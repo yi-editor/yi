@@ -24,9 +24,9 @@ endif
 # building the profiled way
 #
 ifeq "$(way)" "p"
-PROF_OPTS	= -prof -auto-all
+PROF_OPTS	= -prof -auto-all -Icbits
 LD_OPTS		+= $(PROF_OPTS)
-HC_OPTS         += $(PROF_OPTS)
+HC_OPTS     += $(PROF_OPTS)
 HC_OPTS 	+= -hisuf $(way_)hi -hcsuf $(way_)hc -osuf $(way_)o
 endif
 
