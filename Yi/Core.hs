@@ -146,7 +146,7 @@ import System.Directory     ( doesFileExist )
 import System.Exit          ( exitWith, ExitCode(ExitSuccess) )
 
 import Control.Monad
-import Control.Exception    ( ioErrors, handle, throwIO, handleJust )
+import Control.Exception    ( ioErrors, handle, throwIO, handleJust, assert )
 import Control.Concurrent   ( threadWaitRead, takeMVar, forkIO )
 import Control.Concurrent.Chan
 
@@ -154,7 +154,6 @@ import GHC.Exception hiding ( throwIO )
 
 import qualified Yi.Curses.UI as UI
 
--- for now:
 import Data.IORef
 import System.IO.Unsafe     ( unsafePerformIO )
 
@@ -564,7 +563,9 @@ readWord_ w b = do
                           else moveWhile_ isAlphaNum Right w b >> leftB b
     y <- pointB b   -- end point
     moveWhile_ isAlphaNum Left w b
-    rightB b
+    sof <- atSof b
+    c'  <- readB b 
+    when (not sof || not (isAlphaNum c')) $ rightB b
     x <- pointB b
     s <- nelemsB b (y-x+1) x
     moveTo b p
@@ -829,7 +830,7 @@ moveWhile_ f dir w b = do
     loop
     return w
 
-------------------------------------------------------------------------
+-- ---------------------------------------------------------------------
 -- | keyword completion
 --
 -- when doing keyword completion, we need to keep track of the word
@@ -853,7 +854,7 @@ resetCompleteE :: Action
 resetCompleteE = writeIORef completions Nothing
 
 --
--- The word-completion action
+-- The word-completion action, down the buffer
 --
 wordCompleteE :: Action
 wordCompleteE = do
@@ -886,7 +887,7 @@ wordCompleteE = do
     doloop p win buf (w,fm) = do
             m' <- nextWordMatch win buf w
             moveTo buf p
-            (_,j,_) <- readWordLeft_ win buf
+            (_,j,_) <- readWord_ win buf
             case m' of
                 Just (s,i) 
                     | j == i                -- seen entire file
@@ -894,17 +895,13 @@ wordCompleteE = do
                           return Nothing
 
                     | s `elemFM` fm         -- already seen
-                    -> do loop win buf (Just (w,fm,i))
+                    -> loop win buf (Just (w,fm,i))
 
                     | otherwise             -- new
                     -> do replaceLeftWith win buf s
                           return (Just (w,addToFM fm s (),i))
 
-          -- doesn't work, inf.loop:
-          --    Nothing -> loop win buf (Just (w,fm,(-1))) -- goto start of file
-                Nothing
-                    -> do replaceLeftWith win buf w
-                          return Nothing
+                Nothing -> loop win buf (Just (w,fm,(-1))) -- goto start of file
 
     --
     -- replace word under cursor with @s@
@@ -927,11 +924,12 @@ wordCompleteE = do
         mi   <- regexB b re_c
         case mi of 
             Nothing -> return Nothing
-            Just (i,_) -> do 
-                let i' = if i == 0 then 0 else i+1 -- for the space
+            Just (i,j) -> do 
+                c <- readAtB b i
+                let i' = if i == 0 && isAlphaNum c then 0 else i+1 -- for the space
                 moveTo b i'
                 (s,_,_) <- readWord_ win b
-                return $ Just (s,i')
+                assert (s /= [] && i /= j) $ return $ Just (s,i')
 
 ------------------------------------------------------------------------
 
