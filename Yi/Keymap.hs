@@ -157,7 +157,7 @@ cmd '\^W' = nextWinE >> nextCmd
 
 -- Display the file information.
 cmd '\^G' = do
-    (f,_,ln,pct) <- bufInfoE 
+    (f,_,ln,_,_,pct) <- bufInfoE 
     msgE $ show f ++ " Line " ++ show ln ++ " ["++ pct ++"]" 
     nextCmd
 
@@ -179,7 +179,7 @@ ins c | c == keyPPage = upScreenE     >> nextIns
 
 -- Insert character
 ins c  = do 
-        (_,s,_,_) <- bufInfoE
+        (_,s,_,_,_,_) <- bufInfoE
         when (s == 0) $ insertE '\n' -- vi behaviour at start of file
         insertE c
         nextIns
@@ -233,7 +233,7 @@ ex _ = nopE >> nextEx
 --
 viWrite :: Action
 viWrite = do 
-    (f,s,_,_) <- bufInfoE 
+    (f,s,_,_,_,_) <- bufInfoE 
     fwriteE
     msgE $ show f++" "++show s ++ "C written"
 

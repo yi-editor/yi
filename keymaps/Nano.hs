@@ -23,7 +23,7 @@
 -- status.
 --
 
-module Yi.Keymap ( keymap ) where
+module Nano ( keymap ) where
 
 import Yi.Core
 import Yi.Editor        ( Keymap(..) )  -- just for now
