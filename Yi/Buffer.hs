@@ -230,9 +230,6 @@ hNewFBuffer f = do
 --
 -- | Write contents of buffer into specified file
 --
--- TODO something bad is happening underneath , :w can take forever.
--- Some big space leak, yet nothing in the profile..
---
 hPutFBuffer_ :: FBuffer_ -> FilePath -> IO ()
 hPutFBuffer_ (FBuffer_ bytearr _ end _) f = do
     h <- openBinaryFile f WriteMode
@@ -245,7 +242,7 @@ hPutFBuffer_ (FBuffer_ bytearr _ end _) f = do
 --
 stringToFBuffer :: String -> String -> IO FBuffer
 stringToFBuffer nm s = do
-    let size_i = length s
+    let size_i = length s   -- bad for big strings...
         r_size = size_i + 2048 -- TODO
     arr <- newListArray (0,r_size-1) (map (fromIntegral.ord) s) :: IO (IOUArray Int Word8)
     case unsafeCoerce# arr of       -- TODO get rid of Coerce

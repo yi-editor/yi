@@ -195,7 +195,7 @@ drawPoint y_orig x_orig y_max x_max buf = Curses.withCursor Curses.CursorVisible
     -- NB the point is progressing, but we're refusing to scroll for now.
     --
     let prev = reverse $ take p ss
-        y = min y_max $ length $ filter (== '\n') prev
+        y = min y_max $ length $ filter (== '\n') prev -- only ever do this on nelemsB
         x = min x_max $ case elemIndex '\n' prev of {Just a -> a; _ -> p}
 
     cset_attr (Curses.setReverse Curses.attr0 True , Curses.Pair 1)

@@ -349,8 +349,9 @@ defineKey k s = return ()
 initCurses :: IO ()
 initCurses = do
     initScr
-    b <- hasColors
-    when b startColor
+-- TODO
+--  b <- hasColors
+--  when b startColor
     --when b useDefaultColors
     cBreak True
     echo False
@@ -400,6 +401,10 @@ hasColors :: IO Bool
 hasColors = liftM (/= 0) has_colors
 foreign import ccall unsafe "YiCurses.h has_colors" has_colors :: IO (#type bool)
 
+--
+-- | Initialise the color settings, also sets the screen to the
+-- default colors (white on black)
+--
 startColor :: IO ()
 startColor = throwIfErr_ "start_color" start_color
 foreign import ccall unsafe start_color :: IO CInt
