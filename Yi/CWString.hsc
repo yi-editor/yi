@@ -1,4 +1,4 @@
--- 
+--  -*- haskell -*-
 -- Copyright (c) 2002-2004 John Meacham (john at repetae dot net)
 -- 
 -- Permission is hereby granted, free of charge, to any person obtaining a

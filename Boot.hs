@@ -1,5 +1,5 @@
 --
--- hemacs/Boot.hs
+-- yi/Boot.hs
 -- 
 -- Copyright (c) 2004 Don Stewart - http://www.cse.unsw.edu.au/~dons
 -- 
@@ -20,24 +20,24 @@
 -- 
 
 --
--- Boot loader for hemacs.
--- This is a small stub that loads the runtime hemacs library, then
+-- Boot loader for yi.
+-- This is a small stub that loads the runtime yi library, then
 -- jumps to it. It solves the problem of unnecessary code linking.  As
 -- such, we only want to do plugin-related stuff here. So we don't even
 -- mess with the locale stuff yet. Maybe not so small since it is
 -- statically linked against -package plugins :(
 --
--- We should have no static dependencies on any other part of hemacs.
+-- We should have no static dependencies on any other part of yi.
 --
 -- One of our jobs is to find a (value :: Config) to pass to
--- HEmacs.dynamic_main (a dynamically loaded module in the hemacs
+-- Yi.dynamic_main (a dynamically loaded module in the yi
 -- library). To do this we need to check if the -B flag was on the
 -- command line.
 --
 -- Once we find our Config file we have to:
 --      * load Config.o if it exists
---      * load -package hemacs, and any dependencies, through HEmacs.o
---      * jump to HEmacs.dynamic_main with v:: Config as an argument
+--      * load -package yi, and any dependencies, through Yi.o
+--      * jump to Yi.dynamic_main with v:: Config as an argument
 --
 -- This is the only module that depends on -package plugins (at the
 -- moment -- if we want to reload() based on a user action, we'll have
@@ -45,9 +45,9 @@
 --
 -- NB: ncurses must be statically linked in. It can't be dynamically loaded
 --
--- NB: we need to distribute HEmacs.o outside of HShemacs.o, it is our
--- hs-plugins.load entry point to HShemacs.o. Loading HEmacs.o pulls in
--- HShemacs.o (i.e. -package hemacs) as a dependency.
+-- NB: we need to distribute Yi.o outside of HSyi.o, it is our
+-- hs-plugins.load entry point to HSyi.o. Loading Yi.o pulls in
+-- HSyi.o (i.e. -package yi) as a dependency.
 --
 
 module Boot ( main ) where
@@ -71,18 +71,18 @@ import System.Posix.User      ( getUserEntryForID, getRealUserID, homeDirectory 
 #endif
 
 -- ---------------------------------------------------------------------
--- hemacs uses config scripts stored in ~/.hemacs
+-- yi uses config scripts stored in ~/.yi
 --
 
-config_dir, config_file, hemacs_main_obj :: FilePath
-config_dir      = ".hemacs"                -- ~/.hemacs/ stores Config.hs
+config_dir, config_file, yi_main_obj :: FilePath
+config_dir      = ".yi"                -- ~/.yi/ stores Config.hs
 config_file     = "Config.hs"              -- name of user-defineable Config file
 
-hemacs_main_obj = "HEmacs.o"               -- entry point into hemacs lib
+yi_main_obj = "Yi.o"               -- entry point into yi lib
 
-config_sym, hemacs_main_sym :: Symbol
-config_sym      = "hemacs"               -- symbol to retrieve from Config.hs
-hemacs_main_sym = "dynamic_main"         -- main entry point
+config_sym, yi_main_sym :: Symbol
+config_sym      = "yi"               -- symbol to retrieve from Config.hs
+yi_main_sym = "dynamic_main"         -- main entry point
 
 -- ---------------------------------------------------------------------
 -- | Where do the libraries live?
@@ -105,13 +105,13 @@ get_home = Control.Exception.catch
 get_home = error "Boot.get_home not defined for this platform"
 #endif
 
--- | ~/.hemacsrc/
+-- | ~/.yirc/
 get_config_dir  :: IO String
 get_config_dir = do
     home <- get_home
     return $ home</>config_dir
 
--- | ~/.hemacsrc/Config.hs
+-- | ~/.yirc/Config.hs
 get_config_file :: IO (String)
 get_config_file = do
     home <- get_home
@@ -120,8 +120,8 @@ get_config_file = do
 -- ---------------------------------------------------------------------
 -- Do some argv parsing to detect any -B args needed to find our runtime
 -- libraries. Any other args are ignored and passed through to
--- HEmacs.main. Think like GHCs +RTS -RTS options, except we don't
--- remove -B flags -- we expect them to be ignored by HEmacs.main
+-- Yi.main. Think like GHCs +RTS -RTS options, except we don't
+-- remove -B flags -- we expect them to be ignored by Yi.main
 --
 
 data Opts = LibDir FilePath
@@ -142,7 +142,7 @@ doArgs argv = case getOpt Permute options argv of
 
 -- ---------------------------------------------------------------------
 -- Given a source file, compile it to a (.o, .hi) pair
--- Jump to the ~/.hemacs/ directory, in case we are running in-place, to
+-- Jump to the ~/.yi/ directory, in case we are running in-place, to
 -- prevent bogus module dependencies.
 --
 compile :: FilePath -> IO (Maybe FilePath)
@@ -167,7 +167,7 @@ compile src = do
 -- What packages do we need to build Config.hs?
 --
 packages :: [String]
-packages = [ "hemacs" ]
+packages = [ "yi" ]
 
 --
 -- Flags to find the runtime libraries, to help ghc out
@@ -192,8 +192,8 @@ get_load_flags = do libpath <- readIORef libdir
                     return $ map (\p -> libpath </> p <.> "conf") packages
 
 -- ---------------------------------------------------------------------
--- | Find and load a config file. Load the hemacs core library. Jump to
--- the real main in 'HEmacs.main', passing any config information we found.
+-- | Find and load a config file. Load the yi core library. Jump to
+-- the real main in 'Yi.main', passing any config information we found.
 --
 main :: IO ()
 main = do
@@ -202,14 +202,14 @@ main = do
     let mlib = doArgs argv 
     when (isJust mlib) $ writeIORef libdir (fromJust mlib)
 
-    -- check if ~/.hemacs/ exists
+    -- check if ~/.yi/ exists
     d        <- get_config_dir          
     d_exists <- doesDirectoryExist d
     when (not d_exists) $ createDirectory d
 
     putStr "Starting up dynamic Haskell ... " >> hFlush stdout
 
-    -- look for ~/.hemacs/Config.hs
+    -- look for ~/.yi/Config.hs
     c        <- get_config_file 
     c_exists <- doesFileExist c
     m_obj    <- if c_exists then compile c else return Nothing
@@ -227,27 +227,27 @@ main = do
                                 mapM_ putStrLn e ; return Nothing
 
     -- now, get a handle to Main.dynamic_main, and jump to it
-    status    <- load (libpath </> hemacs_main_obj) [] paths hemacs_main_sym
-    hemacs_main <- case status of
-        LoadSuccess _ v -> return (v :: HEmacsMainType)
-        LoadFailure e -> do putStrLn "Unable to load HEmacs.Main, exiting"
+    status    <- load (libpath </> yi_main_obj) [] paths yi_main_sym
+    yi_main <- case status of
+        LoadSuccess _ v -> return (v :: YiMainType)
+        LoadFailure e -> do putStrLn "Unable to load Yi.Main, exiting"
                             mapM_ putStrLn e ; exitFailure
 
     putStr "jumping over the edge ... " >> hFlush stdout
-    hemacs_main cfghdl   -- jump to dynamic code
+    yi_main cfghdl   -- jump to dynamic code
 
 -- ---------------------------------------------------------------------
 -- | MAGIC: this is the type of the value passed from Boot.main to
--- HEmacs.main. It must be exactly the same as the definition in
--- HEmacs.hs.  We can't, however, share the value in another module,
+-- Yi.main. It must be exactly the same as the definition in
+-- Yi.hs.  We can't, however, share the value in another module,
 -- without breaking ghci support (the same module would be linked both
 -- statically and dynamically). 
 --
 -- It is an existential to prevent a dependency on ConfigAPI in Boot.hs.
--- It gets unwrapped magically in HEmacs.dynamic_main
+-- It gets unwrapped magically in Yi.dynamic_main
 --
 data ConfigData = forall a. CD a {- has Config type -}
 
-type HEmacsMainType = (Maybe ConfigData) -> IO ()
+type YiMainType = (Maybe ConfigData) -> IO ()
 
 -- vim: sw=4 ts=4

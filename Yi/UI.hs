@@ -13,7 +13,7 @@
 -- | User interface abstractions. Should always be general enough to
 -- permit multiple user interfaces.
 --
-module HEmacs.UI (
+module Yi.UI (
 
         -- * UI initialisation 
         start, end, 
@@ -30,10 +30,10 @@ module HEmacs.UI (
 
   ) where
 
-import HEmacs.Style
-import HEmacs.Buffer
-import qualified HEmacs.Curses as Curses
-import qualified HEmacs.Editor as Editor
+import Yi.Style
+import Yi.Buffer
+import qualified Yi.Curses as Curses
+import qualified Yi.Editor as Editor
 
 import Data.Maybe                       ( isJust, fromJust ) 
 import Control.Monad                    ( when )
@@ -263,7 +263,7 @@ draw_midinfo s = do_draw_infoline_align s l t (mk_n_of_m n m)
 -- | draw text into the status (bottom) line on the screen
 --
 draw_botinfo :: Entry a => Status a -> IO ()
-draw_botinfo s = do_draw_infoline_align s l t "(hemacs) " {-(mk_n_of_m n m)-}
+draw_botinfo s = do_draw_infoline_align s l t "(yi) " {-(mk_n_of_m n m)-}
     where
         l = botinfo_line s
         t = botinfo_text s

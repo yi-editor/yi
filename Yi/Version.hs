@@ -13,9 +13,9 @@
 -- | Version information
 --
 
-module HEmacs.Version where
+module Yi.Version where
 
-package = "hemacs"
+package = "yi"
 branch  = "0"
 release = "yyyymmdd"
 version = branch++"-"++release

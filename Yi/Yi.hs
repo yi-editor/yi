@@ -22,23 +22,23 @@
 -- a bunch of modules.
 --
 -- You should therefore: 
---      import HEmacs.HEmacs
--- in your ~/.hemacs/Config.hs
+--      import Yi.Yi
+-- in your ~/.yi/Config.hs
 --
 
-module HEmacs.HEmacs (
+module Yi.Yi (
         
-        module HEmacs.Editor,
-        module HEmacs.Config,
-        module HEmacs.Core,
-        module HEmacs.Version,
+        module Yi.Editor,
+        module Yi.Config,
+        module Yi.Core,
+        module Yi.Version,
  
    ) where
 
-import HEmacs.Editor
-import HEmacs.Config
-import HEmacs.Core
-import HEmacs.Version
+import Yi.Editor
+import Yi.Config
+import Yi.Core
+import Yi.Version
 
 -- and anything else that might be useful to write code to
 

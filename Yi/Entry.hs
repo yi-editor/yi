@@ -9,7 +9,7 @@
 -- (at your option) any later version.
 --
 
-module HEmacs.Entry (
+module Yi.Entry (
 
     Entry(..),
     EditableEntry(..),

@@ -21,7 +21,7 @@
 -- | The editor state. This the the machine that Core instructions manipulate.
 --
 
-module HEmacs.Editor (
+module Yi.Editor (
 
         -- * the editor type
         Editor,             -- abstract?
@@ -55,10 +55,10 @@ module HEmacs.Editor (
 
    ) where
 
-import HEmacs.Buffer
+import Yi.Buffer
 
 -- Get at the user defined settings
-import {-# SOURCE #-} qualified HEmacs.Config as Config ( settings )
+import {-# SOURCE #-} qualified Yi.Config as Config ( settings )
 
 import Data.IORef
 import Control.Concurrent.MVar  ( MVar(), newMVar, withMVar )

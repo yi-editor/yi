@@ -8,12 +8,12 @@ Copyright (c) Don Stewart 2004.
 
 BUILDING AND INSTALLING
 
-You can get the latest hemacs source from its darcs repository:
+You can get the latest yi source from its darcs repository:
 
-        darcs get http://www.cse.unsw.edu.au/~dons/hemacs
+        darcs get http://www.cse.unsw.edu.au/~dons/yi
 
 You will need GHC 6 (The Glorious/Glasgow Haskell Compilation System)
-and GNU make to compile hemacs. On OpenBSD you'll need ghc-6.3-20040929, 
+and GNU make to compile yi. On OpenBSD you'll need ghc-6.3-20040929, 
 or greater, which contains a patch for the System.Posix.User library.
 
 You also need a recent snapshot version of hs-plugins, the Haskell
@@ -30,12 +30,12 @@ installed:
 
  2. Run 'make'         ('gmake' on some systems)
 
- 3. Run 'make install' to install it, and then use 'hemacs'
+ 3. Run 'make install' to install it, and then use 'yi'
         OR
-    Just use './hemacs-inplace' directly in the build tree (without
+    Just use './yi-inplace' directly in the build tree (without
     having to install) 
 
-Hint: 'make show-install' will show you which directories hemacs wants
+Hint: 'make show-install' will show you which directories yi wants
 to install into. These are editable in mk/config.mk
 
 Useful targets:
@@ -51,14 +51,14 @@ Useful targets:
 CONFIGURATION
 
 All configuration (bindings, colours) is done at either build time by
-editing HEmacs/ConfigAPI.hs, or at runtime by editing
-~/.hemacs/Config.hs.  Example config files are in plugins/
+editing Yi/ConfigAPI.hs, or at runtime by editing
+~/.yi/Config.hs.  Example config files are in plugins/
 
 PORTABILITY
 
-HEmacs is developed on OpenBSD and Debian Linux. It relies on the
+Yi is developed on OpenBSD and Debian Linux. It relies on the
 hs-plugins library, which has been ported to most platforms, but
-currently not Windows. HEmacs requires GHC 6 with a working GHCi
+currently not Windows. Yi requires GHC 6 with a working GHCi
 implementation. A porting checklist:
 
         * you have GNU make
@@ -69,10 +69,10 @@ implementation. A porting checklist:
 
 CREDITS
 
-HEmacs has been developed by Don Stewart <http://www.cse.unsw.edu.au/~dons>
+Yi has been developed by Don Stewart <http://www.cse.unsw.edu.au/~dons>
 with the help of the #haskell irc community.
 
-HEmacs is derived from Riot <http://iki.fi/tuomov/riot/>, written by
+Yi is derived from Riot <http://iki.fi/tuomov/riot/>, written by
 Tuomo Valkonen.
 
 The Curses interface code is mostly by John Meacham;see the LICENSE

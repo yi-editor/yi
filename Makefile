@@ -1,5 +1,5 @@
 #
-# hemacs Makefile
+# yi Makefile
 #
 
 TOPDIR = .
@@ -9,10 +9,10 @@ include $(TOPDIR)/mk/config.mk
 # this rule must remain first
 default: boot all
 
-ALL_DIRS=       HEmacs cbits
+ALL_DIRS=       Yi cbits
 
-BIN=            hemacs
-STATIC_BIN=     hemacs-static
+BIN=            yi
+STATIC_BIN=     yi-static
 
 ifeq "$(way)" ""
 HS_BINS=        $(BIN) $(STATIC_BIN)
@@ -22,7 +22,7 @@ endif
 
 # Library specific stuff
  
-PKG=            hemacs
+PKG=            yi
 
 # dynamic front end
  
@@ -34,20 +34,20 @@ HADDOCK_SRCS+=  Boot.hs
 # static front end
  
 STATIC_OBJS=    Main.o
-STATIC_BIN_DEPS=hemacs
-STATIC_HC_OPTS  += -package-conf hemacs.conf
+STATIC_BIN_DEPS=yi
+STATIC_HC_OPTS  += -package-conf yi.conf
 HADDOCK_SRCS+=  Main.hs
 
 # frontend to the library (by which it is loaded)
 
-FRONTEND_HS_SRC=HEmacs.hs
-LIB_FRONTEND=   HEmacs.$(way_)o
-LIB_IFACE   =   HEmacs.$(way_)hi
+FRONTEND_HS_SRC=Yi.hs
+LIB_FRONTEND=   Yi.$(way_)o
+LIB_IFACE   =   Yi.$(way_)hi
 HADDOCK_SRCS+=  $(FRONTEND_HS_SRC)
 EXTRA_CLEANS+=	$(LIB_FRONTEND) $(LIB_IFACE)
 
 # filter out recursive module
-NO_DOCS+=       HEmacs/Config.hs
+NO_DOCS+=       Yi/Config.hs
 
 #
 # read in suffix rules
@@ -59,20 +59,20 @@ include $(TOPDIR)/mk/rules.mk
 # 
 
 #
-# Boot is the bootstrap loader. It cant be linked *statically* against -package hemacs.
+# Boot is the bootstrap loader. It cant be linked *statically* against -package yi.
 #
 Boot.o: Boot.hs 
 	$(GHC) $(HC_OPTS) $(BIN_HC_OPTS) $(DEFINES) -main-is Boot.main -c $< -o $@ -ohi $(basename $@).$(way)hi
 
 #
-# Main is the static "loader". It can't get -package-name hemacs, or it
+# Main is the static "loader". It can't get -package-name yi, or it
 # won't work in ghci. Could probably filter it out somehow
 #
 Main.o: Main.hs 
 	$(GHC) $(HC_OPTS) $(STATIC_HC_OPTS) -c $< -o $@ -ohi $(basename $@).hi
 
 #
-# HEmacs.o is the actual HEmacs.main, as well as being the frontend of
+# Yi.o is the actual Yi.main, as well as being the frontend of
 # the statically linked binary
 #
 # Semi-magic to defeat <= ghc-6.2.1 use of -i. by default. this stops
@@ -81,16 +81,16 @@ Main.o: Main.hs
 # issue in ghc-6.2.2. Anyway, the Solution: cd somewhere where -i.
 # means nothing.
 #
-MAGIC_FLAGS   += -package-conf ../hemacs.conf  -package hemacs
+MAGIC_FLAGS   += -package-conf ../yi.conf  -package yi
 
-HEmacs.$(way_)o: HEmacs.hs
-	( cd HEmacs ; $(GHC) $(HC_OPTS) $(MAGIC_FLAGS) -odir .. -c ../$< -o ../$@ -ohi ../$(basename $@).$(way_)hi )
+Yi.$(way_)o: Yi.hs
+	( cd Yi ; $(GHC) $(HC_OPTS) $(MAGIC_FLAGS) -odir .. -c ../$< -o ../$@ -ohi ../$(basename $@).$(way_)hi )
 
-hemacs-inplace: hemacs-inplace.in
-	sed 's,@HEMACS_TOP@,'`pwd`',g' hemacs-inplace.in > hemacs-inplace
-	chmod 755 hemacs-inplace
+yi-inplace: yi-inplace.in
+	sed 's,@YI_TOP@,'`pwd`',g' yi-inplace.in > yi-inplace
+	chmod 755 yi-inplace
 
-EXTRA_CLEANS+= hemacs-inplace
+EXTRA_CLEANS+= yi-inplace
 
 # Dependency orders
 

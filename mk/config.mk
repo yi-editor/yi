@@ -12,7 +12,7 @@ DEFINES+=	-DLIBDIR=\"$(LIBDIR)\"
 
 GHC=            ghc
 GHC_PKG=        ghc-pkg
-HC_OPTS=        -cpp -fglasgow-exts
+HC_OPTS=        -cpp -fglasgow-exts -Wall
 
 HC_OPTS+=       -Onot -fasm -H64m
 #HC_OPTS+=      -O -fvia-C -funbox-strict-fields

@@ -25,7 +25,7 @@
 -- which are available under the BSD license.
 --
 
-module HEmacs.MkTemp ( 
+module Yi.MkTemp ( 
 
      mktemp,    -- :: FilePath -> Maybe FilePath
      mkstemp,   -- :: FilePath -> Maybe (FilePath, Handle)

@@ -13,14 +13,14 @@
 -- This module defines defaults for user configurable data.
 --
 
-module HEmacs.Config (
+module Yi.Config (
 
         settings,       -- default values
 
   ) where
 
-import HEmacs.Editor    ( Config(..), Key(..), Action )
-import HEmacs.Core      
+import Yi.Editor    ( Config(..), Key(..), Action )
+import Yi.Core      
 
 --
 -- | Default settings

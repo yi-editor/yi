@@ -13,7 +13,7 @@
 -- | Colors and friends
 --
 
-module HEmacs.Style (
+module Yi.Style (
 
         UIAttr(..), StyleSpec(..),
         init_uiattr, default_uiattr, 
@@ -28,7 +28,7 @@ module HEmacs.Style (
 
    ) where
 
-import qualified HEmacs.Curses as Curses
+import qualified Yi.Curses as Curses
 
 import Data.Maybe        ( fromJust )
 

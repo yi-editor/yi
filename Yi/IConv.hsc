@@ -1,10 +1,10 @@
---
+-- -*- haskell -*-
 -- IConv wrappers
 --
 
 #include <iconv.h>
 
-module HEmacs.IConv(
+module Yi.IConv(
     IConv,
     iconv,
     iconv_,
@@ -15,7 +15,7 @@ module HEmacs.IConv(
     from_unicode_
   ) where
 
-import HEmacs.CWString (
+import Yi.CWString (
 #ifdef CF_WCHAR_SUPPORT
     CWString, peekCWStringLen, withCWStringLen,
 #endif    

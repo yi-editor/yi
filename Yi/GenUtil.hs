@@ -32,7 +32,7 @@
 -- exported so it may be added to any project without conflicts.
 ----------------------------------------
 
-module HEmacs.GenUtil(
+module Yi.GenUtil(
     -- * Functions
     -- ** Error reporting 
     putErr,putErrLn,putErrDie,

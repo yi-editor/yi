@@ -1,4 +1,4 @@
--- 
+-- -*- haskell -*-
 -- Copyright (c) 2002-2004 John Meacham (john at repetae dot net)
 -- 
 -- Permission is hereby granted, free of charge, to any person obtaining a
@@ -34,7 +34,7 @@
 -- are distributed under a BSD license.
 --
 
-module HEmacs.Curses (
+module Yi.Curses (
 
     --------------------------------------------------------------------
     
@@ -148,8 +148,8 @@ module HEmacs.Curses (
     --------------------------------------------------------------------
   ) where 
 
-import HEmacs.CWString
-import HEmacs.Editor    ( Key(..) )
+import Yi.CWString
+import Yi.Editor    ( Key(..) )
 import Prelude hiding   ( pi )
 
 import Data.Char        ( chr, ord, isPrint, isSpace, toLower )

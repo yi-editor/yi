@@ -1,10 +1,10 @@
-{-# OPTIONS -ffi -#include <locale.h> #-}
+{-# OPTIONS -ffi -#include <locale.h> #-} -- -*- haskell -*-
 
 --
 -- arch-tag: d48a3194-c698-43c7-b581-08e7a213f0c8
 --
 
-module HEmacs.Locale (
+module Yi.Locale (
     setupLocale,
     -- getCharset,
     getDateFmt,

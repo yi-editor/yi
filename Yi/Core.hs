@@ -19,13 +19,13 @@
 
 --
 -- | The core edsl and machine of hemacs. This module is the link
--- between the editor machine defined in 'HEmacs.Editor', and the real
--- world defined in 'HEmacs.UI'. The instructions defined here
+-- between the editor machine defined in 'Yi.Editor', and the real
+-- world defined in 'Yi.UI'. The instructions defined here
 -- manipulate the editor state, and control the screen through the UI.
--- Key bindings, and libraries should manipulate HEmacs through the
+-- Key bindings, and libraries should manipulate Yi through the
 -- interface defined here.
 --
-module HEmacs.Core (
+module Yi.Core (
 
         -- * Main loop
         start,
@@ -48,10 +48,10 @@ module HEmacs.Core (
 
    ) where
 
-import HEmacs.Editor
-import qualified HEmacs.Editor as Editor
-import qualified HEmacs.UI     as UI
-import qualified HEmacs.Buffer as Buffer
+import Yi.Editor
+import qualified Yi.Editor as Editor
+import qualified Yi.UI     as UI
+import qualified Yi.Buffer as Buffer
 
 import System.IO        ( openFile, hGetContents, IOMode(..), )
 import System.Exit

@@ -10,21 +10,21 @@
 --
 
 --
--- | This is the real main module of HEmacs, and is shared between
+-- | This is the real main module of Yi, and is shared between
 -- Main.hs (the static binary), and dynamically loaded by Boot.hs.
 -- We take any config arguments from the boot loader (if that is how we
 -- are being invoked) parse command line args, initialise the ui, before
 -- jumping into an event loop.
 --
 
-module HEmacs (static_main, dynamic_main) where
+module Yi (static_main, dynamic_main) where
 
-import HEmacs.Locale                        ( setupLocale )
-import HEmacs.Version                       ( package, version )
-import qualified HEmacs.Editor  as Editor
-import qualified HEmacs.Config  as Config
-import qualified HEmacs.Core    as Core
-import qualified HEmacs.UI      as UI       ( refresh )
+import Yi.Locale                        ( setupLocale )
+import Yi.Version                       ( package, version )
+import qualified Yi.Editor  as Editor
+import qualified Yi.Config  as Config
+import qualified Yi.Core    as Core
+import qualified Yi.UI      as UI       ( refresh )
 
 import Control.Exception        ( bracket_ )
 import Data.IORef               ( IORef, readIORef, newIORef, writeIORef )
@@ -54,7 +54,7 @@ options = [
 -- usage string.
 --
 usage, versinfo :: IO ()
-usage    = putStr   $ usageInfo "Usage: hemacs [option...] [file]" options
+usage    = putStr   $ usageInfo "Usage: yi [option...] [file]" options
 versinfo = putStrLn $ package++" "++version
 
 --
@@ -104,7 +104,7 @@ releaseSignals = do
 -- ---------------------------------------------------------------------
 -- | The "g_settings" var stores the user-configurable information. It is
 -- initialised with the default settings, so it works even if the user
--- doesnt provide a ~/.hemacs/Config.hs, or stuffs up Config.hs in some
+-- doesnt provide a ~/.yi/Config.hs, or stuffs up Config.hs in some
 -- way.
 --
 g_settings :: IORef Editor.Config
@@ -131,13 +131,13 @@ static_main = do
 
 -- ---------------------------------------------------------------------
 -- | Dynamic main. This is jumped to from from Boot.hs, after dynamically
--- loading HShemacs.o. It takes in user preferences, sets a global
+-- loading HSyi.o. It takes in user preferences, sets a global
 -- variable if any settings were received, then jumps to static main.
 --
-dynamic_main :: HEmacsMainType
+dynamic_main :: YiMainType
 dynamic_main v = putStrLn "done." >> dynamic_main' v
 
-dynamic_main' :: HEmacsMainType
+dynamic_main' :: YiMainType
 
 dynamic_main' Nothing = static_main     -- No prefs found, use defaults
 
@@ -163,8 +163,8 @@ data ConfigData = forall a. CD a {- has Config type -}
 
 --
 -- | Maybe a set of user preferences, if the boot loader found
--- ~/.hemacs/Config.hs
+-- ~/.yi/Config.hs
 --
-type HEmacsMainType = (Maybe ConfigData) -> IO ()
+type YiMainType = (Maybe ConfigData) -> IO ()
 
 -- vim: sw=4 ts=4

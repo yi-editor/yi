@@ -22,7 +22,7 @@
 --  'Buffer' are available.
 --
 
-module HEmacs.Buffer where
+module Yi.Buffer where
 
 --
 -- | The 'Buffer' defines operations over two-dimensional rectangular
