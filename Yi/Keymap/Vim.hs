@@ -41,6 +41,13 @@ import Data.Maybe           ( fromMaybe )
 import Control.Monad        ( replicateM_, when )
 import Control.Exception    ( ioErrors, catchJust, try, evaluate )
 
+--
+-- What's missing?
+--   fancier :s//
+--   '.'
+--   movement parameterised \> \<
+--
+
 -- ---------------------------------------------------------------------
 
 -- A vim mode is a lexer that returns a core Action. 
@@ -53,8 +60,6 @@ type ViRegex = Regexp VimState Action
 -- In vi, you may add bindings (:map) to cmd or insert mode. We thus
 -- carry around the current cmd and insert lexers in the state. Calls to
 -- switch editor modes therefore use the lexers in the state.
---
--- TODO undo and redo :: [Action]
 --
 data VimState = St { 
     acc :: [Char]            -- an accumulator, for count, search and ex mode
@@ -297,6 +302,7 @@ cmdCmdFM = listToFM $
     ,('\^L',    const refreshE)
     ,('\^R',    flip replicateM_ redoE )
     ,('\^W',    const nextWinE)
+    ,('\^Z',    const suspendE)
     ,('D',      const (readRestOfLnE >>= setRegE >> killE))
     ,('J',      const (eolE >> deleteE))    -- the "\n"
     ,('U',      flip replicateM_ undoE )    -- NB not correct
@@ -627,8 +633,8 @@ ex_eval = enter
       fn ('e':' ':f)  = fnewE f
       fn ('s':'/':cs) = viSub cs
 
-      fn "reboot"     = rebootE     -- !
-      fn "reload"     = reloadE     -- !
+      fn "reboot"     = rebootE     -- not in vim
+      fn "reload"     = reloadE     -- not in vim
 
       fn "redr"       = refreshE
       fn "redraw"     = refreshE
@@ -637,6 +643,12 @@ ex_eval = enter
       fn "undo"       = undoE
       fn "r"          = redoE
       fn "redo"       = redoE
+
+      fn "sus"        = suspendE
+      fn "suspend"    = suspendE
+      fn "st"         = suspendE
+      fn "stop"       = suspendE
+      
 
       fn s            = errorE $ "The "++show s++ " command is unknown."
 

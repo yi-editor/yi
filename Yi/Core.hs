@@ -37,6 +37,9 @@ module Yi.Core (
         rebootE,        -- :: Action
         reloadE,        -- :: Action
         refreshE,       -- :: Action
+        suspendE,       -- :: Action
+
+        -- * Main loop
         eventLoop,
 
         -- * Global editor actions
@@ -273,6 +276,10 @@ refreshE = UI.resizeui >>= doResizeAll
 -- | Do nothing
 nopE :: Action
 nopE = return ()
+
+-- | Suspend the program
+suspendE :: Action
+suspendE = UI.suspend
 
 -- ---------------------------------------------------------------------
 -- Movement operations

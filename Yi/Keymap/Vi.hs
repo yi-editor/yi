@@ -286,6 +286,7 @@ cmdCmdFM = listToFM $
     ,('\^F',    downScreensE)
     ,('\^G',    const viFileInfo)
     ,('\^W',    const nextWinE)
+    ,('\^Z',    const suspendE)
     ,('D',      const (readRestOfLnE >>= setRegE >> killE))
     ,('J',      const (eolE >> deleteE))    -- the "\n"
     ,('n',      const (searchE Nothing [] Right))

@@ -130,6 +130,7 @@ cmdCharFM = listToFM $
     ,('\^V',        downScreenE)
     ,('\^X',        quitE)
     ,('\^Y',        upScreenE)
+    ,('\^Z',        suspendE)
     ,('\0',         do moveWhileE (isAlphaNum)      Right
                        moveWhileE (not.isAlphaNum)  Right )
     ,(keyBackspace, leftE >> deleteE)
