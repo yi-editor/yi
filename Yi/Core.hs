@@ -245,12 +245,7 @@ newE f = do
 -- | Write current buffer to disk
 --
 writeE :: IO ()
-writeE = withBuffer_ $ \b -> do
-    let f = nameB b
-    ss <- elemsB b
-    hd <- openFile f WriteMode
-    hPutStr hd ss
-    hClose hd
+writeE = withBuffer_ $ \b -> hPutB b (nameB b)
 
 --
 -- | Read file into buffer starting a current point
@@ -306,9 +301,8 @@ msgClrE  :: IO ()
 msgClrE = UI.clearCmd
 
 -- | File info
-infoE :: IO (FilePath, Int, Int)
+infoE :: IO (FilePath, Int)
 infoE = withBuffer $ \b -> do
     s  <- sizeB b
-    cs <- elemsB b
-    return (nameB b, s, length $ lines cs )
+    return (nameB b, s)
 

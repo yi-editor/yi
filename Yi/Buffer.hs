@@ -35,12 +35,12 @@ import GHC.Word                 ( Word8 )
 import Data.Unique              ( Unique, newUnique )
 import Control.Concurrent.MVar
 
-import IO                       ( hFileSize, IOMode(ReadMode) )
+import IO                       ( hFileSize, hClose, hFlush, IOMode(..) )
 import System.IO                ( openBinaryFile )
 
 import Data.Array.MArray        ( newArray_, newListArray )
 import Data.Array.Base          ( STUArray(..) )
-import Data.Array.IO            ( IOUArray, hGetArray )
+import Data.Array.IO            ( IOUArray, hGetArray, hPutArray )
 
 import Foreign.C.Types          ( CSize )
 
@@ -57,6 +57,9 @@ class Buffer a where
 
     -- | Construct a new buffer filled with contents of file
     hNewB :: FilePath -> IO a
+
+    -- | Write buffer into file
+    hPutB :: a -> FilePath -> IO ()
 
     -- | String name of this buffer
     nameB :: a -> String
@@ -214,15 +217,28 @@ hNewFBuffer f = do
     let size_i = fromIntegral size
         r_size = size_i + 2048 -- TODO
     arr <- newArray_ (0,r_size-1)    -- has a MutableByteArray# inside
-    r <- if size_i == 0 then return 0 else hGetArray h arr size_i -- empty file!
+    r <- if size_i == 0 then return 0 else hGetArray h arr size_i -- empty file?
     if (r /= size_i)
         then ioError (userError $ "Short read of file: " ++ f)
-        else case unsafeCoerce# arr of -- please forgive me
+        else case unsafeCoerce# arr of  -- please forgive me. destruct IOUArray
             STUArray _ _ bytearr# -> do
                 ref <- newIORef (FBuffer_ bytearr# 0 size_i r_size)
                 mv  <- newMVar ref
                 u   <- newUnique
-                return (FBuffer f u mv)
+                return (FBuffer f u mv) -- should hClose?
+
+--
+-- | Write contents of buffer into specified file
+--
+-- TODO something bad is happening underneath , :w can take forever.
+-- Some big space leak, yet nothing in the profile..
+--
+hPutFBuffer_ :: FBuffer_ -> FilePath -> IO ()
+hPutFBuffer_ (FBuffer_ bytearr _ end _) f = do
+    h <- openBinaryFile f WriteMode
+    case unsafeCoerce# (STUArray 0 (end-1) bytearr) of  -- construct IOUArray
+            arr -> do hPutArray h arr end       -- copies bytearr.
+                      hFlush h >> hClose h
 
 --
 -- | New FBuffer filled from string.
@@ -284,7 +300,6 @@ shiftChars b (I# src) (I# dst) (I# l) = do
         loop n  i j = copyCharFromTo b i j >> loop (n -# 1#) (i +# 1#) (j +# 1#)
     loop l src dst
 {-# INLINE shiftChars #-}
--}
 
 --
 -- | Copy a character to another location in the buffer
@@ -295,6 +310,7 @@ copyCharFromTo slab src dst = IO $ \st ->
         (# st', c #) -> case writeCharArray# slab dst c st' of
                 st'' -> (# st'', () #)
 {-# INLINE copyCharFromTo #-}
+-}
 
 --
 -- | Read a 'Char' from a 'RawBuffer'. Return character
@@ -330,6 +346,10 @@ instance Buffer FBuffer where
 
     -- hNewB :: FilePath -> IO a
     hNewB = hNewFBuffer
+
+    -- hPutB :: a -> FilePath -> IO ()
+    hPutB (FBuffer _ _ mv) f = readMVar mv >>=
+        readIORef >>= \fb -> hPutFBuffer_ fb f
 
     -- nameB :: a -> String
     nameB (FBuffer f _ _) = f

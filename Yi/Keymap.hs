@@ -135,9 +135,9 @@ key _  _  = noopE
 --
 viWrite :: Action
 viWrite = do 
-    (f,s,l) <- infoE 
+    (f,s) <- infoE 
     writeE
-    msgE $ show f++" "++show l++"L, "++show s ++ "C written"
+    msgE $ show f++" "++show s ++ "C written"
 
 --
 -- | An invalid command
