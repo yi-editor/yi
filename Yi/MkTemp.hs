@@ -1,4 +1,4 @@
-{-# OPTIONS -fffi #-}
+{-# OPTIONS -cpp -fffi #-}
 -- 
 -- Copyright (C) 2004 Don Stewart - http://www.cse.unsw.edu.au/~dons
 -- 

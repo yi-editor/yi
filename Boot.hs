@@ -1,3 +1,4 @@
+{-# OPTIONS -cpp #-}
 --
 -- yi/Boot.hs
 -- 

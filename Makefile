@@ -57,6 +57,8 @@ include $(TOPDIR)/mk/rules.mk
 # Special targets (just those in $(TOP))
 # 
 
+BIN_HC_OPTS+=     -DLIBDIR=\"$(LIBDIR)\"
+
 #
 # Boot is the bootstrap loader. It cant be linked *statically* against -package yi.
 #
@@ -86,8 +88,8 @@ Yi.$(way_)o: Yi.hs
 	( cd Yi ; $(GHC) $(HC_OPTS) $(MAGIC_FLAGS) -I../cbits -odir .. -c ../$< -o ../$@ -ohi ../$(basename $@).$(way_)hi )
 
 yi-inplace: yi-inplace.in
-	sed 's,@YI_TOP@,'`pwd`',g' yi-inplace.in > yi-inplace
-	chmod 755 yi-inplace
+	@sed 's,@YI_TOP@,'`pwd`',g' yi-inplace.in > yi-inplace
+	@chmod 755 yi-inplace
 
 EXTRA_CLEANS+= yi-inplace
 

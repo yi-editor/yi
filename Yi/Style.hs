@@ -1,3 +1,4 @@
+{-# OPTIONS -#include YiUtils.h #-}
 --
 -- riot/Style.hs
 -- 
