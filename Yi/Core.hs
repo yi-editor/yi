@@ -166,60 +166,56 @@ eventLoop = do
 -- Meta operations
 
 -- | Quit
-quitE :: IO ()
+quitE :: Action
 quitE = exitWith ExitSuccess
 
 -- | Refresh the screen
-refreshE :: IO ()
+refreshE :: Action
 refreshE = UI.refresh
 
 -- | Do nothing
-nopE :: IO ()
+nopE :: Action
 nopE = return ()
 
 -- ---------------------------------------------------------------------
 -- Movement operations
 
-{-
---
 -- | Move cursor to origin
---
-topE :: IO ()
+topE :: Action
 topE = withWindow_ $ moveToW 0
 
---
 -- | Move cursor to end of buffer
---
-botE :: IO ()
-botE = withWindowDo_ $ \b -> sizeB b >>= \n -> moveTo b (n-1)
--}
+botE :: Action
+botE = withWindow_ $ \w b -> do
+            n <- sizeB b
+            moveToW (n-1) w b
 
 -- | Move cursor to start of line
-solE :: IO ()
+solE :: Action
 solE = withWindow_ moveToSolW
 
 -- | Move cursor to end of line
-eolE :: IO ()
+eolE :: Action
 eolE = withWindow_ moveToEolW
 
 -- | Move cursor down 1 line
-downE :: IO ()
+downE :: Action
 downE = withWindow_ moveDownW
 
 -- | Move cursor up to the same point on the previous line
-upE :: IO ()
+upE :: Action
 upE = withWindow_ moveUpW
 
 -- | Scroll up 1 screen
 -- Inefficient
-upScreenE :: IO ()
+upScreenE :: Action
 upScreenE = do
     (Just w) <- getWindow   -- better be a window open..
     mapM_ (\_ -> withWindow_ moveUpW)  [1 .. height w - 3]
     withWindow_ moveUpW
 
 -- | Scroll down 1 screen
-downScreenE :: IO ()
+downScreenE :: Action
 downScreenE = do
     (Just w) <- getWindow  -- better be a window open..
     mapM_ (\_ -> withWindow_ moveDownW)  [1 .. (height w - 2) * 2]
@@ -228,11 +224,11 @@ downScreenE = do
         mapM_ (\_ -> withWindow_ moveUpW) [1 .. height w - 2]
 
 -- | Move left @x@ or to start of line
-leftOrSolE :: Int -> IO ()
+leftOrSolE :: Int -> Action
 leftOrSolE x = withWindow_ $ moveXorSolW x
 
 -- | Move right @x@ or to end of line
-rightOrEolE :: Int -> IO ()
+rightOrEolE :: Int -> Action
 rightOrEolE x = withWindow_ $ moveXorEolW x
 
 -- ---------------------------------------------------------------------
@@ -241,26 +237,26 @@ rightOrEolE x = withWindow_ $ moveXorEolW x
 
 {-
 -- | scroll window up
-scrollUpE :: IO ()
+scrollUpE :: Action
 scrollUpE = withWindow_ scrollUpW
 
 -- | scroll window down
-scrollDownE :: IO ()
+scrollDownE :: Action
 scrollDownE = withWindow_ scrollDownW
 -}
 
 ------------------------------------------------------------------------
 
 -- | Insert new character
-insertE :: Char -> IO ()
+insertE :: Char -> Action
 insertE c = withWindow_ $ insertW c
 
 -- | Delete character under cursor
-deleteE :: IO ()
+deleteE :: Action
 deleteE = withWindow_ deleteW
 
 -- | Kill to end of line
-killE :: IO ()
+killE :: Action
 killE = withWindow_ deleteToEolW -- >>= Buffer.prevXorLn 1
 
 -- | Read the char under the cursor
@@ -278,7 +274,7 @@ readLnE = withWindow $ \w b -> do
             return (w,s)
 
 -- | Write char to point
-writeE :: Char -> IO ()
+writeE :: Char -> Action
 writeE c = withWindow_ $ \w b -> do
             if isLatin1 c then writeB b c else nopE -- TODO
             return w
@@ -287,7 +283,7 @@ writeE c = withWindow_ $ \w b -> do
 -- registers
 
 -- | Put string into yank register
-setRegE :: String -> IO ()
+setRegE :: String -> Action
 setRegE s = modifyEditor_ $ \e -> return e { yreg = s }
 
 -- | Return the contents of the yank register
@@ -297,7 +293,7 @@ getRegE = readEditor yreg
 -- ---------------------------------------------------------------------
 
 -- | Searching. Search for string, and move point to that position.
-searchE :: String -> IO ()
+searchE :: String -> Action
 searchE s = do
     mp <- withWindow $ \w b -> do
             rightB b
@@ -310,12 +306,12 @@ searchE s = do
 ------------------------------------------------------------------------
 
 -- | Draw message at bottom of screen
-msgE :: String -> IO ()
+msgE :: String -> Action
 msgE s = do modifyEditor_ $ \e -> return e { cmdline = s }
             UI.drawCmdLine s -- immediately draw
 
 -- | Clear the message line at bottom of screen
-msgClrE  :: IO ()
+msgClrE  :: Action
 msgClrE = do modifyEditor_ $ \e -> return e { cmdline = [] } 
              UI.drawCmdLine [] -- immediately draw
 
@@ -337,7 +333,7 @@ bufInfoE = withWindow $ \w b -> do
 -- | Window manipulation
 
 -- | edit the next buffer in the buffer list
-nextBufW :: IO ()
+nextBufW :: Action
 nextBufW = do
     w <- getWindow
     b <- Editor.nextBuffer
@@ -346,7 +342,7 @@ nextBufW = do
     Editor.setWindow w'
 
 -- | edit the previous buffer in the buffer list
-prevBufW :: IO ()
+prevBufW :: Action
 prevBufW = do
     b <- Editor.prevBuffer
     getWindow >>= deleteWindow
@@ -354,7 +350,7 @@ prevBufW = do
     setWindow w'
 
 -- | Read file into buffer and open up a new window
-fnewE  :: FilePath -> IO ()
+fnewE  :: FilePath -> Action
 fnewE f = do
     e  <- doesFileExist f
     b  <- if e then hNewBuffer f else stringToNewBuffer f []
@@ -363,11 +359,11 @@ fnewE f = do
     Editor.setWindow w
 
 -- | Write current buffer to disk
-fwriteE :: IO ()
+fwriteE :: Action
 fwriteE = withWindow_ $ \w b -> hPutB b (nameB b) >> return w
 
 -- | Split a second window onto this buffer :)
-splitE :: IO ()
+splitE :: Action
 splitE = do
     i     <- sizeWindows
     (y,_) <- screenSize
@@ -383,16 +379,16 @@ splitE = do
                       Editor.setWindow w'
 
 -- | close current window. quit if that is all the windows
-closeE :: IO ()
+closeE :: Action
 closeE = do getWindow >>= deleteWindow
             i <- sizeWindows
             if i == 0 then quitE else nopE
 
 -- | Shift focus to next window
-nextWinE :: IO ()
+nextWinE :: Action
 nextWinE = Editor.nextWindow
 
 -- | Shift focus to prev window
-prevWinE :: IO ()
+prevWinE :: Action
 prevWinE = Editor.prevWindow
 

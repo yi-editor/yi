@@ -138,7 +138,15 @@ cmd c
     | c == keyRight = rightOrEolE 1 >> nextCmd
 
 -- Delete text from the current position to the end-of-line.
-cmd 'D' = killE                   >> nextCmd
+cmd 'D' = killE                     >> nextCmd
+
+-- Move to the last line of the file
+cmd 'G' = botE                      >> nextCmd
+
+-- Hack!!
+cmd '1' = do c <- getcE
+             when (c == 'G') $ topE 
+             nextCmd
 
 -- Delete the line the cursor is on.
 cmd 'd' = do c <- getcE
