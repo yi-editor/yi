@@ -62,6 +62,7 @@ module Yi.Core (
         -- * File-based actions
         fnewE,          -- :: FilePath -> Action
         fwriteE,        -- :: Action
+        fwriteToE,      -- :: String -> Action
 
         -- * Buffer point movement
         topE,           -- :: Action
@@ -741,6 +742,10 @@ fnewE f = do
 -- | Write current buffer to disk
 fwriteE :: Action
 fwriteE = withWindow_ $ \w b -> hPutB b (nameB b) >> return w
+
+-- | Write current file to disk as @f@
+fwriteToE :: String -> Action
+fwriteToE f = withWindow_ $ \w b -> hPutB b f >> return w
 
 -- | Split a second window onto this buffer :)
 splitE :: Action

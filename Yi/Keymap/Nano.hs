@@ -205,9 +205,9 @@ echoEval :: NanoMode
 echoEval = enter
     `meta` \_ (Just (c,_,rf)) ->
         let f = reverse rf
-            a = if f == [] then nopE else getAction c
-        in (Just (Right (a >> msgClrE >> cmdlineUnFocusE))
-           ,Nothing, Just nano_km)
+            a = if f == [] then nopE 
+                           else getAction f c
+        in (Just (Right (a >> msgClrE >> cmdlineUnFocusE)),Nothing,Just nano_km)
     where
         enter = alt ['\n', '\r']
 
@@ -217,8 +217,9 @@ echoEval = enter
         --
         -- TODO need a new fwriteE function that takes a file name argument.
         --
-        getAction c = case c of
-            '\^O' -> catchJust ioErrors (fwriteE >> msgE "Wrote current file.") 
+        getAction f c = case c of
+            '\^O' -> catchJust ioErrors (do fwriteToE f
+                                            msgE "Wrote current file.") 
                                         (msgE . show)
             _     -> undef c
 
