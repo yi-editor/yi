@@ -5,7 +5,8 @@
 
 module Config where
 
-import HEmacs.ConfigAPI
+import HEmacs.HEmacs
+import HEmacs.Curses ( scrSize )
 
 import System.IO
 import System.IO.Unsafe     ( unsafePerformIO )
@@ -14,7 +15,6 @@ import System.Posix.Process ( forkProcess, executeFile, getProcessID )
 import System.Posix.IO      ( createPipe, stdInput, 
                               stdOutput, fdToHandle, closeFd, dupTo )
 
-import qualified HEmacs.Curses as Curses ( scrSize )
 
 ------------------------------------------------------------------------
 
@@ -29,7 +29,7 @@ hemacs = settings {
 
 date :: String
 date = unsafePerformIO $ do
-        (_,w) <- Curses.scrSize
+        (_,w) <- scrSize  -- should use UI.*
         (hdl,_,_) <- catch (popen "/bin/date") (\_ -> error "popen failed")
         s <- hGetLine hdl
         hClose hdl

@@ -5,7 +5,13 @@ example Config.hs. If this directory doesn't exist, hemacs uses
 HEmacs/ConfigAPI.hs for the defaults, this is also what is used in
 hemacs-static.
 
-How do things load:
+To get at hemacs internals from your config script, either import
+HEmacs.HEmacs, which brings most of the commonly used modules into
+scope, or explicitly import something from HEmacs/*. You can read the
+haddock-generated docs from some (preliminary) api details (make
+html).
+
+How do things load in the dynamic loader.
         
            Boot.hs
           /      \
@@ -80,4 +86,15 @@ patches for running dynamic loaders dynamically.
         Ok, modules loaded: Boot.
         Prelude Boot> main
         Starting up dynamic Haskell ... jumping over the edge ... done.
+\end{verbatim}
+
+For example, to modify \code{\$(TOP)/HEmacs.hs} in ghci, you would:
+\begin{verbatim}
+        manzano$ ghci -package-conf hemacs.conf -package hemacs -cpp -fglasgow-exts
+        Prelude> :l HEmacs.hs
+        *HEmacs> :t init_sighandlers
+        *HEmacs> :t dynamic_main
+        dynamic_main :: Maybe ConfigData -> IO ()
+        *HEmacs> :reload
+        Compiling HEmacs           ( HEmacs.hs, interpreted )
 \end{verbatim}

@@ -14,7 +14,7 @@ module HEmacs.Editor(
     edittext,
     editfile,
     get_editor
-)where
+ ) where
 
 import HEmacs.Version                   ( package  )
 import HEmacs.MkTemp                    ( mkstemp )

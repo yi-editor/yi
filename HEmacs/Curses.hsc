@@ -1003,8 +1003,11 @@ pi       = chr 0x03C0
 nEqual   = chr 0x2260
 sterling = chr 0x00A3
 
--- #if defined(__STDC_ISO_10646__)  && defined(HAVE_WADDNWSTR)
--- #else 
+{-
+-- haddock doesn't like these commented out with --
+   #if defined(__STDC_ISO_10646__)  && defined(HAVE_WADDNWSTR)
+   #else 
+-}
 
 #if 1
 

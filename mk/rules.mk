@@ -14,6 +14,13 @@ HSC_OPTS       += $(DEFINES) -Icbits
 CC_OPTS        += -Icbits
 
 #
+# building the profiled way
+#
+ifeq "$(way)" "p"
+HC_OPTS         += -prof -auto-all
+endif
+
+#
 # Binary flags
 #
 BIN_HC_OPTS     += $(patsubst %,-package %, $(BIN_DEPS))
@@ -27,7 +34,7 @@ STATIC_LD_OPTS  = $(patsubst %,-l%, $(STATIC_BIN_LIBS))
 #
 PKG_OPTS       += -package-name $(PKG)
 LIBOBJS		= $(filter-out $(BIN_OBJS) $(STATIC_BIN_OBJS), $(OBJS))
-LIBRARY         = libHS$(PKG)$(_way).a
+LIBRARY         = libHS$(PKG)$(way).a
 GHCI_LIBRARY    = $(patsubst lib%.a,%.o,$(LIBRARY))
 
 #
@@ -100,6 +107,13 @@ $(GHCI_LIBRARY) : $(LIBOBJS)
 	@$(RM) $@
 	$(GHC) $(CC_OPTS) -c $< -o $@
 
+# preprocssed files, for haddock docs
+%.raw-hs : %.lhs
+	$(GHC) $(HC_OPTS) -D__HADDOCK__ -E -optP-P $< -o $@
+
+%.raw-hs : %.hs
+	$(GHC) $(HC_OPTS) -D__HADDOCK__ -E -optP-P $< -o $@
+
 #
 # Package creation
 #
@@ -119,6 +133,31 @@ $(PKG).conf.install: $(PKG).conf.in.cpp
 EXTRA_CLEANS+= $(PKG).conf.install $(PKG).conf $(PKG).conf.in $(PKG).conf.install.in *.old
 
 #
+# Building the haddock docs
+#
+ifneq "$(HADDOCK)" ""
+
+.PHONY: doc
+docs :: html
+
+HTML_DIR     = html
+HADDOCK_SRCS = $(HS_SRCS) $(FRONTEND_HS_SRC)
+HS_PPS       = $(addsuffix .raw-hs, $(basename $(HADDOCK_SRCS) ))
+
+INSTALL_DATAS  += $(HTML_DIR)
+
+html : $(HS_PPS)
+	@$(INSTALL_DIR) $(HTML_DIR)
+	$(HADDOCK) $(HADDOCK_OPTS) -h -o $(HTML_DIR) $(HS_PPS) --package=$(PKG) 
+
+CLEAN_FILES += $(HS_PPS) $(PACKAGE).haddock
+
+distclean ::
+	$(RM) -rf $(HTML_DIR)
+
+endif
+
+#
 # cleaning
 #
 .PHONY: clean distclean
@@ -126,8 +165,8 @@ EXTRA_CLEANS+= $(PKG).conf.install $(PKG).conf $(PKG).conf.in $(PKG).conf.instal
 clean:
 	$(RM) $(MOSTLY_CLEAN_FILES) $(EXTRA_CLEANS) $(CLEAN_FILES)
 
-distclean: clean
-	$(RM) $(DIST_CLEAN_FILES)
+distclean :: clean
+	$(RM) $(DIST_CLEAN_FILES) *~ */*~
 
 #
 # installing
@@ -148,8 +187,9 @@ INSTALL_IFACES += $(HS_IFACES)
 INSTALL_LIBS   += $(LIBRARY) $(GHCI_LIBRARY) $(LIB_FRONTEND) $(LIB_IFACE)
 
 show-install :
-	@echo "BINDIR = $(BINDIR)"
-	@echo "LIBDIR = $(LIBDIR)"
+	@echo "BINDIR  = $(BINDIR)"
+	@echo "LIBDIR  = $(LIBDIR)"
+	@echo "DATADIR = $(DATADIR)"
 
 ifneq "$(INSTALL_PROGS)" ""
 install :: $(INSTALL_PROGS)
@@ -161,7 +201,7 @@ install :: $(INSTALL_PROGS)
 endif
 
 ifneq "$(INSTALL_LIBS)" ""
-install:: $(INSTALL_LIBS)
+install :: $(INSTALL_LIBS)
 	@$(INSTALL_DIR) $(LIBDIR)
 	@for i in $(INSTALL_LIBS); do \
 		echo $(INSTALL_DATA) $(INSTALL_OPTS) $$i $(LIBDIR) ;\
@@ -169,23 +209,29 @@ install:: $(INSTALL_LIBS)
 	done
 endif
 
-ifneq "$(INSTALL_DATAS)" ""
-install:: $(INSTALL_DATAS)
+ifneq "$(INSTALL_DATA)" ""
+install :: $(INSTALL_DATAS)
 	@$(INSTALL_DIR) $(DATADIR)
-	for i in $(INSTALL_LIBS); do \
-		$(INSTALL_DATA) $(INSTALL_OPTS) $$i $(DATADIR) ;\
+	@for i in $(INSTALL_DATAS); do \
+		if [ -d $$i ] ; then \
+			echo $(CP) -r $$i $(DATADIR)/ ;\
+			$(CP) -r $$i $(DATADIR)/ ;\
+		else \
+			echo $(INSTALL_DATA) $(INSTALL_OPTS) $$i $(DATADIR)/ ;\
+			$(INSTALL_DATA) $(INSTALL_OPTS) $$i $(DATADIR)/ ;\
+		fi ;\
 	done
 endif
 
 ifneq "$(INSTALL_IFACES)" ""
-install:: $(INSTALL_IFACES)
+install :: $(INSTALL_IFACES)
 	@$(INSTALL_DIR) $(IFACEDIR)
 	for i in $(INSTALL_IFACES); do \
 		$(INSTALL_DATA) $(INSTALL_OPTS) $$i $(IFACEDIR)/`dirname $$i`/ ; \
 	done
 endif
 
-install:: $(PKG).conf.install
+install :: $(PKG).conf.install
 	@$(INSTALL_DIR) $(LIBDIR)
 	$(INSTALL_DATA) $(INSTALL_OPTS) $< $(LIBDIR)/$(PKG).conf
 

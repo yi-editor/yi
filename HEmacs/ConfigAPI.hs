@@ -9,12 +9,16 @@
 -- (at your option) any later version.
 --
 
-module HEmacs.ConfigAPI (
-        Config(..),
-        settings,
+--
+-- This module defines the type for the hooks available to user's
+-- to script via ~/.hemacs/Config.hs script. It also defines default
+-- values to use in case something goes wrong.
+--
 
-        module HEmacs.Style,
-        module HEmacs.Entry,
+module HEmacs.ConfigAPI (
+
+        Config(..),     -- all the hooks
+        settings,       -- default values
 
   ) where
 

@@ -11,8 +11,7 @@
 
 --
 -- This is the real main module of HEmacs, and is shared between Main.hs
--- (the static binary), and dynamically loaded by Boot.hs. It is linked
--- into -package hemacs, though.
+-- (the static binary), and dynamically loaded by Boot.hs.
 --
 
 module HEmacs (static_main, dynamic_main) where
@@ -25,7 +24,7 @@ import qualified HEmacs.UI        as UI
 import qualified HEmacs.ConfigAPI
 
 import Control.Exception        ( bracket )
-import Data.IORef               ( readIORef, newIORef, writeIORef )
+import Data.IORef               ( IORef, readIORef, newIORef, writeIORef )
 import System.Console.GetOpt
 import System.Environment       ( getArgs )
 import System.Exit              ( exitWith, ExitCode(ExitSuccess) )
@@ -94,12 +93,17 @@ initui tt fname = do
 -- ---------------------------------------------------------------------
 -- Set up the signal handlers
 
-init_sighandlers s = do 
+--
+-- why does this take an arg?
+--
+init_sighandlers :: t -> IO Handler
+init_sighandlers _ = do 
     -- Signals.setStoppedChildFlag True -- crashes rts on openbsd
     Signals.installHandler Signals.sigCHLD Signals.Default Nothing
     Signals.installHandler Signals.sigINT  Signals.Ignore Nothing
     Signals.installHandler Signals.sigPIPE Signals.Ignore Nothing
 
+release_sighandlers :: IO Handler
 release_sighandlers = do 
     Signals.installHandler Signals.sigINT Signals.Default Nothing
     Signals.installHandler Signals.sigPIPE Signals.Default Nothing
@@ -110,9 +114,14 @@ release_sighandlers = do
 -- doesnt provide a ~/.hemacs/Config.hs, or stuffs up Config.hs in some
 -- way.
 --
+g_settings :: IORef HEmacs.ConfigAPI.Config
 g_settings = unsafePerformIO $ newIORef (HEmacs.ConfigAPI.settings)
 {-# NOINLINE g_settings #-}
 
+--
+-- given a record selector, return that field from the settings
+--
+get_global :: (HEmacs.ConfigAPI.Config -> a) -> IO a
 get_global selector = readIORef g_settings >>= \v -> return $ selector v
 
 -- ---------------------------------------------------------------------
@@ -128,8 +137,8 @@ static_main = do
 
     hk <- get_global HEmacs.ConfigAPI.handle_key
     
-    tt <- return $! tt -- Force load before initialising UI
-    bracket (initui tt fname >>= \s -> init_sighandlers s >> return s)
+    tt' <- return $! tt -- Force load before initialising UI
+    bracket (initui tt' fname >>= \s -> init_sighandlers s >> return s)
             (\_ -> UI.deinit >> release_sighandlers)
             (\s -> UI.refresh s >> UI.event_loop s hk)
 

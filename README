@@ -1,10 +1,14 @@
 
-HEmacs
+HEmacs : the Haskell-Extensible Emacs slayer
 
 Copyright (c) Don Stewart 2004.
 <http://www.cse.unsw.edu.au/~dons>
 
 BUILDING AND INSTALLING
+
+You can get the latest hemacs source from its darcs repository:
+
+        darcs get http://www.cse.unsw.edu.au/~dons/hemacs
 
 You will need GHC 6 (The Glorious/Glasgow Haskell Compilation System)
 and GNU make to compile hemacs. 
@@ -12,32 +16,62 @@ and GNU make to compile hemacs.
 You also need a recent snapshot version of hs-plugins, the Haskell
 dynamic loader library. You can get this from:
         http://www.cse.unsw.edu.au/~dons/hs-plugins/
-The "heatwave" snapshot is suitable.
+The `heatwave' snapshot is suitable. Make sure you "make", "make
+install" and "make register" the library.
 
-Once you have ensured that you have these programs and libraries installed,
+Once you have ensured that you have these programs and libraries
+installed:
 
- 1. Edit mk/config.mk to change some settings for your system (usually in
-    the case it has broken wide character support).
+ 1. Edit mk/config.mk to change any settings for your system (usually
+    in the case it has broken wide character support).
 
  2. Run 'make'         ('gmake' on some systems)
 
- 3. Run 'make install' to install it
+ 3. Run 'make install' to install it, and then use 'hemacs'
         OR
-    Just use 'hemacs-inplace' in the build tree.
-    'make show-install' will show the bindir and libdir vars
+    Just use './hemacs-inplace' directly in the build tree (without
+    having to install) 
 
+Hint: 'make show-install' will show you which directories hemacs wants
+to install into. These are editable in mk/config.mk
+
+Useful targets:
+        make                    -- build the lot
+        make boot               -- regen the dependencies
+        make all                -- compile the .hs source
+        make install            -- install into $(PREFIX)
+        make clean              -- remove most rebuildable stuff
+        make distclean          -- remove anything that can be regenerated
+        make docs               -- build all the docs
+        make html               -- build the haddock docs
 
 CONFIGURATION
 
 All configuration (bindings, colours) is done at either build time by
-editing ConfigAPI.hs, or at runtime by editing ~/.hemacs/Config.hs.
-Example config files are in plugins/
+editing HEmacs/ConfigAPI.hs, or at runtime by editing
+~/.hemacs/Config.hs.  Example config files are in plugins/
+
+PORTABILITY
+
+HEmacs is developed on OpenBSD and Debian Linux. It relies on the
+hs-plugins library, which has been ported to most platforms, but
+currently not Windows. HEmacs requires GHC 6 with a working GHCi
+implementation. A porting checklist:
+
+        * you have GNU make
+        * you have GHC 6.2.1 or greater
+        * you have a working GHCi
+        * you have hs-plugins >= 2004/10/14
 
 
 CREDITS
 
-HEmacs is derived from Riot, written by Tuomo Valkonen.
+HEmacs has been developed by Don Stewart <http://www.cse.unsw.edu.au/~dons>
+with the help of the #haskell irc community.
+
+HEmacs is derived from Riot <http://iki.fi/tuomov/riot/>, written by
+Tuomo Valkonen.
 
 The Curses interface code is mostly by John Meacham;see the LICENSE
-therein for details. Tuomo and others have made some minor modifications.
+for details. Tuomo and I have made some minor modifications.
 

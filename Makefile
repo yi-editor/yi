@@ -34,6 +34,7 @@ STATIC_HC_OPTS  += -package-conf hemacs.conf
 
 # frontend to the library (by which it is loaded)
 
+FRONTEND_HS_SRC=HEmacs.hs
 LIB_FRONTEND=   HEmacs.o
 LIB_IFACE   =   HEmacs.hi
 

@@ -1,9 +1,17 @@
-* improve portability
-* remove posix dependency
 
 Design plan:
-
         - get rid of MBox and Editor stuff
         - design a buffer
         - think about abstractable actions/keybindings
         - clean up code
+        - remove posix dependency
+
+Build system:
+        - write a configure script
+        - check how to install it from a port script
+        - think about how to do a testsuite
+        - get profiling working
+
+Docs:
+        - what format docs/hemacs.tex?
+        - get rid of haddock warnings

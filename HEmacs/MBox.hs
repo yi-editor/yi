@@ -271,7 +271,7 @@ get_charset (s:ss) = get_charset ss
 
 charset m = 
     case get_header "Content-Type:" (headers m) of
-        Nothing -> Nothing
+        Nothing -> Nothing
 	Just h -> get_charset h
 
 #ifdef CF_CHARSET_SUPPORT

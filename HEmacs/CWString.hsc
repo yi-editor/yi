@@ -55,10 +55,13 @@ import GHC.Exts
 
 #ifdef CF_WCHAR_SUPPORT
 
--- #ifndef CONFIG_INCLUDED
--- #define CONFIG_INCLUDED
--- #include <config.h>
--- #endif
+{-
+#ifndef CONFIG_INCLUDED
+#define CONFIG_INCLUDED
+#include <config.h>
+#endif
+-}
+
 #include <wchar.h>
 #include <limits.h>
 #include <stdlib.h>

@@ -55,7 +55,7 @@ module Boot ( main ) where
 import Plugins
 import Plugins.Utils          ( (</>), (<.>) )
 
-import Data.Maybe             ( fromJust, isJust, Maybe(..) )
+import Data.Maybe             ( fromJust, isJust )
 import Data.IORef             ( newIORef, readIORef, writeIORef, IORef() )
 import Control.Monad          ( when )
 import System.IO              ( hFlush, stdout )

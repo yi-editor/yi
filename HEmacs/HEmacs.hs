@@ -18,14 +18,29 @@
 -- 
 
 --
--- frontend to the static binary. Used just so we don't get
--- ZCMain_main_* symbols in -package hemacs (i.e. so we can have
--- multiple frontend, and load them all in ghci).
+-- Front end to the library, for use by external scripts. Just reexports
+-- a bunch of modules.
+--
+-- You should therefore: 
+--      import HEmacs.HEmacs
+-- in your ~/.hemacs/Config.hs
 --
 
-module Main ( main ) where
+module HEmacs.HEmacs (
+        
+        module HEmacs.ConfigAPI,
+        module HEmacs.Version,
+        module HEmacs.UI,
+        module HEmacs.Style,
+        module HEmacs.Entry,
+ 
+   ) where
 
-import qualified HEmacs ( static_main )
+import HEmacs.ConfigAPI
+import HEmacs.Version
+import HEmacs.UI
+import HEmacs.Style
+import HEmacs.Entry
 
-main :: IO ()
-main = HEmacs.static_main
+-- and anything else that might be useful to write code to
+

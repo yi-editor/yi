@@ -12,7 +12,7 @@
 
 module Config where
 
-import HEmacs.ConfigAPI
+import HEmacs.HEmacs
 
 hemacs = settings 
 

@@ -4,31 +4,33 @@
 
 PREFIX=         /usr/local
 BINDIR=         $(PREFIX)/bin
-LIBDIR=         $(PREFIX)/lib/hemacs
-DATADIR=	$(PREFIX)/share
-IFACEDIR=	$(LIBDIR)/imports
+LIBDIR=         $(PREFIX)/lib/$(PKG)
+DATADIR=        $(PREFIX)/share/doc/$(PKG)
+IFACEDIR=       $(LIBDIR)/imports
 
 GHC=            ghc
 GHC_PKG=        ghc-pkg
 HC_OPTS=       -cpp -fglasgow-exts
 
+#HC_OPTS+=      -Onot -fasm -H64m
 #HC_OPTS+=      -O -fvia-C -funbox-strict-fields
 #HC_OPTS+=      -Wall
 #HC_OPTS+=      -debug
 
 HSC2HS=         hsc2hs
+HADDOCK=        haddock
 
 AR=             ar
 AR_OPTS=        cr
 
-RANLIB=		ranlib
-
+RANLIB=         ranlib
 
 INSTALL=        sh $(TOPDIR)/install-sh -c
 INSTALL_PROGRAM=$(INSTALL) -m 755
-INSTALL_DATA= 	$(INSTALL) -m 644
-INSTALL_DIR= 	mkdir -p
+INSTALL_DATA=   $(INSTALL) -m 644
+INSTALL_DIR=    mkdir -p
 
+CP=             cp
 RM=             rm -f
 
 #
@@ -37,9 +39,8 @@ RM=             rm -f
 # two later. 
 #
 
-CURSES 		 = ncurses
-DEFINES 	+= -DHAVE_NCURSES_H=1
-GHC_PKG_DEFINES += -DCURSES=$(CURSES)
+CURSES           = ncurses
+DEFINES         += -DHAVE_NCURSES_H=1
 
 #CURSES = ncursesw
 #DEFINES += -DHAVE_NCURSESW_NCURSES_H=1 -DHAVE_WADDNWSTR=1
@@ -66,7 +67,7 @@ DEFINES += -DCF_WCHAR_SUPPORT
 #DEFINES+=       -DWEIRD_ICONV
 
 #
-# Extra paths to find things
+# Extra paths to find things (OpenBSD needs this)
 #
 #LD_OPTS         += -L/usr/local/lib
 #HC_OPTS         += -I/usr/local/include

@@ -283,7 +283,7 @@ ins_effect_firstunder lll@(l:ll) (i:ii) ne
 
 ins_effect_lastunder lll iii ne = lll
 
-loc_ins_effect :: Loc -> InsertWhere -> Int -> Loc
+loc_ins_effect :: Loc -> InsertWhere -> Int -> Loc
 loc_ins_effect loc Last _ =
     loc
 loc_ins_effect (Loc (l:ll)) First ne =
@@ -302,9 +302,9 @@ mpass f = maybe Nothing (Just . f)
 loc_rm_effect_insw :: InsertWhere -> [Loc] -> Maybe InsertWhere
 loc_rm_effect_insw First _ = Just First
 loc_rm_effect_insw Last _ = Just Last
-loc_rm_effect_insw (Before loc) locv = mpass Before $ loc_rm_effect loc locv
+loc_rm_effect_insw (Before loc) locv = mpass Before $ loc_rm_effect loc locv
 loc_rm_effect_insw (After loc) locv = mpass After $ loc_rm_effect loc locv
-loc_rm_effect_insw (FirstUnder loc) locv = mpass FirstUnder $ loc_rm_effect loc locv
+loc_rm_effect_insw (FirstUnder loc) locv = mpass FirstUnder $ loc_rm_effect loc locv
 loc_rm_effect_insw (LastUnder loc) locv = mpass LastUnder $ loc_rm_effect loc locv
 
 -- }}}
@@ -329,7 +329,7 @@ entrytree_replace_f _ _ _ = error "Invalid entry tree location"
 
 entrytree_replace :: Entry a => [EntryTree a] -> Loc -> EntryTree a -> [EntryTree a]
 entrytree_replace et loc enew =
-    fst $ entrytree_replace_f et loc $ \_ -> ([enew], ())
+    fst $ entrytree_replace_f et loc $ \_ -> ([enew], ())
 
 -- Insert
 

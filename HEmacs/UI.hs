@@ -95,6 +95,10 @@ data Entry a => UndoInfo a = UndoInfo {
 
 undo_count = 100
 
+--
+-- editor state?
+--
+
 data Entry a => Status a = Status {
     attr :: UIAttr,
     topinfo_text :: String,
@@ -779,14 +783,14 @@ do_insert s insw ent =
                  Loc ll -> fromMaybe et_ $ entrytree_expand et_ $ Loc (Data.List.init ll)
         pos = find_viewlist_pos et loc
 
-do_editentry :: EditableEntry a => Status a -> Int -> IO(Status a)
+do_editentry :: EditableEntry a => Status a -> Int -> IO(Status a)
 do_editentry s e = 
     liftM (do_modify s ent loc) $ do_edit text
     where
         (loc, ent) = fromJust $ lnth e (entries_viewlist s)
         text = entry_text ent
 
-do_newentry :: Entry a => Status a -> InsertWhere -> IO (Status a)
+do_newentry :: Entry a => Status a -> InsertWhere -> IO (Status a)
 do_newentry s insw = do
     (text, tm) <- do_edit ""
     liftM (do_insert s insw . new_entrytree) $ new_callback s text tm
@@ -908,7 +912,7 @@ e_submap info submap s = do
 -- Check if control is set and call handle_key again with the plain key.
 e_fallback handle_key (Curses.KeyChar k)
     | ord '\^A' <= ord k && ord k <= ord '\^Z' =
-        handle_key (Curses.KeyChar $ chr $ ord k - ord '\^A' + ord 'a')
+        handle_key (Curses.KeyChar $ chr $ ord k - ord '\^A' + ord 'a')
 e_fallback _ _ = e_none
 
 goto_next_or_redraw :: Entry a => Status a -> IO (ELCont a)
@@ -991,7 +995,7 @@ e_delentry :: Entry a => Status a -> IO (ELCont a)
 e_delentry s = cont_refresh (do_delentry s $ selected_entry s)
 
 e_collapse :: Entry a => Status a -> IO (ELCont a)
-e_collapse s = cont_refresh (do_collapse_p s $ selected_entry s)
+e_collapse s = cont_refresh (do_collapse_p s $ selected_entry s)
 
 e_editentry :: EditableEntry a => Status a -> IO (ELCont a)
 e_editentry s = 
@@ -1034,11 +1038,11 @@ e_clear_tags s = do
 
 e_move_tagged_after :: Entry a => Status a -> IO (ELCont a)
 e_move_tagged_after s = 
-    cont_refresh $ do_move_tagged s (After $ selected_entry_loc s)
+    cont_refresh $ do_move_tagged s (After $ selected_entry_loc s)
 
 e_move_tagged_before :: Entry a => Status a -> IO (ELCont a)
 e_move_tagged_before s = 
-    cont_refresh $ do_move_tagged s (Before $ selected_entry_loc s)
+    cont_refresh $ do_move_tagged s (Before $ selected_entry_loc s)
 
 e_move_tagged_under :: Entry a => Status a -> IO (ELCont a)
 e_move_tagged_under s =
