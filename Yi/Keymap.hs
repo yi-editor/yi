@@ -83,6 +83,18 @@ cmd '|'  = solE             >> nextCmd
 -- Delete the character the cursor is on.
 cmd 'x' = deleteE           >> nextCmd
 
+-- Copy the line the cursor is on.
+cmd 'y' = do c <- getcE 
+             if c == 'y' 
+                then readLnE >>= setRegE
+                else nopE
+             nextCmd
+
+-- Append the copied line after the line the cursor is on.
+cmd 'p' = do s <- getRegE
+             eolE >> insertE '\n' >> mapM_ insertE s >> solE
+             nextCmd
+
 -- Join lines.
 cmd 'J' = eolE >> deleteE >> insertE ' ' >> nextCmd
 

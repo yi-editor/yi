@@ -52,11 +52,14 @@ import System.IO.Unsafe         ( unsafePerformIO )
 --
 -- TODO Windows should be MVar'd as well.
 --
+-- TODO the command line is a vi/emacs specific concept.
+--
 data Buffer a => GenEditor a = 
     Editor {
         buffers   :: FiniteMap Unique a         -- ^ all the buffers
        ,windows   :: FiniteMap Unique Window    -- ^ all the windows
        ,cmdline   :: !String                    -- ^ the command line
+       ,yreg      :: !String                    -- ^ yank register
        ,curwin    :: Maybe Unique               -- ^ the window with focus
        ,curkeymap :: (Char -> IO Keymap)        -- ^ user-configurable keymap
        ,scrsize   :: !(Int,Int)                 -- ^ screen size
@@ -89,7 +92,8 @@ emptyEditor :: Editor
 emptyEditor = Editor {
         buffers      = emptyFM 
        ,windows      = emptyFM
-       ,cmdline      = []           -- for now
+       ,cmdline      = []
+       ,yreg         = []
        ,curwin       = Nothing
        ,curkeymap    = error "no keymap defined"
        ,scrsize      = (0,0)

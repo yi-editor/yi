@@ -267,11 +267,32 @@ killE = withWindow_ deleteToEolW -- >>= Buffer.prevXorLn 1
 readE :: IO Char
 readE = withWindow $ \w b -> readB b >>= \c -> return (w,c)
 
+-- | Read the line the cursor is on
+readLnE :: IO String
+readLnE = withWindow $ \w b -> do
+            p <- pointB b
+            i <- indexOfSol b 
+            j <- indexOfEol b
+            s <- nelemsB b (j-i) i
+            moveTo b p 
+            return (w,s)
+
 -- | Write char to point
 writeE :: Char -> IO ()
 writeE c = withWindow_ $ \w b -> do
             if isLatin1 c then writeB b c else nopE -- TODO
             return w
+
+-- ---------------------------------------------------------------------
+-- registers
+
+-- | Put string into yank register
+setRegE :: String -> IO ()
+setRegE s = modifyEditor_ $ \e -> return e { yreg = s }
+
+-- | Return the contents of the yank register
+getRegE :: IO String
+getRegE = readEditor yreg
 
 ------------------------------------------------------------------------
 
