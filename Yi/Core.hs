@@ -1,6 +1,6 @@
-{-# OPTIONS -fglasgow-exts -cpp -#include YiUtils.h #-}
---
+{-# OPTIONS -fglasgow-exts -#include YiUtils.h #-}
 -- -fglasgow-exts for deriving Typeable
+
 -- 
 -- Copyright (c) Tuomo Valkonen 2004.
 -- Copyright (c) Don Stewart 2004. http://www.cse.unsw.edu.au/~dons
@@ -137,11 +137,7 @@ import qualified Yi.Editor as Editor
 
 import Data.Maybe
 import Data.Char            ( isLatin1 )
-#if __GLASGOW_HASKELL__ >= 602
-import Data.Typeable        ( Typeable )
-#else
 import Data.Dynamic         ( Typeable )
-#endif
 
 import System.IO            ( hClose )
 import System.Directory     ( doesFileExist )
