@@ -48,6 +48,30 @@ AC_PATH_PROG(HaddockCmd,haddock,haddock)
 AC_PATH_PROG(Hsc2hsCmd,hsc2hs,hsc2hs)
 
 AC_PATH_PROG(STRIP,strip,strip)
+AC_PATH_PROG(LdCmd,ld)
+
+# check for -x flag to ld. stolen from $fptools
+AC_DEFUN(FPTOOLS_LD_X,
+[AC_CACHE_CHECK([whether ld understands -x], fptools_cv_ld_x,
+[
+echo 'foo() {}' > conftest.c
+${CC-cc} -c conftest.c
+if ${LdCmd} -r -x -o foo.o conftest.o; then
+   fptools_cv_ld_x=yes 
+else
+   fptools_cv_ld_x=no
+fi
+rm -rf conftest.c conftest.o foo.o 
+])
+if test "$fptools_cv_ld_x" = yes; then
+    LdXFlag=-x
+else
+    LdXFlag=
+fi
+AC_SUBST(LdXFlag)
+])
+
+FPTOOLS_LD_X
 
 #
 # May as well check for this

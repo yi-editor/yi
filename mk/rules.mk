@@ -43,7 +43,7 @@ STATIC_LD_OPTS  = $(STATIC_BIN_LIBS)
 # Library flags
 #
 PKG_OPTS       += -package-name $(PKG)
-LIBOBJS		= $(filter-out $(BIN_OBJS) $(STATIC_BIN_OBJS), $(OBJS))
+LIBOBJS         = $(filter-out $(BIN_OBJS) $(STATIC_BIN_OBJS), $(OBJS))
 LIBRARY         = libHS$(PKG)$(_way).a
 GHCI_LIBRARY    = $(patsubst lib%.a,%.o,$(LIBRARY))
 
@@ -88,7 +88,7 @@ $(LIBRARY) :: $(LIBOBJS)
 all :: $(GHCI_LIBRARY)
 
 $(GHCI_LIBRARY) : $(LIBOBJS)
-	$(LD) -r $(LD_X) -o $@ $(STUBOBJS) $(LIBOBJS)
+	$(LD_X) -r -o $@ $(STUBOBJS) $(LIBOBJS)
 
 # No need to define .SUFFIXES because we don't use any suffix rules
 # Instead we use gmake's pattern rules exlusively
