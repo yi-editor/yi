@@ -172,6 +172,7 @@ cmd_eval = ( cmdc >|<
             "."   -> undef
       --    "0"   -> solE   -- don't want this. clashes with count
             "|"   -> solE
+            "^"   -> firstNonSpaceE
             ";"   -> undef
             "<"   -> undef
 
@@ -214,19 +215,15 @@ cmd_eval = ( cmdc >|<
             "ZZ"  -> viWrite >> quitE
             "dd"  -> solE >> killE >> deleteE
 
-            ">>"  -> do replicateM_ i $ 
-                            solE >> mapM_ insertE "    " 
-                        let loop = do k <- readE 
-                                      when (isSpace k) (rightOrEolE 1 >> loop)
-                        loop
+            -- todo: fix the unnec. refreshes that happen
+            ">>"  -> do replicateM_ i $ solE >> mapM_ insertE "    " 
+                        firstNonSpaceE
 
             "<<"   -> do solE
                          replicateM_ i $
                             replicateM_ 4 $
                                 readE >>= \k -> when (isSpace k) deleteE 
-                         let loop = do k <- readE 
-                                       when (isSpace k) (rightOrEolE 1 >> loop)
-                         loop
+                         firstNonSpaceE
 
             "yy"  -> readLnE >>= setRegE
 
@@ -531,7 +528,7 @@ cmdc' :: [Char]
 cmdc'    = cmdctrl' ++ cursc' ++ special' ++ upper' ++ lower'
 
 special', upper', lower', cmdctrl', cursc' :: [Char]
-special' = " !#$%()+,-.|;<?@~"
+special' = " !#$%()+,-.|;<?@~^"
 upper'   = "BDEFGNHJLMPQRTUWXY"
 lower'   = "hjklnpqx"
 cmdctrl' = ['\^A','\^B','\^D','\^E','\^F','\^H','\^J','\^L','\^M','\^N',

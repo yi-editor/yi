@@ -27,14 +27,14 @@ module Yi.Keymap.Vi ( keymap, keymapPlus, ViMode ) where
 import Prelude hiding   ( any )
 
 import Yi.Core
-import Yi.Editor    ( Action )
+import Yi.Editor            ( Action )
 import Yi.UI         hiding ( plus )
 import Yi.Ctk.Lexers hiding ( Action )
 
 import Data.Maybe           ( fromMaybe )
 import Data.List            ( (\\) )
-import Data.Char            ( isUpper, toLower, toUpper )
-import Control.Monad        ( replicateM_ )
+import Data.Char            ( isUpper, toLower, toUpper, isSpace )
+import Control.Monad        ( replicateM_, when )
 import Control.Exception    ( ioErrors, catchJust )
 
 -- ---------------------------------------------------------------------
@@ -124,7 +124,8 @@ cmd_count = digit
 cmd_eval :: ViMode
 cmd_eval = ( cmdc >|< 
             (char 'r' +> anyButEscOrDel) >|<
-            string ">>" >|< string "dd" >|< string "ZZ" >|< string "yy")
+            string ">>" >|< string "<<" >|< 
+            string "dd" >|< string "ZZ" >|< string "yy")
 
     `meta` \lexeme st@St{acc=count} -> 
         let c  = if null count then Nothing 
@@ -173,6 +174,7 @@ cmd_eval = ( cmdc >|<
             "."   -> undef
       --    "0"   -> solE   -- don't want this. clashes with count
             "|"   -> solE
+            "^"   -> firstNonSpaceE
             ";"   -> undef
             "<"   -> undef
             "?"   -> undef
@@ -213,7 +215,15 @@ cmd_eval = ( cmdc >|<
             "x"   -> deleteNE i
             "ZZ"  -> viWrite >> quitE
             "dd"  -> solE >> killE >> deleteE
-            ">>"  -> replicateM_ i $ solE >> mapM_ insertE "    " 
+            ">>"  -> do replicateM_ i $ solE >> mapM_ insertE "    " 
+                        firstNonSpaceE
+
+            "<<"   -> do solE
+                         replicateM_ i $
+                            replicateM_ 4 $
+                                readE >>= \k -> when (isSpace k) deleteE 
+                         firstNonSpaceE
+
             "yy"  -> readLnE >>= setRegE
 
             'r':[x] -> writeE x
@@ -516,7 +526,7 @@ cmdc' :: [Char]
 cmdc'    = cmdctrl' ++ cursc' ++ special' ++ upper' ++ lower'
 
 special', upper', lower', cmdctrl', cursc' :: [Char]
-special' = " !#$%()+,-.|;<?@~"
+special' = " !#$%()+,-.|;<?@~^"
 upper'   = "BDEFGNHJLMPQRTUWXY"
 lower'   = "hjklnpqx"
 cmdctrl' = ['\^A','\^B','\^D','\^E','\^F','\^H','\^J','\^L','\^M','\^N',

@@ -69,6 +69,7 @@ module Yi.Core (
         rightE,         -- :: Action
         leftOrSolE,     -- :: Int -> Action
         rightOrEolE,    -- :: Int -> Action
+        firstNonSpaceE, -- :: Action
         gotoLnE,        -- :: Int -> Action
         gotoLnFromE,    -- :: Int -> Action
         gotoPoint,      -- :: Int -> Action
@@ -359,6 +360,10 @@ leftOrSolE x = withWindow_ $ moveXorSolW x
 -- | Move right @x@ or to end of line
 rightOrEolE :: Int -> Action
 rightOrEolE x = withWindow_ $ moveXorEolW x
+
+-- | Move to first non-space character in this line
+firstNonSpaceE :: Action
+firstNonSpaceE = withWindow_ firstNonSpaceW
 
 -- ---------------------------------------------------------------------
 -- Window based operations

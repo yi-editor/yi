@@ -28,7 +28,7 @@ module Yi.Window where
 
 import Yi.Buffer
 
-import Data.Char                ( isLatin1 )
+import Data.Char                ( isLatin1, isSpace )
 import Data.Unique              ( Unique, newUnique )
 import Control.Monad            ( when )
 
@@ -222,6 +222,17 @@ moveXorSolW i w b = moveXorSol b i >> update w b
 -- | Move right @n@ or end of line
 moveXorEolW :: Buffer a => Int -> Window -> a -> IO Window
 moveXorEolW i w b = moveXorEol b i >> update w b
+
+-- | Movee to first non-space char from sol
+firstNonSpaceW :: Buffer a => Window -> a -> IO Window
+firstNonSpaceW w b = do
+    moveToSol b
+    let loop = do eol <- atEol b
+                  if eol then return ()
+                         else do k <- readB b
+                                 when (isSpace k) $ rightB b >> loop
+    loop
+    update w b
 
 -- ---------------------------------------------------------------------
 -- Editing operations
