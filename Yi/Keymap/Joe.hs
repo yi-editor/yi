@@ -25,7 +25,7 @@ module Yi.Keymap.Joe (keymap) where
 import Yi.Core
 import Yi.Editor            ( Action )
 import Yi.Curses            ( keyBackspace )
-import Yi.CharMov           ( skipWordE, bskipWordE )
+import Yi.CharMove          ( skipWordE, bskipWordE )
 
 import Data.Maybe
 --import Data.List            ( (\\) )
