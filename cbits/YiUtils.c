@@ -23,16 +23,8 @@ void memcpy_shift(char *buf, int src_off, int dst_off, size_t sz )
 int strstr_n(char *b1, char *b2, int off, size_t b1sz, size_t b2sz)
 {
     char *p;
-    char c = b1[b1sz];  /* insert nulls into end of buffer temporarily */
-    char d = b2[b2sz];
-    b1[b1sz] = '\0';
-    b2[b2sz] = '\0';
-
+    b1[b1sz] = b2[b2sz] = '\0'; /* insert nulls into end of buffer */
     p = strstr(b1+off, b2);
-
-    b1[b1sz] = c;
-    b2[b2sz] = d;
-
     return (p == NULL) ? (-1) : (int)(p - b1);
 }
 
