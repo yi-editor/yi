@@ -68,6 +68,24 @@ else
 fi
 AC_SUBST(GhcPkgCmd)
 
+# check ghc version here
+if test -n "$WithGhc" ; then
+    AC_MSG_CHECKING([for ghc version])
+    GHC_VERSION=`$WithGhc --numeric-version`
+    AC_MSG_RESULT([$GHC_VERSION])
+fi
+AC_SUBST(GHC_VERSION)
+
+# Work out value of __GLASGOW_HASKELL__
+if test -n "$WithGhc" ; then
+ AC_MSG_CHECKING([for value of __GLASGOW_HASKELL__])
+ echo "main = print __GLASGOW_HASKELL__" > t.hs
+ GLASGOW_HASKELL=`echo 'main' | "$WithGhc" --interactive -v0 -cpp t.hs`
+ rm t.hs
+ AC_MSG_RESULT([$GLASGOW_HASKELL])
+fi
+AC_SUBST(GLASGOW_HASKELL)
+
 #
 # And some other tools
 #

@@ -49,8 +49,11 @@
 #             (caveat: assuming no funny use of -hisuf and that
 #               file name and module name match)
 
+HS_BOOTS    = $(wildcard $(patsubst ./%, %, $(patsubst %,%/*.hs-boot, $(ALL_DIRS))))
+
 ALL_SRCS    = $(wildcard $(patsubst ./%, %,  \
 		   $(patsubst %,%/*.hs,   $(ALL_DIRS)) \
+		   $(patsubst %,%/*.hs-boot,   $(ALL_DIRS)) \
 		   $(patsubst %,%/*.lhs,  $(ALL_DIRS)) \
 		   $(patsubst %,%/*.y,    $(ALL_DIRS)) \
 		   $(patsubst %,%/*.ly,   $(ALL_DIRS)) \
@@ -202,8 +205,14 @@ CLEAN_FILES        += $(HS_PROG) $(C_PROG) $(SCRIPT_PROG) $(SCRIPT_LINK) \
 		      $(DERIVED_HSC_SRCS) \
 		      $(DERIVED_GC_SRCS) \
 		      $(patsubst %,%/*.$(way_)hi, . $(ALL_DIRS)) \
+		      $(patsubst %,%/*.$(way_)hi-boot, . $(ALL_DIRS)) \
 		      $(patsubst %,%/*.p_hi, . $(ALL_DIRS)) \
 		      $(patsubst %,%/*.p_o, . $(ALL_DIRS))
+
+ifeq "$(GLASGOW_HASKELL)" "604"
+CLEAN_FILES+= $(patsubst %,%/*.$(way_)o-boot,  . $(ALL_DIRS))
+endif
+
 
 # we delete *all* the .hi files we can find, rather than just
 # $(HS_IFACES), because stale interfaces left around by modules which

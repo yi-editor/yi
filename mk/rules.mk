@@ -26,7 +26,7 @@ endif
 ifeq "$(way)" "p"
 PROF_OPTS	= -prof -auto-all -Icbits
 LD_OPTS		+= $(PROF_OPTS)
-HC_OPTS     += $(PROF_OPTS)
+HC_OPTS		+= $(PROF_OPTS)
 HC_OPTS 	+= -hisuf $(way_)hi -hcsuf $(way_)hc -osuf $(way_)o
 endif
 
@@ -48,12 +48,17 @@ LIBRARY         = libHS$(PKG)$(_way).a
 GHCI_LIBRARY    = $(patsubst lib%.a,%.o,$(LIBRARY))
 
 #
-# Compute dependencies
+# Compute dependencies. 
+# sigh, hs-boot, sigh.
 #
 depend: $(MKDEPENDHS_SRCS)
 	@echo -n "Rebuilding dependencies... "
+ifneq "$(GLASGOW_HASKELL)" "604"
+	@for i in $(HS_BOOTS); do $(CP) $$i `echo $$i | sed 's/hs-boot/hi-boot/'` ; done
+endif
 	@$(GHC) -M -optdep-f -optdepdepend $(HC_OPTS) $(MKDEPENDHS_SRCS)
 	@echo "done."
+
 
 #
 #  boot and all targets
@@ -112,8 +117,15 @@ $(GHCI_LIBRARY) : $(LIBOBJS)
 %.$(way_)o : %.lhs
 	$(GHC) $(HC_OPTS) $(PKG_OPTS) -c $< -o $@  -ohi $(basename $@).$(way_)hi
 
+# Now a rule for hs-boot files. 
+%.$(way_)o-boot : %.hs-boot
+	$(GHC) $(HC_OPTS) $(PKG_OPTS) -c $< -o $@  -ohi $(basename $@).$(way_)hi-boot
+
 %.$(way_)hi : %.$(way_)o
 	@:
+
+%.$(way_)hi : %.$(way_)hc
+        @:
 
 %_hsc.c %_hsc.h %.hs : %.hsc
 	$(HSC2HS) $(HSC_OPTS) $(SYMS) $<

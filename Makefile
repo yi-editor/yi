@@ -77,6 +77,12 @@ Boot.o: Boot.hs
 Main.o: Main.hs Yi.o $(LIBRARY) 
 	$(GHC) $(HC_OPTS) $(STATIC_HC_OPTS) -c $< -o $@ -ohi $(basename $@).hi
 
+# Break some mutual recursion (why doesn't this work in mk/rules.mk??)
+ifeq "$(GLASGOW_HASKELL)" "604"
+%.$(way_)hi-boot : %.$(way_)o-boot
+	@:
+endif
+
 #
 # Yi.o is the actual Yi.main, as well as being the frontend of
 # the statically linked binary

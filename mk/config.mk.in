@@ -16,6 +16,9 @@ HC_OPTS+=       -fvia-C -funbox-strict-fields -fliberate-case-threshold=100 -O2 
 #HC_OPTS+=      -debug 
 #HC_OPTS+=-fignore-asserts 
 
+GHC_VERSION=	@GHC_VERSION@
+GLASGOW_HASKELL=@GLASGOW_HASKELL@
+
 GHC_PKG=        @GhcPkgCmd@
 HSC2HS=         @Hsc2hsCmd@
 
