@@ -218,10 +218,8 @@ startE (confs,fn,fn') ln mfs = do
         refreshLoop = repeatM_ $ do 
                         takeMVar editorModified
                         handleJust ioErrors (errorE.show) UI.refresh 
-                        mv <- tryTakeMVar windowResized -- check sigwinch
-                        case mv of
-                            Nothing -> nopE
-                            Just _  -> refreshE -- not working?
+                        mv <- tryTakeMVar windowResized
+                        when (isJust mv) refreshE -- got sigwinch
 
 -- ---------------------------------------------------------------------
 -- | How to read from standard input
@@ -281,11 +279,7 @@ reloadE = do
 
 -- | Reset the size, and force a complete redraw
 refreshE :: Action
-refreshE = do
-    UI.end -- it is a hack to manually toggle the ui to get the new size
-    UI.start windowResized 
-    sz <- UI.screenSize
-    doResizeAll sz
+refreshE = UI.resizeui >>= doResizeAll
 
 -- | Do nothing
 nopE :: Action

@@ -44,6 +44,7 @@ module Yi.Curses.UI (
 
         -- * Drawing
         refresh,
+        resizeui,
 
         module Yi.Curses.Curses   -- UIs need to export the symbolic key names
 
@@ -275,6 +276,17 @@ reset = setAttribute (Curses.attr0, Curses.Pair 0)
 --
 refresh :: IO ()
 refresh = redraw >> Curses.refresh
+
+--
+-- | Resize the window
+-- From "Writing Programs with NCURSES", by Eric S. Raymond and Zeyd M. Ben-Halim
+--
+--
+resizeui :: IO (Int,Int)
+resizeui = do
+    Curses.endWin
+    Curses.refresh
+    Curses.scrSize
 
 --
 -- | Set some colours, perform an action, and then reset the colours
