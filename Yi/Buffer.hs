@@ -229,34 +229,52 @@ newFBuffer f cs = do
 writeChars :: RawBuffer -> [Char] -> Int -> IO Int
 writeChars _ []     i = return i 
 writeChars b (c:cs) i = writeCharToBuffer b i c >>= writeChars b cs 
+{-# INLINE writeChars #-}
 
 --
 -- | read @n@ chars from buffer @b@, starting at @i@
+-- Slower, more allocs:
+--      readChars b n i = mapM (readCharFromBuffer b) [i .. i+n-1]
 --
 readChars :: RawBuffer -> Int -> Int -> IO [Char]
-readChars b n p = sequence [ readCharFromBuffer b i | i <- [p .. p+n-1] ]
-
-{-
--- old version
-readChars :: RawBuffer -> Int -> Int -> IO [Char]
-readChars b n i = do
-    let lim = i + n
-    let loop j | j >= lim  = return []
+readChars b (I# n) (I# i) = do
+    let lim = i +# n
+    let loop j | j >=# lim  = return []
                | otherwise = do
-                    (c,_) <- readCharFromBuffer b j
-                    cs    <- loop $! j+1
-                    return (c : cs)
+                    c  <- readCharFromBuffer b j
+                    cs <- loop ( j +# 1# )
+                    return $! c : cs
     loop i
--}
+{-# INLINE readChars #-}
 
-------------------------------------------------------------------------
+--
+-- | Copy chars around the buffer. Return the final index.
+-- *Assumes the limits are correct*
+--
+shiftChars :: RawBuffer -> Int -> Int -> Int -> IO Int
+shiftChars b (I# src) (I# dst) (I# l) = do
+    let loop 0# _ j = return (I# j)
+        loop n  i j = copyCharFromTo b i j >> loop (n -# 1#) (i +# 1#) (j +# 1#)
+    loop l src dst
+{-# INLINE shiftChars #-}
+
+--
+-- | Copy a character to another location in the buffer
+--
+copyCharFromTo :: RawBuffer -> Int# -> Int# -> IO ()
+copyCharFromTo slab src dst = IO $ \st ->
+    case readCharArray# slab src st of 
+        (# st', c #) -> case writeCharArray# slab dst c st' of
+                st'' -> (# st'', () #)
+{-# INLINE copyCharFromTo #-}
+
 --
 -- | Read a 'Char' from a 'RawBuffer'. Return character
 --
-readCharFromBuffer :: RawBuffer -> Int -> IO Char
-readCharFromBuffer slab (I# off) = IO $ \st -> 
-    case readCharArray# slab off st of
-             (# st', c #) -> (# st', C# c #)
+readCharFromBuffer :: RawBuffer -> Int# -> IO Char
+readCharFromBuffer slab off = IO $ \st -> 
+    case readCharArray# slab off st of (# st', c #) -> (# st', C# c #)
+{-# INLINE readCharFromBuffer #-}
 
 --
 -- | Write a 'Char' into a 'RawBuffer', 
@@ -265,8 +283,8 @@ readCharFromBuffer slab (I# off) = IO $ \st ->
 --
 writeCharToBuffer :: RawBuffer -> Int -> Char -> IO Int
 writeCharToBuffer slab (I# off) (C# c) = IO $ \st -> 
-    case writeCharArray# slab off c st of
-             st' -> (# st', I# (off +# 1#) #)
+    case writeCharArray# slab off c st of st' -> (# st', I# (off +# 1#) #)
+{-# INLINE writeCharToBuffer #-}
 
 -- ---------------------------------------------------------------------
 --
@@ -308,13 +326,13 @@ instance Buffer FBuffer where
 
     -- readB      :: a -> IO Char
     readB (FBuffer _ _ mv) = withMVar mv $ \ref -> do
-        (FBuffer_ b p _ _) <- readIORef ref
+        (FBuffer_ b (I# p) _ _) <- readIORef ref
         readCharFromBuffer b p
 
     -- readAtB :: a -> Int -> IO Char
     readAtB (FBuffer _ _ mv) i = withMVar mv $ \ref -> do
         (FBuffer_ b _ e _) <- readIORef ref
-        let i' = rawMoveTo i e in readCharFromBuffer b i'
+        let (I# i') = rawMoveTo i e in readCharFromBuffer b i'
 
     -- writeB :: a -> Char -> IO ()
     writeB (FBuffer _ _ mv) c = withMVar mv $ \ref ->
@@ -337,7 +355,7 @@ instance Buffer FBuffer where
     -- insertN :: a -> [Char] -> IO ()
     insertN (FBuffer _ _ mv) cs = withMVar mv $ \ref ->
         modifyIORefIO ref $ \fb@(FBuffer_ b p e _) -> do
-            ds <- readChars b (e-p) p
+            ds <- readChars b (e-p) p   -- TODO shiftChars
             i  <- writeChars b (cs++ds) p
             return $ fb { bufLen=i }
 
@@ -349,8 +367,7 @@ instance Buffer FBuffer where
     -- deleteN    :: a -> Int -> IO ()
     deleteN (FBuffer _ _ mv) n = withMVar mv $ \ref ->
         modifyIORefIO ref $ \fb@(FBuffer_ buf p e _) -> do
-            cs <- readChars buf (e-p-n) (p+n)
-            i  <- writeChars buf cs p  -- index of last char written
+            i  <- shiftChars buf (p+n) p (e-p-n)
             let p' | p == 0    = p     -- go no further!
                    | i == p    = p-1   -- shift back if at eof
                    | otherwise = p

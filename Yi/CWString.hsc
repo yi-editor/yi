@@ -52,7 +52,7 @@ module Yi.CWString (
     newLCStringLen,
     peekLCStringLen,
     peekLCString,
-    charIsRepresentable
+--  charIsRepresentable
 
     ) where
 
@@ -67,7 +67,7 @@ import Foreign.C.Types
 import qualified CForeign
 
 #if __GLASGOW_HASKELL__ >= 603
-import Foreign.C.String hiding (charIsRepresentable)
+import Foreign.C.String
 #else
 import Foreign.C.String
 #endif

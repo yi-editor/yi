@@ -152,7 +152,7 @@ import Yi.CWString
 import Yi.Editor    ( Key(..) )
 import Prelude hiding   ( pi )
 
-import Data.Char        ( chr, ord, isPrint, isSpace, toLower )
+import Data.Char        ( chr, ord, isControl, isSpace, toLower )
 import Data.Ix          ( Ix )
 import Data.Bits
 import Data.List
@@ -633,22 +633,36 @@ attrBold = (#const A_BOLD)
 
 ------------------------------------------------------------------------
 
-
 mvWAddStr :: Window -> Int -> Int -> String -> IO ()
 mvWAddStr w y x str = wMove w y x >> wAddStr w str 
 
 addLn :: IO ()
 addLn = wAddStr stdScr "\n" 
 
-sanifyOutput :: String -> String
-sanifyOutput = map f . filter (/= '\r') where
-    f c | isPrint c  = c
-    f c = '~'
+--
+-- | normalise the string, stripping \\r and making control chars
+-- printable. Called over all output(?)
+
+normalise :: String -> String
+normalise []        = []
+normalise ('\r':cs) = normalise cs
+normalise (c:cs) | isControl c   = '@' : normalise cs
+                 | otherwise     = c   : normalise cs
+{-# INLINE normalise #-}
+
+{-
+normalise s = map f . filter (/= '\r') s
+    where
+        f c | isPrint c  = c
+        f c = '@'
+-}
+
+------------------------------------------------------------------------
 
 #if defined(CF_WCHAR_SUPPORT) && defined(HAVE_WADDNWSTR)
 
 --wAddStr :: Window -> String -> IO ()
---wAddStr w str = throwIfErr_ ("waddnwstr: " ++ show str) $ withCWStringLen (sanifyOutput str) (\(ws,len) -> waddnwstr w ws (fi len))
+--wAddStr w str = throwIfErr_ ("waddnwstr: " ++ show str) $ withCWStringLen (normalise str) (\(ws,len) -> waddnwstr w ws (fi len))
     
 foreign import ccall unsafe waddnwstr :: Window -> CWString -> CInt -> IO CInt
 foreign import ccall unsafe waddch :: Window -> (#type chtype) -> IO CInt
@@ -659,7 +673,7 @@ wAddStr win str = do
         convStr f = case f [] of
             [] -> return ()
             s  -> throwIfErr_ "waddnstr" $
-                withCWStringLen  (sanifyOutput s) (\(ws,len) ->  (waddnwstr win ws (fi len)))
+                withCWStringLen  (normalise s) (\(ws,len) ->  (waddnwstr win ws (fi len)))
         loop []        acc = convStr acc
         loop (ch:str') acc = recognize
             ch
@@ -672,31 +686,65 @@ wAddStr win str = do
 
 #else
 
+--
+-- This is heavily called, and does a lot of allocs.  We walk over all
+-- the string accumulating a list of characters to be drawn.
+--
+-- Got it down to:
+--
+--      wAddStr Yi.Curses 20.0   38.1
+--      wAddStr Yi.Curses 10.0   32.5
+-- 
+-- TODO make this way less expensive. That accum sucks.
+--
+wAddStr :: Window -> [Char] -> IO ()
+wAddStr win cs = do
+    let draw [] = return ()
+        draw s  = case normalise $! reverse s of
+                    s' -> throwIfErr_ "waddnstr" $
+                        withLCStringLen s' (\(ws,len) -> 
+                            waddnstr win ws (fi len))   -- write to screen
 
-foreign import ccall unsafe waddnstr :: Window -> CString -> CInt -> IO CInt
-foreign import ccall unsafe waddch :: Window -> (#type chtype) -> IO CInt
+    let loop []     acc = draw acc
+        loop (c:cs) acc = recognize c 
+                (loop cs $! c:acc)
+                (\c' -> do draw acc
+                           throwIfErr ")waddch" $ waddch win c'
+                           loop cs [])
+    loop cs []
 
+{-
 wAddStr :: Window -> String -> IO ()
 wAddStr win str = do
-    let
-        convStr f = case f [] of
+    let convStr f = case f [] of
             [] -> return ()
-            s  -> throwIfErr_ "waddnstr" $
-                withLCStringLen  (sanifyOutput s) (\(ws,len) ->  (waddnstr win ws (fi len)))
-        loop []        acc = convStr acc
-        loop (ch:str') acc = recognize
-            ch
-            (loop str' (acc . (ch:)))
-            (\ch' -> do
-                convStr acc
-                throwIfErr "waddch" $ waddch win ch'
-                loop str' id)
+            s  -> case normalise s of
+                    s' -> throwIfErr_ "waddnstr" $ 
+                        withLCStringLen s' (\(ws,len) -> 
+                            waddnstr win ws (fi len))   -- write to screen
+
+    let loop []     acc = convStr acc
+        loop (c:cs) acc = 
+            recognize c 
+                (loop cs $ acc . (c:))
+                (\c' -> do convStr acc                 -- draw accumulated chars
+                           throwIfErr "waddch" $ waddch win c' -- draw this char
+                           loop cs id )
     loop str id 
+-}
+
+foreign import ccall unsafe 
+    waddnstr :: Window -> CString -> CInt -> IO CInt
+
+foreign import ccall unsafe 
+    waddch :: Window -> (#type chtype) -> IO CInt
+
 #endif
+
 {-
 
 wAddStr :: Window -> String -> IO ()
-wAddStr w str =  withLCStringLen (sanifyOutput str) (\(ws,len) -> throwIfErr_ ("waddnstr: " ++ show len ++ " " ++ show str) $ waddnstr w ws (fi len))
+wAddStr w str =  withLCStringLen (normalise str) (\(ws,len) -> throwIfErr_ ("waddnstr: " ++ show len ++ " " ++ show str) $ waddnstr w ws (fi len))
 foreign import ccall unsafe waddch :: Window -> (#type chtype) -> IO CInt
 
 wAddStr :: Window -> String -> IO ()
@@ -705,7 +753,7 @@ wAddStr win str = do
         convStr f = case f [] of
             [] -> return ()
             s  -> throwIfErr_ "waddnstr" $
-                withLCString  (sanifyOutput s) (\(ws,len) ->  (waddnstr win ws (fi len)))
+                withLCString  (normalise s) (\(ws,len) ->  (waddnstr win ws (fi len)))
         loop []        acc = convStr acc
         loop (ch:str') acc = recognize
             ch
@@ -717,6 +765,10 @@ wAddStr win str = do
     loop str id 
 -}
 ------------------------------------------------------------------------
+
+--
+-- what ?
+--
 
 #let translate_attr attr =                              \
     "(if a .&. %lu /= 0 then %lu else 0) .|.",          \

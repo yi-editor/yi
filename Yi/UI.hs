@@ -101,7 +101,7 @@ getKey refresh_fn = do
 
 --
 -- | Draw as much of the buffer as we are told to do
--- | active buffer gets a slightly different modeline
+--  active buffer gets a slightly different modeline
 --
 drawBuffer :: Buffer a => Int -> Int -> Int -> a -> IO ()
 drawBuffer main w h buf = do
@@ -124,7 +124,7 @@ drawModeLine :: Int -> String -> IO ()
 drawModeLine w title = drawLine w ("\"" ++ title ++ "\"" ++ repeat ' ')
 
 --
--- | needs to be fast
+-- | lazy version is faster than calculating length of s
 --
 drawLine :: Int -> String -> IO ()
 drawLine w s  = Curses.wAddStr Curses.stdScr $ take w (s ++ repeat ' ')
