@@ -1183,7 +1183,7 @@ getCh :: IO (Maybe Char)
 getCh = do
     v <- getch
     case v of
-         (#const ERR) -> return (Just '\^C')    -- hack
+         (#const ERR) -> do getch {-discard-} ; return (Just $ '\^C') -- hack
          k            -> return (Just $ decodeKey k)
 
 resizeTerminal :: Int -> Int -> IO ()
