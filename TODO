@@ -10,7 +10,8 @@ Build system:
         - ncurses should be a plugin
 
 v0.1:
-        - syn hl
+        - syn hl (needs parser, in bg thread)
+        - start drawing buffer before it is all loaded.
         - undo/redo in vi mode
         - build on mac os x
         - colours

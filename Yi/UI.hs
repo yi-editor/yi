@@ -43,10 +43,6 @@ module Yi.UI (
         -- * Drawing
         refresh,
 
-        -- * Drawing messages
-        drawCmdLine,
---      drawErrLine,
-
         module Yi.Curses   -- UIs need to export the symbolic key names
 
   )   where
@@ -87,13 +83,13 @@ start = do
 end :: IO ()
 end = Curses.endWin
 
-------------------------------------------------------------------------
+--
 -- | Find the current screen height and width.
 --
 screenSize :: IO (Int, Int)
 screenSize = Curses.scrSize
 
--- ---------------------------------------------------------------------
+--
 -- | Read a key. UIs need to define a method for getting events.
 --
 getKey :: IO () -> IO Char
@@ -108,7 +104,7 @@ getKey refresh_fn = do
                       getKey refresh_fn
                 | otherwise -> return k'
  
--- ---------------------------------------------------------------------
+--
 -- | Redraw the entire terminal from the UI state
 --
 redraw :: IO ()
@@ -120,7 +116,7 @@ redraw = withEditor $ \e -> do
         (Just i) = getWindowIndOf e
 
     gotoTop
-    mapM_ (drawWindow e) ws                         -- draw all windows
+    mapM_ (drawWindow e) ws                     -- draw all windows
     withStyle (window sty) $ drawCmdLine cl     -- draw cmd line
 
     -- work out origin of current window from index of that window in win list
@@ -130,6 +126,9 @@ redraw = withEditor $ \e -> do
         (h,_)  <- screenSize
         let o_y = i * (fst $ getY h (length ws))
         drawCursor (o_y,0) $ cursor $ fromJust w
+
+-- ---------------------------------------------------------------------
+-- PRIVATE:
 
 --
 -- | Draw a screen to the screen

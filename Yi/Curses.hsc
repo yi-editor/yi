@@ -148,7 +148,6 @@ module Yi.Curses {-(
     --------------------------------------------------------------------
   )-} where 
 
-import Yi.Ctk.DLists
 import Yi.CWString
 
 import Prelude hiding   ( pi )
@@ -171,6 +170,27 @@ import Data.Bits
 #endif
 
 #include <YiCurses.h>
+
+------------------------------------------------------------------------
+--
+-- | Start it all up
+--
+initCurses :: IO ()
+initCurses = do
+    initScr
+    b <- hasColors
+    when b $ startColor >> useDefaultColors
+    raw True    -- raw mode please
+    echo False
+    nl False
+    intrFlush True
+--  leaveOk True
+    leaveOk False
+    keypad stdScr True
+    defineKey (#const KEY_UP) "\x1b[1;2A"
+    defineKey (#const KEY_DOWN) "\x1b[1;2B"
+    defineKey (#const KEY_SLEFT) "\x1b[1;2D"
+    defineKey (#const KEY_SRIGHT) "\x1b[1;2C"
 
 ------------------------------------------------------------------------
 
@@ -318,6 +338,15 @@ noDelay win bf =
 foreign import ccall unsafe "YiCurses.h nodelay" 
     nodelay :: Window -> (#type bool) -> IO CInt
 
+--
+-- |   Normally, the hardware cursor is left at the  location  of
+--     the  window  cursor  being  refreshed.  The leaveok option
+--     allows the cursor to be left wherever the  update  happens
+--     to leave it.  It is useful for applications where the cur-
+--     sor is not used, since it  reduces  the  need  for  cursor
+--     motions.   If  possible, the cursor is made invisible when
+--     this option is enabled.
+--
 leaveOk  :: Bool -> IO CInt
 leaveOk True  = leaveok_c stdScr 1
 leaveOk False = leaveok_c stdScr 0
@@ -348,37 +377,6 @@ defineKey k s =  withCString s (\s' -> define_key s' k) >> return ()
 
 foreign import ccall unsafe "YiCurses.h define_key" 
     define_key :: Ptr CChar -> CInt -> IO ()
-
-{-
-
-useDefaultColors :: IO ()
-useDefaultColors = return ()
-
-defaultBackground = white 
-defaultForeground = black
-
-defineKey k s = return ()
-
--}
-
---
--- | 
---
-initCurses :: IO ()
-initCurses = do
-    initScr
-    b <- hasColors
-    when b $ startColor >> useDefaultColors
-    raw True    -- raw mode please
-    echo False
-    nl False
-    intrFlush True
-    leaveOk True
-    keypad stdScr True
-    defineKey (#const KEY_UP) "\x1b[1;2A"
-    defineKey (#const KEY_DOWN) "\x1b[1;2B"
-    defineKey (#const KEY_SLEFT) "\x1b[1;2D"
-    defineKey (#const KEY_SRIGHT) "\x1b[1;2C"
 
 --
 -- | >  The program must call endwin for each terminal being used before
@@ -728,8 +726,10 @@ normalise s = map f . filter (/= '\r') s
 --wAddStr :: Window -> String -> IO ()
 --wAddStr w str = throwIfErr_ ("waddnwstr: " ++ show str) $ withCWStringLen (normalise str) (\(ws,len) -> waddnwstr w ws (fi len))
     
-foreign import ccall unsafe waddnwstr :: Window -> CWString -> CInt -> IO CInt
-foreign import ccall unsafe waddch :: Window -> (#type chtype) -> IO CInt
+foreign import ccall unsafe 
+    waddnwstr :: Window -> CWString -> CInt -> IO CInt
+foreign import ccall unsafe 
+    waddch :: Window -> (#type chtype) -> IO CInt
 
 wAddStr :: Window -> String -> IO ()
 wAddStr win str = do
@@ -758,26 +758,15 @@ wAddStr win str = do
 --
 --      wAddStr Yi.Curses 20.0   38.1
 --      wAddStr Yi.Curses 10.0   32.5
-
 -- 
 -- TODO make this way less expensive. That accum sucks.
+-- use difference lists for O(1) append
 --
 wAddStr :: Window -> [Char] -> IO ()
-wAddStr win cs = do
-    let draw [] = return ()
-        draw s  = case normalise s of
-                    s' -> throwIfErr_ "waddnstr" $
-                        withLCStringLen s' (\(ws,len) -> 
-                            waddnstr win ws (fi len))   -- write to screen
-
-    -- use difference lists for O(1) append
-    let loop []     acc = draw (closeDL acc)
-        loop (c:xs) acc = recognize c 
-                (loop xs $! acc `snocDL` c)
-                (\c' -> do draw (closeDL acc)
-                           throwIfErr "waddch" $ waddch win c'
-                           loop xs zeroDL)
-    loop cs zeroDL
+wAddStr _   [] = return ()
+wAddStr win s  = throwIfErr_ "waddnstr" $
+    withLCStringLen (normalise s) 
+                    (\(ws,len) -> waddnstr win ws (fi len))
 
 {-
 wAddStr :: Window -> String -> IO ()
@@ -804,6 +793,9 @@ foreign import ccall threadsafe
 
 foreign import ccall threadsafe
     waddch :: Window -> (#type chtype) -> IO CInt
+
+foreign import ccall threadsafe
+    vline  :: Char -> Int -> IO ()
 
 #endif
 
@@ -1419,10 +1411,14 @@ sterling = chr 0x00A3
    #else 
 -}
 
-#if 1
+recognize :: Char -> IO a -> ((#type chtype) -> IO a) -> IO a
+recognize _ch noConvert _convert = noConvert -- Handle the most common case first.
+
+{-
 
 recognize :: Char -> IO a -> ((#type chtype) -> IO a) -> IO a
 recognize ch noConvert convert
+    | ch <= '\x7F'   = noConvert -- Handle the most common case first.
     | ch <= '\x7F'   = noConvert -- Handle the most common case first.
     | ch == ulCorner = convert =<< hs_curses_acs_ulcorner
     | ch == llCorner = convert =<< hs_curses_acs_llcorner
@@ -1530,7 +1526,7 @@ foreign import ccall unsafe hs_curses_acs_sterling :: IO (#type chtype)
 #def inline chtype hs_curses_acs_sterling (void) {return ACS_STERLING;}
 #  endif
 
-#endif 
+-}
 
 -- ---------------------------------------------------------------------
 -- code graveyard
