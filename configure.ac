@@ -55,6 +55,8 @@ AC_SUBST(WithGhc)
 #
 # Look for a ghc-pkg that matches our ghc version.
 #
+
+AC_MSG_CHECKING([for ghc-pkg])
 ghc_pkg_guess=`echo $WithGhc | sed 's,ghc\(@<:@^/\\@:>@*\)$,ghc-pkg\1,'`
 if "$ghc_pkg_guess" -l > /dev/null 2>&1; then
       matching_ghc_pkg=$ghc_pkg_guess
@@ -66,7 +68,26 @@ if test x"$matching_ghc_pkg" = xno; then
 else
     GhcPkgCmd=$matching_ghc_pkg
 fi
+AC_MSG_RESULT([$GhcPkgCmd])
 AC_SUBST(GhcPkgCmd)
+
+#
+# And look for an hsc2hs in the same place.
+#
+AC_MSG_CHECKING([for hsc2hs])
+hsc2hs_guess=`echo $WithGhc | sed 's/ghc.*$/hsc2hs/'`
+if "$hsc2hs_guess" -V > /dev/null 2>&1; then
+      matching_hsc2hs=$hsc2hs_guess
+else
+      matching_hsc2hs=no
+fi
+if test x"$matching_hsc2hs" = xno; then
+    AC_CHECK_PROG(Hsc2hsCmd,hsc2hs,hsc2hs)
+else
+    Hsc2hsCmd=$matching_hsc2hs
+fi
+AC_MSG_RESULT([$Hsc2hsCmd])
+AC_SUBST(Hsc2hsCmd)
 
 # check ghc version here
 if test -n "$WithGhc" ; then
@@ -92,7 +113,6 @@ AC_SUBST(GLASGOW_HASKELL)
 AC_CHECK_PROG(AlexCmd,alex,alex)
 AC_CHECK_PROG(HappyCmd,happy,happy)
 AC_CHECK_PROG(HaddockCmd,haddock,haddock)
-AC_CHECK_PROG(Hsc2hsCmd,hsc2hs,hsc2hs)
 
 AC_CHECK_PROG(STRIP,strip,strip)
 AC_PATH_PROG(LdCmd,ld)
