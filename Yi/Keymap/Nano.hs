@@ -46,7 +46,7 @@ keymap cs = actions
 --
 -- | @NanoMode@  is the type to instantiate the lazy lexer with
 --
-type NanoMode  = Lexer  NanoState Action
+type NanoMode = Lexer NanoState Action
 
 --
 -- | The lexer is able to thread state around. Our state may contain a
@@ -56,7 +56,17 @@ type NanoMode  = Lexer  NanoState Action
 -- safely ignore the state. The char is the key that was pressed to send
 -- us into cmd buffer mode.
 --
-type NanoState = Maybe (Char,String,String)
+-- Also, when entering text into the command buffer, in some modes extra
+-- key bindings become available (such as searching). Any extra bindings
+-- to add to the echo mode are passed in the state as an @OnlyMode@
+-- (which is just a wrapped mode)
+--
+type NanoState = Maybe (Char,String,String,OnlyMode)
+
+--
+-- Hide the mode inside a data type to avoid cycles
+--
+newtype OnlyMode = Only NanoMode
 
 --
 -- | The default mode is /cmd/ mode. Our other mode is the echo buffer
@@ -71,6 +81,12 @@ nano_km = insChar >||< cmdChar >||< cmdSwitch >||< searchChar
 --
 echo_km :: NanoMode
 echo_km = echoAccum >||< echoEdit >||< echoEval
+
+--
+-- | The null keymap, useful as an argument to >||< sometimes
+--
+null_km :: NanoMode
+null_km = epsilon `action` \_ -> Just undefined
 
 --
 -- Here's where we write a bunch of lexer fragments, corresponding to
@@ -172,16 +188,11 @@ askYN y_act n_act cont =
     where
         ync_mode = yes_mode >||< no_mode >||< cancel
 
-        yes_mode = (char 'Y' >|< char 'y')
-                    `action` \_ -> Just $ y_act >> done
-        no_mode  = (char 'N' >|< char 'n')
-                    `action` \_ -> Just $ n_act >> done
-        cancel   = char '\^C' 
-                    `action` \_ -> Just $ msgE "[ Cancelled ]" >> done
+        yes_mode = (char 'Y' >|< char 'y') `action` \_ -> Just $ y_act >> done
+        no_mode  = (char 'N' >|< char 'n') `action` \_ -> Just $ n_act >> done
+        cancel   = char '\^C' `action` \_ -> Just $ msgE "[ Cancelled ]" >> done
 
         done     = cmdlineUnFocusE >> metaM cont
-
-------------------------------------------------------------------------
 
 --
 -- | Switching to the command buffer
@@ -218,8 +229,9 @@ askYN y_act n_act cont =
 cmdSwitch :: NanoMode
 cmdSwitch = switchChar
     `meta` \[c] _ -> (Just (Right (msgE (prompt c) >> cmdlineFocusE))
-                     ,Just (c, prompt c,[]), Just echo_km)
+                     ,Just (c, prompt c, [], Only null_km), Just echo_km)
     where
+
         --
         -- we look up the echoCharFM to find a list of chars to match in
         -- this action, which we then turn into a regex with alt.
@@ -246,6 +258,9 @@ cmdSwitch = switchChar
 -- argument to 'metaM'. 'metaM' will then cause processing to continue
 -- with this new lexer.
 --
+-- Note that searchChar will override the binding for \^W in switchChar
+-- above
+--
 searchChar :: NanoMode
 searchChar = char '\^W'
     `action` \_ -> Just (a >>= \v -> cmdlineFocusE >> metaM v)
@@ -261,8 +276,45 @@ searchChar = char '\^W'
         -- generate a new keymap lexer, beginning in echo_km mode, with
         -- state initalised with the prompt we created from 'getRegexE'.
         --
-        mkKM p = \cs -> let (as,_,_) = execLexer echo_km (cs, Just ('\^W',p,[]))
-                        in as
+        mkKM p cs = 
+            let (as,_,_) = execLexer (echo_km >||< search_km) 
+                                     (cs, Just ('\^W',p,[], Only search_km)) 
+            in as
+
+--
+-- When searching, a few extra key bindings become available, which
+-- immediately interrupt the echo mode, perform an action, and then drop
+-- back to normal mode.
+--
+-- ^G Get Help ^Y First Line  ^R Replace     M-C Case Sens  M-R Regexp
+-- ^C Cancel   ^V Last Line   ^T Go To Line  M-B Direction  Up History 
+--
+-- We augment the echo keymap with the following bindings, by passing
+-- them in the @OnlyMode@ field of the lexer state. The echo keymap the
+-- knows how to add in these extra bindings.
+--
+search_km :: NanoMode
+search_km = srch_g >||< srch_y >||< srch_v >||< srch_t >||< srch_c >||< srch_r
+  where
+    srch_g = char '\^G' `andthen` msgE "nano-yi : yi emulating nano"
+
+    srch_y = char '\^Y' `andthen` (gotoLnE 0 >> solE)
+    srch_v = char '\^V' `andthen` (do (_,x,_,_,_,_) <- bufInfoE
+                                      gotoLnE x >> solE)
+
+    srch_t = char '\^T' `andthen` msgE "unimplemented" -- goto line
+
+    srch_c = char '\^C' `andthen` msgE "[ Search Cancelled ]"
+    srch_r = char '\^R' `andthen` msgE "unimplemented"
+
+    -- M-C
+    -- M-R
+    -- M-B
+    -- Up
+
+    -- do 'a' and return to the normal mode
+    c `andthen` a = 
+        c `meta` \_ _ -> (Just (Right (a>>cmdlineUnFocusE)),Nothing,Just nano_km)
 
 ------------------------------------------------------------------------
 --
@@ -276,9 +328,10 @@ searchChar = char '\^W'
 --
 echoAccum  :: NanoMode
 echoAccum = anyButDelOrEnter
-    `meta` \[c] (Just (k,p,f)) -> (Just (Right (doEcho p f c))  -- echo char
-                                  ,Just (k,p,c:f)    -- accum filename in state
-                                  ,Just echo_km)     -- and stay in this mode
+    `meta` \[c] (Just (k,p,f,Only m)) -> 
+                    (Just (Right (doEcho p f c))  -- echo char
+                    ,Just (k,p,c:f,Only m)             -- accum filename in state
+                    ,Just (echo_km >||< m))       -- and stay in this mode
     where
         anyButDelOrEnter = alt $ [ '\0' .. '\255' ] \\ (deleteChars ++ [ '\r' ])
         doEcho p f c = msgE $ p ++ (reverse f) ++ [c]
@@ -289,10 +342,12 @@ echoAccum = anyButDelOrEnter
 --
 echoEdit :: NanoMode
 echoEdit = delete
-    `meta` \_ (Just (c,p,f)) ->
+    `meta` \_ (Just (c,p,f,Only m)) ->
         let f' | f == []   = []
                | otherwise = tail f
-        in (Just (Right (msgE (p ++ reverse f'))), Just (c,p,f'), Just echo_km)
+        in (Just (Right (msgE (p ++ reverse f')))
+           ,Just (c,p,f',Only m)
+           ,Just (echo_km >||< m))
     where
         delete = alt deleteChars
 
@@ -305,7 +360,7 @@ echoEdit = delete
 --
 echoEval :: NanoMode
 echoEval = enter
-    `meta` \_ (Just (c,_,rf)) ->
+    `meta` \_ (Just (c,_,rf,_)) ->
         let f = reverse rf
             a = case lookupFM echoCharFM c of
                     Just (fn,_) -> fn f
@@ -334,7 +389,7 @@ echoCharFM = listToFM $
     ,('\^_',
      (\s -> do e <- try $ evaluate $ read s
                case e of Left _   -> errorE "[ Come on, be reasonable ]"
-                         Right ln -> gotoLnE ln >> solE
+                         Right ln -> gotoLnE ln >> solE >> msgClrE
      ,"Enter line number: "))
     
     ,('\^W',

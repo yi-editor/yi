@@ -3,6 +3,7 @@ Design plan:
         - ui type class
         - clean up ncurses code    
         - replace global var in editor state with a state monad
+        - variable-size echo buffer
  
 Build system:
         - check how to install it from a port script
