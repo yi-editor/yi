@@ -23,6 +23,9 @@ other stuff:
         - other forms of undo
         - errorE should display in colour
 
+        - try writing a user defineable Action - how to call this, other
+          than by binding a key?
+
 ------------------------------------------------------------------------
 syn hl:
         - run ghc parser in background thread, producing a syn tree
@@ -38,7 +41,8 @@ syn hl:
                   the colour specified by the tree.
 
         - need multiple entry points to the parser, to reparse subexpressions?
-            - Centaur (for ML) has a good system.
+            - ==> Centaur (for ML) has a good system.
+              ftp://ftp.inria.fr/INRIA/publication/publi-pdf/RR/part3/RR-3139.pdf
 
         - what about comments?
             - record the comments, with their positions, in the lexer.
