@@ -29,12 +29,10 @@ import qualified Yi.Editor  as Editor
 import qualified Yi.Core    as Core 
 import qualified Yi.Style   as Style
 
-import qualified Yi.Map as M
-
 import qualified Yi.Keymap.Vi    as Vi
 import qualified Yi.Keymap.Vim   as Vim
 import qualified Yi.Keymap.Nano  as Nano
-import qualified Yi.Keymap.Emacs as Emacs
+-- import qualified Yi.Keymap.Emacs as Emacs
 
 import qualified Yi.Curses.UI as UI
 
@@ -73,7 +71,7 @@ editorFM = M.fromList $
     [("vi",     Vi.keymap)
     ,("vim",    Vim.keymap)
     ,("nano",   Nano.keymap)
-    ,("emacs",  Emacs.keymap)
+--  ,("emacs",  Emacs.keymap)
     ]
 
 options :: [OptDescr Opts]
