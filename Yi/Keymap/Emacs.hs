@@ -30,16 +30,17 @@ module Yi.Keymap.Emacs ( keymap ) where
 import Yi.Yi hiding ( keymap )
 
 import Data.Char
-import Control.Monad
-import Data.FiniteMap
-import Data.IORef
-import System.IO.Unsafe -- Yuck
+-- import Control.Monad
+-- import Data.FiniteMap
+-- import Data.IORef
+-- import System.IO.Unsafe -- Yuck
 
 -- ---------------------------------------------------------------------
 --
 -- This function must be implemented by any user keybinding
 --
 keymap :: [Char] -> IO ()
+keymap [] = nopE
 keymap (c:cs) = do msgE "emacs keymap not ported to lazy input type"
                    if c == 'q' then quitE else keymap cs
                

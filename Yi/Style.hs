@@ -32,6 +32,8 @@ import qualified Yi.Curses as Curses
 
 import Data.Maybe        ( fromJust )
 
+c_default, c_black, c_red, c_green, c_yellow, 
+    c_blue, c_magenta, c_cyan, c_white :: Curses.Color
 c_default   = fromJust $ Curses.color "default" -- doesn't work?
 c_black     = fromJust $ Curses.color "black"
 c_red       = fromJust $ Curses.color "red"
@@ -42,11 +44,13 @@ c_magenta   = fromJust $ Curses.color "magenta"
 c_cyan      = fromJust $ Curses.color "cyan"
 c_white     = fromJust $ Curses.color "white"
 
+sa_bold, sa_underline, sa_dim, sa_reverse :: Curses.Attr -> Curses.Attr
 sa_bold      = \a -> Curses.setBold a True
 sa_underline = \a -> Curses.setUnderline a True
 sa_dim       = \a -> Curses.setDim a True
 sa_reverse   = \a -> Curses.setReverse a True
 
+a_bold, a_none, a_underline, a_dim, a_reverse :: Curses.Attr
 a_none       = Curses.attr0
 a_bold       = sa_bold Curses.attr0
 a_underline  = sa_underline Curses.attr0
@@ -66,21 +70,25 @@ data UIAttr = UIAttr {
     attr_message :: (Curses.Attr, Curses.Pair)
 }
 
-default_uiattr = UIAttr {
-    attr_infoline = ar,
-    attr_text = a0,
-    attr_entry = a0,
-    attr_entry_sel = ar,
-    attr_entry_act = ab,
-    attr_entry_act_sel = ab,
-    attr_error = ab,
-    attr_message = ab
-} where
-    a0 = (a_none, Curses.Pair 0)
-    ar = (a_reverse, Curses.Pair 0)
-    ab = (a_bold, Curses.Pair 0)
+default_uiattr :: UIAttr
+default_uiattr = 
+    UIAttr {
+        attr_infoline = ar,
+        attr_text = a0,
+        attr_entry = a0,
+        attr_entry_sel = ar,
+        attr_entry_act = ab,
+        attr_entry_act_sel = ab,
+        attr_error = ab,
+        attr_message = ab
+    } 
+    where
+        a0 = (a_none, Curses.Pair 0)
+        ar = (a_reverse, Curses.Pair 0)
+        ab = (a_bold, Curses.Pair 0)
 
 uiattr_set :: UIAttr -> String -> (Curses.Attr, Curses.Pair) -> UIAttr
+
 uiattr_set a "attr_infoline" v = a{attr_infoline = v}
 uiattr_set a "attr_text" v = a{attr_text = v}
 uiattr_set a "attr_entry" v = a{attr_entry = v}
@@ -89,6 +97,7 @@ uiattr_set a "attr_entry_act" v = a{attr_entry_act = v}
 uiattr_set a "attr_entry_act_sel" v = a{attr_entry_act_sel = v}
 uiattr_set a "attr_error" v = a{attr_error = v}
 uiattr_set a "attr_message" v = a{attr_message = v}
+uiattr_set _ _ _ = error "Styles.uiattr_set: Can't happen"
 
 init_style :: (Curses.Attr, Curses.Color, Curses.Color) 
            -> Curses.Pair 

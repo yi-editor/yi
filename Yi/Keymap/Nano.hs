@@ -27,9 +27,10 @@ module Yi.Keymap.Nano ( keymap ) where
 
 import Yi.Yi hiding     ( keymap )
 
-import Control.Monad    ( when )
+-- import Control.Monad    ( when )
 
 keymap :: [Char] -> IO ()
+keymap [] = nopE
 keymap (c:cs) = do msgE "nano keymap not ported to lazy input type"
                    if c == 'q' then quitE else keymap cs
 
