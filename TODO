@@ -11,7 +11,6 @@ Build system:
         - add test for sigwinch
 
 v0.1:
-        - undo/redo
         - line wrapping
         - maybe: syn hl (needs parser, in bg thread)
 

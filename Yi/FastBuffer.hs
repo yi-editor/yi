@@ -284,15 +284,15 @@ instance Buffer FBuffer where
     -- TODO undo
 
     -- writeB :: a -> Char -> IO ()
-    writeB (FBuffer _ _ _ mv) c = 
-        withMVar mv $ \(FBuffer_ ptr off _ _) ->
+    writeB (FBuffer _ _ uv mv) c = 
+        withMVar mv $ \(FBuffer_ ptr off _ _) -> do
+            modifyMVar_ uv $ \u -> do
+                [x] <- readChars ptr 1 off 
+                let u'  = addUR u  (Insert off x)   -- maybe a single action?
+                    u'' = addUR u' (Delete off)
+                return u''
             writeChars ptr [c] off
     {-# INLINE writeB #-}
-
-    -- writeAtB   :: a -> Int -> Char -> IO ()
-    writeAtB (FBuffer _ _ _ mv) off c = 
-        withMVar mv $ \(FBuffer_ ptr _ end _) ->
-            writeChars ptr [c] (inBounds off end)
 
     ------------------------------------------------------------------------
 
@@ -521,7 +521,7 @@ inBounds i end | i <= 0    = 0
 -- | A URList consists of an undo and a redo list.
 --
 data URList = URList ![URAction] ![URAction]
-    deriving Show
+--  deriving Show
 
 --
 -- Mutation actions (from the undo or redo list) are either inserts or
@@ -529,7 +529,7 @@ data URList = URList ![URAction] ![URAction]
 --
 data URAction = Insert !Int !Char
               | Delete !Int
-    deriving Show
+--  deriving Show
 
 -- ---------------------------------------------------------------------
 -- | Create a new 'URList'.

@@ -106,9 +106,6 @@ class Buffer a where
     -- | Write an element into the buffer at the current point
     writeB     :: a -> Char -> IO ()
 
-    -- | Write an element at the given index
-    writeAtB   :: a -> Int -> Char -> IO ()
-
     ------------------------------------------------------------------------
 
     -- | Insert the character at current point, extending size of buffer
