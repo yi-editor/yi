@@ -20,13 +20,13 @@ PKG=            hemacs
  
 BIN_OBJS=       Boot.o
 BIN_DEPS=       plugins posix
-BIN_LIBS=       $(CURSES) iconv
+BIN_LIBS=       $(CURSES) $(ICONV)
 
 # static front end
  
 STATIC_OBJS=    Main.o
 STATIC_BIN_DEPS=hemacs posix
-STATIC_BIN_LIBS=$(CURSES) iconv
+STATIC_BIN_LIBS=$(CURSES) $(ICONV)
 STATIC_HC_OPTS  += -package-conf hemacs.conf
 
 SHARED_OBJ=	HEmacs/BootAPI.o

@@ -60,6 +60,7 @@ GHC_PKG_DEFINES += -DCURSES=$(CURSES)
 # Set this if your iconv library functions are accessed with the "lib"
 # prefix. OpenBSD needs this.
 #
+ICONV=          iconv
 DEFINES+=       -DWEIRD_ICONV
 
 #
