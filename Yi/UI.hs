@@ -101,25 +101,18 @@ getKey refresh_fn = do
 
 --
 -- | Draw as much of the buffer as we are told to do
+-- | active buffer gets a slightly different modeline
 --
-drawBufferXY :: Buffer a => Int -> Int -> a -> IO ()
-drawBufferXY w h buf = do
+drawBuffer :: Buffer a => Int -> Int -> Int -> a -> IO ()
+drawBuffer main w h buf = do
     ss <- contents buf
     mapM_ (drawLine w) $ take (h-1) $ (lines ss) ++ repeat "~"
-    cset_attr (Curses.setReverse Curses.attr0 True , Curses.Pair (1))
+    cset_attr (Curses.setReverse Curses.attr0 True , Curses.Pair (main))
     drawModeLine w (name buf)
     reset
 
---
--- | active buffer gets a slightly different modeline
---
-drawMainBufferXY :: Buffer a => Int -> Int -> a -> IO ()
-drawMainBufferXY w h buf = do
-    ss <- contents buf
-    mapM_ (drawLine w) $ take (h-1) $ (lines ss) ++ repeat "~"
-    cset_attr (Curses.setReverse Curses.attr0 True , Curses.Pair 0)
-    drawModeLine w (name buf)
-    reset
+drawBufferXY = drawBuffer 1
+drawMainBufferXY = drawBuffer 0
 
 --
 -- | draw a simple modeline
