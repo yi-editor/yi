@@ -151,14 +151,12 @@ module Yi.Curses {-(
 import Yi.CWString
 import Prelude hiding   ( pi )
 
-import Data.Char        ( chr, ord, isControl, isSpace, toLower )
+import Data.Char
 import Data.Ix          ( Ix )
-import Data.Bits
 import Data.List
 import Data.Maybe
 
 import Control.Monad
-import Control.Concurrent
 import Control.Exception hiding ( block )
 import Foreign
 import CForeign
@@ -166,10 +164,15 @@ import CForeign
 import System.IO.Unsafe
 import System.Posix.Signals
 
+#if __GLASGOW_HASKELL__ < 603
+import Data.Bits
+#endif
+
 #include <YiCurses.h>
 
 ------------------------------------------------------------------------
 
+fi :: (Integral a, Num b) => a -> b
 fi = fromIntegral
 
 throwIfErr :: Num a => String -> IO a -> IO a
@@ -303,35 +306,44 @@ foreign import ccall unsafe "YiCurses.h intrflush" intrflush :: Window -> (#type
 --
 keypad :: Window -> Bool -> IO ()
 keypad win bf = throwIfErr_ "keypad" $ keypad_c win (if bf then 1 else 0)
-foreign import ccall unsafe "YiCurses.h keypad" keypad_c :: Window -> (#type bool) -> IO CInt
+foreign import ccall unsafe "YiCurses.h keypad" 
+    keypad_c :: Window -> (#type bool) -> IO CInt
 
 noDelay :: Window -> Bool -> IO ()
 noDelay win bf =
     throwIfErr_ "nodelay" $ nodelay win (if bf then 1 else 0)
-foreign import ccall unsafe "YiCurses.h nodelay" nodelay :: Window -> (#type bool) -> IO CInt
 
-foreign import ccall unsafe "YiCurses.h leaveok" leaveok_c :: Window -> (#type bool) -> IO CInt
+foreign import ccall unsafe "YiCurses.h nodelay" 
+    nodelay :: Window -> (#type bool) -> IO CInt
 
-leaveOk True = leaveok_c stdScr 1
+leaveOk  :: Bool -> IO CInt
+leaveOk True  = leaveok_c stdScr 1
 leaveOk False = leaveok_c stdScr 0
 
+foreign import ccall unsafe "YiCurses.h leaveok" 
+    leaveok_c :: Window -> (#type bool) -> IO CInt
 
-foreign import ccall unsafe "YiCurses.h clearok" clearok_c :: Window -> (#type bool) -> IO CInt
-
-clearOk True = clearok_c stdScr 1
+clearOk :: Bool -> IO CInt
+clearOk True  = clearok_c stdScr 1
 clearOk False = clearok_c stdScr 0
+
+foreign import ccall unsafe "YiCurses.h clearok" 
+    clearok_c :: Window -> (#type bool) -> IO CInt
 
 ------------------------------------------------------------------------
 
 foreign import ccall unsafe "YiCurses.h use_default_colors" 
     useDefaultColors :: IO ()
 
+defaultBackground, defaultForeground :: Color
 defaultBackground = Color (-1)
 defaultForeground = Color (-1)
 
 ------------------------------------------------------------------------
 
-defineKey k s =  withCString s (\s -> define_key s k) >> return ()
+defineKey :: CInt -> String -> IO ()
+defineKey k s =  withCString s (\s' -> define_key s' k) >> return ()
+
 foreign import ccall unsafe "YiCurses.h define_key" 
     define_key :: Ptr CChar -> CInt -> IO ()
 
@@ -381,9 +393,9 @@ foreign import ccall unsafe "YiCurses.h endwin" endwin :: IO CInt
 --
 scrSize :: IO (Int, Int)
 scrSize = do
-    lines <- peek linesPtr
-    cols  <- peek colsPtr
-    return (fromIntegral lines, fromIntegral cols)
+    lnes <- peek linesPtr
+    cols <- peek colsPtr
+    return (fromIntegral lnes, fromIntegral cols)
 
 foreign import ccall "YiCurses.h &LINES" linesPtr :: Ptr CInt
 foreign import ccall "YiCurses.h &COLS"  colsPtr  :: Ptr CInt
@@ -568,7 +580,7 @@ isUnderline  = isAttr (#const WA_UNDERLINE)
 isVertical   = isAttr (#const WA_VERTICAL)
 
 isAttr :: (#type attr_t) -> Attr -> Bool
-isAttr bit (Attr a) = a .&. bit /= 0
+isAttr b (Attr a) = a .&. b /= 0
 
 setAltCharset, setBlink, setBold, setDim, setHorizontal, setInvis,
     setLeft, setLow, setProtect, setReverse, setRight, setStandout,
@@ -591,8 +603,8 @@ setUnderline  = setAttr (#const WA_UNDERLINE)
 setVertical   = setAttr (#const WA_VERTICAL)
 
 setAttr :: (#type attr_t) -> Attr -> Bool -> Attr
-setAttr bit (Attr a) False = Attr (a .&. complement bit)
-setAttr bit (Attr a) True  = Attr (a .|.            bit)
+setAttr b (Attr a) False = Attr (a .&. complement b)
+setAttr b (Attr a) True  = Attr (a .|.            b)
 
 attrSet :: Attr -> Pair -> IO ()
 attrSet attr (Pair p) = throwIfErr_ "attrset" $
@@ -712,11 +724,11 @@ wAddStr win cs = do
                             waddnstr win ws (fi len))   -- write to screen
 
     let loop []     acc = draw acc
-        loop (c:cs) acc = recognize c 
-                (loop cs $! c:acc)
+        loop (c:xs) acc = recognize c 
+                (loop xs $! c:acc)
                 (\c' -> do draw acc
                            throwIfErr ")waddch" $ waddch win c'
-                           loop cs [])
+                           loop xs [])
     loop cs []
 
 {-
@@ -857,6 +869,7 @@ vis_c vis = case vis of
 -- >       visibility   requested,   the  previous  cursor  state  is
 -- >       returned; otherwise, ERR is returned.
 --
+cursSet :: CInt -> IO CInt
 cursSet 0 = leaveOk True  >> curs_set 0
 cursSet n = leaveOk False >> curs_set n 
 
@@ -906,28 +919,41 @@ touchWin w = throwIfErr_ "touchwin" $ touchwin w
 foreign import ccall touchwin :: Window -> IO CInt
 
 newPad :: Int -> Int -> IO Window
-newPad nlines ncols = throwIfNull "newpad" $ newpad (fromIntegral nlines) (fromIntegral ncols)
+newPad nlines ncols = throwIfNull "newpad" $ 
+    newpad (fromIntegral nlines) (fromIntegral ncols)
 
 pRefresh :: Window -> Int -> Int -> Int -> Int -> Int -> Int -> IO ()
-pRefresh pad pminrow pmincol sminrow smincol smaxrow smaxcol = throwIfErr_ "prefresh" $
-    prefresh pad (fromIntegral pminrow) (fromIntegral pmincol) (fromIntegral sminrow) (fromIntegral smincol) (fromIntegral smaxrow) (fromIntegral smaxcol)
+pRefresh pad pminrow pmincol sminrow smincol smaxrow smaxcol = 
+    throwIfErr_ "prefresh" $
+        prefresh pad (fromIntegral pminrow) 
+                     (fromIntegral pmincol) 
+                     (fromIntegral sminrow) 
+                     (fromIntegral smincol) 
+                     (fromIntegral smaxrow) 
+                     (fromIntegral smaxcol)
 
 delWin :: Window -> IO ()
 delWin w = throwIfErr_ "delwin" $ delwin w
     
-foreign import ccall unsafe prefresh :: Window -> CInt -> CInt -> CInt -> CInt -> CInt -> CInt -> IO CInt
-foreign import ccall unsafe newpad :: CInt -> CInt -> IO Window
-foreign import ccall unsafe delwin :: Window -> IO CInt
+foreign import ccall unsafe 
+    prefresh :: Window -> CInt -> CInt -> CInt -> CInt -> CInt -> CInt -> IO CInt
 
+foreign import ccall unsafe 
+    newpad :: CInt -> CInt -> IO Window
+
+foreign import ccall unsafe 
+    delwin :: Window -> IO CInt
 
 newWin :: Int -> Int -> Int -> Int -> IO Window
-newWin nlines ncolumn begin_y begin_x = throwIfNull "newwin" $ newwin (fi nlines) (fi ncolumn) (fi begin_y) (fi begin_x)
+newWin nlines ncolumn begin_y begin_x = throwIfNull "newwin" $ 
+    newwin (fi nlines) (fi ncolumn) (fi begin_y) (fi begin_x)
 
-foreign import ccall unsafe newwin :: CInt -> CInt -> CInt -> CInt -> IO Window
-
+foreign import ccall unsafe 
+    newwin :: CInt -> CInt -> CInt -> CInt -> IO Window
 
 wClrToEol :: Window -> IO ()
 wClrToEol w = throwIfErr_ "wclrtoeol" $ wclrtoeol w
+
 foreign import ccall unsafe wclrtoeol :: Window -> IO CInt
 
 --
@@ -942,7 +968,9 @@ foreign import ccall unsafe flushinp :: IO CInt
 
 
 withProgram :: IO a -> IO a
-withProgram action = withCursor CursorVisible $ Control.Exception.bracket_ (endWin) (flushinp) action
+withProgram action = withCursor CursorVisible $ 
+    Control.Exception.bracket_ (endWin) (flushinp) action
+
 --withProgram action = withCursor CursorVisible $ Control.Exception.bracket_ ({-def_prog_mode >> -}endWin) (return ()){-reset_prog_mode-} action
 
 

@@ -4,7 +4,7 @@
 
 #include <iconv.h>
 
-module Yi.IConv(
+module Yi.IConv {-(
     IConv,
     iconv,
     iconv_,
@@ -13,34 +13,29 @@ module Yi.IConv(
     from_unicode,
     to_unicode_,
     from_unicode_
-  ) where
+  )-} where
 
-import Yi.CWString (
-#ifdef CF_WCHAR_SUPPORT
-    CWString, peekCWStringLen, withCWStringLen,
-#endif    
-    withUTF8StringLen, peekUTF8StringLen )
+import Yi.CWString
 
-import Data.Char(chr, ord)
 import Control.Exception(bracket)
 import Control.Exception(Exception, try)
-import Control.Monad(liftM)
 
-import System.IO.Unsafe(unsafePerformIO)
+import System.IO.Unsafe            ( unsafePerformIO )
 
-import Foreign
+import Foreign              hiding ( unsafePerformIO  )
 import Foreign.C
 import Foreign.C.String
 import Foreign.Ptr
 
 type IConv = Ptr () --(#type iconv_t)
 
+err_ptr :: Ptr b -> Bool
 err_ptr p = p == (plusPtr nullPtr (-1))
 
 throw_if_not_2_big :: String -> IO CSize -> IO CSize
 throw_if_not_2_big s r_ = do
     r <- r_
-    if r == fromIntegral (-1) then do
+    if r == fromIntegral (-1 :: Int) then do
         errno <- getErrno
         if errno /= e2BIG then
 	    throwErrno s
@@ -62,31 +57,31 @@ iconv_close :: IConv -> IO ()
 iconv_close ic = 
     throwErrnoIfMinus1_ "iconv_close" $ c_iconv_close ic
     
+outbuf_size :: Int
 outbuf_size = 1024
 
 do_iconv :: ((Ptr a, Int) -> IO String) -> IConv -> (Ptr b, Int) -> IO String
 do_iconv get_string_fn ic (inbuf, inbuf_bytes) =
-    alloca $
-     \inbuf_ptr -> alloca $
-      \(inbytesleft_ptr::Ptr CSize) -> alloca $
-       \outbuf_ptr -> alloca $
-        \(outbytesleft_ptr::Ptr CSize) -> allocaBytes outbuf_size $
-         \outbuf -> do
-              poke inbytesleft_ptr (fromIntegral inbuf_bytes)
-              poke inbuf_ptr inbuf
-              let loop acc = do
-                  poke outbytesleft_ptr (fromIntegral outbuf_size)
-                  poke outbuf_ptr outbuf
-                  ret <- throw_if_not_2_big "c_iconv" $
-                      c_iconv ic inbuf_ptr inbytesleft_ptr
-                                 outbuf_ptr outbytesleft_ptr
-                  left <- peek outbytesleft_ptr
-                  res <- get_string_fn (castPtr outbuf, outbuf_size - fromIntegral left)
-                  if ret == fromIntegral (-1) then
-                      loop (acc++res)
-                    else
-                      return (acc++res)
-              loop []
+    alloca $ \inbuf_ptr -> 
+        alloca $ \(inbytesleft_ptr::Ptr CSize) -> 
+            alloca $ \outbuf_ptr -> 
+                alloca $ \(outbytesleft_ptr::Ptr CSize) -> 
+                    allocaBytes outbuf_size $ \outbuf -> do
+      poke inbytesleft_ptr (fromIntegral inbuf_bytes)
+      poke inbuf_ptr inbuf
+      let loop acc = do
+          poke outbytesleft_ptr (fromIntegral outbuf_size)
+          poke outbuf_ptr outbuf
+          ret <- throw_if_not_2_big "c_iconv" $
+              c_iconv ic inbuf_ptr inbytesleft_ptr
+                         outbuf_ptr outbytesleft_ptr
+          left <- peek outbytesleft_ptr
+          res <- get_string_fn (castPtr outbuf, outbuf_size - fromIntegral left)
+          if ret == fromIntegral (-1 :: Int) then
+              loop (acc++res)
+            else
+              return (acc++res)
+      loop []
 
 
 with_iconv :: String -> String -> (IConv -> IO a) -> IO a
@@ -116,6 +111,7 @@ cunitochar :: CUni -> Char
 cunitochar = chr . fromIntegral
 -}
 
+cuni_charset :: [Char]
 cuni_charset = "WCHAR_T"
 
 peek_cuni :: (Ptr (#type wchar_t), Int) -> IO String
@@ -131,16 +127,19 @@ with_cuni :: String -> ((Ptr (#type wchar_t), Int) -> IO String) -> IO String
 with_cuni str f =
     withCWStringLen str $ \(s, l) -> f (s, l*(#size wchar_t))
     --withArray (map chartocuni str) $ \s -> f (s, l*cuni_size)
-    where
-        l = length str
 
 #else
 -- no CF_WCHAR_SUPPORT
 
 -- Due to endianness problems, it is easiest to do this through UTF-8
 
+cuni_charset :: [Char]
 cuni_charset = "UTF-8"
+
+peek_cuni :: CStringLen -> IO String
 peek_cuni = peekUTF8StringLen
+
+with_cuni :: [Char] -> (CStringLen -> IO a) -> IO a
 with_cuni = withUTF8StringLen
 
 #endif
