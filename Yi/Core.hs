@@ -90,6 +90,7 @@ import Yi.MkTemp
 import Yi.Buffer
 import Yi.Window
 import Yi.Regex
+import Yi.Utils
 
 import Yi.UI
 import qualified Yi.UI     as UI
@@ -105,8 +106,10 @@ import System.Exit
 import Control.Monad
 import Control.Exception    ( ioErrors, handleJust )
 
-import GHC.Base
-import GHC.IOBase
+import Control.Concurrent
+import Control.Concurrent.Chan
+
+-- import GHC.IOBase           ( unsafeInterleaveIO )
 
 -- ---------------------------------------------------------------------
 -- | Start up the editor, setting any state with the user preferences
@@ -119,7 +122,9 @@ startE confs ln mfs = do
     UI.start
     sz <- UI.screenSize
     modifyEditor_ $ \e -> return $ e { scrsize = sz }
-    handleJust (ioErrors) (\e -> errorE (show e)) $ do
+
+    -- read in any files
+    handleJust ioErrors (errorE . show) $ do
         case mfs of
             Just fs -> mapM_ fnewE fs
             Nothing -> do               -- vi-like behaviour, just for now.
@@ -128,6 +133,14 @@ startE confs ln mfs = do
                     Nothing    -> error "Core.startE: mkstemp failed"
                     Just (f,h) -> hClose h >> fnewE f
     gotoLnE ln
+    refreshE
+
+    -- fork input-reading thread. important to block *thread* on getcE
+    -- otherwise all threads will block waiting for input
+    ch <- newChan   
+    modifyEditor_ $ \e -> return $ e { input = ch }
+    forkIO $ repeatM_ (threadWaitRead 0 >> getcE >>= writeChan ch)
+
     refreshE
 
 --
@@ -148,6 +161,16 @@ getcE = UI.getKey UI.refresh
 --
 -- TODO if there is an exception, the key bindings will be reset...
 --
+-- | Channel-based event loop, exactly the same semantics
+--
+eventLoop :: IO ()
+eventLoop = do
+    fn <- Editor.getKeyBinds 
+    ch <- readEditor input
+    repeatM_ $ handleJust ioErrors (errorE . show) $ 
+                    sequence_ . fn =<< getChanContents ch
+
+{-
 eventLoop :: IO ()
 eventLoop = Editor.getKeyBinds >>= loop
     where 
@@ -157,12 +180,14 @@ eventLoop = Editor.getKeyBinds >>= loop
 
 --
 -- | Lazily read all input from the user. A big magic.
+-- Identical to getChanContents
 --
 lazyRead :: IO String
 lazyRead = unsafeInterleaveIO $ do 
                 c  <- getcE
                 cs <- lazyRead
                 return (c : cs)
+-}
 
 -- ---------------------------------------------------------------------
 -- Meta operations
@@ -551,4 +576,3 @@ nextWinE = Editor.nextWindow
 -- | Shift focus to prev window
 prevWinE :: Action
 prevWinE = Editor.prevWindow
-

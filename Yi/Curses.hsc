@@ -799,10 +799,10 @@ wAddStr win str = do
     loop str id 
 -}
 
-foreign import ccall unsafe 
+foreign import ccall threadsafe
     waddnstr :: Window -> CString -> CInt -> IO CInt
 
-foreign import ccall unsafe 
+foreign import ccall threadsafe
     waddch :: Window -> (#type chtype) -> IO CInt
 
 #endif

@@ -35,9 +35,11 @@ import Data.FiniteMap
 import Data.IORef
 import Data.Unique              ( Unique )
 
-import Control.Concurrent.MVar
 import System.IO
 import System.IO.Unsafe         ( unsafePerformIO )
+
+import Control.Concurrent.MVar
+import Control.Concurrent.Chan
 
 --
 -- | The editor state, manipulated by Core instructoins.
@@ -67,6 +69,7 @@ data Buffer a => GenEditor a =
        ,curkeymap :: [Char] -> [Action]         -- ^ user-configurable keymap
        ,scrsize   :: !(Int,Int)                 -- ^ screen size
        ,uistyle   :: UIStyle                    -- ^ ui colours
+       ,input     :: Chan Char                  -- ^ input stream
     }
 
 --
@@ -103,6 +106,7 @@ emptyEditor = Editor {
        ,curkeymap    = error "No keymap defined."
        ,scrsize      = (0,0)
        ,uistyle      = Yi.Style.ui
+       ,input        = error "No channel open"
     }
 
 -- 
