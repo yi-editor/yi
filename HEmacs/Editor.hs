@@ -32,7 +32,9 @@ module HEmacs.Editor (
         getScreenSize,          -- :: IO (Int, Int)
         setScreenSize,          -- :: (Int,Int) -> IO ()
 
-        getBuffers,             -- :: Buffer a => [a]
+        getAllBuffers,          -- :: [BasicBuffer]
+        getBuffers,             -- :: IO (Maybe BasicBuffer, [BasicBuffer])
+        getBufCount,            -- :: IO Int                        
 
         newBuffer,              -- :: FilePath -> [String] -> IO ()
         delBuffer,              -- :: IO ()
@@ -49,7 +51,7 @@ module HEmacs.Editor (
         -- * user bindable actions
         Action,         -- = Key -> IO EditStatus
         KeyMap,
-        EditStatus(..)
+        EventStatus(..)
 
    ) where
 
@@ -73,6 +75,8 @@ data Buffer a => GenericEditor a = Editor {
         s_width       :: !Int       -- ^ total screen width 
        ,s_height      :: !Int       -- ^ total screen height        
        ,buffers       :: [a]        -- ^ multiple buffers
+       ,cur_buf_ind   :: Maybe Int  -- ^ current buffer, index into buffers
+       ,buf_count     :: !Int       -- ^ number of buffers
        ,user_settings :: Config     -- ^ user supplied settings
    }
 
@@ -89,6 +93,8 @@ initialState = Editor {
         s_width         = 80,
         s_height        = 24,
         buffers         = [],
+        cur_buf_ind     = Nothing,
+        buf_count       = 0,
         user_settings   = Config.settings       -- global user settings
     }
 
@@ -139,12 +145,30 @@ setScreenSize (h,w) =
 --
 -- | return the buffers we have
 --
-getBuffers :: IO [BasicBuffer]
-getBuffers = withEditor $ \e -> return $ buffers e
+getAllBuffers :: IO [BasicBuffer]
+getAllBuffers = withEditor $ \e -> return $ buffers e
+
+--
+-- | get current buffer, and the rest
+--
+getBuffers :: IO (Maybe BasicBuffer, [BasicBuffer])
+getBuffers = withEditor $ \e -> do
+    let bs = buffers e
+    case cur_buf_ind e of
+        Nothing -> return (Nothing, bs)
+        Just i  -> let (a,  b) = splitAt (i+1) bs
+                       ([c],d) = splitAt 1     (reverse a)
+                   in return $! (Just c, d ++ b)
+
+--
+-- | get the number of buffers we have
+--
+getBufCount :: IO Int                        
+getBufCount = withEditor $ \e -> return $ buf_count e
 
 -- ---------------------------------------------------------------------
--- | get a new buffer, add it to the set, and fill it with [String]
--- Inherit size from editor screen size.
+-- | Create a new buffer, add it to the set, make it the current buffer,
+-- and fill it with [String]. Inherit size from editor screen size.
 --
 newBuffer :: FilePath -> [String] -> IO ()
 newBuffer f ss = do
@@ -154,7 +178,8 @@ newBuffer f ss = do
                       c = setsize b (s_width e , s_height e)
                       d = setcontents c ss in d
         let bb  = buffers e 
-        return $! e { buffers = buf:bb }
+            i   = buf_count e
+        return $! e { buffers = buf:bb, cur_buf_ind = Just 0, buf_count = i+1 }
 
 --
 -- | delete a buffer
@@ -178,11 +203,13 @@ getKeyMap = withEditor $ \e -> return $ keyMap (user_settings e)
 -- | The type of user-bindable functions
 --
 
-type Action = IO EditStatus
+type Action = IO EventStatus
 type KeyMap = Key -> Action
 
-data EditStatus 
-    = EOk | EQuit
+--
+-- | core instruction return values
+--
+data EventStatus = EOk | EQuit
 
 -- ---------------------------------------------------------------------
 -- | The 'Key' type is the abstract syntax for keys. user interfaces

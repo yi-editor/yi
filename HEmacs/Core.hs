@@ -35,16 +35,14 @@ module HEmacs.Core (
         -- * Editor actions
         e_quit,
         e_refresh,
-        e_fallback
+        e_noop,
+        e_load,
 
    ) where
 
 import HEmacs.Editor
 import qualified HEmacs.Editor as Editor
 import qualified HEmacs.UI     as UI
-
--- deprecated
-import qualified HEmacs.Curses as Curses
 
 import Data.Char        ( ord, chr ) 
 import Data.Maybe       ( isJust, fromJust )
@@ -65,8 +63,8 @@ start confs fs = do
     Editor.setScreenSize size
     Editor.setUserSettings confs
     case fs of
-        Nothing   -> Editor.newBuffer "empty buffer" []
-        Just (fs) -> mapM_ e_load_ fs >> e_refresh >> return ()
+        Nothing   -> Editor.newBuffer "undefined" []
+        Just (fs) -> mapM_ e_load fs >> e_refresh >> return ()
 
 --
 -- | shutdown the editor
@@ -82,7 +80,7 @@ end = UI.end
 eventLoop :: IO ()
 eventLoop = do 
     km <- Editor.getKeyMap
-    Curses.withCursor Curses.CursorInvisible $ eventLoop' km
+    UI.withInvisibleCursor $ eventLoop' km
 
 -- 
 -- | read a keystroke, and interpret it using the current key mappings.
@@ -91,174 +89,44 @@ eventLoop = do
 eventLoop' :: Editor.KeyMap -> IO ()
 eventLoop' keyhandler = do
     k <- UI.getKey UI.refresh
-    c <- Control.Exception.catch (keyhandler k) (do_except)
-    case c of
+    s <- Control.Exception.catch (keyhandler k) (do_except)
+    case s of
         EQuit -> return ()
-        EOk   -> Curses.refresh >> eventLoop' keyhandler
+        EOk   -> UI.refresh >> eventLoop' keyhandler
 
---
--- | deal with exceptions
---
-do_except :: Control.Exception.Exception -> IO EditStatus
-do_except e = Curses.beep >> cont
---do_except e = Curses.beep >> {-UI.do_message undefined {-attr_error-} (show e) >>-} cont_clr
-
-------------------------------------------------------------------------
---
--- | continue, don't redraw
---
-cont :: IO EditStatus
-cont = return EOk
-
-{-
---
--- | redraw and continue
---
-cont_clr :: IO ELCont
-cont_clr = return $ EOk
--}
-
---
--- | refresh screen now and continue
---
-cont_refresh :: IO EditStatus
-cont_refresh = UI.refresh >> cont
-
---
--- | quit
---
-nocont :: IO EditStatus
-nocont = return $ EQuit
+    where
+        do_except :: Control.Exception.Exception -> IO EventStatus
+        do_except e = return EQuit
 
 -- ---------------------------------------------------------------------
--- | What actions may user's call, or bind keys to? This is essentially
--- the editor core language. TODO: this should look much like a real,
--- targettable core language for manipulating the editor machine.
+-- | Editor actions. This is the instruction set of the editor core.
 --
 
 --
--- | quit, but warn if unsaved. this is too high-level, in fact.
+-- | Quit
 --
-e_quit :: IO EditStatus
-e_quit = nocont
-    -- unsaved <- getUnsavedStatus
-    --if unsaved then UI.warn "No write since last change" >> cont else nocont
+e_quit :: IO EventStatus
+e_quit = return EQuit
 
 --
--- | refresh the screen and continue
+-- | Refresh the screen
 --
-e_refresh :: IO EditStatus
-e_refresh = UI.refresh >> cont
+e_refresh :: IO EventStatus
+e_refresh = UI.refresh >> return EOk
 
 --
--- | noop
+-- | Do nothing
 --
-e_none :: IO EditStatus
-e_none = cont
+e_noop :: IO EventStatus
+e_noop = return EOk
 
--- ---------------------------------------------------------------------
--- | load the current buffer with contents of file 'f'
 --
-e_load :: FilePath -> IO EditStatus
+-- | Load a new buffer with contents of file
+--
+e_load  :: FilePath -> IO EventStatus
 e_load f = do
         h <- openFile f ReadWriteMode
         s <- hGetContents h            -- close it?
         Editor.newBuffer f $ lines s   -- lazy for large files?
-        UI.refresh                     -- probably should redraw now
-        return EOk          
+        return EOk
 
---
--- | load the current buffer, no refresh
---
-e_load_  :: FilePath -> IO EditStatus
-e_load_ f = do
-        h <- openFile f ReadWriteMode
-        s <- hGetContents h            -- close it?
-        Editor.newBuffer f $ lines s   -- lazy for large files?
-        return EOk          
-
-------------------------------------------------------------------------
---
--- | a key sequence with a submapping -- read the next key and work out
--- what to do. this is a lookahead.
---
-e_submap :: String -> (Key -> Action) -> IO EditStatus
-e_submap info submap = do
-    -- UI.draw_submap
-    Curses.refresh
-    k <- UI.getKey UI.refresh {-refresh_fn-}
-    --draw_botinfo
-    submap k
-
---
--- | Check if control is set and call handle_key again with the plain key.
---
-e_fallback handle_key (Key k)
-    | ord '\^A' <= ord k && ord k <= ord '\^Z' 
-    = handle_key (Editor.Key $ chr $ ord k - ord '\^A' + ord 'a')
-
-e_fallback _ _ = e_none
-
-------------------------------------------------------------------------
---
-
--- e_fallback = undefined
-e_actentry = undefined
-e_clear_tags = undefined
-e_collapse = undefined
-e_delentry = undefined
-e_delete_tagged = undefined
-e_editentry = undefined
-e_firstentry = undefined
-e_hscroll = undefined
-e_lastentry = undefined
-e_move_tagged_after = undefined
-e_move_tagged_before = undefined
-e_move_tagged_under = undefined
-e_newentry = undefined
-e_newunder = undefined
-e_nextentry = undefined
-e_pgdnentry = undefined
-e_pgdn = undefined
-e_pgup = undefined
-e_pgupentry = undefined
-e_preventry = undefined
-e_redo = undefined
-e_save = undefined
-e_tag = undefined
-e_undo = undefined
-
-{-
-goto_next_or_redraw :: IO ELCont
-goto_next_or_redraw s =
-    if (selected_entry s) + 1 < (n_entries_viewed s) then
-        e_nextentry s
-    else draw_entries s >> cont s
-
--- ---------------------------------------------------------------------
--- Text view manipulation
-
-update_scroll snew = do
-    draw_textarea snew
-    draw_botinfo snew
-    cont snew
-
-e_vscroll :: Int -> IO ELCont
-e_vscroll amount s = update_scroll (do_vscroll amount s)
-
-e_hscroll :: Int -> IO ELCont
-e_hscroll amount s = update_scroll (do_hscroll amount s)
-
-e_pgdn :: Entry a => Status a -> IO (ELCont a)
-e_pgdn s = e_vscroll ((textarea_height s) `div` 2) s
-
-e_pgup :: Entry a => Status a -> IO (ELCont a)
-e_pgup s = e_vscroll (-(textarea_height s) `div` 2) s
-
-e_eob :: Entry a => Status a -> IO (ELCont a)
-e_eob s = update_scroll s{textarea_vscroll = max_vscroll s}
-
-e_bob :: Entry a => Status a -> IO (ELCont a)
-e_bob s = update_scroll s{textarea_vscroll = 0}
-
--}

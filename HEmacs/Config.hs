@@ -40,7 +40,7 @@ settings = Config {
 defaultKeyMap :: Key -> Action
 defaultKeyMap (Key 'q')   = e_quit
 defaultKeyMap (Key '\^R') = e_refresh
-defaultKeyMap k           = e_fallback defaultKeyMap k
+defaultKeyMap _           = e_noop
 
 {-
 --

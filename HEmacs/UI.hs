@@ -25,7 +25,8 @@ module HEmacs.UI (
         refresh,
         warn,
         
-        getKey
+        getKey,
+        withInvisibleCursor,
 
   ) where
 
@@ -34,7 +35,9 @@ import HEmacs.Buffer
 import qualified HEmacs.Curses as Curses
 import qualified HEmacs.Editor as Editor
 
-import qualified Control.Exception        ( try, catch )
+import Data.Maybe                       ( isJust, fromJust ) 
+import Control.Monad                    ( when )
+import qualified Control.Exception      ( try, catch )
 
 ------------------------------------------------------------------------
 -- Initialisation
@@ -61,6 +64,11 @@ end = Curses.endWin
 screenSize :: IO (Int, Int)
 screenSize = Curses.scrSize
 
+--
+-- | set the cursor invisible
+--
+withInvisibleCursor = Curses.withCursor Curses.CursorInvisible
+
 -- ---------------------------------------------------------------------
 -- | Read a key.
 --
@@ -85,12 +93,36 @@ getKey refresh_fn = do
 drawBufferYX :: Buffer a => Int -> Int -> a -> IO ()
 drawBufferYX h w buf = do
     mapM_ (drawLine w) $ take (h-1{-modeline-}) ((contents buf) ++ repeat [])
-    cset_attr (Curses.setReverse Curses.attr0 True , Curses.Pair 0)
-    drawLine w ("\"" ++ (name buf) ++ "\"" ++ repeat ' ')
+    cset_attr (Curses.setReverse Curses.attr0 True , Curses.Pair (1))
+    drawModeLine w (name buf)
     creset_attr
-    where
-        drawLine :: Int -> String -> IO ()
-        drawLine w s  = waddstr Curses.stdScr $ take w (s ++ repeat ' ')
+
+drawMainBufferYX :: Buffer a => Int -> Int -> a -> IO ()
+drawMainBufferYX h w buf = do
+    mapM_ (drawLine w) $ take (h-1{-modeline-}) ((contents buf) ++ repeat [])
+    cset_attr (Curses.setReverse Curses.attr0 True , Curses.Pair 0)
+    drawModeLine w (name buf)
+    creset_attr
+
+drawModeLine :: Int -> String -> IO ()
+drawModeLine w title = drawLine w ("\"" ++ title ++ "\"" ++ repeat ' ')
+
+drawLine :: Int -> String -> IO ()
+drawLine w s  = waddstr Curses.stdScr $ take w (s ++ repeat ' ')
+
+-- 
+-- | redraw the screen
+--
+redraw :: IO ()
+redraw = do
+    (mb,bs) <- Editor.getBuffers
+    (y,x)   <- Editor.getScreenSize
+    i       <- Editor.getBufCount
+    let (y', r) = (y - 1{-cmdline-}) `quotRem` i
+    Curses.wMove Curses.stdScr 0 0  -- mv cursor to origin
+    when (isJust mb) $
+        drawMainBufferYX (y'+r) x (fromJust mb)
+    mapM_ (drawBufferYX y' x) bs
 
 --
 -- | Fill to end of line spaces
@@ -128,19 +160,6 @@ creset_attr = cset_attr (Curses.attr0, Curses.Pair 0)
 --
 refresh :: IO ()
 refresh = redraw >> Curses.refresh
-
--- 
--- | redraw the screen
---
-redraw :: IO ()
-redraw = do
-    bs    <- Editor.getBuffers
-    (y,x) <- Editor.getScreenSize
-    let (y', r) = (y - 1{-cmdline-}) `quotRem` length bs
-    Curses.wMove Curses.stdScr 0 0  -- mv cursor to origin
-    case bs of
-        []     -> return ()
-        (b:bs) -> drawBufferYX (y'+r) x b >> mapM_ (drawBufferYX y' x) bs
 
 ------------------------------------------------------------------------
 -- misc
