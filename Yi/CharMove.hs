@@ -52,11 +52,15 @@ module Yi.CharMove (
         readWordLeftE,  -- :: IO (String,Int,Int)
 
         -- * Word completion
-        wordCompleteE,          -- :: Action
-        resetCompleteE,         -- :: Action
+        wordCompleteE,  -- :: Action
+        resetCompleteE, -- :: Action
 
-        breadE          -- :: IO Char
+        breadE,         -- :: IO Char
 
+        -- * Delete
+        bdeleteE,       -- :: Action
+        killWordE,      -- :: Action
+        bkillWordE      -- :: Action
     ) where
 
 import Yi.Buffer
@@ -106,15 +110,35 @@ doSkipCond mov rd chkend check = do
 (>>||) :: Monad a => a Bool -> a Bool -> a Bool
 a >>|| b = a >>= \ra -> if (not ra) then b else return True
 
+-- Just to make this more easily changed everywhere.
+isNonWord :: Char -> Bool
+isNonWord = isSpace
+
 -- | Skip to next whitespace or non-whitespace inversely depending on
 -- the character under point.
 skipWordE :: Action
-skipWordE = doSkipCond rightE readE atEolE isSpace
+skipWordE = doSkipCond rightE readE atEolE isNonWord
 
 -- | Backwards skip to next whitespace or non-whitespace inversely 
 -- depending on the character before point.
 bskipWordE :: Action
-bskipWordE = doSkipCond leftE breadE atSofE isSpace
+bskipWordE = doSkipCond leftE breadE atSolE isNonWord
+
+------------------------------------------------------------------------
+
+-- | Delete one character backward
+bdeleteE :: Action
+bdeleteE = leftE >> deleteE
+
+-- | Delete forward whitespace or non-whitespace depending on
+-- the character under point.
+killWordE :: Action
+killWordE = doSkipCond deleteE readE atEolE isNonWord
+
+-- | Delete backward whitespace or non-whitespace depending on
+-- the character before point.
+bkillWordE :: Action
+bkillWordE = doSkipCond bdeleteE breadE atSolE isNonWord
 
 ------------------------------------------------------------------------
 
