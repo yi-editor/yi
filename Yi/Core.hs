@@ -222,7 +222,7 @@ downScreenE :: IO ()
 downScreenE = do
     (Just w) <- getWindow  -- better be a window open..
     mapM_ (\_ -> withWindow_ moveDownW)  [1 .. (height w - 2) * 2]
-    ll <- withWindow $ \w b -> atLastLine b >>= \ll -> return (w,ll)
+    ll <- withWindow $ \x b -> atLastLine b >>= \ll -> return (x,ll)
     when (not ll) $
         mapM_ (\_ -> withWindow_ moveUpW) [1 .. height w - 2]
 
@@ -284,11 +284,12 @@ msgClrE  :: IO ()
 msgClrE = do modifyEditor_ $ \e -> return e { cmdline = [] } 
              UI.drawCmdLine [] -- immediately draw
 
--- | File info
-bufInfoE :: IO (FilePath, Int, Int)
+-- | File info, should return modeline info. should be a struct.
+bufInfoE :: IO (FilePath, Int, Int, String)
 bufInfoE = withWindow $ \w b -> do
-    s  <- sizeB b
-    return (w, (nameB b, s, lineno w))
+    s <- sizeB b
+    p <- pointB b
+    return (w, (nameB b, s, lineno w, getPercent p s))
 
 ------------------------------------------------------------------------
 -- | Window manipulation

@@ -69,54 +69,120 @@ key :: Mode -> Char -> Action
 -- 
 -- * Command mode
 --
+
+-- Move the cursor left one character.
 key C 'h'  = leftOrSolE 1
-key C 'j'  = downE
+
+-- Move the cursor down count lines without changing the current column.
+key C 'j'    = downE
+key C '\^J'  = downE
+key C '\^N'  = downE
+
+-- Move the cursor up one line
 key C 'k'  = upE
+
+--  Move the cursor right one character.
 key C 'l'  = rightOrEolE 1
+key C ' '  = rightOrEolE 1
+
+-- Move the cursor to the end of a line.
 key C '$'  = eolE
+
+-- Move to the first character in the current line.
 key C '0'  = solE
+
+-- Move to the start of the current line.
 key C '|'  = solE
+
+-- Enter input mode, inserting the text at the beginning of the line.
+key C 'I' = solE >> beginInsert
+
+-- Enter input mode, inserting the text before the cursor.
 key C 'i' = beginInsert
-key C ':' = msgClrE       >> msgE ":"     >> beginEx 
+
+-- Execute an ex command.
+key C ':' = msgClrE >> msgE ":" >> beginEx 
+
+-- Delete the character the cursor is on.
 key C 'x' = deleteE
-key C 'a' = rightOrEolE 1                 >> beginInsert
-key C 'A' = eolE                          >> beginInsert
-key C 'O' = solE          >> insertE '\n' >> beginInsert
-key C 'o' = eolE          >> insertE '\n' >> beginInsert
-key C 'J' = eolE          >> deleteE      >> insertE ' '
 
-key C c | c == keyPPage = upScreenE
-        | c == keyNPage = downScreenE
-        | c == '\6'     = downScreenE
-        | c == '\2'     = upScreenE
-        | c == keyUp    = upE
-        | c == keyDown  = downE
-        | c == keyLeft  = leftOrSolE 1
-        | c == keyRight = rightOrEolE 1
+-- Enter input mode, appending the text after the cursor.
+key C 'a' = rightOrEolE 1 >> beginInsert
 
+-- Enter input mode, appending the text after the end of the line.
+key C 'A' = eolE >> beginInsert
+
+-- Enter input mode, appending text in a new line above the current line.
+key C 'O' = solE >> insertE '\n' >> beginInsert
+
+-- Enter input mode, appending text in a new line under the current line.
+key C 'o' = eolE >> insertE '\n' >> beginInsert
+
+-- Join lines.
+key C 'J' = eolE >> deleteE >> insertE ' '
+
+key C c 
+-- Page backwards count screens.
+    | c == keyPPage = upScreenE
+    | c == '\^B'    = upScreenE
+
+-- Page forward count screens.
+    | c == keyNPage = downScreenE
+    | c == '\^F'    = downScreenE
+
+-- The cursor arrow keys should work for movement too
+    | c == keyUp    = upE
+    | c == keyDown  = downE
+    | c == keyLeft  = leftOrSolE 1
+    | c == keyRight = rightOrEolE 1
+
+-- Delete text from the current position to the end-of-line.
 key C 'D' = killE
+
+-- Delete the line the cursor is on.
 key C 'd' = do c <- getcE ; when (c == 'd') $ solE >> killE >> deleteE
+
+-- Replace character.
 key C 'r' = getcE >>= writeE
-key C 'Z' = do c <- getcE ; when (c == 'Z') quitE
+
+-- Write the file and exit vi.
+key C 'Z' = do c <- getcE ; when (c == 'Z') $ viWrite >> quitE
+
+-- Shift lines right.
 key C '>' = do c <- getcE
                when (c == '>') $ solE >> mapM_ insertE (replicate 4 ' ')
 
+-- Reverse the case of the next character
 key C '~' = do c <- readE
                let c' = if isUpper c then toLower c else toUpper c
                writeE c'
 
-key C '\23' = nextWinE
+-- Switch to the next lower screen in the window, or to the first screen if
+-- there are no lower screens in the window.
+key C '\^W' = nextWinE
+
+-- Display the file information.
+key C '\^G' = do
+    (f,_,ln,pct) <- bufInfoE 
+    msgE $ show f ++ " Line " ++ show ln ++ " ["++ pct ++"]" 
 
 -- ---------------------------------------------------------------------
 -- * Insert mode
 --
-key I '\27'  = leftOrSolE 1 >> beginCommand  -- ESC
+
+-- Return to command mode.
+key I '\ESC'  = leftOrSolE 1 >> beginCommand  -- ESC
+
+-- Erase the last character.
+key I '\^H'   = deleteE
+key I c | c == keyBackspace = deleteE
 
 key I c | c == keyPPage = upScreenE
         | c == keyNPage = downScreenE
 
+-- Insert character
 key I c  = do 
-        (_,s,_) <- bufInfoE
+        (_,s,_,_) <- bufInfoE
         when (s == 0) $ insertE '\n' -- vi behaviour at start of file
         insertE c
 
@@ -124,21 +190,23 @@ key I c  = do
 -- * Ex mode
 -- accumulate keys until esc or \n, then try to work out what was typed
 --
+-- TODO think about how to do this as a better lexer
+--
 key E k = msgClrE >> loop [k]
   where
     loop [] = do msgE ":"
                  c <- getcE
-                 if c == '\8' || c == keyBackspace
+                 if c == '\BS' || c == keyBackspace
                     then msgClrE >> beginCommand  -- deleted request
                     else loop [c]
     loop w@(c:cs) 
-        | c == '\8'         = deleteWith cs
+        | c == '\BS'  = deleteWith cs
         | c == keyBackspace = deleteWith cs
-        | c == '\27' = msgClrE >> beginCommand  -- cancel 
-        | c == '\13' = execEx (reverse cs) >> beginCommand
-        | otherwise  = do msgE (':':reverse w)
-                          c' <- getcE
-                          loop (c':w)
+        | c == '\ESC' = msgClrE >> beginCommand  -- cancel 
+        | c == '\r'   = execEx (reverse cs) >> beginCommand
+        | otherwise   = do msgE (':':reverse w)
+                           c' <- getcE
+                           loop (c':w)
 
     execEx :: String -> Action
     execEx "w"   = viWrite
@@ -164,7 +232,7 @@ key _  _  = nopE
 --
 viWrite :: Action
 viWrite = do 
-    (f,s,_) <- bufInfoE 
+    (f,s,_,_) <- bufInfoE 
     fwriteE
     msgE $ show f++" "++show s ++ "C written"
 
