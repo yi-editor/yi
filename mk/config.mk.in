@@ -12,7 +12,10 @@ GHC=            @WithGhc@
 HC_OPTS=        -Wall -Werror
 
 #HC_OPTS+=       -Onot -fasm -H64m
-HC_OPTS+=       -fvia-C -funbox-strict-fields -fliberate-case-threshold=100 -O2 -Icbits -Imk
+
+# -fvia-C and 6.4 produce 'keypad' errors in the curses binding
+HC_OPTS+=       -funbox-strict-fields -fliberate-case-threshold=100 -O2 -fasm -Icbits -Imk
+
 #HC_OPTS+=      -debug 
 #HC_OPTS+=-fignore-asserts 
 
