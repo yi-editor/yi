@@ -311,9 +311,7 @@ searchAndRepLocal :: String -> String -> Action
 searchAndRepLocal [] _ = nopE
 searchAndRepLocal re str = do
     mp <- withWindow $ \w b -> do   -- find the regex
-            rightB b
             mp <- regexB b re
-            leftB b                 -- go back
             return (w, mp)
     status <- case mp of
         Just (i,j) -> withWindow $ \w b -> do

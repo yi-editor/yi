@@ -13,7 +13,6 @@ void nomacro_getyx(WINDOW *win, int *y, int *x)
 /* shift contents of a MutableByteArray#  -- fast! */
 void memcpy_shift(char *buf, int src_off, int dst_off, size_t sz ) 
 { 
- // memcpy(buf+dst_off, buf+src_off, sz); 
     memmove(buf+dst_off, buf+src_off, sz);
 }
 
