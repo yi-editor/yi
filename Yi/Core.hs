@@ -152,7 +152,7 @@ import Control.Concurrent.Chan
 
 import GHC.Exception hiding ( throwIO )
 
-import qualified Yi.Curses.UI     as UI ( refresh, start, screenSize, getKey, end, initcolours )
+import qualified Yi.Curses.UI as UI
 
 -- for now:
 import Data.IORef
@@ -543,7 +543,9 @@ readWordLeft_ w b = do
     c <- readB b 
     when (not $ isAlphaNum c) $ leftB b
     moveWhile_ isAlphaNum Left w b
-    rightB b
+    sof <- atSof b
+    c'  <- readB b 
+    when (not sof || not (isAlphaNum c')) $ rightB b
     q <- pointB b
     s <- nelemsB b (p-q) q
     moveTo b p
@@ -856,35 +858,57 @@ resetCompleteE = writeIORef completions Nothing
 wordCompleteE :: Action
 wordCompleteE = do
     withWindow_ $ \win buf -> do
-
-        let loop = do   -- loop over repeated matches
-            p <- pointB buf
-            m <- readIORef completions
-            (w,fm) <- case m of
-                    Nothing -> do (w,_,_) <- readWordLeft_ win buf
-                                  rightB buf ; return (w,emptyFM)
-                    Just (w,fm,next) -> moveTo buf (next+1) >> return (w,fm)
-            m' <- nextWordMatch win buf w
-            moveTo buf p
-            case m' of
-                Just (s,i) 
-                    | s `elemFM` fm 
-                    -> do writeIORef completions (Just (w,fm,i)) ; loop
-
-                    | otherwise 
-                    -> do replaceLeftWith win buf s
-                          writeIORef completions (Just (w,addToFM fm s (),i))
-
-                Nothing -> do replaceLeftWith win buf w
-                              writeIORef completions Nothing
-
-        loop 
+        readIORef completions >>= loop win buf >>= writeIORef completions
         return win
-
     getPointE >>= gotoPointE
 
-    where
+  where
+    --
+    -- work out where to start our next search
+    --
+    loop :: Window -> Buffer' -> (Maybe Completion) -> IO (Maybe Completion)
+    loop win buf (Just (w,fm,n)) = do
+            p  <- pointB buf
+            moveTo buf (n+1)        -- start where we left off
+            doloop p win buf (w,fm)
+    loop win buf Nothing = do 
+            p  <- pointB buf
+            (w,_,_) <- readWordLeft_ win buf 
+            rightB buf  -- start past point
+            doloop p win buf (w,unitFM w ())
+
+    --
+    -- actually do the search, and analyse the result
+    --
+    doloop :: Int -> Window -> Buffer' -> (String,FiniteMap String ()) 
+           -> IO (Maybe Completion)
+
+    doloop p win buf (w,fm) = do
+            m' <- nextWordMatch win buf w
+            moveTo buf p
+            (_,j,_) <- readWordLeft_ win buf
+            case m' of
+                Just (s,i) 
+                    | j == i                -- seen entire file
+                    -> do replaceLeftWith win buf w
+                          return Nothing
+
+                    | s `elemFM` fm         -- already seen
+                    -> do loop win buf (Just (w,fm,i))
+
+                    | otherwise             -- new
+                    -> do replaceLeftWith win buf s
+                          return (Just (w,addToFM fm s (),i))
+
+          -- doesn't work, inf.loop:
+          --    Nothing -> loop win buf (Just (w,fm,(-1))) -- goto start of file
+                Nothing
+                    -> do replaceLeftWith win buf w
+                          return Nothing
+
+    --
     -- replace word under cursor with @s@
+    --
     replaceLeftWith :: Window -> Buffer' -> String -> IO ()
     replaceLeftWith win buf s = do
         (_,b,a) <- readWordLeft_ win buf     -- back at start
@@ -892,18 +916,22 @@ wordCompleteE = do
         deleteNW win buf (a-b)
         mapM_ (\c -> insertW c win buf) s
 
+    --
     -- Return next match, and index of that match (to be used for later searches)
+    -- Leaves the cursor at the next word.
+    --
     nextWordMatch :: Window -> Buffer' -> String -> IO (Maybe (String,Int))
     nextWordMatch win b w = do
-        let re = ("( |\t|\n|\r)"++w)
+        let re = ("( |\t|\n|\r|^)"++w)
         re_c <- regcomp re regExtended
-        mi <- regexB b re_c
+        mi   <- regexB b re_c
         case mi of 
             Nothing -> return Nothing
             Just (i,_) -> do 
-                moveTo b (i+1) -- for the space
+                let i' = if i == 0 then 0 else i+1 -- for the space
+                moveTo b i'
                 (s,_,_) <- readWord_ win b
-                return $ Just (s,(i+1))
+                return $ Just (s,i')
 
 ------------------------------------------------------------------------
 

@@ -45,6 +45,8 @@ module Yi.Curses.UI (
         -- * Drawing
         refresh,
 
+        drawCmdLine,                -- :: String -> IO ()
+
         module Yi.Curses.Curses   -- UIs need to export the symbolic key names
 
   )   where
