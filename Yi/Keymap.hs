@@ -30,7 +30,11 @@ import Yi.Editor    ( Keymap(..) )  -- just for now
 import Yi.UI        -- hack, just for now, so we can see key defns
 
 import Data.Char
+import Data.Maybe
 import Control.Monad
+
+import Data.IORef
+import System.IO.Unsafe ( unsafePerformIO )
 
 -- ---------------------------------------------------------------------
 --
@@ -60,22 +64,23 @@ nextEx  = return (Keymap ex)
 --
 cmd :: Char -> IO Keymap
 cmd c | isDigit c = getdigits [c] >>= uncurry do_cmd
-      | otherwise = do_cmd 1 c
+      | otherwise = do_cmd Nothing c
   where
-    getdigits :: [Char] -> IO (Int, Char)    
-    getdigits cs = do c' <- getcE
-                      if isDigit c' then getdigits (c':cs) 
-                                    else return (read $ reverse cs, c')
+    getdigits :: [Char] -> IO (Maybe Int, Char)    
+    getdigits cs = do 
+        c' <- getcE
+        if isDigit c' then getdigits (c':cs) 
+                      else return (Just (read $ reverse cs), c')
 
-do_cmd :: Int -> Char -> IO Keymap
+do_cmd :: (Maybe Int) -> Char -> IO Keymap
 
-do_cmd i c
+do_cmd mi c
 -- Search forward for the current word.
     | c == '\^A' = not_impl 
 
 -- Page backwards count screens.
     | c == '\^B' || c == keyPPage 
-    = replicateM_ i upScreenE >> nextCmd
+    = replicateM_ (fromMaybe 1 mi) upScreenE >> nextCmd
 
 -- Scroll forward count lines.
     | c == '\^D' = not_impl
@@ -85,7 +90,7 @@ do_cmd i c
 
 -- Page forward count screens.
     | c == keyNPage || c == '\^F'    
-    = replicateM_ i downScreenE >> nextCmd
+    = replicateM_ (fromMaybe 1 mi) downScreenE >> nextCmd
 
 -- Display the file information.
     | c == '\^G' = do (f,_,ln,_,_,pct) <- bufInfoE 
@@ -93,12 +98,12 @@ do_cmd i c
                       nextCmd
 
 -- Move the cursor back count characters in the current line.
-    | c == 'h' || c == '\^H'  
-    = leftOrSolE i >> nextCmd
+    | c == 'h' || c == '\^H'  || c == keyLeft
+    = leftOrSolE (fromMaybe 1 mi) >> nextCmd
 
 -- Move the cursor down count lines without changing the current column.
-    | c == 'j' || c == '\^J' || c == '\^N' 
-    = replicateM_ i downE >> nextCmd
+    | c == 'j' || c == '\^J' || c == '\^N'  || c == keyDown
+    = replicateM_ (fromMaybe 1 mi) downE >> nextCmd
 
 -- Repaint the screen.
     | c == '\^L' || c == '\^R' = not_impl
@@ -107,7 +112,8 @@ do_cmd i c
     | c == '\^M' || c == '+' = not_impl
 
 -- Move the cursor up one line
-    | c == '\^P' || c == 'k'   = replicateM_ i upE >> nextCmd     
+    | c == '\^P' || c == 'k' || c == keyUp
+    = replicateM_ (fromMaybe 1 mi) upE >> nextCmd     
     
 -- Return to the most recent tag context.
     | c == '\^T' = not_impl
@@ -134,7 +140,8 @@ do_cmd i c
     | c == '\^^'    = not_impl
 
 --  Move the cursor right one character.
-    | c ==  'l' || c == ' ' = rightOrEolE i >> nextCmd
+    | c ==  'l' || c == ' ' || c == keyRight
+    = rightOrEolE (fromMaybe 1 mi) >> nextCmd
 
 -- Replace text with results from a shell command.
     | c == '!'   = not_impl
@@ -183,10 +190,16 @@ do_cmd i c
                       del (_:cs) = msg (reverse cs) >> return cs
 
         s <- loop []
+        writeIORef lastRe s
         searchE s
         nextCmd
 
-    | c == 'n' || c == 'N' || c == '?'  = not_impl
+    | c == 'n' 
+    = do s <- readIORef lastRe
+         searchE s
+         nextCmd
+
+    | c == 'N' || c == '?'  = not_impl
 
 -- Move to the first character in the current line.
     | c == '0'   = solE >> nextCmd
@@ -197,11 +210,12 @@ do_cmd i c
 -- Repeat the last character find count times.
     | c == ';'   = not_impl
 
--- Shift lines right.
-    | c ==  '>' = do c' <- getcE
-                     when (c' == '>') $ 
-                        replicateM_ i $ solE >> mapM_ insertE (replicate 4 ' ')
-                     nextCmd
+-- Shift lines right. TODO 4 is not really very good...
+    | c ==  '>' 
+    = do c' <- getcE
+         when (c' == '>') $ replicateM_ (fromMaybe 1 mi) $ 
+                solE >> mapM_ insertE (replicate 4 ' ')
+         nextCmd
 
 -- Shift lines left.
     | c == '<'  = not_impl
@@ -218,7 +232,8 @@ do_cmd i c
     | c == '|'  = solE             >> nextCmd
 
 -- Delete count characters.
-    | c == 'x'  = ( replicateM_ i deleteE )  >> nextCmd
+    | c == 'x'  
+    = replicateM_ (fromMaybe 1 mi) deleteE >> nextCmd
 
 -- Copy the line the cursor is on.
     | c == 'y' = do c' <- getcE 
@@ -247,22 +262,16 @@ do_cmd i c
 -- Enter input mode, appending text in a new line under the current line.
     | c == 'o' = eolE >> insertE '\n' >> nextIns
 
--- The cursor arrow keys should work for movement too
-    | c == keyUp    = upE           >> nextCmd
-    | c == keyDown  = downE         >> nextCmd
-    | c == keyLeft  = leftOrSolE 1  >> nextCmd
-    | c == keyRight = rightOrEolE 1 >> nextCmd
-
 -- Delete text from the current position to the end-of-line.
     | c == 'D' = killE                     >> nextCmd
 
 -- Move to the last line of the file
-    | c == 'G' = botE                      >> nextCmd
-
--- Hack!!
-    | c == '1' = do c' <- getcE
-                    when (c' == 'G') $ topE 
-                    nextCmd
+    | c == 'G' 
+    = do case mi of
+            Nothing     -> botE
+            Just 1      -> topE
+            Just _      -> botE -- TODO
+         nextCmd
 
 -- Delete the line the cursor is on.
     | c == 'd' = do c' <- getcE
@@ -363,3 +372,8 @@ viWrite = do
 viCmdErr :: [Char] -> Action
 viCmdErr s = msgE $ "The "++s++ " command is unknown."
 
+--
+-- | Last regular expression entered. Could this go into Yi.Editor?
+--
+lastRe :: IORef String
+lastRe = unsafePerformIO $ newIORef []
