@@ -101,6 +101,7 @@ import Data.Char            ( isLatin1 )
 import System.IO
 import System.Directory     ( doesFileExist )
 import System.Exit
+import Control.Monad        ( when )
 import Control.Exception    ( ioErrors, catchJust, handleJust )
 
 import GHC.Base
@@ -221,7 +222,9 @@ downScreenE :: IO ()
 downScreenE = do
     (Just w) <- getWindow  -- better be a window open..
     mapM_ (\_ -> withWindow_ moveDownW)  [1 .. (height w - 2) * 2]
-    mapM_ (\_ -> withWindow_ moveUpW)    [1 .. height w - 2]
+    ll <- withWindow $ \w b -> atLastLine b >>= \ll -> return (w,ll)
+    when (not ll) $
+        mapM_ (\_ -> withWindow_ moveUpW) [1 .. height w - 2]
 
 -- | Move left @x@ or to start of line
 leftOrSolE :: Int -> IO ()
