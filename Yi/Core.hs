@@ -24,59 +24,63 @@
 -- 
 
 --
--- | The core edsl and machine of yi. This module is the link
--- between the editor machine defined in 'Yi.Editor', and the real
--- world defined in 'Yi.UI'. The instructions defined here
--- manipulate the editor state, and control the screen through the UI.
--- Key bindings, and libraries should manipulate Yi through the
--- interface defined here.
+-- | The core actions of yi. This module is the link between the editor
+-- machine defined in 'Yi.Editor', and the real world defined in
+-- 'Yi.UI'. The instructions defined here manipulate the editor state,
+-- and control the screen through the UI.  Key bindings, and libraries
+-- should manipulate Yi through the interface defined here.
 --
+
 module Yi.Core (
 
-        -- * Main loop
-        start,
-        end,
+        -- * Construction and destruction
+        startE,
+        endE,
+
+        -- * Getting down to business (soon to be replaced by key lexer) 
         eventLoop,
 
         -- * Editor actions
-        e_quit,
-        e_refresh,
-        e_noop,
-        e_next,
-        e_prev,
 
-        -- * File related
-        e_read,
-        e_write,
+        -- ** Global editor actions
+        quitE,
+        refreshE,
+        noopE,
+        nextE,
+        prevE,
+        newE,
 
-        -- * Cursor movement
-        e_left,
-        e_right,
-        e_top,
-        e_bot,
-        e_down,
-        e_up,
-        e_sol,
-        e_eol,
+        -- ** File-based actions
+        readE,
+        writeE,
 
-        -- * Buffer editing
-        e_replace,
-        e_insert,
-        e_delete,
-        e_kill
+        -- ** Buffer point movement
+        leftE,
+        rightE,
+        solE,
+        eolE,
+        downE,
+        upE,
+        topE,
+        botE,
+
+        -- ** Buffer editing
+        replaceE,
+        insertE,
+        deleteE,
+        killE
 
    ) where
 
-import Yi.Editor
 import Yi.MkTemp
-import qualified Yi.Editor as Editor
+import Yi.Editor                            ( withBuffer )
+import Yi.Buffer
 import qualified Yi.UI     as UI
-import qualified Yi.Buffer as Buffer
+import qualified Yi.Editor as Editor hiding ( withBuffer )
 
 import System.IO
 import System.Exit
 
-import Control.Monad     ( when )
 import qualified Control.Exception ( catch, Exception, throwIO )
 
 import GHC.Base
@@ -85,26 +89,26 @@ import GHC.Base
 -- | Start up the editor, setting any state with the user preferences
 -- and file names passed in, and turning on the UI
 --
-start :: Editor.Config -> Maybe [FilePath] -> IO ()
-start confs mfs = do
+startE :: Editor.Config -> Maybe [FilePath] -> IO ()
+startE confs mfs = do
     UI.start
     Editor.setUserSettings confs
     case mfs of
-        Just fs -> mapM_ e_read fs
+        Just fs -> mapM_ newE fs
 
         -- vi-like behaviour, just for now.
-        Nothing -> do mf <- mkstemp "/tmp/yi.XXXXXXXXXX" 
-                      case mf of
-                        Just (f,h) -> do hClose h
-                                         Editor.fillNewBuffer f
-                        Nothing -> error "Core.start: mkstemp failed"
-    e_refresh
+        Nothing -> do 
+            mf <- mkstemp "/tmp/yi.XXXXXXXXXX" 
+            case mf of
+                Nothing    -> error "Core.startE: mkstemp failed"
+                Just (f,h) -> hClose h >> newE f
+    refreshE
 
 --
 -- | shutdown the editor
 --
-end :: IO ()
-end = UI.end
+endE :: IO ()
+endE = UI.end
 
 -- ---------------------------------------------------------------------
 -- | The editor main loop. Read key strokes from the ui and interpret
@@ -115,7 +119,6 @@ eventLoop :: IO ()
 eventLoop = do 
     km <- Editor.getKeyMap
     eventLoop' km
---  UI.withInvisibleCursor $ eventLoop' km
 
 -- 
 -- | read a keystroke, and interpret it using the current key mappings.
@@ -132,71 +135,82 @@ eventLoop' keyhandler = do
         handler = Control.Exception.throwIO
 
 -- ---------------------------------------------------------------------
--- | Editor actions. This is the instruction set of the editor core.
---
 
---
 -- | Quit
 --
-e_quit :: IO ()
-e_quit = exitWith ExitSuccess
+quitE :: IO ()
+quitE = exitWith ExitSuccess
 
---
 -- | Refresh the screen
 --
-e_refresh :: IO ()
-e_refresh = UI.refresh
+refreshE :: IO ()
+refreshE = UI.refresh
 
---
 -- | Do nothing
 --
-e_noop :: IO ()
-e_noop = return ()
+noopE :: IO ()
+noopE = return ()
 
 ------------------------------------------------------------------------
 
 --
 -- | Move cursor left 1
 --
-e_left :: IO ()
-e_left = modifyCurrentBuffer Buffer.left
+leftE :: IO ()
+leftE = withBuffer leftB
 
 --
 -- | Move cursor right 1
 --
-e_right :: IO ()
-e_right = modifyCurrentBuffer Buffer.right
+rightE :: IO ()
+rightE = withBuffer rightB
 
 --
 -- | Move cursor to origin
 --
-e_top :: IO ()
-e_top = modifyCurrentBuffer (Buffer.moveTo 0)
+topE :: IO ()
+topE = withBuffer $ \b -> moveTo b 0
 
 --
 -- | Move cursor to end of buffer
 --
-e_bot :: IO ()
-e_bot = modifyCurrentBuffer $ \b -> do
-            i <- Buffer.size b
-            Buffer.moveTo (i-1) b
+botE :: IO ()
+botE = withBuffer $ \b -> sizeB b >>= \n -> moveTo b (n-1)
+
+--
+-- | Move cursor to start of line
+--
+solE :: IO ()
+solE = withBuffer moveToSol
+
+--
+-- | Move cursor to end of line
+--
+eolE :: IO ()
+eolE = withBuffer moveToEol
 
 --
 -- | Move cursor down 1 line
 --
-e_down :: IO ()
-e_down = modifyCurrentBuffer $ \b -> do
-    x <- Buffer.prevLnOffset b
-    Buffer.gotoNextLn b
-    Buffer.nextXorNL (max 0 x) b
+downE :: IO ()
+downE = withBuffer $ \b -> do
+    x <- offsetFromSol b
+    moveToEol b
+    rightB b        -- now at start of next b
+    moveXorEol b x  
 
 --
--- | Move cursor up to the same @x@ offset, 1 line previous
--- Blargh. Needs rethink. The primitives don't have quite the desired
--- behaviour.
+-- | Move cursor up to the same point on the previous line
 --
-e_up :: IO ()
-e_up = modifyCurrentBuffer $ \b -> do
+upE :: IO ()
+upE = withBuffer $ \b -> do
+    x <- offsetFromSol b
+    moveToSol b
+    leftB b
+    moveToSol b
+    moveXorEol b x  
+
+{-
     p <- Buffer.point b
     if (p == 0)         -- do nothing.
         then return b
@@ -211,88 +225,75 @@ e_up = modifyCurrentBuffer $ \b -> do
     when (p'/= 0) $
         Buffer.gotoPrevLn b >> return ()
     Buffer.nextXorNL (max x 0) b
+-}
 
 --
--- | Move cursor to start of line
+-- | Read into a *new* buffer the contents of file.
+-- TODO: change type.
 --
-e_sol :: IO ()
-e_sol = modifyCurrentBuffer $ \b -> do
-    p <- Buffer.point b
-    c <- Buffer.char b
-    when (c == '\n') $ 
-        Buffer.left b       >> return ()
-    when (p /= 0)    $ 
-        Buffer.gotoPrevLn b >> return ()
-    return b
+newE  :: FilePath -> IO ()
+newE f = readFile f >>= Editor.newBuffer f
 
---
--- | Move cursor to end of line
---
-e_eol :: IO ()
-e_eol = modifyCurrentBuffer $ \b -> do
-    Buffer.gotoNextLn b 
-    p <- Buffer.point b
-    s <- Buffer.size b
-    when (p /= s - 1) $ 
-        Buffer.left b >> return ()
-    return b
-
---
--- | Read into a new buffer the contents of file.
--- TODO: change type
---
-e_read  :: FilePath -> IO ()
-e_read f = Editor.fillNewBuffer f          -- lazy for large files?
+{-
+-- works. but if you move hClose *before* the call to newBuffer -- bad!
+-- so readFile does exactly what we want, but nicely.
+        hd <- openFile f ReadMode
+        cs <- hGetContents hd
+        Editor.newBuffer f cs       -- lazy for large files?
+        hClose hd                   -- must come after we create the new buffer
+-}
 
 --
 -- | Write current buffer to disk
 --
-e_write :: IO ()
-e_write = modifyCurrentBuffer $ \b -> do
-        let f = Buffer.name b
-        ss <- Buffer.contents b
+writeE :: IO ()
+writeE = withBuffer $ \b -> do
+        let f = nameB b
+        ss <- elemsB b
         h  <- openFile f WriteMode
         hPutStr h ss
         hClose h
-        return b
 
 --
--- | Shift focus to next buffer
+-- | Read file into buffer starting a current point
 --
-e_next :: IO ()
-e_next = Editor.nextBuffer
-
---
--- | Shift focus to prev buffer
---
-e_prev :: IO ()
-e_prev = Editor.prevBuffer
+readE :: IO ()
+readE = error "readE is undefined"
 
 ------------------------------------------------------------------------
 
 --
--- | Replace buffer at point with next char
+-- | Shift focus to next buffer
 --
-e_replace :: IO ()
-e_replace = modifyCurrentBuffer $ \b -> do
-    k <- UI.getKey UI.refresh   -- read next key
-    case k of
-        Key c -> Buffer.replace c b
-        _     -> e_noop >> return b -- TODO
+nextE :: IO ()
+nextE = Editor.nextBuffer
+
+--
+-- | Shift focus to prev buffer
+--
+prevE :: IO ()
+prevE = Editor.prevBuffer
+
+------------------------------------------------------------------------
+
+-- | Replace buffer at point with next char
+replaceE :: IO ()
+replaceE = withBuffer $ \b -> do
+    k <- UI.getKey UI.refresh
+    case k of Editor.Key c -> writeB b c
+              _            -> noopE -- TODO
 
 -- | Insert new character
-e_insert :: IO ()
-e_insert = modifyCurrentBuffer $ \b -> do
+insertE :: IO ()
+insertE = withBuffer $ \b -> do
     k <- UI.getKey UI.refresh
-    case k of
-        Key c -> Buffer.insert c b
-        _     -> e_noop >> return b -- TODO
+    case k of Editor.Key c -> insertB b c
+              _            -> noopE  -- TODO
 
 -- | Delete character under cursor
-e_delete :: IO ()
-e_delete = modifyCurrentBuffer $ Buffer.delete
+deleteE :: IO ()
+deleteE = withBuffer deleteB
 
 -- | Kill to end of line
--- Move back 1 char (this is VI behaviour -- so get rid of it from Core)
-e_kill :: IO ()
-e_kill = modifyCurrentBuffer $ \b -> Buffer.killToNL b >>= Buffer.prevXorLn 1
+killE :: IO ()
+killE = withBuffer deleteToEol -- >>= Buffer.prevXorLn 1

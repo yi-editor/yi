@@ -125,8 +125,8 @@ static_main = do
     args   <- getArgs
     mfiles <- do_args args
     config <- readIORef g_settings
-    bracket_ (initSignals >> Core.start config mfiles)
-             (Core.end    >> releaseSignals)
+    bracket_ (initSignals >> Core.startE config mfiles)
+             (Core.endE   >> releaseSignals)
              (UI.refresh  >> Core.eventLoop)
 
 -- ---------------------------------------------------------------------

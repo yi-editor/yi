@@ -18,24 +18,24 @@
 -- 
 
 --
--- | The editor state. This the the machine that Core instructions manipulate.
--- The editor just manages buffers. 1 buffer is always in focus, and the
--- editor knows which one that is.
+-- | The editor state. This is the machine that Core instructions
+-- manipulate.  The editor manages buffers. One buffer is always in
+-- focus.
 --
 
 module Yi.Editor where
 
 import Yi.Buffer
 
--- Get at the user defined settings
 import {-# SOURCE #-} qualified Yi.Config as Config ( settings )
 
 import Data.List                ( elemIndex )
 import Data.FiniteMap
-import Data.Unique
 import Data.IORef
+import Data.Unique              ( Unique )
 
-import Control.Concurrent.MVar  ( MVar(), newMVar, withMVar )
+import Control.Concurrent.MVar
+import System.IO
 import System.IO.Unsafe         ( unsafePerformIO )
 
 --
@@ -45,161 +45,159 @@ import System.IO.Unsafe         ( unsafePerformIO )
 --
 -- Parameterised on the buffer type
 --
-data Buffer a => GEditor a = Editor {
-        buffers       :: FiniteMap Unique a     -- ^ multiple buffers
-       ,focusKey      :: (Maybe Unique)         -- ^ one buffer has the focus
-       ,editSettings  :: Config                 -- ^ user supplied settings
+data Buffer a => GenEditor a = Editor {
+        buffers      :: FiniteMap Unique a -- ^ multiple buffers
+       ,curkey       :: Unique             -- ^ one buffer has focus
+       ,editSettings :: Config             -- ^ user settings
    }
 
 --
--- What kind of buffer is this editor going to have?
+-- Instantiate the editor with a basic buffer type
 --
-type EBuffer = FBuffer
-type Editor  = GEditor EBuffer
+type Buffer' = FBuffer
+type Editor  = GenEditor Buffer'
 
 -- ---------------------------------------------------------------------
--- | The initial state
---
-initialState :: Editor
-initialState = Editor {
-        buffers         = emptyFM,
-        focusKey        = Nothing,
-        editSettings    = Config.settings   -- static user settings
-    }
-
 --
 -- | The actual editor state
--- TODO get rid of big lock on state -- individual buffers are already
--- synced.
+-- TODO get rid of big lock on state (buffers themselves are locked)
 --
-environment :: MVar (IORef Editor)
-environment = unsafePerformIO $ do
-                ref  <- newIORef initialState
-                newMVar ref
-{-# NOINLINE environment #-}
+-- state :: Buffer a => MVar (IORef (GenEditor a))
+state :: MVar (IORef Editor)
+state = unsafePerformIO $ do
+            ref  <- newIORef newEmptyEditor
+            newMVar ref
+{-# NOINLINE state #-}
 
--- ---------------------------------------------------------------------
+--
+-- | The initial state
+--
+-- newEmptyEditor :: Buffer a => GenEditor a
+newEmptyEditor :: Editor
+newEmptyEditor = Editor {
+        buffers      = emptyFM,
+        curkey       = error "Editor: no buffer in focus",
+        editSettings = Config.settings   -- static user settings
+    }
+
 -- 
--- | Grab editor state read-only
+-- | Read the editor state
 -- 
+-- readEditor :: Buffer a => (GenEditor a -> b) -> IO b
 readEditor :: (Editor -> b) -> IO b
-readEditor f = withMVar environment $ \r -> return . f =<< readIORef r
+readEditor f = withMVar state $ \ref -> return . f =<< readIORef ref
 
 --
--- | Grab the editor state, manipulate it, and write it back
+-- | Grab the editor state, mutate the contents, and write it back
 --
-modifyEditor :: (Editor -> Editor) -> IO ()
-modifyEditor f = withMVar environment $ \r -> modifyIORef r f
-
---
--- | Grab the editor state, maybe do some IO too
---
-modifyEditorIO :: (Editor -> IO Editor) -> IO ()
-modifyEditorIO f = withMVar environment $ \r-> readIORef r >>= f >>= writeIORef r
+-- modifyEditor :: Buffer a => (GenEditor a -> IO (GenEditor a)) -> IO ()
+modifyEditor :: (Editor -> IO Editor) -> IO ()
+modifyEditor f = 
+    modifyMVar_ state $ \r -> do
+        readIORef r >>= f >>= writeIORef r
+        return r    -- :: a -> IO a
 
 -- ---------------------------------------------------------------------
+--
+-- | Create a new buffer, add it to the set, make it the current buffer,
+-- and fill it with contents of @f@.
+--
+newBuffer :: FilePath -> [Char] -> IO ()
+newBuffer f cs = 
+    modifyEditor $ \e@(Editor{buffers=bs} :: Editor) -> do
+        b <- newB f cs
+        return $! e { buffers = addToFM bs (keyB b) b, curkey = (keyB b) }
+
 --
 -- | return the buffers we have
-getBuffers :: IO [EBuffer]
+--
+-- getBuffers :: Buffer a => IO [a]
+--
+getBuffers :: IO [Buffer']
 getBuffers = readEditor $ eltsFM . buffers
-
-------------------------------------------------------------------------
---
--- | get current buffer
---
-getCurrentBuffer :: IO EBuffer
-getCurrentBuffer = readEditor $ \(e :: Editor) -> 
-    case focusKey e of
-        Just k  -> findBufferWithKey e k
-        Nothing -> error "Editor.pwBuffer: no current buffer to get"
-
---
--- | with the current buffer, perform action
---
-modifyCurrentBuffer :: (EBuffer -> IO EBuffer) -> IO ()
-modifyCurrentBuffer f = modifyEditorIO $ \(e :: Editor) ->
-    case focusKey e of
-        Nothing -> error "Editor.getCurrentBuffer: no current buffer"
-        Just k  -> do b' <- f $ findBufferWithKey e k
-                      let bs'= addToFM (buffers e) k b'
-                      return $! e { buffers = bs' }
-
---
--- Private: Find buffer with this key
--- 
-findBufferWithKey :: Editor -> Unique -> EBuffer
-findBufferWithKey e k = 
-    case lookupFM (buffers e) k of
-            Just b  -> b
-            Nothing -> error "Editor.findBufferWithKey: no buffer has this key"
-
---
--- | set new focused buffer
--- Should assert this buffer is in @buffers e@.
--- Generalise the type
---
-setCurrentBuffer :: EBuffer -> IO ()
-setCurrentBuffer b = modifyEditor $ \(e::Editor) -> e{focusKey = Just $ key b}
-
-------------------------------------------------------------------------
---
--- | Rotate focus to the next buffer
--- TODO: refactor
---
-nextBuffer :: IO ()
-nextBuffer = modifyEditor $ \e ->
-    let bs = eltsFM (buffers e)
-    in case focusKey e of
-        Nothing -> error "Editor.nextBuffer: no focused buffer"
-        Just k  -> case lookupFM (buffers e) k of
-            Nothing -> error "Editor.nextBuffer: lost focused buffer"
-            Just cb-> case elemIndex cb bs of
-                Nothing -> error "Error.nextBuffer: focused buffer disappeared"
-                Just i -> let l = length bs
-                              b = bs !! ((i+1) `mod` l)
-                          in e {focusKey = Just $ key b}
-    
---
--- | Rotate focus to the next buffer
---
-prevBuffer :: IO ()
-prevBuffer = modifyEditor $ \e ->
-    let bs = eltsFM (buffers e)
-    in case focusKey e of
-        Nothing -> error "Editor.nextBuffer: no focused buffer"
-        Just k  -> case lookupFM (buffers e) k of
-            Nothing -> error "Editor.nextBuffer: lost focused buffer"
-            Just cb-> case elemIndex cb bs of
-                Nothing -> error "Error.nextBuffer: focused buffer disappeared"
-                Just i -> let l = length bs
-                              b = bs !! ((i-1) `mod` l)
-                          in e {focusKey = Just $ key b}
-    
-------------------------------------------------------------------------
 
 --
 -- | get the number of buffers we have
 --
 lengthBuffers :: IO Int                        
-lengthBuffers = readEditor $ \((Editor{buffers=bs}) :: Editor) -> sizeFM bs
+lengthBuffers = readEditor $ \(Editor {buffers=bs} :: Editor) -> sizeFM bs
 
--- ---------------------------------------------------------------------
--- | Create a new buffer, add it to the set, make it the current buffer,
--- and fill it with contents of @f@.
 --
-fillNewBuffer :: FilePath -> IO ()
-fillNewBuffer f = 
-    modifyEditorIO $ \(e@(Editor{buffers=bs}) :: Editor)-> do
-        b <- newBuffer f
-        return $! e { buffers = addToFM bs (key b) b, focusKey = Just (key b) }
+-- | get current buffer
+--
+-- getCurrentBuffer :: Buffer a => IO a
+getCurrentBuffer :: IO Buffer'
+getCurrentBuffer = readEditor $ \e -> lookupBuffers e (curkey e)
 
--- todo: no inline?
+--
+-- Find buffer with this key
+-- 
+-- lookupBuffers :: Buffer a => GenEditor a -> Unique -> a
+lookupBuffers :: Editor -> Unique -> Buffer'
+lookupBuffers e k = 
+    case lookupFM (buffers e) k of
+        Just b  -> b
+        Nothing -> error "Editor.lookupBuffers: no buffer has this key"
+
+--
+-- | Mutate the current buffer
+--
+-- If we want to do touch anything not inside an ioref, we'll have to
+-- return a modified @e@ (see setBuffer)
+--
+-- withBuffer :: Buffer a => (a -> IO ()) -> IO ()
+withBuffer :: (Buffer' -> IO ()) -> IO ()
+withBuffer f = modifyEditor $ \e -> do 
+        f $ lookupBuffers e (curkey e) -- :: IO ()
+        return e                       -- nothing else changed
+
+--
+-- | Set current buffer
+-- Should assert this buffer is in @buffers e@.
+--
+-- setBuffer :: Buffer a => a -> IO ()
+setBuffer :: Buffer' -> IO ()
+setBuffer b = modifyEditor $ \(e :: Editor) -> return $ e {curkey = keyB b}
+
+--
+-- | Rotate focus to the next buffer
+--
+nextBuffer :: IO ()
+nextBuffer = shiftFocus (\i -> i+1)
+
+--
+-- | Rotate focus to the previous buffer
+--
+prevBuffer :: IO ()
+prevBuffer = shiftFocus (\i -> i-1)
+
+--
+-- | Shift focus to the nth buffer, modulo the number of buffers
+--
+bufferAt :: Int -> IO ()
+bufferAt n = shiftFocus (\_ -> n)
+
+--
+-- | Set the new current buffer using a function applied to the old
+-- current buffer's index
+--
+shiftFocus :: (Int -> Int) -> IO ()
+shiftFocus f = modifyEditor $ \(e :: Editor) -> do
+    let bs  = eltsFM (buffers e)
+        key = curkey e
+    case lookupFM (buffers e) key of
+        Nothing -> error "Editor.setBufferAt: no current buffer"
+        Just cb -> case elemIndex cb bs of
+            Nothing -> error "Error.setBufferAt: current buffer has gone"
+            Just i -> let l = length bs
+                          b = bs !! ((f i) `mod` l)
+                      in return $ e { curkey = keyB b }
 
 -- ---------------------------------------------------------------------
 -- | set the user-defineable key map
 --
 setUserSettings :: Config -> IO ()
-setUserSettings cs = modifyEditor $ \(e :: Editor) -> e { editSettings = cs }
+setUserSettings cs = modifyEditor $ \(e :: Editor) -> return $ e { editSettings = cs }
 
 --
 -- | retrieve the user-defineable key map

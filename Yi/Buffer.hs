@@ -18,107 +18,167 @@
 -- 
 
 --
--- | This module defines operations on a one-dimension buffer. Instances
--- of 'Buffer' are available.
+-- | An interface to a one dimensional mutable 'Buffer', providing
+-- cursor movement and editing commands
 --
 
 module Yi.Buffer where
 
 import Data.IORef
-import Data.Unique
-import Control.Monad            ( liftM, when )
-import Control.Concurrent.MVar
 
+import Prelude      hiding      ( IO )
+import GHC.IOBase               ( IO(..) )
 import GHC.Base
-import GHC.IOBase   ( IO(..) )
-import System.IO    hiding ( IO )
-import Prelude      hiding ( IO )
 
---
--- | The 'Buffer' defines operations over one-dimensional buffers,
--- providing basic editing operations.
---
-class Buffer a where
-
-    -- | A buffer has an (immutable) name
-    name       :: a -> String
-
-    -- | A buffer has an immutable unique key
-    key        :: a -> Unique
-
-    -- | New buffer filled from 'FilePath'. Buffers know how to fill themselves.
-    newBuffer  :: FilePath -> IO a
-
-    --
-    -- | Get the buffer contents in a useful form: '[Char]'
-    --
-    contents   :: a -> IO [Char]
-
-    -- | Number of characters in the buffer, or index of last elem+1
-    size       :: a -> IO Int
-
-    -- | Current position of the cursor. Offset from start of buffer
-    point      :: a -> IO Int
-
-    -- | Character at the current point
-    char       :: a -> IO Char
-
-    -- | Move cursor to arbitrary point. If the point overruns in any
-    -- direction, the cursor is moved to the limit in that dimension
-    -- Does some IO and returns the new buffer
-    moveTo      :: Int -> a -> IO a
-
-    -- | Move cursor -n
-    leftN       :: Int -> a -> IO a
-    leftN n b   = point b >>= \p -> moveTo (p - n) b
-
-    -- | Move cursor -1
-    left        :: a -> IO a
-    left        = leftN 1
-
-    -- | Move cursor +n
-    rightN      :: Int -> a -> IO a
-    rightN n b   = point b >>= \p -> moveTo (p + n) b
-
-    -- | Move cursor +1
-    right       :: a -> IO a
-    right       = rightN 1
-
-    -- | Overwrite contents of buffer from point onwards with string
-    replace     :: Char -> a -> IO a
-
-    -- | Insert character at point, shifting along rest of buffer
-    insert      :: Char -> a -> IO a
-
-    -- | Delete character at point, shifting back rest of buffer
-    delete      :: a -> IO a
-    
-    -- | Delete @n@ characters forward from point, or till eof
-    deleteN     :: Int -> a -> IO a
+import Data.Unique              ( Unique, newUnique )
+import Control.Concurrent.MVar
 
 -- ---------------------------------------------------------------------
 --
--- Fast buffer based on GHC.IORef.{Handle,IOBase} (Handle)
+-- | The 'Buffer' class defines editing operations over one-dimensional
+-- mutable buffers, which maintain a current /point/.
+--
+--
+class Buffer a where
+
+    -- | Construct a new buffer initialised with the supplied name and list
+    newB :: String -> [Char] -> IO a
+
+    -- | String name of this buffer
+    nameB :: a -> String
+
+    -- | Unique key of this buffer
+    keyB :: a -> Unique
+
+    ------------------------------------------------------------------------
+
+    -- | Number of characters in the buffer
+    sizeB      :: a -> IO Int
+
+    -- | Extract the current point
+    pointB     :: a -> IO Int
+
+    -- | Return the contents of the buffer as a list
+    elemsB     :: a -> IO [Char]
+
+    ------------------------------------------------------------------------
+
+    -- | Move point in buffer to the given index
+    moveTo     :: a -> Int -> IO ()
+
+    -- | Move point -1
+    leftB       :: a -> IO ()
+    leftB a     = leftN a 1
+
+    -- | Move cursor -n
+    leftN       :: a -> Int -> IO ()
+    leftN a n   = pointB a >>= \p -> moveTo a (p - n)
+
+    -- | Move cursor +1
+    rightB      :: a -> IO ()
+    rightB a    = rightN a 1
+
+    -- | Move cursor +n
+    rightN      :: a -> Int -> IO ()
+    rightN a n = pointB a >>= \p -> moveTo a (p + n)
+
+    ------------------------------------------------------------------------
+
+    -- | Read the character at the current point
+    readB      :: a -> IO Char
+
+    -- | Read the character at the given index
+    readAtB    :: a -> Int -> IO Char
+
+    -- | Write an element into the buffer at the current point
+    writeB     :: a -> Char -> IO ()
+
+    -- | Write an element at the given index
+    writeAtB   :: a -> Int -> Char -> IO ()
+
+    ------------------------------------------------------------------------
+
+    -- | Insert the character at current point, extending size of buffer
+    insertB    :: a -> Char -> IO ()
+
+    -- | Insert the list at current point, extending size of buffer
+    insertN    :: a -> [Char] -> IO ()
+
+    ------------------------------------------------------------------------
+
+    -- | Delete the character at current point, shrinking size of buffer
+    deleteB    :: a -> IO ()
+
+    -- | Delete @n@ characters forward from the current point
+    deleteN    :: a -> Int -> IO ()
+
+    -- | Delete @n@ characters backwards from the current point
+    -- deleteNback :: a -> Int -> IO ()
+
+    -- | Delete characters forwards to index
+    -- deleteTo    :: a -> Int -> IO ()
+
+    ------------------------------------------------------------------------
+    -- Line based editing
+
+    -- | Return true if the current point is the start of a line
+    atSol       :: a -> IO Bool
+
+    -- | Return true if the current point is the end of a line
+    atEol       :: a -> IO Bool
+    
+    -- | Move point to start of line
+    moveToSol   :: a -> IO ()
+
+    -- | Offset from start of line
+    offsetFromSol :: a -> IO Int
+
+    -- | Move point to end of line
+    moveToEol   :: a -> IO ()
+
+    -- | Move @x@ chars back, or to the sol, whichever is less
+    moveXorSol  :: a -> Int -> IO ()
+
+    -- | Move @x@ chars forward, or to the eol, whichever is less
+    moveXorEol  :: a -> Int -> IO ()
+
+    -- | Delete (back) to start of line
+    -- deleteToSol :: a -> IO ()
+
+    -- | Delete to end of line
+    deleteToEol :: a -> IO ()
+
+    -- | Delete the entire line the point is in
+    -- deleteLn    :: a -> IO ()
+
+-- ---------------------------------------------------------------------
+--
+-- | Fast buffer based on the implementation of 'Handle' in
+-- 'GHC.IOBase' and 'GHC.Handle'. The buffer itself is stored as a
+-- mutable byte array.
+--
+-- In the concurrent world, buffers are locked during use.  This is done
+-- by wrapping an MVar around the buffer which acts as a mutex over
+-- operations on the buffer.
 --
 
+-- TODO add attributes hash: isModified, isVisible etc
+
 data FBuffer = 
-    FBuffer 
-        FilePath{-immutable-} 
-        Unique  {-immutable-}
-        !(MVar (IORef FBuffer_))
+        FBuffer FilePath        -- ^ immutable name
+                Unique          -- ^ immutable unique key
+                !(MVar (IORef FBuffer_))
 
 data FBuffer_ = FBuffer_ {
         bufBuf   :: RawBuffer   -- ^ a raw byte buffer
-       ,bufPnt   :: !Int        -- ^ current pointer index
-       ,bufEnd   :: !Int        -- ^ index to end of chars
-       ,bufSize  :: !Int        -- ^ max size
+       ,bufPnt   :: !Int        -- ^ current point index
+       ,bufLen   :: !Int        -- ^ length of contents
+       ,bufSize  :: !Int        -- ^ raw buffer size
      }
 
+-- RawBuffer :: #
 type RawBuffer = MutableByteArray# RealWorld
 
---
--- | Buffers are equal if they have the same unique.
---
 instance Eq FBuffer where
    (FBuffer _ u _) == (FBuffer _ v _)     = u == v
 
@@ -130,52 +190,41 @@ instance Show FBuffer where
 --
 
 --
--- | A new 'FBuffer_'
+-- | A new empty 'FBuffer'
 --
 newEmptyFBuffer_ :: RawBuffer -> Int -> FBuffer_
-newEmptyFBuffer_ b sz = 
-    FBuffer_ { bufBuf = b, 
-               bufPnt = 0, -- work out how to deal with empty files
-               bufEnd = 0,
-               bufSize = sz }
+newEmptyFBuffer_ b size = 
+    FBuffer_ { bufBuf = b,
+               bufPnt = (-1),   -- should be undefined,
+               bufLen = 0,
+               bufSize = size }
 
 --
--- | Creates a new mutable byte array (a 'FBuffer_') of specified size
--- (in bytes)
+-- | Creates a new mutable byte array of specified size in bytes
 --
-allocateFBuffer_ :: Int -> IO FBuffer_
-allocateFBuffer_ sz@(I# n) = IO $ \st ->
+allocFBuffer_ :: Int -> IO FBuffer_
+allocFBuffer_ sz@(I# n) = IO $ \st ->
     case newByteArray# n st of 
         (# st', b #) -> (# st', newEmptyFBuffer_ b sz #)
 
 --
--- | get a new 'FBuffer_', 2 * size of @Handle@, by default, filled from
--- @Handle@.
+-- | get a new 'FBuffer', 2 * size of @cs@, by default, filled from cs.
+-- TODO what if it is an empty file? bufPnt isn't right.
 --
-fillNewFBuffer_ :: Handle -> IO (IORef FBuffer_)
-fillNewFBuffer_ hd = do
-    sz <- liftM fromIntegral (hFileSize hd)
-    ss <- hGetContents hd    -- race. could have shrunk.
-    b@(FBuffer_ { bufBuf=buf }) <- allocateFBuffer_ (sz+2048)
-    i <- writeChars buf ss 0
-    newIORef (b { bufEnd = i })
-
---
--- | Fill up a new 'FBuffer' using @f@.
---
-newFBuffer :: FilePath -> IO FBuffer
-newFBuffer f = do
-    hd   <- openFile f ReadMode
-    buf  <- fillNewFBuffer_ hd      -- think about resizing
-    hClose hd
-    mbuf <- newMVar buf
-    u    <- newUnique
-    return (FBuffer f u mbuf)
+newFBuffer :: String -> [Char] -> IO FBuffer
+newFBuffer f cs = do
+    let size = length cs
+    fb@(FBuffer_ b _ _ _) <- allocFBuffer_ (size+2048) -- TODO
+    i   <- writeChars b cs 0
+    let fb' = fb {bufPnt = 0, bufLen = i}
+    ref <- newIORef fb'
+    mv  <- newMVar ref
+    u   <- newUnique
+    return (FBuffer f u mv)
 
 -- ---------------------------------------------------------------------
 --
--- | could use read(), mmap.. or something like that, though this is cute.
--- Return the index of the next point
+-- | Write string into buffer, return the index of the next point
 --
 writeChars :: RawBuffer -> [Char] -> Int -> IO Int
 writeChars _ []     i = return i 
@@ -185,55 +234,39 @@ writeChars b (c:cs) i = writeCharToBuffer b i c >>= writeChars b cs
 -- | read @n@ chars from buffer @b@, starting at @i@
 --
 readChars :: RawBuffer -> Int -> Int -> IO [Char]
+readChars b n p = sequence [ readCharFromBuffer b i | i <- [p .. p+n-1] ]
+
+{-
+-- old version
+readChars :: RawBuffer -> Int -> Int -> IO [Char]
 readChars b n i = do
-    let loop j | j >= (i + n) = return []
-               | otherwise    = do
+    let lim = i + n
+    let loop j | j >= lim  = return []
+               | otherwise = do
                     (c,_) <- readCharFromBuffer b j
                     cs    <- loop $! j+1
                     return (c : cs)
     loop i
+-}
+
+------------------------------------------------------------------------
+--
+-- | Read a 'Char' from a 'RawBuffer'. Return character
+--
+readCharFromBuffer :: RawBuffer -> Int -> IO Char
+readCharFromBuffer slab (I# off) = IO $ \st -> 
+    case readCharArray# slab off st of
+             (# st', c #) -> (# st', C# c #)
 
 --
 -- | Write a 'Char' into a 'RawBuffer', 
 -- Stolen straight from GHC. (Write 8-bit character; offset in bytes)
--- Return new offset.
---
 -- TODO ** we're screwed if the buffer is too small, so realloc
--- Will have to resize if off >= size
 --
 writeCharToBuffer :: RawBuffer -> Int -> Char -> IO Int
 writeCharToBuffer slab (I# off) (C# c) = IO $ \st -> 
     case writeCharArray# slab off c st of
              st' -> (# st', I# (off +# 1#) #)
-
-{-
---
--- | resize buffer if we are near the end.
---
-safeWriteCharToBuffer :: RawBuffer -> Int -> Int -> Char -> IO Int
-safeWriteCharToBuffer slab size off c
-    | off > size - 1 = do slab' <- realloc slab size
-                          writeCharToBuffer slab off c
-    | otherwise      = writeCharToBuffer slab off c
--}
-
---
--- | Read a 'Char' from a 'RawBuffer'. Return character, and inc new offset.
---
-readCharFromBuffer :: RawBuffer -> Int -> IO (Char, Int)
-readCharFromBuffer slab (I# off) = IO $ \st -> 
-    case readCharArray# slab off st of
-             (# st', c #) -> (# st', (C# c, I# (off +# 1#)) #)
-
---
--- | calculate whether a move is in bounds. not threadsafe, so only call
--- from with withMVar.
---
-rawMoveTo :: Int -> FBuffer_ -> FBuffer_
-rawMoveTo i b@(FBuffer_ {bufEnd=end}) =
-        if i < 0 then b{bufPnt=0} 
-                 else if i >= end then b{bufPnt=end-1}
-                                  else b{bufPnt=i}
 
 -- ---------------------------------------------------------------------
 --
@@ -244,191 +277,159 @@ rawMoveTo i b@(FBuffer_ {bufEnd=end}) =
 
 instance Buffer FBuffer where
 
-    -- --------------------------------------------------------------------- 
-    -- "stuff what looks at the buffer"
+    -- newB :: String -> [Char] -> IO a
+    newB = newFBuffer
 
-    -- name :: FBuffer -> String
-    name (FBuffer f _ _) = f
+    -- nameB :: a -> String
+    nameB (FBuffer f _ _) = f
 
-    -- key :: FBuffer -> Unique
-    key (FBuffer _ u _)  = u
+    -- keyB :: a -> Unique
+    keyB (FBuffer _ u _) = u
 
-    -- newBuffer :: FilePath -> IO FBuffer
-    newBuffer = newFBuffer
+    -- sizeB      :: a -> IO Int
+    sizeB (FBuffer _ _ mv) = readMVar mv >>= 
+        readIORef >>= \(FBuffer_ _ _ n _) -> return n
 
-    -- contents  :: FBuffer -> [Char]
-    contents (FBuffer _ _ m) =
-        readMVar m >>= 
-            readIORef >>= \(FBuffer_ {bufBuf=b,bufEnd=n}) ->
-                readChars b n 0
+    -- pointB     :: a -> IO Int
+    pointB (FBuffer _ _ mv) = readMVar mv >>=
+        readIORef >>= \(FBuffer_ _ p _ _) -> return p
 
-    -- size :: FBuffer -> IO Int
-    size (FBuffer _ _ m) =
-        readMVar m >>=
-            readIORef >>= \(FBuffer_ {bufEnd=n}) -> return n
+    -- elemsB     :: a -> IO [Char]
+    elemsB (FBuffer _ _ mv) = readMVar mv >>=
+        readIORef >>= \(FBuffer_ b _ n _) -> readChars b n 0
 
-    -- point :: FBuffer -> IO Int
-    point (FBuffer _ _ m) =
-        readMVar m >>=
-            readIORef >>= \(FBuffer_ {bufPnt=p}) -> return p
+    ------------------------------------------------------------------------
 
-    -- char :: FBuffer -> IO Char
-    char  (FBuffer _ _ m) =
-        readMVar m >>=
-            readIORef >>= \(FBuffer_ b p _ _) ->
-                readCharFromBuffer b p >>= \(c,_) -> return c
+    -- moveTo     :: a -> Int -> IO ()
+    moveTo (FBuffer _ _ mv) i = withMVar mv $ \ref ->
+        modifyIORef ref $ \fb@(FBuffer_ _ _ e _) ->
+            let i' = rawMoveTo i e in fb { bufPnt=i' }
 
-    -- ---------------------------------------------------------------------
-    -- "stuff what messes with the buffer"
 
-    -- moveTo :: Int -> FBuffer -> IO FBuffer{-modified-}
-    moveTo i fb@(FBuffer _ _ m) =
-        withMVar m $ \ref -> do   -- return result of action
-            b <- readIORef ref
-            let b' = rawMoveTo i b
-            writeIORef ref b'
+    -- readB      :: a -> IO Char
+    readB (FBuffer _ _ mv) = withMVar mv $ \ref -> do
+        (FBuffer_ b p _ _) <- readIORef ref
+        readCharFromBuffer b p
+
+    -- readAtB :: a -> Int -> IO Char
+    readAtB (FBuffer _ _ mv) i = withMVar mv $ \ref -> do
+        (FBuffer_ b _ e _) <- readIORef ref
+        let i' = rawMoveTo i e in readCharFromBuffer b i'
+
+    -- writeB :: a -> Char -> IO ()
+    writeB (FBuffer _ _ mv) c = withMVar mv $ \ref ->
+        modifyIORefIO ref $ \fb@(FBuffer_ b p _ _) -> do
+            writeCharToBuffer b p c
             return fb
 
-    -- replace  :: Char -> a -> IO a
-    replace c fb@(FBuffer _ _ m) = 
-        withMVar m $ \ref -> do
-            b@(FBuffer_ {bufBuf=buf,bufPnt=p}) <- readIORef ref        
-            writeChars buf [c] p
-            writeIORef ref b
+    -- writeAtB   :: a -> Int -> Char -> IO ()
+    writeAtB (FBuffer _ _ mv) i c = withMVar mv $ \ref -> 
+        modifyIORefIO ref $ \fb@(FBuffer_ b _ e _) -> do
+            let i' = rawMoveTo i e
+            writeCharToBuffer b i' c
             return fb
 
-    -- insert :: Char -> a -> IO a
-    insert c fb@(FBuffer _ _ m) =
-        withMVar m $ \ref -> do
-            b@(FBuffer_ buf p e _) <- readIORef ref        
-            cs <- readChars buf  (e-p) p
-            i  <- writeChars buf (c:cs)  p
-            writeIORef ref (b{bufPnt=p+1,bufEnd=i}) -- shift point
-            return fb
+    ------------------------------------------------------------------------
 
-     -- delete :: a -> IO a
-    delete = deleteN 1
+    -- insertB :: a -> Char -> IO ()
+    insertB a c = insertN a [c]
 
-     -- delete :: Int -> a -> IO a
-    deleteN n fb@(FBuffer _ _ m) =
-        withMVar m $ \ref -> do
-            b@(FBuffer_ buf p e _) <- readIORef ref        
+    -- insertN :: a -> [Char] -> IO ()
+    insertN (FBuffer _ _ mv) cs = withMVar mv $ \ref ->
+        modifyIORefIO ref $ \fb@(FBuffer_ b p e _) -> do
+            ds <- readChars b (e-p) p
+            i  <- writeChars b (cs++ds) p
+            return $ fb { bufLen=i }
+
+    ------------------------------------------------------------------------
+
+    -- deleteB    :: a -> IO ()
+    deleteB a = deleteN a 1
+
+    -- deleteN    :: a -> Int -> IO ()
+    deleteN (FBuffer _ _ mv) n = withMVar mv $ \ref ->
+        modifyIORefIO ref $ \fb@(FBuffer_ buf p e _) -> do
             cs <- readChars buf (e-p-n) (p+n)
             i  <- writeChars buf cs p  -- index of last char written
             let p' | p == 0    = p     -- go no further!
                    | i == p    = p-1   -- shift back if at eof
                    | otherwise = p
-            writeIORef ref (b{bufPnt=p',bufEnd=i})
-            return fb
-        
--- ---------------------------------------------------------------------
--- | "2-D" primitives implemented over the 'Buffer' primitives
--- Needed for 2-D guis.
+            return $ fb { bufPnt=p', bufLen=i }
 
---
--- | Move to the char /in front of/ the prev \n, or the start of file.
--- If the current char is a \n, we are already there.
---
-gotoPrevLn :: Buffer a => a -> IO a
-gotoPrevLn b = do
-    let loop 0# = return ()
-        loop p  = do c <- char b
-                     if (c == '\n') then right b >> return ()
-                                    else left  b >> loop (p -# 1#)
-    (I# p) <- point b
-    loop (p +# 1#)
-    return b
+    ------------------------------------------------------------------------
 
---
--- | Move to the char after the next '\n'. If the current char is a \n,
--- this means move right 1.
---
-gotoNextLn :: Buffer a => a -> IO a
-gotoNextLn b = do
-    (I# e') <- size b
-    let e = e' -# 1#
-        loop p | p ==# e   = return () -- end of buffer
-               | otherwise = do c <- char b
-                                right b
-                                when (c /= '\n') $ loop (p +# 1#)
-    (I# p) <- point b
-    loop p
-    return b
+    -- atSol       :: a -> IO Bool -- or at start of file
+    atSol a = do p <- pointB a
+                 if p == 0 then return True
+                           else do c <- readAtB a (p-1)
+                                   return (c == '\n')
+
+    -- atEol       :: a -> IO Bool -- or at end of file
+    atEol a = do p <- pointB a
+                 e <- sizeB a
+                 if p == e-1 then return True
+                             else do c <- readB a
+                                     return (c == '\n')
+
+    ------------------------------------------------------------------------ 
+
+    -- moveToSol   :: a -> IO ()
+    moveToSol a = sizeB a >>= moveXorSol a
+
+    -- offsetFromSol :: a -> IO Int
+    offsetFromSol a = do
+        i <- pointB a
+        moveToSol a
+        j <- pointB a
+        moveTo a i
+        return (i - j)
+
+    -- moveToEol   :: a -> IO ()
+    moveToEol a = sizeB a >>= moveXorEol a
+
+    -- moveXorSol  :: a -> Int -> IO ()
+    moveXorSol a x
+        | x <= 0    = return ()
+        | otherwise = do
+            let loop 0 = return ()
+                loop i = do sol <- atSol a
+                            if sol then return () 
+                                   else leftB a >> loop (i-1)
+            loop x
+
+    -- moveXorEol  :: a -> Int -> IO ()
+    moveXorEol a x
+        | x <= 0    = return ()
+        | otherwise = do
+            let loop 0 = return ()
+                loop i = do eol <- atEol a
+                            if eol then return () 
+                                   else rightB a >> loop (i-1)
+            loop x
+
+    ------------------------------------------------------------------------
+
+    -- deleteToEol :: a -> IO ()
+    deleteToEol a = do
+        p <- pointB a
+        moveToEol a
+        q <- pointB a
+        c <- readB a
+        let r = fromEnum $ c /= '\n' -- correct for eof
+        moveTo a p
+        deleteN a (max 0 (q-p+r)) 
 
 ------------------------------------------------------------------------
 
---
--- | Return the /index/ of the start of line char, or the last \n if
--- we're at the end of file, and that char in a \n.
---
-prevLnIx :: Buffer a => a -> IO Int
-prevLnIx b = do
-    p <- point b
-    gotoPrevLn b
-    i <- point b
-    moveTo p b
-    return i
+-- | calculate whether a move is in bounds.
+rawMoveTo :: Int -> Int -> Int
+rawMoveTo i end | i <= 0    = 0
+                | i >= end  = end - 1
+                | otherwise = i
+    
 
 --
--- | Return the /index/ to the start of the next line, or what is the
--- index of the char after the next \n?). Index of eof+1 if last line
+-- | Just like 'modifyIORef', but the action may also do IO
 --
-nextLnIx :: Buffer a => a -> IO Int
-nextLnIx b = do
-    p <- point b
-    gotoNextLn b
-    i <- point b
-    s <- size  b
-    moveTo p   b
-    return $ if s-1 == i then i+1 else i -- next nl past eof (safe, but good?)
-
---
--- | Return the offset (distance to shift) to the start of the previous
--- line. If I'm currently on a \n, this means finding the char in front
--- of the last \n
---
-prevLnOffset :: Buffer a => a -> IO Int
-prevLnOffset b = do
-    j <- point b
-    left b  -- hop over any \n
-    i <- prevLnIx b
-    moveTo j b
-    return (j - i)
-
---
--- | Return the offset to the next line. (the char after the next \n)
--- So if we're at the start of a line, give the offset to the next line
---
-nextLnOffset :: Buffer a => a -> IO Int
-nextLnOffset b = do
-    i <- point b
-    j <- nextLnIx b
-    return (j - i - 1)
-
---
--- | Move forward @x@, or end of line, or end of file, 
--- Return the buffer
---
-nextXorNL :: Buffer a => Int -> a -> IO a
-nextXorNL x b = do
-    n <- nextLnOffset b
-    rightN (min x n) b
-
---
--- | Move back @x@, or to the start of the line.
---
-prevXorLn :: Buffer a => Int -> a -> IO a
-prevXorLn x b = do
-    n <- prevLnOffset b
-    leftN (min x n) b
-
---
--- | Kill all chars to end of line, not including the \n
--- What happens if there is no \n on this line?
--- EOF with no \n sucks.
---
-killToNL :: Buffer a => a -> IO a
-killToNL b = do
-    x <- nextLnOffset b
-    deleteN x b
-
+modifyIORefIO :: IORef a -> (a -> IO a) -> IO ()
+modifyIORefIO ref f = writeIORef ref =<< f =<< readIORef ref

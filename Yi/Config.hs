@@ -41,28 +41,28 @@ settings = Config {
 -- vi-like bindings
 --
 defaultKeyMap :: Key -> Action
-defaultKeyMap (Key 'q')   = e_quit
-defaultKeyMap (Key '\^R') = e_refresh
-defaultKeyMap (Key 'h')   = e_left
-defaultKeyMap (Key 'l')   = e_right
-defaultKeyMap (Key '1')   = e_top
-defaultKeyMap (Key 'G')   = e_bot
-defaultKeyMap (Key 'j')   = e_down
-defaultKeyMap (Key 'k')   = e_up
-defaultKeyMap (Key '^')   = e_sol
-defaultKeyMap (Key '$')   = e_eol
-defaultKeyMap (Key 'r')   = e_replace
-defaultKeyMap (Key 'i')   = e_insert 
-defaultKeyMap (Key 'x')   = e_delete
-defaultKeyMap (Key 'w')   = e_write
-defaultKeyMap (Key 'D')   = e_kill
-defaultKeyMap (Key 'N')   = e_next
-defaultKeyMap (Key 'P')   = e_prev
-defaultKeyMap (KeyUp)     = e_up
-defaultKeyMap (KeyDown)   = e_down
-defaultKeyMap (KeyLeft)   = e_left
-defaultKeyMap (KeyRight)  = e_right
-defaultKeyMap _           = e_noop
+defaultKeyMap (Key 'q')   = quitE
+defaultKeyMap (Key '\^R') = refreshE
+defaultKeyMap (Key 'h')   = leftE
+defaultKeyMap (Key 'l')   = rightE
+defaultKeyMap (Key '1')   = topE
+defaultKeyMap (Key 'G')   = botE
+defaultKeyMap (Key 'j')   = downE
+defaultKeyMap (Key 'k')   = upE
+defaultKeyMap (Key '^')   = solE
+defaultKeyMap (Key '$')   = eolE
+defaultKeyMap (Key 'r')   = replaceE
+defaultKeyMap (Key 'i')   = insertE
+defaultKeyMap (Key 'x')   = deleteE
+defaultKeyMap (Key 'w')   = writeE
+defaultKeyMap (Key 'D')   = killE
+defaultKeyMap (Key 'N')   = nextE
+defaultKeyMap (Key 'P')   = prevE
+defaultKeyMap (KeyUp)     = upE
+defaultKeyMap (KeyDown)   = downE
+defaultKeyMap (KeyLeft)   = leftE
+defaultKeyMap (KeyRight)  = rightE
+defaultKeyMap _           = noopE
 
 {-
 --

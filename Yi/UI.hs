@@ -105,13 +105,16 @@ getKey refresh_fn = do
 --
 drawBuffer :: Buffer a => Int -> Int -> Int -> a -> IO ()
 drawBuffer main w h buf = do
-    ss <- contents buf
+    ss <- elemsB buf
     mapM_ (drawLine w) $ take (h-1) $ (lines ss) ++ repeat "~"
     cset_attr (Curses.setReverse Curses.attr0 True , Curses.Pair (main))
-    drawModeLine w (name buf)
+    drawModeLine w (nameB buf)
     reset
 
+drawBufferXY :: Buffer a => Int -> Int -> a -> IO ()
 drawBufferXY = drawBuffer 1
+
+drawMainBufferXY :: Buffer a => Int -> Int -> a -> IO ()
 drawMainBufferXY = drawBuffer 0
 
 --
@@ -156,8 +159,8 @@ redraw = do
 drawPoint :: Buffer a => Int -> Int -> Int -> Int -> a -> IO ()
 drawPoint y_orig x_orig y_max x_max buf = Curses.withCursor Curses.CursorVisible $ do
 
-    ss <- contents buf -- again :(
-    p  <- point buf
+    ss <- elemsB buf -- again :(
+    p  <- pointB buf
 
     --
     -- calculate the offset of the buffer's point in terms of x and y
