@@ -638,6 +638,9 @@ ex_eval = enter
       fn "reboot"     = rebootE     -- !
       fn "reload"     = reloadE     -- !
 
+      fn "redr"       = refreshE
+      fn "redraw"     = refreshE
+
       fn "u"          = undoE
       fn "undo"       = undoE
       fn "r"          = redoE

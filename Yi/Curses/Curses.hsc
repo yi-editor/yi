@@ -746,6 +746,7 @@ normalise s = map f . filter (/= '\r') s
     
 foreign import ccall unsafe 
     waddnwstr :: Window -> CWString -> CInt -> IO CInt
+
 foreign import ccall unsafe 
     waddch :: Window -> (#type chtype) -> IO CInt
 
@@ -813,6 +814,9 @@ foreign import ccall threadsafe
 
 foreign import ccall threadsafe
     vline  :: Char -> Int -> IO ()
+
+foreign import ccall threadsafe 
+    waddchnstr :: Window -> CString -> CInt -> IO CInt
 
 #endif
 
