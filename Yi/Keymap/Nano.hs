@@ -144,8 +144,7 @@ cmdCharFM = listToFM $
     ,('\^P',        upE)
     ,('\^U',        undoE)
     ,('\^V',        downScreenE)
-    ,('\^X',        do b <- isUnchangedE
-                       if b then quitE else switch2WriteMode)
+    ,('\^X',        do b <- isUnchangedE ; if b then quitE else switch2WriteMode)
     ,('\^Y',        upScreenE)
     ,('\^Z',        suspendE)
     ,('\0',         do moveWhileE (isAlphaNum)      Right
@@ -163,7 +162,7 @@ cmdCharFM = listToFM $
 
     where
         --
-        -- | print a message and switch to sub-mode lexer for Y/N questions
+        -- | print a message and switch to sub-mode lexer for Y\/N questions
         --
         switch2WriteMode :: Action
         switch2WriteMode = do
