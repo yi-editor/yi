@@ -443,7 +443,7 @@ instance Buffer FBuffer where
 -- | calculate whether a move is in bounds.
 inBounds :: Int -> Int -> Int
 inBounds i end | i <= 0    = 0
-               | i >= end  = end - 1
+               | i >= end  = max 0 (end - 1)
                | otherwise = i
     
 
@@ -452,3 +452,4 @@ inBounds i end | i <= 0    = 0
 --
 modifyIORefIO :: IORef a -> (a -> IO a) -> IO ()
 modifyIORefIO ref f = writeIORef ref =<< f =<< readIORef ref
+

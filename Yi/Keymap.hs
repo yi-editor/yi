@@ -104,15 +104,44 @@ key I c      = insertE c    >> rightE
 
 -- ---------------------------------------------------------------------
 -- * Ex mode
+-- TODO not very scalable..
 --
-key E 'w' = do msgE ":w"     -- TODO general scheme for echoing
-               c <- getcE
-               if c == '\13' then writeE else msgClrE
-               beginCommand
-
-key E 'q' = do msgE ":q"
-               c <- getcE
-               if c == '\13' then quitE else msgClrE
-               beginCommand
+key E c = do 
+    msgE (':':[c])       -- TODO general scheme for echoing
+    case c of
+        'w' -> do 
+            c' <- getcE
+            case c' of 
+                '\13' -> viWrite
+                'q'   -> do 
+                    msgE (":wq")
+                    c'' <- getcE       
+                    case c'' of
+                        '\13' -> viWrite >> quitE
+                        _     -> viCmdErr (c:c':[c''])
+                _  -> viCmdErr (c:[c'])
+        'q' -> do
+            c' <- getcE
+            case c' of 
+                '\13' -> quitE
+                _     -> viCmdErr (c:[c'])
+        _ -> viCmdErr [c]
+    beginCommand
 
 key _  _  = noopE
+
+-- ---------------------------------------------------------------------
+-- | Try and write a file in the manner of vi/vim
+--
+viWrite :: Action
+viWrite = do 
+    (f,s,l) <- infoE 
+    writeE
+    msgE $ show f++" "++show l++"L, "++show s ++ "C written"
+
+--
+-- | An invalid command
+--
+viCmdErr :: [Char] -> Action
+viCmdErr s = msgE $ "Not an editor command: "++s
+

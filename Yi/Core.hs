@@ -52,6 +52,7 @@ module Yi.Core (
         getcE,
         msgE,
         msgClrE,
+        infoE,
 
         -- ** File-based actions
         readE,
@@ -81,11 +82,11 @@ module Yi.Core (
    ) where
 
 import Yi.MkTemp
-import Yi.Editor                            ( withBuffer )
+import Yi.Editor                            ( withBuffer_, withBuffer )
 import Yi.Buffer
 import Yi.UI
 import qualified Yi.UI     as UI
-import qualified Yi.Editor as Editor hiding ( withBuffer )
+import qualified Yi.Editor as Editor hiding ( withBuffer_, withBuffer )
 
 import Data.Char    ( isLatin1 )
 
@@ -166,43 +167,43 @@ noopE = return ()
 -- | Move cursor left 1
 --
 leftE :: IO ()
-leftE = withBuffer leftB
+leftE = withBuffer_ leftB
 
 --
 -- | Move cursor right 1
 --
 rightE :: IO ()
-rightE = withBuffer rightB
+rightE = withBuffer_ rightB
 
 --
 -- | Move cursor to origin
 --
 topE :: IO ()
-topE = withBuffer $ \b -> moveTo b 0
+topE = withBuffer_ $ \b -> moveTo b 0
 
 --
 -- | Move cursor to end of buffer
 --
 botE :: IO ()
-botE = withBuffer $ \b -> sizeB b >>= \n -> moveTo b (n-1)
+botE = withBuffer_ $ \b -> sizeB b >>= \n -> moveTo b (n-1)
 
 --
 -- | Move cursor to start of line
 --
 solE :: IO ()
-solE = withBuffer moveToSol
+solE = withBuffer_ moveToSol
 
 --
 -- | Move cursor to end of line
 --
 eolE :: IO ()
-eolE = withBuffer moveToEol
+eolE = withBuffer_ moveToEol
 
 --
 -- | Move cursor down 1 line
 --
 downE :: IO ()
-downE = withBuffer $ \b -> do
+downE = withBuffer_ $ \b -> do
     x <- offsetFromSol b
     moveToEol b
     rightB b        -- now at start of next b
@@ -212,7 +213,7 @@ downE = withBuffer $ \b -> do
 -- | Move cursor up to the same point on the previous line
 --
 upE :: IO ()
-upE = withBuffer $ \b -> do
+upE = withBuffer_ $ \b -> do
     x <- offsetFromSol b
     moveToSol b
     leftB b
@@ -223,13 +224,13 @@ upE = withBuffer $ \b -> do
 -- | Move left @x@ or to start of line
 --
 leftOrSolE :: Int -> IO ()
-leftOrSolE x = withBuffer $ \b -> moveXorSol b x
+leftOrSolE x = withBuffer_ $ \b -> moveXorSol b x
 
 --
 -- | Move right @x@ or to end of line
 --
 rightOrEolE :: Int -> IO ()
-rightOrEolE x = withBuffer $ \b -> moveXorEol b x
+rightOrEolE x = withBuffer_ $ \b -> moveXorEol b x
 
 --
 -- | Read into a *new* buffer the contents of file.
@@ -251,7 +252,7 @@ newE f = readFile f >>= Editor.newBuffer f
 -- | Write current buffer to disk
 --
 writeE :: IO ()
-writeE = withBuffer $ \b -> do
+writeE = withBuffer_ $ \b -> do
         let f = nameB b
         ss <- elemsB b
         h  <- openFile f WriteMode
@@ -282,14 +283,14 @@ prevE = Editor.prevBuffer
 
 -- | Replace buffer at point with next char
 replaceE :: IO ()
-replaceE = withBuffer $ \b -> do
+replaceE = withBuffer_ $ \b -> do
     c <- UI.getKey UI.refresh
     if isLatin1 c then writeB b c
                   else noopE        -- TODO
 
 -- | Insert new character
 insertE :: Char -> IO ()
-insertE c = withBuffer $ \b -> do
+insertE c = withBuffer_ $ \b -> do
     case c of
         '\13'          -> insertB b '\n'
         _ | isLatin1 c -> insertB b c
@@ -297,11 +298,11 @@ insertE c = withBuffer $ \b -> do
 
 -- | Delete character under cursor
 deleteE :: IO ()
-deleteE = withBuffer deleteB
+deleteE = withBuffer_ deleteB
 
 -- | Kill to end of line
 killE :: IO ()
-killE = withBuffer deleteToEol -- >>= Buffer.prevXorLn 1
+killE = withBuffer_ deleteToEol -- >>= Buffer.prevXorLn 1
 
 -- | Draw message at bottom of screen
 msgE :: String -> IO ()
@@ -310,3 +311,11 @@ msgE = UI.drawCmd
 -- | Clear the message line at bottom of screen
 msgClrE  :: IO ()
 msgClrE = UI.clearCmd
+
+-- | File info
+infoE :: IO (FilePath, Int, Int)
+infoE = withBuffer $ \b -> do
+    s  <- sizeB b
+    cs <- elemsB b
+    return (nameB b, s, length $ lines cs )
+

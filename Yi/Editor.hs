@@ -92,12 +92,21 @@ readEditor f = withMVar state $ \ref -> return . f =<< readIORef ref
 --
 -- | Grab the editor state, mutate the contents, and write it back
 --
--- modifyEditor :: Buffer a => (GenEditor a -> IO (GenEditor a)) -> IO ()
-modifyEditor :: (Editor -> IO Editor) -> IO ()
-modifyEditor f = 
-    modifyMVar_ state $ \r -> do
-        readIORef r >>= f >>= writeIORef r
-        return r    -- :: a -> IO a
+-- modifyEditor_ :: Buffer a => (GenEditor a -> IO (GenEditor a)) -> IO ()
+modifyEditor_ :: (Editor -> IO Editor) -> IO ()
+modifyEditor_ f = modifyMVar_ state $ \r -> do
+                    readIORef r >>= f >>= writeIORef r
+                    return r    -- :: a -> IO a
+
+--
+-- | Variation on modifyEditor_ that lets you return a value
+--
+modifyEditor :: (Editor -> IO (Editor,b)) -> IO b
+modifyEditor f = modifyMVar state $ \r -> do
+                    v  <- readIORef r
+                    (v',b) <- f v
+                    writeIORef r v'
+                    return (r,b)
 
 -- ---------------------------------------------------------------------
 --
@@ -106,7 +115,7 @@ modifyEditor f =
 --
 newBuffer :: FilePath -> [Char] -> IO ()
 newBuffer f cs = 
-    modifyEditor $ \e@(Editor{buffers=bs} :: Editor) -> do
+    modifyEditor_ $ \e@(Editor{buffers=bs} :: Editor) -> do
         b <- newB f cs
         return $! e { buffers = addToFM bs (keyB b) b, curkey = (keyB b) }
 
@@ -148,10 +157,18 @@ lookupBuffers e k =
 -- return a modified @e@ (see setBuffer)
 --
 -- withBuffer :: Buffer a => (a -> IO ()) -> IO ()
-withBuffer :: (Buffer' -> IO ()) -> IO ()
-withBuffer f = modifyEditor $ \e -> do 
+withBuffer_ :: (Buffer' -> IO ()) -> IO ()
+withBuffer_ f = modifyEditor_ $ \e -> do 
         f $ lookupBuffers e (curkey e) -- :: IO ()
         return e                       -- nothing else changed
+
+--
+-- | Variation on withBuffer_ that lets you return a value
+--
+withBuffer :: (Buffer' -> IO b) -> IO b
+withBuffer f = modifyEditor $ \e -> do
+    b <- f $ lookupBuffers e (curkey e)
+    return (e, b)
 
 --
 -- | Set current buffer
@@ -159,7 +176,7 @@ withBuffer f = modifyEditor $ \e -> do
 --
 -- setBuffer :: Buffer a => a -> IO ()
 setBuffer :: Buffer' -> IO ()
-setBuffer b = modifyEditor $ \(e :: Editor) -> return $ e {curkey = keyB b}
+setBuffer b = modifyEditor_ $ \(e :: Editor) -> return $ e {curkey = keyB b}
 
 --
 -- | Rotate focus to the next buffer
@@ -184,7 +201,7 @@ bufferAt n = shiftFocus (\_ -> n)
 -- current buffer's index
 --
 shiftFocus :: (Int -> Int) -> IO ()
-shiftFocus f = modifyEditor $ \(e :: Editor) -> do
+shiftFocus f = modifyEditor_ $ \(e :: Editor) -> do
     let bs  = eltsFM (buffers e)
         key = curkey e
     case lookupFM (buffers e) key of
@@ -199,7 +216,7 @@ shiftFocus f = modifyEditor $ \(e :: Editor) -> do
 -- | set the user-defineable key map
 --
 setUserSettings :: Config -> IO ()
-setUserSettings cs = modifyEditor $ \(e :: Editor) -> return $ e { editSettings = cs }
+setUserSettings cs = modifyEditor_ $ \(e :: Editor) -> return $ e { editSettings = cs }
 
 --
 -- | retrieve the user-defineable key map

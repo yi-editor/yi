@@ -145,7 +145,7 @@ drawCmd :: String -> IO ()
 drawCmd s = do
     (h,w) <- Curses.scrSize
     Curses.wMove Curses.stdScr (h-1) 0
-    Curses.wAddStr Curses.stdScr s
+    drawLine (w-1) s
 
 clearCmd :: IO ()
 clearCmd = do
