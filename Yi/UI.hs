@@ -61,7 +61,9 @@ import Yi.Window
 import Yi.Curses hiding ( refresh, Window )
 import qualified Yi.Curses as Curses
 
+import Data.Maybe
 import Data.List
+import Control.Monad                    ( when )
 import qualified Control.Exception      ( catch )
 
 --
@@ -115,7 +117,8 @@ redraw = do
 
     -- position cursor
     w <- getWindow
-    drawCursor (cursor w)
+    when (isJust w) $ 
+        drawCursor (cursor $ fromJust w)
 
 --
 -- | Draw a screen to the screen

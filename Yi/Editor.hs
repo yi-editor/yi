@@ -57,7 +57,7 @@ data Buffer a => GenEditor a =
         buffers   :: FiniteMap Unique a         -- ^ all the buffers
        ,windows   :: FiniteMap Unique Window    -- ^ all the windows
        ,cmdline   :: !String                    -- ^ the command line
-       ,curwin    :: Unique                     -- ^ the window with focus
+       ,curwin    :: Maybe Unique               -- ^ the window with focus
        ,curkeymap :: (Char -> IO())             -- ^ user-configurable keymap
     }
 
@@ -89,8 +89,8 @@ emptyEditor = Editor {
         buffers      = emptyFM 
        ,windows      = emptyFM
        ,cmdline      = []           -- for now
-       ,curwin       = error "No focused window"
-       ,curkeymap    = error "No keymap set"
+       ,curwin       = Nothing
+       ,curkeymap    = error "no keymap defined"
     }
 
 -- 
@@ -121,20 +121,22 @@ modifyEditor f = modifyMVar state $ \r -> do
 --
 -- | Create a new buffer filling with contents of file.
 --
-hNewBuffer :: FilePath -> IO ()
+hNewBuffer :: FilePath -> IO Buffer'
 hNewBuffer f = 
-    modifyEditor_ $ \e@(Editor{buffers=bs} :: Editor) -> do
+    modifyEditor $ \e@(Editor{buffers=bs} :: Editor) -> do
         b <- hNewB f
-        return $! e { buffers = addToFM bs (keyB b) b }
+        let e' = e { buffers = addToFM bs (keyB b) b }
+        return (e', b)
 
 --
 -- | Create and fill a new buffer, using contents of string.
 --
-stringToNewBuffer :: FilePath -> String -> IO ()
+stringToNewBuffer :: FilePath -> String -> IO Buffer'
 stringToNewBuffer f cs =
-    modifyEditor_ $ \e@(Editor{buffers=bs} :: Editor) -> do
+    modifyEditor $ \e@(Editor{buffers=bs} :: Editor) -> do
         b <- newB f cs
-        return $! e { buffers = addToFM bs (keyB b) b }
+        let e' = e { buffers = addToFM bs (keyB b) b }
+        return (e', b)
 
 --
 -- | return the buffers we have
@@ -166,15 +168,37 @@ findBufferWith e k =
 getBufferWith :: Unique -> IO Buffer'
 getBufferWith u = readEditor $ \(e :: Editor) -> findBufferWith e u
 
+-- | Return the next buffer
+nextBuffer :: IO Buffer'
+nextBuffer = shiftBuffer (+1)
+
+-- | Return the prev buffer
+prevBuffer :: IO Buffer'
+prevBuffer = shiftBuffer (subtract 1)
+
+-- | Return the nth buffer in the buffer list, module buffer count
+bufferAt :: Int -> IO Buffer'
+bufferAt n = shiftBuffer (const n)
+
+-- | Return the buffer using a function applied to the current window's
+-- buffer's index.
+shiftBuffer :: (Int -> Int) -> IO Buffer'
+shiftBuffer f = readEditor $ \(e :: Editor) ->
+    let bs  = eltsFM $ buffers e
+        win = findWindowWith e (curwin e)
+        buf = findBufferWith e (bufkey win)
+    in case elemIndex buf bs of
+        Nothing -> error "Editor: current buffer has been lost."
+        Just i -> let l = length bs in bs !! ((f i) `mod` l)
+
 ------------------------------------------------------------------------
 -- | Window manipulation
 
 -- | Create a new window onto this buffer
 -- TODO totally fails to take into account the position of other windows
 --
-newWindow :: Unique -> (Int,Int) -> IO Window
-newWindow u sz = modifyEditor $ \e -> do
-    let b = findBufferWith e u
+newWindow :: Buffer' -> (Int,Int) -> IO Window
+newWindow b sz = modifyEditor $ \e -> do
     w <- emptyWindow b sz
     let e' = e { windows = addToFM (windows e) (key w) w }
     return (e', w)
@@ -185,10 +209,10 @@ newWindow u sz = modifyEditor $ \e -> do
 -- onto that buffer. If this is the focused window, switch to another
 -- one.
 --
-deleteWindow :: Unique -> IO ()
-deleteWindow u = modifyEditor_ $ \e -> do
-    let w  = findWindowWith e u
-        ws = delFromFM (windows e) (key w)
+deleteWindow :: (Maybe Window) -> IO ()
+deleteWindow Nothing  = return ()
+deleteWindow (Just w) = modifyEditor_ $ \e -> do
+    let ws = delFromFM (windows e) (key w)
     return $ e { windows = ws }
 
 -- ---------------------------------------------------------------------
@@ -201,14 +225,18 @@ getWindows = readEditor $ \e -> eltsFM $ windows e
 --
 -- | Get current window
 --
-getWindow :: IO Window
-getWindow = readEditor $ \e -> findWindowWith e (curwin e)
+getWindow :: IO (Maybe Window)
+getWindow = readEditor $ \e -> 
+                case curwin e of    
+                    Nothing -> Nothing
+                    k       -> Just $ findWindowWith e k
 
 --
 -- | Set current window
 --
 setWindow :: Window -> IO ()
-setWindow w = modifyEditor_ $ \(e :: Editor) -> return $ e {curwin = key w}
+setWindow w = modifyEditor_ $ \(e :: Editor) -> 
+                    return $ e {curwin = Just $ key w}
 
 --
 -- | How many windows do we have
@@ -219,8 +247,9 @@ sizeWindows = readEditor $ \e -> length $ eltsFM (windows e)
 --
 -- | Find the window with this key
 --
-findWindowWith :: Editor -> Unique -> Window
-findWindowWith e k = 
+findWindowWith :: Editor -> (Maybe Unique) -> Window
+findWindowWith _ Nothing  = error "Editor: no key"
+findWindowWith e (Just k) = 
     case lookupFM (windows e) k of
             Just w  -> w
             Nothing -> error "Editor: no window has this key"
@@ -282,10 +311,10 @@ shiftFocus f = modifyEditor_ $ \(e :: Editor) -> do
         k   = curwin e
         win = findWindowWith e k
     case elemIndex win ws of
-        Nothing -> error "Editor: current buffer has been lost."
+        Nothing -> error "Editor: current window has been lost."
         Just i -> let l = length ws
                       w = ws !! ((f i) `mod` l)
-                  in return $ e { curwin = key w }
+                  in return $ e { curwin = Just $ key w }
 
 -- ---------------------------------------------------------------------
 -- | Given a keymap function, set the user-defineable key map to that function

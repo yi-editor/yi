@@ -104,9 +104,8 @@ key C '>' = do c <- getcE
 key C '~' = do c <- readE
                let c' = if isUpper c then toLower c else toUpper c
                writeE c'
-{-
-key C '\23' = nextE
--}
+
+key C '\23' = nextWinE
 
 -- ---------------------------------------------------------------------
 -- * Insert mode
@@ -117,7 +116,7 @@ key I c | c == keyPPage = upScreenE
         | c == keyNPage = downScreenE
 
 key I c  = do 
-        (_,s) <- infoE
+        (_,s) <- bufInfoE
         when (s == 0) $ insertE '\n' -- vi behaviour at start of file
         insertE c
 
@@ -146,6 +145,11 @@ key E k = msgClrE >> loop [k]
     execEx "q"   = quitE
     execEx "q!"  = quitE
     execEx "wq"  = viWrite >> quitE
+    execEx "n"   = nextBufW
+    execEx "N"   = nextBufW
+    execEx "p"   = prevBufW
+    execEx "P"   = prevBufW
+    execEx ('e':' ':f) = fnewE f
     execEx cs    = viCmdErr cs
 
     deleteWith []     = msgClrE >> msgE ":"      >> loop []
@@ -159,7 +163,7 @@ key _  _  = nopE
 --
 viWrite :: Action
 viWrite = do 
-    (f,s) <- infoE 
+    (f,s) <- bufInfoE 
     fwriteE
     msgE $ show f++" "++show s ++ "C written"
 
