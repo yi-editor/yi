@@ -11,14 +11,16 @@ You can get the latest yi source from its darcs repository:
         darcs get http://www.cse.unsw.edu.au/~dons/yi
 
 You will need GHC 6 (The Glorious/Glasgow Haskell Compilation System)
-and GNU make to compile yi. On OpenBSD you'll need ghc-6.2.2
-or greater, which contains a patch for the System.Posix.User library.
+and GNU make to compile yi. On OpenBSD you'll need ghc-6.2.2 or greater, 
+which contains a patch for the System.Posix.User library.
 
 You also need a recent snapshot version of hs-plugins, the Haskell
 dynamic loader library. You can get this from:
+
         http://www.cse.unsw.edu.au/~dons/hs-plugins/
-The `heatwave' snapshot is suitable (released 20041014). Make sure you
-"make", "make install" and "make register" the library.
+
+You currently need to use a cvs snapshot of hs-plugins, from Oct 26 2004 or 
+later. Make sure you "make", "make install" and "make register" the library.
 
 Once you have ensured that you have these programs and libraries
 installed:
@@ -75,4 +77,3 @@ Tuomo Valkonen.
 
 The Curses interface code is mostly by John Meacham;see the LICENSE
 for details. Tuomo and I have made some minor modifications.
-

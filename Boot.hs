@@ -145,6 +145,8 @@ doArgs argv = case getOpt Permute options argv of
 -- Jump to the ~/.yi/ directory, in case we are running in-place, to
 -- prevent bogus module dependencies.
 --
+-- NB need hs-plugins >= Oct 26 2004, due to bug in recompilation checking
+--
 compile :: FilePath -> IO (Maybe FilePath)
 compile src = do
     build_dir <- get_config_dir
