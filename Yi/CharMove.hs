@@ -72,6 +72,7 @@ import Yi.Regex
 import Data.Char
 import Data.FiniteMap
 import Control.Monad        ( when, replicateM_ )
+import Control.Monad.Fix    ( fix )
 import Control.Exception    ( assert )
 
 -- For word completion:
@@ -177,11 +178,11 @@ firstNonSpaceE :: Action
 firstNonSpaceE = do
     withWindow_ $ \w b -> do
         moveToSol b
-        let loop = do eol <- atEol b
-                      if eol then return ()
-                             else do k <- readB b
-                                     when (isSpace k) $ rightB b >> loop
-        loop
+        fix $ \loop -> do 
+            eol <- atEol b
+            if eol then return ()
+                   else do k <- readB b
+                           when (isSpace k) (rightB b >> loop)
         update w b
     getPointE >>= gotoPointE
 
@@ -249,19 +250,15 @@ moveWhile_ :: (Char -> Bool)
 
 moveWhile_ f dir w b = do
     eof <- sizeB b
-    let loop = case dir () of  {
-        Right _ -> let loop' = do p <- pointB b
-                                  when (p < eof - 1) $ do
-                                  x <- readB b
-                                  when (f x) $ rightB b >> loop'
-                   in loop' ;
-        Left  _ -> let loop' = do p <- pointB b
-                                  when (p > 0) $ do
-                                  x <- readB b
-                                  when (f x) $ leftB b >> loop'
-                   in loop'
-    }
-    loop
+    case dir () of
+        Right _ -> fix $ \loop' -> do p <- pointB b
+                                      when (p < eof - 1) $ do
+                                      x <- readB b
+                                      when (f x) $ rightB b >> loop'
+        Left  _ -> fix $ \loop' -> do p <- pointB b
+                                      when (p > 0) $ do
+                                      x <- readB b
+                                      when (f x) $ leftB b >> loop'
     return w
 
 ------------------------------------------------------------------------
