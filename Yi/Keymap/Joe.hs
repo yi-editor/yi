@@ -25,7 +25,7 @@ module Yi.Keymap.Joe (keymap) where
 import Yi.Core
 import Yi.Editor            ( Action )
 import Yi.Curses            ( keyBackspace )
-import Yi.CharMove          ( skipWordE, bskipWordE )
+import Yi.CharMove
 
 import Data.Maybe
 --import Data.List            ( (\\) )
@@ -67,21 +67,22 @@ kmap=[
     "\^U"  ++> upScreenE,
     "\^V"  ++> downScreenE,
     "\^D"  ++> deleteE,
-    "\BS"  ++> bsE, 
+    "\BS"  ++> bdeleteE, 
     "\^J"  ++> killEolE,
+    "\^[J" ++> killSolE,
     "\^Y"  ++> killLineE,
     "\^_"  ++> undoE,
     "\^^"  ++> redoE,
     "\^X"  ++> skipWordE,
     "\^Z"  ++> bskipWordE,
+    "\^W"  ++> killWordE,
+    "\^O"  ++> bkillWordE,
     "\^KR" &&> queryInsertFileE,
     -- Search
     "\^KF" &&> querySearchRepE,
     "\^L"  &&> nextSearchRepE,
     "\^KL" &&> queryGotoLineE,
     -- Buffers
-    "\^KN" ++> nextBufW,
-    "\^KP" ++> prevBufW,
     "\^KS" &&> queryBufW,
     "\^C"  ++> closeE,
     "\^KD" &&> querySaveE,
@@ -90,8 +91,18 @@ kmap=[
     --"\^KK" ++> copyE,
     --"\"KY" ++> cutE,
     --"\"KC" ++> pasteE,
+    --"\"KW" &&> querySaveSelectionE,
+    --"\"K/" &&> queryFilterSelectionE,
+    
+    -- Windows
+    "\^KN" ++> nextBufW,
+    "\^KP" ++> prevBufW,
+    "\^KS" ++> splitE,
+    "\^KO" ++> nextWinE,
+    "\^C"  ++> closeE, -- Wrong, should close buffer
     
     -- Global
+    "\^R"  ++> refreshE,
     "\^KX" ++> quitE,
     "\^KZ" ++> suspend,
     "\^KE" &&> queryNewE
@@ -99,11 +110,16 @@ kmap=[
 
 -- Extra actions
 
-bsE, killEolE, killLineE, undefE :: Action
+killEolE, killSolE, killLineE, undefE :: Action
 
-bsE = leftE >> deleteE
 killEolE = killE
 killLineE = solE >> killE
+killSolE = do
+    p <- getPointE
+    solE
+    pn <- getPointE
+    deleteNE (p-pn)
+
 undefE = errorE $ "Key sequence not defined."
 
 getFileE :: IO FilePath
