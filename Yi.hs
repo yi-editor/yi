@@ -25,7 +25,7 @@ import qualified Yi.Editor  as Editor
 import qualified Yi.Core    as Core 
 import qualified Yi.Style   as Style
 
-import qualified Yi.Keymap.Vi  as Keymap
+import qualified Yi.Keymap.Vim as Keymap
 
 import Data.IORef
 import Control.Exception        ( bracket_ )

@@ -42,7 +42,7 @@ import Yi.Style
 import Yi.UI                      hiding ( plus ) -- so we can see key defns
 import Yi.Editor                         ( Config(..) )
 import Yi.Ctk.Lexers              hiding ( Action )
-import qualified Yi.Keymap.Vi as Default ( keymap )
+import qualified Yi.Keymap.Vim as Default ( keymap )
 
 settings :: Config
 settings = Config { keymap = Default.keymap, style = ui }
