@@ -33,7 +33,7 @@ module Yi.Yi (
         module Yi.Core,
         module Yi.UI,
         module Yi.Style,
-        module Yi.Ctk.Lexers,
+        module Yi.Lexers,
  
    ) where
 
@@ -41,7 +41,7 @@ import Yi.Core
 import Yi.Style
 import Yi.UI                      hiding ( plus ) -- so we can see key defns
 import Yi.Editor                         ( Config(..) )
-import Yi.Ctk.Lexers              hiding ( Action )
+import Yi.Lexers                  hiding ( Action )
 import qualified Yi.Keymap.Vim as Default ( keymap )
 
 settings :: Config

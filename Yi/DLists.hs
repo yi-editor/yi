@@ -27,7 +27,7 @@
 --- TODO ----------------------------------------------------------------------
 --
 
-module Yi.Ctk.DLists (
+module Yi.DLists (
         DList, openDL, zeroDL, unitDL, snocDL, joinDL, closeDL
     ) where
 

@@ -29,7 +29,7 @@ import Prelude hiding   ( any )
 import Yi.Core
 import Yi.Editor            ( Action )
 import Yi.UI         hiding ( plus )
-import Yi.Ctk.Lexers hiding ( Action )
+import Yi.Lexers     hiding ( Action )
 
 import Data.Maybe           ( fromMaybe )
 import Data.List            ( (\\) )

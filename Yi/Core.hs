@@ -96,6 +96,7 @@ module Yi.Core (
         killE,          -- :: Action
         readE,          -- :: IO Char
         readLnE,        -- :: IO String
+        readNM,         -- :: Int -> Int -> IO String
         readRestOfLnE,  -- :: IO String
         writeE,         -- :: Char -> Action
 
@@ -417,6 +418,10 @@ readLnE = withWindow $ \w b -> do
     j <- indexOfEol b
     s <- nelemsB b (j-i) i
     return (w,s)
+
+-- | Read from - to
+readNM :: Int -> Int -> IO String
+readNM i j = withWindow $ \w b -> nelemsB b (j-i) i >>= \s -> return (w,s)
 
 -- | Read from point to end of line
 readRestOfLnE :: IO String

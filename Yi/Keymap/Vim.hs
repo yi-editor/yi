@@ -26,7 +26,7 @@ module Yi.Keymap.Vim ( keymap, keymapPlus, VimMode ) where
 import Yi.Core
 import Yi.Editor            ( Action )
 import Yi.UI         hiding ( plus )
-import Yi.Ctk.Lexers hiding ( Action )
+import Yi.Lexers     hiding ( Action )
 
 import Prelude       hiding ( any )
 
@@ -112,9 +112,27 @@ rep_mode = rep_char >||< rep2cmd
 ex_mode :: VimMode
 ex_mode = ex_char >||< ex_edit >||< ex_hist >||< ex_eval >||< ex2cmd
 
+------------------------------------------------------------------------
 -- util
+
 with :: Action -> Maybe (Either e Action)
 with a = (Just (Right a))
+
+-- 
+-- lookup an fm, getting an action otherwise nopE, and apply it to an
+-- integer repetition argument.
+--
+getCmdFM :: Char -> Int -> FiniteMap Char (Int -> Action) -> Action
+getCmdFM c i fm = let mfn = lookupFM fm c in (fromMaybe (const nopE) mfn) i
+
+--
+listToMInt :: [Char] -> Maybe Int
+listToMInt [] = Nothing
+listToMInt cs = Just $ read cs
+
+--
+toInt :: [Char] -> Int
+toInt cs = fromMaybe 1 (listToMInt (reverse cs))
 
 ------------------------------------------------------------------------
 --
@@ -131,25 +149,29 @@ lex_count = digit
 
 -- ---------------------------------------------------------------------
 -- | Movement commands
-
+--
+-- The may be invoked directly, or sometimes as arguments to other
+-- /operator/ commands (like d).
+--
 cmd_move :: VimMode
 cmd_move = move_chr
-    `meta` \[c] st@St{acc=count} -> 
-        let cnt= if null count then Nothing else Just (read $ reverse count)
-            i  = fromMaybe 1 cnt
-            fn = getCmd c i
-        in (with (msgClrE >> fn), st{acc=[]}, Just $ cmd st)
-    where
-        move_chr   = alt $ keysFM moveCmdFM
-        getCmd c i = let mfn = lookupFM moveCmdFM c
-                     in flip ($) i (fromMaybe (const nopE) mfn)
+    `meta` \[c] st@St{acc=cnt} -> 
+        (with (msgClrE >> (fn c cnt)), st{acc=[]}, Just $ cmd st)
+
+    where move_chr = alt $ keysFM moveCmdFM
+          fn c cs  = case c of
+                         -- 'G' command needs to know Nothing count
+                        'G' -> case listToMInt cs of 
+                                        Nothing -> botE >> solE
+                                        Just n  -> gotoLnE n
+
+                        _  -> getCmdFM c (toInt cs) moveCmdFM
 
 --
--- movement command
+-- movement commands
 --
 moveCmdFM :: FiniteMap Char (Int -> Action)
 moveCmdFM = listToFM $
-
 -- left/right
     [('h',          left)
     ,('\^H',        left)
@@ -180,6 +202,9 @@ moveCmdFM = listToFM $
     ,('H',          \i -> downFromTosE (i - 1))
     ,('M',          const middleE)
     ,('L',          \i -> upFromBosE (i - 1))
+
+-- bogus entry
+    ,('G',          const nopE)
     ]
     where
         left  i = leftOrSolE i
@@ -187,19 +212,16 @@ moveCmdFM = listToFM $
         up    i = if i > 100 then gotoLnFromE (-i) else replicateM_ i upE
         down  i = if i > 100 then gotoLnFromE i    else replicateM_ i downE
 
-------------------------------------------------------------------------
 --
--- Other command mode functions
+-- | Other command mode functions
 --
 cmd_eval :: VimMode
-cmd_eval = (cmd_char >|< 
-            (char 'r' +> anyButEscOrDel) >|<
-            string ">>" >|< string "<<" >|< 
-            string "ZZ" >|< string "yy")
+cmd_eval = (cmd_char >|<
+           (char 'r' +> anyButEscOrDel) >|<
+           (string ">>" >|< string "<<" >|< string "ZZ" ))
 
     `meta` \lexeme st@St{acc=count} -> 
-        let cnt= if null count then Nothing else Just (read $ reverse count)
-            i  = fromMaybe 1 cnt
+        let i  = toInt count
             fn = case lexeme of
                     "ZZ"    -> viWrite >> quitE
                     -- todo: fix the unnec. refreshes that happen
@@ -211,9 +233,11 @@ cmd_eval = (cmd_char >|<
                                         readE >>= \k -> 
                                             when (isSpace k) deleteE 
                                   firstNonSpaceE
-                    "yy"    -> readLnE >>= setRegE
+
                     'r':[x] -> writeE x
-                    [c]     -> getCmd c i
+
+                    [c]     -> getCmdFM c i cmdCmdFM -- normal commands
+
                     _       -> undef (head lexeme)
 
         in (with (msgClrE >> fn), st{acc=[]}, Just $ cmd st)
@@ -221,10 +245,6 @@ cmd_eval = (cmd_char >|<
     where
         anyButEscOrDel = alt $ any' \\ ('\ESC':delete')
         cmd_char       = alt $ keysFM cmdCmdFM
-
-        getCmd c i = let mfn = lookupFM cmdCmdFM c
-                     in flip ($) i (fromMaybe (const $ undef c) mfn)
-                    
         undef c = not_implemented c
 
 --
@@ -241,77 +261,98 @@ cmdCmdFM = listToFM $
     ,('X',      (\i -> leftOrSolE i >> replicateM_ i deleteE))
     ,('n',      const (searchE Nothing))
     ,('x',      deleteNE)
-    ,('~',      (\i -> 
-                 let fn = do c' <- readE
-                             let c'' = if isUpper c' 
-                                       then toLower c' 
-                                       else toUpper c'
-                             writeE c''
-                             rightE
-                 in replicateM_ i fn))
-
-    -- hmm. 'G' commands need a bit more work
---  ,('G',      (case c of Nothing -> botE >> solE
---                         Just n  -> gotoLnE n))
-
-    ,('p',      (\_ -> getRegE >>= \s -> 
-                        eolE >> insertE '\n' >> 
-                            mapM_ insertE s >> solE))
+    ,('p',      (\_ -> getRegE >>= \s ->
+                        eolE >> insertE '\n' >>
+                            mapM_ insertE s >> solE)) -- ToDo insertNE
     ,(keyPPage, upScreensE)
     ,(keyNPage, downScreensE)
     ,(keyLeft,  const leftE)          -- not really vi, but fun
     ,(keyRight, const rightE)
     ]
 
-------------------------------------------------------------------------
 --
 -- | So-called 'operators', which take movement actions as arguments.
 --
--- An alternative lexer is needed for text-change characters that take
--- movement commands as arguments. Like so:
---      d2w
+-- How do we achive this? We look for the known operator chars
+-- (op_char), followed by digits and one of the known movement commands.
+-- We then consult the lexer table with digits++move_char, to see what
+-- movement commands they correspond to. We then return an action that
+-- performs the movement, and then the operator. For example, we 'd'
+-- command stores the current point, does a movement, then deletes from
+-- the old to the new point.
 --
--- op-semantics: p <- point ; move cursor 2 words. q <- point; deleteN p q
---
--- remember. 'd' could have arguments.
---
--- So, if followed by a move_char, just execute the movement, then
--- perform on range from p to new p.
---
--- Lots ToDo yet. Perhaps a special lexer just for accumulating more
--- numbers and characters. Or a flag in the state (urgh)
---
--- command and motion keys should be broken into different lexers.
--- need to have a motion mode, that includes the int repeat lexer.
+-- We thus elegantly achieve things like 2d4j (2 * delete down 4 times)
+-- Lazy lexers - you know we're right (tm).
 --
 cmd_op :: VimMode
-cmd_op = (op_char +> move_chr >|< string "dd")
+cmd_op =((op_char +> digit `star` move_chr) >|< 
+         (string "dd" >|< string "yy"))
+
     `meta` \lexeme st@St{acc=count} -> 
-        let c  = if null count then Nothing else Just (read $ reverse count)
-            i  = fromMaybe 1 c
-            fn = getCmd lexeme c i
+        let i  = toInt count
+            fn = getCmd lexeme i
         in (with (msgClrE >> fn), st{acc=[]}, Just $ cmd st)
+
     where
-        op_char  = alt "d"             -- just for now
+        op_char  = alt $ keysFM opCmdFM
         move_chr = alt $ keysFM moveCmdFM
 
-        getCmd :: [Char] -> (Maybe Int) -> Int -> Action
-        getCmd lexeme _c i = case lexeme of
+        getCmd :: [Char] -> Int -> Action
+        getCmd lexeme i = case lexeme of
             -- shortcuts
-            "dd" -> solE >> killE >> deleteE
+                "dd" -> solE >> killE >> deleteE
+                "yy" -> readLnE >>= setRegE
 
-            -- todo: yank
-            ('d':m:[]) -> replicateM_ i $ do
-                               p <- getPointE
-                               foldr (>>) nopE (getMove m)
-                               q <- getPointE
-                               when (p < q) $ gotoPointE p
-                               deleteNE (abs (q - p))
-            _ -> nopE
+            -- normal ops
+                c:ms -> getOpCmd c i ms
+                _    -> nopE
 
-        -- no idea if this state is right, yet.
-        -- movement command to perform .. ToDo should be (cmd st)
-        getMove c = let (as,_,_) = execLexer cmd_move ([c], defaultSt) in as
+        getOpCmd c i ms = (fromMaybe (\_ _ -> nopE) (lookupFM opCmdFM c)) i ms
+
+        -- | operator (i.e. movement-parameterised) actions
+        opCmdFM :: FiniteMap Char (Int -> [Char] -> Action)
+        opCmdFM = listToFM $ 
+            [('d', \i m -> replicateM_ i $ do
+                              (p,q) <- withPointMove m
+                              deleteNE (abs (q - p)) 
+             ),
+             ('y', \_ m -> do (p,q) <- withPointMove m
+                              s <- (if p < q then readNM p q else readNM q p)
+                              setRegE s -- ToDo registers not global.
+             )
+            ,('~', \_ m -> do (p,q) <- withPointMove m
+                              let lim = max p q
+                                  loop =  do r <- getPointE
+                                             when (r < lim) $ do
+                                               c' <- readE
+                                               let c'' = if isUpper c' 
+                                                         then toLower c' 
+                                                         else toUpper c'
+                                               writeE c''
+                                               rightE
+                                               loop
+                              loop
+                     )
+                    ]
+
+        --
+        -- A strange, useful action. Save the current point, move to
+        -- some location specified by the sequence @m@, then return.
+        -- Return the current, and remote point.
+        --
+        withPointMove :: [Char] -> IO (Int,Int)
+        withPointMove ms = do p <- getPointE
+                              foldr (>>) nopE (getMove ms)
+                              q <- getPointE
+                              when (p < q) $ gotoPointE p
+                              return (p,q)
+
+        --
+        -- lookup movement command to perform .. ToDo should be (cmd st)?
+        --
+        getMove cs = let (as,_,_) = execLexer (cmd_move >||< lex_count) 
+                                              (cs, defaultSt) 
+                     in as
 
 --
 -- | Switch to another vim mode.

@@ -115,7 +115,7 @@
 --    around.
 --
 
-module Yi.Ctk.Lexers (
+module Yi.Lexers (
 
    Regexp, Lexer, Action, 
    epsilon, char, (+>), 
@@ -125,7 +125,7 @@ module Yi.Ctk.Lexers (
 
    ) where 
 
-import Yi.Ctk.DLists    (zeroDL, snocDL, closeDL)
+import Yi.DLists        (zeroDL, snocDL, closeDL)
 
 import Prelude hiding   (last)
 import Maybe            (fromMaybe)
