@@ -2,10 +2,17 @@
 Design plan:
         - ui type class
         - clean up ncurses code    
-        - how a user can override a single binding of a default map
  
 Build system:
         - write a configure script
         - check how to install it from a port script
         - think about how to do a testsuite, unit testing
         - store cpp options in a file, instead of on the command line
+
+v0.1:
+        - syn hl
+        - undo/redo in vi mode
+        - build on mac os x
+        - colours
+        - bind keymap lexers to windows
+        - :eval, :type, .. etc. ghci stuff
