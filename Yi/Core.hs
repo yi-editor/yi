@@ -48,15 +48,15 @@ module Yi.Core (
         noopE,
         nextE,
         prevE,
-        newE,
         getcE,
         msgE,
         msgClrE,
         infoE,
 
         -- ** File-based actions
-        readE,
-        writeE,
+        fnewE,
+        freadE,
+        fwriteE,
 
         -- ** Buffer point movement
         leftE,
@@ -71,7 +71,8 @@ module Yi.Core (
         botE,
 
         -- ** Buffer editing
-        replaceE,
+        readE,
+        writeE,
         insertE,
         deleteE,
         killE,
@@ -107,12 +108,12 @@ startE confs mfs = do
     Editor.setUserSettings confs
     Control.Exception.handleJust (ioErrors) (\e -> msgE (show e)) $ do
         case mfs of
-            Just fs -> mapM_ newE fs
+            Just fs -> mapM_ fnewE fs
             Nothing -> do               -- vi-like behaviour, just for now.
                 mf <- mkstemp "/tmp/yi.XXXXXXXXXX" 
                 case mf of
                     Nothing    -> error "Core.startE: mkstemp failed"
-                    Just (f,h) -> hClose h >> newE f
+                    Just (f,h) -> hClose h >> fnewE f
     refreshE
 
 --
@@ -235,8 +236,8 @@ rightOrEolE x = withBuffer_ $ \b -> moveXorEol b x
 --
 -- | Read into a *new* buffer the contents of file.
 --
-newE  :: FilePath -> IO ()
-newE f = do
+fnewE  :: FilePath -> IO ()
+fnewE f = do
     e  <- doesFileExist f
     if e then Editor.hNewBuffer f
          else Editor.stringToNewBuffer f []
@@ -244,14 +245,14 @@ newE f = do
 --
 -- | Write current buffer to disk
 --
-writeE :: IO ()
-writeE = withBuffer_ $ \b -> hPutB b (nameB b)
+fwriteE :: IO ()
+fwriteE = withBuffer_ $ \b -> hPutB b (nameB b)
 
 --
 -- | Read file into buffer starting a current point
 --
-readE :: FilePath -> IO ()
-readE = error "readE is undefined"
+freadE :: FilePath -> IO ()
+freadE = error "readE is undefined"
 
 ------------------------------------------------------------------------
 
@@ -269,13 +270,6 @@ prevE = Editor.prevBuffer
 
 ------------------------------------------------------------------------
 
--- | Replace buffer at point with next char
-replaceE :: IO ()
-replaceE = withBuffer_ $ \b -> do
-    c <- UI.getKey UI.refresh
-    if isLatin1 c then writeB b c
-                  else noopE        -- TODO
-
 -- | Insert new character
 insertE :: Char -> IO ()
 insertE c = withBuffer_ $ \b -> do
@@ -291,6 +285,17 @@ deleteE = withBuffer_ deleteB
 -- | Kill to end of line
 killE :: IO ()
 killE = withBuffer_ deleteToEol -- >>= Buffer.prevXorLn 1
+
+-- | Read the char under the cursor
+readE :: IO Char
+readE = withBuffer readB
+
+-- | Write char to point
+writeE :: Char -> IO ()
+writeE c = withBuffer_ $ \b -> 
+                if isLatin1 c then writeB b c else noopE -- TODO
+
+------------------------------------------------------------------------
 
 -- | Draw message at bottom of screen
 msgE :: String -> IO ()

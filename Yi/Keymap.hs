@@ -28,6 +28,7 @@ module Yi.Keymap ( keymap ) where
 import Yi.Editor
 import Yi.Core
 
+import Data.Char
 import Control.Monad
 
 -- vi is a modeful editor, so we store some state. TODO design?
@@ -74,13 +75,14 @@ key C 'l' = rightE
 key C '$' = eolE
 key C '0' = solE
 key C '|' = solE
-key C ':' = msgE ":" >> beginEx 
+key C ':' = msgClrE >> msgE ":" >> beginEx 
 key C 'i' = beginInsert
 key C 'a' = rightOrEolE 1 >> beginInsert
 key C 'A' = eolE          >> beginInsert
 key C 'O' = solE >> insertE '\n' >> beginInsert
 key C 'o' = eolE >> insertE '\n' >> rightE >> beginInsert
 key C 'x' = deleteE
+key C 'r' = getcE >>= writeE
 key C 'D' = killE
 key C 'J' = eolE >> deleteE >> insertE ' '
 key C 'd' = do c <- getcE ; when (c == 'd') $ solE >> killE >> deleteE
@@ -91,18 +93,23 @@ key C c | c == keyUp    = upE
         | c == keyRight = rightE
 key C '>' = do c <- getcE
                when (c == '>') $ solE >> mapM_ insertE (replicate 4 ' ')
+key C '~' = do c <- readE
+               let c' = if isUpper c then toLower c else toUpper c
+               writeE c'
 key C '\23' = nextE
 
 -- ---------------------------------------------------------------------
 -- * Insert mode
 --
 key I '\27'  = leftOrSolE 1 >> beginCommand  -- ESC
-key I '\8'   = leftE >> deleteE
+
 key I c  | c == keyHome      = topE
+         | c == '\8'         = leftE >> deleteE
          | c == keyBackspace = leftE >> deleteE
-key I c      = do (_,s) <- infoE      -- vi behaviour at start of line
-                  when (s == 0) $ insertE '\n'
-                  insertE c    >> rightE
+
+key I c  = do (_,s) <- infoE      -- vi behaviour at start of line
+              when (s == 0) $ insertE '\n'
+              insertE c    >> rightE
 
 -- ---------------------------------------------------------------------
 -- * Ex mode
@@ -110,8 +117,14 @@ key I c      = do (_,s) <- infoE      -- vi behaviour at start of line
 --
 key E k = msgClrE >> loop [k]
   where
-    loop [] = beginCommand  -- impossible
+    loop [] = do msgE ":"
+                 c <- getcE
+                 if c == '\8' || c == keyBackspace
+                    then msgClrE >> beginCommand  -- deleted request
+                    else loop [c]
     loop w@(c:cs) 
+        | c == '\8'         = deleteWith cs
+        | c == keyBackspace = deleteWith cs
         | c == '\27' = msgClrE >> beginCommand  -- cancel 
         | c == '\13' = execEx (reverse cs) >> beginCommand
         | otherwise  = do msgE (':':reverse w)
@@ -125,6 +138,9 @@ key E k = msgClrE >> loop [k]
     execEx "wq"  = viWrite >> quitE
     execEx cs    = viCmdErr cs
 
+    deleteWith []     = msgClrE >> msgE ":"      >> loop []
+    deleteWith (_:cs) = msgClrE >> msgE (':':cs) >> loop cs
+
 -- anything we've missed
 key _  _  = noopE
 
@@ -134,7 +150,7 @@ key _  _  = noopE
 viWrite :: Action
 viWrite = do 
     (f,s) <- infoE 
-    writeE
+    fwriteE
     msgE $ show f++" "++show s ++ "C written"
 
 --
