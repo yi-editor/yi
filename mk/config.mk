@@ -12,8 +12,8 @@ GHC=            ghc
 GHC_PKG=        ghc-pkg
 HC_OPTS=        -fglasgow-exts -Wall -Werror
 
-#HC_OPTS+=       -Onot -fasm -H64m
-HC_OPTS+=       -O -fvia-C -funbox-strict-fields -Icbits
+HC_OPTS+=       -Onot -fasm -H64m
+#HC_OPTS+=       -O -fvia-C -funbox-strict-fields -Icbits
 #HC_OPTS+=      -debug
 
 HSC2HS=         hsc2hs
@@ -57,15 +57,15 @@ DEFINES         += -DHAVE_NCURSES_H=1
 # Comment out on OpenBSD
 #
  
-DEFINES += -DCF_CHARSET_SUPPORT
-DEFINES += -DCF_WCHAR_SUPPORT
+#DEFINES += -DCF_CHARSET_SUPPORT
+#DEFINES += -DCF_WCHAR_SUPPORT
 
 #
 # Set this if your iconv library functions are accessed with the "lib"
 # prefix. OpenBSD needs this.
 #
-#ICONV=          iconv
-#DEFINES+=       -DWEIRD_ICONV
+ICONV=          iconv
+DEFINES+=       -DWEIRD_ICONV
 
 #
 # Set this if your system provides the arc4random(3) function --
@@ -73,13 +73,13 @@ DEFINES += -DCF_WCHAR_SUPPORT
 # random function for the mkstemp lib. Add a linux random device here,
 # and write a binding in Yi/MkTemp.hs
 #
-#DEFINES += -DHAVE_ARC4RANDOM
+DEFINES += -DHAVE_ARC4RANDOM
 
 #
 # Extra paths to find things (OpenBSD needs this)
 #
-#LD_OPTS         += -L/usr/local/lib
-#INC_OPTS        += -I/usr/local/include
+LD_OPTS         += -L/usr/local/lib
+INC_OPTS        += -I/usr/local/include
 
 #
 # define this if you aren't on a posix machine (doesn't work yet)
