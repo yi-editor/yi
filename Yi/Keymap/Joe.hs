@@ -76,7 +76,7 @@ kmap=[
     "\^KR"  &&> queryInsertFileE,
     -- Search
     "\^KF" &&> querySearchRepE,
-    --"\^L"  &&> nextSearchRepE,
+    "\^L"  &&> nextSearchRepE,
     "\^KL" &&> queryGotoLineE,
     -- Buffers
     "\^KN" ++> nextBufW,
@@ -104,34 +104,47 @@ killEolE = killE
 killLineE = solE >> killE
 undefE = errorE $ "Key sequence not defined."
 
-query :: String -> String -> (String -> KProc) -> KProc
-query prompt initial cont cs =
-    q initial cs
+query :: String -> String -> (String -> KProc) -> KProc -> KProc
+query prompt s cont failcont cs =
+    (msgE $ prompt ++ s):(loop cs)
     where
-        q s cs2 = msgE (prompt ++ s):
-            case getch cs2 of
-                ('\n':cs3)        -> msgClrE:cont s cs3
-                ('\r':cs3)        -> msgClrE:cont s cs3
-                (c:cs3) | isDel c -> q (init s) cs3
-                (c:cs3)           -> q (s ++ [c]) cs3
-                []                -> []
-                
-        getch = dropWhile (not . valid)
-        valid c = valid_char c || isDel c || c == '\n' || c == '\n'
-
+        q = \ss cs2 -> query prompt ss cont failcont cs2
+        loop (c:cs3)
+            | is_enter c   = msgClrE:(cont s cs3)
+            | c=='\^G'     = msgClrE:(failcont cs3)
+            | isDel c      = q (init s) cs3
+            | valid_char c = q (s ++ [c]) cs3
+            | otherwise    = loop cs3
+        loop []            = []
+        
 simpleq :: String -> String -> (String -> Action) -> KProc -> KProc
 simpleq prompt initial act cont =
-    query prompt initial $ \s cs -> (act s):(cont cs)
+    query prompt initial (\s cs -> (act s):(cont cs)) cont
 
 queryNewE, querySaveE, queryGotoLineE, queryInsertFileE,
-    queryBufW, querySearchRepE :: KProc -> KProc
+    queryBufW, querySearchRepE, nextSearchRepE :: KProc -> KProc
 
 queryNewE = simpleq "File name: " [] fnewE
 querySaveE = simpleq "File name: " [] unimplementedQ
 queryGotoLineE = simpleq "Line number: " [] (gotoLnE . read)
 queryInsertFileE = simpleq "File name: " [] unimplementedQ
 queryBufW = simpleq "Buffer: " [] unimplementedQ
-querySearchRepE = simpleq "Search term: " [] unimplementedQ
+
+-- TODO: handle flags
+dosearch :: String -> String -> Action
+dosearch s _ = searchE $ Just s
+
+querySearchRepE cont cs = 
+    query "Search term: " [] qflags cont cs
+    where
+        flagprompt = "(I)gnore, (R)eplace, (B)ackward Reg.E(x)p? "
+        qflags s cs2 = query flagprompt [] (doit s) cont cs2
+        doit s flags cs3 = (dosearch s flags):(cont cs3)
+
+--nextSearchRepE cont cs =
+--    getRegexE >>= \e -> case e of
+--        Nothing -> querySearchRepE cont cs
+--        Just _ -> (searchE Nothing):(cont cs)
 
 unimplementedQ :: String -> Action
 unimplementedQ _ = nopE
@@ -167,14 +180,12 @@ get_actions _ _ [] = []
 
 lookup_submap :: KMLookup
 lookup_submap fm c = 
-    fromMaybe     (KMEAction undefE) $
-        try_maybe (lookupFM fm $ lowcase_ctrl c) $
-        try_maybe (lookupFM fm $ upcase_ctrl c) $
-                  (lookupFM fm c)
+    fromMaybe (KMEAction undefE) $
+        listToMaybe $ catMaybes $ map (\f -> lookupFM fm $ f c) alts
     where
-        try_maybe a b = maybe a Just b
-        --try_maybe a Nothing = a
-        --try_maybe _ b = b
+        alts = [id, upcase_ctrl, upcase_lowcase, lowcase_ctrl, lowcase_upcase,
+                ctrl_upcase, ctrl_lowcase]
+        
 
 lookup_dflt :: KMLookup
 lookup_dflt fm c =
@@ -203,13 +214,20 @@ valid_char '\r' = True
 valid_char c | isControl c = False
 valid_char _ = True
 
+remap_char :: Char -> Char -> Char -> Char -> Char -> Char
+remap_char a1 b1 a2 _ c
+    | a1 <= c && c <= b1 = chr $ ord c - ord a1 + ord a2
+    | otherwise          = c
+
 upcase_ctrl, lowcase_ctrl :: Char -> Char
-upcase_ctrl c
-    | '\^A' <= c && c <= '\^Z' = chr $ ord c - ord '\^A' + ord 'A'
-    | otherwise = c
-lowcase_ctrl c
-    | '\^A' <= c && c <= '\^Z' = chr $ ord c - ord '\^A' + ord 'a'
-    | otherwise = c
+upcase_lowcase, ctrl_lowcase :: Char -> Char
+lowcase_upcase, ctrl_upcase :: Char -> Char
+upcase_ctrl = remap_char '\^A' '\^Z' 'A' 'Z'
+lowcase_ctrl = remap_char '\^A' '\^Z' 'a' 'z'
+upcase_lowcase = remap_char 'a' 'z' 'A' 'Z'
+ctrl_lowcase = remap_char 'a' 'z' '\^A' '\^Z'
+lowcase_upcase = remap_char 'A' 'Z' 'a' 'z'
+ctrl_upcase = remap_char 'A' 'Z' '\^A' '\^Z'
 
 remap_bs :: Char -> Char
 remap_bs k | isDel k = '\BS'
@@ -221,3 +239,7 @@ isDel '\127'       = True
 isDel c | c == keyBackspace = True
 isDel _            = False
 
+is_enter :: Char -> Bool
+is_enter '\n' = True
+is_enter '\r' = True
+is_enter _    = False
