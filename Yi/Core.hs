@@ -58,6 +58,9 @@ module Yi.Core (
 
         -- * Buffer editing
         e_replace,
+        e_insert,
+        e_delete,
+        e_kill
 
    ) where
 
@@ -220,8 +223,23 @@ e_load f = Editor.fillNewBuffer f          -- lazy for large files?
 --
 e_replace :: IO ()
 e_replace = modifyCurrentBuffer $ \b -> do
-    k <- UI.getKey UI.refresh
+    k <- UI.getKey UI.refresh   -- read next key
     case k of
         Key c -> Buffer.replace c b
         _     -> e_noop >> return b -- TODO
 
+-- | Insert new character
+e_insert :: IO ()
+e_insert = modifyCurrentBuffer $ \b -> do
+    k <- UI.getKey UI.refresh
+    case k of
+        Key c -> Buffer.insert c b
+        _     -> e_noop >> return b -- TODO
+
+-- | Delete character under cursor
+e_delete :: IO ()
+e_delete = modifyCurrentBuffer $ Buffer.delete
+
+-- | Kill to end of line
+e_kill :: IO ()
+e_kill = modifyCurrentBuffer $ Buffer.killToEOL

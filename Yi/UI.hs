@@ -105,7 +105,7 @@ getKey refresh_fn = do
 drawBufferXY :: Buffer a => Int -> Int -> a -> IO ()
 drawBufferXY w h buf = do
     ss <- contents buf
-    mapM_ (drawLine w) $ take (h-1) $ (lines ss) ++ repeat []
+    mapM_ (drawLine w) $ take (h-1) $ (lines ss) ++ repeat "~"
     cset_attr (Curses.setReverse Curses.attr0 True , Curses.Pair (1))
     drawModeLine w (name buf)
     reset
@@ -116,7 +116,7 @@ drawBufferXY w h buf = do
 drawMainBufferXY :: Buffer a => Int -> Int -> a -> IO ()
 drawMainBufferXY w h buf = do
     ss <- contents buf
-    mapM_ (drawLine w) $ take (h-1) $ (lines ss) ++ repeat []
+    mapM_ (drawLine w) $ take (h-1) $ (lines ss) ++ repeat "~"
     cset_attr (Curses.setReverse Curses.attr0 True , Curses.Pair 0)
     drawModeLine w (name buf)
     reset

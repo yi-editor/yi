@@ -87,6 +87,12 @@ class Buffer a where
     -- | Overwrite contents of buffer from point onwards with string
     replace     :: Char -> a -> IO a
 
+    -- | Insert character at point, shifting along rest of buffer
+    insert      :: Char -> a -> IO a
+
+    -- | Delete character at point, shifting back rest of buffer
+    delete      :: a -> IO a
+
 -- ---------------------------------------------------------------------
 --
 -- Fast buffer based on GHC.IORef.{Handle,IOBase} (Handle)
@@ -101,7 +107,7 @@ data FBuffer =
 data FBuffer_ = FBuffer_ {
         bufBuf   :: RawBuffer   -- ^ a raw byte buffer
        ,bufPnt   :: !Int        -- ^ current pointer index
-       ,bufEnd   :: !Int        -- ^ pointer to end of chars
+       ,bufEnd   :: !Int        -- ^ index to end of chars
        ,bufSize  :: !Int        -- ^ max size
      }
 
@@ -177,12 +183,11 @@ writeChars b (c:cs) i = writeCharToBuffer b i c >>= writeChars b cs
 --
 readChars :: RawBuffer -> Int -> Int -> IO [Char]
 readChars b n i = do
-    let loop j
-           | j >= n    = return []
-           | otherwise = do
-                (c,_) <- readCharFromBuffer b j
-                cs    <- loop $! j+1
-                return (c : cs)
+    let loop j | j >= n    = return []
+               | otherwise = do
+                    (c,_) <- readCharFromBuffer b j
+                    cs    <- loop $! j+1
+                    return (c : cs)
     loop i
 
 --
@@ -217,39 +222,15 @@ readCharFromBuffer slab (I# off) = IO $ \st ->
     case readCharArray# slab off st of
              (# st', c #) -> (# st', (C# c, I# (off +# 1#)) #)
 
-{-
 --
--- | Find the offset from the current point back to the nearest '\n' or
--- start of file. (find the offset from the previous new line)
---
-prevNLOff :: RawBuffer -> Int -> IO Int
-prevNLOff buf i = do
-    j <- loop i
-    return (i - j)
-  where
-    loop k | k <= 0    = return 0
-           | otherwise = do (c,_) <- readCharFromBuffer buf k
-                            if c == '\n' then return k
-                                         else loop $! k - 1
-
-nextNLOff :: RawBuffer -> Int -> Int -> IO Int
-nextNLOff buf max i = assert (i <= max) $ do j <- loop i ; return (j - i)
-  where
-    loop k | k >= max  = return (max - 1)
-           | otherwise = do (c,_) <- readCharFromBuffer buf k
-                            if c == '\n' then return k
-                                         else loop $! k + 1
--}
-
---
--- | calculate whether a move is in bounds. not threadsave, so only call
+-- | calculate whether a move is in bounds. not threadsafe, so only call
 -- from with withMVar.
 --
 rawMoveTo :: Int -> FBuffer_ -> FBuffer_
-rawMoveTo i b@(FBuffer_ {bufEnd=j}) =
+rawMoveTo i b@(FBuffer_ {bufEnd=end}) =
         if i < 0 then b{bufPnt=0} 
-                 else if i >= j then b{bufPnt=j-1}
-                                else b{bufPnt=i}
+                 else if i >= end then b{bufPnt=end-1}
+                                  else b{bufPnt=i}
 
 -- ---------------------------------------------------------------------
 --
@@ -275,18 +256,18 @@ instance Buffer FBuffer where
     -- contents  :: FBuffer -> [Char]
     contents (FBuffer _ _ m) =
         readMVar m >>= 
-            readIORef >>= \(FBuffer_ b _ n _) ->
+            readIORef >>= \(FBuffer_ {bufBuf=b,bufEnd=n}) ->
                 readChars b n 0
 
     -- size :: FBuffer -> IO Int
     size  (FBuffer _ _ m) =
         readMVar m >>=
-            readIORef >>= \(FBuffer_ _ _ i _) -> return i
+            readIORef >>= \(FBuffer_ {bufEnd=n}) -> return n
 
     -- point :: FBuffer -> IO Int
     point (FBuffer _ _ m) =
         readMVar m >>=
-            readIORef >>= \(FBuffer_ _ p _ _) -> return p
+            readIORef >>= \(FBuffer_ {bufPnt=p}) -> return p
 
     -- char :: FBuffer -> IO Char
     char  (FBuffer _ _ m) =
@@ -309,13 +290,31 @@ instance Buffer FBuffer where
     replace c fb@(FBuffer _ _ m) = 
         withMVar m $ \ref -> do
             b@(FBuffer_ {bufBuf=buf,bufPnt=p}) <- readIORef ref        
-            i <- writeChars buf [c] p
-            writeIORef ref (b{bufPnt = i})
+            writeChars buf [c] p
+            writeIORef ref b
             return fb
-                
+
+    -- insert :: Char -> a -> IO a
+    insert c fb@(FBuffer _ _ m) =
+        withMVar m $ \ref -> do
+            b@(FBuffer_ buf p n _) <- readIORef ref        
+            cs <- readChars buf (n-p) p
+            writeChars buf (c:cs) p
+            writeIORef ref (b{bufPnt=p+1,bufEnd=n+1}) -- shift point
+            return fb
+
+     -- delete :: a -> IO a
+    delete fb@(FBuffer _ _ m) =
+        withMVar m $ \ref -> do
+            b@(FBuffer_ buf p n _) <- readIORef ref        
+            cs <- readChars buf (n-p-1) (p+1)
+            writeChars buf cs p
+            writeIORef ref (b{bufEnd=n-1}) -- shift point
+            return fb
         
 -- ---------------------------------------------------------------------
 -- | 2-D primitives implemented over the 'Buffer' primitives
+-- Needed for 2-D guis. TODO is this the right place for them?
 --
 -- Clean these up a bit
 --
@@ -407,3 +406,12 @@ nextXorNL b (I# x) = do
     loop 0# p
     return b
 
+--
+-- | Kill all chars to end of line
+--
+killToEOL :: Buffer a => a -> IO a
+killToEOL b = do
+        let loop = do c <- char b
+                      if c == '\n' then return b
+                                   else delete b >> loop
+        loop
