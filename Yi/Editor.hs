@@ -204,7 +204,7 @@ newWindow b = modifyEditor $ \e -> do
     let (h,w) = scrsize e
         wls   = eltsFM $ windows e
         (y,r) = getY h (1 + (length wls))
-    wls' <- mapM (\x -> newHeight y x $ findBufferWith e (bufkey x)) wls
+    wls' <- mapM (\x -> resize y x $ findBufferWith e (bufkey x)) wls
     win  <- emptyWindow b (y+r,w)
     let e' = e { windows = listToFM $ mkAssoc (win:wls') }
     return (e', win)
@@ -224,12 +224,12 @@ deleteWindow (Just win) = modifyEditor_ $ \e -> do
     let ws    = delFromFM (windows e) (key win)
         (h,_) = scrsize e
         (y,r) = getY h (length $ eltsFM ws)
-    wls <- mapM (\w -> newHeight y w $ findBufferWith e (bufkey w)) $ eltsFM ws
+    wls <- mapM (\w -> resize y w $ findBufferWith e (bufkey w)) $ eltsFM ws
     case wls of
         []        -> return e { windows = emptyFM  }
         (win':_) -> do
             let fm = listToFM $ mkAssoc wls
-            win'' <- newHeight (y+r)  win' (findBufferWith e (bufkey win'))
+            win'' <- resize (y+r)  win' (findBufferWith e (bufkey win'))
             return $ e { windows = (addToFM fm (key win'') win'') }
 
 -- | calculate window heights, given all the windows and current height

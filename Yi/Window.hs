@@ -314,14 +314,14 @@ noNLatEof b = do
 -- | Adjust the window's height-related fields, assuming a new window height
 -- Still got a bug in here somewhere.
 --
-newHeight :: Buffer a => Int -> Window -> a -> IO Window
-newHeight y w b = do
+resize :: Buffer a => Int -> Window -> a -> IO Window
+resize y w b = do
     let topln = toslineno w
         ln    = lineno w
         w'    = w { height = y }
-    if topln - ln >= y        -- then set lineno as top line
+    if ln - topln + 1 >= y            -- then set lineno as top line
         then do i <- indexOfSol b
-                p <- pointB b
-                return w' { toslineno = ln, tospnt = i, cursor = (0,p) }
+                x <- offsetFromSol b
+                return w' { toslineno = ln, tospnt = i , cursor = (0,x) }
         else return w'
 
