@@ -28,8 +28,10 @@ module Yi.Keymap.Vi ( keymap, keymapPlus, ViMode ) where
 
 import Yi.Core
 import Yi.Editor            ( Action )
-import Yi.UI         hiding ( plus )
 import Yi.Lexers     hiding ( Action )
+
+-- hack
+import Yi.Curses.UI  hiding ( plus )
 
 import Prelude       hiding ( any )
 

@@ -31,7 +31,8 @@
 -- permit multiple user interfaces without changin UI.foo calls in
 -- Core.hs
 --
-module Yi.UI (
+
+module Yi.Curses.UI (
 
         -- * UI initialisation 
         start, end, 
@@ -44,7 +45,7 @@ module Yi.UI (
         -- * Drawing
         refresh,
 
-        module Yi.Curses   -- UIs need to export the symbolic key names
+        module Yi.Curses.Curses   -- UIs need to export the symbolic key names
 
   )   where
 
@@ -56,8 +57,8 @@ import Yi.Editor
 import Yi.Window
 import Yi.Style
 
-import Yi.Curses hiding ( refresh, Window )
-import qualified Yi.Curses as Curses
+import Yi.Curses.Curses hiding ( refresh, Window )
+import qualified Yi.Curses.Curses as Curses
 
 import Data.Char                    ( ord )
 import Data.Maybe                   ( isJust, fromJust )

@@ -11,6 +11,10 @@ default: boot all
 
 ALL_DIRS=       Yi Yi/Keymap Yi/Ctk cbits
 
+ifneq "$(CURSES)" ""
+ALL_DIRS+=      Yi/Curses
+endif
+
 BIN=            yi_
 STATIC_BIN=     yi-static
 

@@ -127,7 +127,6 @@ import Yi.Window
 import Yi.Regex             ( regcomp, regExtended, Regex )
 import Yi.Editor
 import qualified Yi.Editor as Editor
-import qualified Yi.UI     as UI ( refresh, start, screenSize, getKey, end, initcolours )
 
 import Data.Maybe           ( isNothing, isJust )
 import Data.Char            ( isLatin1 )
@@ -142,6 +141,8 @@ import Control.Concurrent   ( threadWaitRead, takeMVar, forkIO )
 import Control.Concurrent.Chan
 
 import GHC.Exception hiding ( throwIO )
+
+import qualified Yi.Curses.UI     as UI ( refresh, start, screenSize, getKey, end, initcolours )
 
 -- ---------------------------------------------------------------------
 -- | Start up the editor, setting any state with the user preferences

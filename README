@@ -78,6 +78,10 @@ A porting checklist:
         * you have a working GHCi
         * you have a recent hs-plugins snapshot
 
+The static version of yi has no hs-plugins support, and is thus more
+portable. However, it is not configurable at runtime. To build this,
+you'll just need to be on a machine with ghc installed.
+
 CREDITS
 
 Yi has been developed by Don Stewart <http://www.cse.unsw.edu.au/~dons>

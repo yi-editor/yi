@@ -33,8 +33,10 @@
 -- Sections of the quoted documentation are from the OpenBSD man pages, which
 -- are distributed under a BSD license.
 --
+-- N.B doesn't work with Irix curses.h. This should be fixed.
+--
 
-module Yi.Curses {-(
+module Yi.Curses.Curses {-(
 
     --------------------------------------------------------------------
     
@@ -151,7 +153,7 @@ module Yi.Curses {-(
     --------------------------------------------------------------------
   )-} where 
 
-import Yi.CWString              ( withLCStringLen )
+import Yi.Curses.CWString       ( withLCStringLen )
 
 import Prelude hiding           ( pi )
 import Data.Char

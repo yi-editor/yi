@@ -17,7 +17,7 @@ module Yi.IConv {-(
     from_unicode_
   )-} where
 
-import Yi.CWString          ( peekUTF8StringLen, withUTF8StringLen )
+import Yi.Curses.CWString          ( peekUTF8StringLen, withUTF8StringLen )
 
 import Foreign
 import Foreign.C

@@ -7,7 +7,9 @@ Build system:
         - check how to install it from a port script
         - think about how to do a testsuite, unit testing
 
-        - ncurses should be a plugin
+        - break out curses in to a separate dir, and the same for other
+          ui's
+
         - add test for sigwinch
 
 v0.1:

@@ -31,18 +31,21 @@ module Yi.Yi (
         settings,
         Config(..),
         module Yi.Core,
-        module Yi.UI,
         module Yi.Style,
         module Yi.Lexers,
+
+        module Yi.Curses.UI, -- hack, for key defns
  
    ) where
 
 import Yi.Core
 import Yi.Style
-import Yi.UI                      hiding ( plus ) -- so we can see key defns
 import Yi.Editor                         ( Config(..) )
-import Yi.Lexers                  hiding ( Action )
+import Yi.Lexers                 hiding  ( Action  )
 import qualified Yi.Keymap.Vim as Default ( keymap )
+
+-- need to #define this
+import Yi.Curses.UI               hiding ( plus ) -- so we can see key defns
 
 settings :: Config
 settings = Config { keymap = Default.keymap, style = ui }
