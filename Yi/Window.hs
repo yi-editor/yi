@@ -135,8 +135,6 @@ moveUpW :: Buffer a => Window -> a -> IO Window
 moveUpW w b | lineno w == 1 = return w
             | otherwise     = lineUp b >> decY w b >>= flip update b
 
-{-# SPECIALIZE moveUpW :: Window -> FBuffer -> IO Window #-}
-
 --
 -- | The cursor moves up, staying with its original line, unless it
 -- reaches the top of the screen.
@@ -270,12 +268,13 @@ deleteNW w b i = do
         eof <- atEof b
         when (not eof) $ leftB b
 
+    sof <- atSof b
     eof <- atEof b  -- are we going to del eof
     sol <- atSol b  -- and we're not on the same line?
 
     deleteB b
 
-    if eof && sol   -- if we were at eof, and sol, then move up.
+    if eof && sol && not sof
         then moveToEolW w b >>= flip decY b  -- todo should handle 0
         else update w b
 
@@ -286,9 +285,10 @@ deleteNW w b i = do
 deleteToEolW :: Buffer a => Window -> a -> IO Window
 deleteToEolW w b = do
     sol  <- atSol b      -- about to delete from sol to eol
+    sof  <- atSof b
     noNl <- noNLatEof b  -- and no \n at eol
     deleteToEol b
-    if noNl && sol 
+    if noNl && sol && not sof
         then moveToEolW w b >>= flip decY b 
         else update w b
 
@@ -305,8 +305,6 @@ update w b =
     return w'
     }}
 
-{-# SPECIALIZE update :: Window -> FBuffer -> IO Window #-}
-
 --
 -- | Decrememt the y-related values. Might change top of screen point
 -- TODO deal with sof
@@ -322,7 +320,6 @@ decY w b = do
     return $ if topln < curln
              then w' { cursor = (y-1, x) }                  -- just move cursor
              else w' { toslineno = topln-1, tospnt = p-x }  -- or move window
-{-# SPECIALIZE decY :: Window -> FBuffer -> IO Window #-}
 
 --
 -- | incrememt the y-related values.
@@ -338,7 +335,6 @@ incY w@(Window {height=h}) b = do
    return $ if curln - topln < h - 2   
             then w' { cursor = (y+1,x) }                  -- just move cursor
             else w' { toslineno = topln + 1, tospnt = t } -- scroll window
-{-# SPECIALIZE incY :: Window -> FBuffer -> IO Window #-}
 
 ------------------------------------------------------------------------
 
@@ -353,7 +349,6 @@ atLastLine b = do
     e <- atEof b
     moveTo b p
     return e
-{-# SPECIALIZE atLastLine :: FBuffer -> IO Bool #-}
 
 --
 -- | Given a point, return the point of the next line down
@@ -377,7 +372,6 @@ noNLatEof b = do
     c  <- readB b
     moveTo b p
     return (c /= '\n')
-{-# SPECIALIZE noNLatEof :: FBuffer -> IO Bool #-}
 
 --
 -- | return index of Sol on line @n@ above current line

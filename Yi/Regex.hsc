@@ -32,7 +32,7 @@ module Yi.Regex (
 
     -- * Matching a regular expression
     regexec,    -- :: Regex                 -- pattern
-                -- -> FBuffer               -- buffer to match on
+                -- -> Ptr CChar             -- buffer to match on
                 -- -> IO (Maybe Int)
 
   ) where
@@ -43,7 +43,6 @@ module Yi.Regex (
 #include <sys/types.h>
 #include <regex.h>
 
-import Yi.Buffer        ( RawBuffer, FBuffer_(FBuffer_) )
 import Foreign
 import Foreign.C
 
@@ -77,21 +76,20 @@ regcomp pattern flags = do
 -- index of the match
 --
 regexec :: Regex                -- ^ Compiled regular expression
-        -> FBuffer_             -- ^ The FBuffer_ (!!) to match against
+        -> Ptr CChar            -- ^ The buffer to match against
         -> Int                  -- ^ Offset in buffer to start searching from
         -> IO (Maybe (Int,Int)) -- ^ Returns: 'Nothing' if the regex did not match the
                                 -- or Just the start and end indicies of the match.
 
-regexec (Regex regex_fptr) (FBuffer_ buf _ e _) i = do
+regexec (Regex regex_fptr) ptr i = do
     withForeignPtr regex_fptr $ \regex_ptr -> do
         nsub <- (#peek regex_t, re_nsub) regex_ptr
         let nsub_int = fromIntegral (nsub :: CSize)
         allocaBytes ((1 + nsub_int)*(#const sizeof(regmatch_t))) $ \p_match-> do
 
         -- add one because index zero covers the whole match
-        r <- c_regexec_baoff regex_ptr 
-                             buf i e 
-                             (1 + nsub) p_match 0{-no flags -}
+        r <- cregexec regex_ptr (ptr `plusPtr` i) 
+                                (1 + nsub) p_match 0{-no flags -}
 
         if (r /= 0) then return Nothing else do 
 
@@ -143,14 +141,13 @@ matched_parts p_match = do
 type CRegMatch = ()
 
 foreign import ccall unsafe "regcomp"
-  c_regcomp :: Ptr CRegex -> CString -> CInt -> IO CInt
+    c_regcomp :: Ptr CRegex -> CString -> CInt -> IO CInt
 
 foreign import ccall  unsafe "&regfree"
-  ptr_regfree :: FunPtr (Ptr CRegex -> IO ())
+    ptr_regfree :: FunPtr (Ptr CRegex -> IO ())
 
--- our custom buffer regexec
-foreign import ccall unsafe "regexec_baoff"
-  c_regexec_baoff :: Ptr CRegex 
-                  -> RawBuffer -> Int{-offset-} -> Int{-end-}
-                  -> CSize     -> Ptr CRegMatch -> CInt -> IO CInt
+foreign import ccall unsafe "regexec"
+    cregexec :: Ptr CRegex 
+             -> Ptr CChar 
+             -> CSize -> Ptr CRegMatch -> CInt -> IO CInt
 

@@ -58,6 +58,7 @@ import Yi.Style
 import Yi.Curses hiding ( refresh, Window )
 import qualified Yi.Curses as Curses
 
+import Data.Char                    ( ord )
 import Data.Maybe                   ( isJust, fromJust )
 import Data.List
 import Data.IORef
@@ -154,7 +155,7 @@ drawWindow e mwin sty win =
     case eof    sty of { eofsty -> do
     case findBufferWith e u of { b -> do
 
-    lns <- ptrToLnsB b t h      -- get @h@ cstrings starting a @t@
+    lns <- ptrToLnsB b t (h-1)      -- get @h@ cstrings starting a @t@
 
     -- draw each buffer line
     (y,_) <- getYX Curses.stdScr
@@ -164,6 +165,9 @@ drawWindow e mwin sty win =
 
     -- and any eof markers
     withStyle eofsty $ do
+        (_,x) <- getYX Curses.stdScr
+        when (x /= 0) $ throwIfErr_ "waddch" $
+            waddch Curses.stdScr (fromIntegral $ ord '\n') -- no nl at eof.  better flush
         (y',_) <- getYX Curses.stdScr
         mapM_ (drawLine w) $ take (h - 1  - (y' - y)) $ repeat "~"
 

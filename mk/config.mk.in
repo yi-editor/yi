@@ -12,7 +12,7 @@ GHC=            @WithGhc@
 HC_OPTS=        -fglasgow-exts -Wall -Werror
 
 #HC_OPTS+=       -Onot -fasm -H64m
-HC_OPTS+=       -O2 -fvia-C -funbox-strict-fields -Icbits
+HC_OPTS+=       -O2 -fvia-C -funbox-strict-fields -Icbits -fignore-asserts
 #HC_OPTS+=      -debug
 
 GHC_PKG=        @GhcPkgCmd@

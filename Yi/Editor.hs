@@ -25,7 +25,8 @@
 
 module Yi.Editor where
 
-import Yi.Buffer                ( FBuffer, Buffer(newB, keyB, hNewB) )
+import Yi.Buffer                ( Buffer(newB, keyB, hNewB) )
+import Yi.FastBuffer
 import Yi.Regex                 ( Regex )
 import Yi.Window
 import Yi.Style                 ( ui, UIStyle )
