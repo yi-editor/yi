@@ -92,10 +92,11 @@ reverseA    = setReverseA   nullA
 -- The UI type
 --
 data UI = UI { 
-        window      :: Style
-       ,modeln      :: Style
-       ,modeln_hl   :: Style
-       ,commandln   :: Style
+        window      :: Style    -- ^ window fg and bg (ignore for now)
+       ,modeln      :: Style    -- ^ out of focus modeline colours
+       ,modeln_hl   :: Style    -- ^ in focus modeline
+       ,commandln   :: Style    -- ^ command line colours
+       ,eof         :: Style    -- empty file marker colours
      }
 
 -- foreground and background color
@@ -110,6 +111,7 @@ ui = UI {
         ,modeln    = (Fg  Black,      Bg DarkBlue)
         ,modeln_hl = (FgBright White, Bg DarkBlue)
         ,commandln = (FgDefault,      BgDefault)
+        ,eof       = (Fg  DarkBlue,   BgDefault)
      } 
 
 

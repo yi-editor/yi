@@ -141,17 +141,27 @@ redraw = do
 drawWindow :: Window -> IO ()
 drawWindow win@(Window { bufkey=u, mode=m, origin=(_,_), 
                      height=h, width=w, tospnt=t } ) = do
+
+    us   <- readEditor uistyle
+
     -- draw buffer contents
     b  <- getBufferWith u
     ss <- nelemsB b (h*w) t           -- maximum visible contents of buffer
-    mapM_ (drawLine w) $ take (h-1) $ (lines ss) ++ repeat "~"
+    let ls  = lines ss
+        len = length ls
+    mapM_ (drawLine w) $ take (h-1) ls
+
+    -- draw pretty eof markers
+    uiAttr (eof us) >>= setAttribute
+    mapM_ (drawLine w) $ take (h-1-len) $ repeat "~"
+    reset
 
     -- draw modeline
     mwin <- getWindow
-    us   <- readEditor uistyle
+    uis  <- readEditor uistyle
     if (isJust mwin && fromJust mwin == win)
-        then uiAttr (modeln_hl us) >>= setAttribute
-        else uiAttr (modeln us   ) >>= setAttribute
+        then uiAttr (modeln_hl uis) >>= setAttribute
+        else uiAttr (modeln uis   ) >>= setAttribute
     drawLine w m
     reset
 
@@ -223,9 +233,11 @@ refresh = redraw >> Curses.refresh
 -- associated with the terminal color pair that has been defined for
 -- those colors.
 --
+-- TODO remember to update this if new fields are added to the ui
+--
 initUiColors :: UI -> IO [((Curses.Color, Curses.Color), Pair)]
-initUiColors (UI{ window=wn, modeln_hl=mlf, modeln=ml, commandln=cl})
-    = mapM (uncurry fn) (zip [wn, mlf, ml, cl] [1..])
+initUiColors (UI{ window=wn, modeln_hl=mlf, modeln=ml, commandln=cl, eof=ef})
+    = mapM (uncurry fn) (zip [wn, mlf, ml, cl, ef] [1..])
     where
         fn :: Style -> Int -> IO ((Curses.Color, Curses.Color), Pair)
         fn (fg, bg) p = let (_,fgc) = fgAttr fg
