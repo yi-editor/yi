@@ -41,6 +41,9 @@ LIB_FRONTEND=   HEmacs.o
 LIB_IFACE   =   HEmacs.hi
 HADDOCK_SRCS+=  $(FRONTEND_HS_SRC)
 
+# filter out recursive module
+NO_DOCS+=       HEmacs/Config.hs
+
 #
 # read in suffix rules
 #

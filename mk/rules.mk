@@ -142,13 +142,15 @@ docs :: html
 
 HTML_DIR      = html
 HADDOCK_SRCS += $(HS_SRCS)
-HS_PPS        = $(addsuffix .raw-hs, $(basename $(HADDOCK_SRCS) ))
+HS_PPS        = $(addsuffix .raw-hs, \
+                        $(filter-out $(basename $(NO_DOCS)), \
+                                $(basename $(HADDOCK_SRCS))))
 
 INSTALL_DATAS  += $(HTML_DIR)
 
 html : $(HS_PPS)
 	@$(INSTALL_DIR) $(HTML_DIR)
-	$(HADDOCK) $(HADDOCK_OPTS) -h -o $(HTML_DIR) $(HS_PPS) --package=$(PKG) 2> /dev/null
+	$(HADDOCK) $(HADDOCK_OPTS) -h -o $(HTML_DIR) $(HS_PPS) --package=$(PKG)
 
 CLEAN_FILES += $(HS_PPS) $(PACKAGE).haddock
 

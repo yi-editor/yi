@@ -24,23 +24,24 @@
 module HEmacs.Editor (
 
         -- * the editor type
-        Editor,                 -- abstract
-        -- Buffer,              -- abstract
+        Editor,             -- abstract?
+        Buffer(..),         -- abstract?
 
         -- * access to editor state
-        screenWidth,            -- :: Int
-        screenHeight,           -- :: Int
-        setScreenSize,          -- :: (Int,Int) -> IO ()
+        screenWidth,            -- :: IO Int
+        screenHeight,           -- :: IO Int
         getScreenSize,          -- :: IO (Int, Int)
+        setScreenSize,          -- :: (Int,Int) -> IO ()
 
-        setBuffer,              -- :: [String] -> IO ()
-        getBuffer,              -- :: IO -> [String]
-        getBufSize,
+        newBuffer,              -- :: FilePath -> [String] -> IO ()
+        delBuffer,              -- :: IO ()
+        getBuffers,             -- :: IO -> [Buffer]
+        getBufSize,             -- :: Buffer -> (Int, Int)
         setBufSize,             -- :: (Int, Int) -> IO ()
-        getBufOrigin,
+        getBufOrigin,           -- :: Buffer -> (Int, Int)
 
-        getUnsavedStatus,       -- :: Bool
-        setUnsaved,             -- :: IO ()
+   --   getUnsavedStatus,       -- :: Bool
+   --   setUnsaved,             -- :: IO ()
 
         setUserSettings,        -- :: Config -> IO ()
         getKeyMap,              -- :: IO (Key -> Action)
@@ -77,42 +78,19 @@ import {-# SOURCE #-} qualified HEmacs.Config as Config ( settings )
 data Editor = Editor {
         s_width         :: !Int,        -- ^ total screen width 
         s_height        :: !Int,        -- ^ total screen height        
-
-        buffer          :: Buffer,      -- ^ simple buffer
-
--- should be a sub-structure:
-        buffer_x        :: !Int,        -- ^ buffer top left x origin
-        buffer_y        :: !Int,        -- ^ buffer top left y origin
-        buffer_height   :: !Int,        -- ^ height in rows
-        buffer_width    :: !Int,        -- ^ width  in columns
-
-        mode_line       :: !String,     -- ^ contents of mode lines
-        mode_height     :: !Int,        -- ^ height of modeline
-
-        unsaved_changes :: Bool,        -- ^ are there unsaved changes?
+        buffers         :: [Buffer],    -- ^ multiple buffers
         user_settings   :: Config       -- ^ user supplied settings
    }
 
-------------------------------------------------------------------------
---
+-- ---------------------------------------------------------------------
 -- | The initial state
 --
 initialState :: Editor
 initialState = Editor {
         s_width         = 80,
         s_height        = 24,
-
-        buffer          = emptyBuffer,
-        buffer_x        = 0,
-        buffer_y        = 0,
-        buffer_width    = 80,
-        buffer_height   = 24 - 2, -- s_height - mode_height
-
-        mode_line       = "(hemacs)",
-        mode_height     = 2,
-
-        unsaved_changes = False,
-        user_settings   = Config.settings
+        buffers         = [],
+        user_settings   = Config.settings       -- global user settings
     }
 
 --
@@ -128,8 +106,9 @@ environment = unsafePerformIO $ do
 -- | Grab the editor state, manipulate it, and write it back
 --
 modifyEditor :: (Editor -> IO Editor) -> IO ()
-modifyEditor f = withMVar environment $ \ref ->
-                        readIORef ref >>= f >>= writeIORef ref
+modifyEditor f = 
+    withMVar environment $ \ref ->
+        readIORef ref >>= f >>= writeIORef ref
 
 -- 
 -- | Grab editor state read-only
@@ -147,67 +126,90 @@ screenHeight   :: IO Int
 screenHeight = withEditor $ \e -> return $ s_height e
 
 --
--- | Set the dimensions of the screen to height and width
---
-setScreenSize :: (Int,Int) -> IO ()
-setScreenSize (height,width) = 
-    modifyEditor $ \e -> return $ e { s_width = width, s_height = height }
-
---
 -- | get the screen dimensions (y,x)
 --
 getScreenSize :: IO (Int,Int)
 getScreenSize = withEditor $ \e -> return $ (s_height e, s_width e)
 
 --
--- | set the buffer dimensions
+-- | Set the dimensions of the screen to height and width
 --
-setBufSize :: (Int, Int) -> IO ()
-setBufSize (h, w)= 
-    modifyEditor $ \e ->
-        return $ e { buffer_height = h - mode_height e, buffer_width = w }
+setScreenSize :: (Int,Int) -> IO ()
+setScreenSize (height,width) = 
+    modifyEditor $ \e -> return $ e { s_width = width, s_height = height }
+
+-- ---------------------------------------------------------------------
+-- | get a new buffer, add it to the set, and fill it with [String]
+-- Inherit size from editor screen size.
+--
+newBuffer :: FilePath -> [String] -> IO ()
+newBuffer f ss = do
+    modifyEditor $ \e@(Editor { buffers = bs, s_width = w, s_height = h }) -> do
+        let b = emptyBuffer { name = f, 
+                              contents = ss,
+                              buf_height = h,
+                              buf_width = w, 
+                              visible = True}
+        return $ e { buffers = [b] }
 
 --
+-- | delete a buffer
+--
+delBuffer :: IO ()
+delBuffer = error "delBuffer unimplemented"
+
+--
+-- | get the buffers in a form easy to draw
+--
+getBuffers :: IO [Buffer]
+getBuffers = withEditor $ \e -> return $ buffers e
+
+-- ---------------------------------------------------------------------
 -- | get buffer dimensions (y,x)
 --
-getBufSize :: IO (Int, Int)
-getBufSize = withEditor $ \e -> return $ (buffer_height e, buffer_width e)
+getBufSize :: Buffer -> (Int, Int)
+getBufSize b = (buf_height b, buf_width b)
+
+--
+-- | set the buffer dimensions.
+-- TODO: need to be able to index buffers.
+--
+setBufSize :: (Int, Int) -> IO ()
+setBufSize (h, w)=  undefined
+{-
+    modifyEditor $ \e ->
+        return $ e { buffer_height = h - mode_height e, buffer_width = w }
+-}
 
 --
 -- | get buffer origin (y,x)
 --
-getBufOrigin :: IO (Int, Int)
-getBufOrigin = withEditor $ \e -> return $ (buffer_y e, buffer_x e)
+getBufOrigin :: Buffer -> (Int, Int)
+getBufOrigin b = (x_origin b, y_origin b)
 
 --
 -- | Are there any unsaved changes?
 --
+{-
 getUnsavedStatus :: IO Bool
 getUnsavedStatus = withEditor $ \e -> return $ unsaved_changes e
+-}
 
 --
 -- | set the flag indicating there are unsaved changes in the buffer
 --
+{-
 setUnsaved :: IO ()
 setUnsaved = modifyEditor $ \e -> return $ e { unsaved_changes = True }
+-}
 
 --
 -- | reset the flag indicating all changes have been saved
 --
+{-
 setSaved :: IO ()
 setSaved = modifyEditor $ \e -> return $ e { unsaved_changes = False }
-
--- ---------------------------------------------------------------------
--- | load the buffer with [String]
---
-setBuffer :: [String] -> IO ()
-setBuffer ss = modifyEditor $ \e -> return $ e { buffer = ss }
-
---
--- | get the buffer in a form easy to draw
---
-getBuffer :: IO [String]
-getBuffer = withEditor $ \e -> return $ buffer e
+-}
 
 -- ---------------------------------------------------------------------
 -- | set the user-defineable key map
@@ -222,12 +224,39 @@ getKeyMap :: IO (Key -> Action)
 getKeyMap = withEditor $ \e -> return $ keyMap (user_settings e)
 
 -- --------------------------------------------------------------------- 
--- Buffer type and operations
+-- | A buffer is a rectangular window, containing some contents
+-- It has a height and width in rows and columns (todo: what about
+-- graphic uis?)
+--
+-- todo, annotate with some attributes. e.g colors
+--
+data Buffer = Buffer {
+        name            :: !BufferName, -- ^ name of this buffer
+        contents        :: [String],    -- ^ just for now
+        x_origin        :: !Int,        -- ^ buffer top left x origin
+        y_origin        :: !Int,        -- ^ buffer top left y origin
+        buf_height      :: !Int,        -- ^ height in rows
+        buf_width       :: !Int,        -- ^ width  in columns
+        visible         :: !Bool,       -- ^ is the buffer visible?
+        modified        :: !Bool        -- ^ have the contents been modified
+    }
 
-type Buffer = [String]
+type BufferName = String
 
+--
+-- | give me a new, empty buffer please
+--
 emptyBuffer :: Buffer
-emptyBuffer = []
+emptyBuffer = Buffer {
+        name            = "<undefined>",  -- :)
+        contents        = [],
+        x_origin        = 0, 
+        y_origin        = 0,
+        buf_height      = 24,           -- todo
+        buf_width       = 80,           -- todo
+        visible         = False,
+        modified        = False 
+    }
 
 -- ---------------------------------------------------------------------
 -- | The type of user-bindable functions

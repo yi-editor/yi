@@ -63,10 +63,9 @@ start confs fs = do
     UI.start
     size@(h,w) <- UI.screenSize
     Editor.setScreenSize size
-    Editor.setBufSize size      -- size - mode height
     Editor.setUserSettings confs
     case fs of
-        Nothing    -> return ()
+        Nothing    -> Editor.newBuffer "empty buffer" []
         Just (f:_) -> e_load f >> return ()
 
 --
@@ -141,9 +140,9 @@ nocont = return $ EQuit
 -- | quit, but warn if unsaved. this is too high-level, in fact.
 --
 e_quit :: IO EditStatus
-e_quit = do
-    unsaved <- getUnsavedStatus
-    if unsaved then UI.warn "No write since last change" >> cont else nocont
+e_quit = nocont
+    -- unsaved <- getUnsavedStatus
+    --if unsaved then UI.warn "No write since last change" >> cont else nocont
 
 --
 -- | refresh the screen and continue
@@ -163,10 +162,10 @@ e_none = cont
 e_load :: FilePath -> IO EditStatus
 e_load f = do
         h <- openFile f ReadWriteMode
-        s <- hGetContents h     -- close it?
-        Editor.setBuffer $! lines s
-        UI.drawBuffer
-        return EOk              -- probably should redraw now
+        s <- hGetContents h             -- close it?
+        Editor.newBuffer f $ lines s   -- lazy for large files?
+        UI.refresh                      -- probably should redraw now
+        return EOk          
 
 ------------------------------------------------------------------------
 --

@@ -27,7 +27,7 @@ import HEmacs.Core
 --
 settings :: Config
 settings = Config {
-        keyMap       = defaultKeyMap  -- ^ just key bindings
+        keyMap       = defaultKeyMap
     -- ,styles       = dflt_styles
     }
 

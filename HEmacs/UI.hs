@@ -19,7 +19,7 @@ module HEmacs.UI (
         start, end, 
         screenSize,
 
-        drawBuffer,     -- IO ()
+        drawBufferYX,   -- IO ()
         fillLine,       -- IO ()
 
         refresh,
@@ -29,6 +29,7 @@ module HEmacs.UI (
 
   ) where
 
+import HEmacs.Style
 import qualified HEmacs.Curses as Curses
 import qualified HEmacs.Editor as Editor
 
@@ -80,13 +81,12 @@ getKey refresh_fn = do
 --
 -- | Draw as much of the buffer as will fit in the screen
 --
-drawBuffer :: IO ()
-drawBuffer = do
-    (y,x) <- Editor.getBufOrigin
-    (h,w) <- Editor.getBufSize
-    ss    <- Editor.getBuffer
-    Curses.wMove Curses.stdScr y x  -- mv cursor to origin
-    mapM_ (drawLine w) (take h (ss ++ repeat [])) 
+drawBufferYX :: Int -> Int -> Editor.Buffer -> IO ()
+drawBufferYX h w buf = do
+    mapM_ (drawLine w) $ take (h-1) ((Editor.contents buf) ++ repeat [])
+    cset_attr (Curses.setReverse Curses.attr0 True , Curses.Pair 0)
+    drawLine w ('"' : Editor.name buf ++ "\"" ++ repeat ' ')
+    creset_attr
     where
         drawLine :: Int -> String -> IO ()
         drawLine w s  = waddstr Curses.stdScr $ take w (s ++ repeat ' ')
@@ -98,7 +98,7 @@ fillLine :: IO ()
 fillLine = do
     (_, w) <- Curses.scrSize
     (_, x) <- Curses.getYX Curses.stdScr
-    waddstr Curses.stdScr (replicate (max 0 (w-x)) ' ')
+    waddstr Curses.stdScr $ replicate (max 0 (w-x)) ' '
 
 -- ---------------------------------------------------------------------
 --
@@ -118,10 +118,42 @@ cset_attr (a, p) = Curses.wAttrSet Curses.stdScr (a, p)
 creset_attr :: IO ()
 creset_attr = cset_attr (Curses.attr0, Curses.Pair 0)
 
+-- ---------------------------------------------------------------------
+-- Refreshing
+--
+    
+--
+-- | redraw and refresh the screen
+--
+refresh :: IO ()
+refresh = redraw >> Curses.refresh
+
+-- 
+-- | redraw the screen
+--
+redraw :: IO ()
+redraw = do
+    bs    <- Editor.getBuffers
+    (y,x) <- Editor.getScreenSize
+    let y' = (y - 1) `div` length bs
+    Curses.wMove Curses.stdScr 0 0  -- mv cursor to origin
+    mapM_ (drawBufferYX y' x) bs       
+
+------------------------------------------------------------------------
+-- misc
+
+warn :: String -> IO ()
+warn msg = do   -- do_message s attr_message msg
+    Curses.wMove Curses.stdScr 0 0
+    waddstr Curses.stdScr $ take 80 $ msg ++ repeat ' '
+
+------------------------------------------------------------------------
+-- dead
+
+{-
 --
 -- | draw all the lines to the screen?
 --
-{-
 draw_lines :: [String]
               -> Int
               -> Int
@@ -137,7 +169,6 @@ draw_lines d l_first l_last skip f = do
             | l > l_last = return ()
             | otherwise  = do f (maybehead d) nr
                               do_draw_lines (safetail d) (l+1) l_last (nr+1) f
--}
 
 -- ---------------------------------------------------------------------
 -- Text area
@@ -152,7 +183,6 @@ do_tab_stops pos ('\t':ss) =
 
 do_tab_stops pos (s:ss) = s:(do_tab_stops (pos + 1) ss)
 
-{-
 --
 -- | draw some text
 --
@@ -212,7 +242,6 @@ draw_botinfo s = do_draw_infoline_align s l t "(hemacs) " {-(mk_n_of_m n m)-}
         t = botinfo_text s
         m = text_n_lines (textarea_text s)
         n = min m $ (textarea_vscroll s)+(textarea_height s)
--}
 
 --
 -- | draw the little message when a multi-key command sequence is
@@ -225,71 +254,6 @@ draw_submap = do
     waddstr Curses.stdScr ("["++"null"++"-]")
     creset_attr
 
-{-
--- ---------------------------------------------------------------------
--- Entries
-
-entry_attr s nr =
-    case (nr == selected_entry s, Just nr == active_entry s) of
-        (False, False) -> attr_entry         $ attr s
-        (True,  False)  -> attr_entry_sel     $ attr s
-        (False, True)  -> attr_entry_act     $ attr s
-        (True,  True)   -> attr_entry_act_sel $ attr s
-
-do_draw_entry s Nothing _ = do
-    cset_attr (attr_entry $ attr s)
-    fill_to_eol
-    creset_attr
-
-do_draw_entry s (Just (Loc loc, e)) nr = do
-    cset_attr (entry_attr s nr)
-    waddstr Curses.stdScr (left_align w l)
-    creset_attr
-    where
-        w = screen_width s
-        bullet = case (entrytree_children e) of
-                     [] -> " - " --[' ', Curses.bullet, ' ']
-                     otherwise -> " + "
-        indent = replicate (3 * (length loc - 1)) ' '
-        tg = case entrytree_tagged e of
-                 True -> "*"
-                 False -> " "
-        flags = left_align 4 (entry_flags e)
-        l = concat [" ", flags, tg, " ", indent, bullet, entry_title e]
-
-draw_entries :: Entry a => Status a -> IO ()
-draw_entries s = 
-    draw_lines s (entries_viewlist s) sl el vs do_draw_entry
-    where
-        vs = entryarea_vscroll s
-        sl = entryarea_startline s
-        el = entryarea_endline s
--}
-
--- ---------------------------------------------------------------------
--- Refreshing
-
--- 
--- | redraw the screen
---
-redraw :: IO ()
-redraw = return () -- draw_botinfo status
-{-
-    -- Curses.wclear Curses.stdScr
-    draw_topinfo status
-    draw_entries status
-    draw_midinfo status
-    draw_textarea status
-    draw_botinfo status
--}
-
---
--- | redraw and refresh the screen
---
-refresh :: IO ()
-refresh = redraw >> Curses.refresh
-
-{-
 -- ---------------------------------------------------------------------
 -- Text area scrolling
 
@@ -580,7 +544,7 @@ do_edit text = do
         newtext <- from_locale newtext_
         t_ <- getClockTime
         t <- toCalendarTime t_
-	Curses.clearOk True
+    Curses.clearOk True
         Curses.refresh
         if unmodified_or_empty newtext_ text_ then
             error "Aborted unmodified or empty entry."
@@ -637,11 +601,6 @@ do_message attr_fn msg = do
     waddstr Curses.stdScr $ take (screen_width s) $ msg ++ repeat ' '
     creset_attr
 -}
-
-warn :: String -> IO ()
-warn msg = do   -- do_message s attr_message msg
-    Curses.wMove Curses.stdScr 0 0
-    waddstr Curses.stdScr $ take 80 $ msg ++ repeat ' '
 
 {-
 get_yn s yes no cancel refresh_fn = do

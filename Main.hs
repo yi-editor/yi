@@ -29,3 +29,4 @@ import qualified HEmacs ( static_main )
 
 main :: IO ()
 main = HEmacs.static_main
+

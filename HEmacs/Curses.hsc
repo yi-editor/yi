@@ -34,8 +34,6 @@
 -- are distributed under a BSD license.
 --
 
--- Could we also try ocurses?
-
 module HEmacs.Curses (
 
     --------------------------------------------------------------------
@@ -152,7 +150,6 @@ module HEmacs.Curses (
 
 import HEmacs.CWString
 import HEmacs.Editor    ( Key(..) )
-
 import Prelude hiding   ( pi )
 
 import Data.Char        ( chr, ord, isPrint, isSpace, toLower )
@@ -197,7 +194,8 @@ type Window = Ptr WindowTag
 --
 stdScr :: Window
 stdScr = unsafePerformIO (peek stdscr)
-foreign import ccall "static my_curses.h &stdscr" stdscr :: Ptr Window
+foreign import ccall "static my_curses.h &stdscr" 
+    stdscr :: Ptr Window
 
 --
 -- | initscr is normally the first curses routine to call when
@@ -218,30 +216,84 @@ initScr :: IO Window
 initScr = throwIfNull "initscr" initscr
 foreign import ccall unsafe "my_curses.h initscr" initscr :: IO Window
 
+--
+-- | > The cbreak routine
+--   > disables line buffering and erase/kill  character-process-
+--   > ing  (interrupt  and  flow  control  characters  are unaf-
+--   > fected), making characters typed by the  user  immediately
+--   > available  to  the  program.  The nocbreak routine returns
+--   > the terminal to normal (cooked) mode.
+--
 cBreak :: Bool -> IO ()
 cBreak True  = throwIfErr_ "cbreak"   cbreak
 cBreak False = throwIfErr_ "nocbreak" nocbreak
-foreign import ccall unsafe "my_curses.h cbreak" cbreak :: IO CInt
+
+foreign import ccall unsafe "my_curses.h cbreak"     cbreak :: IO CInt
 foreign import ccall unsafe "my_curses.h nocbreak" nocbreak :: IO CInt
 
+--
+-- |>    The  raw and noraw routines place the terminal into or out
+-- >     of raw mode.  Raw mode is similar to cbreak mode, in  that
+-- >     characters  typed  are  immediately  passed through to the
+-- >     user program.  The differences are that in raw  mode,  the
+-- >     interrupt,  quit, suspend, and flow control characters are
+-- >     all passed through uninterpreted, instead of generating  a
+-- >     signal.   The  behavior  of the BREAK key depends on other
+-- >     bits in the tty driver that are not set by curses.
+--
 raw :: Bool -> IO ()
 raw False = throwIfErr_ "noraw" noraw
 raw True  = throwIfErr_ "raw"   raw_c
-foreign import ccall unsafe "my_curses.h noraw" noraw :: IO CInt
-foreign import ccall unsafe "my_curses.h raw" raw_c :: IO CInt
 
+foreign import ccall unsafe "my_curses.h noraw" noraw :: IO CInt
+foreign import ccall unsafe "my_curses.h raw"   raw_c :: IO CInt
+
+--
+-- |>      The  echo  and  noecho routines control whether characters
+-- >       typed by the user are echoed by getch as they  are  typed.
+-- >       Echoing  by  the  tty  driver is always disabled, but ini-
+-- >       tially getch is in echo  mode,  so  characters  typed  are
+-- >       echoed.  Authors of most interactive programs prefer to do
+-- >       their own echoing in a controlled area of the  screen,  or
+-- >       not  to  echo  at  all, so they disable echoing by calling
+-- >       noecho.  [See curs_getch(3) for a discussion of how  these
+-- >       routines interact with cbreak and nocbreak.]
+-- >
+--
 echo :: Bool -> IO ()
 echo False = throwIfErr_ "noecho" noecho
 echo True  = throwIfErr_ "echo"   echo_c
+
 foreign import ccall unsafe "my_curses.h noecho" noecho :: IO CInt
 foreign import ccall unsafe "my_curses.h echo" echo_c :: IO CInt
 
+--
+-- |>       The  nl  and  nonl routines control whether the underlying
+-- >        display device translates the return key into  newline  on
+-- >        input,  and  whether it translates newline into return and
+-- >        line-feed on output (in either case, the call  addch('\n')
+-- >        does the equivalent of return and line feed on the virtual
+-- >        screen).  Initially, these translations do occur.  If  you
+-- >        disable  them using nonl, curses will be able to make bet-
+-- >        ter use of the line-feed capability, resulting  in  faster
+-- >        cursor  motion.   Also, curses will then be able to detect
+-- >        the return key.
+-- > 
 nl :: Bool -> IO ()
 nl True  = throwIfErr_ "nl"   nl_c
 nl False = throwIfErr_ "nonl" nonl
+
 foreign import ccall unsafe "my_curses.h nl" nl_c :: IO CInt
 foreign import ccall unsafe "my_curses.h nonl" nonl :: IO CInt
 
+-- |>       If  the intrflush option is enabled, (bf is TRUE), when an
+-- >        interrupt key  is  pressed  on  the  keyboard  (interrupt,
+-- >        break,  quit)  all  output in the tty driver queue will be
+-- >        flushed, giving the  effect  of  faster  response  to  the
+-- >        interrupt,  but  causing  curses to have the wrong idea of
+-- >        what is on the  screen.   Disabling  (bf  is  FALSE),  the
+-- >        option  prevents the flush.
+-- > 
 intrFlush :: Bool -> IO ()
 intrFlush bf =
     throwIfErr_ "intrflush" $ intrflush stdScr (if bf then 1 else 0)
@@ -285,8 +337,8 @@ defineKey k s =  withCString s (\s -> define_key s k) >> return ()
 useDefaultColors :: IO ()
 useDefaultColors = return ()
 
-defaultBackground = black
-defaultForeground = white 
+defaultBackground = white 
+defaultForeground = black
 
 defineKey k s = return ()
 
