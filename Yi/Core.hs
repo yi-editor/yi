@@ -46,7 +46,6 @@ module Yi.Core {-(
 
         -- ** Global editor actions
         quitE,
-        refreshE,
         nopE,
         getcE,
         msgE,
@@ -123,6 +122,9 @@ startE confs ln mfs = do
     sz <- UI.screenSize
     modifyEditor_ $ \e -> return $ e { scrsize = sz }
 
+    t <- forkIO refreshLoop -- fork UI thread
+    modifyEditor_ $ \e -> return $ e { threads = t : threads e }
+
     -- read in any files
     handleJust ioErrors (errorE . show) $ do
         case mfs of
@@ -133,15 +135,29 @@ startE confs ln mfs = do
                     Nothing    -> error "Core.startE: mkstemp failed"
                     Just (f,h) -> hClose h >> fnewE f
     gotoLnE ln
-    refreshE
 
     -- fork input-reading thread. important to block *thread* on getcE
     -- otherwise all threads will block waiting for input
     ch <- newChan   
-    modifyEditor_ $ \e -> return $ e { input = ch }
-    forkIO $ repeatM_ (threadWaitRead 0 >> getcE >>= writeChan ch)
+    t' <- forkIO $ getcLoop ch
+    modifyEditor_ $ \e -> return $ e { threads = t' : threads e, input = ch }
 
-    refreshE
+------------------------------------------------------------------------
+--
+-- | Action to read characters into a channel
+-- We block our thread waiting for input on stdin
+--
+getcLoop :: Chan Char -> IO ()
+getcLoop ch = repeatM_ $ threadWaitRead 0 >> getcE >>= writeChan ch
+
+--
+-- | When the editor state isn't being modified, refresh, then wait for
+-- it to be modified again.
+--
+refreshLoop :: IO ()
+refreshLoop = repeatM_ $ takeMVar editorModified >> UI.refresh
+
+------------------------------------------------------------------------
 
 --
 -- | shutdown the editor
@@ -153,7 +169,7 @@ endE = UI.end
 -- | How to read from standard input
 --
 getcE :: IO Char
-getcE = UI.getKey UI.refresh
+getcE = UI.getKey (return ())
 
 -- ---------------------------------------------------------------------
 -- | The editor main loop. Read key strokes from the ui and interpret
@@ -194,11 +210,9 @@ lazyRead = unsafeInterleaveIO $ do
 
 -- | Quit
 quitE :: Action
-quitE = exitWith ExitSuccess
-
--- | Refresh the screen
-refreshE :: Action
-refreshE = UI.refresh
+quitE = do
+    Editor.shutdown
+    exitWith ExitSuccess
 
 -- | Do nothing
 nopE :: Action
@@ -481,18 +495,15 @@ searchAndRepLocal re str = do
 
 -- | Set the cmd buffer, and draw message at bottom of screen
 msgE :: String -> Action
-msgE s = do modifyEditor_ $ \e -> return e { cmdline = s }
-            UI.drawCmdLine s -- immediately draw
+msgE s = modifyEditor_ $ \e -> return e { cmdline = s }
 
 -- | Set the cmd buffer, and draw a pretty error message
 errorE :: String -> Action
-errorE s = do modifyEditor_ $ \e -> return e { cmdline = s }
-              UI.drawCmdLine s -- immediately draw
+errorE s = modifyEditor_ $ \e -> return e { cmdline = s }
 
 -- | Clear the message line at bottom of screen
 msgClrE :: Action
-msgClrE = do modifyEditor_ $ \e -> return e { cmdline = [] } 
-             UI.drawCmdLine [] -- immediately draw
+msgClrE = modifyEditor_ $ \e -> return e { cmdline = [] } 
 
 -- | Get the current cmd buffer
 getMsgE :: IO String

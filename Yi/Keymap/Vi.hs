@@ -116,11 +116,11 @@ with a = (Just (Right a))
 -- accumulate count digits, echoing them to the cmd buffer
 cmd_count :: ViMode
 cmd_count = digit
-    `meta` \[c] st -> (with (msg (c:acc st) >> refreshE),st{acc = c:acc st},Just $ cmd st)
+    `meta` \[c] st -> (with (msg (c:acc st)),st{acc = c:acc st},Just $ cmd st)
     where
         msg cs = msgE $ (replicate 60 ' ') ++ (reverse cs)
 
--- eval a cmd. always clear the cmd buffer prior, and refresh
+-- eval a cmd. always clear the cmd buffer prior
 cmd_eval :: ViMode
 cmd_eval = ( cmdc >|< 
             (char 'r' +> anyButEscOrDel) >|<
@@ -131,7 +131,7 @@ cmd_eval = ( cmdc >|<
                                else Just (read $ reverse count)
             i  = fromMaybe 1 c
             fn = getCmd lexeme c i
-        in (with (msgClrE >> fn >> refreshE), st{acc=[]}, Just $ cmd st)
+        in (with (msgClrE >> fn), st{acc=[]}, Just $ cmd st)
 
     where
         anyButEscOrDel = alt $ any' \\ ('\ESC':delete')
@@ -241,7 +241,7 @@ cmd_eval = ( cmdc >|<
 cmd2other :: ViMode
 cmd2other = modeSwitchChar
     `meta` \[c] st -> 
-        let beginIns a = (with (a >> refreshE), st, Just (ins st))
+        let beginIns a = (with a, st, Just (ins st))
         in case c of
             ':' -> (with (msgE ":"), st{acc=[':']}, Just ex_mode)
 
@@ -258,7 +258,7 @@ cmd2other = modeSwitchChar
             '/' -> (with (msgE "/"), st{acc=['/']}, Just ex_mode)
             '?' -> (with (not_implemented '?'), st{acc=[]}, Just $ cmd st)
 
-            '\ESC'-> (with (msgClrE >> refreshE), st{acc=[]}, Just $ cmd st)
+            '\ESC'-> (with msgClrE, st{acc=[]}, Just $ cmd st)
 
             s   -> (with (errorE ("The "++show s++" command is unknown."))
                    ,st, Just $ cmd st)
@@ -270,7 +270,7 @@ cmd2other = modeSwitchChar
 -- 
 ins_char :: ViMode
 ins_char = anyButEsc
-    `action` \[c] -> Just (fn c >> refreshE)
+    `action` \[c] -> Just (fn c)
 
     where fn c = case c of
                     k | isDel k       -> deleteE
@@ -330,7 +330,7 @@ ex_edit = delete
 -- escape exits ex mode immediately
 ex2cmd :: ViMode
 ex2cmd = char '\ESC'
-    `meta` \_ st -> (with $ msgClrE >> refreshE, st{acc=[]}, Just $ cmd st)
+    `meta` \_ st -> (with msgClrE, st{acc=[]}, Just $ cmd st)
 
 --
 -- eval an ex command to an Action, also appends to the ex history
@@ -341,7 +341,7 @@ ex_eval = enter
         let c  = reverse dmc
             h  = (c:(fst $ hist st), snd $ hist st) in case c of
         -- regex searching
-        ('/':pat) -> (with (searchE (Just pat) >> refreshE)
+        ('/':pat) -> (with (searchE (Just pat))
                      ,st{acc=[],hist=h},Just $ cmd st)
 
         -- add mapping to command mode
@@ -367,7 +367,7 @@ ex_eval = enter
                in (Nothing, st{acc=[],hist=h,ins=ins'}, Just (cmd st))
 
         -- just a normal ex command
-        (_:src) -> (with (fn src >> refreshE), st{acc=[],hist=h}, Just $ cmd st)
+        (_:src) -> (with (fn src), st{acc=[],hist=h}, Just $ cmd st)
 
         -- can't happen, but deal with it
         [] -> (Nothing, st{acc=[], hist=h}, Just $ cmd st)

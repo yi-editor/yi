@@ -112,24 +112,22 @@ getKey refresh_fn = do
 -- | Redraw the entire terminal from the UI state
 --
 redraw :: IO ()
-redraw = do
-    -- draw all windows
-    ws <- getWindows
+redraw = withEditor $ \e -> do
+    let ws       = getWindows e
+        cl       = cmdline e
+        sty      = uistyle e 
+        w        = getWindowOf e
+        (Just i) = getWindowIndOf e
+
     gotoTop
-    mapM_ drawWindow ws
-
-    cl  <- readEditor cmdline
-    sty <- readEditor uistyle
-
-    withStyle (window sty) $ drawCmdLine cl
+    mapM_ (drawWindow e) ws                         -- draw all windows
+    withStyle (window sty) $ drawCmdLine cl     -- draw cmd line
 
     -- work out origin of current window from index of that window in win list
     -- still grubby because we aren't using the /origin/ field of 'Window'
     -- _sigh_ assumes bottom window has rem
-    w <- getWindow
     when (isJust w) $ do
-        (Just i) <- getWindowInd
-        (h,_)    <- screenSize
+        (h,_)  <- screenSize
         let o_y = i * (fst $ getY h (length ws))
         drawCursor (o_y,0) $ cursor $ fromJust w
 
@@ -140,26 +138,23 @@ redraw = do
 -- Take head of 'active' status
 -- TODO set cursor invisible
 --
-drawWindow :: Window -> IO ()
-drawWindow win@(Window { bufkey=u, mode=m, origin=(_,_), 
+drawWindow :: Editor -> Window -> IO ()
+drawWindow e win@(Window { bufkey=u, mode=m, origin=(_,_), 
                      height=h, width=w, tospnt=t } ) = do
 
-    sty <- readEditor uistyle
+    let sty   = uistyle e
+        b     = findBufferWith e u
+        mwin  = getWindowOf e
 
-    -- draw buffer contents
-    b  <- getBufferWith u
     ss <- nelemsB b (h*w) t           -- maximum visible contents of buffer
     let ls  = lines ss
         len = length ls
 
-    -- window contents
+    -- window contents, eof markers
     withStyle (window sty) $ mapM_ (drawLine w) $ take (h-1) ls
-
-    -- any eof markers
-    withStyle (eof sty) $ mapM_ (drawLine w) $ take (h-1-len) $ repeat "~"
+    withStyle (eof sty)    $ mapM_ (drawLine w) $ take (h-1-len) $ repeat "~"
 
     -- draw modeline
-    mwin <- getWindow
     let fn = if isJust mwin && fromJust mwin == win 
              then modeline_focused 
              else modeline

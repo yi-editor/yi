@@ -38,6 +38,7 @@ import Data.Unique              ( Unique )
 import System.IO
 import System.IO.Unsafe         ( unsafePerformIO )
 
+import Control.Concurrent
 import Control.Concurrent.MVar
 import Control.Concurrent.Chan
 
@@ -70,6 +71,7 @@ data Buffer a => GenEditor a =
        ,scrsize   :: !(Int,Int)                 -- ^ screen size
        ,uistyle   :: UIStyle                    -- ^ ui colours
        ,input     :: Chan Char                  -- ^ input stream
+       ,threads   :: [ThreadId]                 -- ^ all our threads
     }
 
 --
@@ -93,6 +95,13 @@ state = unsafePerformIO $ do
 {-# NOINLINE state #-}
 
 --
+-- The ui needs to know if that state has changed
+--
+editorModified :: MVar ()
+editorModified = unsafePerformIO $ newMVar ()
+{-# NOINLINE editorModified #-}
+
+--
 -- | The initial state
 --
 emptyEditor :: Editor
@@ -107,6 +116,7 @@ emptyEditor = Editor {
        ,scrsize      = (0,0)
        ,uistyle      = Yi.Style.ui
        ,input        = error "No channel open"
+       ,threads      = []
     }
 
 -- 
@@ -116,21 +126,33 @@ readEditor :: (Editor -> b) -> IO b
 readEditor f = withMVar state $ \ref -> return . f =<< readIORef ref
 
 --
+-- | Read the editor state, with an IO action
+--
+withEditor :: (Editor -> IO ()) -> IO ()
+withEditor f = withMVar state $ \ref -> f =<< readIORef ref
+
+--
 -- | Modify the contents, using an IO action.
 --
 modifyEditor_ :: (Editor -> IO Editor) -> IO ()
-modifyEditor_ f = modifyMVar_ state $ \r ->
-                    readIORef r >>= f >>= writeIORef r >> return r
+modifyEditor_ f = do
+    modifyMVar_ state $ \r ->
+            readIORef r >>= f >>= writeIORef r >> return r
+    tryPutMVar editorModified ()
+    return ()
 
 --
 -- | Variation on modifyEditor_ that lets you return a value
 --
 modifyEditor :: (Editor -> IO (Editor,b)) -> IO b
-modifyEditor f = modifyMVar state $ \r -> do
+modifyEditor f = do
+    b <- modifyMVar state $ \r -> do
                     v  <- readIORef r
                     (v',b) <- f v
                     writeIORef r v'
                     return (r,b)
+    tryPutMVar editorModified ()
+    return b
 
 -- ---------------------------------------------------------------------
 -- Buffer operations
@@ -263,24 +285,28 @@ mkAssoc (w:ws) = (key w, w) : mkAssoc ws
 -- | Get all the windows
 -- TODO by key
 --
-getWindows :: IO [Window]
-getWindows = readEditor $ \e -> eltsFM $ windows e
+getWindows :: Editor -> [Window]
+getWindows = eltsFM . windows
 
 --
 -- | Get current window
 --
 getWindow :: IO (Maybe Window)
-getWindow = readEditor $ \e -> 
-                case curwin e of    
+getWindow = readEditor getWindowOf
+
+--
+-- | Get window, from the given editor state.
+--
+getWindowOf :: Editor -> (Maybe Window)
+getWindowOf e = case curwin e of
                     Nothing -> Nothing
                     k       -> Just $ findWindowWith e k
 
 --
 -- | Get index of current window in window list
 --
-getWindowInd :: IO (Maybe Int)
-getWindowInd = readEditor $ \e ->
-    case curwin e of    
+getWindowIndOf :: Editor -> (Maybe Int)
+getWindowIndOf e = case curwin e of    
         Nothing -> Nothing
         k       -> let win = findWindowWith e k
                    in elemIndex win (eltsFM $ windows e)
@@ -394,6 +420,14 @@ setUserSettings (Config km sty) =
 --
 getKeyBinds :: IO ([Char] -> [Action])
 getKeyBinds = readEditor curkeymap
+
+-- ---------------------------------------------------------------------
+
+--
+-- | Shut down all of our threads.
+--
+shutdown :: IO ()
+shutdown = readEditor threads >>= mapM_ killThread
 
 -- ---------------------------------------------------------------------
 --

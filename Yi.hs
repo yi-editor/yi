@@ -141,7 +141,7 @@ static_main = do
     lineno <- readIORef g_lineno
     bracket_ (initSignals    >> Core.startE config lineno mfiles)
              (Core.endE      >> releaseSignals)
-             (Core.refreshE  >> Core.eventLoop)
+             (Core.eventLoop)
 
 -- ---------------------------------------------------------------------
 -- | Dynamic main. This is jumped to from from Boot.hs, after dynamically
