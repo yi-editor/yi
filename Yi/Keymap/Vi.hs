@@ -118,7 +118,7 @@ cmd_count = digit
     where
         msg cs = msgE $ (replicate 60 ' ') ++ (reverse cs)
 
--- eval a cmd 
+-- eval a cmd. always clear the buffer now.
 cmd_eval :: ViMode
 cmd_eval = ( cmdc >|< 
             (char 'r' +> anyButEscOrDel) >|<
@@ -129,7 +129,7 @@ cmd_eval = ( cmdc >|<
                                else Just (read $ reverse count)
             i  = fromMaybe 1 c
             fn = getCmd lexeme c i
-        in (with fn, st{acc=[]}, Just $ cmd st)
+        in (with (msgClrE >> fn), st{acc=[]}, Just $ cmd st)
 
     where
         anyButEscOrDel = alt $ any' \\ ('\ESC':delete')
