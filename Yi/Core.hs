@@ -110,6 +110,9 @@ module Yi.Core (
         searchE,                -- :: (Maybe String) -> Action
         searchAndRepLocal,      -- :: String -> String -> IO Bool
 
+        -- * lower-level ops
+        mapUntilE,              -- :: Buffer a => Int -> (a -> Action) -> Action
+
    ) where
 
 import Yi.MkTemp            ( mkstemp )
@@ -621,6 +624,27 @@ nextWinE = Editor.nextWindow
 -- | Shift focus to prev window
 prevWinE :: Action
 prevWinE = Editor.prevWindow
+
+------------------------------------------------------------------------
+--
+-- Map a (buffer) function over a range of the buffer. Why? So you can
+-- write complex operations without having refresh screw you up.
+--
+-- You could still write a function to screw up things though...
+--
+mapUntilE :: Int -> (Buffer' -> Action) -> Action
+mapUntilE limit f
+    | limit < 0 = nopE
+    | otherwise = do
+        withWindow_ $ \w b -> do
+            eof <- sizeB b
+            if limit >= eof then return w else do
+                let loop = do p <- pointB b
+                              when (p < limit && p < eof) $ 
+                                    f b >> loop
+                loop
+                return w
+        getPointE >>= gotoPointE
 
 ------------------------------------------------------------------------
 

@@ -27,6 +27,7 @@ import Yi.Core
 import Yi.Editor            ( Action )
 import Yi.UI         hiding ( plus )
 import Yi.Lexers     hiding ( Action )
+import Yi.Buffer            ( Buffer(..) )
 
 import Prelude       hiding ( any )
 
@@ -321,19 +322,15 @@ cmd_op =((op_char +> digit `star` move_chr) >|<
                               setRegE s -- ToDo registers not global.
              )
             ,('~', \_ m -> do (p,q) <- withPointMove m
-                              let lim = max p q
-                                  loop =  do r <- getPointE
-                                             when (r < lim) $ do
-                                               c' <- readE
-                                               let c'' = if isUpper c' 
-                                                         then toLower c' 
-                                                         else toUpper c'
-                                               writeE c''
-                                               rightE
-                                               loop
-                              loop
-                     )
-                    ]
+                              mapUntilE (max p q) $ \b -> do
+                                   c' <- readB b
+                                   let c'' = if isUpper c' 
+                                                then toLower c' 
+                                                else toUpper c'
+                                   writeB b c''
+                                   rightB b
+             )
+            ]
 
         --
         -- A strange, useful action. Save the current point, move to
@@ -662,4 +659,3 @@ digit'   = ['0' .. '9']
 
 cursc' :: [Char]
 cursc'   = [keyPPage, keyNPage, keyLeft, keyRight, keyDown, keyUp]
-
