@@ -42,6 +42,8 @@ module Yi.Core (
         e_quit,
         e_refresh,
         e_noop,
+        e_next,
+        e_prev,
 
         -- * File related
         e_read,
@@ -205,8 +207,8 @@ e_up = modifyCurrentBuffer $ \b -> do
         Buffer.left b    >> return () -- skip past \n
     Buffer.gotoPrevLn b
     Buffer.leftN 2 b                 -- skip past \n
-    p <- Buffer.point b
-    when (p /= 0) $
+    p'<- Buffer.point b
+    when (p'/= 0) $
         Buffer.gotoPrevLn b >> return ()
     Buffer.nextXorNL (max x 0) b
 
@@ -254,6 +256,18 @@ e_write = modifyCurrentBuffer $ \b -> do
         hClose h
         return b
 
+--
+-- | Shift focus to next buffer
+--
+e_next :: IO ()
+e_next = Editor.nextBuffer
+
+--
+-- | Shift focus to prev buffer
+--
+e_prev :: IO ()
+e_prev = Editor.prevBuffer
+
 ------------------------------------------------------------------------
 
 --
@@ -282,4 +296,3 @@ e_delete = modifyCurrentBuffer $ Buffer.delete
 -- Move back 1 char (this is VI behaviour -- so get rid of it from Core)
 e_kill :: IO ()
 e_kill = modifyCurrentBuffer $ \b -> Buffer.killToNL b >>= Buffer.prevXorLn 1
-

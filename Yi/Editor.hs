@@ -30,6 +30,7 @@ import Yi.Buffer
 -- Get at the user defined settings
 import {-# SOURCE #-} qualified Yi.Config as Config ( settings )
 
+import Data.List                ( elemIndex )
 import Data.FiniteMap
 import Data.Unique
 import Data.IORef
@@ -138,17 +139,43 @@ findBufferWithKey e k =
 -- Generalise the type
 --
 setCurrentBuffer :: EBuffer -> IO ()
-setCurrentBuffer b = modifyEditor $ \(e::Editor) -> e{focusKey = Just $ (key b)}
+setCurrentBuffer b = modifyEditor $ \(e::Editor) -> e{focusKey = Just $ key b}
 
 ------------------------------------------------------------------------
 --
--- | some useful things
+-- | Rotate focus to the next buffer
+-- TODO: refactor
 --
-nextBuffer :: IO EBuffer
-nextBuffer = undefined
-
-prevBuffer :: IO EBuffer
-prevBuffer = undefined
+nextBuffer :: IO ()
+nextBuffer = modifyEditor $ \e ->
+    let bs = eltsFM (buffers e)
+    in case focusKey e of
+        Nothing -> error "Editor.nextBuffer: no focused buffer"
+        Just k  -> case lookupFM (buffers e) k of
+            Nothing -> error "Editor.nextBuffer: lost focused buffer"
+            Just cb-> case elemIndex cb bs of
+                Nothing -> error "Error.nextBuffer: focused buffer disappeared"
+                Just i -> let l = length bs
+                              b = bs !! ((i+1) `mod` l)
+                          in e {focusKey = Just $ key b}
+    
+--
+-- | Rotate focus to the next buffer
+--
+prevBuffer :: IO ()
+prevBuffer = modifyEditor $ \e ->
+    let bs = eltsFM (buffers e)
+    in case focusKey e of
+        Nothing -> error "Editor.nextBuffer: no focused buffer"
+        Just k  -> case lookupFM (buffers e) k of
+            Nothing -> error "Editor.nextBuffer: lost focused buffer"
+            Just cb-> case elemIndex cb bs of
+                Nothing -> error "Error.nextBuffer: focused buffer disappeared"
+                Just i -> let l = length bs
+                              b = bs !! ((i-1) `mod` l)
+                          in e {focusKey = Just $ key b}
+    
+------------------------------------------------------------------------
 
 --
 -- | get the number of buffers we have
