@@ -33,13 +33,14 @@ import qualified Yi.Keymap.Vim as Keymap
 import Data.IORef
 
 import Control.Monad            ( liftM, when )
-import Control.Exception        ( handle, throwIO )
+import Control.Exception        ( handle, throwIO, try )
+import Control.Concurrent       ( myThreadId, throwTo )
 
 import System.Console.GetOpt
 import System.Environment       ( getArgs )
-import System.Exit              ( exitWith, ExitCode(ExitSuccess) )
+import System.Exit
 import System.IO.Unsafe         ( unsafePerformIO )
-import System.Posix.Signals as Signals
+import System.Posix.Signals
 
 import GHC.Base                 ( unsafeCoerce# )
 import GHC.Exception            ( Exception(ExitException) )
@@ -99,18 +100,31 @@ do_args args =
 --      signal, the SIGCHLD signal will be generated only when a child process
 --      exits, not when a child process stops.
 --
-initSignals :: IO Handler
+-- setStoppedChildFlag True
+--
+initSignals :: IO ()
 initSignals = do 
-    -- Signals.setStoppedChildFlag True -- crashes rts on openbsd
-    Signals.installHandler Signals.sigCHLD Signals.Default Nothing
-    Signals.installHandler Signals.sigPIPE Signals.Ignore Nothing
-    Signals.installHandler Signals.sigINT   -- to pass \^C in
-            (Signals.Catch (return ())) Nothing
 
-releaseSignals :: IO Handler
-releaseSignals = do 
-    Signals.installHandler Signals.sigINT Signals.Default Nothing
-    Signals.installHandler Signals.sigPIPE Signals.Default Nothing
+    tid <- myThreadId
+
+    -- to pass \^C to keymap (think emacs mode)
+    installHandler sigINT (Catch (return ())) Nothing
+
+    -- ignore
+    sequence_ $ flip map [sigPIPE, sigALRM]
+                          (\sig -> installHandler sig Ignore Nothing)
+
+    -- and exit if we get the following:
+    sequence_ $ flip map [sigHUP, sigABRT, sigTERM] $ \sig -> do
+            installHandler sig (CatchOnce $ do 
+                    releaseSignals
+                    try Core.quitE >> return ()
+                    throwTo tid (ExitException (ExitFailure 2))) Nothing
+
+releaseSignals :: IO ()
+releaseSignals =
+    sequence_ $ flip map [sigINT, sigPIPE, sigHUP, sigABRT, sigTERM] 
+               (\sig -> installHandler sig Default Nothing)
 
 -- ---------------------------------------------------------------------
 -- | The "g_settings" var stores the user-configurable information. It is
@@ -163,7 +177,7 @@ static_main = do
     -- (catching an ExitException), then re throw the original
     -- exception. catch that and print it, if it wasn't exit.
     --
-    handle (\e -> when (not $ isExitCall e) $ print e ) $ do
+    handle (\e -> when (not $ isExitCall e) $ print e >> throwIO e) $ do
         handle (\e -> releaseSignals >> handle (\_ -> throwIO e) Core.quitE) $ do
             initSignals >> Core.startE config lineno mfiles
             Core.eventLoop
