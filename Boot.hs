@@ -51,7 +51,7 @@
 -- HSyi.o (i.e. -package yi) as a dependency.
 --
 
-module Boot ( main ) where
+module Boot ( main, remain ) where
 
 import Plugins
 import Plugins.Utils          ( (</>), (<.>) )
@@ -92,6 +92,19 @@ yi_main_sym     = "dynamic_main"        -- main entry point
 libdir :: IORef FilePath
 libdir = unsafePerformIO $ newIORef (LIBDIR :: FilePath)
 {-# NOINLINE libdir #-}
+
+--
+-- squirrel away our config data, so that reloading yi can (for now)
+-- just reuse the existing config data.
+--
+g_cfghdl :: IORef (Maybe ConfigData)
+g_cfghdl = unsafePerformIO $ newIORef (error "no config data")
+{-# NOINLINE g_cfghdl #-}
+
+g_yi_main_mod :: IORef Module
+g_yi_main_mod = unsafePerformIO $ newIORef (error "no Yi.o loaded yet")
+{-# NOINLINE g_yi_main_mod #-}
+
 
 -- ---------------------------------------------------------------------
 -- | Finding config files. Use 'Control.Exception.catch' to deal with
@@ -198,6 +211,13 @@ get_load_flags = do libpath <- readIORef libdir
 -- | Find and load a config file. Load the yi core library. Jump to
 -- the real main in 'Yi.main', passing any config information we found.
 --
+-- The library structure in memory:
+--      Boot.o loads Yi.o
+--             which depends on HSyi.o
+--
+-- So to reload the yi core, you need to unload Yi.o and HSyi.o, and
+-- then reload Yi.o.
+--
 main :: IO ()
 main = do
     -- look for -B libdir flag
@@ -229,15 +249,49 @@ main = do
                                 putStrLn "Unable to load config file, using defaults"
                                 mapM_ putStrLn e ; return Nothing
 
+    -- for now, store config data away.
+    writeIORef g_cfghdl cfghdl
+
     -- now, get a handle to Main.dynamic_main, and jump to it
     status    <- load (libpath </> yi_main_obj) [] paths yi_main_sym
     yi_main <- case status of
-        LoadSuccess _ v -> return (v :: YiMainType)
+        LoadSuccess m v ->  do writeIORef g_yi_main_mod m
+                               return (v :: YiMainType)
         LoadFailure e -> do putStrLn "Unable to load Yi.Main, exiting"
                             mapM_ putStrLn e ; exitFailure
 
-    putStr "jumping over the edge ... " >> hFlush stdout
-    yi_main cfghdl   -- jump to dynamic code
+    putStrLn "jumping over the edge ... " >> hFlush stdout
+    yi_main (cfghdl, remain)   -- jump to dynamic code
+
+-- ---------------------------------------------------------------------
+-- Now, we want to /reload/ yi.o. How do we do this?
+-- In our case, we want to unload a /package/, and then pull it back in.
+-- Tricky.
+
+remain :: IO ()
+remain = do
+
+    -- ToDo unload all config files
+
+    -- unload Yi.o
+    yi_main_mod <- readIORef g_yi_main_mod
+    unload yi_main_mod
+
+    -- unloadPackage HSyi.o
+    unloadPackage "yi"
+
+    -- reload Yi.o, pulling in HSyi.o
+    libpath <- readIORef libdir
+    paths   <- get_load_flags
+    status  <- load (libpath </> yi_main_obj) [] paths yi_main_sym
+ 
+    yi_main <- case status of
+        LoadSuccess _ v -> return (v :: YiMainType)
+        LoadFailure e -> do putStrLn "Unable to reload Yi.Main, exiting"
+                            mapM_ putStrLn e ; exitFailure
+    
+    cfghdl  <- readIORef g_cfghdl
+    yi_main (cfghdl,remain)   -- jump to dynamic code
 
 -- ---------------------------------------------------------------------
 -- | MAGIC: this is the type of the value passed from Boot.main to
@@ -251,6 +305,6 @@ main = do
 --
 data ConfigData = forall a. CD a {- has Config type -}
 
-type YiMainType = (Maybe ConfigData) -> IO ()
+type YiMainType = (Maybe ConfigData, IO () ) -> IO ()
 
 -- vim: sw=4 ts=4

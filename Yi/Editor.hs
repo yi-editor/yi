@@ -70,6 +70,7 @@ data Buffer a => GenEditor a =
        ,uistyle   :: !UIStyle                   -- ^ ui colours
        ,input     :: Chan Char                  -- ^ input stream
        ,threads   :: [ThreadId]                 -- ^ all our threads
+       ,reboot    :: IO ()                      -- our reboot function
     }
 
 --
@@ -115,6 +116,7 @@ emptyEditor = Editor {
        ,uistyle      = Yi.Style.ui
        ,input        = error "No channel open"
        ,threads      = []
+       ,reboot       = return ()
     }
 
 -- 
@@ -435,10 +437,12 @@ getKeyBinds = readEditor curkeymap
 -- ---------------------------------------------------------------------
 
 --
--- | Shut down all of our threads.
+-- | Shut down all of our threads. Should free buffers etc.
 --
 shutdown :: IO ()
-shutdown = readEditor threads >>= mapM_ killThread
+shutdown = do ts <- readEditor threads
+              mapM_ killThread ts
+              modifyEditor_ $ const (return emptyEditor)
 
 -- ---------------------------------------------------------------------
 --

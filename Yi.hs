@@ -109,12 +109,14 @@ releaseSignals = do
 -- | The "g_settings" var stores the user-configurable information. It is
 -- initialised with the default settings, so it works even if the user
 -- doesnt provide a ~/.yi/x.hs, or stuffs up their config scripts in
--- some way.
+-- some way. The second component is our reboot function, passed in from
+-- Boot.hs, otherwise return ().
 --
-g_settings :: IORef Editor.Config
+g_settings :: IORef (Editor.Config,IO ())
 g_settings = unsafePerformIO $ newIORef 
-                    (Editor.Config { Editor.keymap = Keymap.keymap,
+                   ((Editor.Config { Editor.keymap = Keymap.keymap,
                                      Editor.style  = Style.ui } )
+                    ,static_main )
 {-# NOINLINE g_settings #-}
 
 --
@@ -149,21 +151,22 @@ static_main = do
 -- variable if any settings were received, then jumps to static main.
 --
 dynamic_main :: YiMainType
-dynamic_main v = putStrLn "done." >> dynamic_main' v
+dynamic_main v = dynamic_main' v
 
 dynamic_main' :: YiMainType
-
-dynamic_main' Nothing = static_main     -- No prefs found, use defaults
+dynamic_main' (Nothing, fn) = do
+    modifyIORef g_settings $ \(dflt,_) -> (dflt,fn)
+    static_main             -- No prefs found, use defaults
 
 --
 -- Prefs found by the boot loader, so write them into the global
 -- settings. Anyone got an idea of how to unwrap this value without
 -- using the coerce?
 --
-dynamic_main' (Just (CD cfg)) = do 
+dynamic_main' (Just (CD cfg), fn) = do 
     case unsafeCoerce# cfg of   -- MAGIC: to unwrap the config value
         (cfg_ :: Editor.Config) -> do
-                writeIORef g_settings cfg_
+                writeIORef g_settings (cfg_,fn)
                 static_main
 
 -- ---------------------------------------------------------------------
@@ -179,6 +182,6 @@ data ConfigData = forall a. CD a {- has Config type -}
 -- | Maybe a set of user preferences, if the boot loader found
 -- ~/.yi/Config.hs
 --
-type YiMainType = (Maybe ConfigData) -> IO ()
+type YiMainType = (Maybe ConfigData, IO () ) -> IO ()
 
 -- vim: sw=4 ts=4

@@ -35,6 +35,7 @@ module Yi.Core (
         -- * Construction and destruction
         startE,         -- :: Editor.Config -> Int -> Maybe [FilePath] -> IO ()
         quitE,          -- :: Action
+        rebootE,        -- :: Action
         eventLoop,
 
         -- * Global editor actions
@@ -124,7 +125,7 @@ import Yi.Editor
 import qualified Yi.Editor as Editor
 import qualified Yi.UI     as UI ( refresh, start, screenSize, getKey, end )
 
-import Data.Maybe           ( isNothing )
+import Data.Maybe           ( isNothing, isJust )
 import Data.Char            ( isLatin1 )
 
 import System.IO            ( hClose )
@@ -132,18 +133,22 @@ import System.Directory     ( doesFileExist )
 import System.Exit          ( exitWith, ExitCode(ExitSuccess) )
 
 import Control.Monad
-import Control.Exception    ( ioErrors, handleJust )
+import Control.Exception    ( ioErrors, handle, throwIO, handleJust )
 import Control.Concurrent   ( threadWaitRead, takeMVar, forkIO )
 import Control.Concurrent.Chan
+
+import GHC.Exception
 
 -- ---------------------------------------------------------------------
 -- | Start up the editor, setting any state with the user preferences
 -- and file names passed in, and turning on the UI
 -- TODO should be in keybind
 --
-startE :: Editor.Config -> Int -> Maybe [FilePath] -> IO ()
-startE confs ln mfs = do
+startE :: (Editor.Config, IO ()) -> Int -> Maybe [FilePath] -> IO ()
+startE (confs,fn) ln mfs = do
+
     Editor.setUserSettings confs
+    modifyEditor_ $ \e -> return $ e { reboot = fn }
     UI.start
     sz <- UI.screenSize
     modifyEditor_ $ \e -> return $ e { scrsize = sz }
@@ -197,8 +202,15 @@ eventLoop :: IO ()
 eventLoop = do
     fn <- Editor.getKeyBinds 
     ch <- readEditor input
-    repeatM_ $ handleJust ioErrors (errorE . show) $ 
-        sequence_ . fn =<< getChanContents ch
+    repeatM_ $ handle handler (sequence_ . fn =<< getChanContents ch)
+
+    where
+      handler e | isJust (ioErrors e) = errorE (show e)
+                | isExitCall e        = throwIO e
+                | otherwise           = errorE (show e)
+
+      isExitCall (ExitException _) = True
+      isExitCall _ = False
 
 -- TODO if there is an exception, the key bindings will be reset...
 
@@ -233,6 +245,19 @@ quitE = do
     UI.end
     Editor.shutdown
     exitWith ExitSuccess
+
+--
+-- | Reboot (!). Reboot the entire editor, reloading the Yi core.
+-- Should store all the buffers somewhere, and reload them on returning.
+--
+-- Reboot doesn't work on openbsd yet. hmm stupid pthreads.
+--
+rebootE :: Action
+rebootE = do
+    fn <- readEditor reboot
+    Editor.shutdown
+    UI.end
+    fn
 
 -- | Do nothing
 nopE :: Action
