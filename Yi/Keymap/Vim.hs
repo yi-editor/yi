@@ -28,11 +28,11 @@ import Yi.Editor            ( Action )
 import Yi.UI         hiding ( plus )
 import Yi.Ctk.Lexers hiding ( Action )
 
-import Prelude hiding       ( any )
+import Prelude       hiding ( any )
 import Data.Maybe           ( fromMaybe )
 import Data.List            ( (\\) )
 import Data.Char            ( isUpper, toLower, toUpper, isSpace )
-import Control.Monad        ( replicateM_, when )
+import Control.Monad        ( replicateM_, when, liftM )
 import Control.Exception    ( ioErrors, catchJust )
 
 -- ---------------------------------------------------------------------
@@ -89,7 +89,7 @@ keymapPlus lexer' cs = actions
 -- count is stored in the lexer state. also the replace cmd, which
 -- consumes one char of input, and commands that switch modes.
 cmd_mode :: VimMode
-cmd_mode = cmd_count >||< cmd_eval >||< cmd2other
+cmd_mode = cmd_count >||< cmd_eval >||< cmd2other >||< cmd_op
 
 --
 -- | insert mode is either insertion actions, or the meta \ESC action
@@ -128,12 +128,11 @@ cmd_count = digit
 cmd_eval :: VimMode
 cmd_eval = ( cmdc >|< 
             (char 'r' +> anyButEscOrDel) >|<
-            string ">>" >|< string "<<" >|< string "dd" >|< 
+            string ">>" >|< string "<<" >|< 
             string "ZZ" >|< string "yy")
 
     `meta` \lexeme st@St{acc=count} -> 
-        let c  = if null count then Nothing 
-                               else Just (read $ reverse count)
+        let c  = if null count then Nothing else Just (read $ reverse count)
             i  = fromMaybe 1 c
             fn = getCmd lexeme c i
         in (with (msgClrE >> fn), st{acc=[]}, Just $ cmd st)
@@ -215,11 +214,8 @@ cmd_eval = ( cmdc >|<
             "n"   -> searchE Nothing
             "p"   -> do s <- getRegE
                         eolE >> insertE '\n' >> mapM_ insertE s >> solE
-   --       "x"   -> replicateM_ i deleteE
             "x"   -> deleteNE i
             "ZZ"  -> viWrite >> quitE
-
-            "dd"  -> solE >> killE >> deleteE
 
             -- todo: fix the unnec. refreshes that happen
             ">>"  -> do replicateM_ i $ solE >> mapM_ insertE "    " 
@@ -250,6 +246,8 @@ cmd_eval = ( cmdc >|<
             where undef = not_implemented (head lexeme)
 
 --
+-- | So-called 'operators', which take movement actions as arguments.
+--
 -- An alternative lexer is needed for text-change characters that take
 -- movement commands as arguments. Like so:
 --      d2w
@@ -258,6 +256,39 @@ cmd_eval = ( cmdc >|<
 --
 -- remember. 'd' could have arguments.
 --
+-- So, if followed by a move_char, just execute the movement, then
+-- perform on range from p to new p.
+--
+-- Lots ToDo yet. Perhaps a special lexer just for accumulating more
+-- numbers and characters. Or a flag in the state (urgh)
+--
+cmd_op :: VimMode
+cmd_op = op_char +> move_char
+    `meta` \lexeme st@St{acc=count} -> 
+        let c  = if null count then Nothing else Just (read $ reverse count)
+            i  = fromMaybe 1 c
+            fn = getCmd lexeme c i
+        in (with (msgClrE >> fn), st{acc=[]}, Just $ cmd st)
+    where
+        op_char   = alt "d"             -- just for now
+        move_char = alt "hl0^$kjG"      -- just for now
+
+        getCmd :: [Char] -> (Maybe Int) -> Int -> Action
+        getCmd lexeme _c i = case lexeme of
+            -- shortcuts
+            "dd" -> solE >> killE >> deleteE
+            ('d':m:[]) -> replicateM_ i $ do
+                        let as = getMove m
+                        do p <- liftM fifth6 bufInfoE
+                           foldr (>>) nopE as
+                           q <- liftM fifth6 bufInfoE
+                           if p < q then gotoPoint p else gotoPoint q
+                           deleteNE (abs (q - p))
+            _ -> nopE
+
+        -- movement command to perform .. ToDo should be (cmd st)
+        getMove c = let (as,_,_) = execLexer cmd_mode ([c], defaultSt) in as
+        fifth6 (_,_,_,_,p,_) = p
 
 --
 -- | Switch to another vim mode.
