@@ -625,6 +625,7 @@ ex_eval = enter
                   Right lineNum -> gotoLnE lineNum
 
       fn "w"          = viWrite
+      fn ('w':' ':f)  = viWriteTo f
       fn "q"          = do b <- isUnchangedE 
                            if b then closeE
                                 else errorE "No write since last change (add ! to override)"
@@ -715,6 +716,13 @@ viWrite = do
     (f,s,_,_,_,_) <- bufInfoE 
     let msg = msgE $ show f++" "++show s ++ "C written"
     catchJust ioErrors (fwriteE >> msg) (msgE . show)
+
+-- | Try to write to a named file in the manner of vi\/vim
+viWriteTo :: String -> Action
+viWriteTo f = do
+    (_,s,_,_,_,_) <- bufInfoE 
+    let msg = msgE $ show f++" "++show s ++ "C written"
+    catchJust ioErrors (fwriteToE f >> msg) (msgE . show)
 
 -- | Try to do a substitution
 viSub :: [Char] -> Action
