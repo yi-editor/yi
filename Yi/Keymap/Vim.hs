@@ -154,18 +154,25 @@ lex_count = digit
 -- /operator/ commands (like d).
 --
 cmd_move :: VimMode
-cmd_move = move_chr
-    `meta` \[c] st@St{acc=cnt} -> 
-        (with (msgClrE >> (fn c cnt)), st{acc=[]}, Just $ cmd st)
+cmd_move = (move_chr >|< (move2chrs +> anyButEsc))
+    `meta` \cs st@St{acc=cnt} -> 
+        (with (msgClrE >> (fn cs cnt)), st{acc=[]}, Just $ cmd st)
 
-    where move_chr = alt $ keysFM moveCmdFM
-          fn c cs  = case c of
+    where move_chr  = alt $ keysFM moveCmdFM
+          move2chrs = alt $ keysFM move2CmdFM
+          fn cs cnt  = case cs of
                          -- 'G' command needs to know Nothing count
-                        'G' -> case listToMInt cs of 
+                        "G" -> case listToMInt cnt of 
                                         Nothing -> botE >> solE
                                         Just n  -> gotoLnE n
 
-                        _  -> getCmdFM c (toInt cs) moveCmdFM
+                        [c,d] -> let mfn = lookupFM move2CmdFM c 
+                                     f   = fromMaybe (const (const nopE)) mfn
+                                 in f (toInt cnt) d
+
+                        [c]  -> getCmdFM c (toInt cnt) moveCmdFM
+
+                        _    -> nopE
 
 --
 -- movement commands
@@ -243,6 +250,18 @@ moveCmdFM = listToFM $
                                 else prevParagraph
 
 --
+-- more movement commands. these ones are paramaterised by a character
+-- to find in the buffer.
+--
+move2CmdFM :: FiniteMap Char (Int -> Char -> Action)
+move2CmdFM = listToFM $
+    [('f',  \i c -> replicateM_ i $ rightE >> moveWhileE (/= c) Right)
+    ,('F',  \i c -> replicateM_ i $ leftE  >> moveWhileE (/= c) Left)
+    ,('t',  \i c -> replicateM_ i $ rightE >> moveWhileE (/= c) Right >> leftE)
+    ,('T',  \i c -> replicateM_ i $ leftE  >> moveWhileE (/= c) Left  >> rightE)
+    ]
+
+--
 -- | Other command mode functions
 --
 cmd_eval :: VimMode
@@ -315,7 +334,7 @@ cmdCmdFM = listToFM $
 -- Lazy lexers - you know we're right (tm).
 --
 cmd_op :: VimMode
-cmd_op =((op_char +> digit `star` move_chr) >|< 
+cmd_op =((op_char +> digit `star` (move_chr >|< (move2chrs +> anyButEsc))) >|<
          (string "dd" >|< string "yy"))
 
     `meta` \lexeme st@St{acc=count} -> 
@@ -324,8 +343,9 @@ cmd_op =((op_char +> digit `star` move_chr) >|<
         in (with (msgClrE >> fn), st{acc=[]}, Just $ cmd st)
 
     where
-        op_char  = alt $ keysFM opCmdFM
-        move_chr = alt $ keysFM moveCmdFM
+        op_char   = alt $ keysFM opCmdFM
+        move_chr  = alt $ keysFM moveCmdFM
+        move2chrs = alt $ keysFM move2CmdFM
 
         getCmd :: [Char] -> Int -> Action
         getCmd lexeme i = case lexeme of
@@ -344,7 +364,7 @@ cmd_op =((op_char +> digit `star` move_chr) >|<
         opCmdFM = listToFM $ 
             [('d', \i m -> replicateM_ i $ do
                               (p,q) <- withPointMove m
-                              deleteNE (abs (q - p)) 
+                              deleteNE (max 0 (abs (q - p) + 1))  -- inclusive
              ),
              ('y', \_ m -> do (p,q) <- withPointMove m
                               s <- (if p < q then readNM p q else readNM q p)
@@ -426,8 +446,6 @@ ins_char = anyButEsc
                       | k == '\t'     -> mapM_ insertE "    " -- XXX
                     _ -> insertE c
 
-          anyButEsc = alt $ (keyBackspace : any' ++ cursc') \\ ['\ESC']
-
 -- switch out of ins_mode
 ins2cmd :: VimMode
 ins2cmd  = char '\ESC' `meta` \_ st -> (with (leftOrSolE 1), st, Just $ cmd st)
@@ -456,8 +474,6 @@ rep_char = anyButEsc
                     '\r' -> insertE '\n' 
                     _ -> do e <- atEolE
                             if e then insertE c else writeE c >> rightE
-
-          anyButEsc = alt $ (keyBackspace : any' ++ cursc') \\ ['\ESC']
 
 -- switch out of rep_mode
 rep2cmd :: VimMode
@@ -683,11 +699,12 @@ isDel _            = False
 -- ---------------------------------------------------------------------
 -- | character ranges
 --
-digit, delete, enter :: ViRegex
+digit, delete, enter, anyButEsc :: ViRegex
 digit   = alt digit'
 enter   = alt enter'
 delete  = alt delete'
 -- any     = alt any'
+anyButEsc = alt $ (keyBackspace : any' ++ cursc') \\ ['\ESC']
 
 enter', any', digit', delete' :: [Char]
 enter'   = ['\n', '\r']
