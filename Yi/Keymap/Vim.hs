@@ -207,6 +207,9 @@ moveCmdFM = listToFM $
                             moveWhileE (not.isAlphaNum)  Left )
 
 -- text
+    ,('{',          \i -> replicateM_ i prevParagraph)
+    ,('}',          \i -> replicateM_ i nextParagraph)
+
 -- misc
     ,('H',          \i -> downFromTosE (i - 1))
     ,('M',          const middleE)
@@ -220,6 +223,24 @@ moveCmdFM = listToFM $
         right i = rightOrEolE i
         up    i = if i > 100 then gotoLnFromE (-i) else replicateM_ i upE
         down  i = if i > 100 then gotoLnFromE i    else replicateM_ i downE
+
+        nextParagraph = do eof <- atEofE
+                           when (not eof) $ do
+                              moveWhileE (/= '\n') Right
+                              rightE 
+                              x <- readE
+                              when (x /= '\n') 
+                                    nextParagraph
+
+        prevParagraph = do sof <- atSofE
+                           when (not sof) $ do
+                              leftE
+                              moveWhileE (/= '\n') Left
+                              leftE 
+                              x <- readE
+                              if x == '\n'
+                                then rightE
+                                else prevParagraph
 
 --
 -- | Other command mode functions
