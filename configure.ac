@@ -17,7 +17,7 @@ AC_ARG_WITH(ghc,
 [ WithGhc="$withval" ],
 [
   if test "$GHC" = ""; then
-    AC_PATH_PROG(GHC,ghc)
+    AC_CHECK_PROGS(GHC,ghc)
   fi
   WithGhc=$GHC
 ])
@@ -33,7 +33,7 @@ else
       matching_ghc_pkg=no
 fi
 if test x"$matching_ghc_pkg" = xno; then
-    AC_PATH_PROG([GhcPkgCmd], [ghc-pkg])
+    AC_CHECK_PROG([GhcPkgCmd], [ghc-pkg])
 else
     GhcPkgCmd=$matching_ghc_pkg
 fi
@@ -42,12 +42,12 @@ AC_SUBST(GhcPkgCmd)
 #
 # And some other tools
 #
-AC_PATH_PROG(AlexCmd,alex,alex)
+AC_CHECK_PROG(AlexCmd,alex,alex)
 #AC_PATH_PROG(HappyCmd,happy,happy)
-AC_PATH_PROG(HaddockCmd,haddock,haddock)
-AC_PATH_PROG(Hsc2hsCmd,hsc2hs,hsc2hs)
+AC_CHECK_PROG(HaddockCmd,haddock,haddock)
+AC_CHECK_PROG(Hsc2hsCmd,hsc2hs,hsc2hs)
 
-AC_PATH_PROG(STRIP,strip,strip)
+AC_CHECK_PROG(STRIP,strip,strip)
 AC_PATH_PROG(LdCmd,ld)
 
 # check for -x flag to ld. stolen from $fptools

@@ -63,7 +63,7 @@ BIN_HC_OPTS+=     -DLIBDIR=\"$(LIBDIR)\"
 # Boot is the bootstrap loader. It cant be linked *statically* against -package yi.
 #
 Boot.o: Boot.hs 
-	$(GHC) $(HC_OPTS) $(BIN_HC_OPTS) $(DEFINES) -main-is Boot.main -c $< -o $@ -ohi $(basename $@).$(way_)hi
+	$(GHC) $(HC_OPTS) $(BIN_HC_OPTS) -main-is Boot.main -c $< -o $@ -ohi $(basename $@).$(way_)hi
 
 #
 # Main is the static "loader". It can't get -package-name yi, or it
