@@ -80,15 +80,15 @@ key C '\2' = upScreenE
 key C '\6' = downScreenE
 key C k | k == keyNPage = downScreenE
         | k == keyPPage = upScreenE
+key C 'i' = beginInsert
+key C ':' = msgClrE >> msgE ":" >> beginEx 
 
 {-
-key C ':' = msgClrE >> msgE ":" >> beginEx 
-key C 'i' = beginInsert
+key C 'x' = deleteE
 key C 'a' = rightOrEolE 1 >> beginInsert
 key C 'A' = eolE          >> beginInsert
 key C 'O' = solE >> insertE '\n' >> beginInsert
 key C 'o' = eolE >> insertE '\n' >> rightE >> beginInsert
-key C 'x' = deleteE
 key C 'r' = getcE >>= writeE
 key C 'D' = killE
 key C 'J' = eolE >> deleteE >> insertE ' '
@@ -104,19 +104,24 @@ key C '~' = do c <- readE
                let c' = if isUpper c then toLower c else toUpper c
                writeE c'
 key C '\23' = nextE
+-}
 
 -- ---------------------------------------------------------------------
 -- * Insert mode
 --
 key I '\27'  = leftOrSolE 1 >> beginCommand  -- ESC
 
-key I c  | c == keyHome      = topE
+key I c -- | c == keyHome      = topE
          | c == '\8'         = leftE >> deleteE
          | c == keyBackspace = leftE >> deleteE
+  
 
-key I c  = do (_,s) <- infoE      -- vi behaviour at start of line
+-- vi behaviour at start of line
+key I c  = do (_,s) <- infoE
               when (s == 0) $ insertE '\n'
-              insertE c    >> rightE
+              insertE c
+              rightE
+              when (c == '\13') $ downE >> solE -- move down with new line
 
 -- ---------------------------------------------------------------------
 -- * Ex mode
@@ -139,18 +144,17 @@ key E k = msgClrE >> loop [k]
                           loop (c':w)
 
     execEx :: String -> Action
-    execEx "w"   = viWrite
+--  execEx "w"   = viWrite
     execEx "q"   = quitE
     execEx "q!"  = quitE
-    execEx "wq"  = viWrite >> quitE
+--  execEx "wq"  = viWrite >> quitE
     execEx cs    = viCmdErr cs
 
     deleteWith []     = msgClrE >> msgE ":"      >> loop []
     deleteWith (_:cs) = msgClrE >> msgE (':':cs) >> loop cs
--}
 
 -- anything we've missed
-key _  _  = quitE
+key _  _  = nopE
 
 {-
 -- ---------------------------------------------------------------------
@@ -161,11 +165,10 @@ viWrite = do
     (f,s) <- infoE 
     fwriteE
     msgE $ show f++" "++show s ++ "C written"
+-}
 
 --
 -- | An invalid command
 --
 viCmdErr :: [Char] -> Action
 viCmdErr s = msgE $ "The "++s++ " command is unknown."
-
--}

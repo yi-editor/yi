@@ -27,6 +27,8 @@
 module Yi.Window where
 
 import Yi.Buffer
+
+import Data.Char                ( isLatin1 )
 import Data.Unique              ( Unique, newUnique )
 
 --
@@ -120,11 +122,11 @@ moveUpW w@(Window {lineno=ln}) b
         p <- pointB b
         let cy = fst $ cursor w
         if toslineno w < ln
-            then updatePnt b w {    -- just move cursor up
+            then flip update b w {    -- just move cursor up
                         lineno = ln - 1, 
                         cursor = (cy-1,x) 
                     }
-            else updatePnt b w {    -- scroll screen up
+            else flip update b w {    -- scroll screen up
                         toslineno = toslineno w -1, 
                         lineno    = ln - 1,
                         tospnt    = p - x, 
@@ -144,13 +146,13 @@ moveDownW w@(Window { height=h, lineno=ln } ) b = do
     lineDown b
     x <- offsetFromSol b
     if ln - toslineno w < h-2
-        then updatePnt b w {    -- just scroll cursor
+        then flip update b w {    -- just scroll cursor
                     lineno = ln + 1,
                     cursor = (cy+1,x)
                 }
         else do 
             t' <- indexOfNLFrom b (tospnt w)
-            updatePnt b w { -- at bottom line of screen, so scroll
+            flip update b w { -- at bottom line of screen, so scroll
                     toslineno = toslineno w + 1,
                     lineno = ln + 1,
                     tospnt = t',
@@ -162,53 +164,68 @@ moveDownW w@(Window { height=h, lineno=ln } ) b = do
 -- | Move the cursor left or start of line
 --
 leftW :: Buffer a => Window -> a -> IO Window
-leftW w b = moveXorSol b 1 >> updateX w b
+leftW w b = moveXorSol b 1 >> update w b
 
 --
 -- | Move the cursor right or end of line
 --
 rightW :: Buffer a => Window -> a -> IO Window
-rightW w b = moveXorEol b 1 >> updateX w b
+rightW w b = moveXorEol b 1 >> update w b
 
 --
 -- | Move to the start of the line
 --
 moveToSolW :: Buffer a => Window -> a -> IO Window
-moveToSolW w b = moveToSol b >> updateX w b
+moveToSolW w b = moveToSol b >> update w b
 
 --
 -- | Move to the end of the line
 --
 moveToEolW :: Buffer a => Window -> a -> IO Window
-moveToEolW w b = moveToEol b >> updateX w b
+moveToEolW w b = moveToEol b >> update w b
 
 --
 -- | Move left or sol
 --
 moveXorSolW :: Buffer a => Int -> Window -> a -> IO Window
-moveXorSolW i w b = moveXorSol b i >> updateX w b
+moveXorSolW i w b = moveXorSol b i >> update w b
 
 --
 -- | Move right or eol
 --
 moveXorEolW :: Buffer a => Int -> Window -> a -> IO Window
-moveXorEolW i w b = moveXorEol b i >> updateX w b
+moveXorEolW i w b = moveXorEol b i >> update w b
 
 ------------------------------------------------------------------------
 --
--- | update window point, and cursor in X dimension
+-- | Insert a character. Don't move.
 --
-updateX :: Buffer a => Window -> a -> IO Window
-updateX w b = do
-    let (y,_) = cursor w
-    x <- offsetFromSol b
-    return w { cursor = (y,x) }
+insertW :: Buffer a => Char -> Window -> a -> IO Window
+insertW c w b = do
+    w' <- do case c of
+                '\13'          -> insertB b '\n'
+                _ | isLatin1 c -> insertB b c
+                  | otherwise  -> return ()
+             return w
+    update w' b
 
 --
--- | reset current point
+-- | Delete character.
+-- Handle eof properly
+-- 
+deleteW :: Buffer a => Window -> a -> IO Window
+deleteW w b = deleteB b >> update w b
+
+------------------------------------------------------------------------
 --
-updatePnt :: Buffer a => a -> Window -> IO Window
-updatePnt b w = pointB b >>= \p -> return w { pnt = p }
+-- | update window point, and cursor in X dimension. and reset pnt cache
+--
+update :: Buffer a => Window -> a -> IO Window
+update w b = do
+    let (y,_) = cursor w
+    x <- offsetFromSol b
+    p <- pointB b
+    return w { pnt = p, cursor = (y,x) }
 
 --
 -- | On the last line of the file
@@ -233,3 +250,4 @@ indexOfNLFrom b i = do
     q <- pointB b
     moveTo b p
     return q
+

@@ -97,6 +97,7 @@ import qualified Yi.UI     as UI
 import Yi.Editor
 import qualified Yi.Editor as Editor
 
+import Data.Char            ( isLatin1 )
 import System.IO
 import System.Directory     ( doesFileExist )
 import System.Exit
@@ -313,32 +314,29 @@ scrollDownE = withWindow_ scrollDownW
 
 ------------------------------------------------------------------------
 
-{-
 -- | Insert new character
 insertE :: Char -> IO ()
-insertE c = withWindowDo_ $ \b -> do
-    case c of
-        '\13'          -> insertB b '\n'
-        _ | isLatin1 c -> insertB b c
-          | otherwise  -> nopE  -- TODO
+insertE c = withWindow_ $ insertW c
 
 -- | Delete character under cursor
 deleteE :: IO ()
-deleteE = withWindowDo_ deleteB
+deleteE = withWindow_ deleteW
 
+{-
 -- | Kill to end of line
 killE :: IO ()
 killE = withWindowDo_ deleteToEol -- >>= Buffer.prevXorLn 1
+-}
 
 -- | Read the char under the cursor
 readE :: IO Char
-readE = withWindowDo readB
+readE = withWindow $ \w b -> readB b >>= \c -> return (w,c)
 
 -- | Write char to point
 writeE :: Char -> IO ()
-writeE c = withWindowDo_ $ \b -> 
-                if isLatin1 c then writeB b c else nopE -- TODO
--}
+writeE c = withWindow_ $ \w b -> do
+            if isLatin1 c then writeB b c else nopE -- TODO
+            return w
 
 ------------------------------------------------------------------------
 
@@ -350,12 +348,10 @@ msgE = UI.drawCmdLine
 msgClrE  :: IO ()
 msgClrE = UI.clearCmd
 
-{-
 -- | File info
 infoE :: IO (FilePath, Int)
-infoE = withWindowDo $ \b -> do
+infoE = withWindow $ \w b -> do
     s  <- sizeB b
-    return (nameB b, s)
--}
+    return (w, (nameB b, s))
 
 
