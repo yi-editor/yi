@@ -55,7 +55,7 @@ AC_SUBST(GhcPkgCmd)
 # And some other tools
 #
 AC_CHECK_PROG(AlexCmd,alex,alex)
-#AC_PATH_PROG(HappyCmd,happy,happy)
+AC_CHECK_PROG(HappyCmd,happy,happy)
 AC_CHECK_PROG(HaddockCmd,haddock,haddock)
 AC_CHECK_PROG(Hsc2hsCmd,hsc2hs,hsc2hs)
 
