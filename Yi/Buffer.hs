@@ -413,10 +413,12 @@ instance Buffer FBuffer where
 
     -- insertN :: a -> [Char] -> IO ()
     insertN (FBuffer _ _ mv) cs = withMVar mv $ \ref ->
-        modifyIORefIO ref $ \fb@(FBuffer_ b p e _) -> do
-            ds <- readChars b (e-p) p   -- TODO shiftChars
-            i  <- writeChars b (cs++ds) p
-            return $ fb { bufLen=i }
+        modifyIORefIO ref $ \fb@(FBuffer_ buf p e _) -> do
+            let len = min (e-p) e
+                dst = p+length cs
+            i <- shiftChars buf p dst len
+            j <- writeChars buf cs p
+            return $ fb { bufLen=max i j }
 
     ------------------------------------------------------------------------
 
@@ -427,8 +429,8 @@ instance Buffer FBuffer where
     deleteN (FBuffer _ _ mv) n = withMVar mv $ \ref ->
         modifyIORefIO ref $ \fb@(FBuffer_ buf p e _) -> do
             let src = inBounds (p + n) e
-                len = max 0 (e-p-n)
-            i  <- shiftChars buf src p len  -- still too slow
+                len = inBounds (e-p-n) e
+            i  <- shiftChars buf src p len
             let p' | p == 0    = p     -- go no further!
                    | i == p    = p-1   -- shift back if at eof
                    | otherwise = p
