@@ -103,15 +103,10 @@ import System.IO
 import System.Directory     ( doesFileExist )
 import System.Exit
 import Control.Monad
-import Control.Exception    ( ioErrors, catchJust, handleJust )
+import Control.Exception    ( ioErrors, handleJust )
 
 import GHC.Base
 import GHC.IOBase
-
--- ---------------------------------------------------------------------
--- | The type of user-bindable functions
---
-type Action = IO ()
 
 -- ---------------------------------------------------------------------
 -- | Start up the editor, setting any state with the user preferences
@@ -156,7 +151,8 @@ getcE = UI.getKey UI.refresh
 eventLoop :: IO ()
 eventLoop = Editor.getKeyBinds >>= loop
     where 
-        loop fn = catchJust ioErrors (lazyRead >>= fn) (handler) >> loop fn
+        loop f = do handleJust ioErrors handler (sequence_ . f =<< lazyRead)
+                    loop f
         handler = msgE . show
 
 

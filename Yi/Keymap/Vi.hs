@@ -25,6 +25,7 @@
 module Yi.Keymap.Vi ( keymap, keymapPlus, ViMode ) where
 
 import Yi.Core
+import Yi.Editor    ( Action )
 import Yi.UI         hiding ( plus )
 import Yi.Ctk.Lexers hiding ( Action )
 
@@ -62,8 +63,8 @@ data ViState =
 -- NB . if there is a (bad) exception, we'll lose any new bindings.. iorefs?
 --    . also, maybe we shouldn't refresh automatically?
 --
-keymap :: String -> IO ()
-keymap cs = mapM_ (>> refreshE) actions
+keymap :: [Char] -> [Action]
+keymap cs = actions
     where 
         (actions,_,_) = execLexer cmd_mode (cs, defaultSt)
 
@@ -73,8 +74,8 @@ defaultSt = St { acc = [], hist = ([],0), cmd = cmd_mode, ins = ins_mode }
 
 -- | like keymap, but takes a supplied lexer, which is used to augment the
 -- existing lexer. Useful for user-added binds (to command mode only!)
-keymapPlus :: ViMode -> [Char] -> IO ()
-keymapPlus lexer' cs = mapM_ (>> refreshE) actions
+keymapPlus :: ViMode -> [Char] -> [Action]
+keymapPlus lexer' cs = actions
     where 
         actions = let (ts,_,_) = execLexer cmd_mode' (cs, dfltSt) in ts
         cmd_mode'= cmd_mode >||< lexer'
@@ -130,7 +131,7 @@ cmd_eval = ( cmdc >|<
                                else Just (read $ reverse count)
             i  = fromMaybe 1 c
             fn = getCmd lexeme c i
-        in (with (msgClrE >> fn), st{acc=[]}, Just $ cmd st)
+        in (with (msgClrE >> fn >> refreshE), st{acc=[]}, Just $ cmd st)
 
     where
         anyButEscOrDel = alt $ any' \\ ('\ESC':delete')
@@ -333,7 +334,8 @@ ex_eval = enter
         let c  = reverse dmc
             h  = (c:(fst $ hist st), snd $ hist st) in case c of
         -- regex searching
-        ('/':pat) -> (with (searchE (Just pat)),st{acc=[],hist=h},Just $ cmd st)
+        ('/':pat) -> (with (searchE (Just pat) >> refreshE)
+                     ,st{acc=[],hist=h},Just $ cmd st)
 
         -- add mapping to command mode
         (_:'m':'a':'p':' ':cs) -> 
@@ -358,7 +360,7 @@ ex_eval = enter
                in (Nothing, st{acc=[],hist=h,ins=ins'}, Just (cmd st))
 
         -- just a normal ex command
-        (_:src) -> (with (fn src), st{acc=[],hist=h}, Just $ cmd st)
+        (_:src) -> (with (fn src >> refreshE), st{acc=[],hist=h}, Just $ cmd st)
 
         -- can't happen, but deal with it
         [] -> (Nothing, st{acc=[], hist=h}, Just $ cmd st)

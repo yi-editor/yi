@@ -9,6 +9,8 @@ Build system:
         - think about how to do a testsuite, unit testing
         - store cpp options in a file, instead of on the command line
 
+        - ncurses should be a plugin
+
 v0.1:
         - syn hl
         - undo/redo in vi mode
