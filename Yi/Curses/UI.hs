@@ -67,7 +67,7 @@ import Data.List
 import Data.IORef
 
 import Control.Monad                ( when )
-import Control.Exception            ( catch, handle )
+import Control.Exception            ( handle )
 
 import System.IO.Unsafe             ( unsafePerformIO )
 
@@ -109,7 +109,7 @@ screenSize = Curses.scrSize
 --
 getKey :: IO () -> IO Char
 getKey refresh_fn = do
-    Control.Exception.catch (Curses.cBreak True) (\_ -> return ())
+    --Control.Exception.catch (Curses.cBreak True) (\_ -> return ())
     k <- Curses.getCh
     case k of
         Nothing -> getKey refresh_fn
