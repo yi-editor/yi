@@ -3,6 +3,7 @@
 
 #include <string.h>
 #include <regex.h>
+#include <sys/types.h>
 
 #include "YiCurses.h"
 

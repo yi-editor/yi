@@ -62,7 +62,8 @@ boot :: depend
 
 all :: $(HS_BINS)
 
-$(BIN) :: $(BIN_OBJS) $(BIN)-inplace
+# hack. we don't want to have _yi-inplace..
+$(BIN) :: $(BIN_OBJS) yi-inplace
 	$(GHC) -o $@ $(LD_OPTS) $(BIN_LD_OPTS) $(BIN_HC_OPTS) $(BIN_OBJS)
 
 $(STATIC_BIN) :: $(LIBRARY) $(PKG).conf $(PKG).conf.install $(LIB_FRONTEND) $(STATIC_OBJS)
@@ -207,12 +208,14 @@ show-install :
 	@echo "LIBDIR  = $(LIBDIR)"
 	@echo "DATADIR = $(DATADIR)"
 
+# the sed is to strip any trailing '_' from the inplace bin names.
 ifneq "$(INSTALL_PROGS)" ""
 install :: $(INSTALL_PROGS)
 	@$(INSTALL_DIR) $(BINDIR)
 	@for i in $(INSTALL_PROGS); do \
-		echo $(INSTALL_PROGRAM) $(INSTALL_BIN_OPTS) $$i $(BINDIR) ;\
-		$(INSTALL_PROGRAM) $(INSTALL_BIN_OPTS) $$i $(BINDIR) ;\
+        j=`echo $$i | sed 's/_$$//'` ;\
+		echo $(INSTALL_PROGRAM) $(INSTALL_BIN_OPTS) $$i $(BINDIR)/$$j ;\
+		$(INSTALL_PROGRAM) $(INSTALL_BIN_OPTS) $$i $(BINDIR)/$$j ;\
 	done
 endif
 

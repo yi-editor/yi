@@ -11,7 +11,7 @@ default: boot all
 
 ALL_DIRS=       Yi cbits
 
-BIN=            yi
+BIN=            yi_
 STATIC_BIN=     yi-static
 
 ifeq "$(way)" ""
