@@ -34,8 +34,8 @@ unsigned long countlns(char *b1, int start, int end)
     char *p = b1 + start;
     char *q = b1 + end;
     unsigned long c = 1;    /* there's always 1 line */
-    while (p++ < q) 
-        if (*p == '\n') c++;
+    while (p < q) 
+        if (*p++ == '\n') c++;
     return c;
 }
 
