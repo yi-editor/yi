@@ -40,24 +40,28 @@ keymap c = nano c >> return (Keymap keymap)  -- modeless, always the same keymap
 -- Execute a single command
 --
 nano :: Char -> Action
-nano '\^G'  = msgE "nano-yi : yi emulating nano emulating pico" -- todo
+nano '\^G'  = msgE "nano-yi : yi emulating nano emulating nano" -- todo
 nano '\^X'  = quitE
 nano '\^O'  = fwriteE
 nano '\^J'  = msgE "^J == justify : undefined" -- TODO
-nano '\^R'  = nanoReadF     -- not really right
+nano '\^R'  = nanoReadF    -- not really right
 nano '\^Y'  = upScreenE
 nano '\^V'  = downScreenE
 nano '\^A'  = solE
 nano '\^E'  = eolE
 nano '\^D'  = deleteE
-nano '\^H'  = leftOrSolE 1 >> deleteE
+nano '\^K'  = do s <- readLnE
+		 setRegE (s ++ "\n") >> solE >> killE >> deleteE
+nano '\^U'  = do s <- getRegE
+		 solE >> mapM_ insertE s
 nano '\188' = prevBufW     -- 'M-<' ?
 nano '\190' = nextBufW     -- 'M->' ?
 nano c
-    | c == keyUp    = upE
-    | c == keyDown  = downE
-    | c == keyLeft  = leftOrSolE 1  -- todo unconditional left
-    | c == keyRight = rightOrEolE 1 -- todo unconditional right
+    | c == keyUp || c == '\^P'    = upE
+    | c == keyDown || c == '\^N'  = downE
+    | c == keyLeft || c == '\^B'  = leftOrSolE 1  -- todo unconditional left
+    | c == keyRight || c == '\^F' = rightOrEolE 1 -- todo unconditional right
+    | c == '\^H' || isDel c = leftOrSolE 1 >> deleteE
 
 -- TODO why doesn't ^C work?
 nano '\^I'  = do
@@ -81,8 +85,6 @@ nanoReadF = do
             case () of {_
                 | k == '\n'         -> return (reverse w)
                 | k == '\r'         -> return (reverse w)
-                | k == '\BS'        -> del w >>= loop
-                | k == keyBackspace -> del w >>= loop
                 | otherwise         -> msg (reverse (k:w)) >> loop (k:w)
             }
     f <- loop []
@@ -92,3 +94,8 @@ nanoReadF = do
           del []     = msg [] >> return []
           del (_:cs) = msg cs >> return cs
     
+isDel :: Char -> Bool
+isDel '\BS'        = True
+isDel '\127'       = True
+isDel c | c == keyBackspace = True
+isDel _            = False
