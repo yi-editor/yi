@@ -200,7 +200,7 @@ class Buffer a where
     searchB      :: a -> [Char] -> IO (Maybe Int)
 
     -- | Return indicies of next string in buffer matched by regex
-    regexB       :: a -> [Char] -> IO (Maybe (Int,Int))
+    regexB       :: a -> Regex -> IO (Maybe (Int,Int))
 
 -- ---------------------------------------------------------------------
 --
@@ -633,12 +633,11 @@ instance Buffer FBuffer where
             fb2 <- readIORef ref'
             searchFB fb1 fb2 (bufPnt fb1)
 
-    -- regexB       :: a -> [Char] -> IO (Maybe (Int,Int))
+    -- regexB       :: a -> Regex -> IO (Maybe (Int,Int))
     regexB (FBuffer _ _ mv) re = withMVar mv $ \ref -> do
-        fb     <- readIORef ref
-        c_re   <- regcomp re regExtended  -- extended by default
+        fb <- readIORef ref
         let p = bufPnt fb
-        mmatch <- regexec c_re fb p
+        mmatch <- regexec re fb p
         case mmatch of
             Nothing     -> return Nothing
             Just (i,j)  -> return (Just (p+i,p+j))    -- offset from point

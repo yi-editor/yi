@@ -33,9 +33,6 @@ import Data.Char
 import Data.Maybe
 import Control.Monad
 
-import Data.IORef
-import System.IO.Unsafe ( unsafePerformIO )
-
 -- ---------------------------------------------------------------------
 --
 -- This function must be implemented by any user keybinding
@@ -190,14 +187,10 @@ do_cmd mi c
                       del (_:cs) = msg (reverse cs) >> return cs
 
         s <- loop []
-        writeIORef lastRe s
-        searchE s
+        searchE (Just s)
         nextCmd
 
-    | c == 'n' 
-    = do s <- readIORef lastRe
-         searchE s
-         nextCmd
+    | c == 'n' = searchE Nothing >> nextCmd    -- > reuse last expression
 
     | c == 'N' || c == '?'  = not_impl
 
@@ -380,12 +373,6 @@ viWrite = do
 --
 viCmdErr :: [Char] -> Action
 viCmdErr s = msgE $ "The "++s++ " command is unknown."
-
---
--- | Last regular expression entered. Could this go into Yi.Editor?
---
-lastRe :: IORef String
-lastRe = unsafePerformIO $ newIORef []
 
 -- | Is a delete sequence
 isDel :: Char -> Bool

@@ -90,6 +90,7 @@ module Yi.Core {-(
 import Yi.MkTemp
 import Yi.Buffer
 import Yi.Window
+import Yi.Regex
 
 import Yi.UI
 import qualified Yi.UI     as UI
@@ -290,28 +291,56 @@ setRegE s = modifyEditor_ $ \e -> return e { yreg = s }
 -- | Return the contents of the yank register
 getRegE :: IO String
 getRegE = readEditor yreg
+
+-- | Put regex into regex 'register'
+setRegexE :: Regex -> Action
+setRegexE re = modifyEditor_ $ \e -> return e { regex = Just re }
+
+-- Return contents of regex register
+getRegexE :: IO (Maybe Regex)
+getRegexE = readEditor regex
  
 -- ---------------------------------------------------------------------
 
 -- | Global searching. Search for regex and move point to that position.
-searchE :: String -> Action
-searchE [] = nopE
-searchE re = do
+-- Nothing means reuse the last regular expression. Just s means use @s@
+-- as the new regular expression.
+--
+searchE :: (Maybe String) -> Action
+searchE (Just []) = nopE
+searchE (Just re) = regcomp re regExtended >>= searchE'
+searchE Nothing   = do 
+    mre <- getRegexE 
+    case mre of
+        Nothing -> nopE
+        Just re -> searchE' re
+
+-- Internal.
+searchE' :: Regex -> Action
+searchE' c_re = do
+    setRegexE c_re      -- store away for later use
     mp <- withWindow $ \w b -> do
             rightB b
-            mp <- regexB b re
+            mp <- regexB b c_re
             when (isNothing mp) (leftB b)   -- go home
             return (w,mp)
     case mp of
         Just (p,_) -> withWindow_ $ moveToW p
-        Nothing    -> msgE ("Pattern not found: "++re)
+        Nothing    -> msgE "Pattern not found"  -- TODO
+
+------------------------------------------------------------------------
 
 -- | Search and replace /on current line/. Should return status.
+-- TODO too complex.
+--
 searchAndRepLocal :: String -> String -> Action
 searchAndRepLocal [] _ = nopE
 searchAndRepLocal re str = do
+    c_re <- regcomp re regExtended
+    setRegexE c_re      -- store away for later use
+
     mp <- withWindow $ \w b -> do   -- find the regex
-            mp <- regexB b re
+            mp <- regexB b c_re
             return (w, mp)
     status <- case mp of
         Just (i,j) -> withWindow $ \w b -> do

@@ -26,6 +26,7 @@
 module Yi.Editor where
 
 import Yi.Buffer
+import Yi.Regex                 ( Regex )
 import Yi.Window
 
 import Data.List                ( elemIndex )
@@ -60,6 +61,7 @@ data Buffer a => GenEditor a =
        ,windows   :: FiniteMap Unique Window    -- ^ all the windows
        ,cmdline   :: !String                    -- ^ the command line
        ,yreg      :: !String                    -- ^ yank register
+       ,regex     :: Maybe Regex                -- ^ most recent regex
        ,curwin    :: Maybe Unique               -- ^ the window with focus
        ,curkeymap :: (Char -> IO Keymap)        -- ^ user-configurable keymap
        ,scrsize   :: !(Int,Int)                 -- ^ screen size
@@ -94,6 +96,7 @@ emptyEditor = Editor {
        ,windows      = emptyFM
        ,cmdline      = []
        ,yreg         = []
+       ,regex        = Nothing
        ,curwin       = Nothing
        ,curkeymap    = error "no keymap defined"
        ,scrsize      = (0,0)
