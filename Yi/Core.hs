@@ -18,7 +18,7 @@
 -- 
 
 --
--- | The core edsl and machine of hemacs. This module is the link
+-- | The core edsl and machine of yi. This module is the link
 -- between the editor machine defined in 'Yi.Editor', and the real
 -- world defined in 'Yi.UI'. The instructions defined here
 -- manipulate the editor state, and control the screen through the UI.

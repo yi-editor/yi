@@ -24,5 +24,5 @@ Build system:
         - store cpp options in a file, instead of on the command line
 
 Docs:
-        - what format docs/hemacs.tex?
+        - what format docs/yi.tex?
         - get rid of haddock warnings

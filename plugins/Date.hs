@@ -5,8 +5,8 @@
 
 module Config where
 
-import HEmacs.HEmacs
-import HEmacs.Curses ( scrSize )
+import Yi.Yi
+import Yi.Curses ( scrSize )
 
 import System.IO
 import System.IO.Unsafe     ( unsafePerformIO )
@@ -18,7 +18,7 @@ import System.Posix.IO      ( createPipe, stdInput,
 
 ------------------------------------------------------------------------
 
-hemacs = settings {-
+yi = settings {-
     topinfo_text = date
 -}
 

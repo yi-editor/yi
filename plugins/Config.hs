@@ -12,9 +12,9 @@
 
 module Config where
 
-import HEmacs.HEmacs
+import Yi.Yi
 
-hemacs = settings 
+yi = settings 
 
 {-
 

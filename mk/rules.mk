@@ -62,7 +62,7 @@ boot :: depend
 
 all :: $(HS_BINS)
 
-$(BIN) :: $(BIN_OBJS) hemacs-inplace
+$(BIN) :: $(BIN_OBJS) $(BIN)-inplace
 	$(GHC) -o $@ $(LD_OPTS) $(BIN_LD_OPTS) $(BIN_HC_OPTS) $(BIN_OBJS)
 
 $(STATIC_BIN) :: $(LIBRARY) $(PKG).conf $(PKG).conf.install $(LIB_FRONTEND) $(STATIC_OBJS)

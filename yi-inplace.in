@@ -1,3 +1,3 @@
 #!/bin/sh
-@HEMACS_TOP@/hemacs -B@HEMACS_TOP@ $*
+@YI_TOP@/yi -B@YI_TOP@ $*
 

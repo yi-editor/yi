@@ -23,7 +23,7 @@
 -- arch-tag: 72067bff-05e1-4c0e-94aa-34b54f437d92
 --
 
-module HEmacs.CWString (
+module Yi.CWString (
 
     -- utf8 versions
     withUTF8String,

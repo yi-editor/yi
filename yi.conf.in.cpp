@@ -1,10 +1,10 @@
 Package {
-        name            = "hemacs",
+        name            = "yi",
         auto            = False,
-        hs_libraries    = [ "HShemacs" ],
+        hs_libraries    = [ "HSyi" ],
 #ifdef INSTALLING
-        import_dirs     = [ "${PREFIX}/lib/hemacs/imports" ],
-        library_dirs    = [ "${PREFIX}/lib/hemacs" ],
+        import_dirs     = [ "${PREFIX}/lib/yi/imports" ],
+        library_dirs    = [ "${PREFIX}/lib/yi" ],
 #else
         import_dirs     = [ "${PREFIX}" ],
         library_dirs    = [ "${PREFIX}" ],
