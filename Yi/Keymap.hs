@@ -250,7 +250,7 @@ do_cmd mi c
     | c == 'i' = nextIns
 
 -- Enter input mode, appending text in a new line above the current line.
-    | c == 'O' = solE >> insertE '\n' >> nextIns
+    | c == 'O' = solE >> insertE '\n' >> upE >> nextIns
 
 -- Enter input mode, appending text in a new line under the current line.
     | c == 'o' = eolE >> insertE '\n' >> nextIns
