@@ -26,8 +26,8 @@ import qualified Yi.Core    as Core
 
 import qualified Yi.Keymap.Vi  as Keymap
 
+import Data.IORef
 import Control.Exception        ( bracket_ )
-import Data.IORef               ( IORef, readIORef, newIORef, writeIORef )
 import System.Console.GetOpt
 import System.Environment       ( getArgs )
 import System.Exit              ( exitWith, ExitCode(ExitSuccess) )
@@ -41,13 +41,14 @@ import GHC.Base                 ( unsafeCoerce# )
 -- The -B flag is needed, and used by Boot.hs to find the runtime
 -- libraries. We still parse it here, but ignore it.
 
-data Opts = Help | Version | Libdir String
+data Opts = Help | Version | Libdir String | LineNo String
 
 options :: [OptDescr Opts]
 options = [
     Option ['V']  ["version"] (NoArg Version) "Show version information",
     Option ['B']  ["libdir"]  (ReqArg Libdir "libdir") "Path to runtime libraries",
-    Option ['h']  ["help"]    (NoArg Help)    "Show this help"
+    Option ['h']  ["help"]    (NoArg Help)    "Show this help",
+    Option ['l']  ["line"]    (ReqArg LineNo "[num]") "Start on line number"
     ]
 
 --
@@ -65,6 +66,7 @@ do_opts (o:oo) = case o of
     Help     -> usage    >> exitWith ExitSuccess
     Version  -> versinfo >> exitWith ExitSuccess
     Libdir _ -> do_opts oo  -- ignore -B flag. already handled in Boot.hs
+    LineNo l -> writeIORef g_lineno ((read l) :: Int) >> do_opts oo
 do_opts [] = return ()
 
 --
@@ -113,6 +115,13 @@ g_settings = unsafePerformIO $ newIORef
                     (Editor.Config { Editor.keymap = Keymap.keymap } )
 {-# NOINLINE g_settings #-}
 
+--
+-- | The line number to start on
+--
+g_lineno :: IORef Int
+g_lineno = unsafePerformIO $ newIORef (1 :: Int)
+{-# NOINLINE g_lineno #-}
+
 -- ---------------------------------------------------------------------
 -- | Static main. This is the front end to the statically linked
 -- application, and the real front end, in a sense. 'dynamic_main' calls
@@ -127,7 +136,8 @@ static_main = do
     args   <- getArgs
     mfiles <- do_args args
     config <- readIORef g_settings
-    bracket_ (initSignals    >> Core.startE config mfiles)
+    lineno <- readIORef g_lineno
+    bracket_ (initSignals    >> Core.startE config lineno mfiles)
              (Core.endE      >> releaseSignals)
              (Core.refreshE  >> Core.eventLoop)
 

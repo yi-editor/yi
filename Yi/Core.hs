@@ -118,8 +118,8 @@ type Action = IO ()
 -- and file names passed in, and turning on the UI
 -- TODO should be in keybind
 --
-startE :: Editor.Config -> Maybe [FilePath] -> IO ()
-startE confs mfs = do
+startE :: Editor.Config -> Int -> Maybe [FilePath] -> IO ()
+startE confs ln mfs = do
     UI.start
     Editor.setUserSettings confs
     sz <- UI.screenSize
@@ -132,7 +132,7 @@ startE confs mfs = do
                 case mf of
                     Nothing    -> error "Core.startE: mkstemp failed"
                     Just (f,h) -> hClose h >> fnewE f
-
+    gotoLnE ln
     refreshE
 
 --
