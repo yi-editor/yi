@@ -1,0 +1,3 @@
+module Yi.Keymap where
+
+keymap :: GHC.Base.Char -> Yi.Editor.Action

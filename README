@@ -1,5 +1,5 @@
 
-yi -- Y I -- the haskell extensible editor
+yi -- Y I -- the Haskell extensible editor
 
 Copyright (c) Don Stewart 2004.
 <http://www.cse.unsw.edu.au/~dons>
@@ -11,7 +11,7 @@ You can get the latest yi source from its darcs repository:
         darcs get http://www.cse.unsw.edu.au/~dons/yi
 
 You will need GHC 6 (The Glorious/Glasgow Haskell Compilation System)
-and GNU make to compile yi. On OpenBSD you'll need ghc-6.3-20040929, 
+and GNU make to compile yi. On OpenBSD you'll need ghc-6.2.2
 or greater, which contains a patch for the System.Posix.User library.
 
 You also need a recent snapshot version of hs-plugins, the Haskell

@@ -23,8 +23,7 @@ import Yi.Locale                        ( setupLocale )
 import Yi.Version                       ( package, version )
 import qualified Yi.Editor  as Editor
 import qualified Yi.Config  as Config
-import qualified Yi.Core    as Core
-import qualified Yi.UI      as UI       ( refresh )
+import qualified Yi.Core    as Core 
 
 import Control.Exception        ( bracket_ )
 import Data.IORef               ( IORef, readIORef, newIORef, writeIORef )
@@ -125,9 +124,9 @@ static_main = do
     args   <- getArgs
     mfiles <- do_args args
     config <- readIORef g_settings
-    bracket_ (initSignals >> Core.startE config mfiles)
-             (Core.endE   >> releaseSignals)
-             (UI.refresh  >> Core.eventLoop)
+    bracket_ (initSignals    >> Core.startE config mfiles)
+             (Core.endE      >> releaseSignals)
+             (Core.refreshE  >> Core.eventLoop)
 
 -- ---------------------------------------------------------------------
 -- | Dynamic main. This is jumped to from from Boot.hs, after dynamically

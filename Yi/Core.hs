@@ -49,6 +49,7 @@ module Yi.Core (
         nextE,
         prevE,
         newE,
+        getcE,
 
         -- ** File-based actions
         readE,
@@ -61,6 +62,8 @@ module Yi.Core (
         eolE,
         downE,
         upE,
+        leftOrSolE,
+        rightOrEolE,
         topE,
         botE,
 
@@ -86,8 +89,6 @@ import Data.Char    ( isLatin1 )
 
 import System.IO
 import System.Exit
-
-import qualified Control.Exception ( catch, Exception, throwIO )
 
 import GHC.Base
 
@@ -117,28 +118,28 @@ endE :: IO ()
 endE = UI.end
 
 -- ---------------------------------------------------------------------
+
+-- | How to read another character, for user key bindings
+getcE :: IO Char
+getcE = UI.getKey UI.refresh
+
+-- ---------------------------------------------------------------------
 -- | The editor main loop. Read key strokes from the ui and interpret
 -- them using the current key map. Keys are bound to core actions.
 -- The state is threaded explicitly at the moment.
 --
-eventLoop :: IO ()
-eventLoop = do 
-    km <- Editor.getKeyMap
-    eventLoop' km
 
--- 
--- | read a keystroke, and interpret it using the current key mappings.
--- The actions keys may be bound to are given in $events.
--- 
-eventLoop' :: (Char -> Editor.Action) -> IO ()
-eventLoop' keyhandler = do
-    k <- UI.getKey UI.refresh
-    Control.Exception.catch (keyhandler k) (handler)
-    UI.refresh
-    eventLoop' keyhandler
-  where
-        handler :: Control.Exception.Exception -> IO ()
-        handler = Control.Exception.throwIO
+eventLoop :: IO ()
+eventLoop = do
+    f <- Editor.getKeyMap
+    let loop = do c <- getcE
+                  f c
+                  UI.refresh
+                  loop
+    loop
+
+    -- handler :: Control.Exception.Exception -> IO ()
+    -- handler = Control.Exception.throwIO
 
 -- ---------------------------------------------------------------------
 
@@ -216,22 +217,17 @@ upE = withBuffer $ \b -> do
     moveToSol b
     moveXorEol b x  
 
-{-
-    p <- Buffer.point b
-    if (p == 0)         -- do nothing.
-        then return b
-        else do 
-    x <- Buffer.prevLnOffset b
-    c <- Buffer.char b
-    when (c == '\n') $ 
-        Buffer.left b    >> return () -- skip past \n
-    Buffer.gotoPrevLn b
-    Buffer.leftN 2 b                 -- skip past \n
-    p'<- Buffer.point b
-    when (p'/= 0) $
-        Buffer.gotoPrevLn b >> return ()
-    Buffer.nextXorNL (max x 0) b
--}
+--
+-- | Move left @x@ or to start of line
+--
+leftOrSolE :: Int -> IO ()
+leftOrSolE x = withBuffer $ \b -> moveXorSol b x
+
+--
+-- | Move right @x@ or to end of line
+--
+rightOrEolE :: Int -> IO ()
+rightOrEolE x = withBuffer $ \b -> moveXorEol b x
 
 --
 -- | Read into a *new* buffer the contents of file.
@@ -290,12 +286,11 @@ replaceE = withBuffer $ \b -> do
                   else noopE        -- TODO
 
 -- | Insert new character
-insertE :: IO ()
-insertE = withBuffer $ \b -> do
-    k <- UI.getKey UI.refresh
-    case k of
+insertE :: Char -> IO ()
+insertE c = withBuffer $ \b -> do
+    case c of
         '\13'          -> insertB b '\n'
-        c | isLatin1 c -> insertB b c
+        _ | isLatin1 c -> insertB b c
           | otherwise  -> noopE  -- TODO
 
 -- | Delete character under cursor
@@ -305,3 +300,4 @@ deleteE = withBuffer deleteB
 -- | Kill to end of line
 killE :: IO ()
 killE = withBuffer deleteToEol -- >>= Buffer.prevXorLn 1
+

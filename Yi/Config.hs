@@ -42,6 +42,8 @@ settings = Config {
 --
 defaultKeyMap :: Char -> Action
 defaultKeyMap 'q'   = quitE
+
+{-
 defaultKeyMap '\^R' = refreshE
 defaultKeyMap 'h'   = leftE
 defaultKeyMap 'l'   = rightE
@@ -52,7 +54,6 @@ defaultKeyMap 'k'   = upE
 defaultKeyMap '^'   = solE
 defaultKeyMap '$'   = eolE
 defaultKeyMap 'r'   = replaceE
-defaultKeyMap 'i'   = insertE
 defaultKeyMap 'x'   = deleteE
 defaultKeyMap 'w'   = writeE
 defaultKeyMap 'D'   = killE
@@ -64,6 +65,7 @@ defaultKeyMap k
     | k == keyLeft  = leftE
     | k == keyRight = rightE
     | otherwise     = noopE
+-}
 
 {-
 --

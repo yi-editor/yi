@@ -20,6 +20,8 @@ HC_OPTS+=       -O -fvia-C -funbox-strict-fields -\#include my_curses.h
 
 HSC2HS=         hsc2hs
 HADDOCK=        haddock
+ALEX=           alex
+ALEX_OPTS=      -g
 
 AR=             ar
 AR_OPTS=        cr

@@ -124,6 +124,10 @@ $(GHCI_LIBRARY) : $(LIBOBJS)
 %.raw-hs : %.hs
 	$(GHC) $(HC_OPTS) $(DEFINES) -D__HADDOCK__ -E -optP-P $< -o $@
 
+# Alex Suffix Rules
+%.hs : %.x
+	$(ALEX) $(ALEX_OPTS) $<
+
 #
 # Package creation
 #
