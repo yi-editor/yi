@@ -43,7 +43,7 @@ STATIC_LD_OPTS  = $(STATIC_BIN_LIBS)
 # Library flags
 #
 PKG_OPTS       += -package-name $(PKG)
-LIBOBJS         = $(filter-out $(BIN_OBJS) $(STATIC_BIN_OBJS), $(OBJS))
+LIBOBJS         = $(filter-out $(BIN_OBJS) $(STATIC_OBJS), $(OBJS))
 LIBRARY         = libHS$(PKG)$(_way).a
 GHCI_LIBRARY    = $(patsubst lib%.a,%.o,$(LIBRARY))
 
