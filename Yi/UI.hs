@@ -142,8 +142,8 @@ drawWindow win@(Window { bufkey=u, mode=m, origin=(_,_),
     -- draw modeline
     cset_attr (setReverse Curses.attr0 True, Pair 0)
     mwin <- getWindow
-    when (isJust mwin && fromJust mwin == win) $ return ()
-       -- set it some color
+    when (isJust mwin && fromJust mwin == win) $ 
+        return ()
     drawLine w m
     reset
     

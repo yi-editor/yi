@@ -3,7 +3,6 @@ Design plan:
         - abstract syntax for ui 
         - think about abstractable actions/keybindings
         - clean up ncurses code    
-        - handle buffer resize code properly
         - pgup/down too inefficient
 
 Dynamic stuff:

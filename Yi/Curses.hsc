@@ -321,17 +321,21 @@ foreign import ccall unsafe "YiCurses.h clearok" clearok_c :: Window -> (#type b
 clearOk True = clearok_c stdScr 1
 clearOk False = clearok_c stdScr 0
 
-#if 1
---HAVE_USE_DEFAULT_COLORS
-foreign import ccall unsafe "YiCurses.h use_default_colors" useDefaultColors :: IO ()
+------------------------------------------------------------------------
+
+foreign import ccall unsafe "YiCurses.h use_default_colors" 
+    useDefaultColors :: IO ()
 
 defaultBackground = Color (-1)
 defaultForeground = Color (-1)
 
-foreign import ccall unsafe "YiCurses.h define_key" define_key :: Ptr CChar -> CInt -> IO ()
-defineKey k s =  withCString s (\s -> define_key s k) >> return ()
+------------------------------------------------------------------------
 
-#else
+defineKey k s =  withCString s (\s -> define_key s k) >> return ()
+foreign import ccall unsafe "YiCurses.h define_key" 
+    define_key :: Ptr CChar -> CInt -> IO ()
+
+{-
 
 useDefaultColors :: IO ()
 useDefaultColors = return ()
@@ -341,7 +345,7 @@ defaultForeground = black
 
 defineKey k s = return ()
 
-#endif
+-}
 
 --
 -- | 
@@ -349,10 +353,8 @@ defineKey k s = return ()
 initCurses :: IO ()
 initCurses = do
     initScr
--- TODO
---  b <- hasColors
---  when b startColor
-    --when b useDefaultColors
+    b <- hasColors
+    when b $ startColor >> useDefaultColors
     cBreak True
     echo False
     nl False
