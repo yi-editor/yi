@@ -36,8 +36,8 @@ endif
 BIN_HC_OPTS     += $(patsubst %,-package %, $(BIN_DEPS))
 STATIC_HC_OPTS  += $(patsubst %,-package %, $(STATIC_BIN_DEPS))
 
-BIN_LD_OPTS	= $(patsubst %,-l%, $(BIN_LIBS))
-STATIC_LD_OPTS  = $(patsubst %,-l%, $(STATIC_BIN_LIBS))
+BIN_LD_OPTS	= $(BIN_LIBS)
+STATIC_LD_OPTS  = $(STATIC_BIN_LIBS)
 
 #
 # Library flags
@@ -167,7 +167,7 @@ INSTALL_DATAS  += $(HTML_DIR)
 
 html : $(HS_PPS)
 	@$(INSTALL_DIR) $(HTML_DIR)
-	$(HADDOCK) $(HADDOCK_OPTS) -h -o $(HTML_DIR) $(HS_PPS) --package=$(PKG)
+	$(HADDOCK) $(HADDOCK_OPTS) -o $(HTML_DIR) $(HS_PPS) --package=$(PKG)
 
 CLEAN_FILES += $(HS_PPS) $(PACKAGE).haddock
 
@@ -186,6 +186,7 @@ clean:
 
 distclean :: clean
 	$(RM) $(DIST_CLEAN_FILES) *~ */*~
+	$(RM) -rf $(DIST_CLEAN_DIRS)
 
 #
 # installing
@@ -247,7 +248,9 @@ endif
 ifneq "$(INSTALL_IFACES)" ""
 install :: $(INSTALL_IFACES)
 	@$(INSTALL_DIR) $(IFACEDIR)
-	for i in $(INSTALL_IFACES); do \
+	@for i in $(INSTALL_IFACES); do \
+	    $(INSTALL_DIR) $(IFACEDIR)/`dirname $$i` ;\
+		echo $(INSTALL_DATA) $(INSTALL_OPTS) $$i $(IFACEDIR)/`dirname $$i`/ ; \
 		$(INSTALL_DATA) $(INSTALL_OPTS) $$i $(IFACEDIR)/`dirname $$i`/ ; \
 	done
 endif

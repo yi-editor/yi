@@ -2,7 +2,9 @@
 -- IConv wrappers
 --
 
-#include <iconv.h>
+#if HAVE_ICONV_H
+# include <iconv.h>
+#endif
 
 module Yi.IConv {-(
     IConv,
@@ -163,7 +165,7 @@ from_unicode from str =
     unsafePerformIO $ try $ from_unicode_ from str
 
 
-#ifndef WEIRD_ICONV
+#ifndef ICONV_LIB_PREFIX
 
 foreign import ccall unsafe "iconv.h iconv_open" c_iconv_open
     :: CString -> CString -> IO IConv

@@ -28,7 +28,7 @@ PKG=            yi
  
 BIN_OBJS=       Boot.o
 BIN_DEPS=       plugins
-BIN_LIBS=       $(CURSES) $(ICONV)
+BIN_LIBS=       $(LIBS)
 HADDOCK_SRCS+=  Boot.hs
 
 # static front end

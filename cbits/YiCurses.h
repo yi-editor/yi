@@ -12,16 +12,13 @@
 # include "config.h"
 #endif
 
-#if HAVE_NCURSESW_NCURSES_H 
+#if HAVE_NCURSESW
 #include <ncursesw/ncurses.h>
-#elif HAVE_NCURSES_H
+#elif HAVE_NCURSES
 #include <ncurses.h>
 #else
 #include <curses.h>
 #endif
-
-
-#include <signal.h>
 
 #if defined(initscr)
 #undef initscr
@@ -54,6 +51,5 @@
 #if defined(wattr_get)
 #undef wattr_get
 #endif
-
 
 #endif

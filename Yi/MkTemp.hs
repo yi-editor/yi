@@ -1,4 +1,4 @@
-{-# OPTIONS -cpp -fffi #-}
+{-# OPTIONS -cpp -fffi -#include <config.h> #-}
 -- 
 -- Copyright (C) 2004 Don Stewart - http://www.cse.unsw.edu.au/~dons
 -- 

@@ -1,0 +1,52 @@
+#
+# System-specific settings
+#
+
+PREFIX=         @prefix@
+BINDIR=         @prefix@/bin
+LIBDIR=         @prefix@/lib/$(PKG)
+DATADIR=        @prefix@/share/doc/$(PKG)
+IFACEDIR=       $(LIBDIR)/imports
+
+GHC=            @WithGhc@
+HC_OPTS=        -fglasgow-exts -Wall -Werror
+
+#HC_OPTS+=       -Onot -fasm -H64m
+HC_OPTS+=       -O -fvia-C -funbox-strict-fields -Icbits
+#HC_OPTS+=      -debug
+
+GHC_PKG=        @GhcPkgCmd@
+HSC2HS=         @Hsc2hsCmd@
+
+HADDOCK=        @HaddockCmd@
+HADDOCK_OPTS=   -h -D html/yi.interface
+
+ALEX=           @AlexCmd@
+ALEX_OPTS=      -g
+
+AR=             ar
+AR_OPTS=        cr
+
+RANLIB=         @RANLIB@
+
+INSTALL=        sh $(TOPDIR)/install-sh -c
+INSTALL_PROGRAM=$(INSTALL) -m 755
+INSTALL_DATA=   $(INSTALL) -m 644
+INSTALL_DIR=    mkdir -p
+
+CP=             cp
+RM=             rm -f
+
+#
+# Extra paths to find things
+#
+LD_OPTS=        @LDFLAGS@
+INC_OPTS=       @CPPFLAGS@
+C_OPTS=         @CFLAGS@
+LIBS=           @LIBS@
+
+#
+# Special libs needed in package.conf files
+#
+CURSES=         @CURSES@
+ICONV=          @ICONV@

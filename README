@@ -25,8 +25,8 @@ later. Make sure you "make", "make install" and "make register" the library.
 Once you have ensured that you have these programs and libraries
 installed:
 
- 1. Edit mk/config.mk to change any settings for your system (usually
-    in the case it has broken wide character support).
+ 1. autoreconf
+    ./configure --prefix=/my/dir
 
  2. Run 'make'         ('gmake' on some systems)
 
@@ -43,6 +43,7 @@ Useful targets:
         make boot               -- regen the dependencies
         make all                -- compile the .hs source
         make install            -- install into $(PREFIX)
+        make show-install       -- print install paths
         make clean              -- remove most rebuildable stuff
         make distclean          -- remove anything that can be regenerated
         make docs               -- build all the docs
