@@ -301,22 +301,32 @@ cmd_eval = (cmd_char >|<
 --
 cmdCmdFM :: FiniteMap Char (Int -> Action)
 cmdCmdFM = listToFM $
-    [('\^B',    upScreensE)
+    [('\^B',    upScreensE)             -- vim does (firstNonSpaceE;leftOrSolE)
     ,('\^F',    downScreensE)
     ,('\^G',    const viFileInfo)        -- hmm. not working. duh. we clear
     ,('\^W',    const nextWinE)
     ,('D',      const (readRestOfLnE >>= setRegE >> killE))
     ,('J',      const (eolE >> deleteE))    -- the "\n"
-    ,('X',      (\i -> leftOrSolE i >> replicateM_ i deleteE))
     ,('n',      const (searchE Nothing))
-    ,('x',      deleteNE)
+
+    ,('X',      \i -> do p <- getPointE
+                         leftOrSolE i
+                         q <- getPointE
+                         when (p-q > 0) $ deleteNE (p-q) )
+
+    ,('x',      \i -> do p <- getPointE -- not handling eol properly
+                         rightOrEolE i
+                         q <- getPointE
+                         gotoPointE p
+                         when (q-p > 0) $ deleteNE (q-p))
+
     ,('p',      (\_ -> getRegE >>= \s ->
                         eolE >> insertE '\n' >>
                             mapM_ insertE s >> solE)) -- ToDo insertNE
     ,(keyPPage, upScreensE)
     ,(keyNPage, downScreensE)
-    ,(keyLeft,  const leftE)          -- not really vi, but fun
-    ,(keyRight, const rightE)
+    ,(keyLeft,  leftOrSolE)
+    ,(keyRight, rightOrEolE)
     ]
 
 --

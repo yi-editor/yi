@@ -33,13 +33,13 @@ import Yi.Lexers     hiding ( Action )
 
 import Prelude       hiding ( any )
 
-import Data.Maybe           ( fromMaybe )
-import Data.List            ( (\\) )
+import Data.Char
 import Data.FiniteMap
-import Data.Char            ( isAlphaNum, isUpper, toLower, toUpper, isSpace )
+import Data.List            ( (\\) )
+import Data.Maybe           ( fromMaybe )
 
 import Control.Monad        ( replicateM_, when )
-import Control.Exception    ( ioErrors, catchJust )
+import Control.Exception    ( ioErrors, catchJust, try, evaluate )
 
 -- ---------------------------------------------------------------------
 
@@ -157,18 +157,25 @@ lex_count = digit
 -- /operator/ commands (like d).
 --
 cmd_move :: ViMode
-cmd_move = move_chr
-    `meta` \[c] st@St{acc=cnt} -> 
-        (with (msgClrE >> (fn c cnt)), st{acc=[]}, Just $ cmd st)
+cmd_move = (move_chr >|< (move2chrs +> anyButEsc))
+    `meta` \cs st@St{acc=cnt} -> 
+        (with (msgClrE >> (fn cs cnt)), st{acc=[]}, Just $ cmd st)
 
-    where move_chr = alt $ keysFM moveCmdFM
-          fn c cs  = case c of
+    where move_chr  = alt $ keysFM moveCmdFM
+          move2chrs = alt $ keysFM move2CmdFM
+          fn cs cnt  = case cs of
                          -- 'G' command needs to know Nothing count
-                        'G' -> case listToMInt cs of 
+                        "G" -> case listToMInt cnt of 
                                         Nothing -> botE >> solE
                                         Just n  -> gotoLnE n
 
-                        _  -> getCmdFM c (toInt cs) moveCmdFM
+                        [c,d] -> let mfn = lookupFM move2CmdFM c 
+                                     f   = fromMaybe (const (const nopE)) mfn
+                                 in f (toInt cnt) d
+
+                        [c]  -> getCmdFM c (toInt cnt) moveCmdFM
+
+                        _    -> nopE
 
 --
 -- movement commands
@@ -180,14 +187,12 @@ moveCmdFM = listToFM $
     ,('\^H',        left)
     ,(keyBackspace, left)
     ,('\BS',        left)
-    ,('\127',       left)
     ,('l',          right)
     ,(' ',          right)
-    ,(keyHome,      const solE)
+    ,(keyHome,      const firstNonSpaceE)   -- vim does solE
     ,('^',          const firstNonSpaceE)
     ,('$',          const eolE)
-    ,(keyEnd,       const eolE)
-    ,('|',          const solE)
+    ,('|',          \i -> solE >> rightOrEolE (i-1))
 
 -- up/down
     ,('k',          up)
@@ -246,6 +251,18 @@ moveCmdFM = listToFM $
                                 else prevParagraph
 
 --
+-- more movement commands. these ones are paramaterised by a character
+-- to find in the buffer.
+--
+move2CmdFM :: FiniteMap Char (Int -> Char -> Action)
+move2CmdFM = listToFM $
+    [('f',  \i c -> replicateM_ i $ rightE >> moveWhileE (/= c) Right)
+    ,('F',  \i c -> replicateM_ i $ leftE  >> moveWhileE (/= c) Left)
+    ,('t',  \i c -> replicateM_ i $ rightE >> moveWhileE (/= c) Right >> leftE)
+    ,('T',  \i c -> replicateM_ i $ leftE  >> moveWhileE (/= c) Left  >> rightE)
+    ]
+
+--
 -- | Other command mode functions
 --
 cmd_eval :: ViMode
@@ -287,20 +304,31 @@ cmdCmdFM :: FiniteMap Char (Int -> Action)
 cmdCmdFM = listToFM $
     [('\^B',    upScreensE)
     ,('\^F',    downScreensE)
-    ,('\^G',    const viFileInfo)        -- hmm. not working. duh. we clear
+    ,('\^G',    const viFileInfo)
     ,('\^W',    const nextWinE)
     ,('D',      const (readRestOfLnE >>= setRegE >> killE))
     ,('J',      const (eolE >> deleteE))    -- the "\n"
-    ,('X',      (\i -> leftOrSolE i >> replicateM_ i deleteE))
     ,('n',      const (searchE Nothing))
-    ,('x',      deleteNE)
+
+    ,('X',      \i -> do p <- getPointE
+                         leftOrSolE i
+                         q <- getPointE -- how far did we really move?
+                         when (p-q > 0) $ deleteNE (p-q) )
+
+    ,('x',      \i -> do p <- getPointE -- not handling eol properly
+                         rightOrEolE i
+                         q <- getPointE
+                         gotoPointE p
+                         when (q-p > 0) $ deleteNE (q-p) )
+
     ,('p',      (\_ -> getRegE >>= \s ->
                         eolE >> insertE '\n' >>
                             mapM_ insertE s >> solE)) -- ToDo insertNE
+
     ,(keyPPage, upScreensE)
     ,(keyNPage, downScreensE)
-    ,(keyLeft,  const leftE)          -- not really vi, but fun
-    ,(keyRight, const rightE)
+    ,(keyLeft,  leftOrSolE)          -- not really vi, but fun
+    ,(keyRight, rightOrEolE)
     ]
 
 --
@@ -318,7 +346,7 @@ cmdCmdFM = listToFM $
 -- Lazy lexers - you know we're right (tm).
 --
 cmd_op :: ViMode
-cmd_op =((op_char +> digit `star` move_chr) >|< 
+cmd_op =((op_char +> digit `star` (move_chr >|< (move2chrs +> anyButEsc))) >|<
          (string "dd" >|< string "yy"))
 
     `meta` \lexeme st@St{acc=count} -> 
@@ -327,8 +355,9 @@ cmd_op =((op_char +> digit `star` move_chr) >|<
         in (with (msgClrE >> fn), st{acc=[]}, Just $ cmd st)
 
     where
-        op_char  = alt $ keysFM opCmdFM
-        move_chr = alt $ keysFM moveCmdFM
+        op_char   = alt $ keysFM opCmdFM
+        move_chr  = alt $ keysFM moveCmdFM
+        move2chrs = alt $ keysFM move2CmdFM
 
         getCmd :: [Char] -> Int -> Action
         getCmd lexeme i = case lexeme of
@@ -347,13 +376,13 @@ cmd_op =((op_char +> digit `star` move_chr) >|<
         opCmdFM = listToFM $ 
             [('d', \i m -> replicateM_ i $ do
                               (p,q) <- withPointMove m
-                              deleteNE (abs (q - p)) 
+                              deleteNE (max 0 (abs (q - p) + 1))  -- inclusive
              ),
              ('y', \_ m -> do (p,q) <- withPointMove m
                               s <- (if p < q then readNM p q else readNM q p)
                               setRegE s -- ToDo registers not global.
              )
-            ,('~', const invertCase)
+            ,('~', const invertCase) -- not right. 
             ]
 
         -- invert the case of range described by movement @m@
@@ -429,8 +458,6 @@ ins_char = anyButEsc
                       | k == '\t'     -> mapM_ insertE "    " -- XXX
                     _ -> insertE c
 
-          anyButEsc = alt $ (keyBackspace : any' ++ cursc') \\ ['\ESC']
-
 -- switch out of ins_mode
 ins2cmd :: ViMode
 ins2cmd  = char '\ESC' `meta` \_ st -> (with (leftOrSolE 1), st, Just $ cmd st)
@@ -459,8 +486,6 @@ rep_char = anyButEsc
                     '\r' -> insertE '\n' 
                     _ -> do e <- atEolE
                             if e then insertE c else writeE c >> rightE
-
-          anyButEsc = alt $ (keyBackspace : any' ++ cursc') \\ ['\ESC']
 
 -- switch out of rep_mode
 rep2cmd :: ViMode
@@ -555,6 +580,12 @@ ex_eval = enter
 
     where 
       fn ""           = msgClrE
+
+      fn s@(c:_) | isDigit c = do 
+        e <- try $ evaluate $ read s
+        case e of Left _ -> errorE $ "The " ++show s++ " command is unknown."
+                  Right lineNum -> gotoLnE lineNum
+
       fn "w"          = viWrite
       fn "q"          = closeE
       fn "q!"         = closeE
@@ -564,6 +595,10 @@ ex_eval = enter
       fn ('s':'p':_)  = splitE
       fn ('e':' ':f)  = fnewE f
       fn ('s':'/':cs) = viSub cs
+
+      fn "reboot"     = rebootE     -- !
+      fn "reload"     = reloadE     -- !
+
       fn s            = errorE $ "The "++show s++ " command is unknown."
 
 ------------------------------------------------------------------------
@@ -676,11 +711,12 @@ isDel _            = False
 -- ---------------------------------------------------------------------
 -- | character ranges
 --
-digit, delete, enter :: ViRegex
+digit, delete, enter, anyButEsc :: ViRegex
 digit   = alt digit'
 enter   = alt enter'
 delete  = alt delete'
 -- any     = alt any'
+anyButEsc = alt $ (keyBackspace : any' ++ cursc') \\ ['\ESC']
 
 enter', any', digit', delete' :: [Char]
 enter'   = ['\n', '\r']
