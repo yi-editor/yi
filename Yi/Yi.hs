@@ -30,12 +30,15 @@ module Yi.Yi (
         
         settings,
         Config(..),
+        Keymap(..),
         module Yi.Core,
+        module Yi.UI,
  
    ) where
 
 import Yi.Core
-import Yi.Editor                        ( Config(..) )
+import Yi.UI        -- hack, just for now, so we can see key defns
+import Yi.Editor                        ( Keymap(..), Config(..) )
 
 import qualified Yi.Keymap.Vi as Keymap    ( keymap )
 

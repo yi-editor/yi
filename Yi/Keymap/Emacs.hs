@@ -27,9 +27,7 @@
 
 module Yi.Keymap.Emacs {-( keymap )-} where
 
-import Yi.Core
-import Yi.Editor    ( Keymap(..) )  -- just for now
-import Yi.UI        -- hack, just for now, so we can see key defns
+import Yi.Yi
 
 import Data.Char
 import Control.Monad
@@ -105,7 +103,7 @@ keytableSetKey t (k:ks) a = do v <- lookupKey t k
     addMap k' ks' a' t' = keytableSetKey t' ks' a' >> updateKey t k' (KMap t')
 
 -- Poor mans key bindings
-initKeyBindings :: [([Char], Yi.Core.Action)]
+initKeyBindings :: [([Char], Action)]
 initKeyBindings = [-- Special characters
 		   ([keyEnter], insertE '\n'),
 		   (['\r'], insertE '\n'),		   

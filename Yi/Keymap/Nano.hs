@@ -25,9 +25,8 @@
 
 module Yi.Keymap.Nano ( keymap ) where
 
-import Yi.Core
-import Yi.Editor        ( Keymap(..) )  -- just for now
-import Yi.UI                            -- hack, just for now
+import Yi.Yi hiding ( keymap )
+
 import Control.Monad    ( when )
 
 --
@@ -83,9 +82,10 @@ nanoReadF = do
     let loop w = do
             k <- getcE
             case () of {_
-                | k == '\n'         -> return (reverse w)
-                | k == '\r'         -> return (reverse w)
-                | otherwise         -> msg (reverse (k:w)) >> loop (k:w)
+                | isDel k    -> del w >>= loop 
+                | k == '\n'  -> return (reverse w)
+                | k == '\r'  -> return (reverse w)
+                | otherwise  -> msg (reverse (k:w)) >> loop (k:w)
             }
     f <- loop []
     fnewE f
