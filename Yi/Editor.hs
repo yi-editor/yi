@@ -59,6 +59,7 @@ data Buffer a => GenEditor a =
        ,cmdline   :: !String                    -- ^ the command line
        ,curwin    :: Maybe Unique               -- ^ the window with focus
        ,curkeymap :: (Char -> IO())             -- ^ user-configurable keymap
+       ,scrsize   :: !(Int,Int)                 -- ^ screen size
     }
 
 --
@@ -91,6 +92,7 @@ emptyEditor = Editor {
        ,cmdline      = []           -- for now
        ,curwin       = Nothing
        ,curkeymap    = error "no keymap defined"
+       ,scrsize      = (0,0)
     }
 
 -- 
@@ -194,30 +196,55 @@ shiftBuffer f = readEditor $ \(e :: Editor) ->
 ------------------------------------------------------------------------
 -- | Window manipulation
 
--- | Create a new window onto this buffer
--- TODO totally fails to take into account the position of other windows
+-- | Create a new window onto this buffer.
+-- top of screen of other windows needs to get adjusted
 --
-newWindow :: Buffer' -> (Int,Int) -> IO Window
-newWindow b sz = modifyEditor $ \e -> do
-    w <- emptyWindow b sz
-    let e' = e { windows = addToFM (windows e) (key w) w }
-    return (e', w)
+newWindow :: Buffer' -> IO Window
+newWindow b = modifyEditor $ \e -> do
+    let (h,w) = scrsize e
+        wls   = eltsFM $ windows e
+        (y,r) = getY h (1 + (length wls))
+    wls' <- mapM (\x -> newHeight y x $ findBufferWith e (bufkey x)) wls
+    win  <- emptyWindow b (y+r,w)
+    let e' = e { windows = listToFM $ mkAssoc (win:wls') }
+    return (e', win)
 
 --
 -- | Delete a window. 
 -- TODO should close the underlying buffer if this is the last window
--- onto that buffer. If this is the focused window, switch to another
--- one.
+-- onto that buffer. 
+--
+-- TODO If this is the focused window, switch to another one.
+--
+-- What if all the windows are now closed?
 --
 deleteWindow :: (Maybe Window) -> IO ()
 deleteWindow Nothing  = return ()
-deleteWindow (Just w) = modifyEditor_ $ \e -> do
-    let ws = delFromFM (windows e) (key w)
-    return $ e { windows = ws }
+deleteWindow (Just win) = modifyEditor_ $ \e -> do
+    let ws    = delFromFM (windows e) (key win)
+        (h,_) = scrsize e
+        (y,r) = getY h (length $ eltsFM ws)
+    wls <- mapM (\w -> newHeight y w $ findBufferWith e (bufkey w)) $ eltsFM ws
+    case wls of
+        []        -> return e { windows = emptyFM  }
+        (win':_) -> do
+            let fm = listToFM $ mkAssoc wls
+            win'' <- newHeight (y+r)  win' (findBufferWith e (bufkey win'))
+            return $ e { windows = (addToFM fm (key win'') win'') }
+
+-- | calculate window heights, given all the windows and current height
+getY :: Int -> Int -> (Int,Int)
+getY h 0 = (h, 0)
+getY h l = h `quotRem` l
+
+-- | turn a list of windows into an association list suitable for listToFM
+mkAssoc :: [Window] -> [(Unique,Window)]
+mkAssoc []     = []
+mkAssoc (w:ws) = (key w, w) : mkAssoc ws
 
 -- ---------------------------------------------------------------------
 -- | Get all the windows
--- TODO sort by key
+-- TODO by key
 --
 getWindows :: IO [Window]
 getWindows = readEditor $ \e -> eltsFM $ windows e
@@ -232,11 +259,24 @@ getWindow = readEditor $ \e ->
                     k       -> Just $ findWindowWith e k
 
 --
+-- | Get index of current window in window list
+--
+getWindowInd :: IO (Maybe Int)
+getWindowInd = readEditor $ \e ->
+    case curwin e of    
+        Nothing -> Nothing
+        k       -> let win = findWindowWith e k
+                   in elemIndex win (eltsFM $ windows e)
+
+--
 -- | Set current window
+-- !! reset the buffer point from the window point
 --
 setWindow :: Window -> IO ()
-setWindow w = modifyEditor_ $ \(e :: Editor) -> 
-                    return $ e {curwin = Just $ key w}
+setWindow w = modifyEditor_ $ \(e :: Editor) -> do
+    let b = findBufferWith e (bufkey w)
+    moveTo b (pnt w)
+    return $ e { curwin = Just $ key w }
 
 --
 -- | How many windows do we have
@@ -304,6 +344,7 @@ windowAt n = shiftFocus (const n)
 --
 -- | Set the new current window using a function applied to the old
 -- window's index
+-- !! reset buffer point from window point
 --
 shiftFocus :: (Int -> Int) -> IO ()
 shiftFocus f = modifyEditor_ $ \(e :: Editor) -> do
@@ -314,7 +355,9 @@ shiftFocus f = modifyEditor_ $ \(e :: Editor) -> do
         Nothing -> error "Editor: current window has been lost."
         Just i -> let l = length ws
                       w = ws !! ((f i) `mod` l)
-                  in return $ e { curwin = Just $ key w }
+                      b = findBufferWith e (bufkey w)
+                  in do moveTo b (pnt w)
+                        return $ e { curwin = Just $ key w }
 
 -- ---------------------------------------------------------------------
 -- | Given a keymap function, set the user-defineable key map to that function

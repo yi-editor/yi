@@ -111,14 +111,18 @@ redraw = do
     gotoTop
     mapM_ drawWindow ws
 
-    -- draw command line
     cl <- readEditor cmdline
     drawCmdLine cl
 
-    -- position cursor
+    -- work out origin of current window from index of that window in win list
+    -- still grubby because we aren't using the /origin/ field of 'Window'
+    -- *sigh* assumes bottom window has rem
     w <- getWindow
-    when (isJust w) $ 
-        drawCursor (cursor $ fromJust w)
+    when (isJust w) $ do
+        (Just i) <- getWindowInd
+        (h,_)    <- screenSize
+        let o_y = i * (fst $ getY h (length ws))
+        drawCursor (o_y,0) $ cursor $ fromJust w
 
 --
 -- | Draw a screen to the screen
@@ -163,11 +167,11 @@ drawLine w s  = Curses.wAddStr Curses.stdScr $ take w (s ++ repeat ' ')
 -- | Given the cursor position in the window. Draw it.
 -- TODO take account of offsets
 --
-drawCursor :: (Int,Int) -> IO ()
-drawCursor (y,x) = Curses.withCursor Curses.CursorVisible $ do
+drawCursor :: (Int,Int) -> (Int,Int) -> IO ()
+drawCursor (o_y,_o_x) (y,x) = Curses.withCursor Curses.CursorVisible $ do
     gotoTop
     cset_attr (Curses.setReverse Curses.attr0 True, Curses.Pair 1)
-    Curses.wMove Curses.stdScr (y) (x)
+    Curses.wMove Curses.stdScr (o_y + y) (x)
     reset
 
 --

@@ -119,6 +119,8 @@ startE :: Editor.Config -> Maybe [FilePath] -> IO ()
 startE confs mfs = do
     UI.start
     Editor.setUserSettings confs
+    sz <- UI.screenSize
+    modifyEditor_ $ \e -> return $ e { scrsize = sz }
     Control.Exception.handleJust (ioErrors) (\e -> msgE (show e)) $ do
         case mfs of
             Just fs -> mapM_ fnewE fs
@@ -233,14 +235,6 @@ rightOrEolE x = withWindow_ $ moveXorEolW x
 -- Window based operations
 --
 
--- | Shift focus to next window
-nextWinE :: IO ()
-nextWinE = Editor.nextWindow
-
--- | Shift focus to prev window
-prevWinE :: IO ()
-prevWinE = Editor.prevWindow
-
 {-
 -- | scroll window up
 scrollUpE :: IO ()
@@ -302,7 +296,7 @@ nextBufW = do
     w <- getWindow
     b <- Editor.nextBuffer
     deleteWindow w         -- !! don't delete window before getting the next buffer
-    w' <- UI.screenSize >>= Editor.newWindow b
+    w' <- Editor.newWindow b
     Editor.setWindow w'
 
 -- | edit the previous buffer in the buffer list
@@ -310,7 +304,7 @@ prevBufW :: IO ()
 prevBufW = do
     b <- Editor.prevBuffer
     getWindow >>= deleteWindow
-    w' <- UI.screenSize >>= newWindow b
+    w' <- newWindow b
     setWindow w'
 
 -- | Read file into buffer and open up a new window
@@ -319,10 +313,28 @@ fnewE f = do
     e  <- doesFileExist f
     b  <- if e then hNewBuffer f else stringToNewBuffer f []
     getWindow >>= deleteWindow
-    w <- UI.screenSize >>= newWindow b
+    w <- newWindow b
     Editor.setWindow w
 
 -- | Write current buffer to disk
 fwriteE :: IO ()
 fwriteE = withWindow_ $ \w b -> hPutB b (nameB b) >> return w
+
+-- | Split a second window onto this buffer :)
+splitE :: IO ()
+splitE = do
+    mw <- getWindow
+    case mw of 
+        Nothing -> nopE
+        Just w  -> do b <- getBufferWith (bufkey w)
+                      w' <- newWindow b
+                      Editor.setWindow w'
+
+-- | Shift focus to next window
+nextWinE :: IO ()
+nextWinE = Editor.nextWindow
+
+-- | Shift focus to prev window
+prevWinE :: IO ()
+prevWinE = Editor.prevWindow
 

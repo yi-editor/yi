@@ -58,11 +58,18 @@ data Window =
 instance Eq Window where
     Window { key = u } == Window { key = v }  = u == v
 
+instance Ord Window where
+    Window { key = u } `compare` Window { key = v }  = u `compare` v
+    Window { key = u } <     Window { key = v }      = u <     v
+
 -- ---------------------------------------------------------------------
 -- Construction
 
 --
 -- A new window
+--
+-- The origin, height and width should be calculated with reference to
+-- all existing windows.
 --
 emptyWindow :: Buffer a => a -> (Int,Int) -> IO Window
 emptyWindow b (h,w) = do
@@ -72,7 +79,7 @@ emptyWindow b (h,w) = do
                 key       = wu
                ,bufkey    = (keyB b)
                ,mode      = m
-               ,origin    = (0,0)  -- TODO what about vnew etc.
+               ,origin    = (0,0)  -- TODO what about vnew etc. do we care?
                ,height    = h-1    -- - 1 for the modeline
                ,width     = w
                ,cursor    = (0,0)  -- (y,x)
@@ -302,3 +309,19 @@ noNLatEof b = do
     c  <- readB b
     moveTo b p
     return (c /= '\n')
+
+--
+-- | Adjust the window's height-related fields, assuming a new window height
+-- Still got a bug in here somewhere.
+--
+newHeight :: Buffer a => Int -> Window -> a -> IO Window
+newHeight y w b = do
+    let topln = toslineno w
+        ln    = lineno w
+        w'    = w { height = y }
+    if topln - ln >= y        -- then set lineno as top line
+        then do i <- indexOfSol b
+                p <- pointB b
+                return w' { toslineno = ln, tospnt = i, cursor = (0,p) }
+        else return w'
+

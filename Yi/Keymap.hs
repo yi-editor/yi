@@ -149,6 +149,7 @@ key E k = msgClrE >> loop [k]
     execEx "N"   = nextBufW
     execEx "p"   = prevBufW
     execEx "P"   = prevBufW
+    execEx "sp"  = splitE
     execEx ('e':' ':f) = fnewE f
     execEx cs    = viCmdErr cs
 
