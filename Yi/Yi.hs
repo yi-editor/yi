@@ -32,13 +32,14 @@ module Yi.Yi (
         Config(..),
         module Yi.Core,
         module Yi.UI,
+        module Yi.Ctk.Lexers,
  
    ) where
 
 import Yi.Core
-import Yi.UI        -- hack, just for now, so we can see key defns
-import Yi.Editor                        ( Config(..) )
-
+import Yi.UI                      hiding ( plus ) -- so we can see key defns
+import Yi.Editor                         ( Config(..) )
+import Yi.Ctk.Lexers              hiding ( Action )
 import qualified Yi.Keymap.Vi as Default ( keymap )
 
 settings :: Config

@@ -1,20 +1,11 @@
 
 Design plan:
-        - abstract syntax for ui 
-        - think about abstractable actions/keybindings
+        - ui type class
         - clean up ncurses code    
-
-Dynamic stuff:
-        - "rebinding" global_vars by writing fields in global settings, using
-          values dynamically compiled.
-                :set some_global_var = map reverse
-          similar effects by reloading Config.hs
-        - scripting: 
-                :map toUpper buffer
-          by compiling, and applying to global var.
-
+        - how a user can override a single binding of a default map
+ 
 Build system:
         - write a configure script
         - check how to install it from a port script
-        - think about how to do a testsuite
+        - think about how to do a testsuite, unit testing
         - store cpp options in a file, instead of on the command line

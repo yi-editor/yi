@@ -21,7 +21,7 @@
 -- Vi-ish keymap for Yi
 --
 
-module Yi.Keymap.Vi ( keymap ) where
+module Yi.Keymap.Vi ( keymap, keymapPlus, ViMode ) where
 
 import Yi.Core
 import Yi.UI         hiding ( plus )
@@ -35,36 +35,43 @@ import Data.Char
 import Control.Monad
 
 -- ---------------------------------------------------------------------
+
 -- A vi mode is a lexer that returns a core Action. 
--- It can carry around some state, if it needs to.
---
-type ViState = [Char]      -- state is key accumulator
 type ViMode  = Lexer  ViState Action 
 type ViRegex = Regexp ViState Action
 
--- ---------------------------------------------------------------------
+-- state threaded through the lexer
+data ViState = 
+        St { acc :: [Char]      -- an accumulator, for count, search and ex mode
+           , cmd :: ViMode }    -- (maybe) user-augmented cmd mode lexer
+
 --
 -- | Top level. Lazily consume all the input, generating a list of
 -- actions, which then need to be forced
 --
--- NB if there is an exception, we'll lose any new bindings..
---    maybe we shouldn't refresh automatically?
+-- NB . if there is an exception, we'll lose any new bindings.. iorefs?
+--    . maybe we shouldn't refresh automatically?
 --
 keymap :: String -> IO ()
 keymap cs = mapM_ (>> refreshE) actions
     where 
-        actions = let (ts,_,_) = execLexer lexer (cs, emptySt) in ts
-        emptySt = []
+        actions = let (ts,_,_) = execLexer cmd_mode (cs, dfltSt) in ts
+        dfltSt = St { acc = [], cmd = cmd_mode }
+
+-- | like keymap, but takes a supplied lexer, which is used to augment the
+-- existing lexer. Useful for user-added binds
+keymapPlus :: ViMode -> [Char] -> IO ()
+keymapPlus lexer' cs = mapM_ (>> refreshE) actions
+    where 
+        actions = let (ts,_,_) = execLexer cmd_mode' (cs, dfltSt) in ts
+        cmd_mode'= cmd_mode >||< lexer'
+        dfltSt = St { acc = [], cmd = cmd_mode' }
 
 ------------------------------------------------------------------------
 
--- The vi lexer is broken up into several parts, roughly corresponding
+-- The vi lexer is divided into several parts, roughly corresponding
 -- to the different modes of vi. Each mode is in turn broken up into
 -- separate lexers for each phase of key input in that mode.
-
--- Top level lexer. We start in command mode
-lexer :: ViMode
-lexer = cmd_mode
 
 -- command mode consits of simple commands that take a count arg - the
 -- count is stored in the lexer state. also the replace cmd, which
@@ -87,11 +94,13 @@ ex_mode = ex_char >||< ex_edit >||< ex_eval >||< ex2cmd
 -- ---------------------------------------------------------------------
 -- | vi (simple) command mode.
 --
+with :: Action -> Maybe (Either e Action)
+with a = (Just (Right a))
 
 -- accumulate count digits, echoing them to the cmd buffer
 cmd_count :: ViMode
 cmd_count = digit
-    `meta` \[c] acc -> (Just (Right $ msg (c:acc)), (c:acc), Just cmd_mode) 
+    `meta` \[c] st -> (with (msg (c:acc st)),st{acc = c:acc st},Just $ cmd st)
     where
         msg cs = msgE $ (replicate 60 ' ') ++ (reverse cs)
 
@@ -101,12 +110,12 @@ cmd_eval = ( cmdc >|<
             (char 'r' +> anyButEscOrDel) >|<
             string ">>" >|< string "dd" >|< string "ZZ" >|< string "yy")
 
-    `meta` \lexeme count -> 
+    `meta` \lexeme st@St{acc=count} -> 
         let c  = if null count then Nothing 
                                else Just (read $ reverse count)
             i  = fromMaybe 1 c
             fn = getCmd lexeme c i
-        in (Just (Right fn), [], Just cmd_mode)
+        in (with fn, st{acc=[]}, Just $ cmd st)
 
     where
         anyButEscOrDel = alt $ any' \\ ('\ESC':delete')
@@ -210,7 +219,7 @@ cmd2other = modeSwitchChar
     `meta` \[c] st -> 
         let beginIns a = (Just (Right (a)), st, Just ins_mode)
         in case c of
-            ':' -> (Just (Right (msgE ":")), [':'], Just ex_mode)
+            ':' -> (with (msgE ":"), st{acc=[':']}, Just ex_mode)
 
             'i' -> (Nothing, st, Just ins_mode)
             'I' -> beginIns solE
@@ -222,14 +231,13 @@ cmd2other = modeSwitchChar
             'C' -> beginIns $ readRestOfLnE >>= setRegE >> killE
             'S' -> beginIns $ solE >> readLnE >>= setRegE >> killE
 
-            '/' -> (Just (Right (msgE "/")), ['/'], Just ex_mode)
-            '?' -> beginIns $ not_implemented '?'
+            '/' -> (with (msgE "/"), st{acc=['/']}, Just ex_mode)
+            '?' -> (with (not_implemented '?'), st{acc=[]}, Just $ cmd st)
 
-            '\ESC'-> (Just (Right msgClrE), [], Just cmd_mode)
+            '\ESC'-> (with msgClrE, st{acc=[]}, Just $ cmd st)
 
-            s   -> (Just (Right (
-                        msgE ("The "++show s++" command is unknown.")))
-                    ,st, Just cmd_mode)
+            s   -> (with (msgE ("The "++show s++" command is unknown."))
+                   ,st, Just $ cmd st)
 
     where modeSwitchChar = alt ":iIaAoOcCS/?\ESC"
 
@@ -249,10 +257,10 @@ ins = anyButEsc
 
     where anyButEsc = alt $ any' \\ ['\ESC']
 
--- switching out of ins_mode
+-- switch out of ins_mode
 ins2cmd :: ViMode
 ins2cmd  = char '\ESC' 
-    `meta` \_ rest -> (Nothing, rest, Just cmd_mode)
+    `meta` \_ st -> (Nothing, st, Just $ cmd st)
 
 -- ---------------------------------------------------------------------
 -- Ex mode. We also lex regex searching mode here.
@@ -260,7 +268,7 @@ ins2cmd  = char '\ESC'
 -- normal input to ex. accumlate chars
 ex_char :: ViMode
 ex_char = anyButDelOrNl
-    `meta` \[c] acc -> (Just (Right $ msg c), (c:acc), Just ex_mode)
+    `meta` \[c] st -> (with (msg c), st{acc=c:acc st}, Just ex_mode)
     where
         anyButDelOrNl= alt $ any' \\ (enter' ++ delete')
         msg c = getMsgE >>= \s -> msgE (s++[c])
@@ -268,33 +276,34 @@ ex_char = anyButDelOrNl
 -- line editing
 ex_edit :: ViMode
 ex_edit = delete
-    `meta` \_ cs -> 
-        let acc = case cs of [c]    -> [c]
-                             (_:xs) -> xs
-                             []     -> [':'] -- can't happen
-        in (Just (Right $ msgE (reverse acc)), acc, Just ex_mode)
+    `meta` \_ st -> 
+        let cs' = case acc st of [c]    -> [c]
+                                 (_:xs) -> xs
+                                 []     -> [':'] -- can't happen
+        in (with (msgE (reverse cs')), st{acc=cs'}, Just ex_mode)
 
 -- escape exits ex mode immediately
 ex2cmd :: ViMode
 ex2cmd = char '\ESC'
-    `meta` \_ _ -> (Just (Right msgClrE), [], Just cmd_mode)
+    `meta` \_ st -> (with msgClrE, st{acc=[]}, Just $ cmd st)
 
 ex_eval :: ViMode
 ex_eval = enter
-    `meta` \_ dmc -> case reverse dmc of
+    `meta` \_ st@St{acc=dmc} -> case reverse dmc of
 
         -- regex searching
-        ('/':pat) -> (Just (Right (searchE (Just pat))), [], Just cmd_mode)
+        ('/':pat) -> (with (searchE (Just pat)), st{acc=[]}, Just $ cmd st)
 
         -- new key bindings. for now, just add bindings to echo n.b we
         -- haven't deleted the old binding, so you better now _rebind_
         -- keys. but only bind new ones, until we fix Lexers.hs
         (_:'l':'e':'t':' ':[c]) ->
-               (Just (Right (bindmsg c)), [], Just (cmd_mode >||< new c))
+               let cmd' = cmd st >||< new c
+               in (with (bindmsg c), st{acc=[],cmd=cmd'}, Just cmd')
 
-        (_:cmd) -> (Just (Right (fn cmd)), [], Just cmd_mode)
+        (_:src) -> (with (fn src), st{acc=[]}, Just $ cmd st)
 
-        [] -> (Nothing, [], Just cmd_mode) -- can't happen
+        [] -> (Nothing, st{acc=[]}, Just $ cmd st) -- can't happen
 
     where 
       fn ""           = msgClrE
