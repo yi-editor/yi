@@ -6,6 +6,17 @@ Yi -- the Haskell extensible editor
 Copyright (c) Don Stewart 2004.
 <http://www.cse.unsw.edu.au/~dons>
 
+QUICK START
+
+* Install the latest hs-plugins snapshot, then:
+
+    $ autoreconf                -- NB auto_re_conf !
+    $ ./configure --prefix=/my/dir
+    $ make
+    $ ./yi-inplace README
+
+Read on for more details..
+
 BUILDING AND INSTALLING
 
 You can get the latest yi source from its darcs repository:
