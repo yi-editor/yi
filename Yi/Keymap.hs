@@ -104,30 +104,26 @@ key I c      = insertE c    >> rightE
 
 -- ---------------------------------------------------------------------
 -- * Ex mode
--- TODO not very scalable..
+-- accumulate keys until esc or \n, then try to work out what was typed
 --
-key E c = do 
-    msgE (':':[c])       -- TODO general scheme for echoing
-    case c of
-        'w' -> do 
-            c' <- getcE
-            case c' of 
-                '\13' -> viWrite
-                'q'   -> do 
-                    msgE (":wq")
-                    c'' <- getcE       
-                    case c'' of
-                        '\13' -> viWrite >> quitE
-                        _     -> viCmdErr (c:c':[c''])
-                _  -> viCmdErr (c:[c'])
-        'q' -> do
-            c' <- getcE
-            case c' of 
-                '\13' -> quitE
-                _     -> viCmdErr (c:[c'])
-        _ -> viCmdErr [c]
-    beginCommand
+key E k = msgClrE >> loop [k]
+  where
+    loop [] = beginCommand  -- impossible
+    loop w@(c:cs) 
+        | c == '\27' = msgClrE >> beginCommand  -- cancel 
+        | c == '\13' = execEx (reverse cs) >> beginCommand
+        | otherwise  = do msgE (':':reverse w)
+                          c' <- getcE
+                          loop (c':w)
 
+    execEx :: String -> Action
+    execEx "w"   = viWrite
+    execEx "q"   = quitE
+    execEx "q!"  = quitE
+    execEx "wq"  = viWrite >> quitE
+    execEx cs    = viCmdErr cs
+
+-- anything we've missed
 key _  _  = noopE
 
 -- ---------------------------------------------------------------------
@@ -143,5 +139,5 @@ viWrite = do
 -- | An invalid command
 --
 viCmdErr :: [Char] -> Action
-viCmdErr s = msgE $ "Not an editor command: "++s
+viCmdErr s = msgE $ "The "++s++ " command is unknown."
 
