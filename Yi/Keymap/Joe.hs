@@ -104,19 +104,30 @@ killEolE = killE
 killLineE = solE >> killE
 undefE = errorE $ "Key sequence not defined."
 
-query :: String -> String -> (String -> KProc) -> KProc -> KProc
-query prompt s cont failcont cs =
+getFileE :: IO FilePath
+getFileE = bufInfoE >>= \(fp, _, _, _, _, _) -> return fp
+
+-- TODO: This is slow, updating the screen on every char.
+insertFileE :: String -> Action
+insertFileE f = readFile f >>= mapM_ insertE
+
+query_ :: String -> String -> (String -> KProc) -> KProc -> KProc
+query_ prompt s cont failcont cs =
     (msgE $ prompt ++ s):(loop cs)
     where
-        q = \ss cs2 -> query prompt ss cont failcont cs2
+        q = \ss cs2 -> query_ prompt ss cont failcont cs2
         loop (c:cs3)
-            | is_enter c   = msgClrE:(cont s cs3)
-            | c=='\^G'     = msgClrE:(failcont cs3)
+            | is_enter c   = msgClrE:cmdlineUnFocusE:(cont s cs3)
+            | c=='\^G'     = msgClrE:cmdlineUnFocusE:(failcont cs3)
             | isDel c      = q (init s) cs3
             | valid_char c = q (s ++ [c]) cs3
             | otherwise    = loop cs3
         loop []            = []
-        
+
+query :: String -> String -> (String -> KProc) -> KProc -> KProc
+query prompt s cont failcont cs =
+    cmdlineFocusE:(query_ prompt s cont failcont cs)
+
 simpleq :: String -> String -> (String -> Action) -> KProc -> KProc
 simpleq prompt initial act cont =
     query prompt initial (\s cs -> (act s):(cont cs)) cont
@@ -124,35 +135,41 @@ simpleq prompt initial act cont =
 queryNewE, querySaveE, queryGotoLineE, queryInsertFileE,
     queryBufW, querySearchRepE, nextSearchRepE :: KProc -> KProc
 
+
 queryNewE = simpleq "File name: " [] fnewE
-querySaveE = simpleq "File name: " [] unimplementedQ
 queryGotoLineE = simpleq "Line number: " [] (gotoLnE . read)
-queryInsertFileE = simpleq "File name: " [] unimplementedQ
+queryInsertFileE = simpleq "File name: " [] insertFileE
 queryBufW = simpleq "Buffer: " [] unimplementedQ
+querySaveE cont _ = return $
+    getFileE >>= \f -> metaM $ simpleq "File name: " f fwriteToE cont
 
--- TODO: handle flags
-dosearch :: String -> String -> Action
-dosearch s _ = searchE $ Just s
+isect :: Eq a => [a] -> [a] -> Bool
+[] `isect` _ = False
+(e:ee) `isect` l = e `elem` l || ee `isect` l
 
+mksearch :: String -> String -> Action
+mksearch s flags = 
+    searchE (Just s) [ignore] backward
+    where
+        ignore = if isect "iI" flags then IgnoreCase else Basic
+        backward = if isect "bB" flags 
+                       then \() -> Left () 
+                       else \() -> Right ()
+        
 querySearchRepE cont cs = 
     query "Search term: " [] qflags cont cs
     where
-        flagprompt = "(I)gnore, (R)eplace, (B)ackward Reg.E(x)p? "
+        flagprompt = "[Not fully implemented] (I)gnore, (R)eplace, (B)ackward Reg.E(x)p? "
         qflags s cs2 = query flagprompt [] (doit s) cont cs2
-        doit s flags cs3 = (dosearch s flags):(cont cs3)
+        doit s flags cs3 = (mksearch s flags):(cont cs3)
 
---nextSearchRepE cont cs =
---    getRegexE >>= \e -> case e of
---        Nothing -> querySearchRepE cont cs
---        Just _ -> (searchE Nothing):(cont cs)
+nextSearchRepE cont _ = return $
+    getRegexE >>= \e -> case e of
+        Nothing -> metaM $ querySearchRepE cont
+        Just _ -> metaM $ \cs -> (nopE):(cont cs)
 
 unimplementedQ :: String -> Action
 unimplementedQ _ = nopE
-
---readMaybeCall :: Read a => (a -> Action) -> a -> (String -> Action)
---readMaybeCall f s =
---    case reads s of
-       
 
 
 -- Keymap processing
