@@ -276,7 +276,7 @@ install :: $(INSTALL_LIBS)
 	done
 endif
 
-ifneq "$(INSTALL_DATA)" ""
+ifneq "$(INSTALL_DATAS)" ""
 install :: $(INSTALL_DATAS)
 	@$(INSTALL_DIR) $(DATADIR)
 	@for i in $(INSTALL_DATAS); do \
