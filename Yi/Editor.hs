@@ -19,87 +19,57 @@
 
 --
 -- | The editor state. This the the machine that Core instructions manipulate.
+-- The editor just manages buffers. 1 buffer is always in focus, and the
+-- editor knows which one that is.
 --
 
-module Yi.Editor (
-
-        -- * the editor type
-        Editor,             -- abstract?
-
-        -- * access to editor state
-        screenWidth,            -- :: IO Int
-        screenHeight,           -- :: IO Int
-        getScreenSize,          -- :: IO (Int, Int)
-        setScreenSize,          -- :: (Int,Int) -> IO ()
-
-        getAllBuffers,          -- :: [BasicBuffer]
-        getBuffers,             -- :: IO (Maybe BasicBuffer, [BasicBuffer])
-        getBufCount,            -- :: IO Int                        
-
-        newBuffer,              -- :: FilePath -> [String] -> IO ()
-        delBuffer,              -- :: IO ()
-        withBuffer,
-
-        setUserSettings,        -- :: Config -> IO ()
-        getKeyMap,              -- :: IO (Key -> Action)
-
-        -- * a type for user defineable settings
-        Config(..),
-
-        -- * abstract syntax for keys
-        Key(..),
-
-        -- * user bindable actions
-        Action,         -- = Key -> IO EditStatus
-        KeyMap,
-
-   ) where
+module Yi.Editor where
 
 import Yi.Buffer
 
 -- Get at the user defined settings
 import {-# SOURCE #-} qualified Yi.Config as Config ( settings )
 
+import Data.FiniteMap
+import Data.Unique
 import Data.IORef
+
 import Control.Concurrent.MVar  ( MVar(), newMVar, withMVar )
 import System.IO.Unsafe         ( unsafePerformIO )
 
 --
 -- | First stab at a simple editor state, manipulated by Core
--- instructions. Keep the machine as simple as possible for all sorts of
--- UIs
+-- instructions.  The 'Editor' just knows about what buffers there are.
+-- The UI knows how to draw things of 'Buffer' type.
 --
 -- Parameterised on the buffer type
 --
-data Buffer a => GenericEditor a = Editor {
-        s_width       :: !Int       -- ^ total screen width 
-       ,s_height      :: !Int       -- ^ total screen height        
-       ,buffers       :: [a]        -- ^ multiple buffers
-       ,cur_buf_ind   :: Maybe Int  -- ^ current buffer, index into buffers
-       ,buf_count     :: !Int       -- ^ number of buffers
-       ,user_settings :: Config     -- ^ user supplied settings
+data Buffer a => GEditor a = Editor {
+        buffers       :: FiniteMap Unique a     -- ^ multiple buffers
+       ,focusKey      :: (Maybe Unique)         -- ^ one buffer has the focus
+       ,editSettings  :: Config                 -- ^ user supplied settings
    }
 
 --
 -- What kind of buffer is this editor going to have?
 --
-type Editor = GenericEditor BasicBuffer
+type EBuffer = FBuffer
+type Editor  = GEditor EBuffer
 
 -- ---------------------------------------------------------------------
 -- | The initial state
 --
 initialState :: Editor
 initialState = Editor {
-        s_width         = 80,
-        s_height        = 24,
-        buffers         = [],
-        cur_buf_ind     = Nothing,
-        buf_count       = 0,
-        user_settings   = Config.settings       -- global user settings
+        buffers         = emptyFM,
+        focusKey        = Nothing,
+        editSettings    = Config.settings   -- static user settings
     }
 
 --
--- | The editor state stored in an IORef, locked with an MVar
+-- | The actual editor state
+-- TODO get rid of big lock on state -- individual buffers are already
+-- synced.
 --
 environment :: MVar (IORef Editor)
 environment = unsafePerformIO $ do
@@ -108,139 +78,107 @@ environment = unsafePerformIO $ do
 {-# NOINLINE environment #-}
 
 -- ---------------------------------------------------------------------
--- | Grab the editor state, manipulate it, and write it back
---
-modifyEditor :: (Editor -> Editor) -> IO ()
-modifyEditor f = withMVar environment $ \ref -> modifyIORef ref f
-
 -- 
 -- | Grab editor state read-only
 -- 
-withEditor :: (Editor -> a) -> IO a
-withEditor f = withMVar environment $ \ref -> return . f =<< readIORef ref
+readEditor :: (Editor -> b) -> IO b
+readEditor f = withMVar environment $ \r -> return . f =<< readIORef r
+
+--
+-- | Grab the editor state, manipulate it, and write it back
+--
+modifyEditor :: (Editor -> Editor) -> IO ()
+modifyEditor f = withMVar environment $ \r -> modifyIORef r f
+
+--
+-- | Grab the editor state, maybe do some IO too
+--
+modifyEditorIO :: (Editor -> IO Editor) -> IO ()
+modifyEditorIO f = withMVar environment $ \r-> readIORef r >>= f >>= writeIORef r
 
 -- ---------------------------------------------------------------------
--- | Functions to get at editor state fields
-
-screenWidth    :: IO Int
-screenWidth = withEditor s_width
- 
-screenHeight   :: IO Int
-screenHeight = withEditor s_height
-
---
--- | get the screen dimensions (y,x)
---
-getScreenSize :: IO (Int,Int)
-getScreenSize = withEditor $ \e -> (s_height e, s_width e)
-
---
--- | Set the dimensions of the screen to height and width
---
-setScreenSize :: (Int,Int) -> IO ()
-setScreenSize (h,w) = modifyEditor $ \e -> e { s_width = w, s_height = h }
-
 --
 -- | return the buffers we have
---
-getAllBuffers :: IO [BasicBuffer]
-getAllBuffers = withEditor buffers
+getBuffers :: IO [EBuffer]
+getBuffers = readEditor $ eltsFM . buffers
 
+------------------------------------------------------------------------
 --
 -- | get current buffer
 --
-getCurBuffer :: IO BasicBuffer
-getCurBuffer = withEditor $ \e -> 
-    case cur_buf_ind e of
-        Just i  -> buffers e !! i
-        Nothing -> error "Editor.getCurBuffer : no buffer to get"
-
---
--- | given the current buffer, write a new version of it
--- should have iorefs for storing the buffers, I think.
--- dodgy.
---
-setCurBuffer :: BasicBuffer -> IO ()
-setCurBuffer buf = modifyEditor $ \e ->
-    case cur_buf_ind e of
-        Nothing -> error "Editor.setCurBuffer: tried to modify non-existent buffer"
-        Just i  -> let (a, b)  = splitAt (i + 1) (buffers e)
-                       ([_],d) = splitAt 1 (reverse a)
-                   in e { buffers = reverse d ++ [buf] ++ b }
+getCurrentBuffer :: IO EBuffer
+getCurrentBuffer = readEditor $ \(e :: Editor) -> 
+    case focusKey e of
+        Just k  -> findBufferWithKey e k
+        Nothing -> error "Editor.pwBuffer: no current buffer to get"
 
 --
 -- | with the current buffer, perform action
 --
-withBuffer :: (BasicBuffer -> BasicBuffer) -> IO ()
-withBuffer f = setCurBuffer . f =<< getCurBuffer
+modifyCurrentBuffer :: (EBuffer -> IO EBuffer) -> IO ()
+modifyCurrentBuffer f = modifyEditorIO $ \(e :: Editor) ->
+    case focusKey e of
+        Nothing -> error "Editor.getCurrentBuffer: no current buffer"
+        Just k  -> do b' <- f $ findBufferWithKey e k
+                      let bs'= addToFM (buffers e) k b'
+                      return $! e { buffers = bs' }
 
 --
--- | get current buffer, and the rest
+-- Private: Find buffer with this key
+-- 
+findBufferWithKey :: Editor -> Unique -> EBuffer
+findBufferWithKey e k = 
+    case lookupFM (buffers e) k of
+            Just b  -> b
+            Nothing -> error "Editor.findBufferWithKey: no buffer has this key"
+
 --
-getBuffers :: IO (Maybe BasicBuffer, [BasicBuffer])
-getBuffers = withEditor $ \e ->
-    case cur_buf_ind e of
-        Nothing -> (Nothing, buffers e)
-        Just i  -> let (a,  b) = splitAt (i+1) (buffers e)
-                       ([c],d) = splitAt 1 (reverse a)
-                   in (Just c, d ++ b)
+-- | set new focused buffer
+-- Should assert this buffer is in @buffers e@.
+-- Generalise the type
+--
+setCurrentBuffer :: EBuffer -> IO ()
+setCurrentBuffer b = modifyEditor $ \(e::Editor) -> e{focusKey = Just $ (key b)}
+
+------------------------------------------------------------------------
+--
+-- | some useful things
+--
+nextBuffer :: IO EBuffer
+nextBuffer = undefined
+
+prevBuffer :: IO EBuffer
+prevBuffer = undefined
 
 --
 -- | get the number of buffers we have
 --
-getBufCount :: IO Int                        
-getBufCount = withEditor buf_count
+lengthBuffers :: IO Int                        
+lengthBuffers = readEditor $ \((Editor{buffers=bs}) :: Editor) -> sizeFM bs
 
 -- ---------------------------------------------------------------------
 -- | Create a new buffer, add it to the set, make it the current buffer,
--- and fill it with [String]. Inherit size from editor screen size.
+-- and fill it with contents of @f@.
 --
-newBuffer :: FilePath -> [String] -> IO ()
-newBuffer f ss = modifyEditor $ \(e :: Editor) ->
-        --
-        -- work out new visible buffer sizes . the height of a window is 
-        -- screen height - 1 for the command line, quot the num of
-        -- (visible) buffers, - 1 for the titlebar. the focused window
-        -- currently gets any remainder.
-        --
-        let (y_, r) = (s_height e - 1) `quotRem` (buf_count e + 1)
-            y = y_ - 1
+fillNewBuffer :: FilePath -> IO ()
+fillNewBuffer f = 
+    modifyEditorIO $ \(e@(Editor{buffers=bs}) :: Editor)-> do
+        b <- newBuffer f
+        return $! e { buffers = addToFM bs (key b) b, focusKey = Just (key b) }
 
-        -- 
-        -- get a new buffer and set some fields.
-            buf = let a = new
-                      b = setname a f
-                      c = setsize b (s_width e , y + r)
-                      d = setcontents c ss in d
-
-            bb  = buffers e 
-            i   = buf_count e
-
-        --
-        -- update the height of all the other buffers
-        --
-            bb' = map (\b -> setsize b (s_width e, y)) bb
-
-        -- add our new buffer to the list
-        in e { buffers = buf:bb', cur_buf_ind = Just 0, buf_count = i+1 }
-
---
--- | delete a buffer
---
-delBuffer :: IO ()
-delBuffer = error "delBuffer unimplemented"
+-- todo: no inline?
 
 -- ---------------------------------------------------------------------
 -- | set the user-defineable key map
 --
 setUserSettings :: Config -> IO ()
-setUserSettings cs = modifyEditor $ \e -> e { user_settings = cs }
+setUserSettings cs = modifyEditor $ \(e :: Editor) -> e { editSettings = cs }
 
 --
 -- | retrieve the user-defineable key map
 --
 getKeyMap :: IO (Key -> Action)
-getKeyMap = withEditor $ \e -> keyMap (user_settings e)
+getKeyMap = readEditor $ \(e :: Editor) -> keyMap (editSettings e)
 
 -- ---------------------------------------------------------------------
 -- | The type of user-bindable functions

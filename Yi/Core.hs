@@ -16,6 +16,12 @@
 -- Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 -- 02111-1307, USA.
 -- 
+-- Derived from: riot/UI.hs
+-- 
+--       Copyright (c) Tuomo Valkonen 2004.
+-- 
+-- Released under the same license.
+-- 
 
 --
 -- | The core edsl and machine of yi. This module is the link
@@ -36,27 +42,34 @@ module Yi.Core (
         e_quit,
         e_refresh,
         e_noop,
+
+        -- * File related
         e_load,
+
+        -- * Cursor movement
         e_left,
         e_right,
-        e_up,
-        e_down,
-        e_eol,
-        e_sol,
         e_top,
         e_bot,
+        e_down,
+        e_up,
+        e_sol,
+        e_eol,
 
    ) where
 
 import Yi.Editor
+import Yi.MkTemp
 import qualified Yi.Editor as Editor
 import qualified Yi.UI     as UI
 import qualified Yi.Buffer as Buffer
 
-import System.IO        ( openFile, hGetContents, IOMode(..), )
+import System.IO
 import System.Exit
 
 import qualified Control.Exception ( catch, Exception, throwIO )
+
+import GHC.Base
 
 -- ---------------------------------------------------------------------
 -- | Start up the editor, setting any state with the user preferences
@@ -65,12 +78,16 @@ import qualified Control.Exception ( catch, Exception, throwIO )
 start :: Editor.Config -> Maybe [FilePath] -> IO ()
 start confs mfs = do
     UI.start
-    size <- UI.screenSize
-    Editor.setScreenSize size
     Editor.setUserSettings confs
     case mfs of
-        Nothing -> Editor.newBuffer "undefined" [[]]
         Just fs -> mapM_ e_load fs
+
+        -- vi-like behaviour, just for now.
+        Nothing -> do mf <- mkstemp "/tmp/yi.XXXXXXXXXX" 
+                      case mf of
+                        Just (f,h) -> do hClose h
+                                         Editor.fillNewBuffer f
+                        Nothing -> error "Core.start: mkstemp failed"
     e_refresh
 
 --
@@ -126,62 +143,69 @@ e_refresh = UI.refresh
 e_noop :: IO ()
 e_noop = return ()
 
+------------------------------------------------------------------------
+
 --
 -- | Move cursor left 1
 --
 e_left :: IO ()
-e_left = withBuffer Buffer.left
+e_left = modifyCurrentBuffer Buffer.left
 
 --
 -- | Move cursor right 1
 --
 e_right :: IO ()
-e_right = withBuffer Buffer.right
-
---
--- | Move cursor up 1
---
-e_up :: IO ()
-e_up = withBuffer Buffer.up
-
---
--- | Move cursor down 1
---
-e_down :: IO ()
-e_down = withBuffer Buffer.down
-
---
--- | Move cursor to end of line
---
-e_eol :: IO ()
-e_eol = withBuffer $ \b -> 
-            b `Buffer.moveto` (Buffer.width b, (snd $ Buffer.point b) )
-
---
--- | Move cursor to start of line
---
-e_sol :: IO ()
-e_sol = withBuffer $ \b -> 
-            case Buffer.point b of (_,y) -> b `Buffer.moveto` (0, y)
+e_right = modifyCurrentBuffer Buffer.right
 
 --
 -- | Move cursor to origin
 --
 e_top :: IO ()
-e_top = withBuffer $ \b -> b `Buffer.moveto` (0, 0)
+e_top = modifyCurrentBuffer (Buffer.moveTo 0)
 
 --
--- | Move cursor to origin
+-- | Move cursor to end of buffer
 --
 e_bot :: IO ()
-e_bot = withBuffer $ \b -> b `Buffer.moveto` (0, Buffer.height b - 1)
+e_bot = modifyCurrentBuffer $ \b -> do
+            i <- Buffer.size b
+            Buffer.moveTo (i-1) b
+
+--
+-- | Move cursor down 1 line
+--
+e_down :: IO ()
+e_down = modifyCurrentBuffer $ \b -> do
+    x <- Buffer.prevNLOffset_ b
+    Buffer.nextNL b
+    Buffer.nextXorNL b (x+1)
+
+--
+-- | Move cursor up to the same @x@ offset, 1 line previous
+--
+e_up :: IO ()
+e_up = modifyCurrentBuffer $ \b -> do
+    x <- Buffer.prevNLOffset b -- prev \n
+    Buffer.left b   -- blargh
+    Buffer.prevNL b
+    p <- Buffer.point b -- if we're at '0', don't shift
+    Buffer.nextXorNL b (x + min p 1)
+
+--
+-- | Move cursor to start of line (blargh)
+--
+e_sol :: IO ()
+e_sol = modifyCurrentBuffer $ \b -> Buffer.left b >>= Buffer.prevNL >>= Buffer.right
+
+--
+-- | Move cursor to end of line
+--
+e_eol :: IO ()
+e_eol = modifyCurrentBuffer Buffer.nextNL
 
 --
 -- | Load a new buffer with contents of file
 --
 e_load  :: FilePath -> IO ()
-e_load f = do
-        h <- openFile f ReadWriteMode
-        s <- hGetContents h            -- close it?
-        Editor.newBuffer f $ lines s   -- lazy for large files?
+e_load f = Editor.fillNewBuffer f          -- lazy for large files?
 

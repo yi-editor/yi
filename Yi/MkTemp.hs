@@ -27,10 +27,10 @@
 
 module Yi.MkTemp ( 
 
-     mktemp,    -- :: FilePath -> Maybe FilePath
-     mkstemp,   -- :: FilePath -> Maybe (FilePath, Handle)
-     mkstemps,  -- :: FilePath -> Int -> Maybe (FilePath,Handle)
-     mkdtemp,   -- :: FilePath -> Maybe FilePath
+     mktemp,    -- :: FilePath -> IO Maybe FilePath
+     mkstemp,   -- :: FilePath -> IO Maybe (FilePath, Handle)
+     mkstemps,  -- :: FilePath -> Int -> IO Maybe (FilePath,Handle)
+     mkdtemp,   -- :: FilePath -> IO Maybe FilePath
 
   ) where
 
@@ -181,11 +181,13 @@ tweak i s
 
 -- ---------------------------------------------------------------------
 
+alreadyExists :: Exception -> Maybe Exception
 alreadyExists e@(IOException ioe) 
         | isAlreadyExistsError ioe = Just e
         | otherwise                = Nothing
 alreadyExists _ = Nothing
 
+isInUse :: Exception -> Maybe ()
 #ifndef __MINGW32__
 isInUse (IOException ioe) 
         | isAlreadyExistsError ioe = Just ()

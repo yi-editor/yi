@@ -8,7 +8,7 @@ LIBDIR=         $(PREFIX)/lib/$(PKG)
 DATADIR=        $(PREFIX)/share/doc/$(PKG)
 IFACEDIR=       $(LIBDIR)/imports
 
-DEFINES+=	-DLIBDIR=\"$(LIBDIR)\"
+DEFINES+=	    -DLIBDIR=\"$(LIBDIR)\"
 
 GHC=            ghc
 GHC_PKG=        ghc-pkg
@@ -71,7 +71,8 @@ DEFINES += -DCF_WCHAR_SUPPORT
 #
 # Set this if your system provides the arc4random(3) function --
 # Available on OpenBSD, FreeBSD at least -- and you'll get a faster
-# random function for the mkstemp lib.
+# random function for the mkstemp lib. Add a linux random device here,
+# and write a binding in Yi/MkTemp.hs
 #
 #DEFINES += -DHAVE_ARC4RANDOM
 

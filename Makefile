@@ -84,7 +84,7 @@ Main.o: Main.hs
 MAGIC_FLAGS   += -package-conf ../yi.conf  -package yi
 
 Yi.$(way_)o: Yi.hs
-	( cd Yi ; $(GHC) $(HC_OPTS) $(MAGIC_FLAGS) -odir .. -c ../$< -o ../$@ -ohi ../$(basename $@).$(way_)hi )
+	( cd Yi ; $(GHC) $(HC_OPTS) $(MAGIC_FLAGS) -I../cbits -odir .. -c ../$< -o ../$@ -ohi ../$(basename $@).$(way_)hi )
 
 yi-inplace: yi-inplace.in
 	sed 's,@YI_TOP@,'`pwd`',g' yi-inplace.in > yi-inplace

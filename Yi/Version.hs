@@ -15,6 +15,8 @@
 
 module Yi.Version where
 
+package, branch, release, version :: String
+
 package = "yi"
 branch  = "0"
 release = "yyyymmdd"
