@@ -42,6 +42,7 @@ keymap c = cmd c        -- vi starts in command mode
 --
 -- | Return the next mode to use
 --
+nextCmd, nextIns, nextEx :: IO Keymap
 nextCmd = return (Keymap cmd)
 nextIns = return (Keymap ins)
 nextEx  = return (Keymap ex)
@@ -54,82 +55,197 @@ nextEx  = return (Keymap ex)
 -- return the keymap function we wish to use for the next action -- this
 -- is how we switch modes.
 --
+-- If we see digits, we need to accumulate them as they may be needed to
+-- repeat actions.
+--
 cmd :: Char -> IO Keymap
+cmd c | isDigit c = getdigits [c] >>= uncurry do_cmd
+      | otherwise = do_cmd 1 c
+  where
+    getdigits :: [Char] -> IO (Int, Char)    
+    getdigits cs = do c' <- getcE
+                      if isDigit c' then getdigits (c':cs) 
+                                    else return (read $ reverse cs, c')
 
--- Move the cursor left one character.
-cmd 'h'   = leftOrSolE 1    >> nextCmd
+do_cmd :: Int -> Char -> IO Keymap
 
--- Move the cursor down count lines without changing the current column.
-cmd 'j'   = downE           >> nextCmd
-cmd '\^J' = downE           >> nextCmd
-cmd '\^N' = downE           >> nextCmd
+do_cmd i c
+-- Search forward for the current word.
+    | c == '\^A' = not_impl 
 
--- Move the cursor up one line
-cmd 'k'   = upE             >> nextCmd     
-
---  Move the cursor right one character.
-cmd 'l'   = rightOrEolE 1   >> nextCmd
-cmd ' '   = rightOrEolE 1   >> nextCmd
-
--- Move the cursor to the end of a line.
-cmd '$'   = eolE            >> nextCmd
-
--- Move to the first character in the current line.
-cmd '0'   = solE            >> nextCmd
-
--- Move to the start of the current line.
-cmd '|'  = solE             >> nextCmd
-
--- Delete the character the cursor is on.
-cmd 'x' = deleteE           >> nextCmd
-
--- Copy the line the cursor is on.
-cmd 'y' = do c <- getcE 
-             if c == 'y' 
-                then readLnE >>= setRegE
-                else nopE
-             nextCmd
-
--- Append the copied line after the line the cursor is on.
-cmd 'p' = do s <- getRegE
-             eolE >> insertE '\n' >> mapM_ insertE s >> solE
-             nextCmd
-
--- Join lines.
-cmd 'J' = eolE >> deleteE >> insertE ' ' >> nextCmd
-
--- Enter input mode, inserting the text at the beginning of the line.
-cmd 'I' = solE              >> nextIns
-
--- Enter input mode, inserting the text before the cursor.
-cmd 'i' = nextIns
-
--- Execute an ex command.
-cmd ':' = msgClrE >> msgE ":" >> nextEx 
-
-
--- Enter input mode, appending the text after the cursor.
-cmd 'a' = rightOrEolE 1     >> nextIns
-
-
--- Enter input mode, appending the text after the end of the line.
-cmd 'A' = eolE            >> nextIns
-
--- Enter input mode, appending text in a new line above the current line.
-cmd 'O' = solE >> insertE '\n' >> nextIns
-
--- Enter input mode, appending text in a new line under the current line.
-cmd 'o' = eolE >> insertE '\n' >> nextIns
-
-
-cmd c 
 -- Page backwards count screens.
-    | c == keyPPage = upScreenE     >> nextCmd
-    | c == '\^B'    = upScreenE     >> nextCmd
+    | c == '\^B' || c == keyPPage 
+    = replicateM_ i upScreenE >> nextCmd
+
+-- Scroll forward count lines.
+    | c == '\^D' = not_impl
+
+-- Scroll forward count lines, leaving the current line and column as is
+    | c == '\^E' = not_impl
 
 -- Page forward count screens.
-    | c == keyNPage = downScreenE   >> nextCmd
-    | c == '\^F'    = downScreenE   >> nextCmd
+    | c == keyNPage || c == '\^F'    
+    = replicateM_ i downScreenE >> nextCmd
+
+-- Display the file information.
+    | c == '\^G' = do (f,_,ln,_,_,pct) <- bufInfoE 
+                      msgE $ show f ++ " Line " ++ show ln ++ " ["++ pct ++"]"
+                      nextCmd
+
+-- Move the cursor back count characters in the current line.
+    | c == 'h' || c == '\^H'  
+    = leftOrSolE i >> nextCmd
+
+-- Move the cursor down count lines without changing the current column.
+    | c == 'j' || c == '\^J' || c == '\^N' 
+    = replicateM_ i downE >> nextCmd
+
+-- Repaint the screen.
+    | c == '\^L' || c == '\^R' = not_impl
+
+-- Move the cursor down count lines to the first non-blank character.
+    | c == '\^M' || c == '+' = not_impl
+
+-- Move the cursor up one line
+    | c == '\^P' || c == 'k'   = replicateM_ i upE >> nextCmd     
+    
+-- Return to the most recent tag context.
+    | c == '\^T' = not_impl
+
+-- Scroll backwards count lines.
+    | c == '\^U' = not_impl
+
+-- Switch to the next lower screen in the window
+    | c == '\^W'    = nextWinE >> nextCmd
+
+-- Scroll backwards count lines
+    | c == '\^Y'    = not_impl
+
+-- Suspend the current editor session.
+    | c == '\^Z'    = not_impl
+
+-- Execute ex commands or cancel partial commands.
+    | c == '\ESC'   = not_impl
+
+-- Push a tag reference onto the tag stack.
+    | c == '\^]'    = not_impl
+
+-- Switch to the most recently edited file.
+    | c == '\^^'    = not_impl
+
+--  Move the cursor right one character.
+    | c ==  'l' || c == ' ' = rightOrEolE i >> nextCmd
+
+-- Replace text with results from a shell command.
+    | c == '!'   = not_impl
+
+-- Increment or decrement the number under the cursor. (this is weird!)
+    | c == '#'  = not_impl
+
+-- Move the cursor to the end of a line, n times.
+    | c == '$'  = eolE >> nextCmd   -- TODO doesn't respect 'count'
+
+-- Move to the matching character.
+    | c == '%'  = not_impl
+
+-- Repeat the previous substitution command on the current line.
+    | c == '&'  = not_impl
+
+-- Back up count sentences.
+    | c == '('  = not_impl
+
+-- Move forward count sentences.
+    | c == ')'  = not_impl
+
+-- Reverse find character count times.
+    | c == ','  = not_impl
+
+-- Move to the first non-blank of the previous line, count times.
+    | c == '-'  = not_impl
+
+-- Repeat the last vi command that modified text.
+    | c == '.'  = not_impl
+
+-- search! not regular expressions at the moment.
+    | c == '/'  = do
+        msgE "/"
+        let loop w  = do
+                k <- getcE
+                case () of {_
+                    | k == '\n'         -> return (reverse w)
+                    | k == '\r'         -> return (reverse w)
+                    | k == '\BS'        -> del w >>= loop
+                    | k == keyBackspace -> del w >>= loop
+                    | otherwise         -> msg (reverse (k:w)) >> loop (k:w)
+                }
+                where msg s = msgE ('/' : s)
+                      del []     = msg []           >> return []
+                      del (_:cs) = msg (reverse cs) >> return cs
+
+        s <- loop []
+        searchE s
+        nextCmd
+
+    | c == 'n' || c == 'N' || c == '?'  = not_impl
+
+-- Move to the first character in the current line.
+    | c == '0'   = solE >> nextCmd
+
+-- Execute an ex command.
+    | c == ':'   = msgClrE >> msgE ":" >> nextEx 
+
+-- Repeat the last character find count times.
+    | c == ';'   = not_impl
+
+-- Shift lines right.
+    | c ==  '>' = do c' <- getcE
+                     when (c' == '>') $ 
+                        replicateM_ i $ solE >> mapM_ insertE (replicate 4 ' ')
+                     nextCmd
+
+-- Shift lines left.
+    | c == '<'  = not_impl
+
+------------------------------------------------------------------------
+
+-- Enter input mode, appending the text after the end of the line.
+    | c == 'A' = eolE            >> nextIns
+
+-- Enter input mode, appending the text after the cursor.
+    | c == 'a' = rightOrEolE 1     >> nextIns
+
+-- Move to the start of the current line.
+    | c == '|'  = solE             >> nextCmd
+
+-- Delete count characters.
+    | c == 'x'  = ( replicateM_ i deleteE )  >> nextCmd
+
+-- Copy the line the cursor is on.
+    | c == 'y' = do c' <- getcE 
+                    if c' == 'y' 
+                        then readLnE >>= setRegE
+                        else nopE
+                    nextCmd
+
+-- Append the copied line after the line the cursor is on.
+    | c == 'p' = do s <- getRegE
+                    eolE >> insertE '\n' >> mapM_ insertE s >> solE
+                    nextCmd
+
+-- Join lines.
+    | c == 'J' = eolE >> deleteE >> insertE ' ' >> nextCmd
+
+-- Enter input mode, inserting the text at the beginning of the line.
+    | c == 'I' = solE              >> nextIns
+
+-- Enter input mode, inserting the text before the cursor.
+    | c == 'i' = nextIns
+
+-- Enter input mode, appending text in a new line above the current line.
+    | c == 'O' = solE >> insertE '\n' >> nextIns
+
+-- Enter input mode, appending text in a new line under the current line.
+    | c == 'o' = eolE >> insertE '\n' >> nextIns
 
 -- The cursor arrow keys should work for movement too
     | c == keyUp    = upE           >> nextCmd
@@ -138,70 +254,38 @@ cmd c
     | c == keyRight = rightOrEolE 1 >> nextCmd
 
 -- Delete text from the current position to the end-of-line.
-cmd 'D' = killE                     >> nextCmd
+    | c == 'D' = killE                     >> nextCmd
 
 -- Move to the last line of the file
-cmd 'G' = botE                      >> nextCmd
+    | c == 'G' = botE                      >> nextCmd
 
 -- Hack!!
-cmd '1' = do c <- getcE
-             when (c == 'G') $ topE 
-             nextCmd
+    | c == '1' = do c' <- getcE
+                    when (c' == 'G') $ topE 
+                    nextCmd
 
 -- Delete the line the cursor is on.
-cmd 'd' = do c <- getcE
-             when (c == 'd') $ solE >> killE >> deleteE
-             nextCmd
+    | c == 'd' = do c' <- getcE
+                    when (c' == 'd') $ solE >> killE >> deleteE
+                    nextCmd
 
 -- Replace character.
-cmd 'r' = getcE >>= writeE >> nextCmd
+    | c == 'r' = getcE >>= writeE >> nextCmd
 
 -- Write the file and exit vi.
-cmd 'Z' = do c <- getcE ; when (c == 'Z') $ viWrite >> quitE
-             nextCmd
-
--- Shift lines right.
-cmd '>' = do c <- getcE
-             when (c == '>') $ solE >> mapM_ insertE (replicate 4 ' ')
-             nextCmd
+    | c == 'Z' = do c' <- getcE
+                    when (c' == 'Z') $ viWrite >> quitE
+                    nextCmd
 
 -- Reverse the case of the next character
-cmd '~' = do c <- readE
-             let c' = if isUpper c then toLower c else toUpper c
-             writeE c'
-             nextCmd
+    | c == '~' = do c' <- readE
+                    let c'' = if isUpper c' then toLower c' else toUpper c'
+                    writeE c''
+                    nextCmd
 
--- Switch to the next lower screen in the window, or to the first screen if
--- there are no lower screens in the window.
-cmd '\^W' = nextWinE >> nextCmd
+    | otherwise = nopE >> nextCmd
 
--- Display the file information.
-cmd '\^G' = do
-    (f,_,ln,_,_,pct) <- bufInfoE 
-    msgE $ show f ++ " Line " ++ show ln ++ " ["++ pct ++"]" 
-    nextCmd
-
--- search!
-cmd '/' = do
-    msg []
-    let loop w  = do
-            k <- getcE
-            case () of {_
-                | k == '\n'         -> return (reverse w)
-                | k == '\r'         -> return (reverse w)
-                | k == '\BS'        -> del w >>= loop
-                | k == keyBackspace -> del w >>= loop
-                | otherwise         -> msg (reverse (k:w)) >> loop (k:w)
-            }
-    s <- loop []
-    searchE s
-    nextCmd
-
-    where msg s = msgE ('/' : s)
-          del []     = msg []           >> return []
-          del (_:cs) = msg (reverse cs) >> return cs
-
-cmd _ = nopE >> nextCmd
+    where not_impl = msgE "Not implemented" >> nextCmd
 
 -- ---------------------------------------------------------------------
 -- * Insert mode
@@ -223,8 +307,6 @@ ins c  = do
         when (s == 0) $ insertE '\n' -- vi behaviour at start of file
         insertE c
         nextIns
-
-ins _ = nopE >> nextIns
 
 -- ---------------------------------------------------------------------
 -- * Ex mode
@@ -265,8 +347,6 @@ ex k = msgClrE >> loop [k]
 
     deleteWith []     = msgClrE >> msgE ":"      >> loop []
     deleteWith (_:cs) = msgClrE >> msgE (':':cs) >> loop cs
-
-ex _ = nopE >> nextEx
 
 -- ---------------------------------------------------------------------
 -- | Try and write a file in the manner of vi\/vim
