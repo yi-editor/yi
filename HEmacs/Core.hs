@@ -130,52 +130,51 @@ e_noop = return ()
 -- | Move cursor left 1
 --
 e_left :: IO ()
-e_left = withBuffer $ \b -> return $ Buffer.left b
+e_left = withBuffer Buffer.left
 
 --
 -- | Move cursor right 1
 --
 e_right :: IO ()
-e_right = withBuffer $ \b -> return $ Buffer.right b
+e_right = withBuffer Buffer.right
 
 --
 -- | Move cursor up 1
 --
 e_up :: IO ()
-e_up = withBuffer $ \b -> return $ Buffer.up b
+e_up = withBuffer Buffer.up
 
 --
 -- | Move cursor down 1
 --
 e_down :: IO ()
-e_down = withBuffer $ \b -> return $ Buffer.down b
+e_down = withBuffer Buffer.down
 
 --
 -- | Move cursor to end of line
 --
 e_eol :: IO ()
 e_eol = withBuffer $ \b -> 
-            case Buffer.point b of 
-                (_,y) -> return $ b `Buffer.moveto` (Buffer.width b, y)
+            b `Buffer.moveto` (Buffer.width b, (snd $ Buffer.point b) )
 
 --
 -- | Move cursor to start of line
 --
 e_sol :: IO ()
 e_sol = withBuffer $ \b -> 
-            case Buffer.point b of (_,y) -> return $ b `Buffer.moveto` (0, y)
+            case Buffer.point b of (_,y) -> b `Buffer.moveto` (0, y)
 
 --
 -- | Move cursor to origin
 --
 e_top :: IO ()
-e_top = withBuffer $ \b -> return $ b `Buffer.moveto` (0, 0)
+e_top = withBuffer $ \b -> b `Buffer.moveto` (0, 0)
 
 --
 -- | Move cursor to origin
 --
 e_bot :: IO ()
-e_bot = withBuffer $ \b -> return $ b `Buffer.moveto` (0, Buffer.height b - 1)
+e_bot = withBuffer $ \b -> b `Buffer.moveto` (0, Buffer.height b - 1)
 
 --
 -- | Load a new buffer with contents of file

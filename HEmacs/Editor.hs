@@ -60,8 +60,8 @@ import HEmacs.Buffer
 -- Get at the user defined settings
 import {-# SOURCE #-} qualified HEmacs.Config as Config ( settings )
 
+import Data.IORef
 import Control.Concurrent.MVar  ( MVar(), newMVar, withMVar )
-import Data.IORef               ( writeIORef, readIORef, newIORef, IORef() )
 import System.IO.Unsafe         ( unsafePerformIO )
 
 --
@@ -110,99 +110,93 @@ environment = unsafePerformIO $ do
 -- ---------------------------------------------------------------------
 -- | Grab the editor state, manipulate it, and write it back
 --
-modifyEditor :: (Editor -> IO Editor) -> IO ()
-modifyEditor f = 
-    withMVar environment $ \ref -> readIORef ref >>= f >>= writeIORef ref
+modifyEditor :: (Editor -> Editor) -> IO ()
+modifyEditor f = withMVar environment $ \ref -> modifyIORef ref f
 
 -- 
 -- | Grab editor state read-only
 -- 
-withEditor :: (Editor -> IO a) -> IO a
-withEditor f = withMVar environment $ \ref -> readIORef ref >>= f
+withEditor :: (Editor -> a) -> IO a
+withEditor f = withMVar environment $ \ref -> return . f =<< readIORef ref
 
 -- ---------------------------------------------------------------------
 -- | Functions to get at editor state fields
 
 screenWidth    :: IO Int
-screenWidth = withEditor $ \e -> return $ s_width e
+screenWidth = withEditor s_width
  
 screenHeight   :: IO Int
-screenHeight = withEditor $ \e -> return $ s_height e
+screenHeight = withEditor s_height
 
 --
 -- | get the screen dimensions (y,x)
 --
 getScreenSize :: IO (Int,Int)
-getScreenSize = withEditor $ \e -> return $ (s_height e, s_width e)
+getScreenSize = withEditor $ \e -> (s_height e, s_width e)
 
 --
 -- | Set the dimensions of the screen to height and width
 --
 setScreenSize :: (Int,Int) -> IO ()
-setScreenSize (h,w) = 
-    modifyEditor $ \e -> return $ e { s_width = w, s_height = h }
+setScreenSize (h,w) = modifyEditor $ \e -> e { s_width = w, s_height = h }
 
 --
 -- | return the buffers we have
 --
 getAllBuffers :: IO [BasicBuffer]
-getAllBuffers = withEditor $ \e -> return $ buffers e
+getAllBuffers = withEditor buffers
 
 --
 -- | get current buffer
 --
 getCurBuffer :: IO BasicBuffer
-getCurBuffer = withEditor $ \e -> do
-    let bs = buffers e
+getCurBuffer = withEditor $ \e -> 
     case cur_buf_ind e of
+        Just i  -> buffers e !! i
         Nothing -> error "Editor.getCurBuffer : no buffer to get"
-        Just i  -> return (bs !! i)
 
 --
 -- | given the current buffer, write a new version of it
 -- should have iorefs for storing the buffers, I think.
+-- dodgy.
 --
 setCurBuffer :: BasicBuffer -> IO ()
-setCurBuffer buf = modifyEditor $ \e -> do
-    let bs = buffers e
+setCurBuffer buf = modifyEditor $ \e ->
     case cur_buf_ind e of
         Nothing -> error "Editor.setCurBuffer: tried to modify non-existent buffer"
-        Just i  -> let (a, b)  = splitAt (i + 1) bs
+        Just i  -> let (a, b)  = splitAt (i + 1) (buffers e)
                        ([_],d) = splitAt 1 (reverse a)
-                   in return $! e { buffers = reverse d ++ [buf] ++ b }
+                   in e { buffers = reverse d ++ [buf] ++ b }
 
 --
 -- | with the current buffer, perform action
 --
-withBuffer :: (BasicBuffer -> IO BasicBuffer) -> IO ()
-withBuffer a = getCurBuffer >>= a >>= setCurBuffer
+withBuffer :: (BasicBuffer -> BasicBuffer) -> IO ()
+withBuffer f = setCurBuffer . f =<< getCurBuffer
 
 --
 -- | get current buffer, and the rest
 --
 getBuffers :: IO (Maybe BasicBuffer, [BasicBuffer])
-getBuffers = withEditor $ \e -> do
-    let bs = buffers e
+getBuffers = withEditor $ \e ->
     case cur_buf_ind e of
-        Nothing -> return (Nothing, bs)
-        Just i  -> let (a,  b) = splitAt (i+1) bs
+        Nothing -> (Nothing, buffers e)
+        Just i  -> let (a,  b) = splitAt (i+1) (buffers e)
                        ([c],d) = splitAt 1 (reverse a)
-                   in return $! (Just c, d ++ b)
+                   in (Just c, d ++ b)
 
 --
 -- | get the number of buffers we have
 --
 getBufCount :: IO Int                        
-getBufCount = withEditor $ \e -> return $ buf_count e
+getBufCount = withEditor buf_count
 
 -- ---------------------------------------------------------------------
 -- | Create a new buffer, add it to the set, make it the current buffer,
 -- and fill it with [String]. Inherit size from editor screen size.
 --
 newBuffer :: FilePath -> [String] -> IO ()
-newBuffer f ss = do
-    modifyEditor $ \(e :: Editor) -> do
-
+newBuffer f ss = modifyEditor $ \(e :: Editor) ->
         --
         -- work out new visible buffer sizes . the height of a window is 
         -- screen height - 1 for the command line, quot the num of
@@ -214,21 +208,21 @@ newBuffer f ss = do
 
         -- 
         -- get a new buffer and set some fields.
-        let buf = let a = new
+            buf = let a = new
                       b = setname a f
                       c = setsize b (s_width e , y + r)
                       d = setcontents c ss in d
 
-        let bb  = buffers e 
+            bb  = buffers e 
             i   = buf_count e
 
         --
         -- update the height of all the other buffers
         --
-        let bb' = map (\b -> setsize b (s_width e, y)) bb
+            bb' = map (\b -> setsize b (s_width e, y)) bb
 
         -- add our new buffer to the list
-        return $! e { buffers = buf:bb', cur_buf_ind = Just 0, buf_count = i+1 }
+        in e { buffers = buf:bb', cur_buf_ind = Just 0, buf_count = i+1 }
 
 --
 -- | delete a buffer
@@ -240,13 +234,13 @@ delBuffer = error "delBuffer unimplemented"
 -- | set the user-defineable key map
 --
 setUserSettings :: Config -> IO ()
-setUserSettings cs = modifyEditor $ \e -> return $ e { user_settings = cs }
+setUserSettings cs = modifyEditor $ \e -> e { user_settings = cs }
 
 --
 -- | retrieve the user-defineable key map
 --
 getKeyMap :: IO (Key -> Action)
-getKeyMap = withEditor $ \e -> return $ keyMap (user_settings e)
+getKeyMap = withEditor $ \e -> keyMap (user_settings e)
 
 -- ---------------------------------------------------------------------
 -- | The type of user-bindable functions
