@@ -1,4 +1,7 @@
 {-# OPTIONS -fffi #-}
+
+#include "config.h"
+
 -- -*- haskell -*-
 --
 -- Copyright (c) 2004 Tuomo Valkonen <tuomov at iki dot fi>

@@ -1,3 +1,5 @@
+#include "config.h"
+
 --  -*- haskell -*-
 --
 -- Copyright (c) 2002-2004 John Meacham (john at repetae dot net)

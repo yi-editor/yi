@@ -1,4 +1,8 @@
 {-# OPTIONS -fffi -fglasgow-exts #-}
+
+#include "config.h"
+#include "YiCurses.h"
+
 --
 -- glaexts needed for newtype deriving 
 --
@@ -162,9 +166,6 @@ module Yi.Curses.Curses {-(
     
     --------------------------------------------------------------------
   )-} where 
-
-#include <config.h>
-#include <YiCurses.h>
 
 #if HAVE_SIGNAL_H
 # include <signal.h>

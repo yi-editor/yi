@@ -37,6 +37,7 @@ module Yi.Regex (
 
   ) where
 
+#include "config.h"
 #include "YiUtils.h"
 
 #include <sys/types.h>
