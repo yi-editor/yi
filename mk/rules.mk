@@ -48,7 +48,7 @@ all :: $(HS_BINS)
 $(BIN) :: $(SHARED_OBJ) $(BIN_OBJS) hemacs-inplace
 	$(GHC) -o $@ $(LD_OPTS) $(BIN_LD_OPTS) $(BIN_HC_OPTS) $(BIN_OBJS) $(SHARED_OBJ)
 
-$(STATIC_BIN) :: $(LIBRARY) package $(STATIC_OBJS)
+$(STATIC_BIN) :: $(LIBRARY) $(PKG).conf $(PKG).conf.install $(STATIC_OBJS)
 	$(GHC) -o $@ $(LD_OPTS) $(STATIC_LD_OPTS) $(STATIC_HC_OPTS) $(STATIC_OBJS)
 
 EXTRA_CLEANS+= $(BIN) $(STATIC_BIN)
@@ -103,8 +103,6 @@ $(GHCI_LIBRARY) : $(LIBOBJS)
 #
 # Package creation
 #
-.PHONY: package
-package:: $(PKG).conf $(PKG).conf.install
 
 # in-tree package.conf
 $(PKG).conf: $(PKG).conf.in.cpp
@@ -146,7 +144,7 @@ distclean: clean
 .PHONY: install install-dirs
 
 INSTALL_PROGS  += $(HS_BINS)
-INSTALL_IFACES += $(HS_IFACES) $(STATIC_IFACES)
+INSTALL_IFACES += $(HS_IFACES)
 INSTALL_LIBS   += $(LIBRARY) $(GHCI_LIBRARY) $(STATIC_OBJS) $(STATIC_IFACES)
 
 show-install :
