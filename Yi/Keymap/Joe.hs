@@ -22,16 +22,15 @@
 
 module Yi.Keymap.Joe (keymap) where
 
-import Prelude hiding   ( any )
-
 import Yi.Core
 import Yi.Editor            ( Action )
 import Yi.Curses            ( keyBackspace )
+import Yi.CharMov           ( skipWordE, bskipWordE )
 
 import Data.Maybe
 --import Data.List            ( (\\) )
 import Data.Char            ( isControl, ord, chr )
---import Control.Monad        ( liftM )
+--import Control.Monad        ( when )
 --import Control.Exception    ( ioErrors, catchJust )
 import Data.FiniteMap
 
@@ -71,9 +70,9 @@ kmap=[
     "\^Y"  ++> killLineE,
     "\^_"  ++> undoE,
     "\^^"  ++> redoE,
-    --"\^X"  ++> skipWordE,
-    --"\^Z"  ++> bskipWordE,
-    "\^KR"  &&> queryInsertFileE,
+    "\^X"  ++> skipWordE,
+    "\^Z"  ++> bskipWordE,
+    "\^KR" &&> queryInsertFileE,
     -- Search
     "\^KF" &&> querySearchRepE,
     "\^L"  &&> nextSearchRepE,
