@@ -34,6 +34,14 @@ module Yi.CharMove (
         skipWordE,      -- :: Action
         bskipWordE,     -- :: Action
         firstNonSpaceE, -- :: Action
+        nextWordE,      -- :: Action
+        prevWordE,      -- :: Action
+
+        -- * Moving to a specific character
+        nextCInc,       -- :: Char -> Action
+        nextCExc,       -- :: Char -> Action
+        prevCInc,       -- :: Char -> Action
+        prevCExc,       -- :: Char -> Action
 
         -- * Paragraph movement
         nextNParagraphs,    -- :: Int -> Action
@@ -98,6 +106,36 @@ skipWordE = doSkipCond rightE (atEolE >>|| atEofE) isSpace
 -- depending on the character under point.
 bskipWordE :: Action
 bskipWordE = doSkipCond leftE (atSolE >>|| atSofE) isSpace
+
+------------------------------------------------------------------------
+
+-- | Move to first char of next word forwards
+nextWordE :: Action
+nextWordE = do moveWhileE (isAlphaNum) Right
+               moveWhileE (not.isAlphaNum)  Right
+
+-- | Move to first char of next word backwards
+prevWordE :: Action
+prevWordE = do moveWhileE (isAlphaNum)      Left
+               moveWhileE (not.isAlphaNum)  Left
+
+------------------------------------------------------------------------
+
+-- | Move to the next occurence of @c@
+nextCInc :: Char -> Action
+nextCInc c = rightE >> moveWhileE (/= c) Right
+
+-- | Move to the character before the next occurence of @c@
+nextCExc :: Char -> Action
+nextCExc c = nextCInc c >> leftE
+
+-- | Move to thhe previous occurence of @c@
+prevCInc :: Char -> Action
+prevCInc c = leftE  >> moveWhileE (/= c) Left
+
+-- | Move to the character after the previous occurence of @c@
+prevCExc :: Char -> Action
+prevCExc c = prevCInc c >> rightE
 
 ------------------------------------------------------------------------
 

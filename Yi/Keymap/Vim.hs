@@ -218,13 +218,8 @@ moveCmdFM = listToFM $
 
 -- words
     -- ToDo these aren't quite right, but are nice and simple
-    ,('w',          \i -> replicateM_ i $ do
-                            moveWhileE (isAlphaNum)      Right
-                            moveWhileE (not.isAlphaNum)  Right )
-
-    ,('b',          \i -> replicateM_ i $ do
-                            moveWhileE (isAlphaNum)      Left
-                            moveWhileE (not.isAlphaNum)  Left )
+    ,('w',          \i -> replicateM_ i nextWordE)
+    ,('b',          \i -> replicateM_ i prevWordE)
 
 -- text
     ,('{',          prevNParagraphs)
@@ -250,10 +245,10 @@ moveCmdFM = listToFM $
 --
 move2CmdFM :: FiniteMap Char (Int -> Char -> Action)
 move2CmdFM = listToFM $
-    [('f',  \i c -> replicateM_ i $ rightE >> moveWhileE (/= c) Right)
-    ,('F',  \i c -> replicateM_ i $ leftE  >> moveWhileE (/= c) Left)
-    ,('t',  \i c -> replicateM_ i $ rightE >> moveWhileE (/= c) Right >> leftE)
-    ,('T',  \i c -> replicateM_ i $ leftE  >> moveWhileE (/= c) Left  >> rightE)
+    [('f',  \i c -> replicateM_ i $ nextCInc c) 
+    ,('F',  \i c -> replicateM_ i $ prevCInc c)
+    ,('t',  \i c -> replicateM_ i $ nextCExc c)
+    ,('T',  \i c -> replicateM_ i $ prevCExc c)
     ]
 
 --
