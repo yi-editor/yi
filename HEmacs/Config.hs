@@ -37,6 +37,9 @@ settings = Config {
 -- lot to change one binding. It should be a set of bindings.
 --
 
+--
+-- vi-like bindings
+--
 defaultKeyMap :: Key -> Action
 defaultKeyMap (Key 'q')   = e_quit
 defaultKeyMap (Key '\^R') = e_refresh
@@ -44,6 +47,10 @@ defaultKeyMap (Key 'h')   = e_left
 defaultKeyMap (Key 'l')   = e_right
 defaultKeyMap (Key 'k')   = e_up
 defaultKeyMap (Key 'j')   = e_down
+defaultKeyMap (Key '$')   = e_eol
+defaultKeyMap (Key '^')   = e_sol
+defaultKeyMap (Key 'G')   = e_bot
+defaultKeyMap (Key '1')   = e_top
 defaultKeyMap _           = e_noop
 
 {-

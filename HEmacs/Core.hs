@@ -41,6 +41,10 @@ module HEmacs.Core (
         e_right,
         e_up,
         e_down,
+        e_eol,
+        e_sol,
+        e_top,
+        e_bot,
 
    ) where
 
@@ -145,6 +149,38 @@ e_up = (withBuffer $ \b -> return $ Buffer.up b) >> return EOk
 --
 e_down :: IO EventStatus
 e_down = (withBuffer $ \b -> return $ Buffer.down b) >> return EOk
+
+--
+-- | Move cursor to end of line
+--
+e_eol :: IO EventStatus
+e_eol = do withBuffer $ \b -> 
+            case Buffer.point b of 
+                (_,y) -> return $ b `Buffer.moveto` (Buffer.width b, y)
+           return EOk
+
+--
+-- | Move cursor to start of line
+--
+e_sol :: IO EventStatus
+e_sol = do withBuffer $ \b -> 
+            case Buffer.point b of 
+                (_,y) -> return $ b `Buffer.moveto` (0, y)
+           return EOk
+
+--
+-- | Move cursor to origin
+--
+e_top :: IO EventStatus
+e_top = do withBuffer $ \b -> return $ b `Buffer.moveto` (0, 0)
+           return EOk
+
+--
+-- | Move cursor to origin
+--
+e_bot :: IO EventStatus
+e_bot = do withBuffer $ \b -> return $ b `Buffer.moveto` (0, Buffer.height b - 1)
+           return EOk
 
 --
 -- | Load a new buffer with contents of file
