@@ -455,6 +455,14 @@ cmd2other = modeSwitchChar
 
 -- ---------------------------------------------------------------------
 -- | vim insert mode
+--
+-- Some ideas for a better insert mode are contained in:
+--
+--      Poller and Garter , "A comparative study of moded and modeless
+--      text editing by experienced editor users", 1983
+--
+-- which suggest that movement commands be added to insert mode, along
+-- with delete.
 -- 
 ins_char :: VimMode
 ins_char = anyButEscOrCtlN
@@ -464,10 +472,8 @@ ins_char = anyButEscOrCtlN
                     k | isDel k       -> leftE >> deleteE
                       | k == keyPPage -> upScreenE
                       | k == keyNPage -> downScreenE
-                    '\t'  -> mapM_ insertE "    " -- XXX
-
-
-                    _ -> insertE c
+                    '\t' -> mapM_ insertE "    " -- XXX
+                    _    -> insertE c
 
           anyButEscOrCtlN = alt $ (keyBackspace : any' ++ cursc') \\ ['\ESC','\^N']
 

@@ -7,8 +7,6 @@ Design plan:
 Build system:
         - check how to install it from a port script
         - think about how to do a testsuite, unit testing
-        - break out curses in to a separate dir, and the same for other ui's
-        - add test for sigwinch
 
 v0.1:
         - line wrapping. windows need to be wrap or nowrap.
@@ -23,3 +21,25 @@ other stuff:
         - start drawing buffer before it is all loaded.
         - either generalise registers, or make them entirely keymap-local
         - other forms of undo
+
+------------------------------------------------------------------------
+syn hl:
+        - run ghc parser in background thread, producing a syn tree
+        - abstract syn representation
+            - produces syntax colouring ppr (not general ppr)
+            - hints for layout (on \n, for example)
+        - so we're mostly direct editing, and updating the syn tree
+          where possible.
+        - so how to take a syn tree and flatten it to produce a drawable buffer?
+            - can we deparse it directly?   
+            - or can we consult the abs syn tree, as we draw each buffer line?
+                - walk the parse tree, drawing chars from the buffer in
+                  the colour specified by the tree.
+
+        - need multiple entry points to the parser, to reparse subexpressions?
+            - Centaur (for ML) has a good system.
+
+        - what about comments?
+            - record the comments, with their positions, in the lexer.
+            - re-splice comments back into the parse tree.
+

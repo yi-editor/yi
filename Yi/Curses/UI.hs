@@ -67,7 +67,7 @@ import Data.List
 import Data.IORef
 
 import Control.Monad                ( when )
-import qualified Control.Exception  ( catch )
+import Control.Exception            ( catch, handleJust, ioErrors )
 
 import System.IO.Unsafe             ( unsafePerformIO )
 
@@ -317,10 +317,11 @@ initUiColors (UIStyle {
     mapM (uncurry fn) (zip [wn, mlf, ml, ef] [1..])
     where
         fn :: Style -> Int -> IO ((Curses.Color, Curses.Color), Pair)
-        fn (Style fg bg) p = let (_,fgc) = fg2attr fg
-                                 (_,bgc) = bg2attr bg
-                             in do initPair (Pair p) fgc bgc
-                                   return ((fgc,bgc), (Pair p))
+        fn (Style fg bg) p = do let (_,fgc) = fg2attr fg
+                                    (_,bgc) = bg2attr bg
+                                handleJust ioErrors (\_ -> return ()) $ 
+                                    initPair (Pair p) fgc bgc
+                                return ((fgc,bgc), (Pair p))
 
 --
 -- | Getting from nice abstract colours to ncurses-settable values
