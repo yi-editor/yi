@@ -218,6 +218,7 @@ hNewFBuffer f = do
         r_size = size_i + 2048 -- TODO
     arr <- newArray_ (0,r_size-1)    -- has a MutableByteArray# inside
     r <- if size_i == 0 then return 0 else hGetArray h arr size_i -- empty file?
+    hClose h -- SimonM says "hClose explicitly when you can."
     if (r /= size_i)
         then ioError (userError $ "Short read of file: " ++ f)
         else case unsafeCoerce# arr of  -- please forgive me. destruct IOUArray
@@ -225,7 +226,7 @@ hNewFBuffer f = do
                 ref <- newIORef (FBuffer_ bytearr# 0 size_i r_size)
                 mv  <- newMVar ref
                 u   <- newUnique
-                return (FBuffer f u mv) -- should hClose?
+                return (FBuffer f u mv)
 
 --
 -- | Write contents of buffer into specified file

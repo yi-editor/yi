@@ -28,11 +28,17 @@
 
 module Yi.Yi (
         
-        module Yi.Core
+        settings,
+        Config(..),
+        module Yi.Core,
  
    ) where
 
 import Yi.Core
+import Yi.Editor                        ( Config(..) )
+import qualified Yi.Keymap as Keymap    ( keymap )
 
--- and anything else that might be useful to write code to
+-- default settings:
+settings :: Config
+settings = Config { keymap = Keymap.keymap }
 

@@ -20,7 +20,7 @@
 -- 
 
 --
--- Boot loader for yi.
+-- | Boot loader for yi.
 -- This is a small stub that loads the runtime yi library, then
 -- jumps to it. It solves the problem of unnecessary code linking.  As
 -- such, we only want to do plugin-related stuff here. So we don't even
@@ -75,14 +75,14 @@ import System.Posix.User      ( getUserEntryForID, getRealUserID, homeDirectory 
 --
 
 config_dir, config_file, yi_main_obj :: FilePath
-config_dir      = ".yi"                -- ~/.yi/ stores Config.hs
-config_file     = "Config.hs"              -- name of user-defineable Config file
+config_dir      = ".yi"                 -- ~/.yi/ stores Config.hs
+config_file     = "Config.hs"           -- name of user-defineable Config file
 
-yi_main_obj = "Yi.o"               -- entry point into yi lib
+yi_main_obj     = "Yi.o"                -- entry point into yi lib
 
 config_sym, yi_main_sym :: Symbol
-config_sym      = "yi"               -- symbol to retrieve from Config.hs
-yi_main_sym = "dynamic_main"         -- main entry point
+config_sym      = "yi"                  -- symbol to retrieve from Config.hs
+yi_main_sym     = "dynamic_main"        -- main entry point
 
 -- ---------------------------------------------------------------------
 -- | Where do the libraries live?
@@ -152,7 +152,7 @@ compile src = do
     setCurrentDirectory build_dir
 
     flags  <- get_make_flags
-    status <- make src flags
+    status <- makeAll src flags
 
     setCurrentDirectory old_pwd
 
@@ -219,7 +219,7 @@ main = do
     libpath <- readIORef libdir
     cfghdl  <- case m_obj of
         Nothing  -> return Nothing
-        Just obj -> do status <- load obj [libpath] paths config_sym
+        Just obj -> do status <- load obj [d,libpath] paths config_sym
                        case status of
                             LoadSuccess _ v -> return $ Just (CD v)
                             LoadFailure e   -> do
