@@ -419,11 +419,13 @@ searchE' c_re = do
 
 ------------------------------------------------------------------------
 
--- | Search and replace /on current line/. Should return status.
+-- | Search and replace /on current line/. Returns Bool indicating
+-- success or failure
+--
 -- TODO too complex.
 --
-searchAndRepLocal :: String -> String -> Action
-searchAndRepLocal [] _ = nopE
+searchAndRepLocal :: String -> String -> IO Bool
+searchAndRepLocal [] _ = return False   -- hmm...
 searchAndRepLocal re str = do
     c_re <- regcomp re regExtended
     setRegexE c_re      -- store away for later use
@@ -431,7 +433,7 @@ searchAndRepLocal re str = do
     mp <- withWindow $ \w b -> do   -- find the regex
             mp <- regexB b c_re
             return (w, mp)
-    status <- case mp of
+    case mp of
         Just (i,j) -> withWindow $ \w b -> do
                 p  <- pointB b      -- all buffer-level atm
                 moveToEol b
@@ -441,17 +443,14 @@ searchAndRepLocal re str = do
                 eq <- pointB b      -- eol of matched line
                 moveTo b p          -- go home. sub doesn't move
                 if (ep /= eq)       -- then match isn't on current line
-                    then return (w, Nothing)
+                    then return (w, False)
                     else do         -- do the replacement
                 moveTo b i
                 deleteN b (j - i)
                 insertN b str
                 moveTo b p          -- and back to where we were!
-                return (w, Just ()) -- signal success
-        Nothing -> return Nothing
-
-    when (isNothing status) $ 
-        msgE ("Pattern not found: "++re) -- TODO vi spec.
+                return (w, True) -- signal success
+        Nothing -> return False
 
 ------------------------------------------------------------------------
 

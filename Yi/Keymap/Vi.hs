@@ -346,7 +346,7 @@ ex_eval = enter
       fn "p"          = prevBufW
       fn ('s':'p':_)  = splitE
       fn ('e':' ':f)  = fnewE f
-      fn ('s':'/':cs) = viSub cs >> msgClrE
+      fn ('s':'/':cs) = viSub cs
       fn s            = msgE $ "The "++show s++ " command is unknown."
 
 ------------------------------------------------------------------------
@@ -420,8 +420,17 @@ viSub cs = do
                                     (rep'', [])    -> (rep'', [])
                                     (rep'', (_:fs)) -> (rep'',fs)
     case opts of
-        ['g'] -> searchAndRepLocal pat rep  -- TODO
-        _     -> searchAndRepLocal pat rep
+        ['g'] -> do let loop i = do s <- searchAndRepLocal pat rep
+                                    if s then loop (i+1) else return i
+                    s <- loop (0 :: Int)
+                    if s == 0
+                        then msgE ("Pattern not found: "++pat)
+                        else msgClrE
+
+        _     -> do s <- searchAndRepLocal pat rep
+                    if not s
+                        then msgE ("Pattern not found: "++pat)
+                        else msgClrE
 
 -- ---------------------------------------------------------------------
 -- | Handle delete chars in a string
