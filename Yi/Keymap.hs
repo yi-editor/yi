@@ -142,8 +142,8 @@ key E k = msgClrE >> loop [k]
 
     execEx :: String -> Action
     execEx "w"   = viWrite
-    execEx "q"   = quitE
-    execEx "q!"  = quitE
+    execEx "q"   = closeE
+    execEx "q!"  = closeE
     execEx "wq"  = viWrite >> quitE
     execEx "n"   = nextBufW
     execEx "N"   = nextBufW

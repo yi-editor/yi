@@ -336,6 +336,12 @@ splitE = do
                       w' <- newWindow b
                       Editor.setWindow w'
 
+-- | close current window. quit if that is all the windows
+closeE :: IO ()
+closeE = do getWindow >>= deleteWindow
+            i <- sizeWindows
+            if i == 0 then quitE else nopE
+
 -- | Shift focus to next window
 nextWinE :: IO ()
 nextWinE = Editor.nextWindow

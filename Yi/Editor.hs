@@ -203,40 +203,41 @@ newWindow :: Buffer' -> IO Window
 newWindow b = modifyEditor $ \e -> do
     let (h,w) = scrsize e
         wls   = eltsFM $ windows e
-        (y,r) = getY h (1 + (length wls))
-    wls' <- mapM (\x -> resize y x $ findBufferWith e (bufkey x)) wls
+        (y,r) = getY h (1 + (length wls))   -- should be h-1..
+    wls' <- resizeAll e wls y
     win  <- emptyWindow b (y+r,w)
     let e' = e { windows = listToFM $ mkAssoc (win:wls') }
     return (e', win)
 
 --
--- | Delete a window. 
+-- | Delete the focused window
+--
 -- TODO should close the underlying buffer if this is the last window
 -- onto that buffer. 
---
--- TODO If this is the focused window, switch to another one.
---
--- What if all the windows are now closed?
---
--- Factor code into shiftFocus!
 --
 deleteWindow :: (Maybe Window) -> IO ()
 deleteWindow Nothing  = return ()
 deleteWindow (Just win) = modifyEditor_ $ \e -> do
-    let ws    = delFromFM (windows e) (key win)
-        (h,_) = scrsize e
-        (y,r) = getY h (length $ eltsFM ws)
-    wls <- mapM (\w -> resize y w $ findBufferWith e (bufkey w)) $ eltsFM ws
-    case wls of
-        []        -> return e { windows = emptyFM  }
+    let ws    = delFromFM (windows e) (key win) -- delete window
+        wls   = eltsFM ws
+        (y,r) = getY ((fst $ scrsize e) - 1) (length wls) -- why -1?
+    wls' <- resizeAll e wls y
+    case wls' of                            -- grab a random window
+        []       -> return e { windows = emptyFM }
         (win':_) -> do
-            let fm = listToFM $ mkAssoc wls
-            win'' <- resize (y+r)  win' (findBufferWith e (bufkey win'))
-            return $ e { windows = (addToFM fm (key win'') win'') }
+            let fm = listToFM $ mkAssoc wls'
+            win'' <- resize (y+r) win' (findBufferWith e (bufkey win'))
+            let e' = e { windows = addToFM fm (key win'') win'' }
+            setWindow' e' win''
+
+-- | Update height of windows in window set
+resizeAll :: Editor -> [Window] -> Int -> IO [Window]
+resizeAll e wls y = mapM (\w -> resize y w $ findBufferWith e (bufkey w)) wls
 
 -- | calculate window heights, given all the windows and current height
 getY :: Int -> Int -> (Int,Int)
 getY h 0 = (h, 0)
+getY h 1 = (h, 0)
 getY h l = h `quotRem` l
 
 -- | turn a list of windows into an association list suitable for listToFM
