@@ -74,7 +74,7 @@ Boot.o: Boot.hs
 # Main is the static "loader". It can't get -package-name yi, or it
 # won't work in ghci. Could probably filter it out somehow
 #
-Main.o: Main.hs 
+Main.o: Main.hs Yi.o $(LIBRARY) 
 	$(GHC) $(HC_OPTS) $(STATIC_HC_OPTS) -c $< -o $@ -ohi $(basename $@).hi
 
 #
@@ -89,7 +89,7 @@ Main.o: Main.hs
 #
 MAGIC_FLAGS   += -package-conf ../yi.conf  -package yi
 
-Yi.$(way_)o: Yi.hs
+Yi.$(way_)o: Yi.hs $(LIBRARY) 
 	( cd Yi ; $(GHC) $(HC_OPTS) $(MAGIC_FLAGS) -I../cbits -odir .. -c ../$< -o ../$@ -ohi ../$(basename $@).$(way_)hi )
 
 yi-inplace: yi-inplace.in
