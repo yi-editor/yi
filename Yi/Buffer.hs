@@ -45,7 +45,8 @@ import Data.Array.Base          ( STUArray(..) )
 import Data.Array.IO            ( IOUArray, hGetArray, hPutArray )
 
 import Foreign.C.Types          ( CSize, CChar )
-import GHC.Ptr                  ( Ptr(..) )
+import Foreign.C.String         ( CStringLen )
+import GHC.Ptr                  ( Ptr(..), plusPtr )
 
 -- ---------------------------------------------------------------------
 --
@@ -84,9 +85,8 @@ class Buffer a where
     -- | Return @n@ elems starting a @i@ of the buffer as a list
     nelemsB    :: a -> Int -> Int -> IO [Char]
 
-    -- | Return a pointer into a C byte array of chars representing the
-    -- rest of the buffer, starting at point.
-    ptrToLnsB  :: a -> Int -> Int -> IO (Ptr CChar, Int)
+    -- | Return a list of pointers to @n@ C strings, starting at point.
+    ptrToLnsB  :: a -> Int -> Int -> IO [CStringLen]
 
     ------------------------------------------------------------------------
     -- Point based operations
@@ -315,14 +315,13 @@ foreign import ccall unsafe "memcpy"
    c_memcpy :: RawBuffer -> RawBuffer -> CSize -> IO (Ptr ())
 
 --
--- | A pointer to a char array
+-- | Return a pointer to our buffer
 -- TODO A bit scary.
 --
-ptrToBA :: RawBuffer -> Int -> IO (Ptr CChar)
-ptrToBA ba (I# i#) =
+castToPtr :: RawBuffer -> Ptr CChar
+castToPtr ba =
     case byteArrayContents# (unsafeCoerce# ba) of
-        a# -> case plusAddr# a# i# of
-            b# -> return (Ptr b#)
+        addr# -> Ptr addr#
 
 -- ---------------------------------------------------------------------
 --
@@ -478,13 +477,26 @@ instance Buffer FBuffer where
                 n' = min (e-i') n
             readChars b n' i'
 
-    -- ptrToLnsB  :: a -> Int -> Int -> IO (Ptr CChar, Int)
-    ptrToLnsB (FBuffer _ _ mv) i len = readMVar mv >>=
+    -- ptrToLnsB  :: a -> Int -> Int -> IO [CStringLen]
+    ptrToLnsB (FBuffer _ _ mv) i' len = readMVar mv >>=
         readIORef >>= \(FBuffer_ rb _ e _) -> do
+            let ptr = castToPtr rb
+                i = inBounds i' e
+                loop 1 _ = return []
+                loop n j | j >= e    = return []
+                         | otherwise = do 
+                            let p@(Ptr ba) = plusPtr ptr j :: Ptr CChar
+                            sz <- gotoln_c (unsafeCoerce# ba) 0 (max 0 (e - j)) 2
+                            ptrs <- loop (n-1) (j+sz)
+                            return ((p,sz) : ptrs)
+            loop len i
+
+    {-
             let i' = inBounds i e
             ptr@(Ptr ba) <- ptrToBA rb i'
             j <- gotoln_c (unsafeCoerce# ba) 0 (max 0 (e - i')) len
             return (ptr, j)
+    -}
 
     ------------------------------------------------------------------------
 

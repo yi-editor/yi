@@ -143,8 +143,6 @@ redraw = withEditor $ \e ->
 -- This function does most of the allocs, and needs to be optimised to
 -- bits
 --
--- Arity: 5 Strictness: S(SAAAAAALLLLLLAA) L L U(LLLAALLAAAALA) L
---
 drawWindow :: Editor 
            -> Maybe Window
            -> UIStyle
@@ -158,12 +156,13 @@ drawWindow e mwin sty win =
     case eof    sty of { eofsty -> do
     case findBufferWith e u of { b -> do
 
-    (ptr,len) <- ptrToLnsB b t h    -- ptr to chunk of buffer to draw
+    lns <- ptrToLnsB b t h      -- get @h@ cstrings starting a @t@
 
-    -- draw our buffer segment straight out. no boxing :)
+    -- draw each buffer line
     (y,_) <- getYX Curses.stdScr
-    withStyle wsty $ throwIfErr_ "waddnstr" $
-            waddnstr Curses.stdScr ptr (fromIntegral len)
+    withStyle wsty $ flip mapM_ lns $ \(ptr,len) -> 
+        throwIfErr_ "drawWindow" $
+            waddnstr Curses.stdScr ptr (fromIntegral $ min len w)
 
     -- and any eof markers
     withStyle eofsty $ do
