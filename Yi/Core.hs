@@ -180,6 +180,7 @@ nopE :: IO ()
 nopE = return ()
 
 ------------------------------------------------------------------------
+{-
 --
 -- | Move cursor left 1, or start of line
 --
@@ -191,6 +192,7 @@ leftE = withWindow_ leftW
 --
 rightE :: IO ()
 rightE = withWindow_ rightW
+-}
 
 {-
 --

@@ -388,7 +388,7 @@ instance Buffer FBuffer where
     nelemsB (FBuffer _ _ mv) n i = readMVar mv >>=
         readIORef >>= \(FBuffer_ b _ e _) -> do
             let i' = inBounds i e
-                n' = min e n
+                n' = min (e-i') n
             readChars b n' i'
 
     ------------------------------------------------------------------------

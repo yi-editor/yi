@@ -109,7 +109,7 @@ redraw = do
     ws <- getWindows
     gotoTop
     mapM_ drawWindow ws
-    drawCmdLine ":"
+--  drawCmdLine ":"
     w <- getWindow
     drawCursor (cursor w)
 

@@ -69,13 +69,13 @@ emptyWindow b (h,w) = do
     m  <- updateModeLine b w 0
     wu <- newUnique
     return $ Window {
-                key    = wu
-               ,bufkey = (keyB b)
-               ,mode   = m
-               ,origin = (0,0)  -- TODO what about vnew etc.
-               ,height = h-1    -- - 1 for the modeline
-               ,width  = w
-               ,cursor = (0,0)  -- (y,x)
+                key       = wu
+               ,bufkey    = (keyB b)
+               ,mode      = m
+               ,origin    = (0,0)  -- TODO what about vnew etc.
+               ,height    = h-1    -- - 1 for the modeline
+               ,width     = w
+               ,cursor    = (0,0)  -- (y,x)
                ,pnt       = 0      -- cache point when out of focus
                ,lineno    = 1
                ,tospnt    = 0
@@ -114,107 +114,105 @@ getPercent a b = show p ++ "%"
 -- happens we move the cursor up the file too.
 --
 moveUpW :: Buffer a => Window -> a -> IO Window
-moveUpW w@(Window {lineno=ln}) b
-    | ln == 1          = return w  -- at top of file
-    | otherwise = do           
-        lineUp b
-        x <- offsetFromSol b
-        p <- pointB b
-        let cy = fst $ cursor w
-        if toslineno w < ln
-            then flip update b w {    -- just move cursor up
-                        lineno = ln - 1, 
-                        cursor = (cy-1,x) 
-                    }
-            else flip update b w {    -- scroll screen up
-                        toslineno = toslineno w -1, 
-                        lineno    = ln - 1,
-                        tospnt    = p - x, 
-                        cursor    = (cy,x) 
-                    }
+moveUpW w b | lineno w == 1 = return w
+            | otherwise     = lineUp b >> decY w b >>= flip update b
 
 --
 -- | The cursor moves up, staying with its original line, unless it
 -- reaches the top of the screen.
 --
 moveDownW :: Buffer a => Window -> a -> IO Window
-moveDownW w@(Window { height=h, lineno=ln } ) b = do
+moveDownW w b = do
     ll <- atLastLine b 
     if ll then return w      -- eof, go no further
-          else do
-    let cy = fst $ cursor w
-    lineDown b
-    x <- offsetFromSol b
-    if ln - toslineno w < h-2
-        then flip update b w {    -- just scroll cursor
-                    lineno = ln + 1,
-                    cursor = (cy+1,x)
-                }
-        else do 
-            t' <- indexOfNLFrom b (tospnt w)
-            flip update b w { -- at bottom line of screen, so scroll
-                    toslineno = toslineno w + 1,
-                    lineno = ln + 1,
-                    tospnt = t',
-                    cursor = (cy,x)     -- doesn't move
-                }
+          else lineDown b >> incY w b >>= flip update b
 
 ------------------------------------------------------------------------
 --
 -- | Move the cursor left or start of line
 --
-leftW :: Buffer a => Window -> a -> IO Window
-leftW w b = moveXorSol b 1 >> update w b
+leftOrSolW :: Buffer a => Window -> a -> IO Window
+leftOrSolW w b = moveXorSol b 1 >> update w b
 
 --
 -- | Move the cursor right or end of line
 --
-rightW :: Buffer a => Window -> a -> IO Window
-rightW w b = moveXorEol b 1 >> update w b
+rightOrSolW :: Buffer a => Window -> a -> IO Window
+rightOrSolW w b = moveXorEol b 1 >> update w b
+
+{-
+--
+-- | Move the cursor left, or to the end of the previous line 
+--
+leftW :: Buffer a => Window -> a -> IO Window
+leftW w b  = do
+    leftB b
+    if atEol b      -- we moved up one line
+        then
+        else
 
 --
--- | Move to the start of the line
+-- | Move the cursor right, or to the start of the next line 
 --
+rightW :: Buffer a => Window -> a -> IO Window
+rightW w b = rightB b >>
+-}
+
+
+-- ---------------------------------------------------------------------
+-- X-axis movement
+
+-- | Move to the start of the line
 moveToSolW :: Buffer a => Window -> a -> IO Window
 moveToSolW w b = moveToSol b >> update w b
 
---
 -- | Move to the end of the line
---
 moveToEolW :: Buffer a => Window -> a -> IO Window
 moveToEolW w b = moveToEol b >> update w b
 
---
--- | Move left or sol
---
+-- | Move left @n@ or start of line
 moveXorSolW :: Buffer a => Int -> Window -> a -> IO Window
 moveXorSolW i w b = moveXorSol b i >> update w b
 
---
--- | Move right or eol
---
+-- | Move right @n@ or end of line
 moveXorEolW :: Buffer a => Int -> Window -> a -> IO Window
 moveXorEolW i w b = moveXorEol b i >> update w b
 
-------------------------------------------------------------------------
+-- ---------------------------------------------------------------------
+-- Editing operations
+
 --
--- | Insert a character. Don't move.
+-- | Insert a single character, shift point right to eol
+-- If we insert a \n, then move to the start of the new line
 --
 insertW :: Buffer a => Char -> Window -> a -> IO Window
 insertW c w b = do
-    w' <- do case c of
-                '\13'          -> insertB b '\n'
-                _ | isLatin1 c -> insertB b c
-                  | otherwise  -> return ()
-             return w
-    update w' b
+    case c of                               -- insertB doesn't change the point
+        '\13'          -> insertB b '\n'
+        _ | isLatin1 c -> insertB b c
+          | otherwise  -> return ()
+    w' <- moveXorEolW 1 w b                       -- and shift the point
+    if c == '\13'       -- newline, so move down with new line
+        then moveDownW w' b >>= flip moveToSolW b
+        else return w'
 
 --
--- | Delete character.
--- Handle eof properly
+-- | Delete character. Don't move point unless at EOF
+--
+-- In vi, you can't delete past the sol, here however, you can keep
+-- deleteing till you have an empty file. 
 -- 
 deleteW :: Buffer a => Window -> a -> IO Window
-deleteW w b = deleteB b >> update w b
+deleteW w b = do 
+    eof <- atEof b
+    sol <- atSol b      -- about to delete \n
+    let tos = lineno w - 1 == toslineno w
+    deleteB b
+    case () of {_
+        | eof && sol && tos -> moveToEolW w b >>= flip decY b {- scroll screen -}
+        | eof && sol        -> moveToEolW w b >>= flip decY b  -- todo should handle 0
+        | otherwise         -> update w b
+    }
 
 ------------------------------------------------------------------------
 --
@@ -228,13 +226,46 @@ update w b = do
     return w { pnt = p, cursor = (y,x) }
 
 --
+-- | Decrememt the y-related values. Might change top of screen point
+-- TODO deal with sof
+--
+decY :: Buffer a => Window -> a -> IO Window
+decY w b = do
+    p <- pointB b           -- current point
+    x <- offsetFromSol b    -- x offset
+    let (y,_) = cursor w 
+        curln = lineno w
+        topln = toslineno w
+        w' = w { lineno = curln-1 }
+    return $ if topln < curln
+             then w' { cursor = (y-1, x) }                  -- just move cursor
+             else w' { toslineno = topln-1, tospnt = p-x }  -- or move window
+
+--
+-- | incrememt the y-related values.
+-- TODO deal with eof
+--
+incY :: Buffer a => Window -> a -> IO Window
+incY w@(Window {height=h}) b = do
+   let (y,x) = cursor w 
+       curln = lineno w
+       topln = toslineno w
+       w' = w { lineno = curln+1 }
+   t <- indexOfNLFrom b (tospnt w)
+   return $ if curln - topln < h - 2   
+            then w' { cursor = (y+1,x) }                  -- just move cursor
+            else w' { toslineno = topln + 1, tospnt = t } -- scroll window
+
+------------------------------------------------------------------------
+
+--
 -- | On the last line of the file
+-- TODO faster please
 --
 atLastLine :: Buffer a => a -> IO Bool
 atLastLine b = do
     p <- pointB b
     moveToEol b
-    pointB b
     e <- atEof b
     moveTo b p
     return e

@@ -69,10 +69,10 @@ key :: Mode -> Char -> Action
 -- 
 -- * Command mode
 --
-key C 'h'  = leftE
+key C 'h'  = leftOrSolE 1
 key C 'j'  = downE
 key C 'k'  = upE
-key C 'l'  = rightE
+key C 'l'  = rightOrEolE 1
 key C '$'  = eolE
 key C '0'  = solE
 key C '|'  = solE
@@ -82,9 +82,9 @@ key C k | k == keyNPage = downScreenE
         | k == keyPPage = upScreenE
 key C 'i' = beginInsert
 key C ':' = msgClrE >> msgE ":" >> beginEx 
+key C 'x' = deleteE
 
 {-
-key C 'x' = deleteE
 key C 'a' = rightOrEolE 1 >> beginInsert
 key C 'A' = eolE          >> beginInsert
 key C 'O' = solE >> insertE '\n' >> beginInsert
@@ -111,17 +111,15 @@ key C '\23' = nextE
 --
 key I '\27'  = leftOrSolE 1 >> beginCommand  -- ESC
 
-key I c -- | c == keyHome      = topE
+{-
+key I c  | c == keyHome      = topE
          | c == '\8'         = leftE >> deleteE
          | c == keyBackspace = leftE >> deleteE
-  
+-}
 
--- vi behaviour at start of line
 key I c  = do (_,s) <- infoE
-              when (s == 0) $ insertE '\n'
+              when (s == 0) $ insertE '\n' -- vi behaviour at start of file
               insertE c
-              rightE
-              when (c == '\13') $ downE >> solE -- move down with new line
 
 -- ---------------------------------------------------------------------
 -- * Ex mode
