@@ -74,10 +74,6 @@ import Control.Exception    ( assert )
 import Data.IORef
 import System.IO.Unsafe     ( unsafePerformIO )
 
---
--- | Perform movement action specified by @mov@ while not @chkend@ and
--- @check@ applied to the current 'Char' are true. 
---
 -- | Read character before point.
 breadE :: IO Char
 breadE = do
@@ -86,6 +82,10 @@ breadE = do
         then return '\0'
         else readNM (p-1) p >>= return . head
 
+--
+-- | Perform movement action specified by @mov@ while not @chkend@ and
+-- @check@ applied to the 'Char' retuned by @rd@ are true.
+--
 doSkipWhile :: Action -> IO Char -> IO Bool -> (Char -> Bool) -> Action
 doSkipWhile mov rd chkend check = do
     e <- chkend
@@ -93,8 +93,8 @@ doSkipWhile mov rd chkend check = do
     when (not e && check c) (mov >> doSkipWhile mov rd chkend check)
 
 --
--- | Similar to 'doSkipWhile', but perform check on current chars, then
--- always move, before branching.
+-- | Similar to 'doSkipWhile', but perform check on the char returned
+-- by @rd@, then always move, before branching.
 --
 doSkipCond :: Action -> IO Char -> IO Bool -> (Char -> Bool) -> Action
 doSkipCond mov rd chkend check = do
