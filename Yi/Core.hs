@@ -97,6 +97,7 @@ import qualified Yi.UI     as UI
 import Yi.Editor
 import qualified Yi.Editor as Editor
 
+import Data.Maybe
 import Data.Char            ( isLatin1 )
 import System.IO
 import System.Directory     ( doesFileExist )
@@ -292,17 +293,49 @@ getRegE = readEditor yreg
  
 -- ---------------------------------------------------------------------
 
--- | Searching. Search for regex and move point to that position.
+-- | Global searching. Search for regex and move point to that position.
 searchE :: String -> Action
 searchE [] = nopE
 searchE re = do
     mp <- withWindow $ \w b -> do
             rightB b
             mp <- regexB b re
+            when (isNothing mp) (leftB b)   -- go home
             return (w,mp)
     case mp of
-        Just p  -> withWindow_ $ moveToW p
-        Nothing -> msgE ("Pattern not found: "++re) -- TODO vi spec.
+        Just (p,_) -> withWindow_ $ moveToW p
+        Nothing    -> msgE ("Pattern not found: "++re)
+
+-- | Search and replace /on current line/. Should return status.
+searchAndRepLocal :: String -> String -> Action
+searchAndRepLocal [] _ = nopE
+searchAndRepLocal re str = do
+    mp <- withWindow $ \w b -> do   -- find the regex
+            rightB b
+            mp <- regexB b re
+            leftB b                 -- go back
+            return (w, mp)
+    status <- case mp of
+        Just (i,j) -> withWindow $ \w b -> do
+                p  <- pointB b      -- all buffer-level atm
+                moveToEol b
+                ep <- pointB b      -- eol point of current line
+                moveTo b i
+                moveToEol b
+                eq <- pointB b      -- eol of matched line
+                moveTo b p          -- go home. sub doesn't move
+                if (ep /= eq)       -- then match isn't on current line
+                    then return (w, Nothing)
+                    else do         -- do the replacement
+                moveTo b i
+                deleteN b (j - i)
+                insertN b str
+                moveTo b p          -- and back to where we were!
+                return (w, Just ()) -- signal success
+        Nothing -> return Nothing
+
+    when (isNothing status) $ 
+        msgE ("Pattern not found: "++re) -- TODO vi spec.
 
 ------------------------------------------------------------------------
 

@@ -351,11 +351,23 @@ ex k = msgClrE >> loop [k]
     execEx "p"   = prevBufW
     execEx "P"   = prevBufW
     execEx "sp"  = splitE
-    execEx ('e':' ':f) = fnewE f
+    execEx ('e':' ':f)  = fnewE f
+    execEx ('s':'/':cs) = viSub cs
     execEx cs    = viCmdErr cs
 
     deleteWith []     = msgClrE >> msgE ":"      >> loop []
     deleteWith (_:cs) = msgClrE >> msgE (':':cs) >> loop cs
+
+-- ---------------------------------------------------------------------
+-- | Try to do a substitute
+--
+viSub :: [Char] -> Action
+viSub cs = do
+    let (pat,rep') = break (== '/')  cs
+        rep        = case rep' of
+                        []     -> []
+                        (_:ds) -> takeWhile (/= '/') ds -- ignore flags for now
+    searchAndRepLocal pat rep
 
 -- ---------------------------------------------------------------------
 -- | Try and write a file in the manner of vi\/vim
