@@ -53,6 +53,8 @@ module Yi.Core (
         prevBufW,       -- :: Action
         nextWinE,       -- :: Action
         prevWinE,       -- :: Action
+        cmdlineFocusE,  -- :: Action
+        cmdlineUnFocusE,-- :: Action
         splitE,         -- :: Action
         closeE,         -- :: Action
 
@@ -769,6 +771,14 @@ nextWinE = Editor.nextWindow
 -- | Shift focus to prev window
 prevWinE :: Action
 prevWinE = Editor.prevWindow
+
+-- | Shift focus to command line window
+cmdlineFocusE :: Action
+cmdlineFocusE = modifyEditor_ $ \e -> return e { cmdlinefocus = True }
+
+-- | Return focus to normal window
+cmdlineUnFocusE :: Action
+cmdlineUnFocusE = modifyEditor_ $ \e -> return e { cmdlinefocus = False }
 
 ------------------------------------------------------------------------
 --

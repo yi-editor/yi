@@ -424,7 +424,7 @@ cmd2other = modeSwitchChar
     `meta` \[c] st -> 
         let beginIns a = (with a, st, Just (ins st))
         in case c of
-            ':' -> (with (msgE ":"), st{acc=[':']}, Just ex_mode)
+            ':' -> (with (msgE ":" >> focus), st{acc=[':']}, Just ex_mode)
             'R' -> (Nothing, st, Just rep_mode)
             'i' -> (Nothing, st, Just (ins st))
             'I' -> beginIns solE
@@ -436,7 +436,7 @@ cmd2other = modeSwitchChar
             'C' -> beginIns $ readRestOfLnE >>= setRegE >> killE
             'S' -> beginIns $ solE >> readLnE >>= setRegE >> killE
 
-            '/' -> (with (msgE "/"), st{acc=['/']}, Just ex_mode)
+            '/' -> (with (msgE "/" >> focus), st{acc=['/']}, Just ex_mode)
             '?' -> (with (not_implemented '?'), st{acc=[]}, Just $ cmd st)
 
             '\ESC'-> (with msgClrE, st{acc=[]}, Just $ cmd st)
@@ -445,6 +445,7 @@ cmd2other = modeSwitchChar
                    ,st, Just $ cmd st)
 
     where modeSwitchChar = alt ":RiIaAoOcCS/?\ESC"
+          focus = cmdlineFocusE
 
 -- ---------------------------------------------------------------------
 -- | vim insert mode
@@ -566,7 +567,7 @@ ex_edit = delete
 -- escape exits ex mode immediately
 ex2cmd :: VimMode
 ex2cmd = char '\ESC'
-    `meta` \_ st -> (with msgClrE, st{acc=[]}, Just $ cmd st)
+    `meta` \_ st -> (with (msgClrE>>cmdlineUnFocusE), st{acc=[]}, Just $ cmd st)
 
 --
 -- eval an ex command to an Action, also appends to the ex history
@@ -577,38 +578,40 @@ ex_eval = enter
         let c  = reverse dmc
             h  = (c:(fst $ hist st), snd $ hist st) in case c of
         -- regex searching
-        ('/':pat) -> (with (searchE (Just pat))
+        ('/':pat) -> (with (searchE (Just pat) >> unfocus)
                      ,st{acc=[],hist=h},Just $ cmd st)
 
         -- add mapping to command mode
         (_:'m':'a':'p':' ':cs) -> 
                let pair = break (== ' ') cs
                    cmd' = uncurry (eval_map st (Left $ cmd st)) pair
-               in (with msgClrE, st{acc=[],hist=h,cmd=cmd'}, Just cmd')
+               in (with (msgClrE >> unfocus), st{acc=[],hist=h,cmd=cmd'}, Just cmd')
 
         -- add mapping to insert mode
         (_:'m':'a':'p':'!':' ':cs) -> 
                let pair = break (== ' ') cs
                    ins' = uncurry (eval_map st (Right $ ins st)) pair
-               in (with msgClrE, st{acc=[],hist=h,ins=ins'}, Just (cmd st))
+               in (with (msgClrE >> unfocus), st{acc=[],hist=h,ins=ins'}, Just (cmd st))
 
         -- unmap a binding from command mode
         (_:'u':'n':'m':'a':'p':' ':cs) ->
                let cmd' = eval_unmap (Left $ cmd st) cs
-               in (with msgClrE, st{acc=[],hist=h,cmd=cmd'}, Just cmd')
+               in (with (msgClrE >> unfocus), st{acc=[],hist=h,cmd=cmd'}, Just cmd')
 
         -- unmap a binding from insert mode
         (_:'u':'n':'m':'a':'p':'!':' ':cs) ->
                let ins' = eval_unmap (Right $ ins st) cs
-               in (Nothing, st{acc=[],hist=h,ins=ins'}, Just (cmd st))
+               in (with unfocus, st{acc=[],hist=h,ins=ins'}, Just (cmd st))
 
         -- just a normal ex command
-        (_:src) -> (with (fn src), st{acc=[],hist=h}, Just $ cmd st)
+        (_:src) -> (with (fn src >> unfocus), st{acc=[],hist=h}, Just $ cmd st)
 
         -- can't happen, but deal with it
-        [] -> (Nothing, st{acc=[], hist=h}, Just $ cmd st)
+        [] -> (with unfocus, st{acc=[], hist=h}, Just $ cmd st)
 
     where 
+      unfocus = cmdlineUnFocusE
+
       fn ""           = msgClrE
 
       fn s@(c:_) | isDigit c = do 

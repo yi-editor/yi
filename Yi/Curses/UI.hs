@@ -123,24 +123,25 @@ redraw = withEditor $ \e ->
     
     case getWindows e     of { ws  ->
     case cmdline e        of { cl  ->
+    case cmdlinefocus e   of { cmdfoc ->
     case uistyle e        of { sty ->
     case getWindowOf e    of { w   ->
     case getWindowIndOf e of { Nothing -> return () ; (Just i) -> do
 
     gotoTop
     mapM_ (drawWindow e w sty) ws               -- draw all windows
-    withStyle (window sty) $ drawCmdLine cl     -- draw cmd line
 
     -- work out origin of current window from index of that window in win list
     -- still grubby because we aren't using the /origin/ field of 'Window'
     -- _sigh_ assumes bottom window has rem
-    when (isJust w) $ do
-        (h,_)  <- screenSize
-        case i * (fst $! getY h (length ws)) of { o_y ->
-            drawCursor (o_y,0) $ cursor $ fromJust w
-        }
+    if (not cmdfoc && isJust w) 
+        then do (h,_)  <- screenSize
+                case i * (fst $! getY h (length ws)) of { o_y ->
+                    drawCursor (o_y,0) $ cursor $ fromJust w
+                }
+        else withStyle (window sty) $ drawCmdLine cl     -- draw cmd line
 
-    }}}}}
+    }}}}}}
 
 -- ---------------------------------------------------------------------
 -- PRIVATE:

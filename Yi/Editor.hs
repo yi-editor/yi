@@ -62,6 +62,7 @@ data Buffer a => GenEditor a =
         buffers   :: !(FiniteMap Unique a)      -- ^ all the buffers
        ,windows   :: !(FiniteMap Unique Window) -- ^ all the windows
        ,cmdline   :: !String                    -- ^ the command line
+       ,cmdlinefocus :: !Bool                   -- ^ cmdline has focus
        ,yreg      :: !String                    -- ^ yank register
        ,regex     :: !(Maybe Regex)             -- ^ most recent regex
        ,curwin    :: !(Maybe Unique)            -- ^ the window with focus
@@ -110,6 +111,7 @@ emptyEditor = Editor {
         buffers      = emptyFM 
        ,windows      = emptyFM
        ,cmdline      = []
+       ,cmdlinefocus = False
        ,yreg         = []
        ,regex        = Nothing
        ,curwin       = Nothing
