@@ -14,7 +14,7 @@
 -----------------------------------------------------------------------------
 
 --  
--- | Regular expression matching, modified to work on buffers.
+-- Regular expression matching, modified to work on buffers.
 --
 
 module Yi.Regex (

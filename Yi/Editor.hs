@@ -53,7 +53,7 @@ import System.IO.Unsafe         ( unsafePerformIO )
 --
 -- TODO Windows should be MVar'd as well.
 --
--- TODO the command line is a vi/emacs specific concept.
+-- TODO the command line is a vi\/emacs specific concept.
 --
 data Buffer a => GenEditor a = 
     Editor {
