@@ -19,7 +19,7 @@
 
 --
 -- | Vi keymap for Yi.
--- Based on version 1.79 (7/14/97) of nex/nvi
+-- Based on version 1.79 (7\/14\/97) of nex\/nvi
 --
 -- The goal is strict vi emulation
 --
