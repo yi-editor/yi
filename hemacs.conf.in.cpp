@@ -12,7 +12,7 @@ Package {
         include_dirs    = [],
         c_includes      = [],
         source_dirs     = [],
-        extra_libraries = [ "${CURSES}", "iconv" ],
+        extra_libraries = [ "${CURSES}", "${ICONV}" ],
         package_deps    = [ "base", "haskell98", "posix" ],
         extra_ghc_opts  = [],
         extra_cc_opts   = [],
