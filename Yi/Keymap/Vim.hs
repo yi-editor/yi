@@ -486,7 +486,9 @@ kwd_char = char '\^N' `action` const (Just wordCompleteE)
 -- | switch back to insert mode
 --
 kwd2ins :: VimMode
-kwd2ins = anyButCtlN `meta` \_ st -> (with resetCompleteE, st, Just $ ins st)
+kwd2ins = anyButCtlN `meta` \tok st -> 
+        let ([a],_,_) = execLexer (ins st) (tok, st)
+        in (with (resetCompleteE >> a), st, Just $ ins st)
     where 
         anyButCtlN = alt $ (keyBackspace : any' ++ cursc') \\ ['\^N']
 
