@@ -148,7 +148,9 @@ module Yi.Curses {-(
     --------------------------------------------------------------------
   )-} where 
 
+import Yi.Ctk.DLists
 import Yi.CWString
+
 import Prelude hiding   ( pi )
 
 import Data.Char
@@ -756,24 +758,26 @@ wAddStr win str = do
 --
 --      wAddStr Yi.Curses 20.0   38.1
 --      wAddStr Yi.Curses 10.0   32.5
+
 -- 
 -- TODO make this way less expensive. That accum sucks.
 --
 wAddStr :: Window -> [Char] -> IO ()
 wAddStr win cs = do
     let draw [] = return ()
-        draw s  = case normalise $! reverse s of
+        draw s  = case normalise s of
                     s' -> throwIfErr_ "waddnstr" $
                         withLCStringLen s' (\(ws,len) -> 
                             waddnstr win ws (fi len))   -- write to screen
 
-    let loop []     acc = draw acc
+    -- use difference lists for O(1) append
+    let loop []     acc = draw (closeDL acc)
         loop (c:xs) acc = recognize c 
-                (loop xs $! c:acc)
-                (\c' -> do draw acc
-                           throwIfErr ")waddch" $ waddch win c'
-                           loop xs [])
-    loop cs []
+                (loop xs $! acc `snocDL` c)
+                (\c' -> do draw (closeDL acc)
+                           throwIfErr "waddch" $ waddch win c'
+                           loop xs zeroDL)
+    loop cs zeroDL
 
 {-
 wAddStr :: Window -> String -> IO ()
