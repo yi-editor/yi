@@ -41,7 +41,7 @@
 --        /Writing Programs with NCURSES/, by Eric S. Raymond and Zeyd
 --        M. Ben-Halim, <http://dickey.his.com/ncurses/>
 --
--- N.B doesn't work with Irix curses.h. This should be fixed.
+-- N.B attrs don't work with Irix curses.h. This should be fixed.
 --
 
 module Yi.Curses.Curses {-(
@@ -161,6 +161,13 @@ module Yi.Curses.Curses {-(
     --------------------------------------------------------------------
   )-} where 
 
+#include <config.h>
+#include <YiCurses.h>
+
+#if HAVE_SIGNAL_H
+# include <signal.h>
+#endif
+
 import Yi.Curses.CWString       ( withLCStringLen )
 
 import Prelude hiding           ( pi )
@@ -179,13 +186,16 @@ import CForeign
 import Data.Bits
 #endif
 
--- #ifdef SIGWINCH
+#ifdef SIGWINCH
 import System.Posix.Signals
--- #endif
+#endif
 
-#include <signal.h>
-
-#include <YiCurses.h>
+--
+-- If we have the SIGWINCH signal, we use that, with a custom handler,
+-- to determine when to resize the screen. Otherwise, we use a similar
+-- handler that looks for KEY_RESIZE in the input stream -- the result
+-- is a less responsive update, however.
+--
 
 ------------------------------------------------------------------------
 --
@@ -206,7 +216,10 @@ initCurses fn = do
     defineKey (#const KEY_DOWN) "\x1b[1;2B"
     defineKey (#const KEY_SLEFT) "\x1b[1;2D"
     defineKey (#const KEY_SRIGHT) "\x1b[1;2C"
-    installHandler (fromJust cursesSigWinch) (Catch fn) Nothing >> return ()
+#ifdef SIGWINCH
+    installHandler (fromJust cursesSigWinch) 
+                   (Catch fn) Nothing >> return ()
+#endif
 
 ------------------------------------------------------------------------
 
@@ -1279,25 +1292,22 @@ getCh = do
          (#const ERR) -> do getch {-discard-} ; return (Just $ '\^C') -- hack
          k            -> return (Just $ decodeKey k)
 
+
 resizeTerminal :: Int -> Int -> IO ()
 
--- #ifdef HAVE_RESIZETERM
-
+#ifdef HAVE_RESIZETERM
 resizeTerminal a b = throwIfErr_ "resizeterm"  $ resizeterm (fi a) (fi b)
 
 foreign import ccall unsafe "YiCurses.h resizeterm" 
     resizeterm :: CInt -> CInt -> IO CInt
+#else
+resizeTerminal _ _ = return ()
+#endif
 
--- #else
-
--- resizeTerminal _ _ = return ()
-
--- #endif
-
--- #ifdef SIGWINCH
+#ifdef SIGWINCH
 cursesSigWinch :: Maybe Signal
 cursesSigWinch = Just (#const SIGWINCH)
--- #endif
+#endif
 
 ------------
 -- Test case

@@ -126,7 +126,7 @@ AC_SUBST(CURSES)
 #
 # Specific headers to check for
 #
-AC_CHECK_HEADERS([iconv.h curses.h ncurses.h ncursesw/ncurses.h regex.h locale.h langinfo.h wchar.h limits.h ])
+AC_CHECK_HEADERS([iconv.h curses.h ncurses.h ncursesw/ncurses.h regex.h locale.h langinfo.h wchar.h limits.h signal.h ])
 
 #
 # We also would like this please

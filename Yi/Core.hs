@@ -222,7 +222,7 @@ startE (confs,fn,fn') ln mfs = do
 -- | How to read from standard input
 --
 getcE :: IO Char
-getcE = UI.getKey nopE  -- could be refreshE if we don't have sigwinch..
+getcE = UI.getKey refreshE -- only used if we don't have sigwinch
 
 -- 
 -- | The editor main loop. Read key strokes from the ui and interpret

@@ -1,4 +1,4 @@
-{-# OPTIONS -#include YiUtils.h #-}
+{-# OPTIONS -cpp -#include YiUtils.h -#include <signal.h> #-}
 -- 
 -- Copyright (C) 2004 Don Stewart - http://www.cse.unsw.edu.au/~dons
 -- 
@@ -104,6 +104,8 @@ screenSize = Curses.scrSize
 
 --
 -- | Read a key. UIs need to define a method for getting events.
+-- We only need to refresh if we don't have the SIGWINCH signal handler
+-- working for us.
 --
 getKey :: IO () -> IO Char
 getKey refresh_fn = do
@@ -112,7 +114,10 @@ getKey refresh_fn = do
     case k of
         Nothing -> getKey refresh_fn
         Just k' | k' == Curses.keyResize 
-                -> do refresh_fn
+                -> do
+#ifndef SIGWINCH
+                      refresh_fn
+#endif
                       getKey refresh_fn
                 | otherwise -> return k'
  
