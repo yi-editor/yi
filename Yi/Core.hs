@@ -279,5 +279,7 @@ e_delete :: IO ()
 e_delete = modifyCurrentBuffer $ Buffer.delete
 
 -- | Kill to end of line
+-- Move back 1 char (this is VI behaviour -- so get rid of it from Core)
 e_kill :: IO ()
-e_kill = modifyCurrentBuffer $ Buffer.killToNL
+e_kill = modifyCurrentBuffer $ \b -> Buffer.killToNL b >>= Buffer.prevXorLn 1
+

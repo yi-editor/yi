@@ -314,9 +314,9 @@ instance Buffer FBuffer where
         withMVar m $ \ref -> do
             b@(FBuffer_ buf p e _) <- readIORef ref        
             cs <- readChars buf (e-p-n) (p+n)
-            i  <- writeChars buf cs p
-            let p' | p == 0    = p   -- go no further!
-                   | i == p    = p-1 -- shift back if del eof
+            i  <- writeChars buf cs p  -- index of last char written
+            let p' | p == 0    = p     -- go no further!
+                   | i == p    = p-1   -- shift back if at eof
                    | otherwise = p
             writeIORef ref (b{bufPnt=p',bufEnd=i})
             return fb
@@ -371,7 +371,7 @@ prevLnIx b = do
 
 --
 -- | Return the /index/ to the start of the next line, or what is the
--- index of the char after the next \n?). Index of eof+1 if no more \n.
+-- index of the char after the next \n?). Index of eof+1 if last line
 --
 nextLnIx :: Buffer a => a -> IO Int
 nextLnIx b = do
@@ -415,7 +415,17 @@ nextXorNL x b = do
     rightN (min x n) b
 
 --
+-- | Move back @x@, or to the start of the line.
+--
+prevXorLn :: Buffer a => Int -> a -> IO a
+prevXorLn x b = do
+    n <- prevLnOffset b
+    leftN (min x n) b
+
+--
 -- | Kill all chars to end of line, not including the \n
+-- What happens if there is no \n on this line?
+-- EOF with no \n sucks.
 --
 killToNL :: Buffer a => a -> IO a
 killToNL b = do
