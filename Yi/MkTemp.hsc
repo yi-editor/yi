@@ -2,7 +2,7 @@
 --
 -- glaexts for I# ops
 -- 
--- Copyright (c) 2004 Don Stewart - http://www.cse.unsw.edu.au/~dons
+-- Copyright (c) 2004-5 Don Stewart - http://www.cse.unsw.edu.au/~dons
 -- 
 -- This library is free software; you can redistribute it and/or
 -- modify it under the terms of the GNU Lesser General Public
@@ -48,7 +48,12 @@ import Data.Char                ( chr, ord, isDigit )
 import Control.Monad            ( liftM )
 import Control.Exception        ( handleJust )
 
+#if __GLASGOW_HASKELL__ < 604
 import System.IO                ( isAlreadyExistsError, Handle )
+#else
+import System.IO                ( Handle )
+import System.IO.Error          ( isAlreadyExistsError )
+#endif
 import System.Directory         ( doesDirectoryExist, doesFileExist )
 
 import GHC.IOBase               ( Exception(IOException) )
