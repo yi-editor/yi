@@ -3,7 +3,6 @@ Design plan:
         - ui type class
         - clean up ncurses code    
         - replace global var in editor state with a state monad
-        - keep testing on funny systems/terminals
  
 Build system:
         - check how to install it from a port script
