@@ -30,9 +30,9 @@ import Yi.FastBuffer
 import Yi.Regex                 ( Regex )
 import Yi.Window
 import Yi.Style                 ( ui, UIStyle )
+import Yi.Map as M
 
 import Data.List                ( elemIndex, find )
-import Yi.Map as M -- use our compat shim
 import Data.IORef               ( newIORef, readIORef, writeIORef, IORef )
 import Data.Unique              ( Unique )
 import System.IO.Unsafe         ( unsafePerformIO )

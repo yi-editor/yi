@@ -28,7 +28,7 @@ module Yi.Map (
         module Data.Map,
 #else
         Map,
-        empty, insert, delete, lookup, fromList
+        empty, insert, delete, lookup, fromList, size, elems
 #endif
   ) where
 
@@ -59,6 +59,10 @@ lookup = flip FM.lookupFM
 fromList :: Ord k => [(k,a)] -> Map k a
 fromList = FM.listToFM
 
-size = sizeFM
+size :: Map k a -> Int
+size = FM.sizeFM
+
+elems :: Map k a -> [a]
+elems = FM.eltsFM
 
 #endif
