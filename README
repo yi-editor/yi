@@ -11,13 +11,14 @@ You can get the latest hemacs source from its darcs repository:
         darcs get http://www.cse.unsw.edu.au/~dons/hemacs
 
 You will need GHC 6 (The Glorious/Glasgow Haskell Compilation System)
-and GNU make to compile hemacs. 
+and GNU make to compile hemacs. On OpenBSD you'll need ghc-6.3-20040929, 
+or greater, which contains a patch for the System.Posix.User library.
 
 You also need a recent snapshot version of hs-plugins, the Haskell
 dynamic loader library. You can get this from:
         http://www.cse.unsw.edu.au/~dons/hs-plugins/
-The `heatwave' snapshot is suitable. Make sure you "make", "make
-install" and "make register" the library.
+The `heatwave' snapshot is suitable (released 20041014). Make sure you
+"make", "make install" and "make register" the library.
 
 Once you have ensured that you have these programs and libraries
 installed:
@@ -59,7 +60,7 @@ currently not Windows. HEmacs requires GHC 6 with a working GHCi
 implementation. A porting checklist:
 
         * you have GNU make
-        * you have GHC 6.2.1 or greater
+        * you have >= GHC 6.2.1         (>= 6.3-20040929 on OpenBSD)
         * you have a working GHCi
         * you have hs-plugins >= 2004/10/14
 

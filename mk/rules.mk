@@ -9,9 +9,9 @@ include $(TOPDIR)/mk/paths.mk
 
 PRE_SRCS:=      $(ALL_SRCS)
 
-HC_OPTS        += $(DEFINES) -Icbits
-HSC_OPTS       += $(DEFINES) -Icbits
-CC_OPTS        += -Icbits
+HC_OPTS        += $(DEFINES) -Icbits $(INC_OPTS)
+HSC_OPTS       += $(DEFINES) -Icbits $(INC_OPTS)
+CC_OPTS        += -Icbits $(INC_OPTS)
 
 #
 # building the profiled way
@@ -109,10 +109,10 @@ $(GHCI_LIBRARY) : $(LIBOBJS)
 
 # preprocssed files, for haddock docs
 %.raw-hs : %.lhs
-	$(GHC) $(HC_OPTS) -D__HADDOCK__ -E -optP-P $< -o $@
+	$(GHC) $(HC_OPTS) $(DEFINES) -D__HADDOCK__ -E -optP-P $< -o $@
 
 %.raw-hs : %.hs
-	$(GHC) $(HC_OPTS) -D__HADDOCK__ -E -optP-P $< -o $@
+	$(GHC) $(HC_OPTS) $(DEFINES) -D__HADDOCK__ -E -optP-P $< -o $@
 
 #
 # Package creation
@@ -122,7 +122,7 @@ $(GHCI_LIBRARY) : $(LIBOBJS)
 $(PKG).conf: $(PKG).conf.in.cpp
 	cpp < $(PKG).conf.in.cpp | sed 's/""//g;s/\[ *,/[ /g;/^#/d' > $(PKG).conf.in
 	if [ ! -f $(PKG).conf ]; then echo [] > $(PKG).conf ; fi
-	env PREFIX=`pwd`/$(TOPDIR) CURSES=$(CURSES) ICONV=$(ICONV) $(GHC_PKG) --force -f $(PKG).conf -u < $(PKG).conf.in
+	env PREFIX=`pwd` CURSES=$(CURSES) ICONV=$(ICONV) $(GHC_PKG) --force -f $(PKG).conf -u < $(PKG).conf.in
 
 # installable package.conf
 $(PKG).conf.install: $(PKG).conf.in.cpp
@@ -140,9 +140,9 @@ ifneq "$(HADDOCK)" ""
 .PHONY: doc
 docs :: html
 
-HTML_DIR     = html
-HADDOCK_SRCS = $(HS_SRCS) $(FRONTEND_HS_SRC)
-HS_PPS       = $(addsuffix .raw-hs, $(basename $(HADDOCK_SRCS) ))
+HTML_DIR      = html
+HADDOCK_SRCS += $(HS_SRCS)
+HS_PPS        = $(addsuffix .raw-hs, $(basename $(HADDOCK_SRCS) ))
 
 INSTALL_DATAS  += $(HTML_DIR)
 

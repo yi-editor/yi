@@ -18,11 +18,11 @@
 -- 
 
 --
--- frontend to the static binary. Used just so we don't get
--- ZCMain_main_* symbols in -package hemacs (i.e. so we can have
--- multiple frontend, and load them all in ghci).
+-- | Frontend to the static binary. We have a separte frontend (rather
+-- than putting main in HEmacs.hs) so we don't get ZCMain_main_* symbols
+-- in -package hemacs, which lets us have multiple frontends, and load
+-- them all in ghci.
 --
-
 module Main ( main ) where
 
 import qualified HEmacs ( static_main )

@@ -9,8 +9,6 @@
 -- (at your option) any later version.
 --
 
--- Module information {{{
-
 module HEmacs.Entry (
 
     Entry(..),
@@ -45,10 +43,8 @@ module HEmacs.Entry (
   ) where
 
 import Data.Maybe
-import Data.List                (sort)
-import Time                     (CalendarTime)
-
--- Classes & misc {{{
+import Data.List                ( sort )
+import Time                     ( CalendarTime )
 
 class Entry a where
     entry_title :: a -> String
@@ -60,24 +56,20 @@ class Entry a where
     entry_flags :: a -> String
     entry_flags e = ""
 
-
 class Entry a => EditableEntry a where
     entry_set_text :: a -> String -> CalendarTime -> a
-
 
 data Entry a => EntryTree a = EntryTree {
     entrytree_expanded :: Bool, 
     entrytree_tagged :: Bool,
     entrytree_thisentry :: a,
     entrytree_children :: [EntryTree a]
-}
-
+  }
 
 instance Entry a => Entry (EntryTree a) where
     entry_title = entry_title . entrytree_thisentry
     entry_text = entry_text . entrytree_thisentry
     entry_flags = entry_flags . entrytree_thisentry
-
 
 instance EditableEntry a => EditableEntry (EntryTree a) where
     entry_set_text e txt tm =
@@ -85,18 +77,14 @@ instance EditableEntry a => EditableEntry (EntryTree a) where
         where
             nent = entry_set_text (entrytree_thisentry e) txt tm
 
-
 new_entrytree e =
     EntryTree False False e []
 
 entrytree_set_entry et e =
     et{entrytree_thisentry = e}
     
-
--- }}}
-
-
--- Location stuff {{{
+-- ---------------------------------------------------------------------
+-- Location stuff
 
 newtype Loc = Loc [Int] deriving Eq
 
@@ -127,10 +115,8 @@ loc_firstunder (Loc ll) = Loc (ll++[0])
 
 loc_lastunder (Loc ll) nch = Loc (ll++[nch])
 
--- }}}
-
-
--- Get {{{
+-- ---------------------------------------------------------------------
+-- Get
 
 entrytree_get :: Entry a => [EntryTree a] -> Loc -> EntryTree a
 entrytree_get (e:et) (Loc (0:[])) = e
@@ -138,10 +124,8 @@ entrytree_get (e:et) (Loc (0:loc)) = entrytree_get (entrytree_children e) (Loc l
 entrytree_get (e:et) (Loc (n:loc)) | n>0 = entrytree_get et (Loc ((n-1):loc))
 entrytree_get _ _ = error "Invalid entry tree location"
 
--- }}}
-
-
--- entrytree_map, entrytree_map_path {{{
+-- ---------------------------------------------------------------------
+-- | entrytree_map, entrytree_map_path
 
 entrytree_map_ f [] _ = []
 entrytree_map_ f (e2:et) rrr@(r:rr) =
@@ -154,9 +138,11 @@ entrytree_map_ f (e2:et) rrr@(r:rr) =
 entrytree_map :: Entry a => (EntryTree a -> [b] -> Loc -> [b]) -> [EntryTree a] -> [b]
 entrytree_map f et = entrytree_map_ f et [0]
 
--- Apply function to all entries in the tree, starting from leaves
+--
+-- | Apply function to all entries in the tree, starting from leaves
 -- and feeding the function also a Maybe indicating whether the children
 -- of the entry in question were changed.
+--
 entrytree_map_maybe_ f [] _ = Nothing
 entrytree_map_maybe_ f (e2:et) rrr@(r:rr) =
     case (e2n, etn) of
@@ -174,8 +160,10 @@ entrytree_map_maybe :: Entry a =>
     -> [EntryTree a] -> Maybe [EntryTree a]
 entrytree_map_maybe f et = entrytree_map_maybe_ f et [0]
 
--- Similar to entrytree_map, but restrict to working on a path given by
--- a Loc.
+--
+-- | Similar to entrytree_map, but restrict to working on a path given
+-- by a Loc.
+--
 entrytree_map_path_ f [] _ _ = Nothing
 entrytree_map_path_ f _ [] _ = Nothing
 entrytree_map_path_ f (e:et) (l:ll) rrr@(r:rr) | l==r =
@@ -183,6 +171,7 @@ entrytree_map_path_ f (e:et) (l:ll) rrr@(r:rr) | l==r =
     where
         nch = entrytree_map_path_ f (entrytree_children e) ll (0:rrr)
         ne = f e nch (Loc $ reverse rrr)
+
 entrytree_map_path_ f (e:et) lll@(l:ll) rrr@(r:rr) | r<l =
    case entrytree_map_path_ f et lll ((r+1):rr) of
        Nothing -> Nothing
@@ -193,10 +182,8 @@ entrytree_map_path :: Entry a =>
     -> [EntryTree a] -> Loc -> Maybe [EntryTree a]
 entrytree_map_path f et (Loc ll) = entrytree_map_path_ f et ll [0]
 
--- }}}
-
-
--- Conversions: flatten, list_to_entrytree {{{
+-- ---------------------------------------------------------------------
+-- Conversions: flatten, list_to_entrytree
 
 entrytree_flatten :: Entry a => [EntryTree a] -> [(Bool, Int, a)]
 entrytree_flatten et =
@@ -204,7 +191,6 @@ entrytree_flatten et =
     where
        f e chflat (Loc loc) =
            (entrytree_expanded e, length loc, entrytree_thisentry e):chflat
-        
 
 list_to_entrytree_ :: Entry a => Int -> [(Bool, Int, a)] -> ([EntryTree a], [(Bool, Int, a)])
 list_to_entrytree_ _ [] = ([], [])
@@ -217,14 +203,11 @@ list_to_entrytree_ d eee@(e@(e_x, e_d, e_e):ee)
         (e_ch, ee_) = list_to_entrytree_ (d+1) ee
         (more, ee__) = list_to_entrytree_ d ee_
 
-
 list_to_entrytree :: Entry a => [(Bool, Int, a)] -> [EntryTree a]
 list_to_entrytree et = fst $ list_to_entrytree_ 0 et
 
--- }}}
-
-
--- Remove/insert effect calculation on locations {{{
+-- ---------------------------------------------------------------------
+-- Remove/insert effect calculation on locations
 
 rm_effect_ :: [Int] -> [Int] -> [Int]
 rm_effect_ [] [] = error "Invalid insertion point"
@@ -306,9 +289,6 @@ loc_rm_effect_insw (Before loc) locv = mpass Before $ loc_rm_effect loc locv
 loc_rm_effect_insw (After loc) locv = mpass After $ loc_rm_effect loc locv
 loc_rm_effect_insw (FirstUnder loc) locv = mpass FirstUnder $ loc_rm_effect loc locv
 loc_rm_effect_insw (LastUnder loc) locv = mpass LastUnder $ loc_rm_effect loc locv
-
--- }}}
-
 
 -- Remove, insert, replace, move etc. {{{
 

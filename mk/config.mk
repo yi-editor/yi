@@ -8,11 +8,13 @@ LIBDIR=         $(PREFIX)/lib/$(PKG)
 DATADIR=        $(PREFIX)/share/doc/$(PKG)
 IFACEDIR=       $(LIBDIR)/imports
 
+DEFINES+=	-DLIBDIR=\"$(LIBDIR)\"
+
 GHC=            ghc
 GHC_PKG=        ghc-pkg
-HC_OPTS=       -cpp -fglasgow-exts
+HC_OPTS=        -cpp -fglasgow-exts
 
-#HC_OPTS+=      -Onot -fasm -H64m
+HC_OPTS+=       -Onot -fasm -H64m
 #HC_OPTS+=      -O -fvia-C -funbox-strict-fields
 #HC_OPTS+=      -Wall
 #HC_OPTS+=      -debug
@@ -53,7 +55,7 @@ DEFINES         += -DHAVE_NCURSES_H=1
 # first option controls conversion between mbox and internal Unicode 
 # presentation, and the second from Unicode to locale's encoding for display.
 # If you unset CF_WCHAR_SUPPORT, you also should not use ncursesw above.
-# Comment these out on OpenBSD
+# Comment out on OpenBSD
 #
  
 DEFINES += -DCF_CHARSET_SUPPORT
@@ -67,10 +69,17 @@ DEFINES += -DCF_WCHAR_SUPPORT
 #DEFINES+=       -DWEIRD_ICONV
 
 #
+# Set this if your system provides the arc4random(3) function --
+# Available on OpenBSD, FreeBSD at least -- and you'll get a faster
+# random function for the mkstemp lib.
+#
+#DEFINES += -DHAVE_ARC4RANDOM
+
+#
 # Extra paths to find things (OpenBSD needs this)
 #
 #LD_OPTS         += -L/usr/local/lib
-#HC_OPTS         += -I/usr/local/include
+#INC_OPTS        += -I/usr/local/include
 
 #
 # define this if you aren't on a posix machine (doesn't work yet)

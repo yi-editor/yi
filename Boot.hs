@@ -64,9 +64,10 @@ import System.Console.GetOpt
 import System.IO.Unsafe       ( unsafePerformIO )
 import System.Environment     ( getArgs, getEnv )
 import System.Exit            ( exitFailure )
+import qualified Control.Exception ( catch )
 
 #ifndef NO_POSIX
-import System.Posix.User      (getUserEntryForID, getRealUserID, homeDirectory)
+import System.Posix.User      ( getUserEntryForID, getRealUserID, homeDirectory )
 #endif
 
 -- ---------------------------------------------------------------------
@@ -84,33 +85,33 @@ config_sym      = "hemacs"               -- symbol to retrieve from Config.hs
 hemacs_main_sym = "dynamic_main"         -- main entry point
 
 -- ---------------------------------------------------------------------
--- Where do the libraries live?
+-- | Where do the libraries live?
 -- This value can be overridden on the command line with the -B flag
 --
-
 libdir :: IORef FilePath
 libdir = unsafePerformIO $ newIORef (LIBDIR :: FilePath)
 {-# NOINLINE libdir #-}
 
 -- ---------------------------------------------------------------------
--- Finding config files
+-- | Finding config files. Use 'Control.Exception.catch' to deal with
+-- broken or missing implementations of get functions.
 --
 get_home :: IO String
 #ifndef NO_POSIX
-get_home =
-    catch (getRealUserID >>= getUserEntryForID >>= (return . homeDirectory))
-          (\_ -> getEnv "HOME")
+get_home = Control.Exception.catch 
+        (getRealUserID >>= getUserEntryForID >>= (return . homeDirectory))
+        (\_ -> getEnv "HOME")
 #else
 get_home = error "Boot.get_home not defined for this platform"
 #endif
 
--- ~/.hemacsrc/
+-- | ~/.hemacsrc/
 get_config_dir  :: IO String
 get_config_dir = do
     home <- get_home
     return $ home</>config_dir
 
--- ~/.hemacsrc/Config.hs
+-- | ~/.hemacsrc/Config.hs
 get_config_file :: IO (String)
 get_config_file = do
     home <- get_home
@@ -237,7 +238,7 @@ main = do
     hemacs_main cfghdl   -- jump to dynamic code
 
 -- ---------------------------------------------------------------------
--- MAGIC: this is the type of the value passed from Boot.main to
+-- | MAGIC: this is the type of the value passed from Boot.main to
 -- HEmacs.main. It must be exactly the same as the definition in
 -- HEmacs.hs.  We can't, however, share the value in another module,
 -- without breaking ghci support (the same module would be linked both

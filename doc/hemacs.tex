@@ -30,6 +30,14 @@ untested.
 
 DEVELOPMENT
 
+Coding guidelines:
+
+Please make sure you code compiles with -Wall, with no warnings. Use
+Haddock markup to document any functions that are exported -- user's
+may want to use this code at some point. We use cpp to pass
+platform-specific options into files. Please provide explicit import
+lists where reasonable, and keep imports in some sorted order.
+
 You can actually run this stuff in ghci! To just run hemacs-core (the gui etc,
 without worrying about booting the thing):
 
@@ -61,7 +69,7 @@ trick you need ghc-6.2.2 or greater, which contain appropriate rts
 patches for running dynamic loaders dynamically.
 
 \begin{verbatim}
-        manzano$ ghci -package plugins -liconv -L/usr/local/lib -v1
+        manzano$ ghci -package plugins -liconv -L/usr/local/lib
            ___         ___ _
           / _ \ /\  /\/ __(_)
          / /_\// /_/ / /  | |      GHC Interactive, version 6.3, for Haskell 98.
@@ -80,21 +88,26 @@ patches for running dynamic loaders dynamically.
         Loading package plugins ... linking ... done.
         Loading object (dynamic) iconv ... done
         final link ... done
-        Prelude> :set args -B/home/dons/hemacs
-        Prelude> :l Boot.hs
-        Skipping  Boot             ( Boot.hs, Boot.o )
-        Ok, modules loaded: Boot.
+	Prelude> :set -cpp -fglasgow-exts
+	Prelude> :set -DLIBDIR="/usr/local/lib/hemacs"
+	Prelude> :set args -B/home/dons/src/projects/hemacs
+	Prelude> :l Boot.hs
+	*Boot>
         Prelude Boot> main
         Starting up dynamic Haskell ... jumping over the edge ... done.
 \end{verbatim}
 
 For example, to modify \code{\$(TOP)/HEmacs.hs} in ghci, you would:
+
 \begin{verbatim}
         manzano$ ghci -package-conf hemacs.conf -package hemacs -cpp -fglasgow-exts
         Prelude> :l HEmacs.hs
-        *HEmacs> :t init_sighandlers
         *HEmacs> :t dynamic_main
         dynamic_main :: Maybe ConfigData -> IO ()
         *HEmacs> :reload
         Compiling HEmacs           ( HEmacs.hs, interpreted )
 \end{verbatim}
+
+\begin{thebibliography}[50]
+\bibitem Emacs, The extensible, customizable ... Stallman.
+\end{thebibliography}

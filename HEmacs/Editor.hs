@@ -9,14 +9,13 @@
 -- (at your option) any later version.
 --
 
-
-module HEmacs.Editor(
+module HEmacs.Editor (
     edittext,
     editfile,
     get_editor
  ) where
 
-import HEmacs.Version                   ( package  )
+import HEmacs.Version                   ( package )
 import HEmacs.MkTemp                    ( mkstemp )
 
 import System.IO
@@ -79,3 +78,4 @@ edittext text = do
             txt <- readFile fname
             removeLink fname
             return txt
+

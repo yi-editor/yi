@@ -19,6 +19,7 @@ module HEmacs.UI (
         set_callbacks,
         change_entry_type,
         refresh,
+
         -- Event handlers
         e_vscroll, e_hscroll, e_pgdn, e_pgup, e_eob, e_bob,
         e_selectentry, e_nextentry, e_preventry, 
@@ -29,6 +30,7 @@ module HEmacs.UI (
         e_tag, e_clear_tags, e_delete_tagged,
         e_move_tagged_after, e_move_tagged_before, e_move_tagged_under, 
         e_save,
+
         -- Classes & data structures
         Status,
         ELCont
@@ -43,11 +45,11 @@ import qualified HEmacs.Curses as Curses
 
 import Data.Maybe
 import Data.Char
-import Data.List        (find,init)
-import Time             (getClockTime, toCalendarTime, CalendarTime)
+import Data.List        ( find,init )
+import Time             ( getClockTime, toCalendarTime, CalendarTime )
 import System.IO        ( stdin )
 
-import Control.Monad    (liftM)
+import Control.Monad    ( liftM, when )
 import qualified Control.Exception
 
 import Foreign.C.String (withCString, peekCString)
@@ -56,15 +58,82 @@ import Foreign.C.String (withCString, peekCString)
 import System.Posix.Signals
 #endif
 
--- Helper functions {{{
+------------------------------------------------------------------------
+-- Initialisation
+
+--
+-- | Initialise the ncurses binding, "turning on the screen". Called
+-- from 'HEmacs.static_main'.
+--
+init :: Entry a => [StyleSpec] -> IO (Status a)
+init styles = do
+    Curses.initCurses                   -- initialise the screen
+    Curses.keypad Curses.stdScr True    -- grab the keyboard
+    a <- init_uiattr styles
+    get_size new_status {attr = a}
+
+--
+-- | Clean up and go home
+--
+deinit :: IO ()
+deinit = Curses.endWin
+ 
+--
+-- | Return the state with the current screen height and width
+--
+get_size :: Entry a => Status a -> IO (Status a)
+get_size s = do
+    (h, w) <- Curses.scrSize
+    return s { screen_width = w, screen_height = h }
+
+-- ---------------------------------------------------------------------
+-- | The main event loop, called from 'HEmacs.static_main'. Set the
+-- cursor invisible and interpret an action.
+--
+event_loop :: Entry a 
+           => Status a 
+           -> (Curses.Key -> Status a -> IO (ELCont a)) 
+           -> IO ()
+
+event_loop s k = Curses.withCursor Curses.CursorInvisible $ 
+        event_loop_ s k False
+
+-- 
+-- | interpret keypresses via the keyhandler
+-- 
+event_loop_ :: Entry a 
+            => Status a
+            -> (Curses.Key -> Status a -> IO (ELCont a))
+            -> Bool
+            -> IO ()
+
+event_loop_ s keyhandler clr = do
+    (snew, k) <- get_key s refresh
+    when clr $ draw_botinfo snew
+    c <- Control.Exception.catch (keyhandler k snew) (do_except snew)
+    case c of
+        ELQuit _        -> return ()
+        ELCont snew clr -> Curses.refresh >> event_loop_ snew keyhandler clr
+
+--
+-- | deal with exceptions
+--
+do_except :: Entry a 
+          => Status a 
+          -> Control.Exception.Exception 
+          -> IO (ELCont a)
+
+do_except s e = Curses.beep >> do_message s attr_error (show e) >> cont_clr s
+
+-- ---------------------------------------------------------------------
+-- Helper functions
+--
 
 text_n_lines :: String -> Int
-text_n_lines text =
-    length (lines text)
+text_n_lines text = length (lines text)
 
 text_n_columns :: String -> Int
-text_n_columns text =
-    foldl max 0 (map length (lines text))
+text_n_columns text = foldl max 0 (map length (lines text))
 
 safetail [] = []
 safetail (x:xs) = xs
@@ -72,8 +141,7 @@ safetail (x:xs) = xs
 maybehead [] = Nothing
 maybehead (x:xs) = Just x
 
-left_align w t =
-    take w (t ++ repeat ' ')
+left_align w t = take w (t ++ repeat ' ')
 
 lnth n l = lookup n $ zip [0..] l
 
@@ -81,152 +149,159 @@ mpass :: (a -> b) -> Maybe a -> Maybe b
 mpass f Nothing = Nothing
 mpass f (Just x) = Just $ f x
 
--- }}}
-
-
--- Status {{{
+-- ---------------------------------------------------------------------
+-- Status
 
 data Entry a => UndoInfo a = UndoInfo {
-    undo_selected_entry :: Int,
-    undo_active_entry :: Maybe Int,
-    undo_unsaved_changes :: Bool,
-    undo_entries :: [EntryTree a]
-}
+        undo_selected_entry :: Int,
+        undo_active_entry :: Maybe Int,
+        undo_unsaved_changes :: Bool,
+        undo_entries :: [EntryTree a]
+   }
 
 undo_count = 100
 
 --
--- editor state?
+-- editor state, threaded through the application.
+-- TODO: find a better design
 --
 
 data Entry a => Status a = Status {
-    attr :: UIAttr,
-    topinfo_text :: String,
-    textarea_hscroll,
-    textarea_vscroll,
-    entryarea_vscroll :: Int,
-    screen_width, 
-    screen_height :: Int,
-    entries :: [EntryTree a],
-    entries_fname :: Maybe String,
-    selected_entry :: Int,
-    active_entry :: Maybe Int,
-    undo_buffer,
-    redo_buffer :: [UndoInfo a],
-    save_callback :: String -> [EntryTree a] -> IO (),
-    new_callback :: String -> CalendarTime -> IO (a),
-    unsaved_changes :: Bool
-}
+        attr                    :: UIAttr,
+        topinfo_text            :: String,
+        textarea_hscroll,
+        textarea_vscroll,
+        entryarea_vscroll       :: Int,
+        screen_width, 
+        screen_height           :: Int,
+        entries                 :: [EntryTree a],
+        entries_fname           :: Maybe String,
+        selected_entry          :: Int,
+        active_entry            :: Maybe Int,
+        undo_buffer,
+        redo_buffer             :: [UndoInfo a],
+        save_callback           :: String -> [EntryTree a] -> IO (),
+        new_callback            :: String -> CalendarTime -> IO (a),
+        unsaved_changes         :: Bool
+   }
 
+--
+-- | default state
+--
 new_status :: Entry a => Status a
 new_status = Status {
-    attr = default_uiattr,
-    topinfo_text = "--",
-    textarea_hscroll = 0,
-    textarea_vscroll = 0,
-    entryarea_vscroll = 0,
-    screen_width = 80,
-    screen_height = 24,
-    entries = [],
-    entries_fname = Nothing,
-    selected_entry = 0,
-    active_entry = Nothing,
-    undo_buffer = [],
-    redo_buffer = [],
-    save_callback = save_disabled,
-    new_callback = new_disabled,
-    unsaved_changes = False
-}
+        attr                    = default_uiattr,
+        topinfo_text            = "",
+        textarea_hscroll        = 0,
+        textarea_vscroll        = 0,
+        entryarea_vscroll       = 0,
+        screen_width            = 80,
+        screen_height           = 24,
+        entries                 = [],
+        entries_fname           = Nothing,
+        selected_entry          = 0,
+        active_entry            = Nothing,
+        undo_buffer             = [],
+        redo_buffer             = [],
+        save_callback           = save_disabled,
+        new_callback            = new_disabled,
+        unsaved_changes         = False
+    }
 
-new_disabled _ _ = error "No handler to create new entries set."
+new_disabled  _ _ = error "No handler to create new entries set."
 save_disabled _ _ = error "No save handler set."
 
 set_topinfo :: Entry a => Status a -> String -> Status a
-set_topinfo s v = s{topinfo_text = v}
+set_topinfo s v = s { topinfo_text = v }
 
-set_entries :: Entry a => Status a -> [EntryTree a] -> (Maybe String) -> Status a
-set_entries s e fname =
-    s{
-        entries = e,
-        entries_fname = fname,
-        selected_entry = 0,
-        active_entry = Nothing,
-        entryarea_vscroll = 0,
-        textarea_vscroll = 0,
-        textarea_hscroll = 0,
-        unsaved_changes = False,
-        undo_buffer = [],
-        redo_buffer = []
+set_entries :: Entry a 
+            => Status a 
+            -> [EntryTree a] 
+            -> (Maybe String) 
+            -> Status a
+
+set_entries s e fname = s {
+        entries                 = e,
+        entries_fname           = fname,
+        selected_entry          = 0,
+        active_entry            = Nothing,
+        entryarea_vscroll       = 0,
+        textarea_vscroll        = 0,
+        textarea_hscroll        = 0,
+        unsaved_changes         = False,
+        undo_buffer             = [],
+        redo_buffer             = []
     }
 
 change_entry_type :: (Entry a, Entry b) => Status a -> Status b
 change_entry_type s =
     new_status{
         attr = attr s,
-        topinfo_text = topinfo_text s,
-        screen_width = screen_width s,
+        topinfo_text  = topinfo_text s,
+        screen_width  = screen_width s,
         screen_height = screen_height s
     } 
 
-set_callbacks :: Entry a =>
-    Status a
-    -> (String -> [EntryTree a] -> IO ())
-    -> (String -> CalendarTime -> IO (a))
-    -> Status a
+set_callbacks :: Entry a
+              => Status a
+              -> (String -> [EntryTree a] -> IO ())
+              -> (String -> CalendarTime -> IO (a))
+              -> Status a
+
 set_callbacks s save_cb new_cb =
-    s{save_callback = save_cb, new_callback = new_cb}
+    s {save_callback = save_cb, new_callback = new_cb }
 
--- }}}
+-- ---------------------------------------------------------------------
+-- Sizes of various elements of the ui. Should be user configurable
+--
 
+entryarea_height _ = 0          -- max 1 $ (screen_height s - 3) `div` 3
 
--- Sizes {{{
+--
+-- | where to draw entry lines on the screen
+--
+topinfo_line s  =  screen_height s - 1
+midinfo_line s  =  screen_height s - 2 -- (entryarea_height s) + 1
+botinfo_line s  =  screen_height s - 1
 
-entryarea_height s = max 1 $ (screen_height s - 3) `div` 3
-topinfo_line s = 0
-midinfo_line s = (entryarea_height s) + 1
-botinfo_line s = max (screen_height s - 1) (midinfo_line s + 2)
-entryarea_startline s = 1
-entryarea_endline s = midinfo_line s - 1
-textarea_startline s = midinfo_line s + 1
-textarea_endline s = botinfo_line s - 1
-textarea_height status = (textarea_endline status) - (textarea_startline status) + 1
+entryarea_startline s   = 1
+entryarea_endline s     = midinfo_line s - 1
+textarea_startline s    = midinfo_line s + 1
+textarea_endline s      = botinfo_line s - 1
+textarea_height status  = (textarea_endline status) - (textarea_startline status) + 1
 
--- }}}
+-- ---------------------------------------------------------------------
+-- Viewlist indexing
 
-
--- Viewlist indexing {{{
-
-valid_entry s e = 0<=e && e<n_entries_viewed s
+valid_entry s e = 0 <= e && e < n_entries_viewed s
 
 entrytree_viewlist :: Entry a => [EntryTree a] -> [(Loc, EntryTree a)]
-entrytree_viewlist et =
-    entrytree_map f et
+entrytree_viewlist et = entrytree_map f et
     where
-       f e chview loc =
-           if entrytree_expanded e then
-               (loc, e):chview
-           else
-               [(loc, e)]
+       f e chview loc
+            | entrytree_expanded e = (loc, e):chview
+            | otherwise            = [(loc, e)]
 
-entries_viewlist s = entrytree_viewlist (entries s)
+entries_viewlist s       = entrytree_viewlist (entries s)
 entries_viewlist_plain s = snd $ unzip $ entries_viewlist s
-entries_viewlist_loc s = fst $ unzip $ entries_viewlist s
+entries_viewlist_loc s   = fst $ unzip $ entries_viewlist s
 
-viewlist_entry s e = lnth e (entries_viewlist_plain s)
-viewlist_entry_loc s e = fromJust $ lnth e (entries_viewlist_loc s)
-selected_entry_loc s = viewlist_entry_loc s (selected_entry s)
-active_entry_loc s = mpass (viewlist_entry_loc s) (active_entry s)
+viewlist_entry s e       = lnth e (entries_viewlist_plain s)
+viewlist_entry_loc s e   = fromJust $ lnth e (entries_viewlist_loc s)
+selected_entry_loc s     = viewlist_entry_loc s (selected_entry s)
+active_entry_loc s       = mpass (viewlist_entry_loc s) (active_entry s)
 
-n_entries_viewed s = length $ entries_viewlist s
+n_entries_viewed s       = length $ entries_viewlist s
 
-find_viewlist_pos et loc = 
-    viewlist_pos 0 et loc
+find_viewlist_pos et loc = viewlist_pos 0 et loc
     where
         viewlist_pos cpos (e:_) (Loc (0:[])) = cpos
+
         viewlist_pos cpos (e:_) (Loc (0:ll)) =
             case entrytree_expanded e of
                 False -> cpos -- Go to parent
                 True -> viewlist_pos (cpos+1) (entrytree_children e) (Loc ll)
+
         viewlist_pos cpos (e:et) (Loc (l:ll)) =
             viewlist_pos (cpos+1+nchv) et $ Loc ((l-1):ll)
             where
@@ -235,62 +310,50 @@ find_viewlist_pos et loc =
                            True -> length $ entrytree_viewlist $ entrytree_children e
         viewlist_pos _ _ _ = error "Invalid location"
 
--- }}}
-
-
--- Initialisation {{{
-
-get_size :: Entry a => Status a -> IO (Status a)
-get_size s = do
-    (h, w) <- Curses.scrSize
-    return s{screen_width = w, screen_height = h}
-
-init :: Entry a => [StyleSpec] -> IO (Status a)
-init styles = do
-    Curses.initCurses
-    Curses.keypad Curses.stdScr True
-    a <- init_uiattr styles
-    get_size new_status{attr = a}
-
-deinit :: IO ()
-deinit = do
-    Curses.endWin
-    return ()
- 
--- }}}
-
-
--- Drawing {{{
+-- ---------------------------------------------------------------------
+-- Drawing
 
 waddstr w s = Control.Exception.try (Curses.wAddStr w s) >> return ()
 
-cset_attr (a, p) = do
-    Curses.wAttrSet Curses.stdScr (a, p)
+--
+-- | manipulate the current attributes of the standard screen
+--
+cset_attr :: (Curses.Attr, Curses.Pair) -> IO ()
+cset_attr (a, p) = Curses.wAttrSet Curses.stdScr (a, p)
 
-creset_attr = do
-    cset_attr (Curses.attr0, Curses.Pair 0)
+--
+-- | Reset the screen to normal values
+--
+creset_attr :: IO ()
+creset_attr = cset_attr (Curses.attr0, Curses.Pair 0)
 
+--
+-- | Fill line with spaces
+--
+fill_to_eol :: IO ()
 fill_to_eol = do
     (h, w) <- Curses.scrSize
     (y, x) <- Curses.getYX Curses.stdScr
     waddstr Curses.stdScr (replicate (max 0 (w-x)) ' ')
 
+--
+-- |
+--
 draw_lines s d l_first l_last skip f = do
     Curses.wMove Curses.stdScr l_first 0
     do_draw_lines s (drop skip d) l_first l_last skip f
     where
         do_draw_lines s d l l_last nr f
-            | l>l_last = return ()
-            | otherwise = do
+            | l > l_last = return ()
+            | otherwise  = do
                 f s (maybehead d) nr
                 do_draw_lines s (safetail d) (l+1) l_last (nr+1) f
 
-
+-- ---------------------------------------------------------------------
 -- Text area
 
 textarea_text :: Entry a => Status a -> String
-textarea_text s =
-    case active_entry s of
+textarea_text s = case active_entry s of
         Nothing -> []
         Just e -> maybe "" entry_text $ viewlist_entry s e
 
@@ -301,21 +364,22 @@ do_tab_stops pos ('\t':ss) =
     replicate (nxt - pos) ' ' ++ (do_tab_stops nxt ss)
     where
         nxt = next_tab_stop pos
+
 do_tab_stops pos (s:ss) = s:(do_tab_stops (pos + 1) ss)
 
+--
+--
+--
 do_draw_text s text hs vs sl el = do
     cset_attr (attr_text $ attr s)
     draw_lines s (map (do_tab_stops 0) $ lines text) sl el vs drawl
     creset_attr
-    where
-        w = screen_width s
-        drawl s Nothing _ = 
-            fill_to_eol
-        drawl s (Just l) _ = 
-            waddstr Curses.stdScr (take w $ drop hs $ l ++ repeat ' ')
+  where w = screen_width s
+        drawl s Nothing _  = fill_to_eol
+        drawl s (Just l) _ = waddstr Curses.stdScr $
+                                take w $ drop hs $ l ++ repeat ' '
 
-do_draw_textarea s text = do
-    do_draw_text s text hs vs sl el
+do_draw_textarea s text = do_draw_text s text hs vs sl el
     where
         hs = textarea_hscroll s
         vs = textarea_vscroll s
@@ -323,72 +387,73 @@ do_draw_textarea s text = do
         el = textarea_endline s
 
 draw_textarea :: Entry a => Status a -> IO ()
-draw_textarea status =
-    do_draw_textarea status (textarea_text status)
+draw_textarea status = do_draw_textarea status (textarea_text status)
 
+-- ---------------------------------------------------------------------
 -- Info lines
 
 botinfo_text :: Entry a => Status a -> String
-botinfo_text s =
+botinfo_text _s = ""
+{-
     case active_entry s of
         Nothing -> "--"
         Just e -> maybe "--" entry_title $ viewlist_entry s e
-
+-}
 
 midinfo_text :: Entry a => Status a -> String
-midinfo_text s = 
+midinfo_text _s = ""
+{-
     fromMaybe "(no file)" (entries_fname s)
     ++ if unsaved_changes s then " [modified]" else ""
-
+-}
 
 do_draw_infoline_align status line left right = do
-    Curses.wMove Curses.stdScr line 0
+    Curses.wMove Curses.stdScr line 0           -- move the cursor to start of line
     cset_attr (attr_infoline $ attr status)
     waddstr Curses.stdScr ((take n_l left_)++(take n_r right_))
     creset_attr
-    where
-        left_ = left ++ (repeat ' ')
+
+  where left_ = left ++ (repeat ' ')
         right_ = ' ':right
         w = screen_width status
         n_r = min w (length right_)
         n_l = max 0 (w-n_r)
 
-do_draw_infoline status line text = 
-    do_draw_infoline_align status line text ""
+do_draw_infoline status line text = do_draw_infoline_align status line text ""
 
-mk_n_of_m n m = 
-    "("++(show n)++"/"++(show m)++") "
+mk_n_of_m n m = "("++(show n)++"/"++(show m)++") "
 
 draw_topinfo :: Entry a => Status a -> IO ()
-draw_topinfo s =
-    do_draw_infoline s (topinfo_line s) (topinfo_text s) 
+draw_topinfo s = do_draw_infoline s (topinfo_line s) (topinfo_text s) 
 
 draw_midinfo :: Entry a => Status a -> IO ()
-draw_midinfo s =
-    do_draw_infoline_align s l t (mk_n_of_m n m)
+draw_midinfo s = do_draw_infoline_align s l t (mk_n_of_m n m)
     where
         l = midinfo_line s
         t = midinfo_text s
         m = length (entries_viewlist_plain s)
         n = 1 + selected_entry s
        
+--
+-- | draw text into the status (bottom) line on the screen
+--
 draw_botinfo :: Entry a => Status a -> IO ()
-draw_botinfo s =
-    do_draw_infoline_align s l t (mk_n_of_m n m)
+draw_botinfo s = do_draw_infoline_align s l t "(hemacs) " {-(mk_n_of_m n m)-}
     where
         l = botinfo_line s
         t = botinfo_text s
         m = text_n_lines (textarea_text s)
         n = min m $ (textarea_vscroll s)+(textarea_height s)
 
+-- ---------------------------------------------------------------------
 -- Entries
 
 entry_attr s nr =
     case (nr == selected_entry s, Just nr == active_entry s) of
-        (False, False) -> attr_entry $ attr s
-        (True, False)  -> attr_entry_sel $ attr s
-        (False, True)  -> attr_entry_act $ attr s
-        (True, True)   -> attr_entry_act_sel $ attr s
+        (False, False) -> attr_entry         $ attr s
+        (True,  False)  -> attr_entry_sel     $ attr s
+        (False, True)  -> attr_entry_act     $ attr s
+        (True,  True)   -> attr_entry_act_sel $ attr s
 
 do_draw_entry s Nothing _ = do
     cset_attr (attr_entry $ attr s)
@@ -419,27 +484,34 @@ draw_entries s =
         sl = entryarea_startline s
         el = entryarea_endline s
 
+-- ---------------------------------------------------------------------
 -- Refresh
 
+-- 
+-- | redraw the screen
+--
 redraw :: Entry a => Status a -> IO ()
-redraw status = do
-    --Curses.wclear Curses.stdScr
+redraw status = draw_botinfo status
+
+{-
+    -- Curses.wclear Curses.stdScr
     draw_topinfo status
     draw_entries status
     draw_midinfo status
     draw_textarea status
     draw_botinfo status
+-}
 
+--
+-- | redraw and refresh
+--
 refresh s = redraw s >> Curses.refresh
 
--- }}}
-
-
--- Text area scrolling {{{
+-- ---------------------------------------------------------------------
+-- Text area scrolling
 
 max_scroll_ :: Int -> Int -> Int
-max_scroll_ item_s view_s =
-    max 0 (item_s - view_s)
+max_scroll_ item_s view_s = max 0 (item_s - view_s)
 
 text_max_hscroll :: String -> (Int, Int) -> Int
 text_max_hscroll text (_, view_w) =
@@ -450,11 +522,9 @@ text_max_vscroll text (view_h, _) =
     max_scroll_ (text_n_lines text) view_h
 
 textarea_size :: Entry a => Status a -> (Int, Int)
-textarea_size s =
-    (textarea_height s, screen_width s)
+textarea_size s = (textarea_height s, screen_width s)
 
-calc_scroll s asc csc_fn msc_fn = 
-    max 0 (min msc (csc + asc))
+calc_scroll s asc csc_fn msc_fn = max 0 (min msc (csc + asc))
     where
         msc = msc_fn (textarea_text s) (textarea_size s)
         csc = csc_fn s
@@ -494,10 +564,8 @@ check_hscroll s =
 check_textarea :: Entry a => Status a -> Status a
 check_textarea = check_vscroll . check_hscroll
 
--- }}}
-
-
--- Entry selection {{{
+-- ---------------------------------------------------------------------
+-- Entry selection
 
 check_active :: Entry a => Status a -> Status a
 check_active s =
@@ -533,17 +601,17 @@ do_selectentry n s | valid_entry s n =
         h = entryarea_height s
         f_e = entryarea_vscroll s
         l_e = f_e + h - 1
+
 do_selectentry 0 s | n_entries_viewed s == 0 =
     s{selected_entry = 0, entryarea_vscroll = 0}
+
 do_selectentry _ _ = error "Invalid entry"
 
 do_actentry s e | valid_entry s e =
     s{active_entry = Just e, textarea_vscroll = 0, textarea_hscroll = 0}
 
--- }}}
-
-
--- Expand/collapse {{{
+-- ---------------------------------------------------------------------
+-- Expand/collapse
 
 update_entries s et = 
     s{entries = et, active_entry = ae, selected_entry = se}
@@ -551,37 +619,31 @@ update_entries s et =
         ae = mpass (find_viewlist_pos et) (active_entry_loc s)
         se = find_viewlist_pos et (selected_entry_loc s)
 
-do_colexp_loc :: Entry a =>
-    ([EntryTree a] -> Loc -> Maybe [EntryTree a]) -> Status a -> Loc
-    -> Status a
-do_colexp_loc fn s loc =
-    case fn (entries s) loc of
+do_colexp_loc :: Entry a 
+              => ([EntryTree a] -> Loc -> Maybe [EntryTree a]) 
+              -> Status a -> Loc -> Status a
+
+do_colexp_loc fn s loc = case fn (entries s) loc of
         Nothing -> s
         Just et -> check_everything $ update_entries s et
 
-do_colexp :: Entry a =>
-    ([EntryTree a] -> Loc -> Maybe [EntryTree a]) -> Status a -> Int
-    -> Status a
+do_colexp :: Entry a 
+          => ([EntryTree a] -> Loc -> Maybe [EntryTree a]) 
+          -> Status a -> Int -> Status a
+
 do_colexp fn s e = do_colexp_loc fn s $ viewlist_entry_loc s e
 
 do_expand :: Entry a => Status a -> Int -> Status a
-do_expand s e | valid_entry s e =
-    do_colexp entrytree_expand s e
-
+do_expand s e | valid_entry s e = do_colexp entrytree_expand s e
 
 do_collapse :: Entry a => Status a -> Int -> Status a
-do_collapse s e | valid_entry s e =
-    do_colexp entrytree_collapse s e
-
+do_collapse s e | valid_entry s e = do_colexp entrytree_collapse s e
 
 do_collapse_p :: Entry a => Status a -> Int -> Status a
-do_collapse_p s e | valid_entry s e =
-    do_colexp entrytree_collapse_p s e
+do_collapse_p s e | valid_entry s e = do_colexp entrytree_collapse_p s e
 
--- }}}
-
-
--- Undo/redo/save {{{
+-- ---------------------------------------------------------------------
+-- Undo/redo/save
 
 mk_snapshot :: Entry a => Status a -> UndoInfo a
 mk_snapshot s =
@@ -643,9 +705,7 @@ save s = do
         Nothing -> error "No file name set."
         Just fname -> do_save s fname
         
--- }}}
-
-
+-- ---------------------------------------------------------------------
 -- Entry and entry tree manipulation {{{
 
 rm_new_loc_vl [] rmlocv = Nothing
@@ -728,7 +788,6 @@ unmodified_or_empty :: String -> String -> Bool
 unmodified_or_empty n o =
     n == o || (dropWhile isSpace n == [])
 
-
 #ifdef CF_CHARSET_SUPPORT
 
 to_locale str = withLCString str (\s -> peekCString s)
@@ -740,7 +799,6 @@ to_locale str = return str
 from_locale str = return str
 
 #endif
-
 
 do_edit :: String -> IO (String, CalendarTime)
 do_edit text = do
@@ -795,11 +853,8 @@ do_newentry s insw = do
     (text, tm) <- do_edit ""
     liftM (do_insert s insw . new_entrytree) $ new_callback s text tm
 
-
--- }}}
-
-
--- Message & yes/no query {{{
+-- ---------------------------------------------------------------------
+-- Message & yes/no query
 
 do_message :: Entry a =>
     Status a -> (UIAttr -> (Curses.Attr, Curses.Pair)) -> String -> IO ()
@@ -812,18 +867,20 @@ do_message s attr_fn msg = do
 message :: Entry a => Status a -> String -> IO ()
 message s msg = do_message s attr_message msg
 
-
+--
+-- | refresh the window if KeyResize is pressed, otherwise return what
+-- key is pressed.
+--
 get_key s refresh_fn = do
     Control.Exception.catch (Curses.cBreak True) (\_ -> return ())
     k <- Curses.getCh
     case k of
-        Nothing -> get_key s refresh_fn
+        Nothing               -> get_key s refresh_fn
 	Just Curses.KeyResize -> do
 	    snew <- get_size s
 	    refresh_fn snew
 	    get_key snew refresh_fn
-	Just k -> return (s, k)
-
+	Just k                -> return (s, k)
 
 get_yn s yes no cancel refresh_fn = do
     (snew, k) <- get_key s refresh_fn
@@ -835,12 +892,13 @@ get_yn s yes no cancel refresh_fn = do
         (Curses.KeyChar '\^G') -> return (snew, cancel)
         otherwise -> Curses.beep >> get_yn s yes no cancel refresh_fn
 
-yesno :: Entry a => 
-    Status a
-    -> String
-    -> (Status a -> IO (ELCont a))
-    -> (Status a -> IO (ELCont a))
-    -> IO (ELCont a)
+yesno :: Entry a
+      => Status a
+      -> String
+      -> (Status a -> IO (ELCont a))
+      -> (Status a -> IO (ELCont a))
+      -> IO (ELCont a)
+
 yesno s msg yes no = do
     draw_yesno msg s
     Curses.refresh
@@ -856,16 +914,11 @@ yesno s msg yes no = do
             creset_attr
         refresh_fn s = redraw s >> draw_yesno msg s >> Curses.refresh
 
--- }}}
+-- ---------------------------------------------------------------------
+-- Event handling
+--
 
-
--- Event handling {{{
-
-data Entry a => ELCont a =
-    ELCont (Status a) Bool |
-    ELQuit (Status a)
-
--- Generic stuff
+data Entry a => ELCont a = ELCont (Status a) Bool | ELQuit (Status a)
 
 cont :: Entry a => Status a -> IO (ELCont a)
 cont s = return $ ELCont s False
@@ -884,8 +937,7 @@ e_quit s =
     if unsaved_changes s then
         yesno s "Save changes before quitting?"
               (\s_ -> save s_ >>= nocont) nocont
-    else
-        nocont s
+    else nocont s
 
 e_refresh :: Entry a => Status a -> IO (ELCont a)
 e_refresh = \s -> refresh s >> cont s
@@ -893,23 +945,29 @@ e_refresh = \s -> refresh s >> cont s
 e_none :: Entry a => Status a -> IO (ELCont a)
 e_none = cont
 
-e_submap :: Entry a => String -> (Curses.Key -> Status a -> IO (ELCont a)) -> Status a -> IO (ELCont a)
+e_submap :: Entry a 
+         => String 
+         -> (Curses.Key -> Status a -> IO (ELCont a)) 
+         -> Status a 
+         -> IO (ELCont a)
+
 e_submap info submap s = do
     draw_submap s
     Curses.refresh
     (snew, k) <- get_key s refresh_fn
     draw_botinfo snew
     submap k snew
-    where
-        draw_submap s = do
+
+  where draw_submap s = do
             Curses.wMove Curses.stdScr (botinfo_line s) 0
             cset_attr (attr_message $ attr s)
             waddstr Curses.stdScr ("["++info++"-]")
             creset_attr
 	refresh_fn s = redraw s >> draw_submap s >> Curses.refresh
 
-
--- Check if control is set and call handle_key again with the plain key.
+--
+-- | Check if control is set and call handle_key again with the plain key.
+--
 e_fallback handle_key (Curses.KeyChar k)
     | ord '\^A' <= ord k && ord k <= ord '\^Z' =
         handle_key (Curses.KeyChar $ chr $ ord k - ord '\^A' + ord 'a')
@@ -919,9 +977,9 @@ goto_next_or_redraw :: Entry a => Status a -> IO (ELCont a)
 goto_next_or_redraw s =
     if (selected_entry s) + 1 < (n_entries_viewed s) then
         e_nextentry s
-    else
-        draw_entries s >> cont s
+    else draw_entries s >> cont s
 
+-- ---------------------------------------------------------------------
 -- Text view manipulation
 
 update_scroll snew = do
@@ -930,12 +988,10 @@ update_scroll snew = do
     cont snew
 
 e_vscroll :: Entry a => Int -> Status a -> IO (ELCont a)
-e_vscroll amount s =
-    update_scroll (do_vscroll amount s)
+e_vscroll amount s = update_scroll (do_vscroll amount s)
 
 e_hscroll :: Entry a => Int -> Status a -> IO (ELCont a)
-e_hscroll amount s =
-    update_scroll (do_hscroll amount s)
+e_hscroll amount s = update_scroll (do_hscroll amount s)
 
 e_pgdn :: Entry a => Status a -> IO (ELCont a)
 e_pgdn s = e_vscroll ((textarea_height s) `div` 2) s
@@ -949,6 +1005,7 @@ e_eob s = update_scroll s{textarea_vscroll = max_vscroll s}
 e_bob :: Entry a => Status a -> IO (ELCont a)
 e_bob s = update_scroll s{textarea_vscroll = 0}
 
+-- ---------------------------------------------------------------------
 -- Entry tree manipulation
 
 e_selectentry :: Entry a => Int -> Status a -> IO (ELCont a)
@@ -1024,7 +1081,6 @@ e_undo s = cont_refresh (undo s)
 e_redo :: Entry a => Status a -> IO (ELCont a)
 e_redo s = cont_refresh (redo s)
     
-
 -- Tags
 
 e_tag :: Entry a => TagAction -> Status a -> IO (ELCont a)
@@ -1062,35 +1118,3 @@ e_save s = do
     draw_midinfo snew
     message snew $ "Saved " ++ (fromMaybe "???" $  entries_fname s)
     cont_clr snew
-
-
--- }}}
-
-
--- Main event loop {{{
-
-do_except :: Entry a => Status a -> Control.Exception.Exception -> IO (ELCont a)
-do_except s e = do
-    Curses.beep
-    do_message s attr_error (show e)
-    cont_clr s
-
-event_loop_ :: Entry a =>
-    Status a
-    -> (Curses.Key -> Status a -> IO (ELCont a))
-    -> Bool
-    -> IO ()
-event_loop_ s keyhandler clr = do
-    (snew, k) <- get_key s refresh
-    if clr then draw_botinfo snew else return ()
-    c <- Control.Exception.catch (keyhandler k snew) (do_except snew)
-    case c of
-        ELQuit _ ->  return ()
-        ELCont snew clr -> Curses.refresh >> event_loop_ snew keyhandler clr
-
-event_loop :: Entry a => Status a -> (Curses.Key -> Status a -> IO (ELCont a)) -> IO ()
-event_loop s k = 
-    Curses.withCursor Curses.CursorInvisible $ event_loop_ s k False
-
--- }}}
-

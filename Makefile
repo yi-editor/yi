@@ -24,19 +24,22 @@ PKG=            hemacs
 BIN_OBJS=       Boot.o
 BIN_DEPS=       plugins
 BIN_LIBS=       $(CURSES) $(ICONV)
+HADDOCK_SRCS+=  Boot.hs
 
 # static front end
  
 STATIC_OBJS=    Main.o
 STATIC_BIN_DEPS=hemacs
-STATIC_BIN_LIBS=$(CURSES) $(ICONV)
+#STATIC_BIN_LIBS=$(CURSES) $(ICONV)
 STATIC_HC_OPTS  += -package-conf hemacs.conf
+HADDOCK_SRCS+=  Main.hs
 
 # frontend to the library (by which it is loaded)
 
 FRONTEND_HS_SRC=HEmacs.hs
 LIB_FRONTEND=   HEmacs.o
 LIB_IFACE   =   HEmacs.hi
+HADDOCK_SRCS+=  $(FRONTEND_HS_SRC)
 
 #
 # read in suffix rules
@@ -51,7 +54,7 @@ include $(TOPDIR)/mk/rules.mk
 # Boot is the bootstrap loader. It cant be linked *statically* against -package hemacs.
 #
 Boot.o: Boot.hs 
-	$(GHC) $(HC_OPTS) $(BIN_HC_OPTS) -DLIBDIR=\"$(LIBDIR)\" -main-is Boot.main -c $< -o $@ -ohi $(basename $@).$(way)hi
+	$(GHC) $(HC_OPTS) $(BIN_HC_OPTS) $(DEFINES) -main-is Boot.main -c $< -o $@ -ohi $(basename $@).$(way)hi
 
 #
 # Main is the static "loader". It can't get -package-name hemacs, or it

@@ -9,22 +9,30 @@
 -- (at your option) any later version.
 --
 
-module HEmacs.Style(
-    UIAttr(..), StyleSpec(..),
-    init_uiattr, default_uiattr, 
-    -- Colours
-    c_default, c_black, c_red, c_green, c_yellow, 
-    c_blue, c_magenta, c_cyan, c_white,
-    -- Attributes
-    sa_bold, sa_underline, sa_dim, sa_reverse,
-    a_none, a_bold, a_underline, a_dim, a_reverse,
-)where
+--
+-- | Colors and friends
+--
+
+module HEmacs.Style (
+
+        UIAttr(..), StyleSpec(..),
+        init_uiattr, default_uiattr, 
+
+        -- Colours
+        c_default, c_black, c_red, c_green, c_yellow, 
+        c_blue, c_magenta, c_cyan, c_white,
+
+        -- Attributes
+        sa_bold, sa_underline, sa_dim, sa_reverse,
+        a_none, a_bold, a_underline, a_dim, a_reverse,
+
+   ) where
 
 import qualified HEmacs.Curses as Curses
 
 import Data.Maybe        ( fromJust )
 
-c_default   = fromJust $ Curses.color "default"
+c_default   = fromJust $ Curses.color "default" -- doesn't work?
 c_black     = fromJust $ Curses.color "black"
 c_red       = fromJust $ Curses.color "red"
 c_green     = fromJust $ Curses.color "green"
@@ -82,7 +90,11 @@ uiattr_set a "attr_entry_act_sel" v = a{attr_entry_act_sel = v}
 uiattr_set a "attr_error" v = a{attr_error = v}
 uiattr_set a "attr_message" v = a{attr_message = v}
 
-init_style :: (Curses.Attr, Curses.Color, Curses.Color) -> Curses.Pair -> Bool -> IO(Curses.Attr, Curses.Pair)
+init_style :: (Curses.Attr, Curses.Color, Curses.Color) 
+           -> Curses.Pair 
+           -> Bool 
+           -> IO(Curses.Attr, Curses.Pair)
+
 init_style (a, fg, bg) p bw =
     case bw of
         True -> return (a, Curses.Pair 0)
@@ -94,12 +106,15 @@ do_init_styles a styles bw pair =
         [] -> return a
         (StyleSpec (name, dflt):more) -> do
             attr <- init_style dflt (Curses.Pair pair) bw
-            a2 <- return (uiattr_set a name attr)
+            a2   <- return (uiattr_set a name attr)
             do_init_styles a2 more bw (pair+1)
 
+--
+-- | Set up the ui attributes
+--
 init_uiattr :: [StyleSpec] -> IO (UIAttr)
 init_uiattr styles = do
-    p <- Curses.colorPairs
-    bw <- return (p<length styles)
+    p <- Curses.colorPairs              -- how many colors
+    let bw = p < length styles
     do_init_styles default_uiattr styles bw 1
 

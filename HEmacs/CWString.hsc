@@ -1,5 +1,27 @@
-{-# OPTIONS -ffi #-}
+-- 
+-- Copyright (c) 2002-2004 John Meacham (john at repetae dot net)
+-- 
+-- Permission is hereby granted, free of charge, to any person obtaining a
+-- copy of this software and associated documentation files (the
+-- "Software"), to deal in the Software without restriction, including
+-- without limitation the rights to use, copy, modify, merge, publish,
+-- distribute, sublicense, and/or sell copies of the Software, and to
+-- permit persons to whom the Software is furnished to do so, subject to
+-- the following conditions:
+-- 
+-- The above copyright notice and this permission notice shall be included
+-- in all copies or substantial portions of the Software.
+-- 
+-- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+-- OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+-- MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+-- IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+-- CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+-- TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+-- SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+-- 
 -- arch-tag: 72067bff-05e1-4c0e-94aa-34b54f437d92
+--
 
 module HEmacs.CWString (
 
@@ -55,22 +77,13 @@ import GHC.Exts
 
 #ifdef CF_WCHAR_SUPPORT
 
-{-
-#ifndef CONFIG_INCLUDED
-#define CONFIG_INCLUDED
-#include <config.h>
-#endif
--}
-
 #include <wchar.h>
 #include <limits.h>
 #include <stdlib.h>
 
-
 type CWChar = (#type wchar_t)
 type CWString = Ptr CWChar
 type CWStringLen = (CWString, Int)
-
 
 fi x = fromIntegral x
 
@@ -97,7 +110,6 @@ cwCharsToChars xs  = map castCWCharToChar xs
 charsToCWChars :: [Char] -> [CWChar]
 charsToCWChars xs  = map castCharToCWChar xs
 
-
 #endif
 -- __STDC_ISO_10646__
 
@@ -106,7 +118,6 @@ castCWCharToChar ch = chr (fromIntegral ch )
 
 castCharToCWChar :: Char -> CWChar
 castCharToCWChar ch = fromIntegral (ord ch)
-
 
 -- exported functions
 peekCWString    :: CWString -> IO String
@@ -208,9 +219,6 @@ withMBState act = allocaBytes (#const sizeof(mbstate_t)) (\mb -> c_memset mb 0 (
 clearMBState :: MBState -> IO ()
 clearMBState (MBState mb) = c_memset mb 0 (#const sizeof(mbstate_t)) >> return ()
 
-
-
-
 wcsrtombs :: CWString -> (CString, CSize) -> IO CSize
 wcsrtombs wcs (cs,len) = alloca (\p -> poke p wcs >> withMBState (\mb -> wcsrtombs' p cs len mb)) where
     wcsrtombs'  p cs len mb = c_wcsrtombs cs p len mb >>= \x -> case x of 
@@ -243,13 +251,10 @@ foreign import ccall unsafe "stdlib.h mbstowcs" c_mbstowcs :: CWString -> CStrin
 
 mbstowcs a b s = throwIf (== -1) (const "mbstowcs") $ c_mbstowcs a b s 
 
-
 peekLCString    :: CString -> IO String
 peekLCString cp  = do 
     sz <- mbstowcs nullPtr cp 0
     allocaArray (fi $ sz + 1) (\wcp -> mbstowcs wcp cp (sz + 1) >> peekCWString wcp)
-
-
 
 -- TODO fix for embeded NULs
 peekLCStringLen           :: CStringLen -> IO String
@@ -258,30 +263,41 @@ peekLCStringLen (cp, len)  =  allocaBytes (len + 1) $ \ncp -> do
     pokeElemOff ncp len 0
     peekLCString ncp
     
-
 newLCString :: String -> IO CString
-newLCString s = withCWString s $ \wcs -> do mallocArray0 alen >>= \cs -> wcsrtombs wcs (cs, fi alen) >> return cs where
-    alen = mb_cur_max * length s
-                               
+newLCString s = 
+    withCWString s $ \wcs -> do 
+        cs <- mallocArray0 alen
+        wcsrtombs wcs (cs, fi alen)
+        return cs 
+
+    where alen = mb_cur_max * length s
 
 newLCStringLen     :: String -> IO CStringLen
 newLCStringLen str  = newLCString str >>= \cs -> return (pairLength1 str cs)
 
 withLCString :: String -> (CString -> IO a) -> IO a
-withLCString s a = withCWString s $ \wcs -> allocaArray0 alen (\cs -> wcsrtombs wcs (cs,fi alen) >> a cs) where
-    alen = mb_cur_max * length s
+withLCString s a = 
+    withCWString s $ \wcs -> 
+        allocaArray0 alen $ \cs -> 
+            wcsrtombs wcs (cs,fi alen) >> a cs
 
-withLCStringLen         :: String -> (CStringLen -> IO a) -> IO a
-withLCStringLen s a = withCWString s $ \wcs -> allocaArray0 alen (\cs -> wcsrtombs wcs (cs,fi alen) >>= \sz -> a (cs,fi sz)) where
-    alen = mb_cur_max * length s
+    where alen = mb_cur_max * length s
 
+withLCStringLen :: String -> (CStringLen -> IO a) -> IO a
+withLCStringLen s a = 
+    withCWString s $ \wcs -> 
+        allocaArray0 alen $ \cs -> do
+            sz <- wcsrtombs wcs (cs,fi alen)
+            a (cs,fi sz)
+
+    where alen = mb_cur_max * length s
 
 pairLength1 :: String -> CString -> CStringLen
 pairLength1  = flip (,) . length
 
-
 #else
--- no CF_WCHAR_SUPPORT
+-- -----------------------------------------------------------
+-- no CF_WCHAR_SUPPORT (OpenBSD)
 
 charIsRepresentable :: Char -> IO Bool
 charIsRepresentable ch = return $ isLatin1 ch
@@ -296,11 +312,9 @@ peekLCStringLen = peekCStringLen
 #endif
 -- no CF_WCHAR_SUPPORT
 
-
 -----------------
 -- UTF8 versions
 -----------------
-
 
 withUTF8String :: String -> (CString -> IO a) -> IO a
 withUTF8String hsStr = CForeign.withCString (toUTF hsStr)
@@ -319,7 +333,6 @@ peekUTF8String strPtr = fmap fromUTF $ CForeign.peekCString strPtr
 
 peekUTF8StringLen :: CStringLen -> IO String
 peekUTF8StringLen strPtr = fmap fromUTF $ CForeign.peekCStringLen strPtr
-
 
 -- these should read and write directly from/to memory.
 -- A first pass will be needed to determine the size of the allocated region
@@ -353,5 +366,4 @@ fromUTF (all@(x:xs)) | ord x<=0x7F = x:fromUTF xs
     threeBytes _ = error "fromUTF: illegal three byte sequence" 
     
     err = error "fromUTF: illegal UTF-8 character"
-
 

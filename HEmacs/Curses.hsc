@@ -1,22 +1,58 @@
+-- 
+-- Copyright (c) 2002-2004 John Meacham (john at repetae dot net)
+-- 
+-- Permission is hereby granted, free of charge, to any person obtaining a
+-- copy of this software and associated documentation files (the
+-- "Software"), to deal in the Software without restriction, including
+-- without limitation the rights to use, copy, modify, merge, publish,
+-- distribute, sublicense, and/or sell copies of the Software, and to
+-- permit persons to whom the Software is furnished to do so, subject to
+-- the following conditions:
+-- 
+-- The above copyright notice and this permission notice shall be included
+-- in all copies or substantial portions of the Software.
+-- 
+-- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+-- OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+-- MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+-- IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+-- CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+-- TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+-- SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+-- 
 -- arch-tag: b25d31d1-0529-4b27-87e3-01618e25c135
+--
+
+--
+-- | Binding to the [wn]curses library. From the ncurses man page:
+--
+-- >      The curses library routines give the user a terminal-inde-
+-- >      pendent method of updating character screens with  reason-
+-- >      able  optimization.
+-- 
+-- Sections of the quoted documentation are from the OpenBSD man pages, which
+-- are distributed under a BSD license.
+--
+
+-- Could we also try ocurses?
 
 module HEmacs.Curses (
 
     --------------------------------------------------------------------
     
-    Window,      -- data Window deriving Eq
-    stdScr,      -- :: Window
-    initScr,     -- :: IO Window
-    cBreak,      -- :: Bool -> IO ()
-    raw,         -- :: Bool -> IO ()
-    echo,        -- :: Bool -> IO ()
-    nl,          -- :: Bool -> IO ()
-    intrFlush,   -- :: Bool -> IO ()
-    keypad,      -- :: Window -> Bool -> IO ()
-    noDelay,     -- :: Window -> Bool -> IO ()
-    initCurses,  -- :: IO ()
-    useDefaultColors, -- :: IO ()
-    endWin,      -- :: IO ()
+    Window,             -- data Window deriving Eq
+    stdScr,             -- :: Window
+    initScr,            -- :: IO Window
+    cBreak,             -- :: Bool -> IO ()
+    raw,                -- :: Bool -> IO ()
+    echo,               -- :: Bool -> IO ()
+    nl,                 -- :: Bool -> IO ()
+    intrFlush,          -- :: Bool -> IO ()
+    keypad,             -- :: Window -> Bool -> IO ()
+    noDelay,            -- :: Window -> Bool -> IO ()
+    initCurses,         -- :: IO ()
+    useDefaultColors,   -- :: IO ()
+    endWin,             -- :: IO ()
     resizeTerminal,
     
     clearOk,
@@ -111,31 +147,28 @@ module HEmacs.Curses (
 
     cursesSigWinch,
     cursesTest
-    ) 
     
     --------------------------------------------------------------------
-    where
+  ) where 
 
-import HEmacs.GenUtil(foldl')
 import HEmacs.CWString
 
-import Prelude hiding (pi)
-import Monad 
-import Char           (chr, ord, isPrint, isSpace, toLower)
-import Ix             (Ix)
+import Prelude hiding   ( pi )
 
+import Data.Char        ( chr, ord, isPrint, isSpace, toLower )
+import Data.Ix          ( Ix )
 import Data.Bits
+import Data.List
+import Data.Maybe
+
+import Control.Monad
 import Control.Concurrent
+import Control.Exception hiding ( block )
 import Foreign
 import CForeign
 
 import System.IO.Unsafe
-import Control.Exception hiding(block)
-
 import System.Posix.Signals
-import List 
-import Monad
-import Maybe
 
 #include <my_curses.h>
 
@@ -159,11 +192,28 @@ throwIfErr_ name act = void $ throwIfErr name act
 data WindowTag 
 type Window = Ptr WindowTag
 
+--
+-- | The standard screen
+--
 stdScr :: Window
 stdScr = unsafePerformIO (peek stdscr)
 foreign import ccall "static my_curses.h &stdscr" stdscr :: Ptr Window
 
-
+--
+-- | initscr is normally the first curses routine to call when
+-- initializing a program. curs_initscr(3):
+--
+-- >     To initialize the routines, the routine initscr or newterm
+-- >     must be called before any of the other routines that  deal
+-- >     with  windows  and  screens  are used. 
+--
+-- >     The initscr code determines the terminal type and initial-
+-- >     izes all curses data structures.  initscr also causes  the
+-- >     first  call  to  refresh  to  clear the screen.  If errors
+-- >     occur, initscr writes  an  appropriate  error  message  to
+-- >     standard error and exits; otherwise, a pointer is returned
+-- >     to stdscr.
+--
 initScr :: IO Window
 initScr = throwIfNull "initscr" initscr
 foreign import ccall unsafe "my_curses.h initscr" initscr :: IO Window
@@ -197,9 +247,11 @@ intrFlush bf =
     throwIfErr_ "intrflush" $ intrflush stdScr (if bf then 1 else 0)
 foreign import ccall unsafe "my_curses.h intrflush" intrflush :: Window -> (#type bool) -> IO CInt
 
+--
+-- | Enable the keypad of the user's terminal.
+--
 keypad :: Window -> Bool -> IO ()
-keypad win bf =
-    throwIfErr_ "keypad" $ keypad_c win (if bf then 1 else 0)
+keypad win bf = throwIfErr_ "keypad" $ keypad_c win (if bf then 1 else 0)
 foreign import ccall unsafe "my_curses.h keypad" keypad_c :: Window -> (#type bool) -> IO CInt
 
 noDelay :: Window -> Bool -> IO ()
@@ -240,6 +292,9 @@ defineKey k s = return ()
 
 #endif
 
+--
+-- | 
+--
 initCurses :: IO ()
 initCurses = do
     initScr
@@ -257,12 +312,19 @@ initCurses = do
     defineKey (#const KEY_SLEFT) "\x1b[1;2D"
     defineKey (#const KEY_SRIGHT) "\x1b[1;2C"
 
+--
+-- | >  The program must call endwin for each terminal being used before
+--   >  exiting from curses.
+--
 endWin :: IO ()
 endWin = throwIfErr_ "endwin" endwin
 foreign import ccall unsafe "my_curses.h endwin" endwin :: IO CInt
 
 ------------------------------------------------------------------------
 
+--
+-- | get the dimensions of the screen
+--
 scrSize :: IO (Int, Int)
 scrSize = do
     lines <- peek linesPtr
@@ -270,12 +332,16 @@ scrSize = do
     return (fromIntegral lines, fromIntegral cols)
 
 foreign import ccall "my_curses.h &LINES" linesPtr :: Ptr CInt
-foreign import ccall "my_curses.h &COLS" colsPtr :: Ptr CInt
+foreign import ccall "my_curses.h &COLS"  colsPtr  :: Ptr CInt
 
-
+--
+-- | refresh curses windows and lines. curs_refresh(3)
+--
 refresh :: IO ()
 refresh = throwIfErr_ "refresh" refresh_c
-foreign import ccall unsafe "my_curses.h refresh" refresh_c :: IO CInt
+
+foreign import ccall unsafe "my_curses.h refresh" 
+    refresh_c :: IO CInt
 
 ------------------------------------------------------------------------
 
@@ -289,11 +355,15 @@ foreign import ccall unsafe start_color :: IO CInt
 
 newtype Pair = Pair Int deriving (Eq, Ord, Ix)
 
+--
+-- | colorPairs defines the maximum number of color-pairs the terminal
+-- can support). 
+--
 colorPairs :: IO Int
 colorPairs = fmap fromIntegral $ peek colorPairsPtr
 
-
-foreign import ccall "my_curses.h &COLOR_PAIRS" colorPairsPtr :: Ptr CInt
+foreign import ccall "my_curses.h &COLOR_PAIRS" 
+        colorPairsPtr :: Ptr CInt
 
 newtype Color = Color Int deriving (Eq, Ord, Ix)
 
@@ -392,14 +462,30 @@ foreign import ccall unsafe "my_curses.h wattroff" wattroff :: Window -> CInt ->
 foreign import ccall standout :: IO Int
 foreign import ccall standend :: IO Int
 
+--
+-- |
+--
 wAttrSet :: Window -> (Attr,Pair) -> IO ()
 wAttrSet w (a,(Pair p)) = throwIfErr_ "wattr_set" $ wattr_set w a (fromIntegral p) nullPtr
+
+--
+-- | manipulate the current attributes of the named window. see curs_attr(3)
+--
 wAttrGet :: Window -> IO (Attr,Pair)
-wAttrGet w =  alloca $ \pa -> alloca $ \pp -> (throwIfErr_ "wattr_get" $ wattr_get w pa pp nullPtr) >> (peek pa >>=  \a -> peek pp >>=  \p -> return (a,Pair (fromIntegral p)))
+wAttrGet w =
+    alloca $ \pa -> 
+        alloca $ \pp -> do
+            throwIfErr_ "wattr_get" $ wattr_get w pa pp nullPtr
+            a <- peek pa
+            p <- peek pp
+            return (a,Pair $ fromIntegral p)
 
 
 newtype Attr = Attr (#type attr_t) deriving (Eq,Storable,Bits, Num, Show)
 
+--
+-- | Normal display (no highlight)
+--
 attr0 :: Attr
 attr0 = Attr (#const WA_NORMAL)
 
@@ -607,20 +693,37 @@ wclear :: Window -> IO ()
 wclear w = throwIfErr_ "wclear" $ wclear_c  w
 foreign import ccall unsafe "wclear" wclear_c :: Window -> IO CInt
 
-
-
 clrToEol :: IO ()
 clrToEol = throwIfErr_ "clrtoeol" clrtoeol
 foreign import ccall unsafe clrtoeol :: IO CInt
 
+--
+-- | >    move the cursor associated with the window
+--   >    to line y and column x.  This routine does  not  move  the
+--   >    physical  cursor  of the terminal until refresh is called.
+--   >    The position specified is relative to the upper  left-hand
+--   >    corner of the window, which is (0,0).
+--
+-- Note that 'move_c' may be a macro.
+--
 move :: Int -> Int -> IO ()
-move y x =
-    throwIfErr_ "move" $ move_c (fromIntegral y) (fromIntegral x)
-foreign import ccall unsafe "move" move_c :: CInt -> CInt -> IO CInt
+move y x = throwIfErr_ "move" $ move_c (fromIntegral y) (fromIntegral x)
 
+foreign import ccall unsafe "move" 
+    move_c :: CInt -> CInt -> IO CInt
+
+--
+-- | >    move the cursor associated with the window
+--   >    to line y and column x.  This routine does  not  move  the
+--   >    physical  cursor  of the terminal until refresh is called.
+--   >    The position specified is relative to the upper  left-hand
+--   >    corner of the window, which is (0,0).
+--
 wMove :: Window -> Int -> Int -> IO ()
 wMove w y x = throwIfErr_ "wmove" $ wmove w (fi y) (fi x)
-foreign import ccall unsafe  wmove :: Window -> CInt -> CInt -> IO CInt
+
+foreign import ccall unsafe  
+    wmove :: Window -> CInt -> CInt -> IO CInt
 
 ------------------
 -- Cursor routines
@@ -634,20 +737,56 @@ vis_c vis = case vis of
     CursorVisible     -> 1
     CursorVeryVisible -> 2
     
-foreign import ccall unsafe "my_curses.h curs_set" curs_set :: CInt -> IO CInt
 
-cursSet 0 = leaveOk True >> curs_set 0
+--
+-- | Set the cursor state
+--
+-- >       The curs_set routine sets  the  cursor  state  is  set  to
+-- >       invisible, normal, or very visible for visibility equal to
+-- >       0, 1, or 2 respectively.  If  the  terminal  supports  the
+-- >       visibility   requested,   the  previous  cursor  state  is
+-- >       returned; otherwise, ERR is returned.
+--
+cursSet 0 = leaveOk True  >> curs_set 0
 cursSet n = leaveOk False >> curs_set n 
 
-withCursor :: CursorVisibility -> IO a -> IO a
-withCursor nv action = Control.Exception.bracket (cursSet (vis_c nv)) (\v -> case v of 
-		(#const ERR) -> return 0
-		x -> cursSet x) (\_ -> action)
+foreign import ccall unsafe "my_curses.h curs_set" 
+    curs_set :: CInt -> IO CInt
 
-foreign import ccall unsafe "nomacro.h nomacro_getyx" nomacro_getyx :: Window -> Ptr CInt -> Ptr CInt -> IO ()
+--
+-- | set the cursor, and do action
+--
+withCursor :: CursorVisibility -> IO a -> IO a
+withCursor nv action = 
+    Control.Exception.bracket 
+        (cursSet (vis_c nv))            -- before
+        (\v -> case v of                -- after
+                (#const ERR) -> return 0
+                x            -> cursSet x) 
+        (\_ -> action)                  -- do this
+
+-- 
+-- | Get the current cursor coordinates
+--
 getYX :: Window -> IO (Int, Int)
-getYX w =  alloca $ \py -> alloca $ \px -> (nomacro_getyx w py px)
-           >> (peek py >>=  \y -> peek px >>=  \x -> return (fromIntegral y, fromIntegral x))
+getYX w =
+    alloca $ \py ->                 -- allocate two ints on the stack
+        alloca $ \px -> do
+            nomacro_getyx w py px   -- writes current cursor coords
+            y <- peek py
+            x <- peek px
+            return (fromIntegral y, fromIntegral x)
+
+--
+-- | Get the current cursor coords, written into the two argument ints.
+--
+-- >    The getyx macro places the current cursor position of the given
+-- >    window in the two integer variables y and x.
+--
+--      void getyx(WINDOW *win, int y, int x);
+--
+foreign import ccall unsafe "nomacro.h nomacro_getyx" 
+        nomacro_getyx :: Window -> Ptr CInt -> Ptr CInt -> IO ()
 
 ------------------------------------------------------------------------
 
@@ -681,11 +820,11 @@ wClrToEol :: Window -> IO ()
 wClrToEol w = throwIfErr_ "wclrtoeol" $ wclrtoeol w
 foreign import ccall unsafe wclrtoeol :: Window -> IO CInt
 
-
-
-
+--
+-- | >      The getch, wgetch, mvgetch and mvwgetch, routines read a
+--   >      character  from the window.
+--
 foreign import ccall threadsafe getch :: IO CInt
-
 
 --foreign import ccall unsafe def_prog_mode :: IO CInt
 --foreign import ccall unsafe reset_prog_mode :: IO CInt
@@ -830,9 +969,9 @@ decodeKey key = case key of
 #endif
     _                          -> KeyUnknown (fromIntegral key)
 
-
-
-
+-- ---------------------------------------------------------------------
+-- get char
+--
 
 --getCh :: IO Key
 --getCh = threadWaitRead 0 >> (liftM decodeKey $ throwIfErr "getch" getch)
@@ -849,12 +988,15 @@ decodeKey key = case key of
 -- 	(#const ERR) -> yield >> getCh 
 -- 	x -> return $ decodeKey x
 
+--
+-- | read a character from the window
+--
 getCh :: IO (Maybe Key)
 getCh = do
     v <- getch
     return $ case v of
                  (#const ERR) -> Nothing
-                 k_ -> Just $ decodeKey k_
+                 k            -> Just $ decodeKey k
 
 resizeTerminal :: Int -> Int -> IO ()
 
@@ -1122,14 +1264,11 @@ foreign import ccall unsafe hs_curses_acs_sterling :: IO (#type chtype)
 
 #endif 
 
--------------------------
+-- ---------------------------------------------------------------------
 -- code graveyard
--------------------------
+--
 
- 
-
-
-#if 0
+{-
 
 addStr :: String -> IO ()
 addStr str =
@@ -1137,9 +1276,13 @@ addStr str =
     withCStringConv (readIORef cursesOutConv) str addstr
 foreign import ccall unsafe addstr :: Ptr CChar -> IO CInt
 
-addStrLn :: Strin -> IO ()
-addStrLn str = do addStr str; addLn
+addStrLn :: String -> IO ()
+addStrLn str = addStr str >> addLn
 
+--
+-- | add a string of characters to a curses window and advance cursor
+-- curs_addstr(3)
+--
 wAddStr :: Window -> String -> IO ()
 wAddStr w str = throwIfErr_ "waddstr" $
     withCStringConv (readIORef cursesOutConv) str (waddstr w)
@@ -1168,4 +1311,6 @@ addGraphStr str = do
 addGraphStrLn :: String -> IO ()
 addGraphStrLn str = do addGraphStr str; addLn
 
-#endif
+-}
+
+-- vim: sw=4 ts=4

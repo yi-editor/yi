@@ -43,7 +43,7 @@ module HEmacs.GenUtil(
     -- ** Random routines
     repMaybe,
     liftT2, liftT3, liftT4, 
-    snub, snubFst, sortFst, groupFst, foldl',
+    snub, snubFst, sortFst, groupFst, {-foldl',-}
     fmapLeft,fmapRight,isDisjoint,isConjoint,
     -- ** Monad routines
     repeatM, repeatM_, replicateM, replicateM_, maybeToMonad,
@@ -414,11 +414,16 @@ buildTableLL ps = map f ps where
     f (x,y) = x ++ replicate (bs - length x) ' ' ++ replicate 4 ' ' ++ y
     bs = maximum (map (length . fst) ps)
 
-{-# INLINE foldl' #-}
+{-
+-- Take this from Data.List
+
 -- | strict version of 'foldl'
 foldl' :: (a -> b -> a) -> a -> [b] -> a
 foldl' _ a []     = a
 foldl' f a (x:xs) = (foldl' f $! f a x) xs
+{-# INLINE foldl' #-}
+
+-}
 
 
 -- | randomly permute a list, using the standard random number generator.

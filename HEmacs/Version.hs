@@ -9,6 +9,10 @@
 -- (at your option) any later version.
 --
 
+--
+-- | Version information
+--
+
 module HEmacs.Version where
 
 package = "hemacs"

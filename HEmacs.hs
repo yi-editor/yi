@@ -10,8 +10,11 @@
 --
 
 --
--- This is the real main module of HEmacs, and is shared between Main.hs
--- (the static binary), and dynamically loaded by Boot.hs.
+-- | This is the real main module of HEmacs, and is shared between
+-- Main.hs (the static binary), and dynamically loaded by Boot.hs.
+-- We take any config arguments from the boot loader (if that is how we
+-- are being invoked) parse command line args, initialise the ui, before
+-- jumping into an event loop.
 --
 
 module HEmacs (static_main, dynamic_main) where
@@ -34,7 +37,7 @@ import System.Posix.Signals as Signals
 import GHC.Base                 ( unsafeCoerce# )
 
 -- ---------------------------------------------------------------------
--- Argument parsing. Pretty standard, except for the trick with -B.
+-- | Argument parsing. Pretty standard, except for the trick with -B.
 -- The -B flag is needed, and used by Boot.hs to find the runtime
 -- libraries. We still parse it here, but ignore it.
 
@@ -79,7 +82,7 @@ do_args args =
         (_, _, errs) -> error (concat errs)
 
 -- ---------------------------------------------------------------------
--- Initialise the gui
+-- | Initialise the gui
 
 initui :: [EntryTree MBoxEntry] -> String -> IO (UI.Status MBoxEntry)
 initui tt fname = do
@@ -94,10 +97,13 @@ initui tt fname = do
 -- Set up the signal handlers
 
 --
--- why does this take an arg?
+-- Notes on setStoppedChildFlag:
+--      If this bit is set when installing a catching function for the SIGCHLD
+--      signal, the SIGCHLD signal will be generated only when a child process
+--      exits, not when a child process stops.
 --
-init_sighandlers :: t -> IO Handler
-init_sighandlers _ = do 
+init_sighandlers :: IO Handler
+init_sighandlers = do 
     -- Signals.setStoppedChildFlag True -- crashes rts on openbsd
     Signals.installHandler Signals.sigCHLD Signals.Default Nothing
     Signals.installHandler Signals.sigINT  Signals.Ignore Nothing
@@ -109,7 +115,7 @@ release_sighandlers = do
     Signals.installHandler Signals.sigPIPE Signals.Default Nothing
 
 -- ---------------------------------------------------------------------
--- The "g_settings" var stores the user-configurable information. It is
+-- | The "g_settings" var stores the user-configurable information. It is
 -- initialised with the default settings, so it works even if the user
 -- doesnt provide a ~/.hemacs/Config.hs, or stuffs up Config.hs in some
 -- way.
@@ -119,15 +125,15 @@ g_settings = unsafePerformIO $ newIORef (HEmacs.ConfigAPI.settings)
 {-# NOINLINE g_settings #-}
 
 --
--- given a record selector, return that field from the settings
+-- | Given a record selector, return that field from the settings
 --
 get_global :: (HEmacs.ConfigAPI.Config -> a) -> IO a
 get_global selector = readIORef g_settings >>= \v -> return $ selector v
 
 -- ---------------------------------------------------------------------
---
--- Static main. This is the front end to the statically linked
--- application.
+-- | Static main. This is the front end to the statically linked
+-- application, and the real front end, in a sense. dynamic_main calls
+-- this after setting preferences passed from the boot loader.
 --
 static_main :: IO ()
 static_main = do
@@ -138,22 +144,35 @@ static_main = do
     hk <- get_global HEmacs.ConfigAPI.handle_key
     
     tt' <- return $! tt -- Force load before initialising UI
-    bracket (initui tt' fname >>= \s -> init_sighandlers s >> return s)
-            (\_ -> UI.deinit >> release_sighandlers)
-            (\s -> UI.refresh s >> UI.event_loop s hk)
+    
+    --
+    -- initialise the ui getting an initial editor state, 
+    -- set signal handlers, then jump to ui event loop with the state.
+    -- Atm, the state is /explicitly threaded/. TODO fix this. I want a
+    -- global var.
+    --
+    bracket (initui tt' fname >>= \s -> init_sighandlers >> return s) -- before
+            (\_ -> UI.deinit    >> release_sighandlers)               -- after
+            (\s -> UI.refresh s >> UI.event_loop s hk)                -- action
 
 
 -- ---------------------------------------------------------------------
---
--- Ddynamic main. This is jumped to from from Boot.hs, after dynamically
--- loading HShemacs.o
+-- | Dynamic main. This is jumped to from from Boot.hs, after dynamically
+-- loading HShemacs.o. It takes in user preferences, sets a global
+-- variable if any settings were received, then jumps to static main.
 --
 dynamic_main :: HEmacsMainType
 dynamic_main v = putStrLn "done." >> dynamic_main' v
 
 dynamic_main' :: HEmacsMainType
-dynamic_main' Nothing = static_main
 
+dynamic_main' Nothing = static_main     -- No prefs found, use defaults
+
+--
+-- Prefs found by the boot loader, so write them into the global
+-- settings. Anyone got an idea of how to unwrap this value without
+-- using the coerce?
+--
 dynamic_main' (Just (CD cfg)) = do 
     case unsafeCoerce# cfg of   -- MAGIC: to unwrap the config value
         (cfg_ :: HEmacs.ConfigAPI.Config) -> do
@@ -161,12 +180,18 @@ dynamic_main' (Just (CD cfg)) = do
                 static_main
 
 -- ---------------------------------------------------------------------
--- MAGIC type. Also identically defined in Boot.hs. See there for
--- details
+-- | Magic type: encapsulates user prefs determined by the boot loader.
+-- Also identically defined in Boot.hs. Why so magic -- the type is
+-- defined here, but the boot loader generates a value of this type. Yet
+-- the boot loader *is not* statically linked against this module. So
+-- the type is defined in the boot loader too.
 --
-
 data ConfigData = forall a. CD a {- has Config type -}
 
+--
+-- | Maybe a set of user preferences, if the boot loader found
+-- ~/.hemacs/Config.hs
+--
 type HEmacsMainType = (Maybe ConfigData) -> IO ()
 
 -- vim: sw=4 ts=4

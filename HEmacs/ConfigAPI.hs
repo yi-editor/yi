@@ -51,8 +51,9 @@ settings = Config {
         styles       = dflt_styles
     }
 
--- defaults
-
+-- ---------------------------------------------------------------------
+-- | defaults
+--
 dflt_handle_key :: KeyMap
 dflt_handle_key (KeyChar 'q') = e_quit
 dflt_handle_key (KeyChar '\^R') = e_refresh

@@ -1,16 +1,27 @@
 
 Design plan:
         - get rid of MBox and Editor stuff
+        - store state in a global var
         - design a buffer
         - think about abstractable actions/keybindings
         - clean up code
         - remove posix dependency
+
+Dynamic stuff:
+        - "rebinding" global_vars by writing fields in global settings, using
+          values dynamically compiled.
+                :set some_global_var = map reverse
+          similar effects by reloading Config.hs
+        - scripting: 
+                :map toUpper buffer
+          by compiling, and applying to global var.
 
 Build system:
         - write a configure script
         - check how to install it from a port script
         - think about how to do a testsuite
         - get profiling working
+        - store cpp options in a file, instead of on the command line
 
 Docs:
         - what format docs/hemacs.tex?
