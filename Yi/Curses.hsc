@@ -142,31 +142,34 @@ module Yi.Curses {-(
 
     beep, wAttrSet, wAttrGet,
 
+#ifdef SIGWINCH
     cursesSigWinch,
+#endif
+
     cursesTest
     
     --------------------------------------------------------------------
   )-} where 
 
-import Yi.CWString
+import Yi.CWString              ( withLCStringLen )
 
-import Prelude hiding   ( pi )
-
+import Prelude hiding           ( pi )
 import Data.Char
-import Data.Ix          ( Ix )
 import Data.List
-import Data.Maybe
+import Data.Ix                  ( Ix )
+import Data.Maybe               ( isJust, fromJust )
 
-import Control.Monad
-import Control.Exception hiding ( block )
 import Foreign
 import CForeign
-
-import System.IO.Unsafe
-import System.Posix.Signals
+import Control.Monad
+import Control.Exception        ( bracket, bracket_ )
 
 #if __GLASGOW_HASKELL__ < 603
 import Data.Bits
+#endif
+
+#ifdef SIGWINCH
+import System.Posix.Signals     ( Signal )
 #endif
 
 #include <YiCurses.h>
@@ -1272,20 +1275,10 @@ resizeTerminal _ _ = return ()
 
 #endif
 
-
-cursesSigWinch :: Maybe Signal
-
 #ifdef SIGWINCH
-
+cursesSigWinch :: Maybe Signal
 cursesSigWinch = Just (#const SIGWINCH)
-
-#else
-
-cursesSigWinch = Nothing
-
 #endif
-
-
 
 ------------
 -- Test case

@@ -139,8 +139,8 @@ static_main = do
     mfiles <- do_args args
     config <- readIORef g_settings
     lineno <- readIORef g_lineno
-    bracket_ (initSignals    >> Core.startE config lineno mfiles)
-             (Core.endE      >> releaseSignals)
+    bracket_ (initSignals >> Core.startE config lineno mfiles)
+             (Core.quitE  >> releaseSignals)
              (Core.eventLoop)
 
 -- ---------------------------------------------------------------------

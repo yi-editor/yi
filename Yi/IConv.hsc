@@ -17,17 +17,12 @@ module Yi.IConv {-(
     from_unicode_
   )-} where
 
-import Yi.CWString
+import Yi.CWString          ( peekUTF8StringLen, withUTF8StringLen )
 
-import Control.Exception(bracket)
-import Control.Exception(Exception, try)
-
-import System.IO.Unsafe            ( unsafePerformIO )
-
-import Foreign              hiding ( unsafePerformIO  )
+import Foreign
 import Foreign.C
 import Foreign.C.String
-import Foreign.Ptr
+import Control.Exception    ( Exception, try, bracket )
 
 type IConv = Ptr () --(#type iconv_t)
 

@@ -50,7 +50,7 @@ module Yi.UI (
 -- TODO the above api should be redesigned. Consider the vi screen api
 -- to ncurses for a nice well thought out editor api.
 
-import Yi.Buffer
+import Yi.Buffer        ( Buffer(nelemsB) )
 import Yi.Editor
 import Yi.Window
 import Yi.Style
@@ -58,7 +58,7 @@ import Yi.Style
 import Yi.Curses hiding ( refresh, Window )
 import qualified Yi.Curses as Curses
 
-import Data.Maybe
+import Data.Maybe                   ( isJust, fromJust )
 import Data.List
 import Data.IORef
 import Control.Monad                    ( when )

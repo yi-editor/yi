@@ -37,16 +37,13 @@ module Yi.Regex (
 
   ) where
 
-#include <sys/types.h>
-
--- hmm. how portable?
-#include <regex.h>
 
 #include "YiUtils.h"
 
-import Yi.Buffer        -- needs to see the internals
+#include <sys/types.h>
+#include <regex.h>
 
-import Prelude
+import Yi.Buffer        ( RawBuffer, FBuffer_(FBuffer_) )
 import Foreign
 import Foreign.C
 

@@ -25,22 +25,19 @@
 
 module Yi.Editor where
 
-import Yi.Buffer
+import Yi.Buffer                ( FBuffer, Buffer(newB, keyB, hNewB) )
 import Yi.Regex                 ( Regex )
 import Yi.Window
-import Yi.Style
+import Yi.Style                 ( ui, UIStyle )
 
 import Data.List                ( elemIndex )
 import Data.FiniteMap
-import Data.IORef
+import Data.IORef               ( newIORef, readIORef, writeIORef, IORef )
 import Data.Unique              ( Unique )
-
-import System.IO
 import System.IO.Unsafe         ( unsafePerformIO )
-
-import Control.Concurrent
+import Control.Concurrent       ( killThread, ThreadId )
+import Control.Concurrent.Chan  ( Chan )
 import Control.Concurrent.MVar
-import Control.Concurrent.Chan
 
 --
 -- | The editor state, manipulated by Core instructoins.

@@ -377,8 +377,7 @@ readCharFromBuffer slab off = IO $ \st ->
 
 --
 -- | Write a 'Char' into a 'RawBuffer', 
--- Stolen straight from GHC. (Write 8-bit character; offset in bytes)
--- TODO ** we're screwed if the buffer is too small, so realloc
+-- ght from GHC. (Write 8-bit character; offset in bytes)
 --
 writeCharToBuffer :: RawBuffer -> Int -> Char -> IO Int
 writeCharToBuffer slab (I# off) (C# c) = IO $ \st -> 

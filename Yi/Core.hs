@@ -30,85 +30,105 @@
 -- the interface defined here.
 --
 
-module Yi.Core {-(
-
-        -- * Type of core functions
-        Action,
+module Yi.Core (
 
         -- * Construction and destruction
-        startE,
-        endE,
-
-        -- * Getting down to business (soon to be replaced by key lexer) 
+        startE,         -- :: Editor.Config -> Int -> Maybe [FilePath] -> IO ()
+        quitE,          -- :: Action
         eventLoop,
 
-        -- * Editor actions
+        -- * Global editor actions
+        getcE,          -- :: IO Char
+        nopE,           -- :: Action
+        msgE,           -- :: String -> Action
+        errorE,         -- :: String -> Action
+        msgClrE,        -- :: Action
+        getMsgE,        -- :: IO String
+        bufInfoE,       -- :: IO (FilePath,Int,Int,Int,Int,String)
 
-        -- ** Global editor actions
-        quitE,
-        nopE,
-        getcE,
-        msgE,
-        msgClrE,
-        infoE,
+        -- * Window manipulation
+        nextBufW,       -- :: Action
+        prevBufW,       -- :: Action
+        nextWinE,       -- :: Action
+        prevWinE,       -- :: Action
+        splitE,         -- :: Action
+        closeE,         -- :: Action
 
-        -- ** Window manipulation
-        nextE,
-        prevE,
+        -- * File-based actions
+        fnewE,          -- :: FilePath -> Action
+        fwriteE,        -- :: Action
 
-        -- ** File-based actions
-        fnewE,
-        freadE,
-        fwriteE,
+        -- * Buffer point movement
+        topE,           -- :: Action
+        botE,           -- :: Action
+        solE,           -- :: Action
+        eolE,           -- :: Action
+        downE,          -- :: Action
+        upE,            -- :: Action
+        leftE,          -- :: Action
+        rightE,         -- :: Action
+        leftOrSolE,     -- :: Int -> Action
+        rightOrEolE,    -- :: Int -> Action
+        gotoLnE,        -- :: Int -> Action
+        gotoLnFromE,    -- :: Int -> Action
+        gotoPoint,      -- :: Int -> Action
 
-        -- ** Buffer point movement
-        leftE,
-        rightE,
-        solE,
-        eolE,
-        downE,
-        upE,
-        leftOrSolE,
-        rightOrEolE,
-        topE,
-        botE,
+        atSolE,         -- :: IO Bool
+        atEolE,         -- :: IO Bool
+        atSofE,         -- :: IO Bool
+        atEofE,         -- :: IO Bool
 
-        -- ** Buffer editing
-        readE,
-        writeE,
-        insertE,
-        deleteE,
-        killE,
+        -- * Window-based movement
+        upScreenE,      -- :: Action
+        upScreensE,     -- :: Int -> Action
+        downScreenE,    -- :: Action
+        downScreensE,   -- :: Int -> Action
+        downFromTosE,   -- :: Int -> Action
+        upFromBosE,     -- :: Int -> Action
+        middleE,        -- :: Action
 
-        -- ** For now, export the symbolic key names from the ui
-        module Yi.UI
+        -- * Buffer editing
+        insertE,        -- :: Char -> Action
+        deleteE,        -- :: Action
+        deleteNE,       -- :: Int -> Action
+        killE,          -- :: Action
+        readE,          -- :: IO Char
+        readLnE,        -- :: IO String
+        readRestOfLnE,  -- :: IO String
+        writeE,         -- :: Char -> Action
 
-   )-} where
+        -- * Basic registers
+        setRegE,        -- :: String -> Action
+        getRegE,        -- :: IO String
+        setRegexE,      -- :: Regex -> Action
+        getRegexE,      -- :: IO (Maybe Regex)
 
-import Yi.MkTemp
+        -- * Regular expression and searching
+        searchE,                -- :: (Maybe String) -> Action
+        searchAndRepLocal,      -- :: String -> String -> IO Bool
+
+   ) where
+
+import Yi.MkTemp            ( mkstemp )
 import Yi.Buffer
 import Yi.Window
-import Yi.Regex
-import Yi.Utils
-
-import Yi.UI
-import qualified Yi.UI     as UI
-
+import Yi.Regex             ( regcomp, regExtended, Regex )
+import Yi.Utils             ( repeatM_ )
 import Yi.Editor
 import qualified Yi.Editor as Editor
+import qualified Yi.UI     as UI ( refresh, start, screenSize, getKey, end )
 
-import Data.Maybe
+import Data.Maybe           ( isNothing )
 import Data.Char            ( isLatin1 )
-import System.IO
+
+import System.IO            ( hClose )
 import System.Directory     ( doesFileExist )
-import System.Exit
+import System.Exit          ( exitWith, ExitCode(ExitSuccess) )
+
 import Control.Monad
 import Control.Exception    ( ioErrors, handleJust )
-
-import Control.Concurrent
+import Control.Concurrent   ( threadWaitRead, takeMVar, forkIO )
 import Control.Concurrent.Chan
-
--- import GHC.IOBase           ( unsafeInterleaveIO )
 
 -- ---------------------------------------------------------------------
 -- | Start up the editor, setting any state with the user preferences
@@ -142,28 +162,20 @@ startE confs ln mfs = do
     t' <- forkIO $ getcLoop ch
     modifyEditor_ $ \e -> return $ e { threads = t' : threads e, input = ch }
 
-------------------------------------------------------------------------
---
--- | Action to read characters into a channel
--- We block our thread waiting for input on stdin
---
-getcLoop :: Chan Char -> IO ()
-getcLoop ch = repeatM_ $ threadWaitRead 0 >> getcE >>= writeChan ch
+    where
+        --
+        -- | Action to read characters into a channel
+        -- We block our thread waiting for input on stdin
+        --
+        getcLoop :: Chan Char -> IO ()
+        getcLoop ch = repeatM_ $ threadWaitRead 0 >> getcE >>= writeChan ch
 
---
--- | When the editor state isn't being modified, refresh, then wait for
--- it to be modified again.
---
-refreshLoop :: IO ()
-refreshLoop = repeatM_ $ takeMVar editorModified >> UI.refresh
-
-------------------------------------------------------------------------
-
---
--- | shutdown the editor
---
-endE :: IO ()
-endE = UI.end
+        --
+        -- | When the editor state isn't being modified, refresh, then wait for
+        -- it to be modified again.
+        --
+        refreshLoop :: IO ()
+        refreshLoop = repeatM_ $ takeMVar editorModified >> UI.refresh
 
 -- ---------------------------------------------------------------------
 -- | How to read from standard input
@@ -171,22 +183,23 @@ endE = UI.end
 getcE :: IO Char
 getcE = UI.getKey (return ())
 
--- ---------------------------------------------------------------------
+-- 
 -- | The editor main loop. Read key strokes from the ui and interpret
 -- them using the current key map. Keys are bound to core actions.
---
--- TODO if there is an exception, the key bindings will be reset...
---
--- | Channel-based event loop, exactly the same semantics
 --
 eventLoop :: IO ()
 eventLoop = do
     fn <- Editor.getKeyBinds 
     ch <- readEditor input
     repeatM_ $ handleJust ioErrors (errorE . show) $ 
-                    sequence_ . fn =<< getChanContents ch
+        sequence_ . fn =<< getChanContents ch
+
+-- TODO if there is an exception, the key bindings will be reset...
 
 {-
+--
+-- Channel-based event loop has exactly the same semantics
+--
 eventLoop :: IO ()
 eventLoop = Editor.getKeyBinds >>= loop
     where 
@@ -211,6 +224,7 @@ lazyRead = unsafeInterleaveIO $ do
 -- | Quit
 quitE :: Action
 quitE = do
+    UI.end
     Editor.shutdown
     exitWith ExitSuccess
 
@@ -410,7 +424,9 @@ writeE c = withWindow_ $ \w b -> do
             return w
 
 -- ---------------------------------------------------------------------
--- registers
+-- registers (TODO these may be redundant now that it is easy to thread
+-- state in key bindings, or maybe not.
+--
 
 -- | Put string into yank register
 setRegE :: String -> Action
@@ -525,8 +541,8 @@ bufInfoE = withWindow $ \w b -> do
                  p, 
                  getPercent p s) )
 
-------------------------------------------------------------------------
--- | Window manipulation
+-- ---------------------------------------------------------------------
+-- Window manipulation
 
 -- | edit the next buffer in the buffer list
 nextBufW :: Action
@@ -562,7 +578,7 @@ fwriteE = withWindow_ $ \w b -> hPutB b (nameB b) >> return w
 splitE :: Action
 splitE = do
     i     <- sizeWindows
-    (y,_) <- screenSize
+    (y,_) <- UI.screenSize
     let (sy,r) = getY y i
     if sy + r <= 4  -- min window size
         then msgE "Not enough room to split"
@@ -587,3 +603,4 @@ nextWinE = Editor.nextWindow
 -- | Shift focus to prev window
 prevWinE :: Action
 prevWinE = Editor.prevWindow
+

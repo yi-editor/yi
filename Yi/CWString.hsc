@@ -25,14 +25,15 @@
 
 module Yi.CWString (
 
-    -- utf8 versions
+    -- * utf8 versions
     withUTF8String,
     withUTF8StringLen,
     newUTF8String,
     newUTF8StringLen,
     peekUTF8String,
     peekUTF8StringLen,
-    -- wchar stuff
+
+    -- * WChar stuff
 #ifdef CF_WCHAR_SUPPORT
     withCWString,
     withCWStringLen,
@@ -45,7 +46,7 @@ module Yi.CWString (
     CWString, 
     CWStringLen,
 #endif
-    -- locale versions 
+    -- * Locale versions 
     withLCString,
     withLCStringLen,
     newLCString,
@@ -56,17 +57,12 @@ module Yi.CWString (
 
     ) where
 
-import Control.Monad
-import Data.Char
-import System.IO
-import Foreign
+import Data.Char            ( ord, chr )
+import Data.Bits            ( Bits((.|.), (.&.), shift) )
+import Foreign.C.String
 
-#if __GLASGOW_HASKELL__ >= 603
-import Foreign.C.String
-#else
+#if __GLASGOW_HASKELL__ < 603
 import GHC.Exts
-import Data.Bits
-import Foreign.C.String
 #endif
 
 #ifdef CF_WCHAR_SUPPORT

@@ -35,7 +35,7 @@ module Yi.MkTemp (
   ) where
 
 import Data.List
-import Data.Char
+import Data.Char                ( chr, ord, isDigit )
 
 import Control.Monad            ( liftM )
 import Control.Exception        ( handleJust )
@@ -52,11 +52,11 @@ import qualified System.Posix.Directory ( createDirectory )
 import qualified System.Posix.Internals ( c_getpid )
 #endif
 
-#ifndef HAVE_ARC4RANDOM
-import System.Random            ( getStdRandom, Random(randomR) )
-#else
+#ifdef HAVE_ARC4RANDOM
 import GHC.Base
 import GHC.Int
+#else
+import System.Random            ( getStdRandom, Random(randomR) )
 #endif
 
 -- ---------------------------------------------------------------------

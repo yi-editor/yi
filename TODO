@@ -8,6 +8,7 @@ Build system:
         - think about how to do a testsuite, unit testing
 
         - ncurses should be a plugin
+        - add test for sigwinch
 
 v0.1:
         - syn hl (needs parser, in bg thread)

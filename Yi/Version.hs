@@ -19,6 +19,6 @@ package, branch, release, version :: String
 
 package = "yi"
 branch  = "0"
-release = "yyyymmdd"
+release = "undefined"
 version = branch++"-"++release
 

@@ -24,17 +24,17 @@
 
 module Yi.Keymap.Vi ( keymap, keymapPlus, ViMode ) where
 
+import Prelude hiding   ( any )
+
 import Yi.Core
 import Yi.Editor    ( Action )
 import Yi.UI         hiding ( plus )
 import Yi.Ctk.Lexers hiding ( Action )
 
-import Prelude hiding   ( any )
-
-import Data.Maybe
-import Data.List        ( (\\) )
-import Data.Char
-import Control.Monad
+import Data.Maybe           ( fromMaybe )
+import Data.List            ( (\\) )
+import Data.Char            ( isUpper, toLower, toUpper )
+import Control.Monad        ( replicateM_ )
 import Control.Exception    ( ioErrors, catchJust )
 
 -- ---------------------------------------------------------------------

@@ -1,42 +1,41 @@
-{-# OPTIONS -ffi -#include <locale.h> #-} -- -*- haskell -*-
+{-# OPTIONS -fffi #-}
 
 --
 -- arch-tag: d48a3194-c698-43c7-b581-08e7a213f0c8
 --
 
 module Yi.Locale (
-    setupLocale,
-    -- getCharset,
-    getDateFmt,
-    getDateTimeFmt,
-    getTimeFmt,
-    getYesRegex,
-    getNoRegex
-    -- nl_langinfo 
+
+        setupLocale,
+        -- getCharset,
+        getDateFmt, getDateTimeFmt, getTimeFmt,
+        getYesRegex, getNoRegex
+        -- nl_langinfo 
+
     ) where
 
-import Foreign
-import Foreign.C
-import Char
+import Foreign      ( Int32 )
+import Foreign.C    ( peekCString, CChar, CInt )
 import GHC.Exts
 
-#include <locale.h>
-#include <langinfo.h>
+-- #include "YiUtils.h"
 
-foreign import ccall unsafe "locale.h setlocale" setlocale :: CInt -> Addr## -> IO (Ptr CChar)
-foreign import ccall unsafe "langinfo.h nl_langinfo" nl_langinfo :: (#type nl_item) -> IO (Ptr CChar)
+-- #if HAVE_LOCALE_H
+#include <locale.h>
+-- #endif
+
+-- #if HAVE_LANGINFO_H
+#include <langinfo.h>
+-- #endif
+
+foreign import ccall unsafe "locale.h setlocale" 
+    setlocale :: CInt -> Addr## -> IO (Ptr CChar)
+
+foreign import ccall unsafe "langinfo.h nl_langinfo" 
+    nl_langinfo :: (#type nl_item) -> IO (Ptr CChar)
 
 setupLocale :: IO ()
 setupLocale = setlocale (#const LC_ALL) ""## >> return () 
-
-{-
-getCharset :: IO String
-#ifndef NO_LANGINFO_CODESET
-getCharset =  nl_langinfo (#const CODESET) >>= peekCString   
-#else
-getCharset =  error "Ginsu.Locale.getCharset: not defined for this platform"
-#endif
--}
 
 getDateFmt :: IO String
 getDateFmt = nl_langinfo (#const D_FMT) >>= peekCString
@@ -52,6 +51,15 @@ getYesRegex = nl_langinfo (#const YESEXPR) >>= peekCString
 
 getNoRegex :: IO String
 getNoRegex = nl_langinfo (#const NOEXPR) >>= peekCString
+
+{-
+getCharset :: IO String
+#ifndef NO_LANGINFO_CODESET
+getCharset =  nl_langinfo (#const CODESET) >>= peekCString   
+#else
+getCharset =  error "Ginsu.Locale.getCharset: not defined for this platform"
+#endif
+-}
 
 {- 
 LC_COLLATE

@@ -9,7 +9,7 @@ include $(TOPDIR)/mk/paths.mk
 
 PRE_SRCS:=      $(ALL_SRCS)
 
-HC_OPTS        += $(DEFINES) $(INC_OPTS)
+HC_OPTS        += $(EXTRA_HC_OPTS) $(DEFINES) $(INC_OPTS)
 HSC_OPTS       += $(DEFINES) -Icbits $(INC_OPTS)
 CC_OPTS        += -Icbits -optc-O3 $(INC_OPTS)
 

@@ -125,11 +125,11 @@ module Yi.Ctk.Lexers (
 
    ) where 
 
-import Prelude hiding (last)
-import Maybe  (fromMaybe)
-import Array  (Array, (!), assocs, accumArray)
+import Yi.Ctk.DLists    (zeroDL, snocDL, closeDL)
 
-import Yi.Ctk.DLists (zeroDL, snocDL, closeDL)
+import Prelude hiding   (last)
+import Maybe            (fromMaybe)
+import Array            (Array, (!), assocs, accumArray)
 
 infixr 4 `quest`, `star`, `plus`
 infixl 3 +>, `lexaction`, `lexmeta`, `action`, `meta`
