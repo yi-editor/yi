@@ -171,6 +171,12 @@ class Buffer a where
     -- | Delete the entire line the point is in
     -- deleteLn    :: a -> IO ()
 
+    -- | Move point up one line
+    lineUp :: a -> IO ()
+
+    -- | Move point down one line
+    lineDown :: a -> IO ()
+
 -- ---------------------------------------------------------------------
 --
 -- | Fast buffer based on the implementation of 'Handle' in
@@ -499,6 +505,23 @@ instance Buffer FBuffer where
         let r = fromEnum $ c /= '\n' -- correct for eof
         moveTo a p
         deleteN a (max 0 (q-p+r)) 
+
+    ------------------------------------------------------------------------
+
+    -- lineUp :: a -> IO ()
+    lineUp b = do
+        x <- offsetFromSol b
+        moveToSol b
+        leftB b
+        moveToSol b
+        moveXorEol b x
+
+    -- lineDown :: a -> IO ()
+    lineDown b = do
+        x <- offsetFromSol b
+        moveToEol b
+        rightB b
+        moveXorEol b x  
 
 ------------------------------------------------------------------------
 

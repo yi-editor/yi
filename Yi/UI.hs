@@ -24,8 +24,11 @@
 --
 
 --
--- | User interface abstractions. Should always be general enough to
--- permit multiple user interfaces.
+-- | This module defines a user interface implemented using ncurses. 
+--
+-- TODO The user interface abstractions should try to be general enough to
+-- permit multiple user interfaces without changin UI.foo calls in
+-- Core.hs
 --
 module Yi.UI (
 
@@ -33,34 +36,35 @@ module Yi.UI (
         start, end, 
         screenSize,
 
-        fillLine,       -- IO ()
-
-        refresh,
-        reset,
-        warn,
-
-        drawCmd,
-        clearCmd,
-        
+        -- * Input
         getKey,
 
+        -- * Drawing
+        refresh,
+        reset,
+        fillLine,
+        drawCmdLine,
+        clearCmd,
+
+        -- * Messages
+        warn,
+        
         module Yi.Curses   -- UIs need to export the symbolic key names
 
-  ) where
+  )   where
+
+-- TODO the above api should be redesigned. Consider the vi screen api
+-- to ncurses for a nice well thought out editor api.
 
 import Yi.Buffer
-import Yi.Curses hiding ( refresh )
+import Yi.Editor
+import Yi.Window
+
+import Yi.Curses hiding ( refresh, Window )
 import qualified Yi.Curses as Curses
-import qualified Yi.Editor as Editor
--- import Yi.Style
 
 import Data.List
--- import Data.Maybe                       ( isJust, fromJust ) 
--- import Control.Monad                    ( when )
 import qualified Control.Exception      ( catch )
-
-------------------------------------------------------------------------
--- Initialisation
 
 --
 -- | how to initialise the ui
@@ -76,16 +80,14 @@ start = do
 end :: IO ()
 end = Curses.endWin
 
---
--- | Find the current screen height and widith. This uses the ffi. You
--- should probably use Editor.getScreenSize once everything is
--- initialised
+------------------------------------------------------------------------
+-- | Find the current screen height and width.
 --
 screenSize :: IO (Int, Int)
 screenSize = Curses.scrSize
 
 -- ---------------------------------------------------------------------
--- | Read a key.
+-- | Read a key. UIs need to define a method for getting events.
 --
 getKey :: IO () -> IO Char
 getKey refresh_fn = do
@@ -100,11 +102,84 @@ getKey refresh_fn = do
                 | otherwise -> return k'
  
 -- ---------------------------------------------------------------------
--- Drawing stuff
+-- | Redraw the entire terminal from the UI state
 --
--- TODO define this in terms of the ncurses WINDOW abstraction, or even
--- pads.
+redraw :: IO ()
+redraw = do
+    ws <- getWindows
+    gotoTop
+    mapM_ drawWindow ws
+    drawCmdLine ":"
+    w <- getWindow
+    drawCursor (cursor w)
+
 --
+-- | Draw a screen to the screen
+--
+-- TODO take heed of the origin and size params correctly.
+-- Take head of 'active' status
+-- TODO set cursor invisible
+--
+drawWindow :: Window -> IO ()
+drawWindow (Window { bufkey=u, mode=m, origin=(_,_), 
+                     height=h, width=w, tospnt=t } ) = do
+    b  <- getBufferWith u
+    ss <- nelemsB b (h*w) t           -- maximum visible contents of buffer
+    mapM_ (drawLine w) $ take (h-1) $ (lines ss) ++ repeat "~"
+    cset_attr (Curses.setReverse Curses.attr0 True , Curses.Pair (0))
+    drawLine w m    -- modeline
+    reset
+
+--
+-- | Draw the editor command line. Make sure not to drop of end of screen.
+--
+drawCmdLine :: String -> IO ()
+drawCmdLine s = do
+    (h,w) <- Curses.scrSize
+    Curses.wMove Curses.stdScr (h-1) 0
+    drawLine (min (w-1) (length s)) s
+
+--
+-- | lazy version is faster than calculating length of s
+--
+drawLine :: Int -> String -> IO ()
+drawLine w s  = Curses.wAddStr Curses.stdScr $ take w (s ++ repeat ' ')
+
+--
+-- | Given the cursor position in the window. Draw it.
+-- TODO take account of offsets
+--
+drawCursor :: (Int,Int) -> IO ()
+drawCursor (y,x) = Curses.withCursor Curses.CursorVisible $ do
+    gotoTop
+    cset_attr (Curses.setReverse Curses.attr0 True, Curses.Pair 1)
+    Curses.wMove Curses.stdScr (y) (x)
+    reset
+
+--
+-- | move cursor to origin of stdScr.
+--
+gotoTop :: IO ()
+gotoTop = Curses.wMove Curses.stdScr 0 0
+
+{-
+redraw :: IO ()
+redraw = do
+    bs      <- getBuffers
+    count   <- lengthBuffers
+    current <- getCurrentBuffer
+    (h,w)   <- screenSize
+    let (y, r) = (h - 1) `quotRem` count    -- work out height of buffers
+    gotoTop
+    mapM_ (\b -> if b == current
+                 then drawMainBufferXY w (y+r) b
+                 else drawBufferXY w y b) bs
+
+    case elemIndex current bs of    -- how many screens down is the active one?
+            Nothing -> return ()    -- no active screen
+            Just i  -> let yoff = y * i
+                       in drawPoint yoff 0{-nohorizsplit-} 
+                                    (y+r-2) (w-1) current
 
 --
 -- | Draw as much of the buffer as we are told to do
@@ -123,29 +198,20 @@ drawBufferXY = drawBuffer 1
 
 drawMainBufferXY :: Buffer a => Int -> Int -> a -> IO ()
 drawMainBufferXY = drawBuffer 0
-
---
--- | draw a simple modeline
---
-drawModeLine :: Int -> String -> IO ()
-drawModeLine w title = drawLine w ("\"" ++ title ++ "\"" ++ repeat ' ')
-
---
--- | lazy version is faster than calculating length of s
---
-drawLine :: Int -> String -> IO ()
-drawLine w s  = Curses.wAddStr Curses.stdScr $ take w (s ++ repeat ' ')
+-}
 
 ------------------------------------------------------------------------
+{-
 --
 -- | Draw the bottom, command line, with contents @ss@
--- This is its own window, nothing else touches it
+-- This is its own screen, nothing else touches it
 --
 drawCmd :: String -> IO ()
 drawCmd s = do
     (h,w) <- Curses.scrSize
     Curses.wMove Curses.stdScr (h-1) 0
     drawLine (min (w-1) (length s)) s
+-}
 
 clearCmd :: IO ()
 clearCmd = do
@@ -154,59 +220,6 @@ clearCmd = do
     drawLine (w-1) " "
 
 ------------------------------------------------------------------------
-
--- 
--- | redraw the entire screen from the editor state
---
-redraw :: IO ()
-redraw = do
-    bs      <- Editor.getBuffers
-    count   <- Editor.lengthBuffers
-    current <- Editor.getCurrentBuffer
-    (h,w)   <- screenSize
-    let (y, r) = (h - 1) `quotRem` count    -- work out height of buffers
-    gotoTop
-    mapM_ (\b -> if b == current
-                 then drawMainBufferXY w (y+r) b
-                 else drawBufferXY w y b) bs
-
-    case elemIndex current bs of    -- how many windows down is the active one?
-            Nothing -> return ()    -- no active window
-            Just i  -> let yoff = y * i
-                       in drawPoint yoff 0{-nohorizsplit-} 
-                                    (y+r-2) (w-1) current
-
---
--- hack. convert a point in the buffer to an (x,y) index in [[Char]]
--- think about how to do this efficiently. Use WINDOW?
--- Input is the Y and X origin of the buffer to draw on the screen, and
--- the buffer itself.
---
-drawPoint :: Buffer a => Int -> Int -> Int -> Int -> a -> IO ()
-drawPoint y_orig x_orig y_max x_max buf = Curses.withCursor Curses.CursorVisible $ do
-
-    ss <- nelemsB buf (y_max*x_max) 0 -- again. TODO :(
-    p  <- pointB buf
-
-    --
-    -- calculate the offset of the buffer's point in terms of x and y
-    -- TODO offsets from the origin of the buffer.
-    --
-    -- NB the point is progressing, but we're refusing to scroll for now.
-    --
-    let prev = reverse $ take p ss
-        y = min y_max $ length $ filter (== '\n') prev -- only ever do this on nelemsB
-        x = min x_max $ case elemIndex '\n' prev of {Just a -> a; _ -> p}
-
-    cset_attr (Curses.setReverse Curses.attr0 True , Curses.Pair 1)
-    Curses.wMove Curses.stdScr (y_orig + y) (x_orig + x)
-    reset
-
---
--- | move cursor to origin of stdScr.
---
-gotoTop :: IO ()
-gotoTop = Curses.wMove Curses.stdScr 0 0
 
 -- gotoBottom :: IO ()
 -- gotoBottom = do
@@ -251,3 +264,4 @@ warn :: String -> IO ()
 warn msg = do   -- do_message s attr_message msg
     Curses.wMove Curses.stdScr 0 0
     Curses.wAddStr Curses.stdScr $ take 80 $ msg ++ repeat ' '
+

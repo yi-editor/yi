@@ -26,6 +26,7 @@
 module Yi.Editor where
 
 import Yi.Buffer
+import Yi.Window
 
 import Data.List                ( elemIndex )
 import Data.FiniteMap
@@ -37,17 +38,28 @@ import System.IO
 import System.IO.Unsafe         ( unsafePerformIO )
 
 --
--- | First stab at a simple editor state, manipulated by Core
--- instructions.  The 'Editor' just knows about what buffers there are.
--- The UI knows how to draw things of 'Buffer' type.
+-- | The editor state, manipulated by Core instructoins.
+-- The editor stores all the buffers, which correspond to opened files.
+-- Windows are views (or port holes) on to buffers, and multiple windows
+-- may be opened onto the one buffer. A distinguished /window/ is stored
+-- explicitly: the command line.
 --
--- Parameterised on the buffer type
+-- Some instructions manipulate buffers, and some just manipulate
+-- windows (e.g. scrolling and splitting).
 --
-data Buffer a => GenEditor a = Editor {
-        buffers      :: FiniteMap Unique a -- ^ multiple buffers
-       ,curkey       :: Unique             -- ^ one buffer has focus
-       ,curkeymap    :: (Char -> IO())     -- ^ user-configurable keymap
-   }
+-- The order windows are displayed on the screen is encoded in their
+-- order in the @windows@ list.
+--
+-- TODO Windows should be MVar'd as well.
+--
+data Buffer a => GenEditor a = 
+    Editor {
+        buffers   :: FiniteMap Unique a         -- ^ all the buffers
+       ,windows   :: FiniteMap Unique Window    -- ^ all the windows
+       ,cmdline   :: !String                    -- ^ the command line
+       ,curwin    :: Unique                     -- ^ the window with focus
+       ,curkeymap :: (Char -> IO())             -- ^ user-configurable keymap
+    }
 
 --
 -- Instantiate the editor with a basic buffer type
@@ -58,41 +70,41 @@ type Editor  = GenEditor Buffer'
 -- ---------------------------------------------------------------------
 --
 -- | The actual editor state
+--
 -- TODO get rid of big lock on state (buffers themselves are locked)
+-- We'd have to lock individual components of the state, however...
 --
 -- state :: Buffer a => MVar (IORef (GenEditor a))
 state :: MVar (IORef Editor)
 state = unsafePerformIO $ do
-            ref  <- newIORef newEmptyEditor
+            ref  <- newIORef emptyEditor
             newMVar ref
 {-# NOINLINE state #-}
 
 --
 -- | The initial state
 --
--- newEmptyEditor :: Buffer a => GenEditor a
-newEmptyEditor :: Editor
-newEmptyEditor = Editor {
-        buffers      = emptyFM,
-        curkey       = error "Editor: no buffer in focus",
-        curkeymap    = error "Editor: no key map set"
+emptyEditor :: Editor
+emptyEditor = Editor {
+        buffers      = emptyFM 
+       ,windows      = emptyFM
+       ,cmdline      = []           -- for now
+       ,curwin       = error "No focused window"
+       ,curkeymap    = error "No keymap set"
     }
 
 -- 
--- | Read the editor state
+-- | Read the editor state, with a pure action
 -- 
--- readEditor :: Buffer a => (GenEditor a -> b) -> IO b
 readEditor :: (Editor -> b) -> IO b
 readEditor f = withMVar state $ \ref -> return . f =<< readIORef ref
 
 --
--- | Grab the editor state, mutate the contents, and write it back
+-- | Modify the contents, using an IO action.
 --
--- modifyEditor_ :: Buffer a => (GenEditor a -> IO (GenEditor a)) -> IO ()
 modifyEditor_ :: (Editor -> IO Editor) -> IO ()
-modifyEditor_ f = modifyMVar_ state $ \r -> do
-                    readIORef r >>= f >>= writeIORef r
-                    return r    -- :: a -> IO a
+modifyEditor_ f = modifyMVar_ state $ \r ->
+                    readIORef r >>= f >>= writeIORef r >> return r
 
 --
 -- | Variation on modifyEditor_ that lets you return a value
@@ -105,27 +117,28 @@ modifyEditor f = modifyMVar state $ \r -> do
                     return (r,b)
 
 -- ---------------------------------------------------------------------
+-- Buffer operations
 --
--- | Create a new buffer, filling with contents of file.
+-- | Create a new buffer filling with contents of file.
 --
 hNewBuffer :: FilePath -> IO ()
 hNewBuffer f = 
     modifyEditor_ $ \e@(Editor{buffers=bs} :: Editor) -> do
         b <- hNewB f
-        return $! e { buffers = addToFM bs (keyB b) b, curkey = (keyB b) }
+        return $! e { buffers = addToFM bs (keyB b) b }
 
 --
--- | Create and fill a new buffer. Gets an \n if it is empty (?)
+-- | Create and fill a new buffer, using contents of string.
 --
 stringToNewBuffer :: FilePath -> String -> IO ()
-stringToNewBuffer f [] = stringToNewBuffer f ['\n']
 stringToNewBuffer f cs =
     modifyEditor_ $ \e@(Editor{buffers=bs} :: Editor) -> do
         b <- newB f cs
-        return $! e { buffers = addToFM bs (keyB b) b, curkey = (keyB b) }
+        return $! e { buffers = addToFM bs (keyB b) b }
 
 --
 -- | return the buffers we have
+-- TODO we need to order the buffers some how.
 --
 -- getBuffers :: Buffer a => IO [a]
 --
@@ -135,87 +148,144 @@ getBuffers = readEditor $ eltsFM . buffers
 --
 -- | get the number of buffers we have
 --
-lengthBuffers :: IO Int                        
-lengthBuffers = readEditor $ \(Editor {buffers=bs} :: Editor) -> sizeFM bs
+sizeBuffers :: IO Int                        
+sizeBuffers = readEditor $ \(e :: Editor) -> sizeFM (buffers e)
 
 --
--- | get current buffer
---
--- getCurrentBuffer :: Buffer a => IO a
-getCurrentBuffer :: IO Buffer'
-getCurrentBuffer = readEditor $ \e -> lookupBuffers e (curkey e)
-
---
--- Find buffer with this key
+-- | Find buffer with this key
 -- 
--- lookupBuffers :: Buffer a => GenEditor a -> Unique -> a
-lookupBuffers :: Editor -> Unique -> Buffer'
-lookupBuffers e k = 
+findBufferWith :: Editor -> Unique -> Buffer'
+findBufferWith e k = 
     case lookupFM (buffers e) k of
         Just b  -> b
-        Nothing -> error "Editor.lookupBuffers: no buffer has this key"
+        Nothing -> error "Editor.findBufferWith: no buffer has this key"
 
 --
--- | Mutate the current buffer
+-- | Safely lookup buffer using it's key.
 --
--- If we want to do touch anything not inside an ioref, we'll have to
--- return a modified @e@ (see setBuffer)
+getBufferWith :: Unique -> IO Buffer'
+getBufferWith u = readEditor $ \(e :: Editor) -> findBufferWith e u
+
+------------------------------------------------------------------------
+-- | Window manipulation
+
+-- | Create a new window onto this buffer
+-- TODO totally fails to take into account the position of other windows
 --
--- withBuffer :: Buffer a => (a -> IO ()) -> IO ()
-withBuffer_ :: (Buffer' -> IO ()) -> IO ()
-withBuffer_ f = modifyEditor_ $ \e -> do 
-        f $ lookupBuffers e (curkey e) -- :: IO ()
-        return e                       -- nothing else changed
+newWindow :: Unique -> (Int,Int) -> IO Window
+newWindow u sz = modifyEditor $ \e -> do
+    let b = findBufferWith e u
+    w <- emptyWindow b sz
+    let e' = e { windows = addToFM (windows e) (key w) w }
+    return (e', w)
 
 --
--- | Variation on withBuffer_ that lets you return a value
+-- | Delete a window. 
+-- TODO should close the underlying buffer if this is the last window
+-- onto that buffer. If this is the focused window, switch to another
+-- one.
 --
-withBuffer :: (Buffer' -> IO b) -> IO b
-withBuffer f = modifyEditor $ \e -> do
-    b <- f $ lookupBuffers e (curkey e)
-    return (e, b)
+deleteWindow :: Unique -> IO ()
+deleteWindow u = modifyEditor_ $ \e -> do
+    let w  = findWindowWith e u
+        ws = delFromFM (windows e) (key w)
+    return $ e { windows = ws }
+
+-- ---------------------------------------------------------------------
+-- | Get all the windows
+-- TODO sort by key
+--
+getWindows :: IO [Window]
+getWindows = readEditor $ \e -> eltsFM $ windows e
 
 --
--- | Set current buffer
--- Should assert this buffer is in @buffers e@.
+-- | Get current window
 --
--- setBuffer :: Buffer a => a -> IO ()
-setBuffer :: Buffer' -> IO ()
-setBuffer b = modifyEditor_ $ \(e :: Editor) -> return $ e {curkey = keyB b}
+getWindow :: IO Window
+getWindow = readEditor $ \e -> findWindowWith e (curwin e)
 
 --
--- | Rotate focus to the next buffer
+-- | Set current window
 --
-nextBuffer :: IO ()
-nextBuffer = shiftFocus (+1)
+setWindow :: Window -> IO ()
+setWindow w = modifyEditor_ $ \(e :: Editor) -> return $ e {curwin = key w}
 
 --
--- | Rotate focus to the previous buffer
+-- | How many windows do we have
 --
-prevBuffer :: IO ()
-prevBuffer = shiftFocus (subtract 1)
+sizeWindows :: IO Int
+sizeWindows = readEditor $ \e -> length $ eltsFM (windows e)
 
 --
--- | Shift focus to the nth buffer, modulo the number of buffers
+-- | Find the window with this key
 --
-bufferAt :: Int -> IO ()
-bufferAt n = shiftFocus (const n)
+findWindowWith :: Editor -> Unique -> Window
+findWindowWith e k = 
+    case lookupFM (windows e) k of
+            Just w  -> w
+            Nothing -> error "Editor: no window has this key"
+
+------------------------------------------------------------------------
+--
+-- | Perform action with current window
+--
+withWindow_ :: (Window -> Buffer' -> IO Window) -> IO ()
+withWindow_ f = modifyEditor_ $ \e -> do
+        let w = findWindowWith e (curwin e)
+            b = findBufferWith e (bufkey w)
+        w' <- f w b
+        m'     <- updateModeLine b (width w') (winpnt w')
+        let w'' = w' { mode = m' }
+            ws = windows e
+            e' = e { windows = addToFM ws (key w'') w'' }
+        return e'
 
 --
--- | Set the new current buffer using a function applied to the old
--- current buffer's index
+-- | Variation on withWindow_ that can return a value
+--
+withWindow :: (Window -> Buffer' -> IO (Window,b)) -> IO b
+withWindow f = modifyEditor $ \e -> do
+        let w = findWindowWith e (curwin e)
+            b = findBufferWith e (bufkey w)
+        (w',v) <- f w b
+        m'     <- updateModeLine b (width w') (winpnt w')
+        let w'' = w' { mode = m' }
+            ws = windows e
+            e' = e { windows = addToFM ws (key w'') w'' }
+        return (e',v)
+
+-- ---------------------------------------------------------------------
+-- | Rotate focus to the next window
+--
+nextWindow :: IO ()
+nextWindow = shiftFocus (+1)
+
+--
+-- | Rotate focus to the previous window
+--
+prevWindow :: IO ()
+prevWindow = shiftFocus (subtract 1)
+
+--
+-- | Shift focus to the nth window, modulo the number of windows
+--
+windowAt :: Int -> IO ()
+windowAt n = shiftFocus (const n)
+
+--
+-- | Set the new current window using a function applied to the old
+-- window's index
 --
 shiftFocus :: (Int -> Int) -> IO ()
 shiftFocus f = modifyEditor_ $ \(e :: Editor) -> do
-    let bs  = eltsFM (buffers e)
-        key = curkey e
-    case lookupFM (buffers e) key of
-        Nothing -> error "Editor.setBufferAt: no current buffer"
-        Just cb -> case elemIndex cb bs of
-            Nothing -> error "Error.setBufferAt: current buffer has gone"
-            Just i -> let l = length bs
-                          b = bs !! ((f i) `mod` l)
-                      in return $ e { curkey = keyB b }
+    let ws  = eltsFM $ windows e    -- hack
+        k   = curwin e
+        win = findWindowWith e k
+    case elemIndex win ws of
+        Nothing -> error "Editor: current buffer has been lost."
+        Just i -> let l = length ws
+                      w = ws !! ((f i) `mod` l)
+                  in return $ e { curwin = key w }
 
 -- ---------------------------------------------------------------------
 -- | Given a keymap function, set the user-defineable key map to that function

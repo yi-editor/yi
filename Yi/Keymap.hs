@@ -75,6 +75,8 @@ key C 'l' = rightE
 key C '$' = eolE
 key C '0' = solE
 key C '|' = solE
+
+{-
 key C ':' = msgClrE >> msgE ":" >> beginEx 
 key C 'i' = beginInsert
 key C 'a' = rightOrEolE 1 >> beginInsert
@@ -140,10 +142,12 @@ key E k = msgClrE >> loop [k]
 
     deleteWith []     = msgClrE >> msgE ":"      >> loop []
     deleteWith (_:cs) = msgClrE >> msgE (':':cs) >> loop cs
+-}
 
 -- anything we've missed
-key _  _  = noopE
+key _  _  = quitE
 
+{-
 -- ---------------------------------------------------------------------
 -- | Try and write a file in the manner of vi\/vim
 --
@@ -159,3 +163,4 @@ viWrite = do
 viCmdErr :: [Char] -> Action
 viCmdErr s = msgE $ "The "++s++ " command is unknown."
 
+-}

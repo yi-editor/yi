@@ -31,7 +31,7 @@
 -- should manipulate Yi through the interface defined here.
 --
 
-module Yi.Core (
+module Yi.Core {-(
 
         -- * Type of core functions
         Action,
@@ -48,7 +48,7 @@ module Yi.Core (
         -- ** Global editor actions
         quitE,
         refreshE,
-        noopE,
+        nopE,
         nextE,
         prevE,
         getcE,
@@ -83,16 +83,17 @@ module Yi.Core (
         -- ** For now, export the symbolic key names from the ui
         module Yi.UI
 
-   ) where
+   )-} where
 
 import Yi.MkTemp
-import Yi.Editor                            ( withBuffer_, withBuffer )
 import Yi.Buffer
+import Yi.Window
+
 import Yi.UI
 import qualified Yi.UI     as UI
-import qualified Yi.Editor as Editor hiding ( withBuffer_, withBuffer )
 
-import Data.Char            ( isLatin1 )
+import Yi.Editor
+import qualified Yi.Editor as Editor
 
 import System.IO
 import System.Directory     ( doesFileExist )
@@ -123,6 +124,13 @@ startE confs mfs = do
                 case mf of
                     Nothing    -> error "Core.startE: mkstemp failed"
                     Just (f,h) -> hClose h >> fnewE f
+
+    -- work out which buffer has the focused window
+    bs <- Editor.getBuffers
+    case reverse bs of
+        (b:_) -> UI.screenSize >>= Editor.newWindow (keyB b) >>= Editor.setWindow
+        _     -> error "Core.startE: no buffers created"
+
     refreshE
 
 --
@@ -167,79 +175,72 @@ refreshE = UI.refresh
 
 -- | Do nothing
 --
-noopE :: IO ()
-noopE = return ()
+nopE :: IO ()
+nopE = return ()
 
 ------------------------------------------------------------------------
 
 --
--- | Move cursor left 1
+-- | Move cursor left 1, or start of line
 --
 leftE :: IO ()
-leftE = withBuffer_ leftB
+leftE = withWindow_ leftW
 
 --
--- | Move cursor right 1
+-- | Move cursor right 1, or end of line
 --
 rightE :: IO ()
-rightE = withBuffer_ rightB
+rightE = withWindow_ rightW
 
+{-
 --
 -- | Move cursor to origin
 --
 topE :: IO ()
-topE = withBuffer_ $ \b -> moveTo b 0
+topE = withWindow_ $ moveToW 0
 
 --
 -- | Move cursor to end of buffer
 --
 botE :: IO ()
-botE = withBuffer_ $ \b -> sizeB b >>= \n -> moveTo b (n-1)
+botE = withWindowDo_ $ \b -> sizeB b >>= \n -> moveTo b (n-1)
+-}
 
 --
 -- | Move cursor to start of line
 --
 solE :: IO ()
-solE = withBuffer_ moveToSol
+solE = withWindow_ moveToSolW
 
 --
 -- | Move cursor to end of line
 --
 eolE :: IO ()
-eolE = withBuffer_ moveToEol
+eolE = withWindow_ moveToEolW
 
 --
 -- | Move cursor down 1 line
 --
 downE :: IO ()
-downE = withBuffer_ $ \b -> do
-    x <- offsetFromSol b
-    moveToEol b
-    rightB b        -- now at start of next b
-    moveXorEol b x  
+downE = withWindow_ moveDownW
 
 --
 -- | Move cursor up to the same point on the previous line
 --
 upE :: IO ()
-upE = withBuffer_ $ \b -> do
-    x <- offsetFromSol b
-    moveToSol b
-    leftB b
-    moveToSol b
-    moveXorEol b x  
+upE = withWindow_ moveUpW
 
 --
 -- | Move left @x@ or to start of line
 --
 leftOrSolE :: Int -> IO ()
-leftOrSolE x = withBuffer_ $ \b -> moveXorSol b x
+leftOrSolE x = withWindow_ $ moveXorSolW x
 
 --
 -- | Move right @x@ or to end of line
 --
 rightOrEolE :: Int -> IO ()
-rightOrEolE x = withBuffer_ $ \b -> moveXorEol b x
+rightOrEolE x = withWindow_ $ moveXorEolW x
 
 ------------------------------------------------------------------------
 --
@@ -251,11 +252,13 @@ fnewE f = do
     if e then Editor.hNewBuffer f
          else Editor.stringToNewBuffer f []
 
+{-
 --
 -- | Write current buffer to disk
 --
 fwriteE :: IO ()
-fwriteE = withBuffer_ $ \b -> hPutB b (nameB b)
+fwriteE = withWindow_ $ \b -> hPutB b (nameB b)
+-}
 
 --
 -- | Read file into buffer starting a current point
@@ -263,61 +266,77 @@ fwriteE = withBuffer_ $ \b -> hPutB b (nameB b)
 freadE :: FilePath -> IO ()
 freadE = error "readE is undefined"
 
-------------------------------------------------------------------------
+-- ---------------------------------------------------------------------
+-- Window based operations
+--
 
 --
 -- | Shift focus to next buffer
 --
 nextE :: IO ()
-nextE = Editor.nextBuffer
+nextE = Editor.nextWindow
 
 --
 -- | Shift focus to prev buffer
 --
 prevE :: IO ()
-prevE = Editor.prevBuffer
+prevE = Editor.prevWindow
+
+{-
+-- | scroll window up
+scrollUpE :: IO ()
+scrollUpE = withWindow_ scrollUpW
+
+-- | scroll window down
+scrollDownE :: IO ()
+scrollDownE = withWindow_ scrollDownW
+-}
 
 ------------------------------------------------------------------------
 
+{-
 -- | Insert new character
 insertE :: Char -> IO ()
-insertE c = withBuffer_ $ \b -> do
+insertE c = withWindowDo_ $ \b -> do
     case c of
         '\13'          -> insertB b '\n'
         _ | isLatin1 c -> insertB b c
-          | otherwise  -> noopE  -- TODO
+          | otherwise  -> nopE  -- TODO
 
 -- | Delete character under cursor
 deleteE :: IO ()
-deleteE = withBuffer_ deleteB
+deleteE = withWindowDo_ deleteB
 
 -- | Kill to end of line
 killE :: IO ()
-killE = withBuffer_ deleteToEol -- >>= Buffer.prevXorLn 1
+killE = withWindowDo_ deleteToEol -- >>= Buffer.prevXorLn 1
 
 -- | Read the char under the cursor
 readE :: IO Char
-readE = withBuffer readB
+readE = withWindowDo readB
 
 -- | Write char to point
 writeE :: Char -> IO ()
-writeE c = withBuffer_ $ \b -> 
-                if isLatin1 c then writeB b c else noopE -- TODO
+writeE c = withWindowDo_ $ \b -> 
+                if isLatin1 c then writeB b c else nopE -- TODO
+-}
 
 ------------------------------------------------------------------------
 
 -- | Draw message at bottom of screen
 msgE :: String -> IO ()
-msgE = UI.drawCmd
+msgE = UI.drawCmdLine
 
 -- | Clear the message line at bottom of screen
 msgClrE  :: IO ()
 msgClrE = UI.clearCmd
 
+{-
 -- | File info
 infoE :: IO (FilePath, Int)
-infoE = withBuffer $ \b -> do
+infoE = withWindowDo $ \b -> do
     s  <- sizeB b
     return (nameB b, s)
+-}
 
 
