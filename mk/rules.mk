@@ -15,7 +15,7 @@ CC_OPTS        += -Icbits $(INC_OPTS)
 
 # If $(way) is set then we define $(way_) and $(_way) from it in the
 # obvious fashion.
-ifneq "$(way)" ""
+ifeq "$(way)" "p"
   way_ := $(way)_
   _way := _$(way)
 endif
