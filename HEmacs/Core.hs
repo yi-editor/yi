@@ -65,8 +65,8 @@ start confs fs = do
     Editor.setScreenSize size
     Editor.setUserSettings confs
     case fs of
-        Nothing    -> Editor.newBuffer "empty buffer" []
-        Just (f:_) -> e_load f >> return ()
+        Nothing   -> Editor.newBuffer "empty buffer" []
+        Just (fs) -> mapM_ e_load_ fs >> e_refresh >> return ()
 
 --
 -- | shutdown the editor
@@ -162,9 +162,19 @@ e_none = cont
 e_load :: FilePath -> IO EditStatus
 e_load f = do
         h <- openFile f ReadWriteMode
-        s <- hGetContents h             -- close it?
+        s <- hGetContents h            -- close it?
         Editor.newBuffer f $ lines s   -- lazy for large files?
-        UI.refresh                      -- probably should redraw now
+        UI.refresh                     -- probably should redraw now
+        return EOk          
+
+--
+-- | load the current buffer, no refresh
+--
+e_load_  :: FilePath -> IO EditStatus
+e_load_ f = do
+        h <- openFile f ReadWriteMode
+        s <- hGetContents h            -- close it?
+        Editor.newBuffer f $ lines s   -- lazy for large files?
         return EOk          
 
 ------------------------------------------------------------------------

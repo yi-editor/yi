@@ -1,11 +1,11 @@
 
 Design plan:
-        - get rid of MBox and Editor stuff
-        - store state in a global var
-        - design a buffer
+        - design a buffer data type
+        - design 'window manager' system for buffers
         - think about abstractable actions/keybindings
         - clean up code
-        - remove posix dependency
+        - better UI.hs binding to ncurses:
+                this is our ui interface.
 
 Dynamic stuff:
         - "rebinding" global_vars by writing fields in global settings, using

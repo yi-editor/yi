@@ -30,6 +30,7 @@ module HEmacs.UI (
   ) where
 
 import HEmacs.Style
+import HEmacs.Buffer
 import qualified HEmacs.Curses as Curses
 import qualified HEmacs.Editor as Editor
 
@@ -81,11 +82,11 @@ getKey refresh_fn = do
 --
 -- | Draw as much of the buffer as will fit in the screen
 --
-drawBufferYX :: Int -> Int -> Editor.Buffer -> IO ()
+drawBufferYX :: Buffer a => Int -> Int -> a -> IO ()
 drawBufferYX h w buf = do
-    mapM_ (drawLine w) $ take (h-1) ((Editor.contents buf) ++ repeat [])
+    mapM_ (drawLine w) $ take (h-1{-modeline-}) ((contents buf) ++ repeat [])
     cset_attr (Curses.setReverse Curses.attr0 True , Curses.Pair 0)
-    drawLine w ('"' : Editor.name buf ++ "\"" ++ repeat ' ')
+    drawLine w ("\"" ++ (name buf) ++ "\"" ++ repeat ' ')
     creset_attr
     where
         drawLine :: Int -> String -> IO ()
@@ -135,9 +136,11 @@ redraw :: IO ()
 redraw = do
     bs    <- Editor.getBuffers
     (y,x) <- Editor.getScreenSize
-    let y' = (y - 1) `div` length bs
+    let (y', r) = (y - 1{-cmdline-}) `quotRem` length bs
     Curses.wMove Curses.stdScr 0 0  -- mv cursor to origin
-    mapM_ (drawBufferYX y' x) bs       
+    case bs of
+        []     -> return ()
+        (b:bs) -> drawBufferYX (y'+r) x b >> mapM_ (drawBufferYX y' x) bs
 
 ------------------------------------------------------------------------
 -- misc
