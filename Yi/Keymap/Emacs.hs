@@ -25,7 +25,7 @@
 -- Contributed by Simon Winwood - http://www.cse.unsw.edu.au/~sjw
 --
 
-module Yi.Keymap.Emacs ( keymap ) where
+module Yi.Keymap.Emacs {-( keymap )-} where
 
 import Yi.Core
 import Yi.Editor    ( Keymap(..) )  -- just for now
@@ -41,14 +41,15 @@ type Key = Char
 data KeyTableItem = KAction Action | KMap KeyTable
 
 instance Show KeyTableItem where
-    show (KAction a) = "Action"
-    show (KMap m)    = "Map"
+    show (KAction _a) = "Action"
+    show (KMap _m)    = "Map"
 
 type KeySeq = [Key]
 
-type Bind = (Key, KeyTableItem)
+-- type Bind = (Key, KeyTableItem)
 type KeyTable = IORef (FiniteMap Key KeyTableItem)
     
+nullAction :: KeyTableItem
 nullAction = KAction nopE
 
 withKeyTableItem :: KeyTableItem -> (Action -> a) -> (KeyTable -> a) -> a
@@ -82,10 +83,10 @@ control c = chr (ord '\^A' + (ord (toUpper c) - ord 'A'))
 -- This function must be implemented by any user keybinding
 --
 lookupKeymap :: KeyTable -> Char -> IO Keymap
-lookupKeymap t '\^G' = msgE "Quit" >> return (Keymap $ lookupKeymap globalKeyTable) -- hack
+lookupKeymap _ '\^G' = msgE "Quit" >> return (Keymap $ lookupKeymap globalKeyTable) -- hack
 lookupKeymap t k = do key <- lookupKey t k
 		      case key of { KAction a -> a >> return (Keymap $ lookupKeymap globalKeyTable);
-				    KMap    t -> return (Keymap $ lookupKeymap t)}
+				    KMap    t' -> return (Keymap $ lookupKeymap t')}
 		      
 keymap :: Char -> IO Keymap
 keymap c = initKeys >> lookupKeymap globalKeyTable c
@@ -101,9 +102,10 @@ keytableSetKey t [k] a    = updateKey t k (KAction a)
 keytableSetKey t (k:ks) a = do v <- lookupKey t k
 			       withKeyTableItem v (\_ -> newKeyTable >>= addMap k ks a) (addMap k ks a)
     where
-    addMap k ks a t' = keytableSetKey t' ks a >> updateKey t k (KMap t')
+    addMap k' ks' a' t' = keytableSetKey t' ks' a' >> updateKey t k' (KMap t')
 
 -- Poor mans key bindings
+initKeyBindings :: [([Char], Yi.Core.Action)]
 initKeyBindings = [-- Special characters
 		   ([keyEnter], insertE '\n'),
 		   (['\r'], insertE '\n'),		   
@@ -124,5 +126,8 @@ initKeyBindings = [-- Special characters
 		   ([control 'x', control 'c'], closeE)
 		  ]
 
-initKeys = do mapM_ (\c -> keytableSetKey globalKeyTable [c] (insertE c)) $ filter isPrint [minBound .. maxBound]
+initKeys :: IO ()
+initKeys = do mapM_ (\c -> keytableSetKey globalKeyTable [c] (insertE c)) $ 
+                            filter isPrint [minBound .. maxBound]
 	      mapM_ (uncurry $ keytableSetKey globalKeyTable) initKeyBindings
+
