@@ -1,0 +1,38 @@
+
+HEmacs
+
+Copyright (c) Don Stewart 2004.
+<http://www.cse.unsw.edu.au/~dons>
+
+BUILDING AND INSTALLING
+
+You will need GHC 6 (The Glorious/Glasgow Haskell Compilation System)
+and GNU make to compile hemacs. 
+
+You also need a recent snapshot version of hs-plugins, the Haskell
+dynamic loader library. You can get this from:
+        http://www.cse.unsw.edu.au/~dons/hs-plugins/
+
+Once you have ensured that you have these programs and libraries installed,
+
+ 1. Edit system.mk to change some settings for your system (usually in
+   the case it has broken wide character support).
+
+ 2. Run 'make' ('gmake' on some systems) to build hemacs.
+
+ 3. Run 'make install' to install it.
+
+
+CONFIGURATION
+
+All configuration (bindings, colours) is done at either build time by
+editing Config.hs, or at runtime by editing ~/.hemacs/Config.hs
+
+
+CREDITS
+
+HEmacs is derived from Riot, written by Tuomo Valkonen.
+
+The Curses interface code is mostly by John Meacham;see the LICENSE
+therein for details. Tuomo and others have made some minor modifications.
+

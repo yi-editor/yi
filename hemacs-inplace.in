@@ -1,0 +1,3 @@
+#!/bin/sh
+@HEMACS_TOP@/hemacs -B@HEMACS_TOP@ $*
+

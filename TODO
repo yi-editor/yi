@@ -1,0 +1,3 @@
+* simplify build system
+* improve portability
+* remove posix dependency

@@ -1,0 +1,35 @@
+# DO NOT DELETE: Beginning of Haskell dependencies
+HEmacs/Locale.o : HEmacs/Locale.hs
+HEmacs/CWString.o : HEmacs/CWString.hs
+HEmacs/Curses.o : HEmacs/Curses.hs
+HEmacs/Curses.o : HEmacs/CWString.hi
+HEmacs/Curses.o : ./HEmacs/GenUtil.hi
+HEmacs/IConv.o : HEmacs/IConv.hs
+HEmacs/IConv.o : HEmacs/CWString.hi
+HEmacs/GenUtil.o : HEmacs/GenUtil.hs
+HEmacs/Version.o : HEmacs/Version.hs
+HEmacs/Entry.o : HEmacs/Entry.hs
+HEmacs/Editor.o : HEmacs/Editor.hs
+HEmacs/Editor.o : ./HEmacs/MkTemp.hi
+HEmacs/Editor.o : HEmacs/Version.hi
+HEmacs/MBox.o : HEmacs/MBox.hs
+HEmacs/MBox.o : HEmacs/IConv.hi
+HEmacs/MBox.o : HEmacs/Entry.hi
+HEmacs/MBox.o : HEmacs/Version.hi
+HEmacs/Style.o : HEmacs/Style.hs
+HEmacs/Style.o : HEmacs/Curses.hi
+HEmacs/UI.o : HEmacs/UI.hs
+HEmacs/UI.o : HEmacs/Curses.hi
+HEmacs/UI.o : HEmacs/Editor.hi
+HEmacs/UI.o : HEmacs/CWString.hi
+HEmacs/UI.o : HEmacs/Style.hi
+HEmacs/UI.o : HEmacs/Entry.hi
+HEmacs/BootAPI.o : HEmacs/BootAPI.hs
+HEmacs/ConfigAPI.o : HEmacs/ConfigAPI.hs
+HEmacs/ConfigAPI.o : HEmacs/Entry.hi
+HEmacs/ConfigAPI.o : HEmacs/Style.hi
+HEmacs/ConfigAPI.o : HEmacs/UI.hi
+HEmacs/ConfigAPI.o : HEmacs/Version.hi
+HEmacs/ConfigAPI.o : HEmacs/Curses.hi
+HEmacs/MkTemp.o : HEmacs/MkTemp.hs
+# DO NOT DELETE: End of Haskell dependencies
