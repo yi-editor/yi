@@ -1,0 +1,3 @@
+module HEmacs.Config where
+
+settings :: HEmacs.Editor.Config

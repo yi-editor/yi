@@ -19,14 +19,14 @@
 
 module HEmacs (static_main, dynamic_main) where
 
-import HEmacs.Entry             ( EntryTree )
-import HEmacs.Locale            ( setupLocale )
-import HEmacs.MBox
-import HEmacs.Version           ( package, version )
-import qualified HEmacs.UI        as UI
-import qualified HEmacs.ConfigAPI
+import HEmacs.Locale                        ( setupLocale )
+import HEmacs.Version                       ( package, version )
+import qualified HEmacs.Editor  as Editor
+import qualified HEmacs.Config  as Config
+import qualified HEmacs.Core    as Core
+import qualified HEmacs.UI      as UI       ( refresh )
 
-import Control.Exception        ( bracket )
+import Control.Exception        ( bracket_ )
 import Data.IORef               ( IORef, readIORef, newIORef, writeIORef )
 import System.Console.GetOpt
 import System.Environment       ( getArgs )
@@ -61,37 +61,24 @@ versinfo = putStrLn $ package++" "++version
 -- deal with real options
 --
 do_opts :: [Opts] -> IO ()
+do_opts (o:oo) = case o of
+    Help     -> usage    >> exitWith ExitSuccess
+    Version  -> versinfo >> exitWith ExitSuccess
+    Libdir _ -> do_opts oo  -- ignore -B flag. already handled in Boot.hs
 do_opts [] = return ()
-do_opts (o:oo) =
-    case o of
-        Help     -> usage    >> exitWith(ExitSuccess)
-        Version  -> versinfo >> exitWith(ExitSuccess)
-        Libdir _ -> do_opts oo  -- ignore -B flag. already handled in Boot.hs
 
 --
 -- everything that is left over
 --
-do_args :: [String] -> IO ([EntryTree MBoxEntry], String)
+do_args :: [String] -> IO (Maybe [FilePath])
 do_args args =
     case (getOpt Permute options args) of
         (o, n, []) -> do
             do_opts o
             case n of
-                []    -> return ([], "<null>")
-                (_f:_) -> return ([], "<null>")
+                []   -> return Nothing
+                fs   -> return $ Just fs
         (_, _, errs) -> error (concat errs)
-
--- ---------------------------------------------------------------------
--- | Initialise the gui
-
-initui :: [EntryTree MBoxEntry] -> String -> IO (UI.Status MBoxEntry)
-initui tt fname = do
-    styles'  <- get_global HEmacs.ConfigAPI.styles
-    topinfo' <- get_global HEmacs.ConfigAPI.topinfo_text
-    s   <- UI.init styles'
-    s'  <- return $ UI.set_topinfo s topinfo'
-    s'' <- return $ UI.set_entries s' tt (Just fname)
-    return s''
 
 -- ---------------------------------------------------------------------
 -- Set up the signal handlers
@@ -102,15 +89,15 @@ initui tt fname = do
 --      signal, the SIGCHLD signal will be generated only when a child process
 --      exits, not when a child process stops.
 --
-init_sighandlers :: IO Handler
-init_sighandlers = do 
+initSignals :: IO Handler
+initSignals = do 
     -- Signals.setStoppedChildFlag True -- crashes rts on openbsd
     Signals.installHandler Signals.sigCHLD Signals.Default Nothing
     Signals.installHandler Signals.sigINT  Signals.Ignore Nothing
     Signals.installHandler Signals.sigPIPE Signals.Ignore Nothing
 
-release_sighandlers :: IO Handler
-release_sighandlers = do 
+releaseSignals :: IO Handler
+releaseSignals = do 
     Signals.installHandler Signals.sigINT Signals.Default Nothing
     Signals.installHandler Signals.sigPIPE Signals.Default Nothing
 
@@ -120,41 +107,33 @@ release_sighandlers = do
 -- doesnt provide a ~/.hemacs/Config.hs, or stuffs up Config.hs in some
 -- way.
 --
-g_settings :: IORef HEmacs.ConfigAPI.Config
-g_settings = unsafePerformIO $ newIORef (HEmacs.ConfigAPI.settings)
+g_settings :: IORef Editor.Config
+g_settings = unsafePerformIO $ newIORef (Config.settings)
 {-# NOINLINE g_settings #-}
 
 --
 -- | Given a record selector, return that field from the settings
 --
-get_global :: (HEmacs.ConfigAPI.Config -> a) -> IO a
+get_global :: (Editor.Config -> a) -> IO a
 get_global selector = readIORef g_settings >>= \v -> return $ selector v
 
 -- ---------------------------------------------------------------------
 -- | Static main. This is the front end to the statically linked
--- application, and the real front end, in a sense. dynamic_main calls
+-- application, and the real front end, in a sense. 'dynamic_main' calls
 -- this after setting preferences passed from the boot loader.
+--
+-- Initialise the ui getting an initial editor state, set signal
+-- handlers, then jump to ui event loop with the state.
 --
 static_main :: IO ()
 static_main = do
     setupLocale
-    args <- getArgs
-    (tt, fname) <- do_args args
-
-    hk <- get_global HEmacs.ConfigAPI.handle_key
-    
-    tt' <- return $! tt -- Force load before initialising UI
-    
-    --
-    -- initialise the ui getting an initial editor state, 
-    -- set signal handlers, then jump to ui event loop with the state.
-    -- Atm, the state is /explicitly threaded/. TODO fix this. I want a
-    -- global var.
-    --
-    bracket (initui tt' fname >>= \s -> init_sighandlers >> return s) -- before
-            (\_ -> UI.deinit    >> release_sighandlers)               -- after
-            (\s -> UI.refresh s >> UI.event_loop s hk)                -- action
-
+    args   <- getArgs
+    mfiles <- do_args args
+    config <- readIORef g_settings
+    bracket_ (initSignals >> Core.start config mfiles)
+             (Core.end    >> releaseSignals)
+             (UI.refresh  >> Core.eventLoop)
 
 -- ---------------------------------------------------------------------
 -- | Dynamic main. This is jumped to from from Boot.hs, after dynamically
@@ -175,7 +154,7 @@ dynamic_main' Nothing = static_main     -- No prefs found, use defaults
 --
 dynamic_main' (Just (CD cfg)) = do 
     case unsafeCoerce# cfg of   -- MAGIC: to unwrap the config value
-        (cfg_ :: HEmacs.ConfigAPI.Config) -> do
+        (cfg_ :: Editor.Config) -> do
                 writeIORef g_settings cfg_
                 static_main
 

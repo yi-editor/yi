@@ -148,7 +148,7 @@ INSTALL_DATAS  += $(HTML_DIR)
 
 html : $(HS_PPS)
 	@$(INSTALL_DIR) $(HTML_DIR)
-	$(HADDOCK) $(HADDOCK_OPTS) -h -o $(HTML_DIR) $(HS_PPS) --package=$(PKG) 
+	$(HADDOCK) $(HADDOCK_OPTS) -h -o $(HTML_DIR) $(HS_PPS) --package=$(PKG) 2> /dev/null
 
 CLEAN_FILES += $(HS_PPS) $(PACKAGE).haddock
 

@@ -37,6 +37,8 @@ Haddock markup to document any functions that are exported -- user's
 may want to use this code at some point. We use cpp to pass
 platform-specific options into files. Please provide explicit import
 lists where reasonable, and keep imports in some sorted order.
+Please don't introduce posix dependencies unless you absolutely have
+to.
 
 You can actually run this stuff in ghci! To just run hemacs-core (the gui etc,
 without worrying about booting the thing):

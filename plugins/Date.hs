@@ -18,9 +18,9 @@ import System.Posix.IO      ( createPipe, stdInput,
 
 ------------------------------------------------------------------------
 
-hemacs = settings {
+hemacs = settings {-
     topinfo_text = date
-}
+-}
 
 ------------------------------------------------------------------------
 --

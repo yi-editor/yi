@@ -28,19 +28,17 @@
 
 module HEmacs.HEmacs (
         
-        module HEmacs.ConfigAPI,
+        module HEmacs.Editor,
+        module HEmacs.Config,
+        module HEmacs.Core,
         module HEmacs.Version,
-        module HEmacs.UI,
-        module HEmacs.Style,
-        module HEmacs.Entry,
  
    ) where
 
-import HEmacs.ConfigAPI
+import HEmacs.Editor
+import HEmacs.Config
+import HEmacs.Core
 import HEmacs.Version
-import HEmacs.UI
-import HEmacs.Style
-import HEmacs.Entry
 
 -- and anything else that might be useful to write code to
 

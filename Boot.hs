@@ -192,10 +192,9 @@ get_load_flags = do libpath <- readIORef libdir
                     return $ map (\p -> libpath </> p <.> "conf") packages
 
 -- ---------------------------------------------------------------------
--- Let's go. Find and load a config file, and pass argv, a handle to the
--- module and the symbol to retrieve from it to Main.main
+-- | Find and load a config file. Load the hemacs core library. Jump to
+-- the real main in 'HEmacs.main', passing any config information we found.
 --
-
 main :: IO ()
 main = do
     -- look for -B libdir flag
