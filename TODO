@@ -1,11 +1,9 @@
 
 Design plan:
-        - design a buffer data type
-        - design 'window manager' system for buffers
+        - design 'window manager' system for buffers 
+        - abstract syntax for ui 
         - think about abstractable actions/keybindings
-        - clean up code
-        - better UI.hs binding to ncurses:
-                this is our ui interface.
+        - clean up ncurses code    
 
 Dynamic stuff:
         - "rebinding" global_vars by writing fields in global settings, using
@@ -20,9 +18,7 @@ Build system:
         - write a configure script
         - check how to install it from a port script
         - think about how to do a testsuite
-        - get profiling working
         - store cpp options in a file, instead of on the command line
 
 Docs:
-        - what format docs/yi.tex?
         - get rid of haddock warnings

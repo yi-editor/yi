@@ -41,9 +41,12 @@ module Yi.UI (
         
         getKey,
 
+        module Yi.Curses   -- UIs need to export the symbolic key names
+
   ) where
 
 import Yi.Buffer
+import Yi.Curses hiding ( refresh )
 import qualified Yi.Curses as Curses
 import qualified Yi.Editor as Editor
 -- import Yi.Style
@@ -81,16 +84,17 @@ screenSize = Curses.scrSize
 -- ---------------------------------------------------------------------
 -- | Read a key.
 --
-getKey :: IO () -> IO Editor.Key
+getKey :: IO () -> IO Char
 getKey refresh_fn = do
     Control.Exception.catch (Curses.cBreak True) (\_ -> return ())
     k <- Curses.getCh
     case k of
-        Nothing               -> getKey refresh_fn
-        Just Editor.KeyResize -> do -- snew <- get_size s
-                                    refresh_fn --snew
-                                    getKey refresh_fn
-        Just k' -> return k'
+        Nothing -> getKey refresh_fn
+        Just k' | k' == Curses.keyResize 
+                -> do -- snew <- get_size s
+                      refresh_fn --snew
+                      getKey refresh_fn
+                | otherwise -> return k'
  
 -- ---------------------------------------------------------------------
 -- Drawing stuff

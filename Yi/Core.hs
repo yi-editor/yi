@@ -68,15 +68,21 @@ module Yi.Core (
         replaceE,
         insertE,
         deleteE,
-        killE
+        killE,
+
+        -- ** For now, export the symbolic key names from the ui
+        module Yi.UI
 
    ) where
 
 import Yi.MkTemp
 import Yi.Editor                            ( withBuffer )
 import Yi.Buffer
+import Yi.UI
 import qualified Yi.UI     as UI
 import qualified Yi.Editor as Editor hiding ( withBuffer )
+
+import Data.Char    ( isLatin1 )
 
 import System.IO
 import System.Exit
@@ -124,7 +130,7 @@ eventLoop = do
 -- | read a keystroke, and interpret it using the current key mappings.
 -- The actions keys may be bound to are given in $events.
 -- 
-eventLoop' :: Editor.KeyMap -> IO ()
+eventLoop' :: (Char -> Editor.Action) -> IO ()
 eventLoop' keyhandler = do
     k <- UI.getKey UI.refresh
     Control.Exception.catch (keyhandler k) (handler)
@@ -279,17 +285,18 @@ prevE = Editor.prevBuffer
 -- | Replace buffer at point with next char
 replaceE :: IO ()
 replaceE = withBuffer $ \b -> do
-    k <- UI.getKey UI.refresh
-    case k of Editor.Key c -> writeB b c
-              _            -> noopE -- TODO
+    c <- UI.getKey UI.refresh
+    if isLatin1 c then writeB b c
+                  else noopE        -- TODO
 
 -- | Insert new character
 insertE :: IO ()
 insertE = withBuffer $ \b -> do
     k <- UI.getKey UI.refresh
-    case k of Editor.Key '\13'  -> insertB b '\n'
-              Editor.Key c      -> insertB b c
-              _                 -> noopE  -- TODO
+    case k of
+        '\13'          -> insertB b '\n'
+        c | isLatin1 c -> insertB b c
+          | otherwise  -> noopE  -- TODO
 
 -- | Delete character under cursor
 deleteE :: IO ()

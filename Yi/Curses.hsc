@@ -34,7 +34,7 @@
 -- are distributed under a BSD license.
 --
 
-module Yi.Curses (
+module Yi.Curses {-(
 
     --------------------------------------------------------------------
     
@@ -146,10 +146,9 @@ module Yi.Curses (
     cursesTest
     
     --------------------------------------------------------------------
-  ) where 
+  )-} where 
 
 import Yi.CWString
-import Yi.Editor    ( Key(..) )
 import Prelude hiding   ( pi )
 
 import Data.Char        ( chr, ord, isControl, isSpace, toLower )
@@ -948,109 +947,210 @@ beep = do
     br <- c_beep
     when (br /= (#const OK)) (c_flash >> return ()) 
 
+------------------------------------------------------------------------
 --
--- | Map curses keys to abstract keys
+-- | Map curses keys to real chars. The lexer will like this.
 --
-decodeKey :: CInt -> Key
-decodeKey key = case key of
-    _ | key >= 0 && key <= 255 -> Key (chr (fromIntegral key))
-    (#const KEY_BREAK)         -> KeyBreak
-    (#const KEY_DOWN)          -> KeyDown
-    (#const KEY_UP)            -> KeyUp
-    (#const KEY_LEFT)          -> KeyLeft
-    (#const KEY_RIGHT)         -> KeyRight
-    (#const KEY_HOME)          -> KeyHome
-    (#const KEY_BACKSPACE)     -> KeyBackspace
-    _ | key >= (#const KEY_F0) && key <= (#const KEY_F(63))
-                               -> KeyF (fromIntegral (key - #const KEY_F0))
-    (#const KEY_DL)            -> KeyDL
-    (#const KEY_IL)            -> KeyIL
-    (#const KEY_DC)            -> KeyDC
-    (#const KEY_IC)            -> KeyIC
-    (#const KEY_EIC)           -> KeyEIC
-    (#const KEY_CLEAR)         -> KeyClear
-    (#const KEY_EOS)           -> KeyEOS
-    (#const KEY_EOL)           -> KeyEOL
-    (#const KEY_SF)            -> KeySF
-    (#const KEY_SR)            -> KeySR
-    (#const KEY_NPAGE)         -> KeyNPage
-    (#const KEY_PPAGE)         -> KeyPPage
-    (#const KEY_STAB)          -> KeySTab
-    (#const KEY_CTAB)          -> KeyCTab
-    (#const KEY_CATAB)         -> KeyCATab
-    (#const KEY_ENTER)         -> KeyEnter
-    (#const KEY_SRESET)        -> KeySReset
-    (#const KEY_RESET)         -> KeyReset
-    (#const KEY_PRINT)         -> KeyPrint
-    (#const KEY_LL)            -> KeyLL
-    (#const KEY_A1)            -> KeyA1
-    (#const KEY_A3)            -> KeyA3
-    (#const KEY_B2)            -> KeyB2
-    (#const KEY_C1)            -> KeyC1
-    (#const KEY_C3)            -> KeyC3
-    (#const KEY_BTAB)          -> KeyBTab
-    (#const KEY_BEG)           -> KeyBeg
-    (#const KEY_CANCEL)        -> KeyCancel
-    (#const KEY_CLOSE)         -> KeyClose
-    (#const KEY_COMMAND)       -> KeyCommand
-    (#const KEY_COPY)          -> KeyCopy
-    (#const KEY_CREATE)        -> KeyCreate
-    (#const KEY_END)           -> KeyEnd
-    (#const KEY_EXIT)          -> KeyExit
-    (#const KEY_FIND)          -> KeyFind
-    (#const KEY_HELP)          -> KeyHelp
-    (#const KEY_MARK)          -> KeyMark
-    (#const KEY_MESSAGE)       -> KeyMessage
-    (#const KEY_MOVE)          -> KeyMove
-    (#const KEY_NEXT)          -> KeyNext
-    (#const KEY_OPEN)          -> KeyOpen
-    (#const KEY_OPTIONS)       -> KeyOptions
-    (#const KEY_PREVIOUS)      -> KeyPrevious
-    (#const KEY_REDO)          -> KeyRedo
-    (#const KEY_REFERENCE)     -> KeyReference
-    (#const KEY_REFRESH)       -> KeyRefresh
-    (#const KEY_REPLACE)       -> KeyReplace
-    (#const KEY_RESTART)       -> KeyRestart
-    (#const KEY_RESUME)        -> KeyResume
-    (#const KEY_SAVE)          -> KeySave
-    (#const KEY_SBEG)          -> KeySBeg
-    (#const KEY_SCANCEL)       -> KeySCancel
-    (#const KEY_SCOMMAND)      -> KeySCommand
-    (#const KEY_SCOPY)         -> KeySCopy
-    (#const KEY_SCREATE)       -> KeySCreate
-    (#const KEY_SDC)           -> KeySDC
-    (#const KEY_SDL)           -> KeySDL
-    (#const KEY_SELECT)        -> KeySelect
-    (#const KEY_SEND)          -> KeySEnd
-    (#const KEY_SEOL)          -> KeySEOL
-    (#const KEY_SEXIT)         -> KeySExit
-    (#const KEY_SFIND)         -> KeySFind
-    (#const KEY_SHELP)         -> KeySHelp
-    (#const KEY_SHOME)         -> KeySHome
-    (#const KEY_SIC)           -> KeySIC
-    (#const KEY_SLEFT)         -> KeySLeft
-    (#const KEY_SMESSAGE)      -> KeySMessage
-    (#const KEY_SMOVE)         -> KeySMove
-    (#const KEY_SNEXT)         -> KeySNext
-    (#const KEY_SOPTIONS)      -> KeySOptions
-    (#const KEY_SPREVIOUS)     -> KeySPrevious
-    (#const KEY_SPRINT)        -> KeySPrint
-    (#const KEY_SREDO)         -> KeySRedo
-    (#const KEY_SREPLACE)      -> KeySReplace
-    (#const KEY_SRIGHT)        -> KeySRight
-    (#const KEY_SRSUME)        -> KeySRsume
-    (#const KEY_SSAVE)         -> KeySSave
-    (#const KEY_SSUSPEND)      -> KeySSuspend
-    (#const KEY_SUNDO)         -> KeySUndo
-    (#const KEY_SUSPEND)       -> KeySuspend
-    (#const KEY_UNDO)          -> KeyUndo
+decodeKey :: CInt -> Char
+decodeKey = chr . fromIntegral
+{-# INLINE decodeKey #-}
+
+--
+-- | Some constants for easy symbolic manipulation.
+-- NB we don't map keys to an abstract type anymore, as we can't use
+-- Alex lexers then.
+--
+keyBreak :: Char
+keyBreak        = chr (#const KEY_BREAK)
+keyDown :: Char
+keyDown         = chr (#const KEY_DOWN)
+keyUp :: Char
+keyUp           = chr (#const KEY_UP)
+keyLeft :: Char
+keyLeft         = chr (#const KEY_LEFT)
+keyRight :: Char
+keyRight        = chr (#const KEY_RIGHT)
+keyHome :: Char
+keyHome         = chr (#const KEY_HOME)
+keyBackspace :: Char
+keyBackspace    = chr (#const KEY_BACKSPACE)
+keyDL :: Char
+keyDL           = chr (#const KEY_DL)
+keyIL :: Char
+keyIL           = chr (#const KEY_IL)
+keyDC :: Char
+keyDC           = chr (#const KEY_DC)
+keyIC :: Char
+keyIC           = chr (#const KEY_IC)
+keyEIC :: Char
+keyEIC          = chr (#const KEY_EIC)
+keyClear :: Char
+keyClear        = chr (#const KEY_CLEAR)
+keyEOS :: Char
+keyEOS          = chr (#const KEY_EOS)
+keyEOL :: Char
+keyEOL          = chr (#const KEY_EOL)
+keySF :: Char
+keySF           = chr (#const KEY_SF)
+keySR :: Char
+keySR           = chr (#const KEY_SR)
+keyNPage :: Char
+keyNPage        = chr (#const KEY_NPAGE)
+keyPPage :: Char
+keyPPage        = chr (#const KEY_PPAGE)
+keySTab :: Char
+keySTab         = chr (#const KEY_STAB)
+keyCTab :: Char
+keyCTab         = chr (#const KEY_CTAB)
+keyCATab :: Char
+keyCATab        = chr (#const KEY_CATAB)
+keyEnter :: Char
+keyEnter        = chr (#const KEY_ENTER)
+keySReset :: Char
+keySReset       = chr (#const KEY_SRESET)
+keyReset :: Char
+keyReset        = chr (#const KEY_RESET)
+keyPrint :: Char
+keyPrint        = chr (#const KEY_PRINT)
+keyLL :: Char
+keyLL           = chr (#const KEY_LL)
+keyA1 :: Char
+keyA1           = chr (#const KEY_A1)
+keyA3 :: Char
+keyA3           = chr (#const KEY_A3)
+keyB2 :: Char
+keyB2           = chr (#const KEY_B2)
+keyC1 :: Char
+keyC1           = chr (#const KEY_C1)
+keyC3 :: Char
+keyC3           = chr (#const KEY_C3)
+keyBTab :: Char
+keyBTab         = chr (#const KEY_BTAB)
+keyBeg :: Char
+keyBeg          = chr (#const KEY_BEG)
+keyCancel :: Char
+keyCancel       = chr (#const KEY_CANCEL)
+keyClose :: Char
+keyClose        = chr (#const KEY_CLOSE)
+keyCommand :: Char
+keyCommand      = chr (#const KEY_COMMAND)
+keyCopy :: Char
+keyCopy         = chr (#const KEY_COPY)
+keyCreate :: Char
+keyCreate       = chr (#const KEY_CREATE)
+keyEnd :: Char
+keyEnd          = chr (#const KEY_END)
+keyExit :: Char
+keyExit         = chr (#const KEY_EXIT)
+keyFind :: Char
+keyFind         = chr (#const KEY_FIND)
+keyHelp :: Char
+keyHelp         = chr (#const KEY_HELP)
+keyMark :: Char
+keyMark         = chr (#const KEY_MARK)
+keyMessage :: Char
+keyMessage      = chr (#const KEY_MESSAGE)
+keyMove :: Char
+keyMove         = chr (#const KEY_MOVE)
+keyNext :: Char
+keyNext         = chr (#const KEY_NEXT)
+keyOpen :: Char
+keyOpen         = chr (#const KEY_OPEN)
+keyOptions :: Char
+keyOptions      = chr (#const KEY_OPTIONS)
+keyPrevious :: Char
+keyPrevious     = chr (#const KEY_PREVIOUS)
+keyRedo :: Char
+keyRedo         = chr (#const KEY_REDO)
+keyReference :: Char
+keyReference    = chr (#const KEY_REFERENCE)
+keyRefresh :: Char
+keyRefresh      = chr (#const KEY_REFRESH)
+keyReplace :: Char
+keyReplace      = chr (#const KEY_REPLACE)
+keyRestart :: Char
+keyRestart      = chr (#const KEY_RESTART)
+keyResume :: Char
+keyResume       = chr (#const KEY_RESUME)
+keySave :: Char
+keySave         = chr (#const KEY_SAVE)
+keySBeg :: Char
+keySBeg         = chr (#const KEY_SBEG)
+keySCancel :: Char
+keySCancel      = chr (#const KEY_SCANCEL)
+keySCommand :: Char
+keySCommand     = chr (#const KEY_SCOMMAND)
+keySCopy :: Char
+keySCopy        = chr (#const KEY_SCOPY)
+keySCreate :: Char
+keySCreate      = chr (#const KEY_SCREATE)
+keySDC :: Char
+keySDC          = chr (#const KEY_SDC)
+keySDL :: Char
+keySDL          = chr (#const KEY_SDL)
+keySelect :: Char
+keySelect       = chr (#const KEY_SELECT)
+keySEnd :: Char
+keySEnd         = chr (#const KEY_SEND)
+keySEOL :: Char
+keySEOL         = chr (#const KEY_SEOL)
+keySExit :: Char
+keySExit        = chr (#const KEY_SEXIT)
+keySFind :: Char
+keySFind        = chr (#const KEY_SFIND)
+keySHelp :: Char
+keySHelp        = chr (#const KEY_SHELP)
+keySHome :: Char
+keySHome        = chr (#const KEY_SHOME)
+keySIC :: Char
+keySIC          = chr (#const KEY_SIC)
+keySLeft :: Char
+keySLeft        = chr (#const KEY_SLEFT)
+keySMessage :: Char
+keySMessage     = chr (#const KEY_SMESSAGE)
+keySMove :: Char
+keySMove        = chr (#const KEY_SMOVE)
+keySNext :: Char
+keySNext        = chr (#const KEY_SNEXT)
+keySOptions :: Char
+keySOptions     = chr (#const KEY_SOPTIONS)
+keySPrevious :: Char
+keySPrevious    = chr (#const KEY_SPREVIOUS)
+keySPrint :: Char
+keySPrint       = chr (#const KEY_SPRINT)
+keySRedo :: Char
+keySRedo        = chr (#const KEY_SREDO)
+keySReplace :: Char
+keySReplace     = chr (#const KEY_SREPLACE)
+keySRight :: Char
+keySRight       = chr (#const KEY_SRIGHT)
+keySRsume :: Char
+keySRsume       = chr (#const KEY_SRSUME)
+keySSave :: Char
+keySSave        = chr (#const KEY_SSAVE)
+keySSuspend :: Char
+keySSuspend     = chr (#const KEY_SSUSPEND)
+keySUndo :: Char
+keySUndo        = chr (#const KEY_SUNDO)
+keySuspend :: Char
+keySuspend      = chr (#const KEY_SUSPEND)
+keyUndo :: Char
+keyUndo         = chr (#const KEY_UNDO)
 #ifdef KEY_RESIZE
-    (#const KEY_RESIZE)        -> KeyResize
+keyResize :: Char
+keyResize       = chr (#const KEY_RESIZE)
 #endif
 #ifdef KEY_MOUSE
-    (#const KEY_MOUSE)        -> KeyMouse
+keyMouse :: Char
+keyMouse        = chr (#const KEY_MOUSE)
 #endif
-    _                          -> KeyUnknown (fromIntegral key)
+
+--
+-- | is a char a function key?
+--
+isFKey :: Char -> Bool
+isFKey c = case fromIntegral $ ord c :: CInt of
+        key -> key >= (#const KEY_F0) && key <= (#const KEY_F(63))
 
 -- ---------------------------------------------------------------------
 -- get char
@@ -1068,13 +1168,13 @@ decodeKey key = case key of
 --     --halfdelay 1
 --     v <- getch
 --     case v of
--- 	(#const ERR) -> yield >> getCh 
--- 	x -> return $ decodeKey x
+--              (#const ERR) -> yield >> getCh 
+--              x -> return $ decodeKey x
 
 --
 -- | read a character from the window
 --
-getCh :: IO (Maybe Key)
+getCh :: IO (Maybe Char)
 getCh = do
     v <- getch
     return $ case v of
@@ -1147,7 +1247,7 @@ data MouseEvent = MouseEvent {
 
 data ButtonEvent = ButtonPressed Int | ButtonReleased Int | ButtonClicked Int | 
     ButtonDoubleClicked Int | ButtonTripleClicked Int | ButtonShift | ButtonControl | ButtonAlt 
-	deriving(Eq,Show)
+                deriving(Eq,Show)
 
 withMouseEventMask :: [ButtonEvent] -> IO a -> IO a
 

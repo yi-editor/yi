@@ -202,53 +202,20 @@ setUserSettings cs = modifyEditor $ \(e :: Editor) -> return $ e { editSettings 
 --
 -- | retrieve the user-defineable key map
 --
-getKeyMap :: IO (Key -> Action)
+getKeyMap :: IO (Char -> Action)
 getKeyMap = readEditor $ \(e :: Editor) -> keyMap (editSettings e)
 
 -- ---------------------------------------------------------------------
 -- | The type of user-bindable functions
 --
-
 type Action = IO ()
-type KeyMap = Key -> Action
-
--- ---------------------------------------------------------------------
--- | The 'Key' type is the abstract syntax for keys. user interfaces
--- should define a decodeKey function that maps their idea of a key to
--- an abstract 'Key'.
---
-
-data Key= Key  !Char 
-        | KeyF !Int 
-        | KeyEnter
-        | KeyBreak  | KeyDown   | KeyUp     | KeyLeft   | KeyRight
-        | KeyHome   | KeyBackspace 
-        | KeyDL     | KeyIL     | KeyDC     | KeyIC     | KeyEIC 
-        | KeyClear  | KeyEOS    | KeyEOL    | KeySF     | KeySR
-        | KeyNPage  | KeyPPage  | KeySTab   | KeyCTab   | KeyCATab 
-        | KeySReset | KeyReset  | KeyPrint  | KeyLL     | KeyA1 
-        | KeyA3     | KeyB2     | KeyC1     | KeyC3     | KeyBTab 
-        | KeyBeg    | KeyCancel | KeyClose  | KeyCommand| KeyCopy 
-        | KeyCreate | KeyEnd    | KeyExit   | KeyFind   | KeyHelp 
-        | KeyMark   | KeyMessage| KeyMove   | KeyNext   | KeyOpen
-        | KeyOptions| KeyPrevious| KeyRedo  | KeyReference
-        | KeyRefresh| KeyReplace| KeyRestart| KeyResume | KeySave   
-        | KeySBeg   | KeySCancel| KeySCommand| KeySCopy | KeySCreate
-        | KeySDC    | KeySDL    | KeySelect | KeySEnd   | KeySEOL   
-        | KeySExit  | KeySFind  | KeySHelp  | KeySHome  | KeySIC 
-        | KeySLeft  | KeySMessage| KeySMove | KeySNext  | KeySOptions
-        | KeySPrevious| KeySPrint| KeySRedo | KeySReplace| KeySRight 
-        | KeySRsume | KeySSave | KeySSuspend| KeySUndo  | KeySuspend
-        | KeyUndo | KeyResize | KeyMouse 
-        | KeyUnknown !Int
-    deriving (Eq, Show)
 
 ------------------------------------------------------------------------
 --
 -- | All the user-defineable settings
 --
 data Config = Config {
-            keyMap       :: Key -> Action       -- ^ bind keys to editor actions
+            keyMap       :: Char -> Action       -- ^ bind keys to editor actions
         -- ,styles       :: [StyleSpec]
     }
 

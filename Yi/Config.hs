@@ -19,8 +19,8 @@ module Yi.Config (
 
   ) where
 
-import Yi.Editor    ( Config(..), Key(..), Action )
-import Yi.Core      
+import Yi.Editor    ( Config(..), Action )
+import Yi.Core
 
 --
 -- | Default settings
@@ -40,29 +40,30 @@ settings = Config {
 --
 -- vi-like bindings
 --
-defaultKeyMap :: Key -> Action
-defaultKeyMap (Key 'q')   = quitE
-defaultKeyMap (Key '\^R') = refreshE
-defaultKeyMap (Key 'h')   = leftE
-defaultKeyMap (Key 'l')   = rightE
-defaultKeyMap (Key '1')   = topE
-defaultKeyMap (Key 'G')   = botE
-defaultKeyMap (Key 'j')   = downE
-defaultKeyMap (Key 'k')   = upE
-defaultKeyMap (Key '^')   = solE
-defaultKeyMap (Key '$')   = eolE
-defaultKeyMap (Key 'r')   = replaceE
-defaultKeyMap (Key 'i')   = insertE
-defaultKeyMap (Key 'x')   = deleteE
-defaultKeyMap (Key 'w')   = writeE
-defaultKeyMap (Key 'D')   = killE
-defaultKeyMap (Key 'N')   = nextE
-defaultKeyMap (Key 'P')   = prevE
-defaultKeyMap (KeyUp)     = upE
-defaultKeyMap (KeyDown)   = downE
-defaultKeyMap (KeyLeft)   = leftE
-defaultKeyMap (KeyRight)  = rightE
-defaultKeyMap _           = noopE
+defaultKeyMap :: Char -> Action
+defaultKeyMap 'q'   = quitE
+defaultKeyMap '\^R' = refreshE
+defaultKeyMap 'h'   = leftE
+defaultKeyMap 'l'   = rightE
+defaultKeyMap '1'   = topE
+defaultKeyMap 'G'   = botE
+defaultKeyMap 'j'   = downE
+defaultKeyMap 'k'   = upE
+defaultKeyMap '^'   = solE
+defaultKeyMap '$'   = eolE
+defaultKeyMap 'r'   = replaceE
+defaultKeyMap 'i'   = insertE
+defaultKeyMap 'x'   = deleteE
+defaultKeyMap 'w'   = writeE
+defaultKeyMap 'D'   = killE
+defaultKeyMap 'N'   = nextE
+defaultKeyMap 'P'   = prevE
+defaultKeyMap k
+    | k == keyUp    = upE
+    | k == keyDown  = downE
+    | k == keyLeft  = leftE
+    | k == keyRight = rightE
+    | otherwise     = noopE
 
 {-
 --
