@@ -8,9 +8,10 @@ Copyright (c) Don Stewart 2004.
 
 QUICK START
 
-* Install the latest hs-plugins snapshot, then:
+* GHC 6.2.2: install hs-plugins-0.9.8.
+* GHC 6.4  : install the latest hs-plugins nightly snapshot.
 
-    $ autoreconf                -- NB auto_re_conf !
+    $ autoreconf                -- NB autoREconf
     $ ./configure --prefix=/my/dir
     $ make
     $ ./yi-inplace README
@@ -27,15 +28,14 @@ You will need GHC 6 (The Glorious/Glasgow Haskell Compilation System)
 and GNU make to compile yi. On OpenBSD you'll need ghc-6.2.2 or greater, 
 which contains a patch for the System.Posix.User library.
 
-You also need a recent snapshot version of hs-plugins, the Haskell
-dynamic loader library. You can get this from:
+If you're building with ghc-6.2.2, you need hs-plugins-0.9.8, if you're
+using ghc-6.4, then you need a more recent nighly snapshot of
+hs-plugins, the Haskell dynamic loader library. You can get this from:
 
         http://www.cse.unsw.edu.au/~dons/hs-plugins/
 
-You currently need to use a cvs snapshot of hs-plugins -- none of the
-stable releases are suitable -- you need an hs-plugins snapshot dated >=
-20041120. Getting the most recent snapshot will work. Make sure you
-"make", "make install" and "make register" the library. 
+Getting the most recent snapshot will work. Make sure you "make", "make
+install" and "make register" the hs-plugins library. 
 
 If you are working from the darcs repository you'll need autoconf and
 automake installed for generating the configure files.
@@ -90,7 +90,7 @@ A porting checklist:
         * you have a recent autoconf and automake
         * you have GHC >= 6.2.1         (>= 6.2.2 on OpenBSD)
         * you have a working GHCi
-        * you have a recent hs-plugins snapshot
+        * you have hs-plugins >= 0.9.8
         * you have haddock installed (for the documentation)
 
 The static version of yi has no hs-plugins support, and is thus more
