@@ -19,10 +19,10 @@ module HEmacs.UI (
         start, end, 
         screenSize,
 
-        drawBufferYX,   -- IO ()
         fillLine,       -- IO ()
 
         refresh,
+        reset,
         warn,
         
         getKey,
@@ -90,19 +90,21 @@ getKey refresh_fn = do
 --
 -- | Draw as much of the buffer as will fit in the screen
 --
-drawBufferYX :: Buffer a => Int -> Int -> a -> IO ()
-drawBufferYX h w buf = do
-    mapM_ (drawLine w) $ take (h-1{-modeline-}) ((contents buf) ++ repeat [])
+drawBuffer :: Buffer a => a -> IO ()
+drawBuffer buf = do
+    let (w,h) = size buf
+    mapM_ (drawLine w) $ take h $ (contents buf) ++ repeat []
     cset_attr (Curses.setReverse Curses.attr0 True , Curses.Pair (1))
     drawModeLine w (name buf)
-    creset_attr
+    reset
 
-drawMainBufferYX :: Buffer a => Int -> Int -> a -> IO ()
-drawMainBufferYX h w buf = do
-    mapM_ (drawLine w) $ take (h-1{-modeline-}) ((contents buf) ++ repeat [])
+drawMainBuffer :: Buffer a => a -> IO ()
+drawMainBuffer buf = do
+    let (w,h) = size buf
+    mapM_ (drawLine w) $ take h $ (contents buf) ++ repeat []
     cset_attr (Curses.setReverse Curses.attr0 True , Curses.Pair 0)
     drawModeLine w (name buf)
-    creset_attr
+    reset
 
 drawModeLine :: Int -> String -> IO ()
 drawModeLine w title = drawLine w ("\"" ++ title ++ "\"" ++ repeat ' ')
@@ -116,13 +118,14 @@ drawLine w s  = waddstr Curses.stdScr $ take w (s ++ repeat ' ')
 redraw :: IO ()
 redraw = do
     (mb,bs) <- Editor.getBuffers
-    (y,x)   <- Editor.getScreenSize
-    i       <- Editor.getBufCount
-    let (y', r) = (y - 1{-cmdline-}) `quotRem` i
     Curses.wMove Curses.stdScr 0 0  -- mv cursor to origin
-    when (isJust mb) $
-        drawMainBufferYX (y'+r) x (fromJust mb)
-    mapM_ (drawBufferYX y' x) bs
+    when (isJust mb) $ drawMainBuffer (fromJust mb)
+    mapM_ drawBuffer bs
+    when (isJust mb) $ Curses.withCursor Curses.CursorVisible $ do
+        let (x,y) = point (fromJust mb)
+        cset_attr (Curses.setReverse Curses.attr0 True , Curses.Pair 1)
+        Curses.wMove Curses.stdScr y x           -- move the cursor to start of line
+        reset
 
 --
 -- | Fill to end of line spaces
@@ -148,8 +151,8 @@ cset_attr (a, p) = Curses.wAttrSet Curses.stdScr (a, p)
 --
 -- | Reset the screen to normal values
 --
-creset_attr :: IO ()
-creset_attr = cset_attr (Curses.attr0, Curses.Pair 0)
+reset :: IO ()
+reset = cset_attr (Curses.attr0, Curses.Pair 0)
 
 -- ---------------------------------------------------------------------
 -- Refreshing

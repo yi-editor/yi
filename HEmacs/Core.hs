@@ -37,34 +37,35 @@ module HEmacs.Core (
         e_refresh,
         e_noop,
         e_load,
+        e_left,
+        e_right,
+        e_up,
+        e_down,
 
    ) where
 
 import HEmacs.Editor
 import qualified HEmacs.Editor as Editor
 import qualified HEmacs.UI     as UI
-
-import Data.Char        ( ord, chr ) 
-import Data.Maybe       ( isJust, fromJust )
-import Data.List        ( lines )
-import Control.Monad    ( when )
-import qualified Control.Exception ( catch, Exception )
+import qualified HEmacs.Buffer as Buffer
 
 import System.IO        ( openFile, hGetContents, IOMode(..), )
+
+import qualified Control.Exception ( catch, Exception )
 
 -- ---------------------------------------------------------------------
 -- | Start up the editor, setting any state with the user preferences
 -- and file names passed in, and turning on the UI
 --
 start :: Editor.Config -> Maybe [FilePath] -> IO ()
-start confs fs = do
+start confs mfs = do
     UI.start
-    size@(h,w) <- UI.screenSize
+    size <- UI.screenSize
     Editor.setScreenSize size
     Editor.setUserSettings confs
-    case fs of
-        Nothing   -> Editor.newBuffer "undefined" []
-        Just (fs) -> mapM_ e_load fs >> e_refresh >> return ()
+    case mfs of
+        Nothing -> Editor.newBuffer "undefined" [[]]
+        Just fs -> mapM_ e_load fs >> e_refresh >> return ()
 
 --
 -- | shutdown the editor
@@ -80,7 +81,8 @@ end = UI.end
 eventLoop :: IO ()
 eventLoop = do 
     km <- Editor.getKeyMap
-    UI.withInvisibleCursor $ eventLoop' km
+    eventLoop' km
+--  UI.withInvisibleCursor $ eventLoop' km
 
 -- 
 -- | read a keystroke, and interpret it using the current key mappings.
@@ -91,12 +93,12 @@ eventLoop' keyhandler = do
     k <- UI.getKey UI.refresh
     s <- Control.Exception.catch (keyhandler k) (do_except)
     case s of
-        EQuit -> return ()
+        EQuit -> UI.reset   >> return ()
         EOk   -> UI.refresh >> eventLoop' keyhandler
 
     where
         do_except :: Control.Exception.Exception -> IO EventStatus
-        do_except e = return EQuit
+        do_except _ = return EQuit
 
 -- ---------------------------------------------------------------------
 -- | Editor actions. This is the instruction set of the editor core.
@@ -119,6 +121,30 @@ e_refresh = UI.refresh >> return EOk
 --
 e_noop :: IO EventStatus
 e_noop = return EOk
+
+--
+-- | Move cursor left 1
+--
+e_left :: IO EventStatus
+e_left = (withBuffer $ \b -> return $ Buffer.left b) >> return EOk
+
+--
+-- | Move cursor right 1
+--
+e_right :: IO EventStatus
+e_right = (withBuffer $ \b -> return $ Buffer.right b) >> return EOk
+
+--
+-- | Move cursor up 1
+--
+e_up :: IO EventStatus
+e_up = (withBuffer $ \b -> return $ Buffer.up b) >> return EOk
+
+--
+-- | Move cursor down 1
+--
+e_down :: IO EventStatus
+e_down = (withBuffer $ \b -> return $ Buffer.down b) >> return EOk
 
 --
 -- | Load a new buffer with contents of file

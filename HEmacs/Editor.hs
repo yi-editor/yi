@@ -38,6 +38,7 @@ module HEmacs.Editor (
 
         newBuffer,              -- :: FilePath -> [String] -> IO ()
         delBuffer,              -- :: IO ()
+        withBuffer,
 
         setUserSettings,        -- :: Config -> IO ()
         getKeyMap,              -- :: IO (Key -> Action)
@@ -149,6 +150,35 @@ getAllBuffers :: IO [BasicBuffer]
 getAllBuffers = withEditor $ \e -> return $ buffers e
 
 --
+-- | get current buffer
+--
+getCurBuffer :: IO BasicBuffer
+getCurBuffer = withEditor $ \e -> do
+    let bs = buffers e
+    case cur_buf_ind e of
+        Nothing -> error "Editor.getCurBuffer : no buffer to get"
+        Just i  -> return (bs !! i)
+
+--
+-- | given the current buffer, write a new version of it
+-- should have iorefs for storing the buffers, I think.
+--
+setCurBuffer :: BasicBuffer -> IO ()
+setCurBuffer buf = modifyEditor $ \e -> do
+    let bs = buffers e
+    case cur_buf_ind e of
+        Nothing -> error "Editor.setCurBuffer: tried to modify non-existent buffer"
+        Just i  -> let (a, b)  = splitAt (i + 1) bs
+                       ([_],d) = splitAt 1 (reverse a)
+                   in return $! e { buffers = reverse d ++ [buf] ++ b }
+
+--
+-- | with the current buffer, perform action
+--
+withBuffer :: (BasicBuffer -> IO BasicBuffer) -> IO ()
+withBuffer a = getCurBuffer >>= a >>= setCurBuffer
+
+--
 -- | get current buffer, and the rest
 --
 getBuffers :: IO (Maybe BasicBuffer, [BasicBuffer])
@@ -157,7 +187,7 @@ getBuffers = withEditor $ \e -> do
     case cur_buf_ind e of
         Nothing -> return (Nothing, bs)
         Just i  -> let (a,  b) = splitAt (i+1) bs
-                       ([c],d) = splitAt 1     (reverse a)
+                       ([c],d) = splitAt 1 (reverse a)
                    in return $! (Just c, d ++ b)
 
 --
@@ -173,13 +203,33 @@ getBufCount = withEditor $ \e -> return $ buf_count e
 newBuffer :: FilePath -> [String] -> IO ()
 newBuffer f ss = do
     modifyEditor $ \(e :: Editor) -> do
+
+        --
+        -- work out new visible buffer sizes . the height of a window is 
+        -- screen height - 1 for the command line, quot the num of
+        -- (visible) buffers, - 1 for the titlebar. the focused window
+        -- currently gets any remainder.
+        --
+        let (y_, r) = (s_height e - 1) `quotRem` (buf_count e + 1)
+            y = y_ - 1
+
+        -- 
+        -- get a new buffer and set some fields.
         let buf = let a = new
                       b = setname a f
-                      c = setsize b (s_width e , s_height e)
+                      c = setsize b (s_width e , y + r)
                       d = setcontents c ss in d
+
         let bb  = buffers e 
             i   = buf_count e
-        return $! e { buffers = buf:bb, cur_buf_ind = Just 0, buf_count = i+1 }
+
+        --
+        -- update the height of all the other buffers
+        --
+        let bb' = map (\b -> setsize b (s_width e, y)) bb
+
+        -- add our new buffer to the list
+        return $! e { buffers = buf:bb', cur_buf_ind = Just 0, buf_count = i+1 }
 
 --
 -- | delete a buffer

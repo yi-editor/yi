@@ -111,12 +111,6 @@ g_settings :: IORef Editor.Config
 g_settings = unsafePerformIO $ newIORef (Config.settings)
 {-# NOINLINE g_settings #-}
 
---
--- | Given a record selector, return that field from the settings
---
-get_global :: (Editor.Config -> a) -> IO a
-get_global selector = readIORef g_settings >>= \v -> return $ selector v
-
 -- ---------------------------------------------------------------------
 -- | Static main. This is the front end to the statically linked
 -- application, and the real front end, in a sense. 'dynamic_main' calls

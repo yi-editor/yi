@@ -89,7 +89,7 @@ class Buffer a where
     -- | Move cursor +n in @x@
     rightn      :: a -> Int -> a
 
-    rightn b n = case point b of (x,y) -> b `moveto` (x+n, y)
+    rightn b n = case point b of (x,y) -> b `moveto` (x+n,  y)
 
     -- | Move cursor +1 in @x@
     right       :: a -> a
@@ -99,7 +99,7 @@ class Buffer a where
     -- | Move cursor +n in @y@
     upn         :: a -> Int -> a
 
-    upn b n = case point b of (x,y) -> b `moveto` (x, y+n)
+    upn b n   = case point b of (x,y) -> b `moveto` (x, y-n)
 
     -- | Move cursor +1 in @y@
     up          :: a -> a
@@ -109,7 +109,7 @@ class Buffer a where
     -- | Move cursor -n in @y@
     downn       :: a -> Int -> a
 
-    downn b n = case point b of (x,y) -> b `moveto` (x, y-n)
+    downn b n = case point b of (x,y) -> b `moveto` (x,y+n)
 
     -- | Move cursor -1 in @y@
     down        :: a -> a
@@ -155,15 +155,33 @@ instance Buffer BasicBuffer where
             
     --
     -- save move to. always end up somewhere with a valid Char
-    -- here's where [[Char]] sucks. at least we cache 'y'..
+    -- here's where [[Char]] sucks. TODO simplify
     --
-    moveto b (x,y) = let ss    = b_contents b
-                         (_,h) = b_size b
-                         y'    = if y > h then h else y
-                         l     = ss !! y'
-                         l_x   = length l
-                         x'    = if x > l_x then l_x else x
-                     in b { b_cursor = (x', y') }
+    moveto b (x,y) = 
+        let ss    = b_contents b
+            h     = height b
+            len   = length ss
+
+            -- find safe y index
+            y' | y >= h    = h - 1     -- end of buffer
+               | y >= len  = len - 1   -- end of contents
+               | y <  0    = 0         -- start
+               | otherwise = y
+
+            -- find line to index
+            l  | length ss <= y' = last ss  -- goto to last line
+               | otherwise       = ss !! y'
+
+            -- find point in line to jump to
+            w  | length l >= 2 = length l - 1 -- ignore '\n'
+               | otherwise     = 0
+            
+            -- now work out safe x index
+            x' | x >= w    = w
+               | x <  0    = 0
+               | otherwise = x
+
+        in b { b_cursor = (x', y') }
                         
     -- always safe
     char b         = let ss    = b_contents b
@@ -172,7 +190,7 @@ instance Buffer BasicBuffer where
 
     new = BasicBuffer {
             b_name     = "undefined"
-           ,b_contents = [] 
+           ,b_contents = [[]] 
            ,b_size     = (0,0)
            ,b_cursor   = (0,0)
           }

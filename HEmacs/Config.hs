@@ -40,6 +40,10 @@ settings = Config {
 defaultKeyMap :: Key -> Action
 defaultKeyMap (Key 'q')   = e_quit
 defaultKeyMap (Key '\^R') = e_refresh
+defaultKeyMap (Key 'h')   = e_left
+defaultKeyMap (Key 'l')   = e_right
+defaultKeyMap (Key 'k')   = e_up
+defaultKeyMap (Key 'j')   = e_down
 defaultKeyMap _           = e_noop
 
 {-
