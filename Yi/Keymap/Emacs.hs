@@ -22,7 +22,7 @@
 -- bindings. Feel free to write your own bindings in ~/.yi/Keymap.hs.
 -- You must provide a function 'keymap' of type: Char -> Action
 --
--- Contributed by Simon Winwood - http://www.cse.unsw.edu.au/~sjw
+-- Contributed by Simon Winwood - <http://www.cse.unsw.edu.au/~sjw>
 --
 
 module Yi.Keymap.Emacs ( keymap ) where

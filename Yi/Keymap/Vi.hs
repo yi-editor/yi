@@ -18,7 +18,8 @@
 -- 
 
 --
--- Vi-ish keymap for Yi
+-- Vi-ish keymap for Yi. The differences are to generalise some aspects
+-- (like map) and ignore some oddities.
 --
 
 module Yi.Keymap.Vi ( keymap, keymapPlus, ViMode ) where
@@ -33,6 +34,7 @@ import Data.Maybe
 import Data.List        ( (\\) )
 import Data.Char
 import Control.Monad
+import Control.Exception    ( ioErrors, catchJust )
 
 -- ---------------------------------------------------------------------
 
@@ -40,32 +42,42 @@ import Control.Monad
 type ViMode  = Lexer  ViState Action 
 type ViRegex = Regexp ViState Action
 
+--
 -- state threaded through the lexer
+--
+-- In vi, you may add bindings (:map) to cmd or insert mode. We thus
+-- carry around the current cmd and insert lexers in the state. Calls to
+-- switch editor modes therefore use the lexers in the state.
+--
 data ViState = 
         St { acc :: [Char]      -- an accumulator, for count, search and ex mode
-           , cmd :: ViMode }    -- (maybe) user-augmented cmd mode lexer
+           , cmd :: ViMode      -- (maybe augmented) cmd mode lexer
+           , ins :: ViMode }    -- (maybe augmented) ins mode lexer
 
 --
 -- | Top level. Lazily consume all the input, generating a list of
 -- actions, which then need to be forced
 --
--- NB . if there is an exception, we'll lose any new bindings.. iorefs?
---    . maybe we shouldn't refresh automatically?
+-- NB . if there is a (bad) exception, we'll lose any new bindings.. iorefs?
+--    . also, maybe we shouldn't refresh automatically?
 --
 keymap :: String -> IO ()
 keymap cs = mapM_ (>> refreshE) actions
     where 
-        (actions,_,_) = execLexer cmd_mode (cs, dfltSt)
-        dfltSt        = St { acc = [], cmd = cmd_mode }
+        (actions,_,_) = execLexer cmd_mode (cs, defaultSt)
+
+-- | default lexer state, just the normal cmd and insert mode. no mappings
+defaultSt :: ViState
+defaultSt = St { acc = [], cmd = cmd_mode, ins = ins_mode }
 
 -- | like keymap, but takes a supplied lexer, which is used to augment the
--- existing lexer. Useful for user-added binds
+-- existing lexer. Useful for user-added binds (to command mode only!)
 keymapPlus :: ViMode -> [Char] -> IO ()
 keymapPlus lexer' cs = mapM_ (>> refreshE) actions
     where 
         actions = let (ts,_,_) = execLexer cmd_mode' (cs, dfltSt) in ts
         cmd_mode'= cmd_mode >||< lexer'
-        dfltSt = St { acc = [], cmd = cmd_mode' }
+        dfltSt = St { acc = [], cmd = cmd_mode', ins = ins_mode }
 
 ------------------------------------------------------------------------
 
@@ -73,29 +85,31 @@ keymapPlus lexer' cs = mapM_ (>> refreshE) actions
 -- to the different modes of vi. Each mode is in turn broken up into
 -- separate lexers for each phase of key input in that mode.
 
--- command mode consits of simple commands that take a count arg - the
+-- | command mode consits of simple commands that take a count arg - the
 -- count is stored in the lexer state. also the replace cmd, which
 -- consumes one char of input, and commands that switch modes.
 cmd_mode :: ViMode
 cmd_mode = cmd_count >||< cmd_eval >||< cmd2other
 
 --
--- insert mode is either insertion actions, or the meta \ESC action
+-- | insert mode is either insertion actions, or the meta \ESC action
 --
 ins_mode :: ViMode
-ins_mode = ins >||< ins2cmd
+ins_mode = ins_char >||< ins2cmd
 
 --
--- ex mode is either accumulating input or, on \n, executing the command
+-- | ex mode is either accumulating input or, on \n, executing the command
 --
 ex_mode :: ViMode
 ex_mode = ex_char >||< ex_edit >||< ex_eval >||< ex2cmd
 
--- ---------------------------------------------------------------------
--- | vi (simple) command mode.
---
+-- util
 with :: Action -> Maybe (Either e Action)
 with a = (Just (Right a))
+
+-- ---------------------------------------------------------------------
+-- | vi command mode.
+--
 
 -- accumulate count digits, echoing them to the cmd buffer
 cmd_count :: ViMode
@@ -211,7 +225,7 @@ cmd_eval = ( cmdc >|<
             where undef = not_implemented (head lexeme)
 
 --
--- | Switch to another vi mode. 
+-- | Switch to another vi mode.
 --
 -- These commands are meta actions, as they transfer control to another
 -- lexer. Some of these commands also perform an action before switching.
@@ -219,11 +233,11 @@ cmd_eval = ( cmdc >|<
 cmd2other :: ViMode
 cmd2other = modeSwitchChar
     `meta` \[c] st -> 
-        let beginIns a = (Just (Right (a)), st, Just ins_mode)
+        let beginIns a = (Just (Right (a)), st, Just (ins st))
         in case c of
             ':' -> (with (msgE ":"), st{acc=[':']}, Just ex_mode)
 
-            'i' -> (Nothing, st, Just ins_mode)
+            'i' -> (Nothing, st, Just (ins st))
             'I' -> beginIns solE
             'a' -> beginIns $ rightOrEolE 1
             'A' -> beginIns eolE
@@ -246,8 +260,8 @@ cmd2other = modeSwitchChar
 -- ---------------------------------------------------------------------
 -- | vi insert mode
 -- 
-ins :: ViMode
-ins = anyButEsc
+ins_char :: ViMode
+ins_char = anyButEsc
     `action` \[c] -> Just $ case c of
         k | isDel k       -> deleteE
           | k == keyPPage -> upScreenE
@@ -294,18 +308,33 @@ ex_eval = enter
         -- regex searching
         ('/':pat) -> (with (searchE (Just pat)), st{acc=[]}, Just $ cmd st)
 
-        -- key mappings
+        -- add mapping to command mode
         (_:'m':'a':'p':' ':cs) -> 
-               let cmd' = uncurry (eval_map (cmd st)) (break (==' ') cs)
-               in (Nothing, st{acc=[],cmd=cmd'}, Just cmd')
+               let pair = break (== ' ') cs
+                   cmd' = uncurry (eval_map st (Left $ cmd st)) pair
+               in (with msgClrE, st{acc=[],cmd=cmd'}, Just cmd')
 
+        -- add mapping to insert mode
+        (_:'m':'a':'p':'!':' ':cs) -> 
+               let pair = break (== ' ') cs
+                   ins' = uncurry (eval_map st (Right $ ins st)) pair
+               in (with msgClrE, st{acc=[],ins=ins'}, Just (cmd st))
+
+        -- unmap a binding from command mode
         (_:'u':'n':'m':'a':'p':' ':cs) ->
-               let cmd' = eval_unmap (cmd st) cs
-               in (Nothing, st{acc=[],cmd=cmd'}, Just cmd')
+               let cmd' = eval_unmap (Left $ cmd st) cs
+               in (with msgClrE, st{acc=[],cmd=cmd'}, Just cmd')
 
+        -- unmap a binding from insert mode
+        (_:'u':'n':'m':'a':'p':'!':' ':cs) ->
+               let ins' = eval_unmap (Right $ ins st) cs
+               in (Nothing, st{acc=[],ins=ins'}, Just (cmd st))
+
+        -- just a normal ex command
         (_:src) -> (with (fn src), st{acc=[]}, Just $ cmd st)
 
-        [] -> (Nothing, st{acc=[]}, Just $ cmd st) -- can't happen
+        -- can't happen, but deal with it
+        [] -> (Nothing, st{acc=[]}, Just $ cmd st)
 
     where 
       fn ""           = msgClrE
@@ -320,25 +349,41 @@ ex_eval = enter
       fn ('s':'/':cs) = viSub cs >> msgClrE
       fn s            = msgE $ "The "++show s++ " command is unknown."
 
+------------------------------------------------------------------------
 --
--- | Given a sequence of chars, and another sequence of existing actions
--- to bind the first to, generate a new lexer in which those chars (as
--- a group) are bound to the sequence of actions generated by the rhs.
+-- | Given a lexer, a sequence of chars, and another sequence of
+-- chars, bind the lhs to the actions produced by the rhs, and augment
+-- the lexer with the new binding. (Left == command mode)
 --
--- Just for command mode at the moment.
---
-eval_map :: ViMode -> [Char] -> [Char] -> ViMode
-eval_map cmdm lhs rhs = cmdm >||< bind
+eval_map :: ViState                 -- ^ current state (including other lexers)
+         -> (Either ViMode ViMode)  -- ^ which mode we're tweaking
+         -> [Char]                  -- ^ identifier to bind to
+         -> [Char]                  -- ^ body of macro, to be expanded
+         -> ViMode                  -- ^ resulting augmented mode
+
+eval_map st emode lhs rhs = mode >||< bind
     where
-        (as,_,_) = execLexer cmdm (rhs, (St [] cmdm))
+        mode     = either id id emode
+        st'      = case emode of
+                        Left  cmd' -> St {acc=[], cmd=cmd', ins=ins st}
+                        Right ins' -> St {acc=[], cmd=cmd st, ins=ins'}
+        (as,_,_) = execLexer mode (rhs, st')
         bind     = string lhs `action` \_ -> Just (foldl1 (>>) as)
 
 --
+-- | Unmap a binding from the keymap (i.e. nopE a lex table entry)
+-- Currently we unmap all the way back to the original mode. So you
+-- can't stack bindings. This is vi's behaviour too, roughly.
 --
-eval_unmap :: ViMode -> [Char] -> ViMode
-eval_unmap cmdm lhs = cmdm >||< bind
+eval_unmap :: (Either ViMode ViMode)  -- ^ which vi mode to unmap from
+           -> [Char]                  -- ^ identifier to unmap
+           -> ViMode                  -- ^ new, depleted mode
+
+eval_unmap emode lhs = mode >||< bind
     where
-        (as,_,_) = execLexer cmd_mode{-original-} (lhs, (St [] cmd_mode))
+        mode      = either id id emode
+        dflt_mode = either (const cmd_mode) (const ins_mode) emode
+        (as,_,_) = execLexer dflt_mode (lhs, defaultSt)
         bind     = case as of
                     [] -> string lhs `action` \_ -> Just nopE -- wasn't bound prior
                     [a]-> string lhs `action` \_ -> Just a    -- bound to just one
@@ -358,11 +403,12 @@ viFileInfo = do (f,_,ln,_,_,pct) <- bufInfoE
                 msgE $ show f ++ " Line " ++ show ln ++ " ["++ pct ++"]"
 
 -- | Try to write a file in the manner of vi\/vim
+-- Need to catch any exception to avoid losing bindings
 viWrite :: Action
 viWrite = do
     (f,s,_,_,_,_) <- bufInfoE 
-    fwriteE
-    msgE $ show f++" "++show s ++ "C written"
+    let msg = msgE $ show f++" "++show s ++ "C written"
+    catchJust ioErrors (fwriteE >> msg) (msgE . show)
 
 -- | Try to do a substitution
 viSub :: [Char] -> Action
