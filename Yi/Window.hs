@@ -148,13 +148,13 @@ moveDownW w b = do
 -- | Move the cursor left or start of line
 --
 leftOrSolW :: Buffer a => Window -> a -> IO Window
-leftOrSolW w b = moveXorSol b 1 >> update w b
+leftOrSolW w b = moveXorSol b 1     >> update w b
 
 --
 -- | Move the cursor right or end of line
 --
 rightOrSolW :: Buffer a => Window -> a -> IO Window
-rightOrSolW w b = moveXorEol b 1 >> update w b
+rightOrSolW w b = moveXorEol b 1    >> update w b
 
 {-
 --
@@ -359,5 +359,6 @@ resetPoint w b = do
            | otherwise    -- just check out x-offset is right
            = w {pnt = p, cursor = (y,x)}
     m <- updateModeLine w' b 
+
     return w' { mode = m }
 

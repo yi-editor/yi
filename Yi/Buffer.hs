@@ -567,13 +567,21 @@ instance Buffer FBuffer where
 
     -- curLn :: a -> IO Int
     curLn (FBuffer _ _ mv) = withMVar mv $ \ref -> do
-        (FBuffer_ b (I# p) _ _) <- readIORef ref
+        fb <- readIORef ref
+        ss <- readChars (bufBuf fb) (bufPnt fb) 0
+        return $ 1 + (length $ filter (== '\n') ss)
+
+-- has bug:
+{-  curLn (FBuffer _ _ mv) = withMVar mv $ \ref -> do
+        (FBuffer_ b p@(I# p#) _ _) <- readIORef ref
         let loop 0# lc = return (I# lc)
             loop i  lc = do c <- readCharFromBuffer b i
                             if c == '\n' then loop (i -# 1#) (lc +# 1#)
                                          else loop (i -# 1#) lc
-        loop p 1#
-
+        k <- readCharFromBuffer b p#
+        let (I# q#) = max 0 (if k == '\n' then p - 1 else p)
+        loop q# 1#
+-}
 ------------------------------------------------------------------------
 
 -- | calculate whether a move is in bounds.

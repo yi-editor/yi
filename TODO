@@ -1,6 +1,5 @@
 
 Design plan:
-        - design 'window manager' system for buffers 
         - abstract syntax for ui 
         - think about abstractable actions/keybindings
         - clean up ncurses code    
@@ -19,6 +18,3 @@ Build system:
         - check how to install it from a port script
         - think about how to do a testsuite
         - store cpp options in a file, instead of on the command line
-
-Docs:
-        - get rid of haddock warnings
