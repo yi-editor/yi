@@ -86,6 +86,7 @@ hNewFBuffer f = do
         r_size = size_i + 2048
     ptr <- mallocArray0 r_size
     r <- if size_i == 0 then return 0 else hGetBuf h ptr size_i
+    hClose h
     if (r /= size_i)
         then ioError (userError $ "Short read of file: " ++ f)
         else do poke (ptr `advancePtr` size_i) (castCharToCChar '\0')
@@ -255,6 +256,11 @@ instance Buffer FBuffer where
         (FBuffer_ _ p e mx) <- readMVar mv
         assert ((p >= 0 && (p < e || e == 0)) && e <= mx) $ return p
     {-# INLINE pointB #-}
+
+    -- isUnchangedB  :: a -> IO Bool
+    isUnchangedB (FBuffer _ _ mv _) = do
+        ur <- readMVar mv
+        return $ isEmptyUList ur
 
     ------------------------------------------------------------------------
 

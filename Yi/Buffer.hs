@@ -64,6 +64,9 @@ class Buffer a where
 
     ------------------------------------------------------------------------
 
+    -- | Has the buffer been modified. @True@ if unchanged
+    isUnchangedB :: a -> IO Bool
+
     -- | Number of characters in the buffer
     sizeB      :: a -> IO Int
 

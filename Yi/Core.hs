@@ -65,6 +65,7 @@ module Yi.Core (
         fnewE,          -- :: FilePath -> Action
         fwriteE,        -- :: Action
         fwriteToE,      -- :: String -> Action
+        isUnchangedE,   -- :: IO Bool
 
         -- * Buffer point movement
         topE,           -- :: Action
@@ -719,6 +720,12 @@ fwriteE = withWindow_ $ \w b -> hPutB b (nameB b) >> return w
 fwriteToE :: String -> Action
 fwriteToE f = withWindow_ $ \w b -> hPutB b f >> return w
 
+-- | Is the current buffer unmodifed?
+isUnchangedE :: IO Bool
+isUnchangedE = withWindow $ \w b -> isUnchangedB b >>= \v -> return (w,v)
+
+------------------------------------------------------------------------
+
 -- | Split a second window onto this buffer :)
 splitE :: Action
 splitE = do
@@ -748,6 +755,8 @@ nextWinE = Editor.nextWindow
 -- | Shift focus to prev window
 prevWinE :: Action
 prevWinE = Editor.prevWindow
+
+------------------------------------------------------------------------
 
 -- | Shift focus to command line window
 cmdlineFocusE :: Action

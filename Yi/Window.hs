@@ -48,6 +48,7 @@ data Window =
        ,mode        :: !(Maybe String) -- ^ this window's modeline
        ,height      :: !Int            -- ^ height of this window
        ,width       :: !Int            -- ^ width of this window
+
        ,cursor      :: !(Int,Int)      -- ^ cursor point on screen
 
        ,pnt         :: !Int            -- ^ current point

@@ -128,7 +128,8 @@ cmdCharFM = listToFM $
     ,('\^P',        upE)
     ,('\^U',        undoE)
     ,('\^V',        downScreenE)
-    ,('\^X',        quitE)
+    ,('\^X',        do b <- isUnchangedE
+                       if b then quitE else switch2WriteMode)
     ,('\^Y',        upScreenE)
     ,('\^Z',        suspendE)
     ,('\0',         do moveWhileE (isAlphaNum)      Right
@@ -143,7 +144,45 @@ cmdCharFM = listToFM $
                        msgE $ "[ line "++show ln++", col "++show x++
                               ", char "++show p++"/"++show s++" ("++pct++") ]"))
     ]
-                
+
+    where
+        --
+        -- | print a message and switch to sub-mode lexer for Y/N questions
+        --
+        switch2WriteMode :: Action
+        switch2WriteMode = do
+            msgE "Save modified buffer (ANSWERING \"No\" WILL DESTROY CHANGES) ? "
+            cmdlineFocusE
+            metaM $ askYN (fwriteE >> quitE) (quitE) keymap
+
+------------------------------------------------------------------------
+--
+-- | Construct a new lexer for yes, no and cancel questions. The lexer
+-- value returned can assume control by applying @metaM@ to that value.
+--
+-- The lexer table is populated with the first two @Action@ arguments
+-- bound to y and n, cancel bound to ctrl-c, and anything else ignored.
+-- Once we've processed a valid keystroke, we return control to the
+-- keymap specified by the third argument.
+--
+askYN ::  Action -> Action -> ([Char] -> [Action]) -> ([Char] -> [Action])
+askYN y_act n_act cont = 
+    \cs -> let (actions,_,_) = execLexer ync_mode (cs, Nothing) in actions
+
+    where
+        ync_mode = yes_mode >||< no_mode >||< cancel
+
+        yes_mode = (char 'Y' >|< char 'y')
+                    `action` \_ -> Just $ y_act >> done
+        no_mode  = (char 'N' >|< char 'n')
+                    `action` \_ -> Just $ n_act >> done
+        cancel   = char '\^C' 
+                    `action` \_ -> Just $ msgE "[ Cancelled ]" >> done
+
+        done     = cmdlineUnFocusE >> metaM cont
+
+------------------------------------------------------------------------
+
 --
 -- | Switching to the command buffer
 --

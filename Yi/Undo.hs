@@ -60,7 +60,16 @@
 -- Also some discussion of this in: /The Text Editor Sam/, Rob Pike, pg 19.
 --
 
-module Yi.Undo where
+module Yi.Undo (
+        emptyUR,
+        addUR, 
+        undoUR,
+        redoUR,
+        isEmptyUList,
+
+        URList,             {- abstractly -}
+        URAction(..),       {- non-abstractly, for concrete implementations -}
+   ) where
 
 import Yi.Buffer                ( Point, Size, Buffer(getActionB) )
 
@@ -116,3 +125,9 @@ redoUR b (URList us (r:rs)) = do
     u <- (getActionB r) b
     return (URList (u:us) rs)
 
+
+-- | isEmptyUndoList. @True@ if the undo list is empty, and hence the
+-- buffer is not modified
+isEmptyUList :: URList -> Bool
+isEmptyUList (URList [] _) = True
+isEmptyUList (URList _  _) = False

@@ -624,7 +624,9 @@ ex_eval = enter
                   Right lineNum -> gotoLnE lineNum
 
       fn "w"          = viWrite
-      fn "q"          = closeE
+      fn "q"          = do b <- isUnchangedE 
+                           if b then closeE
+                                else errorE "No write since last change (add ! to override)"
       fn "q!"         = closeE
       fn "wq"         = viWrite >> closeE
       fn "n"          = nextBufW
