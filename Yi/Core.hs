@@ -88,10 +88,12 @@ import Yi.UI
 import qualified Yi.UI     as UI
 import qualified Yi.Editor as Editor hiding ( withBuffer_, withBuffer )
 
-import Data.Char    ( isLatin1 )
+import Data.Char            ( isLatin1 )
 
 import System.IO
+import System.Directory     ( doesFileExist )
 import System.Exit
+import Control.Exception    ( ioErrors, catchJust, handleJust )
 
 import GHC.Base
 
@@ -103,13 +105,14 @@ startE :: Editor.Config -> Maybe [FilePath] -> IO ()
 startE confs mfs = do
     UI.start
     Editor.setUserSettings confs
-    case mfs of
-        Just fs -> mapM_ newE fs
-        Nothing -> do               -- vi-like behaviour, just for now.
-            mf <- mkstemp "/tmp/yi.XXXXXXXXXX" 
-            case mf of
-                Nothing    -> error "Core.startE: mkstemp failed"
-                Just (f,h) -> hClose h >> newE f
+    Control.Exception.handleJust (ioErrors) (\e -> msgE (show e)) $ do
+        case mfs of
+            Just fs -> mapM_ newE fs
+            Nothing -> do               -- vi-like behaviour, just for now.
+                mf <- mkstemp "/tmp/yi.XXXXXXXXXX" 
+                case mf of
+                    Nothing    -> error "Core.startE: mkstemp failed"
+                    Just (f,h) -> hClose h >> newE f
     refreshE
 
 --
@@ -133,14 +136,12 @@ getcE = UI.getKey UI.refresh
 eventLoop :: IO ()
 eventLoop = do
     f <- Editor.getKeyMap
-    let loop = do c <- getcE
-                  f c
-                  UI.refresh
-                  loop
+    let loop = do 
+            c <- getcE
+            Control.Exception.catchJust (ioErrors) (f c) (\e ->  msgE (show e))
+            UI.refresh
+            loop
     loop
-
-    -- handler :: Control.Exception.Exception -> IO ()
-    -- handler = Control.Exception.throwIO
 
 -- ---------------------------------------------------------------------
 
@@ -230,37 +231,32 @@ leftOrSolE x = withBuffer_ $ \b -> moveXorSol b x
 rightOrEolE :: Int -> IO ()
 rightOrEolE x = withBuffer_ $ \b -> moveXorEol b x
 
+------------------------------------------------------------------------
 --
 -- | Read into a *new* buffer the contents of file.
--- TODO: change type.
 --
 newE  :: FilePath -> IO ()
 newE f = do
-    hd <- openFile f ReadWriteMode
-    cs <- hGetContents hd
+    e  <- doesFileExist f
+    cs <- if e then readFile f else return []
     Editor.newBuffer f cs
-    hClose hd                   -- must come after we create the new buffer
-
-{-
--- works. but if you move hClose *before* the call to newBuffer -- bad!
--- so readFile does exactly what we want, but nicely.
--}
+--  hClose hd                   -- must come after we create the new buffer
 
 --
 -- | Write current buffer to disk
 --
 writeE :: IO ()
 writeE = withBuffer_ $ \b -> do
-        let f = nameB b
-        ss <- elemsB b
-        h  <- openFile f WriteMode
-        hPutStr h ss
-        hClose h
+    let f = nameB b
+    ss <- elemsB b
+    hd <- openFile f WriteMode
+    hPutStr hd ss
+    hClose hd
 
 --
 -- | Read file into buffer starting a current point
 --
-readE :: IO ()
+readE :: FilePath -> IO ()
 readE = error "readE is undefined"
 
 ------------------------------------------------------------------------
