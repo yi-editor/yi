@@ -29,6 +29,8 @@ import qualified Yi.Editor  as Editor
 import qualified Yi.Core    as Core 
 import qualified Yi.Style   as Style
 
+import qualified Yi.Map as M
+
 import qualified Yi.Keymap.Vi    as Vi
 import qualified Yi.Keymap.Vim   as Vim
 import qualified Yi.Keymap.Nano  as Nano

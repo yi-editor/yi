@@ -22,9 +22,8 @@
 
 module Yi.Keymap.Joe (keymap) where
 
-import Yi.Core
 import Yi.Editor            ( Action )
-import Yi.Curses            ( keyBackspace )
+import Yi.Yi hiding         ( keymap )
 import Yi.CharMove
 
 import Data.Maybe
@@ -33,8 +32,6 @@ import Data.Char            ( isControl, ord, chr )
 --import Control.Monad        ( when )
 --import Control.Exception    ( ioErrors, catchJust )
 import Data.FiniteMap
-
-import Yi.Curses.UI         ( suspend )
 
 -- ---------------------------------------------------------------------
 
@@ -104,7 +101,7 @@ kmap=[
     -- Global
     "\^R"  ++> refreshE,
     "\^KX" ++> quitE,
-    "\^KZ" ++> suspend,
+    "\^KZ" ++> suspendE,
     "\^KE" &&> queryNewE
     ]
 
@@ -113,7 +110,7 @@ kmap=[
 killEolE, killSolE, killLineE, undefE :: Action
 
 killEolE = killE
-killLineE = solE >> killE
+killLineE = solE >> killE >> deleteE
 killSolE = do
     p <- getPointE
     solE
