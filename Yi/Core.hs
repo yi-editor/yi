@@ -287,8 +287,9 @@ replaceE = withBuffer $ \b -> do
 insertE :: IO ()
 insertE = withBuffer $ \b -> do
     k <- UI.getKey UI.refresh
-    case k of Editor.Key c -> insertB b c
-              _            -> noopE  -- TODO
+    case k of Editor.Key '\13'  -> insertB b '\n'
+              Editor.Key c      -> insertB b c
+              _                 -> noopE  -- TODO
 
 -- | Delete character under cursor
 deleteE :: IO ()
