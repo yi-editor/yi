@@ -1,130 +1,192 @@
 {-# OPTIONS -#include YiUtils.h #-}
---
--- riot/Style.hs
 -- 
--- Copyright (c) Tuomo Valkonen 2004.
+-- Copyright (c) 2004 Don Stewart - http://www.cse.unsw.edu.au/~dons
+-- 
+-- This program is free software; you can redistribute it and/or
+-- modify it under the terms of the GNU General Public License as
+-- published by the Free Software Foundation; either version 2 of
+-- the License, or (at your option) any later version.
+-- 
+-- This program is distributed in the hope that it will be useful,
+-- but WITHOUT ANY WARRANTY; without even the implied warranty of
+-- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+-- General Public License for more details.
+-- 
+-- You should have received a copy of the GNU General Public License
+-- along with this program; if not, write to the Free Software
+-- Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+-- 02111-1307, USA.
+-- 
+-- Based on: riot/Style.hs
+-- 
+--     Copyright (c) Tuomo Valkonen 2004.
 --
--- This program is free software; you can redistribute it and/or modify
--- it under the terms of the GNU General Public License as published by
--- the Free Software Foundation; either version 2 of the License, or
--- (at your option) any later version.
+-- Released under the same license.
 --
 
 --
--- | Colors and friends
+-- | Colors and friends. At the moment this is tied to curses. This
+-- needs to be fixed. The attibutes and colours should be a type class
 --
 
 module Yi.Style (
 
-        UIAttr(..), StyleSpec(..),
-        init_uiattr, default_uiattr, 
+        UI(..), Style, ui,
 
         -- Colours
-        c_default, c_black, c_red, c_green, c_yellow, 
-        c_blue, c_magenta, c_cyan, c_white,
+        defaultColor, black, red, green, yellow, 
+        blue, magenta, cyan, white,
+
+        Foreground(..), Background(..), bgAttr, fgAttr,
 
         -- Attributes
-        sa_bold, sa_underline, sa_dim, sa_reverse,
-        a_none, a_bold, a_underline, a_dim, a_reverse,
+        setBoldA, setUnderlineA, setDimA, setReverseA,
+        nullA, boldA, underlineA, dimA, reverseA,
 
    ) where
 
 import qualified Yi.Curses as Curses
-
 import Data.Maybe        ( fromJust )
 
-c_default, c_black, c_red, c_green, c_yellow, 
-    c_blue, c_magenta, c_cyan, c_white :: Curses.Color
-c_default   = fromJust $ Curses.color "default" -- doesn't work?
-c_black     = fromJust $ Curses.color "black"
-c_red       = fromJust $ Curses.color "red"
-c_green     = fromJust $ Curses.color "green"
-c_yellow    = fromJust $ Curses.color "yellow"
-c_blue      = fromJust $ Curses.color "blue"
-c_magenta   = fromJust $ Curses.color "magenta"
-c_cyan      = fromJust $ Curses.color "cyan"
-c_white     = fromJust $ Curses.color "white"
+------------------------------------------------------------------------
+--
+-- Basic (ncurses) colours.
+--
+defaultColor :: Curses.Color
+defaultColor = fromJust $ Curses.color "default" -- doesn't work?
 
-sa_bold, sa_underline, sa_dim, sa_reverse :: Curses.Attr -> Curses.Attr
-sa_bold      = \a -> Curses.setBold a True
-sa_underline = \a -> Curses.setUnderline a True
-sa_dim       = \a -> Curses.setDim a True
-sa_reverse   = \a -> Curses.setReverse a True
+black, red, green, yellow, blue, magenta, cyan, white :: Curses.Color
+black     = fromJust $ Curses.color "black"
+red       = fromJust $ Curses.color "red"
+green     = fromJust $ Curses.color "green"
+yellow    = fromJust $ Curses.color "yellow"
+blue      = fromJust $ Curses.color "blue"
+magenta   = fromJust $ Curses.color "magenta"
+cyan      = fromJust $ Curses.color "cyan"
+white     = fromJust $ Curses.color "white"
 
-a_bold, a_none, a_underline, a_dim, a_reverse :: Curses.Attr
-a_none       = Curses.attr0
-a_bold       = sa_bold Curses.attr0
-a_underline  = sa_underline Curses.attr0
-a_dim        = sa_dim Curses.attr0
-a_reverse    = sa_reverse Curses.attr0
-
-newtype StyleSpec = StyleSpec (String, (Curses.Attr, Curses.Color, Curses.Color))
-
-data UIAttr = UIAttr {
-    attr_infoline,
-    attr_text,
-    attr_entry,
-    attr_entry_sel,
-    attr_entry_act,
-    attr_entry_act_sel,
-    attr_error,
-    attr_message :: (Curses.Attr, Curses.Pair)
-}
-
-default_uiattr :: UIAttr
-default_uiattr = 
-    UIAttr {
-        attr_infoline = ar,
-        attr_text = a0,
-        attr_entry = a0,
-        attr_entry_sel = ar,
-        attr_entry_act = ab,
-        attr_entry_act_sel = ab,
-        attr_error = ab,
-        attr_message = ab
-    } 
-    where
-        a0 = (a_none, Curses.Pair 0)
-        ar = (a_reverse, Curses.Pair 0)
-        ab = (a_bold, Curses.Pair 0)
-
-uiattr_set :: UIAttr -> String -> (Curses.Attr, Curses.Pair) -> UIAttr
-
-uiattr_set a "attr_infoline" v = a{attr_infoline = v}
-uiattr_set a "attr_text" v = a{attr_text = v}
-uiattr_set a "attr_entry" v = a{attr_entry = v}
-uiattr_set a "attr_entry_sel" v = a{attr_entry_sel = v}
-uiattr_set a "attr_entry_act" v = a{attr_entry_act = v}
-uiattr_set a "attr_entry_act_sel" v = a{attr_entry_act_sel = v}
-uiattr_set a "attr_error" v = a{attr_error = v}
-uiattr_set a "attr_message" v = a{attr_message = v}
-uiattr_set _ _ _ = error "Styles.uiattr_set: Can't happen"
-
-init_style :: (Curses.Attr, Curses.Color, Curses.Color) 
-           -> Curses.Pair 
-           -> Bool 
-           -> IO(Curses.Attr, Curses.Pair)
-
-init_style (a, fg, bg) p bw =
-    case bw of
-        True -> return (a, Curses.Pair 0)
-        False -> Curses.initPair p fg bg >> return (a, p)
-
-do_init_styles :: UIAttr -> [StyleSpec] -> Bool -> Int -> IO (UIAttr)
-do_init_styles a styles bw pair =
-    case styles of
-        [] -> return a
-        (StyleSpec (name, dflt):more) -> do
-            attr <- init_style dflt (Curses.Pair pair) bw
-            a2   <- return (uiattr_set a name attr)
-            do_init_styles a2 more bw (pair+1)
+------------------------------------------------------------------------
 
 --
--- | Set up the ui attributes
+-- Combine attribute with another attribute
 --
-init_uiattr :: [StyleSpec] -> IO (UIAttr)
-init_uiattr styles = do
-    p <- Curses.colorPairs              -- how many colors
-    let bw = p < length styles
-    do_init_styles default_uiattr styles bw 1
+setBoldA, setUnderlineA, setDimA, setReverseA :: Curses.Attr -> Curses.Attr
+setBoldA      = flip Curses.setBold      True
+setUnderlineA = flip Curses.setUnderline True
+setDimA       = flip Curses.setDim       True
+setReverseA   = flip Curses.setReverse   True
+
+--
+-- | Some attribute constants
+--
+boldA, nullA, underlineA, dimA, reverseA :: Curses.Attr
+nullA       = Curses.attr0
+boldA       = setBoldA      nullA
+underlineA  = setUnderlineA nullA
+dimA        = setDimA       nullA
+reverseA    = setReverseA   nullA
+
+------------------------------------------------------------------------
+--
+-- The UI type
+--
+data UI = UI { 
+        window      :: Style
+       ,modeln      :: Style
+       ,modeln_hl   :: Style
+       ,commandln   :: Style
+     }
+
+-- foreground and background color
+type Style = (Foreground, Background)
+
+--
+-- | Default settings. Need to map (Color,Color) -> Pair
+--
+ui :: UI
+ui = UI { 
+         window    = (FgDefault,      BgDefault)
+        ,modeln    = (Fg  Black,      Bg DarkBlue)
+        ,modeln_hl = (FgBright White, Bg DarkBlue)
+        ,commandln = (FgDefault,      BgDefault)
+     } 
+
+
+------------------------------------------------------------------------
+--
+-- Nicer, user-visible colour defs.
+--
+data DarkColor 
+    = Black
+    | DarkRed
+    | DarkGreen
+    | Brown
+    | DarkBlue
+    | Purple 
+    | DarkCyan
+    | DarkWhite
+
+--
+-- Bright colours, can only be used for foregrounds
+--
+data BrightColor 
+    = Grey
+    | Red
+    | Green
+    | Yellow
+    | Blue
+    | Magenta
+    | Cyan
+    | White
+
+--
+-- foreground colours can be anything
+--
+data Foreground = FgBright BrightColor 
+                | Fg       DarkColor
+                | FgDefault
+
+--
+-- Background colors can't be bright.
+--
+data Background = Bg DarkColor
+                | BgDefault
+
+------------------------------------------------------------------------
+
+--
+-- Dark colors to curses colours
+--
+dark2curses :: DarkColor -> Curses.Color
+dark2curses c = case c of
+    Black       -> black
+    DarkRed     -> red
+    DarkGreen   -> green
+    Brown       -> yellow
+    DarkBlue    -> blue
+    Purple      -> magenta
+    DarkCyan    -> cyan
+    DarkWhite   -> white
+
+bright2curses :: BrightColor -> Curses.Color
+bright2curses c = case c of
+    Grey        -> black
+    Red         -> red
+    Green       -> green
+    Yellow      -> yellow
+    Blue        -> blue
+    Magenta     -> magenta
+    Cyan        -> cyan
+    White       -> white
+
+-- dark colours
+bgAttr :: Background -> (Curses.Attr, Curses.Color)
+bgAttr BgDefault  = (nullA, defaultColor)
+bgAttr (Bg c)     = (nullA, dark2curses c)
+
+-- light colours
+fgAttr :: Foreground -> (Curses.Attr, Curses.Color)
+fgAttr FgDefault = (nullA, defaultColor)
+fgAttr (Fg  c)   = (nullA, dark2curses c)
+fgAttr (FgBright c) = (boldA, bright2curses c)
 

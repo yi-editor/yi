@@ -471,12 +471,43 @@ parseAttr s = Attribute as fg bg where
     cGet _ _ = Nothing
     attributes = ["normal", "bold", "blink", "dim", "reverse", "underline" ]
 
-
+--
+-- |   curses support color attributes  on  terminals  with  that
+--     capability.   To  use  these  routines start_color must be
+--     called, usually right after initscr.   Colors  are  always
+--     used  in pairs (referred to as color-pairs).  A color-pair
+--     consists of a foreground  color  (for  characters)  and  a
+--     background color (for the blank field on which the charac-
+--     ters are displayed).  A programmer  initializes  a  color-
+--     pair  with  the routine init_pair.  After it has been ini-
+--     tialized, COLOR_PAIR(n), a macro  defined  in  <curses.h>,
+--     can be used as a new video attribute.
+--
+--     If  a  terminal  is capable of redefining colors, the pro-
+--     grammer can use the routine init_color to change the defi-
+--     nition   of   a   color.
+--
+--     The init_pair routine changes the definition of  a  color-
+--     pair.   It takes three arguments: the number of the color-
+--     pair to be changed, the foreground color number,  and  the
+--     background color number.  For portable applications:
+--
+--     -    The value of the first argument must be between 1 and
+--          COLOR_PAIRS-1.
+--
+--     -    The value of the second and third arguments  must  be
+--          between  0  and  COLORS (the 0 color pair is wired to
+--          white on black and cannot be changed).
+--
+--
 initPair :: Pair -> Color -> Color -> IO ()
 initPair (Pair p) (Color f) (Color b) =
     throwIfErr_ "init_pair" $
         init_pair (fromIntegral p) (fromIntegral f) (fromIntegral b)
-foreign import ccall unsafe init_pair :: CShort -> CShort -> CShort -> IO CInt
+
+foreign import ccall unsafe 
+    init_pair :: CShort -> CShort -> CShort -> IO CInt
+
 
 pairContent :: Pair -> IO (Color, Color)
 pairContent (Pair p) =
@@ -510,18 +541,24 @@ colorContent (Color c) =
         return (fromIntegral r, fromIntegral g, fromIntegral b)
 foreign import ccall unsafe color_content :: CShort -> Ptr CShort -> Ptr CShort -> Ptr CShort -> IO CInt
 
-foreign import ccall unsafe "YiCurses.h hs_curses_color_pair" colorPair :: Pair -> (#type chtype)
+foreign import ccall unsafe "YiCurses.h hs_curses_color_pair" 
+    colorPair :: Pair -> (#type chtype)
 #def inline chtype hs_curses_color_pair (HsInt pair) {return COLOR_PAIR (pair);}
 
 -------------
 -- Attributes 
 -------------
 
-foreign import ccall unsafe "YiCurses.h attr_set" attr_set :: Attr -> CShort -> Ptr a -> IO Int
+foreign import ccall unsafe "YiCurses.h attr_set" 
+    attr_set :: Attr -> CShort -> Ptr a -> IO Int
+
 -- foreign import ccall unsafe "YiCurses.h attr_get" :: Attr -> CShort -> Ptr a -> IO Int
 
-foreign import ccall unsafe "YiCurses.h wattr_set" wattr_set :: Window -> Attr -> CInt -> Ptr a -> IO CInt
-foreign import ccall unsafe "YiCurses.h wattr_get" wattr_get :: Window -> Ptr Attr -> Ptr CShort -> Ptr a -> IO CInt
+foreign import ccall unsafe "YiCurses.h wattr_set" 
+    wattr_set :: Window -> Attr -> CInt -> Ptr a -> IO CInt
+
+foreign import ccall unsafe "YiCurses.h wattr_get" 
+    wattr_get :: Window -> Ptr Attr -> Ptr CShort -> Ptr a -> IO CInt
 
 foreign import ccall "YiCurses.h attr_on" attr_on :: (#type attr_t) -> Ptr a -> IO Int
 foreign import ccall "YiCurses.h attr_off" attr_off :: (#type attr_t) -> Ptr a -> IO Int
@@ -536,7 +573,8 @@ foreign import ccall standend :: IO Int
 -- |
 --
 wAttrSet :: Window -> (Attr,Pair) -> IO ()
-wAttrSet w (a,(Pair p)) = throwIfErr_ "wattr_set" $ wattr_set w a (fromIntegral p) nullPtr
+wAttrSet w (a,(Pair p)) = throwIfErr_ "wattr_set" $ 
+    wattr_set w a (fromIntegral p) nullPtr
 
 --
 -- | manipulate the current attributes of the named window. see curs_attr(3)
@@ -561,8 +599,8 @@ attr0 = Attr (#const WA_NORMAL)
 
 isAltCharset, isBlink, isBold, isDim, isHorizontal, isInvis, isLeft,
     isLow, isProtect, isReverse, isRight, isStandout, isTop,
-    isUnderline, isVertical
-    :: Attr -> Bool
+    isUnderline, isVertical :: Attr -> Bool
+
 isAltCharset = isAttr (#const WA_ALTCHARSET)
 isBlink      = isAttr (#const WA_BLINK)
 isBold       = isAttr (#const WA_BOLD)
@@ -582,10 +620,13 @@ isVertical   = isAttr (#const WA_VERTICAL)
 isAttr :: (#type attr_t) -> Attr -> Bool
 isAttr b (Attr a) = a .&. b /= 0
 
+--
+-- | Setting attributes
+--
 setAltCharset, setBlink, setBold, setDim, setHorizontal, setInvis,
     setLeft, setLow, setProtect, setReverse, setRight, setStandout,
-    setTop, setUnderline, setVertical
-    :: Attr -> Bool -> Attr
+    setTop, setUnderline, setVertical :: Attr -> Bool -> Attr
+
 setAltCharset = setAttr (#const WA_ALTCHARSET)
 setBlink      = setAttr (#const WA_BLINK)
 setBold       = setAttr (#const WA_BOLD)
@@ -605,6 +646,9 @@ setVertical   = setAttr (#const WA_VERTICAL)
 setAttr :: (#type attr_t) -> Attr -> Bool -> Attr
 setAttr b (Attr a) False = Attr (a .&. complement b)
 setAttr b (Attr a) True  = Attr (a .|.            b)
+
+attrPlus :: Attr -> Attr -> Attr
+attrPlus (Attr a) (Attr b) = Attr (a .|. b)
 
 attrSet :: Attr -> Pair -> IO ()
 attrSet attr (Pair p) = throwIfErr_ "attrset" $

@@ -58,14 +58,17 @@ module Yi.UI (
 import Yi.Buffer
 import Yi.Editor
 import Yi.Window
+import Yi.Style
 
 import Yi.Curses hiding ( refresh, Window )
 import qualified Yi.Curses as Curses
 
 import Data.Maybe
 import Data.List
+import Data.IORef
 import Control.Monad                    ( when )
 import qualified Control.Exception      ( catch )
+import System.IO.Unsafe                 ( unsafePerformIO )
 
 --
 -- | how to initialise the ui
@@ -73,6 +76,8 @@ import qualified Control.Exception      ( catch )
 start :: IO ()
 start = do
     Curses.initCurses                   -- initialise the screen
+    pairs <- initUiColors ui
+    writeIORef pairMap pairs
     Curses.keypad Curses.stdScr True    -- grab the keyboard
 
 --
@@ -141,13 +146,12 @@ drawWindow win@(Window { bufkey=u, mode=m, origin=(_,_),
     mapM_ (drawLine w) $ take (h-1) $ (lines ss) ++ repeat "~"
 
     -- draw modeline
-    cset_attr (setReverse Curses.attr0 True, Pair 0)
     mwin <- getWindow
-    when (isJust mwin && fromJust mwin == win) $ 
-        return ()
+    if (isJust mwin && fromJust mwin == win)
+        then uiAttr (modeln_hl ui) >>= setAttribute
+        else uiAttr (modeln ui   ) >>= setAttribute
     drawLine w m
     reset
-    
 
 --
 -- | Draw the editor command line. Make sure not to drop of end of screen.
@@ -175,7 +179,7 @@ drawCursor :: (Int,Int) -> (Int,Int) -> IO ()
 drawCursor (o_y,_o_x) (y,x) = Curses.withCursor Curses.CursorVisible $ do
     gotoTop
     (h,w) <- scrSize
-    cset_attr (Curses.setReverse Curses.attr0 True, Curses.Pair 1)
+    setAttribute (Curses.setReverse Curses.attr0 True, Curses.Pair 1)
     Curses.wMove Curses.stdScr (min (h-1) (o_y + y)) (min (w-1) x)
     reset
 
@@ -194,18 +198,63 @@ fillLine = Curses.clrToEol
 --
 -- | manipulate the current attributes of the standard screen
 --
-cset_attr :: (Curses.Attr, Curses.Pair) -> IO ()
-cset_attr (a, p) = Curses.wAttrSet Curses.stdScr (a, p)
+setAttribute :: (Curses.Attr, Curses.Pair) -> IO ()
+setAttribute (a, p) = Curses.wAttrSet Curses.stdScr (a, p)
 
 --
 -- | Reset the screen to normal values
 --
 reset :: IO ()
-reset = cset_attr (Curses.attr0, Curses.Pair 0)
+reset = setAttribute (Curses.attr0, Curses.Pair 0)
     
 --
 -- | redraw and refresh the screen
 --
 refresh :: IO ()
 refresh = redraw >> Curses.refresh
+
+------------------------------------------------------------------------
+--
+-- | Set up the ui attributes, given a ui style record
+--
+-- Returns an association list of pairs for foreground and bg colors,
+-- associated with the terminal color pair that has been defined for
+-- those colors.
+--
+initUiColors :: UI -> IO [((Curses.Color, Curses.Color), Pair)]
+initUiColors (UI{ window=wn, modeln_hl=mlf, modeln=ml, commandln=cl})
+    = mapM (uncurry fn) (zip [wn, mlf, ml, cl] [1..])
+    where
+        fn :: Style -> Int -> IO ((Curses.Color, Curses.Color), Pair)
+        fn (fg, bg) p = let (_,fgc) = fgAttr fg
+                            (_,bgc) = bgAttr bg
+                        in do initPair (Pair p) fgc bgc
+                              return ((fgc,bgc), (Pair p))
+
+--
+-- | Getting from nice colours to ncurses-settable attributes
+--
+uiAttr :: Style -> IO (Curses.Attr, Curses.Pair)
+uiAttr (fg, bg) = do
+    let (a, fgc) = fgAttr fg
+        (b, bgc) = bgAttr bg
+    pair <- lookupPair (fgc, bgc)
+    return (a `attrPlus` b, pair)
+
+--
+-- | retrieve a mapping from the pair map
+--
+lookupPair :: (Curses.Color, Curses.Color) -> IO (Curses.Pair)
+lookupPair p = do pm <- readIORef pairMap
+                  return $ case lookup p pm of
+                        Nothing   -> Pair 0 -- default settings
+                        Just pair -> pair
+
+--
+-- | map color pairs to ncurses terminal Pair settings
+--
+pairMap :: IORef [ ((Curses.Color, Curses.Color), Pair) ]
+pairMap = unsafePerformIO $ newIORef []
+{-# NOINLINE pairMap #-}
+
 
