@@ -13,11 +13,21 @@ HC_OPTS        += $(DEFINES) -Icbits $(INC_OPTS)
 HSC_OPTS       += $(DEFINES) -Icbits $(INC_OPTS)
 CC_OPTS        += -Icbits $(INC_OPTS)
 
+# If $(way) is set then we define $(way_) and $(_way) from it in the
+# obvious fashion.
+ifneq "$(way)" ""
+  way_ := $(way)_
+  _way := _$(way)
+endif
+
 #
 # building the profiled way
 #
 ifeq "$(way)" "p"
-HC_OPTS         += -prof -auto-all
+PROF_OPTS	= -prof -auto-all
+LD_OPTS		+= $(PROF_OPTS)
+HC_OPTS         += $(PROF_OPTS)
+HC_OPTS 	+= -hisuf $(way_)hi -hcsuf $(way_)hc -osuf $(way_)o
 endif
 
 #
@@ -34,7 +44,7 @@ STATIC_LD_OPTS  = $(patsubst %,-l%, $(STATIC_BIN_LIBS))
 #
 PKG_OPTS       += -package-name $(PKG)
 LIBOBJS		= $(filter-out $(BIN_OBJS) $(STATIC_BIN_OBJS), $(OBJS))
-LIBRARY         = libHS$(PKG)$(way).a
+LIBRARY         = libHS$(PKG)$(_way).a
 GHCI_LIBRARY    = $(patsubst lib%.a,%.o,$(LIBRARY))
 
 #
@@ -90,20 +100,20 @@ $(GHCI_LIBRARY) : $(LIBOBJS)
 # We anticipate wanting to use multiple ways. Particularly prof.
 #
 
-%.$(way)o: %.hs
-	$(GHC) $(HC_OPTS) $(PKG_OPTS) -c $< -o $@ -ohi $(basename $@).$(way)hi
+%.$(way_)o: %.hs
+	$(GHC) $(HC_OPTS) $(PKG_OPTS) -c $< -o $@ -ohi $(basename $@).$(way_)hi
 
-%.$(way)o : %.lhs
-	$(GHC) $(HC_OPTS) $(PKG_OPTS) -c $< -o $@  -ohi $(basename $@).$(way)hi
+%.$(way_)o : %.lhs
+	$(GHC) $(HC_OPTS) $(PKG_OPTS) -c $< -o $@  -ohi $(basename $@).$(way_)hi
 
-%.$(way)hi : %.$(way)o
+%.$(way_)hi : %.$(way_)o
 	@:
 
 %_hsc.c %_hsc.h %.hs : %.hsc
 	$(HSC2HS) $(HSC_OPTS) $<
 	@touch $(patsubst %.hsc,%_hsc.c,$<)
 
-%.$(way)o : %.c
+%.$(way_)o : %.c
 	@$(RM) $@
 	$(GHC) $(CC_OPTS) -c $< -o $@
 
