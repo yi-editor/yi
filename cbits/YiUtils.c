@@ -37,6 +37,17 @@ unsigned long countlns(char *b1, int start, int end)
     return c;
 }
 
+/* return the index of the first point of line @n@, indexed from 1 */
+unsigned long gotoln(char *b, int start, int end, int n)
+{
+    char *p = b + start;
+    char *q = b + end;
+    unsigned long c = 1;    /* there's always 1 line */
+    while (p < q && c < n) 
+        if (*p++ == '\n') c++;
+    return (p - (b + start));   /* point to move to */
+}
+
 /* return offset from start in buf that regex matches */
 int regexec_baoff(const regex_t *preg, char *buf, int start, int sz,
                   size_t nmatch, regmatch_t pmatch[], int eflags)

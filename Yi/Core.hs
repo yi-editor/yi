@@ -208,6 +208,10 @@ downE = withWindow_ moveDownW
 upE :: Action
 upE = withWindow_ moveUpW
 
+-- | Go to line number @n@
+gotoLnE :: Int -> Action
+gotoLnE n = withWindow_ (gotoLnW n)
+
 ------------------------------------------------------------------------
 
 -- | Is the point at the start of the line

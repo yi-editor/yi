@@ -265,8 +265,7 @@ do_cmd mi c
     | c == 'G' 
     = do case mi of
             Nothing     -> botE
-            Just 1      -> topE
-            Just _      -> botE -- TODO
+            Just n      -> gotoLnE n -- topE
          nextCmd
 
 -- Delete the line the cursor is on.

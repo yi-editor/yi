@@ -85,6 +85,7 @@ class Buffer a where
     nelemsB    :: a -> Int -> Int -> IO [Char]
 
     ------------------------------------------------------------------------
+    -- Point based operations
 
     -- | Move point in buffer to the given index
     moveTo     :: a -> Int -> IO ()
@@ -194,6 +195,11 @@ class Buffer a where
 
     -- | Return the current line number
     curLn       :: a -> IO Int
+
+    -- | Go to line number @n@. @n@ is indexed from 1. Returns the
+    -- actual line we went to (which may be not be the requested line,
+    -- if it was out of range)
+    gotoLn      :: a -> Int -> IO Int
 
     ---------------------------------------------------------------------
    
@@ -391,12 +397,20 @@ foreign import ccall unsafe "strstr_n"
 -- | Count the number of '\n' we see from start to end in bufer
 -- We don't use this very often (at the moment) so it's ok to be O(n).
 --
-
 curLnFB :: FBuffer_ -> IO Int
 curLnFB (FBuffer_ b p _ _) = countlns_c b 0 p
 
 foreign import ccall unsafe "countlns"
    countlns_c :: RawBuffer -> Int -> Int -> IO Int
+
+--
+-- | Return the index of the point at the start of line number @n@
+--
+gotoLnFB :: FBuffer_ -> Int -> IO Int
+gotoLnFB (FBuffer_ buf _ e _) n = gotoln_c buf 0 e n
+
+foreign import ccall unsafe "gotoln"
+   gotoln_c :: RawBuffer -> Int -> Int -> Int -> IO Int
 
 -- ---------------------------------------------------------------------
 --
@@ -619,6 +633,8 @@ instance Buffer FBuffer where
         rightB b
         moveXorEol b x  
 
+    ------------------------------------------------------------------------
+
     -- count number of \n from origin to point
     -- curLn :: a -> IO Int
     curLn (FBuffer _ _ mv) = withMVar mv $ \ref -> do
@@ -642,6 +658,20 @@ instance Buffer FBuffer where
         ss <- readChars (bufBuf fb) (bufPnt fb) 0   -- hmm. not good.
         return $ 1 + (length $ filter (== '\n') ss)
 -}
+
+    ------------------------------------------------------------------------
+
+    -- gotoLn :: a -> Int -> IO ()
+    gotoLn (FBuffer _ _ mv) n = withMVar mv $ \ref -> do
+        fb <- readIORef ref
+        np <- gotoLnFB fb n
+        let fb' = fb { bufPnt = np }
+
+        -- adjust for n >= max lines
+        n' <- if np > bufLen fb' - 1 
+                then return . subtract 1 =<< curLnFB fb' else return n
+        writeIORef ref fb'
+        return (max 1 n')    -- and deal with for n < 1
 
     -- ---------------------------------------------------------------------
 
