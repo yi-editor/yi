@@ -179,16 +179,16 @@ refreshE = UI.refresh
 nopE :: IO ()
 nopE = return ()
 
-------------------------------------------------------------------------
 {-
+------------------------------------------------------------------------
 --
--- | Move cursor left 1, or start of line
+-- | Move cursor backwards one point in the buffer, maybe moving up a line
 --
 leftE :: IO ()
 leftE = withWindow_ leftW
 
 --
--- | Move cursor right 1, or end of line
+-- | Move cursor forwards one point in the buffer, maybe moving down a line
 --
 rightE :: IO ()
 rightE = withWindow_ rightW
@@ -274,13 +274,11 @@ fnewE f = do
     if e then Editor.hNewBuffer f
          else Editor.stringToNewBuffer f []
 
-{-
 --
 -- | Write current buffer to disk
 --
 fwriteE :: IO ()
-fwriteE = withWindow_ $ \b -> hPutB b (nameB b)
--}
+fwriteE = withWindow_ $ \w b -> hPutB b (nameB b) >> return w
 
 --
 -- | Read file into buffer starting a current point
@@ -324,11 +322,9 @@ insertE c = withWindow_ $ insertW c
 deleteE :: IO ()
 deleteE = withWindow_ deleteW
 
-{-
 -- | Kill to end of line
 killE :: IO ()
-killE = withWindowDo_ deleteToEol -- >>= Buffer.prevXorLn 1
--}
+killE = withWindow_ deleteToEolW -- >>= Buffer.prevXorLn 1
 
 -- | Read the char under the cursor
 readE :: IO Char
@@ -344,11 +340,13 @@ writeE c = withWindow_ $ \w b -> do
 
 -- | Draw message at bottom of screen
 msgE :: String -> IO ()
-msgE = UI.drawCmdLine
+msgE s = do modifyEditor_ $ \e -> return e { cmdline = s }
+            UI.drawCmdLine s -- immediately draw
 
 -- | Clear the message line at bottom of screen
 msgClrE  :: IO ()
-msgClrE = UI.clearCmd
+msgClrE = do modifyEditor_ $ \e -> return e { cmdline = [] } 
+             UI.drawCmdLine [] -- immediately draw
 
 -- | File info
 infoE :: IO (FilePath, Int)

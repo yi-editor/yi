@@ -463,14 +463,15 @@ instance Buffer FBuffer where
     -- atEol       :: a -> IO Bool -- or at end of file
     atEol a = do p <- pointB a
                  e <- sizeB a
-                 if p == e-1 then return True
-                             else do c <- readB a
-                                     return (c == '\n')
+                 if p == max 0 (e-1)
+                        then return True
+                        else do c <- readB a
+                                return (c == '\n')
 
     -- atEof       :: a -> IO Bool
     atEof a = do p <- pointB a
                  e <- sizeB a
-                 return (p == e-1)
+                 return (p == max 0 (e-1))
 
     -- atSof       :: a -> IO Bool
     atSof a = do p <- pointB a

@@ -192,7 +192,7 @@ insertW c w b = do
         _ | isLatin1 c -> insertB b c
           | otherwise  -> return ()
     w' <- moveXorEolW 1 w b                       -- and shift the point
-    if c == '\13'       -- newline, so move down with new line
+    if c == '\13' || c == '\n'      -- newline, so move down with new line
         then moveDownW w' b >>= flip moveToSolW b
         else return w'
 
@@ -205,14 +205,24 @@ insertW c w b = do
 deleteW :: Buffer a => Window -> a -> IO Window
 deleteW w b = do 
     eof <- atEof b
-    sol <- atSol b      -- about to delete \n
-    let tos = lineno w - 1 == toslineno w
+    sol <- atSol b      -- about to delete \n at eof
     deleteB b
-    case () of {_
-        | eof && sol && tos -> moveToEolW w b >>= flip decY b {- scroll screen -}
-        | eof && sol        -> moveToEolW w b >>= flip decY b  -- todo should handle 0
-        | otherwise         -> update w b
-    }
+    if eof && sol
+        then moveToEolW w b >>= flip decY b  -- todo should handle 0
+        else update w b
+
+--
+-- | Kill all the characters to the end of the line
+-- If there is no \n at the end of the line, scroll up 1
+--
+deleteToEolW :: Buffer a => Window -> a -> IO Window
+deleteToEolW w b = do
+    sol  <- atSol b      -- about to delete from sol to eol
+    noNl <- noNLatEof b  -- and no \n at eol
+    deleteToEol b
+    if noNl && sol 
+        then moveToEolW w b >>= flip decY b 
+        else update w b
 
 ------------------------------------------------------------------------
 --
@@ -282,3 +292,13 @@ indexOfNLFrom b i = do
     moveTo b p
     return q
 
+--
+-- return True if we're on the last line, and there's no \n at the end
+--
+noNLatEof :: Buffer a => a -> IO Bool
+noNLatEof b = do
+    p <- pointB b
+    moveToEol b
+    c  <- readB b
+    moveTo b p
+    return (c /= '\n')

@@ -43,12 +43,10 @@ module Yi.UI (
         refresh,
         reset,
         fillLine,
-        drawCmdLine,
-        clearCmd,
 
-        -- * Messages
-        warn,
-        
+        -- * Drawing messages
+        drawCmdLine,
+
         module Yi.Curses   -- UIs need to export the symbolic key names
 
   )   where
@@ -106,10 +104,16 @@ getKey refresh_fn = do
 --
 redraw :: IO ()
 redraw = do
+    -- draw all windows
     ws <- getWindows
     gotoTop
     mapM_ drawWindow ws
---  drawCmdLine ":"
+
+    -- draw command line
+    cl <- readEditor cmdline
+    drawCmdLine cl
+
+    -- position cursor
     w <- getWindow
     drawCursor (cursor w)
 
@@ -123,12 +127,16 @@ redraw = do
 drawWindow :: Window -> IO ()
 drawWindow (Window { bufkey=u, mode=m, origin=(_,_), 
                      height=h, width=w, tospnt=t } ) = do
+    -- draw buffer contents
     b  <- getBufferWith u
     ss <- nelemsB b (h*w) t           -- maximum visible contents of buffer
     mapM_ (drawLine w) $ take (h-1) $ (lines ss) ++ repeat "~"
+
+    -- draw modeline
     cset_attr (Curses.setReverse Curses.attr0 True , Curses.Pair (0))
-    drawLine w m    -- modeline
+    drawLine w m
     reset
+    
 
 --
 -- | Draw the editor command line. Make sure not to drop of end of screen.
@@ -137,7 +145,10 @@ drawCmdLine :: String -> IO ()
 drawCmdLine s = do
     (h,w) <- Curses.scrSize
     Curses.wMove Curses.stdScr (h-1) 0
-    drawLine (min (w-1) (length s)) s
+    let w' = min (w-1) (length s)   -- hmm. what if this is big?
+    drawLine w' s
+    fillLine
+    Curses.wMove Curses.stdScr (h-1) w'
 
 --
 -- | lazy version is faster than calculating length of s
@@ -162,78 +173,11 @@ drawCursor (y,x) = Curses.withCursor Curses.CursorVisible $ do
 gotoTop :: IO ()
 gotoTop = Curses.wMove Curses.stdScr 0 0
 
-{-
-redraw :: IO ()
-redraw = do
-    bs      <- getBuffers
-    count   <- lengthBuffers
-    current <- getCurrentBuffer
-    (h,w)   <- screenSize
-    let (y, r) = (h - 1) `quotRem` count    -- work out height of buffers
-    gotoTop
-    mapM_ (\b -> if b == current
-                 then drawMainBufferXY w (y+r) b
-                 else drawBufferXY w y b) bs
-
-    case elemIndex current bs of    -- how many screens down is the active one?
-            Nothing -> return ()    -- no active screen
-            Just i  -> let yoff = y * i
-                       in drawPoint yoff 0{-nohorizsplit-} 
-                                    (y+r-2) (w-1) current
-
---
--- | Draw as much of the buffer as we are told to do
---  active buffer gets a slightly different modeline
---
-drawBuffer :: Buffer a => Int -> Int -> Int -> a -> IO ()
-drawBuffer main w h buf = do
-    ss <- nelemsB buf (w*h) 0
-    mapM_ (drawLine w) $ take (h-1) $ (lines ss) ++ repeat "~"
-    cset_attr (Curses.setReverse Curses.attr0 True , Curses.Pair (main))
-    drawModeLine w (nameB buf)
-    reset
-
-drawBufferXY :: Buffer a => Int -> Int -> a -> IO ()
-drawBufferXY = drawBuffer 1
-
-drawMainBufferXY :: Buffer a => Int -> Int -> a -> IO ()
-drawMainBufferXY = drawBuffer 0
--}
-
-------------------------------------------------------------------------
-{-
---
--- | Draw the bottom, command line, with contents @ss@
--- This is its own screen, nothing else touches it
---
-drawCmd :: String -> IO ()
-drawCmd s = do
-    (h,w) <- Curses.scrSize
-    Curses.wMove Curses.stdScr (h-1) 0
-    drawLine (min (w-1) (length s)) s
--}
-
-clearCmd :: IO ()
-clearCmd = do
-    (h,w) <- Curses.scrSize
-    Curses.wMove Curses.stdScr (h-1) 0
-    drawLine (w-1) " "
-
-------------------------------------------------------------------------
-
--- gotoBottom :: IO ()
--- gotoBottom = do
---     (h,_) <- Curses.scrSize
---     Curses.wMove Curses.stdScr h 0
-
 --
 -- | Fill to end of line spaces
 --
 fillLine :: IO ()
 fillLine = Curses.clrToEol
-
--- ---------------------------------------------------------------------
---
 
 --
 -- | manipulate the current attributes of the standard screen
@@ -246,22 +190,10 @@ cset_attr (a, p) = Curses.wAttrSet Curses.stdScr (a, p)
 --
 reset :: IO ()
 reset = cset_attr (Curses.attr0, Curses.Pair 0)
-
--- ---------------------------------------------------------------------
--- Refreshing
---
     
 --
 -- | redraw and refresh the screen
 --
 refresh :: IO ()
 refresh = redraw >> Curses.refresh
-
-------------------------------------------------------------------------
--- misc
-
-warn :: String -> IO ()
-warn msg = do   -- do_message s attr_message msg
-    Curses.wMove Curses.stdScr 0 0
-    Curses.wAddStr Curses.stdScr $ take 80 $ msg ++ repeat ' '
 

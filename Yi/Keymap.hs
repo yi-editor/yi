@@ -76,33 +76,35 @@ key C 'l'  = rightOrEolE 1
 key C '$'  = eolE
 key C '0'  = solE
 key C '|'  = solE
-key C '\2' = upScreenE
-key C '\6' = downScreenE
-key C k | k == keyNPage = downScreenE
-        | k == keyPPage = upScreenE
 key C 'i' = beginInsert
-key C ':' = msgClrE >> msgE ":" >> beginEx 
+key C ':' = msgClrE       >> msgE ":"     >> beginEx 
 key C 'x' = deleteE
+key C 'a' = rightOrEolE 1                 >> beginInsert
+key C 'A' = eolE                          >> beginInsert
+key C 'O' = solE          >> insertE '\n' >> beginInsert
+key C 'o' = eolE          >> insertE '\n' >> beginInsert
+key C 'J' = eolE          >> deleteE      >> insertE ' '
 
-{-
-key C 'a' = rightOrEolE 1 >> beginInsert
-key C 'A' = eolE          >> beginInsert
-key C 'O' = solE >> insertE '\n' >> beginInsert
-key C 'o' = eolE >> insertE '\n' >> rightE >> beginInsert
-key C 'r' = getcE >>= writeE
-key C 'D' = killE
-key C 'J' = eolE >> deleteE >> insertE ' '
-key C 'd' = do c <- getcE ; when (c == 'd') $ solE >> killE >> deleteE
-key C 'Z' = do c <- getcE ; when (c == 'Z') quitE
-key C c | c == keyUp    = upE
+key C c | c == keyPPage = upScreenE
+        | c == keyNPage = downScreenE
+        | c == '\6'     = downScreenE
+        | c == '\2'     = upScreenE
+        | c == keyUp    = upE
         | c == keyDown  = downE
-        | c == keyLeft  = leftE
-        | c == keyRight = rightE
+        | c == keyLeft  = leftOrSolE 1
+        | c == keyRight = rightOrEolE 1
+
+key C 'D' = killE
+key C 'd' = do c <- getcE ; when (c == 'd') $ solE >> killE >> deleteE
+key C 'r' = getcE >>= writeE
+key C 'Z' = do c <- getcE ; when (c == 'Z') quitE
 key C '>' = do c <- getcE
                when (c == '>') $ solE >> mapM_ insertE (replicate 4 ' ')
+
 key C '~' = do c <- readE
                let c' = if isUpper c then toLower c else toUpper c
                writeE c'
+{-
 key C '\23' = nextE
 -}
 
@@ -111,15 +113,13 @@ key C '\23' = nextE
 --
 key I '\27'  = leftOrSolE 1 >> beginCommand  -- ESC
 
-{-
-key I c  | c == keyHome      = topE
-         | c == '\8'         = leftE >> deleteE
-         | c == keyBackspace = leftE >> deleteE
--}
+key I c | c == keyPPage = upScreenE
+        | c == keyNPage = downScreenE
 
-key I c  = do (_,s) <- infoE
-              when (s == 0) $ insertE '\n' -- vi behaviour at start of file
-              insertE c
+key I c  = do 
+        (_,s) <- infoE
+        when (s == 0) $ insertE '\n' -- vi behaviour at start of file
+        insertE c
 
 -- ---------------------------------------------------------------------
 -- * Ex mode
@@ -142,10 +142,10 @@ key E k = msgClrE >> loop [k]
                           loop (c':w)
 
     execEx :: String -> Action
---  execEx "w"   = viWrite
+    execEx "w"   = viWrite
     execEx "q"   = quitE
     execEx "q!"  = quitE
---  execEx "wq"  = viWrite >> quitE
+    execEx "wq"  = viWrite >> quitE
     execEx cs    = viCmdErr cs
 
     deleteWith []     = msgClrE >> msgE ":"      >> loop []
@@ -154,7 +154,6 @@ key E k = msgClrE >> loop [k]
 -- anything we've missed
 key _  _  = nopE
 
-{-
 -- ---------------------------------------------------------------------
 -- | Try and write a file in the manner of vi\/vim
 --
@@ -163,7 +162,6 @@ viWrite = do
     (f,s) <- infoE 
     fwriteE
     msgE $ show f++" "++show s ++ "C written"
--}
 
 --
 -- | An invalid command
