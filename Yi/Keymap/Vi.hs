@@ -146,11 +146,11 @@ cmd_eval = ( cmdc >|<
             "\^F" -> downScreensE i
             "\^G" -> viFileInfo         -- hmm. not working
             "\^H" -> leftOrSolE  i
-            "\^J" -> replicateM_ i downE
+            "\^J" -> if i > 100 then gotoLnFromE i else replicateM_ i downE
             "\^L" -> undef
             "\^M" -> undef
-            "\^N" -> replicateM_ i downE
-            "\^P" -> replicateM_ i upE
+            "\^N" -> if i > 100 then gotoLnFromE i else replicateM_ i downE
+            "\^P" -> if i > 100 then gotoLnFromE (-i) else replicateM_ i upE
             "\^R" -> undef
             "\^T" -> undef
             "\^U" -> undef
@@ -203,8 +203,8 @@ cmd_eval = ( cmdc >|<
             "X"   -> leftOrSolE i >> replicateM_ i deleteE
             "Y"   -> undef
             "h"   -> leftOrSolE  i
-            "j"   -> replicateM_ i downE
-            "k"   -> replicateM_ i upE
+            "j"   -> if i > 100 then gotoLnFromE i else replicateM_ i downE
+            "k"   -> if i > 100 then gotoLnFromE (-i) else replicateM_ i upE
             "l"   -> rightOrEolE i
             "n"   -> searchE Nothing
             "p"   -> do s <- getRegE
@@ -222,8 +222,10 @@ cmd_eval = ( cmdc >|<
     --          | k == keyLeft  -> leftOrSolE i
                 | k == keyLeft  -> leftE -- not really vi, but fun
                 | k == keyRight -> rightE
-                | k == keyDown  -> replicateM_ i downE
-                | k == keyUp    -> replicateM_ i upE
+                | k == keyDown  -> if i > 100 then gotoLnFromE i 
+                                              else replicateM_ i downE
+                | k == keyUp    -> if i > 100 then gotoLnFromE (-i) 
+                                              else replicateM_ i upE
 
             _ -> undef
 
