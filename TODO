@@ -15,7 +15,6 @@ v0.1:
         - start drawing buffer before it is all loaded.
         - undo/redo
         - line wrapping
-        - build on mac os x
         - bind keymap lexers to windows
         - :eval, :type, .. etc. ghci stuff
         - make the cmd line a buffer.
