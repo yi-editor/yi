@@ -71,7 +71,9 @@ endif
 
 boot :: depend
 
-all :: $(HS_BINS)
+all :: build html
+
+build :: $(HS_BINS)
 
 # hack. we don't want to have _yi-inplace..
 $(BIN) :: $(BIN_OBJS) yi-inplace
@@ -199,6 +201,8 @@ INSTALL_DATAS  += $(HTML_DIR)
 	$(HADDOCK) $(HADDOCK_OPTS) -o $(HTML_DIR) $(HS_PPS) -k $(PKG)
 	@cd $(HTML_DIR) && $(HADDOCK) --gen-index -i yi.interface -i yi.interface2
 	@touch .html-stamp2
+
+CLEAN_FILES+=.html-stamp1 .html-stamp2
 
 CLEAN_FILES += $(HS_PPS) $(EXTRA_HS_PPS)
 
