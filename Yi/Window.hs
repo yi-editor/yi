@@ -321,7 +321,6 @@ noNLatEof b = do
 
 --
 -- | Adjust the window's height-related fields, assuming a new window height
--- Still got a bug in here somewhere.
 --
 resize :: Buffer a => Int -> Window -> a -> IO Window
 resize y w b = do
@@ -338,8 +337,6 @@ resize y w b = do
 -- | We've just gained focus. See if anything changed, and reset the
 -- cursor point appropriately
 --
--- TODO still resets too often
---
 resetPoint :: Buffer a => Window -> a -> IO Window 
 resetPoint w b = do
     let op  = pnt w
@@ -353,7 +350,7 @@ resetPoint w b = do
     let w' | op /= p      -- then the file shrunk under us. move to eof
            = w {pnt = p,lineno = ln,toslineno = ln,tospnt = i,cursor = (0,x)}
 
-           | oln /= ln    -- our line moved or was killed
+           | oln /= ln    -- our line moved or was killed. TODO goto the old line instead
            = w {pnt = p,lineno = ln,toslineno = ln,tospnt = i,cursor = (0,x)}
 
            | otherwise    -- just check out x-offset is right
