@@ -10,6 +10,7 @@ QUICK START
 
 * GHC 6.2.2: install hs-plugins-0.9.8.
 * GHC 6.4  : install the latest hs-plugins nightly snapshot.
+* Or don't install hs-plugins at all, and use 'make way=static'
 
     $ autoreconf                -- NB autoREconf
     $ ./configure --prefix=/my/dir
