@@ -594,7 +594,8 @@ splitE = do
                       w' <- newWindow b
                       Editor.setWindow w'
 
--- | close current window. quit if that is all the windows
+-- | close current window.
+-- ToDo If this is the last window onto this buffer, free and close.
 closeE :: Action
 closeE = do getWindow >>= deleteWindow
             i <- sizeWindows

@@ -37,6 +37,7 @@ import System.IO                ( openBinaryFile, hGetBuf, hPutBuf )
 
 import Foreign.C.String
 import Foreign.C.Types          ( CChar )
+import Foreign.Marshal.Alloc    ( free )
 import Foreign.Marshal.Array
 import Foreign.Ptr              ( Ptr, nullPtr, minusPtr )
 import Foreign.Storable         ( poke )
@@ -166,6 +167,11 @@ instance Buffer FBuffer where
     -- newB :: String -> [Char] -> IO a
     newB = stringToFBuffer
 
+    -- finaliseB :: a -> IO ()
+    finaliseB (FBuffer _ _ mv) = do
+        (FBuffer_ ptr _ _ _) <- readMVar mv
+        free ptr
+
     -- hNewB :: FilePath -> IO a
     hNewB = hNewFBuffer
 
@@ -249,6 +255,7 @@ instance Buffer FBuffer where
 
     -- insertN :: a -> [Char] -> IO ()
     -- May need to resize buffer. How do we append to eof?
+    insertN _ [] = return ()
     insertN (FBuffer _ _ mv) cs = 
         modifyMVar_ mv $ \fb@(FBuffer_ _ _ old_end old_max) -> do
             let cs_len   = length cs

@@ -38,6 +38,9 @@ class Buffer a where
     -- | Construct a new buffer initialised with the supplied name and list
     newB  :: FilePath -> [Char] -> IO a
 
+    -- | Free any resources associated with this buffer
+    finaliseB :: a -> IO ()
+
     -- | Construct a new buffer filled with contents of file
     hNewB :: FilePath -> IO a
 

@@ -25,13 +25,13 @@
 
 module Yi.Editor where
 
-import Yi.Buffer                ( Buffer(newB, keyB, hNewB) )
+import Yi.Buffer                ( Buffer(newB, keyB, hNewB, finaliseB) )
 import Yi.FastBuffer
 import Yi.Regex                 ( Regex )
 import Yi.Window
 import Yi.Style                 ( ui, UIStyle )
 
-import Data.List                ( elemIndex )
+import Data.List                ( elemIndex, find )
 import Data.FiniteMap
 import Data.IORef               ( newIORef, readIORef, writeIORef, IORef )
 import Data.Unique              ( Unique )
@@ -246,23 +246,36 @@ newWindow b = modifyEditor $ \e -> do
 --
 -- | Delete the focused window
 --
--- TODO should close the underlying buffer if this is the last window
--- onto that buffer. 
+-- Delete the buffer, if this is the last window onto that buffer That
+-- is, we abandon buffers that have no windows on to them. To program
+-- 'hidden' behaviour, you'll have to keep a reference to the buffer
+-- yourself, somehow. Hmm.
 --
 deleteWindow :: (Maybe Window) -> IO ()
 deleteWindow Nothing  = return ()
 deleteWindow (Just win) = modifyEditor_ $ \e -> do
     let ws    = delFromFM (windows e) (key win) -- delete window
+        oldkey= bufkey win
         wls   = eltsFM ws
         (y,r) = getY ((fst $ scrsize e) - 1) (length wls) -- why -1?
-    wls' <- resizeAll e wls y
-    case wls' of                            -- grab a random window
-        []       -> return e { windows = emptyFM }
+
+    -- find any windows onto the same buffer, if none, delete this buffer
+    e' <- case find (\w -> bufkey w == oldkey) wls of
+        Just _  -> return e
+        Nothing -> do
+            let b = findBufferWith e oldkey
+            finaliseB b
+            return $ e { buffers = delFromFM (buffers e) oldkey }
+
+    -- resize, then grab a random window
+    wls' <- resizeAll e' wls y
+    case wls' of   
+        []       -> return e' { windows = emptyFM }
         (win':_) -> do
             let fm = listToFM $ mkAssoc wls'
-            win'' <- resize (y+r) win' (findBufferWith e (bufkey win'))
-            let e' = e { windows = addToFM fm (key win'') win'' }
-            setWindow' e' win''
+            win'' <- resize (y+r) win' (findBufferWith e' (bufkey win'))
+            let e'' = e' { windows = addToFM fm (key win'') win'' }
+            setWindow' e'' win''
 
 -- | Update height of windows in window set
 resizeAll :: Editor -> [Window] -> Int -> IO [Window]
