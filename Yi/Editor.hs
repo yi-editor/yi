@@ -32,7 +32,7 @@ import Yi.Window
 import Yi.Style                 ( ui, UIStyle )
 
 import Data.List                ( elemIndex, find )
-import Data.FiniteMap
+import Yi.Map as M -- use our compat shim
 import Data.IORef               ( newIORef, readIORef, writeIORef, IORef )
 import Data.Unique              ( Unique )
 import System.IO.Unsafe         ( unsafePerformIO )
@@ -60,8 +60,8 @@ import Control.Concurrent.MVar
 --
 data Buffer a => GenEditor a = 
     Editor {
-        buffers   :: !(FiniteMap Unique a)      -- ^ all the buffers
-       ,windows   :: !(FiniteMap Unique Window) -- ^ all the windows
+        buffers   :: !(M.Map Unique a)      -- ^ all the buffers
+       ,windows   :: !(M.Map Unique Window) -- ^ all the windows
        ,cmdline   :: !String                    -- ^ the command line
        ,cmdlinefocus :: !Bool                   -- ^ cmdline has focus
        ,yreg      :: !String                    -- ^ yank register
@@ -111,8 +111,8 @@ editorModified = unsafePerformIO $ newMVar ()
 --
 emptyEditor :: Editor
 emptyEditor = Editor {
-        buffers      = emptyFM 
-       ,windows      = emptyFM
+        buffers      = M.empty 
+       ,windows      = M.empty
        ,cmdline      = []
        ,cmdlinefocus = False
        ,yreg         = []
@@ -171,7 +171,7 @@ hNewBuffer :: FilePath -> IO Buffer'
 hNewBuffer f = 
     modifyEditor $ \e@(Editor{buffers=bs}) -> do
         b <- hNewB f
-        let e' = e { buffers = addToFM bs (keyB b) b } :: Editor
+        let e' = e { buffers = M.insert (keyB b) b bs } :: Editor
         return (e', b)
 
 --
@@ -181,7 +181,7 @@ stringToNewBuffer :: FilePath -> String -> IO Buffer'
 stringToNewBuffer f cs =
     modifyEditor $ \e@(Editor{buffers=bs}) -> do
         b <- newB f cs
-        let e' = e { buffers = addToFM bs (keyB b) b } :: Editor
+        let e' = e { buffers = M.insert (keyB b) b bs } :: Editor
         return (e', b)
 
 --
@@ -191,20 +191,20 @@ stringToNewBuffer f cs =
 -- getBuffers :: Buffer a => IO [a]
 --
 getBuffers :: IO [Buffer']
-getBuffers = readEditor $ eltsFM . buffers
+getBuffers = readEditor $ M.elems . buffers
 
 --
 -- | get the number of buffers we have
 --
 sizeBuffers :: IO Int                        
-sizeBuffers = readEditor $ \e -> sizeFM (buffers (e :: Editor))
+sizeBuffers = readEditor $ \e -> M.size (buffers (e :: Editor))
 
 --
 -- | Find buffer with this key
 -- 
 findBufferWith :: Editor -> Unique -> Buffer'
 findBufferWith e k = 
-    case lookupFM (buffers e) k of
+    case M.lookup k (buffers e) of
         Just b  -> b
         Nothing -> error "Editor.findBufferWith: no buffer has this key"
 
@@ -230,7 +230,7 @@ bufferAt n = shiftBuffer (const n)
 -- buffer's index.
 shiftBuffer :: (Int -> Int) -> IO Buffer'
 shiftBuffer f = readEditor $ \e ->
-    let bs  = eltsFM $ buffers (e :: Editor)
+    let bs  = M.elems $ buffers (e :: Editor)
         win = findWindowWith e (curwin e)
         buf = findBufferWith e (bufkey win)
     in case elemIndex buf bs of
@@ -247,13 +247,13 @@ shiftBuffer f = readEditor $ \e ->
 newWindow :: Buffer' -> IO Window
 newWindow b = modifyEditor $ \e -> do
     let (h,w) = scrsize e
-        wls   = eltsFM $ windows e
+        wls   = M.elems $ windows e
         (y,r) = getY h (1 + (length wls))   -- should be h-1..
     wls' <- resizeAll e wls y w
     wls''<- if wls' == [] then return wls' else turnOnML e wls'
     win  <- emptyWindow b (y+r,w) 
     win' <- if wls == [] then return win else liftM head $ turnOnML e [win]
-    let e' = e { windows = listToFM $ mkAssoc (win':wls'') }
+    let e' = e { windows = M.fromList $ mkAssoc (win':wls'') }
     return (e', win')
 
 --
@@ -267,9 +267,9 @@ newWindow b = modifyEditor $ \e -> do
 deleteWindow :: (Maybe Window) -> IO ()
 deleteWindow Nothing  = return ()
 deleteWindow (Just win) = modifyEditor_ $ \e -> do
-    let ws    = delFromFM (windows e) (key win) -- delete window
+    let ws    = M.delete (key win) (windows e) -- delete window
         oldkey= bufkey win
-        wls   = eltsFM ws
+        wls   = M.elems ws
         x     = snd $ scrsize e
         (y,r) = getY ((fst $ scrsize e) - 1) (length wls) -- why -1?
 
@@ -279,17 +279,17 @@ deleteWindow (Just win) = modifyEditor_ $ \e -> do
         Nothing -> do
             let b = findBufferWith e oldkey
             finaliseB b
-            return $ e { buffers = delFromFM (buffers e) oldkey }
+            return $ e { buffers = M.delete oldkey (buffers e) }
 
     -- resize, then grab a random window
     wls' <- resizeAll e' wls y x
     case wls' of   
-        []       -> return e' { windows = emptyFM }
+        []       -> return e' { windows = M.empty }
         (win':xs) -> do
-            let fm = listToFM $ mkAssoc wls'
+            let fm = M.fromList $ mkAssoc wls'
             win'' <- resize (y+r) x win' (findBufferWith e' (bufkey win'))
             let win''' = if xs == [] then win'' { mode = Nothing } else win''
-            let e'' = e' { windows = addToFM fm (key win''') win''' }
+            let e'' = e' { windows = M.insert (key win''') win''' fm }
             setWindow' e'' win'''
 
 -- | Update height of windows in window set
@@ -300,14 +300,14 @@ resizeAll e wls y x = flip mapM wls (\w ->
 -- | Reset the heights and widths of all the windows
 doResizeAll :: (Int,Int) -> IO ()
 doResizeAll sz@(h,w) = modifyEditor_ $ \e -> do
-    let wls   = eltsFM (windows e)
+    let wls   = M.elems (windows e)
         (y,r) = getY h (length wls) -- why -1?
 
     wls'  <- mapM (doresize e w y) (init wls)
     wls'' <- let win = last wls 
             in doresize e w (y+r-1) win >>= \w' -> return (w' : wls')
 
-    return e { scrsize = sz, windows = listToFM $ mkAssoc wls'' }
+    return e { scrsize = sz, windows = M.fromList $ mkAssoc wls'' }
 
     where doresize e x y win = resize y x win $ findBufferWith e (bufkey win)
 
@@ -324,7 +324,7 @@ getY h 0 = (h, 0)
 getY h 1 = (h, 0)
 getY h l = h `quotRem` l
 
--- | turn a list of windows into an association list suitable for listToFM
+-- | turn a list of windows into an association list suitable for fromList
 mkAssoc :: [Window] -> [(Unique,Window)]
 mkAssoc []     = []
 mkAssoc (w:ws) = (key w, w) : mkAssoc ws
@@ -334,7 +334,7 @@ mkAssoc (w:ws) = (key w, w) : mkAssoc ws
 -- TODO by key
 --
 getWindows :: Editor -> [Window]
-getWindows = eltsFM . windows
+getWindows = M.elems . windows
 
 --
 -- | Get current window
@@ -357,7 +357,7 @@ getWindowIndOf :: Editor -> (Maybe Int)
 getWindowIndOf e = case curwin e of    
         Nothing -> Nothing
         k       -> let win = findWindowWith e k
-                   in elemIndex win (eltsFM $ windows e)
+                   in elemIndex win (M.elems $ windows e)
 
 --
 -- | Set current window
@@ -376,13 +376,13 @@ setWindow' e w = do
     let fm = windows e
     let b  = findBufferWith e (bufkey w)
     w' <- resetPoint w b
-    return $ e { windows = addToFM fm (key w') w', curwin = Just $ key w' } 
+    return $ e { windows = M.insert (key w') w' fm, curwin = Just $ key w' } 
 
 --
 -- | How many windows do we have
 --
 sizeWindows :: IO Int
-sizeWindows = readEditor $ \e -> length $ eltsFM (windows e)
+sizeWindows = readEditor $ \e -> length $ M.elems (windows e)
 
 --
 -- | Find the window with this key
@@ -390,7 +390,7 @@ sizeWindows = readEditor $ \e -> length $ eltsFM (windows e)
 findWindowWith :: Editor -> (Maybe Unique) -> Window
 findWindowWith _ Nothing  = error "Editor: no key"
 findWindowWith e (Just k) = 
-    case lookupFM (windows e) k of
+    case M.lookup k (windows e) of
             Just w  -> w
             Nothing -> error "Editor: no window has this key"
 
@@ -406,7 +406,7 @@ withWindow_ f = modifyEditor_ $ \e -> do
         m'     <- updateModeLine w' b
         let w'' = w' { mode = m' }
             ws = windows e
-            e' = e { windows = addToFM ws (key w'') w'' }
+            e' = e { windows = M.insert (key w'') w'' ws }
         return e'
 
 --
@@ -420,7 +420,7 @@ withWindow f = modifyEditor $ \e -> do
         m'     <- updateModeLine w' b
         let w'' = w' { mode = m' }
             ws = windows e
-            e' = e { windows = addToFM ws (key w'') w'' }
+            e' = e { windows = M.insert (key w'') w'' ws }
         return (e',v)
 
 -- ---------------------------------------------------------------------
@@ -448,7 +448,7 @@ windowAt n = shiftFocus (const n)
 --
 shiftFocus :: (Int -> Int) -> IO ()
 shiftFocus f = modifyEditor_ $ \e -> do
-    let ws  = eltsFM $ windows e    -- hack
+    let ws  = M.elems $ windows e    -- hack
         k   = curwin e
         win = findWindowWith e k
     case elemIndex win ws of
