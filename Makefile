@@ -4,51 +4,61 @@
 
 TOPDIR = .
 
-include $(TOPDIR)/system.mk
+include $(TOPDIR)/mk/config.mk
 
-PACKAGE  	= hemacs
+ALL_DIRS=       HEmacs cbits
 
-EXTRA_TARGET 	= hemacs
-TARGET   	= hemacs-static
-GHCI_LIB 	= HS$(PACKAGE).o
-TARGET_A 	= libHS$(PACKAGE).a
+BIN=            hemacs
+STATIC_BIN=     hemacs-static
+HS_BINS=        $(BIN) $(STATIC_BIN)
 
-GHC_COMPILE_FLAGS += -package-name $(PACKAGE)
+# Library specific stuff
+ 
+PKG=            hemacs
 
-# not part of HShemacs.o, but need to be dynamically loaded
-EXTRA_OBJS = Main.o
-EXTRA_HI_FILES = $(subst .o,.hi, $(EXTRA_OBJS))
-BOOT_OBJS  = HEmacs/BootAPI.o Boot.o 
+# dynamic front end
+ 
+BIN_OBJS=       Boot.o
+BIN_DEPS=       plugins posix
+BIN_LIBS=       $(CURSES) iconv
 
-C_SOURCES   = cbits/nomacro.c
+# static front end
+ 
+STATIC_OBJS=    Main.o
+STATIC_BIN_DEPS=hemacs posix
+STATIC_BIN_LIBS=$(CURSES) iconv
+STATIC_HC_OPTS  += -package-conf hemacs.conf
 
-HSC_C_FILES = HEmacs/CWString_hsc.c HEmacs/Curses_hsc.c
+SHARED_OBJ=	HEmacs/BootAPI.o
 
-RAW_SRCS = Locale.hsc GenUtil.hs CWString.hsc Curses.hsc IConv.hsc  \
-           Version.hs Entry.hs Editor.hs MBox.hs Style.hs UI.hs \
-	   BootAPI.hs ConfigAPI.hs MkTemp.hs
+#
+# read in suffix rules
+#
+include $(TOPDIR)/mk/rules.mk
 
-HS_SOURCES = $(patsubst %, HEmacs/%, $(RAW_SRCS))
+#
+# Special targets
+# 
 
-TO_CLEAN += hemacs-static hemacs hemacs-inplace
-TO_CLEAN += $(BOOT_OBJS) $(EXTRA_OBJS) Config.o Config.hi Boot.hi Main.hi
-TO_CLEAN += $(TARGET_A) *.conf.install* *.conf *.old *.conf.in $(GHCI_LIB) *.bak
+#
+# This module is shared between the static and dynamic code. It needs to be
+# treated with care. In particular, it has to get archived into
+# HShemacs.o, but it cannot have a -package hemacs flag.
+#
+HEmacs/BootAPI.o: HEmacs/BootAPI.hs
+	$(GHC) $(HC_OPTS) -c $< -o $@ -ohi $(basename $@).$(way)hi
 
-HEMACS_PACKAGE   = -package-conf hemacs.conf  -package hemacs
-PLUGINS_PACKAGE  = -package plugins
-HSC_INCLUDES    += -Icbits
+#
+# Boot is the bootstrap loader. It cant be linked *statically* against
+# -package hemacs. It depends on $(SHARED_OBJ), which lives in HEmacs,
+# hence the -iHEmacs flag.
+#
+Boot.o: Boot.hs 
+	$(GHC) $(HC_OPTS) $(BIN_HC_OPTS) -DLIBDIR=\"$(LIBDIR)\" -iHEmacs -main-is Boot.main -c $< -o $@ -ohi $(basename $@).$(way)hi
 
-LIBS               = $(LIBS_ICONV) $(EXTRALIBS)
-
-GHC_LINK_FLAGS    += -l$(CURSES) $(LIBS) $(HEMACS_PACKAGE)
-BOOT_LINK_FLAGS    = -l$(CURSES) $(LIBS) $(PLUGINS_PACKAGE)
-
-include $(TOPDIR)/rules.mk
-
-# statically linked target
-$(TARGET): $(OBJS) $(EXTRA_OBJS)
-	$(GHC) $(GHC_LINK_FLAGS) -o $@ $(EXTRA_OBJS)
-
+#
+# Main is the actual application Main.main, as well as being the frontend of
+# the statically linked binary
 #
 # semi-magic to defeat <= ghc-6.2.1 use of -i. by default. this stops
 # us using a library and it's .o files easily in the same dir -- the
@@ -57,38 +67,15 @@ $(TARGET): $(OBJS) $(EXTRA_OBJS)
 #
 MAGIC_FLAGS   += -package-conf ../hemacs.conf  -package hemacs
 
-Main.o: package_conf Main.hs
-	( mkdir d ; cd d ;\
-	  $(GHC) $(GHC_OPT_FLAGS) $(MAGIC_FLAGS) -odir .. -c ../Main.hs ;\
-	  cd .. ; rmdir d)
-
-# dynamic loader target
-$(EXTRA_TARGET): package_conf hemacs-inplace $(BOOT_OBJS)
-	$(GHC) $(BOOT_LINK_FLAGS) -o $@ $(BOOT_OBJS)
-
-# -main-is Boot.main
-Boot.o: Boot.hs
-	$(GHC) -DLIBDIR=\"$(LIBDIR)\" $(GHC_WARNINGS) $(GHC_OPT_FLAGS) $(PLUGINS_PACKAGE) -main-is Boot.main -c Boot.hs
+Main.o: Main.hs
+	( cd HEmacs ; $(GHC) $(HC_OPTS) $(MAGIC_FLAGS) -odir .. -c ../$< -o ../$@ -ohi ../$(basename $@).$(way)hi )
 
 hemacs-inplace: hemacs-inplace.in
 	sed 's,@HEMACS_TOP@,'`pwd`',g' hemacs-inplace.in > hemacs-inplace
 	chmod 755 hemacs-inplace
 
-install:
-	@if [ ! -x $(TARGET) ]; then echo "Try 'make' first" ; fi
-	$(INSTALLDIR) $(BINDIR)
-	$(INSTALL) -m $(BIN_MODE) $(TARGET)       $(BINDIR)
-	$(INSTALL) -m $(BIN_MODE) $(EXTRA_TARGET) $(BINDIR)
-	$(INSTALLDIR) $(LIBDIR)/$(PACKAGE)/imports
-	$(INSTALL) -m $(LIB_MODE) $(TARGET_A) $(LIBDIR)/$(PACKAGE)
-	$(INSTALL) -m $(LIB_MODE) $(GHCI_LIB) $(LIBDIR)/$(PACKAGE)
-	for i in $(HI_FILES) ; do \
-		$(INSTALL) -m $(LIB_MODE) $$i $(LIBDIR)/$(PACKAGE)/imports ;\
-	done
-	for i in $(EXTRA_OBJS) $(EXTRA_HI_FILES) ; do \
-		$(INSTALL) -m $(LIB_MODE) $$i $(LIBDIR)/$(PACKAGE) ;\
-	done
-	$(INSTALL) -m $(LIB_MODE) $(PACKAGE).conf.install $(LIBDIR)/$(PACKAGE)/$(PACKAGE).conf
+EXTRA_CLEANS+= hemacs-inplace
 
-# pull in generated deps
+# Dependency orders
+
 include $(TOPDIR)/depend

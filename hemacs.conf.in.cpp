@@ -14,7 +14,7 @@ Package {
         source_dirs     = [],
         extra_libraries = [],
         extra_libraries = [ "${CURSES}", "iconv" ],
-        package_deps    = [ "base", "haskell98" ],
+        package_deps    = [ "base", "haskell98", "posix" ],
         extra_ghc_opts  = [],
         extra_cc_opts   = [],
         extra_ld_opts   = []

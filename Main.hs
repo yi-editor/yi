@@ -17,8 +17,9 @@ import HEmacs.MBox
 import HEmacs.Version                (package, version)
 import HEmacs.Locale                 (setupLocale)
 import qualified HEmacs.UI        as UI
-import qualified HEmacs.BootAPI   as BootAPI
 import qualified HEmacs.ConfigAPI as ConfigAPI
+
+import qualified BootAPI
 
 import Control.Exception      (catchJust, ioErrors, throw, bracket)
 import Control.Monad          (liftM, when)

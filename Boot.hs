@@ -45,7 +45,7 @@
 
 module Boot ( main ) where
 
-import HEmacs.BootAPI         ( ConfigData(..), HEmacsMainType )
+import BootAPI                ( ConfigData(..), HEmacsMainType )
 import Plugins
 import Plugins.Utils          ( (</>), (<.>) )
 

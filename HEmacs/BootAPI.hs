@@ -1,3 +1,4 @@
+{-# OPTIONS -fglasgow-exts #-}
 --
 -- riot/BootAPI.hs
 -- 
@@ -16,7 +17,7 @@
 -- border. We use the existential to prevent a dependency on ConfigAPI
 -- in Boot.hs. It gets unwrapped magically in Main.dynamic_main
 --
-module HEmacs.BootAPI where
+module BootAPI where
 
 data ConfigData = forall a. CD a {- has Config type -}
 
