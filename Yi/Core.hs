@@ -208,6 +208,25 @@ downE = withWindow_ moveDownW
 upE :: Action
 upE = withWindow_ moveUpW
 
+------------------------------------------------------------------------
+
+-- | Is the point at the start of the line
+atSolE :: IO Bool
+atSolE = withWindow $ \w b -> atSol b >>= \x -> return (w,x)
+
+-- | Is the point at the end of the line
+atEolE :: IO Bool
+atEolE = withWindow $ \w b -> atEol b >>= \x -> return (w,x)
+
+-- | Is the point at the start of the file
+atSofE :: IO Bool
+atSofE = withWindow $ \w b -> atSof b >>= \x -> return (w,x)
+
+-- | Is the point at the end of the file
+atEofE :: IO Bool
+atEofE = withWindow $ \w b -> atEof b >>= \x -> return (w,x)
+
+------------------------------------------------------------------------
 -- | Scroll up 1 screen
 -- Inefficient
 upScreenE :: Action
