@@ -44,7 +44,8 @@ module Yi.Core (
         e_noop,
 
         -- * File related
-        e_load,
+        e_read,
+        e_write,
 
         -- * Cursor movement
         e_left,
@@ -73,6 +74,7 @@ import qualified Yi.Buffer as Buffer
 import System.IO
 import System.Exit
 
+import Control.Monad     ( when )
 import qualified Control.Exception ( catch, Exception, throwIO )
 
 import GHC.Base
@@ -86,7 +88,7 @@ start confs mfs = do
     UI.start
     Editor.setUserSettings confs
     case mfs of
-        Just fs -> mapM_ e_load fs
+        Just fs -> mapM_ e_read fs
 
         -- vi-like behaviour, just for now.
         Nothing -> do mf <- mkstemp "/tmp/yi.XXXXXXXXXX" 
@@ -182,39 +184,75 @@ e_bot = modifyCurrentBuffer $ \b -> do
 --
 e_down :: IO ()
 e_down = modifyCurrentBuffer $ \b -> do
-    x <- Buffer.prevNLOffset_ b
-    Buffer.nextNL b
-    Buffer.nextXorNL b (x+1)
+    x <- Buffer.prevLnOffset b
+    Buffer.gotoNextLn b
+    Buffer.nextXorNL (max 0 x) b
 
 --
 -- | Move cursor up to the same @x@ offset, 1 line previous
+-- Blargh. Needs rethink. The primitives don't have quite the desired
+-- behaviour.
 --
 e_up :: IO ()
 e_up = modifyCurrentBuffer $ \b -> do
-    x <- Buffer.prevNLOffset b -- prev \n
-    Buffer.left b   -- blargh
-    Buffer.prevNL b
-    p <- Buffer.point b -- if we're at '0', don't shift
-    Buffer.nextXorNL b (x + min p 1)
+    p <- Buffer.point b
+    if (p == 0)         -- do nothing.
+        then return b
+        else do 
+    x <- Buffer.prevLnOffset b
+    c <- Buffer.char b
+    when (c == '\n') $ 
+        Buffer.left b    >> return () -- skip past \n
+    Buffer.gotoPrevLn b
+    Buffer.leftN 2 b                 -- skip past \n
+    p <- Buffer.point b
+    when (p /= 0) $
+        Buffer.gotoPrevLn b >> return ()
+    Buffer.nextXorNL (max x 0) b
 
 --
--- | Move cursor to start of line (blargh)
+-- | Move cursor to start of line
 --
 e_sol :: IO ()
-e_sol = modifyCurrentBuffer $ \b -> Buffer.left b >>= Buffer.prevNL >>= Buffer.right
+e_sol = modifyCurrentBuffer $ \b -> do
+    p <- Buffer.point b
+    c <- Buffer.char b
+    when (c == '\n') $ 
+        Buffer.left b       >> return ()
+    when (p /= 0)    $ 
+        Buffer.gotoPrevLn b >> return ()
+    return b
 
 --
 -- | Move cursor to end of line
 --
 e_eol :: IO ()
-e_eol = modifyCurrentBuffer Buffer.nextNL
+e_eol = modifyCurrentBuffer $ \b -> do
+    Buffer.gotoNextLn b 
+    p <- Buffer.point b
+    s <- Buffer.size b
+    when (p /= s - 1) $ 
+        Buffer.left b >> return ()
+    return b
 
 --
--- | Load a new buffer with contents of file
+-- | Read into a new buffer the contents of file.
 -- TODO: change type
 --
-e_load  :: FilePath -> IO ()
-e_load f = Editor.fillNewBuffer f          -- lazy for large files?
+e_read  :: FilePath -> IO ()
+e_read f = Editor.fillNewBuffer f          -- lazy for large files?
+
+--
+-- | Write current buffer to disk
+--
+e_write :: IO ()
+e_write = modifyCurrentBuffer $ \b -> do
+        let f = Buffer.name b
+        ss <- Buffer.contents b
+        h  <- openFile f WriteMode
+        hPutStr h ss
+        hClose h
+        return b
 
 ------------------------------------------------------------------------
 
@@ -242,4 +280,4 @@ e_delete = modifyCurrentBuffer $ Buffer.delete
 
 -- | Kill to end of line
 e_kill :: IO ()
-e_kill = modifyCurrentBuffer $ Buffer.killToEOL
+e_kill = modifyCurrentBuffer $ Buffer.killToNL

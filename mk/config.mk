@@ -8,15 +8,14 @@ LIBDIR=         $(PREFIX)/lib/$(PKG)
 DATADIR=        $(PREFIX)/share/doc/$(PKG)
 IFACEDIR=       $(LIBDIR)/imports
 
-DEFINES+=	    -DLIBDIR=\"$(LIBDIR)\"
+DEFINES+=       -DLIBDIR=\"$(LIBDIR)\"
 
 GHC=            ghc
 GHC_PKG=        ghc-pkg
 HC_OPTS=        -cpp -fglasgow-exts -Wall
 
 HC_OPTS+=       -Onot -fasm -H64m
-#HC_OPTS+=      -O -fvia-C -funbox-strict-fields
-#HC_OPTS+=      -Wall
+#HC_OPTS+=       -O -fvia-C -funbox-strict-fields -\#include my_curses.h
 #HC_OPTS+=      -debug
 
 HSC2HS=         hsc2hs

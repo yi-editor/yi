@@ -54,6 +54,7 @@ defaultKeyMap (Key '$')   = e_eol
 defaultKeyMap (Key 'r')   = e_replace
 defaultKeyMap (Key 'i')   = e_insert 
 defaultKeyMap (Key 'x')   = e_delete
+defaultKeyMap (Key 'w')   = e_write
 defaultKeyMap (Key 'D')   = e_kill
 defaultKeyMap (KeyUp)     = e_up
 defaultKeyMap (KeyDown)   = e_down

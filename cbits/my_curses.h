@@ -9,11 +9,7 @@
 #undef PACKAGE_STRING
 #undef PACKAGE_TARNAME
 #undef PACKAGE_VERSION
-#if __GLASGOW_HASKELL__ >= 603
-# include "ghcconfig.h"
-#else
 # include "config.h"
-#endif
 #endif
 
 #if HAVE_NCURSESW_NCURSES_H 

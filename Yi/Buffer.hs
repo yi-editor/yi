@@ -54,7 +54,7 @@ class Buffer a where
     --
     contents   :: a -> IO [Char]
 
-    -- | Length of contents of buffer
+    -- | Number of characters in the buffer, or index of last elem+1
     size       :: a -> IO Int
 
     -- | Current position of the cursor. Offset from start of buffer
@@ -92,6 +92,9 @@ class Buffer a where
 
     -- | Delete character at point, shifting back rest of buffer
     delete      :: a -> IO a
+    
+    -- | Delete @n@ characters forward from point, or till eof
+    deleteN     :: Int -> a -> IO a
 
 -- ---------------------------------------------------------------------
 --
@@ -153,7 +156,7 @@ fillNewFBuffer_ :: Handle -> IO (IORef FBuffer_)
 fillNewFBuffer_ hd = do
     sz <- liftM fromIntegral (hFileSize hd)
     ss <- hGetContents hd    -- race. could have shrunk.
-    b@(FBuffer_ { bufBuf=buf }) <- allocateFBuffer_ (2*sz)
+    b@(FBuffer_ { bufBuf=buf }) <- allocateFBuffer_ (sz+2048)
     i <- writeChars buf ss 0
     newIORef (b { bufEnd = i })
 
@@ -183,8 +186,8 @@ writeChars b (c:cs) i = writeCharToBuffer b i c >>= writeChars b cs
 --
 readChars :: RawBuffer -> Int -> Int -> IO [Char]
 readChars b n i = do
-    let loop j | j >= n    = return []
-               | otherwise = do
+    let loop j | j >= (i + n) = return []
+               | otherwise    = do
                     (c,_) <- readCharFromBuffer b j
                     cs    <- loop $! j+1
                     return (c : cs)
@@ -260,7 +263,7 @@ instance Buffer FBuffer where
                 readChars b n 0
 
     -- size :: FBuffer -> IO Int
-    size  (FBuffer _ _ m) =
+    size (FBuffer _ _ m) =
         readMVar m >>=
             readIORef >>= \(FBuffer_ {bufEnd=n}) -> return n
 
@@ -297,121 +300,125 @@ instance Buffer FBuffer where
     -- insert :: Char -> a -> IO a
     insert c fb@(FBuffer _ _ m) =
         withMVar m $ \ref -> do
-            b@(FBuffer_ buf p n _) <- readIORef ref        
-            cs <- readChars buf (n-p) p
-            writeChars buf (c:cs) p
-            writeIORef ref (b{bufPnt=p+1,bufEnd=n+1}) -- shift point
+            b@(FBuffer_ buf p e _) <- readIORef ref        
+            cs <- readChars buf  (e-p) p
+            i  <- writeChars buf (c:cs)  p
+            writeIORef ref (b{bufPnt=p+1,bufEnd=i}) -- shift point
             return fb
 
      -- delete :: a -> IO a
-    delete fb@(FBuffer _ _ m) =
+    delete = deleteN 1
+
+     -- delete :: Int -> a -> IO a
+    deleteN n fb@(FBuffer _ _ m) =
         withMVar m $ \ref -> do
-            b@(FBuffer_ buf p n _) <- readIORef ref        
-            cs <- readChars buf (n-p-1) (p+1)
-            writeChars buf cs p
-            writeIORef ref (b{bufEnd=n-1}) -- shift point
+            b@(FBuffer_ buf p e _) <- readIORef ref        
+            cs <- readChars buf (e-p-n) (p+n)
+            i  <- writeChars buf cs p
+            let p' | p == 0    = p   -- go no further!
+                   | i == p    = p-1 -- shift back if del eof
+                   | otherwise = p
+            writeIORef ref (b{bufPnt=p',bufEnd=i})
             return fb
         
 -- ---------------------------------------------------------------------
--- | 2-D primitives implemented over the 'Buffer' primitives
--- Needed for 2-D guis. TODO is this the right place for them?
---
--- Clean these up a bit
---
+-- | "2-D" primitives implemented over the 'Buffer' primitives
+-- Needed for 2-D guis.
 
 --
--- | Move to previous \n, or start of file, and return the modified
--- buffer
+-- | Move to the char /in front of/ the prev \n, or the start of file.
+-- If the current char is a \n, we are already there.
 --
-prevNL :: Buffer a => a -> IO a
-prevNL b = do
+gotoPrevLn :: Buffer a => a -> IO a
+gotoPrevLn b = do
     let loop 0# = return ()
         loop p  = do c <- char b
-                     when (c /= '\n') $ 
-                            left b >> loop (p -# 1#)
+                     if (c == '\n') then right b >> return ()
+                                    else left  b >> loop (p -# 1#)
     (I# p) <- point b
-    loop p
+    loop (p +# 1#)
     return b
 
 --
--- | Return the offset to the previous \n -- don't move there
+-- | Move to the char after the next '\n'. If the current char is a \n,
+-- this means move right 1.
 --
-prevNLOffset_ :: Buffer a => a -> IO Int
-prevNLOffset_ b = do
-    p <- point b
-    x <- prevNLOffset b
-    moveTo p b
-    return x
-
---
--- | Return the index of the previous \n, or start of file
---
-prevNLIx :: Buffer a => a -> IO Int
-prevNLIx b = do
-    p <- point b
-    prevNLOffset b
-    q <- point b
-    moveTo p b
-    return q
-        
-        
-        
-
---
--- | Return the offset to the previous \n , and move there
---
-prevNLOffset :: Buffer a => a -> IO Int
-prevNLOffset b = do
-    let loop acc 0# = return (I# acc)
-        loop acc p  = do left b
-                         c <- char b
-                         if c == '\n' 
-                            then return (I# acc)
-                            else loop (acc +# 1#) (p -# 1#)
-    (I# p) <- point b
-    loop 0# p
-
---
--- | Move to next '\n', returning the buffer. Stay put if we're on a \n.
---
-nextNL :: Buffer a => a -> IO a
-nextNL b = do
+gotoNextLn :: Buffer a => a -> IO a
+gotoNextLn b = do
     (I# e') <- size b
     let e = e' -# 1#
-        loop p | p  ==# e   = return () -- end of buffer
-               | otherwise  = do c <- char b
-                                 when (c /= '\n') $ do
-                                    right b
-                                    loop (p +# 1#)
+        loop p | p ==# e   = return () -- end of buffer
+               | otherwise = do c <- char b
+                                right b
+                                when (c /= '\n') $ loop (p +# 1#)
     (I# p) <- point b
     loop p
     return b
+
+------------------------------------------------------------------------
+
+--
+-- | Return the /index/ of the start of line char, or the last \n if
+-- we're at the end of file, and that char in a \n.
+--
+prevLnIx :: Buffer a => a -> IO Int
+prevLnIx b = do
+    p <- point b
+    gotoPrevLn b
+    i <- point b
+    moveTo p b
+    return i
+
+--
+-- | Return the /index/ to the start of the next line, or what is the
+-- index of the char after the next \n?). Index of eof+1 if no more \n.
+--
+nextLnIx :: Buffer a => a -> IO Int
+nextLnIx b = do
+    p <- point b
+    gotoNextLn b
+    i <- point b
+    s <- size  b
+    moveTo p   b
+    return $ if s-1 == i then i+1 else i -- next nl past eof (safe, but good?)
+
+--
+-- | Return the offset (distance to shift) to the start of the previous
+-- line. If I'm currently on a \n, this means finding the char in front
+-- of the last \n
+--
+prevLnOffset :: Buffer a => a -> IO Int
+prevLnOffset b = do
+    j <- point b
+    left b  -- hop over any \n
+    i <- prevLnIx b
+    moveTo j b
+    return (j - i)
+
+--
+-- | Return the offset to the next line. (the char after the next \n)
+-- So if we're at the start of a line, give the offset to the next line
+--
+nextLnOffset :: Buffer a => a -> IO Int
+nextLnOffset b = do
+    i <- point b
+    j <- nextLnIx b
+    return (j - i - 1)
 
 --
 -- | Move forward @x@, or end of line, or end of file, 
 -- Return the buffer
 --
-nextXorNL :: Buffer a => a -> Int -> IO a
-nextXorNL b (I# x) = do
-    (I# e') <- size  b
-    let e   = e' -# 1#
-        loop acc p | p   ==# e  = return (I# acc)   -- end of file
-                   | acc ==# x  = return (I# acc)   -- moved x chars
-                   | otherwise  = do right b
-                                     c <- char b
-                                     if c == '\n'
-                                        then return (I# acc)
-                                        else loop (acc +# 1#) (p +# 1#)
-    (I# p) <- point b
-    loop 0# p
-    return b
+nextXorNL :: Buffer a => Int -> a -> IO a
+nextXorNL x b = do
+    n <- nextLnOffset b
+    rightN (min x n) b
 
 --
--- | Kill all chars to end of line
+-- | Kill all chars to end of line, not including the \n
 --
-killToEOL :: Buffer a => a -> IO a
-killToEOL b = do
-        let loop = do c <- char b
-                      if c == '\n' then return b
-                                   else delete b >> loop
-        loop
+killToNL :: Buffer a => a -> IO a
+killToNL b = do
+    x <- nextLnOffset b
+    deleteN x b
+
