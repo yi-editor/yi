@@ -1,25 +1,24 @@
 RUNTIME
 
-Preferences are stored in ~/.hemacs/Config.hs. Look in plugins/ for
-example Config.hs. If this directory doesn't exist, hemacs uses
-HEmacs/ConfigAPI.hs for the defaults, this is also what is used in
-hemacs-static.
+Preferences are stored in ~/.yi/Config.hs. Look in examples/ for example
+Config.hs. If this directory doesn't exist, yi uses Yi/Keymap.hs for for
+the defaults key mapping defaults, this is also what is used in
+yi-static.
 
-To get at hemacs internals from your config script, either import
-HEmacs.HEmacs, which brings most of the commonly used modules into
-scope, or explicitly import something from HEmacs/*. You can read the
-haddock-generated docs from some (preliminary) api details (make
-html).
+To get at yi internals from your config script, either import Yi.Yi,
+which brings most of the commonly used modules into scope, or explicitly
+import something from Yi/*. You can read the haddock-generated docs from
+some (preliminary) api details (make html).
 
 How do things load in the dynamic loader.
         
            Boot.hs
           /      \
-      Config.hs HEmacs.o
+      Config.hs Yi.o
                   |
-                HShemacs.o (-package hemacs)
+                HSyi.o (-package yi)
 
-once it is all loaded, Boot.main jumps to HEmacs.dynamic\_main
+once it is all loaded, Boot.main jumps to Yi.dynamic\_main
 
 BUILD SYSTEM
 
@@ -28,29 +27,28 @@ Extra args can be passed at runtime as: make HC\_OPTS=-ddump-minimal-imports
 DEVELOPMENT
 
 Profiling:
-You can build hemacs-static for profiling. Just set:
+You can build yi-static for profiling. Just set:
 	make way=p
 and then invoke
-	./hemacs-static +RTS -p
-and once you quit you'll get a hemacs-static.prof file with profiling
+	./yi-static +RTS -p
+and once you quit you'll get a yi-static.prof file with profiling
 statistics.
 
 Coding guidelines:
 
 Please make sure you code compiles with -Wall, with no warnings. Use
-Haddock markup to document any functions that are exported -- user's
-may want to use this code at some point. We use cpp to pass
-platform-specific options into files. Please provide explicit import
-lists where reasonable, and keep imports in some sorted order.
-Please don't introduce posix dependencies unless you absolutely have
-to.
+Haddock markup to document any functions that are exported -- user's may
+want to use this code at some point. We use cpp to pass platform
+specific options into files. Please provide explicit import lists where
+reasonable, and keep imports in some sorted order.  Please don't
+introduce posix dependencies unless you absolutely have to.
 
-You can actually run this stuff in ghci! To just run hemacs-core (the gui etc,
-without worrying about booting the thing):
+You can actually run this stuff in ghci! To just run yi-core (the gui
+etc, without worrying about booting the thing):
 
 \begin{verbatim}
-        ghci -package-conf hemacs.conf -package hemacs
-        manzano$ ghci -package-conf hemacs.conf -package hemacs
+        ghci -package-conf yi.conf -package yi
+        manzano$ ghci -package-conf yi.conf -package yi
            ___         ___ _
           / _ \ /\  /\/ __(_)
          / /_\// /_/ / /  | |      GHC Interactive, version 6.3, for Haskell 98.
@@ -63,17 +61,17 @@ without worrying about booting the thing):
         Loading package lang ... linking ... done.
         Loading package unix ... linking ... done.
         Loading package posix ... linking ... done.
-        Loading package hemacs ... linking ... done.
+        Loading package yi ... linking ... done.
         Prelude> :l Main
         Prelude Main> main
 \end{verbatim}
 
-To run the whole thing is a bit harder, and requires faking the
-package lib flags in hemacs.conf (leave off the last 2 args if you're
-on linux). And if we haven't installed it yet (you want to run
-in-tree), then you have to set the command line args. Also, to do this
-trick you need ghc-6.2.2 or greater, which contain appropriate rts
-patches for running dynamic loaders dynamically.
+To run the whole thing is a bit harder, and requires faking the package
+lib flags in yi.conf (leave off the last 2 args if you're on linux). And
+if we haven't installed it yet (you want to run in-tree), then you have
+to set the command line args. Also, to do this trick you need ghc-6.2.2
+or greater, which contain appropriate rts patches for running dynamic
+loaders dynamically.
 
 \begin{verbatim}
         manzano$ ghci -package plugins -liconv -L/usr/local/lib
@@ -96,23 +94,23 @@ patches for running dynamic loaders dynamically.
         Loading object (dynamic) iconv ... done
         final link ... done
 	Prelude> :set -cpp -fglasgow-exts
-	Prelude> :set -DLIBDIR="/usr/local/lib/hemacs"
-	Prelude> :set args -B/home/dons/src/projects/hemacs
+	Prelude> :set -DLIBDIR="/usr/local/lib/yi"
+	Prelude> :set args -B/home/dons/src/projects/yi
 	Prelude> :l Boot.hs
 	*Boot>
         Prelude Boot> main
         Starting up dynamic Haskell ... jumping over the edge ... done.
 \end{verbatim}
 
-For example, to modify \code{\$(TOP)/HEmacs.hs} in ghci, you would:
+For example, to modify \code{\$(TOP)/Yi.hs} in ghci, you would:
 
 \begin{verbatim}
-        manzano$ ghci -package-conf hemacs.conf -package hemacs -cpp -fglasgow-exts
-        Prelude> :l HEmacs.hs
-        *HEmacs> :t dynamic_main
+        manzano$ ghci -package-conf yi.conf -package yi -cpp -fglasgow-exts
+        Prelude> :l Yi.hs
+        *Yi> :t dynamic_main
         dynamic_main :: Maybe ConfigData -> IO ()
-        *HEmacs> :reload
-        Compiling HEmacs           ( HEmacs.hs, interpreted )
+        *Yi> :reload
+        Compiling Yi           ( Yi.hs, interpreted )
 \end{verbatim}
 
 \begin{thebibliography}[50]
