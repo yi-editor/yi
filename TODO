@@ -27,22 +27,48 @@ other stuff:
           than by binding a key?
 
 ------------------------------------------------------------------------
-syn hl:
-        - run ghc parser in background thread, producing a syn tree
+Syntax Highlighting:
+
+        - run a parser in background thread (of Parser class), producing a syn tree
+
         - abstract syn representation
             - produces syntax colouring ppr (not general ppr)
             - hints for layout (on \n, for example)
+
         - so we're mostly direct editing, and updating the syn tree
           where possible.
+
         - so how to take a syn tree and flatten it to produce a drawable buffer?
             - can we deparse it directly?   
             - or can we consult the abs syn tree, as we draw each buffer line?
                 - walk the parse tree, drawing chars from the buffer in
                   the colour specified by the tree.
 
+        - need correct position information in syn tree, to colour
+          tokens. comments aren't stored in the syn tree, so how do we
+          colour them?
+            * Centaur records comments in the lexer, with their locations.
+              Then using location information in the syntree, hook
+              comments back in.
+
+        - set of token classes?
+
         - need multiple entry points to the parser, to reparse subexpressions?
             - ==> Centaur (for ML) has a good system.
               ftp://ftp.inria.fr/INRIA/publication/publi-pdf/RR/part3/RR-3139.pdf
+
+            - alredy available in Happy parser for GHC, via the %name
+              directive, for:
+                - parseModule module
+                - parseStmt   maybe_stmt
+                - parseIdentifier  identifier
+                - parseIface iface
+                - parseType ctype
+
+        - can keep track of points to start reparsing from. see
+          vim:syntax.c- syntax state stack cache
+
+        - need to map tokens to attributes.
 
         - what about comments?
             - record the comments, with their positions, in the lexer.
