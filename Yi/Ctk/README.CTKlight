@@ -1,0 +1,80 @@
+		       Compiler Toolkit - Light			     -*-text-*-
+		       ========================
+
+Contents:
+
+  README.CTKlight -- This file
+  LICENSE.LIB	  -- GNU Library General Public License (LGPL)
+  BaseVersion.hs  -- Version, copyright, and disclaimer
+  Config.hs	  -- Configuration module
+  Common.hs	  -- Basic definitions, such as representation of positions
+  DLists.hs	  -- Difference lists - provide O(1) append
+  Errors.hs	  -- Types and functions for error handling
+  FNameOps.hs	  -- Common operations on file names
+  FiniteMaps.hs	  -- Finite maps based on 2-3 trees
+  GetOpt.hs	  -- Sven Panne's Haskell version of the GNU getopt library
+  Lexers.hs	  -- Self-optimising lexer combinators
+  Parsers.hs	  -- Self-optimising parser combinators
+  Pretty.hs	  -- Pretty printing combinators (the interface is essentially
+		     a superset of SimonPJ's pretty printing library)
+  Sets.hs	  -- Sets as an instance of the above mentioned finite maps
+  Utils.hs	  -- Utility routines
+
+The Compiler Toolkit Light (CTKlight) is a subset of the Compiler Toolkit
+(CTK) - an infrastructure for writing compilers in Haskell.  CTKlight
+essentially provides support for implementing syntactical analysis without the
+more heavy-weight state management (like compiler switches, global error pool,
+and exceptions), identifier and attribute management, and various other
+utilities included in the full CTK.  Both packages can be obtained from
+
+  http://www.cse.unsw.edu.au/~chak/ctk/
+
+
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=- BUILDING -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
+In contrast to full CTK, CTKlight is simply a set of Haskell modules without
+any complicated makefile structure.  The code is Haskell 98 compliant with the 
+exception that `Parser.hs' makes use of existentially quantified type
+variables - unfortunately, I do not believe that the same method of
+self-optimisation would work without existential types.
+
+The modules are tested with
+
+* GHC 4.02 and upwards (use `-fglasgow-exts' to compile `Parsers.hs') and
+* Hugs98 (use `-98' when using `Parsers.hs').
+
+If you want autoconf, a ready-made makefile structure, and much more
+additional library functionality, then use full CTK.
+
+
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=- COPYLEFT -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
+This library is free software; you can redistribute it and/or modify it under
+the terms of the GNU Library General Public License as published by the Free
+Software Foundation; either version 2 of the License, or (at your option) any
+later version.
+
+This library is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE.  See the GNU Library General Public License for more
+details.
+
+You should have received a copy of the GNU Library General Public License
+along with this system; if not, write to the Free Software Foundation, Inc.,
+675 Mass Ave, Cambridge, MA 02139, USA.
+
+Note: In essence this means that you can use this library in any program
+      whether it is free or proprietary.  However, if you modify or extend the
+      library itself, you are bound to distribute these modifications or
+      extensions according to the terms and conditions of the LGPL.  For
+      details consult the license itself, which is located in the file
+      `LICENSE.LIB'.
+
+
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=- CREDITS -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+
+Author & Maintainer: Manuel M. T. Chakravarty <chak@cse.unsw.edu.au>
+
+Thanks to Simon L. Peyton Jones <simonpj@microsoft.com> and Roman Lechtchinsky
+<wolfro@cs.tu-berlin.de> for their helpful suggestions that improved the
+design and implementation of the `Lexers' module.

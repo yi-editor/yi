@@ -30,7 +30,6 @@ module Yi.Yi (
         
         settings,
         Config(..),
-        Keymap(..),
         module Yi.Core,
         module Yi.UI,
  
@@ -38,11 +37,10 @@ module Yi.Yi (
 
 import Yi.Core
 import Yi.UI        -- hack, just for now, so we can see key defns
-import Yi.Editor                        ( Keymap(..), Config(..) )
+import Yi.Editor                        ( Config(..) )
 
-import qualified Yi.Keymap.Vi as Keymap    ( keymap )
+import qualified Yi.Keymap.Vi as Default ( keymap )
 
--- default settings:
 settings :: Config
-settings = Config { keymap = Keymap.keymap }
+settings = Config { keymap = Default.keymap }
 

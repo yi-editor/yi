@@ -18,393 +18,269 @@
 -- 
 
 --
--- | Y I -- as the name suggests ;) -- uses vi as its default key
--- bindings. Feel free to write your own bindings in ~/.yi/Keymap.hs.
--- You must provide a function 'keymap' of type: Char -> Action
+-- Vi-ish keymap for Yi
 --
 
 module Yi.Keymap.Vi ( keymap ) where
 
 import Yi.Core
-import Yi.Editor    ( Keymap(..) )  -- just for now
-import Yi.UI        -- hack, just for now, so we can see key defns
+import Yi.UI         hiding ( plus )
+import Yi.Ctk.Lexers hiding ( Action )
 
-import Data.Char
+import Prelude hiding   ( any )
+
 import Data.Maybe
+import Data.List        ( (\\) )
+import Data.Char
 import Control.Monad
 
+--
+-- | Top level. Lazily consume all the input, generating a list of
+-- actions, which then need to be forced
+--
+-- NB if there is an exception, we'll lose any new bindings..
+--
+keymap :: String -> IO ()
+keymap cs =
+    let (ts,_,_) = execLexer lexer (cs,(){-state-})
+    in mapM_ (>> refreshE) ts
+
+-- | start in command mode (which includes the lexers for regex and search).
+lexer :: Lexer () Action
+lexer = cmd_mode
+
+--
+-- command mode consits of simple commands, two commands that consume
+-- input, and commands that switch modes.
+--
+cmd_mode :: Lexer () Action
+cmd_mode = simplecmd >||< replace >||< search >||< cmd2other
+
+--
+-- insert mode is either insertion actions, or the meta \ESC action
+--
+ins_mode :: Lexer () Action
+ins_mode = ins >||< ins2cmd
+
 -- ---------------------------------------------------------------------
+-- | vi (simple) command mode. search mode is considered separately, as
+-- it consumes other input.
 --
--- This function must be implemented by any user keybinding
---
-keymap :: Char -> IO Keymap
-keymap c = cmd c        -- vi starts in command mode
+simplecmd :: Lexer () Action
+simplecmd = digit `star` (cmdc >|< string ">>" 
+                               >|< string "dd"
+                               >|< string "ZZ" 
+                               >|< string "yy")
+    `action` \lexeme -> Just $
+        let (b,cs) = span isDigit lexeme
+            c = if null b then Nothing else Just (read b)
+            i = fromMaybe 1 c
+        in case cs of
+            "\^A" -> not_implemented (head cs)
+            "\^B" -> upScreensE i
+            "\^D" -> not_implemented (head cs)
+            "\^E" -> not_implemented (head cs)
+            "\^F" -> downScreensE i
+            "\^G" -> viFileInfo
+            "\^H" -> leftOrSolE  i
+            "\^J" -> replicateM_ i downE
+            "\^L" -> not_implemented (head cs)
+            "\^M" -> not_implemented (head cs)
+            "\^N" -> replicateM_ i downE
+            "\^P" -> replicateM_ i upE
+            "\^R" -> not_implemented (head cs)
+            "\^T" -> not_implemented (head cs)
+            "\^U" -> not_implemented (head cs)
+            "\^W" -> nextWinE
+            "\^Y" -> not_implemented (head cs)
+            "\^Z" -> not_implemented (head cs)
+            "\ESC"-> not_implemented (head cs)
+            "\^]" -> not_implemented (head cs)
+            "\^^" -> not_implemented (head cs)
+
+            " "   -> rightOrEolE i
+            "!"   -> not_implemented (head cs)
+            "#"   -> not_implemented (head cs)
+            "$"   -> eolE
+            "%"   -> not_implemented (head cs)
+            "&"   -> not_implemented (head cs)
+            "("   -> not_implemented (head cs)
+            ")"   -> not_implemented (head cs)
+            "+"   -> not_implemented (head cs)
+            ","   -> not_implemented (head cs)
+            "-"   -> not_implemented (head cs)
+            "."   -> not_implemented (head cs) -- last command could be in state
+            "0"   -> solE
+            "|"   -> solE
+            ";"   -> not_implemented (head cs)
+            "<"   -> not_implemented (head cs)
+            "?"   -> not_implemented (head cs)
+            "@"   -> not_implemented (head cs)
+            "~"   -> do c' <- readE
+                        let c'' = if isUpper c' then toLower c' else toUpper c'
+                        writeE c''
+
+            "B"   -> not_implemented (head cs)
+            "D"   -> readRestOfLnE >>= setRegE >> killE
+            "E"   -> not_implemented (head cs)
+            "F"   -> not_implemented (head cs)
+            "G"   -> case c of 
+                        Nothing -> botE
+                        Just n  -> gotoLnE n
+
+            "N"   -> not_implemented (head cs)
+            "H"   -> downFromTosE (i - 1)
+            "J"   -> eolE >> deleteE -- the "\n"
+            "L"   -> upFromBosE (i - 1)
+            "M"   -> middleE
+            "P"   -> not_implemented (head cs)
+            "Q"   -> not_implemented (head cs)
+            "R"   -> not_implemented (head cs)
+            "T"   -> not_implemented (head cs)
+            "U"   -> not_implemented (head cs)
+            "W"   -> not_implemented (head cs)
+            "X"   -> leftOrSolE i >> replicateM_ i deleteE
+            "Y"   -> not_implemented (head cs)
+
+            "h"   -> leftOrSolE  i
+            "j"   -> replicateM_ i downE
+            "k"   -> replicateM_ i upE
+            "l"   -> rightOrEolE i
+            "n"   -> searchE Nothing
+            "p"   -> do s <- getRegE
+                        eolE >> insertE '\n' >> mapM_ insertE s >> solE
+            "q"   -> quitE
+            "x"   -> replicateM_ i deleteE
+
+            "ZZ"  -> viWrite >> quitE
+            "dd"  -> solE >> killE >> deleteE
+            ">>"  -> replicateM_ i $ solE >> mapM_ insertE "    " 
+            "yy"  -> readLnE >>= setRegE
+
+            [k] | k == keyPPage -> upScreensE i   -- ? hmm.
+                | k == keyNPage -> downScreensE i
+                | k == keyLeft  -> leftOrSolE i
+                | k == keyDown  -> replicateM_ i downE
+                | k == keyUp    -> replicateM_ i upE
+
+            k   -> not_implemented (head k)
+
+-- | Replace a single char. Consumes more input
+replace :: Lexer () Action
+replace = char 'r' +> any `action` \(_:c:[]) -> Just $ writeE c
+
+-- | Searching
+-- Should make this a full lexer mode of its own, so as to echo chars
+search :: Lexer () Action
+search = char '/' +> anyButEnter `star` enter
+    `action` \lexeme -> Just $
+        let pat' = init (tail lexeme)
+            pat  = clean pat'
+        in msgE ('/':pat) >> searchE (Just pat)
 
 --
--- | Return the next mode to use
+-- | Switch to another vi mode. 
 --
-nextCmd, nextIns, nextEx :: IO Keymap
-nextCmd = return (Keymap cmd)
-nextIns = return (Keymap ins)
-nextEx  = return (Keymap ex)
+-- These commands are meta actions, as they transfer control to another
+-- lexer. Some of these commands also perform an action before switching.
+--
+cmd2other :: Lexer () Action
+cmd2other = 
+    (char ':' >|< char 'i' >|< char 'I' >|< char 'a' >|< char 'A' >|< 
+     char 'o' >|< char 'O' >|< char 'c' >|< char 'C' >|< char 'S')
+    `meta` \[c] rest -> 
+        let beginIns a = (Just (Right (a)), rest, Just ins_mode)
+        in case c of
+            ':' -> (Just (Right (msgE ":")), rest, Just ex_mode)
+            'i' -> (Nothing, rest, Just ins_mode)
+            'I' -> beginIns solE
+            'a' -> beginIns $ rightOrEolE 1
+            'A' -> beginIns eolE
+            'o' -> beginIns $ eolE >> insertE '\n'
+            'O' -> beginIns $ solE >> insertE '\n' >> upE
+            'c' -> beginIns $ not_implemented 'c'
+            'C' -> beginIns $ readRestOfLnE >>= setRegE >> killE
+            'S' -> beginIns $ solE >> readLnE >>= setRegE >> killE
+            s   -> (Just(Right(msgE ("The "++show s++" command is unknown.")))
+                    ,rest, Just cmd_mode)
 
 -- ---------------------------------------------------------------------
--- | Command mode
+-- | vi insert mode
+-- 
+ins :: Lexer () Action
+ins = anyButEsc
+    `action` \[c] -> Just $ case c of
+        k | isDel k       -> deleteE
+          | k == keyPPage -> upScreenE
+          | k == keyNPage -> downScreenE
+
+        _ -> do (_,s,_,_,_,_) <- bufInfoE
+                when (s == 0) $ insertE '\n' -- vi behaviour at start of file
+                insertE c
+
+    where anyButEsc = alt $ any' \\ ['\ESC']
+
+-- switching out of ins_mode
+ins2cmd :: Lexer () Action
+ins2cmd  = char '\ESC' `meta` \_ rest -> (Nothing, rest, Just cmd_mode)
+
+-- ---------------------------------------------------------------------
+-- | todo, perhaps we could set an editor flag to echo each char with
+-- msg as it is read?
 --
--- What's going on here? We match a keystroke (or multiple keystrokes)
--- on the lhs, and perform an editor action on the rhs. Finally, we
--- return the keymap function we wish to use for the next action -- this
--- is how we switch modes.
+-- ex mode immediately switches back to command mode
 --
--- If we see digits, we need to accumulate them as they may be needed to
--- repeat actions.
+-- NB doesn't echo input! Fix me
 --
-cmd :: Char -> IO Keymap
-cmd c | isDigit c = getdigits [c] >>= uncurry do_cmd
-      | otherwise = do_cmd Nothing c
-  where
-    getdigits :: [Char] -> IO (Maybe Int, Char)    
-    getdigits cs = do 
-        c' <- getcE
-        if isDigit c' then getdigits (c':cs) 
-                      else return (Just (read $ reverse cs), c')
+ex_mode :: Lexer () Action
+ex_mode = anyButEnter `star` enter
+    `meta` \cs rest -> case cs of
+        ('l':'e':'t':' ':c:_) 
+            -> -- for now, just add bindings to echo
+               -- n.b we haven't deletted the old binding,
+               -- so you better now _rebind_ keys. but only
+               -- bind new ones, until we fix Lexers.hs
+             (Just (Right (msgE $ show c ++ " bound to msgE")), 
+                            rest, Just (cmd_mode >||< new c))
 
-do_cmd :: (Maybe Int) -> Char -> IO Keymap
+        _ -> (Just (Right (fn $ init cs)), rest, Just cmd_mode)
+    where 
+      fn ""           = msgClrE
+      fn "w"          = viWrite
+      fn "q"          = closeE
+      fn "q!"         = closeE
+      fn "wq"         = viWrite >> closeE
+      fn "n"          = nextBufW
+      fn "p"          = prevBufW
+      fn ('s':'p':_)  = splitE
+      fn ('e':' ':f)  = fnewE f
+      fn ('s':'/':cs) = viSub cs
+      fn s            = msgE $ "The "++show s++ " command is unknown."
 
-do_cmd mi c
--- Search forward for the current word.
-    | c == '\^A' = not_impl 
-
--- Page backwards count screens.
-    | c == '\^B' || c == keyPPage 
-    = upScreensE (fromMaybe 1 mi) >> nextCmd
-
--- Scroll forward count lines.
-    | c == '\^D' = not_impl
-
--- Scroll forward count lines, leaving the current line and column as is
-    | c == '\^E' = not_impl
-
--- Page forward count screens.
-    | c == keyNPage || c == '\^F'    
-    = downScreensE (fromMaybe 1 mi) >> nextCmd
-
--- Display the file information.
-    | c == '\^G' = do (f,_,ln,_,_,pct) <- bufInfoE 
-                      msgE $ show f ++ " Line " ++ show ln ++ " ["++ pct ++"]"
-                      nextCmd
-
--- Move the cursor back count characters in the current line.
-    | c == 'h' || c == '\^H'  || c == keyLeft
-    = leftOrSolE (fromMaybe 1 mi) >> nextCmd
-
--- Move the cursor down count lines without changing the current column.
-    | c == 'j' || c == '\^J' || c == '\^N'  || c == keyDown
-    = replicateM_ (fromMaybe 1 mi) downE >> nextCmd
-
--- Repaint the screen.
-    | c == '\^L' || c == '\^R' = not_impl
-
--- Move the cursor down count lines to the first non-blank character.
-    | c == '\^M' || c == '+' = not_impl
-
--- Move the cursor up one line
-    | c == '\^P' || c == 'k' || c == keyUp
-    = replicateM_ (fromMaybe 1 mi) upE >> nextCmd     
-    
--- Return to the most recent tag context.
-    | c == '\^T' = not_impl
-
--- Scroll backwards count lines.
-    | c == '\^U' = not_impl
-
--- Switch to the next lower screen in the window
-    | c == '\^W'    = nextWinE >> nextCmd
-
--- Scroll backwards count lines
-    | c == '\^Y'    = not_impl
-
--- Suspend the current editor session.
-    | c == '\^Z'    = not_impl
-
--- Execute ex commands or cancel partial commands.
-    | c == '\ESC'   = not_impl
-
--- Push a tag reference onto the tag stack.
-    | c == '\^]'    = not_impl
-
--- Switch to the most recently edited file.
-    | c == '\^^'    = not_impl
-
---  Move the cursor right one character.
-    | c ==  'l' || c == ' ' || c == keyRight
-    = rightOrEolE (fromMaybe 1 mi) >> nextCmd
-
--- Replace text with results from a shell command.
-    | c == '!'   = not_impl
-
--- Increment or decrement the number under the cursor. (this is weird!)
-    | c == '#'  = not_impl
-
--- Move the cursor to the end of a line, n times.
-    | c == '$'  = eolE >> nextCmd   -- TODO doesn't respect 'count'
-
--- Move to the matching character, from the set of ([{}]), /* */, cpp stuff
-    | c == '%'  = not_impl
-
--- Repeat the previous substitution command on the current line.
-    | c == '&'  = not_impl
-
--- Back up count sentences.
-    | c == '('  = not_impl
-
--- Move forward count sentences.
-    | c == ')'  = not_impl
-
--- Reverse find character count times.
-    | c == ','  = not_impl
-
--- Move to the first non-blank of the previous line, count times.
-    | c == '-'  = not_impl
-
--- Repeat the last vi command that modified text.
-    | c == '.'  = not_impl
-
--- search! not regular expressions at the moment.
-    | c == '/'  = do
-        msgE "/"
-        let loop w  = do
-                k <- getcE
-                case () of {_
-                    | k == '\n'         -> return (reverse w)
-                    | k == '\r'         -> return (reverse w)
-                    | k == '\BS'        -> del w >>= loop
-                    | k == keyBackspace -> del w >>= loop
-                    | otherwise         -> msg (reverse (k:w)) >> loop (k:w)
-                }
-                where msg s = msgE ('/' : s)
-                      del []     = msg []           >> return []
-                      del (_:cs) = msg (reverse cs) >> return cs
-
-        s <- loop []
-        searchE (Just s)
-        nextCmd
-
-    | c == 'n' = searchE Nothing >> nextCmd    -- > reuse last expression
-
-    | c == 'N' || c == '?'  = not_impl
-
--- Move to the first character in the current line.
-    | c == '0'   = solE >> nextCmd
-
--- Execute an ex command.
-    | c == ':'   = msgClrE >> msgE ":" >> nextEx 
-
--- Repeat the last character find count times.
-    | c == ';'   = not_impl
-
--- Shift lines right. TODO 4 is not really very good...
-    | c ==  '>' 
-    = do c' <- getcE
-         when (c' == '>') $ replicateM_ (fromMaybe 1 mi) $ 
-                solE >> mapM_ insertE (replicate 4 ' ')
-         nextCmd
-
--- Shift lines left.
-    | c == '<'  = not_impl
-
--- Execute a named buffer
-    | c == '@'  = not_impl
-
--- Enter input mode, appending the text after the end of the line.
-    | c == 'A' = eolE            >> nextIns
-
--- Move backwards count bigwords
-    | c == 'B' = not_impl
-
--- Change text from the current position to the end-of-line.
--- If buffer is specified, ``yank'' the deleted text into buffer. TODO
--- todo-- not vi.
-    | c == 'C' = readRestOfLnE >>= setRegE >> killE >> nextIns
-
--- Delete text from the current position to the end-of-line.
-    | c == 'D' = readRestOfLnE >>= setRegE >> killE >> nextCmd
-
---  Move forward count end-of-bigwords.
-    | c == 'E' = not_impl
-
--- Search count times backward through the current line for character
-    | c == 'F' = not_impl
-
--- Move to line count, or the last line of the file if count is not specified.
-    | c == 'G' = do case mi of
-                        Nothing     -> botE
-                        Just n      -> gotoLnE n -- topE
-                    nextCmd
-
--- Move to the screen line count - 1 lines below the top of the screen
-    | c == 'H' = downFromTosE ((fromMaybe 1 mi ) - 1) >> nextCmd
-
--- Enter input mode, inserting the text at the beginning of the line.
-    | c == 'I' = solE              >> nextIns
-
--- Join lines.
-    | c == 'J' = eolE >> deleteE{-'\n'-} >> nextCmd
-
--- Move to the screen line count - 1 lines above the bottom of the screen.
-    | c == 'L' = upFromBosE ((fromMaybe 1 mi ) - 1) >> nextCmd
-
--- Move to the screen line in the middle of the screen.
-    | c == 'M' = middleE  >> nextCmd
-
--- Enter input mode, appending text in a new line above the current line.
-    | c == 'O' = solE >> insertE '\n' >> upE >> nextIns
-
--- Insert text from a buffer.
-    | c == 'P' = not_impl
-
--- Exit vi (or visual) mode and switch to ex mode.
-    | c == 'Q' = not_impl
-
--- Enter input mode, replacing the characters in the current line.
-    | c == 'R' = not_impl
-
--- Substitute count lines.
-    | c == 'S' = solE >> readLnE >>= setRegE >> killE >> nextIns
-
--- Search backwards, count times, through the current line for the
--- character after the specified character.
-    | c == 'T' = not_impl
-
--- Restore the current line to its state before the cursor last moved to it.
-    | c == 'U' = not_impl
-
--- Move forward count bigwords.
-    | c == 'W' = not_impl
-
--- Delete count characters before the cursor. (TODO yank not impl).
-    | c == 'X' 
-    = let n = (fromMaybe 1 mi) in leftOrSolE n >> replicateM_ n deleteE >> nextCmd
-
--- Copy (or ``yank'') count lines into the specified buffer
-    | c == 'Y' = not_impl
-
--- Write the file and exit vi.
-    | c == 'Z' = do c' <- getcE
-                    when (c' == 'Z') $ viWrite >> quitE
-                    nextCmd
+      -- generate a new lexer binding 'c' to silly echo function
+      new c = char c `action` \_ -> 
+            Just (msgE $ show c ++ " bound to the msg function")
 
 ------------------------------------------------------------------------
 
--- Enter input mode, appending the text after the cursor.
-    | c == 'a' = rightOrEolE 1     >> nextIns
-
--- Move to the start of the current line.
-    | c == '|'  = solE             >> nextCmd
-
--- Delete count characters.
-    | c == 'x'  
-    = replicateM_ (fromMaybe 1 mi) deleteE >> nextCmd
-
--- Copy the line the cursor is on.
-    | c == 'y' = do c' <- getcE 
-                    if c' == 'y' 
-                        then readLnE >>= setRegE
-                        else nopE
-                    nextCmd
-
--- Append the copied line after the line the cursor is on.
-    | c == 'p' = do s <- getRegE
-                    eolE >> insertE '\n' >> mapM_ insertE s >> solE
-                    nextCmd
-
--- Enter input mode, inserting the text before the cursor.
-    | c == 'i' = nextIns
-
--- Enter input mode, appending text in a new line under the current line.
-    | c == 'o' = eolE >> insertE '\n' >> nextIns
-
-
--- Delete the line the cursor is on.
-    | c == 'd' = do c' <- getcE
-                    when (c' == 'd') $ solE >> killE >> deleteE
-                    nextCmd
-
--- Replace character.
-    | c == 'r' = getcE >>= writeE >> nextCmd
-
--- Reverse the case of the next character
-    | c == '~' = do c' <- readE
-                    let c'' = if isUpper c' then toLower c' else toUpper c'
-                    writeE c''
-                    nextCmd
-
-    | otherwise = nopE >> nextCmd
-
-    where not_impl = msgE "Not implemented" >> nextCmd
+not_implemented :: Char -> Action
+not_implemented c = msgE $ "Not implemented: " ++ show c
 
 -- ---------------------------------------------------------------------
--- * Insert mode
---
-ins :: Char -> IO Keymap
--- Return to command mode.
-ins '\ESC'  = leftOrSolE 1 >> nextCmd
+-- Misc functions
 
--- Erase the last character.
-ins c | isDel c       = deleteE       >> nextIns
-      | c == keyPPage = upScreenE     >> nextIns
-      | c == keyNPage = downScreenE   >> nextIns
+viFileInfo :: Action
+viFileInfo = do (f,_,ln,_,_,pct) <- bufInfoE 
+                msgE $ show f ++ " Line " ++ show ln ++ " ["++ pct ++"]"
 
--- Insert character
-ins c  = do 
-        (_,s,_,_,_,_) <- bufInfoE
-        when (s == 0) $ insertE '\n' -- vi behaviour at start of file
-        insertE c
-        nextIns
+-- | Try and write a file in the manner of vi\/vim
+viWrite :: Action
+viWrite = do
+    (f,s,_,_,_,_) <- bufInfoE 
+    fwriteE
+    msgE $ show f++" "++show s ++ "C written"
 
--- ---------------------------------------------------------------------
--- * Ex mode
--- accumulate keys until esc or \n, then try to work out what was typed
---
--- TODO think about how to do this as a better lexer
---
-ex :: Char -> IO Keymap
-
-ex k = msgClrE >> loop [k]
-  where
-    loop [] = do msgE ":"
-                 c <- getcE
-                 if isDel c
-                    then msgClrE >> nextCmd       -- deleted request
-                    else loop [c]
-    loop w@(c:cs) 
-        | isDel c           = deleteWith cs
-        | c == '\ESC'       = msgClrE             >> nextCmd
-        | c == '\r'         = execEx (reverse cs) >> nextCmd
-        | otherwise         = do msgE (':':reverse w)
-                                 c' <- getcE
-                                 loop (c':w)
-
-    execEx :: String -> Action
-    execEx "w"   = viWrite
-    execEx "q"   = closeE
-    execEx "q!"  = closeE
-    execEx "wq"  = viWrite >> quitE
-    execEx "n"   = nextBufW
-    execEx "N"   = nextBufW
-    execEx "p"   = prevBufW
-    execEx "P"   = prevBufW
-    execEx "sp"  = splitE
-    execEx ('e':' ':f)  = fnewE f
-    execEx ('s':'/':cs) = viSub cs
-    execEx cs    = viCmdErr cs
-
-    deleteWith []     = msgClrE >> msgE ":"      >> loop []
-    deleteWith (_:cs) = msgClrE >> msgE (':':cs) >> loop cs
-
--- ---------------------------------------------------------------------
--- | Try to do a substitute
---
+-- | Try to do a substitution
 viSub :: [Char] -> Action
 viSub cs = do
     let (pat,rep') = break (== '/')  cs
@@ -418,19 +294,13 @@ viSub cs = do
         _     -> searchAndRepLocal pat rep
 
 -- ---------------------------------------------------------------------
--- | Try and write a file in the manner of vi\/vim
+-- | Handle delete chars in a string
 --
-viWrite :: Action
-viWrite = do 
-    (f,s,_,_,_,_) <- bufInfoE 
-    fwriteE
-    msgE $ show f++" "++show s ++ "C written"
-
---
--- | An invalid command
---
-viCmdErr :: [Char] -> Action
-viCmdErr s = msgE $ "The "++s++ " command is unknown."
+clean :: [Char] -> [Char]
+clean (_:c:cs) | isDel c = clean cs
+clean (c:cs)   | isDel c = clean cs
+clean (c:cs) = c : clean cs
+clean [] = []
 
 -- | Is a delete sequence
 isDel :: Char -> Bool
@@ -438,4 +308,34 @@ isDel '\BS'        = True
 isDel '\127'       = True
 isDel c | c == keyBackspace = True
 isDel _            = False
+
+-- ---------------------------------------------------------------------
+-- | character ranges
+--
+digit, any, enter, anyButEnter :: Regexp () Action
+digit = alt digit'
+any   = alt any'
+enter = alt enter'
+anyButEnter = alt (any' \\ enter')
+
+enter', any', digit' :: [Char]
+enter'   = ['\n', '\r']
+any'     = ['\0' .. '\255']
+digit'   = ['0' .. '9']
+
+-- ---------------------------------------------------------------------
+-- | simple command mode keys (ones that don't consume input, or switch modes)
+cmdc :: Regexp () Action
+cmdc     = alt cmdc'
+
+cmdc' :: [Char]
+cmdc'    = cmdctrl' ++ cursc' ++ special' ++ upper' ++ lower'
+
+special', upper', lower', cmdctrl', cursc' :: [Char]
+special' = " !#$%()+,-.|0;<?@~"
+upper'   = "BDEFGNHJLMPQRTUWXY"
+lower'   = "hjklnpqx"
+cmdctrl' = ['\^A','\^B','\^D','\^E','\^F','\^H','\^J','\^L','\^M','\^N',
+            '\^P','\^R','\^T','\^U','\^W','\^Y','\^Z','\ESC','\^]','\^^']
+cursc'   = [keyPPage, keyNPage, keyLeft, keyDown, keyUp]
 

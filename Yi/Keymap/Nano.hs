@@ -25,9 +25,15 @@
 
 module Yi.Keymap.Nano ( keymap ) where
 
-import Yi.Yi hiding ( keymap )
+import Yi.Yi hiding     ( keymap )
 
 import Control.Monad    ( when )
+
+keymap :: [Char] -> IO ()
+keymap (c:cs) = do msgE "nano keymap not ported to lazy input type"
+                   if c == 'q' then quitE else keymap cs
+
+{-
 
 --
 -- A Nano key binding for yi
@@ -99,3 +105,5 @@ isDel '\BS'        = True
 isDel '\127'       = True
 isDel c | c == keyBackspace = True
 isDel _            = False
+
+-}

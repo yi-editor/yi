@@ -25,15 +25,34 @@
 -- Contributed by Simon Winwood - http://www.cse.unsw.edu.au/~sjw
 --
 
-module Yi.Keymap.Emacs {-( keymap )-} where
+module Yi.Keymap.Emacs ( keymap ) where
 
-import Yi.Yi
+import Yi.Yi hiding ( keymap )
 
 import Data.Char
 import Control.Monad
 import Data.FiniteMap
 import Data.IORef
 import System.IO.Unsafe -- Yuck
+
+-- ---------------------------------------------------------------------
+--
+-- This function must be implemented by any user keybinding
+--
+keymap :: [Char] -> IO ()
+keymap (c:cs) = do msgE "emacs keymap not ported to lazy input type"
+                   if c == 'q' then quitE else keymap cs
+               
+
+{-
+
+-- keymap c = initKeys >> lookupKeymap globalKeyTable c
+
+lookupKeymap :: KeyTable -> Char -> IO Keymap
+lookupKeymap _ '\^G' = msgE "Quit" >> return (Keymap $ lookupKeymap globalKeyTable) -- hack
+lookupKeymap t k = do key <- lookupKey t k
+		      case key of { KAction a -> a >> return (Keymap $ lookupKeymap globalKeyTable);
+				    KMap    t' -> return (Keymap $ lookupKeymap t')}
 
 type Key = Char
 data KeyTableItem = KAction Action | KMap KeyTable
@@ -131,19 +150,6 @@ control c = chr (ord '\^A' + (ord (toUpper c) - ord 'A'))
 
 -- ---------------------------------------------------------------------
 --
--- This function must be implemented by any user keybinding
---
-lookupKeymap :: KeyTable -> Char -> IO Keymap
-lookupKeymap _ '\^G' = msgE "Quit" >> return (Keymap $ lookupKeymap globalKeyTable) -- hack
-lookupKeymap t k = do key <- lookupKey t k
-		      case key of { KAction a -> a >> return (Keymap $ lookupKeymap globalKeyTable);
-				    KMap    t' -> return (Keymap $ lookupKeymap t')}
-		      
-keymap :: Char -> IO Keymap
-keymap c = initKeys >> lookupKeymap globalKeyTable c
-
--- ---------------------------------------------------------------------
---
 -- | These functions emulate the XXX-set-key functions
 --
 
@@ -187,3 +193,4 @@ initKeys = do mapM_ (\c -> keytableSetKey globalKeyTable [c] (myInsert c)) $
                             filter isPrint [minBound .. maxBound]
 	      mapM_ (uncurry $ keytableSetKey globalKeyTable) initKeyBindings
 
+-}

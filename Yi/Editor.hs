@@ -63,7 +63,7 @@ data Buffer a => GenEditor a =
        ,yreg      :: !String                    -- ^ yank register
        ,regex     :: Maybe Regex                -- ^ most recent regex
        ,curwin    :: Maybe Unique               -- ^ the window with focus
-       ,curkeymap :: (Char -> IO Keymap)        -- ^ user-configurable keymap
+       ,curkeymap :: [Char] -> IO ()            -- ^ user-configurable keymap
        ,scrsize   :: !(Int,Int)                 -- ^ screen size
     }
 
@@ -98,7 +98,7 @@ emptyEditor = Editor {
        ,yreg         = []
        ,regex        = Nothing
        ,curwin       = Nothing
-       ,curkeymap    = error "no keymap defined"
+       ,curkeymap    = error "No keymap defined."
        ,scrsize      = (0,0)
     }
 
@@ -384,7 +384,7 @@ setUserSettings (Config km) =
 --
 -- | retrieve the user-defineable key map
 --
-getKeyBinds :: IO (Char -> IO Keymap)
+getKeyBinds :: IO ([Char] -> IO ())
 getKeyBinds = readEditor curkeymap
 
 -- ---------------------------------------------------------------------
@@ -395,11 +395,5 @@ getKeyBinds = readEditor curkeymap
 -- in the dynamically loaded edition of yi.
 --
 data Config = Config {
-            keymap :: Char -> IO Keymap       -- ^ bind keys to editor actions
+            keymap :: [Char] -> IO ()       -- ^ bind keys to editor actions
     }
-
---
--- | keymaps return the next keymap to use
---
-data Keymap = Keymap (Char -> IO Keymap)
-

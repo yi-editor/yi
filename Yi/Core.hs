@@ -105,6 +105,7 @@ import Control.Monad
 import Control.Exception    ( ioErrors, catchJust, handleJust )
 
 import GHC.Base
+import GHC.IOBase
 
 -- ---------------------------------------------------------------------
 -- | The type of user-bindable functions
@@ -148,19 +149,24 @@ getcE = UI.getKey UI.refresh
 -- ---------------------------------------------------------------------
 -- | The editor main loop. Read key strokes from the ui and interpret
 -- them using the current key map. Keys are bound to core actions.
--- The state is threaded explicitly at the moment.
+--
+-- TODO if there is an exception, the key bindings will be reset...
 --
 eventLoop :: IO ()
-eventLoop = do
-    dflt <- Editor.getKeyBinds
-    let mainloop km@(Keymap fn) = do 
-            c   <- getcE
-            km' <- catchJust (ioErrors) (fn c) (handler km)
-            UI.refresh
-            mainloop km'
-    mainloop (Keymap dflt)
+eventLoop = Editor.getKeyBinds >>= loop
+    where 
+        loop fn = catchJust ioErrors (lazyRead >>= fn) (handler) >> loop fn
+        handler = msgE . show
 
-    where handler = \km e -> msgE (show e) >> return km
+
+--
+-- | Lazily read all input from the user. A big magic.
+--
+lazyRead :: IO String
+lazyRead = unsafeInterleaveIO $ do 
+                c  <- getcE
+                cs <- lazyRead
+                return (c : cs)
 
 -- ---------------------------------------------------------------------
 -- Meta operations
