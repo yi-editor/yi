@@ -23,12 +23,11 @@
 --
 module Yi.CharMove (
 
-        -- * Parameterised movement
-        doSkipWhile,    -- :: Action -> IO Bool -> (Char -> Bool) -> Action
-        doSkipCond,     -- :: Action -> IO Bool -> (Char -> Bool) -> Action
-        moveWhileE,     -- :: (Char -> Bool) -> (() -> Either () ()) -> Action
+    (>>||),         -- :: IO Bool -> IO Bool -> IO Bool
 
-        (>>||),         -- :: IO Bool -> IO Bool -> IO Bool
+    skipWordE,      -- :: Action
+    bskipWordE      -- :: Action
+) where
 
         -- * Word movement
         skipWordE,      -- :: Action
@@ -76,16 +75,20 @@ import System.IO.Unsafe     ( unsafePerformIO )
 -- | Perform movement action specified by @mov@ while not @chkend@ and
 -- @check@ applied to the current 'Char' are true. 
 --
-doSkipWhile :: Action -> IO Bool -> (Char -> Bool) -> Action
-doSkipWhile mov chkend check = do
+-- | Read character before point.
+breadE :: IO Char
+breadE = do
+    p <- getPointE
+    if p == 0
+        then return '\0'
+        else readNM (p-1) p >>= return . head
+
+doSkipWhile :: Action -> IO Char -> IO Bool -> (Char -> Bool) -> Action
+doSkipWhile mov rd chkend check = do
     e <- chkend
     c <- readE
     when (not e && check c) (mov >> doSkipWhile mov chkend check)
 
---
--- | Similar to 'doSkipWhile', but perform check on current chars, then
--- always move, before branching.
---
 doSkipCond :: Action -> IO Bool -> (Char -> Bool) -> Action
 doSkipCond mov chkend check = do
     c <- readE
@@ -93,19 +96,20 @@ doSkipCond mov chkend check = do
         then mov >> doSkipWhile mov chkend check
         else mov >> doSkipWhile mov chkend (not . check)
 
--- | Monadic OR operation.
-(>>||) :: Monad a => a Bool -> a Bool -> a Bool
-a >>|| b = a >>= \ra -> if (not ra) then b else return True
+
+--  Monadic OR operation.
+--(>>||) :: Monad a => a Bool -> a Bool -> a Bool
+--a >>|| b = a >>= \ra -> if (not ra) then b else return True
 
 -- | Skip to next whitespace or non-whitespace inversely depending on
 -- the character under point.
 skipWordE :: Action
-skipWordE = doSkipCond rightE (atEolE >>|| atEofE) isSpace
+skipWordE = doSkipCond rightE readE atEolE isSpace
 
--- | Backwards Skip to next whitespace or non-whitespace inversely 
--- depending on the character under point.
+-- | Backwards skip to next whitespace or non-whitespace inversely 
+-- depending on the character before point.
 bskipWordE :: Action
-bskipWordE = doSkipCond leftE (atSolE >>|| atSofE) isSpace
+bskipWordE = doSkipCond leftE breadE atSofE isSpace
 
 ------------------------------------------------------------------------
 
