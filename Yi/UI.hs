@@ -116,7 +116,7 @@ redraw = do
 
     -- work out origin of current window from index of that window in win list
     -- still grubby because we aren't using the /origin/ field of 'Window'
-    -- *sigh* assumes bottom window has rem
+    -- _sigh_ assumes bottom window has rem
     w <- getWindow
     when (isJust w) $ do
         (Just i) <- getWindowInd
