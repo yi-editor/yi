@@ -58,15 +58,15 @@ import Control.Concurrent.MVar
 --
 data Buffer a => GenEditor a = 
     Editor {
-        buffers   :: FiniteMap Unique a         -- ^ all the buffers
-       ,windows   :: FiniteMap Unique Window    -- ^ all the windows
+        buffers   :: !(FiniteMap Unique a)      -- ^ all the buffers
+       ,windows   :: !(FiniteMap Unique Window) -- ^ all the windows
        ,cmdline   :: !String                    -- ^ the command line
        ,yreg      :: !String                    -- ^ yank register
-       ,regex     :: Maybe Regex                -- ^ most recent regex
-       ,curwin    :: Maybe Unique               -- ^ the window with focus
+       ,regex     :: !(Maybe Regex)             -- ^ most recent regex
+       ,curwin    :: !(Maybe Unique)            -- ^ the window with focus
        ,curkeymap :: [Char] -> [Action]         -- ^ user-configurable keymap
        ,scrsize   :: !(Int,Int)                 -- ^ screen size
-       ,uistyle   :: UIStyle                    -- ^ ui colours
+       ,uistyle   :: !UIStyle                   -- ^ ui colours
        ,input     :: Chan Char                  -- ^ input stream
        ,threads   :: [ThreadId]                 -- ^ all our threads
     }

@@ -93,22 +93,24 @@ emptyWindow b (h,w) = do
 
 --
 -- | Given a buffer, and some information update the modeline
+-- Optimised
 --
 updateModeLine :: Buffer a => Window -> a -> IO String
 updateModeLine w' b = do
-    let f  = nameB b
-        ln = lineno w'
-        col= 1 + (snd $ cursor w')
+    case nameB b             of { f ->
+    case lineno w'           of { ln ->
+    case 1 + snd (cursor w') of { col -> do
     p <- if ln == 0 then return 0 else indexOfEol b
     s <- sizeB b
-    let pct    = getPercent p s
-        lns    = show ln
-        cols   = show col
-        spc'   = flip replicate ' ' (16 - length cols - length pct)
-        spaces = flip replicate ' ' 
-                            (width w' - (3 + sum (map length [f,lns,cols,pct,spc'])))
-
-    return $ "\"" ++ f ++ "\"" ++ spaces ++ lns ++ "," ++ cols ++ spc' ++ pct
+    case getPercent p s     of { pct ->
+    case show ln            of { lns ->
+    case show col           of { cols ->
+    case flip replicate ' ' 
+                (16 - length cols - length pct)      of { spc' ->
+    case flip replicate ' ' (width w' - (3 + sum 
+                (map length [f,lns,cols,pct,spc']))) of { spaces ->
+    return $! "\"" ++ f ++ "\"" ++ spaces ++ lns ++ "," ++ cols ++ spc' ++ pct
+    }}}}}}}}
 
 ------------------------------------------------------------------------
 --
@@ -132,6 +134,8 @@ getPercent a b = show p ++ "%"
 moveUpW :: Buffer a => Window -> a -> IO Window
 moveUpW w b | lineno w == 1 = return w
             | otherwise     = lineUp b >> decY w b >>= flip update b
+
+{-# SPECIALIZE moveUpW :: Window -> FBuffer -> IO Window #-}
 
 --
 -- | The cursor moves up, staying with its original line, unless it
@@ -282,11 +286,15 @@ deleteToEolW w b = do
 -- | update window point, and cursor in X dimension. and reset pnt cache
 --
 update :: Buffer a => Window -> a -> IO Window
-update w b = do
-    let (y,_) = cursor w
+update w b =
+    case fst (cursor w) of { y -> do
     x <- offsetFromSol b
     p <- pointB b
-    return w { pnt = p, cursor = (y,x) }
+    case w { pnt = p, cursor = (y,x) } of { w' ->
+    return w'
+    }}
+
+{-# SPECIALIZE update :: Window -> FBuffer -> IO Window #-}
 
 --
 -- | Decrememt the y-related values. Might change top of screen point
@@ -303,6 +311,7 @@ decY w b = do
     return $ if topln < curln
              then w' { cursor = (y-1, x) }                  -- just move cursor
              else w' { toslineno = topln-1, tospnt = p-x }  -- or move window
+{-# SPECIALIZE decY :: Window -> FBuffer -> IO Window #-}
 
 --
 -- | incrememt the y-related values.
@@ -318,6 +327,7 @@ incY w@(Window {height=h}) b = do
    return $ if curln - topln < h - 2   
             then w' { cursor = (y+1,x) }                  -- just move cursor
             else w' { toslineno = topln + 1, tospnt = t } -- scroll window
+{-# SPECIALIZE incY :: Window -> FBuffer -> IO Window #-}
 
 ------------------------------------------------------------------------
 
@@ -332,6 +342,7 @@ atLastLine b = do
     e <- atEof b
     moveTo b p
     return e
+{-# SPECIALIZE atLastLine :: FBuffer -> IO Bool #-}
 
 --
 -- | Given a point, return the point of the next line down
@@ -355,6 +366,7 @@ noNLatEof b = do
     c  <- readB b
     moveTo b p
     return (c /= '\n')
+{-# SPECIALIZE noNLatEof :: FBuffer -> IO Bool #-}
 
 --
 -- | return index of Sol on line @n@ above current line

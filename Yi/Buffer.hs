@@ -44,8 +44,8 @@ import Data.Array.MArray        ( newArray_, newListArray )
 import Data.Array.Base          ( STUArray(..) )
 import Data.Array.IO            ( IOUArray, hGetArray, hPutArray )
 
-import Foreign.C.Types          ( CSize )
-import Foreign.Ptr              ( Ptr )
+import Foreign.C.Types          ( CSize, CChar )
+import GHC.Ptr                  ( Ptr(..) )
 
 -- ---------------------------------------------------------------------
 --
@@ -83,6 +83,10 @@ class Buffer a where
 
     -- | Return @n@ elems starting a @i@ of the buffer as a list
     nelemsB    :: a -> Int -> Int -> IO [Char]
+
+    -- | Return a pointer into a C byte array of chars representing the
+    -- rest of the buffer, starting at point.
+    ptrToLnsB  :: a -> Int -> Int -> IO (Ptr CChar, Int)
 
     ------------------------------------------------------------------------
     -- Point based operations
@@ -310,6 +314,16 @@ resizeFB_ (FBuffer_ buf p e _) sz = do
 foreign import ccall unsafe "memcpy"
    c_memcpy :: RawBuffer -> RawBuffer -> CSize -> IO (Ptr ())
 
+--
+-- | A pointer to a char array
+-- TODO A bit scary.
+--
+ptrToBA :: RawBuffer -> Int -> IO (Ptr CChar)
+ptrToBA ba (I# i#) =
+    case byteArrayContents# (unsafeCoerce# ba) of
+        a# -> case plusAddr# a# i# of
+            b# -> return (Ptr b#)
+
 -- ---------------------------------------------------------------------
 --
 -- | Write string into buffer, return the index of the next point
@@ -449,6 +463,7 @@ instance Buffer FBuffer where
     -- pointB     :: a -> IO Int
     pointB (FBuffer _ _ mv) = readMVar mv >>=
         readIORef >>= \(FBuffer_ _ p _ _) -> return p
+    {-# INLINE pointB #-}
 
     ------------------------------------------------------------------------
 
@@ -463,12 +478,21 @@ instance Buffer FBuffer where
                 n' = min (e-i') n
             readChars b n' i'
 
+    -- ptrToLnsB  :: a -> Int -> Int -> IO (Ptr CChar, Int)
+    ptrToLnsB (FBuffer _ _ mv) i len = readMVar mv >>=
+        readIORef >>= \(FBuffer_ rb _ e _) -> do
+            let i' = inBounds i e
+            ptr@(Ptr ba) <- ptrToBA rb i'
+            j <- gotoln_c (unsafeCoerce# ba) 0 (max 0 (e - i')) len
+            return (ptr, j)
+
     ------------------------------------------------------------------------
 
     -- moveTo     :: a -> Int -> IO ()
     moveTo (FBuffer _ _ mv) i = withMVar mv $ \ref ->
         modifyIORef ref $ \fb@(FBuffer_ _ _ e _) ->
             let i' = inBounds i e in fb { bufPnt=i' }
+    {-# INLINE moveTo #-}
 
 
     -- readB      :: a -> IO Char

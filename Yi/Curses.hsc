@@ -708,12 +708,14 @@ addLn = wAddStr stdScr "\n"
 -- | normalise the string, stripping \\r and making control chars
 -- printable. Called over all output(?)
 
+{-
 normalise :: String -> String
 normalise []        = []
 normalise ('\r':cs) = normalise cs
 normalise (c:cs) | isControl c   = '@' : normalise cs
                  | otherwise     = c   : normalise cs
 {-# INLINE normalise #-}
+-}
 
 {-
 normalise s = map f . filter (/= '\r') s
@@ -740,7 +742,7 @@ wAddStr win str = do
         convStr f = case f [] of
             [] -> return ()
             s  -> throwIfErr_ "waddnstr" $
-                withCWStringLen  (normalise s) (\(ws,len) ->  (waddnwstr win ws (fi len)))
+                withCWStringLen  (s) (\(ws,len) ->  (waddnwstr win ws (fi len)))
         loop []        acc = convStr acc
         loop (ch:str') acc = recognize
             ch
@@ -768,8 +770,7 @@ wAddStr win str = do
 wAddStr :: Window -> [Char] -> IO ()
 wAddStr _   [] = return ()
 wAddStr win s  = throwIfErr_ "waddnstr" $
-    withLCStringLen (normalise s) 
-                    (\(ws,len) -> waddnstr win ws (fi len))
+    withLCStringLen (s) (\(ws,len) -> waddnstr win ws (fi len))
 
 {-
 wAddStr :: Window -> String -> IO ()

@@ -21,8 +21,8 @@ module Yi.Utils where
 
 repeatM_ :: Monad m => m a -> m ()
 repeatM_ a = a >> repeatM_ a
-{-# INLINE repeatM_ #-}
 {-# SPECIALIZE repeatM_ :: IO a -> IO () #-}
+{-# INLINE repeatM_ #-}
 
 --
 -- todo. withPoint.

@@ -39,6 +39,8 @@ module Yi.UI (
 
         -- * Input
         getKey,
+        drawWindow,
+        drawLine,
 
         -- * Drawing
         refresh,
@@ -50,7 +52,7 @@ module Yi.UI (
 -- TODO the above api should be redesigned. Consider the vi screen api
 -- to ncurses for a nice well thought out editor api.
 
-import Yi.Buffer        ( Buffer(nelemsB) )
+import Yi.Buffer        ( Buffer(ptrToLnsB) )
 import Yi.Editor
 import Yi.Window
 import Yi.Style
@@ -61,9 +63,9 @@ import qualified Yi.Curses as Curses
 import Data.Maybe                   ( isJust, fromJust )
 import Data.List
 import Data.IORef
-import Control.Monad                    ( when )
-import qualified Control.Exception      ( catch )
-import System.IO.Unsafe                 ( unsafePerformIO )
+import Control.Monad                ( when )
+import qualified Control.Exception  ( catch )
+import System.IO.Unsafe             ( unsafePerformIO )
 
 --
 -- | how to initialise the ui
@@ -106,17 +108,19 @@ getKey refresh_fn = do
  
 --
 -- | Redraw the entire terminal from the UI state
+-- Optimised.
 --
 redraw :: IO ()
-redraw = withEditor $ \e -> do
-    let ws       = getWindows e
-        cl       = cmdline e
-        sty      = uistyle e 
-        w        = getWindowOf e
-        (Just i) = getWindowIndOf e
+redraw = withEditor $ \e ->
+    
+    case getWindows e     of { ws  ->
+    case cmdline e        of { cl  ->
+    case uistyle e        of { sty ->
+    case getWindowOf e    of { w   ->
+    case getWindowIndOf e of { Nothing -> return () ; (Just i) -> do
 
     gotoTop
-    mapM_ (drawWindow e) ws                     -- draw all windows
+    mapM_ (drawWindow e w sty) ws               -- draw all windows
     withStyle (window sty) $ drawCmdLine cl     -- draw cmd line
 
     -- work out origin of current window from index of that window in win list
@@ -124,8 +128,11 @@ redraw = withEditor $ \e -> do
     -- _sigh_ assumes bottom window has rem
     when (isJust w) $ do
         (h,_)  <- screenSize
-        let o_y = i * (fst $ getY h (length ws))
-        drawCursor (o_y,0) $ cursor $ fromJust w
+        case i * (fst $! getY h (length ws)) of { o_y ->
+            drawCursor (o_y,0) $ cursor $ fromJust w
+        }
+
+    }}}}}
 
 -- ---------------------------------------------------------------------
 -- PRIVATE:
@@ -133,31 +140,43 @@ redraw = withEditor $ \e -> do
 --
 -- | Draw a screen to the screen
 --
--- TODO take heed of the origin and size params correctly.
--- Take head of 'active' status
--- TODO set cursor invisible
+-- This function does most of the allocs, and needs to be optimised to
+-- bits
 --
-drawWindow :: Editor -> Window -> IO ()
-drawWindow e win@(Window { bufkey=u, mode=m, origin=(_,_), 
-                     height=h, width=w, tospnt=t } ) = do
+-- Arity: 5 Strictness: S(SAAAAAALLLLLLAA) L L U(LLLAALLAAAALA) L
+--
+drawWindow :: Editor 
+           -> Maybe Window
+           -> UIStyle
+           -> Window 
+           -> IO ()
 
-    let sty   = uistyle e
-        b     = findBufferWith e u
-        mwin  = getWindowOf e
+drawWindow e mwin sty win = 
 
-    ss <- nelemsB b (h*w) t           -- maximum visible contents of buffer
-    let ls  = lines ss
-        len = length ls
+    case win of { Window {bufkey=u, mode=m, height=h, width=w, tospnt=t} -> 
+    case window sty of { wsty ->
+    case eof    sty of { eofsty -> do
+    case findBufferWith e u of { b -> do
 
-    -- window contents, eof markers
-    withStyle (window sty) $ mapM_ (drawLine w) $ take (h-1) ls
-    withStyle (eof sty)    $ mapM_ (drawLine w) $ take (h-1-len) $ repeat "~"
+    (ptr,len) <- ptrToLnsB b t h    -- ptr to chunk of buffer to draw
+
+    -- draw our buffer segment straight out. no boxing :)
+    (y,_) <- getYX Curses.stdScr
+    withStyle wsty $ throwIfErr_ "waddnstr" $
+            waddnstr Curses.stdScr ptr (fromIntegral len)
+
+    -- and any eof markers
+    withStyle eofsty $ do
+        (y',_) <- getYX Curses.stdScr
+        mapM_ (drawLine w) $ take (h - 1  - (y' - y)) $ repeat "~"
 
     -- draw modeline
-    let fn = if isJust mwin && fromJust mwin == win 
-             then modeline_focused 
-             else modeline
-    withStyle (fn sty) $ drawLine w m
+    fn <- return $! case mwin of
+            Just win' | win' == win -> modeline_focused 
+            _         -> modeline
+    withStyle (fn sty) $! drawLine w m
+
+    }}}}
 
 --
 -- | Draw the editor command line. Make sure not to drop of end of screen.
@@ -185,7 +204,7 @@ drawErrLine s = do
 -- | lazy version is faster than calculating length of s
 --
 drawLine :: Int -> String -> IO ()
-drawLine w s  = Curses.wAddStr Curses.stdScr $ take w (s ++ repeat ' ')
+drawLine w s = Curses.wAddStr Curses.stdScr $! take w (s ++ repeat ' ')
 
 --
 -- | Given the cursor position in the window. Draw it.

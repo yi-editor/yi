@@ -133,10 +133,10 @@ peekCWStringLen (cp, len)  = do cs <- peekArray len cp; return (cwCharsToChars c
 peekCWStringLen (cp, len) = loop 0
   where
     loop i | i == len  = return []
-	   | otherwise = do
-        	val <- peekElemOff cp i
-        	rest <- loop (i+1)
-        	return (castCWCharToChar val : rest)
+           | otherwise = do
+                val <- peekElemOff cp i
+                rest <- loop (i+1)
+                return (castCWCharToChar val : rest)
 #endif
 
 newCWString :: String -> IO CWString
@@ -146,8 +146,8 @@ newCWString  = newArray0 wNUL . charsToCWChars
 newCWString str = do
   ptr <- mallocArray0 (length str)
   let
-	go [] n##   = pokeElemOff ptr (I## n##) wNUL
-    	go (c:cs) n## = do pokeElemOff ptr (I## n##) (castCharToCWChar c); go cs (n## +## 1##)
+        go [] n##   = pokeElemOff ptr (I## n##) wNUL
+        go (c:cs) n## = do pokeElemOff ptr (I## n##) (castCharToCWChar c); go cs (n## +## 1##)
   go str 0##
   return ptr
 #endif
@@ -155,13 +155,13 @@ newCWString str = do
 newCWStringLen     :: String -> IO CWStringLen
 #ifndef __GLASGOW_HASKELL__
 newCWStringLen str  = do a <- newArray (charsToCWChars str)
-			return (pairLength str a)
+                        return (pairLength str a)
 #else
 newCWStringLen str = do
   ptr <- mallocArray0 len
   let
-	go [] _       = return ()
-    	go (c:cs) n## = do pokeElemOff ptr (I## n##) (castCharToCWChar c); go cs (n## +## 1##)
+        go [] _       = return ()
+        go (c:cs) n## = do pokeElemOff ptr (I## n##) (castCharToCWChar c); go cs (n## +## 1##)
   go str 0##
   return (ptr, len)
   where
@@ -175,8 +175,8 @@ withCWString  = withArray0 wNUL . charsToCWChars
 withCWString str f =
   allocaArray0 (length str) $ \ptr ->
       let
-	go [] n##     = pokeElemOff ptr (I## n##) wNUL
-    	go (c:cs) n## = do pokeElemOff ptr (I## n##) (castCharToCWChar c); go cs (n## +## 1##)
+        go [] n##     = pokeElemOff ptr (I## n##) wNUL
+        go (c:cs) n## = do pokeElemOff ptr (I## n##) (castCharToCWChar c); go cs (n## +## 1##)
       in do
       go str 0##
       f ptr
@@ -189,8 +189,8 @@ withCWStringLen str act  = withArray (charsToCWChars str) $ act . pairLength str
 withCWStringLen str f =
   allocaArray len $ \ptr ->
       let
-	go [] _       = return ()
-    	go (c:cs) n## = do pokeElemOff ptr (I## n##) (castCharToCWChar c); go cs (n## +## 1##)
+        go [] _       = return ()
+        go (c:cs) n## = do pokeElemOff ptr (I## n##) (castCharToCWChar c); go cs (n## +## 1##)
       in do
       go str 0##
       f (ptr,len)
@@ -365,29 +365,29 @@ peekUTF8StringLen strPtr = fmap fromUTF $ peekCStringLen strPtr
 toUTF :: String -> String
 toUTF [] = []
 toUTF (x:xs) | ord x<=0x007F = x:toUTF xs
-	     | ord x<=0x07FF = chr (0xC0 .|. ((ord x `shift` (-6)) .&. 0x1F)):
-			       chr (0x80 .|. (ord x .&. 0x3F)):
-			       toUTF xs
-	     | otherwise     = chr (0xE0 .|. ((ord x `shift` (-12)) .&. 0x0F)):
-			       chr (0x80 .|. ((ord x `shift` (-6)) .&. 0x3F)):
-			       chr (0x80 .|. (ord x .&. 0x3F)):
-			       toUTF xs
+             | ord x<=0x07FF = chr (0xC0 .|. ((ord x `shift` (-6)) .&. 0x1F)):
+                               chr (0x80 .|. (ord x .&. 0x3F)):
+                               toUTF xs
+             | otherwise     = chr (0xE0 .|. ((ord x `shift` (-12)) .&. 0x0F)):
+                               chr (0x80 .|. ((ord x `shift` (-6)) .&. 0x3F)):
+                               chr (0x80 .|. (ord x .&. 0x3F)):
+                               toUTF xs
 
 fromUTF :: String -> String
 fromUTF [] = []
 fromUTF (al@(x:xs)) | ord x<=0x7F = x:fromUTF xs
-		     | ord x<=0xBF = err
-		     | ord x<=0xDF = twoBytes al
-		     | ord x<=0xEF = threeBytes al
-		     | otherwise   = err
+                     | ord x<=0xBF = err
+                     | ord x<=0xDF = twoBytes al
+                     | ord x<=0xEF = threeBytes al
+                     | otherwise   = err
   where
     twoBytes (x1:x2:xs') = chr (((ord x1 .&. 0x1F) `shift` 6) .|.
-			       (ord x2 .&. 0x3F)):fromUTF xs'
+                               (ord x2 .&. 0x3F)):fromUTF xs'
     twoBytes _ = error "fromUTF: illegal two byte sequence"
 
     threeBytes (x1:x2:x3:xs') = chr (((ord x1 .&. 0x0F) `shift` 12) .|.
-				    ((ord x2 .&. 0x3F) `shift` 6) .|.
-				    (ord x3 .&. 0x3F)):fromUTF xs'
+                                    ((ord x2 .&. 0x3F) `shift` 6) .|.
+                                    (ord x3 .&. 0x3F)):fromUTF xs'
     threeBytes _ = error "fromUTF: illegal three byte sequence" 
     
     err = error "fromUTF: illegal UTF-8 character"

@@ -18,3 +18,5 @@ v0.1:
         - colours
         - bind keymap lexers to windows
         - :eval, :type, .. etc. ghci stuff
+
+        - nelems that returns a buffer pointer to pass to drawWindow.
