@@ -200,7 +200,9 @@ cmd_eval = ( cmdc >|<
 
             [k] | k == keyPPage -> upScreensE i
                 | k == keyNPage -> downScreensE i
-                | k == keyLeft  -> leftOrSolE i
+    --          | k == keyLeft  -> leftOrSolE i
+                | k == keyLeft  -> leftE -- not really vi, but fun
+                | k == keyRight -> rightE
                 | k == keyDown  -> replicateM_ i downE
                 | k == keyUp    -> replicateM_ i upE
 
@@ -400,5 +402,5 @@ upper'   = "BDEFGNHJLMPQRTUWXY"
 lower'   = "hjklnpqx"
 cmdctrl' = ['\^A','\^B','\^D','\^E','\^F','\^H','\^J','\^L','\^M','\^N',
             '\^P','\^R','\^T','\^U','\^W','\^Y','\^Z','\ESC','\^]','\^^']
-cursc'   = [keyPPage, keyNPage, keyLeft, keyDown, keyUp]
+cursc'   = [keyPPage, keyNPage, keyLeft, keyRight, keyDown, keyUp]
 
