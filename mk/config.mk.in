@@ -28,6 +28,7 @@ AR=             ar
 AR_OPTS=        cr
 
 RANLIB=         @RANLIB@
+STRIP=          @STRIP@
 
 INSTALL=        sh $(TOPDIR)/install-sh -c
 INSTALL_PROGRAM=$(INSTALL) -m 755

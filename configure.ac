@@ -47,6 +47,8 @@ AC_PATH_PROG(AlexCmd,alex,alex)
 AC_PATH_PROG(HaddockCmd,haddock,haddock)
 AC_PATH_PROG(Hsc2hsCmd,hsc2hs,hsc2hs)
 
+AC_PATH_PROG(STRIP,strip,strip)
+
 #
 # May as well check for this
 #

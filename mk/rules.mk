@@ -67,9 +67,11 @@ all :: $(HS_BINS)
 # hack. we don't want to have _yi-inplace..
 $(BIN) :: $(BIN_OBJS) yi-inplace
 	$(GHC) -o $@ $(LD_OPTS) $(BIN_LD_OPTS) $(BIN_HC_OPTS) $(BIN_OBJS)
+	$(STRIP) $(BIN)
 
 $(STATIC_BIN) :: $(LIBRARY) $(PKG).conf $(PKG).conf.install $(LIB_FRONTEND) $(STATIC_OBJS)
 	$(GHC) -o $@ $(LD_OPTS) $(STATIC_LD_OPTS) $(STATIC_HC_OPTS) $(STATIC_OBJS) $(LIB_FRONTEND)
+	$(STRIP) $(STATIC_BIN)
 
 EXTRA_CLEANS+= $(BIN) $(STATIC_BIN)
 
