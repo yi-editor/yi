@@ -53,21 +53,21 @@ GHC_PKG_DEFINES += -DCURSES=$(CURSES)
 # Comment these out on OpenBSD
 #
  
-#DEFINES += -DCF_CHARSET_SUPPORT
-#DEFINES += -DCF_WCHAR_SUPPORT
+DEFINES += -DCF_CHARSET_SUPPORT
+DEFINES += -DCF_WCHAR_SUPPORT
 
 #
 # Set this if your iconv library functions are accessed with the "lib"
 # prefix. OpenBSD needs this.
 #
-ICONV=          iconv
-DEFINES+=       -DWEIRD_ICONV
+#ICONV=          iconv
+#DEFINES+=       -DWEIRD_ICONV
 
 #
 # Extra paths to find things
 #
-LD_OPTS         += -L/usr/local/lib
-HC_OPTS         += -I/usr/local/include
+#LD_OPTS         += -L/usr/local/lib
+#HC_OPTS         += -I/usr/local/include
 
 #
 # define this if you aren't on a posix machine (doesn't work yet)
