@@ -316,7 +316,9 @@ cmdCmdFM = listToFM $
     ,('D',      const (readRestOfLnE >>= setRegE >> killE))
     ,('J',      const (eolE >> deleteE))    -- the "\n"
     ,('U',      flip replicateM_ undoE )    -- NB not correct
-    ,('n',      const (searchE Nothing [] Right))
+    ,('n',      const $ do getRegexE >>=
+                               msgE . ("/" ++) . fst . fromMaybe ([],undefined)
+                           searchE Nothing [] Right)
     ,('u',      flip replicateM_ undoE )
 
     ,('X',      \i -> do p <- getPointE

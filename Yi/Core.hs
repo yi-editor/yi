@@ -669,19 +669,22 @@ searchE Nothing   _ _ = do     -- use previous regex, if any
 searchInit :: String -> [SearchF] -> IO (String,Regex)
 searchInit re fs = do
     c_re <- regcomp re (extended + igcase + newline)
-    setRegexE (re,c_re)               -- save it for later
-    return   (re,c_re)
+    let p = (re,c_re)
+    setRegexE p
+    return p
 
     where
-        extended | Basic `elem` fs      = 0
+        extended | Basic      `elem` fs = 0
                  | otherwise            = regExtended   -- extended regex dflt
         igcase   | IgnoreCase `elem` fs = regIgnoreCase
-                 | otherwise            = 0             -- case sensitive dflt
-        newline  | NoNewLine `elem` fs  = 0
-                 | otherwise            = regNewline    -- newline is matched
+                 | otherwise            = 0             -- case insensitive dflt
+        newline  | NoNewLine  `elem` fs = 0
+                 | otherwise            = regNewline    -- newline is special
 
 --
 -- Do a forward search, placing cursor at first char of pattern, if found.
+-- Keymaps may implement their own regex language. How do we provide for this?
+-- Also, what's happening with ^ not matching sol?
 --
 searchF :: String -> Regex -> Action
 searchF _ c_re = do
