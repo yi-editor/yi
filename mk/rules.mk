@@ -45,11 +45,11 @@ boot :: depend
 
 all :: $(HS_BINS)
 
-$(BIN) :: $(SHARED_OBJ) $(BIN_OBJS) hemacs-inplace
-	$(GHC) -o $@ $(LD_OPTS) $(BIN_LD_OPTS) $(BIN_HC_OPTS) $(BIN_OBJS) $(SHARED_OBJ)
+$(BIN) :: $(BIN_OBJS) hemacs-inplace
+	$(GHC) -o $@ $(LD_OPTS) $(BIN_LD_OPTS) $(BIN_HC_OPTS) $(BIN_OBJS)
 
-$(STATIC_BIN) :: $(LIBRARY) $(PKG).conf $(PKG).conf.install $(STATIC_OBJS)
-	$(GHC) -o $@ $(LD_OPTS) $(STATIC_LD_OPTS) $(STATIC_HC_OPTS) $(STATIC_OBJS)
+$(STATIC_BIN) :: $(LIBRARY) $(PKG).conf $(PKG).conf.install $(LIB_FRONTEND) $(STATIC_OBJS)
+	$(GHC) -o $@ $(LD_OPTS) $(STATIC_LD_OPTS) $(STATIC_HC_OPTS) $(STATIC_OBJS) $(LIB_FRONTEND)
 
 EXTRA_CLEANS+= $(BIN) $(STATIC_BIN)
 
@@ -145,7 +145,7 @@ distclean: clean
 
 INSTALL_PROGS  += $(HS_BINS)
 INSTALL_IFACES += $(HS_IFACES)
-INSTALL_LIBS   += $(LIBRARY) $(GHCI_LIBRARY) $(STATIC_OBJS) $(STATIC_IFACES)
+INSTALL_LIBS   += $(LIBRARY) $(GHCI_LIBRARY) $(LIB_FRONTEND) $(LIB_IFACE)
 
 show-install :
 	@echo "BINDIR = $(BINDIR)"
@@ -181,7 +181,7 @@ ifneq "$(INSTALL_IFACES)" ""
 install:: $(INSTALL_IFACES)
 	@$(INSTALL_DIR) $(IFACEDIR)
 	for i in $(INSTALL_IFACES); do \
-		$(INSTALL_DATA) $(INSTALL_OPTS) $$i $(IFACEDIR)/`dirname $$i`; \
+		$(INSTALL_DATA) $(INSTALL_OPTS) $$i $(IFACEDIR)/`dirname $$i`/ ; \
 	done
 endif
 

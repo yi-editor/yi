@@ -1,5 +1,83 @@
+RUNTIME
 
 Preferences are stored in ~/.hemacs/Config.hs. Look in plugins/ for
 example Config.hs. If this directory doesn't exist, hemacs uses
 HEmacs/ConfigAPI.hs for the defaults, this is also what is used in
 hemacs-static.
+
+How do things load:
+        
+           Boot.hs
+          /      \
+      Config.hs HEmacs.o
+                  |
+                HShemacs.o (-package hemacs)
+
+once it is all loaded, Boot.main jumps to HEmacs.dynamic\_main
+
+BUILD SYSTEM
+
+Extra args can be passed at runtime as: make HC\_OPTS=-ddump-minimal-imports
+
+There is support for building mulitple "ways", i.e. prof, but it is
+untested.
+
+DEVELOPMENT
+
+You can actually run this stuff in ghci! To just run hemacs-core (the gui etc,
+without worrying about booting the thing):
+
+\begin{verbatim}
+        ghci -package-conf hemacs.conf -package hemacs
+        manzano$ ghci -package-conf hemacs.conf -package hemacs
+           ___         ___ _
+          / _ \ /\  /\/ __(_)
+         / /_\// /_/ / /  | |      GHC Interactive, version 6.3, for Haskell 98.
+        / /_\\/ __  / /___| |      http://www.haskell.org/ghc/
+        \____/\/ /_/\____/|_|      Type :? for help.
+
+        Loading package base ... linking ... done.
+        Loading package haskell98 ... linking ... done.
+        Loading package mtl ... linking ... done.
+        Loading package lang ... linking ... done.
+        Loading package unix ... linking ... done.
+        Loading package posix ... linking ... done.
+        Loading package hemacs ... linking ... done.
+        Prelude> :l Main
+        Prelude Main> main
+\end{verbatim}
+
+To run the whole thing is a bit harder, and requires faking the
+package lib flags in hemacs.conf (leave off the last 2 args if you're
+on linux). And if we haven't installed it yet (you want to run
+in-tree), then you have to set the command line args. Also, to do this
+trick you need ghc-6.2.2 or greater, which contain appropriate rts
+patches for running dynamic loaders dynamically.
+
+\begin{verbatim}
+        manzano$ ghci -package plugins -liconv -L/usr/local/lib -v1
+           ___         ___ _
+          / _ \ /\  /\/ __(_)
+         / /_\// /_/ / /  | |      GHC Interactive, version 6.3, for Haskell 98.
+        / /_\\/ __  / /___| |      http://www.haskell.org/ghc/
+        \____/\/ /_/\____/|_|      Type :? for help.
+
+        Loading package base ... linking ... done.
+        Loading package altdata ... linking ... done.
+        Loading package haskell98 ... linking ... done.
+        Loading package hi ... linking ... done.
+        Loading package unix ... linking ... done.
+        Loading package haskell-src ... linking ... done.
+        Loading package mtl ... linking ... done.
+        Loading package lang ... linking ... done.
+        Loading package posix ... linking ... done.
+        Loading package plugins ... linking ... done.
+        Loading object (dynamic) iconv ... done
+        final link ... done
+        Prelude> :set args -B/home/dons/hemacs
+        Prelude> :l Boot.hs
+        Skipping  Boot             ( Boot.hs, Boot.o )
+        Ok, modules loaded: Boot.
+        Prelude Boot> main
+        Starting up dynamic Haskell ... jumping over the edge ... done.
+\end{verbatim}

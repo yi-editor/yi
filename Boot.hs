@@ -1,4 +1,3 @@
-{-# OPTIONS -cpp -fglasgow-exts #-}
 --
 -- hemacs/Boot.hs
 -- 
@@ -25,39 +24,46 @@
 -- This is a small stub that loads the runtime hemacs library, then
 -- jumps to it. It solves the problem of unnecessary code linking.  As
 -- such, we only want to do plugin-related stuff here. So we don't even
--- mess with the locale stuff yet
+-- mess with the locale stuff yet. Maybe not so small since it is
+-- statically linked against -package plugins :(
 --
 -- We should have no static dependencies on any other part of hemacs.
 --
--- One of our jobs is to find value :: ConfigAPI.Config to pass to
--- Main.main (a dynamically loaded module in the hemacs library). To do
--- this we need to check if the -B flag was on the command line.
+-- One of our jobs is to find a (value :: Config) to pass to
+-- HEmacs.dynamic_main (a dynamically loaded module in the hemacs
+-- library). To do this we need to check if the -B flag was on the
+-- command line.
 --
 -- Once we find our Config file we have to:
 --      * load Config.o if it exists
---      * load -package hemacs, and any dependencies
---      * jump to Main.main, with Config as an argument
+--      * load -package hemacs, and any dependencies, through HEmacs.o
+--      * jump to HEmacs.dynamic_main with v:: Config as an argument
 --
--- This is the only module that depends on -package plugins
+-- This is the only module that depends on -package plugins (at the
+-- moment -- if we want to reload() based on a user action, we'll have
+-- to load plugins dynamically too).
+--
 -- NB: ncurses must be statically linked in. It can't be dynamically loaded
--- NB: we now need to distribute Main.o outside of HShemacs.o
+--
+-- NB: we need to distribute HEmacs.o outside of HShemacs.o, it is our
+-- hs-plugins.load entry point to HShemacs.o. Loading HEmacs.o pulls in
+-- HShemacs.o (i.e. -package hemacs) as a dependency.
 --
 
 module Boot ( main ) where
 
-import BootAPI                ( ConfigData(..), HEmacsMainType )
 import Plugins
 import Plugins.Utils          ( (</>), (<.>) )
 
-import Data.Maybe
-import Data.IORef
-import Control.Monad          (when)
-import System.IO              (hFlush, stdout)
+import Data.Maybe             ( fromJust, isJust, Maybe(..) )
+import Data.IORef             ( newIORef, readIORef, writeIORef, IORef() )
+import Control.Monad          ( when )
+import System.IO              ( hFlush, stdout )
 import System.Directory
-import System.IO.Unsafe       (unsafePerformIO)
 import System.Console.GetOpt
-import System.Environment     (getArgs, getEnv)
-import System.Exit            (exitFailure)
+import System.IO.Unsafe       ( unsafePerformIO )
+import System.Environment     ( getArgs, getEnv )
+import System.Exit            ( exitFailure )
 
 #ifndef NO_POSIX
 import System.Posix.User      (getUserEntryForID, getRealUserID, homeDirectory)
@@ -68,10 +74,10 @@ import System.Posix.User      (getUserEntryForID, getRealUserID, homeDirectory)
 --
 
 config_dir, config_file, hemacs_main_obj :: FilePath
-config_dir    = ".hemacs"                -- ~/.hemacs/ stores Config.hs
-config_file   = "Config.hs"              -- name of user-defineable Config file
+config_dir      = ".hemacs"                -- ~/.hemacs/ stores Config.hs
+config_file     = "Config.hs"              -- name of user-defineable Config file
 
-hemacs_main_obj = "Main.o"               -- entry point into hemacs lib
+hemacs_main_obj = "HEmacs.o"               -- entry point into hemacs lib
 
 config_sym, hemacs_main_sym :: Symbol
 config_sym      = "hemacs"               -- symbol to retrieve from Config.hs
@@ -113,8 +119,8 @@ get_config_file = do
 -- ---------------------------------------------------------------------
 -- Do some argv parsing to detect any -B args needed to find our runtime
 -- libraries. Any other args are ignored and passed through to
--- Main.main. Think like GHCs +RTS -RTS options, except we don't remove
--- -B flags -- we expect them to be ignored by Main.main
+-- HEmacs.main. Think like GHCs +RTS -RTS options, except we don't
+-- remove -B flags -- we expect them to be ignored by HEmacs.main
 --
 
 data Opts = LibDir FilePath
@@ -135,7 +141,8 @@ doArgs argv = case getOpt Permute options argv of
 
 -- ---------------------------------------------------------------------
 -- Given a source file, compile it to a (.o, .hi) pair
--- Jump to the ~/.hemacs/ directory, in case we are running in-place.
+-- Jump to the ~/.hemacs/ directory, in case we are running in-place, to
+-- prevent bogus module dependencies.
 --
 compile :: FilePath -> IO (Maybe FilePath)
 compile src = do
@@ -144,7 +151,7 @@ compile src = do
     setCurrentDirectory build_dir
 
     flags  <- get_make_flags
-    status <- make src $ flags ++ ["-i"] -- to stop it seeing random .o files
+    status <- make src flags
 
     setCurrentDirectory old_pwd
 
@@ -228,5 +235,19 @@ main = do
 
     putStr "jumping over the edge ... " >> hFlush stdout
     hemacs_main cfghdl   -- jump to dynamic code
+
+-- ---------------------------------------------------------------------
+-- MAGIC: this is the type of the value passed from Boot.main to
+-- HEmacs.main. It must be exactly the same as the definition in
+-- HEmacs.hs.  We can't, however, share the value in another module,
+-- without breaking ghci support (the same module would be linked both
+-- statically and dynamically). 
+--
+-- It is an existential to prevent a dependency on ConfigAPI in Boot.hs.
+-- It gets unwrapped magically in HEmacs.dynamic_main
+--
+data ConfigData = forall a. CD a {- has Config type -}
+
+type HEmacsMainType = (Maybe ConfigData) -> IO ()
 
 -- vim: sw=4 ts=4

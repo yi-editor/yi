@@ -22,18 +22,20 @@ PKG=            hemacs
 # dynamic front end
  
 BIN_OBJS=       Boot.o
-BIN_DEPS=       plugins posix
+BIN_DEPS=       plugins
 BIN_LIBS=       $(CURSES) $(ICONV)
 
 # static front end
  
 STATIC_OBJS=    Main.o
-STATIC_IFACES=  Main.hi
-STATIC_BIN_DEPS=hemacs posix
+STATIC_BIN_DEPS=hemacs
 STATIC_BIN_LIBS=$(CURSES) $(ICONV)
 STATIC_HC_OPTS  += -package-conf hemacs.conf
 
-SHARED_OBJ=	HEmacs/BootAPI.o
+# frontend to the library (by which it is loaded)
+
+LIB_FRONTEND=   HEmacs.o
+LIB_IFACE   =   HEmacs.hi
 
 #
 # read in suffix rules
@@ -41,37 +43,35 @@ SHARED_OBJ=	HEmacs/BootAPI.o
 include $(TOPDIR)/mk/rules.mk
 
 #
-# Special targets
+# Special targets (just those in $(TOP))
 # 
 
 #
-# This module is shared between the static and dynamic code. It needs to be
-# treated with care. In particular, it has to get archived into
-# HShemacs.o, but it cannot have a -package hemacs flag.
-#
-HEmacs/BootAPI.o: HEmacs/BootAPI.hs
-	$(GHC) $(HC_OPTS) -c $< -o $@ -ohi $(basename $@).$(way)hi
-
-#
-# Boot is the bootstrap loader. It cant be linked *statically* against
-# -package hemacs. It depends on $(SHARED_OBJ), which lives in HEmacs,
-# hence the -iHEmacs flag.
+# Boot is the bootstrap loader. It cant be linked *statically* against -package hemacs.
 #
 Boot.o: Boot.hs 
-	$(GHC) $(HC_OPTS) $(BIN_HC_OPTS) -DLIBDIR=\"$(LIBDIR)\" -iHEmacs -main-is Boot.main -c $< -o $@ -ohi $(basename $@).$(way)hi
+	$(GHC) $(HC_OPTS) $(BIN_HC_OPTS) -DLIBDIR=\"$(LIBDIR)\" -main-is Boot.main -c $< -o $@ -ohi $(basename $@).$(way)hi
 
 #
-# Main is the actual application Main.main, as well as being the frontend of
+# Main is the static "loader". It can't get -package-name hemacs, or it
+# won't work in ghci. Could probably filter it out somehow
+#
+Main.o: Main.hs 
+	$(GHC) $(HC_OPTS) $(STATIC_HC_OPTS) -c $< -o $@ -ohi $(basename $@).$(way)hi
+
+#
+# HEmacs.o is the actual HEmacs.main, as well as being the frontend of
 # the statically linked binary
 #
-# semi-magic to defeat <= ghc-6.2.1 use of -i. by default. this stops
+# Semi-magic to defeat <= ghc-6.2.1 use of -i. by default. this stops
 # us using a library and it's .o files easily in the same dir -- the
 # .o files will always be used over the package dependency. Not an
-# issue in ghc-6.2.2. Anyway, the Solution: cd somewhere where -i. means nothing.
+# issue in ghc-6.2.2. Anyway, the Solution: cd somewhere where -i.
+# means nothing.
 #
 MAGIC_FLAGS   += -package-conf ../hemacs.conf  -package hemacs
 
-Main.o: Main.hs
+HEmacs.o: HEmacs.hs
 	( cd HEmacs ; $(GHC) $(HC_OPTS) $(MAGIC_FLAGS) -odir .. -c ../$< -o ../$@ -ohi ../$(basename $@).$(way)hi )
 
 hemacs-inplace: hemacs-inplace.in

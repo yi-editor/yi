@@ -15,3 +15,4 @@ package = "hemacs"
 branch  = "0"
 release = "yyyymmdd"
 version = branch++"-"++release
+

@@ -10,16 +10,12 @@
 --
 
 module HEmacs.ConfigAPI (
+        Config(..),
+        settings,
 
-        -- TODO: get rid of these exports
-        module HEmacs.Curses, 
-        module HEmacs.UI,
-        module HEmacs.Version,
         module HEmacs.Style,
         module HEmacs.Entry,
 
-        Config(..),
-        settings,
   ) where
 
 import HEmacs.Curses ( Key(..) )
@@ -53,6 +49,7 @@ settings = Config {
 
 -- defaults
 
+dflt_handle_key :: KeyMap
 dflt_handle_key (KeyChar 'q') = e_quit
 dflt_handle_key (KeyChar '\^R') = e_refresh
 dflt_handle_key (KeyChar '.') = e_hscroll 2
@@ -85,11 +82,13 @@ dflt_handle_key (KeyChar 'k') = e_submap "k" dflt_k_map
 dflt_handle_key (KeyChar ';') = e_submap ";" dflt_tag_map
 dflt_handle_key k             = e_fallback dflt_handle_key k
 
+dflt_k_map :: KeyMap
 dflt_k_map (KeyChar 'u') = e_firstentry
 dflt_k_map (KeyChar 'v') = e_lastentry
 dflt_k_map (KeyChar 'd') = e_save
 dflt_k_map k             = e_fallback dflt_handle_key k
 
+dflt_tag_map :: KeyMap
 dflt_tag_map (KeyChar 't') = e_clear_tags
 dflt_tag_map (KeyChar 'a') = e_move_tagged_after
 dflt_tag_map (KeyChar 'b') = e_move_tagged_before
@@ -102,6 +101,7 @@ dflt_tag_map k             = e_fallback dflt_handle_key k
 -- Help
 --
 
+dflt_topinfo_text :: String
 dflt_topinfo_text = package++" "++version
                ++" ** q:quit, e:edit, a:new, r:new child, kd:save"
 
@@ -109,6 +109,7 @@ dflt_topinfo_text = package++" "++version
 -- Styles
 --
 
+dflt_styles :: [StyleSpec]
 dflt_styles = [
      StyleSpec ("attr_infoline", (a_bold, c_green, c_blue)),
      StyleSpec ("attr_text",     (a_none, c_white, c_black)),
