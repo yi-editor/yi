@@ -304,10 +304,8 @@ ins :: Char -> IO Keymap
 ins '\ESC'  = leftOrSolE 1 >> nextCmd
 
 -- Erase the last character.
-ins '\^H' = deleteE                   >> nextIns
-ins c | c == keyBackspace = deleteE   >> nextIns
-
-ins c | c == keyPPage = upScreenE     >> nextIns
+ins c | isDel c       = deleteE       >> nextIns
+      | c == keyPPage = upScreenE     >> nextIns
       | c == keyNPage = downScreenE   >> nextIns
 
 -- Insert character
@@ -329,12 +327,11 @@ ex k = msgClrE >> loop [k]
   where
     loop [] = do msgE ":"
                  c <- getcE
-                 if c == '\BS' || c == keyBackspace
+                 if isDel c
                     then msgClrE >> nextCmd       -- deleted request
                     else loop [c]
     loop w@(c:cs) 
-        | c == '\BS'        = deleteWith cs
-        | c == keyBackspace = deleteWith cs
+        | isDel c           = deleteWith cs
         | c == '\ESC'       = msgClrE             >> nextCmd
         | c == '\r'         = execEx (reverse cs) >> nextCmd
         | otherwise         = do msgE (':':reverse w)
@@ -389,3 +386,11 @@ viCmdErr s = msgE $ "The "++s++ " command is unknown."
 --
 lastRe :: IORef String
 lastRe = unsafePerformIO $ newIORef []
+
+-- | Is a delete sequence
+isDel :: Char -> Bool
+isDel '\BS'        = True
+isDel '\127'       = True
+isDel c | c == keyBackspace = True
+isDel _            = False
+
