@@ -110,8 +110,9 @@ module Yi.Core (
         searchE,                -- :: (Maybe String) -> Action
         searchAndRepLocal,      -- :: String -> String -> IO Bool
 
-        -- * lower-level ops
-        mapRangeE               -- :: Int -> Int -> (Buffer' -> Action) -> Action
+        -- * higher level ops
+        mapRangeE,              -- :: Int -> Int -> (Buffer' -> Action) -> Action
+        moveWhileE              -- :: (Char -> Bool) -> Bool -> Action
 
    ) where
 
@@ -370,7 +371,11 @@ leftOrSolE x = withWindow_ $ moveXorSolW x
 rightOrEolE :: Int -> Action
 rightOrEolE x = withWindow_ $ moveXorEolW x
 
+-- ---------------------------------------------------------------------
+-- Slightly higher level operations
+
 -- | Move to first non-space character in this line
+-- Stupid to have a special function for this.
 firstNonSpaceE :: Action
 firstNonSpaceE = withWindow_ firstNonSpaceW
 
@@ -642,8 +647,35 @@ mapRangeE from to fn
                                 rightB b
                                 loop (j-1)
                 loop (max 0 (to - from))
+            moveToW from w b
             return w
-        getPointE >>= gotoPointE
+
+--
+-- Shift the point, until predicate is true, leaving point at final
+-- location. Direction is either False=left, True=right
+--
+-- N.B. we're using partially applied Left and Right as well-named Bools.
+--
+moveWhileE :: (Char -> Bool) -> (() -> Either () ()) -> Action
+moveWhileE predicate dir = do
+    withWindow_ $ \w b -> do
+        eof <- sizeB b
+
+        let loop = case dir () of  {
+            Right _ -> let loop' = do p <- pointB b
+                                      when (p < eof - 1) $ do
+                                      x <- readB b
+                                      when (predicate x) $ rightB b >> loop'
+                       in loop' ;
+            Left  _ -> let loop' = do p <- pointB b
+                                      when (p > 0) $ do
+                                      x <- readB b
+                                      when (predicate x) $ leftB b >> loop 
+                       in loop'
+        }
+        loop
+        return w
+    getPointE >>= gotoPointE
 
 ------------------------------------------------------------------------
 

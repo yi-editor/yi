@@ -33,7 +33,7 @@ import Prelude       hiding ( any )
 import Data.Maybe           ( fromMaybe )
 import Data.List            ( (\\) )
 import Data.FiniteMap
-import Data.Char            ( isUpper, toLower, toUpper, isSpace )
+import Data.Char            ( isAlphaNum, isUpper, toLower, toUpper, isSpace )
 
 import Control.Monad        ( replicateM_, when )
 import Control.Exception    ( ioErrors, catchJust )
@@ -197,6 +197,15 @@ moveCmdFM = listToFM $
     ,('\r',         down)
 
 -- words
+    -- ToDo these aren't quite right, but are nice and simple
+    ,('w',          \i -> replicateM_ i $ do
+                            moveWhileE (isAlphaNum)      Right
+                            moveWhileE (not.isAlphaNum)  Right )
+
+    ,('b',          \i -> replicateM_ i $ do
+                            moveWhileE (isAlphaNum)      Left
+                            moveWhileE (not.isAlphaNum)  Left )
+
 -- text
 -- misc
     ,('H',          \i -> downFromTosE (i - 1))

@@ -154,7 +154,7 @@ moveToW :: Buffer a => Int -> Window -> a -> IO Window
 moveToW np w b = do
     moveTo b np
     ln <- curLn b
-    resetW w b ln (min (ln-1) ((height w) `div` 2))
+    resetW w b ln (min (ln-1) (height w - 2))
 
 -- | goto an arbitrary line in the file. center that line on the screen
 -- gotoLn is (fast as possible) an O(n) op atm.
@@ -204,6 +204,10 @@ rightOrSolW w b = moveXorEol b 1    >> update w b
 
 -- ---------------------------------------------------------------------
 -- X-axis movement
+--
+-- This is all stupid. We should just have a refreshW function, that
+-- works out whether to reset the X or Y values.
+--
 
 -- | Move to the start of the line
 moveToSolW :: Buffer a => Window -> a -> IO Window
@@ -221,7 +225,8 @@ moveXorSolW i w b = moveXorSol b i >> update w b
 moveXorEolW :: Buffer a => Int -> Window -> a -> IO Window
 moveXorEolW i w b = moveXorEol b i >> update w b
 
--- | Movee to first non-space char from sol
+-- | Move to first non-space char from sol
+-- Shouldn't need to be here
 firstNonSpaceW :: Buffer a => Window -> a -> IO Window
 firstNonSpaceW w b = do
     moveToSol b

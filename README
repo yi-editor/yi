@@ -37,8 +37,8 @@ installed:
 
  3. Run 'make install' to install it, and then use 'yi'
         OR
-    Just use './yi-inplace' directly in the build tree (without
-    having to install) 
+    Just use './yi-inplace' (or 'yi-static') directly in the build 
+    tree (without having to install) 
 
 Hint: 'make show-install' will show you which directories yi wants
 to install into. These are editable in mk/config.mk
@@ -65,16 +65,15 @@ config files are in examples/.
 
 PORTABILITY
 
-Yi is developed on OpenBSD and Debian Linux. It relies on the hs-plugins
-library, which has been ported to most platforms, but currently not
-Windows -- however yi-static should probably work on Windows. Yi
-requires GHC 6 with a working GHCi implementation. A porting checklist:
+Yi is developed on OpenBSD and Debian Linux. Dynamic configuration relies 
+on the hs-plugins library, which has been ported to most platforms (but 
+currently not Windows -- however yi-static should probably work on Windows). 
+Yi requires GHC 6 with a working GHCi implementation. A porting checklist:
 
         * you have GNU make
         * you have >= GHC 6.2.1         (>= 6.3-20040929 on OpenBSD)
         * you have a working GHCi
         * you have hs-plugins >= 2004/10/14
-
 
 CREDITS
 
@@ -88,3 +87,5 @@ The Curses and CWString interface code is mostly by John Meacham;see the
 LICENSE for details. Tuomo and I have made some minor modifications.
 
 The Ctk lexer library was written by Manuel Chakravarty.
+
+Yi was born on October 14th, 2004
