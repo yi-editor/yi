@@ -155,7 +155,6 @@ eventLoop = Editor.getKeyBinds >>= loop
                     loop f
         handler = msgE . show
 
-
 --
 -- | Lazily read all input from the user. A big magic.
 --

@@ -116,11 +116,11 @@ with a = (Just (Right a))
 -- accumulate count digits, echoing them to the cmd buffer
 cmd_count :: ViMode
 cmd_count = digit
-    `meta` \[c] st -> (with (msg (c:acc st)),st{acc = c:acc st},Just $ cmd st)
+    `meta` \[c] st -> (with (msg (c:acc st) >> refreshE),st{acc = c:acc st},Just $ cmd st)
     where
         msg cs = msgE $ (replicate 60 ' ') ++ (reverse cs)
 
--- eval a cmd. always clear the buffer now.
+-- eval a cmd. always clear the cmd buffer prior, and refresh
 cmd_eval :: ViMode
 cmd_eval = ( cmdc >|< 
             (char 'r' +> anyButEscOrDel) >|<
@@ -144,7 +144,7 @@ cmd_eval = ( cmdc >|<
             "\^D" -> undef
             "\^E" -> undef
             "\^F" -> downScreensE i
-            "\^G" -> viFileInfo
+            "\^G" -> viFileInfo         -- hmm. not working
             "\^H" -> leftOrSolE  i
             "\^J" -> replicateM_ i downE
             "\^L" -> undef
@@ -177,14 +177,18 @@ cmd_eval = ( cmdc >|<
             "<"   -> undef
             "?"   -> undef
             "@"   -> undef
-            "~"   -> do c' <- readE
-                        let c'' = if isUpper c' then toLower c' else toUpper c'
-                        writeE c''
+            "~"   -> let fn = do c' <- readE
+                                 let c'' = if isUpper c' then toLower c' 
+                                                    else toUpper c'
+                                 writeE c''
+                                 rightE
+                     in replicateM_ i fn
             "B"   -> undef
             "D"   -> readRestOfLnE >>= setRegE >> killE
             "E"   -> undef
             "F"   -> undef
-            "G"   -> case c of Nothing -> botE; Just n  -> gotoLnE n
+            "G"   -> case c of Nothing -> botE >> solE
+                               Just n  -> gotoLnE n
             "N"   -> undef
             "H"   -> downFromTosE (i - 1)
             "J"   -> eolE >> deleteE -- the "\n"
@@ -205,7 +209,6 @@ cmd_eval = ( cmdc >|<
             "n"   -> searchE Nothing
             "p"   -> do s <- getRegE
                         eolE >> insertE '\n' >> mapM_ insertE s >> solE
-            "q"   -> quitE
             "x"   -> replicateM_ i deleteE
             "ZZ"  -> viWrite >> quitE
             "dd"  -> solE >> killE >> deleteE
@@ -235,7 +238,7 @@ cmd_eval = ( cmdc >|<
 cmd2other :: ViMode
 cmd2other = modeSwitchChar
     `meta` \[c] st -> 
-        let beginIns a = (Just (Right (a)), st, Just (ins st))
+        let beginIns a = (with (a >> refreshE), st, Just (ins st))
         in case c of
             ':' -> (with (msgE ":"), st{acc=[':']}, Just ex_mode)
 
@@ -252,7 +255,7 @@ cmd2other = modeSwitchChar
             '/' -> (with (msgE "/"), st{acc=['/']}, Just ex_mode)
             '?' -> (with (not_implemented '?'), st{acc=[]}, Just $ cmd st)
 
-            '\ESC'-> (with msgClrE, st{acc=[]}, Just $ cmd st)
+            '\ESC'-> (with (msgClrE >> refreshE), st{acc=[]}, Just $ cmd st)
 
             s   -> (with (msgE ("The "++show s++" command is unknown."))
                    ,st, Just $ cmd st)
@@ -264,14 +267,15 @@ cmd2other = modeSwitchChar
 -- 
 ins_char :: ViMode
 ins_char = anyButEsc
-    `action` \[c] -> Just $ case c of
-        k | isDel k       -> deleteE
-          | k == keyPPage -> upScreenE
-          | k == keyNPage -> downScreenE
+    `action` \[c] -> Just (fn c >> refreshE)
 
-        _ -> insertE c
+    where fn c = case c of
+                    k | isDel k       -> deleteE
+                      | k == keyPPage -> upScreenE
+                      | k == keyNPage -> downScreenE
+                    _ -> insertE c
 
-    where anyButEsc = alt $ any' \\ ['\ESC']
+          anyButEsc = alt $ (keyBackspace : any' ++ cursc') \\ ['\ESC']
 
 -- switch out of ins_mode
 ins2cmd :: ViMode
@@ -286,7 +290,7 @@ ex_char :: ViMode
 ex_char = anyButDelNlArrow
     `meta` \[c] st -> (with (msg c), st{acc=c:acc st}, Just ex_mode)
     where
-        anyButDelNlArrow = alt $ any' \\ (enter' ++ delete' ++ [keyUp,keyDown])
+        anyButDelNlArrow = alt $ any' \\ (enter' ++ delete' ++ ['\ESC',keyUp,keyDown])
         msg c = getMsgE >>= \s -> msgE (s++[c])
 
 -- history editing
@@ -323,7 +327,7 @@ ex_edit = delete
 -- escape exits ex mode immediately
 ex2cmd :: ViMode
 ex2cmd = char '\ESC'
-    `meta` \_ st -> (with msgClrE, st{acc=[]}, Just $ cmd st)
+    `meta` \_ st -> (with $ msgClrE >> refreshE, st{acc=[]}, Just $ cmd st)
 
 --
 -- eval an ex command to an Action, also appends to the ex history
