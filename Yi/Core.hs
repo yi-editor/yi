@@ -124,6 +124,7 @@ module Yi.Core (
         getRegexE,      -- :: IO (Maybe (Regex,String))
 
         -- * Regular expression and searching
+        SearchF(..),        -- Basic | IgnoreCase | NoNewLine
         searchAndRepLocal,  -- :: String -> String -> IO Bool
         searchE,            -- :: (Maybe String) -> [SearchF] 
                             -- -> (() -> Either () ()) -> Action
