@@ -46,7 +46,6 @@ data Window =
         key         :: !Unique         -- ^ each window has a unique 
        ,bufkey      :: !Unique         -- ^ the buffer this window opens to
        ,mode        :: !(Maybe String) -- ^ this window's modeline
-       ,origin      :: !(Int,Int)      -- ^ (y,x) origin of this window
        ,height      :: !Int            -- ^ height of this window
        ,width       :: !Int            -- ^ width of this window
        ,cursor      :: !(Int,Int)      -- ^ cursor point on screen
@@ -82,7 +81,6 @@ emptyWindow b (h,w) = do
                     key       = wu
                    ,bufkey    = (keyB b)
                    ,mode      = Nothing
-                   ,origin    = (0,0)  -- TODO what about vnew etc. do we care?
                    ,height    = h-1    -- - 1 for the cmdline?
                    ,width     = w
                    ,cursor    = (0,0)  -- (y,x)
