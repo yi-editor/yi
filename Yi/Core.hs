@@ -137,7 +137,7 @@ import Control.Exception    ( ioErrors, handle, throwIO, handleJust )
 import Control.Concurrent   ( threadWaitRead, takeMVar, forkIO )
 import Control.Concurrent.Chan
 
-import GHC.Exception
+import GHC.Exception hiding ( throwIO )
 
 -- ---------------------------------------------------------------------
 -- | Start up the editor, setting any state with the user preferences
@@ -641,7 +641,6 @@ splitE = do
                       Editor.setWindow w'
 
 -- | close current window.
--- ToDo If this is the last window onto this buffer, free and close.
 closeE :: Action
 closeE = do getWindow >>= deleteWindow
             i <- sizeWindows
