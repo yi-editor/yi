@@ -9,7 +9,7 @@
 module Config where
 
 import Yi.Yi
-import qualified Yi.Keymap.Vi as Keymap
+import qualified Yi.Keymap.Nano as Keymap
 
 yi = settings {
     keymap = Keymap.keymap

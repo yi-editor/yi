@@ -1,3 +1,4 @@
+#if GLASGOW_HASKELL < 604
 Package {
         name            = "yi",
         auto            = False,
@@ -18,3 +19,60 @@ Package {
         extra_cc_opts   = [],
         extra_ld_opts   = []
 }
+
+#else
+
+name:		yi
+version:	0.1
+license:	LGPL
+maintainer:	dons@cse.unsw.edu.au
+exposed:	True
+exposed-modules:
+	Yi.Buffer
+	Yi.CharMove
+	Yi.Core
+	Yi.Curses
+	Yi.DLists
+	Yi.Editor
+	Yi.FastBuffer
+	Yi.Keymap
+	Yi.Lexers
+	Yi.Locale
+	Yi.MkTemp
+	Yi.Regex
+	Yi.Style
+	Yi.Undo
+	Yi.Version
+	Yi.Window
+	Yi.Yi
+	Yi.Curses.CWString
+	Yi.Curses.Curses
+	Yi.Curses.IConv
+	Yi.Curses.UI
+	Yi.Keymap.Emacs
+	Yi.Keymap.Nano
+	Yi.Keymap.Vi
+	Yi.Keymap.Vim
+
+hidden-modules:
+#ifdef INSTALLING
+import-dirs:          PREFIX/lib/yi/imports
+library-dirs:         PREFIX/lib/yi
+#else
+import-dirs:          PREFIX
+library-dirs:         PREFIX
+#endif
+hs-libraries:         HSyi
+extra-libraries:      CURSES ICONV
+include-dirs:
+includes:	      
+depends:	      base haskell98 posix
+hugs-options:
+cc-options:
+ld-options:
+framework-dirs:
+frameworks:
+haddock-interfaces:
+haddock-html:
+
+#endif

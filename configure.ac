@@ -12,26 +12,43 @@ AC_PREREQ([2.52])
 # Looking for HC, stolen from $fptools
 #
 AC_ARG_WITH(hc,
-[AC_HELP_STRING([--with-hc=ARG],
-    [Use ARG as the path to a Haskell compiler [default=autodetect]])],
+[AC_HELP_STRING(
+ 	[--with-hc=ARG],
+	[Use ARG as the path to a Haskell compiler [default=autodetect]])
+],
 [ WithGhc="$withval" 
   if test "$WithGhc" = "nhc98"; then
-    AC_DEFINE(__NHC__, [], [Defined if compiling with nhc98])
-    SYMS="$SYMS -D__NHC__"
+	AC_DEFINE(__NHC__, [], [Defined if compiling with nhc98])
+	SYMS="$SYMS -D__NHC__"
   fi
 ],
 [
-  if test "$GHC" = ""; then
-    AC_CHECK_PROGS(GHC,ghc)
-  fi
-  if test "$GHC" = ""; then
-    AC_CHECK_PROGS(GHC,nhc98)
-  fi
-  if test "$GHC" = "nhc98"; then
-    AC_DEFINE(__NHC__, [], [Defined if compiling with nhc98])
-    SYMS="$SYMS -D__NHC__"
-  fi
-  WithGhc=$GHC
+  # else check if --with-ghc was used
+  AC_ARG_WITH(ghc,
+  [AC_HELP_STRING(
+   	[--with-ghc=ARG],
+	[Use ARG as the path to a Haskell compiler [default=autodetect]])
+  ],
+  [ WithGhc="$withval" 
+    if test "$WithGhc" = "nhc98"; then
+	  AC_DEFINE(__NHC__, [], [Defined if compiling with nhc98])
+	  SYMS="$SYMS -D__NHC__"
+    fi
+  ],
+  [
+     # else autodetect
+     if test "$GHC" = ""; then
+       AC_CHECK_PROGS(GHC,ghc)
+     fi
+     if test "$GHC" = ""; then
+       AC_CHECK_PROGS(GHC,nhc98)
+     fi
+     if test "$GHC" = "nhc98"; then
+       AC_DEFINE(__NHC__, [], [Defined if compiling with nhc98])
+       SYMS="$SYMS -D__NHC__"
+     fi
+     WithGhc=$GHC
+   ])
 ])
 AC_SUBST(WithGhc)
 

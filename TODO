@@ -1,3 +1,12 @@
+6.4
+---
+
+New-style .hi-boot imports
+and -M is broken?
+
+if-else on ghc version for adding .hi-boot/.hs-boot to Makefile
+
+------------------------------------------------------------------------
 
 Design plan:
         - ui type class
