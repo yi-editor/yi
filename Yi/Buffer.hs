@@ -45,6 +45,7 @@ import Data.Array.Base          ( STUArray(..) )
 import Data.Array.IO            ( IOUArray, hGetArray, hPutArray )
 
 import Foreign.C.Types          ( CSize )
+import Foreign.Ptr              ( Ptr )
 
 -- ---------------------------------------------------------------------
 --
@@ -284,6 +285,20 @@ stringToFBuffer nm s = do
             u   <- newUnique
             return (FBuffer nm u mv)
 
+--
+-- | Resize an FBuffer_
+--
+resizeFB_ :: FBuffer_ -> Int -> IO FBuffer_
+resizeFB_ (FBuffer_ buf p e _) sz = do
+    arr <- newArray_ (0, sz-1) :: IO (IOUArray Int Word8)
+    case unsafeCoerce# arr of
+        STUArray _ _ buf' -> do
+            c_memcpy buf' buf (fromIntegral e)     -- copy contents
+            return (FBuffer_ buf' p e sz)
+
+foreign import ccall unsafe "memcpy"
+   c_memcpy :: RawBuffer -> RawBuffer -> CSize -> IO (Ptr ())
+
 -- ---------------------------------------------------------------------
 --
 -- | Write string into buffer, return the index of the next point
@@ -298,8 +313,6 @@ writeChars b (c:cs) i = writeCharToBuffer b i c >>= writeChars b cs
 -- | read @n@ chars from buffer @b@, starting at @i@
 -- Slower, more allocs:
 --      readChars b n i = mapM (readCharFromBuffer b) [i .. i+n-1]
---
--- strict. is this bad?
 --
 readChars :: RawBuffer -> Int -> Int -> IO [Char]
 readChars b (I# n) (I# i) = do
@@ -469,12 +482,19 @@ instance Buffer FBuffer where
 
     -- insertN :: a -> [Char] -> IO ()
     insertN (FBuffer _ _ mv) cs = withMVar mv $ \ref ->
-        modifyIORefIO ref $ \fb@(FBuffer_ buf p e _) -> do
+        modifyIORefIO ref $ \fb@(FBuffer_ _ _ o_e e_real) -> do
+            let csl = length cs
+
+            -- May need to resize buffer!
+            fb'@(FBuffer_ buf p e _) <- if o_e+csl >= e_real 
+                                        then resizeFB_ fb (2*(o_e+csl)) 
+                                        else return fb
+
             let len = min (e-p) e
-                dst = p+length cs
+                dst = p+csl
             i <- shiftChars buf p dst len
             j <- writeChars buf cs p
-            return $ fb { bufLen=max i j }
+            return $ fb' { bufLen=max i j }
 
     ------------------------------------------------------------------------
 
