@@ -48,7 +48,7 @@ import Data.Char                ( chr, ord, isDigit )
 import Control.Monad            ( liftM )
 import Control.Exception        ( handleJust )
 
-#if __GLASGOW_HASKELL__ < 604
+#if GLASGOW_HASKELL < 604
 import System.IO                ( isAlreadyExistsError, Handle )
 #else
 import System.IO                ( Handle )
@@ -257,7 +257,7 @@ mkdir0700 dir =
 
 #ifdef __MINGW32__
 foreign import ccall unsafe "_getpid" getProcessID :: IO Int
-#elif __GLASGOW_HASKELL__ > 504
+#elif GLASGOW_HASKELL > 504
 getProcessID :: IO Int
 getProcessID = System.Posix.Internals.c_getpid >>= return . fromIntegral
 #else

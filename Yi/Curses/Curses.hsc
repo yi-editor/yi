@@ -184,7 +184,7 @@ import Control.Exception        ( bracket, bracket_ )
 import Foreign
 import CForeign
 
-#if __GLASGOW_HASKELL__ < 603
+#if GLASGOW_HASKELL < 603
 import Data.Bits
 #endif
 

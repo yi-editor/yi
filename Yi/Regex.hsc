@@ -65,7 +65,7 @@ regcomp pattern flags = do
             c_regcomp p cstr (fromIntegral flags)
     if (r == 0)
         then do
-#if __GLASGOW_HASKELL__ >= 602
+#if GLASGOW_HASKELL >= 602
              addForeignPtrFinalizer ptr_regfree regex_fptr
 #elif !defined(__NHC__) 
              flip addForeignPtrFinalizer ptr_regfree regex_fptr

@@ -63,7 +63,7 @@ import Data.Char            ( ord, chr )
 import Data.Bits            ( Bits((.|.), (.&.), shift) )
 import Foreign.C.String
 
-#if __GLASGOW_HASKELL__ < 604
+#if GLASGOW_HASKELL < 604
 import GHC.Exts
 #endif
 
