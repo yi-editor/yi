@@ -36,6 +36,7 @@ import Data.FiniteMap
 import Data.IORef               ( newIORef, readIORef, writeIORef, IORef )
 import Data.Unique              ( Unique )
 import System.IO.Unsafe         ( unsafePerformIO )
+import Control.Monad            ( liftM )
 import Control.Concurrent       ( killThread, ThreadId )
 import Control.Concurrent.Chan  ( Chan )
 import Control.Concurrent.MVar
@@ -240,7 +241,8 @@ shiftBuffer f = readEditor $ \e ->
 -- | Window manipulation
 
 -- | Create a new window onto this buffer.
--- top of screen of other windows needs to get adjusted
+-- Top of screen of other windows needs to get adjusted
+-- As does their modeslines.
 --
 newWindow :: Buffer' -> IO Window
 newWindow b = modifyEditor $ \e -> do
@@ -248,9 +250,12 @@ newWindow b = modifyEditor $ \e -> do
         wls   = eltsFM $ windows e
         (y,r) = getY h (1 + (length wls))   -- should be h-1..
     wls' <- resizeAll e wls y
-    win  <- emptyWindow b (y+r,w)
-    let e' = e { windows = listToFM $ mkAssoc (win:wls') }
-    return (e', win)
+    wls''<- if wls' == [] then return wls' else turnOnML e wls'
+
+    win  <- emptyWindow b (y+r,w) 
+    win' <- if wls == [] then return win else liftM head $ turnOnML e [win]
+    let e' = e { windows = listToFM $ mkAssoc (win':wls'') }
+    return (e', win')
 
 --
 -- | Delete the focused window
@@ -280,17 +285,26 @@ deleteWindow (Just win) = modifyEditor_ $ \e -> do
     wls' <- resizeAll e' wls y
     case wls' of   
         []       -> return e' { windows = emptyFM }
-        (win':_) -> do
+        (win':xs) -> do
             let fm = listToFM $ mkAssoc wls'
             win'' <- resize (y+r) win' (findBufferWith e' (bufkey win'))
-            let e'' = e' { windows = addToFM fm (key win'') win'' }
-            setWindow' e'' win''
+            let win''' = if xs == [] then win'' { mode = Nothing } else win''
+            let e'' = e' { windows = addToFM fm (key win''') win''' }
+            setWindow' e'' win'''
 
 -- | Update height of windows in window set
 resizeAll :: Editor -> [Window] -> Int -> IO [Window]
-resizeAll e wls y = mapM (\w -> resize y w $ findBufferWith e (bufkey w)) wls
+resizeAll e wls y = flip mapM wls (\w -> resize y w $ findBufferWith e (bufkey w))
+
+-- | Turn on modelines of all windows
+turnOnML :: Editor -> [Window] -> IO [Window]
+turnOnML e = mapM $ \w -> do let win = w { mode = Just undefined }
+                             m <- updateModeLine win $ findBufferWith e (bufkey w)
+                             return w { mode = m }
+
 
 -- | calculate window heights, given all the windows and current height
+-- doesn't take into account modelines
 getY :: Int -> Int -> (Int,Int)
 getY h 0 = (h, 0)
 getY h 1 = (h, 0)

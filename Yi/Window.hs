@@ -39,21 +39,23 @@ import Control.Monad            ( when )
 -- Windows need some small information about the terminal. For example,
 -- they need to know the height and width.  That's about it.
 --
+-- This doesn't handle line wrapping, yet.
+--
 data Window = 
     Window {
-        key         :: !Unique      -- ^ each window has a unique 
-       ,bufkey      :: !Unique      -- ^ the buffer this window opens to
-       ,mode        :: !String      -- ^ this window's modeline
-       ,origin      :: !(Int,Int)   -- ^ (y,x) origin of this window
-       ,height      :: !Int         -- ^ height of this window
-       ,width       :: !Int         -- ^ width of this window
-       ,cursor      :: !(Int,Int)   -- ^ cursor point on screen
+        key         :: !Unique         -- ^ each window has a unique 
+       ,bufkey      :: !Unique         -- ^ the buffer this window opens to
+       ,mode        :: !(Maybe String) -- ^ this window's modeline
+       ,origin      :: !(Int,Int)      -- ^ (y,x) origin of this window
+       ,height      :: !Int            -- ^ height of this window
+       ,width       :: !Int            -- ^ width of this window
+       ,cursor      :: !(Int,Int)      -- ^ cursor point on screen
 
-       ,pnt         :: !Int         -- ^ current point
-       ,lineno      :: !Int         -- ^ current line number
+       ,pnt         :: !Int            -- ^ current point
+       ,lineno      :: !Int            -- ^ current line number
 
-       ,tospnt      :: !Int         -- ^ the buffer point of the top of screen
-       ,toslineno   :: !Int         -- ^ line number of top of screen
+       ,tospnt      :: !Int            -- ^ the buffer point of the top of screen
+       ,toslineno   :: !Int            -- ^ line number of top of screen
     }
 
 
@@ -79,7 +81,7 @@ emptyWindow b (h,w) = do
     let win = Window {
                     key       = wu
                    ,bufkey    = (keyB b)
-                   ,mode      = []
+                   ,mode      = Nothing
                    ,origin    = (0,0)  -- TODO what about vnew etc. do we care?
                    ,height    = h-1    -- - 1 for the modeline
                    ,width     = w
@@ -89,31 +91,32 @@ emptyWindow b (h,w) = do
                    ,tospnt    = 0
                    ,toslineno = 1      -- start on line 1
               }
-    m <- updateModeLine win b
-    return win { mode = m }
+    return win
 
 --
 -- | Given a buffer, and some information update the modeline
--- ToDo replace this with a buffer
+-- There's some useful code in textinfo.window.c. Worth a read.
 --
-updateModeLine :: Buffer a => Window -> a -> IO String
+updateModeLine :: Buffer a => Window -> a -> IO (Maybe String)
 updateModeLine w' b = do
-    case nameB b             of { f ->
-    case lineno w'           of { ln ->
-    case 1 + snd (cursor w') of { col -> do
+    if mode w' == Nothing then return Nothing else do
+    let f    = nameB b
+        ln   = lineno w'
+        lns  = show ln
+        top  = toslineno w'
+        cols = show $ 1 + snd (cursor w')
+
     p <- if ln == 0 then return 0 else indexOfEol b
     s <- sizeB b
-    case getPercent p s     of { pct ->
-    case show ln            of { lns ->
-    case show col           of { cols ->
-    case flip replicate ' ' 
-                (16 - length cols - length pct)      of { spc' ->
+    let pct = if top == 1 then "Top" else getPercent p s
+
+    case flip replicate ' ' (16 - length cols - length pct) of { spc' ->
     case flip replicate ' ' (width w' - (3 + sum 
                 (map length [f,lns,cols,pct,spc']))) of { spaces ->
-    return $! "\"" ++ f ++ "\"" ++ spaces ++ lns ++ "," ++ cols ++ spc' ++ pct
-    }}}}}}}}
+    return $ Just $ "\"" ++ f ++ "\"" ++ spaces ++ 
+                    lns ++ "," ++ cols ++ spc' ++ pct
+    }}
 
-------------------------------------------------------------------------
 --
 -- | Give a point, and the file size, gives us a percent string
 --
@@ -156,12 +159,13 @@ moveToW np w b = do
     moveTo b np
     newln <- curLn b
     let gap = newln - toslineno w
+        off   = if mode w == Nothing then 0 else 1
     case () of {_ 
-        | gap < height w - 2 && newln >= toslineno w -- still on the screen
+        | gap < height w - off - 1 && newln >= toslineno w -- still on the screen
         -> resetW w b newln (newln - toslineno w)
 
         | otherwise                             -- dump on bottom line :(
-        -> resetW w b newln (min (newln-1) (height w - 2))
+        -> resetW w b newln (min (newln-1) (height w - off - 1 ))
     }
 
 -- | goto an arbitrary line in the file. center that line on the screen
@@ -194,7 +198,7 @@ resetW w b ln gap = do
     let w' = w {pnt = p, lineno = ln,
                 toslineno = topln, tospnt = i,
                 cursor = (gap,x)}
-    m <- updateModeLine w' b 
+    m <- updateModeLine w' b
     return w' { mode = m }
 
 ------------------------------------------------------------------------
@@ -343,9 +347,10 @@ incY w@(Window {height=h}) b = do
    let (y,x) = cursor w 
        curln = lineno w
        topln = toslineno w
-       w' = w { lineno = curln+1 }
+       w'    = w { lineno = curln+1 }
+       off   = if mode w == Nothing then 0 else 1
    t <- indexOfNLFrom b (tospnt w)
-   return $ if curln - topln < h - 2   
+   return $ if curln - topln < h - off - 1   
             then w' { cursor = (y+1,x) }                  -- just move cursor
             else w' { toslineno = topln + 1, tospnt = t } -- scroll window
 

@@ -61,7 +61,7 @@ import Yi.Curses.Curses hiding ( refresh, Window )
 import qualified Yi.Curses.Curses as Curses
 
 import Data.Char                    ( ord )
-import Data.Maybe                   ( isJust, fromJust )
+import Data.Maybe                   ( isNothing, isJust, fromJust )
 import Data.List
 import Data.IORef
 import Control.Monad                ( when )
@@ -141,10 +141,14 @@ redraw = withEditor $ \e ->
     -- work out origin of current window from index of that window in win list
     -- still grubby because we aren't using the /origin/ field of 'Window'
     -- _sigh_ assumes bottom window has rem
+    --
+    -- this is no good for line wrapping.
+    --
     if (not cmdfoc && isJust w) 
         then do (h,_)  <- screenSize
+                let w' = fromJust w
                 case i * (fst $! getY h (length ws)) of { o_y ->
-                    drawCursor (o_y,0) $ cursor $ fromJust w
+                    drawCursor (o_y,0) (cursor w')
                 }
         else return () -- Curses.wMove Curses.stdScr y x
 
@@ -159,6 +163,10 @@ redraw = withEditor $ \e ->
 -- This function does most of the allocs, and needs to be optimised to
 -- bits
 --
+-- Ok. Now, how do we deal with line wrapping? The lns we get from ptrs
+-- will have to be broken up, dropping some off the end. The cursor
+-- will have to be recalculated too.
+--
 drawWindow :: Editor 
            -> Maybe Window
            -> UIStyle
@@ -171,8 +179,9 @@ drawWindow e mwin sty win =
     case window sty of { wsty ->
     case eof    sty of { eofsty -> do
     case findBufferWith e u of { b -> do
+    let off = case m of Nothing -> 0 ; _ -> 1 -- correct for modeline
 
-    lns <- ptrToLnsB b t (h-1)      -- get @h@ cstrings starting a @t@
+    lns <- ptrToLnsB b t (h - off)
 
     -- draw each buffer line
     (y,_) <- getYX Curses.stdScr
@@ -186,13 +195,14 @@ drawWindow e mwin sty win =
         when (x /= 0) $ throwIfErr_ "waddch" $
             waddch Curses.stdScr (fromIntegral $ ord '\n') -- no nl at eof.  better flush
         (y',_) <- getYX Curses.stdScr
-        mapM_ (drawLine w) $ take (h - 1  - (y' - y)) $ repeat "~"
+        mapM_ (drawLine w) $ take (h - off - (y' - y)) $ repeat "~"
 
     -- draw modeline
-    fn <- return $! case mwin of
-            Just win' | win' == win -> modeline_focused 
-            _         -> modeline
-    withStyle (fn sty) $! drawLine w m
+    when (not $ isNothing m) $ do
+        fn <- return $! case mwin of
+                Just win' | win' == win -> modeline_focused 
+                _         -> modeline
+        withStyle (fn sty) $! drawLine w (fromJust m)
 
     }}}}
 

@@ -11,7 +11,7 @@ Build system:
         - add test for sigwinch
 
 v0.1:
-        - line wrapping
+        - line wrapping. windows need to be wrap or nowrap.
         - maybe: syn hl (needs parser, in bg thread)
         - do we print '\n' at eol. what happens and eof?
         - record if a file is modified
