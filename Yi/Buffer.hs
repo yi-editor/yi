@@ -25,6 +25,8 @@
 
 module Yi.Buffer where
 
+import {-# SOURCE #-} Yi.Regex
+
 import Data.IORef
 
 import Prelude      hiding      ( IO )
@@ -196,6 +198,9 @@ class Buffer a where
    
     -- | Return index of next string in buffer that matches argument
     searchB      :: a -> [Char] -> IO (Maybe Int)
+
+    -- | Return indicies of next string in buffer matched by regex
+    regexB       :: a -> [Char] -> IO (Maybe Int)
 
 -- ---------------------------------------------------------------------
 --
@@ -627,6 +632,16 @@ instance Buffer FBuffer where
         withMVar mv' $ \ref' -> do
             fb2 <- readIORef ref'
             searchFB fb1 fb2 (bufPnt fb1)
+
+    -- regexB       :: a -> [Char] -> IO (Maybe Int)
+    regexB (FBuffer _ _ mv) re = withMVar mv $ \ref -> do
+        fb     <- readIORef ref
+        c_re   <- regcomp re regExtended  -- extended by default
+        let p = bufPnt fb
+        mmatch <- regexec c_re fb p
+        case mmatch of
+            Nothing     -> return Nothing
+            Just (i,_)  -> return (Just (p + i))    -- offset from point
 
 ------------------------------------------------------------------------
 

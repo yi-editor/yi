@@ -1,4 +1,3 @@
-#include <string.h>
 
 #include "YiUtils.h"
 
@@ -39,3 +38,15 @@ unsigned long countlns(char *b1, int start, int end)
     return c;
 }
 
+/* return offset from start in buf that regex matches */
+int regexec_baoff(const regex_t *preg, char *buf, int start, int sz,
+                  size_t nmatch, regmatch_t pmatch[], int eflags)
+{
+    int i;
+    char *buf_ = buf + start;
+    buf[sz] = '\0';         /* just in case */
+
+    i = regexec(preg, buf_, nmatch, pmatch, eflags);
+
+    return i;
+}

@@ -292,16 +292,17 @@ getRegE = readEditor yreg
  
 -- ---------------------------------------------------------------------
 
--- | Searching. Search for string, and move point to that position.
+-- | Searching. Search for regex and move point to that position.
 searchE :: String -> Action
-searchE s = do
+searchE [] = nopE
+searchE re = do
     mp <- withWindow $ \w b -> do
             rightB b
-            mp <- searchB b s
+            mp <- regexB b re
             return (w,mp)
     case mp of
         Just p  -> withWindow_ $ moveToW p
-        Nothing -> msgE ("Pattern not found: "++s) -- TODO vi spec.
+        Nothing -> msgE ("Pattern not found: "++re) -- TODO vi spec.
 
 ------------------------------------------------------------------------
 
