@@ -285,12 +285,19 @@ msgClrE  :: IO ()
 msgClrE = do modifyEditor_ $ \e -> return e { cmdline = [] } 
              UI.drawCmdLine [] -- immediately draw
 
--- | File info, should return modeline info. should be a struct.
-bufInfoE :: IO (FilePath, Int, Int, String)
+-- | File info, size in chars, line no, col num, char num, percent 
+-- TODO more info, better data structure
+bufInfoE :: IO (FilePath, Int, Int, Int, Int, String)
 bufInfoE = withWindow $ \w b -> do
     s <- sizeB b
     p <- pointB b
-    return (w, (nameB b, s, lineno w, getPercent p s))
+    let x = snd $ cursor w
+    return (w, ( nameB b,
+                 s, 
+                 lineno w, 
+                 x+1, 
+                 p, 
+                 getPercent p s) )
 
 ------------------------------------------------------------------------
 -- | Window manipulation
