@@ -355,10 +355,10 @@ initCurses = do
     initScr
     b <- hasColors
     when b $ startColor >> useDefaultColors
-    cBreak True
+    raw True    -- raw mode please
     echo False
     nl False
-    intrFlush False
+    intrFlush True
     leaveOk True
     keypad stdScr True
     defineKey (#const KEY_UP) "\x1b[1;2A"
@@ -1185,6 +1185,7 @@ getCh :: IO (Maybe Char)
 getCh = do
     v <- getch
     case v of
+        -- we won't get ^C otherwise..
          (#const ERR) -> do getch {-discard-} ; return (Just $ '\^C') -- hack
          k            -> return (Just $ decodeKey k)
 

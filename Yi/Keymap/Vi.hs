@@ -80,7 +80,7 @@ do_cmd mi c
     = replicateM_ (fromMaybe 1 mi) upScreenE >> nextCmd
 
 -- \^C means nothing to us, usually
-    | c == '\^C' = nopE >> nextCmd
+--  | c == '\^C' = nopE >> nextCmd
 
 -- Scroll forward count lines.
     | c == '\^D' = not_impl
