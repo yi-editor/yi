@@ -34,7 +34,7 @@ import Control.Exception        ( assert )
 import Control.Concurrent.MVar
 
 import IO                       ( hFileSize, hClose, hFlush, IOMode(..) )
-import System.IO                ( openBinaryFile, hGetBuf, hPutBuf )
+import System.IO                ( openFile, hGetBuf, hPutBuf )
 
 import Foreign.C.String
 import Foreign.C.Types          ( CChar )
@@ -80,7 +80,7 @@ instance Show FBuffer where
 --
 hNewFBuffer :: FilePath -> IO FBuffer
 hNewFBuffer f = do
-    h    <- openBinaryFile f ReadMode
+    h    <- openFile f ReadMode
     size <- hFileSize h
     let size_i = fromIntegral size
         r_size = size_i + 2048
@@ -99,7 +99,7 @@ hNewFBuffer f = do
 --
 hPutFBuffer_ :: FBuffer_ -> FilePath -> IO ()
 hPutFBuffer_ (FBuffer_ bytearr _ end _) f = do
-    h <- openBinaryFile f WriteMode
+    h <- openFile f WriteMode
     hPutBuf h bytearr end
     hFlush h
     hClose h

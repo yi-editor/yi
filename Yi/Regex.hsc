@@ -52,30 +52,30 @@ type CRegex    = ()
 -- | A compiled regular expression
 newtype Regex = Regex (ForeignPtr CRegex)
 
--- -----------------------------------------------------------------------------
--- regcomp
-
 -- | Compiles a regular expression
-regcomp
-  :: String     -- ^ The regular expression to compile
-  -> Int        -- ^ Flags (summed together)
-  -> IO Regex   -- ^ Returns: the compiled regular expression
+regcomp :: String     -- ^ The regular expression to compile
+        -> Int        -- ^ Flags (summed together)
+        -> IO Regex   -- ^ Returns: the compiled regular expression
+
 regcomp pattern flags = do
-  regex_fptr <- mallocForeignPtrBytes (#const sizeof(regex_t))
-  r <- withCString pattern $ \cstr ->
-         withForeignPtr regex_fptr $ \p ->
-           c_regcomp p cstr (fromIntegral flags)
-  if (r == 0)
-     then do
-#ifndef __NHC__
+    regex_fptr <- mallocForeignPtrBytes (#const sizeof(regex_t))
+    r <- withCString pattern $ \cstr ->
+        withForeignPtr regex_fptr $ \p ->
+            c_regcomp p cstr (fromIntegral flags)
+    if (r == 0)
+        then do
+#if !defined(__NHC__) 
+# if __GLASGOW_HASKELL__ >= 602
              addForeignPtrFinalizer ptr_regfree regex_fptr
+# else
+             addForeignPtrFinalizer regex_fptr ptr_regfree  -- swapped
+# endif 
 #else
              addForeignPtrFinalizer regex_fptr (return ()) -- :: ForeignPtr a -> IO () -> IO ()
 #endif
              return (Regex regex_fptr)
-     else ioError $ userError $ "Error in pattern: " ++ pattern
+        else ioError $ userError $ "Error in pattern: " ++ pattern
 
--- -----------------------------------------------------------------------------
 -- regexec
 
 -- | Matches a regular expression against a buffer, returning the buffer
