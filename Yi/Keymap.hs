@@ -354,10 +354,14 @@ ex k = msgClrE >> loop [k]
 viSub :: [Char] -> Action
 viSub cs = do
     let (pat,rep') = break (== '/')  cs
-        rep        = case rep' of
-                        []     -> []
-                        (_:ds) -> takeWhile (/= '/') ds -- ignore flags for now
-    searchAndRepLocal pat rep
+        (rep,opts) = case rep' of
+                        []     -> ([],[])
+                        (_:ds) -> case break (== '/') ds of
+                                    (rep'', [])    -> (rep'', [])
+                                    (rep'', (_:fs)) -> (rep'',fs)
+    case opts of
+        ['g'] -> searchAndRepLocal pat rep  -- TODO
+        _     -> searchAndRepLocal pat rep
 
 -- ---------------------------------------------------------------------
 -- | Try and write a file in the manner of vi\/vim
