@@ -259,7 +259,7 @@ rebootE :: Action
 rebootE = do
     fn <- readEditor reboot
     Editor.shutdown
-    UI.end
+--  UI.end
     fn
 
 -- | Recompile and reload the user's config files
