@@ -27,11 +27,6 @@ module Yi.Editor where
 
 import Yi.Buffer
 
--- recursive module stuff
-import {-# SOURCE #-} qualified Yi.Config as Config ( settings )
-import {-# SOURCE #-} qualified Yi.Keymap as Keymap ( keymap )
--- import Yi.Keymap as Keymap ( keymap )
-
 import Data.List                ( elemIndex )
 import Data.FiniteMap
 import Data.IORef
@@ -51,7 +46,7 @@ import System.IO.Unsafe         ( unsafePerformIO )
 data Buffer a => GenEditor a = Editor {
         buffers      :: FiniteMap Unique a -- ^ multiple buffers
        ,curkey       :: Unique             -- ^ one buffer has focus
-       ,editSettings :: Config             -- ^ user settings
+       ,curkeymap    :: (Char -> IO())     -- ^ user-configurable keymap
    }
 
 --
@@ -80,7 +75,7 @@ newEmptyEditor :: Editor
 newEmptyEditor = Editor {
         buffers      = emptyFM,
         curkey       = error "Editor: no buffer in focus",
-        editSettings = Config.settings   -- static user settings
+        curkeymap    = error "Editor: no key map set"
     }
 
 -- 
@@ -192,19 +187,19 @@ setBuffer b = modifyEditor_ $ \(e :: Editor) -> return $ e {curkey = keyB b}
 -- | Rotate focus to the next buffer
 --
 nextBuffer :: IO ()
-nextBuffer = shiftFocus (\i -> i+1)
+nextBuffer = shiftFocus (+1)
 
 --
 -- | Rotate focus to the previous buffer
 --
 prevBuffer :: IO ()
-prevBuffer = shiftFocus (\i -> i-1)
+prevBuffer = shiftFocus (subtract 1)
 
 --
 -- | Shift focus to the nth buffer, modulo the number of buffers
 --
 bufferAt :: Int -> IO ()
-bufferAt n = shiftFocus (\_ -> n)
+bufferAt n = shiftFocus (const n)
 
 --
 -- | Set the new current buffer using a function applied to the old
@@ -223,24 +218,26 @@ shiftFocus f = modifyEditor_ $ \(e :: Editor) -> do
                       in return $ e { curkey = keyB b }
 
 -- ---------------------------------------------------------------------
--- | set the user-defineable key map
+-- | Given a keymap function, set the user-defineable key map to that function
 --
 setUserSettings :: Config -> IO ()
-setUserSettings cs = modifyEditor_ $ \(e :: Editor) -> return $ e { editSettings = cs }
+setUserSettings (Config km) = 
+    modifyEditor_ $ \(e :: Editor) -> return $ e { curkeymap = km }
 
 --
 -- | retrieve the user-defineable key map
 --
-getKeyMap :: IO (Char -> IO ())
--- getKeyMap = readEditor $ \(e :: Editor) -> keyMap (editSettings e)
-getKeyMap = return $ Keymap.keymap
+getKeyBinds :: IO (Char -> IO ())
+getKeyBinds = readEditor curkeymap
 
-------------------------------------------------------------------------
+-- ---------------------------------------------------------------------
 --
--- | All the user-defineable settings
+-- | All the user-defineable settings. This is the type of the data in
+-- ~/.yi/Config.hs. All user defineable values will eventually be in
+-- this structure. A value of this type is passed from Boot.hs to Yi.hs
+-- in the dynamically loaded edition of yi.
 --
 data Config = Config {
-            keyMap       :: Char -> IO ()        -- ^ bind keys to editor actions
-        -- ,styles       :: [StyleSpec]
+            keymap :: Char -> IO ()        -- ^ bind keys to editor actions
     }
 

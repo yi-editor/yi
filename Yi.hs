@@ -22,7 +22,7 @@ module Yi (static_main, dynamic_main) where
 import Yi.Locale                        ( setupLocale )
 import Yi.Version                       ( package, version )
 import qualified Yi.Editor  as Editor
-import qualified Yi.Config  as Config
+import qualified Yi.Keymap  as Keymap
 import qualified Yi.Core    as Core 
 
 import Control.Exception        ( bracket_ )
@@ -80,7 +80,7 @@ do_args args =
         (_, _, errs) -> error (concat errs)
 
 -- ---------------------------------------------------------------------
--- Set up the signal handlers
+-- | Set up the signal handlers
 
 --
 -- Notes on setStoppedChildFlag:
@@ -103,11 +103,12 @@ releaseSignals = do
 -- ---------------------------------------------------------------------
 -- | The "g_settings" var stores the user-configurable information. It is
 -- initialised with the default settings, so it works even if the user
--- doesnt provide a ~/.yi/Config.hs, or stuffs up Config.hs in some
--- way.
+-- doesnt provide a ~/.yi/x.hs, or stuffs up their config scripts in
+-- some way.
 --
 g_settings :: IORef Editor.Config
-g_settings = unsafePerformIO $ newIORef (Config.settings)
+g_settings = unsafePerformIO $ newIORef 
+                    (Editor.Config { Editor.keymap = Keymap.keymap } )
 {-# NOINLINE g_settings #-}
 
 -- ---------------------------------------------------------------------

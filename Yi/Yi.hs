@@ -23,22 +23,16 @@
 --
 -- You should therefore: 
 --      import Yi.Yi
--- in your ~/.yi/Config.hs
+-- in your ~/.yi/ scripts
 --
 
 module Yi.Yi (
         
-        module Yi.Editor,
-        module Yi.Config,
-        module Yi.Core,
-        module Yi.Version,
+        module Yi.Core
  
    ) where
 
-import Yi.Editor
-import Yi.Config
 import Yi.Core
-import Yi.Version
 
 -- and anything else that might be useful to write code to
 

@@ -109,6 +109,7 @@ type Action = IO ()
 -- ---------------------------------------------------------------------
 -- | Start up the editor, setting any state with the user preferences
 -- and file names passed in, and turning on the UI
+-- TODO should be in keybind
 --
 startE :: Editor.Config -> Maybe [FilePath] -> IO ()
 startE confs mfs = do
@@ -144,13 +145,13 @@ getcE = UI.getKey UI.refresh
 
 eventLoop :: IO ()
 eventLoop = do
-    f <- Editor.getKeyMap
-    let loop = do 
+    km <- Editor.getKeyBinds
+    let mainloop = do 
             c <- getcE
-            Control.Exception.catchJust (ioErrors) (f c) (\e ->  msgE (show e))
+            Control.Exception.catchJust (ioErrors) (km c) (\e -> msgE (show e))
             UI.refresh
-            loop
-    loop
+            mainloop
+    mainloop
 
 -- ---------------------------------------------------------------------
 

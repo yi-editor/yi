@@ -1,3 +1,0 @@
-module Yi.Keymap where
-
-keymap :: GHC.Base.Char -> GHC.IOBase.IO ()

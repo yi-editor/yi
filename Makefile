@@ -46,9 +46,6 @@ LIB_IFACE   =   Yi.$(way_)hi
 HADDOCK_SRCS+=  $(FRONTEND_HS_SRC)
 EXTRA_CLEANS+=	$(LIB_FRONTEND) $(LIB_IFACE)
 
-# filter out recursive module
-NO_DOCS+=       Yi/Config.hs
-
 #
 # read in suffix rules
 #

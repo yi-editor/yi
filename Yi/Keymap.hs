@@ -54,10 +54,11 @@ beginCommand = writeIORef mode C
 beginEx      = writeIORef mode E
 
 -- ---------------------------------------------------------------------
--- This function must be implemented by any user keybinding:
+--
+-- This function must be implemented by any user keybinding
 --
 keymap :: Char -> Action
-keymap c = do m <- readIORef mode ; key m c 
+keymap c = readIORef mode >>= flip key c 
 
 -- ---------------------------------------------------------------------
 -- | Actual lexer
