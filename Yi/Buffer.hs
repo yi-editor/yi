@@ -33,8 +33,8 @@ import Foreign.C.String         ( CStringLen )
 -- mutable buffers, which maintain a current /point/.
 --
 
--- type Point = Word64
--- type Size  = Word64
+type Point = Int
+type Size  = Int
 
 class Buffer a where
 

@@ -396,7 +396,7 @@ cmd_op =((op_char +> digit `star` (move_chr >|< (move2chrs +> anyButEsc))) >|<
         -- | operator (i.e. movement-parameterised) actions
         opCmdFM :: FiniteMap Char (Int -> [Char] -> Action)
         opCmdFM = listToFM $ 
-            [('d', \i m -> replicateM_ i $ do
+            [('d', \i m -> replicateM_ i $ do -- hence d100j is much faster than 100dj
                               (p,q) <- withPointMove m
                               deleteNE (max 0 (abs (q - p) + 1))  -- inclusive
              ),

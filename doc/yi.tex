@@ -54,12 +54,13 @@ statistics.
 
 Coding guidelines:
 
-Please make sure you code compiles with -Wall, with no warnings. Use
-Haddock markup to document any functions that are exported -- user's may
-want to use this code at some point. We use cpp to pass platform
-specific options into files. Please provide explicit import lists where
-reasonable, and keep imports in some sorted order.  Please don't
-introduce posix dependencies unless you absolutely have to.
+Please make sure you code compiles with -Wall -Werror -fno-glasgow-exts
+(we're trying to support nhc98). Use Haddock markup to document any
+functions that are exported -- user's may want to use this code at some
+point. We use cpp to pass platform specific options into files. Please
+provide explicit import lists where reasonable, and keep imports in some
+sorted order.  Please don't introduce posix dependencies unless you
+absolutely have to.
 
 You can actually run this stuff in ghci! To just run yi-core (the gui
 etc, without worrying about booting the thing):
@@ -130,6 +131,12 @@ For example, to modify \code{\$(TOP)/Yi.hs} in ghci, you would:
         *Yi> :reload
         Compiling Yi           ( Yi.hs, interpreted )
 \end{verbatim}
+
+NHC
+
+To use nhc98 (some more porting required):
+    ./configure --with-hc=nhc98
+    gmake
 
 \begin{thebibliography}[50]
 \bibitem Emacs, The extensible, customizable ... Stallman.

@@ -13,6 +13,7 @@ Build system:
 v0.1:
         - line wrapping
         - maybe: syn hl (needs parser, in bg thread)
+        - do we print '\n' at eol. what happens and eof?
 
 other stuff:
         - bind keymap lexers to windows

@@ -1,4 +1,4 @@
-{-# OPTIONS -fffi -#include YiUtils.h #-}
+{-# OPTIONS -fffi #-}
 -- 
 -- Copyright (C) 2004 Don Stewart - http://www.cse.unsw.edu.au/~dons
 -- 
@@ -37,8 +37,10 @@ import System.IO                ( openBinaryFile, hGetBuf, hPutBuf )
 
 import Foreign.C.String
 import Foreign.C.Types          ( CChar )
+import Foreign.ForeignPtr
 import Foreign.Marshal.Alloc    ( free )
 import Foreign.Marshal.Array
+import Foreign.Marshal.Utils
 import Foreign.Ptr              ( Ptr, nullPtr, minusPtr )
 import Foreign.Storable         ( poke )
 
@@ -155,10 +157,10 @@ shiftChars ptr dst_off src_off len = do
 foreign import ccall unsafe "string.h strstr" 
     cstrstr :: Ptr CChar -> Ptr CChar -> IO (Ptr CChar)
 
-foreign import ccall unsafe "countlns"
+foreign import ccall unsafe "YiUtils.h countlns"
    ccountlns :: Ptr CChar -> Int -> Int -> IO Int
 
-foreign import ccall unsafe "gotoln"
+foreign import ccall unsafe "YiUtils.h gotoln"
    cgotoln :: Ptr CChar -> Int -> Int -> Int -> IO Int
 
 ------------------------------------------------------------------------
@@ -179,6 +181,25 @@ insertN' (FBuffer _ _ _ mv) cs cs_len =
         writeChars ptr cs pnt
         return (FBuffer_ ptr pnt nend mx)
 {-# INLINE insertN' #-}
+
+-- Same as above, except we use copyBytes, instead of writeChars
+-- Refactor, please
+insertFromCStrN' :: FBuffer -> (Ptr CChar) -> Int -> IO ()
+insertFromCStrN'  _ _ 0 = return ()
+insertFromCStrN' (FBuffer _ _ _ mv) cptr cs_len =
+    modifyMVar_ mv $ \fb@(FBuffer_ _ _ old_end old_max) -> do
+        let need_len = old_end + cs_len
+        (FBuffer_ ptr pnt end mx) <- 
+            if need_len >= old_max then resizeFB_ fb (need_len + 2048) 
+                                   else return fb
+        let len = max 0 (min (end-pnt) end) -- number of chars to shift
+            dst = pnt + cs_len      -- point to start
+            nend = dst + len        -- new length afterwards
+        shiftChars ptr dst pnt len
+        copyBytes (ptr `advancePtr` pnt) cptr cs_len
+        return (FBuffer_ ptr pnt nend mx)
+
+------------------------------------------------------------------------
 
 deleteN' :: FBuffer -> Int -> IO ()
 deleteN' _ 0 = return ()
@@ -287,9 +308,9 @@ instance Buffer FBuffer where
     writeB (FBuffer _ _ uv mv) c = 
         withMVar mv $ \(FBuffer_ ptr off _ _) -> do
             modifyMVar_ uv $ \u -> do
-                [x] <- readChars ptr 1 off 
-                let u'  = addUR u  (Insert off x)   -- maybe a single action?
-                    u'' = addUR u' (Delete off)
+                ins <- mkInsert ptr off 1
+                let u'  = addUR u  ins
+                    u'' = addUR u' (mkDelete off 1)
                 return u''
             writeChars ptr [c] off
     {-# INLINE writeB #-}
@@ -304,11 +325,8 @@ instance Buffer FBuffer where
     insertN fb@(FBuffer _ _ uv mv) cs = do
         (FBuffer_ _ pnt _ _) <- readMVar mv 
         let cs_len = length cs
-        modifyMVar_ uv $ \ur ->     -- first update undo list
-            let loop 0 u = u
-                loop n u = let u' = addUR u (Delete pnt) in loop (n-1) u'
-            in return $ loop cs_len ur
-        insertN' fb cs cs_len       -- do the real insert
+        modifyMVar_ uv $ \ur -> return $ addUR ur (mkDelete pnt cs_len)
+        insertN' fb cs cs_len
 
     ------------------------------------------------------------------------
     -- deleteB    :: a -> IO ()
@@ -319,12 +337,9 @@ instance Buffer FBuffer where
     deleteN fb@(FBuffer _ _ uv mv) n = do
         -- quick! before we delete the chars, copy them to the redo buffer
         (FBuffer_ ptr pnt end _) <- readMVar mv 
-        modifyMVar_ uv $ \ur ->
-            let loop _ 0 u = return u
-                loop p i u = do [x] <- readChars ptr 1 p    -- n.b
-                                let u' = addUR u (Insert pnt x)
-                                loop (p+1) (i-1) u'
-            in do loop pnt (min n (end-pnt)) ur
+        modifyMVar_ uv $ \ur -> do
+            ins <- mkInsert ptr pnt (max 0 (min n (end-pnt))) -- something wrong.
+            return $ addUR ur ins
         deleteN' fb n   -- now, really delete
 
     ------------------------------------------------------------------------
@@ -514,25 +529,33 @@ inBounds i end | i <= 0    = 0
 -- ---------------------------------------------------------------------
 -- General undo/redo support. Based on proposal by sjw.
 --
--- Big deletes will be a problem at the moment.
---
-
---
 -- | A URList consists of an undo and a redo list.
 --
 data URList = URList ![URAction] ![URAction]
---  deriving Show
 
 --
--- Mutation actions (from the undo or redo list) are either inserts or
--- deletions
+-- Mutation actions (from the undo or redo list) 
+-- They're either inserts or deletions
 --
-data URAction = Insert !Int !Char
-              | Delete !Int
---  deriving Show
+data URAction = Insert !Point !Size !(ForeignPtr CChar)
+              | Delete !Point !Size
 
 -- ---------------------------------------------------------------------
--- | Create a new 'URList'.
+-- Create an insert action
+--
+mkInsert :: (Ptr CChar) -> Point -> Size -> IO URAction
+mkInsert ptr off n = do
+    fptr <- mallocForeignPtrBytes n
+    withForeignPtr fptr $ \fp -> copyBytes fp (ptr `advancePtr` off) n
+    return (Insert off n fptr)
+
+-- Create a delete action
+--
+mkDelete :: Point -> Size -> URAction
+mkDelete = Delete
+
+--
+-- | A new empty 'URList'.
 emptyUR :: URList
 emptyUR = URList [] []
 
@@ -540,6 +563,7 @@ emptyUR = URList [] []
 -- | Add an action to the undo list. The first argument is either a
 -- @Left@ buffer point and 'Char' to insert, or @Right@, a point from
 -- which to delete a character.
+--
 addUR :: URList -> URAction -> URList
 addUR (URList us rs) u = URList (u:us) rs
 
@@ -550,8 +574,7 @@ addUR (URList us rs) u = URList (u:us) rs
 undoUR :: FBuffer -> URList -> IO URList
 undoUR _ u@(URList [] _) = return u
 undoUR b (URList (u:us) rs) = do
-    let f = getAction u
-    r <- f b
+    r <- (getAction u) b
     return (URList us (r:rs))
 
 --
@@ -560,25 +583,28 @@ undoUR b (URList (u:us) rs) = do
 --
 redoUR :: FBuffer -> URList -> IO URList
 redoUR _ u@(URList _ []) = return u
-redoUR buf (URList us (r:rs)) = do
-    u <- (getAction r) buf
+redoUR b (URList us (r:rs)) = do
+    u <- (getAction r) b
     return (URList (u:us) rs)
 
 -- ---------------------------------------------------------------------
--- INTERNAL:
 --
 -- Given a URAction, return the buffer action it represents, and the 
 -- URAction that reverses it.
 --
 getAction :: URAction -> (FBuffer -> IO URAction) 
-getAction (Delete p) b = do 
+getAction (Delete p n) b@(FBuffer _ _ _ mv) = do 
+    (FBuffer_ ptr _ _ _) <- readMVar mv
     moveTo b p
-    c <- readB b
-    deleteN' b 1       -- need to be actions that don't in turn invoke the url
-    return (Insert p c)
+    ins <- mkInsert ptr p n
+    deleteN' b n       -- need to be actions that don't in turn invoke the url
+    return ins
 
-getAction (Insert p c) b = do
+--
+-- Still seem to get some corruption with \0 getting inserted
+--
+getAction (Insert p n fptr) b = do
     moveTo b p
-    insertN' b [c] 1     -- hmm. will modify the ur list
-    return (Delete p)
+    withForeignPtr fptr $ \ptr -> insertFromCStrN' b ptr n
+    return $ mkDelete p n
 
