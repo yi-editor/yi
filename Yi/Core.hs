@@ -290,14 +290,14 @@ middleE = (withWindow $ \w _ -> return (w, (height w -1-1) `div` 2)) >>= downFro
 
 -- ---------------------------------------------------------------------
 
--- move the point left (backwards) in the buffer. may need to scroll
+-- | move the point left (backwards) in the buffer. may need to scroll
 leftE :: Action
 leftE = withWindow_ $ \w b -> do
             e <- atSol b
             if not e then moveXorSolW 1 w b
                      else moveUpW w b >>= flip moveToEolW b
 
--- move the point right (forwards) in the buffer. may need to scroll
+-- | move the point right (forwards) in the buffer. may need to scroll
 rightE :: Action
 rightE = withWindow_ $ \w b -> do
             e <- atEol b
