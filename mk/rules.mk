@@ -174,10 +174,11 @@ EXTRA_CLEANS+= $(PKG).conf.install $(PKG).conf $(PKG).conf.in $(PKG).conf.instal
 #
 # Building the haddock docs
 #
+.PHONY: docs html
+docs :: html
+
 ifneq "$(HADDOCK)" ""
 
-.PHONY: doc html
-docs :: html
 html : .html-stamp1 .html-stamp2
 
 HTML_DIR      = html
@@ -209,6 +210,9 @@ CLEAN_FILES += $(HS_PPS) $(EXTRA_HS_PPS)
 distclean ::
 	$(RM) -rf $(HTML_DIR)
 
+else
+# else no haddock, html is empty.
+html :
 endif
 
 #
