@@ -334,7 +334,11 @@ insertE c = do
 
 -- | Delete character under cursor
 deleteE :: Action
-deleteE = withWindow_ deleteW
+deleteE = withWindow_ $ \w b -> deleteNW w b 1
+
+-- | Delete @n@ characters from under the cursor
+deleteNE :: Int -> Action
+deleteNE i = withWindow_ $ \w b -> deleteNW w b i
 
 -- | Kill to end of line
 killE :: Action

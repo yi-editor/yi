@@ -30,6 +30,7 @@ import Yi.Buffer
 
 import Data.Char                ( isLatin1 )
 import Data.Unique              ( Unique, newUnique )
+import Control.Monad            ( when )
 
 --
 -- | A window onto a buffer. 
@@ -199,25 +200,6 @@ leftOrSolW w b = moveXorSol b 1     >> update w b
 rightOrSolW :: Buffer a => Window -> a -> IO Window
 rightOrSolW w b = moveXorEol b 1    >> update w b
 
-{-
---
--- | Move the cursor left, or to the end of the previous line 
---
-leftW :: Buffer a => Window -> a -> IO Window
-leftW w b  = do
-    leftB b
-    if atEol b      -- we moved up one line
-        then
-        else
-
---
--- | Move the cursor right, or to the start of the next line 
---
-rightW :: Buffer a => Window -> a -> IO Window
-rightW w b = rightB b >>
--}
-
-
 -- ---------------------------------------------------------------------
 -- X-axis movement
 
@@ -260,13 +242,25 @@ insertW c w b = do
 --
 -- In vi, you can't delete past the sol, here however, you can keep
 -- deleteing till you have an empty file. 
+--
+-- TODO think about end of file situation.
 -- 
-deleteW :: Buffer a => Window -> a -> IO Window
-deleteW w b = do 
-    eof <- atEof b
-    sol <- atSol b      -- about to delete \n at eof
+deleteNW :: Buffer a => Window -> a -> Int -> IO Window
+deleteNW w b i = do 
+
+    -- delete up to eof chars
+    when (i > 1) $ do
+        rightB b 
+        deleteN b (i-1)
+        eof <- atEof b
+        when (not eof) $ leftB b
+
+    eof <- atEof b  -- are we going to del eof
+    sol <- atSol b  -- and we're not on the same line?
+
     deleteB b
-    if eof && sol
+
+    if eof && sol   -- if we were at eof, and sol, then move up.
         then moveToEolW w b >>= flip decY b  -- todo should handle 0
         else update w b
 

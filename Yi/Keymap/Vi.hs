@@ -209,7 +209,8 @@ cmd_eval = ( cmdc >|<
             "n"   -> searchE Nothing
             "p"   -> do s <- getRegE
                         eolE >> insertE '\n' >> mapM_ insertE s >> solE
-            "x"   -> replicateM_ i deleteE
+   --       "x"   -> replicateM_ i deleteE
+            "x"   -> deleteNE i
             "ZZ"  -> viWrite >> quitE
             "dd"  -> solE >> killE >> deleteE
             ">>"  -> replicateM_ i $ solE >> mapM_ insertE "    " 
