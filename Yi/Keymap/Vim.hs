@@ -62,22 +62,6 @@ data VimState = St {
    ,ins :: VimMode           -- (maybe augmented) ins mode lexer
    }
 
--- ---------------------------------------------------------------------
--- | Undo/redo
---
--- Following sjw's undo/redo model, the undo and redo lists consist of
--- actions that when perform return their inverse.
--- 
--- so deleteAct takes a point, performs a deletion, then returns an
--- insertAct that reverses this action, similar for insert. What about
--- 'r'? This is conceptually a delete, and an insert, which needs to be
--- paired. 
---
--- Thus the undo/redo list needs to contain IO actions joined with >>.
--- rx ==> (deleteA p >>= \c -> insertA p 'x') >> return (deleteA p >> insertA p c)
---
- 
-
 ------------------------------------------------------------------------
 --
 -- | Top level. Lazily consume all the input, generating a list of

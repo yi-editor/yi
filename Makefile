@@ -50,7 +50,8 @@ LIB_IFACE   =   Yi.$(way_)hi
 HADDOCK_SRCS+=  $(FRONTEND_HS_SRC)
 EXTRA_CLEANS+=	$(LIB_FRONTEND) $(LIB_IFACE)
 
-NO_DOCS=	Yi/Regex.hs
+# Must filter out circular dependencies
+NO_DOCS=	Yi/Undo.hs
 
 #
 # read in suffix rules

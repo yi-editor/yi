@@ -22,10 +22,16 @@
 -- cursor movement and editing commands
 --
 
-module Yi.Buffer where
+module Yi.Buffer (
+        Buffer(..),
+        Point, Size,
+    ) where
 
+import {-# SOURCE #-} Yi.Undo   ( URAction )
 import Yi.Regex                 ( Regex  )
+
 import Data.Unique              ( Unique )
+
 import Foreign.C.String         ( CStringLen )
 
 --
@@ -136,6 +142,10 @@ class Buffer a where
 
     -- | Redo the last action we that was undone.
     redo        :: a -> IO ()
+
+    -- | Required implementation of how to invert an action, for undo
+    -- generates circular dependency between Undo.hs and Buffer.hs
+    getActionB  :: Buffer a => URAction -> (a -> IO URAction) 
 
     ------------------------------------------------------------------------
     -- Line based editing
