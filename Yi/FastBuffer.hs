@@ -22,7 +22,7 @@
 -- | A fast 'Buffer' implementation
 --
 
-module Yi.FastBuffer where
+module Yi.FastBuffer (FBuffer(..)) where
 
 import Yi.Buffer
 import Yi.Regex
@@ -54,8 +54,8 @@ import Foreign.Storable         ( poke )
 --
 
 data FBuffer = 
-        FBuffer FilePath        -- immutable name
-                Unique          -- immutable unique key
+        FBuffer !FilePath        -- immutable name
+                !Unique          -- immutable unique key
                 !(MVar FBuffer_)
 
 data FBuffer_ = 
@@ -127,12 +127,14 @@ stringToFBuffer nm s = do
 readChars :: Ptr CChar -> Int -> Int -> IO [Char]
 readChars p n i = do s <- peekArray n (p `advancePtr` i)
                      return $ map castCCharToChar s
+{-# INLINE readChars #-}
 
 --
 -- | Write string into buffer.
 --
 writeChars :: Ptr CChar -> [Char] -> Int -> IO ()
 writeChars p cs i = pokeArray (p `advancePtr` i) (map castCharToCChar cs)
+{-# INLINE writeChars #-}
 
 --
 -- | Copy chars around the buffer.
@@ -143,6 +145,7 @@ shiftChars ptr dst_off src_off len = do
         src = ptr `advancePtr` src_off
     moveArray dst src len
     poke (dst `advancePtr` len) (castCharToCChar '\0')
+{-# INLINE shiftChars #-}
 
 ------------------------------------------------------------------------
 
@@ -193,6 +196,7 @@ instance Buffer FBuffer where
     pointB (FBuffer _ _ mv) = do
         (FBuffer_ _ p e mx) <- readMVar mv
         assert ((p >= 0 && (p < e || e == 0)) && e <= mx) $ return p
+    {-# INLINE pointB #-}
 
     ------------------------------------------------------------------------
 
@@ -227,11 +231,13 @@ instance Buffer FBuffer where
     moveTo (FBuffer _ _ mv) i = 
         modifyMVar_ mv $ \(FBuffer_ ptr _ end mx) ->
             return $ FBuffer_ ptr (inBounds i end) end mx
+    {-# INLINE moveTo #-}
 
     -- readB      :: a -> IO Char
     readB (FBuffer _ _ mv) = 
         withMVar mv $ \(FBuffer_ ptr off _ _) ->
             readChars ptr 1 off >>= \[c] -> return c
+    {-# INLINE readB #-}
 
     -- readAtB :: a -> Int -> IO Char
     readAtB (FBuffer _ _ mv) off = 
@@ -242,6 +248,7 @@ instance Buffer FBuffer where
     writeB (FBuffer _ _ mv) c = 
         withMVar mv $ \(FBuffer_ ptr off _ _) ->
             writeChars ptr [c] off
+    {-# INLINE writeB #-}
 
     -- writeAtB   :: a -> Int -> Char -> IO ()
     writeAtB (FBuffer _ _ mv) off c = 
@@ -272,6 +279,7 @@ instance Buffer FBuffer where
             shiftChars ptr dst pnt len
             writeChars ptr cs pnt
             return (FBuffer_ ptr pnt nend mx)
+    {-# INLINE insertN #-}
 
     -- deleteB    :: a -> IO ()
     deleteB a = deleteN a 1
@@ -288,6 +296,7 @@ instance Buffer FBuffer where
                      | pnt == end' = max 0 (pnt - 1)    -- shift back if at eof
                      | otherwise   = pnt
             return (FBuffer_ ptr pnt' end' mx)
+    {-# INLINE deleteN #-}
 
     ------------------------------------------------------------------------
 
@@ -296,6 +305,7 @@ instance Buffer FBuffer where
                  if p == 0 then return True
                            else do c <- readAtB a (p-1)
                                    return (c == '\n')
+    {-# INLINE atSol #-}
 
     -- atEol       :: a -> IO Bool -- or at end of file
     atEol a = do p <- pointB a
@@ -304,20 +314,24 @@ instance Buffer FBuffer where
                         then return True
                         else do c <- readB a
                                 return (c == '\n')
+    {-# INLINE atEol #-}
 
     -- atEof       :: a -> IO Bool
     atEof a = do p <- pointB a
                  e <- sizeB a
                  return (p == max 0 (e-1))
+    {-# INLINE atEof #-}
 
     -- atSof       :: a -> IO Bool
     atSof a = do p <- pointB a
                  return (p == 0)
+    {-# INLINE atSof #-}
 
     ------------------------------------------------------------------------ 
 
     -- moveToSol   :: a -> IO ()
     moveToSol a = sizeB a >>= moveXorSol a
+    {-# INLINE moveToSol #-}
 
     -- offsetFromSol :: a -> IO Int
     offsetFromSol a = do
@@ -326,6 +340,7 @@ instance Buffer FBuffer where
         j <- pointB a
         moveTo a i
         return (i - j)
+    {-# INLINE offsetFromSol #-}
 
     -- indexOfSol   :: a -> IO Int
     indexOfSol a = do
@@ -334,6 +349,7 @@ instance Buffer FBuffer where
         j <- pointB a
         moveTo a i
         return j
+    {-# INLINE indexOfSol #-}
 
     -- indexOfEol   :: a -> IO Int
     indexOfEol a = do
@@ -342,9 +358,11 @@ instance Buffer FBuffer where
         j <- pointB a
         moveTo a i
         return j
+    {-# INLINE indexOfEol #-}
 
     -- moveToEol   :: a -> IO ()
     moveToEol a = sizeB a >>= moveXorEol a
+    {-# INLINE moveToEol #-}
 
     -- moveXorSol  :: a -> Int -> IO ()
     moveXorSol a x
@@ -355,6 +373,7 @@ instance Buffer FBuffer where
                             if sol then return () 
                                    else leftB a >> loop (i-1)
             loop x
+    {-# INLINE moveXorSol #-}
 
     -- moveXorEol  :: a -> Int -> IO ()
     moveXorEol a x
@@ -365,6 +384,7 @@ instance Buffer FBuffer where
                             if eol then return () 
                                    else rightB a >> loop (i-1)
             loop x
+    {-# INLINE moveXorEol #-}
 
     ------------------------------------------------------------------------
 
@@ -377,6 +397,7 @@ instance Buffer FBuffer where
         let r = fromEnum $ c /= '\n' -- correct for eof
         moveTo b p
         deleteN b (max 0 (q-p+r)) 
+    {-# INLINE deleteToEol #-}
 
     -- ---------------------------------------------------------------------
     -- Line based movement and friends
@@ -388,6 +409,7 @@ instance Buffer FBuffer where
         leftB b
         moveToSol b
         moveXorEol b x
+    {-# INLINE lineUp #-}
 
     -- lineDown :: a -> IO ()
     lineDown b = do
@@ -395,6 +417,7 @@ instance Buffer FBuffer where
         moveToEol b
         rightB b
         moveXorEol b x  
+    {-# INLINE lineDown #-}
 
     ------------------------------------------------------------------------
 
@@ -402,6 +425,7 @@ instance Buffer FBuffer where
     -- curLn :: a -> IO Int
     curLn (FBuffer _ _ mv) = withMVar mv $ \(FBuffer_ ptr i _ _) -> 
         ccountlns ptr 0 i
+    {-# INLINE curLn #-}
 
     -- gotoLn :: a -> Int -> IO Int
     -- some supicious stuff in here..
@@ -412,6 +436,7 @@ instance Buffer FBuffer where
             n' <- if np > e - 1 then return . subtract 1 =<< ccountlns ptr 0 np
                                 else return n
             return (fb, max 1 n')  -- and deal with for n < 1
+    {-# INLINE gotoLn #-}
 
     -- gotoLnFrom :: a -> Int -> IO Int
     gotoLnFrom (FBuffer _ _ mv) n = 
@@ -420,6 +445,7 @@ instance Buffer FBuffer where
             let fb = FBuffer_ ptr (p + off) e mx
             ln <- return . subtract 1 =<< ccountlns ptr 0 (p+off) -- hmm :(
             return (fb, max 1 ln)
+    {-# INLINE gotoLnFrom #-}
 
     -- ---------------------------------------------------------------------
 
@@ -446,4 +472,5 @@ inBounds :: Int -> Int -> Int
 inBounds i end | i <= 0    = 0
                | i >= end  = max 0 (end - 1)
                | otherwise = i
+{-# INLINE inBounds #-}
     

@@ -98,6 +98,12 @@ ins_mode :: VimMode
 ins_mode = ins_char >||< ins2cmd
 
 --
+-- | replace mode is like insert, except it performs writes, not inserts
+--
+rep_mode :: VimMode
+rep_mode = rep_char >||< rep2cmd
+
+--
 -- | ex mode is either accumulating input or, on \n, executing the command
 --
 ex_mode :: VimMode
@@ -197,7 +203,6 @@ cmd_eval = ( cmdc >|<
             "M"   -> middleE
             "P"   -> undef
             "Q"   -> undef
-            "R"   -> undef
             "T"   -> undef
             "U"   -> undef
             "W"   -> undef
@@ -213,6 +218,7 @@ cmd_eval = ( cmdc >|<
    --       "x"   -> replicateM_ i deleteE
             "x"   -> deleteNE i
             "ZZ"  -> viWrite >> quitE
+
             "dd"  -> solE >> killE >> deleteE
 
             -- todo: fix the unnec. refreshes that happen
@@ -244,6 +250,16 @@ cmd_eval = ( cmdc >|<
             where undef = not_implemented (head lexeme)
 
 --
+-- An alternative lexer is needed for text-change characters that take
+-- movement commands as arguments. Like so:
+--      d2w
+--
+-- op-semantics: p <- point ; move cursor 2 words. q <- point; deleteN p q
+--
+-- remember. 'd' could have arguments.
+--
+
+--
 -- | Switch to another vim mode.
 --
 -- These commands are meta actions, as they transfer control to another
@@ -255,7 +271,7 @@ cmd2other = modeSwitchChar
         let beginIns a = (with a, st, Just (ins st))
         in case c of
             ':' -> (with (msgE ":"), st{acc=[':']}, Just ex_mode)
-
+            'R' -> (Nothing, st, Just rep_mode)
             'i' -> (Nothing, st, Just (ins st))
             'I' -> beginIns solE
             'a' -> beginIns $ rightOrEolE 1
@@ -274,7 +290,7 @@ cmd2other = modeSwitchChar
             s   -> (with (errorE ("The "++show s++" command is unknown."))
                    ,st, Just $ cmd st)
 
-    where modeSwitchChar = alt ":iIaAoOcCS/?\ESC"
+    where modeSwitchChar = alt ":RiIaAoOcCS/?\ESC"
 
 -- ---------------------------------------------------------------------
 -- | vim insert mode
@@ -294,8 +310,38 @@ ins_char = anyButEsc
 
 -- switch out of ins_mode
 ins2cmd :: VimMode
-ins2cmd  = char '\ESC' 
-    `meta` \_ st -> (Nothing, st, Just $ cmd st)
+ins2cmd  = char '\ESC' `meta` \_ st -> (with (leftOrSolE 1), st, Just $ cmd st)
+
+-- ---------------------------------------------------------------------
+-- | vim replace mode
+--
+-- To quote vim:
+--  In Replace mode, one character in the line is deleted for every character
+--  you type.  If there is no character to delete (at the end of the line), the
+--  typed character is appended (as in Insert mode).  Thus the number of
+--  characters in a line stays the same until you get to the end of the line.
+--  If a <NL> is typed, a line break is inserted and no character is deleted. 
+--
+-- ToDo implement the undo features
+--
+
+rep_char :: VimMode
+rep_char = anyButEsc
+    `action` \[c] -> Just (fn c)
+    where fn c = case c of
+                    k | isDel k       -> leftE >> deleteE 
+                      | k == keyPPage -> upScreenE
+                      | k == keyNPage -> downScreenE
+                    '\t' -> mapM_ insertE "    " -- XXX
+                    '\r' -> insertE '\n' 
+                    _ -> do e <- atEolE
+                            if e then insertE c else writeE c >> rightE
+
+          anyButEsc = alt $ (keyBackspace : any' ++ cursc') \\ ['\ESC']
+
+-- switch out of rep_mode
+rep2cmd :: VimMode
+rep2cmd  = char '\ESC' `meta` \_ st -> (Nothing, st, Just $ cmd st)
 
 -- ---------------------------------------------------------------------
 -- Ex mode. We also lex regex searching mode here.

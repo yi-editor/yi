@@ -93,7 +93,7 @@ emptyWindow b (h,w) = do
 
 --
 -- | Given a buffer, and some information update the modeline
--- Optimised
+-- ToDo replace this with a buffer
 --
 updateModeLine :: Buffer a => Window -> a -> IO String
 updateModeLine w' b = do

@@ -424,7 +424,10 @@ readRestOfLnE = withWindow $ \w b -> do
 -- | Write char to point
 writeE :: Char -> Action
 writeE c = withWindow_ $ \w b -> do
-            if isLatin1 c then writeB b c else nopE -- TODO
+            case c of
+                '\r' -> writeB b '\n'
+                _ | isLatin1 c -> writeB b c 
+                  | otherwise  -> nopE          -- TODO
             return w
 
 -- ---------------------------------------------------------------------
