@@ -651,9 +651,10 @@ viWrite = do
 -- | Try to write to a named file in the manner of vi\/vim
 viWriteTo :: String -> Action
 viWriteTo f = do
+    let f' = (takeWhile (/= ' ') . dropWhile (== ' ')) f
     (_,s,_,_,_,_) <- bufInfoE 
-    let msg = msgE $ show f++" "++show s ++ "C written"
-    catchJust ioErrors (fwriteToE f >> msg) (msgE . show)
+    let msg = msgE $ show f'++" "++show s ++ "C written"
+    catchJust ioErrors (fwriteToE f' >> msg) (msgE . show)
 
 -- | Try to do a substitution
 viSub :: [Char] -> Action
