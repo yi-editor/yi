@@ -51,6 +51,7 @@ defaultKeyMap (Key 'j')   = e_down
 defaultKeyMap (Key 'k')   = e_up
 defaultKeyMap (Key '^')   = e_sol
 defaultKeyMap (Key '$')   = e_eol
+defaultKeyMap (Key 'r')   = e_replace
 defaultKeyMap (KeyUp)     = e_up
 defaultKeyMap (KeyDown)   = e_down
 defaultKeyMap (KeyLeft)   = e_left

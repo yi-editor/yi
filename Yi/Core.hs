@@ -56,6 +56,9 @@ module Yi.Core (
         e_sol,
         e_eol,
 
+        -- * Buffer editing
+        e_replace,
+
    ) where
 
 import Yi.Editor
@@ -205,7 +208,20 @@ e_eol = modifyCurrentBuffer Buffer.nextNL
 
 --
 -- | Load a new buffer with contents of file
+-- TODO: change type
 --
 e_load  :: FilePath -> IO ()
 e_load f = Editor.fillNewBuffer f          -- lazy for large files?
+
+------------------------------------------------------------------------
+
+--
+-- | Replace buffer at point with next char
+--
+e_replace :: IO ()
+e_replace = modifyCurrentBuffer $ \b -> do
+    k <- UI.getKey UI.refresh
+    case k of
+        Key c -> Buffer.replace c b
+        _     -> e_noop >> return b -- TODO
 

@@ -84,6 +84,9 @@ class Buffer a where
     right       :: a -> IO a
     right       = rightN 1
 
+    -- | Overwrite contents of buffer from point onwards with string
+    replace     :: Char -> a -> IO a
+
 -- ---------------------------------------------------------------------
 --
 -- Fast buffer based on GHC.IORef.{Handle,IOBase} (Handle)
@@ -301,6 +304,15 @@ instance Buffer FBuffer where
             let b' = rawMoveTo i b
             writeIORef ref b'
             return fb
+
+    -- replace  :: Char -> a -> IO a
+    replace c fb@(FBuffer _ _ m) = 
+        withMVar m $ \ref -> do
+            b@(FBuffer_ {bufBuf=buf,bufPnt=p}) <- readIORef ref        
+            i <- writeChars buf [c] p
+            writeIORef ref (b{bufPnt = i})
+            return fb
+                
         
 -- ---------------------------------------------------------------------
 -- | 2-D primitives implemented over the 'Buffer' primitives
@@ -331,6 +343,20 @@ prevNLOffset_ b = do
     x <- prevNLOffset b
     moveTo p b
     return x
+
+--
+-- | Return the index of the previous \n, or start of file
+--
+prevNLIx :: Buffer a => a -> IO Int
+prevNLIx b = do
+    p <- point b
+    prevNLOffset b
+    q <- point b
+    moveTo p b
+    return q
+        
+        
+        
 
 --
 -- | Return the offset to the previous \n , and move there
