@@ -35,7 +35,7 @@
 module Yi.Curses.UI (
 
         -- * UI initialisation 
-        start, end, 
+        start, end, suspend, 
         initcolours,
         screenSize,
 
@@ -71,6 +71,8 @@ import Control.Exception            ( handle )
 
 import System.IO.Unsafe             ( unsafePerformIO )
 
+import System.Posix.Signals
+
 --
 -- | how to initialise the ui
 --
@@ -95,6 +97,12 @@ initcolours = do
 --
 end :: IO ()
 end = Curses.endWin
+
+--
+-- | Suspend the program
+--
+suspend :: IO ()
+suspend = raiseSignal sigTSTP
 
 --
 -- | Find the current screen height and width.
