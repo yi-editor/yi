@@ -29,9 +29,12 @@ import Yi.UI         hiding ( plus )
 import Yi.Ctk.Lexers hiding ( Action )
 
 import Prelude       hiding ( any )
+
 import Data.Maybe           ( fromMaybe )
 import Data.List            ( (\\) )
+import Data.FiniteMap
 import Data.Char            ( isUpper, toLower, toUpper, isSpace )
+
 import Control.Monad        ( replicateM_, when )
 import Control.Exception    ( ioErrors, catchJust )
 
@@ -89,7 +92,7 @@ keymapPlus lexer' cs = actions
 -- count is stored in the lexer state. also the replace cmd, which
 -- consumes one char of input, and commands that switch modes.
 cmd_mode :: VimMode
-cmd_mode = cmd_count >||< cmd_eval >||< cmd2other >||< cmd_op
+cmd_mode = lex_count >||< cmd_eval >||< cmd_move >||< cmd2other >||< cmd_op
 
 --
 -- | insert mode is either insertion actions, or the meta \ESC action
@@ -113,138 +116,154 @@ ex_mode = ex_char >||< ex_edit >||< ex_hist >||< ex_eval >||< ex2cmd
 with :: Action -> Maybe (Either e Action)
 with a = (Just (Right a))
 
--- ---------------------------------------------------------------------
--- | vim command mode.
+------------------------------------------------------------------------
 --
-
--- accumulate count digits, echoing them to the cmd buffer
-cmd_count :: VimMode
-cmd_count = digit
+-- A lexer to accumulate digits, echoing them to the cmd buffer. This is
+-- typically what is needed for integer repetition arguments to commands
+--
+-- ToDo don't handle 0 properly
+--
+lex_count :: VimMode
+lex_count = digit
     `meta` \[c] st -> (with (msg (c:acc st)),st{acc = c:acc st},Just $ cmd st)
     where
         msg cs = msgE $ (replicate 60 ' ') ++ (reverse cs)
 
--- eval a cmd. always clear the cmd buffer prior
+-- ---------------------------------------------------------------------
+-- | Movement commands
+
+cmd_move :: VimMode
+cmd_move = move_chr
+    `meta` \[c] st@St{acc=count} -> 
+        let cnt= if null count then Nothing else Just (read $ reverse count)
+            i  = fromMaybe 1 cnt
+            fn = getCmd c i
+        in (with (msgClrE >> fn), st{acc=[]}, Just $ cmd st)
+    where
+        move_chr   = alt $ keysFM moveCmdFM
+        getCmd c i = let mfn = lookupFM moveCmdFM c
+                     in flip ($) i (fromMaybe (const nopE) mfn)
+
+--
+-- movement command
+--
+moveCmdFM :: FiniteMap Char (Int -> Action)
+moveCmdFM = listToFM $
+
+-- left/right
+    [('h',          left)
+    ,('\^H',        left)
+    ,(keyBackspace, left)
+    ,('\BS',        left)
+    ,('\127',       left)
+    ,('l',          right)
+    ,(' ',          right)
+    ,(keyHome,      const solE)
+    ,('^',          const firstNonSpaceE)
+    ,('$',          const eolE)
+    ,(keyEnd,       const eolE)
+    ,('|',          const solE)
+
+-- up/down
+    ,('k',          up)
+    ,(keyUp,        up)
+    ,('\^P',        up)
+    ,('j',          down)
+    ,(keyDown,      down)
+    ,('\^J',        down)
+    ,('\^N',        down)
+    ,('\r',         down)
+
+-- words
+-- text
+-- misc
+    ,('H',          \i -> downFromTosE (i - 1))
+    ,('M',          const middleE)
+    ,('L',          \i -> upFromBosE (i - 1))
+    ]
+    where
+        left  i = leftOrSolE i
+        right i = rightOrEolE i
+        up    i = if i > 100 then gotoLnFromE (-i) else replicateM_ i upE
+        down  i = if i > 100 then gotoLnFromE i    else replicateM_ i downE
+
+------------------------------------------------------------------------
+--
+-- Other command mode functions
+--
 cmd_eval :: VimMode
-cmd_eval = ( cmdc >|< 
+cmd_eval = (cmd_char >|< 
             (char 'r' +> anyButEscOrDel) >|<
             string ">>" >|< string "<<" >|< 
             string "ZZ" >|< string "yy")
 
     `meta` \lexeme st@St{acc=count} -> 
-        let c  = if null count then Nothing else Just (read $ reverse count)
-            i  = fromMaybe 1 c
-            fn = getCmd lexeme c i
+        let cnt= if null count then Nothing else Just (read $ reverse count)
+            i  = fromMaybe 1 cnt
+            fn = case lexeme of
+                    "ZZ"    -> viWrite >> quitE
+                    -- todo: fix the unnec. refreshes that happen
+                    ">>"    -> do replicateM_ i $ solE >> mapM_ insertE "    " 
+                                  firstNonSpaceE
+                    "<<"    -> do solE
+                                  replicateM_ i $
+                                    replicateM_ 4 $
+                                        readE >>= \k -> 
+                                            when (isSpace k) deleteE 
+                                  firstNonSpaceE
+                    "yy"    -> readLnE >>= setRegE
+                    'r':[x] -> writeE x
+                    [c]     -> getCmd c i
+                    _       -> undef (head lexeme)
+
         in (with (msgClrE >> fn), st{acc=[]}, Just $ cmd st)
 
     where
         anyButEscOrDel = alt $ any' \\ ('\ESC':delete')
+        cmd_char       = alt $ keysFM cmdCmdFM
 
-        -- command chars to actions
-        getCmd :: [Char] -> (Maybe Int) -> Int -> Action
-        getCmd lexeme c i = case lexeme of
-            "\^A" -> undef
-            "\^B" -> upScreensE i
-            "\^D" -> undef
-            "\^E" -> undef
-            "\^F" -> downScreensE i
-            "\^G" -> viFileInfo         -- hmm. not working
-            "\^H" -> leftOrSolE  i
-            "\^J" -> if i > 100 then gotoLnFromE i else replicateM_ i downE
-            "\^L" -> undef
-            "\^M" -> undef
-            "\^N" -> if i > 100 then gotoLnFromE i else replicateM_ i downE
-            "\^P" -> if i > 100 then gotoLnFromE (-i) else replicateM_ i upE
-            "\^R" -> undef
-            "\^T" -> undef
-            "\^U" -> undef
-            "\^W" -> nextWinE
-            "\^Y" -> undef
-            "\^Z" -> undef
-            "\^]" -> undef
-            "\^^" -> undef
-            " "   -> rightOrEolE i
-            "!"   -> undef
-            "#"   -> undef
-            "$"   -> eolE
-            "%"   -> undef
-            "&"   -> undef
-            "("   -> undef
-            ")"   -> undef
-            "+"   -> undef
-            ","   -> undef
-            "-"   -> undef
-            "."   -> undef
-      --    "0"   -> solE   -- don't want this. clashes with count
-            "|"   -> solE
-            "^"   -> firstNonSpaceE
-            ";"   -> undef
-            "<"   -> undef
+        getCmd c i = let mfn = lookupFM cmdCmdFM c
+                     in flip ($) i (fromMaybe (const $ undef c) mfn)
+                    
+        undef c = not_implemented c
 
-            "?"   -> undef
-            "@"   -> undef
-            "~"   -> let fn = do c' <- readE
-                                 let c'' = if isUpper c' then toLower c' 
-                                                    else toUpper c'
-                                 writeE c''
-                                 rightE
-                     in replicateM_ i fn
-            "B"   -> undef
-            "D"   -> readRestOfLnE >>= setRegE >> killE
-            "E"   -> undef
-            "F"   -> undef
-            "G"   -> case c of Nothing -> botE >> solE
-                               Just n  -> gotoLnE n
-            "N"   -> undef
-            "H"   -> downFromTosE (i - 1)
-            "J"   -> eolE >> deleteE -- the "\n"
-            "L"   -> upFromBosE (i - 1)
-            "M"   -> middleE
-            "P"   -> undef
-            "Q"   -> undef
-            "T"   -> undef
-            "U"   -> undef
-            "W"   -> undef
-            "X"   -> leftOrSolE i >> replicateM_ i deleteE
-            "Y"   -> undef
-            "h"   -> leftOrSolE  i
-            "j"   -> if i > 100 then gotoLnFromE i else replicateM_ i downE
-            "k"   -> if i > 100 then gotoLnFromE (-i) else replicateM_ i upE
-            "l"   -> rightOrEolE i
-            "n"   -> searchE Nothing
-            "p"   -> do s <- getRegE
-                        eolE >> insertE '\n' >> mapM_ insertE s >> solE
-            "x"   -> deleteNE i
-            "ZZ"  -> viWrite >> quitE
+--
+-- cmd mode commands
+--
+cmdCmdFM :: FiniteMap Char (Int -> Action)
+cmdCmdFM = listToFM $
+    [('\^B',    upScreensE)
+    ,('\^F',    downScreensE)
+    ,('\^G',    const viFileInfo)        -- hmm. not working. duh. we clear
+    ,('\^W',    const nextWinE)
+    ,('D',      const (readRestOfLnE >>= setRegE >> killE))
+    ,('J',      const (eolE >> deleteE))    -- the "\n"
+    ,('X',      (\i -> leftOrSolE i >> replicateM_ i deleteE))
+    ,('n',      const (searchE Nothing))
+    ,('x',      deleteNE)
+    ,('~',      (\i -> 
+                 let fn = do c' <- readE
+                             let c'' = if isUpper c' 
+                                       then toLower c' 
+                                       else toUpper c'
+                             writeE c''
+                             rightE
+                 in replicateM_ i fn))
 
-            -- todo: fix the unnec. refreshes that happen
-            ">>"  -> do replicateM_ i $ solE >> mapM_ insertE "    " 
-                        firstNonSpaceE
+    -- hmm. 'G' commands need a bit more work
+--  ,('G',      (case c of Nothing -> botE >> solE
+--                         Just n  -> gotoLnE n))
 
-            "<<"   -> do solE
-                         replicateM_ i $
-                            replicateM_ 4 $
-                                readE >>= \k -> when (isSpace k) deleteE 
-                         firstNonSpaceE
+    ,('p',      (\_ -> getRegE >>= \s -> 
+                        eolE >> insertE '\n' >> 
+                            mapM_ insertE s >> solE))
+    ,(keyPPage, upScreensE)
+    ,(keyNPage, downScreensE)
+    ,(keyLeft,  const leftE)          -- not really vi, but fun
+    ,(keyRight, const rightE)
+    ]
 
-            "yy"  -> readLnE >>= setRegE
-
-            'r':[x] -> writeE x
-
-            [k] | k == keyPPage -> upScreensE i
-                | k == keyNPage -> downScreensE i
-    --          | k == keyLeft  -> leftOrSolE i
-                | k == keyLeft  -> leftE -- not really vi, but fun
-                | k == keyRight -> rightE
-                | k == keyDown  -> if i > 100 then gotoLnFromE i 
-                                              else replicateM_ i downE
-                | k == keyUp    -> if i > 100 then gotoLnFromE (-i) 
-                                              else replicateM_ i upE
-
-            _ -> undef
-
-            where undef = not_implemented (head lexeme)
-
+------------------------------------------------------------------------
 --
 -- | So-called 'operators', which take movement actions as arguments.
 --
@@ -266,15 +285,15 @@ cmd_eval = ( cmdc >|<
 -- need to have a motion mode, that includes the int repeat lexer.
 --
 cmd_op :: VimMode
-cmd_op = (op_char +> move_char >|< string "dd")
+cmd_op = (op_char +> move_chr >|< string "dd")
     `meta` \lexeme st@St{acc=count} -> 
         let c  = if null count then Nothing else Just (read $ reverse count)
             i  = fromMaybe 1 c
             fn = getCmd lexeme c i
         in (with (msgClrE >> fn), st{acc=[]}, Just $ cmd st)
     where
-        op_char   = alt "d"             -- just for now
-        move_char = alt "hl0^$kjG"      -- just for now
+        op_char  = alt "d"             -- just for now
+        move_chr = alt $ keysFM moveCmdFM
 
         getCmd :: [Char] -> (Maybe Int) -> Int -> Action
         getCmd lexeme _c i = case lexeme of
@@ -292,7 +311,7 @@ cmd_op = (op_char +> move_char >|< string "dd")
 
         -- no idea if this state is right, yet.
         -- movement command to perform .. ToDo should be (cmd st)
-        getMove c = let (as,_,_) = execLexer cmd_mode ([c], defaultSt) in as
+        getMove c = let (as,_,_) = execLexer cmd_move ([c], defaultSt) in as
 
 --
 -- | Switch to another vim mode.
@@ -600,19 +619,6 @@ delete'  = ['\BS', '\127', keyBackspace ]
 any'     = ['\0' .. '\255']
 digit'   = ['0' .. '9']
 
--- ---------------------------------------------------------------------
--- | simple command mode keys (ones that don't consume input, or switch modes)
-cmdc :: ViRegex
-cmdc     = alt cmdc'
-
-cmdc' :: [Char]
-cmdc'    = cmdctrl' ++ cursc' ++ special' ++ upper' ++ lower'
-
-special', upper', lower', cmdctrl', cursc' :: [Char]
-special' = " !#$%()+,-.|;<?@~^"
-upper'   = "BDEFGNHJLMPQRTUWXY"
-lower'   = "hjklnpqx"
-cmdctrl' = ['\^A','\^B','\^D','\^E','\^F','\^H','\^J','\^L','\^M','\^N',
-            '\^P','\^R','\^T','\^U','\^W','\^Y','\^Z','\ESC','\^]','\^^']
+cursc' :: [Char]
 cursc'   = [keyPPage, keyNPage, keyLeft, keyRight, keyDown, keyUp]
 

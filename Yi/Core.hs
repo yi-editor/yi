@@ -270,7 +270,7 @@ gotoLnE n = withWindow_ (gotoLnW n)
 gotoLnFromE :: Int -> Action
 gotoLnFromE n = withWindow_ (gotoLnFromW n)
 
--- | Go to a particular point
+-- | Go to a particular point. ToDo don't reset unless we wander off the screen
 gotoPointE :: Int -> Action
 gotoPointE p = withWindow_ $ moveToW p
 
