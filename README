@@ -32,8 +32,10 @@ dynamic loader library. You can get this from:
 
         http://www.cse.unsw.edu.au/~dons/hs-plugins/
 
-You currently need to use a cvs snapshot of hs-plugins, from Nov 20 or 
-later. Make sure you "make", "make install" and "make register" the library.
+You currently need to use a cvs snapshot of hs-plugins -- none of the
+stable releases are suitable -- you need an hs-plugins snapshot dated >=
+20041120. Getting the most recent snapshot will work. Make sure you
+"make", "make install" and "make register" the library. 
 
 If you are working from the darcs repository you'll need autoconf and
 automake installed for generating the configure files.
