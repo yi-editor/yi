@@ -100,7 +100,9 @@ key I '\27'  = leftOrSolE 1 >> beginCommand  -- ESC
 key I '\8'   = leftE >> deleteE
 key I c  | c == keyHome      = topE
          | c == keyBackspace = leftE >> deleteE
-key I c      = insertE c    >> rightE
+key I c      = do (_,s) <- infoE      -- vi behaviour at start of line
+                  when (s == 0) $ insertE '\n'
+                  insertE c    >> rightE
 
 -- ---------------------------------------------------------------------
 -- * Ex mode
