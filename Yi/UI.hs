@@ -173,8 +173,9 @@ drawLine w s  = Curses.wAddStr Curses.stdScr $ take w (s ++ repeat ' ')
 drawCursor :: (Int,Int) -> (Int,Int) -> IO ()
 drawCursor (o_y,_o_x) (y,x) = Curses.withCursor Curses.CursorVisible $ do
     gotoTop
+    (h,w) <- scrSize
     cset_attr (Curses.setReverse Curses.attr0 True, Curses.Pair 1)
-    Curses.wMove Curses.stdScr (o_y + y) (x)
+    Curses.wMove Curses.stdScr (min (h-1) (o_y + y)) (min (w-1) x)
     reset
 
 --
