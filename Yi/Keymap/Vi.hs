@@ -251,9 +251,7 @@ ins = anyButEsc
           | k == keyPPage -> upScreenE
           | k == keyNPage -> downScreenE
 
-        _ -> do (_,s,_,_,_,_) <- bufInfoE
-                when (s == 0) $ insertE '\n' -- vi behaviour at start of file
-                insertE c
+        _ -> insertE c
 
     where anyButEsc = alt $ any' \\ ['\ESC']
 

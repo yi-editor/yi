@@ -316,7 +316,11 @@ scrollDownE = withWindow_ scrollDownW
 
 -- | Insert new character
 insertE :: Char -> Action
-insertE c = withWindow_ $ insertW c
+insertE c = do
+    withWindow_ $ \w b -> do
+            s <- sizeB b
+            if s == 0 then insertW '\n' w b else return w
+    withWindow_ $ insertW c
 
 -- | Delete character under cursor
 deleteE :: Action
