@@ -99,11 +99,15 @@ module Yi.Core (
         deleteE,        -- :: Action
         deleteNE,       -- :: Int -> Action
         killE,          -- :: Action
+        writeE,         -- :: Char -> Action
+
+        -- * Read parts of the buffer
         readE,          -- :: IO Char
         readLnE,        -- :: IO String
         readNM,         -- :: Int -> Int -> IO String
         readRestOfLnE,  -- :: IO String
-        writeE,         -- :: Char -> Action
+        readWordE,      -- :: IO (String,Int,Int)
+        readWordLeftE,  -- :: IO (String,Int,Int)
 
         -- * Basic registers
         setRegE,        -- :: String -> Action
@@ -112,12 +116,17 @@ module Yi.Core (
         getRegexE,      -- :: IO (Maybe Regex)
 
         -- * Regular expression and searching
+        findE,                  -- :: String -> IO (Maybe (Int,Int))
         searchE,                -- :: (Maybe String) -> Action
         searchAndRepLocal,      -- :: String -> String -> IO Bool
 
         -- * higher level ops
         mapRangeE,              -- :: Int -> Int -> (Buffer' -> Action) -> Action
-        moveWhileE              -- :: (Char -> Bool) -> Bool -> Action
+        moveWhileE,             -- :: (Char -> Bool) -> Bool -> Action
+
+        -- * Word completion
+        wordCompleteE,          -- :: Action
+        resetCompleteE,         -- :: Action
 
    ) where
 
@@ -129,7 +138,8 @@ import Yi.Editor
 import qualified Yi.Editor as Editor
 
 import Data.Maybe           ( isNothing, isJust )
-import Data.Char            ( isLatin1 )
+import Data.Char            ( isLatin1, isAlphaNum )
+import Data.FiniteMap
 
 import System.IO            ( hClose )
 import System.Directory     ( doesFileExist )
@@ -143,6 +153,10 @@ import Control.Concurrent.Chan
 import GHC.Exception hiding ( throwIO )
 
 import qualified Yi.Curses.UI     as UI ( refresh, start, screenSize, getKey, end, initcolours )
+
+-- for now:
+import Data.IORef
+import System.IO.Unsafe     ( unsafePerformIO )
 
 -- ---------------------------------------------------------------------
 -- | Start up the editor, setting any state with the user preferences
@@ -518,6 +532,42 @@ readRestOfLnE = withWindow $ \w b -> do
     s <- nelemsB b (j-p) p
     return (w,s)
 
+-- | Read word to the left of the cursor
+readWordLeftE :: IO (String,Int,Int)
+readWordLeftE = withWindow $ \w b -> readWordLeft_ w b >>= \s -> return (w,s)
+
+-- Core-internal worker, not threadsafe.
+readWordLeft_ :: Window -> Buffer' -> IO (String,Int,Int)
+readWordLeft_ w b = do
+    p <- pointB b
+    c <- readB b 
+    when (not $ isAlphaNum c) $ leftB b
+    moveWhile_ isAlphaNum Left w b
+    rightB b
+    q <- pointB b
+    s <- nelemsB b (p-q) q
+    moveTo b p
+    return (s,q,p)
+
+-- | Read word under cursor
+readWordE :: IO (String,Int,Int)
+readWordE = withWindow $ \w b -> readWord_ w b >>= \v -> return (w,v)
+
+-- Internal, for readWordE, not threadsafe
+readWord_ :: Window -> Buffer' -> IO (String,Int,Int)
+readWord_ w b = do
+    p <- pointB b
+    c <- readB b 
+    if not (isAlphaNum c) then leftB b 
+                          else moveWhile_ isAlphaNum Right w b >> leftB b
+    y <- pointB b   -- end point
+    moveWhile_ isAlphaNum Left w b
+    rightB b
+    x <- pointB b
+    s <- nelemsB b (y-x+1) x
+    moveTo b p
+    return (s,x,y)
+
 -- | Write char to point
 writeE :: Char -> Action
 writeE c = withWindow_ $ \w b -> do
@@ -549,6 +599,15 @@ getRegexE :: IO (Maybe Regex)
 getRegexE = readEditor regex
  
 -- ---------------------------------------------------------------------
+-- | Global searching for simple strings.
+-- Return the index of the next occurence of @s@
+
+findE :: String -> IO (Maybe (Int,Int))
+findE [] = return Nothing
+findE s = withWindow $ \w b -> do
+    re <- regcomp s regExtended
+    is <- regexB b re
+    return (w,is)
 
 -- | Global searching. Search for regex and move point to that position.
 -- Nothing means reuse the last regular expression. Just s means use @s@
@@ -735,6 +794,8 @@ mapRangeE from to fn
 --
 -- N.B. we're using partially applied Left and Right as well-named Bools.
 --
+-- Maybe this shouldn't refresh?
+--
 moveWhileE :: (Char -> Bool) -> (() -> Either () ()) -> Action
 moveWhileE f d = do withWindow_ (moveWhile_ f d)
                     getPointE >>= gotoPointE
@@ -765,6 +826,84 @@ moveWhile_ f dir w b = do
     }
     loop
     return w
+
+------------------------------------------------------------------------
+-- | keyword completion
+--
+-- when doing keyword completion, we need to keep track of the word
+-- we're trying to complete. Finding this word is an IO action.
+--
+
+-- remember the word, if any, we're trying to complete, previous matches
+-- we've seen, and the point in the search we are up to.
+type Completion = (String,FiniteMap String (),Int)
+
+-- This could go in the single editor state, I suppose. Esp. if we want
+-- to do hardcore persistence at some point soon.
+--
+completions :: IORef (Maybe Completion)
+completions = unsafePerformIO $ newIORef Nothing
+
+--
+-- | Switch out of completion mode.
+--
+resetCompleteE :: Action
+resetCompleteE = writeIORef completions Nothing
+
+--
+-- The word-completion action
+--
+wordCompleteE :: Action
+wordCompleteE = do
+    withWindow_ $ \win buf -> do
+
+        let loop = do   -- loop over repeated matches
+            p <- pointB buf
+            m <- readIORef completions
+            (w,fm) <- case m of
+                    Nothing -> do (w,_,_) <- readWordLeft_ win buf
+                                  rightB buf ; return (w,emptyFM)
+                    Just (w,fm,next) -> moveTo buf (next+1) >> return (w,fm)
+            m' <- nextWordMatch win buf w
+            moveTo buf p
+            case m' of
+                Just (s,i) 
+                    | s `elemFM` fm 
+                    -> do writeIORef completions (Just (w,fm,i)) ; loop
+
+                    | otherwise 
+                    -> do replaceLeftWith win buf s
+                          writeIORef completions (Just (w,addToFM fm s (),i))
+
+                Nothing -> do replaceLeftWith win buf w
+                              writeIORef completions Nothing
+
+        loop 
+        return win
+
+    getPointE >>= gotoPointE
+
+    where
+    -- replace word under cursor with @s@
+    replaceLeftWith :: Window -> Buffer' -> String -> IO ()
+    replaceLeftWith win buf s = do
+        (_,b,a) <- readWordLeft_ win buf     -- back at start
+        moveTo buf b
+        deleteNW win buf (a-b)
+        mapM_ (\c -> insertW c win buf) s
+
+    -- Return next match, and index of that match (to be used for later searches)
+    nextWordMatch :: Window -> Buffer' -> String -> IO (Maybe (String,Int))
+    nextWordMatch win b w = do
+        let re = ("( |\t|\n|\r)"++w)
+        re_c <- regcomp re regExtended
+        mi <- regexB b re_c
+        case mi of 
+            Nothing -> return Nothing
+            Just (i,_) -> do 
+                moveTo b (i+1) -- for the space
+                (s,_,_) <- readWord_ win b
+                return $ Just (s,(i+1))
 
 ------------------------------------------------------------------------
 

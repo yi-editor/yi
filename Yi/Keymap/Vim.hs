@@ -53,12 +53,14 @@ type ViRegex = Regexp VimState Action
 -- carry around the current cmd and insert lexers in the state. Calls to
 -- switch editor modes therefore use the lexers in the state.
 --
-data VimState = 
-        St { acc :: [Char]           -- an accumulator, for count, search and ex mode
-           , hist:: ([String],Int)   -- ex-mode command history
-           , cmd :: VimMode          -- (maybe augmented) cmd mode lexer
-           , ins :: VimMode }        -- (maybe augmented) ins mode lexer
+data VimState = St { 
+    acc :: [Char]            -- an accumulator, for count, search and ex mode
+   ,hist:: ([String],Int)    -- ex-mode command history
+   ,cmd :: VimMode           -- (maybe augmented) cmd mode lexer
+   ,ins :: VimMode           -- (maybe augmented) ins mode lexer
+   }
 
+------------------------------------------------------------------------
 --
 -- | Top level. Lazily consume all the input, generating a list of
 -- actions, which then need to be forced
@@ -100,7 +102,13 @@ cmd_mode = lex_count >||< cmd_eval >||< cmd_move >||< cmd2other >||< cmd_op
 -- | insert mode is either insertion actions, or the meta \ESC action
 --
 ins_mode :: VimMode
-ins_mode = ins_char >||< ins2cmd
+ins_mode = ins_char >||< ins2cmd >||< ins2kwd
+
+--
+-- | keyword completion is its own mode
+--
+kwd_mode :: VimMode
+kwd_mode = kwd_char >||< kwd2ins
 
 --
 -- | replace mode is like insert, except it performs writes, not inserts
@@ -316,9 +324,9 @@ cmdCmdFM = listToFM $
                          gotoPointE p
                          when (q-p > 0) $ deleteNE (q-p))
 
-    ,('p',      (\_ -> getRegE >>= \s ->
-                        eolE >> insertE '\n' >>
-                            mapM_ insertE s >> solE)) -- ToDo insertNE
+    ,('p',      (const $ getRegE >>= \s ->
+                            eolE >> insertE '\n' >>
+                                mapM_ insertE s >> solE)) -- ToDo insertNE
     ,(keyPPage, upScreensE)
     ,(keyNPage, downScreensE)
     ,(keyLeft,  leftOrSolE)
@@ -442,19 +450,45 @@ cmd2other = modeSwitchChar
 -- | vim insert mode
 -- 
 ins_char :: VimMode
-ins_char = anyButEsc
+ins_char = anyButEscOrCtlN
     `action` \[c] -> Just (fn c)
 
     where fn c = case c of
                     k | isDel k       -> leftE >> deleteE
                       | k == keyPPage -> upScreenE
                       | k == keyNPage -> downScreenE
-                      | k == '\t'     -> mapM_ insertE "    " -- XXX
+                    '\t'  -> mapM_ insertE "    " -- XXX
+
+
                     _ -> insertE c
 
--- switch out of ins_mode
+          anyButEscOrCtlN = alt $ (keyBackspace : any' ++ cursc') \\ ['\ESC','\^N']
+
+--
+-- | switch to keyword insertion mode
+--
+ins2kwd :: VimMode
+ins2kwd = char '\^N' `meta` \_ st -> (with wordCompleteE, st, Just kwd_mode)
+
+--
+-- | switch out of ins_mode
+--
 ins2cmd :: VimMode
 ins2cmd  = char '\ESC' `meta` \_ st -> (with (leftOrSolE 1), st, Just $ cmd st)
+
+-- ---------------------------------------------------------------------
+-- | Keyword insertion mode
+--
+kwd_char :: VimMode
+kwd_char = char '\^N' `action` const (Just wordCompleteE)
+
+
+-- | switch back to insert mode
+--
+kwd2ins :: VimMode
+kwd2ins = anyButCtlN `meta` \_ st -> (with resetCompleteE, st, Just $ ins st)
+    where 
+        anyButCtlN = alt $ (keyBackspace : any' ++ cursc') \\ ['\^N']
 
 -- ---------------------------------------------------------------------
 -- | vim replace mode
