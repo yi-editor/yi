@@ -134,9 +134,18 @@ For example, to modify \code{\$(TOP)/Yi.hs} in ghci, you would:
 
 NHC
 
-To use nhc98 (some more porting required):
+To use nhc98 (some more porting required). The best we can do is
+yi-static:
     ./configure --with-hc=nhc98
     gmake
+
+We have 3 problems:
+    * We rely on some non-nhc98 libraries: MVar, threads, Unique..
+    * We use hsc2hs for ffi files
+    * There's still a couple of files with -fglasgow-exts (I think just
+      simple existentials, though, which nhc can handle(?))
+
+The big problem is the extra libraries.
 
 \begin{thebibliography}[50]
 \bibitem Emacs, The extensible, customizable ... Stallman.

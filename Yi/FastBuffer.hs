@@ -44,6 +44,9 @@ import Foreign.Marshal.Utils
 import Foreign.Ptr              ( Ptr, nullPtr, minusPtr )
 import Foreign.Storable         ( poke )
 
+-- import Debug.Trace
+import System.IO.Unsafe         ( unsafePerformIO )
+
 -- ---------------------------------------------------------------------
 --
 -- | Fast buffer based on the implementation of 'Handle' in
@@ -527,7 +530,47 @@ inBounds i end | i <= 0    = 0
 {-# INLINE inBounds #-}
 
 -- ---------------------------------------------------------------------
--- General undo/redo support. Based on proposal by sjw.
+--
+-- Restricted, linear undo/redo support.
+-- Implementation based on proposal by sjw.
+--
+--      T. Berlage, "A selective undo mechanism for graphical user interfaces
+--      based on command objects", ACM Transactions on Computer-Human
+--      Interaction 1(3), pp. 269-294, 1994.          
+--
+-- From Berlage:
+--   All buffer-mutating commands are stored (in abstract form) in an
+--   Undo list. The most recent item in this list is the action that
+--   will be undone next. When it is undone, it is removed from the Undo
+--   list, and its inverse is added to the Redo list. The last command
+--   put into the Redo list can be redone, and again prepended to the
+--   Undo list. New commands are added to the Undo list without
+--   affecting the Redo list.
+--
+-- Now, the above assumes that commands can be _redone_ in a state other
+-- than that in which it was orginally done. This is not the case in our
+-- text editor: a user may delete, for example, between an undo and a
+-- redo. Berlage addresses this in S2.3. A Yi example:
+--
+--      Delete some characters
+--      Undo partialy
+--      Move prior in the file, and delete another _chunk_
+--      Redo some things  == corruption.
+--
+-- Berlage describes the "stable execution property":
+--
+--   A command is always redone in the same state that it was originally
+--   executed in, and is always undone in the state that was reached
+--   after the original execution.
+--
+--   The only case where the linear undo model violates the stable
+--   execution property is when _a new command is submitted while the
+--   redo list is not empty_. The _restricted linear undo model_ ...
+--   clears the redo list in this case.
+--
+-- Also some discussion of this in: "The Text Editor Sam", Rob Pike, pg 19.
+--
+
 --
 -- | A URList consists of an undo and a redo list.
 --
@@ -540,9 +583,16 @@ data URList = URList ![URAction] ![URAction]
 data URAction = Insert !Point !Size !(ForeignPtr CChar)
               | Delete !Point !Size
 
--- ---------------------------------------------------------------------
+-- debugginginstances
+instance Show URAction where
+    showsPrec _ (Delete p n)    = showString $ "Delete "++show (p,n)
+    showsPrec _ (Insert p n fp) = 
+        let cs = unsafePerformIO $ 
+                    withForeignPtr fp $ \cp -> 
+                        peekCStringLen ( cp,n )
+        in showString $ "Insert "++show (p,cs)
+
 -- Create an insert action
---
 mkInsert :: (Ptr CChar) -> Point -> Size -> IO URAction
 mkInsert ptr off n = do
     fptr <- mallocForeignPtrBytes n
@@ -550,12 +600,10 @@ mkInsert ptr off n = do
     return (Insert off n fptr)
 
 -- Create a delete action
---
 mkDelete :: Point -> Size -> URAction
 mkDelete = Delete
 
---
--- | A new empty 'URList'.
+-- A new empty 'URList'.
 emptyUR :: URList
 emptyUR = URList [] []
 
@@ -564,8 +612,14 @@ emptyUR = URList [] []
 -- @Left@ buffer point and 'Char' to insert, or @Right@, a point from
 -- which to delete a character.
 --
+-- According to the restricted, linear undo model, if we add a command,
+-- whilst the redo list is not empty, we will lose our redoable changes.
+-- See the notes above.
+--
 addUR :: URList -> URAction -> URList
-addUR (URList us rs) u = URList (u:us) rs
+addUR (URList us _rs) u = 
+--  trace ((show $ (u:us,rs))) $
+    URList (u:us) []
 
 --
 -- | Undo the last action that mutated the buffer contents. The action's
@@ -575,6 +629,7 @@ undoUR :: FBuffer -> URList -> IO URList
 undoUR _ u@(URList [] _) = return u
 undoUR b (URList (u:us) rs) = do
     r <- (getAction u) b
+--  trace ((show $ (us,r:rs))) $
     return (URList us (r:rs))
 
 --
@@ -585,6 +640,7 @@ redoUR :: FBuffer -> URList -> IO URList
 redoUR _ u@(URList _ []) = return u
 redoUR b (URList us (r:rs)) = do
     u <- (getAction r) b
+--  trace ((show $ (u:us,rs))) $
     return (URList (u:us) rs)
 
 -- ---------------------------------------------------------------------
@@ -596,15 +652,14 @@ getAction :: URAction -> (FBuffer -> IO URAction)
 getAction (Delete p n) b@(FBuffer _ _ _ mv) = do 
     (FBuffer_ ptr _ _ _) <- readMVar mv
     moveTo b p
-    ins <- mkInsert ptr p n
+    p' <- pointB b
+    ins <- mkInsert ptr p' n
     deleteN' b n       -- need to be actions that don't in turn invoke the url
     return ins
 
---
--- Still seem to get some corruption with \0 getting inserted
---
 getAction (Insert p n fptr) b = do
     moveTo b p
     withForeignPtr fptr $ \ptr -> insertFromCStrN' b ptr n
-    return $ mkDelete p n
+    p' <- pointB b
+    return $ mkDelete p' n
 
