@@ -10,7 +10,7 @@ Build system:
 
 v0.1:
         - line wrapping. windows need to be wrap or nowrap.
-        - maybe: syn hl (needs parser, in bg thread)
+        - maybe syn hl (needs parser, in bg thread)
         - do we print '\n' at eol. what happens and eof?
         - record if a file is modified
 
@@ -21,6 +21,7 @@ other stuff:
         - start drawing buffer before it is all loaded.
         - either generalise registers, or make them entirely keymap-local
         - other forms of undo
+        - errorE should display in colour
 
 ------------------------------------------------------------------------
 syn hl:
@@ -42,4 +43,12 @@ syn hl:
         - what about comments?
             - record the comments, with their positions, in the lexer.
             - re-splice comments back into the parse tree.
+
+
+------------------------------------------------------------------------
+regexes:
+
+        - how do we handle all the different editors regex languages?
+            - do they have to compile down to a core regex language,
+              before calling searchE?
 
