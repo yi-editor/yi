@@ -30,13 +30,13 @@ import Yi.Lexers     hiding ( Action )
 
 import Prelude       hiding ( any )
 
-import Data.Maybe           ( fromMaybe )
-import Data.List            ( (\\) )
+import Data.Char
 import Data.FiniteMap
-import Data.Char            ( isAlphaNum, isUpper, toLower, toUpper, isSpace )
+import Data.List            ( (\\) )
+import Data.Maybe           ( fromMaybe )
 
 import Control.Monad        ( replicateM_, when )
-import Control.Exception    ( ioErrors, catchJust )
+import Control.Exception    ( ioErrors, catchJust, try, evaluate )
 
 -- ---------------------------------------------------------------------
 
@@ -552,6 +552,12 @@ ex_eval = enter
 
     where 
       fn ""           = msgClrE
+
+      fn s@(c:_) | isDigit c = do 
+        e <- try $ evaluate $ read s
+        case e of Left _ -> errorE $ "The " ++show s++ " command is unknown."
+                  Right lineNum -> gotoLnE lineNum
+
       fn "w"          = viWrite
       fn "q"          = closeE
       fn "q!"         = closeE
