@@ -44,18 +44,6 @@ DEFINES += -DCF_WCHAR_SUPPORT
 #DEFINES    += -DWEIRD_ICONV
 #LIBS_ICONV = -liconv -L/usr/local/lib
 
-# 
-# Define this if your <langinfo.h> doesn't provide the CODESET value
-# (OpenBSD, at least)
-#
-#DEFINES += -DNO_LANGINFO_CODESET
-
-#
-# Define this if you have a broken
-# System.Posix.Signals.setStoppedChildFlag (OpenBSD, at least)
-#
-#DEFINES += -DBROKEN_NOCLDSTOP
-
 #
 # Set this if you need extra flags to find libraries (for example,
 # iconv might live in /usr/local, so you need :
@@ -64,15 +52,21 @@ DEFINES += -DCF_WCHAR_SUPPORT
 #EXTRA_LIB_FLAGS=-I/usr/local/include
 
 #
+# OpenBSD specific settings. Turn all these on if you're on OpenBSD
+#
+#LIBS_ICONV      = -liconv -L/usr/local/lib
+#EXTRA_LIB_FLAGS =-I/usr/local/include
+#DEFINES         += -DWEIRD_ICONV
+
+#
 # GHC settings
 #
 
-GHC = ghc-6.2.1
-GHC_PKG = ghc-pkg-6.2.1
+GHC = ghc
+GHC_PKG = ghc-pkg
 
 # TODO: remove posix dependency, so it runs on windows
 GHC_COMPILE_FLAGS = $(DEFINES) \
-	-package posix  \
 	-cpp -fglasgow-exts \
 	-Icbits $(EXTRA_LIB_FLAGS) 
 
@@ -89,8 +83,7 @@ GHC_C_COMPILE_FLAGS = $(GHC_COMPILE_FLAGS)
 
 HSC2HS=hsc2hs $(DEFINES) $(EXTRA_LIB_FLAGS)
 
-GHC_LINK_FLAGS = $(GHC_COMPILE_FLAGS) $(LIBS)
-
+GHC_LINK_FLAGS = -package posix
 
 #
 # Misc. programs

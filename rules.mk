@@ -20,7 +20,7 @@ TO_CLEAN += $(OBJS) $(TARGET) $(HI_FILES) $(TARGET_A)
 
 all: boot $(TARGET) $(TARGET_A) package_conf $(EXTRA_TARGET)
 
-boot: $(HSC_HS_FILES) depend
+boot: depend
 
 # don't clean hsc2hs stuff by default.
 clean:
@@ -31,7 +31,7 @@ distclean: clean
 	$(RM) $(HSC_HS_FILES) $(HSC_C_FILES) $(HSC_C_INCLUDES) 
 
 depend: $(HSC_HS_FILES) $(HS_SOURCES)                        
-	$(GHC) -M -optdep-f -optdepdepend $(GHC_COMPILE_FLAGS) $(HSC_HS_FILES) $(HS_SOURCES)
+	$(GHC) -M -optdep-f -optdepdepend $(DEFINES) $(HSC_HS_FILES) $(HS_SOURCES)
 
 # Generic rules:
 #

@@ -6,7 +6,7 @@
 
 module HEmacs.Locale (
     setupLocale,
-    getCharset,
+    -- getCharset,
     getDateFmt,
     getDateTimeFmt,
     getTimeFmt,
@@ -29,12 +29,14 @@ foreign import ccall unsafe "langinfo.h nl_langinfo" nl_langinfo :: (#type nl_it
 setupLocale :: IO ()
 setupLocale = setlocale (#const LC_ALL) ""## >> return () 
 
+{-
 getCharset :: IO String
 #ifndef NO_LANGINFO_CODESET
 getCharset =  nl_langinfo (#const CODESET) >>= peekCString   
 #else
 getCharset =  error "Ginsu.Locale.getCharset: not defined for this platform"
 #endif
+-}
 
 getDateFmt :: IO String
 getDateFmt = nl_langinfo (#const D_FMT) >>= peekCString
