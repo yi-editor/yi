@@ -319,22 +319,42 @@ noNLatEof b = do
     return (c /= '\n')
 
 --
+-- | return index of Sol on line @n@ above current line
+--
+indexOfSolAbove :: Buffer a => a -> Int -> IO Int
+indexOfSolAbove b n = do
+    p <- pointB b
+    moveToSol b
+    mapM_ (const $ lineUp b) [1 .. n]
+    q <- pointB b
+    moveTo b p
+    return q
+     
+
+--
 -- | Adjust the window's height-related fields, assuming a new window height
+-- Now, if we know the height of the screen, and the number of lines,
+-- center the line in the screen please.
 --
 resize :: Buffer a => Int -> Window -> a -> IO Window
 resize y w b = do
     let topln = toslineno w
         ln    = lineno w
         w'    = w { height = y }
-    if ln - topln + 1 >= y            -- then set lineno as top line
-        then do i <- indexOfSol b
+    if ln - topln + 1 >= y          -- old line isn't on screen now
+        then do let gap   = min ln (y `div` 2)
+                    topln'= ln - gap
                 x <- offsetFromSol b
-                return w' { toslineno = ln, tospnt = i , cursor = (0,x) }
+                i <- indexOfSolAbove b gap
+                return w' { toslineno = topln', 
+                            tospnt = i, 
+                            cursor = (gap,x) }
         else return w'
 
 --
 -- | We've just gained focus. See if anything changed, and reset the
--- cursor point appropriately
+-- cursor point appropriately. The idea is that if anything changed, we
+-- position the working line in the middle of the window.
 --
 resetPoint :: Buffer a => Window -> a -> IO Window 
 resetPoint w b = do
@@ -344,16 +364,15 @@ resetPoint w b = do
     moveTo b op         -- reset the point to what we think it should be
     ln <- curLn b
     p  <- pointB b      -- see where it actually got placed 
-    i  <- indexOfSol b
     x  <- offsetFromSol b
-    let w' | op /= p      -- then the file shrunk under us. move to eof
-           = w {pnt = p,lineno = ln,toslineno = ln,tospnt = i,cursor = (0,x)}
-
-           | oln /= ln    -- our line moved or was killed. TODO goto the old line instead
-           = w {pnt = p,lineno = ln,toslineno = ln,tospnt = i,cursor = (0,x)}
-
-           | otherwise    -- just check out x-offset is right
-           = w {pnt = p, cursor = (y,x)}
+    w' <- if op /= p || oln /= ln -- then the file shrunk or line moved
+          then do let gap   = min ln ((height w) `div` 2)
+                      topln = ln - gap
+                  i <- indexOfSolAbove b gap
+                  return w {pnt = p, lineno = ln,
+                            toslineno = topln, tospnt = i,
+                            cursor = (gap,x)}
+          else return w {pnt = p, cursor = (y,x)} -- just check out x-offset is right
     m <- updateModeLine w' b 
 
     return w' { mode = m }
