@@ -34,114 +34,145 @@ import Data.List        ( (\\) )
 import Data.Char
 import Control.Monad
 
+-- ---------------------------------------------------------------------
+-- A vi mode is a lexer that returns a core Action. 
+-- It can carry around some state, if it needs to.
+--
+type ViState = [Char]      -- state is key accumulator
+type ViMode  = Lexer  ViState Action 
+type ViRegex = Regexp ViState Action
+
+-- ---------------------------------------------------------------------
 --
 -- | Top level. Lazily consume all the input, generating a list of
 -- actions, which then need to be forced
 --
 -- NB if there is an exception, we'll lose any new bindings..
+--    maybe we shouldn't refresh automatically?
 --
 keymap :: String -> IO ()
-keymap cs =
-    let (ts,_,_) = execLexer lexer (cs,(){-state-})
-    in mapM_ (>> refreshE) ts
+keymap cs = mapM_ (>> refreshE) actions
+    where 
+        actions = let (ts,_,_) = execLexer lexer (cs, emptySt) in ts
+        emptySt = []
 
--- | start in command mode (which includes the lexers for regex and search).
-lexer :: Lexer () Action
+------------------------------------------------------------------------
+
+-- The vi lexer is broken up into several parts, roughly corresponding
+-- to the different modes of vi. Each mode is in turn broken up into
+-- separate lexers for each phase of key input in that mode.
+
+-- Top level lexer. We start in command mode
+lexer :: ViMode
 lexer = cmd_mode
 
---
--- command mode consits of simple commands, two commands that consume
--- input, and commands that switch modes.
---
-cmd_mode :: Lexer () Action
-cmd_mode = simplecmd >||< replace >||< search >||< cmd2other
+-- command mode consits of simple commands that take a count arg - the
+-- count is stored in the lexer state. also the replace cmd, which
+-- consumes one char of input, and commands that switch modes.
+cmd_mode :: ViMode
+cmd_mode = cmd_count >||< cmd_eval >||< cmd2other
 
 --
 -- insert mode is either insertion actions, or the meta \ESC action
 --
-ins_mode :: Lexer () Action
+ins_mode :: ViMode
 ins_mode = ins >||< ins2cmd
 
--- ---------------------------------------------------------------------
--- | vi (simple) command mode. search mode is considered separately, as
--- it consumes other input.
 --
-simplecmd :: Lexer () Action
-simplecmd = digit `star` (cmdc >|< string ">>" 
-                               >|< string "dd"
-                               >|< string "ZZ" 
-                               >|< string "yy")
-    `action` \lexeme -> Just $
-        let (b,cs) = span isDigit lexeme
-            c = if null b then Nothing else Just (read b)
-            i = fromMaybe 1 c
-        in case cs of
-            "\^A" -> not_implemented (head cs)
+-- ex mode is either accumulating input or, on \n, executing the command
+--
+ex_mode :: ViMode
+ex_mode = ex_char >||< ex_edit >||< ex_eval >||< ex2cmd
+
+-- ---------------------------------------------------------------------
+-- | vi (simple) command mode.
+--
+
+-- accumulate count digits, echoing them to the cmd buffer
+cmd_count :: ViMode
+cmd_count = digit
+    `meta` \[c] acc -> (Just (Right $ msg (c:acc)), (c:acc), Just cmd_mode) 
+    where
+        msg cs = msgE $ (replicate 60 ' ') ++ (reverse cs)
+
+-- eval a cmd 
+cmd_eval :: ViMode
+cmd_eval = ( cmdc >|< 
+            (char 'r' +> anyButEscOrDel) >|<
+            string ">>" >|< string "dd" >|< string "ZZ" >|< string "yy")
+
+    `meta` \lexeme count -> 
+        let c  = if null count then Nothing 
+                               else Just (read $ reverse count)
+            i  = fromMaybe 1 c
+            fn = getCmd lexeme c i
+        in (Just (Right fn), [], Just cmd_mode)
+
+    where
+        anyButEscOrDel = alt $ any' \\ ('\ESC':delete')
+
+        -- command chars to actions
+        getCmd :: [Char] -> (Maybe Int) -> Int -> Action
+        getCmd lexeme c i = case lexeme of
+            "\^A" -> undef
             "\^B" -> upScreensE i
-            "\^D" -> not_implemented (head cs)
-            "\^E" -> not_implemented (head cs)
+            "\^D" -> undef
+            "\^E" -> undef
             "\^F" -> downScreensE i
             "\^G" -> viFileInfo
             "\^H" -> leftOrSolE  i
             "\^J" -> replicateM_ i downE
-            "\^L" -> not_implemented (head cs)
-            "\^M" -> not_implemented (head cs)
+            "\^L" -> undef
+            "\^M" -> undef
             "\^N" -> replicateM_ i downE
             "\^P" -> replicateM_ i upE
-            "\^R" -> not_implemented (head cs)
-            "\^T" -> not_implemented (head cs)
-            "\^U" -> not_implemented (head cs)
+            "\^R" -> undef
+            "\^T" -> undef
+            "\^U" -> undef
             "\^W" -> nextWinE
-            "\^Y" -> not_implemented (head cs)
-            "\^Z" -> not_implemented (head cs)
-            "\ESC"-> not_implemented (head cs)
-            "\^]" -> not_implemented (head cs)
-            "\^^" -> not_implemented (head cs)
-
+            "\^Y" -> undef
+            "\^Z" -> undef
+            "\^]" -> undef
+            "\^^" -> undef
             " "   -> rightOrEolE i
-            "!"   -> not_implemented (head cs)
-            "#"   -> not_implemented (head cs)
+            "!"   -> undef
+            "#"   -> undef
             "$"   -> eolE
-            "%"   -> not_implemented (head cs)
-            "&"   -> not_implemented (head cs)
-            "("   -> not_implemented (head cs)
-            ")"   -> not_implemented (head cs)
-            "+"   -> not_implemented (head cs)
-            ","   -> not_implemented (head cs)
-            "-"   -> not_implemented (head cs)
-            "."   -> not_implemented (head cs) -- last command could be in state
-            "0"   -> solE
+            "%"   -> undef
+            "&"   -> undef
+            "("   -> undef
+            ")"   -> undef
+            "+"   -> undef
+            ","   -> undef
+            "-"   -> undef
+            "."   -> undef
+      --    "0"   -> solE   -- don't want this. clashes with count
             "|"   -> solE
-            ";"   -> not_implemented (head cs)
-            "<"   -> not_implemented (head cs)
-            "?"   -> not_implemented (head cs)
-            "@"   -> not_implemented (head cs)
+            ";"   -> undef
+            "<"   -> undef
+            "?"   -> undef
+            "@"   -> undef
             "~"   -> do c' <- readE
                         let c'' = if isUpper c' then toLower c' else toUpper c'
                         writeE c''
-
-            "B"   -> not_implemented (head cs)
+            "B"   -> undef
             "D"   -> readRestOfLnE >>= setRegE >> killE
-            "E"   -> not_implemented (head cs)
-            "F"   -> not_implemented (head cs)
-            "G"   -> case c of 
-                        Nothing -> botE
-                        Just n  -> gotoLnE n
-
-            "N"   -> not_implemented (head cs)
+            "E"   -> undef
+            "F"   -> undef
+            "G"   -> case c of Nothing -> botE; Just n  -> gotoLnE n
+            "N"   -> undef
             "H"   -> downFromTosE (i - 1)
             "J"   -> eolE >> deleteE -- the "\n"
             "L"   -> upFromBosE (i - 1)
             "M"   -> middleE
-            "P"   -> not_implemented (head cs)
-            "Q"   -> not_implemented (head cs)
-            "R"   -> not_implemented (head cs)
-            "T"   -> not_implemented (head cs)
-            "U"   -> not_implemented (head cs)
-            "W"   -> not_implemented (head cs)
+            "P"   -> undef
+            "Q"   -> undef
+            "R"   -> undef
+            "T"   -> undef
+            "U"   -> undef
+            "W"   -> undef
             "X"   -> leftOrSolE i >> replicateM_ i deleteE
-            "Y"   -> not_implemented (head cs)
-
+            "Y"   -> undef
             "h"   -> leftOrSolE  i
             "j"   -> replicateM_ i downE
             "k"   -> replicateM_ i upE
@@ -151,32 +182,22 @@ simplecmd = digit `star` (cmdc >|< string ">>"
                         eolE >> insertE '\n' >> mapM_ insertE s >> solE
             "q"   -> quitE
             "x"   -> replicateM_ i deleteE
-
             "ZZ"  -> viWrite >> quitE
             "dd"  -> solE >> killE >> deleteE
             ">>"  -> replicateM_ i $ solE >> mapM_ insertE "    " 
             "yy"  -> readLnE >>= setRegE
 
-            [k] | k == keyPPage -> upScreensE i   -- ? hmm.
+            'r':[x] -> writeE x
+
+            [k] | k == keyPPage -> upScreensE i
                 | k == keyNPage -> downScreensE i
                 | k == keyLeft  -> leftOrSolE i
                 | k == keyDown  -> replicateM_ i downE
                 | k == keyUp    -> replicateM_ i upE
 
-            k   -> not_implemented (head k)
+            _ -> undef
 
--- | Replace a single char. Consumes more input
-replace :: Lexer () Action
-replace = char 'r' +> any `action` \(_:c:[]) -> Just $ writeE c
-
--- | Searching
--- Should make this a full lexer mode of its own, so as to echo chars
-search :: Lexer () Action
-search = char '/' +> anyButEnter `star` enter
-    `action` \lexeme -> Just $
-        let pat' = init (tail lexeme)
-            pat  = clean pat'
-        in msgE ('/':pat) >> searchE (Just pat)
+            where undef = not_implemented (head lexeme)
 
 --
 -- | Switch to another vi mode. 
@@ -184,15 +205,14 @@ search = char '/' +> anyButEnter `star` enter
 -- These commands are meta actions, as they transfer control to another
 -- lexer. Some of these commands also perform an action before switching.
 --
-cmd2other :: Lexer () Action
-cmd2other = 
-    (char ':' >|< char 'i' >|< char 'I' >|< char 'a' >|< char 'A' >|< 
-     char 'o' >|< char 'O' >|< char 'c' >|< char 'C' >|< char 'S')
-    `meta` \[c] rest -> 
-        let beginIns a = (Just (Right (a)), rest, Just ins_mode)
+cmd2other :: ViMode
+cmd2other = modeSwitchChar
+    `meta` \[c] st -> 
+        let beginIns a = (Just (Right (a)), st, Just ins_mode)
         in case c of
-            ':' -> (Just (Right (msgE ":")), rest, Just ex_mode)
-            'i' -> (Nothing, rest, Just ins_mode)
+            ':' -> (Just (Right (msgE ":")), [':'], Just ex_mode)
+
+            'i' -> (Nothing, st, Just ins_mode)
             'I' -> beginIns solE
             'a' -> beginIns $ rightOrEolE 1
             'A' -> beginIns eolE
@@ -201,13 +221,22 @@ cmd2other =
             'c' -> beginIns $ not_implemented 'c'
             'C' -> beginIns $ readRestOfLnE >>= setRegE >> killE
             'S' -> beginIns $ solE >> readLnE >>= setRegE >> killE
-            s   -> (Just(Right(msgE ("The "++show s++" command is unknown.")))
-                    ,rest, Just cmd_mode)
+
+            '/' -> (Just (Right (msgE "/")), ['/'], Just ex_mode)
+            '?' -> beginIns $ not_implemented '?'
+
+            '\ESC'-> (Just (Right msgClrE), [], Just cmd_mode)
+
+            s   -> (Just (Right (
+                        msgE ("The "++show s++" command is unknown.")))
+                    ,st, Just cmd_mode)
+
+    where modeSwitchChar = alt ":iIaAoOcCS/?\ESC"
 
 -- ---------------------------------------------------------------------
 -- | vi insert mode
 -- 
-ins :: Lexer () Action
+ins :: ViMode
 ins = anyButEsc
     `action` \[c] -> Just $ case c of
         k | isDel k       -> deleteE
@@ -221,29 +250,52 @@ ins = anyButEsc
     where anyButEsc = alt $ any' \\ ['\ESC']
 
 -- switching out of ins_mode
-ins2cmd :: Lexer () Action
-ins2cmd  = char '\ESC' `meta` \_ rest -> (Nothing, rest, Just cmd_mode)
+ins2cmd :: ViMode
+ins2cmd  = char '\ESC' 
+    `meta` \_ rest -> (Nothing, rest, Just cmd_mode)
 
 -- ---------------------------------------------------------------------
--- | todo, perhaps we could set an editor flag to echo each char with
--- msg as it is read?
---
--- ex mode immediately switches back to command mode
---
--- NB doesn't echo input! Fix me
---
-ex_mode :: Lexer () Action
-ex_mode = anyButEnter `star` enter
-    `meta` \cs rest -> case cs of
-        ('l':'e':'t':' ':c:_) 
-            -> -- for now, just add bindings to echo
-               -- n.b we haven't deletted the old binding,
-               -- so you better now _rebind_ keys. but only
-               -- bind new ones, until we fix Lexers.hs
-             (Just (Right (msgE $ show c ++ " bound to msgE")), 
-                            rest, Just (cmd_mode >||< new c))
+-- Ex mode. We also lex regex searching mode here.
 
-        _ -> (Just (Right (fn $ init cs)), rest, Just cmd_mode)
+-- normal input to ex. accumlate chars
+ex_char :: ViMode
+ex_char = anyButDelOrNl
+    `meta` \[c] acc -> (Just (Right $ msg c), (c:acc), Just ex_mode)
+    where
+        anyButDelOrNl= alt $ any' \\ (enter' ++ delete')
+        msg c = getMsgE >>= \s -> msgE (s++[c])
+
+-- line editing
+ex_edit :: ViMode
+ex_edit = delete
+    `meta` \_ cs -> 
+        let acc = case cs of [c]    -> [c]
+                             (_:xs) -> xs
+                             []     -> [':'] -- can't happen
+        in (Just (Right $ msgE (reverse acc)), acc, Just ex_mode)
+
+-- escape exits ex mode immediately
+ex2cmd :: ViMode
+ex2cmd = char '\ESC'
+    `meta` \_ _ -> (Just (Right msgClrE), [], Just cmd_mode)
+
+ex_eval :: ViMode
+ex_eval = enter
+    `meta` \_ dmc -> case reverse dmc of
+
+        -- regex searching
+        ('/':pat) -> (Just (Right (searchE (Just pat))), [], Just cmd_mode)
+
+        -- new key bindings. for now, just add bindings to echo n.b we
+        -- haven't deleted the old binding, so you better now _rebind_
+        -- keys. but only bind new ones, until we fix Lexers.hs
+        (_:'l':'e':'t':' ':[c]) ->
+               (Just (Right (bindmsg c)), [], Just (cmd_mode >||< new c))
+
+        (_:cmd) -> (Just (Right (fn cmd)), [], Just cmd_mode)
+
+        [] -> (Nothing, [], Just cmd_mode) -- can't happen
+
     where 
       fn ""           = msgClrE
       fn "w"          = viWrite
@@ -254,12 +306,13 @@ ex_mode = anyButEnter `star` enter
       fn "p"          = prevBufW
       fn ('s':'p':_)  = splitE
       fn ('e':' ':f)  = fnewE f
-      fn ('s':'/':cs) = viSub cs
+      fn ('s':'/':cs) = viSub cs >> msgClrE
       fn s            = msgE $ "The "++show s++ " command is unknown."
 
       -- generate a new lexer binding 'c' to silly echo function
-      new c = char c `action` \_ -> 
-            Just (msgE $ show c ++ " bound to the msg function")
+      new c = char c `action` \_ -> Just $ msgE $ "echo " ++ show c
+
+      bindmsg c = msgE $ show c ++ "is now bound to msgE()"
 
 ------------------------------------------------------------------------
 
@@ -296,11 +349,13 @@ viSub cs = do
 -- ---------------------------------------------------------------------
 -- | Handle delete chars in a string
 --
+{-
 clean :: [Char] -> [Char]
 clean (_:c:cs) | isDel c = clean cs
 clean (c:cs)   | isDel c = clean cs
 clean (c:cs) = c : clean cs
 clean [] = []
+-}
 
 -- | Is a delete sequence
 isDel :: Char -> Bool
@@ -312,27 +367,28 @@ isDel _            = False
 -- ---------------------------------------------------------------------
 -- | character ranges
 --
-digit, any, enter, anyButEnter :: Regexp () Action
-digit = alt digit'
-any   = alt any'
-enter = alt enter'
-anyButEnter = alt (any' \\ enter')
+digit, delete, enter :: ViRegex
+digit   = alt digit'
+enter   = alt enter'
+delete  = alt delete'
+-- any     = alt any'
 
-enter', any', digit' :: [Char]
+enter', any', digit', delete' :: [Char]
 enter'   = ['\n', '\r']
+delete'  = ['\BS', '\127', keyBackspace ]
 any'     = ['\0' .. '\255']
 digit'   = ['0' .. '9']
 
 -- ---------------------------------------------------------------------
 -- | simple command mode keys (ones that don't consume input, or switch modes)
-cmdc :: Regexp () Action
+cmdc :: ViRegex
 cmdc     = alt cmdc'
 
 cmdc' :: [Char]
 cmdc'    = cmdctrl' ++ cursc' ++ special' ++ upper' ++ lower'
 
 special', upper', lower', cmdctrl', cursc' :: [Char]
-special' = " !#$%()+,-.|0;<?@~"
+special' = " !#$%()+,-.|;<?@~"
 upper'   = "BDEFGNHJLMPQRTUWXY"
 lower'   = "hjklnpqx"
 cmdctrl' = ['\^A','\^B','\^D','\^E','\^F','\^H','\^J','\^L','\^M','\^N',

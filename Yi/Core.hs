@@ -437,15 +437,21 @@ searchAndRepLocal re str = do
 
 ------------------------------------------------------------------------
 
--- | Draw message at bottom of screen
+-- | Set the cmd buffer, and draw message at bottom of screen
 msgE :: String -> Action
 msgE s = do modifyEditor_ $ \e -> return e { cmdline = s }
             UI.drawCmdLine s -- immediately draw
 
 -- | Clear the message line at bottom of screen
-msgClrE  :: Action
+msgClrE :: Action
 msgClrE = do modifyEditor_ $ \e -> return e { cmdline = [] } 
              UI.drawCmdLine [] -- immediately draw
+
+-- | Get the current cmd buffer
+getMsgE :: IO String
+getMsgE = readEditor cmdline 
+
+------------------------------------------------------------------------
 
 -- | File info, size in chars, line no, col num, char num, percent 
 -- TODO more info, better data structure
