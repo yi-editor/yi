@@ -58,7 +58,7 @@ type NanoState = Maybe (Char,String,String)
 -- cmd char lexer.
 --
 nano_km :: NanoMode
-nano_km = insChar >||< cmdChar >||< cmdSwitch
+nano_km = insChar >||< cmdChar >||< cmdSwitch >||< searchChar
 
 --
 -- Echo buffer mode (typing in file names at the prompt, for example)
@@ -141,6 +141,37 @@ cmdCharFM = listToFM $
     ]
 
 --
+-- nano search behaviour.
+--
+-- This is a bit subtle, and illustrates the use of metaM to modify the
+-- current lexer based on the result of an IO action.
+--
+-- We need to jump to the echo buffer keymap, however, the prompt to use
+-- is depedent upon the contents of the regex register. Getting at this
+-- is an IO action. So, to pass IO results back to the pure lexer
+-- requires the metaM action, to replace the current lexer with the
+-- supplied argument.
+--
+-- What will happen? We _abandon_ the current lexer, jumping to a new
+-- lexer that begins in echo_km mode, with a state set by the IO action.
+-- This lexer will continue processing for us.
+--
+searchChar :: NanoMode
+searchChar = char '\^W'
+    `action` \_ -> Just (a >>= metaM)
+    where
+        a = do mre <- getRegexE
+               let prompt = case mre of
+                    Nothing      -> "Search: "
+                    Just (pat,_) -> "Search ["++pat++"]: "
+               msgE prompt
+               return (mkKM prompt) -- return the echo_km lexer, with
+                                    -- the correct state set
+
+        mkKM p = \cs -> let (as,_,_) = execLexer echo_km (cs, Just ('\^W',p,[]))
+                        in as
+                
+--
 -- We implement the state where the user can enter a file name (for
 -- reading, or writing) as a separate lexer (not just lexer fragment).
 -- Certain characterrs cause a /mode/ switch, which puts us into the
@@ -220,10 +251,9 @@ echoEval :: NanoMode
 echoEval = enter
     `meta` \_ (Just (c,_,rf)) ->
         let f = reverse rf
-            a = if f == [] then nopE 
-                           else case lookupFM echoCharFM c of
-                                    Just (fn,_) -> fn f
-                                    Nothing     -> nopE
+            a = case lookupFM echoCharFM c of
+                    Just (fn,_) -> fn f
+                    Nothing     -> nopE
 
         in (Just (Right (a >> msgClrE >> cmdlineUnFocusE)),Nothing,Just nano_km)
     where
@@ -231,16 +261,24 @@ echoEval = enter
 
 --
 -- Actions that mess with the echo (or command) buffer
--- Notice how these actions take a @FilePath@ as an argument, and the
--- second component of the elem of the fm is a string to use as a
--- prompt.
+-- Notice how these actions take a @String@ as an argument, and the
+-- second component of the elem of the fm is a string that could be used
+-- as a prompt (in @cmdSwitch@ -- sometimes the prompt is set using an
+-- IO action, in which case we ignore the prompt component of the fm)
 --
-echoCharFM :: FiniteMap Char ((FilePath -> Action), String)
+echoCharFM :: FiniteMap Char ((String -> Action), String)
 echoCharFM = listToFM $
     [('\^O',     
-     (\f -> catchJust ioErrors (do fwriteToE f ; msgE "Wrote current file.") 
-                               (msgE . show) 
+     (\f -> if f == [] 
+            then nopE
+            else catchJust ioErrors (do fwriteToE f ; msgE "Wrote current file.") 
+                                    (msgE . show) 
      ,"File Name to Write: "))
+    
+    ,('\^W',
+     (\p -> case p of [] -> searchE Nothing
+                      _  -> searchE (Just p)
+     ,undefined))
     ]
 
 -- ---------------------------------------------------------------------

@@ -1,4 +1,6 @@
-{-# OPTIONS -#include YiUtils.h #-}
+{-# OPTIONS -fglasgow-exts -cpp -#include YiUtils.h #-}
+--
+-- -fglasgow-exts for deriving Typeable
 -- 
 -- Copyright (C) 2004 Don Stewart - http://www.cse.unsw.edu.au/~dons
 -- 
@@ -118,8 +120,8 @@ module Yi.Core (
         -- * Basic registers
         setRegE,        -- :: String -> Action
         getRegE,        -- :: IO String
-        setRegexE,      -- :: Regex -> Action
-        getRegexE,      -- :: IO (Maybe Regex)
+        setRegexE,      -- :: (String,Regex) -> Action
+        getRegexE,      -- :: IO (Maybe (Regex,String))
 
         -- * Regular expression and searching
         findE,                  -- :: String -> IO (Maybe (Int,Int))
@@ -134,6 +136,9 @@ module Yi.Core (
         wordCompleteE,          -- :: Action
         resetCompleteE,         -- :: Action
 
+        -- * Modifying the current keymap
+        metaM,                  -- :: ([Char] -> [Action]) -> IO ()
+
    ) where
 
 import Yi.MkTemp            ( mkstemp )
@@ -146,13 +151,18 @@ import qualified Yi.Editor as Editor
 import Data.Maybe           ( isNothing, isJust )
 import Data.Char            ( isLatin1, isAlphaNum )
 import Data.FiniteMap
+#if __GLASGOW_HASKELL__ >= 602
+import Data.Typeable        ( Typeable )
+#else
+import Data.Dynamic         ( Typeable )
+#endif
 
 import System.IO            ( hClose )
 import System.Directory     ( doesFileExist )
 import System.Exit          ( exitWith, ExitCode(ExitSuccess) )
 
 import Control.Monad
-import Control.Exception    ( ioErrors, handle, throwIO, handleJust, assert )
+import Control.Exception
 import Control.Concurrent   ( threadWaitRead, takeMVar, forkIO )
 import Control.Concurrent.Chan
 
@@ -233,7 +243,9 @@ eventLoop :: IO ()
 eventLoop = do
     fn <- Editor.getKeyBinds 
     ch <- readEditor input
-    repeatM_ $ handle handler (sequence_ . fn =<< getChanContents ch)
+    let run km = catchDyn (sequence_ . km =<< getChanContents ch)
+                          (\(MetaActionException km') -> run km')
+    repeatM_ $ handle handler (run fn)
 
     where
       handler e | isJust (ioErrors e) = errorE (show e)
@@ -597,11 +609,11 @@ getRegE :: IO String
 getRegE = readEditor yreg
 
 -- | Put regex into regex 'register'
-setRegexE :: Regex -> Action
+setRegexE :: (String,Regex) -> Action
 setRegexE re = modifyEditor_ $ \e -> return e { regex = Just re }
 
 -- Return contents of regex register
-getRegexE :: IO (Maybe Regex)
+getRegexE :: IO (Maybe (String,Regex))
 getRegexE = readEditor regex
  
 -- ---------------------------------------------------------------------
@@ -621,17 +633,17 @@ findE s = withWindow $ \w b -> do
 --
 searchE :: (Maybe String) -> Action
 searchE (Just []) = nopE
-searchE (Just re) = regcomp re regExtended >>= searchE'
+searchE (Just re) = regcomp re regExtended >>= \c_re -> searchE' re c_re
 searchE Nothing   = do 
     mre <- getRegexE 
     case mre of
-        Nothing -> nopE
-        Just re -> searchE' re
+        Nothing     -> nopE
+        Just (s,re) -> searchE' s re
 
 -- Internal.
-searchE' :: Regex -> Action
-searchE' c_re = do
-    setRegexE c_re      -- store away for later use
+searchE' :: String -> Regex -> Action
+searchE' s c_re = do
+    setRegexE (s,c_re)      -- store away for later use
     mp <- withWindow $ \w b -> do
             rightB b
             mp <- regexB b c_re
@@ -652,7 +664,7 @@ searchAndRepLocal :: String -> String -> IO Bool
 searchAndRepLocal [] _ = return False   -- hmm...
 searchAndRepLocal re str = do
     c_re <- regcomp re regExtended
-    setRegexE c_re      -- store away for later use
+    setRegexE (re,c_re)     -- store away for later use
 
     mp <- withWindow $ \w b -> do   -- find the regex
             mp <- regexB b c_re
@@ -945,6 +957,34 @@ wordCompleteE = do
                 moveTo b i'
                 (s,_,_) <- readWord_ win b
                 assert (s /= [] && i /= j) $ return $ Just (s,i')
+
+-- ---------------------------------------------------------------------
+-- | The metaM action. This is our mechanism for having Actions alter
+-- the current keymap. It is similar to the Ctk lexer\'s meta action.
+-- It takes a new keymap to use, throws a dynamic exception, which
+-- interrupts the main loop, causing it to restart with the given
+-- exception. An alternative would be to change all action types to
+-- @IO (Maybe Keymap)@, and check the result of each action as it is
+-- forced. Currently, my feeling is that metaM will be rare enough not
+-- to bother with this solution. Also, the dynamic exception solution
+-- changes only a couple of lines of code.
+--
+
+--
+-- Our meta exception returns the next keymap to use
+--
+newtype MetaActionException = MetaActionException ([Char] -> [Action])
+    deriving Typeable
+
+--
+-- | Given a keymap function, throw an exception to interrupt the main
+-- loop, which will continue processing with the supplied keymap.  Use
+-- this when you want to alter the keymap lexer based on the outcome of
+-- some IO action. Altering the keymap based on the input to  the keymap
+-- is achieved by threading a state variable in the keymap itself.
+--
+metaM :: ([Char] -> [Action]) -> IO ()
+metaM km = throwDyn (MetaActionException km)
 
 ------------------------------------------------------------------------
 

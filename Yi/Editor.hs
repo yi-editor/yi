@@ -65,7 +65,7 @@ data Buffer a => GenEditor a =
        ,cmdline   :: !String                    -- ^ the command line
        ,cmdlinefocus :: !Bool                   -- ^ cmdline has focus
        ,yreg      :: !String                    -- ^ yank register
-       ,regex     :: !(Maybe Regex)             -- ^ most recent regex
+       ,regex     :: !(Maybe (String,Regex))    -- ^ most recent regex
        ,curwin    :: !(Maybe Unique)            -- ^ the window with focus
        ,curkeymap :: [Char] -> [Action]         -- ^ user-configurable keymap
        ,scrsize   :: !(Int,Int)                 -- ^ screen size
