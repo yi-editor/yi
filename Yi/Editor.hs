@@ -66,7 +66,7 @@ data Buffer a => GenEditor a =
        ,curwin    :: Maybe Unique               -- ^ the window with focus
        ,curkeymap :: [Char] -> [Action]         -- ^ user-configurable keymap
        ,scrsize   :: !(Int,Int)                 -- ^ screen size
-       ,uistyle   :: UI                         -- ^ ui colours
+       ,uistyle   :: UIStyle                    -- ^ ui colours
     }
 
 --
@@ -400,7 +400,7 @@ getKeyBinds = readEditor curkeymap
 --
 data Config = Config {
             keymap :: [Char] -> [Action]       -- ^ bind keys to editor actions
-           ,style  :: UI
+           ,style  :: UIStyle
     }
 
 -- ---------------------------------------------------------------------

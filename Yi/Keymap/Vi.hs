@@ -257,7 +257,7 @@ cmd2other = modeSwitchChar
 
             '\ESC'-> (with (msgClrE >> refreshE), st{acc=[]}, Just $ cmd st)
 
-            s   -> (with (msgE ("The "++show s++" command is unknown."))
+            s   -> (with (errorE ("The "++show s++" command is unknown."))
                    ,st, Just $ cmd st)
 
     where modeSwitchChar = alt ":iIaAoOcCS/?\ESC"
@@ -380,7 +380,7 @@ ex_eval = enter
       fn ('s':'p':_)  = splitE
       fn ('e':' ':f)  = fnewE f
       fn ('s':'/':cs) = viSub cs
-      fn s            = msgE $ "The "++show s++ " command is unknown."
+      fn s            = errorE $ "The "++show s++ " command is unknown."
 
 ------------------------------------------------------------------------
 --
@@ -426,7 +426,7 @@ eval_unmap emode lhs = mode >||< bind
 ------------------------------------------------------------------------
 
 not_implemented :: Char -> Action
-not_implemented c = msgE $ "Not implemented: " ++ show c
+not_implemented c = errorE $ "Not implemented: " ++ show c
 
 -- ---------------------------------------------------------------------
 -- Misc functions
@@ -459,7 +459,7 @@ viSub cs = do
  
     where do_single p r = do 
                 s <- searchAndRepLocal p r
-                if not s then msgE ("Pattern not found: "++p) else msgClrE
+                if not s then errorE ("Pattern not found: "++p) else msgClrE
 
 {-
           -- inefficient. we recompile the regex each time.

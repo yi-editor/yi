@@ -10,7 +10,7 @@ import qualified Yi.Keymap.Vi as Vi
 
 yi = settings { 
         keymap = Vi.keymapPlus fn,
-        style  = ui { modeln_hl = (FgBright Blue, Bg DarkBlue) }
+        style  = ui { modeline_focused = Style BlueF DarkBlueB }
      }
 
 fn = char 'n' 

@@ -42,11 +42,10 @@ module Yi.UI (
 
         -- * Drawing
         refresh,
-        reset,
-        fillLine,
 
         -- * Drawing messages
         drawCmdLine,
+--      drawErrLine,
 
         module Yi.Curses   -- UIs need to export the symbolic key names
 
@@ -119,8 +118,10 @@ redraw = do
     gotoTop
     mapM_ drawWindow ws
 
-    cl <- readEditor cmdline
-    drawCmdLine cl
+    cl  <- readEditor cmdline
+    sty <- readEditor uistyle
+
+    withStyle (window sty) $ drawCmdLine cl
 
     -- work out origin of current window from index of that window in win list
     -- still grubby because we aren't using the /origin/ field of 'Window'
@@ -159,7 +160,9 @@ drawWindow win@(Window { bufkey=u, mode=m, origin=(_,_),
 
     -- draw modeline
     mwin <- getWindow
-    let fn = if isJust mwin && fromJust mwin == win then modeln_hl else modeln
+    let fn = if isJust mwin && fromJust mwin == win 
+             then modeline_focused 
+             else modeline
     withStyle (fn sty) $ drawLine w m
 
 --
@@ -167,14 +170,22 @@ drawWindow win@(Window { bufkey=u, mode=m, origin=(_,_),
 --
 drawCmdLine :: String -> IO ()
 drawCmdLine s = do
+    (h,w) <- Curses.scrSize
+    Curses.wMove Curses.stdScr (h-1) 0
+    let w' = min (w-1) (length s)   -- hmm. what if this is big?
+    drawLine w' s
+    fillLine
+    Curses.wMove Curses.stdScr (h-1) w'
+
+--
+-- | Draw an error message to the command line
+--
+{-
+drawErrLine :: String -> IO ()
+drawErrLine s = do
     sty <- readEditor uistyle
-    withStyle (window sty) $ do
-        (h,w) <- Curses.scrSize
-        Curses.wMove Curses.stdScr (h-1) 0
-        let w' = min (w-1) (length s)   -- hmm. what if this is big?
-        drawLine w' s
-        fillLine
-        Curses.wMove Curses.stdScr (h-1) w'
+    withStyle (error_messages sty) $ drawCmdLine s
+-}
 
 --
 -- | lazy version is faster than calculating length of s
@@ -190,9 +201,7 @@ drawCursor :: (Int,Int) -> (Int,Int) -> IO ()
 drawCursor (o_y,_o_x) (y,x) = Curses.withCursor Curses.CursorVisible $ do
     gotoTop
     (h,w) <- scrSize
-    setAttribute (Curses.setReverse Curses.attr0 True, Curses.Pair 1)
     Curses.wMove Curses.stdScr (min (h-1) (o_y + y)) (min (w-1) x)
-    reset
 
 --
 -- | move cursor to origin of stdScr.
@@ -240,23 +249,27 @@ withStyle sty fn = uiAttr sty >>= setAttribute >> fn >> reset
 --
 -- TODO remember to update this if new fields are added to the ui
 --
-initUiColors :: UI -> IO [((Curses.Color, Curses.Color), Pair)]
-initUiColors (UI{ window=wn, modeln_hl=mlf, modeln=ml, eof=ef})
-    = mapM (uncurry fn) (zip [wn, mlf, ml, ef] [1..])
+initUiColors :: UIStyle -> IO [((Curses.Color, Curses.Color), Pair)]
+initUiColors (UIStyle {
+                 window=wn, 
+                 modeline_focused=mlf, 
+                 modeline=ml, 
+                 eof=ef }) =
+    mapM (uncurry fn) (zip [wn, mlf, ml, ef] [1..])
     where
         fn :: Style -> Int -> IO ((Curses.Color, Curses.Color), Pair)
-        fn (fg, bg) p = let (_,fgc) = fgAttr fg
-                            (_,bgc) = bgAttr bg
-                        in do initPair (Pair p) fgc bgc
-                              return ((fgc,bgc), (Pair p))
+        fn (Style fg bg) p = let (_,fgc) = fg2attr fg
+                                 (_,bgc) = bg2attr bg
+                             in do initPair (Pair p) fgc bgc
+                                   return ((fgc,bgc), (Pair p))
 
 --
--- | Getting from nice colours to ncurses-settable attributes
+-- | Getting from nice abstract colours to ncurses-settable values
 --
 uiAttr :: Style -> IO (Curses.Attr, Curses.Pair)
-uiAttr (fg, bg) = do
-    let (a, fgc) = fgAttr fg
-        (b, bgc) = bgAttr bg
+uiAttr (Style fg bg) = do
+    let (a, fgc) = fg2attr fg
+        (b, bgc) = bg2attr bg
     pair <- lookupPair (fgc, bgc)
     return (a `attrPlus` b, pair)
 
@@ -270,10 +283,86 @@ lookupPair p = do pm <- readIORef pairMap
                         Just pair -> pair
 
 --
--- | map color pairs to ncurses terminal Pair settings
+-- | map of Curses.Color pairs to ncurses terminal Pair settings
 --
 pairMap :: IORef [ ((Curses.Color, Curses.Color), Pair) ]
 pairMap = unsafePerformIO $ newIORef []
 {-# NOINLINE pairMap #-}
 
+-- ---------------------------------------------------------------------
+--
+-- | mapping abstract colours to ncurses attributes and colours
+--
+
+bg2attr :: BackgroundColor -> (Curses.Attr, Curses.Color)
+bg2attr c = case c of
+    BlackB      -> (nullA, black)
+    DarkRedB    -> (nullA, red)
+    DarkGreenB  -> (nullA, green)
+    BrownB      -> (nullA, yellow)
+    DarkBlueB   -> (nullA, blue)
+    PurpleB     -> (nullA, magenta)
+    DarkCyanB   -> (nullA, cyan)
+    WhiteB      -> (nullA, white)
+    DefaultB    -> (nullA, defaultColor)
+
+fg2attr :: ForegroundColor -> (Curses.Attr, Curses.Color)
+fg2attr c = case c of
+    BlackF       -> (nullA, black)
+    GreyF        -> (boldA, black)
+    DarkRedF     -> (nullA, red)
+    RedF         -> (boldA, red)
+    DarkGreenF   -> (nullA, green)
+    GreenF       -> (boldA, green)
+    BrownF       -> (nullA, yellow)
+    YellowF      -> (boldA, yellow)
+    DarkBlueF    -> (nullA, blue)
+    BlueF        -> (boldA, blue)
+    PurpleF      -> (nullA, magenta)
+    MagentaF     -> (boldA, magenta)
+    DarkCyanF    -> (nullA, cyan)
+    CyanF        -> (boldA, cyan)
+    WhiteF       -> (nullA, white)
+    BrightWhiteF -> (boldA, white)
+    DefaultF     -> (nullA, defaultColor)
+
+------------------------------------------------------------------------
+--
+-- Basic (ncurses) colours.
+--
+defaultColor :: Curses.Color
+defaultColor = fromJust $ Curses.color "default"
+
+black, red, green, yellow, blue, magenta, cyan, white :: Curses.Color
+black     = fromJust $ Curses.color "black"
+red       = fromJust $ Curses.color "red"
+green     = fromJust $ Curses.color "green"
+yellow    = fromJust $ Curses.color "yellow"
+blue      = fromJust $ Curses.color "blue"
+magenta   = fromJust $ Curses.color "magenta"
+cyan      = fromJust $ Curses.color "cyan"
+white     = fromJust $ Curses.color "white"
+
+--
+-- Combine attribute with another attribute
+--
+setBoldA :: Curses.Attr -> Curses.Attr
+setBoldA = flip Curses.setBold True
+
+-- setUnderlineA, setDimA, setReverseA :: Curses.Attr -> Curses.Attr
+-- setUnderlineA = flip Curses.setUnderline True
+-- setDimA       = flip Curses.setDim       True
+-- setReverseA   = flip Curses.setReverse   True
+
+--
+-- | Some attribute constants
+--
+boldA, nullA :: Curses.Attr
+nullA       = Curses.attr0
+boldA       = setBoldA      nullA
+
+-- underlineA, dimA, reverseA :: Curses.Attr
+-- underlineA  = setUnderlineA nullA
+-- dimA        = setDimA       nullA
+-- reverseA    = setReverseA   nullA
 

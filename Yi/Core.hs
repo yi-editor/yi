@@ -119,7 +119,7 @@ startE confs ln mfs = do
     UI.start
     sz <- UI.screenSize
     modifyEditor_ $ \e -> return $ e { scrsize = sz }
-    handleJust (ioErrors) (\e -> msgE (show e)) $ do
+    handleJust (ioErrors) (\e -> errorE (show e)) $ do
         case mfs of
             Just fs -> mapM_ fnewE fs
             Nothing -> do               -- vi-like behaviour, just for now.
@@ -153,7 +153,7 @@ eventLoop = Editor.getKeyBinds >>= loop
     where 
         loop f = do handleJust ioErrors handler (sequence_ . f =<< lazyRead)
                     loop f
-        handler = msgE . show
+        handler = errorE . show
 
 --
 -- | Lazily read all input from the user. A big magic.
@@ -411,7 +411,7 @@ searchE' c_re = do
             return (w,mp)
     case mp of
         Just (p,_) -> withWindow_ $ moveToW p
-        Nothing    -> msgE "Pattern not found"  -- TODO
+        Nothing    -> errorE "Pattern not found"  -- TODO
 
 ------------------------------------------------------------------------
 
@@ -454,6 +454,11 @@ searchAndRepLocal re str = do
 msgE :: String -> Action
 msgE s = do modifyEditor_ $ \e -> return e { cmdline = s }
             UI.drawCmdLine s -- immediately draw
+
+-- | Set the cmd buffer, and draw a pretty error message
+errorE :: String -> Action
+errorE s = do modifyEditor_ $ \e -> return e { cmdline = s }
+              UI.drawCmdLine s -- immediately draw
 
 -- | Clear the message line at bottom of screen
 msgClrE :: Action
