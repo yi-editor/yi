@@ -238,9 +238,8 @@ rightOrEolE x = withBuffer_ $ \b -> moveXorEol b x
 newE  :: FilePath -> IO ()
 newE f = do
     e  <- doesFileExist f
-    cs <- if e then readFile f else return []
-    Editor.newBuffer f cs
---  hClose hd                   -- must come after we create the new buffer
+    if e then Editor.hNewBuffer f
+         else Editor.stringToNewBuffer f []
 
 --
 -- | Write current buffer to disk

@@ -110,11 +110,19 @@ modifyEditor f = modifyMVar state $ \r -> do
 
 -- ---------------------------------------------------------------------
 --
--- | Create a new buffer, add it to the set, make it the current buffer,
--- and fill it with contents of @f@.
+-- | Create a new buffer, filling with contents of file.
 --
-newBuffer :: FilePath -> [Char] -> IO ()
-newBuffer f cs = 
+hNewBuffer :: FilePath -> IO ()
+hNewBuffer f = 
+    modifyEditor_ $ \e@(Editor{buffers=bs} :: Editor) -> do
+        b <- hNewB f
+        return $! e { buffers = addToFM bs (keyB b) b, curkey = (keyB b) }
+
+--
+-- | Create and fill a new buffer.
+--
+stringToNewBuffer :: FilePath -> String -> IO ()
+stringToNewBuffer f cs =
     modifyEditor_ $ \e@(Editor{buffers=bs} :: Editor) -> do
         b <- newB f cs
         return $! e { buffers = addToFM bs (keyB b) b, curkey = (keyB b) }

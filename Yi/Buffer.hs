@@ -1,3 +1,4 @@
+{-# OPTIONS -fffi #-}
 -- 
 -- Copyright (C) 2004 Don Stewart - http://www.cse.unsw.edu.au/~dons
 -- 
@@ -29,9 +30,19 @@ import Data.IORef
 import Prelude      hiding      ( IO )
 import GHC.IOBase               ( IO(..) )
 import GHC.Base
+import GHC.Word                 ( Word8 )
 
 import Data.Unique              ( Unique, newUnique )
 import Control.Concurrent.MVar
+
+import IO                       ( hFileSize, IOMode(ReadMode) )
+import System.IO                ( openBinaryFile )
+
+import Data.Array.MArray        ( newArray_, newListArray )
+import Data.Array.Base          ( STUArray(..) )
+import Data.Array.IO            ( IOUArray, hGetArray )
+
+import Foreign.C.Types          ( CSize )
 
 -- ---------------------------------------------------------------------
 --
@@ -42,7 +53,10 @@ import Control.Concurrent.MVar
 class Buffer a where
 
     -- | Construct a new buffer initialised with the supplied name and list
-    newB :: String -> [Char] -> IO a
+    newB  :: FilePath -> [Char] -> IO a
+
+    -- | Construct a new buffer filled with contents of file
+    hNewB :: FilePath -> IO a
 
     -- | String name of this buffer
     nameB :: a -> String
@@ -173,13 +187,12 @@ data FBuffer =
                 !(MVar (IORef FBuffer_))
 
 data FBuffer_ = FBuffer_ {
-        bufBuf   :: RawBuffer   -- ^ a raw byte buffer
-       ,bufPnt   :: !Int        -- ^ current point index
-       ,bufLen   :: !Int        -- ^ length of contents
-       ,bufSize  :: !Int        -- ^ raw buffer size
+        bufBuf   :: RawBuffer  -- ^ raw memory in the heap
+       ,bufPnt   :: !Int       -- ^ current position
+       ,bufLen   :: !Int       -- ^ length of contents
+       ,bufSize  :: !Int       -- ^ raw size of ba
      }
 
--- RawBuffer :: #
 type RawBuffer = MutableByteArray# RealWorld
 
 instance Eq FBuffer where
@@ -189,45 +202,46 @@ instance Show FBuffer where
     showsPrec _ (FBuffer f _ _) = showString $ "\"" ++ f ++ "\""
 
 -- ---------------------------------------------------------------------
--- | Initialisation stuff.
+-- | Construction
+
+-- | Get a new 'FBuffer' filled from FilePath.
+-- Based on GHC's Utils/StringBuffer.hs
 --
+hNewFBuffer :: FilePath -> IO FBuffer
+hNewFBuffer f = do
+    h    <- openBinaryFile f ReadMode
+    size <- hFileSize h
+    let size_i = fromIntegral size
+        r_size = size_i + 2048 -- TODO
+    arr <- newArray_ (0,r_size-1)    -- has a MutableByteArray# inside
+    r <- if size_i == 0 then return 0 else hGetArray h arr size_i -- empty file!
+    if (r /= size_i)
+        then ioError (userError $ "Short read of file: " ++ f)
+        else case unsafeCoerce# arr of -- please forgive me
+            STUArray _ _ bytearr# -> do
+                ref <- newIORef (FBuffer_ bytearr# 0 size_i r_size)
+                mv  <- newMVar ref
+                u   <- newUnique
+                return (FBuffer f u mv)
 
 --
--- | A new empty 'FBuffer'
+-- | New FBuffer filled from string
 --
-newEmptyFBuffer_ :: RawBuffer -> Int -> FBuffer_
-newEmptyFBuffer_ b size = 
-    FBuffer_ { bufBuf = b,
-               bufPnt = (-1),   -- should be undefined,
-               bufLen = 0,
-               bufSize = size }
-
---
--- | Creates a new mutable byte array of specified size in bytes
---
-allocFBuffer_ :: Int -> IO FBuffer_
-allocFBuffer_ sz@(I# n) = IO $ \st ->
-    case newByteArray# n st of 
-        (# st', b #) -> (# st', newEmptyFBuffer_ b sz #)
-
---
--- | get a new 'FBuffer', 2 * size of @cs@, by default, filled from cs.
---
-newFBuffer :: String -> [Char] -> IO FBuffer
-newFBuffer f []  = newFBuffer f ['\n']  -- NB empty file semantics
-newFBuffer f cs = do
-    let size = length cs
-    fb@(FBuffer_ b _ _ _) <- allocFBuffer_ (size+2048) -- TODO
-    i   <- writeChars b cs 0
-    let fb' = fb {bufPnt = 0, bufLen = i}
-    ref <- newIORef fb'
-    mv  <- newMVar ref
-    u   <- newUnique
-    return (FBuffer f u mv)
+stringToFBuffer :: String -> String -> IO FBuffer
+stringToFBuffer nm s = do
+    let size_i = length s
+    arr <- newListArray (0,size_i-1) (map (fromIntegral.ord) s) :: IO (IOUArray Int Word8)
+    case unsafeCoerce# arr of       -- TODO get rid of Coerce
+        STUArray _ _ bytearr# -> do
+            ref <- newIORef (FBuffer_ bytearr# 0 size_i size_i)
+            mv  <- newMVar ref
+            u   <- newUnique
+            return (FBuffer nm u mv)
 
 -- ---------------------------------------------------------------------
 --
 -- | Write string into buffer, return the index of the next point
+-- TODO slow.
 --
 writeChars :: RawBuffer -> [Char] -> Int -> IO Int
 writeChars _ []     i = return i 
@@ -238,6 +252,8 @@ writeChars b (c:cs) i = writeCharToBuffer b i c >>= writeChars b cs
 -- | read @n@ chars from buffer @b@, starting at @i@
 -- Slower, more allocs:
 --      readChars b n i = mapM (readCharFromBuffer b) [i .. i+n-1]
+--
+-- strict. is this bad?
 --
 readChars :: RawBuffer -> Int -> Int -> IO [Char]
 readChars b (I# n) (I# i) = do
@@ -255,11 +271,19 @@ readChars b (I# n) (I# i) = do
 -- *Assumes the limits are correct*
 --
 shiftChars :: RawBuffer -> Int -> Int -> Int -> IO Int
+shiftChars b src dst len = 
+    c_memcpy_shift b src dst (fromIntegral len) >> return (dst + len)
+
+foreign import ccall unsafe "memcpy_shift"
+   c_memcpy_shift :: RawBuffer -> Int -> Int -> CSize -> IO ()
+
+{-
 shiftChars b (I# src) (I# dst) (I# l) = do
     let loop 0# _ j = return (I# j)
         loop n  i j = copyCharFromTo b i j >> loop (n -# 1#) (i +# 1#) (j +# 1#)
     loop l src dst
 {-# INLINE shiftChars #-}
+-}
 
 --
 -- | Copy a character to another location in the buffer
@@ -273,6 +297,8 @@ copyCharFromTo slab src dst = IO $ \st ->
 
 --
 -- | Read a 'Char' from a 'RawBuffer'. Return character
+--
+-- TODO could use indexCharArray# :: ByteArr# -> Int# -> Char#
 --
 readCharFromBuffer :: RawBuffer -> Int# -> IO Char
 readCharFromBuffer slab off = IO $ \st -> 
@@ -299,7 +325,10 @@ writeCharToBuffer slab (I# off) (C# c) = IO $ \st ->
 instance Buffer FBuffer where
 
     -- newB :: String -> [Char] -> IO a
-    newB = newFBuffer
+    newB = stringToFBuffer
+
+    -- hNewB :: FilePath -> IO a
+    hNewB = hNewFBuffer
 
     -- nameB :: a -> String
     nameB (FBuffer f _ _) = f
@@ -381,7 +410,7 @@ instance Buffer FBuffer where
         modifyIORefIO ref $ \fb@(FBuffer_ buf p e _) -> do
             let src = inBounds (p + n) e
                 len = max 0 (e-p-n)
-            i  <- shiftChars buf src p len
+            i  <- shiftChars buf src p len  -- still too slow
             let p' | p == 0    = p     -- go no further!
                    | i == p    = p-1   -- shift back if at eof
                    | otherwise = p
