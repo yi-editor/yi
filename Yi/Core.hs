@@ -105,9 +105,7 @@ startE confs mfs = do
     Editor.setUserSettings confs
     case mfs of
         Just fs -> mapM_ newE fs
-
-        -- vi-like behaviour, just for now.
-        Nothing -> do 
+        Nothing -> do               -- vi-like behaviour, just for now.
             mf <- mkstemp "/tmp/yi.XXXXXXXXXX" 
             case mf of
                 Nothing    -> error "Core.startE: mkstemp failed"
@@ -237,15 +235,15 @@ rightOrEolE x = withBuffer_ $ \b -> moveXorEol b x
 -- TODO: change type.
 --
 newE  :: FilePath -> IO ()
-newE f = readFile f >>= Editor.newBuffer f
+newE f = do
+    hd <- openFile f ReadWriteMode
+    cs <- hGetContents hd
+    Editor.newBuffer f cs
+    hClose hd                   -- must come after we create the new buffer
 
 {-
 -- works. but if you move hClose *before* the call to newBuffer -- bad!
 -- so readFile does exactly what we want, but nicely.
-        hd <- openFile f ReadMode
-        cs <- hGetContents hd
-        Editor.newBuffer f cs       -- lazy for large files?
-        hClose hd                   -- must come after we create the new buffer
 -}
 
 --
