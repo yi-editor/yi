@@ -1,5 +1,3 @@
-6.4
----
 
 ------------------------------------------------------------------------
 
@@ -19,6 +17,11 @@ v0.2:
         - do we print '\n' at eol. what happens and eof?
 
 other stuff:
+	- compilation errors from make() go to stderr (and screw up the
+	  window). 
+	- the unChanged test doesn't seem to be accurate. what's up with
+	  that?
+
         - bind keymap lexers to windows
         - :eval, :type, .. etc. ghci stuff
         - make the cmd line a buffer.
