@@ -52,3 +52,6 @@ regexes:
             - do they have to compile down to a core regex language,
               before calling searchE?
 
+------------------------------------------------------------------------
+GUI:
+        - wolfgang has some ideas. musasabi too.
