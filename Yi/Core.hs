@@ -72,7 +72,8 @@ module Yi.Core (
         firstNonSpaceE, -- :: Action
         gotoLnE,        -- :: Int -> Action
         gotoLnFromE,    -- :: Int -> Action
-        gotoPoint,      -- :: Int -> Action
+        gotoPointE,     -- :: Int -> Action
+        getPointE,      -- :: IO Int
 
         atSolE,         -- :: IO Bool
         atEolE,         -- :: IO Bool
@@ -270,8 +271,12 @@ gotoLnFromE :: Int -> Action
 gotoLnFromE n = withWindow_ (gotoLnFromW n)
 
 -- | Go to a particular point
-gotoPoint :: Int -> Action
-gotoPoint p = withWindow_ $ moveToW p
+gotoPointE :: Int -> Action
+gotoPointE p = withWindow_ $ moveToW p
+
+-- | Get the current point
+getPointE :: IO Int
+getPointE = withWindow $ \w b -> pointB b >>= \p -> return (w,p)
 
 ------------------------------------------------------------------------
 

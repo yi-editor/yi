@@ -32,7 +32,7 @@ import Prelude       hiding ( any )
 import Data.Maybe           ( fromMaybe )
 import Data.List            ( (\\) )
 import Data.Char            ( isUpper, toLower, toUpper, isSpace )
-import Control.Monad        ( replicateM_, when, liftM )
+import Control.Monad        ( replicateM_, when )
 import Control.Exception    ( ioErrors, catchJust )
 
 -- ---------------------------------------------------------------------
@@ -262,8 +262,11 @@ cmd_eval = ( cmdc >|<
 -- Lots ToDo yet. Perhaps a special lexer just for accumulating more
 -- numbers and characters. Or a flag in the state (urgh)
 --
+-- command and motion keys should be broken into different lexers.
+-- need to have a motion mode, that includes the int repeat lexer.
+--
 cmd_op :: VimMode
-cmd_op = op_char +> move_char
+cmd_op = (op_char +> move_char >|< string "dd")
     `meta` \lexeme st@St{acc=count} -> 
         let c  = if null count then Nothing else Just (read $ reverse count)
             i  = fromMaybe 1 c
@@ -277,18 +280,19 @@ cmd_op = op_char +> move_char
         getCmd lexeme _c i = case lexeme of
             -- shortcuts
             "dd" -> solE >> killE >> deleteE
+
+            -- todo: yank
             ('d':m:[]) -> replicateM_ i $ do
-                        let as = getMove m
-                        do p <- liftM fifth6 bufInfoE
-                           foldr (>>) nopE as
-                           q <- liftM fifth6 bufInfoE
-                           if p < q then gotoPoint p else gotoPoint q
-                           deleteNE (abs (q - p))
+                               p <- getPointE
+                               foldr (>>) nopE (getMove m)
+                               q <- getPointE
+                               when (p < q) $ gotoPointE p
+                               deleteNE (abs (q - p))
             _ -> nopE
 
+        -- no idea if this state is right, yet.
         -- movement command to perform .. ToDo should be (cmd st)
         getMove c = let (as,_,_) = execLexer cmd_mode ([c], defaultSt) in as
-        fifth6 (_,_,_,_,p,_) = p
 
 --
 -- | Switch to another vim mode.
