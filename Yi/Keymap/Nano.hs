@@ -17,7 +17,11 @@
 -- 02111-1307, USA.
 -- 
 
-module Yi.Keymap.Nano ( keymap ) where
+--
+-- | An emulation of the Nano editor
+--
+
+module Yi.Keymap.Nano where
 
 import Yi.Editor            ( Action )
 import Yi.Yi hiding         ( keymap )
@@ -27,12 +31,12 @@ import Data.List            ( (\\) )
 import Data.Maybe           ( fromMaybe )
 import Data.FiniteMap
 
-import Control.Exception    ( ioErrors, catchJust )
+import Control.Exception    ( ioErrors, catchJust, try, evaluate )
 
 --
--- Top level function. A function of this type is used by the editor
--- main loop to interpret actions. The second argument to @execLexer@
--- is our default state.
+-- | Top level function. A function of this type is used by the editor
+-- main loop to interpret actions. The second argument to @execLexer@ is
+-- our default state.
 --
 keymap :: [Char] -> [Action]
 keymap cs = actions
@@ -40,28 +44,30 @@ keymap cs = actions
         (actions,_,_) = execLexer nano_km (cs, Nothing)
 
 --
--- Define some types to instantiate the lazy lexer to
+-- | @NanoMode@  is the type to instantiate the lazy lexer with
 --
 type NanoMode  = Lexer  NanoState Action
 
 --
--- Our state may contain a pair of strings, and a char. This is used
--- when reading in filenames typed in the cmd buffer -- to display a
--- prompt, and to accumulated the filename. See the echo keymap below.
--- In all other modes you can safely ignore the state. The char is the
--- key that was pressed to send us into cmd buffer mode.
+-- | The lexer is able to thread state around. Our state may contain a
+-- pair of strings, and a char. This is used when reading in filenames
+-- typed in the cmd buffer -- to display a prompt, and to accumulated
+-- the filename. See the echo keymap below.  In all other modes you can
+-- safely ignore the state. The char is the key that was pressed to send
+-- us into cmd buffer mode.
 --
 type NanoState = Maybe (Char,String,String)
 
 --
--- The default mode is the conjunction of the self-insert lexer, and the
--- cmd char lexer.
+-- | The default mode is /cmd/ mode. Our other mode is the echo buffer
+-- mode. In cmd mode you can insert chars, run commands and switch to
+-- the echo buffer mode.
 --
 nano_km :: NanoMode
 nano_km = insChar >||< cmdChar >||< cmdSwitch >||< searchChar
 
 --
--- Echo buffer mode (typing in file names at the prompt, for example)
+-- | Echo buffer mode (typing in file names at the prompt, for example)
 --
 echo_km :: NanoMode
 echo_km = echoAccum >||< echoEdit >||< echoEval
@@ -73,7 +79,7 @@ echo_km = echoAccum >||< echoEdit >||< echoEval
 --
 
 --
--- normal chars just insert themselves
+-- | Normal chars just insert themselves
 --
 insChar :: NanoMode
 insChar = anyButCmdChar
@@ -82,8 +88,7 @@ insChar = anyButCmdChar
         anyButCmdChar = alt $ '\r' : map chr [32 .. 126]
 
 --
--- The basic nano keymap. It's a lexer, with an implicit state (of ()),
--- returning Just an editor action (or Nothing), for each key press.
+-- | Command chars run actions. 
 --
 cmdChar :: NanoMode
 cmdChar = nanoCmdChar
@@ -101,10 +106,8 @@ cmdChar = nanoCmdChar
                             Nothing -> nopE
 
 --
--- A key\/action table. 
--- This is where we actually map command (^) chars to actions.
---
--- How to do Meta-key ?
+-- A key\/action table. This is where we actually map command (^) chars
+-- to actions.
 --
 cmdCharFM :: FiniteMap Char Action
 cmdCharFM = listToFM $
@@ -139,62 +142,38 @@ cmdCharFM = listToFM $
                        msgE $ "[ line "++show ln++", col "++show x++
                               ", char "++show p++"/"++show s++" ("++pct++") ]"))
     ]
-
---
--- nano search behaviour.
---
--- This is a bit subtle, and illustrates the use of metaM to modify the
--- current lexer based on the result of an IO action.
---
--- We need to jump to the echo buffer keymap, however, the prompt to use
--- is depedent upon the contents of the regex register. Getting at this
--- is an IO action. So, to pass IO results back to the pure lexer
--- requires the metaM action, to replace the current lexer with the
--- supplied argument.
---
--- What will happen? We _abandon_ the current lexer, jumping to a new
--- lexer that begins in echo_km mode, with a state set by the IO action.
--- This lexer will continue processing for us.
---
-searchChar :: NanoMode
-searchChar = char '\^W'
-    `action` \_ -> Just (a >>= metaM)
-    where
-        a = do mre <- getRegexE
-               let prompt = case mre of
-                    Nothing      -> "Search: "
-                    Just (pat,_) -> "Search ["++pat++"]: "
-               msgE prompt
-               return (mkKM prompt) -- return the echo_km lexer, with
-                                    -- the correct state set
-
-        mkKM p = \cs -> let (as,_,_) = execLexer echo_km (cs, Just ('\^W',p,[]))
-                        in as
                 
 --
--- We implement the state where the user can enter a file name (for
--- reading, or writing) as a separate lexer (not just lexer fragment).
--- Certain characterrs cause a /mode/ switch, which puts us into the
--- alternate lexer. To actually do the switch requires a /meta/ action
--- which can return a new lexer to continue with -- @echo_km@ in this
--- case.
+-- | Switching to the command buffer
 --
--- I would consider help-mode in nano to be a separate mode too. There
--- are probably others.
+-- Sometimes the editor needs to ask a question of the user, in the
+-- command buffer. We implement this as a separate lexer (not just lexer
+-- fragment) as characters typed in this mode have different meanings to
+-- normal mode.
 --
--- So, we see a \^R, we need to print a prompt, and switch to the new
--- mode, which will accumulate filename characters until nl.  To do this
--- we make use of the lexer state. We store the char that caused us to
--- switch modes, a prompt, and the accumulated filename, in this state.
--- Once the user presses Enter, we are able to evaluate the action char
--- represents (e.g. writing a file).
+-- Certain characters cause the /mode/ switch, which puts us into the
+-- alternate lexer. To actually do the switch requires either a lexer
+-- /meta/ action which can (purely) return a new lexer to continue with
+-- (@echo_km@ in this case) or via a metaM action (which accomplishes
+-- approximately the same in the IO monad).
+--
+-- help-mode in nano to be a separate mode too. There are probably
+-- others.
+--
+-- For example, we see a \^R, we need to print a prompt, and switch to
+-- the new mode, which will accumulate filename characters until nl.  To
+-- do this we make use of the lexer state. We store the char that caused
+-- us to switch modes, a prompt, and the accumulated filename, in this
+-- state.  Once the user presses Enter, in the @echo_km@ mode, we are
+-- able to evaluate the action char represents (e.g. writing a file).
 --
 -- Meta-actions return a triple containing maybe an action to perform
 -- /right now/, a modified state, and the lexer to continue parsing
 -- with.
 -- 
--- Since we're going to edit the command buffer, which is still slighly
--- magic (unfortunately) we need to explicitly switch focus.
+-- Since we're going to edit the command buffer, which is still a
+-- slighly buffer magic (unfortunately) we need to explicitly switch
+-- focus.
 --
 cmdSwitch :: NanoMode
 cmdSwitch = switchChar
@@ -211,12 +190,49 @@ cmdSwitch = switchChar
         switchChar = alt $ keysFM echoCharFM
         prompt  c  = snd $ fromMaybe (undefined,"") (lookupFM echoCharFM c)
 
+--
+-- | Nano search behaviour.
+--
+-- This is a bit subtle, and illustrates the use of metaM to modify the
+-- current lexer based on the result of an IO action.  Searching is
+-- quite like other mode switches, except that the prompt is based on
+-- the outcome of inspecting the regex register in the editor state --
+-- an IO action. However, the prompt is stored in the pure lexer state.
+-- So, to pass IO results back to the pure lexer requires the metaM
+-- action, to replace the current lexer with the supplied argument.
+--
+-- What will happen? We _abandon_ the current lexer, jumping to a new
+-- lexer that begins in echo_km mode, with a state initalised with the
+-- argument to 'metaM'. 'metaM' will then cause processing to continue
+-- with this new lexer.
+--
+searchChar :: NanoMode
+searchChar = char '\^W'
+    `action` \_ -> Just (a >>= \v -> cmdlineFocusE >> metaM v)
+    where
+        a = do mre <- getRegexE
+               let prompt = case mre of     -- create a prompt
+                    Nothing      -> "Search: "
+                    Just (pat,_) -> "Search ["++pat++"]: "
+               msgE prompt
+               return (mkKM prompt) -- and run our custom lexer
+
+        --
+        -- generate a new keymap lexer, beginning in echo_km mode, with
+        -- state initalised with the prompt we created from 'getRegexE'.
+        --
+        mkKM p = \cs -> let (as,_,_) = execLexer echo_km (cs, Just ('\^W',p,[]))
+                        in as
+
 ------------------------------------------------------------------------
+--
+-- echo buffer mode
+--
 
 --
--- A simple line editor, which accumulates chars in the state
--- This is a meta action, as it must modify the implicit state (it adds
--- (or deletes) chars to the filename we're building)
+-- | Accumulates chars in the state. This is a meta action, as it must
+-- modify the implicit state (it adds (or deletes) chars to the filename
+-- we're building)
 --
 echoAccum  :: NanoMode
 echoAccum = anyButDelOrEnter
@@ -228,7 +244,7 @@ echoAccum = anyButDelOrEnter
         doEcho p f c = msgE $ p ++ (reverse f) ++ [c]
 
 --
--- A simple line editor. Just chop chars off the end of the filename
+-- | A simple line editor. Just chop chars off the end of the filename
 -- passed in the state.
 --
 echoEdit :: NanoMode
@@ -241,11 +257,11 @@ echoEdit = delete
         delete = alt deleteChars
 
 --
--- The user presses \n, we can evaluate the action.
--- We return the action to perform, an empty state, and the next lexer,
--- which of course is the default lexer (so we're switching back to
--- normal mode). Make sure to clear the command buffer after we're
--- done, and return focus to the normal window.
+-- | The user presses \n, we can evaluate the action.  We return the
+-- action to perform, an empty state, and the next lexer, which of
+-- course is the default lexer (so we're switching back to normal mode).
+-- Make sure to clear the command buffer after we're done, and return
+-- focus to the normal window.
 --
 echoEval :: NanoMode
 echoEval = enter
@@ -260,11 +276,11 @@ echoEval = enter
         enter = alt ['\n', '\r']
 
 --
--- Actions that mess with the echo (or command) buffer
--- Notice how these actions take a @String@ as an argument, and the
--- second component of the elem of the fm is a string that could be used
--- as a prompt (in @cmdSwitch@ -- sometimes the prompt is set using an
--- IO action, in which case we ignore the prompt component of the fm)
+-- | Actions that mess with the echo (or command) buffer. Notice how
+-- these actions take a @String@ as an argument, and the second
+-- component of the elem of the fm is a string that could be used as a
+-- prompt (in @cmdSwitch@ -- sometimes the prompt is set using an IO
+-- action, in which case we ignore the prompt component of the fm)
 --
 echoCharFM :: FiniteMap Char ((String -> Action), String)
 echoCharFM = listToFM $
@@ -274,6 +290,12 @@ echoCharFM = listToFM $
             else catchJust ioErrors (do fwriteToE f ; msgE "Wrote current file.") 
                                     (msgE . show) 
      ,"File Name to Write: "))
+
+    ,('\^_',
+     (\s -> do e <- try $ evaluate $ read s
+               case e of Left _   -> errorE "[ Come on, be reasonable ]"
+                         Right ln -> gotoLnE ln >> solE
+     ,"Enter line number: "))
     
     ,('\^W',
      (\p -> case p of [] -> searchE Nothing
@@ -284,26 +306,15 @@ echoCharFM = listToFM $
 -- ---------------------------------------------------------------------
 -- utilities
 
-{-
-isDel :: Char -> Bool
-isDel '\BS'        = True
-isDel '\127'       = True
-isDel c | c == keyBackspace = True
-isDel _            = False
--}
-
 undef :: Char -> Action
 undef c = errorE $ "Not implemented: " ++ show c
 
 deleteChars :: [Char]
 deleteChars  = ['\BS', '\127', keyBackspace]
 
---
 -- A Nano-ish style (make the '~' markers invisible)
 -- Put something like this in your Config.hs
 --
 --  ui {
 --       eof = Style WhiteF DefaultB
 --  }
---
-
