@@ -29,6 +29,9 @@ HSC2HS=         @Hsc2hsCmd@
 HADDOCK=        @HaddockCmd@
 HADDOCK_OPTS=   -h -D html/yi.interface
 
+HAPPY=          @HappyCmd@
+HAPPY_OPTS=     -gac
+
 ALEX=           @AlexCmd@
 ALEX_OPTS=      -g
 

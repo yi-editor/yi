@@ -9,7 +9,7 @@ include $(TOPDIR)/mk/config.mk
 # this rule must remain first
 default: boot all
 
-ALL_DIRS=       Yi Yi/Keymap Yi/Ctk cbits
+ALL_DIRS=       Yi Yi/Keymap Yi/Syntax cbits
 
 ifneq "$(CURSES)" ""
 ALL_DIRS+=      Yi/Curses
@@ -104,6 +104,8 @@ yi-inplace: yi-inplace.in
 
 EXTRA_CLEANS+= yi-inplace
 
+EXTRA_CLEANS+=Yi/Syntax/TestLex.hs Yi/Syntax/TestParse.hs
+
 # Dependency orders
 
-include $(TOPDIR)/depend
+-include $(TOPDIR)/depend

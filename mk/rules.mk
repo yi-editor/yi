@@ -155,6 +155,10 @@ $(GHCI_LIBRARY) : $(LIBOBJS)
 %.hs : %.x
 	$(ALEX) $(ALEX_OPTS) $<
 
+# Happy Rules
+%.hs : %.y
+	$(HAPPY) $(HAPPY_OPTS) $<
+
 #
 # Package creation
 #

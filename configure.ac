@@ -110,8 +110,20 @@ AC_SUBST(GLASGOW_HASKELL)
 #
 # And some other tools
 #
-AC_CHECK_PROG(AlexCmd,alex,alex)
-AC_CHECK_PROG(HappyCmd,happy,happy)
+AC_PATH_PROG(AlexCmd,alex)
+if test -z "$AlexCmd"; then
+      echo "You must install alex before you can continue"
+      echo "Perhaps it is already installed, but not in your PATH?"
+      exit 1
+fi
+
+AC_PATH_PROG(HappyCmd,happy)
+if test -z "$HappyCmd"; then
+      echo "You must install happy before you can continue"
+      echo "Perhaps it is already installed, but not in your PATH?"
+      exit 1
+fi
+
 AC_CHECK_PROG(HaddockCmd,haddock,haddock)
 
 AC_CHECK_PROG(STRIP,strip,strip)

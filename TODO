@@ -80,6 +80,8 @@ Syntax Highlighting:
             - record the comments, with their positions, in the lexer.
             - re-splice comments back into the parse tree.
 
+	- good overview to structure editors
+             http://www.cs.uu.nl/research/projects/proxima/
 
 ------------------------------------------------------------------------
 regexes:
