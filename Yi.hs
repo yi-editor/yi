@@ -28,9 +28,13 @@ import qualified Yi.Editor  as Editor
 import qualified Yi.Core    as Core 
 import qualified Yi.Style   as Style
 
-import qualified Yi.Keymap.Vim as Keymap
+import qualified Yi.Keymap.Vi    as Vi
+import qualified Yi.Keymap.Vim   as Vim
+import qualified Yi.Keymap.Nano  as Nano
+-- import qualified Yi.Keymap.Emacs as Emacs
 
 import Data.IORef
+import Data.FiniteMap
 
 import Control.Monad            ( liftM, when )
 import Control.Exception        ( handle, throwIO, try )
@@ -50,14 +54,30 @@ import GHC.Exception            ( Exception(ExitException) )
 -- The -B flag is needed, and used by Boot.hs to find the runtime
 -- libraries. We still parse it here, but ignore it.
 
-data Opts = Help | Version | Libdir String | LineNo String
+data Opts = Help 
+          | Version 
+          | Libdir String 
+          | LineNo String
+          | EditorNm String
+
+--
+-- In case the user wants to start with a certain editor
+--
+editorFM :: FiniteMap [Char] ([Char] -> [Editor.Action])
+editorFM = listToFM $
+    [("vi",     Vi.keymap)
+    ,("vim",    Vim.keymap)
+    ,("nano",   Nano.keymap)
+--  ,("emacs",  Emacs.keymap)
+    ]
 
 options :: [OptDescr Opts]
 options = [
     Option ['V']  ["version"] (NoArg Version) "Show version information",
     Option ['B']  ["libdir"]  (ReqArg Libdir "libdir") "Path to runtime libraries",
     Option ['h']  ["help"]    (NoArg Help)    "Show this help",
-    Option ['l']  ["line"]    (ReqArg LineNo "[num]") "Start on line number"
+    Option ['l']  ["line"]    (ReqArg LineNo "[num]") "Start on line number",
+    Option []     ["as"]      (ReqArg EditorNm "[editor]") "Start with editor keymap"
     ]
 
 --
@@ -76,6 +96,16 @@ do_opts (o:oo) = case o of
     Version  -> versinfo >> exitWith ExitSuccess
     Libdir _ -> do_opts oo  -- ignore -B flag. already handled in Boot.hs
     LineNo l -> writeIORef g_lineno ((read l) :: Int) >> do_opts oo
+
+    EditorNm e -> case lookupFM editorFM e of
+                    Just km -> do
+                        (k,f,g) <- readIORef g_settings
+                        writeIORef g_settings (k { Editor.keymap = km }, f, g)
+                        do_opts oo
+                    Nothing -> do
+                        putStrLn $ "Unknown editor: "++show e++". Ignoring."
+                        do_opts oo
+
 do_opts [] = return ()
 
 --
@@ -145,7 +175,7 @@ g_settings = unsafePerformIO $
 --
 dflt_config :: Editor.Config
 dflt_config = Editor.Config { 
-        Editor.keymap = Keymap.keymap,
+        Editor.keymap = Vim.keymap,
         Editor.style  = Style.ui 
     }
 
