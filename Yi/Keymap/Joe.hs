@@ -34,6 +34,8 @@ import Data.Char            ( isControl, ord, chr )
 --import Control.Exception    ( ioErrors, catchJust )
 import Data.FiniteMap
 
+import Yi.Curses.UI         ( suspend )
+
 -- ---------------------------------------------------------------------
 
 data KME = KMEAction Action | KMESubmap KM | KMEMode (KProc -> KProc)
@@ -91,6 +93,7 @@ kmap=[
     
     -- Global
     "\^KX" ++> quitE,
+    "\^KZ" ++> suspend,
     "\^KE" &&> queryNewE
     ]
 
