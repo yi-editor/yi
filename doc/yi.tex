@@ -1,3 +1,21 @@
+WRITING A CUSTOM KEYMAP
+
+To write your own keymap is fairly easy. Here's how to use the example
+Nano.hs keymap:
+    $ cp examples/Config.hs ~/.yi/
+    $ cp keymaps/Nano.hs ~/.yi
+
+    -- Now edit ~/.yi/Config.hs to use ~/.yi/Nano.hs
+    you need to replace:
+                "import qualified Keymap" 
+           with "import qualified Nano"
+
+           and  "keymap = Keymap.keymap"
+           with "keymap = Nano.keymap"
+
+    and you're done. Restarting will use the new keymap.
+    $ ./yi-inplace
+
 RUNTIME
 
 Preferences are stored in ~/.yi/Config.hs. Look in examples/ for example
