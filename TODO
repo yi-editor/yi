@@ -26,6 +26,8 @@ other stuff:
         - try writing a user defineable Action - how to call this, other
           than by binding a key?
 
+        - closing window and terminating on OSX produces infinite loop?
+
 ------------------------------------------------------------------------
 Syntax Highlighting:
 

@@ -124,6 +124,7 @@ $(GHCI_LIBRARY) : $(LIBOBJS)
 	$(GHC) $(CC_OPTS) -c $< -o $@
 
 # preprocssed files, for haddock docs
+# remember to strip #pragma lines from MacOSX cpp.
 %.raw-hs : %.lhs
 	$(GHC) $(HC_OPTS) -D__HADDOCK__ -E -optP-P $< -o $@
 
