@@ -1,6 +1,6 @@
 {-# OPTIONS -cpp -fffi -#include <config.h> #-}
 -- 
--- Copyright (C) 2004 Don Stewart - http://www.cse.unsw.edu.au/~dons
+-- Copyright (c) 2004 Don Stewart - http://www.cse.unsw.edu.au/~dons
 -- 
 -- This library is free software; you can redistribute it and/or
 -- modify it under the terms of the GNU Lesser General Public

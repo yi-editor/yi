@@ -1,6 +1,4 @@
 {-# OPTIONS -fglasgow-exts -cpp #-}
---
--- yi/Boot.hs
 -- 
 -- Copyright (c) 2004 Don Stewart - http://www.cse.unsw.edu.au/~dons
 -- 

@@ -2,7 +2,8 @@
 --
 -- -fglasgow-exts for deriving Typeable
 -- 
--- Copyright (C) 2004 Don Stewart - http://www.cse.unsw.edu.au/~dons
+-- Copyright (c) Tuomo Valkonen 2004.
+-- Copyright (c) Don Stewart 2004. http://www.cse.unsw.edu.au/~dons
 -- 
 -- This program is free software; you can redistribute it and/or
 -- modify it under the terms of the GNU General Public License as
@@ -20,10 +21,6 @@
 -- 02111-1307, USA.
 -- 
 -- Derived from: riot/UI.hs
--- 
---       Copyright (c) Tuomo Valkonen 2004.
--- 
--- Released under the same license.
 -- 
 
 --

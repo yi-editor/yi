@@ -1,10 +1,11 @@
 {-# OPTIONS -fglasgow-exts #-}
---
--- ToDo glaexts for unsafeCoerce#
+-- gla-exts required for unsafeCoerce#
+
 --
 -- riot/Main.hs
 -- 
 -- Copyright (c) Tuomo Valkonen 2004.
+-- Copyright (c) Don Stewarti 2004.
 --
 -- This program is free software; you can redistribute it and/or modify
 -- it under the terms of the GNU General Public License as published by

@@ -1,9 +1,11 @@
 {-# OPTIONS -fffi #-}
 --
--- Copyright (c) 2004 Don Stewart - http://www.cse.unsw.edu.au/~dons
 --
 -- Module      :  Text.Regex.Posix
+--
 -- Copyright   :  (c) The University of Glasgow 2002
+--                (c) Don Stewart 2004
+--
 -- License     :  BSD-style (see the file libraries/base/LICENSE)
 -- 
 -- Maintainer  :  libraries@haskell.org
