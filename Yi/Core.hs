@@ -627,22 +627,22 @@ prevWinE = Editor.prevWindow
 
 ------------------------------------------------------------------------
 --
--- Map a (buffer) function over a range of the buffer. Why? So you can
--- write complex operations without having refresh screw you up.
+-- Map a char function over a range of the buffer.
 --
--- You could still write a function to screw up things though...
---
-mapRangeE :: Int -> Int -> (Buffer' -> Action) -> Action
-mapRangeE from to f
+mapRangeE :: Int -> Int -> (Char -> Char) -> Action
+mapRangeE from to fn
     | from < 0  = nopE
     | otherwise = do
         withWindow_ $ \w b -> do
             eof <- sizeB b
-            if to >= eof then return w else do
+            when (to < eof) $ do
                 let loop j | j <= 0    = return ()
-                           | otherwise = f b >> loop (j-1)
-                loop (to - from)
-                return w
+                           | otherwise = do
+                                readB b >>= return . fn >>= writeB b
+                                rightB b
+                                loop (j-1)
+                loop (max 0 (to - from))
+            return w
         getPointE >>= gotoPointE
 
 ------------------------------------------------------------------------

@@ -27,7 +27,6 @@ import Yi.Core
 import Yi.Editor            ( Action )
 import Yi.UI         hiding ( plus )
 import Yi.Lexers     hiding ( Action )
-import Yi.Buffer            ( Buffer(..) )
 
 import Prelude       hiding ( any )
 
@@ -328,11 +327,8 @@ cmd_op =((op_char +> digit `star` move_chr) >|<
         -- could take 90s on a 64M file.
         invertCase m = do 
             (p,q) <- withPointMove m
-            mapRangeE (min p q) (max p q) $ \b -> do 
-                c  <- readB b
-                let c' = if isUpper c then toLower c else toUpper c
-                writeB b c'
-                rightB b
+            mapRangeE (min p q) (max p q) $ \c -> 
+                if isUpper c then toLower c else toUpper c
 
         --
         -- A strange, useful action. Save the current point, move to
