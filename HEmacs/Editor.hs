@@ -52,7 +52,6 @@ module HEmacs.Editor (
         -- * user bindable actions
         Action,         -- = Key -> IO EditStatus
         KeyMap,
-        EventStatus(..)
 
    ) where
 
@@ -253,13 +252,8 @@ getKeyMap = withEditor $ \e -> return $ keyMap (user_settings e)
 -- | The type of user-bindable functions
 --
 
-type Action = IO EventStatus
+type Action = IO ()
 type KeyMap = Key -> Action
-
---
--- | core instruction return values
---
-data EventStatus = EOk | EQuit
 
 -- ---------------------------------------------------------------------
 -- | The 'Key' type is the abstract syntax for keys. user interfaces

@@ -25,10 +25,15 @@ BUILD SYSTEM
 
 Extra args can be passed at runtime as: make HC\_OPTS=-ddump-minimal-imports
 
-There is support for building mulitple "ways", i.e. prof, but it is
-untested.
-
 DEVELOPMENT
+
+Profiling:
+You can build hemacs-static for profiling. Just set:
+	make way=p
+and then invoke
+	./hemacs-static +RTS -p
+and once you quit you'll get a hemacs-static.prof file with profiling
+statistics.
 
 Coding guidelines:
 

@@ -54,8 +54,9 @@ import qualified HEmacs.UI     as UI
 import qualified HEmacs.Buffer as Buffer
 
 import System.IO        ( openFile, hGetContents, IOMode(..), )
+import System.Exit
 
-import qualified Control.Exception ( catch, Exception )
+import qualified Control.Exception ( catch, Exception, throwIO )
 
 -- ---------------------------------------------------------------------
 -- | Start up the editor, setting any state with the user preferences
@@ -69,7 +70,8 @@ start confs mfs = do
     Editor.setUserSettings confs
     case mfs of
         Nothing -> Editor.newBuffer "undefined" [[]]
-        Just fs -> mapM_ e_load fs >> e_refresh >> return ()
+        Just fs -> mapM_ e_load fs
+    e_refresh
 
 --
 -- | shutdown the editor
@@ -95,14 +97,12 @@ eventLoop = do
 eventLoop' :: Editor.KeyMap -> IO ()
 eventLoop' keyhandler = do
     k <- UI.getKey UI.refresh
-    s <- Control.Exception.catch (keyhandler k) (do_except)
-    case s of
-        EQuit -> UI.reset   >> return ()
-        EOk   -> UI.refresh >> eventLoop' keyhandler
-
-    where
-        do_except :: Control.Exception.Exception -> IO EventStatus
-        do_except _ = return EQuit
+    Control.Exception.catch (keyhandler k) (handler)
+    UI.refresh
+    eventLoop' keyhandler
+  where
+        handler :: Control.Exception.Exception -> IO ()
+        handler = Control.Exception.throwIO
 
 -- ---------------------------------------------------------------------
 -- | Editor actions. This is the instruction set of the editor core.
@@ -111,84 +111,78 @@ eventLoop' keyhandler = do
 --
 -- | Quit
 --
-e_quit :: IO EventStatus
-e_quit = return EQuit
+e_quit :: IO ()
+e_quit = exitWith ExitSuccess
 
 --
 -- | Refresh the screen
 --
-e_refresh :: IO EventStatus
-e_refresh = UI.refresh >> return EOk
+e_refresh :: IO ()
+e_refresh = UI.refresh
 
 --
 -- | Do nothing
 --
-e_noop :: IO EventStatus
-e_noop = return EOk
+e_noop :: IO ()
+e_noop = return ()
 
 --
 -- | Move cursor left 1
 --
-e_left :: IO EventStatus
-e_left = (withBuffer $ \b -> return $ Buffer.left b) >> return EOk
+e_left :: IO ()
+e_left = withBuffer $ \b -> return $ Buffer.left b
 
 --
 -- | Move cursor right 1
 --
-e_right :: IO EventStatus
-e_right = (withBuffer $ \b -> return $ Buffer.right b) >> return EOk
+e_right :: IO ()
+e_right = withBuffer $ \b -> return $ Buffer.right b
 
 --
 -- | Move cursor up 1
 --
-e_up :: IO EventStatus
-e_up = (withBuffer $ \b -> return $ Buffer.up b) >> return EOk
+e_up :: IO ()
+e_up = withBuffer $ \b -> return $ Buffer.up b
 
 --
 -- | Move cursor down 1
 --
-e_down :: IO EventStatus
-e_down = (withBuffer $ \b -> return $ Buffer.down b) >> return EOk
+e_down :: IO ()
+e_down = withBuffer $ \b -> return $ Buffer.down b
 
 --
 -- | Move cursor to end of line
 --
-e_eol :: IO EventStatus
-e_eol = do withBuffer $ \b -> 
+e_eol :: IO ()
+e_eol = withBuffer $ \b -> 
             case Buffer.point b of 
                 (_,y) -> return $ b `Buffer.moveto` (Buffer.width b, y)
-           return EOk
 
 --
 -- | Move cursor to start of line
 --
-e_sol :: IO EventStatus
-e_sol = do withBuffer $ \b -> 
-            case Buffer.point b of 
-                (_,y) -> return $ b `Buffer.moveto` (0, y)
-           return EOk
+e_sol :: IO ()
+e_sol = withBuffer $ \b -> 
+            case Buffer.point b of (_,y) -> return $ b `Buffer.moveto` (0, y)
 
 --
 -- | Move cursor to origin
 --
-e_top :: IO EventStatus
-e_top = do withBuffer $ \b -> return $ b `Buffer.moveto` (0, 0)
-           return EOk
+e_top :: IO ()
+e_top = withBuffer $ \b -> return $ b `Buffer.moveto` (0, 0)
 
 --
 -- | Move cursor to origin
 --
-e_bot :: IO EventStatus
-e_bot = do withBuffer $ \b -> return $ b `Buffer.moveto` (0, Buffer.height b - 1)
-           return EOk
+e_bot :: IO ()
+e_bot = withBuffer $ \b -> return $ b `Buffer.moveto` (0, Buffer.height b - 1)
 
 --
 -- | Load a new buffer with contents of file
 --
-e_load  :: FilePath -> IO EventStatus
+e_load  :: FilePath -> IO ()
 e_load f = do
         h <- openFile f ReadWriteMode
         s <- hGetContents h            -- close it?
         Editor.newBuffer f $ lines s   -- lazy for large files?
-        return EOk
 

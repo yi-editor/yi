@@ -109,11 +109,15 @@ drawMainBuffer buf = do
 drawModeLine :: Int -> String -> IO ()
 drawModeLine w title = drawLine w ("\"" ++ title ++ "\"" ++ repeat ' ')
 
+--
+-- | needs to be fast -- or use better rendering systems!
+--
 drawLine :: Int -> String -> IO ()
-drawLine w s  = waddstr Curses.stdScr $ take w (s ++ repeat ' ')
+drawLine w s  = Curses.wAddStr Curses.stdScr $ take w (s ++ repeat ' ')
 
 -- 
--- | redraw the screen
+-- | redraw the entire screen from the editor state
+-- totally bogus.
 --
 redraw :: IO ()
 redraw = do
@@ -121,10 +125,11 @@ redraw = do
     Curses.wMove Curses.stdScr 0 0  -- mv cursor to origin
     when (isJust mb) $ drawMainBuffer (fromJust mb)
     mapM_ drawBuffer bs
+
     when (isJust mb) $ Curses.withCursor Curses.CursorVisible $ do
-        let (x,y) = point (fromJust mb)
         cset_attr (Curses.setReverse Curses.attr0 True , Curses.Pair 1)
-        Curses.wMove Curses.stdScr y x           -- move the cursor to start of line
+        let (x,y) = point (fromJust mb)
+        Curses.wMove Curses.stdScr y x   -- goto point
         reset
 
 --
@@ -134,13 +139,10 @@ fillLine :: IO ()
 fillLine = do
     (_, w) <- Curses.scrSize
     (_, x) <- Curses.getYX Curses.stdScr
-    waddstr Curses.stdScr $ replicate (max 0 (w-x)) ' '
+    Curses.wAddStr Curses.stdScr $ replicate (max 0 (w-x)) ' '
 
 -- ---------------------------------------------------------------------
 --
-
-waddstr :: Curses.Window -> String -> IO ()
-waddstr w s = Control.Exception.try (Curses.wAddStr w s) >> return ()
 
 --
 -- | manipulate the current attributes of the standard screen
@@ -170,7 +172,7 @@ refresh = redraw >> Curses.refresh
 warn :: String -> IO ()
 warn msg = do   -- do_message s attr_message msg
     Curses.wMove Curses.stdScr 0 0
-    waddstr Curses.stdScr $ take 80 $ msg ++ repeat ' '
+    Curses.wAddStr Curses.stdScr $ take 80 $ msg ++ repeat ' '
 
 ------------------------------------------------------------------------
 -- dead
