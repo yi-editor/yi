@@ -36,17 +36,22 @@ import Data.Unique              ( Unique, newUnique )
 -- they need to know the height and width.  That's about it.
 --
 data Window = 
-        Window {
-            key         :: !Unique      -- ^ each window has a unique 
-           ,bufkey      :: !Unique      -- ^ the buffer this window opens to
-           ,mode        :: !String      -- ^ this window's modeline
-           ,origin      :: !(Int,Int)   -- ^ (y,x) origin of this window
-           ,height      :: !Int         -- ^ height of this window
-           ,width       :: !Int         -- ^ width of this window
-           ,winpnt      :: !Int         -- ^ cached point of the cursor
-           ,tospnt      :: !Int         -- ^ the buffer point of the top of screen
-           ,cursor      :: !(Int,Int)   -- ^ cursor point on screen
-        }
+    Window {
+        key         :: !Unique      -- ^ each window has a unique 
+       ,bufkey      :: !Unique      -- ^ the buffer this window opens to
+       ,mode        :: !String      -- ^ this window's modeline
+       ,origin      :: !(Int,Int)   -- ^ (y,x) origin of this window
+       ,height      :: !Int         -- ^ height of this window
+       ,width       :: !Int         -- ^ width of this window
+       ,cursor      :: !(Int,Int)   -- ^ cursor point on screen
+
+       ,pnt         :: !Int         -- ^ current point
+       ,lineno      :: !Int         -- ^ current line number
+
+       ,tospnt      :: !Int         -- ^ the buffer point of the top of screen
+       ,toslineno   :: !Int         -- ^ line number of top of screen
+    }
+
 
 instance Eq Window where
     Window { key = u } == Window { key = v }  = u == v
@@ -66,11 +71,13 @@ emptyWindow b (h,w) = do
                ,bufkey = (keyB b)
                ,mode   = m
                ,origin = (0,0)  -- TODO what about vnew etc.
-               ,height = h-1    -- + 1 for the modeline
+               ,height = h-1    -- - 1 for the modeline
                ,width  = w
-               ,winpnt = 0      -- cache point when out of focus
-               ,tospnt = 0
                ,cursor = (0,0)  -- (y,x)
+               ,pnt       = 0      -- cache point when out of focus
+               ,lineno    = 1
+               ,tospnt    = 0
+               ,toslineno = 1      -- start on line 1
              }
 
 --
@@ -105,50 +112,52 @@ getPercent a b = show p ++ "%"
 -- happens we move the cursor up the file too.
 --
 moveUpW :: Buffer a => Window -> a -> IO Window
-moveUpW w b = do
-    lineUp b
-    p <- pointB b
-    let (cy,_) = cursor w
-    x <- offsetFromSol b
-    if (p < tospnt w)   -- have to scroll window, cursor-y stays the same
-        then return w { winpnt = p, tospnt = p-x, cursor = (cy,x) }
-        else return w { winpnt = p, cursor = (max 0 (cy-1),x)  }
+moveUpW w@(Window {lineno=ln}) b
+    | ln == 1          = return w  -- at top of file
+    | otherwise = do           
+        lineUp b
+        x <- offsetFromSol b
+        p <- pointB b
+        let cy = fst $ cursor w
+        if toslineno w < ln
+            then updatePnt b w {    -- just move cursor up
+                        lineno = ln - 1, 
+                        cursor = (cy-1,x) 
+                    }
+            else updatePnt b w {    -- scroll screen up
+                        toslineno = toslineno w -1, 
+                        lineno    = ln - 1,
+                        tospnt    = p - x, 
+                        cursor    = (cy,x) 
+                    }
 
 --
 -- | The cursor moves up, staying with its original line, unless it
 -- reaches the top of the screen.
--- 
--- TODO too complicated
 --
 moveDownW :: Buffer a => Window -> a -> IO Window
-moveDownW w@(Window { height=h, tospnt=t }) b = do
-    op <- pointB b
-    ox <- offsetFromSol b
+moveDownW w@(Window { height=h, lineno=ln } ) b = do
+    ll <- atLastLine b 
+    if ll then return w      -- eof, go no further
+          else do
+    let cy = fst $ cursor w
     lineDown b
-    p  <- pointB b
-    x  <- offsetFromSol b
-    ss <- nelemsB b (p - t) t   -- do something about this calculation
-    let lns = length (lines ss)
-        (cy,_) = cursor w
-    case () of {_
-        | lns-1 > h-2         -- at bottom of screen
-        -> do moveTo b t      -- TODO fix this. move tospnt down 1 line
-              lineDown b 
-              q <- pointB b
-              moveTo b p 
-              return w { winpnt = p, tospnt = q, cursor = (cy,x) }
-        | op - ox == p - x               -- didn't change position. eof
-        -> return w { winpnt = p, cursor = (cy, x) } 
-        | otherwise         -- just move down
-        -> return w { winpnt = p, cursor = (min (h-2) (cy+1),x) }
-    }
+    x <- offsetFromSol b
+    if ln - toslineno w < h-2
+        then updatePnt b w {    -- just scroll cursor
+                    lineno = ln + 1,
+                    cursor = (cy+1,x)
+                }
+        else do 
+            t' <- indexOfNLFrom b (tospnt w)
+            updatePnt b w { -- at bottom line of screen, so scroll
+                    toslineno = toslineno w + 1,
+                    lineno = ln + 1,
+                    tospnt = t',
+                    cursor = (cy,x)     -- doesn't move
+                }
 
---
--- | shift the window, but don't move the point, unless at start of file
---
-scrollUpW :: Buffer a => Window -> a -> IO Window
-scrollUpW w b = undefined
-
+------------------------------------------------------------------------
 --
 -- | Move the cursor left or start of line
 --
@@ -192,7 +201,35 @@ moveXorEolW i w b = moveXorEol b i >> updateX w b
 updateX :: Buffer a => Window -> a -> IO Window
 updateX w b = do
     let (y,_) = cursor w
-    p <- pointB b
     x <- offsetFromSol b
-    return w { winpnt = p, cursor = (y,x) }
+    return w { cursor = (y,x) }
 
+--
+-- | reset current point
+--
+updatePnt :: Buffer a => a -> Window -> IO Window
+updatePnt b w = pointB b >>= \p -> return w { pnt = p }
+
+--
+-- | On the last line of the file
+--
+atLastLine :: Buffer a => a -> IO Bool
+atLastLine b = do
+    p <- pointB b
+    moveToEol b
+    pointB b
+    e <- atEof b
+    moveTo b p
+    return e
+
+--
+-- | Given a point, return the point of the next line down
+--
+indexOfNLFrom:: Buffer a => a -> Int -> IO Int
+indexOfNLFrom b i = do
+    p <- pointB b
+    moveTo b i
+    lineDown b
+    q <- pointB b
+    moveTo b p
+    return q

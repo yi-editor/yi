@@ -26,6 +26,7 @@
 module Yi.Keymap ( keymap ) where
 
 import Yi.Core
+import Yi.UI        -- hack, just for now, so we can see key defns
 
 import Data.Char
 import Control.Monad
@@ -68,13 +69,17 @@ key :: Mode -> Char -> Action
 -- 
 -- * Command mode
 --
-key C 'h' = leftE
-key C 'j' = downE
-key C 'k' = upE
-key C 'l' = rightE
-key C '$' = eolE
-key C '0' = solE
-key C '|' = solE
+key C 'h'  = leftE
+key C 'j'  = downE
+key C 'k'  = upE
+key C 'l'  = rightE
+key C '$'  = eolE
+key C '0'  = solE
+key C '|'  = solE
+key C '\2' = upScreenE
+key C '\6' = downScreenE
+key C k | k == keyNPage = downScreenE
+        | k == keyPPage = upScreenE
 
 {-
 key C ':' = msgClrE >> msgE ":" >> beginEx 

@@ -49,12 +49,14 @@ module Yi.Core {-(
         quitE,
         refreshE,
         nopE,
-        nextE,
-        prevE,
         getcE,
         msgE,
         msgClrE,
         infoE,
+
+        -- ** Window manipulation
+        nextE,
+        prevE,
 
         -- ** File-based actions
         fnewE,
@@ -140,8 +142,8 @@ endE :: IO ()
 endE = UI.end
 
 -- ---------------------------------------------------------------------
-
--- | How to read another character, for user key bindings
+-- | How to read from standard input
+--
 getcE :: IO Char
 getcE = UI.getKey UI.refresh
 
@@ -150,7 +152,6 @@ getcE = UI.getKey UI.refresh
 -- them using the current key map. Keys are bound to core actions.
 -- The state is threaded explicitly at the moment.
 --
-
 eventLoop :: IO ()
 eventLoop = do
     km <- Editor.getKeyBinds
@@ -162,7 +163,6 @@ eventLoop = do
     mainloop
 
 -- ---------------------------------------------------------------------
-
 -- | Quit
 --
 quitE :: IO ()
@@ -179,7 +179,6 @@ nopE :: IO ()
 nopE = return ()
 
 ------------------------------------------------------------------------
-
 --
 -- | Move cursor left 1, or start of line
 --
@@ -229,6 +228,26 @@ downE = withWindow_ moveDownW
 --
 upE :: IO ()
 upE = withWindow_ moveUpW
+
+--
+-- | Scroll up 1 screen
+-- Inefficient
+--
+upScreenE :: IO ()
+upScreenE = do
+    w <- getWindow
+    mapM_ (\_ -> withWindow_ moveUpW)  [1 .. height w - 3]
+    withWindow_ moveUpW
+
+--
+-- | Scroll down 1 screen
+-- Inefficient
+--
+downScreenE :: IO ()
+downScreenE = do
+    w <- getWindow
+    mapM_ (\_ -> withWindow_ moveDownW)  [1 .. (height w - 2) * 2]
+    mapM_ (\_ -> withWindow_ moveUpW)    [1 .. height w - 2]
 
 --
 -- | Move left @x@ or to start of line

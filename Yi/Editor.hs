@@ -234,7 +234,7 @@ withWindow_ f = modifyEditor_ $ \e -> do
         let w = findWindowWith e (curwin e)
             b = findBufferWith e (bufkey w)
         w' <- f w b
-        m'     <- updateModeLine b (width w') (winpnt w')
+        m'     <- updateModeLine b (width w') (pnt w')
         let w'' = w' { mode = m' }
             ws = windows e
             e' = e { windows = addToFM ws (key w'') w'' }
@@ -248,7 +248,7 @@ withWindow f = modifyEditor $ \e -> do
         let w = findWindowWith e (curwin e)
             b = findBufferWith e (bufkey w)
         (w',v) <- f w b
-        m'     <- updateModeLine b (width w') (winpnt w')
+        m'     <- updateModeLine b (width w') (pnt w')
         let w'' = w' { mode = m' }
             ws = windows e
             e' = e { windows = addToFM ws (key w'') w'' }

@@ -146,12 +146,21 @@ class Buffer a where
 
     -- | Return true if the current point is the end of a line
     atEol       :: a -> IO Bool
+
+    -- | True if point at start of file
+    atSof       :: a -> IO Bool
+
+    -- | True if point at end of file
+    atEof       :: a -> IO Bool
     
     -- | Move point to start of line
     moveToSol   :: a -> IO ()
 
     -- | Offset from start of line
     offsetFromSol :: a -> IO Int
+
+    -- | Index of start of line 
+    indexOfSol    :: a -> IO Int
 
     -- | Move point to end of line
     moveToEol   :: a -> IO ()
@@ -458,6 +467,15 @@ instance Buffer FBuffer where
                              else do c <- readB a
                                      return (c == '\n')
 
+    -- atEof       :: a -> IO Bool
+    atEof a = do p <- pointB a
+                 e <- sizeB a
+                 return (p == e-1)
+
+    -- atSof       :: a -> IO Bool
+    atSof a = do p <- pointB a
+                 return (p == 0)
+
     ------------------------------------------------------------------------ 
 
     -- moveToSol   :: a -> IO ()
@@ -470,6 +488,14 @@ instance Buffer FBuffer where
         j <- pointB a
         moveTo a i
         return (i - j)
+
+    -- indexOfSol   :: a -> IO Int
+    indexOfSol a = do
+        i <- pointB a
+        moveToSol a
+        j <- pointB a
+        moveTo a i
+        return j
 
     -- moveToEol   :: a -> IO ()
     moveToEol a = sizeB a >>= moveXorEol a
