@@ -79,6 +79,7 @@ start = do
     sty <- readEditor uistyle
     pairs <- initUiColors sty
     writeIORef pairMap pairs
+    uiAttr (window sty) >>= \(_,p) -> bkgrndSet nullA p
     Curses.keypad Curses.stdScr True    -- grab the keyboard
 
 --
@@ -142,40 +143,38 @@ drawWindow :: Window -> IO ()
 drawWindow win@(Window { bufkey=u, mode=m, origin=(_,_), 
                      height=h, width=w, tospnt=t } ) = do
 
-    us   <- readEditor uistyle
+    sty <- readEditor uistyle
 
     -- draw buffer contents
     b  <- getBufferWith u
     ss <- nelemsB b (h*w) t           -- maximum visible contents of buffer
     let ls  = lines ss
         len = length ls
-    mapM_ (drawLine w) $ take (h-1) ls
 
-    -- draw pretty eof markers
-    uiAttr (eof us) >>= setAttribute
-    mapM_ (drawLine w) $ take (h-1-len) $ repeat "~"
-    reset
+    -- window contents
+    withStyle (window sty) $ mapM_ (drawLine w) $ take (h-1) ls
+
+    -- any eof markers
+    withStyle (eof sty) $ mapM_ (drawLine w) $ take (h-1-len) $ repeat "~"
 
     -- draw modeline
     mwin <- getWindow
-    uis  <- readEditor uistyle
-    if (isJust mwin && fromJust mwin == win)
-        then uiAttr (modeln_hl uis) >>= setAttribute
-        else uiAttr (modeln uis   ) >>= setAttribute
-    drawLine w m
-    reset
+    let fn = if isJust mwin && fromJust mwin == win then modeln_hl else modeln
+    withStyle (fn sty) $ drawLine w m
 
 --
 -- | Draw the editor command line. Make sure not to drop of end of screen.
 --
 drawCmdLine :: String -> IO ()
 drawCmdLine s = do
-    (h,w) <- Curses.scrSize
-    Curses.wMove Curses.stdScr (h-1) 0
-    let w' = min (w-1) (length s)   -- hmm. what if this is big?
-    drawLine w' s
-    fillLine
-    Curses.wMove Curses.stdScr (h-1) w'
+    sty <- readEditor uistyle
+    withStyle (window sty) $ do
+        (h,w) <- Curses.scrSize
+        Curses.wMove Curses.stdScr (h-1) 0
+        let w' = min (w-1) (length s)   -- hmm. what if this is big?
+        drawLine w' s
+        fillLine
+        Curses.wMove Curses.stdScr (h-1) w'
 
 --
 -- | lazy version is faster than calculating length of s
@@ -225,6 +224,12 @@ reset = setAttribute (Curses.attr0, Curses.Pair 0)
 refresh :: IO ()
 refresh = redraw >> Curses.refresh
 
+--
+-- | Set some colours, perform an action, and then reset the colours
+--
+withStyle :: Style -> (IO ()) -> IO ()
+withStyle sty fn = uiAttr sty >>= setAttribute >> fn >> reset
+
 ------------------------------------------------------------------------
 --
 -- | Set up the ui attributes, given a ui style record
@@ -236,8 +241,8 @@ refresh = redraw >> Curses.refresh
 -- TODO remember to update this if new fields are added to the ui
 --
 initUiColors :: UI -> IO [((Curses.Color, Curses.Color), Pair)]
-initUiColors (UI{ window=wn, modeln_hl=mlf, modeln=ml, commandln=cl, eof=ef})
-    = mapM (uncurry fn) (zip [wn, mlf, ml, cl, ef] [1..])
+initUiColors (UI{ window=wn, modeln_hl=mlf, modeln=ml, eof=ef})
+    = mapM (uncurry fn) (zip [wn, mlf, ml, ef] [1..])
     where
         fn :: Style -> Int -> IO ((Curses.Color, Curses.Color), Pair)
         fn (fg, bg) p = let (_,fgc) = fgAttr fg

@@ -849,6 +849,7 @@ bkgrndSet (Attr a) p = bkgdset $
     #translate_attr STANDOUT
     #translate_attr UNDERLINE
     colorPair p
+
 foreign import ccall unsafe bkgdset :: (#type chtype) -> IO ()
 
 erase :: IO ()
