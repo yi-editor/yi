@@ -82,6 +82,9 @@ module Yi.Core (
         atSofE,         -- :: IO Bool
         atEofE,         -- :: IO Bool
 
+        nextNParagraphs,    -- :: Int -> Action
+        prevNParagraphs,    -- :: Int -> Action
+
         -- * Window-based movement
         upScreenE,      -- :: Action
         upScreensE,     -- :: Int -> Action
@@ -410,11 +413,49 @@ rightOrEolE x = withWindow_ $ moveXorEolW x
 
 -- ---------------------------------------------------------------------
 -- Slightly higher level operations
+-- Uncommitted to whether these should exist or not. Are they non-core?
 
 -- | Move to first non-space character in this line
--- Stupid to have a special function for this.
 firstNonSpaceE :: Action
 firstNonSpaceE = withWindow_ firstNonSpaceW
+
+-- | Move down next @n@ paragraphs
+nextNParagraphs :: Int -> Action
+nextNParagraphs n = do
+    withWindow_ $ \w b -> do
+        eof <- sizeB b
+        let loop = do
+                p <- pointB b
+                when (p < eof-1) $ do
+                    moveWhile_ (/= '\n') Right w b
+                    p' <- pointB b
+                    when (p' < eof-1) $ do
+                        rightB b
+                        x <- readB b
+                        when (x /= '\n') loop
+        replicateM_ n loop
+        return w
+    getPointE >>= gotoPointE
+
+-- | Move up prev @n@ paragraphs
+prevNParagraphs :: Int -> Action
+prevNParagraphs n = do
+    withWindow_ $ \w b -> do
+        let loop = do
+                p <- pointB b
+                when (p > 0) $ do
+                    leftB b
+                    moveWhile_ (/= '\n') Left w b
+                    p' <- pointB b
+                    when (p' > 0) $ do
+                        leftB b
+                        x <- readB b
+                        if x == '\n'
+                            then rightB b
+                            else loop
+        replicateM_ n loop
+        return w
+    getPointE >>= gotoPointE
 
 -- ---------------------------------------------------------------------
 -- Window based operations
@@ -686,6 +727,7 @@ mapRangeE from to fn
             moveToW from w b
             return w
 
+------------------------------------------------------------------------
 --
 -- Shift the point, until predicate is true, leaving point at final
 -- location. Direction is either False=left, True=right
@@ -693,25 +735,35 @@ mapRangeE from to fn
 -- N.B. we're using partially applied Left and Right as well-named Bools.
 --
 moveWhileE :: (Char -> Bool) -> (() -> Either () ()) -> Action
-moveWhileE f dir = do
-    withWindow_ $ \w b -> do
-        eof <- sizeB b
+moveWhileE f d = do withWindow_ (moveWhile_ f d)
+                    getPointE >>= gotoPointE
 
-        let loop = case dir () of  {
-            Right _ -> let loop' = do p <- pointB b
-                                      when (p < eof - 1) $ do
-                                      x <- readB b
-                                      when (f x) $ rightB b >> loop'
-                       in loop' ;
-            Left  _ -> let loop' = do p <- pointB b
-                                      when (p > 0) $ do
-                                      x <- readB b
-                                      when (f x) $ leftB b >> loop 
-                       in loop'
-        }
-        loop
-        return w
-    getPointE >>= gotoPointE
+--
+-- internal moveWhile function to avoid unnec. ui updates
+-- not for external consumption
+--
+moveWhile_ :: (Char -> Bool)
+           -> (() -> Either () ())
+           -> Window
+           -> Buffer'
+           -> IO Window
+
+moveWhile_ f dir w b = do
+    eof <- sizeB b
+    let loop = case dir () of  {
+        Right _ -> let loop' = do p <- pointB b
+                                  when (p < eof - 1) $ do
+                                  x <- readB b
+                                  when (f x) $ rightB b >> loop'
+                   in loop' ;
+        Left  _ -> let loop' = do p <- pointB b
+                                  when (p > 0) $ do
+                                  x <- readB b
+                                  when (f x) $ leftB b >> loop 
+                   in loop'
+    }
+    loop
+    return w
 
 ------------------------------------------------------------------------
 

@@ -201,7 +201,9 @@ CLEAN_FILES        += $(HS_PROG) $(C_PROG) $(SCRIPT_PROG) $(SCRIPT_LINK) \
 		      $(PROG) $(LIBRARY) a.out \
 		      $(DERIVED_HSC_SRCS) \
 		      $(DERIVED_GC_SRCS) \
-		      $(patsubst %,%/*.$(way_)hi, . $(ALL_DIRS))
+		      $(patsubst %,%/*.$(way_)hi, . $(ALL_DIRS)) \
+		      $(patsubst %,%/*.p_hi, . $(ALL_DIRS)) \
+		      $(patsubst %,%/*.p_o, . $(ALL_DIRS))
 
 # we delete *all* the .hi files we can find, rather than just
 # $(HS_IFACES), because stale interfaces left around by modules which
@@ -219,7 +221,7 @@ MAINTAINER_CLEAN_FILES 	+= $(BOOT_SRCS) $(DERIVED_HAPPY_SRCS) $(DERIVED_ALEX_SRC
 # `Standard' set of files to clean out.
 #
 MOSTLY_CLEAN_FILES += \
- *.CKP *.ln *.BAK *.bak .*.bak *.o core a.out errs ,* *.a .emacs_*  \
+ *.CKP *.ln *.BAK *.bak .*.bak *.o *.p_o core a.out errs ,* *.a .emacs_*  \
  tags TAGS *.ind *.ilg *.idx *.idx-prev *.aux *.aux-prev *.dvi *.log \
  *.toc *.lot *.lof *.blg *.cb *_stub.c *_stub.h *.raw_s *.a.list \
  *.log *.status

@@ -27,6 +27,7 @@
 module Yi.Window where
 
 import Yi.Buffer
+import Yi.FastBuffer            ( FBuffer ) -- for specialisation
 
 import Data.Char                ( isLatin1, isSpace )
 import Data.Unique              ( Unique, newUnique )
@@ -392,11 +393,15 @@ indexOfSolAbove :: Buffer a => a -> Int -> IO Int
 indexOfSolAbove b n = do
     p <- pointB b
     moveToSol b
-    mapM_ (const $ lineUp b) [1 .. n]
+    loop n b
     q <- pointB b
     moveTo b p
     return q
-     
+
+    where loop 0 _  = return ()
+          loop i b' = lineUp b' >> loop (i-1) b'
+
+{-# SPECIALIZE indexOfSolAbove :: FBuffer -> Int -> IO Int #-}
 
 --
 -- | Adjust the window's height-related fields, assuming a new window height
