@@ -73,9 +73,17 @@ import GHC.Exts
 
 import Foreign.C.Types
 
-#include <wchar.h>
-#include <limits.h>
-#include <stdlib.h>
+#if HAVE_WCHAR_H
+# include <wchar.h>
+#endif
+
+#if HAVE_LIMITS_H
+# include <limits.h>
+#endif
+
+#if HAVE_STDLIB_H
+# include <stdlib.h>
+#endif
 
 type CWChar = (#type wchar_t)
 type CWString = Ptr CWChar

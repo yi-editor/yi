@@ -40,8 +40,13 @@ module Yi.Regex (
 #include "config.h"
 #include "YiUtils.h"
 
-#include <sys/types.h>
-#include <regex.h>
+#if HAVE_SYS_TYPES_H
+# include <sys/types.h>
+#endif
+
+#if HAVE_REGEX_H
+# include <regex.h>
+#endif
 
 import Foreign
 import Foreign.C

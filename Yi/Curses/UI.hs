@@ -1,4 +1,9 @@
-{-# OPTIONS -cpp -#include YiUtils.h -#include <signal.h> #-}
+{-# OPTIONS -cpp -#include "config.h" #-}
+
+#if HAVE_SIGNAL_H
+{-#include <signal.h> #-}
+#endif
+
 -- 
 -- Copyright (C) 2004 Don Stewart - http://www.cse.unsw.edu.au/~dons
 -- 
