@@ -61,6 +61,9 @@ class Buffer a where
     -- | Return the contents of the buffer as a list
     elemsB     :: a -> IO [Char]
 
+    -- | Return @n@ elems starting a @i@ of the buffer as a list
+    nelemsB    :: a -> Int -> Int -> IO [Char]
+
     ------------------------------------------------------------------------
 
     -- | Move point in buffer to the given index
@@ -312,9 +315,18 @@ instance Buffer FBuffer where
     pointB (FBuffer _ _ mv) = readMVar mv >>=
         readIORef >>= \(FBuffer_ _ p _ _) -> return p
 
+    ------------------------------------------------------------------------
+
     -- elemsB     :: a -> IO [Char]
     elemsB (FBuffer _ _ mv) = readMVar mv >>=
         readIORef >>= \(FBuffer_ b _ n _) -> readChars b n 0
+
+    -- nelemsB    :: a -> Int -> Int -> IO [Char]
+    nelemsB (FBuffer _ _ mv) n i = readMVar mv >>=
+        readIORef >>= \(FBuffer_ b _ e _) -> do
+            let i' = inBounds i e
+                n' = min e n
+            readChars b n' i'
 
     ------------------------------------------------------------------------
 
@@ -446,7 +458,6 @@ inBounds i end | i <= 0    = 0
                | i >= end  = max 0 (end - 1)
                | otherwise = i
     
-
 --
 -- | Just like 'modifyIORef', but the action may also do IO
 --

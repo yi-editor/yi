@@ -112,7 +112,7 @@ getKey refresh_fn = do
 --
 drawBuffer :: Buffer a => Int -> Int -> Int -> a -> IO ()
 drawBuffer main w h buf = do
-    ss <- elemsB buf
+    ss <- nelemsB buf (w*h) 0
     mapM_ (drawLine w) $ take (h-1) $ (lines ss) ++ repeat "~"
     cset_attr (Curses.setReverse Curses.attr0 True , Curses.Pair (main))
     drawModeLine w (nameB buf)
@@ -185,12 +185,12 @@ redraw = do
 drawPoint :: Buffer a => Int -> Int -> Int -> Int -> a -> IO ()
 drawPoint y_orig x_orig y_max x_max buf = Curses.withCursor Curses.CursorVisible $ do
 
-    ss <- elemsB buf -- again :(
+    ss <- nelemsB buf (y_max*x_max) 0 -- again. TODO :(
     p  <- pointB buf
 
     --
     -- calculate the offset of the buffer's point in terms of x and y
-    -- offsets from the origin of the buffer.
+    -- TODO offsets from the origin of the buffer.
     --
     -- NB the point is progressing, but we're refusing to scroll for now.
     --
