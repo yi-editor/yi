@@ -39,8 +39,6 @@ module Yi.UI (
 
         -- * Input
         getKey,
-        drawWindow,
-        drawLine,
 
         -- * Drawing
         refresh,

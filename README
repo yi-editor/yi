@@ -22,6 +22,9 @@ dynamic loader library. You can get this from:
 You currently need to use a cvs snapshot of hs-plugins, from Oct 26 2004 or 
 later. Make sure you "make", "make install" and "make register" the library.
 
+If you are working from the darcs repository you'll need autoconf and
+automake installed for generating the configure files.
+
 Once you have ensured that you have these programs and libraries
 installed:
 
