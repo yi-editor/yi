@@ -93,10 +93,13 @@ initcolours = do
     uiAttr (window sty) >>= \(_,p) -> bkgrndSet nullA p
 
 --
--- | Clean up and go home
+-- | Clean up and go home. Refresh is needed on linux. grr.
 --
 end :: IO ()
-end = Curses.endWin
+end = do Curses.endWin
+#if NCURSES_UPDATE_AFTER_END
+         Curses.update
+#endif
 
 --
 -- | Suspend the program

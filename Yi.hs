@@ -148,6 +148,7 @@ initSignals = do
                           (\sig -> installHandler sig Ignore Nothing)
 
     -- and exit if we get the following:
+    -- we have to do our own quitE here.
     sequence_ $ flip map [sigHUP, sigABRT, sigTERM] $ \sig -> do
             installHandler sig (CatchOnce $ do 
                     releaseSignals
@@ -220,8 +221,8 @@ static_main = do
     Control.Exception.catch
         (initSignals >> Core.startE config lineno mfiles >> Core.eventLoop)
         (\e -> do releaseSignals
-                  UI.end
                   Editor.shutdown
+                  UI.end
                   when (not $ isExitCall e) $ print e
                   throw e
         )

@@ -440,6 +440,15 @@ refresh = throwIfErr_ "refresh" refresh_c
 foreign import ccall unsafe "YiCurses.h refresh" 
     refresh_c :: IO CInt
 
+--
+-- | Do an actual update. Used after endWin on linux to restore the terminal
+--
+update :: IO ()
+update = throwIfErr_ "update" update_c
+
+foreign import ccall unsafe "YiCurses.h doupdate" 
+    update_c :: IO CInt
+
 ------------------------------------------------------------------------
 
 hasColors :: IO Bool

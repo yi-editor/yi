@@ -108,6 +108,12 @@ AC_CHECK_LIB(iconv, libiconv)
 AC_CHECK_FUNCS(libiconv, AC_DEFINE( [ICONV_LIB_PREFIX],[1],
                 [Define to 1 if you need a 'lib' prefix to iconv functions]))
 
+# On linux we need to call doupdate() after endwin() to restore the term
+if uname -s | grep Linux > /dev/null 2>&1 ; then
+    AC_DEFINE( [NCURSES_UPDATE_AFTER_END],[1],
+               [Define to 1 if you need to call doupdate after endwin])
+fi
+
 # some special libs need to be set for package.conf files
 if echo "$LIBS" | grep iconv > /dev/null 2>&1 ; then
     ICONV=iconv
