@@ -79,9 +79,6 @@ do_cmd mi c
     | c == '\^B' || c == keyPPage 
     = upScreensE (fromMaybe 1 mi) >> nextCmd
 
--- \^C means nothing to us, usually
---  | c == '\^C' = nopE >> nextCmd
-
 -- Scroll forward count lines.
     | c == '\^D' = not_impl
 
@@ -152,7 +149,7 @@ do_cmd mi c
 -- Move the cursor to the end of a line, n times.
     | c == '$'  = eolE >> nextCmd   -- TODO doesn't respect 'count'
 
--- Move to the matching character.
+-- Move to the matching character, from the set of ([{}]), /* */, cpp stuff
     | c == '%'  = not_impl
 
 -- Repeat the previous substitution command on the current line.
@@ -216,10 +213,88 @@ do_cmd mi c
 -- Shift lines left.
     | c == '<'  = not_impl
 
-------------------------------------------------------------------------
+-- Execute a named buffer
+    | c == '@'  = not_impl
 
 -- Enter input mode, appending the text after the end of the line.
     | c == 'A' = eolE            >> nextIns
+
+-- Move backwards count bigwords
+    | c == 'B' = not_impl
+
+-- Change text from the current position to the end-of-line.
+-- If buffer is specified, ``yank'' the deleted text into buffer. TODO
+-- todo-- not vi.
+    | c == 'C' = readRestOfLnE >>= setRegE >> killE >> nextIns
+
+-- Delete text from the current position to the end-of-line.
+    | c == 'D' = readRestOfLnE >>= setRegE >> killE >> nextCmd
+
+--  Move forward count end-of-bigwords.
+    | c == 'E' = not_impl
+
+-- Search count times backward through the current line for character
+    | c == 'F' = not_impl
+
+-- Move to line count, or the last line of the file if count is not specified.
+    | c == 'G' = do case mi of
+                        Nothing     -> botE
+                        Just n      -> gotoLnE n -- topE
+                    nextCmd
+
+-- Move to the screen line count - 1 lines below the top of the screen
+    | c == 'H' = downFromTosE ((fromMaybe 1 mi ) - 1) >> nextCmd
+
+-- Enter input mode, inserting the text at the beginning of the line.
+    | c == 'I' = solE              >> nextIns
+
+-- Join lines.
+    | c == 'J' = eolE >> deleteE{-'\n'-} >> nextCmd
+
+-- Move to the screen line count - 1 lines above the bottom of the screen.
+    | c == 'L' = upFromBosE ((fromMaybe 1 mi ) - 1) >> nextCmd
+
+-- Move to the screen line in the middle of the screen.
+    | c == 'M' = middleE  >> nextCmd
+
+-- Enter input mode, appending text in a new line above the current line.
+    | c == 'O' = solE >> insertE '\n' >> upE >> nextIns
+
+-- Insert text from a buffer.
+    | c == 'P' = not_impl
+
+-- Exit vi (or visual) mode and switch to ex mode.
+    | c == 'Q' = not_impl
+
+-- Enter input mode, replacing the characters in the current line.
+    | c == 'R' = not_impl
+
+-- Substitute count lines.
+    | c == 'S' = solE >> readLnE >>= setRegE >> killE >> nextIns
+
+-- Search backwards, count times, through the current line for the
+-- character after the specified character.
+    | c == 'T' = not_impl
+
+-- Restore the current line to its state before the cursor last moved to it.
+    | c == 'U' = not_impl
+
+-- Move forward count bigwords.
+    | c == 'W' = not_impl
+
+-- Delete count characters before the cursor. (TODO yank not impl).
+    | c == 'X' 
+    = let n = (fromMaybe 1 mi) in leftOrSolE n >> replicateM_ n deleteE >> nextCmd
+
+-- Copy (or ``yank'') count lines into the specified buffer
+    | c == 'Y' = not_impl
+
+-- Write the file and exit vi.
+    | c == 'Z' = do c' <- getcE
+                    when (c' == 'Z') $ viWrite >> quitE
+                    nextCmd
+
+------------------------------------------------------------------------
 
 -- Enter input mode, appending the text after the cursor.
     | c == 'a' = rightOrEolE 1     >> nextIns
@@ -243,30 +318,12 @@ do_cmd mi c
                     eolE >> insertE '\n' >> mapM_ insertE s >> solE
                     nextCmd
 
--- Join lines.
-    | c == 'J' = eolE >> deleteE >> insertE ' ' >> nextCmd
-
--- Enter input mode, inserting the text at the beginning of the line.
-    | c == 'I' = solE              >> nextIns
-
 -- Enter input mode, inserting the text before the cursor.
     | c == 'i' = nextIns
-
--- Enter input mode, appending text in a new line above the current line.
-    | c == 'O' = solE >> insertE '\n' >> upE >> nextIns
 
 -- Enter input mode, appending text in a new line under the current line.
     | c == 'o' = eolE >> insertE '\n' >> nextIns
 
--- Delete text from the current position to the end-of-line.
-    | c == 'D' = killE                     >> nextCmd
-
--- Move to the last line of the file
-    | c == 'G' 
-    = do case mi of
-            Nothing     -> botE
-            Just n      -> gotoLnE n -- topE
-         nextCmd
 
 -- Delete the line the cursor is on.
     | c == 'd' = do c' <- getcE
@@ -275,11 +332,6 @@ do_cmd mi c
 
 -- Replace character.
     | c == 'r' = getcE >>= writeE >> nextCmd
-
--- Write the file and exit vi.
-    | c == 'Z' = do c' <- getcE
-                    when (c' == 'Z') $ viWrite >> quitE
-                    nextCmd
 
 -- Reverse the case of the next character
     | c == '~' = do c' <- readE

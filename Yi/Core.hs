@@ -25,9 +25,7 @@
 
 --
 -- | The core actions of yi. This module is the link between the editor
--- machine defined in 'Yi.Editor', and the real world defined in
--- 'Yi.UI'. The instructions defined here manipulate the editor state,
--- and control the screen through the UI.  Key bindings, and libraries
+--nd control the screen through the UI.  Key bindings, and libraries
 -- should manipulate Yi through the interface defined here.
 --
 
@@ -262,6 +260,24 @@ downScreensE n = do
     (Just w) <- getWindow
     withWindow_ (gotoLnFromW (n * (height w - 1)))
 
+-- | Move to @n@ lines down from top of screen
+downFromTosE :: Int -> Action
+downFromTosE n = do
+    (i,fn) <- withWindow $ \w _ -> do
+                    let y  = fst $ cursor w
+                        n' = min n (height w - 1 - 1)
+                        d  = n' - y
+                    return (w, (abs d, if d < 0 then upE else downE))
+    replicateM_ i fn
+
+-- | Move to @n@ lines up from the bottom of the screen
+upFromBosE :: Int -> Action
+upFromBosE n = (withWindow $ \w _ -> return (w, height w -1 -1 - n)) >>= downFromTosE
+
+-- | Move to middle line in screen
+middleE :: Action
+middleE = (withWindow $ \w _ -> return (w, (height w -1-1) `div` 2)) >>= downFromTosE
+
 -- ---------------------------------------------------------------------
 
 -- | Move left @x@ or to start of line
@@ -307,12 +323,18 @@ readE = withWindow $ \w b -> readB b >>= \c -> return (w,c)
 -- | Read the line the cursor is on
 readLnE :: IO String
 readLnE = withWindow $ \w b -> do
-            p <- pointB b
-            i <- indexOfSol b 
-            j <- indexOfEol b
-            s <- nelemsB b (j-i) i
-            moveTo b p 
-            return (w,s)
+    i <- indexOfSol b 
+    j <- indexOfEol b
+    s <- nelemsB b (j-i) i
+    return (w,s)
+
+-- | Read from point to end of line
+readRestOfLnE :: IO String
+readRestOfLnE = withWindow $ \w b -> do
+    p <- pointB b
+    j <- indexOfEol b
+    s <- nelemsB b (j-p) p
+    return (w,s)
 
 -- | Write char to point
 writeE :: Char -> Action

@@ -3,7 +3,6 @@ Design plan:
         - abstract syntax for ui 
         - think about abstractable actions/keybindings
         - clean up ncurses code    
-        - pgup/down too inefficient
 
 Dynamic stuff:
         - "rebinding" global_vars by writing fields in global settings, using
