@@ -693,7 +693,7 @@ mapRangeE from to fn
 -- N.B. we're using partially applied Left and Right as well-named Bools.
 --
 moveWhileE :: (Char -> Bool) -> (() -> Either () ()) -> Action
-moveWhileE predicate dir = do
+moveWhileE f dir = do
     withWindow_ $ \w b -> do
         eof <- sizeB b
 
@@ -701,12 +701,12 @@ moveWhileE predicate dir = do
             Right _ -> let loop' = do p <- pointB b
                                       when (p < eof - 1) $ do
                                       x <- readB b
-                                      when (predicate x) $ rightB b >> loop'
+                                      when (f x) $ rightB b >> loop'
                        in loop' ;
             Left  _ -> let loop' = do p <- pointB b
                                       when (p > 0) $ do
                                       x <- readB b
-                                      when (predicate x) $ leftB b >> loop 
+                                      when (f x) $ leftB b >> loop 
                        in loop'
         }
         loop

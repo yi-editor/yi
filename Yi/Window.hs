@@ -153,8 +153,15 @@ moveDownW w b = do
 moveToW :: Buffer a => Int -> Window -> a -> IO Window
 moveToW np w b = do
     moveTo b np
-    ln <- curLn b
-    resetW w b ln (min (ln-1) (height w - 2))
+    newln <- curLn b
+    let gap = newln - toslineno w
+    case () of {_ 
+        | gap < height w - 2 && newln >= toslineno w -- still on the screen
+        -> resetW w b newln (newln - toslineno w)
+
+        | otherwise                             -- dump on bottom line :(
+        -> resetW w b newln (min (newln-1) (height w - 2))
+    }
 
 -- | goto an arbitrary line in the file. center that line on the screen
 -- gotoLn is (fast as possible) an O(n) op atm.

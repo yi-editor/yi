@@ -234,20 +234,24 @@ moveCmdFM = listToFM $
         nextParagraph = do eof <- atEofE
                            when (not eof) $ do
                               moveWhileE (/= '\n') Right
-                              rightE 
-                              x <- readE
-                              when (x /= '\n') 
-                                    nextParagraph
+                              eof' <- atEofE
+                              when (not eof') $ do
+                                  rightE 
+                                  x <- readE
+                                  when (x /= '\n') 
+                                        nextParagraph
 
         prevParagraph = do sof <- atSofE
                            when (not sof) $ do
                               leftE
                               moveWhileE (/= '\n') Left
-                              leftE 
-                              x <- readE
-                              if x == '\n'
-                                then rightE
-                                else prevParagraph
+                              sof' <- atSofE
+                              when (not sof') $ do
+                                  leftE 
+                                  x <- readE
+                                  if x == '\n'
+                                    then rightE
+                                    else prevParagraph
 
 --
 -- more movement commands. these ones are paramaterised by a character
