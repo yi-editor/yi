@@ -32,8 +32,8 @@ import qualified Yi.Keymap.Vim as Keymap
 
 import Data.IORef
 
-import Control.Monad            ( liftM )
-import Control.Exception        ( bracket_ )
+import Control.Monad            ( liftM, when )
+import Control.Exception        ( handle, throwIO )
 
 import System.Console.GetOpt
 import System.Environment       ( getArgs )
@@ -42,6 +42,7 @@ import System.IO.Unsafe         ( unsafePerformIO )
 import System.Posix.Signals as Signals
 
 import GHC.Base                 ( unsafeCoerce# )
+import GHC.Exception            ( Exception(ExitException) )
 
 -- ---------------------------------------------------------------------
 -- | Argument parsing. Pretty standard, except for the trick with -B.
@@ -156,9 +157,21 @@ static_main = do
     mfiles <- do_args args
     config <- readIORef g_settings
     lineno <- readIORef g_lineno
-    bracket_ (initSignals >> Core.startE config lineno mfiles)
-             (Core.quitE  >> releaseSignals)
-             (Core.eventLoop)
+
+    --
+    -- catch any exception thrown by the main loop, clean up and quit
+    -- (catching an ExitException), then re throw the original
+    -- exception. catch that and print it, if it wasn't exit.
+    --
+    handle (\e -> when (not $ isExitCall e) $ print e ) $ do
+        handle (\e -> releaseSignals >> handle (\_ -> throwIO e) Core.quitE) $ do
+            initSignals >> Core.startE config lineno mfiles
+            Core.eventLoop
+
+    where
+      isExitCall (ExitException _) = True
+      isExitCall _ = False
+
 
 -- ---------------------------------------------------------------------
 -- | Dynamic main. This is jumped to from from Boot.hs, after dynamically
