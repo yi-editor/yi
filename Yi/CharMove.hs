@@ -23,11 +23,12 @@
 --
 module Yi.CharMove (
 
-    (>>||),         -- :: IO Bool -> IO Bool -> IO Bool
+        -- * Parameterised movement
+        doSkipWhile,    -- :: Action -> IO Bool -> (Char -> Bool) -> Action
+        doSkipCond,     -- :: Action -> IO Bool -> (Char -> Bool) -> Action
+        moveWhileE,     -- :: (Char -> Bool) -> (() -> Either () ()) -> Action
 
-    skipWordE,      -- :: Action
-    bskipWordE      -- :: Action
-) where
+        (>>||),         -- :: IO Bool -> IO Bool -> IO Bool
 
         -- * Word movement
         skipWordE,      -- :: Action
@@ -53,6 +54,8 @@ module Yi.CharMove (
         -- * Word completion
         wordCompleteE,          -- :: Action
         resetCompleteE,         -- :: Action
+
+        breadE          -- :: IO Char
 
     ) where
 
@@ -86,20 +89,22 @@ breadE = do
 doSkipWhile :: Action -> IO Char -> IO Bool -> (Char -> Bool) -> Action
 doSkipWhile mov rd chkend check = do
     e <- chkend
-    c <- readE
-    when (not e && check c) (mov >> doSkipWhile mov chkend check)
+    c <- rd
+    when (not e && check c) (mov >> doSkipWhile mov rd chkend check)
 
-doSkipCond :: Action -> IO Bool -> (Char -> Bool) -> Action
-doSkipCond mov chkend check = do
-    c <- readE
-    if check c
-        then mov >> doSkipWhile mov chkend check
-        else mov >> doSkipWhile mov chkend (not . check)
-
+--
+-- | Similar to 'doSkipWhile', but perform check on current chars, then
+-- always move, before branching.
+--
+doSkipCond :: Action -> IO Char -> IO Bool -> (Char -> Bool) -> Action
+doSkipCond mov rd chkend check = do
+    c <- rd
+    mov
+    doSkipWhile mov rd chkend (if check c then check else not . check)
 
 --  Monadic OR operation.
---(>>||) :: Monad a => a Bool -> a Bool -> a Bool
---a >>|| b = a >>= \ra -> if (not ra) then b else return True
+(>>||) :: Monad a => a Bool -> a Bool -> a Bool
+a >>|| b = a >>= \ra -> if (not ra) then b else return True
 
 -- | Skip to next whitespace or non-whitespace inversely depending on
 -- the character under point.
