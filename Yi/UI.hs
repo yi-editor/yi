@@ -38,6 +38,9 @@ module Yi.UI (
         refresh,
         reset,
         warn,
+
+        drawCmd,
+        clearCmd,
         
         getKey,
 
@@ -133,6 +136,25 @@ drawModeLine w title = drawLine w ("\"" ++ title ++ "\"" ++ repeat ' ')
 drawLine :: Int -> String -> IO ()
 drawLine w s  = Curses.wAddStr Curses.stdScr $ take w (s ++ repeat ' ')
 
+------------------------------------------------------------------------
+--
+-- | Draw the bottom, command line, with contents @ss@
+-- This is its own window, nothing else touches it
+--
+drawCmd :: String -> IO ()
+drawCmd s = do
+    (h,w) <- Curses.scrSize
+    Curses.wMove Curses.stdScr (h-1) 0
+    Curses.wAddStr Curses.stdScr s
+
+clearCmd :: IO ()
+clearCmd = do
+    (h,w) <- Curses.scrSize
+    Curses.wMove Curses.stdScr (h-1) 0
+    drawLine (w-1) " "
+
+------------------------------------------------------------------------
+
 -- 
 -- | redraw the entire screen from the editor state
 --
@@ -143,7 +165,7 @@ redraw = do
     current <- Editor.getCurrentBuffer
     (h,w)   <- screenSize
     let (y, r) = (h - 1) `quotRem` count    -- work out height of buffers
-    gotoOrigin
+    gotoTop
     mapM_ (\b -> if b == current
                  then drawMainBufferXY w (y+r) b
                  else drawBufferXY w y b) bs
@@ -183,8 +205,13 @@ drawPoint y_orig x_orig y_max x_max buf = Curses.withCursor Curses.CursorVisible
 --
 -- | move cursor to origin of stdScr.
 --
-gotoOrigin :: IO ()
-gotoOrigin = Curses.wMove Curses.stdScr 0 0
+gotoTop :: IO ()
+gotoTop = Curses.wMove Curses.stdScr 0 0
+
+-- gotoBottom :: IO ()
+-- gotoBottom = do
+--     (h,_) <- Curses.scrSize
+--     Curses.wMove Curses.stdScr h 0
 
 --
 -- | Fill to end of line spaces

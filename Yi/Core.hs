@@ -50,6 +50,8 @@ module Yi.Core (
         prevE,
         newE,
         getcE,
+        msgE,
+        msgClrE,
 
         -- ** File-based actions
         readE,
@@ -301,3 +303,10 @@ deleteE = withBuffer deleteB
 killE :: IO ()
 killE = withBuffer deleteToEol -- >>= Buffer.prevXorLn 1
 
+-- | Draw message at bottom of screen
+msgE :: String -> IO ()
+msgE = UI.drawCmd
+
+-- | Clear the message line at bottom of screen
+msgClrE  :: IO ()
+msgClrE = UI.clearCmd

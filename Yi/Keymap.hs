@@ -74,7 +74,7 @@ key C 'l' = rightE
 key C '$' = eolE
 key C '0' = solE
 key C '|' = solE
-key C ':' = beginEx 
+key C ':' = msgE ":" >> beginEx 
 key C 'i' = beginInsert
 key C 'a' = rightOrEolE 1 >> beginInsert
 key C 'A' = eolE          >> beginInsert
@@ -105,7 +105,14 @@ key I c      = insertE c    >> rightE
 -- ---------------------------------------------------------------------
 -- * Ex mode
 --
-key E 'w' = writeE
-key E 'q' = quitE
+key E 'w' = do msgE ":w"     -- TODO general scheme for echoing
+               c <- getcE
+               if c == '\13' then writeE else msgClrE
+               beginCommand
+
+key E 'q' = do msgE ":q"
+               c <- getcE
+               if c == '\13' then quitE else msgClrE
+               beginCommand
 
 key _  _  = noopE
