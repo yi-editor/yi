@@ -88,7 +88,7 @@ lookupKeymap t k = do key <- lookupKey t k
 				    KMap    t -> return (Keymap $ lookupKeymap t)}
 		      
 keymap :: Char -> IO Keymap
-keymap c = initKeyMap >> lookupKeymap globalKeyTable c
+keymap c = initKeys >> lookupKeymap globalKeyTable c
 
 -- ---------------------------------------------------------------------
 --
@@ -103,4 +103,26 @@ keytableSetKey t (k:ks) a = do v <- lookupKey t k
     where
     addMap k ks a t' = keytableSetKey t' ks a >> updateKey t k (KMap t')
 
-initKeyMap = keytableSetKey globalKeyTable [control 'x', control 'x'] closeE
+-- Poor mans key bindings
+initKeyBindings = [-- Special characters
+		   ([keyEnter], insertE '\n'),
+		   (['\r'], insertE '\n'),		   
+		   -- Movement
+		   ([keyDown], downE),
+		   ([keyLeft], leftOrSolE 1),
+		   ([keyRight], rightOrEolE 1),
+		   ([keyUp], upE),
+
+		   ([control 'a'], solE),
+		   ([control 'e'], eolE),
+   		   -- Editing
+		   ([keyBackspace], leftOrSolE 1  >> deleteE),
+		   ([control 'k'], killE),
+		   ([control 'd'], deleteE),
+		   -- Other
+		   ([control 'x', control 's'], fwriteE),
+		   ([control 'x', control 'c'], closeE)
+		  ]
+
+initKeys = do mapM_ (\c -> keytableSetKey globalKeyTable [c] (insertE c)) $ filter isPrint [minBound .. maxBound]
+	      mapM_ (uncurry $ keytableSetKey globalKeyTable) initKeyBindings
