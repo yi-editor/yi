@@ -1,4 +1,3 @@
-
 {-# OPTIONS -cpp #-}
 -- 
 -- Copyright (C) 2004-5 Don Stewart - http://www.cse.unsw.edu.au/~dons
@@ -28,7 +27,16 @@ module Yi.Map (
         module Data.Map,
 #else
         Map,
-        empty, insert, delete, lookup, fromList, size, elems
+        empty, 
+        insert, 
+        delete, 
+        lookup, 
+        fromList, 
+        size, 
+        elems, 
+        singleton,
+        member,
+        keys,
 #endif
   ) where
 
@@ -47,6 +55,9 @@ type Map k a = FM.FiniteMap k a
 empty  :: Map k a
 empty  = FM.emptyFM
 
+singleton :: k -> a -> Map k a
+singleton = FM.unitFM 
+
 insert :: Ord k => k -> a -> Map k a -> Map k a
 insert = \k e m -> FM.addToFM m k e
 
@@ -64,5 +75,11 @@ size = FM.sizeFM
 
 elems :: Map k a -> [a]
 elems = FM.eltsFM
+
+member :: Ord k => k -> Map k a -> Bool
+member = FM.elemFM
+
+keys  :: Map k a -> [k] 
+keys = FM.keysFM
 
 #endif

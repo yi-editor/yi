@@ -66,7 +66,7 @@ import qualified System.Posix.Internals ( c_getpid )
 #endif
 
 #ifdef HAVE_ARC4RANDOM
-import GHC.Base
+import GHC.Base hiding ( ord, chr )
 import GHC.Int
 #else
 import System.Random            ( getStdRandom, Random(randomR) )

@@ -10,7 +10,10 @@ include $(TOPDIR)/mk/paths.mk
 PRE_SRCS:=      $(ALL_SRCS)
 
 HC_OPTS        += $(INC_OPTS)
-HSC_OPTS       += -Imk -Icbits $(INC_OPTS)
+ifeq "$(GLASGOW_HASKELL)" "604"
+HC_OPTS	       += -I$(TOPDIR)
+endif
+HSC_OPTS       += -Imk -Icbits $(INC_OPTS) 
 CC_OPTS        += -Imk -Icbits -optc-O3 $(INC_OPTS)
 
 # If $(way) is set then we define $(way_) and $(_way) from it in the

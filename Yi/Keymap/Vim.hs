@@ -31,10 +31,11 @@ import Yi.Lexers     hiding ( Action )
 -- TODO
 import Yi.Curses.UI  hiding ( plus )
 
+import qualified Yi.Map as M
+
 import Prelude       hiding ( any )
 
 import Data.Char
-import Data.FiniteMap
 import Data.List            ( (\\) )
 import Data.Maybe           ( fromMaybe )
 
@@ -140,8 +141,8 @@ with a = (Just (Right a))
 -- lookup an fm, getting an action otherwise nopE, and apply it to an
 -- integer repetition argument.
 --
-getCmdFM :: Char -> Int -> FiniteMap Char (Int -> Action) -> Action
-getCmdFM c i fm = let mfn = lookupFM fm c in (fromMaybe (const nopE) mfn) i
+getCmdFM :: Char -> Int -> M.Map Char (Int -> Action) -> Action
+getCmdFM c i fm = let mfn = M.lookup c fm in (fromMaybe (const nopE) mfn) i
 
 --
 listToMInt :: [Char] -> Maybe Int
@@ -176,15 +177,15 @@ cmd_move = (move_chr >|< (move2chrs +> anyButEsc))
     `meta` \cs st@St{acc=cnt} -> 
         (with (msgClrE >> (fn cs cnt)), st{acc=[]}, Just $ cmd st)
 
-    where move_chr  = alt $ keysFM moveCmdFM
-          move2chrs = alt $ keysFM move2CmdFM
+    where move_chr  = alt $ M.keys moveCmdFM
+          move2chrs = alt $ M.keys move2CmdFM
           fn cs cnt  = case cs of
                          -- 'G' command needs to know Nothing count
                         "G" -> case listToMInt cnt of 
                                         Nothing -> botE >> solE
                                         Just n  -> gotoLnE n
 
-                        [c,d] -> let mfn = lookupFM move2CmdFM c 
+                        [c,d] -> let mfn = M.lookup move2CmdFM c 
                                      f   = fromMaybe (const (const nopE)) mfn
                                  in f (toInt cnt) d
 
@@ -195,8 +196,8 @@ cmd_move = (move_chr >|< (move2chrs +> anyButEsc))
 --
 -- movement commands
 --
-moveCmdFM :: FiniteMap Char (Int -> Action)
-moveCmdFM = listToFM $
+moveCmdFM :: M.Map Char (Int -> Action)
+moveCmdFM = M.fromList $
 -- left/right
     [('h',          left)
     ,('\^H',        left)
@@ -248,8 +249,8 @@ moveCmdFM = listToFM $
 -- more movement commands. these ones are paramaterised by a character
 -- to find in the buffer.
 --
-move2CmdFM :: FiniteMap Char (Int -> Char -> Action)
-move2CmdFM = listToFM $
+move2CmdFM :: M.Map Char (Int -> Char -> Action)
+move2CmdFM = M.fromList $
     [('f',  \i c -> replicateM_ i $ nextCInc c) 
     ,('F',  \i c -> replicateM_ i $ prevCInc c)
     ,('t',  \i c -> replicateM_ i $ nextCExc c)
@@ -288,14 +289,14 @@ cmd_eval = (cmd_char >|<
 
     where
         anyButEscOrDel = alt $ any' \\ ('\ESC':delete')
-        cmd_char       = alt $ keysFM cmdCmdFM
+        cmd_char       = alt $ M.keys cmdCmdFM
         undef c = not_implemented c
 
 --
 -- cmd mode commands
 --
-cmdCmdFM :: FiniteMap Char (Int -> Action)
-cmdCmdFM = listToFM $
+cmdCmdFM :: M.Map Char (Int -> Action)
+cmdCmdFM = M.fromList $
     [('\^B',    upScreensE)             -- vim does (firstNonSpaceE;leftOrSolE)
     ,('\^F',    downScreensE)
     ,('\^G',    const viFileInfo)        -- hmm. not working. duh. we clear
@@ -355,9 +356,9 @@ cmd_op =((op_char +> digit `star` (move_chr >|< (move2chrs +> anyButEsc))) >|<
         in (with (msgClrE >> fn), st{acc=[]}, Just $ cmd st)
 
     where
-        op_char   = alt $ keysFM opCmdFM
-        move_chr  = alt $ keysFM moveCmdFM
-        move2chrs = alt $ keysFM move2CmdFM
+        op_char   = alt $ M.keys opCmdFM
+        move_chr  = alt $ M.keys moveCmdFM
+        move2chrs = alt $ M.keys move2CmdFM
 
         getCmd :: [Char] -> Int -> Action
         getCmd lexeme i = case lexeme of
@@ -369,11 +370,11 @@ cmd_op =((op_char +> digit `star` (move_chr >|< (move2chrs +> anyButEsc))) >|<
                 c:ms -> getOpCmd c i ms
                 _    -> nopE
 
-        getOpCmd c i ms = (fromMaybe (\_ _ -> nopE) (lookupFM opCmdFM c)) i ms
+        getOpCmd c i ms = (fromMaybe (\_ _ -> nopE) (M.lookup opCmdFM c)) i ms
 
         -- | operator (i.e. movement-parameterised) actions
-        opCmdFM :: FiniteMap Char (Int -> [Char] -> Action)
-        opCmdFM = listToFM $ 
+        opCmdFM :: M.Map Char (Int -> [Char] -> Action)
+        opCmdFM = M.fromList $ 
             [('d', \i m -> replicateM_ i $ do -- hence d100j is much faster than 100dj
                               (p,q) <- withPointMove m
                               deleteNE (max 0 (abs (q - p) + 1))  -- inclusive

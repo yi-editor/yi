@@ -68,9 +68,9 @@ import Yi.Core
 import Yi.Editor
 import Yi.Window
 import Yi.Regex
+import qualified Yi.Map as M
 
 import Data.Char
-import Data.FiniteMap
 import Control.Monad        ( when, replicateM_ )
 import Control.Monad.Fix    ( fix )
 import Control.Exception    ( assert )
@@ -312,7 +312,7 @@ readWord_ w b = do
 
 -- remember the word, if any, we're trying to complete, previous matches
 -- we've seen, and the point in the search we are up to.
-type Completion = (String,FiniteMap String (),Int)
+type Completion = (String,M.Map String (),Int)
 
 -- This could go in the single editor state, I suppose. Esp. if we want
 -- to do hardcore persistence at some point soon.
@@ -349,12 +349,12 @@ wordCompleteE = do
             p  <- pointB buf
             (w,_,_) <- readWordLeft_ win buf 
             rightB buf  -- start past point
-            doloop p win buf (w,unitFM w ())
+            doloop p win buf (w,M.singleton w ())
 
     --
     -- actually do the search, and analyse the result
     --
-    doloop :: Int -> Window -> Buffer' -> (String,FiniteMap String ()) 
+    doloop :: Int -> Window -> Buffer' -> (String,M.Map String ()) 
            -> IO (Maybe Completion)
 
     doloop p win buf (w,fm) = do
@@ -367,12 +367,12 @@ wordCompleteE = do
                     -> do replaceLeftWith win buf w
                           return Nothing
 
-                    | s `elemFM` fm         -- already seen
+                    | s `M.member` fm         -- already seen
                     -> loop win buf (Just (w,fm,i))
 
                     | otherwise             -- new
                     -> do replaceLeftWith win buf s
-                          return (Just (w,addToFM fm s (),i))
+                          return (Just (w,M.insert s () fm,i))
 
                 Nothing -> loop win buf (Just (w,fm,(-1))) -- goto start of file
 
