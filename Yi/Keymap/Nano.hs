@@ -272,7 +272,7 @@ echoEval = enter
                     Just (fn,_) -> fn f
                     Nothing     -> nopE
 
-        in (Just (Right (a >> msgClrE >> cmdlineUnFocusE)),Nothing,Just nano_km)
+        in (Just (Right (a >> cmdlineUnFocusE)),Nothing,Just nano_km)
     where
         enter = alt ['\n', '\r']
 
