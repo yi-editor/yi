@@ -12,7 +12,7 @@ GHC=            @WithGhc@
 HC_OPTS=        -Wall -Werror
 
 #HC_OPTS+=       -Onot -fasm -H64m
-HC_OPTS+=       -fvia-C -funbox-strict-fields -O2 -Icbits
+HC_OPTS+=       -fvia-C -funbox-strict-fields -O2 -Icbits -Imk
 #HC_OPTS+=      -debug 
 #HC_OPTS+=-fignore-asserts 
 

@@ -1,4 +1,6 @@
-{-# OPTIONS -cpp -fffi -#include <config.h> #-}
+{-# OPTIONS -fffi -fglasgow-exts #-}
+--
+-- glaexts for I# ops
 -- 
 -- Copyright (c) 2004 Don Stewart - http://www.cse.unsw.edu.au/~dons
 -- 
@@ -33,6 +35,12 @@ module Yi.MkTemp (
      mkdtemp,   -- :: FilePath -> IO Maybe FilePath
 
   ) where
+    
+#include "config.h"
+
+#if HAVE_STDLIB_H
+# include <stdlib.h>
+#endif
 
 import Data.List
 import Data.Char                ( chr, ord, isDigit )
@@ -261,16 +269,15 @@ getRandom :: () -> IO Int
 getRandom _ = getStdRandom (randomR (0,51))
 #else
 --
---
 -- OpenBSD: "The arc4random() function provides a high quality 32-bit
 -- pseudo-random number very quickly.  arc4random() seeds itself on a
 -- regular basis from the kernel strong random number subsystem
 -- described in random(4)." Also, it is a bit faster than getStdRandom
 --
 getRandom _ = do 
-        (I32# i) <- c_arc4random
-        return (I# (word2Int# 
-             ((int2Word# i `and#` int2Word# 0xffff#) `remWord#` int2Word# 52#)))
+    (I32## i) <- c_arc4random
+    return (I## (word2Int## ((int2Word## i `and##` int2Word## 0xffff##) 
+                    `remWord##` int2Word## 52##)))
 
 foreign import ccall unsafe "arc4random" c_arc4random :: IO Int32
 #endif
