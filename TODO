@@ -1,11 +1,6 @@
 6.4
 ---
 
-New-style .hi-boot imports
-and -M is broken?
-
-if-else on ghc version for adding .hi-boot/.hs-boot to Makefile
-
 ------------------------------------------------------------------------
 
 Design plan:
@@ -18,9 +13,9 @@ Build system:
         - check how to install it from a port script
         - think about how to do a testsuite, unit testing
 
-v0.1:
+v0.2:
         - line wrapping. windows need to be wrap or nowrap.
-        - maybe syn hl (needs parser, in bg thread)
+        - syn hl (needs parser, in bg thread)
         - do we print '\n' at eol. what happens and eof?
 
 other stuff:
