@@ -1,3 +1,10 @@
 * simplify build system
 * improve portability
 * remove posix dependency
+
+Design plan:
+
+        - get rid of MBox and Editor stuff
+        - design a buffer
+        - think about abstractable actions/keybindings
+        - clean up code

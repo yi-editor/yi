@@ -12,7 +12,7 @@ HSC_C_OBJS = $(subst .c,.o, $(HSC_C_FILES))
 
 OBJS = $(C_OBJS) $(HSC_C_OBJS) $(HS_OBJS)
 
-TO_CLEAN += $(OBJS) $(TARGET) $(HSC_C_INCLUDES) $(HI_FILES) $(TARGET_A)
+TO_CLEAN += $(OBJS) $(TARGET) $(HI_FILES) $(TARGET_A)
 
 # the real rules
 
@@ -22,12 +22,13 @@ all: boot $(TARGET) $(TARGET_A) package_conf $(EXTRA_TARGET)
 
 boot: $(HSC_HS_FILES) depend
 
+# don't clean hsc2hs stuff by default.
 clean:
 	$(RM) $(TO_CLEAN)
 
 distclean: clean
 	find . -name '*~' -exec $(RM) {} \;
-	$(RM) $(HSC_HS_FILES) $(HSC_C_FILES)
+	$(RM) $(HSC_HS_FILES) $(HSC_C_FILES) $(HSC_C_INCLUDES) 
 
 depend: $(HSC_HS_FILES) $(HS_SOURCES)                        
 	$(GHC) -M -optdep-f -optdepdepend $(GHC_COMPILE_FLAGS) $(HSC_HS_FILES) $(HS_SOURCES)
@@ -42,7 +43,7 @@ depend: $(HSC_HS_FILES) $(HS_SOURCES)
 %.o: %.c
 	$(GHC) $(GHC_C_COMPILE_FLAGS) -c $< -o $@
 
-.PRECIOUS: $(HSC_HS_FILES)
+.PRECIOUS: $(HSC_HS_FILES) $(HSC_C_INCLUDES)
 %.hs: %.hsc
 	$(HSC2HS) $(HSC_INCLUDES) $< -o $@
 
