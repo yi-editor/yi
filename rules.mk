@@ -2,7 +2,6 @@
 HSC_SOURCES = $(filter %.hsc, $(HS_SOURCES))
 
 HSC_HS_FILES = $(subst .hsc,.hs, $(HSC_SOURCES))
-#HSC_C_FILES = $(subst .hsc,_hsc.c, $(HSC_SOURCES))
 HSC_C_INCLUDES = $(subst .c,.h, $(HSC_C_FILES))
 
 HS_OBJS = $(subst .hs,.o, $(subst .hsc,.o, $(HS_SOURCES)))
@@ -13,7 +12,7 @@ HSC_C_OBJS = $(subst .c,.o, $(HSC_C_FILES))
 
 OBJS = $(C_OBJS) $(HSC_C_OBJS) $(HS_OBJS)
 
-TO_CLEAN += $(OBJS) $(TARGET) $(HSC_C_FILES) $(HSC_C_INCLUDES) $(HI_FILES) $(TARGET_A)
+TO_CLEAN += $(OBJS) $(TARGET) $(HSC_C_INCLUDES) $(HI_FILES) $(TARGET_A)
 
 # the real rules
 
@@ -28,7 +27,7 @@ clean:
 
 distclean: clean
 	find . -name '*~' -exec $(RM) {} \;
-	for i in $(HSC_HS_FILES) ; do $(RM) $$i ; done
+	$(RM) $(HSC_HS_FILES) $(HSC_C_FILES)
 
 depend: $(HSC_HS_FILES) $(HS_SOURCES)                        
 	$(GHC) -M -optdep-f -optdepdepend $(GHC_COMPILE_FLAGS) $(HSC_HS_FILES) $(HS_SOURCES)

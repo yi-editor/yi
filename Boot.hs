@@ -135,11 +135,19 @@ doArgs argv = case getOpt Permute options argv of
 
 -- ---------------------------------------------------------------------
 -- Given a source file, compile it to a (.o, .hi) pair
+-- Jump to the ~/.hemacs/ directory, in case we are running in-place.
 --
 compile :: FilePath -> IO (Maybe FilePath)
 compile src = do
+    build_dir <- get_config_dir
+    old_pwd   <- getCurrentDirectory 
+    setCurrentDirectory build_dir
+
     flags  <- get_make_flags
     status <- make src $ flags ++ ["-i"] -- to stop it seeing random .o files
+
+    setCurrentDirectory old_pwd
+
     case status of
         MakeSuccess _ obj -> return $ Just obj
         MakeFailure errs  -> do 
@@ -156,11 +164,20 @@ packages = [ "hemacs" ]
 --
 -- Flags to find the runtime libraries, to help ghc out
 --
+-- Grr... ghc-6.2.1 and less have the annoying behaviour of, when given
+-- the choice between linking an object from an explicit -package flag,
+-- or from a path in the current directory, always chooses the latter.
+-- This results in explicit module dependencies, rather than package
+-- dependencies. Bad from dynamic loading when running in-place.
+--
+-- A way around this is to get to cd to another directory where the -i.
+-- flag means nothing.
+--
 get_make_flags :: IO [String]
 get_make_flags = do libpath <- readIORef libdir
-                    let pkgs = concatMap (f libpath) packages
-                    return $ ("-i" ++ libpath) : pkgs
-    where f l p = ["-package-conf", l </> p <.> "conf", "-package", p]
+                    return $! concatMap (f libpath) packages
+    where 
+        f l p = ["-package-conf", l </> p <.> "conf", "-package", p]
 
 get_load_flags :: IO [String]
 get_load_flags = do libpath <- readIORef libdir

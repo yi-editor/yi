@@ -14,7 +14,7 @@ module HEmacs.Config where
 
 import HEmacs.ConfigAPI
 
-riot = settings 
+hemacs = settings 
 
 {-
 

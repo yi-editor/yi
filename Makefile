@@ -93,7 +93,6 @@ install:
 		$(INSTALL) -m $(LIB_MODE) $$i $(LIBDIR)/$(PACKAGE) ;\
 	done
 	$(INSTALL) -m $(LIB_MODE) $(PACKAGE).conf.install $(LIBDIR)/$(PACKAGE)/$(PACKAGE).conf
-	$(INSTALL) -m $(LIB_MODE) ginsu.conf.install $(LIBDIR)/$(PACKAGE)/ginsu.conf
 
 # pull in generated deps
 include $(TOPDIR)/depend
