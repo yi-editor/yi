@@ -28,6 +28,7 @@ module Yi.Editor where
 import Yi.Buffer
 import Yi.Regex                 ( Regex )
 import Yi.Window
+import Yi.Style
 
 import Data.List                ( elemIndex )
 import Data.FiniteMap
@@ -65,6 +66,7 @@ data Buffer a => GenEditor a =
        ,curwin    :: Maybe Unique               -- ^ the window with focus
        ,curkeymap :: [Char] -> [Action]         -- ^ user-configurable keymap
        ,scrsize   :: !(Int,Int)                 -- ^ screen size
+       ,uistyle   :: UI                         -- ^ ui colours
     }
 
 --
@@ -100,6 +102,7 @@ emptyEditor = Editor {
        ,curwin       = Nothing
        ,curkeymap    = error "No keymap defined."
        ,scrsize      = (0,0)
+       ,uistyle      = Yi.Style.ui
     }
 
 -- 
@@ -378,8 +381,9 @@ shiftFocus f = modifyEditor_ $ \(e :: Editor) -> do
 -- | Given a keymap function, set the user-defineable key map to that function
 --
 setUserSettings :: Config -> IO ()
-setUserSettings (Config km) = 
-    modifyEditor_ $ \(e :: Editor) -> return $ e { curkeymap = km }
+setUserSettings (Config km sty) = 
+    modifyEditor_ $ \(e :: Editor) -> 
+        return $ e { curkeymap = km, uistyle = sty }
 
 --
 -- | retrieve the user-defineable key map
@@ -396,6 +400,7 @@ getKeyBinds = readEditor curkeymap
 --
 data Config = Config {
             keymap :: [Char] -> [Action]       -- ^ bind keys to editor actions
+           ,style  :: UI
     }
 
 -- ---------------------------------------------------------------------

@@ -76,7 +76,8 @@ import System.IO.Unsafe                 ( unsafePerformIO )
 start :: IO ()
 start = do
     Curses.initCurses                   -- initialise the screen
-    pairs <- initUiColors ui
+    sty <- readEditor uistyle
+    pairs <- initUiColors sty
     writeIORef pairMap pairs
     Curses.keypad Curses.stdScr True    -- grab the keyboard
 
@@ -147,9 +148,10 @@ drawWindow win@(Window { bufkey=u, mode=m, origin=(_,_),
 
     -- draw modeline
     mwin <- getWindow
+    us   <- readEditor uistyle
     if (isJust mwin && fromJust mwin == win)
-        then uiAttr (modeln_hl ui) >>= setAttribute
-        else uiAttr (modeln ui   ) >>= setAttribute
+        then uiAttr (modeln_hl us) >>= setAttribute
+        else uiAttr (modeln us   ) >>= setAttribute
     drawLine w m
     reset
 

@@ -38,6 +38,7 @@ module Yi.Style (
         blue, magenta, cyan, white,
 
         Foreground(..), Background(..), bgAttr, fgAttr,
+        BrightColor(..), DarkColor(..),
 
         -- Attributes
         setBoldA, setUnderlineA, setDimA, setReverseA,
@@ -116,6 +117,11 @@ ui = UI {
 --
 -- Nicer, user-visible colour defs.
 --
+-- We separate colours into dark and bright colours, to prevent users
+-- from erroneously constructing bright colours for dark backgrounds,
+-- which doesn't work.
+--
+
 data DarkColor 
     = Black
     | DarkRed
@@ -126,9 +132,7 @@ data DarkColor
     | DarkCyan
     | DarkWhite
 
---
 -- Bright colours, can only be used for foregrounds
---
 data BrightColor 
     = Grey
     | Red
@@ -139,16 +143,12 @@ data BrightColor
     | Cyan
     | White
 
---
 -- foreground colours can be anything
---
 data Foreground = FgBright BrightColor 
                 | Fg       DarkColor
                 | FgDefault
 
---
 -- Background colors can't be bright.
---
 data Background = Bg DarkColor
                 | BgDefault
 
@@ -186,7 +186,7 @@ bgAttr (Bg c)     = (nullA, dark2curses c)
 
 -- light colours
 fgAttr :: Foreground -> (Curses.Attr, Curses.Color)
-fgAttr FgDefault = (nullA, defaultColor)
-fgAttr (Fg  c)   = (nullA, dark2curses c)
+fgAttr FgDefault    = (nullA, defaultColor)
+fgAttr (Fg  c)      = (nullA, dark2curses c)
 fgAttr (FgBright c) = (boldA, bright2curses c)
 

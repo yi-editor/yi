@@ -115,8 +115,8 @@ import GHC.IOBase
 --
 startE :: Editor.Config -> Int -> Maybe [FilePath] -> IO ()
 startE confs ln mfs = do
-    UI.start
     Editor.setUserSettings confs
+    UI.start
     sz <- UI.screenSize
     modifyEditor_ $ \e -> return $ e { scrsize = sz }
     handleJust (ioErrors) (\e -> msgE (show e)) $ do

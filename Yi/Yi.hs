@@ -32,16 +32,18 @@ module Yi.Yi (
         Config(..),
         module Yi.Core,
         module Yi.UI,
+        module Yi.Style,
         module Yi.Ctk.Lexers,
  
    ) where
 
 import Yi.Core
+import Yi.Style
 import Yi.UI                      hiding ( plus ) -- so we can see key defns
 import Yi.Editor                         ( Config(..) )
 import Yi.Ctk.Lexers              hiding ( Action )
 import qualified Yi.Keymap.Vi as Default ( keymap )
 
 settings :: Config
-settings = Config { keymap = Default.keymap }
+settings = Config { keymap = Default.keymap, style = ui }
 

@@ -23,6 +23,7 @@ import Yi.Locale                        ( setupLocale )
 import Yi.Version                       ( package, version )
 import qualified Yi.Editor  as Editor
 import qualified Yi.Core    as Core 
+import qualified Yi.Style   as Style
 
 import qualified Yi.Keymap.Vi  as Keymap
 
@@ -112,7 +113,8 @@ releaseSignals = do
 --
 g_settings :: IORef Editor.Config
 g_settings = unsafePerformIO $ newIORef 
-                    (Editor.Config { Editor.keymap = Keymap.keymap } )
+                    (Editor.Config { Editor.keymap = Keymap.keymap,
+                                     Editor.style  = Style.ui } )
 {-# NOINLINE g_settings #-}
 
 --
