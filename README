@@ -77,6 +77,7 @@ A porting checklist:
         * you have GHC >= 6.2.1         (>= 6.2.2 on OpenBSD)
         * you have a working GHCi
         * you have a recent hs-plugins snapshot
+        * you have haddock installed (for the documentation)
 
 The static version of yi has no hs-plugins support, and is thus more
 portable. However, it is not configurable at runtime. To build this,

@@ -23,3 +23,4 @@ other stuff:
         - make the cmd line a buffer.
         - start drawing buffer before it is all loaded.
         - either generalise registers, or make them entirely keymap-local
+        - other forms of undo
