@@ -38,13 +38,15 @@ TO_CLEAN += $(BOOT_OBJS) $(EXTRA_OBJS) Config.o Config.hi Boot.hi Main.hi
 TO_CLEAN += $(TARGET_A) *.conf.install* *.conf *.old *.conf.in $(GHCI_LIB) *.bak
 
 HEMACS_PACKAGE   = -package-conf hemacs.conf  -package hemacs
+PLUGINS_PACKAGE  = -package plugins
 
-GHC_LINK_FLAGS    += -l$(CURSES) $(HEMACS_PACKAGE)
 GHC_COMPILE_FLAGS += -\#include cbits/my_curses.h
 HSC_INCLUDES      += -I$(TOPDIR)/cbits
-BOOT_LINK_FLAGS    = -l$(CURSES) -package plugins
 
-LIBS = $(LIBS_ICONV) $(EXTRALIBS)
+LIBS               = $(LIBS_ICONV) $(EXTRALIBS)
+
+GHC_LINK_FLAGS    += -l$(CURSES) $(HEMACS_PACKAGE)
+BOOT_LINK_FLAGS    = -l$(CURSES) $(LIBS) $(PLUGINS_PACKAGE)
 
 include $(TOPDIR)/rules.mk
 

@@ -164,6 +164,8 @@ from_unicode from str =
     unsafePerformIO $ try $ from_unicode_ from str
 
 
+#ifndef WEIRD_ICONV
+
 foreign import ccall unsafe "iconv.h iconv_open" c_iconv_open
     :: CString -> CString -> IO IConv
 
@@ -172,3 +174,16 @@ foreign import ccall unsafe "iconv.h iconv_close" c_iconv_close
 
 foreign import ccall unsafe "iconv.h iconv" c_iconv
     :: IConv -> Ptr a -> Ptr CSize -> Ptr b -> Ptr CSize -> IO CSize
+
+#else
+
+foreign import ccall unsafe "iconv.h libiconv_open" c_iconv_open
+    :: CString -> CString -> IO IConv
+
+foreign import ccall unsafe "iconv.h libiconv_close" c_iconv_close
+    :: IConv -> IO CInt
+
+foreign import ccall unsafe "iconv.h libiconv" c_iconv
+    :: IConv -> Ptr a -> Ptr CSize -> Ptr b -> Ptr CSize -> IO CSize
+
+#endif

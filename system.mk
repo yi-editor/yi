@@ -34,11 +34,14 @@ GHC_PKG_DEFINES += -DCURSES=$(CURSES)
 # If you unset CF_WCHAR_SUPPORT, you also should not use ncursesw above.
 #
  
+# comment these out on OpenBSD
 DEFINES += -DCF_CHARSET_SUPPORT
 DEFINES += -DCF_WCHAR_SUPPORT
 
 #LIBS_ICONV =
+
 # OpenBSD needs:
+#DEFINES    += -DWEIRD_ICONV
 #LIBS_ICONV = -liconv -L/usr/local/lib
 
 # 
@@ -86,7 +89,7 @@ GHC_C_COMPILE_FLAGS = $(GHC_COMPILE_FLAGS)
 
 HSC2HS=hsc2hs $(DEFINES) $(EXTRA_LIB_FLAGS)
 
-GHC_LINK_FLAGS = $(GHC_COMPILE_FLAGS)
+GHC_LINK_FLAGS = $(GHC_COMPILE_FLAGS) $(LIBS)
 
 
 #

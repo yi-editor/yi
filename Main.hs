@@ -81,9 +81,7 @@ initui tt fname = do
     return s
 
 init_sighandlers s = do 
-#ifndef BROKEN_NOCLDSTOP
-    PosixSig.setStoppedChildFlag True
-#endif
+    -- PosixSig.setStoppedChildFlag True
     PosixSig.installHandler PosixSig.sigCHLD PosixSig.Default Nothing
     PosixSig.installHandler PosixSig.sigINT PosixSig.Ignore Nothing
     PosixSig.installHandler PosixSig.sigPIPE PosixSig.Ignore Nothing
