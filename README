@@ -12,7 +12,6 @@ QUICK START
 * GHC 6.4  : install the latest hs-plugins nightly snapshot.
 * Or don't install hs-plugins at all, and use 'make way=static'
 
-    $ autoreconf                -- NB autoREconf
     $ ./configure --prefix=/my/dir
     $ make
     $ ./yi-inplace README
@@ -38,18 +37,14 @@ hs-plugins, the Haskell dynamic loader library. You can get this from:
 Getting the most recent snapshot will work. Make sure you "make", "make
 install" and "make register" the hs-plugins library. 
 
-If you are working from the darcs repository you'll need autoconf and
-automake installed for generating the configure files.
-
 Once you have ensured that you have these programs and libraries
 installed:
 
- 1. autoreconf
-    ./configure --prefix=/my/dir
+ 1. ./configure --prefix=/my/dir
 
- 2. Run 'make'         ('gmake' on some systems)
+ 2. make         	('gmake' on some systems)
 
- 3. Run 'make install' to install it, and then use 'yi' or 'yi-static'
+ 3. make install 	(to install it, and then use 'yi' or 'yi-static')
         OR
     Just use './yi-inplace' (or 'yi-static') directly in the build 
     tree (without having to install) 
@@ -60,7 +55,8 @@ to install into. These are editable in mk/config.mk
 Useful targets:
         make                    -- build the lot
         make boot               -- regen the dependencies
-        make all                -- compile the .hs source
+        make build              -- compile the .hs source
+        make all                -- compile the .hs source and docs
         make install            -- install into $(PREFIX)
         make show-install       -- print install paths
         make clean              -- remove most rebuildable stuff
@@ -98,6 +94,9 @@ The static version of yi has no hs-plugins support, and is thus more
 portable (you only need GHC 6.0, too). However, it is not configurable
 at runtime. To build this, you'll just need to be on a machine with ghc
 installed.
+
+Users of the darcs repo will require autoreconf, which is part of the
+automake suite of tools.
 
 CREDITS
 
