@@ -441,7 +441,7 @@ instance Buffer FBuffer where
     -- gotoLnFrom :: a -> Int -> IO Int
     gotoLnFrom (FBuffer _ _ mv) n = 
         modifyMVar mv $ \(FBuffer_ ptr p e mx) -> do
-            off <- cgotoln ptr p (if n < 0 then 0 else e) n
+            off <- cgotoln ptr p (if n < 0 then 0 else (e-1)) n
             let fb = FBuffer_ ptr (p + off) e mx
             ln <- return . subtract 1 =<< ccountlns ptr 0 (p+off) -- hmm :(
             return (fb, max 1 ln)

@@ -191,7 +191,7 @@ moveCmdFM = listToFM $
     ,('^',          const firstNonSpaceE)
     ,('$',          const eolE)
     ,(keyEnd,       const eolE)
-    ,('|',          const solE)
+    ,('|',          \i -> solE >> rightOrEolE (i-1))
 
 -- up/down
     ,('k',          up)
