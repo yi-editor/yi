@@ -67,7 +67,7 @@ import Data.List
 import Data.IORef
 
 import Control.Monad                ( when )
-import Control.Exception            ( catch, handleJust, ioErrors )
+import Control.Exception            ( catch, handle )
 
 import System.IO.Unsafe             ( unsafePerformIO )
 
@@ -319,7 +319,7 @@ initUiColors (UIStyle {
         fn :: Style -> Int -> IO ((Curses.Color, Curses.Color), Pair)
         fn (Style fg bg) p = do let (_,fgc) = fg2attr fg
                                     (_,bgc) = bg2attr bg
-                                handleJust ioErrors (\_ -> return ()) $ 
+                                handle (\_ -> return ()) $ 
                                     initPair (Pair p) fgc bgc
                                 return ((fgc,bgc), (Pair p))
 
