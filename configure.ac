@@ -9,15 +9,27 @@ AC_CONFIG_HEADERS([mk/config.h])
 AC_PREREQ([2.52])
 
 #
-# Looking for GHC, stolen from $fptools
+# Looking for HC, stolen from $fptools
 #
-AC_ARG_WITH(ghc,
-[AC_HELP_STRING([--with-ghc=ARG],
-    [Use ARG as the path to GHC  [default=autodetect]])],
-[ WithGhc="$withval" ],
+AC_ARG_WITH(hc,
+[AC_HELP_STRING([--with-hc=ARG],
+    [Use ARG as the path to a Haskell compiler [default=autodetect]])],
+[ WithGhc="$withval" 
+  if test "$WithGhc" = "nhc98"; then
+    AC_DEFINE(__NHC__, [], [Defined if compiling with nhc98])
+    SYMS="$SYMS -D__NHC__"
+  fi
+],
 [
   if test "$GHC" = ""; then
     AC_CHECK_PROGS(GHC,ghc)
+  fi
+  if test "$GHC" = ""; then
+    AC_CHECK_PROGS(GHC,nhc98)
+  fi
+  if test "$GHC" = "nhc98"; then
+    AC_DEFINE(__NHC__, [], [Defined if compiling with nhc98])
+    SYMS="$SYMS -D__NHC__"
   fi
   WithGhc=$GHC
 ])
@@ -120,6 +132,8 @@ AC_CHECK_HEADERS([iconv.h curses.h ncurses.h ncursesw/ncurses.h regex.h locale.h
 # We also would like this please
 # 
 AC_CHECK_FUNCS(arc4random)
+
+AC_SUBST(SYMS)
 
 AC_CONFIG_FILES([mk/config.mk])
 AC_OUTPUT

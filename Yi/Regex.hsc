@@ -45,6 +45,7 @@ module Yi.Regex (
 
 import Foreign
 import Foreign.C
+import Foreign.ForeignPtr
 
 type CRegex    = ()
 
@@ -65,7 +66,12 @@ regcomp pattern flags = do
          withForeignPtr regex_fptr $ \p ->
            c_regcomp p cstr (fromIntegral flags)
   if (r == 0)
-     then do addForeignPtrFinalizer ptr_regfree regex_fptr
+     then do
+#ifndef __NHC__
+             addForeignPtrFinalizer ptr_regfree regex_fptr
+#else
+             addForeignPtrFinalizer regex_fptr (return ()) -- :: ForeignPtr a -> IO () -> IO ()
+#endif
              return (Regex regex_fptr)
      else ioError $ userError $ "Error in pattern: " ++ pattern
 
@@ -86,15 +92,13 @@ regexec (Regex regex_fptr) ptr i = do
         nsub <- (#peek regex_t, re_nsub) regex_ptr
         let nsub_int = fromIntegral (nsub :: CSize)
         allocaBytes ((1 + nsub_int)*(#const sizeof(regmatch_t))) $ \p_match-> do
+            -- add one because index zero covers the whole match
+            r <- cregexec regex_ptr (ptr `plusPtr` i) 
+                                    (1 + nsub) p_match 0{-no flags -}
 
-        -- add one because index zero covers the whole match
-        r <- cregexec regex_ptr (ptr `plusPtr` i) 
-                                (1 + nsub) p_match 0{-no flags -}
-
-        if (r /= 0) then return Nothing else do 
-
-        is <- matched_parts p_match
-        return (Just is)
+            if (r /= 0) then return Nothing else do 
+                is <- matched_parts p_match
+                return (Just is)
 
 matched_parts :: Ptr CRegMatch -> IO (Int, Int)
 matched_parts p_match = do
@@ -143,7 +147,7 @@ type CRegMatch = ()
 foreign import ccall unsafe "regcomp"
     c_regcomp :: Ptr CRegex -> CString -> CInt -> IO CInt
 
-foreign import ccall  unsafe "&regfree"
+foreign import ccall  unsafe "YiUtils.h &regfree"
     ptr_regfree :: FunPtr (Ptr CRegex -> IO ())
 
 foreign import ccall unsafe "regexec"
@@ -151,3 +155,17 @@ foreign import ccall unsafe "regexec"
              -> Ptr CChar 
              -> CSize -> Ptr CRegMatch -> CInt -> IO CInt
 
+-- ---------------------------------------------------------------------
+-- Some stuff missing from the nhc98-1.16 libs
+-- Watch that memory leak..
+--
+#ifdef __NHC__
+
+mallocForeignPtrBytes :: Int -> IO (ForeignPtr a)
+mallocForeignPtrBytes n = do
+    r <- mallocBytes n
+    newForeignPtr r (return ()) -- :: Ptr a -> IO () -> IO (ForeignPtr a)
+
+type FinalizerPtr a        = FunPtr            (Ptr a -> IO ())
+
+#endif

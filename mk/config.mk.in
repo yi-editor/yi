@@ -54,3 +54,6 @@ LIBS=           @LIBS@
 #
 CURSES=         @CURSES@
 ICONV=          @ICONV@
+
+# extra symbols
+SYMS=           @SYMS@

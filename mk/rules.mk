@@ -115,7 +115,7 @@ $(GHCI_LIBRARY) : $(LIBOBJS)
 	@:
 
 %_hsc.c %_hsc.h %.hs : %.hsc
-	$(HSC2HS) $(HSC_OPTS) $<
+	$(HSC2HS) $(HSC_OPTS) $(SYMS) $<
 	@touch $(patsubst %.hsc,%_hsc.c,$<)
 
 %.$(way_)o : %.c
