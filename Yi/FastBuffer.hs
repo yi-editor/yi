@@ -517,8 +517,8 @@ instance Buffer FBuffer where
         withMVar mv $ \(FBuffer_ ptr p _ _) -> do
             mmatch <- regexec re ptr p
             case mmatch of
-                Nothing     -> return Nothing
-                Just (i,j)  -> return (Just (p+i,p+j))    -- offset from point
+                Nothing        -> return Nothing
+                Just ((i,j),_) -> return (Just (p+i,p+j))    -- offset from point
 
 ------------------------------------------------------------------------
 

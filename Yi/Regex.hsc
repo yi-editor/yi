@@ -1,6 +1,7 @@
-{-# OPTIONS -fffi -fno-warn-unused-binds #-}
------------------------------------------------------------------------------
--- |
+{-# OPTIONS -fffi #-}
+--
+-- Copyright (c) 2004 Don Stewart - http://www.cse.unsw.edu.au/~dons
+--
 -- Module      :  Text.Regex.Posix
 -- Copyright   :  (c) The University of Glasgow 2002
 -- License     :  BSD-style (see the file libraries/base/LICENSE)
@@ -9,12 +10,9 @@
 -- Stability   :  experimental
 -- Portability :  portable
 --
--- Interface to the POSIX regular expression library.
---
------------------------------------------------------------------------------
 
 --  
--- Regular expression matching, modified to work on buffers.
+-- | Interface to the POSIX regular expression library.
 --
 
 module Yi.Regex (
@@ -29,14 +27,13 @@ module Yi.Regex (
     regExtended,    -- (flag to regcomp) use extended regex syntax
     regIgnoreCase,  -- (flag to regcomp) ignore case when matching
     regNewline,     -- (flag to regcomp) '.' doesn't match newline
+    regNosub,       -- unused
 
     -- * Matching a regular expression
-    regexec,    -- :: Regex                 -- pattern
-                -- -> Ptr CChar             -- buffer to match on
-                -- -> IO (Maybe Int)
+    regexec,        -- :: Regex -> Ptr CChar -> Int
+                    -- -> IO (Maybe ((Int,Int), [(Int,Int)]))
 
   ) where
-
 
 #include "YiUtils.h"
 
@@ -47,12 +44,14 @@ import Foreign
 import Foreign.C
 import Foreign.ForeignPtr
 
-type CRegex    = ()
+type CRegex = ()
 
 -- | A compiled regular expression
 newtype Regex = Regex (ForeignPtr CRegex)
 
+-- ---------------------------------------------------------------------
 -- | Compiles a regular expression
+--
 regcomp :: String     -- ^ The regular expression to compile
         -> Int        -- ^ Flags (summed together)
         -> IO Regex   -- ^ Returns: the compiled regular expression
@@ -64,28 +63,26 @@ regcomp pattern flags = do
             c_regcomp p cstr (fromIntegral flags)
     if (r == 0)
         then do
-#if !defined(__NHC__) 
-# if __GLASGOW_HASKELL__ >= 602
+#if __GLASGOW_HASKELL__ >= 602
              addForeignPtrFinalizer ptr_regfree regex_fptr
-# else
-             addForeignPtrFinalizer regex_fptr ptr_regfree  -- swapped
-# endif 
+#elif !defined(__NHC__) 
+             flip addForeignPtrFinalizer ptr_regfree regex_fptr
 #else
-             addForeignPtrFinalizer regex_fptr (return ()) -- :: ForeignPtr a -> IO () -> IO ()
+             addForeignPtrFinalizer regex_fptr (return ())
 #endif
              return (Regex regex_fptr)
         else ioError $ userError $ "Error in pattern: " ++ pattern
 
--- regexec
-
+-- ---------------------------------------------------------------------
 -- | Matches a regular expression against a buffer, returning the buffer
--- index of the match
+-- indicies of the match, and any submatches
 --
 regexec :: Regex                -- ^ Compiled regular expression
         -> Ptr CChar            -- ^ The buffer to match against
         -> Int                  -- ^ Offset in buffer to start searching from
-        -> IO (Maybe (Int,Int)) -- ^ Returns: 'Nothing' if the regex did not match the
-                                -- or Just the start and end indicies of the match.
+        -> IO (Maybe ((Int,Int), [(Int,Int)]))
+        -- ^ Returns: 'Nothing' if the regex did not match the
+        -- or Just the start and end indicies of the match and submatches
 
 regexec (Regex regex_fptr) ptr i = do
     withForeignPtr regex_fptr $ \regex_ptr -> do
@@ -97,11 +94,14 @@ regexec (Regex regex_fptr) ptr i = do
                                     (1 + nsub) p_match 0{-no flags -}
 
             if (r /= 0) then return Nothing else do 
-                is <- matched_parts p_match
-                return (Just is)
+                match       <- indexOfMatch p_match
+                sub_matches <- mapM (indexOfMatch) $ take nsub_int $ tail $
+                        iterate (`plusPtr` (#const sizeof(regmatch_t))) p_match
 
-matched_parts :: Ptr CRegMatch -> IO (Int, Int)
-matched_parts p_match = do
+                return (Just (match, sub_matches))
+
+indexOfMatch :: Ptr CRegMatch -> IO (Int, Int)
+indexOfMatch p_match = do
     start <- (#peek regmatch_t, rm_so) p_match :: IO (#type regoff_t)
     end   <- (#peek regmatch_t, rm_eo) p_match :: IO (#type regoff_t)
     let s = fromIntegral start; e = fromIntegral end
@@ -111,6 +111,7 @@ matched_parts p_match = do
 -- The POSIX regex C interface
 
 -- Flags for regexec
+{-
 #enum Int,, \
     REG_NOTBOL, \
     REG_NOTEOL
@@ -119,8 +120,10 @@ matched_parts p_match = do
 #enum Int,, \
     REG_NOMATCH
 --  REG_ESPACE
+-}
 
 -- Flags for regcomp
+
 #enum Int,, \
     REG_EXTENDED, \
     regIgnoreCase = REG_ICASE, \
@@ -128,6 +131,7 @@ matched_parts p_match = do
     REG_NEWLINE
 
 -- Error codes from regcomp
+{-
 #enum Int,, \
     REG_BADBR, \
     REG_BADPAT, \
@@ -141,6 +145,7 @@ matched_parts p_match = do
     REG_EBRACE, \
     REG_ERANGE, \
     REG_ESPACE
+-}
 
 type CRegMatch = ()
 

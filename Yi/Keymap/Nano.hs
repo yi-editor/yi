@@ -298,8 +298,8 @@ echoCharFM = listToFM $
      ,"Enter line number: "))
     
     ,('\^W',
-     (\p -> case p of [] -> searchE Nothing
-                      _  -> searchE (Just p)
+     (\p -> case p of [] -> searchE Nothing  [] Right
+                      _  -> searchE (Just p) [] Right
      ,undefined))
     ]
 

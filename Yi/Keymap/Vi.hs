@@ -292,7 +292,7 @@ cmdCmdFM = listToFM $
     ,('\^W',    const nextWinE)
     ,('D',      const (readRestOfLnE >>= setRegE >> killE))
     ,('J',      const (eolE >> deleteE))    -- the "\n"
-    ,('n',      const (searchE Nothing))
+    ,('n',      const (searchE Nothing [] Right))
 
     ,('X',      \i -> do p <- getPointE
                          leftOrSolE i
@@ -531,7 +531,7 @@ ex_eval = enter
         let c  = reverse dmc
             h  = (c:(fst $ hist st), snd $ hist st) in case c of
         -- regex searching
-        ('/':pat) -> (with (searchE (Just pat))
+        ('/':pat) -> (with (searchE (Just pat) [] Right)
                      ,st{acc=[],hist=h},Just $ cmd st)
 
         -- add mapping to command mode

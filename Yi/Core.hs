@@ -124,9 +124,9 @@ module Yi.Core (
         getRegexE,      -- :: IO (Maybe (Regex,String))
 
         -- * Regular expression and searching
-        findE,                  -- :: String -> IO (Maybe (Int,Int))
-        searchE,                -- :: (Maybe String) -> Action
-        searchAndRepLocal,      -- :: String -> String -> IO Bool
+        searchAndRepLocal,  -- :: String -> String -> IO Bool
+        searchE,            -- :: (Maybe String) -> [SearchF] 
+                            -- -> (() -> Either () ()) -> Action
 
         -- * higher level ops
         mapRangeE,              -- :: Int -> Int -> (Buffer' -> Action) -> Action
@@ -144,11 +144,11 @@ module Yi.Core (
 import Yi.MkTemp            ( mkstemp )
 import Yi.Buffer
 import Yi.Window
-import Yi.Regex             ( regcomp, regExtended, Regex )
+import Yi.Regex
 import Yi.Editor
 import qualified Yi.Editor as Editor
 
-import Data.Maybe           ( isNothing, isJust )
+import Data.Maybe
 import Data.Char            ( isLatin1, isAlphaNum )
 import Data.FiniteMap
 #if __GLASGOW_HASKELL__ >= 602
@@ -608,6 +608,14 @@ setRegE s = modifyEditor_ $ \e -> return e { yreg = s }
 getRegE :: IO String
 getRegE = readEditor yreg
 
+-- ---------------------------------------------------------------------
+-- Searching and substitutions with regular expressions
+--
+-- The most recent regex is held by the editor. You can get at it with
+-- getRegeE. This is useful to determine if there was a previous
+-- pattern.
+--
+
 -- | Put regex into regex 'register'
 setRegexE :: (String,Regex) -> Action
 setRegexE re = modifyEditor_ $ \e -> return e { regex = Just re }
@@ -616,45 +624,83 @@ setRegexE re = modifyEditor_ $ \e -> return e { regex = Just re }
 getRegexE :: IO (Maybe (String,Regex))
 getRegexE = readEditor regex
  
--- ---------------------------------------------------------------------
--- | Global searching for simple strings.
--- Return the index of the next occurence of @s@
-
-findE :: String -> IO (Maybe (Int,Int))
-findE [] = return Nothing
-findE s = withWindow $ \w b -> do
-    re <- regcomp s regExtended
-    is <- regexB b re
-    return (w,is)
+------------------------------------------------------------------------
+-- | Searching
 
 -- | Global searching. Search for regex and move point to that position.
--- Nothing means reuse the last regular expression. Just s means use @s@
--- as the new regular expression.
+-- @Nothing@ means reuse the last regular expression. @Just s@ means use
+-- @s@ as the new regular expression. Direction of search can be
+-- specified as either @Left@ (backwards) or @Right@ (forwards in the
+-- buffer). Arguments to modify the compiled regular expression can be
+-- supplied as well.
 --
-searchE :: (Maybe String) -> Action
-searchE (Just []) = nopE
-searchE (Just re) = regcomp re regExtended >>= \c_re -> searchE' re c_re
-searchE Nothing   = do 
-    mre <- getRegexE 
-    case mre of
-        Nothing     -> nopE
-        Just (s,re) -> searchE' s re
 
--- Internal.
-searchE' :: String -> Regex -> Action
-searchE' s c_re = do
-    setRegexE (s,c_re)      -- store away for later use
+data SearchF = Basic        -- ^ Use non-modern (i.e. basic) regexes
+             | IgnoreCase   -- ^ Compile for matching that ignores char case
+             | NoNewLine    -- ^ Compile for newline-insensitive matching
+    deriving Eq
+
+searchE :: (Maybe String)       -- ^ @Nothing@ means used previous
+                                -- pattern, if any. Complain otherwise.
+                                -- Use getRegexE to check for previous patterns
+        -> [SearchF]            -- ^ Flags to modify the compiled regex
+        -> (() -> Either () ()) -- ^ @Left@ means backwards, @Right@ means forward
+        -> Action
+
+searchE _ _ d | isLeft (d ()) = errorE "Backward searching is unimplemented"
+    where
+        isLeft (Left _) = True
+        isLeft _ = False
+
+searchE (Just []) _ _ = nopE   -- NB
+searchE (Just re) fs _ = searchInit re fs >>= uncurry searchF
+searchE Nothing   _ _ = do     -- use previous regex, if any
+    mre <- getRegexE
+    case mre of
+        Nothing     -> errorE "No previous search pattern" -- NB
+        Just (s,re) -> searchF s re
+
+-- ---------------------------------------------------------------------
+-- Internal
+
+--
+-- Set up a search.
+--
+searchInit :: String -> [SearchF] -> IO (String,Regex)
+searchInit re fs = do
+    c_re <- regcomp re (extended + igcase + newline)
+    setRegexE (re,c_re)               -- save it for later
+    return   (re,c_re)
+
+    where
+        extended | Basic `elem` fs      = 0
+                 | otherwise            = regExtended   -- extended regex dflt
+        igcase   | IgnoreCase `elem` fs = regIgnoreCase
+                 | otherwise            = 0             -- case sensitive dflt
+        newline  | NoNewLine `elem` fs  = 0
+                 | otherwise            = regNewline    -- newline is matched
+
+--
+-- Do a forward search, placing cursor at first char of pattern, if found.
+--
+searchF :: String -> Regex -> Action
+searchF _ c_re = do
     mp <- withWindow $ \w b -> do
-            rightB b
-            mp <- regexB b c_re
-            when (isNothing mp) (leftB b)   -- go home
-            return (w,mp)
+            p   <- pointB b
+            rightB b                  -- start immed. after cursor
+            mp  <- regexB b c_re
+            case fmap Right mp of
+                x@(Just _) -> return (w,x)
+                _ -> do moveTo b 0
+                        np <- regexB b c_re
+                        moveTo b p
+                        return (w, fmap Left np)
     case mp of
-        Just (p,_) -> withWindow_ $ moveToW p
-        Nothing    -> errorE "Pattern not found"  -- TODO
+        Just (Right (p,_)) -> gotoPointE p
+        Just (Left  (p,_)) -> msgE "Search wrapped" >> gotoPointE p
+        Nothing            -> errorE "Pattern not found"
 
 ------------------------------------------------------------------------
-
 -- | Search and replace /on current line/. Returns Bool indicating
 -- success or failure
 --
