@@ -625,15 +625,21 @@ setRegexE re = modifyEditor_ $ \e -> return e { regex = Just re }
 getRegexE :: IO (Maybe (String,Regex))
 getRegexE = readEditor regex
  
-------------------------------------------------------------------------
--- | Searching
-
+-- ---------------------------------------------------------------------
+--
 -- | Global searching. Search for regex and move point to that position.
 -- @Nothing@ means reuse the last regular expression. @Just s@ means use
 -- @s@ as the new regular expression. Direction of search can be
 -- specified as either @Left@ (backwards) or @Right@ (forwards in the
 -- buffer). Arguments to modify the compiled regular expression can be
 -- supplied as well.
+--
+
+--
+-- What would be interesting would be to implement our own general
+-- mechanism to allow users to supply a regex function of any kind, and
+-- search with that. This removes the restriction on strings be valid
+-- under regex(3).
 --
 
 data SearchF = Basic        -- ^ Use non-modern (i.e. basic) regexes
@@ -703,6 +709,11 @@ searchF _ c_re = do
         Just (Right (p,_)) -> gotoPointE p
         Just (Left  (p,_)) -> msgE "Search wrapped" >> gotoPointE p
         Nothing            -> errorE "Pattern not found"
+
+------------------------------------------------------------------------
+-- Global search and replace
+--
+
 
 ------------------------------------------------------------------------
 -- | Search and replace /on current line/. Returns Bool indicating
