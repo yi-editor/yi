@@ -25,7 +25,6 @@
 module Yi.FastBuffer (FBuffer(..)) where
 
 import Yi.Buffer
-import Yi.FastUndo
 import Yi.Regex
 
 import Data.Unique              ( Unique, newUnique )
@@ -163,6 +162,39 @@ foreign import ccall unsafe "gotoln"
    cgotoln :: Ptr CChar -> Int -> Int -> Int -> IO Int
 
 ------------------------------------------------------------------------
+
+-- May need to resize buffer. How do we append to eof?
+insertN' :: FBuffer -> [Char] -> Int -> IO ()
+insertN'  _ [] _ = return ()
+insertN' (FBuffer _ _ _ mv) cs cs_len = 
+    modifyMVar_ mv $ \fb@(FBuffer_ _ _ old_end old_max) -> do
+        let need_len = old_end + cs_len
+        (FBuffer_ ptr pnt end mx) <- 
+            if need_len >= old_max then resizeFB_ fb (need_len + 2048) 
+                                   else return fb
+        let len = max 0 (min (end-pnt) end) -- number of chars to shift
+            dst = pnt + cs_len      -- point to start
+            nend = dst + len        -- new length afterwards
+        shiftChars ptr dst pnt len
+        writeChars ptr cs pnt
+        return (FBuffer_ ptr pnt nend mx)
+{-# INLINE insertN' #-}
+
+deleteN' :: FBuffer -> Int -> IO ()
+deleteN' _ 0 = return ()
+deleteN' (FBuffer _ _ _ mv) n = 
+    modifyMVar_ mv $ \(FBuffer_ ptr pnt end mx) -> do
+        let src = inBounds (pnt + n) end     -- start shifting back from
+            len = inBounds (end-pnt-n) end   -- length of shift
+            end'= pnt + len                  -- new end
+        shiftChars ptr pnt src len
+        let pnt' | pnt == 0    = pnt
+                 | pnt == end' = max 0 (pnt - 1)    -- shift back if at eof
+                 | otherwise   = pnt
+        return (FBuffer_ ptr pnt' end' mx)
+{-# INLINE deleteN' #-}
+
+------------------------------------------------------------------------
 --
 -- | 'FBuffer' is a member of the 'Buffer' class, providing fast
 -- indexing operations. It is implemented in terms of a mutable byte
@@ -249,6 +281,7 @@ instance Buffer FBuffer where
             readChars ptr 1 (inBounds off e) >>= \[c] -> return c
 
     ------------------------------------------------------------------------
+    -- TODO undo
 
     -- writeB :: a -> Char -> IO ()
     writeB (FBuffer _ _ _ mv) c = 
@@ -267,32 +300,15 @@ instance Buffer FBuffer where
     insertB a c = insertN a [c]
 
     -- insertN :: a -> [Char] -> IO ()
-    -- May need to resize buffer. How do we append to eof?
-    insertN _ [] = return ()
-    insertN (FBuffer _ _ _uv mv) cs = 
-        modifyMVar_ mv $ \fb@(FBuffer_ _ _ old_end old_max) -> do
-            let cs_len   = length cs
-                need_len = old_end + cs_len
-
-            (FBuffer_ ptr pnt end mx) <- 
-                if need_len >= old_max then resizeFB_ fb (need_len + 2048) 
-                                       else return fb
-
-            let len = max 0 (min (end-pnt) end) -- number of chars to shift
-                dst = pnt + cs_len      -- point to start
-                nend = dst + len        -- new length afterwards
-
-            shiftChars ptr dst pnt len
-            writeChars ptr cs pnt
-
-       {-   -- update undo list
-            modifyMVar_ uv $ \ur -> 
-                let loop _ []     u = u
-                    loop n (x:ys) u = let u' = addUR u (Insert n x) in loop (n+1) ys u'
-                in return $ loop pnt cs ur -}
-
-            return (FBuffer_ ptr pnt nend mx)
-    {-# INLINE insertN #-}
+    insertN  _ [] = return ()
+    insertN fb@(FBuffer _ _ uv mv) cs = do
+        (FBuffer_ _ pnt _ _) <- readMVar mv 
+        let cs_len = length cs
+        modifyMVar_ uv $ \ur ->     -- first update undo list
+            let loop 0 u = u
+                loop n u = let u' = addUR u (Delete pnt) in loop (n-1) u'
+            in return $ loop cs_len ur
+        insertN' fb cs cs_len       -- do the real insert
 
     ------------------------------------------------------------------------
     -- deleteB    :: a -> IO ()
@@ -300,17 +316,16 @@ instance Buffer FBuffer where
 
     -- deleteN    :: a -> Int -> IO ()
     deleteN _ 0 = return ()
-    deleteN (FBuffer _ _ _ mv) n = 
-        modifyMVar_ mv $ \(FBuffer_ ptr pnt end mx) -> do
-            let src = inBounds (pnt + n) end     -- start shifting back from
-                len = inBounds (end-pnt-n) end   -- length of shift
-                end'= pnt + len                  -- new end
-            shiftChars ptr pnt src len
-            let pnt' | pnt == 0    = pnt
-                     | pnt == end' = max 0 (pnt - 1)    -- shift back if at eof
-                     | otherwise   = pnt
-            return (FBuffer_ ptr pnt' end' mx)
-    {-# INLINE deleteN #-}
+    deleteN fb@(FBuffer _ _ uv mv) n = do
+        -- quick! before we delete the chars, copy them to the redo buffer
+        (FBuffer_ ptr pnt end _) <- readMVar mv 
+        modifyMVar_ uv $ \ur ->
+            let loop _ 0 u = return u
+                loop p i u = do [x] <- readChars ptr 1 p    -- n.b
+                                let u' = addUR u (Insert pnt x)
+                                loop (p+1) (i-1) u'
+            in do loop pnt (min n (end-pnt)) ur
+        deleteN' fb n   -- now, really delete
 
     ------------------------------------------------------------------------
   
@@ -495,3 +510,75 @@ inBounds i end | i <= 0    = 0
                | i >= end  = max 0 (end - 1)
                | otherwise = i
 {-# INLINE inBounds #-}
+
+-- ---------------------------------------------------------------------
+-- General undo/redo support. Based on proposal by sjw.
+--
+-- Big deletes will be a problem at the moment.
+--
+
+--
+-- | A URList consists of an undo and a redo list.
+--
+data URList = URList ![URAction] ![URAction]
+    deriving Show
+
+--
+-- Mutation actions (from the undo or redo list) are either inserts or
+-- deletions
+--
+data URAction = Insert !Int !Char
+              | Delete !Int
+    deriving Show
+
+-- ---------------------------------------------------------------------
+-- | Create a new 'URList'.
+emptyUR :: URList
+emptyUR = URList [] []
+
+--
+-- | Add an action to the undo list. The first argument is either a
+-- @Left@ buffer point and 'Char' to insert, or @Right@, a point from
+-- which to delete a character.
+addUR :: URList -> URAction -> URList
+addUR (URList us rs) u = URList (u:us) rs
+
+--
+-- | Undo the last action that mutated the buffer contents. The action's
+-- inverse is added to the redo list.
+--
+undoUR :: FBuffer -> URList -> IO URList
+undoUR _ u@(URList [] _) = return u
+undoUR b (URList (u:us) rs) = do
+    let f = getAction u
+    r <- f b
+    return (URList us (r:rs))
+
+--
+-- | Redo the last action that mutated the buffer contents. The action's
+-- inverse is added to the undo list.
+--
+redoUR :: FBuffer -> URList -> IO URList
+redoUR _ u@(URList _ []) = return u
+redoUR buf (URList us (r:rs)) = do
+    u <- (getAction r) buf
+    return (URList (u:us) rs)
+
+-- ---------------------------------------------------------------------
+-- INTERNAL:
+--
+-- Given a URAction, return the buffer action it represents, and the 
+-- URAction that reverses it.
+--
+getAction :: URAction -> (FBuffer -> IO URAction) 
+getAction (Delete p) b = do 
+    moveTo b p
+    c <- readB b
+    deleteN' b 1       -- need to be actions that don't in turn invoke the url
+    return (Insert p c)
+
+getAction (Insert p c) b = do
+    moveTo b p
+    insertN' b [c] 1     -- hmm. will modify the ur list
+    return (Delete p)
+

@@ -326,6 +326,7 @@ cmdCmdFM = listToFM $
     [('\^B',    upScreensE)             -- vim does (firstNonSpaceE;leftOrSolE)
     ,('\^F',    downScreensE)
     ,('\^G',    const viFileInfo)        -- hmm. not working. duh. we clear
+    ,('\^R',    const redoE )
     ,('\^W',    const nextWinE)
     ,('D',      const (readRestOfLnE >>= setRegE >> killE))
     ,('J',      const (eolE >> deleteE))    -- the "\n"
