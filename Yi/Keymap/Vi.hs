@@ -395,7 +395,7 @@ eval_map st emode lhs rhs = mode >||< bind
                         Left  cmd' -> st {acc=[], cmd=cmd'}
                         Right ins' -> st {acc=[], ins=ins'}
         (as,_,_) = execLexer mode (rhs, st')
-        bind     = string lhs `action` \_ -> Just (foldl1 (>>) as)
+        bind     = string lhs `action` \_ -> Just (foldl (>>) nopE as)
 
 --
 -- | Unmap a binding from the keymap (i.e. nopE a lex table entry)
