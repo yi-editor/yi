@@ -77,7 +77,7 @@ do_cmd mi c
 
 -- Page backwards count screens.
     | c == '\^B' || c == keyPPage 
-    = replicateM_ (fromMaybe 1 mi) upScreenE >> nextCmd
+    = upScreensE (fromMaybe 1 mi) >> nextCmd
 
 -- \^C means nothing to us, usually
 --  | c == '\^C' = nopE >> nextCmd
@@ -90,7 +90,7 @@ do_cmd mi c
 
 -- Page forward count screens.
     | c == keyNPage || c == '\^F'    
-    = replicateM_ (fromMaybe 1 mi) downScreenE >> nextCmd
+    = downScreensE (fromMaybe 1 mi) >> nextCmd
 
 -- Display the file information.
     | c == '\^G' = do (f,_,ln,_,_,pct) <- bufInfoE 

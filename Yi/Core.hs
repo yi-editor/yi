@@ -212,6 +212,10 @@ upE = withWindow_ moveUpW
 gotoLnE :: Int -> Action
 gotoLnE n = withWindow_ (gotoLnW n)
 
+-- | Go to line @n@ offset from current line
+gotoLnFromE :: Int -> Action
+gotoLnFromE n = withWindow_ (gotoLnFromW n)
+
 ------------------------------------------------------------------------
 
 -- | Is the point at the start of the line
@@ -231,22 +235,34 @@ atEofE :: IO Bool
 atEofE = withWindow $ \w b -> atEof b >>= \x -> return (w,x)
 
 ------------------------------------------------------------------------
+
 -- | Scroll up 1 screen
--- Inefficient
 upScreenE :: Action
 upScreenE = do
-    (Just w) <- getWindow   -- better be a window open..
-    replicateM_ (height w - 2) $ withWindow_ moveUpW
+    (Just w) <- getWindow
+    withWindow_ (gotoLnFromW (- (height w - 1)))
+    solE 
+
+-- | Scroll up n screens
+upScreensE :: Int -> Action
+upScreensE n = do
+    (Just w) <- getWindow
+    withWindow_ (gotoLnFromW (- (n * (height w - 1))))
+    solE 
 
 -- | Scroll down 1 screen
--- Inefficient
 downScreenE :: Action
 downScreenE = do
     (Just w) <- getWindow
-    let i = 2 * (height w - 2)
-    replicateM_ i $ withWindow_ moveDownW
-    ll <- withWindow $ \x b -> atLastLine b >>= \ll -> return (x,ll)
-    when (not ll) $ replicateM_ (i`div`2) (withWindow_ moveUpW)
+    withWindow_ (gotoLnFromW (height w - 1))
+
+-- | Scroll down n screens
+downScreensE :: Int -> Action
+downScreensE n = do
+    (Just w) <- getWindow
+    withWindow_ (gotoLnFromW (n * (height w - 1)))
+
+-- ---------------------------------------------------------------------
 
 -- | Move left @x@ or to start of line
 leftOrSolE :: Int -> Action

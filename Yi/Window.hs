@@ -151,24 +151,34 @@ moveToW :: Buffer a => Int -> Window -> a -> IO Window
 moveToW np w b = do
     moveTo b np
     ln <- curLn b
-    resetW w b ln
+    resetW w b ln (min (ln-1) ((height w) `div` 2))
 
 -- | goto an arbitrary line in the file. center that line on the screen
 -- gotoLn is (fast as possible) an O(n) op atm.
 --
 gotoLnW :: Buffer a => Int -> Window -> a -> IO Window
-gotoLnW n w b = gotoLn b n >>= resetW w b
+gotoLnW n w b = do 
+    ln <- gotoLn b n 
+    resetW w b ln (min (ln-1) ((height w) `div` 2))
+
+--
+-- | Goto a line offset from the current line
+--
+gotoLnFromW :: Buffer a => Int -> Window -> a -> IO Window
+gotoLnFromW n w b = do
+    ln <- gotoLnFrom b n
+    resetW w b ln 0
 
 ------------------------------------------------------------------------
 --
 -- | reset the window to the current line
+-- @gap@ is where to center the window.
 --
-resetW :: Buffer a => Window -> a -> Int -> IO Window
-resetW w b ln = do
+resetW :: Buffer a => Window -> a -> Int -> Int -> IO Window
+resetW w b ln gap = do
     p  <- pointB b      -- see where it actually got placed 
     x  <- offsetFromSol b
-    let gap   = min (ln-1) ((height w) `div` 2) -- why -1?
-        topln = ln - gap
+    let topln = ln - gap
     i <- indexOfSolAbove b gap
     let w' = w {pnt = p, lineno = ln,
                 toslineno = topln, tospnt = i,

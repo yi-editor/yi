@@ -201,6 +201,11 @@ class Buffer a where
     -- if it was out of range)
     gotoLn      :: a -> Int -> IO Int
 
+    --
+    -- | Go to line indexed from current point
+    --
+    gotoLnFrom  :: a -> Int -> IO Int
+
     ---------------------------------------------------------------------
    
     -- | Return index of next string in buffer that matches argument
@@ -405,9 +410,10 @@ foreign import ccall unsafe "countlns"
 
 --
 -- | Return the index of the point at the start of line number @n@
+-- starting at point @s@
 --
-gotoLnFB :: FBuffer_ -> Int -> IO Int
-gotoLnFB (FBuffer_ buf _ e _) n = gotoln_c buf 0 e n
+gotoLnFB :: FBuffer_ -> Int -> Int -> Int -> IO Int
+gotoLnFB (FBuffer_ buf _ _ _) s e n = gotoln_c buf s e n
 
 foreign import ccall unsafe "gotoln"
    gotoln_c :: RawBuffer -> Int -> Int -> Int -> IO Int
@@ -660,18 +666,26 @@ instance Buffer FBuffer where
 -}
 
     ------------------------------------------------------------------------
+    -- TODO refactor below:
 
-    -- gotoLn :: a -> Int -> IO ()
+    -- gotoLn :: a -> Int -> IO Int
     gotoLn (FBuffer _ _ mv) n = withMVar mv $ \ref -> do
-        fb <- readIORef ref
-        np <- gotoLnFB fb n
+        fb@(FBuffer_ _ _ e _) <- readIORef ref
+        np <- gotoLnFB fb 0 e n
         let fb' = fb { bufPnt = np }
-
-        -- adjust for n >= max lines
-        n' <- if np > bufLen fb' - 1 
-                then return . subtract 1 =<< curLnFB fb' else return n
+        n' <- if np > e - 1 then return . subtract 1 =<< curLnFB fb' 
+                            else return n
         writeIORef ref fb'
         return (max 1 n')    -- and deal with for n < 1
+
+    -- gotoLnFrom :: a -> Int -> IO Int
+    gotoLnFrom (FBuffer _ _ mv) n = withMVar mv $ \ref -> do
+        fb@(FBuffer_ _ p e _) <- readIORef ref
+        off <- gotoLnFB fb p (if n < 0 then 0 else e) n
+        let fb' = fb { bufPnt = p + off }
+        ln <- return . subtract 1 =<< curLnFB fb' -- hmm :(
+        writeIORef ref fb'
+        return (max 1 ln)
 
     -- ---------------------------------------------------------------------
 
