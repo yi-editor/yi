@@ -473,4 +473,3 @@ inBounds i end | i <= 0    = 0
                | i >= end  = max 0 (end - 1)
                | otherwise = i
 {-# INLINE inBounds #-}
-    

@@ -321,16 +321,18 @@ cmd_op =((op_char +> digit `star` move_chr) >|<
                               s <- (if p < q then readNM p q else readNM q p)
                               setRegE s -- ToDo registers not global.
              )
-            ,('~', \_ m -> do (p,q) <- withPointMove m
-                              mapUntilE (max p q) $ \b -> do
-                                   c' <- readB b
-                                   let c'' = if isUpper c' 
-                                                then toLower c' 
-                                                else toUpper c'
-                                   writeB b c''
-                                   rightB b
-             )
+            ,('~', const invertCase)
             ]
+
+        -- invert the case of range described by movement @m@
+        -- could take 90s on a 64M file.
+        invertCase m = do 
+            (p,q) <- withPointMove m
+            mapRangeE (min p q) (max p q) $ \b -> do 
+                c  <- readB b
+                let c' = if isUpper c then toLower c else toUpper c
+                writeB b c'
+                rightB b
 
         --
         -- A strange, useful action. Save the current point, move to

@@ -111,7 +111,7 @@ module Yi.Core (
         searchAndRepLocal,      -- :: String -> String -> IO Bool
 
         -- * lower-level ops
-        mapUntilE,              -- :: Buffer a => Int -> (a -> Action) -> Action
+        mapRangeE               -- :: Int -> Int -> (Buffer' -> Action) -> Action
 
    ) where
 
@@ -632,17 +632,16 @@ prevWinE = Editor.prevWindow
 --
 -- You could still write a function to screw up things though...
 --
-mapUntilE :: Int -> (Buffer' -> Action) -> Action
-mapUntilE limit f
-    | limit < 0 = nopE
+mapRangeE :: Int -> Int -> (Buffer' -> Action) -> Action
+mapRangeE from to f
+    | from < 0  = nopE
     | otherwise = do
         withWindow_ $ \w b -> do
             eof <- sizeB b
-            if limit >= eof then return w else do
-                let loop = do p <- pointB b
-                              when (p < limit && p < eof) $ 
-                                    f b >> loop
-                loop
+            if to >= eof then return w else do
+                let loop j | j <= 0    = return ()
+                           | otherwise = f b >> loop (j-1)
+                loop (to - from)
                 return w
         getPointE >>= gotoPointE
 
