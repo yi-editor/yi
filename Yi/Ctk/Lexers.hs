@@ -307,12 +307,12 @@ joinConts c    c'   = let (bn , cls ) = listify c
     listify (Sparse n cls) = (n, cls)
     listify _              = error "Lexers.listify: Impossible argument!"
 
--- combine two actions
+-- combine two actions. Use the latter in case of overlap (!)
 --
 joinActions :: LexAction s t -> LexAction s t -> LexAction s t
 joinActions NoAction a'       = a'
 joinActions a        NoAction = a
-joinActions _        _        = error "Lexers.>||<: Overlapping actions!"
+joinActions _        a'       = a' -- error "Lexers.>||<: Overlapping actions!"
 
 -- Note: `n' is only an upper bound of the number of non-overlapping cases
 --
