@@ -356,8 +356,8 @@ initCurses = do
     cBreak True
     echo False
     nl False
-    leaveOk True
     intrFlush False
+    leaveOk True
     keypad stdScr True
     defineKey (#const KEY_UP) "\x1b[1;2A"
     defineKey (#const KEY_DOWN) "\x1b[1;2B"
@@ -1182,9 +1182,9 @@ isFKey c = case fromIntegral $ ord c :: CInt of
 getCh :: IO (Maybe Char)
 getCh = do
     v <- getch
-    return $ case v of
-                 (#const ERR) -> Nothing
-                 k            -> Just $ decodeKey k
+    case v of
+         (#const ERR) -> return (Just '\^C')    -- hack
+         k            -> return (Just $ decodeKey k)
 
 resizeTerminal :: Int -> Int -> IO ()
 

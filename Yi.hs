@@ -92,8 +92,9 @@ initSignals :: IO Handler
 initSignals = do 
     -- Signals.setStoppedChildFlag True -- crashes rts on openbsd
     Signals.installHandler Signals.sigCHLD Signals.Default Nothing
-    Signals.installHandler Signals.sigINT  Signals.Ignore Nothing
     Signals.installHandler Signals.sigPIPE Signals.Ignore Nothing
+    Signals.installHandler Signals.sigINT   -- to pass \^C in
+            (Signals.Catch (return ())) Nothing
 
 releaseSignals :: IO Handler
 releaseSignals = do 

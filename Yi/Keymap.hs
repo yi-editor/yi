@@ -79,6 +79,9 @@ do_cmd mi c
     | c == '\^B' || c == keyPPage 
     = replicateM_ (fromMaybe 1 mi) upScreenE >> nextCmd
 
+-- \^C means nothing to us, usually
+    | c == '\^C' = nopE >> nextCmd
+
 -- Scroll forward count lines.
     | c == '\^D' = not_impl
 
