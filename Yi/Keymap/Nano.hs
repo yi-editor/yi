@@ -25,11 +25,11 @@ module Yi.Keymap.Nano where
 
 import Yi.Editor            ( Action )
 import Yi.Yi hiding         ( keymap )
+import qualified Yi.Map as M
 
 import Data.Char            ( chr, isAlphaNum )
 import Data.List            ( (\\) )
 import Data.Maybe           ( fromMaybe )
-import Data.FiniteMap
 
 import Control.Exception    ( ioErrors, catchJust, try, evaluate )
 
@@ -112,12 +112,12 @@ cmdChar = nanoCmdChar
     where
         -- create a regex match any of the chars with entries
         -- in the cmdCharFM
-        nanoCmdChar = alt $ keysFM cmdCharFM
+        nanoCmdChar = alt $ M.keys cmdCharFM
 
         -- lookup an action, given a char. Return nopE (as a backup)
         -- in case it wasn't found.
         theActionOf :: Char -> Action
-        theActionOf c = case lookupFM cmdCharFM c of
+        theActionOf c = case M.lookup c cmdCharFM of
                             Just a  -> a
                             Nothing -> nopE
 
@@ -125,8 +125,8 @@ cmdChar = nanoCmdChar
 -- A key\/action table. This is where we actually map command (^) chars
 -- to actions.
 --
-cmdCharFM :: FiniteMap Char Action
-cmdCharFM = listToFM $
+cmdCharFM :: M.Map Char Action
+cmdCharFM = M.fromList $
     [('\127',       leftE >> deleteE)
     ,('\188',       prevBufW)    -- 'M-<' ?
     ,('\190',       nextBufW)    -- 'M->' ?
@@ -238,8 +238,8 @@ cmdSwitch = switchChar
         -- also, we can construct a prompt from the second component
         -- of the elem of the same fm.
         --
-        switchChar = alt $ keysFM echoCharFM
-        prompt  c  = snd $ fromMaybe (undefined,"") (lookupFM echoCharFM c)
+        switchChar = alt $ M.keys echoCharFM
+        prompt  c  = snd $ fromMaybe (undefined,"") (M.lookup c echoCharFM)
 
 --
 -- | Nano search behaviour.
@@ -361,7 +361,7 @@ echoEval :: NanoMode
 echoEval = enter
     `meta` \_ (Just (c,_,rf,_)) ->
         let f = reverse rf
-            a = case lookupFM echoCharFM c of
+            a = case M.lookup c echoCharFM of
                     Just (fn,_) -> fn f
                     Nothing     -> nopE
 
@@ -376,8 +376,8 @@ echoEval = enter
 -- prompt (in @cmdSwitch@ -- sometimes the prompt is set using an IO
 -- action, in which case we ignore the prompt component of the fm)
 --
-echoCharFM :: FiniteMap Char ((String -> Action), String)
-echoCharFM = listToFM $
+echoCharFM :: M.Map Char ((String -> Action), String)
+echoCharFM = M.fromList $
     [('\^O',     
      (\f -> if f == [] 
             then nopE

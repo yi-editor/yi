@@ -185,7 +185,7 @@ cmd_move = (move_chr >|< (move2chrs +> anyButEsc))
                                         Nothing -> botE >> solE
                                         Just n  -> gotoLnE n
 
-                        [c,d] -> let mfn = M.lookup move2CmdFM c 
+                        [c,d] -> let mfn = M.lookup c move2CmdFM
                                      f   = fromMaybe (const (const nopE)) mfn
                                  in f (toInt cnt) d
 
@@ -370,7 +370,7 @@ cmd_op =((op_char +> digit `star` (move_chr >|< (move2chrs +> anyButEsc))) >|<
                 c:ms -> getOpCmd c i ms
                 _    -> nopE
 
-        getOpCmd c i ms = (fromMaybe (\_ _ -> nopE) (M.lookup opCmdFM c)) i ms
+        getOpCmd c i ms = (fromMaybe (\_ _ -> nopE) (M.lookup c opCmdFM)) i ms
 
         -- | operator (i.e. movement-parameterised) actions
         opCmdFM :: M.Map Char (Int -> [Char] -> Action)
