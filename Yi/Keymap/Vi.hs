@@ -289,21 +289,23 @@ ex_char = anyButDelNlArrow
         msg c = getMsgE >>= \s -> msgE (s++[c])
 
 -- history editing
+-- TODO when you go up, then down, you need 2 keypresses to go up again.
 ex_hist :: ViMode
 ex_hist = arrow
-    `meta` \[key] st@St{acc=cs, hist=(h,i)} -> 
+    `meta` \[key] st@St{hist=(h,i)} -> 
                 let (s,i') = msg key (h,i)
-                in (with (msgE s), st{hist=(h,i')}, Just ex_mode)
+                in (with (msgE s),st{acc=reverse s,hist=(h,i')}, Just ex_mode)
     where
         msg :: Char -> ([String],Int) -> (String,Int)
         msg key (h,i) = case () of {_
-                | null h         -> ([],0)
-                | key == keyUp   -> if i < (length h - 1)
+                | null h         -> (":",0)
+                | key == keyUp   -> if i < length h - 1 
                                     then (h !! i, i+1)
-                                    else (last h, i)
+                                    else (last h, length h - 1)
                 | key == keyDown -> if i > 0 
                                     then (h !! i, i-1)
                                     else (head h, 0)
+                | otherwise      -> error "ex_hist: the impossible happened"
             }
 
         arrow = alt [keyUp, keyDown]
@@ -328,8 +330,8 @@ ex2cmd = char '\ESC'
 ex_eval :: ViMode
 ex_eval = enter
     `meta` \_ st@St{acc=dmc} -> 
-        let cs = reverse dmc
-            h  = (cs:(fst $ hist st), snd $ hist st) in case cs of
+        let c  = reverse dmc
+            h  = (c:(fst $ hist st), snd $ hist st) in case c of
         -- regex searching
         ('/':pat) -> (with (searchE (Just pat)),st{acc=[],hist=h},Just $ cmd st)
 
@@ -390,8 +392,8 @@ eval_map st emode lhs rhs = mode >||< bind
     where
         mode     = either id id emode
         st'      = case emode of
-                        Left  cmd' -> St {acc=[], cmd=cmd', ins=ins st}
-                        Right ins' -> St {acc=[], cmd=cmd st, ins=ins'}
+                        Left  cmd' -> st {acc=[], cmd=cmd'}
+                        Right ins' -> st {acc=[], ins=ins'}
         (as,_,_) = execLexer mode (rhs, st')
         bind     = string lhs `action` \_ -> Just (foldl1 (>>) as)
 
