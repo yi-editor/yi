@@ -24,6 +24,7 @@
 module Yi.Keymap.Vim ( keymap, keymapPlus, VimMode ) where
 
 import Yi.Core
+import Yi.CharMove
 import Yi.Editor            ( Action )
 import Yi.Lexers     hiding ( Action )
 
@@ -242,18 +243,6 @@ moveCmdFM = listToFM $
         right i = rightOrEolE i
         up    i = if i > 100 then gotoLnFromE (-i) else replicateM_ i upE
         down  i = if i > 100 then gotoLnFromE i    else replicateM_ i downE
-
-        prevParagraph = do sof <- atSofE
-                           when (not sof) $ do
-                              leftE
-                              moveWhileE (/= '\n') Left
-                              sof' <- atSofE
-                              when (not sof') $ do
-                                  leftE 
-                                  x <- readE
-                                  if x == '\n'
-                                    then rightE
-                                    else prevParagraph
 
 --
 -- more movement commands. these ones are paramaterised by a character

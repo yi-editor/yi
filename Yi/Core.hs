@@ -77,7 +77,6 @@ module Yi.Core (
         rightE,         -- :: Action
         leftOrSolE,     -- :: Int -> Action
         rightOrEolE,    -- :: Int -> Action
-        firstNonSpaceE, -- :: Action
         gotoLnE,        -- :: Int -> Action
         gotoLnFromE,    -- :: Int -> Action
         gotoPointE,     -- :: Int -> Action
@@ -87,9 +86,6 @@ module Yi.Core (
         atEolE,         -- :: IO Bool
         atSofE,         -- :: IO Bool
         atEofE,         -- :: IO Bool
-
-        nextNParagraphs,    -- :: Int -> Action
-        prevNParagraphs,    -- :: Int -> Action
 
         -- * Window-based movement
         upScreenE,      -- :: Action
@@ -114,8 +110,6 @@ module Yi.Core (
         readLnE,        -- :: IO String
         readNM,         -- :: Int -> Int -> IO String
         readRestOfLnE,  -- :: IO String
-        readWordE,      -- :: IO (String,Int,Int)
-        readWordLeftE,  -- :: IO (String,Int,Int)
 
         -- * Basic registers
         setRegE,        -- :: String -> Action
@@ -131,11 +125,6 @@ module Yi.Core (
 
         -- * higher level ops
         mapRangeE,              -- :: Int -> Int -> (Buffer' -> Action) -> Action
-        moveWhileE,             -- :: (Char -> Bool) -> Bool -> Action
-
-        -- * Word completion
-        wordCompleteE,          -- :: Action
-        resetCompleteE,         -- :: Action
 
         -- * Modifying the current keymap
         metaM,                  -- :: ([Char] -> [Action]) -> IO ()
@@ -150,8 +139,7 @@ import Yi.Editor
 import qualified Yi.Editor as Editor
 
 import Data.Maybe
-import Data.Char            ( isLatin1, isAlphaNum )
-import Data.FiniteMap
+import Data.Char            ( isLatin1 )
 #if __GLASGOW_HASKELL__ >= 602
 import Data.Typeable        ( Typeable )
 #else
@@ -170,9 +158,6 @@ import Control.Concurrent.Chan
 import GHC.Exception hiding ( throwIO )
 
 import qualified Yi.Curses.UI as UI
-
-import Data.IORef
-import System.IO.Unsafe     ( unsafePerformIO )
 
 -- ---------------------------------------------------------------------
 -- | Start up the editor, setting any state with the user preferences
@@ -434,52 +419,6 @@ rightOrEolE :: Int -> Action
 rightOrEolE x = withWindow_ $ moveXorEolW x
 
 -- ---------------------------------------------------------------------
--- Slightly higher level operations
--- Uncommitted to whether these should exist or not. Are they non-core?
-
--- | Move to first non-space character in this line
-firstNonSpaceE :: Action
-firstNonSpaceE = withWindow_ firstNonSpaceW
-
--- | Move down next @n@ paragraphs
-nextNParagraphs :: Int -> Action
-nextNParagraphs n = do
-    withWindow_ $ \w b -> do
-        eof <- sizeB b
-        let loop = do
-                p <- pointB b
-                when (p < eof-1) $ do
-                    moveWhile_ (/= '\n') Right w b
-                    p' <- pointB b
-                    when (p' < eof-1) $ do
-                        rightB b
-                        x <- readB b
-                        when (x /= '\n') loop
-        replicateM_ n loop
-        return w
-    getPointE >>= gotoPointE
-
--- | Move up prev @n@ paragraphs
-prevNParagraphs :: Int -> Action
-prevNParagraphs n = do
-    withWindow_ $ \w b -> do
-        let loop = do
-                p <- pointB b
-                when (p > 0) $ do
-                    leftB b
-                    moveWhile_ (/= '\n') Left w b
-                    p' <- pointB b
-                    when (p' > 0) $ do
-                        leftB b
-                        x <- readB b
-                        if x == '\n'
-                            then rightB b
-                            else loop
-        replicateM_ n loop
-        return w
-    getPointE >>= gotoPointE
-
--- ---------------------------------------------------------------------
 -- Window based operations
 --
 
@@ -538,46 +477,6 @@ readRestOfLnE = withWindow $ \w b -> do
     j <- indexOfEol b
     s <- nelemsB b (j-p) p
     return (w,s)
-
--- | Read word to the left of the cursor
-readWordLeftE :: IO (String,Int,Int)
-readWordLeftE = withWindow $ \w b -> readWordLeft_ w b >>= \s -> return (w,s)
-
--- Core-internal worker, not threadsafe.
-readWordLeft_ :: Window -> Buffer' -> IO (String,Int,Int)
-readWordLeft_ w b = do
-    p <- pointB b
-    c <- readB b 
-    when (not $ isAlphaNum c) $ leftB b
-    moveWhile_ isAlphaNum Left w b
-    sof <- atSof b
-    c'  <- readB b 
-    when (not sof || not (isAlphaNum c')) $ rightB b
-    q <- pointB b
-    s <- nelemsB b (p-q) q
-    moveTo b p
-    return (s,q,p)
-
--- | Read word under cursor
-readWordE :: IO (String,Int,Int)
-readWordE = withWindow $ \w b -> readWord_ w b >>= \v -> return (w,v)
-
--- Internal, for readWordE, not threadsafe
-readWord_ :: Window -> Buffer' -> IO (String,Int,Int)
-readWord_ w b = do
-    p <- pointB b
-    c <- readB b 
-    if not (isAlphaNum c) then leftB b 
-                          else moveWhile_ isAlphaNum Right w b >> leftB b
-    y <- pointB b   -- end point
-    moveWhile_ isAlphaNum Left w b
-    sof <- atSof b
-    c'  <- readB b 
-    when (not sof || not (isAlphaNum c')) $ rightB b
-    x <- pointB b
-    s <- nelemsB b (y-x+1) x
-    moveTo b p
-    return (s,x,y)
 
 -- | Write char to point
 writeE :: Char -> Action
@@ -877,147 +776,6 @@ mapRangeE from to fn
                 loop (max 0 (to - from))
             moveToW from w b
             return w
-
-------------------------------------------------------------------------
---
--- Shift the point, until predicate is true, leaving point at final
--- location. Direction is either False=left, True=right
---
--- N.B. we're using partially applied Left and Right as well-named Bools.
---
--- Maybe this shouldn't refresh?
---
-moveWhileE :: (Char -> Bool) -> (() -> Either () ()) -> Action
-moveWhileE f d = do withWindow_ (moveWhile_ f d)
-                    getPointE >>= gotoPointE
-
---
--- internal moveWhile function to avoid unnec. ui updates
--- not for external consumption
---
-moveWhile_ :: (Char -> Bool)
-           -> (() -> Either () ())
-           -> Window
-           -> Buffer'
-           -> IO Window
-
-moveWhile_ f dir w b = do
-    eof <- sizeB b
-    let loop = case dir () of  {
-        Right _ -> let loop' = do p <- pointB b
-                                  when (p < eof - 1) $ do
-                                  x <- readB b
-                                  when (f x) $ rightB b >> loop'
-                   in loop' ;
-        Left  _ -> let loop' = do p <- pointB b
-                                  when (p > 0) $ do
-                                  x <- readB b
-                                  when (f x) $ leftB b >> loop 
-                   in loop'
-    }
-    loop
-    return w
-
--- ---------------------------------------------------------------------
--- | keyword completion
---
--- when doing keyword completion, we need to keep track of the word
--- we're trying to complete. Finding this word is an IO action.
---
-
--- remember the word, if any, we're trying to complete, previous matches
--- we've seen, and the point in the search we are up to.
-type Completion = (String,FiniteMap String (),Int)
-
--- This could go in the single editor state, I suppose. Esp. if we want
--- to do hardcore persistence at some point soon.
---
-completions :: IORef (Maybe Completion)
-completions = unsafePerformIO $ newIORef Nothing
-
---
--- | Switch out of completion mode.
---
-resetCompleteE :: Action
-resetCompleteE = writeIORef completions Nothing
-
---
--- The word-completion action, down the buffer
---
-wordCompleteE :: Action
-wordCompleteE = do
-    withWindow_ $ \win buf -> do
-        readIORef completions >>= loop win buf >>= writeIORef completions
-        return win
-    getPointE >>= gotoPointE
-
-  where
-    --
-    -- work out where to start our next search
-    --
-    loop :: Window -> Buffer' -> (Maybe Completion) -> IO (Maybe Completion)
-    loop win buf (Just (w,fm,n)) = do
-            p  <- pointB buf
-            moveTo buf (n+1)        -- start where we left off
-            doloop p win buf (w,fm)
-    loop win buf Nothing = do 
-            p  <- pointB buf
-            (w,_,_) <- readWordLeft_ win buf 
-            rightB buf  -- start past point
-            doloop p win buf (w,unitFM w ())
-
-    --
-    -- actually do the search, and analyse the result
-    --
-    doloop :: Int -> Window -> Buffer' -> (String,FiniteMap String ()) 
-           -> IO (Maybe Completion)
-
-    doloop p win buf (w,fm) = do
-            m' <- nextWordMatch win buf w
-            moveTo buf p
-            (_,j,_) <- readWord_ win buf
-            case m' of
-                Just (s,i) 
-                    | j == i                -- seen entire file
-                    -> do replaceLeftWith win buf w
-                          return Nothing
-
-                    | s `elemFM` fm         -- already seen
-                    -> loop win buf (Just (w,fm,i))
-
-                    | otherwise             -- new
-                    -> do replaceLeftWith win buf s
-                          return (Just (w,addToFM fm s (),i))
-
-                Nothing -> loop win buf (Just (w,fm,(-1))) -- goto start of file
-
-    --
-    -- replace word under cursor with @s@
-    --
-    replaceLeftWith :: Window -> Buffer' -> String -> IO ()
-    replaceLeftWith win buf s = do
-        (_,b,a) <- readWordLeft_ win buf     -- back at start
-        moveTo buf b
-        deleteNW win buf (a-b)
-        mapM_ (\c -> insertW c win buf) s
-
-    --
-    -- Return next match, and index of that match (to be used for later searches)
-    -- Leaves the cursor at the next word.
-    --
-    nextWordMatch :: Window -> Buffer' -> String -> IO (Maybe (String,Int))
-    nextWordMatch win b w = do
-        let re = ("( |\t|\n|\r|^)"++w)
-        re_c <- regcomp re regExtended
-        mi   <- regexB b re_c
-        case mi of 
-            Nothing -> return Nothing
-            Just (i,j) -> do 
-                c <- readAtB b i
-                let i' = if i == 0 && isAlphaNum c then 0 else i+1 -- for the space
-                moveTo b i'
-                (s,_,_) <- readWord_ win b
-                assert (s /= [] && i /= j) $ return $ Just (s,i')
 
 -- ---------------------------------------------------------------------
 -- | The metaM action. This is our mechanism for having Actions alter
