@@ -310,12 +310,13 @@ cmdCmdFM = listToFM $
     [('\^B',    upScreensE)             -- vim does (firstNonSpaceE;leftOrSolE)
     ,('\^F',    downScreensE)
     ,('\^G',    const viFileInfo)        -- hmm. not working. duh. we clear
-    ,('\^R',    const redoE )
+    ,('\^R',    flip replicateM_ redoE )
     ,('\^W',    const nextWinE)
     ,('D',      const (readRestOfLnE >>= setRegE >> killE))
     ,('J',      const (eolE >> deleteE))    -- the "\n"
+    ,('U',      flip replicateM_ undoE )    -- NB not correct
     ,('n',      const (searchE Nothing))
-    ,('u',      const undoE )
+    ,('u',      flip replicateM_ undoE )
 
     ,('X',      \i -> do p <- getPointE
                          leftOrSolE i
@@ -635,6 +636,11 @@ ex_eval = enter
 
       fn "reboot"     = rebootE     -- !
       fn "reload"     = reloadE     -- !
+
+      fn "u"          = undoE
+      fn "undo"       = undoE
+      fn "r"          = redoE
+      fn "redo"       = redoE
 
       fn s            = errorE $ "The "++show s++ " command is unknown."
 
