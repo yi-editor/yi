@@ -78,5 +78,7 @@ with the help of the #haskell irc community.
 Yi is derived from Riot <http://iki.fi/tuomov/riot/>, written by
 Tuomo Valkonen.
 
-The Curses interface code is mostly by John Meacham;see the LICENSE
-for details. Tuomo and I have made some minor modifications.
+The Curses and CWString interface code is mostly by John Meacham;see the
+LICENSE for details. Tuomo and I have made some minor modifications.
+
+The Ctk lexer library was written by Manuel Chakravarty.
