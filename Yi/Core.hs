@@ -214,6 +214,10 @@ gotoLnE n = withWindow_ (gotoLnW n)
 gotoLnFromE :: Int -> Action
 gotoLnFromE n = withWindow_ (gotoLnFromW n)
 
+-- | Go to a particular point
+gotoPoint :: Int -> Action
+gotoPoint p = withWindow_ $ moveToW p
+
 ------------------------------------------------------------------------
 
 -- | Is the point at the start of the line

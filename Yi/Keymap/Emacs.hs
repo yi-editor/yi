@@ -71,6 +71,56 @@ lookupKey t k = (readIORef t >>= \x ->
 globalKeyTable :: KeyTable
 globalKeyTable = unsafePerformIO newKeyTable
 
+-- Undo/Redo action
+
+-- evil
+getPoint = do (_, _, _, _, p, _) <- bufInfoE; return p
+setPoint = gotoPoint
+
+saveExcursion :: IO a -> IO a
+saveExcursion f = do p <- getPoint; r <- f; setPoint p; return r
+
+data URAction = AC (IO URAction)
+
+deleteA :: Int -> IO URAction
+deleteA p = do gotoPoint p
+	       c <- readE
+	       msgE ("deleteA " ++ show p ++ " " ++ show c)
+	       deleteE
+	       return (AC $ insertA p c)
+
+insertA :: Int -> Char -> IO URAction
+insertA p c = do msgE ("InsertA " ++ show p ++ " " ++ show c)
+	         gotoPoint p
+		 insertE c
+		 return (AC $ deleteA p)
+
+{-# NOINLINE undoRedoState #-}
+undoRedoState :: IORef ([URAction], [URAction])
+undoRedoState = unsafePerformIO $ newIORef ([], [])
+
+setUndoRedoState :: ([URAction], [URAction]) -> IO ()
+setUndoRedoState = writeIORef undoRedoState
+
+doURAction :: IO URAction -> Action
+doURAction action = do (undo, redo) <- readIORef undoRedoState
+		       u <- action
+		       setUndoRedoState (u : undo, []) -- doing something kills the redo state!
+		       
+undo :: Action
+undo = do (undo, redo) <- readIORef undoRedoState
+	  case undo of 
+		    []     -> msgE "No more undos"
+		    ((AC x):xs) -> do r <- x
+				      setUndoRedoState (xs, r : redo)
+
+redo :: Action
+redo = do (undo, redo) <- readIORef undoRedoState
+	  case redo of 
+		    []     -> msgE "No more redos"
+		    ((AC x):xs) -> do u <- x
+				      setUndoRedoState (u : undo, xs)
+
 -- ---------------------------------------------------------------------
 
 control :: Char -> Char
@@ -102,11 +152,14 @@ keytableSetKey t (k:ks) a = do v <- lookupKey t k
     where
     addMap k' ks' a' t' = keytableSetKey t' ks' a' >> updateKey t k' (KMap t')
 
+myInsert :: Char -> Action
+myInsert c = do p <- getPoint; doURAction (insertA p c)
+
 -- Poor mans key bindings
 initKeyBindings :: [([Char], Action)]
 initKeyBindings = [-- Special characters
-		   ([keyEnter], insertE '\n'),
-		   (['\r'], insertE '\n'),		   
+		   ([keyEnter], myInsert '\n'),
+		   (['\r'], myInsert '\n'),		   
 		   -- Movement
 		   ([keyDown], downE),
 		   ([keyLeft], leftOrSolE 1),
@@ -120,12 +173,14 @@ initKeyBindings = [-- Special characters
 		   ([control 'k'], killE),
 		   ([control 'd'], deleteE),
 		   -- Other
+		   ([control 'u'], undo),
+		   ([control 'r'], redo),
 		   ([control 'x', control 's'], fwriteE),
 		   ([control 'x', control 'c'], closeE)
 		  ]
 
 initKeys :: IO ()
-initKeys = do mapM_ (\c -> keytableSetKey globalKeyTable [c] (insertE c)) $ 
+initKeys = do mapM_ (\c -> keytableSetKey globalKeyTable [c] (myInsert c)) $ 
                             filter isPrint [minBound .. maxBound]
 	      mapM_ (uncurry $ keytableSetKey globalKeyTable) initKeyBindings
 
