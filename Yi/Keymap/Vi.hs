@@ -50,9 +50,10 @@ type ViRegex = Regexp ViState Action
 -- switch editor modes therefore use the lexers in the state.
 --
 data ViState = 
-        St { acc :: [Char]      -- an accumulator, for count, search and ex mode
-           , cmd :: ViMode      -- (maybe augmented) cmd mode lexer
-           , ins :: ViMode }    -- (maybe augmented) ins mode lexer
+        St { acc :: [Char]          -- an accumulator, for count, search and ex mode
+           , hist:: ([String],Int)  -- ex-mode command history
+           , cmd :: ViMode          -- (maybe augmented) cmd mode lexer
+           , ins :: ViMode }        -- (maybe augmented) ins mode lexer
 
 --
 -- | Top level. Lazily consume all the input, generating a list of
@@ -68,7 +69,7 @@ keymap cs = mapM_ (>> refreshE) actions
 
 -- | default lexer state, just the normal cmd and insert mode. no mappings
 defaultSt :: ViState
-defaultSt = St { acc = [], cmd = cmd_mode, ins = ins_mode }
+defaultSt = St { acc = [], hist = ([],0), cmd = cmd_mode, ins = ins_mode }
 
 -- | like keymap, but takes a supplied lexer, which is used to augment the
 -- existing lexer. Useful for user-added binds (to command mode only!)
@@ -77,7 +78,7 @@ keymapPlus lexer' cs = mapM_ (>> refreshE) actions
     where 
         actions = let (ts,_,_) = execLexer cmd_mode' (cs, dfltSt) in ts
         cmd_mode'= cmd_mode >||< lexer'
-        dfltSt = St { acc = [], cmd = cmd_mode', ins = ins_mode }
+        dfltSt = St { acc = [], hist = ([],0), cmd = cmd_mode', ins = ins_mode }
 
 ------------------------------------------------------------------------
 
@@ -101,7 +102,7 @@ ins_mode = ins_char >||< ins2cmd
 -- | ex mode is either accumulating input or, on \n, executing the command
 --
 ex_mode :: ViMode
-ex_mode = ex_char >||< ex_edit >||< ex_eval >||< ex2cmd
+ex_mode = ex_char >||< ex_edit >||< ex_hist >||< ex_eval >||< ex2cmd
 
 -- util
 with :: Action -> Maybe (Either e Action)
@@ -281,11 +282,31 @@ ins2cmd  = char '\ESC'
 
 -- normal input to ex. accumlate chars
 ex_char :: ViMode
-ex_char = anyButDelOrNl
+ex_char = anyButDelNlArrow
     `meta` \[c] st -> (with (msg c), st{acc=c:acc st}, Just ex_mode)
     where
-        anyButDelOrNl= alt $ any' \\ (enter' ++ delete')
+        anyButDelNlArrow = alt $ any' \\ (enter' ++ delete' ++ [keyUp,keyDown])
         msg c = getMsgE >>= \s -> msgE (s++[c])
+
+-- history editing
+ex_hist :: ViMode
+ex_hist = arrow
+    `meta` \[key] st@St{acc=cs, hist=(h,i)} -> 
+                let (s,i') = msg key (h,i)
+                in (with (msgE s), st{hist=(h,i')}, Just ex_mode)
+    where
+        msg :: Char -> ([String],Int) -> (String,Int)
+        msg key (h,i) = case () of {_
+                | null h         -> ([],0)
+                | key == keyUp   -> if i < (length h - 1)
+                                    then (h !! i, i+1)
+                                    else (last h, i)
+                | key == keyDown -> if i > 0 
+                                    then (h !! i, i-1)
+                                    else (head h, 0)
+            }
+
+        arrow = alt [keyUp, keyDown]
 
 -- line editing
 ex_edit :: ViMode
@@ -301,40 +322,44 @@ ex2cmd :: ViMode
 ex2cmd = char '\ESC'
     `meta` \_ st -> (with msgClrE, st{acc=[]}, Just $ cmd st)
 
+--
+-- eval an ex command to an Action, also appends to the ex history
+--
 ex_eval :: ViMode
 ex_eval = enter
-    `meta` \_ st@St{acc=dmc} -> case reverse dmc of
-
+    `meta` \_ st@St{acc=dmc} -> 
+        let cs = reverse dmc
+            h  = (cs:(fst $ hist st), snd $ hist st) in case cs of
         -- regex searching
-        ('/':pat) -> (with (searchE (Just pat)), st{acc=[]}, Just $ cmd st)
+        ('/':pat) -> (with (searchE (Just pat)),st{acc=[],hist=h},Just $ cmd st)
 
         -- add mapping to command mode
         (_:'m':'a':'p':' ':cs) -> 
                let pair = break (== ' ') cs
                    cmd' = uncurry (eval_map st (Left $ cmd st)) pair
-               in (with msgClrE, st{acc=[],cmd=cmd'}, Just cmd')
+               in (with msgClrE, st{acc=[],hist=h,cmd=cmd'}, Just cmd')
 
         -- add mapping to insert mode
         (_:'m':'a':'p':'!':' ':cs) -> 
                let pair = break (== ' ') cs
                    ins' = uncurry (eval_map st (Right $ ins st)) pair
-               in (with msgClrE, st{acc=[],ins=ins'}, Just (cmd st))
+               in (with msgClrE, st{acc=[],hist=h,ins=ins'}, Just (cmd st))
 
         -- unmap a binding from command mode
         (_:'u':'n':'m':'a':'p':' ':cs) ->
                let cmd' = eval_unmap (Left $ cmd st) cs
-               in (with msgClrE, st{acc=[],cmd=cmd'}, Just cmd')
+               in (with msgClrE, st{acc=[],hist=h,cmd=cmd'}, Just cmd')
 
         -- unmap a binding from insert mode
         (_:'u':'n':'m':'a':'p':'!':' ':cs) ->
                let ins' = eval_unmap (Right $ ins st) cs
-               in (Nothing, st{acc=[],ins=ins'}, Just (cmd st))
+               in (Nothing, st{acc=[],hist=h,ins=ins'}, Just (cmd st))
 
         -- just a normal ex command
-        (_:src) -> (with (fn src), st{acc=[]}, Just $ cmd st)
+        (_:src) -> (with (fn src), st{acc=[],hist=h}, Just $ cmd st)
 
         -- can't happen, but deal with it
-        [] -> (Nothing, st{acc=[]}, Just $ cmd st)
+        [] -> (Nothing, st{acc=[], hist=h}, Just $ cmd st)
 
     where 
       fn ""           = msgClrE
