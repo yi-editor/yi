@@ -370,6 +370,17 @@ foreign import ccall unsafe "strstr_n"
    strstrn_c :: RawBuffer -> RawBuffer -> Int -> CSize -> CSize -> IO Int
 
 -- ---------------------------------------------------------------------
+-- | Count the number of '\n' we see from start to end in bufer
+-- We don't use this very often (at the moment) so it's ok to be O(n).
+--
+
+curLnFB :: FBuffer_ -> IO Int
+curLnFB (FBuffer_ b p _ _) = countlns_c b 0 p
+
+foreign import ccall unsafe "countlns"
+   countlns_c :: RawBuffer -> Int -> Int -> IO Int
+
+-- ---------------------------------------------------------------------
 --
 -- | 'FBuffer' is a member of the 'Buffer' class, providing fast
 -- indexing operations. It is implemented in terms of a mutable byte
@@ -586,6 +597,10 @@ instance Buffer FBuffer where
     -- count number of \n from origin to point
     -- curLn :: a -> IO Int
     curLn (FBuffer _ _ mv) = withMVar mv $ \ref -> do
+        fb <- readIORef ref
+        curLnFB fb
+
+{-
         (FBuffer_ b (I# p) _ _) <- readIORef ref
         let loop i acc
                 | i >=# p   = return (I# acc)
@@ -595,6 +610,7 @@ instance Buffer FBuffer where
                             then loop (i +# 1#) (acc +# 1#)
                             else loop (i +# 1#) acc
         loop 0# 1#
+-}
 
 {-
         fb <- readIORef ref
