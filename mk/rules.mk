@@ -156,8 +156,9 @@ EXTRA_CLEANS+= $(PKG).conf.install $(PKG).conf $(PKG).conf.in $(PKG).conf.instal
 #
 ifneq "$(HADDOCK)" ""
 
-.PHONY: doc
+.PHONY: doc html
 docs :: html
+html :: html1 html2
 
 HTML_DIR      = html
 HADDOCK_SRCS += $(HS_SRCS)
@@ -165,13 +166,21 @@ HS_PPS        = $(addsuffix .raw-hs, \
                         $(filter-out $(basename $(NO_DOCS)), \
                                 $(basename $(HADDOCK_SRCS))))
 
+EXTRA_HS_PPS  = $(addsuffix .raw-hs, $(basename $(NO_DOCS)))
+
 INSTALL_DATAS  += $(HTML_DIR)
 
-html : $(HS_PPS)
+# circular (excluded) modules first
+html1 : $(EXTRA_HS_PPS)
 	@$(INSTALL_DIR) $(HTML_DIR)
-	$(HADDOCK) $(HADDOCK_OPTS) -o $(HTML_DIR) $(HS_PPS) --package=$(PKG)
+	$(HADDOCK) $(HADDOCK_OPTS)2 -o $(HTML_DIR) $(EXTRA_HS_PPS) -k $(PKG)
 
-CLEAN_FILES += $(HS_PPS) $(PACKAGE).haddock
+html2 : $(HS_PPS)
+	@$(INSTALL_DIR) $(HTML_DIR)
+	$(HADDOCK) $(HADDOCK_OPTS) -o $(HTML_DIR) $(HS_PPS) -k $(PKG)
+	@cd $(HTML_DIR) && $(HADDOCK) --gen-index -i yi.interface -i yi.interface2
+
+CLEAN_FILES += $(HS_PPS) $(EXTRA_HS_PPS)
 
 distclean ::
 	$(RM) -rf $(HTML_DIR)

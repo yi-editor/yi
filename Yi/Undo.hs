@@ -18,7 +18,46 @@
 -- 
 
 --
--- | A efficient, generic implementation of restricted linear undo
+-- | An implementation of restricted, linear undo, as described in:
+--
+-- >    T. Berlage, "A selective undo mechanism for graphical user interfaces
+-- >    based on command objects", ACM Transactions on Computer-Human
+-- >    Interaction 1(3), pp. 269-294, 1994.          
+--
+-- Implementation based on a proposal by sjw.
+--
+-- From Berlage:
+--
+-- >    All buffer-mutating commands are stored (in abstract form) in an
+-- >    Undo list. The most recent item in this list is the action that
+-- >    will be undone next. When it is undone, it is removed from the Undo
+-- >    list, and its inverse is added to the Redo list. The last command
+-- >    put into the Redo list can be redone, and again prepended to the
+-- >    Undo list. New commands are added to the Undo list without
+-- >    affecting the Redo list.
+--
+-- Now, the above assumes that commands can be _redone_ in a state other
+-- than that in which it was orginally done. This is not the case in our
+-- text editor: a user may delete, for example, between an undo and a
+-- redo. Berlage addresses this in S2.3. A Yi example:
+--
+-- >    Delete some characters
+-- >    Undo partialy
+-- >    Move prior in the file, and delete another _chunk_
+-- >    Redo some things  == corruption.
+--
+-- Berlage describes the /stable execution property/:
+--
+-- >    A command is always redone in the same state that it was originally
+-- >    executed in, and is always undone in the state that was reached
+-- >    after the original execution.
+--
+-- >    The only case where the linear undo model violates the stable
+-- >    execution property is when _a new command is submitted while the
+-- >    redo list is not empty_. The _restricted linear undo model_ ...
+-- >    clears the redo list in this case.
+--
+-- Also some discussion of this in: /The Text Editor Sam/, Rob Pike, pg 19.
 --
 
 module Yi.Undo where
@@ -28,51 +67,6 @@ import Yi.Buffer                ( Point, Size, Buffer(getActionB) )
 import Foreign.C.Types          ( CChar )
 import Foreign.ForeignPtr       ( ForeignPtr )
 
--- debugging purposes
--- import System.IO.Unsafe         ( unsafePerformIO )
-
---
--- Restricted, linear undo/redo support:
---
---      T. Berlage, "A selective undo mechanism for graphical user interfaces
---      based on command objects", ACM Transactions on Computer-Human
---      Interaction 1(3), pp. 269-294, 1994.          
---
--- Implementation based on a proposal by sjw.
---
--- From Berlage:
---   All buffer-mutating commands are stored (in abstract form) in an
---   Undo list. The most recent item in this list is the action that
---   will be undone next. When it is undone, it is removed from the Undo
---   list, and its inverse is added to the Redo list. The last command
---   put into the Redo list can be redone, and again prepended to the
---   Undo list. New commands are added to the Undo list without
---   affecting the Redo list.
---
--- Now, the above assumes that commands can be _redone_ in a state other
--- than that in which it was orginally done. This is not the case in our
--- text editor: a user may delete, for example, between an undo and a
--- redo. Berlage addresses this in S2.3. A Yi example:
---
---      Delete some characters
---      Undo partialy
---      Move prior in the file, and delete another _chunk_
---      Redo some things  == corruption.
---
--- Berlage describes the "stable execution property":
---
---   A command is always redone in the same state that it was originally
---   executed in, and is always undone in the state that was reached
---   after the original execution.
---
---   The only case where the linear undo model violates the stable
---   execution property is when _a new command is submitted while the
---   redo list is not empty_. The _restricted linear undo model_ ...
---   clears the redo list in this case.
---
--- Also some discussion of this in: "The Text Editor Sam", Rob Pike, pg 19.
---
-
 --
 -- | A URList consists of an undo and a redo list.
 --
@@ -81,7 +75,7 @@ data URList = URList ![URAction] ![URAction]
 --
 -- | Mutation actions (from the undo or redo list) 
 --
--- We use the 'partial checkpoint' (Berlage, pg16) strategy to store
+-- We use the /partial checkpoint/ (Berlage, pg16) strategy to store
 -- just the components of the state that change.
 --
 -- The state (i.e. editor contents) are stored CChars, this has
