@@ -56,7 +56,7 @@ module Yi.Curses.UI (
 import Yi.Buffer        ( Buffer(ptrToLnsB) )
 import Yi.Editor
 import Yi.Window
-import Yi.Style
+import Yi.Style     ( Color(..), Style(..), UIStyle(..) )
 
 import Yi.Curses.Curses hiding ( refresh, Window )
 import qualified Yi.Curses.Curses as Curses
@@ -71,7 +71,7 @@ import Control.Exception            ( handle )
 
 import System.IO.Unsafe             ( unsafePerformIO )
 
-import System.Posix.Signals
+import System.Posix.Signals         ( raiseSignal, sigTSTP )
 
 --
 -- | how to initialise the ui
@@ -328,18 +328,20 @@ initUiColors (UIStyle {
     mapM (uncurry fn) (zip [wn, mlf, ml, ef] [1..])
     where
         fn :: Style -> Int -> IO ((Curses.Color, Curses.Color), Pair)
-        fn (Style fg bg) p = do let (_,fgc) = fg2attr fg
-                                    (_,bgc) = bg2attr bg
-                                handle (\_ -> return ()) $ 
-                                    initPair (Pair p) fgc bgc
-                                return ((fgc,bgc), (Pair p))
+        fn sty p = do let (fg,bg) = style2curses sty
+                          (_,fgc) = fg2attr fg
+                          (_,bgc) = bg2attr bg
+                      handle (\_ -> return ()) $ 
+                           initPair (Pair p) fgc bgc
+                      return ((fgc,bgc), (Pair p))
 
 --
 -- | Getting from nice abstract colours to ncurses-settable values
 --
 uiAttr :: Style -> IO (Curses.Attr, Curses.Pair)
-uiAttr (Style fg bg) = do
-    let (a, fgc) = fg2attr fg
+uiAttr sty = do
+    let (fg,bg)  = style2curses sty
+        (a, fgc) = fg2attr fg
         (b, bgc) = bg2attr bg
     pair <- lookupPair (fgc, bgc)
     return (a `attrPlus` b, pair)
@@ -436,4 +438,95 @@ boldA       = setBoldA      nullA
 -- underlineA  = setUnderlineA nullA
 -- dimA        = setDimA       nullA
 -- reverseA    = setReverseA   nullA
+
+------------------------------------------------------------------------
+--
+-- Nicer, user-visible colour defs.
+--
+-- We separate colours into dark and bright colours, to prevent users
+-- from erroneously constructing bright colours for dark backgrounds,
+-- which doesn't work.
+
+--
+-- Foreground colours
+--
+data ForegroundColor
+    = BlackF
+    | GreyF
+    | DarkRedF
+    | RedF
+    | DarkGreenF
+    | GreenF
+    | BrownF
+    | YellowF
+    | DarkBlueF
+    | BlueF
+    | PurpleF
+    | MagentaF
+    | DarkCyanF
+    | CyanF
+    | WhiteF
+    | BrightWhiteF
+    | DefaultF
+
+--
+-- Background colors can't be bright.
+--
+data BackgroundColor
+    = BlackB
+    | DarkRedB
+    | DarkGreenB
+    | BrownB
+    | DarkBlueB
+    | PurpleB
+    | DarkCyanB
+    | WhiteB
+    | DefaultB
+
+-- 
+-- | Map Style rgb rgb colours to ncurses pairs
+-- TODO a generic way to turn an rgb into the nearest curses color
+--
+style2curses :: Style -> (ForegroundColor, BackgroundColor)
+style2curses (Style fg bg) = (fgCursCol fg, bgCursCol bg)
+    where
+        fgCursCol c = case c of
+            RGB (0,0,0)         -> BlackF
+            RGB (128,128,128)   -> GreyF
+            RGB (139,0,0)       -> DarkRedF
+            RGB (255,0,0)       -> RedF
+            RGB (0,100,0)       -> DarkGreenF
+            RGB (0,128,0)       -> GreenF
+            RGB (165,42,42)     -> BrownF
+            RGB (255,255,0)     -> YellowF
+            RGB (0,0,139)       -> DarkBlueF
+            RGB (0,0,255)       -> BlueF
+            RGB (128,0,128)     -> PurpleF
+            RGB (255,0,255)     -> MagentaF
+            RGB (0,139,139)     -> DarkCyanF
+            RGB (0,255,255)     -> CyanF
+            RGB (165,165,165)   -> WhiteF
+            RGB (255,255,255)   -> BrightWhiteF
+            Default         -> DefaultF
+            _               -> BlackF       -- NB
+
+        bgCursCol c = case c of
+            RGB (0,0,0)         -> BlackB
+            RGB (128,128,128)   -> BlackB
+            RGB (139,0,0)       -> DarkRedB
+            RGB (255,0,0)       -> DarkRedB
+            RGB (0,100,0)       -> DarkGreenB
+            RGB (0,128,0)       -> DarkGreenB
+            RGB (165,42,42)     -> BrownB
+            RGB (255,255,0)     -> BrownB
+            RGB (0,0,139)       -> DarkBlueB
+            RGB (0,0,255)       -> DarkBlueB
+            RGB (128,0,128)     -> PurpleB
+            RGB (255,0,255)     -> PurpleB
+            RGB (0,139,139)     -> DarkCyanB
+            RGB (0,255,255)     -> DarkCyanB
+            RGB (165,165,165)   -> WhiteB
+            RGB (255,255,255)   -> WhiteB
+            Default         -> DefaultB
+            _               -> WhiteB
 

@@ -557,10 +557,12 @@ pairContent (Pair p) =
         f <- peek fPtr
         b <- peek bPtr
         return (Color (fromIntegral f), Color (fromIntegral b))
+
 foreign import ccall unsafe pair_content :: CShort -> Ptr CShort -> Ptr CShort -> IO CInt
 
 canChangeColor :: IO Bool
 canChangeColor = liftM (/= 0) can_change_color
+
 foreign import ccall unsafe can_change_color :: IO (#type bool)
 
 initColor :: Color -> (Int, Int, Int) -> IO ()
@@ -579,7 +581,9 @@ colorContent (Color c) =
         g <- peek gPtr
         b <- peek bPtr
         return (fromIntegral r, fromIntegral g, fromIntegral b)
-foreign import ccall unsafe color_content :: CShort -> Ptr CShort -> Ptr CShort -> Ptr CShort -> IO CInt
+
+foreign import ccall unsafe 
+    color_content :: CShort -> Ptr CShort -> Ptr CShort -> Ptr CShort -> IO CInt
 
 foreign import ccall unsafe "YiCurses.h hs_curses_color_pair" 
     colorPair :: Pair -> (#type chtype)

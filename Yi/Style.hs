@@ -1,4 +1,3 @@
-{-# OPTIONS -#include YiUtils.h #-}
 -- 
 -- Copyright (c) 2004 Don Stewart - http://www.cse.unsw.edu.au/~dons
 -- 
@@ -24,8 +23,12 @@
 
 module Yi.Style (
 
-        UIStyle(..), Style(..), ui,
-        ForegroundColor(..), BackgroundColor(..),
+        Color(..),              -- a color defn
+        Style(..),          -- a pair of foreground and background
+        UIStyle(..), ui,    -- a set of ui component colours, and a default
+
+        black, grey, darkRed, red, darkGreen, green, brown, yellow,
+        darkBlue, blue, purple, magenta, darkCyan, cyan, white, brightWhite,
 
    ) where
 
@@ -42,62 +45,49 @@ data UIStyle =
      }
 
 --
--- | Foreground and background color pairs
---
-data Style = Style ForegroundColor BackgroundColor
-
---
 -- | Default settings. Need to map (Color,Color) -> Pair
 --
 ui :: UIStyle
 ui = UIStyle {
-         window             = Style DefaultF     DefaultB
-        ,modeline           = Style BlackF       DarkCyanB
-        ,modeline_focused   = Style BrightWhiteF DarkCyanB
-        ,eof                = Style DarkBlueF    DefaultB
---      ,error_messages     = Style BrightWhiteF DarkRedB
+         window             = Style Default      Default
+        ,modeline           = Style black        darkCyan 
+        ,modeline_focused   = Style brightWhite  darkCyan 
+        ,eof                = Style darkBlue     Default
+--      ,error_messages     = Style BrightWhiteF DarkRed
      } 
 
 --
--- Nicer, user-visible colour defs.
+-- | Foreground and background color pairs
 --
--- We separate colours into dark and bright colours, to prevent users
--- from erroneously constructing bright colours for dark backgrounds,
--- which doesn't work.
+data Style = Style Color Color
 
 --
--- Foreground colours
+-- our representation of colours
 --
-data ForegroundColor
-    = BlackF
-    | GreyF
-    | DarkRedF
-    | RedF
-    | DarkGreenF
-    | GreenF
-    | BrownF
-    | YellowF
-    | DarkBlueF
-    | BlueF
-    | PurpleF
-    | MagentaF
-    | DarkCyanF
-    | CyanF
-    | WhiteF
-    | BrightWhiteF
-    | DefaultF
+data Color
+    = RGB (Int,Int,Int)
+    | Default
+    -- .. anything else
 
 --
--- Background colors can't be bright.
+-- Some colours (derivied from proxima/src/common/CommonTypes.hs)
 --
-data BackgroundColor
-    = BlackB
-    | DarkRedB
-    | DarkGreenB
-    | BrownB
-    | DarkBlueB
-    | PurpleB
-    | DarkCyanB
-    | WhiteB
-    | DefaultB
+black, grey, darkRed, red, darkGreen, green, brown, yellow          :: Color
+darkBlue, blue, purple, magenta, darkCyan, cyan, white, brightWhite :: Color
+black       = RGB (0,0,0)
+grey        = RGB (128,128,128)
+darkRed     = RGB (139,0,0)
+red         = RGB (255,0,0)
+darkGreen   = RGB (0,100,0)
+green       = RGB (0,128,0)
+brown       = RGB (165,42,42)
+yellow      = RGB (255,255,0)
+darkBlue    = RGB (0,0,139)
+blue        = RGB (0,0,255)
+purple      = RGB (128,0,128)
+magenta     = RGB (255,0,255)
+darkCyan    = RGB (0,139,139) 
+cyan        = RGB (0,255,255)
+white       = RGB (165,165,165)
+brightWhite = RGB (255,255,255)
 

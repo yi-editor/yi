@@ -47,7 +47,7 @@ import Yi.Lexers                 hiding  ( Action  )
 import qualified Yi.Keymap.Vim as Default ( keymap )
 
 -- need to #define this
-import Yi.Curses.UI               hiding ( plus ) -- so we can see key defns
+import Yi.Curses.UI               hiding ( plus, Color ) -- so we can see key defns
 
 settings :: Config
 settings = Config { keymap = Default.keymap, style = ui }
