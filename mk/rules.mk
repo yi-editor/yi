@@ -108,13 +108,13 @@ $(GHCI_LIBRARY) : $(LIBOBJS)
 $(PKG).conf: $(PKG).conf.in.cpp
 	cpp < $(PKG).conf.in.cpp | sed 's/""//g;s/\[ *,/[ /g;/^#/d' > $(PKG).conf.in
 	if [ ! -f $(PKG).conf ]; then echo [] > $(PKG).conf ; fi
-	env PREFIX=`pwd`/$(TOPDIR) $(GHC_PKG) $(GHC_PKG_DEFINES) --force -f $(PKG).conf -u < $(PKG).conf.in
+	env PREFIX=`pwd`/$(TOPDIR) CURSES=$(CURSES) $(GHC_PKG) --force -f $(PKG).conf -u < $(PKG).conf.in
 
 # installable package.conf
 $(PKG).conf.install: $(PKG).conf.in.cpp
 	cpp -DINSTALLING < $(PKG).conf.in.cpp | sed 's/""//g;s/\[ *,/[ /g;/^#/d' > $(PKG).conf.install.in
 	if [ ! -f $(PKG).conf.install ]; then echo [] > $(PKG).conf.install ; fi
-	env PREFIX=$(PREFIX) $(GHC_PKG) $(GHC_PKG_DEFINES) --force -f $(PKG).conf.install -u < $(PKG).conf.install.in
+	env PREFIX=$(PREFIX) CURSES=$(CURSES) $(GHC_PKG) --force -f $(PKG).conf.install -u < $(PKG).conf.install.in
 
 EXTRA_CLEANS+= $(PKG).conf.install $(PKG).conf $(PKG).conf.in $(PKG).conf.install.in *.old
 
