@@ -74,7 +74,10 @@ globalKeyTable = unsafePerformIO newKeyTable
 -- Undo/Redo action
 
 -- evil
+getPoint :: IO Int
 getPoint = do (_, _, _, _, p, _) <- bufInfoE; return p
+
+setPoint :: Int -> Action
 setPoint = gotoPoint
 
 saveExcursion :: IO a -> IO a
@@ -103,23 +106,23 @@ setUndoRedoState :: ([URAction], [URAction]) -> IO ()
 setUndoRedoState = writeIORef undoRedoState
 
 doURAction :: IO URAction -> Action
-doURAction action = do (undo, redo) <- readIORef undoRedoState
+doURAction action = do (undos, _redos) <- readIORef undoRedoState
 		       u <- action
-		       setUndoRedoState (u : undo, []) -- doing something kills the redo state!
+		       setUndoRedoState (u : undos, []) -- doing something kills the redo state!
 		       
 undo :: Action
-undo = do (undo, redo) <- readIORef undoRedoState
-	  case undo of 
+undo = do (undos, redos) <- readIORef undoRedoState
+	  case undos of 
 		    []     -> msgE "No more undos"
 		    ((AC x):xs) -> do r <- x
-				      setUndoRedoState (xs, r : redo)
+				      setUndoRedoState (xs, r : redos)
 
 redo :: Action
-redo = do (undo, redo) <- readIORef undoRedoState
-	  case redo of 
+redo = do (undos, redos) <- readIORef undoRedoState
+	  case redos of 
 		    []     -> msgE "No more redos"
 		    ((AC x):xs) -> do u <- x
-				      setUndoRedoState (u : undo, xs)
+				      setUndoRedoState (u : undos, xs)
 
 -- ---------------------------------------------------------------------
 
