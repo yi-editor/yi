@@ -199,6 +199,7 @@ moveCmdFM = M.fromList $
     ,('j',          down)
     ,(keyDown,      down)
     ,('\^J',        down)
+    ,('\^L',        const refreshE)
     ,('\^N',        down)
     ,('\r',         down)
 
