@@ -217,7 +217,6 @@ upScreenE = do
     withWindow_ moveUpW
 
 -- | Scroll down 1 screen
--- Inefficient
 downScreenE :: IO ()
 downScreenE = do
     (Just w) <- getWindow  -- better be a window open..
@@ -330,7 +329,7 @@ splitE = do
     i     <- sizeWindows
     (y,_) <- screenSize
     let (sy,r) = getY y i
-    if sy + r <= 4
+    if sy + r <= 4  -- min window size
         then msgE "Not enough room to split"
         else do
     mw <- getWindow

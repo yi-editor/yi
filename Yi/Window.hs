@@ -125,9 +125,8 @@ getPercent a b = show p ++ "%"
 --
 
 --
--- | The point moves backwards in the buffer, but the cursor doesn't
--- change positions, unless we reach the top of the file. Once this
--- happens we move the cursor up the file too.
+-- | The point moves backwards in the buffer, but the screen doesn't
+-- scroll, until we reach the top of the screen.
 --
 moveUpW :: Buffer a => Window -> a -> IO Window
 moveUpW w b | lineno w == 1 = return w

@@ -132,7 +132,7 @@ redraw = do
 -- TODO set cursor invisible
 --
 drawWindow :: Window -> IO ()
-drawWindow (Window { bufkey=u, mode=m, origin=(_,_), 
+drawWindow win@(Window { bufkey=u, mode=m, origin=(_,_), 
                      height=h, width=w, tospnt=t } ) = do
     -- draw buffer contents
     b  <- getBufferWith u
@@ -140,7 +140,10 @@ drawWindow (Window { bufkey=u, mode=m, origin=(_,_),
     mapM_ (drawLine w) $ take (h-1) $ (lines ss) ++ repeat "~"
 
     -- draw modeline
-    cset_attr (Curses.setReverse Curses.attr0 True , Curses.Pair (0))
+    cset_attr (setReverse Curses.attr0 True, Pair 0)
+    mwin <- getWindow
+    when (isJust mwin && fromJust mwin == win) $ return ()
+       -- set it some color
     drawLine w m
     reset
     
