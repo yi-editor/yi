@@ -38,6 +38,7 @@ exposed-modules:
 	Yi.Keymap
 	Yi.Lexers
 	Yi.Locale
+	Yi.Map
 	Yi.MkTemp
 	Yi.Regex
 	Yi.Style

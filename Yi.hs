@@ -29,6 +29,8 @@ import qualified Yi.Editor  as Editor
 import qualified Yi.Core    as Core 
 import qualified Yi.Style   as Style
 
+import qualified Yi.Map as M
+
 import qualified Yi.Keymap.Vi    as Vi
 import qualified Yi.Keymap.Vim   as Vim
 import qualified Yi.Keymap.Nano  as Nano
@@ -37,7 +39,6 @@ import qualified Yi.Keymap.Nano  as Nano
 import qualified Yi.Curses.UI as UI
 
 import Data.IORef
-import Data.FiniteMap
 
 import Control.Monad            ( liftM, when )
 import Control.Concurrent       ( myThreadId, throwTo )
@@ -66,8 +67,8 @@ data Opts = Help
 --
 -- In case the user wants to start with a certain editor
 --
-editorFM :: FiniteMap [Char] ([Char] -> [Editor.Action])
-editorFM = listToFM $
+editorFM :: M.Map [Char] ([Char] -> [Editor.Action])
+editorFM = M.fromList $
     [("vi",     Vi.keymap)
     ,("vim",    Vim.keymap)
     ,("nano",   Nano.keymap)
@@ -100,7 +101,7 @@ do_opts (o:oo) = case o of
     Libdir _ -> do_opts oo  -- ignore -B flag. already handled in Boot.hs
     LineNo l -> writeIORef g_lineno ((read l) :: Int) >> do_opts oo
 
-    EditorNm e -> case lookupFM editorFM e of
+    EditorNm e -> case M.lookup e editorFM of
                     Just km -> do
                         (k,f,g) <- readIORef g_settings
                         writeIORef g_settings (k { Editor.keymap = km }, f, g)
