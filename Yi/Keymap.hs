@@ -116,7 +116,7 @@ key I c | c == keyPPage = upScreenE
         | c == keyNPage = downScreenE
 
 key I c  = do 
-        (_,s) <- bufInfoE
+        (_,s,_) <- bufInfoE
         when (s == 0) $ insertE '\n' -- vi behaviour at start of file
         insertE c
 
@@ -164,7 +164,7 @@ key _  _  = nopE
 --
 viWrite :: Action
 viWrite = do 
-    (f,s) <- bufInfoE 
+    (f,s,_) <- bufInfoE 
     fwriteE
     msgE $ show f++" "++show s ++ "C written"
 

@@ -282,10 +282,10 @@ msgClrE = do modifyEditor_ $ \e -> return e { cmdline = [] }
              UI.drawCmdLine [] -- immediately draw
 
 -- | File info
-bufInfoE :: IO (FilePath, Int)
+bufInfoE :: IO (FilePath, Int, Int)
 bufInfoE = withWindow $ \w b -> do
     s  <- sizeB b
-    return (w, (nameB b, s))
+    return (w, (nameB b, s, lineno w))
 
 ------------------------------------------------------------------------
 -- | Window manipulation
@@ -323,6 +323,12 @@ fwriteE = withWindow_ $ \w b -> hPutB b (nameB b) >> return w
 -- | Split a second window onto this buffer :)
 splitE :: IO ()
 splitE = do
+    i     <- sizeWindows
+    (y,_) <- screenSize
+    let (sy,r) = getY y i
+    if sy + r <= 4
+        then msgE "Not enough room to split"
+        else do
     mw <- getWindow
     case mw of 
         Nothing -> nopE

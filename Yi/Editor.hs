@@ -218,6 +218,8 @@ newWindow b = modifyEditor $ \e -> do
 --
 -- What if all the windows are now closed?
 --
+-- Factor code into shiftFocus!
+--
 deleteWindow :: (Maybe Window) -> IO ()
 deleteWindow Nothing  = return ()
 deleteWindow (Just win) = modifyEditor_ $ \e -> do
@@ -271,12 +273,21 @@ getWindowInd = readEditor $ \e ->
 --
 -- | Set current window
 -- !! reset the buffer point from the window point
+-- 
+-- Factor in shift focus.
 --
 setWindow :: Window -> IO ()
-setWindow w = modifyEditor_ $ \(e :: Editor) -> do
-    let b = findBufferWith e (bufkey w)
-    moveTo b (pnt w)
-    return $ e { curwin = Just $ key w }
+setWindow w = modifyEditor_ $ \(e :: Editor) -> setWindow' e w
+
+--
+-- | Internal function to update window on focus or creation.
+--
+setWindow' :: Editor -> Window -> IO Editor
+setWindow' e w = do
+    let fm = windows e
+    let b  = findBufferWith e (bufkey w)
+    w' <- resetPoint w b
+    return $ e { windows = addToFM fm (key w') w', curwin = Just $ key w' } 
 
 --
 -- | How many windows do we have
@@ -303,7 +314,7 @@ withWindow_ f = modifyEditor_ $ \e -> do
         let w = findWindowWith e (curwin e)
             b = findBufferWith e (bufkey w)
         w' <- f w b
-        m'     <- updateModeLine b (width w') (pnt w')
+        m'     <- updateModeLine w' b
         let w'' = w' { mode = m' }
             ws = windows e
             e' = e { windows = addToFM ws (key w'') w'' }
@@ -317,7 +328,7 @@ withWindow f = modifyEditor $ \e -> do
         let w = findWindowWith e (curwin e)
             b = findBufferWith e (bufkey w)
         (w',v) <- f w b
-        m'     <- updateModeLine b (width w') (pnt w')
+        m'     <- updateModeLine w' b
         let w'' = w' { mode = m' }
             ws = windows e
             e' = e { windows = addToFM ws (key w'') w'' }
@@ -353,11 +364,7 @@ shiftFocus f = modifyEditor_ $ \(e :: Editor) -> do
         win = findWindowWith e k
     case elemIndex win ws of
         Nothing -> error "Editor: current window has been lost."
-        Just i -> let l = length ws
-                      w = ws !! ((f i) `mod` l)
-                      b = findBufferWith e (bufkey w)
-                  in do moveTo b (pnt w)
-                        return $ e { curwin = Just $ key w }
+        Just i -> let w = ws !! ((f i) `mod` (length ws)) in setWindow' e w
 
 -- ---------------------------------------------------------------------
 -- | Given a keymap function, set the user-defineable key map to that function

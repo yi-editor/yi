@@ -73,32 +73,41 @@ instance Ord Window where
 --
 emptyWindow :: Buffer a => a -> (Int,Int) -> IO Window
 emptyWindow b (h,w) = do
-    m  <- updateModeLine b w 0
     wu <- newUnique
-    return $ Window {
-                key       = wu
-               ,bufkey    = (keyB b)
-               ,mode      = m
-               ,origin    = (0,0)  -- TODO what about vnew etc. do we care?
-               ,height    = h-1    -- - 1 for the modeline
-               ,width     = w
-               ,cursor    = (0,0)  -- (y,x)
-               ,pnt       = 0      -- cache point when out of focus
-               ,lineno    = 1
-               ,tospnt    = 0
-               ,toslineno = 1      -- start on line 1
-             }
+    let win = Window {
+                    key       = wu
+                   ,bufkey    = (keyB b)
+                   ,mode      = []
+                   ,origin    = (0,0)  -- TODO what about vnew etc. do we care?
+                   ,height    = h-1    -- - 1 for the modeline
+                   ,width     = w
+                   ,cursor    = (0,0)  -- (y,x)
+                   ,pnt       = 0      -- cache point when out of focus
+                   ,lineno    = 1
+                   ,tospnt    = 0
+                   ,toslineno = 1      -- start on line 1
+              }
+    m <- updateModeLine win b
+    return win { mode = m }
 
 --
 -- | Given a buffer, and some information update the modeline
 --
-updateModeLine :: Buffer a => a -> Int -> Int -> IO String
-updateModeLine b w' p = do
-    let f = nameB b
-    s    <- sizeB b
+updateModeLine :: Buffer a => Window -> a -> IO String
+updateModeLine w' b = do
+    let f  = nameB b
+        ln = lineno w'
+        col= 1 + (snd $ cursor w')
+    p <- if ln == 0 then return 0 else indexOfEol b
+    s <- sizeB b
     let pct    = getPercent p s
-        spaces = replicate (w' - (2 + length f + length pct)) ' '
-    return $ "\"" ++ f ++ "\"" ++ spaces ++ pct
+        lns    = show ln
+        cols   = show col
+        spc'   = flip replicate ' ' (16 - length cols - length pct)
+        spaces = flip replicate ' ' 
+                            (width w' - (3 + sum (map length [f,lns,cols,pct,spc'])))
+
+    return $ "\"" ++ f ++ "\"" ++ spaces ++ lns ++ "," ++ cols ++ spc' ++ pct
 
 ------------------------------------------------------------------------
 --
@@ -324,4 +333,31 @@ resize y w b = do
                 x <- offsetFromSol b
                 return w' { toslineno = ln, tospnt = i , cursor = (0,x) }
         else return w'
+
+--
+-- | We've just gained focus. See if anything changed, and reset the
+-- cursor point appropriately
+--
+-- TODO still resets too often
+--
+resetPoint :: Buffer a => Window -> a -> IO Window 
+resetPoint w b = do
+    let op  = pnt w
+        oln = lineno w
+        y   = fst $ cursor w
+    moveTo b op         -- reset the point to what we think it should be
+    ln <- curLn b
+    p  <- pointB b      -- see where it actually got placed 
+    i  <- indexOfSol b
+    x  <- offsetFromSol b
+    let w' | op /= p      -- then the file shrunk under us. move to eof
+           = w {pnt = p,lineno = ln,toslineno = ln,tospnt = i,cursor = (0,x)}
+
+           | oln /= ln    -- our line moved or was killed
+           = w {pnt = p,lineno = ln,toslineno = ln,tospnt = i,cursor = (0,x)}
+
+           | otherwise    -- just check out x-offset is right
+           = w {pnt = p, cursor = (y,x)}
+    m <- updateModeLine w' b 
+    return w' { mode = m }
 

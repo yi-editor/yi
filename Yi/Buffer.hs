@@ -162,6 +162,9 @@ class Buffer a where
     -- | Index of start of line 
     indexOfSol    :: a -> IO Int
 
+    -- | Index of end of line 
+    indexOfEol    :: a -> IO Int
+
     -- | Move point to end of line
     moveToEol   :: a -> IO ()
 
@@ -181,10 +184,13 @@ class Buffer a where
     -- deleteLn    :: a -> IO ()
 
     -- | Move point up one line
-    lineUp :: a -> IO ()
+    lineUp      :: a -> IO ()
 
     -- | Move point down one line
-    lineDown :: a -> IO ()
+    lineDown    :: a -> IO ()
+
+    -- | Return the current line number
+    curLn       :: a -> IO Int
 
 -- ---------------------------------------------------------------------
 --
@@ -498,6 +504,14 @@ instance Buffer FBuffer where
         moveTo a i
         return j
 
+    -- indexOfEol   :: a -> IO Int
+    indexOfEol a = do
+        i <- pointB a
+        moveToEol a
+        j <- pointB a
+        moveTo a i
+        return j
+
     -- moveToEol   :: a -> IO ()
     moveToEol a = sizeB a >>= moveXorEol a
 
@@ -533,7 +547,8 @@ instance Buffer FBuffer where
         moveTo a p
         deleteN a (max 0 (q-p+r)) 
 
-    ------------------------------------------------------------------------
+    -- ---------------------------------------------------------------------
+    -- Line based movement and friends
 
     -- lineUp :: a -> IO ()
     lineUp b = do
@@ -549,6 +564,15 @@ instance Buffer FBuffer where
         moveToEol b
         rightB b
         moveXorEol b x  
+
+    -- curLn :: a -> IO Int
+    curLn (FBuffer _ _ mv) = withMVar mv $ \ref -> do
+        (FBuffer_ b (I# p) _ _) <- readIORef ref
+        let loop 0# lc = return (I# lc)
+            loop i  lc = do c <- readCharFromBuffer b i
+                            if c == '\n' then loop (i -# 1#) (lc +# 1#)
+                                         else loop (i -# 1#) lc
+        loop p 1#
 
 ------------------------------------------------------------------------
 
