@@ -209,9 +209,9 @@ allocFBuffer_ sz@(I# n) = IO $ \st ->
 
 --
 -- | get a new 'FBuffer', 2 * size of @cs@, by default, filled from cs.
--- TODO what if it is an empty file? bufPnt isn't right.
 --
 newFBuffer :: String -> [Char] -> IO FBuffer
+newFBuffer f []  = newFBuffer f ['\n']  -- NB empty file semantics
 newFBuffer f cs = do
     let size = length cs
     fb@(FBuffer_ b _ _ _) <- allocFBuffer_ (size+2048) -- TODO
@@ -321,7 +321,7 @@ instance Buffer FBuffer where
     -- moveTo     :: a -> Int -> IO ()
     moveTo (FBuffer _ _ mv) i = withMVar mv $ \ref ->
         modifyIORef ref $ \fb@(FBuffer_ _ _ e _) ->
-            let i' = rawMoveTo i e in fb { bufPnt=i' }
+            let i' = inBounds i e in fb { bufPnt=i' }
 
 
     -- readB      :: a -> IO Char
@@ -332,7 +332,7 @@ instance Buffer FBuffer where
     -- readAtB :: a -> Int -> IO Char
     readAtB (FBuffer _ _ mv) i = withMVar mv $ \ref -> do
         (FBuffer_ b _ e _) <- readIORef ref
-        let (I# i') = rawMoveTo i e in readCharFromBuffer b i'
+        let (I# i') = inBounds i e in readCharFromBuffer b i'
 
     -- writeB :: a -> Char -> IO ()
     writeB (FBuffer _ _ mv) c = withMVar mv $ \ref ->
@@ -343,7 +343,7 @@ instance Buffer FBuffer where
     -- writeAtB   :: a -> Int -> Char -> IO ()
     writeAtB (FBuffer _ _ mv) i c = withMVar mv $ \ref -> 
         modifyIORefIO ref $ \fb@(FBuffer_ b _ e _) -> do
-            let i' = rawMoveTo i e
+            let i' = inBounds i e
             writeCharToBuffer b i' c
             return fb
 
@@ -367,7 +367,9 @@ instance Buffer FBuffer where
     -- deleteN    :: a -> Int -> IO ()
     deleteN (FBuffer _ _ mv) n = withMVar mv $ \ref ->
         modifyIORefIO ref $ \fb@(FBuffer_ buf p e _) -> do
-            i  <- shiftChars buf (p+n) p (e-p-n)
+            let src = inBounds (p + n) e
+                len = max 0 (e-p-n)
+            i  <- shiftChars buf src p len
             let p' | p == 0    = p     -- go no further!
                    | i == p    = p-1   -- shift back if at eof
                    | otherwise = p
@@ -439,10 +441,10 @@ instance Buffer FBuffer where
 ------------------------------------------------------------------------
 
 -- | calculate whether a move is in bounds.
-rawMoveTo :: Int -> Int -> Int
-rawMoveTo i end | i <= 0    = 0
-                | i >= end  = end - 1
-                | otherwise = i
+inBounds :: Int -> Int -> Int
+inBounds i end | i <= 0    = 0
+               | i >= end  = end - 1
+               | otherwise = i
     
 
 --
