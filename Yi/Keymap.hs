@@ -25,7 +25,6 @@
 
 module Yi.Keymap ( keymap ) where
 
-import Yi.Editor
 import Yi.Core
 
 import Data.Char
@@ -145,7 +144,7 @@ key E k = msgClrE >> loop [k]
 key _  _  = noopE
 
 -- ---------------------------------------------------------------------
--- | Try and write a file in the manner of vi/vim
+-- | Try and write a file in the manner of vi\/vim
 --
 viWrite :: Action
 viWrite = do 

@@ -33,6 +33,9 @@
 
 module Yi.Core (
 
+        -- * Type of core functions
+        Action,
+
         -- * Construction and destruction
         startE,
         endE,
@@ -97,6 +100,11 @@ import System.Exit
 import Control.Exception    ( ioErrors, catchJust, handleJust )
 
 import GHC.Base
+
+-- ---------------------------------------------------------------------
+-- | The type of user-bindable functions
+--
+type Action = IO ()
 
 -- ---------------------------------------------------------------------
 -- | Start up the editor, setting any state with the user preferences
@@ -310,4 +318,5 @@ infoE :: IO (FilePath, Int)
 infoE = withBuffer $ \b -> do
     s  <- sizeB b
     return (nameB b, s)
+
 

@@ -27,9 +27,10 @@ module Yi.Editor where
 
 import Yi.Buffer
 
--- | recursive module stuff
+-- recursive module stuff
 import {-# SOURCE #-} qualified Yi.Config as Config ( settings )
 import {-# SOURCE #-} qualified Yi.Keymap as Keymap ( keymap )
+-- import Yi.Keymap as Keymap ( keymap )
 
 import Data.List                ( elemIndex )
 import Data.FiniteMap
@@ -230,21 +231,16 @@ setUserSettings cs = modifyEditor_ $ \(e :: Editor) -> return $ e { editSettings
 --
 -- | retrieve the user-defineable key map
 --
-getKeyMap :: IO (Char -> Action)
+getKeyMap :: IO (Char -> IO ())
 -- getKeyMap = readEditor $ \(e :: Editor) -> keyMap (editSettings e)
 getKeyMap = return $ Keymap.keymap
-
--- ---------------------------------------------------------------------
--- | The type of user-bindable functions
---
-type Action = IO ()
 
 ------------------------------------------------------------------------
 --
 -- | All the user-defineable settings
 --
 data Config = Config {
-            keyMap       :: Char -> Action       -- ^ bind keys to editor actions
+            keyMap       :: Char -> IO ()        -- ^ bind keys to editor actions
         -- ,styles       :: [StyleSpec]
     }
 

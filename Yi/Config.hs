@@ -19,7 +19,7 @@ module Yi.Config (
 
   ) where
 
-import Yi.Editor    ( Config(..), Action )
+import Yi.Editor    ( Config(..) )
 import Yi.Core
 
 --

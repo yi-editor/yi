@@ -185,8 +185,8 @@ class Buffer a where
 -- TODO add attributes hash: isModified, isVisible etc
 
 data FBuffer = 
-        FBuffer FilePath        -- ^ immutable name
-                Unique          -- ^ immutable unique key
+        FBuffer FilePath        -- immutable name
+                Unique          -- immutable unique key
                 !(MVar (IORef FBuffer_))
 
 data FBuffer_ = FBuffer_ {
@@ -208,7 +208,7 @@ instance Show FBuffer where
 -- | Construction
 
 -- | Get a new 'FBuffer' filled from FilePath.
--- Based on GHC's Utils/StringBuffer.hs
+-- Based on GHC's Utils\/StringBuffer.hs
 --
 hNewFBuffer :: FilePath -> IO FBuffer
 hNewFBuffer f = do
