@@ -67,7 +67,6 @@ import Data.List
 import Data.IORef
 
 import Control.Monad                ( when )
-import Control.Concurrent.MVar      ( MVar )
 import qualified Control.Exception  ( catch )
 
 import System.IO.Unsafe             ( unsafePerformIO )
@@ -75,9 +74,9 @@ import System.IO.Unsafe             ( unsafePerformIO )
 --
 -- | how to initialise the ui
 --
-start :: (MVar ()) -> IO ()
-start mv = do
-    Curses.initCurses mv                -- initialise the screen
+start :: (IO ()) -> IO ()
+start fn = do
+    Curses.initCurses fn                -- initialise the screen
     initcolours
     Curses.keypad Curses.stdScr True    -- grab the keyboard
 

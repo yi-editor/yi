@@ -154,7 +154,6 @@ import Control.Monad
 import Control.Exception    ( ioErrors, handle, throwIO, handleJust, assert )
 import Control.Concurrent   ( threadWaitRead, takeMVar, forkIO )
 import Control.Concurrent.Chan
-import Control.Concurrent.MVar  ( tryTakeMVar )
 
 import GHC.Exception hiding ( throwIO )
 
@@ -177,7 +176,7 @@ startE (confs,fn,fn') ln mfs = do
 
     Editor.setUserSettings confs fn fn'
 
-    UI.start (windowResized)
+    UI.start refreshE
     sz <- UI.screenSize
     modifyEditor_ $ \e -> return $ e { scrsize = sz }
 
@@ -218,14 +217,12 @@ startE (confs,fn,fn') ln mfs = do
         refreshLoop = repeatM_ $ do 
                         takeMVar editorModified
                         handleJust ioErrors (errorE.show) UI.refresh 
-                        mv <- tryTakeMVar windowResized
-                        when (isJust mv) refreshE -- got sigwinch
 
 -- ---------------------------------------------------------------------
 -- | How to read from standard input
 --
 getcE :: IO Char
-getcE = UI.getKey (return ())
+getcE = UI.getKey refreshE
 
 -- 
 -- | The editor main loop. Read key strokes from the ui and interpret

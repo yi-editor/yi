@@ -37,6 +37,10 @@
 -- Sections of the quoted documentation are from the OpenBSD man pages, which
 -- are distributed under a BSD license.
 --
+-- A useful reference is: 
+--        /Writing Programs with NCURSES/, by Eric S. Raymond and Zeyd
+--        M. Ben-Halim, <http://dickey.his.com/ncurses/>
+--
 -- N.B doesn't work with Irix curses.h. This should be fixed.
 --
 
@@ -167,7 +171,6 @@ import Data.Maybe               ( isJust, fromJust )
 
 import Control.Monad
 import Control.Exception        ( bracket, bracket_ )
-import Control.Concurrent.MVar  ( MVar, putMVar )
 
 import Foreign
 import CForeign
@@ -188,8 +191,8 @@ import System.Posix.Signals
 --
 -- | Start it all up
 --
-initCurses :: MVar () -> IO ()
-initCurses mv = do
+initCurses :: IO () -> IO ()
+initCurses fn = do
     initScr
     b <- hasColors
     when b $ startColor >> useDefaultColors
@@ -197,15 +200,13 @@ initCurses mv = do
     echo False
     nl False
     intrFlush True
---  leaveOk True
     leaveOk False
     keypad stdScr True
     defineKey (#const KEY_UP) "\x1b[1;2A"
     defineKey (#const KEY_DOWN) "\x1b[1;2B"
     defineKey (#const KEY_SLEFT) "\x1b[1;2D"
     defineKey (#const KEY_SRIGHT) "\x1b[1;2C"
-    installHandler (fromJust cursesSigWinch) 
-                   (Catch (putMVar mv ())) Nothing >> return ()
+    installHandler (fromJust cursesSigWinch) (Catch fn) Nothing >> return ()
 
 ------------------------------------------------------------------------
 

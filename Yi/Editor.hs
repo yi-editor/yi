@@ -107,13 +107,6 @@ editorModified = unsafePerformIO $ newMVar ()
 {-# NOINLINE editorModified #-}
 
 --
--- The ui needs to know if a sigwinch was delivered
---
-windowResized :: MVar ()
-windowResized = unsafePerformIO $ newEmptyMVar
-{-# NOINLINE windowResized #-}
-
---
 -- | The initial state
 --
 emptyEditor :: Editor
