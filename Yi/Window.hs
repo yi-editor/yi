@@ -83,7 +83,7 @@ emptyWindow b (h,w) = do
                    ,bufkey    = (keyB b)
                    ,mode      = Nothing
                    ,origin    = (0,0)  -- TODO what about vnew etc. do we care?
-                   ,height    = h-1    -- - 1 for the modeline
+                   ,height    = h-1    -- - 1 for the cmdline?
                    ,width     = w
                    ,cursor    = (0,0)  -- (y,x)
                    ,pnt       = 0      -- cache point when out of focus
@@ -409,23 +409,23 @@ indexOfSolAbove b n = do
 {-# SPECIALIZE indexOfSolAbove :: FBuffer -> Int -> IO Int #-}
 
 --
--- | Adjust the window's height-related fields, assuming a new window height
--- Now, if we know the height of the screen, and the number of lines,
--- center the line in the screen please.
+-- | Adjust the window's size-related fields, assuming a new window
+-- height, and width. Now, if we know the height of the screen, and the
+-- number of lines, center the line in the screen please.
 --
-resize :: Buffer a => Int -> Window -> a -> IO Window
-resize y w b = do
+resize :: Buffer a => Int -> Int -> Window -> a -> IO Window
+resize y x w b = do
     let topln = toslineno w
         ln    = lineno w
-        w'    = w { height = y }
+        w'    = w { height = y, width = x }
     if ln - topln + 1 >= y          -- old line isn't on screen now
         then do let gap   = min ln (y `div` 2)
                     topln'= ln - gap
-                x <- offsetFromSol b
+                x'<- offsetFromSol b
                 i <- indexOfSolAbove b gap
                 return w' { toslineno = topln', 
                             tospnt = i, 
-                            cursor = (gap,x) }
+                            cursor = (gap,max x x') }
         else return w'
 
 --

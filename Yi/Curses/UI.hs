@@ -64,16 +64,19 @@ import Data.Char                    ( ord )
 import Data.Maybe                   ( isNothing, isJust, fromJust )
 import Data.List
 import Data.IORef
+
 import Control.Monad                ( when )
+import Control.Concurrent.MVar      ( MVar )
 import qualified Control.Exception  ( catch )
+
 import System.IO.Unsafe             ( unsafePerformIO )
 
 --
 -- | how to initialise the ui
 --
-start :: IO ()
-start = do
-    Curses.initCurses                   -- initialise the screen
+start :: (MVar ()) -> IO ()
+start mv = do
+    Curses.initCurses mv                -- initialise the screen
     initcolours
     Curses.keypad Curses.stdScr True    -- grab the keyboard
 
@@ -109,8 +112,7 @@ getKey refresh_fn = do
     case k of
         Nothing -> getKey refresh_fn
         Just k' | k' == Curses.keyResize 
-                -> do -- snew <- get_size s
-                      refresh_fn --snew
+                -> do refresh_fn
                       getKey refresh_fn
                 | otherwise -> return k'
  

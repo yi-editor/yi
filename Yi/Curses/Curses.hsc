@@ -165,18 +165,22 @@ import Data.List
 import Data.Ix                  ( Ix )
 import Data.Maybe               ( isJust, fromJust )
 
-import Foreign
-import CForeign
 import Control.Monad
 import Control.Exception        ( bracket, bracket_ )
+import Control.Concurrent.MVar  ( MVar, putMVar )
+
+import Foreign
+import CForeign
 
 #if __GLASGOW_HASKELL__ < 603
 import Data.Bits
 #endif
 
-#ifdef SIGWINCH
-import System.Posix.Signals     ( Signal )
-#endif
+-- #ifdef SIGWINCH
+import System.Posix.Signals
+-- #endif
+
+#include <signal.h>
 
 #include <YiCurses.h>
 
@@ -184,8 +188,8 @@ import System.Posix.Signals     ( Signal )
 --
 -- | Start it all up
 --
-initCurses :: IO ()
-initCurses = do
+initCurses :: MVar () -> IO ()
+initCurses mv = do
     initScr
     b <- hasColors
     when b $ startColor >> useDefaultColors
@@ -200,6 +204,8 @@ initCurses = do
     defineKey (#const KEY_DOWN) "\x1b[1;2B"
     defineKey (#const KEY_SLEFT) "\x1b[1;2D"
     defineKey (#const KEY_SRIGHT) "\x1b[1;2C"
+    installHandler (fromJust cursesSigWinch) 
+                   (Catch (putMVar mv ())) Nothing >> return ()
 
 ------------------------------------------------------------------------
 
@@ -1270,22 +1276,23 @@ getCh = do
 
 resizeTerminal :: Int -> Int -> IO ()
 
-#ifdef HAVE_RESIZETERM
+-- #ifdef HAVE_RESIZETERM
 
 resizeTerminal a b = throwIfErr_ "resizeterm"  $ resizeterm (fi a) (fi b)
 
-foreign import ccall unsafe "YiCurses.h resizeterm" resizeterm :: CInt -> CInt -> IO CInt
+foreign import ccall unsafe "YiCurses.h resizeterm" 
+    resizeterm :: CInt -> CInt -> IO CInt
 
-#else
+-- #else
 
-resizeTerminal _ _ = return ()
+-- resizeTerminal _ _ = return ()
 
-#endif
+-- #endif
 
-#ifdef SIGWINCH
+-- #ifdef SIGWINCH
 cursesSigWinch :: Maybe Signal
 cursesSigWinch = Just (#const SIGWINCH)
-#endif
+-- #endif
 
 ------------
 -- Test case
@@ -1330,7 +1337,8 @@ withMouseEventMask :: [ButtonEvent] -> IO a -> IO a
 
 #ifdef KEY_MOUSE
 
-foreign import ccall unsafe "YiCurses.h mousemask" mousemask :: (#type mmask_t) -> Ptr (#type mmask_t) -> IO (#type mmask_t)
+foreign import ccall unsafe "YiCurses.h mousemask" 
+    mousemask :: (#type mmask_t) -> Ptr (#type mmask_t) -> IO (#type mmask_t)
 
 withMouseEventMask bes action = do
     ov <- alloca (\a ->  mousemask (besToMouseMask bes) a >> peek a) 

@@ -37,6 +37,7 @@ module Yi.Core (
         quitE,          -- :: Action
         rebootE,        -- :: Action
         reloadE,        -- :: Action
+        refreshE,       -- :: Action
         eventLoop,
 
         -- * Global editor actions
@@ -153,6 +154,7 @@ import Control.Monad
 import Control.Exception    ( ioErrors, handle, throwIO, handleJust, assert )
 import Control.Concurrent   ( threadWaitRead, takeMVar, forkIO )
 import Control.Concurrent.Chan
+import Control.Concurrent.MVar  ( tryTakeMVar )
 
 import GHC.Exception hiding ( throwIO )
 
@@ -175,7 +177,7 @@ startE (confs,fn,fn') ln mfs = do
 
     Editor.setUserSettings confs fn fn'
 
-    UI.start
+    UI.start (windowResized)
     sz <- UI.screenSize
     modifyEditor_ $ \e -> return $ e { scrsize = sz }
 
@@ -209,12 +211,17 @@ startE (confs,fn,fn') ln mfs = do
 
         --
         -- | When the editor state isn't being modified, refresh, then wait for
-        -- it to be modified again.
+        -- it to be modified again. Also, check if the window got
+        -- resized, and take the opportunity to refresh.
         --
         refreshLoop :: IO ()
         refreshLoop = repeatM_ $ do 
-                            takeMVar editorModified
-                            handleJust ioErrors (errorE.show) UI.refresh 
+                        takeMVar editorModified
+                        handleJust ioErrors (errorE.show) UI.refresh 
+                        mv <- tryTakeMVar windowResized -- check sigwinch
+                        case mv of
+                            Nothing -> nopE
+                            Just _  -> refreshE -- not working?
 
 -- ---------------------------------------------------------------------
 -- | How to read from standard input
@@ -271,6 +278,14 @@ reloadE = do
         Config km sty <- fn
         return e { curkeymap = km, uistyle = sty }
     UI.initcolours
+
+-- | Reset the size, and force a complete redraw
+refreshE :: Action
+refreshE = do
+    UI.end -- it is a hack to manually toggle the ui to get the new size
+    UI.start windowResized 
+    sz <- UI.screenSize
+    doResizeAll sz
 
 -- | Do nothing
 nopE :: Action

@@ -107,6 +107,13 @@ editorModified = unsafePerformIO $ newMVar ()
 {-# NOINLINE editorModified #-}
 
 --
+-- The ui needs to know if a sigwinch was delivered
+--
+windowResized :: MVar ()
+windowResized = unsafePerformIO $ newEmptyMVar
+{-# NOINLINE windowResized #-}
+
+--
 -- | The initial state
 --
 emptyEditor :: Editor
@@ -249,9 +256,8 @@ newWindow b = modifyEditor $ \e -> do
     let (h,w) = scrsize e
         wls   = eltsFM $ windows e
         (y,r) = getY h (1 + (length wls))   -- should be h-1..
-    wls' <- resizeAll e wls y
+    wls' <- resizeAll e wls y w
     wls''<- if wls' == [] then return wls' else turnOnML e wls'
-
     win  <- emptyWindow b (y+r,w) 
     win' <- if wls == [] then return win else liftM head $ turnOnML e [win]
     let e' = e { windows = listToFM $ mkAssoc (win':wls'') }
@@ -271,6 +277,7 @@ deleteWindow (Just win) = modifyEditor_ $ \e -> do
     let ws    = delFromFM (windows e) (key win) -- delete window
         oldkey= bufkey win
         wls   = eltsFM ws
+        x     = snd $ scrsize e
         (y,r) = getY ((fst $ scrsize e) - 1) (length wls) -- why -1?
 
     -- find any windows onto the same buffer, if none, delete this buffer
@@ -282,26 +289,40 @@ deleteWindow (Just win) = modifyEditor_ $ \e -> do
             return $ e { buffers = delFromFM (buffers e) oldkey }
 
     -- resize, then grab a random window
-    wls' <- resizeAll e' wls y
+    wls' <- resizeAll e' wls y x
     case wls' of   
         []       -> return e' { windows = emptyFM }
         (win':xs) -> do
             let fm = listToFM $ mkAssoc wls'
-            win'' <- resize (y+r) win' (findBufferWith e' (bufkey win'))
+            win'' <- resize (y+r) x win' (findBufferWith e' (bufkey win'))
             let win''' = if xs == [] then win'' { mode = Nothing } else win''
             let e'' = e' { windows = addToFM fm (key win''') win''' }
             setWindow' e'' win'''
 
 -- | Update height of windows in window set
-resizeAll :: Editor -> [Window] -> Int -> IO [Window]
-resizeAll e wls y = flip mapM wls (\w -> resize y w $ findBufferWith e (bufkey w))
+resizeAll :: Editor -> [Window] -> Int -> Int -> IO [Window]
+resizeAll e wls y x = flip mapM wls (\w -> 
+                            resize y x w $ findBufferWith e (bufkey w))
+
+-- | Reset the heights and widths of all the windows
+doResizeAll :: (Int,Int) -> IO ()
+doResizeAll sz@(h,w) = modifyEditor_ $ \e -> do
+    let wls   = eltsFM (windows e)
+        (y,r) = getY h (length wls) -- why -1?
+
+    wls'  <- mapM (doresize e w y) (init wls)
+    wls'' <- let win = last wls 
+            in doresize e w (y+r-1) win >>= \w' -> return (w' : wls')
+
+    return e { scrsize = sz, windows = listToFM $ mkAssoc wls'' }
+
+    where doresize e x y win = resize y x win $ findBufferWith e (bufkey win)
 
 -- | Turn on modelines of all windows
 turnOnML :: Editor -> [Window] -> IO [Window]
 turnOnML e = mapM $ \w -> do let win = w { mode = Just undefined }
                              m <- updateModeLine win $ findBufferWith e (bufkey w)
                              return w { mode = m }
-
 
 -- | calculate window heights, given all the windows and current height
 -- doesn't take into account modelines
