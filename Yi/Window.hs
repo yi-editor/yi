@@ -142,6 +142,26 @@ moveDownW w b = do
     if ll then return w      -- eof, go no further
           else lineDown b >> incY w b >>= flip update b
 
+-- ---------------------------------------------------------------------
+-- | Wacky moveToW function
+
+-- roughly resetPoint. so refactor!
+
+moveToW :: Buffer a => Int -> Window -> a -> IO Window
+moveToW np w b = do
+    moveTo b np
+    ln <- curLn b
+    p  <- pointB b      -- see where it actually got placed 
+    x  <- offsetFromSol b
+    let gap   = min (ln-1) ((height w) `div` 2) -- why -1?
+        topln = ln - gap
+    i <- indexOfSolAbove b gap
+    let w' = w {pnt = p, lineno = ln,
+                toslineno = topln, tospnt = i,
+                cursor = (gap,x)}
+    m <- updateModeLine w' b 
+    return w' { mode = m }
+
 ------------------------------------------------------------------------
 --
 -- | Move the cursor left or start of line
@@ -356,6 +376,8 @@ resize y w b = do
 -- cursor point appropriately. The idea is that if anything changed, we
 -- position the working line in the middle of the window.
 --
+-- code duplicated in moveToW
+--
 resetPoint :: Buffer a => Window -> a -> IO Window 
 resetPoint w b = do
     let op  = pnt w
@@ -374,6 +396,5 @@ resetPoint w b = do
                             cursor = (gap,x)}
           else return w {pnt = p, cursor = (y,x)} -- just check out x-offset is right
     m <- updateModeLine w' b 
-
     return w' { mode = m }
 

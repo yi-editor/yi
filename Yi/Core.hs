@@ -293,6 +293,19 @@ setRegE s = modifyEditor_ $ \e -> return e { yreg = s }
 -- | Return the contents of the yank register
 getRegE :: IO String
 getRegE = readEditor yreg
+ 
+-- ---------------------------------------------------------------------
+
+-- | Searching. Search for string, and move point to that position.
+searchE :: String -> IO ()
+searchE s = do
+    mp <- withWindow $ \w b -> do
+            rightB b
+            mp <- searchB b s
+            return (w,mp)
+    case mp of
+        Just p  -> withWindow_ $ moveToW p
+        Nothing -> msgE ("Pattern not found: "++s) -- TODO vi spec.
 
 ------------------------------------------------------------------------
 

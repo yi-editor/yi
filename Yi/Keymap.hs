@@ -173,6 +173,26 @@ cmd '\^G' = do
     msgE $ show f ++ " Line " ++ show ln ++ " ["++ pct ++"]" 
     nextCmd
 
+-- search!
+cmd '/' = do
+    msg []
+    let loop w  = do
+            k <- getcE
+            case () of {_
+                | k == '\n'         -> return (reverse w)
+                | k == '\r'         -> return (reverse w)
+                | k == '\BS'        -> del w >>= loop
+                | k == keyBackspace -> del w >>= loop
+                | otherwise         -> msg (reverse (k:w)) >> loop (k:w)
+            }
+    s <- loop []
+    searchE s
+    nextCmd
+
+    where msg s = msgE ('/' : s)
+          del []     = msg []           >> return []
+          del (_:cs) = msg (reverse cs) >> return cs
+
 cmd _ = nopE >> nextCmd
 
 -- ---------------------------------------------------------------------

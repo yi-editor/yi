@@ -192,6 +192,11 @@ class Buffer a where
     -- | Return the current line number
     curLn       :: a -> IO Int
 
+    ---------------------------------------------------------------------
+   
+    -- | Return index of next string in buffer that matches argument
+    searchB      :: a -> [Char] -> IO (Maybe Int)
+
 -- ---------------------------------------------------------------------
 --
 -- | Fast buffer based on the implementation of 'Handle' in
@@ -350,6 +355,19 @@ writeCharToBuffer :: RawBuffer -> Int -> Char -> IO Int
 writeCharToBuffer slab (I# off) (C# c) = IO $ \st -> 
     case writeCharArray# slab off c st of st' -> (# st', I# (off +# 1#) #)
 {-# INLINE writeCharToBuffer #-}
+
+-- ---------------------------------------------------------------------
+--
+-- Find the first occurence of the contents of a buffer in the contents
+-- of another, given an offset to start with.
+--
+searchFB :: FBuffer_ -> FBuffer_ -> Int -> IO (Maybe Int)
+searchFB (FBuffer_ b1 _ e1 _)(FBuffer_ b2 _ e2 _) p = do
+    k <- strstrn_c b1 b2 p (fromIntegral e1) (fromIntegral e2)
+    return $ if k == (-1) then Nothing else Just k
+
+foreign import ccall unsafe "strstr_n"
+   strstrn_c :: RawBuffer -> RawBuffer -> Int -> CSize -> CSize -> IO Int
 
 -- ---------------------------------------------------------------------
 --
@@ -583,6 +601,16 @@ instance Buffer FBuffer where
         ss <- readChars (bufBuf fb) (bufPnt fb) 0   -- hmm. not good.
         return $ 1 + (length $ filter (== '\n') ss)
 -}
+
+    -- ---------------------------------------------------------------------
+
+    -- searchB      :: a -> [Char] -> IO (Maybe Int)
+    searchB (FBuffer _ _ mv) s = withMVar mv $ \ref -> do
+        fb1 <- readIORef ref
+        (FBuffer _ _ mv') <- stringToFBuffer [] s
+        withMVar mv' $ \ref' -> do
+            fb2 <- readIORef ref'
+            searchFB fb1 fb2 (bufPnt fb1)
 
 ------------------------------------------------------------------------
 

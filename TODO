@@ -3,6 +3,7 @@ Design plan:
         - abstract syntax for ui 
         - think about abstractable actions/keybindings
         - clean up ncurses code    
+        - handle buffer resize code properly
 
 Dynamic stuff:
         - "rebinding" global_vars by writing fields in global settings, using
