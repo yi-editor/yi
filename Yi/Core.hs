@@ -212,7 +212,9 @@ startE (confs,fn,fn') ln mfs = do
         -- it to be modified again.
         --
         refreshLoop :: IO ()
-        refreshLoop = repeatM_ $ takeMVar editorModified >> UI.refresh
+        refreshLoop = repeatM_ $ do 
+                            takeMVar editorModified
+                            handleJust ioErrors (errorE.show) UI.refresh 
 
 -- ---------------------------------------------------------------------
 -- | How to read from standard input
@@ -239,28 +241,6 @@ eventLoop = do
       isExitCall _ = False
 
 -- TODO if there is an exception, the key bindings will be reset...
-
-{-
---
--- Channel-based event loop has exactly the same semantics
---
-eventLoop :: IO ()
-eventLoop = Editor.getKeyBinds >>= loop
-    where 
-        loop f = do handleJust ioErrors handler (sequence_ . f =<< lazyRead)
-                    loop f
-        handler = errorE . show
-
---
--- | Lazily read all input from the user. A big magic.
--- Identical to getChanContents
---
-lazyRead :: IO String
-lazyRead = unsafeInterleaveIO $ do 
-                c  <- getcE
-                cs <- lazyRead
-                return (c : cs)
--}
 
 -- ---------------------------------------------------------------------
 -- Meta operations

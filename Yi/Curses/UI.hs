@@ -136,6 +136,8 @@ redraw = withEditor $ \e ->
     gotoTop
     mapM_ (drawWindow e w sty) ws               -- draw all windows
 
+    withStyle (window sty) $ drawCmdLine cl     -- draw cmd line
+
     -- work out origin of current window from index of that window in win list
     -- still grubby because we aren't using the /origin/ field of 'Window'
     -- _sigh_ assumes bottom window has rem
@@ -144,7 +146,7 @@ redraw = withEditor $ \e ->
                 case i * (fst $! getY h (length ws)) of { o_y ->
                     drawCursor (o_y,0) $ cursor $ fromJust w
                 }
-        else withStyle (window sty) $ drawCmdLine cl     -- draw cmd line
+        else return () -- Curses.wMove Curses.stdScr y x
 
     }}}}}}
 
