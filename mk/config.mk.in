@@ -6,6 +6,7 @@ PREFIX=         @prefix@
 BINDIR=         @prefix@/bin
 LIBDIR=         @prefix@/lib/$(PKG)
 DATADIR=        @prefix@/share/doc/$(PKG)
+MANDIR=         @prefix@/man
 IFACEDIR=       $(LIBDIR)/imports
 
 GHC=            @WithGhc@

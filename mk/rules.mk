@@ -176,7 +176,7 @@ ifneq "$(HADDOCK)" ""
 
 .PHONY: doc html
 docs :: html
-html :: html1 html2
+html : .html-stamp1 .html-stamp2
 
 HTML_DIR      = html
 HADDOCK_SRCS += $(HS_SRCS)
@@ -189,14 +189,16 @@ EXTRA_HS_PPS  = $(addsuffix .raw-hs, $(basename $(NO_DOCS)))
 INSTALL_DATAS  += $(HTML_DIR)
 
 # circular (excluded) modules first
-html1 : $(EXTRA_HS_PPS)
+.html-stamp1 : $(EXTRA_HS_PPS)
 	@$(INSTALL_DIR) $(HTML_DIR)
 	$(HADDOCK) $(HADDOCK_OPTS)2 -o $(HTML_DIR) $(EXTRA_HS_PPS) -k $(PKG)
+	@touch .html-stamp1
 
-html2 : $(HS_PPS)
+.html-stamp2 : .html-stamp1 $(HS_PPS)
 	@$(INSTALL_DIR) $(HTML_DIR)
 	$(HADDOCK) $(HADDOCK_OPTS) -o $(HTML_DIR) $(HS_PPS) -k $(PKG)
 	@cd $(HTML_DIR) && $(HADDOCK) --gen-index -i yi.interface -i yi.interface2
+	@touch .html-stamp2
 
 CLEAN_FILES += $(HS_PPS) $(EXTRA_HS_PPS)
 
@@ -235,10 +237,14 @@ INSTALL_PROGS  += $(HS_BINS)
 INSTALL_IFACES += $(HS_IFACES)
 INSTALL_LIBS   += $(LIBRARY) $(GHCI_LIBRARY) $(LIB_FRONTEND) $(LIB_IFACE)
 
+# we have a man page
+INSTALL_MANS=doc/yi.1
+
 show-install :
 	@echo "BINDIR  = $(BINDIR)"
 	@echo "LIBDIR  = $(LIBDIR)"
 	@echo "DATADIR = $(DATADIR)"
+	@echo "MANDIR  = $(MANDIR)"
 
 # the sed is to strip any trailing '_' from the inplace bin names.
 ifneq "$(INSTALL_PROGS)" ""
@@ -272,6 +278,13 @@ install :: $(INSTALL_DATAS)
 			$(INSTALL_DATA) $(INSTALL_OPTS) $$i $(DATADIR)/ ;\
 		fi ;\
 	done
+endif
+
+ifneq "$(INSTALL_MANS)" ""
+install :: $(INSTALL_MANS)
+	@$(INSTALL_DIR) $(MANDIR)
+	@$(INSTALL_DIR) $(MANDIR)/man1
+	$(INSTALL_DATA) $(INSTALL_OPTS) $(INSTALL_MANS) $(MANDIR)/man1/
 endif
 
 ifneq "$(INSTALL_IFACES)" ""
