@@ -58,7 +58,7 @@ data Buffer a => GenEditor a =
        ,windows   :: FiniteMap Unique Window    -- ^ all the windows
        ,cmdline   :: !String                    -- ^ the command line
        ,curwin    :: Maybe Unique               -- ^ the window with focus
-       ,curkeymap :: (Char -> IO())             -- ^ user-configurable keymap
+       ,curkeymap :: (Char -> IO Keymap)        -- ^ user-configurable keymap
        ,scrsize   :: !(Int,Int)                 -- ^ screen size
     }
 
@@ -377,7 +377,7 @@ setUserSettings (Config km) =
 --
 -- | retrieve the user-defineable key map
 --
-getKeyBinds :: IO (Char -> IO ())
+getKeyBinds :: IO (Char -> IO Keymap)
 getKeyBinds = readEditor curkeymap
 
 -- ---------------------------------------------------------------------
@@ -388,6 +388,11 @@ getKeyBinds = readEditor curkeymap
 -- in the dynamically loaded edition of yi.
 --
 data Config = Config {
-            keymap :: Char -> IO ()        -- ^ bind keys to editor actions
+            keymap :: Char -> IO Keymap       -- ^ bind keys to editor actions
     }
+
+--
+-- | keymaps return the next keymap to use
+--
+data Keymap = Keymap (Char -> IO Keymap)
 

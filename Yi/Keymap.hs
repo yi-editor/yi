@@ -26,165 +26,165 @@
 module Yi.Keymap ( keymap ) where
 
 import Yi.Core
+import Yi.Editor    ( Keymap(..) )  -- just for now
 import Yi.UI        -- hack, just for now, so we can see key defns
 
 import Data.Char
 import Control.Monad
 
--- vi is a modeful editor, so we store some state. TODO design?
---
-import Data.IORef
-import System.IO.Unsafe     ( unsafePerformIO )
-
--- ---------------------------------------------------------------------
--- | Lets remember what editor mode we are in
---
-data Mode = C     -- ^ command mode
-          | I     -- ^ insert mode
-          | E     -- ^ ex mode
-
--- | By default, vi starts in command mode
---
-mode :: IORef Mode
-mode = unsafePerformIO $ newIORef C
-
-beginInsert, beginCommand, beginEx :: IO ()
-
-beginInsert  = writeIORef mode I
-beginCommand = writeIORef mode C
-beginEx      = writeIORef mode E
-
 -- ---------------------------------------------------------------------
 --
 -- This function must be implemented by any user keybinding
 --
-keymap :: Char -> Action
-keymap c = readIORef mode >>= flip key c 
+keymap :: Char -> IO Keymap
+keymap c = cmd c        -- vi starts in command mode
+
+--
+-- | Return the next mode to use
+--
+nextCmd = return (Keymap cmd)
+nextIns = return (Keymap ins)
+nextEx  = return (Keymap ex)
 
 -- ---------------------------------------------------------------------
--- | Actual lexer
+-- | Command mode
 --
-key :: Mode -> Char -> Action
-
--- 
--- * Command mode
+-- What's going on here? We match a keystroke (or multiple keystrokes)
+-- on the lhs, and perform an editor action on the rhs. Finally, we
+-- return the keymap function we wish to use for the next action -- this
+-- is how we switch modes.
 --
+cmd :: Char -> IO Keymap
 
 -- Move the cursor left one character.
-key C 'h'  = leftOrSolE 1
+cmd 'h'   = leftOrSolE 1    >> nextCmd
 
 -- Move the cursor down count lines without changing the current column.
-key C 'j'    = downE
-key C '\^J'  = downE
-key C '\^N'  = downE
+cmd 'j'   = downE           >> nextCmd
+cmd '\^J' = downE           >> nextCmd
+cmd '\^N' = downE           >> nextCmd
 
 -- Move the cursor up one line
-key C 'k'  = upE
+cmd 'k'   = upE             >> nextCmd     
 
 --  Move the cursor right one character.
-key C 'l'  = rightOrEolE 1
-key C ' '  = rightOrEolE 1
+cmd 'l'   = rightOrEolE 1   >> nextCmd
+cmd ' '   = rightOrEolE 1   >> nextCmd
 
 -- Move the cursor to the end of a line.
-key C '$'  = eolE
+cmd '$'   = eolE            >> nextCmd
 
 -- Move to the first character in the current line.
-key C '0'  = solE
+cmd '0'   = solE            >> nextCmd
 
 -- Move to the start of the current line.
-key C '|'  = solE
-
--- Enter input mode, inserting the text at the beginning of the line.
-key C 'I' = solE >> beginInsert
-
--- Enter input mode, inserting the text before the cursor.
-key C 'i' = beginInsert
-
--- Execute an ex command.
-key C ':' = msgClrE >> msgE ":" >> beginEx 
+cmd '|'  = solE             >> nextCmd
 
 -- Delete the character the cursor is on.
-key C 'x' = deleteE
-
--- Enter input mode, appending the text after the cursor.
-key C 'a' = rightOrEolE 1 >> beginInsert
-
--- Enter input mode, appending the text after the end of the line.
-key C 'A' = eolE >> beginInsert
-
--- Enter input mode, appending text in a new line above the current line.
-key C 'O' = solE >> insertE '\n' >> beginInsert
-
--- Enter input mode, appending text in a new line under the current line.
-key C 'o' = eolE >> insertE '\n' >> beginInsert
+cmd 'x' = deleteE           >> nextCmd
 
 -- Join lines.
-key C 'J' = eolE >> deleteE >> insertE ' '
+cmd 'J' = eolE >> deleteE >> insertE ' ' >> nextCmd
 
-key C c 
+-- Enter input mode, inserting the text at the beginning of the line.
+cmd 'I' = solE              >> nextIns
+
+-- Enter input mode, inserting the text before the cursor.
+cmd 'i' = nextIns
+
+-- Execute an ex command.
+cmd ':' = msgClrE >> msgE ":" >> nextEx 
+
+
+-- Enter input mode, appending the text after the cursor.
+cmd 'a' = rightOrEolE 1     >> nextIns
+
+
+-- Enter input mode, appending the text after the end of the line.
+cmd 'A' = eolE            >> nextIns
+
+-- Enter input mode, appending text in a new line above the current line.
+cmd 'O' = solE >> insertE '\n' >> nextIns
+
+-- Enter input mode, appending text in a new line under the current line.
+cmd 'o' = eolE >> insertE '\n' >> nextIns
+
+
+cmd c 
 -- Page backwards count screens.
-    | c == keyPPage = upScreenE
-    | c == '\^B'    = upScreenE
+    | c == keyPPage = upScreenE     >> nextCmd
+    | c == '\^B'    = upScreenE     >> nextCmd
 
 -- Page forward count screens.
-    | c == keyNPage = downScreenE
-    | c == '\^F'    = downScreenE
+    | c == keyNPage = downScreenE   >> nextCmd
+    | c == '\^F'    = downScreenE   >> nextCmd
 
 -- The cursor arrow keys should work for movement too
-    | c == keyUp    = upE
-    | c == keyDown  = downE
-    | c == keyLeft  = leftOrSolE 1
-    | c == keyRight = rightOrEolE 1
+    | c == keyUp    = upE           >> nextCmd
+    | c == keyDown  = downE         >> nextCmd
+    | c == keyLeft  = leftOrSolE 1  >> nextCmd
+    | c == keyRight = rightOrEolE 1 >> nextCmd
 
 -- Delete text from the current position to the end-of-line.
-key C 'D' = killE
+cmd 'D' = killE                   >> nextCmd
 
 -- Delete the line the cursor is on.
-key C 'd' = do c <- getcE ; when (c == 'd') $ solE >> killE >> deleteE
+cmd 'd' = do c <- getcE
+             when (c == 'd') $ solE >> killE >> deleteE
+             nextCmd
 
 -- Replace character.
-key C 'r' = getcE >>= writeE
+cmd 'r' = getcE >>= writeE >> nextCmd
 
 -- Write the file and exit vi.
-key C 'Z' = do c <- getcE ; when (c == 'Z') $ viWrite >> quitE
+cmd 'Z' = do c <- getcE ; when (c == 'Z') $ viWrite >> quitE
+             nextCmd
 
 -- Shift lines right.
-key C '>' = do c <- getcE
-               when (c == '>') $ solE >> mapM_ insertE (replicate 4 ' ')
+cmd '>' = do c <- getcE
+             when (c == '>') $ solE >> mapM_ insertE (replicate 4 ' ')
+             nextCmd
 
 -- Reverse the case of the next character
-key C '~' = do c <- readE
-               let c' = if isUpper c then toLower c else toUpper c
-               writeE c'
+cmd '~' = do c <- readE
+             let c' = if isUpper c then toLower c else toUpper c
+             writeE c'
+             nextCmd
 
 -- Switch to the next lower screen in the window, or to the first screen if
 -- there are no lower screens in the window.
-key C '\^W' = nextWinE
+cmd '\^W' = nextWinE >> nextCmd
 
 -- Display the file information.
-key C '\^G' = do
+cmd '\^G' = do
     (f,_,ln,pct) <- bufInfoE 
     msgE $ show f ++ " Line " ++ show ln ++ " ["++ pct ++"]" 
+    nextCmd
+
+cmd _ = nopE >> nextCmd
 
 -- ---------------------------------------------------------------------
 -- * Insert mode
 --
-
+ins :: Char -> IO Keymap
 -- Return to command mode.
-key I '\ESC'  = leftOrSolE 1 >> beginCommand  -- ESC
+ins '\ESC'  = leftOrSolE 1 >> nextCmd
 
 -- Erase the last character.
-key I '\^H'   = deleteE
-key I c | c == keyBackspace = deleteE
+ins '\^H' = deleteE                   >> nextIns
+ins c | c == keyBackspace = deleteE   >> nextIns
 
-key I c | c == keyPPage = upScreenE
-        | c == keyNPage = downScreenE
+ins c | c == keyPPage = upScreenE     >> nextIns
+        | c == keyNPage = downScreenE   >> nextIns
 
 -- Insert character
-key I c  = do 
+ins c  = do 
         (_,s,_,_) <- bufInfoE
         when (s == 0) $ insertE '\n' -- vi behaviour at start of file
         insertE c
+        nextIns
+
+ins _ = nopE >> nextIns
 
 -- ---------------------------------------------------------------------
 -- * Ex mode
@@ -192,21 +192,23 @@ key I c  = do
 --
 -- TODO think about how to do this as a better lexer
 --
-key E k = msgClrE >> loop [k]
+ex :: Char -> IO Keymap
+
+ex k = msgClrE >> loop [k]
   where
     loop [] = do msgE ":"
                  c <- getcE
                  if c == '\BS' || c == keyBackspace
-                    then msgClrE >> beginCommand  -- deleted request
+                    then msgClrE >> nextCmd       -- deleted request
                     else loop [c]
     loop w@(c:cs) 
-        | c == '\BS'  = deleteWith cs
+        | c == '\BS'        = deleteWith cs
         | c == keyBackspace = deleteWith cs
-        | c == '\ESC' = msgClrE >> beginCommand  -- cancel 
-        | c == '\r'   = execEx (reverse cs) >> beginCommand
-        | otherwise   = do msgE (':':reverse w)
-                           c' <- getcE
-                           loop (c':w)
+        | c == '\ESC'       = msgClrE             >> nextCmd
+        | c == '\r'         = execEx (reverse cs) >> nextCmd
+        | otherwise         = do msgE (':':reverse w)
+                                 c' <- getcE
+                                 loop (c':w)
 
     execEx :: String -> Action
     execEx "w"   = viWrite
@@ -224,8 +226,7 @@ key E k = msgClrE >> loop [k]
     deleteWith []     = msgClrE >> msgE ":"      >> loop []
     deleteWith (_:cs) = msgClrE >> msgE (':':cs) >> loop cs
 
--- anything we've missed
-key _  _  = nopE
+ex _ = nopE >> nextEx
 
 -- ---------------------------------------------------------------------
 -- | Try and write a file in the manner of vi\/vim
@@ -241,3 +242,4 @@ viWrite = do
 --
 viCmdErr :: [Char] -> Action
 viCmdErr s = msgE $ "The "++s++ " command is unknown."
+

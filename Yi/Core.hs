@@ -122,7 +122,7 @@ startE confs mfs = do
     Editor.setUserSettings confs
     sz <- UI.screenSize
     modifyEditor_ $ \e -> return $ e { scrsize = sz }
-    Control.Exception.handleJust (ioErrors) (\e -> msgE (show e)) $ do
+    handleJust (ioErrors) (\e -> msgE (show e)) $ do
         case mfs of
             Just fs -> mapM_ fnewE fs
             Nothing -> do               -- vi-like behaviour, just for now.
@@ -152,13 +152,15 @@ getcE = UI.getKey UI.refresh
 --
 eventLoop :: IO ()
 eventLoop = do
-    km <- Editor.getKeyBinds
-    let mainloop = do 
-            c <- getcE
-            Control.Exception.catchJust (ioErrors) (km c) (\e -> msgE (show e))
+    dflt <- Editor.getKeyBinds
+    let mainloop km@(Keymap fn) = do 
+            c   <- getcE
+            km' <- catchJust (ioErrors) (fn c) (handler km)
             UI.refresh
-            mainloop
-    mainloop
+            mainloop km'
+    mainloop (Keymap dflt)
+
+    where handler = \km e -> msgE (show e) >> return km
 
 -- ---------------------------------------------------------------------
 -- Meta operations
