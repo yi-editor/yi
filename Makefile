@@ -6,6 +6,9 @@ TOPDIR = .
 
 include $(TOPDIR)/mk/config.mk
 
+# this rule must remain first
+default: boot all
+
 ALL_DIRS=       HEmacs cbits
 
 BIN=            hemacs
@@ -25,6 +28,7 @@ BIN_LIBS=       $(CURSES) $(ICONV)
 # static front end
  
 STATIC_OBJS=    Main.o
+STATIC_IFACES=  Main.hi
 STATIC_BIN_DEPS=hemacs posix
 STATIC_BIN_LIBS=$(CURSES) $(ICONV)
 STATIC_HC_OPTS  += -package-conf hemacs.conf

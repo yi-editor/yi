@@ -83,7 +83,7 @@ hemacs_main_sym = "dynamic_main"         -- main entry point
 --
 
 libdir :: IORef FilePath
-libdir = unsafePerformIO $ newIORef (LIBDIR </> "hemacs" :: FilePath)
+libdir = unsafePerformIO $ newIORef (LIBDIR :: FilePath)
 {-# NOINLINE libdir #-}
 
 -- ---------------------------------------------------------------------

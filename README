@@ -12,21 +12,26 @@ and GNU make to compile hemacs.
 You also need a recent snapshot version of hs-plugins, the Haskell
 dynamic loader library. You can get this from:
         http://www.cse.unsw.edu.au/~dons/hs-plugins/
+The "heatwave" snapshot is suitable.
 
 Once you have ensured that you have these programs and libraries installed,
 
- 1. Edit system.mk to change some settings for your system (usually in
-   the case it has broken wide character support).
+ 1. Edit mk/config.mk to change some settings for your system (usually in
+    the case it has broken wide character support).
 
- 2. Run 'make' ('gmake' on some systems) to build hemacs.
+ 2. Run 'make'         ('gmake' on some systems)
 
- 3. Run 'make install' to install it.
+ 3. Run 'make install' to install it
+        OR
+    Just use 'hemacs-inplace' in the build tree.
+    'make show-install' will show the bindir and libdir vars
 
 
 CONFIGURATION
 
 All configuration (bindings, colours) is done at either build time by
-editing Config.hs, or at runtime by editing ~/.hemacs/Config.hs
+editing ConfigAPI.hs, or at runtime by editing ~/.hemacs/Config.hs.
+Example config files are in plugins/
 
 
 CREDITS

@@ -4,7 +4,9 @@
 
 PREFIX=         /usr/local
 BINDIR=         $(PREFIX)/bin
-LIBDIR=         $(PREFIX)/lib
+LIBDIR=         $(PREFIX)/lib/hemacs
+DATADIR=	$(PREFIX)/share
+IFACEDIR=	$(LIBDIR)/imports
 
 GHC=            ghc
 GHC_PKG=        ghc-pkg
@@ -21,11 +23,11 @@ AR_OPTS=        cr
 
 RANLIB=		ranlib
 
-INSTALL=        sh $(TOPDIR)/install-sh -c
-BIN_MODE=       755
-LIB_MODE=       644
 
-INSTALLDIR=     mkdir -p
+INSTALL=        sh $(TOPDIR)/install-sh -c
+INSTALL_PROGRAM=$(INSTALL) -m 755
+INSTALL_DATA= 	$(INSTALL) -m 644
+INSTALL_DIR= 	mkdir -p
 
 RM=             rm -f
 

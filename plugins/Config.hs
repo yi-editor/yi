@@ -10,7 +10,7 @@
 --
 
 
-module HEmacs.Config where
+module Config where
 
 import HEmacs.ConfigAPI
 

@@ -41,8 +41,6 @@ depend: $(MKDEPENDHS_SRCS)
 #
 .PHONY: boot all
 
-default: all
-
 boot :: depend
 
 all :: $(HS_BINS)
@@ -132,3 +130,64 @@ clean:
 
 distclean: clean
 	$(RM) $(DIST_CLEAN_FILES)
+
+#
+# installing
+#
+# For each of these variables that is defined, you
+# get one install rule
+#
+#       INSTALL_PROGS        executable programs in $(bindir)
+#       INSTALL_LIBS         platform-dependent libraries in $(libdir) (ranlib'ed)
+#       INSTALL_DATAS        platform-independent files in $(datadir)
+#       INSTALL_IFACES       platform-dependent interface files in $(ifacedir)
+#
+
+.PHONY: install install-dirs
+
+INSTALL_PROGS  += $(HS_BINS)
+INSTALL_IFACES += $(HS_IFACES) $(STATIC_IFACES)
+INSTALL_LIBS   += $(LIBRARY) $(GHCI_LIBRARY) $(STATIC_OBJS) $(STATIC_IFACES)
+
+show-install :
+	@echo "BINDIR = $(BINDIR)"
+	@echo "LIBDIR = $(LIBDIR)"
+
+ifneq "$(INSTALL_PROGS)" ""
+install :: $(INSTALL_PROGS)
+	@$(INSTALL_DIR) $(BINDIR)
+	@for i in $(INSTALL_PROGS); do \
+		echo $(INSTALL_PROGRAM) $(INSTALL_BIN_OPTS) $$i $(BINDIR) ;\
+		$(INSTALL_PROGRAM) $(INSTALL_BIN_OPTS) $$i $(BINDIR) ;\
+	done
+endif
+
+ifneq "$(INSTALL_LIBS)" ""
+install:: $(INSTALL_LIBS)
+	@$(INSTALL_DIR) $(LIBDIR)
+	@for i in $(INSTALL_LIBS); do \
+		echo $(INSTALL_DATA) $(INSTALL_OPTS) $$i $(LIBDIR) ;\
+		$(INSTALL_DATA) $(INSTALL_OPTS) $$i $(LIBDIR) ;\
+	done
+endif
+
+ifneq "$(INSTALL_DATAS)" ""
+install:: $(INSTALL_DATAS)
+	@$(INSTALL_DIR) $(DATADIR)
+	for i in $(INSTALL_LIBS); do \
+		$(INSTALL_DATA) $(INSTALL_OPTS) $$i $(DATADIR) ;\
+	done
+endif
+
+ifneq "$(INSTALL_IFACES)" ""
+install:: $(INSTALL_IFACES)
+	@$(INSTALL_DIR) $(IFACEDIR)
+	for i in $(INSTALL_IFACES); do \
+		$(INSTALL_DATA) $(INSTALL_OPTS) $$i $(IFACEDIR)/`dirname $$i`; \
+	done
+endif
+
+install:: $(PKG).conf.install
+	@$(INSTALL_DIR) $(LIBDIR)
+	$(INSTALL_DATA) $(INSTALL_OPTS) $< $(LIBDIR)/$(PKG).conf
+
