@@ -33,12 +33,14 @@ import qualified Yi.Keymap.Vim   as Vim
 import qualified Yi.Keymap.Nano  as Nano
 -- import qualified Yi.Keymap.Emacs as Emacs
 
+import qualified Yi.Curses.UI as UI
+
 import Data.IORef
 import Data.FiniteMap
 
 import Control.Monad            ( liftM, when )
-import Control.Exception        ( handle, throwIO, try )
 import Control.Concurrent       ( myThreadId, throwTo )
+import Control.Exception        ( catch, throw )
 
 import System.Console.GetOpt
 import System.Environment       ( getArgs )
@@ -148,7 +150,8 @@ initSignals = do
     sequence_ $ flip map [sigHUP, sigABRT, sigTERM] $ \sig -> do
             installHandler sig (CatchOnce $ do 
                     releaseSignals
-                    try Core.quitE >> return ()
+                    UI.end
+                    Editor.shutdown
                     throwTo tid (ExitException (ExitFailure 2))) Nothing
 
 releaseSignals :: IO ()
@@ -203,14 +206,24 @@ static_main = do
     lineno <- readIORef g_lineno
 
     --
+    -- The only way out is by throwing an exception, or an external
+    -- signal. Is this alright?
+    --
     -- catch any exception thrown by the main loop, clean up and quit
     -- (catching an ExitException), then re throw the original
     -- exception. catch that and print it, if it wasn't exit.
     --
-    handle (\e -> when (not $ isExitCall e) $ print e >> throwIO e) $ do
-        handle (\e -> releaseSignals >> handle (\_ -> throwIO e) Core.quitE) $ do
-            initSignals >> Core.startE config lineno mfiles
-            Core.eventLoop
+    -- If we've rebooted, then we have two levels of catch wrapped
+    -- around.
+    --
+    Control.Exception.catch
+        (initSignals >> Core.startE config lineno mfiles >> Core.eventLoop)
+        (\e -> do releaseSignals
+                  UI.end
+                  Editor.shutdown
+                  when (not $ isExitCall e) $ print e
+                  throw e
+        )
 
     where
       isExitCall (ExitException _) = True
