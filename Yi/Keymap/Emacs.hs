@@ -25,7 +25,7 @@
 -- Contributed by Simon Winwood - http://www.cse.unsw.edu.au/~sjw
 --
 
-module Emacs ( keymap ) where
+module Yi.Keymap.Emacs ( keymap ) where
 
 import Yi.Core
 import Yi.Editor    ( Keymap(..) )  -- just for now

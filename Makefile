@@ -9,7 +9,7 @@ include $(TOPDIR)/mk/config.mk
 # this rule must remain first
 default: boot all
 
-ALL_DIRS=       Yi cbits
+ALL_DIRS=       Yi Yi/Keymap cbits
 
 BIN=            yi_
 STATIC_BIN=     yi-static

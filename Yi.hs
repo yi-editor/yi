@@ -22,8 +22,9 @@ module Yi (static_main, dynamic_main) where
 import Yi.Locale                        ( setupLocale )
 import Yi.Version                       ( package, version )
 import qualified Yi.Editor  as Editor
-import qualified Yi.Keymap  as Keymap
 import qualified Yi.Core    as Core 
+
+import qualified Yi.Keymap.Vi  as Keymap
 
 import Control.Exception        ( bracket_ )
 import Data.IORef               ( IORef, readIORef, newIORef, writeIORef )

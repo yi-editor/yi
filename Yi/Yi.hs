@@ -36,7 +36,8 @@ module Yi.Yi (
 
 import Yi.Core
 import Yi.Editor                        ( Config(..) )
-import qualified Yi.Keymap as Keymap    ( keymap )
+
+import qualified Yi.Keymap.Vi as Keymap    ( keymap )
 
 -- default settings:
 settings :: Config

@@ -23,7 +23,7 @@
 -- You must provide a function 'keymap' of type: Char -> Action
 --
 
-module Yi.Keymap ( keymap ) where
+module Yi.Keymap.Vi ( keymap ) where
 
 import Yi.Core
 import Yi.Editor    ( Keymap(..) )  -- just for now
