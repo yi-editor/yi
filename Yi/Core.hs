@@ -113,7 +113,6 @@ import Yi.MkTemp            ( mkstemp )
 import Yi.Buffer
 import Yi.Window
 import Yi.Regex             ( regcomp, regExtended, Regex )
-import Yi.Utils             ( repeatM_ )
 import Yi.Editor
 import qualified Yi.Editor as Editor
 import qualified Yi.UI     as UI ( refresh, start, screenSize, getKey, end )
@@ -604,3 +603,9 @@ nextWinE = Editor.nextWindow
 prevWinE :: Action
 prevWinE = Editor.prevWindow
 
+------------------------------------------------------------------------
+
+repeatM_ :: Monad m => m a -> m ()
+repeatM_ a = a >> repeatM_ a
+{-# SPECIALIZE repeatM_ :: IO a -> IO () #-}
+{-# INLINE repeatM_ #-}

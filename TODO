@@ -13,10 +13,11 @@ Build system:
 v0.1:
         - syn hl (needs parser, in bg thread)
         - start drawing buffer before it is all loaded.
-        - undo/redo in vi mode
+        - undo/redo
+        - line wrapping
         - build on mac os x
-        - colours
         - bind keymap lexers to windows
         - :eval, :type, .. etc. ghci stuff
+        - make the cmd line a buffer.
 
-        - nelems that returns a buffer pointer to pass to drawWindow.
+        - either generalise registers, or make them entirely keymap-local

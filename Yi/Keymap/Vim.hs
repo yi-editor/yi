@@ -18,12 +18,10 @@
 -- 
 
 --
--- Vim keymap for Yi.
--- vim mode emulates vim :set nocompatible
+-- | Vim keymap for Yi. Emulates vim :set nocompatible
 --
 
 module Yi.Keymap.Vim ( keymap, keymapPlus, VimMode ) where
-
 
 import Yi.Core
 import Yi.Editor            ( Action )
@@ -33,8 +31,8 @@ import Yi.Ctk.Lexers hiding ( Action )
 import Prelude hiding       ( any )
 import Data.Maybe           ( fromMaybe )
 import Data.List            ( (\\) )
-import Data.Char            ( isUpper, toLower, toUpper )
-import Control.Monad        ( replicateM_ )
+import Data.Char            ( isUpper, toLower, toUpper, isSpace )
+import Control.Monad        ( replicateM_, when )
 import Control.Exception    ( ioErrors, catchJust )
 
 -- ---------------------------------------------------------------------
@@ -51,8 +49,8 @@ type ViRegex = Regexp VimState Action
 -- switch editor modes therefore use the lexers in the state.
 --
 data VimState = 
-        St { acc :: [Char]          -- an accumulator, for count, search and ex mode
-           , hist:: ([String],Int)  -- ex-mode command history
+        St { acc :: [Char]           -- an accumulator, for count, search and ex mode
+           , hist:: ([String],Int)   -- ex-mode command history
            , cmd :: VimMode          -- (maybe augmented) cmd mode lexer
            , ins :: VimMode }        -- (maybe augmented) ins mode lexer
 
@@ -124,7 +122,8 @@ cmd_count = digit
 cmd_eval :: VimMode
 cmd_eval = ( cmdc >|< 
             (char 'r' +> anyButEscOrDel) >|<
-            string ">>" >|< string "dd" >|< string "ZZ" >|< string "yy")
+            string ">>" >|< string "<<" >|< string "dd" >|< 
+            string "ZZ" >|< string "yy")
 
     `meta` \lexeme st@St{acc=count} -> 
         let c  = if null count then Nothing 
@@ -175,6 +174,7 @@ cmd_eval = ( cmdc >|<
             "|"   -> solE
             ";"   -> undef
             "<"   -> undef
+
             "?"   -> undef
             "@"   -> undef
             "~"   -> let fn = do c' <- readE
@@ -213,7 +213,21 @@ cmd_eval = ( cmdc >|<
             "x"   -> deleteNE i
             "ZZ"  -> viWrite >> quitE
             "dd"  -> solE >> killE >> deleteE
-            ">>"  -> replicateM_ i $ solE >> mapM_ insertE "    " 
+
+            ">>"  -> do replicateM_ i $ 
+                            solE >> mapM_ insertE "    " 
+                        let loop = do k <- readE 
+                                      when (isSpace k) (rightOrEolE 1 >> loop)
+                        loop
+
+            "<<"   -> do solE
+                         replicateM_ i $
+                            replicateM_ 4 $
+                                readE >>= \k -> when (isSpace k) deleteE 
+                         let loop = do k <- readE 
+                                       when (isSpace k) (rightOrEolE 1 >> loop)
+                         loop
+
             "yy"  -> readLnE >>= setRegE
 
             'r':[x] -> writeE x
@@ -276,6 +290,7 @@ ins_char = anyButEsc
                     k | isDel k       -> leftE >> deleteE
                       | k == keyPPage -> upScreenE
                       | k == keyNPage -> downScreenE
+                      | k == '\t'     -> mapM_ insertE "    " -- XXX
                     _ -> insertE c
 
           anyButEsc = alt $ (keyBackspace : any' ++ cursc') \\ ['\ESC']
