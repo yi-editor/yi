@@ -388,7 +388,7 @@ resetPoint w b = do
     p  <- pointB b      -- see where it actually got placed 
     x  <- offsetFromSol b
     w' <- if op /= p || oln /= ln -- then the file shrunk or line moved
-          then do let gap   = min ln ((height w) `div` 2)
+          then do let gap   = min (ln-1) ((height w) `div` 2)
                       topln = ln - gap
                   i <- indexOfSolAbove b gap
                   return w {pnt = p, lineno = ln,
