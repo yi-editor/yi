@@ -1,4 +1,4 @@
-{-# OPTIONS -cpp #-}
+{-# OPTIONS -fglasgow-exts -cpp #-}
 --
 -- yi/Boot.hs
 -- 

@@ -2,23 +2,22 @@
 Design plan:
         - ui type class
         - clean up ncurses code    
+        - replace global var in editor state with a state monad
  
 Build system:
         - check how to install it from a port script
         - think about how to do a testsuite, unit testing
-
-        - break out curses in to a separate dir, and the same for other
-          ui's
-
+        - break out curses in to a separate dir, and the same for other ui's
         - add test for sigwinch
 
 v0.1:
-        - syn hl (needs parser, in bg thread)
-        - start drawing buffer before it is all loaded.
         - undo/redo
         - line wrapping
+        - maybe: syn hl (needs parser, in bg thread)
+
+other stuff:
         - bind keymap lexers to windows
         - :eval, :type, .. etc. ghci stuff
         - make the cmd line a buffer.
-
+        - start drawing buffer before it is all loaded.
         - either generalise registers, or make them entirely keymap-local

@@ -1,3 +1,4 @@
+{-# OPTIONS -fffi #-}
 -- -*- haskell -*-
 -- IConv wrappers
 --
@@ -60,14 +61,14 @@ outbuf_size = 1024
 do_iconv :: ((Ptr a, Int) -> IO String) -> IConv -> (Ptr b, Int) -> IO String
 do_iconv get_string_fn ic (inbuf, inbuf_bytes) =
     alloca $ \inbuf_ptr -> 
-        alloca $ \(inbytesleft_ptr::Ptr CSize) -> 
+        alloca $ \inbytesleft_ptr -> 
             alloca $ \outbuf_ptr -> 
-                alloca $ \(outbytesleft_ptr::Ptr CSize) -> 
+                alloca $ \outbytesleft_ptr -> 
                     allocaBytes outbuf_size $ \outbuf -> do
-      poke inbytesleft_ptr (fromIntegral inbuf_bytes)
+      poke (inbytesleft_ptr :: Ptr CSize) (fromIntegral inbuf_bytes)
       poke inbuf_ptr inbuf
       let loop acc = do
-          poke outbytesleft_ptr (fromIntegral outbuf_size)
+          poke (outbytesleft_ptr :: Ptr CSize) (fromIntegral outbuf_size)
           poke outbuf_ptr outbuf
           ret <- throw_if_not_2_big "c_iconv" $
               c_iconv ic inbuf_ptr inbytesleft_ptr

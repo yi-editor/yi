@@ -25,6 +25,7 @@
 module Yi.FastBuffer (FBuffer(..)) where
 
 import Yi.Buffer
+import Yi.FastUndo
 import Yi.Regex
 
 import Data.Unique              ( Unique, newUnique )
@@ -56,6 +57,7 @@ import Foreign.Storable         ( poke )
 data FBuffer = 
         FBuffer !FilePath        -- immutable name
                 !Unique          -- immutable unique key
+                !(MVar URList)   -- undo/redo list
                 !(MVar FBuffer_)
 
 data FBuffer_ = 
@@ -65,10 +67,10 @@ data FBuffer_ =
                  !Int           -- raw size of buffer
 
 instance Eq FBuffer where
-   (FBuffer _ u _) == (FBuffer _ v _) = u == v
+   (FBuffer _ u _ _) == (FBuffer _ v _ _) = u == v
 
 instance Show FBuffer where
-    showsPrec _ (FBuffer f _ _) = showString $ "\"" ++ f ++ "\""
+    showsPrec _ (FBuffer f _ _ _) = showString $ "\"" ++ f ++ "\""
 
 -- ---------------------------------------------------------------------
 --
@@ -86,8 +88,9 @@ hNewFBuffer f = do
         then ioError (userError $ "Short read of file: " ++ f)
         else do poke (ptr `advancePtr` size_i) (castCharToCChar '\0')
                 mv  <- newMVar  (FBuffer_ ptr 0 size_i r_size)
+                mv' <- newMVar  emptyUR
                 u   <- newUnique
-                return (FBuffer f u mv)
+                return (FBuffer f u mv' mv)
 
 --
 -- | Write contents of buffer into specified file
@@ -118,8 +121,9 @@ stringToFBuffer nm s = do
     pokeArray ptr (map castCharToCChar s) -- Unicode
     poke (ptr `advancePtr` size_i) (castCharToCChar '\0')
     mv  <- newMVar (FBuffer_ ptr 0 size_i r_size)
+    mv' <- newMVar emptyUR
     u   <- newUnique
-    return (FBuffer nm u mv)
+    return (FBuffer nm u mv' mv)
 
 --
 -- | read @n@ chars from buffer @b@, starting at @i@
@@ -171,7 +175,7 @@ instance Buffer FBuffer where
     newB = stringToFBuffer
 
     -- finaliseB :: a -> IO ()
-    finaliseB (FBuffer _ _ mv) = do
+    finaliseB (FBuffer _ _ _ mv) = do
         (FBuffer_ ptr _ _ _) <- readMVar mv
         free ptr
 
@@ -179,21 +183,21 @@ instance Buffer FBuffer where
     hNewB = hNewFBuffer
 
     -- hPutB :: a -> FilePath -> IO ()
-    hPutB (FBuffer _ _ mv) f = readMVar mv >>= flip hPutFBuffer_ f
+    hPutB (FBuffer _ _ _ mv) f = readMVar mv >>= flip hPutFBuffer_ f
 
     -- nameB :: a -> String
-    nameB (FBuffer f _ _) = f
+    nameB (FBuffer f _ _ _) = f
 
     -- keyB :: a -> Unique
-    keyB (FBuffer _ u _) = u
+    keyB (FBuffer _ u _ _) = u
 
     -- sizeB      :: a -> IO Int
-    sizeB (FBuffer _ _ mv) = do
+    sizeB (FBuffer _ _ _ mv) = do
         (FBuffer_ _ _ n _) <- readMVar mv
         return n
 
     -- pointB     :: a -> IO Int
-    pointB (FBuffer _ _ mv) = do
+    pointB (FBuffer _ _ _ mv) = do
         (FBuffer_ _ p e mx) <- readMVar mv
         assert ((p >= 0 && (p < e || e == 0)) && e <= mx) $ return p
     {-# INLINE pointB #-}
@@ -201,18 +205,18 @@ instance Buffer FBuffer where
     ------------------------------------------------------------------------
 
     -- elemsB     :: a -> IO [Char]
-    elemsB (FBuffer _ _ mv) =
+    elemsB (FBuffer _ _ _ mv) =
         withMVar mv $ \(FBuffer_ b _ n _) -> readChars b n 0
 
     -- nelemsB    :: a -> Int -> Int -> IO [Char]
-    nelemsB (FBuffer _ _ mv) n i =
+    nelemsB (FBuffer _ _ _ mv) n i =
         withMVar mv $ \(FBuffer_ b _ e _) -> do
             let i' = inBounds i e
                 n' = min (e-i') n
             readChars b n' i'
 
     -- ptrToLnsB  :: a -> Int -> Int -> IO [CStringLen]
-    ptrToLnsB (FBuffer _ _ mv) i' len = 
+    ptrToLnsB (FBuffer _ _ _ mv) i' len = 
         withMVar mv $ \(FBuffer_ ptr _ e _) -> do
             let i = inBounds i' e
                 loop 0 _ = return []
@@ -228,30 +232,32 @@ instance Buffer FBuffer where
     ------------------------------------------------------------------------
 
     -- moveTo     :: a -> Int -> IO ()
-    moveTo (FBuffer _ _ mv) i = 
+    moveTo (FBuffer _ _ _ mv) i = 
         modifyMVar_ mv $ \(FBuffer_ ptr _ end mx) ->
             return $ FBuffer_ ptr (inBounds i end) end mx
     {-# INLINE moveTo #-}
 
     -- readB      :: a -> IO Char
-    readB (FBuffer _ _ mv) = 
+    readB (FBuffer _ _ _ mv) = 
         withMVar mv $ \(FBuffer_ ptr off _ _) ->
             readChars ptr 1 off >>= \[c] -> return c
     {-# INLINE readB #-}
 
     -- readAtB :: a -> Int -> IO Char
-    readAtB (FBuffer _ _ mv) off = 
+    readAtB (FBuffer _ _ _ mv) off = 
         withMVar mv $ \(FBuffer_ ptr _ e _) ->
             readChars ptr 1 (inBounds off e) >>= \[c] -> return c
 
+    ------------------------------------------------------------------------
+
     -- writeB :: a -> Char -> IO ()
-    writeB (FBuffer _ _ mv) c = 
+    writeB (FBuffer _ _ _ mv) c = 
         withMVar mv $ \(FBuffer_ ptr off _ _) ->
             writeChars ptr [c] off
     {-# INLINE writeB #-}
 
     -- writeAtB   :: a -> Int -> Char -> IO ()
-    writeAtB (FBuffer _ _ mv) off c = 
+    writeAtB (FBuffer _ _ _ mv) off c = 
         withMVar mv $ \(FBuffer_ ptr _ end _) ->
             writeChars ptr [c] (inBounds off end)
 
@@ -263,7 +269,7 @@ instance Buffer FBuffer where
     -- insertN :: a -> [Char] -> IO ()
     -- May need to resize buffer. How do we append to eof?
     insertN _ [] = return ()
-    insertN (FBuffer _ _ mv) cs = 
+    insertN (FBuffer _ _ _uv mv) cs = 
         modifyMVar_ mv $ \fb@(FBuffer_ _ _ old_end old_max) -> do
             let cs_len   = length cs
                 need_len = old_end + cs_len
@@ -278,15 +284,23 @@ instance Buffer FBuffer where
 
             shiftChars ptr dst pnt len
             writeChars ptr cs pnt
+
+       {-   -- update undo list
+            modifyMVar_ uv $ \ur -> 
+                let loop _ []     u = u
+                    loop n (x:ys) u = let u' = addUR u (Insert n x) in loop (n+1) ys u'
+                in return $ loop pnt cs ur -}
+
             return (FBuffer_ ptr pnt nend mx)
     {-# INLINE insertN #-}
 
+    ------------------------------------------------------------------------
     -- deleteB    :: a -> IO ()
     deleteB a = deleteN a 1
 
     -- deleteN    :: a -> Int -> IO ()
     deleteN _ 0 = return ()
-    deleteN (FBuffer _ _ mv) n = 
+    deleteN (FBuffer _ _ _ mv) n = 
         modifyMVar_ mv $ \(FBuffer_ ptr pnt end mx) -> do
             let src = inBounds (pnt + n) end     -- start shifting back from
                 len = inBounds (end-pnt-n) end   -- length of shift
@@ -297,6 +311,14 @@ instance Buffer FBuffer where
                      | otherwise   = pnt
             return (FBuffer_ ptr pnt' end' mx)
     {-# INLINE deleteN #-}
+
+    ------------------------------------------------------------------------
+  
+    -- undo        :: a -> IO ()
+    undo fb@(FBuffer _ _ mv _) = modifyMVar_ mv (undoUR fb)
+
+    -- redo        :: a -> IO ()
+    redo fb@(FBuffer _ _ mv _) = modifyMVar_ mv (redoUR fb)
 
     ------------------------------------------------------------------------
 
@@ -423,13 +445,13 @@ instance Buffer FBuffer where
 
     -- count number of \n from origin to point
     -- curLn :: a -> IO Int
-    curLn (FBuffer _ _ mv) = withMVar mv $ \(FBuffer_ ptr i _ _) -> 
+    curLn (FBuffer _ _ _ mv) = withMVar mv $ \(FBuffer_ ptr i _ _) -> 
         ccountlns ptr 0 i
     {-# INLINE curLn #-}
 
     -- gotoLn :: a -> Int -> IO Int
     -- some supicious stuff in here..
-    gotoLn (FBuffer _ _ mv) n = 
+    gotoLn (FBuffer _ _ _ mv) n = 
         modifyMVar mv $ \(FBuffer_ ptr _ e mx) -> do
             np <- cgotoln ptr 0 e n
             let fb = FBuffer_ ptr np e mx
@@ -439,7 +461,7 @@ instance Buffer FBuffer where
     {-# INLINE gotoLn #-}
 
     -- gotoLnFrom :: a -> Int -> IO Int
-    gotoLnFrom (FBuffer _ _ mv) n = 
+    gotoLnFrom (FBuffer _ _ _ mv) n = 
         modifyMVar mv $ \(FBuffer_ ptr p e mx) -> do
             off <- cgotoln ptr p (if n < 0 then 0 else (e-1)) n
             let fb = FBuffer_ ptr (p + off) e mx
@@ -450,7 +472,7 @@ instance Buffer FBuffer where
     -- ---------------------------------------------------------------------
 
     -- searchB      :: a -> [Char] -> IO (Maybe Int)
-    searchB (FBuffer _ _ mv) s =
+    searchB (FBuffer _ _ _ mv) s =
         withMVar mv $ \(FBuffer_ ptr off _ _) ->
             withCString s $ \str -> do
                 p <- cstrstr (ptr `advancePtr` off) str
@@ -458,7 +480,7 @@ instance Buffer FBuffer where
                                          else Just (p `minusPtr` ptr)
 
     -- regexB       :: a -> Regex -> IO (Maybe (Int,Int))
-    regexB (FBuffer _ _ mv) re = 
+    regexB (FBuffer _ _ _ mv) re = 
         withMVar mv $ \(FBuffer_ ptr p _ _) -> do
             mmatch <- regexec re ptr p
             case mmatch of

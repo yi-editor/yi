@@ -33,6 +33,9 @@ import Foreign.C.String         ( CStringLen )
 -- mutable buffers, which maintain a current /point/.
 --
 
+-- type Point = Word64
+-- type Size  = Word64
+
 class Buffer a where
 
     -- | Construct a new buffer initialised with the supplied name and list
@@ -127,6 +130,15 @@ class Buffer a where
 
     -- | Delete characters forwards to index
     -- deleteTo    :: a -> Int -> IO ()
+
+    ------------------------------------------------------------------------
+    -- undo/redo
+
+    -- | Undo the last action that mutated the buffer's contents
+    undo        :: a -> IO ()
+
+    -- | Redo the last action we that was undone.
+    redo        :: a -> IO ()
 
     ------------------------------------------------------------------------
     -- Line based editing

@@ -1,3 +1,7 @@
+{-# OPTIONS -fffi -fglasgow-exts #-}
+--
+-- ToDo glaexts needed for newtype deriving 
+--
 -- -*- haskell -*-
 -- Copyright (c) 2002-2004 John Meacham (john at repetae dot net)
 -- 
@@ -215,7 +219,7 @@ throwIfErr_ name act = void $ throwIfErr name act
 
 ------------------------------------------------------------------------
 
-data WindowTag 
+type WindowTag = ()
 type Window = Ptr WindowTag
 
 --

@@ -89,6 +89,8 @@ type Editor  = GenEditor Buffer'
 -- TODO get rid of big lock on state (buffers themselves are locked)
 -- We'd have to lock individual components of the state, however...
 --
+-- ToDo abolish this, in favour of a state monad.
+--
 -- state :: Buffer a => MVar (IORef (GenEditor a))
 state :: MVar (IORef Editor)
 state = unsafePerformIO $ do
@@ -166,9 +168,9 @@ modifyEditor f = do
 --
 hNewBuffer :: FilePath -> IO Buffer'
 hNewBuffer f = 
-    modifyEditor $ \e@(Editor{buffers=bs} :: Editor) -> do
+    modifyEditor $ \e@(Editor{buffers=bs}) -> do
         b <- hNewB f
-        let e' = e { buffers = addToFM bs (keyB b) b }
+        let e' = e { buffers = addToFM bs (keyB b) b } :: Editor
         return (e', b)
 
 --
@@ -176,9 +178,9 @@ hNewBuffer f =
 --
 stringToNewBuffer :: FilePath -> String -> IO Buffer'
 stringToNewBuffer f cs =
-    modifyEditor $ \e@(Editor{buffers=bs} :: Editor) -> do
+    modifyEditor $ \e@(Editor{buffers=bs}) -> do
         b <- newB f cs
-        let e' = e { buffers = addToFM bs (keyB b) b }
+        let e' = e { buffers = addToFM bs (keyB b) b } :: Editor
         return (e', b)
 
 --
@@ -194,7 +196,7 @@ getBuffers = readEditor $ eltsFM . buffers
 -- | get the number of buffers we have
 --
 sizeBuffers :: IO Int                        
-sizeBuffers = readEditor $ \(e :: Editor) -> sizeFM (buffers e)
+sizeBuffers = readEditor $ \e -> sizeFM (buffers (e :: Editor))
 
 --
 -- | Find buffer with this key
@@ -209,7 +211,7 @@ findBufferWith e k =
 -- | Safely lookup buffer using it's key.
 --
 getBufferWith :: Unique -> IO Buffer'
-getBufferWith u = readEditor $ \(e :: Editor) -> findBufferWith e u
+getBufferWith u = readEditor $ \e -> findBufferWith (e :: Editor) u
 
 -- | Return the next buffer
 nextBuffer :: IO Buffer'
@@ -226,8 +228,8 @@ bufferAt n = shiftBuffer (const n)
 -- | Return the buffer using a function applied to the current window's
 -- buffer's index.
 shiftBuffer :: (Int -> Int) -> IO Buffer'
-shiftBuffer f = readEditor $ \(e :: Editor) ->
-    let bs  = eltsFM $ buffers e
+shiftBuffer f = readEditor $ \e ->
+    let bs  = eltsFM $ buffers (e :: Editor)
         win = findWindowWith e (curwin e)
         buf = findBufferWith e (bufkey win)
     in case elemIndex buf bs of
@@ -336,7 +338,7 @@ getWindowIndOf e = case curwin e of
 -- Factor in shift focus.
 --
 setWindow :: Window -> IO ()
-setWindow w = modifyEditor_ $ \(e :: Editor) -> setWindow' e w
+setWindow w = modifyEditor_ $ \e -> (setWindow' e w :: IO Editor)
 
 --
 -- | Internal function to update window on focus or creation.
@@ -417,24 +419,25 @@ windowAt n = shiftFocus (const n)
 -- !! reset buffer point from window point
 --
 shiftFocus :: (Int -> Int) -> IO ()
-shiftFocus f = modifyEditor_ $ \(e :: Editor) -> do
+shiftFocus f = modifyEditor_ $ \e -> do
     let ws  = eltsFM $ windows e    -- hack
         k   = curwin e
         win = findWindowWith e k
     case elemIndex win ws of
         Nothing -> error "Editor: current window has been lost."
-        Just i -> let w = ws !! ((f i) `mod` (length ws)) in setWindow' e w
+        Just i -> let w = ws !! ((f i) `mod` (length ws)) 
+                  in (setWindow' e w :: IO Editor)
 
 -- ---------------------------------------------------------------------
 -- | Given a keymap function, set the user-defineable key map to that function
 --
 setUserSettings :: Config -> IO () -> IO Config -> IO ()
 setUserSettings (Config km sty) fn fn' = 
-    modifyEditor_ $ \(e :: Editor) -> 
-        return $ e { curkeymap = km, 
+    modifyEditor_ $ \e -> 
+        return $ (e { curkeymap = km, 
                      uistyle = sty, 
                      reboot = fn,
-                     reload = fn' }
+                     reload = fn' } :: Editor)
 
 --
 -- | retrieve the user-defineable key map

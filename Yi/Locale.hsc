@@ -1,4 +1,6 @@
-{-# OPTIONS -fffi #-}
+{-# OPTIONS -fffi -fglasgow-exts #-}
+
+-- ToDo Addr## should be a more ffi-friendly type
 
 --
 -- arch-tag: d48a3194-c698-43c7-b581-08e7a213f0c8

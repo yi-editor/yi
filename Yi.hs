@@ -1,3 +1,6 @@
+{-# OPTIONS -fglasgow-exts #-}
+--
+-- ToDo glaexts for unsafeCoerce#
 --
 -- riot/Main.hs
 -- 

@@ -102,6 +102,8 @@ module Yi.Core (
         deleteNE,       -- :: Int -> Action
         killE,          -- :: Action
         writeE,         -- :: Char -> Action
+        undoE,          -- :: Action
+        redoE,          -- :: Action
 
         -- * Read parts of the buffer
         readE,          -- :: IO Char
@@ -581,6 +583,14 @@ writeE c = withWindow_ $ \w b -> do
                 _ | isLatin1 c -> writeB b c 
                   | otherwise  -> nopE          -- TODO
             return w
+
+-- ---------------------------------------------------------------------
+
+undoE :: Action
+undoE = (withWindow_ $ \w b -> undo b >> return w) >> getPointE >>= gotoPointE
+
+redoE :: Action
+redoE = (withWindow_ $ \w b -> redo b >> return w) >> getPointE >>= gotoPointE
 
 -- ---------------------------------------------------------------------
 -- registers (TODO these may be redundant now that it is easy to thread

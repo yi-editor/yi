@@ -1,4 +1,4 @@
-{-# OPTIONS -fno-warn-unused-binds #-}
+{-# OPTIONS -fffi -fno-warn-unused-binds #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Text.Regex.Posix

@@ -118,6 +118,11 @@ getKey refresh_fn = do
 -- | Redraw the entire terminal from the UI state
 -- Optimised.
 --
+-- It is crucial that redraw doesn't modify the editor state (of course
+-- it shouldn't). Just slipping in a modifyEditor_ there  will kill
+-- your redraw speed, as every redraw will trigger another redraw...
+-- So don't be tempted.
+--
 redraw :: IO ()
 redraw = withEditor $ \e ->
     

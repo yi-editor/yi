@@ -53,12 +53,30 @@ type ViRegex = Regexp VimState Action
 -- carry around the current cmd and insert lexers in the state. Calls to
 -- switch editor modes therefore use the lexers in the state.
 --
+-- TODO undo and redo :: [Action]
+--
 data VimState = St { 
     acc :: [Char]            -- an accumulator, for count, search and ex mode
    ,hist:: ([String],Int)    -- ex-mode command history
    ,cmd :: VimMode           -- (maybe augmented) cmd mode lexer
    ,ins :: VimMode           -- (maybe augmented) ins mode lexer
    }
+
+-- ---------------------------------------------------------------------
+-- | Undo/redo
+--
+-- Following sjw's undo/redo model, the undo and redo lists consist of
+-- actions that when perform return their inverse.
+-- 
+-- so deleteAct takes a point, performs a deletion, then returns an
+-- insertAct that reverses this action, similar for insert. What about
+-- 'r'? This is conceptually a delete, and an insert, which needs to be
+-- paired. 
+--
+-- Thus the undo/redo list needs to contain IO actions joined with >>.
+-- rx ==> (deleteA p >>= \c -> insertA p 'x') >> return (deleteA p >> insertA p c)
+--
+ 
 
 ------------------------------------------------------------------------
 --
@@ -312,6 +330,7 @@ cmdCmdFM = listToFM $
     ,('D',      const (readRestOfLnE >>= setRegE >> killE))
     ,('J',      const (eolE >> deleteE))    -- the "\n"
     ,('n',      const (searchE Nothing))
+    ,('u',      const undoE )
 
     ,('X',      \i -> do p <- getPointE
                          leftOrSolE i
