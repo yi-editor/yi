@@ -28,7 +28,10 @@ import qualified Yi.Style   as Style
 import qualified Yi.Keymap.Vim as Keymap
 
 import Data.IORef
+
+import Control.Monad            ( liftM )
 import Control.Exception        ( bracket_ )
+
 import System.Console.GetOpt
 import System.Environment       ( getArgs )
 import System.Exit              ( exitWith, ExitCode(ExitSuccess) )
@@ -112,12 +115,21 @@ releaseSignals = do
 -- some way. The second component is our reboot function, passed in from
 -- Boot.hs, otherwise return ().
 --
-g_settings :: IORef (Editor.Config,IO ())
-g_settings = unsafePerformIO $ newIORef 
-                   ((Editor.Config { Editor.keymap = Keymap.keymap,
-                                     Editor.style  = Style.ui } )
-                    ,static_main )
+g_settings :: IORef (Editor.Config, IO (), IO Editor.Config )
+g_settings = unsafePerformIO $ 
+                newIORef (dflt_config
+                         ,static_main 
+                         ,return dflt_config)
 {-# NOINLINE g_settings #-}
+
+--
+-- | default values to use if no ~/.yi/Config.hs is found
+--
+dflt_config :: Editor.Config
+dflt_config = Editor.Config { 
+        Editor.keymap = Keymap.keymap,
+        Editor.style  = Style.ui 
+    }
 
 --
 -- | The line number to start on
@@ -154,8 +166,8 @@ dynamic_main :: YiMainType
 dynamic_main v = dynamic_main' v
 
 dynamic_main' :: YiMainType
-dynamic_main' (Nothing, fn) = do
-    modifyIORef g_settings $ \(dflt,_) -> (dflt,fn)
+dynamic_main' (Nothing, fn1, fn2) = do
+    modifyIORef g_settings $ \(dflt,_,_) -> (dflt,fn1, liftM unwrap fn2)
     static_main             -- No prefs found, use defaults
 
 --
@@ -163,11 +175,18 @@ dynamic_main' (Nothing, fn) = do
 -- settings. Anyone got an idea of how to unwrap this value without
 -- using the coerce?
 --
-dynamic_main' (Just (CD cfg), fn) = do 
-    case unsafeCoerce# cfg of   -- MAGIC: to unwrap the config value
-        (cfg_ :: Editor.Config) -> do
-                writeIORef g_settings (cfg_,fn)
-                static_main
+dynamic_main' (cfg, fn1, fn2) = do 
+        let cfg_ = unwrap cfg
+        writeIORef g_settings (cfg_, fn1, liftM unwrap fn2)
+        static_main
+
+------------------------------------------------------------------------
+--
+-- unwrap a ConfigData value
+--
+unwrap :: Maybe ConfigData -> Editor.Config
+unwrap Nothing         = dflt_config
+unwrap (Just (CD cfg)) = unsafeCoerce# cfg :: Editor.Config
 
 -- ---------------------------------------------------------------------
 -- | Magic type: encapsulates user prefs determined by the boot loader.
@@ -182,6 +201,9 @@ data ConfigData = forall a. CD a {- has Config type -}
 -- | Maybe a set of user preferences, if the boot loader found
 -- ~/.yi/Config.hs
 --
-type YiMainType = (Maybe ConfigData, IO () ) -> IO ()
+type YiMainType = (Maybe ConfigData, 
+                   IO (), 
+                   IO (Maybe ConfigData)) 
+                -> IO ()
 
 -- vim: sw=4 ts=4

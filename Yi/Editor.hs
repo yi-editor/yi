@@ -70,7 +70,9 @@ data Buffer a => GenEditor a =
        ,uistyle   :: !UIStyle                   -- ^ ui colours
        ,input     :: Chan Char                  -- ^ input stream
        ,threads   :: [ThreadId]                 -- ^ all our threads
+
        ,reboot    :: IO ()                      -- our reboot function
+       ,reload    :: IO Config                  -- reload config function
     }
 
 --
@@ -117,6 +119,7 @@ emptyEditor = Editor {
        ,input        = error "No channel open"
        ,threads      = []
        ,reboot       = return ()
+       ,reload       = error "No reload function"
     }
 
 -- 
@@ -423,10 +426,13 @@ shiftFocus f = modifyEditor_ $ \(e :: Editor) -> do
 -- ---------------------------------------------------------------------
 -- | Given a keymap function, set the user-defineable key map to that function
 --
-setUserSettings :: Config -> IO ()
-setUserSettings (Config km sty) = 
+setUserSettings :: Config -> IO () -> IO Config -> IO ()
+setUserSettings (Config km sty) fn fn' = 
     modifyEditor_ $ \(e :: Editor) -> 
-        return $ e { curkeymap = km, uistyle = sty }
+        return $ e { curkeymap = km, 
+                     uistyle = sty, 
+                     reboot = fn,
+                     reload = fn' }
 
 --
 -- | retrieve the user-defineable key map

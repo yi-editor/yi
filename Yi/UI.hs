@@ -35,6 +35,7 @@ module Yi.UI (
 
         -- * UI initialisation 
         start, end, 
+        initcolours,
         screenSize,
 
         -- * Input
@@ -72,11 +73,18 @@ import System.IO.Unsafe             ( unsafePerformIO )
 start :: IO ()
 start = do
     Curses.initCurses                   -- initialise the screen
+    initcolours
+    Curses.keypad Curses.stdScr True    -- grab the keyboard
+
+--
+-- | And turn on the colours
+--
+initcolours :: IO ()
+initcolours = do
     sty <- readEditor uistyle
     pairs <- initUiColors sty
     writeIORef pairMap pairs
     uiAttr (window sty) >>= \(_,p) -> bkgrndSet nullA p
-    Curses.keypad Curses.stdScr True    -- grab the keyboard
 
 --
 -- | Clean up and go home

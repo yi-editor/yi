@@ -36,6 +36,7 @@ module Yi.Core (
         startE,         -- :: Editor.Config -> Int -> Maybe [FilePath] -> IO ()
         quitE,          -- :: Action
         rebootE,        -- :: Action
+        reloadE,        -- :: Action
         eventLoop,
 
         -- * Global editor actions
@@ -123,7 +124,7 @@ import Yi.Window
 import Yi.Regex             ( regcomp, regExtended, Regex )
 import Yi.Editor
 import qualified Yi.Editor as Editor
-import qualified Yi.UI     as UI ( refresh, start, screenSize, getKey, end )
+import qualified Yi.UI     as UI ( refresh, start, screenSize, getKey, end, initcolours )
 
 import Data.Maybe           ( isNothing, isJust )
 import Data.Char            ( isLatin1 )
@@ -144,17 +145,21 @@ import GHC.Exception hiding ( throwIO )
 -- and file names passed in, and turning on the UI
 -- TODO should be in keybind
 --
-startE :: (Editor.Config, IO ()) -> Int -> Maybe [FilePath] -> IO ()
-startE (confs,fn) ln mfs = do
+startE :: (Editor.Config, IO (), IO Editor.Config ) 
+       -> Int 
+       -> Maybe [FilePath] 
+       -> IO ()
 
-    Editor.setUserSettings confs
-    modifyEditor_ $ \e -> return $ e { reboot = fn }
+startE (confs,fn,fn') ln mfs = do
+
+    Editor.setUserSettings confs fn fn'
+
     UI.start
     sz <- UI.screenSize
     modifyEditor_ $ \e -> return $ e { scrsize = sz }
 
     t <- forkIO refreshLoop -- fork UI thread
-    modifyEditor_ $ \e -> return $ e { threads = t : threads e }
+    modifyEditor_ $ \e -> return $ e { threads = [t] }
 
     -- read in any files
     handleJust ioErrors (errorE . show) $ do
@@ -250,14 +255,21 @@ quitE = do
 -- | Reboot (!). Reboot the entire editor, reloading the Yi core.
 -- Should store all the buffers somewhere, and reload them on returning.
 --
--- Reboot doesn't work on openbsd yet. hmm stupid pthreads.
---
 rebootE :: Action
 rebootE = do
     fn <- readEditor reboot
     Editor.shutdown
     UI.end
     fn
+
+-- | Recompile and reload the user's config files
+reloadE :: Action
+reloadE = do
+    fn <- readEditor reload
+    modifyEditor_ $ \e -> do
+        Config km sty <- fn
+        return e { curkeymap = km, uistyle = sty }
+    UI.initcolours
 
 -- | Do nothing
 nopE :: Action

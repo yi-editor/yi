@@ -567,7 +567,10 @@ ex_eval = enter
       fn ('s':'p':_)  = splitE
       fn ('e':' ':f)  = fnewE f
       fn ('s':'/':cs) = viSub cs
+
       fn "reboot"     = rebootE     -- !
+      fn "reload"     = reloadE     -- !
+
       fn s            = errorE $ "The "++show s++ " command is unknown."
 
 ------------------------------------------------------------------------

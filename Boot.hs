@@ -59,7 +59,6 @@ import Plugins.Utils          ( (</>), (<.>) )
 import Data.Maybe             ( fromJust, isJust )
 import Data.IORef             ( newIORef, readIORef, writeIORef, IORef() )
 import Control.Monad          ( when )
-import System.IO              ( hFlush, stdout )
 import System.Directory
 import System.Console.GetOpt
 import System.IO.Unsafe       ( unsafePerformIO )
@@ -94,13 +93,16 @@ libdir = unsafePerformIO $ newIORef (LIBDIR :: FilePath)
 {-# NOINLINE libdir #-}
 
 --
--- squirrel away our config data, so that reloading yi can (for now)
--- just reuse the existing config data.
+-- squirrel away our config module, so :reboot and :reload can find the
+-- module to reuse.
 --
-g_cfghdl :: IORef (Maybe ConfigData)
-g_cfghdl = unsafePerformIO $ newIORef (error "no config data")
-{-# NOINLINE g_cfghdl #-}
+g_cfg_mod :: IORef (Maybe Module)
+g_cfg_mod = unsafePerformIO $ newIORef (error "no config data")
+{-# NOINLINE g_cfg_mod #-}
 
+--
+-- save this module for reload as well.
+--
 g_yi_main_mod :: IORef Module
 g_yi_main_mod = unsafePerformIO $ newIORef (error "no Yi.o loaded yet")
 {-# NOINLINE g_yi_main_mod #-}
@@ -208,6 +210,24 @@ get_load_flags = do libpath <- readIORef libdir
                     return $ map (\p -> libpath </> p <.> "conf") packages
 
 -- ---------------------------------------------------------------------
+-- | load the config module
+--
+load_config :: Maybe FilePath -> IO (Maybe Module, Maybe ConfigData)
+load_config m_obj = do
+    paths   <- get_load_flags
+    libpath <- readIORef libdir
+    d       <- get_config_dir          
+    case m_obj of
+        Nothing  -> return (Nothing,Nothing)
+        Just obj -> do 
+           status <- load obj [d,libpath] paths config_sym
+           case status of
+                LoadSuccess m v -> return $ (Just m, Just (CD v))
+                LoadFailure e   -> do
+                    putStrLn "Unable to load config file, using defaults"
+                    mapM_ putStrLn e ; return (Nothing, Nothing)
+
+-- ---------------------------------------------------------------------
 -- | Find and load a config file. Load the yi core library. Jump to
 -- the real main in 'Yi.main', passing any config information we found.
 --
@@ -230,7 +250,8 @@ main = do
     d_exists <- doesDirectoryExist d
     when (not d_exists) $ createDirectory d
 
-    putStr "Starting up dynamic Haskell ... " >> hFlush stdout
+    libpath  <- readIORef libdir
+    paths    <- get_load_flags
 
     -- look for ~/.yi/Config.hs
     c        <- get_config_file 
@@ -238,19 +259,10 @@ main = do
     m_obj    <- if c_exists then compile c else return Nothing
  
     -- now load user's Config.o if we have it
-    paths   <- get_load_flags
-    libpath <- readIORef libdir
-    cfghdl  <- case m_obj of
-        Nothing  -> return Nothing
-        Just obj -> do status <- load obj [d,libpath] paths config_sym
-                       case status of
-                            LoadSuccess _ v -> return $ Just (CD v)
-                            LoadFailure e   -> do
-                                putStrLn "Unable to load config file, using defaults"
-                                mapM_ putStrLn e ; return Nothing
+    (mmod, cfghdl) <- load_config m_obj
 
-    -- for now, store config data away.
-    writeIORef g_cfghdl cfghdl
+    -- squirrel away the module, for reload() purposes
+    writeIORef g_cfg_mod mmod
 
     -- now, get a handle to Main.dynamic_main, and jump to it
     status    <- load (libpath </> yi_main_obj) [] paths yi_main_sym
@@ -260,18 +272,14 @@ main = do
         LoadFailure e -> do putStrLn "Unable to load Yi.Main, exiting"
                             mapM_ putStrLn e ; exitFailure
 
-    putStrLn "jumping over the edge ... " >> hFlush stdout
-    yi_main (cfghdl, remain)   -- jump to dynamic code
+    yi_main (cfghdl, remain, reconf)   -- jump to dynamic code
 
 -- ---------------------------------------------------------------------
--- Now, we want to /reload/ yi.o. How do we do this?
--- In our case, we want to unload a /package/, and then pull it back in.
--- Tricky.
-
+-- Now, we want to reboot the editor. That is, recompile and reload
+-- configuration data. And reload the entire HSyi.o library.
+--
 remain :: IO ()
 remain = do
-
-    -- ToDo unload all config files
 
     -- unload Yi.o
     yi_main_mod <- readIORef g_yi_main_mod
@@ -289,9 +297,37 @@ remain = do
         LoadSuccess _ v -> return (v :: YiMainType)
         LoadFailure e -> do putStrLn "Unable to reload Yi.Main, exiting"
                             mapM_ putStrLn e ; exitFailure
+
+    -- reload config data. !! crucial this comes after we reload HSyi.o,
+    -- so that we link against the new version of the lib
+    cfghdl <- reconf
     
-    cfghdl  <- readIORef g_cfghdl
-    yi_main (cfghdl,remain)   -- jump to dynamic code
+    yi_main (cfghdl, remain, reconf)   -- jump to dynamic code
+
+-- ---------------------------------------------------------------------
+-- | Compile and reload configuration module
+--
+reconf :: IO (Maybe ConfigData)
+reconf = do
+
+    -- try to recompile
+    c        <- get_config_file 
+    c_exists <- doesFileExist c
+    m_obj    <- if c_exists then compile c else return Nothing
+
+    -- reload out config modules
+    cfg_mod  <- readIORef g_cfg_mod
+    (mmod, cfghdl) <- case cfg_mod of
+        Just m  -> do       -- was already loaded
+            status <- reload m config_sym
+            case status of
+                LoadSuccess m' v -> return $ (Just m', Just (CD v))
+                LoadFailure _    -> return (Nothing, Nothing)
+            
+        Nothing -> load_config m_obj
+
+    writeIORef g_cfg_mod mmod
+    return cfghdl
 
 -- ---------------------------------------------------------------------
 -- | MAGIC: this is the type of the value passed from Boot.main to
@@ -305,6 +341,9 @@ remain = do
 --
 data ConfigData = forall a. CD a {- has Config type -}
 
-type YiMainType = (Maybe ConfigData, IO () ) -> IO ()
+type YiMainType = (Maybe ConfigData, 
+                   IO (), 
+                   IO (Maybe ConfigData)) 
+                -> IO ()
 
 -- vim: sw=4 ts=4
