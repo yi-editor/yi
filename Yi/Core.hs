@@ -101,7 +101,7 @@ import Data.Char            ( isLatin1 )
 import System.IO
 import System.Directory     ( doesFileExist )
 import System.Exit
-import Control.Monad        ( when )
+import Control.Monad
 import Control.Exception    ( ioErrors, catchJust, handleJust )
 
 import GHC.Base
@@ -211,17 +211,17 @@ upE = withWindow_ moveUpW
 upScreenE :: Action
 upScreenE = do
     (Just w) <- getWindow   -- better be a window open..
-    mapM_ (\_ -> withWindow_ moveUpW)  [1 .. height w - 3]
-    withWindow_ moveUpW
+    replicateM_ (height w - 2) $ withWindow_ moveUpW
 
 -- | Scroll down 1 screen
+-- Inefficient
 downScreenE :: Action
 downScreenE = do
-    (Just w) <- getWindow  -- better be a window open..
-    mapM_ (\_ -> withWindow_ moveDownW)  [1 .. (height w - 2) * 2]
+    (Just w) <- getWindow
+    let i = 2 * (height w - 2)
+    replicateM_ i $ withWindow_ moveDownW
     ll <- withWindow $ \x b -> atLastLine b >>= \ll -> return (x,ll)
-    when (not ll) $
-        mapM_ (\_ -> withWindow_ moveUpW) [1 .. height w - 2]
+    when (not ll) $ replicateM_ (i`div`2) (withWindow_ moveUpW)
 
 -- | Move left @x@ or to start of line
 leftOrSolE :: Int -> Action
