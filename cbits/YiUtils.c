@@ -1,4 +1,4 @@
-#include "nomacro.h"
+#include "YiUtils.h"
 
 /*
  * A non-macro version of getyx(3), to make writing a Haskell binding

@@ -166,7 +166,7 @@ import CForeign
 import System.IO.Unsafe
 import System.Posix.Signals
 
-#include <my_curses.h>
+#include <YiCurses.h>
 
 ------------------------------------------------------------------------
 
@@ -193,7 +193,7 @@ type Window = Ptr WindowTag
 --
 stdScr :: Window
 stdScr = unsafePerformIO (peek stdscr)
-foreign import ccall "static my_curses.h &stdscr" 
+foreign import ccall "static YiCurses.h &stdscr" 
     stdscr :: Ptr Window
 
 --
@@ -213,7 +213,7 @@ foreign import ccall "static my_curses.h &stdscr"
 --
 initScr :: IO Window
 initScr = throwIfNull "initscr" initscr
-foreign import ccall unsafe "my_curses.h initscr" initscr :: IO Window
+foreign import ccall unsafe "YiCurses.h initscr" initscr :: IO Window
 
 --
 -- | > The cbreak routine
@@ -227,8 +227,8 @@ cBreak :: Bool -> IO ()
 cBreak True  = throwIfErr_ "cbreak"   cbreak
 cBreak False = throwIfErr_ "nocbreak" nocbreak
 
-foreign import ccall unsafe "my_curses.h cbreak"     cbreak :: IO CInt
-foreign import ccall unsafe "my_curses.h nocbreak" nocbreak :: IO CInt
+foreign import ccall unsafe "YiCurses.h cbreak"     cbreak :: IO CInt
+foreign import ccall unsafe "YiCurses.h nocbreak" nocbreak :: IO CInt
 
 --
 -- |>    The  raw and noraw routines place the terminal into or out
@@ -244,8 +244,8 @@ raw :: Bool -> IO ()
 raw False = throwIfErr_ "noraw" noraw
 raw True  = throwIfErr_ "raw"   raw_c
 
-foreign import ccall unsafe "my_curses.h noraw" noraw :: IO CInt
-foreign import ccall unsafe "my_curses.h raw"   raw_c :: IO CInt
+foreign import ccall unsafe "YiCurses.h noraw" noraw :: IO CInt
+foreign import ccall unsafe "YiCurses.h raw"   raw_c :: IO CInt
 
 --
 -- |>      The  echo  and  noecho routines control whether characters
@@ -263,8 +263,8 @@ echo :: Bool -> IO ()
 echo False = throwIfErr_ "noecho" noecho
 echo True  = throwIfErr_ "echo"   echo_c
 
-foreign import ccall unsafe "my_curses.h noecho" noecho :: IO CInt
-foreign import ccall unsafe "my_curses.h echo" echo_c :: IO CInt
+foreign import ccall unsafe "YiCurses.h noecho" noecho :: IO CInt
+foreign import ccall unsafe "YiCurses.h echo" echo_c :: IO CInt
 
 --
 -- |>       The  nl  and  nonl routines control whether the underlying
@@ -282,8 +282,8 @@ nl :: Bool -> IO ()
 nl True  = throwIfErr_ "nl"   nl_c
 nl False = throwIfErr_ "nonl" nonl
 
-foreign import ccall unsafe "my_curses.h nl" nl_c :: IO CInt
-foreign import ccall unsafe "my_curses.h nonl" nonl :: IO CInt
+foreign import ccall unsafe "YiCurses.h nl" nl_c :: IO CInt
+foreign import ccall unsafe "YiCurses.h nonl" nonl :: IO CInt
 
 -- |>       If  the intrflush option is enabled, (bf is TRUE), when an
 -- >        interrupt key  is  pressed  on  the  keyboard  (interrupt,
@@ -296,39 +296,39 @@ foreign import ccall unsafe "my_curses.h nonl" nonl :: IO CInt
 intrFlush :: Bool -> IO ()
 intrFlush bf =
     throwIfErr_ "intrflush" $ intrflush stdScr (if bf then 1 else 0)
-foreign import ccall unsafe "my_curses.h intrflush" intrflush :: Window -> (#type bool) -> IO CInt
+foreign import ccall unsafe "YiCurses.h intrflush" intrflush :: Window -> (#type bool) -> IO CInt
 
 --
 -- | Enable the keypad of the user's terminal.
 --
 keypad :: Window -> Bool -> IO ()
 keypad win bf = throwIfErr_ "keypad" $ keypad_c win (if bf then 1 else 0)
-foreign import ccall unsafe "my_curses.h keypad" keypad_c :: Window -> (#type bool) -> IO CInt
+foreign import ccall unsafe "YiCurses.h keypad" keypad_c :: Window -> (#type bool) -> IO CInt
 
 noDelay :: Window -> Bool -> IO ()
 noDelay win bf =
     throwIfErr_ "nodelay" $ nodelay win (if bf then 1 else 0)
-foreign import ccall unsafe "my_curses.h nodelay" nodelay :: Window -> (#type bool) -> IO CInt
+foreign import ccall unsafe "YiCurses.h nodelay" nodelay :: Window -> (#type bool) -> IO CInt
 
-foreign import ccall unsafe "my_curses.h leaveok" leaveok_c :: Window -> (#type bool) -> IO CInt
+foreign import ccall unsafe "YiCurses.h leaveok" leaveok_c :: Window -> (#type bool) -> IO CInt
 
 leaveOk True = leaveok_c stdScr 1
 leaveOk False = leaveok_c stdScr 0
 
 
-foreign import ccall unsafe "my_curses.h clearok" clearok_c :: Window -> (#type bool) -> IO CInt
+foreign import ccall unsafe "YiCurses.h clearok" clearok_c :: Window -> (#type bool) -> IO CInt
 
 clearOk True = clearok_c stdScr 1
 clearOk False = clearok_c stdScr 0
 
 #if 1
 --HAVE_USE_DEFAULT_COLORS
-foreign import ccall unsafe "my_curses.h use_default_colors" useDefaultColors :: IO ()
+foreign import ccall unsafe "YiCurses.h use_default_colors" useDefaultColors :: IO ()
 
 defaultBackground = Color (-1)
 defaultForeground = Color (-1)
 
-foreign import ccall unsafe "my_curses.h define_key" define_key :: Ptr CChar -> CInt -> IO ()
+foreign import ccall unsafe "YiCurses.h define_key" define_key :: Ptr CChar -> CInt -> IO ()
 defineKey k s =  withCString s (\s -> define_key s k) >> return ()
 
 #else
@@ -369,7 +369,7 @@ initCurses = do
 --
 endWin :: IO ()
 endWin = throwIfErr_ "endwin" endwin
-foreign import ccall unsafe "my_curses.h endwin" endwin :: IO CInt
+foreign import ccall unsafe "YiCurses.h endwin" endwin :: IO CInt
 
 ------------------------------------------------------------------------
 
@@ -382,8 +382,8 @@ scrSize = do
     cols  <- peek colsPtr
     return (fromIntegral lines, fromIntegral cols)
 
-foreign import ccall "my_curses.h &LINES" linesPtr :: Ptr CInt
-foreign import ccall "my_curses.h &COLS"  colsPtr  :: Ptr CInt
+foreign import ccall "YiCurses.h &LINES" linesPtr :: Ptr CInt
+foreign import ccall "YiCurses.h &COLS"  colsPtr  :: Ptr CInt
 
 --
 -- | refresh curses windows and lines. curs_refresh(3)
@@ -391,14 +391,14 @@ foreign import ccall "my_curses.h &COLS"  colsPtr  :: Ptr CInt
 refresh :: IO ()
 refresh = throwIfErr_ "refresh" refresh_c
 
-foreign import ccall unsafe "my_curses.h refresh" 
+foreign import ccall unsafe "YiCurses.h refresh" 
     refresh_c :: IO CInt
 
 ------------------------------------------------------------------------
 
 hasColors :: IO Bool
 hasColors = liftM (/= 0) has_colors
-foreign import ccall unsafe "my_curses.h has_colors" has_colors :: IO (#type bool)
+foreign import ccall unsafe "YiCurses.h has_colors" has_colors :: IO (#type bool)
 
 startColor :: IO ()
 startColor = throwIfErr_ "start_color" start_color
@@ -413,7 +413,7 @@ newtype Pair = Pair Int deriving (Eq, Ord, Ix)
 colorPairs :: IO Int
 colorPairs = fmap fromIntegral $ peek colorPairsPtr
 
-foreign import ccall "my_curses.h &COLOR_PAIRS" 
+foreign import ccall "YiCurses.h &COLOR_PAIRS" 
         colorPairsPtr :: Ptr CInt
 
 newtype Color = Color Int deriving (Eq, Ord, Ix)
@@ -421,7 +421,7 @@ newtype Color = Color Int deriving (Eq, Ord, Ix)
 colors :: IO Int
 colors = liftM fromIntegral $ peek colorsPtr
 
-foreign import ccall "my_curses.h &COLORS" colorsPtr :: Ptr CInt
+foreign import ccall "YiCurses.h &COLORS" colorsPtr :: Ptr CInt
 
 --black, red, green, yellow, blue, magenta, cyan, white :: Color
 
@@ -491,25 +491,25 @@ colorContent (Color c) =
         return (fromIntegral r, fromIntegral g, fromIntegral b)
 foreign import ccall unsafe color_content :: CShort -> Ptr CShort -> Ptr CShort -> Ptr CShort -> IO CInt
 
-foreign import ccall unsafe "my_curses.h hs_curses_color_pair" colorPair :: Pair -> (#type chtype)
+foreign import ccall unsafe "YiCurses.h hs_curses_color_pair" colorPair :: Pair -> (#type chtype)
 #def inline chtype hs_curses_color_pair (HsInt pair) {return COLOR_PAIR (pair);}
 
 -------------
 -- Attributes 
 -------------
 
-foreign import ccall unsafe "my_curses.h attr_set" attr_set :: Attr -> CShort -> Ptr a -> IO Int
--- foreign import ccall unsafe "my_curses.h attr_get" :: Attr -> CShort -> Ptr a -> IO Int
+foreign import ccall unsafe "YiCurses.h attr_set" attr_set :: Attr -> CShort -> Ptr a -> IO Int
+-- foreign import ccall unsafe "YiCurses.h attr_get" :: Attr -> CShort -> Ptr a -> IO Int
 
-foreign import ccall unsafe "my_curses.h wattr_set" wattr_set :: Window -> Attr -> CInt -> Ptr a -> IO CInt
-foreign import ccall unsafe "my_curses.h wattr_get" wattr_get :: Window -> Ptr Attr -> Ptr CShort -> Ptr a -> IO CInt
+foreign import ccall unsafe "YiCurses.h wattr_set" wattr_set :: Window -> Attr -> CInt -> Ptr a -> IO CInt
+foreign import ccall unsafe "YiCurses.h wattr_get" wattr_get :: Window -> Ptr Attr -> Ptr CShort -> Ptr a -> IO CInt
 
-foreign import ccall "my_curses.h attr_on" attr_on :: (#type attr_t) -> Ptr a -> IO Int
-foreign import ccall "my_curses.h attr_off" attr_off :: (#type attr_t) -> Ptr a -> IO Int
-foreign import ccall "my_curses.h attron" attron :: Int -> IO Int
-foreign import ccall "my_curses.h attroff" attroff :: Int -> IO Int
-foreign import ccall unsafe "my_curses.h wattron" wattron :: Window -> CInt -> IO CInt
-foreign import ccall unsafe "my_curses.h wattroff" wattroff :: Window -> CInt -> IO CInt
+foreign import ccall "YiCurses.h attr_on" attr_on :: (#type attr_t) -> Ptr a -> IO Int
+foreign import ccall "YiCurses.h attr_off" attr_off :: (#type attr_t) -> Ptr a -> IO Int
+foreign import ccall "YiCurses.h attron" attron :: Int -> IO Int
+foreign import ccall "YiCurses.h attroff" attroff :: Int -> IO Int
+foreign import ccall unsafe "YiCurses.h wattron" wattron :: Window -> CInt -> IO CInt
+foreign import ccall unsafe "YiCurses.h wattroff" wattroff :: Window -> CInt -> IO CInt
 foreign import ccall standout :: IO Int
 foreign import ccall standend :: IO Int
 
@@ -853,7 +853,7 @@ vis_c vis = case vis of
 cursSet 0 = leaveOk True  >> curs_set 0
 cursSet n = leaveOk False >> curs_set n 
 
-foreign import ccall unsafe "my_curses.h curs_set" 
+foreign import ccall unsafe "YiCurses.h curs_set" 
     curs_set :: CInt -> IO CInt
 
 --
@@ -888,7 +888,7 @@ getYX w =
 --
 --      void getyx(WINDOW *win, int y, int x);
 --
-foreign import ccall unsafe "nomacro.h nomacro_getyx" 
+foreign import ccall unsafe "YiUtils.h nomacro_getyx" 
         nomacro_getyx :: Window -> Ptr CInt -> Ptr CInt -> IO ()
 
 ------------------------------------------------------------------------
@@ -939,8 +939,8 @@ withProgram action = withCursor CursorVisible $ Control.Exception.bracket_ (endW
 --withProgram action = withCursor CursorVisible $ Control.Exception.bracket_ ({-def_prog_mode >> -}endWin) (return ()){-reset_prog_mode-} action
 
 
-foreign import ccall unsafe "my_curses.h beep" c_beep :: IO CInt
-foreign import ccall unsafe "my_curses.h flash" c_flash :: IO CInt
+foreign import ccall unsafe "YiCurses.h beep" c_beep :: IO CInt
+foreign import ccall unsafe "YiCurses.h flash" c_flash :: IO CInt
 
 beep :: IO ()
 beep = do
@@ -1187,7 +1187,7 @@ resizeTerminal :: Int -> Int -> IO ()
 
 resizeTerminal a b = throwIfErr_ "resizeterm"  $ resizeterm (fi a) (fi b)
 
-foreign import ccall unsafe "my_curses.h resizeterm" resizeterm :: CInt -> CInt -> IO CInt
+foreign import ccall unsafe "YiCurses.h resizeterm" resizeterm :: CInt -> CInt -> IO CInt
 
 #else
 
@@ -1253,7 +1253,7 @@ withMouseEventMask :: [ButtonEvent] -> IO a -> IO a
 
 #ifdef KEY_MOUSE
 
-foreign import ccall unsafe "my_curses.h mousemask" mousemask :: (#type mmask_t) -> Ptr (#type mmask_t) -> IO (#type mmask_t)
+foreign import ccall unsafe "YiCurses.h mousemask" mousemask :: (#type mmask_t) -> Ptr (#type mmask_t) -> IO (#type mmask_t)
 
 withMouseEventMask bes action = do
     ov <- alloca (\a ->  mousemask (besToMouseMask bes) a >> peek a) 

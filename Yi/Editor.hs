@@ -119,9 +119,10 @@ hNewBuffer f =
         return $! e { buffers = addToFM bs (keyB b) b, curkey = (keyB b) }
 
 --
--- | Create and fill a new buffer.
+-- | Create and fill a new buffer. Gets an \n if it is empty (?)
 --
 stringToNewBuffer :: FilePath -> String -> IO ()
+stringToNewBuffer f [] = stringToNewBuffer f ['\n']
 stringToNewBuffer f cs =
     modifyEditor_ $ \e@(Editor{buffers=bs} :: Editor) -> do
         b <- newB f cs

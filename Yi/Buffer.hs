@@ -1,4 +1,4 @@
-{-# OPTIONS -fffi #-}
+{-# OPTIONS -fffi -#include YiUtils.h #-}
 -- 
 -- Copyright (C) 2004 Don Stewart - http://www.cse.unsw.edu.au/~dons
 -- 
@@ -225,15 +225,16 @@ hNewFBuffer f = do
                 return (FBuffer f u mv)
 
 --
--- | New FBuffer filled from string
+-- | New FBuffer filled from string.
 --
 stringToFBuffer :: String -> String -> IO FBuffer
 stringToFBuffer nm s = do
     let size_i = length s
-    arr <- newListArray (0,size_i-1) (map (fromIntegral.ord) s) :: IO (IOUArray Int Word8)
+        r_size = size_i + 2048 -- TODO
+    arr <- newListArray (0,r_size-1) (map (fromIntegral.ord) s) :: IO (IOUArray Int Word8)
     case unsafeCoerce# arr of       -- TODO get rid of Coerce
         STUArray _ _ bytearr# -> do
-            ref <- newIORef (FBuffer_ bytearr# 0 size_i size_i)
+            ref <- newIORef (FBuffer_ bytearr# 0 size_i r_size)
             mv  <- newMVar ref
             u   <- newUnique
             return (FBuffer nm u mv)
