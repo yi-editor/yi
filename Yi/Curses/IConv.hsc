@@ -1,7 +1,7 @@
 {-# OPTIONS -fffi #-}
 -- -*- haskell -*-
 --
--- Copyright (c) 2002-2004 John Meacham (john at repetae dot net)
+-- Copyright (c) 2004 Tuomo Valkonen <tuomov at iki dot fi>
 -- Copyright (c) 2004 Don Stewart - http://www.cse.unsw.edu.au/~dons
 -- 
 -- Permission is hereby granted, free of charge, to any person obtaining a
