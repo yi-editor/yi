@@ -22,8 +22,9 @@ module Yi.Keymap.Nano ( keymap ) where
 import Yi.Editor            ( Action )
 import Yi.Yi hiding         ( keymap )
 
-import Data.Char            ( chr )
+import Data.Char            ( chr, isAlphaNum )
 import Data.List            ( (\\) )
+import Data.Maybe           ( fromMaybe )
 import Data.FiniteMap
 
 import Control.Exception    ( ioErrors, catchJust )
@@ -103,6 +104,8 @@ cmdChar = nanoCmdChar
 -- A key\/action table. 
 -- This is where we actually map command (^) chars to actions.
 --
+-- How to do Meta-key ?
+--
 cmdCharFM :: FiniteMap Char Action
 cmdCharFM = listToFM $
     [('\127',       leftE >> deleteE)
@@ -116,12 +119,16 @@ cmdCharFM = listToFM $
     ,('\^H',        leftE >> deleteE)
     ,('\^J',        undef '\^J')
     ,('\^K',        readRestOfLnE >>= setRegE >> killE)
+    ,('\^L',        refreshE)
+    ,('\^M',        insertE '\n')
     ,('\^N',        downE)
     ,('\^P',        upE)
-    ,('\^U',        getRegE >>= mapM_ insertE)
+    ,('\^U',        undoE)
     ,('\^V',        downScreenE)
     ,('\^X',        quitE)
     ,('\^Y',        upScreenE)
+    ,('\0',         do moveWhileE (isAlphaNum)      Right
+                       moveWhileE (not.isAlphaNum)  Right )
     ,(keyBackspace, leftE >> deleteE)
     ,(keyDown,      downE)
     ,(keyLeft,      leftE)
@@ -159,11 +166,19 @@ cmdCharFM = listToFM $
 -- magic (unfortunately) we need to explicitly switch focus.
 --
 cmdSwitch :: NanoMode
-cmdSwitch = char '\^O'
-    `meta` \[c] _ -> (Just (Right (msgE msg >> cmdlineFocusE))
-                     ,Just (c, msg,[]), Just echo_km)
+cmdSwitch = switchChar
+    `meta` \[c] _ -> (Just (Right (msgE (prompt c) >> cmdlineFocusE))
+                     ,Just (c, prompt c,[]), Just echo_km)
     where
-        msg = "File Name to Write: "
+        --
+        -- we look up the echoCharFM to find a list of chars to match in
+        -- this action, which we then turn into a regex with alt.
+        --
+        -- also, we can construct a prompt from the second component
+        -- of the elem of the same fm.
+        --
+        switchChar = alt $ keysFM echoCharFM
+        prompt  c  = snd $ fromMaybe (undefined,"") (lookupFM echoCharFM c)
 
 ------------------------------------------------------------------------
 
@@ -206,22 +221,27 @@ echoEval = enter
     `meta` \_ (Just (c,_,rf)) ->
         let f = reverse rf
             a = if f == [] then nopE 
-                           else getAction f c
+                           else case lookupFM echoCharFM c of
+                                    Just (fn,_) -> fn f
+                                    Nothing     -> nopE
+
         in (Just (Right (a >> msgClrE >> cmdlineUnFocusE)),Nothing,Just nano_km)
     where
         enter = alt ['\n', '\r']
 
-        --
-        -- Just hard-code the mapping here, rather than use an FM. No
-        -- reason why we'd do this, however.
-        --
-        -- TODO need a new fwriteE function that takes a file name argument.
-        --
-        getAction f c = case c of
-            '\^O' -> catchJust ioErrors (do fwriteToE f
-                                            msgE "Wrote current file.") 
-                                        (msgE . show)
-            _     -> undef c
+--
+-- Actions that mess with the echo (or command) buffer
+-- Notice how these actions take a @FilePath@ as an argument, and the
+-- second component of the elem of the fm is a string to use as a
+-- prompt.
+--
+echoCharFM :: FiniteMap Char ((FilePath -> Action), String)
+echoCharFM = listToFM $
+    [('\^O',     
+     (\f -> catchJust ioErrors (do fwriteToE f ; msgE "Wrote current file.") 
+                               (msgE . show) 
+     ,"File Name to Write: "))
+    ]
 
 -- ---------------------------------------------------------------------
 -- utilities
