@@ -447,18 +447,21 @@ viSub cs = do
                                     (rep'', [])    -> (rep'', [])
                                     (rep'', (_:fs)) -> (rep'',fs)
     case opts of
-        ['g'] -> do let loop i = do s <- searchAndRepLocal pat rep
-                                    if s then loop (i+1) else return i
-                    s <- loop (0 :: Int)
-                    if s == 0
-                        then msgE ("Pattern not found: "++pat)
-                        else msgClrE
+        []    -> do_single pat rep
+        ['g'] -> do_line   pat rep
+        _     -> do_single pat rep-- TODO
+ 
+    where do_single p r = do 
+                s <- searchAndRepLocal p r
+                if not s then msgE ("Pattern not found: "++p) else msgClrE
 
-        _     -> do s <- searchAndRepLocal pat rep
-                    if not s
-                        then msgE ("Pattern not found: "++pat)
-                        else msgClrE
-
+          -- inefficient. we recompile the regex each time.
+          do_line   p r = do 
+                let loop i = do s <- searchAndRepLocal p r
+                                if s then loop (i+1) else return i
+                s <- loop (0 :: Int)
+                if s == 0 then msgE ("Pattern not found: "++p) else msgClrE
+  
 -- ---------------------------------------------------------------------
 -- | Handle delete chars in a string
 --
