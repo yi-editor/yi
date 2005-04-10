@@ -37,7 +37,7 @@ HADDOCK_SRCS+=  Boot.hs
 
 # static front end
  
-STATIC_OBJS=    Main.o
+STATIC_OBJS=    Main.$(way_)o
 STATIC_BIN_DEPS=yi
 STATIC_HC_OPTS  += -package-conf yi.conf
 HADDOCK_SRCS+=  Main.hs
@@ -74,7 +74,7 @@ Boot.o: Boot.hs
 # Main is the static "loader". It can't get -package-name yi, or it
 # won't work in ghci. Could probably filter it out somehow
 #
-Main.o: Main.hs Yi.o $(LIBRARY) 
+Main.o: Main.hs Yi.$(way_)o $(LIBRARY) 
 	$(GHC) $(HC_OPTS) $(STATIC_HC_OPTS) -c $< -o $@ -ohi $(basename $@).hi
 
 # Break some mutual recursion (why doesn't this work in mk/rules.mk??)
