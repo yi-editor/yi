@@ -1,5 +1,7 @@
 -- 
--- Copyright (c) 2004 Don Stewart - http://www.cse.unsw.edu.au/~dons
+-- Copyright 2005 by B.Zapf
+--
+-- adapted from Nano.hs
 -- 
 -- This program is free software; you can redistribute it and/or
 -- modify it under the terms of the GNU General Public License as
@@ -17,181 +19,145 @@
 -- 02111-1307, USA.
 -- 
 
---
--- | Y I -- as the name suggests ;) -- uses vi as its default key
--- bindings. Feel free to write your own bindings in ~/.yi/Keymap.hs.
--- You must provide a function 'keymap' of type: Char -> Action
---
--- Contributed by Simon Winwood - <http://www.cse.unsw.edu.au/~sjw>
---
-
-module Yi.Keymap.Emacs ( keymap ) where
-
-import Yi.Yi hiding ( keymap )
-
-import Data.Char
--- import Control.Monad
--- import Data.FiniteMap
--- import Data.IORef
--- import System.IO.Unsafe -- Yuck
-
--- ---------------------------------------------------------------------
---
--- This function must be implemented by any user keybinding
---
-keymap :: [Char] -> IO ()
-keymap [] = nopE
-keymap (c:cs) = do msgE "emacs keymap not ported to lazy input type"
-                   if c == 'q' then quitE else keymap cs
-               
 
 {-
 
--- keymap c = initKeys >> lookupKeymap globalKeyTable c
+Requirements from the community:
 
-lookupKeymap :: KeyTable -> Char -> IO Keymap
-lookupKeymap _ '\^G' = msgE "Quit" >> return (Keymap $ lookupKeymap globalKeyTable) -- hack
-lookupKeymap t k = do key <- lookupKey t k
-		      case key of { KAction a -> a >> return (Keymap $ lookupKeymap globalKeyTable);
-				    KMap    t' -> return (Keymap $ lookupKeymap t')}
+sat 9 apr 22:20
+ < stepcut> (1) showing the 'C-x - ' stuff in the message bar
+ < stepcut> (2) allowing tab completion of M-x commands
+ < stepcut> (3) supporting 'C-h k'
+ < stepcut> (4) rebinding keys (of course)
+ < stepcut> (5) C-u
+ < basti_> doing WHAT? ;)
+ * basti_ doesnt have that bound
+ < stepcut> C-u is bound by default...
+ < stepcut> try, C-u 20 a
+ < basti_> ah
+ < stepcut> it repeats a command
+ < basti_> hmm ok
+ < stepcut> C-u a will do it 4 times
+ < stepcut> it is often, but not always interpreted as a repeat
+ < stepcut> also, capturing/replaying keyboard macros
+ < basti_> lets stay on the carpet.
 
-type Key = Char
-data KeyTableItem = KAction Action | KMap KeyTable
-
-instance Show KeyTableItem where
-    show (KAction _a) = "Action"
-    show (KMap _m)    = "Map"
-
-type KeySeq = [Key]
-
--- type Bind = (Key, KeyTableItem)
-type KeyTable = IORef (FiniteMap Key KeyTableItem)
-    
-nullAction :: KeyTableItem
-nullAction = KAction nopE
-
-withKeyTableItem :: KeyTableItem -> (Action -> a) -> (KeyTable -> a) -> a
-withKeyTableItem (KAction a) f _ = f a
-withKeyTableItem (KMap m)    _ f = f m
-
-copyKeyTable :: KeyTable -> IO (KeyTable)
-copyKeyTable k = readIORef k >>= newIORef
-
-newKeyTable :: IO (KeyTable)
-newKeyTable = newIORef emptyFM
-
-updateKey ::  KeyTable -> Key -> KeyTableItem -> IO ()
-updateKey t k i = modifyIORef t $ \x -> addToFM x k i 
-
-lookupKey :: KeyTable -> Key -> IO (KeyTableItem)
-lookupKey t k = (readIORef t >>= \x -> 
-		 return $ lookupWithDefaultFM x nullAction k)
-
-{-# NOINLINE globalKeyTable #-}
-globalKeyTable :: KeyTable
-globalKeyTable = unsafePerformIO newKeyTable
-
--- Undo/Redo action
-
--- evil
-getPoint :: IO Int
-getPoint = do (_, _, _, _, p, _) <- bufInfoE; return p
-
-setPoint :: Int -> Action
-setPoint = gotoPoint
-
-saveExcursion :: IO a -> IO a
-saveExcursion f = do p <- getPoint; r <- f; setPoint p; return r
-
-data URAction = AC (IO URAction)
-
-deleteA :: Int -> IO URAction
-deleteA p = do gotoPoint p
-	       c <- readE
-	       msgE ("deleteA " ++ show p ++ " " ++ show c)
-	       deleteE
-	       return (AC $ insertA p c)
-
-insertA :: Int -> Char -> IO URAction
-insertA p c = do msgE ("InsertA " ++ show p ++ " " ++ show c)
-	         gotoPoint p
-		 insertE c
-		 return (AC $ deleteA p)
-
-{-# NOINLINE undoRedoState #-}
-undoRedoState :: IORef ([URAction], [URAction])
-undoRedoState = unsafePerformIO $ newIORef ([], [])
-
-setUndoRedoState :: ([URAction], [URAction]) -> IO ()
-setUndoRedoState = writeIORef undoRedoState
-
-doURAction :: IO URAction -> Action
-doURAction action = do (undos, _redos) <- readIORef undoRedoState
-		       u <- action
-		       setUndoRedoState (u : undos, []) -- doing something kills the redo state!
-		       
-undo :: Action
-undo = do (undos, redos) <- readIORef undoRedoState
-	  case undos of 
-		    []     -> msgE "No more undos"
-		    ((AC x):xs) -> do r <- x
-				      setUndoRedoState (xs, r : redos)
-
-redo :: Action
-redo = do (undos, redos) <- readIORef undoRedoState
-	  case redos of 
-		    []     -> msgE "No more redos"
-		    ((AC x):xs) -> do u <- x
-				      setUndoRedoState (u : undos, xs)
-
--- ---------------------------------------------------------------------
-
-control :: Char -> Char
-control c = chr (ord '\^A' + (ord (toUpper c) - ord 'A'))
-
--- ---------------------------------------------------------------------
---
--- | These functions emulate the XXX-set-key functions
---
-
-keytableSetKey :: KeyTable -> KeySeq -> Action -> IO ()
-keytableSetKey _ [] _     = error "Invalid (empty) key sequence"
-keytableSetKey t [k] a    = updateKey t k (KAction a)
-keytableSetKey t (k:ks) a = do v <- lookupKey t k
-			       withKeyTableItem v (\_ -> newKeyTable >>= addMap k ks a) (addMap k ks a)
-    where
-    addMap k' ks' a' t' = keytableSetKey t' ks' a' >> updateKey t k' (KMap t')
-
-myInsert :: Char -> Action
-myInsert c = do p <- getPoint; doURAction (insertA p c)
-
--- Poor mans key bindings
-initKeyBindings :: [([Char], Action)]
-initKeyBindings = [-- Special characters
-		   ([keyEnter], myInsert '\n'),
-		   (['\r'], myInsert '\n'),		   
-		   -- Movement
-		   ([keyDown], downE),
-		   ([keyLeft], leftOrSolE 1),
-		   ([keyRight], rightOrEolE 1),
-		   ([keyUp], upE),
-
-		   ([control 'a'], solE),
-		   ([control 'e'], eolE),
-   		   -- Editing
-		   ([keyBackspace], leftOrSolE 1  >> deleteE),
-		   ([control 'k'], killE),
-		   ([control 'd'], deleteE),
-		   -- Other
-		   ([control 'u'], undo),
-		   ([control 'r'], redo),
-		   ([control 'x', control 's'], fwriteE),
-		   ([control 'x', control 'c'], closeE)
-		  ]
-
-initKeys :: IO ()
-initKeys = do mapM_ (\c -> keytableSetKey globalKeyTable [c] (myInsert c)) $ 
-                            filter isPrint [minBound .. maxBound]
-	      mapM_ (uncurry $ keytableSetKey globalKeyTable) initKeyBindings
+ < stepcut> the hard part with (4) is how to express the command you want 
+            to bind to at run-time
+ < basti_> hmm.
+ -!- lisppaste2 [~lisppaste@common-lisp.net] has joined #haskell
+ < basti_> is there some sort of eval function?
+ < stepcut> in the compiled code, you just bind the key to some code that 
+            is compiled
+ < basti_> i know
+ < basti_> we would need 2-way association
+ < stepcut> right
 
 -}
+
+--
+-- | An emulation of the Emacs editor
+--
+
+module Yi.Keymap.Emacs where
+
+import Yi.Editor            ( Action )
+import Yi.Yi hiding         ( keymap )
+import Yi.Lexers hiding (Action)
+
+--import qualified Yi.Map as M
+
+import Data.Char            ( chr ) --, isAlphaNum )
+--import Data.List            ( (\\) )
+--import Data.Maybe           ( fromMaybe )
+
+--import Control.Exception    ( ioErrors, catchJust, try, evaluate )
+
+-- so far, Command Sequences are stored as a string. I thought 
+-- making an own datatype for them, for the sake of abstraction, but then
+-- realized that this wouldn't earn a lot and complicates matters.   basti_
+
+type CommandSequence = String
+
+keymap :: [Char] -> [Action]
+keymap cs = actions
+    where 
+        (actions,_,_) = execLexer emacs_km (cs, "")
+
+type EmacsMode = Lexer EmacsState Action
+
+type EmacsState = CommandSequence
+
+-- the naming is still a little heterogenous, but this is the "normal"
+-- key lexer...
+
+emacs_km :: EmacsMode
+emacs_km =      insChar    -- insert a keystroke
+           >||< moveChar   -- or move the cursor
+           >||< (char '\^X' `meta` escape) -- or go Ctl-X
+           >||< (char '#'   `meta` escape) -- or go Meta-X (this is
+                                        -- bound to # for the moment)
+
+-- upon the chars 32..126, insertE 
+
+insChar :: EmacsMode
+insChar = insertChars `action` \[c] -> Just $ insertE c
+          where insertChars = alt $ '\r' : map chr [32..126]
+
+-- cursor motions
+
+moveChar :: EmacsMode
+moveChar = (char keyUp    `action` \_ -> Just upE   ) >||<
+           (char keyDown  `action` \_ -> Just downE ) >||<
+           (char keyRight `action` \_ -> Just rightE) >||<
+           (char keyLeft  `action` \_ -> Just leftE ) 
+
+
+-- this does the decoding of CommandSequences... this approach seems
+-- to be good for sequences of a few keys, but it's not favourable for
+-- filenames etc.
+
+decode :: CommandSequence -> Action
+decode ('\^X':('\^S':_)) = msgE "Write"
+decode ('\^X':('\^C':_)) = quitE
+
+decode _ = msgE "Unbound Control sequence"
+
+-- this is some rudimentary "wacko mode abstraction": it escapes a
+-- character into the "CommandSequence", displaying it, and goes into
+-- commandChar mode.
+
+-- Note: for prettifying the visual feedback, start here at "show ns"...
+
+escape :: String->CommandSequence->(Maybe (Either e Action),CommandSequence,Maybe (Lexer CommandSequence Action))
+
+escape s os = ((Just $ Right $ msgE $ show ns),
+                ns,
+                Just commandChar)
+               where ns = os++s
+
+-- this ends "wacko mode abstraction", going back to emacs_km
+
+endescape :: String->CommandSequence->(Maybe (Either e Action),CommandSequence,Maybe (Lexer CommandSequence Action))
+
+endescape s os = ((Just $ Right $ msgE ("!!!>"++(show ns)) >> decode ns),
+                  "",
+                  Just emacs_km)
+                 where ns = os++s
+
+--bindings :: IORef MArray Integer
+
+commandChar :: EmacsMode
+commandChar = char '\^X' `meta` escape  >||<
+              ((alt $ ['\^C','\^S']++(map chr [32..123])) `meta` endescape)
+
+
+
+{--- junk at the bottom ---}
+
+null_km :: EmacsMode
+null_km = epsilon `action` \_ -> Just undefined
+
+
+--metaXChar :: EmacsMode
+--metaXChar = normalChars
