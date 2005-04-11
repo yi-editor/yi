@@ -67,7 +67,7 @@ import Yi.Lexers hiding (Action)
 
 --import qualified Yi.Map as M
 
-import Data.Char            ( chr ) --, isAlphaNum )
+import Data.Char            ( chr,ord ) --, isAlphaNum )
 --import Data.List            ( (\\) )
 --import Data.Maybe           ( fromMaybe )
 
@@ -82,21 +82,37 @@ type CommandSequence = String
 keymap :: [Char] -> [Action]
 keymap cs = actions
     where 
-        (actions,_,_) = execLexer emacs_km (cs, "")
+        (actions,_,_) = execLexer normalMode (cs,ES "")
 
 type EmacsMode = Lexer EmacsState Action
 
-type EmacsState = CommandSequence
+data EmacsState = ES CommandSequence
+
+scrrep :: Char->String
+
+scrrep a | ord(a)<32 = "C-"++[chr(ord(a)+96),' ']
+         | otherwise = [a]
+
+instance Show EmacsState where
+  show (ES (a:ta)) = (scrrep a)++(show $ ES ta)
+  show (ES []) = []
+
+
+esss :: (String->String)->EmacsState->EmacsState
+esss f (ES a) = ES (f a)
+
+
 
 -- the naming is still a little heterogenous, but this is the "normal"
 -- key lexer...
 
-emacs_km :: EmacsMode
-emacs_km =      insChar    -- insert a keystroke
+normalMode :: EmacsMode
+normalMode =      insChar    -- insert a keystroke
            >||< moveChar   -- or move the cursor
-           >||< (char '\^X' `meta` escape) -- or go Ctl-X
-           >||< (char '#'   `meta` escape) -- or go Meta-X (this is
-                                        -- bound to # for the moment)
+           >||< (char '\^X' `meta` \s->(escape wackoMode $ esss (++s))) 
+              -- or go Ctl-X
+           >||< (char '#'   `meta` \s->(escape wackoMode $ esss (++s))) 
+              -- or go Meta-X (this is bound to # for the moment)
 
 -- upon the chars 32..126, insertE 
 
@@ -117,39 +133,45 @@ moveChar = (char keyUp    `action` \_ -> Just upE   ) >||<
 -- to be good for sequences of a few keys, but it's not favourable for
 -- filenames etc.
 
-decode :: CommandSequence -> Action
-decode ('\^X':('\^S':_)) = msgE "Write"
-decode ('\^X':('\^C':_)) = quitE
+decode :: EmacsState -> Action
+decode (ES ('\^X':('\^S':_))) = msgE "Write"
+decode (ES ('\^X':('\^C':_))) = quitE
 
-decode _ = msgE "Unbound Control sequence"
+decode s = msgE ("Unbound Control sequence "++(show s))
 
--- this is some rudimentary "wacko mode abstraction": it escapes a
--- character into the "CommandSequence", displaying it, and goes into
--- commandChar mode.
 
--- Note: for prettifying the visual feedback, start here at "show ns"...
+-- This is our "wacko mode abstraction". On userlevel you will see:
+--
+--  regex `meta`  escape (mode) (state->state)
+--
+-- which, upon regex, escapes into mode and transforms the editor state
 
-escape :: String->CommandSequence->(Maybe (Either e Action),CommandSequence,Maybe (Lexer CommandSequence Action))
+escape :: EmacsMode->(EmacsState->EmacsState)->EmacsState->(Maybe (Either e Action),EmacsState,Maybe (Lexer EmacsState Action))
 
-escape s os = ((Just $ Right $ msgE $ show ns),
+escape m f os = ((Just $ Right $ msgE $ show ns),
                 ns,
-                Just commandChar)
-               where ns = os++s
+                Just m)
+               where ns = f os
 
--- this ends "wacko mode abstraction", going back to emacs_km
+-- On userlevel you will see:
+--
+--  regex `meta`  endescape (mode) (state->state) (decode)
+--
+-- which, upon regex, ends an escape, lets 
 
-endescape :: String->CommandSequence->(Maybe (Either e Action),CommandSequence,Maybe (Lexer CommandSequence Action))
+actescape :: EmacsMode->(EmacsState->Action)->(EmacsState->EmacsState)->(EmacsState->EmacsState)->EmacsState->(Maybe (Either e Action),EmacsState,Maybe (Lexer EmacsState Action))
 
-endescape s os = ((Just $ Right $ msgE ("!!!>"++(show ns)) >> decode ns),
-                  "",
-                  Just emacs_km)
-                 where ns = os++s
+actescape m act fo fn os = ((Just $ Right $ msgE ("!!!>"++(show (fo os))) >> act (fo os)),
+                  (fn (fo os)),
+                  Just m)
+
 
 --bindings :: IORef MArray Integer
 
-commandChar :: EmacsMode
-commandChar = char '\^X' `meta` escape  >||<
-              ((alt $ ['\^C','\^S']++(map chr [32..123])) `meta` endescape)
+wackoMode :: EmacsMode
+wackoMode = (alt (map chr [0..32]) `meta` \s->(escape wackoMode $ esss (++s) ))  >||<
+            ((alt $ ['\^C','\^S']++(map chr [32..123])) `meta` 
+               \s->(actescape normalMode decode (esss (++s)) (\_->ES "")))
 
 
 
