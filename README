@@ -16,6 +16,9 @@ QUICK START
     $ make
     $ ./yi-inplace README
 
+** Users of the darcs repo will require autoreconf, which is part of the
+automake suite of tools.
+
 Read on for more details..
 
 BUILDING AND INSTALLING
@@ -23,9 +26,6 @@ BUILDING AND INSTALLING
 You can get the latest yi source from its darcs repository:
 
         darcs get http://www.cse.unsw.edu.au/~dons/yi
-
-** Users of the darcs repo will require autoreconf, which is part of the
-automake suite of tools.
 
 You will need GHC 6 (The Glorious/Glasgow Haskell Compilation System)
 and GNU make to compile yi. On OpenBSD you'll need ghc-6.2.2 or greater, 
