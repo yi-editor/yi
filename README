@@ -24,6 +24,9 @@ You can get the latest yi source from its darcs repository:
 
         darcs get http://www.cse.unsw.edu.au/~dons/yi
 
+** Users of the darcs repo will require autoreconf, which is part of the
+automake suite of tools.
+
 You will need GHC 6 (The Glorious/Glasgow Haskell Compilation System)
 and GNU make to compile yi. On OpenBSD you'll need ghc-6.2.2 or greater, 
 which contains a patch for the System.Posix.User library.
@@ -94,9 +97,6 @@ The static version of yi has no hs-plugins support, and is thus more
 portable (you only need GHC 6.0, too). However, it is not configurable
 at runtime. To build this, you'll just need to be on a machine with ghc
 installed.
-
-Users of the darcs repo will require autoreconf, which is part of the
-automake suite of tools.
 
 CREDITS
 
