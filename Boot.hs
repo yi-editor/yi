@@ -284,9 +284,7 @@ remain st = do
     unload yi_main_mod
 
     -- unloadPackage HSyi.o
-    print "Starting"
     unloadPackage "yi"
-    print "Done"
 
     -- reload Yi.o, pulling in HSyi.o
     libpath <- readIORef libdir
