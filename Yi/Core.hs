@@ -1,9 +1,8 @@
 {-# OPTIONS -fglasgow-exts -#include YiUtils.h #-}
 -- -fglasgow-exts for deriving Typeable
-
 -- 
 -- Copyright (c) Tuomo Valkonen 2004.
--- Copyright (c) Don Stewart 2004. http://www.cse.unsw.edu.au/~dons
+-- Copyright (c) Don Stewart 2004-5. http://www.cse.unsw.edu.au/~dons
 -- 
 -- This program is free software; you can redistribute it and/or
 -- modify it under the terms of the GNU General Public License as
@@ -159,7 +158,6 @@ import qualified Yi.Curses.UI as UI
 -- ---------------------------------------------------------------------
 -- | Start up the editor, setting any state with the user preferences
 -- and file names passed in, and turning on the UI
--- TODO should be in keybind
 --
 startE :: Maybe Editor 
        -> (Editor.Config, (Maybe Editor) -> IO (), IO (Maybe Editor.Config) ) 
@@ -276,8 +274,10 @@ reloadE :: Action
 reloadE = do
     fn <- readEditor reload
     modifyEditor_ $ \e -> do
-        (Just (Config km sty)) <- fn
-        return e { curkeymap = km, uistyle = sty }
+        v <- fn
+        return $ case v of
+            Nothing -> e
+            Just (Config km sty) -> e { curkeymap = km, uistyle = sty }
     UI.initcolours
 
 -- | Reset the size, and force a complete redraw
