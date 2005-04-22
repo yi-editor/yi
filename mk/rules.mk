@@ -144,11 +144,11 @@ $(GHCI_LIBRARY) : $(LIBOBJS)
 # preprocssed files, for haddock docs
 # remember to strip #pragma lines from MacOSX cpp.
 %.raw-hs : %.lhs
-	$(GHC) $(HC_OPTS) -D__HADDOCK__ -E -optP-P $< -o $@
+	@$(GHC) $(HC_OPTS) -D__HADDOCK__ -E -optP-P $< -o $@
 	@sed '/#pragma/d' $@ > $@.1 && mv $@.1 $@
 
 %.raw-hs : %.hs
-	$(GHC) $(HC_OPTS) -D__HADDOCK__ -E -optP-P $< -o $@
+	@$(GHC) $(HC_OPTS) -D__HADDOCK__ -E -optP-P $< -o $@
 	@sed '/#pragma/d' $@ > $@.1 && mv $@.1 $@
 
 # Alex Suffix Rules

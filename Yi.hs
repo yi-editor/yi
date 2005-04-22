@@ -204,12 +204,11 @@ g_lineno = unsafePerformIO $ newIORef (1 :: Int)
 --
 static_main :: (Maybe Editor.Editor) -> IO ()
 static_main st = do
-
     setupLocale
-    args   <- getArgs
-    mfiles <- do_args args
-    config <- readIORef g_settings
-    lineno <- readIORef g_lineno
+    args    <- getArgs
+    mfiles  <- do_args args
+    config  <- readIORef g_settings
+    lineno  <- readIORef g_lineno
 
     --
     -- The only way out is by throwing an exception, or an external
@@ -220,7 +219,7 @@ static_main st = do
     -- exception. catch that and print it, if it wasn't exit.
     --
     -- If we've rebooted, then we have two levels of catch wrapped
-    -- around.
+    -- around. (is this still true? -- 04/05)
     --
     Control.Exception.catch
         (initSignals >> Core.startE st config lineno mfiles >> Core.eventLoop)
@@ -228,28 +227,28 @@ static_main st = do
                   Editor.shutdown
                   UI.end
                   when (not $ isExitCall e) $ print e
-                  throw e
-        )
+                  throw e)
 
     where
       isExitCall (ExitException _) = True
       isExitCall _ = False
 
-
--- ---------------------------------------------------------------------
--- | Dynamic main. This is jumped to from from Boot.hs, after dynamically
--- loading HSyi.o. It takes in user preferences, sets a global
--- variable if any settings were received, then jumps to static main.
 --
-dynamic_main :: (Maybe Editor.Editor
-                ,Maybe Editor.Config
-                ,(Maybe Editor.Editor) -> IO ()
-                ,IO (Maybe Editor.Config)) -> IO ()
+-- | Dynamic main. This is jumped to from from Boot.hs, after
+-- dynamically loading HSyi.o. It takes in user preferences, an old
+-- state, and some dynamic loading funcitons, updates a global variable
+-- if any settings were received, then jumps to main.
+--
+type DynamicT = (Maybe Editor.Editor,          -- old state
+                 Maybe Editor.Config,          -- config data
+                 Maybe Editor.Editor -> IO (), -- reboot function
+                 IO (Maybe Editor.Config))     -- reload function
 
+dynamic_main :: DynamicT -> IO ()
 dynamic_main (st, Nothing, fn1, fn2) = do
     modifyIORef g_settings $ \(kb,_,_) -> (kb,fn1,fn2)
     static_main st          -- No prefs found, use defaults
 
-dynamic_main (st, Just (cfg :: Editor.Config), fn1, fn2) = do 
+dynamic_main (st, Just cfg, fn1, fn2) = do 
     writeIORef g_settings (cfg, fn1, fn2)
     static_main st

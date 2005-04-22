@@ -283,8 +283,11 @@ remain st = do
     yi_main_mod <- readIORef g_yi_main_mod
     unload yi_main_mod
 
-    -- unloadPackage HSyi.o
+#if __GLASGOW_HASKELL__ < 604
     unloadPackage "yi"
+#else
+    unloadPackage "yi-0.1"
+#endif
 
     -- reload Yi.o, pulling in HSyi.o
     libpath <- readIORef libdir
