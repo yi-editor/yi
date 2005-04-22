@@ -64,6 +64,8 @@ Useful targets:
         make show-install       -- print install paths
         make clean              -- remove most rebuildable stuff
         make distclean          -- remove anything that can be regenerated
+        make clean FAST=1       -- remove anything, fast!
+        make distclean FAST=1   -- remove anything, fast!
         make docs               -- build all the docs
         make html               -- build the haddock docs
 

@@ -108,4 +108,6 @@ EXTRA_CLEANS+=Yi/Syntax/TestLex.hs Yi/Syntax/TestParse.hs
 
 # Dependency orders
 
--include $(TOPDIR)/depend
+ifndef FAST
+-include $(TOPDIR)/depend 
+endif

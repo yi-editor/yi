@@ -7,6 +7,12 @@
 #
 include $(TOPDIR)/mk/paths.mk
 
+# We want to disable all the built-in rules that make uses; having them
+# just slows things down, and we write all the rules ourselves.  Setting
+# .SUFFIXES to empty disables them all.
+MAKEFLAGS += --no-builtin-rules
+.SUFFIXES:
+
 PRE_SRCS:=      $(ALL_SRCS)
 
 HC_OPTS        += $(INC_OPTS)
