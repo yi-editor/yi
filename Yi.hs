@@ -5,7 +5,7 @@
 -- riot/Main.hs
 -- 
 -- Copyright (c) Tuomo Valkonen 2004.
--- Copyright (c) Don Stewarti 2004.
+-- Copyright (c) Don Stewarti 2004-5.
 --
 -- This program is free software; you can redistribute it and/or modify
 -- it under the terms of the GNU General Public License as published by
@@ -40,7 +40,7 @@ import qualified Yi.Curses.UI as UI
 
 import Data.IORef
 
-import Control.Monad            ( liftM, when )
+import Control.Monad            ( when )
 import Control.Concurrent       ( myThreadId, throwTo )
 import Control.Exception        ( catch, throw )
 
@@ -50,7 +50,6 @@ import System.Exit
 import System.IO.Unsafe         ( unsafePerformIO )
 import System.Posix.Signals
 
-import GHC.Base                 ( unsafeCoerce# )
 import GHC.Exception            ( Exception(ExitException) )
 
 -- ---------------------------------------------------------------------
@@ -169,11 +168,14 @@ releaseSignals =
 -- some way. The second component is our reboot function, passed in from
 -- Boot.hs, otherwise return ().
 --
-g_settings :: IORef (Editor.Config, IO (), IO Editor.Config )
+g_settings :: IORef (Editor.Config
+                    ,Maybe Editor.Editor -> IO ()
+                    ,IO (Maybe Editor.Config))
+
 g_settings = unsafePerformIO $ 
                 newIORef (dflt_config
                          ,static_main 
-                         ,return dflt_config)
+                         ,return (Just dflt_config))
 {-# NOINLINE g_settings #-}
 
 --
@@ -200,8 +202,9 @@ g_lineno = unsafePerformIO $ newIORef (1 :: Int)
 -- Initialise the ui getting an initial editor state, set signal
 -- handlers, then jump to ui event loop with the state.
 --
-static_main :: IO ()
-static_main = do
+static_main :: (Maybe Editor.Editor) -> IO ()
+static_main st = do
+
     setupLocale
     args   <- getArgs
     mfiles <- do_args args
@@ -220,7 +223,7 @@ static_main = do
     -- around.
     --
     Control.Exception.catch
-        (initSignals >> Core.startE config lineno mfiles >> Core.eventLoop)
+        (initSignals >> Core.startE st config lineno mfiles >> Core.eventLoop)
         (\e -> do releaseSignals
                   Editor.shutdown
                   UI.end
@@ -238,48 +241,15 @@ static_main = do
 -- loading HSyi.o. It takes in user preferences, sets a global
 -- variable if any settings were received, then jumps to static main.
 --
-dynamic_main :: YiMainType
-dynamic_main v = dynamic_main' v
+dynamic_main :: (Maybe Editor.Editor
+                ,Maybe Editor.Config
+                ,(Maybe Editor.Editor) -> IO ()
+                ,IO (Maybe Editor.Config)) -> IO ()
 
-dynamic_main' :: YiMainType
-dynamic_main' (Nothing, fn1, fn2) = do
-    modifyIORef g_settings $ \(dflt,_,_) -> (dflt,fn1, liftM unwrap fn2)
-    static_main             -- No prefs found, use defaults
+dynamic_main (st, Nothing, fn1, fn2) = do
+    modifyIORef g_settings $ \(kb,_,_) -> (kb,fn1,fn2)
+    static_main st          -- No prefs found, use defaults
 
---
--- Prefs found by the boot loader, so write them into the global
--- settings. Anyone got an idea of how to unwrap this value without
--- using the coerce?
---
-dynamic_main' (cfg, fn1, fn2) = do 
-        let cfg_ = unwrap cfg
-        writeIORef g_settings (cfg_, fn1, liftM unwrap fn2)
-        static_main
-
-------------------------------------------------------------------------
---
--- unwrap a ConfigData value
---
-unwrap :: Maybe ConfigData -> Editor.Config
-unwrap Nothing         = dflt_config
-unwrap (Just (CD cfg)) = unsafeCoerce# cfg :: Editor.Config
-
--- ---------------------------------------------------------------------
--- | Magic type: encapsulates user prefs determined by the boot loader.
--- Also identically defined in Boot.hs. Why so magic -- the type is
--- defined here, but the boot loader generates a value of this type. Yet
--- the boot loader *is not* statically linked against this module. So
--- the type is defined in the boot loader too.
---
-data ConfigData = forall a. CD a {- has Config type -}
-
---
--- | Maybe a set of user preferences, if the boot loader found
--- ~/.yi/Config.hs
---
-type YiMainType = (Maybe ConfigData, 
-                   IO (), 
-                   IO (Maybe ConfigData)) 
-                -> IO ()
-
--- vim: sw=4 ts=4
+dynamic_main (st, Just (cfg :: Editor.Config), fn1, fn2) = do 
+    writeIORef g_settings (cfg, fn1, fn2)
+    static_main st

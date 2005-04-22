@@ -93,10 +93,10 @@ endif
 # issue in ghc-6.2.2. Anyway, the Solution: cd somewhere where -i.
 # means nothing.
 #
-MAGIC_FLAGS   += -package-conf ../yi.conf  -package yi
+MAGIC_FLAGS   += -package-conf yi.conf -package yi
 
 Yi.$(way_)o: Yi.hs $(LIBRARY) 
-	( cd Yi ; $(GHC) $(HC_OPTS) $(MAGIC_FLAGS) -I../cbits -odir .. -c ../$< -o ../$@ -ohi ../$(basename $@).$(way_)hi )
+	$(GHC) $(HC_OPTS) $(MAGIC_FLAGS) -i -Icbits -c $< -o $@ -ohi $(basename $@).$(way_)hi
 
 yi-inplace: yi-inplace.in
 	@sed 's,@YI_TOP@,'`pwd`',g' yi-inplace.in > yi-inplace

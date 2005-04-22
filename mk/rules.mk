@@ -81,7 +81,7 @@ $(BIN) :: $(BIN_OBJS) yi-inplace
 	$(STRIP) $(BIN)
 
 # yi-static depends on Main.o and the library
-$(STATIC_BIN) :: $(LIBRARY) $(PKG).conf $(PKG).conf.install $(LIB_FRONTEND) $(STATIC_OBJS)
+$(STATIC_BIN) :: $(LIBRARY) $(GHCI_LIBRARY) $(PKG).conf $(PKG).conf.install $(LIB_FRONTEND) $(STATIC_OBJS)
 	$(GHC) -o $@ $(LD_OPTS) $(STATIC_LD_OPTS) $(STATIC_HC_OPTS) $(STATIC_OBJS) $(LIB_FRONTEND)
 	$(STRIP) $(STATIC_BIN)
 

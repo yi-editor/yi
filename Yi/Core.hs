@@ -32,7 +32,7 @@
 module Yi.Core (
 
         -- * Construction and destruction
-        startE,         -- :: Editor.Config -> Int -> Maybe [FilePath] -> IO ()
+        startE,         -- :: a -> Editor.Config -> Int -> Maybe [FilePath] -> IO ()
         quitE,          -- :: Action
         rebootE,        -- :: Action
         reloadE,        -- :: Action
@@ -161,38 +161,47 @@ import qualified Yi.Curses.UI as UI
 -- and file names passed in, and turning on the UI
 -- TODO should be in keybind
 --
-startE :: (Editor.Config, IO (), IO Editor.Config ) 
+startE :: Maybe Editor 
+       -> (Editor.Config, (Maybe Editor) -> IO (), IO (Maybe Editor.Config) ) 
        -> Int 
        -> Maybe [FilePath] 
        -> IO ()
 
-startE (confs,fn,fn') ln mfs = do
+startE st (confs,fn,fn') ln mfs = do
 
-    Editor.setUserSettings confs fn fn'
+    -- restore the old state
+    case st of
+        -- need to update default keymap to point to current code.
+        Just e' -> modifyEditor_ $ const $ return e'
+        Nothing -> return ()
 
     UI.start refreshE
     sz <- UI.screenSize
     modifyEditor_ $ \e -> return $ e { scrsize = sz }
 
+    Editor.setUserSettings confs fn fn'
+
     t <- forkIO refreshLoop -- fork UI thread
     modifyEditor_ $ \e -> return $ e { threads = [t] }
 
-    -- read in any files
-    handleJust ioErrors (errorE . show) $ do
-        case mfs of
-            Just fs -> mapM_ fnewE fs
-            Nothing -> do               -- vi-like behaviour, just for now.
-                mf <- mkstemp "/tmp/yi.XXXXXXXXXX" 
-                case mf of
-                    Nothing    -> error "Core.startE: mkstemp failed"
-                    Just (f,h) -> hClose h >> fnewE f
-    gotoLnE ln
+    when (isNothing st) $ do -- read in any files if booting for the first time
+        handleJust ioErrors (errorE . show) $ do
+            case mfs of
+                Just fs -> mapM_ fnewE fs
+                Nothing -> do               -- vi-like behaviour, just for now.
+                    mf <- mkstemp "/tmp/yi.XXXXXXXXXX" 
+                    case mf of
+                        Nothing    -> error "Core.startE: mkstemp failed"
+                        Just (f,h) -> hClose h >> fnewE f
+        gotoLnE ln
 
     -- fork input-reading thread. important to block *thread* on getcE
     -- otherwise all threads will block waiting for input
     ch <- newChan   
     t' <- forkIO $ getcLoop ch
     modifyEditor_ $ \e -> return $ e { threads = t' : threads e, input = ch }
+
+    when (not $ isNothing st) refreshE -- and redraw
 
     where
         --
@@ -252,21 +261,22 @@ quitE = do
 
 --
 -- | Reboot (!). Reboot the entire editor, reloading the Yi core.
--- Should store all the buffers somewhere, and reload them on returning.
 --
 rebootE :: Action
 rebootE = do
+    cmdlineUnFocusE     -- return focus to buffer (seems natural)
+    e  <- getEditor
     fn <- readEditor reboot
     Editor.shutdown
 --  UI.end
-    fn
+    fn (Just e)
 
 -- | Recompile and reload the user's config files
 reloadE :: Action
 reloadE = do
     fn <- readEditor reload
     modifyEditor_ $ \e -> do
-        Config km sty <- fn
+        (Just (Config km sty)) <- fn
         return e { curkeymap = km, uistyle = sty }
     UI.initcolours
 

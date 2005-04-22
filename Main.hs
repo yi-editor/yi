@@ -28,5 +28,5 @@ module Main ( main ) where
 import qualified Yi ( static_main )
 
 main :: IO ()
-main = Yi.static_main
+main = Yi.static_main Nothing
 

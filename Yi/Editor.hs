@@ -60,8 +60,8 @@ import Control.Concurrent.MVar
 --
 data Buffer a => GenEditor a = 
     Editor {
-        buffers   :: !(M.Map Unique a)      -- ^ all the buffers
-       ,windows   :: !(M.Map Unique Window) -- ^ all the windows
+        buffers   :: !(M.Map Unique a)          -- ^ all the buffers
+       ,windows   :: !(M.Map Unique Window)     -- ^ all the windows
        ,cmdline   :: !String                    -- ^ the command line
        ,cmdlinefocus :: !Bool                   -- ^ cmdline has focus
        ,yreg      :: !String                    -- ^ yank register
@@ -72,9 +72,8 @@ data Buffer a => GenEditor a =
        ,uistyle   :: !UIStyle                   -- ^ ui colours
        ,input     :: Chan Char                  -- ^ input stream
        ,threads   :: [ThreadId]                 -- ^ all our threads
-
-       ,reboot    :: IO ()                      -- our reboot function
-       ,reload    :: IO Config                  -- reload config function
+       ,reboot    :: (Maybe Editor) -> IO ()    -- ^ our reboot function
+       ,reload    :: IO (Maybe Config)          -- ^ reload config function
     }
 
 --
@@ -123,7 +122,7 @@ emptyEditor = Editor {
        ,uistyle      = Yi.Style.ui
        ,input        = error "No channel open"
        ,threads      = []
-       ,reboot       = return ()
+       ,reboot       = const $ return ()
        ,reload       = error "No reload function"
     }
 
@@ -132,6 +131,12 @@ emptyEditor = Editor {
 -- 
 readEditor :: (Editor -> b) -> IO b
 readEditor f = withMVar state $ \ref -> return . f =<< readIORef ref
+
+--
+-- Get state
+--
+getEditor :: IO Editor
+getEditor = withMVar state $ \ref -> readIORef ref
 
 --
 -- | Read the editor state, with an IO action
@@ -459,13 +464,13 @@ shiftFocus f = modifyEditor_ $ \e -> do
 -- ---------------------------------------------------------------------
 -- | Given a keymap function, set the user-defineable key map to that function
 --
-setUserSettings :: Config -> IO () -> IO Config -> IO ()
+setUserSettings :: Config -> (Maybe Editor -> IO ()) -> IO (Maybe Config) -> IO ()
 setUserSettings (Config km sty) fn fn' = 
     modifyEditor_ $ \e -> 
         return $ (e { curkeymap = km, 
-                     uistyle = sty, 
-                     reboot = fn,
-                     reload = fn' } :: Editor)
+                     uistyle    = sty, 
+                     reboot     = fn,
+                     reload     = fn' } :: Editor)
 
 --
 -- | retrieve the user-defineable key map

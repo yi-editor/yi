@@ -210,7 +210,7 @@ get_load_flags = do libpath <- readIORef libdir
 -- ---------------------------------------------------------------------
 -- | load the config module
 --
-load_config :: Maybe FilePath -> IO (Maybe Module, Maybe ConfigData)
+load_config :: Maybe FilePath -> IO (Maybe Module, Maybe a)
 load_config m_obj = do
     paths   <- get_load_flags
     libpath <- readIORef libdir
@@ -220,7 +220,7 @@ load_config m_obj = do
         Just obj -> do 
            status <- load obj [d,libpath] paths config_sym
            case status of
-                LoadSuccess m v -> return $ (Just m, Just (CD v))
+                LoadSuccess m v -> return $ (Just m, Just v)
                 LoadFailure e   -> do
                     putStrLn "Unable to load config file, using defaults"
                     mapM_ putStrLn e ; return (Nothing, Nothing)
@@ -266,25 +266,27 @@ main = do
     status    <- load (libpath </> yi_main_obj) [] paths yi_main_sym
     yi_main <- case status of
         LoadSuccess m v ->  do writeIORef g_yi_main_mod m
-                               return (v :: YiMainType)
-        LoadFailure e -> do putStrLn "Unable to load Yi.Main, exiting"
-                            mapM_ putStrLn e ; exitFailure
+                               return v
+        LoadFailure e    -> do putStrLn "Unable to load Yi.Main, exiting"
+                               mapM_ putStrLn e ; exitFailure
 
-    yi_main (cfghdl, remain, reconf)   -- jump to dynamic code
+    yi_main (Nothing, cfghdl, remain, reconf)   -- jump to dynamic code
 
 -- ---------------------------------------------------------------------
 -- Now, we want to reboot the editor. That is, recompile and reload
 -- configuration data. And reload the entire HSyi.o library.
 --
-remain :: IO ()
-remain = do
+remain :: a -> IO ()
+remain st = do
 
     -- unload Yi.o
     yi_main_mod <- readIORef g_yi_main_mod
     unload yi_main_mod
 
     -- unloadPackage HSyi.o
+    print "Starting"
     unloadPackage "yi"
+    print "Done"
 
     -- reload Yi.o, pulling in HSyi.o
     libpath <- readIORef libdir
@@ -292,20 +294,22 @@ remain = do
     status  <- load (libpath </> yi_main_obj) [] paths yi_main_sym
  
     yi_main <- case status of
-        LoadSuccess _ v -> return (v :: YiMainType)
-        LoadFailure e -> do putStrLn "Unable to reload Yi.Main, exiting"
-                            mapM_ putStrLn e ; exitFailure
+        LoadSuccess m v -> do writeIORef g_yi_main_mod m
+                              return v
+        LoadFailure e   -> do putStrLn "Unable to reload Yi.Main, exiting"
+                              mapM_ putStrLn e
+                              exitFailure
 
     -- reload config data. !! crucial this comes after we reload HSyi.o,
     -- so that we link against the new version of the lib
     cfghdl <- reconf
     
-    yi_main (cfghdl, remain, reconf)   -- jump to dynamic code
+    yi_main (st, cfghdl, remain, reconf)   -- jump to dynamic code
 
 -- ---------------------------------------------------------------------
 -- | Compile and reload configuration module
 --
-reconf :: IO (Maybe ConfigData)
+reconf :: IO (Maybe a)
 reconf = do
 
     -- try to recompile
@@ -319,7 +323,7 @@ reconf = do
         Just m  -> do       -- was already loaded
             status <- reload m config_sym
             case status of
-                LoadSuccess m' v -> return $ (Just m', Just (CD v))
+                LoadSuccess m' v -> return (Just m', Just v)
                 LoadFailure _    -> return (Nothing, Nothing)
             
         Nothing -> load_config m_obj
@@ -327,21 +331,3 @@ reconf = do
     writeIORef g_cfg_mod mmod
     return cfghdl
 
--- ---------------------------------------------------------------------
--- | MAGIC: this is the type of the value passed from Boot.main to
--- Yi.main. It must be exactly the same as the definition in
--- Yi.hs.  We can't, however, share the value in another module,
--- without breaking ghci support (the same module would be linked both
--- statically and dynamically). 
---
--- It is an existential to prevent a dependency on ConfigAPI in Boot.hs.
--- It gets unwrapped magically in Yi.dynamic_main
---
-data ConfigData = forall a. CD a {- has Config type -}
-
-type YiMainType = (Maybe ConfigData, 
-                   IO (), 
-                   IO (Maybe ConfigData)) 
-                -> IO ()
-
--- vim: sw=4 ts=4
