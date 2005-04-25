@@ -31,7 +31,7 @@ PKG=            yi
 # dynamic front end
  
 BIN_OBJS=       Boot.o
-BIN_DEPS=       plugins
+BIN_DEPS=       plugins posix
 BIN_LIBS=       $(LIBS)
 HADDOCK_SRCS+=  Boot.hs
 
