@@ -164,9 +164,17 @@ AC_PROG_RANLIB
 #
 # The shell variables should be added to, e.g., $LIBS
 #
-AC_CHECK_LIB(curses,  addnstr)
-AC_CHECK_LIB(ncurses, addnstr)
 AC_CHECK_LIB(ncursesw,waddnwstr)
+if echo "$LIBS" | grep ncursesw > /dev/null 2>&1 ; then
+    :
+else
+    AC_CHECK_LIB(ncurses, addnstr)
+    if echo "$LIBS" | grep ncurses > /dev/null 2>&1 ; then
+        :
+    else
+        AC_CHECK_LIB(curses,  addnstr)
+    fi
+fi
 
 AC_CHECK_LIB(iconv, iconv)
 AC_CHECK_LIB(iconv, libiconv)

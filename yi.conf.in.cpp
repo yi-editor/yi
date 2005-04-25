@@ -22,38 +22,38 @@ Package {
 
 #else
 
-name:		yi
-version:	0.1
-license:	LGPL
-maintainer:	dons@cse.unsw.edu.au
-exposed:	True
+name:           yi
+version:        0.1
+license:        LGPL
+maintainer:     dons@cse.unsw.edu.au
+exposed:        True
 exposed-modules:
-	Yi.Buffer
-	Yi.CharMove
-	Yi.Core
-	Yi.Curses
-	Yi.DLists
-	Yi.Editor
-	Yi.FastBuffer
-	Yi.Keymap
-	Yi.Lexers
-	Yi.Locale
-	Yi.Map
-	Yi.MkTemp
-	Yi.Regex
-	Yi.Style
-	Yi.Undo
-	Yi.Version
-	Yi.Window
-	Yi.Yi
-	Yi.Curses.CWString
-	Yi.Curses.Curses
-	Yi.Curses.IConv
-	Yi.Curses.UI
-	Yi.Keymap.Emacs
-	Yi.Keymap.Nano
-	Yi.Keymap.Vi
-	Yi.Keymap.Vim
+        Yi.Buffer
+        Yi.CharMove
+        Yi.Core
+        Yi.Curses
+        Yi.DLists
+        Yi.Editor
+        Yi.FastBuffer
+        Yi.Keymap
+        Yi.Lexers
+        Yi.Locale
+        Yi.Map
+        Yi.MkTemp
+        Yi.Regex
+        Yi.Style
+        Yi.Undo
+        Yi.Version
+        Yi.Window
+        Yi.Yi
+        Yi.Curses.CWString
+        Yi.Curses.Curses
+        Yi.Curses.IConv
+        Yi.Curses.UI
+        Yi.Keymap.Emacs
+        Yi.Keymap.Nano
+        Yi.Keymap.Vi
+        Yi.Keymap.Vim
 
 hidden-modules:
 #ifdef INSTALLING
@@ -66,8 +66,8 @@ library-dirs:         PREFIX
 hs-libraries:         HSyi
 extra-libraries:      CURSES ICONV
 include-dirs:
-includes:	      
-depends:	      base haskell98 posix
+includes:             
+depends:              base haskell98
 hugs-options:
 cc-options:
 ld-options:

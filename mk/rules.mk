@@ -63,7 +63,7 @@ GHCI_LIBRARY    = $(patsubst lib%.a,%.o,$(LIBRARY))
 #
 depend: $(MKDEPENDHS_SRCS)
 	@echo -n "Rebuilding dependencies... "
-ifneq "$(GLASGOW_HASKELL)" "604"
+ifeq "$(GLASGOW_HASKELL)" "602"
 	@for i in $(HS_BOOTS); do $(CP) $$i `echo $$i | sed 's/hs-boot/hi-boot/'` ; done
 endif
 	@$(GHC) -M -optdep-f -optdepdepend $(HC_OPTS) $(MKDEPENDHS_SRCS)

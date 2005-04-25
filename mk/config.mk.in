@@ -23,6 +23,10 @@ HC_OPTS+=       -funbox-strict-fields -O2 -fasm -Icbits -Imk
 GHC_VERSION=	@GHC_VERSION@
 GLASGOW_HASKELL=@GLASGOW_HASKELL@
 
+ifeq "$(GLASGOW_HASKELL)" "602"
+HC_OPTS+=       -package posix
+endif
+
 GHC_PKG=        @GhcPkgCmd@
 HSC2HS=         @Hsc2hsCmd@
 
