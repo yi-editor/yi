@@ -129,12 +129,16 @@ module Yi.Core (
         -- * Modifying the current keymap
         metaM,                  -- :: ([Char] -> [Action]) -> IO ()
 
+        -- * Interacting with external commands
+        pipeE                   -- :: String -> IO String
+
    ) where
 
 import Yi.MkTemp            ( mkstemp )
 import Yi.Buffer
 import Yi.Window
 import Yi.Regex
+import Yi.Process           ( popen )
 import Yi.Editor
 import qualified Yi.Editor as Editor
 
@@ -658,6 +662,17 @@ searchAndRepLocal re str = do
                 moveTo b p          -- and back to where we were!
                 return (w, True) -- signal success
         Nothing -> return False
+
+------------------------------------------------------------------------
+-- | Pipe a string through an external command, returning the stdout
+-- Todo: varients with marks?
+--
+pipeE :: String -> String -> IO String
+pipeE cmd inp = do
+    let (f,args) = break (== ' ') cmd   -- need to split args
+        args'    = if null args then [] else [args]
+    (out,_err,_) <- popen f args' (Just inp)
+    return out
 
 ------------------------------------------------------------------------
 
