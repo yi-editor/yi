@@ -16,6 +16,7 @@ HC_OPTS=        -Wall -Werror
 
 # -fvia-C and 6.4 produce 'keypad' errors in the curses binding
 HC_OPTS+=       -funbox-strict-fields -O2 -fasm -Icbits -Imk
+HC_OPTS+=       -threaded
 
 #HC_OPTS+=      -debug 
 #HC_OPTS+=-fignore-asserts 
