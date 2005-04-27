@@ -138,6 +138,7 @@ import Yi.MkTemp            ( mkstemp )
 import Yi.Buffer
 import Yi.Window
 import Yi.Regex
+import Yi.String
 import Yi.Process           ( popen )
 import Yi.Editor
 import qualified Yi.Editor as Editor
@@ -665,14 +666,15 @@ searchAndRepLocal re str = do
 
 ------------------------------------------------------------------------
 -- | Pipe a string through an external command, returning the stdout
+-- chomp any trailing newline (is this desirable?)
+--
 -- Todo: varients with marks?
 --
 pipeE :: String -> String -> IO String
 pipeE cmd inp = do
-    let (f,args) = break (== ' ') cmd   -- need to split args
-        args'    = if null args then [] else [args]
-    (out,_err,_) <- popen f args' (Just inp)
-    return out
+    let (f:args) = split " " cmd
+    (out,_err,_) <- popen f args (Just inp)
+    return (chomp "\n" out)
 
 ------------------------------------------------------------------------
 

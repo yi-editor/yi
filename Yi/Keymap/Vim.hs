@@ -637,14 +637,14 @@ ex_eval = enter
       fn ('e':' ':f)  = fnewE f
       fn ('s':'/':cs) = viSub cs
 
-      -- send this line through fn
-      -- not quite right on empty lines.
+      -- send just this line through external command /fn/
       fn ('.':'!':f) = do
             ln  <- readLnE
             ln' <- pipeE f ln
             solE 
-            killE >> deleteE
-            mapM_ insertE ln'
+            killE
+            mapM_ insertE ln' -- urgh.
+            solE
 
       fn "reboot"     = rebootE     -- not in vim
       fn "reload"     = reloadE     -- not in vim
