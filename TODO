@@ -1,3 +1,13 @@
+Vim mode:
+        - undo interferes with :w :q
+        - empty tmp files don't complain when you try to write them.
+        - 0 in vim mode is ignored.
+        - tab completion.
+        - flavours of s///
+        - range syntax
+        - performance issue on very long lines. (C fragment?)
+        - path names not expanded in :e
+        - :!cmd , run an external command not implemented
 
 ------------------------------------------------------------------------
 
