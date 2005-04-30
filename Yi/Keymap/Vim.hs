@@ -470,6 +470,8 @@ ins_char = anyButEscOrCtlN
                       | k == keyDown  -> downE
                       | k == keyLeft  -> leftE
                       | k == keyRight -> rightE
+                      | k == keyEnd   -> eolE 
+                      | k == keyHome  -> solE
                     '\t' -> mapM_ insertE "    " -- XXX
                     _    -> insertE c
 
@@ -520,11 +522,17 @@ rep_char :: VimMode
 rep_char = anyButEsc
     `action` \[c] -> Just (fn c)
     where fn c = case c of
-                    k | isDel k       -> leftE >> deleteE 
+                    k | isDel k       -> leftE -- should undo unless pointer has been moved
                       | k == keyPPage -> upScreenE
                       | k == keyNPage -> downScreenE
+                      | k == keyUp    -> upE
+                      | k == keyDown  -> downE
+                      | k == keyLeft  -> leftE
+                      | k == keyRight -> rightE
+                      | k == keyEnd   -> eolE 
+                      | k == keyHome  -> solE
                     '\t' -> mapM_ insertE "    " -- XXX
-                    '\r' -> insertE '\n' 
+                    '\r' -> insertE '\n'
                     _ -> do e <- atEolE
                             if e then insertE c else writeE c >> rightE
 
@@ -805,4 +813,4 @@ any'     = ['\0' .. '\255']
 digit'   = ['0' .. '9']
 
 cursc' :: [Char]
-cursc'   = [keyPPage, keyNPage, keyLeft, keyRight, keyDown, keyUp]
+cursc'   = [keyPPage, keyNPage, keyLeft, keyRight, keyDown, keyUp, keyHome, keyEnd]
