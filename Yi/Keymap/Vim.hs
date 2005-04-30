@@ -487,7 +487,7 @@ ins2kwd = char '\^N' `meta` \_ st -> (with wordCompleteE, st, Just kwd_mode)
 -- | switch out of ins_mode
 --
 ins2cmd :: VimMode
-ins2cmd  = char '\ESC' `meta` \_ st -> (with (leftOrSolE 1), st, Just $ cmd st)
+ins2cmd  = char '\ESC' `meta` \_ st -> (Nothing, st, Just $ cmd st)
 
 -- ---------------------------------------------------------------------
 -- | Keyword insertion mode
