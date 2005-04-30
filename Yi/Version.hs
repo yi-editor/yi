@@ -13,12 +13,10 @@
 -- | Version information
 --
 
-module Yi.Version where
+module Yi.Version (package, version) where
 
-package, branch, release, version :: String
+package, version :: String
 
 package = "yi"
-branch  = "0"
-release = "undefined"
-version = branch++"-"++release
+version = "0.1.0"
 

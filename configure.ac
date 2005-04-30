@@ -96,6 +96,7 @@ if test -n "$WithGhc" ; then
     AC_MSG_RESULT([$GHC_VERSION])
 fi
 AC_SUBST(GHC_VERSION)
+AC_DEFINE_UNQUOTED(GHC_VERSION, "$GHC_VERSION", [GHC version])
 
 # Work out value of __GLASGOW_HASKELL__
 if test -n "$WithGhc" ; then
@@ -213,6 +214,15 @@ AC_CHECK_HEADERS([iconv.h curses.h ncurses.h ncursesw/ncurses.h regex.h locale.h
 # We also would like this please
 # 
 AC_CHECK_FUNCS(arc4random)
+
+PLATFORM_=`uname -ms`
+AC_DEFINE_UNQUOTED(PLATFORM, "$PLATFORM_", [Platform we are on])
+
+REPO_PATH_=`sed -n 1p _darcs/prefs/repos`
+AC_DEFINE_UNQUOTED(REPO_PATH, "$REPO_PATH_", [Path to Yi repo])
+
+PATCH_COUNT_=`darcs changes --xml-output | sed -n '/^<patch/p;/TAG/q' | wc -l | sed 's/ *//g'`
+AC_DEFINE_UNQUOTED(PATCH_COUNT, $PATCH_COUNT_, [Current patch count])
 
 AC_SUBST(SYMS)
 

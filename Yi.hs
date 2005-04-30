@@ -1,4 +1,4 @@
-{-# OPTIONS -fglasgow-exts #-}
+{-# OPTIONS -fglasgow-exts -cpp #-}
 -- gla-exts required for unsafeCoerce#
 
 --
@@ -52,6 +52,8 @@ import System.Posix.Signals
 
 import GHC.Exception            ( Exception(ExitException) )
 
+#include "config.h"
+
 -- ---------------------------------------------------------------------
 -- | Argument parsing. Pretty standard, except for the trick with -B.
 -- The -B flag is needed, and used by Boot.hs to find the runtime
@@ -88,7 +90,12 @@ options = [
 --
 usage, versinfo :: IO ()
 usage    = putStr   $ usageInfo "Usage: yi [option...] [file]" options
-versinfo = putStrLn $ package++" "++version
+
+versinfo = do 
+        putStrLn $ package++" "++
+                   version++"p"++(show (PATCH_COUNT :: Int))++
+                   ", GHC "++GHC_VERSION++" (" ++ PLATFORM ++ ")"
+        putStrLn $ "darcs get "++ REPO_PATH
 
 --
 -- deal with real options
