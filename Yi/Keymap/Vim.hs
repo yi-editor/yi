@@ -651,6 +651,9 @@ ex_eval = enter
             mapM_ insertE ln' -- urgh.
             solE
 
+--    Needs to occur in another buffer
+--    fn ('!':f) = pipeE f []
+
       fn "reboot"     = rebootE     -- not in vim
       fn "reload"     = reloadE     -- not in vim
 
