@@ -110,6 +110,8 @@ g_yi_main_mod = unsafePerformIO $ newIORef (error "no Yi.o loaded yet")
 -- | Finding config files. Use 'Control.Exception.catch' to deal with
 -- broken or missing implementations of get functions.
 --
+-- TODO get rid of posix dependency here.
+--
 get_home :: IO String
 #ifndef NO_POSIX
 get_home = Control.Exception.catch 

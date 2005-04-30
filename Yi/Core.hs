@@ -797,6 +797,8 @@ cmdlineUnFocusE = modifyEditor_ $ \e -> return e { cmdlinefocus = False }
 --
 -- Map a char function over a range of the buffer.
 --
+-- Fold over a range is probably useful too..
+--
 mapRangeE :: Int -> Int -> (Char -> Char) -> Action
 mapRangeE from to fn
     | from < 0  = nopE
