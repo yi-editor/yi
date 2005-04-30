@@ -465,6 +465,10 @@ ins_char = anyButEscOrCtlN
                     k | isDel k       -> leftE >> deleteE
                       | k == keyPPage -> upScreenE
                       | k == keyNPage -> downScreenE
+                      | k == keyUp    -> upE
+                      | k == keyDown  -> downE
+                      | k == keyLeft  -> leftE
+                      | k == keyRight -> rightE
                     '\t' -> mapM_ insertE "    " -- XXX
                     _    -> insertE c
 
