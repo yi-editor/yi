@@ -40,6 +40,7 @@ exposed-modules:
         Yi.Locale
         Yi.Map
         Yi.MkTemp
+        Yi.MakeKeymap
         Yi.Regex
         Yi.Style
         Yi.Undo
@@ -54,6 +55,7 @@ exposed-modules:
         Yi.Keymap.Nano
         Yi.Keymap.Vi
         Yi.Keymap.Vim
+        Yi.Keymap.Joe
 
 hidden-modules:
 #ifdef INSTALLING
