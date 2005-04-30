@@ -39,7 +39,7 @@ import Data.Char
 import Data.List            ( (\\) )
 import Data.Maybe           ( fromMaybe )
 
-import Control.Monad        ( replicateM_, when )
+import Control.Monad        ( replicateM_, when, unless )
 import Control.Exception    ( ioErrors, catchJust, try, evaluate )
 
 --
@@ -462,7 +462,8 @@ ins_char = anyButEscOrCtlN
     `action` \[c] -> Just (fn c)
 
     where fn c = case c of
-                    k | isDel k       -> leftE >> deleteE
+                    k | isDel k       -> do s <- atSofE
+                                            unless s (leftE >> deleteE)
                       | k == keyPPage -> upScreenE
                       | k == keyNPage -> downScreenE
                       | k == keyUp    -> upE
