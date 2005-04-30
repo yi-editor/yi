@@ -20,38 +20,22 @@
 --
 -- Joe-ish keymap for Yi. 
 
-module Yi.Keymap.Joe (keymap) where
+module Yi.Keymap.Joe (
+    keymap
+) where
 
 import Yi.Editor            ( Action )
 import Yi.Yi hiding         ( keymap )
 import Yi.CharMove
-
-import Data.Maybe
---import Data.List            ( (\\) )
-import Data.Char            ( isControl, ord, chr )
---import Control.Monad        ( when )
---import Control.Exception    ( ioErrors, catchJust )
-import Data.FiniteMap
+import Yi.Char
+import Yi.MakeKeymap
 
 -- ---------------------------------------------------------------------
 
-data KME = KMEAction Action | KMESubmap KM | KMEMode (KProc -> KProc)
-type KProc = [Char] -> [Action]
-type KM = FiniteMap Char KME
-type KMLookup = KM -> Char -> KME
-type KListEnt = ([Char], KME)
-type KList = [KListEnt]
-
-(++>) :: [Char] -> Action -> KListEnt
-s ++> a = (s, KMEAction a)
-
-(&&>) :: [Char] -> (KProc -> KProc) -> KListEnt
-s &&> a = (s, KMEMode a)
-
 -- The Keymap
 
-kmap :: KList
-kmap=[
+klist :: KList
+klist=[
     -- Editing and movement
     "\^KU" ++> topE,
     "\^KV" ++> botE,
@@ -105,9 +89,12 @@ kmap=[
     "\^KE" &&> queryNewE
     ]
 
+keymap :: KProc
+keymap = makeKeymap klist
+
 -- Extra actions
 
-killEolE, killSolE, killLineE, undefE :: Action
+killEolE, killSolE, killLineE :: Action
 
 killEolE = killE
 killLineE = solE >> killE >> deleteE
@@ -116,8 +103,6 @@ killSolE = do
     solE
     pn <- getPointE
     deleteNE (p-pn)
-
-undefE = errorE $ "Key sequence not defined."
 
 getFileE :: IO FilePath
 getFileE = bufInfoE >>= \(fp, _, _, _, _, _) -> return fp
@@ -132,12 +117,12 @@ query_ prompt s cont failcont cs =
     where
         q = \ss cs2 -> query_ prompt ss cont failcont cs2
         loop (c:cs3)
-            | is_enter c   = msgClrE:cmdlineUnFocusE:(cont s cs3)
-            | c=='\^G'     = msgClrE:cmdlineUnFocusE:(failcont cs3)
-            | isDel c      = q (init s) cs3
-            | valid_char c = q (s ++ [c]) cs3
-            | otherwise    = loop cs3
-        loop []            = []
+            | isEnter c   = msgClrE:cmdlineUnFocusE:(cont s cs3)
+            | c=='\^G'    = msgClrE:cmdlineUnFocusE:(failcont cs3)
+            | isDel c     = q (init s) cs3
+            | validChar c = q (s ++ [c]) cs3
+            | otherwise   = loop cs3
+        loop []           = []
 
 query :: String -> String -> (String -> KProc) -> KProc -> KProc
 query prompt s cont failcont cs =
@@ -185,93 +170,3 @@ nextSearchRepE cont _ = return $
 
 unimplementedQ :: String -> Action
 unimplementedQ _ = nopE
-
-
--- Keymap processing
-
--- | Top level. Lazily consume all the input, generating a list of
--- actions, which then need to be forced
---
--- NB . if there is a (bad) exception, we'll lose any new bindings.. iorefs?
---    . also, maybe we shouldn't refresh automatically?
---
-keymap :: KProc
-keymap cs = actions
-    where 
-        kfm = build_kmap emptyFM kmap
-        kproc = get_actions (kfm, lookup_dflt) kproc
-        actions = kproc (map remap_bs cs)
-
-get_actions :: (KM, KMLookup) -> KProc -> KProc
-get_actions (fm, lk) cont (c:cs) = 
-    case lk fm c of 
-        KMEAction a -> a:(cont cs)
-        KMEMode m -> m cont cs
-        KMESubmap sfm -> get_actions (sfm, lookup_submap) cont cs
-get_actions _ _ [] = []
-
-lookup_submap :: KMLookup
-lookup_submap fm c = 
-    fromMaybe (KMEAction undefE) $
-        listToMaybe $ catMaybes $ map (\f -> lookupFM fm $ f c) alts
-    where
-        alts = [id, upcase_ctrl, upcase_lowcase, lowcase_ctrl, lowcase_upcase,
-                ctrl_upcase, ctrl_lowcase]
-        
-
-lookup_dflt :: KMLookup
-lookup_dflt fm c =
-    fromMaybe fallback (lookupFM fm c)
-    where
-        fallback = KMEAction $ if valid_char c then insertE c else undefE
-
-build_kmap :: KM -> KList -> KM
-build_kmap fm_ l =
-    foldl add_k fm_ l
-    where
-        add_k fm (c:[], a) = addToFM fm c a
-        add_k fm (c:cs, a) = 
-            addToFM fm c $ KMESubmap $ 
-                case lookupFM fm c of
-                    Nothing -> add_k emptyFM (cs, a)
-                    Just (KMESubmap sm) -> add_k sm (cs, a)
-                    _ -> error "Invalid keymap table"
-        add_k _ ([], _) = error "Invalid keymap table"
-
--- Backspace remapping
-
-valid_char :: Char -> Bool
-valid_char '\n' = True
-valid_char '\r' = True
-valid_char c | isControl c = False
-valid_char _ = True
-
-remap_char :: Char -> Char -> Char -> Char -> Char -> Char
-remap_char a1 b1 a2 _ c
-    | a1 <= c && c <= b1 = chr $ ord c - ord a1 + ord a2
-    | otherwise          = c
-
-upcase_ctrl, lowcase_ctrl :: Char -> Char
-upcase_lowcase, ctrl_lowcase :: Char -> Char
-lowcase_upcase, ctrl_upcase :: Char -> Char
-upcase_ctrl = remap_char '\^A' '\^Z' 'A' 'Z'
-lowcase_ctrl = remap_char '\^A' '\^Z' 'a' 'z'
-upcase_lowcase = remap_char 'a' 'z' 'A' 'Z'
-ctrl_lowcase = remap_char 'a' 'z' '\^A' '\^Z'
-lowcase_upcase = remap_char 'A' 'Z' 'a' 'z'
-ctrl_upcase = remap_char 'A' 'Z' '\^A' '\^Z'
-
-remap_bs :: Char -> Char
-remap_bs k | isDel k = '\BS'
-           | otherwise = k
-
-isDel :: Char -> Bool
-isDel '\BS'        = True
-isDel '\127'       = True
-isDel c | c == keyBackspace = True
-isDel _            = False
-
-is_enter :: Char -> Bool
-is_enter '\n' = True
-is_enter '\r' = True
-is_enter _    = False
