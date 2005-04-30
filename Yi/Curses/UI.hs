@@ -307,9 +307,7 @@ refresh = redraw >> Curses.refresh
 resizeui :: IO (Int,Int)
 resizeui = do
     Curses.endWin
-#if NCURSES_UPDATE_AFTER_END
     Curses.initCurses Curses.refresh
-#endif
     Curses.refresh
     Curses.scrSize
 
