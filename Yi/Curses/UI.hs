@@ -303,11 +303,10 @@ refresh = redraw >> Curses.refresh
 -- | Resize the window
 -- From "Writing Programs with NCURSES", by Eric S. Raymond and Zeyd M. Ben-Halim
 --
---
 resizeui :: IO (Int,Int)
 resizeui = do
     Curses.endWin
-    Curses.initCurses Curses.refresh
+    Curses.resetParams
     Curses.refresh
     Curses.scrSize
 

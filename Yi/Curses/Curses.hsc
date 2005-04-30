@@ -209,6 +209,15 @@ initCurses fn = do
     initScr
     b <- hasColors
     when b $ startColor >> useDefaultColors
+    resetParams
+#ifdef SIGWINCH
+    installHandler (fromJust cursesSigWinch) 
+                   (Catch fn) Nothing >> return ()
+#endif
+
+-- | A bunch of settings we need
+resetParams :: IO ()
+resetParams = do
     raw True    -- raw mode please
     echo False
     nl False
@@ -219,10 +228,6 @@ initCurses fn = do
     defineKey (#const KEY_DOWN) "\x1b[1;2B"
     defineKey (#const KEY_SLEFT) "\x1b[1;2D"
     defineKey (#const KEY_SRIGHT) "\x1b[1;2C"
-#ifdef SIGWINCH
-    installHandler (fromJust cursesSigWinch) 
-                   (Catch fn) Nothing >> return ()
-#endif
 
 ------------------------------------------------------------------------
 
