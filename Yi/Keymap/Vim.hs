@@ -330,6 +330,13 @@ cmdCmdFM = M.fromList $
     ,(keyNPage, downScreensE)
     ,(keyLeft,  leftOrSolE)
     ,(keyRight, rightOrEolE)
+    ,('~',      \i -> do p <- getPointE 
+                         rightOrEolE i
+                         q <- getPointE
+                         gotoPointE p
+                         mapRangeE p q $ \c ->
+                             if isUpper c then toLower c else toUpper c
+			 gotoPointE q)
     ]
 
 --
@@ -383,15 +390,7 @@ cmd_op =((op_char +> digit `star` (move_chr >|< (move2chrs +> anyButEsc))) >|<
                               s <- (if p < q then readNM p q else readNM q p)
                               setRegE s -- ToDo registers not global.
              )
-            ,('~', const invertCase)
             ]
-
-        -- invert the case of range described by movement @m@
-        -- could take 90s on a 64M file.
-        invertCase m = do 
-            (p,q) <- withPointMove m
-            mapRangeE (min p q) (max p q) $ \c -> 
-                if isUpper c then toLower c else toUpper c
 
         --
         -- A strange, useful action. Save the current point, move to
