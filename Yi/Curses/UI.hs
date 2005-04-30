@@ -1,8 +1,10 @@
-{-# OPTIONS -cpp -#include "config.h" #-}
+{-# OPTIONS -cpp #-}
 
 #if HAVE_SIGNAL_H
 {-#include <signal.h> #-}
 #endif
+
+#include "config.h"
 
 -- 
 -- Copyright (C) 2004 Don Stewart - http://www.cse.unsw.edu.au/~dons
@@ -305,6 +307,9 @@ refresh = redraw >> Curses.refresh
 resizeui :: IO (Int,Int)
 resizeui = do
     Curses.endWin
+#if NCURSES_UPDATE_AFTER_END
+    Curses.initCurses Curses.refresh
+#endif
     Curses.refresh
     Curses.scrSize
 
