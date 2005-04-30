@@ -639,6 +639,7 @@ ex_eval = enter
       fn "p"          = prevBufW
       fn ('s':'p':_)  = splitE
       fn ('e':' ':f)  = fnewE f
+      fn ('n':'e':'w':' ':f) = splitE >> fnewE f
       fn ('s':'/':cs) = viSub cs
 
       -- send just this line through external command /fn/
@@ -666,7 +667,6 @@ ex_eval = enter
       fn "st"         = suspendE
       fn "stop"       = suspendE
       
-
       fn s            = errorE $ "The "++show s++ " command is unknown."
 
 ------------------------------------------------------------------------
