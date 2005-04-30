@@ -34,14 +34,14 @@ module Yi.MakeKeymap (
 import Yi.Editor            ( Action )
 import Yi.Yi hiding         ( keymap )
 import Yi.Char
-import Data.FiniteMap
+import qualified Yi.Map as M
 import Data.Maybe
 
 -- ---------------------------------------------------------------------
 
 data KME = KMEAction Action | KMESubmap KM | KMEMode (KProc -> KProc)
 type KProc = [Char] -> [Action]
-type KM = FiniteMap Char KME
+type KM = M.Map Char KME
 type KMLookup = KM -> Char -> KME
 type KListEnt = ([Char], KME)
 type KList = [KListEnt]
@@ -60,7 +60,7 @@ s &&> a = (s, KMEMode a)
 makeKeymap :: KList -> KProc
 makeKeymap kmap cs = actions
     where 
-        kfm = buildKeymap emptyFM kmap
+        kfm = buildKeymap M.empty kmap
         kproc = getActions (kfm, lookup_dflt) kproc
         actions = kproc (map remapBS cs)
 
@@ -72,36 +72,36 @@ getActions (fm, lk) cont (c:cs) =
         KMESubmap sfm -> getActions (sfm, lookup_submap) cont cs
 getActions _ _ [] = []
 
--- Key lookup from a FiniteMap for submaps: tries many alternatives,
+-- Key lookup from a Yi.Map.Map for submaps: tries many alternatives,
 -- with different upcase and control bits.
 lookup_submap :: KMLookup
 lookup_submap fm c = 
     fromMaybe (KMEAction undefE) $
-        listToMaybe $ catMaybes $ map (\f -> lookupFM fm $ f c) alts
+        listToMaybe $ catMaybes $ map (\f -> M.lookup (f c) fm) alts
     where
         alts = [id, upcaseCtrl, upcaseLowcase, lowcaseCtrl, lowcaseUpcase,
                 ctrlUpcase, ctrlLowcase]
         
 
--- Key lookup from a FiniteMap for top-level map: falls back to inserting
+-- Key lookup from a Yi.Map.Map for top-level map: falls back to inserting
 -- printable characters if mapping was not found.
 lookup_dflt :: KMLookup
 lookup_dflt fm c =
-    fromMaybe fallback (lookupFM fm c)
+    fromMaybe fallback (M.lookup c fm)
     where
         fallback = KMEAction $ if validChar c then insertE c else undefE
 
--- Builds a keymap (FiniteMap) from a key binding list, also creating 
+-- Builds a keymap (Yi.Map.Map) from a key binding list, also creating 
 -- submaps from key sequences.
 buildKeymap :: KM -> KList -> KM
 buildKeymap fm_ l =
     foldl addKey fm_ l
     where
-        addKey fm (c:[], a) = addToFM fm c a
+        addKey fm (c:[], a) = M.insert c a fm
         addKey fm (c:cs, a) = 
-            addToFM fm c $ KMESubmap $ 
-                case lookupFM fm c of
-                    Nothing             -> addKey emptyFM (cs, a)
+            flip (M.insert c) fm $ KMESubmap $ 
+                case M.lookup c fm of
+                    Nothing             -> addKey M.empty (cs, a)
                     Just (KMESubmap sm) -> addKey sm (cs, a)
                     _                   -> error "Invalid keymap table"
         addKey _ ([], _) = error "Invalid keymap table"
