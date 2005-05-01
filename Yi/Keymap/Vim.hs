@@ -336,7 +336,7 @@ cmdCmdFM = M.fromList $
                          gotoPointE p
                          mapRangeE p q $ \c ->
                              if isUpper c then toLower c else toUpper c
-			 gotoPointE q)
+                         gotoPointE q)
     ]
 
 --
