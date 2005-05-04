@@ -114,14 +114,23 @@ module Yi.Core (
         -- * Basic registers
         setRegE,        -- :: String -> Action
         getRegE,        -- :: IO String
-        setRegexE,      -- :: (String,Regex) -> Action
-        getRegexE,      -- :: IO (Maybe (Regex,String))
+        setRegexE,      -- :: SearchExp -> Action
+        getRegexE,      -- :: IO (Maybe SearchExp)
 
         -- * Regular expression and searching
         SearchF(..),        -- Basic | IgnoreCase | NoNewLine
+        SearchResult,
+        SearchMatch,
+	SearchExp,
         searchAndRepLocal,  -- :: String -> String -> IO Bool
         searchE,            -- :: (Maybe String) -> [SearchF] 
                             -- -> (() -> Either () ()) -> Action
+        searchInitE,        -- :: String
+                            -- -> [SearchF]
+                            -- -> IO SearchExp
+        searchDoE,          -- :: SearchExp
+                            -- -> (() -> Either () ())
+                            -- -> IO SearchResult
 
         -- * higher level ops
         mapRangeE,              -- :: Int -> Int -> (Buffer' -> Action) -> Action
@@ -533,11 +542,11 @@ getRegE = readEditor yreg
 --
 
 -- | Put regex into regex 'register'
-setRegexE :: (String,Regex) -> Action
+setRegexE :: SearchExp -> Action
 setRegexE re = modifyEditor_ $ \e -> return e { regex = Just re }
 
 -- Return contents of regex register
-getRegexE :: IO (Maybe (String,Regex))
+getRegexE :: IO (Maybe SearchExp)
 getRegexE = readEditor regex
  
 -- ---------------------------------------------------------------------
@@ -562,6 +571,10 @@ data SearchF = Basic        -- ^ Use non-modern (i.e. basic) regexes
              | NoNewLine    -- ^ Compile for newline-insensitive matching
     deriving Eq
 
+type SearchMatch = (Int, Int)
+type SearchResult = Maybe (Either SearchMatch SearchMatch)
+type SearchExp = (String, Regex)
+
 searchE :: (Maybe String)       -- ^ @Nothing@ means used previous
                                 -- pattern, if any. Complain otherwise.
                                 -- Use getRegexE to check for previous patterns
@@ -569,27 +582,39 @@ searchE :: (Maybe String)       -- ^ @Nothing@ means used previous
         -> (() -> Either () ()) -- ^ @Left@ means backwards, @Right@ means forward
         -> Action
 
-searchE _ _ d | isLeft (d ()) = errorE "Backward searching is unimplemented"
+searchE s fs d = 
+     case s of
+        Just re -> searchInitE re fs >>= (flip searchDoE) d >>= f
+        Nothing -> do
+	    mre <- getRegexE
+            case mre of
+                Nothing -> errorE "No previous search pattern" -- NB
+                Just r -> searchDoE r d >>= f
+    where
+        f mp = case mp of
+            Just (Right _) -> return ()
+            Just (Left  _) -> msgE "Search wrapped"
+            Nothing        -> errorE "Pattern not found"
+
+
+searchDoE :: SearchExp
+          -> (() -> Either () ())
+          -> IO SearchResult
+
+searchDoE _ d | isLeft (d ()) = do
+        errorE "Backward searching is unimplemented"
+	return Nothing
     where
         isLeft (Left _) = True
         isLeft _ = False
 
-searchE (Just []) _ _ = nopE   -- NB
-searchE (Just re) fs _ = searchInit re fs >>= uncurry searchF
-searchE Nothing   _ _ = do     -- use previous regex, if any
-    mre <- getRegexE
-    case mre of
-        Nothing     -> errorE "No previous search pattern" -- NB
-        Just (s,re) -> searchF s re
-
--- ---------------------------------------------------------------------
--- Internal
+searchDoE (s, re) _ = searchF s re
 
 --
 -- Set up a search.
 --
-searchInit :: String -> [SearchF] -> IO (String,Regex)
-searchInit re fs = do
+searchInitE :: String -> [SearchF] -> IO SearchExp
+searchInitE re fs = do
     c_re <- regcomp re (extended + igcase + newline)
     let p = (re,c_re)
     setRegexE p
@@ -603,12 +628,16 @@ searchInit re fs = do
         newline  | NoNewLine  `elem` fs = 0
                  | otherwise            = regNewline    -- newline is special
 
+
+-- ---------------------------------------------------------------------
+-- Internal
+
 --
 -- Do a forward search, placing cursor at first char of pattern, if found.
 -- Keymaps may implement their own regex language. How do we provide for this?
 -- Also, what's happening with ^ not matching sol?
 --
-searchF :: String -> Regex -> Action
+searchF :: String -> Regex -> IO SearchResult
 searchF _ c_re = do
     mp <- withWindow $ \w b -> do
             p   <- pointB b
@@ -621,9 +650,9 @@ searchF _ c_re = do
                         moveTo b p
                         return (w, fmap Left np)
     case mp of
-        Just (Right (p,_)) -> gotoPointE p
-        Just (Left  (p,_)) -> msgE "Search wrapped" >> gotoPointE p
-        Nothing            -> errorE "Pattern not found"
+        Just (Right (p,_)) -> gotoPointE p >> return mp
+        Just (Left  (p,_)) -> gotoPointE p >> return mp
+	_                  -> return mp
 
 ------------------------------------------------------------------------
 -- Global search and replace
