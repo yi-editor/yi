@@ -32,9 +32,12 @@ import Yi.MakeKeymap
 
 -- ---------------------------------------------------------------------
 
+type JoeState = ()
+type JoeProc = KProc JoeState
+
 -- The Keymap
 
-klist :: KList
+klist :: KList JoeState
 klist=[
     -- Editing and movement
     "\^KU" ++> topE,
@@ -89,8 +92,8 @@ klist=[
     "\^KE" &&> queryNewE
     ]
 
-keymap :: KProc
-keymap = makeKeymap klist
+keymap :: [Char] -> [Action]
+keymap = makeKeymap klist ()
 
 -- Extra actions
 
@@ -111,37 +114,37 @@ getFileE = bufInfoE >>= \(fp, _, _, _, _, _) -> return fp
 insertFileE :: String -> Action
 insertFileE f = readFile f >>= mapM_ insertE
 
-query_ :: String -> String -> (String -> KProc) -> KProc -> KProc
-query_ prompt s cont failcont cs =
+query_ :: String -> String -> (String -> JoeProc) -> JoeProc -> JoeProc
+query_ prompt s cont failcont st cs =
     (msgE $ prompt ++ s):(loop cs)
     where
-        q = \ss cs2 -> query_ prompt ss cont failcont cs2
+        q = \ss cs2 -> query_ prompt ss cont failcont st cs2
         loop (c:cs3)
-            | isEnter c   = msgClrE:cmdlineUnFocusE:(cont s cs3)
-            | c=='\^G'    = msgClrE:cmdlineUnFocusE:(failcont cs3)
+            | isEnter c   = msgClrE:cmdlineUnFocusE:(cont s st cs3)
+            | c=='\^G'    = msgClrE:cmdlineUnFocusE:(failcont st cs3)
             | isDel c     = q (init s) cs3
             | validChar c = q (s ++ [c]) cs3
             | otherwise   = loop cs3
         loop []           = []
 
-query :: String -> String -> (String -> KProc) -> KProc -> KProc
-query prompt s cont failcont cs =
-    cmdlineFocusE:(query_ prompt s cont failcont cs)
+query :: String -> String -> (String -> JoeProc) -> JoeProc -> JoeProc
+query prompt s cont failcont st cs =
+    cmdlineFocusE:(query_ prompt s cont failcont st cs)
 
-simpleq :: String -> String -> (String -> Action) -> KProc -> KProc
-simpleq prompt initial act cont =
-    query prompt initial (\s cs -> (act s):(cont cs)) cont
+simpleq :: String -> String -> (String -> Action) -> JoeProc -> JoeProc
+simpleq prompt initial act cont st =
+    query prompt initial (\s st_ cs -> (act s):(cont st_ cs)) cont st
 
 queryNewE, querySaveE, queryGotoLineE, queryInsertFileE,
-    queryBufW, querySearchRepE, nextSearchRepE :: KProc -> KProc
+    queryBufW, querySearchRepE, nextSearchRepE :: JoeProc -> JoeProc
 
 
 queryNewE = simpleq "File name: " [] fnewE
 queryGotoLineE = simpleq "Line number: " [] (gotoLnE . read)
 queryInsertFileE = simpleq "File name: " [] insertFileE
 queryBufW = simpleq "Buffer: " [] unimplementedQ
-querySaveE cont _ = return $
-    getFileE >>= \f -> metaM $ simpleq "File name: " f fwriteToE cont
+querySaveE cont st _ = return $
+    getFileE >>= \f -> metaM $ simpleq "File name: " f fwriteToE cont st
 
 isect :: Eq a => [a] -> [a] -> Bool
 [] `isect` _ = False
@@ -156,17 +159,17 @@ mksearch s flags =
                        then \() -> Left () 
                        else \() -> Right ()
         
-querySearchRepE cont cs = 
-    query "Search term: " [] qflags cont cs
+querySearchRepE cont = 
+    query "Search term: " [] qflags cont
     where
         flagprompt = "[Not fully implemented] (I)gnore, (R)eplace, (B)ackward Reg.E(x)p? "
-        qflags s cs2 = query flagprompt [] (doit s) cont cs2
-        doit s flags cs3 = (mksearch s flags):(cont cs3)
+        qflags s = query flagprompt [] (doit s) cont
+        doit s flags st cs = (mksearch s flags):(cont st cs)
 
-nextSearchRepE cont _ = return $
+nextSearchRepE cont st _ = return $
     getRegexE >>= \e -> case e of
-        Nothing -> metaM $ querySearchRepE cont
-        Just _ -> metaM $ \cs -> (nopE):(cont cs)
+        Nothing -> metaM $ querySearchRepE cont st
+        Just _ -> metaM $ \cs -> (nopE):(cont st cs)
 
 unimplementedQ :: String -> Action
 unimplementedQ _ = nopE

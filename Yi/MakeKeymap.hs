@@ -39,42 +39,44 @@ import Data.Maybe
 
 -- ---------------------------------------------------------------------
 
-data KME = KMEAction Action | KMESubmap KM | KMEMode (KProc -> KProc)
-type KProc = [Char] -> [Action]
-type KM = M.Map Char KME
-type KMLookup = KM -> Char -> KME
-type KListEnt = ([Char], KME)
-type KList = [KListEnt]
+data KME s = KMEAction Action
+           | KMESubmap (KM s)
+           | KMEMode (KProc s -> KProc s)
+type KProc s = s -> [Char] -> [Action]
+type KM s = M.Map Char (KME s)
+type KMLookup s = (KM s) -> Char -> (KME s)
+type KListEnt s = ([Char], KME s)
+type KList s = [KListEnt s]
 
 -- | Bind a key combination to an action in a binding list.
-(++>) :: [Char] -> Action -> KListEnt
+(++>) :: [Char] -> Action -> KListEnt s
 s ++> a = (s, KMEAction a)
 
 -- | Bind a key combination to a binding processor in a binding list. 
 -- The binding processor should call evaluate the parameter continuation 
 -- binding processor when finished.
-(&&>) :: [Char] -> (KProc -> KProc) -> KListEnt
+(&&>) :: [Char] -> (KProc s -> KProc s) -> KListEnt s
 s &&> a = (s, KMEMode a)
 
 -- | Create a binding processor from 'kmap'.
-makeKeymap :: KList -> KProc
-makeKeymap kmap cs = actions
+makeKeymap :: KList s -> KProc s
+makeKeymap kmap st cs = actions
     where 
         kfm = buildKeymap M.empty kmap
         kproc = getActions (kfm, lookup_dflt) kproc
-        actions = kproc (map remapBS cs)
+        actions = kproc st (map remapBS cs)
 
-getActions :: (KM, KMLookup) -> KProc -> KProc
-getActions (fm, lk) cont (c:cs) = 
+getActions :: (KM s, KMLookup s) -> KProc s -> KProc s
+getActions (fm, lk) cont s (c:cs) = 
     case lk fm c of 
-        KMEAction a -> a:(cont cs)
-        KMEMode m -> m cont cs
-        KMESubmap sfm -> getActions (sfm, lookup_submap) cont cs
-getActions _ _ [] = []
+        KMEAction a -> a:(cont s cs)
+        KMEMode m -> m cont s cs
+        KMESubmap sfm -> getActions (sfm, lookup_submap) cont s cs
+getActions _ _ _ [] = []
 
 -- Key lookup from a Yi.Map.Map for submaps: tries many alternatives,
 -- with different upcase and control bits.
-lookup_submap :: KMLookup
+lookup_submap :: KMLookup s
 lookup_submap fm c = 
     fromMaybe (KMEAction undefE) $
         listToMaybe $ catMaybes $ map (\f -> M.lookup (f c) fm) alts
@@ -85,7 +87,7 @@ lookup_submap fm c =
 
 -- Key lookup from a Yi.Map.Map for top-level map: falls back to inserting
 -- printable characters if mapping was not found.
-lookup_dflt :: KMLookup
+lookup_dflt :: KMLookup s
 lookup_dflt fm c =
     fromMaybe fallback (M.lookup c fm)
     where
@@ -93,7 +95,7 @@ lookup_dflt fm c =
 
 -- Builds a keymap (Yi.Map.Map) from a key binding list, also creating 
 -- submaps from key sequences.
-buildKeymap :: KM -> KList -> KM
+buildKeymap :: KM s -> KList s -> KM s
 buildKeymap fm_ l =
     foldl addKey fm_ l
     where
