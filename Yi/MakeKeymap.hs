@@ -42,7 +42,7 @@ import Data.Maybe
 data KME s = KMEAction Action
            | KMESubmap (KM s)
            | KMEMode (KProc s -> KProc s)
-type KProc s = s -> [Char] -> [Action]
+type KProc s = s ->[Char] -> [Action]
 type KM s = M.Map Char (KME s)
 type KMLookup s = (KM s) -> Char -> (KME s)
 type KListEnt s = ([Char], KME s)
