@@ -51,8 +51,7 @@
 
 module Boot ( main, remain ) where
 
-import Plugins
-import Plugins.Utils          ( (</>), (<.>) )
+import System.Plugins
 
 import Data.Maybe             ( fromJust, isJust )
 import Data.IORef             ( newIORef, readIORef, writeIORef, IORef() )
@@ -334,3 +333,14 @@ reconf = do
     writeIORef g_cfg_mod mmod
     return cfghdl
 
+------------------------------------------------------------------------
+
+infixr 6 </>
+infixr 6 <.>
+
+(</>), (<.>) :: FilePath -> FilePath -> FilePath
+[] </> b = b
+a  </> b = a ++ "/" ++ b
+
+[] <.> b = b
+a  <.> b = a ++ "." ++ b
