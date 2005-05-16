@@ -221,7 +221,7 @@ endif
 # Don't clean the .hc files if we're bootstrapping
 CLEAN_FILES += $(DERIVED_HC_SRCS)
 
-DIST_CLEAN_FILES 	+= depend* *.hp *.prof configure mk/config.h* mk/config.mk
+DIST_CLEAN_FILES 	+= depend* *.hp *.prof mk/config.h mk/config.mk
 DIST_CLEAN_DIRS=  *.cache
 
 MAINTAINER_CLEAN_FILES 	+= $(BOOT_SRCS) $(DERIVED_HAPPY_SRCS) $(DERIVED_ALEX_SRCS)
