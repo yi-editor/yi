@@ -99,11 +99,12 @@ AC_SUBST(GHC_VERSION)
 AC_DEFINE_UNQUOTED(GHC_VERSION, "$GHC_VERSION", [GHC version])
 
 # Work out value of __GLASGOW_HASKELL__
+# Don't use ghci, as that's non-portable
 if test -n "$WithGhc" ; then
  AC_MSG_CHECKING([for value of __GLASGOW_HASKELL__])
  echo "main = print __GLASGOW_HASKELL__" > t.hs
- GLASGOW_HASKELL=`echo 'main' | "$WithGhc" --interactive -ignore-dot-ghci -v0 -cpp t.hs`
- rm t.hs
+ GLASGOW_HASKELL=`"$WithGhc" -v0 -cpp t.hs > /dev/null 2>&1 && ./a.out`
+ rm -f t.hs t.hi t.o a.out
  AC_MSG_RESULT([$GLASGOW_HASKELL])
 fi
 AC_SUBST(GLASGOW_HASKELL)

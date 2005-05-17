@@ -1563,12 +1563,13 @@ _ACEOF
 
 
 # Work out value of __GLASGOW_HASKELL__
+# Don't use ghci, as that's non-portable
 if test -n "$WithGhc" ; then
  echo "$as_me:$LINENO: checking for value of __GLASGOW_HASKELL__" >&5
 echo $ECHO_N "checking for value of __GLASGOW_HASKELL__... $ECHO_C" >&6
  echo "main = print __GLASGOW_HASKELL__" > t.hs
- GLASGOW_HASKELL=`echo 'main' | "$WithGhc" --interactive -ignore-dot-ghci -v0 -cpp t.hs`
- rm t.hs
+ GLASGOW_HASKELL=`"$WithGhc" -v0 -cpp t.hs > /dev/null 2>&1 && ./a.out`
+ rm -f t.hs t.hi t.o a.out
  echo "$as_me:$LINENO: result: $GLASGOW_HASKELL" >&5
 echo "${ECHO_T}$GLASGOW_HASKELL" >&6
 fi
