@@ -1,4 +1,4 @@
-{-# OPTIONS -cpp #-}
+{-# OPTIONS -cpp -#include "YiCurses.h" #-}
 
 #if HAVE_SIGNAL_H
 {-#include <signal.h> #-}
