@@ -8,6 +8,12 @@ Vim mode:
         - performance issue on very long lines. (C fragment?)
         - path names not expanded in :e
         - :!cmd , run an external command not implemented
+        - remember column count when moving down to short lines.
+        - deal with delay after hitting esc from command mode.
+
+Darcs support:
+        - what interesting things can we do with integrated darcs
+          support?
 
 ------------------------------------------------------------------------
 
