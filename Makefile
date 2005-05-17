@@ -78,7 +78,7 @@ Main.o: Main.hs Yi.$(way_)o $(LIBRARY)
 	$(GHC) $(HC_OPTS) $(STATIC_HC_OPTS) -c $< -o $@ -ohi $(basename $@).hi
 
 # Break some mutual recursion (why doesn't this work in mk/rules.mk??)
-ifeq "$(GLASGOW_HASKELL)" "604"
+ifneq "$(GLASGOW_HASKELL)" "602"
 %.$(way_)hi-boot : %.$(way_)o-boot
 	@:
 endif
