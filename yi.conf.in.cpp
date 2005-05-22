@@ -56,6 +56,7 @@ exposed-modules:
         Yi.Keymap.Vi
         Yi.Keymap.Vim
         Yi.Keymap.Joe
+        Yi.Keymap.Ee
 
 hidden-modules:
 #ifdef INSTALLING
