@@ -103,7 +103,7 @@ AC_DEFINE_UNQUOTED(GHC_VERSION, "$GHC_VERSION", [GHC version])
 if test -n "$WithGhc" ; then
  AC_MSG_CHECKING([for value of __GLASGOW_HASKELL__])
  echo "main = print __GLASGOW_HASKELL__" > t.hs
- GLASGOW_HASKELL=`"$WithGhc" -v0 -cpp t.hs > /dev/null 2>&1 && ./a.out`
+ GLASGOW_HASKELL=`"$WithGhc" -v0 -cpp t.hs -o a.out > /dev/null 2>&1 && ./a.out`
  rm -f t.hs t.hi t.o a.out
  AC_MSG_RESULT([$GLASGOW_HASKELL])
 fi
