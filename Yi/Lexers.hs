@@ -118,7 +118,7 @@
 
 module Yi.Lexers (
 
-   Regexp, Lexer, Action, 
+   Regexp, Lexer, Action, Meta, Error, 
    epsilon, char, (+>), 
    lexaction, lexactionErr, lexmeta, action, meta,
    (>|<), (>||<), 

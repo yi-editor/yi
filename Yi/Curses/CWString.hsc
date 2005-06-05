@@ -66,7 +66,7 @@ import Data.Bits            ( Bits((.|.), (.&.), shift) )
 import Foreign.C.String
 
 #if GLASGOW_HASKELL < 603
-import GHC.Exts
+#import GHC.Exts
 #endif
 
 #ifdef CF_WCHAR_SUPPORT

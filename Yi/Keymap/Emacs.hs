@@ -108,7 +108,6 @@ esss f (ES a) = ES (f a)
 
 normalMode :: EmacsMode
 normalMode =      insChar    -- insert a keystroke
-           >||< deleteChar -- delete a character
            >||< moveChar   -- or move the cursor
            >||< (char '\^X' `meta` \s->(escape wackoMode $ esss (++s))) 
               -- or go Ctl-X
@@ -120,12 +119,6 @@ normalMode =      insChar    -- insert a keystroke
 insChar :: EmacsMode
 insChar = insertChars `action` \[c] -> Just $ insertE c
           where insertChars = alt $ '\r' : map chr [32..126]
-
--- deleting
-deleteChar :: EmacsMode
-deleteChar = alt (keyBackspace:"\BS\127") 
-             `action` (\_-> Just $ leftE >> deleteE)
-             >||< alt (keyDC:"\^D") `action` (\_ -> Just $ deleteE)
 
 -- cursor motions
 
