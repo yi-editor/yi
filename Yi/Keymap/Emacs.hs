@@ -1,7 +1,7 @@
+
 -- 
 -- Copyright 2005 by B.Zapf
 --
--- adapted from Nano.hs
 -- 
 -- This program is free software; you can redistribute it and/or
 -- modify it under the terms of the GNU General Public License as
@@ -45,7 +45,6 @@ sat 9 apr 22:20
  < stepcut> the hard part with (4) is how to express the command you want 
             to bind to at run-time
  < basti_> hmm.
- -!- lisppaste2 [~lisppaste@common-lisp.net] has joined #haskell
  < basti_> is there some sort of eval function?
  < stepcut> in the compiled code, you just bind the key to some code that 
             is compiled
@@ -55,9 +54,12 @@ sat 9 apr 22:20
 
 -}
 
+
 --
 -- | An emulation of the Emacs editor
 --
+-- This is a revised version (internal count 2) - the first version
+-- lacked the possibility to abstract key bindings meaningful.
 
 module Yi.Keymap.Emacs where
 
@@ -65,121 +67,205 @@ import Yi.Editor            ( Action )
 import Yi.Yi hiding         ( keymap )
 import Yi.Lexers hiding (Action)
 
---import qualified Yi.Map as M
+--import Data.Array
+import Data.Char            ( chr, ord ) --, isAlphaNum )
+import Data.List
+import qualified Data.Map as Map
+type Key = Int {- Meta Keystrokes? -}
 
-import Data.Char            ( chr,ord ) --, isAlphaNum )
---import Data.List            ( (\\) )
---import Data.Maybe           ( fromMaybe )
+type ActRef = String 
 
---import Control.Exception    ( ioErrors, catchJust, try, evaluate )
+-- A regex is bound to an Action (or rather, a reference to one)
 
--- so far, Command Sequences are stored as a string. I thought 
--- making an own datatype for them, for the sake of abstraction, but then
--- realized that this wouldn't earn a lot and complicates matters.   basti_
-
-type CommandSequence = String
-
-keymap :: [Char] -> [Action]
-keymap cs = actions
-    where 
-        (actions,_,_) = execLexer normalMode (cs,ES "")
+data KeyBinding = 
+    KeyBinding [(Regexp EmacsState Action  ,   ActRef)]
 
 type EmacsMode = Lexer EmacsState Action
 
-data EmacsState = ES CommandSequence
 
-scrrep :: Char->String
+{- State consists of visual Feedback, a stack of prompt strings,
+   and Maybe something we're about to do. (The arguments will be 
+   applied to ReflectableAction one by one, and when an "Action" 
+   results, it is handed to the editor)
+   -}
 
-scrrep a | ord(a)<32 = "C-"++[chr(ord(a)+96),' ']
-         | otherwise = [a]
+type Dialog = (Maybe String,Maybe ReflectableAction) 
 
-instance Show EmacsState where
-  show (ES (a:ta)) = (scrrep a)++(show $ ES ta)
-  show (ES []) = []
+type KeymapSetup = [KeyBinding]
 
+data EmacsState = ES Dialog KeymapSetup
 
-esss :: (String->String)->EmacsState->EmacsState
-esss f (ES a) = ES (f a)
+-- Kinds of things that might happen to the editor.
 
+data ReflectableAction = 
+    Action Action | 
+    Char (Char->ReflectableAction) | 
+    String (String->ReflectableAction) | 
+    Int (Int->ReflectableAction) | 
+    Keymap Int | 
+    Cancel |
+    Describe |
+    Label String ReflectableAction |
+    Accept |
+    Repeat Int
 
+type Feedback = String
 
--- the naming is still a little heterogenous, but this is the "normal"
--- key lexer...
+-- ActionMap stores names, 
 
-normalMode :: EmacsMode
-normalMode =      insChar    -- insert a keystroke
-           >||< moveChar   -- or move the cursor
-           >||< (char '\^X' `meta` \s->(escape wackoMode $ esss (++s))) 
-              -- or go Ctl-X
-           >||< (char '#'   `meta` \s->(escape wackoMode $ esss (++s))) 
-              -- or go Meta-X (this is bound to # for the moment)
+type ActionMapEntry = (String,[String],ReflectableAction)
 
--- upon the chars 32..126, insertE 
+type ActionMap = Map.Map String ReflectableAction
 
-insChar :: EmacsMode
-insChar = insertChars `action` \[c] -> Just $ insertE c
-          where insertChars = alt $ '\r' : map chr [32..126]
-
--- cursor motions
-
-moveChar :: EmacsMode
-moveChar = (char keyUp    `action` \_ -> Just upE   ) >||<
-           (char keyDown  `action` \_ -> Just downE ) >||<
-           (char keyRight `action` \_ -> Just rightE) >||<
-           (char keyLeft  `action` \_ -> Just leftE ) 
-
-
--- this does the decoding of CommandSequences... this approach seems
--- to be good for sequences of a few keys, but it's not favourable for
--- filenames etc.
-
-decode :: EmacsState -> Action
-decode (ES ('\^X':('\^S':_))) = msgE "Write"
-decode (ES ('\^X':('\^C':_))) = quitE
-
-decode s = msgE ("Unbound Control sequence "++(show s))
+actionlist :: ActionMap
+actionlist = Map.fromList $ (map (\(Label a b)->(a,Label a b)))
+    [Label "insert_self"  $ String $ \[x]-> Action (insertE x),
+     Label "cursor_up"    $ String $ \_  -> Action upE,
+     Label "cursor_down"  $ String $ \_  -> Action downE,
+     Label "cursor_right" $ String $ \_  -> Action rightE,
+     Label "cursor_left"  $ String $ \_  -> Action leftE,
+     Label "quit"         $ String $ \_  -> Action quitE,
+     Label "accept"       $ String $ \_  -> Accept,
+     Label "mode_norm"    $ String $ \_  -> Keymap 0,
+     Label "mode_cx"      $ String $ \_  -> Keymap 1,
+     Label "describe_key" $ String $ \_  -> Describe,
+     Label "test_actions" $ String $ \_  -> Action cmdlineFocusE,
+     Label "repeat_key"   $ String $ \_  -> Int $ \k -> Repeat k ]
 
 
--- This is our "wacko mode abstraction". On userlevel you will see:
---
---  regex `meta`  escape (mode) (state->state)
---
--- which, upon regex, escapes into mode and transforms the editor state
+printeable :: String->String
+printeable (a:ta) | (ord a)<32 = "C-"++[chr ((ord a)+96)]++" "++(printeable ta)
+                  | otherwise  = [a]++(printeable ta)
+printeable [] = []
 
-escape :: EmacsMode->(EmacsState->EmacsState)->EmacsState->(Maybe (Either e Action),EmacsState,Maybe (Lexer EmacsState Action))
+{- This is what normally happens to ReflectableActions: Heading Labels are 
+   matched away, the String-RA below (hopefully) gets the user input thrown 
+   at.    -}
 
-escape m f os = ((Just $ Right $ msgE $ show ns),
-                ns,
-                Just m)
-               where ns = f os
+interpret :: ReflectableAction -> Meta EmacsState Action
+interpret act inp state = 
+  let ES (feedback,pendaction) keymaps = state in
+  case act of 
+    Label _ act' -> interpret act' inp state -- skip labels
+    String act' ->
+      case act' inp of 
+        Action act'' -> (Just $ Right act'',
+                         ES (Just "",pendaction) keymaps,
+                         Nothing)
+        Keymap i   -> let newfb = case feedback of
+                                    Just a  -> Just $ a++(printeable inp) 
+                                    Nothing -> Just (printeable inp) in
+                      (Nothing,
+                       ES (newfb,pendaction) keymaps,
+                       Just $ realizekeymap (keymaps !! i) )
+        Describe   -> (Nothing,
+                       ES (Just "Type Key to Describe: ",Just Describe) keymaps,
+                       Just $ realizekeymap (keymaps !! 0))
+        Repeat k   -> (Nothing,
+                       ES (Nothing,Just $ Repeat k) keymaps,
+                       Nothing)
+        _          -> error "Untreatable Action"
+    _ -> error "Actions have to take a String as their first argument"
 
--- On userlevel you will see:
---
---  regex `meta`  endescape (mode) (state->state) (decode)
---
--- which, upon regex, ends an escape, lets 
+type MetaResult = (Maybe (Either Error Action),EmacsState,Maybe (Lexer EmacsState Action))
+--type MetaMetaResult = (Maybe (Either Error ReflectabeAction),EmacsState,Maybe (Lexer EmacsState Action))
 
-actescape :: EmacsMode->(EmacsState->Action)->(EmacsState->EmacsState)->(EmacsState->EmacsState)->EmacsState->(Maybe (Either e Action),EmacsState,Maybe (Lexer EmacsState Action))
+{- Display the head label -}
 
-actescape m act fo fn os = ((Just $ Right $ msgE ("!!!>"++(show (fo os))) >> act (fo os)),
-                  (fn (fo os)),
-                  Just m)
-
-
---bindings :: IORef MArray Integer
-
-wackoMode :: EmacsMode
-wackoMode = (alt (map chr [0..32]) `meta` \s->(escape wackoMode $ esss (++s) ))  >||<
-            ((alt $ ['\^C','\^S']++(map chr [32..123])) `meta` 
-               \s->(actescape normalMode decode (esss (++s)) (\_->ES "")))
-
-
-
-{--- junk at the bottom ---}
-
-null_km :: EmacsMode
-null_km = epsilon `action` \_ -> Just undefined
+describe :: ReflectableAction -> Meta EmacsState Action
+describe act inp (ES (feedback,pendaction) keymaps) = 
+  case act of 
+    Label label act' -> 
+      case act' of
+        String act'' -> case (act'' inp) of
+          Keymap i -> let newfb = case feedback of
+                                  Just a  -> Just $ a++(printeable inp) 
+                                  Nothing -> Just (printeable inp) in
+                      (Nothing,
+                       ES (newfb,pendaction) keymaps,
+                       Just $ realizekeymap (keymaps !! i) )
+          _         -> (Nothing,
+                        ES (Just label,Nothing) keymaps,
+                        Just $ realizekeymap (keymaps !! 0) )
+        _  -> error "Describing an action that doesn't take a String as its first parameter" -- self-reference rocks!
+    _             -> error "Unlabelled Action"
 
 
---metaXChar :: EmacsMode
---metaXChar = normalChars
+--inputint :: ReflectableAction -> Meta EmacsState Action
+--inputint act inp (ES (feedback,pendaction) keymaps) =
+
+
+{- Some UI-Feedback Logic -}
+
+showfeedback :: MetaResult -> MetaResult
+showfeedback (act,ES (Nothing,sc) sd,lexer) = 
+    (act, ES (Nothing,sc) sd,lexer)
+showfeedback (Just (Right act),ES (Just a,sc) sd,lexer) = 
+    (Just $ Right $ msgE a >> act, ES (Just a,sc) sd,lexer)
+showfeedback (Nothing,ES (Just a,sc) sd,lexer) = 
+    (Just $ Right $ msgE a, ES (Just a,sc) sd,lexer)
+showfeedback (junk,ES (sa,sb) sc,lexer) = 
+    (junk, ES (sa,sb) sc,lexer)
+
+
+{- Finally we're building some lexers from regexes and action names -}
+
+associateaction :: Regexp EmacsState Action -> String -> Lexer EmacsState Action
+associateaction regex actionname   =
+  regex `meta` \inp state ->
+     let act= actionlist Map.! actionname 
+         ES (_,pendaction) _ = state in
+           showfeedback $ case pendaction of 
+             Nothing       -> interpret act inp state 
+             Just Describe -> describe  act inp state 
+--             Int  act'     -> inputint inp state
+             _ -> error "Can't pend this action yet"
+
+comparefsts :: (Ord a) => (a,b)->(a,b)->Ordering
+comparefsts (x,_) (y,_) = compare x y
+
+allkeys :: [Key]
+allkeys = [1..255] -- is 0 a keystroke?
+
+
+realizekeymap :: KeyBinding -> EmacsMode
+realizekeymap (KeyBinding km) = 
+    foldr
+
+-- A keymap is a lexer alternative
+
+    (>||<) 
+
+-- neutral lexer (stupid!)
+
+    ((char $ chr 0) `action` \_->Nothing)
+
+    (map (\(x,y)-> associateaction x y) km) --Build lexers
+
+normalkeymap :: KeyBinding
+normalkeymap = KeyBinding
+
+                [(alt $ map chr $ 13:[32..127] , "insert_self"),
+                 (char keyUp   ,"cursor_up"),
+                 (char keyDown ,"cursor_down"),
+                 (char keyRight,"cursor_right"),
+                 (char keyLeft ,"cursor_left"),
+                 ((char '\^X') ,"mode_cx")]
+
+
+
+cxkeymap :: KeyBinding
+cxkeymap = KeyBinding [((char '\^C'),"quit"),
+                       ((char '\^D'),"describe_key"),
+                       (alt $ map chr $ [32..127],"mode_norm"),
+                       ((char 't'),"test_actions")
+                      ]
+
+
+emacsNormal :: EmacsMode
+emacsNormal = realizekeymap normalkeymap
+
+keymap :: [Char] -> [Action]
+keymap cs = actions 
+   where (actions,_,_) = execLexer emacsNormal (cs,ES (Nothing,Nothing) [normalkeymap,cxkeymap])
+
