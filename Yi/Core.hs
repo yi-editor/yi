@@ -213,7 +213,7 @@ startE st (confs,fn,fn') ln mfs = do
     t' <- forkIO $ getcLoop ch
     modifyEditor_ $ \e -> return $ e { threads = t' : threads e, input = ch }
 
-    when (not $ isNothing st) refreshE -- and redraw
+    when (isJust st) refreshE -- and redraw
 
     where
         --

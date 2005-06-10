@@ -12,7 +12,7 @@ QUICK START
 * GHC 6.4  : install the latest hs-plugins nightly snapshot.
 * Or don't install hs-plugins at all, and use 'make way=static'
 
-    $ ./configure --prefix=/my/dir
+    $ ./configure --prefix=/usr/local
     $ make
     $ ./yi-inplace README
 
