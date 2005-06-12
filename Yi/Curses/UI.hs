@@ -104,9 +104,9 @@ initcolours = do
 --
 end :: IO ()
 end = do Curses.endWin
--- #if NCURSES_UPDATE_AFTER_END
+--  if NCURSES_UPDATE_AFTER_END
 --          Curses.update
--- #endif
+--  endif
 
 --
 -- | Suspend the program
