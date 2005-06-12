@@ -266,10 +266,7 @@ eventLoop = do
 
 -- | Quit.
 quitE :: Action
-quitE = do
---  UI.end  -- will be dealt with by catch() in Yi.hs
-    Editor.shutdown
-    exitWith ExitSuccess -- throw to top-level exception handler
+quitE = exitWith ExitSuccess -- throws to top level
 
 --
 -- | Reboot (!). Reboot the entire editor, reloading the Yi core.
