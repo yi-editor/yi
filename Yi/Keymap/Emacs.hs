@@ -25,41 +25,34 @@
 Requirements from the community:
 
 sat 9 apr 22:20
- < stepcut> (1) showing the 'C-x - ' stuff in the message bar
- < stepcut> (2) allowing tab completion of M-x commands
- < stepcut> (3) supporting 'C-h k'
- < stepcut> (4) rebinding keys (of course)
- < stepcut> (5) C-u
- < basti_> doing WHAT? ;)
- * basti_ doesnt have that bound
- < stepcut> C-u is bound by default...
- < stepcut> try, C-u 20 a
- < basti_> ah
- < stepcut> it repeats a command
- < basti_> hmm ok
- < stepcut> C-u a will do it 4 times
- < stepcut> it is often, but not always interpreted as a repeat
- < stepcut> also, capturing/replaying keyboard macros
- < basti_> lets stay on the carpet.
 
- < stepcut> the hard part with (4) is how to express the command you want 
-            to bind to at run-time
- < basti_> hmm.
- < basti_> is there some sort of eval function?
- < stepcut> in the compiled code, you just bind the key to some code that 
-            is compiled
- < basti_> i know
- < basti_> we would need 2-way association
- < stepcut> right
+ < stepcut> (1) showing the 'C-x - ' stuff in the message bar
+
+check :)
+
+ < stepcut> (2) allowing tab completion of M-x commands
+
+will take some time
+
+ < stepcut> (3) supporting 'C-h k'
+
+it's C-x C-d at the moment, but - check
+
+ < stepcut> (4) rebinding keys (of course)
+
+no interface, but supported
+
+ < stepcut> (5) C-u
+
+no interface, but supported
 
 -}
-
 
 --
 -- | An emulation of the Emacs editor
 --
 -- This is a revised version (internal count 2) - the first version
--- lacked the possibility to abstract key bindings meaningful.
+-- lacked the possibility to abstract key bindings meaningfully.
 
 module Yi.Keymap.Emacs where
 
@@ -67,11 +60,11 @@ import Yi.Editor            ( Action )
 import Yi.Yi hiding         ( keymap )
 import Yi.Lexers hiding (Action)
 
---import Data.Array
-import Data.Char            ( chr, ord ) --, isAlphaNum )
+import Data.Char            ( chr, ord )
 import Data.List
 import qualified Data.Map as Map
-type Key = Int {- Meta Keystrokes? -}
+
+type Key = Int {- What to use here - Meta Keystrokes? -}
 
 type ActRef = String 
 
@@ -82,18 +75,38 @@ data KeyBinding =
 
 type EmacsMode = Lexer EmacsState Action
 
-
-{- State consists of visual Feedback, a stack of prompt strings,
-   and Maybe something we're about to do. (The arguments will be 
-   applied to ReflectableAction one by one, and when an "Action" 
-   results, it is handed to the editor)
-   -}
-
-type Dialog = (Maybe String,Maybe ReflectableAction) 
-
 type KeymapSetup = [KeyBinding]
 
-data EmacsState = ES Dialog KeymapSetup
+type RAHandler = (ReflectableAction->(Meta EmacsState Action))
+
+{- State consists of a Handler for ReflectableActions,
+   then Maybe some String that's to be displayed in the bottom line,
+   and a bunch of keymaps -}
+
+-- TODO: this should be a record, i suppose (thanks xerox)
+
+data EmacsState = ES RAHandler (Maybe String) KeymapSetup 
+
+getHandler :: EmacsState -> RAHandler
+getHandler (ES x _ _) = x
+
+getDisplay :: EmacsState -> (Maybe String)
+getDisplay (ES _ x _) = x
+
+getKeymaps :: EmacsState -> KeymapSetup
+getKeymaps (ES _ _ x) = x
+
+replaceHandler :: RAHandler -> EmacsState -> EmacsState 
+replaceHandler x (ES _ b c) = ES x b c
+
+replaceDisplay :: Maybe String -> EmacsState -> EmacsState 
+replaceDisplay x (ES a _ c) = ES a x c
+
+replaceKeymaps :: KeymapSetup -> EmacsState -> EmacsState 
+replaceKeymaps x (ES a b _) = ES a b x
+
+-- ... and this was why it should be a record
+
 
 -- Kinds of things that might happen to the editor.
 
@@ -106,141 +119,171 @@ data ReflectableAction =
     Cancel |
     Describe |
     Label String ReflectableAction |
-    Accept |
+    Accept | -- probably not needed
     Repeat Int
 
 type Feedback = String
 
--- ActionMap stores names, 
 
-type ActionMapEntry = (String,[String],ReflectableAction)
-
+--type ActionMapEntry = (String,[String],ReflectableAction)
 type ActionMap = Map.Map String ReflectableAction
+
+-- actions  -   i dont know what to do with this big fat ugly list
 
 actionlist :: ActionMap
 actionlist = Map.fromList $ (map (\(Label a b)->(a,Label a b)))
-    [Label "insert_self"  $ String $ \[x]-> Action (insertE x),
+    [Label "insert_self"  $ String $ \x  -> 
+         Action (foldl' (>>) nopE (map insertE x)), 
      Label "cursor_up"    $ String $ \_  -> Action upE,
+     Label "backspace"    $ String $ \_  -> Action (leftE>>deleteE),
+     Label "delete"       $ String $ \_  -> Action deleteE,
+     Label "kill"         $ String $ \_  -> Action killE,
      Label "cursor_down"  $ String $ \_  -> Action downE,
      Label "cursor_right" $ String $ \_  -> Action rightE,
      Label "cursor_left"  $ String $ \_  -> Action leftE,
+     Label "top"          $ String $ \_  -> Action topE,
+     Label "bottom"       $ String $ \_  -> Action botE,
+     Label "sol"          $ String $ \_  -> Action solE,
+     Label "eol"          $ String $ \_  -> Action eolE,
+     Label "upScreen"     $ String $ \_  -> Action upScreenE,
+     Label "downScreen"   $ String $ \_  -> Action downScreenE,
      Label "quit"         $ String $ \_  -> Action quitE,
      Label "accept"       $ String $ \_  -> Accept,
+     Label "refresh"      $ String $ \_  -> Action refreshE,
+     Label "suspend"      $ String $ \_  -> Action suspendE,
+     Label "split"        $ String $ \_  -> Action splitE,
+     Label "close"        $ String $ \_  -> Action closeE,
+     Label "nextWin"      $ String $ \_  -> Action nextWinE,
+     Label "prevWin"      $ String $ \_  -> Action prevWinE,
+     Label "fwrite"       $ String $ \_  -> Action fwriteE,
      Label "mode_norm"    $ String $ \_  -> Keymap 0,
      Label "mode_cx"      $ String $ \_  -> Keymap 1,
      Label "describe_key" $ String $ \_  -> Describe,
      Label "test_actions" $ String $ \_  -> Action cmdlineFocusE,
      Label "repeat_key"   $ String $ \_  -> Int $ \k -> Repeat k ]
 
+-- Annotate characters below 32 with C-
 
 printeable :: String->String
 printeable (a:ta) | (ord a)<32 = "C-"++[chr ((ord a)+96)]++" "++(printeable ta)
                   | otherwise  = [a]++(printeable ta)
 printeable [] = []
 
+-- Switch keymap, display keys that caused the switch
+
+switchkeymap :: Int->Meta EmacsState Action
+switchkeymap i inp state = 
+    let ES h display keymaps = state 
+        newdisplay = case display of
+                       Just a  -> Just $ a++(printeable inp) 
+                       Nothing -> Just (printeable inp) in
+        (Nothing,
+         ES h newdisplay keymaps,
+         Just $ realizekeymap (keymaps !! i) )
+
 {- This is what normally happens to ReflectableActions: Heading Labels are 
-   matched away, the String-RA below (hopefully) gets the user input thrown 
+   matched away, the String-RA that's beneath gets the user input thrown 
    at.    -}
 
-interpret :: ReflectableAction -> Meta EmacsState Action
+interpret :: RAHandler
 interpret act inp state = 
-  let ES (feedback,pendaction) keymaps = state in
   case act of 
     Label _ act' -> interpret act' inp state -- skip labels
-    String act' ->
-      case act' inp of 
+    String act' -> 
+      case act' inp of  -- feed the keypress
         Action act'' -> (Just $ Right act'',
-                         ES (Just "",pendaction) keymaps,
-                         Nothing)
-        Keymap i   -> let newfb = case feedback of
-                                    Just a  -> Just $ a++(printeable inp) 
-                                    Nothing -> Just (printeable inp) in
+                         replaceDisplay (Just "") state,
+                         Just $ realizekeymap $ (getKeymaps state) !! 0)
+        Keymap i   -> switchkeymap i inp state
+        Describe   -> let keymaps = getKeymaps state in 
                       (Nothing,
-                       ES (newfb,pendaction) keymaps,
-                       Just $ realizekeymap (keymaps !! i) )
-        Describe   -> (Nothing,
-                       ES (Just "Type Key to Describe: ",Just Describe) keymaps,
+                       replaceHandler describe $
+                       replaceDisplay (Just "Type Key to Describe: ") $
+                       state,
                        Just $ realizekeymap (keymaps !! 0))
         Repeat k   -> (Nothing,
-                       ES (Nothing,Just $ Repeat k) keymaps,
+                       replaceHandler (actrepeat k) state,
                        Nothing)
         _          -> error "Untreatable Action"
     _ -> error "Actions have to take a String as their first argument"
 
-type MetaResult = (Maybe (Either Error Action),EmacsState,Maybe (Lexer EmacsState Action))
---type MetaMetaResult = (Maybe (Either Error ReflectabeAction),EmacsState,Maybe (Lexer EmacsState Action))
 
-{- Display the head label -}
+-- Repetition. This doesn't work yet since we can't input integers
+
+actrepeat :: Int -> RAHandler
+actrepeat k act inp state = 
+  case act of 
+    Label _ act' -> actrepeat k act' inp state -- skip labels
+    String act' ->
+      case act' inp of 
+        Action act'' -> (Just $ Right (foldl (>>) nopE (replicate k act'')),
+                         replaceHandler interpret state,
+                         Nothing)
+        _            -> error "Untreatable Action"
+    _ -> error "Actions have to take a String as their first argument"
+
+
+
+-- Display the head label of a ReflectableAction 
 
 describe :: ReflectableAction -> Meta EmacsState Action
-describe act inp (ES (feedback,pendaction) keymaps) = 
+describe act inp state = 
   case act of 
     Label label act' -> 
       case act' of
         String act'' -> case (act'' inp) of
-          Keymap i -> let newfb = case feedback of
-                                  Just a  -> Just $ a++(printeable inp) 
-                                  Nothing -> Just (printeable inp) in
-                      (Nothing,
-                       ES (newfb,pendaction) keymaps,
-                       Just $ realizekeymap (keymaps !! i) )
-          _         -> (Nothing,
-                        ES (Just label,Nothing) keymaps,
-                        Just $ realizekeymap (keymaps !! 0) )
-        _  -> error "Describing an action that doesn't take a String as its first parameter" -- self-reference rocks!
+          Keymap i   -> switchkeymap i inp state 
+          _          -> let keymaps=getKeymaps state in
+                        (Nothing,
+                         replaceHandler interpret $ 
+                         replaceDisplay (Just label) $ 
+                         state,
+                         Just $ realizekeymap (keymaps !! 0) )
+        _  -> error "Describing an action that doesn't take a String as its first parameter" 
     _             -> error "Unlabelled Action"
 
 
---inputint :: ReflectableAction -> Meta EmacsState Action
---inputint act inp (ES (feedback,pendaction) keymaps) =
+-- Some UI-Feedback Logic -- there should be an easier way to do that
 
-
-{- Some UI-Feedback Logic -}
+type MetaResult = (Maybe (Either Error Action),EmacsState,Maybe (Lexer EmacsState Action))
 
 showfeedback :: MetaResult -> MetaResult
-showfeedback (act,ES (Nothing,sc) sd,lexer) = 
-    (act, ES (Nothing,sc) sd,lexer)
-showfeedback (Just (Right act),ES (Just a,sc) sd,lexer) = 
-    (Just $ Right $ msgE a >> act, ES (Just a,sc) sd,lexer)
-showfeedback (Nothing,ES (Just a,sc) sd,lexer) = 
-    (Just $ Right $ msgE a, ES (Just a,sc) sd,lexer)
-showfeedback (junk,ES (sa,sb) sc,lexer) = 
-    (junk, ES (sa,sb) sc,lexer)
+
+showfeedback (Just (Right act),state,lexer) =
+    case getDisplay state of
+      Just msg -> (Just $ Right $ msgE msg >> act ,state,lexer)
+      Nothing  -> (Just $ Right act,state,lexer)
+
+showfeedback (Nothing         ,state,lexer) = 
+    case getDisplay state of 
+      Just msg -> (Just $ Right $ msgE msg        ,state,lexer)
+      Nothing  -> (Nothing,state,lexer)
+
+showfeedback junk = junk 
 
 
-{- Finally we're building some lexers from regexes and action names -}
+{- Finally we're building some lexers from regexes and action names 
+   Take a Regex, Look up an action in the map, meta it to the regex
+   and return the resulting lexer. -}
 
 associateaction :: Regexp EmacsState Action -> String -> Lexer EmacsState Action
 associateaction regex actionname   =
   regex `meta` \inp state ->
-     let act= actionlist Map.! actionname 
-         ES (_,pendaction) _ = state in
-           showfeedback $ case pendaction of 
-             Nothing       -> interpret act inp state 
-             Just Describe -> describe  act inp state 
---             Int  act'     -> inputint inp state
-             _ -> error "Can't pend this action yet"
+     let act= actionlist Map.! actionname  in       
+           showfeedback $ (getHandler state) act inp state
 
-comparefsts :: (Ord a) => (a,b)->(a,b)->Ordering
-comparefsts (x,_) (y,_) = compare x y
 
-allkeys :: [Key]
-allkeys = [1..255] -- is 0 a keystroke?
-
+-- Realize a whole key binding, basically a wrapper for associateaction
 
 realizekeymap :: KeyBinding -> EmacsMode
-realizekeymap (KeyBinding km) = 
+realizekeymap (KeyBinding keymap_) = 
     foldr
+    (>||<) -- A keymap is a lexer alternative
+    ((char $ chr 0) `action` \_->Nothing) -- neutral lexer (stupid!)
+    (map (\(x,y)-> associateaction x y) keymap_)
 
--- A keymap is a lexer alternative
 
-    (>||<) 
-
--- neutral lexer (stupid!)
-
-    ((char $ chr 0) `action` \_->Nothing)
-
-    (map (\(x,y)-> associateaction x y) km) --Build lexers
+-- a few default bindings
 
 normalkeymap :: KeyBinding
 normalkeymap = KeyBinding
@@ -250,22 +293,27 @@ normalkeymap = KeyBinding
                  (char keyDown ,"cursor_down"),
                  (char keyRight,"cursor_right"),
                  (char keyLeft ,"cursor_left"),
-                 ((char '\^X') ,"mode_cx")]
-
-
+                 (char keyEnd  ,"eol"),
+                 (char keyHome ,"sol"),
+                 (char keyNPage,"downScreen"),
+                 (char keyPPage,"upScreen"),
+                 (char '\^U'   ,"repeat_key"),
+                 (char '\^K'   ,"kill"),
+                 (char keyBackspace  ,"backspace"),
+                 (char '\^X'   ,"mode_cx")]
 
 cxkeymap :: KeyBinding
 cxkeymap = KeyBinding [((char '\^C'),"quit"),
                        ((char '\^D'),"describe_key"),
+                       ((char '\^S'),"fwrite"),
                        (alt $ map chr $ [32..127],"mode_norm"),
                        ((char 't'),"test_actions")
                       ]
 
-
-emacsNormal :: EmacsMode
-emacsNormal = realizekeymap normalkeymap
-
 keymap :: [Char] -> [Action]
 keymap cs = actions 
-   where (actions,_,_) = execLexer emacsNormal (cs,ES (Nothing,Nothing) [normalkeymap,cxkeymap])
+   where (actions,_,_) = 
+             execLexer 
+             (realizekeymap normalkeymap) 
+             (cs,ES interpret Nothing [normalkeymap,cxkeymap])
 
