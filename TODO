@@ -22,6 +22,8 @@ Design plan:
         - clean up ncurses code    
         - replace global var in editor state with a state monad
         - variable-size echo buffer
+
+        - hot swappable user interfaces
  
 Build system:
         - check how to install it from a port script
