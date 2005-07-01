@@ -42,7 +42,7 @@ import Control.Concurrent.Chan  ( Chan )
 import Control.Concurrent.MVar
 
 --
--- | The editor state, manipulated by Core instructoins.
+-- | The editor state, manipulated by Core instructions.
 -- The editor stores all the buffers, which correspond to opened files.
 -- Windows are views (or port holes) on to buffers, and multiple windows
 -- may be opened onto the one buffer. A distinguished /window/ is stored
