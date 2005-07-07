@@ -17,7 +17,8 @@ QUICK START
     $ ./yi-inplace README
 
 ** Users of the darcs repo will require autoreconf, which is part of the
-automake suite of tools.  And you may also need to 'chmod a+x configure'.
+automake suite of tools.  And you may also need to 'chmod a+x
+configure', or darcs get --set-scripts-executable.
 
 Read on for more details..
 
