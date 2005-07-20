@@ -18,7 +18,8 @@ import Data.List
 -- Should include much more things
 -- (killring, current keylist, etc.)
 
-data ES = ES { esPrecKey, esKey :: String, 
+data ES = ES { esPrecKey :: String, -- ^ should be dropped in favour of esKey
+               esKey :: String, 
                esArg :: Maybe Int
              }
           deriving Show
@@ -42,6 +43,14 @@ esAddKey :: Char -> ES -> ES
 esAddKey k s = s { esKey = esKey s ++ [k] }
 
 
+showKey :: String->String
+showKey ('\ESC':a:ta) = "M-" ++ [a] ++ showKey ta
+showKey ('\ESC':ta) = "ESC " ++ showKey ta
+showKey (a:ta) | ord a < 32 = "C-" ++ [chr (ord a + 96)] ++ " " ++ showKey ta
+               | otherwise  = [a, ' '] ++ showKey ta
+showKey [] = []
+
+
 -- * The keymap abstract definition
 ctrl :: String -> String
 ctrl = map ctrlLowcase
@@ -51,8 +60,7 @@ meta s = concat [['\ESC', c] | c <- s]
 
 -- In the future the following list can become something like
 -- [ ("C-x k", killBuffer) , ... ]
--- or even ("C-x k", "killBuffer") if/when we get reflection,
--- since the keys/commands are homogeneous
+-- This structure should be easy to modify dynamically (for rebinding keys)
 
 normalKlist :: KList 
 normalKlist = [ ([chr c], insertSelfC) | c <- [32..127] ] ++
@@ -127,7 +135,7 @@ undefC cont s cs = (errorE $ "Key sequence not defined : " ++ showKey (esPrecKey
                    : cont s cs
 
 
--- C-u stuff
+-- | C-u stuff
 readArgC :: Command
 readArgC cont s cs = readArg' cont (s {esArg = Nothing}) cs
 
@@ -148,7 +156,7 @@ readArg' _ _ [] = error "readArg': holy crap"
 
 data KME = KMESubmap KM
          | KMECommand Command
---type Command = RWS [Char] [Action] s ()
+
 type KM = M.Map Char KME
 
 type KListEnt = ([Char], Command)
@@ -173,14 +181,6 @@ getActions fm cont s (c:cs) =
 getActions _ _ _ [] = []
 
 
-showKey :: String->String
-showKey ('\ESC':a:ta) = "M-" ++ [a] ++ showKey ta
-showKey ('\ESC':ta) = "ESC " ++ showKey ta
-showKey (a:ta) | ord a < 32 = "C-" ++ [chr (ord a + 96)] ++ " " ++ showKey ta
-               | otherwise  = [a, ' '] ++ showKey ta
-showKey [] = []
-
-
 -- Builds a keymap (Yi.Map.Map) from a key binding list, also creating 
 -- submaps from key sequences.
 buildKeymap :: KM -> KList -> KM
@@ -197,6 +197,6 @@ buildKeymap fm_ l =
         addKey _ ([], _) = error "Invalid keymap table"
 
 
--- "main" entry point
+-- | entry point
 keymap :: [Char] -> [Action]
 keymap = makeKeymap normalKlist initialState
