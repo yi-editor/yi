@@ -326,6 +326,11 @@ cmdCmdFM = M.fromList $
     ,('p',      (const $ getRegE >>= \s ->
                             eolE >> insertE '\n' >>
                                 mapM_ insertE s >> solE)) -- ToDo insertNE
+
+    ,('P',      (const $ getRegE >>= \s ->
+                            solE >> insertE '\n' >> upE >>
+                                mapM_ insertE s >> solE)) -- ToDo insertNE
+
     ,(keyPPage, upScreensE)
     ,(keyNPage, downScreensE)
     ,(keyLeft,  leftOrSolE)
