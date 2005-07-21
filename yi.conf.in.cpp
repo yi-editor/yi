@@ -53,6 +53,7 @@ exposed-modules:
         Yi.Curses.UI
         Yi.Keymap.Emacs
         Yi.Keymap.Emacs2
+        Yi.Keymap.Mg
         Yi.Keymap.Nano
         Yi.Keymap.Vi
         Yi.Keymap.Vim
