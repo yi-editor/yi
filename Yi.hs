@@ -38,6 +38,7 @@ import qualified Yi.Keymap.Emacs as Emacs
 import qualified Yi.Keymap.Emacs2 as Emacs2
 import qualified Yi.Keymap.Joe   as Joe
 import qualified Yi.Keymap.Ee    as Ee
+import qualified Yi.Keymap.Mg    as Mg
 
 import qualified Yi.Curses.UI as UI
 
@@ -80,6 +81,7 @@ editorFM = M.fromList $
     ,("emacs2",  Emacs2.keymap)
     ,("joe",    Joe.keymap)
     ,("ee",     Ee.keymap)
+    ,("mg",     Mg.keymap)
     ]
 
 options :: [OptDescr Opts]
