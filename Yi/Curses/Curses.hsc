@@ -9,7 +9,7 @@
 -- -*- haskell -*-
 --
 -- Copyright (c) 2002-2004 John Meacham (john at repetae dot net)
--- Copyright (c) 2004 Don Stewart - http://www.cse.unsw.edu.au/~dons
+-- Copyright (c) 2004-2005 Don Stewart - http://www.cse.unsw.edu.au/~dons
 -- 
 -- Permission is hereby granted, free of charge, to any person obtaining a
 -- copy of this software and associated documentation files (the
@@ -193,6 +193,8 @@ import Data.Bits
 import System.Posix.Signals
 #endif
 
+import Debug.Trace
+
 --
 -- If we have the SIGWINCH signal, we use that, with a custom handler,
 -- to determine when to resize the screen. Otherwise, we use a similar
@@ -224,6 +226,8 @@ resetParams = do
     intrFlush True
     leaveOk False
     keypad stdScr True
+--  wtimeout stdScr ((-1) :: CInt)
+--  noDelay stdScr True
     defineKey (#const KEY_UP) "\x1b[1;2A"
     defineKey (#const KEY_DOWN) "\x1b[1;2B"
     defineKey (#const KEY_SLEFT) "\x1b[1;2D"
@@ -374,6 +378,12 @@ noDelay win bf =
 
 foreign import ccall unsafe "YiCurses.h nodelay" 
     nodelay :: Window -> (#type bool) -> IO CInt
+
+foreign import ccall unsafe
+    notimeout :: Window -> CInt -> IO CInt
+
+foreign import ccall unsafe "YiCurses.h"
+    wtimeout :: Window -> CInt -> IO ()
 
 --
 -- |   Normally, the hardware cursor is left at the  location  of
@@ -1302,17 +1312,31 @@ isFKey c = case fromIntegral $ ord c :: CInt of
 --              (#const ERR) -> yield >> getCh 
 --              x -> return $ decodeKey x
 
+------------------------------------------------------------------------
 --
 -- | read a character from the window
+-- When 'ESC' followed by another key is pressed before the ESC timeout,
+-- that second character is not returned until a third character is
+-- pressed
 --
-getCh :: IO (Maybe Char)
+getCh :: IO Char
 getCh = do
+    wtimeout stdScr (0 :: CInt)
     v <- getch
+    trace (show (chr (fromIntegral v), show v)) $ do
     case v of
-        -- we won't get ^C otherwise..
-         (#const ERR) -> do getch {-discard-} ; return (Just $ '\^C') -- hack
-         k            -> return (Just $ decodeKey k)
+            -- we won't get ^C otherwise..
+             (#const ERR) -> 
+                trace ("got ERR") $ getch {-discard-} >> return '\^C'   -- hack
 
+             _            -> do
+                let c = decodeKey v
+                when (c == '\ESC') (trace ("got ESC") $ return ())
+                return c
+                
+
+
+------------------------------------------------------------------------
 
 resizeTerminal :: Int -> Int -> IO ()
 
