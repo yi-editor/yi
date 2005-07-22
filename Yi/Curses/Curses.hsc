@@ -193,7 +193,7 @@ import Data.Bits
 import System.Posix.Signals
 #endif
 
-import Debug.Trace
+-- import Debug.Trace
 
 --
 -- If we have the SIGWINCH signal, we use that, with a custom handler,
