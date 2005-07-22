@@ -96,7 +96,7 @@ endif
 MAGIC_FLAGS   += -package-conf yi.conf -package yi
 
 Yi.$(way_)o: Yi.hs $(LIBRARY) 
-	$(GHC) $(HC_OPTS) $(MAGIC_FLAGS) -i -Icbits -c $< -o $@ -ohi $(basename $@).$(way_)hi
+	$(GHC) $(HC_OPTS) $(MAGIC_FLAGS) -i -Icbits -Imk -c $< -o $@ -ohi $(basename $@).$(way_)hi
 
 yi-inplace: yi-inplace.in
 	@sed 's,@YI_TOP@,'`pwd`',g' yi-inplace.in > yi-inplace
