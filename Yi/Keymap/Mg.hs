@@ -269,6 +269,7 @@ meta_ :: Char -> Char
 meta_ c = chr $ (ord c) .|. metaBit
 
 -- the M- bit (Mod1)
+metaBit :: Int
 metaBit = 1 `shiftL` 7
 
 ------------------------------------------------------------------------

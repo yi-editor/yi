@@ -30,6 +30,7 @@ exposed:        True
 exposed-modules:
         Yi.Buffer
         Yi.CharMove
+        Yi.Char
         Yi.Core
         Yi.Curses
         Yi.DLists

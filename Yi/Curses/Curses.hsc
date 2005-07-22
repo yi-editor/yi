@@ -1336,7 +1336,7 @@ foreign import ccall unsafe "YiCurses.h meta"
 --
 -- When 'ESC' followed by another key is pressed before the ESC timeout,
 -- that second character is not returned until a third character is
--- pressed. :/ wtimeout, nodelay and timeout don't appear to change this
+-- pressed. wtimeout, nodelay and timeout don't appear to change this
 -- behaviour.
 -- 
 -- On emacs, we really would want Alt to be our meta key, I think.
