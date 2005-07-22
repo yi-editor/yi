@@ -127,17 +127,14 @@ screenSize = Curses.scrSize
 --
 getKey :: IO () -> IO Char
 getKey refresh_fn = do
-    --Control.Exception.catch (Curses.cBreak True) (\_ -> return ())
     k <- Curses.getCh
-    case k of
-        Nothing -> getKey refresh_fn
-        Just k' | k' == Curses.keyResize 
-                -> do
+    if k == Curses.keyResize 
+        then do
 #ifndef SIGWINCH
-                      refresh_fn
+              refresh_fn
 #endif
-                      getKey refresh_fn
-                | otherwise -> return k'
+              getKey refresh_fn
+        else return k
  
 --
 -- | Redraw the entire terminal from the UI state
