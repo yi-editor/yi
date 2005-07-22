@@ -73,7 +73,7 @@ hs-libraries:         HSyi
 extra-libraries:      CURSES ICONV
 include-dirs:
 includes:             
-depends:              base haskell98
+depends:              base haskell98 mtl
 hugs-options:
 cc-options:
 ld-options:
