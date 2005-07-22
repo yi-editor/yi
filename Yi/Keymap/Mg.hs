@@ -141,6 +141,7 @@ module Yi.Keymap.Mg where
 --      stop and inform the user for one undo keystroke before continuing.
 -- 
 -- OpenBSD 3.7                    February 25, 2000                             2
+--
 
 import Yi.Yi         hiding ( keymap )
 import Yi.Editor            ( Action )
@@ -154,14 +155,19 @@ type MgMode = Lexer () Action
 keymap :: [Char] -> [Action]
 keymap cs = let (actions,_,_) = execLexer mode (cs, ()) in actions
 
-mode :: Lexer () Action
-mode = insert >||< command >||< ctrlx
+------------------------------------------------------------------------
 
-insert :: Lexer () Action
+-- default mode
+mode :: MgMode
+mode = insert >||< command >||< ctrlxSwitch >||< metaSwitch
+
+-- self insertion
+insert :: MgMode
 insert  = anything `action` \[c] -> Just (insertE c)
         where anything = alt ['\0' .. '\255']
  
-command :: Lexer () Action
+-- C- commands
+command :: MgMode
 command = cmd `action` \[c] -> Just $ 
                 case M.lookup c cmdMap of
                         Nothing -> undefined
@@ -181,7 +187,7 @@ cmdMap = M.fromList [
        ('\^S' , errorE "search forwards, not yet implemented"),
        ('\^R' , errorE "search backwards, not yet implemented"),
        ('\^O' , solE >> insertE '\n' >> upE),
-       ('\^T' , errorE "transpose, unimplemented"),
+       ('\^T' , swapE),
        ('\^U' , errorE "repeat command 4 times unimplemented"),
        ('\^K' , readRestOfLnE >>= setRegE >> killE),
        ('\^Y' , getRegE >>= \s -> mapM_ insertE s >> solE),
@@ -189,13 +195,29 @@ cmdMap = M.fromList [
        ('\^W' , errorE "kill region, unimplemented"),
        ('\^Q' , quitE),
        ('\^Z' , suspendE),
-       ('\^_' , undoE) ]
+       ('\^_' , undoE),
+       (keyLeft,  leftE),
+       (keyRight, rightE),
+       (keyUp ,   upE),
+       (keyDown , downE)  ]
+    where
+        -- | C-t action
+        swapE :: Action
+        swapE = do c <- readE
+                   deleteE
+                   leftE
+                   insertE c
+                   rightE
 
-ctrlx :: Lexer () Action
-ctrlx = char '\^X' 
+------------------------------------------------------------------------
+
+-- switch to ctrl-X submap
+ctrlxSwitch :: MgMode
+ctrlxSwitch = char '\^X' 
         `meta` \_ _ -> (Just (Right (msgE "C-x-")), (), Just ctrlxMode)
 
-ctrlxMode :: Lexer () Action
+-- ctrl x mode
+ctrlxMode :: MgMode
 ctrlxMode = cmd 
         `meta` \[c] _ -> (Just (Right (f c)),  (), Just mode) -- and leave 
         where
@@ -226,4 +248,35 @@ ctrlXMap = M.fromList [
                           "  row=? col="++ show col),
         ('g',  errorE "goto line unimplemented") 
         ]
+
+------------------------------------------------------------------------
+
+-- switch to meta mode
+metaSwitch :: MgMode
+metaSwitch = char '\ESC'
+        `meta` \_ st -> (Just (Right (msgE "ESC-")), st,  Just metaMode)
+
+metaMode :: MgMode
+metaMode = cmd 
+        `meta` \[c] st -> (Just (Right (msgClrE >> f c)), st, Just mode) -- and leave
+        where
+            cmd = alt $ M.keys metaMap
+            f c = case M.lookup c metaMap of
+                        Nothing -> undefined
+                        Just a  -> a
+
+
+-- Commands that are invoked with a M-
+metaMap :: M.Map Char Action
+metaMap = M.fromList [
+        (' ',   insertE ' '),
+        ('<',   topE),
+        ('>',   botE),
+        ('O',   errorE "M-O unimplemented"),
+        (']',   nextNParagraphs 1),
+        ('b',   prevWordE),
+        ('d',   killWordE),
+        ('f',   nextWordE),
+        ('x',   errorE "execute-extended-command not implemented"),
+        ('\BS', bkillWordE) ]
 
