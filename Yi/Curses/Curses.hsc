@@ -220,18 +220,17 @@ initCurses fn = do
 -- | A bunch of settings we need
 resetParams :: IO ()
 resetParams = do
-    raw True    -- raw mode please
-    echo False
-    nl False
-    intrFlush True
-    leaveOk False
-    keypad stdScr True
---  wtimeout stdScr ((-1) :: CInt)
---  noDelay stdScr True
-    defineKey (#const KEY_UP) "\x1b[1;2A"
-    defineKey (#const KEY_DOWN) "\x1b[1;2B"
-    defineKey (#const KEY_SLEFT) "\x1b[1;2D"
-    defineKey (#const KEY_SRIGHT) "\x1b[1;2C"
+    raw True            -- raw mode please (not cbreak), needed for ^C to be passed
+    echo False          -- don't echo to the screen
+    leaveOk False       -- not ok to leave cursor wherever it is
+    keypad stdScr True  -- enable the keypad, so things like ^L (refresh) work
+    return ()
+
+-- not needed, if keypad is True:
+--  defineKey (#const KEY_UP) "\x1b[1;2A"
+--  defineKey (#const KEY_DOWN) "\x1b[1;2B"
+--  defineKey (#const KEY_SLEFT) "\x1b[1;2D"
+--  defineKey (#const KEY_SRIGHT) "\x1b[1;2C"
 
 ------------------------------------------------------------------------
 
@@ -376,14 +375,24 @@ noDelay :: Window -> Bool -> IO ()
 noDelay win bf =
     throwIfErr_ "nodelay" $ nodelay win (if bf then 1 else 0)
 
-foreign import ccall unsafe "YiCurses.h nodelay" 
+foreign import ccall unsafe "YiCurses.h"
     nodelay :: Window -> (#type bool) -> IO CInt
 
-foreign import ccall unsafe
+-- |      While interpreting an input escape sequence, wgetch sets a
+--        timer  while  waiting  for the next character.  If notime-
+--        out(win, TRUE) is called,  then  wgetch  does  not  set  a
+--        timer.   The  purpose  of  the timeout is to differentiate
+--        between sequences received from a function key  and  those
+--        typed by a user.
+-- 
+foreign import ccall unsafe "YiCurses.h"
     notimeout :: Window -> CInt -> IO CInt
 
 foreign import ccall unsafe "YiCurses.h"
     wtimeout :: Window -> CInt -> IO ()
+
+foreign import ccall unsafe "YiCurses.h"
+    qiflush :: IO ()
 
 --
 -- |   Normally, the hardware cursor is left at the  location  of
@@ -1068,6 +1077,10 @@ foreign import ccall unsafe wclrtoeol :: Window -> IO CInt
 --
 foreign import ccall threadsafe getch :: IO CInt
 
+foreign import ccall threadsafe wgetch :: Window -> IO CInt
+
+foreign import ccall threadsafe ungetch :: CInt -> IO CInt
+
 --foreign import ccall unsafe def_prog_mode :: IO CInt
 --foreign import ccall unsafe reset_prog_mode :: IO CInt
 foreign import ccall unsafe flushinp :: IO CInt
@@ -1294,6 +1307,11 @@ isFKey c = case fromIntegral $ ord c :: CInt of
         key -> key >= (#const KEY_F0) && key <= (#const KEY_F(63))
 
 -- ---------------------------------------------------------------------
+-- try to set the upper bits
+foreign import ccall unsafe "YiCurses.h meta" 
+    c_meta :: Window -> CInt -> IO CInt
+
+-- ---------------------------------------------------------------------
 -- get char
 --
 
@@ -1315,26 +1333,26 @@ isFKey c = case fromIntegral $ ord c :: CInt of
 ------------------------------------------------------------------------
 --
 -- | read a character from the window
+--
 -- When 'ESC' followed by another key is pressed before the ESC timeout,
 -- that second character is not returned until a third character is
--- pressed
+-- pressed. :/ wtimeout, nodelay and timeout don't appear to change this
+-- behaviour.
+-- 
+-- On emacs, we really would want Alt to be our meta key, I think.
 --
 getCh :: IO Char
 getCh = do
-    wtimeout stdScr (0 :: CInt)
     v <- getch
-    trace (show (chr (fromIntegral v), show v)) $ do
+--  trace (show (chr (fromIntegral v), show v)) $ do
     case v of
             -- we won't get ^C otherwise..
-             (#const ERR) -> 
-                trace ("got ERR") $ getch {-discard-} >> return '\^C'   -- hack
+             (#const ERR) -> getch {-discard-} >> return '\^C'   -- hack
 
-             _            -> do
+             _  -> do
                 let c = decodeKey v
-                when (c == '\ESC') (trace ("got ESC") $ return ())
+        --      when (c == '\ESC') $ trace ("got ESC") $ return ()
                 return c
-                
-
 
 ------------------------------------------------------------------------
 
