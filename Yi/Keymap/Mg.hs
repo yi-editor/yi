@@ -148,7 +148,8 @@ import Yi.Editor            ( Action )
 import qualified Yi.Map as M
 
 import Numeric   ( showOct )
-import Data.Char ( ord )
+import Data.Char ( ord, chr )
+import Data.Bits
 
 type MgMode = Lexer () Action
 
@@ -199,7 +200,18 @@ cmdMap = M.fromList [
        (keyLeft,  leftE),
        (keyRight, rightE),
        (keyUp ,   upE),
-       (keyDown , downE)  ]
+       (keyDown , downE) ,
+       (meta_ ' ',   insertE ' '),
+       (meta_ '<',   topE),
+       (meta_ '>',   botE),
+       (meta_ 'O',   errorE "M-O unimplemented"),
+       (meta_ ']',   nextNParagraphs 1),
+       (meta_ 'b',   prevWordE),
+       (meta_ 'd',   killWordE),
+       (meta_ 'f',   nextWordE),
+       (meta_ 'x',   errorE "execute-extended-command not implemented"),
+       (meta_ '\BS', bkillWordE) ]
+
     where
         -- | C-t action
         swapE :: Action
@@ -250,33 +262,33 @@ ctrlXMap = M.fromList [
         ]
 
 ------------------------------------------------------------------------
+-- Meta is not ESC in this setup (ESC has the ncurses read-delay issue)
+
+-- set the M- bit on a char
+meta_ :: Char -> Char
+meta_ c = chr $ (ord c) .|. metaBit
+
+-- the M- bit (Mod1)
+metaBit = 1 `shiftL` 7
+
+------------------------------------------------------------------------
+
+--
+-- on escape, we'd like to doM the next char
+--
 
 -- switch to meta mode
 metaSwitch :: MgMode
-metaSwitch = char '\ESC'
+metaSwitch = char '\ESC'        -- hitting ESC also triggers a meta char
         `meta` \_ st -> (Just (Right (msgE "ESC-")), st,  Just metaMode)
 
+-- 
+-- just turn on the meta bit, and ungetch it.
+--
 metaMode :: MgMode
-metaMode = cmd 
+metaMode = alt ['\0' .. '\255']       -- not quite right
         `meta` \[c] st -> (Just (Right (msgClrE >> f c)), st, Just mode) -- and leave
         where
-            cmd = alt $ M.keys metaMap
-            f c = case M.lookup c metaMap of
-                        Nothing -> undefined
-                        Just a  -> a
-
-
--- Commands that are invoked with a M-
-metaMap :: M.Map Char Action
-metaMap = M.fromList [
-        (' ',   insertE ' '),
-        ('<',   topE),
-        ('>',   botE),
-        ('O',   errorE "M-O unimplemented"),
-        (']',   nextNParagraphs 1),
-        ('b',   prevWordE),
-        ('d',   killWordE),
-        ('f',   nextWordE),
-        ('x',   errorE "execute-extended-command not implemented"),
-        ('\BS', bkillWordE) ]
+            f c = let (as,_,_) = execLexer mode ([meta_ c], ()) 
+                  in foldl (>>) nopE as
 
