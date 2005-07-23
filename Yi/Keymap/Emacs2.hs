@@ -56,7 +56,8 @@ data ES = ES {
 -- but the editor state.
 
 -- 2. The above requires a configurable editor state. Such a feature would allow
--- to clearly separate configuration of keybindings and configuration of behaviours.
+-- to clearly separate configuration of keybindings from configuration of behaviours.
+
 
 
 -- | The command type. 
@@ -140,14 +141,32 @@ normalKlist = [ ([chr c], insertSelfC) | c <- [32..127] ] ++
          
         ]
 
+-- * Boilerplace code for the Command monad
+-- | Convert an Action to a Command
+liftC :: Action -> Command
+liftC act = tell [act]
 
--- | C-t action
-swapE :: Action
-swapE = do c <- readE
-           deleteE
-           leftE
-           insertE c
-           rightE
+getState :: KProc ES
+getState = return . snd =<< get
+
+modifyState :: (ES -> ES) -> KProc ()
+modifyState f = modify (\(x,y)->(x,f y))
+
+getInput :: KProc String
+getInput = return . fst =<< get
+
+putInput :: String -> KProc ()
+putInput x' = modify $ \(_,y) -> (x', y)
+
+
+readStroke, lookStroke :: KProc Char
+readStroke = do (c:cs) <- getInput
+                putInput cs
+                return c 
+
+lookStroke = do (c:_) <- getInput
+                return c 
+
 
 -- * Code for various commands
 -- This ideally should be put in their own module,
