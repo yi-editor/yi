@@ -25,12 +25,15 @@ module Yi.Keymap.Mg where
 import Yi.Yi         hiding ( keymap )
 import Yi.Editor            ( Action )
 import Yi.Char
+import Yi.MkTemp            ( mkstemp )
 import qualified Yi.Map as M
 
 import Numeric   ( showOct )
 import Data.Char ( ord, chr, isSpace )
 import Data.Bits
 import Data.List ((\\), isPrefixOf)
+
+import System.IO            ( hPutStr, hClose )
 
 -- 
 -- MG(1)                      OpenBSD Reference Manual                      MG(1)
@@ -258,7 +261,7 @@ globalTable = [
         closeE),
   ("describe-bindings",         
         [[c_ 'h', 'b']],
-        errorE "describe-bindings unimplemented"),
+        describeBindings),
   ("describe-key-briefly",      
         [[c_ 'h', 'c']],
         msgE "Describe key briefly: " >> cmdlineFocusE >> metaM describeKeymap),
@@ -649,6 +652,7 @@ describeChar = anything
 
 ------------------------------------------------------------------------
 -- translate a string into the emacs encoding of that string
+--
 printable :: String->String
 printable = dropSpace . printable'
     where 
@@ -674,6 +678,18 @@ whatCursorPos = do
                 "("++pct++
                 ")  line="++show ln++
                 "  row=? col="++ show col
+
+
+describeBindings :: Action
+describeBindings = do
+    mf <- mkstemp "/tmp/yi.XXXXXXXXXX" 
+    case mf of
+        Nothing    -> error "Yi.Keymap.Mg: mkstemp failed"
+        Just (f,h) -> hPutStr h s >> hClose h >> splitE >> fnewE f
+    where
+      s = unlines [ printable k ++ "\t\t" ++ ex 
+                  | (ex,ks,_) <- globalTable
+                  , k         <- ks ]
 
 ------------------------------------------------------------------------
 --  
