@@ -122,7 +122,7 @@ module Yi.Lexers (
    epsilon, char, (+>), 
    lexaction, lexactionErr, lexmeta, action, meta,
    (>|<), (>||<), 
-   star, plus, quest, alt, string, LexerState, execLexer
+   star, plus, quest, alt, string, with, LexerState, execLexer
 
    ) where 
 
@@ -279,6 +279,10 @@ meta = lexmeta
 
 lexmeta      :: Regexp s t -> Meta s t -> Lexer s t
 lexmeta re a  = re (Lexer (Action a) Done)
+
+-- useful for building meta actions
+with :: b -> Maybe (Either a b)
+with a = Just (Right a)
 
 -- disjunctive combination of two regexps (EXPORTED)
 --

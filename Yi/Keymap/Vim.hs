@@ -134,9 +134,6 @@ ex_mode = ex_char >||< ex_edit >||< ex_hist >||< ex_eval >||< ex2cmd
 ------------------------------------------------------------------------
 -- util
 
-with :: Action -> Maybe (Either e Action)
-with a = (Just (Right a))
-
 -- 
 -- lookup an fm, getting an action otherwise nopE, and apply it to an
 -- integer repetition argument.
