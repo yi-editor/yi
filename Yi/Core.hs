@@ -110,6 +110,7 @@ module Yi.Core (
         readLnE,        -- :: IO String
         readNM,         -- :: Int -> Int -> IO String
         readRestOfLnE,  -- :: IO String
+        swapE,          -- :: Action
 
         -- * Basic registers
         setRegE,        -- :: String -> Action
@@ -508,6 +509,14 @@ writeE c = withWindow_ $ \w b -> do
                 _ | isLatin1 c -> writeB b c 
                   | otherwise  -> nopE          -- TODO
             return w
+
+-- | Transpose two characters, (the Emacs C-t action)
+swapE :: Action
+swapE = do c <- readE
+           deleteE
+           leftE
+           insertE c
+           rightE
 
 -- ---------------------------------------------------------------------
 
