@@ -119,15 +119,6 @@ normalKlist = [ ([chr c], insertSelfC) | c <- [32..127] ] ++
          
         ]
 
-
--- | C-t action
-swapE :: Action
-swapE = do c <- readE
-           deleteE
-           leftE
-           insertE c
-           rightE
-
 -- * Code for various commands
 -- This ideally should be put in their own module,
 -- without a prefix, so M-x ... would be easily implemented
