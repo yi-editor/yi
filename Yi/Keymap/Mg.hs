@@ -1,6 +1,6 @@
 {-# OPTIONS -fglasgow-exts #-}
 --
--- ^ pattern guards
+-- for pattern guards
 -- 
 -- Copyright (c) 2005 Don Stewart - http://www.cse.unsw.edu.au/~dons
 -- 
@@ -472,6 +472,7 @@ data MgState = MgState {
 dfltState :: MgState
 dfltState = MgState [] []
 
+defaultKeymap :: [Char] -> [Action]
 defaultKeymap = keymap
 
 ------------------------------------------------------------------------
@@ -599,7 +600,7 @@ metaXEdit = delete
         
 metaXEval :: MgMode
 metaXEval = enter
-    `meta` \_ st@MgState{acc=cca} -> 
+    `meta` \_ MgState{acc=cca} -> 
         let cmd = reverse cca 
         in case M.lookup cmd extended2action of
                 Nothing -> (with $ msgE "[No match]" >> cmdlineUnFocusE, MgState [] [], Just mode)
@@ -631,7 +632,7 @@ helpMap = M.fromList [
 ------------------------------------------------------------------------
 -- some regular expressions
 
-enter', delete' :: [Char]
+any', enter', delete' :: [Char]
 enter'   = ['\n', '\r']
 delete'  = ['\BS', '\127', keyBackspace ]
 any'     = ['\0' .. '\255']
