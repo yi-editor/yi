@@ -60,7 +60,11 @@ module Yi.CharMove (
         -- * Delete
         bdeleteE,       -- :: Action
         killWordE,      -- :: Action
-        bkillWordE      -- :: Action
+        bkillWordE,     -- :: Action
+
+        capitaliseWordE, -- :: Action
+        uppercaseWordE, -- :: Action
+        lowercaseWordE -- :: Action
     ) where
 
 import Yi.Buffer
@@ -285,6 +289,25 @@ readWordLeft_ w b = do
 -- | Read word under cursor
 readWordE :: IO (String,Int,Int)
 readWordE = withWindow $ \w b -> readWord_ w b >>= \v -> return (w,v)
+
+-- | capitalise the word under the cursor
+uppercaseWordE :: Action
+uppercaseWordE = do
+        (w,_,_) <- readWordE
+        killWordE
+        mapM_ insertE (map toUpper w)
+
+lowercaseWordE :: Action
+lowercaseWordE = do
+        (w,_,_) <- readWordE
+        killWordE
+        mapM_ insertE (map toLower w)
+
+capitaliseWordE :: Action
+capitaliseWordE = do
+        (w,_,_) <- readWordE
+        killWordE
+        mapM_ insertE (toUpper (head w) : tail w)
 
 -- Internal, for readWordE, not threadsafe
 readWord_ :: Window -> Buffer' -> IO (String,Int,Int)
