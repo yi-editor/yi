@@ -118,6 +118,11 @@ module Yi.Core (
         setRegexE,      -- :: SearchExp -> Action
         getRegexE,      -- :: IO (Maybe SearchExp)
 
+
+        -- * Plugs
+        getPlug,
+        setPlug,
+
         -- * Regular expression and searching
         SearchF(..),        -- Basic | IgnoreCase | NoNewLine
         SearchResult,
@@ -155,7 +160,9 @@ import qualified Yi.Editor as Editor
 
 import Data.Maybe
 import Data.Char            ( isLatin1 )
-import Data.Dynamic         ( Typeable )
+import Data.Dynamic         
+import Data.Map as M        ( lookup, insert )
+
 
 import System.IO            ( hClose )
 import System.Directory     ( doesFileExist )
@@ -539,6 +546,21 @@ setRegE s = modifyEditor_ $ \e -> return e { yreg = s }
 getRegE :: IO String
 getRegE = readEditor yreg
 
+------------------------------------------------------------------------
+-- Plugs.
+
+getPlug :: forall a. Initializable a => IO a
+getPlug =
+   do let r = undefined
+          r :: a
+      ps <- readEditor plugs
+      return $ fromMaybe initial $ fromJust $ gcast  $ M.lookup (show $ typeOf r) ps
+
+setPlug :: Typeable a => a -> Action
+setPlug x = modifyEditor_ $ \e -> return e { plugs = M.insert (show $ typeOf x) (toDyn x) (plugs e)}
+                 
+
+
 -- ---------------------------------------------------------------------
 -- Searching and substitutions with regular expressions
 --
@@ -880,7 +902,7 @@ metaM km = throwDyn (MetaActionException km)
 
 ------------------------------------------------------------------------
 
-repeatM_ :: Monad m => m a -> m ()
+repeatM_ :: forall m a. Monad m => m a -> m ()
 repeatM_ a = a >> repeatM_ a
 {-# SPECIALIZE repeatM_ :: IO a -> IO () #-}
 {-# INLINE repeatM_ #-}

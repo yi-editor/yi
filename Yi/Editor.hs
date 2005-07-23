@@ -40,6 +40,7 @@ import Control.Monad            ( liftM )
 import Control.Concurrent       ( killThread, ThreadId )
 import Control.Concurrent.Chan  ( Chan )
 import Control.Concurrent.MVar
+import Data.Dynamic
 
 --
 -- | The editor state, manipulated by Core instructions.
@@ -58,6 +59,10 @@ import Control.Concurrent.MVar
 --
 -- TODO the command line is a vi\/emacs specific concept.
 --
+
+class Typeable a => Initializable a where
+    initial :: a
+
 data Buffer a => GenEditor a = 
     Editor {
         buffers   :: !(M.Map Unique a)          -- ^ all the buffers
@@ -74,6 +79,10 @@ data Buffer a => GenEditor a =
        ,threads   :: [ThreadId]                 -- ^ all our threads
        ,reboot    :: (Maybe Editor) -> IO ()    -- ^ our reboot function
        ,reload    :: IO (Maybe Config)          -- ^ reload config function
+       ,plugs     :: !(M.Map String Dynamic)    -- ^ dynamic components 
+
+       -- replace String with TypeRep as feasible
+
     }
 
 --
@@ -124,6 +133,7 @@ emptyEditor = Editor {
        ,threads      = []
        ,reboot       = const $ return ()
        ,reload       = error "No reload function"
+       ,plugs        = M.empty
     }
 
 -- 
