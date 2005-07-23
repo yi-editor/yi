@@ -515,43 +515,10 @@ ctrlxMode :: MgMode
 ctrlxMode = cmd 
         `meta` \[c] st -> (with (msgClrE >> f c), st, Just mode)
         where
-            cmd = alt $ M.keys ctrlXMap
-            f c = case M.lookup c ctrlXMap of
-                        Nothing -> undefined
-                        Just a  -> a
-
-ctrlXMap :: M.Map Char Action
-ctrlXMap = M.fromList [
-        ('\^C', quitE),
-        ('\^S', fwriteE),
-        ('\^W', errorE "write file unimplemented"),
-        ('\^G', errorE "keyboard quit unimplemented"),
-        ('O',   nextWinE),
-        ('N',   nextWinE),
-        ('P',   prevWinE),
-        ('0',   closeE),
-        ('1',   errorE "delete-other-windows unimplemented"),
-        ('2',   splitE),
-        ('U',   undoE),
-        ('=',   do (_,_,ln,col,pt,pct) <- bufInfoE
-                   c <- readE
-                   msgE $ "Char: "++[c]++" (0"++showOct (ord c) ""++
-                          ")  point="++show pt++
-                          "("++pct++
-                          ")  line="++show ln++
-                          "  row=? col="++ show col),
-        ('g',  errorE "goto line unimplemented") 
-        ]
-
-------------------------------------------------------------------------
--- Meta is not ESC in this setup (ESC has the ncurses read-delay issue)
-
--- set the M- bit on a char
-meta_ :: Char -> Char
-meta_ c = chr $ (ord c) .|. metaBit
-
--- the M- bit (Mod1)
-metaBit = 1 `shiftL` 7
+            cmd = alt ctrlxKeysList
+            f c = if c `elem` ctrlxKeysList
+                    then keys2action ['\^X',c]
+                    else undefined
 
 ------------------------------------------------------------------------
 --
