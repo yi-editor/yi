@@ -499,7 +499,6 @@ mode = insert >||< command >||<
 -- self insertion
 insert :: MgMode
 insert  = anything `action` \[c] -> Just (insertE c)
-        where anything = alt ['\0' .. '\255']
  
 -- C- commands
 command :: MgMode
@@ -567,9 +566,9 @@ metaOMode = cmd
 -- execute an extended command
 metaXSwitch :: MgMode
 metaXSwitch = (char (m_ 'x') >|< char (m_ 'X'))
-        `meta` \_ st -> (with (msgE "M-x " >> cmdlineFocusE)
-                        , metaXEnterState
-                        , Just metaXMode)
+        `meta` \_ _ -> (with (msgE "M-x " >> cmdlineFocusE)
+                       , metaXEnterState
+                       , Just metaXMode)
 
 metaXEnterState :: MgState
 metaXEnterState = MgState { prompt = "M-x ", acc = [] }
@@ -630,6 +629,7 @@ describeKeymap cs =
         let (actions,_,_) = execLexer describeKeyMode (cs, describeKeyEnterState) 
         in actions
 
+describeKeyEnterState :: MgState
 describeKeyEnterState = MgState { prompt = "Describe key briefly: ", acc = [] }
 
 describeChar :: MgMode
