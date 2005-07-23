@@ -22,6 +22,16 @@
 
 module Yi.Keymap.Mg where
 
+import Yi.Yi         hiding ( keymap )
+import Yi.Editor            ( Action )
+import Yi.Char
+import qualified Yi.Map as M
+
+import Numeric   ( showOct )
+import Data.Char ( ord, chr, isSpace )
+import Data.Bits
+import Data.List ((\\), isPrefixOf)
+
 -- 
 -- MG(1)                      OpenBSD Reference Manual                      MG(1)
 -- 
@@ -146,25 +156,16 @@ module Yi.Keymap.Mg where
 -- OpenBSD 3.7                    February 25, 2000                             2
 --
 
-import Yi.Yi         hiding ( keymap )
-import Yi.Editor            ( Action )
-import Yi.Char
-import qualified Yi.Map as M
-
-import Numeric   ( showOct )
-import Data.Char ( ord, chr )
-import Data.Bits
-import Data.List ((\\))
-
 ------------------------------------------------------------------------
 
 c_ :: Char -> Char
 c_ = ctrlLowcase
 
 m_ :: Char -> Char
-m_ c = chr $ (ord c) .|. metaBit
-    where 
-        metaBit = 1 `shiftL` 7
+m_ c = chr (setBit (ord c) metaBit)
+
+metaBit :: Int
+metaBit = 7
 
 -- ---------------------------------------------------------------------
 -- map extended names to corresponding actions
@@ -260,7 +261,7 @@ globalTable = [
         errorE "describe-bindings unimplemented"),
   ("describe-key-briefly",      
         [[c_ 'h', 'c']],
-        errorE "describe-key-briefly unimplemented"),
+        msgE "Describe key briefly: " >> cmdlineFocusE >> metaM describeKeymap),
   ("digit-argument",            
         [ [m_ d] | d <- ['0' .. '9'] ],
         errorE "digit-argument unimplemented"),
@@ -290,7 +291,7 @@ globalTable = [
         errorE "exchange-point-and-mark unimplemented"),
   ("execute-extended-command",  
         [[m_ 'x']],
-        errorE "execute-extended-command unimplemented"),
+        msgE "M-x " >> cmdlineFocusE >> metaM metaXmap),
   ("fill-paragraph",            
         [[m_ 'q']],
         errorE "fill-paragraph unimplemented"),
@@ -563,9 +564,17 @@ metaOMode = cmd
 -- execute an extended command
 metaXSwitch :: MgMode
 metaXSwitch = (char (m_ 'x') >|< char (m_ 'X'))
-        `meta` \_ st -> 
-                let st' = st { prompt = "M-x ", acc = [] }
-                in (with (msgE "M-x " >> cmdlineFocusE), st', Just metaXMode)
+        `meta` \_ st -> (with (msgE "M-x " >> cmdlineFocusE)
+                        , metaXEnterState
+                        , Just metaXMode)
+
+metaXEnterState :: MgState
+metaXEnterState = MgState { prompt = "M-x ", acc = [] }
+
+metaXmap :: [Char] -> [Action]
+metaXmap cs = 
+        let (actions,_,_) = execLexer metaXMode (cs, metaXEnterState) 
+        in actions
 
 --
 -- a line buffer mode, where we ultimately map the command back to a
@@ -573,6 +582,8 @@ metaXSwitch = (char (m_ 'x') >|< char (m_ 'X'))
 --
 metaXMode :: MgMode
 metaXMode = metaXChar >||<  metaXEdit >||< metaXEval
+
+------------------------------------------------------------------------
 
 -- accumulate characters after the M-x prompt
 metaXChar :: MgMode
@@ -607,6 +618,51 @@ metaXEval = enter
                 Just a  -> (with (cmdlineUnFocusE  >> msgClrE >> a), MgState [] [], Just mode)
 
 ------------------------------------------------------------------------
+
+describeKeyMode :: MgMode
+describeKeyMode = describeChar
+
+describeKeymap :: [Char] -> [Action]
+describeKeymap cs = 
+        let (actions,_,_) = execLexer describeKeyMode (cs, describeKeyEnterState) 
+        in actions
+
+describeKeyEnterState = MgState { prompt = "Describe key briefly: ", acc = [] }
+
+describeChar :: MgMode
+describeChar = anything
+    `meta` \[c] st -> 
+        let acc' = c : acc st
+            keys = reverse acc'
+        in case M.lookup keys keys2extended of
+            Just ex -> (with $ (msgE $ (printable keys) ++ " runs the command " ++ ex)
+                                 >> cmdlineUnFocusE 
+                       ,dfltState, Just mode)
+            Nothing -> 
+                -- only continue if this is the prefix of something in the table
+                if any (isPrefixOf keys) (M.keys keys2extended)
+                   then (with $ msgE (prompt st ++ keys)
+                        ,st{acc=acc'}, Just describeKeyMode)
+                   else (with $ (msgE $ printable keys ++ " is not bound to any function")
+                                >> cmdlineUnFocusE
+                        ,dfltState, Just mode)
+
+------------------------------------------------------------------------
+-- translate a string into the emacs encoding of that string
+printable :: String->String
+printable = dropSpace . printable'
+    where 
+        printable' ('\ESC':a:ta) = "M-" ++ [a] ++ printable' ta
+        printable' ('\ESC':ta) = "ESC " ++ printable' ta
+        printable' (a:ta) 
+                | ord a < 32 
+                = "C-" ++ [chr (ord a + 96)] ++ " " ++ printable' ta
+                | testBit (ord a) metaBit
+                = "M-" ++ [chr (clearBit (ord a) metaBit)] ++ " " ++ printable' ta
+                | otherwise  = [a, ' '] ++ printable' ta
+        printable' [] = []
+
+------------------------------------------------------------------------
 -- Mg-specific actions
 
 whatCursorPos :: Action
@@ -620,16 +676,7 @@ whatCursorPos = do
                 "  row=? col="++ show col
 
 ------------------------------------------------------------------------
-  
---
--- describe-key-briefly table
---
-helpMap :: M.Map String String
-helpMap = M.fromList [
-  ("\^X\^C", "C-x C-c runs the command save-buffers-kill-emacs")
-  ]
-
-------------------------------------------------------------------------
+--  
 -- some regular expressions
 
 any', enter', delete' :: [Char]
@@ -637,6 +684,10 @@ enter'   = ['\n', '\r']
 delete'  = ['\BS', '\127', keyBackspace ]
 any'     = ['\0' .. '\255']
 
-delete, enter :: Regexp MgState Action
+delete, enter, anything :: Regexp MgState Action
 delete  = alt delete'
 enter   = alt enter'
+anything  = alt any'
+
+dropSpace :: [Char] -> [Char]
+dropSpace = let f = reverse . dropWhile isSpace in f . f
