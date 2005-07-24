@@ -25,15 +25,11 @@ module Yi.Keymap.Mg (keymap) where
 import Yi.Yi         hiding ( keymap )
 import Yi.Editor            ( Action )
 import Yi.Char
-import Yi.MkTemp            ( mkstemp )
 import qualified Yi.Map as M
 
 import Numeric              ( showOct )
 import Data.Char            ( ord, chr, isSpace )
-import Data.Bits
 import Data.List            ((\\), isPrefixOf)
-
-import System.IO            ( hPutStr, hClose )
 
 -- 
 -- MG(1)                      OpenBSD Reference Manual                      MG(1)
@@ -579,7 +575,7 @@ editDelete m = delete
 -- and build a generic keymap
 --
 mkKeymap :: MgMode -> MgState -> ([Char] -> [Action])
-mkKeymap mode st = \cs -> let (actions,_,_) = execLexer mode (cs, st) in actions
+mkKeymap m st = \cs -> let (actions,_,_) = execLexer m (cs, st) in actions
 
 --
 -- and a default state
