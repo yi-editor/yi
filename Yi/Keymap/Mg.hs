@@ -571,6 +571,10 @@ editDelete m = delete
                         (_:xs) -> xs
         in (with (msgE (prompt st ++ reverse cs')), st{acc=cs'}, Just m)
 
+editEscape :: MgMode
+editEscape = char '\^G'
+    `meta` \_ _ -> (with (cmdlineUnFocusE >> msgE "Quit"), dfltState, Just mode)
+
 --
 -- and build a generic keymap
 --
@@ -603,7 +607,8 @@ metaXmap :: [Char] -> [Action]
 metaXmap = mkKeymap metaXMode metaXState
 
 metaXMode :: MgMode
-metaXMode = (editInsert metaXMode) >||< (editDelete metaXMode) >||< metaXEval
+metaXMode = (editInsert metaXMode) >||< (editDelete metaXMode) >||< 
+            editEscape >||< metaXEval
 
 -- | M-x mode, evaluate a string entered after M-x
 metaXEval :: MgMode
@@ -616,7 +621,6 @@ metaXEval = enter
                 Just a  -> (with (cmdlineUnFocusE  >> msgClrE >> a)
                            , MgState [] [], Just mode)
 
--- metaXEscape
 -- metaXTab :: MgMode
 
 ------------------------------------------------------------------------
@@ -659,7 +663,8 @@ findFileState = mkPromptState "Find file: "
 
 findFileMode :: MgMode
 findFileMode = (editInsert findFileMode) >||< 
-               (editDelete findFileMode) >||< findFileEval
+               (editDelete findFileMode) >||< 
+               editEscape >||< findFileEval
 
 findFileEval :: MgMode
 findFileEval = enter
@@ -681,7 +686,8 @@ writeFileState = mkPromptState "Write file: "
 
 writeFileMode :: MgMode
 writeFileMode = (editInsert writeFileMode) >||< 
-                (editDelete writeFileMode) >||< writeFileEval
+                (editDelete writeFileMode) >||< 
+                editEscape >||< writeFileEval
 
 writeFileEval :: MgMode
 writeFileEval = enter
@@ -759,7 +765,6 @@ mgDeleteBlanks = do
         q <- getPointE
         gotoPointE p
         deleteNE (q - p)
-
 
 ------------------------------------------------------------------------
 --  
