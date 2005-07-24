@@ -30,6 +30,7 @@ import qualified Yi.Map as M
 import Numeric              ( showOct )
 import Data.Char            ( ord, chr, isSpace )
 import Data.List            ((\\), isPrefixOf)
+import Control.Exception    ( try, evaluate )
 
 -- 
 -- MG(1)                      OpenBSD Reference Manual                      MG(1)
@@ -245,7 +246,7 @@ globalTable = [
         deleteE),
   ("delete-horizontal-space",   
         [[m_ '\\']],
-        errorE "delete-horizontal-space unimplemented"),
+        mgDeleteHorizBlanks),
   ("delete-other-windows",      
         [[c_ 'x', '1']],
         closeOtherE),
@@ -311,7 +312,7 @@ globalTable = [
         nextWordE),
   ("goto-line",                 
         [[c_ 'x', 'g']],
-        errorE "goto-line unimplemented"),
+        msgE "Goto line: " >> cmdlineFocusE >> metaM gotoMap),
   ("help-help",                 
         [[c_ 'h', c_ 'h']],
         errorE "help-help unimplemented"),
@@ -414,7 +415,7 @@ globalTable = [
         [[c_ 'x', 'f']],
         errorE "set-fill-column unimplemented"),
   ("set-mark-command",          
-        [[c_ ' ']],
+        [['\NUL']],
         errorE "set-mark-command unimplemented"),
   ("split-window-vertically",   
         [[c_ 'x', '2']],
@@ -435,7 +436,7 @@ globalTable = [
         [[c_ 't']],
         swapE),
   ("undo",                      
-        [[c_ 'x', 'u'], [c_ '_']],
+        [[c_ 'x', 'u'], ['\^_']],
         undoE),
   ("universal-argument",        
         [[c_ 'u']],
@@ -700,6 +701,29 @@ writeFileEval = enter
            ,MgState [] [], Just mode )
 
 -- ---------------------------------------------------------------------
+-- Goto a line
+--
+gotoMap  :: [Char] -> [Action]
+gotoMap = mkKeymap gotoMode gotoState
+
+gotoState :: MgState
+gotoState = mkPromptState "Goto line: "
+
+gotoMode :: MgMode
+gotoMode = (editInsert gotoMode) >||< 
+           (editDelete gotoMode) >||< editEscape >||< gotoEval
+
+gotoEval :: MgMode
+gotoEval = enter
+        `meta` \_ MgState{acc=cca} ->
+        let l = reverse cca
+        in (with ((do
+                i <- try . evaluate . read $ l
+                case i of Left _   -> errorE "Invalid number" 
+                          Right i' -> gotoLnE i') >> cmdlineUnFocusE)
+           ,MgState [] [], Just mode )
+
+-- ---------------------------------------------------------------------
 -- insert the first character, then switch back to normal mode
 --
 insertAnyMap :: [Char] -> [Action]
@@ -762,6 +786,15 @@ mgDeleteBlanks :: Action
 mgDeleteBlanks = do
         p <- getPointE
         moveWhileE (== '\n') Right
+        q <- getPointE
+        gotoPointE p
+        deleteNE (q - p)
+
+-- not quite right, as it will delete, even if no blanks
+mgDeleteHorizBlanks :: Action
+mgDeleteHorizBlanks = do
+        p <- getPointE
+        moveWhileE (\c -> c == ' ' || c == '\t') Right
         q <- getPointE
         gotoPointE p
         deleteNE (q - p)
