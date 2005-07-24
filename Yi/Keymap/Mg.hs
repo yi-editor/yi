@@ -243,7 +243,7 @@ globalTable = [
         bdeleteE),
   ("delete-blank-lines",        
         [[c_ 'x', c_ 'o']],
-        errorE "delete-blank-lines unimplemented"),
+        mgDeleteBlanks),
   ("delete-char",               
         [[c_ 'd']],
         deleteE),
@@ -392,7 +392,7 @@ globalTable = [
         errorE "recenter unimplemented"),
   ("save-buffer",               
         [[c_ 'x', c_ 's']],
-        fwriteE), -- should know if a filename has been set
+        mgWrite), -- should know if a filename has been set
   ("save-buffers-kill-emacs",   
         [[c_ 'x', c_ 'c']],
         fwriteE >> quitE),
@@ -732,6 +732,27 @@ describeBindings = newBufferE "*help*" s
       s = unlines [ printable k ++ "\t\t" ++ ex 
                   | (ex,ks,_) <- globalTable
                   , k         <- ks ]
+
+------------------------------------------------------------------------
+-- save a file in the style of Mg
+
+mgWrite :: Action
+mgWrite = do
+        u <- isUnchangedE     
+        if u then msgE "(No changes need to be saved)"
+             else do fwriteE
+                     f <- fileNameE
+                     msgE $ "Wrote " ++ f
+
+--
+-- delete all blank lines from this point
+mgDeleteBlanks :: Action
+mgDeleteBlanks = do
+        p <- getPointE
+        moveWhileE (== '\n') Right
+        q <- getPointE
+        gotoPointE p
+        deleteNE (q - p)
 
 ------------------------------------------------------------------------
 --  
