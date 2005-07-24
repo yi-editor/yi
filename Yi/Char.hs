@@ -77,7 +77,11 @@ isEnter '\n' = True
 isEnter '\r' = True
 isEnter _    = False
 
-------------------------------------------------------------------------
+-- ---------------------------------------------------------------------
+--
+-- If Bit 7 is set in Char, then treat as a META key (ESC)
+-- This is useful as it avoids the ncurses timeout issues associated
+-- with the real ESC.
 
 -- set the meta bit, as if Mod1/Alt had been pressed
 setMeta :: Char -> Char
