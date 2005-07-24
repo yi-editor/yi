@@ -20,7 +20,7 @@
 -- 02111-1307, USA.
 -- 
 
-module Yi.Keymap.Mg where
+module Yi.Keymap.Mg (keymap) where
 
 import Yi.Yi         hiding ( keymap )
 import Yi.Editor            ( Action )
@@ -252,7 +252,7 @@ globalTable = [
         errorE "delete-horizontal-space unimplemented"),
   ("delete-other-windows",      
         [[c_ 'x', '1']],
-        errorE "delete-other-windows unimplemented"),
+        closeOtherE),
   ("delete-window",             
         [[c_ 'x', '0']],
         closeE),
@@ -300,7 +300,7 @@ globalTable = [
         errorE "find-alternate-file unimplemented"),
   ("find-file",                 
         [[c_ 'x', c_ 'f']],
-        errorE "find-file unimplemented"),
+        msgE "Find file: " >> cmdlineFocusE >> metaM findFileMap),
   ("find-file-other-window",    
         [[c_ 'x', '4', c_ 'f']],
         errorE "find-file-other-window unimplemented"),
@@ -455,7 +455,7 @@ globalTable = [
         whatCursorPos),
   ("write-file",                
         [[c_ 'x', c_ 'w']],
-        fwriteE), -- should prompt for a filename
+        msgE "Write file: " >> cmdlineFocusE >> metaM writeFileMap),
   ("yank",                      
         [[c_ 'y']],
         errorE "yank unimplemented")
@@ -558,63 +558,70 @@ metaOMode = cmd
                       then keys2action [m_ 'O',c]
                       else undefined
 
+-- ---------------------------------------------------------------------
+-- build a generic line buffer editor, given a mode to transition to
+--
+editInsert :: MgMode -> MgMode
+editInsert m = anyButDelNlArrow
+        `meta` \[c] st -> (with (msgE (prompt st ++ (reverse (acc st)) ++ [c]))
+                          , st{acc=c:acc st} , Just m)
+    where anyButDelNlArrow = alt $ any' \\ (enter' ++ delete' ++ ['\ESC',keyUp,keyDown])
+
+editDelete :: MgMode -> MgMode
+editDelete m = delete
+    `meta` \_ st -> 
+        let cs' = case acc st of 
+                        []    -> []
+                        (_:xs) -> xs
+        in (with (msgE (prompt st ++ reverse cs')), st{acc=cs'}, Just m)
+
+--
+-- and build a generic keymap
+--
+mkKeymap :: MgMode -> MgState -> ([Char] -> [Action])
+mkKeymap mode st = \cs -> let (actions,_,_) = execLexer mode (cs, st) in actions
+
+--
+-- and a default state
+--
+mkPromptState :: String -> MgState
+mkPromptState p = MgState { prompt = p, acc = [] }
+
 ------------------------------------------------------------------------
 
 -- execute an extended command
 metaXSwitch :: MgMode
 metaXSwitch = (char (m_ 'x') >|< char (m_ 'X'))
         `meta` \_ _ -> (with (msgE "M-x " >> cmdlineFocusE)
-                       , metaXEnterState
+                       , metaXState
                        , Just metaXMode)
-
-metaXEnterState :: MgState
-metaXEnterState = MgState { prompt = "M-x ", acc = [] }
-
-metaXmap :: [Char] -> [Action]
-metaXmap cs = 
-        let (actions,_,_) = execLexer metaXMode (cs, metaXEnterState) 
-        in actions
 
 --
 -- a line buffer mode, where we ultimately map the command back to a
 -- keystroke, and execute that.
 --
+metaXState :: MgState
+metaXState = mkPromptState "M-x "
+
+metaXmap :: [Char] -> [Action]
+metaXmap = mkKeymap metaXMode metaXState
+
 metaXMode :: MgMode
-metaXMode = metaXChar >||<  metaXEdit >||< metaXEval
+metaXMode = (editInsert metaXMode) >||< (editDelete metaXMode) >||< metaXEval
 
-------------------------------------------------------------------------
-
--- accumulate characters after the M-x prompt
-metaXChar :: MgMode
-metaXChar = anyButDelNlArrow
-        `meta` \[c] st -> (with (msgE (prompt st ++ (reverse (acc st)) ++ [c]))
-                          , st{acc=c:acc st}
-                          , Just metaXMode)
-
-    -- display old prompt + this char
-    where anyButDelNlArrow = alt $ any' \\ (enter' ++ delete' ++ ['\ESC',keyUp,keyDown])
-
--- edit the M-x line
-metaXEdit :: MgMode
-metaXEdit = delete
-    `meta` \_ st -> 
-        let cs' = case acc st of 
-                        []    -> []
-                        (_:xs) -> xs
-        in (with (msgE (prompt st ++ reverse cs')), st{acc=cs'}, Just metaXMode)
-
--- tab completion
--- metaXTab :: MgMode
-
--- metaXEscape
-        
+-- | M-x mode, evaluate a string entered after M-x
 metaXEval :: MgMode
 metaXEval = enter
     `meta` \_ MgState{acc=cca} -> 
         let cmd = reverse cca 
         in case M.lookup cmd extended2action of
-                Nothing -> (with $ msgE "[No match]" >> cmdlineUnFocusE, MgState [] [], Just mode)
-                Just a  -> (with (cmdlineUnFocusE  >> msgClrE >> a), MgState [] [], Just mode)
+                Nothing -> (with $ msgE "[No match]" >> cmdlineUnFocusE
+                           , MgState [] [], Just mode)
+                Just a  -> (with (cmdlineUnFocusE  >> msgClrE >> a)
+                           , MgState [] [], Just mode)
+
+-- metaXEscape
+-- metaXTab :: MgMode
 
 ------------------------------------------------------------------------
 
@@ -622,12 +629,10 @@ describeKeyMode :: MgMode
 describeKeyMode = describeChar
 
 describeKeymap :: [Char] -> [Action]
-describeKeymap cs = 
-        let (actions,_,_) = execLexer describeKeyMode (cs, describeKeyEnterState) 
-        in actions
+describeKeymap = mkKeymap describeKeyMode describeKeyState
 
-describeKeyEnterState :: MgState
-describeKeyEnterState = MgState { prompt = "Describe key briefly: ", acc = [] }
+describeKeyState :: MgState
+describeKeyState = mkPromptState "Describe key briefly: "
 
 describeChar :: MgMode
 describeChar = anything
@@ -646,6 +651,51 @@ describeChar = anything
                    else (with $ (msgE $ printable keys ++ " is not bound to any function")
                                 >> cmdlineUnFocusE
                         ,dfltState, Just mode)
+
+------------------------------------------------------------------------
+-- Reading a filename, to open a buffer
+--
+findFileMap :: [Char] -> [Action]
+findFileMap = mkKeymap findFileMode findFileState
+
+findFileState :: MgState
+findFileState = mkPromptState "Find file: "
+
+findFileMode :: MgMode
+findFileMode = (editInsert findFileMode) >||< 
+               (editDelete findFileMode) >||< findFileEval
+
+findFileEval :: MgMode
+findFileEval = enter
+        `meta` \_ MgState{acc=cca} ->
+        (with (do fnewE (reverse cca)
+                  (_,s,_,_,_,_) <- bufInfoE
+                  msgE $ "(Read "++show s++" bytes)"
+                  cmdlineUnFocusE)
+        , MgState [] [], Just mode )
+
+------------------------------------------------------------------------
+-- Writing a file
+--
+writeFileMap  :: [Char] -> [Action]
+writeFileMap = mkKeymap writeFileMode writeFileState
+
+writeFileState :: MgState
+writeFileState = mkPromptState "Write file: "
+
+writeFileMode :: MgMode
+writeFileMode = (editInsert writeFileMode) >||< 
+                (editDelete writeFileMode) >||< writeFileEval
+
+writeFileEval :: MgMode
+writeFileEval = enter
+        `meta` \_ MgState{acc=cca} ->
+        let f = reverse cca
+        in (with (do fwriteToE f
+                     fnewE f
+                     msgE $ "Wrote "++f
+                     cmdlineUnFocusE)
+           ,MgState [] [], Just mode )
 
 ------------------------------------------------------------------------
 -- translate a string into the emacs encoding of that string
@@ -676,13 +726,8 @@ whatCursorPos = do
                 ")  line="++show ln++
                 "  row=? col="++ show col
 
-
 describeBindings :: Action
-describeBindings = do
-    mf <- mkstemp "/tmp/yi.XXXXXXXXXX" 
-    case mf of
-        Nothing    -> error "Yi.Keymap.Mg: mkstemp failed"
-        Just (f,h) -> hPutStr h s >> hClose h >> splitE >> fnewE f
+describeBindings = newBufferE "*help*" s
     where
       s = unlines [ printable k ++ "\t\t" ++ ex 
                   | (ex,ks,_) <- globalTable
