@@ -318,6 +318,8 @@ resizeAll :: Editor -> [Window] -> Int -> Int -> IO [Window]
 resizeAll e wls y x = flip mapM wls (\w -> 
                             resize y x w $ findBufferWith e (bufkey w))
 
+-- XXX todo, windowInc, windowDec. Increase the size of just the current window
+
 -- | Reset the heights and widths of all the windows
 doResizeAll :: (Int,Int) -> IO ()
 doResizeAll sz@(h,w) = modifyEditor_ $ \e -> do
