@@ -562,7 +562,7 @@ getRegE = readEditor yreg
 -- | Retrieve the extensible state
 getDynamic :: forall a. Initializable a => IO a
 getDynamic = do
-        let r :: a = undefined
+        let r = undefined :: a
         ps <- readEditor dynamic
         return $ fromMaybe initial $    -- hmm, a bit cryptic
                         fromJust $ gcast $ 
@@ -858,7 +858,7 @@ closeE = do getWindow >>= deleteWindow
             i <- sizeWindows
             if i == 0 then quitE else nopE
 
--- | close other windows (and get rid of their buffers :/)
+-- | close other windows (and get rid of their buffers )
 closeOtherE :: Action
 closeOtherE = do
         this   <- getWindow -- current window
