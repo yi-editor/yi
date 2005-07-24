@@ -388,10 +388,10 @@ globalTable = [
         errorE "recenter unimplemented"),
   ("save-buffer",               
         [[c_ 'x', c_ 's']],
-        mgWrite), -- should know if a filename has been set
+        mgWrite),
   ("save-buffers-kill-emacs",   
         [[c_ 'x', c_ 'c']],
-        fwriteE >> quitE),
+        quitE),
   ("save-some-buffers",         
         [[c_ 'x', 's']],
         errorE "save-some-buffers unimplemented"),
