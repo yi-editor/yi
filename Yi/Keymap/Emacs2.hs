@@ -1,3 +1,5 @@
+{-# OPTIONS -fglasgow-exts #-}
+
 -- 
 -- Copyright (c) 2005 Jean-Philippe Bernardy
 -- 
@@ -17,10 +19,11 @@
 -- 02111-1307, USA.
 -- 
 
+
+
 module Yi.Keymap.Emacs2 (keymap) where
 
-
-import Yi.Editor            ( Action )
+import Yi.Editor            ( Initializable, initial, Action )
 import Yi.Yi hiding         ( keymap, meta )
 --import Yi.Lexers hiding (Action)
 
@@ -32,53 +35,41 @@ import Data.Maybe
 import Data.List
 import Control.Monad.Writer
 import Control.Monad.State
+import Data.Dynamic
 
 
--- | The state of the editor.
--- Should include much more things
--- (killring, current keylist, etc.)
+-- * Dynamic state components
 
-data ES = ES { 
-               esKillRing :: String, -- should be [String]
-               esLatestIsKill :: Bool,
-               esKeyList :: KList,
-               esKeyMap :: KM, -- invariant: esKeyMap == buildKeymap esKeyList
-               esKey :: String, 
-               esArg :: Maybe Int 
-               -- doing the argument precisely is kind of tedious.
-               -- read: http://www.gnu.org/software/emacs/manual/html_node/Arguments.html
-               -- and: http://www.gnu.org/software/emacs/elisp-manual/html_node/elisp_318.html
-             }
+newtype UniversalArg = UniversalArg (Maybe Int)
+    deriving Typeable
 
--- NOTES:
+instance Initializable UniversalArg where
+    initial = UniversalArg Nothing
 
--- 1. Maybe most of (all) the above stuff should not be part of the emacs state at all
--- but the editor state.
 
--- 2. The above requires a configurable editor state. Such a feature would allow
--- to clearly separate configuration of keybindings from configuration of behaviours.
+newtype TypedKey = TypedKey String
+    deriving Typeable
+
+instance Initializable TypedKey where
+    initial = TypedKey ""
+
+
+
+-- TODO
+
+-- * Killring
+
+-- * Keymaps (rebindings)
+
+-- doing the argument precisely is kind of tedious.
+-- read: http://www.gnu.org/software/emacs/manual/html_node/Arguments.html
+-- and: http://www.gnu.org/software/emacs/elisp-manual/html_node/elisp_318.html
 
 
 
 -- | The command type. 
 
-type KProc a = StateT (String, ES) (Writer [Action]) a
-type Command = KProc ()
-
-
--- * Functions to handle the state.
-initialState :: ES
-initialState = ES { 
-                   esKillRing = [],
-                   esLatestIsKill = False,
-                   esKeyList = normalKlist,
-                   esKeyMap = buildKeymap M.empty (esKeyList initialState),
-                   esKey = "", 
-                   esArg = Nothing
-                  }
-
-esAddKey :: Char -> ES -> ES
-esAddKey k s = s { esKey = esKey s ++ [k] }
+type KProc a = StateT String (Writer [Action]) a
 
 
 showKey :: String->String
@@ -90,73 +81,75 @@ showKey [] = []
 
 
 -- * The keymap abstract definition
-ctrl :: String -> String
-ctrl = map ctrlLowcase
+c_ :: String -> String
+c_ = map ctrlLowcase
 
-meta :: String -> String 
-meta s = concat [['\ESC', c] | c <- s] 
+m_ :: String -> String 
+m_ s = concat [['\ESC', c] | c <- s] 
 
 -- In the future the following list can become something like
 -- [ ("C-x k", killBuffer) , ... ]
 -- This structure should be easy to modify dynamically (for rebinding keys)
 
 normalKlist :: KList 
-normalKlist = [ ([chr c], insertSelfC) | c <- [32..127] ] ++
+normalKlist = [ ([chr c], liftC $ insertSelf) | c <- [32..127] ] ++
               [
---       ((ctrl " "), setMarkC),
-         ((ctrl "a"), repeatingArgC $ liftC solE),
-         ((ctrl "b"), repeatingArgC $ liftC leftE),
-         ((ctrl "d"), repeatingArgC $ liftC deleteE),
-         ((ctrl "e"), repeatingArgC $ liftC eolE),
-         ((ctrl "f"), repeatingArgC $ liftC rightE),
-         ((ctrl "g"), liftC $ msgE "Quit"),
-         ((ctrl "h"), repeatingArgC $ liftC (leftE >> deleteE)),
---       ((ctrl "i"), indentC),
-         ((ctrl "j"), repeatingArgC $ liftC $ insertE '\n'),
---       ((ctrl "k"), killLineC),
-         ((ctrl "m"), repeatingArgC $ liftC $ insertE '\n'),
-         ((ctrl "n"), repeatingArgC $ liftC downE),
-         ((ctrl "o"), repeatingArgC $ liftC (insertE '\n' >> leftE)),
-         ((ctrl "p"), repeatingArgC $ liftC upE),
-         ((ctrl "q"), repeatingArgC $ insertNextC),
---       ((ctrl "r"), backwardsIncrementalSearchE),
---       ((ctrl "s"), incrementalSearchE),
-         ((ctrl "t"), swapC),         
-         ((ctrl "u"), readArgC),
---       ((ctrl "v"), scrollDownC),                    
---       ((ctrl "w"), killRegionC),                    
-         ((ctrl "x" ++ ctrl "c"), liftC quitE),
-         ((ctrl "x" ++ ctrl "s"), liftC fwriteE),
-         ((ctrl "x" ++ "o"), liftC nextWinE),
-         ((ctrl "x" ++ "k"), liftC closeE),
-         ((ctrl "x" ++ "r" ++ "k"), liftC $ msgE "killRect"),
---       ((ctrl "x" ++ "u"), undoC), 
---       ((ctrl "y"), yankC),
---       ((meta "%"), searchReplaceC),
-         ((meta "w"), liftC $ msgE "copy"),         
-         ([keyLeft], repeatingArgC $ liftC leftE),
-         ([keyRight], repeatingArgC $ liftC rightE),
-         ([keyUp], repeatingArgC $ liftC upE),
-         ([keyDown], repeatingArgC $ liftC downE)
+--       ((c_ " "),                liftC $ setMarkE),
+         ((c_ "a"),                liftC $ repeatingArg solE),
+         ((c_ "b"),                liftC $ repeatingArg leftE),
+         ((c_ "d"),                liftC $ repeatingArg deleteE),
+         ((c_ "e"),                liftC $ repeatingArg eolE),
+         ((c_ "f"),                liftC $ repeatingArg rightE),
+         ((c_ "g"),                liftC $ msgE "Quit"),
+--       ((c_ "i"),                liftC $ indentC),
+         ((c_ "j"),                liftC $ repeatingArg $ insertE '\n'),
+--       ((c_ "k"),                liftC $ killLineC),
+         ((c_ "m"),                liftC $ repeatingArg $ insertE '\n'),
+         ((c_ "n"),                liftC $ repeatingArg downE),
+         ((c_ "o"),                liftC $ repeatingArg (insertE '\n' >> leftE)),
+         ((c_ "p"),                liftC $ repeatingArg upE),
+         ((c_ "q"),                insertNextC),
+--       ((c_ "r"),                liftC $ backwardsIncrementalSearchE),
+--       ((c_ "s"),                liftC $ incrementalSearchE),
+         ((c_ "t"),                liftC $ swapE),         
+         ((c_ "u"),                readArgC),
+--       ((c_ "v"),                liftC $ scrollDownC),                    
+--       ((c_ "w"),                liftC $ killRegionC),                    
+         ((c_ "x" ++ c_ "c"),      liftC $ quitE),
+         ((c_ "x" ++ c_ "s"),      liftC $ fwriteE),
+         ((c_ "x" ++ "o"),         liftC $ nextWinE),
+         ((c_ "x" ++ "k"),         liftC $ closeE),
+         ((c_ "x" ++ "r" ++ "k"),  liftC $ msgE "killRect"),
+--       ((c_ "x" ++ "u"),         undoC), 
+--       ((c_ "y"),                yankC),
+         ((m_ "<"),                liftC $ repeatingArg topE),
+         ((m_ ">"),                liftC $ repeatingArg botE),
+--       ((m_ "%"),                searchReplaceC),
+         ((m_ "c"),                liftC $ repeatingArg capitaliseWordE),
+         ((m_ "d"),                liftC $ repeatingArg killWordE),
+         ((m_ "f"),                liftC $ repeatingArg nextWordE),
+         ((m_ "l"),                liftC $ repeatingArg lowercaseWordE),
+         ((m_ "u"),                liftC $ repeatingArg uppercaseWordE),         
+         ((m_ "w"),                liftC $ msgE "copy"),         
+         ([keyLeft],               liftC $ repeatingArg leftE),
+         ([keyRight],              liftC $ repeatingArg rightE),
+         ([keyUp],                 liftC $ repeatingArg upE),
+         ([keyDown],               liftC $ repeatingArg downE),
+         (("\BS"),                 liftC $ repeatingArg bdeleteE),
+         ((m_ "\BS"),              liftC $ repeatingArg bkillWordE)
          
         ]
 
 -- * Boilerplace code for the Command monad
--- | Convert an Action to a Command
-liftC :: Action -> Command
-liftC act = tell [act]
 
-getState :: KProc ES
-getState = return . snd =<< get
-
-modifyState :: (ES -> ES) -> KProc ()
-modifyState f = modify (\(x,y)->(x,f y))
+liftC :: Action -> KProc ()
+liftC = tell . return
 
 getInput :: KProc String
-getInput = return . fst =<< get
+getInput = get
 
 putInput :: String -> KProc ()
-putInput x' = modify $ \(_,y) -> (x', y)
+putInput = modify . const
 
 
 readStroke, lookStroke :: KProc Char
@@ -175,91 +168,83 @@ lookStroke = do (c:_) <- getInput
 
 
 
-withArgC :: (Int -> Command) -> Command
-withArgC cmd = do s <- getState
-                  cmd (fromMaybe 1 $ esArg s)
-                  modifyState $ \s' -> s' { esArg = Nothing }
 
-repeatingArgC :: Command -> Command
-repeatingArgC f = withArgC $ \n->replicateM_ n f
+withUnivArg :: (Int -> Action) -> Action
+withUnivArg cmd = do UniversalArg s <- getDynamic
+                     cmd (fromMaybe 1 s)
+                     setDynamic $ UniversalArg Nothing
 
-insertSelfC :: Command
-insertSelfC = repeatingArgC $ do s <- getState
-                                 tell $ map insertE (esKey s)
+repeatingArg :: Action -> Action
+repeatingArg f = withUnivArg $ \n->replicateM_ n f
 
-insertNextC :: Command
-insertNextC = repeatingArgC $ do c <- readStroke
-                                 liftC $ insertE c
+insertSelf :: Action
+insertSelf = repeatingArg $ do TypedKey k <- getDynamic
+                               mapM_ insertE k
+
+insertNextC :: KProc ()
+insertNextC = do c <- readStroke 
+                 liftC $ repeatingArg $ insertE c
 
 
--- | C-t action
-swapC :: Command
-swapC = repeatingArgC $ liftC $ do leftE
-                                   c <- readE
-                                   deleteE
-                                   rightE 
-                                   insertE c
-
--- spawnMinibuffer :: Command -> Command
--- no clue how to do this.
+-- spawnMinibuffer :: Action
+-- This requires support from Core.
 
 
      
 -- | Complain about undefined key
-undefC :: Command
-undefC = do s <- getState
-            liftC $ errorE $ "Key sequence not defined : " ++ 
-                  showKey (esKey s) ++ " " ++ show (map ord $ esKey s)
+undefC :: Action
+undefC = do TypedKey k <- getDynamic 
+            errorE $ "Key sequence not defined : " ++ 
+                  showKey k ++ " " ++ show (map ord k)
 
 
 -- | C-u stuff
-readArgC :: Command
+readArgC :: KProc ()
 readArgC = do readArg' Nothing
 
-readArg' :: Maybe Int -> Command
+readArg' :: Maybe Int -> KProc ()
 readArg' acc = do
     c <- lookStroke
-    s <- getState
     if isDigit c
      then (do { readStroke
               ; let acc' = Just $ 10 * (fromMaybe 0 acc) + (ord c - ord '0')
-              ; liftC $ msgE (showKey (esKey s) ++ show (fromJust $ acc')) 
+              ; liftC $ do TypedKey k <- getDynamic
+                           msgE (showKey k ++ show (fromJust $ acc')) 
               ; readArg' acc'
              }
           )
-     else modifyState (\s'->s'{esArg = Just $ fromMaybe 4 acc})
+     else liftC $ setDynamic $ UniversalArg $ Just $ fromMaybe 4 acc
+
 
 
 -- * KeyList => keymap
 -- Specialized version of MakeKeymap
 
 data KME = KMESubmap KM
-         | KMECommand Command
+         | KMECommand (KProc ())
 
 type KM = M.Map Char KME
 
-type KListEnt = ([Char], Command)
+type KListEnt = ([Char], KProc ())
 type KList = [KListEnt]
 
 -- | Create a binding processor from 'kmap'.
-makeKeymap :: KList -> Command 
-makeKeymap kmap = do modifyState (\s -> s {esKey = ""})
-                     s <- getState
-                     getActions (esKeyMap s)
+makeKeymap :: KList -> KProc ()              
+makeKeymap kmap = do getActions "" (buildKeymap M.empty kmap)
                      makeKeymap kmap
 
-getActions :: KM -> Command
-getActions fm = do
+getActions :: String -> KM -> KProc ()   
+getActions k fm = do
     c <- readStroke
-    modifyState (esAddKey c)
-    case fromMaybe (KMECommand undefC) (M.lookup c fm) of 
-        KMECommand m -> m
-        KMESubmap sfm -> do s' <- getState
-                            liftC $ msgE (showKey (esKey s') ++ "-")
-                            getActions sfm
+    let k' = k ++ [c]
+    liftC $ setDynamic $ TypedKey k'
+    case fromMaybe (KMECommand $ liftC undefC) (M.lookup c fm) of 
+        KMECommand m -> do m
+        KMESubmap sfm -> do liftC $ msgE (showKey k' ++ "-")
+                            getActions k' sfm
 
 
--- Builds a keymap (Yi.Map.Map) from a key binding list, also creating 
+-- | Builds a keymap (Yi.Map.Map) from a key binding list, also creating 
 -- submaps from key sequences.
 buildKeymap :: KM -> KList -> KM
 buildKeymap fm_ l =
@@ -275,9 +260,9 @@ buildKeymap fm_ l =
         addKey _ ([], _) = error "Invalid keymap table"
 
 
+fromKProc :: KProc a -> [Char] -> [Action]
+fromKProc kp cs = snd $ runWriter $ runStateT kp cs
+
 -- | entry point
 keymap :: [Char] -> [Action]
-keymap cs = snd $ 
-            runWriter $ 
-            flip runStateT (cs, initialState) $ 
-            makeKeymap normalKlist
+keymap = fromKProc $ makeKeymap normalKlist
