@@ -49,6 +49,7 @@ module Yi.Core (
         msgClrE,        -- :: Action
         getMsgE,        -- :: IO String
         bufInfoE,       -- :: IO (FilePath,Int,Int,Int,Int,String)
+        fileNameE,      -- :: IO FilePath
 
         -- * Window manipulation
         nextBufW,       -- :: Action
@@ -777,6 +778,10 @@ bufInfoE = withWindow $ \w b -> do
                  x+1, 
                  p, 
                  getPercent p s) )
+
+-- | Name of this buffer
+fileNameE :: IO FilePath
+fileNameE = withWindow $ \w b -> return (w, nameB b)
 
 -- ---------------------------------------------------------------------
 -- Window manipulation
