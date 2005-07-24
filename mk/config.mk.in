@@ -11,7 +11,10 @@ IFACEDIR=       $(LIBDIR)/imports
 
 GHC=            @WithGhc@
 HC_OPTS=        -Wall -Werror
-HC_OPTS+=       -funbox-strict-fields -O2 -threaded -Icbits -Imk
+HC_OPTS+=       -Icbits -Imk
+
+# optimisation flags
+HC_OPTS+=       -funbox-strict-fields -O2
 
 #
 # With ghc-6.4 -fvia-C produces a buggy binary, dying with:
