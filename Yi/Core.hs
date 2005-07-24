@@ -119,9 +119,9 @@ module Yi.Core (
         getRegexE,      -- :: IO (Maybe SearchExp)
 
 
-        -- * Plugs
-        getPlug,
-        setPlug,
+        -- * Dynamically extensible state
+        getDynamic,
+        setDynamic,
 
         -- * Regular expression and searching
         SearchF(..),        -- Basic | IgnoreCase | NoNewLine
@@ -546,20 +546,29 @@ setRegE s = modifyEditor_ $ \e -> return e { yreg = s }
 getRegE :: IO String
 getRegE = readEditor yreg
 
-------------------------------------------------------------------------
--- Plugs.
+-- ---------------------------------------------------------------------
+-- | Dynamically-extensible state components.
+--
+-- These hooks are used by keymaps to store values that result from
+-- Actions (i.e. that restult from IO), as opposed to the pure values
+-- they generate themselves, and can be stored internally.
+--
+-- The `dynamic' field is a type-indexed map.
+-- 
 
-getPlug :: forall a. Initializable a => IO a
-getPlug =
-   do let r = undefined
-          r :: a
-      ps <- readEditor plugs
-      return $ fromMaybe initial $ fromJust $ gcast  $ M.lookup (show $ typeOf r) ps
+-- | Retrieve the extensible state
+getDynamic :: forall a. Initializable a => IO a
+getDynamic = do
+        let r :: a = undefined
+        ps <- readEditor dynamic
+        return $ fromMaybe initial $    -- hmm, a bit cryptic
+                        fromJust $ gcast $ 
+                                M.lookup (show $ typeOf r) ps
 
-setPlug :: Typeable a => a -> Action
-setPlug x = modifyEditor_ $ \e -> return e { plugs = M.insert (show $ typeOf x) (toDyn x) (plugs e)}
-                 
-
+-- | Insert a value into the extensible state, keyed by its type
+setDynamic :: Typeable a => a -> Action
+setDynamic x = modifyEditor_ $ \e -> 
+        return e { dynamic = M.insert (show $ typeOf x) (toDyn x) (dynamic e) }
 
 -- ---------------------------------------------------------------------
 -- Searching and substitutions with regular expressions

@@ -60,17 +60,17 @@ import Data.Dynamic
 -- TODO the command line is a vi\/emacs specific concept.
 --
 
-class Typeable a => Initializable a where
-    initial :: a
-
 data Buffer a => GenEditor a = 
     Editor {
         buffers   :: !(M.Map Unique a)          -- ^ all the buffers
        ,windows   :: !(M.Map Unique Window)     -- ^ all the windows
        ,cmdline   :: !String                    -- ^ the command line
        ,cmdlinefocus :: !Bool                   -- ^ cmdline has focus
+
+       -- should be moved into dynamic component, perhaps
        ,yreg      :: !String                    -- ^ yank register
        ,regex     :: !(Maybe (String,Regex))    -- ^ most recent regex
+
        ,curwin    :: !(Maybe Unique)            -- ^ the window with focus
        ,curkeymap :: [Char] -> [Action]         -- ^ user-configurable keymap
        ,scrsize   :: !(Int,Int)                 -- ^ screen size
@@ -79,7 +79,7 @@ data Buffer a => GenEditor a =
        ,threads   :: [ThreadId]                 -- ^ all our threads
        ,reboot    :: (Maybe Editor) -> IO ()    -- ^ our reboot function
        ,reload    :: IO (Maybe Config)          -- ^ reload config function
-       ,plugs     :: !(M.Map String Dynamic)    -- ^ dynamic components 
+       ,dynamic   :: !(M.Map String Dynamic)    -- ^ dynamic components 
 
        -- replace String with TypeRep as feasible
 
@@ -90,6 +90,12 @@ data Buffer a => GenEditor a =
 --
 type Buffer' = FBuffer
 type Editor  = GenEditor Buffer'
+
+-- ---------------------------------------------------------------------
+-- | Class of values that can go in the extensible state component
+--
+class Typeable a => Initializable a where
+    initial :: a
 
 -- ---------------------------------------------------------------------
 --
@@ -133,7 +139,7 @@ emptyEditor = Editor {
        ,threads      = []
        ,reboot       = const $ return ()
        ,reload       = error "No reload function"
-       ,plugs        = M.empty
+       ,dynamic      = M.empty
     }
 
 -- 
