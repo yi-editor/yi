@@ -59,12 +59,14 @@ module Yi.Core (
         cmdlineUnFocusE,-- :: Action
         splitE,         -- :: Action
         closeE,         -- :: Action
+        closeOtherE,    -- :: Action
 
         -- * File-based actions
         fnewE,          -- :: FilePath -> Action
         fwriteE,        -- :: Action
         fwriteToE,      -- :: String -> Action
         isUnchangedE,   -- :: IO Bool
+        newBufferE,     -- :: String -> String -> Action
 
         -- * Buffer point movement
         topE,           -- :: Action
@@ -805,6 +807,16 @@ fnewE f = do
     w <- newWindow b
     Editor.setWindow w
 
+-- | Open up a new buffer, in a new window, with first argument as
+-- buffer name, and second as contents.
+newBufferE :: String -> String -> Action
+newBufferE f s = do
+    b <- stringToNewBuffer f s
+    splitE
+    getWindow >>= deleteWindow
+    w <- newWindow b
+    Editor.setWindow w
+
 -- | Write current buffer to disk
 fwriteE :: Action
 fwriteE = withWindow_ $ \w b -> hPutB b (nameB b) >> return w
@@ -840,6 +852,15 @@ closeE :: Action
 closeE = do getWindow >>= deleteWindow
             i <- sizeWindows
             if i == 0 then quitE else nopE
+
+-- | close other windows (and get rid of their buffers :/)
+closeOtherE :: Action
+closeOtherE = do
+        this   <- getWindow -- current window
+        others <- modifyEditor $ \e -> do
+                        let ws = getWindows e
+                        return (e, (filter (/= this) (map Just ws)))
+        mapM_ deleteWindow others
 
 -- | Shift focus to next window
 nextWinE :: Action
