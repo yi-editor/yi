@@ -354,7 +354,7 @@ globalTable = [
         [[m_ '-']],
         errorE "negative-argument unimplemented"),
   ("newline",                   
-        [['\n']],
+        [[c_ 'm']],
         insertE '\n'),
   ("newline-and-indent",        
         [],
@@ -367,7 +367,7 @@ globalTable = [
         errorE "not-modified unimplemented"),
   ("open-line",                 
         [[c_ 'o']],
-        solE >> insertE '\n' >> upE),
+        insertE '\n' >> leftE),
   ("other-window",              
         [[c_ 'x', 'n'], [c_ 'x', 'o']],
         nextWinE),
@@ -382,7 +382,7 @@ globalTable = [
         errorE "query-replace unimplemented"),
   ("quoted-insert",             
         [[c_ 'q']],
-        errorE "quoted-insert unimplemented"),
+        metaM insertAnyMap),
   ("recenter",                  
         [[c_ 'l']],
         errorE "recenter unimplemented"),
@@ -670,7 +670,7 @@ findFileEval = enter
                   cmdlineUnFocusE)
         , MgState [] [], Just mode )
 
-------------------------------------------------------------------------
+-- ---------------------------------------------------------------------
 -- Writing a file
 --
 writeFileMap  :: [Char] -> [Action]
@@ -692,6 +692,16 @@ writeFileEval = enter
                      msgE $ "Wrote "++f
                      cmdlineUnFocusE)
            ,MgState [] [], Just mode )
+
+-- ---------------------------------------------------------------------
+-- insert the first character, then switch back to normal mode
+--
+insertAnyMap :: [Char] -> [Action]
+insertAnyMap = mkKeymap insertAnyMode dfltState
+
+insertAnyMode :: MgMode
+insertAnyMode = alt ['\0' .. '\255']
+        `meta` \[c] st -> (with (insertE c), st, Just mode)
 
 ------------------------------------------------------------------------
 -- translate a string into the emacs encoding of that string
@@ -749,6 +759,7 @@ mgDeleteBlanks = do
         q <- getPointE
         gotoPointE p
         deleteNE (q - p)
+
 
 ------------------------------------------------------------------------
 --  
