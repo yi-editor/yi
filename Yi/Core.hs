@@ -574,7 +574,7 @@ getDynamic :: forall a. Initializable a => IO a
 getDynamic = do
         ps <- readEditor dynamic
         case M.lookup (show $ typeOf (undefined :: a)) ps of
-            Nothing -> return initial
+            Nothing -> initial
             Just x -> return $ fromJust $ fromDynamic x
 
 -- | Insert a value into the extensible state, keyed by its type

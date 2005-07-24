@@ -95,7 +95,7 @@ type Editor  = GenEditor Buffer'
 -- | Class of values that can go in the extensible state component
 --
 class Typeable a => Initializable a where
-    initial :: a
+    initial :: IO a
 
 -- ---------------------------------------------------------------------
 --
