@@ -562,11 +562,10 @@ getRegE = readEditor yreg
 -- | Retrieve the extensible state
 getDynamic :: forall a. Initializable a => IO a
 getDynamic = do
-        let r = undefined :: a
         ps <- readEditor dynamic
-        return $ fromMaybe initial $    -- hmm, a bit cryptic
-                        fromJust $ gcast $ 
-                                M.lookup (show $ typeOf r) ps
+        case M.lookup (show $ typeOf (undefined :: a)) ps of
+            Nothing -> return initial
+            Just x -> return $ fromJust $ fromDynamic x
 
 -- | Insert a value into the extensible state, keyed by its type
 setDynamic :: Typeable a => a -> Action
