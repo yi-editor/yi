@@ -28,10 +28,10 @@ import Yi.Char
 import Yi.MkTemp            ( mkstemp )
 import qualified Yi.Map as M
 
-import Numeric   ( showOct )
-import Data.Char ( ord, chr, isSpace )
+import Numeric              ( showOct )
+import Data.Char            ( ord, chr, isSpace )
 import Data.Bits
-import Data.List ((\\), isPrefixOf)
+import Data.List            ((\\), isPrefixOf)
 
 import System.IO            ( hPutStr, hClose )
 
@@ -39,13 +39,13 @@ import System.IO            ( hPutStr, hClose )
 -- MG(1)                      OpenBSD Reference Manual                      MG(1)
 -- 
 -- NNAAMMEE
---      mmgg - emacs-like text editor
+--      mg - emacs-like text editor
 -- 
 -- SSYYNNOOPPSSIISS
---      mmgg [_o_p_t_i_o_n_s] [_f_i_l_e _._._.]
+--      mg [_o_p_t_i_o_n_s] [_f_i_l_e _._._.]
 -- 
 -- DDEESSCCRRIIPPTTIIOONN
---      mmgg is intended to be a small, fast, and portable editor for people who
+--      mg is intended to be a small, fast, and portable editor for people who
 --      can't (or don't want to) run the real emacs for one reason or another, or
 --      are not familiar with the vi(1) editor.  It is compatible with emacs be-
 --      cause there shouldn't be any reason to learn more editor types than emacs
@@ -105,7 +105,7 @@ import System.IO            ( hPutStr, hClose )
 -- 
 --      For more key bindings, type ``M-x describe-bindings''.
 -- 
---      mmgg differs primarily in not having special modes for tasks other than
+--      mg differs primarily in not having special modes for tasks other than
 --      straight editing, e.g., mail and news, and in not having special modes
 --      that support various programming languages.  It does have text justifica-
 --      tion and auto-fill mode.  Since it is written completely in C, there is
@@ -114,10 +114,10 @@ import System.IO            ( hPutStr, hClose )
 --      format.  Command, buffer, and file name completion and listing can be
 --      done using the spacebar and `?', respectively.
 -- 
---      Amongst other major differences, the mmgg configuration files are much sim-
+--      Amongst other major differences, the mg configuration files are much sim-
 --      pler than real emacs.  There are two configuration files, _._m_g, and _._m_g_-
 --      _T_E_R_M.  Here, TERM represents the name of your terminal type; e.g., if
---      your terminal type is set to ``vt100'', mmgg will use _._m_g_-_v_t_1_0_0 as a start-
+--      your terminal type is set to ``vt100'', mg will use _._m_g_-_v_t_1_0_0 as a start-
 --      up file.  The terminal type startup file is used first.  See the manual
 --      for a full list of the commands that can go in the files.
 -- 
@@ -149,11 +149,11 @@ import System.IO            ( hPutStr, hClose )
 -- BBUUGGSS
 --      When you type `?' to list possible file names, buffer names, etc., a help
 --      buffer is created for the possibilities.  In Gnu Emacs, this buffer goes
---      away the next time you type a real command.  In mmgg, you must use "^X-1"
+--      away the next time you type a real command.  In mg, you must use "^X-1"
 --      to get rid of it.
 -- 
 --      The undo feature has a minor difference compared to the same feature in
---      Gnu Emacs.  When the end of the undo records list is reached, mmgg will not
+--      Gnu Emacs.  When the end of the undo records list is reached, mg will not
 --      stop and inform the user for one undo keystroke before continuing.
 -- 
 -- OpenBSD 3.7                    February 25, 2000                             2
@@ -165,10 +165,7 @@ c_ :: Char -> Char
 c_ = ctrlLowcase
 
 m_ :: Char -> Char
-m_ c = chr (setBit (ord c) metaBit)
-
-metaBit :: Int
-metaBit = 7
+m_ = setMeta
 
 -- ---------------------------------------------------------------------
 -- map extended names to corresponding actions
@@ -661,8 +658,8 @@ printable = dropSpace . printable'
         printable' (a:ta) 
                 | ord a < 32 
                 = "C-" ++ [chr (ord a + 96)] ++ " " ++ printable' ta
-                | testBit (ord a) metaBit
-                = "M-" ++ [chr (clearBit (ord a) metaBit)] ++ " " ++ printable' ta
+                | isMeta a
+                = "M-" ++ [clrMeta a] ++ " " ++ printable' ta
                 | otherwise  = [a, ' '] ++ printable' ta
         printable' [] = []
 

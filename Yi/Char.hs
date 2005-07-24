@@ -32,11 +32,13 @@ module Yi.Char (
     remapChar,
     remapBS,
     isDel,
-    isEnter
+    isEnter,
+    setMeta, clrMeta, isMeta, metaBit
 ) where
 
-import Data.Char
 import Yi.Yi ( keyBackspace )
+import Data.Char
+import Data.Bits
 
 validChar :: Char -> Bool
 validChar '\n' = True
@@ -74,3 +76,19 @@ isEnter :: Char -> Bool
 isEnter '\n' = True
 isEnter '\r' = True
 isEnter _    = False
+
+------------------------------------------------------------------------
+
+-- set the meta bit, as if Mod1/Alt had been pressed
+setMeta :: Char -> Char
+setMeta c = chr (setBit (ord c) metaBit)
+
+-- remove the meta bit
+clrMeta :: Char -> Char
+clrMeta c = chr (clearBit (ord c) metaBit)
+
+isMeta  :: Char -> Bool
+isMeta  c = testBit (ord c) metaBit
+
+metaBit :: Int
+metaBit = 7
