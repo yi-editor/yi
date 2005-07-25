@@ -282,7 +282,10 @@ globalTable = [
         eolE),
   ("enlarge-window",            
         [[c_ 'x', '^']],
-        errorE "enlarge-window unimplemented"),
+        enlargeWinE),
+  ("shrink-window",             -- not in mg     
+        [[c_ 'x', 'v']],
+        shrinkWinE),
   ("exchange-point-and-mark",   
         [[c_ 'x', c_ 'x']],
         errorE "exchange-point-and-mark unimplemented"),

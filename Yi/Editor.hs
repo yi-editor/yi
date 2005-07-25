@@ -25,14 +25,14 @@
 
 module Yi.Editor where
 
-import Yi.Buffer                ( Buffer(newB, keyB, hNewB, finaliseB) )
+import Yi.Buffer                ( Buffer(newB, keyB, hNewB {-, finaliseB-}) )
 import Yi.FastBuffer
 import Yi.Regex                 ( Regex )
 import Yi.Window
 import Yi.Style                 ( ui, UIStyle )
-import Yi.Map as M
+import Yi.Map as M hiding       ( null )
 
-import Data.List                ( elemIndex, find )
+import Data.List                ( elemIndex )
 import Data.IORef               ( newIORef, readIORef, writeIORef, IORef )
 import Data.Unique              ( Unique )
 import System.IO.Unsafe         ( unsafePerformIO )
@@ -229,6 +229,12 @@ findBufferWith e k =
         Just b  -> b
         Nothing -> error "Editor.findBufferWith: no buffer has this key"
 
+-- 
+-- | Find the buffer connected to this window
+--
+win2buf :: Window -> Editor -> Buffer'
+win2buf w e = findBufferWith e (bufkey w)
+
 --
 -- | Safely lookup buffer using it's key.
 --
@@ -271,54 +277,112 @@ newWindow b = modifyEditor $ \e -> do
         wls   = M.elems $ windows e
         (y,r) = getY h (1 + (length wls))   -- should be h-1..
     wls' <- resizeAll e wls y w
-    wls''<- if wls' == [] then return wls' else turnOnML e wls'
+    wls''<- if null wls' then return wls' else turnOnML e wls'
     win  <- emptyWindow b (y+r,w) 
-    win' <- if wls == [] then return win else liftM head $ turnOnML e [win]
+    win' <- if null wls then return win else liftM head $ turnOnML e [win]
     let e' = e { windows = M.fromList $ mkAssoc (win':wls'') }
     return (e', win')
 
+-- ---------------------------------------------------------------------
+-- | Grow the given window, and pick another to shrink
+-- grow and shrink compliment each other, they could be refactored.
 --
+enlargeWindow :: Maybe Window -> IO ()
+enlargeWindow Nothing = return ()
+enlargeWindow (Just win) = modifyEditor_ $ \e -> do
+    let wls      = (M.elems . windows) e
+        (maxy,x) = scrsize e
+
+    -- can't resize if only window on screen, or if no room left
+    if length wls == 1 || height win >= maxy - (2*length wls-1)
+        then return e else do
+    case elemIndex win wls of
+        Nothing -> error "Editor.Window: window not found"
+        Just i  -> -- else pick next window up to shrink
+            case getWinWithHeight wls i 1 (> 2) of
+                Nothing -> return e    -- give up
+                Just winnext -> do {
+    ;win'     <- resize (height win + 1)     x win (win2buf win e) 
+    ;winnext' <- resize (height winnext -1)  x winnext (win2buf winnext e)
+    ;return $ e { windows = (M.insert (key winnext') winnext' $ 
+                              M.insert (key win') win' $ windows e) }
+    }
+
+-- | shrink given window (just grow another)
+shrinkWindow :: Maybe Window -> IO ()
+shrinkWindow Nothing = return ()
+shrinkWindow (Just win) = modifyEditor_ $ \e -> do
+    let wls      = (M.elems . windows) e
+        (maxy,x) = scrsize e
+    -- can't resize if only window on screen, or if no room left
+    if length wls == 1 || height win <= 3 -- rem..
+        then return e else do
+    case elemIndex win wls of
+        Nothing -> error "Editor.Window: window not found"
+        Just i  -> -- else pick a window that could be grown
+            case getWinWithHeight wls i 1 (< (maxy - (2 * length wls))) of
+                Nothing -> return e    -- give up
+                Just winnext -> do {
+    ;win'     <- resize (height win - 1)      x win     (win2buf win e) 
+    ;winnext' <- resize (height winnext + 1)  x winnext (win2buf winnext e)
+    ;return $ e { windows = (M.insert (key winnext') winnext' $ 
+                              M.insert (key win') win' $ windows e) }
+    }
+
+-- | find a window, starting at offset @i + n@, whose height satisifies pred
+--
+getWinWithHeight :: [Window] -> Int -> Int -> (Int -> Bool) -> Maybe Window
+getWinWithHeight wls i n pred
+   | n > length wls = Nothing
+   | otherwise      
+   = let w = wls !! ((abs (i - n)) `mod` (length wls))
+     in if pred (height w) 
+                then Just w
+                else getWinWithHeight wls i (n+1) pred
+
+------------------------------------------------------------------------
 -- | Delete the focused window
+-- 
+deleteThisWindow :: IO ()
+deleteThisWindow = getWindow >>= deleteWindow
+
 --
--- Delete the buffer, if this is the last window onto that buffer That
--- is, we abandon buffers that have no windows on to them. To program
--- 'hidden' behaviour, you'll have to keep a reference to the buffer
--- yourself, somehow. Hmm.
+-- | Delete a window. Note that the buffer that was connected to this
+-- window is still open.
 --
 deleteWindow :: (Maybe Window) -> IO ()
 deleteWindow Nothing  = return ()
 deleteWindow (Just win) = modifyEditor_ $ \e -> do
     let ws    = M.delete (key win) (windows e) -- delete window
-        oldkey= bufkey win
+--      oldkey= bufkey win
         wls   = M.elems ws
         x     = snd $ scrsize e
         (y,r) = getY ((fst $ scrsize e) - 1) (length wls) -- why -1?
 
     -- find any windows onto the same buffer, if none, delete this buffer
-    e' <- case find (\w -> bufkey w == oldkey) wls of
-        Just _  -> return e
-        Nothing -> do
-            let b = findBufferWith e oldkey
-            finaliseB b
-            return $ e { buffers = M.delete oldkey (buffers e) }
+--  e' <- case find (\w -> bufkey w == oldkey) wls of
+--      Just _  -> return e
+--      Nothing -> do
+--          let b = findBufferWith e oldkey
+--          finaliseB b
+--          return $ e { buffers = M.delete oldkey (buffers e) }
 
-    -- resize, then grab a random window
-    wls' <- resizeAll e' wls y x
+    wls' <- resizeAll e wls y x -- now resize
+
+    -- now switch focus to a random window
     case wls' of   
-        []       -> return e' { windows = M.empty }
+        []       -> return e { windows = M.empty }
         (win':xs) -> do
             let fm = M.fromList $ mkAssoc wls'
-            win'' <- resize (y+r) x win' (findBufferWith e' (bufkey win'))
+            win'' <- resize (y+r) x win' (findBufferWith e (bufkey win'))
             let win''' = if xs == [] then win'' { mode = Nothing } else win''
-            let e'' = e' { windows = M.insert (key win''') win''' fm }
-            setWindow' e'' win'''
+            let e' = e { windows = M.insert (key win''') win''' fm }
+            setWindow' e' win'''
 
 -- | Update height of windows in window set
 resizeAll :: Editor -> [Window] -> Int -> Int -> IO [Window]
 resizeAll e wls y x = flip mapM wls (\w -> 
                             resize y x w $ findBufferWith e (bufkey w))
-
--- XXX todo, windowInc, windowDec. Increase the size of just the current window
 
 -- | Reset the heights and widths of all the windows
 doResizeAll :: (Int,Int) -> IO ()
@@ -328,7 +392,7 @@ doResizeAll sz@(h,w) = modifyEditor_ $ \e -> do
 
     wls'  <- mapM (doresize e w y) (init wls)
     wls'' <- let win = last wls 
-            in doresize e w (y+r-1) win >>= \w' -> return (w' : wls')
+             in doresize e w (y+r-1) win >>= \w' -> return (w' : wls')
 
     return e { scrsize = sz, windows = M.fromList $ mkAssoc wls'' }
 

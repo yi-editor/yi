@@ -52,22 +52,32 @@ module Yi.Core (
         fileNameE,      -- :: IO FilePath
 
         -- * Window manipulation
-        nextBufW,       -- :: Action
-        prevBufW,       -- :: Action
         nextWinE,       -- :: Action
         prevWinE,       -- :: Action
-        cmdlineFocusE,  -- :: Action
-        cmdlineUnFocusE,-- :: Action
-        splitE,         -- :: Action
         closeE,         -- :: Action
         closeOtherE,    -- :: Action
+        splitE,         -- :: Action
+        enlargeWinE,    -- :: Action
+        shrinkWinE,     -- :: Action
+
+        -- * Switching to the command line
+        cmdlineFocusE,  -- :: Action
+        cmdlineUnFocusE,-- :: Action
 
         -- * File-based actions
         fnewE,          -- :: FilePath -> Action
         fwriteE,        -- :: Action
+        fwriteAllE,     -- :: Action
         fwriteToE,      -- :: String -> Action
-        isUnchangedE,   -- :: IO Bool
+        backupE,        -- :: FilePath -> Action
+
+        -- * Buffer only stuff
+        nextBufW,       -- :: Action
+        prevBufW,       -- :: Action
         newBufferE,     -- :: String -> String -> Action
+        listBuffersE,   -- :: Action
+        isUnchangedE,   -- :: IO Bool
+        setUnchangedE,  -- :: Action
 
         -- * Buffer point movement
         topE,           -- :: Action
@@ -762,7 +772,8 @@ msgClrE = modifyEditor_ $ \e -> return e { cmdline = [] }
 getMsgE :: IO String
 getMsgE = readEditor cmdline 
 
-------------------------------------------------------------------------
+-- ---------------------------------------------------------------------
+-- Buffer operations
 
 -- | File info, size in chars, line no, col num, char num, percent 
 -- TODO more info, better data structure
@@ -782,9 +793,6 @@ bufInfoE = withWindow $ \w b -> do
 fileNameE :: IO FilePath
 fileNameE = withWindow $ \w b -> return (w, nameB b)
 
--- ---------------------------------------------------------------------
--- Window manipulation
-
 -- | edit the next buffer in the buffer list
 nextBufW :: Action
 nextBufW = do
@@ -802,22 +810,24 @@ prevBufW = do
     w' <- newWindow b
     setWindow w'
 
--- | Read file into buffer and open up a new window
+-- | If file exists, read contents of file into a new buffer, otherwise
+-- creating a new empty buffer. Replace the current window with a new
+-- window onto the new buffer.
 fnewE  :: FilePath -> Action
 fnewE f = do
     e  <- doesFileExist f
     b  <- if e then hNewBuffer f else stringToNewBuffer f []
-    getWindow >>= deleteWindow
+    deleteThisWindow
     w <- newWindow b
     Editor.setWindow w
 
--- | Open up a new buffer, in a new window, with first argument as
--- buffer name, and second as contents.
+-- | Like fnewE, create a new buffer filled with the String @s@, 
+-- Open up a new window onto this buffer
 newBufferE :: String -> String -> Action
 newBufferE f s = do
     b <- stringToNewBuffer f s
     splitE
-    getWindow >>= deleteWindow
+    deleteThisWindow
     w <- newWindow b
     Editor.setWindow w
 
@@ -829,20 +839,52 @@ fwriteE = withWindow_ $ \w b -> hPutB b (nameB b) >> return w
 fwriteToE :: String -> Action
 fwriteToE f = withWindow_ $ \w b -> hPutB b f >> return w
 
--- | Is the current buffer unmodifed?
-isUnchangedE :: IO Bool
-isUnchangedE = withWindow $ \w b -> isUnchangedB b >>= \v -> return (w,v)
+-- | Write all open buffers
+fwriteAllE :: Action
+fwriteAllE = undefined
+
+-- | Make a backup copy of file
+backupE :: FilePath -> Action
+backupE = undefined
+
+-- | List all buffers (in a popup window)
+listBuffersE :: Action
+listBuffersE = undefined
+
+-- closeBufferE ?
 
 ------------------------------------------------------------------------
 
--- | Split a second window onto this buffer :)
+-- | Is the current buffer unmodifed? (currently buggy, we need
+-- bounaries in the undo list)
+isUnchangedE :: IO Bool
+isUnchangedE = withWindow $ \w b -> isUnchangedB b >>= \v -> return (w,v)
+
+-- | Set the current buffer to be unmodifed
+setUnchangedE :: Action
+setUnchangedE = undefined
+
+------------------------------------------------------------------------
+--
+-- Window operations
+
+-- | Make the next window (down the screen) the current window
+nextWinE :: Action
+nextWinE = Editor.nextWindow
+
+-- | Make the previous window (up the screen) the current window
+prevWinE :: Action
+prevWinE = Editor.prevWindow
+
+-- | Split the current window, opening a second window onto this buffer.
+-- Windows smaller than 3 lines cannot be split.
 splitE :: Action
 splitE = do
     i     <- sizeWindows
-    (y,_) <- UI.screenSize
+    (y,_) <- UI.screenSize -- bah
     let (sy,r) = getY y i
     if sy + r <= 4  -- min window size
-        then msgE "Not enough room to split"
+        then errorE "Not enough room to split"
         else do
     mw <- getWindow
     case mw of 
@@ -851,13 +893,24 @@ splitE = do
                       w' <- newWindow b
                       Editor.setWindow w'
 
--- | close current window.
-closeE :: Action
-closeE = do getWindow >>= deleteWindow
-            i <- sizeWindows
-            if i == 0 then quitE else nopE
+-- | Enlarge the current window
+enlargeWinE :: Action
+enlargeWinE = getWindow >>= enlargeWindow
 
--- | close other windows (and get rid of their buffers )
+-- | Shrink the current window
+shrinkWinE :: Action
+shrinkWinE = getWindow >>= shrinkWindow
+
+-- | Close the current window. 
+-- If this is the last window open, quit the program. TODO this
+-- behaviour may be undesirable
+closeE :: Action
+closeE = do 
+        deleteThisWindow
+        i <- sizeWindows
+        when (i == 0) quitE
+
+-- | Make the current window the only window on the screen
 closeOtherE :: Action
 closeOtherE = do
         this   <- getWindow -- current window
@@ -865,14 +918,6 @@ closeOtherE = do
                         let ws = getWindows e
                         return (e, (filter (/= this) (map Just ws)))
         mapM_ deleteWindow others
-
--- | Shift focus to next window
-nextWinE :: Action
-nextWinE = Editor.nextWindow
-
--- | Shift focus to prev window
-prevWinE :: Action
-prevWinE = Editor.prevWindow
 
 ------------------------------------------------------------------------
 
