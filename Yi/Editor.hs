@@ -332,13 +332,13 @@ shrinkWindow (Just win) = modifyEditor_ $ \e -> do
 -- | find a window, starting at offset @i + n@, whose height satisifies pred
 --
 getWinWithHeight :: [Window] -> Int -> Int -> (Int -> Bool) -> Maybe Window
-getWinWithHeight wls i n pred
+getWinWithHeight wls i n p
    | n > length wls = Nothing
    | otherwise      
    = let w = wls !! ((abs (i - n)) `mod` (length wls))
-     in if pred (height w) 
+     in if p (height w) 
                 then Just w
-                else getWinWithHeight wls i (n+1) pred
+                else getWinWithHeight wls i (n+1) p
 
 ------------------------------------------------------------------------
 -- | Delete the focused window
