@@ -61,6 +61,7 @@ data FBuffer =
                 !Unique          -- immutable unique key
                 !(MVar URList)   -- undo/redo list
                 !(MVar FBuffer_)
+             -- !Bool            -- read-only
 
 data FBuffer_ = 
         FBuffer_ !(Ptr CChar)   -- raw memory           (ToDo unicode)
