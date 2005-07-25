@@ -24,7 +24,7 @@
 module Yi.Keymap.Emacs2 ( keymap ) where
 
 import Yi.Editor hiding     ( keymap )
-import Yi.Yi hiding         ( keymap, meta )
+import Yi.Yi hiding         ( keymap, meta, string )
 --import Yi.Lexers hiding (Action)
 
 import Yi.Char
@@ -38,11 +38,17 @@ import Control.Monad.State
 import Data.Dynamic
 import Yi.Window
 import Yi.Buffer
+import Text.ParserCombinators.ReadP hiding ( get )
 
 -- * Dynamic state components
 
 newtype UniversalArg = UniversalArg (Maybe Int)
     deriving Typeable
+
+-- doing the argument precisely is kind of tedious.
+-- read: http://www.gnu.org/software/emacs/manual/html_node/Arguments.html
+-- and: http://www.gnu.org/software/emacs/elisp-manual/html_node/elisp_318.html
+
 
 instance Initializable UniversalArg where
     initial = return $ UniversalArg Nothing
@@ -69,31 +75,19 @@ instance Initializable MiniBuf where
 
 -- * Keymaps (rebindings)
 
--- doing the argument precisely is kind of tedious.
--- read: http://www.gnu.org/software/emacs/manual/html_node/Arguments.html
--- and: http://www.gnu.org/software/emacs/elisp-manual/html_node/elisp_318.html
-
-
 
 -- | The command type. 
 
 type KProc a = StateT String (Writer [Action]) a
 
 
-showKey :: String->String
-showKey ('\ESC':a:ta) = "M-" ++ [a] ++ showKey ta
-showKey ('\ESC':ta) = "ESC " ++ showKey ta
-showKey (a:ta) | ord a < 32 = "C-" ++ [chr (ord a + 96)] ++ " " ++ showKey ta
-               | otherwise  = [a, ' '] ++ showKey ta
-showKey [] = []
-
-
 -- * The keymap abstract definition
-c_ :: String -> String
-c_ = map ctrlLowcase
+c_ :: Char -> Char
+c_ = ctrlLowcase
 
-m_ :: String -> String 
-m_ s = concat [['\ESC', c] | c <- s] 
+m_ :: Char -> Char
+m_ '\263' = chr 255
+m_ x = setMeta x
 
 -- In the future the following list can become something like
 -- [ ("C-x k", killBuffer) , ... ]
@@ -109,58 +103,114 @@ m_ s = concat [['\ESC', c] | c <- s]
 
 -- And, rebinding could then be achieved :)
 
+printableChars :: [Char]
+printableChars = map chr [32..127]
+
 normalKlist :: KList 
-normalKlist = [ ([chr c], liftC $ insertSelf) | c <- [32..127] ] ++
+normalKlist = [ ([c], liftC $ insertSelf) | c <- printableChars ] ++
               [
---       ((c_ " "),                liftC $ setMarkE),
-         ((c_ "a"),                liftC $ repeatingArg solE),
-         ((c_ "b"),                liftC $ repeatingArg leftE),
-         ((c_ "d"),                liftC $ repeatingArg deleteE),
-         ((c_ "e"),                liftC $ repeatingArg eolE),
-         ((c_ "f"),                liftC $ repeatingArg rightE),
-         ((c_ "g"),                liftC $ msgE "Quit"),
---       ((c_ "i"),                liftC $ indentC),
-         ((c_ "j"),                liftC $ repeatingArg $ insertE '\n'),
---       ((c_ "k"),                liftC $ killLineC),
-         ((c_ "m"),                liftC $ repeatingArg $ insertE '\n'),
-         ((c_ "n"),                liftC $ repeatingArg downE),
-         ((c_ "o"),                liftC $ repeatingArg (insertE '\n' >> leftE)),
-         ((c_ "p"),                liftC $ repeatingArg upE),
-         ((c_ "q"),                insertNextC),
---       ((c_ "r"),                liftC $ backwardsIncrementalSearchE),
---       ((c_ "s"),                liftC $ incrementalSearchE),
-         ((c_ "t"),                liftC $ repeatingArg $ swapE),         
-         ((c_ "u"),                readArgC),
---       ((c_ "v"),                liftC $ scrollDownC),                    
---       ((c_ "w"),                liftC $ killRegionC),                    
-         ((c_ "x" ++ c_ "c"),      liftC $ quitE),
-         ((c_ "x" ++ c_ "f"),      liftC $ findFile),
-         ((c_ "x" ++ c_ "s"),      liftC $ fwriteE),
-         ((c_ "x" ++ "o"),         liftC $ nextWinE),
-         ((c_ "x" ++ "k"),         liftC $ closeE),
-         ((c_ "x" ++ "r" ++ "k"),  liftC $ msgE "killRect"),
---       ((c_ "x" ++ "u"),         undoC), 
---       ((c_ "y"),                yankC),
-         ((m_ "<"),                liftC $ repeatingArg topE),
-         ((m_ ">"),                liftC $ repeatingArg botE),
---       ((m_ "%"),                searchReplaceC),
-         ((m_ "c"),                liftC $ repeatingArg capitaliseWordE),
-         ((m_ "d"),                liftC $ repeatingArg killWordE),
-         ((m_ "f"),                liftC $ repeatingArg nextWordE),
-         ((m_ "l"),                liftC $ repeatingArg lowercaseWordE),
-         ((m_ "u"),                liftC $ repeatingArg uppercaseWordE),         
-         ((m_ "w"),                liftC $ msgE "copy"),         
-         ([keyLeft],               liftC $ repeatingArg leftE),
-         ([keyRight],              liftC $ repeatingArg rightE),
-         ([keyUp],                 liftC $ repeatingArg upE),
-         ([keyDown],               liftC $ repeatingArg downE),
-         (("\263"),                liftC $ repeatingArg bdeleteE),
-         (("\BS"),                 liftC $ repeatingArg bdeleteE),
-         ((m_ "\BS"),              liftC $ repeatingArg bkillWordE)
+--      ("C-SPC",    liftC $ setMarkE),
+        ("C-a",      liftC $ repeatingArg solE),
+        ("C-b",      liftC $ repeatingArg leftE),
+        ("C-d",      liftC $ repeatingArg deleteE),
+        ("C-e",      liftC $ repeatingArg eolE),
+        ("C-f",      liftC $ repeatingArg rightE),
+        ("C-g",      liftC $ msgE "Quit"),
+--      ("C-i",      liftC $ indentC),
+        ("C-j",      liftC $ repeatingArg $ insertE '\n'),
+--      ("C-k",      liftC $ killLineC),
+        ("C-m",      liftC $ repeatingArg $ insertE '\n'),
+        ("C-n",      liftC $ repeatingArg downE),
+        ("C-o",      liftC $ repeatingArg (insertE '\n' >> leftE)),
+        ("C-p",      liftC $ repeatingArg upE),
+        ("C-q",      insertNextC),
+--      ("C-r",      liftC $ backwardsIncrementalSearchE),
+--      ("C-s",      liftC $ incrementalSearchE),
+        ("C-t",      liftC $ repeatingArg $ swapE),         
+        ("C-u",      readArgC),
+--      ("C-v",      liftC $ scrollDownC),                    
+--      ("C-w",      liftC $ killRegionC),                    
+        ("C-x C-c",  liftC $ quitE),
+        ("C-x C-f",  liftC $ findFile),
+        ("C-x C-s",  liftC $ fwriteE),
+        ("C-x o",    liftC $ nextWinE),
+        ("C-x k",    liftC $ closeE),
+        ("C-x r k",  liftC $ msgE "killRect"),
+--      ("C-x u",    undoC), 
+--      ("C-y",      yankC),
+        ("M-<",      liftC $ repeatingArg topE),
+        ("M->",      liftC $ repeatingArg botE),
+--      ("M-%",      searchReplaceC),
+        ("M-c",      liftC $ repeatingArg capitaliseWordE),
+        ("M-d",      liftC $ repeatingArg killWordE),
+        ("M-f",      liftC $ repeatingArg nextWordE),
+        ("M-l",      liftC $ repeatingArg lowercaseWordE),
+        ("M-u",      liftC $ repeatingArg uppercaseWordE),         
+        ("M-w",      liftC $ msgE "copy"),         
+        ("<left>",   liftC $ repeatingArg leftE),
+        ("<right>",  liftC $ repeatingArg rightE),
+        ("<up>",     liftC $ repeatingArg upE),
+        ("<down>",   liftC $ repeatingArg downE),
+        ("DEL",      liftC $ repeatingArg bdeleteE),
+        ("M-DEL",    liftC $ repeatingArg bkillWordE)
          
         ]
 
--- * Boilerplace code for the Command monad
+-- * Key parser 
+-- This really should be in its own module 
+-- (importing Text.ParserCombinators.ReadP pollutes the namespace here)
+
+parseCtrl :: ReadP Char
+parseCtrl = do string "C-"
+               k <- parseMeta +++ parseRegular
+               return $ c_ k
+
+parseMeta :: ReadP Char
+parseMeta = do string "M-"
+               k <- parseRegular
+               return $ m_ k
+
+parseRegular :: ReadP Char
+parseRegular = choice [string s >> return c | (c,s) <- kNames]
+               +++ satisfy (`elem` printableChars)
+    where kNames = [(' ', "SPC"),
+                    (keyLeft, "<left>"),
+                    (keyRight, "<right>"),
+                    (keyDown, "<down>"),
+                    (keyUp, "<up>"),
+                    (keyBackspace, "DEL")
+                   ]
+               
+
+parseKey :: ReadP String
+parseKey = sepBy1 (parseCtrl +++ parseMeta +++ parseRegular) (munch1 isSpace)
+
+readKey :: String -> String
+readKey s = case readKey' s of
+              [r] -> r
+              rs -> error $ "readKey: " ++ s ++ show (map ord s) ++ " -> " ++ show rs
+
+readKey' :: String -> [String]
+readKey' s = map fst $ nub $ filter (null . snd) $ readP_to_S parseKey $ s
+
+-- * Key printer
+
+showKey :: String -> String
+showKey = dropSpace . printable'
+    where 
+        printable' ('\ESC':a:ta) = "M-" ++ [a] ++ printable' ta
+        printable' ('\ESC':ta) = "ESC " ++ printable' ta
+        printable' (a:ta) 
+                | ord a < 32 
+                = "C-" ++ [chr (ord a + 96)] ++ " " ++ printable' ta
+                | isMeta a
+                = "M-" ++ [clrMeta a] ++ " " ++ printable' ta
+                | otherwise  = [a, ' '] ++ printable' ta
+        printable' [] = []
+
+        dropSpace = let f = reverse . dropWhile isSpace in f . f
+
+-- * Boilerplate code for the Command monad
 
 liftC :: Action -> KProc ()
 liftC = tell . return
@@ -252,12 +302,12 @@ rebind kl k kp = M.toList $ M.insert k kp $ M.delete k $ M.fromList kl
          
                      
 findFile :: Action
-findFile = spawnMinibuffer "find file:" (rebind normalKlist (c_ "j") (liftC loadFile))
+findFile = spawnMinibuffer "find file:" (rebind normalKlist "C-j" (liftC loadFile))
 
 loadFile :: Action
 loadFile = do MiniBuf w b <- getDynamic
               filename <- elemsB b -- doesn't seem to work
-              deleteWindow $ Just w -- ???
+              deleteWindow $ Just w -- behaves strange too
               msgE $ "loading " ++ filename
               fnewE filename 
               return ()
@@ -275,7 +325,7 @@ type KList = [KListEnt]
 
 -- | Create a binding processor from 'kmap'.
 makeKeymap :: KList -> KProc ()              
-makeKeymap kmap = do getActions "" (buildKeymap M.empty kmap)
+makeKeymap kmap = do getActions "" (buildKeymap kmap)
                      makeKeymap kmap
 
 getActions :: String -> KM -> KProc ()   
@@ -292,8 +342,11 @@ getActions k fm = do
 
 -- | Builds a keymap (Yi.Map.Map) from a key binding list, also creating 
 -- submaps from key sequences.
-buildKeymap :: KM -> KList -> KM
-buildKeymap fm_ l =
+buildKeymap :: KList -> KM
+buildKeymap l = buildKeymap' M.empty [(readKey k, c) | (k,c) <- l]
+
+buildKeymap' :: KM -> KList -> KM
+buildKeymap' fm_ l =
     foldl addKey fm_ [(k, KMECommand c) | (k,c) <- l]
     where
         addKey fm (c:[], a) = M.insert c a fm
