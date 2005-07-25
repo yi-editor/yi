@@ -21,9 +21,9 @@
 
 
 
-module Yi.Keymap.Emacs2 (keymap) where
+module Yi.Keymap.Emacs2 ( keymap ) where
 
-import Yi.Editor            ( Initializable, initial, Action )
+import Yi.Editor hiding     ( keymap )
 import Yi.Yi hiding         ( keymap, meta )
 --import Yi.Lexers hiding (Action)
 
@@ -36,7 +36,8 @@ import Data.List
 import Control.Monad.Writer
 import Control.Monad.State
 import Data.Dynamic
-
+import Yi.Window
+import Yi.Buffer
 
 -- * Dynamic state components
 
@@ -44,15 +45,22 @@ newtype UniversalArg = UniversalArg (Maybe Int)
     deriving Typeable
 
 instance Initializable UniversalArg where
-    initial = UniversalArg Nothing
+    initial = return $ UniversalArg Nothing
 
 
 newtype TypedKey = TypedKey String
     deriving Typeable
 
 instance Initializable TypedKey where
-    initial = TypedKey ""
+    initial = return $ TypedKey ""
 
+data MiniBuf = forall a. Buffer a => MiniBuf Window a
+    deriving Typeable
+
+instance Initializable MiniBuf where
+    initial = do b <- stringToNewBuffer "*minibuf*" []
+                 w <- newWindow b
+                 return $ MiniBuf w b
 
 
 -- TODO
@@ -91,6 +99,16 @@ m_ s = concat [['\ESC', c] | c <- s]
 -- [ ("C-x k", killBuffer) , ... ]
 -- This structure should be easy to modify dynamically (for rebinding keys)
 
+-- Ultimately, this should become:
+
+--  [ ("C-x k", "killBuffer") 
+-- killBuffer would be looked up a la ghci. Then its type would be checked
+-- (Optional) arguments could then be handled dynamically depending on the type
+-- Action; Int -> Action; Region -> Action; types could be handled in a clever
+-- way, reducing glue code to the minimum.
+
+-- And, rebinding could then be achieved :)
+
 normalKlist :: KList 
 normalKlist = [ ([chr c], liftC $ insertSelf) | c <- [32..127] ] ++
               [
@@ -111,11 +129,12 @@ normalKlist = [ ([chr c], liftC $ insertSelf) | c <- [32..127] ] ++
          ((c_ "q"),                insertNextC),
 --       ((c_ "r"),                liftC $ backwardsIncrementalSearchE),
 --       ((c_ "s"),                liftC $ incrementalSearchE),
-         ((c_ "t"),                liftC $ swapE),         
+         ((c_ "t"),                liftC $ repeatingArg $ swapE),         
          ((c_ "u"),                readArgC),
 --       ((c_ "v"),                liftC $ scrollDownC),                    
 --       ((c_ "w"),                liftC $ killRegionC),                    
          ((c_ "x" ++ c_ "c"),      liftC $ quitE),
+         ((c_ "x" ++ c_ "f"),      liftC $ findFile),
          ((c_ "x" ++ c_ "s"),      liftC $ fwriteE),
          ((c_ "x" ++ "o"),         liftC $ nextWinE),
          ((c_ "x" ++ "k"),         liftC $ closeE),
@@ -135,6 +154,7 @@ normalKlist = [ ([chr c], liftC $ insertSelf) | c <- [32..127] ] ++
          ([keyRight],              liftC $ repeatingArg rightE),
          ([keyUp],                 liftC $ repeatingArg upE),
          ([keyDown],               liftC $ repeatingArg downE),
+         (("\263"),                liftC $ repeatingArg bdeleteE),
          (("\BS"),                 liftC $ repeatingArg bdeleteE),
          ((m_ "\BS"),              liftC $ repeatingArg bkillWordE)
          
@@ -186,10 +206,6 @@ insertNextC = do c <- readStroke
                  liftC $ repeatingArg $ insertE c
 
 
--- spawnMinibuffer :: Action
--- This requires support from Core.
-
-
      
 -- | Complain about undefined key
 undefC :: Action
@@ -216,6 +232,35 @@ readArg' acc = do
      else liftC $ setDynamic $ UniversalArg $ Just $ fromMaybe 4 acc
 
 
+-- TODO:
+-- buffer local keymap: this requires Core support
+-- ensure that it quits (ok[ret]/cancel[C-g])
+-- add prompt
+-- resize: this requires Core support
+-- prevent recursive minibuffer usage
+-- hide modeline
+
+spawnMinibuffer :: String -> KList -> Action
+spawnMinibuffer _prompt klist = 
+    do MiniBuf w _b <- getDynamic
+       setWindow w
+       metaM (fromKProc $ makeKeymap klist)
+
+
+rebind :: KList -> String -> KProc () -> KList
+rebind kl k kp = M.toList $ M.insert k kp $ M.delete k $ M.fromList kl
+         
+                     
+findFile :: Action
+findFile = spawnMinibuffer "find file:" (rebind normalKlist (c_ "j") (liftC loadFile))
+
+loadFile :: Action
+loadFile = do MiniBuf w b <- getDynamic
+              filename <- elemsB b -- doesn't seem to work
+              deleteWindow $ Just w -- ???
+              msgE $ "loading " ++ filename
+              fnewE filename 
+              return ()
 
 -- * KeyList => keymap
 -- Specialized version of MakeKeymap
@@ -239,7 +284,8 @@ getActions k fm = do
     let k' = k ++ [c]
     liftC $ setDynamic $ TypedKey k'
     case fromMaybe (KMECommand $ liftC undefC) (M.lookup c fm) of 
-        KMECommand m -> do m
+        KMECommand m -> do liftC $ msgE ""
+                           m
         KMESubmap sfm -> do liftC $ msgE (showKey k' ++ "-")
                             getActions k' sfm
 
