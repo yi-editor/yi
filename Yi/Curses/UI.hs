@@ -7,7 +7,7 @@
 #include "config.h"
 
 -- 
--- Copyright (C) 2004 Don Stewart - http://www.cse.unsw.edu.au/~dons
+-- Copyright (C) 2004-5 Don Stewart - http://www.cse.unsw.edu.au/~dons
 -- 
 -- This program is free software; you can redistribute it and/or
 -- modify it under the terms of the GNU General Public License as
@@ -69,7 +69,7 @@ import Yi.Curses.Curses hiding ( refresh, Window )
 import qualified Yi.Curses.Curses as Curses
 
 import Data.Char                    ( ord )
-import Data.Maybe                   ( isNothing, isJust, fromJust )
+import Data.Maybe                   ( isNothing, fromJust )
 import Data.List
 import Data.IORef
 
@@ -160,19 +160,16 @@ redraw = withEditor $ \e ->
 
     withStyle (window sty) $ drawCmdLine cl     -- draw cmd line
 
-    -- work out origin of current window from index of that window in win list
-    -- still grubby because we aren't using the /origin/ field of 'Window'
-    -- _sigh_ assumes bottom window has rem
-    --
-    -- this is no good for line wrapping.
-    --
-    if (not cmdfoc && isJust w) 
-        then do (h,_)  <- screenSize
-                let w' = fromJust w
-                case i * (fst $! getY h (length ws)) of { o_y ->
-                    drawCursor (o_y,0) (cursor w')
-                }
-        else return () -- Curses.wMove Curses.stdScr y x
+    -- and now position cursor.
+    when (not cmdfoc) $
+        case w of
+           -- calculate origin of focused window
+           -- sum of heights of windows above this one on screen.
+           Just w' ->
+                case sum [ height (ws !! k) | k <- [0 .. (i-1)] ] of
+                        o_y -> drawCursor (o_y,0) (cursor w')
+
+           _ -> return ()
 
     }}}}}}
 
@@ -211,7 +208,7 @@ drawWindow e mwin sty win =
         throwIfErr_ "drawWindow" $
             waddnstr Curses.stdScr ptr (fromIntegral $ min len w)
 
-    -- and any eof markers
+    -- and any eof markers (should be optional)
     withStyle eofsty $ do
         (_,x) <- getYX Curses.stdScr
         when (x /= 0) $ throwIfErr_ "waddch" $
