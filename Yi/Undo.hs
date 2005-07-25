@@ -66,6 +66,7 @@ module Yi.Undo (
         undoUR,
         redoUR,
         isEmptyUList,
+        addBoundary,
 
         URList,             {- abstractly -}
         URAction(..),       {- non-abstractly, for concrete implementations -}
@@ -92,6 +93,7 @@ data URList = URList ![URAction] ![URAction]
 --
 data URAction = Insert !Point !Size !(ForeignPtr CChar)
               | Delete !Point !Size
+      --      | Boundary
 
 
 -- | A new empty 'URList'.
@@ -131,3 +133,7 @@ redoUR b (URList us (r:rs)) = do
 isEmptyUList :: URList -> Bool
 isEmptyUList (URList [] _) = True
 isEmptyUList (URList _  _) = False
+
+-- | Add an undo `boundary', for save-points and the like
+addBoundary :: URList -> URList
+addBoundary = undefined
