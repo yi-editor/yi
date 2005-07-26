@@ -26,7 +26,8 @@ module Yi.CharMove (
         -- * Parameterised movement
         doSkipWhile,    -- :: Action -> IO Bool -> (Char -> Bool) -> Action
         doSkipCond,     -- :: Action -> IO Bool -> (Char -> Bool) -> Action
-        moveWhileE,     -- :: (Char -> Bool) -> (() -> Either () ()) -> Action
+        moveWhileE,     -- :: (Char -> Bool) -> Direction -> Action
+        withPointE,     -- :: Action -> Action
 
         (>>||),         -- :: IO Bool -> IO Bool -> IO Bool
 
@@ -82,6 +83,9 @@ import Control.Exception    ( assert )
 -- For word completion:
 import Data.IORef
 import System.IO.Unsafe     ( unsafePerformIO )
+
+-- i.e. Left or Right
+type Direction = () -> Either () ()
 
 -- | Read character before point.
 breadE :: IO Char
@@ -238,7 +242,7 @@ prevNParagraphs n = do
 --
 -- Maybe this shouldn't refresh?
 --
-moveWhileE :: (Char -> Bool) -> (() -> Either () ()) -> Action
+moveWhileE :: (Char -> Bool) -> Direction -> Action
 moveWhileE f d = do withWindow_ (moveWhile_ f d)
                     getPointE >>= gotoPointE
 
@@ -247,7 +251,7 @@ moveWhileE f d = do withWindow_ (moveWhile_ f d)
 -- not for external consumption
 --
 moveWhile_ :: (Char -> Bool)
-           -> (() -> Either () ())
+           -> Direction
            -> Window
            -> Buffer'
            -> IO Window
@@ -290,24 +294,36 @@ readWordLeft_ w b = do
 readWordE :: IO (String,Int,Int)
 readWordE = withWindow $ \w b -> readWord_ w b >>= \v -> return (w,v)
 
+------------------------------------------------------------------------
+
 -- | capitalise the word under the cursor
 uppercaseWordE :: Action
-uppercaseWordE = do
-        (w,_,_) <- readWordE
-        killWordE
-        mapM_ insertE (map toUpper w)
+uppercaseWordE = withPointE $ do
+        (_,i,j) <- readWordE
+        gotoPointE i
+        mapRangeE i (j+1) toUpper
 
+-- | lowerise word under the cursor
 lowercaseWordE :: Action
-lowercaseWordE = do
-        (w,_,_) <- readWordE
-        killWordE
-        mapM_ insertE (map toLower w)
+lowercaseWordE = withPointE $ do
+        (_,i,j) <- readWordE
+        gotoPointE i
+        mapRangeE i (j+1) toLower
 
+-- | capitalise the first letter of this word
 capitaliseWordE :: Action
-capitaliseWordE = do
-        (w,_,_) <- readWordE
-        killWordE
-        mapM_ insertE (toUpper (head w) : tail w)
+capitaliseWordE = withPointE $ do
+        (_,i,j) <- readWordE
+        gotoPointE i
+        mapRangeE i (i+1) toUpper
+
+-- perform an action, and return to the current point
+withPointE :: Action -> Action
+withPointE f = do p <- getPointE
+                  f
+                  gotoPointE p
+
+------------------------------------------------------------------------
 
 -- Internal, for readWordE, not threadsafe
 readWord_ :: Window -> Buffer' -> IO (String,Int,Int)
