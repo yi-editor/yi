@@ -793,7 +793,8 @@ bufInfoE = withWindow $ \w b -> do
 fileNameE :: IO FilePath
 fileNameE = withWindow $ \w b -> return (w, nameB b)
 
--- | edit the next buffer in the buffer list
+-- | Close the current window, attach the next buffer in the buffer list
+-- to a new window, and open it up
 nextBufW :: Action
 nextBufW = do
     w <- getWindow
@@ -813,6 +814,10 @@ prevBufW = do
 -- | If file exists, read contents of file into a new buffer, otherwise
 -- creating a new empty buffer. Replace the current window with a new
 -- window onto the new buffer.
+--
+-- Need to clean up semantics for when buffers exist, and how to attach
+-- windows to buffers.
+--
 fnewE  :: FilePath -> Action
 fnewE f = do
     e  <- doesFileExist f
