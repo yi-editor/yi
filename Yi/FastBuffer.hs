@@ -55,6 +55,10 @@ import Foreign.Storable         ( poke )
 --
 -- In the concurrent world, buffers are locked during use.
 --
+-- Todo, should be able to associate a name, and a file with a buffer,
+-- and not merge  the name and file into one value. For, e.g. scratch
+-- and popup buffers
+--
 
 data FBuffer = 
         FBuffer !FilePath        -- immutable name
