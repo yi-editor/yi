@@ -224,6 +224,7 @@ resetParams = do
     echo False          -- don't echo to the screen
     nl True             -- always translate enter to \n
     leaveOk False       -- not ok to leave cursor wherever it is
+    c_meta stdScr 1       -- ask for 8 bit chars, so we can get Meta
     keypad stdScr True  -- enable the keypad, so things like ^L (refresh) work
     return ()
 
