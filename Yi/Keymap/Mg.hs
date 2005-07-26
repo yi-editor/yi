@@ -341,7 +341,7 @@ globalTable = [
         msgE "Quit" >> metaM defaultKeymap),
   ("kill-buffer",               
         [[c_ 'x', 'k']],
-        closeE),
+        msgE "Kill buffer: " >> cmdlineFocusE >> metaM killBufferMap),
   ("kill-line",                 
         [[c_ 'k']],
         readRestOfLnE >>= setRegE >> killE),
@@ -353,7 +353,7 @@ globalTable = [
         killWordE),
   ("list-buffers",              
         [[c_ 'x', c_ 'b']],
-        errorE "list-buffers unimplemented"),
+        mgListBuffers),
   ("negative-argument",         
         [[m_ '-']],
         errorE "negative-argument unimplemented"),
@@ -703,6 +703,26 @@ writeFileEval = enter
            ,MgState [] [], Just mode )
 
 -- ---------------------------------------------------------------------
+-- Killing a buffer by name
+killBufferMap :: [Char] -> [Action]
+killBufferMap = mkKeymap killBufferMode killBufferState
+
+killBufferState :: MgState
+killBufferState = mkPromptState "Kill buffer: "
+
+killBufferMode :: MgMode
+killBufferMode = (editInsert killBufferMode) >||< 
+                 (editDelete killBufferMode) >||< 
+                 editEscape >||< killBufferEval
+
+killBufferEval :: MgMode
+killBufferEval = enter
+        `meta` \_ MgState{acc=cca} ->
+        let buf = reverse cca
+        in (with (closeBufferE buf >> cmdlineUnFocusE)
+           ,MgState [] [], Just mode )
+
+-- ---------------------------------------------------------------------
 -- Goto a line
 --
 gotoMap  :: [Char] -> [Action]
@@ -784,6 +804,13 @@ describeBindings = newBufferE "*help*" s
                     in p ++ replicate (17 - length p) ' ' ++ ex 
                   | (ex,ks,_) <- globalTable
                   , k         <- ks ]
+
+mgListBuffers :: Action
+mgListBuffers = do
+        bs  <- listBuffersE
+        newBufferE "*Buffer List*" (f bs)
+    where 
+        f bs = unlines [ "  "++(show i)++"\t"++(show n) | (n,i) <- bs ]
 
 -- save a file in the style of Mg
 mgWrite :: Action

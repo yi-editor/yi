@@ -25,22 +25,24 @@
 
 module Yi.Editor where
 
-import Yi.Buffer                ( Buffer(newB, keyB, hNewB {-, finaliseB-}) )
+import Yi.Buffer                ( Buffer(newB, keyB, hNewB, finaliseB, nameB) )
 import Yi.FastBuffer
 import Yi.Regex                 ( Regex )
 import Yi.Window
 import Yi.Style                 ( ui, UIStyle )
-import Yi.Map as M hiding       ( null )
+import Yi.Map as M hiding       ( null, filter )
 
 import Data.List                ( elemIndex )
 import Data.IORef               ( newIORef, readIORef, writeIORef, IORef )
 import Data.Unique              ( Unique )
+import Data.Dynamic
 import System.IO.Unsafe         ( unsafePerformIO )
-import Control.Monad            ( liftM )
+import Control.Monad            ( liftM, foldM )
 import Control.Concurrent       ( killThread, ThreadId )
 import Control.Concurrent.Chan  ( Chan )
 import Control.Concurrent.MVar
-import Data.Dynamic
+
+import Debug.Trace
 
 --
 -- | The editor state, manipulated by Core instructions.
@@ -229,6 +231,10 @@ findBufferWith e k =
         Just b  -> b
         Nothing -> error "Editor.findBufferWith: no buffer has this key"
 
+-- | Find buffer with this name
+findBufferWithName :: Editor -> String -> [Buffer']
+findBufferWithName e n = filter (\b -> nameB b == n) (M.elems $ buffers e)
+
 -- 
 -- | Find the buffer connected to this window
 --
@@ -346,26 +352,40 @@ getWinWithHeight wls i n p
 deleteThisWindow :: IO ()
 deleteThisWindow = getWindow >>= deleteWindow
 
+killAllBuffers :: IO ()
+killAllBuffers = undefined
+
+-- close any windows onto the buffer associated with name 'n', then free the buffer
+killBuffer :: String -> IO ()
+killBuffer n = modifyEditor_ $ \e -> do
+    case findBufferWithName e n of
+        []  -> return e     -- no buffer to kill, so nothing to do
+        [b] -> do
+            let thiskey = keyB b
+                wls     = M.elems . windows $ e
+                bsWin   = filter (\w -> bufkey w == thiskey) wls
+
+            e' <- foldM deleteWindow' e bsWin -- now close any windows onto this buffer
+            finaliseB b                   -- now free the buffer
+            return $ e' { buffers = M.delete thiskey (buffers e) }
+
+        _ -> error "more than one buffer has this name!"
+
 --
 -- | Delete a window. Note that the buffer that was connected to this
 -- window is still open.
 --
 deleteWindow :: (Maybe Window) -> IO ()
-deleteWindow Nothing  = return ()
-deleteWindow (Just win) = modifyEditor_ $ \e -> do
+deleteWindow Nothing    = return ()
+deleteWindow (Just win) = modifyEditor_ $ \e -> deleteWindow' e win
+
+-- internal, non-thread safe
+deleteWindow' :: Editor -> Window -> IO Editor
+deleteWindow' e win = do
     let ws    = M.delete (key win) (windows e) -- delete window
---      oldkey= bufkey win
         wls   = M.elems ws
         x     = snd $ scrsize e
         (y,r) = getY ((fst $ scrsize e) - 1) (length wls) -- why -1?
-
-    -- find any windows onto the same buffer, if none, delete this buffer
---  e' <- case find (\w -> bufkey w == oldkey) wls of
---      Just _  -> return e
---      Nothing -> do
---          let b = findBufferWith e oldkey
---          finaliseB b
---          return $ e { buffers = M.delete oldkey (buffers e) }
 
     wls' <- resizeAll e wls y x -- now resize
 
@@ -378,6 +398,8 @@ deleteWindow (Just win) = modifyEditor_ $ \e -> do
             let win''' = if xs == [] then win'' { mode = Nothing } else win''
             let e' = e { windows = M.insert (key win''') win''' fm }
             setWindow' e' win'''
+
+------------------------------------------------------------------------
 
 -- | Update height of windows in window set
 resizeAll :: Editor -> [Window] -> Int -> Int -> IO [Window]

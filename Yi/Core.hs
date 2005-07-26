@@ -76,6 +76,7 @@ module Yi.Core (
         prevBufW,       -- :: Action
         newBufferE,     -- :: String -> String -> Action
         listBuffersE,   -- :: Action
+        closeBufferE,   -- :: String -> Action
         isUnchangedE,   -- :: IO Bool
         setUnchangedE,  -- :: Action
 
@@ -854,11 +855,16 @@ fwriteAllE = undefined
 backupE :: FilePath -> Action
 backupE = undefined
 
--- | List all buffers (in a popup window)
-listBuffersE :: Action
-listBuffersE = undefined
+-- | Return a list of all buffers, and their indicies
+listBuffersE :: IO [(String,Int)]
+listBuffersE = do
+        bs  <- getBuffers
+        return $ zip (map nameB bs) [0..]
 
--- closeBufferE ?
+-- | Release resources associated with buffer, close any windows open
+-- onto buffer.
+closeBufferE :: String -> Action
+closeBufferE f = killBuffer f
 
 ------------------------------------------------------------------------
 
