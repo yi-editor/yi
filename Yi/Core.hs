@@ -531,6 +531,8 @@ writeE c = withWindow_ $ \w b -> do
             return w
 
 -- | Transpose two characters, (the Emacs C-t action)
+-- Note that mg and emacs only work on the current line, whereas this
+-- transpose will operate over the entire buffer if required.
 swapE :: Action
 swapE = do c <- readE
            deleteE

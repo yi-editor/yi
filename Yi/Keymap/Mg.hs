@@ -32,16 +32,17 @@ import Data.Char            ( ord, chr, isSpace )
 import Data.List            ((\\), isPrefixOf)
 import Control.Exception    ( try, evaluate )
 
+------------------------------------------------------------------------
 -- 
 -- MG(1)                      OpenBSD Reference Manual                      MG(1)
 -- 
--- NNAAMMEE
+-- NAME
 --      mg - emacs-like text editor
 -- 
--- SSYYNNOOPPSSIISS
---      mg [_o_p_t_i_o_n_s] [_f_i_l_e _._._.]
+-- SYNOPSIS
+--      mg [options] [file ...]
 -- 
--- DDEESSCCRRIIPPTTIIOONN
+-- DESCRIPTION
 --      mg is intended to be a small, fast, and portable editor for people who
 --      can't (or don't want to) run the real emacs for one reason or another, or
 --      are not familiar with the vi(1) editor.  It is compatible with emacs be-
@@ -50,18 +51,18 @@ import Control.Exception    ( try, evaluate )
 -- 
 --      The options are as follows:
 -- 
---      _+_n_u_m_b_e_r
+--      +number
 --              Go to the line specified by number (do not insert a space between
 --              the "+" sign and the number).  If a negative number is specified,
 --              the line number counts backwards from the end of the file i.e.
 --              +-1 will be the last line of the file, +-2 will be second last,
 --              and so on.
 -- 
---      --ff _<_m_o_d_e_>
+--      -f <mode>
 --              Run the mode command for all buffers created from arguments on
 --              the command line, including the scratch buffer and all files.
 -- 
---      --nn      Turn off backup file generation.
+--      -n      Turn off backup file generation.
 -- 
 --      Normal editing commands are very similar to Gnu Emacs.  In the following
 --      examples, ^X means control-X, and M-X means Meta-X, where the Meta key
@@ -112,9 +113,9 @@ import Control.Exception    ( try, evaluate )
 --      done using the spacebar and `?', respectively.
 -- 
 --      Amongst other major differences, the mg configuration files are much sim-
---      pler than real emacs.  There are two configuration files, _._m_g, and _._m_g_-
---      _T_E_R_M.  Here, TERM represents the name of your terminal type; e.g., if
---      your terminal type is set to ``vt100'', mg will use _._m_g_-_v_t_1_0_0 as a start-
+--      pler than real emacs.  There are two configuration files, .mg, and .mg-
+--      TERM.  Here, TERM represents the name of your terminal type; e.g., if
+--      your terminal type is set to ``vt100'', mg will use .mg-vt100 as a start-
 --      up file.  The terminal type startup file is used first.  See the manual
 --      for a full list of the commands that can go in the files.
 -- 
@@ -136,14 +137,14 @@ import Control.Exception    ( try, evaluate )
 --            global-set-key "\ez" scroll-one-line-down
 --            global-set-key "\^_" suspend-emacs
 -- 
--- FFIILLEESS
+-- FILES
 --      ~/.mg       normal startup file
 --      ~/.mg-TERM  terminal-specific startup file
 -- 
--- SSEEEE AALLSSOO
+-- SEE ALSO
 --      vi(1)
 -- 
--- BBUUGGSS
+-- BUGS
 --      When you type `?' to list possible file names, buffer names, etc., a help
 --      buffer is created for the possibilities.  In Gnu Emacs, this buffer goes
 --      away the next time you type a real command.  In mg, you must use "^X-1"
@@ -154,7 +155,6 @@ import Control.Exception    ( try, evaluate )
 --      stop and inform the user for one undo keystroke before continuing.
 -- 
 -- OpenBSD 3.7                    February 25, 2000                             2
---
 
 ------------------------------------------------------------------------
 
@@ -364,7 +364,7 @@ globalTable = [
         [],
         errorE "newline-and-indent unimplemented"),
   ("next-line",                 
-        [[c_ 'n'], [m_ 'O', 'B'], [keyDown]],
+        [[c_ 'n'], [m_ 'O', 'B'], [keyDown]], -- doesn't remember goal column
         downE),
   ("not-modified",              
         [[m_ '~']],
@@ -395,7 +395,7 @@ globalTable = [
         mgWrite),
   ("save-buffers-kill-emacs",   
         [[c_ 'x', c_ 'c']],
-        quitE),
+        quitE), -- should ask to save buffers
   ("save-some-buffers",         
         [[c_ 'x', 's']],
         errorE "save-some-buffers unimplemented"),
@@ -458,8 +458,7 @@ globalTable = [
         msgE "Write file: " >> cmdlineFocusE >> metaM writeFileMap),
   ("yank",                      
         [[c_ 'y']],
-        errorE "yank unimplemented")
-  ]
+        getRegE >>= mapM_ insertE) ]
 
 ------------------------------------------------------------------------
 
@@ -739,18 +738,31 @@ insertAnyMode = alt ['\0' .. '\255']
 ------------------------------------------------------------------------
 -- translate a string into the emacs encoding of that string
 --
-printable :: String->String
+printable :: String -> String
 printable = dropSpace . printable'
     where 
         printable' ('\ESC':a:ta) = "M-" ++ [a] ++ printable' ta
         printable' ('\ESC':ta) = "ESC " ++ printable' ta
         printable' (a:ta) 
-                | ord a < 32 
+                | ord a < 32
                 = "C-" ++ [chr (ord a + 96)] ++ " " ++ printable' ta
                 | isMeta a
-                = "M-" ++ [clrMeta a] ++ " " ++ printable' ta
+                = "M-" ++ printable' (clrMeta a:ta)
+                | ord a >= 127
+                = bigChar a ++ " " ++ printable' ta 
                 | otherwise  = [a, ' '] ++ printable' ta
+                
         printable' [] = []
+
+        bigChar c 
+                | c == keyDown  = "<down"
+                | c == keyUp    = "<up>"
+                | c == keyLeft  = "<left>"
+                | c == keyRight = "<right>"
+                | c == keyNPage = "<pagedown>"
+                | c == keyPPage = "<pageup>"
+                | c == '\127'   = "<delete>"
+                | otherwise     = show c
 
 ------------------------------------------------------------------------
 -- Mg-specific actions
@@ -768,16 +780,15 @@ whatCursorPos = do
 describeBindings :: Action
 describeBindings = newBufferE "*help*" s
     where
-      s = unlines [ printable k ++ "\t\t" ++ ex 
+      s = unlines [ let p = printable k 
+                    in p ++ replicate (17 - length p) ' ' ++ ex 
                   | (ex,ks,_) <- globalTable
                   , k         <- ks ]
 
-------------------------------------------------------------------------
 -- save a file in the style of Mg
-
 mgWrite :: Action
 mgWrite = do
-        u <- isUnchangedE     
+        u <- isUnchangedE      -- just  the current buffer
         if u then msgE "(No changes need to be saved)"
              else do fwriteE
                      f <- fileNameE
