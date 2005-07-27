@@ -18,9 +18,7 @@
 -- 
 
 --
--- | The editor state. This is the machine that Core instructions
--- manipulate.  The editor manages buffers. One buffer is always in
--- focus.
+-- | The top level editor state, and operations on it.
 --
 
 module Yi.Editor where
@@ -42,85 +40,33 @@ import Control.Concurrent       ( killThread, ThreadId )
 import Control.Concurrent.Chan  ( Chan )
 import Control.Concurrent.MVar
 
---
--- | The editor state, manipulated by Core instructions.
--- The editor stores all the buffers, which correspond to opened files.
--- Windows are views (or port holes) on to buffers, and multiple windows
--- may be opened onto the one buffer. A distinguished /window/ is stored
--- explicitly: the command line.
---
--- Some instructions manipulate buffers, and some just manipulate
--- windows (e.g. scrolling and splitting).
---
--- The order windows are displayed on the screen is encoded in their
--- order in the @windows@ list.
---
--- TODO Windows should be MVar'd as well.
---
--- TODO the command line is a vi\/emacs specific concept.
---
+------------------------------------------------------------------------
 
-data Buffer a => GenEditor a = 
-    Editor {
-        buffers   :: !(M.Map Unique a)          -- ^ all the buffers
-       ,windows   :: !(M.Map Unique Window)     -- ^ all the windows
+--
+-- | The Editor state
+--
+data Editor = Editor {
+        buffers         :: !(M.Map Unique FBuffer)    -- ^ all the buffers
+       ,windows         :: !(M.Map Unique Window)     -- ^ all the windows
 
-       ,cmdline   :: !String                    -- ^ the command line
-       ,cmdlinefocus :: !Bool                   -- ^ cmdline has focus
-       ,windowfill :: !Char                     -- ^ char to fill empty window space with
+       ,curwin          :: !(Maybe Unique)            -- ^ the window with focus
+       ,curkeymap       :: [Char] -> [Action]         -- ^ user-configurable keymap
+       ,scrsize         :: !(Int,Int)                 -- ^ screen size
+       ,uistyle         :: !UIStyle                   -- ^ ui colours
+       ,input           :: Chan Char                  -- ^ input stream
+       ,threads         :: [ThreadId]                 -- ^ all our threads
+       ,reboot          :: (Maybe Editor) -> IO ()    -- ^ our reboot function
+       ,reload          :: IO (Maybe Config)          -- ^ reload config function
+       ,dynamic         :: !(M.Map String Dynamic)    -- ^ dynamic components 
 
+       ,cmdline         :: !String                    -- ^ the command line
+       ,cmdlinefocus    :: !Bool                   -- ^ cmdline has focus
+       ,windowfill      :: !Char                     -- ^ char to fill empty window space with
+
+       ,yreg            :: !String                    -- ^ yank register
+       ,regex           :: !(Maybe (String,Regex))    -- ^ most recent regex
        -- should be moved into dynamic component, perhaps
-       ,yreg      :: !String                    -- ^ yank register
-       ,regex     :: !(Maybe (String,Regex))    -- ^ most recent regex
-
-       ,curwin    :: !(Maybe Unique)            -- ^ the window with focus
-       ,curkeymap :: [Char] -> [Action]         -- ^ user-configurable keymap
-       ,scrsize   :: !(Int,Int)                 -- ^ screen size
-       ,uistyle   :: !UIStyle                   -- ^ ui colours
-       ,input     :: Chan Char                  -- ^ input stream
-       ,threads   :: [ThreadId]                 -- ^ all our threads
-       ,reboot    :: (Maybe Editor) -> IO ()    -- ^ our reboot function
-       ,reload    :: IO (Maybe Config)          -- ^ reload config function
-       ,dynamic   :: !(M.Map String Dynamic)    -- ^ dynamic components 
-
-       -- replace String with TypeRep as feasible
-
     }
-
---
--- Instantiate the editor with a basic buffer type
---
-type Buffer' = FBuffer
-type Editor  = GenEditor Buffer'
-
--- ---------------------------------------------------------------------
--- | Class of values that can go in the extensible state component
---
-class Typeable a => Initializable a where
-    initial :: IO a
-
--- ---------------------------------------------------------------------
---
--- | The actual editor state
---
--- TODO get rid of big lock on state (buffers themselves are locked)
--- We'd have to lock individual components of the state, however...
---
--- ToDo abolish this, in favour of a state monad.
---
--- state :: Buffer a => MVar (IORef (GenEditor a))
-state :: MVar (IORef Editor)
-state = unsafePerformIO $ do
-            ref  <- newIORef emptyEditor
-            newMVar ref
-{-# NOINLINE state #-}
-
---
--- The ui needs to know if that state has changed
---
-editorModified :: MVar ()
-editorModified = unsafePerformIO $ newMVar ()
-{-# NOINLINE editorModified #-}
 
 --
 -- | The initial state
@@ -145,17 +91,30 @@ emptyEditor = Editor {
        ,dynamic      = M.empty
     }
 
+-- ---------------------------------------------------------------------
+-- | The actual editor state
+--
+state :: MVar (IORef Editor)
+state = unsafePerformIO $ do
+            ref  <- newIORef emptyEditor
+            newMVar ref
+{-# NOINLINE state #-}
+
+--
+-- Set when redrawable components of the state are modified. The ui
+-- thread waits on this.
+--
+editorModified :: MVar ()
+editorModified = unsafePerformIO $ newMVar ()
+{-# NOINLINE editorModified #-}
+
+-- ---------------------------------------------------------------------
+
 -- 
 -- | Read the editor state, with a pure action
 -- 
 readEditor :: (Editor -> b) -> IO b
 readEditor f = withMVar state $ \ref -> return . f =<< readIORef ref
-
---
--- Get state
---
-getEditor :: IO Editor
-getEditor = withMVar state $ \ref -> readIORef ref
 
 --
 -- | Read the editor state, with an IO action
@@ -191,7 +150,7 @@ modifyEditor f = do
 --
 -- | Create a new buffer filling with contents of file.
 --
-hNewBuffer :: FilePath -> IO Buffer'
+hNewBuffer :: FilePath -> IO FBuffer
 hNewBuffer f = 
     modifyEditor $ \e@(Editor{buffers=bs}) -> do
         b <- hNewB f
@@ -201,20 +160,21 @@ hNewBuffer f =
 --
 -- | Create and fill a new buffer, using contents of string.
 --
-stringToNewBuffer :: FilePath -> String -> IO Buffer'
+stringToNewBuffer :: FilePath -> String -> IO FBuffer
 stringToNewBuffer f cs =
     modifyEditor $ \e@(Editor{buffers=bs}) -> do
         b <- newB f cs
         let e' = e { buffers = M.insert (keyB b) b bs } :: Editor
         return (e', b)
 
+------------------------------------------------------------------------
 --
 -- | return the buffers we have
 -- TODO we need to order the buffers some how.
 --
 -- getBuffers :: Buffer a => IO [a]
 --
-getBuffers :: IO [Buffer']
+getBuffers :: IO [FBuffer]
 getBuffers = readEditor $ M.elems . buffers
 
 --
@@ -226,43 +186,45 @@ sizeBuffers = readEditor $ \e -> M.size (buffers (e :: Editor))
 --
 -- | Find buffer with this key
 -- 
-findBufferWith :: Editor -> Unique -> Buffer'
+findBufferWith :: Editor -> Unique -> FBuffer
 findBufferWith e k = 
     case M.lookup k (buffers e) of
         Just b  -> b
         Nothing -> error "Editor.findBufferWith: no buffer has this key"
 
 -- | Find buffer with this name
-findBufferWithName :: Editor -> String -> [Buffer']
+findBufferWithName :: Editor -> String -> [FBuffer]
 findBufferWithName e n = filter (\b -> nameB b == n) (M.elems $ buffers e)
 
 -- 
 -- | Find the buffer connected to this window
 --
-win2buf :: Window -> Editor -> Buffer'
+win2buf :: Window -> Editor -> FBuffer
 win2buf w e = findBufferWith e (bufkey w)
 
 --
 -- | Safely lookup buffer using it's key.
 --
-getBufferWith :: Unique -> IO Buffer'
+getBufferWith :: Unique -> IO FBuffer
 getBufferWith u = readEditor $ \e -> findBufferWith (e :: Editor) u
 
+------------------------------------------------------------------------
+
 -- | Return the next buffer
-nextBuffer :: IO Buffer'
+nextBuffer :: IO FBuffer
 nextBuffer = shiftBuffer (+1)
 
 -- | Return the prev buffer
-prevBuffer :: IO Buffer'
+prevBuffer :: IO FBuffer
 prevBuffer = shiftBuffer (subtract 1)
 
 -- | Return the nth buffer in the buffer list, module buffer count
-bufferAt :: Int -> IO Buffer'
+bufferAt :: Int -> IO FBuffer
 bufferAt n = shiftBuffer (const n)
 
 -- | Return the buffer using a function applied to the current window's
 -- buffer's index.
-shiftBuffer :: (Int -> Int) -> IO Buffer'
+shiftBuffer :: (Int -> Int) -> IO FBuffer
 shiftBuffer f = readEditor $ \e ->
     let bs  = M.elems $ buffers (e :: Editor)
         win = findWindowWith e (curwin e)
@@ -278,7 +240,7 @@ shiftBuffer f = readEditor $ \e ->
 -- Top of screen of other windows needs to get adjusted
 -- As does their modeslines.
 --
-newWindow :: Buffer' -> IO Window
+newWindow :: FBuffer -> IO Window
 newWindow b = modifyEditor $ \e -> do
     let (h,w) = scrsize e
         wls   = M.elems $ windows e
@@ -291,6 +253,7 @@ newWindow b = modifyEditor $ \e -> do
     return (e', win')
 
 -- ---------------------------------------------------------------------
+-- TODO Should probably be in the Window code
 -- | Grow the given window, and pick another to shrink
 -- grow and shrink compliment each other, they could be refactored.
 --
@@ -512,7 +475,7 @@ findWindowWith e (Just k) =
 --
 -- | Perform action with current window
 --
-withWindow_ :: (Window -> Buffer' -> IO Window) -> IO ()
+withWindow_ :: (Window -> FBuffer -> IO Window) -> IO ()
 withWindow_ f = modifyEditor_ $ \e -> do
         let w = findWindowWith e (curwin e)
             b = findBufferWith e (bufkey w)
@@ -526,7 +489,7 @@ withWindow_ f = modifyEditor_ $ \e -> do
 --
 -- | Variation on withWindow_ that can return a value
 --
-withWindow :: (Window -> Buffer' -> IO (Window,b)) -> IO b
+withWindow :: (Window -> FBuffer -> IO (Window,b)) -> IO b
 withWindow f = modifyEditor $ \e -> do
         let w = findWindowWith e (curwin e)
             b = findBufferWith e (bufkey w)
@@ -613,3 +576,9 @@ data Config = Config {
 -- | The type of user-bindable functions
 --
 type Action = IO ()
+
+-- ---------------------------------------------------------------------
+-- | Class of values that can go in the extensible state component
+--
+class Typeable a => Initializable a where
+    initial :: IO a

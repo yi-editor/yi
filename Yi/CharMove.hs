@@ -71,6 +71,7 @@ module Yi.CharMove (
     ) where
 
 import Yi.Buffer
+import Yi.FastBuffer    (FBuffer)
 import Yi.Core
 import Yi.Editor
 import Yi.Window
@@ -255,7 +256,7 @@ moveWhileE f d = do withWindow_ (moveWhile_ f d)
 moveWhile_ :: (Char -> Bool)
            -> Direction
            -> Window
-           -> Buffer'
+           -> FBuffer
            -> IO Window
 
 moveWhile_ f dir w b = do
@@ -278,7 +279,7 @@ readWordLeftE :: IO (String,Int,Int)
 readWordLeftE = withWindow $ \w b -> readWordLeft_ w b >>= \s -> return (w,s)
 
 -- Core-internal worker, not threadsafe.
-readWordLeft_ :: Window -> Buffer' -> IO (String,Int,Int)
+readWordLeft_ :: Window -> FBuffer -> IO (String,Int,Int)
 readWordLeft_ w b = do
     p <- pointB b
     c <- readB b 
@@ -328,7 +329,7 @@ withPointE f = do p <- getPointE
 ------------------------------------------------------------------------
 
 -- Internal, for readWordE, not threadsafe
-readWord_ :: Window -> Buffer' -> IO (String,Int,Int)
+readWord_ :: Window -> FBuffer -> IO (String,Int,Int)
 readWord_ w b = do
     p <- pointB b
     c <- readB b 
@@ -381,7 +382,7 @@ wordCompleteE = do
     --
     -- work out where to start our next search
     --
-    loop :: Window -> Buffer' -> (Maybe Completion) -> IO (Maybe Completion)
+    loop :: Window -> FBuffer -> (Maybe Completion) -> IO (Maybe Completion)
     loop win buf (Just (w,fm,n)) = do
             p  <- pointB buf
             moveTo buf (n+1)        -- start where we left off
@@ -395,7 +396,7 @@ wordCompleteE = do
     --
     -- actually do the search, and analyse the result
     --
-    doloop :: Int -> Window -> Buffer' -> (String,M.Map String ()) 
+    doloop :: Int -> Window -> FBuffer -> (String,M.Map String ()) 
            -> IO (Maybe Completion)
 
     doloop p win buf (w,fm) = do
@@ -420,7 +421,7 @@ wordCompleteE = do
     --
     -- replace word under cursor with @s@
     --
-    replaceLeftWith :: Window -> Buffer' -> String -> IO ()
+    replaceLeftWith :: Window -> FBuffer -> String -> IO ()
     replaceLeftWith win buf s = do
         (_,b,a) <- readWordLeft_ win buf     -- back at start
         moveTo buf b
@@ -431,7 +432,7 @@ wordCompleteE = do
     -- Return next match, and index of that match (to be used for later searches)
     -- Leaves the cursor at the next word.
     --
-    nextWordMatch :: Window -> Buffer' -> String -> IO (Maybe (String,Int))
+    nextWordMatch :: Window -> FBuffer -> String -> IO (Maybe (String,Int))
     nextWordMatch win b w = do
         let re = ("( |\t|\n|\r|^)"++w)
         re_c <- regcomp re regExtended

@@ -302,7 +302,7 @@ quitE = exitWith ExitSuccess -- throws to top level
 rebootE :: Action
 rebootE = do
     cmdlineUnFocusE     -- return focus to buffer (seems natural)
-    e  <- getEditor
+    e  <- readEditor id
     fn <- readEditor reboot
     Editor.shutdown
 --  UI.end
