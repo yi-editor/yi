@@ -64,8 +64,10 @@ module Yi.CharMove (
         bkillWordE,     -- :: Action
 
         capitaliseWordE, -- :: Action
-        uppercaseWordE, -- :: Action
-        lowercaseWordE -- :: Action
+        uppercaseWordE,  -- :: Action
+        lowercaseWordE,  -- :: Action
+
+        dropSpace,      -- :: String -> String
     ) where
 
 import Yi.Buffer
@@ -443,3 +445,8 @@ wordCompleteE = do
                 (s,_,_) <- readWord_ win b
                 assert (s /= [] && i /= j) $ return $ Just (s,i')
 
+------------------------------------------------------------------------
+
+-- utility, drop spaces
+dropSpace :: [Char] -> [Char]
+dropSpace = let f = reverse . dropWhile isSpace in f . f
