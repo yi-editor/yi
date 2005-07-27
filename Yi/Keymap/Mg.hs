@@ -804,11 +804,16 @@ describeBindings = newBufferE "*help*" s
                   | (ex,ks,_) <- globalTable
                   , k         <- ks ]
 
+-- bit of a hack, unfortunately
 mgListBuffers :: Action
 mgListBuffers = do
-        bs  <- listBuffersE
-        newBufferE "*Buffer List*" (f bs)
+        closeBufferE name   -- close any previous buffer list buffer
+        newBufferE name []  -- new empty one
+        bs  <- listBuffersE -- get current list
+        closeBufferE name   -- close temporary one
+        newBufferE name (f bs) -- and finally display current one
     where 
+        name = "*Buffer List*"
         f bs = unlines [ "  "++(show i)++"\t"++(show n) | (n,i) <- bs ]
 
 -- save a file in the style of Mg
