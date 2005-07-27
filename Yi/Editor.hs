@@ -475,6 +475,11 @@ getWindowIndOf e = case curwin e of
 setWindow :: Window -> IO ()
 setWindow w = modifyEditor_ $ \e -> (setWindow' e w :: IO Editor)
 
+-- | Set current window to window with this key
+-- Maybe should check this is a valid window
+setWindowToThisWindow :: Window -> IO ()
+setWindowToThisWindow w = modifyEditor_ $ \e -> setWindow' e w
+
 --
 -- | Internal function to update window on focus or creation.
 --

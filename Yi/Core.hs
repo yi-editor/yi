@@ -54,6 +54,7 @@ module Yi.Core (
         -- * Window manipulation
         nextWinE,       -- :: Action
         prevWinE,       -- :: Action
+        setWinE,        -- :: Window -> Action
         closeE,         -- :: Action
         closeOtherE,    -- :: Action
         splitE,         -- :: Action
@@ -124,6 +125,8 @@ module Yi.Core (
         readLnE,        -- :: IO String
         readNM,         -- :: Int -> Int -> IO String
         readRestOfLnE,  -- :: IO String
+        readAllE,       -- :: IO String
+
         swapE,          -- :: Action
 
         -- * Basic registers
@@ -514,6 +517,13 @@ readLnE = withWindow $ \w b -> do
 readNM :: Int -> Int -> IO String
 readNM i j = withWindow $ \w b -> nelemsB b (j-i) i >>= \s -> return (w,s)
 
+-- | Return the contents of the buffer as a string (note that this will
+-- be very expensive on large (multi-megabyte) buffers)
+readAllE :: IO String
+readAllE = withWindow $ \w b -> do
+        s <- elemsB b
+        return (w,s)
+
 -- | Read from point to end of line
 readRestOfLnE :: IO String
 readRestOfLnE = withWindow $ \w b -> do
@@ -888,6 +898,10 @@ nextWinE = Editor.nextWindow
 -- | Make the previous window (up the screen) the current window
 prevWinE :: Action
 prevWinE = Editor.prevWindow
+
+-- | Make window with key @k@ the current window
+setWinE :: Window -> Action
+setWinE = Editor.setWindowToThisWindow
 
 -- | Split the current window, opening a second window onto this buffer.
 -- Windows smaller than 3 lines cannot be split.
