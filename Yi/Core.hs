@@ -138,6 +138,10 @@ module Yi.Core (
         setRegexE,      -- :: SearchExp -> Action
         getRegexE,      -- :: IO (Maybe SearchExp)
 
+        -- * Marks
+        setMarkE,        
+        getMarkE,       
+        exchangePointAndMarkE,
 
         -- * Dynamically extensible state
         getDynamic,
@@ -574,6 +578,26 @@ setRegE s = modifyEditor_ $ \e -> return e { yreg = s }
 -- | Return the contents of the yank register
 getRegE :: IO String
 getRegE = readEditor yreg
+
+
+-- ----------------------------------------------------
+-- | Marks
+
+-- | Set the current buffer mark
+setMarkE :: Int -> Action
+setMarkE pos = withWindow_ $ \w b -> (setMarkB b pos >> return w)
+
+-- | Get the current buffer mark
+getMarkE :: IO Int
+getMarkE = withWindow $ \w b -> do pos <- getMarkB b
+                                   return (w, pos)
+-- | Exchange point & mark.
+-- Maybe this is better put in Emacs/Mg common file
+exchangePointAndMarkE :: Action
+exchangePointAndMarkE = do m <- getMarkE
+                           p <- getPointE
+                           setMarkE p
+                           gotoPointE m
 
 -- ---------------------------------------------------------------------
 -- | Dynamically-extensible state components.
