@@ -67,6 +67,7 @@ data Buffer a => GenEditor a =
 
        ,cmdline   :: !String                    -- ^ the command line
        ,cmdlinefocus :: !Bool                   -- ^ cmdline has focus
+       ,windowfill :: !Char                     -- ^ char to fill empty window space with
 
        -- should be moved into dynamic component, perhaps
        ,yreg      :: !String                    -- ^ yank register
@@ -130,6 +131,7 @@ emptyEditor = Editor {
        ,windows      = M.empty
        ,cmdline      = []
        ,cmdlinefocus = False
+       ,windowfill   = ' '
        ,yreg         = []
        ,regex        = Nothing
        ,curwin       = Nothing

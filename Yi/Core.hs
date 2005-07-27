@@ -51,6 +51,7 @@ module Yi.Core (
         bufInfoE,       -- :: IO (FilePath,Int,Int,Int,Int,String)
         fileNameE,      -- :: IO (Maybe FilePath)
         bufNameE,       -- :: IO String
+        setWindowFillE, -- :: Char -> Action
 
         -- * Window manipulation
         nextWinE,       -- :: Action
@@ -65,6 +66,7 @@ module Yi.Core (
         -- * Switching to the command line
         cmdlineFocusE,  -- :: Action
         cmdlineUnFocusE,-- :: Action
+
 
         -- * File-based actions
         fnewE,          -- :: FilePath -> Action
@@ -810,6 +812,11 @@ fileNameE = withWindow $ \w b -> getfileB b >>= \f -> return (w, f)
 -- | Name of this buffer
 bufNameE :: IO String
 bufNameE = withWindow $ \w b -> return (w, nameB b)
+
+-- | A character to fill blank lines in windows with. Usually '~' for
+-- vi-like editors, ' ' for everything else
+setWindowFillE :: Char -> Action
+setWindowFillE c = modifyEditor_ $ \e -> return $ e { windowfill = c }
 
 -- | Close the current window, attach the next buffer in the buffer list
 -- to a new window, and open it up

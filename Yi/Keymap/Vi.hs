@@ -66,7 +66,7 @@ data ViState =
 --    . also, maybe we shouldn't refresh automatically?
 --
 keymap :: [Char] -> [Action]
-keymap cs = actions
+keymap cs = setWindowFillE '~' : actions
     where 
         (actions,_,_) = execLexer cmd_mode (cs, defaultSt)
 
