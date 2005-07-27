@@ -137,7 +137,7 @@ normalKlist = [ ([c], liftC $ insertSelf) | c <- printableChars ] ++
         ("C-x o",    liftC $ nextWinE),
         ("C-x k",    liftC $ closeE),
         ("C-x r k",  liftC $ msgE "killRect"),
- -      ("C-x u",    liftC $ repeatingArg undoE), 
+        ("C-x u",    liftC $ repeatingArg undoE), 
         ("C-x v",    liftC $ repeatingArg shrinkWinE),
 --      ("C-y",      yankC),
         ("M-<",      liftC $ repeatingArg topE),

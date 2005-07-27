@@ -313,7 +313,7 @@ lowercaseWordE = withPointE $ do
 -- | capitalise the first letter of this word
 capitaliseWordE :: Action
 capitaliseWordE = withPointE $ do
-        (_,i,j) <- readWordE
+        (_,i,_) <- readWordE
         gotoPointE i
         mapRangeE i (i+1) toUpper
 

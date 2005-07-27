@@ -42,8 +42,6 @@ import Control.Concurrent       ( killThread, ThreadId )
 import Control.Concurrent.Chan  ( Chan )
 import Control.Concurrent.MVar
 
-import Debug.Trace
-
 --
 -- | The editor state, manipulated by Core instructions.
 -- The editor stores all the buffers, which correspond to opened files.
