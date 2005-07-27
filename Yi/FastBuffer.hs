@@ -29,6 +29,7 @@ import Yi.Regex
 import Yi.Undo
 
 import Data.Unique              ( Unique, newUnique )
+import qualified Data.Map as M
 
 import Control.Exception        ( assert )
 import Control.Concurrent.MVar
@@ -67,11 +68,11 @@ data FBuffer =
                 }
 
 data FBuffer_ = 
-        FBuffer_ !(Ptr CChar)   -- raw memory           (ToDo unicode)
-                 !Int           -- current position     (ToDo list of pnts)
-                 !Int           -- length of contents
-                 !Int           -- raw size of buffer
-
+        FBuffer_ { rawmem   :: !(Ptr CChar)     -- raw memory           (ToDo unicode)
+                 , marks    :: !(M.Map Int Int) -- 0: point, 1: mark
+                 , contsize :: !Int             -- length of contents
+                 , rawsize  :: !Int             -- raw size of buffer
+                 }
 instance Eq FBuffer where
    FBuffer { bkey = u } == FBuffer { bkey = v } = u == v
 
@@ -94,7 +95,7 @@ hNewFBuffer f = do
     if (r /= size_i)
         then ioError (userError $ "Short read of file: " ++ f)
         else do poke (ptr `advancePtr` size_i) (castCharToCChar '\0')
-                mv  <- newMVar  (FBuffer_ ptr 0 size_i r_size)
+                mv  <- newMVar  (FBuffer_ ptr (M.fromList [(0,0), (1,0)]) size_i r_size)
                 mv' <- newMVar  emptyUR
                 fn  <- newMVar  (Just f)        -- filename is buffer name
                 rw  <- newMVar  ReadWrite
@@ -134,7 +135,7 @@ stringToFBuffer nm s = do
     ptr <- mallocArray0 r_size
     pokeArray ptr (map castCharToCChar s) -- Unicode
     poke (ptr `advancePtr` size_i) (castCharToCChar '\0')
-    mv  <- newMVar (FBuffer_ ptr 0 size_i r_size)
+    mv  <- newMVar (FBuffer_ ptr (M.fromList [(0,0), (1,0)]) size_i r_size)
     mv' <- newMVar emptyUR
     mvf <- newMVar Nothing      -- has name, not connected to a file
     rw  <- newMVar ReadWrite
@@ -172,6 +173,7 @@ shiftChars ptr dst_off src_off len = do
     poke (dst `advancePtr` len) (castCharToCChar '\0')
 {-# INLINE shiftChars #-}
 
+
 ------------------------------------------------------------------------
 
 foreign import ccall unsafe "string.h strstr" 
@@ -191,15 +193,17 @@ insertN'  _ [] _ = return ()
 insertN' (FBuffer { rawbuf = mv }) cs cs_len = 
     modifyMVar_ mv $ \fb@(FBuffer_ _ _ old_end old_max) -> do
         let need_len = old_end + cs_len
-        (FBuffer_ ptr pnt end mx) <- 
+        (FBuffer_ ptr pnts end mx) <- 
             if need_len >= old_max then resizeFB_ fb (need_len + 2048) 
                                    else return fb
-        let len = max 0 (min (end-pnt) end) -- number of chars to shift
+        let pnt = pnts M.! 0
+            len = max 0 (min (end-pnt) end) -- number of chars to shift
             dst = pnt + cs_len      -- point to start
             nend = dst + len        -- new length afterwards
         shiftChars ptr dst pnt len
         writeChars ptr cs pnt
-        return (FBuffer_ ptr pnt nend mx)
+        let pnts' = M.map (\p -> if p > pnt then p + cs_len else p) pnts
+        return (FBuffer_ ptr pnts' nend mx)
 {-# INLINE insertN' #-}
 
 -- Same as above, except we use copyBytes, instead of writeChars
@@ -209,30 +213,34 @@ insertFromCStrN'  _ _ 0 = return ()
 insertFromCStrN' (FBuffer { rawbuf = mv }) cptr cs_len =
     modifyMVar_ mv $ \fb@(FBuffer_ _ _ old_end old_max) -> do
         let need_len = old_end + cs_len
-        (FBuffer_ ptr pnt end mx) <- 
+        (FBuffer_ ptr pnts end mx) <- 
             if need_len >= old_max then resizeFB_ fb (need_len + 2048) 
                                    else return fb
-        let len = max 0 (min (end-pnt) end) -- number of chars to shift
+        let pnt = pnts M.! 0
+            len = max 0 (min (end-pnt) end) -- number of chars to shift
             dst = pnt + cs_len      -- point to start
             nend = dst + len        -- new length afterwards
         shiftChars ptr dst pnt len
         copyBytes (ptr `advancePtr` pnt) cptr cs_len
-        return (FBuffer_ ptr pnt nend mx)
+        let pnts' = M.map (\p -> if p > pnt then p + cs_len else p) pnts
+        return (FBuffer_ ptr pnts' nend mx)
 
 ------------------------------------------------------------------------
 
 deleteN' :: FBuffer -> Int -> IO ()
 deleteN' _ 0 = return ()
 deleteN' (FBuffer { rawbuf = mv }) n = 
-    modifyMVar_ mv $ \(FBuffer_ ptr pnt end mx) -> do
-        let src = inBounds (pnt + n) end     -- start shifting back from
+    modifyMVar_ mv $ \(FBuffer_ ptr pnts end mx) -> do
+        let pnt = pnts M.! 0
+            src = inBounds (pnt + n) end     -- start shifting back from
             len = inBounds (end-pnt-n) end   -- length of shift
             end'= pnt + len                  -- new end
         shiftChars ptr pnt src len
-        let pnt' | pnt == 0    = pnt
-                 | pnt == end' = max 0 (pnt - 1)    -- shift back if at eof
-                 | otherwise   = pnt
-        return (FBuffer_ ptr pnt' end' mx)
+        let pnts' = M.map shift pnts
+            shift p | p < pnt = p
+                    | p < end' = pnt
+                    | otherwise = p - len
+        return (FBuffer_ ptr pnts' end' mx)
 {-# INLINE deleteN' #-}
 
 ------------------------------------------------------------------------
@@ -278,7 +286,8 @@ instance Buffer FBuffer where
 
     -- pointB     :: a -> IO Int
     pointB (FBuffer { rawbuf = mv }) = do
-        (FBuffer_ _ p e mx) <- readMVar mv
+        (FBuffer_ _ pnts e mx) <- readMVar mv
+        let p = (pnts M.! 0)
         assert ((p >= 0 && (p < e || e == 0)) && e <= mx) $ return p
     {-# INLINE pointB #-}
 
@@ -318,14 +327,14 @@ instance Buffer FBuffer where
 
     -- moveTo     :: a -> Int -> IO ()
     moveTo (FBuffer { rawbuf = mv }) i = 
-        modifyMVar_ mv $ \(FBuffer_ ptr _ end mx) ->
-            return $ FBuffer_ ptr (inBounds i end) end mx
+        modifyMVar_ mv $ \(FBuffer_ ptr pnts end mx) ->
+            return $ FBuffer_ ptr (M.insert 0 (inBounds i end) pnts) end mx
     {-# INLINE moveTo #-}
 
     -- readB      :: a -> IO Char
     readB (FBuffer { rawbuf = mv }) = 
-        withMVar mv $ \(FBuffer_ ptr off _ _) ->
-            readChars ptr 1 off >>= \[c] -> return c
+        withMVar mv $ \(FBuffer_ ptr pnts _ _) ->
+            readChars ptr 1 (pnts M.! 0) >>= \[c] -> return c
     {-# INLINE readB #-}
 
     -- readAtB :: a -> Int -> IO Char
@@ -338,7 +347,8 @@ instance Buffer FBuffer where
 
     -- writeB :: a -> Char -> IO ()
     writeB (FBuffer { undos = uv, rawbuf = mv }) c = 
-        withMVar mv $ \(FBuffer_ ptr off _ _) -> do
+        withMVar mv $ \(FBuffer_ ptr pnts _ _) -> do
+            let off = (pnts M.! 0)
             modifyMVar_ uv $ \u -> do
                 ins <- mkInsert ptr off 1
                 let u'  = addUR u  ins
@@ -355,8 +365,9 @@ instance Buffer FBuffer where
     -- insertN :: a -> [Char] -> IO ()
     insertN  _ [] = return ()
     insertN fb@(FBuffer { undos = uv, rawbuf = mv}) cs = do
-        (FBuffer_ _ pnt _ _) <- readMVar mv 
+        (FBuffer_ _ pnts _ _) <- readMVar mv 
         let cs_len = length cs
+            pnt = pnts M.! 0
         modifyMVar_ uv $ \ur -> return $ addUR ur (mkDelete pnt cs_len)
         insertN' fb cs cs_len
 
@@ -368,8 +379,9 @@ instance Buffer FBuffer where
     deleteN _ 0 = return ()
     deleteN fb@(FBuffer { undos = uv, rawbuf = mv }) n = do
         -- quick! before we delete the chars, copy them to the redo buffer
-        (FBuffer_ ptr pnt end _) <- readMVar mv 
+        (FBuffer_ ptr pnts end _) <- readMVar mv 
         modifyMVar_ uv $ \ur -> do
+            let pnt = pnts M.! 0
             ins <- mkInsert ptr pnt (max 0 (min n (end-pnt))) -- something wrong.
             return $ addUR ur ins
         deleteN' fb n   -- now, really delete
@@ -509,16 +521,16 @@ instance Buffer FBuffer where
 
     -- count number of \n from origin to point
     -- curLn :: a -> IO Int
-    curLn (FBuffer { rawbuf = mv }) = withMVar mv $ \(FBuffer_ ptr i _ _) -> 
-        ccountlns ptr 0 i
+    curLn (FBuffer { rawbuf = mv }) = withMVar mv $ \(FBuffer_ ptr pnts _ _) -> 
+        ccountlns ptr 0 $ pnts M.! 0
     {-# INLINE curLn #-}
 
     -- gotoLn :: a -> Int -> IO Int
     -- some supicious stuff in here..
     gotoLn (FBuffer { rawbuf = mv }) n = 
-        modifyMVar mv $ \(FBuffer_ ptr _ e mx) -> do
+        modifyMVar mv $ \(FBuffer_ ptr pnts e mx) -> do
             np <- cgotoln ptr 0 e n
-            let fb = FBuffer_ ptr np e mx
+            let fb = FBuffer_ ptr (M.insert 0 np pnts)  e mx
             n' <- if np > e - 1 then return . subtract 1 =<< ccountlns ptr 0 np
                                 else return n
             return (fb, max 1 n')  -- and deal with for n < 1
@@ -526,9 +538,10 @@ instance Buffer FBuffer where
 
     -- gotoLnFrom :: a -> Int -> IO Int
     gotoLnFrom (FBuffer { rawbuf = mv }) n = 
-        modifyMVar mv $ \(FBuffer_ ptr p e mx) -> do
+        modifyMVar mv $ \(FBuffer_ ptr pnts e mx) -> do
+            let p = pnts M.! 0
             off <- cgotoln ptr p (if n < 0 then 0 else (e-1)) n
-            let fb = FBuffer_ ptr (p + off) e mx
+            let fb = FBuffer_ ptr (M.insert 0 (p + off) pnts) e mx
             ln <- return . subtract 1 =<< ccountlns ptr 0 (p+off) -- hmm :(
             return (fb, max 1 ln)
     {-# INLINE gotoLnFrom #-}
@@ -537,19 +550,32 @@ instance Buffer FBuffer where
 
     -- searchB      :: a -> [Char] -> IO (Maybe Int)
     searchB (FBuffer { rawbuf = mv }) s =
-        withMVar mv $ \(FBuffer_ ptr off _ _) ->
+        withMVar mv $ \(FBuffer_ ptr pnts _ _) ->
             withCString s $ \str -> do
-                p <- cstrstr (ptr `advancePtr` off) str
+                p <- cstrstr (ptr `advancePtr` (pnts M.! 0)) str
                 return $ if p == nullPtr then Nothing 
                                          else Just (p `minusPtr` ptr)
 
     -- regexB       :: a -> Regex -> IO (Maybe (Int,Int))
     regexB (FBuffer { rawbuf = mv }) re = 
-        withMVar mv $ \(FBuffer_ ptr p _ _) -> do
+        withMVar mv $ \(FBuffer_ ptr pnts _ _) -> do
+            let p = (pnts M.! 0)
             mmatch <- regexec re ptr p
             case mmatch of
                 Nothing        -> return Nothing
                 Just ((i,j),_) -> return (Just (p+i,p+j))    -- offset from point
+
+
+    -- ------------------------------------------------------------------------
+
+    getMarkB (FBuffer { rawbuf = mv }) = withMVar mv $
+                                         \(FBuffer_ {contsize=_,
+                                                     rawsize=_,
+                                                     rawmem = _, marks=p}) -> 
+                                             return (p M.! 1)
+    
+    setMarkB (FBuffer { rawbuf = mv }) pos = modifyMVar_ mv $ \fb -> 
+                                             return $ fb {marks = (M.insert 1 pos (marks fb))}
 
 ------------------------------------------------------------------------
 

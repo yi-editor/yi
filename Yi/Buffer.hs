@@ -225,6 +225,11 @@ class Buffer a where
     -- | Return index of next string in buffer that matches argument
     searchB      :: a -> [Char] -> IO (Maybe Int)
 
-    -- | Return indicies of next string in buffer matched by regex
+    -- | Return indices of next string in buffer matched by regex
     regexB       :: a -> Regex -> IO (Maybe (Int,Int))
 
+    ---------------------------------------------------------------------
+
+    -- | Set this buffer mark (TODO: have a set of these (bookmarks, error list, etc.))
+    setMarkB        :: a -> Int -> IO ()
+    getMarkB        :: a -> IO Int
