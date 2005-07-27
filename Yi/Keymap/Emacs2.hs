@@ -75,6 +75,7 @@ instance Initializable MiniBuf where
 
 -- * Keymaps (rebindings)
 
+-- * mark
 
 -- | The command type. 
 
@@ -109,6 +110,7 @@ printableChars = map chr [32..127]
 normalKlist :: KList 
 normalKlist = [ ([c], liftC $ insertSelf) | c <- printableChars ] ++
               [
+        ("DEL",      liftC $ repeatingArg bdeleteE),
 --      ("C-SPC",    liftC $ setMarkE),
         ("C-a",      liftC $ repeatingArg solE),
         ("C-b",      liftC $ repeatingArg leftE),
@@ -128,7 +130,7 @@ normalKlist = [ ([c], liftC $ insertSelf) | c <- printableChars ] ++
 --      ("C-s",      liftC $ incrementalSearchE),
         ("C-t",      liftC $ repeatingArg $ swapE),         
         ("C-u",      readArgC),
---      ("C-v",      liftC $ scrollDownC),                    
+        ("C-v",      liftC $ scrollDownE),                    
 --      ("C-w",      liftC $ killRegionC),                    
         ("C-z",      liftC $ suspendE),
         ("C-x ^",    liftC $ repeatingArg enlargeWinE),
@@ -144,6 +146,7 @@ normalKlist = [ ([c], liftC $ insertSelf) | c <- printableChars ] ++
         ("M-<",      liftC $ repeatingArg topE),
         ("M->",      liftC $ repeatingArg botE),
 --      ("M-%",      searchReplaceC),
+        ("M-DEL",    liftC $ repeatingArg bkillWordE),
         ("M-b",      liftC $ repeatingArg prevWordE),
         ("M-c",      liftC $ repeatingArg capitaliseWordE),
         ("M-d",      liftC $ repeatingArg killWordE),
@@ -155,9 +158,8 @@ normalKlist = [ ([c], liftC $ insertSelf) | c <- printableChars ] ++
         ("<right>",  liftC $ repeatingArg rightE),
         ("<up>",     liftC $ repeatingArg upE),
         ("<down>",   liftC $ repeatingArg downE),
-        ("DEL",      liftC $ repeatingArg bdeleteE),
-        ("M-DEL",    liftC $ repeatingArg bkillWordE)
-         
+        ("<next>",   liftC $ repeatingArg downScreenE),
+        ("<prior>",  liftC $ repeatingArg upScreenE)
         ]
 
 -- * Key parser 
@@ -174,17 +176,20 @@ parseMeta = do string "M-"
                k <- parseRegular
                return $ m_ k
 
+keyNames :: [(Char, String)]
+keyNames = [(' ', "SPC"),
+            (keyLeft, "<left>"),
+            (keyRight, "<right>"),
+            (keyDown, "<down>"),
+            (keyUp, "<up>"),
+            (keyBackspace, "DEL"),
+            (keyNPage, "<next>"),
+            (keyPPage, "<prior>")
+           ]
+
 parseRegular :: ReadP Char
-parseRegular = choice [string s >> return c | (c,s) <- kNames]
-               +++ satisfy (`elem` printableChars)
-    where kNames = [(' ', "SPC"),
-                    (keyLeft, "<left>"),
-                    (keyRight, "<right>"),
-                    (keyDown, "<down>"),
-                    (keyUp, "<up>"),
-                    (keyBackspace, "DEL")
-                   ]
-               
+parseRegular = choice [string s >> return c | (c,s) <- keyNames]
+               +++ satisfy (`elem` printableChars)               
 
 parseKey :: ReadP String
 parseKey = sepBy1 (parseCtrl +++ parseMeta +++ parseRegular) (munch1 isSpace)
@@ -205,12 +210,18 @@ showKey = dropSpace . printable'
         printable' ('\ESC':a:ta) = "M-" ++ [a] ++ printable' ta
         printable' ('\ESC':ta) = "ESC " ++ printable' ta
         printable' (a:ta) 
-                | ord a < 32 
+                | ord a < 32
                 = "C-" ++ [chr (ord a + 96)] ++ " " ++ printable' ta
                 | isMeta a
-                = "M-" ++ [clrMeta a] ++ " " ++ printable' ta
+                = "M-" ++ printable' (clrMeta a:ta)
+                | ord a >= 127
+                = bigChar a ++ " " ++ printable' ta 
                 | otherwise  = [a, ' '] ++ printable' ta
+                
         printable' [] = []
+
+        bigChar c = fromMaybe [c] $ M.lookup c $ M.fromList keyNames
+
 
 -- * Boilerplate code for the Command monad
 
@@ -241,13 +252,16 @@ lookStroke = do (c:_) <- getInput
 
 
 
-withUnivArg :: (Int -> Action) -> Action
-withUnivArg cmd = do UniversalArg s <- getDynamic
-                     cmd (fromMaybe 1 s)
+withUnivArg :: (Maybe Int -> Action) -> Action
+withUnivArg cmd = do UniversalArg a <- getDynamic
+                     cmd a
                      setDynamic $ UniversalArg Nothing
 
+withIntArg :: (Int -> Action) -> Action
+withIntArg cmd = withUnivArg $ \arg -> cmd (fromMaybe 1 arg)
+
 repeatingArg :: Action -> Action
-repeatingArg f = withUnivArg $ \n->replicateM_ n f
+repeatingArg f = withIntArg $ \n->replicateM_ n f
 
 insertSelf :: Action
 insertSelf = repeatingArg $ do TypedKey k <- getDynamic
@@ -311,6 +325,12 @@ loadFile = do filename <- liftM init readAllE  -- problems if more than 1 line, 
               closeE
               msgE $ "loading " ++ filename
               fnewE filename 
+
+scrollDownE :: Action
+scrollDownE = withUnivArg $ \a ->
+              case a of 
+                 Nothing -> downScreenE
+                 Just n -> replicateM_ n downE
 
 -- * KeyList => keymap
 -- Specialized version of MakeKeymap
