@@ -76,7 +76,7 @@ class Buffer a where
     -- | Return the contents of the buffer as a list
     elemsB     :: a -> IO [Char]
 
-    -- | Return @n@ elems starting a @i@ of the buffer as a list
+    -- | Return @n@ elems starting at @i@ of the buffer as a list
     nelemsB    :: a -> Int -> Int -> IO [Char]
 
     -- | Return a list of pointers to @n@ C strings, starting at point.
