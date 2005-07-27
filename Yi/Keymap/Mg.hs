@@ -853,6 +853,3 @@ delete, enter, anything :: Regexp MgState Action
 delete  = alt delete'
 enter   = alt enter'
 anything  = alt any'
-
-dropSpace :: [Char] -> [Char]
-dropSpace = let f = reverse . dropWhile isSpace in f . f
