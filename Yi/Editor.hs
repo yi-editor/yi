@@ -64,6 +64,7 @@ data Buffer a => GenEditor a =
     Editor {
         buffers   :: !(M.Map Unique a)          -- ^ all the buffers
        ,windows   :: !(M.Map Unique Window)     -- ^ all the windows
+
        ,cmdline   :: !String                    -- ^ the command line
        ,cmdlinefocus :: !Bool                   -- ^ cmdline has focus
 
@@ -357,17 +358,16 @@ killAllBuffers = undefined
 killBuffer :: String -> IO ()
 killBuffer n = modifyEditor_ $ \e -> do
     case findBufferWithName e n of
-        []  -> return e     -- no buffer to kill, so nothing to do
-        [b] -> do
+        [] -> return e     -- no buffer to kill, so nothing to do
+        bs -> foldM killB e bs
+    where
+        killB e' b = do
             let thiskey = keyB b
-                wls     = M.elems . windows $ e
+                wls     = M.elems . windows $ e'
                 bsWin   = filter (\w -> bufkey w == thiskey) wls
-
-            e' <- foldM deleteWindow' e bsWin -- now close any windows onto this buffer
-            finaliseB b                   -- now free the buffer
-            return $ e' { buffers = M.delete thiskey (buffers e) }
-
-        _ -> error "more than one buffer has this name!"
+            e'' <- foldM deleteWindow' e' bsWin -- now close any windows
+            finaliseB b                         -- now free the buffer
+            return $ e'' { buffers = M.delete thiskey (buffers e') }
 
 --
 -- | Delete a window. Note that the buffer that was connected to this
