@@ -49,7 +49,8 @@ module Yi.Core (
         msgClrE,        -- :: Action
         getMsgE,        -- :: IO String
         bufInfoE,       -- :: IO (FilePath,Int,Int,Int,Int,String)
-        fileNameE,      -- :: IO FilePath
+        fileNameE,      -- :: IO (Maybe FilePath)
+        bufNameE,       -- :: IO String
 
         -- * Window manipulation
         nextWinE,       -- :: Action
@@ -802,9 +803,13 @@ bufInfoE = withWindow $ \w b -> do
                  p, 
                  getPercent p s) )
 
+-- | Maybe a file associated with this buffer
+fileNameE :: IO (Maybe FilePath)
+fileNameE = withWindow $ \w b -> getfileB b >>= \f -> return (w, f)
+
 -- | Name of this buffer
-fileNameE :: IO FilePath
-fileNameE = withWindow $ \w b -> return (w, nameB b)
+bufNameE :: IO String
+bufNameE = withWindow $ \w b -> return (w, nameB b)
 
 -- | Close the current window, attach the next buffer in the buffer list
 -- to a new window, and open it up
@@ -835,12 +840,15 @@ fnewE  :: FilePath -> Action
 fnewE f = do
     e  <- doesFileExist f
     b  <- if e then hNewBuffer f else stringToNewBuffer f []
+    setfileB b f        -- and associate with file f
     deleteThisWindow
     w <- newWindow b
     Editor.setWindow w
 
 -- | Like fnewE, create a new buffer filled with the String @s@, 
--- Open up a new window onto this buffer
+-- Open up a new window onto this buffer. Doesn't associated any file
+-- with the buffer (unlike fnewE) and so is good for popup internal
+-- buffers (like scratch or minibuffer)
 newBufferE :: String -> String -> Action
 newBufferE f s = do
     b <- stringToNewBuffer f s
@@ -849,13 +857,24 @@ newBufferE f s = do
     w <- newWindow b
     Editor.setWindow w
 
--- | Write current buffer to disk
+-- | Write current buffer to disk, if this buffer is associated with a file
 fwriteE :: Action
-fwriteE = withWindow_ $ \w b -> hPutB b (nameB b) >> return w
+fwriteE = withWindow_ $ \w b -> do
+        mf <- getfileB b
+        case mf of
+                Nothing -> error "buffer not associated with a file"
+                Just f  -> hPutB b f >> return w
 
--- | Write current file to disk as @f@
+-- | Write current buffer to disk as @f@. If this buffer doesn't
+-- currently have a file associated with it, the file is set to @f@
 fwriteToE :: String -> Action
-fwriteToE f = withWindow_ $ \w b -> hPutB b f >> return w
+fwriteToE f = withWindow_ $ \w b -> do
+        hPutB b f
+        mf <- getfileB b
+        case mf of
+                Nothing -> setfileB b f
+                Just _  -> return ()
+        return w
 
 -- | Write all open buffers
 fwriteAllE :: Action

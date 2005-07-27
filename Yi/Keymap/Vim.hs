@@ -740,9 +740,13 @@ viFileInfo = do (f,_,ln,_,_,pct) <- bufInfoE
 -- Need to catch any exception to avoid losing bindings
 viWrite :: Action
 viWrite = do
-    (f,s,_,_,_,_) <- bufInfoE 
-    let msg = msgE $ show f++" "++show s ++ "C written"
-    catchJust ioErrors (fwriteE >> msg) (msgE . show)
+    mf <- fileNameE
+    case mf of 
+        Nothing -> errorE "no file name associate with buffer"
+        Just f  -> do
+            (_,s,_,_,_,_) <- bufInfoE 
+            let msg = msgE $ show f++" "++show s ++ "C written"
+            catchJust ioErrors (fwriteToE f >> msg) (msgE . show)
 
 -- | Try to write to a named file in the manner of vi\/vim
 viWriteTo :: String -> Action

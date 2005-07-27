@@ -59,6 +59,12 @@ class Buffer a where
     -- | String name of this buffer
     nameB :: a -> String
 
+    -- | Name of file associated with this buffer
+    getfileB :: a -> IO (Maybe FilePath)
+
+    -- | Set the name of the file associated with this buffer
+    setfileB :: a -> FilePath -> IO ()
+
     -- | Unique key of this buffer
     keyB :: a -> Unique
 

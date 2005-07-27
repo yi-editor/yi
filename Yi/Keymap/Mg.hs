@@ -28,7 +28,7 @@ import Yi.Char
 import qualified Yi.Map as M
 
 import Numeric              ( showOct )
-import Data.Char            ( ord, chr, isSpace )
+import Data.Char            ( ord, chr )
 import Data.List            ((\\), isPrefixOf)
 import Control.Exception    ( try, evaluate )
 
@@ -697,7 +697,6 @@ writeFileEval = enter
         `meta` \_ MgState{acc=cca} ->
         let f = reverse cca
         in (with (do fwriteToE f
-                     fnewE f
                      msgE $ "Wrote "++f
                      cmdlineUnFocusE)
            ,MgState [] [], Just mode )
@@ -817,9 +816,11 @@ mgWrite :: Action
 mgWrite = do
         u <- isUnchangedE      -- just  the current buffer
         if u then msgE "(No changes need to be saved)"
-             else do fwriteE
-                     f <- fileNameE
-                     msgE $ "Wrote " ++ f
+             else do 
+                mf <- fileNameE
+                case mf of
+                        Nothing -> errorE "No filename connected to this buffer"
+                        Just f  -> fwriteE >> msgE ("Wrote " ++ f)
 
 --
 -- delete all blank lines from this point
