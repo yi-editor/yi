@@ -130,6 +130,7 @@ normalKlist = [ ([c], liftC $ insertSelf) | c <- printableChars ] ++
         ("C-u",      readArgC),
 --      ("C-v",      liftC $ scrollDownC),                    
 --      ("C-w",      liftC $ killRegionC),                    
+        ("C-z",      liftC $ suspendE),
         ("C-x ^",    liftC $ repeatingArg enlargeWinE),
         ("C-x C-c",  liftC $ quitE),
         ("C-x C-f",  liftC $ findFile),
@@ -210,8 +211,6 @@ showKey = dropSpace . printable'
                 = "M-" ++ [clrMeta a] ++ " " ++ printable' ta
                 | otherwise  = [a, ' '] ++ printable' ta
         printable' [] = []
-
-        dropSpace = let f = reverse . dropWhile isSpace in f . f
 
 -- * Boilerplate code for the Command monad
 
@@ -296,24 +295,22 @@ readArg' acc = do
 spawnMinibuffer :: String -> KList -> Action
 spawnMinibuffer _prompt klist = 
     do MiniBuf w _b <- getDynamic
-       setWindow w
+       setWinE w
        metaM (fromKProc $ makeKeymap klist)
-
 
 rebind :: KList -> String -> KProc () -> KList
 rebind kl k kp = M.toList $ M.insert k kp $ M.delete k $ M.fromList kl
          
-                     
 findFile :: Action
 findFile = spawnMinibuffer "find file:" (rebind normalKlist "C-j" (liftC loadFile))
 
+-- read contents of current buffer (which should be the minibuffer), and
+-- use it to open a new file
 loadFile :: Action
-loadFile = do MiniBuf w b <- getDynamic
-              filename <- elemsB b -- doesn't seem to work
-              deleteWindow $ Just w -- behaves strange too
+loadFile = do filename <- liftM init readAllE  -- problems if more than 1 line, of course
+              closeE
               msgE $ "loading " ++ filename
               fnewE filename 
-              return ()
 
 -- * KeyList => keymap
 -- Specialized version of MakeKeymap
