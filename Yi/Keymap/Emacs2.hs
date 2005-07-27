@@ -83,12 +83,7 @@ type KProc a = StateT String (Writer [Action]) a
 
 
 -- * The keymap abstract definition
-c_ :: Char -> Char
-c_ = ctrlLowcase
 
-m_ :: Char -> Char
-m_ '\263' = chr 255
-m_ x = setMeta x
 
 -- In the future the following list can become something like
 -- [ ("C-x k", killBuffer) , ... ]
@@ -111,7 +106,7 @@ normalKlist :: KList
 normalKlist = [ ([c], liftC $ insertSelf) | c <- printableChars ] ++
               [
         ("DEL",      liftC $ repeatingArg bdeleteE),
---      ("C-SPC",    liftC $ setMarkE),
+        ("C-SPC",    liftC $ (getPointE >>= setMarkE)),
         ("C-a",      liftC $ repeatingArg solE),
         ("C-b",      liftC $ repeatingArg leftE),
         ("C-d",      liftC $ repeatingArg deleteE),
@@ -137,6 +132,7 @@ normalKlist = [ ([c], liftC $ insertSelf) | c <- printableChars ] ++
         ("C-x C-c",  liftC $ quitE),
         ("C-x C-f",  liftC $ findFile),
         ("C-x C-s",  liftC $ fwriteE),
+        ("C-x C-x",  liftC $ exchangePointAndMarkE),
         ("C-x o",    liftC $ nextWinE),
         ("C-x k",    liftC $ closeE),
         ("C-x r k",  liftC $ msgE "killRect"),
@@ -165,6 +161,14 @@ normalKlist = [ ([c], liftC $ insertSelf) | c <- printableChars ] ++
 -- * Key parser 
 -- This really should be in its own module 
 -- (importing Text.ParserCombinators.ReadP pollutes the namespace here)
+
+c_ :: Char -> Char
+c_ ' ' = '\0'
+c_ x = ctrlLowcase x
+
+m_ :: Char -> Char
+m_ '\263' = chr 255
+m_ x = setMeta x
 
 parseCtrl :: ReadP Char
 parseCtrl = do string "C-"
@@ -313,7 +317,7 @@ spawnMinibuffer _prompt klist =
        metaM (fromKProc $ makeKeymap klist)
 
 rebind :: KList -> String -> KProc () -> KList
-rebind kl k kp = M.toList $ M.insert k kp $ M.delete k $ M.fromList kl
+rebind kl k kp = M.toList $ M.insert k kp $ M.fromList kl
          
 findFile :: Action
 findFile = spawnMinibuffer "find file:" (rebind normalKlist "C-j" (liftC loadFile))
