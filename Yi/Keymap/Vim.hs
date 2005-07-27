@@ -646,6 +646,7 @@ ex_eval = enter
       fn "q!"         = closeE
       fn "wq"         = viWrite >> closeE
       fn "n"          = nextBufW
+      fn "$"          = botE
       fn "p"          = prevBufW
       fn ('s':'p':_)  = splitE
       fn ('e':' ':f)  = fnewE f

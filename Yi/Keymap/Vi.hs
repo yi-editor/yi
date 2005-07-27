@@ -573,6 +573,7 @@ ex_eval = enter
                  else errorE $ "File modified since last complete write; "++
                                "write or use ! to override."
       fn "q!"         = closeE
+      fn "$"          = botE
       fn "wq"         = viWrite >> closeE
       fn "n"          = nextBufW
       fn "p"          = prevBufW
