@@ -142,6 +142,9 @@ class Buffer a where
 
     -- | Delete characters forwards to index
     -- deleteTo    :: a -> Int -> IO ()
+    
+    -- | @deleteNAt b n p@ deletes @n@ characters at position @p@
+    deleteNAt :: a -> Int -> Int -> IO ()
 
     ------------------------------------------------------------------------
     -- undo/redo
