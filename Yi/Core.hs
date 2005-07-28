@@ -116,15 +116,18 @@ module Yi.Core (
 
         -- * Buffer editing
         insertE,        -- :: Char -> Action
+        insertNE,       -- :: String -> Action
         deleteE,        -- :: Action
         deleteNE,       -- :: Int -> Action
         killE,          -- :: Action
+        deleteRegionE,  -- :: (Int,Int) -> Action
         writeE,         -- :: Char -> Action
         undoE,          -- :: Action
         redoE,          -- :: Action
 
         -- * Read parts of the buffer
         readE,          -- :: IO Char
+        readRegionE,    -- :: (Int,Int) -> IO String
         readLnE,        -- :: IO String
         readNM,         -- :: Int -> Int -> IO String
         readRestOfLnE,  -- :: IO String
@@ -496,6 +499,10 @@ insertE c = do
             if s == 0 then insertW '\n' w b else return w
     withWindow_ $ insertW c
 
+-- | Insert a string
+insertNE :: String -> Action
+insertNE = mapM_ insertE
+
 -- | Delete character under cursor
 deleteE :: Action
 deleteE = withWindow_ $ \w b -> deleteNW w b 1
@@ -508,9 +515,18 @@ deleteNE i = withWindow_ $ \w b -> deleteNW w b i
 killE :: Action
 killE = withWindow_ deleteToEolW -- >>= Buffer.prevXorLn 1
 
+-- | Delete an arbitrary part of the buffer
+deleteRegionE :: (Int,Int) -> IO ()
+deleteRegionE (from,to) = withWindow_ $ \w b -> do
+    deleteNAtW  w b (to-from) from    
+
 -- | Read the char under the cursor
 readE :: IO Char
 readE = withWindow $ \w b -> readB b >>= \c -> return (w,c)
+
+-- | Read an arbitrary part of the buffer
+readRegionE :: (Int,Int) -> IO String
+readRegionE (from,to) = readNM from to
 
 -- | Read the line the cursor is on
 readLnE :: IO String
