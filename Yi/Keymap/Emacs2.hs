@@ -38,9 +38,10 @@ import Control.Monad.State
 import Data.Dynamic
 import Yi.Window
 import Yi.Buffer
+import Yi.Keymap.Killring
 import Text.ParserCombinators.ReadP hiding ( get )
 
--- * Dynamic state components
+-- * Dynamic state-components
 
 newtype UniversalArg = UniversalArg (Maybe Int)
     deriving Typeable
@@ -103,59 +104,59 @@ printableChars :: [Char]
 printableChars = map chr [32..127]
 
 normalKlist :: KList 
-normalKlist = [ ([c], liftC $ insertSelf) | c <- printableChars ] ++
+normalKlist = [ ([c], atomic $ insertSelf) | c <- printableChars ] ++
               [
-        ("DEL",      liftC $ repeatingArg bdeleteE),
-        ("C-SPC",    liftC $ (getPointE >>= setMarkE)),
-        ("C-a",      liftC $ repeatingArg solE),
-        ("C-b",      liftC $ repeatingArg leftE),
-        ("C-d",      liftC $ repeatingArg deleteE),
-        ("C-e",      liftC $ repeatingArg eolE),
-        ("C-f",      liftC $ repeatingArg rightE),
-        ("C-g",      liftC $ msgE "Quit"),
---      ("C-i",      liftC $ indentC),
-        ("C-j",      liftC $ repeatingArg $ insertE '\n'),
---      ("C-k",      liftC $ killLineC),
-        ("C-m",      liftC $ repeatingArg $ insertE '\n'),
-        ("C-n",      liftC $ repeatingArg downE),
-        ("C-o",      liftC $ repeatingArg (insertE '\n' >> leftE)),
-        ("C-p",      liftC $ repeatingArg upE),
+        ("DEL",      atomic $ repeatingArg bdeleteE),
+        ("C-SPC",    atomic $ (getPointE >>= setMarkE)),
+        ("C-a",      atomic $ repeatingArg solE),
+        ("C-b",      atomic $ repeatingArg leftE),
+        ("C-d",      atomic $ repeatingArg deleteE),
+        ("C-e",      atomic $ repeatingArg eolE),
+        ("C-f",      atomic $ repeatingArg rightE),
+        ("C-g",      atomic $ msgE "Quit"),
+--      ("C-i",      atomic $ indentC),
+        ("C-j",      atomic $ repeatingArg $ insertE '\n'),
+--        ("C-k",      atomic $ killLineE),
+        ("C-m",      atomic $ repeatingArg $ insertE '\n'),
+        ("C-n",      atomic $ repeatingArg downE),
+        ("C-o",      atomic $ repeatingArg (insertE '\n' >> leftE)),
+        ("C-p",      atomic $ repeatingArg upE),
         ("C-q",      insertNextC),
---      ("C-r",      liftC $ backwardsIncrementalSearchE),
---      ("C-s",      liftC $ incrementalSearchE),
-        ("C-t",      liftC $ repeatingArg $ swapE),         
+--      ("C-r",      atomic $ backwardsIncrementalSearchE),
+--      ("C-s",      atomic $ incrementalSearchE),
+        ("C-t",      atomic $ repeatingArg $ swapE),         
         ("C-u",      readArgC),
-        ("C-v",      liftC $ scrollDownE),                    
---      ("C-w",      liftC $ killRegionC),                    
-        ("C-z",      liftC $ suspendE),
-        ("C-x ^",    liftC $ repeatingArg enlargeWinE),
-        ("C-x C-c",  liftC $ quitE),
-        ("C-x C-f",  liftC $ findFile),
-        ("C-x C-s",  liftC $ fwriteE),
-        ("C-x C-x",  liftC $ exchangePointAndMarkE),
-        ("C-x o",    liftC $ nextWinE),
-        ("C-x k",    liftC $ closeE),
-        ("C-x r k",  liftC $ msgE "killRect"),
-        ("C-x u",    liftC $ repeatingArg undoE), 
-        ("C-x v",    liftC $ repeatingArg shrinkWinE),
---      ("C-y",      yankC),
-        ("M-<",      liftC $ repeatingArg topE),
-        ("M->",      liftC $ repeatingArg botE),
+        ("C-v",      atomic $ scrollDownE),                    
+        ("C-w",      atomic $ killRegionE),                    
+        ("C-z",      atomic $ suspendE),
+        ("C-x ^",    atomic $ repeatingArg enlargeWinE),
+        ("C-x C-c",  atomic $ quitE),
+        ("C-x C-f",  atomic $ findFile),
+        ("C-x C-s",  atomic $ fwriteE),
+        ("C-x C-x",  atomic $ exchangePointAndMarkE),
+        ("C-x o",    atomic $ nextWinE),
+        ("C-x k",    atomic $ closeE),
+        ("C-x r k",  atomic $ msgE "killRect"),
+        ("C-x u",    atomic $ repeatingArg undoE), 
+        ("C-x v",    atomic $ repeatingArg shrinkWinE),
+        ("C-y",      atomic $ yankE),
+        ("M-<",      atomic $ repeatingArg topE),
+        ("M->",      atomic $ repeatingArg botE),
 --      ("M-%",      searchReplaceC),
-        ("M-DEL",    liftC $ repeatingArg bkillWordE),
-        ("M-b",      liftC $ repeatingArg prevWordE),
-        ("M-c",      liftC $ repeatingArg capitaliseWordE),
-        ("M-d",      liftC $ repeatingArg killWordE),
-        ("M-f",      liftC $ repeatingArg nextWordE),
-        ("M-l",      liftC $ repeatingArg lowercaseWordE),
-        ("M-u",      liftC $ repeatingArg uppercaseWordE),         
-        ("M-w",      liftC $ msgE "copy"),         
-        ("<left>",   liftC $ repeatingArg leftE),
-        ("<right>",  liftC $ repeatingArg rightE),
-        ("<up>",     liftC $ repeatingArg upE),
-        ("<down>",   liftC $ repeatingArg downE),
-        ("<next>",   liftC $ repeatingArg downScreenE),
-        ("<prior>",  liftC $ repeatingArg upScreenE)
+        ("M-DEL",    atomic $ repeatingArg bkillWordE),
+        ("M-b",      atomic $ repeatingArg prevWordE),
+        ("M-c",      atomic $ repeatingArg capitaliseWordE),
+        ("M-d",      atomic $ repeatingArg killWordE),
+        ("M-f",      atomic $ repeatingArg nextWordE),
+        ("M-l",      atomic $ repeatingArg lowercaseWordE),
+        ("M-u",      atomic $ repeatingArg uppercaseWordE),         
+        ("M-w",      atomic $ msgE "copy"),         
+        ("<left>",   atomic $ repeatingArg leftE),
+        ("<right>",  atomic $ repeatingArg rightE),
+        ("<up>",     atomic $ repeatingArg upE),
+        ("<down>",   atomic $ repeatingArg downE),
+        ("<next>",   atomic $ repeatingArg downScreenE),
+        ("<prior>",  atomic $ repeatingArg upScreenE)
         ]
 
 -- * Key parser 
@@ -232,6 +233,10 @@ showKey = dropSpace . printable'
 liftC :: Action -> KProc ()
 liftC = tell . return
 
+atomic :: Action -> KProc ()
+atomic cmd = liftC $ do cmd
+                        killringEndCmd
+
 getInput :: KProc String
 getInput = get
 
@@ -269,7 +274,7 @@ repeatingArg f = withIntArg $ \n->replicateM_ n f
 
 insertSelf :: Action
 insertSelf = repeatingArg $ do TypedKey k <- getDynamic
-                               mapM_ insertE k
+                               insertNE k
 
 insertNextC :: KProc ()
 insertNextC = do c <- readStroke 
