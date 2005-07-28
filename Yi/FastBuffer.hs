@@ -70,6 +70,9 @@ data FBuffer =
 data FBuffer_ = 
         FBuffer_ { rawmem   :: !(Ptr CChar)     -- raw memory           (ToDo unicode)
                  , marks    :: !(M.Map Int Int) -- 0: point, 1: mark
+                   -- TODO: This isn't the most efficient structure
+                   -- to store marks. When IntMap gets stabilized we'd
+                   -- better switch to it.
                  , contsize :: !Int             -- length of contents
                  , rawsize  :: !Int             -- raw size of buffer
                  }
@@ -227,18 +230,17 @@ insertFromCStrN' (FBuffer { rawbuf = mv }) cptr cs_len =
 
 ------------------------------------------------------------------------
 
-deleteN' :: FBuffer -> Int -> IO ()
-deleteN' _ 0 = return ()
-deleteN' (FBuffer { rawbuf = mv }) n = 
+deleteN' :: FBuffer -> Int -> Int -> IO ()
+deleteN' _ 0 _ = return ()
+deleteN' (FBuffer { rawbuf = mv }) n pos = 
     modifyMVar_ mv $ \(FBuffer_ ptr pnts end mx) -> do
-        let pnt = pnts M.! 0
-            src = inBounds (pnt + n) end     -- start shifting back from
-            len = inBounds (end-pnt-n) end   -- length of shift
-            end'= pnt + len                  -- new end
-        shiftChars ptr pnt src len
+        let src = inBounds (pos + n) end     -- start shifting back from
+            len = inBounds (end-pos-n) end   -- length of shift
+            end'= pos + len                  -- new end
+        shiftChars ptr pos src len
         let pnts' = M.map shift pnts
-            shift p | p < pnt = p
-                    | p < end' = pnt
+            shift p | p < pos = p
+                    | p < end' = pos
                     | otherwise = p - len
         return (FBuffer_ ptr pnts' end' mx)
 {-# INLINE deleteN' #-}
@@ -377,14 +379,20 @@ instance Buffer FBuffer where
 
     -- deleteN    :: a -> Int -> IO ()
     deleteN _ 0 = return ()
-    deleteN fb@(FBuffer { undos = uv, rawbuf = mv }) n = do
+    deleteN b n = do
+        point <- pointB b
+        deleteNAt b n point
+    
+
+    deleteNAt _ 0 _ = return ()
+    deleteNAt fb@(FBuffer { undos = uv, rawbuf = mv }) n pos = do
         -- quick! before we delete the chars, copy them to the redo buffer
-        (FBuffer_ ptr pnts end _) <- readMVar mv 
+        (FBuffer_ ptr _ end _) <- readMVar mv 
         modifyMVar_ uv $ \ur -> do
-            let pnt = pnts M.! 0
-            ins <- mkInsert ptr pnt (max 0 (min n (end-pnt))) -- something wrong.
+            ins <- mkInsert ptr pos (max 0 (min n (end-pos))) -- something wrong.
             return $ addUR ur ins
-        deleteN' fb n   -- now, really delete
+        deleteN' fb n pos  -- now, really delete
+   
 
     ------------------------------------------------------------------------
   
@@ -598,7 +606,7 @@ getActionFB (Delete p n) b@(FBuffer { rawbuf = mv }) = do
     moveTo b p
     p' <- pointB b
     ins <- mkInsert ptr p' n
-    deleteN' b n       -- need to be actions that don't in turn invoke the url
+    deleteN' b n p'       -- need to be actions that don't in turn invoke the url
     return ins
 
 getActionFB (Insert p n fptr) b = do
