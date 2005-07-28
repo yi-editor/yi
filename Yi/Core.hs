@@ -592,7 +592,7 @@ getMarkE :: IO Int
 getMarkE = withWindow $ \w b -> do pos <- getMarkB b
                                    return (w, pos)
 -- | Exchange point & mark.
--- Maybe this is better put in Emacs/Mg common file
+-- Maybe this is better put in Emacs\/Mg common file
 exchangePointAndMarkE :: Action
 exchangePointAndMarkE = do m <- getMarkE
                            p <- getPointE
