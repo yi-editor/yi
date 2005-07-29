@@ -195,7 +195,8 @@ AC_CHECK_FUNCS(libiconv, AC_DEFINE( [ICONV_LIB_PREFIX],[1],
 if echo "$LIBS" | grep iconv > /dev/null 2>&1 ; then
     ICONV=iconv
 else
-    AC_MSG_ERROR(You need libiconv to run Yi)
+    : 
+# AC_MSG_ERROR(You need libiconv to run Yi)
 fi
 
 if (echo "$LIBS" | grep ncursesw) >/dev/null 2>&1 ; then
