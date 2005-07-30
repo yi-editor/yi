@@ -1,5 +1,4 @@
 {-# OPTIONS -cpp -fglasgow-exts #-}
-
 -- 
 -- Copyright (c) 2005 Jean-Philippe Bernardy
 -- 
@@ -25,20 +24,19 @@ module Yi.Keymap.Emacs2 ( keymap ) where
 
 import Yi.Editor hiding     ( keymap )
 import Yi.Yi hiding         ( keymap, meta, string )
---import Yi.Lexers hiding (Action)
-
-import Yi.Char
-import Data.Char           
---import Data.List
-import qualified Yi.Map as M
-import Data.Maybe
-import Data.List
-import Control.Monad.Writer
-import Control.Monad.State
-import Data.Dynamic
 import Yi.Window
 import Yi.Buffer
-import Yi.Keymap.Killring
+import Yi.Keymap.KillRing
+import Yi.Char
+import qualified Yi.Map as M
+
+import Data.Char           
+import Data.Maybe
+import Data.List
+import Data.Dynamic
+
+import Control.Monad.Writer
+import Control.Monad.State
 
 import Text.ParserCombinators.ReadP hiding ( get )
 
