@@ -441,6 +441,8 @@ cmd2other = modeSwitchChar
 
             '\ESC'-> (with msgClrE, st{acc=[]}, Just $ cmd st)
 
+            k | k == keySIC -> (Nothing, st, Just (ins st)) -- <insert>
+
             s   -> (with (errorE ("The "++show s++" command is unknown."))
                    ,st, Just $ cmd st)
 
