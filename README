@@ -3,38 +3,49 @@ Yi -- the Haskell extensible editor
 
 <http://www.cse.unsw.edu.au/~dons/yi.html>
 
-Copyright (c) Don Stewart 2004.
-<http://www.cse.unsw.edu.au/~dons>
+Copyright (c) Don Stewart 2004-5, <http://www.cse.unsw.edu.au/~dons>
+
+------------------------------------------------------------------------
 
 QUICK START
 
-* GHC 6.2.2: install hs-plugins-0.9.8.
-* GHC 6.4  : install the latest hs-plugins nightly snapshot.
-* Or don't install hs-plugins at all, and use 'make way=static'
+To build the static editor (enough for most people):
+
+    $ ./configure --prefix=/usr/local
+    $ make way=static
+    $ ./yi-static README
+
+To build the whole thing, including the dynamic components:
+
+    Dependencies:
+        * you need ghc 6.4, and
+        * you need to install hs-plugins 0.9.10
 
     $ ./configure --prefix=/usr/local
     $ make
-    $ ./yi-inplace README
+    $ ./yi-inplace README  or  ./yi-static README
 
-** Users of the darcs repo will require autoreconf, which is part of the
-automake suite of tools.  And you may also need to 'chmod a+x
-configure', or darcs get --set-scripts-executable.
+Additionally,
 
-Read on for more details..
+ * Users of the darcs repo will require autoreconf, which is part of the
+   automake suite of tools.  And you may also need to 'chmod a+x configure', 
+   or darcs get --set-scripts-executable.
+
+------------------------------------------------------------------------
 
 BUILDING AND INSTALLING
 
-You can get the latest yi source from its darcs repository:
+You can get the latest Yi source from its darcs repository:
 
         darcs get http://www.cse.unsw.edu.au/~dons/yi
 
 You will need GHC 6 (The Glorious/Glasgow Haskell Compilation System)
-and GNU make to compile yi. On OpenBSD you'll need ghc-6.2.2 or greater, 
-which contains a patch for the System.Posix.User library.
+and GNU make to compile yi. 
 
-If you're building with ghc-6.2.2, you need hs-plugins-0.9.8, if you're
-using ghc-6.4, then you need a more recent nighly snapshot of
-hs-plugins, the Haskell dynamic loader library. You can get this from:
+To build an extensible editor, you need hs-plugins 0.9.10, which in turn
+depends on HSX, which requires ghc 6.4.
+
+You can get hs-plugins from:
 
         http://www.cse.unsw.edu.au/~dons/hs-plugins/
 
@@ -48,10 +59,11 @@ installed:
 
  2. make         	('gmake' on some systems)
 
- 3. make install 	(to install it, and then use 'yi' or 'yi-static')
-        OR
-    Just use './yi-inplace' (or 'yi-static') directly in the build 
-    tree (without having to install) 
+You can then use ./yi-static or ./yi-inplace.
+
+And if you wish to install Yi:
+
+ 3. make install
 
 Hint: 'make show-install' will show you which directories yi wants
 to install into. These are editable in mk/config.mk
@@ -84,8 +96,9 @@ PORTABILITY
 Yi is developed on OpenBSD, FreeBSD and Debian Linux. Dynamic
 configuration relies on the hs-plugins library, which has been ported to
 most platforms (but currently not Windows -- however yi-static should
-work on Windows with a little porting effort). Yi requires GHC 6 with a
-working GHCi implementation. 
+work on Windows with a little porting effort). Dynamic Yi requires GHC
+6 with a working GHCi implementation, static Yi should work with GHC 6.2
+and later. 
 
 A porting checklist:
 
