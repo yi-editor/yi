@@ -383,7 +383,7 @@ instance Buffer FBuffer where
         point <- pointB b
         deleteNAt b n point
     
-
+    -- deleteNAt :: a -> Int -> Int -> IO ()
     deleteNAt _ 0 _ = return ()
     deleteNAt fb@(FBuffer { undos = uv, rawbuf = mv }) n pos = do
         -- quick! before we delete the chars, copy them to the redo buffer
