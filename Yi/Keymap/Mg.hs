@@ -20,6 +20,47 @@
 -- 02111-1307, USA.
 -- 
 
+-- 
+-- | An keymap that emulates @mg@, an emacs-like text editor. For more
+-- information see <http://www.openbsd.org/cgi-bin/man.cgi?query=mg>
+-- 
+-- A quick summary:
+--
+-- >     ^F     Forward character
+-- >     ^B     Backwards character
+-- >     ^N     Next line
+-- >     ^P     Previous line
+-- >     ^A     Start of line
+-- >     ^E     End of line
+-- >     ^D     delete current character
+-- >     ^S     interactive search forward
+-- >     ^R     interactive search backwards
+-- >     ^O     Open a new line at cursor position
+-- >     ^T     transpose characters
+-- >     ^U     Repeat next command 4 times (can be cascaded i.e. ^u^u^f will move
+-- >            16 characters forward)
+-- >
+-- >     ^K     kill to end of line (placing into kill buffer)
+-- >     ^Y     yank kill buffer into current location
+-- >     ^@     set mark
+-- >     ^W     kill region (cuts from previously set mark to current location,
+-- >            into kill buffer)
+-- >     M-W    copy region (into kill buffer)
+-- >
+-- >     ^V     Next page
+-- >     M-V    Previous page
+-- >     M-<    start of buffer
+-- >     M->    end of buffer
+--
+-- >     ^X^C   Quit (you will be asked if you want to save files)
+-- >     ^X-O   Next window.
+-- >     ^X-N   Next window.
+-- >     ^X-P   Previous window.
+-- >     ^X-U   Undo.
+--
+-- For more key bindings, type ``M-x describe-bindings''.
+-- 
+
 module Yi.Keymap.Mg (keymap) where
 
 import Yi.Yi         hiding ( keymap )
@@ -31,130 +72,6 @@ import Numeric              ( showOct )
 import Data.Char            ( ord, chr )
 import Data.List            ((\\), isPrefixOf)
 import Control.Exception    ( try, evaluate )
-
-------------------------------------------------------------------------
--- 
--- MG(1)                      OpenBSD Reference Manual                      MG(1)
--- 
--- NAME
---      mg - emacs-like text editor
--- 
--- SYNOPSIS
---      mg [options] [file ...]
--- 
--- DESCRIPTION
---      mg is intended to be a small, fast, and portable editor for people who
---      can't (or don't want to) run the real emacs for one reason or another, or
---      are not familiar with the vi(1) editor.  It is compatible with emacs be-
---      cause there shouldn't be any reason to learn more editor types than emacs
---      or vi(1).
--- 
---      The options are as follows:
--- 
---      +number
---              Go to the line specified by number (do not insert a space between
---              the "+" sign and the number).  If a negative number is specified,
---              the line number counts backwards from the end of the file i.e.
---              +-1 will be the last line of the file, +-2 will be second last,
---              and so on.
--- 
---      -f <mode>
---              Run the mode command for all buffers created from arguments on
---              the command line, including the scratch buffer and all files.
--- 
---      -n      Turn off backup file generation.
--- 
---      Normal editing commands are very similar to Gnu Emacs.  In the following
---      examples, ^X means control-X, and M-X means Meta-X, where the Meta key
---      may be either a special key on your keyboard or the ALT key; otherwise
---      ESC followed by the key X works as well.
--- 
---      ^F     Forward character
---      ^B     Backwards character
---      ^N     Next line
---      ^P     Previous line
---      ^A     Start of line
---      ^E     End of line
---      ^D     delete current character
---      ^S     interactive search forward
---      ^R     interactive search backwards
---      ^O     Open a new line at cursor position
---      ^T     transpose characters
---      ^U     Repeat next command 4 times (can be cascaded i.e. ^u^u^f will move
---             16 characters forward)
--- 
---      ^K     kill to end of line (placing into kill buffer)
---      ^Y     yank kill buffer into current location
---      ^@     set mark
---      ^W     kill region (cuts from previously set mark to current location,
---             into kill buffer)
---      M-W    copy region (into kill buffer)
--- 
---      ^V     Next page
---      M-V    Previous page
---      M-<    start of buffer
---      M->    end of buffer
--- 
---      ^X^C   Quit (you will be asked if you want to save files)
---      ^X-O   Next window.
---      ^X-N   Next window.
---      ^X-P   Previous window.
---      ^X-U   Undo.
--- 
---      For more key bindings, type ``M-x describe-bindings''.
--- 
---      mg differs primarily in not having special modes for tasks other than
---      straight editing, e.g., mail and news, and in not having special modes
---      that support various programming languages.  It does have text justifica-
---      tion and auto-fill mode.  Since it is written completely in C, there is
---      no language in which you can write extensions.  However, you can rebind
---      keys and change some parameters.  There are no limits to line length or
---      format.  Command, buffer, and file name completion and listing can be
---      done using the spacebar and `?', respectively.
--- 
---      Amongst other major differences, the mg configuration files are much sim-
---      pler than real emacs.  There are two configuration files, .mg, and .mg-
---      TERM.  Here, TERM represents the name of your terminal type; e.g., if
---      your terminal type is set to ``vt100'', mg will use .mg-vt100 as a start-
---      up file.  The terminal type startup file is used first.  See the manual
---      for a full list of the commands that can go in the files.
--- 
---      Here's another example sequence that you may find useful.  By default,
---      ``()'' and ``[]'' are recognized as brackets, so bracket matching can be
---      done.  The following defines ``{}'' as brackets, and turns on the mode
---      that causes the cursor to "blink" to show you matching brackets.
--- 
---            global-set-key } blink-matching-paren-hack
---            blink-matching-paren
---            set-default-mode blink
--- 
---      More complicated key mappings are also possible, though there are some
---      internal limitations compared to regular emacs.  An example of how to map
---      control characters and sequences follows, illustrating the Gosling-like
---      line scrolling characters.
--- 
---            global-set-key "\^Z" scroll-one-line-up
---            global-set-key "\ez" scroll-one-line-down
---            global-set-key "\^_" suspend-emacs
--- 
--- FILES
---      ~/.mg       normal startup file
---      ~/.mg-TERM  terminal-specific startup file
--- 
--- SEE ALSO
---      vi(1)
--- 
--- BUGS
---      When you type `?' to list possible file names, buffer names, etc., a help
---      buffer is created for the possibilities.  In Gnu Emacs, this buffer goes
---      away the next time you type a real command.  In mg, you must use "^X-1"
---      to get rid of it.
--- 
---      The undo feature has a minor difference compared to the same feature in
---      Gnu Emacs.  When the end of the undo records list is reached, mg will not
---      stop and inform the user for one undo keystroke before continuing.
--- 
--- OpenBSD 3.7                    February 25, 2000                             2
 
 ------------------------------------------------------------------------
 
