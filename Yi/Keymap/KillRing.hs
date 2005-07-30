@@ -24,6 +24,8 @@ import Yi.Editor
 import Yi.Core
 import Data.Dynamic
 
+import Control.Monad ( when )
+
 -- * Killring structure
 
 data Killring = Killring {
@@ -31,7 +33,7 @@ data Killring = Killring {
                          , krAccumulate :: Bool
                          , krContents :: [String]
                          }
-    deriving Typeable
+    deriving (Typeable, Show)
 
 instance Initializable Killring where
     initial = return $ Killring False False [[]]
@@ -43,20 +45,20 @@ killringMaxDepth = 10
 
 -- | Finish an atomic command, for the purpose of killring accumulation.
 killringEndCmd :: Action
-killringEndCmd = do Killring killed _ r <- getDynamic
+killringEndCmd = do Killring killed _ r <- getDynamic undefined
                     setDynamic $ Killring False killed r
 
 -- | Put some text in the killring.
 -- It's accumulated if the last command was a kill too
 killringPut :: String -> Action
-killringPut s = do Killring _ acc r@(x:xs) <- getDynamic
+killringPut s = do Killring _ acc r@(x:xs) <- getDynamic undefined
                    if acc 
                       then setDynamic $ Killring True acc (s:take killringMaxDepth r)
                       else setDynamic $ Killring True acc ((x++s):xs)
 
 -- | Return the killring contents as a list. Head is most recent.
 killringGet :: IO [String]
-killringGet = do Killring _ _ r <- getDynamic
+killringGet = do Killring _ _ r <- getDynamic undefined
                  return r
 
 -- | Construct a region from its bounds
@@ -72,8 +74,21 @@ killRegionE = do m <- getMarkE
                  text <- readRegionE r
                  killringPut text
                  deleteRegionE r
-                 
+
+killLineE :: Action
+killLineE = do eol <- atEolE
+               l <- readRestOfLnE
+               killringPut l
+               killE
+               when eol $
+                    do c <- readE
+                       killringPut [c]
+                       deleteE
+ 
 yankE :: Action
 yankE = do (text:_) <- killringGet 
+           --kr@(Killring _ _ _) <- getDynamic undefined
+           --let text = show kr
+           getPointE >>= setMarkE
            insertNE text
            
