@@ -194,9 +194,11 @@ AC_CHECK_FUNCS(libiconv, AC_DEFINE( [ICONV_LIB_PREFIX],[1],
 # some special libs need to be set for package.conf files
 if echo "$LIBS" | grep iconv > /dev/null 2>&1 ; then
     ICONV=iconv
-else
-    : 
-# AC_MSG_ERROR(You need libiconv to run Yi)
+fi
+
+# it is fatal
+if test "x$ac_cv_lib_iconv_libiconv" = "xno"; then
+        AC_MSG_ERROR(You need libiconv to run Yi)
 fi
 
 if (echo "$LIBS" | grep ncursesw) >/dev/null 2>&1 ; then
