@@ -35,7 +35,7 @@ HC_OPTS+=       -threaded
 #HC_OPTS+=      -fignore-asserts 
 
 # Useful development settings:
-#HC_OPTS=       -Onot -fasm -H64m
+#HC_OPTS+=       -Onot -fasm -H64m
 
 GHC_VERSION=	@GHC_VERSION@
 GLASGOW_HASKELL=@GLASGOW_HASKELL@
@@ -85,7 +85,7 @@ LIBS=           @LIBS@
 # Special libs needed in package.conf files
 #
 CURSES=         @CURSES@
-ICONV=          @ICONV@
+# ICONV=          @ICONV@
 
 # extra symbols
 SYMS=           @SYMS@

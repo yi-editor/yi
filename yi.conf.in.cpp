@@ -13,7 +13,7 @@ Package {
         include_dirs    = [],
         c_includes      = [],
         source_dirs     = [],
-        extra_libraries = [ "${CURSES}", "${ICONV}" ],
+        extra_libraries = [ "${CURSES}" ],
         package_deps    = [ "base", "haskell98", "posix" ],
         extra_ghc_opts  = [],
         extra_cc_opts   = [],
@@ -70,7 +70,7 @@ import-dirs:          PREFIX
 library-dirs:         PREFIX
 #endif
 hs-libraries:         HSyi
-extra-libraries:      CURSES ICONV
+extra-libraries:      CURSES
 include-dirs:
 includes:             
 depends:              base haskell98 mtl

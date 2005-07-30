@@ -9,9 +9,6 @@
 /* Define to 1 if you have the <curses.h> header file. */
 #undef HAVE_CURSES_H
 
-/* Define to 1 if you have the <iconv.h> header file. */
-#undef HAVE_ICONV_H
-
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
 
@@ -20,9 +17,6 @@
 
 /* Define to 1 if you have the `curses' library (-lcurses). */
 #undef HAVE_LIBCURSES
-
-/* Define to 1 if you have the `libiconv' function. */
-#undef HAVE_LIBICONV
 
 /* Define to 1 if you have the `ncurses' library (-lncurses). */
 #undef HAVE_LIBNCURSES
@@ -74,9 +68,6 @@
 
 /* Define to 1 if you have the <wchar.h> header file. */
 #undef HAVE_WCHAR_H
-
-/* Define to 1 if you need a 'lib' prefix to iconv functions */
-#undef ICONV_LIB_PREFIX
 
 /* Define to the address where bug reports for this package should be sent. */
 #undef PACKAGE_BUGREPORT

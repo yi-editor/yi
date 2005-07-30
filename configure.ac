@@ -178,12 +178,12 @@ else
     fi
 fi
 
-AC_CHECK_LIB(iconv, iconv)
-AC_CHECK_LIB(iconv, libiconv)
+# AC_CHECK_LIB(iconv, iconv)
+# AC_CHECK_LIB(iconv, libiconv)
 
 # Bit weird. On OpenBSD you need the 'lib' suffix to iconv functions, it seems
-AC_CHECK_FUNCS(libiconv, AC_DEFINE( [ICONV_LIB_PREFIX],[1],
-                [Define to 1 if you need a 'lib' prefix to iconv functions]))
+# AC_CHECK_FUNCS(libiconv, AC_DEFINE( [ICONV_LIB_PREFIX],[1],
+#                 [Define to 1 if you need a 'lib' prefix to iconv functions]))
 
 # On linux we need to call doupdate() after endwin() to restore the term
 #if uname -s | grep Linux > /dev/null 2>&1 ; then
@@ -192,14 +192,10 @@ AC_CHECK_FUNCS(libiconv, AC_DEFINE( [ICONV_LIB_PREFIX],[1],
 #fi
 
 # some special libs need to be set for package.conf files
-if echo "$LIBS" | grep iconv > /dev/null 2>&1 ; then
-    ICONV=iconv
-fi
-
-# it is fatal
-if test "x$ac_cv_lib_iconv_libiconv" = "xno"; then
-        AC_MSG_ERROR(You need libiconv to run Yi)
-fi
+# if echo "$LIBS" | grep iconv > /dev/null 2>&1 ; then
+#     ICONV=iconv
+# fi
+# AC_SUBST(ICONV)
 
 if (echo "$LIBS" | grep ncursesw) >/dev/null 2>&1 ; then
     CURSES=ncursesw
@@ -208,13 +204,12 @@ elif (echo "$LIBS" | grep ncurses) >/dev/null 2>&1 ; then
 else
     CURSES=curses
 fi
-AC_SUBST(ICONV)
 AC_SUBST(CURSES)
 
 #
 # Specific headers to check for
 #
-AC_CHECK_HEADERS([iconv.h curses.h ncurses.h ncursesw/ncurses.h regex.h locale.h langinfo.h wchar.h limits.h signal.h ])
+AC_CHECK_HEADERS([curses.h ncurses.h ncursesw/ncurses.h regex.h locale.h langinfo.h wchar.h limits.h signal.h])
 
 #
 # We also would like this please

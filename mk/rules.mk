@@ -19,9 +19,9 @@ HC_OPTS        += $(INC_OPTS)
 HSC_OPTS       += -Imk -Icbits $(INC_OPTS) -DGLASGOW_HASKELL=$(GLASGOW_HASKELL)
 CC_OPTS        += -Imk -Icbits -optc-O3 $(INC_OPTS)
 
-ifeq "$(GLASGOW_HASKELL)" "604"
-HC_OPTS	       += -I$(TOPDIR)
-endif
+# ifeq "$(GLASGOW_HASKELL)" "604"
+# HC_OPTS	       += -I$(TOPDIR)
+# endif
 
 # If $(way) is set then we define $(way_) and $(_way) from it in the
 # obvious fashion.
@@ -171,15 +171,15 @@ $(GHCI_LIBRARY) : $(LIBOBJS)
 
 # in-tree package.conf
 $(PKG).conf: $(PKG).conf.in.cpp
-	@cpp -DPREFIX=`pwd` -DCURSES=$(CURSES) -DICONV=$(ICONV) -DGLASGOW_HASKELL=$(GLASGOW_HASKELL) < $(PKG).conf.in.cpp | sed 's/""//g;s/\[ *,/[ /g;/^#/d' > $(PKG).conf.in
+	@cpp -DPREFIX=`pwd` -DCURSES=$(CURSES) -DGLASGOW_HASKELL=$(GLASGOW_HASKELL) < $(PKG).conf.in.cpp | sed 's/""//g;s/\[ *,/[ /g;/^#/d' > $(PKG).conf.in
 	@if [ ! -f $(PKG).conf ]; then echo '[]' > $(PKG).conf ; fi
-	@env PREFIX=`pwd` CURSES=$(CURSES) ICONV=$(ICONV) $(GHC_PKG) --force -f $(PKG).conf -u < $(PKG).conf.in > /dev/null 2>&1
+	@env PREFIX=`pwd` CURSES=$(CURSES) $(GHC_PKG) --force -f $(PKG).conf -u < $(PKG).conf.in > /dev/null 2>&1
 
 # installable package.conf
 $(PKG).conf.install: $(PKG).conf.in.cpp
-	@cpp -DPREFIX=$(PREFIX) -DCURSES=$(CURSES) -DICONV=$(ICONV) -DINSTALLING -DGLASGOW_HASKELL=$(GLASGOW_HASKELL) < $(PKG).conf.in.cpp | sed 's/""//g;s/\[ *,/[ /g;/^#/d' > $(PKG).conf.install.in
+	@cpp -DPREFIX=$(PREFIX) -DCURSES=$(CURSES) -DINSTALLING -DGLASGOW_HASKELL=$(GLASGOW_HASKELL) < $(PKG).conf.in.cpp | sed 's/""//g;s/\[ *,/[ /g;/^#/d' > $(PKG).conf.install.in
 	@if [ ! -f $(PKG).conf.install ]; then echo '[]' > $(PKG).conf.install ; fi
-	@env PREFIX=$(PREFIX) CURSES=$(CURSES) ICONV=$(ICONV) $(GHC_PKG) --force -f $(PKG).conf.install -u < $(PKG).conf.install.in > /dev/null 2>&1
+	@env PREFIX=$(PREFIX) CURSES=$(CURSES) $(GHC_PKG) --force -f $(PKG).conf.install -u < $(PKG).conf.install.in > /dev/null 2>&1
 
 EXTRA_CLEANS+= $(PKG).conf.install $(PKG).conf $(PKG).conf.in $(PKG).conf.install.in *.old
 
