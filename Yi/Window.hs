@@ -287,16 +287,7 @@ deleteNW w b i = do
         else update w b
 
 deleteNAtW :: Buffer a => Window -> a -> Int -> Int -> IO Window
-deleteNAtW w b i p = do 
-    -- FIXME / TODO: the right way to do this is to have a mark for each 
-    -- window's point in the buffer. We can then rely on the buffer to do
-    -- manage it.    
-    -- I think this will be especially important 
-    -- when many window edit the same buffer.
-                     
-    deleteNAt b i p
-    point <- pointB b -- hack, see above
-    moveToW point w b
+deleteNAtW w b i p = deleteNAt b i p >> update w b
 
 --
 -- | Kill all the characters to the end of the line
