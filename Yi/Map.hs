@@ -43,6 +43,10 @@ module Yi.Map (
         member,
         keys,
         assocs,
+        map,
+        (!),
+        null,
+        filter,
 
         mapWithKey,
         filterWithKey,
@@ -50,7 +54,7 @@ module Yi.Map (
 #endif
   ) where
 
-import Prelude hiding (lookup)
+import Prelude hiding (lookup, map, null)
 
 #if __GLASGOW_HASKELL__ >= 604
 import Data.Map
@@ -62,7 +66,6 @@ addList l m = union (fromList l) m
 --
 -- compatibility code for deprecated FiniteMap
 --
-import Prelude hiding (lookup)
 import qualified Data.FiniteMap as FM
 
 type Map = FM.FiniteMap
@@ -72,6 +75,9 @@ instance Functor (Map k) where
 
 empty  :: Map k a
 empty  = FM.emptyFM
+
+null :: Map k a -> Bool
+null = FM.isEmptyFM
 
 singleton :: k -> a -> Map k a
 singleton = FM.unitFM
@@ -132,7 +138,13 @@ addList = flip FM.addListToFM
 mapWithKey :: (k -> a -> b) -> Map k a -> Map k b
 mapWithKey = FM.mapFM
 
--- map f m == mapFM (const f)
+map :: (a -> b) -> Map k a -> Map k b
+map f = FM.mapFM (const f)
+
+(!) :: Ord k => Map k a -> k -> a
+(!) m k = case FM.lookupFM m k of
+                Nothing -> error "Yi.Map.find: element not in the map"
+                Just e  -> e
 
 filterWithKey :: Ord k => (k -> a -> Bool) -> Map k a -> Map k a
 filterWithKey = FM.filterFM

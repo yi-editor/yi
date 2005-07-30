@@ -182,13 +182,13 @@ import Yi.Window
 import Yi.Regex
 import Yi.String
 import Yi.Process           ( popen )
+import Yi.Map as M          ( lookup, insert )
 import Yi.Editor
 import qualified Yi.Editor as Editor
 
 import Data.Maybe
 import Data.Char            ( isLatin1 )
 import Data.Dynamic         
-import Data.Map as M        ( lookup, insert )
 
 
 import System.IO            ( hClose )
@@ -626,10 +626,20 @@ exchangePointAndMarkE = do m <- getMarkE
 -- 
 
 -- | Retrieve the extensible state
+{-
+-- requires ghc 6.4:
 getDynamic :: forall a. Initializable a => IO a
 getDynamic = do
         ps <- readEditor dynamic
         case M.lookup (show $ typeOf (undefined :: a)) ps of
+            Nothing -> initial
+            Just x -> return $ fromJust $ fromDynamic x
+-}
+
+getDynamic :: forall a. Initializable a => a -> IO a
+getDynamic undef = do
+        ps <- readEditor dynamic
+        case M.lookup (show $ typeOf undef) ps of
             Nothing -> initial
             Just x -> return $ fromJust $ fromDynamic x
 

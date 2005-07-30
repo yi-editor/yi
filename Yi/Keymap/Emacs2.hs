@@ -1,4 +1,4 @@
-{-# OPTIONS -fglasgow-exts #-}
+{-# OPTIONS -cpp -fglasgow-exts #-}
 
 -- 
 -- Copyright (c) 2005 Jean-Philippe Bernardy
@@ -39,7 +39,21 @@ import Data.Dynamic
 import Yi.Window
 import Yi.Buffer
 import Yi.Keymap.Killring
+
 import Text.ParserCombinators.ReadP hiding ( get )
+
+#if __GLASGOW_HASKELL__ < 604
+-- just enough parsec for 6.2.2 to build
+
+sepBy1 :: ReadP a -> ReadP sep -> ReadP [a]
+sepBy1 p sep = liftM2 (:) p (many (sep >> p))
+
+many :: ReadP a -> ReadP [a]
+many p = return [] +++ many1 p
+
+many1 :: ReadP a -> ReadP [a]
+many1 p = liftM2 (:) p (many p)
+#endif
 
 -- * Dynamic state-components
 
@@ -262,7 +276,7 @@ lookStroke = do (c:_) <- getInput
 
 
 withUnivArg :: (Maybe Int -> Action) -> Action
-withUnivArg cmd = do UniversalArg a <- getDynamic
+withUnivArg cmd = do UniversalArg a <- getDynamic undefined
                      cmd a
                      setDynamic $ UniversalArg Nothing
 
@@ -273,7 +287,7 @@ repeatingArg :: Action -> Action
 repeatingArg f = withIntArg $ \n->replicateM_ n f
 
 insertSelf :: Action
-insertSelf = repeatingArg $ do TypedKey k <- getDynamic
+insertSelf = repeatingArg $ do TypedKey k <- getDynamic undefined
                                insertNE k
 
 insertNextC :: KProc ()
@@ -284,7 +298,7 @@ insertNextC = do c <- readStroke
      
 -- | Complain about undefined key
 undefC :: Action
-undefC = do TypedKey k <- getDynamic 
+undefC = do TypedKey k <- getDynamic  undefined
             errorE $ "Key sequence not defined : " ++ 
                   showKey k ++ " " ++ show (map ord k)
 
@@ -299,7 +313,7 @@ readArg' acc = do
     if isDigit c
      then (do { readStroke
               ; let acc' = Just $ 10 * (fromMaybe 0 acc) + (ord c - ord '0')
-              ; liftC $ do TypedKey k <- getDynamic
+              ; liftC $ do TypedKey k <- getDynamic undefined
                            msgE (showKey k ++ show (fromJust $ acc')) 
               ; readArg' acc'
              }
@@ -317,7 +331,7 @@ readArg' acc = do
 
 spawnMinibuffer :: String -> KList -> Action
 spawnMinibuffer _prompt klist = 
-    do MiniBuf w _b <- getDynamic
+    do MiniBuf w _b <- getDynamic undefined
        setWinE w
        metaM (fromKProc $ makeKeymap klist)
 

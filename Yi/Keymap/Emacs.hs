@@ -77,10 +77,10 @@ module Yi.Keymap.Emacs where
 import Yi.Editor            ( Action )
 import Yi.Yi hiding         ( keymap )
 import Yi.Lexers hiding (Action)
+import qualified Yi.Map as Map
 
 import Data.Char            ( chr, ord )
 import Data.List
-import qualified Data.Map as Map
 
 type Key = Int {- What to use here - Meta Keystrokes? -}
 
