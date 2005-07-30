@@ -441,12 +441,12 @@ cmd2other = modeSwitchChar
 
             '\ESC'-> (with msgClrE, st{acc=[]}, Just $ cmd st)
 
-            k | k == keySIC -> (Nothing, st, Just (ins st)) -- <insert>
+            k | k == keyIC -> (Nothing, st, Just (ins st)) -- <insert>
 
             s   -> (with (errorE ("The "++show s++" command is unknown."))
                    ,st, Just $ cmd st)
 
-    where modeSwitchChar = alt ":RiIaAoOcCS/?\ESC"
+    where modeSwitchChar = alt $ ":RiIaAoOcCS/?\ESC" ++ [keyIC]
           focus = cmdlineFocusE
 
 -- ---------------------------------------------------------------------
