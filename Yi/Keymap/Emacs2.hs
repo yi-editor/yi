@@ -274,7 +274,7 @@ lookStroke = do (c:_) <- getInput
 
 
 withUnivArg :: (Maybe Int -> Action) -> Action
-withUnivArg cmd = do UniversalArg a <- getDynamic undefined
+withUnivArg cmd = do UniversalArg a <- getDynamic
                      cmd a
                      setDynamic $ UniversalArg Nothing
 
@@ -285,7 +285,7 @@ repeatingArg :: Action -> Action
 repeatingArg f = withIntArg $ \n->replicateM_ n f
 
 insertSelf :: Action
-insertSelf = repeatingArg $ do TypedKey k <- getDynamic undefined
+insertSelf = repeatingArg $ do TypedKey k <- getDynamic
                                insertNE k
 
 insertNextC :: KProc ()
@@ -296,7 +296,7 @@ insertNextC = do c <- readStroke
      
 -- | Complain about undefined key
 undefC :: Action
-undefC = do TypedKey k <- getDynamic  undefined
+undefC = do TypedKey k <- getDynamic 
             errorE $ "Key sequence not defined : " ++ 
                   showKey k ++ " " ++ show (map ord k)
 
@@ -311,7 +311,7 @@ readArg' acc = do
     if isDigit c
      then (do { readStroke
               ; let acc' = Just $ 10 * (fromMaybe 0 acc) + (ord c - ord '0')
-              ; liftC $ do TypedKey k <- getDynamic undefined
+              ; liftC $ do TypedKey k <- getDynamic
                            msgE (showKey k ++ show (fromJust $ acc')) 
               ; readArg' acc'
              }
@@ -329,7 +329,7 @@ readArg' acc = do
 
 spawnMinibuffer :: String -> KList -> Action
 spawnMinibuffer _prompt klist = 
-    do MiniBuf w _b <- getDynamic undefined
+    do MiniBuf w _b <- getDynamic
        setWinE w
        metaM (fromKProc $ makeKeymap klist)
 

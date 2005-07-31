@@ -627,7 +627,10 @@ exchangePointAndMarkE = do m <- getMarkE
 
 -- | Retrieve the extensible state
 {-
--- requires ghc 6.4:
+--
+-- More info: GHC 6.2 and 6.4 vary quite greatly with this code, and it
+-- seems like a bug, investigations continuing
+--
 getDynamic :: forall a. Initializable a => IO a
 getDynamic = do
         ps <- readEditor dynamic
@@ -636,12 +639,15 @@ getDynamic = do
             Just x -> return $ fromJust $ fromDynamic x
 -}
 
-getDynamic :: forall a. Initializable a => a -> IO a
-getDynamic undef = do
-        ps <- readEditor dynamic
-        case M.lookup (show $ typeOf undef) ps of
-            Nothing -> initial
-            Just x -> return $ fromJust $ fromDynamic x
+getDynamic :: forall a. Initializable a => IO a
+getDynamic = getDynamic' (undefined :: a)
+    where
+        getDynamic' :: Initializable a => a -> IO a
+        getDynamic' a = do
+                ps <- readEditor dynamic
+                case M.lookup (show $ typeOf a) ps of
+                    Nothing -> initial
+                    Just x -> return $ fromJust $ fromDynamic x
 
 -- | Insert a value into the extensible state, keyed by its type
 setDynamic :: Typeable a => a -> Action
