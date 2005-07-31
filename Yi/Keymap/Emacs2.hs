@@ -88,13 +88,14 @@ normalKlist :: KList
 normalKlist = [ ([c], atomic $ insertSelf) | c <- printableChars ] ++
               [
         ("DEL",      atomic $ repeatingArg bdeleteE),
+        ("C-M-w",    atomic $ appendNextKillE),
         ("C-SPC",    atomic $ (getPointE >>= setMarkE)),
         ("C-a",      atomic $ repeatingArg solE),
         ("C-b",      atomic $ repeatingArg leftE),
         ("C-d",      atomic $ repeatingArg deleteE),
         ("C-e",      atomic $ repeatingArg eolE),
         ("C-f",      atomic $ repeatingArg rightE),
-        ("C-g",      atomic $ msgE "Quit"),
+--      ("C-g",      atomic $ keyboardQuitE),
 --      ("C-i",      atomic $ indentC),
         ("C-j",      atomic $ repeatingArg $ insertE '\n'),
         ("C-k",      atomic $ killLineE),
@@ -117,7 +118,10 @@ normalKlist = [ ([c], atomic $ insertSelf) | c <- printableChars ] ++
         ("C-x C-x",  atomic $ exchangePointAndMarkE),
         ("C-x o",    atomic $ nextWinE),
         ("C-x k",    atomic $ closeE),
-        ("C-x r k",  atomic $ msgE "killRect"),
+--      ("C-x r k",  atomic $ killRectE),
+--      ("C-x r o",  atomic $ openRectE),
+--      ("C-x r t",  atomic $ stringRectE),
+--      ("C-x r y",  atomic $ yankRectE),
         ("C-x u",    atomic $ repeatingArg undoE), 
         ("C-x v",    atomic $ repeatingArg shrinkWinE),
         ("C-y",      atomic $ yankE),
@@ -125,13 +129,19 @@ normalKlist = [ ([c], atomic $ insertSelf) | c <- printableChars ] ++
         ("M->",      atomic $ repeatingArg botE),
 --      ("M-%",      searchReplaceC),
         ("M-DEL",    atomic $ repeatingArg bkillWordE),
+--      ("M-a",      atomic $ repeatingArg backwardSentenceE),
         ("M-b",      atomic $ repeatingArg prevWordE),
         ("M-c",      atomic $ repeatingArg capitaliseWordE),
         ("M-d",      atomic $ repeatingArg killWordE),
+--      ("M-e",      atomic $ repeatingArg forwardSentenceE),
         ("M-f",      atomic $ repeatingArg nextWordE),
+--      ("M-h",      atomic $ repeatingArg markParagraphE),
+--      ("M-k",      atomic $ repeatingArg killSentenceE),
         ("M-l",      atomic $ repeatingArg lowercaseWordE),
+--      ("M-t",      atomic $ repeatingArg transposeWordsE),
         ("M-u",      atomic $ repeatingArg uppercaseWordE),         
         ("M-w",      atomic $ killRingSaveE),         
+--      ("M-x",      atomic $ executeExtendedCommandE),         
         ("M-y",      atomic $ yankPopE),         
         ("<left>",   atomic $ repeatingArg leftE),
         ("<right>",  atomic $ repeatingArg rightE),
@@ -146,6 +156,8 @@ normalKlist = [ ([c], atomic $ insertSelf) | c <- printableChars ] ++
 liftC :: Action -> KProc ()
 liftC = tell . return
 
+-- | Define an atomic interactive command.
+-- Purose is to define "transactional" boundaries for killring, undo, etc.
 atomic :: Action -> KProc ()
 atomic cmd = liftC $ do cmd
                         killringEndCmd
