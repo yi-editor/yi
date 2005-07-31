@@ -134,6 +134,7 @@ yankPopE = do r <- getRegionE
               kr@Killring {krContents = ring} <- getDynamic 
               setDynamic $ kr {krContents = tail ring ++ [head ring]}
               yankE
-           
+
+-- | C-M-w           
 appendNextKillE :: Action
 appendNextKillE = killringModify (\kr -> kr {krKilled=True})
