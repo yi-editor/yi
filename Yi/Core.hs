@@ -642,7 +642,7 @@ getDynamic = do
 getDynamic :: forall a. Initializable a => IO a
 getDynamic = getDynamic' (undefined :: a)
     where
-        getDynamic' :: Initializable a => a -> IO a
+        getDynamic' :: Initializable b => b -> IO b
         getDynamic' a = do
                 ps <- readEditor dynamic
                 case M.lookup (show $ typeOf a) ps of
