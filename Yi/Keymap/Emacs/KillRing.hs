@@ -82,22 +82,26 @@ mkRegion x y = if x < y then (x,y) else (y,x)
 
 -- * Killring actions
 
+-- | Get the current region boundaries
 getRegionE :: IO (Int,Int)
 getRegionE = do m <- getMarkE
                 p <- getPointE
                 return $ mkRegion m p
 
+-- | C-w
 killRegionE :: Action
 killRegionE = do r <- getRegionE
                  text <- readRegionE r
                  killringPut text
                  deleteRegionE r
 
+-- | C-k
 killLineE :: Action
 killLineE = withUnivArg $ \a -> case a of
                Nothing -> killRestOfLineE
                Just n -> replicateM_ (2*n) killRestOfLineE
 
+-- | Kill the rest of line
 killRestOfLineE :: Action
 killRestOfLineE =
     do eol <- atEolE
@@ -109,6 +113,7 @@ killRestOfLineE =
                killringPut [c]
                deleteE
 
+-- | C-y
 yankE :: Action
 yankE = do (text:_) <- killringGet 
            --kr@(Killring _ _ _) <- getDynamic undefined
@@ -116,10 +121,13 @@ yankE = do (text:_) <- killringGet
            getPointE >>= setMarkE
            insertNE text
 
+-- | M-w
 killRingSaveE :: Action
 killRingSaveE = do text <- readRegionE =<< getRegionE
                    killringPut text
+-- | M-y
 
+-- TODO: Handle argument, verify last command was a yank
 yankPopE :: Action
 yankPopE = do r <- getRegionE
               deleteRegionE r
@@ -127,3 +135,5 @@ yankPopE = do r <- getRegionE
               setDynamic $ kr {krContents = tail ring ++ [head ring]}
               yankE
            
+appendNextKillE :: Action
+appendNextKillE = killringModify (\kr -> kr {krKilled=True})
