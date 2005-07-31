@@ -18,25 +18,34 @@
 -- 02111-1307, USA.
 -- 
 
-module Yi.Keymap.KillRing where
+module Yi.Keymap.Emacs.KillRing where
 
 import Yi.Editor
 import Yi.Core
+import Yi.Keymap.Emacs.UnivArgument
+
 import Data.Dynamic
 
-import Control.Monad ( when )
+import Control.Monad ( when, replicateM_ )
 
 -- * Killring structure
 
-data Killring = Killring {
-                         krKilled :: Bool
+data Killring = Killring { krKilled :: Bool
                          , krAccumulate :: Bool
                          , krContents :: [String]
+                         , krLastYank :: Bool
+                         , krYanked :: Bool
                          }
     deriving (Typeable, Show)
 
 instance Initializable Killring where
-    initial = return $ Killring False False [[]]
+    initial = return $ 
+              Killring { krKilled = False
+                       , krAccumulate = False
+                       , krContents = [[]]
+                       , krLastYank = False
+                       , krYanked = False
+                       }
 
 -- * Killring "ADT"
 
@@ -62,34 +71,59 @@ killringGet :: IO [String]
 killringGet = do Killring {krContents = r} <- getDynamic
                  return r
 
+killringModify :: (Killring -> Killring) -> IO ()
+killringModify f = do
+                   kr <- getDynamic
+                   setDynamic $ f kr
+
 -- | Construct a region from its bounds
 mkRegion :: Int -> Int -> (Int, Int)
 mkRegion x y = if x < y then (x,y) else (y,x)
 
 -- * Killring actions
 
+getRegionE :: IO (Int,Int)
+getRegionE = do m <- getMarkE
+                p <- getPointE
+                return $ mkRegion m p
+
 killRegionE :: Action
-killRegionE = do m <- getMarkE
-                 p <- getPointE
-                 let r = mkRegion m p
+killRegionE = do r <- getRegionE
                  text <- readRegionE r
                  killringPut text
                  deleteRegionE r
 
 killLineE :: Action
-killLineE = do eol <- atEolE
-               l <- readRestOfLnE
-               killringPut l
-               killE
-               when eol $
-                    do c <- readE
-                       killringPut [c]
-                       deleteE
- 
+killLineE = withUnivArg $ \a -> case a of
+               Nothing -> killRestOfLineE
+               Just n -> replicateM_ (2*n) killRestOfLineE
+
+killRestOfLineE :: Action
+killRestOfLineE =
+    do eol <- atEolE
+       l <- readRestOfLnE
+       killringPut l
+       killE
+       when eol $
+            do c <- readE
+               killringPut [c]
+               deleteE
+
 yankE :: Action
 yankE = do (text:_) <- killringGet 
            --kr@(Killring _ _ _) <- getDynamic undefined
            --let text = show kr
            getPointE >>= setMarkE
            insertNE text
+
+killRingSaveE :: Action
+killRingSaveE = do text <- readRegionE =<< getRegionE
+                   killringPut text
+
+yankPopE :: Action
+yankPopE = do r <- getRegionE
+              deleteRegionE r
+              kr@Killring {krContents = ring} <- getDynamic 
+              setDynamic $ kr {krContents = tail ring ++ [head ring]}
+              yankE
            

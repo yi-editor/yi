@@ -1,4 +1,4 @@
-{-# OPTIONS -cpp -fglasgow-exts #-}
+{-# OPTIONS -fglasgow-exts #-}
 -- 
 -- Copyright (c) 2005 Jean-Philippe Bernardy
 -- 
@@ -26,9 +26,11 @@ import Yi.Editor hiding     ( keymap )
 import Yi.Yi hiding         ( keymap, meta, string )
 import Yi.Window
 import Yi.Buffer
-import Yi.Keymap.KillRing
-import Yi.Char
 import qualified Yi.Map as M
+
+import Yi.Keymap.Emacs.KillRing
+import Yi.Keymap.Emacs.UnivArgument
+import Yi.Keymap.Emacs.Keys
 
 import Data.Char           
 import Data.Maybe
@@ -38,33 +40,7 @@ import Data.Dynamic
 import Control.Monad.Writer
 import Control.Monad.State
 
-import Text.ParserCombinators.ReadP hiding ( get )
-
-#if __GLASGOW_HASKELL__ < 604
--- just enough parsec for 6.2.2 to build
-
-sepBy1 :: ReadP a -> ReadP sep -> ReadP [a]
-sepBy1 p sep = liftM2 (:) p (many (sep >> p))
-
-many :: ReadP a -> ReadP [a]
-many p = return [] +++ many1 p
-
-many1 :: ReadP a -> ReadP [a]
-many1 p = liftM2 (:) p (many p)
-#endif
-
 -- * Dynamic state-components
-
-newtype UniversalArg = UniversalArg (Maybe Int)
-    deriving Typeable
-
--- doing the argument precisely is kind of tedious.
--- read: http://www.gnu.org/software/emacs/manual/html_node/Arguments.html
--- and: http://www.gnu.org/software/emacs/elisp-manual/html_node/elisp_318.html
-
-
-instance Initializable UniversalArg where
-    initial = return $ UniversalArg Nothing
 
 
 newtype TypedKey = TypedKey String
@@ -84,11 +60,7 @@ instance Initializable MiniBuf where
 
 -- TODO
 
--- * Killring
-
 -- * Keymaps (rebindings)
-
--- * mark
 
 -- | The command type. 
 
@@ -111,9 +83,6 @@ type KProc a = StateT String (Writer [Action]) a
 -- way, reducing glue code to the minimum.
 
 -- And, rebinding could then be achieved :)
-
-printableChars :: [Char]
-printableChars = map chr [32..127]
 
 normalKlist :: KList 
 normalKlist = [ ([c], atomic $ insertSelf) | c <- printableChars ] ++
@@ -162,7 +131,8 @@ normalKlist = [ ([c], atomic $ insertSelf) | c <- printableChars ] ++
         ("M-f",      atomic $ repeatingArg nextWordE),
         ("M-l",      atomic $ repeatingArg lowercaseWordE),
         ("M-u",      atomic $ repeatingArg uppercaseWordE),         
-        ("M-w",      atomic $ msgE "copy"),         
+        ("M-w",      atomic $ killRingSaveE),         
+        ("M-y",      atomic $ yankPopE),         
         ("<left>",   atomic $ repeatingArg leftE),
         ("<right>",  atomic $ repeatingArg rightE),
         ("<up>",     atomic $ repeatingArg upE),
@@ -170,75 +140,6 @@ normalKlist = [ ([c], atomic $ insertSelf) | c <- printableChars ] ++
         ("<next>",   atomic $ repeatingArg downScreenE),
         ("<prior>",  atomic $ repeatingArg upScreenE)
         ]
-
--- * Key parser 
--- This really should be in its own module 
--- (importing Text.ParserCombinators.ReadP pollutes the namespace here)
-
-c_ :: Char -> Char
-c_ ' ' = '\0'
-c_ x = ctrlLowcase x
-
-m_ :: Char -> Char
-m_ '\263' = chr 255
-m_ x = setMeta x
-
-parseCtrl :: ReadP Char
-parseCtrl = do string "C-"
-               k <- parseMeta +++ parseRegular
-               return $ c_ k
-
-parseMeta :: ReadP Char
-parseMeta = do string "M-"
-               k <- parseRegular
-               return $ m_ k
-
-keyNames :: [(Char, String)]
-keyNames = [(' ', "SPC"),
-            (keyLeft, "<left>"),
-            (keyRight, "<right>"),
-            (keyDown, "<down>"),
-            (keyUp, "<up>"),
-            (keyBackspace, "DEL"),
-            (keyNPage, "<next>"),
-            (keyPPage, "<prior>")
-           ]
-
-parseRegular :: ReadP Char
-parseRegular = choice [string s >> return c | (c,s) <- keyNames]
-               +++ satisfy (`elem` printableChars)               
-
-parseKey :: ReadP String
-parseKey = sepBy1 (parseCtrl +++ parseMeta +++ parseRegular) (munch1 isSpace)
-
-readKey :: String -> String
-readKey s = case readKey' s of
-              [r] -> r
-              rs -> error $ "readKey: " ++ s ++ show (map ord s) ++ " -> " ++ show rs
-
-readKey' :: String -> [String]
-readKey' s = map fst $ nub $ filter (null . snd) $ readP_to_S parseKey $ s
-
--- * Key printer
-
-showKey :: String -> String
-showKey = dropSpace . printable'
-    where 
-        printable' ('\ESC':a:ta) = "M-" ++ [a] ++ printable' ta
-        printable' ('\ESC':ta) = "ESC " ++ printable' ta
-        printable' (a:ta) 
-                | ord a < 32
-                = "C-" ++ [chr (ord a + 96)] ++ " " ++ printable' ta
-                | isMeta a
-                = "M-" ++ printable' (clrMeta a:ta)
-                | ord a >= 127
-                = bigChar a ++ " " ++ printable' ta 
-                | otherwise  = [a, ' '] ++ printable' ta
-                
-        printable' [] = []
-
-        bigChar c = fromMaybe [c] $ M.lookup c $ M.fromList keyNames
-
 
 -- * Boilerplate code for the Command monad
 
@@ -270,19 +171,6 @@ lookStroke = do (c:_) <- getInput
 -- without a prefix, so M-x ... would be easily implemented
 -- by looking up that module's contents
 
-
-
-
-withUnivArg :: (Maybe Int -> Action) -> Action
-withUnivArg cmd = do UniversalArg a <- getDynamic
-                     cmd a
-                     setDynamic $ UniversalArg Nothing
-
-withIntArg :: (Int -> Action) -> Action
-withIntArg cmd = withUnivArg $ \arg -> cmd (fromMaybe 1 arg)
-
-repeatingArg :: Action -> Action
-repeatingArg f = withIntArg $ \n->replicateM_ n f
 
 insertSelf :: Action
 insertSelf = repeatingArg $ do TypedKey k <- getDynamic

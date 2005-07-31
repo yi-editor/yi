@@ -9,7 +9,7 @@ include $(TOPDIR)/mk/config.mk
 # this rule must remain first
 default: boot all
 
-ALL_DIRS=       Yi Yi/Keymap Yi/Syntax cbits
+ALL_DIRS=       Yi Yi/Keymap Yi/Keymap/Emacs Yi/Syntax cbits
 
 ifneq "$(CURSES)" ""
 ALL_DIRS+=      Yi/Curses
