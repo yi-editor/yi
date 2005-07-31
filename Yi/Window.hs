@@ -258,6 +258,14 @@ insertW c w b = do
         then moveDownW w' b >>= flip moveToSolW b
         else return w'
 
+-- | Insert a whole String at the point.
+insertNW :: Buffer a => String -> Window -> a -> IO Window
+insertNW cs w b = do
+    let cs' = [if c == '\13' then '\n' else c | c <- cs, isLatin1 c]
+    insertN b cs'
+    rightN b (length cs')
+    update w b
+
 --
 -- | Delete character. Don't move point unless at EOF
 --

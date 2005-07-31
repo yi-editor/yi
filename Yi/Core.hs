@@ -501,7 +501,11 @@ insertE c = do
 
 -- | Insert a string
 insertNE :: String -> Action
-insertNE = mapM_ insertE
+insertNE str = do
+    withWindow_ $ \w b -> do
+            s <- sizeB b
+            if s == 0 then insertW '\n' w b else return w
+    withWindow_ $ \w b -> insertNW str w b
 
 -- | Delete character under cursor
 deleteE :: Action
