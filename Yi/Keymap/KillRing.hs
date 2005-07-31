@@ -45,20 +45,21 @@ killringMaxDepth = 10
 
 -- | Finish an atomic command, for the purpose of killring accumulation.
 killringEndCmd :: Action
-killringEndCmd = do Killring killed _ r <- getDynamic undefined
-                    setDynamic $ Killring False killed r
+killringEndCmd = do kr@Killring {krKilled = killed} <- getDynamic
+                    setDynamic $ kr {krKilled = False, krAccumulate = killed }
 
 -- | Put some text in the killring.
 -- It's accumulated if the last command was a kill too
 killringPut :: String -> Action
-killringPut s = do Killring _ acc r@(x:xs) <- getDynamic undefined
-                   if acc 
-                      then setDynamic $ Killring True acc (s:take killringMaxDepth r)
-                      else setDynamic $ Killring True acc ((x++s):xs)
+killringPut s = do kr@Killring {krContents = r@(x:xs), krAccumulate=acc} <- getDynamic
+                   setDynamic $ kr {krKilled = True,
+                                    krContents = 
+                                        if acc then (x++s):xs
+                                               else s:take killringMaxDepth r }
 
 -- | Return the killring contents as a list. Head is most recent.
 killringGet :: IO [String]
-killringGet = do Killring _ _ r <- getDynamic undefined
+killringGet = do Killring {krContents = r} <- getDynamic
                  return r
 
 -- | Construct a region from its bounds
