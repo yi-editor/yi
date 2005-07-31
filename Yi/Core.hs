@@ -639,7 +639,7 @@ getDynamic = do
             Just x -> return $ fromJust $ fromDynamic x
 -}
 
-getDynamic :: forall a. Initializable a => IO a
+getDynamic :: Initializable a => IO a
 getDynamic = getDynamic' (undefined :: a)
     where
         getDynamic' :: Initializable b => b -> IO b
