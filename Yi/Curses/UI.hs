@@ -214,7 +214,10 @@ drawWindow e mwin sty win =
         when (x /= 0) $ throwIfErr_ "waddch" $
             waddch Curses.stdScr (fromIntegral $ ord '\n') -- no nl at eof.  better flush
         (y',_) <- getYX Curses.stdScr
-        mapM_ (drawLine w) $ take (h - off - (y' - y)) $ repeat [windowfill e]
+        let diff = h - off - (y' - y)
+        if windowfill e /= ' ' 
+            then mapM_ (drawLine w) $ take diff $ repeat [windowfill e]
+            else Curses.wMove Curses.stdScr (y' + diff) 0 -- just move the cursor
 
     -- draw modeline
     when (not $ isNothing m) $ do

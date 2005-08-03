@@ -246,6 +246,7 @@ throwIfErr :: Num a => String -> IO a -> IO a
 --        then ioError (userError ("Curses: "++name++" failed"))
 --        else return res
 throwIfErr s = throwIf (== (#const ERR)) (\a -> "Curses[" ++ show a ++ "]:"  ++ s)
+{-# INLINE throwIfErr #-}
 
 throwIfErr_ :: Num a => String -> IO a -> IO ()
 throwIfErr_ name act = void $ throwIfErr name act
@@ -811,7 +812,7 @@ wAddStr win str = do
         convStr f = case f [] of
             [] -> return ()
             s  -> throwIfErr_ "waddnstr" $
-                withCWStringLen  (s) (\(ws,len) ->  (waddnwstr win ws (fi len)))
+                withCWStringLen (s) (\(ws,len) -> (waddnwstr win ws (fi len)))
         loop []        acc = convStr acc
         loop (ch:str') acc = recognize
             ch
