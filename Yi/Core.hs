@@ -495,17 +495,17 @@ scrollDownE = withWindow_ scrollDownW
 insertE :: Char -> Action
 insertE c = do
     withWindow_ $ \w b -> do
-            s <- sizeB b
-            if s == 0 then insertW '\n' w b else return w
-    withWindow_ $ insertW c
+            s  <- sizeB b
+            w' <- if s == 0 then insertW '\n' w b else return w
+            insertW c w' b
 
 -- | Insert a string
 insertNE :: String -> Action
 insertNE str = do
     withWindow_ $ \w b -> do
-            s <- sizeB b
-            if s == 0 then insertW '\n' w b else return w
-    withWindow_ $ \w b -> insertNW str w b
+            s  <- sizeB b
+            w' <- if s == 0 then insertW '\n' w b else return w
+            insertNW str w' b
 
 -- | Delete character under cursor
 deleteE :: Action
