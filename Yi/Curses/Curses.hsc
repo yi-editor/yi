@@ -226,6 +226,7 @@ resetParams = do
     leaveOk False       -- not ok to leave cursor wherever it is
     c_meta stdScr 1       -- ask for 8 bit chars, so we can get Meta
     keypad stdScr True  -- enable the keypad, so things like ^L (refresh) work
+    noDelay stdScr False -- blocking getCh, no #ERR
     return ()
 
 -- not needed, if keypad is True:
@@ -1345,17 +1346,17 @@ foreign import ccall unsafe "YiCurses.h meta"
 -- On emacs, we really would want Alt to be our meta key, I think.
 --
 getCh :: IO Char
-getCh = do
-    v <- getch
---  trace (show (chr (fromIntegral v), show v)) $ do
-    case v of
-            -- we won't get ^C otherwise..
-             (#const ERR) -> getch {-discard-} >> return '\^C'   -- hack
+getCh = liftM decodeKey $ throwIfErr "getch" getch
 
-             _  -> do
-                let c = decodeKey v
+--  trace (show (chr (fromIntegral v), show v)) $ do
+--  case v of
+            -- we won't get ^C otherwise..
+            -- (#const ERR) -> getch {-discard-} >> return '\^C'   -- hack
+
+--           _  -> do
+--              let c = decodeKey v
         --      when (c == '\ESC') $ trace ("got ESC") $ return ()
-                return c
+--              return c
 
 ------------------------------------------------------------------------
 
