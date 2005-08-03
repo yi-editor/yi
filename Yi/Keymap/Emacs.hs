@@ -24,8 +24,6 @@
 
 Requirements from the community:
 
-sat 9 apr 22:20
-
  < stepcut> (1) showing the 'C-x - ' stuff in the message bar
 
 check :)
@@ -51,6 +49,16 @@ no interface, but supported
  < stepcut> (5) C-u
 
 interface is there, although a little crude
+
+
+sun 31 jul
+
+Great news, i'm including some "completion" algorithms this time,
+these might help with the Filename and M-x interfaces. 
+
+Concerning M-x, there was some debate how M- is implemented, I think
+the consus was that ESC prefix is the lowest common denominator of
+many setups and thus should be realized first.
 
 -}
 
@@ -81,6 +89,7 @@ import qualified Yi.Map as Map
 
 import Data.Char            ( chr, ord )
 import Data.List
+import qualified Data.Map as Map
 
 type Key = Int {- What to use here - Meta Keystrokes? -}
 
@@ -97,38 +106,47 @@ type KeymapSetup = [KeyBinding]
 
 type RAHandler = (ReflectableAction->(Meta EmacsState Action))
 
-type Input = String
+type Input = Maybe (Either String Int)
 {- State consists of a Handler for ReflectableActions,
    then Maybe some String that's to be displayed in the bottom line,
    and a bunch of keymaps -}
 
 -- TODO: this should be a record, i suppose (thanks xerox)
 
-data EmacsState = ES RAHandler (Maybe String) KeymapSetup Input
+data EmacsState = ES RAHandler (Maybe String) KeymapSetup Input 
+    (CompletionTree Char)
 
 getHandler :: EmacsState -> RAHandler
-getHandler (ES x _ _ _) = x
+getHandler (ES x _ _ _ _) = x
 
 getDisplay :: EmacsState -> (Maybe String)
-getDisplay (ES _ x _ _) = x
+getDisplay (ES _ x _ _ _) = x
 
 getKeymaps :: EmacsState -> KeymapSetup
-getKeymaps (ES _ _ x _) = x
+getKeymaps (ES _ _ x _ _) = x
 
 getInput :: EmacsState -> Input
-getInput (ES _ _ _ x) = x
+getInput (ES _ _ _ x _) = x
+
+getCompletion :: EmacsState -> (CompletionTree Char)
+getCompletion (ES _ _ _ _ x) = x
+
 
 replaceHandler :: RAHandler -> EmacsState -> EmacsState 
-replaceHandler x (ES _ b c d) = ES x b c d
+replaceHandler x (ES _ b c d e) = ES x b c d e
 
 replaceDisplay :: Maybe String -> EmacsState -> EmacsState 
-replaceDisplay x (ES a _ c d) = ES a x c d
+replaceDisplay x (ES a _ c d e) = ES a x c d e
 
 replaceKeymaps :: KeymapSetup -> EmacsState -> EmacsState 
-replaceKeymaps x (ES a b _ d) = ES a b x d
+replaceKeymaps x (ES a b _ d e) = ES a b x d e
 
 replaceInput :: Input -> EmacsState -> EmacsState 
-replaceInput x (ES a b c _) = ES a b c x
+replaceInput x (ES a b c _ e) = ES a b c x e
+
+replaceCompletion :: (CompletionTree Char) -> EmacsState -> EmacsState
+replaceCompletion x (ES a b c d _) = ES a b c d x
+
 
 -- ... and this was why it should be a record
 
@@ -138,8 +156,9 @@ replaceInput x (ES a b c _) = ES a b c x
 data ReflectableAction = 
     Action EditorCommand | 
     Char (Char->ReflectableAction) | 
-    String (String->ReflectableAction) | 
-    Int (String->ReflectableAction) | 
+    Input (Input->ReflectableAction) |
+    CInput (Input->ReflectableAction) | -- with completion
+    Keys (String->ReflectableAction) |
     Keymap Int | 
     Cancel |
     Describe |
@@ -157,6 +176,7 @@ type ActionMap = Map.Map String ReflectableAction
 
 -- which is resolved when the keymap is being switched.
 
+type MetaResult = (Maybe (Either Error Action),EmacsState,Maybe (Lexer EmacsState Action))
 
 
 -- Feel free to supply any EditorCommands that are missing 
@@ -177,26 +197,31 @@ translate ECbotE = botE
 translate ECquitE = quitE
 translate ECbkspE = leftE>>deleteE
 
+repeat_fun :: Input->ReflectableAction
+repeat_fun (Just (Right i)) = Repeat i
+repeat_fun a                = error $ "Can't repeat "++(show a)++" times.";
+
 -- actions  -   i dont know what to do with this big fat ugly list
 
 actionlist :: ActionMap
 actionlist = Map.fromList $ (map (\(Label a b)->(a,Label a b)))
-    [Label "insert_self"  $ String $ \x  -> Action $ ECinsertE x, 
-     Label "cursor_up"    $ String $ \_  -> Action ECupE,
-     Label "backspace"    $ String $ \_  -> Action ECbkspE,
-     Label "delete"       $ String $ \_  -> Action ECdeleteE,
---     Label "kill"         $ String $ \_  -> Action ECkillE,
-     Label "cursor_down"  $ String $ \_  -> Action ECdownE,
-     Label "cursor_right" $ String $ \_  -> Action ECrightE,
-     Label "cursor_left"  $ String $ \_  -> Action ECleftE,
-     Label "top"          $ String $ \_  -> Action ECtopE,
-     Label "bottom"       $ String $ \_  -> Action ECbotE,
-     Label "mode_norm"    $ String $ \_  -> Keymap 0,
-     Label "mode_cx"      $ String $ \_  -> Keymap 1,
-     Label "describe_key" $ String $ \_  -> Describe,
-     Label "quit"         $ String $ \_  -> Action ECquitE,
-     Label "repeat_key"   $ String $ \_  -> Int $ Repeat . read ,
-     Label "accept"       $ String $ \_  -> Accept
+    [Label "insert_self"  $ Keys $ \x  -> Action $ ECinsertE x, 
+     Label "cursor_up"    $ Keys $ \_  -> Action ECupE,
+     Label "backspace"    $ Keys $ \_  -> Action ECbkspE,
+     Label "delete"       $ Keys $ \_  -> Action ECdeleteE,
+--     Label "kill"         $ Keys $ \_  -> Action ECkillE,
+     Label "cursor_down"  $ Keys $ \_  -> Action ECdownE,
+     Label "cursor_right" $ Keys $ \_  -> Action ECrightE,
+     Label "cursor_left"  $ Keys $ \_  -> Action ECleftE,
+     Label "top"          $ Keys $ \_  -> Action ECtopE,
+     Label "bottom"       $ Keys $ \_  -> Action ECbotE,
+     Label "mode_norm"    $ Keys $ \_  -> Keymap 0,
+     Label "mode_cx"      $ Keys $ \_  -> Keymap 1,
+     Label "describe_key" $ Keys $ \_  -> Describe,
+     Label "quit"         $ Keys $ \_  -> Action ECquitE,
+     Label "repeat_key"   $ Keys $ \_  -> Input repeat_fun,
+     Label "accept"       $ Keys $ \_  -> Accept,
+     Label "test_completion" $ Keys $ \_  -> CInput (\_->Keymap 0)
 {-     Label "sol"          $ String $ \_  -> Action solE,
      Label "eol"          $ String $ \_  -> Action eolE,
      Label "upScreen"     $ String $ \_  -> Action upScreenE,
@@ -211,23 +236,39 @@ actionlist = Map.fromList $ (map (\(Label a b)->(a,Label a b)))
      Label "test_actions" $ String $ \_  -> Action cmdlineFocusE,
 -} ]
 
+-- A helper... Prepends an action
+
+(>>>) :: Action -> MetaResult -> MetaResult
+a >>> (Just (Right a'),b,c) = (Just $ Right $ a>>a',b,c)
+a >>> (Nothing,b,c) = (Just $ Right $ a,b,c)
+_ >>> b                     = b 
+
+
 -- Annotate characters below 32 with C-
 
 printeable :: String->String
 printeable (a:ta) | (ord a)<32 = "C-"++[chr ((ord a)+96)]++" "++(printeable ta)
                   | otherwise  = [a]++(printeable ta)
 printeable [] = []
+                
+inputDisplay :: EmacsState -> EmacsState
+inputDisplay x = replaceDisplay (Just $ newoutput) x
+  where newoutput  = case getInput x of
+                       Nothing -> ""
+                       Just (Left s)  -> s
+                       Just (Right i) -> show i
+
 
 -- Switch keymap, display keys that caused the switch
 
 switchkeymap :: Int->Meta EmacsState Action
 switchkeymap i inp state = 
-    let ES h display keymaps userinput = state 
+    let ES h display keymaps userinput completion = state 
         newdisplay = case display of
                        Just a  -> Just $ a++(printeable inp) 
                        Nothing -> Just (printeable inp) in
         (Nothing,
-         ES h newdisplay keymaps userinput,
+         ES h newdisplay keymaps userinput completion,
          Just $ realizekeymap (keymaps !! i) )
 
 {- This is what normally happens to ReflectableActions: Heading Labels are 
@@ -239,7 +280,7 @@ toplevel :: RAHandler
 toplevel act inp state = 
   case act of 
     Label _ act' -> toplevel act' inp state -- skip labels
-    String act' -> toplevel (act' inp) inp state        
+    Keys    act' -> toplevel (act' inp) inp state        
 
     -- The following can only be a pended actions 
 
@@ -247,10 +288,14 @@ toplevel act inp state =
     Repeat k   -> (Nothing,
                    replaceHandler (actrepeat k) state,
                    Nothing)
-    (Int act') -> (Nothing,
-                   replaceInput "" $
-                   replaceHandler (bottomlineinput act') state,
+    Input act' -> (Just $ Right $ cmdlineFocusE,
+                   replaceHandler (bottomlineinput act') $
+                   replaceInput (Just (Right 0)) state,
                    Nothing)
+    CInput act' -> (Just $ Right $ cmdlineFocusE,
+                    replaceHandler (completioninput act') $
+                    replaceInput (Just (Left "")) state,
+                    Nothing)
     Action ec -> (Just $ Right $ translate ec,
                   replaceDisplay (Just "") state,
                   Just $ realizekeymap $ (getKeymaps state) !! 0)
@@ -266,48 +311,83 @@ toplevel act inp state =
 {-
   Bottom Line Input is brittle still - you need to finish the
   input with the return key. - If anyone has a great idea, I won't
-  stop him. But it works well, in principle.
+  stop him. 
 -}
 
-bottomlineinput :: (String->ReflectableAction) -> RAHandler 
+inputProcess :: String -> EmacsState -> EmacsState 
+inputProcess s (ES a b c d e) = ES a b c (inputProcess' d s) e
+
+inputProcess' :: Input -> String -> Input
+inputProcess' Nothing          b = Just $ Left b
+inputProcess' (Just (Left a))  b = Just $ Left $ a++b
+inputProcess' (Just (Right a)) b = Just $ Right $ (a*10)+(read b)
+
+bottomlineinput :: (Input->ReflectableAction) -> RAHandler 
+
 {- first parameter is the action that needs a parameter -}
                    
 bottomlineinput pending act inp state = 
   case act of  
     Label _ act' -> bottomlineinput pending act' inp state -- skip labels
-    String act' -> 
+    Keys act' -> 
       case act' inp of  -- feed the keypress
-        Action ec -> case ec of -- This is pretty stupid, Emacs
-        -- behaves very differently - TODO
-           ECinsertE c -> case c of
-                           '\n':_ -> toplevel 
-                               (pending $ getInput state) inp state 
-                           '\r':_ -> toplevel 
-                               (pending $ getInput state) inp state
-                           _    -> (Nothing, -- THIS WILL FAIL
-                                    let userinput'= (getInput state)++c in
-                                        replaceInput (userinput') $
-                                        replaceDisplay (Just $ userinput') state,
+        Action ec -> case ec of 
+           ECinsertE c -> case c of -- this could be a regex match
+                           '\r':_ -> cmdlineUnFocusE >>> 
+                               toplevel (pending $ getInput state) inp state
+                           _    -> (Nothing, 
+                                    inputDisplay 
+                                    $ inputProcess c state,
                                     Nothing)
            _ -> error "Untreatable EditorCommand"
-        _ -> error "Untreatable Action"
+        Input f -> toplevel (f (getInput state)) inp state
+        _ -> error "Untreatable action"
+    _ -> error "Actions have to take a String as their first argument"
+
+obvious' :: Eq a => (CompletionTree a) -> [a] -> [a]
+obvious' c i = fst $ obvious $ snd $ complete c i 
+
+completeInput :: EmacsState -> EmacsState
+
+completeInput s = replaceInput 
+                  (Just $ Left $ inp ++ obvious' (getCompletion s) inp)
+                  s
+   where inp = (\(Just (Left x))->x) (getInput s)
+
+completioninput :: (Input->ReflectableAction) -> RAHandler 
+                   
+completioninput pending act inp state = 
+  case act of  
+    Label _ act' -> completioninput pending act' inp state -- skip labels
+    Keys act' -> 
+      case act' inp of  -- feed the keypress
+        Action ec -> case ec of 
+           ECinsertE c -> case c of
+                           '\r':_ -> (Just $ Right cmdlineUnFocusE,
+                                      replaceHandler toplevel state,
+                                      Nothing)
+                           '\^I':_ -> (Nothing,
+                                       inputDisplay
+                                       $ completeInput state,
+                                       Nothing)
+                           _    -> (Nothing, 
+                                    inputDisplay 
+                                    $ inputProcess c state,
+                                    Nothing)
+           _ -> error "Untreatable EditorCommand"
+        Input f -> toplevel (f (getInput state)) inp state
+        _ -> error "Untreatable action"
     _ -> error "Actions have to take a String as their first argument"
 
 
--- An Integer reader for the repeat function - special insofar as that
--- a non-digit will immediately complete the number entry
 
---bottomline :: ReflectableAction->RAHandler 
---bottomline ra inp state = 
-    
-
--- Repetition. This doesn't work yet since we can't input integers
+-- Repetition.
 
 actrepeat :: Int -> RAHandler
 actrepeat k act inp state = 
   case act of 
     Label _ act' -> actrepeat k act' inp state -- skip labels
-    String act' ->
+    Keys act' ->
       case act' inp of 
         Action act'' -> (Just $ Right $ foldr1 (>>) $ replicate k $ translate act'',
                          replaceHandler toplevel state,
@@ -324,7 +404,7 @@ describe act inp state =
   case act of 
     Label label act' -> 
       case act' of
-        String act'' -> case (act'' inp) of
+        Keys act'' -> case (act'' inp) of
           Keymap i   -> switchkeymap i inp state 
           _          -> let keymaps=getKeymaps state in
                         (Nothing,
@@ -338,7 +418,6 @@ describe act inp state =
 
 -- Some UI-Feedback Logic -- there should be an easier way to do that
 
-type MetaResult = (Maybe (Either Error Action),EmacsState,Maybe (Lexer EmacsState Action))
 
 showfeedback :: MetaResult -> MetaResult
 
@@ -381,7 +460,7 @@ realizekeymap (KeyBinding keymap_) =
 normalkeymap :: KeyBinding
 normalkeymap = KeyBinding
 
-                [(alt $ map chr $ 13:[32..127] , "insert_self"),
+                [(alt $ map chr $ 13:9:[32..127] , "insert_self"),
                  (char keyUp   ,"cursor_up"),
                  (char keyDown ,"cursor_down"),
                  (char keyRight,"cursor_right"),
@@ -392,6 +471,7 @@ normalkeymap = KeyBinding
                  (char keyPPage,"upScreen"),
                  (char '\^U'   ,"repeat_key"),
                  (char '\^K'   ,"kill"),
+                 (char '\^T'   ,"test_completion"),
                  (char keyBackspace  ,"backspace"),
                  (char '\^X'   ,"mode_cx")]
 
@@ -409,5 +489,7 @@ keymap cs = actions
    where (actions,_,_) = 
              execLexer 
              (realizekeymap normalkeymap) 
-             (cs,ES toplevel Nothing [normalkeymap,cxkeymap] "")
+             (cs,ES toplevel Nothing [normalkeymap,cxkeymap] Nothing 
+                    (mergeTrees $ map listToTree $ 
+                                map fst $ Map.toList actionlist))
 
