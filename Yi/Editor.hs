@@ -480,7 +480,7 @@ withWindow_ f = modifyEditor_ $ \e -> do
         let w = findWindowWith e (curwin e)
             b = findBufferWith e (bufkey w)
         w' <- f w b
-        m'     <- updateModeLine w' b
+        m' <- updateModeLine w' b
         let w'' = w' { mode = m' }
             ws = windows e
             e' = e { windows = M.insert (key w'') w'' ws }
