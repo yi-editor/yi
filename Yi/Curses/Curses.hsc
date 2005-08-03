@@ -181,6 +181,7 @@ import Data.Maybe               ( isJust, fromJust )
 
 import Control.Monad
 import Control.Exception        ( bracket, bracket_ )
+import Control.Concurrent       ( yield )
 
 import Foreign
 import CForeign
@@ -1325,15 +1326,6 @@ foreign import ccall unsafe "YiCurses.h meta"
 --getCh :: IO Key
 --getCh = liftM decodeKey $ throwIfErr "getch" getch
 
--- getCh :: IO Key
--- getCh = do
---     nodelay stdScr 1
---     --halfdelay 1
---     v <- getch
---     case v of
---              (#const ERR) -> yield >> getCh 
---              x -> return $ decodeKey x
-
 ------------------------------------------------------------------------
 --
 -- | read a character from the window
@@ -1346,16 +1338,15 @@ foreign import ccall unsafe "YiCurses.h meta"
 -- On emacs, we really would want Alt to be our meta key, I think.
 --
 getCh :: IO Char
-getCh = liftM decodeKey $ throwIfErr "getch" getch
-
---  trace (show (chr (fromIntegral v), show v)) $ do
---  case v of
-            -- we won't get ^C otherwise..
-            -- (#const ERR) -> getch {-discard-} >> return '\^C'   -- hack
+getCh = do
+    v <- getch
+    case v of
+        (#const ERR) -> yield >> getCh
+        x            -> return $ decodeKey x
 
 --           _  -> do
 --              let c = decodeKey v
-        --      when (c == '\ESC') $ trace ("got ESC") $ return ()
+--              when (c == '\ESC') $ trace ("got ESC") $ return ()
 --              return c
 
 ------------------------------------------------------------------------
