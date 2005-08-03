@@ -259,6 +259,7 @@ insertW c w b = do
         else return w'
 
 -- | Insert a whole String at the point.
+-- is this going to reset things properly?
 insertNW :: Buffer a => String -> Window -> a -> IO Window
 insertNW cs w b = do
     let cs' = [if c == '\13' then '\n' else c | c <- cs, isLatin1 c]
@@ -314,15 +315,15 @@ deleteToEolW w b = do
 ------------------------------------------------------------------------
 --
 -- | update window point, and cursor in X dimension. and reset pnt cache
+-- A lot of time is spent here when pasting blocks of text
 --
 update :: Buffer a => Window -> a -> IO Window
-update w b =
-    case fst (cursor w) of { y -> do
+update w b = do
     x <- offsetFromSol b
     p <- pointB b
-    case w { pnt = p, cursor = (y,x) } of { w' ->
-    return w'
-    }}
+    return $! w { pnt = p, cursor = (fst (cursor w),x) }
+{-# INLINE update #-}
+{-# SPECIALIZE update :: Window -> FBuffer -> IO Window #-}
 
 --
 -- | Decrememt the y-related values. Might change top of screen point
