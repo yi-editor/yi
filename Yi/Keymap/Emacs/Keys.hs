@@ -31,7 +31,11 @@ import Data.Maybe
 import Text.ParserCombinators.ReadP 
 
 #if __GLASGOW_HASKELL__ < 604
+--
 -- just enough parsec for 6.2.2 to build
+--
+
+import Control.Monad
 
 sepBy1 :: ReadP a -> ReadP sep -> ReadP [a]
 sepBy1 p sep = liftM2 (:) p (many (sep >> p))
@@ -41,6 +45,7 @@ many p = return [] +++ many1 p
 
 many1 :: ReadP a -> ReadP [a]
 many1 p = liftM2 (:) p (many p)
+
 #endif
 
 
