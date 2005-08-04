@@ -4,6 +4,7 @@
 --  Created: 24 February 95
 --
 --  Copyright (c) [1995..2000] Manuel M. T. Chakravarty
+--  Copyright (c) 2004-5 Don Stewart
 --
 --  This library is free software; you can redistribute it and/or
 --  modify it under the terms of the GNU Library General Public

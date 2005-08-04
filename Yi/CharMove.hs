@@ -1,5 +1,5 @@
 -- 
--- Copyright (C) 2004 Don Stewart - http://www.cse.unsw.edu.au/~dons
+-- Copyright (C) 2004-5 Don Stewart - http://www.cse.unsw.edu.au/~dons
 --               2004 Tuomo Valkonen
 --
 -- This program is free software; you can redistribute it and/or
