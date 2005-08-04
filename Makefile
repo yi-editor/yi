@@ -39,7 +39,7 @@ HADDOCK_SRCS+=  Boot.hs
  
 STATIC_OBJS=    Main.$(way_)o
 STATIC_BIN_DEPS=yi
-STATIC_HC_OPTS  += -package-conf yi.conf
+STATIC_HC_OPTS  += -package-conf yi.conf -package yi
 HADDOCK_SRCS+=  Main.hs
 
 # frontend to the library (by which it is loaded)
@@ -74,8 +74,11 @@ Boot.o: Boot.hs
 # Main is the static "loader". It can't get -package-name yi, or it
 # won't work in ghci. Could probably filter it out somehow
 #
-Main.o: Main.hs Yi.$(way_)o $(LIBRARY) 
-	$(GHC) $(HC_OPTS) $(STATIC_HC_OPTS) -c $< -o $@ -ohi $(basename $@).hi
+# --make -v0 should be unneccessary, but it seems to allow us to work
+# around a bug in ghc 6.5
+#
+Main.$(way_)o: Main.hs Yi.$(way_)o $(LIBRARY) 
+	$(GHC) $(HC_OPTS) $(STATIC_HC_OPTS) --make -v0 -c $< -o $@
 
 # Break some mutual recursion (why doesn't this work in mk/rules.mk??)
 ifneq "$(GLASGOW_HASKELL)" "602"
