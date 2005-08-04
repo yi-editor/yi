@@ -145,6 +145,8 @@ getKey refresh_fn = do
 -- your redraw speed, as every redraw will trigger another redraw...
 -- So don't be tempted.
 --
+-- Two points remain: horizontal scrolling, and tab handling.
+--
 redraw :: IO ()
 redraw = withEditor $ \e ->
     
@@ -161,6 +163,7 @@ redraw = withEditor $ \e ->
     withStyle (window sty) $ drawCmdLine cl     -- draw cmd line
 
     -- and now position cursor.
+    -- will be influenced by whether the focused window is scrolled left or right
     when (not cmdfoc) $
         case w of
            -- calculate origin of focused window
@@ -203,6 +206,8 @@ drawWindow e mwin sty win =
     lns <- ptrToLnsB b t (h - off)
 
     -- draw each buffer line
+    -- ToDo, horizontal scrolling. determine how many screen widths to
+    -- drop off the string (i.e. add to the ptr..)
     (y,_) <- getYX Curses.stdScr
     withStyle wsty $ flip mapM_ lns $ \(ptr,len) -> 
         throwIfErr_ "drawWindow" $
