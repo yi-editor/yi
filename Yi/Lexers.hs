@@ -129,8 +129,8 @@ module Yi.Lexers (
 import Yi.DLists        (zeroDL, snocDL, closeDL)
 
 import Prelude hiding   (last)
-import Maybe            (fromMaybe)
-import Array            (Array, (!), assocs, accumArray)
+import Data.Maybe       (fromMaybe)
+import Data.Array       (Array, (!), assocs, accumArray)
 
 infixr 4 `quest`, `star`, `plus`
 infixl 3 +>, `lexaction`, `lexmeta`, `action`, `meta`

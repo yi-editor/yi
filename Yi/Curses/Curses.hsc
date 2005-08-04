@@ -220,7 +220,7 @@ import Control.Exception        ( bracket, bracket_ )
 import Control.Concurrent       ( yield )
 
 import Foreign
-import CForeign
+import Foreign.C
 
 #if GLASGOW_HASKELL < 603
 import Data.Bits

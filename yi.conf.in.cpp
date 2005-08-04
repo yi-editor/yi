@@ -14,7 +14,7 @@ Package {
         c_includes      = [],
         source_dirs     = [],
         extra_libraries = [ "${CURSES}" ],
-        package_deps    = [ "base", "haskell98", "posix" ],
+        package_deps    = [ "base", "posix" ],
         extra_ghc_opts  = [],
         extra_cc_opts   = [],
         extra_ld_opts   = []
@@ -79,7 +79,7 @@ hs-libraries:         HSyi
 extra-libraries:      CURSES
 include-dirs:
 includes:             
-depends:              base haskell98 mtl
+depends:              base mtl
 hugs-options:
 cc-options:
 ld-options:

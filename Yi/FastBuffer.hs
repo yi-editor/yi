@@ -34,8 +34,8 @@ import Data.Unique              ( Unique, newUnique )
 import Control.Exception        ( assert )
 import Control.Concurrent.MVar
 
-import IO                       ( hFileSize, hClose, hFlush, IOMode(..) )
-import System.IO                ( openFile, hGetBuf, hPutBuf )
+import System.IO                ( openFile, hGetBuf, hPutBuf,
+                                  hFileSize, hClose, hFlush, IOMode(..) )
 
 import Foreign.C.String
 import Foreign.C.Types          ( CChar )
