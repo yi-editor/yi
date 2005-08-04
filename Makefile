@@ -77,8 +77,12 @@ Boot.o: Boot.hs
 # --make -v0 should be unneccessary, but it seems to allow us to work
 # around a bug in ghc 6.5
 #
+ifneq "$(GLASGOW_HASKELL)" "602"
+MAIN_FLAGS=--make -v0
+endif
+
 Main.$(way_)o: Main.hs Yi.$(way_)o $(LIBRARY) 
-	$(GHC) $(HC_OPTS) $(STATIC_HC_OPTS) --make -v0 -c $< -o $@
+	$(GHC) $(HC_OPTS) $(STATIC_HC_OPTS) $(MAIN_FLAGS) -c $< -o $@
 
 # Break some mutual recursion (why doesn't this work in mk/rules.mk??)
 ifneq "$(GLASGOW_HASKELL)" "602"
