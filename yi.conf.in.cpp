@@ -29,37 +29,43 @@ maintainer:     dons@cse.unsw.edu.au
 exposed:        True
 exposed-modules:
         Yi.Buffer
-        Yi.CharMove
         Yi.Char
+        Yi.CharMove
         Yi.Core
-        Yi.Curses
+        Yi.Curses.CWString
+        Yi.Curses.Curses
+        Yi.Curses.UI
         Yi.DLists
         Yi.Editor
         Yi.FastBuffer
-        Yi.Keymap
-        Yi.Lexers
-        Yi.Locale
-        Yi.Map
-        Yi.MkTemp
-        Yi.MakeKeymap
-        Yi.Regex
-        Yi.Style
-        Yi.Undo
-        Yi.Version
-        Yi.Window
-        Yi.Yi
-        Yi.Curses.CWString
-        Yi.Curses.Curses
-        Yi.Curses.IConv
-        Yi.Curses.UI
+        Yi.Keymap.Completion
+        Yi.Keymap.Ee
         Yi.Keymap.Emacs
+        Yi.Keymap.Emacs.Keys
+        Yi.Keymap.Emacs.KillRing
+        Yi.Keymap.Emacs.UnivArgument
         Yi.Keymap.Emacs2
+        Yi.Keymap.Joe
         Yi.Keymap.Mg
         Yi.Keymap.Nano
         Yi.Keymap.Vi
         Yi.Keymap.Vim
-        Yi.Keymap.Joe
-        Yi.Keymap.Ee
+        Yi.Lexers
+        Yi.Locale
+        Yi.MakeKeymap
+        Yi.Map
+        Yi.MkTemp
+        Yi.Process
+        Yi.Regex
+        Yi.String
+        Yi.Style
+        Yi.Syntax.Syntax
+        Yi.Syntax.TestLex
+        Yi.Syntax.TestParse
+        Yi.Undo
+        Yi.Version
+        Yi.Window
+        Yi.Yi
 
 hidden-modules:
 #ifdef INSTALLING
