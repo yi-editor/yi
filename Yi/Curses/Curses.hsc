@@ -401,11 +401,8 @@ foreign import ccall unsafe "YiCurses.h nonl" nonl :: IO CInt
 -- > option  prevents the flush.
 -- > 
 intrFlush :: Bool -> IO ()
-intrFlush bf = throwIfErr_ "intrflush" $ intrflush stdScr (fromEnumW8 bf)
-
--- just let the defaulting do the work
-fromEnumW8 :: Bool -> Word8
-fromEnumW8 bf = if bf then 1 else 0
+intrFlush bf = throwIfErr_ "intrflush" $ 
+    intrflush stdScr (if bf then 1 else 0)
 
 foreign import ccall unsafe "YiCurses.h intrflush"  
     intrflush :: Window -> (#type bool) -> IO CInt
@@ -414,7 +411,8 @@ foreign import ccall unsafe "YiCurses.h intrflush"
 -- | Enable the keypad of the user's terminal.
 --
 keypad :: Window -> Bool -> IO ()
-keypad win bf = throwIfErr_ "keypad" $ keypad_c win (fromEnumW8 bf)
+keypad win bf = throwIfErr_ "keypad" $ 
+    keypad_c win (if bf then 1 else 0)
 
 foreign import ccall unsafe "YiCurses.h keypad" 
     keypad_c :: Window -> (#type bool) -> IO CInt
@@ -424,7 +422,8 @@ foreign import ccall unsafe "YiCurses.h keypad"
 -- > is FALSE), getch waits until a key is pressed.
 --
 noDelay :: Window -> Bool -> IO ()
-noDelay win bf = throwIfErr_ "nodelay" $ nodelay win (fromEnumW8 bf)
+noDelay win bf = throwIfErr_ "nodelay" $ 
+    nodelay win (if bf then 1 else 0)
 
 foreign import ccall unsafe "YiCurses.h"
     nodelay :: Window -> (#type bool) -> IO CInt
@@ -455,7 +454,7 @@ foreign import ccall unsafe "YiCurses.h"
 -- > this option is enabled.
 --
 leaveOk  :: Bool -> IO CInt
-leaveOk bf = leaveok_c stdScr (fromEnumW8 bf)
+leaveOk bf = leaveok_c stdScr (if bf then 1 else 0)
 
 foreign import ccall unsafe "YiCurses.h leaveok" 
     leaveok_c :: Window -> (#type bool) -> IO CInt
@@ -470,7 +469,7 @@ foreign import ccall unsafe "YiCurses.h leaveok"
 -- > screen to be cleared and repainted from scratch.
 --
 clearOk :: Bool -> IO CInt
-clearOk bf    = clearok_c stdScr (fromEnumW8 bf)
+clearOk bf    = clearok_c stdScr (if bf then 1 else 0)
 
 foreign import ccall unsafe "YiCurses.h clearok" 
     clearok_c :: Window -> (#type bool) -> IO CInt
