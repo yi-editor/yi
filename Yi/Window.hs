@@ -84,7 +84,7 @@ emptyWindow b (h,w) = do
                    ,mode      = Nothing
                    ,height    = h-1    -- - 1 for the cmdline?
                    ,width     = w
-                   ,cursor    = (0,0)  -- (y,x)
+                   ,cursor    = (0,0)  -- (y,x) (screen columns, needs to know about tabs)
                    ,pnt       = 0      -- cache point when out of focus
                    ,lineno    = 1
                    ,tospnt    = 0
@@ -196,11 +196,12 @@ resetW :: Buffer a => Window -> a -> Int -> Int -> IO Window
 resetW w b ln gap = do
     p  <- pointB b      -- see where it actually got placed 
     x  <- offsetFromSol b
+    tw <- tabWidthsB b 8        -- hard coded for now
     let topln = ln - gap
     i <- indexOfSolAbove b gap
     let w' = w {pnt = p, lineno = ln,
                 toslineno = topln, tospnt = i,
-                cursor = (gap,x)}
+                cursor = (gap,x-tw)}
     m <- updateModeLine w' b
     return w' { mode = m }
 
@@ -319,9 +320,10 @@ deleteToEolW w b = do
 --
 update :: Buffer a => Window -> a -> IO Window
 update w b = do
-    x <- offsetFromSol b
-    p <- pointB b
-    return $! w { pnt = p, cursor = (fst (cursor w),x) }
+    x  <- offsetFromSol b
+    tw <- tabWidthsB b 8
+    p  <- pointB b
+    return $! w { pnt = p, cursor = (fst (cursor w),x + tw) }
 {-# INLINE update #-}
 {-# SPECIALIZE update :: Window -> FBuffer -> IO Window #-}
 
@@ -333,12 +335,13 @@ decY :: Buffer a => Window -> a -> IO Window
 decY w b = do
     p <- pointB b           -- current point
     x <- offsetFromSol b    -- x offset
+    tw <- tabWidthsB b 8
     let (y,_) = cursor w 
         curln = lineno w
         topln = toslineno w
         w' = w { lineno = curln-1 }
     return $ if topln < curln
-             then w' { cursor = (y-1, x) }                  -- just move cursor
+             then w' { cursor = (y-1, x + tw) }             -- just move cursor
              else w' { toslineno = topln-1, tospnt = p-x }  -- or move window
 
 --
@@ -425,10 +428,11 @@ resize y x w b = do
         then do let gap   = min ln (y `div` 2)
                     topln'= ln - gap
                 x'<- offsetFromSol b
+                tw<- tabWidthsB b 8
                 i <- indexOfSolAbove b gap
                 return w' { toslineno = topln', 
                             tospnt = i, 
-                            cursor = (gap,max x x') }
+                            cursor = (gap,max x (x' + tw)) } -- ok ?
         else return w'
 
 --
@@ -447,14 +451,15 @@ resetPoint w b = do
     ln <- curLn b
     p  <- pointB b      -- see where it actually got placed 
     x  <- offsetFromSol b
+    tw <- tabWidthsB b 8
     w' <- if op /= p || oln /= ln -- then the file shrunk or line moved
           then do let gap   = min (ln-1) ((height w) `div` 2)
                       topln = ln - gap
                   i <- indexOfSolAbove b gap
                   return w {pnt = p, lineno = ln,
                             toslineno = topln, tospnt = i,
-                            cursor = (gap,x)}
-          else return w {pnt = p, cursor = (y,x)} -- just check out x-offset is right
+                            cursor = (gap,x + tw)}
+          else return w {pnt = p, cursor = (y,x + tw)} -- just check out x-offset is right
     m <- updateModeLine w' b 
     return w' { mode = m }
 

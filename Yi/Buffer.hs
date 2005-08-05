@@ -236,3 +236,8 @@ class Buffer a where
     -- | Set this buffer mark (TODO: have a set of these (bookmarks, error list, etc.))
     setMarkB        :: a -> Int -> IO ()
     getMarkB        :: a -> IO Int
+
+    ---------------------------------------------------------------------
+    -- | Width of tabs between start of line and current point
+    tabWidthsB :: a -> Int -> IO Int
+

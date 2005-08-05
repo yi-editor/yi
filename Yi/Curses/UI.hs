@@ -168,6 +168,8 @@ redraw = withEditor $ \e ->
         case w of
            -- calculate origin of focused window
            -- sum of heights of windows above this one on screen.
+
+           -- needs to be shifted 'x' by the width of the tabs on this line
            Just w' ->
                 case sum [ height (ws !! k) | k <- [0 .. (i-1)] ] of
                         o_y -> drawCursor (o_y,0) (cursor w')
@@ -208,6 +210,9 @@ drawWindow e mwin sty win =
     -- draw each buffer line
     -- ToDo, horizontal scrolling. determine how many screen widths to
     -- drop off the string (i.e. add to the ptr..)
+    --
+    -- This `len' doesn't take tabs into account
+    --
     (y,_) <- getYX Curses.stdScr
     withStyle wsty $ flip mapM_ lns $ \(ptr,len) -> 
         throwIfErr_ "drawWindow" $

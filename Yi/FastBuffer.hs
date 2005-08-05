@@ -22,6 +22,9 @@
 -- | A fast 'Buffer' implementation
 --
 
+-- NB buffers have no concept of multiwidth characters. There is an
+-- assumption that a character has width 1, including tabs.
+
 module Yi.FastBuffer (FBuffer(..), BufferMode(..)) where
 
 import Yi.Buffer
@@ -68,13 +71,13 @@ data FBuffer =
                 }
 
 data FBuffer_ = 
-        FBuffer_ { rawmem   :: !(Ptr CChar)     -- raw memory           (ToDo unicode)
+        FBuffer_ { _rawmem  :: !(Ptr CChar)     -- raw memory           (ToDo unicode)
                  , marks    :: !(M.Map Int Int) -- 0: point, 1: mark
                    -- TODO: This isn't the most efficient structure
                    -- to store marks. When IntMap gets stabilized we'd
                    -- better switch to it.
-                 , contsize :: !Int             -- length of contents
-                 , rawsize  :: !Int             -- raw size of buffer
+                 , _contsize :: !Int             -- length of contents
+                 , _rawsize  :: !Int             -- raw size of buffer
                  }
 instance Eq FBuffer where
    FBuffer { bkey = u } == FBuffer { bkey = v } = u == v
@@ -187,6 +190,9 @@ foreign import ccall unsafe "YiUtils.h countlns"
 
 foreign import ccall unsafe "YiUtils.h gotoln"
    cgotoln :: Ptr CChar -> Int -> Int -> Int -> IO Int
+
+foreign import ccall unsafe "YiUtils.h tabwidths"
+   ctabwidths :: Ptr CChar -> Int -> Int -> Int -> IO Int
 
 ------------------------------------------------------------------------
 
@@ -576,14 +582,19 @@ instance Buffer FBuffer where
 
     -- ------------------------------------------------------------------------
 
-    getMarkB (FBuffer { rawbuf = mv }) = withMVar mv $
-                                         \(FBuffer_ {contsize=_,
-                                                     rawsize=_,
-                                                     rawmem = _, marks=p}) -> 
-                                             return (p M.! 1)
+    getMarkB (FBuffer { rawbuf = mv }) = 
+        withMVar mv $ \(FBuffer_ {marks=p}) -> return (p M.! 1)
     
-    setMarkB (FBuffer { rawbuf = mv }) pos = modifyMVar_ mv $ \fb -> 
-                                             return $ fb {marks = (M.insert 1 pos (marks fb))}
+    setMarkB (FBuffer { rawbuf = mv }) pos = 
+        modifyMVar_ mv $ \fb -> return $ fb {marks = (M.insert 1 pos (marks fb))}
+
+    -- ------------------------------------------------------------------------
+
+    tabWidthsB b@(FBuffer { rawbuf = mv }) width = do
+        i <- indexOfSol b
+        withMVar mv $ \(FBuffer_ ptr pnts _ _) -> do
+            let j = pnts M.! 0
+            ctabwidths ptr i j width
 
 ------------------------------------------------------------------------
 

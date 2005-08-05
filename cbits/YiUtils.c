@@ -21,6 +21,29 @@ unsigned long countlns(char *b1, int start, int end)
     return c;
 }
 
+/* return width of all tabs in current line, minus the number of tabs
+ * (so that we can just say: number of chars + tabwidths 
+ */
+unsigned long tabwidths(char *b, int start, int end, int tabwidth)
+{
+    char *p = b + start;
+    char *q = b + end;
+    unsigned long c   = 0;
+    unsigned long col = 0;
+    unsigned long w   = 0;
+    while (p < q && *p != '\n') {
+        if (*p++ == '\t') {
+            w = tabwidth - (col % tabwidth); /* width of tab */
+            c   += w - 1; /* minus 1 for tab char itself */
+            col += w;
+        } else {
+            col++;
+        }
+    }
+    return c;
+}
+
+
 /* return the index of the first point of line @n@, indexed from 1 */
 unsigned long gotoln(char *b, int start, int end, int n)
 {
@@ -38,4 +61,3 @@ unsigned long gotoln(char *b, int start, int end, int n)
     }
     return (p - (b + start));
 }
-

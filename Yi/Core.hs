@@ -154,7 +154,7 @@ module Yi.Core (
         SearchF(..),        -- Basic | IgnoreCase | NoNewLine
         SearchResult,
         SearchMatch,
-	SearchExp,
+        SearchExp,
         searchAndRepLocal,  -- :: String -> String -> IO Bool
         searchE,            -- :: (Maybe String) -> [SearchF] 
                             -- -> (() -> Either () ()) -> Action

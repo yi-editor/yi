@@ -60,8 +60,9 @@ data Editor = Editor {
        ,dynamic         :: !(M.Map String Dynamic)    -- ^ dynamic components 
 
        ,cmdline         :: !String                    -- ^ the command line
-       ,cmdlinefocus    :: !Bool                   -- ^ cmdline has focus
-       ,windowfill      :: !Char                     -- ^ char to fill empty window space with
+       ,cmdlinefocus    :: !Bool                      -- ^ cmdline has focus
+       ,windowfill      :: !Char                      -- ^ char to fill empty window space with
+       ,tabwidth        :: !Int                       -- ^ width of tabs
 
        ,yreg            :: !String                    -- ^ yank register
        ,regex           :: !(Maybe (String,Regex))    -- ^ most recent regex
@@ -78,6 +79,7 @@ emptyEditor = Editor {
        ,cmdline      = []
        ,cmdlinefocus = False
        ,windowfill   = ' '
+       ,tabwidth     = 8        -- has to be for now
        ,yreg         = []
        ,regex        = Nothing
        ,curwin       = Nothing
