@@ -43,6 +43,7 @@ import qualified Yi.Keymap.Mg    as Mg
 import qualified Yi.Curses.UI as UI
 
 import Data.IORef
+import Data.List                ( intersperse )
 
 import Control.Monad            ( when )
 import Control.Concurrent       ( myThreadId, throwTo )
@@ -90,7 +91,9 @@ options = [
     Option ['B']  ["libdir"]  (ReqArg Libdir "libdir") "Path to runtime libraries",
     Option ['h']  ["help"]    (NoArg Help)    "Show this help",
     Option ['l']  ["line"]    (ReqArg LineNo "[num]") "Start on line number",
-    Option []     ["as"]      (ReqArg EditorNm "[editor]") "Start with editor keymap"
+    Option []     ["as"]      (ReqArg EditorNm "[editor]") 
+        ("Start with editor keymap, where editor is one of:\n" ++
+                (concat . intersperse ", ") (M.keys editorFM))
     ]
 
 --
