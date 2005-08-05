@@ -403,8 +403,9 @@ foreign import ccall unsafe "YiCurses.h nonl" nonl :: IO CInt
 intrFlush :: Bool -> IO ()
 intrFlush bf = throwIfErr_ "intrflush" $ intrflush stdScr (fromEnumW8 bf)
 
+-- just let the defaulting do the work
 fromEnumW8 :: Bool -> Word8
-fromEnumW8 = fromInteger . fromIntegral . fromEnum
+fromEnumW8 bf = if bf then 1 else 0
 
 foreign import ccall unsafe "YiCurses.h intrflush"  
     intrflush :: Window -> (#type bool) -> IO CInt
