@@ -316,7 +316,7 @@ deleteToEolW w b = do
 ------------------------------------------------------------------------
 --
 -- | update window point, and cursor in X dimension. and reset pnt cache
--- A lot of time is spent here when pasting blocks of text
+-- A lot of time is spent here
 --
 update :: Buffer a => Window -> a -> IO Window
 update w b = do
