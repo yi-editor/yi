@@ -206,12 +206,12 @@ INSTALL_DATAS  += $(HTML_DIR)
 # circular (excluded) modules first
 .html-stamp1 : $(EXTRA_HS_PPS)
 	@$(INSTALL_DIR) $(HTML_DIR)
-	$(HADDOCK) $(HADDOCK_OPTS)2 -o $(HTML_DIR) $(EXTRA_HS_PPS) -k $(PKG)
+	$(HADDOCK) $(HADDOCK_OPTS)2 -o $(HTML_DIR) $(EXTRA_HS_PPS) -k $(PKG) 2> /dev/null
 	@touch .html-stamp1
 
 .html-stamp2 : .html-stamp1 $(HS_PPS)
 	@$(INSTALL_DIR) $(HTML_DIR)
-	$(HADDOCK) $(HADDOCK_OPTS) -o $(HTML_DIR) $(HS_PPS) -k $(PKG)
+	$(HADDOCK) $(HADDOCK_OPTS) -o $(HTML_DIR) $(HS_PPS) -k $(PKG) 2> /dev/null
 	@cd $(HTML_DIR) && $(HADDOCK) --gen-index -i yi.interface -i yi.interface2
 	@touch .html-stamp2
 
