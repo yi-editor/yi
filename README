@@ -95,10 +95,9 @@ PORTABILITY
 
 Yi is developed on OpenBSD, FreeBSD and Debian Linux. Dynamic
 configuration relies on the hs-plugins library, which has been ported to
-most platforms (but currently not Windows -- however yi-static should
-work on Windows with a little porting effort). Dynamic Yi requires GHC
-6 with a working GHCi implementation, static Yi should work with GHC 6.2
-and later. 
+most platforms, including Windows. Dynamic Yi requires GHC 6 with a
+working GHCi implementation, static Yi should work with GHC 6.2 and
+later. 
 
 A porting checklist:
 
@@ -106,7 +105,7 @@ A porting checklist:
         * you have a recent autoconf and automake
         * you have GHC >= 6.2.1         (>= 6.2.2 on OpenBSD)
         * you have a working GHCi
-        * you have hs-plugins >= 0.9.8
+        * you have hs-plugins >= 0.9.10
         * you have haddock installed (for the documentation)
 
 The static version of yi has no hs-plugins support, and is thus more
@@ -126,5 +125,19 @@ The Curses and CWString interface code is mostly by John Meacham;see the
 LICENSE for details. Tuomo and I have made some minor modifications.
 
 The Ctk lexer library was written by Manuel Chakravarty.
+
+The following people have contributed patches to Yi, in alphabetical order:
+        Bastiaan Zapf
+        Cale Gibbard
+        Don Stewart
+        Jason Dagit
+        Jean-Philippe Bernardy
+        Mark Wotton
+        Samuel Bronson
+        Shae Erisson
+        Simon Winwood
+        Suleiman Souhlal
+        Tuomo Valkonen
+        Vivian McPhail
 
 Yi was born on October 14th, 2004
