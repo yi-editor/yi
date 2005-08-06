@@ -162,12 +162,12 @@ initSignals = do
     installHandler sigINT (Catch (return ())) Nothing
 
     -- ignore
-    sequence_ $ flip map [sigPIPE, sigALRM]
-                          (\sig -> installHandler sig Ignore Nothing)
+    flip mapM_ [sigPIPE, sigALRM] 
+               (\sig -> installHandler sig Ignore Nothing)
 
     -- and exit if we get the following:
     -- we have to do our own quitE here.
-    sequence_ $ flip map [sigHUP, sigABRT, sigTERM] $ \sig -> do
+    flip mapM_ [sigHUP, sigABRT, sigTERM] $ \sig -> do
             installHandler sig (CatchOnce $ do 
                     releaseSignals
                     UI.end
@@ -176,7 +176,7 @@ initSignals = do
 
 releaseSignals :: IO ()
 releaseSignals =
-    sequence_ $ flip map [sigINT, sigPIPE, sigHUP, sigABRT, sigTERM] 
+    flip mapM_ [sigINT, sigPIPE, sigHUP, sigABRT, sigTERM] 
                (\sig -> installHandler sig Default Nothing)
 
 -- ---------------------------------------------------------------------
