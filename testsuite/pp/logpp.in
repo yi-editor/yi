@@ -1,0 +1,13 @@
+#!/bin/sh
+
+origName=$1
+inName=$2
+outName=$3
+macros=`dirname $0`/macros.m4
+
+if [ -z "origName" -o -z "$inName" -o -z "$outName" ] ; then
+    echo "Usage: $0 original-filename input-filename output-filename"
+    exit 1
+fi
+
+exec $M4 -s "-D__orig_file__=\"$origName\"" "-D__TOPLEVEL_DIRECTORY__=\"`pwd`\"" "$macros" "$inName" > "$outName"

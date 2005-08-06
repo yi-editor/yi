@@ -113,8 +113,18 @@ EXTRA_CLEANS+= yi-inplace
 
 EXTRA_CLEANS+=Yi/Syntax/TestLex.hs Yi/Syntax/TestParse.hs
 
+#
+# Let's run the testsuite
+#
+.PHONY: check
+check: 
+	@echo "====== Running unit tests ========="
+	@( cd testsuite && $(MAKE) run-utests && ./run-utests )
+
 # Dependency orders
 
 ifndef FAST
 -include $(TOPDIR)/depend 
 endif
+
+

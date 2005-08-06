@@ -28,6 +28,7 @@ Design plan:
 Build system:
         - check how to install it from a port script
         - think about how to do a testsuite, unit testing
+                + icfp05/stefanw-style
 
 v0.2:
         - line wrapping. windows need to be wrap or nowrap.
