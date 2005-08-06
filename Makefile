@@ -121,6 +121,10 @@ check:
 	@echo "====== Running unit tests ========="
 	@( cd testsuite && $(MAKE) run-utests && ./run-utests )
 
+EXTRA_CLEANS+=testsuite/pp/logpp
+
+EXTRA_CLEANS+= Yi/Undo.p_hi-boot Yi/Undo.p_o-boot testsuite/run-utests
+
 # Dependency orders
 
 ifndef FAST

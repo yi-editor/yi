@@ -159,6 +159,14 @@ FPTOOLS_LD_X
 #
 AC_PROG_RANLIB
 
+# Use GNU m4, which is called gm4 on *BSD
+if gm4 --version > /dev/null 2>&1 ; then
+        AC_PATH_PROG(WithM4,gm4)
+else
+        AC_PATH_PROG(WithM4,m4)
+fi
+AC_SUBST(WithM4)
+
 #
 # Curses. If you don't have wchar_t-aware ncurses (Debian package:
 # libncursesw5-dev),  uncomment the first line and comment-out the
@@ -227,5 +235,6 @@ AC_DEFINE_UNQUOTED(PATCH_COUNT, $PATCH_COUNT_, [Current patch count])
 
 AC_SUBST(SYMS)
 
-AC_CONFIG_FILES([mk/config.mk])
+AC_CONFIG_FILES([mk/config.mk testsuite/pp/logpp])
+AC_CONFIG_COMMANDS([default], [chmod 700 testsuite/pp/logpp] )
 AC_OUTPUT
