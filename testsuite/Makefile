@@ -12,10 +12,12 @@ PP_OPTS=        -pgmF "$(PP)" -F
 
 GHC_ = $(GHC) $(PP_OPTS) -fglasgow-exts --make $(PKG_CONF) $(PKG)
 
+SRCS= Buffer/Buffer0.hs TestFramework.hs TestTest.hs UnitTestsMain.hs
+
 all: run-utests
 
 # build executable, linking in all tests
-run-utests: 
+run-utests: $(SRCS)
 	$(GHC_) -o $@ UnitTestsMain.hs
 
 .PHONY: clean
