@@ -236,7 +236,7 @@ clean:
 	$(RM) $(MOSTLY_CLEAN_FILES) $(EXTRA_CLEANS) $(CLEAN_FILES)
 
 distclean :: clean
-	$(RM) $(DIST_CLEAN_FILES) *~ */*~
+	$(RM) $(DIST_CLEAN_FILES) *~ */*~ Yi/Curses/IConv.hs
 	$(RM) -rf $(DIST_CLEAN_DIRS)
 
 #
