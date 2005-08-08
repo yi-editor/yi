@@ -25,7 +25,7 @@
 -- NB buffers have no concept of multiwidth characters. There is an
 -- assumption that a character has width 1, including tabs.
 
-module Yi.FastBuffer (FBuffer(..), BufferMode(..)) where
+module Yi.FastBuffer (FBuffer(..), BufferMode(..), FBuffer_(..)) where
 
 import Yi.Buffer
 import Yi.Regex

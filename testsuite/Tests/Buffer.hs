@@ -1,6 +1,6 @@
 -- Test the fast buffer implementation
 
-module Buffer.Buffer0 where
+module Tests.Buffer where
 
 import Yi.Buffer
 import Yi.FastBuffer

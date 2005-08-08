@@ -12,7 +12,8 @@ PP_OPTS=        -pgmF "$(PP)" -F
 
 GHC_ = $(GHC) $(PP_OPTS) -fglasgow-exts --make $(PKG_CONF) $(PKG)
 
-SRCS= Buffer/Buffer0.hs TestFramework.hs TestTest.hs UnitTestsMain.hs
+SRCS= TestFramework.hs TestTest.hs UnitTestsMain.hs \
+      Tests/CBits.hs Tests/Buffer.hs 
 
 all: run-utests
 

@@ -24,12 +24,14 @@
 module Main where
 
 import TestFramework
--- import new test modules here
-import Buffer.Buffer0
+
+import Tests.Buffer
+import Tests.CBits
 
 allTests = 
   TestList 
-     [ fastBuffer
+     [ fastBuffer,
+       cbits
      ]
 
 main = runTestTT allTests
