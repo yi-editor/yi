@@ -1,3 +1,5 @@
+emacs modes should always show the modeline
+
 Vim mode:
         - undo interferes with :w :q
         - empty tmp files don't complain when you try to write them.
