@@ -30,7 +30,7 @@ contents = unsafePerformIO $  do
         forkIO (Control.Exception.evaluate (length s) >> return ())
         return s
 
--- now bring in our bindings
+------------------------------------------------------------------------
 
 foreign import ccall unsafe "string.h strstr" 
     cstrstr :: Ptr CChar -> Ptr CChar -> IO (Ptr CChar)
@@ -44,9 +44,11 @@ foreign import ccall unsafe "YiUtils.h gotoln"
 foreign import ccall unsafe "YiUtils.h tabwidths"
    ctabwidths :: Ptr CChar -> Int -> Int -> Int -> IO Int
 
+------------------------------------------------------------------------
+
 $(tests "cbits" [d| 
 
- testCcountLns = unsafePerformIO $ do
+ testCcountLns = do
         b  <- newB "testbuffer" contents :: IO FBuffer
         s  <- sizeB b
         i  <- docount b s
@@ -57,11 +59,11 @@ $(tests "cbits" [d|
         s'' <- sizeB b
         j <- docount b s''
         k <- docount b 0
-        return $ do
-                assertEqual (i-1) (length . filter (== '\n') $ contents)
-                assertEqual 1 i'
-                assertEqual 2 j
-                assertEqual 1 k
+        assertEqual (i-1) (length . filter (== '\n') $ contents)
+        assertEqual 1 i'
+        assertEqual 2 j
+        assertEqual 1 k
+
     where
         docount :: FBuffer -> Int -> IO Int
         docount b end = do
@@ -69,7 +71,7 @@ $(tests "cbits" [d|
             withMVar mv $ \(FBuffer_ ptr _ _ _) -> ccountlns ptr 0 end
 
  -- index of first point of line n
- testCgotoln = unsafePerformIO $ do
+ testCgotoln = do
         b <- newB "testbuffer" contents :: IO FBuffer
 
         -- indicies of all first char after a \n char
@@ -81,7 +83,7 @@ $(tests "cbits" [d|
                         sequence [ cgotoln ptr 0 end (i+1)
                                  | i <- [1 .. length pure] ]
 
-        return $ assertEqual pure impure
+        assertEqual pure impure
 
 {-
  test_screenlen = unsafePerformIO $ do

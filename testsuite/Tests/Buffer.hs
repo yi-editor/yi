@@ -26,55 +26,56 @@ contents = unsafePerformIO $  do
 
 $(tests "fastBuffer" [d| 
 
- testElems = unsafePerformIO $ do
+ testElems = do
         b <- newB "testbuffer" contents :: IO FBuffer
         s <- elemsB b
-        return $ assertEqual s contents
+        assertEqual s contents
 
- testName = unsafePerformIO $ do
+ testName = do
         b <- newB "testbuffer" contents :: IO FBuffer
-        return $ assertEqual (nameB b) "testbuffer"
+        assertEqual (nameB b) "testbuffer"
 
- testSize = unsafePerformIO $ do
+ testSize = do
         b <- newB "testbuffer" contents :: IO FBuffer
         i <- sizeB b
-        return $ assertEqual i (length contents)
+        assertEqual i (length contents)
 
- testWriteFile = unsafePerformIO $ do
+ testWriteFile = do
         b <- newB "testbuffer" contents :: IO FBuffer
         let f = "testWriteFile.file"
         hPutB b f
         s <- readFile f
         removeFile f
-        return $ assertEqual s contents
+        assertEqual s contents
 
- testGetFileNameB = unsafePerformIO $ do
+ testGetFileNameB = do
         b <- hNewB "../README" :: IO FBuffer
         m <- getfileB b
-        return $ assertEqual m (Just "../README")
+        assertEqual m (Just "../README")
 
- testSetFileNameB = unsafePerformIO $ do
+ testSetFileNameB = do
         b <- newB "testbuffer" contents :: IO FBuffer
         setfileB b "../README"
         m <- getfileB b
-        return $ assertEqual m (Just "../README")
+        assertEqual m (Just "../README")
 
- testLotsOfBuffers = unsafePerformIO $ do
+ testLotsOfBuffers = do
         bs <- sequence [ newB (show x) contents :: IO FBuffer
                        | x <- [1..100] ]   -- create a 1000 buffers
         
         bs' <- mapM elemsB bs
 
-        return $ do assertEqual (length . nub . sort $ map keyB bs) (length bs)
-                    assert $ (length . nub . sort $ bs')  == 1
+        assertEqual (length . nub . sort $ map keyB bs) (length bs)
+        assert $ (length . nub . sort $ bs')  == 1
 
- testMoveTo = unsafePerformIO $ do
+ testMoveTo = do
         b  <- newB "testbuffer" contents :: IO FBuffer
         ps <- sequence [ moveTo b i >> pointB b >>= \j -> return (i,j) 
                        | i <- [0 .. 4000] ]
-        return $ let (l1,l2) = unzip ps in assertEqual l1 l2
+        let (l1,l2) = unzip ps
+        assertEqual l1 l2
 
- testMovement = unsafePerformIO $ do
+ testMovement = do
         b  <- newB "testbuffer" contents :: IO FBuffer
         moveTo b 1000
         leftB b
@@ -92,24 +93,24 @@ $(tests "fastBuffer" [d|
         s <- sizeB b 
         leftN b 10000
         n <- pointB b
-        return $ do assertEqual i 1000
-                    assertEqual j i
-                    assertEqual k (1000+1000)
-                    assertEqual l 0
-                    assertEqual m (s-1)
-                    assertEqual n 0
+        assertEqual i 1000
+        assertEqual j i
+        assertEqual k (1000+1000)
+        assertEqual l 0
+        assertEqual m (s-1)
+        assertEqual n 0
                     
- testRead = unsafePerformIO $ do
+ testRead = do
         b  <- newB "testbuffer" contents :: IO FBuffer
         c  <- readAtB b 1000
         moveTo b 1000
         c' <- readB b
         writeB b 'X'
         c'' <- readB b
-        return $ do assertEqual c c'
-                    assertEqual c'' 'X'
+        assertEqual c c'
+        assertEqual c'' 'X'
 
- testInsert = unsafePerformIO $ do
+ testInsert = do
         b <- newB "testbuffer" contents :: IO FBuffer
         s <- sizeB b
         moveTo b 1000
@@ -122,12 +123,12 @@ $(tests "fastBuffer" [d|
         let str = "haskell string\n\nanother string"
         insertN b str
         s'' <- sizeB b
-        return $ do assertEqual (s+1) s'
-                    assertEqual p p'
-                    assertEqual c 'X'
-                    assertEqual s'' (s' + length str)
+        assertEqual (s+1) s'
+        assertEqual p p'
+        assertEqual c 'X'
+        assertEqual s'' (s' + length str)
 
- testDelete = unsafePerformIO $ do
+ testDelete = do
         b <- newB "testbuffer" contents :: IO FBuffer
         moveTo b 2000
         p <- pointB b
@@ -150,17 +151,17 @@ $(tests "fastBuffer" [d|
         insertN b contents
         deleteNAt b (s - 100) 100
         t'  <- sizeB b
-        return $ do assert (c /= c')
-                    assertEqual p p'
-                    assertEqual s (s'+1)
-                    assertEqual s'' 0
-                    assertEqual p'' 0
-                    assertEqual c'' (chr 0)     -- should throw an exception really
-                    assertEqual s s'''
-                    assertEqual t 0
-                    assertEqual t' 100
+        assert (c /= c')
+        assertEqual p p'
+        assertEqual s (s'+1)
+        assertEqual s'' 0
+        assertEqual p'' 0
+        assertEqual c'' (chr 0)     -- should throw an exception really
+        assertEqual s s'''
+        assertEqual t 0
+        assertEqual t' 100
 
- testUndo = unsafePerformIO $ do
+ testUndo = do
         b <- newB "testbuffer" contents :: IO FBuffer
         s <- sizeB b
         deleteN b s
@@ -170,10 +171,9 @@ $(tests "fastBuffer" [d|
         t   <- elemsB b
         redo b >> redo b
         s'''<- sizeB b
-        return $ do 
-                assertEqual s s''
-                assertEqual t contents -- contents after undo should equal original contents
-                assertEqual s' s'''
+        assertEqual s s''
+        assertEqual t contents -- contents after undo should equal original contents
+        assertEqual s' s'''
                 
  |])
 
