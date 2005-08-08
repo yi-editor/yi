@@ -32,9 +32,6 @@ contents = unsafePerformIO $  do
 
 ------------------------------------------------------------------------
 
-foreign import ccall unsafe "string.h strstr" 
-    cstrstr :: Ptr CChar -> Ptr CChar -> IO (Ptr CChar)
-
 foreign import ccall unsafe "YiUtils.h countlns"
    ccountlns :: Ptr CChar -> Int -> Int -> IO Int
 
@@ -75,15 +72,19 @@ $(tests "cbits" [d|
         b <- newB "testbuffer" contents :: IO FBuffer
 
         -- indicies of all first char after a \n char
-        let pure  = [ i+1 | (c,i) <- zip contents [0..], c == '\n' ]
+        let pure  = map (+1) (findIndices (=='\n') contents)
 
         -- now see if the fast version matches
         let (FBuffer { rawbuf = mv }) = b
         impure <- withMVar mv $ \(FBuffer_ ptr _ end _) ->
-                        sequence [ cgotoln ptr 0 end (i+1)
-                                 | i <- [1 .. length pure] ]
+                sequence [ cgotoln ptr 0 end (i+1) | i <- [1 .. length pure] ]
+
+        let n = 20
+        let p_n = pure !! n
+        i_n <- withMVar mv $ \(FBuffer_ ptr _ end _) -> cgotoln ptr 0 end (n+1+1)
 
         assertEqual pure impure
+        assertEqual p_n  i_n
 
 {-
  test_screenlen = unsafePerformIO $ do

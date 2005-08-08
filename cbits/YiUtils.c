@@ -23,7 +23,10 @@ unsigned long countlns(char *b1, int start, int end)
     return c;
 }
 
-/* return the index of the first point of line @n@, indexed from 1 */
+/* return the index of the first point of line @n@, indexed from 1 
+ * cgotoln p 0 end (n+1+1) == (map (+1) (findIndices (== '\n') p)) !! n
+ * handling of n=0 is suspect
+ */
 unsigned long gotoln(char *b, int start, int end, int n)
 {
     char *p = b + start;
