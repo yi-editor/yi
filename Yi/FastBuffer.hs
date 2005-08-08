@@ -194,6 +194,9 @@ foreign import ccall unsafe "YiUtils.h gotoln"
 foreign import ccall unsafe "YiUtils.h tabwidths"
    ctabwidths :: Ptr CChar -> Int -> Int -> Int -> IO Int
 
+foreign import ccall unsafe "YiUtils.h screenlen"
+   cfindlength :: Ptr CChar -> Int -> Int -> Int -> Int -> IO Int
+
 ------------------------------------------------------------------------
 
 -- May need to resize buffer. How do we append to eof?
@@ -317,8 +320,8 @@ instance Buffer FBuffer where
                 n' = min (e-i') n
             readChars b n' i'
 
-    -- ptrToLnsB  :: a -> Int -> Int -> IO [CStringLen]
-    ptrToLnsB (FBuffer { rawbuf = mv }) i' len = 
+    -- ptrToLnsB  :: a -> Int -> Int -> Int -> IO [CStringLen]
+    ptrToLnsB (FBuffer { rawbuf = mv }) i' len width = 
         withMVar mv $ \(FBuffer_ ptr _ e _) -> do
             let i = inBounds i' e
                 loop 0 _ = return []
@@ -326,9 +329,9 @@ instance Buffer FBuffer where
                          | otherwise = do 
                             let ptr' = ptr `advancePtr` j
                             sz   <- cgotoln ptr' 0 (max 0 (e - j)) 2{-from 1-}
-                            ptrs <- loop (n-1) (j+sz)
-                            return ((ptr',sz) : ptrs)
-
+                            sz'  <- cfindlength ptr' 0 sz 8{-hard-} width -- find screen width
+                            ptrs <- loop (n-1) (j+sz)   -- gets us index of next str
+                            return ((ptr',sz') : ptrs)
             loop len i
 
     ------------------------------------------------------------------------

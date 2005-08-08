@@ -205,18 +205,26 @@ drawWindow e mwin sty win =
     case findBufferWith e u of { b -> do
     let off = case m of Nothing -> 0 ; _ -> 1 -- correct for modeline
 
-    lns <- ptrToLnsB b t (h - off)
+    lns <- ptrToLnsB b t (h - off) w
 
     -- draw each buffer line
     -- ToDo, horizontal scrolling. determine how many screen widths to
     -- drop off the string (i.e. add to the ptr..)
     --
-    -- This `len' doesn't take tabs into account
+    -- This `len' doesn't take tabs into account. Leading to curses draw
+    -- errors on lines with tabs in them. Solution, find a len that
+    -- includes tab widths
+    --
+    -- `len' is number of chars in the line -- not the screen width.
+    -- so `w' is wrong in the presence of tabs.
+    -- 
+    -- need a function that takes the desired width, and tells us how
+    -- many real chars to take.
     --
     (y,_) <- getYX Curses.stdScr
-    withStyle wsty $ flip mapM_ lns $ \(ptr,len) -> 
+    withStyle wsty $ flip mapM_ lns $ \(ptr,len) -> do
         throwIfErr_ "drawWindow" $
-            waddnstr Curses.stdScr ptr (fromIntegral $ min len w)
+            waddnstr Curses.stdScr ptr (fromIntegral len)
 
     -- and any eof markers (should be optional)
     withStyle eofsty $ do

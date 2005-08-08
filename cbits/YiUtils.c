@@ -23,6 +23,7 @@ unsigned long countlns(char *b1, int start, int end)
 
 /* return width of all tabs in current line, minus the number of tabs
  * (so that we can just say: number of chars + tabwidths 
+ * So this function tells you how many tabs given a string.
  */
 unsigned long tabwidths(char *b, int start, int end, int tabwidth)
 {
@@ -41,6 +42,28 @@ unsigned long tabwidths(char *b, int start, int end, int tabwidth)
         }
     }
     return c;
+}
+
+/*
+ * return the string length required to make a screen length of `max',
+ * including tab expansion. assume screenwidth % tabwidth == 0 for now
+ * this is kind of the inverse of tabwidths, telling you how much of a
+ * string, given a desired tab width
+ */
+unsigned long screenlen(char *b, int start, int end, int tabwidth, int max)
+{
+    char *p = b + start;
+    char *q = b + end;
+    unsigned long i;          /* count of chars */
+    unsigned long col = 0;    /* screen column  */
+    unsigned long w   = 0;
+    for (i = 0; p < q && col < max; i++, col += w) {
+        if (*p++ == '\t')
+            w = tabwidth - (col % tabwidth);
+        else 
+            w = 1;
+    }
+    return i;
 }
 
 

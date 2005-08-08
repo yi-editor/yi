@@ -85,8 +85,9 @@ class Buffer a where
     -- | Return @n@ elems starting at @i@ of the buffer as a list
     nelemsB    :: a -> Int -> Int -> IO [Char]
 
-    -- | Return a list of pointers to @n@ C strings, starting at point.
-    ptrToLnsB  :: a -> Int -> Int -> IO [CStringLen]
+    -- | Return a list of pointers to @n@ C strings, starting at point
+    -- @p@. Maximum width (including tabs) must be @w@.
+    ptrToLnsB  :: a -> Int -> Int -> Int -> IO [CStringLen]
 
     ------------------------------------------------------------------------
     -- Point based operations
