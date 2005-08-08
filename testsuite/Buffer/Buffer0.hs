@@ -65,6 +65,12 @@ $(tests "fastBuffer" [d|
         return $ do assertEqual (length . nub . sort $ map keyB bs) (length bs)
                     assert $ (length . nub . sort $ bs')  == 1
 
+ testMoveTo = unsafePerformIO $ do
+        b  <- newB "testbuffer" contents :: IO FBuffer
+        ps <- sequence [ moveTo b i >> pointB b >>= \j -> return (i,j) 
+                       | i <- [0 .. 4000] ]
+        return $ let (l1,l2) = unzip ps in assertEqual l1 l2
+
  |])
 
 instance Show Unique where
