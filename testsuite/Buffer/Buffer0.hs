@@ -71,6 +71,38 @@ $(tests "fastBuffer" [d|
                        | i <- [0 .. 4000] ]
         return $ let (l1,l2) = unzip ps in assertEqual l1 l2
 
+ testMovement = unsafePerformIO $ do
+        b  <- newB "testbuffer" contents :: IO FBuffer
+        moveTo b 1000
+        leftB b
+        rightB b
+        i <- pointB b   -- should be 1000
+        rightB b
+        leftB b
+        j <- pointB b
+        rightN b 1000
+        k <- pointB b
+        leftN b 2000
+        l <- pointB b
+        rightN b 10000  -- moving past end of buffer should only go to end
+        m <- pointB b
+        s <- sizeB b 
+        leftN b 10000
+        n <- pointB b
+        return $ do assertEqual i 1000
+                    assertEqual j i
+                    assertEqual k (1000+1000)
+                    assertEqual l 0
+                    assertEqual m (s-1)
+                    assertEqual n 0
+                    
+ testRead = unsafePerformIO $ do
+        b  <- newB "testbuffer" contents :: IO FBuffer
+        c  <- readAtB b 1000
+        moveTo b 1000
+        c' <- readB b
+        return $ do assertEqual c c'
+
  |])
 
 instance Show Unique where
