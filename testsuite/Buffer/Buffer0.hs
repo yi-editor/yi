@@ -4,12 +4,15 @@ module Buffer.Buffer0 where
 
 import Yi.Buffer
 import Yi.FastBuffer
-import Data.Unique
 
+import Data.Unique
+import Data.Char
 import Data.List
 
 import System.Directory
 import System.IO.Unsafe
+
+import Control.Monad
 import qualified Control.Exception
 import Control.Concurrent
 
@@ -101,8 +104,77 @@ $(tests "fastBuffer" [d|
         c  <- readAtB b 1000
         moveTo b 1000
         c' <- readB b
+        writeB b 'X'
+        c'' <- readB b
         return $ do assertEqual c c'
+                    assertEqual c'' 'X'
 
+ testInsert = unsafePerformIO $ do
+        b <- newB "testbuffer" contents :: IO FBuffer
+        s <- sizeB b
+        moveTo b 1000
+        p  <- pointB b
+        insertB b 'X'
+        p' <- pointB b
+        s' <- sizeB b
+        c  <- readB b
+        moveTo b s'
+        let str = "haskell string\n\nanother string"
+        insertN b str
+        s'' <- sizeB b
+        return $ do assertEqual (s+1) s'
+                    assertEqual p p'
+                    assertEqual c 'X'
+                    assertEqual s'' (s' + length str)
+
+ testDelete = unsafePerformIO $ do
+        b <- newB "testbuffer" contents :: IO FBuffer
+        moveTo b 2000
+        p <- pointB b
+        c <- readB b
+        s <- sizeB b
+        deleteB b
+        c' <- readB b
+        p' <- pointB b
+        s' <- sizeB b
+        moveTo b 0
+        deleteN b 10000
+        s'' <- sizeB b
+        p'' <- pointB b
+        c'' <- readB b  -- unsafe/should fail (empty buffer)
+        writeB b 'X'    -- unsafe/should fail
+        insertN b contents
+        s''' <- sizeB b
+        deleteN b s'''
+        t  <- sizeB b
+        insertN b contents
+        deleteNAt b (s - 100) 100
+        t'  <- sizeB b
+        return $ do assert (c /= c')
+                    assertEqual p p'
+                    assertEqual s (s'+1)
+                    assertEqual s'' 0
+                    assertEqual p'' 0
+                    assertEqual c'' (chr 0)     -- should throw an exception really
+                    assertEqual s s'''
+                    assertEqual t 0
+                    assertEqual t' 100
+
+ testUndo = unsafePerformIO $ do
+        b <- newB "testbuffer" contents :: IO FBuffer
+        s <- sizeB b
+        deleteN b s
+        s' <- sizeB b
+        undo b
+        s'' <-sizeB b
+        t   <- elemsB b
+        redo b >> redo b
+        s'''<- sizeB b
+        return $ do 
+                assertEqual s s''
+                assertEqual t contents -- contents after undo should equal original contents
+                assertEqual s' s'''
+                
  |])
 
 instance Show Unique where
