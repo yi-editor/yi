@@ -32,20 +32,23 @@ contents = unsafePerformIO $  do
 
 ------------------------------------------------------------------------
 
-foreign import ccall unsafe "YiUtils.h countlns"
+foreign import ccall unsafe "YiUtils.h countLines"
    ccountlns :: Ptr CChar -> Int -> Int -> IO Int
 
-foreign import ccall unsafe "YiUtils.h gotoln"
+foreign import ccall unsafe "YiUtils.h findStartOfLineN"
    cgotoln :: Ptr CChar -> Int -> Int -> Int -> IO Int
 
-foreign import ccall unsafe "YiUtils.h tabwidths"
+foreign import ccall unsafe "YiUtils.h expandedLengthOfStr"
    ctabwidths :: Ptr CChar -> Int -> Int -> Int -> IO Int
+
+foreign import ccall unsafe "YiUtils.h strlenWithExpandedLengthN"
+   cstrlentabbed :: Ptr CChar -> Int -> Int -> Int -> Int -> IO Int
 
 ------------------------------------------------------------------------
 
 $(tests "cbits" [d| 
 
- testCcountLns = do
+ testCountLines = do
         b  <- newB "testbuffer" contents :: IO FBuffer
         s  <- sizeB b
         i  <- docount b s
@@ -60,7 +63,6 @@ $(tests "cbits" [d|
         assertEqual 1 i'
         assertEqual 2 j
         assertEqual 1 k
-
     where
         docount :: FBuffer -> Int -> IO Int
         docount b end = do
@@ -68,20 +70,21 @@ $(tests "cbits" [d|
             withMVar mv $ \(FBuffer_ ptr _ _ _) -> ccountlns ptr 0 end
 
  -- index of first point of line n
- testCgotoln = do
+ testFindStartOfLineN = do
         b <- newB "testbuffer" contents :: IO FBuffer
 
-        -- indicies of all first char after a \n char
-        let pure  = map (+1) (findIndices (=='\n') contents)
+        -- the index of the start of each line, line 1 starts at 0
+        let pure  = 0 : (init . map (+1) . (findIndices (== '\n')) $ contents)
 
         -- now see if the fast version matches
         let (FBuffer { rawbuf = mv }) = b
-        impure <- withMVar mv $ \(FBuffer_ ptr _ end _) ->
-                sequence [ cgotoln ptr 0 end (i+1) | i <- [1 .. length pure] ]
 
-        let n = 20
+        impure <- withMVar mv $ \(FBuffer_ ptr _ end _) ->
+                sequence [ cgotoln ptr 0 end i | i <- [0 .. length pure-1] ]
+
+        let n   = 20
         let p_n = pure !! n
-        i_n <- withMVar mv $ \(FBuffer_ ptr _ end _) -> cgotoln ptr 0 end (n+1+1)
+        i_n <- withMVar mv $ \(FBuffer_ ptr _ end _) -> cgotoln ptr 0 end n
 
         assertEqual pure impure
         assertEqual p_n  i_n

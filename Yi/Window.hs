@@ -196,7 +196,7 @@ resetW :: Buffer a => Window -> a -> Int -> Int -> IO Window
 resetW w b ln gap = do
     p  <- pointB b      -- see where it actually got placed 
     x  <- offsetFromSol b
-    tw <- tabWidthsB b 8        -- hard coded for now
+    tw <- expandedTabLengthB b 8        -- hard coded for now
     let topln = ln - gap
     i <- indexOfSolAbove b gap
     let w' = w {pnt = p, lineno = ln,
@@ -321,7 +321,7 @@ deleteToEolW w b = do
 update :: Buffer a => Window -> a -> IO Window
 update w b = do
     x  <- offsetFromSol b
-    tw <- tabWidthsB b 8
+    tw <- expandedTabLengthB b 8
     p  <- pointB b
     return $! w { pnt = p, cursor = (fst (cursor w),x + tw) }
 {-# INLINE update #-}
@@ -335,7 +335,7 @@ decY :: Buffer a => Window -> a -> IO Window
 decY w b = do
     p <- pointB b           -- current point
     x <- offsetFromSol b    -- x offset
-    tw <- tabWidthsB b 8
+    tw <- expandedTabLengthB b 8
     let (y,_) = cursor w 
         curln = lineno w
         topln = toslineno w
@@ -428,7 +428,7 @@ resize y x w b = do
         then do let gap   = min ln (y `div` 2)
                     topln'= ln - gap
                 x'<- offsetFromSol b
-                tw<- tabWidthsB b 8
+                tw<- expandedTabLengthB b 8
                 i <- indexOfSolAbove b gap
                 return w' { toslineno = topln', 
                             tospnt = i, 
@@ -451,7 +451,7 @@ resetPoint w b = do
     ln <- curLn b
     p  <- pointB b      -- see where it actually got placed 
     x  <- offsetFromSol b
-    tw <- tabWidthsB b 8
+    tw <- expandedTabLengthB b 8
     w' <- if op /= p || oln /= ln -- then the file shrunk or line moved
           then do let gap   = min (ln-1) ((height w) `div` 2)
                       topln = ln - gap

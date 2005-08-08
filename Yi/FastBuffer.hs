@@ -185,16 +185,16 @@ shiftChars ptr dst_off src_off len = do
 foreign import ccall unsafe "string.h strstr" 
     cstrstr :: Ptr CChar -> Ptr CChar -> IO (Ptr CChar)
 
-foreign import ccall unsafe "YiUtils.h countlns"
-   ccountlns :: Ptr CChar -> Int -> Int -> IO Int
+foreign import ccall unsafe "YiUtils.h countLines"
+   ccountLines :: Ptr CChar -> Int -> Int -> IO Int
 
-foreign import ccall unsafe "YiUtils.h gotoln"
-   cgotoln :: Ptr CChar -> Int -> Int -> Int -> IO Int
+foreign import ccall unsafe "YiUtils.h findStartOfLineN"
+   cfindStartOfLineN :: Ptr CChar -> Int -> Int -> Int -> IO Int
 
-foreign import ccall unsafe "YiUtils.h tabwidths"
-   ctabwidths :: Ptr CChar -> Int -> Int -> Int -> IO Int
+foreign import ccall unsafe "YiUtils.h expandedLengthOfStr"
+   cexpandedTabLength :: Ptr CChar -> Int -> Int -> Int -> IO Int
 
-foreign import ccall unsafe "YiUtils.h screenlen"
+foreign import ccall unsafe "YiUtils.h strlenWithExpandedLengthN"
    cfindlength :: Ptr CChar -> Int -> Int -> Int -> Int -> IO Int
 
 ------------------------------------------------------------------------
@@ -327,11 +327,11 @@ instance Buffer FBuffer where
                 loop 0 _ = return []
                 loop n j | j >= e    = return []
                          | otherwise = do 
-                            let ptr' = ptr `advancePtr` j
-                            sz   <- cgotoln ptr' 0 (max 0 (e - j)) 2{-from 1-}
-                            sz'  <- cfindlength ptr' 0 sz 8{-hard-} width -- find screen width
-                            ptrs <- loop (n-1) (j+sz)   -- gets us index of next str
-                            return ((ptr',sz') : ptrs)
+                            let this = ptr `advancePtr` j -- new line
+                            off  <- cfindStartOfLineN this 0 (max 0 (e - j)) 1
+                            size <- cfindlength this 0 off 8{-tab-} width
+                            ptrs <- loop (n-1) (j+off)
+                            return ((this,size) : ptrs)
             loop len i
 
     ------------------------------------------------------------------------
@@ -540,27 +540,27 @@ instance Buffer FBuffer where
     -- count number of \n from origin to point
     -- curLn :: a -> IO Int
     curLn (FBuffer { rawbuf = mv }) = withMVar mv $ \(FBuffer_ ptr pnts _ _) -> 
-        ccountlns ptr 0 $ pnts M.! 0
+        ccountLines ptr 0 $ pnts M.! 0
     {-# INLINE curLn #-}
 
     -- gotoLn :: a -> Int -> IO Int
-    -- some supicious stuff in here..
     gotoLn (FBuffer { rawbuf = mv }) n = 
         modifyMVar mv $ \(FBuffer_ ptr pnts e mx) -> do
-            np <- cgotoln ptr 0 e n
-            let fb = FBuffer_ ptr (M.insert 0 np pnts)  e mx
-            n' <- if np > e - 1 then return . subtract 1 =<< ccountlns ptr 0 np
-                                else return n
-            return (fb, max 1 n')  -- and deal with for n < 1
+            np <- cfindStartOfLineN ptr 0 e (n-1)       -- index from 0
+            let fb = FBuffer_ ptr (M.insert 0 np pnts) e mx
+            n' <- if np > e - 1 -- if next line is end of file, then find out what line this is
+                  then return . subtract 1 =<< ccountLines ptr 0 np
+                  else return n         -- else it is this line
+            return (fb, max 1 n')
     {-# INLINE gotoLn #-}
 
     -- gotoLnFrom :: a -> Int -> IO Int
     gotoLnFrom (FBuffer { rawbuf = mv }) n = 
         modifyMVar mv $ \(FBuffer_ ptr pnts e mx) -> do
             let p = pnts M.! 0
-            off <- cgotoln ptr p (if n < 0 then 0 else (e-1)) n
+            off <- cfindStartOfLineN ptr p (if n < 0 then 0 else (e-1)) n
             let fb = FBuffer_ ptr (M.insert 0 (p + off) pnts) e mx
-            ln <- return . subtract 1 =<< ccountlns ptr 0 (p+off) -- hmm :(
+            ln <- return . subtract 1 =<< ccountLines ptr 0 (p+off) -- end of file
             return (fb, max 1 ln)
     {-# INLINE gotoLnFrom #-}
 
@@ -594,11 +594,11 @@ instance Buffer FBuffer where
 
     -- ------------------------------------------------------------------------
 
-    tabWidthsB b@(FBuffer { rawbuf = mv }) width = do
+    expandedTabLengthB b@(FBuffer { rawbuf = mv }) width = do
         i <- indexOfSol b
         withMVar mv $ \(FBuffer_ ptr pnts _ _) -> do
             let j = pnts M.! 0
-            ctabwidths ptr i j width
+            cexpandedTabLength ptr i j width
 
 ------------------------------------------------------------------------
 

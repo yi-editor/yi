@@ -243,5 +243,5 @@ class Buffer a where
 
     ---------------------------------------------------------------------
     -- | Width of tabs between start of line and current point
-    tabWidthsB :: a -> Int -> IO Int
+    expandedTabLengthB :: a -> Int -> IO Int
 

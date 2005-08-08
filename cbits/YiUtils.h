@@ -7,10 +7,10 @@
 
 extern void nomacro_getyx(WINDOW *win, int *y, int *x);
 
-extern unsigned long countlns(char *b1, int start, int end);
-extern unsigned long gotoln(char *b, int start, int end, int n);
+extern unsigned long countLines(char *b1, int start, int end);
+extern unsigned long findStartOfLineN(char *b, int start, int end, int n);
 
-extern unsigned long tabwidths(char *b, int start, int end, int tabwidth);
-extern unsigned long screenlen(char *b, int start, int end, int tabwidth, int max);
+extern unsigned long expandedLengthOfStr(char *b, int start, int end, int tabwidth);
+extern unsigned long strlenWithExpandedLengthN(char *b, int start, int end, int tabwidth, int max);
 
 #endif

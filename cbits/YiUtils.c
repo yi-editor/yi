@@ -13,7 +13,7 @@ void nomacro_getyx(WINDOW *win, int *y, int *x)
 /* 1 + the number of occurences of \n in buffer from start to end
  * i.e. the index of the current line, starting from 1
  */
-unsigned long countlns(char *b1, int start, int end) 
+unsigned long countLines(char *b1, int start, int end) 
 {
     char *p = b1 + start;
     char *q = b1 + end;
@@ -23,32 +23,36 @@ unsigned long countlns(char *b1, int start, int end)
     return c;
 }
 
-/* return the index of the first point of line @n@, indexed from 1 
- * cgotoln p 0 end (n+1+1) == (map (+1) (findIndices (== '\n') p)) !! n
- * handling of n=0 is suspect
+/* 
+ * return the index of the first character of the line @n@ from the current line
+ * for example, from the start of the buffer:
+ *
+ * sequence [ findStartOfLineN p 0 end i | i <- [ 0 .. numline ] ]
+ *      ==
+ * 0 : (init . map (+1) . (findIndices (== '\n') p))
  */
-unsigned long gotoln(char *b, int start, int end, int n)
+unsigned long findStartOfLineN(char *b, int start, int end, int n)
 {
     char *p = b + start;
     char *q = b + end;
-    unsigned long c = 1;    /* there's always 1 line */
+    unsigned long c = 0; /* current line */
 
-    if (n >= 0) {
+    if (n > 0) {
         while (p < q && c < n) 
             if (*p++ == '\n') c++;
-    } else {
-        int n_ = 0 - n;
+
+    } else { /* go backwards */
+        int n_ = - n;
         while (p > q && c < n_) 
             if (*p-- == '\n') c++;
     }
     return (p - (b + start));
+
 }
 
-/* return width of all tabs in current line, minus the number of tabs
- * (so that we can just say: number of chars + tabwidths 
- * So this function tells you how many tabs given a string.
+/* Length of tabs in the string from start to end, after expansion
  */
-unsigned long tabwidths(char *b, int start, int end, int tabwidth)
+unsigned long expandedLengthOfStr(char *b, int start, int end, int tabwidth)
 {
     char *p = b + start;
     char *q = b + end;
@@ -73,7 +77,7 @@ unsigned long tabwidths(char *b, int start, int end, int tabwidth)
  * this is kind of the inverse of tabwidths, telling you how much of a
  * string, given a desired tab width
  */
-unsigned long screenlen(char *b, int start, int end, int tabwidth, int max)
+unsigned long strlenWithExpandedLengthN(char *b, int start, int end, int tabwidth, int max)
 {
     char *p = b + start;
     char *q = b + end;
