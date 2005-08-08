@@ -113,12 +113,15 @@ class Buffer a where
     ------------------------------------------------------------------------
 
     -- | Read the character at the current point
+    -- This is an unsafe operation, no bounds checks are performed
     readB      :: a -> IO Char
 
     -- | Read the character at the given index
+    -- This is an unsafe operation, no bounds checks are performed
     readAtB    :: a -> Int -> IO Char
 
     -- | Write an element into the buffer at the current point
+    -- This is an unsafe operation, no bounds checks are performed
     writeB     :: a -> Char -> IO ()
 
     ------------------------------------------------------------------------

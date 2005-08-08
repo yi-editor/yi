@@ -346,6 +346,7 @@ instance Buffer FBuffer where
     {-# INLINE readB #-}
 
     -- readAtB :: a -> Int -> IO Char
+    -- should perform a bounds check? (readAtB n on an empty buffer is unsafe)
     readAtB (FBuffer { rawbuf = mv }) off = 
         withMVar mv $ \(FBuffer_ ptr _ e _) ->
             readChars ptr 1 (inBounds off e) >>= \[c] -> return c
