@@ -176,13 +176,13 @@ $(tests "fastBuffer" [d|
         assertEqual s' s'''
 
  testMoveToSol = do
-        b <- newB "testbuffer" "\n\nabc\ndef\n" :: IO FBuffer
+        b <- newB "testbuffer" "\n\nabc\n\ndef\n" :: IO FBuffer
         -- expected sol points
-        let pure = [0,1,2,2,2,2,6,6,6,6]
+        let pure = [0,1,2,2,2,2,6,7,7,7,7]
         impure <- sequence [ do moveTo b i
                                 moveToSol b
                                 pointB b
-                           | i <- [ 0 .. (length pure - 1) ] ]
+                           | i <- [ 0 .. length pure - 1] ]
         assertEqual pure impure
 
  testMoveToEol = do

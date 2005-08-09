@@ -455,20 +455,13 @@ instance Buffer FBuffer where
     ------------------------------------------------------------------------ 
 
     -- moveToSol   :: a -> IO ()
-    -- todo: optimise
-    moveToSol a = sizeB a >>= moveXorSol a
-    {-
+    -- optimised. crucial for long lines
+    -- moveToSol a = sizeB a >>= moveXorSol a
     moveToSol (FBuffer { rawbuf = mv }) =
         modifyMVar_ mv $ \(FBuffer_ ptr pnts end mx) -> do
             let p = pnts M.! 0
-            [c] <- readChars ptr 1 p
-            let q = max 0 (p - (fromEnum $ c == '\n'))  -- left if on a \n
-            off <- cfindStartOfLineN ptr q 0 (-1)
-            let r = q + off + (if q + off == 0   {- bah -}  -- looks like first line
-                                then if p /= 0 -- not really first line
-                                then 1 else 0 else 2)
-            return $ FBuffer_ ptr (M.insert 0 (inBounds r end) pnts) end mx
-    -}
+            off <- cfindStartOfLineN ptr p 0 (-1)
+            return $ FBuffer_ ptr (M.insert 0 (inBounds (p + off) end) pnts) end mx
     {-# INLINE moveToSol #-}
 
     -- moveToEol   :: a -> IO ()

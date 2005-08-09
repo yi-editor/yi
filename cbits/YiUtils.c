@@ -43,8 +43,11 @@ unsigned long findStartOfLineN(char *b, int start, int end, int n)
 
     } else { /* go backwards */
         int n_ = - n;
-        while (p > q && c < n_) 
-            if (*p-- == '\n') c++;
+        while (p > q)  {
+            if (*(p-1) == '\n') c++;
+            if (c >= n_) break;
+            p--;
+        }
     }
     return (p - (b + start));
 
