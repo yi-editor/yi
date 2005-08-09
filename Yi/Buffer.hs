@@ -177,6 +177,9 @@ class Buffer a where
 
     -- | True if point at end of file
     atEof       :: a -> IO Bool
+
+    -- | True if point is on last line of the file
+    atLastLine  :: a -> IO Bool
     
     -- | Move point to start of line
     moveToSol   :: a -> IO ()
@@ -190,14 +193,24 @@ class Buffer a where
     -- | Index of end of line 
     indexOfEol    :: a -> IO Int
 
+    -- | Given a point, return the point of the next line down
+    indexOfNLFrom:: a -> Int -> IO Int
+
     -- | Move point to end of line
     moveToEol   :: a -> IO ()
 
     -- | Move @x@ chars back, or to the sol, whichever is less
     moveXorSol  :: a -> Int -> IO ()
+    moveXorSol a x = moveAXuntil a leftB x atSol
 
     -- | Move @x@ chars forward, or to the eol, whichever is less
     moveXorEol  :: a -> Int -> IO ()
+    moveXorEol a x = moveAXuntil a rightB x atEol
+
+    -- Move using the direction specified by the 2nd argument, until
+    -- either we've moved @n@, the 3rd argument, or @p@ the 4th argument 
+    -- is True
+    moveAXuntil :: a -> (a -> IO ()) -> Int -> (a -> IO Bool) -> IO ()
 
     -- | Delete (back) to start of line
     -- deleteToSol :: a -> IO ()

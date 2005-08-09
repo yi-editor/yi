@@ -34,6 +34,7 @@ import qualified Yi.Map as M
 
 import Data.Unique              ( Unique, newUnique )
 
+import Control.Monad            ( when )
 import Control.Exception        ( assert )
 import Control.Concurrent.MVar
 
@@ -403,7 +404,6 @@ instance Buffer FBuffer where
             return $ addUR ur ins
         deleteN' fb n pos  -- now, really delete
    
-
     ------------------------------------------------------------------------
   
     -- undo        :: a -> IO ()
@@ -443,11 +443,31 @@ instance Buffer FBuffer where
                  return (p == 0)
     {-# INLINE atSof #-}
 
+    -- atLastLine  :: a -> IO Bool
+    atLastLine b = do
+            p <- pointB b
+            moveToEol b
+            e <- atEof b
+            moveTo b p
+            return e
+    {-# INLINE atLastLine #-}
+
     ------------------------------------------------------------------------ 
 
     -- moveToSol   :: a -> IO ()
+    -- todo: optimise
     moveToSol a = sizeB a >>= moveXorSol a
     {-# INLINE moveToSol #-}
+
+    -- moveToEol   :: a -> IO ()
+    -- optimised. crucial for long lines
+    --  was:     moveToEol a = sizeB a >>= moveXorEol a
+    moveToEol (FBuffer { rawbuf = mv }) =
+        modifyMVar_ mv $ \(FBuffer_ ptr pnts end mx) -> do
+            let p = pnts M.! 0
+            i <- cfindStartOfLineN ptr p end 1 -- next line
+            return $ FBuffer_ ptr (M.insert 0 (inBounds (p+i-1) end) pnts) end mx
+    {-# INLINE moveToEol #-}
 
     -- offsetFromSol :: a -> IO Int
     offsetFromSol a = do
@@ -476,31 +496,25 @@ instance Buffer FBuffer where
         return j
     {-# INLINE indexOfEol #-}
 
-    -- moveToEol   :: a -> IO ()
-    moveToEol a = sizeB a >>= moveXorEol a
-    {-# INLINE moveToEol #-}
+    -- indexOfNLFrom :: a -> Int -> IO Int
+    indexOfNLFrom b i = do
+        p <- pointB b
+        moveTo b i
+        lineDown b
+        q <- pointB b
+        moveTo b p
+        return q
+    {-# INLINE indexOfNLFrom #-}
 
-    -- moveXorSol  :: a -> Int -> IO ()
-    moveXorSol a x
+    -- moveAXuntil :: a -> (a -> IO ()) -> Int -> (a -> IO Bool) -> IO ()
+    moveAXuntil b f x p
         | x <= 0    = return ()
         | otherwise = do
             let loop 0 = return ()
-                loop i = do sol <- atSol a
-                            if sol then return () 
-                                   else leftB a >> loop (i-1)
+                loop i = do r <- p b
+                            when (not r) $ f b >> loop (i-1)
             loop x
-    {-# INLINE moveXorSol #-}
-
-    -- moveXorEol  :: a -> Int -> IO ()
-    moveXorEol a x
-        | x <= 0    = return ()
-        | otherwise = do
-            let loop 0 = return ()
-                loop i = do eol <- atEol a
-                            if eol then return () 
-                                   else rightB a >> loop (i-1)
-            loop x
-    {-# INLINE moveXorEol #-}
+    {-# INLINE moveAXuntil #-}
 
     ------------------------------------------------------------------------
 

@@ -24,8 +24,8 @@ unsigned long countLines(char *b1, int start, int end)
 }
 
 /* 
- * return the index of the first character of the line @n@ from the current line
- * for example, from the start of the buffer:
+ * return the offset of the first character of the line @n@ from the
+ current point, for example, from the start of the buffer:
  *
  * sequence [ findStartOfLineN p 0 end i | i <- [ 0 .. numline ] ]
  *      ==
@@ -92,4 +92,3 @@ unsigned long strlenWithExpandedLengthN(char *b, int start, int end, int tabwidt
     }
     return i;
 }
-
