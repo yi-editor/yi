@@ -174,7 +174,27 @@ $(tests "fastBuffer" [d|
         assertEqual s s''
         assertEqual t contents -- contents after undo should equal original contents
         assertEqual s' s'''
-                
+
+ testMoveToSol = do
+        b <- newB "testbuffer" "\n\nabc\ndef\n" :: IO FBuffer
+        -- expected sol points
+        let pure = [0,1,2,2,2,2,6,6,6,6]
+        impure <- sequence [ do moveTo b i
+                                moveToSol b
+                                pointB b
+                           | i <- [ 0 .. (length pure - 1) ] ]
+        assertEqual pure impure
+
+ testMoveToEol = do
+        b <- newB "testbuffer" "\n\nabc\ndef\n" :: IO FBuffer
+        -- expected eol points
+        let pure = [0,1,5,5,5,5,9,9,9,9]
+        impure <- sequence [ do moveTo b i
+                                moveToEol b
+                                pointB b
+                           | i <- [ 0 .. (length pure - 1) ] ]
+        assertEqual pure impure
+
  |])
 
 instance Show Unique where
