@@ -186,9 +186,9 @@ $(tests "fastBuffer" [d|
         assertEqual pure impure
 
  testMoveToEol = do
-        b <- newB "testbuffer" "\n\nabc\ndef\n" :: IO FBuffer
+        b <- newB "testbuffer" "\n\nabc\n\ndef\n" :: IO FBuffer
         -- expected eol points
-        let pure = [0,1,5,5,5,5,9,9,9,9]
+        let pure = [0,1,5,5,5,5,6,10,10,10,10]
         impure <- sequence [ do moveTo b i
                                 moveToEol b
                                 pointB b
