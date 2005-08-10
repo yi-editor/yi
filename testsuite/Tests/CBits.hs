@@ -11,6 +11,7 @@ import Yi.Process       ( popen )
 import Data.Unique
 import Data.Char
 import Data.List
+import Data.Maybe
 
 import System.Directory
 import System.IO.Unsafe
@@ -70,7 +71,7 @@ $(tests "cbits" [d|
             withMVar mv $ \(FBuffer_ ptr _ _ _) -> ccountlns ptr 0 end
 
  -- index of first point of line n
- testFindStartOfLineN = do
+ testFindStartOfLineNForward = do
         b <- newB "testbuffer" contents :: IO FBuffer
 
         -- the index of the start of each line, line 1 starts at 0
@@ -88,6 +89,23 @@ $(tests "cbits" [d|
 
         assertEqual pure impure
         assertEqual p_n  i_n
+
+ -- index of first point of line n
+ testFindStartOfLineNBackward = do
+        b <- newB "testbuffer" contents :: IO FBuffer
+
+        -- distance from each point back to start of line
+        let pure  = [ - (fromMaybe 0 $ findIndex (== '\n') (reverse (take i contents))) 
+                    | i <- [ 0 .. length contents - 1 ] ]
+
+        -- now see if the fast version matches
+        let (FBuffer { rawbuf = mv }) = b
+
+        -- distance back to start of line
+        impure <- withMVar mv $ \(FBuffer_ ptr _ end _) ->
+                sequence [ cgotoln ptr i 0 (-1) | i <- [0 .. length contents-1] ]
+
+        assertEqual pure impure
 
 {-
  test_screenlen = unsafePerformIO $ do

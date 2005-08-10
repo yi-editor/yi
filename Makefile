@@ -81,7 +81,7 @@ ifneq "$(GLASGOW_HASKELL)" "602"
 MAIN_FLAGS=--make -v0
 endif
 
-Main.$(way_)o: Main.hs Yi.$(way_)o $(LIBRARY) 
+Main.$(way_)o: Main.hs Yi.$(way_)o $(LIBRARY)
 	$(GHC) $(HC_OPTS) $(STATIC_HC_OPTS) $(MAIN_FLAGS) -c $< -o $@
 
 # Break some mutual recursion (why doesn't this work in mk/rules.mk??)
@@ -117,7 +117,7 @@ EXTRA_CLEANS+=Yi/Syntax/TestLex.hs Yi/Syntax/TestParse.hs
 # Let's run the testsuite
 #
 .PHONY: check
-check: 
+check: all
 	@echo "====== Running unit tests ========="
 	@( cd testsuite && $(MAKE) run-utests && ./run-utests )
 
