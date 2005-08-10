@@ -107,11 +107,23 @@ $(tests "cbits" [d|
 
         assertEqual pure impure
 
-{-
- test_screenlen = unsafePerformIO $ do
-        b <- newB "testbuffer" contents :: IO FBuffer
-        return $ assertEqual (nameB b) "testbuffer"
--}
+ testExpandedLengthOfStr = do
+        let s = "\t\n.\t\n..\t\n...\t\n....\t\n.....\t\n......\t\n.......\t\n........\t\n" 
+        b <- newB "testbuffer" s :: IO FBuffer
+        let lns  = 0 : (init . map (+1) . (findIndices (== '\n')) $ s)
+        let (FBuffer { rawbuf = mv }) = b
+        impure <- withMVar mv $ \(FBuffer_ ptr _ end _) ->
+                sequence [ liftM (+1) $ ctabwidths ptr i end 8 | i <- lns  ]
+        assertEqual [8,7,6,5,4,3,2,1,8] impure
+
+ testStrlenWithExpandedLengthN = do
+        let s = "\t\n.\t\n..\t\n...\t\n....\t\n.....\t\n......\t\n.......\t\n........\t\n" 
+        b <- newB "testbuffer" s :: IO FBuffer
+        let lns  = 0 : (init . map (+1) . (findIndices (== '\n')) $ s)
+        let (FBuffer { rawbuf = mv }) = b
+        impure <- withMVar mv $ \(FBuffer_ ptr _ end _) ->
+                sequence [ cstrlentabbed ptr i end 8 8 | i <- lns  ]
+        assertEqual [1,2,3,4,5,6,7,8,8] impure
 
  |])
     

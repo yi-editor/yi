@@ -54,6 +54,9 @@ unsigned long findStartOfLineN(char *b, int start, int end, int n)
 }
 
 /* Length of tabs in the string from start to end, after expansion
+ *
+ * where: let s = "\t\n.\t\n..\t\n...\t\n....\t\n.....\t\n......\t\n.......\t\n........\t\n"
+ * then : expandedLengthOfStr == [7,6,5,4,3,2,1,0,7] for these lines
  */
 unsigned long expandedLengthOfStr(char *b, int start, int end, int tabwidth)
 {
@@ -79,6 +82,9 @@ unsigned long expandedLengthOfStr(char *b, int start, int end, int tabwidth)
  * including tab expansion. assume screenwidth % tabwidth == 0 for now
  * this is kind of the inverse of tabwidths, telling you how much of a
  * string, given a desired tab width
+ *
+ * let s = "\t\n.\t\n..\t\n...\t\n....\t\n.....\t\n......\t\n.......\t\n........\t\n"
+ * then [1,2,3,4,5,6,7,8,8] is the lengths required for these lines, for max == 8
  */
 unsigned long strlenWithExpandedLengthN(char *b, int start, int end, int tabwidth, int max)
 {
