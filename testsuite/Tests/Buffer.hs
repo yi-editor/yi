@@ -8,6 +8,7 @@ import Yi.FastBuffer
 import Data.Unique
 import Data.Char
 import Data.List
+import Data.Maybe
 
 import System.Directory
 import System.IO.Unsafe
@@ -194,6 +195,17 @@ $(tests "fastBuffer" [d|
                                 pointB b
                            | i <- [ 0 .. (length pure - 1) ] ]
         assertEqual pure impure
+
+ testAtSol = do
+        let s ="\n\nabc\n\ndef\n" 
+        b <- newB "testbuffer" s :: IO FBuffer
+        -- points where atSol is true
+        let pure = [0,1,2,6,7]
+        impure <- sequence [ do moveTo b i
+                                b <- atSol b
+                                return $ if b then Just i else Nothing
+                           | i <- [ 0 .. (length s - 1) ] ]
+        assertEqual pure (map fromJust $ filter isJust impure)
 
  |])
 
