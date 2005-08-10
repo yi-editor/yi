@@ -207,6 +207,17 @@ $(tests "fastBuffer" [d|
                            | i <- [ 0 .. (length s - 1) ] ]
         assertEqual pure (map fromJust $ filter isJust impure)
 
+ testAtEol = do
+        let s ="\n\nabc\n\ndef\n" 
+        b <- newB "testbuffer" s :: IO FBuffer
+        -- points where atEol is true
+        let pure = [0,1,5,6,10]
+        impure <- sequence [ do moveTo b i
+                                b <- atEol b
+                                return $ if b then Just i else Nothing
+                           | i <- [ 0 .. (length s - 1) ] ]
+        assertEqual pure (map fromJust $ filter isJust impure)
+
  |])
 
 instance Show Unique where
