@@ -218,6 +218,36 @@ $(tests "fastBuffer" [d|
                            | i <- [ 0 .. (length s - 1) ] ]
         assertEqual pure (map fromJust $ filter isJust impure)
 
+ testAtSof = do
+        let s ="\n\nabc\n\ndef\n" 
+        b <- newB "testbuffer" s :: IO FBuffer
+        -- points where atSof is true
+        impure <- sequence [ do moveTo b i
+                                b <- atSof b
+                                return $ if b then Just i else Nothing
+                           | i <- [ 0 .. (length s - 1) ] ]
+        assertEqual [0] (map fromJust $ filter isJust impure)
+
+ testAtEof = do
+        let s ="\n\nabc\n\ndef\n" 
+        b <- newB "testbuffer" s :: IO FBuffer
+        -- points where atEof is true
+        impure <- sequence [ do moveTo b i
+                                b <- atEof b
+                                return $ if b then Just i else Nothing
+                           | i <- [ 0 .. (length s - 1) ] ]
+        assertEqual [10] (map fromJust $ filter isJust impure)
+
+ testAtLastLine = do
+        let s ="\n\nabc\n\ndef\n" 
+        b <- newB "testbuffer" s :: IO FBuffer
+        -- points where atEof is true
+        impure <- sequence [ do moveTo b i
+                                b <- atLastLine b
+                                return $ if b then Just i else Nothing
+                           | i <- [ 0 .. (length s - 1) ] ]
+        assertEqual [7,8,9,10] (map fromJust $ filter isJust impure)
+
  |])
 
 instance Show Unique where
