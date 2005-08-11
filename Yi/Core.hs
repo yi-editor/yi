@@ -32,6 +32,8 @@ module Yi.Core (
 
         -- * Construction and destruction
         startE,         -- :: a -> Editor.Config -> Int -> Maybe [FilePath] -> IO ()
+        emptyE,         -- :: IO ()
+        runE,         -- :: IO ()
         quitE,          -- :: Action
         rebootE,        -- :: Action
         reloadE,        -- :: Action
@@ -267,6 +269,26 @@ startE st (confs,fn,fn') ln mfs = do
         refreshLoop = repeatM_ $ do 
                         takeMVar editorModified
                         handleJust ioErrors (errorE.show) UI.refresh 
+
+-- ---------------------------------------------------------------------
+-- | @emptyE@ and @runE@ are for automated testing purposes. The former
+-- initialises the editor state, and returns, enabling the tester to
+-- invoke various core commands from a program. The latter runs the
+-- editor with string as input, and is useful for testing keymaps.
+-- emptyE takes no input -- the ui blocks on stdin.
+--
+emptyE :: IO ()
+emptyE = modifyEditor_ $ const $ return $ emptyEditor { scrsize = (100,100) }
+    -- need to get it into a state where we can just run core commands
+    -- to make it reinitialisable, lets blank out the state
+    -- make up an abitrary screen size
+
+    -- no ui thread
+    -- no eventloop
+
+-- for testing keymaps:
+runE :: String -> IO ()
+runE = undefined
 
 -- ---------------------------------------------------------------------
 -- | How to read from standard input

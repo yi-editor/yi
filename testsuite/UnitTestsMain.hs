@@ -27,10 +27,12 @@ import TestFramework
 
 import Tests.Buffer
 import Tests.CBits
+import Tests.Core
 
 allTests = 
   TestList 
      [ fastBuffer,
+       core,
        cbits
      ]
 
