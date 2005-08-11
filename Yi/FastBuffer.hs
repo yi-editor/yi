@@ -486,10 +486,8 @@ instance Buffer FBuffer where
     -- indexOfSol   :: a -> IO Int
     indexOfSol a = do
         i <- pointB a
-        moveToSol a
-        j <- pointB a
-        moveTo a i
-        return j
+        j <- offsetFromSol a
+        return (i - j)
     {-# INLINE indexOfSol #-}
 
     -- indexOfEol   :: a -> IO Int

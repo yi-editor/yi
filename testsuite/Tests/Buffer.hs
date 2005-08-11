@@ -19,11 +19,18 @@ import Control.Concurrent
 
 import TestFramework
 
+instance Show Unique where
+    showsPrec _ u = showString "<unique>"
+
 -- really test it!
 contents = unsafePerformIO $  do
-        s <- readFile "../README"
+        s <- readFile "data"
         forkIO (Control.Exception.evaluate (length s) >> return ())
         return s
+
+str ="\n\nabc\n\ndef\n" 
+
+lenstr = length str
 
 $(tests "fastBuffer" [d| 
 
@@ -197,59 +204,148 @@ $(tests "fastBuffer" [d|
         assertEqual pure impure
 
  testAtSol = do
-        let s ="\n\nabc\n\ndef\n" 
-        b <- newB "testbuffer" s :: IO FBuffer
+        b <- newB "testbuffer" str :: IO FBuffer
         -- points where atSol is true
         let pure = [0,1,2,6,7]
         impure <- sequence [ do moveTo b i
                                 b <- atSol b
                                 return $ if b then Just i else Nothing
-                           | i <- [ 0 .. (length s - 1) ] ]
+                           | i <- [ 0 .. (lenstr - 1) ] ]
         assertEqual pure (map fromJust $ filter isJust impure)
 
  testAtEol = do
-        let s ="\n\nabc\n\ndef\n" 
-        b <- newB "testbuffer" s :: IO FBuffer
+        b <- newB "testbuffer" str :: IO FBuffer
         -- points where atEol is true
         let pure = [0,1,5,6,10]
         impure <- sequence [ do moveTo b i
                                 b <- atEol b
                                 return $ if b then Just i else Nothing
-                           | i <- [ 0 .. (length s - 1) ] ]
+                           | i <- [ 0 .. (lenstr - 1) ] ]
         assertEqual pure (map fromJust $ filter isJust impure)
 
  testAtSof = do
-        let s ="\n\nabc\n\ndef\n" 
-        b <- newB "testbuffer" s :: IO FBuffer
+        b <- newB "testbuffer" str :: IO FBuffer
         -- points where atSof is true
         impure <- sequence [ do moveTo b i
                                 b <- atSof b
                                 return $ if b then Just i else Nothing
-                           | i <- [ 0 .. (length s - 1) ] ]
+                           | i <- [ 0 .. (lenstr - 1) ] ]
         assertEqual [0] (map fromJust $ filter isJust impure)
 
  testAtEof = do
-        let s ="\n\nabc\n\ndef\n" 
-        b <- newB "testbuffer" s :: IO FBuffer
+        b <- newB "testbuffer" str :: IO FBuffer
         -- points where atEof is true
         impure <- sequence [ do moveTo b i
                                 b <- atEof b
                                 return $ if b then Just i else Nothing
-                           | i <- [ 0 .. (length s - 1) ] ]
+                           | i <- [ 0 .. (lenstr - 1) ] ]
         assertEqual [10] (map fromJust $ filter isJust impure)
 
  testAtLastLine = do
-        let s ="\n\nabc\n\ndef\n" 
-        b <- newB "testbuffer" s :: IO FBuffer
+        b <- newB "testbuffer" str :: IO FBuffer
         -- points where atEof is true
         impure <- sequence [ do moveTo b i
                                 b <- atLastLine b
                                 return $ if b then Just i else Nothing
-                           | i <- [ 0 .. (length s - 1) ] ]
+                           | i <- [ 0 .. (lenstr - 1) ] ]
         assertEqual [7,8,9,10] (map fromJust $ filter isJust impure)
 
- |])
+ testOffsetFromSol = do
+        b <- newB "testbuffer" str :: IO FBuffer
+        impure <- sequence [ moveTo b i >> offsetFromSol b
+                           | i <- [ 0 .. (lenstr - 1) ] ]
+        assertEqual [0,0,0,1,2,3,0,0,1,2,3] impure
+ 
+ testIndexOfSol = do
+        b <- newB "testbuffer" str :: IO FBuffer
+        impure <- sequence [ moveTo b i >> indexOfSol b
+                           | i <- [ 0 .. (lenstr - 1) ] ]
+        assertEqual [0,1,2,2,2,2,6,7,7,7,7] impure
+ 
+ testIndexOfEol = do
+        b <- newB "testbuffer" str :: IO FBuffer
+        impure <- sequence [ moveTo b i >> indexOfEol b
+                           | i <- [ 0 .. (lenstr - 1) ] ]
+        assertEqual [0,1,5,5,5,5,6,10,10,10,10] impure
 
-instance Show Unique where
-    showsPrec _ u = showString "<unique>"
-    
+ -- the point of the next line down
+ testIndexOfNLFrom = do
+        b <- newB "testbuffer" str :: IO FBuffer
+        impure <- sequence [ indexOfNLFrom b i
+                           | i <- [ 0 .. (lenstr - 1) ] ]
+        assertEqual [1,2,6,6,6,6,7,10,10,10,10] impure
+
+ testMoveAXuntil = do
+        b <- newB "testbuffer" str :: IO FBuffer
+        impure <- sequence [ do moveTo b i
+                                moveAXuntil b rightB 2 ((('\n' ==) `fmap`) . readB)
+                                pointB b
+                           | i <- [ 0 .. (lenstr - 1) ] ]
+        assertEqual [0,1,4,5,5,5,6,9,10,10,10] impure
+
+ testDeleteToEol = do
+        impure <- sequence [ do b <- newB "testbuffer" str :: IO FBuffer
+                                moveTo b i
+                                deleteToEol b
+                                elemsB b
+                           | i <- [ 0 .. (lenstr - 1) ] ]
+        let pure = ["\n\nabc\n\ndef\n",
+                    "\n\nabc\n\ndef\n",
+                    "\n\n\n\ndef\n",
+                    "\n\na\n\ndef\n",
+                    "\n\nab\n\ndef\n",
+                    "\n\nabc\n\ndef\n",
+                    "\n\nabc\n\ndef\n",
+                    "\n\nabc\n\n\n",
+                    "\n\nabc\n\nd\n",
+                    "\n\nabc\n\nde\n",
+                    "\n\nabc\n\ndef\n"]
+        assertEqual pure impure
+
+ testLineUp = do
+        b <- newB "testbuffer" str :: IO FBuffer
+        impure <- sequence [ do moveTo b i
+                                lineUp b
+                                pointB b
+                           | i <- [ 0 .. (lenstr - 1) ] ]
+        assertEqual [0,0,1,1,1,1,2,6,6,6,6] impure
+
+ testLineDown = do
+        b <- newB "testbuffer" str :: IO FBuffer
+        impure <- sequence [ do moveTo b i
+                                lineDown b
+                                pointB b
+                           | i <- [ 0 .. (lenstr - 1) ] ]
+        assertEqual [1,2,6,6,6,6,7,10,10,10,10] impure
+
+ testCurLn = do
+        b <- newB "testbuffer" str :: IO FBuffer
+        impure <- sequence [ moveTo b i >> curLn b
+                           | i <- [ 0 .. (lenstr - 1) ] ]
+        assertEqual [1,2,3,3,3,3,4,5,5,5,5] impure
+
+ testGotoLn = do
+        b <- newB "testbuffer" str :: IO FBuffer
+        impure <- sequence [ moveTo b i >> gotoLn b 4
+                           | i <- [ 0 .. (lenstr - 1) ] ]
+        assertEqual [4,4,4,4,4,4,4,4,4,4,4] impure
+
+ testGotoLnFrom = do
+        b <- newB "testbuffer" str :: IO FBuffer
+        impure <- sequence [ gotoLnFrom b i
+                           | i <- [ 0 .. (lenstr - 1) ] ]
+        assertEqual [1,1,3,4,4,4,4,4,4,4,4] impure
+
+ testSearch = do
+        b <- newB "T" contents :: IO FBuffer
+        let loop = do
+                r <- searchB b "dons" 
+                case r of
+                        Nothing -> return []
+                        Just i  -> do moveTo b (i+1)
+                                      is <- loop
+                                      return (i : is)
+        rs <- loop
+        assertEqual [67,145,1054,1343,3806] rs
+
+ |])

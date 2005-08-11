@@ -1,0 +1,143 @@
+
+Yi -- the Haskell extensible editor
+
+<http://www.cse.unsw.edu.au/~dons/yi.html>
+
+Copyright (c) Don Stewart 2004-5, <http://www.cse.unsw.edu.au/~dons>
+
+------------------------------------------------------------------------
+
+QUICK START
+
+To build the static editor (enough for most people):
+
+    $ ./configure --prefix=/usr/local
+    $ make way=static
+    $ ./yi-static README
+
+To build the whole thing, including the dynamic components:
+
+    Dependencies:
+        * you need ghc 6.4, and
+        * you need to install hs-plugins 0.9.10
+
+    $ ./configure --prefix=/usr/local
+    $ make
+    $ ./yi-inplace README  or  ./yi-static README
+
+Additionally,
+
+ * Users of the darcs repo will require autoreconf, which is part of the
+   automake suite of tools.  And you may also need to 'chmod a+x configure', 
+   or darcs get --set-scripts-executable.
+
+------------------------------------------------------------------------
+
+BUILDING AND INSTALLING
+
+You can get the latest Yi source from its darcs repository:
+
+        darcs get http://www.cse.unsw.edu.au/~dons/yi
+
+You will need GHC 6 (The Glorious/Glasgow Haskell Compilation System)
+and GNU make to compile yi. 
+
+To build an extensible editor, you need hs-plugins 0.9.10, which in turn
+depends on HSX, which requires ghc 6.4.
+
+You can get hs-plugins from:
+
+        http://www.cse.unsw.edu.au/~dons/hs-plugins/
+
+Getting the most recent snapshot will work. Make sure you "make", "make
+install" and "make register" the hs-plugins library. 
+
+Once you have ensured that you have these programs and libraries
+installed:
+
+ 1. ./configure --prefix=/my/dir
+
+ 2. make         	('gmake' on some systems)
+
+You can then use ./yi-static or ./yi-inplace.
+
+And if you wish to install Yi:
+
+ 3. make install
+
+Hint: 'make show-install' will show you which directories yi wants
+to install into. These are editable in mk/config.mk
+
+Useful targets:
+        make                    -- build the lot
+        make boot               -- regen the dependencies
+        make build              -- compile the .hs source
+        make all                -- compile the .hs source and docs
+        make install            -- install into $(PREFIX)
+        make show-install       -- print install paths
+        make clean              -- remove most rebuildable stuff
+        make distclean          -- remove anything that can be regenerated
+        make clean FAST=1       -- remove anything, fast!
+        make distclean FAST=1   -- remove anything, fast!
+        make docs               -- build all the docs
+        make html               -- build the haddock docs
+
+        make way=p              -- build a profiling version of yi
+        make way=static         -- build a static-only version of yi
+
+CONFIGURATION
+
+All configuration (bindings, colours) is done at either build time by
+editing the yi src, or at runtime by editing ~/.yi/Config.hs.  Example
+config files are in examples/.
+
+PORTABILITY
+
+Yi is developed on OpenBSD, FreeBSD and Debian Linux. Dynamic
+configuration relies on the hs-plugins library, which has been ported to
+most platforms, including Windows. Dynamic Yi requires GHC 6 with a
+working GHCi implementation, static Yi should work with GHC 6.2 and
+later. 
+
+A porting checklist:
+
+        * you have GNU make
+        * you have a recent autoconf and automake
+        * you have GHC >= 6.2.1         (>= 6.2.2 on OpenBSD)
+        * you have a working GHCi
+        * you have hs-plugins >= 0.9.10
+        * you have haddock installed (for the documentation)
+
+The static version of yi has no hs-plugins support, and is thus more
+portable (you only need GHC 6.0, too). However, it is not configurable
+at runtime. To build this, you'll just need to be on a machine with ghc
+installed.
+
+CREDITS
+
+Yi has been developed by Don Stewart <http://www.cse.unsw.edu.au/~dons>
+with the help of the #haskell irc community.
+
+Yi is derived from Riot <http://iki.fi/tuomov/riot/>, written by
+Tuomo Valkonen.
+
+The Curses and CWString interface code is mostly by John Meacham;see the
+LICENSE for details. Tuomo and I have made some minor modifications.
+
+The Ctk lexer library was written by Manuel Chakravarty.
+
+The following people have contributed patches to Yi, in alphabetical order:
+        Bastiaan Zapf
+        Cale Gibbard
+        Don Stewart
+        Jason Dagit
+        Jean-Philippe Bernardy
+        Mark Wotton
+        Samuel Bronson
+        Shae Erisson
+        Simon Winwood
+        Suleiman Souhlal
+        Tuomo Valkonen
+        Vivian McPhail
+
+Yi was born on October 14th, 2004
