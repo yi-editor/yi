@@ -233,7 +233,7 @@ endif
 .PHONY: clean distclean
 
 # list of old files people migt still have in their repos
-EXTRA_CLEANS=Yi/Curses/IConv.hs
+EXTRA_CLEANS+=Yi/Curses/IConv.hs
 
 clean:
 	$(RM) $(MOSTLY_CLEAN_FILES) $(EXTRA_CLEANS) $(CLEAN_FILES)
