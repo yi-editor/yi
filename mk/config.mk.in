@@ -3,10 +3,10 @@
 #
 
 PREFIX=         @prefix@
-BINDIR=         @prefix@/bin
-LIBDIR=         @prefix@/lib/$(PKG)
-DATADIR=        @prefix@/share/doc/$(PKG)
-MANDIR=         @prefix@/man
+BINDIR=         ${PREFIX}/bin
+LIBDIR=         ${PREFIX}/lib/$(PKG)
+DATADIR=        ${PREFIX}/share/doc/$(PKG)
+MANDIR=         ${PREFIX}/man
 IFACEDIR=       $(LIBDIR)/imports
 
 GHC=            @WithGhc@
