@@ -96,5 +96,18 @@ $(tests "core" [d|
                        return (i !! 4) 
                   | i <- [1 .. 3925] ]
    assertEqual ([2..3925]++[3925]) ws
+ 
+ testGotoPointE = do
+   emptyE >> fnewE "data"
+   gotoPointE 100000
+   i <- getPointE 
+   v <- getW
+   assertEqual i 100000
+   assertEqual [100000,100000,30,6,1501,97850,1471] v
+
+ testAtSolE = do
+   emptyE >> fnewE "data"
+   impure <- sequence [ gotoPointE i >> atSolE  | i <- [ 100000 ..  100100 ] ]
+   flip assertEqual impure [False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,True,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False]
 
  |])
