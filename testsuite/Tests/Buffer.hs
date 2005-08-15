@@ -28,6 +28,8 @@ contents = unsafePerformIO $  do
         forkIO (Control.Exception.evaluate (length s) >> return ())
         return s
 
+lendata = length contents
+
 str ="\n\nabc\n\ndef\n" 
 
 lenstr = length str
@@ -37,6 +39,14 @@ $(tests "fastBuffer" [d|
  testElems = do
         b <- newB "testbuffer" contents :: IO FBuffer
         s <- elemsB b
+        assertEqual s contents
+
+ testHNewB = do
+        b  <- newB "testbuffer" contents :: IO FBuffer
+        b' <- hNewB "data"  :: IO FBuffer
+        s  <- elemsB b
+        s' <- elemsB b
+        assertEqual s s'
         assertEqual s contents
 
  testName = do
@@ -68,23 +78,24 @@ $(tests "fastBuffer" [d|
         assertEqual m (Just "../README")
 
  testLotsOfBuffers = do
-        bs <- sequence [ newB (show x) contents :: IO FBuffer
-                       | x <- [1..100] ]   -- create a 1000 buffers
+        bs <- sequence [ hNewB "data" :: IO FBuffer
+                       | x <- [1..10] ]   -- create a 1000 buffers
         
         bs' <- mapM elemsB bs
 
         assertEqual (length . nub . sort $ map keyB bs) (length bs)
-        assert $ (length . nub . sort $ bs')  == 1
+        assertEqual 1 (length . nub . sort $ bs')
+        assert (all (==contents) bs')
 
  testMoveTo = do
-        b  <- newB "testbuffer" contents :: IO FBuffer
+        b  <- hNewB "data" :: IO FBuffer
         ps <- sequence [ moveTo b i >> pointB b >>= \j -> return (i,j) 
                        | i <- [0 .. 4000] ]
         let (l1,l2) = unzip ps
         assertEqual l1 l2
 
  testMovement = do
-        b  <- newB "testbuffer" contents :: IO FBuffer
+        b  <- hNewB "data" :: IO FBuffer
         moveTo b 1000
         leftB b
         rightB b
@@ -96,10 +107,10 @@ $(tests "fastBuffer" [d|
         k <- pointB b
         leftN b 2000
         l <- pointB b
-        rightN b 10000  -- moving past end of buffer should only go to end
+        rightN b 1000000  -- moving past end of buffer should only go to end
         m <- pointB b
         s <- sizeB b 
-        leftN b 10000
+        leftN b 1000000
         n <- pointB b
         assertEqual i 1000
         assertEqual j i
@@ -109,7 +120,7 @@ $(tests "fastBuffer" [d|
         assertEqual n 0
                     
  testRead = do
-        b  <- newB "testbuffer" contents :: IO FBuffer
+        b  <- hNewB "data" :: IO FBuffer
         c  <- readAtB b 1000
         moveTo b 1000
         c' <- readB b
@@ -119,7 +130,7 @@ $(tests "fastBuffer" [d|
         assertEqual c'' 'X'
 
  testInsert = do
-        b <- newB "testbuffer" contents :: IO FBuffer
+        b <- hNewB "data" :: IO FBuffer
         s <- sizeB b
         moveTo b 1000
         p  <- pointB b
@@ -137,17 +148,17 @@ $(tests "fastBuffer" [d|
         assertEqual s'' (s' + length str)
 
  testDelete = do
-        b <- newB "testbuffer" contents :: IO FBuffer
-        moveTo b 2000
+        b <- hNewB "data" :: IO FBuffer
+        moveTo b 10000
         p <- pointB b
-        c <- readB b
+        c <- readB b    -- read a char
         s <- sizeB b
         deleteB b
-        c' <- readB b
+        c' <- readB b   -- read this char
         p' <- pointB b
         s' <- sizeB b
         moveTo b 0
-        deleteN b 10000
+        deleteN b 10000000
         s'' <- sizeB b
         p'' <- pointB b
         c'' <- readB b  -- unsafe/should fail (empty buffer)
@@ -170,7 +181,7 @@ $(tests "fastBuffer" [d|
         assertEqual t' 100
 
  testUndo = do
-        b <- newB "testbuffer" contents :: IO FBuffer
+        b <- hNewB "data" :: IO FBuffer
         s <- sizeB b
         deleteN b s
         s' <- sizeB b
@@ -232,6 +243,15 @@ $(tests "fastBuffer" [d|
                            | i <- [ 0 .. (lenstr - 1) ] ]
         assertEqual [0] (map fromJust $ filter isJust impure)
 
+ testHardAtSof = do
+        b <- hNewB "data" :: IO FBuffer
+        -- points where atSof is true
+        impure <- sequence [ do moveTo b i
+                                b <- atSof b
+                                return $ if b then Just i else Nothing
+                           | i <- [ 0 .. (lendata - 1) ] ]
+        assertEqual [0] (map fromJust $ filter isJust impure)
+
  testAtEof = do
         b <- newB "testbuffer" str :: IO FBuffer
         -- points where atEof is true
@@ -241,6 +261,14 @@ $(tests "fastBuffer" [d|
                            | i <- [ 0 .. (lenstr - 1) ] ]
         assertEqual [10] (map fromJust $ filter isJust impure)
 
+ testHardAtEof = do
+        b <- hNewB "data" :: IO FBuffer
+        impure <- sequence [ do moveTo b i
+                                b <- atEof b
+                                return $ if b then Just i else Nothing
+                           | i <- [ 0 .. (lendata - 1) ] ]
+        assertEqual [lendata - 1] (map fromJust $ filter isJust impure)
+
  testAtLastLine = do
         b <- newB "testbuffer" str :: IO FBuffer
         -- points where atEof is true
@@ -249,6 +277,15 @@ $(tests "fastBuffer" [d|
                                 return $ if b then Just i else Nothing
                            | i <- [ 0 .. (lenstr - 1) ] ]
         assertEqual [7,8,9,10] (map fromJust $ filter isJust impure)
+
+ testHardAtLastLine = do
+        b <- hNewB "data" :: IO FBuffer
+        -- points where atEof is true
+        impure <- sequence [ do moveTo b i
+                                b <- atLastLine b
+                                return $ if b then Just i else Nothing
+                           | i <- [ 0 .. (lendata - 1) ] ]
+        assertEqual [256927] (map fromJust $ filter isJust impure)
 
  testOffsetFromSol = do
         b <- newB "testbuffer" str :: IO FBuffer
@@ -330,22 +367,34 @@ $(tests "fastBuffer" [d|
                            | i <- [ 0 .. (lenstr - 1) ] ]
         assertEqual [4,4,4,4,4,4,4,4,4,4,4] impure
 
+ testHardGotoLn = do
+        b <- hNewB "data" :: IO FBuffer
+        impure <- sequence [ moveTo b i >> gotoLn b 4
+                           | i <- [ 0 .. (lendata - 1) ] ]
+        assertEqual (replicate lendata 4) impure
+
  testGotoLnFrom = do
         b <- newB "testbuffer" str :: IO FBuffer
         impure <- sequence [ gotoLnFrom b i
                            | i <- [ 0 .. (lenstr - 1) ] ]
         assertEqual [1,1,3,4,4,4,4,4,4,4,4] impure
 
+ testHardGotoLnFrom = do
+        b <- hNewB "data" :: IO FBuffer
+        impure <- sequence [ gotoLnFrom b 100
+                           | i <- [ 1 .. length [100, 200 .. 3900 ] ] ]
+        assertEqual [100,200..3900] impure
+
  testSearch = do
         b <- newB "T" contents :: IO FBuffer
         let loop = do
-                r <- searchB b "dons" 
+                r <- searchB b "Utopia" 
                 case r of
                         Nothing -> return []
                         Just i  -> do moveTo b (i+1)
                                       is <- loop
                                       return (i : is)
         rs <- loop
-        assertEqual [67,145,1054,1343,3806] rs
+        assertEqual [29,339,1634,4945,5971,6205,7310,7379,7961,17241,56306,65159,69398,73199,77132,80891,97946,101903,103878,110169,121298,125041,126151,126749,127213,127445,129210,129293,143137,145856,146655,148945,160049,175824,176122,176860,179745,183199,183825,185498,187063,189432,191387,191468,191960,200269,208806,214785,219347,229205,233376,235247,235922,238163] rs
 
  |])

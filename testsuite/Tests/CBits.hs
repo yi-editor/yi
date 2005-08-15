@@ -27,9 +27,11 @@ import Foreign.Ptr              ( Ptr )
 import TestFramework
 
 contents = unsafePerformIO $  do
-        s <- readFile "../README"
+        s <- readFile "data"
         forkIO (Control.Exception.evaluate (length s) >> return ())
         return s
+
+lendata = length contents
 
 ------------------------------------------------------------------------
 
@@ -50,7 +52,7 @@ foreign import ccall unsafe "YiUtils.h strlenWithExpandedLengthN"
 $(tests "cbits" [d| 
 
  testCountLines = do
-        b  <- newB "testbuffer" contents :: IO FBuffer
+        b  <- hNewB "data" :: IO FBuffer
         s  <- sizeB b
         i  <- docount b s
         deleteN b s
@@ -72,7 +74,7 @@ $(tests "cbits" [d|
 
  -- index of first point of line n
  testFindStartOfLineNForward = do
-        b <- newB "testbuffer" contents :: IO FBuffer
+        b <- hNewB "data" :: IO FBuffer
 
         -- the index of the start of each line, line 1 starts at 0
         let pure  = 0 : (init . map (+1) . (findIndices (== '\n')) $ contents)
@@ -92,18 +94,18 @@ $(tests "cbits" [d|
 
  -- index of first point of line n
  testFindStartOfLineNBackward = do
-        b <- newB "testbuffer" contents :: IO FBuffer
+        b <- hNewB "data" :: IO FBuffer
 
         -- distance from each point back to start of line
-        let pure  = [ - (fromMaybe 0 $ findIndex (== '\n') (reverse (take i contents))) 
-                    | i <- [ 0 .. length contents - 1 ] ]
+        let pure  = [ - (fromMaybe i $ findIndex (== '\n') (reverse (take i contents))) 
+                    | i <- [ 0,1024 .. lendata -1 ] ]
 
         -- now see if the fast version matches
         let (FBuffer { rawbuf = mv }) = b
 
         -- distance back to start of line
         impure <- withMVar mv $ \(FBuffer_ ptr _ end _) ->
-                sequence [ cgotoln ptr i 0 (-1) | i <- [0 .. length contents-1] ]
+                sequence [ cgotoln ptr i 0 (-1) | i <- [0,1024 .. lendata-1] ]
 
         assertEqual pure impure
 

@@ -278,7 +278,7 @@ startE st (confs,fn,fn') ln mfs = do
 -- emptyE takes no input -- the ui blocks on stdin.
 --
 emptyE :: IO ()
-emptyE = modifyEditor_ $ const $ return $ emptyEditor { scrsize = (100,100) }
+emptyE = modifyEditor_ $ const $ return $ emptyEditor { scrsize = (32,102) }
     -- need to get it into a state where we can just run core commands
     -- to make it reinitialisable, lets blank out the state
     -- make up an abitrary screen size
