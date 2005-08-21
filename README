@@ -75,6 +75,7 @@ Useful targets:
         make all                -- compile the .hs source and docs
         make install            -- install into $(PREFIX)
         make show-install       -- print install paths
+        make check              -- run the testsuite
         make clean              -- remove most rebuildable stuff
         make distclean          -- remove anything that can be regenerated
         make clean FAST=1       -- remove anything, fast!
