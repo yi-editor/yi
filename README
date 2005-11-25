@@ -25,6 +25,21 @@ To build the whole thing, including the dynamic components:
     $ make
     $ ./yi-inplace README  or  ./yi-static README
 
+Note that yi uses vi keys by default! So quit with :q
+To use an alternate keymap, try:
+
+    $ ./yi-static --help
+    Usage: yi [option...] [file]
+      -V         --version        Show version information
+      -B libdir  --libdir=libdir  Path to runtime libraries
+      -h         --help           Show this help
+      -l [num]   --line=[num]     Start on line number
+                 --as=[editor]    Start with editor keymap, where editor is one of:
+                                  ee, emacs, emacs2, joe, mg, nano, vi, vim
+    paprika$ ./yi-static --as=mg
+
+For example.
+
 Additionally,
 
  * Users of the darcs repo will require autoreconf, which is part of the
