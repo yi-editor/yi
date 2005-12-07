@@ -1,24 +1,24 @@
 {-# OPTIONS -cpp -fffi -fglasgow-exts #-}
 --
 -- glaexts for I# ops
--- 
+--
 -- Copyright (c) 2004-5 Don Stewart - http://www.cse.unsw.edu.au/~dons
--- 
+--
 -- This library is free software; you can redistribute it and/or
 -- modify it under the terms of the GNU Lesser General Public
 -- License as published by the Free Software Foundation; either
 -- version 2.1 of the License, or (at your option) any later version.
--- 
+--
 -- This library is distributed in the hope that it will be useful,
 -- but WITHOUT ANY WARRANTY; without even the implied warranty of
 -- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 -- Lesser General Public License for more details.
--- 
+--
 -- You should have received a copy of the GNU Lesser General Public
 -- License along with this library; if not, write to the Free Software
 -- Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307
 -- USA
--- 
+--
 
 --
 -- A Haskell reimplementation of the C mktemp/mkstemp/mkstemps library
@@ -27,7 +27,7 @@
 -- which are available under the BSD license.
 --
 
-module Yi.MkTemp ( 
+module Yi.MkTemp (
 
      mktemp,    -- :: FilePath -> IO Maybe FilePath
      mkstemp,   -- :: FilePath -> IO Maybe (FilePath, Handle)
@@ -35,7 +35,7 @@ module Yi.MkTemp (
      mkdtemp,   -- :: FilePath -> IO Maybe FilePath
 
   ) where
-    
+
 #include "config.h"
 
 import Data.List
@@ -46,8 +46,8 @@ import System.Directory         ( doesDirectoryExist, doesFileExist, createDirec
 import System.IO
 import System.IO.Error          ( isAlreadyExistsError )
 
-import GHC.IOBase               ( IOException(IOError), 
-                                  Exception(IOException), 
+import GHC.IOBase               ( IOException(IOError),
+                                  Exception(IOException),
                                   IOErrorType(AlreadyExists) )
 
 #ifndef __MINGW32__
@@ -132,7 +132,7 @@ gettemp path doopen domkdir slen = do
             do v <- fn p
                case v of Just h  -> return $ Just (p,h)        -- it worked
                          Nothing -> let (i',t') = tweak i t
-                                    in if null t' 
+                                    in if null t'
                                        then return Nothing     -- no more
                                        else tryIt (pref++t'++suff) t' i'
     ;tryIt path' tmpl' 0
@@ -155,8 +155,8 @@ merge (_:ts) (p:ps) = (ts',p:ps')
 randomise :: String -> IO String
 randomise []       = return []
 randomise ('X':xs) = do p <- getRandom ()
-                        let c = chr $! if p < 26 
-                                       then p + (ord 'A') 
+                        let c = chr $! if p < 26
+                                       then p + (ord 'A')
                                        else (p - 26) + (ord 'a')
                         xs' <- randomise xs
                         return (c : xs')
@@ -167,9 +167,9 @@ randomise s = return s
 -- could do with a Haskellish rewrite
 --
 tweak :: Int -> String -> (Int,String)
-tweak i s 
+tweak i s
     | i > length s - 1 = (i,[])                 -- no more
-    | s !! i == 'Z'    = if i == length s - 1 
+    | s !! i == 'Z'    = if i == length s - 1
                          then (i,[])            -- no more
                          else let s' = splice (i+1) 'a'
                               in tweak (i+1) s' -- loop
@@ -184,19 +184,19 @@ tweak i s
 -- ---------------------------------------------------------------------
 
 alreadyExists :: Exception -> Maybe Exception
-alreadyExists e@(IOException ioe) 
+alreadyExists e@(IOException ioe)
         | isAlreadyExistsError ioe = Just e
         | otherwise                = Nothing
 alreadyExists _ = Nothing
 
 isInUse :: Exception -> Maybe ()
 #ifndef __MINGW32__
-isInUse (IOException ioe) 
+isInUse (IOException ioe)
         | isAlreadyExistsError ioe = Just ()
         | otherwise                = Nothing
 isInUse _ = Nothing
 #else
-isInUse (IOException ioe) 
+isInUse (IOException ioe)
         | isAlreadyInUseError  ioe = Just ()
         | isPermissionError    ioe = Just ()
         | isAlreadyExistsError ioe = Just ()    -- we throw this
@@ -223,7 +223,7 @@ open0600 f = do
 --
 open0600 f = do
         openFd f ReadWrite (Just o600) excl >>= fdToHandle
-   where 
+   where
         o600 = ownerReadMode `unionFileModes` ownerWriteMode
         excl = defaultFileFlags { exclusive = True }
 -}
@@ -260,9 +260,9 @@ getRandom _ = getStdRandom (randomR (0,51))
 -- regular basis from the kernel strong random number subsystem
 -- described in random(4)." Also, it is a bit faster than getStdRandom
 --
-getRandom _ = do 
+getRandom _ = do
     (I32# i) <- c_arc4random
-    return (I# (word2Int# ((int2Word# i `and#` int2Word# 0xffff#) 
+    return (I# (word2Int# ((int2Word# i `and#` int2Word# 0xffff#)
                     `remWord#` int2Word# 52#)))
 
 foreign import ccall unsafe "stdlib.h arc4random" c_arc4random :: IO Int32

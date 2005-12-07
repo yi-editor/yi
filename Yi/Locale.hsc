@@ -2,7 +2,7 @@
 --
 -- Copyright (c) 2002-2004 John Meacham (john at repetae dot net)
 -- Copyright (c) 2004      Don Stewart - http://www.cse.unsw.edu.au/~dons
--- 
+--
 -- Permission is hereby granted, free of charge, to any person obtaining a
 -- copy of this software and associated documentation files (the
 -- "Software"), to deal in the Software without restriction, including
@@ -10,10 +10,10 @@
 -- distribute, sublicense, and/or sell copies of the Software, and to
 -- permit persons to whom the Software is furnished to do so, subject to
 -- the following conditions:
--- 
+--
 -- The above copyright notice and this permission notice shall be included
 -- in all copies or substantial portions of the Software.
--- 
+--
 -- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
 -- OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
 -- MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
@@ -21,7 +21,7 @@
 -- CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 -- TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 -- SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
--- 
+--
 -- arch-tag: 72067bff-05e1-4c0e-94aa-34b54f437d92
 --
 
@@ -37,7 +37,7 @@ module Yi.Locale (
         -- getCharset,
         getDateFmt, getDateTimeFmt, getTimeFmt,
         getYesRegex, getNoRegex
-        -- nl_langinfo 
+        -- nl_langinfo
 
     ) where
 
@@ -49,14 +49,14 @@ import GHC.Exts
 #include <locale.h>
 #include <langinfo.h>
 
-foreign import ccall unsafe "locale.h setlocale" 
+foreign import ccall unsafe "locale.h setlocale"
     setlocale :: CInt -> Addr## -> IO (Ptr CChar)
 
-foreign import ccall unsafe "langinfo.h nl_langinfo" 
+foreign import ccall unsafe "langinfo.h nl_langinfo"
     nl_langinfo :: (#type nl_item) -> IO (Ptr CChar)
 
 setupLocale :: IO ()
-setupLocale = setlocale (#const LC_ALL) ""## >> return () 
+setupLocale = setlocale (#const LC_ALL) ""## >> return ()
 
 getDateFmt :: IO String
 getDateFmt = nl_langinfo (#const D_FMT) >>= peekCString
@@ -76,13 +76,13 @@ getNoRegex = nl_langinfo (#const NOEXPR) >>= peekCString
 {-
 getCharset :: IO String
 #ifndef NO_LANGINFO_CODESET
-getCharset =  nl_langinfo (#const CODESET) >>= peekCString   
+getCharset =  nl_langinfo (#const CODESET) >>= peekCString
 #else
 getCharset =  error "Ginsu.Locale.getCharset: not defined for this platform"
 #endif
 -}
 
-{- 
+{-
 LC_COLLATE
     Affects the behavior of regular expressions and the collation functions.
 LC_CTYPE
@@ -92,7 +92,7 @@ LC_MESSAGES
      Affects what strings are expected by commands and utilities as affirmative
      or negative responses.  It also affects what strings are given by commands
      and utilities as affirmative or negative responses, and the content of
-     messages. 
+     messages.
 LC_MONETARY
     Affects the behavior of functions that handle monetary values.
 LC_NUMERIC
@@ -103,13 +103,13 @@ LC_TIME
 data Locale = LC_CTYPE | LC_NUMERIC | LC_TIME | LC_COLLATE | LC_MONETARY | LC_MESSAGES | LC_ALL | LC_PAPER | LC_NAME | LC_ADDRESS | LC_TELEPHONE | LC_MEASUREMENT | LC_IDENTIFICATION
     deriving(Show, Enum, Read, Ord, Eq)
 
-decodeLocale :: Locale -> CInt 
+decodeLocale :: Locale -> CInt
 decodeLocale LC_CTYPE = (#const LC_CTYPE)
 decodeLocale LC_NUMERIC = (#const LC_NUMERIC)
 decodeLocale LC_COLLATE = (#const LC_COLLATE)
 decodeLocale LC_MONETARY = (#const LC_MONETARY)
 decodeLocale LC_TIME = (#const LC_TIME)
-#ifdef LC_MESSAGES 
+#ifdef LC_MESSAGES
 decodeLocale LC_MESSAGES = (#const LC_MESSAGES)
 #endif
 #ifdef LC_PAPER
@@ -133,7 +133,7 @@ decodeLocale LC_IDENTIFICATION = (#const LC_IDENTIFICATION)
 decodeLocale _ = -1
 
 dString :: IO (Ptr CChar) -> IO (Maybe String)
-dString action = do 
+dString action = do
     v <- action
     if v == nullPtr then return Nothing else fmap Just (peekCString v)
 
@@ -149,7 +149,7 @@ setLocale l s = case decodeLocale l of
     nl -> dString $ withCString s (setlocale nl)
 
 getLocale :: Locale -> IO (Maybe String)
-getLocale l = case decodeLocale l of 
+getLocale l = case decodeLocale l of
     -1 -> return Nothing
-    nl -> dString $ setlocale nl nullPtr 
+    nl -> dString $ setlocale nl nullPtr
 -}

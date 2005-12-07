@@ -7,13 +7,13 @@
 --                (c) Don Stewart 2004
 --
 -- License     :  BSD-style (see the file libraries/base/LICENSE)
--- 
+--
 -- Maintainer  :  libraries@haskell.org
 -- Stability   :  experimental
 -- Portability :  portable
 --
 
---  
+--
 -- | Interface to the POSIX regular expression library.
 --
 
@@ -87,10 +87,10 @@ regexec (Regex regex_fptr) ptr i = do
         let nsub_int = fromIntegral (nsub :: CSize)
         allocaBytes ((1 + nsub_int)*(#const sizeof(regmatch_t))) $ \p_match-> do
             -- add one because index zero covers the whole match
-            r <- cregexec regex_ptr (ptr `plusPtr` i) 
+            r <- cregexec regex_ptr (ptr `plusPtr` i)
                                     (1 + nsub) p_match 0{-no flags -}
 
-            if (r /= 0) then return Nothing else do 
+            if (r /= 0) then return Nothing else do
                 match       <- indexOfMatch p_match
                 sub_matches <- mapM (indexOfMatch) $ take nsub_int $ tail $
                         iterate (`plusPtr` (#const sizeof(regmatch_t))) p_match
@@ -153,6 +153,6 @@ foreign import ccall  unsafe "YiUtils.h &regfree"
     ptr_regfree :: FunPtr (Ptr CRegex -> IO ())
 
 foreign import ccall unsafe "regexec"
-    cregexec :: Ptr CRegex 
-             -> Ptr CChar 
+    cregexec :: Ptr CRegex
+             -> Ptr CChar
              -> CSize -> Ptr CRegMatch -> CInt -> IO CInt

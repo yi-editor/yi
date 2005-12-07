@@ -1,10 +1,10 @@
 {-# OPTIONS -fffi -fglasgow-exts #-}
--- glaexts needed for newtype deriving 
+-- glaexts needed for newtype deriving
 
 --
 -- Copyright (c) 2002-2004 John Meacham (john at repetae dot net)
 -- Copyright (c) 2004-2005 Don Stewart - http://www.cse.unsw.edu.au/~dons
--- 
+--
 -- Permission is hereby granted, free of charge, to any person obtaining a
 -- copy of this software and associated documentation files (the
 -- "Software"), to deal in the Software without restriction, including
@@ -12,10 +12,10 @@
 -- distribute, sublicense, and/or sell copies of the Software, and to
 -- permit persons to whom the Software is furnished to do so, subject to
 -- the following conditions:
--- 
+--
 -- The above copyright notice and this permission notice shall be included
 -- in all copies or substantial portions of the Software.
--- 
+--
 -- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
 -- OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
 -- MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
@@ -23,7 +23,7 @@
 -- CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 -- TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 -- SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
--- 
+--
 
 --
 -- | Binding to the [wn]curses library. From the ncurses man page:
@@ -31,11 +31,11 @@
 -- >      The curses library routines give the user a terminal-inde-
 -- >      pendent method of updating character screens with  reason-
 -- >      able  optimization.
--- 
+--
 -- Sections of the quoted documentation are from the OpenBSD man pages,
 -- which are distributed under a BSD license.
 --
--- A useful reference is: 
+-- A useful reference is:
 --        /Writing Programs with NCURSES/, by Eric S. Raymond and Zeyd
 --        M. Ben-Halim, <http://dickey.his.com/ncurses/>
 --
@@ -68,10 +68,10 @@ module Yi.Curses.Curses (
     refresh,        -- :: IO ()
     update,         -- :: IO ()
     getCh,          -- :: IO Char
-    wgetch, 
+    wgetch,
     ungetch,
     resizeTerminal, -- :: Int -> Int -> IO ()
-    notimeout,      
+    notimeout,
     wtimeout,
     qiflush,
     noqiflush,
@@ -106,7 +106,7 @@ module Yi.Curses.Curses (
     keyLL, keyA1, keyA3, keyB2, keyC1, keyC3, keyBTab, keyBeg,
     keyCancel, keyClose, keyCommand, keyCopy, keyCreate, keyEnd,
     keyExit, keyFind, keyHelp, keyMark, keyMessage, keyMove, keyNext,
-    keyOpen, keyOptions, keyPrevious, keyRedo, keyReference, keyRefresh, 
+    keyOpen, keyOptions, keyPrevious, keyRedo, keyReference, keyRefresh,
     keyReplace, keyRestart, keyResume, keySave, keySBeg, keySCancel,
     keySCommand, keySCopy, keySCreate, keySDC, keySDL, keySelect, keySEnd,
     keySEOL, keySExit, keySFind, keySHelp, keySHome, keySIC, keySLeft,
@@ -149,7 +149,7 @@ module Yi.Curses.Curses (
     colorPairs,         -- :: IO Int
     colors,             -- :: IO Int
     color,              -- :: String -> Maybe Color
-    parseAttr,          -- :: String -> Attribute 
+    parseAttr,          -- :: String -> Attribute
     initPair,           -- :: Pair -> Color -> Color -> IO ()
     pairContent,        -- :: Pair -> IO (Color, Color)
     colorContent,       -- :: Color -> IO (Int, Int, Int)
@@ -163,7 +163,7 @@ module Yi.Curses.Curses (
     attr0,
     attrPlus,           -- :: Attr -> Attr -> Attr
     attrSet,            -- :: Attr -> Pair -> IO ()
-    setAttr, 
+    setAttr,
     attrOn,             -- :: Attr -> IO ()
     attrOff,            -- :: Attr -> IO ()
     isAttr,
@@ -175,16 +175,16 @@ module Yi.Curses.Curses (
     attrBoldOff,        -- :: IO ()
     attrDim,            -- :: Int
     attrBold,           -- :: Int
-    isAltCharset, isBlink, isBold, isDim, 
-    isHorizontal, isInvis, isLeft, isLow, 
-    isProtect, isReverse, isRight, isStandout, 
+    isAltCharset, isBlink, isBold, isDim,
+    isHorizontal, isInvis, isLeft, isLow,
+    isProtect, isReverse, isRight, isStandout,
     isTop, isUnderline, isVertical,    -- :: Attr -> Bool
-    setAltCharset, setBlink, setBold, setDim, 
-    setHorizontal, setInvis, setLeft, setLow, 
+    setAltCharset, setBlink, setBold, setDim,
+    setHorizontal, setInvis, setLeft, setLow,
     setProtect, setReverse, setRight, setStandout,
     setTop, setUnderline, setVertical,  -- :: Attr -> Bool -> Attr
 
-    attr_set, attr_get, wattr_set, wattr_get, 
+    attr_set, attr_get, wattr_set, wattr_get,
     attr_on, attr_off, attron, attroff,
     wattron, wattroff, standout, standend,
 
@@ -200,8 +200,8 @@ module Yi.Curses.Curses (
 #ifdef SIGWINCH
     cursesSigWinch,
 #endif
-    
-  ) where 
+
+  ) where
 
 #include <signal.h>
 
@@ -242,7 +242,7 @@ initCurses fn = do
     when b $ startColor >> useDefaultColors
     resetParams
 #ifdef SIGWINCH
-    installHandler (fromJust cursesSigWinch) 
+    installHandler (fromJust cursesSigWinch)
                    (Catch fn) Nothing >> return ()
 #endif
 
@@ -293,7 +293,7 @@ type Window = Ptr WindowTag
 stdScr :: Window
 stdScr = unsafePerformIO (peek stdscr)
 
-foreign import ccall "static YiCurses.h &stdscr" 
+foreign import ccall "static YiCurses.h &stdscr"
     stdscr :: Ptr Window
 
 --
@@ -302,7 +302,7 @@ foreign import ccall "static YiCurses.h &stdscr"
 --
 -- > To initialize the routines, the routine initscr or newterm
 -- > must be called before any of the other routines that  deal
--- > with  windows  and  screens  are used. 
+-- > with  windows  and  screens  are used.
 --
 -- > The initscr code determines the terminal type and initial-
 -- > izes all curses data structures.  initscr also causes  the
@@ -314,7 +314,7 @@ foreign import ccall "static YiCurses.h &stdscr"
 initScr :: IO Window
 initScr = throwIfNull "initscr" initscr
 
-foreign import ccall unsafe "YiCurses.h initscr" 
+foreign import ccall unsafe "YiCurses.h initscr"
     initscr :: IO Window
 
 --
@@ -378,7 +378,7 @@ foreign import ccall unsafe "YiCurses.h echo"   echo_c :: IO CInt
 -- > ter use of the line-feed capability, resulting  in  faster
 -- > cursor  motion.   Also, curses will then be able to detect
 -- > the return key.
--- > 
+-- >
 nl :: Bool -> IO ()
 nl True  = throwIfErr_ "nl"   nl_c
 nl False = throwIfErr_ "nonl" nonl
@@ -393,22 +393,22 @@ foreign import ccall unsafe "YiCurses.h nonl" nonl :: IO CInt
 -- > pt,  but  causing  curses to have the wrong idea of
 -- > what is on the  screen.   Disabling  (bf  is  FALSE),  the
 -- > option  prevents the flush.
--- > 
+-- >
 intrFlush :: Bool -> IO ()
-intrFlush bf = throwIfErr_ "intrflush" $ 
+intrFlush bf = throwIfErr_ "intrflush" $
     intrflush stdScr (if bf then 1 else 0)
 
-foreign import ccall unsafe "YiCurses.h intrflush"  
+foreign import ccall unsafe "YiCurses.h intrflush"
     intrflush :: Window -> (#type bool) -> IO CInt
 
 --
 -- | Enable the keypad of the user's terminal.
 --
 keypad :: Window -> Bool -> IO ()
-keypad win bf = throwIfErr_ "keypad" $ 
+keypad win bf = throwIfErr_ "keypad" $
     keypad_c win (if bf then 1 else 0)
 
-foreign import ccall unsafe "YiCurses.h keypad" 
+foreign import ccall unsafe "YiCurses.h keypad"
     keypad_c :: Window -> (#type bool) -> IO CInt
 
 -- |> The nodelay option causes getch to be a non-blocking call.
@@ -416,7 +416,7 @@ foreign import ccall unsafe "YiCurses.h keypad"
 -- > is FALSE), getch waits until a key is pressed.
 --
 noDelay :: Window -> Bool -> IO ()
-noDelay win bf = throwIfErr_ "nodelay" $ 
+noDelay win bf = throwIfErr_ "nodelay" $
     nodelay win (if bf then 1 else 0)
 
 foreign import ccall unsafe "YiCurses.h"
@@ -428,7 +428,7 @@ foreign import ccall unsafe "YiCurses.h"
 -- > timer.   The  purpose  of  the timeout is to differentiate
 -- > between sequences received from a function key  and  those
 -- > typed by a user.
--- 
+--
 foreign import ccall unsafe "YiCurses.h"
     notimeout :: Window -> CInt -> IO CInt
 
@@ -450,7 +450,7 @@ foreign import ccall unsafe "YiCurses.h"
 leaveOk  :: Bool -> IO CInt
 leaveOk bf = leaveok_c stdScr (if bf then 1 else 0)
 
-foreign import ccall unsafe "YiCurses.h leaveok" 
+foreign import ccall unsafe "YiCurses.h leaveok"
     leaveok_c :: Window -> (#type bool) -> IO CInt
 
 -- |> If  clearok is called with TRUE as argument, the next call
@@ -465,12 +465,12 @@ foreign import ccall unsafe "YiCurses.h leaveok"
 clearOk :: Bool -> IO CInt
 clearOk bf    = clearok_c stdScr (if bf then 1 else 0)
 
-foreign import ccall unsafe "YiCurses.h clearok" 
+foreign import ccall unsafe "YiCurses.h clearok"
     clearok_c :: Window -> (#type bool) -> IO CInt
 
 ------------------------------------------------------------------------
 
-foreign import ccall unsafe "YiCurses.h use_default_colors" 
+foreign import ccall unsafe "YiCurses.h use_default_colors"
     useDefaultColors :: IO ()
 
 defaultBackground, defaultForeground :: Color
@@ -482,7 +482,7 @@ defaultForeground = Color (-1)
 defineKey :: CInt -> String -> IO ()
 defineKey k s =  withCString s (\s' -> define_key s' k) >> return ()
 
-foreign import ccall unsafe "YiCurses.h define_key" 
+foreign import ccall unsafe "YiCurses.h define_key"
     define_key :: Ptr CChar -> CInt -> IO ()
 
 --
@@ -492,7 +492,7 @@ foreign import ccall unsafe "YiCurses.h define_key"
 endWin :: IO ()
 endWin = throwIfErr_ "endwin" endwin
 
-foreign import ccall unsafe "YiCurses.h endwin" 
+foreign import ccall unsafe "YiCurses.h endwin"
     endwin :: IO CInt
 
 ------------------------------------------------------------------------
@@ -515,7 +515,7 @@ foreign import ccall "YiCurses.h &COLS"  colsPtr  :: Ptr CInt
 refresh :: IO ()
 refresh = throwIfErr_ "refresh" refresh_c
 
-foreign import ccall unsafe "YiCurses.h refresh" 
+foreign import ccall unsafe "YiCurses.h refresh"
     refresh_c :: IO CInt
 
 --
@@ -524,7 +524,7 @@ foreign import ccall unsafe "YiCurses.h refresh"
 update :: IO ()
 update = throwIfErr_ "update" update_c
 
-foreign import ccall unsafe "YiCurses.h doupdate" 
+foreign import ccall unsafe "YiCurses.h doupdate"
     update_c :: IO CInt
 
 ------------------------------------------------------------------------
@@ -532,7 +532,7 @@ foreign import ccall unsafe "YiCurses.h doupdate"
 hasColors :: IO Bool
 hasColors = liftM (/= 0) has_colors
 
-foreign import ccall unsafe "YiCurses.h has_colors" 
+foreign import ccall unsafe "YiCurses.h has_colors"
     has_colors :: IO (#type bool)
 
 --
@@ -548,12 +548,12 @@ newtype Pair = Pair Int deriving (Eq, Ord, Ix)
 
 --
 -- | colorPairs defines the maximum number of color-pairs the terminal
--- can support). 
+-- can support).
 --
 colorPairs :: IO Int
 colorPairs = fmap fromIntegral $ peek colorPairsPtr
 
-foreign import ccall "YiCurses.h &COLOR_PAIRS" 
+foreign import ccall "YiCurses.h &COLOR_PAIRS"
         colorPairsPtr :: Ptr CInt
 
 newtype Color = Color Int deriving (Eq, Ord, Ix)
@@ -579,23 +579,23 @@ color _ =  Nothing
 
 data Attribute = Attribute [String] String String
 
-parseAttr :: String -> Attribute 
-parseAttr s = Attribute as fg bg 
+parseAttr :: String -> Attribute
+parseAttr s = Attribute as fg bg
   where
-    rs    = filter (not . f . head) $ groupBy (\x y -> f x && f y) (map toLower s) 
+    rs    = filter (not . f . head) $ groupBy (\x y -> f x && f y) (map toLower s)
     as    = filter (`elem` attributes) rs
     col x = if isJust (color x) then return x else Nothing
-    fg    = fromJust $ msum (map (cGet "fg") rs) 
-               `mplus` msum (map col rs) 
+    fg    = fromJust $ msum (map (cGet "fg") rs)
+               `mplus` msum (map col rs)
                `mplus` return "default"
-    bg = fromJust $ msum (map (cGet "bg") rs) 
+    bg = fromJust $ msum (map (cGet "bg") rs)
                `mplus` return "default"
 
     f ','           = True
     f c | isSpace c = True
     f _             = False
 
-    cGet p r | (p ++ ":") `isPrefixOf` r = col (drop (length p + 1) r) 
+    cGet p r | (p ++ ":") `isPrefixOf` r = col (drop (length p + 1) r)
              | otherwise                 = Nothing
 
     attributes = ["normal", "bold", "blink", "dim", "reverse", "underline" ]
@@ -634,7 +634,7 @@ initPair (Pair p) (Color f) (Color b) =
     throwIfErr_ "init_pair" $
         init_pair (fromIntegral p) (fromIntegral f) (fromIntegral b)
 
-foreign import ccall unsafe 
+foreign import ccall unsafe
     init_pair :: CShort -> CShort -> CShort -> IO CInt
 
 pairContent :: Pair -> IO (Color, Color)
@@ -646,20 +646,20 @@ pairContent (Pair p) =
         b <- peek bPtr
         return (Color (fromIntegral f), Color (fromIntegral b))
 
-foreign import ccall unsafe 
+foreign import ccall unsafe
     pair_content :: CShort -> Ptr CShort -> Ptr CShort -> IO CInt
 
 canChangeColor :: IO Bool
 canChangeColor = liftM (/= 0) can_change_color
 
-foreign import ccall unsafe 
+foreign import ccall unsafe
     can_change_color :: IO (#type bool)
 
 initColor :: Color -> (Int, Int, Int) -> IO ()
 initColor (Color c) (r, g, b) = throwIfErr_ "init_color" $
         init_color (fi c) (fi r) (fi g) (fi b)
 
-foreign import ccall unsafe 
+foreign import ccall unsafe
     init_color :: CShort -> CShort -> CShort -> CShort -> IO CInt
 
 colorContent :: Color -> IO (Int, Int, Int)
@@ -673,36 +673,36 @@ colorContent (Color c) =
         b <- peek bPtr
         return (fromIntegral r, fromIntegral g, fromIntegral b)
 
-foreign import ccall unsafe 
+foreign import ccall unsafe
     color_content :: CShort -> Ptr CShort -> Ptr CShort -> Ptr CShort -> IO CInt
 
-foreign import ccall unsafe "YiCurses.h hs_curses_color_pair" 
+foreign import ccall unsafe "YiCurses.h hs_curses_color_pair"
     colorPair :: Pair -> (#type chtype)
 
 #def inline chtype hs_curses_color_pair (HsInt pair) {return COLOR_PAIR (pair);}
 
 -- ---------------------------------------------------------------------
--- Attributes 
+-- Attributes
 
-foreign import ccall unsafe "YiCurses.h attr_set" 
+foreign import ccall unsafe "YiCurses.h attr_set"
     attr_set :: Attr -> CShort -> Ptr a -> IO Int
-foreign import ccall unsafe "YiCurses.h attr_get" 
+foreign import ccall unsafe "YiCurses.h attr_get"
     attr_get :: Attr -> CShort -> Ptr a -> IO Int
-foreign import ccall unsafe "YiCurses.h wattr_set" 
+foreign import ccall unsafe "YiCurses.h wattr_set"
     wattr_set :: Window -> Attr -> CInt -> Ptr a -> IO CInt
-foreign import ccall unsafe "YiCurses.h wattr_get" 
+foreign import ccall unsafe "YiCurses.h wattr_get"
     wattr_get :: Window -> Ptr Attr -> Ptr CShort -> Ptr a -> IO CInt
-foreign import ccall "YiCurses.h attr_on" 
+foreign import ccall "YiCurses.h attr_on"
     attr_on :: (#type attr_t) -> Ptr a -> IO Int
-foreign import ccall "YiCurses.h attr_off" 
+foreign import ccall "YiCurses.h attr_off"
     attr_off :: (#type attr_t) -> Ptr a -> IO Int
-foreign import ccall "YiCurses.h attron"  
+foreign import ccall "YiCurses.h attron"
     attron  :: Int -> IO Int
-foreign import ccall "YiCurses.h attroff" 
+foreign import ccall "YiCurses.h attroff"
     attroff :: Int -> IO Int
-foreign import ccall unsafe "YiCurses.h wattron" 
+foreign import ccall unsafe "YiCurses.h wattron"
     wattron :: Window -> CInt -> IO CInt
-foreign import ccall unsafe "YiCurses.h wattroff" 
+foreign import ccall unsafe "YiCurses.h wattroff"
     wattroff :: Window -> CInt -> IO CInt
 
 foreign import ccall standout :: IO Int
@@ -712,7 +712,7 @@ foreign import ccall standend :: IO Int
 -- |
 --
 wAttrSet :: Window -> (Attr,Pair) -> IO ()
-wAttrSet w (a,(Pair p)) = throwIfErr_ "wattr_set" $ 
+wAttrSet w (a,(Pair p)) = throwIfErr_ "wattr_set" $
     wattr_set w a (fromIntegral p) nullPtr
 
 --
@@ -720,7 +720,7 @@ wAttrSet w (a,(Pair p)) = throwIfErr_ "wattr_set" $
 --
 wAttrGet :: Window -> IO (Attr,Pair)
 wAttrGet w =
-    alloca $ \pa -> 
+    alloca $ \pa ->
         alloca $ \pp -> do
             throwIfErr_ "wattr_get" $ wattr_get w pa pp nullPtr
             a <- peek pa
@@ -809,19 +809,19 @@ wAttrOff w x = throwIfErr_ "wattroff" $ wattroff w (fi x)
 
 attrDimOn :: IO ()
 attrDimOn  = throwIfErr_ "attron A_DIM" $
-    attron (#const A_DIM) 
+    attron (#const A_DIM)
 
 attrDimOff :: IO ()
 attrDimOff = throwIfErr_ "attroff A_DIM" $
-    attroff (#const A_DIM) 
+    attroff (#const A_DIM)
 
 attrBoldOn :: IO ()
 attrBoldOn  = throwIfErr_ "attron A_BOLD" $
-    attron (#const A_BOLD) 
+    attron (#const A_BOLD)
 
 attrBoldOff :: IO ()
 attrBoldOff = throwIfErr_ "attroff A_BOLD" $
-    attroff (#const A_BOLD) 
+    attroff (#const A_BOLD)
 
 attrDim :: Int
 attrDim = (#const A_DIM)
@@ -831,10 +831,10 @@ attrBold = (#const A_BOLD)
 ------------------------------------------------------------------------
 
 mvWAddStr :: Window -> Int -> Int -> String -> IO ()
-mvWAddStr w y x str = wMove w y x >> wAddStr w str 
+mvWAddStr w y x str = wMove w y x >> wAddStr w str
 
 addLn :: IO ()
-addLn = wAddStr stdScr "\n" 
+addLn = wAddStr stdScr "\n"
 
 --
 -- | normalise the string, stripping \\r and making control chars
@@ -862,11 +862,11 @@ normalise s = map f . filter (/= '\r') s
 
 --wAddStr :: Window -> String -> IO ()
 --wAddStr w str = throwIfErr_ ("waddnwstr: " ++ show str) $ withCWStringLen (normalise str) (\(ws,len) -> waddnwstr w ws (fi len))
-    
-foreign import ccall unsafe 
+
+foreign import ccall unsafe
     waddnwstr :: Window -> CWString -> CInt -> IO CInt
 
-foreign import ccall unsafe 
+foreign import ccall unsafe
     waddch :: Window -> (#type chtype) -> IO CInt
 
 wAddStr :: Window -> String -> IO ()
@@ -884,7 +884,7 @@ wAddStr win str = do
                 convStr acc
                 throwIfErr "waddch" $ waddch win ch'
                 loop str' id)
-    loop str id 
+    loop str id
 
 #else
 
@@ -896,7 +896,7 @@ wAddStr win str = do
 --
 --      wAddStr Yi.Curses 20.0   38.1
 --      wAddStr Yi.Curses 10.0   32.5
--- 
+--
 -- TODO make this way less expensive. That accum sucks.
 -- use difference lists for O(1) append
 --
@@ -911,18 +911,18 @@ wAddStr win str = do
     let convStr f = case f [] of
             [] -> return ()
             s  -> case normalise s of
-                    s' -> throwIfErr_ "waddnstr" $ 
-                        withLCStringLen s' (\(ws,len) -> 
+                    s' -> throwIfErr_ "waddnstr" $
+                        withLCStringLen s' (\(ws,len) ->
                             waddnstr win ws (fi len))   -- write to screen
 
     let loop []     acc = convStr acc
-        loop (c:cs) acc = 
-            recognize c 
+        loop (c:cs) acc =
+            recognize c
                 (loop cs $ acc . (c:))
                 (\c' -> do convStr acc                 -- draw accumulated chars
                            throwIfErr "waddch" $ waddch win c' -- draw this char
                            loop cs id )
-    loop str id 
+    loop str id
 -}
 
 foreign import ccall threadsafe
@@ -934,7 +934,7 @@ foreign import ccall threadsafe
 foreign import ccall threadsafe
     vline  :: Char -> Int -> IO ()
 
-foreign import ccall threadsafe 
+foreign import ccall threadsafe
     waddchnstr :: Window -> CString -> CInt -> IO CInt
 
 #endif
@@ -960,7 +960,7 @@ wAddStr win str = do
                 convStr acc
                 throwIfErr "waddch" $ waddch win ch'
                 loop str' id)
-    loop str id 
+    loop str id
 -}
 ------------------------------------------------------------------------
 
@@ -990,13 +990,13 @@ foreign import ccall unsafe bkgdset :: (#type chtype) -> IO ()
 erase :: IO ()
 erase = throwIfErr_ "erase" $ werase_c  stdScr
 
-foreign import ccall unsafe "werase" 
+foreign import ccall unsafe "werase"
     werase_c :: Window -> IO CInt
 
 wclear :: Window -> IO ()
 wclear w = throwIfErr_ "wclear" $ wclear_c  w
 
-foreign import ccall unsafe "wclear" 
+foreign import ccall unsafe "wclear"
     wclear_c :: Window -> IO CInt
 
 clrToEol :: IO ()
@@ -1016,7 +1016,7 @@ foreign import ccall unsafe clrtoeol :: IO CInt
 move :: Int -> Int -> IO ()
 move y x = throwIfErr_ "move" $ move_c (fromIntegral y) (fromIntegral x)
 
-foreign import ccall unsafe "move" 
+foreign import ccall unsafe "move"
     move_c :: CInt -> CInt -> IO CInt
 
 --
@@ -1029,7 +1029,7 @@ foreign import ccall unsafe "move"
 wMove :: Window -> Int -> Int -> IO ()
 wMove w y x = throwIfErr_ "wmove" $ wmove w (fi y) (fi x)
 
-foreign import ccall unsafe  
+foreign import ccall unsafe
     wmove :: Window -> CInt -> CInt -> IO CInt
 
 -- ---------------------------------------------------------------------
@@ -1042,7 +1042,7 @@ vis_c vis = case vis of
     CursorInvisible   -> 0
     CursorVisible     -> 1
     CursorVeryVisible -> 2
-    
+
 --
 -- | Set the cursor state
 --
@@ -1054,24 +1054,24 @@ vis_c vis = case vis of
 --
 cursSet :: CInt -> IO CInt
 cursSet 0 = leaveOk True  >> curs_set 0
-cursSet n = leaveOk False >> curs_set n 
+cursSet n = leaveOk False >> curs_set n
 
-foreign import ccall unsafe "YiCurses.h curs_set" 
+foreign import ccall unsafe "YiCurses.h curs_set"
     curs_set :: CInt -> IO CInt
 
 --
 -- | set the cursor, and do action
 --
 withCursor :: CursorVisibility -> IO a -> IO a
-withCursor nv action = 
-    Control.Exception.bracket 
+withCursor nv action =
+    Control.Exception.bracket
         (cursSet (vis_c nv))            -- before
         (\v -> case v of                -- after
                 (#const ERR) -> return 0
-                x            -> cursSet x) 
+                x            -> cursSet x)
         (\_ -> action)                  -- do this
 
--- 
+--
 -- | Get the current cursor coordinates
 --
 getYX :: Window -> IO (Int, Int)
@@ -1091,7 +1091,7 @@ getYX w =
 --
 --      void getyx(WINDOW *win, int y, int x);
 --
-foreign import ccall unsafe "YiUtils.h nomacro_getyx" 
+foreign import ccall unsafe "YiUtils.h nomacro_getyx"
         nomacro_getyx :: Window -> Ptr CInt -> Ptr CInt -> IO ()
 
 touchWin :: Window -> IO ()
@@ -1100,36 +1100,36 @@ touchWin w = throwIfErr_ "touchwin" $ touchwin w
 foreign import ccall touchwin :: Window -> IO CInt
 
 newPad :: Int -> Int -> IO Window
-newPad nlines ncols = throwIfNull "newpad" $ 
+newPad nlines ncols = throwIfNull "newpad" $
     newpad (fromIntegral nlines) (fromIntegral ncols)
 
 pRefresh :: Window -> Int -> Int -> Int -> Int -> Int -> Int -> IO ()
-pRefresh pad pminrow pmincol sminrow smincol smaxrow smaxcol = 
+pRefresh pad pminrow pmincol sminrow smincol smaxrow smaxcol =
     throwIfErr_ "prefresh" $
-        prefresh pad (fromIntegral pminrow) 
-                     (fromIntegral pmincol) 
-                     (fromIntegral sminrow) 
-                     (fromIntegral smincol) 
-                     (fromIntegral smaxrow) 
+        prefresh pad (fromIntegral pminrow)
+                     (fromIntegral pmincol)
+                     (fromIntegral sminrow)
+                     (fromIntegral smincol)
+                     (fromIntegral smaxrow)
                      (fromIntegral smaxcol)
 
 delWin :: Window -> IO ()
 delWin w = throwIfErr_ "delwin" $ delwin w
-    
-foreign import ccall unsafe 
+
+foreign import ccall unsafe
     prefresh :: Window -> CInt -> CInt -> CInt -> CInt -> CInt -> CInt -> IO CInt
 
-foreign import ccall unsafe 
+foreign import ccall unsafe
     newpad :: CInt -> CInt -> IO Window
 
-foreign import ccall unsafe 
+foreign import ccall unsafe
     delwin :: Window -> IO CInt
 
 newWin :: Int -> Int -> Int -> Int -> IO Window
-newWin nlines ncolumn begin_y begin_x = throwIfNull "newwin" $ 
+newWin nlines ncolumn begin_y begin_x = throwIfNull "newwin" $
     newwin (fi nlines) (fi ncolumn) (fi begin_y) (fi begin_x)
 
-foreign import ccall unsafe 
+foreign import ccall unsafe
     newwin :: CInt -> CInt -> CInt -> CInt -> IO Window
 
 wClrToEol :: Window -> IO ()
@@ -1151,11 +1151,11 @@ foreign import ccall threadsafe ungetch :: CInt -> IO CInt
 --foreign import ccall unsafe reset_prog_mode :: IO CInt
 foreign import ccall unsafe flushinp :: IO CInt
 
-foreign import ccall unsafe "HSCurses.h noqiflush" 
+foreign import ccall unsafe "HSCurses.h noqiflush"
     noqiflush :: IO ()
 
 withProgram :: IO a -> IO a
-withProgram action = withCursor CursorVisible $ 
+withProgram action = withCursor CursorVisible $
     Control.Exception.bracket_ (endWin) (flushinp) action
 
 foreign import ccall unsafe "YiCurses.h beep" c_beep :: IO CInt
@@ -1164,7 +1164,7 @@ foreign import ccall unsafe "YiCurses.h flash" c_flash :: IO CInt
 beep :: IO ()
 beep = do
     br <- c_beep
-    when (br /= (#const OK)) (c_flash >> return ()) 
+    when (br /= (#const OK)) (c_flash >> return ())
 
 ------------------------------------------------------------------------
 --
@@ -1373,7 +1373,7 @@ isFKey c = case fromIntegral $ ord c :: CInt of
 
 -- ---------------------------------------------------------------------
 -- try to set the upper bits
-foreign import ccall unsafe "YiCurses.h meta" 
+foreign import ccall unsafe "YiCurses.h meta"
     c_meta :: Window -> CInt -> IO CInt
 
 -- ---------------------------------------------------------------------
@@ -1394,7 +1394,7 @@ foreign import ccall unsafe "YiCurses.h meta"
 -- that second character is not returned until a third character is
 -- pressed. wtimeout, nodelay and timeout don't appear to change this
 -- behaviour.
--- 
+--
 -- On emacs, we really would want Alt to be our meta key, I think.
 --
 getCh :: IO Char
@@ -1416,7 +1416,7 @@ resizeTerminal :: Int -> Int -> IO ()
 #ifdef HAVE_RESIZETERM
 resizeTerminal a b = throwIfErr_ "resizeterm"  $ resizeterm (fi a) (fi b)
 
-foreign import ccall unsafe "YiCurses.h resizeterm" 
+foreign import ccall unsafe "YiCurses.h resizeterm"
     resizeterm :: CInt -> CInt -> IO CInt
 #else
 resizeTerminal _ _ = return ()
@@ -1434,14 +1434,14 @@ cursesSigWinch = Just (#const SIGWINCH)
 cursesTest :: IO ()
 cursesTest = do
     initScr
-    hc <- hasColors 
+    hc <- hasColors
     when hc startColor
     ccc <- canChangeColor
     (ys,xs) <- scrSize
     cp <- colorPairs
     cs <- colors
     endWin
-    putStrLn $ "ScreenSize: " ++ show (xs,ys) 
+    putStrLn $ "ScreenSize: " ++ show (xs,ys)
     putStrLn $ "hasColors: " ++ show hc
     putStrLn $ "canChangeColor: " ++ show ccc
     putStrLn $ "colorPairs: " ++ show cp
@@ -1452,35 +1452,35 @@ cursesTest = do
 -- Mouse Routines
 
 data MouseEvent = MouseEvent {
-    mouseEventId :: Int, 
-    mouseEventX :: Int, 
-    mouseEventY :: Int, 
-    mouseEventZ :: Int, 
+    mouseEventId :: Int,
+    mouseEventX :: Int,
+    mouseEventY :: Int,
+    mouseEventZ :: Int,
     mouseEventButton :: [ButtonEvent]
    } deriving(Show)
 
-data ButtonEvent 
-    = ButtonPressed Int 
-    | ButtonReleased Int 
-    | ButtonClicked Int 
-    | ButtonDoubleClicked Int 
-    | ButtonTripleClicked Int 
-    | ButtonShift   
-    | ButtonControl 
-    | ButtonAlt 
+data ButtonEvent
+    = ButtonPressed Int
+    | ButtonReleased Int
+    | ButtonClicked Int
+    | ButtonDoubleClicked Int
+    | ButtonTripleClicked Int
+    | ButtonShift
+    | ButtonControl
+    | ButtonAlt
     deriving(Eq,Show)
 
 withMouseEventMask :: [ButtonEvent] -> IO a -> IO a
 
 #ifdef KEY_MOUSE
 
-foreign import ccall unsafe "YiCurses.h mousemask" 
+foreign import ccall unsafe "YiCurses.h mousemask"
     mousemask :: (#type mmask_t) -> Ptr (#type mmask_t) -> IO (#type mmask_t)
 
 withMouseEventMask bes action = do
-    ov <- alloca (\a ->  mousemask (besToMouseMask bes) a >> peek a) 
-    r <- action 
-    mousemask ov nullPtr 
+    ov <- alloca (\a ->  mousemask (besToMouseMask bes) a >> peek a)
+    r <- action
+    mousemask ov nullPtr
     return r
 
 besToMouseMask :: [ButtonEvent] -> (#type mmask_t)
@@ -1553,7 +1553,7 @@ sterling = chr 0x00A3
 {-
 -- haddock doesn't like these commented out with --
    #if defined(__STDC_ISO_10646__)  && defined(HAVE_WADDNWSTR)
-   #else 
+   #else
 -}
 
 recognize :: Char -> IO a -> ((#type chtype) -> IO a) -> IO a

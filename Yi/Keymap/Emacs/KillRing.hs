@@ -1,22 +1,22 @@
 {-# OPTIONS -fglasgow-exts #-}
--- 
+--
 -- Copyright (c) 2005 Jean-Philippe Bernardy
--- 
+--
 -- This program is free software; you can redistribute it and/or
 -- modify it under the terms of the GNU General Public License as
 -- published by the Free Software Foundation; either version 2 of
 -- the License, or (at your option) any later version.
--- 
+--
 -- This program is distributed in the hope that it will be useful,
 -- but WITHOUT ANY WARRANTY; without even the implied warranty of
 -- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
 -- General Public License for more details.
--- 
+--
 -- You should have received a copy of the GNU General Public License
 -- along with this program; if not, write to the Free Software
 -- Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 -- 02111-1307, USA.
--- 
+--
 
 module Yi.Keymap.Emacs.KillRing where
 
@@ -39,7 +39,7 @@ data Killring = Killring { krKilled :: Bool
     deriving (Typeable, Show)
 
 instance Initializable Killring where
-    initial = return $ 
+    initial = return $
               Killring { krKilled = False
                        , krAccumulate = False
                        , krContents = [[]]
@@ -62,7 +62,7 @@ killringEndCmd = do kr@Killring {krKilled = killed} <- getDynamic
 killringPut :: String -> Action
 killringPut s = do kr@Killring {krContents = r@(x:xs), krAccumulate=acc} <- getDynamic
                    setDynamic $ kr {krKilled = True,
-                                    krContents = 
+                                    krContents =
                                         if acc then (x++s):xs
                                                else s:take killringMaxDepth r }
 
@@ -115,7 +115,7 @@ killRestOfLineE =
 
 -- | C-y
 yankE :: Action
-yankE = do (text:_) <- killringGet 
+yankE = do (text:_) <- killringGet
            --kr@(Killring _ _ _) <- getDynamic undefined
            --let text = show kr
            getPointE >>= setMarkE
@@ -131,10 +131,10 @@ killRingSaveE = do text <- readRegionE =<< getRegionE
 yankPopE :: Action
 yankPopE = do r <- getRegionE
               deleteRegionE r
-              kr@Killring {krContents = ring} <- getDynamic 
+              kr@Killring {krContents = ring} <- getDynamic
               setDynamic $ kr {krContents = tail ring ++ [head ring]}
               yankE
 
--- | C-M-w           
+-- | C-M-w
 appendNextKillE :: Action
 appendNextKillE = killringModify (\kr -> kr {krKilled=True})

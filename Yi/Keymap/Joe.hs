@@ -1,24 +1,24 @@
--- 
+--
 -- Copyright (c) 2004 Tuomo Valkonen
--- 
+--
 -- This program is free software; you can redistribute it and/or
 -- modify it under the terms of the GNU General Public License as
 -- published by the Free Software Foundation; either version 2 of
 -- the License, or (at your option) any later version.
--- 
+--
 -- This program is distributed in the hope that it will be useful,
 -- but WITHOUT ANY WARRANTY; without even the implied warranty of
 -- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
 -- General Public License for more details.
--- 
+--
 -- You should have received a copy of the GNU General Public License
 -- along with this program; if not, write to the Free Software
 -- Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 -- 02111-1307, USA.
--- 
+--
 
 --
--- Joe-ish keymap for Yi. 
+-- Joe-ish keymap for Yi.
 --
 
 module Yi.Keymap.Joe (
@@ -69,7 +69,7 @@ klist=[
     "\^U"  ++> upScreenE,
     "\^V"  ++> downScreenE,
     "\^D"  ++> deleteE,
-    "\BS"  ++> bdeleteE, 
+    "\BS"  ++> bdeleteE,
     "\^J"  ++> killEolE,
     "\^[J" ++> killSolE,
     "\^Y"  ++> killLineE,
@@ -95,14 +95,14 @@ klist=[
     --"\"KC" ++> pasteE,
     --"\"KW" &&> querySaveSelectionE,
     --"\"K/" &&> queryFilterSelectionE,
-    
+
     -- Windows
     "\^KN" ++> nextBufW,
     "\^KP" ++> prevBufW,
     "\^KS" ++> splitE,
     "\^KO" ++> nextWinE,
     "\^C"  ++> closeE, -- Wrong, should close buffer
-    
+
     -- Global
     "\^R"  ++> refreshE,
     "\^KX" ++> quitE,
@@ -182,7 +182,7 @@ simpleq prompt initial act cont st =
 
 
 queryKeys :: String -> [(String, JoeProc)] -> JoeProc -> JoeProc
-queryKeys prompt ks failcont st cs_ = 
+queryKeys prompt ks failcont st cs_ =
     (msgE prompt):(loop cs_)
     where
         loop []                         = []
@@ -214,12 +214,12 @@ querySaveE cont st _ = return $
 
 -- Search queries
 
-queryReplace :: SearchMatch 
-             -> String 
-             -> IO (Maybe SearchMatch) 
-             -> JoeProc 
+queryReplace :: SearchMatch
+             -> String
+             -> IO (Maybe SearchMatch)
              -> JoeProc
-queryReplace m s sfn cont = 
+             -> JoeProc
+queryReplace m s sfn cont =
     queryKeys prompt opts cont
     where
         prompt="Replace? (Y)es (N)o (R)est? "
@@ -254,7 +254,7 @@ queryReplace m s sfn cont =
 	    res <- sfn
 	    when (isNothing res) (gotoPointE op)
 	    return res
-	    
+	
 doSearch :: SearchExp -> JoeProc -> JoeState -> Action
 doSearch srchexp cont st = do
     res <- sfn
@@ -292,9 +292,9 @@ querySearchRepE cont =
     where
         flagprompt = "(I)gnore, (R)eplace, (B)ackward Reg.E(x)p? "
         qflags s = query flagprompt [] (qreplace s) cont
-	qreplace s flags | isect "rR" flags = 
+	qreplace s flags | isect "rR" flags =
 	    query "Replace with: " [] (mksearch cont s flags . Just) cont
-	qreplace s flags = 
+	qreplace s flags =
 	    mksearch cont s flags Nothing
 
 nextSearchRepE cont st _ = return $

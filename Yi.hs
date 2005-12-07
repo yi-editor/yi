@@ -3,7 +3,7 @@
 
 --
 -- riot/Main.hs
--- 
+--
 -- Copyright (c) Tuomo Valkonen 2004.
 -- Copyright (c) Don Stewarti 2004-5.
 --
@@ -26,7 +26,7 @@ module Yi (static_main, dynamic_main) where
 import Yi.Locale                        ( setupLocale )
 import Yi.Version                       ( package, version )
 import qualified Yi.Editor  as Editor
-import qualified Yi.Core    as Core 
+import qualified Yi.Core    as Core
 import qualified Yi.Style   as Style
 
 import qualified Yi.Map as M
@@ -64,9 +64,9 @@ import GHC.Exception            ( Exception(ExitException) )
 -- The -B flag is needed, and used by Boot.hs to find the runtime
 -- libraries. We still parse it here, but ignore it.
 
-data Opts = Help 
-          | Version 
-          | Libdir String 
+data Opts = Help
+          | Version
+          | Libdir String
           | LineNo String
           | EditorNm String
 
@@ -91,7 +91,7 @@ options = [
     Option ['B']  ["libdir"]  (ReqArg Libdir "libdir") "Path to runtime libraries",
     Option ['h']  ["help"]    (NoArg Help)    "Show this help",
     Option ['l']  ["line"]    (ReqArg LineNo "[num]") "Start on line number",
-    Option []     ["as"]      (ReqArg EditorNm "[editor]") 
+    Option []     ["as"]      (ReqArg EditorNm "[editor]")
         ("Start with editor keymap, where editor is one of:\n" ++
                 (concat . intersperse ", ") (M.keys editorFM))
     ]
@@ -150,7 +150,7 @@ do_args args =
 -- setStoppedChildFlag True
 --
 initSignals :: IO ()
-initSignals = do 
+initSignals = do
 
     tid <- myThreadId
 
@@ -158,13 +158,13 @@ initSignals = do
     installHandler sigINT (Catch (return ())) Nothing
 
     -- ignore
-    flip mapM_ [sigPIPE, sigALRM] 
+    flip mapM_ [sigPIPE, sigALRM]
                (\sig -> installHandler sig Ignore Nothing)
 
     -- and exit if we get the following:
     -- we have to do our own quitE here.
     flip mapM_ [sigHUP, sigABRT, sigTERM] $ \sig -> do
-            installHandler sig (CatchOnce $ do 
+            installHandler sig (CatchOnce $ do
                     releaseSignals
                     UI.end
                     Editor.shutdown
@@ -172,7 +172,7 @@ initSignals = do
 
 releaseSignals :: IO ()
 releaseSignals =
-    flip mapM_ [sigINT, sigPIPE, sigHUP, sigABRT, sigTERM] 
+    flip mapM_ [sigINT, sigPIPE, sigHUP, sigABRT, sigTERM]
                (\sig -> installHandler sig Default Nothing)
 
 -- ---------------------------------------------------------------------
@@ -186,9 +186,9 @@ g_settings :: IORef (Editor.Config
                     ,Maybe Editor.Editor -> IO ()
                     ,IO (Maybe Editor.Config))
 
-g_settings = unsafePerformIO $ 
+g_settings = unsafePerformIO $
                 newIORef (dflt_config
-                         ,static_main 
+                         ,static_main
                          ,return (Just dflt_config))
 {-# NOINLINE g_settings #-}
 
@@ -196,9 +196,9 @@ g_settings = unsafePerformIO $
 -- | default values to use if no ~/.yi/Config.hs is found
 --
 dflt_config :: Editor.Config
-dflt_config = Editor.Config { 
+dflt_config = Editor.Config {
         Editor.keymap = Vim.keymap,
-        Editor.style  = Style.ui 
+        Editor.style  = Style.ui
     }
 
 --
@@ -263,6 +263,6 @@ dynamic_main (st, Nothing, fn1, fn2) = do
     modifyIORef g_settings $ \(kb,_,_) -> (kb,fn1,fn2)
     static_main st          -- No prefs found, use defaults
 
-dynamic_main (st, Just cfg, fn1, fn2) = do 
+dynamic_main (st, Just cfg, fn1, fn2) = do
     writeIORef g_settings (cfg, fn1, fn2)
     static_main st

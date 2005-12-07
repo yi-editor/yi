@@ -26,14 +26,14 @@ import TestFramework
 getW :: IO [Int]
 getW = withWindow $ \w b -> do
         p <- pointB b
-        let q     = pnt w 
+        let q     = pnt w
             (i,j) = cursor w
             ln    = lineno w
             tp    = tospnt w
             tln   = toslineno w
         return (w, [p,q,i,j,ln,tp,tln])
 
-$(tests "core" [d| 
+$(tests "core" [d|
 
  testQuit = do
     v <- Control.Exception.catch
@@ -51,7 +51,7 @@ $(tests "core" [d|
    emptyE >> fnewE "data"
    topE
    v <- getW
-   downE 
+   downE
    u <- getW
    upE
    v' <- getW
@@ -78,7 +78,7 @@ $(tests "core" [d|
    u <- getW
    solE
    v' <- getW
-   eolE 
+   eolE
    u' <- getW
    assertEqual v v'
    assertEqual u u'
@@ -93,14 +93,14 @@ $(tests "core" [d|
    ws <- sequence [ do gotoLnE i
                        gotoLnFromE 2
                        i <- getW
-                       return (i !! 4) 
+                       return (i !! 4)
                   | i <- [1 .. 3925] ]
    assertEqual ([2..3925]++[3925]) ws
- 
+
  testGotoPointE = do
    emptyE >> fnewE "data"
    gotoPointE 100000
-   i <- getPointE 
+   i <- getPointE
    v <- getW
    assertEqual i 100000
    assertEqual [100000,100000,30,6,1501,97850,1471] v

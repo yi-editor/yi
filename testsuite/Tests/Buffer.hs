@@ -30,11 +30,11 @@ contents = unsafePerformIO $  do
 
 lendata = length contents
 
-str ="\n\nabc\n\ndef\n" 
+str ="\n\nabc\n\ndef\n"
 
 lenstr = length str
 
-$(tests "fastBuffer" [d| 
+$(tests "fastBuffer" [d|
 
  testElems = do
         b <- newB "testbuffer" contents :: IO FBuffer
@@ -80,7 +80,7 @@ $(tests "fastBuffer" [d|
  testLotsOfBuffers = do
         bs <- sequence [ hNewB "data" :: IO FBuffer
                        | x <- [1..10] ]   -- create a 1000 buffers
-        
+
         bs' <- mapM elemsB bs
 
         assertEqual (length . nub . sort $ map keyB bs) (length bs)
@@ -89,7 +89,7 @@ $(tests "fastBuffer" [d|
 
  testMoveTo = do
         b  <- hNewB "data" :: IO FBuffer
-        ps <- sequence [ moveTo b i >> pointB b >>= \j -> return (i,j) 
+        ps <- sequence [ moveTo b i >> pointB b >>= \j -> return (i,j)
                        | i <- [0 .. 4000] ]
         let (l1,l2) = unzip ps
         assertEqual l1 l2
@@ -109,7 +109,7 @@ $(tests "fastBuffer" [d|
         l <- pointB b
         rightN b 1000000  -- moving past end of buffer should only go to end
         m <- pointB b
-        s <- sizeB b 
+        s <- sizeB b
         leftN b 1000000
         n <- pointB b
         assertEqual i 1000
@@ -118,7 +118,7 @@ $(tests "fastBuffer" [d|
         assertEqual l 0
         assertEqual m (s-1)
         assertEqual n 0
-                    
+
  testRead = do
         b  <- hNewB "data" :: IO FBuffer
         c  <- readAtB b 1000
@@ -292,13 +292,13 @@ $(tests "fastBuffer" [d|
         impure <- sequence [ moveTo b i >> offsetFromSol b
                            | i <- [ 0 .. (lenstr - 1) ] ]
         assertEqual [0,0,0,1,2,3,0,0,1,2,3] impure
- 
+
  testIndexOfSol = do
         b <- newB "testbuffer" str :: IO FBuffer
         impure <- sequence [ moveTo b i >> indexOfSol b
                            | i <- [ 0 .. (lenstr - 1) ] ]
         assertEqual [0,1,2,2,2,2,6,7,7,7,7] impure
- 
+
  testIndexOfEol = do
         b <- newB "testbuffer" str :: IO FBuffer
         impure <- sequence [ moveTo b i >> indexOfEol b
@@ -388,7 +388,7 @@ $(tests "fastBuffer" [d|
  testSearch = do
         b <- newB "T" contents :: IO FBuffer
         let loop = do
-                r <- searchB b "Utopia" 
+                r <- searchB b "Utopia"
                 case r of
                         Nothing -> return []
                         Just i  -> do moveTo b (i+1)

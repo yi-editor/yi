@@ -1,21 +1,21 @@
--- 
+--
 -- Copyright (C) 2004 Don Stewart - http://www.cse.unsw.edu.au/~dons
--- 
+--
 -- This program is free software; you can redistribute it and/or
 -- modify it under the terms of the GNU General Public License as
 -- published by the Free Software Foundation; either version 2 of
 -- the License, or (at your option) any later version.
--- 
+--
 -- This program is distributed in the hope that it will be useful,
 -- but WITHOUT ANY WARRANTY; without even the implied warranty of
 -- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
 -- General Public License for more details.
--- 
+--
 -- You should have received a copy of the GNU General Public License
 -- along with this program; if not, write to the Free Software
 -- Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 -- 02111-1307, USA.
--- 
+--
 
 --
 -- | An interface to a one dimensional mutable 'Buffer', providing
@@ -147,7 +147,7 @@ class Buffer a where
 
     -- | Delete characters forwards to index
     -- deleteTo    :: a -> Int -> IO ()
-    
+
     -- | @deleteNAt b n p@ deletes @n@ characters at position @p@
     deleteNAt :: a -> Int -> Int -> IO ()
 
@@ -162,7 +162,7 @@ class Buffer a where
 
     -- | Required implementation of how to invert an action, for undo
     -- generates circular dependency between Undo.hs and Buffer.hs
-    getActionB  :: Buffer a => URAction -> (a -> IO URAction) 
+    getActionB  :: Buffer a => URAction -> (a -> IO URAction)
 
     ------------------------------------------------------------------------
     -- Line based editing
@@ -181,17 +181,17 @@ class Buffer a where
 
     -- | True if point is on last line of the file
     atLastLine  :: a -> IO Bool
-    
+
     -- | Move point to start of line
     moveToSol   :: a -> IO ()
 
     -- | Offset from start of line
     offsetFromSol :: a -> IO Int
 
-    -- | Index of start of line 
+    -- | Index of start of line
     indexOfSol    :: a -> IO Int
 
-    -- | Index of end of line 
+    -- | Index of end of line
     indexOfEol    :: a -> IO Int
 
     -- | Given a point, return the point of the next line down
@@ -209,7 +209,7 @@ class Buffer a where
     moveXorEol a x = moveAXuntil a rightB x atEol
 
     -- Move using the direction specified by the 2nd argument, until
-    -- either we've moved @n@, the 3rd argument, or @p@ the 4th argument 
+    -- either we've moved @n@, the 3rd argument, or @p@ the 4th argument
     -- is True
     moveAXuntil :: a -> (a -> IO ()) -> Int -> (a -> IO Bool) -> IO ()
 
@@ -242,7 +242,7 @@ class Buffer a where
     gotoLnFrom  :: a -> Int -> IO Int
 
     ---------------------------------------------------------------------
-   
+
     -- | Return index of next string in buffer that matches argument
     searchB      :: a -> [Char] -> IO (Maybe Int)
 

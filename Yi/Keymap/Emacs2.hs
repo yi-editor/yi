@@ -1,22 +1,22 @@
 {-# OPTIONS -fglasgow-exts #-}
--- 
+--
 -- Copyright (c) 2005 Jean-Philippe Bernardy
--- 
+--
 -- This program is free software; you can redistribute it and/or
 -- modify it under the terms of the GNU General Public License as
 -- published by the Free Software Foundation; either version 2 of
 -- the License, or (at your option) any later version.
--- 
+--
 -- This program is distributed in the hope that it will be useful,
 -- but WITHOUT ANY WARRANTY; without even the implied warranty of
 -- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
 -- General Public License for more details.
--- 
+--
 -- You should have received a copy of the GNU General Public License
 -- along with this program; if not, write to the Free Software
 -- Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 -- 02111-1307, USA.
--- 
+--
 
 
 
@@ -32,7 +32,7 @@ import Yi.Keymap.Emacs.KillRing
 import Yi.Keymap.Emacs.UnivArgument
 import Yi.Keymap.Emacs.Keys
 
-import Data.Char           
+import Data.Char
 import Data.Maybe
 import Data.List
 import Data.Dynamic
@@ -62,7 +62,7 @@ instance Initializable MiniBuf where
 
 -- * Keymaps (rebindings)
 
--- | The command type. 
+-- | The command type.
 
 type KProc a = StateT String (Writer [Action]) a
 
@@ -76,7 +76,7 @@ type KProc a = StateT String (Writer [Action]) a
 
 -- Ultimately, this should become:
 
---  [ ("C-x k", "killBuffer") 
+--  [ ("C-x k", "killBuffer")
 -- killBuffer would be looked up a la ghci. Then its type would be checked
 -- (Optional) arguments could then be handled dynamically depending on the type
 -- Action; Int -> Action; Region -> Action; types could be handled in a clever
@@ -84,7 +84,7 @@ type KProc a = StateT String (Writer [Action]) a
 
 -- And, rebinding could then be achieved :)
 
-normalKlist :: KList 
+normalKlist :: KList
 normalKlist = [ ([c], atomic $ insertSelf) | c <- printableChars ] ++
               [
         ("DEL",      atomic $ repeatingArg bdeleteE),
@@ -107,10 +107,10 @@ normalKlist = [ ([c], atomic $ insertSelf) | c <- printableChars ] ++
         ("C-q",      insertNextC),
 --      ("C-r",      atomic $ backwardsIncrementalSearchE),
 --      ("C-s",      atomic $ incrementalSearchE),
-        ("C-t",      atomic $ repeatingArg $ swapE),         
+        ("C-t",      atomic $ repeatingArg $ swapE),
         ("C-u",      readArgC),
-        ("C-v",      atomic $ scrollDownE),                    
-        ("C-w",      atomic $ killRegionE),                    
+        ("C-v",      atomic $ scrollDownE),
+        ("C-w",      atomic $ killRegionE),
         ("C-z",      atomic $ suspendE),
         ("C-x ^",    atomic $ repeatingArg enlargeWinE),
         ("C-x 1",    atomic $ closeOtherE),
@@ -125,7 +125,7 @@ normalKlist = [ ([c], atomic $ insertSelf) | c <- printableChars ] ++
 --      ("C-x r o",  atomic $ openRectE),
 --      ("C-x r t",  atomic $ stringRectE),
 --      ("C-x r y",  atomic $ yankRectE),
-        ("C-x u",    atomic $ repeatingArg undoE), 
+        ("C-x u",    atomic $ repeatingArg undoE),
         ("C-y",      atomic $ yankE),
         ("M-<",      atomic $ repeatingArg topE),
         ("M->",      atomic $ repeatingArg botE),
@@ -141,10 +141,10 @@ normalKlist = [ ([c], atomic $ insertSelf) | c <- printableChars ] ++
 --      ("M-k",      atomic $ repeatingArg killSentenceE),
         ("M-l",      atomic $ repeatingArg lowercaseWordE),
 --      ("M-t",      atomic $ repeatingArg transposeWordsE),
-        ("M-u",      atomic $ repeatingArg uppercaseWordE),         
-        ("M-w",      atomic $ killRingSaveE),         
---      ("M-x",      atomic $ executeExtendedCommandE),         
-        ("M-y",      atomic $ yankPopE),         
+        ("M-u",      atomic $ repeatingArg uppercaseWordE),
+        ("M-w",      atomic $ killRingSaveE),
+--      ("M-x",      atomic $ executeExtendedCommandE),
+        ("M-y",      atomic $ yankPopE),
         ("<left>",   atomic $ repeatingArg leftE),
         ("<right>",  atomic $ repeatingArg rightE),
         ("<up>",     atomic $ repeatingArg upE),
@@ -174,10 +174,10 @@ putInput = modify . const
 readStroke, lookStroke :: KProc Char
 readStroke = do (c:cs) <- getInput
                 putInput cs
-                return c 
+                return c
 
 lookStroke = do (c:_) <- getInput
-                return c 
+                return c
 
 
 -- * Code for various commands
@@ -191,15 +191,15 @@ insertSelf = repeatingArg $ do TypedKey k <- getDynamic
                                insertNE k
 
 insertNextC :: KProc ()
-insertNextC = do c <- readStroke 
+insertNextC = do c <- readStroke
                  liftC $ repeatingArg $ insertE c
 
 
-     
+
 -- | Complain about undefined key
 undefC :: Action
-undefC = do TypedKey k <- getDynamic 
-            errorE $ "Key sequence not defined : " ++ 
+undefC = do TypedKey k <- getDynamic
+            errorE $ "Key sequence not defined : " ++
                   showKey k ++ " " ++ show (map ord k)
 
 
@@ -214,7 +214,7 @@ readArg' acc = do
      then (do { readStroke
               ; let acc' = Just $ 10 * (fromMaybe 0 acc) + (ord c - ord '0')
               ; liftC $ do TypedKey k <- getDynamic
-                           msgE (showKey k ++ show (fromJust $ acc')) 
+                           msgE (showKey k ++ show (fromJust $ acc'))
               ; readArg' acc'
              }
           )
@@ -230,14 +230,14 @@ readArg' acc = do
 -- hide modeline
 
 spawnMinibuffer :: String -> KList -> Action
-spawnMinibuffer _prompt klist = 
+spawnMinibuffer _prompt klist =
     do MiniBuf w _b <- getDynamic
        setWinE w
        metaM (fromKProc $ makeKeymap klist)
 
 rebind :: KList -> String -> KProc () -> KList
 rebind kl k kp = M.toList $ M.insert k kp $ M.fromList kl
-         
+
 findFile :: Action
 findFile = spawnMinibuffer "find file:" (rebind normalKlist "C-j" (liftC loadFile))
 
@@ -247,11 +247,11 @@ loadFile :: Action
 loadFile = do filename <- liftM init readAllE  -- problems if more than 1 line, of course
               closeE
               msgE $ "loading " ++ filename
-              fnewE filename 
+              fnewE filename
 
 scrollDownE :: Action
 scrollDownE = withUnivArg $ \a ->
-              case a of 
+              case a of
                  Nothing -> downScreenE
                  Just n -> replicateM_ n downE
 
@@ -267,23 +267,23 @@ type KListEnt = ([Char], KProc ())
 type KList = [KListEnt]
 
 -- | Create a binding processor from 'kmap'.
-makeKeymap :: KList -> KProc ()              
+makeKeymap :: KList -> KProc ()
 makeKeymap kmap = do getActions "" (buildKeymap kmap)
                      makeKeymap kmap
 
-getActions :: String -> KM -> KProc ()   
+getActions :: String -> KM -> KProc ()
 getActions k fm = do
     c <- readStroke
     let k' = k ++ [c]
     liftC $ setDynamic $ TypedKey k'
-    case fromMaybe (KMECommand $ liftC undefC) (M.lookup c fm) of 
+    case fromMaybe (KMECommand $ liftC undefC) (M.lookup c fm) of
         KMECommand m -> do liftC $ msgE ""
                            m
         KMESubmap sfm -> do liftC $ msgE (showKey k' ++ "-")
                             getActions k' sfm
 
 
--- | Builds a keymap (Yi.Map.Map) from a key binding list, also creating 
+-- | Builds a keymap (Yi.Map.Map) from a key binding list, also creating
 -- submaps from key sequences.
 buildKeymap :: KList -> KM
 buildKeymap l = buildKeymap' M.empty [(readKey k, c) | (k,c) <- l]
@@ -293,8 +293,8 @@ buildKeymap' fm_ l =
     foldl addKey fm_ [(k, KMECommand c) | (k,c) <- l]
     where
         addKey fm (c:[], a) = M.insert c a fm
-        addKey fm (c:cs, a) = 
-            flip (M.insert c) fm $ KMESubmap $ 
+        addKey fm (c:cs, a) =
+            flip (M.insert c) fm $ KMESubmap $
                 case M.lookup c fm of
                     Nothing             -> addKey M.empty (cs, a)
                     Just (KMESubmap sm) -> addKey sm (cs, a)

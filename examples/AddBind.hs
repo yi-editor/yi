@@ -11,11 +11,11 @@ module Config where
 import Yi.Yi
 import qualified Yi.Keymap.Vi as Vi
 
-yi = settings { 
+yi = settings {
         keymap = Vi.keymapPlus fn,
         style  = ui { modeline_focused = Style blue darkBlue }
      }
 
-fn = char 'n' 
+fn = char 'n'
     `action` \_ -> Just $ mapM_ insertE "yi rules"
 

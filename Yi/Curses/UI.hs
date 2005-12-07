@@ -2,24 +2,24 @@
 
 #include "config.h"
 
--- 
+--
 -- Copyright (C) 2004-5 Don Stewart - http://www.cse.unsw.edu.au/~dons
--- 
+--
 -- This program is free software; you can redistribute it and/or
 -- modify it under the terms of the GNU General Public License as
 -- published by the Free Software Foundation; either version 2 of
 -- the License, or (at your option) any later version.
--- 
+--
 -- This program is distributed in the hope that it will be useful,
 -- but WITHOUT ANY WARRANTY; without even the implied warranty of
 -- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
 -- General Public License for more details.
--- 
+--
 -- You should have received a copy of the GNU General Public License
 -- along with this program; if not, write to the Free Software
 -- Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 -- 02111-1307, USA.
--- 
+--
 -- Derived from: riot/UI.hs
 --
 --      Copyright (c) Tuomo Valkonen 2004.
@@ -28,7 +28,7 @@
 --
 
 --
--- | This module defines a user interface implemented using ncurses. 
+-- | This module defines a user interface implemented using ncurses.
 --
 -- TODO The user interface abstractions should try to be general enough to
 -- permit multiple user interfaces without changin UI.foo calls in
@@ -37,8 +37,8 @@
 
 module Yi.Curses.UI (
 
-        -- * UI initialisation 
-        start, end, suspend, 
+        -- * UI initialisation
+        start, end, suspend,
         initcolours,
         screenSize,
 
@@ -124,14 +124,14 @@ screenSize = Curses.scrSize
 getKey :: IO () -> IO Char
 getKey refresh_fn = do
     k <- Curses.getCh
-    if k == Curses.keyResize 
+    if k == Curses.keyResize
         then do
 #ifndef SIGWINCH
               refresh_fn
 #endif
               getKey refresh_fn
         else return k
- 
+
 --
 -- | Redraw the entire terminal from the UI state
 -- Optimised.
@@ -145,7 +145,7 @@ getKey refresh_fn = do
 --
 redraw :: IO ()
 redraw = withEditor $ \e ->
-    
+
     case getWindows e     of { ws  ->
     case cmdline e        of { cl  ->
     case cmdlinefocus e   of { cmdfoc ->
@@ -187,15 +187,15 @@ redraw = withEditor $ \e ->
 -- will have to be broken up, dropping some off the end. The cursor
 -- will have to be recalculated too.
 --
-drawWindow :: Editor 
+drawWindow :: Editor
            -> Maybe Window
            -> UIStyle
-           -> Window 
+           -> Window
            -> IO ()
 
-drawWindow e mwin sty win = 
+drawWindow e mwin sty win =
 
-    case win of { Window {bufkey=u, mode=m, height=h, width=w, tospnt=t} -> 
+    case win of { Window {bufkey=u, mode=m, height=h, width=w, tospnt=t} ->
     case window sty of { wsty ->
     case eof    sty of { eofsty -> do
     case findBufferWith e u of { b -> do
@@ -213,7 +213,7 @@ drawWindow e mwin sty win =
     --
     -- `len' is number of chars in the line -- not the screen width.
     -- so `w' is wrong in the presence of tabs.
-    -- 
+    --
     -- need a function that takes the desired width, and tells us how
     -- many real chars to take.
     --
@@ -229,14 +229,14 @@ drawWindow e mwin sty win =
             waddch Curses.stdScr (fromIntegral $ ord '\n') -- no nl at eof.  better flush
         (y',_) <- getYX Curses.stdScr
         let diff = h - off - (y' - y)
-        if windowfill e /= ' ' 
+        if windowfill e /= ' '
             then mapM_ (drawLine w) $ take diff $ repeat [windowfill e]
             else Curses.wMove Curses.stdScr (y' + diff) 0 -- just move the cursor
 
     -- draw modeline
     when (not $ isNothing m) $ do
         fn <- return $! case mwin of
-                Just win' | win' == win -> modeline_focused 
+                Just win' | win' == win -> modeline_focused
                 _         -> modeline
         withStyle (fn sty) $! drawLine w (fromJust m)
 
@@ -303,7 +303,7 @@ setAttribute (a, p) = Curses.wAttrSet Curses.stdScr (a, p)
 --
 reset :: IO ()
 reset = setAttribute (Curses.attr0, Curses.Pair 0)
-    
+
 --
 -- | redraw and refresh the screen
 --
@@ -339,9 +339,9 @@ withStyle sty fn = uiAttr sty >>= setAttribute >> fn >> reset
 --
 initUiColors :: UIStyle -> IO [((Curses.Color, Curses.Color), Pair)]
 initUiColors (UIStyle {
-                 window=wn, 
-                 modeline_focused=mlf, 
-                 modeline=ml, 
+                 window=wn,
+                 modeline_focused=mlf,
+                 modeline=ml,
                  eof=ef }) =
     mapM (uncurry fn) (zip [wn, mlf, ml, ef] [1..])
     where
@@ -349,7 +349,7 @@ initUiColors (UIStyle {
         fn sty p = do let (fg,bg) = style2curses sty
                           (_,fgc) = fg2attr fg
                           (_,bgc) = bg2attr bg
-                      handle (\_ -> return ()) $ 
+                      handle (\_ -> return ()) $
                            initPair (Pair p) fgc bgc
                       return ((fgc,bgc), (Pair p))
 
@@ -501,7 +501,7 @@ data BackgroundColor
     | WhiteB
     | DefaultB
 
--- 
+--
 -- | Map Style rgb rgb colours to ncurses pairs
 -- TODO a generic way to turn an rgb into the nearest curses color
 --

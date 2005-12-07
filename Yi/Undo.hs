@@ -1,28 +1,28 @@
--- 
+--
 -- Copyright (c) 2004 Don Stewart - http://www.cse.unsw.edu.au/~dons
--- 
+--
 -- This program is free software; you can redistribute it and/or
 -- modify it under the terms of the GNU General Public License as
 -- published by the Free Software Foundation; either version 2 of
 -- the License, or (at your option) any later version.
--- 
+--
 -- This program is distributed in the hope that it will be useful,
 -- but WITHOUT ANY WARRANTY; without even the implied warranty of
 -- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
 -- General Public License for more details.
--- 
+--
 -- You should have received a copy of the GNU General Public License
 -- along with this program; if not, write to the Free Software
 -- Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 -- 02111-1307, USA.
--- 
+--
 
 --
 -- | An implementation of restricted, linear undo, as described in:
 --
 -- >    T. Berlage, "A selective undo mechanism for graphical user interfaces
 -- >    based on command objects", ACM Transactions on Computer-Human
--- >    Interaction 1(3), pp. 269-294, 1994.          
+-- >    Interaction 1(3), pp. 269-294, 1994.
 --
 -- Implementation based on a proposal by sjw.
 --
@@ -62,7 +62,7 @@
 
 module Yi.Undo (
         emptyUR,
-        addUR, 
+        addUR,
         undoUR,
         redoUR,
         isEmptyUList,
@@ -83,7 +83,7 @@ import Foreign.ForeignPtr       ( ForeignPtr )
 data URList = URList ![URAction] ![URAction]
 
 --
--- | Mutation actions (from the undo or redo list) 
+-- | Mutation actions (from the undo or redo list)
 --
 -- We use the /partial checkpoint/ (Berlage, pg16) strategy to store
 -- just the components of the state that change.
@@ -105,7 +105,7 @@ emptyUR = URList [] []
 -- According to the restricted, linear undo model, if we add a command
 -- whilst the redo list is not empty, we will lose our redoable changes.
 addUR :: URList -> URAction -> URList
-addUR (URList us _rs) u = 
+addUR (URList us _rs) u =
     URList (u:us) []
 
 --

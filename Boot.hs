@@ -1,22 +1,22 @@
 {-# OPTIONS -fglasgow-exts -cpp #-}
--- 
+--
 -- Copyright (c) 2004 Don Stewart - http://www.cse.unsw.edu.au/~dons
--- 
+--
 -- This program is free software; you can redistribute it and/or
 -- modify it under the terms of the GNU General Public License as
 -- published by the Free Software Foundation; either version 2 of
 -- the License, or (at your option) any later version.
--- 
+--
 -- This program is distributed in the hope that it will be useful,
 -- but WITHOUT ANY WARRANTY; without even the implied warranty of
 -- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
 -- General Public License for more details.
--- 
+--
 -- You should have received a copy of the GNU General Public License
 -- along with this program; if not, write to the Free Software
 -- Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 -- 02111-1307, USA.
--- 
+--
 
 --
 -- | Boot loader for yi.
@@ -113,7 +113,7 @@ g_yi_main_mod = unsafePerformIO $ newIORef (error "no Yi.o loaded yet")
 --
 get_home :: IO String
 #ifndef NO_POSIX
-get_home = Control.Exception.catch 
+get_home = Control.Exception.catch
         (getRealUserID >>= getUserEntryForID >>= (return . homeDirectory))
         (\_ -> getEnv "HOME")
 #else
@@ -165,7 +165,7 @@ doArgs argv = case getOpt Permute options argv of
 compile :: FilePath -> IO (Maybe FilePath)
 compile src = do
     build_dir <- get_config_dir
-    old_pwd   <- getCurrentDirectory 
+    old_pwd   <- getCurrentDirectory
     setCurrentDirectory build_dir
 
     flags  <- get_make_flags
@@ -175,7 +175,7 @@ compile src = do
 
     case status of
         MakeSuccess _ obj -> return $ Just obj
-        MakeFailure errs  -> do 
+        MakeFailure errs  -> do
             putStrLn "Errors in config file, using defaults"
             mapM_ putStrLn errs
             return Nothing
@@ -201,7 +201,7 @@ packages = [ "yi" ]
 get_make_flags :: IO [String]
 get_make_flags = do libpath <- readIORef libdir
                     return $! concatMap (f libpath) packages
-    where 
+    where
         f l p = ["-package-conf", l </> p <.> "conf", "-package", p]
 
 get_load_flags :: IO [String]
@@ -215,10 +215,10 @@ load_config :: Maybe FilePath -> IO (Maybe Module, Maybe a)
 load_config m_obj = do
     paths   <- get_load_flags
     libpath <- readIORef libdir
-    d       <- get_config_dir          
+    d       <- get_config_dir
     case m_obj of
         Nothing  -> return (Nothing,Nothing)
-        Just obj -> do 
+        Just obj -> do
            status <- load obj [d,libpath] paths config_sym
            case status of
                 LoadSuccess m v -> return $ (Just m, Just v)
@@ -240,12 +240,12 @@ load_config m_obj = do
 main :: IO ()
 main = do
     -- look for -B libdir flag
-    argv <- getArgs              
-    let mlib = doArgs argv 
+    argv <- getArgs
+    let mlib = doArgs argv
     when (isJust mlib) $ writeIORef libdir (fromJust mlib)
 
     -- check if ~/.yi/ exists
-    d        <- get_config_dir          
+    d        <- get_config_dir
     d_exists <- doesDirectoryExist d
     when (not d_exists) $ createDirectory d
 
@@ -253,10 +253,10 @@ main = do
     paths    <- get_load_flags
 
     -- look for ~/.yi/Config.hs
-    c        <- get_config_file 
+    c        <- get_config_file
     c_exists <- doesFileExist c
     m_obj    <- if c_exists then compile c else return Nothing
- 
+
     -- now load user's Config.o if we have it
     (mmod, cfghdl) <- load_config m_obj
 
@@ -290,7 +290,7 @@ remain st = do
     libpath <- readIORef libdir
     paths   <- get_load_flags
     status  <- load (libpath </> yi_main_obj) [] paths yi_main_sym
- 
+
     yi_main <- case status of
         LoadSuccess m v -> do writeIORef g_yi_main_mod m
                               return v
@@ -301,7 +301,7 @@ remain st = do
     -- reload config data. !! crucial this comes after we reload HSyi.o,
     -- so that we link against the new version of the lib
     cfghdl <- reconf
-    
+
     yi_main (st, cfghdl, remain, reconf)   -- jump to dynamic code
 
 -- ---------------------------------------------------------------------
@@ -311,7 +311,7 @@ reconf :: IO (Maybe a)
 reconf = do
 
     -- try to recompile
-    c        <- get_config_file 
+    c        <- get_config_file
     c_exists <- doesFileExist c
     m_obj    <- if c_exists then compile c else return Nothing
 
@@ -323,7 +323,7 @@ reconf = do
             case status of
                 LoadSuccess m' v -> return (Just m', Just v)
                 LoadFailure _    -> return (Nothing, Nothing)
-            
+
         Nothing -> load_config m_obj
 
     writeIORef g_cfg_mod mmod

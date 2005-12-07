@@ -1,26 +1,26 @@
 {-# OPTIONS -fglasgow-exts -#include YiUtils.h #-}
 -- -fglasgow-exts for deriving Typeable
--- 
+--
 -- Copyright (c) Tuomo Valkonen 2004.
 -- Copyright (c) Don Stewart 2004-5. http://www.cse.unsw.edu.au/~dons
--- 
+--
 -- This program is free software; you can redistribute it and/or
 -- modify it under the terms of the GNU General Public License as
 -- published by the Free Software Foundation; either version 2 of
 -- the License, or (at your option) any later version.
--- 
+--
 -- This program is distributed in the hope that it will be useful,
 -- but WITHOUT ANY WARRANTY; without even the implied warranty of
 -- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
 -- General Public License for more details.
--- 
+--
 -- You should have received a copy of the GNU General Public License
 -- along with this program; if not, write to the Free Software
 -- Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 -- 02111-1307, USA.
--- 
+--
 -- Derived from: riot/UI.hs
--- 
+--
 
 --
 -- | The core actions of yi. This module is the link between the editor
@@ -144,8 +144,8 @@ module Yi.Core (
         getRegexE,      -- :: IO (Maybe SearchExp)
 
         -- * Marks
-        setMarkE,        
-        getMarkE,       
+        setMarkE,
+        getMarkE,
         exchangePointAndMarkE,
 
         -- * Dynamically extensible state
@@ -158,7 +158,7 @@ module Yi.Core (
         SearchMatch,
         SearchExp,
         searchAndRepLocal,  -- :: String -> String -> IO Bool
-        searchE,            -- :: (Maybe String) -> [SearchF] 
+        searchE,            -- :: (Maybe String) -> [SearchF]
                             -- -> (() -> Either () ()) -> Action
         searchInitE,        -- :: String
                             -- -> [SearchF]
@@ -190,7 +190,7 @@ import qualified Yi.Editor as Editor
 
 import Data.Maybe
 import Data.Char            ( isLatin1 )
-import Data.Dynamic         
+import Data.Dynamic
 
 
 import System.IO            ( hClose )
@@ -210,10 +210,10 @@ import qualified Yi.Curses.UI as UI
 -- | Start up the editor, setting any state with the user preferences
 -- and file names passed in, and turning on the UI
 --
-startE :: Maybe Editor 
-       -> (Editor.Config, (Maybe Editor) -> IO (), IO (Maybe Editor.Config) ) 
-       -> Int 
-       -> Maybe [FilePath] 
+startE :: Maybe Editor
+       -> (Editor.Config, (Maybe Editor) -> IO (), IO (Maybe Editor.Config) )
+       -> Int
+       -> Maybe [FilePath]
        -> IO ()
 
 startE st (confs,fn,fn') ln mfs = do
@@ -238,7 +238,7 @@ startE st (confs,fn,fn') ln mfs = do
             case mfs of
                 Just fs -> mapM_ fnewE fs
                 Nothing -> do               -- vi-like behaviour, just for now.
-                    mf <- mkstemp "/tmp/yi.XXXXXXXXXX" 
+                    mf <- mkstemp "/tmp/yi.XXXXXXXXXX"
                     case mf of
                         Nothing    -> error "Core.startE: mkstemp failed"
                         Just (f,h) -> hClose h >> fnewE f
@@ -246,7 +246,7 @@ startE st (confs,fn,fn') ln mfs = do
 
     -- fork input-reading thread. important to block *thread* on getcE
     -- otherwise all threads will block waiting for input
-    ch <- newChan   
+    ch <- newChan
     t' <- forkIO $ getcLoop ch
     modifyEditor_ $ \e -> return $ e { threads = t' : threads e, input = ch }
 
@@ -266,9 +266,9 @@ startE st (confs,fn,fn') ln mfs = do
         -- resized, and take the opportunity to refresh.
         --
         refreshLoop :: IO ()
-        refreshLoop = repeatM_ $ do 
+        refreshLoop = repeatM_ $ do
                         takeMVar editorModified
-                        handleJust ioErrors (errorE.show) UI.refresh 
+                        handleJust ioErrors (errorE.show) UI.refresh
 
 -- ---------------------------------------------------------------------
 -- | @emptyE@ and @runE@ are for automated testing purposes. The former
@@ -296,13 +296,13 @@ runE = undefined
 getcE :: IO Char
 getcE = UI.getKey refreshE -- only used if we don't have sigwinch
 
--- 
+--
 -- | The editor main loop. Read key strokes from the ui and interpret
 -- them using the current key map. Keys are bound to core actions.
 --
 eventLoop :: IO ()
 eventLoop = do
-    fn <- Editor.getKeyBinds 
+    fn <- Editor.getKeyBinds
     ch <- readEditor input
     let run km = catchDyn (sequence_ . km =<< getChanContents ch)
                           (\(MetaActionException km') -> run km')
@@ -430,14 +430,14 @@ upScreenE :: Action
 upScreenE = do
     (Just w) <- getWindow
     withWindow_ (gotoLnFromW (- (height w - 1)))
-    solE 
+    solE
 
 -- | Scroll up n screens
 upScreensE :: Int -> Action
 upScreensE n = do
     (Just w) <- getWindow
     withWindow_ (gotoLnFromW (- (n * (height w - 1))))
-    solE 
+    solE
 
 -- | Scroll down 1 screen
 downScreenE :: Action
@@ -544,7 +544,7 @@ killE = withWindow_ deleteToEolW -- >>= Buffer.prevXorLn 1
 -- | Delete an arbitrary part of the buffer
 deleteRegionE :: (Int,Int) -> IO ()
 deleteRegionE (from,to) = withWindow_ $ \w b -> do
-    deleteNAtW  w b (to-from) from    
+    deleteNAtW  w b (to-from) from
 
 -- | Read the char under the cursor
 readE :: IO Char
@@ -557,7 +557,7 @@ readRegionE (from,to) = readNM from to
 -- | Read the line the cursor is on
 readLnE :: IO String
 readLnE = withWindow $ \w b -> do
-    i <- indexOfSol b 
+    i <- indexOfSol b
     j <- indexOfEol b
     s <- nelemsB b (j-i) i
     return (w,s)
@@ -586,7 +586,7 @@ writeE :: Char -> Action
 writeE c = withWindow_ $ \w b -> do
             case c of
                 '\r' -> writeB b '\n'
-                _ | isLatin1 c -> writeB b c 
+                _ | isLatin1 c -> writeB b c
                   | otherwise  -> nopE          -- TODO
             return w
 
@@ -649,7 +649,7 @@ exchangePointAndMarkE = do m <- getMarkE
 -- they generate themselves, and can be stored internally.
 --
 -- The `dynamic' field is a type-indexed map.
--- 
+--
 
 -- | Retrieve the extensible state
 {-
@@ -677,7 +677,7 @@ getDynamic = getDynamic' (undefined :: a)
 
 -- | Insert a value into the extensible state, keyed by its type
 setDynamic :: Typeable a => a -> Action
-setDynamic x = modifyEditor_ $ \e -> 
+setDynamic x = modifyEditor_ $ \e ->
         return e { dynamic = M.insert (show $ typeOf x) (toDyn x) (dynamic e) }
 
 -- ---------------------------------------------------------------------
@@ -695,7 +695,7 @@ setRegexE re = modifyEditor_ $ \e -> return e { regex = Just re }
 -- Return contents of regex register
 getRegexE :: IO (Maybe SearchExp)
 getRegexE = readEditor regex
- 
+
 -- ---------------------------------------------------------------------
 --
 -- | Global searching. Search for regex and move point to that position.
@@ -729,7 +729,7 @@ searchE :: (Maybe String)       -- ^ @Nothing@ means used previous
         -> (() -> Either () ()) -- ^ @Left@ means backwards, @Right@ means forward
         -> Action
 
-searchE s fs d = 
+searchE s fs d =
      case s of
         Just re -> searchInitE re fs >>= (flip searchDoE) d >>= f
         Nothing -> do
@@ -864,16 +864,16 @@ errorE s = modifyEditor_ $ \e -> return e { cmdline = s }
 
 -- | Clear the message line at bottom of screen
 msgClrE :: Action
-msgClrE = modifyEditor_ $ \e -> return e { cmdline = [] } 
+msgClrE = modifyEditor_ $ \e -> return e { cmdline = [] }
 
 -- | Get the current cmd buffer
 getMsgE :: IO String
-getMsgE = readEditor cmdline 
+getMsgE = readEditor cmdline
 
 -- ---------------------------------------------------------------------
 -- Buffer operations
 
--- | File info, size in chars, line no, col num, char num, percent 
+-- | File info, size in chars, line no, col num, char num, percent
 -- TODO more info, better data structure
 bufInfoE :: IO (FilePath, Int, Int, Int, Int, String)
 bufInfoE = withWindow $ \w b -> do
@@ -881,10 +881,10 @@ bufInfoE = withWindow $ \w b -> do
     p <- pointB b
     let x = snd $ cursor w
     return (w, ( nameB b,
-                 s, 
-                 lineno w, 
-                 x+1, 
-                 p, 
+                 s,
+                 lineno w,
+                 x+1,
+                 p,
                  getPercent p s) )
 
 -- | Maybe a file associated with this buffer
@@ -934,7 +934,7 @@ fnewE f = do
     w <- newWindow b
     Editor.setWindow w
 
--- | Like fnewE, create a new buffer filled with the String @s@, 
+-- | Like fnewE, create a new buffer filled with the String @s@,
 -- Open up a new window onto this buffer. Doesn't associated any file
 -- with the buffer (unlike fnewE) and so is good for popup internal
 -- buffers (like scratch or minibuffer)
@@ -1022,7 +1022,7 @@ splitE = do
         then errorE "Not enough room to split"
         else do
     mw <- getWindow
-    case mw of 
+    case mw of
         Nothing -> nopE
         Just w  -> do b <- getBufferWith (bufkey w)
                       w' <- newWindow b
@@ -1036,11 +1036,11 @@ enlargeWinE = getWindow >>= enlargeWindow
 shrinkWinE :: Action
 shrinkWinE = getWindow >>= shrinkWindow
 
--- | Close the current window. 
+-- | Close the current window.
 -- If this is the last window open, quit the program. TODO this
 -- behaviour may be undesirable
 closeE :: Action
-closeE = do 
+closeE = do
         deleteThisWindow
         i <- sizeWindows
         when (i == 0) quitE

@@ -1,21 +1,21 @@
--- 
+--
 -- Copyright (c) 2004 Don Stewart - http://www.cse.unsw.edu.au/~dons
--- 
+--
 -- This program is free software; you can redistribute it and/or
 -- modify it under the terms of the GNU General Public License as
 -- published by the Free Software Foundation; either version 2 of
 -- the License, or (at your option) any later version.
--- 
+--
 -- This program is distributed in the hope that it will be useful,
 -- but WITHOUT ANY WARRANTY; without even the implied warranty of
 -- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
 -- General Public License for more details.
--- 
+--
 -- You should have received a copy of the GNU General Public License
 -- along with this program; if not, write to the Free Software
 -- Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 -- 02111-1307, USA.
--- 
+--
 
 --
 -- | Colors and friends.
@@ -35,8 +35,8 @@ module Yi.Style (
 --
 -- | The UI type
 --
-data UIStyle = 
-    UIStyle { 
+data UIStyle =
+    UIStyle {
         window           :: Style    -- ^ window fg and bg (ignore for now)
        ,modeline         :: Style    -- ^ out of focus modeline colours
        ,modeline_focused :: Style    -- ^ in focus modeline
@@ -50,11 +50,11 @@ data UIStyle =
 ui :: UIStyle
 ui = UIStyle {
          window             = Style Default      Default
-        ,modeline           = Style black        darkCyan 
-        ,modeline_focused   = Style brightWhite  darkCyan 
+        ,modeline           = Style black        darkCyan
+        ,modeline_focused   = Style brightWhite  darkCyan
         ,eof                = Style darkBlue     Default
 --      ,error_messages     = Style BrightWhiteF DarkRed
-     } 
+     }
 
 --
 -- | Foreground and background color pairs
@@ -86,7 +86,7 @@ darkBlue    = RGB (0,0,139)
 blue        = RGB (0,0,255)
 purple      = RGB (128,0,128)
 magenta     = RGB (255,0,255)
-darkCyan    = RGB (0,139,139) 
+darkCyan    = RGB (0,139,139)
 cyan        = RGB (0,255,255)
 white       = RGB (165,165,165)
 brightWhite = RGB (255,255,255)

@@ -1,4 +1,4 @@
--- 
+--
 -- Copyright (C) 2004-5 Don Stewart - http://www.cse.unsw.edu.au/~dons
 --               2004 Tuomo Valkonen
 --
@@ -6,17 +6,17 @@
 -- modify it under the terms of the GNU General Public License as
 -- published by the Free Software Foundation; either version 2 of
 -- the License, or (at your option) any later version.
--- 
+--
 -- This program is distributed in the hope that it will be useful,
 -- but WITHOUT ANY WARRANTY; without even the implied warranty of
 -- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
 -- General Public License for more details.
--- 
+--
 -- You should have received a copy of the GNU General Public License
 -- along with this program; if not, write to the Free Software
 -- Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 -- 02111-1307, USA.
--- 
+--
 
 --
 -- | Char-based movement actions.
@@ -131,7 +131,7 @@ isNonWord = isSpace
 skipWordE :: Action
 skipWordE = doSkipCond rightE readE atEolE isNonWord
 
--- | Backwards skip to next whitespace or non-whitespace inversely 
+-- | Backwards skip to next whitespace or non-whitespace inversely
 -- depending on the character before point.
 bskipWordE :: Action
 bskipWordE = doSkipCond leftE breadE atSolE isNonWord
@@ -189,7 +189,7 @@ firstNonSpaceE :: Action
 firstNonSpaceE = do
     withWindow_ $ \w b -> do
         moveToSol b
-        fix $ \loop -> do 
+        fix $ \loop -> do
             eol <- atEol b
             if eol then return ()
                    else do k <- readB b
@@ -282,11 +282,11 @@ readWordLeftE = withWindow $ \w b -> readWordLeft_ w b >>= \s -> return (w,s)
 readWordLeft_ :: Window -> FBuffer -> IO (String,Int,Int)
 readWordLeft_ w b = do
     p <- pointB b
-    c <- readB b 
+    c <- readB b
     when (not $ isAlphaNum c) $ leftB b
     moveWhile_ isAlphaNum Left w b
     sof <- atSof b
-    c'  <- readB b 
+    c'  <- readB b
     when (not sof || not (isAlphaNum c')) $ rightB b
     q <- pointB b
     s <- nelemsB b (p-q) q
@@ -332,13 +332,13 @@ withPointE f = do p <- getPointE
 readWord_ :: Window -> FBuffer -> IO (String,Int,Int)
 readWord_ w b = do
     p <- pointB b
-    c <- readB b 
-    if not (isAlphaNum c) then leftB b 
+    c <- readB b
+    if not (isAlphaNum c) then leftB b
                           else moveWhile_ isAlphaNum Right w b >> leftB b
     y <- pointB b   -- end point
     moveWhile_ isAlphaNum Left w b
     sof <- atSof b
-    c'  <- readB b 
+    c'  <- readB b
     when (not sof || not (isAlphaNum c')) $ rightB b
     x <- pointB b
     s <- nelemsB b (y-x+1) x
@@ -387,16 +387,16 @@ wordCompleteE = do
             p  <- pointB buf
             moveTo buf (n+1)        -- start where we left off
             doloop p win buf (w,fm)
-    loop win buf Nothing = do 
+    loop win buf Nothing = do
             p  <- pointB buf
-            (w,_,_) <- readWordLeft_ win buf 
+            (w,_,_) <- readWordLeft_ win buf
             rightB buf  -- start past point
             doloop p win buf (w,M.singleton w ())
 
     --
     -- actually do the search, and analyse the result
     --
-    doloop :: Int -> Window -> FBuffer -> (String,M.Map String ()) 
+    doloop :: Int -> Window -> FBuffer -> (String,M.Map String ())
            -> IO (Maybe Completion)
 
     doloop p win buf (w,fm) = do
@@ -404,7 +404,7 @@ wordCompleteE = do
             moveTo buf p
             (_,j,_) <- readWord_ win buf
             case m' of
-                Just (s,i) 
+                Just (s,i)
                     | j == i                -- seen entire file
                     -> do replaceLeftWith win buf w
                           return Nothing
@@ -437,9 +437,9 @@ wordCompleteE = do
         let re = ("( |\t|\n|\r|^)"++w)
         re_c <- regcomp re regExtended
         mi   <- regexB b re_c
-        case mi of 
+        case mi of
             Nothing -> return Nothing
-            Just (i,j) -> do 
+            Just (i,j) -> do
                 c <- readAtB b i
                 let i' = if i == 0 && isAlphaNum c then 0 else i+1 -- for the space
                 moveTo b i'

@@ -1,21 +1,21 @@
--- 
+--
 -- Copyright (c) 2004 Don Stewart - http://www.cse.unsw.edu.au/~dons
--- 
+--
 -- This program is free software; you can redistribute it and/or
 -- modify it under the terms of the GNU General Public License as
 -- published by the Free Software Foundation; either version 2 of
 -- the License, or (at your option) any later version.
--- 
+--
 -- This program is distributed in the hope that it will be useful,
 -- but WITHOUT ANY WARRANTY; without even the implied warranty of
 -- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
 -- General Public License for more details.
--- 
+--
 -- You should have received a copy of the GNU General Public License
 -- along with this program; if not, write to the Free Software
 -- Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 -- 02111-1307, USA.
--- 
+--
 
 --
 -- | Vi keymap for Yi.
@@ -41,8 +41,8 @@ import Control.Exception    ( ioErrors, catchJust, try, evaluate )
 
 -- ---------------------------------------------------------------------
 
--- A vi mode is a lexer that returns a core Action. 
-type ViMode = Lexer  ViState Action 
+-- A vi mode is a lexer that returns a core Action.
+type ViMode = Lexer  ViState Action
 type ViRegex = Regexp ViState Action
 
 --
@@ -52,7 +52,7 @@ type ViRegex = Regexp ViState Action
 -- carry around the current cmd and insert lexers in the state. Calls to
 -- switch editor modes therefore use the lexers in the state.
 --
-data ViState = 
+data ViState =
         St { acc :: [Char]           -- an accumulator, for count, search and ex mode
            , hist:: ([String],Int)   -- ex-mode command history
            , cmd :: ViMode          -- (maybe augmented) cmd mode lexer
@@ -67,7 +67,7 @@ data ViState =
 --
 keymap :: [Char] -> [Action]
 keymap cs = setWindowFillE '~' : actions
-    where 
+    where
         (actions,_,_) = execLexer cmd_mode (cs, defaultSt)
 
 -- | default lexer state, just the normal cmd and insert mode. no mappings
@@ -78,7 +78,7 @@ defaultSt = St { acc = [], hist = ([],0), cmd = cmd_mode, ins = ins_mode }
 -- existing lexer. Useful for user-added binds (to command mode only!)
 keymapPlus :: ViMode -> [Char] -> [Action]
 keymapPlus lexer' cs = actions
-    where 
+    where
         actions = let (ts,_,_) = execLexer cmd_mode' (cs, dfltSt) in ts
         cmd_mode'= cmd_mode >||< lexer'
         dfltSt = St { acc = [], hist = ([],0), cmd = cmd_mode', ins = ins_mode }
@@ -116,7 +116,7 @@ ex_mode = ex_char >||< ex_edit >||< ex_hist >||< ex_eval >||< ex2cmd
 ------------------------------------------------------------------------
 -- util
 
--- 
+--
 -- lookup an fm, getting an action otherwise nopE, and apply it to an
 -- integer repetition argument.
 --
@@ -153,14 +153,14 @@ lex_count = digit
 --
 cmd_move :: ViMode
 cmd_move = (move_chr >|< (move2chrs +> anyButEsc))
-    `meta` \cs st@St{acc=cnt} -> 
+    `meta` \cs st@St{acc=cnt} ->
         (with (msgClrE >> (fn cs cnt)), st{acc=[]}, Just $ cmd st)
 
     where move_chr  = alt $ M.keys moveCmdFM
           move2chrs = alt $ M.keys move2CmdFM
           fn cs cnt  = case cs of
                          -- 'G' command needs to know Nothing count
-                        "G" -> case listToMInt cnt of 
+                        "G" -> case listToMInt cnt of
                                         Nothing -> botE >> solE
                                         Just n  -> gotoLnE n
 
@@ -248,18 +248,18 @@ cmd_eval = (cmd_char >|<
            (char 'r' +> anyButEscOrDel) >|<
            (string ">>" >|< string "<<" >|< string "ZZ" ))
 
-    `meta` \lexeme st@St{acc=count} -> 
+    `meta` \lexeme st@St{acc=count} ->
         let i  = toInt count
             fn = case lexeme of
                     "ZZ"    -> viWrite >> quitE
                     -- todo: fix the unnec. refreshes that happen
-                    ">>"    -> do replicateM_ i $ solE >> mapM_ insertE "    " 
+                    ">>"    -> do replicateM_ i $ solE >> mapM_ insertE "    "
                                   firstNonSpaceE
                     "<<"    -> do solE
                                   replicateM_ i $
                                     replicateM_ 4 $
-                                        readE >>= \k -> 
-                                            when (isSpace k) deleteE 
+                                        readE >>= \k ->
+                                            when (isSpace k) deleteE
                                   firstNonSpaceE
 
                     'r':[x] -> writeE x
@@ -328,7 +328,7 @@ cmd_op :: ViMode
 cmd_op =((op_char +> digit `star` (move_chr >|< (move2chrs +> anyButEsc))) >|<
          (string "dd" >|< string "yy"))
 
-    `meta` \lexeme st@St{acc=count} -> 
+    `meta` \lexeme st@St{acc=count} ->
         let i  = toInt count
             fn = getCmd lexeme i
         in (with (msgClrE >> fn), st{acc=[]}, Just $ cmd st)
@@ -352,7 +352,7 @@ cmd_op =((op_char +> digit `star` (move_chr >|< (move2chrs +> anyButEsc))) >|<
 
         -- | operator (i.e. movement-parameterised) actions
         opCmdFM :: M.Map Char (Int -> [Char] -> Action)
-        opCmdFM = M.fromList $ 
+        opCmdFM = M.fromList $
             [('d', \i m -> replicateM_ i $ do
                               (p,q) <- withPointMove m
                               deleteNE (max 0 (abs (q - p) + 1))  -- inclusive
@@ -361,14 +361,14 @@ cmd_op =((op_char +> digit `star` (move_chr >|< (move2chrs +> anyButEsc))) >|<
                               s <- (if p < q then readNM p q else readNM q p)
                               setRegE s -- ToDo registers not global.
              )
-            ,('~', const invertCase) -- not right. 
+            ,('~', const invertCase) -- not right.
             ]
 
         -- invert the case of range described by movement @m@
         -- could take 90s on a 64M file.
-        invertCase m = do 
+        invertCase m = do
             (p,q) <- withPointMove m
-            mapRangeE (min p q) (max p q) $ \c -> 
+            mapRangeE (min p q) (max p q) $ \c ->
                 if isUpper c then toLower c else toUpper c
 
         --
@@ -386,8 +386,8 @@ cmd_op =((op_char +> digit `star` (move_chr >|< (move2chrs +> anyButEsc))) >|<
         --
         -- lookup movement command to perform .. ToDo should be (cmd st)?
         --
-        getMove cs = let (as,_,_) = execLexer (cmd_move >||< lex_count) 
-                                              (cs, defaultSt) 
+        getMove cs = let (as,_,_) = execLexer (cmd_move >||< lex_count)
+                                              (cs, defaultSt)
                      in as
 
 --
@@ -398,7 +398,7 @@ cmd_op =((op_char +> digit `star` (move_chr >|< (move2chrs +> anyButEsc))) >|<
 --
 cmd2other :: ViMode
 cmd2other = modeSwitchChar
-    `meta` \[c] st -> 
+    `meta` \[c] st ->
         let beginIns a = (with a, st, Just (ins st))
         in case c of
             ':' -> (with (msgE ":"), st{acc=[':']}, Just ex_mode)
@@ -425,7 +425,7 @@ cmd2other = modeSwitchChar
 
 -- ---------------------------------------------------------------------
 -- | vi insert mode
--- 
+--
 ins_char :: ViMode
 ins_char = anyButEsc
     `action` \[c] -> Just (fn c)
@@ -449,7 +449,7 @@ ins2cmd  = char '\ESC' `meta` \_ st -> (with (leftOrSolE 1), st, Just $ cmd st)
 --  you type.  If there is no character to delete (at the end of the line), the
 --  typed character is appended (as in Insert mode).  Thus the number of
 --  characters in a line stays the same until you get to the end of the line.
---  If a <NL> is typed, a line break is inserted and no character is deleted. 
+--  If a <NL> is typed, a line break is inserted and no character is deleted.
 --
 -- ToDo implement the undo features
 --
@@ -458,11 +458,11 @@ rep_char :: ViMode
 rep_char = anyButEsc
     `action` \[c] -> Just (fn c)
     where fn c = case c of
-                    k | isDel k       -> leftE >> deleteE 
+                    k | isDel k       -> leftE >> deleteE
                       | k == keyPPage -> upScreenE
                       | k == keyNPage -> downScreenE
                     '\t' -> mapM_ insertE "    " -- XXX
-                    '\r' -> insertE '\n' 
+                    '\r' -> insertE '\n'
                     _ -> do e <- atEolE
                             if e then insertE c else writeE c >> rightE
 
@@ -485,17 +485,17 @@ ex_char = anyButDelNlArrow
 -- TODO when you go up, then down, you need 2 keypresses to go up again.
 ex_hist :: ViMode
 ex_hist = arrow
-    `meta` \[key] st@St{hist=(h,i)} -> 
+    `meta` \[key] st@St{hist=(h,i)} ->
                 let (s,i') = msg key (h,i)
                 in (with (msgE s),st{acc=reverse s,hist=(h,i')}, Just ex_mode)
     where
         msg :: Char -> ([String],Int) -> (String,Int)
         msg key (h,i) = case () of {_
                 | null h         -> (":",0)
-                | key == keyUp   -> if i < length h - 1 
+                | key == keyUp   -> if i < length h - 1
                                     then (h !! i, i+1)
                                     else (last h, length h - 1)
-                | key == keyDown -> if i > 0 
+                | key == keyDown -> if i > 0
                                     then (h !! i, i-1)
                                     else (head h, 0)
                 | otherwise      -> error "ex_hist: the impossible happened"
@@ -506,7 +506,7 @@ ex_hist = arrow
 -- line editing
 ex_edit :: ViMode
 ex_edit = delete
-    `meta` \_ st -> 
+    `meta` \_ st ->
         let cs' = case acc st of [c]    -> [c]
                                  (_:xs) -> xs
                                  []     -> [':'] -- can't happen
@@ -522,7 +522,7 @@ ex2cmd = char '\ESC'
 --
 ex_eval :: ViMode
 ex_eval = enter
-    `meta` \_ st@St{acc=dmc} -> 
+    `meta` \_ st@St{acc=dmc} ->
         let c  = reverse dmc
             h  = (c:(fst $ hist st), snd $ hist st) in case c of
         -- regex searching
@@ -530,13 +530,13 @@ ex_eval = enter
                      ,st{acc=[],hist=h},Just $ cmd st)
 
         -- add mapping to command mode
-        (_:'m':'a':'p':' ':cs) -> 
+        (_:'m':'a':'p':' ':cs) ->
                let pair = break (== ' ') cs
                    cmd' = uncurry (eval_map st (Left $ cmd st)) pair
                in (with msgClrE, st{acc=[],hist=h,cmd=cmd'}, Just cmd')
 
         -- add mapping to insert mode
-        (_:'m':'a':'p':'!':' ':cs) -> 
+        (_:'m':'a':'p':'!':' ':cs) ->
                let pair = break (== ' ') cs
                    ins' = uncurry (eval_map st (Right $ ins st)) pair
                in (with msgClrE, st{acc=[],hist=h,ins=ins'}, Just (cmd st))
@@ -557,18 +557,18 @@ ex_eval = enter
         -- can't happen, but deal with it
         [] -> (Nothing, st{acc=[], hist=h}, Just $ cmd st)
 
-    where 
+    where
       fn ""           = msgClrE
 
-      fn s@(c:_) | isDigit c = do 
+      fn s@(c:_) | isDigit c = do
         e <- try $ evaluate $ read s
         case e of Left _ -> errorE $ "The " ++show s++ " command is unknown."
                   Right lineNum -> gotoLnE lineNum
 
       fn "w"          = viWrite
       fn ('w':' ':f)  = viWriteTo f
-      fn "q"          = do 
-            b <- isUnchangedE 
+      fn "q"          = do
+            b <- isUnchangedE
             if b then closeE
                  else errorE $ "File modified since last complete write; "++
                                "write or use ! to override."
@@ -624,7 +624,7 @@ eval_unmap emode lhs = mode >||< bind
         bind     = case as of
                     [] -> string lhs `action` \_ -> Just nopE -- wasn't bound prior
                     [a]-> string lhs `action` \_ -> Just a    -- bound to just one
-                    _  -> string lhs `action` \_ -> Just nopE 
+                    _  -> string lhs `action` \_ -> Just nopE
                             -- components of the command were bound. too hard
 
 ------------------------------------------------------------------------
@@ -636,7 +636,7 @@ not_implemented c = errorE $ "Not implemented: " ++ show c
 -- Misc functions
 
 viFileInfo :: Action
-viFileInfo = do (f,_,ln,_,_,pct) <- bufInfoE 
+viFileInfo = do (f,_,ln,_,_,pct) <- bufInfoE
                 msgE $ show f ++ " Line " ++ show ln ++ " ["++ pct ++"]"
 
 -- | Try to write a file in the manner of vi
@@ -647,7 +647,7 @@ viWrite = do
     case mf of
         Nothing ->errorE "No file name associated with this buffer"
         Just f  -> do
-            (_,s,_,_,_,_) <- bufInfoE 
+            (_,s,_,_,_,_) <- bufInfoE
             let msg = msgE $ show f++" "++show s ++ "C written"
             catchJust ioErrors (fwriteE >> msg) (msgE . show)
 
@@ -655,7 +655,7 @@ viWrite = do
 viWriteTo :: String -> Action
 viWriteTo f = do
     let f' = (takeWhile (/= ' ') . dropWhile (== ' ')) f
-    (_,s,_,_,_,_) <- bufInfoE 
+    (_,s,_,_,_,_) <- bufInfoE
     let msg = msgE $ show f'++" "++show s ++ "C written"
     catchJust ioErrors (fwriteToE f' >> msg) (msgE . show)
 
@@ -672,21 +672,21 @@ viSub cs = do
         []    -> do_single pat rep
         ['g'] -> do_single pat rep
         _     -> do_single pat rep-- TODO
- 
-    where do_single p r = do 
+
+    where do_single p r = do
                 s <- searchAndRepLocal p r
                 if not s then errorE ("Pattern not found: "++p) else msgClrE
 
 {-
           -- inefficient. we recompile the regex each time.
           -- stupido
-          do_line   p r = do 
+          do_line   p r = do
                 let loop i = do s <- searchAndRepLocal p r
                                 if s then loop (i+1) else return i
                 s <- loop (0 :: Int)
                 if s == 0 then msgE ("Pattern not found: "++p) else msgClrE
 -}
-  
+
 -- ---------------------------------------------------------------------
 -- | Handle delete chars in a string
 --

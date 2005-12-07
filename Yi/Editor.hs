@@ -1,21 +1,21 @@
--- 
+--
 -- Copyright (c) 2004-5 Don Stewart - http://www.cse.unsw.edu.au/~dons
--- 
+--
 -- This program is free software; you can redistribute it and/or
 -- modify it under the terms of the GNU General Public License as
 -- published by the Free Software Foundation; either version 2 of
 -- the License, or (at your option) any later version.
--- 
+--
 -- This program is distributed in the hope that it will be useful,
 -- but WITHOUT ANY WARRANTY; without even the implied warranty of
 -- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
 -- General Public License for more details.
--- 
+--
 -- You should have received a copy of the GNU General Public License
 -- along with this program; if not, write to the Free Software
 -- Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 -- 02111-1307, USA.
--- 
+--
 
 --
 -- | The top level editor state, and operations on it.
@@ -57,7 +57,7 @@ data Editor = Editor {
        ,threads         :: [ThreadId]                 -- ^ all our threads
        ,reboot          :: (Maybe Editor) -> IO ()    -- ^ our reboot function
        ,reload          :: IO (Maybe Config)          -- ^ reload config function
-       ,dynamic         :: !(M.Map String Dynamic)    -- ^ dynamic components 
+       ,dynamic         :: !(M.Map String Dynamic)    -- ^ dynamic components
 
        ,cmdline         :: !String                    -- ^ the command line
        ,cmdlinefocus    :: !Bool                      -- ^ cmdline has focus
@@ -74,7 +74,7 @@ data Editor = Editor {
 --
 emptyEditor :: Editor
 emptyEditor = Editor {
-        buffers      = M.empty 
+        buffers      = M.empty
        ,windows      = M.empty
        ,cmdline      = []
        ,cmdlinefocus = False
@@ -112,9 +112,9 @@ editorModified = unsafePerformIO $ newMVar ()
 
 -- ---------------------------------------------------------------------
 
--- 
+--
 -- | Read the editor state, with a pure action
--- 
+--
 readEditor :: (Editor -> b) -> IO b
 readEditor f = withMVar state $ \ref -> return . f =<< readIORef ref
 
@@ -153,7 +153,7 @@ modifyEditor f = do
 -- | Create a new buffer filling with contents of file.
 --
 hNewBuffer :: FilePath -> IO FBuffer
-hNewBuffer f = 
+hNewBuffer f =
     modifyEditor $ \e@(Editor{buffers=bs}) -> do
         b <- hNewB f
         let e' = e { buffers = M.insert (keyB b) b bs } :: Editor
@@ -182,14 +182,14 @@ getBuffers = readEditor $ M.elems . buffers
 --
 -- | get the number of buffers we have
 --
-sizeBuffers :: IO Int                        
+sizeBuffers :: IO Int
 sizeBuffers = readEditor $ \e -> M.size (buffers (e :: Editor))
 
 --
 -- | Find buffer with this key
--- 
+--
 findBufferWith :: Editor -> Unique -> FBuffer
-findBufferWith e k = 
+findBufferWith e k =
     case M.lookup k (buffers e) of
         Just b  -> b
         Nothing -> error "Editor.findBufferWith: no buffer has this key"
@@ -198,7 +198,7 @@ findBufferWith e k =
 findBufferWithName :: Editor -> String -> [FBuffer]
 findBufferWithName e n = filter (\b -> nameB b == n) (M.elems $ buffers e)
 
--- 
+--
 -- | Find the buffer connected to this window
 --
 win2buf :: Window -> Editor -> FBuffer
@@ -249,7 +249,7 @@ newWindow b = modifyEditor $ \e -> do
         (y,r) = getY h (1 + (length wls))   -- should be h-1..
     wls' <- resizeAll e wls y w
     wls''<- if null wls' then return wls' else turnOnML e wls'
-    win  <- emptyWindow b (y+r,w) 
+    win  <- emptyWindow b (y+r,w)
     win' <- if null wls then return win else liftM head $ turnOnML e [win]
     let e' = e { windows = M.fromList $ mkAssoc (win':wls'') }
     return (e', win')
@@ -274,9 +274,9 @@ enlargeWindow (Just win) = modifyEditor_ $ \e -> do
             case getWinWithHeight wls i 1 (> 2) of
                 Nothing -> return e    -- give up
                 Just winnext -> do {
-    ;win'     <- resize (height win + 1)     x win (win2buf win e) 
+    ;win'     <- resize (height win + 1)     x win (win2buf win e)
     ;winnext' <- resize (height winnext -1)  x winnext (win2buf winnext e)
-    ;return $ e { windows = (M.insert (key winnext') winnext' $ 
+    ;return $ e { windows = (M.insert (key winnext') winnext' $
                               M.insert (key win') win' $ windows e) }
     }
 
@@ -295,9 +295,9 @@ shrinkWindow (Just win) = modifyEditor_ $ \e -> do
             case getWinWithHeight wls i 1 (< (maxy - (2 * length wls))) of
                 Nothing -> return e    -- give up
                 Just winnext -> do {
-    ;win'     <- resize (height win - 1)      x win     (win2buf win e) 
+    ;win'     <- resize (height win - 1)      x win     (win2buf win e)
     ;winnext' <- resize (height winnext + 1)  x winnext (win2buf winnext e)
-    ;return $ e { windows = (M.insert (key winnext') winnext' $ 
+    ;return $ e { windows = (M.insert (key winnext') winnext' $
                               M.insert (key win') win' $ windows e) }
     }
 
@@ -306,15 +306,15 @@ shrinkWindow (Just win) = modifyEditor_ $ \e -> do
 getWinWithHeight :: [Window] -> Int -> Int -> (Int -> Bool) -> Maybe Window
 getWinWithHeight wls i n p
    | n > length wls = Nothing
-   | otherwise      
+   | otherwise
    = let w = wls !! ((abs (i - n)) `mod` (length wls))
-     in if p (height w) 
+     in if p (height w)
                 then Just w
                 else getWinWithHeight wls i (n+1) p
 
 ------------------------------------------------------------------------
 -- | Delete the focused window
--- 
+--
 deleteThisWindow :: IO ()
 deleteThisWindow = getWindow >>= deleteWindow
 
@@ -355,7 +355,7 @@ deleteWindow' e win = do
     wls' <- resizeAll e wls y x -- now resize
 
     -- now switch focus to a random window
-    case wls' of   
+    case wls' of
         []       -> return e { windows = M.empty }
         (win':xs) -> do
             let fm = M.fromList $ mkAssoc wls'
@@ -368,7 +368,7 @@ deleteWindow' e win = do
 
 -- | Update height of windows in window set
 resizeAll :: Editor -> [Window] -> Int -> Int -> IO [Window]
-resizeAll e wls y x = flip mapM wls (\w -> 
+resizeAll e wls y x = flip mapM wls (\w ->
                             resize y x w $ findBufferWith e (bufkey w))
 
 -- | Reset the heights and widths of all the windows
@@ -378,7 +378,7 @@ doResizeAll sz@(h,w) = modifyEditor_ $ \e -> do
         (y,r) = getY h (length wls) -- why -1?
 
     wls'  <- mapM (doresize e w y) (init wls)
-    wls'' <- let win = last wls 
+    wls'' <- let win = last wls
              in doresize e w (y+r-1) win >>= \w' -> return (w' : wls')
 
     return e { scrsize = sz, windows = M.fromList $ mkAssoc wls'' }
@@ -428,7 +428,7 @@ getWindowOf e = case curwin e of
 -- | Get index of current window in window list
 --
 getWindowIndOf :: Editor -> (Maybe Int)
-getWindowIndOf e = case curwin e of    
+getWindowIndOf e = case curwin e of
         Nothing -> Nothing
         k       -> let win = findWindowWith e k
                    in elemIndex win (M.elems $ windows e)
@@ -436,7 +436,7 @@ getWindowIndOf e = case curwin e of
 --
 -- | Set current window
 -- !! reset the buffer point from the window point
--- 
+--
 -- Factor in shift focus.
 --
 setWindow :: Window -> IO ()
@@ -455,7 +455,7 @@ setWindow' e w = do
     let fm = windows e
     let b  = findBufferWith e (bufkey w)
     w' <- resetPoint w b
-    return $ e { windows = M.insert (key w') w' fm, curwin = Just $ key w' } 
+    return $ e { windows = M.insert (key w') w' fm, curwin = Just $ key w' }
 
 --
 -- | How many windows do we have
@@ -468,7 +468,7 @@ sizeWindows = readEditor $ \e -> length $ M.elems (windows e)
 --
 findWindowWith :: Editor -> (Maybe Unique) -> Window
 findWindowWith _ Nothing  = error "Editor: no key"
-findWindowWith e (Just k) = 
+findWindowWith e (Just k) =
     case M.lookup k (windows e) of
             Just w  -> w
             Nothing -> error "Editor: no window has this key"
@@ -532,17 +532,17 @@ shiftFocus f = modifyEditor_ $ \e -> do
         win = findWindowWith e k
     case elemIndex win ws of
         Nothing -> error "Editor: current window has been lost."
-        Just i -> let w = ws !! ((f i) `mod` (length ws)) 
+        Just i -> let w = ws !! ((f i) `mod` (length ws))
                   in (setWindow' e w :: IO Editor)
 
 -- ---------------------------------------------------------------------
 -- | Given a keymap function, set the user-defineable key map to that function
 --
 setUserSettings :: Config -> (Maybe Editor -> IO ()) -> IO (Maybe Config) -> IO ()
-setUserSettings (Config km sty) fn fn' = 
-    modifyEditor_ $ \e -> 
-        return $ (e { curkeymap = km, 
-                     uistyle    = sty, 
+setUserSettings (Config km sty) fn fn' =
+    modifyEditor_ $ \e ->
+        return $ (e { curkeymap = km,
+                     uistyle    = sty,
                      reboot     = fn,
                      reload     = fn' } :: Editor)
 

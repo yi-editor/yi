@@ -49,7 +49,7 @@ foreign import ccall unsafe "YiUtils.h strlenWithExpandedLengthN"
 
 ------------------------------------------------------------------------
 
-$(tests "cbits" [d| 
+$(tests "cbits" [d|
 
  testCountLines = do
         b  <- hNewB "data" :: IO FBuffer
@@ -97,7 +97,7 @@ $(tests "cbits" [d|
         b <- hNewB "data" :: IO FBuffer
 
         -- distance from each point back to start of line
-        let pure  = [ - (fromMaybe i $ findIndex (== '\n') (reverse (take i contents))) 
+        let pure  = [ - (fromMaybe i $ findIndex (== '\n') (reverse (take i contents)))
                     | i <- [ 0,1024 .. lendata -1 ] ]
 
         -- now see if the fast version matches
@@ -110,7 +110,7 @@ $(tests "cbits" [d|
         assertEqual pure impure
 
  testExpandedLengthOfStr = do
-        let s = "\t\n.\t\n..\t\n...\t\n....\t\n.....\t\n......\t\n.......\t\n........\t\n" 
+        let s = "\t\n.\t\n..\t\n...\t\n....\t\n.....\t\n......\t\n.......\t\n........\t\n"
         b <- newB "testbuffer" s :: IO FBuffer
         let lns  = 0 : (init . map (+1) . (findIndices (== '\n')) $ s)
         let (FBuffer { rawbuf = mv }) = b
@@ -119,7 +119,7 @@ $(tests "cbits" [d|
         assertEqual [8,7,6,5,4,3,2,1,8] impure
 
  testStrlenWithExpandedLengthN = do
-        let s = "\t\n.\t\n..\t\n...\t\n....\t\n.....\t\n......\t\n.......\t\n........\t\n" 
+        let s = "\t\n.\t\n..\t\n...\t\n....\t\n.....\t\n......\t\n.......\t\n........\t\n"
         b <- newB "testbuffer" s :: IO FBuffer
         let lns  = 0 : (init . map (+1) . (findIndices (== '\n')) $ s)
         let (FBuffer { rawbuf = mv }) = b
@@ -128,4 +128,4 @@ $(tests "cbits" [d|
         assertEqual [1,2,3,4,5,6,7,8,8] impure
 
  |])
-    
+

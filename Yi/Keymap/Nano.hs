@@ -1,21 +1,21 @@
--- 
+--
 -- Copyright (c) 2004 Don Stewart - http://www.cse.unsw.edu.au/~dons
--- 
+--
 -- This program is free software; you can redistribute it and/or
 -- modify it under the terms of the GNU General Public License as
 -- published by the Free Software Foundation; either version 2 of
 -- the License, or (at your option) any later version.
--- 
+--
 -- This program is distributed in the hope that it will be useful,
 -- but WITHOUT ANY WARRANTY; without even the implied warranty of
 -- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
 -- General Public License for more details.
--- 
+--
 -- You should have received a copy of the GNU General Public License
 -- along with this program; if not, write to the Free Software
 -- Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 -- 02111-1307, USA.
--- 
+--
 
 --
 -- | An emulation of the Nano editor
@@ -40,7 +40,7 @@ import Control.Exception    ( ioErrors, catchJust, try, evaluate )
 --
 keymap :: [Char] -> [Action]
 keymap cs = actions
-    where 
+    where
         (actions,_,_) = execLexer nano_km (cs, Nothing)
 
 --
@@ -104,7 +104,7 @@ insChar = anyButCmdChar
         anyButCmdChar = alt $ '\r' : map chr [32 .. 126]
 
 --
--- | Command chars run actions. 
+-- | Command chars run actions.
 --
 cmdChar :: NanoMode
 cmdChar = nanoCmdChar
@@ -155,7 +155,7 @@ cmdCharFM = M.fromList $
     ,(keyRight,     rightE)
     ,(keyUp,        upE)
     ,('\^G',        msgE "nano-yi : yi emulating nano")
-    ,('\^I',       (do (_,s,ln,x,p,pct) <- bufInfoE 
+    ,('\^I',       (do (_,s,ln,x,p,pct) <- bufInfoE
                        msgE $ "[ line "++show ln++", col "++show x++
                               ", char "++show p++"/"++show s++" ("++pct++") ]"))
     ]
@@ -181,7 +181,7 @@ cmdCharFM = M.fromList $
 -- keymap specified by the third argument.
 --
 askYN ::  Action -> Action -> ([Char] -> [Action]) -> ([Char] -> [Action])
-askYN y_act n_act cont = 
+askYN y_act n_act cont =
     \cs -> let (actions,_,_) = execLexer ync_mode (cs, Nothing) in actions
 
     where
@@ -220,7 +220,7 @@ askYN y_act n_act cont =
 -- Meta-actions return a triple containing maybe an action to perform
 -- /right now/, a modified state, and the lexer to continue parsing
 -- with.
--- 
+--
 -- Since we're going to edit the command buffer, which is still a
 -- slighly buffer magic (unfortunately) we need to explicitly switch
 -- focus.
@@ -275,9 +275,9 @@ searchChar = char '\^W'
         -- generate a new keymap lexer, beginning in echo_km mode, with
         -- state initalised with the prompt we created from 'getRegexE'.
         --
-        mkKM p cs = 
-            let (as,_,_) = execLexer (echo_km >||< search_km) 
-                                     (cs, Just ('\^W',p,[], Only search_km)) 
+        mkKM p cs =
+            let (as,_,_) = execLexer (echo_km >||< search_km)
+                                     (cs, Just ('\^W',p,[], Only search_km))
             in as
 
 --
@@ -286,7 +286,7 @@ searchChar = char '\^W'
 -- back to normal mode.
 --
 -- ^G Get Help ^Y First Line  ^R Replace     M-C Case Sens  M-R Regexp
--- ^C Cancel   ^V Last Line   ^T Go To Line  M-B Direction  Up History 
+-- ^C Cancel   ^V Last Line   ^T Go To Line  M-B Direction  Up History
 --
 -- We augment the echo keymap with the following bindings, by passing
 -- them in the @OnlyMode@ field of the lexer state. The echo keymap the
@@ -312,7 +312,7 @@ search_km = srch_g >||< srch_y >||< srch_v >||< srch_t >||< srch_c >||< srch_r
     -- Up
 
     -- do 'a' and return to the normal mode
-    c `andthen` a = 
+    c `andthen` a =
         c `meta` \_ _ -> (Just (Right (a>>cmdlineUnFocusE)),Nothing,Just nano_km)
 
 ------------------------------------------------------------------------
@@ -327,7 +327,7 @@ search_km = srch_g >||< srch_y >||< srch_v >||< srch_t >||< srch_c >||< srch_r
 --
 echoAccum  :: NanoMode
 echoAccum = anyButDelOrEnter
-    `meta` \[c] (Just (k,p,f,Only m)) -> 
+    `meta` \[c] (Just (k,p,f,Only m)) ->
                     (Just (Right (doEcho p f c))  -- echo char
                     ,Just (k,p,c:f,Only m)             -- accum filename in state
                     ,Just (echo_km >||< m))       -- and stay in this mode
@@ -378,11 +378,11 @@ echoEval = enter
 --
 echoCharFM :: M.Map Char ((String -> Action), String)
 echoCharFM = M.fromList $
-    [('\^O',     
-     (\f -> if f == [] 
+    [('\^O',
+     (\f -> if f == []
             then nopE
-            else catchJust ioErrors (do fwriteToE f ; msgE "Wrote current file.") 
-                                    (msgE . show) 
+            else catchJust ioErrors (do fwriteToE f ; msgE "Wrote current file.")
+                                    (msgE . show)
      ,"File Name to Write: "))
 
     ,('\^_',
@@ -390,7 +390,7 @@ echoCharFM = M.fromList $
                case e of Left _   -> errorE "[ Come on, be reasonable ]"
                          Right ln -> gotoLnE ln >> solE >> msgClrE
      ,"Enter line number: "))
-    
+
     ,('\^W',
      (\p -> case p of [] -> searchE Nothing  [] Right
                       _  -> searchE (Just p) [] Right

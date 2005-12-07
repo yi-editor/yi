@@ -1,21 +1,21 @@
--- 
+--
 -- Copyright (c) 2004-5 Don Stewart - http://www.cse.unsw.edu.au/~dons
--- 
+--
 -- This program is free software; you can redistribute it and/or
 -- modify it under the terms of the GNU General Public License as
 -- published by the Free Software Foundation; either version 2 of
 -- the License, or (at your option) any later version.
--- 
+--
 -- This program is distributed in the hope that it will be useful,
 -- but WITHOUT ANY WARRANTY; without even the implied warranty of
 -- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
 -- General Public License for more details.
--- 
+--
 -- You should have received a copy of the GNU General Public License
 -- along with this program; if not, write to the Free Software
 -- Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 -- 02111-1307, USA.
--- 
+--
 
 --
 -- | A 'Window' is a rectangular view onto a buffer. Editor actions
@@ -34,16 +34,16 @@ import Data.Unique              ( Unique, newUnique )
 import Control.Monad            ( when )
 
 --
--- | A window onto a buffer. 
+-- | A window onto a buffer.
 --
 -- Windows need some small information about the terminal. For example,
 -- they need to know the height and width.  That's about it.
 --
 -- This doesn't handle line wrapping, yet.
 --
-data Window = 
+data Window =
     Window {
-        key         :: !Unique         -- ^ each window has a unique 
+        key         :: !Unique         -- ^ each window has a unique
        ,bufkey      :: !Unique         -- ^ the buffer this window opens to
        ,mode        :: !(Maybe String) -- ^ this window's modeline
        ,height      :: !Int            -- ^ height of this window
@@ -114,9 +114,9 @@ updateModeLine w' b = do
     let pct = if top == 1 then "Top" else getPercent p s
 
     case flip replicate ' ' (16 - length cols - length pct) of { spc' ->
-    case flip replicate ' ' (width w' - (3 + sum 
+    case flip replicate ' ' (width w' - (3 + sum
                 (map length [f,lns,cols,pct,spc']))) of { spaces ->
-    return $ Just $ "\"" ++ f ++ "\"" ++ spaces ++ 
+    return $ Just $ "\"" ++ f ++ "\"" ++ spaces ++
                     lns ++ "," ++ cols ++ spc' ++ pct
     }}
 
@@ -148,7 +148,7 @@ moveUpW w b | lineno w == 1 = return w
 --
 moveDownW :: Buffer a => Window -> a -> IO Window
 moveDownW w b = do
-    ll <- atLastLine b 
+    ll <- atLastLine b
     if ll then return w      -- eof, go no further
           else lineDown b >> incY w b >>= flip update b
 
@@ -163,7 +163,7 @@ moveToW np w b = do
     newln <- curLn b
     let gap = newln - toslineno w
         off   = if mode w == Nothing then 0 else 1
-    case () of {_ 
+    case () of {_
         | gap < height w - off - 1 && newln >= toslineno w -- still on the screen
         -> resetW w b newln (newln - toslineno w)
 
@@ -175,8 +175,8 @@ moveToW np w b = do
 -- gotoLn is (fast as possible) an O(n) op atm.
 --
 gotoLnW :: Buffer a => Int -> Window -> a -> IO Window
-gotoLnW n w b = do 
-    ln <- gotoLn b n 
+gotoLnW n w b = do
+    ln <- gotoLn b n
     resetW w b ln (min (ln-1) ((height w) `div` 2))
 
 --
@@ -194,7 +194,7 @@ gotoLnFromW n w b = do
 --
 resetW :: Buffer a => Window -> a -> Int -> Int -> IO Window
 resetW w b ln gap = do
-    p  <- pointB b      -- see where it actually got placed 
+    p  <- pointB b      -- see where it actually got placed
     x  <- offsetFromSol b
     tw <- expandedTabLengthB b 8        -- hard coded for now
     let topln = ln - gap
@@ -272,16 +272,16 @@ insertNW cs w b = do
 -- | Delete character. Don't move point unless at EOF
 --
 -- In vi, you can't delete past the sol, here however, you can keep
--- deleteing till you have an empty file. 
+-- deleteing till you have an empty file.
 --
 -- TODO think about end of file situation.
--- 
+--
 deleteNW :: Buffer a => Window -> a -> Int -> IO Window
-deleteNW w b i = do 
+deleteNW w b i = do
 
     -- delete up to eof chars
     when (i > 1) $ do
-        rightB b 
+        rightB b
         deleteN b (i-1)
         eof <- atEof b
         when (not eof) $ leftB b
@@ -310,7 +310,7 @@ deleteToEolW w b = do
     noNl <- noNLatEof b  -- and no \n at eol
     deleteToEol b
     if noNl && sol && not sof
-        then moveToEolW w b >>= flip decY b 
+        then moveToEolW w b >>= flip decY b
         else update w b
 
 ------------------------------------------------------------------------
@@ -336,7 +336,7 @@ decY w b = do
     p <- pointB b           -- current point
     x <- offsetFromSol b    -- x offset
     tw <- expandedTabLengthB b 8
-    let (y,_) = cursor w 
+    let (y,_) = cursor w
         curln = lineno w
         topln = toslineno w
         w' = w { lineno = curln-1 }
@@ -350,13 +350,13 @@ decY w b = do
 --
 incY :: Buffer a => Window -> a -> IO Window
 incY w@(Window {height=h}) b = do
-   let (y,x) = cursor w 
+   let (y,x) = cursor w
        curln = lineno w
        topln = toslineno w
        w'    = w { lineno = curln+1 }
        off   = if mode w == Nothing then 0 else 1
    t <- indexOfNLFrom b (tospnt w)
-   return $ if curln - topln < h - off - 1   
+   return $ if curln - topln < h - off - 1
             then w' { cursor = (y+1,x) }                  -- just move cursor
             else w' { toslineno = topln + 1, tospnt = t } -- scroll window
 
@@ -406,8 +406,8 @@ resize y x w b = do
                 x'<- offsetFromSol b
                 tw<- expandedTabLengthB b 8
                 i <- indexOfSolAbove b gap
-                return w' { toslineno = topln', 
-                            tospnt = i, 
+                return w' { toslineno = topln',
+                            tospnt = i,
                             cursor = (gap,max x (x' + tw)) } -- ok ?
         else return w'
 
@@ -418,14 +418,14 @@ resize y x w b = do
 --
 -- code duplicated in moveToW
 --
-resetPoint :: Buffer a => Window -> a -> IO Window 
+resetPoint :: Buffer a => Window -> a -> IO Window
 resetPoint w b = do
     let op  = pnt w
         oln = lineno w
         y   = fst $ cursor w
     moveTo b op         -- reset the point to what we think it should be
     ln <- curLn b
-    p  <- pointB b      -- see where it actually got placed 
+    p  <- pointB b      -- see where it actually got placed
     x  <- offsetFromSol b
     tw <- expandedTabLengthB b 8
     w' <- if op /= p || oln /= ln -- then the file shrunk or line moved
@@ -436,6 +436,6 @@ resetPoint w b = do
                             toslineno = topln, tospnt = i,
                             cursor = (gap,x + tw)}
           else return w {pnt = p, cursor = (y,x + tw)} -- just check out x-offset is right
-    m <- updateModeLine w' b 
+    m <- updateModeLine w' b
     return w' { mode = m }
 
