@@ -1,0 +1,15 @@
+name:		yi
+version:	0.2
+license:	GPL
+license-file:	LICENSE
+author:		Don Stewart
+maintainer:	dons@cse.unsw.edu.au
+build-depends:	base, unix
+
+executable:	yi
+main-is:	Main.hs
+include-dirs:	cbits
+c-sources:	cbits/YiUtils.c Yi/Curses/CWString_hsc.c Yi/Curses/Curses_hsc.c
+other-modules:	Yi.Curses.CWString Yi.Curses.Curses Yi.Locale Yi.Regex
+
+-- vim:noet nosta nolist ts=8 sw=8:

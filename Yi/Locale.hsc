@@ -46,14 +46,8 @@ import Foreign.C    ( peekCString, CChar, CInt )
 import GHC.Exts
 
 #include "config.h"
-
-#if HAVE_LOCALE_H
-# include <locale.h>
-#endif
-
-#if HAVE_LANGINFO_H
-# include <langinfo.h>
-#endif
+#include <locale.h>
+#include <langinfo.h>
 
 foreign import ccall unsafe "locale.h setlocale" 
     setlocale :: CInt -> Addr## -> IO (Ptr CChar)

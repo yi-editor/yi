@@ -40,13 +40,8 @@ module Yi.Regex (
 #include "config.h"
 #include "YiUtils.h"
 
-#if HAVE_SYS_TYPES_H
-# include <sys/types.h>
-#endif
-
-#if HAVE_REGEX_H
-# include <regex.h>
-#endif
+#include <sys/types.h>
+#include <regex.h>
 
 import Foreign
 import Foreign.C
@@ -71,13 +66,7 @@ regcomp pattern flags = do
             c_regcomp p cstr (fromIntegral flags)
     if (r == 0)
         then do
-#if GLASGOW_HASKELL >= 602
              addForeignPtrFinalizer ptr_regfree regex_fptr
-#elif !defined(__NHC__) 
-             flip addForeignPtrFinalizer ptr_regfree regex_fptr
-#else
-             addForeignPtrFinalizer regex_fptr (return ())
-#endif
              return (Regex regex_fptr)
         else ioError $ userError $ "Error in pattern: " ++ pattern
 
@@ -167,18 +156,3 @@ foreign import ccall unsafe "regexec"
     cregexec :: Ptr CRegex 
              -> Ptr CChar 
              -> CSize -> Ptr CRegMatch -> CInt -> IO CInt
-
--- ---------------------------------------------------------------------
--- Some stuff missing from the nhc98-1.16 libs
--- Watch that memory leak..
---
-#ifdef __NHC__
-
-mallocForeignPtrBytes :: Int -> IO (ForeignPtr a)
-mallocForeignPtrBytes n = do
-    r <- mallocBytes n
-    newForeignPtr r (return ()) -- :: Ptr a -> IO () -> IO (ForeignPtr a)
-
-type FinalizerPtr a        = FunPtr            (Ptr a -> IO ())
-
-#endif

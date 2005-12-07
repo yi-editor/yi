@@ -102,11 +102,7 @@ options = [
 usage, versinfo :: IO ()
 usage    = putStr   $ usageInfo "Usage: yi [option...] [file]" options
 
-versinfo = do 
-        putStrLn $ package++" "++
-                   version++"p"++(show (PATCH_COUNT :: Int))++
-                   ", GHC "++GHC_VERSION++" (" ++ PLATFORM ++ ")"
-        putStrLn $ "darcs get "++ REPO_PATH
+versinfo = putStrLn $ package++" "++version
 
 --
 -- deal with real options

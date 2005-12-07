@@ -1,0 +1,2 @@
+executable: yi
+extra-libraries: @CURSES@

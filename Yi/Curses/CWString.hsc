@@ -65,25 +65,13 @@ import Data.Char            ( ord, chr )
 import Data.Bits            ( Bits((.|.), (.&.), shift) )
 import Foreign.C.String
 
-#if GLASGOW_HASKELL < 603
-import GHC.Exts
-#endif
-
 #ifdef CF_WCHAR_SUPPORT
 
 import Foreign.C.Types
 
-#if HAVE_WCHAR_H
-# include <wchar.h>
-#endif
-
-#if HAVE_LIMITS_H
-# include <limits.h>
-#endif
-
-#if HAVE_STDLIB_H
-# include <stdlib.h>
-#endif
+#include <wchar.h>
+#include <limits.h>
+#include <stdlib.h>
 
 type CWChar = (#type wchar_t)
 type CWString = Ptr CWChar
@@ -106,16 +94,6 @@ wcharIsUnicode = True
 -- support functions 
 wNUL :: CWChar
 wNUL = 0
-#ifndef __GLASGOW_HASKELL__
-pairLength :: String -> CString -> CStringLen
-pairLength  = flip (,) . length
-
-cwCharsToChars :: [CWChar] -> [Char]
-cwCharsToChars xs  = map castCWCharToChar xs
-charsToCWChars :: [Char] -> [CWChar]
-charsToCWChars xs  = map castCharToCWChar xs
-
-#endif
 -- __STDC_ISO_10646__
 
 castCWCharToChar :: CWChar -> Char
@@ -126,9 +104,6 @@ castCharToCWChar ch = fromIntegral (ord ch)
 
 -- exported functions
 peekCWString    :: CWString -> IO String
-#ifndef __GLASGOW_HASKELL__
-peekCString cp  = do cs <- peekArray0 wNUL cp; return (cwCharsToChars cs)
-#else
 peekCWString cp = loop 0
   where
     loop i = do
@@ -136,12 +111,8 @@ peekCWString cp = loop 0
         if val == wNUL then return [] else do
             rest <- loop (i+1)
             return (castCWCharToChar val : rest)
-#endif
 
 peekCWStringLen           :: CWStringLen -> IO String
-#ifndef __GLASGOW_HASKELL__
-peekCWStringLen (cp, len)  = do cs <- peekArray len cp; return (cwCharsToChars cs)
-#else
 peekCWStringLen (cp, len) = loop 0
   where
     loop i | i == len  = return []
@@ -149,12 +120,8 @@ peekCWStringLen (cp, len) = loop 0
                 val <- peekElemOff cp i
                 rest <- loop (i+1)
                 return (castCWCharToChar val : rest)
-#endif
 
 newCWString :: String -> IO CWString
-#ifndef __GLASGOW_HASKELL__
-newCWString  = newArray0 wNUL . charsToCWChars
-#else
 newCWString str = do
   ptr <- mallocArray0 (length str)
   let
@@ -162,13 +129,8 @@ newCWString str = do
         go (c:cs) n## = do pokeElemOff ptr (I## n##) (castCharToCWChar c); go cs (n## +## 1##)
   go str 0##
   return ptr
-#endif
 
 newCWStringLen     :: String -> IO CWStringLen
-#ifndef __GLASGOW_HASKELL__
-newCWStringLen str  = do a <- newArray (charsToCWChars str)
-                        return (pairLength str a)
-#else
 newCWStringLen str = do
   ptr <- mallocArray0 len
   let
@@ -178,12 +140,8 @@ newCWStringLen str = do
   return (ptr, len)
   where
     len = length str
-#endif
 
 withCWString :: String -> (CWString -> IO a) -> IO a
-#ifndef __GLASGOW_HASKELL__
-withCWString  = withArray0 wNUL . charsToCWChars
-#else
 withCWString str f =
   allocaArray0 (length str) $ \ptr ->
       let
@@ -192,12 +150,8 @@ withCWString str f =
       in do
       go str 0##
       f ptr
-#endif
 
 withCWStringLen         :: String -> (CWStringLen -> IO a) -> IO a
-#ifndef __GLASGOW_HASKELL__
-withCWStringLen str act  = withArray (charsToCWChars str) $ act . pairLength str
-#else
 withCWStringLen str f =
   allocaArray len $ \ptr ->
       let
@@ -208,7 +162,6 @@ withCWStringLen str f =
       f (ptr,len)
   where
     len = length str
-#endif
 
 
 #else

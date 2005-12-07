@@ -1,9 +1,5 @@
 {-# OPTIONS -cpp -#include "YiCurses.h" #-}
 
-#if HAVE_SIGNAL_H
-{-#include <signal.h> #-}
-#endif
-
 #include "config.h"
 
 -- 

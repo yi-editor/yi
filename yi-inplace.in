@@ -1,3 +1,0 @@
-#!/bin/sh
-@YI_TOP@/yi_ -B@YI_TOP@ $*
-

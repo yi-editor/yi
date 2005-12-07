@@ -203,9 +203,7 @@ module Yi.Curses.Curses (
     
   ) where 
 
-#if HAVE_SIGNAL_H
-# include <signal.h>
-#endif
+#include <signal.h>
 
 import Yi.Curses.CWString       ( withLCStringLen )
 
@@ -221,10 +219,6 @@ import Control.Concurrent       ( yield )
 
 import Foreign
 import Foreign.C
-
-#if GLASGOW_HASKELL < 603
-import Data.Bits
-#endif
 
 #ifdef SIGWINCH
 import System.Posix.Signals
@@ -864,7 +858,7 @@ normalise s = map f . filter (/= '\r') s
 
 ------------------------------------------------------------------------
 
-#if defined(CF_WCHAR_SUPPORT) && defined(HAVE_WADDNWSTR)
+#if defined(CF_WCHAR_SUPPORT) && defined(HAVE_NCURSESW)
 
 --wAddStr :: Window -> String -> IO ()
 --wAddStr w str = throwIfErr_ ("waddnwstr: " ++ show str) $ withCWStringLen (normalise str) (\(ws,len) -> waddnwstr w ws (fi len))
