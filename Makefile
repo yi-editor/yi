@@ -1,14 +1,14 @@
 all:
-	@runghc Setup.hs build
+	@runhaskell Setup.lhs build
 
 config:
-	@runghc Setup.hs configure
+	@runhaskell Setup.lhs configure
 
 install:
-	@runghc Setup.hs install
+	@runhaskell Setup.lhs install
 
 clean:
-	if [ -f .setup-config ]; then runghc Setup.hs clean; fi
+	if [ -f .setup-config ]; then runhaskell Setup.lhs clean; fi
 	rm -f conftest* Yi/Curses/*_hsc.[ch]
 
 distclean: clean
