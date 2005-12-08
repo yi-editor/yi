@@ -9,6 +9,24 @@ Copyright (c) Don Stewart 2004-5, <http://www.cse.unsw.edu.au/~dons>
 
 QUICK START
 
+Buliding from darcs:
+
+    $ autoreconf
+    $ chmod +x Setup.lhs configure
+    $ ./Setup.lhs configure
+    $ ./Setup.lhs build
+    $ ./Setup.lhs install
+
+
+
+
+
+
+
+
+------------------------------------------------------------------------
+-- The following is outdated:
+
 To build the static editor (enough for most people):
 
     $ ./configure --prefix=/usr/local

@@ -1,5 +1,4 @@
 {-# OPTIONS -fglasgow-exts -cpp #-}
--- gla-exts required for unsafeCoerce#
 
 --
 -- riot/Main.hs
