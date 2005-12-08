@@ -137,6 +137,7 @@ class Buffer a where
 
     -- | Delete the character at current point, shrinking size of buffer
     deleteB    :: a -> IO ()
+    deleteB a = deleteN a 1
 
     -- | Delete @n@ characters forward from the current point
     deleteN    :: a -> Int -> IO ()
