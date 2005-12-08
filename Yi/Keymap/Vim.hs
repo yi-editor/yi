@@ -322,7 +322,7 @@ cmdCmdFM = M.fromList $
 
     ,('p',      (const $ getRegE >>= \s ->
                             eolE >> insertE '\n' >>
-                                mapM_ insertE s >> solE)) -- ToDo insertNE
+                                mapM_ insertE s >> solE)) -- ToDo too slow
 
     ,('P',      (const $ getRegE >>= \s ->
                             solE >> insertE '\n' >> upE >>

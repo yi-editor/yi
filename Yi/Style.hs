@@ -53,7 +53,7 @@ ui = UIStyle {
         ,modeline           = Style black        darkCyan
         ,modeline_focused   = Style brightWhite  darkCyan
         ,eof                = Style darkBlue     Default
---      ,error_messages     = Style BrightWhiteF DarkRed
+--      ,error_messages     = Style BrightWhiteF darkRed
      }
 
 --
