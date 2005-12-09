@@ -25,11 +25,11 @@ module Yi.Keymap.Nano where
 
 import Yi.Editor            ( Action )
 import Yi.Yi hiding         ( keymap )
-import qualified Yi.Map as M
 
 import Data.Char            ( chr, isAlphaNum )
 import Data.List            ( (\\) )
 import Data.Maybe           ( fromMaybe )
+import qualified Data.Map as M
 
 import Control.Exception    ( ioErrors, catchJust, try, evaluate )
 

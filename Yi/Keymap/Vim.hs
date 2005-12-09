@@ -30,13 +30,12 @@ import Yi.Lexers     hiding ( Action )
 
 import Yi.UI
 
-import qualified Yi.Map as M
-
 import Prelude       hiding ( any )
 
 import Data.Char
 import Data.List            ( (\\) )
 import Data.Maybe           ( fromMaybe )
+import qualified Data.Map as M
 
 import Control.Monad        ( replicateM_, when, unless )
 import Control.Exception    ( ioErrors, catchJust, try, evaluate )

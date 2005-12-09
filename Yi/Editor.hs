@@ -28,16 +28,18 @@ import Yi.FastBuffer
 import Yi.Regex                 ( Regex )
 import Yi.Window
 import Yi.Style                 ( ui, UIStyle )
-import Yi.Map as M hiding       ( null, filter )
 
 import Data.List                ( elemIndex )
 import Data.Unique              ( Unique )
 import Data.Dynamic
-import System.IO.Unsafe         ( unsafePerformIO )
+import Data.Map as M hiding       ( null, filter )
+
 import Control.Monad            ( liftM, foldM )
 import Control.Concurrent       ( killThread, ThreadId )
 import Control.Concurrent.Chan  ( Chan )
 import Control.Concurrent.MVar
+
+import System.IO.Unsafe         ( unsafePerformIO )
 
 ------------------------------------------------------------------------
 

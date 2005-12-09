@@ -22,11 +22,11 @@ module Yi.Keymap.Emacs.Keys (readKey, showKey, printableChars) where
 
 import Yi.Char
 import Yi.Yi hiding (string)
-import qualified Yi.Map as M
 
 import Data.Char
 import Data.List
 import Data.Maybe
+import qualified Data.Map as M
 
 import Text.ParserCombinators.ReadP
 

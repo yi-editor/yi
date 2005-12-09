@@ -29,9 +29,9 @@ module Yi.FastBuffer (FBuffer(..), BufferMode(..), FBuffer_(..)) where
 import Yi.Buffer
 import Yi.Regex
 import Yi.Undo
-import qualified Yi.Map as M
 
 import Data.Unique              ( Unique, newUnique )
+import qualified Data.Map as M
 
 import Control.Monad            ( when )
 import Control.Exception        ( assert )

@@ -28,13 +28,13 @@ module Yi.Keymap.Vi ( keymap, keymapPlus, ViMode ) where
 
 import Yi.Yi         hiding ( keymap )
 import Yi.Editor            ( Action )
-import qualified Yi.Map as M
 
 import Prelude       hiding ( any )
 
 import Data.Char
 import Data.List            ( (\\) )
 import Data.Maybe           ( fromMaybe )
+import qualified Data.Map as M
 
 import Control.Monad        ( replicateM_, when )
 import Control.Exception    ( ioErrors, catchJust, try, evaluate )

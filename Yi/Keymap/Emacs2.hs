@@ -25,7 +25,6 @@ import Yi.Editor hiding     ( keymap )
 import Yi.Yi hiding         ( keymap, meta, string )
 import Yi.Window
 import Yi.Buffer
-import qualified Yi.Map as M
 
 import Yi.Keymap.Emacs.KillRing
 import Yi.Keymap.Emacs.UnivArgument
@@ -35,6 +34,7 @@ import Data.Char
 import Data.Maybe
 import Data.List
 import Data.Dynamic
+import qualified Data.Map as M
 
 import Control.Monad.Writer
 import Control.Monad.State

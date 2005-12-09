@@ -184,14 +184,13 @@ import Yi.Window
 import Yi.Regex
 import Yi.String
 import Yi.Process           ( popen )
-import Yi.Map as M          ( lookup, insert )
 import Yi.Editor
 import qualified Yi.Editor as Editor
 
 import Data.Maybe
 import Data.Char            ( isLatin1 )
 import Data.Dynamic
-
+import Data.Map as M        ( lookup, insert )
 
 import System.IO            ( hClose )
 import System.Directory     ( doesFileExist )

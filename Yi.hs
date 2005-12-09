@@ -26,8 +26,6 @@ import qualified Yi.Editor  as Editor
 import qualified Yi.Core    as Core
 import qualified Yi.Style   as Style
 
-import qualified Yi.Map as M
-
 import qualified Yi.Keymap.Vi    as Vi
 import qualified Yi.Keymap.Vim   as Vim
 import qualified Yi.Keymap.Nano  as Nano
@@ -41,6 +39,7 @@ import qualified Yi.UI as UI
 
 import Data.IORef
 import Data.List                ( intersperse )
+import qualified Data.Map as M
 
 import Control.Monad            ( when )
 import Control.Concurrent       ( myThreadId, throwTo )

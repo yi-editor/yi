@@ -63,11 +63,11 @@ module Yi.Keymap.Mg (keymap) where
 import Yi.Yi         hiding ( keymap )
 import Yi.Editor            ( Action )
 import Yi.Char
-import qualified Yi.Map as M
 
 import Numeric              ( showOct )
 import Data.Char            ( ord, chr )
 import Data.List            ((\\), isPrefixOf)
+import qualified Data.Map as M
 import Control.Exception    ( try, evaluate )
 
 ------------------------------------------------------------------------

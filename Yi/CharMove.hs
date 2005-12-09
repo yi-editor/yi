@@ -76,9 +76,10 @@ import Yi.Core
 import Yi.Editor
 import Yi.Window
 import Yi.Regex
-import qualified Yi.Map as M
 
 import Data.Char
+import qualified Data.Map as M
+
 import Control.Monad        ( when, replicateM_ )
 import Control.Monad.Fix    ( fix )
 import Control.Exception    ( assert )
