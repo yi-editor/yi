@@ -1,7 +1,4 @@
-{-# OPTIONS -#include "YiCurses.h" #-}
-
-#include "config.h"
-
+{-# OPTIONS -#include "YiUtils.h" #-}
 --
 -- Copyright (C) 2004-5 Don Stewart - http://www.cse.unsw.edu.au/~dons
 --
@@ -27,13 +24,7 @@
 -- Released under the same license.
 --
 
---
 -- | This module defines a user interface implemented using ncurses.
---
--- TODO The user interface abstractions should try to be general enough to
--- permit multiple user interfaces without changin UI.foo calls in
--- Core.hs
---
 
 module Yi.UI (
 
@@ -52,9 +43,6 @@ module Yi.UI (
 
   )   where
 
--- TODO the above api should be redesigned. Consider the vi screen api
--- to ncurses for a nice well thought out editor api.
-
 import Yi.Buffer        ( Buffer(ptrToLnsB) )
 import Yi.Editor
 import Yi.Window
@@ -64,40 +52,30 @@ import qualified Yi.Curses as Curses
 
 import qualified Data.FastPackedString as P
 
-import Data.Char                    ( ord )
 import Data.Maybe                   ( isNothing, fromJust )
 import Data.List
 
-import Foreign
-
 import Control.Monad                ( when )
-import System.IO.Unsafe             ( unsafePerformIO )
 import System.Posix.Signals         ( raiseSignal, sigTSTP )
 
---
+------------------------------------------------------------------------
+
 -- | how to initialise the ui
---
 start :: (IO ()) -> IO ()
 start fn = do
     Curses.initCurses fn                -- initialise the screen
     initcolours ui
     Curses.keypad Curses.stdScr True    -- grab the keyboard
 
---
--- | Clean up and go home. Refresh is needed on linux. grr.
---
+-- | Clean up and go home
 end :: IO ()
 end = Curses.endWin
 
---
 -- | Suspend the program
---
 suspend :: IO ()
 suspend = raiseSignal sigTSTP
 
---
 -- | Find the current screen height and width.
---
 screenSize :: IO (Int, Int)
 screenSize = Curses.scrSize
 
@@ -107,8 +85,9 @@ screenSize = Curses.scrSize
 -- working for us.
 --
 getKey :: IO () -> IO Char
-getKey refresh_fn = do
+getKey _refresh_fn = do
     k <- Curses.getCh
+#ifdef KEY_RESIZE
     if k == Curses.keyResize
         then do
 #ifndef SIGWINCH
@@ -116,6 +95,9 @@ getKey refresh_fn = do
 #endif
               getKey refresh_fn
         else return k
+#else
+    return k
+#endif
 
 --
 -- | Redraw the entire terminal from the UI state
@@ -218,7 +200,8 @@ drawWindow e mwin sty win =
         (y',_) <- getYX Curses.stdScr
         let diff = h - off - (y' - y)
         if windowfill e /= ' '
-            then mapM_ (drawLine w) $ take diff $ repeat [windowfill e]
+            then mapM_ (\s -> drawLine w s>> lineDown) $ 
+                    take diff $ repeat [windowfill e]
             else Curses.wMove Curses.stdScr (y' + diff) 0 -- just move the cursor
 
     -- draw modeline
@@ -242,78 +225,43 @@ drawCmdLine s = do
     fillLine
     Curses.wMove Curses.stdScr (h-1) w'
 
---
--- | Draw an error message to the command line
---
-{-
-drawErrLine :: String -> IO ()
-drawErrLine s = do
-    sty <- readEditor uistyle
-    withStyle (error_messages sty) $ drawCmdLine s
--}
-
---
--- | lazy version is faster than calculating length of s
--- 
--- waddnstr should do, shouldn't it?
---
+-- | Draw a line quickly
 drawLine :: Int -> String -> IO ()
-drawLine w s = 
-  let ps = P.pack s
-      qs = P.concat [ps, replicatePS (w-P.length ps) ' ']
-  in P.unsafeUseAsCString qs $ \cstr -> throwIfErr_ (P.pack "drawLine") $
-        Curses.waddnstr Curses.stdScr cstr (fromIntegral w)
+drawLine w s = case P.pack s of
+    ps -> P.unsafeUseAsCString ps $ \cstr -> 
+        throwIfErr_ (P.pack "drawLine") $
+            Curses.waddnstr Curses.stdScr cstr (fromIntegral (min w (P.length ps)))
 
---
+lineDown :: IO ()
+lineDown = do
+    (h,_) <- screenSize
+    (y,_) <- Curses.getYX Curses.stdScr
+    Curses.wMove Curses.stdScr (min h (y+1)) 0
+
 -- | Given the cursor position in the window. Draw it.
--- TODO take account of offsets
---
 drawCursor :: (Int,Int) -> (Int,Int) -> IO ()
 drawCursor (o_y,_o_x) (y,x) = Curses.withCursor Curses.CursorVisible $ do
     gotoTop
     (h,w) <- scrSize
     Curses.wMove Curses.stdScr (min (h-1) (o_y + y)) (min (w-1) x)
 
---
 -- | move cursor to origin of stdScr.
---
 gotoTop :: IO ()
 gotoTop = Curses.wMove Curses.stdScr 0 0
 
---
 -- | Fill to end of line spaces
---
 fillLine :: IO ()
 fillLine = Curses.clrToEol
 
---
--- | Reset the screen to normal values
---
--- reset :: IO ()
--- reset = setAttribute (Curses.attr0, Curses.Pair 0)
-
---
 -- | redraw and refresh the screen
---
 refresh :: IO ()
 refresh = redraw >> Curses.refresh
 
---
 -- | Resize the window
 -- From "Writing Programs with NCURSES", by Eric S. Raymond and Zeyd M. Ben-Halim
---
 resizeui :: IO (Int,Int)
 resizeui = do
     Curses.endWin
     Curses.resetParams
     Curses.refresh
     Curses.scrSize
-
-
--- replicateP w c = P.unfoldr w (\u -> Just (u,u)) c
-replicatePS :: Int -> Char -> P.FastString
-replicatePS w c = unsafePerformIO $ P.generate w $ \ptr -> go ptr w
-    where 
-        x = fromIntegral . ord $ c
-        go _   0 = return w
-        go ptr n = poke ptr x >> go (ptr `plusPtr` 1) (n-1)

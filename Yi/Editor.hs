@@ -32,7 +32,7 @@ import Yi.Style                 ( ui, UIStyle )
 import Data.List                ( elemIndex )
 import Data.Unique              ( Unique )
 import Data.Dynamic
-import Data.Map as M hiding       ( null, filter )
+import Data.Map as M hiding     ( null, filter )
 
 import Control.Monad            ( liftM, foldM )
 import Control.Concurrent       ( killThread, ThreadId )

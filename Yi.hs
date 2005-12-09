@@ -1,4 +1,3 @@
-
 --
 -- riot/Main.hs
 --

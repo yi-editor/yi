@@ -14,3 +14,5 @@ other-modules:  Yi.Curses Yi.Regex
 extra-libraries: curses
 extensions:     CPP, ForeignFunctionInterface
 ghc-options:    -Wall -fglasgow-exts -O -funbox-strict-fields -fasm -optl-Wl,-s
+
+-- ghc-options:    -prof -auto-all -Wall -fglasgow-exts -O -funbox-strict-fields -fasm -optl-Wl,-s
