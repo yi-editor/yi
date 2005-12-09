@@ -200,7 +200,7 @@ drawWindow e mwin sty win =
         (y',_) <- getYX Curses.stdScr
         let diff = h - off - (y' - y)
         if windowfill e /= ' '
-            then mapM_ (\s -> drawLine w s>> lineDown) $ 
+            then mapM_ (\s -> drawLine w s >> clrToEol >> lineDown) $ 
                     take diff $ repeat [windowfill e]
             else Curses.wMove Curses.stdScr (y' + diff) 0 -- just move the cursor
 
