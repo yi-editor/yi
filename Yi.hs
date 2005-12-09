@@ -1,4 +1,3 @@
-{-# OPTIONS -fglasgow-exts -cpp #-}
 
 --
 -- riot/Main.hs
@@ -22,7 +21,6 @@
 
 module Yi (static_main, dynamic_main) where
 
-import Yi.Locale                        ( setupLocale )
 import Yi.Version                       ( package, version )
 import qualified Yi.Editor  as Editor
 import qualified Yi.Core    as Core
@@ -39,7 +37,7 @@ import qualified Yi.Keymap.Joe   as Joe
 import qualified Yi.Keymap.Ee    as Ee
 import qualified Yi.Keymap.Mg    as Mg
 
-import qualified Yi.Curses.UI as UI
+import qualified Yi.UI as UI
 
 import Data.IORef
 import Data.List                ( intersperse )
@@ -217,7 +215,6 @@ g_lineno = unsafePerformIO $ newIORef (1 :: Int)
 --
 static_main :: (Maybe Editor.Editor) -> IO ()
 static_main st = do
-    setupLocale
     args    <- getArgs
     mfiles  <- do_args args
     config  <- readIORef g_settings

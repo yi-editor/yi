@@ -35,7 +35,7 @@ module Yi.Yi (
         module Yi.Style,
         module Yi.Lexers,
 
-        module Yi.Curses.UI, -- hack, for key defns
+        module Yi.UI, -- hack, for key defns
 
    ) where
 
@@ -46,8 +46,7 @@ import Yi.Editor                         ( Config(..) )
 import Yi.Lexers                 hiding  ( Action  )
 import qualified Yi.Keymap.Vim as Default ( keymap )
 
--- need to #define this
-import Yi.Curses.UI               hiding ( plus, Color ) -- so we can see key defns
+import Yi.UI               hiding ( initcolours, Color ) -- so we can see key defns
 
 settings :: Config
 settings = Config { keymap = Default.keymap, style = ui }

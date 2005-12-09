@@ -10,6 +10,12 @@ void nomacro_getyx(WINDOW *win, int *y, int *x)
     getyx(win, *y, *x);
 }
 
+/* A non-macro version of COLOR_PAIR(3)
+ */
+int get_color_pair (int pair) {
+    return COLOR_PAIR (pair);
+}
+
 /* 1 + the number of occurences of \n in buffer from start to end
  * i.e. the index of the current line, starting from 1
  */

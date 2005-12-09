@@ -37,11 +37,15 @@ module Yi.Regex (
 
   ) where
 
-#include "config.h"
 #include "YiUtils.h"
 
+#if defined(HAVE_SYS_TYPES_H)
 #include <sys/types.h>
+#endif
+
+#if defined(HAVE_REGEX_H)
 #include <regex.h>
+#endif
 
 import Foreign
 import Foreign.C
@@ -107,42 +111,14 @@ indexOfMatch p_match = do
 -- -----------------------------------------------------------------------------
 -- The POSIX regex C interface
 
--- Flags for regexec
-{-
-#enum Int,, \
-    REG_NOTBOL, \
-    REG_NOTEOL
-
--- Return values from regexec
-#enum Int,, \
-    REG_NOMATCH
---  REG_ESPACE
--}
-
--- Flags for regcomp
-
-#enum Int,, \
-    REG_EXTENDED, \
-    regIgnoreCase = REG_ICASE, \
-    REG_NOSUB, \
-    REG_NEWLINE
-
--- Error codes from regcomp
-{-
-#enum Int,, \
-    REG_BADBR, \
-    REG_BADPAT, \
-    REG_BADRPT, \
-    REG_ECOLLATE, \
-    REG_ECTYPE, \
-    REG_EESCAPE, \
-    REG_ESUBREG, \
-    REG_EBRACK, \
-    REG_EPAREN, \
-    REG_EBRACE, \
-    REG_ERANGE, \
-    REG_ESPACE
--}
+regExtended :: Int
+regExtended =  1
+regIgnoreCase  :: Int
+regIgnoreCase  =  2
+regNosub :: Int
+regNosub =  4
+regNewline :: Int
+regNewline =  8
 
 type CRegMatch = ()
 

@@ -1,4 +1,3 @@
-{-# OPTIONS -fglasgow-exts #-}
 --
 -- Copyright (c) 2005 Jean-Philippe Bernardy
 --

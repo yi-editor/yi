@@ -31,7 +31,6 @@ import Yi.Style                 ( ui, UIStyle )
 import Yi.Map as M hiding       ( null, filter )
 
 import Data.List                ( elemIndex )
-import Data.IORef               ( newIORef, readIORef, writeIORef, IORef )
 import Data.Unique              ( Unique )
 import Data.Dynamic
 import System.IO.Unsafe         ( unsafePerformIO )
@@ -67,6 +66,8 @@ data Editor = Editor {
        ,yreg            :: !String                    -- ^ yank register
        ,regex           :: !(Maybe (String,Regex))    -- ^ most recent regex
        -- should be moved into dynamic component, perhaps
+
+       ,editorModified :: MVar ()
     }
 
 --
@@ -91,24 +92,16 @@ emptyEditor = Editor {
        ,reboot       = const $ return ()
        ,reload       = error "No reload function"
        ,dynamic      = M.empty
+
+       ,editorModified = unsafePerformIO newEmptyMVar
     }
 
 -- ---------------------------------------------------------------------
 -- | The actual editor state
 --
-state :: MVar (IORef Editor)
-state = unsafePerformIO $ do
-            ref  <- newIORef emptyEditor
-            newMVar ref
+state :: MVar Editor
+state = unsafePerformIO $ newMVar emptyEditor
 {-# NOINLINE state #-}
-
---
--- Set when redrawable components of the state are modified. The ui
--- thread waits on this.
---
-editorModified :: MVar ()
-editorModified = unsafePerformIO $ newMVar ()
-{-# NOINLINE editorModified #-}
 
 -- ---------------------------------------------------------------------
 
@@ -116,36 +109,23 @@ editorModified = unsafePerformIO $ newMVar ()
 -- | Read the editor state, with a pure action
 --
 readEditor :: (Editor -> b) -> IO b
-readEditor f = withMVar state $ \ref -> return . f =<< readIORef ref
+readEditor f = readMVar state >>= return . f
 
---
 -- | Read the editor state, with an IO action
---
 withEditor :: (Editor -> IO ()) -> IO ()
-withEditor f = withMVar state $ \ref -> f =<< readIORef ref
+withEditor f = withMVar state f
 
---
+-- | Trigger a refresh. This is the only way to update the screen
+touchST :: IO ()
+touchST = withMVar state $ \st -> tryPutMVar (editorModified st) () >> return ()
+
 -- | Modify the contents, using an IO action.
---
 modifyEditor_ :: (Editor -> IO Editor) -> IO ()
-modifyEditor_ f = do
-    modifyMVar_ state $ \r ->
-            readIORef r >>= f >>= writeIORef r >> return r
-    tryPutMVar editorModified ()
-    return ()
+modifyEditor_ f = modifyMVar_ state f >> touchST
 
---
 -- | Variation on modifyEditor_ that lets you return a value
---
 modifyEditor :: (Editor -> IO (Editor,b)) -> IO b
-modifyEditor f = do
-    b <- modifyMVar state $ \r -> do
-                    v  <- readIORef r
-                    (v',b) <- f v
-                    writeIORef r v'
-                    return (r,b)
-    tryPutMVar editorModified ()
-    return b
+modifyEditor f = modifyMVar state f >>= \a -> touchST >> return a
 
 -- ---------------------------------------------------------------------
 -- Buffer operations

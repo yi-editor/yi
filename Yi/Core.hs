@@ -1,4 +1,4 @@
-{-# OPTIONS -fglasgow-exts -#include YiUtils.h #-}
+{-# OPTIONS -#include YiUtils.h #-}
 -- -fglasgow-exts for deriving Typeable
 --
 -- Copyright (c) Tuomo Valkonen 2004.
@@ -204,7 +204,7 @@ import Control.Concurrent.Chan
 
 import GHC.Exception hiding ( throwIO )
 
-import qualified Yi.Curses.UI as UI
+import qualified Yi.UI as UI
 
 -- ---------------------------------------------------------------------
 -- | Start up the editor, setting any state with the user preferences
@@ -266,9 +266,9 @@ startE st (confs,fn,fn') ln mfs = do
         -- resized, and take the opportunity to refresh.
         --
         refreshLoop :: IO ()
-        refreshLoop = repeatM_ $ do
-                        takeMVar editorModified
-                        handleJust ioErrors (errorE.show) UI.refresh
+        refreshLoop = 
+            readEditor editorModified >>= \mvar -> repeatM_ $
+                    takeMVar mvar >> handleJust ioErrors (errorE.show) UI.refresh
 
 -- ---------------------------------------------------------------------
 -- | @emptyE@ and @runE@ are for automated testing purposes. The former
@@ -346,7 +346,9 @@ reloadE = do
         return $ case v of
             Nothing -> e
             Just (Config km sty) -> e { curkeymap = km, uistyle = sty }
-    UI.initcolours
+    
+    sty <- readEditor uistyle
+    UI.initcolours sty
 
 -- | Reset the size, and force a complete redraw
 refreshE :: Action

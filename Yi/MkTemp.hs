@@ -1,4 +1,3 @@
-{-# OPTIONS -cpp -fffi -fglasgow-exts #-}
 --
 -- glaexts for I# ops
 --
@@ -251,19 +250,4 @@ getProcessID = System.Posix.Internals.c_getpid >>= return . fromIntegral
 --
 getRandom :: () -> IO Int
 
-#ifndef HAVE_ARC4RANDOM
 getRandom _ = getStdRandom (randomR (0,51))
-#else
---
--- OpenBSD: "The arc4random() function provides a high quality 32-bit
--- pseudo-random number very quickly.  arc4random() seeds itself on a
--- regular basis from the kernel strong random number subsystem
--- described in random(4)." Also, it is a bit faster than getStdRandom
---
-getRandom _ = do
-    (I32# i) <- c_arc4random
-    return (I# (word2Int# ((int2Word# i `and#` int2Word# 0xffff#)
-                    `remWord#` int2Word# 52#)))
-
-foreign import ccall unsafe "stdlib.h arc4random" c_arc4random :: IO Int32
-#endif

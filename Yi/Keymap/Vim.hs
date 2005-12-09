@@ -28,8 +28,7 @@ import Yi.CharMove
 import Yi.Editor            ( Action )
 import Yi.Lexers     hiding ( Action )
 
--- TODO
-import Yi.Curses.UI  hiding ( plus )
+import Yi.UI
 
 import qualified Yi.Map as M
 

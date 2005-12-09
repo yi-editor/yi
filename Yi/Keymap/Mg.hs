@@ -1,6 +1,3 @@
-{-# OPTIONS -fglasgow-exts #-}
---
--- for pattern guards
 --
 -- Copyright (c) 2005 Don Stewart - http://www.cse.unsw.edu.au/~dons
 --
