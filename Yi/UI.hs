@@ -51,6 +51,7 @@ import Yi.Curses hiding ( refresh )
 import qualified Yi.Curses as Curses
 
 import qualified Data.FastPackedString as P
+import qualified Data.ByteString.Char8 as C
 
 import Data.Maybe                   ( isNothing, fromJust )
 import Data.List
@@ -186,15 +187,15 @@ drawWindow e mwin sty win =
     --
     (y,_) <- getYX Curses.stdScr
     withStyle wsty $ flip mapM_ lns $ \(ptr,len) -> do
-        throwIfErr_ (P.pack "drawWindow") $
+        throwIfErr_ (C.pack "drawWindow") $
             waddnstr Curses.stdScr ptr (fromIntegral len)
 
     -- and any eof markers (should be optional)
     withStyle eofsty $ do
         (_,x) <- getYX Curses.stdScr
 
-        when (x /= 0) $ throwIfErr_ (P.pack "waddnstr") $
-            P.unsafeUseAsCString (P.pack "\n") $ \cstr -> 
+        when (x /= 0) $ throwIfErr_ (C.pack "waddnstr") $
+            P.unsafeUseAsCString (C.pack "\n") $ \cstr -> 
                 waddnstr Curses.stdScr cstr 1
 
         (y',_) <- getYX Curses.stdScr
@@ -227,9 +228,9 @@ drawCmdLine s = do
 
 -- | Draw a line quickly
 drawLine :: Int -> String -> IO ()
-drawLine w s = case P.pack s of
+drawLine w s = case C.pack s of
     ps -> P.unsafeUseAsCString ps $ \cstr -> 
-        throwIfErr_ (P.pack "drawLine") $
+        throwIfErr_ (C.pack "drawLine") $
             Curses.waddnstr Curses.stdScr cstr (fromIntegral (min w (P.length ps)))
 
 lineDown :: IO ()
