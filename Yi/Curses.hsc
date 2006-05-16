@@ -106,7 +106,7 @@ module Yi.Curses (
 # include <signal.h>
 #endif
 
-import qualified Data.FastPackedString as P
+import qualified Data.ByteString.Char8 as P
 
 import Prelude hiding       (pi)
 import Data.Char            (ord, chr)
@@ -176,24 +176,24 @@ fi = fromIntegral
 --
 
 -- | Like throwIf, but for packed error messages
-throwPackedIf :: (a -> Bool) -> P.FastString -> (IO a) -> (IO a)
+throwPackedIf :: (a -> Bool) -> P.ByteString -> (IO a) -> (IO a)
 throwPackedIf p msg action = do
     v <- action
     if p v then (fail . P.unpack $ msg) else return v
 {-# INLINE throwPackedIf #-}
 
 -- | Arbitrary test 
-throwIfErr :: Num a => P.FastString -> IO a -> IO a
+throwIfErr :: Num a => P.ByteString -> IO a -> IO a
 throwIfErr = throwPackedIf (== (#const ERR))
 {-# INLINE throwIfErr #-}
 
 -- | Discard result
-throwIfErr_ :: Num a => P.FastString -> IO a -> IO ()
+throwIfErr_ :: Num a => P.ByteString -> IO a -> IO ()
 throwIfErr_ a b = void $ throwIfErr a b
 {-# INLINE throwIfErr_ #-}
 
 -- | packed throwIfNull
-throwPackedIfNull :: P.FastString -> IO (Ptr a) -> IO (Ptr a)
+throwPackedIfNull :: P.ByteString -> IO (Ptr a) -> IO (Ptr a)
 throwPackedIfNull = throwPackedIf (== nullPtr)
 {-# INLINE throwPackedIfNull #-}
 

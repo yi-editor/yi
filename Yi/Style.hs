@@ -27,7 +27,7 @@ module Yi.Style where
 
 import qualified Yi.Curses as Curses
 
-import qualified Data.FastPackedString as P (FastString)
+import qualified Data.ByteString as P (ByteString)
 
 import Data.Word                (Word8)
 import Data.Maybe               (fromJust)
@@ -69,8 +69,8 @@ data CharA = C {-# UNPACK #-} !Char
            | A {-# UNPACK #-} !Char !Style
 
 -- | A list of such values (the representation is optimised)
-data StringA = Fast   {-# UNPACK #-} !P.FastString !Style
-             | FancyS {-# UNPACK #-} ![(P.FastString,Style)]  -- one line made up of segments
+data StringA = Fast   {-# UNPACK #-} !P.ByteString !Style
+             | FancyS {-# UNPACK #-} ![(P.ByteString, Style)]  -- one line made up of segments
 
 data Color
     = RGB {-# UNPACK #-} !Word8 !Word8 !Word8
