@@ -322,12 +322,12 @@ foreign import ccall unsafe "leaveok"
 
 ------------------------------------------------------------------------
 
--- | The use_default_colors() and assume_default_colors() func-
---   tions are extensions to the curses library.  They are used
---   with terminals that support ISO 6429 color, or equivalent.
+-- |>  The use_default_colors() and assume_default_colors() func-
+--  >  tions are extensions to the curses library.  They are used
+--  >  with terminals that support ISO 6429 color, or equivalent.
 --
---  use_default_colors() tells the  curses library  to  assign terminal
---  default foreground/background colors to color number  -1.
+--  >  use_default_colors() tells the  curses library  to  assign terminal
+--  >  default foreground/background colors to color number  -1.
 --
 #if defined(HAVE_USE_DEFAULT_COLORS)
 foreign import ccall unsafe "use_default_colors" 

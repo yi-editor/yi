@@ -4,6 +4,9 @@ all:
 config:
 	@runhaskell Setup.lhs configure
 
+html:
+	@runhaskell Setup.lhs haddock
+
 install:
 	@runhaskell Setup.lhs install
 
