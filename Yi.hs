@@ -25,14 +25,16 @@ import qualified Yi.Editor  as Editor
 import qualified Yi.Core    as Core
 import qualified Yi.Style   as Style
 
-import qualified Yi.Keymap.Vi    as Vi
-import qualified Yi.Keymap.Vim   as Vim
-import qualified Yi.Keymap.Nano  as Nano
-import qualified Yi.Keymap.Emacs as Emacs
+{- All the standard editor front ends -}
+import qualified Yi.Keymap.Vi     as Vi
+import qualified Yi.Keymap.Vim    as Vim
+import qualified Yi.Keymap.Nano   as Nano
+import qualified Yi.Keymap.Emacs  as Emacs
 import qualified Yi.Keymap.Emacs2 as Emacs2
-import qualified Yi.Keymap.Joe   as Joe
-import qualified Yi.Keymap.Ee    as Ee
-import qualified Yi.Keymap.Mg    as Mg
+import qualified Yi.Keymap.Vimacs as Vimacs
+import qualified Yi.Keymap.Joe    as Joe
+import qualified Yi.Keymap.Ee     as Ee
+import qualified Yi.Keymap.Mg     as Mg
 
 import qualified Yi.UI as UI
 
@@ -70,14 +72,16 @@ data Opts = Help
 --
 editorFM :: M.Map [Char] ([Char] -> [Editor.Action])
 editorFM = M.fromList $
-    [("vi",     Vi.keymap)
-    ,("vim",    Vim.keymap)
-    ,("nano",   Nano.keymap)
-    ,("emacs",  Emacs.keymap)
-    ,("emacs2",  Emacs2.keymap)
-    ,("joe",    Joe.keymap)
-    ,("ee",     Ee.keymap)
-    ,("mg",     Mg.keymap)
+    [ ("vi"      ,      Vi.keymap)
+    , ("vim"     ,     Vim.keymap)
+    , ("nano"    ,    Nano.keymap)
+    , ("emacs"   ,   Emacs.keymap)
+    , ("emacs2"  ,  Emacs2.keymap)
+    , ("vimacs"  ,  Vimacs.keymap)
+    , ("Vimacs"  ,  Vimacs.keymap) -- I keep doing --as=Vimacs
+    , ("joe"     ,     Joe.keymap)
+    , ("ee"      ,      Ee.keymap)
+    , ("mg"      ,      Mg.keymap)
     ]
 
 options :: [OptDescr Opts]

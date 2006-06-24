@@ -44,13 +44,15 @@ module Yi.Core (
         eventLoop,
 
         -- * Global editor actions
+        BufferFileInfo ( .. ), 
+
         getcE,          -- :: IO Char
         nopE,           -- :: Action
         msgE,           -- :: String -> Action
         errorE,         -- :: String -> Action
         msgClrE,        -- :: Action
         getMsgE,        -- :: IO String
-        bufInfoE,       -- :: IO (FilePath,Int,Int,Int,Int,String)
+        bufInfoE,       -- :: IO BufferFileInfo
         fileNameE,      -- :: IO (Maybe FilePath)
         bufNameE,       -- :: IO String
         setWindowFillE, -- :: Char -> Action
@@ -101,6 +103,7 @@ module Yi.Core (
         gotoLnFromE,    -- :: Int -> Action
         gotoPointE,     -- :: Int -> Action
         getPointE,      -- :: IO Int
+	getLineAndColE, -- :: IO (Int, Int)
 
         atSolE,         -- :: IO Bool
         atEolE,         -- :: IO Bool
@@ -405,6 +408,16 @@ gotoPointE p = withWindow_ $ moveToW p
 -- | Get the current point
 getPointE :: IO Int
 getPointE = withWindow $ \w b -> pointB b >>= \p -> return (w,p)
+
+-- | Get the current line and column number
+getLineAndColE :: IO (Int, Int)
+getLineAndColE = 
+    withWindow lineAndColumn
+    where lineAndColumn :: Buffer a => Window -> a -> IO (Window, (Int, Int))
+	  lineAndColumn w b = 
+	      do lineNo <- curLn b
+		 colNo  <- offsetFromSol b
+		 return (w, (lineNo, colNo))
 
 ------------------------------------------------------------------------
 
@@ -874,19 +887,28 @@ getMsgE = readEditor cmdline
 -- ---------------------------------------------------------------------
 -- Buffer operations
 
+data BufferFileInfo =
+    BufferFileInfo { bufInfoFileName :: FilePath
+		   , bufInfoSize     :: Int
+		   , bufInfoLineNo   :: Int
+		   , bufInfoColNo    :: Int
+		   , bufInfoCharNo   :: Int
+		   , bufInfoPercent  :: String
+		   }
+
 -- | File info, size in chars, line no, col num, char num, percent
--- TODO more info, better data structure
-bufInfoE :: IO (FilePath, Int, Int, Int, Int, String)
+-- TODO: use the above data type
+bufInfoE :: IO BufferFileInfo
 bufInfoE = withWindow $ \w b -> do
     s <- sizeB b
     p <- pointB b
-    let x = snd $ cursor w
-    return (w, ( nameB b,
-                 s,
-                 lineno w,
-                 x+1,
-                 p,
-                 getPercent p s) )
+    let bufInfo = BufferFileInfo { bufInfoFileName = nameB b
+				 , bufInfoSize     = s
+				 , bufInfoLineNo   = lineno w
+				 , bufInfoColNo    = 1 + (snd $ cursor w)
+				 , bufInfoCharNo   = p
+				 , bufInfoPercent  = getPercent p s }
+    return (w, bufInfo)
 
 -- | Maybe a file associated with this buffer
 fileNameE :: IO (Maybe FilePath)

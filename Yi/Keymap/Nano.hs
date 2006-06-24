@@ -155,9 +155,14 @@ cmdCharFM = M.fromList $
     ,(keyRight,     rightE)
     ,(keyUp,        upE)
     ,('\^G',        msgE "nano-yi : yi emulating nano")
-    ,('\^I',       (do (_,s,ln,x,p,pct) <- bufInfoE
-                       msgE $ "[ line "++show ln++", col "++show x++
-                              ", char "++show p++"/"++show s++" ("++pct++") ]"))
+    ,('\^I',       (do bufInfo <- bufInfoE
+		       let s   = bufInfoFileName bufInfo
+		           ln  = bufInfoLineNo   bufInfo
+                           col = bufInfoColNo    bufInfo
+		           pt  = bufInfoCharNo   bufInfo
+		           pct = bufInfoPercent  bufInfo
+                       msgE $ "[ line "++show ln++", col "++show col++
+		              ", char "++show pt++"/"++show s++" ("++pct++") ]"))
     ]
 
     where
@@ -298,7 +303,8 @@ search_km = srch_g >||< srch_y >||< srch_v >||< srch_t >||< srch_c >||< srch_r
     srch_g = char '\^G' `andthen` msgE "nano-yi : yi emulating nano"
 
     srch_y = char '\^Y' `andthen` (gotoLnE 0 >> solE)
-    srch_v = char '\^V' `andthen` (do (_,x,_,_,_,_) <- bufInfoE
+    srch_v = char '\^V' `andthen` (do bufInfo <- bufInfoE
+				      let x = bufInfoLineNo bufInfo
                                       gotoLnE x >> solE)
 
     srch_t = char '\^T' `andthen` msgE "unimplemented" -- goto line

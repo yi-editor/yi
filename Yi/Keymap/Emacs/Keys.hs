@@ -38,8 +38,8 @@ printableChars = map chr [32..127]
 -- * Key parser
 
 c_ :: Char -> Char
-c_ ' ' = '\0'
-c_ x = ctrlLowcase x
+c_ ' '   = '\0'
+c_ x     = ctrlLowcase x
 
 m_ :: Char -> Char
 m_ '\263' = chr 255
@@ -63,6 +63,7 @@ parseCtrlMeta = do string "C-M-"
 
 keyNames :: [(Char, String)]
 keyNames = [(' ', "SPC"),
+	    ('\t', "TAB"),
             (keyLeft, "<left>"),
             (keyRight, "<right>"),
             (keyDown, "<down>"),

@@ -587,7 +587,8 @@ findFileEval :: MgMode
 findFileEval = enter
         `meta` \_ MgState{acc=cca} ->
         (with (do fnewE (reverse cca)
-                  (_,s,_,_,_,_) <- bufInfoE
+                  bufInfo <- bufInfoE
+	          let s = bufInfoFileName bufInfo
                   msgE $ "(Read "++show s++" bytes)"
                   cmdlineUnFocusE)
         , MgState [] [], Just mode )
@@ -702,7 +703,11 @@ printable = dropSpace . printable'
 
 whatCursorPos :: Action
 whatCursorPos = do
-        (_,_,ln,col,pt,pct) <- bufInfoE
+	bufInfo <- bufInfoE
+	let ln  = bufInfoLineNo  bufInfo
+	    col = bufInfoColNo   bufInfo
+	    pt  = bufInfoCharNo  bufInfo
+	    pct = bufInfoPercent bufInfo
         c <- readE
         msgE $ "Char: "++[c]++" (0"++showOct (ord c) ""++
                 ")  point="++show pt++

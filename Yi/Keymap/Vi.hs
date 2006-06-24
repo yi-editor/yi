@@ -636,28 +636,42 @@ not_implemented c = errorE $ "Not implemented: " ++ show c
 -- Misc functions
 
 viFileInfo :: Action
-viFileInfo = do (f,_,ln,_,_,pct) <- bufInfoE
-                msgE $ show f ++ " Line " ++ show ln ++ " ["++ pct ++"]"
+viFileInfo = 
+    do bufInfo <- bufInfoE
+       msgE $ showBufInfo bufInfo
+    where 
+    showBufInfo :: BufferFileInfo -> String
+    showBufInfo bufInfo = concat [ show $ bufInfoFileName bufInfo
+				 , " Line "
+				 , show $ bufInfoLineNo bufInfo
+				 , " ["
+				 , bufInfoPercent bufInfo
+				 , "]"
+				 ]
 
--- | Try to write a file in the manner of vi
+
+-- | Try to write a file in the manner of vi\/vim
 -- Need to catch any exception to avoid losing bindings
 viWrite :: Action
 viWrite = do
     mf <- fileNameE
     case mf of
-        Nothing ->errorE "No file name associated with this buffer"
+        Nothing -> errorE "no file name associate with buffer"
         Just f  -> do
-            (_,s,_,_,_,_) <- bufInfoE
-            let msg = msgE $ show f++" "++show s ++ "C written"
-            catchJust ioErrors (fwriteE >> msg) (msgE . show)
+            bufInfo <- bufInfoE
+	    let s   = bufInfoFileName bufInfo
+            let msg = msgE $ show f ++" "++show s ++ "C written"
+            catchJust ioErrors (fwriteToE f >> msg) (msgE . show)
 
 -- | Try to write to a named file in the manner of vi\/vim
 viWriteTo :: String -> Action
 viWriteTo f = do
     let f' = (takeWhile (/= ' ') . dropWhile (== ' ')) f
-    (_,s,_,_,_,_) <- bufInfoE
+    bufInfo <- bufInfoE
+    let s   = bufInfoFileName bufInfo
     let msg = msgE $ show f'++" "++show s ++ "C written"
     catchJust ioErrors (fwriteToE f' >> msg) (msgE . show)
+
 
 -- | Try to do a substitution
 viSub :: [Char] -> Action

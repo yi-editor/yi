@@ -149,7 +149,8 @@ initCurses fn = do
 --
 resetParams :: IO ()
 resetParams = do
-    cBreak True
+    --cBreak True
+    rawF True
     echo False          -- don't echo to the screen
     nl True             -- always translate enter to \n
     leaveOk True        -- not ok to leave cursor wherever it is
@@ -246,6 +247,24 @@ cBreak False = throwIfErr_ (P.packAddress "nocbreak"##) nocbreak
 
 foreign import ccall unsafe "cbreak"     cbreak :: IO CInt
 foreign import ccall unsafe "nocbreak" nocbreak :: IO CInt
+
+
+--
+-- |> The raw routine
+-- > disables line buffering and erase/kill  character-process-
+-- > ing as in the above cbreak routine, however it also passes
+-- > control characters such as Ctrl-C and Ctrl-Z straight-through
+-- > to the program to process. This allows the emacs mode to
+-- > process things such as C-x C-s.
+-- > The noraw routine returns 
+-- > the terminal to normal (cooked) mode (I think).
+--
+rawF :: Bool -> IO ()
+rawF True  = throwIfErr_ (P.packAddress "raw"##)   raw
+rawF False = throwIfErr_ (P.packAddress "noraw"##) noraw
+
+foreign import ccall unsafe "raw"     raw :: IO CInt
+foreign import ccall unsafe "noraw" noraw :: IO CInt
 
 --
 -- |> The  echo  and  noecho routines control whether characters

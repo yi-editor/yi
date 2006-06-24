@@ -129,7 +129,10 @@ killSolE = do
     deleteNE (p-pn)
 
 getFileE :: IO FilePath
-getFileE = bufInfoE >>= \(fp, _, _, _, _, _) -> return fp
+getFileE = do bufInfo <- bufInfoE
+	      let fp = bufInfoFileName bufInfo
+              return fp
+
 
 -- TODO: This is slow, updating the screen on every char.
 insertFileE :: String -> Action

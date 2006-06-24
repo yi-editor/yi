@@ -21,20 +21,19 @@
 -- | Same character classification and remapping routines.
 --
 
-module Yi.Char (
-    upcaseCtrl,
-    lowcaseCtrl,
-    upcaseLowcase,
-    ctrlLowcase,
-    lowcaseUpcase,
-    ctrlUpcase,
-    validChar,
-    remapChar,
-    remapBS,
-    isDel,
-    isEnter,
-    setMeta, clrMeta, isMeta, metaBit
-) where
+module Yi.Char ( upcaseCtrl
+	       , lowcaseCtrl
+	       , upcaseLowcase
+	       , ctrlLowcase
+	       , lowcaseUpcase
+	       , ctrlUpcase
+	       , validChar
+	       , remapChar
+	       , remapBS
+	       , isDel
+	       , isEnter
+	       , setMeta, clrMeta, isMeta, metaBit
+	       ) where
 
 import Yi.Yi ( keyBackspace )
 import Data.Char
@@ -96,3 +95,5 @@ isMeta  c = testBit (ord c) metaBit
 
 metaBit :: Int
 metaBit = 7
+
+
