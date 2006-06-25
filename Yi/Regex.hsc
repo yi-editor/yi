@@ -43,9 +43,9 @@ module Yi.Regex (
 #include <sys/types.h>
 #endif
 
-#if defined(HAVE_REGEX_H)
+{- #if defined(HAVE_REGEX_H) -}
 #include <regex.h>
-#endif
+{- #endif -}
 
 import Foreign
 import Foreign.C

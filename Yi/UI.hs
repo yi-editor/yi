@@ -200,10 +200,15 @@ drawWindow e mwin sty win =
 
         (y',_) <- getYX Curses.stdScr
         let diff = h - off - (y' - y)
-        if windowfill e /= ' '
+        mapM_ (\s -> drawLine w s >> clrToEol >> lineDown) $ 
+              take diff $ repeat [windowfill e]
+	{-
+	if windowfill e /= ' '
             then mapM_ (\s -> drawLine w s >> clrToEol >> lineDown) $ 
                     take diff $ repeat [windowfill e]
-            else Curses.wMove Curses.stdScr (y' + diff) 0 -- just move the cursor
+	    else Curses.wMove Curses.stdScr (y' + diff) 0 -- just move the cursor
+        -}
+
 
     -- draw modeline
     when (not $ isNothing m) $ do
@@ -215,7 +220,7 @@ drawWindow e mwin sty win =
     }}}}
 
 --
--- | Draw the editor command line. Make sure not to drop of end of screen.
+-- | Draw the editor command line. Make sure not to drop off end of screen.
 --
 drawCmdLine :: String -> IO ()
 drawCmdLine s = do
