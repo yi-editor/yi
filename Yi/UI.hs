@@ -51,6 +51,7 @@ import Yi.Curses hiding ( refresh )
 import qualified Yi.Curses as Curses
 
 import qualified Data.ByteString as P
+import qualified Data.ByteString.Base as P
 import qualified Data.ByteString.Char8 as C
 
 import Data.Maybe                   ( isNothing, fromJust )
