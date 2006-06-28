@@ -1,11 +1,15 @@
 {-
+  \section{Module Yi.Keymap.Movements}
   This file represents some common movements that maybe used by
   all of the individual key maps, rather than re-implementing such
   movements again and again for separate keymaps.
 -}
 
 module Yi.Keymap.Movements ( moveRightWord
-			   , movementCommand )
+			   , movementCommand 
+			   , newlineAndIndent
+			   , writeFileandMessage
+			   )
 where
 
 {- Standard library modules imported -}
@@ -16,6 +20,52 @@ import Yi.Editor hiding     ( keymap )
 import Yi.Yi hiding         ( keymap, meta, string )
 -- import Yi.Window
 -- import Yi.Buffer
+
+
+{-
+  \subsection{File Commands}
+  This sections contains commands for reading and writing
+  the buffers to disk.
+-}
+writeFileandMessage :: Action
+writeFileandMessage =
+    do bufInfo <- bufInfoE
+       fwriteE
+       msgE $ concat [ "file: "
+		     , show $ bufInfoFileName bufInfo
+		     , " written to disk"
+		     ]
+
+
+{-
+  \subsection{Movement commands}
+  In this section we define commands for quickly moving the cursor
+  to where we want to be.
+
+  Writing to the mode line information about the current buffer, in particular
+  the current line and column numbers.
+-}
+-- | Performs the given action and then updates the message with
+-- | the current (possibly updated) position.
+movementCommand :: Action -> Action
+movementCommand act = 
+    do act
+       bufInfo <- bufInfoE
+       msgE $ showBufInfo bufInfo
+    where 
+    showBufInfo :: BufferFileInfo -> String
+    showBufInfo bufInfo =
+	concat [ show $ bufInfoFileName bufInfo
+	       , " Line "
+	       , show $ bufInfoLineNo bufInfo
+	       , " Col "
+	       , show $ bufInfoColNo bufInfo
+	       , " ["
+	       , bufInfoPercent bufInfo
+	       , "]"
+	       ]
+
+
 
 {-
   For moving around with the control key, this speeds up movement
@@ -69,49 +119,52 @@ moveRightWord =
           skipToAlphaNum :: Int -> String -> Action
 	  skipToAlphaNum x s = rightOrEolE $ skipTo isAlphaNum x s
 
+{-
+  \subsection{Simple Indentation}
+  Here we will define a simple indentation algorithm. The basic idea is that
+  when we want to indent we indent the same amount as the previous line
+  and then the user can move it to the left or the right however they like.
+  This is obviously very primitive and for most languages not ideal, however it
+  has two very good properties, it's very predictable, and works with pretty
+  much any language, even something like tex. It is also has the desirable
+  property that it is easy to implement.
+
+  We start by simply looking at the previous line, we should also check
+  if it was an empty line and if so check the line above and so on.
+
+  As a side issue note here that we cannot place the new line character
+  in the string given to [-indentNE-] (see the definition of [-indentNE-]
+  in [-Yi.Core.hs-]) so we combine two actions, this means that the
+  undo command will not undo these as one action; two questions arise
+  from this: is there a way around this? and do we want to get around it
+  or is the splitting behaviour desirable?
+-}
+newlineAndIndent :: Action
+newlineAndIndent = do lineChars <- readLnE
+		      let spaces = indentationChars lineChars
+		      insertE '\n'
+		      insertNE spaces
+
 
 {-
-  This is the old code for [-getMovement-].
-  [- nextNonWhite :: Int -> String -> (Int, String)
-     nextNonWhite x [] = (x, [])
-     nextNonWhite x (c : rest)
-         | not $ isAlphaNum c = nextNonWhite (x + 1) rest
-	 | otherwise          = (x, c : rest)
-
-     wordLength :: Int -> String -> Int
-     wordLength x []            = x
-     wordLength x (firstChar : rest)
-	  | isAlphaNum firstChar = wordLength (x + 1) rest
-	  | otherwise            = x
-
-     getMovement :: String -> Int
-     getMovement s = 
-	  wordLength skipped restS
-	  where (skipped, restS) = nextNonWhite 0 s
-  -]
+ We should also write an indent current line, which is a bit more
+ than the above, since the point may not be current at the start of
+ the line so we cannot simply insert at number of spaces.
 -}
 
 
 {-
-  Writing to the mode line information about the current buffer, in particular
-  the current line and column numbers.
+  \subsection{Utility functions}
+  This section contains small utility functions used by the definitions
+  above for common calculations such as finding the next non-whitespace
+  character.
 -}
--- | Performs the given action and then updates the message with
--- | the current (possibly updated) position.
-movementCommand :: Action -> Action
-movementCommand act = 
-    do act
-       bufInfo <- bufInfoE
-       msgE $ showBufInfo bufInfo
-    where 
-    showBufInfo :: BufferFileInfo -> String
-    showBufInfo bufInfo =
-	concat [ show $ bufInfoFileName bufInfo
-	       , " Line "
-	       , show $ bufInfoLineNo bufInfo
-	       , " Col "
-	       , show $ bufInfoColNo bufInfo
-	       , " ["
-	       , bufInfoPercent bufInfo
-	       , "]"
-	       ]
+
+-- | Returns the indentation characters of the given string,
+-- that is return the white space at the start of the string, generally
+-- the given string will be a line.
+indentationChars :: String -> String
+indentationChars [] = []
+indentationChars ( first : rest )
+    | isSpace first = first : (indentationChars rest)
+    | otherwise     = []

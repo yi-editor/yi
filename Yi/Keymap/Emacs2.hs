@@ -86,7 +86,7 @@ type KProc a = StateT String (Writer [Action]) a
 normalKlist :: KList
 normalKlist = [ ([c], atomic $ insertSelf) | c <- printableChars ] ++
               [
-        ("DEL",      atomic $ repeatingArg bdeleteE),
+        ("BACKSP",   atomic $ repeatingArg bdeleteE),
         ("C-M-w",    atomic $ appendNextKillE),
         ("C-_",      atomic $ undoE),
         ("C-SPC",    atomic $ (getPointE >>= setMarkE)),
@@ -129,7 +129,7 @@ normalKlist = [ ([c], atomic $ insertSelf) | c <- printableChars ] ++
         ("M-<",      atomic $ repeatingArg topE),
         ("M->",      atomic $ repeatingArg botE),
 --      ("M-%",      searchReplaceC),
-        ("M-DEL",    atomic $ repeatingArg bkillWordE),
+        ("M-BACKSP", atomic $ repeatingArg bkillWordE),
 --      ("M-a",      atomic $ repeatingArg backwardSentenceE),
         ("M-b",      atomic $ repeatingArg prevWordE),
         ("M-c",      atomic $ repeatingArg capitaliseWordE),

@@ -68,7 +68,8 @@ keyNames = [(' ', "SPC"),
             (keyRight, "<right>"),
             (keyDown, "<down>"),
             (keyUp, "<up>"),
-            (keyBackspace, "DEL"),
+            (keyDC, "DEL"),
+            (keyBackspace, "BACKSP"),
             (keyNPage, "<next>"),
             (keyPPage, "<prior>")
            ]

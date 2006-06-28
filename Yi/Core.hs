@@ -536,6 +536,10 @@ insertE c = do
             insertW c w' b
 
 -- | Insert a string
+-- But one must be careful when using this that the string does not
+-- contain a newline, in fact perhaps we should check for that, we could
+-- do something like unlines and then insert each line followed by
+-- a newline character?
 insertNE :: String -> Action
 insertNE str = do
     withWindow_ $ \w b -> do

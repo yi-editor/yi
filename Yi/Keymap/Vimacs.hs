@@ -43,6 +43,8 @@ import Yi.Keymap.Emacs.Keys
 
 import Yi.Keymap.Movements ( moveRightWord
 			   , movementCommand
+			   , newlineAndIndent
+			   , writeFileandMessage
 			   )
 
 import Data.Char
@@ -111,7 +113,8 @@ normalKlist = [ ([c], atomic $ insertSelf) | c <- printableChars ] ++
 	 @todo{This whole list would probably be better formatted more to
 	 the left, just to give each action specification more room.}
 	 -}
-        ("DEL",       atomic $ repeatingArg bdeleteE),
+        ("DEL",       atomic $ repeatingArg deleteE),
+        ("BACKSP",    atomic $ repeatingArg bdeleteE),
         ("C-M-w",     atomic $ appendNextKillE),
         ("C-_",       atomic $ undoE),
         ("C-SPC",     atomic $ (getPointE >>= setMarkE)),
@@ -122,7 +125,7 @@ normalKlist = [ ([c], atomic $ insertSelf) | c <- printableChars ] ++
         ("C-f",       atomic $ repeatingArg rightE),
 --      ("C-g",       atomic $ keyboardQuitE),
 --      ("C-i",       atomic $ indentC),
-        ("C-j",       atomic $ repeatingArg $ insertE '\n'),
+        ("C-j",       atomic $ repeatingArg $ newlineAndIndent),
         ("C-k",       atomic $ killLineE),
         ("C-m",       atomic $ repeatingArg $ insertE '\n'),
         ("C-n",       atomic $ repeatingArg downE),
@@ -147,7 +150,7 @@ normalKlist = [ ([c], atomic $ insertSelf) | c <- printableChars ] ++
         ("C-x C-c",   atomic $ closeE),
         ("C-x C-f",   atomic $ findFile),
 	("C-x C-g",   atomic $ findGotoLine), -- Alt-Shift-G some prefer?
-        ("C-x C-s",   atomic $ fwriteE),
+        ("C-x C-s",   atomic $ writeFileandMessage),
         ("C-x C-x",   atomic $ exchangePointAndMarkE),
         ("C-x o",     atomic $ nextWinE),
         ("C-x k",     atomic $ closeE),
@@ -161,7 +164,8 @@ normalKlist = [ ([c], atomic $ insertSelf) | c <- printableChars ] ++
         ("M-<",       atomic $ repeatingArg topE),
         ("M->",       atomic $ repeatingArg botE),
 --      ("M-%",       searchReplaceC),
-        ("M-DEL",     atomic $ repeatingArg bkillWordE),
+        ("M-BACKSP",  atomic $ repeatingArg bkillWordE),
+        ("M-DEL",     atomic $ repeatingArg killWordE),
 --      ("M-a",       atomic $ repeatingArg backwardSentenceE),
         ("M-b",       atomic $ repeatingArg prevWordE),
         ("M-c",       atomic $ repeatingArg capitaliseWordE),
@@ -321,6 +325,9 @@ scrollDownE = withUnivArg $ \a ->
               case a of
                  Nothing -> downScreenE
                  Just n -> replicateM_ n downE
+
+
+
 
 -- * KeyList => keymap
 -- Specialized version of MakeKeymap
