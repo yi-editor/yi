@@ -36,6 +36,7 @@ import Yi.Editor hiding     ( keymap )
 import Yi.Yi hiding         ( keymap, meta, string )
 import Yi.Window
 import Yi.Buffer
+import qualified Yi.Style as Style
 
 import Yi.Keymap.Emacs.KillRing
 import Yi.Keymap.Emacs.UnivArgument
@@ -118,12 +119,16 @@ normalKlist = [ ([c], atomic $ insertSelf) | c <- printableChars ] ++
         ("C-M-w",     atomic $ appendNextKillE),
         ("C-_",       atomic $ undoE),
         ("C-SPC",     atomic $ (getPointE >>= setMarkE)),
+	("C-g",       atomic $ unsetMarkE), 
+         -- C-g should be a more general quit that also unsets the mark.
+	 --      ("C-g",       atomic $ keyboardQuitE),
+
         ("C-a",       atomic $ repeatingArg solE),
         ("C-b",       atomic $ repeatingArg leftE),
         ("C-d",       atomic $ repeatingArg deleteE),
         ("C-e",       atomic $ repeatingArg eolE),
         ("C-f",       atomic $ repeatingArg rightE),
---      ("C-g",       atomic $ keyboardQuitE),
+
 --      ("C-i",       atomic $ indentC),
         ("C-j",       atomic $ repeatingArg $ newlineAndIndent),
         ("C-k",       atomic $ killLineE),
@@ -137,7 +142,7 @@ normalKlist = [ ([c], atomic $ insertSelf) | c <- printableChars ] ++
         ("C-t",       atomic $ repeatingArg $ swapE),
         ("C-u",       readArgC),
         ("C-v",       atomic $ scrollDownE),
-        ("C-w",       atomic $ killRegionE),
+        ("C-w",       atomic $ killRegionE >> unsetMarkE),
         ("C-y",       atomic $ yankE),
         ("C-z",       atomic $ suspendE),
 
@@ -151,6 +156,11 @@ normalKlist = [ ([c], atomic $ insertSelf) | c <- printableChars ] ++
         ("C-x C-f",   atomic $ findFile),
 	("C-x C-g",   atomic $ findGotoLine), -- Alt-Shift-G some prefer?
         ("C-x C-s",   atomic $ writeFileandMessage),
+
+        {- 
+	   @bug{small bug somehow in the selection if the mark isn't set
+           when this is applied (try it and see).}
+	-}
         ("C-x C-x",   atomic $ exchangePointAndMarkE),
         ("C-x o",     atomic $ nextWinE),
         ("C-x k",     atomic $ closeE),
@@ -381,6 +391,14 @@ fromKProc kp cs = snd $ runWriter $ runStateT kp cs
 
 -- | entry point
 keymap :: [Char] -> [Action]
-keymap cs = setWindowFillE '~' : actions
-	    where actions   = keymapFun cs
-		  keymapFun = fromKProc $ makeKeymap normalKlist
+keymap cs = setWindowFillE '~' : winStyleAct : actions
+	    where actions     = keymapFun cs
+		  keymapFun   = fromKProc $ makeKeymap normalKlist
+		  winStyleAct = setWindowStyleE defaultVimacsUiStyle
+
+{-
+  For now we just make the selected style the same as the eof characters
+  style.
+-}
+defaultVimacsUiStyle :: Style.UIStyle
+defaultVimacsUiStyle = Style.ui { selected = Style.eof Style.ui }

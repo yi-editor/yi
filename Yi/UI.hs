@@ -43,7 +43,8 @@ module Yi.UI (
 
   )   where
 
-import Yi.Buffer        ( Buffer(ptrToLnsB) )
+import Yi.Buffer        ( Buffer( ptrToLnsB
+				, getMarkB  ) )
 import Yi.Editor
 import Yi.Window
 import Yi.Style
@@ -60,6 +61,10 @@ import Data.List
 import Control.Monad                ( when )
 import System.Posix.Signals         ( raiseSignal, sigTSTP )
 
+
+-- Just really to allow me to give some signatures
+-- import Foreign.C.Types      ( CInt )
+import Foreign.C.String     ( CString )
 ------------------------------------------------------------------------
 
 -- | how to initialise the ui
@@ -163,10 +168,17 @@ drawWindow :: Editor
            -> IO ()
 
 drawWindow e mwin sty win =
-
-    case win of { Window {bufkey=u, mode=m, height=h, width=w, tospnt=t} ->
-    case window sty of { wsty ->
-    case eof    sty of { eofsty -> do
+    -- so t is the current point at the top of the screen.
+    -- pnt is where the current cursor is.
+    case win of { Window { bufkey = u
+			 , mode   = m
+			 , height = h
+			 , width  = w
+			 , tospnt = t 
+			 , pnt    = point} ->
+    case window sty   of { wsty ->
+    case selected sty of { selsty ->
+    case eof    sty   of { eofsty -> do
     case findBufferWith e u of { b -> do
     let off = case m of Nothing -> 0 ; _ -> 1 -- correct for modeline
 
@@ -187,9 +199,99 @@ drawWindow e mwin sty win =
     -- many real chars to take.
     --
     (y,_) <- getYX Curses.stdScr
-    withStyle wsty $ flip mapM_ lns $ \(ptr,len) -> do
-        throwIfErr_ (C.pack "drawWindow") $
-            waddnstr Curses.stdScr ptr (fromIntegral len)
+
+    {-
+      That was the first attempt, now what we'll do is split each
+      line in to three parts, the bit before the selection, the
+      bit within the selection and the bit after the selection,
+      at most one line will have all there parts
+      (and then only if the selection forms a middle part of
+      one line), most will either be all selection, if the
+      selection covers multiple lines, or completely before or
+      completely after the selection. 
+    -}
+    markPoint <- getMarkB b
+    let	startSelect = min markPoint point
+	stopSelect  = max markPoint point
+
+        -- @todo{signature}
+        lineTest (sol, len) = startSelect < sol &&
+			      stopSelect > sol
+
+        -- The integer argument is the current point at the start of
+        -- the line we wish to draw
+        drawLines :: Int -> [(CString, Int)] -> IO ()
+	drawLines _ []                    = return ()
+	drawLines sol ((ptr, len) : rest) =
+	    -- @todo{Make sure these can't *all* be zero
+            -- Notice for example that some conditions imply others, eg
+            -- stopSelect < eol implies startSelect < eol, so
+            -- startSelect > sol && stopSelect < eol implies that
+            -- the selection starts and ends on this line.
+
+            -- I think that the inSel conditions can be slightly optimised.
+            let eol        = sol + len
+                byteString = P.packCString ptr
+	        beforeSel
+		    | startSelect > sol         = min len (startSelect - sol)
+		    | otherwise                 = 0
+		inSel    
+                    -- selection starts and ends on this line
+		    | startSelect > sol &&
+		      stopSelect  < eol         = stopSelect - startSelect
+
+                    -- selection is entirely before this line
+		    | stopSelect  < sol         = 0
+
+                    -- selection is entirely after this line
+		    | startSelect > eol         = 0
+
+                    -- this line is entirely within the selection
+		    | startSelect < sol &&
+		      stopSelect  > eol         = len
+
+                    -- selection begins before this line, ends during it
+		    | startSelect < sol &&
+		      stopSelect  > sol         = stopSelect - sol
+
+                    -- selection begins on this line, ends after it
+                    | startSelect > sol &&
+                      stopSelect  > eol         = eol - startSelect
+
+                    -- selection outside this line (not really needed)
+		    | otherwise                 = 0
+		afterSel = len - (beforeSel + inSel)
+		--     | stopSelect < eol          = min len (eol - stopSelect)
+		--     | otherwise                 = 0
+		(beforeSelPtrB,
+		 afterStartPtrB) = P.splitAt beforeSel byteString
+		(inSelPtrB,
+		 afterSelPtrB)   = P.splitAt inSel afterStartPtrB
+            in
+            -- @todo{A little optimisation by not drawing any of the
+            -- three parts whose length is zero.
+	    do withStyle wsty $ P.useAsCString beforeSelPtrB $
+		     \pointer ->
+		     throwIfErr_ (C.pack "drawWindow") $
+		     waddnstr Curses.stdScr pointer $
+		     fromIntegral beforeSel
+	       withStyle selsty $ P.useAsCString inSelPtrB $
+		     \pointer ->
+		     throwIfErr_ (C.pack "drawWindow") $
+		     waddnstr Curses.stdScr pointer $
+		     fromIntegral inSel
+	       withStyle wsty $ P.useAsCString afterSelPtrB $
+		     \pointer ->
+		     throwIfErr_ (C.pack "drawWindow") $
+		     waddnstr Curses.stdScr pointer $
+		     fromIntegral afterSel
+	       drawLines (len + sol) rest
+
+    drawLines t lns
+
+--    withStyle lineStyle $ flip mapM_ lns $ \(ptr,len) -> do
+--        throwIfErr_ (C.pack "drawWindow") $
+--            waddnstr Curses.stdScr ptr (fromIntegral len)
 
     -- and any eof markers (should be optional)
     withStyle eofsty $ do
@@ -218,7 +320,7 @@ drawWindow e mwin sty win =
                 _         -> modeline
         withStyle (fn sty) $! drawLine w (fromJust m)
 
-    }}}}
+    }}}}}
 
 --
 -- | Draw the editor command line. Make sure not to drop off end of screen.

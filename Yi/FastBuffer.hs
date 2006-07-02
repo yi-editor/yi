@@ -70,6 +70,7 @@ data FBuffer =
                 , bmode  :: !(MVar BufferMode)  -- a read-only bit
                 }
 
+
 data FBuffer_ =
         FBuffer_ { _rawmem  :: !(Ptr CChar)     -- raw memory           (ToDo unicode)
                  , marks    :: !(M.Map Int Int) -- 0: point, 1: mark
@@ -101,7 +102,9 @@ hNewFBuffer f = do
     if (r /= size_i)
         then ioError (userError $ "Short read of file: " ++ f)
         else do poke (ptr `advancePtr` size_i) (castCharToCChar '\0')
-                mv  <- newMVar  (FBuffer_ ptr (M.fromList [(0,0), (1,0)]) size_i r_size)
+		-- Note here we do not set the mark, just the point, I think
+                -- that this is correct behaviour.
+                mv  <- newMVar  (FBuffer_ ptr (M.fromList [(0,0)]) size_i r_size)
                 mv' <- newMVar  emptyUR
                 fn  <- newMVar  (Just f)        -- filename is buffer name
                 rw  <- newMVar  ReadWrite
@@ -603,11 +606,34 @@ instance Buffer FBuffer where
 
     -- ------------------------------------------------------------------------
 
+    {- 
+       Okay if the mark is set then we return that, otherwise we
+       return the point, which will mean that the calling function will
+       see the selection area as null in length. 
+    -}
     getMarkB (FBuffer { rawbuf = mv }) =
-        withMVar mv $ \(FBuffer_ {marks=p}) -> return (p M.! 1)
+        withMVar mv $ findMarkFun
+	where
+	-- We look up position 1 in the marks, the default value to return
+	-- if position 1 is not set, is position 0, ie the point.
+	findMarkFun :: FBuffer_ -> IO Int
+	findMarkFun (FBuffer_ { marks = p } ) = 
+	    return $ M.findWithDefault (p M.! 0) 1 p
+
 
     setMarkB (FBuffer { rawbuf = mv }) pos =
         modifyMVar_ mv $ \fb -> return $ fb {marks = (M.insert 1 pos (marks fb))}
+
+    {-
+      We must allow the unsetting of this mark, this will have the property
+      that the point will always be returned as the mark.
+    -}
+    unsetMarkB  (FBuffer { rawbuf = mv }) =
+	modifyMVar_ mv $ unsetMarkFun
+	where
+	unsetMarkFun :: FBuffer_ -> IO FBuffer_
+	unsetMarkFun fb = return $ fb { marks = (M.delete 1 (marks fb)) }
+
 
     -- ------------------------------------------------------------------------
 

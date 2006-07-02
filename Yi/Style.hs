@@ -42,20 +42,31 @@ import Control.Exception        (handle)
 --
 data UIStyle =
     UIStyle {
-        window           :: !Style    -- ^ window fg and bg (ignore for now)
-       ,modeline         :: !Style    -- ^ out of focus modeline colours
-       ,modeline_focused :: !Style    -- ^ in focus modeline
-       ,eof              :: !Style    -- empty file marker colours
+         window           :: !Style    -- ^ window fg and bg (ignore for now)
+       , modeline         :: !Style    -- ^ out of focus modeline colours
+       , modeline_focused :: !Style    -- ^ in focus modeline
+       , selected         :: !Style    -- ^ the selected portion
+       , eof              :: !Style    -- ^ empty file marker colours
      }
 
 --
 -- | Default settings
 --
+{-
+  Notice that the selected field is initially set to the default, which
+  essentially means that selected text will not be highlighted. The reason
+  for this is that if the mode does not remember to UnSet the mark after,
+  for example, cutting, then there will always be a highlighted region, that
+  is essentially the default for now which has worked up until now because the
+  selected text wasn't highlighted, now that it is, we need the modes to unset
+  the mark when nothing should be hightlighted.
+-}
 ui :: UIStyle
 ui = UIStyle {
          window             = Style defaultfg    defaultbg
         ,modeline           = Style black        darkcyan
         ,modeline_focused   = Style brightwhite  darkcyan
+	,selected           = Style defaultfg    defaultbg
         ,eof                = Style blue         defaultbg
      }
 

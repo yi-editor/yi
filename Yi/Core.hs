@@ -33,7 +33,7 @@ module Yi.Core (
         -- * Construction and destruction
         startE,         -- :: a -> Editor.Config -> Int -> Maybe [FilePath] -> IO ()
         emptyE,         -- :: IO ()
-        runE,         -- :: IO ()
+        runE,           -- :: IO ()
         quitE,          -- :: Action
         rebootE,        -- :: Action
         reloadE,        -- :: Action
@@ -56,6 +56,7 @@ module Yi.Core (
         fileNameE,      -- :: IO (Maybe FilePath)
         bufNameE,       -- :: IO String
         setWindowFillE, -- :: Char -> Action
+	setWindowStyleE,-- :: UIStyle -> Action
 
         -- * Window manipulation
         nextWinE,       -- :: Action
@@ -149,6 +150,7 @@ module Yi.Core (
         -- * Marks
         setMarkE,
         getMarkE,
+	unsetMarkE,
         exchangePointAndMarkE,
 
         -- * Dynamically extensible state
@@ -189,6 +191,7 @@ import Yi.String
 import Yi.Process           ( popen )
 import Yi.Editor
 import qualified Yi.Editor as Editor
+import qualified Yi.Style as Style
 
 import Data.Maybe
 import Data.Char            ( isLatin1 )
@@ -647,6 +650,10 @@ getRegE = readEditor yreg
 setMarkE :: Int -> Action
 setMarkE pos = withWindow_ $ \w b -> (setMarkB b pos >> return w)
 
+-- | Unset the current buffer mark so that there is no selection
+unsetMarkE :: Action
+unsetMarkE = withWindow_ $ \w b -> (unsetMarkB b >> return w)
+
 -- | Get the current buffer mark
 getMarkE :: IO Int
 getMarkE = withWindow $ \w b -> do pos <- getMarkB b
@@ -926,6 +933,11 @@ bufNameE = withWindow $ \w b -> return (w, nameB b)
 -- vi-like editors, ' ' for everything else
 setWindowFillE :: Char -> Action
 setWindowFillE c = modifyEditor_ $ \e -> return $ e { windowfill = c }
+
+-- | Sets the window style.
+setWindowStyleE :: Style.UIStyle -> Action
+setWindowStyleE sty = modifyEditor_ $ \e -> return $ e { uistyle = sty }
+
 
 -- | Close the current window, attach the next buffer in the buffer list
 -- to a new window, and open it up
