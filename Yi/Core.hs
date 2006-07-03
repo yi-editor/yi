@@ -905,6 +905,7 @@ data BufferFileInfo =
 		   , bufInfoColNo    :: Int
 		   , bufInfoCharNo   :: Int
 		   , bufInfoPercent  :: String
+		   , bufInfoModified :: Bool
 		   }
 
 -- | File info, size in chars, line no, col num, char num, percent
@@ -913,12 +914,15 @@ bufInfoE :: IO BufferFileInfo
 bufInfoE = withWindow $ \w b -> do
     s <- sizeB b
     p <- pointB b
+    m <- isUnchangedB b
     let bufInfo = BufferFileInfo { bufInfoFileName = nameB b
 				 , bufInfoSize     = s
 				 , bufInfoLineNo   = lineno w
 				 , bufInfoColNo    = 1 + (snd $ cursor w)
 				 , bufInfoCharNo   = p
-				 , bufInfoPercent  = getPercent p s }
+				 , bufInfoPercent  = getPercent p s 
+				 , bufInfoModified = not m
+				 }
     return (w, bufInfo)
 
 -- | Maybe a file associated with this buffer

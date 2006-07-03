@@ -63,7 +63,11 @@ movementCommand act =
 	       , " ["
 	       , bufInfoPercent bufInfo
 	       , "]"
+	       , isModified
 	       ]
+	where isModified
+		  | bufInfoModified bufInfo = "(Modified)"
+		  | otherwise               = ""
 
 
 
