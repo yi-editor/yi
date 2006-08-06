@@ -6,12 +6,17 @@ Vim mode:
         - 0 in vim mode is ignored.
         - tab completion.
         - flavours of s///
-        - range syntax
+	- visual mode
+	- visual line mode
+        - range syntax, including '<,'> for beginning and end of visual mode.
         - performance issue on very long lines. (C fragment?)
         - path names not expanded in :e
         - :!cmd , run an external command not implemented
         - remember column count when moving down to short lines.
         - deal with delay after hitting esc from command mode.
+        - undo should coalesce so that dl is undone all at once.
+        - b should be first beginning of word match to the left
+        - e should be first end of word match to the right
 
 Darcs support:
         - what interesting things can we do with integrated darcs
@@ -43,6 +48,7 @@ other stuff:
 	- the unChanged test doesn't seem to be accurate. what's up with
 	  that?
 
+	- speed up Esc key detection, shorter delay than ncurses.
         - bind keymap lexers to windows
         - :eval, :type, .. etc. ghci stuff
         - make the cmd line a buffer.
