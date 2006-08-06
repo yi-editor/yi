@@ -420,11 +420,11 @@ cmd_op =((op_char +> digit `star` (move_chr >|< (move2chrs +> anyButEsc))) >|<
 cmd2other :: VimMode
 cmd2other = modeSwitchChar
     `meta` \[c] st ->
-        let beginIns a = (with a, st, Just (ins st))
+        let beginIns a = (with (msgE "-- INSERT --" >> a), st, Just (ins st))
         in case c of
             ':' -> (with (msgE ":" >> focus), st{acc=[':']}, Just ex_mode)
             'R' -> (Nothing, st, Just rep_mode)
-            'i' -> (Nothing, st, Just (ins st))
+            'i' -> (with (msgE "-- INSERT --"), st, Just (ins st))
             'I' -> beginIns solE
             'a' -> beginIns $ rightOrEolE 1
             'A' -> beginIns eolE
