@@ -30,6 +30,7 @@
 
 module Yi.Core (
 
+        Direction (GoLeft, GoRight),
         -- * Construction and destruction
         startE,         -- :: a -> Editor.Config -> Int -> Maybe [FilePath] -> IO ()
         emptyE,         -- :: IO ()
@@ -164,12 +165,12 @@ module Yi.Core (
         SearchExp,
         searchAndRepLocal,  -- :: String -> String -> IO Bool
         searchE,            -- :: (Maybe String) -> [SearchF]
-                            -- -> (() -> Either () ()) -> Action
+                            -- -> Direction -> Action
         searchInitE,        -- :: String
                             -- -> [SearchF]
                             -- -> IO SearchExp
         searchDoE,          -- :: SearchExp
-                            -- -> (() -> Either () ())
+                            -- -> Direction
                             -- -> IO SearchResult
 
         -- * higher level ops
@@ -210,6 +211,9 @@ import Control.Concurrent.Chan
 import GHC.Exception hiding ( throwIO )
 
 import qualified Yi.UI as UI
+
+-- | A 'Direction' is either left or right.
+data Direction = GoLeft | GoRight
 
 -- ---------------------------------------------------------------------
 -- | Start up the editor, setting any state with the user preferences
@@ -751,7 +755,7 @@ searchE :: (Maybe String)       -- ^ @Nothing@ means used previous
                                 -- pattern, if any. Complain otherwise.
                                 -- Use getRegexE to check for previous patterns
         -> [SearchF]            -- ^ Flags to modify the compiled regex
-        -> (() -> Either () ()) -- ^ @Left@ means backwards, @Right@ means forward
+        -> Direction            -- ^ @Left@ means backwards, @Right@ means forward
         -> Action
 
 searchE s fs d =
@@ -770,16 +774,12 @@ searchE s fs d =
 
 
 searchDoE :: SearchExp
-          -> (() -> Either () ())
+          -> Direction
           -> IO SearchResult
 
-searchDoE _ d | isLeft (d ()) = do
+searchDoE _ GoLeft = do
         errorE "Backward searching is unimplemented"
 	return Nothing
-    where
-        isLeft (Left _) = True
-        isLeft _ = False
-
 searchDoE (s, re) _ = searchF s re
 
 --

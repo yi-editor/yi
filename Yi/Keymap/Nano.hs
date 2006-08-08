@@ -147,8 +147,8 @@ cmdCharFM = M.fromList $
     ,('\^X',        do b <- isUnchangedE ; if b then quitE else switch2WriteMode)
     ,('\^Y',        upScreenE)
     ,('\^Z',        suspendE)
-    ,('\0',         do moveWhileE (isAlphaNum)      Right
-                       moveWhileE (not.isAlphaNum)  Right )
+    ,('\0',         do moveWhileE (isAlphaNum)      GoRight
+                       moveWhileE (not.isAlphaNum)  GoRight )
     ,(keyBackspace, leftE >> deleteE)
     ,(keyDown,      downE)
     ,(keyLeft,      leftE)
@@ -398,8 +398,8 @@ echoCharFM = M.fromList $
      ,"Enter line number: "))
 
     ,('\^W',
-     (\p -> case p of [] -> searchE Nothing  [] Right
-                      _  -> searchE (Just p) [] Right
+     (\p -> case p of [] -> searchE Nothing  [] GoRight
+                      _  -> searchE (Just p) [] GoRight
      ,undefined))
     ]
 

@@ -88,9 +88,6 @@ import Control.Exception    ( assert )
 import Data.IORef
 import System.IO.Unsafe     ( unsafePerformIO )
 
--- i.e. Left or Right
-type Direction = () -> Either () ()
-
 -- | Read character before point.
 breadE :: IO Char
 breadE = do
@@ -157,19 +154,19 @@ bkillWordE = doSkipCond bdeleteE breadE atSolE isNonWord
 
 -- | Move to first char of next word forwards
 nextWordE :: Action
-nextWordE = do moveWhileE (isAlphaNum) Right
-               moveWhileE (not.isAlphaNum)  Right
+nextWordE = do moveWhileE (isAlphaNum) GoRight
+               moveWhileE (not.isAlphaNum)  GoRight
 
 -- | Move to first char of next word backwards
 prevWordE :: Action
-prevWordE = do moveWhileE (isAlphaNum)      Left
-               moveWhileE (not.isAlphaNum)  Left
+prevWordE = do moveWhileE (isAlphaNum)      GoLeft
+               moveWhileE (not.isAlphaNum)  GoLeft
 
 ------------------------------------------------------------------------
 
 -- | Move to the next occurence of @c@
 nextCInc :: Char -> Action
-nextCInc c = rightE >> moveWhileE (/= c) Right
+nextCInc c = rightE >> moveWhileE (/= c) GoRight
 
 -- | Move to the character before the next occurence of @c@
 nextCExc :: Char -> Action
@@ -177,7 +174,7 @@ nextCExc c = nextCInc c >> leftE
 
 -- | Move to thhe previous occurence of @c@
 prevCInc :: Char -> Action
-prevCInc c = leftE  >> moveWhileE (/= c) Left
+prevCInc c = leftE  >> moveWhileE (/= c) GoLeft
 
 -- | Move to the character after the previous occurence of @c@
 prevCExc :: Char -> Action
@@ -206,7 +203,7 @@ nextNParagraphs n = do
         let loop = do
                 p <- pointB b
                 when (p < eof-1) $ do
-                    moveWhile_ (/= '\n') Right w b
+                    moveWhile_ (/= '\n') GoRight w b
                     p' <- pointB b
                     when (p' < eof-1) $ do
                         rightB b
@@ -224,7 +221,7 @@ prevNParagraphs n = do
                 p <- pointB b
                 when (p > 0) $ do
                     leftB b
-                    moveWhile_ (/= '\n') Left w b
+                    moveWhile_ (/= '\n') GoLeft w b
                     p' <- pointB b
                     when (p' > 0) $ do
                         leftB b
@@ -239,10 +236,8 @@ prevNParagraphs n = do
 ------------------------------------------------------------------------
 --
 -- | Shift the point, until predicate is true, leaving point at final
--- location. Direction is either False=left, True=right
+-- location.
 
---
--- N.B. we're using partially applied Left and Right as well-named Bools.
 --
 -- Maybe this shouldn't refresh?
 --
@@ -262,15 +257,15 @@ moveWhile_ :: (Char -> Bool)
 
 moveWhile_ f dir w b = do
     eof <- sizeB b
-    case dir () of
-        Right _ -> fix $ \loop' -> do p <- pointB b
+    case dir of
+        GoRight -> fix $ \loop' -> do p <- pointB b
                                       when (p < eof - 1) $ do
-                                      x <- readB b
-                                      when (f x) $ rightB b >> loop'
-        Left  _ -> fix $ \loop' -> do p <- pointB b
+                                        x <- readB b
+                                        when (f x) $ rightB b >> loop'
+        GoLeft  -> fix $ \loop' -> do p <- pointB b
                                       when (p > 0) $ do
-                                      x <- readB b
-                                      when (f x) $ leftB b >> loop'
+                                        x <- readB b
+                                        when (f x) $ leftB b >> loop'
     return w
 
 ------------------------------------------------------------------------
@@ -285,7 +280,7 @@ readWordLeft_ w b = do
     p <- pointB b
     c <- readB b
     when (not $ isAlphaNum c) $ leftB b
-    moveWhile_ isAlphaNum Left w b
+    moveWhile_ isAlphaNum GoLeft w b
     sof <- atSof b
     c'  <- readB b
     when (not sof || not (isAlphaNum c')) $ rightB b
@@ -335,9 +330,9 @@ readWord_ w b = do
     p <- pointB b
     c <- readB b
     if not (isAlphaNum c) then leftB b
-                          else moveWhile_ isAlphaNum Right w b >> leftB b
+                          else moveWhile_ isAlphaNum GoRight w b >> leftB b
     y <- pointB b   -- end point
-    moveWhile_ isAlphaNum Left w b
+    moveWhile_ isAlphaNum GoLeft w b
     sof <- atSof b
     c'  <- readB b
     when (not sof || not (isAlphaNum c')) $ rightB b

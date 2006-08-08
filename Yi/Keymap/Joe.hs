@@ -39,14 +39,14 @@ import Yi.Buffer            ( moveTo, deleteN, insertN )
 type JoeProc = KProc JoeState
 
 data JoeState = JoeState {
-    js_search_dir :: (() -> Either () ()),
+    js_search_dir :: Direction,
     js_search_flags :: [SearchF],
     js_search_replace :: Maybe String
     }
 
 initial_state :: JoeState
 initial_state = JoeState {
-    js_search_dir = \_ -> Right (),
+    js_search_dir = GoRight,
     js_search_flags = [],
     js_search_replace = Nothing
     }
@@ -282,7 +282,7 @@ mksearch cont s flags repl st _ = return $ do
     doSearch srchexp cont newst
     where
         ignore   = if isect "iI" flags then [IgnoreCase] else []
-        dir      = const $ if isect "bB" flags then Left () else Right ()
+        dir      = if isect "bB" flags then GoLeft else GoRight
         searchrx = if isect "xX" flags then s else escape2rx s
         newst = st{
             js_search_dir = dir,

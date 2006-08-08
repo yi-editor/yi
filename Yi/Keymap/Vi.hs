@@ -203,12 +203,12 @@ moveCmdFM = M.fromList $
 -- words
     -- ToDo these aren't quite right, but are nice and simple
     ,('w',          \i -> replicateM_ i $ do
-                            moveWhileE (isAlphaNum)      Right
-                            moveWhileE (not.isAlphaNum)  Right )
+                            moveWhileE (isAlphaNum)      GoRight
+                            moveWhileE (not.isAlphaNum)  GoRight )
 
     ,('b',          \i -> replicateM_ i $ do
-                            moveWhileE (isAlphaNum)      Left
-                            moveWhileE (not.isAlphaNum)  Left )
+                            moveWhileE (isAlphaNum)      GoLeft
+                            moveWhileE (not.isAlphaNum)  GoLeft )
 
 -- text
     ,('{',          prevNParagraphs)
@@ -234,10 +234,10 @@ moveCmdFM = M.fromList $
 --
 move2CmdFM :: M.Map Char (Int -> Char -> Action)
 move2CmdFM = M.fromList $
-    [('f',  \i c -> replicateM_ i $ rightE >> moveWhileE (/= c) Right)
-    ,('F',  \i c -> replicateM_ i $ leftE  >> moveWhileE (/= c) Left)
-    ,('t',  \i c -> replicateM_ i $ rightE >> moveWhileE (/= c) Right >> leftE)
-    ,('T',  \i c -> replicateM_ i $ leftE  >> moveWhileE (/= c) Left  >> rightE)
+    [('f',  \i c -> replicateM_ i $ rightE >> moveWhileE (/= c) GoRight)
+    ,('F',  \i c -> replicateM_ i $ leftE  >> moveWhileE (/= c) GoLeft)
+    ,('t',  \i c -> replicateM_ i $ rightE >> moveWhileE (/= c) GoRight >> leftE)
+    ,('T',  \i c -> replicateM_ i $ leftE  >> moveWhileE (/= c) GoLeft  >> rightE)
     ]
 
 --
@@ -287,7 +287,7 @@ cmdCmdFM = M.fromList $
     ,('\^Z',    const suspendE)
     ,('D',      const (readRestOfLnE >>= setRegE >> killE))
     ,('J',      const (eolE >> deleteE))    -- the "\n"
-    ,('n',      const (searchE Nothing [] Right))
+    ,('n',      const (searchE Nothing [] GoRight))
 
     ,('X',      \i -> do p <- getPointE
                          leftOrSolE i
@@ -526,7 +526,7 @@ ex_eval = enter
         let c  = reverse dmc
             h  = (c:(fst $ hist st), snd $ hist st) in case c of
         -- regex searching
-        ('/':pat) -> (with (searchE (Just pat) [] Right)
+        ('/':pat) -> (with (searchE (Just pat) [] GoRight)
                      ,st{acc=[],hist=h},Just $ cmd st)
 
         -- add mapping to command mode

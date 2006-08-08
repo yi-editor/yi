@@ -751,7 +751,7 @@ mgWrite = do
 mgDeleteBlanks :: Action
 mgDeleteBlanks = do
         p <- getPointE
-        moveWhileE (== '\n') Right
+        moveWhileE (== '\n') GoRight
         q <- getPointE
         gotoPointE p
         deleteNE (q - p)
@@ -760,7 +760,7 @@ mgDeleteBlanks = do
 mgDeleteHorizBlanks :: Action
 mgDeleteHorizBlanks = do
         p <- getPointE
-        moveWhileE (\c -> c == ' ' || c == '\t') Right
+        moveWhileE (\c -> c == ' ' || c == '\t') GoRight
         q <- getPointE
         gotoPointE p
         deleteNE (q - p)

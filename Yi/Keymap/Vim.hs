@@ -370,7 +370,7 @@ cmdCmdFM = M.fromList $
     ,('U',      flip replicateM_ undoE )    -- NB not correct
     ,('n',      const $ do getRegexE >>=
                                msgE . ("/" ++) . fst . fromMaybe ([],undefined)
-                           searchE Nothing [] Right)
+                           searchE Nothing [] GoRight)
     ,('u',      flip replicateM_ undoE )
 
     ,('X',      \i -> do p <- getPointE
@@ -663,7 +663,7 @@ ex_eval = enter
         let c  = reverse dmc
             h  = (c:(fst $ hist st), snd $ hist st) in case c of
         -- regex searching
-        ('/':pat) -> (with (searchE (Just pat) [] Right >> unfocus)
+        ('/':pat) -> (with (searchE (Just pat) [] GoRight >> unfocus)
                      ,st{acc=[],hist=h},Just $ cmd st)
 
         -- add mapping to command mode
