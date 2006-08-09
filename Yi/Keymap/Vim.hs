@@ -189,6 +189,62 @@ cmd_move = (move_chr >|< (move2chrs +> anyButEsc))
                         _    -> nopE
 
 --
+-- TODO: Does this belong in CharMove.hs ?
+--
+detectMovement :: Action -> IO Bool
+detectMovement act = do x <- getPointE
+                        act
+                        y <- getPointE
+                        if (x /= y) then return True
+                                    else return False
+
+-- The next 4 functions facilitate the default *word* concept 
+-- of Vim. In vim, the iskeyword variable modifies this concept,
+-- and it is configured differently for different filetypes.
+
+-- TODO: word can be abstracted to textUnit to deal with 
+--       all the various chunks of text that vim uses,
+--       such as paragraph, WORD, sentence ...
+
+-- sameWord c returns a function which tests other
+--   characters to see if they can be part of the same
+--   word
+sameWord :: Char -> Char -> Bool
+sameWord ch = head . filter ($ ch) $ [ type1, type2, type3 ]
+              where type1 c = (isAlphaNum c) || (c == '_') -- vim has two types of words
+                    type2 c = not (type1 c || type3 c)
+                    type3 c = betweenWord c  -- actually I dont expect this should ever happen
+                                             -- but i'll include it for robustness
+
+
+betweenWord :: Char -> Bool
+betweenWord ch = (isSpace ch) -- && (ch /= '\n')
+
+begWord :: Action
+begWord = do 
+      moveWhileE (betweenWord) Left
+      c <- readE
+      skippedAlpha <- detectMovement (moveWhileE (sameWord c) Left)
+      when skippedAlpha $ moveWhileE (not.sameWord c) Right
+
+endWord :: Action
+endWord = do 
+      moveWhileE (betweenWord) Right
+      c <- readE
+      skippedAlpha <- detectMovement (moveWhileE (sameWord c) Right)
+      when skippedAlpha $ moveWhileE (not.sameWord c) Left
+
+nextWord :: Action
+nextWord = do 
+      wasBetween <-detectMovement ( moveWhileE (betweenWord) Right)
+      if wasBetween
+         then return ()
+         else do
+            c <- readE
+            moveWhileE (sameWord c) Right
+            moveWhileE (betweenWord) Right
+
+--
 -- movement commands
 --
 moveCmdFM :: M.Map Char (Int -> Action)
@@ -218,9 +274,19 @@ moveCmdFM = M.fromList $
     ,('\r',         down)
 
 -- words
-    -- ToDo these aren't quite right, but are nice and simple
-    ,('w',          \i -> replicateM_ i nextWordE)
-    ,('b',          \i -> replicateM_ i prevWordE)
+    -- TODO: These handle blanks differently
+    --       than vim .. (is our way better tho?)
+    ,('w',          \i -> replicateM_ i nextWord)
+    ,('b',          \i -> replicateM_ i (do
+         moved <- detectMovement begWord
+         when (not moved) (leftE >> begWord)
+         ))
+    ,('e',          \i -> replicateM_ i (do
+         moved <- detectMovement endWord
+         when (not moved) (rightE >> endWord)
+         ))
+
+
 
 -- text
     ,('{',          prevNParagraphs)

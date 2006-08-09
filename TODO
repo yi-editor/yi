@@ -15,8 +15,6 @@ Vim mode:
         - remember column count when moving down to short lines.
         - deal with delay after hitting esc from command mode.
         - undo should coalesce so that dl is undone all at once.
-        - b should be first beginning of word match to the left
-        - e should be first end of word match to the right
 
 Darcs support:
         - what interesting things can we do with integrated darcs
