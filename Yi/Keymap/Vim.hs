@@ -222,27 +222,27 @@ betweenWord ch = (isSpace ch) -- && (ch /= '\n')
 
 begWord :: Action
 begWord = do 
-      moveWhileE (betweenWord) Left
+      moveWhileE (betweenWord) GoLeft
       c <- readE
-      skippedAlpha <- detectMovement (moveWhileE (sameWord c) Left)
-      when skippedAlpha $ moveWhileE (not.sameWord c) Right
+      skippedAlpha <- detectMovement (moveWhileE (sameWord c) GoLeft)
+      when skippedAlpha $ moveWhileE (not.sameWord c) GoRight
 
 endWord :: Action
 endWord = do 
-      moveWhileE (betweenWord) Right
+      moveWhileE (betweenWord) GoRight
       c <- readE
-      skippedAlpha <- detectMovement (moveWhileE (sameWord c) Right)
-      when skippedAlpha $ moveWhileE (not.sameWord c) Left
+      skippedAlpha <- detectMovement (moveWhileE (sameWord c) GoRight)
+      when skippedAlpha $ moveWhileE (not.sameWord c) GoLeft
 
 nextWord :: Action
 nextWord = do 
-      wasBetween <-detectMovement ( moveWhileE (betweenWord) Right)
+      wasBetween <-detectMovement ( moveWhileE (betweenWord) GoRight)
       if wasBetween
          then return ()
          else do
             c <- readE
-            moveWhileE (sameWord c) Right
-            moveWhileE (betweenWord) Right
+            moveWhileE (sameWord c) GoRight
+            moveWhileE (betweenWord) GoRight
 
 --
 -- movement commands
