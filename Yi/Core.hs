@@ -151,7 +151,7 @@ module Yi.Core (
         -- * Marks
         setMarkE,
         getMarkE,
-	unsetMarkE,
+        unsetMarkE,
         exchangePointAndMarkE,
 
         -- * Dynamically extensible state
@@ -195,6 +195,7 @@ import qualified Yi.Editor as Editor
 import qualified Yi.Style as Style
 
 import Data.Maybe
+import Data.List            ( intersperse )
 import Data.Char            ( isLatin1 )
 import Data.Dynamic
 import Data.Map as M        ( lookup, insert )
@@ -543,16 +544,15 @@ insertE c = do
             insertW c w' b
 
 -- | Insert a string
--- But one must be careful when using this that the string does not
--- contain a newline, in fact perhaps we should check for that, we could
--- do something like unlines and then insert each line followed by
--- a newline character?
 insertNE :: String -> Action
 insertNE str = do
     withWindow_ $ \w b -> do
             s  <- sizeB b
             w' <- if s == 0 then insertW '\n' w b else return w
-            insertNW str w' b
+            let lines' = lines str
+                insert_ "\n" win= insertW '\n' win b
+                insert_ st win = insertNW st win b
+            foldl (\win' str' -> do {ww<- win'; insert_ str' ww}) (return w') $ intersperse "\n" lines'
 
 -- | Delete character under cursor
 deleteE :: Action
