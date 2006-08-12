@@ -575,9 +575,13 @@ deleteRegionE (from,to) = withWindow_ $ \w b -> do
 readE :: IO Char
 readE = withWindow $ \w b -> readB b >>= \c -> return (w,c)
 
+
 -- | Read an arbitrary part of the buffer
+-- | The region is closed (including both end points).
 readRegionE :: (Int,Int) -> IO String
-readRegionE (from,to) = readNM from to
+readRegionE (from,to) | from <= to = readNM from (to+1)
+readRegionE (from,to) | otherwise  = readNM to (from+1)
+
 
 -- | Read the line the cursor is on
 readLnE :: IO String

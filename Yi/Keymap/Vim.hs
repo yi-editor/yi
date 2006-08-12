@@ -29,6 +29,7 @@ import Yi.Editor            ( Action )
 import Yi.Lexers     hiding ( Action )
 
 import Yi.UI
+import Yi.Style as Style
 
 import Prelude       hiding ( any )
 
@@ -47,6 +48,14 @@ import Control.Exception    ( ioErrors, catchJust, try, evaluate )
 --   movement parameterised \> \<
 --
 
+{-
+  For now we just make the selected style the same as the 
+  modeline_focused style... Just because i'm not good with
+  styles yet - Jim
+-}
+defaultVimUiStyle :: Style.UIStyle
+defaultVimUiStyle = Style.ui { selected = Style.modeline_focused Style.ui}
+
 -- ---------------------------------------------------------------------
 
 -- A vim mode is a lexer that returns a core Action.
@@ -63,9 +72,54 @@ type ViRegex = Regexp VimState Action
 data VimState = St {
     acc :: [Char]            -- an accumulator, for count, search and ex mode
    ,hist:: ([String],Int)    -- ex-mode command history
-   ,cmd :: VimMode           -- (maybe augmented) cmd mode lexer
-   ,ins :: VimMode           -- (maybe augmented) ins mode lexer
+   ,cmd :: VimMode           -- (maybe augmented) cmd mode lexer (Normal Mode)
+   ,ins :: VimMode           -- (maybe augmented) ins mode lexer 
+   -- ,vis :: VimMode           -- (maybe augmented) vis mode lexer
    }
+
+------------------------------------------------------------------------
+--
+-- | Settings variables. These should really be stored in a mutable map.
+--
+shiftwidth :: Int
+shiftwidth = 4 -- sw
+expandTabs :: Bool
+expandTabs = True -- et
+tabsize :: Int
+tabsize = 8  -- ts
+
+-- | tabifySpacesOnLineAndShift num 
+-- |  shifts right (or left if num is negative) num times, filling in tabs if
+-- |  expandtabs is set.
+tabifySpacesOnLineAndShift :: Int -> Action
+tabifySpacesOnLineAndShift numOfShifts = 
+                     do solE
+                        sol <- getPointE
+                        firstNonSpaceE
+                        -- moveWhileE ((=='\t')||(==' ')) GoRight
+                        leftE
+                        endOfSpace <- getPointE
+                        let toSpace '\t' = tabsize
+                            toSpace _ = 1 -- we'll assume nothing but tabs and spaces
+                        count <- vimGetRegion (sol,endOfSpace) >>= return . sum . map toSpace
+                        deleteRegionE (sol,endOfSpace)
+                        let newcount = count + (shiftwidth * numOfShifts)
+                        if (newcount > 0) 
+                           then let tabs   = replicate (newcount `div` tabsize) '\t'
+                                    spaces = replicate (newcount `mod` tabsize) ' '
+                                    in insertNE $ if expandTabs then replicate newcount ' '
+                                                                else tabs ++ spaces
+
+                           else nopE
+                        firstNonSpaceE
+{- No longer necessary
+vimGetRegion :: (Int,Int) -> IO String
+vimGetRegion (x,y) | x <= y    = readRegionE (x,y)
+                   | otherwise = readRegionE (y,x)
+
+-}
+vimGetRegion :: (Int,Int) -> IO String
+vimGetRegion = readRegionE
 
 ------------------------------------------------------------------------
 --
@@ -76,9 +130,10 @@ data VimState = St {
 --    . also, maybe we shouldn't refresh automatically?
 --
 keymap :: [Char] -> [Action]
-keymap cs = setWindowFillE '~' : actions
+keymap cs = setWindowFillE '~' : winStyleAct : actions
     where
         (actions,_,_) = execLexer cmd_mode (cs, defaultSt)
+        winStyleAct = unsetMarkE >> setWindowStyleE defaultVimUiStyle
 
 -- | default lexer state, just the normal cmd and insert mode. no mappings
 defaultSt :: VimState
@@ -123,11 +178,22 @@ kwd_mode = kwd_char >||< kwd2ins
 rep_mode :: VimMode
 rep_mode = rep_char >||< rep2cmd
 
+
+--
+-- | visual mode, similar to command mode
+--
+vis_mode :: VimMode
+vis_mode = lex_count >||< cmd_move >||< vis_multi >||< vis_single
+
+
+
 --
 -- | ex mode is either accumulating input or, on \n, executing the command
 --
 ex_mode :: VimMode
 ex_mode = ex_char >||< ex_edit >||< ex_hist >||< ex_eval >||< ex2cmd
+
+
 
 ------------------------------------------------------------------------
 -- util
@@ -190,6 +256,12 @@ cmd_move = (move_chr >|< (move2chrs +> anyButEsc))
 
 --
 -- TODO: Does this belong in CharMove.hs ?
+--          Actually, more like Movement.hs
+--
+--   If we had each set of movement actions with
+--   a common interface and a registered plugin, it
+--   would make it really very configurable even by
+--   nonprogrammers.. using a nice gui
 --
 detectMovement :: Action -> IO Bool
 detectMovement act = do x <- getPointE
@@ -244,6 +316,12 @@ nextWord = do
             moveWhileE (sameWord c) GoRight
             moveWhileE (betweenWord) GoRight
 
+viewChar :: Action
+viewChar = do
+   c <- readE
+   msgE . show $ c
+
+
 --
 -- movement commands
 --
@@ -292,6 +370,9 @@ moveCmdFM = M.fromList $
     ,('{',          prevNParagraphs)
     ,('}',          nextNParagraphs)
 
+-- debuging
+    ,('g',          \_ -> viewChar)
+
 -- misc
     ,('H',          \i -> downFromTosE (i - 1))
     ,('M',          const middleE)
@@ -330,15 +411,8 @@ cmd_eval = (cmd_char >|<
         let i  = toInt count
             fn = case lexeme of
                     "ZZ"    -> viWrite >> quitE
-                    -- todo: fix the unnec. refreshes that happen
-                    ">>"    -> do replicateM_ i $ solE >> mapM_ insertE "    "
-                                  firstNonSpaceE
-                    "<<"    -> do solE
-                                  replicateM_ i $
-                                    replicateM_ 4 $
-                                        readE >>= \k ->
-                                            when (isSpace k) deleteE
-                                  firstNonSpaceE
+                    ">>"    -> tabifySpacesOnLineAndShift i
+                    "<<"    -> tabifySpacesOnLineAndShift (-i)
 
                     'r':[x] -> writeE x
 
@@ -384,13 +458,9 @@ cmdCmdFM = M.fromList $
                          gotoPointE p
                          when (q-p > 0) $ deleteNE (q-p))
 
-    ,('p',      (const $ getRegE >>= \s ->
-                            eolE >> insertE '\n' >>
-                                mapM_ insertE s >> solE)) -- ToDo too slow
+    ,('p',      (const $ rightOrEolE 1 >> getRegE >>= insertNE >> leftE))
 
-    ,('P',      (const $ getRegE >>= \s ->
-                            solE >> insertE '\n' >> upE >>
-                                mapM_ insertE s >> solE)) -- ToDo insertNE
+    ,('P',      (const $ getRegE >>= insertNE >> leftE))
 
     ,(keyPPage, upScreensE)
     ,(keyNPage, downScreensE)
@@ -478,7 +548,104 @@ cmd_op =((op_char +> digit `star` (move_chr >|< (move2chrs +> anyButEsc))) >|<
                      in as
 
 --
--- | Switch to another vim mode.
+-- | Switching to another mode from visual mode.
+--
+-- All visual commands are meta actions, as they transfer control to another
+-- lexer. In this way vis_single is analogous to cmd2other
+--
+vis_single :: VimMode
+vis_single = visChar
+    `meta` \[c] st ->
+        let beginIns a = (with (msgE "-- INSERT --" >> a >> unsetMarkE), st, Just (ins st))
+            beginCmd a = ( with (msgClrE >> a >> unsetMarkE)
+                         , st{acc=[], cmd=cmd_mode}
+                         , Just cmd_mode)
+            yank = do mrk <- getMarkE
+                      pt <- getPointE
+                      vimGetRegion (mrk,pt) >>= setRegE
+                      gotoPointE mrk
+                      (mrkRow,_) <- getLineAndColE
+                      gotoPointE pt
+                      (ptRow,_) <- getLineAndColE
+                      let rowsYanked = ptRow - mrkRow
+                      if (rowsYanked > 2) then msgE ( (show rowsYanked) ++ " lines yanked")
+                                          else nopE
+            pasteOver = do mrk <- getMarkE
+                           pt <- getPointE
+                           text <- getRegE
+                           gotoPointE mrk
+                           deleteRegionE (mrk,pt)
+                           insertNE text
+            cut  = do mrk <- getMarkE
+                      pt <- getPointE
+                      (ptRow,_) <- getLineAndColE
+                      vimGetRegion (mrk,pt) >>= setRegE
+                      gotoPointE mrk
+                      (mrkRow,_) <- getLineAndColE
+                      deleteRegionE (mrk,pt)
+                      let rowsCut = ptRow - mrkRow
+                      if (rowsCut > 2) then msgE ( (show rowsCut) ++ " fewer lines")
+                                       else nopE
+        in case c of
+            '\ESC'-> beginCmd $ nopE
+            'v' -> beginCmd $ nopE
+            ':' -> (with (msgE ":'<,'>" >> focus), st{acc=":'<,'>"}, Just ex_mode)
+            'y' -> beginCmd $ yank
+            'x' -> beginCmd $ cut
+            'p' -> beginCmd $ pasteOver
+            'c' -> beginIns $ cut
+            s   -> beginCmd $ not_implemented s
+
+    where visChar = alt $ "cpvxy:\ESC"
+          focus = cmdlineFocusE
+
+--
+-- | These also switch mode, as all visual commands do, but
+-- | these are analogous to the commands in cmd_eval.
+-- | They are different in that they are multiple characters
+--
+vis_multi :: VimMode
+vis_multi = (cmd_char >|<
+           (char 'r' +> anyButEscOrDel) >|<
+           (string ">>" >|< string "<<" >|< string "ZZ" ))
+
+    `meta` \lexeme st@St{acc=count} ->
+        let i  = toInt count
+            shiftBy x = do mark <- getMarkE
+                           (row2,_) <- getLineAndColE
+                           gotoPointE mark
+                           (row1,_) <- getLineAndColE
+                           let step = if (row2 > row1) then downE
+                                                       else upE
+                               numOfLines = abs (row2 - row1)
+                           replicateM_ numOfLines (tabifySpacesOnLineAndShift x>>step)
+            fn = case lexeme of
+                    "ZZ"    -> viWrite >> quitE
+                    ">>"    -> shiftBy i
+                    "<<"    -> shiftBy (-i)
+                    'r':[x] -> do mrk <- getMarkE
+                                  pt <- getPointE
+                                  text <- vimGetRegion (mrk,pt)
+                                  gotoPointE mrk
+                                  deleteRegionE (mrk,pt)
+                                  let convert '\n' = '\n'
+                                      convert  _   = x
+                                  insertNE . map convert $ text
+
+                    [c]     -> getCmdFM c i cmdCmdFM -- normal commands
+
+                    _       -> undef (head lexeme)
+
+        in (with (msgClrE >> fn), st{acc=[]}, Just cmd_mode)
+
+    where
+        anyButEscOrDel = alt $ any' \\ ('\ESC':delete')
+        cmd_char       = alt $ M.keys cmdCmdFM
+        undef c = not_implemented c
+
+
+--
+-- | Switch to another vim mode from command mode.
 --
 -- These commands are meta actions, as they transfer control to another
 -- lexer. Some of these commands also perform an action before switching.
@@ -489,7 +656,8 @@ cmd2other = modeSwitchChar
         let beginIns a = (with (msgE "-- INSERT --" >> a), st, Just (ins st))
         in case c of
             ':' -> (with (msgE ":" >> focus), st{acc=[':']}, Just ex_mode)
-            'R' -> (Nothing, st, Just rep_mode)
+            'v' -> (with (msgE "-- VISUAL --" >> getPointE >>= setMarkE), st{cmd=vis_mode}, Just vis_mode)
+            'R' -> (with (msgE "-- REPLACE --"), st, Just rep_mode)
             'i' -> (with (msgE "-- INSERT --"), st, Just (ins st))
             'I' -> beginIns solE
             'a' -> beginIns $ rightOrEolE 1
@@ -510,7 +678,7 @@ cmd2other = modeSwitchChar
             s   -> (with (errorE ("The "++show s++" command is unknown."))
                    ,st, Just $ cmd st)
 
-    where modeSwitchChar = alt $ ":RiIaAoOcCS/?\ESC" ++ [keyIC]
+    where modeSwitchChar = alt $ "v:RiIaAoOcCS/?\ESC" ++ [keyIC]
           focus = cmdlineFocusE
 
 -- ---------------------------------------------------------------------

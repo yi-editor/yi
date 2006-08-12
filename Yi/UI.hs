@@ -44,7 +44,7 @@ module Yi.UI (
   )   where
 
 import Yi.Buffer        ( Buffer( ptrToLnsB
-				, getMarkB  ) )
+                                , getMarkB  ) )
 import Yi.Editor
 import Yi.Window
 import Yi.Style
@@ -171,11 +171,11 @@ drawWindow e mwin sty win =
     -- so t is the current point at the top of the screen.
     -- pnt is where the current cursor is.
     case win of { Window { bufkey = u
-			 , mode   = m
-			 , height = h
-			 , width  = w
-			 , tospnt = t 
-			 , pnt    = point} ->
+                         , mode   = m
+                         , height = h
+                         , width  = w
+                         , tospnt = t 
+                         , pnt    = point} ->
     case window sty   of { wsty ->
     case selected sty of { selsty ->
     case eof    sty   of { eofsty -> do
@@ -211,19 +211,19 @@ drawWindow e mwin sty win =
       completely after the selection. 
     -}
     markPoint <- getMarkB b
-    let	startSelect = min markPoint point
-	stopSelect  = max markPoint point
+    let startSelect = min markPoint point
+        stopSelect  = (max markPoint point) + 1
 
         -- @todo{signature}
-        lineTest (sol, len) = startSelect < sol &&
-			      stopSelect > sol
+        lineTest (sol, len) = startSelect <= sol &&
+                              stopSelect > sol
 
         -- The integer argument is the current point at the start of
         -- the line we wish to draw
         drawLines :: Int -> [(CString, Int)] -> IO ()
-	drawLines _ []                    = return ()
-	drawLines sol ((ptr, len) : rest) =
-	    -- @todo{Make sure these can't *all* be zero
+        drawLines _ []                    = return ()
+        drawLines sol ((ptr, len) : rest) =
+            -- @todo{Make sure these can't *all* be zero
             -- Notice for example that some conditions imply others, eg
             -- stopSelect < eol implies startSelect < eol, so
             -- startSelect > sol && stopSelect < eol implies that
@@ -232,60 +232,60 @@ drawWindow e mwin sty win =
             -- I think that the inSel conditions can be slightly optimised.
             let eol        = sol + len
                 byteString = P.packCString ptr
-	        beforeSel
-		    | startSelect > sol         = min len (startSelect - sol)
-		    | otherwise                 = 0
-		inSel    
+                beforeSel
+                    | startSelect > sol         = min len (startSelect - sol)
+                    | otherwise                 = 0
+                inSel    
                     -- selection starts and ends on this line
-		    | startSelect > sol &&
-		      stopSelect  < eol         = stopSelect - startSelect
+                    | startSelect > sol &&
+                      stopSelect  < eol         = stopSelect - startSelect
 
                     -- selection is entirely before this line
-		    | stopSelect  < sol         = 0
+                    | stopSelect  < sol         = 0
 
                     -- selection is entirely after this line
-		    | startSelect > eol         = 0
+                    | startSelect > eol         = 0
 
                     -- this line is entirely within the selection
-		    | startSelect < sol &&
-		      stopSelect  > eol         = len
+                    | startSelect < sol &&
+                      stopSelect  > eol         = len
 
                     -- selection begins before this line, ends during it
-		    | startSelect < sol &&
-		      stopSelect  > sol         = stopSelect - sol
+                    | startSelect < sol &&
+                      stopSelect  > sol         = stopSelect - sol
 
                     -- selection begins on this line, ends after it
-                    | startSelect > sol &&
+                    | startSelect >= sol &&
                       stopSelect  > eol         = eol - startSelect
 
                     -- selection outside this line (not really needed)
-		    | otherwise                 = 0
-		afterSel = len - (beforeSel + inSel)
-		--     | stopSelect < eol          = min len (eol - stopSelect)
-		--     | otherwise                 = 0
-		(beforeSelPtrB,
-		 afterStartPtrB) = P.splitAt beforeSel byteString
-		(inSelPtrB,
-		 afterSelPtrB)   = P.splitAt inSel afterStartPtrB
+                    | otherwise                 = 0
+                afterSel = len - (beforeSel + inSel)
+                --     | stopSelect < eol          = min len (eol - stopSelect)
+                --     | otherwise                 = 0
+                (beforeSelPtrB,
+                 afterStartPtrB) = P.splitAt beforeSel byteString
+                (inSelPtrB,
+                 afterSelPtrB)   = P.splitAt inSel afterStartPtrB
             in
             -- @todo{A little optimisation by not drawing any of the
             -- three parts whose length is zero.
-	    do withStyle wsty $ P.useAsCString beforeSelPtrB $
-		     \pointer ->
-		     throwIfErr_ (C.pack "drawWindow") $
-		     waddnstr Curses.stdScr pointer $
-		     fromIntegral beforeSel
-	       withStyle selsty $ P.useAsCString inSelPtrB $
-		     \pointer ->
-		     throwIfErr_ (C.pack "drawWindow") $
-		     waddnstr Curses.stdScr pointer $
-		     fromIntegral inSel
-	       withStyle wsty $ P.useAsCString afterSelPtrB $
-		     \pointer ->
-		     throwIfErr_ (C.pack "drawWindow") $
-		     waddnstr Curses.stdScr pointer $
-		     fromIntegral afterSel
-	       drawLines (len + sol) rest
+            do withStyle wsty $ P.useAsCString beforeSelPtrB $
+                     \pointer ->
+                     throwIfErr_ (C.pack "drawWindow") $
+                     waddnstr Curses.stdScr pointer $
+                     fromIntegral beforeSel
+               withStyle selsty $ P.useAsCString inSelPtrB $
+                     \pointer ->
+                     throwIfErr_ (C.pack "drawWindow") $
+                     waddnstr Curses.stdScr pointer $
+                     fromIntegral inSel
+               withStyle wsty $ P.useAsCString afterSelPtrB $
+                     \pointer ->
+                     throwIfErr_ (C.pack "drawWindow") $
+                     waddnstr Curses.stdScr pointer $
+                     fromIntegral afterSel
+               drawLines (len + sol) rest
 
     drawLines t lns
 
@@ -305,11 +305,11 @@ drawWindow e mwin sty win =
         let diff = h - off - (y' - y)
         mapM_ (\s -> drawLine w s >> clrToEol >> lineDown) $ 
               take diff $ repeat [windowfill e]
-	{-
-	if windowfill e /= ' '
+        {-
+        if windowfill e /= ' '
             then mapM_ (\s -> drawLine w s >> clrToEol >> lineDown) $ 
                     take diff $ repeat [windowfill e]
-	    else Curses.wMove Curses.stdScr (y' + diff) 0 -- just move the cursor
+            else Curses.wMove Curses.stdScr (y' + diff) 0 -- just move the cursor
         -}
 
 
