@@ -96,22 +96,31 @@ tabifySpacesOnLineAndShift numOfShifts =
                      do solE
                         sol <- getPointE
                         firstNonSpaceE
-                        -- moveWhileE ((=='\t')||(==' ')) GoRight
-                        leftE
-                        endOfSpace <- getPointE
-                        let toSpace '\t' = tabsize
-                            toSpace _ = 1 -- we'll assume nothing but tabs and spaces
-                        count <- vimGetRegion (sol,endOfSpace) >>= return . sum . map toSpace
-                        deleteRegionE (sol,endOfSpace)
-                        let newcount = count + (shiftwidth * numOfShifts)
-                        if (newcount > 0) 
-                           then let tabs   = replicate (newcount `div` tabsize) '\t'
-                                    spaces = replicate (newcount `mod` tabsize) ' '
-                                    in insertNE $ if expandTabs then replicate newcount ' '
-                                                                else tabs ++ spaces
+                        -- ptOfNonSpace <- getPointE
+                        atSol <- atSolE 
+                        if (not atSol) then leftE
+                                       else nopE
+                        ptOfLastSpace <- getPointE
+                        msgE ("ptOfLastSpace= " ++ (show ptOfLastSpace) ++ "-" ++ (show sol) ++ "=" ++ (show (ptOfLastSpace - sol)))
+                        let countSpace '\t' = tabsize
+                            countSpace _ = 1 -- we'll assume nothing but tabs and spaces
+                        count <- if (atSol) then return 0
+                                            else vimGetRegion (sol,ptOfLastSpace) >>= return . sum . map countSpace
+                        if (not atSol) then deleteRegionE (sol,ptOfLastSpace)
+                                       else nopE
 
-                           else nopE
-                        firstNonSpaceE
+                        let newcount = count + (shiftwidth * numOfShifts)
+                        if (newcount <= 0)
+                           then nopE
+                           else do
+                             let tabs   = replicate (newcount `div` tabsize) '\t'
+                                 spaces = replicate (newcount `mod` tabsize) ' '
+                             solE
+                             insertNE $ if expandTabs then replicate newcount ' '
+                                                      else tabs ++ spaces
+                                                                                  
+                             firstNonSpaceE
+                        
 {- No longer necessary
 vimGetRegion :: (Int,Int) -> IO String
 vimGetRegion (x,y) | x <= y    = readRegionE (x,y)
@@ -617,7 +626,7 @@ vis_multi = (cmd_char >|<
                            (row1,_) <- getLineAndColE
                            let step = if (row2 > row1) then downE
                                                        else upE
-                               numOfLines = abs (row2 - row1)
+                               numOfLines = 1 + (abs (row2 - row1))
                            replicateM_ numOfLines (tabifySpacesOnLineAndShift x>>step)
             fn = case lexeme of
                     "ZZ"    -> viWrite >> quitE
