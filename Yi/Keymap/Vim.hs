@@ -636,7 +636,7 @@ vis_multi = (cmd_char >|<
 
                     _       -> undef (head lexeme)
 
-        in (with (msgClrE >> fn), st{acc=[]}, Just cmd_mode)
+        in (with (msgClrE >> fn >> unsetMarkE), st{acc=[]}, Just cmd_mode)
 
     where
         anyButEscOrDel = alt $ any' \\ ('\ESC':delete')
