@@ -568,8 +568,9 @@ killE = withWindow_ deleteToEolW -- >>= Buffer.prevXorLn 1
 
 -- | Delete an arbitrary part of the buffer
 deleteRegionE :: (Int,Int) -> IO ()
-deleteRegionE (from,to) = withWindow_ $ \w b -> do
-    deleteNAtW  w b (to-from) from
+deleteRegionE (from,to) | from <= to = withWindow_ $ \w b -> do
+    deleteNAtW  w b (to-from+1) from
+deleteRegionE (from,to) | otherwise  = deleteRegionE (to,from)
 
 -- | Read the char under the cursor
 readE :: IO Char
