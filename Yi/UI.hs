@@ -238,7 +238,7 @@ drawWindow e mwin sty win =
                 inSel    
                     -- selection starts and ends on this line
                     | startSelect >= sol &&
-                      stopSelect  < eol         = stopSelect - startSelect
+                      stopSelect  <= eol         = stopSelect - startSelect
 
                     -- selection is entirely before this line
                     | stopSelect  < sol         = 0
