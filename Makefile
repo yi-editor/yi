@@ -1,17 +1,19 @@
-all:
-	@runhaskell Setup.lhs build
+HS_FILES=$(shell find . -path "./_darcs" -prune -o -name "*.hs" -print)
+
+all: TAGS
+	@runhaskell Setup.hs build
 
 config:
-	@runhaskell Setup.lhs configure
+	@runhaskell Setup.hs configure
 
 html:
-	@runhaskell Setup.lhs haddock
+	@runhaskell Setup.hs haddock
 
 install:
-	@runhaskell Setup.lhs install
+	@runhaskell Setup.hs install
 
 clean:
-	if [ -f .setup-config ]; then runhaskell Setup.lhs clean; fi
+	if [ -f .setup-config ]; then runhaskell Setup.hs clean; fi
 	rm -f conftest* Yi/Curses/*_hsc.[ch]
 
 distclean: clean
@@ -21,3 +23,6 @@ distclean: clean
 maintainer-clean: distclean
 	rm -f configure cbits/config.h.in
 	rm -rf autom4te.cache
+
+tags TAGS: $(HS_FILES)
+	hasktags -b $(HS_FILES)
