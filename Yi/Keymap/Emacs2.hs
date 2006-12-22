@@ -86,15 +86,19 @@ type KProc a = StateT String (Writer [Action]) a
 normalKlist :: KList
 normalKlist = [ ([c], atomic $ insertSelf) | c <- printableChars ] ++
               [
+        ("DEL",       atomic $ repeatingArg deleteE),
         ("BACKSP",   atomic $ repeatingArg bdeleteE),
         ("C-M-w",    atomic $ appendNextKillE),
-        ("C-_",      atomic $ undoE),
+        ("C-/",      atomic $ repeatingArg undoE),
+        ("C-_",      atomic $ repeatingArg undoE),
         ("C-SPC",    atomic $ (getPointE >>= setMarkE)),
         ("C-a",      atomic $ repeatingArg solE),
         ("C-b",      atomic $ repeatingArg leftE),
         ("C-d",      atomic $ repeatingArg deleteE),
         ("C-e",      atomic $ repeatingArg eolE),
         ("C-f",      atomic $ repeatingArg rightE),
+        ("C-g",      atomic $ unsetMarkE), 
+        -- C-g should be a more general quit that also unsets the mark.
 --      ("C-g",      atomic $ keyboardQuitE),
 --      ("C-i",      atomic $ indentC),
         ("C-j",      atomic $ repeatingArg $ insertE '\n'),
@@ -125,6 +129,7 @@ normalKlist = [ ([c], atomic $ insertSelf) | c <- printableChars ] ++
 --      ("C-x r t",  atomic $ stringRectE),
 --      ("C-x r y",  atomic $ yankRectE),
         ("C-x u",    atomic $ repeatingArg undoE),
+        ("C-x v",    atomic $ repeatingArg shrinkWinE),
         ("C-y",      atomic $ yankE),
         ("M-<",      atomic $ repeatingArg topE),
         ("M->",      atomic $ repeatingArg botE),
@@ -143,7 +148,10 @@ normalKlist = [ ([c], atomic $ insertSelf) | c <- printableChars ] ++
         ("M-u",      atomic $ repeatingArg uppercaseWordE),
         ("M-w",      atomic $ killRingSaveE),
 --      ("M-x",      atomic $ executeExtendedCommandE),
+        ("M-x g o t o - l i n e", atomic $ gotoLine), -- joke.
         ("M-y",      atomic $ yankPopE),
+        ("<home>",   atomic $ repeatingArg solE),
+        ("<end>",    atomic $ repeatingArg eolE),
         ("<left>",   atomic $ repeatingArg leftE),
         ("<right>",  atomic $ repeatingArg rightE),
         ("<up>",     atomic $ repeatingArg upE),
@@ -238,15 +246,20 @@ rebind :: KList -> String -> KProc () -> KList
 rebind kl k kp = M.toList $ M.insert k kp $ M.fromList kl
 
 findFile :: Action
-findFile = spawnMinibuffer "find file:" (rebind normalKlist "C-j" (liftC loadFile))
+findFile = withMinibuffer "find file:" $ \filename -> do msgE $ "loading " ++ filename
+                                                         fnewE filename
+-- | Goto a line specified in the mini buffer.
+gotoLine :: Action
+gotoLine = withMinibuffer "goto line:" $ \lineString -> gotoLnE (read lineString)
 
--- read contents of current buffer (which should be the minibuffer), and
--- use it to open a new file
-loadFile :: Action
-loadFile = do filename <- liftM init readAllE  -- problems if more than 1 line, of course
-              closeE
-              msgE $ "loading " ++ filename
-              fnewE filename
+withMinibuffer :: String -> (String -> Action) -> Action
+withMinibuffer prompt act = spawnMinibuffer prompt (rebind normalKlist "C-j" (liftC innerAction))
+    -- read contents of current buffer (which should be the minibuffer), and
+    -- apply it to the desired action
+    where innerAction :: Action
+          innerAction = do lineString <- liftM init readAllE
+                           closeE
+                           act lineString
 
 scrollDownE :: Action
 scrollDownE = withUnivArg $ \a ->
@@ -306,4 +319,6 @@ fromKProc kp cs = snd $ runWriter $ runStateT kp cs
 
 -- | entry point
 keymap :: [Char] -> [Action]
-keymap = fromKProc $ makeKeymap normalKlist
+keymap = fromKProc (makeKeymap normalKlist)
+
+

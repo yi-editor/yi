@@ -41,6 +41,11 @@ c_ :: Char -> Char
 c_ ' '   = '\0'
 c_ x     = ctrlLowcase x
 
+
+-- Some terminals (eg. gnome-terminal as of Jan 2007) are badly configured and return ESC separately.
+-- We should try and see how to correctly configure the terminal.
+-- Incidentally, bash seems to prefer the gnome-terminal.
+
 m_ :: Char -> Char
 m_ '\263' = chr 255
 m_ x = setMeta x
@@ -71,7 +76,9 @@ keyNames = [(' ', "SPC"),
             (keyDC, "DEL"),
             (keyBackspace, "BACKSP"),
             (keyNPage, "<next>"),
-            (keyPPage, "<prior>")
+            (keyPPage, "<prior>"),
+            (keyHome, "<home>"),
+            (keyEnd, "<end>")
            ]
 
 parseRegular :: ReadP Char
