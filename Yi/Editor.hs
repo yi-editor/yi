@@ -27,7 +27,7 @@ import Yi.Buffer                ( Buffer(newB, keyB, hNewB, finaliseB, nameB) )
 import Yi.FastBuffer
 import Yi.Regex                 ( Regex )
 import Yi.Window
-import Yi.Style                 ( ui, UIStyle )
+import Yi.Style                 ( uiStyle, UIStyle )
 
 import Data.List                ( elemIndex )
 import Data.Unique              ( Unique )
@@ -88,7 +88,7 @@ emptyEditor = Editor {
        ,curwin       = Nothing
        ,curkeymap    = error "No keymap defined."
        ,scrsize      = (0,0)
-       ,uistyle      = Yi.Style.ui
+       ,uistyle      = Yi.Style.uiStyle
        ,input        = error "No channel open"
        ,threads      = []
        ,reboot       = const $ return ()

@@ -54,7 +54,7 @@ import Control.Exception    ( ioErrors, catchJust, try, evaluate )
   styles yet - Jim
 -}
 defaultVimUiStyle :: Style.UIStyle
-defaultVimUiStyle = Style.ui { selected = Style.modeline_focused Style.ui}
+defaultVimUiStyle = Style.uiStyle { selected = Style.modeline_focused Style.uiStyle}
 
 -- ---------------------------------------------------------------------
 

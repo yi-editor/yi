@@ -49,5 +49,5 @@ import qualified Yi.Keymap.Vim as Default ( keymap )
 import Yi.UI               hiding ( initcolours, Color ) -- so we can see key defns
 
 settings :: Config
-settings = Config { keymap = Default.keymap, style = ui }
+settings = Config { keymap = Default.keymap, style = uiStyle }
 

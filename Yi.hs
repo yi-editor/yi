@@ -197,7 +197,7 @@ g_settings = unsafePerformIO $
 dflt_config :: Editor.Config
 dflt_config = Editor.Config {
         Editor.keymap = Vim.keymap,
-        Editor.style  = Style.ui
+        Editor.style  = Style.uiStyle
     }
 
 --

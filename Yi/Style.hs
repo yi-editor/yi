@@ -61,8 +61,8 @@ data UIStyle =
   selected text wasn't highlighted, now that it is, we need the modes to unset
   the mark when nothing should be hightlighted.
 -}
-ui :: UIStyle
-ui = UIStyle {
+uiStyle :: UIStyle
+uiStyle = UIStyle {
          window             = Style defaultfg    defaultbg
         ,modeline           = Style black        darkcyan
         ,modeline_focused   = Style brightwhite  darkcyan

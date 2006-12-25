@@ -71,7 +71,7 @@ import Foreign.C.String     ( CString )
 start :: (IO ()) -> IO ()
 start fn = do
     Curses.initCurses fn                -- initialise the screen
-    initcolours ui
+    initcolours uiStyle
     Curses.keypad Curses.stdScr True    -- grab the keyboard
 
 -- | Clean up and go home

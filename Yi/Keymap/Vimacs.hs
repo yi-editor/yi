@@ -401,4 +401,4 @@ keymap cs = setWindowFillE '~' : winStyleAct : actions
   style.
 -}
 defaultVimacsUiStyle :: Style.UIStyle
-defaultVimacsUiStyle = Style.ui { selected = Style.eof Style.ui }
+defaultVimacsUiStyle = Style.uiStyle { selected = Style.eof Style.uiStyle }
