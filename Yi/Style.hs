@@ -23,7 +23,7 @@
 
 module Yi.Style where
 
-#include "config.h"
+#include "ghcconfig.h"
 
 import qualified Yi.Curses as Curses
 

@@ -35,7 +35,7 @@ module Yi.MkTemp (
 
   ) where
 
-#include "config.h"
+#include "ghcconfig.h"
 
 import Data.List
 import Data.Char                ( chr, ord, isDigit )

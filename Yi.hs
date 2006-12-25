@@ -54,7 +54,7 @@ import System.Posix.Signals
 
 import GHC.Exception            ( Exception(ExitException) )
 
-#include "config.h"
+#include "ghcconfig.h"
 
 -- ---------------------------------------------------------------------
 -- | Argument parsing. Pretty standard, except for the trick with -B.
