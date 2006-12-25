@@ -41,6 +41,8 @@ import Control.Concurrent.MVar
 
 import System.IO.Unsafe         ( unsafePerformIO )
 
+import {-# source #-} Yi.UI ( UI )
+
 ------------------------------------------------------------------------
 
 --
@@ -49,6 +51,8 @@ import System.IO.Unsafe         ( unsafePerformIO )
 data Editor = Editor {
         buffers         :: !(M.Map Unique FBuffer)    -- ^ all the buffers
        ,windows         :: !(M.Map Unique Window)     -- ^ all the windows
+
+       ,ui              :: UI
 
        ,curwin          :: !(Maybe Unique)            -- ^ the window with focus
        ,curkeymap       :: [Char] -> [Action]         -- ^ user-configurable keymap
@@ -79,6 +83,9 @@ emptyEditor :: Editor
 emptyEditor = Editor {
         buffers      = M.empty
        ,windows      = M.empty
+
+       ,ui           = error "UI not initialized"
+
        ,cmdline      = []
        ,cmdlinefocus = False
        ,windowfill   = ' '

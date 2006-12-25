@@ -39,7 +39,11 @@ module Yi.UI (
         refresh,
         resizeui,
 
+        -- * UI type, abstract.
+        UI,
+
         module Yi.Curses   -- UIs need to export the symbolic key names
+
 
   )   where
 
@@ -66,6 +70,8 @@ import System.Posix.Signals         ( raiseSignal, sigTSTP )
 -- import Foreign.C.Types      ( CInt )
 import Foreign.C.String     ( CString )
 ------------------------------------------------------------------------
+
+data UI
 
 -- | how to initialise the ui
 start :: (IO ()) -> IO ()
