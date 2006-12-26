@@ -165,7 +165,7 @@ initSignals = do
     flip mapM_ [sigHUP, sigABRT, sigTERM] $ \sig -> do
             installHandler sig (CatchOnce $ do
                     releaseSignals
-                    UI.end
+                    UI.end =<< Editor.readEditor Editor.ui
                     Editor.shutdown
                     throwTo tid (ExitException (ExitFailure 2))) Nothing
 
@@ -236,8 +236,8 @@ static_main st = do
     Control.Exception.catch
         (initSignals >> Core.startE st config lineno mfiles >> Core.eventLoop)
         (\e -> do releaseSignals
+                  UI.end =<< Editor.readEditor Editor.ui
                   Editor.shutdown
-                  UI.end
                   when (not $ isExitCall e) $ print e
                   throw e)
 

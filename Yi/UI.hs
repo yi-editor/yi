@@ -30,19 +30,18 @@ module Yi.UI (
 
         -- * UI initialisation
         start, end, suspend,
-        screenSize, initcolours,
 
         -- * Input
         getKey,
 
         -- * Drawing
         refresh,
-        resizeui,
+        screenSize,
 
         -- * UI type, abstract.
         UI,
 
-        module Yi.Curses   -- UIs need to export the symbolic key names
+        module Yi.Vty   -- UIs need to export the symbolic key names
 
 
   )   where
@@ -52,65 +51,51 @@ import Yi.Buffer        ( Buffer( ptrToLnsB
 import Yi.Editor
 import Yi.Window
 import Yi.Style
-import Yi.Curses hiding ( refresh )
-import qualified Yi.Curses as Curses
+import Yi.Vty
 
-import qualified Data.ByteString as P
-import qualified Data.ByteString.Base as P
-import qualified Data.ByteString.Char8 as C
+import qualified Data.ByteString.Char8 as BS
 
-import Data.Maybe                   ( isNothing, fromJust )
 import Data.List
 
-import Control.Monad                ( when )
+import Control.Monad                ( ap )
 import System.Posix.Signals         ( raiseSignal, sigTSTP )
 
 
 -- Just really to allow me to give some signatures
--- import Foreign.C.Types      ( CInt )
+
 import Foreign.C.String     ( CString )
 ------------------------------------------------------------------------
 
-data UI
+newtype UI = UI Vty --{ vty :: Vty }
 
 -- | how to initialise the ui
-start :: (IO ()) -> IO ()
-start fn = do
-    Curses.initCurses fn                -- initialise the screen
-    initcolours uiStyle
-    Curses.keypad Curses.stdScr True    -- grab the keyboard
+start :: IO UI
+start = do
+  v <- mkVty
+  return (UI v)
 
 -- | Clean up and go home
-end :: IO ()
-end = Curses.endWin
+end :: UI -> IO ()
+end (UI vty) = Yi.Vty.shutdown vty 
 
 -- | Suspend the program
 suspend :: IO ()
 suspend = raiseSignal sigTSTP
 
 -- | Find the current screen height and width.
-screenSize :: IO (Int, Int)
-screenSize = Curses.scrSize
-
+screenSize :: UI -> IO (Int, Int)
+screenSize (UI vty) = return swap `ap` Yi.Vty.getSize vty
+    where swap (x,y) = (y,x)
 --
 -- | Read a key. UIs need to define a method for getting events.
--- We only need to refresh if we don't have the SIGWINCH signal handler
--- working for us.
 --
-getKey :: IO () -> IO Char
-getKey _refresh_fn = do
-    k <- Curses.getCh
-#ifdef KEY_RESIZE
-    if k == Curses.keyResize
-        then do
-#ifndef SIGWINCH
-              refresh_fn
-#endif
-              getKey refresh_fn
-        else return k
-#else
-    return k
-#endif
+
+getKey :: UI -> IO () -> IO Char
+getKey (UI vty) doRefresh = do 
+  event <- getEvent vty
+  case event of 
+    (EvResize _ _) -> doRefresh >> getKey (UI vty) refresh
+    _ -> return (eventToChar event)
 
 --
 -- | Redraw the entire terminal from the UI state
@@ -125,34 +110,27 @@ getKey _refresh_fn = do
 --
 redraw :: IO ()
 redraw = withEditor $ \e ->
-
+    case ui e             of { (UI vty)  ->
     case getWindows e     of { ws  ->
     case cmdline e        of { cl  ->
     case cmdlinefocus e   of { cmdfoc ->
     case uistyle e        of { sty ->
     case getWindowOf e    of { w   ->
     case getWindowIndOf e of { Nothing -> return () ; (Just i) -> do
+                                              
+    wImages <- mapM (drawWindow e w sty) ws
+    Yi.Vty.update vty pic {pImage = concat wImages ++ [withStyle (window sty) cl],
+                           pCursor = if cmdfoc 
+                                     then NoCursor 
+                                     else case w of
+                                         -- calculate origin of focused window
+                                         -- sum of heights of windows above this one on screen.
+                                         -- needs to be shifted 'x' by the width of the tabs on this line
+                                         Just w' -> let (y,x) = cursor w' in
+                                             Cursor x (y + sum [ height (ws !! k) | k <- [0 .. (i-1)] ])
+                                         Nothing -> NoCursor}
 
-    gotoTop
-    mapM_ (drawWindow e w sty) ws               -- draw all windows
-
-    withStyle (window sty) $ drawCmdLine cl     -- draw cmd line
-
-    -- and now position cursor.
-    -- will be influenced by whether the focused window is scrolled left or right
-    when (not cmdfoc) $
-        case w of
-           -- calculate origin of focused window
-           -- sum of heights of windows above this one on screen.
-
-           -- needs to be shifted 'x' by the width of the tabs on this line
-           Just w' ->
-                case sum [ height (ws !! k) | k <- [0 .. (i-1)] ] of
-                        o_y -> drawCursor (o_y,0) (cursor w')
-
-           _ -> return ()
-
-    }}}}}}
+    }}}}}}}
 
 -- ---------------------------------------------------------------------
 -- PRIVATE:
@@ -171,7 +149,7 @@ drawWindow :: Editor
            -> Maybe Window
            -> UIStyle
            -> Window
-           -> IO ()
+           -> IO Pic
 
 drawWindow e mwin sty win =
     -- so t is the current point at the top of the screen.
@@ -186,9 +164,16 @@ drawWindow e mwin sty win =
     case selected sty of { selsty ->
     case eof    sty   of { eofsty -> do
     case findBufferWith e u of { b -> do
-    let off = case m of Nothing -> 0 ; _ -> 1 -- correct for modeline
+    let modeLines = case m of 
+                      Nothing -> []
+                      Just text -> [withStyle (modeStyle sty) text]
+        modeStyle = case mwin of
+               Just win' | win' == win -> modeline_focused
+               _                       -> modeline
 
-    lns <- ptrToLnsB b t (h - off) w
+        off = length modeLines
+        h' = h - off
+    lns <- ptrToLnsB b t h' w
 
     -- draw each buffer line
     -- ToDo, horizontal scrolling. determine how many screen widths to
@@ -204,7 +189,6 @@ drawWindow e mwin sty win =
     -- need a function that takes the desired width, and tells us how
     -- many real chars to take.
     --
-    (y,_) <- getYX Curses.stdScr
 
     {-
       That was the first attempt, now what we'll do is split each
@@ -220,15 +204,11 @@ drawWindow e mwin sty win =
     let startSelect = min markPoint point
         stopSelect  = (max markPoint point) + 1
 
-        -- @todo{signature}
-        lineTest (sol, len) = startSelect <= sol &&
-                              stopSelect > sol
-
         -- The integer argument is the current point at the start of
         -- the line we wish to draw
-        drawLines :: Int -> [(CString, Int)] -> IO ()
-        drawLines _ []                    = return ()
-        drawLines sol ((ptr, len) : rest) =
+        drawLines :: Int -> [(CString, Int)] -> Pic
+        drawLines _ []                    = []
+        drawLines sol ((ptr,len) : rest) =
             -- @todo{Make sure these can't *all* be zero
             -- Notice for example that some conditions imply others, eg
             -- stopSelect < eol implies startSelect < eol, so
@@ -237,7 +217,7 @@ drawWindow e mwin sty win =
 
             -- I think that the inSel conditions can be slightly optimised.
             let eol        = sol + len
-                byteString = P.packCString ptr
+                byteString = BS.packCString ptr
                 beforeSel
                     | startSelect > sol         = min len (startSelect - sol)
                     | otherwise                 = 0
@@ -270,113 +250,28 @@ drawWindow e mwin sty win =
                 --     | stopSelect < eol          = min len (eol - stopSelect)
                 --     | otherwise                 = 0
                 (beforeSelPtrB,
-                 afterStartPtrB) = P.splitAt beforeSel byteString
+                 afterStartPtrB) = BS.splitAt beforeSel byteString
                 (inSelPtrB,
-                 afterSelPtrB)   = P.splitAt inSel afterStartPtrB
-            in
-            -- @todo{A little optimisation by not drawing any of the
-            -- three parts whose length is zero.
-            do withStyle wsty $ P.useAsCString beforeSelPtrB $
-                     \pointer ->
-                     throwIfErr_ (C.pack "drawWindow") $
-                     waddnstr Curses.stdScr pointer $
-                     fromIntegral beforeSel
-               withStyle selsty $ P.useAsCString inSelPtrB $
-                     \pointer ->
-                     throwIfErr_ (C.pack "drawWindow") $
-                     waddnstr Curses.stdScr pointer $
-                     fromIntegral inSel
-               withStyle wsty $ P.useAsCString afterSelPtrB $
-                     \pointer ->
-                     throwIfErr_ (C.pack "drawWindow") $
-                     waddnstr Curses.stdScr pointer $
-                     fromIntegral afterSel
-               drawLines (len + sol) rest
-
-    drawLines t lns
-
---    withStyle lineStyle $ flip mapM_ lns $ \(ptr,len) -> do
---        throwIfErr_ (C.pack "drawWindow") $
---            waddnstr Curses.stdScr ptr (fromIntegral len)
-
-    -- and any eof markers (should be optional)
-    withStyle eofsty $ do
-        (_,x) <- getYX Curses.stdScr
-
-        when (x /= 0) $ throwIfErr_ (C.pack "waddnstr") $
-            P.unsafeUseAsCString (C.pack "\n") $ \cstr -> 
-                waddnstr Curses.stdScr cstr 1
-
-        (y',_) <- getYX Curses.stdScr
-        let diff = h - off - (y' - y)
-        mapM_ (\s -> drawLine w s >> clrToEol >> lineDown) $ 
-              take diff $ repeat [windowfill e]
-        {-
-        if windowfill e /= ' '
-            then mapM_ (\s -> drawLine w s >> clrToEol >> lineDown) $ 
-                    take diff $ repeat [windowfill e]
-            else Curses.wMove Curses.stdScr (y' + diff) 0 -- just move the cursor
-        -}
-
-
-    -- draw modeline
-    when (not $ isNothing m) $ do
-        fn <- return $! case mwin of
-                Just win' | win' == win -> modeline_focused
-                _         -> modeline
-        withStyle (fn sty) $! drawLine w (fromJust m)
+                 afterSelPtrB)   = BS.splitAt inSel afterStartPtrB
+            in (withStyle wsty   (map renderChar $ BS.unpack $ beforeSelPtrB) ++
+                withStyle selsty (map renderChar $ BS.unpack $ inSelPtrB) ++
+                withStyle wsty   (map renderChar $ take afterSel $ BS.unpack $ afterSelPtrB))
+              : drawLines (sol + len) rest
+    return (take h' (drawLines t lns ++ repeat (withStyle eofsty [windowfill e])) ++ modeLines)
 
     }}}}}
 
---
--- | Draw the editor command line. Make sure not to drop off end of screen.
---
-drawCmdLine :: String -> IO ()
-drawCmdLine s = do
-    (h,w) <- Curses.scrSize
-    Curses.wMove Curses.stdScr (h-1) 0
-    let w' = min (w-1) (length s)   -- hmm. what if this is big?
-    drawLine w' s
-    fillLine
-    Curses.wMove Curses.stdScr (h-1) w'
+renderChar :: Char -> Char
+renderChar '\n' = ' ' -- Till we find a better rendering.
+renderChar c = c
 
--- | Draw a line quickly
-drawLine :: Int -> String -> IO ()
-drawLine w s = case C.pack s of
-    ps -> P.unsafeUseAsCString ps $ \cstr -> 
-        throwIfErr_ (C.pack "drawLine") $
-            Curses.waddnstr Curses.stdScr cstr (fromIntegral (min w (P.length ps)))
-
-lineDown :: IO ()
-lineDown = do
-    (h,_) <- screenSize
-    (y,_) <- Curses.getYX Curses.stdScr
-    Curses.wMove Curses.stdScr (min h (y+1)) 0
-
--- | Given the cursor position in the window. Draw it.
-drawCursor :: (Int,Int) -> (Int,Int) -> IO ()
-drawCursor (o_y,_o_x) (y,x) = Curses.withCursor Curses.CursorVisible $ do
-    gotoTop
-    (h,w) <- scrSize
-    Curses.wMove Curses.stdScr (min (h-1) (o_y + y)) (min (w-1) x)
-
--- | move cursor to origin of stdScr.
-gotoTop :: IO ()
-gotoTop = Curses.wMove Curses.stdScr 0 0
-
--- | Fill to end of line spaces
-fillLine :: IO ()
-fillLine = Curses.clrToEol
+withStyle :: Style -> String -> [(Char, Int)]
+withStyle sty str = zip str (repeat (fromAttr $ styleToAttr sty))
 
 -- | redraw and refresh the screen
 refresh :: IO ()
-refresh = redraw >> Curses.refresh
+refresh = redraw
 
--- | Resize the window
--- From "Writing Programs with NCURSES", by Eric S. Raymond and Zeyd M. Ben-Halim
-resizeui :: IO (Int,Int)
-resizeui = do
-    Curses.endWin
-    Curses.resetParams
-    Curses.refresh
-    Curses.scrSize
+
+
+

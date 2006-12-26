@@ -206,7 +206,7 @@ import System.Exit          ( exitWith, ExitCode(ExitSuccess) )
 
 import Control.Monad
 import Control.Exception
-import Control.Concurrent   ( threadWaitRead, takeMVar, forkIO )
+import Control.Concurrent   ( takeMVar, forkIO )
 import Control.Concurrent.Chan
 
 import GHC.Exception hiding ( throwIO )
@@ -234,8 +234,10 @@ startE st (confs,fn,fn') ln mfs = do
         Just e' -> modifyEditor_ $ const $ return e'
         Nothing -> return ()
 
-    UI.start refreshE
-    sz <- UI.screenSize
+    u <- UI.start
+    modifyEditor_ $ \e -> return $ e { ui = u }
+
+    sz <- UI.screenSize =<< readEditor ui
     modifyEditor_ $ \e -> return $ e { scrsize = sz }
 
     Editor.setUserSettings confs fn fn'
@@ -265,10 +267,9 @@ startE st (confs,fn,fn') ln mfs = do
     where
         --
         -- | Action to read characters into a channel
-        -- We block our thread waiting for input on stdin
         --
         getcLoop :: Chan Char -> IO ()
-        getcLoop ch = repeatM_ $ threadWaitRead 0 >> getcE >>= writeChan ch
+        getcLoop ch = repeatM_ $ getcE >>= writeChan ch
 
         --
         -- | When the editor state isn't being modified, refresh, then wait for
@@ -304,7 +305,8 @@ runE = undefined
 -- | How to read from standard input
 --
 getcE :: IO Char
-getcE = UI.getKey refreshE -- only used if we don't have sigwinch
+getcE = do u <- readEditor ui
+           UI.getKey u refreshE
 
 --
 -- | The editor main loop. Read key strokes from the ui and interpret
@@ -356,13 +358,10 @@ reloadE = do
         return $ case v of
             Nothing -> e
             Just (Config km sty) -> e { curkeymap = km, uistyle = sty }
-    
-    sty <- readEditor uistyle
-    UI.initcolours sty
 
 -- | Reset the size, and force a complete redraw
 refreshE :: Action
-refreshE = UI.resizeui >>= doResizeAll
+refreshE = do readEditor ui >>= UI.screenSize >>= doResizeAll
 
 -- | Do nothing
 nopE :: Action
@@ -1064,7 +1063,7 @@ setWinE = Editor.setWindowToThisWindow
 splitE :: Action
 splitE = do
     i     <- sizeWindows
-    (y,_) <- UI.screenSize -- bah
+    (y,_) <- UI.screenSize =<< readEditor ui -- bah
     let (sy,r) = getY y i
     if sy + r <= 4  -- min window size
         then errorE "Not enough room to split"

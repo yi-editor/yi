@@ -25,17 +25,16 @@ module Yi.Style where
 
 #include "ghcconfig.h"
 
-import qualified Yi.Curses as Curses
+import qualified Yi.Vty as Vty
 
 import qualified Data.ByteString as P (ByteString)
 
 import Data.Word                (Word8)
 import Data.Maybe               (fromJust)
-import Data.IORef               (readIORef, writeIORef, newIORef, IORef)
-import qualified Data.Map as M  (fromList, empty, lookup, Map)
+import Data.IORef               (newIORef, IORef)
+import qualified Data.Map as M  (empty, lookup, Map)
 
 import System.IO.Unsafe         (unsafePerformIO)
-import Control.Exception        (handle)
 
 --
 -- | The UI type
@@ -126,83 +125,19 @@ reversefg   = Reverse
 reversebg   = Reverse
 
 ------------------------------------------------------------------------
---
--- | Set some colours, perform an action, and then reset the colours
---
-withStyle :: Style -> (IO ()) -> IO ()
-withStyle sty fn = uiAttr sty >>= setAttribute >> fn >> reset
-{-# INLINE withStyle #-}
 
---
--- | manipulate the current attributes of the standard screen
--- Only set attr if it's different to the current one?
---
-setAttribute :: (Curses.Attr, Curses.Pair) -> IO ()
-setAttribute = uncurry Curses.attrSet
-{-# INLINE setAttribute #-}
-
---
--- | Reset the screen to normal values
---
-reset :: IO ()
-reset = setAttribute (Curses.attr0, Curses.Pair 0)
-{-# INLINE reset #-}
-
---
--- | And turn on the colours
---
-initcolours :: UIStyle -> IO ()
-initcolours sty = do
-    let ls  = [window sty, modeline sty, modeline_focused sty, eof sty]
-    pairs <- initUiColors ls
-    writeIORef pairMap pairs
-    -- set the background
-    uiAttr (window sty) >>= \(_,p) -> Curses.bkgrndSet nullA p
-    
-------------------------------------------------------------------------
---
--- | Set up the ui attributes, given a ui style record
---
--- Returns an association list of pairs for foreground and bg colors,
--- associated with the terminal color pair that has been defined for
--- those colors.
---
-initUiColors :: [Style] -> IO PairMap
-initUiColors stys = do 
-    ls <- sequence [ uncurry fn m | m <- zip stys [1..] ]
-    return (M.fromList ls)
-  where
-    fn :: Style -> Int -> IO (Style, (Curses.Attr,Curses.Pair))
-    fn sty p = do
-        let (CColor (a,fgc),CColor (b,bgc)) = style2curses sty
-        handle (\_ -> return ()) $ Curses.initPair (Curses.Pair p) fgc bgc
-        return (sty, (a `Curses.attrPlus` b, Curses.Pair p))
-
-------------------------------------------------------------------------
---
--- | Getting from nice abstract colours to ncurses-settable values
--- 
--- 20% of allocss occur here! But there's only 3 or 4 colours :/
--- Every call to uiAttr
---
-uiAttr :: Style -> IO (Curses.Attr, Curses.Pair)
-uiAttr sty = do
-    m <- readIORef pairMap
-    return $ lookupPair m sty
-{-# INLINE uiAttr #-}
-
--- | Given a curses color pair, find the Curses.Pair (i.e. the pair
+-- | Given a curses color pair, find the Vty.Pair (i.e. the pair
 -- curses thinks these colors map to) from the state
-lookupPair :: PairMap -> Style -> (Curses.Attr, Curses.Pair)
+lookupPair :: PairMap -> Style -> (Vty.Attr, Vty.Pair)
 lookupPair m s = case M.lookup s m of
-                    Nothing   -> (Curses.attr0, Curses.Pair 0) -- default settings
+                    Nothing   -> (Vty.attr0, Vty.Pair 0) -- default settings
                     Just v    -> v
 {-# INLINE lookupPair #-}
 
 -- | Keep a map of nice style defs to underlying curses pairs, created at init time
-type PairMap = M.Map Style (Curses.Attr, Curses.Pair)
+type PairMap = M.Map Style (Vty.Attr, Vty.Pair)
 
--- | map of Curses.Color pairs to ncurses terminal Pair settings
+-- | map of Vty.Color pairs to ncurses terminal Pair settings
 pairMap :: IORef PairMap
 pairMap = unsafePerformIO $ newIORef M.empty
 {-# NOINLINE pairMap #-}
@@ -211,37 +146,37 @@ pairMap = unsafePerformIO $ newIORef M.empty
 --
 -- Basic (ncurses) colours.
 --
-defaultColor :: Curses.Color
-defaultColor = fromJust $ Curses.color "default"
+defaultColor :: Vty.Color
+defaultColor = fromJust $ Vty.color "default"
 
-cblack, cred, cgreen, cyellow, cblue, cmagenta, ccyan, cwhite :: Curses.Color
-cblack     = fromJust $ Curses.color "black"
-cred       = fromJust $ Curses.color "red"
-cgreen     = fromJust $ Curses.color "green"
-cyellow    = fromJust $ Curses.color "yellow"
-cblue      = fromJust $ Curses.color "blue"
-cmagenta   = fromJust $ Curses.color "magenta"
-ccyan      = fromJust $ Curses.color "cyan"
-cwhite     = fromJust $ Curses.color "white"
+cblack, cred, cgreen, cyellow, cblue, cmagenta, ccyan, cwhite :: Vty.Color
+cblack     = fromJust $ Vty.color "black"
+cred       = fromJust $ Vty.color "red"
+cgreen     = fromJust $ Vty.color "green"
+cyellow    = fromJust $ Vty.color "yellow"
+cblue      = fromJust $ Vty.color "blue"
+cmagenta   = fromJust $ Vty.color "magenta"
+ccyan      = fromJust $ Vty.color "cyan"
+cwhite     = fromJust $ Vty.color "white"
 
 --
 -- Combine attribute with another attribute
 --
-setBoldA, setReverseA ::  Curses.Attr -> Curses.Attr
-setBoldA     = flip Curses.setBold    True
-setReverseA  = flip Curses.setReverse True
+setBoldA, setReverseA ::  Vty.Attr -> Vty.Attr
+setBoldA     = flip Vty.setBold    True
+setReverseA  = flip Vty.setReverse True
 
 --
 -- | Some attribute constants
 --
-boldA, nullA, reverseA :: Curses.Attr
-nullA       = Curses.attr0
+boldA, nullA, reverseA :: Vty.Attr
+nullA       = Vty.attr0
 boldA       = setBoldA      nullA
 reverseA    = setReverseA   nullA
 
 ------------------------------------------------------------------------
 
-newtype CColor = CColor (Curses.Attr, Curses.Color)
+newtype CColor = CColor {fromCColor :: (Vty.Attr, Vty.Color)}
 -- 
 -- | Map Style rgb rgb colours to ncurses pairs
 -- TODO a generic way to turn an rgb into the nearest curses color
@@ -296,3 +231,10 @@ bgCursCol c = case c of
 
 defaultSty :: Style
 defaultSty = Style Default Default
+
+
+ccolorToAttr :: CColor -> Vty.Attr
+ccolorToAttr (CColor (modifier, color)) = Vty.attrPlus modifier (Vty.colorToAttr color)  
+
+styleToAttr :: Style -> Vty.Attr
+styleToAttr =  ccolorToAttr . fst . style2curses
