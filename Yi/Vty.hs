@@ -23,6 +23,7 @@ module Yi.Vty
     Pair(..), Color,
     color,              -- :: String -> Maybe Color
     colorToAttr,
+
     -- * Attributes
     Attr(..),
     attr0, setBold, setReverse,
@@ -350,8 +351,11 @@ keyOops :: Char
 keyOops = chr 0
 
 
-newtype Pair  = Pair Int
+newtype Pair = Pair Int
+    deriving Show
+
 newtype Color = Color Int
+    deriving Show
 
 color :: String -> Maybe Color
 
@@ -375,6 +379,7 @@ color "white"    = Just $ Color (7)
 color _          = Just $ Color (0)    -- NB
 
 newtype Attr = Attr { fromAttr :: Int }
+    deriving Show
 
 attr0   :: Attr
 attr0   = Attr (0)

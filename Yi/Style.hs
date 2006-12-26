@@ -46,7 +46,7 @@ data UIStyle =
        , modeline_focused :: !Style    -- ^ in focus modeline
        , selected         :: !Style    -- ^ the selected portion
        , eof              :: !Style    -- ^ empty file marker colours
-     }
+     } 
 
 --
 -- | Default settings
@@ -72,7 +72,7 @@ uiStyle = UIStyle {
 ------------------------------------------------------------------------
 
 -- | Foreground and background color pairs
-data Style = Style {-# UNPACK #-} !Color !Color deriving (Eq,Ord)
+data Style = Style {-# UNPACK #-} !Color !Color deriving (Eq,Ord,Show)
 
 -- | A List of characters with styles attached
 data CharA = C {-# UNPACK #-} !Char
@@ -86,7 +86,7 @@ data Color
     = RGB {-# UNPACK #-} !Word8 !Word8 !Word8
     | Default
     | Reverse
-    deriving (Eq,Ord)
+    deriving (Eq,Ord,Show)
 
 ------------------------------------------------------------------------
 --
@@ -114,13 +114,8 @@ white       = RGB 165 165 165
 brightwhite = RGB 255 255 255
 
 defaultfg, defaultbg, reversefg, reversebg :: Color
-#if defined(HAVE_USE_DEFAULT_COLORS)
 defaultfg   = Default
 defaultbg   = Default
-#else
-defaultfg   = white
-defaultbg   = black
-#endif
 reversefg   = Reverse
 reversebg   = Reverse
 
