@@ -155,16 +155,13 @@ initSignals = do
 
     tid <- myThreadId
 
-    -- to pass \^C to keymap (think emacs mode)
-    installHandler sigINT (Catch (return ())) Nothing
-
     -- ignore
     flip mapM_ [sigPIPE, sigALRM]
                (\sig -> installHandler sig Ignore Nothing)
 
     -- and exit if we get the following:
     -- we have to do our own quitE here.
-    flip mapM_ [sigHUP, sigABRT, sigTERM] $ \sig -> do
+    flip mapM_ [sigINT, sigHUP, sigABRT, sigTERM] $ \sig -> do
             installHandler sig (CatchOnce $ do
                     releaseSignals
                     UI.end =<< Editor.readEditor Editor.ui
