@@ -119,7 +119,7 @@ redraw = withEditor $ \e ->
     case getWindowIndOf e of { Nothing -> return () ; (Just i) -> do
                                               
     wImages <- mapM (drawWindow e w sty) ws
-    Yi.Vty.update vty pic {pImage = concat wImages ++ [withStyle (window sty) cl],
+    Yi.Vty.update vty pic {pImage = concat wImages ++ [withStyle (window sty) (cl ++ repeat ' ')],
                            pCursor = if cmdfoc 
                                      then NoCursor 
                                      else case w of
@@ -137,9 +137,6 @@ redraw = withEditor $ \e ->
 
 --
 -- | Draw a screen to the screen
---
--- This function does most of the allocs, and needs to be optimised to
--- bits
 --
 -- Ok. Now, how do we deal with line wrapping? The lns we get from ptrs
 -- will have to be broken up, dropping some off the end. The cursor
@@ -173,6 +170,7 @@ drawWindow e mwin sty win =
 
         off = length modeLines
         h' = h - off
+        filler = repeat (windowfill e)
     lns <- ptrToLnsB b t h' w
 
     -- draw each buffer line
@@ -255,15 +253,18 @@ drawWindow e mwin sty win =
                  afterSelPtrB)   = BS.splitAt inSel afterStartPtrB
             in (withStyle wsty   (map renderChar $ BS.unpack $ beforeSelPtrB) ++
                 withStyle selsty (map renderChar $ BS.unpack $ inSelPtrB) ++
-                withStyle wsty   (map renderChar $ take afterSel $ BS.unpack $ afterSelPtrB))
+                withStyle wsty   ((map renderChar $ take afterSel $ BS.unpack $ afterSelPtrB) ++ filler))
               : drawLines (sol + len) rest
-    return (take h' (drawLines t lns ++ repeat (withStyle eofsty [windowfill e])) ++ modeLines)
+    return (take h' (drawLines t lns ++ repeat (withStyle eofsty filler)) ++ modeLines)
 
     }}}}}
 
 renderChar :: Char -> Char
 renderChar '\n' = ' ' -- Till we find a better rendering.
 renderChar c = c
+
+-- TODO: The above will actually require a bit of work, in order to properly
+-- render all the non-printable chars (<32)
 
 withStyle :: Style -> String -> [(Char, Int)]
 withStyle sty str = zip str (repeat (fromAttr $ styleToAttr sty))
