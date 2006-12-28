@@ -46,7 +46,7 @@ module Yi.UI (
 
   )   where
 
-import Yi.Buffer        ( Buffer( ptrToLnsB
+import Yi.Buffer        ( Buffer( nelemsB
                                 , getMarkB  ) )
 import Yi.Editor
 import Yi.Window
@@ -135,16 +135,21 @@ redraw = withEditor $ \e ->
 
     }}}}}}}
 
+lines' :: [(Char,a)] -> [[(Char,a)]]
+lines' [] =  []
+lines' s  =  let (l, s') = break ((== '\n') . fst) s in case s' of
+                                                          [] -> [l]
+                                                          ((_,x):s'') -> (l++[(' ',x)]) : lines' s''
+
+wrapLine :: Int -> [x] -> [[x]]
+wrapLine _ [] = []
+wrapLine n l = let (x,rest) = splitAt n l in x : wrapLine n rest
+
 -- ---------------------------------------------------------------------
 -- PRIVATE:
 
---
--- | Draw a screen to the screen
---
--- Ok. Now, how do we deal with line wrapping? The lns we get from ptrs
--- will have to be broken up, dropping some off the end. The cursor
--- will have to be recalculated too.
---
+-- | Draw a window
+-- TODO: horizontal scrolling.
 drawWindow :: Editor
            -> Maybe Window
            -> UIStyle
@@ -174,97 +179,27 @@ drawWindow e mwin sty win =
         off = length modeLines
         h' = h - off
         filler = repeat (windowfill e)
-    lns <- ptrToLnsB b t h' w
 
-    -- draw each buffer line
-    -- ToDo, horizontal scrolling. determine how many screen widths to
-    -- drop off the string (i.e. add to the ptr..)
-    --
-    -- This `len' doesn't take tabs into account. Leading to curses draw
-    -- errors on lines with tabs in them. Solution, find a len that
-    -- includes tab widths
-    --
-    -- `len' is number of chars in the line -- not the screen width.
-    -- so `w' is wrong in the presence of tabs.
-    --
-    -- need a function that takes the desired width, and tells us how
-    -- many real chars to take.
-    --
-
-    {-
-      That was the first attempt, now what we'll do is split each
-      line in to three parts, the bit before the selection, the
-      bit within the selection and the bit after the selection,
-      at most one line will have all there parts
-      (and then only if the selection forms a middle part of
-      one line), most will either be all selection, if the
-      selection covers multiple lines, or completely before or
-      completely after the selection. 
-    -}
+    bufData <- nelemsB b (w*h') t -- read enough chars from the buffer.        
     markPoint <- getMarkB b
-    let startSelect = min markPoint point
-        stopSelect  = (max markPoint point) + 1
+    let rendered = drawText h' w t point markPoint (fromAttr $ styleToAttr selsty) (fromAttr $ styleToAttr wsty) bufData
 
-        -- The integer argument is the current point at the start of
-        -- the line we wish to draw
-        drawLines :: Int -> [(CString, Int)] -> Pic
-        drawLines _ []                    = []
-        drawLines sol ((ptr,len) : rest) =
-            -- @todo{Make sure these can't *all* be zero
-            -- Notice for example that some conditions imply others, eg
-            -- stopSelect < eol implies startSelect < eol, so
-            -- startSelect > sol && stopSelect < eol implies that
-            -- the selection starts and ends on this line.
-
-            -- I think that the inSel conditions can be slightly optimised.
-            let eol        = sol + len
-                byteString = BS.packCString ptr
-                beforeSel
-                    | startSelect > sol         = min len (startSelect - sol)
-                    | otherwise                 = 0
-                inSel    
-                    -- selection starts and ends on this line
-                    | startSelect >= sol &&
-                      stopSelect  <= eol         = stopSelect - startSelect
-
-                    -- selection is entirely before this line
-                    | stopSelect  < sol         = 0
-
-                    -- selection is entirely after this line
-                    | startSelect > eol         = 0
-
-                    -- this line is entirely within the selection
-                    | startSelect < sol &&
-                      stopSelect  > eol         = len
-
-                    -- selection begins before this line, ends during it
-                    | startSelect < sol &&
-                      stopSelect  > sol         = stopSelect - sol
-
-                    -- selection begins on this line, ends after it
-                    | startSelect >= sol &&
-                      stopSelect  > eol         = eol - startSelect
-
-                    -- selection outside this line (not really needed)
-                    | otherwise                 = 0
-                afterSel = len - (beforeSel + inSel)
-                --     | stopSelect < eol          = min len (eol - stopSelect)
-                --     | otherwise                 = 0
-                (beforeSelPtrB,
-                 afterStartPtrB) = BS.splitAt beforeSel byteString
-                (inSelPtrB,
-                 afterSelPtrB)   = BS.splitAt inSel afterStartPtrB
-            in (withStyle wsty   (map renderChar $ BS.unpack $ beforeSelPtrB) ++
-                withStyle selsty (map renderChar $ BS.unpack $ inSelPtrB) ++
-                withStyle wsty   ((map renderChar $ take afterSel $ BS.unpack $ afterSelPtrB) ++ filler))
-              : drawLines (sol + len) rest
-    return (take h' (drawLines t lns ++ repeat (withStyle eofsty filler)) ++ modeLines)
-
+    return (take h' (rendered ++ repeat (withStyle eofsty filler)) ++ modeLines)
     }}}}}
 
-renderChar :: Char -> Char
-renderChar '\n' = ' ' -- Till we find a better rendering.
-renderChar c = c
+
+drawText h w t point markPoint selsty wsty bufData = rendered
+  where startSelect = min markPoint point
+        stopSelect  = (max markPoint point) + 1
+        annBufData = zip bufData [t..]  -- remember the point of each char
+        -- TODO: render non-graphic chars (^G and the like)
+        lns = take h $ concatMap (wrapLine w) $ lines' $ annBufData
+        windowEnd = snd $ last $ last $ lns -- point of the last char show in the window.
+        rendered = map (map colorChar) lns
+        colorChar (c, x) = (c,pointStyle x)
+        pointStyle x = if startSelect < x && x < stopSelect then selsty else wsty
+    
+    
 
 -- TODO: The above will actually require a bit of work, in order to properly
 -- render all the non-printable chars (<32)
@@ -275,7 +210,6 @@ withStyle sty str = zip str (repeat (styleToAttr sty))
 -- | redraw and refresh the screen
 refresh :: IO ()
 refresh = redraw
-
 
 
 
