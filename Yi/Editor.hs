@@ -28,6 +28,7 @@ import Yi.FastBuffer
 import Yi.Regex                 ( Regex )
 import Yi.Window
 import Yi.Style                 ( uiStyle, UIStyle )
+import Yi.Event
 
 import Data.List                ( elemIndex )
 import Data.Unique              ( Unique )
@@ -55,10 +56,10 @@ data Editor = Editor {
        ,ui              :: UI
 
        ,curwin          :: !(Maybe Unique)            -- ^ the window with focus
-       ,curkeymap       :: [Char] -> [Action]         -- ^ user-configurable keymap
+       ,curkeymap       :: [Event] -> [Action]        -- ^ user-configurable keymap
        ,scrsize         :: !(Int,Int)                 -- ^ screen size
        ,uistyle         :: !UIStyle                   -- ^ ui colours
-       ,input           :: Chan Char                  -- ^ input stream
+       ,input           :: Chan Event                 -- ^ input stream
        ,threads         :: [ThreadId]                 -- ^ all our threads
        ,reboot          :: (Maybe Editor) -> IO ()    -- ^ our reboot function
        ,reload          :: IO (Maybe Config)          -- ^ reload config function
@@ -538,7 +539,7 @@ setUserSettings (Config km sty) fn fn' =
 --
 -- | retrieve the user-defineable key map
 --
-getKeyBinds :: IO ([Char] -> [Action])
+getKeyBinds :: IO ([Event] -> [Action])
 getKeyBinds = readEditor curkeymap
 
 -- ---------------------------------------------------------------------
@@ -559,7 +560,7 @@ shutdown = do ts <- readEditor threads
 -- in the dynamically loaded edition of yi.
 --
 data Config = Config {
-            keymap :: [Char] -> [Action]       -- ^ bind keys to editor actions
+            keymap :: Keymap      -- ^ bind keys to editor actions
            ,style  :: UIStyle
     }
 
@@ -567,6 +568,8 @@ data Config = Config {
 -- | The type of user-bindable functions
 --
 type Action = IO ()
+
+type Keymap = [Event] -> [Action]
 
 -- ---------------------------------------------------------------------
 -- | Class of values that can go in the extensible state component

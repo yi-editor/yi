@@ -23,7 +23,7 @@
 
 module Yi.Keymap.Nano where
 
-import Yi.Editor            ( Action )
+import Yi.Editor            ( Action, Keymap )
 import Yi.Yi hiding         ( keymap )
 
 import Data.Char            ( chr, isAlphaNum )
@@ -38,10 +38,10 @@ import Control.Exception    ( ioErrors, catchJust, try, evaluate )
 -- main loop to interpret actions. The second argument to @execLexer@ is
 -- our default state.
 --
-keymap :: [Char] -> [Action]
+keymap :: Keymap
 keymap cs = actions
     where
-        (actions,_,_) = execLexer nano_km (cs, Nothing)
+        (actions,_,_) = execLexer nano_km (map eventToChar cs, Nothing)
 
 --
 -- | @NanoMode@  is the type to instantiate the lazy lexer with
@@ -185,9 +185,9 @@ cmdCharFM = M.fromList $
 -- Once we've processed a valid keystroke, we return control to the
 -- keymap specified by the third argument.
 --
-askYN ::  Action -> Action -> ([Char] -> [Action]) -> ([Char] -> [Action])
+askYN ::  Action -> Action -> Keymap -> Keymap
 askYN y_act n_act cont =
-    \cs -> let (actions,_,_) = execLexer ync_mode (cs, Nothing) in actions
+    \cs -> let (actions,_,_) = execLexer ync_mode (map eventToChar cs, Nothing) in actions
 
     where
         ync_mode = yes_mode >||< no_mode >||< cancel
@@ -282,7 +282,7 @@ searchChar = char '\^W'
         --
         mkKM p cs =
             let (as,_,_) = execLexer (echo_km >||< search_km)
-                                     (cs, Just ('\^W',p,[], Only search_km))
+                                     (map eventToChar cs, Just ('\^W',p,[], Only search_km))
             in as
 
 --

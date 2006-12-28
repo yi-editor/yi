@@ -27,7 +27,7 @@
 module Yi.Keymap.Vi ( keymap, keymapPlus, ViMode ) where
 
 import Yi.Yi         hiding ( keymap )
-import Yi.Editor            ( Action )
+import Yi.Editor            ( Action, Keymap )
 
 import Prelude       hiding ( any )
 
@@ -65,10 +65,10 @@ data ViState =
 -- NB . if there is a (bad) exception, we'll lose any new bindings.. iorefs?
 --    . also, maybe we shouldn't refresh automatically?
 --
-keymap :: [Char] -> [Action]
+keymap :: Keymap
 keymap cs = setWindowFillE '~' : actions
     where
-        (actions,_,_) = execLexer cmd_mode (cs, defaultSt)
+        (actions,_,_) = execLexer cmd_mode (map eventToChar cs, defaultSt)
 
 -- | default lexer state, just the normal cmd and insert mode. no mappings
 defaultSt :: ViState

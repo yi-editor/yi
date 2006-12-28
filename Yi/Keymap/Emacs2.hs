@@ -39,6 +39,9 @@ import qualified Data.Map as M
 import Control.Monad.Writer
 import Control.Monad.State
 
+liftKm :: ([Char] -> [Action]) -> Keymap
+liftKm m = m . map eventToChar
+
 -- * Dynamic state-components
 
 
@@ -240,7 +243,7 @@ spawnMinibuffer :: String -> KList -> Action
 spawnMinibuffer _prompt klist =
     do MiniBuf w _b <- getDynamic
        setWinE w
-       metaM (fromKProc $ makeKeymap klist)
+       metaM $ liftKm (fromKProc $ makeKeymap klist)
 
 rebind :: KList -> String -> KProc () -> KList
 rebind kl k kp = M.toList $ M.insert k kp $ M.fromList kl
@@ -318,7 +321,7 @@ fromKProc :: KProc a -> [Char] -> [Action]
 fromKProc kp cs = snd $ runWriter $ runStateT kp cs
 
 -- | entry point
-keymap :: [Char] -> [Action]
-keymap = fromKProc (makeKeymap normalKlist)
+keymap :: Keymap
+keymap = liftKm $ fromKProc (makeKeymap normalKlist)
 
 

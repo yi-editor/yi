@@ -31,7 +31,7 @@ module Yi.MakeKeymap (
     makeKeymap
 ) where
 
-import Yi.Editor            ( Action )
+import Yi.Editor            ( Action, Keymap )
 import Yi.Yi hiding         ( keymap )
 import Yi.Char
 import Data.Maybe
@@ -42,7 +42,7 @@ import qualified Data.Map as M
 data KME s = KMEAction Action
            | KMESubmap (KM s)
            | KMEMode (KProc s -> KProc s)
-type KProc s = s ->[Char] -> [Action]
+type KProc s = s -> [Char] -> [Action]
 type KM s = M.Map Char (KME s)
 type KMLookup s = (KM s) -> Char -> (KME s)
 type KListEnt s = ([Char], KME s)

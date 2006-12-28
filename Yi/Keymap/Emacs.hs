@@ -80,7 +80,7 @@ Currently there's three abstraction layers in here:
 
 module Yi.Keymap.Emacs where
 
-import Yi.Editor            ( Action )
+import Yi.Editor            ( Action, Keymap )
 import Yi.Yi hiding         ( keymap )
 import Yi.Lexers hiding (Action)
 
@@ -483,12 +483,12 @@ cxkeymap = KeyBinding [((char '\^C'),"quit"),
                        ((char 't'),"test_actions")
                       ]
 
-keymap :: [Char] -> [Action]
+keymap :: Keymap
 keymap cs = actions
    where (actions,_,_) =
              execLexer
              (realizekeymap normalkeymap)
-             (cs,ES toplevel Nothing [normalkeymap,cxkeymap] Nothing
+             (map eventToChar cs,ES toplevel Nothing [normalkeymap,cxkeymap] Nothing
                     (mergeTrees $ map listToTree $
                                 map fst $ Map.toList actionlist))
 

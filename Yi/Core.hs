@@ -191,6 +191,7 @@ import Yi.Regex
 import Yi.String
 import Yi.Process           ( popen )
 import Yi.Editor
+import Yi.Event
 import qualified Yi.Editor as Editor
 import qualified Yi.Style as Style
 
@@ -268,7 +269,7 @@ startE st (confs,fn,fn') ln mfs = do
         --
         -- | Action to read characters into a channel
         --
-        getcLoop :: Chan Char -> IO ()
+        getcLoop :: Chan Event -> IO ()
         getcLoop ch = repeatM_ $ getcE >>= writeChan ch
 
         --
@@ -304,7 +305,7 @@ runE = undefined
 -- ---------------------------------------------------------------------
 -- | How to read from standard input
 --
-getcE :: IO Char
+getcE :: IO Event
 getcE = do u <- readEditor ui
            UI.getKey u refreshE
 
@@ -1148,7 +1149,7 @@ mapRangeE from to fn
 --
 -- Our meta exception returns the next keymap to use
 --
-newtype MetaActionException = MetaActionException ([Char] -> [Action])
+newtype MetaActionException = MetaActionException Keymap
     deriving Typeable
 
 --
@@ -1158,7 +1159,7 @@ newtype MetaActionException = MetaActionException ([Char] -> [Action])
 -- some IO action. Altering the keymap based on the input to  the keymap
 -- is achieved by threading a state variable in the keymap itself.
 --
-metaM :: ([Char] -> [Action]) -> IO ()
+metaM :: Keymap -> IO ()
 metaM km = throwDyn (MetaActionException km)
 
 ------------------------------------------------------------------------

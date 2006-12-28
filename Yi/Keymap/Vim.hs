@@ -25,7 +25,7 @@ module Yi.Keymap.Vim ( keymap, keymapPlus, VimMode ) where
 
 import Yi.Core
 import Yi.CharMove
-import Yi.Editor            ( Action )
+import Yi.Editor            ( Action, Keymap )
 import Yi.Lexers     hiding ( Action )
 
 import Yi.UI
@@ -138,8 +138,12 @@ vimGetRegion = readRegionE
 -- NB . if there is a (bad) exception, we'll lose any new bindings.. iorefs?
 --    . also, maybe we shouldn't refresh automatically?
 --
-keymap :: [Char] -> [Action]
-keymap cs = setWindowFillE '~' : winStyleAct : actions
+
+keymap :: Keymap
+keymap = keymap' . map eventToChar
+
+keymap' :: [Char] -> [Action]
+keymap' cs = setWindowFillE '~' : winStyleAct : actions
     where
         (actions,_,_) = execLexer cmd_mode (cs, defaultSt)
         winStyleAct = unsetMarkE >> setWindowStyleE defaultVimUiStyle

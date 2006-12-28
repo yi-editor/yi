@@ -90,12 +90,12 @@ screenSize (UI vty) = return swap `ap` Yi.Vty.getSize vty
 -- | Read a key. UIs need to define a method for getting events.
 --
 
-getKey :: UI -> IO () -> IO Char
+getKey :: UI -> IO () -> IO Event
 getKey (UI vty) doRefresh = do 
   event <- getEvent vty
   case event of 
     (EvResize _ _) -> doRefresh >> getKey (UI vty) refresh
-    _ -> return (eventToChar event)
+    _ -> return event
 
 --
 -- | Redraw the entire terminal from the UI state

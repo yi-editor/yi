@@ -72,7 +72,7 @@ data Opts = Help
 --
 -- In case the user wants to start with a certain editor
 --
-editorFM :: M.Map [Char] ([Char] -> [Editor.Action])
+editorFM :: M.Map [Char] (Editor.Keymap)
 editorFM = M.fromList $
     [ ("vi"      ,      Vi.keymap)
     , ("vim"     ,     Vim.keymap)

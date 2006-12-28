@@ -61,7 +61,7 @@
 module Yi.Keymap.Mg (keymap) where
 
 import Yi.Yi         hiding ( keymap )
-import Yi.Editor            ( Action )
+import Yi.Editor            ( Action, Keymap )
 import Yi.Char
 
 import Numeric              ( showOct )
@@ -386,13 +386,16 @@ data MgState = MgState {
 dfltState :: MgState
 dfltState = MgState [] []
 
-defaultKeymap :: [Char] -> [Action]
+defaultKeymap :: Keymap
 defaultKeymap = keymap
 
 ------------------------------------------------------------------------
 
-keymap :: [Char] -> [Action]
-keymap cs = let (actions,_,_) = execLexer mode (cs, dfltState) in actions
+keymap :: Keymap
+keymap = keymap' . map eventToChar
+
+keymap' :: [Char] -> [Action]
+keymap' cs = let (actions,_,_) = execLexer mode (cs, dfltState) in actions
 
 ------------------------------------------------------------------------
 
@@ -495,8 +498,8 @@ editEscape = char '\^G'
 --
 -- and build a generic keymap
 --
-mkKeymap :: MgMode -> MgState -> ([Char] -> [Action])
-mkKeymap m st = \cs -> let (actions,_,_) = execLexer m (cs, st) in actions
+mkKeymap :: MgMode -> MgState -> Keymap
+mkKeymap m st = \cs -> let (actions,_,_) = execLexer m (map eventToChar cs, st) in actions
 
 --
 -- and a default state
@@ -520,7 +523,7 @@ metaXSwitch = (char (m_ 'x') >|< char (m_ 'X'))
 metaXState :: MgState
 metaXState = mkPromptState "M-x "
 
-metaXmap :: [Char] -> [Action]
+metaXmap :: Keymap
 metaXmap = mkKeymap metaXMode metaXState
 
 metaXMode :: MgMode
@@ -545,7 +548,7 @@ metaXEval = enter
 describeKeyMode :: MgMode
 describeKeyMode = describeChar
 
-describeKeymap :: [Char] -> [Action]
+describeKeymap :: Keymap
 describeKeymap = mkKeymap describeKeyMode describeKeyState
 
 describeKeyState :: MgState
@@ -572,7 +575,7 @@ describeChar = anything
 ------------------------------------------------------------------------
 -- Reading a filename, to open a buffer
 --
-findFileMap :: [Char] -> [Action]
+findFileMap :: Keymap
 findFileMap = mkKeymap findFileMode findFileState
 
 findFileState :: MgState
@@ -596,7 +599,7 @@ findFileEval = enter
 -- ---------------------------------------------------------------------
 -- Writing a file
 --
-writeFileMap  :: [Char] -> [Action]
+writeFileMap  :: Keymap
 writeFileMap = mkKeymap writeFileMode writeFileState
 
 writeFileState :: MgState
@@ -618,7 +621,7 @@ writeFileEval = enter
 
 -- ---------------------------------------------------------------------
 -- Killing a buffer by name
-killBufferMap :: [Char] -> [Action]
+killBufferMap :: Keymap
 killBufferMap = mkKeymap killBufferMode killBufferState
 
 killBufferState :: MgState
@@ -639,7 +642,7 @@ killBufferEval = enter
 -- ---------------------------------------------------------------------
 -- Goto a line
 --
-gotoMap  :: [Char] -> [Action]
+gotoMap  :: Keymap
 gotoMap = mkKeymap gotoMode gotoState
 
 gotoState :: MgState
@@ -662,7 +665,7 @@ gotoEval = enter
 -- ---------------------------------------------------------------------
 -- insert the first character, then switch back to normal mode
 --
-insertAnyMap :: [Char] -> [Action]
+insertAnyMap :: Keymap
 insertAnyMap = mkKeymap insertAnyMode dfltState
 
 insertAnyMode :: MgMode

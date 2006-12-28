@@ -24,12 +24,12 @@
 module Yi.Keymap.Ee ( keymap, EeMode ) where
 
 import Yi.Yi         hiding ( keymap )
-import Yi.Editor            ( Action )
+import Yi.Editor            ( Action, Keymap )
 
 type EeMode = Lexer () Action
 
-keymap :: [Char] -> [Action]
-keymap cs = let (actions,_,_) = execLexer mode (cs, ()) in actions
+keymap :: Keymap
+keymap cs = let (actions,_,_) = execLexer mode (map eventToChar cs, ()) in actions
 
 --
 -- Control keys:

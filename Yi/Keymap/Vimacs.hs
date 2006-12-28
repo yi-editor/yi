@@ -83,6 +83,8 @@ instance Initializable MiniBuf where
 
 type KProc a = StateT String (Writer [Action]) a
 
+liftKm :: ([Char] -> [Action]) -> Keymap
+liftKm m = m . map eventToChar
 
 -- * The keymap abstract definition
 
@@ -297,7 +299,7 @@ spawnMinibuffer :: String -> KList -> Action
 spawnMinibuffer _prompt klist =
     do MiniBuf w _b <- getDynamic
        setWinE w
-       metaM (fromKProc $ makeKeymap klist)
+       metaM $ liftKm (fromKProc $ makeKeymap klist)
 
 rebind :: KList -> String -> KProc () -> KList
 rebind kl k kp = M.toList $ M.insert k kp $ M.fromList kl
@@ -390,9 +392,9 @@ fromKProc :: KProc a -> [Char] -> [Action]
 fromKProc kp cs = snd $ runWriter $ runStateT kp cs
 
 -- | entry point
-keymap :: [Char] -> [Action]
+keymap :: Keymap
 keymap cs = setWindowFillE '~' : winStyleAct : actions
-	    where actions     = keymapFun cs
+	    where actions     = keymapFun $ map eventToChar cs
 		  keymapFun   = fromKProc $ makeKeymap normalKlist
 		  winStyleAct = setWindowStyleE defaultVimacsUiStyle
 

@@ -27,7 +27,7 @@ module Yi.Keymap.Joe (
 
 import Control.Monad        ( when )
 import Data.Maybe           ( isNothing )
-import Yi.Editor            ( Action, withWindow_ )
+import Yi.Editor            ( Action, Keymap, withWindow_ )
 import Yi.Yi hiding         ( keymap )
 import Yi.CharMove
 import Yi.Char
@@ -35,6 +35,9 @@ import Yi.MakeKeymap
 import Yi.Buffer            ( moveTo, deleteN, insertN )
 
 -- ---------------------------------------------------------------------
+
+liftKm :: ([Char] -> [Action]) -> Keymap
+liftKm m = m . map eventToChar
 
 type JoeProc = KProc JoeState
 
@@ -110,8 +113,8 @@ klist=[
     "\^KE" &&> queryNewE
     ]
 
-keymap :: [Char] -> [Action]
-keymap = makeKeymap klist initial_state
+keymap :: Keymap
+keymap = liftKm $ makeKeymap klist initial_state
 
 -- ---------------------------------------------------------------------
 
@@ -210,7 +213,7 @@ queryGotoLineE = simpleq "Line number: " [] (gotoLnE . read)
 queryInsertFileE = simpleq "File name: " [] insertFileE
 queryBufW = simpleq "Buffer: " [] unimplementedQ
 querySaveE cont st _ = return $
-    getFileE >>= \f -> metaM $ simpleq "File name: " f fwriteToE cont st
+    getFileE >>= \f -> metaM $ liftKm $ simpleq "File name: " f fwriteToE cont st
 
 
 -- ---------------------------------------------------------------------
@@ -231,8 +234,8 @@ queryReplace m s sfn cont =
 	skip (_, j) st _ = return $ do
 	    res <- do_next j
             case res of
-                Nothing -> metaM (cont st)
-                Just p -> metaM $ queryReplace p s sfn cont st
+                Nothing -> metaM $ liftKm (cont st)
+                Just p -> metaM $ liftKm $ queryReplace p s sfn cont st
 	
 	repl mm_ rest_ st_ cs_ = return $ repl_ mm_ rest_ st_ cs_
 	   where
@@ -240,9 +243,9 @@ queryReplace m s sfn cont =
 	           do_replace mm s
                    res <- do_next (i+length s)
                    case (res, rest) of
-                       (Nothing, _)    -> metaM (cont st)
+                       (Nothing, _)    -> metaM $ liftKm (cont st)
                        (Just p, True)  -> repl_ p rest st cs
-                       (Just p, False) -> metaM $ queryReplace p s sfn cont st
+                       (Just p, False) -> metaM $ liftKm $ queryReplace p s sfn cont st
 
 	do_replace (i, j) ss = withWindow_ $ \w b -> do
 	    moveTo b i
@@ -262,10 +265,10 @@ doSearch :: SearchExp -> JoeProc -> JoeState -> Action
 doSearch srchexp cont st = do
     res <- sfn
     case res of
-        Nothing -> errorE "Not found." >> metaM (cont st)
+        Nothing -> errorE "Not found." >> metaM (liftKm (cont st))
 	Just p -> case js_search_replace st of
-            Just rep -> metaM $ queryReplace p rep (sfn) cont st
-            Nothing -> metaM $ cont st
+            Just rep -> metaM $ liftKm $ queryReplace p rep (sfn) cont st
+            Nothing -> metaM $ liftKm $ cont st
     where
         sfn = do
             op <- getPointE
@@ -302,7 +305,7 @@ querySearchRepE cont =
 
 nextSearchRepE cont st _ = return $
     getRegexE >>= \e -> case e of
-        Nothing -> metaM $ querySearchRepE cont st
+        Nothing -> metaM $ liftKm $ querySearchRepE cont st
         Just se -> doSearch se cont st
 
 unimplementedQ :: String -> Action
