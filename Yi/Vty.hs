@@ -36,7 +36,8 @@ module Yi.Vty
 import Data.Char (chr,ord)
 import Graphics.Vty
 import Data.Bits
-import Debug.Trace
+
+import Yi.Debug
 
 type Pic = [[(Char,Int)]]
 

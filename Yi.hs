@@ -25,6 +25,8 @@ import qualified Yi.Editor  as Editor
 import qualified Yi.Core    as Core
 import qualified Yi.Style   as Style
 
+import Yi.Debug
+
 {- All the standard editor front ends -}
 import qualified Yi.Keymap.Vi     as Vi
 import qualified Yi.Keymap.Vim    as Vim
@@ -234,7 +236,7 @@ static_main st = do
     -- around. (is this still true? -- 04/05)
     --
     Control.Exception.catch
-        (initSignals >> Core.startE st config lineno mfiles >> Core.eventLoop)
+        (initSignals >> Core.startE st config lineno mfiles >> initDebug ".yi.dbg" >> Core.eventLoop)
         (\e -> do releaseSignals
                   UI.end =<< Editor.readEditor Editor.ui
                   Editor.shutdown
