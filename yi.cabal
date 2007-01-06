@@ -4,7 +4,7 @@ license:        GPL
 license-file:   LICENSE
 author:         Don Stewart
 maintainer:     dons@cse.unsw.edu.au
-build-depends:  base, fps, mtl, vty
+build-depends:  base, fps, mtl, vty>=2.0
 
 executable:     yi
 main-is:        Main.hs

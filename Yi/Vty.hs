@@ -3,35 +3,24 @@ module Yi.Vty
      Pic,    
      
      -- * Key codes
-    eventToChar,
-    keyBreak, keyDown, keyUp, keyLeft, keyRight, keyHome,
-    keyBackspace, keyDL, keyIL, keyDC, keyIC, keyEIC, keyClear,
-    keyEOS, keyEOL, keySF, keySR, keyNPage, keyPPage, keySTab,
-    keyCTab, keyCATab, keyEnter, keySReset, keyReset, keyPrint,
-    keyLL, keyA1, keyA3, keyB2, keyC1, keyC3, keyBTab, keyBeg,
-    keyCancel, keyClose, keyCommand, keyCopy, keyCreate, keyEnd,
-    keyExit, keyFind, keyHelp, keyMark, keyMessage, keyMove, keyNext,
-    keyOpen, keyOptions, keyPrevious, keyRedo, keyReference, keyRefresh,
-    keyReplace, keyRestart, keyResume, keySave, keySBeg, keySCancel,
-    keySCommand, keySCopy, keySCreate, keySDC, keySDL, keySelect, keySEnd,
-    keySEOL, keySExit, keySFind, keySHelp, keySHome, keySIC, keySLeft,
-    keySMessage, keySMove, keySNext, keySOptions, keySPrevious, keySPrint,
-    keySRedo, keySReplace, keySRight, keySRsume, keySSave, keySSuspend,
-    keySUndo, keySuspend, keyUndo,
+     eventToChar,
+     keyBreak, keyDown, keyUp, keyLeft, keyRight, keyHome,
+     keyBackspace, keyDL, keyIL, keyDC, keyIC, keyEIC, keyClear,
+     keyEOS, keyEOL, keySF, keySR, keyNPage, keyPPage, keySTab,
+     keyCTab, keyCATab, keyEnter, keySReset, keyReset, keyPrint,
+     keyLL, keyA1, keyA3, keyB2, keyC1, keyC3, keyBTab, keyBeg,
+     keyCancel, keyClose, keyCommand, keyCopy, keyCreate, keyEnd,
+     keyExit, keyFind, keyHelp, keyMark, keyMessage, keyMove, keyNext,
+     keyOpen, keyOptions, keyPrevious, keyRedo, keyReference, keyRefresh,
+     keyReplace, keyRestart, keyResume, keySave, keySBeg, keySCancel,
+     keySCommand, keySCopy, keySCreate, keySDC, keySDL, keySelect, keySEnd,
+     keySEOL, keySExit, keySFind, keySHelp, keySHome, keySIC, keySLeft,
+     keySMessage, keySMove, keySNext, keySOptions, keySPrevious, keySPrint,
+     keySRedo, keySReplace, keySRight, keySRsume, keySSave, keySSuspend,
+     keySUndo, keySuspend, keyUndo,
 
-    -- * Colours
-    Pair(..), Color,
-    color,              -- :: String -> Maybe Color
-    colorToAttr,
-
-    -- * Attributes
-    Attr(..),
-    attr0, setBold, setReverse,
-    attrSet,
-    attrPlus,           -- :: Attr -> Attr -> Attr
-
-               module Graphics.Vty
-              ) where
+     module Graphics.Vty
+    ) where
 
 import Data.Char (chr,ord)
 import Graphics.Vty
@@ -39,7 +28,7 @@ import Data.Bits
 
 import Yi.Debug
 
-type Pic = [[(Char,Int)]]
+type Pic = [[(Char,Attr)]]
 
 
 
@@ -350,58 +339,4 @@ keyUndo         = chr (408)
 
 keyOops :: Char
 keyOops = chr 0
-
-
-newtype Pair = Pair Int
-    deriving Show
-
-newtype Color = Color Int
-    deriving Show
-
-color :: String -> Maybe Color
-
-
-color "black"    = Just $ Color (0)
-
-color "red"      = Just $ Color (1)
-
-color "green"    = Just $ Color (2)
-
-color "yellow"   = Just $ Color (3)
-
-color "blue"     = Just $ Color (4)
-
-color "magenta"  = Just $ Color (5)
-
-color "cyan"     = Just $ Color (6)
-
-color "white"    = Just $ Color (7)
-
-color _          = Just $ Color (0)    -- NB
-
-newtype Attr = Attr { fromAttr :: Int }
-    deriving Show
-
-attr0   :: Attr
-attr0   = Attr (0)
-
-setBold :: Attr -> Bool -> Attr
-setBold = attrSet (Attr 2097152)
-
-setReverse :: Attr -> Bool -> Attr
-setReverse = attrSet (Attr 262144)
-
--- | bitwise combination of attributes
-attrSet :: Attr -> Attr -> Bool -> Attr
-attrSet (Attr b) (Attr a) False = Attr (a .&. complement b)
-attrSet (Attr b) (Attr a) True  = Attr (a .|.            b)
-
-attrPlus :: Attr -> Attr -> Attr
-attrPlus (Attr a) (Attr b) = Attr (a .|. b)
-
-------------------------------------------------------------------------
-
-colorToAttr :: Color -> Attr
-colorToAttr (Color x) = Attr x
-
 

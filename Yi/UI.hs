@@ -51,7 +51,7 @@ import Yi.Buffer        ( Buffer( ptrToLnsB
 import Yi.Editor
 import Yi.Window
 import Yi.Style
-import Yi.Vty
+import Yi.Vty hiding (def, black, red, green, yellow, blue, magenta, cyan, white)
 
 import qualified Data.ByteString.Char8 as BS
 
@@ -266,8 +266,8 @@ renderChar c = c
 -- TODO: The above will actually require a bit of work, in order to properly
 -- render all the non-printable chars (<32)
 
-withStyle :: Style -> String -> [(Char, Int)]
-withStyle sty str = zip str (repeat (fromAttr $ styleToAttr sty))
+withStyle :: Style -> String -> [(Char, Attr)]
+withStyle sty str = zip str (repeat (styleToAttr sty))
 
 -- | redraw and refresh the screen
 refresh :: IO ()

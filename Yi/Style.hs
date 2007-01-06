@@ -30,11 +30,6 @@ import qualified Yi.Vty as Vty
 import qualified Data.ByteString as P (ByteString)
 
 import Data.Word                (Word8)
-import Data.Maybe               (fromJust)
-import Data.IORef               (newIORef, IORef)
-import qualified Data.Map as M  (empty, lookup, Map)
-
-import System.IO.Unsafe         (unsafePerformIO)
 
 --
 -- | The UI type
@@ -121,57 +116,17 @@ reversebg   = Reverse
 
 ------------------------------------------------------------------------
 
--- | Given a curses color pair, find the Vty.Pair (i.e. the pair
--- curses thinks these colors map to) from the state
-lookupPair :: PairMap -> Style -> (Vty.Attr, Vty.Pair)
-lookupPair m s = case M.lookup s m of
-                    Nothing   -> (Vty.attr0, Vty.Pair 0) -- default settings
-                    Just v    -> v
-{-# INLINE lookupPair #-}
-
--- | Keep a map of nice style defs to underlying curses pairs, created at init time
-type PairMap = M.Map Style (Vty.Attr, Vty.Pair)
-
--- | map of Vty.Color pairs to ncurses terminal Pair settings
-pairMap :: IORef PairMap
-pairMap = unsafePerformIO $ newIORef M.empty
-{-# NOINLINE pairMap #-}
-
-------------------------------------------------------------------------
---
--- Basic (ncurses) colours.
---
-defaultColor :: Vty.Color
-defaultColor = fromJust $ Vty.color "default"
-
-cblack, cred, cgreen, cyellow, cblue, cmagenta, ccyan, cwhite :: Vty.Color
-cblack     = fromJust $ Vty.color "black"
-cred       = fromJust $ Vty.color "red"
-cgreen     = fromJust $ Vty.color "green"
-cyellow    = fromJust $ Vty.color "yellow"
-cblue      = fromJust $ Vty.color "blue"
-cmagenta   = fromJust $ Vty.color "magenta"
-ccyan      = fromJust $ Vty.color "cyan"
-cwhite     = fromJust $ Vty.color "white"
-
 --
 -- Combine attribute with another attribute
 --
-setBoldA, setReverseA ::  Vty.Attr -> Vty.Attr
-setBoldA     = flip Vty.setBold    True
-setReverseA  = flip Vty.setReverse True
-
---
--- | Some attribute constants
---
-boldA, nullA, reverseA :: Vty.Attr
-nullA       = Vty.attr0
-boldA       = setBoldA      nullA
-reverseA    = setReverseA   nullA
+boldA, reverseA, nullA ::  Vty.Attr -> Vty.Attr
+boldA a    = a { Vty.bold = True }
+reverseA a = a { Vty.rv = True }
+nullA       = id
 
 ------------------------------------------------------------------------
 
-newtype CColor = CColor {fromCColor :: (Vty.Attr, Vty.Color)}
+newtype CColor = CColor {fromCColor :: (Vty.Attr -> Vty.Attr, Vty.Color)}
 -- 
 -- | Map Style rgb rgb colours to ncurses pairs
 -- TODO a generic way to turn an rgb into the nearest curses color
@@ -182,54 +137,52 @@ style2curses (Style fg bg) = (fgCursCol fg, bgCursCol bg)
 
 fgCursCol :: Color -> CColor
 fgCursCol c = case c of
-    RGB 0 0 0         -> CColor (nullA, cblack)
-    RGB 128 128 128   -> CColor (boldA, cblack)
-    RGB 139 0 0       -> CColor (nullA, cred)
-    RGB 255 0 0       -> CColor (boldA, cred)
-    RGB 0 100 0       -> CColor (nullA, cgreen)
-    RGB 0 128 0       -> CColor (boldA, cgreen)
-    RGB 165 42 42     -> CColor (nullA, cyellow)
-    RGB 255 255 0     -> CColor (boldA, cyellow)
-    RGB 0 0 139       -> CColor (nullA, cblue)
-    RGB 0 0 255       -> CColor (boldA, cblue)
-    RGB 128 0 128     -> CColor (nullA, cmagenta)
-    RGB 255 0 255     -> CColor (boldA, cmagenta)
-    RGB 0 139 139     -> CColor (nullA, ccyan)
-    RGB 0 255 255     -> CColor (boldA, ccyan)
-    RGB 165 165 165   -> CColor (nullA, cwhite)
-    RGB 255 255 255   -> CColor (boldA, cwhite)
-    Default           -> CColor (nullA, defaultColor)
-    Reverse           -> CColor (reverseA, defaultColor)
-    _                 -> CColor (nullA, cblack) -- NB
+    RGB 0 0 0         -> CColor (nullA,    Vty.black)
+    RGB 128 128 128   -> CColor (boldA,    Vty.black)
+    RGB 139 0 0       -> CColor (nullA,    Vty.red)
+    RGB 255 0 0       -> CColor (boldA,    Vty.red)
+    RGB 0 100 0       -> CColor (nullA,    Vty.green)
+    RGB 0 128 0       -> CColor (boldA,    Vty.green)
+    RGB 165 42 42     -> CColor (nullA,    Vty.yellow)
+    RGB 255 255 0     -> CColor (boldA,    Vty.yellow)
+    RGB 0 0 139       -> CColor (nullA,    Vty.blue)
+    RGB 0 0 255       -> CColor (boldA,    Vty.blue)
+    RGB 128 0 128     -> CColor (nullA,    Vty.magenta)
+    RGB 255 0 255     -> CColor (boldA,    Vty.magenta)
+    RGB 0 139 139     -> CColor (nullA,    Vty.cyan)
+    RGB 0 255 255     -> CColor (boldA,    Vty.cyan)
+    RGB 165 165 165   -> CColor (nullA,    Vty.white)
+    RGB 255 255 255   -> CColor (boldA,    Vty.white)
+    Default           -> CColor (nullA,    Vty.def)
+    Reverse           -> CColor (reverseA, Vty.def)
+    _                 -> CColor (nullA,    Vty.black) -- NB
 
 bgCursCol :: Color -> CColor
 bgCursCol c = case c of
-    RGB 0 0 0         -> CColor (nullA, cblack)
-    RGB 128 128 128   -> CColor (nullA, cblack)
-    RGB 139 0 0       -> CColor (nullA, cred)
-    RGB 255 0 0       -> CColor (nullA, cred)
-    RGB 0 100 0       -> CColor (nullA, cgreen)
-    RGB 0 128 0       -> CColor (nullA, cgreen)
-    RGB 165 42 42     -> CColor (nullA, cyellow)
-    RGB 255 255 0     -> CColor (nullA, cyellow)
-    RGB 0 0 139       -> CColor (nullA, cblue)
-    RGB 0 0 255       -> CColor (nullA, cblue)
-    RGB 128 0 128     -> CColor (nullA, cmagenta)
-    RGB 255 0 255     -> CColor (nullA, cmagenta)
-    RGB 0 139 139     -> CColor (nullA, ccyan)
-    RGB 0 255 255     -> CColor (nullA, ccyan)
-    RGB 165 165 165   -> CColor (nullA, cwhite)
-    RGB 255 255 255   -> CColor (nullA, cwhite)
-    Default           -> CColor (nullA, defaultColor)
-    Reverse           -> CColor (reverseA, defaultColor)
-    _                 -> CColor (nullA, cwhite)    -- NB
+    RGB 0 0 0         -> CColor (nullA,    Vty.black)
+    RGB 128 128 128   -> CColor (nullA,    Vty.black)
+    RGB 139 0 0       -> CColor (nullA,    Vty.red)
+    RGB 255 0 0       -> CColor (nullA,    Vty.red)
+    RGB 0 100 0       -> CColor (nullA,    Vty.green)
+    RGB 0 128 0       -> CColor (nullA,    Vty.green)
+    RGB 165 42 42     -> CColor (nullA,    Vty.yellow)
+    RGB 255 255 0     -> CColor (nullA,    Vty.yellow)
+    RGB 0 0 139       -> CColor (nullA,    Vty.blue)
+    RGB 0 0 255       -> CColor (nullA,    Vty.blue)
+    RGB 128 0 128     -> CColor (nullA,    Vty.magenta)
+    RGB 255 0 255     -> CColor (nullA,    Vty.magenta)
+    RGB 0 139 139     -> CColor (nullA,    Vty.cyan)
+    RGB 0 255 255     -> CColor (nullA,    Vty.cyan)
+    RGB 165 165 165   -> CColor (nullA,    Vty.white)
+    RGB 255 255 255   -> CColor (nullA,    Vty.white)
+    Default           -> CColor (nullA,    Vty.def)
+    Reverse           -> CColor (reverseA, Vty.def)
+    _                 -> CColor (nullA,    Vty.white)    -- NB
 
 defaultSty :: Style
 defaultSty = Style Default Default
 
-
-ccolorToAttr :: CColor -> Vty.Attr
-ccolorToAttr (CColor (modifier, color)) = Vty.attrPlus modifier (Vty.colorToAttr color)  
-
 styleToAttr :: Style -> Vty.Attr
-styleToAttr =  ccolorToAttr . fst . style2curses
+styleToAttr = ccolorToAttr . style2curses
+    where ccolorToAttr ((CColor (fmod, fcolor)), (CColor (bmod, bcol))) = 
+              fmod . bmod $ Vty.attr {Vty.fg = fcolor, Vty.bg = bcol}
