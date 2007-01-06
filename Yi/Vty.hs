@@ -47,6 +47,7 @@ eventToChar (EvKey KPageDown _) = keyNPage
 eventToChar (EvKey KLeft _) = keyLeft
 eventToChar (EvKey KRight _) = keyRight
 eventToChar (EvKey KEnter _) = '\n'
+eventToChar (EvKey KEsc _) = '\ESC'
 
 eventToChar (EvKey (KASCII c) mods) = (if MMeta `elem` mods then setMeta else id) $
                                       (if MCtrl `elem` mods then ctrlLowcase else id) $
