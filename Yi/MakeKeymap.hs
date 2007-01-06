@@ -31,7 +31,7 @@ module Yi.MakeKeymap (
     makeKeymap
 ) where
 
-import Yi.Editor            ( Action, Keymap )
+import Yi.Editor            ( Action )
 import Yi.Yi hiding         ( keymap )
 import Yi.Char
 import Data.Maybe

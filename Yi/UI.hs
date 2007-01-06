@@ -41,7 +41,7 @@ module Yi.UI (
         -- * UI type, abstract.
         UI,
 
-        module Yi.Vty   -- UIs need to export the symbolic key names
+        module Yi.Event   -- UIs need to export the symbolic key names
 
 
   )   where
@@ -52,6 +52,7 @@ import Yi.Editor
 import Yi.Window
 import Yi.Style
 import Yi.Vty hiding (def, black, red, green, yellow, blue, magenta, cyan, white)
+import Yi.Event
 
 import qualified Data.ByteString.Char8 as BS
 
@@ -90,12 +91,14 @@ screenSize (UI vty) = return swap `ap` Yi.Vty.getSize vty
 -- | Read a key. UIs need to define a method for getting events.
 --
 
-getKey :: UI -> IO () -> IO Event
+getKey :: UI -> IO () -> IO Yi.Event.Event
 getKey (UI vty) doRefresh = do 
   event <- getEvent vty
   case event of 
     (EvResize _ _) -> doRefresh >> getKey (UI vty) refresh
-    _ -> return event
+    _ -> return (fromVtyEvent event)
+ where fromVtyEvent (EvKey k mods) = Event k mods
+       fromVtyEvent _ = error "fromVtyEvent: unsupported event encountered."
 
 --
 -- | Redraw the entire terminal from the UI state
