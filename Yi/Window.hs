@@ -140,7 +140,7 @@ getPercent a b = show p ++ "%"
 --
 moveUpW :: Buffer a => Window -> a -> IO Window
 moveUpW w b | lineno w == 1 = return w
-            | otherwise     = lineUp b >> decY w b >>= flip update b
+            | otherwise     = lineUp b >> update w b
 
 --
 -- | The cursor moves up, staying with its original line, unless it
@@ -150,62 +150,32 @@ moveDownW :: Buffer a => Window -> a -> IO Window
 moveDownW w b = do
     ll <- atLastLine b
     if ll then return w      -- eof, go no further
-          else lineDown b >> incY w b >>= flip update b
+          else lineDown b >> update w b
 
 -- ---------------------------------------------------------------------
 -- | Wacky moveToW function
 
--- roughly resetPoint. so refactor!
-
 moveToW :: Buffer a => Int -> Window -> a -> IO Window
 moveToW np w b = do
     moveTo b np
-    newln <- curLn b
-    let gap = newln - toslineno w
-        off   = if mode w == Nothing then 0 else 1
-    case () of {_
-        | gap < height w - off - 1 && newln >= toslineno w -- still on the screen
-        -> resetW w b newln (newln - toslineno w)
-
-        | otherwise                             -- dump on bottom line :(
-        -> resetW w b newln (min (newln-1) (height w - off - 1 ))
-    }
+    update w b
 
 -- | goto an arbitrary line in the file. center that line on the screen
 -- gotoLn is (fast as possible) an O(n) op atm.
 --
 gotoLnW :: Buffer a => Int -> Window -> a -> IO Window
 gotoLnW n w b = do
-    ln <- gotoLn b n
-    resetW w b ln (min (ln-1) ((height w) `div` 2))
+    gotoLn b n
+    update w b
 
 --
 -- | Goto a line offset from the current line
 --
 gotoLnFromW :: Buffer a => Int -> Window -> a -> IO Window
 gotoLnFromW n w b = do
-    ln <- gotoLnFrom b n
-    resetW w b ln 0
+    gotoLnFrom b n
+    update w b
 
-------------------------------------------------------------------------
---
--- | reset the window to the current line
--- @gap@ is where to center the window.
---
-resetW :: Buffer a => Window -> a -> Int -> Int -> IO Window
-resetW w b ln gap = do
-    p  <- pointB b      -- see where it actually got placed
-    x  <- offsetFromSol b
-    tw <- expandedTabLengthB b 8        -- hard coded for now
-    let topln = ln - gap
-    i <- indexOfSolAbove b gap
-    let w' = w {pnt = p, lineno = ln,
-                toslineno = topln, tospnt = i,
-                cursor = (gap,x-tw)}
-    m <- updateModeLine w' b
-    return w' { mode = m }
-
-------------------------------------------------------------------------
 --
 -- | Move the cursor left or start of line
 --
@@ -217,13 +187,6 @@ leftOrSolW w b = moveXorSol b 1     >> update w b
 --
 rightOrSolW :: Buffer a => Window -> a -> IO Window
 rightOrSolW w b = moveXorEol b 1    >> update w b
-
--- ---------------------------------------------------------------------
--- X-axis movement
---
--- This is all stupid. We should just have a refreshW function, that
--- works out whether to reset the X or Y values.
---
 
 -- | Move to the start of the line
 moveToSolW :: Buffer a => Window -> a -> IO Window
@@ -244,28 +207,15 @@ moveXorEolW i w b = moveXorEol b i >> update w b
 -- ---------------------------------------------------------------------
 -- Editing operations
 
---
--- | Insert a single character, shift point right to eol
--- If we insert a \n, then move to the start of the new line
---
+-- | Insert a single character
 insertW :: Buffer a => Char -> Window -> a -> IO Window
-insertW c w b = do
-    case c of                               -- insertB doesn't change the point
-        '\13'          -> insertB b '\n'
-        _ | isLatin1 c -> insertB b c
-          | otherwise  -> return ()
-    w' <- moveXorEolW 1 w b                       -- and shift the point
-    if c == '\13' || c == '\n'      -- newline, so move down with new line
-        then moveDownW w' b >>= flip moveToSolW b
-        else return w'
+insertW c = insertNW [c]
 
--- | Insert a whole String at the point.
--- is this going to reset things properly?
+-- | Insert a whole String at the point
 insertNW :: Buffer a => String -> Window -> a -> IO Window
 insertNW cs w b = do
     let cs' = [if c == '\13' then '\n' else c | c <- cs, isLatin1 c]
     insertN b cs'
-    rightN b (length cs')
     update w b
 
 --
@@ -293,7 +243,7 @@ deleteNW w b i = do
     deleteB b
 
     if eof && sol && not sof
-        then moveToEolW w b >>= flip decY b  -- todo should handle 0
+        then moveToEolW w b
         else update w b
 
 deleteNAtW :: Buffer a => Window -> a -> Int -> Int -> IO Window
@@ -310,13 +260,15 @@ deleteToEolW w b = do
     noNl <- noNLatEof b  -- and no \n at eol
     deleteToEol b
     if noNl && sol && not sof
-        then moveToEolW w b >>= flip decY b
+        then moveToEolW w b
         else update w b
 
 ------------------------------------------------------------------------
 --
 -- | update window point and cursor, and reset pnt cache
 -- A lot of time is spent here
+--
+-- optimization: we should work out whether to reset the Y value.
 --
 update :: Buffer a => Window -> a -> IO Window
 update w b = do
@@ -342,39 +294,6 @@ update w b = do
     return $! w' { mode = m }
 {-# INLINE update #-}
 {-# SPECIALIZE update :: Window -> FBuffer -> IO Window #-}
-
---
--- | Decrememt the y-related values. Might change top of screen point
--- TODO deal with sof
---
-decY :: Buffer a => Window -> a -> IO Window
-decY w b = do
-    p <- pointB b           -- current point
-    x <- offsetFromSol b    -- x offset
-    tw <- expandedTabLengthB b 8
-    let (y,_) = cursor w
-        curln = lineno w
-        topln = toslineno w
-        w' = w { lineno = curln-1 }
-    return $ if topln < curln
-             then w' { cursor = (y-1, x + tw) }             -- just move cursor
-             else w' { toslineno = topln-1, tospnt = p-x }  -- or move window
-
---
--- | incrememt the y-related values.
--- TODO deal with eof
---
-incY :: Buffer a => Window -> a -> IO Window
-incY w@(Window {height=h}) b = do
-   let (y,x) = cursor w
-       curln = lineno w
-       topln = toslineno w
-       w'    = w { lineno = curln+1 }
-       off   = if mode w == Nothing then 0 else 1
-   t <- indexOfNLFrom b (tospnt w)
-   return $ if curln - topln < h - off - 1
-            then w' { cursor = (y+1,x) }                  -- just move cursor
-            else w' { toslineno = topln + 1, tospnt = t } -- scroll window
 
 ------------------------------------------------------------------------
 

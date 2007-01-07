@@ -647,7 +647,7 @@ instance Buffer FBuffer where
             cexpandedTabLength ptr i j width
 
 pointLeftBound, markLeftBound :: Bool
-pointLeftBound = True
+pointLeftBound = False
 markLeftBound = True
 
 ------------------------------------------------------------------------
