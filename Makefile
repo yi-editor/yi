@@ -26,3 +26,6 @@ maintainer-clean: distclean
 
 tags TAGS: $(HS_FILES)
 	hasktags -b $(HS_FILES)
+
+interactive:
+	ghci -cpp -hidirdist/build/yi/yi-tmp/ -odirdist/build/yi/yi-tmp/ ./dist/build/yi/yi-tmp/cbits/YiUtils.o Yi/UI.hs
