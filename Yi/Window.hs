@@ -315,15 +315,31 @@ deleteToEolW w b = do
 
 ------------------------------------------------------------------------
 --
--- | update window point, and cursor in X dimension. and reset pnt cache
+-- | update window point and cursor, and reset pnt cache
 -- A lot of time is spent here
 --
 update :: Buffer a => Window -> a -> IO Window
 update w b = do
+    y  <- curLn b 
     x  <- offsetFromSol b
     tw <- expandedTabLengthB b 8
     p  <- pointB b
-    return $! w { pnt = p, cursor = (fst (cursor w),x + tw) }
+
+    -- compute the new top of screen. (handle scrolling)
+    let newtoslineno | y < toslineno w                = y
+                     | y > toslineno w + height w - 1 = y - height w + 1
+                     | otherwise                      = toslineno w
+    gotoLn b newtoslineno
+    newtospnt <- pointB b
+    moveTo b p
+    let w' = w { pnt = p, 
+                  lineno = y,
+                  tospnt = newtospnt,
+                  toslineno = newtoslineno, 
+                  cursor = (y - newtoslineno, x + tw)
+                }
+    m <- updateModeLine w' b
+    return $! w' { mode = m }
 {-# INLINE update #-}
 {-# SPECIALIZE update :: Window -> FBuffer -> IO Window #-}
 
