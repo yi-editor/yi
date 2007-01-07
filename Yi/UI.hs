@@ -46,7 +46,8 @@ module Yi.UI (
 
   )   where
 
-import Yi.Buffer        ( Buffer( nelemsB
+import Yi.Buffer        ( Point
+                        , Buffer( nelemsB
                                 , getMarkB  ) )
 import Yi.Editor
 import Yi.Window
@@ -54,17 +55,12 @@ import Yi.Style
 import Yi.Vty hiding (def, black, red, green, yellow, blue, magenta, cyan, white)
 import Yi.Event
 
-import qualified Data.ByteString.Char8 as BS
-
 import Data.List
 
 import Control.Monad                ( ap )
 import System.Posix.Signals         ( raiseSignal, sigTSTP )
 
 
--- Just really to allow me to give some signatures
-
-import Foreign.C.String     ( CString )
 ------------------------------------------------------------------------
 
 newtype UI = UI Vty --{ vty :: Vty }
@@ -182,23 +178,23 @@ drawWindow e mwin sty win =
 
     bufData <- nelemsB b (w*h') t -- read enough chars from the buffer.        
     markPoint <- getMarkB b
-    let rendered = drawText h' w t point markPoint (fromAttr $ styleToAttr selsty) (fromAttr $ styleToAttr wsty) bufData
+    let rendered = drawText h' w t point markPoint (styleToAttr selsty) (styleToAttr wsty) bufData
 
     return (take h' (rendered ++ repeat (withStyle eofsty filler)) ++ modeLines)
     }}}}}
 
 
-drawText h w t point markPoint selsty wsty bufData = rendered
+drawText :: Int -> Int -> Point -> Point -> Point -> Attr -> Attr -> String -> Pic
+drawText h w topPoint point markPoint selsty wsty bufData = rendered
   where startSelect = min markPoint point
         stopSelect  = (max markPoint point) + 1
-        annBufData = zip bufData [t..]  -- remember the point of each char
+        annBufData = zip bufData [topPoint..]  -- remember the point of each char
         -- TODO: render non-graphic chars (^G and the like)
         lns = take h $ concatMap (wrapLine w) $ lines' $ annBufData
         windowEnd = snd $ last $ last $ lns -- point of the last char show in the window.
         rendered = map (map colorChar) lns
         colorChar (c, x) = (c,pointStyle x)
         pointStyle x = if startSelect < x && x < stopSelect then selsty else wsty
-    
     
 
 -- TODO: The above will actually require a bit of work, in order to properly
