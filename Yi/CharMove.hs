@@ -272,7 +272,7 @@ moveWhile_ f dir w b = do
 
 -- | Read word to the left of the cursor
 readWordLeftE :: IO (String,Int,Int)
-readWordLeftE = withWindow $ \w b -> readWordLeft_ w b >>= \s -> return (w,s)
+readWordLeftE = withWindow $ \w b -> readWordLeft_ w b
 
 -- Core-internal worker, not threadsafe.
 readWordLeft_ :: Window -> FBuffer -> IO (String,Int,Int)
@@ -291,7 +291,7 @@ readWordLeft_ w b = do
 
 -- | Read word under cursor
 readWordE :: IO (String,Int,Int)
-readWordE = withWindow $ \w b -> readWord_ w b >>= \v -> return (w,v)
+readWordE = withWindow $ \w b -> readWord_ w b
 
 ------------------------------------------------------------------------
 

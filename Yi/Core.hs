@@ -415,35 +415,35 @@ gotoPointE p = withWindow_ $ moveToW p
 
 -- | Get the current point
 getPointE :: IO Int
-getPointE = withWindow $ \w b -> pointB b >>= \p -> return (w,p)
+getPointE = withWindow $ \w b -> pointB b
 
 -- | Get the current line and column number
 getLineAndColE :: IO (Int, Int)
 getLineAndColE = 
     withWindow lineAndColumn
-    where lineAndColumn :: Buffer a => Window -> a -> IO (Window, (Int, Int))
+    where lineAndColumn :: Buffer a => Window -> a -> IO (Int, Int)
 	  lineAndColumn w b = 
 	      do lineNo <- curLn b
 		 colNo  <- offsetFromSol b
-		 return (w, (lineNo, colNo))
+		 return (lineNo, colNo)
 
 ------------------------------------------------------------------------
 
 -- | Is the point at the start of the line
 atSolE :: IO Bool
-atSolE = withWindow $ \w b -> atSol b >>= \x -> return (w,x)
+atSolE = withWindow $ \w b -> atSol b 
 
 -- | Is the point at the end of the line
 atEolE :: IO Bool
-atEolE = withWindow $ \w b -> atEol b >>= \x -> return (w,x)
+atEolE = withWindow $ \w b -> atEol b 
 
 -- | Is the point at the start of the file
 atSofE :: IO Bool
-atSofE = withWindow $ \w b -> atSof b >>= \x -> return (w,x)
+atSofE = withWindow $ \w b -> atSof b 
 
 -- | Is the point at the end of the file
 atEofE :: IO Bool
-atEofE = withWindow $ \w b -> atEof b >>= \x -> return (w,x)
+atEofE = withWindow $ \w b -> atEof b 
 
 ------------------------------------------------------------------------
 
@@ -480,16 +480,16 @@ downFromTosE n = do
                     let y  = fst $ cursor w
                         n' = min n (height w - 1 - 1)
                         d  = n' - y
-                    return (w, (abs d, if d < 0 then upE else downE))
+                    return (abs d, if d < 0 then upE else downE)
     replicateM_ i fn
 
 -- | Move to @n@ lines up from the bottom of the screen
 upFromBosE :: Int -> Action
-upFromBosE n = (withWindow $ \w _ -> return (w, height w -1 -1 - n)) >>= downFromTosE
+upFromBosE n = (withWindow $ \w _ -> return (height w -1 -1 - n)) >>= downFromTosE
 
 -- | Move to middle line in screen
 middleE :: Action
-middleE = (withWindow $ \w _ -> return (w, (height w -1-1) `div` 2)) >>= downFromTosE
+middleE = (withWindow $ \w _ -> return ((height w -1-1) `div` 2)) >>= downFromTosE
 
 -- ---------------------------------------------------------------------
 
@@ -499,8 +499,8 @@ leftE = withWindow_ $ \w b -> do
     e <- atSol b
     if not e then moveXorSolW 1 w b
              else do e' <- atSof b
-                     if e' then return w
-                           else moveUpW w b >>= flip moveToEolW b
+                     if e' then return ()
+                           else moveUpW w b >> moveToEolW w b
 
 -- | move the point right (forwards) in the buffer. may need to scroll
 rightE :: Action
@@ -508,8 +508,8 @@ rightE = withWindow_ $ \w b -> do
     e <- atEol b
     if not e then moveXorEolW 1 w b
              else do e' <- atEof b
-                     if e' then return w
-                           else moveDownW w b >>= flip moveToSolW b
+                     if e' then return ()
+                           else moveDownW w b >> moveToSolW w b
 
 -- | Move left @x@ or to start of line
 leftOrSolE :: Int -> Action
@@ -540,19 +540,16 @@ insertE :: Char -> Action
 insertE c = do
     withWindow_ $ \w b -> do
             s  <- sizeB b
-            w' <- if s == 0 then insertW '\n' w b else return w
-            insertW c w' b
+            if s == 0 then insertW '\n' w b else return ()
+            insertW c w b
 
 -- | Insert a string
 insertNE :: String -> Action
 insertNE str = do
-    withWindow_ $ \w b -> do
+    withWindow_ $ \w b -> do 
             s  <- sizeB b
-            w' <- if s == 0 then insertW '\n' w b else return w
-            let lines' = lines str
-                insert_ "\n" win= insertW '\n' win b
-                insert_ st win = insertNW st win b
-            foldl (\win' str' -> do {ww<- win'; insert_ str' ww}) (return w') $ intersperse "\n" lines'
+            if s == 0 then insertW '\n' w b else return ()
+            insertNW str w b
 
 -- | Delete character under cursor
 deleteE :: Action
@@ -574,7 +571,7 @@ deleteRegionE (from,to) | otherwise  = deleteRegionE (to,from)
 
 -- | Read the char under the cursor
 readE :: IO Char
-readE = withWindow $ \w b -> readB b >>= \c -> return (w,c)
+readE = withWindow $ \w b -> readB b
 
 
 -- | Read an arbitrary part of the buffer
@@ -590,18 +587,16 @@ readLnE = withWindow $ \w b -> do
     i <- indexOfSol b
     j <- indexOfEol b
     s <- nelemsB b (j-i) i
-    return (w,s)
+    return s
 
 -- | Read from - to
 readNM :: Int -> Int -> IO String
-readNM i j = withWindow $ \w b -> nelemsB b (j-i) i >>= \s -> return (w,s)
+readNM i j = withWindow $ \w b -> nelemsB b (j-i) i
 
 -- | Return the contents of the buffer as a string (note that this will
 -- be very expensive on large (multi-megabyte) buffers)
 readAllE :: IO String
-readAllE = withWindow $ \w b -> do
-        s <- elemsB b
-        return (w,s)
+readAllE = withWindow $ \w b -> elemsB b
 
 -- | Read from point to end of line
 readRestOfLnE :: IO String
@@ -609,7 +604,7 @@ readRestOfLnE = withWindow $ \w b -> do
     p <- pointB b
     j <- indexOfEol b
     s <- nelemsB b (j-p) p
-    return (w,s)
+    return s
 
 -- | Write char to point
 writeE :: Char -> Action
@@ -666,7 +661,7 @@ unsetMarkE = withWindow_ $ \w b -> (unsetMarkB b >> return w)
 -- | Get the current buffer mark
 getMarkE :: IO Int
 getMarkE = withWindow $ \w b -> do pos <- getMarkB b
-                                   return (w, pos)
+                                   return pos
 -- | Exchange point & mark.
 -- Maybe this is better put in Emacs\/Mg common file
 exchangePointAndMarkE :: Action
@@ -821,11 +816,11 @@ searchF _ c_re = do
             rightB b                  -- start immed. after cursor
             mp  <- regexB b c_re
             case fmap Right mp of
-                x@(Just _) -> return (w,x)
+                x@(Just _) -> return x
                 _ -> do moveTo b 0
                         np <- regexB b c_re
                         moveTo b p
-                        return (w, fmap Left np)
+                        return (fmap Left np)
     case mp of
         Just (Right (p,_)) -> gotoPointE p >> return mp
         Just (Left  (p,_)) -> gotoPointE p >> return mp
@@ -850,7 +845,7 @@ searchAndRepLocal re str = do
 
     mp <- withWindow $ \w b -> do   -- find the regex
             mp <- regexB b c_re
-            return (w, mp)
+            return mp
     case mp of
         Just (i,j) -> withWindow $ \w b -> do
                 p  <- pointB b      -- all buffer-level atm
@@ -861,13 +856,13 @@ searchAndRepLocal re str = do
                 eq <- pointB b      -- eol of matched line
                 moveTo b p          -- go home. sub doesn't move
                 if (ep /= eq)       -- then match isn't on current line
-                    then return (w, False)
+                    then return False
                     else do         -- do the replacement
                 moveTo b i
                 deleteN b (j - i)
                 insertN b str
                 moveTo b p          -- and back to where we were!
-                return (w, True) -- signal success
+                return True -- signal success
         Nothing -> return False
 
 ------------------------------------------------------------------------
@@ -928,15 +923,15 @@ bufInfoE = withWindow $ \w b -> do
 				 , bufInfoPercent  = getPercent p s 
 				 , bufInfoModified = not m
 				 }
-    return (w, bufInfo)
+    return bufInfo
 
 -- | Maybe a file associated with this buffer
 fileNameE :: IO (Maybe FilePath)
-fileNameE = withWindow $ \w b -> getfileB b >>= \f -> return (w, f)
+fileNameE = withWindow $ \w b -> getfileB b
 
 -- | Name of this buffer
 bufNameE :: IO String
-bufNameE = withWindow $ \w b -> return (w, nameB b)
+bufNameE = withWindow $ \w b -> return (nameB b)
 
 -- | A character to fill blank lines in windows with. Usually '~' for
 -- vi-like editors, ' ' for everything else
@@ -1037,7 +1032,7 @@ closeBufferE f = killBuffer f
 -- | Is the current buffer unmodifed? (currently buggy, we need
 -- bounaries in the undo list)
 isUnchangedE :: IO Bool
-isUnchangedE = withWindow $ \w b -> isUnchangedB b >>= \v -> return (w,v)
+isUnchangedE = withWindow $ \w b -> isUnchangedB b
 
 -- | Set the current buffer to be unmodifed
 setUnchangedE :: Action

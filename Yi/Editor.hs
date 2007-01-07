@@ -33,7 +33,7 @@ import Yi.Event
 import Data.List                ( elemIndex )
 import Data.Unique              ( Unique )
 import Data.Dynamic
-import Data.Map as M hiding     ( null, filter )
+import qualified Data.Map as M
 
 import Control.Monad            ( liftM, foldM )
 import Control.Concurrent       ( killThread, ThreadId )
@@ -467,30 +467,21 @@ findWindowWith e (Just k) =
 --
 -- | Perform action with current window
 --
-withWindow_ :: (Window -> FBuffer -> IO Window) -> IO ()
-withWindow_ f = modifyEditor_ $ \e -> do
-        let w = findWindowWith e (curwin e)
-            b = findBufferWith e (bufkey w)
-        w' <- f w b
-        m' <- updateModeLine w' b
-        let w'' = w' { mode = m' }
-            ws = windows e
-            e' = e { windows = M.insert (key w'') w'' ws }
-        return e'
-
---
--- | Variation on withWindow_ that can return a value
---
-withWindow :: (Window -> FBuffer -> IO (Window,b)) -> IO b
+withWindow :: (Window -> FBuffer -> IO a) -> IO a
 withWindow f = modifyEditor $ \e -> do
         let w = findWindowWith e (curwin e)
             b = findBufferWith e (bufkey w)
-        (w',v) <- f w b
-        m'     <- updateModeLine w' b
-        let w'' = w' { mode = m' }
-            ws = windows e
-            e' = e { windows = M.insert (key w'') w'' ws }
+        v <- f w b
+        w' <- update w b
+        let ws = windows e
+            e' = e { windows = M.insert (key w') w' ws }
         return (e',v)
+
+--
+-- | Perform action with current window, discarding the result.
+--
+withWindow_ :: (Window -> FBuffer -> IO a) -> IO ()
+withWindow_ f = withWindow f >> return ()
 
 -- ---------------------------------------------------------------------
 -- | Rotate focus to the next window
