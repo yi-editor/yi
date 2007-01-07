@@ -91,14 +91,13 @@ getKey :: UI -> IO () -> IO Yi.Event.Event
 getKey (UI vty) doRefresh = do 
   event <- getEvent vty
   case event of 
-    (EvResize _ _) -> doRefresh >> getKey (UI vty) refresh
+    (EvResize _ _) -> doRefresh >> getKey (UI vty) doRefresh
     _ -> return (fromVtyEvent event)
  where fromVtyEvent (EvKey k mods) = Event k mods
        fromVtyEvent _ = error "fromVtyEvent: unsupported event encountered."
 
 --
 -- | Redraw the entire terminal from the UI state
--- Optimised.
 --
 -- It is crucial that redraw doesn't modify the editor state (of course
 -- it shouldn't). Just slipping in a modifyEditor_ there  will kill
@@ -107,8 +106,8 @@ getKey (UI vty) doRefresh = do
 --
 -- Two points remain: horizontal scrolling, and tab handling.
 --
-redraw :: IO ()
-redraw = withEditor $ \e ->
+refresh :: IO ()
+refresh = withEditor $ \e ->
     case ui e             of { (UI vty)  ->
     case getWindows e     of { ws  ->
     case cmdline e        of { cl  ->
@@ -202,10 +201,4 @@ drawText h w topPoint point markPoint selsty wsty bufData = rendered
 
 withStyle :: Style -> String -> [(Char, Attr)]
 withStyle sty str = zip str (repeat (styleToAttr sty))
-
--- | redraw and refresh the screen
-refresh :: IO ()
-refresh = redraw
-
-
 
