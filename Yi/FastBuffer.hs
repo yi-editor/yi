@@ -70,13 +70,14 @@ data FBuffer =
                 , bmode  :: !(MVar BufferMode)  -- a read-only bit
                 }
 
+type MarkKey = Int  -- 0: point, 1: mark
+type MarkValue = (Int, Bool) -- (Point, leftBound)
+type Marks = M.Map MarkKey MarkValue
 
 data FBuffer_ =
         FBuffer_ { _rawmem  :: !(Ptr CChar)     -- raw memory           (ToDo unicode)
-                 , marks    :: !(M.Map Int Int) -- 0: point, 1: mark
-                   -- TODO: This isn't the most efficient structure
-                   -- to store marks. When IntMap gets stabilized we'd
-                   -- better switch to it.
+                 , marks    :: !Marks
+                   -- TODO: use weak refs as to automatically free unreferenced marks.
                  , _contsize :: !Int             -- length of contents
                  , _rawsize  :: !Int             -- raw size of buffer
                  }
@@ -104,7 +105,7 @@ hNewFBuffer f = do
         else do poke (ptr `advancePtr` size_i) (castCharToCChar '\0')
 		-- Note here we do not set the mark, just the point, I think
                 -- that this is correct behaviour.
-                mv  <- newMVar  (FBuffer_ ptr (M.fromList [(0,0)]) size_i r_size)
+                mv  <- newMVar  (FBuffer_ ptr (M.fromList [(0,(0,pointLeftBound))]) size_i r_size)
                 mv' <- newMVar  emptyUR
                 fn  <- newMVar  (Just f)        -- filename is buffer name
                 rw  <- newMVar  ReadWrite
@@ -144,7 +145,7 @@ stringToFBuffer nm s = do
     ptr <- mallocArray0 r_size
     pokeArray ptr (map castCharToCChar s) -- Unicode
     poke (ptr `advancePtr` size_i) (castCharToCChar '\0')
-    mv  <- newMVar (FBuffer_ ptr (M.fromList [(0,0), (1,0)]) size_i r_size)
+    mv  <- newMVar (FBuffer_ ptr (M.fromList [(0,(0,pointLeftBound)), (1,(0,markLeftBound))]) size_i r_size)
     mv' <- newMVar emptyUR
     mvf <- newMVar Nothing      -- has name, not connected to a file
     rw  <- newMVar ReadWrite
@@ -211,15 +212,22 @@ insertN' (FBuffer { rawbuf = mv }) cs cs_len =
         (FBuffer_ ptr pnts end mx) <-
             if need_len >= old_max then resizeFB_ fb (need_len + 2048)
                                    else return fb
-        let pnt = pnts M.! 0
-            len = max 0 (min (end-pnt) end) -- number of chars to shift
+        let (pnt,_) = pnts M.! 0
+            len = max 0 (min (end - pnt) end) -- number of chars to shift
             dst = pnt + cs_len      -- point to start
             nend = dst + len        -- new length afterwards
         shiftChars ptr dst pnt len
         writeChars ptr cs pnt
-        let pnts' = M.map (\p -> if p > pnt then p + cs_len else p) pnts
-        return (FBuffer_ ptr pnts' nend mx)
+        return (FBuffer_ ptr (shiftMarks pnt cs_len pnts) nend mx)
 {-# INLINE insertN' #-}
+
+
+shiftMarks :: Point -> Int -> Marks -> Marks
+shiftMarks from by = M.map $ \(p, leftBound) -> (shift p leftBound, leftBound)
+    where shift p leftBound | p < from  = p
+                            | p == from = if leftBound then p else p'
+                            | otherwise {- p > from -} = p'
+                     where p' = max from (p + by)
 
 -- Same as above, except we use copyBytes, instead of writeChars
 -- Refactor, please
@@ -231,14 +239,13 @@ insertFromCStrN' (FBuffer { rawbuf = mv }) cptr cs_len =
         (FBuffer_ ptr pnts end mx) <-
             if need_len >= old_max then resizeFB_ fb (need_len + 2048)
                                    else return fb
-        let pnt = pnts M.! 0
-            len = max 0 (min (end-pnt) end) -- number of chars to shift
+        let (pnt,_) = pnts M.! 0
+            len = max 0 (min (end - pnt) end) -- number of chars to shift
             dst = pnt + cs_len      -- point to start
             nend = dst + len        -- new length afterwards
         shiftChars ptr dst pnt len
         copyBytes (ptr `advancePtr` pnt) cptr cs_len
-        let pnts' = M.map (\p -> if p > pnt then p + cs_len else p) pnts
-        return (FBuffer_ ptr pnts' nend mx)
+        return (FBuffer_ ptr (shiftMarks pnt cs_len pnts) nend mx)
 
 ------------------------------------------------------------------------
 
@@ -250,11 +257,7 @@ deleteN' (FBuffer { rawbuf = mv }) n pos =
             len = inBounds (end-pos-n) end   -- length of shift
             end'= pos + len                  -- new end
         shiftChars ptr pos src len
-        let pnts' = M.map shift pnts
-            shift p | p < pos = p
-                    | p < end' = pos
-                    | otherwise = p - len
-        return (FBuffer_ ptr pnts' end' mx)
+        return (FBuffer_ ptr (shiftMarks pos (negate len) pnts) end' mx)
 {-# INLINE deleteN' #-}
 
 ------------------------------------------------------------------------
@@ -301,7 +304,7 @@ instance Buffer FBuffer where
     -- pointB     :: a -> IO Int
     pointB (FBuffer { rawbuf = mv }) = do
         (FBuffer_ _ pnts e mx) <- readMVar mv
-        let p = (pnts M.! 0)
+        let (p,_) = (pnts M.! 0)
         assert ((p >= 0 && (p < e || e == 0)) && e <= mx) $ return p
     {-# INLINE pointB #-}
 
@@ -342,13 +345,13 @@ instance Buffer FBuffer where
     -- moveTo     :: a -> Int -> IO ()
     moveTo (FBuffer { rawbuf = mv }) i =
         modifyMVar_ mv $ \(FBuffer_ ptr pnts end mx) ->
-            return $ FBuffer_ ptr (M.insert 0 (inBounds i end) pnts) end mx
+            return $ FBuffer_ ptr (M.insert 0 (inBounds i end, pointLeftBound) pnts) end mx
     {-# INLINE moveTo #-}
 
     -- readB      :: a -> IO Char
     readB (FBuffer { rawbuf = mv }) =
         withMVar mv $ \(FBuffer_ ptr pnts _ _) ->
-            readChars ptr 1 (pnts M.! 0) >>= \[c] -> return c
+            readChars ptr 1 (fst $ pnts M.! 0) >>= \[c] -> return c
     {-# INLINE readB #-}
 
     -- readAtB :: a -> Int -> IO Char
@@ -363,7 +366,7 @@ instance Buffer FBuffer where
     -- writeB :: a -> Char -> IO ()
     writeB (FBuffer { undos = uv, rawbuf = mv }) c =
         withMVar mv $ \(FBuffer_ ptr pnts _ _) -> do
-            let off = (pnts M.! 0)
+            let off = fst (pnts M.! 0)
             modifyMVar_ uv $ \u -> do
                 ins <- mkInsert ptr off 1
                 let u'  = addUR u  ins
@@ -382,7 +385,7 @@ instance Buffer FBuffer where
     insertN fb@(FBuffer { undos = uv, rawbuf = mv}) cs = do
         (FBuffer_ _ pnts _ _) <- readMVar mv
         let cs_len = length cs
-            pnt = pnts M.! 0
+            pnt = fst $ pnts M.! 0
         modifyMVar_ uv $ \ur -> return $ addUR ur (mkDelete pnt cs_len)
         insertN' fb cs cs_len
 
@@ -461,9 +464,9 @@ instance Buffer FBuffer where
     -- moveToSol a = sizeB a >>= moveXorSol a
     moveToSol (FBuffer { rawbuf = mv }) =
         modifyMVar_ mv $ \(FBuffer_ ptr pnts end mx) -> do
-            let p = pnts M.! 0
+            let p = fst $ pnts M.! 0
             off <- cfindStartOfLineN ptr p 0 (-1)
-            return $ FBuffer_ ptr (M.insert 0 (inBounds (p + off) end) pnts) end mx
+            return $ FBuffer_ ptr (M.insert 0 (inBounds (p + off) end, pointLeftBound) pnts) end mx
     {-# INLINE moveToSol #-}
 
     -- moveToEol   :: a -> IO ()
@@ -471,9 +474,9 @@ instance Buffer FBuffer where
     --  was:     moveToEol a = sizeB a >>= moveXorEol a
     moveToEol (FBuffer { rawbuf = mv }) =
         modifyMVar_ mv $ \(FBuffer_ ptr pnts end mx) -> do
-            let p = pnts M.! 0
+            let p = fst $ pnts M.! 0
             off <- cfindStartOfLineN ptr p end 1 -- next line
-            return $ FBuffer_ ptr (M.insert 0 (inBounds (p+off-1) end) pnts) end mx
+            return $ FBuffer_ ptr (M.insert 0 (inBounds (p+off-1) end, pointLeftBound) pnts) end mx
     {-# INLINE moveToEol #-}
 
     -- offsetFromSol :: a -> IO Int
@@ -560,14 +563,14 @@ instance Buffer FBuffer where
     -- count number of \n from origin to point
     -- curLn :: a -> IO Int
     curLn (FBuffer { rawbuf = mv }) = withMVar mv $ \(FBuffer_ ptr pnts _ _) ->
-        ccountLines ptr 0 $ pnts M.! 0
+        ccountLines ptr 0 $ fst $ pnts M.! 0
     {-# INLINE curLn #-}
 
     -- gotoLn :: a -> Int -> IO Int
     gotoLn (FBuffer { rawbuf = mv }) n =
         modifyMVar mv $ \(FBuffer_ ptr pnts e mx) -> do
             np <- cfindStartOfLineN ptr 0 e (n-1)       -- index from 0
-            let fb = FBuffer_ ptr (M.insert 0 np pnts) e mx
+            let fb = FBuffer_ ptr (M.insert 0 (np,pointLeftBound) pnts) e mx
             n' <- if np > e - 1 -- if next line is end of file, then find out what line this is
                   then return . subtract 1 =<< ccountLines ptr 0 np
                   else return n         -- else it is this line
@@ -577,9 +580,9 @@ instance Buffer FBuffer where
     -- gotoLnFrom :: a -> Int -> IO Int
     gotoLnFrom (FBuffer { rawbuf = mv }) n =
         modifyMVar mv $ \(FBuffer_ ptr pnts e mx) -> do
-            let p = pnts M.! 0
+            let p = fst $ pnts M.! 0
             off <- cfindStartOfLineN ptr p (if n < 0 then 0 else (e-1)) n
-            let fb = FBuffer_ ptr (M.insert 0 (p + off) pnts) e mx
+            let fb = FBuffer_ ptr (M.insert 0 (p + off, pointLeftBound) pnts) e mx
             ln <- return . subtract 1 =<< ccountLines ptr 0 (p+off) -- end of file
             return (fb, max 1 ln)
     {-# INLINE gotoLnFrom #-}
@@ -590,14 +593,14 @@ instance Buffer FBuffer where
     searchB (FBuffer { rawbuf = mv }) s =
         withMVar mv $ \(FBuffer_ ptr pnts _ _) ->
             withCString s $ \str -> do
-                p <- cstrstr (ptr `advancePtr` (pnts M.! 0)) str
+                p <- cstrstr (ptr `advancePtr` (fst $ pnts M.! 0)) str
                 return $ if p == nullPtr then Nothing
                                          else Just (p `minusPtr` ptr)
 
     -- regexB       :: a -> Regex -> IO (Maybe (Int,Int))
     regexB (FBuffer { rawbuf = mv }) re =
         withMVar mv $ \(FBuffer_ ptr pnts _ _) -> do
-            let p = (pnts M.! 0)
+            let p = (fst $ pnts M.! 0)
             mmatch <- regexec re ptr p
             case mmatch of
                 Nothing        -> return Nothing
@@ -618,11 +621,11 @@ instance Buffer FBuffer where
 	-- if position 1 is not set, is position 0, ie the point.
 	findMarkFun :: FBuffer_ -> IO Int
 	findMarkFun (FBuffer_ { marks = p } ) = 
-	    return $ M.findWithDefault (p M.! 0) 1 p
+	    return $ fst $ M.findWithDefault (p M.! 0) 1 p
 
 
     setMarkB (FBuffer { rawbuf = mv }) pos =
-        modifyMVar_ mv $ \fb -> return $ fb {marks = (M.insert 1 pos (marks fb))}
+        modifyMVar_ mv $ \fb -> return $ fb {marks = (M.insert 1 (pos,markLeftBound) (marks fb))}
 
     {-
       We must allow the unsetting of this mark, this will have the property
@@ -640,8 +643,12 @@ instance Buffer FBuffer where
     expandedTabLengthB b@(FBuffer { rawbuf = mv }) width = do
         i <- indexOfSol b
         withMVar mv $ \(FBuffer_ ptr pnts _ _) -> do
-            let j = pnts M.! 0
+            let j = fst $ pnts M.! 0
             cexpandedTabLength ptr i j width
+
+pointLeftBound, markLeftBound :: Bool
+pointLeftBound = True
+markLeftBound = True
 
 ------------------------------------------------------------------------
 
@@ -673,13 +680,25 @@ getActionFB (Insert p n fptr) b = do
     p' <- pointB b
     return $ mkDelete p' n
 
--- Create an insert action
+-- | Create an insert action
 mkInsert :: (Ptr CChar) -> Point -> Size -> IO URAction
 mkInsert ptr off n = do
     fptr <- mallocForeignPtrBytes n
     withForeignPtr fptr $ \fp -> copyBytes fp (ptr `advancePtr` off) n
     return (Insert off n fptr)
 
--- Create a delete action
+-- | Create a delete action
 mkDelete :: Point -> Size -> URAction
 mkDelete = Delete
+
+{-
+-- | Create a mark associated with this buffer.
+newMarkB :: FBuffer -> Point -> Bool -> IO MarkKey
+newMarkB (FBuffer { rawbuf = mv }) point leftBound = do 
+  modifyMVar mv $ \fb -> do
+    let idx :: MarkKey
+        idx = case M.maxView (marks fb) of
+                   Nothing -> 0
+                   Just (_,(x,_)) -> x + 1 -- FIXME: this risk overflowing
+    return (fb {marks = M.insert idx (point, leftBound) (marks fb)}, idx)
+-}
