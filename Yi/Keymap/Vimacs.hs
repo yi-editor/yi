@@ -40,7 +40,7 @@ import qualified Yi.Style as Style
 
 import Yi.Keymap.Emacs.KillRing
 import Yi.Keymap.Emacs.UnivArgument
-import Yi.Keymap.Emacs.Keys
+import Yi.Keymap.Emacs.OldKeys
 
 import Yi.Keymap.Movements ( moveRightWord
 			   , movementCommand

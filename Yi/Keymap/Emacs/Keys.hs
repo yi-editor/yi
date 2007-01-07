@@ -37,82 +37,69 @@ printableChars = map chr [32..127]
 
 -- * Key parser
 
-c_ :: Char -> Char
-c_ ' '   = '\0'
-c_ x     = ctrlLowcase x
+x_ mods' (Event k mods) = Event k (nub (mods'++mods))
+x_ _ x = x
 
 
--- Some terminals (eg. gnome-terminal as of Jan 2007) are badly configured and return ESC separately.
--- We should try and see how to correctly configure the terminal.
--- Incidentally, bash seems to prefer the gnome-terminal.
-
-m_ :: Char -> Char
-m_ '\263' = chr 255
-m_ x = setMeta x
-
-parseCtrl :: ReadP Char
+parseCtrl :: ReadP Event
 parseCtrl = do string "C-"
                k <- parseRegular
-               return $ c_ k
+               return $ x_ [MCtrl] k
 
-parseMeta :: ReadP Char
+parseMeta :: ReadP Event
 parseMeta = do string "M-"
                k <- parseRegular
-               return $ m_ k
+               return $ x_ [MMeta] k
 
-parseCtrlMeta :: ReadP Char
+parseCtrlMeta :: ReadP Event
 parseCtrlMeta = do string "C-M-"
                    k <- parseRegular
-                   return $ m_ $ c_ k
+                   return $ x_ [MMeta, MCtrl] k
 
 
-keyNames :: [(Char, String)]
-keyNames = [(' ', "SPC"),
-	    ('\t', "TAB"),
-            (keyLeft, "<left>"),
-            (keyRight, "<right>"),
-            (keyDown, "<down>"),
-            (keyUp, "<up>"),
-            (keyDC, "DEL"),
-            (keyBackspace, "BACKSP"),
-            (keyNPage, "<next>"),
-            (keyPPage, "<prior>"),
-            (keyHome, "<home>"),
-            (keyEnd, "<end>")
+keyNames :: [(Key, String)]
+keyNames = [(KASCII ' ', "SPC"),
+	    (KASCII '\t', "TAB"),
+            (KLeft, "<left>"),
+            (KRight, "<right>"),
+            (KDown, "<down>"),
+            (KUp, "<up>"),
+            (KDel, "DEL"),
+            (KBS, "BACKSP"),
+            (KPageDown, "<next>"),
+            (KPageUp, "<prior>"),
+            (KHome, "<home>"),
+            (KEnd, "<end>")
            ]
 
-parseRegular :: ReadP Char
-parseRegular = choice [string s >> return c | (c,s) <- keyNames]
-               +++ satisfy (`elem` printableChars)
+parseRegular :: ReadP Event
+parseRegular = choice [string s >> return (Event c []) | (c,s) <- keyNames]
+               +++ do c <- satisfy (`elem` printableChars)
+                      return (Event (KASCII c) [])
 
-parseKey :: ReadP String
+parseKey :: ReadP [Event]
 parseKey = sepBy1 (choice [parseCtrlMeta, parseCtrl, parseMeta, parseRegular])
                   (munch1 isSpace)
 
-readKey :: String -> String
+readKey :: String -> [Event]
 readKey s = case readKey' s of
               [r] -> r
               rs -> error $ "readKey: " ++ s ++ show (map ord s) ++ " -> " ++ show rs
 
-readKey' :: String -> [String]
+readKey' :: String -> [[Event]]
 readKey' s = map fst $ nub $ filter (null . snd) $ readP_to_S parseKey $ s
 
 -- * Key printer
 -- FIXME: C- and M- should be swapped when they are both there.
-showKey :: String -> String
-showKey = dropSpace . printable'
+showKey :: [Event] -> String
+showKey = concat . intersperse " " . map showEv
     where
-        printable' ('\ESC':a:ta) = "M-" ++ [a] ++ printable' ta
-        printable' ('\ESC':ta) = "ESC " ++ printable' ta
-        printable' (a:ta)
-                | ord a < 32
-                = "C-" ++ [chr (ord a + 96)] ++ " " ++ printable' ta
-                | isMeta a
-                = "M-" ++ printable' (clrMeta a:ta)
-                | ord a >= 127
-                = bigChar a ++ " " ++ printable' ta
-                | otherwise  = [a, ' '] ++ printable' ta
+      showEv (Event k mods) = concatMap showMod mods ++ showK k
+      showMod MCtrl = "C-"
+      showMod MMeta = "M-"
+      showMod _ = ""
 
-        printable' [] = []
+      showK (KASCII x) = [x]
+      showK c = fromJust $ M.lookup c $ M.fromList keyNames
 
-        bigChar c = fromMaybe [c] $ M.lookup c $ M.fromList keyNames
+
