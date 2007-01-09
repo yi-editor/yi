@@ -196,7 +196,6 @@ import qualified Yi.Editor as Editor
 import qualified Yi.Style as Style
 
 import Data.Maybe
-import Data.List            ( intersperse )
 import Data.Char            ( isLatin1 )
 import Data.Dynamic
 import Data.Map as M        ( lookup, insert )
@@ -415,14 +414,14 @@ gotoPointE p = withWindow_ $ moveToW p
 
 -- | Get the current point
 getPointE :: IO Int
-getPointE = withWindow $ \w b -> pointB b
+getPointE = withBuffer pointB
 
 -- | Get the current line and column number
 getLineAndColE :: IO (Int, Int)
 getLineAndColE = 
-    withWindow lineAndColumn
-    where lineAndColumn :: Buffer a => Window -> a -> IO (Int, Int)
-	  lineAndColumn w b = 
+    withBuffer lineAndColumn
+    where lineAndColumn :: Buffer a => a -> IO (Int, Int)
+	  lineAndColumn b = 
 	      do lineNo <- curLn b
 		 colNo  <- offsetFromSol b
 		 return (lineNo, colNo)
@@ -431,19 +430,19 @@ getLineAndColE =
 
 -- | Is the point at the start of the line
 atSolE :: IO Bool
-atSolE = withWindow $ \w b -> atSol b 
+atSolE = withBuffer atSol
 
 -- | Is the point at the end of the line
 atEolE :: IO Bool
-atEolE = withWindow $ \w b -> atEol b 
+atEolE = withBuffer atEol
 
 -- | Is the point at the start of the file
 atSofE :: IO Bool
-atSofE = withWindow $ \w b -> atSof b 
+atSofE = withBuffer atSof
 
 -- | Is the point at the end of the file
 atEofE :: IO Bool
-atEofE = withWindow $ \w b -> atEof b 
+atEofE = withBuffer atEof
 
 ------------------------------------------------------------------------
 
@@ -571,7 +570,7 @@ deleteRegionE (from,to) | otherwise  = deleteRegionE (to,from)
 
 -- | Read the char under the cursor
 readE :: IO Char
-readE = withWindow $ \w b -> readB b
+readE = withBuffer readB
 
 
 -- | Read an arbitrary part of the buffer
@@ -583,7 +582,7 @@ readRegionE (from,to) | otherwise  = readNM to (from+1)
 
 -- | Read the line the cursor is on
 readLnE :: IO String
-readLnE = withWindow $ \w b -> do
+readLnE = withBuffer $ \b -> do
     i <- indexOfSol b
     j <- indexOfEol b
     s <- nelemsB b (j-i) i
@@ -591,16 +590,16 @@ readLnE = withWindow $ \w b -> do
 
 -- | Read from - to
 readNM :: Int -> Int -> IO String
-readNM i j = withWindow $ \w b -> nelemsB b (j-i) i
+readNM i j = withBuffer $ \b -> nelemsB b (j-i) i
 
 -- | Return the contents of the buffer as a string (note that this will
 -- be very expensive on large (multi-megabyte) buffers)
 readAllE :: IO String
-readAllE = withWindow $ \w b -> elemsB b
+readAllE = withBuffer $ \b -> elemsB b
 
 -- | Read from point to end of line
 readRestOfLnE :: IO String
-readRestOfLnE = withWindow $ \w b -> do
+readRestOfLnE = withBuffer $ \b -> do
     p <- pointB b
     j <- indexOfEol b
     s <- nelemsB b (j-p) p
@@ -660,8 +659,8 @@ unsetMarkE = withWindow_ $ \w b -> (unsetMarkB b >> return w)
 
 -- | Get the current buffer mark
 getMarkE :: IO Int
-getMarkE = withWindow $ \w b -> do pos <- getMarkB b
-                                   return pos
+getMarkE = withBuffer getMarkB
+
 -- | Exchange point & mark.
 -- Maybe this is better put in Emacs\/Mg common file
 exchangePointAndMarkE :: Action
@@ -811,7 +810,7 @@ searchInitE re fs = do
 --
 searchF :: String -> Regex -> IO SearchResult
 searchF _ c_re = do
-    mp <- withWindow $ \w b -> do
+    mp <- withBuffer $ \b -> do
             p   <- pointB b
             rightB b                  -- start immed. after cursor
             mp  <- regexB b c_re
@@ -843,11 +842,11 @@ searchAndRepLocal re str = do
     c_re <- regcomp re regExtended
     setRegexE (re,c_re)     -- store away for later use
 
-    mp <- withWindow $ \w b -> do   -- find the regex
+    mp <- withBuffer $ \b -> do   -- find the regex
             mp <- regexB b c_re
             return mp
     case mp of
-        Just (i,j) -> withWindow $ \w b -> do
+        Just (i,j) -> withBuffer $ \b -> do
                 p  <- pointB b      -- all buffer-level atm
                 moveToEol b
                 ep <- pointB b      -- eol point of current line
@@ -927,11 +926,11 @@ bufInfoE = withWindow $ \w b -> do
 
 -- | Maybe a file associated with this buffer
 fileNameE :: IO (Maybe FilePath)
-fileNameE = withWindow $ \w b -> getfileB b
+fileNameE = withBuffer getfileB
 
 -- | Name of this buffer
 bufNameE :: IO String
-bufNameE = withWindow $ \w b -> return (nameB b)
+bufNameE = withBuffer $ \b -> return (nameB b)
 
 -- | A character to fill blank lines in windows with. Usually '~' for
 -- vi-like editors, ' ' for everything else
@@ -1032,7 +1031,7 @@ closeBufferE f = killBuffer f
 -- | Is the current buffer unmodifed? (currently buggy, we need
 -- bounaries in the undo list)
 isUnchangedE :: IO Bool
-isUnchangedE = withWindow $ \w b -> isUnchangedB b
+isUnchangedE = withBuffer isUnchangedB
 
 -- | Set the current buffer to be unmodifed
 setUnchangedE :: Action

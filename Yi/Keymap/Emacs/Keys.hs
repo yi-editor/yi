@@ -20,7 +20,6 @@
 
 module Yi.Keymap.Emacs.Keys (readKey, showKey, printableChars) where
 
-import Yi.Char
 import Yi.Yi hiding (string)
 
 import Data.Char
@@ -37,8 +36,8 @@ printableChars = map chr [32..127]
 
 -- * Key parser
 
+x_ :: [Modifier] -> Event -> Event
 x_ mods' (Event k mods) = Event k (nub (mods'++mods))
-x_ _ x = x
 
 
 parseCtrl :: ReadP Event

@@ -483,6 +483,17 @@ withWindow f = modifyEditor $ \e -> do
 withWindow_ :: (Window -> FBuffer -> IO a) -> IO ()
 withWindow_ f = withWindow f >> return ()
 
+-- | Perform action with current window's buffer
+
+withBuffer :: (FBuffer -> IO a) -> IO a
+withBuffer f = withWindow (const f)
+
+-- | Perform action with current window's buffer
+
+withBuffer_ :: (FBuffer -> IO a) -> IO ()
+withBuffer_ f = withWindow_ (const f)
+
+
 -- ---------------------------------------------------------------------
 -- | Rotate focus to the next window
 --
