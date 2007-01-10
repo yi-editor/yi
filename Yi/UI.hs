@@ -185,15 +185,14 @@ drawWindow e mwin sty win =
 
 drawText :: Int -> Int -> Point -> Point -> Point -> Attr -> Attr -> String -> Pic
 drawText h w topPoint point markPoint selsty wsty bufData = rendered
-  where startSelect = min markPoint point
-        stopSelect  = (max markPoint point) + 1
+  where [startSelect, stopSelect] = sort [markPoint,point]
         annBufData = zip bufData [topPoint..]  -- remember the point of each char
         -- TODO: render non-graphic chars (^G and the like)
         lns = take h $ concatMap (wrapLine w) $ lines' $ annBufData
         windowEnd = snd $ last $ last $ lns -- point of the last char show in the window.
         rendered = map (map colorChar) lns
         colorChar (c, x) = (c,pointStyle x)
-        pointStyle x = if startSelect < x && x < stopSelect then selsty else wsty
+        pointStyle x = if startSelect < x && x <= stopSelect then selsty else wsty
     
 
 -- TODO: The above will actually require a bit of work, in order to properly
