@@ -50,12 +50,13 @@ import Yi.Buffer        ( Point
                         , Buffer( nelemsB
                                 , getMarkB  ) )
 import Yi.Editor
-import Yi.Window
+import Yi.Window as Window
 import Yi.Style
 import Yi.Vty hiding (def, black, red, green, yellow, blue, magenta, cyan, white)
 import Yi.Event
 
 import Data.List
+import qualified Data.Map as M
 
 import Control.Monad                ( ap )
 import System.Posix.Signals         ( raiseSignal, sigTSTP )
@@ -86,7 +87,6 @@ screenSize (UI vty) = return swap `ap` Yi.Vty.getSize vty
 --
 -- | Read a key. UIs need to define a method for getting events.
 --
-
 getKey :: UI -> IO () -> IO Yi.Event.Event
 getKey (UI vty) doRefresh = do 
   event <- getEvent vty
@@ -107,16 +107,18 @@ getKey (UI vty) doRefresh = do
 -- Two points remain: horizontal scrolling, and tab handling.
 --
 refresh :: IO ()
-refresh = withEditor $ \e ->
+refresh = refreshEditor $ \e ->
     case ui e             of { (UI vty)  ->
     case getWindows e     of { ws  ->
     case cmdline e        of { cl  ->
     case cmdlinefocus e   of { cmdfoc ->
     case uistyle e        of { sty ->
     case getWindowOf e    of { w   ->
-    case getWindowIndOf e of { Nothing -> return () ; (Just i) -> do
+    case getWindowIndOf e of { Nothing -> return e ; (Just i) -> do
+
+    ws' <- mapM (\w -> Window.update w (findBufferWith e (bufkey w))) ws
                                               
-    wImages <- mapM (drawWindow e w sty) ws
+    wImages <- mapM (drawWindow e w sty) ws'
     Yi.Vty.update vty pic {pImage = concat wImages ++ [withStyle (window sty) (cl ++ repeat ' ')],
                            pCursor = if cmdfoc 
                                      then NoCursor 
@@ -127,7 +129,7 @@ refresh = withEditor $ \e ->
                                          Just w' -> let (y,x) = cursor w' in
                                              Cursor x (y + sum [ height (ws !! k) | k <- [0 .. (i-1)] ])
                                          Nothing -> NoCursor}
-
+    return e { windows = M.fromList [(key w, w) | w <- ws']}
     }}}}}}}
 
 lines' :: [(Char,a)] -> [[(Char,a)]]

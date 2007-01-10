@@ -133,6 +133,12 @@ touchST = withMVar state $ \st -> tryPutMVar (editorModified st) () >> return ()
 modifyEditor_ :: (Editor -> IO Editor) -> IO ()
 modifyEditor_ f = modifyMVar_ state f >> touchST
 
+-- | Refresh the editor's apparence. The caller is invited the
+-- editor's state, but that won't trigger another refresh
+refreshEditor :: (Editor -> IO Editor) -> IO ()
+refreshEditor f = modifyMVar_ state f
+
+
 -- | Variation on modifyEditor_ that lets you return a value
 modifyEditor :: (Editor -> IO (Editor,b)) -> IO b
 modifyEditor f = modifyMVar state f >>= \a -> touchST >> return a
@@ -472,10 +478,7 @@ withWindow f = modifyEditor $ \e -> do
         let w = findWindowWith e (curwin e)
             b = findBufferWith e (bufkey w)
         v <- f w b
-        w' <- update w b
-        let ws = windows e
-            e' = e { windows = M.insert (key w') w' ws }
-        return (e',v)
+        return (e,v)
 
 --
 -- | Perform action with current window, discarding the result.
