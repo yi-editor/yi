@@ -192,7 +192,6 @@ firstNonSpaceE = do
             if eol then return ()
                    else do k <- readB b
                            when (isSpace k) (rightB b >> loop)
-        update w b
     getPointE >>= gotoPointE
 
 -- | Move down next @n@ paragraphs

@@ -49,10 +49,9 @@ data Window =
        ,height      :: !Int            -- ^ height of this window
        ,width       :: !Int            -- ^ width of this window
 
-       ,cursor      :: !(Int,Int)      -- ^ cursor point on screen
+       ,cursor      :: !(Int,Int)      -- ^ cursor point on screen (y,x)
 
        ,pnt         :: !Int            -- ^ current point
-       ,lineno      :: !Int            -- ^ current line number
 
        ,tospnt      :: !Int            -- ^ the buffer point of the top of screen
        ,toslineno   :: !Int            -- ^ line number of top of screen
@@ -86,7 +85,6 @@ emptyWindow b (h,w) = do
                    ,width     = w
                    ,cursor    = (0,0)  -- (y,x) (screen columns, needs to know about tabs)
                    ,pnt       = 0      -- cache point when out of focus
-                   ,lineno    = 1
                    ,tospnt    = 0
                    ,toslineno = 1      -- start on line 1
               }
@@ -103,13 +101,13 @@ emptyWindow b (h,w) = do
 updateModeLine :: Buffer a => Window -> a -> IO (Maybe String)
 updateModeLine w' b = do
     if not (mode w') then return Nothing else do
+    ln <- curLn b
     let f    = nameB b
-        ln   = lineno w'
         lns  = show ln
         top  = toslineno w'
         cols = show $ 1 + snd (cursor w')
 
-    p <- if ln == 0 then return 0 else indexOfEol b
+    p <- indexOfEol b
     s <- sizeB b
     let pct = if top == 1 then "Top" else getPercent p s
 
@@ -139,7 +137,7 @@ getPercent a b = show p ++ "%"
 -- scroll, until we reach the top of the screen.
 --
 moveUpW :: Buffer a => Window -> a -> IO ()
-moveUpW w b = when (lineno w > 1) $ lineUp b
+moveUpW w b = lineUp b
 
 --
 -- | The cursor moves up, staying with its original line, unless it
@@ -253,37 +251,6 @@ deleteToEolW w b = do
     deleteToEol b
 
 ------------------------------------------------------------------------
---
--- | update window point and cursor, and reset pnt cache
--- A lot of time is spent here
---
--- optimization: we should work out whether to reset the Y value.
---
-update :: Buffer a => Window -> a -> IO Window
-update w b = do
-    y  <- curLn b 
-    x  <- offsetFromSol b
-    tw <- expandedTabLengthB b 8
-    p  <- pointB b
-
-    -- compute the new top of screen. (handle scrolling)
-    let newtoslineno | y < toslineno w                = y
-                     | y > toslineno w + height w - 1 = y - height w + 1
-                     | otherwise                      = toslineno w
-    gotoLn b newtoslineno
-    newtospnt <- pointB b
-    moveTo b p
-    let w' = w { pnt = p, 
-                 lineno = y,
-                 tospnt = newtospnt,
-                 toslineno = newtoslineno, 
-                 cursor = (y - newtoslineno, x + tw)
-               }
-    return w'
-{-# INLINE update #-}
-{-# SPECIALIZE update :: Window -> FBuffer -> IO Window #-}
-
-------------------------------------------------------------------------
 
 --
 -- return True if we're on the last line, and there's no \n at the end
@@ -319,45 +286,5 @@ indexOfSolAbove b n = do
 -- number of lines, center the line in the screen please.
 --
 resize :: Buffer a => Int -> Int -> Window -> a -> IO Window
-resize y x w b = do
-    let topln = toslineno w
-        ln    = lineno w
-        w'    = w { height = y, width = x }
-    if ln - topln + 1 >= y          -- old line isn't on screen now
-        then do let gap   = min ln (y `div` 2)
-                    topln'= ln - gap
-                x'<- offsetFromSol b
-                tw<- expandedTabLengthB b 8
-                i <- indexOfSolAbove b gap
-                return w' { toslineno = topln',
-                            tospnt = i,
-                            cursor = (gap,max x (x' + tw)) } -- ok ?
-        else return w'
-
---
--- | We've just gained focus. See if anything changed, and reset the
--- cursor point appropriately. The idea is that if anything changed, we
--- position the working line in the middle of the window.
---
--- TODO: refactor with update.
---
-resetPoint :: Buffer a => Window -> a -> IO Window
-resetPoint w b = do
-    let op  = pnt w
-        oln = lineno w
-        y   = fst $ cursor w
-    moveTo b op         -- reset the point to what we think it should be
-    ln <- curLn b
-    p  <- pointB b      -- see where it actually got placed
-    x  <- offsetFromSol b
-    tw <- expandedTabLengthB b 8
-    w' <- if op /= p || oln /= ln -- then the file shrunk or line moved
-          then do let gap   = min (ln-1) ((height w) `div` 2)
-                      topln = ln - gap
-                  i <- indexOfSolAbove b gap
-                  return w {pnt = p, lineno = ln,
-                            toslineno = topln, tospnt = i,
-                            cursor = (gap,x + tw)}
-          else return w {pnt = p, cursor = (y,x + tw)} -- just check out x-offset is right
-    return w'
+resize y x w b = return $ w { height = y, width = x }
 

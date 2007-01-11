@@ -914,9 +914,10 @@ bufInfoE = withWindow $ \w b -> do
     s <- sizeB b
     p <- pointB b
     m <- isUnchangedB b
+    l <- curLn b
     let bufInfo = BufferFileInfo { bufInfoFileName = nameB b
 				 , bufInfoSize     = s
-				 , bufInfoLineNo   = lineno w
+				 , bufInfoLineNo   = l
 				 , bufInfoColNo    = 1 + (snd $ cursor w)
 				 , bufInfoCharNo   = p
 				 , bufInfoPercent  = getPercent p s 

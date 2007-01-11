@@ -448,8 +448,7 @@ setWindow' :: Editor -> Window -> IO Editor
 setWindow' e w = do
     let fm = windows e
     let b  = findBufferWith e (bufkey w)
-    w' <- resetPoint w b
-    return $ e { windows = M.insert (key w') w' fm, curwin = Just $ key w' }
+    return $ e { windows = M.insert (key w) w fm, curwin = Just $ key w }
 
 --
 -- | How many windows do we have
