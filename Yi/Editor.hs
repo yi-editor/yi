@@ -447,7 +447,6 @@ setWindowToThisWindow w = modifyEditor_ $ \e -> setWindow' e w
 setWindow' :: Editor -> Window -> IO Editor
 setWindow' e w = do
     let fm = windows e
-    let b  = findBufferWith e (bufkey w)
     return $ e { windows = M.insert (key w) w fm, curwin = Just $ key w }
 
 --

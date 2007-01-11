@@ -185,7 +185,7 @@ prevCExc c = prevCInc c >> rightE
 -- | Move to first non-space character in this line
 firstNonSpaceE :: Action
 firstNonSpaceE = do
-    withWindow_ $ \w b -> do
+    withBuffer_ $ \b -> do
         moveToSol b
         fix $ \loop -> do
             eol <- atEol b

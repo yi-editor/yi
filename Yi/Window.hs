@@ -28,10 +28,12 @@ module Yi.Window where
 
 import Yi.Buffer
 import Yi.FastBuffer            ( FBuffer ) -- for specialisation
+import Yi.Vty
 
 import Data.Char                ( isLatin1 )
 import Data.Unique              ( Unique, newUnique )
 import Control.Monad            ( when )
+import qualified Data.Map as M
 
 --
 -- | A window onto a buffer.
@@ -55,6 +57,9 @@ data Window =
 
        ,tospnt      :: !Int            -- ^ the buffer point of the top of screen
        ,toslineno   :: !Int            -- ^ line number of top of screen
+                       
+       ,pointsToPos :: M.Map Int (Int,Int) -- ^ map of each point to its position in the window.
+       ,picture     :: Pic                 -- ^ the picture currently displayed.
     }
 
 
@@ -87,6 +92,8 @@ emptyWindow b (h,w) = do
                    ,pnt       = 0      -- cache point when out of focus
                    ,tospnt    = 0
                    ,toslineno = 1      -- start on line 1
+                   ,pointsToPos = M.fromList []
+                   ,picture = [[]]
               }
     return win
 

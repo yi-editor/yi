@@ -111,11 +111,12 @@ refresh = refreshEditor $ \e ->
     case getWindows e     of { ws  ->
     case cmdline e        of { cl  ->
     case cmdlinefocus e   of { cmdfoc ->
-    case uistyle e        of { sty ->
+    case uistyle e        of { sty -> do
     case getWindowOf e    of { w   ->
     case getWindowIndOf e of { Nothing -> return e ; (Just i) -> do
 
-    (ws',wImages) <- return unzip `ap` mapM (drawWindow e w sty) ws
+    ws' <- mapM (drawWindow e w sty) ws
+    let wImages = map picture ws'
     Yi.Vty.update vty pic {pImage = concat wImages ++ [withStyle (window sty) (cl ++ repeat ' ')],
                            pCursor = if cmdfoc 
                                      then NoCursor 
@@ -142,15 +143,42 @@ wrapLine n l = let (x,rest) = splitAt n l in x : wrapLine n rest
 -- ---------------------------------------------------------------------
 -- PRIVATE:
 
-showPoint :: Buffer a => Window -> a -> IO Window 
-showPoint w b =
-    do ln <- curLn b
-       let gap = min (ln-1) ((height w) `div` 2)
-           topln = ln - gap
-       i <- indexOfSolAbove b gap
-       return w {toslineno = topln,
-                 tospnt = i}
+showPoint :: Editor -> Window -> IO Window 
+showPoint e w = do
+  let b = findBufferWith e (bufkey w)          
+  ln <- curLn b
+  let gap = min (ln-1) ((height w) `div` 2)
+      topln = ln - gap
+  i <- indexOfSolAbove b gap
+  return w {toslineno = topln,
+            tospnt = i}
 
+-- | redraw a window (only called when scrolling is needed)
+doDrawWindow :: Editor -> Maybe Window -> UIStyle -> Window -> IO Window
+doDrawWindow e mwin sty win = do
+    let b = findBufferWith e (bufkey win)
+        w = width win
+        h = height win
+        m = mode win
+        off = if m then 1 else 0
+        h' = h - off
+        wsty = styleToAttr (window sty)
+        selsty = styleToAttr (selected sty)
+        eofsty = eof sty
+    markPoint <- getMarkB b
+    point <- pointB b
+    bufData <- nelemsB b (w*h') (tospnt win) -- read enough chars from the buffer.        
+    let (pointsPos,rendered) = drawText h' w (tospnt win) point markPoint selsty wsty bufData
+        win' = win {pointsToPos = pointsPos}
+    modeLine <- if m then updateModeLine win b else return Nothing
+    let modeLines = map (withStyle (modeStyle sty)) $ maybeToList $ modeLine
+        modeStyle = case mwin of
+               Just win'' | win'' == win' -> modeline_focused
+               _                          -> modeline        
+        filler = repeat (windowfill e)
+    
+    return win' { picture = take h' (rendered ++ repeat (withStyle eofsty filler)) ++ modeLines }
+    
 
 -- | Draw a window
 -- TODO: horizontal scrolling.
@@ -158,37 +186,13 @@ drawWindow :: Editor
            -> Maybe Window
            -> UIStyle
            -> Window
-           -> IO (Window, Pic)
+           -> IO Window
 
-drawWindow e mwin sty win0 = do
-    -- so t is the current point at the top of the screen.
-    -- pnt is where the current cursor is.
-    let b = findBufferWith e (bufkey win0)
-        w = width win0
-        h = height win0
-        m = mode win0
-        off = if m then 1 else 0
-        h' = h - off
-        wsty = styleToAttr (window sty)
-        selsty = styleToAttr (selected sty)
-        eofsty = eof sty
-    bufData0 <- nelemsB b (w*h') (tospnt win0) -- read enough chars from the buffer.        
-    markPoint <- getMarkB b
+drawWindow e mwin sty win = do
+    let b = findBufferWith e (bufkey win)
     point <- pointB b
-    let (pointsPos0,_) = drawText h' w (tospnt win0) point markPoint selsty wsty bufData0
-    win <- if M.member point pointsPos0 then return win0 else showPoint win0 b
-    modeLine <- if m then updateModeLine win b else return Nothing
-    let modeLines = map (withStyle (modeStyle sty)) $ maybeToList $ modeLine
-        modeStyle = case mwin of
-               Just win' | win' == win -> modeline_focused
-               _                       -> modeline        
-        filler = repeat (windowfill e)
-    bufData <- nelemsB b (w*h') (tospnt win) -- read enough chars from the buffer.        
-    let (pointsPos,rendered) = drawText h' w (tospnt win) point markPoint selsty wsty bufData
-    
-    return (win {cursor = pointsPos M.! point},
-            take h' (rendered ++ repeat (withStyle eofsty filler)) ++ modeLines)
-    
+    win' <- if M.member point (pointsToPos win) then return win else showPoint e win >>= doDrawWindow e mwin sty   
+    return win' {cursor = pointsToPos win' M.! point }
 
 -- | Renders text in a rectangle.
 -- Also returns a finite map from buffer offsets to their position on the screen.
