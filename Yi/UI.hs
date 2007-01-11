@@ -56,6 +56,7 @@ import Yi.Vty hiding (def, black, red, green, yellow, blue, magenta, cyan, white
 import Yi.Event
 
 import Data.List
+import Data.Maybe
 import qualified Data.Map as M
 
 import Control.Monad                ( ap )
@@ -166,12 +167,12 @@ drawWindow e mwin sty win =
     case selected sty of { selsty ->
     case eof    sty   of { eofsty -> do
     case findBufferWith e u of { b -> do
-    let modeLines = case m of 
-                      Nothing -> []
-                      Just text -> [withStyle (modeStyle sty) text]
+    modeLine <- if m then updateModeLine win b else return Nothing
+    let modeLines = map (withStyle (modeStyle sty)) $ maybeToList $ modeLine
         modeStyle = case mwin of
                Just win' | win' == win -> modeline_focused
                _                       -> modeline
+        
 
         off = length modeLines
         h' = h - off

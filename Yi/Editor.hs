@@ -35,7 +35,7 @@ import Data.Unique              ( Unique )
 import Data.Dynamic
 import qualified Data.Map as M
 
-import Control.Monad            ( liftM, foldM )
+import Control.Monad            ( foldM )
 import Control.Concurrent       ( killThread, ThreadId )
 import Control.Concurrent.Chan  ( Chan )
 import Control.Concurrent.MVar
@@ -244,9 +244,9 @@ newWindow b = modifyEditor $ \e -> do
         wls   = M.elems $ windows e
         (y,r) = getY h (1 + (length wls))   -- should be h-1..
     wls' <- resizeAll e wls y w
-    wls''<- if null wls' then return wls' else turnOnML e wls'
+    let wls'' = turnOnML wls'
     win  <- emptyWindow b (y+r,w)
-    win' <- if null wls then return win else liftM head $ turnOnML e [win]
+    let [win'] = (if null wls then id else turnOnML) [win]
     let e' = e { windows = M.fromList $ mkAssoc (win':wls'') }
     return (e', win')
 
@@ -356,7 +356,7 @@ deleteWindow' e win = do
         (win':xs) -> do
             let fm = M.fromList $ mkAssoc wls'
             win'' <- resize (y+r) x win' (findBufferWith e (bufkey win'))
-            let win''' = if xs == [] then win'' { mode = Nothing } else win''
+            let win''' = if xs == [] then win'' { mode = False } else win''
             let e' = e { windows = M.insert (key win''') win''' fm }
             setWindow' e' win'''
 
@@ -382,10 +382,8 @@ doResizeAll sz@(h,w) = modifyEditor_ $ \e -> do
     where doresize e x y win = resize y x win $ findBufferWith e (bufkey win)
 
 -- | Turn on modelines of all windows
-turnOnML :: Editor -> [Window] -> IO [Window]
-turnOnML e = mapM $ \w -> do let win = w { mode = Just undefined }
-                             m <- updateModeLine win $ findBufferWith e (bufkey w)
-                             return w { mode = m }
+turnOnML :: [Window] -> [Window]
+turnOnML = map $ \w -> w { mode = True }
 
 -- | calculate window heights, given all the windows and current height
 -- doesn't take into account modelines

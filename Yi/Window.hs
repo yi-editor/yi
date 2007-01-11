@@ -45,7 +45,7 @@ data Window =
     Window {
         key         :: !Unique         -- ^ each window has a unique
        ,bufkey      :: !Unique         -- ^ the buffer this window opens to
-       ,mode        :: !(Maybe String) -- ^ this window's modeline
+       ,mode        :: !Bool           -- ^ this window has modeline?
        ,height      :: !Int            -- ^ height of this window
        ,width       :: !Int            -- ^ width of this window
 
@@ -80,8 +80,8 @@ emptyWindow b (h,w) = do
     wu <- newUnique
     let win = Window {
                     key       = wu
+                   ,mode      = False
                    ,bufkey    = (keyB b)
-                   ,mode      = Nothing
                    ,height    = h-1    -- - 1 for the cmdline?
                    ,width     = w
                    ,cursor    = (0,0)  -- (y,x) (screen columns, needs to know about tabs)
@@ -102,7 +102,7 @@ emptyWindow b (h,w) = do
 --
 updateModeLine :: Buffer a => Window -> a -> IO (Maybe String)
 updateModeLine w' b = do
-    if mode w' == Nothing then return Nothing else do
+    if not (mode w') then return Nothing else do
     let f    = nameB b
         ln   = lineno w'
         lns  = show ln
@@ -279,13 +279,12 @@ update w b = do
     newtospnt <- pointB b
     moveTo b p
     let w' = w { pnt = p, 
-                  lineno = y,
-                  tospnt = newtospnt,
-                  toslineno = newtoslineno, 
-                  cursor = (y - newtoslineno, x + tw)
-                }
-    m <- updateModeLine w' b
-    return $! w' { mode = m }
+                 lineno = y,
+                 tospnt = newtospnt,
+                 toslineno = newtoslineno, 
+                 cursor = (y - newtoslineno, x + tw)
+               }
+    return w'
 {-# INLINE update #-}
 {-# SPECIALIZE update :: Window -> FBuffer -> IO Window #-}
 
@@ -365,6 +364,5 @@ resetPoint w b = do
                             toslineno = topln, tospnt = i,
                             cursor = (gap,x + tw)}
           else return w {pnt = p, cursor = (y,x + tw)} -- just check out x-offset is right
-    m <- updateModeLine w' b
-    return w' { mode = m }
+    return w'
 
