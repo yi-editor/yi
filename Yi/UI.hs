@@ -117,9 +117,7 @@ refresh = refreshEditor $ \e ->
     case getWindowOf e    of { w   ->
     case getWindowIndOf e of { Nothing -> return e ; (Just i) -> do
 
-    ws' <- mapM (\w -> Window.update w (findBufferWith e (bufkey w))) ws
-                                              
-    wImages <- mapM (drawWindow e w sty) ws'
+    (ws',wImages) <- return unzip `ap` mapM (drawWindow e w sty) ws
     Yi.Vty.update vty pic {pImage = concat wImages ++ [withStyle (window sty) (cl ++ repeat ' ')],
                            pCursor = if cmdfoc 
                                      then NoCursor 
@@ -152,11 +150,12 @@ drawWindow :: Editor
            -> Maybe Window
            -> UIStyle
            -> Window
-           -> IO Pic
+           -> IO (Window, Pic)
 
-drawWindow e mwin sty win =
+drawWindow e mwin sty win0 = do
     -- so t is the current point at the top of the screen.
     -- pnt is where the current cursor is.
+    win <- Window.update win0 (findBufferWith e (bufkey win0))
     case win of { Window { bufkey = u
                          , mode   = m
                          , height = h
@@ -182,7 +181,7 @@ drawWindow e mwin sty win =
     markPoint <- getMarkB b
     let rendered = drawText h' w t point markPoint (styleToAttr selsty) (styleToAttr wsty) bufData
 
-    return (take h' (rendered ++ repeat (withStyle eofsty filler)) ++ modeLines)
+    return (win,take h' (rendered ++ repeat (withStyle eofsty filler)) ++ modeLines)
     }}}}}
 
 
