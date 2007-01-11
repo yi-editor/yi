@@ -184,14 +184,16 @@ drawWindow e mwin sty win0 = do
     return (win,take h' (rendered ++ repeat (withStyle eofsty filler)) ++ modeLines)
     }}}}}
 
-
+-- | Renders text in a rectangle.
+-- Also returns a finite map from buffer offsets to their position on the screen.
 drawText :: Int -> Int -> Point -> Point -> Point -> Attr -> Attr -> String -> Pic
 drawText h w topPoint point markPoint selsty wsty bufData = rendered
   where [startSelect, stopSelect] = sort [markPoint,point]
         annBufData = zip bufData [topPoint..]  -- remember the point of each char
         -- TODO: render non-graphic chars (^G and the like)
         lns = take h $ concatMap (wrapLine w) $ lines' $ annBufData
-        windowEnd = snd $ last $ last $ lns -- point of the last char show in the window.
+
+        pointsPos = M.fromList [(p, (y,x)) | (y,l) <- zip [(0::Int)..] lns, (x,(_char,p)) <- zip [(0::Int)..] l]
         rendered = map (map colorChar) lns
         colorChar (c, x) = (c,pointStyle x)
         pointStyle x = if startSelect < x && x <= stopSelect then selsty else wsty
