@@ -250,12 +250,7 @@ deleteNAtW w b i p = deleteNAt b i p
 --
 deleteToEolW :: Buffer a => Window -> a -> IO ()
 deleteToEolW w b = do
-    sol  <- atSol b      -- about to delete from sol to eol
-    sof  <- atSof b
-    noNl <- noNLatEof b  -- and no \n at eol
     deleteToEol b
-    when (noNl && sol && not sof) $
-        moveToEolW w b
 
 ------------------------------------------------------------------------
 --
