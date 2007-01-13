@@ -175,11 +175,10 @@ doDrawWindow e mwin sty win = do
         modeStyle = case mwin of
                Just win'' | win'' == win' -> modeline_focused
                _                          -> modeline        
-        filler = repeat (windowfill e)
+        filler = take w (windowfill e : repeat (windowfill e))
     
     return win' { picture = take h' (rendered ++ repeat (withStyle eofsty filler)) ++ modeLines }
     
-
 -- | Draw a window
 -- TODO: horizontal scrolling.
 drawWindow :: Editor
@@ -191,8 +190,8 @@ drawWindow :: Editor
 drawWindow e mwin sty win = do
     let b = findBufferWith e (bufkey win)
     point <- pointB b
-    win' <- if M.member point (pointsToPos win) then return win else showPoint e win >>= doDrawWindow e mwin sty   
-    return win' {cursor = pointsToPos win' M.! point }
+    win' <- (if M.member point (pointsToPos win) then return win else showPoint e win) >>= doDrawWindow e mwin sty   
+    return win' {cursor = M.findWithDefault (0,0) point (pointsToPos win') }
 
 -- | Renders text in a rectangle.
 -- Also returns a finite map from buffer offsets to their position on the screen.
@@ -201,13 +200,14 @@ drawText h w topPoint point markPoint selsty wsty bufData = (pointsPos, rendered
   where [startSelect, stopSelect] = sort [markPoint,point]
         annBufData = zip bufData [topPoint..]  -- remember the point of each char
         -- TODO: render non-graphic chars (^G and the like)
-        lns = take h $ concatMap (wrapLine w) $ lines' $ annBufData
+        lns = take h $ map fillLine $ concatMap (wrapLine w) $ lines' $ annBufData
 
-        pointsPos = M.fromList [(p, (y,x)) | (y,l) <- zip [(0::Int)..] lns, (x,(_char,p)) <- zip [(0::Int)..] l]
+        pointsPos = M.fromListWith (\_ x->x) [(p, (y,x)) | (y,l) <- zip [(0::Int)..] lns, (x,(_char,p)) <- zip [(0::Int)..] l]
         rendered = map (map colorChar) lns
         colorChar (c, x) = (c,pointStyle x)
         pointStyle x = if startSelect < x && x <= stopSelect then selsty else wsty
-    
+        fillLine [] = []
+        fillLine l = take w (l ++ repeat (' ',snd $ last l))
 
 -- TODO: The above will actually require a bit of work, in order to properly
 -- render all the non-printable chars (<32)
