@@ -133,15 +133,15 @@ touchST = withMVar state $ \st -> tryPutMVar (editorModified st) () >> return ()
 modifyEditor_ :: (Editor -> IO Editor) -> IO ()
 modifyEditor_ f = modifyMVar_ state f >> touchST
 
--- | Refresh the editor's apparence. The caller is invited the
+-- | Variation on modifyEditor_ that lets you return a value
+modifyEditor :: (Editor -> IO (Editor,b)) -> IO b
+modifyEditor f = modifyMVar state f >>= \a -> touchST >> return a
+
+-- | Refresh the editor's apparence. The caller is invited to touch the
 -- editor's state, but that won't trigger another refresh
 refreshEditor :: (Editor -> IO Editor) -> IO ()
 refreshEditor f = modifyMVar_ state f
 
-
--- | Variation on modifyEditor_ that lets you return a value
-modifyEditor :: (Editor -> IO (Editor,b)) -> IO b
-modifyEditor f = modifyMVar state f >>= \a -> touchST >> return a
 
 -- ---------------------------------------------------------------------
 -- Buffer operations
