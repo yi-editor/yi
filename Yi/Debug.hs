@@ -4,6 +4,7 @@ module Yi.Debug (
        ,logPutStrLn
     ) where
 
+import Control.Concurrent
 import Data.IORef
 import System.IO        
 import System.IO.Unsafe ( unsafePerformIO )
@@ -32,6 +33,7 @@ trace s e = unsafePerformIO $ do logPutStrLn s
 
 logPutStrLn :: String -> IO ()
 logPutStrLn s = do time <- toCalendarTime =<< getClockTime
+                   tId <- myThreadId
                    h <- readIORef dbgHandle
-                   hPutStrLn h (calendarTimeToString time ++ " " ++ s)
+                   hPutStrLn h $ calendarTimeToString time ++ " " ++ show tId ++ " " ++ s
                    hFlush h
