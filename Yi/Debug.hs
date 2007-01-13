@@ -5,8 +5,9 @@ module Yi.Debug (
     ) where
 
 import Data.IORef
-import System.IO        ( FilePath, Handle, IOMode(..), hPutStrLn, hFlush, openFile, stderr )
+import System.IO        
 import System.IO.Unsafe ( unsafePerformIO )
+import System.Time
 
 dbgHandle :: IORef Handle
 dbgHandle = unsafePerformIO $ newIORef stderr
@@ -26,6 +27,11 @@ trace s e = unsafePerformIO $ do logPutStrLn s
                                  return e
 {-# NOINLINE trace #-}
 
+
+
+
 logPutStrLn :: String -> IO ()
-logPutStrLn s = do h <- readIORef dbgHandle
-                   hPutStrLn h s >> hFlush h
+logPutStrLn s = do time <- toCalendarTime =<< getClockTime
+                   h <- readIORef dbgHandle
+                   hPutStrLn h (calendarTimeToString time ++ " " ++ s)
+                   hFlush h
