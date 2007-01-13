@@ -172,7 +172,7 @@ nextCInc c = rightE >> moveWhileE (/= c) GoRight
 nextCExc :: Char -> Action
 nextCExc c = nextCInc c >> leftE
 
--- | Move to thhe previous occurence of @c@
+-- | Move to the previous occurence of @c@
 prevCInc :: Char -> Action
 prevCInc c = leftE  >> moveWhileE (/= c) GoLeft
 
@@ -196,29 +196,28 @@ firstNonSpaceE = do
 -- | Move down next @n@ paragraphs
 nextNParagraphs :: Int -> Action    -- could be rewritten in a more functional style
 nextNParagraphs n = do
-    withWindow_ $ \w b -> do
+    withBuffer_ $ \b -> do
         eof <- sizeB b
         let loop = do
                 p <- pointB b
                 when (p < eof-1) $ do
-                    moveWhile_ (/= '\n') GoRight w b
+                    moveWhile_ (/= '\n') GoRight b
                     p' <- pointB b
                     when (p' < eof-1) $ do
                         rightB b
                         x <- readB b
                         when (x /= '\n') loop
         replicateM_ n loop
-        return w
 
 -- | Move up prev @n@ paragraphs
 prevNParagraphs :: Int -> Action
 prevNParagraphs n = do
-    withWindow_ $ \w b -> do
+    withBuffer_ $ \b -> do
         let loop = do
                 p <- pointB b
                 when (p > 0) $ do
                     leftB b
-                    moveWhile_ (/= '\n') GoLeft w b
+                    moveWhile_ (/= '\n') GoLeft b
                     p' <- pointB b
                     when (p' > 0) $ do
                         leftB b
@@ -227,7 +226,6 @@ prevNParagraphs n = do
                             then rightB b
                             else loop
         replicateM_ n loop
-        return w
 
 ------------------------------------------------------------------------
 --
@@ -238,18 +236,17 @@ prevNParagraphs n = do
 -- Maybe this shouldn't refresh?
 --
 moveWhileE :: (Char -> Bool) -> Direction -> Action
-moveWhileE f d = do withWindow_ (moveWhile_ f d)
+moveWhileE f d = withBuffer_ (moveWhile_ f d)
 --
 -- Internal moveWhile function to avoid unnec. ui updates
 -- not for external consumption
 --
 moveWhile_ :: (Char -> Bool)
            -> Direction
-           -> Window
            -> FBuffer
-           -> IO Window
+           -> IO ()
 
-moveWhile_ f dir w b = do
+moveWhile_ f dir b = do
     eof <- sizeB b
     case dir of
         GoRight -> fix $ \loop' -> do p <- pointB b
@@ -260,21 +257,20 @@ moveWhile_ f dir w b = do
                                       when (p > 0) $ do
                                         x <- readB b
                                         when (f x) $ leftB b >> loop'
-    return w
 
 ------------------------------------------------------------------------
 
 -- | Read word to the left of the cursor
 readWordLeftE :: IO (String,Int,Int)
-readWordLeftE = withWindow $ \w b -> readWordLeft_ w b
+readWordLeftE = withBuffer $ \b -> readWordLeft_ b
 
 -- Core-internal worker, not threadsafe.
-readWordLeft_ :: Window -> FBuffer -> IO (String,Int,Int)
-readWordLeft_ w b = do
+readWordLeft_ :: FBuffer -> IO (String,Int,Int)
+readWordLeft_ b = do
     p <- pointB b
     c <- readB b
     when (not $ isAlphaNum c) $ leftB b
-    moveWhile_ isAlphaNum GoLeft w b
+    moveWhile_ isAlphaNum GoLeft b
     sof <- atSof b
     c'  <- readB b
     when (not sof || not (isAlphaNum c')) $ rightB b
@@ -285,7 +281,7 @@ readWordLeft_ w b = do
 
 -- | Read word under cursor
 readWordE :: IO (String,Int,Int)
-readWordE = withWindow $ \w b -> readWord_ w b
+readWordE = withBuffer $ \b -> readWord_ b
 
 ------------------------------------------------------------------------
 
@@ -319,14 +315,14 @@ withPointE f = do p <- getPointE
 ------------------------------------------------------------------------
 
 -- Internal, for readWordE, not threadsafe
-readWord_ :: Window -> FBuffer -> IO (String,Int,Int)
-readWord_ w b = do
+readWord_ :: FBuffer -> IO (String,Int,Int)
+readWord_ b = do
     p <- pointB b
     c <- readB b
     if not (isAlphaNum c) then leftB b
-                          else moveWhile_ isAlphaNum GoRight w b >> leftB b
+                          else moveWhile_ isAlphaNum GoRight b >> leftB b
     y <- pointB b   -- end point
-    moveWhile_ isAlphaNum GoLeft w b
+    moveWhile_ isAlphaNum GoLeft b
     sof <- atSof b
     c'  <- readB b
     when (not sof || not (isAlphaNum c')) $ rightB b
@@ -365,7 +361,6 @@ wordCompleteE :: Action
 wordCompleteE = do
     withWindow_ $ \win buf -> do
         readIORef completions >>= loop win buf >>= writeIORef completions
-        return win
 
   where
     --
@@ -378,7 +373,7 @@ wordCompleteE = do
             doloop p win buf (w,fm)
     loop win buf Nothing = do
             p  <- pointB buf
-            (w,_,_) <- readWordLeft_ win buf
+            (w,_,_) <- readWordLeft_ buf
             rightB buf  -- start past point
             doloop p win buf (w,M.singleton w ())
 
@@ -389,20 +384,20 @@ wordCompleteE = do
            -> IO (Maybe Completion)
 
     doloop p win buf (w,fm) = do
-            m' <- nextWordMatch win buf w
+            m' <- nextWordMatch buf w
             moveTo buf p
-            (_,j,_) <- readWord_ win buf
+            (_,j,_) <- readWord_ buf
             case m' of
                 Just (s,i)
                     | j == i                -- seen entire file
-                    -> do replaceLeftWith win buf w
+                    -> do replaceLeftWith buf w
                           return Nothing
 
                     | s `M.member` fm         -- already seen
                     -> loop win buf (Just (w,fm,i))
 
                     | otherwise             -- new
-                    -> do replaceLeftWith win buf s
+                    -> do replaceLeftWith buf s
                           return (Just (w,M.insert s () fm,i))
 
                 Nothing -> loop win buf (Just (w,fm,(-1))) -- goto start of file
@@ -410,9 +405,9 @@ wordCompleteE = do
     --
     -- replace word under cursor with @s@
     --
-    replaceLeftWith :: Window -> FBuffer -> String -> IO ()
-    replaceLeftWith win buf s = do
-        (_,b,a) <- readWordLeft_ win buf     -- back at start
+    replaceLeftWith :: FBuffer -> String -> IO ()
+    replaceLeftWith buf s = do
+        (_,b,a) <- readWordLeft_ buf     -- back at start
         moveTo buf b
         deleteNW buf (a-b)
         insertN buf s
@@ -421,8 +416,8 @@ wordCompleteE = do
     -- Return next match, and index of that match (to be used for later searches)
     -- Leaves the cursor at the next word.
     --
-    nextWordMatch :: Window -> FBuffer -> String -> IO (Maybe (String,Int))
-    nextWordMatch win b w = do
+    nextWordMatch :: FBuffer -> String -> IO (Maybe (String,Int))
+    nextWordMatch b w = do
         let re = ("( |\t|\n|\r|^)"++w)
         re_c <- regcomp re regExtended
         mi   <- regexB b re_c
@@ -432,7 +427,7 @@ wordCompleteE = do
                 c <- readAtB b i
                 let i' = if i == 0 && isAlphaNum c then 0 else i+1 -- for the space
                 moveTo b i'
-                (s,_,_) <- readWord_ win b
+                (s,_,_) <- readWord_ b
                 assert (s /= [] && i /= j) $ return $ Just (s,i')
 
 ------------------------------------------------------------------------

@@ -597,12 +597,11 @@ readRestOfLnE = withBuffer $ \b -> do
 
 -- | Write char to point
 writeE :: Char -> Action
-writeE c = withWindow_ $ \w b -> do
+writeE c = withBuffer_ $ \b -> do
             case c of
                 '\r' -> writeB b '\n'
                 _ | isLatin1 c -> writeB b c
                   | otherwise  -> nopE          -- TODO
-            return w
 
 -- | Transpose two characters, (the Emacs C-t action)
 -- Note that mg and emacs only work on the current line, whereas this
@@ -641,11 +640,11 @@ getRegE = readEditor yreg
 
 -- | Set the current buffer mark
 setMarkE :: Int -> Action
-setMarkE pos = withWindow_ $ \w b -> (setMarkB b pos >> return w)
+setMarkE pos = withBuffer_ $ \b -> setMarkB b pos
 
 -- | Unset the current buffer mark so that there is no selection
 unsetMarkE :: Action
-unsetMarkE = withWindow_ $ \w b -> (unsetMarkB b >> return w)
+unsetMarkE = withBuffer_ $ \b -> unsetMarkB b
 
 -- | Get the current buffer mark
 getMarkE :: IO Int
@@ -981,22 +980,21 @@ newBufferE f s = do
 
 -- | Write current buffer to disk, if this buffer is associated with a file
 fwriteE :: Action
-fwriteE = withWindow_ $ \w b -> do
+fwriteE = withBuffer_ $ \b -> do
         mf <- getfileB b
         case mf of
                 Nothing -> error "buffer not associated with a file"
-                Just f  -> hPutB b f >> return w
+                Just f  -> hPutB b f
 
 -- | Write current buffer to disk as @f@. If this buffer doesn't
 -- currently have a file associated with it, the file is set to @f@
 fwriteToE :: String -> Action
-fwriteToE f = withWindow_ $ \w b -> do
+fwriteToE f = withBuffer_ $ \b -> do
         hPutB b f
         mf <- getfileB b
         case mf of
                 Nothing -> setfileB b f
                 Just _  -> return ()
-        return w
 
 -- | Write all open buffers
 fwriteAllE :: Action
@@ -1107,7 +1105,7 @@ mapRangeE :: Int -> Int -> (Char -> Char) -> Action
 mapRangeE from to fn
     | from < 0  = nopE
     | otherwise = do
-        withWindow_ $ \w b -> do
+        withBuffer_ $ \b -> do
             eof <- sizeB b
             when (to < eof) $ do
                 let loop j | j <= 0    = return ()
@@ -1117,7 +1115,6 @@ mapRangeE from to fn
                                 loop (j-1)
                 loop (max 0 (to - from))
             moveTo b from
-            return w
 
 -- ---------------------------------------------------------------------
 -- | The metaM action. This is our mechanism for having Actions alter
