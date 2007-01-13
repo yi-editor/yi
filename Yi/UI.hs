@@ -52,6 +52,7 @@ import Yi.Window as Window
 import Yi.Style
 import Yi.Vty hiding (def, black, red, green, yellow, blue, magenta, cyan, white)
 import Yi.Event
+--import Yi.Debug
 
 import Data.List
 import Data.Maybe
@@ -91,7 +92,8 @@ getKey (UI vty) doRefresh = do
   event <- getEvent vty
   case event of 
     (EvResize _ _) -> doRefresh >> getKey (UI vty) doRefresh
-    _ -> return (fromVtyEvent event)
+    _ -> do -- logPutStrLn $ show $ fromVtyEvent event
+            return (fromVtyEvent event)
  where fromVtyEvent (EvKey k mods) = Event k mods
        fromVtyEvent _ = error "fromVtyEvent: unsupported event encountered."
 

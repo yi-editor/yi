@@ -420,7 +420,7 @@ wordCompleteE = do
     replaceLeftWith win buf s = do
         (_,b,a) <- readWordLeft_ win buf     -- back at start
         moveTo buf b
-        deleteNW win buf (a-b)
+        deleteNW buf (a-b)
         mapM_ (\c -> insertW c win buf) s
 
     --

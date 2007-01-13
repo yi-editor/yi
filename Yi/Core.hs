@@ -545,18 +545,18 @@ insertE c = do
 -- | Insert a string
 insertNE :: String -> Action
 insertNE str = do
-    withWindow_ $ \w b -> do 
+    withBuffer_ $ \b -> do 
             s  <- sizeB b
             if s == 0 then insertW '\n' w b else return ()
             insertNW str w b
 
 -- | Delete character under cursor
 deleteE :: Action
-deleteE = withWindow_ $ \w b -> deleteNW w b 1
+deleteE = withBuffer_ $ \b -> deleteNW b 1
 
 -- | Delete @n@ characters from under the cursor
 deleteNE :: Int -> Action
-deleteNE i = withWindow_ $ \w b -> deleteNW w b i
+deleteNE i = withBuffer_ $ \b -> deleteNW b i
 
 -- | Kill to end of line
 killE :: Action

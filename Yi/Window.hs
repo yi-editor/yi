@@ -226,8 +226,8 @@ insertNW cs w b = do
 --
 -- TODO think about end of file situation.
 --
-deleteNW :: Buffer a => Window -> a -> Int -> IO ()
-deleteNW w b i = do
+deleteNW :: Buffer a => a -> Int -> IO ()
+deleteNW b i = do
 
     -- delete up to eof chars
     when (i > 1) $ do
