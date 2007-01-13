@@ -85,6 +85,7 @@ type KProc a = StateT [Event] (Writer [Action]) a
 normalKlist :: KList String
 normalKlist = [ ([c], atomic $ insertSelf) | c <- printableChars ] ++
               [
+        ("RET",      atomic $ repeatingArg $ insertE '\n'),
         ("DEL",      atomic $ repeatingArg deleteE),
         ("BACKSP",   atomic $ repeatingArg bdeleteE),
         ("C-M-w",    atomic $ appendNextKillE),

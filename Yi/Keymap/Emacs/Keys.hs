@@ -68,7 +68,8 @@ keyNames = [(KASCII ' ', "SPC"),
             (KPageDown, "<next>"),
             (KPageUp, "<prior>"),
             (KHome, "<home>"),
-            (KEnd, "<end>")
+            (KEnd, "<end>"),
+            (KEnter, "RET")
            ]
 
 parseRegular :: ReadP Event
