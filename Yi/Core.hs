@@ -617,10 +617,10 @@ swapE = do c <- readE
 -- ---------------------------------------------------------------------
 
 undoE :: Action
-undoE = (withWindow_ $ \w b -> undo b >> return w) >> getPointE >>= gotoPointE
+undoE = withBuffer_ undo
 
 redoE :: Action
-redoE = (withWindow_ $ \w b -> redo b >> return w) >> getPointE >>= gotoPointE
+redoE = withBuffer_ redo
 
 -- ---------------------------------------------------------------------
 -- registers (TODO these may be redundant now that it is easy to thread

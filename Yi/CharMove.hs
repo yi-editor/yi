@@ -192,7 +192,6 @@ firstNonSpaceE = do
             if eol then return ()
                    else do k <- readB b
                            when (isSpace k) (rightB b >> loop)
-    getPointE >>= gotoPointE
 
 -- | Move down next @n@ paragraphs
 nextNParagraphs :: Int -> Action    -- could be rewritten in a more functional style
@@ -210,7 +209,6 @@ nextNParagraphs n = do
                         when (x /= '\n') loop
         replicateM_ n loop
         return w
-    getPointE >>= gotoPointE
 
 -- | Move up prev @n@ paragraphs
 prevNParagraphs :: Int -> Action
@@ -230,7 +228,6 @@ prevNParagraphs n = do
                             else loop
         replicateM_ n loop
         return w
-    getPointE >>= gotoPointE
 
 ------------------------------------------------------------------------
 --
@@ -242,8 +239,6 @@ prevNParagraphs n = do
 --
 moveWhileE :: (Char -> Bool) -> Direction -> Action
 moveWhileE f d = do withWindow_ (moveWhile_ f d)
-                    getPointE >>= gotoPointE
-
 --
 -- Internal moveWhile function to avoid unnec. ui updates
 -- not for external consumption
@@ -371,7 +366,6 @@ wordCompleteE = do
     withWindow_ $ \win buf -> do
         readIORef completions >>= loop win buf >>= writeIORef completions
         return win
-    getPointE >>= gotoPointE
 
   where
     --
