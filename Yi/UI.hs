@@ -114,7 +114,6 @@ refresh = refreshEditor $ \e ->
     case uistyle e        of { sty -> do
     case getWindowOf e    of { w   ->
     case getWindowIndOf e of { Nothing -> return e ; (Just i) -> do
-
     ws' <- mapM (drawWindow e w sty) ws
     let wImages = map picture ws'
     Yi.Vty.update vty pic {pImage = concat wImages ++ [withStyle (window sty) (cl ++ repeat ' ')],
@@ -168,16 +167,17 @@ doDrawWindow e mwin sty win = do
     markPoint <- getMarkB b
     point <- pointB b
     bufData <- nelemsB b (w*h') (tospnt win) -- read enough chars from the buffer.        
-    let (pointsPos,rendered) = drawText h' w (tospnt win) point markPoint selsty wsty bufData
-        win' = win {pointsToPos = pointsPos}
+    let (rendered,bos,cur) = drawText h' w (tospnt win) point markPoint selsty wsty bufData
     modeLine <- if m then updateModeLine win b else return Nothing
     let modeLines = map (withStyle (modeStyle sty)) $ maybeToList $ modeLine
         modeStyle = case mwin of
-               Just win'' | win'' == win' -> modeline_focused
-               _                          -> modeline        
+               Just win'' | win'' == win -> modeline_focused
+               _                         -> modeline        
         filler = take w (windowfill e : repeat (windowfill e))
     
-    return win' { picture = take h' (rendered ++ repeat (withStyle eofsty filler)) ++ modeLines }
+    return win { picture = take h' (rendered ++ repeat (withStyle eofsty filler)) ++ modeLines,
+                 cursor = cur,
+                 bospnt = bos }
     
 -- | Draw a window
 -- TODO: horizontal scrolling.
@@ -190,19 +190,25 @@ drawWindow :: Editor
 drawWindow e mwin sty win = do
     let b = findBufferWith e (bufkey win)
     point <- pointB b
-    win' <- (if M.member point (pointsToPos win) then return win else showPoint e win) >>= doDrawWindow e mwin sty   
-    return win' {cursor = M.findWithDefault (0,0) point (pointsToPos win') }
+    (if tospnt win <= point && point <= bospnt win then return win else showPoint e win) >>= doDrawWindow e mwin sty   
+
 
 -- | Renders text in a rectangle.
 -- Also returns a finite map from buffer offsets to their position on the screen.
-drawText :: Int -> Int -> Point -> Point -> Point -> Attr -> Attr -> String -> (M.Map Point (Int,Int), Pic)
-drawText h w topPoint point markPoint selsty wsty bufData = (pointsPos, rendered)
+drawText :: Int -> Int -> Point -> Point -> Point -> Attr -> Attr -> String -> (Pic, Point, (Int,Int))
+drawText h w topPoint point markPoint selsty wsty bufData = (rendered, bottomPoint, pntpos)
   where [startSelect, stopSelect] = sort [markPoint,point]
         annBufData = zip bufData [topPoint..]  -- remember the point of each char
         -- TODO: render non-graphic chars (^G and the like)
-        lns = take h $ map fillLine $ concatMap (wrapLine w) $ lines' $ annBufData
+        lns0 = take h $ concatMap (wrapLine w) $ lines' $ annBufData
+        lns = map fillLine $ lns0 -- fill lines with blanks, so the selection looks ok.
+        bottomPoint = case lns0 of 
+                        [] -> topPoint 
+                        _ -> snd $ last $ last $ lns0
+        pntpos = case [(y,x) | (y,l) <- zip [(0::Int)..] lns0, (x,(_char,p)) <- zip [(0::Int)..] l, p == point] of
+                   [] -> (0,0)
+                   (pp:_) -> pp
 
-        pointsPos = M.fromListWith (\_ x->x) [(p, (y,x)) | (y,l) <- zip [(0::Int)..] lns, (x,(_char,p)) <- zip [(0::Int)..] l]
         rendered = map (map colorChar) lns
         colorChar (c, x) = (c,pointStyle x)
         pointStyle x = if startSelect < x && x <= stopSelect then selsty else wsty
