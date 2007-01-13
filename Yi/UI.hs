@@ -128,7 +128,7 @@ refresh = refreshEditor $ \e ->
                                          Just w' -> let (y,x) = cursor w' in
                                              Cursor x (y + sum [ height (ws !! k) | k <- [0 .. (i-1)] ])
                                          Nothing -> NoCursor}
-    return e { windows = M.fromList [(key w, w) | w <- ws']}
+    return e { windows = M.fromList [(key w', w') | w' <- ws']}
     }}}}}}}
 
 lines' :: [(Char,a)] -> [[(Char,a)]]

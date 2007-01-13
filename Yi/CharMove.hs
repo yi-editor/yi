@@ -421,7 +421,7 @@ wordCompleteE = do
         (_,b,a) <- readWordLeft_ win buf     -- back at start
         moveTo buf b
         deleteNW buf (a-b)
-        mapM_ (\c -> insertW c win buf) s
+        insertN buf s
 
     --
     -- Return next match, and index of that match (to be used for later searches)

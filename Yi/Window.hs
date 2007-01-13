@@ -132,92 +132,22 @@ getPercent a b = show p ++ "%"
     where p = ceiling ((fromIntegral a) / (fromIntegral b) * 100 :: Double) :: Int
 
 -- ---------------------------------------------------------------------
--- Window actions. These are, often, wrappers around the underlying
--- buffer actions.  Some actions, such as scrolling, are just windows
--- only. When we modify the buffer state, we must be sure to keep the
--- window up to date as well.
---
+-- Window actions. Some actions, such as scrolling, are just windows
+-- only. 
 
---
--- | The point moves backwards in the buffer, but the screen doesn't
--- scroll, until we reach the top of the screen.
---
-moveUpW :: Buffer a => Window -> a -> IO ()
-moveUpW w b = lineUp b
-
---
--- | The cursor moves up, staying with its original line, unless it
--- reaches the top of the screen.
---
-moveDownW :: Buffer a => Window -> a -> IO ()
-moveDownW w b = do
-    ll <- atLastLine b
-    when (not ll) $      -- eof, go no further
-      lineDown b
-
--- ---------------------------------------------------------------------
--- | Wacky moveToW function
-
-moveToW :: Buffer a => Int -> Window -> a -> IO ()
-moveToW np w b = do
-    moveTo b np
-
--- | goto an arbitrary line in the file. center that line on the screen
--- gotoLn is (fast as possible) an O(n) op atm.
---
-gotoLnW :: Buffer a => Int -> Window -> a -> IO Int
-gotoLnW n w b = do
-    gotoLn b n
-    
---
--- | Goto a line offset from the current line
---
-gotoLnFromW :: Buffer a => Int -> Window -> a -> IO Int
-gotoLnFromW n w b = do
-    gotoLnFrom b n
-
---
--- | Move the cursor left or start of line
---
-leftOrSolW :: Buffer a => Window -> a -> IO ()
-leftOrSolW w b = moveXorSol b 1    
+leftOrSol :: Buffer a => a -> IO ()
+leftOrSol b = moveXorSol b 1    
 
 --
 -- | Move the cursor right or end of line
 --
-rightOrSolW :: Buffer a => Window -> a -> IO ()
-rightOrSolW w b = moveXorEol b 1   
-
--- | Move to the start of the line
-moveToSolW :: Buffer a => Window -> a -> IO ()
-moveToSolW w b = moveToSol b
-
--- | Move to the end of the line
-moveToEolW :: Buffer a => Window -> a -> IO ()
-moveToEolW w b = moveToEol b
-
--- | Move left @n@ or start of line
-moveXorSolW :: Buffer a => Int -> Window -> a -> IO ()
-moveXorSolW i w b = moveXorSol b i
-
--- | Move right @n@ or end of line
-moveXorEolW :: Buffer a => Int -> Window -> a -> IO ()
-moveXorEolW i w b = moveXorEol b i
+rightOrSol :: Buffer a => a -> IO ()
+rightOrSol b = moveXorEol b 1   
 
 -- ---------------------------------------------------------------------
 -- Editing operations
 
--- | Insert a single character
-insertW :: Buffer a => Char -> Window -> a -> IO ()
-insertW c = insertNW [c]
-
--- | Insert a whole String at the point
-insertNW :: Buffer a => String -> Window -> a -> IO ()
-insertNW cs w b = do
-    let cs' = [if c == '\13' then '\n' else c | c <- cs, isLatin1 c]
-    insertN b cs'
     
-
 --
 -- | Delete character. Don't move point unless at EOF
 --
@@ -243,20 +173,7 @@ deleteNW b i = do
     deleteB b
 
     when (eof && sol && not sof) $
-        moveToEolW w b
-
-deleteNAtW :: Buffer a => Window -> a -> Int -> Int -> IO ()
-deleteNAtW w b i p = deleteNAt b i p
-
---
--- | Kill all the characters to the end of the line
--- If there is no \n at the end of the line, scroll up 1
---
-deleteToEolW :: Buffer a => Window -> a -> IO ()
-deleteToEolW w b = do
-    deleteToEol b
-
-------------------------------------------------------------------------
+        moveToEol b
 
 --
 -- return True if we're on the last line, and there's no \n at the end

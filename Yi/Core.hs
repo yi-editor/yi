@@ -376,41 +376,41 @@ suspendE = UI.suspend
 
 -- | Move cursor to origin
 topE :: Action
-topE = withWindow_ $ moveToW 0
+topE = withBuffer_ $ \b -> moveTo b 0
 
 -- | Move cursor to end of buffer
 botE :: Action
-botE = withWindow_ $ \w b -> do
+botE = withBuffer_ $ \b -> do
             n <- sizeB b
-            moveToW (n-1) w b
+            moveTo b (n-1)
 
 -- | Move cursor to start of line
 solE :: Action
-solE = withWindow_ moveToSolW
+solE = withBuffer_ moveToSol
 
 -- | Move cursor to end of line
 eolE :: Action
-eolE = withWindow_ moveToEolW
+eolE = withBuffer_ moveToEol
 
 -- | Move cursor down 1 line
 downE :: Action
-downE = withWindow_ moveDownW
+downE = withBuffer_ lineDown
 
 -- | Move cursor up to the same point on the previous line
 upE :: Action
-upE = withWindow_ moveUpW
+upE = withBuffer_ lineUp
 
 -- | Go to line number @n@
 gotoLnE :: Int -> Action
-gotoLnE n = withWindow_ (gotoLnW n)
+gotoLnE n = withBuffer_ (flip gotoLn n)
 
 -- | Go to line @n@ offset from current line
 gotoLnFromE :: Int -> Action
-gotoLnFromE n = withWindow_ (gotoLnFromW n)
+gotoLnFromE n = withBuffer_ (flip gotoLnFrom n)
 
 -- | Go to a particular point. ToDo don't reset unless we wander off the screen
 gotoPointE :: Int -> Action
-gotoPointE p = withWindow_ $ moveToW p
+gotoPointE p = withBuffer_ $ flip moveTo p
 
 -- | Get the current point
 getPointE :: IO Int
@@ -450,27 +450,27 @@ atEofE = withBuffer atEof
 upScreenE :: Action
 upScreenE = do
     (Just w) <- getWindow
-    withWindow_ (gotoLnFromW (- (height w - 1)))
+    withBuffer_ (flip gotoLnFrom (- (height w - 1)))
     solE
 
 -- | Scroll up n screens
 upScreensE :: Int -> Action
 upScreensE n = do
     (Just w) <- getWindow
-    withWindow_ (gotoLnFromW (- (n * (height w - 1))))
+    withBuffer_ (flip gotoLnFrom (- (n * (height w - 1))))
     solE
 
 -- | Scroll down 1 screen
 downScreenE :: Action
 downScreenE = do
     (Just w) <- getWindow
-    withWindow_ (gotoLnFromW (height w - 1))
+    withBuffer_ (flip gotoLnFrom (height w - 1))
 
 -- | Scroll down n screens
 downScreensE :: Int -> Action
 downScreensE n = do
     (Just w) <- getWindow
-    withWindow_ (gotoLnFromW (n * (height w - 1)))
+    withBuffer_ (flip gotoLnFrom (n * (height w - 1)))
 
 -- | Move to @n@ lines down from top of screen
 downFromTosE :: Int -> Action
@@ -494,29 +494,29 @@ middleE = (withWindow $ \w _ -> return ((height w -1-1) `div` 2)) >>= downFromTo
 
 -- | move the point left (backwards) in the buffer. may need to scroll
 leftE :: Action
-leftE = withWindow_ $ \w b -> do
+leftE = withBuffer_ $ \b -> do
     e <- atSol b
-    if not e then moveXorSolW 1 w b
+    if not e then moveXorSol b 1
              else do e' <- atSof b
                      if e' then return ()
-                           else moveUpW w b >> moveToEolW w b
+                           else lineUp b >> moveToEol b
 
 -- | move the point right (forwards) in the buffer. may need to scroll
 rightE :: Action
-rightE = withWindow_ $ \w b -> do
+rightE = withBuffer_ $ \b -> do
     e <- atEol b
-    if not e then moveXorEolW 1 w b
+    if not e then moveXorEol b 1
              else do e' <- atEof b
                      if e' then return ()
-                           else moveDownW w b >> moveToSolW w b
+                           else lineDown b >> moveToSol b
 
 -- | Move left @x@ or to start of line
 leftOrSolE :: Int -> Action
-leftOrSolE x = withWindow_ $ moveXorSolW x
+leftOrSolE x = withBuffer_ $ flip moveXorSol x
 
 -- | Move right @x@ or to end of line
 rightOrEolE :: Int -> Action
-rightOrEolE x = withWindow_ $ moveXorEolW x
+rightOrEolE x = withBuffer_ $ flip moveXorEol x
 
 -- ---------------------------------------------------------------------
 -- Window based operations
@@ -536,19 +536,15 @@ scrollDownE = withWindow_ scrollDownW
 
 -- | Insert new character
 insertE :: Char -> Action
-insertE c = do
-    withWindow_ $ \w b -> do
-            s  <- sizeB b
-            if s == 0 then insertW '\n' w b else return ()
-            insertW c w b
+insertE c = insertNE [c]
 
 -- | Insert a string
 insertNE :: String -> Action
 insertNE str = do
     withBuffer_ $ \b -> do 
             s  <- sizeB b
-            if s == 0 then insertW '\n' w b else return ()
-            insertNW str w b
+            if s == 0 then insertN b "\n" else return ()
+            insertN b str
 
 -- | Delete character under cursor
 deleteE :: Action
@@ -560,12 +556,12 @@ deleteNE i = withBuffer_ $ \b -> deleteNW b i
 
 -- | Kill to end of line
 killE :: Action
-killE = withWindow_ deleteToEolW -- >>= Buffer.prevXorLn 1
+killE = withBuffer_ deleteToEol -- >>= Buffer.prevXorLn 1
 
 -- | Delete an arbitrary part of the buffer
 deleteRegionE :: (Int,Int) -> IO ()
-deleteRegionE (from,to) | from <= to = withWindow_ $ \w b -> do
-    deleteNAtW  w b (to-from+1) from
+deleteRegionE (from,to) | from <= to = withBuffer_ $ \b -> do
+    deleteNAt b (to-from+1) from
 deleteRegionE (from,to) | otherwise  = deleteRegionE (to,from)
 
 -- | Read the char under the cursor
@@ -1126,7 +1122,7 @@ mapRangeE from to fn
                                 rightB b
                                 loop (j-1)
                 loop (max 0 (to - from))
-            moveToW from w b
+            moveTo b from
             return w
 
 -- ---------------------------------------------------------------------

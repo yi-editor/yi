@@ -14,7 +14,7 @@ install:
 
 clean:
 	if [ -f .setup-config ]; then runhaskell Setup.hs clean; fi
-	rm -f conftest* Yi/Curses/*_hsc.[ch]
+	rm -f conftest*
 
 distclean: clean
 	rm -f yi.buildinfo testsuite/pp/logpp config.log config.cache config.status cbits/config.h .setup-config
