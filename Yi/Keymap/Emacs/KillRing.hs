@@ -78,7 +78,7 @@ killringModify f = do
 
 -- | Construct a region from its bounds
 mkRegion :: Int -> Int -> (Int, Int)
-mkRegion x y = if x < y then (x,y) else (y,x)
+mkRegion x y = if x < y then (x,y-1) else (y,x-1)
 
 -- * Killring actions
 

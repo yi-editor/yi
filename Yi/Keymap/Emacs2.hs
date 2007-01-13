@@ -254,11 +254,11 @@ gotoLine :: Action
 gotoLine = withMinibuffer "goto line:" $ \lineString -> gotoLnE (read lineString)
 
 withMinibuffer :: String -> (String -> Action) -> Action
-withMinibuffer prompt act = spawnMinibuffer prompt (rebind normalKlist "C-j" (liftC innerAction))
+withMinibuffer prompt act = spawnMinibuffer prompt (rebind normalKlist "RET" (liftC innerAction))
     -- read contents of current buffer (which should be the minibuffer), and
     -- apply it to the desired action
     where innerAction :: Action
-          innerAction = do lineString <- liftM init readAllE
+          innerAction = do lineString <- readAllE
                            closeE
                            act lineString
 
