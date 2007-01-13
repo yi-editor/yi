@@ -492,23 +492,17 @@ middleE = (withWindow $ \w _ -> return ((height w -1-1) `div` 2)) >>= downFromTo
 
 -- ---------------------------------------------------------------------
 
--- | move the point left (backwards) in the buffer. may need to scroll
+-- | move the point left (backwards) in the buffer
 leftE :: Action
 leftE = withBuffer_ $ \b -> do
-    e <- atSol b
-    if not e then moveXorSol b 1
-             else do e' <- atSof b
-                     if e' then return ()
-                           else lineUp b >> moveToEol b
+          p <- pointB b
+          moveTo b (p-1)
 
--- | move the point right (forwards) in the buffer. may need to scroll
+-- | move the point right (forwards) in the buffer
 rightE :: Action
 rightE = withBuffer_ $ \b -> do
-    e <- atEol b
-    if not e then moveXorEol b 1
-             else do e' <- atEof b
-                     if e' then return ()
-                           else lineDown b >> moveToSol b
+           p <- pointB b
+           moveTo b (p+1)
 
 -- | Move left @x@ or to start of line
 leftOrSolE :: Int -> Action
