@@ -1,4 +1,10 @@
-emacs modes should always show the modeline
+Refactorings/Frameworks:
+        - ui type class
+        - replace global var in editor state with a state monad
+        - hot swappable user interfaces
+
+Emacs modes:
+        - should always show the modeline
 
 Vim mode:
         - undo interferes with :w :q
@@ -20,25 +26,15 @@ Darcs support:
         - what interesting things can we do with integrated darcs
           support?
 
-------------------------------------------------------------------------
-
-Design plan:
-        - ui type class
-        - clean up ncurses code    
-        - replace global var in editor state with a state monad
-        - variable-size echo buffer
-
-        - hot swappable user interfaces
  
 Build system:
         - check how to install it from a port script
         - think about how to do a testsuite, unit testing
                 + icfp05/stefanw-style
 
-v0.2:
-        - line wrapping. windows need to be wrap or nowrap.
+Presentation/Rendering:
+        - windows need to be wrap or nowrap.
         - syn hl (needs parser, in bg thread)
-        - do we print '\n' at eol. what happens and eof?
 
 other stuff:
 	- compilation errors from make() go to stderr (and screw up the
@@ -46,8 +42,7 @@ other stuff:
 	- the unChanged test doesn't seem to be accurate. what's up with
 	  that?
 
-	- speed up Esc key detection, shorter delay than ncurses.
-        - bind keymap lexers to windows
+        - bind keymap lexers to buffers
         - :eval, :type, .. etc. ghci stuff
         - make the cmd line a buffer.
         - start drawing buffer before it is all loaded.
@@ -117,7 +112,3 @@ regexes:
         - how do we handle all the different editors regex languages?
             - do they have to compile down to a core regex language,
               before calling searchE?
-
-------------------------------------------------------------------------
-GUI:
-        - wolfgang has some ideas. musasabi too.
