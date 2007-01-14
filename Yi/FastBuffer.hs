@@ -29,6 +29,7 @@ module Yi.FastBuffer (FBuffer(..), BufferMode(..), FBuffer_(..)) where
 import Yi.Buffer
 import Yi.Regex
 import Yi.Undo
+import Yi.Debug
 
 import Data.Unique              ( Unique, newUnique )
 import qualified Data.Map as M
@@ -216,6 +217,7 @@ insertN' (FBuffer { rawbuf = mv }) cs cs_len =
             len = max 0 (min (end - pnt) end) -- number of chars to shift
             dst = pnt + cs_len      -- point to start
             nend = dst + len        -- new length afterwards
+        -- logPutStrLn $ "insertN' " ++ show cs ++ show pnt
         shiftChars ptr dst pnt len
         writeChars ptr cs pnt
         return (FBuffer_ ptr (shiftMarks pnt cs_len pnts) nend mx)
@@ -355,10 +357,11 @@ instance Buffer FBuffer where
     {-# INLINE readB #-}
 
     -- readAtB :: a -> Int -> IO Char
-    -- should perform a bounds check? (readAtB n on an empty buffer is unsafe)
     readAtB (FBuffer { rawbuf = mv }) off =
         withMVar mv $ \(FBuffer_ ptr _ e _) ->
-            readChars ptr 1 (inBounds off e) >>= \[c] -> return c
+            if off >= e || off < 0 
+            then return '\0' 
+            else readChars ptr 1 off >>= \[c] -> return c
 
     ------------------------------------------------------------------------
     -- TODO undo
@@ -431,7 +434,7 @@ instance Buffer FBuffer where
     -- atEol       :: a -> IO Bool -- or at end of file
     atEol a = do p <- pointB a
                  e <- sizeB a
-                 if p == max 0 (e-1)
+                 if p == e
                         then return True
                         else do c <- readB a
                                 return (c == '\n')
@@ -440,7 +443,7 @@ instance Buffer FBuffer where
     -- atEof       :: a -> IO Bool
     atEof a = do p <- pointB a
                  e <- sizeB a
-                 return (p == max 0 (e-1))
+                 return (p == e)
     {-# INLINE atEof #-}
 
     -- atSof       :: a -> IO Bool
@@ -652,10 +655,11 @@ markLeftBound = True
 
 ------------------------------------------------------------------------
 
--- | calculate whether a move is in bounds.
+-- | calculate whether a move is in bounds. 
+-- Note that one can always move to 1 char past the end of the buffer.
 inBounds :: Int -> Int -> Int
 inBounds i end | i <= 0    = 0
-               | i >= end  = max 0 (end - 1)
+               | i > end   = max 0 end
                | otherwise = i
 {-# INLINE inBounds #-}
 

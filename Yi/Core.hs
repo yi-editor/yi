@@ -534,11 +534,7 @@ insertE c = insertNE [c]
 
 -- | Insert a string
 insertNE :: String -> Action
-insertNE str = do
-    withBuffer_ $ \b -> do 
-            s  <- sizeB b
-            if s == 0 then insertN b "\n" else return ()
-            insertN b str
+insertNE str = withBuffer_ $ \b -> insertN b str
 
 -- | Delete character under cursor
 deleteE :: Action

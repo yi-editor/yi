@@ -169,7 +169,9 @@ doDrawWindow e mwin sty win = do
     markPoint <- getMarkB b
     point <- pointB b
     bufData <- nelemsB b (w*h') (tospnt win) -- read enough chars from the buffer.        
-    let (rendered,bos,cur) = drawText h' w (tospnt win) point markPoint selsty wsty bufData
+    let (rendered,bos,cur) = drawText h' w (tospnt win) point markPoint selsty wsty (bufData ++ " ")
+                             -- we always add one character which can be used to mark the end of file
+                                                                                                 
     modeLine <- if m then updateModeLine win b else return Nothing
     let modeLines = map (withStyle (modeStyle sty)) $ maybeToList $ modeLine
         modeStyle = case mwin of
@@ -207,7 +209,7 @@ drawText h w topPoint point markPoint selsty wsty bufData = (rendered, bottomPoi
         bottomPoint = case lns0 of 
                         [] -> topPoint 
                         _ -> snd $ last $ last $ lns0
-        pntpos = case [(y,x) | (y,l) <- zip [(0::Int)..] lns0, (x,(_char,p)) <- zip [(0::Int)..] l, p == point] of
+        pntpos = case [(y,x) | (y,l) <- zip [0..] lns0, (x,(_char,p)) <- zip [0..] l, p == point] of
                    [] -> (0,0)
                    (pp:_) -> pp
 

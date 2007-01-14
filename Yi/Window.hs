@@ -30,7 +30,6 @@ import Yi.Buffer
 import Yi.FastBuffer            ( FBuffer ) -- for specialisation
 import Yi.Vty
 
-import Data.Char                ( isLatin1 )
 import Data.Unique              ( Unique, newUnique )
 import Control.Monad            ( when )
 
