@@ -243,7 +243,7 @@ newWindow b = modifyEditor $ \e -> do
     let (h,w) = scrsize e
         wls   = M.elems $ windows e
         (y,r) = getY h (1 + (length wls))   -- should be h-1..
-    wls' <- resizeAll e wls y w
+    wls' <- resizeAll wls y w
     let wls'' = turnOnML wls'
     win  <- emptyWindow b (y+r,w)
     let [win'] = (if null wls then id else turnOnML) [win]
@@ -270,8 +270,8 @@ enlargeWindow (Just win) = modifyEditor_ $ \e -> do
             case getWinWithHeight wls i 1 (> 2) of
                 Nothing -> return e    -- give up
                 Just winnext -> do {
-    ;win'     <- resize (height win + 1)     x win (win2buf win e)
-    ;winnext' <- resize (height winnext -1)  x winnext (win2buf winnext e)
+    ;win'     <- resize (height win + 1)     x win
+    ;winnext' <- resize (height winnext -1)  x winnext
     ;return $ e { windows = (M.insert (key winnext') winnext' $
                               M.insert (key win') win' $ windows e) }
     }
@@ -291,8 +291,8 @@ shrinkWindow (Just win) = modifyEditor_ $ \e -> do
             case getWinWithHeight wls i 1 (< (maxy - (2 * length wls))) of
                 Nothing -> return e    -- give up
                 Just winnext -> do {
-    ;win'     <- resize (height win - 1)      x win     (win2buf win e)
-    ;winnext' <- resize (height winnext + 1)  x winnext (win2buf winnext e)
+    ;win'     <- resize (height win - 1)      x win
+    ;winnext' <- resize (height winnext + 1)  x winnext
     ;return $ e { windows = (M.insert (key winnext') winnext' $
                               M.insert (key win') win' $ windows e) }
     }
@@ -348,14 +348,14 @@ deleteWindow' e win = do
         x     = snd $ scrsize e
         (y,r) = getY ((fst $ scrsize e) - 1) (length wls) -- why -1?
 
-    wls' <- resizeAll e wls y x -- now resize
+    wls' <- resizeAll wls y x -- now resize
 
     -- now switch focus to a random window
     case wls' of
         []       -> return e { windows = M.empty }
         (win':xs) -> do
             let fm = M.fromList $ mkAssoc wls'
-            win'' <- resize (y+r) x win' (findBufferWith e (bufkey win'))
+            win'' <- resize (y+r) x win'
             let win''' = if xs == [] then win'' { mode = False } else win''
             let e' = e { windows = M.insert (key win''') win''' fm }
             setWindow' e' win'''
@@ -363,9 +363,8 @@ deleteWindow' e win = do
 ------------------------------------------------------------------------
 
 -- | Update height of windows in window set
-resizeAll :: Editor -> [Window] -> Int -> Int -> IO [Window]
-resizeAll e wls y x = flip mapM wls (\w ->
-                            resize y x w $ findBufferWith e (bufkey w))
+resizeAll :: [Window] -> Int -> Int -> IO [Window]
+resizeAll wls y x = flip mapM wls (\w -> resize y x w)
 
 -- | Reset the heights and widths of all the windows
 doResizeAll :: (Int,Int) -> IO ()
@@ -373,13 +372,13 @@ doResizeAll sz@(h,w) = modifyEditor_ $ \e -> do
     let wls   = M.elems (windows e)
         (y,r) = getY h (length wls) -- why -1?
 
-    wls'  <- mapM (doresize e w y) (init wls)
+    wls'  <- mapM (doresize w y) (init wls)
     wls'' <- let win = last wls
-             in doresize e w (y+r-1) win >>= \w' -> return (w' : wls')
+             in doresize w (y+r-1) win >>= \w' -> return (w' : wls')
 
     return e { scrsize = sz, windows = M.fromList $ mkAssoc wls'' }
 
-    where doresize e x y win = resize y x win $ findBufferWith e (bufkey win)
+    where doresize x y win = resize y x win
 
 -- | Turn on modelines of all windows
 turnOnML :: [Window] -> [Window]

@@ -175,17 +175,6 @@ deleteNW b i = do
         moveToEol b
 
 --
--- return True if we're on the last line, and there's no \n at the end
---
-noNLatEof :: Buffer a => a -> IO Bool
-noNLatEof b = do
-    p <- pointB b
-    moveToEol b
-    c  <- readB b
-    moveTo b p
-    return (c /= '\n')
-
---
 -- | return index of Sol on line @n@ above current line
 --
 indexOfSolAbove :: Buffer a => a -> Int -> IO Int
@@ -206,7 +195,7 @@ indexOfSolAbove b n = do
 -- | Adjust the window's size-related fields, assuming a new window
 -- height, and width. Now, if we know the height of the screen, and the
 -- number of lines, center the line in the screen please.
---
-resize :: Buffer a => Int -> Int -> Window -> a -> IO Window
-resize y x w b = return $ w { height = y, width = x }
+-- TODO: take this out of IO
+resize :: Int -> Int -> Window -> IO Window
+resize y x w = return $ w { height = y, width = x }
 
