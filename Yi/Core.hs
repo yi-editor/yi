@@ -494,15 +494,11 @@ middleE = (withWindow $ \w _ -> return ((height w -1-1) `div` 2)) >>= downFromTo
 
 -- | move the point left (backwards) in the buffer
 leftE :: Action
-leftE = withBuffer_ $ \b -> do
-          p <- pointB b
-          moveTo b (p-1)
+leftE = withBuffer_ leftB
 
 -- | move the point right (forwards) in the buffer
 rightE :: Action
-rightE = withBuffer_ $ \b -> do
-           p <- pointB b
-           moveTo b (p+1)
+rightE = withBuffer_ rightB
 
 -- | Move left @x@ or to start of line
 leftOrSolE :: Int -> Action
