@@ -24,6 +24,7 @@
 
 module Yi.Buffer (
         Buffer(..),
+        lineUp, lineDown, rightB, leftB, readB, deleteB, deleteN,
         Point, Size,
     ) where
 
@@ -31,8 +32,6 @@ import {-# SOURCE #-} Yi.Undo   ( URAction )
 import Yi.Regex                 ( Regex  )
 
 import Data.Unique              ( Unique )
-
-import Foreign.C.String         ( CStringLen )
 
 --
 -- | The 'Buffer' class defines editing operations over one-dimensional`
@@ -85,40 +84,17 @@ class Buffer a where
     -- | Return @n@ elems starting at @i@ of the buffer as a list
     nelemsB    :: a -> Int -> Int -> IO [Char]
 
-    -- | Return a list of pointers to @n@ C strings, starting at point
-    -- @p@. Maximum width (including tabs) must be @w@.
-    ptrToLnsB  :: a -> Int -> Int -> Int -> IO [CStringLen]
-
     ------------------------------------------------------------------------
     -- Point based operations
 
     -- | Move point in buffer to the given index
     moveTo     :: a -> Int -> IO ()
 
-    -- | Move point -1
-    leftB       :: a -> IO ()
-    leftB a     = leftN a 1
-
-    -- | Move cursor -n
-    leftN       :: a -> Int -> IO ()
-    leftN a n   = pointB a >>= \p -> moveTo a (p - n)
-
-    -- | Move cursor +1
-    rightB      :: a -> IO ()
-    rightB a    = rightN a 1
-
-    -- | Move cursor +n
-    rightN      :: a -> Int -> IO ()
-    rightN a n = pointB a >>= \p -> moveTo a (p + n)
-
     ------------------------------------------------------------------------
 
-    -- | Read the character at the current point
-    -- This is an unsafe operation, no bounds checks are performed
-    readB      :: a -> IO Char
-
     -- | Read the character at the given index
-    -- This is an unsafe operation, no bounds checks are performed
+    -- This is an unsafe operation: character NUL is returned when out of bounds
+    --
     readAtB    :: a -> Int -> IO Char
 
     -- | Write an element into the buffer at the current point
@@ -127,26 +103,10 @@ class Buffer a where
 
     ------------------------------------------------------------------------
 
-    -- | Insert the character at current point, extending size of buffer
-    insertB    :: a -> Char -> IO ()
-
     -- | Insert the list at current point, extending size of buffer
     insertN    :: a -> [Char] -> IO ()
 
     ------------------------------------------------------------------------
-
-    -- | Delete the character at current point, shrinking size of buffer
-    deleteB    :: a -> IO ()
-    deleteB a = deleteN a 1
-
-    -- | Delete @n@ characters forward from the current point
-    deleteN    :: a -> Int -> IO ()
-
-    -- | Delete @n@ characters backwards from the current point
-    -- deleteNback :: a -> Int -> IO ()
-
-    -- | Delete characters forwards to index
-    -- deleteTo    :: a -> Int -> IO ()
 
     -- | @deleteNAt b n p@ deletes @n@ characters at position @p@
     deleteNAt :: a -> Int -> Int -> IO ()
@@ -179,9 +139,6 @@ class Buffer a where
     -- | True if point at end of file
     atEof       :: a -> IO Bool
 
-    -- | True if point is on last line of the file
-    atLastLine  :: a -> IO Bool
-
     -- | Move point to start of line
     moveToSol   :: a -> IO ()
 
@@ -193,9 +150,6 @@ class Buffer a where
 
     -- | Index of end of line
     indexOfEol    :: a -> IO Int
-
-    -- | Given a point, return the point of the next line down
-    indexOfNLFrom:: a -> Int -> IO Int
 
     -- | Move point to end of line
     moveToEol   :: a -> IO ()
@@ -213,20 +167,8 @@ class Buffer a where
     -- is True
     moveAXuntil :: a -> (a -> IO ()) -> Int -> (a -> IO Bool) -> IO ()
 
-    -- | Delete (back) to start of line
-    -- deleteToSol :: a -> IO ()
-
     -- | Delete to end of line
     deleteToEol :: a -> IO ()
-
-    -- | Delete the entire line the point is in
-    -- deleteLn    :: a -> IO ()
-
-    -- | Move point up one line
-    lineUp      :: a -> IO ()
-
-    -- | Move point down one line
-    lineDown    :: a -> IO ()
 
     -- | Return the current line number
     curLn       :: a -> IO Int
@@ -256,7 +198,58 @@ class Buffer a where
     getMarkB        :: a -> IO Int
     unsetMarkB      :: a -> IO ()
 
-    ---------------------------------------------------------------------
-    -- | Width of tabs between start of line and current point
-    expandedTabLengthB :: a -> Int -> IO Int
 
+-- | Move point -1
+leftB       :: Buffer a => a -> IO ()
+leftB a     = leftN a 1
+
+-- | Move cursor -n
+leftN       :: Buffer a => a -> Int -> IO ()
+leftN a n   = pointB a >>= \p -> moveTo a (p - n)
+
+-- | Move cursor +1
+rightB      :: Buffer a => a -> IO ()
+rightB a    = rightN a 1
+
+-- | Move cursor +n
+rightN      :: Buffer a => a -> Int -> IO ()
+rightN a n = pointB a >>= \p -> moveTo a (p + n)
+
+-- ---------------------------------------------------------------------
+-- Line based movement and friends
+
+-- | Move point up one line
+
+lineUp :: Buffer a => a -> IO ()
+lineUp b = do
+    x <- offsetFromSol b
+    moveToSol b
+    leftB b
+    moveToSol b
+    moveXorEol b x
+{-# INLINE lineUp #-}
+
+-- | Move point down one line
+lineDown :: Buffer a => a -> IO ()
+lineDown b = do
+    x <- offsetFromSol b
+    moveToEol b
+    rightB b
+    moveXorEol b x
+{-# INLINE lineDown #-}
+
+
+-- | Read the character at the current point
+readB :: Buffer a => a -> IO Char
+readB b = pointB b >>= readAtB b
+
+-- | Delete the character at current point, shrinking size of buffer
+deleteB :: Buffer a => a -> IO ()
+deleteB a = deleteN a 1
+
+-- | Delete @n@ characters forward from the current point
+deleteN :: Buffer a => a -> Int -> IO ()
+deleteN _ 0 = return ()
+deleteN b n = do
+  point <- pointB b
+  deleteNAt b n point

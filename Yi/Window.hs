@@ -130,18 +130,6 @@ getPercent :: Int -> Int -> String
 getPercent a b = show p ++ "%"
     where p = ceiling ((fromIntegral a) / (fromIntegral b) * 100 :: Double) :: Int
 
--- ---------------------------------------------------------------------
--- Window actions. Some actions, such as scrolling, are just windows
--- only. 
-
-leftOrSol :: Buffer a => a -> IO ()
-leftOrSol b = moveXorSol b 1    
-
---
--- | Move the cursor right or end of line
---
-rightOrSol :: Buffer a => a -> IO ()
-rightOrSol b = moveXorEol b 1   
 
 -- ---------------------------------------------------------------------
 -- Editing operations

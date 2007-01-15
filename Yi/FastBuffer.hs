@@ -196,12 +196,6 @@ foreign import ccall unsafe "YiUtils.h countLines"
 foreign import ccall unsafe "YiUtils.h findStartOfLineN"
    cfindStartOfLineN :: Ptr CChar -> Int -> Int -> Int -> IO Int
 
-foreign import ccall unsafe "YiUtils.h expandedLengthOfStr"
-   cexpandedTabLength :: Ptr CChar -> Int -> Int -> Int -> IO Int
-
-foreign import ccall unsafe "YiUtils.h strlenWithExpandedLengthN"
-   cfindlength :: Ptr CChar -> Int -> Int -> Int -> Int -> IO Int
-
 ------------------------------------------------------------------------
 
 -- May need to resize buffer. How do we append to eof?
@@ -328,20 +322,6 @@ instance Buffer FBuffer where
                 n' = min (e-i') n
             readChars b n' i'
 
-    -- ptrToLnsB  :: a -> Int -> Int -> Int -> IO [CStringLen]
-    ptrToLnsB (FBuffer { rawbuf = mv }) i' len width =
-        withMVar mv $ \(FBuffer_ ptr _ e _) -> do
-            let i = inBounds i' e
-                loop 0 _ = return []
-                loop n j | j >= e    = return []
-                         | otherwise = do
-                            let this = ptr `advancePtr` j -- new line
-                            off  <- cfindStartOfLineN this 0 (max 0 (e - j)) 1
-                            size <- cfindlength this 0 off 8{-tab-} width
-                            ptrs <- loop (n-1) (j+off)
-                            return ((this,size) : ptrs)
-            loop len i
-
     ------------------------------------------------------------------------
 
     -- moveTo     :: a -> Int -> IO ()
@@ -350,11 +330,6 @@ instance Buffer FBuffer where
             return $ FBuffer_ ptr (M.insert 0 (inBounds i end, pointLeftBound) pnts) end mx
     {-# INLINE moveTo #-}
 
-    -- readB      :: a -> IO Char
-    readB (FBuffer { rawbuf = mv }) =
-        withMVar mv $ \(FBuffer_ ptr pnts _ _) ->
-            readChars ptr 1 (fst $ pnts M.! 0) >>= \[c] -> return c
-    {-# INLINE readB #-}
 
     -- readAtB :: a -> Int -> IO Char
     readAtB (FBuffer { rawbuf = mv }) off =
@@ -380,9 +355,6 @@ instance Buffer FBuffer where
 
     ------------------------------------------------------------------------
 
-    -- insertB :: a -> Char -> IO ()
-    insertB a c = insertN a [c]
-
     -- insertN :: a -> [Char] -> IO ()
     insertN  _ [] = return ()
     insertN fb@(FBuffer { undos = uv, rawbuf = mv}) cs = do
@@ -391,16 +363,6 @@ instance Buffer FBuffer where
             pnt = fst $ pnts M.! 0
         modifyMVar_ uv $ \ur -> return $ addUR ur (mkDelete pnt cs_len)
         insertN' fb cs cs_len
-
-    ------------------------------------------------------------------------
-    -- deleteB    :: a -> IO ()
-    deleteB a = deleteN a 1
-
-    -- deleteN    :: a -> Int -> IO ()
-    deleteN _ 0 = return ()
-    deleteN b n = do
-        point <- pointB b
-        deleteNAt b n point
 
     -- deleteNAt :: a -> Int -> Int -> IO ()
     deleteNAt _ 0 _ = return ()
@@ -436,7 +398,7 @@ instance Buffer FBuffer where
                  e <- sizeB a
                  if p == e
                         then return True
-                        else do c <- readB a
+                        else do c <- readAtB a p
                                 return (c == '\n')
     {-# INLINE atEol #-}
 
@@ -450,15 +412,6 @@ instance Buffer FBuffer where
     atSof a = do p <- pointB a
                  return (p == 0)
     {-# INLINE atSof #-}
-
-    -- atLastLine  :: a -> IO Bool
-    atLastLine b = do
-            p <- pointB b
-            moveToEol b
-            e <- atEof b
-            moveTo b p
-            return e
-    {-# INLINE atLastLine #-}
 
     ------------------------------------------------------------------------
 
@@ -507,15 +460,6 @@ instance Buffer FBuffer where
         return j
     {-# INLINE indexOfEol #-}
 
-    -- indexOfNLFrom :: a -> Int -> IO Int
-    indexOfNLFrom b i = do
-        p <- pointB b
-        moveTo b i
-        lineDown b
-        q <- pointB b
-        moveTo b p
-        return q
-    {-# INLINE indexOfNLFrom #-}
 
     -- moveAXuntil :: a -> (a -> IO ()) -> Int -> (a -> IO Bool) -> IO ()
     -- will be slow on long lines...
@@ -535,31 +479,11 @@ instance Buffer FBuffer where
         p <- pointB b
         moveToEol b
         q <- pointB b
-        c <- readB b
+        c <- readAtB b q
         let r = fromEnum $ c /= '\n' -- correct for eof
         moveTo b p
-        deleteN b (max 0 (q-p+r))
+        deleteNAt b (max 0 (q-p+r)) p
     {-# INLINE deleteToEol #-}
-
-    -- ---------------------------------------------------------------------
-    -- Line based movement and friends
-
-    -- lineUp :: a -> IO ()
-    lineUp b = do
-        x <- offsetFromSol b
-        moveToSol b
-        leftB b
-        moveToSol b
-        moveXorEol b x
-    {-# INLINE lineUp #-}
-
-    -- lineDown :: a -> IO ()
-    lineDown b = do
-        x <- offsetFromSol b
-        moveToEol b
-        rightB b
-        moveXorEol b x
-    {-# INLINE lineDown #-}
 
     ------------------------------------------------------------------------
 
@@ -640,14 +564,6 @@ instance Buffer FBuffer where
 	unsetMarkFun :: FBuffer_ -> IO FBuffer_
 	unsetMarkFun fb = return $ fb { marks = (M.delete 1 (marks fb)) }
 
-
-    -- ------------------------------------------------------------------------
-
-    expandedTabLengthB b@(FBuffer { rawbuf = mv }) width = do
-        i <- indexOfSol b
-        withMVar mv $ \(FBuffer_ ptr pnts _ _) -> do
-            let j = fst $ pnts M.! 0
-            cexpandedTabLength ptr i j width
 
 pointLeftBound, markLeftBound :: Bool
 pointLeftBound = False
