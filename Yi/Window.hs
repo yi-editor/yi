@@ -31,7 +31,6 @@ import Yi.FastBuffer            ( FBuffer ) -- for specialisation
 import Yi.Vty
 
 import Data.Unique              ( Unique, newUnique )
-import Control.Monad            ( when )
 
 --
 -- | A window onto a buffer.
@@ -133,34 +132,6 @@ getPercent a b = show p ++ "%"
 
 -- ---------------------------------------------------------------------
 -- Editing operations
-
-    
---
--- | Delete character. Don't move point unless at EOF
---
--- In vi, you can't delete past the sol, here however, you can keep
--- deleteing till you have an empty file.
---
--- TODO think about end of file situation.
---
-deleteNW :: Buffer a => a -> Int -> IO ()
-deleteNW b i = do
-
-    -- delete up to eof chars
-    when (i > 1) $ do
-        rightB b
-        deleteN b (i-1)
-        eof <- atEof b
-        when (not eof) $ leftB b
-
-    sof <- atSof b
-    eof <- atEof b  -- are we going to del eof
-    sol <- atSol b  -- and we're not on the same line?
-
-    deleteB b
-
-    when (eof && sol && not sof) $
-        moveToEol b
 
 --
 -- | return index of Sol on line @n@ above current line

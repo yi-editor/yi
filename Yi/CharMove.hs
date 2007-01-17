@@ -409,7 +409,7 @@ wordCompleteE = do
     replaceLeftWith buf s = do
         (_,b,a) <- readWordLeft_ buf     -- back at start
         moveTo buf b
-        deleteNW buf (a-b)
+        deleteN buf (a-b)
         insertN buf s
 
     --

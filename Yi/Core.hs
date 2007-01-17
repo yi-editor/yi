@@ -534,11 +534,11 @@ insertNE str = withBuffer_ $ \b -> insertN b str
 
 -- | Delete character under cursor
 deleteE :: Action
-deleteE = withBuffer_ $ \b -> deleteNW b 1
+deleteE = withBuffer_ $ \b -> deleteN b 1
 
 -- | Delete @n@ characters from under the cursor
 deleteNE :: Int -> Action
-deleteNE i = withBuffer_ $ \b -> deleteNW b i
+deleteNE i = withBuffer_ $ \b -> deleteN b i
 
 -- | Kill to end of line
 killE :: Action
