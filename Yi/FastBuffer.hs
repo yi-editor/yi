@@ -311,10 +311,6 @@ instance Buffer FBuffer where
 
     ------------------------------------------------------------------------
 
-    -- elemsB     :: a -> IO [Char]
-    elemsB (FBuffer { rawbuf = mv }) =
-        withMVar mv $ \(FBuffer_ b _ n _) -> readChars b n 0
-
     -- nelemsB    :: a -> Int -> Int -> IO [Char]
     nelemsB (FBuffer { rawbuf = mv }) n i =
         withMVar mv $ \(FBuffer_ b _ e _) -> do
@@ -330,13 +326,6 @@ instance Buffer FBuffer where
             return $ FBuffer_ ptr (M.insert 0 (inBounds i end, pointLeftBound) pnts) end mx
     {-# INLINE moveTo #-}
 
-
-    -- readAtB :: a -> Int -> IO Char
-    readAtB (FBuffer { rawbuf = mv }) off =
-        withMVar mv $ \(FBuffer_ ptr _ e _) ->
-            if off >= e || off < 0 
-            then return '\0' 
-            else readChars ptr 1 off >>= \[c] -> return c
 
     ------------------------------------------------------------------------
     -- TODO undo
@@ -383,35 +372,6 @@ instance Buffer FBuffer where
     redo fb@(FBuffer { undos = mv }) = modifyMVar_ mv (redoUR fb)
 
     getActionB = getActionFB
-
-    ------------------------------------------------------------------------
-
-    -- atSol       :: a -> IO Bool -- or at start of file
-    atSol a = do p <- pointB a
-                 if p == 0 then return True
-                           else do c <- readAtB a (p-1)
-                                   return (c == '\n')
-    {-# INLINE atSol #-}
-
-    -- atEol       :: a -> IO Bool -- or at end of file
-    atEol a = do p <- pointB a
-                 e <- sizeB a
-                 if p == e
-                        then return True
-                        else do c <- readAtB a p
-                                return (c == '\n')
-    {-# INLINE atEol #-}
-
-    -- atEof       :: a -> IO Bool
-    atEof a = do p <- pointB a
-                 e <- sizeB a
-                 return (p == e)
-    {-# INLINE atEof #-}
-
-    -- atSof       :: a -> IO Bool
-    atSof a = do p <- pointB a
-                 return (p == 0)
-    {-# INLINE atSof #-}
 
     ------------------------------------------------------------------------
 

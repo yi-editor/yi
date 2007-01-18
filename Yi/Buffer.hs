@@ -24,7 +24,8 @@
 
 module Yi.Buffer (
         Buffer(..),
-        lineUp, lineDown, rightB, leftB, readB, deleteB, deleteN, deleteToEol,
+        lineUp, lineDown, rightB, leftB, readB, deleteB, deleteN, deleteToEol, elemsB, readAtB,
+        atSol, atSof, atEol, atEof, 
         Point, Size,
     ) where
 
@@ -78,9 +79,6 @@ class Buffer a where
     -- | Extract the current point
     pointB     :: a -> IO Int
 
-    -- | Return the contents of the buffer as a list
-    elemsB     :: a -> IO [Char]
-
     -- | Return @n@ elems starting at @i@ of the buffer as a list
     nelemsB    :: a -> Int -> Int -> IO [Char]
 
@@ -91,11 +89,6 @@ class Buffer a where
     moveTo     :: a -> Int -> IO ()
 
     ------------------------------------------------------------------------
-
-    -- | Read the character at the given index
-    -- This is an unsafe operation: character NUL is returned when out of bounds
-    --
-    readAtB    :: a -> Int -> IO Char
 
     -- | Write an element into the buffer at the current point
     -- This is an unsafe operation, no bounds checks are performed
@@ -126,18 +119,6 @@ class Buffer a where
 
     ------------------------------------------------------------------------
     -- Line based editing
-
-    -- | Return true if the current point is the start of a line
-    atSol       :: a -> IO Bool
-
-    -- | Return true if the current point is the end of a line
-    atEol       :: a -> IO Bool
-
-    -- | True if point at start of file
-    atSof       :: a -> IO Bool
-
-    -- | True if point at end of file
-    atEof       :: a -> IO Bool
 
     -- | Move point to start of line
     moveToSol   :: a -> IO ()
@@ -236,9 +217,23 @@ lineDown b = do
 {-# INLINE lineDown #-}
 
 
+-- | Return the contents of the buffer as a list
+elemsB ::  Buffer a => a -> IO [Char]
+elemsB b = do n <- sizeB b
+              nelemsB b n 0
+
 -- | Read the character at the current point
 readB :: Buffer a => a -> IO Char
 readB b = pointB b >>= readAtB b
+
+-- | Read the character at the given index
+-- This is an unsafe operation: character NUL is returned when out of bounds
+readAtB :: Buffer a => a -> Int -> IO Char
+readAtB b i = do
+    s <- nelemsB b 1 i
+    return $ case s of
+               [c] -> c
+               _ -> '\0'
 
 -- | Delete the character at current point, shrinking size of buffer
 deleteB :: Buffer a => a -> IO ()
@@ -259,4 +254,36 @@ deleteToEol b = do
     q <- pointB b
     deleteNAt b (q-p) p
 
+
+
 ------------------------------------------------------------------------
+
+-- | Return true if the current point is the start of a line
+atSol ::  Buffer a => a -> IO Bool
+atSol a = do p <- pointB a
+             if p == 0 then return True
+                       else do c <- readAtB a (p-1)
+                               return (c == '\n')
+
+-- | Return true if the current point is the end of a line
+atEol ::  Buffer a => a -> IO Bool
+atEol a = do p <- pointB a
+             e <- sizeB a
+             if p == e
+                    then return True
+
+                    else do c <- readAtB a p
+                            return (c == '\n')
+
+-- | True if point at start of file
+atSof ::  Buffer a => a -> IO Bool
+atSof a = do p <- pointB a
+             return (p == 0)
+
+-- | True if point at end of file
+atEof :: Buffer a => a -> IO Bool
+atEof a = do p <- pointB a
+             e <- sizeB a
+             return (p == e)
+
+
