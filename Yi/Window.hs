@@ -155,6 +155,6 @@ indexOfSolAbove b n = do
 -- height, and width. Now, if we know the height of the screen, and the
 -- number of lines, center the line in the screen please.
 -- TODO: take this out of IO
-resize :: Int -> Int -> Window -> IO Window
-resize y x w = return $ w { height = y, width = x }
+resize :: Int -> Int -> Window -> Window
+resize y x w = w { height = y, width = x }
 
