@@ -158,3 +158,5 @@ indexOfSolAbove b n = do
 resize :: Int -> Int -> Window -> Window
 resize y x w = w { height = y, width = x }
 
+
+

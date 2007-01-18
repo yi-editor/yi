@@ -931,7 +931,7 @@ nextBufW = do
     w <- getWindow
     b <- Editor.nextBuffer
     deleteWindow w         -- !! don't delete window before getting the next buffer
-    w' <- Editor.newWindow b
+    w' <- UI.newWindow b
     Editor.setWindow w'
 
 -- | edit the previous buffer in the buffer list
@@ -939,7 +939,7 @@ prevBufW :: Action
 prevBufW = do
     b <- Editor.prevBuffer
     getWindow >>= deleteWindow
-    w' <- newWindow b
+    w' <- UI.newWindow b
     setWindow w'
 
 -- | If file exists, read contents of file into a new buffer, otherwise
@@ -955,7 +955,7 @@ fnewE f = do
     b  <- if e then hNewBuffer f else stringToNewBuffer f []
     setfileB b f        -- and associate with file f
     deleteThisWindow
-    w <- newWindow b
+    w <- UI.newWindow b
     Editor.setWindow w
 
 -- | Like fnewE, create a new buffer filled with the String @s@,
@@ -967,7 +967,7 @@ newBufferE f s = do
     b <- stringToNewBuffer f s
     splitE
     deleteThisWindow
-    w <- newWindow b
+    w <- UI.newWindow b
     Editor.setWindow w
 
 -- | Write current buffer to disk, if this buffer is associated with a file
@@ -1048,16 +1048,16 @@ splitE = do
     case mw of
         Nothing -> nopE
         Just w  -> do b <- getBufferWith (bufkey w)
-                      w' <- newWindow b
+                      w' <- UI.newWindow b
                       Editor.setWindow w'
 
 -- | Enlarge the current window
 enlargeWinE :: Action
-enlargeWinE = getWindow >>= enlargeWindow
+enlargeWinE = getWindow >>= UI.enlargeWindow
 
 -- | Shrink the current window
 shrinkWinE :: Action
-shrinkWinE = getWindow >>= shrinkWindow
+shrinkWinE = getWindow >>= UI.shrinkWindow
 
 -- | Close the current window.
 -- If this is the last window open, quit the program. TODO this

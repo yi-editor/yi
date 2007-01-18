@@ -35,6 +35,7 @@ import Data.Maybe
 import Data.List
 import Data.Dynamic
 import qualified Data.Map as M
+import qualified Yi.UI as UI  -- FIXME this module should not depend on UI
 
 import Control.Monad.Writer
 import Control.Monad.State
@@ -52,7 +53,7 @@ data MiniBuf = forall a. Buffer a => MiniBuf Window a
 
 instance Initializable MiniBuf where
     initial = do b <- stringToNewBuffer "*minibuf*" []
-                 w <- newWindow b
+                 w <- UI.newWindow b
                  return $ MiniBuf w b
 
 

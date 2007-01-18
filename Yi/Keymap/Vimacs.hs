@@ -35,6 +35,7 @@ module Yi.Keymap.Vimacs ( keymap ) where
 import Yi.Editor hiding     ( keymap )
 import Yi.Yi hiding         ( keymap, meta, string )
 import Yi.Window
+import qualified Yi.UI as UI  -- FIXME this module should not depend on UI
 import Yi.Buffer
 import qualified Yi.Style as Style
 
@@ -71,7 +72,7 @@ data MiniBuf = forall a. Buffer a => MiniBuf Window a
 
 instance Initializable MiniBuf where
     initial = do b <- stringToNewBuffer "*minibuf*" []
-                 w <- newWindow b
+                 w <- UI.newWindow b
                  return $ MiniBuf w b
 
 
