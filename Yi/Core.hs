@@ -542,7 +542,7 @@ deleteNE i = withBuffer_ $ \b -> deleteN b i
 
 -- | Kill to end of line
 killE :: Action
-killE = withBuffer_ deleteToEol -- >>= Buffer.prevXorLn 1
+killE = withBuffer_ deleteToEol
 
 -- | Delete an arbitrary part of the buffer
 deleteRegionE :: (Int,Int) -> IO ()

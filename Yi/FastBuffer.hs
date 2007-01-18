@@ -474,19 +474,6 @@ instance Buffer FBuffer where
 
     ------------------------------------------------------------------------
 
-    -- deleteToEol :: a -> IO ()
-    deleteToEol b = do
-        p <- pointB b
-        moveToEol b
-        q <- pointB b
-        c <- readAtB b q
-        let r = fromEnum $ c /= '\n' -- correct for eof
-        moveTo b p
-        deleteNAt b (max 0 (q-p+r)) p
-    {-# INLINE deleteToEol #-}
-
-    ------------------------------------------------------------------------
-
     -- count number of \n from origin to point
     -- curLn :: a -> IO Int
     curLn (FBuffer { rawbuf = mv }) = withMVar mv $ \(FBuffer_ ptr pnts _ _) ->

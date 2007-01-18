@@ -24,7 +24,7 @@
 
 module Yi.Buffer (
         Buffer(..),
-        lineUp, lineDown, rightB, leftB, readB, deleteB, deleteN,
+        lineUp, lineDown, rightB, leftB, readB, deleteB, deleteN, deleteToEol,
         Point, Size,
     ) where
 
@@ -167,9 +167,6 @@ class Buffer a where
     -- is True
     moveAXuntil :: a -> (a -> IO ()) -> Int -> (a -> IO Bool) -> IO ()
 
-    -- | Delete to end of line
-    deleteToEol :: a -> IO ()
-
     -- | Return the current line number
     curLn       :: a -> IO Int
 
@@ -253,3 +250,13 @@ deleteN _ 0 = return ()
 deleteN b n = do
   point <- pointB b
   deleteNAt b n point
+
+-- | Delete to the end of line, excluding it.
+deleteToEol :: Buffer a => a -> IO ()
+deleteToEol b = do
+    p <- pointB b
+    moveToEol b
+    q <- pointB b
+    deleteNAt b (q-p) p
+
+------------------------------------------------------------------------
