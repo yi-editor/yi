@@ -25,12 +25,14 @@
 module Yi.Buffer (
         Buffer(..),
         lineUp, lineDown, rightB, leftB, readB, deleteB, deleteN, deleteToEol, elemsB, readAtB,
-        atSol, atSof, atEol, atEof, 
+        atSol, atSof, atEol, atEof,
+        indexOfSol, indexOfEol, moveToSol, moveToEol, offsetFromSol, gotoLnFrom, moveXorEol, moveXorSol, 
         Point, Size,
     ) where
 
 import {-# SOURCE #-} Yi.Undo   ( URAction )
 import Yi.Regex                 ( Regex  )
+import Control.Monad            ( when )
 
 import Data.Unique              ( Unique )
 
@@ -120,34 +122,6 @@ class Buffer a where
     ------------------------------------------------------------------------
     -- Line based editing
 
-    -- | Move point to start of line
-    moveToSol   :: a -> IO ()
-
-    -- | Offset from start of line
-    offsetFromSol :: a -> IO Int
-
-    -- | Index of start of line
-    indexOfSol    :: a -> IO Int
-
-    -- | Index of end of line
-    indexOfEol    :: a -> IO Int
-
-    -- | Move point to end of line
-    moveToEol   :: a -> IO ()
-
-    -- | Move @x@ chars back, or to the sol, whichever is less
-    moveXorSol  :: a -> Int -> IO ()
-    moveXorSol a x = moveAXuntil a leftB x atSol
-
-    -- | Move @x@ chars forward, or to the eol, whichever is less
-    moveXorEol  :: a -> Int -> IO ()
-    moveXorEol a x = moveAXuntil a rightB x atEol
-
-    -- Move using the direction specified by the 2nd argument, until
-    -- either we've moved @n@, the 3rd argument, or @p@ the 4th argument
-    -- is True
-    moveAXuntil :: a -> (a -> IO ()) -> Int -> (a -> IO Bool) -> IO ()
-
     -- | Return the current line number
     curLn       :: a -> IO Int
 
@@ -155,11 +129,6 @@ class Buffer a where
     -- actual line we went to (which may be not be the requested line,
     -- if it was out of range)
     gotoLn      :: a -> Int -> IO Int
-
-    --
-    -- | Go to line indexed from current point
-    --
-    gotoLnFrom  :: a -> Int -> IO Int
 
     ---------------------------------------------------------------------
 
@@ -285,5 +254,74 @@ atEof :: Buffer a => a -> IO Bool
 atEof a = do p <- pointB a
              e <- sizeB a
              return (p == e)
+
+
+-- | Offset from start of line
+offsetFromSol :: Buffer a => a -> IO Int
+offsetFromSol a = do
+    i <- pointB a
+    moveToSol a
+    j <- pointB a
+    moveTo a i
+    return (i - j)
+{-# INLINE offsetFromSol #-}
+
+-- | Index of start of line
+indexOfSol :: Buffer a => a -> IO Int
+indexOfSol a = do
+    i <- pointB a
+    j <- offsetFromSol a
+    return (i - j)
+{-# INLINE indexOfSol #-}
+
+-- | Index of end of line
+indexOfEol :: Buffer a => a -> IO Int
+indexOfEol a = do
+    i <- pointB a
+    moveToEol a
+    j <- pointB a
+    moveTo a i
+    return j
+{-# INLINE indexOfEol #-}
+
+
+-- | Move using the direction specified by the 2nd argument, until
+-- either we've moved @n@, the 3rd argument, or @p@ the 4th argument
+-- is True
+moveAXuntil :: Buffer a => a -> (a -> IO ()) -> Int -> (a -> IO Bool) -> IO ()
+moveAXuntil b f x p
+    | x <= 0    = return ()
+    | otherwise = do -- will be slow on long lines...
+        let loop 0 = return ()
+            loop i = do r <- p b
+                        when (not r) $ f b >> loop (i-1)
+        loop x
+{-# INLINE moveAXuntil #-}
+
+-- | Move @x@ chars back, or to the sol, whichever is less
+moveXorSol  :: Buffer a => a -> Int -> IO ()
+moveXorSol a x = moveAXuntil a leftB x atSol
+
+-- | Move @x@ chars forward, or to the eol, whichever is less
+moveXorEol  :: Buffer a => a -> Int -> IO ()
+moveXorEol a x = moveAXuntil a rightB x atEol
+
+
+-- | Go to line indexed from current point
+gotoLnFrom :: Buffer a => a -> Int -> IO Int
+gotoLnFrom b x = do 
+  l <- curLn b 
+  gotoLn b (x+l)
+  return (x+l)
+
+
+-- | Move point to start of line
+moveToSol :: Buffer a =>  a -> IO ()
+moveToSol b = sizeB b >>= moveXorSol b  
+
+-- | Move point to end of line
+moveToEol :: Buffer a => a -> IO ()
+moveToEol b = sizeB b >>= moveXorEol b 
+
 
 

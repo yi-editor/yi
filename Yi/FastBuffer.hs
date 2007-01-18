@@ -34,7 +34,6 @@ import Yi.Debug
 import Data.Unique              ( Unique, newUnique )
 import qualified Data.Map as M
 
-import Control.Monad            ( when )
 import Control.Exception        ( assert )
 import Control.Concurrent.MVar
 
@@ -375,65 +374,6 @@ instance Buffer FBuffer where
 
     ------------------------------------------------------------------------
 
-    -- moveToSol   :: a -> IO ()
-    -- optimised. crucial for long lines
-    -- moveToSol a = sizeB a >>= moveXorSol a
-    moveToSol (FBuffer { rawbuf = mv }) =
-        modifyMVar_ mv $ \(FBuffer_ ptr pnts end mx) -> do
-            let p = fst $ pnts M.! 0
-            off <- cfindStartOfLineN ptr p 0 (-1)
-            return $ FBuffer_ ptr (M.insert 0 (inBounds (p + off) end, pointLeftBound) pnts) end mx
-    {-# INLINE moveToSol #-}
-
-    -- moveToEol   :: a -> IO ()
-    -- optimised. crucial for long lines
-    --  was:     moveToEol a = sizeB a >>= moveXorEol a
-    moveToEol (FBuffer { rawbuf = mv }) =
-        modifyMVar_ mv $ \(FBuffer_ ptr pnts end mx) -> do
-            let p = fst $ pnts M.! 0
-            off <- cfindStartOfLineN ptr p end 1 -- next line
-            return $ FBuffer_ ptr (M.insert 0 (inBounds (p+off-1) end, pointLeftBound) pnts) end mx
-    {-# INLINE moveToEol #-}
-
-    -- offsetFromSol :: a -> IO Int
-    offsetFromSol a = do
-        i <- pointB a
-        moveToSol a
-        j <- pointB a
-        moveTo a i
-        return (i - j)
-    {-# INLINE offsetFromSol #-}
-
-    -- indexOfSol   :: a -> IO Int
-    indexOfSol a = do
-        i <- pointB a
-        j <- offsetFromSol a
-        return (i - j)
-    {-# INLINE indexOfSol #-}
-
-    -- indexOfEol   :: a -> IO Int
-    indexOfEol a = do
-        i <- pointB a
-        moveToEol a
-        j <- pointB a
-        moveTo a i
-        return j
-    {-# INLINE indexOfEol #-}
-
-
-    -- moveAXuntil :: a -> (a -> IO ()) -> Int -> (a -> IO Bool) -> IO ()
-    -- will be slow on long lines...
-    moveAXuntil b f x p
-        | x <= 0    = return ()
-        | otherwise = do
-            let loop 0 = return ()
-                loop i = do r <- p b
-                            when (not r) $ f b >> loop (i-1)
-            loop x
-    {-# INLINE moveAXuntil #-}
-
-    ------------------------------------------------------------------------
-
     -- count number of \n from origin to point
     -- curLn :: a -> IO Int
     curLn (FBuffer { rawbuf = mv }) = withMVar mv $ \(FBuffer_ ptr pnts _ _) ->
@@ -450,16 +390,6 @@ instance Buffer FBuffer where
                   else return n         -- else it is this line
             return (fb, max 1 n')
     {-# INLINE gotoLn #-}
-
-    -- gotoLnFrom :: a -> Int -> IO Int
-    gotoLnFrom (FBuffer { rawbuf = mv }) n =
-        modifyMVar mv $ \(FBuffer_ ptr pnts e mx) -> do
-            let p = fst $ pnts M.! 0
-            off <- cfindStartOfLineN ptr p (if n < 0 then 0 else (e-1)) n
-            let fb = FBuffer_ ptr (M.insert 0 (p + off, pointLeftBound) pnts) e mx
-            ln <- return . subtract 1 =<< ccountLines ptr 0 (p+off) -- end of file
-            return (fb, max 1 ln)
-    {-# INLINE gotoLnFrom #-}
 
     -- ---------------------------------------------------------------------
 
