@@ -48,7 +48,7 @@ newtype TypedKey = TypedKey [Event]
 instance Initializable TypedKey where
     initial = return $ TypedKey []
 
-data MiniBuf = forall a. Buffer a => MiniBuf Window a
+data MiniBuf = MiniBuf Window FBuffer
     deriving Typeable
 
 instance Initializable MiniBuf where

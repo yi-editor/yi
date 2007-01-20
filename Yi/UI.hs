@@ -236,7 +236,7 @@ withStyle sty str = zip str (repeat (styleToAttr sty))
 -- Top of screen of other windows needs to get adjusted
 -- As does their modeslines.
 --
-newWindow :: Buffer a => a -> IO Window
+newWindow :: FBuffer -> IO Window
 newWindow b = modifyEditor $ \e -> do
     let (h,w) = scrsize e
         wls   = M.elems $ windows e

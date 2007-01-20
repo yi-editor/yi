@@ -72,10 +72,7 @@ module Yi.Undo (
         URAction(..),       {- non-abstractly, for concrete implementations -}
    ) where
 
-import Yi.Buffer                ( Point, Size, Buffer(getActionB) )
-
-import Foreign.C.Types          ( CChar )
-import Foreign.ForeignPtr       ( ForeignPtr )
+import Yi.FastBuffer            
 
 --
 -- | A URList consists of an undo and a redo list.
@@ -91,7 +88,7 @@ data URList = URList ![URAction] ![URAction]
 -- The state (i.e. editor contents) are stored CChars, this has
 -- implications for Unicode.
 --
-data URAction = Insert !Point !Size !(ForeignPtr CChar)
+data URAction = Insert !Point !String -- FIXME: use ByteString
               | Delete !Point !Size
       --      | Boundary
 
@@ -110,9 +107,8 @@ addUR (URList us _rs) u =
 
 --
 -- | Undo the last action that mutated the buffer contents. The action's
--- inverse is added to the redo list. How to convert an abstract action
--- into its concrete implementation is very Buffer-dependent.
-undoUR :: Buffer a => a -> URList -> IO URList
+-- inverse is added to the redo list. 
+undoUR :: FBuffer_ -> URList -> IO URList
 undoUR _ u@(URList [] _) = return u
 undoUR b (URList (u:us) rs) = do
     r <- (getActionB u) b
@@ -121,7 +117,7 @@ undoUR b (URList (u:us) rs) = do
 --
 -- | Redo the last action that mutated the buffer contents. The action's
 -- inverse is added to the undo list.
-redoUR :: Buffer a => a -> URList -> IO URList
+redoUR :: FBuffer_ -> URList -> IO URList
 redoUR _ u@(URList _ []) = return u
 redoUR b (URList us (r:rs)) = do
     u <- (getActionB r) b
@@ -137,3 +133,22 @@ isEmptyUList (URList _  _) = False
 -- | Add an undo `boundary', for save-points and the like
 addBoundary :: URList -> URList
 addBoundary = undefined
+
+
+
+-- | Given a URAction, apply it to the buffer, and return the
+-- URAction that reverses it.
+--
+getActionB :: URAction -> FBuffer_ -> IO URAction
+getActionB (Delete p n) b = do
+    moveToI b p
+    p' <- pointBI b
+    text <- nelemsBI b n p'
+    deleteNAtI b n p'
+    return $ Insert p' text
+
+getActionB (Insert p cs) b = do
+    moveToI b p
+    insertNI b cs
+    return $ Delete p (length cs)
+

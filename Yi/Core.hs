@@ -420,7 +420,7 @@ getPointE = withBuffer pointB
 getLineAndColE :: IO (Int, Int)
 getLineAndColE = 
     withBuffer lineAndColumn
-    where lineAndColumn :: Buffer a => a -> IO (Int, Int)
+    where lineAndColumn :: FBuffer -> IO (Int, Int)
 	  lineAndColumn b = 
 	      do lineNo <- curLn b
 		 colNo  <- offsetFromSol b

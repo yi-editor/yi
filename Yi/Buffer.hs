@@ -1,4 +1,4 @@
---
+ --
 -- Copyright (C) 2004 Don Stewart - http://www.cse.unsw.edu.au/~dons
 --
 -- This program is free software; you can redistribute it and/or
@@ -22,144 +22,200 @@
 -- cursor movement and editing commands
 --
 
-module Yi.Buffer (
-        Buffer(..),
-        lineUp, lineDown, rightB, leftB, readB, deleteB, deleteN, deleteToEol, elemsB, readAtB,
-        atSol, atSof, atEol, atEof,
-        indexOfSol, indexOfEol, moveToSol, moveToEol, offsetFromSol, gotoLnFrom, moveXorEol, moveXorSol, 
-        Point, Size,
-    ) where
+module Yi.Buffer where
 
-import {-# SOURCE #-} Yi.Undo   ( URAction )
 import Yi.Regex                 ( Regex  )
 import Control.Monad            ( when )
+import Yi.FastBuffer
+import Yi.Undo
 
-import Data.Unique              ( Unique )
+import Data.Unique              ( newUnique, Unique )
+import Control.Concurrent.MVar
+
 
 --
 -- | The 'Buffer' class defines editing operations over one-dimensional`
 -- mutable buffers, which maintain a current /point/.
 --
 
-type Point = Int
-type Size  = Int
+type Point = Yi.FastBuffer.Point --  to re-export.
 
-class Buffer a where
+data BufferMode = ReadOnly | ReadWrite
 
-    -- | Construct a new buffer initialised with the supplied name and list
-    newB  :: FilePath -> [Char] -> IO a
+data FBuffer =
+        FBuffer { name   :: !String           -- immutable buffer name
+                , bkey   :: !Unique           -- immutable unique key
+                , file   :: !(MVar (Maybe FilePath)) -- maybe a filename associated with this buffer
+                , undos  :: !(MVar URList)      -- undo/redo list
+                , rawbuf :: !FBuffer_
+                , bmode  :: !(MVar BufferMode)  -- a read-only bit
+                }
 
-    -- | Free any resources associated with this buffer
-    finaliseB :: a -> IO ()
+instance Eq FBuffer where
+   FBuffer { bkey = u } == FBuffer { bkey = v } = u == v
 
-    -- | Construct a new buffer filled with contents of file
-    hNewB :: FilePath -> IO a
+instance Show FBuffer where
+    showsPrec _ (FBuffer { name = f }) = showString $ "\"" ++ f ++ "\""
 
-    -- | Write buffer into file
-    hPutB :: a -> FilePath -> IO ()
+lift :: (FBuffer_ -> x) -> (FBuffer -> x)
+lift f = \b -> f (rawbuf b)
 
-    -- | String name of this buffer
-    nameB :: a -> String
+hNewB :: FilePath -> IO FBuffer
+hNewB nm = do s <- readFile nm
+              b <- newB nm s
+              setfileB b nm
+              return b
 
-    -- | Name of file associated with this buffer
-    getfileB :: a -> IO (Maybe FilePath)
+hPutB :: FBuffer -> FilePath -> IO ()
+hPutB b nm = elemsB b >>= writeFile nm
 
-    -- | Set the name of the file associated with this buffer
-    setfileB :: a -> FilePath -> IO ()
+nameB :: FBuffer -> String
+nameB (FBuffer { name = n }) = n
 
-    -- | Unique key of this buffer
-    keyB :: a -> Unique
+getfileB :: FBuffer -> IO (Maybe FilePath)
+getfileB (FBuffer { file = mvf }) = readMVar mvf
 
-    ------------------------------------------------------------------------
+setfileB :: FBuffer -> FilePath -> IO ()
+setfileB (FBuffer { file = mvf }) f =
+    modifyMVar_ mvf $ const $ return (Just f)
 
-    -- | Has the buffer been modified. @True@ if unchanged
-    isUnchangedB :: a -> IO Bool
+keyB :: FBuffer -> Unique
+keyB (FBuffer { bkey = u }) = u
 
-    -- | Number of characters in the buffer
-    sizeB      :: a -> IO Int
 
-    -- | Extract the current point
-    pointB     :: a -> IO Int
+isUnchangedB  :: FBuffer -> IO Bool
+isUnchangedB (FBuffer { undos = mv }) = do
+  ur <- readMVar mv
+  return $ isEmptyUList ur
 
-    -- | Return @n@ elems starting at @i@ of the buffer as a list
-    nelemsB    :: a -> Int -> Int -> IO [Char]
+undo        :: FBuffer -> IO ()
+undo fb@(FBuffer { undos = mv }) = modifyMVar_ mv (undoUR (rawbuf fb))
 
-    ------------------------------------------------------------------------
-    -- Point based operations
+redo        :: FBuffer -> IO ()
+redo fb@(FBuffer { undos = mv }) = modifyMVar_ mv (redoUR (rawbuf fb))
 
-    -- | Move point in buffer to the given index
-    moveTo     :: a -> Int -> IO ()
+-- | Create buffer named @nm@ with contents @s@
+newB :: String -> [Char] -> IO FBuffer
+newB nm s = do 
+    mv <- newBI s
+    mv' <- newMVar emptyUR
+    mvf <- newMVar Nothing      -- has name, not connected to a file
+    rw  <- newMVar ReadWrite
+    u   <- newUnique
+    return $ FBuffer { name   = nm
+                     , bkey   = u
+                     , file   = mvf
+                     , undos  = mv'
+                     , rawbuf = mv
+                     , bmode  = rw }
 
-    ------------------------------------------------------------------------
+-- | Free any resources associated with this buffer
+finaliseB :: FBuffer -> IO ()
+finaliseB = lift finaliseBI
 
-    -- | Write an element into the buffer at the current point
-    -- This is an unsafe operation, no bounds checks are performed
-    writeB     :: a -> Char -> IO ()
+-- | Number of characters in the buffer
+sizeB     :: FBuffer -> IO Int
+sizeB = lift sizeBI
 
-    ------------------------------------------------------------------------
+-- | Extract the current point
+pointB    :: FBuffer -> IO Int
+pointB = lift pointBI
 
-    -- | Insert the list at current point, extending size of buffer
-    insertN    :: a -> [Char] -> IO ()
+-- | Return @n@ elems starting at @i@ of the buffer as a list
+nelemsB   :: FBuffer -> Int -> Int -> IO [Char]
+nelemsB = lift nelemsBI
 
-    ------------------------------------------------------------------------
+------------------------------------------------------------------------
+-- Point based operations
 
-    -- | @deleteNAt b n p@ deletes @n@ characters at position @p@
-    deleteNAt :: a -> Int -> Int -> IO ()
+-- | Move point in buffer to the given index
+moveTo    :: FBuffer -> Int -> IO ()
+moveTo = lift moveToI
 
-    ------------------------------------------------------------------------
-    -- undo/redo
+------------------------------------------------------------------------
 
-    -- | Undo the last action that mutated the buffer's contents
-    undo        :: a -> IO ()
+-- | Write an element into the buffer at the current point
+-- This is an unsafe operation, no bounds checks are performed
+-- TODO: undo is not atomic!
+writeB    :: FBuffer -> Char -> IO ()
+writeB b@FBuffer { undos = uv } c = do
+  off <- pointB b
+  oldc <- nelemsB b 1 off
+  modifyMVar_ uv $ \u -> do
+    let u'  = addUR u  (Insert off oldc)
+        u'' = addUR u' (Delete off 1)
+    return u''
+  writeBI (rawbuf b) c
 
-    -- | Redo the last action we that was undone.
-    redo        :: a -> IO ()
+------------------------------------------------------------------------
 
-    -- | Required implementation of how to invert an action, for undo
-    -- generates circular dependency between Undo.hs and Buffer.hs
-    getActionB  :: Buffer a => URAction -> (a -> IO URAction)
+-- | Insert the list at current point, extending size of buffer
+insertN   :: FBuffer -> [Char] -> IO ()
+insertN  _ [] = return ()
+insertN fb@FBuffer { undos = uv } cs = do
+  pnt <- pointB fb
+  modifyMVar_ uv $ \ur -> return $ addUR ur (Delete pnt (length cs))
+  insertNI (rawbuf fb) cs
 
-    ------------------------------------------------------------------------
-    -- Line based editing
+------------------------------------------------------------------------
 
-    -- | Return the current line number
-    curLn       :: a -> IO Int
+-- | @deleteNAt b n p@ deletes @n@ characters at position @p@
+deleteNAt:: FBuffer -> Int -> Int -> IO ()
+deleteNAt _ 0 _ = return ()
+deleteNAt b@FBuffer { undos = uv }  n pos = 
+    do text <- nelemsB b n pos
+       modifyMVar_ uv $ \ur -> return $ addUR ur (Insert pos text)
+       lift deleteNAtI b n pos
 
-    -- | Go to line number @n@. @n@ is indexed from 1. Returns the
-    -- actual line we went to (which may be not be the requested line,
-    -- if it was out of range)
-    gotoLn      :: a -> Int -> IO Int
+------------------------------------------------------------------------
+-- Line based editing
 
-    ---------------------------------------------------------------------
+-- | Return the current line number
+curLn      :: FBuffer -> IO Int
+curLn = lift curLnI 
 
-    -- | Return index of next string in buffer that matches argument
-    searchB      :: a -> [Char] -> IO (Maybe Int)
+-- | Go to line number @n@. @n@ is indexed from 1. Returns the
+-- actual line we went to (which may be not be the requested line,
+-- if it was out of range)
+gotoLn     :: FBuffer -> Int -> IO Int
+gotoLn = lift gotoLnI
 
-    -- | Return indices of next string in buffer matched by regex
-    regexB       :: a -> Regex -> IO (Maybe (Int,Int))
+---------------------------------------------------------------------
 
-    ---------------------------------------------------------------------
+-- | Return index of next string in buffer that matches argument
+searchB     :: FBuffer -> [Char] -> IO (Maybe Int)
+searchB = lift searchBI
 
-    -- | Set this buffer mark (TODO: have a set of these (bookmarks, error list, etc.))
-    setMarkB        :: a -> Int -> IO ()
-    getMarkB        :: a -> IO Int
-    unsetMarkB      :: a -> IO ()
+-- | Return indices of next string in buffer matched by regex
+regexB      :: FBuffer -> Regex -> IO (Maybe (Int,Int))
+regexB = lift regexBI
 
+---------------------------------------------------------------------
+
+-- | Set this buffer mark (TODO: have a set of these (bookmarks, error list, etc.))
+setMarkB       :: FBuffer -> Int -> IO ()
+setMarkB = lift setMarkBI
+
+getMarkB       :: FBuffer -> IO Int
+getMarkB = lift getMarkBI
+
+unsetMarkB     :: FBuffer -> IO ()
+unsetMarkB = lift unsetMarkBI
 
 -- | Move point -1
-leftB       :: Buffer a => a -> IO ()
+leftB       :: FBuffer -> IO ()
 leftB a     = leftN a 1
 
 -- | Move cursor -n
-leftN       :: Buffer a => a -> Int -> IO ()
+leftN       :: FBuffer -> Int -> IO ()
 leftN a n   = pointB a >>= \p -> moveTo a (p - n)
 
 -- | Move cursor +1
-rightB      :: Buffer a => a -> IO ()
+rightB      :: FBuffer -> IO ()
 rightB a    = rightN a 1
 
 -- | Move cursor +n
-rightN      :: Buffer a => a -> Int -> IO ()
+rightN      :: FBuffer -> Int -> IO ()
 rightN a n = pointB a >>= \p -> moveTo a (p + n)
 
 -- ---------------------------------------------------------------------
@@ -167,7 +223,7 @@ rightN a n = pointB a >>= \p -> moveTo a (p + n)
 
 -- | Move point up one line
 
-lineUp :: Buffer a => a -> IO ()
+lineUp :: FBuffer -> IO ()
 lineUp b = do
     x <- offsetFromSol b
     moveToSol b
@@ -177,7 +233,7 @@ lineUp b = do
 {-# INLINE lineUp #-}
 
 -- | Move point down one line
-lineDown :: Buffer a => a -> IO ()
+lineDown :: FBuffer -> IO ()
 lineDown b = do
     x <- offsetFromSol b
     moveToEol b
@@ -187,17 +243,17 @@ lineDown b = do
 
 
 -- | Return the contents of the buffer as a list
-elemsB ::  Buffer a => a -> IO [Char]
+elemsB ::  FBuffer -> IO [Char]
 elemsB b = do n <- sizeB b
               nelemsB b n 0
 
 -- | Read the character at the current point
-readB :: Buffer a => a -> IO Char
+readB :: FBuffer -> IO Char
 readB b = pointB b >>= readAtB b
 
 -- | Read the character at the given index
 -- This is an unsafe operation: character NUL is returned when out of bounds
-readAtB :: Buffer a => a -> Int -> IO Char
+readAtB :: FBuffer -> Int -> IO Char
 readAtB b i = do
     s <- nelemsB b 1 i
     return $ case s of
@@ -205,18 +261,18 @@ readAtB b i = do
                _ -> '\0'
 
 -- | Delete the character at current point, shrinking size of buffer
-deleteB :: Buffer a => a -> IO ()
+deleteB :: FBuffer -> IO ()
 deleteB a = deleteN a 1
 
 -- | Delete @n@ characters forward from the current point
-deleteN :: Buffer a => a -> Int -> IO ()
+deleteN :: FBuffer -> Int -> IO ()
 deleteN _ 0 = return ()
 deleteN b n = do
   point <- pointB b
   deleteNAt b n point
 
 -- | Delete to the end of line, excluding it.
-deleteToEol :: Buffer a => a -> IO ()
+deleteToEol :: FBuffer -> IO ()
 deleteToEol b = do
     p <- pointB b
     moveToEol b
@@ -228,14 +284,14 @@ deleteToEol b = do
 ------------------------------------------------------------------------
 
 -- | Return true if the current point is the start of a line
-atSol ::  Buffer a => a -> IO Bool
+atSol :: FBuffer -> IO Bool
 atSol a = do p <- pointB a
              if p == 0 then return True
                        else do c <- readAtB a (p-1)
                                return (c == '\n')
 
 -- | Return true if the current point is the end of a line
-atEol ::  Buffer a => a -> IO Bool
+atEol :: FBuffer -> IO Bool
 atEol a = do p <- pointB a
              e <- sizeB a
              if p == e
@@ -245,19 +301,19 @@ atEol a = do p <- pointB a
                             return (c == '\n')
 
 -- | True if point at start of file
-atSof ::  Buffer a => a -> IO Bool
+atSof :: FBuffer -> IO Bool
 atSof a = do p <- pointB a
              return (p == 0)
 
 -- | True if point at end of file
-atEof :: Buffer a => a -> IO Bool
+atEof :: FBuffer -> IO Bool
 atEof a = do p <- pointB a
              e <- sizeB a
              return (p == e)
 
 
 -- | Offset from start of line
-offsetFromSol :: Buffer a => a -> IO Int
+offsetFromSol :: FBuffer -> IO Int
 offsetFromSol a = do
     i <- pointB a
     moveToSol a
@@ -267,7 +323,7 @@ offsetFromSol a = do
 {-# INLINE offsetFromSol #-}
 
 -- | Index of start of line
-indexOfSol :: Buffer a => a -> IO Int
+indexOfSol :: FBuffer -> IO Int
 indexOfSol a = do
     i <- pointB a
     j <- offsetFromSol a
@@ -275,7 +331,7 @@ indexOfSol a = do
 {-# INLINE indexOfSol #-}
 
 -- | Index of end of line
-indexOfEol :: Buffer a => a -> IO Int
+indexOfEol :: FBuffer -> IO Int
 indexOfEol a = do
     i <- pointB a
     moveToEol a
@@ -288,7 +344,7 @@ indexOfEol a = do
 -- | Move using the direction specified by the 2nd argument, until
 -- either we've moved @n@, the 3rd argument, or @p@ the 4th argument
 -- is True
-moveAXuntil :: Buffer a => a -> (a -> IO ()) -> Int -> (a -> IO Bool) -> IO ()
+moveAXuntil :: FBuffer -> (FBuffer -> IO ()) -> Int -> (FBuffer -> IO Bool) -> IO ()
 moveAXuntil b f x p
     | x <= 0    = return ()
     | otherwise = do -- will be slow on long lines...
@@ -299,16 +355,16 @@ moveAXuntil b f x p
 {-# INLINE moveAXuntil #-}
 
 -- | Move @x@ chars back, or to the sol, whichever is less
-moveXorSol  :: Buffer a => a -> Int -> IO ()
+moveXorSol  :: FBuffer -> Int -> IO ()
 moveXorSol a x = moveAXuntil a leftB x atSol
 
 -- | Move @x@ chars forward, or to the eol, whichever is less
-moveXorEol  :: Buffer a => a -> Int -> IO ()
+moveXorEol  :: FBuffer -> Int -> IO ()
 moveXorEol a x = moveAXuntil a rightB x atEol
 
 
 -- | Go to line indexed from current point
-gotoLnFrom :: Buffer a => a -> Int -> IO Int
+gotoLnFrom :: FBuffer -> Int -> IO Int
 gotoLnFrom b x = do 
   l <- curLn b 
   gotoLn b (x+l)
@@ -316,12 +372,10 @@ gotoLnFrom b x = do
 
 
 -- | Move point to start of line
-moveToSol :: Buffer a =>  a -> IO ()
+moveToSol :: FBuffer -> IO ()
 moveToSol b = sizeB b >>= moveXorSol b  
 
 -- | Move point to end of line
-moveToEol :: Buffer a => a -> IO ()
+moveToEol :: FBuffer -> IO ()
 moveToEol b = sizeB b >>= moveXorEol b 
-
-
 

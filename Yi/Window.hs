@@ -27,7 +27,6 @@
 module Yi.Window where
 
 import Yi.Buffer
-import Yi.FastBuffer            ( FBuffer ) -- for specialisation
 import Yi.Vty
 
 import Data.Unique              ( Unique, newUnique )
@@ -76,7 +75,7 @@ instance Ord Window where
 -- The origin, height and width should be calculated with reference to
 -- all existing windows.
 --
-emptyWindow :: Buffer a => a -> (Int,Int) -> IO Window
+emptyWindow :: FBuffer -> (Int,Int) -> IO Window
 emptyWindow b (h,w) = do
     wu <- newUnique
     let win = Window {
@@ -102,7 +101,7 @@ emptyWindow b (h,w) = do
 -- N.B. the contents of modelines should be specified by keymaps, and
 -- not hardcoded.
 --
-updateModeLine :: Buffer a => Window -> a -> IO (Maybe String)
+updateModeLine :: Window -> FBuffer -> IO (Maybe String)
 updateModeLine w' b = do
     if not (mode w') then return Nothing else do
     ln <- curLn b
@@ -136,7 +135,7 @@ getPercent a b = show p ++ "%"
 --
 -- | return index of Sol on line @n@ above current line
 --
-indexOfSolAbove :: Buffer a => a -> Int -> IO Int
+indexOfSolAbove :: FBuffer -> Int -> IO Int
 indexOfSolAbove b n = do
     p <- pointB b
     moveToSol b

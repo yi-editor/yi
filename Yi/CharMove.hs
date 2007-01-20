@@ -71,7 +71,6 @@ module Yi.CharMove (
     ) where
 
 import Yi.Buffer
-import Yi.FastBuffer    (FBuffer)
 import Yi.Core
 import Yi.Editor
 import Yi.Window

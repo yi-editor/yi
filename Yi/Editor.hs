@@ -23,8 +23,7 @@
 
 module Yi.Editor where
 
-import Yi.Buffer                ( Buffer(newB, keyB, hNewB, finaliseB, nameB) )
-import Yi.FastBuffer
+import Yi.Buffer                ( FBuffer, newB, keyB, hNewB, finaliseB, nameB )
 import Yi.Regex                 ( Regex )
 import Yi.Window
 import Yi.Style                 ( uiStyle, UIStyle )
