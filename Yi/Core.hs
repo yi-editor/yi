@@ -361,7 +361,7 @@ reloadE = do
 
 -- | Reset the size, and force a complete redraw
 refreshE :: Action
-refreshE = do readEditor ui >>= UI.screenSize >>= doResizeAll
+refreshE = do readEditor ui >>= UI.screenSize >>= UI.doResizeAll
 
 -- | Do nothing
 nopE :: Action
@@ -930,7 +930,7 @@ nextBufW :: Action
 nextBufW = do
     w <- getWindow
     b <- Editor.nextBuffer
-    deleteWindow w         -- !! don't delete window before getting the next buffer
+    UI.deleteWindow w         -- !! don't delete window before getting the next buffer
     w' <- UI.newWindow b
     Editor.setWindow w'
 
@@ -938,7 +938,7 @@ nextBufW = do
 prevBufW :: Action
 prevBufW = do
     b <- Editor.prevBuffer
-    getWindow >>= deleteWindow
+    getWindow >>= UI.deleteWindow
     w' <- UI.newWindow b
     setWindow w'
 
@@ -1075,7 +1075,7 @@ closeOtherE = do
         others <- modifyEditor $ \e -> do
                         let ws = getWindows e
                         return (e, (filter (/= this) (map Just ws)))
-        mapM_ deleteWindow others
+        mapM_ UI.deleteWindow others
 
 ------------------------------------------------------------------------
 

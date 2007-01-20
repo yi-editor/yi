@@ -41,7 +41,7 @@ import Control.Concurrent.MVar
 
 import System.IO.Unsafe         ( unsafePerformIO )
 
-import {-# source #-} Yi.UI ( UI )
+import {-# source #-} Yi.UI ( UI, deleteWindow, deleteWindow' )
 
 ------------------------------------------------------------------------
 
@@ -254,58 +254,6 @@ killBuffer n = modifyEditor_ $ \e -> do
             e'' <- foldM deleteWindow' e' bsWin -- now close any windows
             finaliseB b                         -- now free the buffer
             return $ e'' { buffers = M.delete thiskey (buffers e') }
-
---
--- | Delete a window. Note that the buffer that was connected to this
--- window is still open.
---
-deleteWindow :: (Maybe Window) -> IO ()
-deleteWindow Nothing    = return ()
-deleteWindow (Just win) = modifyEditor_ $ \e -> deleteWindow' e win
-
--- internal, non-thread safe
-deleteWindow' :: Editor -> Window -> IO Editor
-deleteWindow' e win = do
-    let ws    = M.delete (key win) (windows e) -- delete window
-        wls   = M.elems ws
-        x     = snd $ scrsize e
-        (y,r) = getY ((fst $ scrsize e) - 1) (length wls) -- why -1?
-
-    let wls'  = resizeAll wls y x -- now resize
-
-    -- now switch focus to a random window
-    case wls' of
-        []       -> return e { windows = M.empty }
-        (win':xs) -> do
-            let fm = M.fromList $ mkAssoc wls'
-            let win'' = resize (y+r) x win'
-            let win''' = if xs == [] then win'' { mode = False } else win''
-            let e' = e { windows = M.insert (key win''') win''' fm }
-            setWindow' e' win'''
-
-------------------------------------------------------------------------
-
--- | Update height of windows in window set
-resizeAll :: [Window] -> Int -> Int -> [Window]
-resizeAll wls y x = flip map wls (\w -> resize y x w)
-
--- | Reset the heights and widths of all the windows
-doResizeAll :: (Int,Int) -> IO ()
-doResizeAll sz@(h,w) = modifyEditor_ $ \e -> do
-    let wls   = M.elems (windows e)
-        (y,r) = getY h (length wls) -- why -1?
-
-    let wls' = map (doresize w y) (init wls)
-        wls'' = let win = last wls
-                in (doresize w (y+r-1) win : wls')
-
-    return e { scrsize = sz, windows = M.fromList $ mkAssoc wls'' }
-
-    where doresize x y win = resize y x win
-
--- | Turn on modelines of all windows
-turnOnML :: [Window] -> [Window]
-turnOnML = map $ \w -> w { mode = True }
 
 -- | calculate window heights, given all the windows and current height
 -- doesn't take into account modelines
