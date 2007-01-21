@@ -47,7 +47,7 @@ data FBuffer =
                 , bkey   :: !Unique           -- immutable unique key
                 , file   :: !(MVar (Maybe FilePath)) -- maybe a filename associated with this buffer
                 , undos  :: !(MVar URList)      -- undo/redo list
-                , rawbuf :: !FBuffer_
+                , rawbuf :: !BufferImpl
                 , bmode  :: !(MVar BufferMode)  -- a read-only bit
                 }
 
@@ -57,7 +57,7 @@ instance Eq FBuffer where
 instance Show FBuffer where
     showsPrec _ (FBuffer { name = f }) = showString $ "\"" ++ f ++ "\""
 
-lift :: (FBuffer_ -> x) -> (FBuffer -> x)
+lift :: (BufferImpl -> x) -> (FBuffer -> x)
 lift f = \b -> f (rawbuf b)
 
 hNewB :: FilePath -> IO FBuffer

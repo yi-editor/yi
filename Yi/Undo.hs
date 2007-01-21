@@ -108,7 +108,7 @@ addUR (URList us _rs) u =
 --
 -- | Undo the last action that mutated the buffer contents. The action's
 -- inverse is added to the redo list. 
-undoUR :: FBuffer_ -> URList -> IO URList
+undoUR :: BufferImpl -> URList -> IO URList
 undoUR _ u@(URList [] _) = return u
 undoUR b (URList (u:us) rs) = do
     r <- (getActionB u) b
@@ -117,7 +117,7 @@ undoUR b (URList (u:us) rs) = do
 --
 -- | Redo the last action that mutated the buffer contents. The action's
 -- inverse is added to the undo list.
-redoUR :: FBuffer_ -> URList -> IO URList
+redoUR :: BufferImpl -> URList -> IO URList
 redoUR _ u@(URList _ []) = return u
 redoUR b (URList us (r:rs)) = do
     u <- (getActionB r) b
@@ -139,7 +139,7 @@ addBoundary = undefined
 -- | Given a URAction, apply it to the buffer, and return the
 -- URAction that reverses it.
 --
-getActionB :: URAction -> FBuffer_ -> IO URAction
+getActionB :: URAction -> BufferImpl -> IO URAction
 getActionB (Delete p n) b = do
     moveToI b p
     p' <- pointBI b
