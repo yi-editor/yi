@@ -862,7 +862,8 @@ msgE s = modifyEditor_ $ \e -> return e { cmdline = s }
 
 -- | Set the cmd buffer, and draw a pretty error message
 errorE :: String -> Action
-errorE s = modifyEditor_ $ \e -> return e { cmdline = s }
+errorE s = do modifyEditor_ $ \e -> return e { cmdline = s }
+              logPutStrLn $ "errorE: " ++ s
 
 -- | Clear the message line at bottom of screen
 msgClrE :: Action
