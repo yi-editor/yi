@@ -44,6 +44,8 @@ module Yi.UI (
 
   )   where
 
+import Prelude hiding (error)
+
 import Yi.Buffer
 import Yi.Editor
 import Yi.Window as Window

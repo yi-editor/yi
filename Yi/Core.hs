@@ -183,6 +183,8 @@ module Yi.Core (
 
    ) where
 
+import Prelude hiding (error)
+
 import Yi.Debug
 import Yi.MkTemp            ( mkstemp )
 import Yi.Buffer

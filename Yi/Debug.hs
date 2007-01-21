@@ -3,6 +3,7 @@ module Yi.Debug (
        ,trace           -- :: String -> a -> a
        ,logPutStrLn
        ,logError
+       ,Yi.Debug.error
     ) where
 
 import Control.Concurrent
@@ -30,7 +31,9 @@ trace s e = unsafePerformIO $ do logPutStrLn s
 {-# NOINLINE trace #-}
 
 
-
+error :: String -> a
+error s = unsafePerformIO $ do logPutStrLn s
+                               Prelude.error s
 
 logPutStrLn :: String -> IO ()
 logPutStrLn s = do time <- toCalendarTime =<< getClockTime

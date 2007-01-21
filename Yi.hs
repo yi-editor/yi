@@ -20,6 +20,8 @@
 
 module Yi (static_main, dynamic_main) where
 
+import Prelude hiding (error)
+
 import Yi.Version                       ( package, version )
 import qualified Yi.Editor  as Editor
 import qualified Yi.Core    as Core
