@@ -221,7 +221,6 @@ drawText h w topPoint point markPoint selsty wsty bufData
     | otherwise        = (rendered, bottomPoint, pntpos)
   where [startSelect, stopSelect] = sort [markPoint,point]
         annBufData = zip bufData [topPoint..]  -- remember the point of each char
-        -- TODO: render non-graphic chars (^G and the like)
         lns0 = take h $ concatMap (wrapLine w) $ lines' $ annBufData
         lns = map fillLine $ lns0 -- fill lines with blanks, so the selection looks ok.
 
@@ -280,7 +279,6 @@ newWindow b = modifyEditor $ \e -> do
     return (e', win')
 
 -- ---------------------------------------------------------------------
--- TODO Should probably be in the Window code
 -- | Grow the given window, and pick another to shrink
 -- grow and shrink compliment each other, they could be refactored.
 --

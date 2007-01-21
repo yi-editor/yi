@@ -147,13 +147,11 @@ indexOfSolAbove b n = do
     where loop 0 _  = return ()
           loop i b' = lineUp b' >> loop (i-1) b'
 
-{-# SPECIALIZE indexOfSolAbove :: FBuffer -> Int -> IO Int #-}
 
 --
 -- | Adjust the window's size-related fields, assuming a new window
 -- height, and width. Now, if we know the height of the screen, and the
 -- number of lines, center the line in the screen please.
--- TODO: take this out of IO
 resize :: Int -> Int -> Window -> Window
 resize y x w = w { height = y, width = x }
 
