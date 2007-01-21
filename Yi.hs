@@ -40,6 +40,7 @@ import qualified Yi.Keymap.Mg     as Mg
 
 import qualified Yi.UI as UI
 
+import Data.Char
 import Data.IORef
 import Data.List                ( intersperse )
 import qualified Data.Map as M
@@ -80,7 +81,6 @@ editorFM = M.fromList $
     , ("emacs"   ,   Emacs.keymap)
     , ("emacs2"  ,  Emacs2.keymap)
     , ("vimacs"  ,  Vimacs.keymap)
-    , ("Vimacs"  ,  Vimacs.keymap) -- I keep doing --as=Vimacs
     , ("joe"     ,     Joe.keymap)
     , ("ee"      ,      Ee.keymap)
     , ("mg"      ,      Mg.keymap)
@@ -115,7 +115,7 @@ do_opts (o:oo) = case o of
     Libdir _ -> do_opts oo  -- ignore -B flag. already handled in Boot.hs
     LineNo l -> writeIORef g_lineno ((read l) :: Int) >> do_opts oo
 
-    EditorNm e -> case M.lookup e editorFM of
+    EditorNm e -> case M.lookup (map toLower e) editorFM of
                     Just km -> do
                         (k,f,g) <- readIORef g_settings
                         writeIORef g_settings (k { Editor.keymap = km }, f, g)
