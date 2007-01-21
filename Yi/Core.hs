@@ -237,9 +237,6 @@ startE st (confs,fn,fn') ln mfs = do
     u <- UI.start
     modifyEditor_ $ \e -> return $ e { ui = u }
 
-    sz <- UI.screenSize =<< readEditor ui
-    modifyEditor_ $ \e -> return $ e { scrsize = sz }
-
     Editor.setUserSettings confs fn fn'
 
     t <- forkIO refreshLoop -- fork UI thread
@@ -289,7 +286,7 @@ startE st (confs,fn,fn') ln mfs = do
 -- emptyE takes no input -- the ui blocks on stdin.
 --
 emptyE :: IO ()
-emptyE = modifyEditor_ $ const $ return $ emptyEditor { scrsize = (32,102) }
+emptyE = modifyEditor_ $ const $ return $ emptyEditor
     -- need to get it into a state where we can just run core commands
     -- to make it reinitialisable, lets blank out the state
     -- make up an abitrary screen size
@@ -306,7 +303,7 @@ runE = undefined
 --
 getcE :: IO Event
 getcE = do u <- readEditor ui
-           UI.getKey u refreshE
+           UI.getKey u
 
 --
 -- | The editor main loop. Read key strokes from the ui and interpret

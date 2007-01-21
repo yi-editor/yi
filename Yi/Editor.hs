@@ -56,7 +56,6 @@ data Editor = Editor {
 
        ,curwin          :: !(Maybe Unique)            -- ^ the window with focus
        ,curkeymap       :: [Event] -> [Action]        -- ^ user-configurable keymap
-       ,scrsize         :: !(Int,Int)                 -- ^ screen size
        ,uistyle         :: !UIStyle                   -- ^ ui colours
        ,input           :: Chan Event                 -- ^ input stream
        ,threads         :: [ThreadId]                 -- ^ all our threads
@@ -94,7 +93,6 @@ emptyEditor = Editor {
        ,regex        = Nothing
        ,curwin       = Nothing
        ,curkeymap    = error "No keymap defined."
-       ,scrsize      = (0,0)
        ,uistyle      = Yi.Style.uiStyle
        ,input        = error "No channel open"
        ,threads      = []

@@ -62,23 +62,27 @@ import Data.List
 import Data.Maybe
 import qualified Data.Map as M
 
-import Control.Monad                ( ap )
+import Data.IORef
 import System.Posix.Signals         ( raiseSignal, sigTSTP )
-
 
 ------------------------------------------------------------------------
 
-newtype UI = UI Vty --{ vty :: Vty }
+data UI = UI { 
+              vty :: Vty                    -- ^ Vty
+             ,scrsize :: !(IORef (Int,Int))  -- ^ screen size
+             }
 
 -- | how to initialise the ui
 start :: IO UI
 start = do
   v <- mkVty
-  return (UI v)
+  (x,y) <- Yi.Vty.getSize v
+  s <- newIORef (y,x)
+  return (UI v s)
 
 -- | Clean up and go home
 end :: UI -> IO ()
-end (UI vty) = Yi.Vty.shutdown vty 
+end i = Yi.Vty.shutdown (vty i)
 
 -- | Suspend the program
 suspend :: IO ()
@@ -86,16 +90,16 @@ suspend = raiseSignal sigTSTP
 
 -- | Find the current screen height and width.
 screenSize :: UI -> IO (Int, Int)
-screenSize (UI vty) = return swap `ap` Yi.Vty.getSize vty
-    where swap (x,y) = (y,x)
+screenSize = readIORef . scrsize
+
 --
 -- | Read a key. UIs need to define a method for getting events.
 --
-getKey :: UI -> IO () -> IO Yi.Event.Event
-getKey (UI vty) doRefresh = do 
+getKey :: UI -> IO Yi.Event.Event
+getKey i@(UI vty sz) = do 
   event <- getEvent vty
   case event of 
-    (EvResize _ _) -> doRefresh >> getKey (UI vty) doRefresh
+    (EvResize x y) -> writeIORef sz (y,x) >> doResizeAll (y,x) >> getKey i
     _ -> do -- logPutStrLn $ show $ fromVtyEvent event
             return (fromVtyEvent event)
  where fromVtyEvent (EvKey k mods) = Event k mods
@@ -105,7 +109,7 @@ getKey (UI vty) doRefresh = do
 -- | Redraw the entire terminal from the UI state
 --
 -- It is crucial that redraw doesn't modify the editor state (of course
--- it shouldn't). Just slipping in a modifyEditor_ there  will kill
+-- it shouldn't). Just slipping in a modifyEditor_ there will kill
 -- your redraw speed, as every redraw will trigger another redraw...
 -- So don't be tempted.
 --
@@ -113,7 +117,7 @@ getKey (UI vty) doRefresh = do
 --
 refresh :: IO ()
 refresh = refreshEditor $ \e ->
-    case ui e             of { (UI vty)  ->
+    case ui e             of { (UI vty sz)  ->
     case getWindows e     of { ws  ->
     case cmdline e        of { cl  ->
     case cmdlinefocus e   of { cmdfoc ->
@@ -239,8 +243,8 @@ withStyle sty str = zip str (repeat (styleToAttr sty))
 --
 newWindow :: FBuffer -> IO Window
 newWindow b = modifyEditor $ \e -> do
-    let (h,w) = scrsize e
-        wls   = M.elems $ windows e
+    (h,w) <- readIORef $ scrsize $ ui $ e
+    let wls   = M.elems $ windows e
         (y,r) = getY h (1 + (length wls))   -- should be h-1..
     let wls'  = resizeAll wls y w
     let wls'' = turnOnML wls'
@@ -258,7 +262,7 @@ enlargeWindow :: Maybe Window -> IO ()
 enlargeWindow Nothing = return ()
 enlargeWindow (Just win) = modifyEditor_ $ \e -> do
     let wls      = (M.elems . windows) e
-        (maxy,x) = scrsize e
+    (maxy,x) <- readIORef $ scrsize $ ui e
 
     -- can't resize if only window on screen, or if no room left
     if length wls == 1 || height win >= maxy - (2*length wls-1)
@@ -280,7 +284,7 @@ shrinkWindow :: Maybe Window -> IO ()
 shrinkWindow Nothing = return ()
 shrinkWindow (Just win) = modifyEditor_ $ \e -> do
     let wls      = (M.elems . windows) e
-        (maxy,x) = scrsize e
+    (maxy,x) <- readIORef $ scrsize $ ui e
     -- can't resize if only window on screen, or if no room left
     if length wls == 1 || height win <= 3 -- rem..
         then return e else do
@@ -318,10 +322,11 @@ deleteWindow (Just win) = modifyEditor_ $ \e -> deleteWindow' e win
 -- internal, non-thread safe
 deleteWindow' :: Editor -> Window -> IO Editor
 deleteWindow' e win = do
+    (y0,x) <- readIORef $ scrsize $ ui $ e
+
     let ws    = M.delete (key win) (windows e) -- delete window
         wls   = M.elems ws
-        x     = snd $ scrsize e
-        (y,r) = getY ((fst $ scrsize e) - 1) (length wls) -- why -1?
+        (y,r) = getY (y0 - 1) (length wls) -- why -1?
 
     let wls'  = resizeAll wls y x -- now resize
 
@@ -343,7 +348,7 @@ resizeAll wls y x = flip map wls (\w -> resize y x w)
 
 -- | Reset the heights and widths of all the windows
 doResizeAll :: (Int,Int) -> IO ()
-doResizeAll sz@(h,w) = modifyEditor_ $ \e -> do
+doResizeAll (h,w) = modifyEditor_ $ \e -> do
     let wls   = M.elems (windows e)
         (y,r) = getY h (length wls) -- why -1?
 
@@ -351,7 +356,7 @@ doResizeAll sz@(h,w) = modifyEditor_ $ \e -> do
         wls'' = let win = last wls
                 in (doresize w (y+r-1) win : wls')
 
-    return e { scrsize = sz, windows = M.fromList $ mkAssoc wls'' }
+    return e { windows = M.fromList $ mkAssoc wls'' }
 
     where doresize x y win = resize y x win
 
