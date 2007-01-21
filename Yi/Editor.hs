@@ -444,3 +444,8 @@ type Keymap = [Event] -> [Action]
 -- | Class of values that can go in the extensible state component
 --
 class Typeable a => Initializable a where initial :: IO a
+
+repeatM_ :: forall m a. Monad m => m a -> m ()
+repeatM_ a = a >> repeatM_ a
+{-# SPECIALIZE repeatM_ :: IO a -> IO () #-}
+{-# INLINE repeatM_ #-}

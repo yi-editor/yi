@@ -2,6 +2,7 @@ module Yi.Debug (
         initDebug       -- :: FilePath -> IO () 
        ,trace           -- :: String -> a -> a
        ,logPutStrLn
+       ,logError
     ) where
 
 import Control.Concurrent
@@ -37,3 +38,6 @@ logPutStrLn s = do time <- toCalendarTime =<< getClockTime
                    h <- readIORef dbgHandle
                    hPutStrLn h $ calendarTimeToString time ++ " " ++ show tId ++ " " ++ s
                    hFlush h
+
+logError :: String -> IO ()
+logError s = logPutStrLn $ "error: " ++ s

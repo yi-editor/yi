@@ -31,11 +31,7 @@ module Yi.UI (
         -- * UI initialisation
         start, end, suspend,
 
-        -- * Input
-        getKey,
-
         -- * Drawing
-        refresh,
         screenSize,
 
         -- * Window manipulation
@@ -56,7 +52,11 @@ import Yi.Window as Window
 import Yi.Style
 import Yi.Vty hiding (def, black, red, green, yellow, blue, magenta, cyan, white)
 import Yi.Event
---import Yi.Debug
+import Yi.Debug
+
+import Control.Concurrent   ( takeMVar, forkIO )
+import Control.Concurrent.Chan
+import Control.Exception
 
 import Data.List
 import Data.Maybe
@@ -68,17 +68,40 @@ import System.Posix.Signals         ( raiseSignal, sigTSTP )
 ------------------------------------------------------------------------
 
 data UI = UI { 
-              vty :: Vty                    -- ^ Vty
+              vty :: Vty                     -- ^ Vty
              ,scrsize :: !(IORef (Int,Int))  -- ^ screen size
              }
 
--- | how to initialise the ui
+-- | Initialise the ui
 start :: IO UI
 start = do
   v <- mkVty
   (x,y) <- Yi.Vty.getSize v
   s <- newIORef (y,x)
-  return (UI v s)
+  let result = UI v s
+  t <- forkIO refreshLoop -- fork UI thread
+  modifyEditor_ $ \e -> return $ e { threads = [t] }
+  -- fork input-reading thread. important to block *thread* on getKey
+  -- otherwise all threads will block waiting for input
+  ch <- newChan
+  t' <- forkIO $ getcLoop result ch 
+  modifyEditor_ $ \e -> return $ e { threads = t' : threads e, input = ch }
+  return result
+ where
+        --
+        -- | Action to read characters into a channel
+        --
+        getcLoop :: UI -> Chan Yi.Event.Event -> IO ()
+        getcLoop i ch = repeatM_ $ getKey i >>= writeChan ch
+
+        --
+        -- | When the editor state isn't being modified, refresh, then wait for
+        -- it to be modified again. 
+        --
+        refreshLoop :: IO ()
+        refreshLoop = 
+            readEditor editorModified >>= \mvar -> repeatM_ $
+                    takeMVar mvar >> handleJust ioErrors (logError . show) refresh
 
 -- | Clean up and go home
 end :: UI -> IO ()
@@ -137,9 +160,6 @@ updateWindows :: IO ()
 updateWindows = refreshEditor $ \e -> do
                   ws <- mapM (\w -> drawWindow e (Just w == getWindowOf e) (uistyle e) w) (getWindows e)
                   return $ e { windows = M.fromList [(key w, w) | w <- ws]}
-
--- ---------------------------------------------------------------------
--- PRIVATE:
 
 showPoint :: Editor -> Window -> IO Window 
 showPoint e w = do

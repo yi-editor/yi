@@ -47,7 +47,6 @@ module Yi.Core (
         -- * Global editor actions
         BufferFileInfo ( .. ), 
 
-        getcE,          -- :: IO Char
         nopE,           -- :: Action
         msgE,           -- :: String -> Action
         errorE,         -- :: String -> Action
@@ -184,6 +183,7 @@ module Yi.Core (
 
    ) where
 
+import Yi.Debug
 import Yi.MkTemp            ( mkstemp )
 import Yi.Buffer
 import Yi.Window
@@ -191,7 +191,6 @@ import Yi.Regex
 import Yi.String
 import Yi.Process           ( popen )
 import Yi.Editor
-import Yi.Event
 import qualified Yi.Editor as Editor
 import qualified Yi.Style as Style
 
@@ -206,7 +205,6 @@ import System.Exit          ( exitWith, ExitCode(ExitSuccess) )
 
 import Control.Monad
 import Control.Exception
-import Control.Concurrent   ( takeMVar, forkIO )
 import Control.Concurrent.Chan
 
 import GHC.Exception hiding ( throwIO )
@@ -234,13 +232,10 @@ startE st (confs,fn,fn') ln mfs = do
         Just e' -> modifyEditor_ $ const $ return e'
         Nothing -> return ()
 
-    u <- UI.start
-    modifyEditor_ $ \e -> return $ e { ui = u }
-
     Editor.setUserSettings confs fn fn'
 
-    t <- forkIO refreshLoop -- fork UI thread
-    modifyEditor_ $ \e -> return $ e { threads = [t] }
+    u <- UI.start
+    modifyEditor_ $ \e -> return $ e { ui = u }
 
     when (isNothing st) $ do -- read in any files if booting for the first time
         handleJust ioErrors (errorE . show) $ do
@@ -253,30 +248,9 @@ startE st (confs,fn,fn') ln mfs = do
                         Just (f,h) -> hClose h >> fnewE f
         gotoLnE ln
 
-    -- fork input-reading thread. important to block *thread* on getcE
-    -- otherwise all threads will block waiting for input
-    ch <- newChan
-    t' <- forkIO $ getcLoop ch
-    modifyEditor_ $ \e -> return $ e { threads = t' : threads e, input = ch }
 
     when (isJust st) refreshE -- and redraw
 
-    where
-        --
-        -- | Action to read characters into a channel
-        --
-        getcLoop :: Chan Event -> IO ()
-        getcLoop ch = repeatM_ $ getcE >>= writeChan ch
-
-        --
-        -- | When the editor state isn't being modified, refresh, then wait for
-        -- it to be modified again. Also, check if the window got
-        -- resized, and take the opportunity to refresh.
-        --
-        refreshLoop :: IO ()
-        refreshLoop = 
-            readEditor editorModified >>= \mvar -> repeatM_ $
-                    takeMVar mvar >> handleJust ioErrors (errorE.show) UI.refresh
 
 -- ---------------------------------------------------------------------
 -- | @emptyE@ and @runE@ are for automated testing purposes. The former
@@ -297,13 +271,6 @@ emptyE = modifyEditor_ $ const $ return $ emptyEditor
 -- for testing keymaps:
 runE :: String -> IO ()
 runE = undefined
-
--- ---------------------------------------------------------------------
--- | How to read from standard input
---
-getcE :: IO Event
-getcE = do u <- readEditor ui
-           UI.getKey u
 
 --
 -- | The editor main loop. Read key strokes from the ui and interpret
@@ -1136,8 +1103,4 @@ metaM km = throwDyn (MetaActionException km)
 
 ------------------------------------------------------------------------
 
-repeatM_ :: forall m a. Monad m => m a -> m ()
-repeatM_ a = a >> repeatM_ a
-{-# SPECIALIZE repeatM_ :: IO a -> IO () #-}
-{-# INLINE repeatM_ #-}
 
