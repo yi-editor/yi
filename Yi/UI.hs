@@ -139,15 +139,6 @@ refresh = refreshEditor $ \e ->
     return e { windows = M.fromList [(key w', w') | w' <- ws']}
     }}}}}}}
 
-lines' :: [(Char,a)] -> [[(Char,a)]]
-lines' [] =  []
-lines' s  =  let (l, s') = break ((== '\n') . fst) s in case s' of
-                                                          [] -> [l]
-                                                          ((_,x):s'') -> (l++[(' ',x)]) : lines' s''
-
-wrapLine :: Int -> [x] -> [[x]]
-wrapLine _ [] = []
-wrapLine n l = let (x,rest) = splitAt n l in x : wrapLine n rest
 
 -- ---------------------------------------------------------------------
 -- PRIVATE:
@@ -178,7 +169,7 @@ doDrawWindow e mwin sty win = do
     point <- pointB b
     bufData <- nelemsB b (w*h') (tospnt win) -- read enough chars from the buffer.        
     let (rendered,bos,cur) = drawText h' w (tospnt win) point markPoint selsty wsty (bufData ++ " ")
-                             -- we always add one character which can be used to mark the end of file
+                             -- we always add one character which can be used to position the cursor at the end of file
                                                                                                  
     modeLine <- if m then updateModeLine win b else return Nothing
     let modeLines = map (withStyle (modeStyle sty)) $ maybeToList $ modeLine
@@ -208,15 +199,19 @@ drawWindow e mwin sty win = do
 -- | Renders text in a rectangle.
 -- Also returns a finite map from buffer offsets to their position on the screen.
 drawText :: Int -> Int -> Point -> Point -> Point -> Attr -> Attr -> String -> (Pic, Point, (Int,Int))
-drawText h w topPoint point markPoint selsty wsty bufData = (rendered, bottomPoint, pntpos)
+drawText h w topPoint point markPoint selsty wsty bufData 
+    | h == 0 || w == 0 = ([[]], topPoint, (0,0))
+    | otherwise        = (rendered, bottomPoint, pntpos)
   where [startSelect, stopSelect] = sort [markPoint,point]
         annBufData = zip bufData [topPoint..]  -- remember the point of each char
         -- TODO: render non-graphic chars (^G and the like)
         lns0 = take h $ concatMap (wrapLine w) $ lines' $ annBufData
         lns = map fillLine $ lns0 -- fill lines with blanks, so the selection looks ok.
+
         bottomPoint = case lns0 of 
                         [] -> topPoint 
                         _ -> snd $ last $ last $ lns0
+
         pntpos = case [(y,x) | (y,l) <- zip [0..] lns0, (x,(_char,p)) <- zip [0..] l, p == point] of
                    [] -> (0,0)
                    (pp:_) -> pp
@@ -224,8 +219,22 @@ drawText h w topPoint point markPoint selsty wsty bufData = (rendered, bottomPoi
         rendered = map (map colorChar) lns
         colorChar (c, x) = (c,pointStyle x)
         pointStyle x = if startSelect < x && x <= stopSelect then selsty else wsty
+
         fillLine [] = []
         fillLine l = take w (l ++ repeat (' ',snd $ last l))
+
+        -- | Cut a string in lines separated by a '\n' char. 
+        -- note that we add a blank character so the cursor can be positioned there.
+        lines' :: [(Char,a)] -> [[(Char,a)]]
+        lines' [] =  []
+        lines' s  =  let (l, s') = break ((== '\n') . fst) s in case s' of
+                                                                  [] -> [l]
+                                                                  ((_,x):s'') -> (l++[(' ',x)]) : lines' s''
+
+        wrapLine :: Int -> [x] -> [[x]]
+        wrapLine _ [] = []
+        wrapLine n l = let (x,rest) = splitAt n l in x : wrapLine n rest
+
 
 -- TODO: The above will actually require a bit of work, in order to properly
 -- render all the non-printable chars (<32)
