@@ -253,12 +253,6 @@ killBuffer n = modifyEditor_ $ \e -> do
             finaliseB b                         -- now free the buffer
             return $ e'' { buffers = M.delete thiskey (buffers e') }
 
--- | calculate window heights, given all the windows and current height
--- doesn't take into account modelines
-getY :: Int -> Int -> (Int,Int)
-getY h 0 = (h, 0)
-getY h 1 = (h, 0)
-getY h l = h `quotRem` l
 
 -- | turn a list of windows into an association list suitable for fromList
 mkAssoc :: [Window] -> [(Unique,Window)]

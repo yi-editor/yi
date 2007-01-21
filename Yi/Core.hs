@@ -325,7 +325,7 @@ reloadE = do
 
 -- | Reset the size, and force a complete redraw
 refreshE :: Action
-refreshE = do readEditor ui >>= UI.screenSize >>= UI.doResizeAll
+refreshE = do readEditor ui >>= UI.doResizeAll
 
 -- | Do nothing
 nopE :: Action
@@ -1003,18 +1003,16 @@ setWinE = Editor.setWindowToThisWindow
 -- Windows smaller than 3 lines cannot be split.
 splitE :: Action
 splitE = do
-    i     <- sizeWindows
-    (y,_) <- UI.screenSize =<< readEditor ui -- bah
-    let (sy,r) = getY y i
-    if sy + r <= 4  -- min window size
+  canSplit <- UI.hasRoomForExtraWindow
+  if not (canSplit)
         then errorE "Not enough room to split"
         else do
-    mw <- getWindow
-    case mw of
-        Nothing -> nopE
-        Just w  -> do b <- getBufferWith (bufkey w)
-                      w' <- UI.newWindow b
-                      Editor.setWindow w'
+              mw <- getWindow
+              case mw of
+                Nothing -> nopE
+                Just w  -> do b <- getBufferWith (bufkey w)
+                              w' <- UI.newWindow b
+                              Editor.setWindow w'
 
 -- | Enlarge the current window
 enlargeWinE :: Action

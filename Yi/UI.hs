@@ -31,12 +31,10 @@ module Yi.UI (
         -- * UI initialisation
         start, end, suspend,
 
-        -- * Drawing
-        screenSize,
-
         -- * Window manipulation
         newWindow, enlargeWindow, shrinkWindow, 
         doResizeAll, deleteWindow, deleteWindow',
+        hasRoomForExtraWindow,
 
         -- * UI type, abstract.
         UI,
@@ -122,7 +120,7 @@ getKey :: UI -> IO Yi.Event.Event
 getKey i@(UI vty sz) = do 
   event <- getEvent vty
   case event of 
-    (EvResize x y) -> writeIORef sz (y,x) >> doResizeAll (y,x) >> getKey i
+    (EvResize x y) -> writeIORef sz (y,x) >> doResizeAll i >> getKey i
     _ -> do -- logPutStrLn $ show $ fromVtyEvent event
             return (fromVtyEvent event)
  where fromVtyEvent (EvKey k mods) = Event k mods
@@ -375,8 +373,9 @@ resizeAll :: [Window] -> Int -> Int -> [Window]
 resizeAll wls y x = flip map wls (\w -> resize y x w)
 
 -- | Reset the heights and widths of all the windows
-doResizeAll :: (Int,Int) -> IO ()
-doResizeAll (h,w) = modifyEditor_ $ \e -> do
+doResizeAll :: UI -> IO ()
+doResizeAll i = modifyEditor_ $ \e -> do
+    (h,w) <- readIORef $ scrsize i
     let wls   = M.elems (windows e)
         (y,r) = getY h (length wls) -- why -1?
 
@@ -391,3 +390,18 @@ doResizeAll (h,w) = modifyEditor_ $ \e -> do
 -- | Turn on modelines of all windows
 turnOnML :: [Window] -> [Window]
 turnOnML = map $ \w -> w { mode = True }
+
+-- | Has the frame enough room for an extra window.
+hasRoomForExtraWindow :: IO Bool
+hasRoomForExtraWindow = do
+    i     <- sizeWindows
+    (y,_) <- screenSize =<< readEditor ui -- bah
+    let (sy,r) = getY y i
+    return $ sy + r <= 4  -- min window size
+
+-- | calculate window heights, given all the windows and current height
+-- doesn't take into account modelines
+getY :: Int -> Int -> (Int,Int)
+getY h 0 = (h, 0)
+getY h 1 = (h, 0)
+getY h l = h `quotRem` l
