@@ -116,29 +116,27 @@ getKey i@(UI vty sz) = do
 -- Two points remain: horizontal scrolling, and tab handling.
 --
 refresh :: IO ()
-refresh = refreshEditor $ \e ->
-    case ui e             of { (UI vty sz)  ->
-    case getWindows e     of { ws  ->
-    case cmdline e        of { cl  ->
-    case cmdlinefocus e   of { cmdfoc ->
-    case uistyle e        of { sty -> do
-    case getWindowOf e    of { w   ->
-    case getWindowIndOf e of { Nothing -> return e ; (Just i) -> do
-    ws' <- mapM (drawWindow e w sty) ws
-    let wImages = map picture ws'
-    Yi.Vty.update vty pic {pImage = concat wImages ++ [withStyle (window sty) (cl ++ repeat ' ')],
-                           pCursor = if cmdfoc 
-                                     then NoCursor 
-                                     else case w of
-                                         -- calculate origin of focused window
-                                         -- sum of heights of windows above this one on screen.
-                                         -- needs to be shifted 'x' by the width of the tabs on this line
-                                         Just w' -> let (y,x) = cursor w' in
-                                             Cursor x (y + sum [ height (ws !! k) | k <- [0 .. (i-1)] ])
-                                         Nothing -> NoCursor}
-    return e { windows = M.fromList [(key w', w') | w' <- ws']}
-    }}}}}}}
+refresh = do 
+  updateWindows
+  withEditor $ \e -> do
+    let ws = getWindows e
+        wImages = map picture ws
+    Yi.Vty.update (vty $ ui e) 
+      pic {pImage = concat wImages ++ [withStyle (window $ uistyle e) (cmdline e ++ repeat ' ')],
+           pCursor = if cmdlinefocus e
+                     then NoCursor 
+                     else case getWindowOf e of
+                            -- calculate origin of focused window
+                            -- sum of heights of windows above this one on screen.
+                            -- needs to be shifted 'x' by the width of the tabs on this line
+                            Just w -> let (y,x) = cursor w in
+                                      Cursor x (y + (sum $ map height $ takeWhile (/= w) $ ws))
+                            Nothing -> NoCursor}
 
+updateWindows :: IO ()
+updateWindows = refreshEditor $ \e -> do
+                  ws <- mapM (\w -> drawWindow e (Just w == getWindowOf e) (uistyle e) w) (getWindows e)
+                  return $ e { windows = M.fromList [(key w, w) | w <- ws]}
 
 -- ---------------------------------------------------------------------
 -- PRIVATE:
@@ -154,8 +152,8 @@ showPoint e w = do
             tospnt = i}
 
 -- | redraw a window
-doDrawWindow :: Editor -> Maybe Window -> UIStyle -> Window -> IO Window
-doDrawWindow e mwin sty win = do
+doDrawWindow :: Editor -> Bool -> UIStyle -> Window -> IO Window
+doDrawWindow e focused sty win = do
     let b = findBufferWith e (bufkey win)
         w = width win
         h = height win
@@ -168,14 +166,15 @@ doDrawWindow e mwin sty win = do
     markPoint <- getMarkB b
     point <- pointB b
     bufData <- nelemsB b (w*h') (tospnt win) -- read enough chars from the buffer.        
+
+    --pointData <- nelemsB b 5 point/logPutStrLn $ "doDrawWindow point=" ++ show point ++ " after: " ++ show pointData
+
     let (rendered,bos,cur) = drawText h' w (tospnt win) point markPoint selsty wsty (bufData ++ " ")
                              -- we always add one character which can be used to position the cursor at the end of file
                                                                                                  
     modeLine <- if m then updateModeLine win b else return Nothing
     let modeLines = map (withStyle (modeStyle sty)) $ maybeToList $ modeLine
-        modeStyle = case mwin of
-               Just win'' | win'' == win -> modeline_focused
-               _                         -> modeline        
+        modeStyle = if focused then modeline_focused else modeline        
         filler = take w (windowfill e : repeat ' ')
     
     return win { picture = take h' (rendered ++ repeat (withStyle eofsty filler)) ++ modeLines,
@@ -185,15 +184,15 @@ doDrawWindow e mwin sty win = do
 -- | Draw a window
 -- TODO: horizontal scrolling.
 drawWindow :: Editor
-           -> Maybe Window
+           -> Bool
            -> UIStyle
            -> Window
            -> IO Window
 
-drawWindow e mwin sty win = do
+drawWindow e focused sty win = do
     let b = findBufferWith e (bufkey win)
     point <- pointB b
-    (if tospnt win <= point && point <= bospnt win then return win else showPoint e win) >>= doDrawWindow e mwin sty   
+    (if tospnt win <= point && point <= bospnt win then return win else showPoint e win) >>= doDrawWindow e focused sty   
 
 
 -- | Renders text in a rectangle.
