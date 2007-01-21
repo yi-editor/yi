@@ -162,7 +162,7 @@ showPoint e w = do
   return w {toslineno = topln,
             tospnt = i}
 
--- | redraw a window (only called when scrolling is needed)
+-- | redraw a window
 doDrawWindow :: Editor -> Maybe Window -> UIStyle -> Window -> IO Window
 doDrawWindow e mwin sty win = do
     let b = findBufferWith e (bufkey win)
@@ -185,7 +185,7 @@ doDrawWindow e mwin sty win = do
         modeStyle = case mwin of
                Just win'' | win'' == win -> modeline_focused
                _                         -> modeline        
-        filler = take w (windowfill e : repeat (windowfill e))
+        filler = take w (windowfill e : repeat ' ')
     
     return win { picture = take h' (rendered ++ repeat (withStyle eofsty filler)) ++ modeLines,
                  cursor = cur,
