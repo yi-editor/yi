@@ -125,8 +125,38 @@ getKey i@(UI vty sz) = do
     (EvResize x y) -> writeIORef sz (y,x) >> doResizeAll i >> getKey i
     _ -> do -- logPutStrLn $ show $ fromVtyEvent event
             return (fromVtyEvent event)
- where fromVtyEvent (EvKey k mods) = Event k mods
-       fromVtyEvent _ = error "fromVtyEvent: unsupported event encountered."
+
+fromVtyEvent :: Yi.Vty.Event -> Yi.Event.Event
+fromVtyEvent (EvKey k mods) = Event (fromVtyKey k) (map fromVtyMod mods)
+fromVtyEvent _ = error "fromVtyEvent: unsupported event encountered."
+
+
+fromVtyKey :: Yi.Vty.Key -> Yi.Event.Key
+fromVtyKey (Yi.Vty.KEsc     ) = Yi.Event.KEsc      
+fromVtyKey (Yi.Vty.KFun x   ) = Yi.Event.KFun x    
+fromVtyKey (Yi.Vty.KPrtScr  ) = Yi.Event.KPrtScr   
+fromVtyKey (Yi.Vty.KPause   ) = Yi.Event.KPause    
+fromVtyKey (Yi.Vty.KASCII c ) = Yi.Event.KASCII c  
+fromVtyKey (Yi.Vty.KBS      ) = Yi.Event.KBS       
+fromVtyKey (Yi.Vty.KIns     ) = Yi.Event.KIns      
+fromVtyKey (Yi.Vty.KHome    ) = Yi.Event.KHome     
+fromVtyKey (Yi.Vty.KPageUp  ) = Yi.Event.KPageUp   
+fromVtyKey (Yi.Vty.KDel     ) = Yi.Event.KDel      
+fromVtyKey (Yi.Vty.KEnd     ) = Yi.Event.KEnd      
+fromVtyKey (Yi.Vty.KPageDown) = Yi.Event.KPageDown 
+fromVtyKey (Yi.Vty.KNP5     ) = Yi.Event.KNP5      
+fromVtyKey (Yi.Vty.KUp      ) = Yi.Event.KUp       
+fromVtyKey (Yi.Vty.KMenu    ) = Yi.Event.KMenu     
+fromVtyKey (Yi.Vty.KLeft    ) = Yi.Event.KLeft     
+fromVtyKey (Yi.Vty.KDown    ) = Yi.Event.KDown     
+fromVtyKey (Yi.Vty.KRight   ) = Yi.Event.KRight    
+fromVtyKey (Yi.Vty.KEnter   ) = Yi.Event.KEnter    
+
+fromVtyMod :: Yi.Vty.Modifier -> Yi.Event.Modifier
+fromVtyMod Yi.Vty.MShift = Yi.Event.MShift
+fromVtyMod Yi.Vty.MCtrl  = Yi.Event.MCtrl
+fromVtyMod Yi.Vty.MMeta  = Yi.Event.MMeta
+fromVtyMod Yi.Vty.MAlt   = Yi.Event.MMeta
 
 --
 -- | Redraw the entire terminal from the UI state

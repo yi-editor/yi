@@ -24,9 +24,17 @@ module Yi.Event
 import Data.Bits
 import Data.Char (chr,ord)
 import Yi.Debug
-import Yi.Vty (Key(..), Modifier(..))
+
+data Modifier = MShift | MCtrl | MMeta
+                deriving (Show,Eq,Ord)
+
+data Key = KEsc | KFun Int | KPrtScr | KPause | KASCII Char | KBS | KIns
+         | KHome | KPageUp | KDel | KEnd | KPageDown | KNP5 | KUp | KMenu
+         | KLeft | KDown | KRight | KEnter deriving (Eq,Show,Ord)
 
 data Event = Event Key [Modifier] deriving (Show,Eq,Ord)
+
+
 
 -- | Map an event to a char. This should be gotten rid of, eventually.
 -- Do this to enable using Alex lexers.
