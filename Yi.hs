@@ -235,9 +235,8 @@ static_main st = do
     -- around. (is this still true? -- 04/05)
     --
     Control.Exception.catch
-        (initSignals >> Core.startE st config lineno mfiles >> initDebug ".yi.dbg" >> Core.eventLoop)
+        (initSignals >> initDebug ".yi.dbg" >> Core.startE st config lineno mfiles )
         (\e -> do releaseSignals
-                  UI.end =<< Editor.readEditor Editor.ui
                   Editor.shutdown
                   when (not $ isExitCall e) $ print e
                   throw e)

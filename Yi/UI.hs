@@ -29,7 +29,7 @@
 module Yi.UI (
 
         -- * UI initialisation
-        start, end, suspend,
+        start, end, suspend, main,
 
         -- * Window manipulation
         newWindow, enlargeWindow, shrinkWindow, 
@@ -54,7 +54,7 @@ import Yi.Vty hiding (def, black, red, green, yellow, blue, magenta, cyan, white
 import Yi.Event
 import Yi.Debug
 
-import Control.Concurrent   ( takeMVar, forkIO )
+import Control.Concurrent
 import Control.Concurrent.Chan
 import Control.Exception
 
@@ -63,6 +63,7 @@ import Data.Maybe
 import qualified Data.Map as M
 
 import Data.IORef
+import System.Exit
 import System.Posix.Signals         ( raiseSignal, sigTSTP )
 
 ------------------------------------------------------------------------
@@ -70,6 +71,7 @@ import System.Posix.Signals         ( raiseSignal, sigTSTP )
 data UI = UI { 
               vty :: Vty                     -- ^ Vty
              ,scrsize :: !(IORef (Int,Int))  -- ^ screen size
+             ,uiThread :: ThreadId
              }
 
 -- | Initialise the ui
@@ -78,22 +80,28 @@ start = do
   v <- mkVty
   (x,y) <- Yi.Vty.getSize v
   s <- newIORef (y,x)
-  let result = UI v s
-  t <- forkIO refreshLoop -- fork UI thread
-  modifyEditor_ $ \e -> return $ e { threads = [t] }
   -- fork input-reading thread. important to block *thread* on getKey
   -- otherwise all threads will block waiting for input
   ch <- newChan
-  t' <- forkIO $ getcLoop result ch 
-  modifyEditor_ $ \e -> return $ e { threads = t' : threads e, input = ch }
-  return result
+  forkIO $ getcLoop v s ch 
+  modifyEditor_ $ \e -> return $ e { input = ch }
+  t <- myThreadId
+  return $ UI v s t
  where
-        --
         -- | Action to read characters into a channel
-        --
-        getcLoop :: UI -> Chan Yi.Event.Event -> IO ()
-        getcLoop i ch = repeatM_ $ getKey i >>= writeChan ch
+        getcLoop v s ch = repeatM_ $ getKey v s >>= writeChan ch
 
+        -- | Read a key. UIs need to define a method for getting events.
+        getKey v sz = do 
+          event <- getEvent v
+          case event of 
+            (EvResize x y) -> writeIORef sz (y,x) >> doResizeAll >> getKey v sz
+            _ -> return (fromVtyEvent event)
+
+
+main = do
+  refreshLoop
+ where
         --
         -- | When the editor state isn't being modified, refresh, then wait for
         -- it to be modified again. 
@@ -105,7 +113,9 @@ start = do
 
 -- | Clean up and go home
 end :: UI -> IO ()
-end i = Yi.Vty.shutdown (vty i)
+end i = do  
+  Yi.Vty.shutdown (vty i)
+  throwTo (uiThread i) (ExitException ExitSuccess)
 
 -- | Suspend the program
 suspend :: IO ()
@@ -115,16 +125,6 @@ suspend = raiseSignal sigTSTP
 screenSize :: UI -> IO (Int, Int)
 screenSize = readIORef . scrsize
 
---
--- | Read a key. UIs need to define a method for getting events.
---
-getKey :: UI -> IO Yi.Event.Event
-getKey i@(UI vty sz) = do 
-  event <- getEvent vty
-  case event of 
-    (EvResize x y) -> writeIORef sz (y,x) >> doResizeAll i >> getKey i
-    _ -> do -- logPutStrLn $ show $ fromVtyEvent event
-            return (fromVtyEvent event)
 
 fromVtyEvent :: Yi.Vty.Event -> Yi.Event.Event
 fromVtyEvent (EvKey k mods) = Event (fromVtyKey k) (map fromVtyMod mods)
@@ -403,8 +403,9 @@ resizeAll :: [Window] -> Int -> Int -> [Window]
 resizeAll wls y x = flip map wls (\w -> resize y x w)
 
 -- | Reset the heights and widths of all the windows
-doResizeAll :: UI -> IO ()
-doResizeAll i = modifyEditor_ $ \e -> do
+doResizeAll :: IO ()
+doResizeAll = modifyEditor_ $ \e -> do
+    let i = ui e
     (h,w) <- readIORef $ scrsize i
     let wls   = M.elems (windows e)
         (y,r) = getY h (length wls) -- why -1?

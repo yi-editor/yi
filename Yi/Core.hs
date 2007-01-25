@@ -207,6 +207,7 @@ import System.Exit          ( exitWith, ExitCode(ExitSuccess) )
 
 import Control.Monad
 import Control.Exception
+import Control.Concurrent   ( yield, takeMVar, forkIO )
 import Control.Concurrent.Chan
 
 import GHC.Exception hiding ( throwIO )
@@ -250,8 +251,8 @@ startE st (confs,fn,fn') ln mfs = do
                         Just (f,h) -> hClose h >> fnewE f
         gotoLnE ln
 
-
-    when (isJust st) refreshE -- and redraw
+    forkIO eventLoop -- FIXME: record thread
+    UI.main -- transfer control to UI: GTK must run in the main thread, or else it's not happy.
 
 
 -- ---------------------------------------------------------------------
@@ -287,12 +288,7 @@ eventLoop = do
     repeatM_ $ handle handler (run fn)
 
     where
-      handler e | isJust (ioErrors e) = errorE (show e)
-                | isExitCall e        = throwIO e
-                | otherwise           = errorE (show e)
-
-      isExitCall (ExitException _) = True
-      isExitCall _ = False
+      handler e = errorE (show e)
 
 -- TODO if there is an exception, the key bindings will be reset...
 
@@ -301,7 +297,7 @@ eventLoop = do
 
 -- | Quit.
 quitE :: Action
-quitE = exitWith ExitSuccess -- throws to top level
+quitE = readEditor ui >>= UI.end
 
 --
 -- | Reboot (!). Reboot the entire editor, reloading the Yi core.
@@ -312,7 +308,6 @@ rebootE = do
     e  <- readEditor id
     fn <- readEditor reboot
     Editor.shutdown
---  UI.end
     fn (Just e)
 
 -- | Recompile and reload the user's config files
@@ -327,7 +322,7 @@ reloadE = do
 
 -- | Reset the size, and force a complete redraw
 refreshE :: Action
-refreshE = do readEditor ui >>= UI.doResizeAll
+refreshE = UI.doResizeAll
 
 -- | Do nothing
 nopE :: Action
