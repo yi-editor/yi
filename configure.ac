@@ -1,7 +1,7 @@
 AC_INIT(Yi/Yi.hs)
 
 if test ! -f .setup-config; then
-    exec runhaskell Setup.lhs configure "$@"
+    exec runhaskell Setup.hs configure "$@"
 fi
 
 AC_CONFIG_SRCDIR([yi.cabal])
