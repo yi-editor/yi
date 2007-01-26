@@ -203,11 +203,10 @@ import Data.Map as M        ( lookup, insert )
 
 import System.IO            ( hClose )
 import System.Directory     ( doesFileExist )
-import System.Exit          ( exitWith, ExitCode(ExitSuccess) )
 
 import Control.Monad
 import Control.Exception
-import Control.Concurrent   ( yield, takeMVar, forkIO )
+import Control.Concurrent   ( forkIO )
 import Control.Concurrent.Chan
 
 import GHC.Exception hiding ( throwIO )
