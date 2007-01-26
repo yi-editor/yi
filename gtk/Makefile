@@ -1,9 +1,6 @@
 HS_FILES=$(shell find . -path "./_darcs" -prune -o -name "*.hs" -print)
 
-all: TAGS build
-
-gtk:
-	cd gtk && @runhaskell Setup.hs build
+all: build
 
 build:
 	@runhaskell Setup.hs build

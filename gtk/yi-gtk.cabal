@@ -1,0 +1,19 @@
+name:           yi-gtk
+version:        0.2
+license:        GPL
+license-file:   LICENSE
+author:         Don Stewart
+maintainer:     dons@cse.unsw.edu.au
+build-depends:  base, mtl, vty>=2.0, gtk>=0.9.10.4
+-- vty is still used for Style!
+
+executable:     yi
+main-is:        Main.hs
+include-dirs:   ../cbits
+c-sources:      ../cbits/YiUtils.c
+hs-source-dirs: ., ..
+other-modules:  Yi.Regex
+extensions:     CPP, ForeignFunctionInterface
+ghc-options:    -Wall -fglasgow-exts -O -funbox-strict-fields -fasm -optl-Wl,-s
+
+-- ghc-options:    -prof -auto-all -Wall -fglasgow-exts -O -funbox-strict-fields -fasm -optl-Wl,-s

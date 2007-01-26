@@ -296,7 +296,6 @@ atEol a = do p <- pointB a
              e <- sizeB a
              if p == e
                     then return True
-
                     else do c <- readAtB a p
                             return (c == '\n')
 
