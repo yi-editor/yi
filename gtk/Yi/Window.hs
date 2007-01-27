@@ -46,6 +46,7 @@ data Window =
         key         :: !Unique         -- ^ each window has a unique
        ,bufkey      :: !Unique         -- ^ the buffer this window opens to
        ,textview    :: TextView
+       ,widget      :: ScrolledWindow  -- ^ Top-level widget for this window.
 --     ,mode        :: !Bool           -- ^ this window has modeline?
     }
 
@@ -73,13 +74,16 @@ instance Ord Window where
 -- all existing windows.
 --
 emptyWindow :: FBuffer -> (Int,Int) -> IO Window
-emptyWindow b (h,w) = do
+emptyWindow b (_h,_w) = do
     wu <- newUnique
     v <- textViewNewWithBuffer (textbuf $ rawbuf b)
+    scroll <- scrolledWindowNew Nothing Nothing
+    set scroll [containerChild := v]
     let win = Window {
                     key       = wu
                    ,bufkey    = (keyB b)
                    ,textview  = v
+                   ,widget    = scroll
               }
     return win
 

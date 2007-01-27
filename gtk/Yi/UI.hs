@@ -122,12 +122,10 @@ gtkToYiEvent _ = Event (KASCII '\0') [] -- FIXME: return a more sensible result 
 
 addWindow :: UI -> Window -> IO ()
 addWindow ui w = do
-  scroll <- scrolledWindowNew Nothing Nothing
-  set scroll [containerChild := textview w]
-  set (uiBox ui) [containerChild := scroll, 
-                  boxChildPosition scroll := 0]
+  set (uiBox ui) [containerChild := widget w, 
+                  boxChildPosition (widget w) := 0]
   widgetModifyFont (textview w) (Just (uiFont ui))
-  widgetShowAll (uiBox ui)
+  widgetShowAll (widget w)
 
 
 -- | Clean up and go home
@@ -173,7 +171,10 @@ deleteWindow (Just win) = modifyEditor_ $ \e -> deleteWindow' e win
 
 -- internal, non-thread safe
 deleteWindow' :: Editor -> Window -> IO Editor
-deleteWindow' e win = return e -- TODO
+deleteWindow' e win = do
+  let i = ui e
+  containerRemove (uiBox i) (widget win)
+  return e
 
 -- | Has the frame enough room for an extra window.
 hasRoomForExtraWindow :: IO Bool
@@ -181,8 +182,6 @@ hasRoomForExtraWindow = return True
 
 doResizeAll :: IO ()
 doResizeAll = return ()
-
-
 
 -- | Map GTK long names to Keys
 keyTable :: M.Map String Key
