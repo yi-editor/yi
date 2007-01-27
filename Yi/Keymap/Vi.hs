@@ -476,10 +476,10 @@ rep2cmd  = char '\ESC' `meta` \_ st -> (Nothing, st, Just $ cmd st)
 -- normal input to ex. accumlate chars
 ex_char :: ViMode
 ex_char = anyButDelNlArrow
-    `meta` \[c] st -> (with (msg c), st{acc=c:acc st}, Just ex_mode)
+    `meta` \[c] st -> let newSt = c:acc st in (with (msg newSt), st{acc=newSt}, Just ex_mode)
     where
         anyButDelNlArrow = alt $ any' \\ (enter' ++ delete' ++ ['\ESC',keyUp,keyDown])
-        msg c = getMsgE >>= \s -> msgE (s++[c])
+        msg s = msgE (reverse s)
 
 -- history editing
 -- TODO when you go up, then down, you need 2 keypresses to go up again.

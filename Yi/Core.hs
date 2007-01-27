@@ -51,7 +51,6 @@ module Yi.Core (
         msgE,           -- :: String -> Action
         errorE,         -- :: String -> Action
         msgClrE,        -- :: Action
-        getMsgE,        -- :: IO String
         bufInfoE,       -- :: IO BufferFileInfo
         fileNameE,      -- :: IO (Maybe FilePath)
         bufNameE,       -- :: IO String
@@ -825,16 +824,12 @@ msgE s = modifyEditor_ $ \e -> return e { cmdline = s }
 
 -- | Set the cmd buffer, and draw a pretty error message
 errorE :: String -> Action
-errorE s = do modifyEditor_ $ \e -> return e { cmdline = s }
+errorE s = do msgE s
               logPutStrLn $ "errorE: " ++ s
 
 -- | Clear the message line at bottom of screen
 msgClrE :: Action
-msgClrE = modifyEditor_ $ \e -> return e { cmdline = [] }
-
--- | Get the current cmd buffer
-getMsgE :: IO String
-getMsgE = readEditor cmdline
+msgClrE = msgE ""
 
 -- ---------------------------------------------------------------------
 -- Buffer operations
