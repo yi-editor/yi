@@ -820,7 +820,9 @@ pipeE cmd inp = do
 
 -- | Set the cmd buffer, and draw message at bottom of screen
 msgE :: String -> Action
-msgE s = modifyEditor_ $ \e -> return e { cmdline = s }
+msgE s = do modifyEditor_ $ \e -> do
+              UI.setCmdLine (ui e) s
+              return e
 
 -- | Set the cmd buffer, and draw a pretty error message
 errorE :: String -> Action

@@ -30,6 +30,9 @@ module Yi.UI (
         doResizeAll, deleteWindow, deleteWindow',
         hasRoomForExtraWindow,
 
+        -- * Command line
+        setCmdLine,
+
         -- * UI type, abstract.
         UI,
 
@@ -65,7 +68,8 @@ data UI = UI {
              ,uiFont :: FontDescription
              ,uiCmdLine :: Label
              }
--- | how to initialise the ui
+
+-- | Initialise the ui
 start :: IO UI
 start = do
   initGUI -- FIXME: forward args to the real main. ??
@@ -120,6 +124,25 @@ gtkToYiEvent (Key {eventKeyName = name, eventModifier = modifier, eventKeyChar =
             modif Apple = MMeta
             modif Compose = MMeta
 gtkToYiEvent _ = Event (KASCII '\0') [] -- FIXME: return a more sensible result when we can't translate the event.
+
+-- | Map GTK long names to Keys
+keyTable :: M.Map String Key
+keyTable = M.fromList 
+    [("Down",       KDown) -- defns imported from Yi.Char
+    ,("Up",         KUp)
+    ,("Left",       KLeft)
+    ,("Right",      KRight)
+    ,("Home",       KHome)
+    ,("End",        KEnd)
+    ,("BackSpace",  KBS)
+    ,("Delete",     KDel)
+    ,("Page_Up",    KPageUp)
+    ,("Page_Down",  KPageDown)
+    ,("Insert",     KIns)
+    ,("Escape",     KEsc)
+    ,("Return",     KEnter)
+    ]
+
 
 addWindow :: UI -> Window -> IO ()
 addWindow ui w = do
@@ -186,21 +209,8 @@ hasRoomForExtraWindow = return True
 doResizeAll :: IO ()
 doResizeAll = return ()
 
--- | Map GTK long names to Keys
-keyTable :: M.Map String Key
-keyTable = M.fromList 
-    [("Down",       KDown) -- defns imported from Yi.Char
-    ,("Up",         KUp)
-    ,("Left",       KLeft)
-    ,("Right",      KRight)
-    ,("Home",       KHome)
-    ,("End",        KEnd)
-    ,("BackSpace",  KBS)
-    ,("Delete",     KDel)
-    ,("Page_Up",    KPageUp)
-    ,("Page_Down",  KPageDown)
-    ,("Insert",     KIns)
-    ,("Escape",     KEsc)
-    ,("Return",     KEnter)
-    ]
+setCmdLine :: UI -> String -> IO ()
+setCmdLine i s = do 
+  set (uiCmdLine i) [labelText := s]
 
+                

@@ -63,7 +63,6 @@ data Editor = Editor {
        ,reload          :: IO (Maybe Config)          -- ^ reload config function
        ,dynamic         :: !(M.Map String Dynamic)    -- ^ dynamic components
 
-       ,cmdline         :: !String                    -- ^ the command line
        ,cmdlinefocus    :: !Bool                      -- ^ cmdline has focus
        ,windowfill      :: !Char                      -- ^ char to fill empty window space with
        ,tabwidth        :: !Int                       -- ^ width of tabs
@@ -85,7 +84,6 @@ emptyEditor = Editor {
 
        ,ui           = error "UI not initialized"
 
-       ,cmdline      = []
        ,cmdlinefocus = False
        ,windowfill   = ' '
        ,tabwidth     = 8        -- has to be for now

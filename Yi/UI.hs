@@ -36,6 +36,9 @@ module Yi.UI (
         doResizeAll, deleteWindow, deleteWindow',
         hasRoomForExtraWindow,
 
+        -- * Command line
+        setCmdLine,
+
         -- * UI type, abstract.
         UI,
 
@@ -72,6 +75,7 @@ data UI = UI {
               vty :: Vty                     -- ^ Vty
              ,scrsize :: !(IORef (Int,Int))  -- ^ screen size
              ,uiThread :: ThreadId
+             ,cmdline :: IORef String
              }
 
 -- | Initialise the ui
@@ -86,7 +90,8 @@ start = do
   forkIO $ getcLoop v s ch 
   modifyEditor_ $ \e -> return $ e { input = ch }
   t <- myThreadId
-  return $ UI v s t
+  cmd <- newIORef ""
+  return $ UI v s t cmd
  where
         -- | Action to read characters into a channel
         getcLoop v s ch = repeatM_ $ getKey v s >>= writeChan ch
@@ -98,7 +103,7 @@ start = do
             (EvResize x y) -> writeIORef sz (y,x) >> doResizeAll >> getKey v sz
             _ -> return (fromVtyEvent event)
 
-
+main :: IO ()
 main = do
   refreshLoop
  where
@@ -174,8 +179,9 @@ refresh = do
   withEditor $ \e -> do
     let ws = getWindows e
         wImages = map picture ws
+    cmd <- readIORef (cmdline (ui e))
     Yi.Vty.update (vty $ ui e) 
-      pic {pImage = concat wImages ++ [withStyle (window $ uistyle e) (cmdline e ++ repeat ' ')],
+      pic {pImage = concat wImages ++ [withStyle (window $ uistyle e) (cmd ++ repeat ' ')],
            pCursor = if cmdlinefocus e
                      then NoCursor 
                      else case getWindowOf e of
@@ -436,3 +442,8 @@ getY :: Int -> Int -> (Int,Int)
 getY h 0 = (h, 0)
 getY h 1 = (h, 0)
 getY h l = h `quotRem` l
+
+setCmdLine :: UI -> String -> IO ()
+setCmdLine ui s = do 
+  writeIORef (cmdline ui) s
+                
