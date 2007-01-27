@@ -46,7 +46,7 @@ import Yi.Window as Window
 import Yi.Event
 import Yi.Debug
 
-import Control.Concurrent   ( yield)
+import Control.Concurrent ( yield )
 import Control.Concurrent.Chan
 
 import Data.List
@@ -60,7 +60,8 @@ import qualified Graphics.UI.Gtk as Gtk
 ------------------------------------------------------------------------
 
 data UI = UI {
-              uiBox :: VBox
+              uiWindow :: Gtk.Window
+             ,uiBox :: VBox
              ,uiFont :: FontDescription
              ,uiCmdLine :: Label
              }
@@ -92,7 +93,7 @@ start = do
   fontDescriptionSetFamily f "Monospace"
 
   widgetShowAll win
-  return $ UI vb f cmd
+  return $ UI win vb f cmd
 
 main :: IO ()
 main = do logPutStrLn "GTK main loop running"
@@ -134,7 +135,9 @@ end _ = mainQuit
 
 -- | Suspend the program
 suspend :: IO ()
-suspend = return () -- GTK FIXME: minimize
+suspend = do 
+  i <- readEditor ui
+  windowIconify (uiWindow i) 
 
 
 ------------------------------------------------------------------------
