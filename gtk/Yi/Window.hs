@@ -17,12 +17,7 @@
 -- 02111-1307, USA.
 --
 
---
--- | A 'Window' is a rectangular view onto a buffer. Editor actions
--- manipulate buffers via particular windows onto that buffer. Some
--- editor actions, such as scrolling, only manipulate windows, without
--- touching the underlying buffer.
---
+-- | A 'Window' is a view onto a buffer.
 
 module Yi.Window where
 
@@ -33,14 +28,6 @@ import Data.Unique              ( Unique, newUnique )
 
 import Graphics.UI.Gtk hiding (Window)
 
---
--- | A window onto a buffer.
---
--- Windows need some small information about the terminal. For example,
--- they need to know the height and width.  That's about it.
---
--- This doesn't handle line wrapping, yet.
---
 data Window =
     Window {
         key         :: !Unique         -- ^ each window has a unique
