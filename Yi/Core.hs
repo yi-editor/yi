@@ -208,8 +208,6 @@ import Control.Exception
 import Control.Concurrent   ( forkIO )
 import Control.Concurrent.Chan
 
-import GHC.Exception hiding ( throwIO )
-
 import qualified Yi.UI as UI
 
 -- | A 'Direction' is either left or right.

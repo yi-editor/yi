@@ -104,26 +104,41 @@ main = do logPutStrLn "GTK main loop running"
           mainGUI
 
 
+instance Show Gtk.Event where
+    show (Key _eventRelease _eventSent _eventTime eventModifier _eventWithCapsLock _eventWithNumLock 
+                  _eventWithScrollLock eventKeyName eventKeyChar) 
+        = show eventModifier ++ " " ++ show eventKeyName ++ " " ++ show eventKeyChar
+    show _ = "Not a key event"
+
+instance Show Gtk.Modifier where
+    show Control = "Ctrl"
+    show Alt = "Alt"
+    show Shift = "Shift"
+    show Apple = "Apple"
+    show Compose = "Compose"
+    
 processEvent :: Chan Event -> Gtk.Event -> IO Bool
 processEvent ch ev = do
-  logPutStrLn $ "Event: " ++ show (gtkToYiEvent ev)
-  writeChan ch (gtkToYiEvent ev)
+  -- logPutStrLn $ "Gtk.Event: " ++ show ev
+  -- logPutStrLn $ "Event: " ++ show (gtkToYiEvent ev)
+  case gtkToYiEvent ev of
+    Nothing -> logPutStrLn $ "Event not translatable: " ++ show ev
+    Just e -> writeChan ch e
   return True
             
-gtkToYiEvent :: Gtk.Event -> Event
-gtkToYiEvent (Key {eventKeyName = name, eventModifier = modifier, eventKeyChar = char})
-    = Event k $ (nub $ (if isShift then filter (not . (== MShift)) else id) $ map modif modifier)
-      where (k,isShift) = 
+gtkToYiEvent :: Gtk.Event -> Maybe Event
+gtkToYiEvent (Key {eventKeyName = keyName, eventModifier = modifier, eventKeyChar = char})
+    = fmap (\k -> Event k $ (nub $ (if isShift then filter (not . (== MShift)) else id) $ map modif modifier)) key
+      where (key,isShift) = 
                 case char of
-                  Just c -> (KASCII c, True)
-                  Nothing -> (M.findWithDefault (KASCII '\0') name keyTable, False)
-                              -- FIXME: return a more sensible result when we can't translate the event.
+                  Just c -> (Just $ KASCII c, True)
+                  Nothing -> (M.lookup keyName keyTable, False)
             modif Control = MCtrl
             modif Alt = MMeta
             modif Shift = MShift
             modif Apple = MMeta
             modif Compose = MMeta
-gtkToYiEvent _ = Event (KASCII '\0') [] -- FIXME: return a more sensible result when we can't translate the event.
+gtkToYiEvent _ = Nothing
 
 -- | Map GTK long names to Keys
 keyTable :: M.Map String Key
@@ -145,10 +160,10 @@ keyTable = M.fromList
 
 
 addWindow :: UI -> Window -> IO ()
-addWindow ui w = do
-  set (uiBox ui) [containerChild := widget w, 
+addWindow i w = do
+  set (uiBox i) [containerChild := widget w, 
                   boxChildPosition (widget w) := 0]
-  widgetModifyFont (textview w) (Just (uiFont ui))
+  widgetModifyFont (textview w) (Just (uiFont i))
   widgetShowAll (widget w)
 
 
