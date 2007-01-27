@@ -198,6 +198,7 @@ import qualified Yi.Style as Style
 import Data.Maybe
 import Data.Char            ( isLatin1 )
 import Data.Dynamic
+import Data.List
 import Data.Map as M        ( lookup, insert )
 
 import System.IO            ( hClose )
@@ -279,12 +280,14 @@ eventLoop :: IO ()
 eventLoop = do
     fn <- Editor.getKeyBinds
     ch <- readEditor input
-    let run km = catchDyn (sequence_ . km =<< getChanContents ch)
+    let run km = catchDyn (sequence_ . map atomic . km  =<< getChanContents ch)
                           (\(MetaActionException km') -> run km')
     repeatM_ $ handle handler (run fn)
 
     where
       handler e = errorE (show e)
+      atomic action = do action
+                         touchST
 
 -- TODO if there is an exception, the key bindings will be reset...
 
