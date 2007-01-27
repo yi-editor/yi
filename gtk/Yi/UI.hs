@@ -105,9 +105,9 @@ main = do logPutStrLn "GTK main loop running"
 
 
 instance Show Gtk.Event where
-    show (Key _eventRelease _eventSent _eventTime eventModifier _eventWithCapsLock _eventWithNumLock 
-                  _eventWithScrollLock eventKeyName eventKeyChar) 
-        = show eventModifier ++ " " ++ show eventKeyName ++ " " ++ show eventKeyChar
+    show (Key _eventRelease _eventSent _eventTime eventModifier' _eventWithCapsLock _eventWithNumLock 
+                  _eventWithScrollLock eventKeyName' eventKeyChar') 
+        = show eventModifier' ++ " " ++ show eventKeyName' ++ " " ++ show eventKeyChar'
     show _ = "Not a key event"
 
 instance Show Gtk.Modifier where
@@ -128,8 +128,8 @@ processEvent ch ev = do
             
 gtkToYiEvent :: Gtk.Event -> Maybe Event
 gtkToYiEvent (Key {eventKeyName = keyName, eventModifier = modifier, eventKeyChar = char})
-    = fmap (\k -> Event k $ (nub $ (if isShift then filter (not . (== MShift)) else id) $ map modif modifier)) key
-      where (key,isShift) = 
+    = fmap (\k -> Event k $ (nub $ (if isShift then filter (not . (== MShift)) else id) $ map modif modifier)) key'
+      where (key',isShift) = 
                 case char of
                   Just c -> (Just $ KASCII c, True)
                   Nothing -> (M.lookup keyName keyTable, False)
