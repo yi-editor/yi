@@ -31,6 +31,7 @@ import Prelude hiding (error)
 import Yi.Debug
 import Yi.Regex
 
+import Data.IORef
 import Control.Monad
 
 import Graphics.UI.Gtk hiding ( Point, Size )
@@ -43,6 +44,7 @@ data BufferImpl =
         BufferImpl { textbuf :: TextBuffer
                    , point :: TextMark
                    , mark :: TextMark
+                   , markActive :: IORef Bool
                    }
 
 --
@@ -73,7 +75,7 @@ insertN' buf cs = do
   --logPutStrLn "insertN'"
   textBufferInsertAtCursor buf cs
 
-deleteN' :: TextBuffer -> Int -> Point -> IO ()
+deleteN' :: TextBuffer -> Size -> Point -> IO ()
 deleteN' _ 0 _ = return ()
 deleteN' tb n p = do
   start <- textBufferGetIterAtOffset tb p
@@ -83,7 +85,9 @@ deleteN' tb n p = do
 
 
 
-lineMove f (BufferImpl tb p _) = do
+lineMove f b = do
+  let tb = textbuf b
+      p = point b 
   i <- textBufferGetIterAtMark tb p 
   l <- get i textIterLine
   o <- get i textIterLineOffset
@@ -108,7 +112,8 @@ newBI s = do
   textBufferSetText buf s
   p <- textBufferGetInsert buf
   m <- textBufferGetSelectionBound buf
-  return (BufferImpl buf p m)
+  a <- newIORef False
+  return (BufferImpl buf p m a)
 
 -- | Free any resources associated with this buffer
 finaliseBI :: BufferImpl -> IO ()
@@ -116,49 +121,53 @@ finaliseBI _ = return () -- gtk takes care of the garbage.
 
 -- | Number of characters in the buffer
 sizeBI      :: BufferImpl -> IO Int
-sizeBI (BufferImpl tb _ _) = do
-  i <- textBufferGetEndIter tb
+sizeBI b = do
+  i <- textBufferGetEndIter (textbuf b)
   get i textIterOffset
 
 -- | Extract the current point
 pointBI :: BufferImpl -> IO Int
-pointBI (BufferImpl tb point _) = do
-  i <-  textBufferGetIterAtMark tb point
+pointBI b = do
+  i <-  textBufferGetIterAtMark (textbuf b) (point b)
   get i textIterOffset
 {-# INLINE pointBI #-}
 
 
 -- | Return @n@ elems starting at @i@ of the buffer as a list
 nelemsBI :: BufferImpl -> Size -> Point -> IO [Char]
-nelemsBI (BufferImpl tb _ _) n i = readChars tb i n
+nelemsBI b n i = readChars (textbuf b) i n
 
 ------------------------------------------------------------------------
 -- Point based editing
 
 -- | Move point in buffer to the given index
-moveToI     :: BufferImpl -> Int -> IO ()
-moveToI (BufferImpl tb point _) off = do
+moveToI :: BufferImpl -> Int -> IO ()
+moveToI b off = do
   --logPutStrLn $ "moveTo " ++ show off
-  p <- textBufferGetIterAtOffset tb off
-  textBufferMoveMark tb point p
+  p <- textBufferGetIterAtOffset (textbuf b) off
+  active <- readIORef (markActive b)
+  if active
+    then textBufferMoveMark (textbuf b) (point b) p
+    else textBufferPlaceCursor (textbuf b) p
 {-# INLINE moveToI #-}
 
 
 -- | Write an element into the buffer at the current point
 writeBI :: BufferImpl -> Char -> IO ()
-writeBI b@(BufferImpl tb _ _) c = do
+writeBI b c = do
     off <- pointBI b
-    writeChars tb [c] off -- FIXME: insert instead of overwrite
+    deleteN' (textbuf b) 1 off
+    writeChars (textbuf b) [c] off 
 
 {-# INLINE writeBI #-}
 
 -- | Insert the list at current point, extending size of buffer
 insertNI    :: BufferImpl -> [Char] -> IO ()
-insertNI (BufferImpl tb _ _) = insertN' tb
+insertNI b = insertN' (textbuf b)
 
 -- | @deleteNAt b n p@ deletes @n@ characters at position @p@
-deleteNAtI :: BufferImpl -> Int -> Int -> IO ()
-deleteNAtI (BufferImpl tb _ _) = deleteN' tb
+deleteNAtI :: BufferImpl -> Size -> Point -> IO ()
+deleteNAtI b = deleteN' (textbuf b)
 
 ------------------------------------------------------------------------
 -- Line based editing
@@ -166,8 +175,8 @@ deleteNAtI (BufferImpl tb _ _) = deleteN' tb
 -- | Return the current line number
 curLnI       :: BufferImpl -> IO Int
 -- count number of \n from origin to point
-curLnI (BufferImpl buf point _) = do
-  p <- textBufferGetIterAtMark buf point
+curLnI b = do
+  p <- textBufferGetIterAtMark (textbuf b) (point b)
   get p textIterLine
 {-# INLINE curLnI #-}
 
@@ -175,10 +184,10 @@ curLnI (BufferImpl buf point _) = do
 -- actual line we went to (which may be not be the requested line,
 -- if it was out of range)
 gotoLnI      :: BufferImpl -> Int -> IO Int
-gotoLnI (BufferImpl tb point _) n = do
-  p <- textBufferGetIterAtMark tb point
+gotoLnI b n = do
+  p <- textBufferGetIterAtMark (textbuf b) (point b)
   textIterSetLine p n
-  textBufferMoveMark tb point p
+  textBufferMoveMark (textbuf b) (point b) p
   textIterGetLine p
 {-# INLINE gotoLnI #-}
 
@@ -199,29 +208,32 @@ regexBI fb re = error "regexBI not implemented"
 -- ------------------------------------------------------------------------
     ---------------------------------------------------------------------
 
-
-{- 
-   Okay if the mark is set then we return that, otherwise we
-   return the point, which will mean that the calling function will
-   see the selection area as null in length. 
--}
 getMarkBI :: BufferImpl -> IO Int
-getMarkBI (BufferImpl tb _ m) = do
-  i <- textBufferGetIterAtMark tb m
+getMarkBI b = do
+  i <- textBufferGetIterAtMark (textbuf b) (mark b)
   get i textIterOffset
 
 -- | Set this buffer mark (TODO: have a set of these (bookmarks, error list, etc.))
 setMarkBI :: BufferImpl -> Int -> IO ()
-setMarkBI (BufferImpl tb _ m) pos = do
+setMarkBI b pos = do
+  let tb = textbuf b
   logPutStrLn $ "setMarkBI " ++ show pos
+  writeIORef (markActive b) True
   p <- textBufferGetIterAtOffset tb pos
-  textBufferMoveMark tb m p
+  textBufferMoveMark tb (mark b) p
+
 {-
   We must allow the unsetting of this mark, this will have the property
   that the point will always be returned as the mark.
 -}
+
 unsetMarkBI :: BufferImpl -> IO ()
-unsetMarkBI fb = error "unsetMarkB not supported"
+unsetMarkBI b = do
+  let tb = textbuf b
+  writeIORef (markActive b) False
+  p <- textBufferGetIterAtMark tb (point b)
+  textBufferMoveMark tb (mark b) p
+  
 
 -- | calculate whether a move is in bounds.
 inBounds :: Int -> Int -> Int

@@ -46,10 +46,9 @@ import Yi.Window as Window
 import Yi.Event
 import Yi.Debug
 
-import Control.Concurrent   ( yield, forkIO )
+import Control.Concurrent   ( yield)
 import Control.Concurrent.Chan
 
-import Data.Char ( isUpper )
 import Data.List
 import Data.Maybe
 import qualified Data.Map as M
@@ -97,7 +96,7 @@ gtkToYiEvent (Key {eventKeyName = name, eventModifier = modifier, eventKeyChar =
     = Event k $ (nub $ (if isShift then filter (not . (== MShift)) else id) $ map modif modifier)
       where (k,isShift) = 
                 case char of
-                  Just c -> (KASCII c, isUpper c)
+                  Just c -> (KASCII c, True)
                   Nothing -> (M.findWithDefault (KASCII '\0') name keyTable, False)
                               -- FIXME: return a more sensible result when we can't translate the event.
             modif Control = MCtrl
