@@ -41,7 +41,7 @@ import qualified Yi.Style as Style
 
 import Yi.Keymap.Emacs.KillRing
 import Yi.Keymap.Emacs.UnivArgument
-import Yi.Keymap.Emacs.OldKeys
+import Yi.Keymap.Emacs.Keys
 
 import Yi.Keymap.Movements ( moveRightWord
 			   , movementCommand
@@ -60,12 +60,11 @@ import Control.Monad.State
 
 -- * Dynamic state-components
 
-
-newtype TypedKey = TypedKey String
+newtype TypedKey = TypedKey [Event]
     deriving Typeable
 
 instance Initializable TypedKey where
-    initial = return $ TypedKey ""
+    initial = return $ TypedKey []
 
 data MiniBuf = MiniBuf Window FBuffer
     deriving Typeable
@@ -82,10 +81,8 @@ instance Initializable MiniBuf where
 
 -- | The command type.
 
-type KProc a = StateT String (Writer [Action]) a
+type KProc a = StateT [Event] (Writer [Action]) a
 
-liftKm :: ([Char] -> [Action]) -> Keymap
-liftKm m = m . map eventToChar
 
 -- * The keymap abstract definition
 
@@ -104,7 +101,7 @@ liftKm m = m . map eventToChar
 
 -- And, rebinding could then be achieved :)
 
-normalKlist :: KList
+normalKlist :: KList String
 normalKlist = [ ([c], atomic $ insertSelf) | c <- printableChars ] ++
               [
 	 {-
@@ -157,7 +154,7 @@ normalKlist = [ ([c], atomic $ insertSelf) | c <- printableChars ] ++
         ("C-x 2",     atomic $ splitE),
         ("C-x C-c",   atomic $ closeE),
         ("C-x C-f",   atomic $ findFile),
-	("C-x C-g",   atomic $ findGotoLine), -- Alt-Shift-G some prefer?
+	("C-x C-g",   atomic $ gotoLine), -- Alt-Shift-G some prefer?
         ("C-x C-s",   atomic $ writeFileandMessage),
 
         {- 
@@ -231,14 +228,14 @@ atomic :: Action -> KProc ()
 atomic cmd = liftC $ do cmd
                         killringEndCmd
 
-getInput :: KProc String
+getInput :: KProc [Event]
 getInput = get
 
-putInput :: String -> KProc ()
+putInput :: [Event] -> KProc ()
 putInput = modify . const
 
 
-readStroke, lookStroke :: KProc Char
+readStroke, lookStroke :: KProc Event
 readStroke = do (c:cs) <- getInput
                 putInput cs
                 return c
@@ -255,11 +252,11 @@ lookStroke = do (c:_) <- getInput
 
 insertSelf :: Action
 insertSelf = repeatingArg $ do TypedKey k <- getDynamic
-                               insertNE k
+                               insertNE (map eventToChar k)
 
 insertNextC :: KProc ()
 insertNextC = do c <- readStroke
-                 liftC $ repeatingArg $ insertE c
+                 liftC $ repeatingArg $ insertE (eventToChar c)
 
 
 
@@ -267,7 +264,7 @@ insertNextC = do c <- readStroke
 undefC :: Action
 undefC = do TypedKey k <- getDynamic
             errorE $ "Key sequence not defined : " ++
-                  showKey k ++ " " ++ show (map ord k)
+                  showKey k ++ " " ++ show k
 
 
 -- | C-u stuff
@@ -277,15 +274,15 @@ readArgC = do readArg' Nothing
 readArg' :: Maybe Int -> KProc ()
 readArg' acc = do
     c <- lookStroke
-    if isDigit c
-     then (do { readStroke
-              ; let acc' = Just $ 10 * (fromMaybe 0 acc) + (ord c - ord '0')
+    case c of
+      Event (KASCII d) [] | isDigit d ->
+           do { readStroke
+              ; let acc' = Just $ 10 * (fromMaybe 0 acc) + (ord d - ord '0')
               ; liftC $ do TypedKey k <- getDynamic
                            msgE (showKey k ++ show (fromJust $ acc'))
               ; readArg' acc'
              }
-          )
-     else liftC $ setDynamic $ UniversalArg $ Just $ fromMaybe 4 acc
+      _ -> liftC $ setDynamic $ UniversalArg $ Just $ fromMaybe 4 acc
 
 
 -- TODO:
@@ -296,42 +293,30 @@ readArg' acc = do
 -- prevent recursive minibuffer usage
 -- hide modeline
 
-spawnMinibuffer :: String -> KList -> Action
+spawnMinibuffer :: String -> KList String -> Action
 spawnMinibuffer _prompt klist =
     do MiniBuf w _b <- getDynamic
        setWinE w
-       metaM $ liftKm (fromKProc $ makeKeymap klist)
+       metaM (fromKProc $ makeKeymap klist)
 
-rebind :: KList -> String -> KProc () -> KList
+rebind :: KList String -> String -> KProc () -> KList String
 rebind kl k kp = M.toList $ M.insert k kp $ M.fromList kl
 
 findFile :: Action
-findFile = spawnMinibuffer "find file:" (rebind normalKlist "C-j" (liftC loadFile))
-
--- read contents of current buffer (which should be the minibuffer), and
--- use it to open a new file
-loadFile :: Action
-loadFile = do filename <- liftM init readAllE  -- problems if more than 1 line, of course
-              closeE
-              msgE $ "loading " ++ filename
-              fnewE filename
-
-{-
-  Do roughly the same for [-gotoLine-] which we do for [-findFile-] above.
-  Obviously problems if the contents has more than one line or even if it
-  just isn't a number.
--}
+findFile = withMinibuffer "find file:" $ \filename -> do msgE $ "loading " ++ filename
+                                                         fnewE filename
 -- | Goto a line specified in the mini buffer.
-findGotoLine :: Action
-findGotoLine = spawnMinibuffer "goto line:" 
-	       (rebind normalKlist "C-j" (liftC gotoLine))
-	       where gotoLine :: Action
-		     gotoLine = do lineString <- liftM init readAllE
-				   let lineNo = read lineString
-				   closeE
-				   gotoLnE lineNo
+gotoLine :: Action
+gotoLine = withMinibuffer "goto line:" $ \lineString -> gotoLnE (read lineString)
 
-
+withMinibuffer :: String -> (String -> Action) -> Action
+withMinibuffer prompt act = spawnMinibuffer prompt (rebind normalKlist "RET" (liftC innerAction))
+    -- read contents of current buffer (which should be the minibuffer), and
+    -- apply it to the desired action
+    where innerAction :: Action
+          innerAction = do lineString <- readAllE
+                           closeE
+                           act lineString
 
 scrollDownE :: Action
 scrollDownE = withUnivArg $ \a ->
@@ -339,26 +324,23 @@ scrollDownE = withUnivArg $ \a ->
                  Nothing -> downScreenE
                  Just n -> replicateM_ n downE
 
-
-
-
 -- * KeyList => keymap
 -- Specialized version of MakeKeymap
 
 data KME = KMESubmap KM
          | KMECommand (KProc ())
 
-type KM = M.Map Char KME
+type KM = M.Map Event KME
 
-type KListEnt = ([Char], KProc ())
-type KList = [KListEnt]
+type KListEnt k = (k, KProc ())
+type KList k = [KListEnt k]
 
 -- | Create a binding processor from 'kmap'.
-makeKeymap :: KList -> KProc ()
-makeKeymap kmap = do getActions "" (buildKeymap kmap)
+makeKeymap :: KList String -> KProc ()
+makeKeymap kmap = do getActions [] (buildKeymap kmap)
                      makeKeymap kmap
 
-getActions :: String -> KM -> KProc ()
+getActions :: [Event] -> KM -> KProc ()
 getActions k fm = do
     c <- readStroke
     let k' = k ++ [c]
@@ -372,10 +354,10 @@ getActions k fm = do
 
 -- | Builds a keymap (Yi.Map.Map) from a key binding list, also creating
 -- submaps from key sequences.
-buildKeymap :: KList -> KM
+buildKeymap :: KList String -> KM
 buildKeymap l = buildKeymap' M.empty [(readKey k, c) | (k,c) <- l]
 
-buildKeymap' :: KM -> KList -> KM
+buildKeymap' :: KM -> KList [Event] -> KM
 buildKeymap' fm_ l =
     foldl addKey fm_ [(k, KMECommand c) | (k,c) <- l]
     where
@@ -389,13 +371,13 @@ buildKeymap' fm_ l =
         addKey _ ([], _) = error "Invalid keymap table"
 
 
-fromKProc :: KProc a -> [Char] -> [Action]
+fromKProc :: KProc a -> [Event] -> [Action]
 fromKProc kp cs = snd $ runWriter $ runStateT kp cs
 
 -- | entry point
 keymap :: Keymap
 keymap cs = setWindowFillE '~' : winStyleAct : actions
-	    where actions     = keymapFun $ map eventToChar cs
+	    where actions     = keymapFun $ cs
 		  keymapFun   = fromKProc $ makeKeymap normalKlist
 		  winStyleAct = setWindowStyleE defaultVimacsUiStyle
 
