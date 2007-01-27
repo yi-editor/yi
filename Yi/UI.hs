@@ -444,6 +444,6 @@ getY h 1 = (h, 0)
 getY h l = h `quotRem` l
 
 setCmdLine :: UI -> String -> IO ()
-setCmdLine ui s = do 
-  writeIORef (cmdline ui) s
+setCmdLine i s = do 
+  writeIORef (cmdline i) s
                 

@@ -23,12 +23,6 @@
 
 module Yi.Style where
 
-#include "ghcconfig.h"
-
-import qualified Yi.Vty as Vty
-
-import qualified Data.ByteString as P (ByteString)
-
 import Data.Word                (Word8)
 
 --
@@ -42,6 +36,13 @@ data UIStyle =
        , selected         :: !Style    -- ^ the selected portion
        , eof              :: !Style    -- ^ empty file marker colours
      } 
+
+data Color
+    = RGB {-# UNPACK #-} !Word8 !Word8 !Word8
+    | Default
+    | Reverse
+    deriving (Eq,Ord,Show)
+
 
 --
 -- | Default settings
@@ -68,20 +69,6 @@ uiStyle = UIStyle {
 
 -- | Foreground and background color pairs
 data Style = Style {-# UNPACK #-} !Color !Color deriving (Eq,Ord,Show)
-
--- | A List of characters with styles attached
-data CharA = C {-# UNPACK #-} !Char
-           | A {-# UNPACK #-} !Char !Style
-
--- | A list of such values (the representation is optimised)
-data StringA = Fast   {-# UNPACK #-} !P.ByteString !Style
-             | FancyS {-# UNPACK #-} ![(P.ByteString, Style)]  -- one line made up of segments
-
-data Color
-    = RGB {-# UNPACK #-} !Word8 !Word8 !Word8
-    | Default
-    | Reverse
-    deriving (Eq,Ord,Show)
 
 ------------------------------------------------------------------------
 --
@@ -119,11 +106,10 @@ reversebg   = Reverse
 --
 -- Combine attribute with another attribute
 --
-boldA, reverseA, nullA, flipRevA ::  Vty.Attr -> Vty.Attr
+boldA, reverseA, nullA ::  Vty.Attr -> Vty.Attr
 boldA a    = a { Vty.bold = True }
 reverseA a = a { Vty.rv = True }
 nullA       = id
-flipRevA a = a { Vty.rv = not $ Vty.rv a }
 
 ------------------------------------------------------------------------
 

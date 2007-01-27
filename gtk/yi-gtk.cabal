@@ -4,8 +4,7 @@ license:        GPL
 license-file:   LICENSE
 author:         Don Stewart
 maintainer:     dons@cse.unsw.edu.au
-build-depends:  base, mtl, vty>=2.0, gtk>=0.9.10.4
--- vty is still used for Style!
+build-depends:  base, mtl, gtk>=0.9.10.4
 
 executable:     yi
 main-is:        Main.hs
