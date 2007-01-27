@@ -53,7 +53,7 @@ readChars buf p i = do
   start <- textBufferGetIterAtOffset buf (p)
   end <- textBufferGetIterAtOffset buf (p+i)
   result <- textBufferGetText buf start end False
-  logPutStrLn $ "readChars " ++ show p ++ " " ++ show i ++ " = " ++ show result
+  --logPutStrLn $ "readChars " ++ show p ++ " " ++ show i ++ " = " ++ show result
   return result
 {-# INLINE readChars #-}
 
@@ -70,7 +70,7 @@ writeChars buf cs p = do
 
 
 insertN' buf cs = do 
-  logPutStrLn "insertN'"
+  --logPutStrLn "insertN'"
   textBufferInsertAtCursor buf cs
 
 deleteN' :: TextBuffer -> Int -> Point -> IO ()
@@ -138,7 +138,7 @@ nelemsBI (BufferImpl tb _ _) n i = readChars tb i n
 -- | Move point in buffer to the given index
 moveToI     :: BufferImpl -> Int -> IO ()
 moveToI (BufferImpl tb point _) off = do
-  putStrLn $ "moveTo " ++ show off
+  --logPutStrLn $ "moveTo " ++ show off
   p <- textBufferGetIterAtOffset tb off
   textBufferMoveMark tb point p
 {-# INLINE moveToI #-}
