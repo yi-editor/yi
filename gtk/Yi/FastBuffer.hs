@@ -183,7 +183,7 @@ curLnI b = do
 -- | Go to line number @n@. @n@ is indexed from 1. Returns the
 -- actual line we went to (which may be not be the requested line,
 -- if it was out of range)
-gotoLnI      :: BufferImpl -> Int -> IO Int
+gotoLnI :: BufferImpl -> Int -> IO Int
 gotoLnI b n = do
   p <- textBufferGetIterAtMark (textbuf b) (point b)
   textIterSetLine p n

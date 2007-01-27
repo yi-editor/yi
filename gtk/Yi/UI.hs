@@ -18,7 +18,7 @@
 --
 
 
--- | This module defines a user interface implemented using ncurses.
+-- | This module defines a user interface implemented using gtk.
 
 module Yi.UI (
 
@@ -60,28 +60,41 @@ import qualified Graphics.UI.Gtk as Gtk
 ------------------------------------------------------------------------
 
 data UI = UI {
-              uiBox :: VBox,
-              uiFont :: FontDescription
+              uiBox :: VBox
+             ,uiFont :: FontDescription
+             ,uiCmdLine :: Label
              }
 -- | how to initialise the ui
 start :: IO UI
 start = do
   initGUI -- FIXME: forward args to the real main. ??
+
   win <- windowNew
+
   ch <- newChan
   modifyEditor_ $ \e -> return $ e { input = ch }
   onKeyPress win (processEvent ch)
+
   vb <- vBoxNew False 1
   set win [ containerChild := vb ]
   onDestroy win mainQuit
-  widgetShowAll win
                 
-  f <- fontDescriptionNew
-  fontDescriptionSetFamily f "Monospace"
+  cmd <- labelNew Nothing
+  set cmd [ miscXalign := 0.01 ]
+  set vb [ containerChild := cmd, 
+           boxChildPacking cmd := PackNatural, 
+           boxChildPosition cmd := 10 ] 
+
   -- use our magic threads thingy (http://haskell.org/gtk2hs/archives/2005/07/24/writing-multi-threaded-guis/)
   timeoutAddFull (yield >> return True) priorityDefaultIdle 50
-  return $ UI vb f
 
+  f <- fontDescriptionNew
+  fontDescriptionSetFamily f "Monospace"
+
+  widgetShowAll win
+  return $ UI vb f cmd
+
+main :: IO ()
 main = do logPutStrLn "GTK main loop running"
           mainGUI
 
@@ -92,6 +105,7 @@ processEvent ch ev = do
   writeChan ch (gtkToYiEvent ev)
   return True
             
+gtkToYiEvent :: Gtk.Event -> Event
 gtkToYiEvent (Key {eventKeyName = name, eventModifier = modifier, eventKeyChar = char})
     = Event k $ (nub $ (if isShift then filter (not . (== MShift)) else id) $ map modif modifier)
       where (k,isShift) = 
@@ -106,10 +120,12 @@ gtkToYiEvent (Key {eventKeyName = name, eventModifier = modifier, eventKeyChar =
             modif Compose = MMeta
 gtkToYiEvent _ = Event (KASCII '\0') [] -- FIXME: return a more sensible result when we can't translate the event.
 
+addWindow :: UI -> Window -> IO ()
 addWindow ui w = do
   scroll <- scrolledWindowNew Nothing Nothing
   set scroll [containerChild := textview w]
-  set (uiBox ui) [containerChild := scroll]
+  set (uiBox ui) [containerChild := scroll, 
+                  boxChildPosition scroll := 0]
   widgetModifyFont (textview w) (Just (uiFont ui))
   widgetShowAll (uiBox ui)
 
@@ -165,6 +181,7 @@ hasRoomForExtraWindow = return True
 
 doResizeAll :: IO ()
 doResizeAll = return ()
+
 
 
 -- | Map GTK long names to Keys
