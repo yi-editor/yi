@@ -553,10 +553,10 @@ writeE c = withBuffer_ $ \b -> do
                   | otherwise  -> nopE          -- TODO
 
 -- | Transpose two characters, (the Emacs C-t action)
--- Note that mg and emacs only work on the current line, whereas this
--- transpose will operate over the entire buffer if required.
 swapE :: Action
-swapE = do c <- readE
+swapE = do eol <- atEolE
+           when eol leftE
+           c <- readE
            deleteE
            leftE
            insertE c
