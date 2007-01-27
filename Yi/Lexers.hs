@@ -147,7 +147,7 @@ denseMin  = 20
 -- data structures
 -- ---------------
 
--- represents the number of (non-error) elements and the bounds of a table
+-- | Represents the number of (non-error) elements and the bounds of a table
 --
 type BoundsNum = (Int, Char, Char)
 
@@ -156,17 +156,17 @@ type BoundsNum = (Int, Char, Char)
 -- nullBoundsNum :: BoundsNum
 -- nullBoundsNum  = (0, maxBound, minBound)
 
--- combine two bounds
+-- | Combine two bounds
 --
 addBoundsNum                            :: BoundsNum -> BoundsNum -> BoundsNum
 addBoundsNum (n, lc, hc) (n', lc', hc')  = (n + n', min lc lc', max hc hc')
 
--- check whether a character is in the bounds
+-- | Check whether a character is in the bounds
 --
 inBounds               :: Char -> BoundsNum -> Bool
 inBounds c (_, lc, hc)  = c >= lc && c <= hc
 
--- Lexer errors
+-- | Lexer errors
 type Error = String
 
 -- Lexical actions take a lexeme with its position and may return a token; in
@@ -178,7 +178,7 @@ type Error = String
 type Action    t = String -> Maybe t
 type ActionErr t = String -> Either Error t
 
--- Meta actions transform the lexeme, and a user-defined state; they
+-- | Meta actions transform the lexeme, and a user-defined state; they
 -- may return a lexer, which is then used for accepting the next token
 -- (this is important to implement non-regular behaviour like nested
 -- comments) (EXPORTED) 
@@ -187,14 +187,14 @@ type Meta s t = String -> s -> (Maybe (Either Error t), -- err/tok?
                                 s,                      -- state
                                 Maybe (Lexer s t))      -- lexer?
 
--- tree structure used to represent the lexer table (EXPORTED ABSTRACTLY) 
+-- | Tree structure used to represent the lexer table (EXPORTED ABSTRACTLY) 
 --
 -- * each node in the tree corresponds to a state of the lexer; the associated 
 --   actions are those that apply when the corresponding state is reached
 --
 data Lexer s t = Lexer (LexAction s t) (Cont s t)
 
--- represent the continuation of a lexer
+-- | Represent the continuation of a lexer
 --
 data Cont s t = -- on top of the tree, where entries are dense, we use arrays
                 --
@@ -210,12 +210,12 @@ data Cont s t = -- on top of the tree, where entries are dense, we use arrays
                 --
               | Done
 
--- lexical action (EXPORTED ABSTRACTLY)
+-- | lexical action (EXPORTED ABSTRACTLY)
 --
 data LexAction s t = Action   (Meta s t)
                    | NoAction
 
--- a regular expression (EXPORTED)
+-- | a regular expression (EXPORTED)
 --
 type Regexp s t = Lexer s t -> Lexer s t
 
@@ -223,22 +223,22 @@ type Regexp s t = Lexer s t -> Lexer s t
 -- basic combinators
 -- -----------------
 
--- Empty lexeme (EXPORTED)
+-- | Empty lexeme (EXPORTED)
 --
 epsilon :: Regexp s t
 epsilon  = id
 
--- One character regexp (EXPORTED) 
+-- | One character regexp (EXPORTED) 
 --
 char   :: Char -> Regexp s t
 char c  = \l -> Lexer NoAction (Sparse (1, c, c) [(c, l)])
 
--- Concatenation of regexps (EXPORTED)
+-- | Concatenation of regexps (EXPORTED)
 --
 (+>) :: Regexp s t -> Regexp s t -> Regexp s t
 (+>)  = (.)
 
--- Close a regular expression with an action that converts the lexeme into a
+-- | Close a regular expression with an action that converts the lexeme into a
 -- token (EXPORTED)
 --
 -- * Note: After the application of the action, the position is advanced
@@ -258,14 +258,14 @@ lexaction re a  = re `lexmeta` a'
             Nothing -> (Nothing, s, Nothing)
             Just t  -> (Just (Right t), s, Nothing)
 
--- Variant for actions that may returns an error (EXPORTED)
+-- | Variant for actions that may returns an error (EXPORTED)
 --
 lexactionErr      :: Regexp s t -> ActionErr t -> Lexer s t
 lexactionErr re a  = re `lexmeta` a'
   where
      a' lexeme s = (Just (a lexeme), s, Nothing)
 
--- Close a regular expression with a meta action (EXPORTED)
+-- | Close a regular expression with a meta action (EXPORTED)
 --
 -- * Note: Meta actions have to advance the position in dependence of the
 --         lexeme by themselves.
@@ -276,21 +276,21 @@ meta = lexmeta
 lexmeta      :: Regexp s t -> Meta s t -> Lexer s t
 lexmeta re a  = re (Lexer (Action a) Done)
 
--- useful for building meta actions
+-- | Useful for building meta actions
 with :: b -> Maybe (Either a b)
 with a = Just (Right a)
 
--- disjunctive combination of two regexps (EXPORTED)
+-- | Disjunctive combination of two regexps
 --
 (>|<)      :: Regexp s t -> Regexp s t -> Regexp s t
 re >|< re'  = \l -> re l >||< re' l
 
--- disjunctive combination of two lexers (EXPORTED)
+-- | Disjunctive combination of two lexers
 --
 (>||<)                         :: Lexer s t -> Lexer s t -> Lexer s t
 (Lexer a c) >||< (Lexer a' c')  = Lexer (joinActions a a') (joinConts c c')
 
--- combine two disjunctive continuations
+-- | Combine two disjunctive continuations
 --
 joinConts :: Cont s t -> Cont s t -> Cont s t
 joinConts Done c'   = c'
@@ -308,7 +308,7 @@ joinConts c    c'   = let (bn , cls ) = listify c
     listify (Sparse n cls) = (n, cls)
     listify _              = error "Lexers.listify: Impossible argument!"
 
--- combine two actions. Use the latter in case of overlap (!)
+-- | Combine two actions. Use the latter in case of overlap (!)
 --
 joinActions :: LexAction s t -> LexAction s t -> LexAction s t
 joinActions NoAction a'       = a'
@@ -324,7 +324,7 @@ aggregate bn@(n, lc, hc) cls
   where
     noLexer = Lexer NoAction Done
 
--- combine the elements in the association list that have the same key
+-- | Combine the elements in the association list that have the same key
 --
 accum :: Eq a => (b -> b -> b) -> [(a, b)] -> [(a, b)]
 accum _ []           = []
@@ -383,7 +383,7 @@ alt cs  = \l -> let bnds = (length cs, minimum cs, maximum cs)
                 in
                 Lexer NoAction (aggregate bnds [(c, l) | c <- cs])
 
--- accept a character sequence (EXPORTED)
+-- | Accept a character sequence (EXPORTED)
 --
 string    :: String -> Regexp s t
 string []  = error "Lexers.string: Empty character set!"

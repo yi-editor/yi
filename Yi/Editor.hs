@@ -236,7 +236,7 @@ deleteThisWindow = getWindow >>= deleteWindow
 killAllBuffers :: IO ()
 killAllBuffers = undefined
 
--- close any windows onto the buffer associated with name 'n', then free the buffer
+-- | Close any windows onto the buffer associated with name 'n', then free the buffer
 killBuffer :: String -> IO ()
 killBuffer n = modifyEditor_ $ \e -> do
     case findBufferWithName e n of

@@ -41,7 +41,7 @@ import Control.Exception    ( ioErrors, catchJust, try, evaluate )
 
 -- ---------------------------------------------------------------------
 
--- A vi mode is a lexer that returns a core Action.
+-- | A vi mode is a lexer that returns a core Action.
 type ViMode = Lexer  ViState Action
 type ViRegex = Regexp ViState Action
 
