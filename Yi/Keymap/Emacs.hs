@@ -68,21 +68,6 @@ type KProc a = StateT [Event] (Writer [Action]) a
 
 -- * The keymap abstract definition
 
-
--- In the future the following list can become something like
--- [ ("C-x k", killBuffer) , ... ]
--- This structure should be easy to modify dynamically (for rebinding keys)
-
--- Ultimately, this should become:
-
---  [ ("C-x k", "killBuffer")
--- killBuffer would be looked up a la ghci. Then its type would be checked
--- (Optional) arguments could then be handled dynamically depending on the type
--- Action; Int -> Action; Region -> Action; types could be handled in a clever
--- way, reducing glue code to the minimum.
-
--- And, rebinding could then be achieved :)
-
 normalKlist :: KList String
 normalKlist = [ ([c], atomic $ insertSelf) | c <- printableChars ] ++
               [
@@ -100,8 +85,7 @@ normalKlist = [ ([c], atomic $ insertSelf) | c <- printableChars ] ++
         ("C-e",      atomic $ repeatingArg eolE),
         ("C-f",      atomic $ repeatingArg rightE),
         ("C-g",      atomic $ unsetMarkE), 
-        -- C-g should be a more general quit that also unsets the mark.
---      ("C-g",      atomic $ keyboardQuitE),
+--      ("C-g",      atomic $ keyboardQuitE), -- C-g should be a more general quit that also unsets the mark.
 --      ("C-i",      atomic $ indentC),
         ("C-j",      atomic $ repeatingArg $ insertE '\n'),
         ("C-k",      atomic $ killLineE),
@@ -109,11 +93,11 @@ normalKlist = [ ([c], atomic $ insertSelf) | c <- printableChars ] ++
         ("C-n",      atomic $ repeatingArg downE),
         ("C-o",      atomic $ repeatingArg (insertE '\n' >> leftE)),
         ("C-p",      atomic $ repeatingArg upE),
-        ("C-q",      insertNextC),
+        ("C-q",               insertNextC),
 --      ("C-r",      atomic $ backwardsIncrementalSearchE),
 --      ("C-s",      atomic $ incrementalSearchE),
         ("C-t",      atomic $ repeatingArg $ swapE),
-        ("C-u",      readArgC),
+        ("C-u",               readArgC),
         ("C-v",      atomic $ scrollDownE),
         ("C-w",      atomic $ killRegionE),
         ("C-z",      atomic $ suspendE),
@@ -135,7 +119,7 @@ normalKlist = [ ([c], atomic $ insertSelf) | c <- printableChars ] ++
         ("C-y",      atomic $ yankE),
         ("M-<",      atomic $ repeatingArg topE),
         ("M->",      atomic $ repeatingArg botE),
---      ("M-%",      searchReplaceC),
+--      ("M-%",               searchReplaceC),
         ("M-BACKSP", atomic $ repeatingArg bkillWordE),
 --      ("M-a",      atomic $ repeatingArg backwardSentenceE),
         ("M-b",      atomic $ repeatingArg prevWordE),
@@ -208,8 +192,7 @@ insertNextC = do c <- readStroke
 -- | Complain about undefined key
 undefC :: Action
 undefC = do TypedKey k <- getDynamic
-            errorE $ "Key sequence not defined : " ++
-                  showKey k ++ " " ++ show k
+            errorE $ "Key sequence not defined : " ++ showKey k ++ " " ++ show k
 
 
 -- | C-u stuff
@@ -316,11 +299,11 @@ buildKeymap' fm_ l =
         addKey _ ([], _) = error "Invalid keymap table"
 
 
-fromKProc :: KProc a -> [Event] -> [Action]
+fromKProc :: KProc a -> Keymap
 fromKProc kp cs = snd $ runWriter $ runStateT kp cs
 
 -- | entry point
-keymap :: [Event] -> [Action]
+keymap :: Keymap
 keymap = fromKProc (makeKeymap normalKlist)
 
 

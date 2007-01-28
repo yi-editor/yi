@@ -521,7 +521,7 @@ readRegionE (from,to) | from <= to = readNM from (to+1)
 readRegionE (from,to) | otherwise  = readNM to (from+1)
 
 
--- | Read the line the cursor is on
+-- | Read the line the point is on
 readLnE :: IO String
 readLnE = withBuffer $ \b -> do
     i <- indexOfSol b
