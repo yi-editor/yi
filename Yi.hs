@@ -34,7 +34,6 @@ import qualified Yi.Keymap.Vi     as Vi
 import qualified Yi.Keymap.Vim    as Vim
 import qualified Yi.Keymap.Nano   as Nano
 import qualified Yi.Keymap.Emacs  as Emacs
-import qualified Yi.Keymap.Emacs2 as Emacs2
 import qualified Yi.Keymap.Joe    as Joe
 import qualified Yi.Keymap.Ee     as Ee
 import qualified Yi.Keymap.Mg     as Mg
@@ -80,7 +79,6 @@ editorFM = M.fromList $
     , ("vim"     ,     Vim.keymap)
     , ("nano"    ,    Nano.keymap)
     , ("emacs"   ,   Emacs.keymap)
-    , ("emacs2"  ,  Emacs2.keymap)
     , ("joe"     ,     Joe.keymap)
     , ("ee"      ,      Ee.keymap)
     , ("mg"      ,      Mg.keymap)
