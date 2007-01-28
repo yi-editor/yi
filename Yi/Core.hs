@@ -248,7 +248,8 @@ startE st (confs,fn,fn') ln mfs = do
                         Just (f,h) -> hClose h >> fnewE f
         gotoLnE ln
 
-    forkIO eventLoop -- FIXME: record thread
+    t <- forkIO eventLoop
+    modifyEditor_ $ \e -> return $ e { threads = t : threads e }
     UI.main -- transfer control to UI: GTK must run in the main thread, or else it's not happy.
 
 
@@ -298,9 +299,7 @@ eventLoop = do
 quitE :: Action
 quitE = readEditor ui >>= UI.end
 
---
 -- | Reboot (!). Reboot the entire editor, reloading the Yi core.
---
 rebootE :: Action
 rebootE = do
     cmdlineUnFocusE     -- return focus to buffer (seems natural)

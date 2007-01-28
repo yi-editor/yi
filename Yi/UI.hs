@@ -105,6 +105,7 @@ start = do
 
 main :: IO ()
 main = do
+  refresh
   refreshLoop
  where
         --
