@@ -164,6 +164,7 @@ addWindow i w = do
   set (uiBox i) [containerChild := widget w, 
                   boxChildPosition (widget w) := 0]
   widgetModifyFont (textview w) (Just (uiFont i))
+  textview w `onFocusIn` (\_event -> setWindow w >> return True)
   widgetShowAll (widget w)
 
 
@@ -176,6 +177,8 @@ suspend :: IO ()
 suspend = do 
   i <- readEditor ui
   windowIconify (uiWindow i) 
+
+
 
 
 ------------------------------------------------------------------------
