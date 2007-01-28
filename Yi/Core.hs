@@ -196,7 +196,6 @@ import qualified Yi.Editor as Editor
 import qualified Yi.Style as Style
 
 import Data.Maybe
-import Data.Char            ( isLatin1 )
 import Data.Dynamic
 import Data.List
 import Data.Map as M        ( lookup, insert )
@@ -548,11 +547,7 @@ readRestOfLnE = withBuffer $ \b -> do
 
 -- | Write char to point
 writeE :: Char -> Action
-writeE c = withBuffer_ $ \b -> do
-            case c of
-                '\r' -> writeB b '\n'
-                _ | isLatin1 c -> writeB b c
-                  | otherwise  -> nopE          -- TODO
+writeE c = withBuffer_ $ \b -> writeB b c
 
 -- | Transpose two characters, (the Emacs C-t action)
 swapE :: Action
