@@ -18,7 +18,7 @@
 --
 
 
--- | This module defines a user interface implemented using gtk.
+-- | This module defines a user interface implemented using gtk2hs.
 
 module Yi.UI (
 
@@ -72,7 +72,7 @@ data UI = UI {
 -- | Initialise the ui
 start :: IO UI
 start = do
-  initGUI -- FIXME: forward args to the real main. ??
+  initGUI
 
   win <- windowNew
 
@@ -143,7 +143,7 @@ gtkToYiEvent _ = Nothing
 -- | Map GTK long names to Keys
 keyTable :: M.Map String Key
 keyTable = M.fromList 
-    [("Down",       KDown) -- defns imported from Yi.Char
+    [("Down",       KDown)
     ,("Up",         KUp)
     ,("Left",       KLeft)
     ,("Right",      KRight)

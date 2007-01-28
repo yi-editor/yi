@@ -37,8 +37,6 @@ data Event = Event Key [Modifier] deriving (Show,Eq,Ord)
 
 
 -- | Map an event to a char. This should be gotten rid of, eventually.
--- Do this to enable using Alex lexers.
--- OTOH, we should screw Alex and do proper typing.
 
 eventToChar :: Event -> Char
 eventToChar (Event KBS _) = keyBackspace

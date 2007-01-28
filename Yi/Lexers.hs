@@ -87,7 +87,7 @@
 --
 --- TODO ----------------------------------------------------------------------
 --
---  * error correction is missing
+--  * error correction is missing (we probably do NOT want that for yi!)
 --
 --  * in (>||<) in the last case, `(addBoundsNum bn bn')' is too simple, as
 --    the number of outgoing edges is not the sum of the numbers of the
@@ -169,12 +169,12 @@ inBounds c (_, lc, hc)  = c >= lc && c <= hc
 -- | Lexer errors
 type Error = String
 
--- Lexical actions take a lexeme with its position and may return a token; in
+-- | Lexical actions take a lexeme with its position and may return a token; in
 -- a variant, an error can be returned (EXPORTED)
 --
--- * if there is no token returned, the current lexeme is discarded lexing
+-- * if there is no token returned, the current lexeme is discarded and lexing
 --   continues looking for a token
---
+
 type Action    t = String -> Maybe t
 type ActionErr t = String -> Either Error t
 
