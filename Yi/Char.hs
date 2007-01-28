@@ -35,7 +35,7 @@ module Yi.Char ( upcaseCtrl
 	       , setMeta, clrMeta, isMeta, metaBit
 	       ) where
 
-import Yi.Yi ( keyBackspace )
+import Yi.Event ( keyBackspace )
 import Data.Char
 import Data.Bits
 

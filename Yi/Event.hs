@@ -59,6 +59,22 @@ eventToChar (Event (KASCII c) mods) = (if MMeta `elem` mods then setMeta else id
 
 eventToChar ev = trace ("Got event " ++ show ev) keyOops
 
+charToEvent c 
+    | c == keyBackspace = Event KBS                      [] 
+    | c == keyHome      = Event KHome                    []
+    | c == keyEnd       = Event KEnd                     []
+    | c == keyUp        = Event KUp                      []
+    | c == keyDown      = Event KDown                    []
+    | c == keyPPage     = Event KPageUp                  []
+    | c == keyNPage     = Event KPageDown                []
+    | c == keyLeft      = Event KLeft                    []
+    | c == keyRight     = Event KRight                   []
+    | c == '\n'         = Event KEnter                   []
+    | c == '\ESC'       = Event KEsc                     []
+    | ord c < 32        = Event (KASCII (lowcaseCtrl c)) [MCtrl]
+    | otherwise         = Event (KASCII c)               [MCtrl]
+
+
 remapChar :: Char -> Char -> Char -> Char -> Char -> Char
 remapChar a1 b1 a2 _ c
     | a1 <= c && c <= b1 = chr $ ord c - ord a1 + ord a2
@@ -67,12 +83,15 @@ remapChar a1 b1 a2 _ c
 ctrlLowcase :: Char -> Char
 ctrlLowcase   = remapChar 'a'   'z'   '\^A' '\^Z'
 
+lowcaseCtrl = remapChar '\^A' '\^Z' 'a'   'z'
+
 -- set the meta bit, as if Mod1/Alt had been pressed
 setMeta :: Char -> Char
 setMeta c = chr (setBit (ord c) metaBit)
 
 metaBit :: Int
 metaBit = 7
+
 
 --
 -- | Some constants for easy symbolic manipulation.
