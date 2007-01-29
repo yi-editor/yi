@@ -506,7 +506,7 @@ killE = withBuffer_ deleteToEol
 -- | Delete an arbitrary part of the buffer
 deleteRegionE :: Region -> IO ()
 deleteRegionE r = withBuffer_ $ \b -> do
-                    deleteNAt b (regionEnd r - regionStart r + 1) (regionStart r)
+                    deleteNAt b (regionEnd r - regionStart r) (regionStart r)
 
 
 -- | Read the char under the cursor
@@ -516,7 +516,7 @@ readE = withBuffer readB
 
 -- | Read an arbitrary part of the buffer
 readRegionE :: Region -> IO String
-readRegionE r = readNM (regionStart r) (regionEnd r + 1)
+readRegionE r = readNM (regionStart r) (regionEnd r)
 
 -- | Read the line the point is on
 readLnE :: IO String
