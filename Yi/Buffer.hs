@@ -30,6 +30,8 @@ import Yi.FastBuffer
 import Yi.Undo
 import Yi.Vty                   ( Attr )
 
+import Yi.Debug
+import Data.IORef
 import Data.Unique              ( newUnique, Unique )
 import Control.Concurrent.MVar
 
@@ -44,12 +46,13 @@ type Point = Yi.FastBuffer.Point --  to re-export.
 data BufferMode = ReadOnly | ReadWrite
 
 data FBuffer =
-        FBuffer { name   :: !String           -- immutable buffer name
-                , bkey   :: !Unique           -- immutable unique key
-                , file   :: !(MVar (Maybe FilePath)) -- maybe a filename associated with this buffer
-                , undos  :: !(MVar URList)      -- undo/redo list
+        FBuffer { name   :: !String           -- ^ immutable buffer name
+                , bkey   :: !Unique           -- ^ immutable unique key
+                , file   :: !(MVar (Maybe FilePath)) -- ^ maybe a filename associated with this buffer
+                , undos  :: !(MVar URList)      -- ^ undo/redo list
                 , rawbuf :: !BufferImpl
-                , bmode  :: !(MVar BufferMode)  -- a read-only bit
+                , bmode  :: !(MVar BufferMode)  -- ^ a read-only bit
+                , preferCol :: !(IORef (Maybe Int))      -- ^ prefered column to arrive at when we do a lineDown / lineUp
                 }
 
 instance Eq FBuffer where
@@ -98,6 +101,7 @@ redo fb@(FBuffer { undos = mv }) = modifyMVar_ mv (redoUR (rawbuf fb))
 -- | Create buffer named @nm@ with contents @s@
 newB :: String -> [Char] -> IO FBuffer
 newB nm s = do 
+    pc <- newIORef Nothing
     mv <- newBI s
     mv' <- newMVar emptyUR
     mvf <- newMVar Nothing      -- has name, not connected to a file
@@ -108,7 +112,10 @@ newB nm s = do
                      , file   = mvf
                      , undos  = mv'
                      , rawbuf = mv
-                     , bmode  = rw }
+                     , bmode  = rw
+                     , preferCol = pc 
+                     }
+                     
 
 -- | Free any resources associated with this buffer
 finaliseB :: FBuffer -> IO ()
@@ -135,7 +142,9 @@ nelemsBH = lift nelemsBIH
 
 -- | Move point in buffer to the given index
 moveTo    :: FBuffer -> Int -> IO ()
-moveTo = lift moveToI
+moveTo b x = do 
+  forgetPerferCol b  
+  lift moveToI b x
 
 ------------------------------------------------------------------------
 
@@ -144,6 +153,7 @@ moveTo = lift moveToI
 -- TODO: undo is not atomic!
 writeB    :: FBuffer -> Char -> IO ()
 writeB b@FBuffer { undos = uv } c = do
+  forgetPerferCol b
   off <- pointB b
   oldc <- nelemsB b 1 off
   modifyMVar_ uv $ \u -> do
@@ -158,6 +168,7 @@ writeB b@FBuffer { undos = uv } c = do
 insertN   :: FBuffer -> [Char] -> IO ()
 insertN  _ [] = return ()
 insertN fb@FBuffer { undos = uv } cs = do
+  forgetPerferCol fb
   pnt <- pointB fb
   modifyMVar_ uv $ \ur -> return $ addUR ur (Delete pnt (length cs))
   insertNI (rawbuf fb) cs
@@ -168,7 +179,8 @@ insertN fb@FBuffer { undos = uv } cs = do
 deleteNAt:: FBuffer -> Int -> Int -> IO ()
 deleteNAt _ 0 _ = return ()
 deleteNAt b@FBuffer { undos = uv }  n pos = 
-    do text <- nelemsB b n pos
+    do forgetPerferCol b
+       text <- nelemsB b n pos
        modifyMVar_ uv $ \ur -> return $ addUR ur (Insert pos text)
        lift deleteNAtI b n pos
 
@@ -226,25 +238,31 @@ rightN a n = pointB a >>= \p -> moveTo a (p + n)
 -- ---------------------------------------------------------------------
 -- Line based movement and friends
 
--- | Move point up one line
 
+-- | Move point down by @n@ lines. @n@ can be negative.
+lineMoveRel :: FBuffer -> Int -> IO ()
+lineMoveRel b n = do
+  prefCol <- readIORef (preferCol b)
+  targetCol <- case prefCol of
+    Nothing -> offsetFromSol b
+    Just x -> return x
+  --logPutStrLn $ "lineMoveRel: targetCol = " ++ show targetCol
+  gotoLnFrom b n
+  moveXorEol b targetCol
+  writeIORef (preferCol b) (Just targetCol)
+
+forgetPerferCol :: FBuffer -> IO ()
+forgetPerferCol b = do
+  --logPutStrLn "forgetPerferCol"
+  writeIORef (preferCol b) Nothing
+
+-- | Move point up one line
 lineUp :: FBuffer -> IO ()
-lineUp b = do
-    x <- offsetFromSol b
-    moveToSol b
-    leftB b
-    moveToSol b
-    moveXorEol b x
-{-# INLINE lineUp #-}
+lineUp b = lineMoveRel b (-1)
 
 -- | Move point down one line
 lineDown :: FBuffer -> IO ()
-lineDown b = do
-    x <- offsetFromSol b
-    moveToEol b
-    rightB b
-    moveXorEol b x
-{-# INLINE lineDown #-}
+lineDown b = lineMoveRel b 1
 
 
 -- | Return the contents of the buffer as a list
