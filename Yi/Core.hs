@@ -187,6 +187,7 @@ import Prelude hiding (error)
 import Yi.Debug
 import Yi.MkTemp            ( mkstemp )
 import Yi.Buffer
+import Yi.Region
 import Yi.Window
 import Yi.Regex
 import Yi.String
@@ -503,10 +504,10 @@ killE :: Action
 killE = withBuffer_ deleteToEol
 
 -- | Delete an arbitrary part of the buffer
-deleteRegionE :: (Int,Int) -> IO ()
-deleteRegionE (from,to) | from <= to = withBuffer_ $ \b -> do
-    deleteNAt b (to-from+1) from
-deleteRegionE (from,to) | otherwise  = deleteRegionE (to,from)
+deleteRegionE :: Region -> IO ()
+deleteRegionE r = withBuffer_ $ \b -> do
+                    deleteNAt b (regionEnd r - regionStart r + 1) (regionStart r)
+
 
 -- | Read the char under the cursor
 readE :: IO Char
@@ -514,11 +515,8 @@ readE = withBuffer readB
 
 
 -- | Read an arbitrary part of the buffer
--- | The region is closed (including both end points).
-readRegionE :: (Int,Int) -> IO String
-readRegionE (from,to) | from <= to = readNM from (to+1)
-readRegionE (from,to) | otherwise  = readNM to (from+1)
-
+readRegionE :: Region -> IO String
+readRegionE r = readNM (regionStart r) (regionEnd r + 1)
 
 -- | Read the line the point is on
 readLnE :: IO String

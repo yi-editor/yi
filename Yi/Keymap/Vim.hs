@@ -23,6 +23,7 @@
 
 module Yi.Keymap.Vim ( keymap, keymapPlus, VimMode ) where
 
+import Yi.Region
 import Yi.Core
 import Yi.CharMove
 import Yi.Editor            ( Action, Keymap )
@@ -105,8 +106,8 @@ tabifySpacesOnLineAndShift numOfShifts =
                         let countSpace '\t' = tabsize
                             countSpace _ = 1 -- we'll assume nothing but tabs and spaces
                         count <- if (atSol) then return 0
-                                            else vimGetRegion (sol,ptOfLastSpace) >>= return . sum . map countSpace
-                        if (not atSol) then deleteRegionE (sol,ptOfLastSpace)
+                                            else readRegionE (mkVimRegion sol ptOfLastSpace) >>= return . sum . map countSpace
+                        if (not atSol) then deleteRegionE (mkVimRegion sol ptOfLastSpace)
                                        else nopE
 
                         let newcount = count + (shiftwidth * numOfShifts)
@@ -121,15 +122,6 @@ tabifySpacesOnLineAndShift numOfShifts =
                                                                                   
                              firstNonSpaceE
                         
-{- No longer necessary
-vimGetRegion :: (Int,Int) -> IO String
-vimGetRegion (x,y) | x <= y    = readRegionE (x,y)
-                   | otherwise = readRegionE (y,x)
-
--}
-vimGetRegion :: (Int,Int) -> IO String
-vimGetRegion = readRegionE
-
 ------------------------------------------------------------------------
 --
 -- | Top level. Lazily consume all the input, generating a list of
@@ -575,7 +567,7 @@ vis_single = visChar
                          , Just cmd_mode)
             yank = do mrk <- getMarkE
                       pt <- getPointE
-                      vimGetRegion (mrk,pt) >>= setRegE
+                      readRegionE (mkVimRegion mrk pt) >>= setRegE
                       gotoPointE mrk
                       (mrkRow,_) <- getLineAndColE
                       gotoPointE pt
@@ -587,15 +579,15 @@ vis_single = visChar
                            pt <- getPointE
                            text <- getRegE
                            gotoPointE mrk
-                           deleteRegionE (mrk,pt)
+                           deleteRegionE (mkVimRegion mrk pt)
                            insertNE text
             cut  = do mrk <- getMarkE
                       pt <- getPointE
                       (ptRow,_) <- getLineAndColE
-                      vimGetRegion (mrk,pt) >>= setRegE
+                      readRegionE (mkVimRegion mrk pt) >>= setRegE
                       gotoPointE mrk
                       (mrkRow,_) <- getLineAndColE
-                      deleteRegionE (mrk,pt)
+                      deleteRegionE (mkVimRegion mrk pt)
                       let rowsCut = ptRow - mrkRow
                       if (rowsCut > 2) then msgE ( (show rowsCut) ++ " fewer lines")
                                        else nopE
@@ -638,9 +630,9 @@ vis_multi = (cmd_char >|<
                     "<<"    -> shiftBy (-i)
                     'r':[x] -> do mrk <- getMarkE
                                   pt <- getPointE
-                                  text <- vimGetRegion (mrk,pt)
+                                  text <- readRegionE (mkVimRegion mrk pt)
                                   gotoPointE mrk
-                                  deleteRegionE (mrk,pt)
+                                  deleteRegionE (mkVimRegion mrk pt)
                                   let convert '\n' = '\n'
                                       convert  _   = x
                                   insertNE . map convert $ text

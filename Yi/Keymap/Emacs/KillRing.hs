@@ -23,6 +23,7 @@ module Yi.Keymap.Emacs.KillRing where
 import Yi.Editor
 import Yi.Core
 import Yi.Keymap.Emacs.UnivArgument
+import Yi.Region
 
 import Data.Dynamic
 
@@ -76,14 +77,10 @@ killringModify f = do
                    kr <- getDynamic
                    setDynamic $ f kr
 
--- | Construct a region from its bounds
-mkRegion :: Int -> Int -> (Int, Int)
-mkRegion x y = if x < y then (x,y-1) else (y,x-1)
-
 -- * Killring actions
 
 -- | Get the current region boundaries
-getRegionE :: IO (Int,Int)
+getRegionE :: IO Region
 getRegionE = do m <- getMarkE
                 p <- getPointE
                 return $ mkRegion m p
