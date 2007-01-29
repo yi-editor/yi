@@ -137,9 +137,8 @@ getFileE = do bufInfo <- bufInfoE
               return fp
 
 
--- TODO: This is slow, updating the screen on every char.
 insertFileE :: String -> Action
-insertFileE f = readFile f >>= mapM_ insertE
+insertFileE f = readFile f >>= insertNE
 
 
 -- ---------------------------------------------------------------------
