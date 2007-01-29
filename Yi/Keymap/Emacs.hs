@@ -77,8 +77,9 @@ normalKlist = [ ([c], atomic $ insertSelf) | c <- printableChars ] ++
         ("C-M-w",    atomic $ appendNextKillE),
         ("C-/",      atomic $ repeatingArg undoE),
         ("C-_",      atomic $ repeatingArg undoE),
+        ("C-<left>", atomic $ repeatingArg prevWordE),
+        ("C-<right>",atomic $ repeatingArg nextWordE),
         ("C-SPC",    atomic $ (getPointE >>= setMarkE)),
-        ("C-@",      atomic $ (getPointE >>= setMarkE)), -- until the Vty library properly supports control characters.
         ("C-a",      atomic $ repeatingArg solE),
         ("C-b",      atomic $ repeatingArg leftE),
         ("C-d",      atomic $ repeatingArg deleteE),
