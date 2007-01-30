@@ -57,6 +57,7 @@ eventToChar (Event (KASCII c) mods) = (if MMeta `elem` mods then setMeta else id
 
 eventToChar ev = trace ("Got event " ++ show ev) keyOops
 
+charToEvent :: Char -> Event
 charToEvent c 
     | c == keyBackspace = Event KBS                      [] 
     | c == keyHome      = Event KHome                    []
