@@ -2,12 +2,8 @@
 #define YIUTILS_H
 
 #include <string.h>
-#include <ncurses.h>
 
 #include "ghcconfig.h"
-
-extern void nomacro_getyx(WINDOW *win, int *y, int *x);
-extern int get_color_pair (int pair);
 
 extern unsigned long countLines(char *b1, int start, int end);
 extern unsigned long findStartOfLineN(char *b, int start, int end, int n);

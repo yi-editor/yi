@@ -1,21 +1,6 @@
 
 #include "YiUtils.h"
 
-/*
- * A non-macro version of getyx(3), to make writing a Haskell binding
- * easier.  Called in Yi/Curses.hsc
- */
-void nomacro_getyx(WINDOW *win, int *y, int *x)
-{
-    getyx(win, *y, *x);
-}
-
-/* A non-macro version of COLOR_PAIR(3)
- */
-int get_color_pair (int pair) {
-    return COLOR_PAIR (pair);
-}
-
 /* 1 + the number of occurences of \n in buffer from start to end
  * i.e. the index of the current line, starting from 1
  */
