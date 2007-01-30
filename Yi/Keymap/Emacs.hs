@@ -103,6 +103,7 @@ normalKlist = [ ([c], atomic $ insertSelf) | c <- printableChars ] ++
         ("C-w",      atomic $ killRegionE),
         ("C-z",      atomic $ suspendE),
         ("C-x ^",    atomic $ repeatingArg enlargeWinE),
+        ("C-x 0",    atomic $ closeE),
         ("C-x 1",    atomic $ closeOtherE),
         ("C-x 2",    atomic $ splitE),
         ("C-x C-c",  atomic $ quitE),
