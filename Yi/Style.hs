@@ -119,10 +119,11 @@ reversebg   = Reverse
 --
 -- Combine attribute with another attribute
 --
-boldA, reverseA, nullA ::  Vty.Attr -> Vty.Attr
+boldA, reverseA, nullA, flipRevA ::  Vty.Attr -> Vty.Attr
 boldA a    = a { Vty.bold = True }
 reverseA a = a { Vty.rv = True }
 nullA       = id
+flipRevA a = a { Vty.rv = not $ Vty.rv a }
 
 ------------------------------------------------------------------------
 

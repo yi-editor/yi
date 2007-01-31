@@ -24,12 +24,16 @@
 -- NB buffers have no concept of multiwidth characters. There is an
 -- assumption that a character has width 1, including tabs.
 
-module Yi.FastBuffer (Point, Size, BufferImpl, newBI, deleteNAtI, moveToI, insertNI, pointBI, nelemsBI, finaliseBI, sizeBI, writeBI, curLnI, gotoLnI, searchBI, regexBI, getMarkBI, setMarkBI, unsetMarkBI) where
+module Yi.FastBuffer (Point, Size, BufferImpl, newBI, deleteNAtI, moveToI, insertNI, pointBI, nelemsBI, finaliseBI, sizeBI, writeBI, curLnI, gotoLnI, searchBI, regexBI, getMarkBI, setMarkBI, unsetMarkBI, nelemsBIH) where
 
 import Yi.Regex
 import Yi.Debug
 
+import Yi.Syntax
+
 import qualified Data.Map as M
+import Data.List (mapAccumL)
+import Yi.Vty (Attr)
 
 import Control.Concurrent.MVar
 import Control.Exception        ( assert )
@@ -206,6 +210,14 @@ nelemsBI fb n i = withMVar fb $ \(FBufferData b _ e _) -> do
         let i' = inBounds i e
             n' = min (e-i') n
         readChars b n' i'
+
+-- | Return @n@ elems starting at @i@ of the buffer as a list.
+-- This routine also does syntax highlighting.
+nelemsBIH    :: BufferImpl -> Int -> Int -> IO [(Char,Attr)]
+nelemsBIH fb n i = do asStr <- withMVar fb $ \(FBufferData b _ e _) -> readChars b e 0
+                      let (finst,colors_) = mapAccumL highlight highinit asStr
+                          colors = concat colors_ ++ highend finst
+                      return (take n (drop i (zip asStr colors)))
 
 ------------------------------------------------------------------------
 -- Point based editing

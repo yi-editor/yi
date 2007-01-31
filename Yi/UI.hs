@@ -215,11 +215,11 @@ doDrawWindow e focused sty win = do
         eofsty = eof sty
     markPoint <- getMarkB b
     point <- pointB b
-    bufData <- nelemsB b (w*h') (tospnt win) -- read enough chars from the buffer.        
+    bufData <- nelemsBH b (w*h') (tospnt win) -- read enough chars from the buffer.
 
     --pointData <- nelemsB b 5 point/logPutStrLn $ "doDrawWindow point=" ++ show point ++ " after: " ++ show pointData
 
-    let (rendered,bos,cur) = drawText h' w (tospnt win) point markPoint selsty wsty (bufData ++ " ")
+    let (rendered,bos,cur) = drawText h' w (tospnt win) point markPoint selsty wsty (bufData ++ [(' ',attr)])
                              -- we always add one character which can be used to position the cursor at the end of file
                                                                                                  
     modeLine <- if m then updateModeLine win b else return Nothing
@@ -247,26 +247,26 @@ drawWindow e focused sty win = do
 
 -- | Renders text in a rectangle.
 -- Also returns a finite map from buffer offsets to their position on the screen.
-drawText :: Int -> Int -> Point -> Point -> Point -> Attr -> Attr -> String -> (Pic, Point, (Int,Int))
+drawText :: Int -> Int -> Point -> Point -> Point -> Attr -> Attr -> [(Char,Attr)] -> (Pic, Point, (Int,Int))
 drawText h w topPoint point markPoint selsty wsty bufData 
     | h == 0 || w == 0 = ([[]], topPoint, (0,0))
     | otherwise        = (rendered, bottomPoint, pntpos)
   where [startSelect, stopSelect] = sort [markPoint,point]
-        annBufData = zip bufData [topPoint..]  -- remember the point of each char
+        annBufData = zipWith (\(c,a) p -> (c,(a,p))) bufData [topPoint..]  -- remember the point of each char
         lns0 = take h $ concatMap (wrapLine w) $ lines' $ annBufData
         lns = map fillLine $ lns0 -- fill lines with blanks, so the selection looks ok.
 
         bottomPoint = case lns0 of 
                         [] -> topPoint 
-                        _ -> snd $ last $ last $ lns0
+                        _ -> snd $ snd $ last $ last $ lns0
 
-        pntpos = case [(y,x) | (y,l) <- zip [0..] lns0, (x,(_char,p)) <- zip [0..] l, p == point] of
+        pntpos = case [(y,x) | (y,l) <- zip [0..] lns0, (x,(_char,(_attr,p))) <- zip [0..] l, p == point] of
                    [] -> (0,0)
                    (pp:_) -> pp
 
         rendered = map (map colorChar) lns
-        colorChar (c, x) = (c,pointStyle x)
-        pointStyle x = if startSelect < x && x <= stopSelect then selsty else wsty
+        colorChar (c, (a, x)) = (c, pointStyle x a)
+        pointStyle x a = if startSelect < x && x <= stopSelect && selsty /= wsty then selsty else a
 
         fillLine [] = []
         fillLine l = take w (l ++ repeat (' ',snd $ last l))
