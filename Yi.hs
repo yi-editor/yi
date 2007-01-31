@@ -148,6 +148,14 @@ do_args args =
 --
 -- setStoppedChildFlag True
 --
+#ifdef mingw32_HOST_OS
+-- Stubs, no signals in win32.
+initSignals :: IO ()
+initSignals = return ()
+releaseSignals :: IO ()
+releaseSignals = return ()
+
+#else
 initSignals :: IO ()
 initSignals = do
 
@@ -170,6 +178,7 @@ releaseSignals :: IO ()
 releaseSignals =
     flip mapM_ [sigINT, sigPIPE, sigHUP, sigABRT, sigTERM]
                (\sig -> installHandler sig Default Nothing)
+#endif
 
 -- ---------------------------------------------------------------------
 -- | The "g_settings" var stores the user-configurable information. It is
