@@ -28,7 +28,6 @@ import Yi.Regex                 ( Regex  )
 import Control.Monad            ( when )
 import Yi.FastBuffer
 import Yi.Undo
-import Yi.Vty                   ( Attr )
 
 import Yi.Debug
 import Data.IORef
@@ -132,10 +131,6 @@ pointB = lift pointBI
 -- | Return @n@ elems starting at @i@ of the buffer as a list
 nelemsB   :: FBuffer -> Int -> Int -> IO [Char]
 nelemsB = lift nelemsBI
-
--- | Return @n@ elems starting at @i@ of the buffer as a list, highlighted
-nelemsBH  :: FBuffer -> Int -> Int -> IO [(Char,Attr)]
-nelemsBH = lift nelemsBIH
 
 ------------------------------------------------------------------------
 -- Point based operations

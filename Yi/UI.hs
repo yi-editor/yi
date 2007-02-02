@@ -50,6 +50,7 @@ module Yi.UI (
 import Prelude hiding (error)
 
 import Yi.Buffer
+import Yi.FastBuffer( nelemsBIH ) -- gah this is ugly
 import Yi.Editor
 import Yi.Window as Window
 import Yi.Style
@@ -222,7 +223,7 @@ doDrawWindow e focused sty win = do
         eofsty = eof sty
     markPoint <- getMarkB b
     point <- pointB b
-    bufData <- nelemsBH b (w*h') (tospnt win) -- read enough chars from the buffer.
+    bufData <- nelemsBIH (rawbuf b) (w*h') (tospnt win) -- read enough chars from the buffer.
 
     --pointData <- nelemsB b 5 point/logPutStrLn $ "doDrawWindow point=" ++ show point ++ " after: " ++ show pointData
 
