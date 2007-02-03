@@ -30,6 +30,7 @@ import Yi.Regex
 import Yi.Debug
 
 import Yi.Syntax
+import Yi.Syntax.Haskell
 
 import qualified Data.Map as M
 import Data.List (mapAccumL)
@@ -44,6 +45,8 @@ import Foreign.Marshal.Alloc    ( free )
 import Foreign.Marshal.Array
 import Foreign.Ptr              ( Ptr, nullPtr, minusPtr )
 import Foreign.Storable         ( poke )
+
+import qualified Data.ByteString.Char8 as B
 
 -- ---------------------------------------------------------------------
 --
@@ -215,8 +218,8 @@ nelemsBI fb n i = withMVar fb $ \(FBufferData b _ e _) -> do
 -- This routine also does syntax highlighting.
 nelemsBIH    :: BufferImpl -> Int -> Int -> IO [(Char,Attr)]
 nelemsBIH fb n i = do asStr <- withMVar fb $ \(FBufferData b _ e _) -> readChars b e 0
-                      let (finst,colors_) = mapAccumL highlight highinit asStr
-                          colors = concat colors_ ++ highend finst
+                      let (finst,colors_) = hlColorize highlighter (B.pack asStr) (hlStartState highlighter)
+                          colors = colors_ ++ hlColorizeEOF highlighter finst
                       return (take n (drop i (zip asStr colors)))
 
 ------------------------------------------------------------------------

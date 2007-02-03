@@ -10,7 +10,7 @@ executable:     yi
 main-is:        Main.hs
 include-dirs:   cbits
 c-sources:      cbits/YiUtils.c
-other-modules:   Yi.Regex
+other-modules:   Yi.Regex, Yi.Syntax.Haskell
 extensions:     CPP, ForeignFunctionInterface
 ghc-options:    -Wall -fglasgow-exts -O -funbox-strict-fields -fasm -optl-Wl,-s
 
