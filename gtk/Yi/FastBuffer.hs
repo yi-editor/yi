@@ -23,7 +23,7 @@
 module Yi.FastBuffer (Point, Size, BufferImpl, newBI, deleteNAtI,
                       moveToI, insertNI, pointBI, nelemsBI, finaliseBI, sizeBI, writeBI,
                       curLnI, gotoLnI, searchBI, regexBI, getMarkBI, setMarkBI, unsetMarkBI, 
-                      textbuf)
+                      textbuf, setSyntaxBI)
 where
 
 import Prelude hiding (error)
@@ -234,7 +234,8 @@ unsetMarkBI b = do
   p <- textBufferGetIterAtMark tb (point b)
   textBufferMoveMark tb (mark b) p
   
-
+setSyntaxBI      :: BufferImpl -> String -> IO ()
+setSyntaxBI _ _ = return ()
 -- | calculate whether a move is in bounds.
 inBounds :: Int -> Int -> Int
 inBounds i end | i <= 0    = 0

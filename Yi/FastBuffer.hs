@@ -24,20 +24,19 @@
 -- NB buffers have no concept of multiwidth characters. There is an
 -- assumption that a character has width 1, including tabs.
 
-module Yi.FastBuffer (Point, Size, BufferImpl, newBI, deleteNAtI, moveToI, insertNI, pointBI, nelemsBI, finaliseBI, sizeBI, writeBI, curLnI, gotoLnI, searchBI, regexBI, getMarkBI, setMarkBI, unsetMarkBI, nelemsBIH) where
+module Yi.FastBuffer (Point, Size, BufferImpl, newBI, deleteNAtI, moveToI, insertNI, pointBI, nelemsBI, finaliseBI, sizeBI, writeBI, curLnI, gotoLnI, searchBI, regexBI, getMarkBI, setMarkBI, unsetMarkBI, nelemsBIH, setSyntaxBI) where
 
 import Yi.Regex
 import Yi.Debug
 
 import Yi.Syntax
-import Yi.Syntax.Haskell
+import Yi.Syntax.Table
 
 import qualified Data.Map as M
-import Data.List (mapAccumL)
-import Yi.Vty (Attr)
+import Yi.Vty (Attr, attr)
 
 import Control.Concurrent.MVar
-import Control.Exception        ( assert )
+import Control.Exception        ( evaluate, assert )
 
 import Foreign.C.String
 import Foreign.C.Types          ( CChar )
@@ -69,12 +68,15 @@ type Marks = M.Map MarkKey MarkValue
 
 type BufferImpl = MVar FBufferData
 
+data HLState = forall a. Eq a => HLState !(Highlighter a)
+
 data FBufferData =
         FBufferData { _rawmem  :: !(Ptr CChar)     -- raw memory           (ToDo unicode)
                     , marks    :: !Marks
                     -- TODO: use weak refs as to automatically free unreferenced marks.
                     , _contsize :: !Int             -- length of contents
                     , _rawsize  :: !Int             -- raw size of buffer
+                    , hlcache   :: !(Maybe HLState) -- syntax highlighting state
                     }
 
 
@@ -83,9 +85,9 @@ data FBufferData =
 -- | Resize an FBufferData
 --
 resizeFB_ :: FBufferData -> Int -> IO FBufferData
-resizeFB_ (FBufferData ptr p e _) sz = do
+resizeFB_ (FBufferData ptr p e _ hl) sz = do
     ptr' <- reallocArray0 ptr sz
-    return (FBufferData ptr' p e sz)
+    return (FBufferData ptr' p e sz hl)
 
 --
 -- | New FBuffer filled from string.
@@ -97,7 +99,7 @@ stringToFBuffer s = do
     ptr <- mallocArray0 r_size
     pokeArray ptr (map castCharToCChar s) -- Unicode
     poke (ptr `advancePtr` size_i) (castCharToCChar '\0')
-    return (FBufferData ptr (M.fromList [(0,(0,pointLeftBound)), (1,(0,markLeftBound))]) size_i r_size)
+    return (FBufferData ptr (M.fromList [(0,(0,pointLeftBound)), (1,(0,markLeftBound))]) size_i r_size Nothing)
 
 
 --
@@ -143,9 +145,9 @@ foreign import ccall unsafe "YiUtils.h findStartOfLineN"
 -- May need to resize buffer. How do we append to eof?
 insertN' :: FBufferData -> [Char] -> Int -> IO FBufferData
 insertN' fb [] _ = return fb
-insertN' fb@(FBufferData _ _ old_end old_max) cs cs_len = do
+insertN' fb@(FBufferData _ _ old_end old_max hl) cs cs_len = do
         let need_len = old_end + cs_len
-        (FBufferData ptr pnts end mx) <-
+        (FBufferData ptr pnts end mx _) <-
             if need_len >= old_max then resizeFB_ fb (need_len + 2048)
                                    else return fb
         let (pnt,_) = pnts M.! 0
@@ -155,9 +157,8 @@ insertN' fb@(FBufferData _ _ old_end old_max) cs cs_len = do
         -- logPutStrLn $ "insertN' " ++ show cs ++ show pnt
         shiftChars ptr dst pnt len
         writeChars ptr cs pnt
-        return (FBufferData ptr (shiftMarks pnt cs_len pnts) nend mx)
+        return (FBufferData ptr (shiftMarks pnt cs_len pnts) nend mx hl)
 {-# INLINE insertN' #-}
-
 
 shiftMarks :: Point -> Int -> Marks -> Marks
 shiftMarks from by = M.map $ \(p, leftBound) -> (shift p leftBound, leftBound)
@@ -170,12 +171,12 @@ shiftMarks from by = M.map $ \(p, leftBound) -> (shift p leftBound, leftBound)
 
 deleteN' :: FBufferData -> Int -> Int -> IO FBufferData
 deleteN' b 0 _ = return b
-deleteN' (FBufferData ptr pnts end mx) n pos = do
+deleteN' (FBufferData ptr pnts end mx hl) n pos = do
         let src = inBounds (pos + n) end     -- start shifting back from
             len = inBounds (end-pos-n) end   -- length of shift
             end'= pos + len                  -- new end
         shiftChars ptr pos src len
-        return (FBufferData ptr (shiftMarks pos (negate len) pnts) end' mx)
+        return (FBufferData ptr (shiftMarks pos (negate len) pnts) end' mx hl)
 {-# INLINE deleteN' #-}
 
 ------------------------------------------------------------------------
@@ -193,15 +194,15 @@ newBI s = newMVar =<< stringToFBuffer s
 
 -- | Free any resources associated with this buffer
 finaliseBI :: BufferImpl -> IO ()
-finaliseBI fb = withMVar fb $ \(FBufferData ptr _ _ _) -> free ptr
+finaliseBI fb = withMVar fb $ \(FBufferData ptr _ _ _ _) -> free ptr
 
 -- | Number of characters in the buffer
 sizeBI      :: BufferImpl -> IO Int
-sizeBI fb = withMVar fb $ \(FBufferData _ _ n _) -> return n
+sizeBI fb = withMVar fb $ \(FBufferData _ _ n _ _) -> return n
 
 -- | Extract the current point
 pointBI     :: BufferImpl -> IO Int
-pointBI fb = withMVar fb $ \(FBufferData _ pnts e mx) -> do
+pointBI fb = withMVar fb $ \(FBufferData _ pnts e mx _) -> do
     let (p,_) = (pnts M.! 0)
     assert ((p >= 0 && (p < e || e == 0)) && e <= mx) $ return p
 {-# INLINE pointBI #-}
@@ -209,7 +210,7 @@ pointBI fb = withMVar fb $ \(FBufferData _ pnts e mx) -> do
 
 -- | Return @n@ elems starting at @i@ of the buffer as a list
 nelemsBI    :: BufferImpl -> Int -> Int -> IO [Char]
-nelemsBI fb n i = withMVar fb $ \(FBufferData b _ e _) -> do
+nelemsBI fb n i = withMVar fb $ \(FBufferData b _ e _ _) -> do
         let i' = inBounds i e
             n' = min (e-i') n
         readChars b n' i'
@@ -217,24 +218,30 @@ nelemsBI fb n i = withMVar fb $ \(FBufferData b _ e _) -> do
 -- | Return @n@ elems starting at @i@ of the buffer as a list.
 -- This routine also does syntax highlighting.
 nelemsBIH    :: BufferImpl -> Int -> Int -> IO [(Char,Attr)]
-nelemsBIH fb n i = do asStr <- withMVar fb $ \(FBufferData b _ e _) -> readChars b e 0
-                      let (finst,colors_) = hlColorize highlighter (B.pack asStr) (hlStartState highlighter)
-                          colors = colors_ ++ hlColorizeEOF highlighter finst
-                      return (take n (drop i (zip asStr colors)))
+nelemsBIH fb n i = withMVar fb fun
+    where
+      fun (FBufferData b _ e _ Nothing) = let i' = inBounds i e
+                                              n' = min (e-i') n
+                                          in fmap (map (flip (,) attr)) (readChars b n' i')
+      fun (FBufferData b _ e _ (Just (HLState hl))) = do
+        bs <- B.copyCStringLen (b, e)
+        let (finst,colors_) = hlColorize hl bs (hlStartState hl)
+            colors = colors_ ++ hlColorizeEOF hl finst
+        return (take n (drop i (zip (B.unpack bs) colors)))
 
 ------------------------------------------------------------------------
 -- Point based editing
 
 -- | Move point in buffer to the given index
 moveToI     :: BufferImpl -> Int -> IO ()
-moveToI fb i = modifyMVar_ fb $ \(FBufferData ptr pnts end mx) ->
-    return $ FBufferData ptr (M.insert 0 (inBounds i end, pointLeftBound) pnts) end mx
+moveToI fb i = modifyMVar_ fb $ \(FBufferData ptr pnts end mx hl) ->
+    return $ FBufferData ptr (M.insert 0 (inBounds i end, pointLeftBound) pnts) end mx hl
 {-# INLINE moveToI #-}
 
 
 -- | Write an element into the buffer at the current point
 writeBI :: BufferImpl -> Char -> IO ()
-writeBI fb c = withMVar fb $ \(FBufferData ptr pnts _ _) -> do
+writeBI fb c = withMVar fb $ \ (FBufferData ptr pnts _ _ _) -> do
         let off = fst (pnts M.! 0)
         writeChars ptr [c] off
 {-# INLINE writeBI #-}
@@ -253,16 +260,16 @@ deleteNAtI fb n pos = modifyMVar_ fb $ \fb' -> deleteN' fb' n pos
 -- | Return the current line number
 curLnI       :: BufferImpl -> IO Int
 -- count number of \n from origin to point
-curLnI fb = withMVar fb $ \(FBufferData ptr pnts _ _) -> ccountLines ptr 0 $ fst $ pnts M.! 0
+curLnI fb = withMVar fb $ \(FBufferData ptr pnts _ _ _) -> ccountLines ptr 0 $ fst $ pnts M.! 0
 {-# INLINE curLnI #-}
 
 -- | Go to line number @n@. @n@ is indexed from 1. Returns the
 -- actual line we went to (which may be not be the requested line,
 -- if it was out of range)
 gotoLnI      :: BufferImpl -> Int -> IO Int
-gotoLnI fb n = modifyMVar fb $ \(FBufferData ptr pnts e mx) -> do
+gotoLnI fb n = modifyMVar fb $ \(FBufferData ptr pnts e mx hl) -> do
         np <- cfindStartOfLineN ptr 0 e (n-1)       -- index from 0
-        let fb' = FBufferData ptr (M.insert 0 (np,pointLeftBound) pnts) e mx
+        let fb' = FBufferData ptr (M.insert 0 (np,pointLeftBound) pnts) e mx hl
         n' <- if np > e - 1 -- if next line is end of file, then find out what line this is
               then return . subtract 1 =<< ccountLines ptr 0 np
               else return n         -- else it is this line
@@ -276,7 +283,7 @@ gotoLnI fb n = modifyMVar fb $ \(FBufferData ptr pnts e mx) -> do
 
 -- | Return index of next string in buffer that matches argument
 searchBI      :: BufferImpl -> [Char] -> IO (Maybe Int)
-searchBI fb s = withMVar fb $ \(FBufferData ptr pnts _ _) -> 
+searchBI fb s = withMVar fb $ \(FBufferData ptr pnts _ _ _) -> 
         withCString s $ \str -> do
             p <- cstrstr (ptr `advancePtr` (fst $ pnts M.! 0)) str
             return $ if p == nullPtr then Nothing
@@ -284,7 +291,7 @@ searchBI fb s = withMVar fb $ \(FBufferData ptr pnts _ _) ->
 
 -- | Return indices of next string in buffer matched by regex
 regexBI       :: BufferImpl -> Regex -> IO (Maybe (Int,Int))
-regexBI fb re = withMVar fb $ \(FBufferData ptr pnts _ _) -> do
+regexBI fb re = withMVar fb $ \(FBufferData ptr pnts _ _ _) -> do
         let p = (fst $ pnts M.! 0)
         mmatch <- regexec re ptr p
         case mmatch of
@@ -319,6 +326,9 @@ setMarkBI fb pos = modifyMVar_ fb $ \fb' -> return $ fb' {marks = (M.insert 1 (p
 unsetMarkBI      :: BufferImpl -> IO ()
 unsetMarkBI fb = modifyMVar_ fb $ \fb'-> return $ fb' { marks = (M.delete 1 (marks fb')) }
 
+setSyntaxBI      :: BufferImpl -> String -> IO ()
+setSyntaxBI fb sy = modifyMVar_ fb $ \fb' -> do (ExtHL e) <- evaluate (highlighters M.! sy)
+                                                return fb' { hlcache = HLState `fmap` e }
 
 pointLeftBound, markLeftBound :: Bool
 pointLeftBound = False

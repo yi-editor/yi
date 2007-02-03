@@ -889,6 +889,7 @@ ex_eval = enter
       fn "p"          = prevBufW
       fn ('s':'p':_)  = splitE
       fn ('e':' ':f)  = fnewE f
+      fn ('s':'e':'t':' ':'f':'t':'=':ft)  = setSynE ft
       fn ('n':'e':'w':' ':f) = splitE >> fnewE f
       fn ('s':'/':cs) = viSub cs
 

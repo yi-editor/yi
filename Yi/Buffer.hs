@@ -198,6 +198,10 @@ gotoLn = lift gotoLnI
 searchB     :: FBuffer -> [Char] -> IO (Maybe Int)
 searchB = lift searchBI
 
+-- | Set name of syntax highlighting mode
+setSyntaxB :: FBuffer -> [Char] -> IO ()
+setSyntaxB = lift setSyntaxBI
+
 -- | Return indices of next string in buffer matched by regex
 regexB      :: FBuffer -> Regex -> IO (Maybe (Int,Int))
 regexB = lift regexBI

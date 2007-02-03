@@ -87,6 +87,7 @@ module Yi.Core (
         closeBufferE,   -- :: String -> Action
         isUnchangedE,   -- :: IO Bool
         setUnchangedE,  -- :: Action
+        setSynE,        -- :: String -> Action
 
         -- * Buffer point movement
         topE,           -- :: Action
@@ -968,6 +969,10 @@ isUnchangedE = withBuffer isUnchangedB
 -- | Set the current buffer to be unmodifed
 setUnchangedE :: Action
 setUnchangedE = undefined
+
+-- | Set the current buffer's highlighting kind
+setSynE :: String -> Action
+setSynE sy = withBuffer_ (\b -> setSyntaxB b sy)
 
 ------------------------------------------------------------------------
 --
