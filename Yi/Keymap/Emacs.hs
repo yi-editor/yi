@@ -25,6 +25,8 @@ import Yi.Editor hiding     ( keymap )
 import Yi.Yi hiding         ( keymap, meta, string )
 import Yi.Window
 import Yi.Buffer
+import Yi.Interact
+import Yi.Debug
 
 import Yi.Keymap.Emacs.KillRing
 import Yi.Keymap.Emacs.UnivArgument
@@ -34,19 +36,11 @@ import Data.Char
 import Data.Maybe
 import Data.List
 import Data.Dynamic
-import qualified Data.Map as M
 import qualified Yi.UI as UI  -- FIXME this module should not depend on UI
 
-import Control.Monad.Writer
-import Control.Monad.State
+import Control.Monad
 
 -- * Dynamic state-components
-
-newtype TypedKey = TypedKey [Event]
-    deriving Typeable
-
-instance Initializable TypedKey where
-    initial = return $ TypedKey []
 
 data MiniBuf = MiniBuf Window FBuffer
     deriving Typeable
@@ -57,19 +51,19 @@ instance Initializable MiniBuf where
                  return $ MiniBuf w b
 
 
--- TODO
-
--- * Keymaps (rebindings)
-
--- | The command type.
-
-type KProc a = StateT [Event] (Writer [Action]) a
-
-
 -- * The keymap abstract definition
 
-normalKlist :: KList String
-normalKlist = [ ([c], atomic $ insertSelf) | c <- printableChars ] ++
+type KProc a = Interact Event a
+type Process = KProc ()
+type KList = [(String, Process)]
+
+selfInsertKeymap :: Process
+selfInsertKeymap = do
+  Event (KASCII c) [] <- satisfy (const True)
+  write (insertSelf c)
+
+normalKeymap :: Process
+normalKeymap = selfInsertKeymap +++ makeKeymap 
               [
         ("RET",      atomic $ repeatingArg $ insertE '\n'),
         ("DEL",      atomic $ repeatingArg deleteE),
@@ -150,30 +144,12 @@ normalKlist = [ ([c], atomic $ insertSelf) | c <- printableChars ] ++
 
 -- * Boilerplate code for the Command monad
 
-liftC :: Action -> KProc ()
-liftC = tell . return
 
 -- | Define an atomic interactive command.
 -- Purose is to define "transactional" boundaries for killring, undo, etc.
 atomic :: Action -> KProc ()
-atomic cmd = liftC $ do cmd
+atomic cmd = write $ do cmd
                         killringEndCmd
-
-getInput :: KProc [Event]
-getInput = get
-
-putInput :: [Event] -> KProc ()
-putInput = modify . const
-
-
-readStroke, lookStroke :: KProc Event
-readStroke = do (c:cs) <- getInput
-                putInput cs
-                return c
-
-lookStroke = do (c:_) <- getInput
-                return c
-
 
 -- * Code for various commands
 -- This ideally should be put in their own module,
@@ -181,38 +157,35 @@ lookStroke = do (c:_) <- getInput
 -- by looking up that module's contents
 
 
-insertSelf :: Action
-insertSelf = repeatingArg $ do TypedKey k <- getDynamic
-                               insertNE (map eventToChar k)
+insertSelf :: Char -> Action
+insertSelf c = repeatingArg $ insertNE [c]
 
 insertNextC :: KProc ()
-insertNextC = do c <- readStroke
-                 liftC $ repeatingArg $ insertE (eventToChar c)
+insertNextC = do c <- satisfy (const True)
+                 write $ repeatingArg $ insertE (eventToChar c)
 
 
-
+{-
 -- | Complain about undefined key
 undefC :: Action
 undefC = do TypedKey k <- getDynamic
             errorE $ "Key sequence not defined : " ++ showKey k ++ " " ++ show k
-
+-}
 
 -- | C-u stuff
 readArgC :: KProc ()
 readArgC = do readArg' Nothing
+              write $ do UniversalArg u <- getDynamic
+                         logPutStrLn (show u)
+                         msgE ""
 
 readArg' :: Maybe Int -> KProc ()
 readArg' acc = do
-    c <- lookStroke
+    write $ msgE $ "Argument: " ++ show acc
+    c <- satisfy (const True) -- FIXME: the C-u will read one character that should be part of the next command!
     case c of
-      Event (KASCII d) [] | isDigit d ->
-           do { readStroke
-              ; let acc' = Just $ 10 * (fromMaybe 0 acc) + (ord d - ord '0')
-              ; liftC $ do TypedKey k <- getDynamic
-                           msgE (showKey k ++ show (fromJust $ acc'))
-              ; readArg' acc'
-             }
-      _ -> liftC $ setDynamic $ UniversalArg $ Just $ fromMaybe 4 acc
+      Event (KASCII d) [] | isDigit d -> readArg' $ Just $ 10 * (fromMaybe 0 acc) + (ord d - ord '0')
+      _ -> write $ setDynamic $ UniversalArg $ Just $ fromMaybe 4 acc
 
 
 -- TODO:
@@ -223,14 +196,14 @@ readArg' acc = do
 -- prevent recursive minibuffer usage
 -- hide modeline
 
-spawnMinibuffer :: String -> KList String -> Action
-spawnMinibuffer _prompt klist =
+spawnMinibuffer :: String -> Process -> Action
+spawnMinibuffer _prompt process =
     do MiniBuf w _b <- getDynamic
        setWinE w
-       metaM (fromKProc $ makeKeymap klist)
+       metaM (runProcess process)
 
-rebind :: KList String -> String -> KProc () -> KList String
-rebind kl k kp = M.toList $ M.insert k kp $ M.fromList kl
+rebind :: Process -> String -> Process -> Process
+rebind kl k kp = (string (readKey k) >> kp) <++ kl
 
 findFile :: Action
 findFile = withMinibuffer "find file:" $ \filename -> do msgE $ "loading " ++ filename
@@ -240,7 +213,7 @@ gotoLine :: Action
 gotoLine = withMinibuffer "goto line:" $ \lineString -> gotoLnE (read lineString)
 
 withMinibuffer :: String -> (String -> Action) -> Action
-withMinibuffer prompt act = spawnMinibuffer prompt (rebind normalKlist "RET" (liftC innerAction))
+withMinibuffer prompt act = spawnMinibuffer prompt (rebind normalKeymap "RET" (write innerAction))
     -- read contents of current buffer (which should be the minibuffer), and
     -- apply it to the desired action
     where innerAction :: Action
@@ -254,58 +227,11 @@ scrollDownE = withUnivArg $ \a ->
                  Nothing -> downScreenE
                  Just n -> replicateM_ n downE
 
--- * KeyList => keymap
--- Specialized version of MakeKeymap
-
-data KME = KMESubmap KM
-         | KMECommand (KProc ())
-
-type KM = M.Map Event KME
-
-type KListEnt k = (k, KProc ())
-type KList k = [KListEnt k]
 
 -- | Create a binding processor from 'kmap'.
-makeKeymap :: KList String -> KProc ()
-makeKeymap kmap = do getActions [] (buildKeymap kmap)
-                     makeKeymap kmap
-
-getActions :: [Event] -> KM -> KProc ()
-getActions k fm = do
-    c <- readStroke
-    let k' = k ++ [c]
-    liftC $ setDynamic $ TypedKey k'
-    case fromMaybe (KMECommand $ liftC undefC) (M.lookup c fm) of
-        KMECommand m -> do liftC $ msgE ""
-                           m
-        KMESubmap sfm -> do liftC $ msgE (showKey k' ++ "-")
-                            getActions k' sfm
-
-
--- | Builds a keymap (Yi.Map.Map) from a key binding list, also creating
--- submaps from key sequences.
-buildKeymap :: KList String -> KM
-buildKeymap l = buildKeymap' M.empty [(readKey k, c) | (k,c) <- l]
-
-buildKeymap' :: KM -> KList [Event] -> KM
-buildKeymap' fm_ l =
-    foldl addKey fm_ [(k, KMECommand c) | (k,c) <- l]
-    where
-        addKey fm (c:[], a) = M.insert c a fm
-        addKey fm (c:cs, a) =
-            flip (M.insert c) fm $ KMESubmap $
-                case M.lookup c fm of
-                    Nothing             -> addKey M.empty (cs, a)
-                    Just (KMESubmap sm) -> addKey sm (cs, a)
-                    _                   -> error "Invalid keymap table"
-        addKey _ ([], _) = error "Invalid keymap table"
-
-
-fromKProc :: KProc a -> Keymap
-fromKProc kp cs = snd $ runWriter $ runStateT kp cs
+makeKeymap :: KList -> KProc ()
+makeKeymap kmap = choice [string (readKey k) >> a | (k,a) <- kmap]
 
 -- | entry point
 keymap :: Keymap
-keymap = fromKProc (makeKeymap normalKlist)
-
-
+keymap = runProcess normalKeymap
