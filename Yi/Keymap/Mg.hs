@@ -63,12 +63,15 @@ module Yi.Keymap.Mg (keymap) where
 import Yi.Yi         hiding ( keymap )
 import Yi.Editor            ( Action, Keymap )
 import Yi.Char
+import Yi.Interact
 
 import Numeric              ( showOct )
 import Data.Char            ( ord, chr )
 import Data.List            ((\\), isPrefixOf)
 import qualified Data.Map as M
 import Control.Exception    ( try, evaluate )
+import Control.Monad
+import Yi.Debug
 
 ------------------------------------------------------------------------
 
@@ -81,7 +84,7 @@ m_ = setMeta
 -- ---------------------------------------------------------------------
 -- map extended names to corresponding actions
 --
-extended2action :: M.Map String Action
+extended2action :: M.Map String MgMode
 extended2action = M.fromList [ (ex,a) | (ex,_,a) <- globalTable ]
 
 --
@@ -93,10 +96,10 @@ keys2extended   = M.fromList [ (k,ex) | (ex,ks,_) <- globalTable, k <- ks ]
 --
 -- map chars to actions
 --
-keys2action :: [Char] -> Action
+keys2action :: [Char] -> MgMode
 keys2action ks | Just ex <- M.lookup ks keys2extended
-               , Just a  <- M.lookup ex extended2action  = a
-               | otherwise = errorE $ "No binding for "++ show ks
+               , Just a  <- M.lookup ex extended2action = a
+               | otherwise = write $ errorE $ "No binding for "++ show ks
 
 --
 -- keystrokes only 1 character long
@@ -120,131 +123,131 @@ metaoKeysList = [ k | (_,ks,_) <- globalTable, [m,k] <- ks, m == m_ 'O' ]
 --
 -- global key/action/name map
 --
-globalTable :: [(String,[String],Action)]
+globalTable :: [(String,[String],MgMode)]
 globalTable = [
   ("apropos",
         [[c_ 'h', 'a']],
-        errorE "apropos unimplemented"),
+        write $ errorE "apropos unimplemented"),
   ("backward-char",
         [[c_ 'b'], [m_ 'O', 'D'], [keyLeft]],
-        leftE),
+        write $ leftE),
   ("backward-kill-word",
         [[m_ '\127']],
-        bkillWordE),
+        write $ bkillWordE),
   ("backward-word",
         [[m_ 'b']],
-        prevWordE),
+        write $ prevWordE),
   ("beginning-of-buffer",
         [[m_ '<']],
-        topE),
+        write $ topE),
   ("beginning-of-line",
         [[c_ 'a'], [m_ 'O', 'H']],
-        solE),
+        write $ solE),
   ("call-last-kbd-macro",
         [[c_ 'x', 'e']],
-        errorE "call-last-kbd-macro unimplemented"),
+        write $ errorE "call-last-kbd-macro unimplemented"),
   ("capitalize-word",
         [[m_ 'c']],
-        capitaliseWordE),
+        write $ capitaliseWordE),
   ("copy-region-as-kill",
         [[m_ 'w']],
-        errorE "copy-region-as-kill unimplemented"),
+        write $ errorE "copy-region-as-kill unimplemented"),
   ("delete-backward-char",
         [['\127'], ['\BS'], [keyBackspace]],
-        bdeleteE),
+        write $ bdeleteE),
   ("delete-blank-lines",
         [[c_ 'x', c_ 'o']],
-        mgDeleteBlanks),
+        write $ mgDeleteBlanks),
   ("delete-char",
         [[c_ 'd']],
-        deleteE),
+        write $ deleteE),
   ("delete-horizontal-space",
         [[m_ '\\']],
-        mgDeleteHorizBlanks),
+        write $ mgDeleteHorizBlanks),
   ("delete-other-windows",
         [[c_ 'x', '1']],
-        closeOtherE),
+        write $ closeOtherE),
   ("delete-window",
         [[c_ 'x', '0']],
-        closeE),
+        write $ closeE),
   ("describe-bindings",
         [[c_ 'h', 'b']],
-        describeBindings),
+        write $ describeBindings),
   ("describe-key-briefly",
         [[c_ 'h', 'c']],
-        msgE "Describe key briefly: " >> cmdlineFocusE >> metaM describeKeymap),
+        describeKeyMode),
   ("digit-argument",
         [ [m_ d] | d <- ['0' .. '9'] ],
-        errorE "digit-argument unimplemented"),
+        write $ errorE "digit-argument unimplemented"),
   ("dired",
         [[c_ 'x', 'd']],
-        errorE "dired unimplemented"),
+        write $ errorE "dired unimplemented"),
   ("downcase-region",
         [[c_ 'x', c_ 'l']],
-        errorE "downcase-region unimplemented"),
+        write $ errorE "downcase-region unimplemented"),
   ("downcase-word",
         [[m_ 'l']],
-        lowercaseWordE),
+        write $ lowercaseWordE),
   ("end-kbd-macro",
         [[c_ 'x', ')']],
-        errorE "end-kbd-macro unimplemented"),
+        write $ errorE "end-kbd-macro unimplemented"),
   ("end-of-buffer",
         [[m_ '>']],
-        botE),
+        write $ botE),
   ("end-of-line",
         [[c_ 'e'], [m_ 'O', 'F']],
-        eolE),
+        write $ eolE),
   ("enlarge-window",
         [[c_ 'x', '^']],
-        enlargeWinE),
+        write $ enlargeWinE),
   ("shrink-window",             -- not in mg
         [[c_ 'x', 'v']],
-        shrinkWinE),
+        write $ shrinkWinE),
   ("exchange-point-and-mark",
         [[c_ 'x', c_ 'x']],
-        errorE "exchange-point-and-mark unimplemented"),
+        write $ errorE "exchange-point-and-mark unimplemented"),
   ("execute-extended-command",
         [[m_ 'x']],
-        msgE "M-x " >> cmdlineFocusE >> metaM metaXmap),
+        metaXSwitch),
   ("fill-paragraph",
         [[m_ 'q']],
-        errorE "fill-paragraph unimplemented"),
+        write $ errorE "fill-paragraph unimplemented"),
   ("find-alternate-file",
         [[c_ 'c', c_ 'v']],
-        errorE "find-alternate-file unimplemented"),
+        write $ errorE "find-alternate-file unimplemented"),
   ("find-file",
         [[c_ 'x', c_ 'f']],
-        msgE "Find file: " >> cmdlineFocusE >> metaM findFileMap),
+        findFileMode),
   ("find-file-other-window",
         [[c_ 'x', '4', c_ 'f']],
-        errorE "find-file-other-window unimplemented"),
+        write $ errorE "find-file-other-window unimplemented"),
   ("forward-char",
         [[c_ 'f'], [m_ 'O', 'C'], [keyRight]],
-        rightE),
+        write $ rightE),
   ("forward-paragraph",
         [[m_ ']']],
-        nextNParagraphs 1),
+        write $ nextNParagraphs 1),
   ("forward-word",
         [[m_ 'f']],
-        nextWordE),
+        write $ nextWordE),
   ("goto-line",
         [[c_ 'x', 'g']],
-        msgE "Goto line: " >> cmdlineFocusE >> metaM gotoMap),
+        gotoMode),
   ("help-help",
         [[c_ 'h', c_ 'h']],
-        errorE "help-help unimplemented"),
+        write $ errorE "help-help unimplemented"),
   ("insert-file",
         [[c_ 'x', 'i']],
-        errorE "insert-file unimplemented"),
+        write $ errorE "insert-file unimplemented"),
   ("isearch-backward",
         [[c_ 'r']],
-        errorE "isearch-backward unimplemented"),
+        write $ errorE "isearch-backward unimplemented"),
   ("isearch-forward",
         [[c_ 's']],
-        errorE "isearch-forward unimplemented"),
+        write $ errorE "isearch-forward unimplemented"),
   ("just-one-space",
         [[m_ ' ']],
-        insertE ' '),
+        write $ insertE ' '),
   ("keyboard-quit",
         [[c_ 'g'],
          [c_ 'h', c_ 'g'],
@@ -252,190 +255,165 @@ globalTable = [
          [c_ 'x', '4', c_ 'g'],
          [m_ (c_ 'g')]
         ],
-        msgE "Quit" >> metaM defaultKeymap),
+        write $ msgE "Quit"),
   ("kill-buffer",
         [[c_ 'x', 'k']],
-        msgE "Kill buffer: " >> cmdlineFocusE >> metaM killBufferMap),
+        killBufferMode),
   ("kill-line",
         [[c_ 'k']],
-        readRestOfLnE >>= setRegE >> killE),
+        write $ readRestOfLnE >>= setRegE >> killE),
   ("kill-region",
         [[c_ 'w']],
-        errorE "kill-region unimplemented"),
+        write $ errorE "kill-region unimplemented"),
   ("kill-word",
         [[m_ 'd']],
-        killWordE),
+        write $ killWordE),
   ("list-buffers",
         [[c_ 'x', c_ 'b']],
-        mgListBuffers),
+        write $ mgListBuffers),
   ("negative-argument",
         [[m_ '-']],
-        errorE "negative-argument unimplemented"),
+        write $ errorE "negative-argument unimplemented"),
   ("newline",
         [[c_ 'm']],
-        insertE '\n'),
+        write $ insertE '\n'),
   ("newline-and-indent",
         [],
-        errorE "newline-and-indent unimplemented"),
+        write $ errorE "newline-and-indent unimplemented"),
   ("next-line",
         [[c_ 'n'], [m_ 'O', 'B'], [keyDown]], -- doesn't remember goal column
-        downE),
+        write $ downE),
   ("not-modified",
         [[m_ '~']],
-        errorE "not-modified unimplemented"),
+        write $ errorE "not-modified unimplemented"),
   ("open-line",
         [[c_ 'o']],
-        insertE '\n' >> leftE),
+        write $ insertE '\n' >> leftE),
   ("other-window",
         [[c_ 'x', 'n'], [c_ 'x', 'o']],
-        nextWinE),
+        write $ nextWinE),
   ("previous-line",
         [[c_ 'p'], [m_ 'O', 'A'], [keyUp]],
-        upE),
+        write $ upE),
   ("previous-window",
         [[c_ 'x', 'p']],
-        prevWinE),
+        write $ prevWinE),
   ("query-replace",
         [[m_ '%']],
-        errorE "query-replace unimplemented"),
+        write $ errorE "query-replace unimplemented"),
   ("quoted-insert",
         [[c_ 'q']],
-        metaM insertAnyMap),
+        insertAnyMode),
   ("recenter",
         [[c_ 'l']],
-        errorE "recenter unimplemented"),
+        write $ errorE "recenter unimplemented"),
   ("save-buffer",
         [[c_ 'x', c_ 's']],
-        mgWrite),
+        write $ mgWrite),
   ("save-buffers-kill-emacs",
         [[c_ 'x', c_ 'c']],
-        quitE), -- should ask to save buffers
+        write $ quitE), -- should ask to save buffers
   ("save-some-buffers",
         [[c_ 'x', 's']],
-        errorE "save-some-buffers unimplemented"),
+        write $ errorE "save-some-buffers unimplemented"),
   ("scroll-down",
         [[m_ '[', '5', '~'], [m_ 'v'], [keyPPage]],
-        upScreenE),
+        write $ upScreenE),
   ("scroll-other-window",
         [[m_ (c_ 'v')]],
-        errorE "scroll-other-window unimplemented"),
+        write $ errorE "scroll-other-window unimplemented"),
   ("scroll-up",
         [[c_ 'v'], [m_ '[', '6', '~'], [keyNPage]],
-        downScreenE),
+        write $ downScreenE),
   ("search-backward",
         [[m_ 'r']],
-        errorE "search-backward unimplemented"),
+        write $ errorE "search-backward unimplemented"),
   ("search-forward",
         [[m_ 's']],
-        errorE "search-forward unimplemented"),
+        write $ errorE "search-forward unimplemented"),
   ("set-fill-column",
         [[c_ 'x', 'f']],
-        errorE "set-fill-column unimplemented"),
+        write $ errorE "set-fill-column unimplemented"),
   ("set-mark-command",
         [['\NUL']],
-        errorE "set-mark-command unimplemented"),
+        write $ errorE "set-mark-command unimplemented"),
   ("split-window-vertically",
         [[c_ 'x', '2']],
-        splitE),
+        write $ splitE),
   ("start-kbd-macro",
         [[c_ 'x', '(']],
-        errorE "start-kbd-macro unimplemented"),
+        write $ errorE "start-kbd-macro unimplemented"),
   ("suspend-emacs",
         [[c_ 'z']],
-        suspendE),
+        write $ suspendE),
   ("switch-to-buffer",
         [[c_ 'x', 'b']],
-        errorE "switch-to-buffer unimplemented"),
+        write $ errorE "switch-to-buffer unimplemented"),
   ("switch-to-buffer-other-window",
         [[c_ 'x', '4', 'b']],
-        errorE "switch-to-buffer-other-window unimplemented"),
+        write $ errorE "switch-to-buffer-other-window unimplemented"),
   ("transpose-chars",
         [[c_ 't']],
-        swapE),
+        write $ swapE),
   ("undo",
         [[c_ 'x', 'u'], ['\^_']],
-        undoE),
+        write $ undoE),
   ("universal-argument",
         [[c_ 'u']],
-        errorE "universal-argument unimplemented"),
+        write $ errorE "universal-argument unimplemented"),
   ("upcase-region",
         [[c_ 'x', c_ 'u']],
-        errorE "upcase-region unimplemented"),
+        write $ errorE "upcase-region unimplemented"),
   ("upcase-word",
         [[m_ 'u']],
-        uppercaseWordE),
+        write $ uppercaseWordE),
   ("what-cursor-position",
         [[c_ 'x', '=']],
-        whatCursorPos),
+        write $ whatCursorPos),
   ("write-file",
         [[c_ 'x', c_ 'w']],
-        msgE "Write file: " >> cmdlineFocusE >> metaM writeFileMap),
+        writeFileMode),
   ("yank",
         [[c_ 'y']],
-        getRegE >>= mapM_ insertE) ]
+        write $ getRegE >>= mapM_ insertE) ]
 
 ------------------------------------------------------------------------
 
-type MgMode = Lexer MgState Action
-
-data MgState = MgState {
-        acc    :: String,       -- a line buffer
-        prompt :: String        -- current prompt
-     }
-
-dfltState :: MgState
-dfltState = MgState [] []
-
-defaultKeymap :: Keymap
-defaultKeymap = keymap
-
-------------------------------------------------------------------------
+type MgMode = Interact Char ()
 
 keymap :: Keymap
-keymap = keymap' . map eventToChar
-
-keymap' :: [Char] -> [Action]
-keymap' cs = let (actions,_,_) = execLexer mode (cs, dfltState) in actions
+keymap = runProcess mode . map eventToChar
 
 ------------------------------------------------------------------------
 
 -- default bindings
 mode :: MgMode
-mode = insert >||< command >||<
-       ctrlxSwitch  >||<
-       metaSwitch   >||<
-       metaOSwitch  >||<
-       metaXSwitch
+mode = command +++
+       ctrlxSwitch  +++
+       metaSwitch   +++
+       metaOSwitch  +++
+       metaXSwitch +++ insert
 
 ------------------------------------------------------------------------
 
 -- self insertion
 insert :: MgMode
-insert  = anything `action` \[c] -> Just (insertE c)
+insert  = do c <- satisfy (const True); write $ insertE c
 
 -- C- commands
 command :: MgMode
-command = cmd `action` \[c] -> Just $ if c `elem` unitKeysList
-                                        then keys2action [c]
-                                        else undefined
-        where cmd = alt $ unitKeysList
+command = do c <- alt' unitKeysList; keys2action [c]
 
 ------------------------------------------------------------------------
 
 -- switch to ctrl-X submap
 ctrlxSwitch :: MgMode
-ctrlxSwitch = char '\^X'
-        `meta` \_ st -> (with (msgE "C-x-"), st, Just ctrlxMode)
+ctrlxSwitch = do event '\^X' ; write (msgE "C-x-"); ctrlxMode
+
 
 -- ctrl x submap
 ctrlxMode :: MgMode
-ctrlxMode = cmd
-        `meta` \[c] st -> (with (msgClrE >> f c), st, Just mode)
-        where
-            cmd = alt ctrlxKeysList
-            f c = if c `elem` ctrlxKeysList
-                    then keys2action ['\^X',c]
-                    else undefined
+ctrlxMode = do c <- alt' ctrlxKeysList; keys2action ['\^X',c]; write msgClrE
 
 ------------------------------------------------------------------------
 --
@@ -444,236 +422,137 @@ ctrlxMode = cmd
 
 -- switch to meta mode
 metaSwitch :: MgMode
-metaSwitch = char '\ESC'        -- hitting ESC also triggers a meta char
-        `meta` \_ st -> (with (msgE "ESC-"), st,  Just metaMode)
+metaSwitch = do event '\ESC' ; write  (msgE "ESC-"); metaMode       -- hitting ESC also triggers a meta char
 
 --
 -- a fake mode. really just looking up the binding for: m_ c
 --
 metaMode :: MgMode
-metaMode = alt ['\0' .. '\255']       -- not quite right
-        `meta` \[c] st -> (Just (Right (msgClrE >> f c)), st, Just mode) -- and leave
-        where
-            f c = if (m_ c) `elem` unitKeysList
-                    then keys2action [m_ c]
-                    else undefined
+metaMode = do c <- alt' ['\0' .. '\255']       -- not quite right
+              when ((m_ c) `elem` unitKeysList) $ keys2action [m_ c]
+              write msgClrE
 
 ------------------------------------------------------------------------
 
 -- switch to meta O mode
 metaOSwitch :: MgMode
-metaOSwitch = char (m_ 'O')
-        `meta` \_ st -> (Just (Right (msgE "ESC-O-")), st,  Just metaOMode)
+metaOSwitch = event (m_ 'O') >> write (msgE "ESC-O-") >> metaOMode
 
 metaOMode :: MgMode
-metaOMode = cmd
-        `meta` \[c] st -> (Just (Right (msgClrE >> f c)), st, Just mode)
-        where
-            cmd = alt metaoKeysList
-            f c = if c `elem` metaoKeysList
-                      then keys2action [m_ 'O',c]
-                      else undefined
-
+metaOMode = do c <- alt' metaoKeysList; keys2action [m_ 'O',c]; write msgClrE
+               
 -- ---------------------------------------------------------------------
 -- build a generic line buffer editor, given a mode to transition to
 --
-editInsert :: MgMode -> MgMode
-editInsert m = anyButDelNlArrow
-        `meta` \[c] st -> (with (msgE (prompt st ++ (reverse (acc st)) ++ [c]))
-                          , st{acc=c:acc st} , Just m)
-    where anyButDelNlArrow = alt $ any' \\ (enter' ++ delete' ++ ['\ESC',keyUp,keyDown])
 
-editDelete :: MgMode -> MgMode
-editDelete m = delete
-    `meta` \_ st ->
-        let cs' = case acc st of
-                        []    -> []
-                        (_:xs) -> xs
-        in (with (msgE (prompt st ++ reverse cs')), st{acc=cs'}, Just m)
+echoMode :: String -> Interact Char (Maybe String)
+echoMode prompt = do 
+  write (logPutStrLn "echoMode")
+  write cmdlineFocusE 
+  result <- lineEdit []
+  write (msgClrE >> cmdlineUnFocusE)
+  return result
+    where lineEdit s =
+              do write $ msgE (prompt ++ s)
+                 (do delete; lineEdit (take (length s - 1) s)
+                  +++ do c <- anyButDelNlArrow; lineEdit (s++[c])
+                  +++ do event '\^G'; return Nothing
+                  +++ do enter; return (Just s))
+          anyButDelNlArrow = alt' $ any' \\ (enter' ++ delete' ++ ['\ESC',keyUp,keyDown])
 
-editEscape :: MgMode
-editEscape = char '\^G'
-    `meta` \_ _ -> (with (cmdlineUnFocusE >> msgE "Quit"), dfltState, Just mode)
 
---
--- and build a generic keymap
---
-mkKeymap :: MgMode -> MgState -> Keymap
-mkKeymap m st = \cs -> let (actions,_,_) = execLexer m (map eventToChar cs, st) in actions
+withLineEditor :: String -> (String -> MgMode) -> MgMode
+withLineEditor prompt cont = do
+  s <- echoMode prompt
+  case s of 
+    Nothing -> return ()
+    Just x -> cont x
 
---
--- and a default state
---
-mkPromptState :: String -> MgState
-mkPromptState p = MgState { prompt = p, acc = [] }
 
 ------------------------------------------------------------------------
 
--- execute an extended command
-metaXSwitch :: MgMode
-metaXSwitch = (char (m_ 'x') >|< char (m_ 'X'))
-        `meta` \_ _ -> (with (msgE "M-x " >> cmdlineFocusE)
-                       , metaXState
-                       , Just metaXMode)
-
---
--- a line buffer mode, where we ultimately map the command back to a
+-- | execute an extended command
+-- we ultimately map the command back to a
 -- keystroke, and execute that.
---
-metaXState :: MgState
-metaXState = mkPromptState "M-x "
 
-metaXmap :: Keymap
-metaXmap = mkKeymap metaXMode metaXState
-
-metaXMode :: MgMode
-metaXMode = (editInsert metaXMode) >||< (editDelete metaXMode) >||<
-            editEscape >||< metaXEval
+metaXSwitch :: MgMode
+metaXSwitch = do (event (m_ 'x') +++ event (m_ 'X')); withLineEditor "M-x " metaXEval
 
 -- | M-x mode, evaluate a string entered after M-x
-metaXEval :: MgMode
-metaXEval = enter
-    `meta` \_ MgState{acc=cca} ->
-        let cmd = reverse cca
-        in case M.lookup cmd extended2action of
-                Nothing -> (with $ msgE "[No match]" >> cmdlineUnFocusE
-                           , MgState [] [], Just mode)
-                Just a  -> (with (cmdlineUnFocusE  >> msgClrE >> a)
-                           , MgState [] [], Just mode)
+metaXEval :: String -> MgMode
+metaXEval cmd = case M.lookup cmd extended2action of
+                  Nothing -> write $ msgE "[No match]"
+                  Just a  -> a
 
 -- metaXTab :: MgMode
 
 ------------------------------------------------------------------------
 
 describeKeyMode :: MgMode
-describeKeyMode = describeChar
+describeKeyMode = describeChar "Describe key briefly: " []
 
-describeKeymap :: Keymap
-describeKeymap = mkKeymap describeKeyMode describeKeyState
-
-describeKeyState :: MgState
-describeKeyState = mkPromptState "Describe key briefly: "
-
-describeChar :: MgMode
-describeChar = anything
-    `meta` \[c] st ->
-        let acc' = c : acc st
-            keys = reverse acc'
-        in case M.lookup keys keys2extended of
-            Just ex -> (with $ (msgE $ (printable keys) ++ " runs the command " ++ ex)
-                                 >> cmdlineUnFocusE
-                       ,dfltState, Just mode)
+describeChar :: String -> String -> MgMode
+describeChar prompt acc = do 
+  c <- anything
+  let keys = acc ++ [c]
+  case M.lookup keys keys2extended of
+            Just ex -> write $ do msgE $ (printable keys) ++ " runs the command " ++ ex
+                                  cmdlineUnFocusE
             Nothing ->
                 -- only continue if this is the prefix of something in the table
                 if any (isPrefixOf keys) (M.keys keys2extended)
-                   then (with $ msgE (prompt st ++ keys)
-                        ,st{acc=acc'}, Just describeKeyMode)
-                   else (with $ (msgE $ printable keys ++ " is not bound to any function")
-                                >> cmdlineUnFocusE
-                        ,dfltState, Just mode)
+                   then do write $ msgE (prompt ++ keys)
+                           describeChar prompt keys
+                   else write $ do msgE $ printable keys ++ " is not bound to any function"
+                                   cmdlineUnFocusE
 
 ------------------------------------------------------------------------
--- Reading a filename, to open a buffer
+-- | Reading a filename, to open a buffer
 --
-findFileMap :: Keymap
-findFileMap = mkKeymap findFileMode findFileState
-
-findFileState :: MgState
-findFileState = mkPromptState "Find file: "
 
 findFileMode :: MgMode
-findFileMode = (editInsert findFileMode) >||<
-               (editDelete findFileMode) >||<
-               editEscape >||< findFileEval
-
-findFileEval :: MgMode
-findFileEval = enter
-        `meta` \_ MgState{acc=cca} ->
-        (with (do fnewE (reverse cca)
-                  bufInfo <- bufInfoE
-	          let s = bufInfoFileName bufInfo
-                  msgE $ "(Read "++show s++" bytes)"
-                  cmdlineUnFocusE)
-        , MgState [] [], Just mode )
+findFileMode = withLineEditor "Find file: " $ \f -> write $ do
+                 fnewE f
+                 bufInfo <- bufInfoE
+                 let s = bufInfoFileName bufInfo
+                 msgE $ "(Read "++show s++" bytes)"
 
 -- ---------------------------------------------------------------------
--- Writing a file
+-- | Writing a file
 --
-writeFileMap  :: Keymap
-writeFileMap = mkKeymap writeFileMode writeFileState
-
-writeFileState :: MgState
-writeFileState = mkPromptState "Write file: "
 
 writeFileMode :: MgMode
-writeFileMode = (editInsert writeFileMode) >||<
-                (editDelete writeFileMode) >||<
-                editEscape >||< writeFileEval
-
-writeFileEval :: MgMode
-writeFileEval = enter
-        `meta` \_ MgState{acc=cca} ->
-        let f = reverse cca
-        in (with (do fwriteToE f
-                     msgE $ "Wrote "++f
-                     cmdlineUnFocusE)
-           ,MgState [] [], Just mode )
+writeFileMode = withLineEditor "Write file: "$ \f -> write $ do
+                  fwriteToE f
+                  msgE $ "Wrote "++ f
 
 -- ---------------------------------------------------------------------
--- Killing a buffer by name
-killBufferMap :: Keymap
-killBufferMap = mkKeymap killBufferMode killBufferState
-
-killBufferState :: MgState
-killBufferState = mkPromptState "Kill buffer: "
+-- | Killing a buffer by name
 
 killBufferMode :: MgMode
-killBufferMode = (editInsert killBufferMode) >||<
-                 (editDelete killBufferMode) >||<
-                 editEscape >||< killBufferEval
-
-killBufferEval :: MgMode
-killBufferEval = enter
-        `meta` \_ MgState{acc=cca} ->
-        let buf = reverse cca
-        in (with (closeBufferE buf >> cmdlineUnFocusE)
-           ,MgState [] [], Just mode )
+killBufferMode = withLineEditor "Kill buffer: " $ \buf -> write $ do
+                   closeBufferE buf
 
 -- ---------------------------------------------------------------------
--- Goto a line
+-- | Goto a line
 --
-gotoMap  :: Keymap
-gotoMap = mkKeymap gotoMode gotoState
-
-gotoState :: MgState
-gotoState = mkPromptState "Goto line: "
 
 gotoMode :: MgMode
-gotoMode = (editInsert gotoMode) >||<
-           (editDelete gotoMode) >||< editEscape >||< gotoEval
-
-gotoEval :: MgMode
-gotoEval = enter
-        `meta` \_ MgState{acc=cca} ->
-        let l = reverse cca
-        in (with ((do
-                i <- try . evaluate . read $ l
-                case i of Left _   -> errorE "Invalid number"
-                          Right i' -> gotoLnE i') >> cmdlineUnFocusE)
-           ,MgState [] [], Just mode )
+gotoMode = withLineEditor "goto line: " $ \l -> write $ do
+             i <- try . evaluate . read $ l
+             case i of Left _   -> errorE "Invalid number"
+                       Right i' -> gotoLnE i'
+             
 
 -- ---------------------------------------------------------------------
--- insert the first character, then switch back to normal mode
+-- | insert the first character, then switch back to normal mode
 --
-insertAnyMap :: Keymap
-insertAnyMap = mkKeymap insertAnyMode dfltState
 
 insertAnyMode :: MgMode
-insertAnyMode = alt ['\0' .. '\255']
-        `meta` \[c] st -> (with (insertE c), st, Just mode)
+insertAnyMode = do c <- alt' ['\0' .. '\255']; write (insertE c)
 
 ------------------------------------------------------------------------
--- translate a string into the emacs encoding of that string
+-- | translate a string into the emacs encoding of that string
 --
 printable :: String -> String
 printable = dropSpace . printable'
@@ -777,7 +656,10 @@ enter'   = ['\n', '\r']
 delete'  = ['\BS', '\127', keyBackspace ]
 any'     = ['\0' .. '\255']
 
-delete, enter, anything :: Regexp MgState Action
-delete  = alt delete'
-enter   = alt enter'
-anything  = alt any'
+delete, enter, anything :: Interact Char Char
+delete  = alt' delete'
+enter   = alt' enter'
+anything  = alt' any'
+
+alt' :: String -> Interact Char Char
+alt' s = satisfy (`elem` s)
