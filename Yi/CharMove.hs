@@ -231,9 +231,6 @@ prevNParagraphs n = do
 -- | Shift the point, until predicate is true, leaving point at final
 -- location.
 
---
--- Maybe this shouldn't refresh?
---
 moveWhileE :: (Char -> Bool) -> Direction -> Action
 moveWhileE f d = withBuffer_ (moveWhile_ f d)
 --
