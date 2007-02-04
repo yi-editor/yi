@@ -113,7 +113,9 @@ newBI s = do
   p <- textBufferGetInsert buf
   m <- textBufferGetSelectionBound buf
   a <- newIORef False
-  return (BufferImpl buf p m a)
+  let b = BufferImpl buf p m a
+  moveToI b 0
+  return b
 
 -- | Free any resources associated with this buffer
 finaliseBI :: BufferImpl -> IO ()
@@ -140,15 +142,20 @@ nelemsBI b n i = readChars (textbuf b) i n
 ------------------------------------------------------------------------
 -- Point based editing
 
+moveCursorAtIter :: BufferImpl -> TextIter -> IO ()
+moveCursorAtIter b p = do
+  active <- readIORef (markActive b)
+  if active
+    then textBufferMoveMark (textbuf b) (point b) p
+    else textBufferPlaceCursor (textbuf b) p
+
+
 -- | Move point in buffer to the given index
 moveToI :: BufferImpl -> Int -> IO ()
 moveToI b off = do
   --logPutStrLn $ "moveTo " ++ show off
   p <- textBufferGetIterAtOffset (textbuf b) off
-  active <- readIORef (markActive b)
-  if active
-    then textBufferMoveMark (textbuf b) (point b) p
-    else textBufferPlaceCursor (textbuf b) p
+  moveCursorAtIter b p
 {-# INLINE moveToI #-}
 
 
@@ -187,7 +194,7 @@ gotoLnI :: BufferImpl -> Int -> IO Int
 gotoLnI b n = do
   p <- textBufferGetIterAtMark (textbuf b) (point b)
   textIterSetLine p n
-  textBufferMoveMark (textbuf b) (point b) p
+  moveCursorAtIter b p
   textIterGetLine p
 {-# INLINE gotoLnI #-}
 
