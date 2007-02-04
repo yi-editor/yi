@@ -21,15 +21,14 @@
 -- Introductory binding for the 'ee' editor
 --
 
-module Yi.Keymap.Ee ( keymap, EeMode ) where
+module Yi.Keymap.Ee ( keymap ) where
 
 import Yi.Yi         hiding ( keymap )
-import Yi.Editor            ( Action, Keymap )
-
-type EeMode = Lexer () Action
+import Yi.Editor            ( Keymap )
+import Yi.Interact
 
 keymap :: Keymap
-keymap cs = let (actions,_,_) = execLexer mode (map eventToChar cs, ()) in actions
+keymap = runProcess (command +++ insert) . map eventToChar
 
 --
 -- Control keys:
@@ -44,27 +43,22 @@ keymap cs = let (actions,_,_) = execLexer mode (map eventToChar cs, ()) in actio
 -- ^[ (escape) menu
 --
 
-mode :: Lexer () Action
-mode = insert >||< command
+insert :: Interact Char ()
+insert  = do c <- satisfy (const True); write (insertE c)
 
-insert :: Lexer () Action
-insert  = anything `action` \[c] -> Just (insertE c)
-        where anything = alt ['\0' .. '\255']
+command :: Interact Char () 
+command = choice [event c >> write act | (c, act) <- cmds]
+    where cmds = [('\^R', rightE          ),  
+                  ('\^B', botE            ),
+                  ('\^T', topE            ),
+                  ('\^K', deleteE         ),
+                  ('\^U', upE             ),
+                  ('\^D', downE           ),
+                  ('\^L', leftE           ),
+                  ('\^G', solE            ),
+                  ('\^O', eolE            ),
+                  ('\^Y', killE           ),
+                  ('\^H', deleteE >> leftE),
+                  ('\^X', quitE           )]
 
-command :: Lexer () Action
-command = cmd `action` \[c] -> Just $ case c of
-                '\^R' -> rightE
-                '\^B' -> botE
-                '\^T' -> topE
-                '\^K' -> deleteE
-                '\^U' -> upE
-                '\^D' -> downE
-                '\^L' -> leftE
-                '\^G' -> solE
-                '\^O' -> eolE
-                '\^Y' -> killE
-                '\^H' -> deleteE >> leftE
-                '\^X' -> quitE
-                _     -> undefined
-        where cmd = alt "\^R\^B\^T\^K\^U\^D\^L\^G\^O\^Y\^H\^X"
 
