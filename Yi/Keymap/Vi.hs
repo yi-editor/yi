@@ -28,22 +28,25 @@ module Yi.Keymap.Vi ( keymap, keymapPlus, ViMode ) where
 
 import Yi.Yi         hiding ( keymap )
 import Yi.Editor            ( Action, Keymap )
+import Yi.Interact   hiding ( count, string )
+import Yi.Debug
 
-import Prelude       hiding ( any )
+import Prelude       hiding ( any, error )
 
 import Data.Char
 import Data.List            ( (\\) )
-import Data.Maybe           ( fromMaybe )
-import qualified Data.Map as M
 
-import Control.Monad        ( replicateM_, when )
 import Control.Exception    ( ioErrors, catchJust, try, evaluate )
+
+import Control.Monad.State
+
+
 
 -- ---------------------------------------------------------------------
 
--- | A vi mode is a lexer that returns a core Action.
-type ViMode = Lexer  ViState Action
-type ViRegex = Regexp ViState Action
+type ViMode = ViProc ()
+
+type ViProc a = StateT ViState (Interact Char) a
 
 --
 -- state threaded through the lexer
@@ -53,9 +56,8 @@ type ViRegex = Regexp ViState Action
 -- switch editor modes therefore use the lexers in the state.
 --
 data ViState =
-        St { acc :: [Char]           -- an accumulator, for count, search and ex mode
-           , hist:: ([String],Int)   -- ex-mode command history
-           , cmd :: ViMode          -- (maybe augmented) cmd mode lexer
+        St { hist :: ([String],Int) -- ex-mode command history
+           , cmdMode :: ViMode      -- (maybe augmented) cmd mode lexer
            , ins :: ViMode }        -- (maybe augmented) ins mode lexer
 
 --
@@ -66,22 +68,21 @@ data ViState =
 --    . also, maybe we shouldn't refresh automatically?
 --
 keymap :: Keymap
-keymap cs = setWindowFillE '~' : actions
-    where
-        (actions,_,_) = execLexer cmd_mode (map eventToChar cs, defaultSt)
+keymap cs = setWindowFillE '~' : runProcess (runStateT cmd_mode defaultSt) (map eventToChar cs)
 
 -- | default lexer state, just the normal cmd and insert mode. no mappings
 defaultSt :: ViState
-defaultSt = St { acc = [], hist = ([],0), cmd = cmd_mode, ins = ins_mode }
+defaultSt = St { hist = ([],0), cmdMode = cmd_mode, ins = ins_mode }
 
 -- | like keymap, but takes a supplied lexer, which is used to augment the
 -- existing lexer. Useful for user-added binds (to command mode only!)
-keymapPlus :: ViMode -> [Char] -> [Action]
-keymapPlus lexer' cs = actions
-    where
-        actions = let (ts,_,_) = execLexer cmd_mode' (cs, dfltSt) in ts
-        cmd_mode'= cmd_mode >||< lexer'
-        dfltSt = St { acc = [], hist = ([],0), cmd = cmd_mode', ins = ins_mode }
+keymapPlus :: ViMode -> ViMode
+keymapPlus lexer' = do 
+  cmd0 <- return . cmdMode =<< get
+  let cmd' = lexer' <++ cmd0
+  modify (\s -> s {cmdMode = cmd'})
+  cmd'
+  
 
 ------------------------------------------------------------------------
 
@@ -93,57 +94,32 @@ keymapPlus lexer' cs = actions
 -- count is stored in the lexer state. also the replace cmd, which
 -- consumes one char of input, and commands that switch modes.
 cmd_mode :: ViMode
-cmd_mode = lex_count >||< cmd_eval >||< cmd_move >||< cmd2other >||< cmd_op
+cmd_mode = forever (choice [cmd_eval,eval cmd_move,cmd2other,cmd_op])
+
+eval :: ViProc Action -> ViMode
+eval p = do a <- p; write a
 
 --
 -- | insert mode is either insertion actions, or the meta \ESC action
 --
 ins_mode :: ViMode
-ins_mode = ins_char >||< ins2cmd
+ins_mode = many' ins_char >> event '\ESC' >> return ()
 
 --
 -- | replace mode is like insert, except it performs writes, not inserts
 --
 rep_mode :: ViMode
-rep_mode = rep_char >||< rep2cmd
-
---
--- | ex mode is either accumulating input or, on \n, executing the command
---
-ex_mode :: ViMode
-ex_mode = ex_char >||< ex_edit >||< ex_hist >||< ex_eval >||< ex2cmd
-
-------------------------------------------------------------------------
--- util
-
---
--- lookup an fm, getting an action otherwise nopE, and apply it to an
--- integer repetition argument.
---
-getCmdFM :: Char -> Int -> M.Map Char (Int -> Action) -> Action
-getCmdFM c i fm = let mfn = M.lookup c fm in (fromMaybe (const nopE) mfn) i
-
---
-listToMInt :: [Char] -> Maybe Int
-listToMInt [] = Nothing
-listToMInt cs = Just $ read cs
-
---
-toInt :: [Char] -> Int
-toInt cs = fromMaybe 1 (listToMInt (reverse cs))
+rep_mode = many' rep_char >> event '\ESC' >> return ()
 
 ------------------------------------------------------------------------
 --
--- A lexer to accumulate digits, echoing them to the cmd buffer. This is
+-- A parser to accumulate digits.
 -- typically what is needed for integer repetition arguments to commands
 --
 -- ToDo don't handle 0 properly
 --
-lex_count :: ViMode
-lex_count = digit
-    `meta` \[c] st -> (with (msg (c:acc st)),st{acc = c:acc st},Just $ cmd st)
-    where
-        msg cs = msgE $ (replicate 60 ' ') ++ (reverse cs)
+count :: ViProc (Maybe Int)
+count = option Nothing (many1' (satisfy isDigit) >>= return . Just . read)
 
 -- ---------------------------------------------------------------------
 -- | Movement commands
@@ -151,32 +127,22 @@ lex_count = digit
 -- The may be invoked directly, or sometimes as arguments to other
 -- /operator/ commands (like d).
 --
-cmd_move :: ViMode
-cmd_move = (move_chr >|< (move2chrs +> anyButEsc))
-    `meta` \cs st@St{acc=cnt} ->
-        (with (msgClrE >> (fn cs cnt)), st{acc=[]}, Just $ cmd st)
-
-    where move_chr  = alt $ M.keys moveCmdFM
-          move2chrs = alt $ M.keys move2CmdFM
-          fn cs cnt  = case cs of
-                         -- 'G' command needs to know Nothing count
-                        "G" -> case listToMInt cnt of
-                                        Nothing -> botE >> solE
-                                        Just n  -> gotoLnE n
-
-                        [c,d] -> let mfn = M.lookup c move2CmdFM
-                                     f   = fromMaybe (const (const nopE)) mfn
-                                 in f (toInt cnt) d
-
-                        [c]  -> getCmdFM c (toInt cnt) moveCmdFM
-
-                        _    -> nopE
+cmd_move :: ViProc Action
+cmd_move = do 
+  cnt <- count
+  let x = maybe 1 id cnt
+  choice [event c >> return (a x) | (c,a) <- moveCmdFM] +++ 
+   choice [do event c; c' <- anyButEsc; return (a x c') | (c,a) <- move2CmdFM] +++
+   (do event 'G'; return $ case cnt of 
+                            Nothing -> botE >> solE
+                            Just n  -> gotoLnE n)
+               
 
 --
 -- movement commands
 --
-moveCmdFM :: M.Map Char (Int -> Action)
-moveCmdFM = M.fromList $
+moveCmdFM :: [(Char, Int -> Action)]
+moveCmdFM = 
 -- left/right
     [('h',          left)
     ,('\^H',        left)
@@ -232,54 +198,43 @@ moveCmdFM = M.fromList $
 -- more movement commands. these ones are paramaterised by a character
 -- to find in the buffer.
 --
-move2CmdFM :: M.Map Char (Int -> Char -> Action)
-move2CmdFM = M.fromList $
+move2CmdFM :: [(Char, Int -> Char -> Action)]
+move2CmdFM =
     [('f',  \i c -> replicateM_ i $ rightE >> moveWhileE (/= c) GoRight)
     ,('F',  \i c -> replicateM_ i $ leftE  >> moveWhileE (/= c) GoLeft)
     ,('t',  \i c -> replicateM_ i $ rightE >> moveWhileE (/= c) GoRight >> leftE)
     ,('T',  \i c -> replicateM_ i $ leftE  >> moveWhileE (/= c) GoLeft  >> rightE)
     ]
 
+str :: String -> ViMode
+str s = mapM_ event s -- TODO: find a better name
+
 --
 -- | Other command mode functions
 --
 cmd_eval :: ViMode
-cmd_eval = (cmd_char >|<
-           (char 'r' +> anyButEscOrDel) >|<
-           (string ">>" >|< string "<<" >|< string "ZZ" ))
+cmd_eval = do
+   cnt <- count 
+   let i = maybe 1 id cnt
+   choice [event c >> write (a i) | (c,a) <- cmdCmdFM ] +++
+    (do event 'r'; c <- anyButEscOrDel; write (writeE c)) +++
+    (str ">>" >> write (do replicateM_ i $ solE >> mapM_ insertE "    "
+                           firstNonSpaceE)) +++
+    (str "<<" >> write (do solE
+                           replicateM_ i $
+                             replicateM_ 4 $
+                                 readE >>= \k ->
+                                     when (isSpace k) deleteE
+                           firstNonSpaceE)) +++
+    (str "ZZ" >> write (viWrite >> quitE))
 
-    `meta` \lexeme st@St{acc=count} ->
-        let i  = toInt count
-            fn = case lexeme of
-                    "ZZ"    -> viWrite >> quitE
-                    -- todo: fix the unnec. refreshes that happen
-                    ">>"    -> do replicateM_ i $ solE >> mapM_ insertE "    "
-                                  firstNonSpaceE
-                    "<<"    -> do solE
-                                  replicateM_ i $
-                                    replicateM_ 4 $
-                                        readE >>= \k ->
-                                            when (isSpace k) deleteE
-                                  firstNonSpaceE
-
-                    'r':[x] -> writeE x
-
-                    [c]     -> getCmdFM c i cmdCmdFM -- normal commands
-
-                    _       -> undef (head lexeme)
-
-        in (with (msgClrE >> fn), st{acc=[]}, Just $ cmd st)
-
-    where
-        anyButEscOrDel = alt $ any' \\ ('\ESC':delete')
-        cmd_char       = alt $ M.keys cmdCmdFM
-        undef c = not_implemented c
+   where anyButEscOrDel = alt' $ any' \\ ('\ESC':delete')
 
 --
 -- cmd mode commands
 --
-cmdCmdFM :: M.Map Char (Int -> Action)
-cmdCmdFM = M.fromList $
+cmdCmdFM :: [(Char, Int -> Action)]
+cmdCmdFM = 
     [('\^B',    upScreensE)
     ,('\^F',    downScreensE)
     ,('\^G',    const viFileInfo)
@@ -325,34 +280,16 @@ cmdCmdFM = M.fromList $
 -- Lazy lexers - you know we're right (tm).
 --
 cmd_op :: ViMode
-cmd_op =((op_char +> digit `star` (move_chr >|< (move2chrs +> anyButEsc))) >|<
-         (string "dd" >|< string "yy"))
-
-    `meta` \lexeme st@St{acc=count} ->
-        let i  = toInt count
-            fn = getCmd lexeme i
-        in (with (msgClrE >> fn), st{acc=[]}, Just $ cmd st)
-
+cmd_op = do
+  cnt <- count
+  let i = maybe 1 id cnt
+  choice $ [str "dd" >> write (solE >> killE >> deleteE),
+            str "yy" >> write (readLnE >>= setRegE)] ++
+           [do event c; m <- cmd_move; write (a i m) | (c,a) <- opCmdFM]
     where
-        op_char   = alt $ M.keys opCmdFM
-        move_chr  = alt $ M.keys moveCmdFM
-        move2chrs = alt $ M.keys move2CmdFM
-
-        getCmd :: [Char] -> Int -> Action
-        getCmd lexeme i = case lexeme of
-            -- shortcuts
-                "dd" -> solE >> killE >> deleteE
-                "yy" -> readLnE >>= setRegE
-
-            -- normal ops
-                c:ms -> getOpCmd c i ms
-                _    -> nopE
-
-        getOpCmd c i ms = (fromMaybe (\_ _ -> nopE) (M.lookup c opCmdFM)) i ms
-
         -- | operator (i.e. movement-parameterised) actions
-        opCmdFM :: M.Map Char (Int -> [Char] -> Action)
-        opCmdFM = M.fromList $
+        opCmdFM :: [(Char,Int -> Action -> Action)]
+        opCmdFM =
             [('d', \i m -> replicateM_ i $ do
                               (p,q) <- withPointMove m
                               deleteNE (max 0 (abs (q - p) + 1))  -- inclusive
@@ -376,60 +313,50 @@ cmd_op =((op_char +> digit `star` (move_chr >|< (move2chrs +> anyButEsc))) >|<
         -- some location specified by the sequence @m@, then return.
         -- Return the current, and remote point.
         --
-        withPointMove :: [Char] -> IO (Int,Int)
-        withPointMove ms = do p <- getPointE
-                              foldr (>>) nopE (getMove ms)
-                              q <- getPointE
-                              when (p < q) $ gotoPointE p
-                              return (p,q)
+        withPointMove :: Action -> IO (Int,Int)
+        withPointMove m = do p <- getPointE
+                             m
+                             q <- getPointE
+                             when (p < q) $ gotoPointE p
+                             return (p,q)
 
-        --
-        -- lookup movement command to perform .. ToDo should be (cmd st)?
-        --
-        getMove cs = let (as,_,_) = execLexer (cmd_move >||< lex_count)
-                                              (cs, defaultSt)
-                     in as
 
 --
 -- | Switch to another vi mode.
 --
--- These commands are meta actions, as they transfer control to another
--- lexer. Some of these commands also perform an action before switching.
+-- These commands transfer control to another
+-- process. Some of these commands also perform an action before switching.
 --
 cmd2other :: ViMode
-cmd2other = modeSwitchChar
-    `meta` \[c] st ->
-        let beginIns a = (with a, st, Just (ins st))
-        in case c of
-            ':' -> (with (msgE ":"), st{acc=[':']}, Just ex_mode)
-            'R' -> (Nothing, st, Just rep_mode)
-            'i' -> (Nothing, st, Just (ins st))
-            'I' -> beginIns solE
-            'a' -> beginIns $ rightOrEolE 1
-            'A' -> beginIns eolE
-            'o' -> beginIns $ eolE >> insertE '\n'
-            'O' -> beginIns $ solE >> insertE '\n' >> upE
-            'c' -> beginIns $ not_implemented 'c'
-            'C' -> beginIns $ readRestOfLnE >>= setRegE >> killE
-            'S' -> beginIns $ solE >> readLnE >>= setRegE >> killE
+cmd2other = do c <- modeSwitchChar
+               ins' <- return ins `ap` get
+               case c of
+                 ':' -> ex_mode ":"
+                 'R' -> rep_mode
+                 'i' -> ins'
+                 'I' -> write solE >> ins'
+                 'a' -> write (rightOrEolE 1) >> ins'
+                 'A' -> write eolE >> ins'
+                 'o' -> write (eolE >> insertE '\n') >> ins'
+                 'O' -> write (solE >> insertE '\n' >> upE) >> ins'
+                 'c' -> write (not_implemented 'c') >> ins'
+                 'C' -> write (readRestOfLnE >>= setRegE >> killE) >> ins'
+                 'S' -> write (solE >> readLnE >>= setRegE >> killE) >> ins'
 
-            '/' -> (with (msgE "/"), st{acc=['/']}, Just ex_mode)
-            '?' -> (with (not_implemented '?'), st{acc=[]}, Just $ cmd st)
+                 '/' -> ex_mode "/"
 
-            '\ESC'-> (with msgClrE, st{acc=[]}, Just $ cmd st)
+                 '\ESC'-> write msgClrE
 
-            s   -> (with (errorE ("The "++show s++" command is unknown."))
-                   ,st, Just $ cmd st)
+                 s   -> write $ errorE ("The "++show s++" command is unknown.")
 
-    where modeSwitchChar = alt ":RiIaAoOcCS/?\ESC"
+
+    where modeSwitchChar = alt' ":RiIaAoOcCS/?\ESC"
 
 -- ---------------------------------------------------------------------
 -- | vi insert mode
 --
 ins_char :: ViMode
-ins_char = anyButEsc
-    `action` \[c] -> Just (fn c)
-
+ins_char = write . fn =<< anyButEsc 
     where fn c = case c of
                     k | isDel k       -> leftE >> deleteE
                       | k == keyPPage -> upScreenE
@@ -437,9 +364,6 @@ ins_char = anyButEsc
                       | k == '\t'     -> mapM_ insertE "    " -- XXX
                     _ -> insertE c
 
--- switch out of ins_mode
-ins2cmd :: ViMode
-ins2cmd  = char '\ESC' `meta` \_ st -> (with (leftOrSolE 1), st, Just $ cmd st)
 
 -- ---------------------------------------------------------------------
 -- | vi replace mode
@@ -455,8 +379,7 @@ ins2cmd  = char '\ESC' `meta` \_ st -> (with (leftOrSolE 1), st, Just $ cmd st)
 --
 
 rep_char :: ViMode
-rep_char = anyButEsc
-    `action` \[c] -> Just (fn c)
+rep_char = write . fn =<< anyButEsc 
     where fn c = case c of
                     k | isDel k       -> leftE >> deleteE
                       | k == keyPPage -> upScreenE
@@ -466,96 +389,78 @@ rep_char = anyButEsc
                     _ -> do e <- atEolE
                             if e then insertE c else writeE c >> rightE
 
--- switch out of rep_mode
-rep2cmd :: ViMode
-rep2cmd  = char '\ESC' `meta` \_ st -> (Nothing, st, Just $ cmd st)
-
 -- ---------------------------------------------------------------------
 -- Ex mode. We also lex regex searching mode here.
 
--- normal input to ex. accumlate chars
-ex_char :: ViMode
-ex_char = anyButDelNlArrow
-    `meta` \[c] st -> let newSt = c:acc st in (with (msg newSt), st{acc=newSt}, Just ex_mode)
+--
+-- | ex mode is either accumulating input or, on \n, executing the command
+--
+ex_mode :: String -> ViMode
+ex_mode s = do debug
+               write (msgE s)
+               choice [do c <- anyButDelNlArrow; ex_mode (s++[c]),
+                       do enter; ex_eval s,
+                       do event '\ESC'; return (),
+                       do delete; ex_mode (take (length s - 1) s),
+                       do event keyUp; histMove True >>= ex_mode,
+                       do event keyDown; histMove False >>= ex_mode]
+               
     where
-        anyButDelNlArrow = alt $ any' \\ (enter' ++ delete' ++ ['\ESC',keyUp,keyDown])
-        msg s = msgE (reverse s)
+        anyButDelNlArrow = alt' $ any' \\ (enter' ++ delete' ++ ['\ESC',keyUp,keyDown])
 
--- history editing
 -- TODO when you go up, then down, you need 2 keypresses to go up again.
-ex_hist :: ViMode
-ex_hist = arrow
-    `meta` \[key] st@St{hist=(h,i)} ->
-                let (s,i') = msg key (h,i)
-                in (with (msgE s),st{acc=reverse s,hist=(h,i')}, Just ex_mode)
-    where
-        msg :: Char -> ([String],Int) -> (String,Int)
-        msg key (h,i) = case () of {_
-                | null h         -> (":",0)
-                | key == keyUp   -> if i < length h - 1
-                                    then (h !! i, i+1)
-                                    else (last h, length h - 1)
-                | key == keyDown -> if i > 0
-                                    then (h !! i, i-1)
-                                    else (head h, 0)
-                | otherwise      -> error "ex_hist: the impossible happened"
-            }
+histMove :: Bool -> ViProc String
+histMove up = do
+  (h,i) <- return hist `ap` get
+  let (s,i') = msg (h,i)
+  modify $ \st -> st {hist=(h,i')}
+  return s
+      where
+        msg (h,i)
+               | null h = (":",0)
+               | up     = if i < length h - 1
+                           then (h !! i, i+1)
+                           else (last h, length h - 1)
+               | not up = if i > 0
+                           then (h !! i, i-1)
+                           else (head h, 0)
+               | otherwise = error "the impossible happened"
+             
 
-        arrow = alt [keyUp, keyDown]
-
--- line editing
-ex_edit :: ViMode
-ex_edit = delete
-    `meta` \_ st ->
-        let cs' = case acc st of [c]    -> [c]
-                                 (_:xs) -> xs
-                                 []     -> [':'] -- can't happen
-        in (with (msgE (reverse cs')), st{acc=cs'}, Just ex_mode)
-
--- escape exits ex mode immediately
-ex2cmd :: ViMode
-ex2cmd = char '\ESC'
-    `meta` \_ st -> (with msgClrE, st{acc=[]}, Just $ cmd st)
-
+debug :: ViMode
+debug = do st <- get; write $ logPutStrLn $ show $ hist $ st
 --
 -- eval an ex command to an Action, also appends to the ex history
 --
-ex_eval :: ViMode
-ex_eval = enter
-    `meta` \_ st@St{acc=dmc} ->
-        let c  = reverse dmc
-            h  = (c:(fst $ hist st), snd $ hist st) in case c of
+ex_eval :: String -> ViMode
+ex_eval cmd = do 
+        debug
+        modify $ \st -> st {hist = (cmd:(fst $ hist st), snd $ hist st)}
+        debug
+        write $ case cmd of
         -- regex searching
-        ('/':pat) -> (with (searchE (Just pat) [] GoRight)
-                     ,st{acc=[],hist=h},Just $ cmd st)
+          ('/':pat) -> searchE (Just pat) [] GoRight
+
+        -- TODO: We give up on re-mapping till there exists a generic Yi mechanism to do so.
 
         -- add mapping to command mode
-        (_:'m':'a':'p':' ':cs) ->
-               let pair = break (== ' ') cs
-                   cmd' = uncurry (eval_map st (Left $ cmd st)) pair
-               in (with msgClrE, st{acc=[],hist=h,cmd=cmd'}, Just cmd')
+          (_:'m':'a':'p':' ':_cs) -> error "Not yet implemented."
 
         -- add mapping to insert mode
-        (_:'m':'a':'p':'!':' ':cs) ->
-               let pair = break (== ' ') cs
-                   ins' = uncurry (eval_map st (Right $ ins st)) pair
-               in (with msgClrE, st{acc=[],hist=h,ins=ins'}, Just (cmd st))
+          (_:'m':'a':'p':'!':' ':_cs) -> error "Not yet implemented."
 
         -- unmap a binding from command mode
-        (_:'u':'n':'m':'a':'p':' ':cs) ->
-               let cmd' = eval_unmap (Left $ cmd st) cs
-               in (with msgClrE, st{acc=[],hist=h,cmd=cmd'}, Just cmd')
+          (_:'u':'n':'m':'a':'p':' ':_cs) -> error "Not yet implemented."
 
         -- unmap a binding from insert mode
-        (_:'u':'n':'m':'a':'p':'!':' ':cs) ->
-               let ins' = eval_unmap (Right $ ins st) cs
-               in (Nothing, st{acc=[],hist=h,ins=ins'}, Just (cmd st))
+          (_:'u':'n':'m':'a':'p':'!':' ':_cs) -> error "Not yet implemented."
+
 
         -- just a normal ex command
-        (_:src) -> (with (fn src), st{acc=[],hist=h}, Just $ cmd st)
+          (_:src) -> fn src
 
         -- can't happen, but deal with it
-        [] -> (Nothing, st{acc=[], hist=h}, Just $ cmd st)
+          [] -> nopE
 
     where
       fn ""           = msgClrE
@@ -586,46 +491,6 @@ ex_eval = enter
 
       fn s            = errorE $ "The "++show s++ " command is unknown."
 
-------------------------------------------------------------------------
---
--- | Given a lexer, a sequence of chars, and another sequence of
--- chars, bind the lhs to the actions produced by the rhs, and augment
--- the lexer with the new binding. (Left == command mode)
---
-eval_map :: ViState                 -- ^ current state (including other lexers)
-         -> (Either ViMode ViMode)  -- ^ which mode we're tweaking
-         -> [Char]                  -- ^ identifier to bind to
-         -> [Char]                  -- ^ body of macro, to be expanded
-         -> ViMode                  -- ^ resulting augmented mode
-
-eval_map st emode lhs rhs = mode >||< bind
-    where
-        mode     = either id id emode
-        st'      = case emode of
-                        Left  cmd' -> st {acc=[], cmd=cmd'}
-                        Right ins' -> st {acc=[], ins=ins'}
-        (as,_,_) = execLexer mode (rhs, st')
-        bind     = string lhs `action` \_ -> Just (foldl (>>) nopE as)
-
---
--- | Unmap a binding from the keymap (i.e. nopE a lex table entry)
--- Currently we unmap all the way back to the original mode. So you
--- can't stack bindings. This is vi's behaviour too, roughly.
---
-eval_unmap :: (Either ViMode ViMode)  -- ^ which vi mode to unmap from
-           -> [Char]                  -- ^ identifier to unmap
-           -> ViMode                  -- ^ new, depleted mode
-
-eval_unmap emode lhs = mode >||< bind
-    where
-        mode      = either id id emode
-        dflt_mode = either (const cmd_mode) (const ins_mode) emode
-        (as,_,_) = execLexer dflt_mode (lhs, defaultSt)
-        bind     = case as of
-                    [] -> string lhs `action` \_ -> Just nopE -- wasn't bound prior
-                    [a]-> string lhs `action` \_ -> Just a    -- bound to just one
-                    _  -> string lhs `action` \_ -> Just nopE
-                            -- components of the command were bound. too hard
 
 ------------------------------------------------------------------------
 
@@ -722,18 +587,19 @@ isDel _            = False
 -- ---------------------------------------------------------------------
 -- | character ranges
 --
-digit, delete, enter, anyButEsc :: ViRegex
-digit   = alt digit'
-enter   = alt enter'
-delete  = alt delete'
+delete, enter, anyButEsc :: ViProc Char
+enter   = alt' enter'
+delete  = alt' delete'
 -- any     = alt any'
-anyButEsc = alt $ (keyBackspace : any' ++ cursc') \\ ['\ESC']
+anyButEsc = alt' $ (keyBackspace : any' ++ cursc') \\ ['\ESC']
 
-enter', any', digit', delete' :: [Char]
+alt' :: String -> ViProc Char
+alt' s = satisfy (`elem` s)
+
+enter', any', delete' :: [Char]
 enter'   = ['\n', '\r']
 delete'  = ['\BS', '\127', keyBackspace ]
 any'     = ['\0' .. '\255']
-digit'   = ['0' .. '9']
 
 cursc' :: [Char]
 cursc'   = [keyPPage, keyNPage, keyLeft, keyRight, keyDown, keyUp]
