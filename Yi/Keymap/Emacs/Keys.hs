@@ -96,8 +96,8 @@ showKey = concat . intersperse " " . map showEv
     where
       showEv (Event k mods) = concatMap showMod mods ++ showK k
       showMod MCtrl = "C-"
+      showMod MShift = "S-"
       showMod MMeta = "M-"
-      showMod _ = ""
 
       showK (KASCII x) = [x]
       showK c = fromJust $ M.lookup c $ M.fromList keyNames
