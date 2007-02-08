@@ -64,6 +64,7 @@ import Control.Exception
 
 import Data.List
 import Data.Maybe
+import Data.Char (ord,chr)
 import qualified Data.Map as M
 
 import Data.IORef
@@ -260,9 +261,11 @@ drawText h w topPoint point markPoint selsty wsty bufData
     | h == 0 || w == 0 = ([[]], topPoint, (0,0))
     | otherwise        = (rendered, bottomPoint, pntpos)
   where [startSelect, stopSelect] = sort [markPoint,point]
-        annBufData = zipWith (\(c,a) p -> (c,(a,p))) bufData [topPoint..]  -- remember the point of each char
-        lns0 = take h $ concatMap (wrapLine w) $ lines' $ annBufData
-        lns = map fillLine $ lns0 -- fill lines with blanks, so the selection looks ok.
+
+        -- | Remember the point of each char
+        annotateWithPoint text = zipWith (\(c,a) p -> (c,(a,p))) text [topPoint..]  
+
+        lns0 = take h $ concatMap (wrapLine w) $ map (concatMap expandGraphic) $ lines' $ annotateWithPoint $ bufData
 
         bottomPoint = case lns0 of 
                         [] -> topPoint 
@@ -272,15 +275,17 @@ drawText h w topPoint point markPoint selsty wsty bufData
                    [] -> (0,0)
                    (pp:_) -> pp
 
-        rendered = map (map colorChar) lns
+        rendered = map (map colorChar) $ map fillLine $ lns0 -- fill lines with blanks, so the selection looks ok.
         colorChar (c, (a, x)) = (c, pointStyle x a)
         pointStyle x a = if startSelect < x && x <= stopSelect && selsty /= wsty then selsty else a
 
         fillLine [] = []
         fillLine l = take w (l ++ repeat (' ',snd $ last l))
 
-        -- | Cut a string in lines separated by a '\n' char. 
-        -- note that we add a blank character so the cursor can be positioned there.
+        -- | Cut a string in lines separated by a '\n' char. Note
+        -- that we add a blank character where the \n was, so the
+        -- cursor can be positioned there.
+
         lines' :: [(Char,a)] -> [[(Char,a)]]
         lines' [] =  []
         lines' s  =  let (l, s') = break ((== '\n') . fst) s in case s' of
@@ -290,10 +295,14 @@ drawText h w topPoint point markPoint selsty wsty bufData
         wrapLine :: Int -> [x] -> [[x]]
         wrapLine _ [] = []
         wrapLine n l = let (x,rest) = splitAt n l in x : wrapLine n rest
+                                      
+        expandGraphic (c,p) | ord c < 32 = [('^',p),(chr (ord c + 64),p)]
+                            | ord c < 128 = [(c,p)]
+                            | otherwise = zip ('\\':show (ord c)) (repeat p)
+                                            
 
 
--- TODO: The above will actually require a bit of work, in order to properly
--- render all the non-printable chars (<32)
+-- TODO: The above will actually require a bit of work, in order to handle tabs.
 
 withStyle :: Style -> String -> [(Char, Attr)]
 withStyle sty str = zip str (repeat (styleToAttr sty))
