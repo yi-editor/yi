@@ -101,7 +101,8 @@ start = do
         getKey v sz = do 
           event <- getEvent v
           case event of 
-            (EvResize x y) -> writeIORef sz (y,x) >> doResizeAll >> getKey v sz
+            (EvResize x y) -> do logPutStrLn $ "UI: EvResize: " ++ show (x,y)
+                                 writeIORef sz (y,x) >> doResizeAll >> getKey v sz
             _ -> return (fromVtyEvent event)
 
 main :: IO ()
@@ -412,7 +413,7 @@ resizeAll wls y x = flip map wls (\w -> resize y x w)
 
 -- | Reset the heights and widths of all the windows
 doResizeAll :: IO ()
-doResizeAll = modifyEditor_ $ \e -> do
+doResizeAll = (modifyEditor_ $ \e -> do
     let i = ui e
     (h,w) <- readIORef $ scrsize i
     let wls   = M.elems (windows e)
@@ -422,7 +423,7 @@ doResizeAll = modifyEditor_ $ \e -> do
         wls'' = let win = last wls
                 in (doresize w (y+r-1) win : wls')
 
-    return e { windows = M.fromList $ mkAssoc wls'' }
+    return e { windows = M.fromList $ mkAssoc wls'' }) >> refresh
 
     where doresize x y win = resize y x win
 
