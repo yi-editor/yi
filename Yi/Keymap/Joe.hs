@@ -25,21 +25,16 @@ module Yi.Keymap.Joe (
     keymap
 ) where
 
-import Control.Monad        ( when )
-import Data.Maybe           ( isNothing )
-import Yi.Editor            ( Action, Keymap, withWindow_ )
+import Control.Monad.State
+import Yi.Editor            ( Action, Keymap )
 import Yi.Yi hiding         ( keymap )
 import Yi.CharMove
 import Yi.Char
-import Yi.MakeKeymap
-import Yi.Buffer            ( moveTo, deleteN, insertN )
+import Yi.Interact
+import Yi.Debug
 
 -- ---------------------------------------------------------------------
 
-liftKm :: ([Char] -> [Action]) -> Keymap
-liftKm m = m . map eventToChar
-
-type JoeProc = KProc JoeState
 
 data JoeState = JoeState {
     js_search_dir :: Direction,
@@ -54,15 +49,25 @@ initial_state = JoeState {
     js_search_replace = Nothing
     }
 
+type JoeProc a = StateT JoeState (Interact Char) a
+
+type JoeMode = JoeProc ()
+
 -- ---------------------------------------------------------------------
 
 -- The Keymap
 
-klist :: KList JoeState
-klist=[
+(++>) :: String -> Action -> JoeMode
+s ++> a = s &&> write a
+
+(&&>) :: String -> JoeMode -> JoeMode
+s &&> p = mapM_ event s >> p
+
+klist :: JoeMode
+klist = choice [
     -- Editing and movement
-    "\^KU" ++> topE,
-    "\^KV" ++> botE,
+    "\^K\^U" ++> topE,
+    "\^K\^V" ++> botE,
     "\^A"  ++> solE,
     "\^E"  ++> eolE,
     "\^B"  ++> leftE,
@@ -82,39 +87,42 @@ klist=[
     "\^Z"  ++> bskipWordE,
     "\^W"  ++> killWordE,
     "\^O"  ++> bkillWordE,
-    "\^KR" &&> queryInsertFileE,
+    "\^K\^R" &&> queryInsertFileE,
     -- Search
-    "\^KF" &&> querySearchRepE,
-    "\^L"  &&> nextSearchRepE,
-    "\^KL" &&> queryGotoLineE,
+    --"\^K\^F" &&> querySearchRepE,
+    --"\^L"  &&> nextSearchRepE,
+    "\^K\^L" &&> queryGotoLineE,
     -- Buffers
-    "\^KS" &&> queryBufW,
+    "\^K\^S" &&> queryBufW,
     "\^C"  ++> closeE,
-    "\^KD" &&> querySaveE,
+    "\^K\^D" &&> querySaveE,
     -- Copy&paste
-    --"\^KB" ++> setMarkE,
-    --"\^KK" ++> copyE,
-    --"\"KY" ++> cutE,
-    --"\"KC" ++> pasteE,
-    --"\"KW" &&> querySaveSelectionE,
+    --"\^K^B" ++> setMarkE,
+    --"\^K^K" ++> copyE,
+    --"\"K^Y" ++> cutE,
+    --"\"K^C" ++> pasteE,
+    --"\"K^W" &&> querySaveSelectionE,
     --"\"K/" &&> queryFilterSelectionE,
 
     -- Windows
-    "\^KN" ++> nextBufW,
-    "\^KP" ++> prevBufW,
-    "\^KS" ++> splitE,
-    "\^KO" ++> nextWinE,
+    "\^K\^N" ++> nextBufW,
+    "\^K\^P" ++> prevBufW,
+    "\^K\^S" ++> splitE,
+    "\^K\^O" ++> nextWinE,
     "\^C"  ++> closeE, -- Wrong, should close buffer
 
     -- Global
     "\^R"  ++> refreshE,
-    "\^KX" ++> quitE,
-    "\^KZ" ++> suspendE,
-    "\^KE" &&> queryNewE
+    "\^K\^X" ++> quitE,
+    "\^K\^Z" ++> suspendE,
+    "\^K\^E" &&> queryNewE
     ]
 
 keymap :: Keymap
-keymap = liftKm $ makeKeymap klist initial_state
+keymap = runProc klist
+
+runProc :: JoeMode -> Keymap
+runProc p cs = runProcess (runStateT p initial_state) (map eventToChar cs)
 
 -- ---------------------------------------------------------------------
 
@@ -164,39 +172,43 @@ escape2rx (c:cs)   = '[':c:']':escape2rx cs
 
 -- Query support
 
-query_ :: String -> String -> (String -> JoeProc) -> JoeProc -> JoeProc
-query_ prompt s cont failcont st cs =
-    (msgE $ prompt ++ s):(loop cs)
-    where
-        q = \ss cs2 -> query_ prompt ss cont failcont st cs2
-        loop (c:cs3)
-            | isEnter c   = msgClrE:cmdlineUnFocusE:(cont s st cs3)
-            | isCancel c  = msgClrE:cmdlineUnFocusE:(failcont st cs3)
-            | isDel c     = q (init s) cs3
-            | validChar c = q (s ++ [c]) cs3
-            | otherwise   = loop cs3
-        loop []           = []
 
-query :: String -> String -> (String -> JoeProc) -> JoeProc -> JoeProc
-query prompt s cont failcont st cs =
-    cmdlineFocusE:(query_ prompt s cont failcont st cs)
+simpleq :: String -> String -> (String -> Action) -> JoeMode
+simpleq prompt initial act = do
+  s <- echoMode prompt initial
+  maybe (return ()) (write . act) s
 
-simpleq :: String -> String -> (String -> Action) -> JoeProc -> JoeProc
-simpleq prompt initial act cont st =
-    query prompt initial (\s st_ cs -> (act s):(cont st_ cs)) cont st
+-- | A simple line editor. 
+-- @echoMode prompt exitProcess@ runs the line editor; @prompt@ will
+-- be displayed as prompt, @exitProcess@ is a process that will be
+-- used to exit the line-editor sub-process if it succeeds on input
+-- typed during edition.
 
+echoMode :: String -> String -> JoeProc (Maybe String)
+echoMode prompt initial = do 
+  write (logPutStrLn "echoMode")
+  write cmdlineFocusE 
+  result <- lineEdit initial
+  write cmdlineUnFocusE
+  return result
+    where lineEdit s =
+              do write $ msgE (prompt ++ s)
+                 choice [satisfy isEnter >> return (Just s),
+                         satisfy isCancel >> return Nothing,
+                         satisfy isDel >> lineEdit (take (length s - 1) s),
+                         do c <- satisfy validChar; lineEdit (s++[c])]
+ 
 
-queryKeys :: String -> [(String, JoeProc)] -> JoeProc -> JoeProc
-queryKeys prompt ks failcont st cs_ =
-    (msgE prompt):(loop cs_)
-    where
-        loop []                         = []
-        loop (c:cs)
-            | isEnter c || isCancel c   = msgClrE:(failcont st cs)
-	    | otherwise                 = loop2 c ks cs
-	loop2 _ []                      = loop
-	loop2 c ((s, f):_) | c `elem` s = (msgClrE:) . (f st)
-	loop2 c (_:ss)                  = loop2 c ss
+query :: String -> [(String, JoeMode)] -> JoeMode
+query prompt ks = write (msgE prompt) >> loop
+    where loop = choice $ (satisfy (isEnter ||| isCancel) >> return ()) :
+                          [oneOf cs >> a | (cs,a) <- ks]
+                          ++ [(anyEvent >> loop)]
+          (|||) = liftM2 (||)
+
+                
+queryKeys :: String -> [(String, Action)] -> JoeMode
+queryKeys prompt ks = query prompt [(cs,write a) | (cs,a) <- ks]
 
 
 -- ---------------------------------------------------------------------
@@ -204,37 +216,37 @@ queryKeys prompt ks failcont st cs_ =
 -- Some queries
 
 queryNewE, querySaveE, queryGotoLineE, queryInsertFileE,
-    queryBufW, querySearchRepE, nextSearchRepE :: JoeProc -> JoeProc
+    queryBufW :: JoeMode
+
+-- querySearchRepE, nextSearchRepE :: JoeMode
 
 
 queryNewE = simpleq "File name: " [] fnewE
 queryGotoLineE = simpleq "Line number: " [] (gotoLnE . read)
 queryInsertFileE = simpleq "File name: " [] insertFileE
 queryBufW = simpleq "Buffer: " [] unimplementedQ
-querySaveE cont st _ = return $
-    getFileE >>= \f -> metaM $ liftKm $ simpleq "File name: " f fwriteToE cont st
+querySaveE = write $
+    getFileE >>= \f -> metaM $ runProc $ (simpleq "File name: " f fwriteToE >> klist)
 
 
 -- ---------------------------------------------------------------------
 
 -- Search queries
+-- TODO: search is currently broken in Core anyway; to re-implement when it gets fixed.
+{-
 
 queryReplace :: SearchMatch
              -> String
              -> IO (Maybe SearchMatch)
-             -> JoeProc
-             -> JoeProc
-queryReplace m s sfn cont =
-    queryKeys prompt opts cont
+             -> JoeMode
+queryReplace m s sfn =
+    queryKeys "Replace? (Y)es (N)o (R)est? " [("yY", repl m False), ("rR", repl m True), ("nN", skip m)]
     where
-        prompt="Replace? (Y)es (N)o (R)est? "
-	opts=[("yY", repl m False), ("rR", repl m True), ("nN", skip m)]
-	
 	skip (_, j) st _ = return $ do
 	    res <- do_next j
             case res of
-                Nothing -> metaM $ liftKm (cont st)
-                Just p -> metaM $ liftKm $ queryReplace p s sfn cont st
+                Nothing -> metaM keymap
+                Just p -> metaM $ runProc $ queryReplace p s sfn
 	
 	repl mm_ rest_ st_ cs_ = return $ repl_ mm_ rest_ st_ cs_
 	   where
@@ -242,9 +254,9 @@ queryReplace m s sfn cont =
 	           do_replace mm s
                    res <- do_next (i+length s)
                    case (res, rest) of
-                       (Nothing, _)    -> metaM $ liftKm (cont st)
+                       (Nothing, _)    -> metaM keymap
                        (Just p, True)  -> repl_ p rest st cs
-                       (Just p, False) -> metaM $ liftKm $ queryReplace p s sfn cont st
+                       (Just p, False) -> metaM $ runProc $ queryReplace p s sfn
 
 	do_replace (i, j) ss = withWindow_ $ \w b -> do
 	    moveTo b i
@@ -260,14 +272,14 @@ queryReplace m s sfn cont =
 	    when (isNothing res) (gotoPointE op)
 	    return res
 	
-doSearch :: SearchExp -> JoeProc -> JoeState -> Action
-doSearch srchexp cont st = do
+doSearch :: SearchExp -> Action
+doSearch srchexp = do
     res <- sfn
     case res of
-        Nothing -> errorE "Not found." >> metaM (liftKm (cont st))
+        Nothing -> errorE "Not found." >> metaM keymap
 	Just p -> case js_search_replace st of
-            Just rep -> metaM $ liftKm $ queryReplace p rep (sfn) cont st
-            Nothing -> metaM $ liftKm $ cont st
+            Just rep -> metaM $ runProc $ queryReplace p rep (sfn)
+            Nothing -> metaM $ keymap
     where
         sfn = do
             op <- getPointE
@@ -278,10 +290,10 @@ doSearch srchexp cont st = do
 		Nothing -> return Nothing
 
 
-mksearch :: JoeProc -> String -> String -> Maybe String -> JoeProc
-mksearch cont s flags repl st _ = return $ do
+mksearch :: String -> String -> Maybe String -> JoeMode
+mksearch s flags repl st _ = return $ do
     srchexp <- searchInitE searchrx (js_search_flags newst)
-    doSearch srchexp cont newst
+    doSearch srchexp newst
     where
         ignore   = if isect "iI" flags then [IgnoreCase] else []
         dir      = if isect "bB" flags then GoLeft else GoRight
@@ -292,20 +304,21 @@ mksearch cont s flags repl st _ = return $ do
             js_search_replace = repl
             }
 
-querySearchRepE cont =
-    query "Search term: " [] qflags cont
+querySearchRepE =
+    query "Search term: " [] qflags
     where
         flagprompt = "(I)gnore, (R)eplace, (B)ackward Reg.E(x)p? "
-        qflags s = query flagprompt [] (qreplace s) cont
+        qflags s = query flagprompt [] (qreplace s)
 	qreplace s flags | isect "rR" flags =
-	    query "Replace with: " [] (mksearch cont s flags . Just) cont
+	    query "Replace with: " [] (mksearch s flags . Just)
 	qreplace s flags =
-	    mksearch cont s flags Nothing
+	    mksearch s flags Nothing
 
-nextSearchRepE cont st _ = return $
+nextSearchRepE =
     getRegexE >>= \e -> case e of
-        Nothing -> metaM $ liftKm $ querySearchRepE cont st
-        Just se -> doSearch se cont st
+        Nothing -> metaM $ runProc $ querySearchRepE
+        Just se -> doSearch se
+-}
 
 unimplementedQ :: String -> Action
 unimplementedQ _ = nopE
