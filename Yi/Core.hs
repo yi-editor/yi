@@ -284,7 +284,8 @@ eventLoop = do
     ch <- readEditor input
     let run km = do
         touchST -- start with a refresh; so we assert a clean state wrt. the user pov.
-        catchDyn (sequence_ . map atomic . km  =<< getChanContents ch)
+        catchDyn (do sequence_ . map atomic . km  =<< getChanContents ch
+                     logPutStrLn "Keymap execution ended")
                      (\(MetaActionException km') -> run km')
     repeatM_ $ handle handler (run fn)
 
@@ -913,7 +914,7 @@ fnewE f = do
     Editor.setWindow w
 
 -- | Like fnewE, create a new buffer filled with the String @s@,
--- Open up a new window onto this buffer. Doesn't associated any file
+-- Open up a new window onto this buffer. Doesn't associate any file
 -- with the buffer (unlike fnewE) and so is good for popup internal
 -- buffers (like scratch or minibuffer)
 newBufferE :: String -> String -> Action

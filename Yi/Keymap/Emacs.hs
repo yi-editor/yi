@@ -200,10 +200,10 @@ spawnMinibuffer :: String -> Process -> Action
 spawnMinibuffer _prompt process =
     do MiniBuf w _b <- getDynamic
        setWinE w
-       metaM (runProcess process)
+       metaM (runKeymap process)
 
 rebind :: Process -> String -> Process -> Process
-rebind kl k kp = (string (readKey k) >> kp) <++ kl
+rebind kl k kp = debug ("(rebound "++k++")") >> ((string (readKey k) >> kp) <++ kl)
 
 findFile :: Action
 findFile = withMinibuffer "find file:" $ \filename -> do msgE $ "loading " ++ filename
@@ -211,6 +211,9 @@ findFile = withMinibuffer "find file:" $ \filename -> do msgE $ "loading " ++ fi
 -- | Goto a line specified in the mini buffer.
 gotoLine :: Action
 gotoLine = withMinibuffer "goto line:" $ \lineString -> gotoLnE (read lineString)
+
+debug :: String -> Process
+debug = write . logPutStrLn
 
 withMinibuffer :: String -> (String -> Action) -> Action
 withMinibuffer prompt act = spawnMinibuffer prompt (rebind normalKeymap "RET" (write innerAction))
@@ -220,6 +223,7 @@ withMinibuffer prompt act = spawnMinibuffer prompt (rebind normalKeymap "RET" (w
           innerAction = do lineString <- readAllE
                            closeE
                            act lineString
+                           metaM (runKeymap normalKeymap)
 
 scrollDownE :: Action
 scrollDownE = withUnivArg $ \a ->
@@ -234,4 +238,6 @@ makeKeymap kmap = choice [string (readKey k) >> a | (k,a) <- kmap]
 
 -- | entry point
 keymap :: Keymap
-keymap = runProcess normalKeymap
+keymap evs = runKeymap normalKeymap evs
+
+runKeymap = runProcess . forever 

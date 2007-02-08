@@ -364,6 +364,7 @@ shrinkWindow (Just win) = modifyEditor_ $ \e -> do
                               M.insert (key win') win' $ windows e) }
     }
 
+
 -- | find a window, starting at offset @i + n@, whose height satisifies pred
 --
 getWinWithHeight :: [Window] -> Int -> Int -> (Int -> Bool) -> Maybe Window
