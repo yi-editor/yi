@@ -238,6 +238,7 @@ makeKeymap kmap = choice [string (readKey k) >> a | (k,a) <- kmap]
 
 -- | entry point
 keymap :: Keymap
-keymap evs = runKeymap normalKeymap evs
+keymap = runKeymap normalKeymap
 
-runKeymap = runProcess . forever 
+runKeymap :: Process -> Keymap
+runKeymap km evs = (setSynE "haskell" : runProcess (forever km) evs)
