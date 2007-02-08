@@ -240,5 +240,12 @@ makeKeymap kmap = choice [string (readKey k) >> a | (k,a) <- kmap]
 keymap :: Keymap
 keymap = runKeymap normalKeymap
 
+
+showFailures :: Process -> Process
+showFailures p = do result <- consumeLookahead p 
+                    case result of
+                      Right _ -> return ()
+                      Left e -> write $ errorE $ "Key not bound: " ++ showKey e
+
 runKeymap :: Process -> Keymap
-runKeymap km evs = (setSynE "haskell" : runProcess (forever km) evs)
+runKeymap km evs = (setSynE "haskell" : runProcess (forever $ showFailures km) evs)
