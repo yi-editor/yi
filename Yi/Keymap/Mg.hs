@@ -402,7 +402,7 @@ insert  = do c <- satisfy (const True); write $ insertE c
 
 -- C- commands
 command :: MgMode
-command = do c <- alt' unitKeysList; keys2action [c]
+command = do c <- oneOf unitKeysList; keys2action [c]
 
 ------------------------------------------------------------------------
 
@@ -413,7 +413,7 @@ ctrlxSwitch = do event '\^X' ; write (msgE "C-x-"); ctrlxMode
 
 -- ctrl x submap
 ctrlxMode :: MgMode
-ctrlxMode = do c <- alt' ctrlxKeysList; keys2action ['\^X',c]; write msgClrE
+ctrlxMode = do c <- oneOf ctrlxKeysList; keys2action ['\^X',c]; write msgClrE
 
 ------------------------------------------------------------------------
 --
@@ -428,7 +428,7 @@ metaSwitch = do event '\ESC' ; write  (msgE "ESC-"); metaMode       -- hitting E
 -- a fake mode. really just looking up the binding for: m_ c
 --
 metaMode :: MgMode
-metaMode = do c <- alt' ['\0' .. '\255']       -- not quite right
+metaMode = do c <- oneOf ['\0' .. '\255']       -- not quite right
               when ((m_ c) `elem` unitKeysList) $ keys2action [m_ c]
               write msgClrE
 
@@ -439,7 +439,7 @@ metaOSwitch :: MgMode
 metaOSwitch = event (m_ 'O') >> write (msgE "ESC-O-") >> metaOMode
 
 metaOMode :: MgMode
-metaOMode = do c <- alt' metaoKeysList; keys2action [m_ 'O',c]; write msgClrE
+metaOMode = do c <- oneOf metaoKeysList; keys2action [m_ 'O',c]; write msgClrE
                
 -- ---------------------------------------------------------------------
 -- build a generic line buffer editor, given a mode to transition to
@@ -458,7 +458,7 @@ echoMode prompt = do
                   +++ do c <- anyButDelNlArrow; lineEdit (s++[c])
                   +++ do event '\^G'; return Nothing
                   +++ do enter; return (Just s))
-          anyButDelNlArrow = alt' $ any' \\ (enter' ++ delete' ++ ['\ESC',keyUp,keyDown])
+          anyButDelNlArrow = oneOf $ any' \\ (enter' ++ delete' ++ ['\ESC',keyUp,keyDown])
 
 
 withLineEditor :: String -> (String -> MgMode) -> MgMode
@@ -549,7 +549,7 @@ gotoMode = withLineEditor "goto line: " $ \l -> write $ do
 --
 
 insertAnyMode :: MgMode
-insertAnyMode = do c <- alt' ['\0' .. '\255']; write (insertE c)
+insertAnyMode = do c <- oneOf ['\0' .. '\255']; write (insertE c)
 
 ------------------------------------------------------------------------
 -- | translate a string into the emacs encoding of that string
@@ -657,9 +657,7 @@ delete'  = ['\BS', '\127', keyBackspace ]
 any'     = ['\0' .. '\255']
 
 delete, enter, anything :: Interact Char Char
-delete  = alt' delete'
-enter   = alt' enter'
-anything  = alt' any'
+delete  = oneOf delete'
+enter   = oneOf enter'
+anything  = oneOf any'
 
-alt' :: String -> Interact Char Char
-alt' s = satisfy (`elem` s)

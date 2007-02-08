@@ -228,7 +228,7 @@ cmd_eval = do
                            firstNonSpaceE)) +++
     (str "ZZ" >> write (viWrite >> quitE))
 
-   where anyButEscOrDel = alt' $ any' \\ ('\ESC':delete')
+   where anyButEscOrDel = oneOf $ any' \\ ('\ESC':delete')
 
 --
 -- cmd mode commands
@@ -350,7 +350,7 @@ cmd2other = do c <- modeSwitchChar
                  s   -> write $ errorE ("The "++show s++" command is unknown.")
 
 
-    where modeSwitchChar = alt' ":RiIaAoOcCS/?\ESC"
+    where modeSwitchChar = oneOf ":RiIaAoOcCS/?\ESC"
 
 -- ---------------------------------------------------------------------
 -- | vi insert mode
@@ -406,7 +406,7 @@ ex_mode s = do debug
                        do event keyDown; histMove False >>= ex_mode]
                
     where
-        anyButDelNlArrow = alt' $ any' \\ (enter' ++ delete' ++ ['\ESC',keyUp,keyDown])
+        anyButDelNlArrow = oneOf $ any' \\ (enter' ++ delete' ++ ['\ESC',keyUp,keyDown])
 
 -- TODO when you go up, then down, you need 2 keypresses to go up again.
 histMove :: Bool -> ViProc String
@@ -588,13 +588,9 @@ isDel _            = False
 -- | character ranges
 --
 delete, enter, anyButEsc :: ViProc Char
-enter   = alt' enter'
-delete  = alt' delete'
--- any     = alt any'
-anyButEsc = alt' $ (keyBackspace : any' ++ cursc') \\ ['\ESC']
-
-alt' :: String -> ViProc Char
-alt' s = satisfy (`elem` s)
+enter   = oneOf enter'
+delete  = oneOf delete'
+anyButEsc = oneOf $ (keyBackspace : any' ++ cursc') \\ ['\ESC']
 
 enter', any', delete' :: [Char]
 enter'   = ['\n', '\r']
