@@ -33,7 +33,6 @@ module Yi.Yi (
         module Yi.Core,
         module Yi.CharMove,
         module Yi.Style,
-        module Yi.Lexers,
 
         module Yi.Event, -- hack, for key defns
 
@@ -43,7 +42,6 @@ import Yi.Core
 import Yi.CharMove
 import Yi.Style
 import Yi.Editor                         ( Config(..) )
-import Yi.Lexers                 hiding  ( Action  )
 import qualified Yi.Keymap.Vim as Default ( keymap )
 
 import Yi.Event -- so we can see key defns

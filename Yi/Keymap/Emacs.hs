@@ -22,7 +22,7 @@
 module Yi.Keymap.Emacs ( keymap ) where
 
 import Yi.Editor hiding     ( keymap )
-import Yi.Yi hiding         ( keymap, meta, string )
+import Yi.Yi hiding         ( keymap )
 import Yi.Window
 import Yi.Buffer
 import Yi.Interact

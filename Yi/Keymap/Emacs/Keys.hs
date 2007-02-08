@@ -20,7 +20,7 @@
 
 module Yi.Keymap.Emacs.Keys (readKey, showKey, printableChars) where
 
-import Yi.Yi hiding (string)
+import Yi.Yi
 
 import Data.Char
 import Data.List
