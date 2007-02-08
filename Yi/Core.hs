@@ -282,8 +282,10 @@ eventLoop :: IO ()
 eventLoop = do
     fn <- Editor.getKeyBinds
     ch <- readEditor input
-    let run km = catchDyn (sequence_ . map atomic . km  =<< getChanContents ch)
-                          (\(MetaActionException km') -> run km')
+    let run km = do
+        touchST -- start with a refresh; so we assert a clean state wrt. the user pov.
+        catchDyn (sequence_ . map atomic . km  =<< getChanContents ch)
+                     (\(MetaActionException km') -> run km')
     repeatM_ $ handle handler (run fn)
 
     where
