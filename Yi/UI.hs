@@ -185,7 +185,7 @@ refresh = do
     Yi.Vty.update (vty $ ui e) 
       pic {pImage = concat wImages ++ [withStyle (window $ uistyle e) (cmd ++ repeat ' ')],
            pCursor = if cmdlinefocus e
-                     then NoCursor 
+                     then Cursor (length cmd) (sum $ map height $ ws)
                      else case getWindowOf e of
                             -- calculate origin of focused window
                             -- sum of heights of windows above this one on screen.
