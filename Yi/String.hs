@@ -24,7 +24,7 @@ module Yi.String (chomp,split) where
 
 import Data.List    (isSuffixOf,isPrefixOf)
 
--- | Remove any trailing strings matcing /irs/ (input record separator)
+-- | Remove any trailing strings matching /irs/ (input record separator)
 -- from input string. Like perl's chomp(1).
 --
 chomp :: String -> String -> String

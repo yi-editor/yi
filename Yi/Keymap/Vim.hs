@@ -31,6 +31,7 @@ import Yi.Interact   hiding ( count )
 import Yi.Debug
 import Yi.UI
 import Yi.Style as Style
+import Yi.Search
 
 import Prelude       hiding ( any, error )
 

@@ -27,14 +27,17 @@
 --
 
 module Yi.Yi (
-
+              -- all things re-exported here are made available to keymaps definitions.
         settings,
         Config(..),
         module Yi.Core,
         module Yi.CharMove,
         module Yi.Style,
-
         module Yi.Event, -- hack, for key defns
+        module Yi.Search,
+        --module Yi.Region,
+        --module Yi.Interact,
+        module Yi.Debug
 
    ) where
 
@@ -42,6 +45,11 @@ import Yi.Core
 import Yi.CharMove
 import Yi.Style
 import Yi.Editor                         ( Config(..) )
+import Yi.Search
+--import Yi.Region
+--import Yi.Interact
+import Yi.Debug
+
 import qualified Yi.Keymap.Vim as Default ( keymap )
 
 import Yi.Event -- so we can see key defns

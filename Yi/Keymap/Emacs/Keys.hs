@@ -26,7 +26,7 @@ import Data.Char
 import Data.List
 import Data.Maybe
 import qualified Data.Map as M
-
+import Prelude hiding (error)
 import Text.ParserCombinators.ReadP
 
 
