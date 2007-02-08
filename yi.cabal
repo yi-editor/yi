@@ -4,13 +4,13 @@ license:        GPL
 license-file:   LICENSE
 author:         Don Stewart
 maintainer:     dons@cse.unsw.edu.au
-build-depends:  base, mtl, vty>=2.0
+build-depends:  base, mtl, vty>=2.0, regex-posix
 
 executable:     yi
 main-is:        Main.hs
 include-dirs:   cbits
 c-sources:      cbits/YiUtils.c
-other-modules:   Yi.Regex, Yi.Syntax.Haskell
+other-modules:  Yi.Syntax.Haskell
 extensions:     CPP, ForeignFunctionInterface
 ghc-options:    -Wall -fglasgow-exts -O -funbox-strict-fields -fasm -optl-Wl,-s
 

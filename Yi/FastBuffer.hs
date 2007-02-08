@@ -26,7 +26,6 @@
 
 module Yi.FastBuffer (Point, Size, BufferImpl, newBI, deleteNAtI, moveToI, insertNI, pointBI, nelemsBI, finaliseBI, sizeBI, writeBI, curLnI, gotoLnI, searchBI, regexBI, getMarkBI, setMarkBI, unsetMarkBI, nelemsBIH, setSyntaxBI) where
 
-import Yi.Regex
 import Yi.Debug
 
 import Yi.Syntax
@@ -42,8 +41,10 @@ import Foreign.C.String
 import Foreign.C.Types          ( CChar )
 import Foreign.Marshal.Alloc    ( free )
 import Foreign.Marshal.Array
-import Foreign.Ptr              ( Ptr, nullPtr, minusPtr )
+import Foreign.Ptr              ( Ptr, nullPtr, minusPtr, plusPtr )
 import Foreign.Storable         ( poke )
+
+import Text.Regex.Posix.Wrap
 
 import qualified Data.ByteString.Char8 as B
 
@@ -293,10 +294,12 @@ searchBI fb s = withMVar fb $ \(FBufferData ptr pnts _ _ _) ->
 regexBI       :: BufferImpl -> Regex -> IO (Maybe (Int,Int))
 regexBI fb re = withMVar fb $ \(FBufferData ptr pnts _ _ _) -> do
         let p = (fst $ pnts M.! 0)
-        mmatch <- regexec re ptr p
+        Right mmatch <- wrapMatch re (ptr `plusPtr` p)
+        logPutStrLn $ show mmatch
         case mmatch of
             Nothing        -> return Nothing
-            Just ((i,j),_) -> return (Just (p+i,p+j))    -- offset from point
+            Just []        -> return Nothing
+            Just ((i,j):_) -> return (Just (p+fromIntegral i,p+fromIntegral j))    -- offset from point
 
 
 -- ------------------------------------------------------------------------

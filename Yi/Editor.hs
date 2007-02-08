@@ -24,7 +24,7 @@
 module Yi.Editor where
 
 import Yi.Buffer                ( FBuffer, newB, keyB, hNewB, finaliseB, nameB )
-import Yi.Regex                 ( Regex )
+import Text.Regex.Posix.Wrap    ( Regex )
 import Yi.Window
 import Yi.Style                 ( uiStyle, UIStyle )
 import Yi.Event

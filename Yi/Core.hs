@@ -190,13 +190,14 @@ import Yi.MkTemp            ( mkstemp )
 import Yi.Buffer
 import Yi.Region
 import Yi.Window
-import Yi.Regex
+import Text.Regex.Posix.Wrap    ( Regex,  compExtended, compIgnoreCase, compNewline, wrapCompile, execBlank)
 import Yi.String
 import Yi.Process           ( popen )
 import Yi.Editor
 import qualified Yi.Editor as Editor
 import qualified Yi.Style as Style
 
+import Data.Bits ( (.|.) )
 import Data.Maybe
 import Data.Dynamic
 import Data.List
@@ -209,6 +210,8 @@ import Control.Monad
 import Control.Exception
 import Control.Concurrent   ( forkIO )
 import Control.Concurrent.Chan
+
+import Foreign.C.String
 
 import qualified Yi.UI as UI
 
@@ -723,18 +726,18 @@ searchDoE (s, re) _ = searchF s re
 --
 searchInitE :: String -> [SearchF] -> IO SearchExp
 searchInitE re fs = do
-    c_re <- regcomp re (extended + igcase + newline)
+    Right c_re <- withCString re $ \re' -> wrapCompile (extended .|. igcase .|. newline) execBlank re'
     let p = (re,c_re)
     setRegexE p
     return p
 
     where
         extended | Basic      `elem` fs = 0
-                 | otherwise            = regExtended   -- extended regex dflt
-        igcase   | IgnoreCase `elem` fs = regIgnoreCase
+                 | otherwise            = compExtended   -- extended regex dflt
+        igcase   | IgnoreCase `elem` fs = compIgnoreCase
                  | otherwise            = 0             -- case insensitive dflt
         newline  | NoNewLine  `elem` fs = 0
-                 | otherwise            = regNewline    -- newline is special
+                 | otherwise            = compNewline    -- newline is special
 
 
 -- ---------------------------------------------------------------------
@@ -776,7 +779,7 @@ searchF _ c_re = do
 searchAndRepLocal :: String -> String -> IO Bool
 searchAndRepLocal [] _ = return False   -- hmm...
 searchAndRepLocal re str = do
-    c_re <- regcomp re regExtended
+    Right c_re <- withCString re $ \re' -> wrapCompile compExtended execBlank re'
     setRegexE (re,c_re)     -- store away for later use
 
     mp <- withBuffer $ \b -> do   -- find the regex

@@ -29,7 +29,7 @@ where
 import Prelude hiding (error)
 
 import Yi.Debug
-import Yi.Regex
+import Text.Regex.Posix.Wrap
 
 import Data.IORef
 import Control.Monad

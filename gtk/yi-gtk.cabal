@@ -12,7 +12,6 @@ main-is:        Main.hs
 include-dirs:   ../cbits
 c-sources:      ../cbits/YiUtils.c
 hs-source-dirs: ., ..
-other-modules:  Yi.Regex
 extensions:     CPP, ForeignFunctionInterface
 ghc-options:    -Wall -fglasgow-exts -O -funbox-strict-fields -fasm -optl-Wl,-s
 

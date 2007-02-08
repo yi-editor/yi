@@ -24,7 +24,7 @@
 
 module Yi.Buffer where
 
-import Yi.Regex                 ( Regex  )
+import Text.Regex.Posix.Wrap    ( Regex  )
 import Control.Monad            ( when )
 import Yi.FastBuffer
 import Yi.Undo
