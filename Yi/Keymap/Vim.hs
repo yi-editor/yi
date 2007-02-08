@@ -27,7 +27,7 @@ import Yi.Region
 import Yi.Core
 import Yi.CharMove
 import Yi.Editor            ( Action, Keymap )
-import Yi.Interact   hiding ( count, string )
+import Yi.Interact   hiding ( count )
 import Yi.Debug
 import Yi.UI
 import Yi.Style as Style
@@ -357,9 +357,6 @@ move2CmdFM =
     ,('T',  \i c -> replicateM_ i $ prevCExc c)
     ]
 
-str :: String -> VimMode
-str s = mapM_ event s -- TODO: find a better name
-
 --
 -- | Other command mode functions
 --
@@ -369,9 +366,9 @@ cmd_eval = do
    let i = maybe 1 id cnt
    choice [event c >> write (a i) | (c,a) <- cmdCmdFM ] +++
     (do event 'r'; c <- anyButEscOrDel; write (writeE c)) +++
-    (str ">>" >> write (tabifySpacesOnLineAndShift i))+++
-    (str "<<" >> write (tabifySpacesOnLineAndShift (-i)))+++
-    (str "ZZ" >> write (viWrite >> quitE))
+    (events ">>" >> write (tabifySpacesOnLineAndShift i))+++
+    (events "<<" >> write (tabifySpacesOnLineAndShift (-i)))+++
+    (events "ZZ" >> write (viWrite >> quitE))
 
 anyButEscOrDel :: VimProc Char
 anyButEscOrDel = oneOf $ any' \\ ('\ESC':delete')
@@ -438,8 +435,8 @@ cmd_op :: VimMode
 cmd_op = do
   cnt <- count
   let i = maybe 1 id cnt
-  choice $ [str "dd" >> write (solE >> killE >> deleteE),
-            str "yy" >> write (readLnE >>= setRegE)] ++
+  choice $ [events "dd" >> write (solE >> killE >> deleteE),
+            events "yy" >> write (readLnE >>= setRegE)] ++
            [do event c; m <- cmd_move; write (a i m) | (c,a) <- opCmdFM]
     where
         -- | operator (i.e. movement-parameterised) actions
@@ -528,9 +525,9 @@ vis_multi = do
                                                   else upE
                           numOfLines = 1 + (abs (row2 - row1))
                       replicateM_ numOfLines (tabifySpacesOnLineAndShift x>>step)
-   choice ([str "ZZ" >> write (viWrite >> quitE),
-            str ">>" >> write (shiftBy i),
-            str "<<" >> write (shiftBy (-i)),
+   choice ([events "ZZ" >> write (viWrite >> quitE),
+            events ">>" >> write (shiftBy i),
+            events "<<" >> write (shiftBy (-i)),
             do event 'r'; x <- anyEvent; write $ do
                                    mrk <- getMarkE
                                    pt <- getPointE

@@ -203,7 +203,7 @@ spawnMinibuffer _prompt process =
        metaM (runKeymap process)
 
 rebind :: Process -> String -> Process -> Process
-rebind kl k kp = debug ("(rebound "++k++")") >> ((string (readKey k) >> kp) <++ kl)
+rebind kl k kp = debug ("(rebound "++k++")") >> ((events (readKey k) >> kp) <++ kl)
 
 findFile :: Action
 findFile = withMinibuffer "find file:" $ \filename -> do msgE $ "loading " ++ filename
@@ -234,7 +234,7 @@ scrollDownE = withUnivArg $ \a ->
 
 -- | Create a binding processor from 'kmap'.
 makeKeymap :: KList -> KProc ()
-makeKeymap kmap = choice [string (readKey k) >> a | (k,a) <- kmap]
+makeKeymap kmap = choice [events (readKey k) >> a | (k,a) <- kmap]
 
 -- | entry point
 keymap :: Keymap

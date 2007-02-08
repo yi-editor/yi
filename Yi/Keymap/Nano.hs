@@ -225,7 +225,7 @@ echoMode prompt exitProcess = do
   return result
     where lineEdit s =
               do write $ msgE (prompt ++ s)
-                 (exitProcess s <++
+                 (exitProcess s +++
                   (anyChar deleteChars >> lineEdit (take (length s - 1) s)) +++
                   (do c <- anyChar ('\n' : map chr [32 .. 126]); lineEdit (s++[c])))
                    

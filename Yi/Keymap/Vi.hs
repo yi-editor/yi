@@ -28,7 +28,7 @@ module Yi.Keymap.Vi ( keymap, keymapPlus, ViMode ) where
 
 import Yi.Yi         hiding ( keymap )
 import Yi.Editor            ( Action, Keymap )
-import Yi.Interact   hiding ( count, string )
+import Yi.Interact   hiding ( count )
 import Yi.Debug
 
 import Prelude       hiding ( any, error )
@@ -206,9 +206,6 @@ move2CmdFM =
     ,('T',  \i c -> replicateM_ i $ leftE  >> moveWhileE (/= c) GoLeft  >> rightE)
     ]
 
-str :: String -> ViMode
-str s = mapM_ event s -- TODO: find a better name
-
 --
 -- | Other command mode functions
 --
@@ -218,15 +215,15 @@ cmd_eval = do
    let i = maybe 1 id cnt
    choice [event c >> write (a i) | (c,a) <- cmdCmdFM ] +++
     (do event 'r'; c <- anyButEscOrDel; write (writeE c)) +++
-    (str ">>" >> write (do replicateM_ i $ solE >> mapM_ insertE "    "
-                           firstNonSpaceE)) +++
-    (str "<<" >> write (do solE
-                           replicateM_ i $
-                             replicateM_ 4 $
-                                 readE >>= \k ->
-                                     when (isSpace k) deleteE
-                           firstNonSpaceE)) +++
-    (str "ZZ" >> write (viWrite >> quitE))
+    (events ">>" >> write (do replicateM_ i $ solE >> mapM_ insertE "    "
+                              firstNonSpaceE)) +++
+    (events "<<" >> write (do solE
+                              replicateM_ i $
+                                replicateM_ 4 $
+                                    readE >>= \k ->
+                                        when (isSpace k) deleteE
+                              firstNonSpaceE)) +++
+    (events "ZZ" >> write (viWrite >> quitE))
 
    where anyButEscOrDel = oneOf $ any' \\ ('\ESC':delete')
 
@@ -283,8 +280,8 @@ cmd_op :: ViMode
 cmd_op = do
   cnt <- count
   let i = maybe 1 id cnt
-  choice $ [str "dd" >> write (solE >> killE >> deleteE),
-            str "yy" >> write (readLnE >>= setRegE)] ++
+  choice $ [events "dd" >> write (solE >> killE >> deleteE),
+            events "yy" >> write (readLnE >>= setRegE)] ++
            [do event c; m <- cmd_move; write (a i m) | (c,a) <- opCmdFM]
     where
         -- | operator (i.e. movement-parameterised) actions
@@ -310,7 +307,7 @@ cmd_op = do
 
         --
         -- A strange, useful action. Save the current point, move to
-        -- some location specified by the sequence @m@, then return.
+        -- some xlocation specified by the sequence @m@, then return.
         -- Return the current, and remote point.
         --
         withPointMove :: Action -> IO (Int,Int)

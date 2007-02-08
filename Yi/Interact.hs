@@ -66,7 +66,8 @@ module Yi.Interact (
   oneOf,
   satisfy,    -- :: (Char -> Bool) -> Interact Char
   event,      -- :: Char -> Interact Char
-  string,     -- :: String -> Interact String
+  -- string,     -- :: String -> Interact String
+  events,
   choice,     -- :: [Interact a] -> Interact a
   count,      -- :: Int -> Interact a -> Interact [a]
   between,    -- :: Interact open -> Interact close -> Interact a -> Interact a
@@ -74,7 +75,6 @@ module Yi.Interact (
   optional,   -- :: Interact a -> Interact ()
   many',
   many1',
-  consumeLookahead,
   many,       -- :: Interact a -> Interact [a]
   many1,      -- :: Interact a -> Interact [a]
   skipMany,   -- :: Interact a -> Interact ()
@@ -107,19 +107,28 @@ infixr 5 +++, <++
 class (Monad m, MonadPlus m) => MonadInteract m e | m -> e where
     write :: Action -> m ()
     anyEvent :: m e
+    -- ^ Consumes and returns the next character.
+    --   Fails if there is no input left.
     (<++) :: m a -> m a -> m a
+    consumeLookahead :: m a -> m (Either [e] a)
+    -- ^ Transforms a parser into one that does the same, except when it fails.
+    --   in that case, it just consumes the the amount of characters demanded by the parser to fail IF that number is > 1.
 
 instance MonadInteract (Interact event) event where
     write = writeL
     anyEvent = get
     (<++) = mLeftPlusL
+    consumeLookahead = consumeLookaheadL
 
 -- Needs -fallow-undecidable-instances
 instance MonadInteract m e => MonadInteract (StateT s m) e where
     write = lift . write
     anyEvent = lift anyEvent
     m <++ n = StateT $ \s -> runStateT m s <++ runStateT n s
-
+    consumeLookahead m = StateT $ \s -> liftM (\r -> case r of 
+                                                      Left e -> (Left e,s)
+                                                      Right (a,s') -> (Right a,s')       
+                                             ) (consumeLookahead (runStateT m s))
 
 -- ---------------------------------------------------------------------------
 -- The P type
@@ -223,8 +232,6 @@ writeL :: Action -> Interact event ()
 writeL w = R (Write w)
 
 get :: Interact event event
--- ^ Consumes and returns the next character.
---   Fails if there is no input left.
 get = R Get
 
 look :: Int -> Interact event [event]
@@ -244,33 +251,27 @@ mplusL :: Interact event a -> Interact event a -> Interact event a
 R f1 `mplusL` R f2 = R (\k -> f1 k `mplus` f2 k)
 
 mLeftPlusL :: Interact event a -> Interact event a -> Interact event a
-
-
--- FIXME: this is not entirely compatible with 'consumed'.
--- We should add gets in the q part too (otherwise what's been looked 
--- at in the left operand will not be counted by 'consumed'.
 R r `mLeftPlusL` q =
-  do s <- look (-1)
+  do s <- look 0 -- look 0 bypasses the protection in 'consumed'; 
+                 -- it's ok because we do more specific looks below.
      probe (r return) s 0
  where
   probe (Get f)        (c:s) n = probe (f c) s (n+1)
   probe (Look _ f)     s     n = probe (f s) s n
-  probe p@(Result _ _) _     n = discard n >> R (p >>=)
-  probe p@(Write  _ _) _     n = discard n >> R (p >>=)
+  probe p@(Result _ _) _     n = R (Look n) >> discard n >> R (p >>=)
+  probe p@(Write  _ _) _     n = R (Look n) >> discard n >> R (p >>=)
   probe _              _     n = R (Look n) >> q
 
 discard :: Int -> Interact event ()
 discard 0 = return ()
 discard n  = get >> discard (n-1)
 
-consumeLookahead :: Interact event a -> Interact event (Maybe a)
--- ^ Transforms a parser into one that does the same, except when it fails.
---   in that case, it just consumes the the amount of characters demanded by the parser to fail IF that number is > 1.
-consumeLookahead (R f) = do
+consumeLookaheadL :: Interact event a -> Interact event (Either [event] a)
+consumeLookaheadL (R f) = do
   s <- look (-1)
   case run (f return) s of    
-    [] -> let n = consumed (f return) s in if n > 1 then discard n >> return Nothing else fail "consumeLookahead"
-    _ -> R f >>= return . Just
+    [] -> let n = consumed (f return) s in discard n >> return (Left (take n s))
+    _ -> R f >>= return . Right
 
 gather :: Interact event a -> Interact event ([event], a)
 -- ^ Transforms a parser into one that does the same, but
@@ -298,14 +299,9 @@ event :: (Eq event, MonadInteract m event) => event -> m event
 -- ^ Parses and returns the specified character.
 event c = satisfy (c ==)
 
-string :: Eq event => [event] -> Interact event [event]
--- ^ Parses and returns the specified string.
-string this = do s <- look (length this); scan this s
- where
-  scan []     _               = do return this
-  scan (x:xs) (y:ys) | x == y = do get; scan xs ys
-  scan _      _               = do pfail
-
+events :: (Eq event, MonadInteract m event) => [event] -> m [event]
+-- ^ Parses and returns the specified list of events (lazily). 
+events = mapM event
 
 choice :: (MonadInteract m e) => [m a] -> m a
 -- ^ Combines all parsers in the specified list.
