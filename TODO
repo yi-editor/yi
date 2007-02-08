@@ -21,7 +21,6 @@ Vim mode:
         - performance issue on very long lines. (C fragment?)
         - path names not expanded in :e
         - :!cmd , run an external command not implemented
-        - remember column count when moving down to short lines.
         - deal with delay after hitting esc from command mode.
         - undo should coalesce so that dl is undone all at once.
 
@@ -51,7 +50,7 @@ other stuff:
         - bind keymap lexers to buffers
         - :eval, :type, .. etc. ghci stuff
         - make the cmd line a buffer.
-        - start drawing buffer before it is all loaded.
+        - start drawing buffer before it is all loaded. (ie. load buffers lazily)
         - either generalise registers, or make them entirely keymap-local
         - other forms of undo
         - errorE should display in colour
@@ -85,6 +84,9 @@ Syntax Highlighting:
             * Centaur records comments in the lexer, with their locations.
               Then using location information in the syntree, hook
               comments back in.
+          - what about comments?
+              - record the comments, with their positions, in the lexer.
+              - re-splice comments back into the parse tree.
 
         - set of token classes?
 
@@ -104,10 +106,6 @@ Syntax Highlighting:
           vim:syntax.c- syntax state stack cache
 
         - need to map tokens to attributes.
-
-        - what about comments?
-            - record the comments, with their positions, in the lexer.
-            - re-splice comments back into the parse tree.
 
 	- good overview to structure editors
              http://www.cs.uu.nl/research/projects/proxima/
