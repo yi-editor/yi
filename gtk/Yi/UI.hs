@@ -65,7 +65,6 @@ import qualified Graphics.UI.Gtk as Gtk
 data UI = UI {
               uiWindow :: Gtk.Window
              ,uiBox :: VBox
-             ,uiFont :: FontDescription
              ,uiCmdLine :: Label
              }
 
@@ -88,16 +87,13 @@ start = do
   set cmd [ miscXalign := 0.01 ]
   set vb [ containerChild := cmd, 
            boxChildPacking cmd := PackNatural, 
-           boxChildPosition cmd := 10 ] 
+           boxChildPosition cmd := 10000 ] 
 
   -- use our magic threads thingy (http://haskell.org/gtk2hs/archives/2005/07/24/writing-multi-threaded-guis/)
   timeoutAddFull (yield >> return True) priorityDefaultIdle 50
 
-  f <- fontDescriptionNew
-  fontDescriptionSetFamily f "Monospace"
-
   widgetShowAll win
-  return $ UI win vb f cmd
+  return $ UI win vb cmd
 
 main :: IO ()
 main = do logPutStrLn "GTK main loop running"
@@ -162,8 +158,10 @@ keyTable = M.fromList
 addWindow :: UI -> Window -> IO ()
 addWindow i w = do
   set (uiBox i) [containerChild := widget w, 
-                  boxChildPosition (widget w) := 0]
-  widgetModifyFont (textview w) (Just (uiFont i))
+                 boxChildPosition (widget w) := 0]
+  f <- fontDescriptionNew
+  fontDescriptionSetFamily f "Monospace"
+  widgetModifyFont (textview w) (Just f)
   textview w `onFocusIn` (\_event -> setWindow w >> return True)
   widgetShowAll (widget w)
 
