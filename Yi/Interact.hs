@@ -63,6 +63,7 @@ module Yi.Interact (
   gather,     -- :: Interact a -> Interact (String, a)
   
   -- * Other operations
+  oneOf,
   satisfy,    -- :: (Char -> Bool) -> Interact Char
   event,      -- :: Char -> Interact Char
   string,     -- :: String -> Interact String
@@ -285,6 +286,8 @@ gather (R m) =
 
 -- ---------------------------------------------------------------------------
 -- Derived operations
+oneOf :: (Eq event, MonadInteract m event) => [event] -> m event
+oneOf s = satisfy (`elem` s)
 
 satisfy :: MonadInteract m event => (event -> Bool) -> m event
 -- ^ Consumes and returns the next character, if it satisfies the
