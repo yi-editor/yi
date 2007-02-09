@@ -74,7 +74,7 @@ import Yi.Buffer
 import Yi.Core
 import Yi.Editor
 import Yi.Window
-import Text.Regex.Posix.Wrap ( compExtended, wrapCompile, execBlank)
+import Text.Regex.Posix.String ( compExtended, compile, execBlank)
 
 import Data.Char
 import qualified Data.Map as M
@@ -82,8 +82,6 @@ import qualified Data.Map as M
 import Control.Monad        ( when, replicateM_ )
 import Control.Monad.Fix    ( fix )
 import Control.Exception    ( assert )
-
-import Foreign.C.String
 
 -- For word completion:
 import Data.IORef
@@ -417,7 +415,7 @@ wordCompleteE = do
     nextWordMatch :: FBuffer -> String -> IO (Maybe (String,Int))
     nextWordMatch b w = do
         let re = ("( |\t|\n|\r|^)"++w)
-        Right re_c <- withCString re $ \re' -> wrapCompile compExtended execBlank re'
+        Right re_c <- compile compExtended execBlank re
         mi   <- regexB b re_c
         case mi of
             Nothing -> return Nothing
