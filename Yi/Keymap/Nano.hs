@@ -23,11 +23,8 @@
 
 module Yi.Keymap.Nano ( keymap ) where
 
-import Yi.Editor            ( Action, Keymap )
 import Yi.Yi hiding         ( keymap )
 
-import Yi.Interact
-import Yi.Debug
 import Data.Char            ( chr, isAlphaNum, toLower )
 
 import Control.Exception    ( ioErrors, catchJust, try, evaluate )

@@ -26,12 +26,12 @@ module Yi.Keymap.Vim ( keymap, VimMode ) where
 import Yi.Region
 import Yi.Core
 import Yi.CharMove
-import Yi.Editor            ( Action, Keymap )
 import Yi.Interact   hiding ( count )
 import Yi.Debug
 import Yi.UI
 import Yi.Style as Style
 import Yi.Search
+import Yi.Keymap
 
 import Prelude       hiding ( any, error )
 

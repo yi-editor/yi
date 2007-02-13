@@ -45,6 +45,7 @@ import Yi.Debug
 import Yi.Buffer
 import Text.Regex.Posix.String  ( Regex, compExtended, compIgnoreCase, compNewline, compile, execBlank )
 import Yi.Editor
+import Yi.Keymap
 import qualified Yi.Editor as Editor
 
 import Data.Bits ( (.|.) )

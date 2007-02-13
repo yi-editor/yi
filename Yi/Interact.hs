@@ -101,7 +101,7 @@ module Yi.Interact (
 import Control.Monad( MonadPlus(..), sequence, liftM2 )
 import Control.Monad.State hiding ( get )
 
-import Yi.Editor ( Action ) --type Action = ()
+import Yi.Keymap ( Action )
 infixr 5 +++, <++
 
 class (Monad m, MonadPlus m) => MonadInteract m e | m -> e where

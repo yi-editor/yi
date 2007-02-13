@@ -24,6 +24,7 @@ import Yi.Editor
 import Yi.Core
 import Yi.Keymap.Emacs.UnivArgument
 import Yi.Region
+import Yi.Keymap
 
 import Data.Dynamic
 

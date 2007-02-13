@@ -26,6 +26,7 @@ import Yi.Version                       ( package, version )
 import qualified Yi.Editor  as Editor
 import qualified Yi.Core    as Core
 import qualified Yi.Style   as Style
+import qualified Yi.Keymap  as Keymap
 
 import Yi.Debug
 
@@ -73,7 +74,7 @@ data Opts = Help
 --
 -- In case the user wants to start with a certain editor
 --
-editorFM :: M.Map [Char] (Editor.Keymap)
+editorFM :: M.Map [Char] (Keymap.Keymap)
 editorFM = M.fromList $
     [ ("vi"      ,      Vi.keymap)
     , ("vim"     ,     Vim.keymap)

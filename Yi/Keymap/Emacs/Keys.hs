@@ -20,8 +20,8 @@
 
 module Yi.Keymap.Emacs.Keys (readKey, showKey, printableChars) where
 
-import Yi.Yi
-
+import Yi.Event
+import Yi.Debug
 import Data.Char
 import Data.List
 import Data.Maybe

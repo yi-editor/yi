@@ -28,6 +28,7 @@ import Text.Regex.Posix.Wrap    ( Regex )
 import Yi.Window
 import Yi.Style                 ( uiStyle, UIStyle )
 import Yi.Event
+import Yi.Keymap
 
 import Data.List                ( elemIndex )
 import Data.Unique              ( Unique )
@@ -55,7 +56,6 @@ data Editor = Editor {
        ,ui              :: UI
 
        ,curwin          :: !(Maybe Unique)            -- ^ the window with focus
-       ,curkeymap       :: [Event] -> [Action]        -- ^ user-configurable keymap
        ,uistyle         :: !UIStyle                   -- ^ ui colours
        ,input           :: Chan Event                 -- ^ input stream
        ,threads         :: [ThreadId]                 -- ^ all our threads
@@ -71,6 +71,7 @@ data Editor = Editor {
        ,regex           :: !(Maybe (String,Regex))    -- ^ most recent regex
        -- should be moved into dynamic component, perhaps
 
+       ,defaultKeymap  :: Keymap
        ,editorModified :: MVar ()
     }
 
@@ -90,7 +91,7 @@ emptyEditor = Editor {
        ,yreg         = []
        ,regex        = Nothing
        ,curwin       = Nothing
-       ,curkeymap    = error "No keymap defined."
+       ,defaultKeymap    = error "No keymap defined."
        ,uistyle      = Yi.Style.uiStyle
        ,input        = error "No channel open"
        ,threads      = []
@@ -146,7 +147,7 @@ refreshEditor f = modifyMVar_ state f
 hNewBuffer :: FilePath -> IO FBuffer
 hNewBuffer f =
     modifyEditor $ \e@(Editor{buffers=bs}) -> do
-        b <- hNewB f
+        b <- hNewB (defaultKeymap e) f
         let e' = e { buffers = M.insert (keyB b) b bs } :: Editor
         return (e', b)
 
@@ -156,7 +157,7 @@ hNewBuffer f =
 stringToNewBuffer :: FilePath -> String -> IO FBuffer
 stringToNewBuffer f cs =
     modifyEditor $ \e@(Editor{buffers=bs}) -> do
-        b <- newB f cs
+        b <- newB (defaultKeymap e) f cs
         let e' = e { buffers = M.insert (keyB b) b bs } :: Editor
         return (e', b)
 
@@ -392,16 +393,11 @@ shiftFocus f = modifyEditor_ $ \e -> do
 setUserSettings :: Config -> (Maybe Editor -> IO ()) -> IO (Maybe Config) -> IO ()
 setUserSettings (Config km sty) fn fn' =
     modifyEditor_ $ \e ->
-        return $ (e { curkeymap = km,
+        return $ (e { defaultKeymap = km,
                      uistyle    = sty,
                      reboot     = fn,
                      reload     = fn' } :: Editor)
 
---
--- | retrieve the user-defineable key map
---
-getKeyBinds :: IO ([Event] -> [Action])
-getKeyBinds = readEditor curkeymap
 
 -- ---------------------------------------------------------------------
 
@@ -426,13 +422,6 @@ data Config = Config {
     }
 
 -- ---------------------------------------------------------------------
--- | The type of user-bindable functions
---
-type Action = IO ()
-
-type Keymap = [Event] -> [Action]
-
--- ---------------------------------------------------------------------
 -- | Class of values that can go in the extensible state component
 --
 class Typeable a => Initializable a where initial :: IO a
@@ -441,3 +430,4 @@ repeatM_ :: forall m a. Monad m => m a -> m ()
 repeatM_ a = a >> repeatM_ a
 {-# SPECIALIZE repeatM_ :: IO a -> IO () #-}
 {-# INLINE repeatM_ #-}
+

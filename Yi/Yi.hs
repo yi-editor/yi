@@ -35,8 +35,9 @@ module Yi.Yi (
         module Yi.Style,
         module Yi.Event, -- hack, for key defns
         module Yi.Search,
-        --module Yi.Region,
-        --module Yi.Interact,
+        module Yi.Region,
+        module Yi.Interact,
+        module Yi.Keymap,
         module Yi.Debug
 
    ) where
@@ -46,9 +47,10 @@ import Yi.CharMove
 import Yi.Style
 import Yi.Editor                         ( Config(..) )
 import Yi.Search
---import Yi.Region
---import Yi.Interact
+import Yi.Region
+import Yi.Interact
 import Yi.Debug
+import Yi.Keymap
 
 import qualified Yi.Keymap.Vim as Default ( keymap )
 

@@ -26,12 +26,9 @@ module Yi.Keymap.Joe (
 ) where
 
 import Control.Monad.State
-import Yi.Editor            ( Action, Keymap )
 import Yi.Yi hiding         ( keymap )
 import Yi.CharMove
 import Yi.Char
-import Yi.Interact
-import Yi.Debug
 
 -- ---------------------------------------------------------------------
 

@@ -24,8 +24,6 @@
 module Yi.Keymap.Ee ( keymap ) where
 
 import Yi.Yi         hiding ( keymap )
-import Yi.Editor            ( Keymap )
-import Yi.Interact
 
 keymap :: Keymap
 keymap = runProcess (command +++ insert) . map eventToChar

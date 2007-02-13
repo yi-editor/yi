@@ -40,9 +40,6 @@ module Yi.Core (
         refreshE,       -- :: Action
         suspendE,       -- :: Action
 
-        -- * Main loop
-        eventLoop,
-
         -- * Global editor actions
         BufferFileInfo ( .. ), 
 
@@ -157,9 +154,6 @@ module Yi.Core (
         -- * higher level ops
         mapRangeE,              -- :: Int -> Int -> (Buffer' -> Action) -> Action
 
-        -- * Modifying the current keymap
-        metaM,                  -- :: ([Char] -> [Action]) -> IO ()
-
         -- * Interacting with external commands
         pipeE                   -- :: String -> IO String
 
@@ -175,6 +169,7 @@ import Yi.Window
 import Yi.String
 import Yi.Process           ( popen )
 import Yi.Editor
+import Yi.Keymap
 
 import qualified Yi.Editor as Editor
 import qualified Yi.Style as Style
@@ -234,6 +229,20 @@ startE st (confs,fn,fn') ln mfs = do
     t <- forkIO eventLoop
     modifyEditor_ $ \e -> return $ e { threads = t : threads e }
     UI.main -- transfer control to UI: GTK must run in the main thread, or else it's not happy.
+        where 
+          eventLoop :: IO ()
+          eventLoop = do
+              ch <- readEditor input
+              let run = mapM_ dispatch =<< getChanContents ch
+              repeatM_ $ (handle handler run >> logPutStrLn "Dispatcher execution ended")
+                       
+              where
+                handler e = errorE (show e)
+                dispatch action = withBuffer $ \b -> writeChan (bufferInput b) action
+                
+
+
+
 
 
 -- ---------------------------------------------------------------------
@@ -255,28 +264,6 @@ emptyE = modifyEditor_ $ const $ return $ emptyEditor
 -- for testing keymaps:
 runE :: String -> IO ()
 runE = undefined
-
---
--- | The editor main loop. Read key strokes from the ui and interpret
--- them using the current key map. Keys are bound to core actions.
---
-eventLoop :: IO ()
-eventLoop = do
-    fn <- Editor.getKeyBinds
-    ch <- readEditor input
-    let run km = do
-        touchST -- start with a refresh; so we assert a clean state wrt. the user pov.
-        catchDyn (do sequence_ . map atomic . km  =<< getChanContents ch
-                     logPutStrLn "Keymap execution ended")
-                     (\(MetaActionException km') -> run km')
-    repeatM_ $ handle handler (run fn)
-
-    where
-      handler e = errorE (show e)
-      atomic action = do action
-                         touchST
-
--- TODO if there is an exception, the key bindings will be reset...
 
 -- ---------------------------------------------------------------------
 -- Meta operations
@@ -302,7 +289,7 @@ reloadE = do
         v <- fn
         return $ case v of
             Nothing -> e
-            Just (Config km sty) -> e { curkeymap = km, uistyle = sty }
+            Just (Config km sty) -> e { defaultKeymap = km, uistyle = sty }
 
 -- | Reset the size, and force a complete redraw
 refreshE :: Action
@@ -904,22 +891,5 @@ mapRangeE from to fn
 -- changes only a couple of lines of code.
 --
 
---
--- Our meta exception returns the next keymap to use
---
-newtype MetaActionException = MetaActionException Keymap
-    deriving Typeable
-
---
--- | Given a keymap function, throw an exception to interrupt the main
--- loop, which will continue processing with the supplied keymap.  Use
--- this when you want to alter the keymap lexer based on the outcome of
--- some IO action. Altering the keymap based on the input to  the keymap
--- is achieved by threading a state variable in the keymap itself.
---
-metaM :: Keymap -> IO ()
-metaM km = throwDyn (MetaActionException km)
-
-------------------------------------------------------------------------
 
 

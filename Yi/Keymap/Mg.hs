@@ -61,9 +61,7 @@
 module Yi.Keymap.Mg (keymap) where
 
 import Yi.Yi         hiding ( keymap )
-import Yi.Editor            ( Action, Keymap )
 import Yi.Char
-import Yi.Interact
 
 import Numeric              ( showOct )
 import Data.Char            ( ord, chr )

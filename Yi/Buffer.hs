@@ -25,7 +25,6 @@
 module Yi.Buffer where
 
 import Text.Regex.Posix.Wrap    ( Regex  )
-import Control.Monad            ( when )
 import Yi.FastBuffer
 import Yi.Undo
 
@@ -33,8 +32,13 @@ import Yi.Debug
 import Data.IORef
 import Data.Unique              ( newUnique, Unique )
 import Control.Concurrent.MVar
-
-
+import Yi.Event
+import Yi.Keymap
+import Control.Concurrent   ( forkIO )
+import Control.Concurrent.Chan
+import Control.Monad
+import Control.Exception
+import {-# source #-} Yi.Editor
 --
 -- | The 'Buffer' class defines editing operations over one-dimensional`
 -- mutable buffers, which maintain a current /point/.
@@ -44,14 +48,17 @@ type Point = Yi.FastBuffer.Point --  to re-export.
 
 data BufferMode = ReadOnly | ReadWrite
 
+
 data FBuffer =
-        FBuffer { name   :: !String           -- ^ immutable buffer name
-                , bkey   :: !Unique           -- ^ immutable unique key
+        FBuffer { name   :: !String                  -- ^ immutable buffer name
+                , bkey   :: !Unique                  -- ^ immutable unique key
                 , file   :: !(MVar (Maybe FilePath)) -- ^ maybe a filename associated with this buffer
-                , undos  :: !(MVar URList)      -- ^ undo/redo list
+                , undos  :: !(MVar URList)           -- ^ undo/redo list
                 , rawbuf :: !BufferImpl
-                , bmode  :: !(MVar BufferMode)  -- ^ a read-only bit
-                , preferCol :: !(IORef (Maybe Int))      -- ^ prefered column to arrive at when we do a lineDown / lineUp
+                , bmode  :: !(MVar BufferMode)       -- ^ a read-only bit
+                , preferCol :: !(IORef (Maybe Int))  -- ^ prefered column to arrive at when we do a lineDown / lineUp
+                , bufferKeymap :: !Keymap        -- ^ user-configurable keymap
+                , bufferInput     :: Chan Event                 -- ^ input stream
                 }
 
 instance Eq FBuffer where
@@ -63,11 +70,12 @@ instance Show FBuffer where
 lift :: (BufferImpl -> x) -> (FBuffer -> x)
 lift f = \b -> f (rawbuf b)
 
-hNewB :: FilePath -> IO FBuffer
-hNewB nm = do s <- readFile nm
-              b <- newB nm s
-              setfileB b nm
-              return b
+hNewB :: Keymap -> FilePath -> IO FBuffer
+hNewB km nm = do 
+  s <- readFile nm
+  b <- newB km nm s
+  setfileB b nm
+  return b
 
 hPutB :: FBuffer -> FilePath -> IO ()
 hPutB b nm = elemsB b >>= writeFile nm
@@ -98,23 +106,52 @@ redo        :: FBuffer -> IO ()
 redo fb@(FBuffer { undos = mv }) = modifyMVar_ mv (redoUR (rawbuf fb))
 
 -- | Create buffer named @nm@ with contents @s@
-newB :: String -> [Char] -> IO FBuffer
-newB nm s = do 
+newB :: Keymap -> String -> [Char] -> IO FBuffer
+newB km nm s = do 
     pc <- newIORef Nothing
     mv <- newBI s
     mv' <- newMVar emptyUR
     mvf <- newMVar Nothing      -- has name, not connected to a file
     rw  <- newMVar ReadWrite
     u   <- newUnique
-    return $ FBuffer { name   = nm
-                     , bkey   = u
-                     , file   = mvf
-                     , undos  = mv'
-                     , rawbuf = mv
-                     , bmode  = rw
-                     , preferCol = pc 
-                     }
-                     
+    ch  <- newChan
+    let result = FBuffer { name   = nm
+                         , bkey   = u
+                         , file   = mvf
+                         , undos  = mv'
+                         , rawbuf = mv
+                         , bmode  = rw
+                         , preferCol = pc 
+                         , bufferKeymap = km
+                         , bufferInput = ch
+                         }
+    forkIO (eventLoop result)
+    return result                    
+  where
+    -- | The editor main loop. Read key strokes from the ui and interpret
+    -- them using the current key map. Keys are bound to core actions.
+    eventLoop :: FBuffer -> IO ()
+    eventLoop b = do
+        let run km = do
+            touchST -- start with a refresh; so we assert a clean state wrt. the user pov.
+            catchDyn (do sequence_ . map interactive . km  =<< getChanContents (bufferInput b)
+                         logPutStrLn "Keymap execution ended")
+                         (\(MetaActionException km') -> run km')
+        repeatM_ $ handle handler (run (bufferKeymap b))
+
+        where
+          repeatM_ a = a >> repeatM_ a
+          handler e = logPutStrLn (show e)
+
+
+-- | Make an action suitable for an interactive run.
+-- Editor state will be refreshed after
+interactive :: IO () -> IO ()
+interactive action = action >> touchST
+
+
+-- TODO if there is an exception, the key bindings will be reset...
+ 
 
 -- | Free any resources associated with this buffer
 finaliseB :: FBuffer -> IO ()

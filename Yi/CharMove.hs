@@ -75,6 +75,7 @@ import Yi.Core
 import Yi.Editor
 import Yi.Window
 import Text.Regex.Posix.String ( compExtended, compile, execBlank)
+import Yi.Keymap
 
 import Data.Char
 import qualified Data.Map as M
