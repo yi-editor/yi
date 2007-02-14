@@ -71,6 +71,8 @@ import Data.IORef
 import System.Exit
 import System.Posix.Signals         ( raiseSignal, sigTSTP )
 
+import qualified Data.ByteString.Char8 as B
+
 ------------------------------------------------------------------------
 
 data UI = UI { 
@@ -183,8 +185,9 @@ refresh = do
     let ws = getWindows e
         wImages = map picture ws
     cmd <- readIORef (cmdline (ui e))
+    (yss,xss) <- readIORef (scrsize (ui e))
     Yi.Vty.update (vty $ ui e) 
-      pic {pImage = concat wImages ++ [withStyle (window $ uistyle e) (cmd ++ repeat ' ')],
+      pic {pImage = vertcat wImages <-> withStyle (window $ uistyle e) (take xss $ cmd ++ repeat ' '),
            pCursor = if cmdlinefocus e
                      then Cursor (length cmd) (sum $ map height $ ws)
                      else case getWindowOf e of
@@ -232,11 +235,11 @@ doDrawWindow e focused sty win = do
                              -- we always add one character which can be used to position the cursor at the end of file
                                                                                                  
     modeLine <- if m then updateModeLine win b else return Nothing
-    let modeLines = map (withStyle (modeStyle sty)) $ maybeToList $ modeLine
+    let modeLines = map (withStyle (modeStyle sty) . take w . (++ repeat ' ')) $ maybeToList $ modeLine
         modeStyle = if focused then modeline_focused else modeline        
         filler = take w (windowfill e : repeat ' ')
     
-    return win { picture = take h' (rendered ++ repeat (withStyle eofsty filler)) ++ modeLines,
+    return win { picture = vertcat (take h' (rendered ++ repeat (withStyle eofsty filler)) ++ modeLines),
                  cursor = cur,
                  bospnt = bos }
     
@@ -256,10 +259,10 @@ drawWindow e focused sty win = do
 
 -- | Renders text in a rectangle.
 -- Also returns a finite map from buffer offsets to their position on the screen.
-drawText :: Int -> Int -> Point -> Point -> Point -> Attr -> Attr -> [(Char,Attr)] -> (Pic, Point, (Int,Int))
+drawText :: Int -> Int -> Point -> Point -> Point -> Attr -> Attr -> [(Char,Attr)] -> ([Image], Point, (Int,Int))
 drawText h w topPoint point markPoint selsty wsty bufData 
-    | h == 0 || w == 0 = ([[]], topPoint, (0,0))
-    | otherwise        = (rendered, bottomPoint, pntpos)
+    | h == 0 || w == 0 = ([], topPoint, (0,0))
+    | otherwise        = (rendered_lines, bottomPoint, pntpos)
   where [startSelect, stopSelect] = sort [markPoint,point]
 
         -- | Remember the point of each char
@@ -275,12 +278,13 @@ drawText h w topPoint point markPoint selsty wsty bufData
                    [] -> (0,0)
                    (pp:_) -> pp
 
-        rendered = map (map colorChar) $ map fillLine $ lns0 -- fill lines with blanks, so the selection looks ok.
-        colorChar (c, (a, x)) = (c, pointStyle x a)
+        rendered_lines = map fillColorLine $ lns0 -- fill lines with blanks, so the selection looks ok.
+        colorChar (c, (a, x)) = renderChar (pointStyle x a) c
         pointStyle x a = if startSelect < x && x <= stopSelect && selsty /= wsty then selsty else a
 
-        fillLine [] = []
-        fillLine l = take w (l ++ repeat (' ',snd $ last l))
+        fillColorLine [] = renderHFill attr ' ' w
+        fillColorLine l = horzcat (map colorChar l) <|> renderHFill (pointStyle x a) ' ' (w - length l)
+            where (_,(a,x)) = last l
 
         -- | Cut a string in lines separated by a '\n' char. Note
         -- that we add a blank character where the \n was, so the
@@ -304,8 +308,8 @@ drawText h w topPoint point markPoint selsty wsty bufData
 
 -- TODO: The above will actually require a bit of work, in order to handle tabs.
 
-withStyle :: Style -> String -> [(Char, Attr)]
-withStyle sty str = zip str (repeat (styleToAttr sty))
+withStyle :: Style -> String -> Image
+withStyle sty str = renderBS (styleToAttr sty) (B.pack str)
 
 
 ------------------------------------------------------------------------

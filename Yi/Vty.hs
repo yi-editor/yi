@@ -1,7 +1,5 @@
 module Yi.Vty 
     (
-     Pic,    
-
      styleToAttr,
 
      module Vty
@@ -11,16 +9,14 @@ import Yi.Style as Style
 
 import Graphics.Vty as Vty
 
-type Pic = [[(Char,Attr)]]
-
 ------------------------------------------------------------------------
 
 --
 -- Combine attribute with another attribute
 --
 boldA, reverseA, nullA :: Vty.Attr -> Vty.Attr
-boldA a    = a { Vty.bold = True }
-reverseA a = a { Vty.rv = True }
+boldA       = setBold
+reverseA    = setRV
 nullA       = id
 
 ------------------------------------------------------------------------
@@ -84,4 +80,4 @@ defaultSty = Style Default Default
 styleToAttr :: Style -> Vty.Attr
 styleToAttr = ccolorToAttr . style2curses
     where ccolorToAttr ((CColor (fmod, fcolor)), (CColor (bmod, bcol))) = 
-              fmod . bmod $ Vty.attr {Vty.fg = fcolor, Vty.bg = bcol}
+              fmod . bmod . setFG fcolor . setBG bcol $ attr

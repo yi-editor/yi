@@ -49,7 +49,7 @@ data Window =
        ,toslineno   :: !Int            -- ^ line number of top of screen
                        
        ,bospnt      :: !Int            -- ^ the buffer point of the bottom of screen
-       ,picture     :: !Pic            -- ^ the picture currently displayed.
+       ,picture     :: !Image          -- ^ the picture currently displayed.
     }
 
 
@@ -83,7 +83,7 @@ emptyWindow b (h,w) = do
                    ,tospnt    = 0
                    ,bospnt    = 0
                    ,toslineno = 1      -- start on line 1
-                   ,picture = [[]]
+                   ,picture = empty
               }
     return win
 

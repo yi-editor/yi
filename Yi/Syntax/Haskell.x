@@ -72,26 +72,26 @@ haskell :-
 <0> $white+                                     { c attr } -- whitespace
 
 <nestcomm> {
-  "{-"                                          { m (subtract 1) attr{fg = red} }
-  "-}"                                          { m (+1) attr{fg = red} }
-  .                                             { c attr{fg = red} }
+  "{-"                                          { m (subtract 1) redA }
+  "-}"                                          { m (+1) redA }
+  .                                             { c redA }
 }
 
 <0> {
   "--"\-* $symbol $symchar*                     { c attr }
-  "--"\-*[^\n]*                                 { c attr{fg = red} }
+  "--"\-*[^\n]*                                 { c redA }
 
- "{-"                                           { m (subtract 1) attr{fg = red} }
+ "{-"                                           { m (subtract 1) redA }
 
  $special                                       { c attr }
 
- @reservedid                                    { c attr{fg=blue, bold=True} }
+ @reservedid                                    { c (setFG blue (setBold attr)) }
  @varid                                         { c attr }
- @conid                                         { c attr{fg=green} }
+ @conid                                         { c greenA }
 
- @reservedop                                    { c attr{fg=yellow} }
- @varsym                                        { c attr{fg=yellow} }
- @consym                                        { c attr{fg=green} }
+ @reservedop                                    { c yellowA }
+ @varsym                                        { c yellowA }
+ @consym                                        { c greenA }
 
  @decimal 
   | 0[oO] @octal
@@ -100,12 +100,14 @@ haskell :-
  @decimal \. @decimal @exponent?
   | @decimal @exponent                          { c attr }
 
- \' ($graphic # [\'\\] | " " | @escape) \'      { c attr{fg=green} }
- \" @string* \"                                 { c attr{fg=green} }
- .                                              { c attr{fg=red, bold=True} }
+ \' ($graphic # [\'\\] | " " | @escape) \'      { c greenA }
+ \" @string* \"                                 { c greenA }
+ .                                              { c (setBold redA) }
 }
 
 {
+
+redA = setFG red attr ; greenA = setFG green attr ; yellowA = setFG yellow attr
 
 type HlState = Int
 
