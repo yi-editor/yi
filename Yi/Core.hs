@@ -155,7 +155,10 @@ module Yi.Core (
         mapRangeE,              -- :: Int -> Int -> (Buffer' -> Action) -> Action
 
         -- * Interacting with external commands
-        pipeE                   -- :: String -> IO String
+        pipeE,                   -- :: String -> IO String
+ 
+        -- * Minibuffer
+        spawnMinibufferE
 
    ) where
 
@@ -720,8 +723,9 @@ prevBufW = do
 --
 fnewE  :: FilePath -> Action
 fnewE f = do
+    km <- readEditor defaultKeymap
     e  <- doesFileExist f
-    b  <- if e then hNewBuffer f else stringToNewBuffer f []
+    b  <- if e then hNewBuffer f else stringToNewBuffer f [] km
     setfileB b f        -- and associate with file f
     deleteThisWindow
     w <- UI.newWindow b
@@ -733,7 +737,8 @@ fnewE f = do
 -- buffers (like scratch or minibuffer)
 newBufferE :: String -> String -> Action
 newBufferE f s = do
-    b <- stringToNewBuffer f s
+    km <- readEditor defaultKeymap
+    b <- stringToNewBuffer f s km
     splitE
     deleteThisWindow
     w <- UI.newWindow b
@@ -879,17 +884,14 @@ mapRangeE from to fn
                 loop (max 0 (to - from))
             moveTo b from
 
--- ---------------------------------------------------------------------
--- | The metaM action. This is our mechanism for having Actions alter
--- the current keymap. It is similar to the Ctk lexer\'s meta action.
--- It takes a new keymap to use, throws a dynamic exception, which
--- interrupts the main loop, causing it to restart with the given
--- exception. An alternative would be to change all action types to
--- @IO (Maybe Keymap)@, and check the result of each action as it is
--- forced. Currently, my feeling is that metaM will be rare enough not
--- to bother with this solution. Also, the dynamic exception solution
--- changes only a couple of lines of code.
---
 
+-- TODO:
+-- add prompt
+-- resize
+-- hide modeline (?)
 
-
+spawnMinibufferE :: String -> Keymap -> Action
+spawnMinibufferE prompt km =
+    do b <- stringToNewBuffer ("Minibuffer: " ++ prompt) [] km 
+       w <- UI.newWindow b
+       Editor.setWindow w

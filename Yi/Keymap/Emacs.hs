@@ -40,17 +40,6 @@ import qualified Yi.UI as UI  -- FIXME this module should not depend on UI
 
 import Control.Monad
 
--- * Dynamic state-components
-
-data MiniBuf = MiniBuf Window FBuffer
-    deriving Typeable
-
-instance Initializable MiniBuf where
-    initial = do b <- stringToNewBuffer "*minibuf*" []
-                 w <- UI.newWindow b
-                 return $ MiniBuf w b
-
-
 -- * The keymap abstract definition
 
 type KProc a = Interact Event a
@@ -187,21 +176,6 @@ readArg' acc = do
       Event (KASCII d) [] | isDigit d -> readArg' $ Just $ 10 * (fromMaybe 0 acc) + (ord d - ord '0')
       _ -> write $ setDynamic $ UniversalArg $ Just $ fromMaybe 4 acc
 
-
--- TODO:
--- buffer local keymap: this requires Core support
--- ensure that it quits (ok[ret]/cancel[C-g])
--- add prompt
--- resize: this requires Core support
--- prevent recursive minibuffer usage
--- hide modeline
-
-spawnMinibuffer :: String -> Process -> Action
-spawnMinibuffer _prompt process =
-    do MiniBuf w _b <- getDynamic
-       setWinE w
-       metaM (runKeymap process)
-
 rebind :: Process -> String -> Process -> Process
 rebind kl k kp = debug ("(rebound "++k++")") >> ((events (readKey k) >> kp) <++ kl)
 
@@ -216,7 +190,7 @@ debug :: String -> Process
 debug = write . logPutStrLn
 
 withMinibuffer :: String -> (String -> Action) -> Action
-withMinibuffer prompt act = spawnMinibuffer prompt (rebind normalKeymap "RET" (write innerAction))
+withMinibuffer prompt act = spawnMinibufferE prompt (runProcess (rebind normalKeymap "RET" (write innerAction)))
     -- read contents of current buffer (which should be the minibuffer), and
     -- apply it to the desired action
     where innerAction :: Action

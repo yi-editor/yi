@@ -154,10 +154,10 @@ hNewBuffer f =
 --
 -- | Create and fill a new buffer, using contents of string.
 --
-stringToNewBuffer :: FilePath -> String -> IO FBuffer
-stringToNewBuffer f cs =
+stringToNewBuffer :: FilePath -> String -> Keymap -> IO FBuffer
+stringToNewBuffer f cs km =
     modifyEditor $ \e@(Editor{buffers=bs}) -> do
-        b <- newB (defaultKeymap e) f cs
+        b <- newB km f cs
         let e' = e { buffers = M.insert (keyB b) b bs } :: Editor
         return (e', b)
 

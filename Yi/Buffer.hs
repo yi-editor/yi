@@ -57,8 +57,8 @@ data FBuffer =
                 , rawbuf :: !BufferImpl
                 , bmode  :: !(MVar BufferMode)       -- ^ a read-only bit
                 , preferCol :: !(IORef (Maybe Int))  -- ^ prefered column to arrive at when we do a lineDown / lineUp
-                , bufferKeymap :: !Keymap        -- ^ user-configurable keymap
-                , bufferInput     :: Chan Event                 -- ^ input stream
+                , bufferKeymap :: Keymap        -- ^ user-configurable keymap
+                , bufferInput  :: Chan Event                 -- ^ input stream
                 }
 
 instance Eq FBuffer where
@@ -89,6 +89,16 @@ getfileB (FBuffer { file = mvf }) = readMVar mvf
 setfileB :: FBuffer -> FilePath -> IO ()
 setfileB (FBuffer { file = mvf }) f =
     modifyMVar_ mvf $ const $ return (Just f)
+
+{-
+setKeymapB :: FBuffer -> Keymap -> IO ()
+setKeymapB (FBuffer { bufferKeymap = km }) m =
+    modifyMVar_ km $ const $ return m
+    rebootKmThread
+
+getKeymapB :: FBuffer -> IO Keymap
+getKeymapB (FBuffer { bufferKeymap = km }) = readMVar km
+-}
 
 keyB :: FBuffer -> Unique
 keyB (FBuffer { bkey = u }) = u
