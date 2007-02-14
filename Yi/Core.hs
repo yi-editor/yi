@@ -343,7 +343,7 @@ gotoLnE n = withBuffer_ (flip gotoLn n)
 gotoLnFromE :: Int -> Action
 gotoLnFromE n = withBuffer_ (flip gotoLnFrom n)
 
--- | Go to a particular point. ToDo don't reset unless we wander off the screen
+-- | Go to a particular point.
 gotoPointE :: Int -> Action
 gotoPointE p = withBuffer_ $ flip moveTo p
 
