@@ -451,14 +451,14 @@ hasRoomForExtraWindow = do
     i     <- sizeWindows
     (y,_) <- screenSize =<< readEditor ui -- bah
     let (sy,r) = getY y i
-    return $ sy + r <= 4  -- min window size
+    logPutStrLn $ " (sy,r) = " ++ show (sy,r)
+    return $ sy + r > 4  -- min window size
 
--- | calculate window heights, given all the windows and current height
--- doesn't take into account modelines
+-- | Calculate window heights, given all the windows and current height.
+-- Does not take into account modelines
 getY :: Int -> Int -> (Int,Int)
-getY h 0 = (h, 0)
-getY h 1 = (h, 0)
-getY h l = h `quotRem` l
+getY screenHeight 0               = (screenHeight, 0)
+getY screenHeight numberOfWindows = screenHeight `quotRem` numberOfWindows
 
 setCmdLine :: UI -> String -> IO ()
 setCmdLine i s = do 
