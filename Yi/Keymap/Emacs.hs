@@ -21,10 +21,7 @@
 
 module Yi.Keymap.Emacs ( keymap ) where
 
-import Yi.Editor hiding     ( keymap )
 import Yi.Yi hiding         ( keymap )
-import Yi.Window
-import Yi.Buffer
 import Yi.Interact
 import Yi.Debug
 
@@ -35,7 +32,6 @@ import Yi.Keymap.Emacs.Keys
 import Data.Char
 import Data.Maybe
 import Data.List
-import Data.Dynamic
 import qualified Yi.UI as UI  -- FIXME this module should not depend on UI
 
 import Control.Monad
@@ -197,7 +193,6 @@ withMinibuffer prompt act = spawnMinibufferE prompt (runProcess (rebind normalKe
           innerAction = do lineString <- readAllE
                            closeE
                            act lineString
-                           metaM (runKeymap normalKeymap)
 
 scrollDownE :: Action
 scrollDownE = withUnivArg $ \a ->
