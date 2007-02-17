@@ -83,20 +83,21 @@ start = do
   onKeyPress win (processEvent ch)
 
   vb <- vBoxNew False 1
+  vb' <- vBoxNew False 1
   set win [ containerChild := vb ]
   onDestroy win mainQuit
                 
   cmd <- labelNew Nothing
   set cmd [ miscXalign := 0.01 ]
-  set vb [ containerChild := cmd, 
-           boxChildPacking cmd := PackNatural, 
-           boxChildPosition cmd := 10000 ] 
+  set vb [ containerChild := vb', 
+           containerChild := cmd, 
+           boxChildPacking cmd := PackNatural] 
 
   -- use our magic threads thingy (http://haskell.org/gtk2hs/archives/2005/07/24/writing-multi-threaded-guis/)
   timeoutAddFull (yield >> return True) priorityDefaultIdle 50
 
   widgetShowAll win
-  return $ UI win vb cmd
+  return $ UI win vb' cmd
 
 main :: IO ()
 main = do logPutStrLn "GTK main loop running"
@@ -160,8 +161,7 @@ keyTable = M.fromList
 
 addWindow :: UI -> Window -> IO ()
 addWindow i w = do
-  set (uiBox i) [containerChild := widget w, 
-                 boxChildPosition (widget w) := 0]
+  set (uiBox i) [containerChild := widget w]
   f <- fontDescriptionNew
   fontDescriptionSetFamily f "Monospace"
   widgetModifyFont (textview w) (Just f)
