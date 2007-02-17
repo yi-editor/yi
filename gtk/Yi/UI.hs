@@ -239,10 +239,13 @@ setCmdLine i s = do
 setWindowBuffer :: FBuffer -> Maybe Window -> IO ()
 setWindowBuffer b mw = do
     logPutStrLn $ "Setting buffer for " ++ show mw ++ " to " ++ show b
-    case mw of 
-      Just w -> textViewSetBuffer (textview w) (textbuf $ rawbuf b)
-      Nothing -> newWindow b >> return ()
+    w'' <- case mw of 
+      Just w -> do textViewSetBuffer (textview w) (textbuf $ rawbuf b)
+                   let w' = w { bufkey = bkey b }
+                   return $ w' { key = key w }
+      Nothing -> newWindow b
                    -- if there is no window, just create a new one.
+    modifyEditor_ $ \e -> return $ e { windows = M.insert (key w'') w'' (windows e) }
     debugWindows 
 
 
