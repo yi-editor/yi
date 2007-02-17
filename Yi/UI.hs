@@ -410,12 +410,6 @@ deleteWindow (Just win) = do
     [] -> logPutStrLn "All windows deleted!"
     (w:_) -> setWindow w 
 
-deleteWindow' :: Window -> IO ()
-deleteWindow' win = modifyEditor_ $ \e -> do
-    logPutStrLn $ "Deleting window #" ++ show (hashUnique $ key win)
-    let ws = M.delete (key win) (windows e) -- delete window
-    return e { windows = ws }
-
 ------------------------------------------------------------------------
 
 -- | Update height of windows in window set

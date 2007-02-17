@@ -213,14 +213,15 @@ shrinkWindow _ = return () -- TODO
 --
 deleteWindow :: (Maybe Window) -> IO ()
 deleteWindow Nothing    = return ()
-deleteWindow (Just win) = modifyEditor_ $ \e -> deleteWindow' e win
-
--- internal, non-thread safe
-deleteWindow' :: Editor -> Window -> IO Editor
-deleteWindow' e win = do
-  let i = ui e
+deleteWindow (Just win) = do
+  deleteWindow' win
+  i <- readEditor ui
   containerRemove (uiBox i) (widget win)
-  return e
+  -- now switch focus to a random window
+  ws <- readEditor getWindows
+  case ws of
+    [] -> logPutStrLn "All windows deleted!"
+    (w:_) -> setWindow w 
 
 -- | Has the frame enough room for an extra window.
 hasRoomForExtraWindow :: IO Bool
@@ -237,10 +238,9 @@ setCmdLine i s = do
 -- | Display the given buffer in the given window.
 setWindowBuffer :: FBuffer -> Maybe Window -> IO ()
 setWindowBuffer b mw = do
-    logPutStrLn $ "Setting buffer for " ++ show mw
+    logPutStrLn $ "Setting buffer for " ++ show mw ++ " to " ++ show b
     case mw of 
-      Just w -> do
-              textViewSetBuffer (textview w) (textbuf $ rawbuf b)
+      Just w -> textViewSetBuffer (textview w) (textbuf $ rawbuf b)
       Nothing -> newWindow b >> return ()
                    -- if there is no window, just create a new one.
     debugWindows 

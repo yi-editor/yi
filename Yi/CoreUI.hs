@@ -20,13 +20,18 @@
 
 -- UI-related code common between all frontends.
 
-
 module Yi.CoreUI where
 
+import Prelude hiding (error)
 import Yi.UI
 import Yi.Editor
-
+import Yi.Debug
+import Yi.Buffer
+import Yi.Window
+import qualified Data.Map as M
 import Data.List
+
+
 
 -- | Rotate focus to the next window
 nextWindow :: IO ()
@@ -50,3 +55,26 @@ shiftFocus f = do
     Just w | Just i <- elemIndex w ws
           -> setWindow (ws !! ((f i) `mod` (length ws)))
     _     -> error "Editor: current window has been lost."
+
+-- | Delete the focused window
+deleteThisWindow :: IO ()
+deleteThisWindow = logPutStrLn "deleting current window" >> getWindow >>= deleteWindow  
+
+-- | Close any windows onto the buffer b, then free the buffer
+killBufferWindows :: FBuffer -> IO ()
+killBufferWindows b = do
+  logPutStrLn $ "KillBufferWindows: " ++ nameB b
+  ws <- readEditor getWindows
+  mapM_ deleteWindow $ map Just $ filter (\w -> bufkey w == keyB b) ws
+
+-- | Close any windows onto the buffer associated with name 'n', then free the buffer
+killBufferAndWindows :: String -> IO ()
+killBufferAndWindows n = do
+  bs <- readEditor $ \e -> findBufferWithName e n
+  case bs of
+    [] -> return ()     -- no buffer to kill, so nothing to do
+    _ -> mapM_ killB bs
+    where
+        killB b = do killBufferWindows b
+                     finaliseB b  
+                     modifyEditor_ $ \e -> return $ e { buffers = M.delete (keyB b) (buffers e) }

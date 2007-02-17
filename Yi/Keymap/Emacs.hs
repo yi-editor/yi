@@ -186,7 +186,7 @@ debug :: String -> Process
 debug = write . logPutStrLn
 
 withMinibuffer :: String -> (String -> Action) -> Action
-withMinibuffer prompt act = spawnMinibufferE prompt (runProcess (rebind normalKeymap "RET" (write innerAction)))
+withMinibuffer prompt act = spawnMinibufferE prompt (runKeymap (rebind normalKeymap "RET" (write innerAction)))
     -- read contents of current buffer (which should be the minibuffer), and
     -- apply it to the desired action
     where innerAction :: Action

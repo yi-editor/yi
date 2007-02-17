@@ -220,6 +220,7 @@ startE st (confs,fn,fn') ln mfs = do
 
     logPutStrLn "Initializing First Buffer"
 
+    -- emacs-like behaviour
     newBufferE "*scratch*" $
                    "-- This buffer is for notes you don't want to save.\n" ++
                    "-- If you want to create a file, open that file,\n" ++
@@ -602,18 +603,6 @@ exchangePointAndMarkE = do m <- getMarkE
 --
 
 -- | Retrieve the extensible state
-{-
---
--- More info: GHC 6.2 and 6.4 vary quite greatly with this code, and it
--- seems like a bug, investigations continuing
---
-getDynamic :: forall a. Initializable a => IO a
-getDynamic = do
-        ps <- readEditor dynamic
-        case M.lookup (show $ typeOf (undefined :: a)) ps of
-            Nothing -> initial
-            Just x -> return $ fromJust $ fromDynamic x
--}
 
 getDynamic :: Initializable a => IO a
 getDynamic = getDynamic' (undefined :: a)

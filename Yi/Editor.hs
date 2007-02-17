@@ -43,7 +43,7 @@ import Control.Concurrent.MVar
 
 import System.IO.Unsafe         ( unsafePerformIO )
 
-import {-# source #-} Yi.UI ( UI, deleteWindow )
+import {-# source #-} Yi.UI ( UI )
 
 ------------------------------------------------------------------------
 
@@ -231,12 +231,14 @@ shiftBuffer f = readEditor $ \e ->
 
 
 ------------------------------------------------------------------------
-
--- | Delete the focused window
-deleteThisWindow :: IO ()
-deleteThisWindow = logPutStrLn "deleting current window" >> getWindow >>= deleteWindow  
     
-   
+deleteWindow' :: Window -> IO ()
+deleteWindow' win = (modifyEditor_ $ \e -> do
+    logPutStrLn $ "Deleting window #" ++ show (hashUnique $ key win)
+    let ws = M.delete (key win) (windows e) -- delete window
+    return e { windows = ws }) >> debugWindows
+  
+
 debugWindows :: IO ()
 debugWindows = do 
   ws <- readEditor getWindows
@@ -245,26 +247,6 @@ debugWindows = do
 
 killAllBuffers :: IO ()
 killAllBuffers = error "killAllBuffers undefined"
-
-
--- | Close any windows onto the buffer b, then free the buffer
-killBufferWindows :: FBuffer -> IO ()
-killBufferWindows b = do
-  logPutStrLn $ "KillBufferWindows: " ++ nameB b
-  ws <- readEditor getWindows
-  mapM_ deleteWindow $ map Just $ filter (\w -> bufkey w == keyB b) ws
-
--- | Close any windows onto the buffer associated with name 'n', then free the buffer
-killBufferAndWindows :: String -> IO ()
-killBufferAndWindows n = do
-  bs <- readEditor $ \e -> findBufferWithName e n
-  case bs of
-    [] -> return ()     -- no buffer to kill, so nothing to do
-    _ -> mapM_ killB bs
-    where
-        killB b = do killBufferWindows b
-                     finaliseB b  
-                     modifyEditor_ $ \e -> return $ e { buffers = M.delete (keyB b) (buffers e) }
 
 
 -- | turn a list of windows into an association list suitable for fromList
