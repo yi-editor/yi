@@ -172,6 +172,7 @@ import Yi.String
 import Yi.Process           ( popen )
 import Yi.Editor
 import Yi.Keymap
+import Yi.CoreUI
 
 import qualified Yi.Editor as Editor
 import qualified Yi.Style as Style
@@ -746,7 +747,7 @@ newBufferE f s = do
     b <- stringToNewBuffer f s km
     canSplit <- UI.hasRoomForExtraWindow
     if canSplit 
-      then UI.newWindow b >>= setWindow
+      then UI.newWindow b >>= UI.setWindow
       else return ()
     getWindow >>= UI.setWindowBuffer b
     logPutStrLn "newBufferE ended"
@@ -760,7 +761,7 @@ spawnMinibufferE :: String -> Keymap -> Action
 spawnMinibufferE prompt km =
     do b <- stringToNewBuffer ("Minibuffer: " ++ prompt) [] km 
        w <- UI.newWindow b
-       Editor.setWindow w
+       UI.setWindow w
 
 
 -- | Write current buffer to disk, if this buffer is associated with a file
@@ -821,15 +822,15 @@ setSynE sy = withBuffer_ (\b -> setSyntaxB b sy)
 
 -- | Make the next window (down the screen) the current window
 nextWinE :: Action
-nextWinE = Editor.nextWindow
+nextWinE = nextWindow
 
 -- | Make the previous window (up the screen) the current window
 prevWinE :: Action
-prevWinE = Editor.prevWindow
+prevWinE = prevWindow
 
 -- | Make window with key @k@ the current window
 setWinE :: Window -> Action
-setWinE = Editor.setWindow
+setWinE = UI.setWindow
 
 -- | Split the current window, opening a second window onto this buffer.
 -- Windows smaller than 3 lines cannot be split.
@@ -844,7 +845,7 @@ splitE = do
                 Nothing -> nopE
                 Just w  -> do b <- getBufferWith (bufkey w)
                               w' <- UI.newWindow b
-                              Editor.setWindow w'
+                              UI.setWindow w'
 
 -- | Enlarge the current window
 enlargeWinE :: Action

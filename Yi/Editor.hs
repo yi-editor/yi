@@ -301,20 +301,6 @@ getWindowIndOf e = case curwin e of
         Nothing -> Nothing
         k       -> let win = findWindowWith e k
                    in elemIndex win (M.elems $ windows e)
-
---
--- | Set current window
--- !! reset the buffer point from the window point
---
--- Factor in shift focus.
---
-setWindow :: Window -> IO ()
-setWindow w = do
-  modifyEditor_ $ \e -> do
-                logPutStrLn $ "Focusing window #" ++ show (hashUnique $ key w)
-                let fm = windows e                 
-                return $ e { windows = M.insert (key w) w fm, curwin = Just $ key w }
-  debugWindows
     
 --
 -- | How many windows do we have
@@ -360,37 +346,7 @@ withBuffer_ :: (FBuffer -> IO a) -> IO ()
 withBuffer_ f = withWindow_ (const f)
 
 
--- ---------------------------------------------------------------------
--- | Rotate focus to the next window
---
-nextWindow :: IO ()
-nextWindow = shiftFocus (+1)
 
---
--- | Rotate focus to the previous window
---
-prevWindow :: IO ()
-prevWindow = shiftFocus (subtract 1)
-
---
--- | Shift focus to the nth window, modulo the number of windows
---
-windowAt :: Int -> IO ()
-windowAt n = shiftFocus (const n)
-
---
--- | Set the new current window using a function applied to the old
--- window's index
--- !! reset buffer point from window point
---
-shiftFocus :: (Int -> Int) -> IO ()
-shiftFocus f = do
-  ws <- readEditor getWindows
-  mw <- getWindow
-  case mw of
-    Just w | Just i <- elemIndex w ws
-          -> setWindow (ws !! ((f i) `mod` (length ws)))
-    _     -> error "Editor: current window has been lost."
 
 -- ---------------------------------------------------------------------
 -- | Given a keymap function, set the user-defineable key map to that function

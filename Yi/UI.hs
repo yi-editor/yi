@@ -36,7 +36,7 @@ module Yi.UI (
 
         -- * Window manipulation
         newWindow, enlargeWindow, shrinkWindow, deleteWindow,
-        hasRoomForExtraWindow, setWindowBuffer,
+        hasRoomForExtraWindow, setWindowBuffer, setWindow,
 
         -- * Command line
         setCmdLine,
@@ -479,4 +479,17 @@ setWindowBuffer b mw = do
              Nothing -> newWindow b -- if there is no window, just create a new one.
     modifyEditor_ $ \e -> return $ e { windows = M.insert (key w'') w'' (windows e) }
     debugWindows 
-    logPutStrLn "setWindowBuffer ended"
+
+--
+-- | Set current window
+-- !! reset the buffer point from the window point
+--
+-- Factor in shift focus.
+--
+setWindow :: Window -> IO ()
+setWindow w = do
+  modifyEditor_ $ \e -> do
+                logPutStrLn $ "Focusing " ++ show w
+                let fm = windows e                 
+                return $ e { windows = M.insert (key w) w fm, curwin = Just $ key w }
+  debugWindows

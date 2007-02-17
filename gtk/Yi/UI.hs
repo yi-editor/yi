@@ -30,7 +30,7 @@ module Yi.UI (
 
         -- * Window manipulation
         newWindow, enlargeWindow, shrinkWindow, deleteWindow,
-        hasRoomForExtraWindow, setWindowBuffer,
+        hasRoomForExtraWindow, setWindowBuffer, setWindow,
 
         -- * Command line
         setCmdLine,
@@ -46,6 +46,7 @@ module Yi.UI (
 import Prelude hiding (error)
 
 import Yi.Buffer
+import Yi.FastBuffer
 import Yi.Editor
 import Yi.Window as Window
 import Yi.Event
@@ -164,7 +165,7 @@ addWindow i w = do
   f <- fontDescriptionNew
   fontDescriptionSetFamily f "Monospace"
   widgetModifyFont (textview w) (Just f)
-  textview w `onFocusIn` (\_event -> setWindow w >> return True)
+  textview w `onFocusIn` (\_event -> (modifyEditor_ $ \e -> return $ e { curwin = Just $ key w }) >> return True)
   widgetShowAll (widget w)
 
 
@@ -189,6 +190,7 @@ suspend = do
 newWindow :: FBuffer -> IO Window
 newWindow b = modifyEditor $ \e -> do
     win <- emptyWindow b
+    logPutStrLn $ "Creating " ++ show win
     addWindow (ui e) win
     let e' = e { windows = M.fromList $ mkAssoc (win : M.elems (windows e)) }
     return (e', win)
@@ -236,12 +238,23 @@ setCmdLine i s = do
 setWindowBuffer :: FBuffer -> Maybe Window -> IO ()
 setWindowBuffer b mw = do
     logPutStrLn $ "Setting buffer for " ++ show mw
-    w'' <- case mw of 
-             Just w -> do
-                     w' <- emptyWindow b
-                     return $ w' { key = key w } 
-                     -- reuse the window's key (so it ends in the same place on the screen)
-             Nothing -> newWindow b -- if there is no window, just create a new one.
-    modifyEditor_ $ \e -> return $ e { windows = M.insert (key w'') w'' (windows e) }
+    case mw of 
+      Just w -> do
+              textViewSetBuffer (textview w) (textbuf $ rawbuf b)
+      Nothing -> newWindow b >> return ()
+                   -- if there is no window, just create a new one.
     debugWindows 
-    logPutStrLn "setWindowBuffer ended"
+
+
+--
+-- | Set current window
+-- !! reset the buffer point from the window point
+--
+-- Factor in shift focus.
+--
+setWindow :: Window -> IO ()
+setWindow w = do
+  logPutStrLn $ "Focusing " ++ show w 
+  modifyEditor_ $ \e -> return $ e { curwin = Just $ key w }
+  widgetGrabFocus (textview w) -- This doesn't seem to do the trick; would a gtk expert help?
+  debugWindows
