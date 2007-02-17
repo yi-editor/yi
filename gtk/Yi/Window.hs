@@ -24,7 +24,7 @@ module Yi.Window where
 import Yi.FastBuffer
 import Yi.Buffer
 
-import Data.Unique              ( Unique, newUnique )
+import Data.Unique              ( Unique, newUnique, hashUnique )
 
 import Graphics.UI.Gtk hiding (Window)
 
@@ -51,6 +51,9 @@ instance Ord Window where
     Window { key = u } `compare` Window { key = v }  = u `compare` v
     Window { key = u } <     Window { key = v }      = u <     v
 
+instance Show Window where
+    show Window { key = u } = "Window #" ++ show (hashUnique u)
+
 -- ---------------------------------------------------------------------
 -- Construction
 
@@ -60,8 +63,8 @@ instance Ord Window where
 -- The origin, height and width should be calculated with reference to
 -- all existing windows.
 --
-emptyWindow :: FBuffer -> (Int,Int) -> IO Window
-emptyWindow b (_h,_w) = do
+emptyWindow :: FBuffer -> IO Window
+emptyWindow b = do
     wu <- newUnique
     v <- textViewNewWithBuffer (textbuf $ rawbuf b)
     scroll <- scrolledWindowNew Nothing Nothing
@@ -83,7 +86,7 @@ emptyWindow b (_h,_w) = do
 -- not hardcoded.
 --
 updateModeLine :: Window -> FBuffer -> IO (Maybe String)
-updateModeLine w' b = return Nothing -- FIXME
+updateModeLine _w' _b = return Nothing -- FIXME
 
 --
 -- | Give a point, and the file size, gives us a percent string

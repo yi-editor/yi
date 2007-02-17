@@ -10,7 +10,7 @@ module Yi.Debug (
 import Control.Concurrent
 import Data.IORef
 import System.IO        
-import System.IO.Unsafe ( unsafePerformIO, unsafeInterleaveIO )
+import System.IO.Unsafe ( unsafePerformIO )
 import System.Time
 
 dbgHandle :: IORef Handle

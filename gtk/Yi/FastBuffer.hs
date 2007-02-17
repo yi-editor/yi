@@ -70,7 +70,7 @@ writeChars buf cs p = do
   textBufferInsert buf start cs
 {-# INLINE writeChars #-}
 
-
+insertN' :: TextBuffer -> String -> IO ()
 insertN' buf cs = do 
   --logPutStrLn "insertN'"
   textBufferInsertAtCursor buf cs
@@ -84,7 +84,7 @@ deleteN' tb n p = do
 {-# INLINE deleteN' #-}
 
 
-
+lineMove :: (Int -> Int) -> BufferImpl -> IO ()
 lineMove f b = do
   let tb = textbuf b
       p = point b 

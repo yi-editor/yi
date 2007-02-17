@@ -25,10 +25,12 @@ module Yi.UI (
         -- * UI initialisation
         start, end, suspend, main,
 
+        -- * Refresh
+        refreshAll,
+
         -- * Window manipulation
-        newWindow, enlargeWindow, shrinkWindow, 
-        doResizeAll, deleteWindow, deleteWindow',
-        hasRoomForExtraWindow,
+        newWindow, enlargeWindow, shrinkWindow, deleteWindow,
+        hasRoomForExtraWindow, setWindowBuffer,
 
         -- * Command line
         setCmdLine,
@@ -186,7 +188,7 @@ suspend = do
 --
 newWindow :: FBuffer -> IO Window
 newWindow b = modifyEditor $ \e -> do
-    win  <- emptyWindow b (1,1) -- FIXME
+    win <- emptyWindow b
     addWindow (ui e) win
     let e' = e { windows = M.fromList $ mkAssoc (win : M.elems (windows e)) }
     return (e', win)
@@ -222,11 +224,24 @@ deleteWindow' e win = do
 hasRoomForExtraWindow :: IO Bool
 hasRoomForExtraWindow = return True
 
-doResizeAll :: IO ()
-doResizeAll = return ()
+refreshAll :: IO ()
+refreshAll = return ()
 
 setCmdLine :: UI -> String -> IO ()
 setCmdLine i s = do 
   set (uiCmdLine i) [labelText := s]
 
                 
+-- | Display the given buffer in the given window.
+setWindowBuffer :: FBuffer -> Maybe Window -> IO ()
+setWindowBuffer b mw = do
+    logPutStrLn $ "Setting buffer for " ++ show mw
+    w'' <- case mw of 
+             Just w -> do
+                     w' <- emptyWindow b
+                     return $ w' { key = key w } 
+                     -- reuse the window's key (so it ends in the same place on the screen)
+             Nothing -> newWindow b -- if there is no window, just create a new one.
+    modifyEditor_ $ \e -> return $ e { windows = M.insert (key w'') w'' (windows e) }
+    debugWindows 
+    logPutStrLn "setWindowBuffer ended"
