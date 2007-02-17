@@ -166,8 +166,23 @@ addWindow i w = do
   fontDescriptionSetFamily f "Monospace"
   widgetModifyFont (textview w) (Just f)
   textview w `onFocusIn` (\_event -> (modifyEditor_ $ \e -> return $ e { curwin = Just $ key w }) >> return True)
+  textview w `onMoveCursor` \step amount user -> do
+      logPutStrLn $ "moveCursor: " ++ show step ++ show amount ++ show user
+      -- gtk experts: we don't seem to get any of those events... why?
+      --forgetPerferCol (findBufferWith e (bufkey w))
   widgetShowAll (widget w)
 
+instance Show MovementStep where
+    show MovementLogicalPositions = "MovementLogicalPosition"		
+    show MovementVisualPositions  = "MovementVisualPositions"         
+    show MovementWords	      = "MovementWords	        " 
+    show MovementDisplayLines     = "MovementDisplayLines	" 
+    show MovementDisplayLineEnds  = "MovementDisplayLineEnds"         
+    show MovementParagraphs	      = "MovementParagraphs	"         
+    show MovementParagraphEnds    = "MovementParagraphEnds	" 
+    show MovementPages	      = "MovementPages	        " 
+    show MovementBufferEnds	      = "MovementBufferEnds	"         
+    show MovementHorizontalPages  = "MovementHorizontalPages"         
 
 -- | Clean up and go home
 end :: UI -> IO ()
