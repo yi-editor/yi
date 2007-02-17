@@ -29,20 +29,21 @@ import Yi.Window
 import Yi.Style                 ( uiStyle, UIStyle )
 import Yi.Event
 import Yi.Keymap
+import Yi.Debug
+import Prelude hiding (error)
 
 import Data.List                ( elemIndex )
-import Data.Unique              ( Unique )
+import Data.Unique              ( Unique, hashUnique )
 import Data.Dynamic
 import qualified Data.Map as M
 
-import Control.Monad            ( foldM )
 import Control.Concurrent       ( killThread, ThreadId )
 import Control.Concurrent.Chan  ( Chan )
 import Control.Concurrent.MVar
 
 import System.IO.Unsafe         ( unsafePerformIO )
 
-import {-# source #-} Yi.UI ( UI, deleteWindow, deleteWindow' )
+import {-# source #-} Yi.UI ( UI, deleteWindow )
 
 ------------------------------------------------------------------------
 
@@ -155,7 +156,8 @@ hNewBuffer f =
 -- | Create and fill a new buffer, using contents of string.
 --
 stringToNewBuffer :: FilePath -> String -> Keymap -> IO FBuffer
-stringToNewBuffer f cs km =
+stringToNewBuffer f cs km = do
+    logPutStrLn $ "stringToNewBuffer: " ++ show f
     modifyEditor $ \e@(Editor{buffers=bs}) -> do
         b <- newB km f cs
         let e' = e { buffers = M.insert (keyB b) b bs } :: Editor
@@ -229,28 +231,40 @@ shiftBuffer f = readEditor $ \e ->
 
 
 ------------------------------------------------------------------------
+
 -- | Delete the focused window
---
 deleteThisWindow :: IO ()
-deleteThisWindow = getWindow >>= deleteWindow
+deleteThisWindow = logPutStrLn "deleting current window" >> getWindow >>= deleteWindow  
+    
+   
+debugWindows :: IO ()
+debugWindows = do 
+  ws <- readEditor getWindows
+  w <- readEditor curwin
+  logPutStrLn $ "Editor windows: " ++ show ws ++ " current window " ++ show (fmap hashUnique w)
 
 killAllBuffers :: IO ()
-killAllBuffers = undefined
+killAllBuffers = error "killAllBuffers undefined"
+
+
+-- | Close any windows onto the buffer b, then free the buffer
+killBufferWindows :: FBuffer -> IO ()
+killBufferWindows b = do
+  logPutStrLn $ "KillBufferWindows: " ++ nameB b
+  ws <- readEditor getWindows
+  mapM_ deleteWindow $ map Just $ filter (\w -> bufkey w == keyB b) ws
 
 -- | Close any windows onto the buffer associated with name 'n', then free the buffer
-killBuffer :: String -> IO ()
-killBuffer n = modifyEditor_ $ \e -> do
-    case findBufferWithName e n of
-        [] -> return e     -- no buffer to kill, so nothing to do
-        bs -> foldM killB e bs
+killBufferAndWindows :: String -> IO ()
+killBufferAndWindows n = do
+  bs <- readEditor $ \e -> findBufferWithName e n
+  case bs of
+    [] -> return ()     -- no buffer to kill, so nothing to do
+    _ -> mapM_ killB bs
     where
-        killB e' b = do
-            let thiskey = keyB b
-                wls     = M.elems . windows $ e'
-                bsWin   = filter (\w -> bufkey w == thiskey) wls
-            e'' <- foldM deleteWindow' e' bsWin -- now close any windows
-            finaliseB b                         -- now free the buffer
-            return $ e'' { buffers = M.delete thiskey (buffers e') }
+        killB b = do killBufferWindows b
+                     finaliseB b  
+                     modifyEditor_ $ \e -> return $ e { buffers = M.delete (keyB b) (buffers e) }
 
 
 -- | turn a list of windows into an association list suitable for fromList
@@ -295,21 +309,13 @@ getWindowIndOf e = case curwin e of
 -- Factor in shift focus.
 --
 setWindow :: Window -> IO ()
-setWindow w = modifyEditor_ $ \e -> (setWindow' e w :: IO Editor)
-
--- | Set current window to window with this key
--- Maybe should check this is a valid window
-setWindowToThisWindow :: Window -> IO ()
-setWindowToThisWindow w = modifyEditor_ $ \e -> setWindow' e w
-
---
--- | Internal function to update window on focus or creation.
---
-setWindow' :: Editor -> Window -> IO Editor
-setWindow' e w = do
-    let fm = windows e
-    return $ e { windows = M.insert (key w) w fm, curwin = Just $ key w }
-
+setWindow w = do
+  modifyEditor_ $ \e -> do
+                logPutStrLn $ "Focusing window #" ++ show (hashUnique $ key w)
+                let fm = windows e                 
+                return $ e { windows = M.insert (key w) w fm, curwin = Just $ key w }
+  debugWindows
+    
 --
 -- | How many windows do we have
 --
@@ -320,11 +326,11 @@ sizeWindows = readEditor $ \e -> length $ M.elems (windows e)
 -- | Find the window with this key
 --
 findWindowWith :: Editor -> (Maybe Unique) -> Window
-findWindowWith _ Nothing  = error "Editor: no key"
+findWindowWith _ Nothing  = error "Editor: no current window!"
 findWindowWith e (Just k) =
     case M.lookup k (windows e) of
             Just w  -> w
-            Nothing -> error "Editor: no window has this key"
+            Nothing -> error $ "Editor: no window has key #" ++ (show (hashUnique k))
 
 ------------------------------------------------------------------------
 --
@@ -378,14 +384,13 @@ windowAt n = shiftFocus (const n)
 -- !! reset buffer point from window point
 --
 shiftFocus :: (Int -> Int) -> IO ()
-shiftFocus f = modifyEditor_ $ \e -> do
-    let ws  = M.elems $ windows e    -- hack
-        k   = curwin e
-        win = findWindowWith e k
-    case elemIndex win ws of
-        Nothing -> error "Editor: current window has been lost."
-        Just i -> let w = ws !! ((f i) `mod` (length ws))
-                  in (setWindow' e w :: IO Editor)
+shiftFocus f = do
+  ws <- readEditor getWindows
+  mw <- getWindow
+  case mw of
+    Just w | Just i <- elemIndex w ws
+          -> setWindow (ws !! ((f i) `mod` (length ws)))
+    _     -> error "Editor: current window has been lost."
 
 -- ---------------------------------------------------------------------
 -- | Given a keymap function, set the user-defineable key map to that function

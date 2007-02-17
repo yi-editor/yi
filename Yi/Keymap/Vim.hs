@@ -200,8 +200,6 @@ count = option Nothing (many1' (satisfy isDigit) >>= return . Just . read)
 -- The may be invoked directly, or sometimes as arguments to other
 -- /operator/ commands (like d).
 --
-debug :: String -> VimMode
-debug = write . logPutStrLn
 
 cmd_move :: VimProc Action
 cmd_move = do 

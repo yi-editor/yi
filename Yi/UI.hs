@@ -31,10 +31,12 @@ module Yi.UI (
         -- * UI initialisation
         start, end, suspend, main,
 
+        -- * Refresh
+        refreshAll,
+
         -- * Window manipulation
-        newWindow, enlargeWindow, shrinkWindow, 
-        doResizeAll, deleteWindow, deleteWindow',
-        hasRoomForExtraWindow,
+        newWindow, enlargeWindow, shrinkWindow, deleteWindow,
+        hasRoomForExtraWindow, setWindowBuffer,
 
         -- * Command line
         setCmdLine,
@@ -62,6 +64,7 @@ import Control.Concurrent
 import Control.Concurrent.Chan
 import Control.Exception
 
+import Data.Unique
 import Data.List
 import Data.Maybe
 import Data.Char (ord,chr)
@@ -105,7 +108,7 @@ start = do
           event <- getEvent v
           case event of 
             (EvResize x y) -> do logPutStrLn $ "UI: EvResize: " ++ show (x,y)
-                                 writeIORef sz (y,x) >> doResizeAll >> getKey v sz
+                                 writeIORef sz (y,x) >> refreshAll >> getKey v sz
             _ -> return (fromVtyEvent event)
 
 main :: IO ()
@@ -186,7 +189,7 @@ refresh = do
     let ws = getWindows e
         wImages = map picture ws
     cmd <- readIORef (cmdline (ui e))
-    (yss,xss) <- readIORef (scrsize (ui e))
+    (_yss,xss) <- readIORef (scrsize (ui e))
     Yi.Vty.update (vty $ ui e) 
       pic {pImage = vertcat wImages <-> withStyle (window $ uistyle e) (take xss $ cmd ++ repeat ' '),
            pCursor = if cmdlinefocus e
@@ -325,12 +328,14 @@ newWindow b = modifyEditor $ \e -> do
     (h,w) <- readIORef $ scrsize $ ui $ e
     let wls   = M.elems $ windows e
         (y,r) = getY h (1 + (length wls))   -- should be h-1..
-    let wls'  = resizeAll wls y w
-    let wls'' = turnOnML wls'
-    win  <- emptyWindow b (y+r,w)
+        wls'  = resizeAll wls y w
+        wls'' = turnOnML wls'
+    win  <- emptyWindow b (y+r-1,w) -- -1 for the modeline
     let [win'] = (if null wls then id else turnOnML) [win]
-    let e' = e { windows = M.fromList $ mkAssoc (win':wls'') }
+        e' = e { windows = M.fromList $ mkAssoc (win':wls'') }
+    logPutStrLn $ "createdWindow #" ++ show (hashUnique $ key win')
     return (e', win')
+
 
 -- ---------------------------------------------------------------------
 -- | Grow the given window, and pick another to shrink
@@ -396,28 +401,20 @@ getWinWithHeight wls i n p
 --
 deleteWindow :: (Maybe Window) -> IO ()
 deleteWindow Nothing    = return ()
-deleteWindow (Just win) = modifyEditor_ $ \e -> deleteWindow' e win
+deleteWindow (Just win) = do 
+  deleteWindow' win
+  doResizeAll
+  -- now switch focus to a random window
+  ws <- readEditor getWindows
+  case ws of
+    [] -> logPutStrLn "All windows deleted!"
+    (w:_) -> setWindow w 
 
--- internal, non-thread safe
-deleteWindow' :: Editor -> Window -> IO Editor
-deleteWindow' e win = do
-    (y0,x) <- readIORef $ scrsize $ ui $ e
-
-    let ws    = M.delete (key win) (windows e) -- delete window
-        wls   = M.elems ws
-        (y,r) = getY (y0 - 1) (length wls) -- why -1?
-
-    let wls'  = resizeAll wls y x -- now resize
-
-    -- now switch focus to a random window
-    case wls' of
-        []       -> return e { windows = M.empty }
-        (win':xs) -> do
-            let fm = M.fromList $ mkAssoc wls'
-            let win'' = resize (y+r) x win'
-            let win''' = if xs == [] then win'' { mode = False } else win''
-            let e' = e { windows = M.insert (key win''') win''' fm }
-            setWindow' e' win'''
+deleteWindow' :: Window -> IO ()
+deleteWindow' win = modifyEditor_ $ \e -> do
+    logPutStrLn $ "Deleting window #" ++ show (hashUnique $ key win)
+    let ws = M.delete (key win) (windows e) -- delete window
+    return e { windows = ws }
 
 ------------------------------------------------------------------------
 
@@ -425,19 +422,25 @@ deleteWindow' e win = do
 resizeAll :: [Window] -> Int -> Int -> [Window]
 resizeAll wls y x = flip map wls (\w -> resize y x w)
 
+
+-- | Reset the heights and widths of all the windows;
+-- refresh the display.
+refreshAll :: IO ()
+refreshAll = doResizeAll >> refresh
+
 -- | Reset the heights and widths of all the windows
 doResizeAll :: IO ()
-doResizeAll = (modifyEditor_ $ \e -> do
+doResizeAll = modifyEditor_ $ \e -> do
     let i = ui e
     (h,w) <- readIORef $ scrsize i
     let wls   = M.elems (windows e)
-        (y,r) = getY h (length wls) -- why -1?
-
-    let wls' = map (doresize w y) (init wls)
-        wls'' = let win = last wls
-                in (doresize w (y+r-1) win : wls')
-
-    return e { windows = M.fromList $ mkAssoc wls'' }) >> refresh
+    if null wls 
+      then return e 
+      else let (y,r) = getY h (length wls) -- why -1?
+               wls' = map (doresize w y) (init wls)
+               wls'' = let win = last wls
+                           in (doresize w (y+r-1) win : wls') 
+           in return e { windows = M.fromList $ mkAssoc wls'' }
 
     where doresize x y win = resize y x win
 
@@ -464,3 +467,16 @@ setCmdLine :: UI -> String -> IO ()
 setCmdLine i s = do 
   writeIORef (cmdline i) s
                 
+-- | Display the given buffer in the given window.
+setWindowBuffer :: FBuffer -> Maybe Window -> IO ()
+setWindowBuffer b mw = do
+    logPutStrLn $ "Setting buffer for " ++ show mw
+    w'' <- case mw of 
+             Just w -> do
+                     w' <- (emptyWindow b (height w, width w))
+                     return $ w' { key = key w, mode = mode w } 
+                     -- reuse the window's key (so it ends in the same place on the screen)
+             Nothing -> newWindow b -- if there is no window, just create a new one.
+    modifyEditor_ $ \e -> return $ e { windows = M.insert (key w'') w'' (windows e) }
+    debugWindows 
+    logPutStrLn "setWindowBuffer ended"

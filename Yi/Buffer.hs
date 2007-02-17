@@ -30,7 +30,7 @@ import Yi.Undo
 
 import Yi.Debug
 import Data.IORef
-import Data.Unique              ( newUnique, Unique )
+import Data.Unique              ( newUnique, Unique, hashUnique )
 import Control.Concurrent.MVar
 import Yi.Event
 import Yi.Keymap
@@ -58,14 +58,14 @@ data FBuffer =
                 , bmode  :: !(MVar BufferMode)       -- ^ a read-only bit
                 , preferCol :: !(IORef (Maybe Int))  -- ^ prefered column to arrive at when we do a lineDown / lineUp
                 , bufferKeymap :: Keymap        -- ^ user-configurable keymap
-                , bufferInput  :: Chan Event                 -- ^ input stream
+                , bufferInput  :: !(Chan Event)                 -- ^ input stream
                 }
 
 instance Eq FBuffer where
    FBuffer { bkey = u } == FBuffer { bkey = v } = u == v
 
 instance Show FBuffer where
-    showsPrec _ (FBuffer { name = f }) = showString $ "\"" ++ f ++ "\""
+    showsPrec _ (FBuffer { bkey = u, name = f }) = showString $ "Buffer #" ++ show (hashUnique u) ++ " (" ++ show f ++ ")"
 
 lift :: (BufferImpl -> x) -> (FBuffer -> x)
 lift f = \b -> f (rawbuf b)
@@ -142,22 +142,23 @@ newB km nm s = do
     -- them using the current key map. Keys are bound to core actions.
     eventLoop :: FBuffer -> IO ()
     eventLoop b = do
-        let run km = do
+        let run bkm = do
+            logStream ("Event for " ++ show b) (bufferInput b)
             touchST -- start with a refresh; so we assert a clean state wrt. the user pov.
-            catchDyn (do sequence_ . map interactive . km  =<< getChanContents (bufferInput b)
+            catchDyn (do sequence_ . map interactive . bkm =<< getChanContents (bufferInput b)
                          logPutStrLn "Keymap execution ended")
                          (\(MetaActionException km') -> run km')
         repeatM_ $ handle handler (run (bufferKeymap b))
 
         where
           repeatM_ a = a >> repeatM_ a
-          handler e = logPutStrLn (show e)
+          handler e = logPutStrLn $ "Buffer event loop crashed with: " ++ (show e)
 
 
 -- | Make an action suitable for an interactive run.
 -- Editor state will be refreshed after
 interactive :: IO () -> IO ()
-interactive action = action >> touchST
+interactive action = logPutStrLn "running interactively (" >> action >> touchST >> logPutStrLn ")"
 
 
 -- TODO if there is an exception, the key bindings will be reset...

@@ -165,7 +165,6 @@ module Yi.Core (
 import Prelude hiding (error)
 
 import Yi.Debug
-import Yi.MkTemp            ( mkstemp )
 import Yi.Buffer
 import Yi.Region
 import Yi.Window
@@ -182,7 +181,6 @@ import Data.Dynamic
 import Data.List
 import Data.Map as M        ( lookup, insert )
 
-import System.IO            ( hClose )
 import System.Directory     ( doesFileExist )
 
 import Control.Monad
@@ -206,7 +204,8 @@ startE :: Maybe Editor
        -> IO ()
 
 startE st (confs,fn,fn') ln mfs = do
-
+  
+    logPutStrLn "Starting Core"
     -- restore the old state
     case st of
         -- need to update default keymap to point to current code.
@@ -218,17 +217,30 @@ startE st (confs,fn,fn') ln mfs = do
     u <- UI.start
     modifyEditor_ $ \e -> return $ e { ui = u }
 
+    logPutStrLn "Initializing First Buffer"
+
+    newBufferE "*scratch*" $
+                   "-- This buffer is for notes you don't want to save.\n" ++
+                   "-- If you want to create a file, open that file,\n" ++
+                   "-- then enter the text in that file's own buffer.\n\n"
+
+    {-
+    -- vi-like behaviour
+    UI.addWindow
+    
     when (isNothing st) $ do -- read in any files if booting for the first time
         handleJust ioErrors (errorE . show) $ do
             case mfs of
                 Just fs -> mapM_ fnewE fs
-                Nothing -> do               -- vi-like behaviour, just for now.
+                Nothing -> do               
                     mf <- mkstemp "/tmp/yi.XXXXXXXXXX"
                     case mf of
                         Nothing    -> error "Core.startE: mkstemp failed"
                         Just (f,h) -> hClose h >> fnewE f
         gotoLnE ln
+    -}
 
+    logPutStrLn "Starting event handler"
     t <- forkIO eventLoop
     modifyEditor_ $ \e -> return $ e { threads = t : threads e }
     UI.main -- transfer control to UI: GTK must run in the main thread, or else it's not happy.
@@ -296,7 +308,7 @@ reloadE = do
 
 -- | Reset the size, and force a complete redraw
 refreshE :: Action
-refreshE = UI.doResizeAll
+refreshE = UI.refreshAll
 
 -- | Do nothing
 nopE :: Action
@@ -700,19 +712,14 @@ setWindowStyleE sty = modifyEditor_ $ \e -> return $ e { uistyle = sty }
 -- to a new window, and open it up
 nextBufW :: Action
 nextBufW = do
-    w <- getWindow
     b <- Editor.nextBuffer
-    UI.deleteWindow w         -- !! don't delete window before getting the next buffer
-    w' <- UI.newWindow b
-    Editor.setWindow w'
+    getWindow >>= UI.setWindowBuffer b
 
 -- | edit the previous buffer in the buffer list
 prevBufW :: Action
 prevBufW = do
     b <- Editor.prevBuffer
-    getWindow >>= UI.deleteWindow
-    w' <- UI.newWindow b
-    setWindow w'
+    getWindow >>= UI.setWindowBuffer b
 
 -- | If file exists, read contents of file into a new buffer, otherwise
 -- creating a new empty buffer. Replace the current window with a new
@@ -727,22 +734,34 @@ fnewE f = do
     e  <- doesFileExist f
     b  <- if e then hNewBuffer f else stringToNewBuffer f [] km
     setfileB b f        -- and associate with file f
-    deleteThisWindow
-    w <- UI.newWindow b
-    Editor.setWindow w
+    getWindow >>= UI.setWindowBuffer b
 
 -- | Like fnewE, create a new buffer filled with the String @s@,
 -- Open up a new window onto this buffer. Doesn't associate any file
 -- with the buffer (unlike fnewE) and so is good for popup internal
--- buffers (like scratch or minibuffer)
+-- buffers (like scratch)
 newBufferE :: String -> String -> Action
 newBufferE f s = do
     km <- readEditor defaultKeymap
     b <- stringToNewBuffer f s km
-    splitE
-    deleteThisWindow
-    w <- UI.newWindow b
-    Editor.setWindow w
+    canSplit <- UI.hasRoomForExtraWindow
+    if canSplit 
+      then UI.newWindow b >>= setWindow
+      else return ()
+    getWindow >>= UI.setWindowBuffer b
+    logPutStrLn "newBufferE ended"
+
+-- TODO:
+-- add prompt
+-- resize
+-- hide modeline (?)
+
+spawnMinibufferE :: String -> Keymap -> Action
+spawnMinibufferE prompt km =
+    do b <- stringToNewBuffer ("Minibuffer: " ++ prompt) [] km 
+       w <- UI.newWindow b
+       Editor.setWindow w
+
 
 -- | Write current buffer to disk, if this buffer is associated with a file
 fwriteE :: Action
@@ -779,7 +798,7 @@ listBuffersE = do
 -- | Release resources associated with buffer, close any windows open
 -- onto buffer.
 closeBufferE :: String -> Action
-closeBufferE f = killBuffer f
+closeBufferE f = killBufferAndWindows f
 
 ------------------------------------------------------------------------
 
@@ -810,7 +829,7 @@ prevWinE = Editor.prevWindow
 
 -- | Make window with key @k@ the current window
 setWinE :: Window -> Action
-setWinE = Editor.setWindowToThisWindow
+setWinE = Editor.setWindow
 
 -- | Split the current window, opening a second window onto this buffer.
 -- Windows smaller than 3 lines cannot be split.
@@ -885,13 +904,3 @@ mapRangeE from to fn
             moveTo b from
 
 
--- TODO:
--- add prompt
--- resize
--- hide modeline (?)
-
-spawnMinibufferE :: String -> Keymap -> Action
-spawnMinibufferE prompt km =
-    do b <- stringToNewBuffer ("Minibuffer: " ++ prompt) [] km 
-       w <- UI.newWindow b
-       Editor.setWindow w

@@ -24,7 +24,7 @@ module Yi.Window where
 import Yi.Buffer
 import Yi.Vty
 
-import Data.Unique              ( Unique, newUnique )
+import Data.Unique              ( Unique, newUnique, hashUnique )
 
 --
 -- | A window onto a buffer.
@@ -60,6 +60,9 @@ instance Ord Window where
     Window { key = u } `compare` Window { key = v }  = u `compare` v
     Window { key = u } <     Window { key = v }      = u <     v
 
+instance Show Window where
+    show Window { key = u } = "Window #" ++ show (hashUnique u)
+
 -- ---------------------------------------------------------------------
 -- Construction
 
@@ -76,7 +79,7 @@ emptyWindow b (h,w) = do
                     key       = wu
                    ,mode      = False
                    ,bufkey    = (keyB b)
-                   ,height    = h-1    -- - 1 for the cmdline?
+                   ,height    = h      -- - 1 for the cmdline?
                    ,width     = w
                    ,cursor    = (0,0)  -- (y,x) (screen columns, needs to know about tabs)
                    ,pnt       = 0      -- cache point when out of focus

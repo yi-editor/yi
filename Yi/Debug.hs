@@ -3,13 +3,14 @@ module Yi.Debug (
        ,trace           -- :: String -> a -> a
        ,logPutStrLn
        ,logError
+       ,logStream
        ,Yi.Debug.error
     ) where
 
 import Control.Concurrent
 import Data.IORef
 import System.IO        
-import System.IO.Unsafe ( unsafePerformIO )
+import System.IO.Unsafe ( unsafePerformIO, unsafeInterleaveIO )
 import System.Time
 
 dbgHandle :: IORef Handle
@@ -44,3 +45,14 @@ logPutStrLn s = do time <- toCalendarTime =<< getClockTime
 
 logError :: String -> IO ()
 logError s = logPutStrLn $ "error: " ++ s
+
+logStream :: Show a => String -> Chan a -> IO ()
+logStream msg ch = do
+  logPutStrLn $ "Logging stream " ++ msg
+  forkIO $ logStreamThread msg  ch
+  return ()
+
+logStreamThread :: Show a => String -> Chan a -> IO ()
+logStreamThread msg ch = do
+  stream <- getChanContents =<< dupChan ch
+  mapM_ logPutStrLn [msg ++ "(" ++ show i ++ ")" ++ show event | event <- stream | i <- [(0::Int)..] ]
