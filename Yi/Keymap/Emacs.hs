@@ -58,6 +58,7 @@ normalKeymap = selfInsertKeymap +++ makeKeymap
         ("C-_",      atomic $ repeatingArg undoE),
         ("C-<left>", atomic $ repeatingArg prevWordE),
         ("C-<right>",atomic $ repeatingArg nextWordE),
+        ("C-@",    atomic $ (getPointE >>= setMarkE)), -- till vty correctly support C-SPC
         ("C-SPC",    atomic $ (getPointE >>= setMarkE)),
         ("C-a",      atomic $ repeatingArg solE),
         ("C-b",      atomic $ repeatingArg leftE),
@@ -89,6 +90,7 @@ normalKeymap = selfInsertKeymap +++ makeKeymap
         ("C-x C-f",  atomic $ findFile),
         ("C-x C-s",  atomic $ fwriteE),
         ("C-x C-x",  atomic $ exchangePointAndMarkE),
+        ("C-x e e",  atomic $ evalRegionE),
         ("C-x o",    atomic $ nextWinE),
         ("C-x k",    atomic $ closeE),
 --      ("C-x r k",  atomic $ killRectE),
@@ -127,7 +129,9 @@ normalKeymap = selfInsertKeymap +++ makeKeymap
         ("<prior>",  atomic $ repeatingArg upScreenE)
         ]
 
--- * Boilerplate code for the Command monad
+
+evalRegionE = do
+  getRegionE >>= readRegionE >>= evalE
 
 
 -- | Define an atomic interactive command.
