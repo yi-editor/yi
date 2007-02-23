@@ -45,6 +45,8 @@ import System.IO.Unsafe         ( unsafePerformIO )
 
 import {-# source #-} Yi.UI ( UI )
 
+import qualified GHC
+
 ------------------------------------------------------------------------
 
 --
@@ -74,6 +76,8 @@ data Editor = Editor {
 
        ,defaultKeymap  :: Keymap
        ,editorModified :: MVar ()
+
+       ,editorSession :: GHC.Session
     }
 
 --
@@ -101,6 +105,8 @@ emptyEditor = Editor {
        ,dynamic      = M.empty
 
        ,editorModified = unsafePerformIO newEmptyMVar
+
+       ,editorSession = error "GHC Session not initialized"
     }
 
 -- ---------------------------------------------------------------------

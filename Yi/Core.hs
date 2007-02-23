@@ -158,8 +158,10 @@ module Yi.Core (
         pipeE,                   -- :: String -> IO String
  
         -- * Minibuffer
-        spawnMinibufferE
+        spawnMinibufferE,
 
+        -- * Eval\/Interpretation
+        evalE
    ) where
 
 import Prelude hiding (error)
@@ -191,6 +193,12 @@ import Control.Concurrent.Chan
 
 import qualified Yi.UI as UI
 
+import qualified GHC
+import qualified Packages
+import qualified PackageConfig
+import GHC.Exts ( unsafeCoerce# )
+
+
 -- | A 'Direction' is either left or right.
 data Direction = GoLeft | GoRight
 
@@ -207,6 +215,10 @@ startE :: Maybe Editor
 startE st (confs,fn,fn') ln mfs = do
   
     logPutStrLn "Starting Core"
+
+    -- start GHC session
+    initializeI
+
     -- restore the old state
     case st of
         -- need to update default keymap to point to current code.
@@ -894,3 +906,34 @@ mapRangeE from to fn
             moveTo b from
 
 
+------------------
+-- GHCi embedding
+
+-- the path of our GHC installation
+path :: FilePath
+path = "/usr/lib/ghc-6.6" -- ghc --print-libdir
+
+initializeI :: IO ()
+initializeI = do
+  session <- GHC.newSession GHC.Interactive (Just path)
+  dflags1 <- GHC.getSessionDynFlags session
+  (dflags1',_otherFlags) <- GHC.parseDynamicFlags dflags1 ["-fglasgow-exts"]  
+  (dflags2, _packageIds) <- Packages.initPackages dflags1'
+  GHC.setSessionDynFlags session dflags2{GHC.hscTarget=GHC.HscInterpreted}
+  modifyEditor_ $ \e -> return e {editorSession = session}
+
+  -- load the standard prelude
+  let preludeModule = GHC.mkModule (PackageConfig.stringToPackageId "base") (GHC.mkModuleName "Prelude")
+  GHC.setContext session [] [preludeModule]
+
+
+evalToString :: String -> IO String
+evalToString string = do
+  session <- readEditor editorSession
+  result <- GHC.compileExpr session ("show (" ++ string ++ ")")
+  case result of
+    Nothing -> return ""
+    Just x -> return (unsafeCoerce# x)
+
+evalE :: String -> IO ()
+evalE s = evalToString s >>= msgE
