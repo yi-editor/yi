@@ -26,7 +26,7 @@ module Yi.UI (
         start, end, suspend, main,
 
         -- * Refresh
-        refreshAll,
+        refreshAll, scheduleRefresh,
 
         -- * Window manipulation
         newWindow, enlargeWindow, shrinkWindow, deleteWindow,
@@ -99,9 +99,10 @@ start = do
   widgetShowAll win
   return $ UI win vb' cmd
 
-main :: IO ()
-main = do logPutStrLn "GTK main loop running"
-          mainGUI
+main :: UI -> IO ()
+main _gui = 
+    do logPutStrLn "GTK main loop running"
+       mainGUI
 
 
 instance Show Gtk.Event where
@@ -244,6 +245,9 @@ hasRoomForExtraWindow = return True
 
 refreshAll :: IO ()
 refreshAll = return ()
+
+scheduleRefresh :: UI -> IO ()
+scheduleRefresh _gui = return ()
 
 setCmdLine :: UI -> String -> IO ()
 setCmdLine i s = do 

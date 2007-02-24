@@ -4,7 +4,7 @@ license:        GPL
 license-file:   LICENSE
 author:         Don Stewart
 maintainer:     dons@cse.unsw.edu.au
-build-depends:  base, mtl, gtk>=0.9.10.4, regex-posix
+build-depends:  base, ghc, mtl, gtk>=0.9.10.4, regex-posix
 -- the dependency on regex-posix is there so we ensure the C-level regex library is there.
 
 executable:     yi
