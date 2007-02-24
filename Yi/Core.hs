@@ -337,41 +337,41 @@ suspendE = UI.suspend
 
 -- | Move cursor to origin
 topE :: Action
-topE = withBuffer_ $ \b -> moveTo b 0
+topE = withBuffer $ \b -> moveTo b 0
 
 -- | Move cursor to end of buffer
 botE :: Action
-botE = withBuffer_ $ \b -> do
+botE = withBuffer $ \b -> do
             n <- sizeB b
             moveTo b (n-1)
 
 -- | Move cursor to start of line
 solE :: Action
-solE = withBuffer_ moveToSol
+solE = withBuffer moveToSol
 
 -- | Move cursor to end of line
 eolE :: Action
-eolE = withBuffer_ moveToEol
+eolE = withBuffer moveToEol
 
 -- | Move cursor down 1 line
 downE :: Action
-downE = withBuffer_ lineDown
+downE = withBuffer lineDown
 
 -- | Move cursor up to the same point on the previous line
 upE :: Action
-upE = withBuffer_ lineUp
+upE = withBuffer lineUp
 
 -- | Go to line number @n@
 gotoLnE :: Int -> Action
-gotoLnE n = withBuffer_ (flip gotoLn n)
+gotoLnE n = withBuffer (flip gotoLn n) >> return ()
 
 -- | Go to line @n@ offset from current line
 gotoLnFromE :: Int -> Action
-gotoLnFromE n = withBuffer_ (flip gotoLnFrom n)
+gotoLnFromE n = withBuffer (flip gotoLnFrom n) >> return ()
 
 -- | Go to a particular point.
 gotoPointE :: Int -> Action
-gotoPointE p = withBuffer_ $ flip moveTo p
+gotoPointE p = withBuffer $ flip moveTo p
 
 -- | Get the current point
 getPointE :: IO Int
@@ -411,27 +411,29 @@ atEofE = withBuffer atEof
 upScreenE :: Action
 upScreenE = do
     (Just w) <- getWindow
-    withBuffer_ (flip gotoLnFrom (- (height w - 1)))
+    withBuffer (flip gotoLnFrom (- (height w - 1)))
     solE
 
 -- | Scroll up n screens
 upScreensE :: Int -> Action
 upScreensE n = do
     (Just w) <- getWindow
-    withBuffer_ (flip gotoLnFrom (- (n * (height w - 1))))
+    withBuffer (flip gotoLnFrom (- (n * (height w - 1))))
     solE
 
 -- | Scroll down 1 screen
 downScreenE :: Action
 downScreenE = do
     (Just w) <- getWindow
-    withBuffer_ (flip gotoLnFrom (height w - 1))
+    withBuffer (flip gotoLnFrom (height w - 1))
+    return ()
 
 -- | Scroll down n screens
 downScreensE :: Int -> Action
 downScreensE n = do
     (Just w) <- getWindow
-    withBuffer_ (flip gotoLnFrom (n * (height w - 1)))
+    withBuffer (flip gotoLnFrom (n * (height w - 1)))
+    return ()
 
 -- | Move to @n@ lines down from top of screen
 downFromTosE :: Int -> Action
@@ -455,19 +457,19 @@ middleE = (withWindow $ \w _ -> return ((height w -1-1) `div` 2)) >>= downFromTo
 
 -- | move the point left (backwards) in the buffer
 leftE :: Action
-leftE = withBuffer_ leftB
+leftE = withBuffer leftB
 
 -- | move the point right (forwards) in the buffer
 rightE :: Action
-rightE = withBuffer_ rightB
+rightE = withBuffer rightB
 
 -- | Move left @x@ or to start of line
 leftOrSolE :: Int -> Action
-leftOrSolE x = withBuffer_ $ flip moveXorSol x
+leftOrSolE x = withBuffer $ flip moveXorSol x
 
 -- | Move right @x@ or to end of line
 rightOrEolE :: Int -> Action
-rightOrEolE x = withBuffer_ $ flip moveXorEol x
+rightOrEolE x = withBuffer $ flip moveXorEol x
 
 -- ---------------------------------------------------------------------
 -- Window based operations
@@ -491,23 +493,23 @@ insertE c = insertNE [c]
 
 -- | Insert a string
 insertNE :: String -> Action
-insertNE str = withBuffer_ $ \b -> insertN b str
+insertNE str = withBuffer $ \b -> insertN b str
 
 -- | Delete character under cursor
 deleteE :: Action
-deleteE = withBuffer_ $ \b -> deleteN b 1
+deleteE = withBuffer $ \b -> deleteN b 1
 
 -- | Delete @n@ characters from under the cursor
 deleteNE :: Int -> Action
-deleteNE i = withBuffer_ $ \b -> deleteN b i
+deleteNE i = withBuffer $ \b -> deleteN b i
 
 -- | Kill to end of line
 killE :: Action
-killE = withBuffer_ deleteToEol
+killE = withBuffer deleteToEol
 
 -- | Delete an arbitrary part of the buffer
 deleteRegionE :: Region -> IO ()
-deleteRegionE r = withBuffer_ $ \b -> do
+deleteRegionE r = withBuffer $ \b -> do
                     deleteNAt b (regionEnd r - regionStart r) (regionStart r)
 
 
@@ -547,7 +549,7 @@ readRestOfLnE = withBuffer $ \b -> do
 
 -- | Write char to point
 writeE :: Char -> Action
-writeE c = withBuffer_ $ \b -> writeB b c
+writeE c = withBuffer $ \b -> writeB b c
 
 -- | Transpose two characters, (the Emacs C-t action)
 swapE :: Action
@@ -562,10 +564,10 @@ swapE = do eol <- atEolE
 -- ---------------------------------------------------------------------
 
 undoE :: Action
-undoE = withBuffer_ undo
+undoE = withBuffer undo
 
 redoE :: Action
-redoE = withBuffer_ redo
+redoE = withBuffer redo
 
 -- ---------------------------------------------------------------------
 -- registers (TODO these may be redundant now that it is easy to thread
@@ -586,11 +588,11 @@ getRegE = readEditor yreg
 
 -- | Set the current buffer mark
 setMarkE :: Int -> Action
-setMarkE pos = withBuffer_ $ \b -> setMarkB b pos
+setMarkE pos = withBuffer $ \b -> setMarkB b pos
 
 -- | Unset the current buffer mark so that there is no selection
 unsetMarkE :: Action
-unsetMarkE = withBuffer_ $ \b -> unsetMarkB b
+unsetMarkE = withBuffer $ \b -> unsetMarkB b
 
 -- | Get the current buffer mark
 getMarkE :: IO Int
@@ -767,7 +769,7 @@ spawnMinibufferE prompt km =
 
 -- | Write current buffer to disk, if this buffer is associated with a file
 fwriteE :: Action
-fwriteE = withBuffer_ $ \b -> do
+fwriteE = withBuffer $ \b -> do
         mf <- getfileB b
         case mf of
                 Nothing -> error "buffer not associated with a file"
@@ -776,7 +778,7 @@ fwriteE = withBuffer_ $ \b -> do
 -- | Write current buffer to disk as @f@. If this buffer doesn't
 -- currently have a file associated with it, the file is set to @f@
 fwriteToE :: String -> Action
-fwriteToE f = withBuffer_ $ \b -> do
+fwriteToE f = withBuffer $ \b -> do
         hPutB b f
         mf <- getfileB b
         case mf of
@@ -815,7 +817,7 @@ setUnchangedE = undefined
 
 -- | Set the current buffer's highlighting kind
 setSynE :: String -> Action
-setSynE sy = withBuffer_ (\b -> setSyntaxB b sy)
+setSynE sy = withBuffer (\b -> setSyntaxB b sy)
 
 ------------------------------------------------------------------------
 --
@@ -894,7 +896,7 @@ mapRangeE :: Int -> Int -> (Char -> Char) -> Action
 mapRangeE from to fn
     | from < 0  = nopE
     | otherwise = do
-        withBuffer_ $ \b -> do
+        withBuffer $ \b -> do
             eof <- sizeB b
             when (to < eof) $ do
                 let loop j | j <= 0    = return ()

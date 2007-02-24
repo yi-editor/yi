@@ -106,6 +106,8 @@ emptyEditor = Editor {
        ,editorSession = error "GHC Session not initialized"
     }
 
+type EditorM = IO
+
 -- ---------------------------------------------------------------------
 -- | The actual editor state
 --
@@ -304,22 +306,10 @@ withWindow f = modifyEditor $ \e -> do
         v <- f w b
         return (e,v)
 
---
--- | Perform action with current window, discarding the result.
---
-withWindow_ :: (Window -> FBuffer -> IO a) -> IO ()
-withWindow_ f = withWindow f >> return ()
-
 -- | Perform action with current window's buffer
 
 withBuffer :: (FBuffer -> IO a) -> IO a
 withBuffer f = withWindow (const f)
-
--- | Perform action with current window's buffer
-
-withBuffer_ :: (FBuffer -> IO a) -> IO ()
-withBuffer_ f = withWindow_ (const f)
-
 
 
 

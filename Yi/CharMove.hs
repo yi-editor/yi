@@ -185,7 +185,7 @@ prevCExc c = prevCInc c >> rightE
 -- | Move to first non-space character in this line
 firstNonSpaceE :: Action
 firstNonSpaceE = do
-    withBuffer_ $ \b -> do
+    withBuffer $ \b -> do
         moveToSol b
         fix $ \loop -> do
             eol <- atEol b
@@ -196,7 +196,7 @@ firstNonSpaceE = do
 -- | Move down next @n@ paragraphs
 nextNParagraphs :: Int -> Action    -- could be rewritten in a more functional style
 nextNParagraphs n = do
-    withBuffer_ $ \b -> do
+    withBuffer $ \b -> do
         eof <- sizeB b
         let loop = do
                 p <- pointB b
@@ -212,7 +212,7 @@ nextNParagraphs n = do
 -- | Move up prev @n@ paragraphs
 prevNParagraphs :: Int -> Action
 prevNParagraphs n = do
-    withBuffer_ $ \b -> do
+    withBuffer $ \b -> do
         let loop = do
                 p <- pointB b
                 when (p > 0) $ do
@@ -233,7 +233,7 @@ prevNParagraphs n = do
 -- location.
 
 moveWhileE :: (Char -> Bool) -> Direction -> Action
-moveWhileE f d = withBuffer_ (moveWhile_ f d)
+moveWhileE f d = withBuffer (moveWhile_ f d)
 --
 -- Internal moveWhile function to avoid unnec. ui updates
 -- not for external consumption
@@ -356,7 +356,7 @@ resetCompleteE = writeIORef completions Nothing
 --
 wordCompleteE :: Action
 wordCompleteE = do
-    withWindow_ $ \win buf -> do
+    withWindow $ \win buf -> do
         readIORef completions >>= loop win buf >>= writeIORef completions
 
   where
