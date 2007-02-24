@@ -271,15 +271,6 @@ getWindowOf e = case curwin e of
                     k       -> Just $ findWindowWith e k
 
 --
--- | Get index of current window in window list
---
-getWindowIndOf :: Editor -> (Maybe Int)
-getWindowIndOf e = case curwin e of
-        Nothing -> Nothing
-        k       -> let win = findWindowWith e k
-                   in elemIndex win (M.elems $ windows e)
-    
---
 -- | How many windows do we have
 --
 sizeWindows :: IO Int
