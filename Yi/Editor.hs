@@ -43,7 +43,7 @@ import Control.Concurrent.MVar
 
 import System.IO.Unsafe         ( unsafePerformIO )
 
-import {-# source #-} Yi.UI ( UI )
+import {-# source #-} Yi.UI as UI ( UI, scheduleRefresh )
 
 import qualified GHC
 
@@ -75,7 +75,6 @@ data Editor = Editor {
        -- should be moved into dynamic component, perhaps
 
        ,defaultKeymap  :: Keymap
-       ,editorModified :: MVar ()
 
        ,editorSession :: GHC.Session
     }
@@ -104,8 +103,6 @@ emptyEditor = Editor {
        ,reload       = error "No reload function"
        ,dynamic      = M.empty
 
-       ,editorModified = unsafePerformIO newEmptyMVar
-
        ,editorSession = error "GHC Session not initialized"
     }
 
@@ -127,10 +124,6 @@ readEditor f = readMVar state >>= return . f
 -- | Read the editor state, with an IO action
 withEditor :: (Editor -> IO ()) -> IO ()
 withEditor f = withMVar state f
-
--- | Trigger a refresh. This is the only way to update the screen
-touchST :: IO ()
-touchST = withMVar state $ \st -> tryPutMVar (editorModified st) () >> return ()
 
 -- | Modify the contents, using an IO action.
 modifyEditor_ :: (Editor -> IO Editor) -> IO ()
@@ -154,7 +147,7 @@ refreshEditor f = modifyMVar_ state f
 hNewBuffer :: FilePath -> IO FBuffer
 hNewBuffer f =
     modifyEditor $ \e@(Editor{buffers=bs}) -> do
-        b <- hNewB (defaultKeymap e) f
+        b <- hNewB (UI.scheduleRefresh (ui e)) (defaultKeymap e) f
         let e' = e { buffers = M.insert (keyB b) b bs } :: Editor
         return (e', b)
 
@@ -165,7 +158,7 @@ stringToNewBuffer :: FilePath -> String -> Keymap -> IO FBuffer
 stringToNewBuffer f cs km = do
     logPutStrLn $ "stringToNewBuffer: " ++ show f
     modifyEditor $ \e@(Editor{buffers=bs}) -> do
-        b <- newB km f cs
+        b <- newB (UI.scheduleRefresh (ui e)) km f cs
         let e' = e { buffers = M.insert (keyB b) b bs } :: Editor
         return (e', b)
 

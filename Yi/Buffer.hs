@@ -38,7 +38,6 @@ import Control.Concurrent   ( forkIO )
 import Control.Concurrent.Chan
 import Control.Monad
 import Control.Exception
-import {-# source #-} Yi.Editor
 --
 -- | The 'Buffer' class defines editing operations over one-dimensional`
 -- mutable buffers, which maintain a current /point/.
@@ -70,10 +69,10 @@ instance Show FBuffer where
 lift :: (BufferImpl -> x) -> (FBuffer -> x)
 lift f = \b -> f (rawbuf b)
 
-hNewB :: Keymap -> FilePath -> IO FBuffer
-hNewB km nm = do 
+hNewB :: IO () -> Keymap -> FilePath -> IO FBuffer
+hNewB scheduleRefresh km nm = do 
   s <- readFile nm
-  b <- newB km nm s
+  b <- newB scheduleRefresh km nm s
   setfileB b nm
   return b
 
@@ -116,8 +115,8 @@ redo        :: FBuffer -> IO ()
 redo fb@(FBuffer { undos = mv }) = modifyMVar_ mv (redoUR (rawbuf fb))
 
 -- | Create buffer named @nm@ with contents @s@
-newB :: Keymap -> String -> [Char] -> IO FBuffer
-newB km nm s = do 
+newB :: IO () -> Keymap -> String -> [Char] -> IO FBuffer
+newB scheduleRefresh km nm s = do 
     pc <- newIORef Nothing
     mv <- newBI s
     mv' <- newMVar emptyUR
@@ -135,7 +134,7 @@ newB km nm s = do
                          , bufferKeymap = km
                          , bufferInput = ch
                          }
-    forkIO (eventLoop result)
+    forkIO (eventLoop result) -- FIXME: kill this thread when the buffer dies.
     return result                    
   where
     -- | The editor main loop. Read key strokes from the ui and interpret
@@ -144,8 +143,8 @@ newB km nm s = do
     eventLoop b = do
         let run bkm = do
             logStream ("Event for " ++ show b) (bufferInput b)
-            touchST -- start with a refresh; so we assert a clean state wrt. the user pov.
-            catchDyn (do sequence_ . map interactive . bkm =<< getChanContents (bufferInput b)
+            scheduleRefresh
+            catchDyn (do sequence_ . map (interactive scheduleRefresh) . bkm =<< getChanContents (bufferInput b)
                          logPutStrLn "Keymap execution ended")
                          (\(MetaActionException km') -> run km')
         repeatM_ $ handle handler (run (bufferKeymap b))
@@ -157,8 +156,8 @@ newB km nm s = do
 
 -- | Make an action suitable for an interactive run.
 -- Editor state will be refreshed after
-interactive :: IO () -> IO ()
-interactive action = logPutStrLn "running interactively (" >> action >> touchST >> logPutStrLn ")"
+interactive :: IO () -> IO () -> IO ()
+interactive scheduleRefresh action = logPutStrLn "running interactively (" >> action  >> logPutStrLn ")" >> scheduleRefresh
 
 
 -- TODO if there is an exception, the key bindings will be reset...

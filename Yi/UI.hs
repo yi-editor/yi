@@ -32,7 +32,7 @@ module Yi.UI (
         start, end, suspend, main,
 
         -- * Refresh
-        refreshAll,
+        refreshAll, scheduleRefresh,
 
         -- * Window manipulation
         newWindow, enlargeWindow, shrinkWindow, deleteWindow,
@@ -83,6 +83,7 @@ data UI = UI {
              ,scrsize :: !(IORef (Int,Int))  -- ^ screen size
              ,uiThread :: ThreadId
              ,cmdline :: IORef String
+             ,uiRefresh :: MVar ()
              }
 
 -- | Initialise the ui
@@ -98,7 +99,8 @@ start = do
   modifyEditor_ $ \e -> return $ e { input = ch }
   t <- myThreadId
   cmd <- newIORef ""
-  return $ UI v s t cmd
+  tuiRefresh <- newMVar ()
+  return $ UI v s t cmd tuiRefresh
  where
         -- | Action to read characters into a channel
         getcLoop v s ch = repeatM_ $ getKey v s >>= writeChan ch
@@ -111,19 +113,17 @@ start = do
                                  writeIORef sz (y,x) >> refreshAll >> getKey v sz
             _ -> return (fromVtyEvent event)
 
-main :: IO ()
-main = do
+main :: UI -> IO ()
+main tui = do
   refresh
   refreshLoop
  where
-        --
         -- | When the editor state isn't being modified, refresh, then wait for
         -- it to be modified again. 
-        --
         refreshLoop :: IO ()
-        refreshLoop = 
-            readEditor editorModified >>= \mvar -> repeatM_ $
-                    takeMVar mvar >> handleJust ioErrors (logError . show) refresh
+        refreshLoop = repeatM_ $ do
+                        takeMVar (uiRefresh tui )
+                        handleJust ioErrors (logError . show) refresh
 
 -- | Clean up and go home
 end :: UI -> IO ()
@@ -421,6 +421,10 @@ resizeAll wls y x = flip map wls (\w -> resize y x w)
 -- refresh the display.
 refreshAll :: IO ()
 refreshAll = doResizeAll >> refresh
+
+-- | Schedule a refresh of the UI.
+scheduleRefresh :: UI -> IO ()
+scheduleRefresh tui = tryPutMVar (uiRefresh tui) () >> return ()
 
 -- | Reset the heights and widths of all the windows
 doResizeAll :: IO ()

@@ -129,7 +129,7 @@ normalKeymap = selfInsertKeymap +++ makeKeymap
         ("<prior>",  atomic $ repeatingArg upScreenE)
         ]
 
-
+evalRegionE :: Action
 evalRegionE = do
   getRegionE >>= readRegionE >>= evalE
 

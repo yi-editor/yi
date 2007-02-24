@@ -257,7 +257,7 @@ startE st (confs,fn,fn') ln mfs = do
     logPutStrLn "Starting event handler"
     t <- forkIO eventLoop
     modifyEditor_ $ \e -> return $ e { threads = t : threads e }
-    UI.main -- transfer control to UI: GTK must run in the main thread, or else it's not happy.
+    UI.main u -- transfer control to UI: GTK must run in the main thread, or else it's not happy.
         where 
           eventLoop :: IO ()
           eventLoop = do
