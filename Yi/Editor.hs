@@ -133,12 +133,6 @@ modifyEditor_ f = modifyMVar_ state f
 modifyEditor :: (Editor -> IO (Editor,b)) -> IO b
 modifyEditor f = modifyMVar state f 
 
--- | Refresh the editor's apparence. The caller is invited to touch the
--- editor's state, but that won't trigger another refresh
-refreshEditor :: (Editor -> IO Editor) -> IO ()
-refreshEditor f = modifyMVar_ state f
-
-
 -- ---------------------------------------------------------------------
 -- Buffer operations
 --

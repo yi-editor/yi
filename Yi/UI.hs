@@ -203,7 +203,7 @@ refresh = do
                             Nothing -> NoCursor}
 
 updateWindows :: IO ()
-updateWindows = refreshEditor $ \e -> do
+updateWindows = modifyEditor_ $ \e -> do
                   ws <- mapM (\w -> drawWindow e (Just w == getWindowOf e) (uistyle e) w) (getWindows e)
                   return $ e { windows = M.fromList [(key w, w) | w <- ws]}
 
