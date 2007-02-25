@@ -23,7 +23,7 @@
 
 module Yi.Editor where
 
-import Yi.Buffer                ( FBuffer, newB, keyB, hNewB, finaliseB, nameB )
+import Yi.Buffer                ( FBuffer (..), newB, keyB, hNewB, finaliseB, nameB )
 import Text.Regex.Posix.Wrap    ( Regex )
 import Yi.Window
 import Yi.Style                 ( uiStyle, UIStyle )
@@ -38,8 +38,11 @@ import Data.Dynamic
 import qualified Data.Map as M
 
 import Control.Concurrent       ( killThread, ThreadId )
-import Control.Concurrent.Chan  ( Chan )
+import Control.Concurrent.Chan
 import Control.Concurrent.MVar
+import Control.Concurrent   ( forkIO )
+import Control.Exception
+
 
 import System.IO.Unsafe         ( unsafePerformIO )
 
@@ -141,11 +144,10 @@ modifyEditor f = modifyMVar state f
 -- | Create a new buffer filling with contents of file.
 --
 hNewBuffer :: FilePath -> IO FBuffer
-hNewBuffer f =
-    modifyEditor $ \e@(Editor{buffers=bs}) -> do
-        b <- hNewB (UI.scheduleRefresh (ui e)) (defaultKeymap e) f
-        let e' = e { buffers = M.insert (keyB b) b bs } :: Editor
-        return (e', b)
+hNewBuffer f = do
+    b <- hNewB f
+    km <- readEditor defaultKeymap
+    insertBuffer b km
 
 --
 -- | Create and fill a new buffer, using contents of string.
@@ -153,10 +155,39 @@ hNewBuffer f =
 stringToNewBuffer :: FilePath -> String -> Keymap -> IO FBuffer
 stringToNewBuffer f cs km = do
     logPutStrLn $ "stringToNewBuffer: " ++ show f
-    modifyEditor $ \e@(Editor{buffers=bs}) -> do
-        b <- newB (UI.scheduleRefresh (ui e)) km f cs
-        let e' = e { buffers = M.insert (keyB b) b bs } :: Editor
-        return (e', b)
+    b <- newB f cs
+    insertBuffer b km
+
+insertBuffer :: FBuffer -> Keymap -> IO ()
+insertBuffer b km = do
+  modifyEditor $ \e@(Editor{buffers=bs}) -> do
+                     let e' = e { buffers = M.insert (keyB b) b bs } :: Editor
+                     forkIO (bufferEventLoop (ui e) b km) -- FIXME: kill this thread when the buffer dies.
+                     return (e', b)
+
+bufferEventLoop :: UI -> FBuffer -> Keymap -> IO ()
+bufferEventLoop tui b km = eventLoop
+  where
+    -- | The editor main loop. Read key strokes from the ui and interpret
+    -- them using the current key map. Keys are bound to core actions.
+    eventLoop :: IO ()
+    eventLoop = do
+        let run bkm = do
+            logStream ("Event for " ++ show b) (bufferInput b)
+            UI.scheduleRefresh tui
+            catchDyn (do sequence_ . map interactive . bkm =<< getChanContents (bufferInput b)
+                         logPutStrLn "Keymap execution ended")
+                         (\(MetaActionException km') -> run km')
+        repeatM_ $ handle handler (run km) -- when there is a bad exception, keybindings set via MetaActionException are reset.
+
+        where
+          repeatM_ a = a >> repeatM_ a
+          handler e = logPutStrLn $ "Buffer event loop crashed with: " ++ (show e)
+          -- | Make an action suitable for an interactive run.
+          -- Editor state will be refreshed after
+          interactive :: IO () -> IO ()
+          interactive action = logPutStrLn "running interactively (" >> action  >> logPutStrLn ")" >> UI.scheduleRefresh tui
+
 
 ------------------------------------------------------------------------
 --
