@@ -69,6 +69,7 @@ import Data.List            ((\\), isPrefixOf)
 import qualified Data.Map as M
 import Control.Exception    ( try, evaluate )
 import Control.Monad
+import Control.Monad.Trans
 import Yi.Debug
 
 ------------------------------------------------------------------------
@@ -445,7 +446,7 @@ metaOMode = do c <- oneOf metaoKeysList; keys2action [m_ 'O',c]; write msgClrE
 
 echoMode :: String -> Interact Char (Maybe String)
 echoMode prompt = do 
-  write (logPutStrLn "echoMode")
+  write (lift $ logPutStrLn "echoMode")
   write cmdlineFocusE 
   result <- lineEdit []
   write (msgClrE >> cmdlineUnFocusE)
@@ -537,7 +538,7 @@ killBufferMode = withLineEditor "Kill buffer: " $ \buf -> write $ do
 
 gotoMode :: MgMode
 gotoMode = withLineEditor "goto line: " $ \l -> write $ do
-             i <- try . evaluate . read $ l
+             i <- lift $ try . evaluate . read $ l
              case i of Left _   -> errorE "Invalid number"
                        Right i' -> gotoLnE i'
              

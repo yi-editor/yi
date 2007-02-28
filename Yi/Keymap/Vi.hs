@@ -33,7 +33,7 @@ import Prelude       hiding ( any, error )
 import Data.Char
 import Data.List            ( (\\) )
 
-import Control.Exception    ( ioErrors, catchJust, try, evaluate )
+import Control.Exception    ( ioErrors, try, evaluate )
 
 import Control.Monad.State
 
@@ -307,7 +307,7 @@ cmd_op = do
         -- some xlocation specified by the sequence @m@, then return.
         -- Return the current, and remote point.
         --
-        withPointMove :: Action -> IO (Int,Int)
+        withPointMove :: Action -> EditorM (Int,Int)
         withPointMove m = do p <- getPointE
                              m
                              q <- getPointE
@@ -422,7 +422,7 @@ histMove up = do
              
 
 debug :: ViMode
-debug = do st <- get; write $ logPutStrLn $ show $ hist $ st
+debug = do st <- get; write $ lift $ logPutStrLn $ show $ hist $ st
 --
 -- eval an ex command to an Action, also appends to the ex history
 --
@@ -460,7 +460,7 @@ ex_eval cmd = do
       fn ""           = msgClrE
 
       fn s@(c:_) | isDigit c = do
-        e <- try $ evaluate $ read s
+        e <- lift $ try $ evaluate $ read s
         case e of Left _ -> errorE $ "The " ++show s++ " command is unknown."
                   Right lineNum -> gotoLnE lineNum
 
@@ -520,7 +520,7 @@ viWrite = do
             bufInfo <- bufInfoE
 	    let s   = bufInfoFileName bufInfo
             let msg = msgE $ show f ++" "++show s ++ "C written"
-            catchJust ioErrors (fwriteToE f >> msg) (msgE . show)
+            catchJust' ioErrors (fwriteToE f >> msg) (msgE . show)
 
 -- | Try to write to a named file in the manner of vi\/vim
 viWriteTo :: String -> Action
@@ -529,7 +529,7 @@ viWriteTo f = do
     bufInfo <- bufInfoE
     let s   = bufInfoFileName bufInfo
     let msg = msgE $ show f'++" "++show s ++ "C written"
-    catchJust ioErrors (fwriteToE f' >> msg) (msgE . show)
+    catchJust' ioErrors (fwriteToE f' >> msg) (msgE . show)
 
 
 -- | Try to do a substitution

@@ -54,7 +54,9 @@ import Yi.Debug
 
 import Control.Concurrent ( yield )
 import Control.Concurrent.Chan
+import Control.Monad.Reader
 
+import Data.IORef
 import Data.List
 import Data.Maybe
 import qualified Data.Map as M
@@ -72,14 +74,13 @@ data UI = UI {
              }
 
 -- | Initialise the ui
-start :: IO UI
-start = do
+start :: EditorM ()
+start = modifyEditor_ $ \e -> do
   initGUI
 
   win <- windowNew
 
   ch <- newChan
-  modifyEditor_ $ \e -> return $ e { input = ch }
   onKeyPress win (processEvent ch)
 
   vb <- vBoxNew False 1
@@ -97,10 +98,10 @@ start = do
   timeoutAddFull (yield >> return True) priorityDefaultIdle 50
 
   widgetShowAll win
-  return $ UI win vb' cmd
+  return $ e { input = ch, ui = UI win vb' cmd }
 
-main :: UI -> IO ()
-main _gui = 
+main :: IORef Editor -> IO ()
+main _editor = 
     do logPutStrLn "GTK main loop running"
        mainGUI
 
@@ -160,13 +161,14 @@ keyTable = M.fromList
     ]
 
 
-addWindow :: UI -> Window -> IO ()
-addWindow i w = do
+addWindow :: IORef Editor -> Window -> IO ()
+addWindow editor w = do
+  i <- liftM ui $ readIORef editor
   set (uiBox i) [containerChild := widget w]
   f <- fontDescriptionNew
   fontDescriptionSetFamily f "Monospace"
   widgetModifyFont (textview w) (Just f)
-  textview w `onFocusIn` (\_event -> (modifyEditor_ $ \e -> return $ e { curwin = Just $ key w }) >> return True)
+  textview w `onFocusIn` (\_event -> (modifyIORef editor $ \e -> e { curwin = Just $ key w }) >> return True)
   textview w `onMoveCursor` \step amount user -> do
       logPutStrLn $ "moveCursor: " ++ show step ++ show amount ++ show user
       -- gtk experts: we don't seem to get any of those events... why?
@@ -190,10 +192,10 @@ end :: UI -> IO ()
 end _ = mainQuit
 
 -- | Suspend the program
-suspend :: IO ()
+suspend :: EditorM ()
 suspend = do 
   i <- readEditor ui
-  windowIconify (uiWindow i) 
+  lift $ windowIconify (uiWindow i) 
 
 
 
@@ -203,11 +205,13 @@ suspend = do
 
 -- | Create a new window onto this buffer.
 --
-newWindow :: FBuffer -> IO Window
-newWindow b = modifyEditor $ \e -> do
+newWindow :: FBuffer -> EditorM Window
+newWindow b = do
+  editor <- ask
+  modifyEditor $ \e -> do
     win <- emptyWindow b
     logPutStrLn $ "Creating " ++ show win
-    addWindow (ui e) win
+    addWindow editor win
     let e' = e { windows = M.fromList $ mkAssoc (win : M.elems (windows e)) }
     return (e', win)
 
@@ -215,11 +219,11 @@ newWindow b = modifyEditor $ \e -> do
 -- | Grow the given window, and pick another to shrink
 -- grow and shrink compliment each other, they could be refactored.
 --
-enlargeWindow :: Maybe Window -> IO ()
+enlargeWindow :: Maybe Window -> EditorM ()
 enlargeWindow _ = return () -- TODO
 
 -- | shrink given window (just grow another)
-shrinkWindow :: Maybe Window -> IO ()
+shrinkWindow :: Maybe Window -> EditorM ()
 shrinkWindow _ = return () -- TODO
 
 
@@ -227,23 +231,23 @@ shrinkWindow _ = return () -- TODO
 -- | Delete a window. Note that the buffer that was connected to this
 -- window is still open.
 --
-deleteWindow :: (Maybe Window) -> IO ()
+deleteWindow :: (Maybe Window) -> EditorM ()
 deleteWindow Nothing    = return ()
 deleteWindow (Just win) = do
   deleteWindow' win
   i <- readEditor ui
-  containerRemove (uiBox i) (widget win)
+  lift $ containerRemove (uiBox i) (widget win)
   -- now switch focus to a random window
   ws <- readEditor getWindows
   case ws of
-    [] -> logPutStrLn "All windows deleted!"
+    [] -> lift $ logPutStrLn "All windows deleted!"
     (w:_) -> setWindow w 
 
 -- | Has the frame enough room for an extra window.
-hasRoomForExtraWindow :: IO Bool
+hasRoomForExtraWindow :: EditorM Bool
 hasRoomForExtraWindow = return True
 
-refreshAll :: IO ()
+refreshAll :: EditorM ()
 refreshAll = return ()
 
 scheduleRefresh :: UI -> IO ()
@@ -255,17 +259,17 @@ setCmdLine i s = do
 
                 
 -- | Display the given buffer in the given window.
-setWindowBuffer :: FBuffer -> Maybe Window -> IO ()
+setWindowBuffer :: FBuffer -> Maybe Window -> EditorM ()
 setWindowBuffer b mw = do
-    logPutStrLn $ "Setting buffer for " ++ show mw ++ " to " ++ show b
+    lift $ logPutStrLn $ "Setting buffer for " ++ show mw ++ " to " ++ show b
     w'' <- case mw of 
-      Just w -> do textViewSetBuffer (textview w) (textbuf $ rawbuf b)
+      Just w -> do lift $ textViewSetBuffer (textview w) (textbuf $ rawbuf b)
                    let w' = w { bufkey = bkey b }
                    return $ w' { key = key w }
       Nothing -> newWindow b
                    -- if there is no window, just create a new one.
     modifyEditor_ $ \e -> return $ e { windows = M.insert (key w'') w'' (windows e) }
-    debugWindows 
+    debugWindows "Buffer set"
 
 
 --
@@ -274,9 +278,9 @@ setWindowBuffer b mw = do
 --
 -- Factor in shift focus.
 --
-setWindow :: Window -> IO ()
+setWindow :: Window -> EditorM ()
 setWindow w = do
-  logPutStrLn $ "Focusing " ++ show w 
+  lift $ logPutStrLn $ "Focusing " ++ show w 
   modifyEditor_ $ \e -> return $ e { curwin = Just $ key w }
-  widgetGrabFocus (textview w) -- This doesn't seem to do the trick; would a gtk expert help?
-  debugWindows
+  lift $ widgetGrabFocus (textview w) -- This doesn't seem to do the trick; would a gtk expert help?
+  debugWindows "Focused"

@@ -30,24 +30,24 @@ import Yi.Buffer
 import Yi.Window
 import qualified Data.Map as M
 import Data.List
-
+import Control.Monad.State
 
 
 -- | Rotate focus to the next window
-nextWindow :: IO ()
+nextWindow :: EditorM ()
 nextWindow = shiftFocus (+1)
 
 -- | Rotate focus to the previous window
-prevWindow :: IO ()
+prevWindow :: EditorM ()
 prevWindow = shiftFocus (subtract 1)
 
 -- | Shift focus to the nth window, modulo the number of windows
-windowAt :: Int -> IO ()
+windowAt :: Int -> EditorM ()
 windowAt n = shiftFocus (const n)
 
 -- | Set the new current window using a function applied to the old
 -- window's index
-shiftFocus :: (Int -> Int) -> IO ()
+shiftFocus :: (Int -> Int) -> EditorM ()
 shiftFocus f = do
   ws <- readEditor getWindows
   mw <- getWindow
@@ -57,18 +57,20 @@ shiftFocus f = do
     _     -> error "Editor: current window has been lost."
 
 -- | Delete the focused window
-deleteThisWindow :: IO ()
-deleteThisWindow = logPutStrLn "deleting current window" >> getWindow >>= deleteWindow  
+deleteThisWindow :: EditorM ()
+deleteThisWindow = do
+  lift $ logPutStrLn "deleting current window"
+  getWindow >>= deleteWindow  
 
 -- | Close any windows onto the buffer b, then free the buffer
-killBufferWindows :: FBuffer -> IO ()
+killBufferWindows :: FBuffer -> EditorM ()
 killBufferWindows b = do
-  logPutStrLn $ "KillBufferWindows: " ++ nameB b
+  lift $ logPutStrLn $ "KillBufferWindows: " ++ nameB b
   ws <- readEditor getWindows
   mapM_ deleteWindow $ map Just $ filter (\w -> bufkey w == keyB b) ws
 
 -- | Close any windows onto the buffer associated with name 'n', then free the buffer
-killBufferAndWindows :: String -> IO ()
+killBufferAndWindows :: String -> EditorM ()
 killBufferAndWindows n = do
   bs <- readEditor $ \e -> findBufferWithName e n
   case bs of
@@ -76,5 +78,5 @@ killBufferAndWindows n = do
     _ -> mapM_ killB bs
     where
         killB b = do killBufferWindows b
-                     finaliseB b  
+                     lift $ finaliseB b  
                      modifyEditor_ $ \e -> return $ e { buffers = M.delete (keyB b) (buffers e) }

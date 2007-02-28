@@ -171,8 +171,9 @@ initSignals = do
     flip mapM_ [sigINT, sigHUP, sigABRT, sigTERM] $ \sig -> do
             installHandler sig (CatchOnce $ do
                     releaseSignals
-                    UI.end =<< Editor.readEditor Editor.ui
-                    Editor.shutdown
+                    -- FIXME: We should do this, but that's impossible with no access to the editor state:
+                    -- UI.end =<< Editor.readEditor Editor.ui
+                    -- Editor.shutdown
                     throwTo tid (ExitException (ExitFailure 2))) Nothing
 
 releaseSignals :: IO ()
@@ -243,7 +244,8 @@ static_main st = do
     Control.Exception.catch
         (initSignals >> initDebug ".yi.dbg" >> Core.startE st config lineno mfiles )
         (\e -> do releaseSignals
-                  Editor.shutdown
+                  -- FIXME: We should do this, but that's impossible with no access to the editor state:
+                  -- Editor.shutdown
                   when (not $ isExitCall e) $ print e
                   throw e)
 

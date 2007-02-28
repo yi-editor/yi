@@ -22,7 +22,16 @@
 -- cursor movement and editing commands
 --
 
-module Yi.Buffer where
+module Yi.Buffer ( FBuffer (..), keyB, curLn, nameB, indexOfEol,
+                   sizeB, pointB, moveToSol, moveTo, lineUp, lineDown,
+                   hNewB, newB, getMarkB, finaliseB, hPutB, Point,
+                   moveToEol, gotoLn, gotoLnFrom, offsetFromSol,
+                   atSol, atEol, atSof, atEof, leftB, rightB,
+                   moveXorEol, moveXorSol, insertN, deleteN,
+                   deleteToEol, indexOfSol, nelemsB, writeB, getfileB,
+                   setfileB, deleteNAt, readB, elemsB, undo, redo,
+                   setMarkB, unsetMarkB, isUnchangedB, setSyntaxB, regexB, readAtB,
+                    ) where
 
 import Text.Regex.Posix.Wrap    ( Regex  )
 import Yi.FastBuffer
@@ -33,7 +42,6 @@ import Data.IORef
 import Data.Unique              ( newUnique, Unique, hashUnique )
 import Control.Concurrent.MVar
 import Yi.Event
-import Yi.Keymap
 import Control.Concurrent.Chan
 import Control.Monad
 
@@ -41,8 +49,6 @@ import Control.Monad
 -- | The 'Buffer' class defines editing operations over one-dimensional`
 -- mutable buffers, which maintain a current /point/.
 --
-
-type Point = Yi.FastBuffer.Point --  to re-export.
 
 data BufferMode = ReadOnly | ReadWrite
 

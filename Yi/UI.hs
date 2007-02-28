@@ -51,7 +51,7 @@ module Yi.UI (
 
 import Prelude hiding (error)
 
-import Yi.Buffer
+import Yi.Buffer (Point, FBuffer (..), pointB, curLn, getMarkB )
 import Yi.FastBuffer( nelemsBIH ) -- gah this is ugly
 import Yi.Editor
 import Yi.Window as Window
@@ -63,6 +63,7 @@ import Yi.Debug
 import Control.Concurrent
 import Control.Concurrent.Chan
 import Control.Exception
+import Control.Monad.Reader
 
 import Data.Unique
 import Data.List
@@ -87,43 +88,51 @@ data UI = UI {
              }
 
 -- | Initialise the ui
-start :: IO UI
+start :: EditorM ()
 start = do
-  v <- mkVty
-  (x,y) <- Yi.Vty.getSize v
-  s <- newIORef (y,x)
-  -- fork input-reading thread. important to block *thread* on getKey
-  -- otherwise all threads will block waiting for input
-  ch <- newChan
-  forkIO $ getcLoop v s ch 
-  modifyEditor_ $ \e -> return $ e { input = ch }
-  t <- myThreadId
-  cmd <- newIORef ""
-  tuiRefresh <- newMVar ()
-  return $ UI v s t cmd tuiRefresh
+  editor <- ask
+  lift $ do 
+          v <- mkVty
+          (x,y) <- Yi.Vty.getSize v
+          s <- newIORef (y,x)
+          -- fork input-reading thread. important to block *thread* on getKey
+          -- otherwise all threads will block waiting for input
+          ch <- newChan
+          forkIO $ getcLoop editor v s ch 
+          t <- myThreadId
+          cmd <- newIORef ""
+          tuiRefresh <- newEmptyMVar
+          let result = UI v s t cmd tuiRefresh
+          modifyIORef editor $ \e -> e { ui = result, input = ch }
  where
         -- | Action to read characters into a channel
-        getcLoop v s ch = repeatM_ $ getKey v s >>= writeChan ch
+        getcLoop editor v s ch = repeatM_ $ getKey editor v s >>= writeChan ch
 
         -- | Read a key. UIs need to define a method for getting events.
-        getKey v sz = do 
+        getKey editor v sz = do 
           event <- getEvent v
           case event of 
             (EvResize x y) -> do logPutStrLn $ "UI: EvResize: " ++ show (x,y)
-                                 writeIORef sz (y,x) >> refreshAll >> getKey v sz
+                                 writeIORef sz (y,x) >> runReaderT refreshAll editor >> getKey editor v sz
             _ -> return (fromVtyEvent event)
 
-main :: UI -> IO ()
-main tui = do
-  refresh
+main :: IORef Editor -> IO ()
+main editor = do
+  e <- readIORef editor
+  let
+      -- | When the editor state isn't being modified, refresh, then wait for
+      -- it to be modified again. 
+      refreshLoop :: IO ()
+      refreshLoop = repeatM_ $ do 
+                      takeMVar (uiRefresh (ui e))
+                      handleJust ioErrors (\except -> do 
+                                             logPutStrLn "refresh crashed with IO Error"
+                                             logError $ show $ except)
+                                     (runReaderT refresh editor)
+  scheduleRefresh (ui e)
+  logPutStrLn "refreshLoop started"
   refreshLoop
- where
-        -- | When the editor state isn't being modified, refresh, then wait for
-        -- it to be modified again. 
-        refreshLoop :: IO ()
-        refreshLoop = repeatM_ $ do
-                        takeMVar (uiRefresh tui )
-                        handleJust ioErrors (logError . show) refresh
+  
 
 -- | Clean up and go home
 end :: UI -> IO ()
@@ -132,12 +141,12 @@ end i = do
   throwTo (uiThread i) (ExitException ExitSuccess)
 
 -- | Suspend the program
-suspend :: IO ()
-suspend = raiseSignal sigTSTP
+suspend :: EditorM ()
+suspend = lift $ raiseSignal sigTSTP
 
 -- | Find the current screen height and width.
-screenSize :: UI -> IO (Int, Int)
-screenSize = readIORef . scrsize
+screenSize :: EditorM (Int, Int)
+screenSize = lift . readIORef . scrsize =<< readEditor ui 
 
 
 fromVtyEvent :: Yi.Vty.Event -> Yi.Event.Event
@@ -182,8 +191,9 @@ fromVtyMod Yi.Vty.MAlt   = Yi.Event.MMeta
 --
 -- Two points remain: horizontal scrolling, and tab handling.
 --
-refresh :: IO ()
-refresh = do 
+refresh :: EditorM ()
+refresh = do
+  lift $ logPutStrLn "refreshing screen."
   updateWindows
   withEditor $ \e -> do
     let ws = getWindows e
@@ -201,10 +211,14 @@ refresh = do
                             Just w -> let (y,x) = cursor w in
                                       Cursor x (y + (sum $ map height $ takeWhile (/= w) $ ws))
                             Nothing -> NoCursor}
+  return ()
 
-updateWindows :: IO ()
-updateWindows = modifyEditor_ $ \e -> do
+updateWindows :: EditorM ()
+updateWindows = do
+  debugWindows "Updating windows"
+  modifyEditor_ $ \e -> do
                   ws <- mapM (\w -> drawWindow e (Just w == getWindowOf e) (uistyle e) w) (getWindows e)
+                  logPutStrLn "Windows updated!"
                   return $ e { windows = M.fromList [(key w, w) | w <- ws]}
 
 showPoint :: Editor -> Window -> IO Window 
@@ -323,7 +337,7 @@ withStyle sty str = renderBS (styleToAttr sty) (B.pack str)
 -- Top of screen of other windows needs to get adjusted
 -- As does their modeslines.
 --
-newWindow :: FBuffer -> IO Window
+newWindow :: FBuffer -> EditorM Window
 newWindow b = modifyEditor $ \e -> do
     (h,w) <- readIORef $ scrsize $ ui $ e
     let wls   = M.elems $ windows e
@@ -341,7 +355,7 @@ newWindow b = modifyEditor $ \e -> do
 -- | Grow the given window, and pick another to shrink
 -- grow and shrink compliment each other, they could be refactored.
 --
-enlargeWindow :: Maybe Window -> IO ()
+enlargeWindow :: Maybe Window -> EditorM ()
 enlargeWindow Nothing = return ()
 enlargeWindow (Just win) = modifyEditor_ $ \e -> do
     let wls      = (M.elems . windows) e
@@ -363,7 +377,7 @@ enlargeWindow (Just win) = modifyEditor_ $ \e -> do
     }
 
 -- | shrink given window (just grow another)
-shrinkWindow :: Maybe Window -> IO ()
+shrinkWindow :: Maybe Window -> EditorM ()
 shrinkWindow Nothing = return ()
 shrinkWindow (Just win) = modifyEditor_ $ \e -> do
     let wls      = (M.elems . windows) e
@@ -399,7 +413,7 @@ getWinWithHeight wls i n p
 -- | Delete a window. Note that the buffer that was connected to this
 -- window is still open.
 --
-deleteWindow :: (Maybe Window) -> IO ()
+deleteWindow :: (Maybe Window) -> EditorM ()
 deleteWindow Nothing    = return ()
 deleteWindow (Just win) = do 
   deleteWindow' win
@@ -407,7 +421,7 @@ deleteWindow (Just win) = do
   -- now switch focus to a random window
   ws <- readEditor getWindows
   case ws of
-    [] -> logPutStrLn "All windows deleted!"
+    [] -> lift $ logPutStrLn "All windows deleted!"
     (w:_) -> setWindow w 
 
 ------------------------------------------------------------------------
@@ -419,15 +433,17 @@ resizeAll wls y x = flip map wls (\w -> resize y x w)
 
 -- | Reset the heights and widths of all the windows;
 -- refresh the display.
-refreshAll :: IO ()
-refreshAll = doResizeAll >> refresh
+refreshAll :: EditorM ()
+refreshAll = do 
+  doResizeAll
+  refresh
 
 -- | Schedule a refresh of the UI.
 scheduleRefresh :: UI -> IO ()
 scheduleRefresh tui = tryPutMVar (uiRefresh tui) () >> return ()
 
 -- | Reset the heights and widths of all the windows
-doResizeAll :: IO ()
+doResizeAll :: EditorM ()
 doResizeAll = modifyEditor_ $ \e -> do
     let i = ui e
     (h,w) <- readIORef $ scrsize i
@@ -447,12 +463,11 @@ turnOnML :: [Window] -> [Window]
 turnOnML = map $ \w -> w { mode = True }
 
 -- | Has the frame enough room for an extra window.
-hasRoomForExtraWindow :: IO Bool
+hasRoomForExtraWindow :: EditorM Bool
 hasRoomForExtraWindow = do
     i     <- sizeWindows
-    (y,_) <- screenSize =<< readEditor ui -- bah
+    (y,_) <- screenSize
     let (sy,r) = getY y i
-    logPutStrLn $ " (sy,r) = " ++ show (sy,r)
     return $ sy + r > 4  -- min window size
 
 -- | Calculate window heights, given all the windows and current height.
@@ -466,17 +481,17 @@ setCmdLine i s = do
   writeIORef (cmdline i) s
                 
 -- | Display the given buffer in the given window.
-setWindowBuffer :: FBuffer -> Maybe Window -> IO ()
+setWindowBuffer :: FBuffer -> Maybe Window -> EditorM ()
 setWindowBuffer b mw = do
-    logPutStrLn $ "Setting buffer for " ++ show mw
+    lift $ logPutStrLn $ "Setting buffer for " ++ show mw
     w'' <- case mw of 
              Just w -> do
-                     w' <- (emptyWindow b (height w, width w))
+                     w' <- lift $ emptyWindow b (height w, width w)
                      return $ w' { key = key w, mode = mode w } 
                      -- reuse the window's key (so it ends in the same place on the screen)
              Nothing -> newWindow b -- if there is no window, just create a new one.
     modifyEditor_ $ \e -> return $ e { windows = M.insert (key w'') w'' (windows e) }
-    debugWindows 
+    debugWindows "After setting buffer"
 
 --
 -- | Set current window
@@ -484,10 +499,10 @@ setWindowBuffer b mw = do
 --
 -- Factor in shift focus.
 --
-setWindow :: Window -> IO ()
+setWindow :: Window -> EditorM ()
 setWindow w = do
   modifyEditor_ $ \e -> do
                 logPutStrLn $ "Focusing " ++ show w
                 let fm = windows e                 
                 return $ e { windows = M.insert (key w) w fm, curwin = Just $ key w }
-  debugWindows
+  debugWindows "After focus"

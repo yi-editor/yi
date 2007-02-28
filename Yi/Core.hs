@@ -161,7 +161,9 @@ module Yi.Core (
         spawnMinibufferE,
 
         -- * Eval\/Interpretation
-        evalE
+        evalE,
+
+        catchJust'
    ) where
 
 import Prelude hiding (error)
@@ -173,9 +175,7 @@ import Yi.Window
 import Yi.String
 import Yi.Process           ( popen )
 import Yi.Editor
-import Yi.Keymap
 import Yi.CoreUI
-
 import qualified Yi.Editor as Editor
 import qualified Yi.Style as Style
 
@@ -183,10 +183,12 @@ import Data.Maybe
 import Data.Dynamic
 import Data.List
 import Data.Map as M        ( lookup, insert )
+import Data.IORef
 
 import System.Directory     ( doesFileExist )
 
 import Control.Monad
+import Control.Monad.Reader
 import Control.Exception
 import Control.Concurrent   ( forkIO )
 import Control.Concurrent.Chan
@@ -213,61 +215,56 @@ startE :: Maybe Editor
        -> IO ()
 
 startE st (confs,fn,fn') ln mfs = do
-  
     logPutStrLn "Starting Core"
 
-    -- start GHC session
-    initializeI
-
     -- restore the old state
-    case st of
-        -- need to update default keymap to point to current code.
-        Just e' -> modifyEditor_ $ const $ return e'
-        Nothing -> return ()
+    newSt <- newIORef $ maybe emptyEditor id st
+    flip runReaderT newSt $ do 
+      -- start GHC session
+      initializeI
+      Editor.setUserSettings confs fn fn'
 
-    Editor.setUserSettings confs fn fn'
+      u <- UI.start      
 
-    u <- UI.start
-    modifyEditor_ $ \e -> return $ e { ui = u }
+      lift $ logPutStrLn "Initializing First Buffer"
 
-    logPutStrLn "Initializing First Buffer"
-
-    -- emacs-like behaviour
-    newBufferE "*scratch*" $
-                   "-- This buffer is for notes you don't want to save.\n" ++
+      -- emacs-like behaviour
+      newBufferE "*scratch*" $
+                   "-- This buffer is for notes you don't want to save, and for haskell evaluation\n" ++
                    "-- If you want to create a file, open that file,\n" ++
                    "-- then enter the text in that file's own buffer.\n\n"
 
-    {-
-    -- vi-like behaviour
-    UI.addWindow
+      {-
+      -- vi-like behaviour
+      UI.addWindow
     
-    when (isNothing st) $ do -- read in any files if booting for the first time
-        handleJust ioErrors (errorE . show) $ do
-            case mfs of
-                Just fs -> mapM_ fnewE fs
-                Nothing -> do               
-                    mf <- mkstemp "/tmp/yi.XXXXXXXXXX"
-                    case mf of
-                        Nothing    -> error "Core.startE: mkstemp failed"
-                        Just (f,h) -> hClose h >> fnewE f
-        gotoLnE ln
-    -}
+      when (isNothing st) $ do -- read in any files if booting for the first time
+          handleJust ioErrors (errorE . show) $ do
+              case mfs of
+                  Just fs -> mapM_ fnewE fs
+                  Nothing -> do               
+                      mf <- mkstemp "/tmp/yi.XXXXXXXXXX"
+                      case mf of
+                          Nothing    -> error "Core.startE: mkstemp failed"
+                          Just (f,h) -> hClose h >> fnewE f
+          gotoLnE ln
+      -}
 
     logPutStrLn "Starting event handler"
-    t <- forkIO eventLoop
-    modifyEditor_ $ \e -> return $ e { threads = t : threads e }
-    UI.main u -- transfer control to UI: GTK must run in the main thread, or else it's not happy.
-        where 
+    let
           eventLoop :: IO ()
           eventLoop = do
-              ch <- readEditor input
+              ch <- liftM input $ readIORef newSt 
               let run = mapM_ dispatch =<< getChanContents ch
               repeatM_ $ (handle handler run >> logPutStrLn "Dispatcher execution ended")
                        
               where
-                handler e = errorE (show e)
-                dispatch action = withBuffer $ \b -> writeChan (bufferInput b) action
+                handler e = flip runReaderT newSt $ errorE (show e)
+                dispatch action = flip runReaderT newSt $ withBuffer $ \b -> writeChan (bufferInput b) action
+      
+    t <- forkIO eventLoop 
+    modifyIORef newSt $ \e -> e { threads = t : threads e }
+    UI.main newSt -- transfer control to UI: GTK must run in the main thread, or else it's not happy.
                 
 
 
@@ -281,7 +278,7 @@ startE st (confs,fn,fn') ln mfs = do
 -- editor with string as input, and is useful for testing keymaps.
 -- emptyE takes no input -- the ui blocks on stdin.
 --
-emptyE :: IO ()
+emptyE :: EditorM ()
 emptyE = modifyEditor_ $ const $ return $ emptyEditor
     -- need to get it into a state where we can just run core commands
     -- to make it reinitialisable, lets blank out the state
@@ -291,7 +288,7 @@ emptyE = modifyEditor_ $ const $ return $ emptyEditor
     -- no eventloop
 
 -- for testing keymaps:
-runE :: String -> IO ()
+runE :: String -> EditorM ()
 runE = undefined
 
 -- ---------------------------------------------------------------------
@@ -299,7 +296,7 @@ runE = undefined
 
 -- | Quit.
 quitE :: Action
-quitE = readEditor ui >>= UI.end
+quitE = withUI UI.end
 
 -- | Reboot (!). Reboot the entire editor, reloading the Yi core.
 rebootE :: Action
@@ -308,7 +305,7 @@ rebootE = do
     e  <- readEditor id
     fn <- readEditor reboot
     Editor.shutdown
-    fn (Just e)
+    lift $ fn (Just e)
 
 -- | Recompile and reload the user's config files
 reloadE :: Action
@@ -374,11 +371,11 @@ gotoPointE :: Int -> Action
 gotoPointE p = withBuffer $ flip moveTo p
 
 -- | Get the current point
-getPointE :: IO Int
+getPointE :: EditorM Int
 getPointE = withBuffer pointB
 
 -- | Get the current line and column number
-getLineAndColE :: IO (Int, Int)
+getLineAndColE :: EditorM (Int, Int)
 getLineAndColE = 
     withBuffer lineAndColumn
     where lineAndColumn :: FBuffer -> IO (Int, Int)
@@ -390,19 +387,19 @@ getLineAndColE =
 ------------------------------------------------------------------------
 
 -- | Is the point at the start of the line
-atSolE :: IO Bool
+atSolE :: EditorM Bool
 atSolE = withBuffer atSol
 
 -- | Is the point at the end of the line
-atEolE :: IO Bool
+atEolE :: EditorM Bool
 atEolE = withBuffer atEol
 
 -- | Is the point at the start of the file
-atSofE :: IO Bool
+atSofE :: EditorM Bool
 atSofE = withBuffer atSof
 
 -- | Is the point at the end of the file
-atEofE :: IO Bool
+atEofE :: EditorM Bool
 atEofE = withBuffer atEof
 
 ------------------------------------------------------------------------
@@ -508,22 +505,22 @@ killE :: Action
 killE = withBuffer deleteToEol
 
 -- | Delete an arbitrary part of the buffer
-deleteRegionE :: Region -> IO ()
+deleteRegionE :: Region -> EditorM ()
 deleteRegionE r = withBuffer $ \b -> do
                     deleteNAt b (regionEnd r - regionStart r) (regionStart r)
 
 
 -- | Read the char under the cursor
-readE :: IO Char
+readE :: EditorM Char
 readE = withBuffer readB
 
 
 -- | Read an arbitrary part of the buffer
-readRegionE :: Region -> IO String
+readRegionE :: Region -> EditorM String
 readRegionE r = readNM (regionStart r) (regionEnd r)
 
 -- | Read the line the point is on
-readLnE :: IO String
+readLnE :: EditorM String
 readLnE = withBuffer $ \b -> do
     i <- indexOfSol b
     j <- indexOfEol b
@@ -531,16 +528,16 @@ readLnE = withBuffer $ \b -> do
     return s
 
 -- | Read from - to
-readNM :: Int -> Int -> IO String
+readNM :: Int -> Int -> EditorM String
 readNM i j = withBuffer $ \b -> nelemsB b (j-i) i
 
 -- | Return the contents of the buffer as a string (note that this will
 -- be very expensive on large (multi-megabyte) buffers)
-readAllE :: IO String
+readAllE :: EditorM String
 readAllE = withBuffer $ \b -> elemsB b
 
 -- | Read from point to end of line
-readRestOfLnE :: IO String
+readRestOfLnE :: EditorM String
 readRestOfLnE = withBuffer $ \b -> do
     p <- pointB b
     j <- indexOfEol b
@@ -579,7 +576,7 @@ setRegE :: String -> Action
 setRegE s = modifyEditor_ $ \e -> return e { yreg = s }
 
 -- | Return the contents of the yank register
-getRegE :: IO String
+getRegE :: EditorM String
 getRegE = readEditor yreg
 
 
@@ -595,7 +592,7 @@ unsetMarkE :: Action
 unsetMarkE = withBuffer $ \b -> unsetMarkB b
 
 -- | Get the current buffer mark
-getMarkE :: IO Int
+getMarkE :: EditorM Int
 getMarkE = withBuffer getMarkB
 
 -- | Exchange point & mark.
@@ -618,14 +615,14 @@ exchangePointAndMarkE = do m <- getMarkE
 
 -- | Retrieve the extensible state
 
-getDynamic :: Initializable a => IO a
+getDynamic :: Initializable a => EditorM a
 getDynamic = getDynamic' (undefined :: a)
     where
-        getDynamic' :: Initializable b => b -> IO b
+        getDynamic' :: Initializable b => b -> EditorM b
         getDynamic' a = do
                 ps <- readEditor dynamic
                 case M.lookup (show $ typeOf a) ps of
-                    Nothing -> initial
+                    Nothing -> lift $ initial
                     Just x -> return $ fromJust $ fromDynamic x
 
 -- | Insert a value into the extensible state, keyed by its type
@@ -640,10 +637,10 @@ setDynamic x = modifyEditor_ $ \e ->
 --
 -- Todo: varients with marks?
 --
-pipeE :: String -> String -> IO String
+pipeE :: String -> String -> EditorM String
 pipeE cmd inp = do
     let (f:args) = split " " cmd
-    (out,_err,_) <- popen f args (Just inp)
+    (out,_err,_) <- lift $ popen f args (Just inp)
     return (chomp "\n" out)
 
 ------------------------------------------------------------------------
@@ -657,7 +654,7 @@ msgE s = do modifyEditor_ $ \e -> do
 -- | Set the cmd buffer, and draw a pretty error message
 errorE :: String -> Action
 errorE s = do msgE s
-              logPutStrLn $ "errorE: " ++ s
+              lift $ logPutStrLn $ "errorE: " ++ s
 
 -- | Clear the message line at bottom of screen
 msgClrE :: Action
@@ -678,7 +675,7 @@ data BufferFileInfo =
 
 -- | File info, size in chars, line no, col num, char num, percent
 -- TODO: use the above data type
-bufInfoE :: IO BufferFileInfo
+bufInfoE :: EditorM BufferFileInfo
 bufInfoE = withWindow $ \w b -> do
     s <- sizeB b
     p <- pointB b
@@ -695,11 +692,11 @@ bufInfoE = withWindow $ \w b -> do
     return bufInfo
 
 -- | Maybe a file associated with this buffer
-fileNameE :: IO (Maybe FilePath)
+fileNameE :: EditorM (Maybe FilePath)
 fileNameE = withBuffer getfileB
 
 -- | Name of this buffer
-bufNameE :: IO String
+bufNameE :: EditorM String
 bufNameE = withBuffer $ \b -> return (nameB b)
 
 -- | A character to fill blank lines in windows with. Usually '~' for
@@ -735,9 +732,9 @@ prevBufW = do
 fnewE  :: FilePath -> Action
 fnewE f = do
     km <- readEditor defaultKeymap
-    e  <- doesFileExist f
+    e  <- lift $ doesFileExist f
     b  <- if e then hNewBuffer f else stringToNewBuffer f [] km
-    setfileB b f        -- and associate with file f
+    lift $ setfileB b f        -- and associate with file f
     getWindow >>= UI.setWindowBuffer b
 
 -- | Like fnewE, create a new buffer filled with the String @s@,
@@ -753,7 +750,7 @@ newBufferE f s = do
       then UI.newWindow b >>= UI.setWindow
       else return ()
     getWindow >>= UI.setWindowBuffer b
-    logPutStrLn "newBufferE ended"
+    lift $ logPutStrLn "newBufferE ended"
 
 -- TODO:
 -- add prompt
@@ -794,7 +791,7 @@ backupE :: FilePath -> Action
 backupE = undefined
 
 -- | Return a list of all buffers, and their indicies
-listBuffersE :: IO [(String,Int)]
+listBuffersE :: EditorM [(String,Int)]
 listBuffersE = do
         bs  <- getBuffers
         return $ zip (map nameB bs) [0..]
@@ -808,7 +805,7 @@ closeBufferE f = killBufferAndWindows f
 
 -- | Is the current buffer unmodifed? (currently buggy, we need
 -- bounaries in the undo list)
-isUnchangedE :: IO Bool
+isUnchangedE :: EditorM Bool
 isUnchangedE = withBuffer isUnchangedB
 
 -- | Set the current buffer to be unmodifed
@@ -915,27 +912,26 @@ mapRangeE from to fn
 path :: FilePath
 path = "/usr/lib/ghc-6.6" -- ghc --print-libdir
 
-initializeI :: IO ()
-initializeI = do
+initializeI :: EditorM ()
+initializeI = modifyEditor_ $ \e -> do
   session <- GHC.newSession GHC.Interactive (Just path)
   dflags1 <- GHC.getSessionDynFlags session
   (dflags1',_otherFlags) <- GHC.parseDynamicFlags dflags1 ["-fglasgow-exts"]  
   (dflags2, _packageIds) <- Packages.initPackages dflags1'
   GHC.setSessionDynFlags session dflags2{GHC.hscTarget=GHC.HscInterpreted}
-  modifyEditor_ $ \e -> return e {editorSession = session}
 
   -- load the standard prelude
   let preludeModule = GHC.mkModule (PackageConfig.stringToPackageId "base") (GHC.mkModuleName "Prelude")
   GHC.setContext session [] [preludeModule]
+  return e {editorSession = session}
 
-
-evalToString :: String -> IO String
+evalToString :: String -> EditorM String
 evalToString string = do
   session <- readEditor editorSession
-  result <- GHC.compileExpr session ("show (" ++ string ++ ")")
+  result <- lift $ GHC.compileExpr session ("show (" ++ string ++ ")")
   case result of
     Nothing -> return ""
     Just x -> return (unsafeCoerce# x)
 
-evalE :: String -> IO ()
+evalE :: String -> EditorM ()
 evalE s = evalToString s >>= msgE

@@ -39,7 +39,7 @@ import Data.Char
 import Data.List            ( (\\) )
 import Data.Maybe           ( fromMaybe )
 
-import Control.Exception    ( ioErrors, catchJust, try, evaluate )
+import Control.Exception    ( ioErrors, try, evaluate )
 import Control.Monad.State
 
 --
@@ -220,7 +220,7 @@ cmd_move = do
 --   would make it really very configurable even by
 --   nonprogrammers.. using a nice gui
 --
-detectMovement :: Action -> IO Bool
+detectMovement :: Action -> EditorM Bool
 detectMovement act = do x <- getPointE
                         act
                         y <- getPointE
@@ -455,7 +455,7 @@ cmd_op = do
         -- some location specified by the sequence @m@, then return.
         -- Return the current, and remote point.
         --
-        withPointMove :: Action -> IO (Int,Int)
+        withPointMove :: Action -> EditorM (Int,Int)
         withPointMove m = do p <- getPointE
                              m
                              q <- getPointE
@@ -707,7 +707,7 @@ ex_eval cmd = do
       fn ""           = msgClrE
 
       fn s@(c:_) | isDigit c = do
-        e <- try $ evaluate $ read s
+        e <- lift $ try $ evaluate $ read s
         case e of Left _ -> errorE $ "The " ++show s++ " command is unknown."
                   Right lineNum -> gotoLnE lineNum
 
@@ -792,7 +792,8 @@ viWrite = do
             bufInfo <- bufInfoE
 	    let s   = bufInfoFileName bufInfo
             let msg = msgE $ show f ++" "++show s ++ "C written"
-            catchJust ioErrors (fwriteToE f >> msg) (msgE . show)
+            catchJust' ioErrors (fwriteToE f >> msg) (msgE . show)
+
 
 -- | Try to write to a named file in the manner of vi\/vim
 viWriteTo :: String -> Action
@@ -801,7 +802,7 @@ viWriteTo f = do
     bufInfo <- bufInfoE
     let s   = bufInfoFileName bufInfo
     let msg = msgE $ show f'++" "++show s ++ "C written"
-    catchJust ioErrors (fwriteToE f' >> msg) (msgE . show)
+    catchJust' ioErrors (fwriteToE f' >> msg) (msgE . show)
 
 -- | Try to do a substitution
 viSub :: [Char] -> Action

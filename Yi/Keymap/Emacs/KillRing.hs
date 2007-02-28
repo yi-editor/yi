@@ -69,11 +69,11 @@ killringPut s = do kr@Killring {krContents = r@(x:xs), krAccumulate=acc} <- getD
                                                else s:take killringMaxDepth r }
 
 -- | Return the killring contents as a list. Head is most recent.
-killringGet :: IO [String]
+killringGet :: EditorM [String]
 killringGet = do Killring {krContents = r} <- getDynamic
                  return r
 
-killringModify :: (Killring -> Killring) -> IO ()
+killringModify :: (Killring -> Killring) -> EditorM ()
 killringModify f = do
                    kr <- getDynamic
                    setDynamic $ f kr
@@ -81,7 +81,7 @@ killringModify f = do
 -- * Killring actions
 
 -- | Get the current region boundaries
-getRegionE :: IO Region
+getRegionE :: EditorM Region
 getRegionE = do m <- getMarkE
                 p <- getPointE
                 return $ mkRegion m p

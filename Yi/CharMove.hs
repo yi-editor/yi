@@ -70,7 +70,7 @@ module Yi.CharMove (
         dropSpace,      -- :: String -> String
     ) where
 
-import Yi.Buffer
+import Yi.Buffer 
 import Yi.Core
 import Yi.Editor
 import Yi.Window
@@ -83,13 +83,14 @@ import qualified Data.Map as M
 import Control.Monad        ( when, replicateM_ )
 import Control.Monad.Fix    ( fix )
 import Control.Exception    ( assert )
+import Control.Monad.Trans
 
 -- For word completion:
 import Data.IORef
 import System.IO.Unsafe     ( unsafePerformIO )
 
 -- | Read character before point.
-breadE :: IO Char
+breadE :: EditorM Char
 breadE = do
     p <- getPointE
     if p == 0
@@ -100,7 +101,7 @@ breadE = do
 -- | Perform movement action specified by @mov@ while not @chkend@ and
 -- @check@ applied to the 'Char' retuned by @rd@ are true.
 --
-doSkipWhile :: Action -> IO Char -> IO Bool -> (Char -> Bool) -> Action
+doSkipWhile :: Action -> EditorM Char -> EditorM Bool -> (Char -> Bool) -> Action
 doSkipWhile mov rd chkend check = do
     e <- chkend
     c <- rd
@@ -110,7 +111,7 @@ doSkipWhile mov rd chkend check = do
 -- | Similar to 'doSkipWhile', but perform check on the char returned
 -- by @rd@, then always move, before branching.
 --
-doSkipCond :: Action -> IO Char -> IO Bool -> (Char -> Bool) -> Action
+doSkipCond :: Action -> EditorM Char -> EditorM Bool -> (Char -> Bool) -> Action
 doSkipCond mov rd chkend check = do
     c <- rd
     mov
@@ -258,7 +259,7 @@ moveWhile_ f dir b = do
 ------------------------------------------------------------------------
 
 -- | Read word to the left of the cursor
-readWordLeftE :: IO (String,Int,Int)
+readWordLeftE :: EditorM (String,Int,Int)
 readWordLeftE = withBuffer $ \b -> readWordLeft_ b
 
 -- Core-internal worker, not threadsafe.
@@ -277,7 +278,7 @@ readWordLeft_ b = do
     return (s,q,p)
 
 -- | Read word under cursor
-readWordE :: IO (String,Int,Int)
+readWordE :: EditorM (String,Int,Int)
 readWordE = withBuffer $ \b -> readWord_ b
 
 ------------------------------------------------------------------------
@@ -339,17 +340,17 @@ readWord_ b = do
 -- we've seen, and the point in the search we are up to.
 type Completion = (String,M.Map String (),Int)
 
--- This could go in the single editor state, I suppose. Esp. if we want
+-- FIXME: This must go in the single editor state. Esp. if we want
 -- to do hardcore persistence at some point soon.
 --
 completions :: IORef (Maybe Completion)
-completions = unsafePerformIO $ newIORef Nothing
+completions = unsafePerformIO $ newIORef Nothing -- FIXME:
 
 --
 -- | Switch out of completion mode.
 --
 resetCompleteE :: Action
-resetCompleteE = writeIORef completions Nothing
+resetCompleteE = lift $ writeIORef completions Nothing
 
 --
 -- The word-completion action, down the buffer

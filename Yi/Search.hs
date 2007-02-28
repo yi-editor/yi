@@ -45,7 +45,6 @@ import Yi.Debug
 import Yi.Buffer
 import Text.Regex.Posix.String  ( Regex, compExtended, compIgnoreCase, compNewline, compile, execBlank )
 import Yi.Editor
-import Yi.Keymap
 import qualified Yi.Editor as Editor
 
 import Data.Bits ( (.|.) )
@@ -53,6 +52,7 @@ import Data.Maybe
 import Data.List
 
 import Control.Monad
+import Control.Monad.Reader
 
 import Yi.Core
 
@@ -69,7 +69,7 @@ setRegexE :: SearchExp -> Action
 setRegexE re = modifyEditor_ $ \e -> return e { regex = Just re }
 
 -- Return contents of regex register
-getRegexE :: IO (Maybe SearchExp)
+getRegexE :: EditorM (Maybe SearchExp)
 getRegexE = readEditor regex
 
 
@@ -123,7 +123,7 @@ searchE s fs d =
 
 searchDoE :: SearchExp
           -> Direction
-          -> IO SearchResult
+          -> EditorM SearchResult
 
 searchDoE _ GoLeft = do
         errorE "Backward searching is unimplemented"
@@ -133,9 +133,9 @@ searchDoE (s, re) _ = searchF s re
 --
 -- Set up a search.
 --
-searchInitE :: String -> [SearchF] -> IO SearchExp
+searchInitE :: String -> [SearchF] -> EditorM SearchExp
 searchInitE re fs = do
-    Right c_re <- compile (extended .|. igcase .|. newline) execBlank re
+    Right c_re <- lift $ compile (extended .|. igcase .|. newline) execBlank re
     let p = (re,c_re)
     setRegexE p
     return p
@@ -157,7 +157,7 @@ searchInitE re fs = do
 -- Keymaps may implement their own regex language. How do we provide for this?
 -- Also, what's happening with ^ not matching sol?
 --
-searchF :: String -> Regex -> IO SearchResult
+searchF :: String -> Regex -> EditorM SearchResult
 searchF _ c_re = do
     mp <- withBuffer $ \b -> do
             p   <- pointB b
@@ -185,10 +185,10 @@ searchF _ c_re = do
 --
 -- TODO too complex.
 --
-searchAndRepLocal :: String -> String -> IO Bool
+searchAndRepLocal :: String -> String -> EditorM Bool
 searchAndRepLocal [] _ = return False   -- hmm...
 searchAndRepLocal re str = do
-    Right c_re <- compile compExtended execBlank re
+    Right c_re <- lift $ compile compExtended execBlank re
     setRegexE (re,c_re)     -- store away for later use
 
     mp <- withBuffer $ \b -> do   -- find the regex

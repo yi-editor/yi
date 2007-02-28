@@ -27,9 +27,9 @@ import Yi.Yi hiding         ( keymap )
 
 import Data.Char            ( chr, isAlphaNum, toLower )
 
-import Control.Exception    ( ioErrors, catchJust, try, evaluate )
+import Control.Exception    ( ioErrors, try, evaluate )
 import Control.Monad ( when )
-
+import Control.Monad.Trans ( lift )
 --
 -- | Top level function. A function of this type is used by the editor
 -- main loop to interpret actions. The second argument to @execLexer@ is
@@ -214,7 +214,7 @@ search_km p = choice [srch_g, srch_y, srch_v, srch_t, srch_c, srch_r, performSea
 
 echoMode :: String -> (String -> Interact Char a) -> Interact Char a
 echoMode prompt exitProcess = do 
-  write (logPutStrLn "echoMode")
+  write (lift $ logPutStrLn "echoMode")
   write cmdlineFocusE 
   result <- lineEdit []
   write cmdlineUnFocusE
@@ -235,12 +235,12 @@ echoCharFM =
     [('\^O',
       \f -> if f == []
             then nopE
-            else catchJust ioErrors (do fwriteToE f ; msgE "Wrote current file.")
-                                    (msgE . show)
+            else catchJust' ioErrors (do fwriteToE f ; msgE "Wrote current file.")
+                                     (msgE . show)
      ,"File Name to Write: ")
 
     ,('\^_',
-     \s -> do e <- try $ evaluate $ read s
+     \s -> do e <- lift $ try $ evaluate $ read s
               case e of Left _   -> errorE "[ Come on, be reasonable ]"
                         Right ln -> gotoLnE ln >> solE >> msgClrE
      ,"Enter line number: ")

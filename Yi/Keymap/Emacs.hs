@@ -28,13 +28,13 @@ import Yi.Debug
 import Yi.Keymap.Emacs.KillRing
 import Yi.Keymap.Emacs.UnivArgument
 import Yi.Keymap.Emacs.Keys
-
 import Data.Char
 import Data.Maybe
 import Data.List
 import qualified Yi.UI as UI  -- FIXME this module should not depend on UI
 
 import Control.Monad
+import Control.Monad.Trans
 
 -- * The keymap abstract definition
 
@@ -165,7 +165,7 @@ undefC = do TypedKey k <- getDynamic
 readArgC :: KProc ()
 readArgC = do readArg' Nothing
               write $ do UniversalArg u <- getDynamic
-                         logPutStrLn (show u)
+                         lift $ logPutStrLn (show u)
                          msgE ""
 
 readArg' :: Maybe Int -> KProc ()
@@ -187,7 +187,7 @@ gotoLine :: Action
 gotoLine = withMinibuffer "goto line:" $ \lineString -> gotoLnE (read lineString)
 
 debug :: String -> Process
-debug = write . logPutStrLn
+debug = write . lift . logPutStrLn
 
 withMinibuffer :: String -> (String -> Action) -> Action
 withMinibuffer prompt act = spawnMinibufferE prompt (runKeymap (rebind normalKeymap "RET" (write innerAction)))

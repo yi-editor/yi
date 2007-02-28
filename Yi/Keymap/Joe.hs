@@ -136,14 +136,14 @@ killSolE = do
     pn <- getPointE
     deleteNE (p-pn)
 
-getFileE :: IO FilePath
+getFileE :: EditorM FilePath
 getFileE = do bufInfo <- bufInfoE
 	      let fp = bufInfoFileName bufInfo
               return fp
 
 
 insertFileE :: String -> Action
-insertFileE f = readFile f >>= insertNE
+insertFileE f = lift (readFile f) >>= insertNE
 
 
 -- ---------------------------------------------------------------------
@@ -183,7 +183,7 @@ simpleq prompt initial act = do
 
 echoMode :: String -> String -> JoeProc (Maybe String)
 echoMode prompt initial = do 
-  write (logPutStrLn "echoMode")
+  write (lift $ logPutStrLn "echoMode")
   write cmdlineFocusE 
   result <- lineEdit initial
   write cmdlineUnFocusE

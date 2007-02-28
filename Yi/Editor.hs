@@ -28,23 +28,20 @@ import Text.Regex.Posix.Wrap    ( Regex )
 import Yi.Window
 import Yi.Style                 ( uiStyle, UIStyle )
 import Yi.Event
-import Yi.Keymap
 import Yi.Debug
 import Prelude hiding (error)
 
 import Data.List                ( elemIndex )
 import Data.Unique              ( Unique, hashUnique )
 import Data.Dynamic
+import Data.IORef
 import qualified Data.Map as M
 
 import Control.Concurrent       ( killThread, ThreadId )
 import Control.Concurrent.Chan
-import Control.Concurrent.MVar
+import Control.Monad.Reader
 import Control.Concurrent   ( forkIO )
 import Control.Exception
-
-
-import System.IO.Unsafe         ( unsafePerformIO )
 
 import {-# source #-} Yi.UI as UI ( UI, scheduleRefresh )
 
@@ -82,6 +79,8 @@ data Editor = Editor {
        ,editorSession :: GHC.Session
     }
 
+type EditorM = ReaderT (IORef Editor) IO
+
 --
 -- | The initial state
 --
@@ -109,101 +108,100 @@ emptyEditor = Editor {
        ,editorSession = error "GHC Session not initialized"
     }
 
-type EditorM = IO
-
--- ---------------------------------------------------------------------
--- | The actual editor state
---
-state :: MVar Editor
-state = unsafePerformIO $ newMVar emptyEditor
-{-# NOINLINE state #-}
-
 -- ---------------------------------------------------------------------
 
 --
 -- | Read the editor state, with a pure action
 --
-readEditor :: (Editor -> b) -> IO b
-readEditor f = readMVar state >>= return . f
-
--- | Read the editor state, with an IO action
-withEditor :: (Editor -> IO ()) -> IO ()
-withEditor f = withMVar state f
+readEditor :: (Editor -> b) -> EditorM b
+readEditor f = do
+  e <- ask
+  lift $ liftM f (readIORef e)
 
 -- | Modify the contents, using an IO action.
-modifyEditor_ :: (Editor -> IO Editor) -> IO ()
-modifyEditor_ f = modifyMVar_ state f 
+modifyEditor_ :: (Editor -> IO Editor) -> EditorM ()
+modifyEditor_ f = do
+  e <- ask
+  e' <- lift $ (f =<< readIORef e)
+  lift $ writeIORef e e'  
 
 -- | Variation on modifyEditor_ that lets you return a value
-modifyEditor :: (Editor -> IO (Editor,b)) -> IO b
-modifyEditor f = modifyMVar state f 
+modifyEditor :: (Editor -> IO (Editor,b)) -> EditorM b
+modifyEditor f = do
+  e <- ask
+  (e',result) <- lift (f =<< readIORef e)
+  lift $ writeIORef e e'
+  return result
+
+withEditor :: (Editor -> IO a) -> EditorM a
+withEditor f = do
+  e <- ask
+  lift $ f =<< readIORef e
 
 -- ---------------------------------------------------------------------
 -- Buffer operations
 --
 -- | Create a new buffer filling with contents of file.
 --
-hNewBuffer :: FilePath -> IO FBuffer
+hNewBuffer :: FilePath -> EditorM FBuffer
 hNewBuffer f = do
-    b <- hNewB f
+    b <- lift $ hNewB f
     km <- readEditor defaultKeymap
     insertBuffer b km
 
 --
 -- | Create and fill a new buffer, using contents of string.
 --
-stringToNewBuffer :: FilePath -> String -> Keymap -> IO FBuffer
+stringToNewBuffer :: FilePath -> String -> Keymap -> EditorM FBuffer
 stringToNewBuffer f cs km = do
-    logPutStrLn $ "stringToNewBuffer: " ++ show f
-    b <- newB f cs
+    lift $ logPutStrLn $ "stringToNewBuffer: " ++ show f
+    b <- lift $ newB f cs
     insertBuffer b km
 
-insertBuffer :: FBuffer -> Keymap -> IO ()
+insertBuffer :: FBuffer -> Keymap -> EditorM FBuffer
 insertBuffer b km = do
+  editor <- ask
+  lift $ forkIO (bufferEventLoop editor b km) -- FIXME: kill this thread when the buffer dies.
   modifyEditor $ \e@(Editor{buffers=bs}) -> do
                      let e' = e { buffers = M.insert (keyB b) b bs } :: Editor
-                     forkIO (bufferEventLoop (ui e) b km) -- FIXME: kill this thread when the buffer dies.
                      return (e', b)
 
-bufferEventLoop :: UI -> FBuffer -> Keymap -> IO ()
-bufferEventLoop tui b km = eventLoop
+bufferEventLoop :: IORef Editor -> FBuffer -> Keymap -> IO ()
+bufferEventLoop e b km = eventLoop 
   where
     -- | The editor main loop. Read key strokes from the ui and interpret
     -- them using the current key map. Keys are bound to core actions.
     eventLoop :: IO ()
     eventLoop = do
-        let run bkm = do
+        tui <- liftM ui (readIORef e)
+        let
+            handler e = logPutStrLn $ "Buffer event loop crashed with: " ++ (show e)
+            -- | Make an action suitable for an interactive run.
+            -- Editor state will be refreshed after
+            interactive :: EditorM () -> IO ()
+            interactive action = do 
+              logPutStrLn "running interactively ("
+              runReaderT action e
+              logPutStrLn ")"
+              UI.scheduleRefresh tui
+
+            run bkm = do
             logStream ("Event for " ++ show b) (bufferInput b)
             UI.scheduleRefresh tui
             catchDyn (do sequence_ . map interactive . bkm =<< getChanContents (bufferInput b)
                          logPutStrLn "Keymap execution ended")
                          (\(MetaActionException km') -> run km')
+            
         repeatM_ $ handle handler (run km) -- when there is a bad exception, keybindings set via MetaActionException are reset.
-
-        where
-          repeatM_ a = a >> repeatM_ a
-          handler e = logPutStrLn $ "Buffer event loop crashed with: " ++ (show e)
-          -- | Make an action suitable for an interactive run.
-          -- Editor state will be refreshed after
-          interactive :: IO () -> IO ()
-          interactive action = logPutStrLn "running interactively (" >> action  >> logPutStrLn ")" >> UI.scheduleRefresh tui
-
 
 ------------------------------------------------------------------------
 --
 -- | return the buffers we have
 -- TODO we need to order the buffers some how.
 --
--- getBuffers :: Buffer a => IO [a]
---
-getBuffers :: IO [FBuffer]
+getBuffers :: EditorM [FBuffer]
 getBuffers = readEditor $ M.elems . buffers
 
---
--- | get the number of buffers we have
---
-sizeBuffers :: IO Int
-sizeBuffers = readEditor $ \e -> M.size (buffers (e :: Editor))
 
 --
 -- | Find buffer with this key
@@ -227,26 +225,26 @@ win2buf w e = findBufferWith e (bufkey w)
 --
 -- | Safely lookup buffer using it's key.
 --
-getBufferWith :: Unique -> IO FBuffer
+getBufferWith :: Unique -> EditorM FBuffer
 getBufferWith u = readEditor $ \e -> findBufferWith (e :: Editor) u
 
 ------------------------------------------------------------------------
 
 -- | Return the next buffer
-nextBuffer :: IO FBuffer
+nextBuffer :: EditorM FBuffer
 nextBuffer = shiftBuffer (+1)
 
 -- | Return the prev buffer
-prevBuffer :: IO FBuffer
+prevBuffer :: EditorM FBuffer
 prevBuffer = shiftBuffer (subtract 1)
 
 -- | Return the nth buffer in the buffer list, module buffer count
-bufferAt :: Int -> IO FBuffer
+bufferAt :: Int -> EditorM FBuffer
 bufferAt n = shiftBuffer (const n)
 
 -- | Return the buffer using a function applied to the current window's
 -- buffer's index.
-shiftBuffer :: (Int -> Int) -> IO FBuffer
+shiftBuffer :: (Int -> Int) -> EditorM FBuffer
 shiftBuffer f = readEditor $ \e ->
     let bs  = M.elems $ buffers (e :: Editor)
         win = findWindowWith e (curwin e)
@@ -258,18 +256,18 @@ shiftBuffer f = readEditor $ \e ->
 
 ------------------------------------------------------------------------
     
-deleteWindow' :: Window -> IO ()
+deleteWindow' :: Window -> EditorM ()
 deleteWindow' win = (modifyEditor_ $ \e -> do
     logPutStrLn $ "Deleting window #" ++ show (hashUnique $ key win)
     let ws = M.delete (key win) (windows e) -- delete window
-    return e { windows = ws }) >> debugWindows
+    return e { windows = ws }) >> debugWindows "After deletion"
   
 
-debugWindows :: IO ()
-debugWindows = do 
+debugWindows :: String -> EditorM ()
+debugWindows msg = do 
   ws <- readEditor getWindows
   w <- readEditor curwin
-  logPutStrLn $ "Editor windows: " ++ show ws ++ " current window " ++ show (fmap hashUnique w)
+  lift $ logPutStrLn $ msg ++ ": editor windows: " ++ show ws ++ " current window " ++ show (fmap hashUnique w)
 
 killAllBuffers :: IO ()
 killAllBuffers = error "killAllBuffers undefined"
@@ -290,7 +288,7 @@ getWindows = M.elems . windows
 --
 -- | Get current window
 --
-getWindow :: IO (Maybe Window)
+getWindow :: EditorM (Maybe Window)
 getWindow = readEditor getWindowOf
 
 --
@@ -304,7 +302,7 @@ getWindowOf e = case curwin e of
 --
 -- | How many windows do we have
 --
-sizeWindows :: IO Int
+sizeWindows :: EditorM Int
 sizeWindows = readEditor $ \e -> length $ M.elems (windows e)
 
 --
@@ -321,7 +319,7 @@ findWindowWith e (Just k) =
 --
 -- | Perform action with current window
 --
-withWindow :: (Window -> FBuffer -> IO a) -> IO a
+withWindow :: (Window -> FBuffer -> IO a) -> EditorM a
 withWindow f = modifyEditor $ \e -> do
         let w = findWindowWith e (curwin e)
             b = findBufferWith e (bufkey w)
@@ -329,16 +327,18 @@ withWindow f = modifyEditor $ \e -> do
         return (e,v)
 
 -- | Perform action with current window's buffer
-
-withBuffer :: (FBuffer -> IO a) -> IO a
+withBuffer :: (FBuffer -> IO a) -> EditorM a
 withBuffer f = withWindow (const f)
 
-
+withUI :: (UI -> IO a) -> EditorM a
+withUI f = do
+  e <- ask
+  lift $ f . ui =<< readIORef e 
 
 -- ---------------------------------------------------------------------
 -- | Given a keymap function, set the user-defineable key map to that function
 --
-setUserSettings :: Config -> (Maybe Editor -> IO ()) -> IO (Maybe Config) -> IO ()
+setUserSettings :: Config -> (Maybe Editor -> IO ()) -> IO (Maybe Config) -> EditorM ()
 setUserSettings (Config km sty) fn fn' =
     modifyEditor_ $ \e ->
         return $ (e { defaultKeymap = km,
@@ -352,9 +352,9 @@ setUserSettings (Config km sty) fn fn' =
 --
 -- | Shut down all of our threads. Should free buffers etc.
 --
-shutdown :: IO ()
+shutdown :: EditorM ()
 shutdown = do ts <- readEditor threads
-              mapM_ killThread ts
+              lift $ mapM_ killThread ts
               modifyEditor_ $ const (return emptyEditor)
 
 -- ---------------------------------------------------------------------
@@ -379,3 +379,47 @@ repeatM_ a = a >> repeatM_ a
 {-# SPECIALIZE repeatM_ :: IO a -> IO () #-}
 {-# INLINE repeatM_ #-}
 
+
+-- ---------------------------------------------------------------------
+-- | The type of user-bindable functions
+--
+type Action = EditorM ()
+
+type Keymap = [Event] -> [Action]
+
+--
+-- Our meta exception returns the next keymap to use
+--
+newtype MetaActionException = MetaActionException Keymap
+    deriving Typeable
+
+--
+-- | Given a keymap function, throw an exception to interrupt the main
+-- loop, which will continue processing with the supplied keymap.  Use
+-- this when you want to alter the keymap lexer based on the outcome of
+-- some IO action. Altering the keymap based on the input to  the keymap
+-- is achieved by threading a state variable in the keymap itself.
+--
+metaM :: Keymap -> EditorM ()
+metaM km = lift $ throwDyn (MetaActionException km)
+
+------------------------------------------------------------------------
+
+
+-- ---------------------------------------------------------------------
+-- | The metaM action. This is our mechanism for having Actions alter
+-- the current keymap. It is similar to the Ctk lexer\'s meta action.
+-- It takes a new keymap to use, throws a dynamic exception, which
+-- interrupts the main loop, causing it to restart with the given
+-- exception. An alternative would be to change all action types to
+-- @IO (Maybe Keymap)@, and check the result of each action as it is
+-- forced. Currently, my feeling is that metaM will be rare enough not
+-- to bother with this solution. Also, the dynamic exception solution
+-- changes only a couple of lines of code.
+--
+
+catchJust' :: (Exception -> Maybe b) -- ^ Predicate to select exceptions
+           -> EditorM a	-- ^ Computation to run
+           -> (b -> EditorM a) -- ^	Handler
+           -> EditorM a
+catchJust' p c h = ReaderT (\r -> catchJust p (runReaderT c r) (\b -> runReaderT (h b) r))
