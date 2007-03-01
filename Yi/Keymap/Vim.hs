@@ -23,16 +23,8 @@
 
 module Yi.Keymap.Vim ( keymap, VimMode ) where
 
-import Yi.Region
-import Yi.Core
-import Yi.CharMove
-import Yi.Interact   hiding ( count )
-import Yi.Debug
-import Yi.UI
+import Yi.Yi hiding ( count, keymap )
 import Yi.Style as Style
-import Yi.Search
-import Yi.Keymap
-
 import Prelude       hiding ( any, error )
 
 import Data.Char
