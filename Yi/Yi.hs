@@ -33,6 +33,7 @@ module Yi.Yi (
         module Yi.Core,
         module Yi.CharMove,
         module Yi.Style,
+        module Yi.Eval,
         module Yi.Event, -- hack, for key defns
         module Yi.Search,
         module Yi.Region,
@@ -52,6 +53,7 @@ import Yi.Interact
 import Yi.Debug
 import Yi.Keymap
 import Control.Monad
+import Yi.Eval
 
 import qualified Yi.Keymap.Vim as Default ( keymap )
 

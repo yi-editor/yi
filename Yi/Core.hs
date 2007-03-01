@@ -160,11 +160,6 @@ module Yi.Core (
         -- * Minibuffer
         spawnMinibufferE,
 
-        -- * Eval\/Interpretation
-        evalE,
-        execE,
-
-
         catchJust'
    ) where
 
@@ -189,7 +184,6 @@ import Data.IORef
 
 import System.Directory     ( doesFileExist )
 
-import Control.Monad
 import Control.Monad.Reader
 import Control.Exception
 import Control.Concurrent   ( forkIO )
@@ -201,10 +195,7 @@ import qualified GHC
 import qualified Packages
 import qualified PackageConfig
 import qualified DynFlags
-import qualified DriverPhases
 import qualified ObjLink
-import qualified Util ( handleDyn )
-import GHC.Exts ( unsafeCoerce# )
 
 
 -- | A 'Direction' is either left or right.
@@ -916,7 +907,7 @@ mapRangeE from to fn
 
 -- the path of our GHC installation
 path :: FilePath
-path = "/usr/lib/ghc-6.6" -- ghc --print-libdir; I'm very unsure on how to configure this with cabal.
+path = GHC_LIBDIR -- See Setup.hs
 
 initializeI :: EditorM ()
 initializeI = modifyEditor_ $ \e -> GHC.defaultErrorHandler DynFlags.defaultDynFlags $ do
@@ -943,44 +934,4 @@ initializeI = modifyEditor_ $ \e -> GHC.defaultErrorHandler DynFlags.defaultDynF
   yiModule <- GHC.findModule session (GHC.mkModuleName "Yi.Yi") Nothing -- this module re-exports all useful stuff.
   GHC.setContext session [] [preludeModule, yiModule]
   return e {editorSession = session}
-
-evalToStringE :: String -> EditorM String
-evalToStringE string = do
-  session <- readEditor editorSession
-  result <- lift $ GHC.compileExpr session ("show (" ++ string ++ ")")
-  case result of
-    Nothing -> return ""
-    Just x -> return (unsafeCoerce# x)
-
-evalE :: String -> EditorM ()
-evalE s = evalToStringE s >>= msgE
-
-execE :: String -> EditorM ()
-execE s = ghcErrorHandlerE $ do
-  lift $ logPutStrLn $ "execing " ++ s
-  session <- readEditor editorSession
-  result <- lift $ GHC.compileExpr session ("(" ++ s ++ ") >>= msgE . show :: EditorM ()")
-  case result of
-    Nothing -> errorE "Could not compile expression"
-    Just x -> do let (x' :: EditorM ()) = unsafeCoerce# x
-                 x'
-                 return ()
-
-
--- | Install some default exception handlers and run the inner computation.
-
-ghcErrorHandlerE :: EditorM () -> EditorM ()
-ghcErrorHandlerE inner = do
-  flip catchDynE (\dyn -> do
-  		    case dyn of
-		     GHC.PhaseFailed _ code -> errorE $ "Exitted with " ++ show code
-		     GHC.Interrupted -> errorE $ "Interrupted!"
-		     _ -> do errorE $ "GHC exeption: " ++ (show (dyn :: GHC.GhcException))
-			     
-	    ) $
-            inner
-
-catchDynE :: Typeable exception => EditorM a -> (exception -> EditorM a) -> EditorM a
-catchDynE inner handler = ReaderT (\r -> catchDyn (runReaderT inner r) (\e -> runReaderT (handler e) r))
-  
 
