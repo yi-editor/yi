@@ -28,7 +28,6 @@
 
 module Yi.Yi (
               -- all things re-exported here are made available to keymaps definitions.
-        settings,
         Config(..),
         module Yi.Core,
         module Yi.CharMove,
@@ -55,10 +54,6 @@ import Yi.Keymap
 import Control.Monad
 import Yi.Eval
 
-import qualified Yi.Keymap.Vim as Default ( keymap )
-
 import Yi.Event -- so we can see key defns
 
-settings :: Config
-settings = Config { keymap = Default.keymap, style = uiStyle }
 
