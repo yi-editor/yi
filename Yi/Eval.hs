@@ -64,10 +64,6 @@ ghcErrorHandlerE inner = do
 
 catchDynE :: Typeable exception => EditorM a -> (exception -> EditorM a) -> EditorM a
 catchDynE inner handler = ReaderT (\r -> catchDyn (runReaderT inner r) (\e -> runReaderT (handler e) r))
-  
-
-withSession :: (GHC.Session -> IO a) -> EditorM a
-withSession f = withEditor $ \e -> f (editorSession e)
 
 yiContext :: EditorM ()
 yiContext = withSession $ \session -> do
@@ -81,5 +77,3 @@ preludeContext = withSession $ \session -> do
   -- Setup the context for evaluation
   let preludeModule = GHC.mkModule (PackageConfig.stringToPackageId "base") (GHC.mkModuleName "Prelude")
   GHC.setContext session [] [preludeModule]
-
- 

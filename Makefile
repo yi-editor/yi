@@ -5,6 +5,10 @@ all: TAGS build
 gtk:
 	cd gtk && @runhaskell Setup.hs build
 
+emacs:
+	test -e $(HOME)/.yi/Config.hs || (mkdir $(HOME)/.yi; cp Config.hs $(HOME)/.yi/Config.hs)
+	dist/build/yi/yi --as=emacs
+
 build:
 	@runhaskell Setup.hs --with-ghc=ghc build
 

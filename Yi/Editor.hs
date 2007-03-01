@@ -335,6 +335,10 @@ withUI f = do
   e <- ask
   lift $ f . ui =<< readIORef e 
 
+withSession :: (GHC.Session -> IO a) -> EditorM a
+withSession f = withEditor $ \e -> f (editorSession e)
+
+
 -- ---------------------------------------------------------------------
 -- | Given a keymap function, set the user-defineable key map to that function
 --

@@ -182,11 +182,11 @@ import Data.List
 import Data.Map as M        ( lookup, insert )
 import Data.IORef
 
-import System.Directory     ( doesFileExist )
+import System.Directory     ( doesFileExist, getHomeDirectory )
 
 import Control.Monad.Reader
 import Control.Exception
-import Control.Concurrent   ( forkIO )
+import Control.Concurrent 
 import Control.Concurrent.Chan
 
 import qualified Yi.UI as UI
@@ -196,6 +196,8 @@ import qualified Packages
 import qualified PackageConfig
 import qualified DynFlags
 import qualified ObjLink
+
+import GHC.Exts ( unsafeCoerce# )
 
 
 -- | A 'Direction' is either left or right.
@@ -223,6 +225,10 @@ startE st (confs,fn,fn') ln mfs = do
 
       u <- UI.start      
 
+      -- run user configuration
+      cfg <- withSession runConfig
+      cfg
+
       lift $ logPutStrLn "Initializing First Buffer"
 
       -- emacs-like behaviour
@@ -247,6 +253,7 @@ startE st (confs,fn,fn') ln mfs = do
                           Just (f,h) -> hClose h >> fnewE f
           gotoLnE ln
       -}
+      
 
     logPutStrLn "Starting event handler"
     let
@@ -262,6 +269,7 @@ startE st (confs,fn,fn') ln mfs = do
       
     t <- forkIO eventLoop 
     modifyIORef newSt $ \e -> e { threads = t : threads e }
+
     UI.main newSt -- transfer control to UI: GTK must run in the main thread, or else it's not happy.
                 
 
@@ -917,8 +925,10 @@ initializeI = modifyEditor_ $ \e -> GHC.defaultErrorHandler DynFlags.defaultDynF
 
   -- TODO: currently we require user=developer; 
   -- Yi must be run in the yi repository root directory.
-  -- DEV MODE flags
+  home <- getHomeDirectory
   (dflags1',_otherFlags) <- GHC.parseDynamicFlags dflags1 ["-package ghc", "-fglasgow-exts", "-cpp", 
+                                                           "-i" ++ home ++ "/.yi", -- FIXME
+  -- DEV MODE flags
                                                            "-odirdist/build/yi/yi-tmp/",
                                                            "-hidirdist/build/yi/yi-tmp/"]
   (dflags2, _packageIds) <- Packages.initPackages dflags1'
@@ -928,7 +938,21 @@ initializeI = modifyEditor_ $ \e -> GHC.defaultErrorHandler DynFlags.defaultDynF
   ObjLink.loadObj "./dist/build/yi/yi-tmp/cbits/YiUtils.o"
   yiTarget <- GHC.guessTarget "Yi.Yi" Nothing
   GHC.addTarget session yiTarget
+
+  -- FIXME: don't do this if no config module is there.
+  configTarget <- GHC.guessTarget "Config" Nothing
+  GHC.addTarget session configTarget
+
   GHC.load session GHC.LoadAllTargets
 
   return e {editorSession = session}
+
+runConfig session = do
+  cfgModule <- GHC.findModule session (GHC.mkModuleName "Config") Nothing
+  GHC.setContext session [] [cfgModule]
+  result <- GHC.compileExpr session "yiConfig"
+  case result of
+    Nothing -> error "Could not compile expression"
+    Just x -> do let (x' :: EditorM ()) = unsafeCoerce# x
+                 return x'
 
