@@ -231,6 +231,7 @@ startE st (confs,fn,fn') ln mfs = do
                    "-- If you want to create a file, open that file,\n" ++
                    "-- then enter the text in that file's own buffer.\n\n"
 
+      
       {-
       -- vi-like behaviour
       UI.addWindow
@@ -929,9 +930,5 @@ initializeI = modifyEditor_ $ \e -> GHC.defaultErrorHandler DynFlags.defaultDynF
   GHC.addTarget session yiTarget
   GHC.load session GHC.LoadAllTargets
 
-  -- load the standard prelude
-  let preludeModule = GHC.mkModule (PackageConfig.stringToPackageId "base") (GHC.mkModuleName "Prelude")
-  yiModule <- GHC.findModule session (GHC.mkModuleName "Yi.Yi") Nothing -- this module re-exports all useful stuff.
-  GHC.setContext session [] [preludeModule, yiModule]
   return e {editorSession = session}
 

@@ -39,8 +39,6 @@ import qualified Yi.Keymap.Joe    as Joe
 import qualified Yi.Keymap.Ee     as Ee
 import qualified Yi.Keymap.Mg     as Mg
 
-import qualified Yi.UI as UI
-
 import Data.Char
 import Data.IORef
 import Data.List                ( intersperse )

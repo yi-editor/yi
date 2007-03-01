@@ -18,11 +18,13 @@ import Control.Monad.Reader
 import Control.Exception
 
 import qualified GHC
+import qualified PackageConfig
 import GHC.Exts ( unsafeCoerce# )
 
 
 evalToStringE :: String -> EditorM String
 evalToStringE string = do
+  preludeContext
   session <- readEditor editorSession
   result <- lift $ GHC.compileExpr session ("show (" ++ string ++ ")")
   case result of
@@ -38,6 +40,7 @@ execE :: String -> EditorM ()
 execE s = ghcErrorHandlerE $ do
   lift $ logPutStrLn $ "execing " ++ s
   session <- readEditor editorSession
+  yiContext
   result <- lift $ GHC.compileExpr session ("(" ++ s ++ ") >>= msgE . show :: EditorM ()")
   case result of
     Nothing -> errorE "Could not compile expression"
@@ -63,3 +66,20 @@ catchDynE :: Typeable exception => EditorM a -> (exception -> EditorM a) -> Edit
 catchDynE inner handler = ReaderT (\r -> catchDyn (runReaderT inner r) (\e -> runReaderT (handler e) r))
   
 
+withSession :: (GHC.Session -> IO a) -> EditorM a
+withSession f = withEditor $ \e -> f (editorSession e)
+
+yiContext :: EditorM ()
+yiContext = withSession $ \session -> do
+  -- Setup the context for evaluation
+  let preludeModule = GHC.mkModule (PackageConfig.stringToPackageId "base") (GHC.mkModuleName "Prelude")
+  yiModule <- GHC.findModule session (GHC.mkModuleName "Yi.Yi") Nothing -- this module re-exports all useful stuff.
+  GHC.setContext session [] [preludeModule, yiModule]
+
+preludeContext :: EditorM ()
+preludeContext = withSession $ \session -> do
+  -- Setup the context for evaluation
+  let preludeModule = GHC.mkModule (PackageConfig.stringToPackageId "base") (GHC.mkModuleName "Prelude")
+  GHC.setContext session [] [preludeModule]
+
+ 
