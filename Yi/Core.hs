@@ -916,13 +916,15 @@ mapRangeE from to fn
 
 -- the path of our GHC installation
 path :: FilePath
-path = "/usr/lib/ghc-6.6" -- ghc --print-libdir
+path = "/usr/lib/ghc-6.6" -- ghc --print-libdir; I'm very unsure on how to configure this with cabal.
 
 initializeI :: EditorM ()
 initializeI = modifyEditor_ $ \e -> GHC.defaultErrorHandler DynFlags.defaultDynFlags $ do
   session <- GHC.newSession GHC.Interactive (Just path)
   dflags1 <- GHC.getSessionDynFlags session
 
+  -- TODO: currently we require user=developer; 
+  -- Yi must be run in the yi repository root directory.
   -- DEV MODE flags
   (dflags1',_otherFlags) <- GHC.parseDynamicFlags dflags1 ["-package ghc", "-fglasgow-exts", "-cpp", 
                                                            "-odirdist/build/yi/yi-tmp/",
@@ -942,8 +944,8 @@ initializeI = modifyEditor_ $ \e -> GHC.defaultErrorHandler DynFlags.defaultDynF
   GHC.setContext session [] [preludeModule, yiModule]
   return e {editorSession = session}
 
-evalToString :: String -> EditorM String
-evalToString string = do
+evalToStringE :: String -> EditorM String
+evalToStringE string = do
   session <- readEditor editorSession
   result <- lift $ GHC.compileExpr session ("show (" ++ string ++ ")")
   case result of
@@ -951,7 +953,7 @@ evalToString string = do
     Just x -> return (unsafeCoerce# x)
 
 evalE :: String -> EditorM ()
-evalE s = evalToString s >>= msgE
+evalE s = evalToStringE s >>= msgE
 
 execE :: String -> EditorM ()
 execE s = ghcErrorHandlerE $ do
@@ -969,14 +971,8 @@ execE s = ghcErrorHandlerE $ do
 
 ghcErrorHandlerE :: EditorM () -> EditorM ()
 ghcErrorHandlerE inner = do
-  -- program errors: messages with locations attached.  Sometimes it is
-  -- convenient to just throw these as exceptions.
-  -- flip catchDyn (\dyn -> do printBagOfErrors dflags (unitBag dyn)) $
-
-  -- error messages propagated as exceptions
   flip catchDynE (\dyn -> do
-  		--hFlush stdout
-  		case dyn of
+  		    case dyn of
 		     GHC.PhaseFailed _ code -> errorE $ "Exitted with " ++ show code
 		     GHC.Interrupted -> errorE $ "Interrupted!"
 		     _ -> do errorE $ "GHC exeption: " ++ (show (dyn :: GHC.GhcException))

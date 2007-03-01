@@ -156,14 +156,6 @@ insertNextC :: KProc ()
 insertNextC = do c <- satisfy (const True)
                  write $ repeatingArg $ insertE (eventToChar c)
 
-
-{-
--- | Complain about undefined key
-undefC :: Action
-undefC = do TypedKey k <- getDynamic
-            errorE $ "Key sequence not defined : " ++ showKey k ++ " " ++ show k
--}
-
 -- | C-u stuff
 readArgC :: KProc ()
 readArgC = do readArg' Nothing
