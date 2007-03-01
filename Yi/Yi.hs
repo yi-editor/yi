@@ -38,8 +38,8 @@ module Yi.Yi (
         module Yi.Region,
         module Yi.Interact,
         module Yi.Keymap,
-        module Yi.Debug
-
+        module Yi.Debug,
+        module Control.Monad -- since all actions are monadic, this is very useful to combine them.
    ) where
 
 import Yi.Core
@@ -51,6 +51,7 @@ import Yi.Region
 import Yi.Interact
 import Yi.Debug
 import Yi.Keymap
+import Control.Monad
 
 import qualified Yi.Keymap.Vim as Default ( keymap )
 

@@ -162,6 +162,8 @@ module Yi.Core (
 
         -- * Eval\/Interpretation
         evalE,
+        execE,
+
 
         catchJust'
    ) where
@@ -198,6 +200,10 @@ import qualified Yi.UI as UI
 import qualified GHC
 import qualified Packages
 import qualified PackageConfig
+import qualified DynFlags
+import qualified DriverPhases
+import qualified ObjLink
+import qualified Util ( handleDyn )
 import GHC.Exts ( unsafeCoerce# )
 
 
@@ -913,16 +919,27 @@ path :: FilePath
 path = "/usr/lib/ghc-6.6" -- ghc --print-libdir
 
 initializeI :: EditorM ()
-initializeI = modifyEditor_ $ \e -> do
+initializeI = modifyEditor_ $ \e -> GHC.defaultErrorHandler DynFlags.defaultDynFlags $ do
   session <- GHC.newSession GHC.Interactive (Just path)
   dflags1 <- GHC.getSessionDynFlags session
-  (dflags1',_otherFlags) <- GHC.parseDynamicFlags dflags1 ["-fglasgow-exts"]  
+
+  -- DEV MODE flags
+  (dflags1',_otherFlags) <- GHC.parseDynamicFlags dflags1 ["-package ghc", "-fglasgow-exts", "-cpp", 
+                                                           "-odirdist/build/yi/yi-tmp/",
+                                                           "-hidirdist/build/yi/yi-tmp/"]
   (dflags2, _packageIds) <- Packages.initPackages dflags1'
   GHC.setSessionDynFlags session dflags2{GHC.hscTarget=GHC.HscInterpreted}
+  
+  -- DEV MODE
+  ObjLink.loadObj "./dist/build/yi/yi-tmp/cbits/YiUtils.o"
+  yiTarget <- GHC.guessTarget "Yi.Yi" Nothing
+  GHC.addTarget session yiTarget
+  GHC.load session GHC.LoadAllTargets
 
   -- load the standard prelude
   let preludeModule = GHC.mkModule (PackageConfig.stringToPackageId "base") (GHC.mkModuleName "Prelude")
-  GHC.setContext session [] [preludeModule]
+  yiModule <- GHC.findModule session (GHC.mkModuleName "Yi.Yi") Nothing -- this module re-exports all useful stuff.
+  GHC.setContext session [] [preludeModule, yiModule]
   return e {editorSession = session}
 
 evalToString :: String -> EditorM String
@@ -935,3 +952,39 @@ evalToString string = do
 
 evalE :: String -> EditorM ()
 evalE s = evalToString s >>= msgE
+
+execE :: String -> EditorM ()
+execE s = ghcErrorHandlerE $ do
+  lift $ logPutStrLn $ "execing " ++ s
+  session <- readEditor editorSession
+  result <- lift $ GHC.compileExpr session ("(" ++ s ++ ") >>= msgE . show :: EditorM ()")
+  case result of
+    Nothing -> errorE "Could not compile expression"
+    Just x -> do let (x' :: EditorM ()) = unsafeCoerce# x
+                 x'
+                 return ()
+
+
+-- | Install some default exception handlers and run the inner computation.
+
+ghcErrorHandlerE :: EditorM () -> EditorM ()
+ghcErrorHandlerE inner = do
+  -- program errors: messages with locations attached.  Sometimes it is
+  -- convenient to just throw these as exceptions.
+  -- flip catchDyn (\dyn -> do printBagOfErrors dflags (unitBag dyn)) $
+
+  -- error messages propagated as exceptions
+  flip catchDynE (\dyn -> do
+  		--hFlush stdout
+  		case dyn of
+		     GHC.PhaseFailed _ code -> errorE $ "Exitted with " ++ show code
+		     GHC.Interrupted -> errorE $ "Interrupted!"
+		     _ -> do errorE $ "GHC exeption: " ++ (show (dyn :: GHC.GhcException))
+			     
+	    ) $
+            inner
+
+catchDynE :: Typeable exception => EditorM a -> (exception -> EditorM a) -> EditorM a
+catchDynE inner handler = ReaderT (\r -> catchDyn (runReaderT inner r) (\e -> runReaderT (handler e) r))
+  
+

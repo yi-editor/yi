@@ -116,8 +116,7 @@ normalKeymap = selfInsertKeymap +++ makeKeymap
 --      ("M-t",      atomic $ repeatingArg transposeWordsE),
         ("M-u",      atomic $ repeatingArg uppercaseWordE),
         ("M-w",      atomic $ killRingSaveE),
---      ("M-x",      atomic $ executeExtendedCommandE),
-        ("M-x g o t o - l i n e", atomic $ gotoLine), -- joke.
+        ("M-x",      atomic $ executeExtendedCommandE),
         ("M-y",      atomic $ yankPopE),
         ("<home>",   atomic $ repeatingArg solE),
         ("<end>",    atomic $ repeatingArg eolE),
@@ -128,6 +127,10 @@ normalKeymap = selfInsertKeymap +++ makeKeymap
         ("<next>",   atomic $ repeatingArg downScreenE),
         ("<prior>",  atomic $ repeatingArg upScreenE)
         ]
+
+executeExtendedCommandE :: Action
+executeExtendedCommandE = do
+  withMinibuffer "M-x" execE
 
 evalRegionE :: Action
 evalRegionE = do
