@@ -6,7 +6,7 @@ gtk:
 	cd gtk && @runhaskell Setup.hs build
 
 build:
-	@runhaskell Setup.hs build
+	@runhaskell Setup.hs --with-ghc=ghc build
 
 config:
 	@runhaskell Setup.hs configure
