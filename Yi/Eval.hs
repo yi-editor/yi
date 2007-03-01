@@ -29,9 +29,11 @@ evalToStringE string = do
     Nothing -> return ""
     Just x -> return (unsafeCoerce# x)
 
+-- | Evaluate some text and show the result in the message line.
 evalE :: String -> EditorM ()
 evalE s = evalToStringE s >>= msgE
 
+-- | Run a (dynamically specified) editor command.
 execE :: String -> EditorM ()
 execE s = ghcErrorHandlerE $ do
   lift $ logPutStrLn $ "execing " ++ s
