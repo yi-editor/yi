@@ -105,22 +105,17 @@ versinfo = putStrLn $ package++" "++version
 --
 -- deal with real options
 --
-do_opts :: [Opts] -> IO ()
-do_opts (o:oo) = case o of
+do_opt :: Opts -> IO ()
+do_opt o = case o of
     Help     -> usage    >> exitWith ExitSuccess
     Version  -> versinfo >> exitWith ExitSuccess
-    Libdir _ -> do_opts oo  -- ignore -B flag. already handled in Boot.hs
-    LineNo l -> writeIORef g_lineno ((read l) :: Int) >> do_opts oo
+    Libdir _ -> return ()  -- FIXME: don't ignore -B flag. 
+    LineNo l -> writeIORef g_lineno ((read l) :: Int)
 
     EditorNm e -> case M.lookup (map toLower e) editorFM of
-                    Just km -> do
-                        do_opts oo
+                    Just km -> return () -- FIXME
                     Nothing -> do
                         putStrLn $ "Unknown editor: "++show e++". Ignoring."
-                        do_opts oo
-
-do_opts [] = return ()
-
 --
 -- everything that is left over
 --
@@ -128,7 +123,7 @@ do_args :: [String] -> IO (Maybe [FilePath])
 do_args args =
     case (getOpt Permute options args) of
         (o, n, []) -> do
-            do_opts o
+            mapM do_opt o
             case n of
                 []   -> return Nothing
                 fs   -> return $ Just fs
