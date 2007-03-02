@@ -39,7 +39,6 @@ import qualified Yi.Keymap.Ee     as Ee
 import qualified Yi.Keymap.Mg     as Mg
 
 import Data.Char
-import Data.IORef
 import Data.List                ( intersperse )
 import qualified Data.Map as M
 
@@ -50,7 +49,6 @@ import Control.Exception        ( catch, throw )
 import System.Console.GetOpt
 import System.Environment       ( getArgs )
 import System.Exit
-import System.IO.Unsafe         ( unsafePerformIO )
 import System.Posix.Signals
 
 import GHC.Exception            ( Exception(ExitException) )
@@ -67,6 +65,7 @@ data Opts = Help
           | Libdir String
           | LineNo String
           | EditorNm String
+          | File String
 
 --
 -- In case the user wants to start with a certain editor
@@ -104,26 +103,24 @@ versinfo = putStrLn $ package++" "++version
 --
 -- deal with real options
 --
-do_opt :: Opts -> IO ()
+do_opt :: Opts -> IO (Editor.Action)
 do_opt o = case o of
     Help     -> usage    >> exitWith ExitSuccess
     Version  -> versinfo >> exitWith ExitSuccess
-    Libdir _ -> return ()  -- FIXME: don't ignore -B flag. 
-    LineNo l -> writeIORef g_lineno ((read l) :: Int)
-
-    EditorNm e -> case M.lookup (map toLower e) editorFM of
-                    Just km -> return () -- FIXME
-                    Nothing -> do
-                        putStrLn $ "Unknown editor: "++show e++". Ignoring."
+    Libdir _ -> return Core.nopE  -- FIXME: don't ignore -B flag. 
+    LineNo l -> return (Core.gotoLnE (read l))
+    File file -> return (Core.fnewE file)
+    EditorNm emul -> case M.lookup (map toLower emul) editorFM of
+                    Just km -> return (Editor.modifyEditor_ $ \e -> return e { Editor.defaultKeymap = km })
+                    Nothing -> putStrLn ("Unknown emulation: " ++ show emul) >> exitWith (ExitFailure 1)
 --
 -- everything that is left over
 --
-do_args :: [String] -> IO ([FilePath])
+do_args :: [String] -> IO ([Editor.Action])
 do_args args =
-    case (getOpt Permute options args) of
-        (o, n, []) -> do
+    case (getOpt (ReturnInOrder File) options args) of
+        (o, [], []) -> do
             mapM do_opt o
-            return n
         (_, _, errs) -> error (concat errs)
 
 -- ---------------------------------------------------------------------
@@ -170,14 +167,6 @@ releaseSignals =
                (\sig -> installHandler sig Default Nothing)
 #endif
 
-
---
--- | The line number to start on
---
-g_lineno :: IORef Int
-g_lineno = unsafePerformIO $ newIORef (1 :: Int)
-{-# NOINLINE g_lineno #-}
-
 -- ---------------------------------------------------------------------
 -- | Static main. This is the front end to the statically linked
 -- application, and the real front end, in a sense. 'dynamic_main' calls
@@ -188,9 +177,7 @@ g_lineno = unsafePerformIO $ newIORef (1 :: Int)
 --
 static_main :: (Maybe Editor.Editor) -> IO ()
 static_main st = do
-    args    <- getArgs
-    mfiles  <- do_args args
-    lineno  <- readIORef g_lineno
+    mopts <- do_args =<< getArgs
 
     --
     -- The only way out is by throwing an exception, or an external
@@ -204,7 +191,7 @@ static_main st = do
     -- around. (is this still true? -- 04/05)
     --
     Control.Exception.catch
-        (initSignals >> initDebug ".yi.dbg" >> Core.startE st lineno mfiles )
+        (initSignals >> initDebug ".yi.dbg" >> Core.startE st mopts )
         (\e -> do releaseSignals
                   -- FIXME: We should do this, but that's impossible with no access to the editor state:
                   -- Editor.shutdown

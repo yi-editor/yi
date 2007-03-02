@@ -207,12 +207,8 @@ data Direction = GoLeft | GoRight
 -- | Start up the editor, setting any state with the user preferences
 -- and file names passed in, and turning on the UI
 --
-startE :: Maybe Editor
-       -> Int
-       -> [FilePath]
-       -> IO ()
-
-startE st ln fs = do
+startE :: Maybe Editor -> [Action] -> IO ()
+startE st commandLineActions = do
     logPutStrLn "Starting Core"
 
     -- restore the old state
@@ -235,17 +231,8 @@ startE st ln fs = do
                    "-- If you want to create a file, open that file,\n" ++
                    "-- then enter the text in that file's own buffer.\n\n"
 
-      when (isNothing st) $ do -- read in any files if booting for the first time
-          handleJustE ioErrors (errorE . show) $ mapM_ fnewE fs
-                       -- vi-like behaviour
-                      {-  do               
-                      mf <- mkstemp "/tmp/yi.XXXXXXXXXX"   
-                      case mf of
-                          Nothing    -> error "Core.startE: mkstemp failed"
-                          Just (f,h) -> hClose h >> fnewE f -}
-          gotoLnE ln
-      
-      
+      when (isNothing st) $ do -- process options if booting for the first time
+        sequence_ commandLineActions
 
     logPutStrLn "Starting event handler"
     let
@@ -938,6 +925,7 @@ initializeI = modifyEditor_ $ \e -> GHC.defaultErrorHandler DynFlags.defaultDynF
     
   return e {editorSession = session}
 
+getConfig :: GHC.Session -> IO (EditorM ())
 getConfig session = GHC.defaultErrorHandler DynFlags.defaultDynFlags $ do
   cfgModule <- GHC.findModule session (GHC.mkModuleName "YiConfig") Nothing
   GHC.setContext session [] [cfgModule]
