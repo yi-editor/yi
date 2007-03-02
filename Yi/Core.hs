@@ -891,6 +891,14 @@ mapRangeE from to fn
 path :: FilePath
 path = GHC_LIBDIR -- See Setup.hs
 
+objectsDir :: FilePath
+#ifdef YI_FLAVOUR_GTK
+objectsDir = "dist/build/yi-gtk/yi-gtk-tmp/"
+#else
+objectsDir = "dist/build/yi/yi-tmp/"
+#endif
+
+
 initializeI :: EditorM ()
 initializeI = modifyEditor_ $ \e -> GHC.defaultErrorHandler DynFlags.defaultDynFlags $ do
   session <- GHC.newSession GHC.Interactive (Just path)
@@ -904,13 +912,19 @@ initializeI = modifyEditor_ $ \e -> GHC.defaultErrorHandler DynFlags.defaultDynF
                                                            "-i" ++ home ++ "/.yi", -- FIXME
   -- DEV MODE flags
                                                            -- "-v",
-                                                           "-odirdist/build/yi/yi-tmp/",
-                                                           "-hidirdist/build/yi/yi-tmp/"]
+                                                           "-odir" ++ objectsDir,
+                                                           "-hidir" ++ objectsDir,
+#ifdef YI_FLAVOUR_GTK
+                                                           "-igtk"
+#else
+                                                           "-ivty"
+#endif
+                                                          ]
   (dflags2, _packageIds) <- Packages.initPackages dflags1'
   GHC.setSessionDynFlags session dflags2{GHC.hscTarget=GHC.HscInterpreted}
   
   -- DEV MODE
-  ObjLink.loadObj "./dist/build/yi/yi-tmp/cbits/YiUtils.o"
+  ObjLink.loadObj $ "./" ++ objectsDir ++ "cbits/YiUtils.o"
   yiTarget <- GHC.guessTarget "Yi.Yi" Nothing
   GHC.addTarget session yiTarget
 

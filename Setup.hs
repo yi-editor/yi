@@ -7,7 +7,6 @@ import System.Info
 import System.Process
 import Data.List
 import System.IO
---import Config
 
 main :: IO ()
 main = defaultMainWithHooks defaultUserHooks
@@ -18,7 +17,11 @@ setConfigInfo args _
       return
       (Nothing,
        [("yi", emptyBuildInfo
-       { options = [(GHC,[mkOpt ("GHC_LIBDIR",show libdir)])] })])
+         { options = [(GHC,[mkOpt ("GHC_LIBDIR",show libdir)]),
+                      (GHC,[mkOpt ("YI_FLAVOUR_VTY","1")])] }),
+        ("yi-gtk", emptyBuildInfo
+         { options = [(GHC,[mkOpt ("GHC_LIBDIR",show libdir)]),
+                      (GHC,[mkOpt ("YI_FLAVOUR_GTK","1")])] })])
     where mkOpt (name,def) = "-D"++name++"="++def
 
 getLibDir [arg]

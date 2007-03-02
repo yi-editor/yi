@@ -2,9 +2,6 @@ HS_FILES=$(shell find . -path "./_darcs" -prune -o -name "*.hs" -print)
 
 all: TAGS build
 
-gtk:
-	cd gtk && @runhaskell Setup.hs build
-
 runtime-config: $(HOME)/.yi/YiConfig.hs
 
 $(HOME)/.yi/YiConfig.hs: YiConfig.example.hs
