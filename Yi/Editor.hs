@@ -395,8 +395,11 @@ metaM km = lift $ throwDyn (MetaActionException km)
 -- changes only a couple of lines of code.
 --
 
-catchJust' :: (Exception -> Maybe b) -- ^ Predicate to select exceptions
+catchJustE :: (Exception -> Maybe b) -- ^ Predicate to select exceptions
            -> EditorM a	-- ^ Computation to run
            -> (b -> EditorM a) -- ^	Handler
            -> EditorM a
-catchJust' p c h = ReaderT (\r -> catchJust p (runReaderT c r) (\b -> runReaderT (h b) r))
+catchJustE p c h = ReaderT (\r -> catchJust p (runReaderT c r) (\b -> runReaderT (h b) r))
+
+handleJustE :: (Exception -> Maybe b) -> (b -> EditorM a) -> EditorM a -> EditorM a
+handleJustE p h c = catchJustE p c h

@@ -784,7 +784,7 @@ viWrite = do
             bufInfo <- bufInfoE
 	    let s   = bufInfoFileName bufInfo
             let msg = msgE $ show f ++" "++show s ++ "C written"
-            catchJust' ioErrors (fwriteToE f >> msg) (msgE . show)
+            catchJustE ioErrors (fwriteToE f >> msg) (msgE . show)
 
 
 -- | Try to write to a named file in the manner of vi\/vim
@@ -794,7 +794,7 @@ viWriteTo f = do
     bufInfo <- bufInfoE
     let s   = bufInfoFileName bufInfo
     let msg = msgE $ show f'++" "++show s ++ "C written"
-    catchJust' ioErrors (fwriteToE f' >> msg) (msgE . show)
+    catchJustE ioErrors (fwriteToE f' >> msg) (msgE . show)
 
 -- | Try to do a substitution
 viSub :: [Char] -> Action

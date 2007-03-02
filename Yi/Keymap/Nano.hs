@@ -235,7 +235,7 @@ echoCharFM =
     [('\^O',
       \f -> if f == []
             then nopE
-            else catchJust' ioErrors (do fwriteToE f ; msgE "Wrote current file.")
+            else catchJustE ioErrors (do fwriteToE f ; msgE "Wrote current file.")
                                      (msgE . show)
      ,"File Name to Write: ")
 

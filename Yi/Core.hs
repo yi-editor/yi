@@ -160,7 +160,7 @@ module Yi.Core (
         -- * Minibuffer
         spawnMinibufferE,
 
-        catchJust'
+        catchJustE
    ) where
 
 import Prelude hiding (error)
@@ -236,22 +236,19 @@ startE st ln mfs = do
                    "-- If you want to create a file, open that file,\n" ++
                    "-- then enter the text in that file's own buffer.\n\n"
 
-      
-      {-
-      -- vi-like behaviour
-      UI.addWindow
-    
       when (isNothing st) $ do -- read in any files if booting for the first time
-          handleJust ioErrors (errorE . show) $ do
+          handleJustE ioErrors (errorE . show) $ do
               case mfs of
                   Just fs -> mapM_ fnewE fs
-                  Nothing -> do               
-                      mf <- mkstemp "/tmp/yi.XXXXXXXXXX"
+                  Nothing -> return ()
+                       -- vi-like behaviour
+                      {-  do               
+                      mf <- mkstemp "/tmp/yi.XXXXXXXXXX"   
                       case mf of
                           Nothing    -> error "Core.startE: mkstemp failed"
-                          Just (f,h) -> hClose h >> fnewE f
+                          Just (f,h) -> hClose h >> fnewE f -}
           gotoLnE ln
-      -}
+      
       
 
     logPutStrLn "Starting event handler"
