@@ -25,7 +25,6 @@ import Prelude hiding (error)
 import Yi.Version                       ( package, version )
 import qualified Yi.Editor  as Editor
 import qualified Yi.Core    as Core
-import qualified Yi.Style   as Style
 import qualified Yi.Keymap  as Keymap
 
 import Yi.Debug
@@ -119,14 +118,12 @@ do_opt o = case o of
 --
 -- everything that is left over
 --
-do_args :: [String] -> IO (Maybe [FilePath])
+do_args :: [String] -> IO ([FilePath])
 do_args args =
     case (getOpt Permute options args) of
         (o, n, []) -> do
             mapM do_opt o
-            case n of
-                []   -> return Nothing
-                fs   -> return $ Just fs
+            return n
         (_, _, errs) -> error (concat errs)
 
 -- ---------------------------------------------------------------------

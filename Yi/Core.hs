@@ -194,7 +194,6 @@ import System.Exit	( exitWith, ExitCode(..) )
 
 import qualified GHC
 import qualified Packages
-import qualified PackageConfig
 import qualified DynFlags
 import qualified ObjLink
 
@@ -210,10 +209,10 @@ data Direction = GoLeft | GoRight
 --
 startE :: Maybe Editor
        -> Int
-       -> Maybe [FilePath]
+       -> [FilePath]
        -> IO ()
 
-startE st ln mfs = do
+startE st ln fs = do
     logPutStrLn "Starting Core"
 
     -- restore the old state
@@ -222,7 +221,7 @@ startE st ln mfs = do
       -- start GHC session
       initializeI
 
-      u <- UI.start      
+      UI.start      
 
       -- run user configuration
       cfg <- withSession getConfig
@@ -237,10 +236,7 @@ startE st ln mfs = do
                    "-- then enter the text in that file's own buffer.\n\n"
 
       when (isNothing st) $ do -- read in any files if booting for the first time
-          handleJustE ioErrors (errorE . show) $ do
-              case mfs of
-                  Just fs -> mapM_ fnewE fs
-                  Nothing -> return ()
+          handleJustE ioErrors (errorE . show) $ mapM_ fnewE fs
                        -- vi-like behaviour
                       {-  do               
                       mf <- mkstemp "/tmp/yi.XXXXXXXXXX"   
