@@ -23,7 +23,7 @@
 
 module Yi.Keymap.Nano ( keymap ) where
 
-import Yi.Yi hiding         ( keymap )
+import Yi.Yi
 
 import Data.Char            ( chr, isAlphaNum, toLower )
 

@@ -5,9 +5,17 @@ all: TAGS build
 gtk:
 	cd gtk && @runhaskell Setup.hs build
 
-emacs:
-	test -e $(HOME)/.yi/Config.hs || (mkdir $(HOME)/.yi; cp Config.hs $(HOME)/.yi/Config.hs)
+runtime-config: $(HOME)/.yi/YiConfig.hs
+
+$(HOME)/.yi/YiConfig.hs: YiConfig.example.hs
+	mkdir -p $(HOME)/.yi
+	cp $< $@
+
+emacs: runtime-config
 	dist/build/yi/yi --as=emacs
+
+vim: runtime-config
+	dist/build/yi/yi --as=vim
 
 build:
 	@runhaskell Setup.hs --with-ghc=ghc build
@@ -37,4 +45,4 @@ tags TAGS: $(HS_FILES)
 	hasktags -b $(HS_FILES)
 
 interactive:
-	ghci -fglasgow-exts -package ghc -cpp -hidirdist/build/yi/yi-tmp/ -odirdist/build/yi/yi-tmp/ ./dist/build/yi/yi-tmp/cbits/YiUtils.o Yi/Yi.hs
+	ghci -fglasgow-exts -package ghc -cpp -hidirdist/build/yi/yi-tmp/ -odirdist/build/yi/yi-tmp/ -i/home/jp/.yi ./dist/build/yi/yi-tmp/cbits/YiUtils.o Yi/Yi.hs 

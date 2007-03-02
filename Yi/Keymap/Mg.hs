@@ -60,7 +60,7 @@
 
 module Yi.Keymap.Mg (keymap) where
 
-import Yi.Yi         hiding ( keymap )
+import Yi.Yi
 import Yi.Char
 
 import Numeric              ( showOct )

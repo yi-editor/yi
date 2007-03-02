@@ -26,7 +26,7 @@ module Yi.Keymap.Joe (
 ) where
 
 import Control.Monad.State
-import Yi.Yi hiding         ( keymap )
+import Yi.Yi
 import Yi.CharMove
 import Yi.Char
 

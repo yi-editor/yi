@@ -175,6 +175,7 @@ import Yi.Editor
 import Yi.CoreUI
 import qualified Yi.Editor as Editor
 import qualified Yi.Style as Style
+import qualified Yi.UI as UI
 
 import Data.Maybe
 import Data.Dynamic
@@ -189,7 +190,7 @@ import Control.Exception
 import Control.Concurrent 
 import Control.Concurrent.Chan
 
-import qualified Yi.UI as UI
+import System.Exit	( exitWith, ExitCode(..) )
 
 import qualified GHC
 import qualified Packages
@@ -208,12 +209,11 @@ data Direction = GoLeft | GoRight
 -- and file names passed in, and turning on the UI
 --
 startE :: Maybe Editor
-       -> (Editor.Config, (Maybe Editor) -> IO (), IO (Maybe Editor.Config) )
        -> Int
        -> Maybe [FilePath]
        -> IO ()
 
-startE st (confs,fn,fn') ln mfs = do
+startE st ln mfs = do
     logPutStrLn "Starting Core"
 
     -- restore the old state
@@ -221,12 +221,11 @@ startE st (confs,fn,fn') ln mfs = do
     flip runReaderT newSt $ do 
       -- start GHC session
       initializeI
-      Editor.setUserSettings confs fn fn'
 
       u <- UI.start      
 
       -- run user configuration
-      cfg <- withSession runConfig
+      cfg <- withSession getConfig
       cfg
 
       lift $ logPutStrLn "Initializing First Buffer"
@@ -315,13 +314,7 @@ rebootE = do
 
 -- | Recompile and reload the user's config files
 reloadE :: Action
-reloadE = do
-    fn <- readEditor reload
-    modifyEditor_ $ \e -> do
-        v <- fn
-        return $ case v of
-            Nothing -> e
-            Just (Config km sty) -> e { defaultKeymap = km, uistyle = sty }
+reloadE = error "Reload not implemented yet"
 
 -- | Reset the size, and force a complete redraw
 refreshE :: Action
@@ -926,9 +919,11 @@ initializeI = modifyEditor_ $ \e -> GHC.defaultErrorHandler DynFlags.defaultDynF
   -- TODO: currently we require user=developer; 
   -- Yi must be run in the yi repository root directory.
   home <- getHomeDirectory
+  logPutStrLn $ "Home = " ++ home
   (dflags1',_otherFlags) <- GHC.parseDynamicFlags dflags1 ["-package ghc", "-fglasgow-exts", "-cpp", 
                                                            "-i" ++ home ++ "/.yi", -- FIXME
   -- DEV MODE flags
+                                                           -- "-v",
                                                            "-odirdist/build/yi/yi-tmp/",
                                                            "-hidirdist/build/yi/yi-tmp/"]
   (dflags2, _packageIds) <- Packages.initPackages dflags1'
@@ -940,17 +935,20 @@ initializeI = modifyEditor_ $ \e -> GHC.defaultErrorHandler DynFlags.defaultDynF
   GHC.addTarget session yiTarget
 
   -- FIXME: don't do this if no config module is there.
-  configTarget <- GHC.guessTarget "Config" Nothing
+  configTarget <- GHC.guessTarget "YiConfig" Nothing
   GHC.addTarget session configTarget
 
-  GHC.load session GHC.LoadAllTargets
-
+  result <- GHC.load session GHC.LoadAllTargets
+  case result of
+    GHC.Failed -> exitWith (ExitFailure (-1))
+    _ -> return ()
+    
   return e {editorSession = session}
 
-runConfig session = do
-  cfgModule <- GHC.findModule session (GHC.mkModuleName "Config") Nothing
+getConfig session = GHC.defaultErrorHandler DynFlags.defaultDynFlags $ do
+  cfgModule <- GHC.findModule session (GHC.mkModuleName "YiConfig") Nothing
   GHC.setContext session [] [cfgModule]
-  result <- GHC.compileExpr session "yiConfig"
+  result <- GHC.compileExpr session "yiMain"
   case result of
     Nothing -> error "Could not compile expression"
     Just x -> do let (x' :: EditorM ()) = unsafeCoerce# x

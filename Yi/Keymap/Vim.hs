@@ -23,7 +23,7 @@
 
 module Yi.Keymap.Vim ( keymap, VimMode ) where
 
-import Yi.Yi hiding ( count, keymap )
+import Yi.Yi hiding ( count )
 import Yi.Style as Style
 import Prelude       hiding ( any, error )
 

@@ -26,7 +26,7 @@
 
 module Yi.Keymap.Vi ( keymap, keymapPlus, ViMode ) where
 
-import Yi.Yi         hiding ( keymap, count )
+import Yi.Yi         hiding ( count )
 
 import Prelude       hiding ( any, error )
 

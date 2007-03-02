@@ -63,7 +63,6 @@ data Editor = Editor {
        ,input           :: Chan Event                 -- ^ input stream
        ,threads         :: [ThreadId]                 -- ^ all our threads
        ,reboot          :: (Maybe Editor) -> IO ()    -- ^ our reboot function
-       ,reload          :: IO (Maybe Config)          -- ^ reload config function
        ,dynamic         :: !(M.Map String Dynamic)    -- ^ dynamic components
 
        ,cmdlinefocus    :: !Bool                      -- ^ cmdline has focus
@@ -102,7 +101,6 @@ emptyEditor = Editor {
        ,input        = error "No channel open"
        ,threads      = []
        ,reboot       = const $ return ()
-       ,reload       = error "No reload function"
        ,dynamic      = M.empty
 
        ,editorSession = error "GHC Session not initialized"
@@ -338,19 +336,6 @@ withUI f = do
 withSession :: (GHC.Session -> IO a) -> EditorM a
 withSession f = withEditor $ \e -> f (editorSession e)
 
-
--- ---------------------------------------------------------------------
--- | Given a keymap function, set the user-defineable key map to that function
---
-setUserSettings :: Config -> (Maybe Editor -> IO ()) -> IO (Maybe Config) -> EditorM ()
-setUserSettings (Config km sty) fn fn' =
-    modifyEditor_ $ \e ->
-        return $ (e { defaultKeymap = km,
-                     uistyle    = sty,
-                     reboot     = fn,
-                     reload     = fn' } :: Editor)
-
-
 -- ---------------------------------------------------------------------
 
 --
@@ -360,18 +345,6 @@ shutdown :: EditorM ()
 shutdown = do ts <- readEditor threads
               lift $ mapM_ killThread ts
               modifyEditor_ $ const (return emptyEditor)
-
--- ---------------------------------------------------------------------
---
--- | All the user-defineable settings. This is the type of the data in
--- ~/.yi/Config.hs. All user defineable values will eventually be in
--- this structure. A value of this type is passed from Boot.hs to Yi.hs
--- in the dynamically loaded edition of yi.
---
-data Config = Config {
-            keymap :: Keymap      -- ^ bind keys to editor actions
-           ,style  :: UIStyle
-    }
 
 -- ---------------------------------------------------------------------
 -- | Class of values that can go in the extensible state component

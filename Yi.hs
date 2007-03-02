@@ -18,7 +18,7 @@
 -- jumping into an event loop.
 --
 
-module Yi (static_main, dynamic_main) where
+module Yi (static_main) where
 
 import Prelude hiding (error)
 
@@ -114,8 +114,6 @@ do_opts (o:oo) = case o of
 
     EditorNm e -> case M.lookup (map toLower e) editorFM of
                     Just km -> do
-                        (k,f,g) <- readIORef g_settings
-                        writeIORef g_settings (k { Editor.keymap = km }, f, g)
                         do_opts oo
                     Nothing -> do
                         putStrLn $ "Unknown editor: "++show e++". Ignoring."
@@ -180,31 +178,6 @@ releaseSignals =
                (\sig -> installHandler sig Default Nothing)
 #endif
 
--- ---------------------------------------------------------------------
--- | The "g_settings" var stores the user-configurable information. It is
--- initialised with the default settings, so it works even if the user
--- doesnt provide a ~/.yi/x.hs, or stuffs up their config scripts in
--- some way. The second component is our reboot function, passed in from
--- Boot.hs, otherwise return ().
---
-g_settings :: IORef (Editor.Config
-                    ,Maybe Editor.Editor -> IO ()
-                    ,IO (Maybe Editor.Config))
-
-g_settings = unsafePerformIO $
-                newIORef (dflt_config
-                         ,static_main
-                         ,return (Just dflt_config))
-{-# NOINLINE g_settings #-}
-
---
--- | default values to use if no ~/.yi/Config.hs is found
---
-dflt_config :: Editor.Config
-dflt_config = Editor.Config {
-        Editor.keymap = Vim.keymap,
-        Editor.style  = Style.uiStyle
-    }
 
 --
 -- | The line number to start on
@@ -225,7 +198,6 @@ static_main :: (Maybe Editor.Editor) -> IO ()
 static_main st = do
     args    <- getArgs
     mfiles  <- do_args args
-    config  <- readIORef g_settings
     lineno  <- readIORef g_lineno
 
     --
@@ -240,7 +212,7 @@ static_main st = do
     -- around. (is this still true? -- 04/05)
     --
     Control.Exception.catch
-        (initSignals >> initDebug ".yi.dbg" >> Core.startE st config lineno mfiles )
+        (initSignals >> initDebug ".yi.dbg" >> Core.startE st lineno mfiles )
         (\e -> do releaseSignals
                   -- FIXME: We should do this, but that's impossible with no access to the editor state:
                   -- Editor.shutdown
@@ -251,22 +223,3 @@ static_main st = do
       isExitCall (ExitException _) = True
       isExitCall _ = False
 
---
--- | Dynamic main. This is jumped to from from Boot.hs, after
--- dynamically loading HSyi.o. It takes in user preferences, an old
--- state, and some dynamic loading funcitons, updates a global variable
--- if any settings were received, then jumps to main.
---
-type DynamicT = (Maybe Editor.Editor,          -- old state
-                 Maybe Editor.Config,          -- config data
-                 Maybe Editor.Editor -> IO (), -- reboot function
-                 IO (Maybe Editor.Config))     -- reload function
-
-dynamic_main :: DynamicT -> IO ()
-dynamic_main (st, Nothing, fn1, fn2) = do
-    modifyIORef g_settings $ \(kb,_,_) -> (kb,fn1,fn2)
-    static_main st          -- No prefs found, use defaults
-
-dynamic_main (st, Just cfg, fn1, fn2) = do
-    writeIORef g_settings (cfg, fn1, fn2)
-    static_main st

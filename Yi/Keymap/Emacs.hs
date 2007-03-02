@@ -21,9 +21,7 @@
 
 module Yi.Keymap.Emacs ( keymap ) where
 
-import Yi.Yi hiding         ( keymap )
-import Yi.Interact
-import Yi.Debug
+import Yi.Yi
 
 import Yi.Keymap.Emacs.KillRing
 import Yi.Keymap.Emacs.UnivArgument
@@ -179,7 +177,7 @@ findFile = withMinibuffer "find file:" $ \filename -> do msgE $ "loading " ++ fi
                                                          fnewE filename
 -- | Goto a line specified in the mini buffer.
 gotoLine :: Action
-gotoLine = withMinibuffer "goto line:" $ \lineString -> gotoLnE (read lineString)
+gotoLine = withMinibuffer "goto line:" $ gotoLnE . read
 
 debug :: String -> Process
 debug = write . lift . logPutStrLn
