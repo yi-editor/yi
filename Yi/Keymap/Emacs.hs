@@ -90,6 +90,7 @@ normalKeymap = selfInsertKeymap +++ makeKeymap
         ("C-x C-x",  atomic $ exchangePointAndMarkE),
         ("C-x e e",  atomic $ evalRegionE),
         ("C-x o",    atomic $ nextWinE),
+        ("C-x l",    atomic $ gotoLineE),
         ("C-x k",    atomic $ closeE),
 --      ("C-x r k",  atomic $ killRectE),
 --      ("C-x r o",  atomic $ openRectE),
@@ -175,9 +176,10 @@ rebind kl k kp = debug ("(rebound "++k++")") >> ((events (readKey k) >> kp) <++ 
 findFile :: Action
 findFile = withMinibuffer "find file:" $ \filename -> do msgE $ "loading " ++ filename
                                                          fnewE filename
+
 -- | Goto a line specified in the mini buffer.
-gotoLine :: Action
-gotoLine = withMinibuffer "goto line:" $ gotoLnE . read
+gotoLineE :: Action
+gotoLineE = withMinibuffer "goto line:" $ gotoLnE . read
 
 debug :: String -> Process
 debug = write . lift . logPutStrLn
