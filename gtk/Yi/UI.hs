@@ -108,7 +108,7 @@ main _editor =
 
 instance Show Gtk.Event where
     show (Key _eventRelease _eventSent _eventTime eventModifier' _eventWithCapsLock _eventWithNumLock 
-                  _eventWithScrollLock eventKeyName' eventKeyChar') 
+                  _eventWithScrollLock _eventKeyVal eventKeyName' eventKeyChar') 
         = show eventModifier' ++ " " ++ show eventKeyName' ++ " " ++ show eventKeyChar'
     show _ = "Not a key event"
 
