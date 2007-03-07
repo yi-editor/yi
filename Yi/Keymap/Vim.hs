@@ -156,13 +156,13 @@ eval p = do a <- p; write a
 -- | insert mode is either insertion actions, or the meta \ESC action
 --
 ins_mode :: VimMode
-ins_mode = write (msgE "-- INSERT --") >> many' (ins_char +++ kwd_mode) >> event '\ESC' >> write msgClrE
+ins_mode = write (msgE "-- INSERT --") >> many (ins_char +++ kwd_mode) >> event '\ESC' >> write msgClrE
 
 --
 -- | replace mode is like insert, except it performs writes, not inserts
 --
 rep_mode :: VimMode
-rep_mode = write (msgE "-- REPLACE --") >> many' rep_char >> event '\ESC' >> write msgClrE
+rep_mode = write (msgE "-- REPLACE --") >> many rep_char >> event '\ESC' >> write msgClrE
 
 --
 -- | visual mode, similar to command mode
@@ -171,7 +171,7 @@ vis_mode :: VimMode
 vis_mode = do 
   modify (\st->st{cmdMode=vis_mode})
   write (msgE "-- VISUAL --" >> getPointE >>= setMarkE) 
-  many' (eval cmd_move)
+  many (eval cmd_move)
   (vis_multi +++ vis_single)
   write (msgClrE >> unsetMarkE)
 
@@ -594,6 +594,8 @@ anyButEscOrCtlN = oneOf $ (keyBackspace : any' ++ cursc') \\ ['\ESC','\^N']
 --
 kwd_mode :: VimMode
 kwd_mode = many1' (event '\^N' >> write wordCompleteE) >> write resetCompleteE
+-- Use many1' (not many1), otherwise resetCompleteE would always be chosen (because
+-- it produces output earlier)
 
 
 -- ---------------------------------------------------------------------

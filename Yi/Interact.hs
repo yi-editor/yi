@@ -2,10 +2,8 @@
 
 {- |
 
-Copyright   :  (c) The University of Glasgow 2002 
-               (c) Jean-Philippe Bernardy 2007
-License     :  BSD-style (see http://darcs.haskell.org/packages/base/LICENSE)
-
+Copyright   :  (c) The University of Glasgow 2002, (c) Jean-Philippe Bernardy 2007
+License     :  BSD-style (see http:\/\/darcs.haskell.org\/packages\/base\/LICENSE)
 Portability :  non-portable (local universal quantification)
 
 
@@ -19,7 +17,7 @@ The processes are:
 
 * composable
 
-* extensible: it is always possible to override a behaviour by using the <++ operator
+* extensible: it is always possible to override a behaviour by using the '<++' operator
 
 * monadic: sequencing is done via monadic bind. (leveraging the whole
   battery of monadic tools that Haskell provides)
@@ -31,16 +29,16 @@ an execution of a process can be interactive.
 The semantics of operation is therefore quite obvious; ony disjunction
 deserve a bit more explanation:
 
-@(a +++ b)@ means
+@(a '+++' b)@ means
 
 * if @a@ produces output earlier than @b@, we commit to the @a@ process (the converse is true)
 
 * if both produce output at the same time (ie. after reading the same
   character in the input), then we commit to @a@ (ie. left bias)
 
-The extensibility is achieved by the <++ operator.
+Extensibility by overriding is achieved by the '<++' operator.
 
-@(a <++ b)@ will commit to @a@, unless it fails before producing any output.
+@(a '<++' b)@ will commit to @a@, unless it fails before producing any output.
 
 
 -}
@@ -106,13 +104,16 @@ infixr 5 +++, <++
 
 class (Monad m, MonadPlus m) => MonadInteract m e | m -> e where
     write :: Action -> m ()
+    -- ^ Outputs an action.
     anyEvent :: m e
     -- ^ Consumes and returns the next character.
     --   Fails if there is no input left.
     (<++) :: m a -> m a -> m a
+    -- ^ @(a '<++' b)@ will commit to @a@, unless it fails before producing any output.
     consumeLookahead :: m a -> m (Either [e] a)
     -- ^ Transforms a parser into one that does the same, except when it fails.
-    --   in that case, it just consumes the the amount of characters demanded by the parser to fail IF that number is > 1.
+    --   In that case, it just consumes the the amount of characters demanded by its argument for it to fail.
+    --   Typically this will be used in a "many" combinator
 
 instance MonadInteract (Interact event) event where
     write = writeL
@@ -342,10 +343,12 @@ many1 p = liftM2 (:) p (many p)
 
 many' :: (MonadInteract m e) => m a -> m [a]
 -- ^ Parses zero or more occurrences of the given parser.
+-- ^ Same as 'many', but the preference is to the given parser instead of leaving the loop, using '<++'.
 many' p = many1' p <++ return []
 
 many1' :: (MonadInteract m e) => m a -> m [a]
 -- ^ Parses one or more occurrences of the given parser.
+-- ^ Same as 'many1', but the preference is to the given parser instead of leaving the loop, using '<++'.
 many1' p = liftM2 (:) p (many' p)
 
 
@@ -421,7 +424,7 @@ forever f = f >> forever f
 -- Converting between Interact event and Read
 
 runProcessParser :: Interact event a -> [event] -> [(a,[event])]
--- ^ Converts a parser into a Haskell ReadS-style function.
+-- ^ Converts a process into a Haskell ReadS-style parsing function. (for debugging)
 runProcessParser (R f) = run (f return)
 
 
@@ -432,92 +435,3 @@ runProcess :: Interact event a -> [event] -> [Action]
 -- produces the output as soon as possible.
 runProcess (R f) = runWrite (f return)
 
--- ---------------------------------------------------------------------------
--- QuickCheck properties that hold for the combinators
-
-{- $properties
-The following are QuickCheck specifications of what the combinators do.
-These can be seen as formal specifications of the behavior of the
-combinators.
-
-We use bags to give semantics to the combinators.
-
->  type Bag a = [a]
-
-Equality on bags does not care about the order of elements.
-
->  (=~) :: Ord a => Bag a -> Bag a -> Bool
->  xs =~ ys = sort xs == sort ys
-
-A special equality operator to avoid unresolved overloading
-when testing the properties.
-
->  (=~.) :: Bag (Int,[event]) -> Bag (Int,String) -> Bool
->  (=~.) = (=~)
-
-Here follow the properties:
-
->  prop_Get_Nil =
->    readP_to_S get [] =~ []
->
->  prop_Get_Cons c s =
->    readP_to_S get (c:s) =~ [(c,s)]
->
->  prop_Look s =
->    readP_to_S look s =~ [(s,s)]
->
->  prop_Fail s =
->    readP_to_S pfail s =~. []
->
->  prop_Return x s =
->    readP_to_S (return x) s =~. [(x,s)]
->
->  prop_Bind p k s =
->    readP_to_S (p >>= k) s =~.
->      [ ys''
->      | (x,s') <- readP_to_S p s
->      , ys''   <- readP_to_S (k (x::Int)) s'
->      ]
->
->  prop_Plus p q s =
->    readP_to_S (p +++ q) s =~.
->      (readP_to_S p s ++ readP_to_S q s)
->
->  prop_LeftPlus p q s =
->    readP_to_S (p <++ q) s =~.
->      (readP_to_S p s +<+ readP_to_S q s)
->   where
->    [] +<+ ys = ys
->    xs +<+ _  = xs
->
->  prop_Gather s =
->    forAll readPWithoutReadS $ \p -> 
->      readP_to_S (gather p) s =~
->	 [ ((pre,x::Int),s')
->	 | (x,s') <- readP_to_S p s
->	 , let pre = take (length s - length s') s
->	 ]
->
->  prop_String_Yes this s =
->    readP_to_S (string this) (this ++ s) =~
->      [(this,s)]
->
->  prop_String_Maybe this s =
->    readP_to_S (string this) s =~
->      [(this, drop (length this) s) | this `isPrefixOf` s]
->
->  prop_Munch p s =
->    readP_to_S (munch p) s =~
->      [(takeWhile p s, dropWhile p s)]
->
->  prop_Munch1 p s =
->    readP_to_S (munch1 p) s =~
->      [(res,s') | let (res,s') = (takeWhile p s, dropWhile p s), not (null res)]
->
->  prop_Choice ps s =
->    readP_to_S (choice ps) s =~.
->      readP_to_S (foldr (+++) pfail ps) s
->
->  prop_ReadS r s =
->    readP_to_S (readS_to_P r) s =~. r s
--}
