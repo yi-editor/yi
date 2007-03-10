@@ -111,7 +111,9 @@ do_opt o = case o of
     LineNo l -> return (Core.gotoLnE (read l))
     File file -> return (Core.fnewE file)
     EditorNm emul -> case M.lookup (map toLower emul) editorFM of
-                    Just km -> return (Editor.modifyEditor_ $ \e -> return e { Editor.defaultKeymap = km })
+                    Just km -> return (Editor.modifyEditor_ $ \e -> do
+                                           logPutStrLn $ "Switching to " ++ emul ++ " for default keymap"
+                                           return e { Editor.defaultKeymap = km })
                     Nothing -> putStrLn ("Unknown emulation: " ++ show emul) >> exitWith (ExitFailure 1)
 --
 -- everything that is left over
