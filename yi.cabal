@@ -4,7 +4,7 @@ license:        GPL
 license-file:   LICENSE
 author:         Don Stewart
 maintainer:     dons@cse.unsw.edu.au
-build-depends:  ghc, base, mtl, vty>=3.0, gtk>=0.9.11, regex-posix
+build-depends:  ghc>=6.6, base, mtl, vty>=3.0, gtk>=0.9.11, regex-posix
         
 executable:     yi
 main-is:        Main.hs
