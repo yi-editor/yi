@@ -180,7 +180,7 @@ import qualified Yi.UI as UI
 import Data.Maybe
 import Data.Dynamic
 import Data.List
-import Data.Map as M        ( lookup, insert )
+import qualified Data.Map as M        ( lookup, insert )
 import Data.IORef
 
 import System.Directory     ( doesFileExist, getHomeDirectory )
@@ -196,6 +196,9 @@ import qualified GHC
 import qualified Packages
 import qualified DynFlags
 import qualified ObjLink
+import qualified SrcLoc
+import qualified ErrUtils
+import Outputable
 
 import GHC.Exts ( unsafeCoerce# )
 
@@ -231,6 +234,9 @@ startE st commandLineActions = do
                    "-- This buffer is for notes you don't want to save, and for haskell evaluation\n" ++
                    "-- If you want to create a file, open that file,\n" ++
                    "-- then enter the text in that file's own buffer.\n\n"
+      withSession $ \session -> do
+        dflags <- GHC.getSessionDynFlags session
+        GHC.setSessionDynFlags session dflags { GHC.log_action = ghcErrorReporter newSt }
 
     logPutStrLn "Starting event handler"
     let
@@ -947,3 +953,12 @@ getConfig session = GHC.defaultErrorHandler DynFlags.defaultDynFlags $ do
     Just x -> do let (x' :: EditorM ()) = unsafeCoerce# x
                  return x'
 
+ghcErrorReporter :: IORef Editor -> GHC.Severity -> SrcLoc.SrcSpan -> Outputable.PprStyle -> ErrUtils.Message -> IO () 
+ghcErrorReporter editor severity srcSpan pprStyle message = 
+    flip runReaderT editor $ do
+      e <- readEditor id
+      let [b] = findBufferWithName e "*scratch*"
+      lift $ do 
+        moveTo b =<< sizeB b
+        insertN b (showSDocDump $ message)
+        insertN b "\n"
