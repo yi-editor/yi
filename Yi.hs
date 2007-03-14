@@ -18,7 +18,7 @@
 -- jumping into an event loop.
 --
 
-module Yi (static_main) where
+module Yi (main, Kernel) where
 
 import Prelude hiding (error)
 
@@ -26,7 +26,7 @@ import Yi.Version                       ( package, version )
 import qualified Yi.Editor  as Editor
 import qualified Yi.Core    as Core
 import qualified Yi.Keymap  as Keymap
-
+import Yi.Kernel
 import Yi.Debug
 
 {- All the standard editor front ends -}
@@ -177,8 +177,8 @@ releaseSignals =
 -- Initialise the ui getting an initial editor state, set signal
 -- handlers, then jump to ui event loop with the state.
 --
-static_main :: (Maybe Editor.Editor) -> IO ()
-static_main st = do
+main :: Kernel -> IO ()
+main kernel = do
     mopts <- do_args =<< getArgs
 
     --
@@ -193,7 +193,9 @@ static_main st = do
     -- around. (is this still true? -- 04/05)
     --
     Control.Exception.catch
-        (initSignals >> initDebug ".yi.dbg" >> Core.startE st mopts )
+        (do initSignals
+            initDebug ".yi.dbg"
+            Core.startE kernel Nothing mopts )
         (\e -> do releaseSignals
                   -- FIXME: We should do this, but that's impossible with no access to the editor state:
                   -- Editor.shutdown

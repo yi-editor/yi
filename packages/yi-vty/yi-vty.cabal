@@ -1,0 +1,54 @@
+name:           yi-vty
+version:        0.2
+license:        GPL
+license-file:   LICENSE
+author:         Don Stewart
+maintainer:     dons@cse.unsw.edu.au
+build-depends:  ghc>=6.6, base, mtl, vty>=3.0, regex-posix
+exposed-modules:
+ Yi
+ Yi.Buffer
+ Yi.Char
+ Yi.CharMove
+ Yi.Core
+ Yi.CoreUI
+ Yi.Debug
+ Yi.Editor
+ Yi.Eval
+ Yi.Event
+ Yi.FastBuffer
+ Yi.Interact
+ Yi.Kernel
+ Yi.Keymap
+ Yi.Keymap.Completion
+ Yi.Keymap.Ee
+ Yi.Keymap.Emacs
+ Yi.Keymap.Emacs.Keys
+ Yi.Keymap.Emacs.KillRing
+ Yi.Keymap.Emacs.UnivArgument
+ Yi.Keymap.Joe
+ Yi.Keymap.Mg
+-- Yi.Keymap.Movements ?? Investigate the contents of this module
+ Yi.Keymap.Nano
+ Yi.Keymap.Vi
+ Yi.Keymap.Vim
+ Yi.MkTemp
+ Yi.Process
+ Yi.Region
+ Yi.Search
+ Yi.String
+ Yi.Style
+ Yi.Syntax
+ Yi.Syntax.Table
+ Yi.UI
+ Yi.Undo
+ Yi.Version
+ Yi.Vty
+ Yi.Window
+ Yi.Yi
+include-dirs:   ../../cbits
+hs-source-dirs: ../../vty, ../..
+c-sources:      ../../cbits/YiUtils.c
+other-modules:  Yi.Syntax.Haskell
+extensions:     CPP, ForeignFunctionInterface
+ghc-options:    -Wall -fglasgow-exts -O -funbox-strict-fields -fasm -optl-Wl,-s

@@ -173,6 +173,7 @@ import Yi.String
 import Yi.Process           ( popen )
 import Yi.Editor
 import Yi.CoreUI
+import Yi.Kernel
 import qualified Yi.Editor as Editor
 import qualified Yi.Style as Style
 import qualified Yi.UI as UI
@@ -210,21 +211,21 @@ data Direction = GoLeft | GoRight
 -- | Start up the editor, setting any state with the user preferences
 -- and file names passed in, and turning on the UI
 --
-startE :: Maybe Editor -> [Action] -> IO ()
-startE st commandLineActions = do
+startE :: Kernel -> Maybe Editor -> [Action] -> IO ()
+startE kernel st commandLineActions = do
     logPutStrLn "Starting Core"
 
     -- restore the old state
     newSt <- newIORef $ maybe emptyEditor id st
     flip runReaderT newSt $ do 
-      -- start GHC session
-      initializeI
-
+      modifyEditor_ $ \e -> return e { editorSession = kernel }
       UI.start      
 
       -- run user configuration
-      cfg <- withSession getConfig
+      cfg <- getConfig
       cfg
+
+      withSession yiContext
 
       when (isNothing st) $ do -- process options if booting for the first time
         sequence_ commandLineActions
@@ -886,68 +887,21 @@ mapRangeE from to fn
                                 loop (j-1)
                 loop (max 0 (to - from))
             moveTo b from
+ 
 
+getConfig :: EditorM (EditorM ())
+getConfig = withSession $ \session -> GHC.defaultErrorHandler DynFlags.defaultDynFlags $ do
+  logPutStrLn "getting user config"
 
-------------------
--- GHCi embedding
-
--- the path of our GHC installation
-path :: FilePath
-path = GHC_LIBDIR -- See Setup.hs
-
-objectsDir :: FilePath
-#ifdef YI_FLAVOUR_GTK
-objectsDir = "dist/build/yi-gtk/yi-gtk-tmp/"
-#else
-objectsDir = "dist/build/yi/yi-tmp/"
-#endif
-
-
-initializeI :: EditorM ()
-initializeI = modifyEditor_ $ \e -> GHC.defaultErrorHandler DynFlags.defaultDynFlags $ do
-  session <- GHC.newSession GHC.Interactive (Just path)
-  dflags1 <- GHC.getSessionDynFlags session
-
-  -- TODO: currently we require user=developer; 
-  -- Yi must be run in the yi repository root directory.
-  home <- getHomeDirectory
-  logPutStrLn $ "Home = " ++ home
-  (dflags1',_otherFlags) <- GHC.parseDynamicFlags dflags1 ["-package ghc", "-fglasgow-exts", "-cpp", 
-                                                           "-i" ++ home ++ "/.yi", -- FIXME
-  -- DEV MODE flags
-                                                           -- "-v",
-                                                           "-odir" ++ objectsDir,
-                                                           "-hidir" ++ objectsDir,
-#ifdef YI_FLAVOUR_GTK
-                                                           "-igtk"
-#else
-                                                           "-ivty"
-#endif
-                                                          ]
-  (dflags2, _packageIds) <- Packages.initPackages dflags1'
-  GHC.setSessionDynFlags session dflags2{GHC.hscTarget=GHC.HscInterpreted}
-  
-  -- DEV MODE
-  ObjLink.loadObj $ "./" ++ objectsDir ++ "cbits/YiUtils.o"
-  yiTarget <- GHC.guessTarget "Yi.Yi" Nothing
-  GHC.addTarget session yiTarget
-
-  -- FIXME: don't do this if no config module is there.
   configTarget <- GHC.guessTarget "YiConfig" Nothing
   GHC.addTarget session configTarget
-
   result <- GHC.load session GHC.LoadAllTargets
   case result of
     GHC.Failed -> exitWith (ExitFailure (-1))
     _ -> return ()
-    
-  return e {editorSession = session}
 
-getConfig :: GHC.Session -> IO (EditorM ())
-getConfig session = GHC.defaultErrorHandler DynFlags.defaultDynFlags $ do
-  cfgModule <- GHC.findModule session (GHC.mkModuleName "YiConfig") Nothing
-  GHC.setContext session [] [cfgModule]
-  result <- GHC.compileExpr session "yiMain"
+  result <- GHC.compileExpr session "YiConfig.yiMain :: Yi.Yi.EditorM ()"
+  logPutStrLn "config compiled"
   case result of
     Nothing -> error "Could not compile expression"
     Just x -> do let (x' :: EditorM ()) = unsafeCoerce# x
@@ -957,8 +911,8 @@ ghcErrorReporter :: IORef Editor -> GHC.Severity -> SrcLoc.SrcSpan -> Outputable
 ghcErrorReporter editor severity srcSpan pprStyle message = 
     flip runReaderT editor $ do
       e <- readEditor id
-      let [b] = findBufferWithName e "*scratch*"
+      let [b] = findBufferWithName e "*scratch*" -- FIXME: report errors to another buffer (*console*?)
       lift $ do 
         moveTo b =<< sizeB b
-        insertN b (showSDocDump $ message)
+        insertN b (showSDoc $ message) -- FIXME: also show severity, etc.
         insertN b "\n"

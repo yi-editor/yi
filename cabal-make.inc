@@ -17,6 +17,8 @@ all:
 
 #### Default settings.  To override, define before including this file.
 
+build-args ?= 
+
 # Pass to "./setup configure"
 configure-args ?= \
         $(extra-configure-args) \
@@ -98,7 +100,7 @@ all:  configure build doc install
 configure: .setup-config
 
 build: .setup-config
-	./setup build
+	./setup build $(build-args)
 
 install: build
 	./setup install
@@ -117,8 +119,9 @@ version ?= $(strip $(shell cat *.cabal | egrep -i 'version:' | sed -e 's/version
 show-version:
 	@echo $(version)
 
-show-config-args:
-	@echo haddock-interfaces=$(configure-args)
+show-build-args:
+	@echo $(build-args)
+
 
 setup: Setup.*hs
 	ghc --make Setup.*hs -o setup

@@ -1,0 +1,49 @@
+name:           yi-gtk
+version:        0.2
+license:        GPL
+license-file:   LICENSE
+author:         Don Stewart
+maintainer:     dons@cse.unsw.edu.au
+build-depends:  ghc>=6.6, base, mtl, gtk>=0.9.11, regex-posix
+exposed-modules:
+ Yi
+ Yi.Buffer
+ Yi.Char
+ Yi.CharMove
+ Yi.Core
+ Yi.CoreUI
+ Yi.Debug
+ Yi.Editor
+ Yi.Eval
+ Yi.Event
+ Yi.FastBuffer
+ Yi.Interact
+ Yi.Kernel
+ Yi.Keymap
+ Yi.Keymap.Completion
+ Yi.Keymap.Ee
+ Yi.Keymap.Emacs
+ Yi.Keymap.Emacs.Keys
+ Yi.Keymap.Emacs.KillRing
+ Yi.Keymap.Emacs.UnivArgument
+ Yi.Keymap.Joe
+ Yi.Keymap.Mg
+ Yi.Keymap.Nano
+ Yi.Keymap.Vi
+ Yi.Keymap.Vim
+ Yi.MkTemp
+ Yi.Process
+ Yi.Region
+ Yi.Search
+ Yi.String
+ Yi.Style
+ Yi.UI
+ Yi.Undo
+ Yi.Version
+ Yi.Window
+ Yi.Yi
+include-dirs:   ../../cbits
+hs-source-dirs: ../../gtk       , ../..
+c-sources:      ../../cbits/YiUtils.c
+extensions:     CPP, ForeignFunctionInterface
+ghc-options:    -Wall -fglasgow-exts -O -funbox-strict-fields -fasm -optl-Wl,-s

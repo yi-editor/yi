@@ -9,6 +9,7 @@ import Prelude hiding (error)
 import Yi.Debug
 import Yi.Editor
 import Yi.Core
+import Yi.Kernel
 
 import Data.Maybe
 import Data.Dynamic
@@ -40,7 +41,6 @@ execE :: String -> EditorM ()
 execE s = ghcErrorHandlerE $ do
   lift $ logPutStrLn $ "execing " ++ s
   session <- readEditor editorSession
-  yiContext
   result <- lift $ GHC.compileExpr session ("(" ++ s ++ ") >>= msgE . show :: EditorM ()")
   case result of
     Nothing -> errorE "Could not compile expression"
@@ -64,13 +64,6 @@ ghcErrorHandlerE inner = do
 
 catchDynE :: Typeable exception => EditorM a -> (exception -> EditorM a) -> EditorM a
 catchDynE inner handler = ReaderT (\r -> catchDyn (runReaderT inner r) (\e -> runReaderT (handler e) r))
-
-yiContext :: EditorM ()
-yiContext = withSession $ \session -> do
-  -- Setup the context for evaluation
-  let preludeModule = GHC.mkModule (PackageConfig.stringToPackageId "base") (GHC.mkModuleName "Prelude")
-  yiModule <- GHC.findModule session (GHC.mkModuleName "Yi.Yi") Nothing -- this module re-exports all useful stuff.
-  GHC.setContext session [] [preludeModule, yiModule]
 
 preludeContext :: EditorM ()
 preludeContext = withSession $ \session -> do
