@@ -28,22 +28,16 @@ module Main ( main ) where
 import Yi.Kernel
 import Yi.Debug
 
-{-
-
-the code we really would like is:
-
 main :: IO ()
 main = do
   initDebug ".yi-static.dbg"
   kernel <- initialize
-  (Kernel.eval "Yi.main") kernel -- call Yi.main dynamically
+  Yi.Kernel.startYi kernel -- call Yi.main dynamically
   
-avoiding to statically link the whole Yi code (twice). Unfortunately, ghc 6.6.0 doesn't permit the 
-session to be passed to "interpreted" code. This also means that "eval inside eval" is not possible.
 
 
--}
 
+{-
 import qualified Yi 
 
 main :: IO ()
@@ -52,4 +46,4 @@ main = do
   kernel <- initialize
   Yi.main kernel
   
-
+-}

@@ -29,6 +29,7 @@ import Yi.Window
 import Yi.Style                 ( uiStyle, UIStyle )
 import Yi.Event
 import Yi.Debug
+import Yi.Kernel
 import Prelude hiding (error)
 
 import Data.List                ( elemIndex )
@@ -75,7 +76,7 @@ data Editor = Editor {
 
        ,defaultKeymap  :: Keymap
 
-       ,editorSession :: GHC.Session
+       ,editorKernel :: Kernel
     }
 
 type EditorM = ReaderT (IORef Editor) IO
@@ -103,7 +104,7 @@ emptyEditor = Editor {
        ,reboot       = const $ return ()
        ,dynamic      = M.empty
 
-       ,editorSession = error "GHC Session not initialized"
+       ,editorKernel = error "GHC Kernel not initialized"
     }
 
 -- ---------------------------------------------------------------------
@@ -333,8 +334,8 @@ withUI f = do
   e <- ask
   lift $ f . ui =<< readIORef e 
 
-withSession :: (GHC.Session -> IO a) -> EditorM a
-withSession f = withEditor $ \e -> f (editorSession e)
+withKernel :: (Kernel -> IO a) -> EditorM a
+withKernel f = withEditor $ \e -> f (editorKernel e)
 
 -- ---------------------------------------------------------------------
 

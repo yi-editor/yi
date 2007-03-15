@@ -218,14 +218,14 @@ startE kernel st commandLineActions = do
     -- restore the old state
     newSt <- newIORef $ maybe emptyEditor id st
     flip runReaderT newSt $ do 
-      modifyEditor_ $ \e -> return e { editorSession = kernel }
+      modifyEditor_ $ \e -> return e { editorKernel = kernel }
       UI.start      
 
       -- run user configuration
       cfg <- getConfig
       cfg
 
-      withSession yiContext
+      withKernel yiContext
 
       when (isNothing st) $ do -- process options if booting for the first time
         sequence_ commandLineActions
@@ -235,9 +235,9 @@ startE kernel st commandLineActions = do
                    "-- This buffer is for notes you don't want to save, and for haskell evaluation\n" ++
                    "-- If you want to create a file, open that file,\n" ++
                    "-- then enter the text in that file's own buffer.\n\n"
-      withSession $ \session -> do
-        dflags <- GHC.getSessionDynFlags session
-        GHC.setSessionDynFlags session dflags { GHC.log_action = ghcErrorReporter newSt }
+      withKernel $ \kernel -> do
+        dflags <- getSessionDynFlags kernel
+        setSessionDynFlags kernel dflags { GHC.log_action = ghcErrorReporter newSt }
 
     logPutStrLn "Starting event handler"
     let
@@ -890,17 +890,16 @@ mapRangeE from to fn
  
 
 getConfig :: EditorM (EditorM ())
-getConfig = withSession $ \session -> GHC.defaultErrorHandler DynFlags.defaultDynFlags $ do
+getConfig = withKernel $ \kernel -> GHC.defaultErrorHandler DynFlags.defaultDynFlags $ do
   logPutStrLn "getting user config"
 
-  configTarget <- GHC.guessTarget "YiConfig" Nothing
-  GHC.addTarget session configTarget
-  result <- GHC.load session GHC.LoadAllTargets
+  addTarget kernel "YiConfig"
+  result <- loadAllTargets kernel
   case result of
     GHC.Failed -> exitWith (ExitFailure (-1))
     _ -> return ()
 
-  result <- GHC.compileExpr session "YiConfig.yiMain :: Yi.Yi.EditorM ()"
+  result <- compileExpr kernel "YiConfig.yiMain :: Yi.Yi.EditorM ()"
   logPutStrLn "config compiled"
   case result of
     Nothing -> error "Could not compile expression"

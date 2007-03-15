@@ -24,10 +24,9 @@ import GHC.Exts ( unsafeCoerce# )
 
 
 evalToStringE :: String -> EditorM String
-evalToStringE string = do
-  preludeContext
-  session <- readEditor editorSession
-  result <- lift $ GHC.compileExpr session ("show (" ++ string ++ ")")
+evalToStringE string = withKernel $ \kernel -> do
+  yiContext kernel
+  result <- compileExpr kernel ("show (" ++ string ++ ")")
   case result of
     Nothing -> return ""
     Just x -> return (unsafeCoerce# x)
@@ -39,14 +38,14 @@ evalE s = evalToStringE s >>= msgE
 -- | Run a (dynamically specified) editor command.
 execE :: String -> EditorM ()
 execE s = ghcErrorHandlerE $ do
-  lift $ logPutStrLn $ "execing " ++ s
-  session <- readEditor editorSession
-  result <- lift $ GHC.compileExpr session ("(" ++ s ++ ") >>= msgE . show :: EditorM ()")
-  case result of
-    Nothing -> errorE "Could not compile expression"
-    Just x -> do let (x' :: EditorM ()) = unsafeCoerce# x
-                 x'
-                 return ()
+            result <- withKernel $ \kernel -> do
+                               logPutStrLn $ "execing " ++ s
+                               compileExpr kernel ("(" ++ s ++ ") >>= msgE . show :: EditorM ()")
+            case result of
+              Nothing -> errorE "Could not compile expression"
+              Just x -> do let (x' :: EditorM ()) = unsafeCoerce# x
+                           x'
+                           return ()
 
 
 -- | Install some default exception handlers and run the inner computation.
@@ -65,8 +64,4 @@ ghcErrorHandlerE inner = do
 catchDynE :: Typeable exception => EditorM a -> (exception -> EditorM a) -> EditorM a
 catchDynE inner handler = ReaderT (\r -> catchDyn (runReaderT inner r) (\e -> runReaderT (handler e) r))
 
-preludeContext :: EditorM ()
-preludeContext = withSession $ \session -> do
-  -- Setup the context for evaluation
-  let preludeModule = GHC.mkModule (PackageConfig.stringToPackageId "base") (GHC.mkModuleName "Prelude")
-  GHC.setContext session [] [preludeModule]
+
