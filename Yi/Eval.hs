@@ -19,7 +19,6 @@ import Control.Monad.Reader
 import Control.Exception
 
 import qualified GHC
-import qualified PackageConfig
 import GHC.Exts ( unsafeCoerce# )
 
 

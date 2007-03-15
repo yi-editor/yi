@@ -179,7 +179,6 @@ releaseSignals =
 --
 main :: Kernel -> IO ()
 main kernel = do
-    testEval kernel "After the jump."
     mopts <- do_args =<< getArgs
 
     --

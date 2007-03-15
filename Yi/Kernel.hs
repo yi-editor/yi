@@ -4,17 +4,15 @@
 -- nothing about Yi (at the haskell level; it can know names of
 -- modules/functions at strings)
 
-module Yi.Kernel (initialize, Kernel(..), startYi, testEval) where
+module Yi.Kernel (initialize, Kernel(..), eval, startYi) where
 
 import Yi.Debug hiding (error)
 
-import System.Directory     ( doesFileExist, getHomeDirectory )
-import System.Exit	( exitWith, ExitCode(..) )
+import System.Directory     ( getHomeDirectory )
 
 import qualified GHC
 import qualified Packages
 import qualified DynFlags
-import qualified ObjLink
 import qualified PackageConfig
 import qualified Linker
 import Outputable
@@ -83,7 +81,6 @@ startYi :: Kernel -> IO ()
 startYi kernel = GHC.defaultErrorHandler DynFlags.defaultDynFlags $ do
   result <- compileExpr kernel ("Yi.main :: Yi.Kernel -> IO ()") 
   -- coerce the interpreted expression, so we check that we are not making an horrible mistake.
-  testEval kernel "Before jump."
   logPutStrLn "Starting Yi!"
   case result of
     Nothing -> error "Could not compile Yi.main!"
@@ -99,18 +96,20 @@ eval kernel expr = do
     Nothing -> error $ "Could not compile expr: " ++ expr
     Just x -> return x
 
-
-testEval kernel msg = do
-  result <- compileExpr kernel ("1 :: Int")
-  case result of
-    Nothing -> error $ "eval does not work / " ++ msg
-    Just x -> return ()
-
+yiContextL :: GHC.Session -> IO ()
 yiContextL session = do
   preludeModule <- GHC.findModule session (GHC.mkModuleName "Prelude") Nothing
   yiModule <- GHC.findModule session (GHC.mkModuleName "Yi.Yi") Nothing -- this module re-exports all useful stuff.
   GHC.setContext session [] [preludeModule, yiModule]
 
+addTargetL :: GHC.Session -> String -> IO ()
+addTargetL session targetId = do
+  configTarget <- GHC.guessTarget targetId Nothing
+  GHC.addTarget session configTarget
+
+
+{- 
+Maybe useful in the future...
 
 showModules session = do
   logPutStrLn "Loaded modules:"
@@ -124,9 +123,6 @@ showContext session = do
   ctx <- GHC.getContext session
   logPutStrLn $ "Context: " ++ (showSDocDump $ ppr $ ctx)
 
-
-addTargetL session targetId = do
-  configTarget <- GHC.guessTarget targetId Nothing
-  GHC.addTarget session configTarget
+-}
   
 

@@ -184,7 +184,7 @@ import Data.List
 import qualified Data.Map as M        ( lookup, insert )
 import Data.IORef
 
-import System.Directory     ( doesFileExist, getHomeDirectory )
+import System.Directory     ( doesFileExist )
 
 import Control.Monad.Reader
 import Control.Exception
@@ -194,9 +194,7 @@ import Control.Concurrent.Chan
 import System.Exit	( exitWith, ExitCode(..) )
 
 import qualified GHC
-import qualified Packages
 import qualified DynFlags
-import qualified ObjLink
 import qualified SrcLoc
 import qualified ErrUtils
 import Outputable
@@ -899,9 +897,9 @@ getConfig = withKernel $ \kernel -> GHC.defaultErrorHandler DynFlags.defaultDynF
     GHC.Failed -> exitWith (ExitFailure (-1))
     _ -> return ()
 
-  result <- compileExpr kernel "YiConfig.yiMain :: Yi.Yi.EditorM ()"
+  result2 <- compileExpr kernel "YiConfig.yiMain :: Yi.Yi.EditorM ()"
   logPutStrLn "config compiled"
-  case result of
+  case result2 of
     Nothing -> error "Could not compile expression"
     Just x -> do let (x' :: EditorM ()) = unsafeCoerce# x
                  return x'
