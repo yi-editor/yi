@@ -216,7 +216,7 @@ startE kernel st commandLineActions = do
     -- restore the old state
     newSt <- newIORef $ maybe emptyEditor id st
     flip runReaderT newSt $ do 
-      modifyEditor_ $ \e -> return e { editorKernel = kernel }
+      modifyEditor_ $ \e -> return e { editorKernel = kernel, defaultKeymap = \(_:_) -> [errorE "Keymap not defined!"] }
       UI.start      
 
       -- run user configuration
