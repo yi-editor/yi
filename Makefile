@@ -11,14 +11,12 @@ $(HOME)/.yi/YiConfig.hs: YiConfig.example.hs
 	mkdir -p $(HOME)/.yi
 	cp $< $@
 
-emacs: yi-vty install runtime-config
+
+emacs: $(flavour) install runtime-config
 	$(prefix)/bin/yi --as=emacs
 
-vim: yi-vty install runtime-config
+vim: $(flavour) install runtime-config
 	dist/build/yi/yi --as=vim
-
-emacs-gtk: yi-gtk install runtime-config
-	$(prefix)/bin/yi-gtk --as=emacs
 
 distclean: clean
 	rm -f yi.buildinfo testsuite/pp/logpp config.log config.cache config.status cbits/config.h .setup-config
@@ -34,6 +32,8 @@ interactive:
 
 yi-vty:
 	make -C packages/yi-vty install
+	-ghc-pkg --user hide yi-gtk
 
 yi-gtk:
 	make -C packages/yi-gtk install
+	-ghc-pkg --user hide yi-vty

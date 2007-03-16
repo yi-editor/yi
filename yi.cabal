@@ -4,25 +4,12 @@ license:        GPL
 license-file:   LICENSE
 author:         Don Stewart
 maintainer:     dons@cse.unsw.edu.au
-build-depends:  ghc>=6.6, base, mtl, vty>=3.0, gtk>=0.9.11, regex-posix
+build-depends:  ghc>=6.6, base, mtl, regex-posix
         
 executable:     yi
 main-is:        Main.hs
 include-dirs:   cbits
-hs-source-dirs: vty, .
-c-sources:      cbits/YiUtils.c
-other-modules:  Yi.Syntax.Haskell
 extensions:     CPP, ForeignFunctionInterface
 ghc-options:    -Wall -fglasgow-exts -O -funbox-strict-fields -fasm -optl-Wl,-s
-
-executable:     yi-gtk
-main-is:        Main.hs
-include-dirs:   cbits
-hs-source-dirs: gtk, .
-c-sources:      cbits/YiUtils.c
-other-modules:  Yi.Syntax.Haskell
-extensions:     CPP, ForeignFunctionInterface
-ghc-options:    -Wall -fglasgow-exts -O -funbox-strict-fields -fasm -optl-Wl,-s
-
 
 -- ghc-options:    -prof -auto-all -Wall -fglasgow-exts -O -funbox-strict-fields -fasm -optl-Wl,-s

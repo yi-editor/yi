@@ -21,7 +21,7 @@ import GHC.Exts ( unsafeCoerce# )
 
 
 -- | GHC API Kernel. 
--- Calls to the GHC API must go though this type. (Because of "global variables" in GHC I imagine).
+-- Calls to the GHC API must go though this type. (Because of the use "global variables" in GHC I imagine)
 -- ie. the simpler approach of passing just the GHC. Session does not work
 data Kernel = Kernel
     {
@@ -51,13 +51,6 @@ initialize = GHC.defaultErrorHandler DynFlags.defaultDynFlags $ do
   home <- getHomeDirectory
   (dflags1',_otherFlags) <- GHC.parseDynamicFlags dflags1 [
                                                            "-package ghc", "-fglasgow-exts", "-cpp", 
-#ifdef YI_FLAVOUR_GTK
-                                                           "-package yi-gtk",
-                                                           "-hide-package yi-vty",
-#else
-                                                           "-hide-package yi-gtk",
-                                                           "-package yi-vty",
-#endif
                                                            "-i", -- clear the search directory (don't look in ./)
                                                            "-i" ++ home ++ "/.yi" -- We look for source files in ~/.yi
 --                                                           ,"-v"

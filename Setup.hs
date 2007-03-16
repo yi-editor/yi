@@ -17,11 +17,7 @@ setConfigInfo args _
       return
       (Nothing,
        [("yi", emptyBuildInfo
-         { options = [(GHC,[mkOpt ("GHC_LIBDIR",show libdir)]),
-                      (GHC,[mkOpt ("YI_FLAVOUR_VTY","1")])] }),
-        ("yi-gtk", emptyBuildInfo
-         { options = [(GHC,[mkOpt ("GHC_LIBDIR",show libdir)]),
-                      (GHC,[mkOpt ("YI_FLAVOUR_GTK","1")])] })])
+         { options = [(GHC,[mkOpt ("GHC_LIBDIR",show libdir)])] })])
     where mkOpt (name,def) = "-D"++name++"="++def
 
 getLibDir [arg]
