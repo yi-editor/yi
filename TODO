@@ -3,7 +3,6 @@ First, read:
 
 Refactorings/Frameworks:
         - ui type class
-        - replace global var in editor state with a state monad
         - hot swappable user interfaces
 
 Emacs modes:
@@ -31,6 +30,7 @@ Darcs support:
 Undo:
         - overwrite is not properly supported
         - emacs-style undo
+        - other forms of undo
  
 Build system:
         - check how to install it from a port script
@@ -39,7 +39,6 @@ Build system:
 
 Presentation/Rendering:
         - windows need to be wrap or nowrap.
-        - syn hl (needs parser, in bg thread)
 
 other stuff:
 	- compilation errors from make() go to stderr (and screw up the
@@ -47,21 +46,16 @@ other stuff:
 	- the unChanged test doesn't seem to be accurate. what's up with
 	  that?
 
-        - bind keymap lexers to buffers
         - :eval, :type, .. etc. ghci stuff
         - make the cmd line a buffer.
         - start drawing buffer before it is all loaded. (ie. load buffers lazily)
         - either generalise registers, or make them entirely keymap-local
-        - other forms of undo
         - errorE should display in colour
-
-        - try writing a user defineable Action - how to call this, other
-          than by binding a key?
 
         - closing window and terminating on OSX produces infinite loop?
 
 ------------------------------------------------------------------------
-Syntax Highlighting:
+Syntax Highlighting -- Ideas parallel to the current one:
 
         - run a parser in background thread (of Parser class), producing a syn tree
 
