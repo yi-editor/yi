@@ -7,15 +7,15 @@ include $(cabal-make)/cabal-make.inc
 
 runtime-config: $(HOME)/.yi/YiConfig.hs
 
-$(HOME)/.yi/YiConfig.hs: YiConfig.example.hs
+$(HOME)/.yi/YiConfig.hs: examples/YiConfig.hs
 	mkdir -p $(HOME)/.yi
 	cp $< $@
 
 
-emacs: $(flavour) install runtime-config
+emacs: $(flavour) install
 	$(prefix)/bin/yi --as=emacs
 
-vim: $(flavour) install runtime-config
+vim: $(flavour) install
 	dist/build/yi/yi --as=vim
 
 distclean: clean
