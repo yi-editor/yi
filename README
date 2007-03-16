@@ -7,7 +7,11 @@ Copyright (c) Don Stewart 2004-5, <http://www.cse.unsw.edu.au/~dons>
 
 ------------------------------------------------------------------------
 
-QUICK START: run
+QUICK START: 
+
+edit config.mk so it suits your needs;
+
+run
 
  $ make emacs
 
@@ -18,9 +22,9 @@ or
 following your preferences.
 
 
-Dependencies: see cabal file.
-        * you need ghc 6.6, and
-        * you need to install hs-plugins 0.9.10
+DEPENDENCIES
+
+see cabal files (find . "-name *.cabal")
 
 
 CONFIGURATION
@@ -32,9 +36,9 @@ PORTABILITY
 Yi is developed on OpenBSD, FreeBSD and Debian Linux. 
 
 A porting checklist:
-
         * you have GNU make
         * you have a working GHCi
+        * you have either gtk or vty support
         * you have haddock installed (for the documentation)
 
 CREDITS

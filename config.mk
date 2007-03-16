@@ -1,21 +1,36 @@
-export ghc=
+# Where to find ghc
+build-args = --with-ghc=/usr/bin/ghc
 
-export tmp-dir = /tmp
-export user = jpbernardy
+# yi-vty or yi-gtk
+flavour=yi-vty
 
-export prefix = $(HOME)/usr/
+# where to install executable and packages (running in-place -- without installing -- is not supported)
+prefix = $(HOME)/usr/
 
-export configure-dirs = --prefix=$(prefix) --datadir=--prefix=$(prefix)
-export hscolour-css = $(cabal-make)/hscolour.css
 
-export haddock-interfaces=\
+
+
+
+# The following are web-publishing options.
+
+tmp-dir = /tmp
+user = jpbernardy
+
+configure-dirs = --prefix=$(prefix) --datadir=--prefix=$(prefix)
+hscolour-css = $(cabal-make)/hscolour.css
+
+haddock-interfaces=\
   http://haskell.org/ghc/docs/latest/html/libraries/base,/home/jp/haskell/ghc/libraries/base/base.haddock \
   http://haskell.org/ghc/docs/latest/html/libraries/QuickCheck,/home/jp/haskell/ghc/libraries/QuickCheck/QuickCheck.haddock
 
-export top-src-dir =
 
-export extra-configure-args = --user --with-haddock=$(prefix)/bin/haddock
+extra-configure-args = --user --with-haddock=$(prefix)/bin/haddock
 
-export HsColour = $(prefix)/bin/HsColour
+HsColour = $(prefix)/bin/HsColour
 
-export build-args = --with-ghc=/usr/bin/ghc
+
+
+# You should never need to change the following.
+
+top-src-dir =
+
