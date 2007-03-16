@@ -46,9 +46,7 @@ execE s = ghcErrorHandlerE $ do
                            x'
                            return ()
 
-
 -- | Install some default exception handlers and run the inner computation.
-
 ghcErrorHandlerE :: EditorM () -> EditorM ()
 ghcErrorHandlerE inner = do
   flip catchDynE (\dyn -> do
@@ -60,7 +58,7 @@ ghcErrorHandlerE inner = do
 	    ) $
             inner
 
-catchDynE :: Typeable exception => EditorM a -> (exception -> EditorM a) -> EditorM a
-catchDynE inner handler = ReaderT (\r -> catchDyn (runReaderT inner r) (\e -> runReaderT (handler e) r))
+
+
 
 

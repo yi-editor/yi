@@ -28,8 +28,9 @@ data Kernel = Kernel
      getSessionDynFlags :: IO GHC.DynFlags,
      setSessionDynFlags :: GHC.DynFlags -> IO [Packages.PackageId],
      compileExpr :: String -> IO (Maybe GHC.HValue),
-     yiContext :: IO (),                 
-     addTarget :: String -> IO (),
+     yiContext :: IO (), 
+     guessTarget :: String -> Maybe GHC.Phase -> IO GHC.Target,
+     setTargets :: [GHC.Target] -> IO (),
      loadAllTargets :: IO GHC.SuccessFlag
     }
 
@@ -65,7 +66,8 @@ initialize = GHC.defaultErrorHandler DynFlags.defaultDynFlags $ do
                  compileExpr = GHC.compileExpr session,
                  yiContext = yiContextL session,
                  loadAllTargets = GHC.load session GHC.LoadAllTargets,
-                 addTarget = addTargetL session
+                 setTargets = GHC.setTargets session,
+                 guessTarget = GHC.guessTarget
                 }
 
 
@@ -94,11 +96,6 @@ yiContextL session = do
   preludeModule <- GHC.findModule session (GHC.mkModuleName "Prelude") Nothing
   yiModule <- GHC.findModule session (GHC.mkModuleName "Yi.Yi") Nothing -- this module re-exports all useful stuff.
   GHC.setContext session [] [preludeModule, yiModule]
-
-addTargetL :: GHC.Session -> String -> IO ()
-addTargetL session targetId = do
-  configTarget <- GHC.guessTarget targetId Nothing
-  GHC.addTarget session configTarget
 
 
 {- 

@@ -219,9 +219,14 @@ startE kernel st commandLineActions = do
       modifyEditor_ $ \e -> return e { editorKernel = kernel, defaultKeymap = \(_:_) -> [errorE "Keymap not defined!"] }
       UI.start      
 
+      withKernel $ \kernel -> do
+        dflags <- getSessionDynFlags kernel
+        setSessionDynFlags kernel dflags { GHC.log_action = ghcErrorReporter' }
+
       -- run user configuration
-      cfg <- getConfig
-      cfg
+      addConfigTarget
+      reloadE
+      runConfig
 
       withKernel yiContext
 
@@ -297,7 +302,11 @@ rebootE = do
 
 -- | Recompile and reload the user's config files
 reloadE :: Action
-reloadE = error "Reload not implemented yet"
+reloadE = do
+  result <- withKernel loadAllTargets
+  case result of
+    GHC.Failed -> errorE "failed to load targets"
+    _ -> return ();
 
 -- | Reset the size, and force a complete redraw
 refreshE :: Action
@@ -723,7 +732,7 @@ fnewE f = do
 -- Open up a new window onto this buffer. Doesn't associate any file
 -- with the buffer (unlike fnewE) and so is good for popup internal
 -- buffers (like scratch)
-newBufferE :: String -> String -> Action
+newBufferE :: String -> String -> EditorM FBuffer
 newBufferE f s = do
     km <- readEditor defaultKeymap
     b <- stringToNewBuffer f s km
@@ -733,6 +742,7 @@ newBufferE f s = do
       else return ()
     getWindow >>= UI.setWindowBuffer b
     lift $ logPutStrLn "newBufferE ended"
+    return b
 
 -- TODO:
 -- add prompt
@@ -886,23 +896,19 @@ mapRangeE from to fn
                 loop (max 0 (to - from))
             moveTo b from
  
-
-getConfig :: EditorM (EditorM ())
-getConfig = withKernel $ \kernel -> GHC.defaultErrorHandler DynFlags.defaultDynFlags $ do
+addConfigTarget :: EditorM ()
+addConfigTarget = withKernel $ \kernel -> do
   logPutStrLn "getting user config"
+  configTarget <- guessTarget kernel "YiConfig" Nothing
+  setTargets kernel [configTarget]
 
-  addTarget kernel "YiConfig"
-  result <- loadAllTargets kernel
+
+runConfig :: Action
+runConfig = do
+  result <- withKernel $ \kernel -> compileExpr kernel "YiConfig.yiMain :: Yi.Yi.EditorM ()"
   case result of
-    GHC.Failed -> exitWith (ExitFailure (-1))
-    _ -> return ()
-
-  result2 <- compileExpr kernel "YiConfig.yiMain :: Yi.Yi.EditorM ()"
-  logPutStrLn "config compiled"
-  case result2 of
-    Nothing -> error "Could not compile expression"
-    Just x -> do let (x' :: EditorM ()) = unsafeCoerce# x
-                 return x'
+    Nothing -> errorE "Could not run YiConfig.yiMain :: Yi.Yi.EditorM ()"
+    Just x -> (unsafeCoerce# x)
 
 ghcErrorReporter :: IORef Editor -> GHC.Severity -> SrcLoc.SrcSpan -> Outputable.PprStyle -> ErrUtils.Message -> IO () 
 ghcErrorReporter editor severity srcSpan pprStyle message = 
@@ -911,5 +917,11 @@ ghcErrorReporter editor severity srcSpan pprStyle message =
       let [b] = findBufferWithName e "*scratch*" -- FIXME: report errors to another buffer (*console*?)
       lift $ do 
         moveTo b =<< sizeB b
-        insertN b (showSDoc $ message) -- FIXME: also show severity, etc.
+        insertN b (showSDoc message) -- FIXME: also show severity, etc.
         insertN b "\n"
+
+ghcErrorReporter' :: GHC.Severity -> SrcLoc.SrcSpan -> Outputable.PprStyle -> ErrUtils.Message -> IO () 
+ghcErrorReporter' severity srcSpan pprStyle message = 
+    logPutStrLn $ "GHC Error: " ++ (showSDoc message) -- FIXME: also show severity, etc.
+
+

@@ -597,7 +597,7 @@ whatCursorPos = do
                 "  row=? col="++ show col
 
 describeBindings :: Action
-describeBindings = newBufferE "*help*" s
+describeBindings = newBufferE "*help*" s >> return ()
     where
       s = unlines [ let p = printable k
                     in p ++ replicate (17 - length p) ' ' ++ ex
@@ -612,6 +612,7 @@ mgListBuffers = do
         bs  <- listBuffersE -- get current list
         closeBufferE name   -- close temporary one
         newBufferE name (f bs) -- and finally display current one
+        return ()
     where
         name = "*Buffer List*"
         f bs = unlines [ "  "++(show i)++"\t"++(show n) | (n,i) <- bs ]

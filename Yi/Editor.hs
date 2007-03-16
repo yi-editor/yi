@@ -23,7 +23,7 @@
 
 module Yi.Editor where
 
-import Yi.Buffer                ( FBuffer (..), newB, keyB, hNewB, finaliseB, nameB )
+import Yi.Buffer                ( FBuffer (..), newB, keyB, hNewB, nameB )
 import Text.Regex.Posix.Wrap    ( Regex )
 import Yi.Window
 import Yi.Style                 ( uiStyle, UIStyle )
@@ -46,37 +46,35 @@ import Control.Exception
 
 import {-# source #-} Yi.UI as UI ( UI, scheduleRefresh )
 
-import qualified GHC
-
 ------------------------------------------------------------------------
 
 --
 -- | The Editor state
 --
 data Editor = Editor {
-        buffers         :: !(M.Map Unique FBuffer)    -- ^ all the buffers
-       ,windows         :: !(M.Map Unique Window)     -- ^ all the windows
+        buffers       :: !(M.Map Unique FBuffer)    -- ^ all the buffers
+       ,windows       :: !(M.Map Unique Window)     -- ^ all the windows
 
-       ,ui              :: UI
+       ,ui            :: UI
 
-       ,curwin          :: !(Maybe Unique)            -- ^ the window with focus
-       ,uistyle         :: !UIStyle                   -- ^ ui colours
-       ,input           :: Chan Event                 -- ^ input stream
-       ,threads         :: [ThreadId]                 -- ^ all our threads
-       ,reboot          :: (Maybe Editor) -> IO ()    -- ^ our reboot function
-       ,dynamic         :: !(M.Map String Dynamic)    -- ^ dynamic components
+       ,curwin        :: !(Maybe Unique)            -- ^ the window with focus
+       ,uistyle       :: !UIStyle                   -- ^ ui colours
+       ,input         :: Chan Event                 -- ^ input stream
+       ,threads       :: [ThreadId]                 -- ^ all our threads
+       ,reboot        :: (Maybe Editor) -> IO ()    -- ^ our reboot function
+       ,dynamic       :: !(M.Map String Dynamic)    -- ^ dynamic components
 
-       ,cmdlinefocus    :: !Bool                      -- ^ cmdline has focus
-       ,windowfill      :: !Char                      -- ^ char to fill empty window space with
-       ,tabwidth        :: !Int                       -- ^ width of tabs
+       ,cmdlinefocus  :: !Bool                      -- ^ cmdline has focus
+       ,windowfill    :: !Char                      -- ^ char to fill empty window space with
+       ,tabwidth      :: !Int                       -- ^ width of tabs
 
-       ,yreg            :: !String                    -- ^ yank register
-       ,regex           :: !(Maybe (String,Regex))    -- ^ most recent regex
+       ,yreg          :: !String                    -- ^ yank register
+       ,regex         :: !(Maybe (String,Regex))    -- ^ most recent regex
        -- should be moved into dynamic component, perhaps
 
-       ,defaultKeymap  :: Keymap
+       ,defaultKeymap :: Keymap
 
-       ,editorKernel :: Kernel
+       ,editorKernel  :: Kernel
     }
 
 type EditorM = ReaderT (IORef Editor) IO
@@ -97,7 +95,7 @@ emptyEditor = Editor {
        ,yreg         = []
        ,regex        = Nothing
        ,curwin       = Nothing
-       ,defaultKeymap    = error "No keymap defined."
+       ,defaultKeymap = error "No keymap defined."
        ,uistyle      = Yi.Style.uiStyle
        ,input        = error "No channel open"
        ,threads      = []
@@ -404,3 +402,6 @@ catchJustE p c h = ReaderT (\r -> catchJust p (runReaderT c r) (\b -> runReaderT
 
 handleJustE :: (Exception -> Maybe b) -> (b -> EditorM a) -> EditorM a -> EditorM a
 handleJustE p h c = catchJustE p c h
+
+catchDynE :: Typeable exception => EditorM a -> (exception -> EditorM a) -> EditorM a
+catchDynE inner handler = ReaderT (\r -> catchDyn (runReaderT inner r) (\e -> runReaderT (handler e) r))

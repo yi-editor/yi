@@ -30,6 +30,7 @@ see cabal files (find . "-name *.cabal")
 CONFIGURATION
 
 All configuration (bindings, colours) is done with ~/.yi/YiConfig.hs
+See examples directory.
 
 PORTABILITY
 
