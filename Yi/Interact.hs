@@ -96,7 +96,7 @@ module Yi.Interact (
   ) 
  where
 
-import Control.Monad( MonadPlus(..), sequence, liftM2 )
+import Control.Monad ( MonadPlus(..), sequence, liftM2 )
 import Control.Monad.State hiding ( get )
 
 import Yi.Keymap ( Action )

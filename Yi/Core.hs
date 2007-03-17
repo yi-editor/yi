@@ -160,7 +160,9 @@ module Yi.Core (
         -- * Minibuffer
         spawnMinibufferE,
 
-        catchJustE
+        -- * Misc
+        catchJustE,
+        changeKeymapE
    ) where
 
 import Prelude hiding (error)
@@ -190,8 +192,6 @@ import Control.Monad.Reader
 import Control.Exception
 import Control.Concurrent 
 import Control.Concurrent.Chan
-
-import System.Exit	( exitWith, ExitCode(..) )
 
 import qualified GHC
 import qualified DynFlags
@@ -225,9 +225,9 @@ startE kernel st commandLineActions = do
 
       newBufferE "*messages*" ""
 
-      withKernel $ \kernel -> do
-        dflags <- getSessionDynFlags kernel
-        setSessionDynFlags kernel dflags { GHC.log_action = ghcErrorReporter newSt }
+      withKernel $ \k -> do
+        dflags <- getSessionDynFlags k
+        setSessionDynFlags k dflags { GHC.log_action = ghcErrorReporter newSt }
 
       -- run user configuration
       addConfigTarget
@@ -266,8 +266,10 @@ startE kernel st commandLineActions = do
     UI.main newSt -- transfer control to UI: GTK must run in the main thread, or else it's not happy.
                 
 
-
-
+changeKeymapE km = do
+  modifyEditor_ $ \e -> return e { defaultKeymap = km }
+  bs <- getBuffers
+  lift $ mapM_ (flip throwDynTo "Keymap change") $ catMaybes $ map bufferThread bs
 
 
 -- ---------------------------------------------------------------------

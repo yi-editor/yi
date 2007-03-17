@@ -40,9 +40,8 @@ import Yi.Undo
 import Yi.Debug
 import Data.IORef
 import Data.Unique              ( newUnique, Unique, hashUnique )
-import Control.Concurrent.MVar
 import Yi.Event
-import Control.Concurrent.Chan
+import Control.Concurrent
 import Control.Monad
 
 --
@@ -62,6 +61,7 @@ data FBuffer =
                 , bmode  :: !(MVar BufferMode)       -- ^ a read-only bit
                 , preferCol :: !(IORef (Maybe Int))  -- ^ prefered column to arrive at when we do a lineDown / lineUp
                 , bufferInput  :: !(Chan Event)      -- ^ input stream
+                , bufferThread :: !(Maybe ThreadId)  -- ^ Id of the thread running the buffer's keymap.
                 }
 
 instance Eq FBuffer where
@@ -79,8 +79,6 @@ hNewB nm = do
   b <- newB nm s
   setfileB b nm
   return b
-
-
 
 hPutB :: FBuffer -> FilePath -> IO ()
 hPutB b nm = elemsB b >>= writeFile nm
@@ -129,14 +127,10 @@ newB nm s = do
                          , bmode  = rw
                          , preferCol = pc 
                          , bufferInput = ch
+                         , bufferThread = Nothing
                          }
     return result                    
 
-
-
-
--- TODO if there is an exception, the key bindings will be reset...
- 
 
 -- | Free any resources associated with this buffer
 finaliseB :: FBuffer -> IO ()

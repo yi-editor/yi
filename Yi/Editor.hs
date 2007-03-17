@@ -155,10 +155,11 @@ stringToNewBuffer f cs getKm = do
 insertBuffer :: FBuffer -> EditorM Keymap -> EditorM FBuffer
 insertBuffer b km = do
   editor <- ask
-  lift $ forkIO (bufferEventLoop editor b km) -- FIXME: kill this thread when the buffer dies.
+  thread <- lift $ forkIO (bufferEventLoop editor b km) -- FIXME: kill this thread when the buffer dies.  
+  let b' = b {bufferThread = Just thread}
   modifyEditor $ \e@(Editor{buffers=bs}) -> do
-                     let e' = e { buffers = M.insert (keyB b) b bs } :: Editor
-                     return (e', b)
+                     let e' = e { buffers = M.insert (keyB b) b' bs } :: Editor
+                     return (e', b')
 
 bufferEventLoop :: IORef Editor -> FBuffer -> EditorM Keymap -> IO ()
 bufferEventLoop e b getKm = eventLoop 
