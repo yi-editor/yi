@@ -143,19 +143,16 @@ withEditor f = do
 hNewBuffer :: FilePath -> EditorM FBuffer
 hNewBuffer f = do
     b <- lift $ hNewB f
-    km <- readEditor defaultKeymap
-    insertBuffer b km
+    insertBuffer b (readEditor defaultKeymap)
 
---
 -- | Create and fill a new buffer, using contents of string.
---
-stringToNewBuffer :: FilePath -> String -> Keymap -> EditorM FBuffer
-stringToNewBuffer f cs km = do
+stringToNewBuffer :: FilePath -> String -> EditorM Keymap -> EditorM FBuffer
+stringToNewBuffer f cs getKm = do
     lift $ logPutStrLn $ "stringToNewBuffer: " ++ show f
     b <- lift $ newB f cs
-    insertBuffer b km
+    insertBuffer b getKm
 
-insertBuffer :: FBuffer -> Keymap -> EditorM FBuffer
+insertBuffer :: FBuffer -> EditorM Keymap -> EditorM FBuffer
 insertBuffer b km = do
   editor <- ask
   lift $ forkIO (bufferEventLoop editor b km) -- FIXME: kill this thread when the buffer dies.
@@ -163,10 +160,10 @@ insertBuffer b km = do
                      let e' = e { buffers = M.insert (keyB b) b bs } :: Editor
                      return (e', b)
 
-bufferEventLoop :: IORef Editor -> FBuffer -> Keymap -> IO ()
-bufferEventLoop e b km = eventLoop 
+bufferEventLoop :: IORef Editor -> FBuffer -> EditorM Keymap -> IO ()
+bufferEventLoop e b getKm = eventLoop 
   where
-    -- | The editor main loop. Read key strokes from the ui and interpret
+    -- | The buffer's main loop. Read key strokes from the ui and interpret
     -- them using the current key map. Keys are bound to core actions.
     eventLoop :: IO ()
     eventLoop = do
@@ -188,7 +185,8 @@ bufferEventLoop e b km = eventLoop
             sequence_ . map interactive . bkm =<< getChanContents (bufferInput b)
             logPutStrLn "Keymap execution ended"
             
-        repeatM_ $ handle handler (run km)
+        repeatM_ $ do km <- runReaderT getKm e -- get the new version of the keymap every time we need to start it.
+                      handle handler (run km)
 
 ------------------------------------------------------------------------
 --

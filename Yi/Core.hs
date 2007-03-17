@@ -244,15 +244,17 @@ startE kernel st commandLineActions = do
 
     logPutStrLn "Starting event handler"
     let
-          eventLoop :: IO ()
-          eventLoop = do
-              ch <- liftM input $ readIORef newSt 
-              let run = mapM_ dispatch =<< getChanContents ch
-              repeatM_ $ (handle handler run >> logPutStrLn "Dispatcher execution ended")
-                       
-              where
-                handler e = flip runReaderT newSt $ errorE (show e)
-                dispatch action = flip runReaderT newSt $ withBuffer $ \b -> writeChan (bufferInput b) action
+        -- | The editor's main loop. 
+        -- Read key strokes from the ui and dispatches them to the buffer with focus.
+        eventLoop :: IO ()
+        eventLoop = do
+            ch <- liftM input $ readIORef newSt 
+            let run = mapM_ dispatch =<< getChanContents ch
+            repeatM_ $ (handle handler run >> logPutStrLn "Dispatcher execution ended")
+                     
+            where
+              handler e = flip runReaderT newSt $ errorE (show e)
+              dispatch action = flip runReaderT newSt $ withBuffer $ \b -> writeChan (bufferInput b) action
       
     t <- forkIO eventLoop 
     modifyIORef newSt $ \e -> e { threads = t : threads e }
@@ -722,7 +724,7 @@ prevBufW = do
 --
 fnewE  :: FilePath -> Action
 fnewE f = do
-    km <- readEditor defaultKeymap
+    let km = readEditor defaultKeymap
     e  <- lift $ doesFileExist f
     b  <- if e then hNewBuffer f else stringToNewBuffer f [] km
     lift $ setfileB b f        -- and associate with file f
@@ -734,7 +736,7 @@ fnewE f = do
 -- buffers (like scratch)
 newBufferE :: String -> String -> EditorM FBuffer
 newBufferE f s = do
-    km <- readEditor defaultKeymap
+    let km = readEditor defaultKeymap
     b <- stringToNewBuffer f s km
     canSplit <- UI.hasRoomForExtraWindow
     if canSplit 
@@ -751,7 +753,7 @@ newBufferE f s = do
 
 spawnMinibufferE :: String -> Keymap -> Action
 spawnMinibufferE prompt km =
-    do b <- stringToNewBuffer ("Minibuffer: " ++ prompt) [] km 
+    do b <- stringToNewBuffer ("Minibuffer: " ++ prompt) [] (return km) 
        w <- UI.newWindow b
        UI.setWindow w
 
