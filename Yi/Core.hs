@@ -217,11 +217,17 @@ startE kernel st commandLineActions = do
     newSt <- newIORef $ maybe emptyEditor id st
     flip runReaderT newSt $ do 
       modifyEditor_ $ \e -> return e { editorKernel = kernel, defaultKeymap = \(_:_) -> [errorE "Keymap not defined!"] }
-      UI.start      
+      UI.start  
+
+      -- Setting up the 1st buffer/window is a bit tricky because most functions assume there exists a "current window"
+      -- or a "current buffer".
+      stringToNewBuffer "*console*" "" (readEditor defaultKeymap) >>= UI.newWindow >>= UI.setWindow    
+
+      newBufferE "*messages*" ""
 
       withKernel $ \kernel -> do
         dflags <- getSessionDynFlags kernel
-        setSessionDynFlags kernel dflags { GHC.log_action = ghcErrorReporter' }
+        setSessionDynFlags kernel dflags { GHC.log_action = ghcErrorReporter newSt }
 
       -- run user configuration
       addConfigTarget
@@ -238,9 +244,7 @@ startE kernel st commandLineActions = do
                    "-- This buffer is for notes you don't want to save, and for haskell evaluation\n" ++
                    "-- If you want to create a file, open that file,\n" ++
                    "-- then enter the text in that file's own buffer.\n\n"
-      withKernel $ \kernel -> do
-        dflags <- getSessionDynFlags kernel
-        setSessionDynFlags kernel dflags { GHC.log_action = ghcErrorReporter newSt }
+
 
     logPutStrLn "Starting event handler"
     let
@@ -642,11 +646,16 @@ pipeE cmd inp = do
 msgE :: String -> Action
 msgE s = do modifyEditor_ $ \e -> do
               UI.setCmdLine (ui e) s
+              -- also show in the messages buffer, so we don't loose any message
+              let [b] = findBufferWithName e "*messages*"
+              moveTo b =<< sizeB b
+              insertN b (s ++ "\n")
               return e
+            
 
 -- | Set the cmd buffer, and draw a pretty error message
 errorE :: String -> Action
-errorE s = do msgE s
+errorE s = do msgE ("error: " ++ s)
               lift $ logPutStrLn $ "errorE: " ++ s
 
 -- | Clear the message line at bottom of screen
@@ -738,10 +747,6 @@ newBufferE :: String -> String -> EditorM FBuffer
 newBufferE f s = do
     let km = readEditor defaultKeymap
     b <- stringToNewBuffer f s km
-    canSplit <- UI.hasRoomForExtraWindow
-    if canSplit 
-      then UI.newWindow b >>= UI.setWindow
-      else return ()
     getWindow >>= UI.setWindowBuffer b
     lift $ logPutStrLn "newBufferE ended"
     return b
@@ -828,18 +833,12 @@ setWinE = UI.setWindow
 
 -- | Split the current window, opening a second window onto this buffer.
 -- Windows smaller than 3 lines cannot be split.
-splitE :: Action
+splitE :: EditorM ()
 splitE = do
-  canSplit <- UI.hasRoomForExtraWindow
-  if not (canSplit)
-        then errorE "Not enough room to split"
-        else do
-              mw <- getWindow
-              case mw of
-                Nothing -> nopE
-                Just w  -> do b <- getBufferWith (bufkey w)
-                              w' <- UI.newWindow b
-                              UI.setWindow w'
+    canSplit <- UI.hasRoomForExtraWindow
+    if canSplit 
+      then getBuffer >>= UI.newWindow >>= UI.setWindow
+      else errorE "Not enough room to split"
 
 -- | Enlarge the current window
 enlargeWinE :: Action
@@ -914,16 +913,14 @@ runConfig = do
 
 ghcErrorReporter :: IORef Editor -> GHC.Severity -> SrcLoc.SrcSpan -> Outputable.PprStyle -> ErrUtils.Message -> IO () 
 ghcErrorReporter editor severity srcSpan pprStyle message = 
+    -- the following is written in very bad style.
     flip runReaderT editor $ do
       e <- readEditor id
-      let [b] = findBufferWithName e "*scratch*" -- FIXME: report errors to another buffer (*console*?)
+      let [b] = findBufferWithName e "*messages*"
       lift $ do 
         moveTo b =<< sizeB b
         insertN b (showSDoc message) -- FIXME: also show severity, etc.
         insertN b "\n"
 
-ghcErrorReporter' :: GHC.Severity -> SrcLoc.SrcSpan -> Outputable.PprStyle -> ErrUtils.Message -> IO () 
-ghcErrorReporter' severity srcSpan pprStyle message = 
-    logPutStrLn $ "GHC Error: " ++ (showSDoc message) -- FIXME: also show severity, etc.
 
 

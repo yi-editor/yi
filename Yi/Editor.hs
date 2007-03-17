@@ -279,11 +279,10 @@ mkAssoc (w:ws) = (key w, w) : mkAssoc ws
 getWindows :: Editor -> [Window]
 getWindows = M.elems . windows
 
---
 -- | Get current window
---
 getWindow :: EditorM (Maybe Window)
 getWindow = readEditor getWindowOf
+
 
 --
 -- | Get window, from the given editor state.
@@ -323,6 +322,9 @@ withWindow f = modifyEditor $ \e -> do
 -- | Perform action with current window's buffer
 withBuffer :: (FBuffer -> IO a) -> EditorM a
 withBuffer f = withWindow (const f)
+
+getBuffer :: EditorM FBuffer
+getBuffer = withBuffer return
 
 withUI :: (UI -> IO a) -> EditorM a
 withUI f = do
