@@ -19,7 +19,7 @@
 
 
 
-module Yi.Keymap.Emacs ( keymap ) where
+module Yi.Keymap.Emacs ( keymap, runKeymap, rebind, normalKeymap ) where
 
 import Yi.Yi
 
@@ -33,6 +33,8 @@ import qualified Yi.UI as UI  -- FIXME this module should not depend on UI
 
 import Control.Monad
 import Control.Monad.Trans
+
+import Yi.Editor
 
 -- * The keymap abstract definition
 
@@ -88,6 +90,7 @@ normalKeymap = selfInsertKeymap +++ makeKeymap
         ("C-x C-f",  atomic $ findFile),
         ("C-x C-s",  atomic $ fwriteE),
         ("C-x C-x",  atomic $ exchangePointAndMarkE),
+        ("C-x b",    atomic $ switchBufferE),
         ("C-x e e",  atomic $ evalRegionE),
         ("C-x o",    atomic $ nextWinE),
         ("C-x l",    atomic $ gotoLineE),
@@ -199,6 +202,13 @@ scrollDownE = withUnivArg $ \a ->
                  Nothing -> downScreenE
                  Just n -> replicateM_ n downE
 
+switchBufferE :: Action
+switchBufferE = withMinibuffer "switch to buffer:" $ \bufName -> do
+                  b <- getBuffer -- current buffer
+                  bs <- readEditor $ \e -> findBufferWithName e bufName
+                  case filter (/= b) bs of
+                    [] -> errorE "No such buffer"
+                    (b':_) -> getWindow >>= UI.setWindowBuffer b'
 
 -- | Create a binding processor from 'kmap'.
 makeKeymap :: KList -> KProc ()
