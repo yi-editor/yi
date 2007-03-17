@@ -222,8 +222,14 @@ queryNewE = simpleq "File name: " [] fnewE
 queryGotoLineE = simpleq "Line number: " [] (gotoLnE . read)
 queryInsertFileE = simpleq "File name: " [] insertFileE
 queryBufW = simpleq "Buffer: " [] unimplementedQ
-querySaveE = write $
-    getFileE >>= \f -> metaM $ runProc $ (simpleq "File name: " f fwriteToE >> klist)
+
+
+-- TODO: this could either use the method in the Nano keymap or the Emacs keymap. 
+-- (metaM used change the current keymap)
+querySaveE = return ()
+--querySaveE = write $
+--    getFileE >>= \f -> metaM $ runProc $ (simpleq "File name: " f fwriteToE >> klist)
+
 
 
 -- ---------------------------------------------------------------------
