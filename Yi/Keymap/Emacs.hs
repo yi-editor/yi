@@ -173,8 +173,8 @@ readArg' acc = do
       Event (KASCII d) [] | isDigit d -> readArg' $ Just $ 10 * (fromMaybe 0 acc) + (ord d - ord '0')
       _ -> write $ setDynamic $ UniversalArg $ Just $ fromMaybe 4 acc
 
-rebind :: Process -> String -> Process -> Process
-rebind kl k kp = debug ("(rebound "++k++")") >> ((events (readKey k) >> kp) <++ kl)
+rebind :: [(String,Process)] -> Process -> Process
+rebind keys kl = (choice [events (readKey k) >> p | (k,p) <- keys]) <++ kl
 
 findFile :: Action
 findFile = withMinibuffer "find file:" $ \filename -> do msgE $ "loading " ++ filename
@@ -188,8 +188,8 @@ debug :: String -> Process
 debug = write . lift . logPutStrLn
 
 withMinibuffer :: String -> (String -> Action) -> Action
-withMinibuffer prompt act = spawnMinibufferE prompt (runKeymap (rebind normalKeymap "RET" (write innerAction)))
-    -- read contents of current buffer (which should be the minibuffer), and
+withMinibuffer prompt act = spawnMinibufferE prompt (runKeymap (rebind [("RET", write innerAction)] normalKeymap))
+    -- | Read contents of current buffer (which should be the minibuffer), and
     -- apply it to the desired action
     where innerAction :: Action
           innerAction = do lineString <- readAllE
