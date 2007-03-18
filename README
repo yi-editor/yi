@@ -31,6 +31,7 @@ CONFIGURATION
 
 All configuration (bindings, colours) is done with ~/.yi/YiConfig.hs
 See examples directory.
+Drop the --as=... when you have defined your YiConfig.hs
 
 PORTABILITY
 

@@ -176,6 +176,7 @@ import Yi.Process           ( popen )
 import Yi.Editor
 import Yi.CoreUI
 import Yi.Kernel
+import Yi.Event
 import qualified Yi.Editor as Editor
 import qualified Yi.Style as Style
 import qualified Yi.UI as UI
@@ -205,6 +206,11 @@ import GHC.Exts ( unsafeCoerce# )
 -- | A 'Direction' is either left or right.
 data Direction = GoLeft | GoRight
 
+nilKeymap (c:_) = [if eventToChar c == 'q' 
+                   then quitE 
+                   else errorE "Keymap not defined, type 'q' to quit. README file may help you."]
+nilKeymap [] = error "stream of input event ended"
+
 -- ---------------------------------------------------------------------
 -- | Start up the editor, setting any state with the user preferences
 -- and file names passed in, and turning on the UI
@@ -219,7 +225,7 @@ startE kernel st commandLineActions = do
     flip runReaderT newSt $ do 
       modifyEditor_ $ \e -> return e { output = outCh, 
                                        editorKernel = kernel, 
-                                       defaultKeymap = \(_:_) -> [errorE "Keymap not defined!"] }
+                                       defaultKeymap = nilKeymap }
       UI.start  
 
       -- Setting up the 1st buffer/window is a bit tricky because most functions assume there exists a "current window"
