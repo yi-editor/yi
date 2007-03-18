@@ -16,7 +16,6 @@ import Data.Dynamic
 import Data.List
 
 import Control.Monad.Reader
-import Control.Exception
 
 import qualified GHC
 import GHC.Exts ( unsafeCoerce# )
@@ -36,12 +35,14 @@ evalE s = evalToStringE s >>= msgE
 
 -- | Run a (dynamically specified) editor command.
 execE :: String -> EditorM ()
-execE s = ghcErrorHandlerE $ do
+execE s = do
+  ghcErrorHandlerE $ do
+            withKernel yiContext
             result <- withKernel $ \kernel -> do
                                logPutStrLn $ "execing " ++ s
                                compileExpr kernel ("(" ++ s ++ ") >>= msgE . show :: EditorM ()")
             case result of
-              Nothing -> errorE "Could not compile expression"
+              Nothing -> errorE ("Could not compile: " ++ s)
               Just x -> do let (x' :: EditorM ()) = unsafeCoerce# x
                            x'
                            return ()

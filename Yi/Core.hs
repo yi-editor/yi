@@ -215,8 +215,11 @@ startE kernel st commandLineActions = do
 
     -- restore the old state
     newSt <- newIORef $ maybe emptyEditor id st
+    outCh <- newChan
     flip runReaderT newSt $ do 
-      modifyEditor_ $ \e -> return e { editorKernel = kernel, defaultKeymap = \(_:_) -> [errorE "Keymap not defined!"] }
+      modifyEditor_ $ \e -> return e { output = outCh, 
+                                       editorKernel = kernel, 
+                                       defaultKeymap = \(_:_) -> [errorE "Keymap not defined!"] }
       UI.start  
 
       -- Setting up the 1st buffer/window is a bit tricky because most functions assume there exists a "current window"
@@ -230,11 +233,9 @@ startE kernel st commandLineActions = do
         setSessionDynFlags k dflags { GHC.log_action = ghcErrorReporter newSt }
 
       -- run user configuration
-      addConfigTarget
+      addConfigTarget -- Make sure we load YiConfig, if it exists.
       reloadE
       runConfig
-
-      withKernel yiContext
 
       when (isNothing st) $ do -- process options if booting for the first time
         sequence_ commandLineActions
@@ -246,9 +247,11 @@ startE kernel st commandLineActions = do
                    "-- then enter the text in that file's own buffer.\n\n"
 
 
+    theUI <- liftM ui (readIORef newSt)
+
     logPutStrLn "Starting event handler"
     let
-        -- | The editor's main loop. 
+        -- | The editor's input main loop. 
         -- Read key strokes from the ui and dispatches them to the buffer with focus.
         eventLoop :: IO ()
         eventLoop = do
@@ -259,13 +262,32 @@ startE kernel st commandLineActions = do
             where
               handler e = flip runReaderT newSt $ errorE (show e)
               dispatch action = flip runReaderT newSt $ withBuffer $ \b -> writeChan (bufferInput b) action
+
+
+        -- | Make an action suitable for an interactive run.
+        -- Editor state will be refreshed after
+        interactive :: EditorM () -> IO ()
+        interactive action = do 
+          logPutStrLn ">>>>>>> interactively"
+          runReaderT action newSt
+          logPutStrLn "<<<<<<<"
+          UI.scheduleRefresh theUI
+
+        -- | The editor's output main loop. 
+        execLoop :: IO ()
+        execLoop = do
+            UI.scheduleRefresh theUI
+            let loop = sequence_ . map interactive =<< getChanContents outCh
+            let handler exception = logPutStrLn $ "Buffer event loop crashed with: " ++ (show exception)
+            handle handler loop
       
-    t <- forkIO eventLoop 
-    modifyIORef newSt $ \e -> e { threads = t : threads e }
+    t1 <- forkIO eventLoop 
+    t2 <- forkIO execLoop
+    modifyIORef newSt $ \e -> e { threads = t1 : t2 : threads e }
 
     UI.main newSt -- transfer control to UI: GTK must run in the main thread, or else it's not happy.
                 
-
+changeKeymapE :: Keymap -> EditorM ()
 changeKeymapE km = do
   modifyEditor_ $ \e -> return e { defaultKeymap = km }
   bs <- getBuffers
@@ -308,13 +330,19 @@ rebootE = do
     Editor.shutdown
     lift $ fn (Just e)
 
--- | Recompile and reload the user's config files
+-- | (Re)compile and reload the user's config files
 reloadE :: Action
 reloadE = do
+  -- lift $ rts_revertCAFs -- FIXME: GHCi does this; It currently has undesired effects on logging; investigate.
   result <- withKernel loadAllTargets
   case result of
     GHC.Failed -> errorE "failed to load targets"
-    _ -> return ();
+    _ -> return ()
+  -- lift $ rts_revertCAFs
+
+foreign import ccall "revertCAFs" rts_revertCAFs  :: IO ()  
+	-- Make it "safe", just in case
+
 
 -- | Reset the size, and force a complete redraw
 refreshE :: Action
@@ -901,7 +929,7 @@ mapRangeE from to fn
  
 addConfigTarget :: EditorM ()
 addConfigTarget = withKernel $ \kernel -> do
-  logPutStrLn "getting user config"
+  -- FIXME: make sure we don't add this if the file does not exist.
   configTarget <- guessTarget kernel "YiConfig" Nothing
   setTargets kernel [configTarget]
 

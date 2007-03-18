@@ -60,6 +60,7 @@ data Editor = Editor {
        ,curwin        :: !(Maybe Unique)            -- ^ the window with focus
        ,uistyle       :: !UIStyle                   -- ^ ui colours
        ,input         :: Chan Event                 -- ^ input stream
+       ,output        :: Chan Action                -- ^ output stream
        ,threads       :: [ThreadId]                 -- ^ all our threads
        ,reboot        :: (Maybe Editor) -> IO ()    -- ^ our reboot function
        ,dynamic       :: !(M.Map String Dynamic)    -- ^ dynamic components
@@ -97,7 +98,8 @@ emptyEditor = Editor {
        ,curwin       = Nothing
        ,defaultKeymap = error "No keymap defined."
        ,uistyle      = Yi.Style.uiStyle
-       ,input        = error "No channel open"
+       ,input        = error "No input channel open"
+       ,output       = error "No output channel open"
        ,threads      = []
        ,reboot       = const $ return ()
        ,dynamic      = M.empty
@@ -164,30 +166,20 @@ insertBuffer b km = do
 bufferEventLoop :: IORef Editor -> FBuffer -> EditorM Keymap -> IO ()
 bufferEventLoop e b getKm = eventLoop 
   where
+    handler exception = logPutStrLn $ "Buffer event loop crashed with: " ++ (show exception)
+
+    run bkm = do
+      -- logStream ("Event for " ++ show b) (bufferInput b)
+      out <- liftM output $ readIORef e
+      writeList2Chan out . bkm =<< getChanContents (bufferInput b)
+      logPutStrLn "Keymap execution ended"
+
     -- | The buffer's main loop. Read key strokes from the ui and interpret
     -- them using the current key map. Keys are bound to core actions.
     eventLoop :: IO ()
     eventLoop = do
-        tui <- liftM ui (readIORef e)
-        let
-            handler exception = logPutStrLn $ "Buffer event loop crashed with: " ++ (show exception)
-            -- | Make an action suitable for an interactive run.
-            -- Editor state will be refreshed after
-            interactive :: EditorM () -> IO ()
-            interactive action = do 
-              logPutStrLn "running interactively ("
-              runReaderT action e
-              logPutStrLn ")"
-              UI.scheduleRefresh tui
-
-            run bkm = do
-            logStream ("Event for " ++ show b) (bufferInput b)
-            UI.scheduleRefresh tui
-            sequence_ . map interactive . bkm =<< getChanContents (bufferInput b)
-            logPutStrLn "Keymap execution ended"
-            
-        repeatM_ $ do km <- runReaderT getKm e -- get the new version of the keymap every time we need to start it.
-                      handle handler (run km)
+      repeatM_ $ do km <- runReaderT getKm e -- get the new version of the keymap every time we need to start it.
+                    handle handler (run km)
 
 ------------------------------------------------------------------------
 --
