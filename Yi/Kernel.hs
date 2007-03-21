@@ -4,7 +4,7 @@
 -- nothing about Yi (at the haskell level; it can know names of
 -- modules/functions at strings)
 
-module Yi.Kernel (initialize, Kernel(..), eval, startYi) where
+module Yi.Kernel (initialize, Kernel(..), eval, startYi, yiContext) where
 
 import Yi.Debug hiding (error)
 
@@ -28,10 +28,13 @@ data Kernel = Kernel
      getSessionDynFlags :: IO GHC.DynFlags,
      setSessionDynFlags :: GHC.DynFlags -> IO [Packages.PackageId],
      compileExpr :: String -> IO (Maybe GHC.HValue),
-     yiContext :: IO (), 
      guessTarget :: String -> Maybe GHC.Phase -> IO GHC.Target,
      setTargets :: [GHC.Target] -> IO (),
-     loadAllTargets :: IO GHC.SuccessFlag
+     loadAllTargets :: IO GHC.SuccessFlag,
+     findModule :: String -> IO GHC.Module,
+     setContext :: [GHC.Module]	-- ^ entire top level scope of these modules
+	        -> [GHC.Module]	-- ^ exports only of these modules
+	        -> IO ()
     }
 
 
@@ -59,22 +62,22 @@ initialize = GHC.defaultErrorHandler DynFlags.defaultDynFlags $ do
   (dflags2, packageIds) <- Packages.initPackages dflags1'
   logPutStrLn $ "packagesIds: " ++ (showSDocDump $ ppr $ packageIds)
   GHC.setSessionDynFlags session dflags2{GHC.hscTarget=GHC.HscInterpreted}
-  yiContextL session
   return Kernel { 
                  getSessionDynFlags = GHC.getSessionDynFlags session,
                  setSessionDynFlags = GHC.setSessionDynFlags session,
                  compileExpr = GHC.compileExpr session,
-                 yiContext = yiContextL session,
-                 loadAllTargets = GHC.load session GHC.LoadAllTargets,
+                  loadAllTargets = GHC.load session GHC.LoadAllTargets,
                  setTargets = GHC.setTargets session,
-                 guessTarget = GHC.guessTarget
+                 guessTarget = GHC.guessTarget,
+                 findModule = \s -> GHC.findModule session (GHC.mkModuleName s) Nothing,
+                 setContext = GHC.setContext session
                 }
 
 
 -- | Dynamically start Yi. 
 startYi :: Kernel -> IO ()
 startYi kernel = GHC.defaultErrorHandler DynFlags.defaultDynFlags $ do
-  result <- compileExpr kernel ("Yi.main :: Yi.Kernel -> IO ()") 
+  result <- compileExpr kernel ("Yi.main :: Yi.Kernel -> Prelude.IO ()") 
   -- coerce the interpreted expression, so we check that we are not making an horrible mistake.
   logPutStrLn "Starting Yi!"
   case result of
@@ -91,12 +94,11 @@ eval kernel expr = do
     Nothing -> error $ "Could not compile expr: " ++ expr
     Just x -> return x
 
-yiContextL :: GHC.Session -> IO ()
-yiContextL session = do
-  preludeModule <- GHC.findModule session (GHC.mkModuleName "Prelude") Nothing
-  yiModule <- GHC.findModule session (GHC.mkModuleName "Yi.Yi") Nothing -- this module re-exports all useful stuff.
-  GHC.setContext session [] [preludeModule, yiModule]
-
+yiContext :: Kernel -> IO ()
+yiContext kernel =
+    do preludeModule <- findModule kernel "Prelude"
+       yiModule <- findModule kernel "Yi.Yi" -- this module re-exports all useful stuff.
+       setContext kernel [] [preludeModule, yiModule]
 
 {- 
 Maybe useful in the future...
