@@ -955,8 +955,11 @@ ghcErrorReporter editor severity srcSpan pprStyle message =
       let [b] = findBufferWithName e "*messages*"
       lift $ do 
         moveTo b =<< sizeB b
-        insertN b (showSDoc message) -- FIXME: also show severity, etc.
+        insertN b msg
         insertN b "\n"
-
+    where msg = case severity of
+                  GHC.SevInfo -> show (message pprStyle)
+                  GHC.SevFatal -> show (message pprStyle)
+                  _ -> show ((ErrUtils.mkLocMessage srcSpan message) pprStyle)
 
 
