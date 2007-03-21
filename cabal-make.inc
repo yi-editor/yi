@@ -119,6 +119,9 @@ version ?= $(strip $(shell cat *.cabal | egrep -i 'version:' | sed -e 's/version
 show-version:
 	@echo $(version)
 
+show-config-args:
+	@echo $(configure-args)
+
 show-build-args:
 	@echo $(build-args)
 
