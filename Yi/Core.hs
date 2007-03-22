@@ -37,6 +37,7 @@ module Yi.Core (
         quitE,          -- :: Action
         rebootE,        -- :: Action
         reloadE,        -- :: Action
+        reconfigE,
         loadE,
         refreshE,       -- :: Action
         suspendE,       -- :: Action
@@ -933,6 +934,10 @@ mapRangeE from to fn
                                 loop (j-1)
                 loop (max 0 (to - from))
             moveTo b from
+
+
+reconfigE :: Action
+reconfigE = reloadE >> runConfig
 
 runConfig :: Action
 runConfig = do
