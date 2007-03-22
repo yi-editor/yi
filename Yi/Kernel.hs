@@ -16,6 +16,7 @@ import qualified DynFlags
 import qualified PackageConfig
 import qualified Linker
 import Outputable
+import Control.Monad
 
 import GHC.Exts ( unsafeCoerce# )
 
@@ -34,7 +35,11 @@ data Kernel = Kernel
      findModule :: String -> IO GHC.Module,
      setContext :: [GHC.Module]	-- ^ entire top level scope of these modules
 	        -> [GHC.Module]	-- ^ exports only of these modules
-	        -> IO ()
+	        -> IO (),
+     setContextAfterLoad :: IO ()
+     -- getModuleGraph
+     -- isLoaded
+     -- ms_mod_name
     }
 
 
@@ -70,7 +75,8 @@ initialize = GHC.defaultErrorHandler DynFlags.defaultDynFlags $ do
                  setTargets = GHC.setTargets session,
                  guessTarget = GHC.guessTarget,
                  findModule = \s -> GHC.findModule session (GHC.mkModuleName s) Nothing,
-                 setContext = GHC.setContext session
+                 setContext = GHC.setContext session,
+                 setContextAfterLoad = setContextAfterLoadL session
                 }
 
 
@@ -118,3 +124,24 @@ showContext session = do
 -}
   
 
+setContextAfterLoadL session = do
+  preludeModule <- GHC.findModule session (GHC.mkModuleName "Prelude") Nothing
+  yiModule <- GHC.findModule session (GHC.mkModuleName "Yi.Yi") Nothing -- this module re-exports all useful stuff.
+  graph <- GHC.getModuleGraph session
+  graph' <- filterM (GHC.isLoaded session . GHC.ms_mod_name) graph
+  targets <- GHC.getTargets session
+  let targets' = [ m | Just m <- map (findTarget graph') targets ]
+      modules = map GHC.ms_mod targets'
+  GHC.setContext session [] (preludeModule:yiModule:modules)
+ where
+   findTarget ms t
+    = case filter (`matches` t) ms of
+	[]    -> Nothing
+	(m:_) -> Just m
+
+   summary `matches` GHC.Target (GHC.TargetModule m) _
+	= GHC.ms_mod_name summary == m
+   summary `matches` GHC.Target (GHC.TargetFile f _) _ 
+	| Just f' <- GHC.ml_hs_file (GHC.ms_location summary)	= f == f'
+   summary `matches` target
+	= False

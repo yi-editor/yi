@@ -76,6 +76,7 @@ data Editor = Editor {
        ,defaultKeymap :: Keymap
 
        ,editorKernel  :: Kernel
+       ,editorModules :: [String] -- ^ modules requested by user: (e.g. ["YiConfig", "Hoogle"])
     }
 
 type EditorM = ReaderT (IORef Editor) IO
@@ -105,6 +106,7 @@ emptyEditor = Editor {
        ,dynamic      = M.empty
 
        ,editorKernel = error "GHC Kernel not initialized"
+       ,editorModules = []
     }
 
 -- ---------------------------------------------------------------------

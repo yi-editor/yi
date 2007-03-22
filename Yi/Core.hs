@@ -37,6 +37,7 @@ module Yi.Core (
         quitE,          -- :: Action
         rebootE,        -- :: Action
         reloadE,        -- :: Action
+        loadE,
         refreshE,       -- :: Action
         suspendE,       -- :: Action
 
@@ -239,8 +240,7 @@ startE kernel st commandLineActions = do
         setSessionDynFlags k dflags { GHC.log_action = ghcErrorReporter newSt }
 
       -- run user configuration
-      addConfigTarget -- Make sure we load YiConfig, if it exists.
-      reloadE
+      loadE "YiConfig"
       runConfig
 
       when (isNothing st) $ do -- process options if booting for the first time
@@ -344,6 +344,7 @@ reloadE = do
   case result of
     GHC.Failed -> errorE "failed to load targets"
     _ -> return ()
+  withKernel setContextAfterLoad
   -- lift $ rts_revertCAFs
 
 foreign import ccall "revertCAFs" rts_revertCAFs  :: IO ()  
@@ -932,13 +933,6 @@ mapRangeE from to fn
                                 loop (j-1)
                 loop (max 0 (to - from))
             moveTo b from
- 
-addConfigTarget :: EditorM ()
-addConfigTarget = withKernel $ \kernel -> do
-  -- FIXME: make sure we don't add this if the file does not exist.
-  configTarget <- guessTarget kernel "YiConfig" Nothing
-  setTargets kernel [configTarget]
-
 
 runConfig :: Action
 runConfig = do
@@ -946,6 +940,14 @@ runConfig = do
   case result of
     Nothing -> errorE "Could not run YiConfig.yiMain :: Yi.Yi.EditorM ()"
     Just x -> (unsafeCoerce# x)
+
+loadE mod = do
+  modules <- modifyEditor $ \e -> let ms = nub (mod : editorModules e) 
+                                  in return (e { editorModules = ms }, ms)
+  withKernel $ \kernel -> do
+    targets <- mapM (\m -> guessTarget kernel m Nothing) modules
+    setTargets kernel targets
+  reloadE
 
 ghcErrorReporter :: IORef Editor -> GHC.Severity -> SrcLoc.SrcSpan -> Outputable.PprStyle -> ErrUtils.Message -> IO () 
 ghcErrorReporter editor severity srcSpan pprStyle message = 
