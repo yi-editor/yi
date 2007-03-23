@@ -23,7 +23,6 @@ import GHC.Exts ( unsafeCoerce# )
 
 evalToStringE :: String -> EditorM String
 evalToStringE string = withKernel $ \kernel -> do
-  yiContext kernel
   result <- compileExpr kernel ("show (" ++ string ++ ")")
   case result of
     Nothing -> return ""
@@ -37,7 +36,6 @@ evalE s = evalToStringE s >>= msgE
 execE :: String -> EditorM ()
 execE s = do
   ghcErrorHandlerE $ do
-            withKernel yiContext
             result <- withKernel $ \kernel -> do
                                logPutStrLn $ "execing " ++ s
                                compileExpr kernel ("(" ++ s ++ ") >>= msgE . show :: EditorM ()")
