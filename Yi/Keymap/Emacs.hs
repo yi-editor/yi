@@ -27,6 +27,7 @@ import Yi.Keymap.Emacs.KillRing
 import Yi.Keymap.Emacs.UnivArgument
 import Yi.Keymap.Emacs.Keys
 import Yi.Buffer
+import Yi.Kernel
 import Data.Char
 import Data.Maybe
 import Data.List
@@ -134,7 +135,7 @@ normalKeymap = selfInsertKeymap +++ makeKeymap
 
 executeExtendedCommandE :: Action
 executeExtendedCommandE = do
-  withMinibuffer "M-x" return execE
+  withMinibuffer "M-x" completeFunctionName execE
 
 evalRegionE :: Action
 evalRegionE = do
@@ -239,6 +240,7 @@ historyMove delta = do
               deleteN b sz
               insertN b nextValue
 
+commonPrefix :: [String] -> String
 commonPrefix [] = []
 commonPrefix strings 
     | any null strings = []
@@ -248,11 +250,19 @@ commonPrefix strings
           (heads, tails) = unzip [(h,t) | (h:t) <- strings]
           prefix = head heads
 
+completeInList :: [String] -> String -> String
+completeInList l s = if null prefix then s else prefix
+    where prefix = commonPrefix (filter (s `isPrefixOf`) l)
+
 completeBufferName :: String -> EditorM String
 completeBufferName s = do
-    bs <- getBuffers
-    let matching = filter (s `isPrefixOf`) (map nameB bs)
-    return (commonPrefix matching)
+  bs <- getBuffers
+  return $ completeInList (map nameB bs) s
+
+completeFunctionName :: String -> EditorM String
+completeFunctionName s = do
+  names <- getNamesInScopeE
+  return $ completeInList names s
 
 completionFunction :: (String -> EditorM String) -> EditorM ()
 completionFunction f = do

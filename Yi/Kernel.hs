@@ -37,7 +37,9 @@ data Kernel = Kernel
      setContext :: [GHC.Module]	-- ^ entire top level scope of these modules
 	        -> [GHC.Module]	-- ^ exports only of these modules
 	        -> IO (),
-     setContextAfterLoad :: IO [GHC.Module]
+     setContextAfterLoad :: IO [GHC.Module],
+     getNamesInScope :: IO [GHC.Name],
+     nameToString :: GHC.Name -> String
      -- getModuleGraph
      -- isLoaded
      -- ms_mod_name
@@ -77,7 +79,9 @@ initialize = GHC.defaultErrorHandler DynFlags.defaultDynFlags $ do
                  guessTarget = GHC.guessTarget,
                  findModule = \s -> GHC.findModule session (GHC.mkModuleName s) Nothing,
                  setContext = GHC.setContext session,
-                 setContextAfterLoad = setContextAfterLoadL session
+                 setContextAfterLoad = setContextAfterLoadL session,
+                 getNamesInScope = GHC.getNamesInScope session,
+                 nameToString = Outputable.showSDocDump . Outputable.ppr
                 }
 
 
@@ -101,25 +105,8 @@ eval kernel expr = do
     Nothing -> error $ "Could not compile expr: " ++ expr
     Just x -> return x
 
-
-{- 
-Maybe useful in the future...
-
-showModules session = do
-  logPutStrLn "Loaded modules:"
-  let show_one ms = do m <- GHC.showModule session ms
-                       logPutStrLn (showSDocDump $ ppr $ ms)
-		       logPutStrLn m
-  graph <- GHC.getModuleGraph session
-  mapM_ show_one graph
-
-showContext session = do
-  ctx <- GHC.getContext session
-  logPutStrLn $ "Context: " ++ (showSDocDump $ ppr $ ctx)
-
--}
   
-
+setContextAfterLoadL :: GHC.Session -> IO [GHC.Module]
 setContextAfterLoadL session = do
   preludeModule <- GHC.findModule session (GHC.mkModuleName "Prelude") Nothing
   yiModule <- GHC.findModule session (GHC.mkModuleName "Yi.Yi") Nothing -- this module re-exports all useful stuff.
@@ -141,7 +128,7 @@ setContextAfterLoadL session = do
 	= GHC.ms_mod_name summary == m
    summary `matches` GHC.Target (GHC.TargetFile f _) _ 
 	| Just f' <- GHC.ml_hs_file (GHC.ms_location summary)	= f == f'
-   summary `matches` target
+   _summary `matches` _target
 	= False
 
 moduleName :: GHC.Module -> String

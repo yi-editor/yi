@@ -164,7 +164,8 @@ module Yi.Core (
 
         -- * Misc
         catchJustE,
-        changeKeymapE
+        changeKeymapE,
+        getNamesInScopeE
    ) where
 
 import Prelude hiding (error)
@@ -947,6 +948,7 @@ runConfig = do
     Nothing -> errorE "Could not run YiConfig.yiMain :: Yi.Yi.EditorM ()"
     Just x -> (unsafeCoerce# x)
 
+loadE :: String -> EditorM [String]
 loadE mod = do
   modules <- modifyEditor $ \e -> let ms = nub (mod : editorModules e) 
                                   in return (e { editorModules = ms }, ms)
@@ -954,6 +956,12 @@ loadE mod = do
     targets <- mapM (\m -> guessTarget kernel m Nothing) modules
     setTargets kernel targets
   reloadE
+
+getNamesInScopeE :: EditorM [String]
+getNamesInScopeE = do
+  withKernel $ \k -> do
+      names <- getNamesInScope k
+      return (map (nameToString k) names)
 
 ghcErrorReporter :: IORef Editor -> GHC.Severity -> SrcLoc.SrcSpan -> Outputable.PprStyle -> ErrUtils.Message -> IO () 
 ghcErrorReporter editor severity srcSpan pprStyle message = 
