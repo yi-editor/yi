@@ -734,7 +734,7 @@ ex_eval cmd = do
 --    fn ('!':f) = pipeE f []
 
       fn "reboot"     = rebootE     -- not in vim
-      fn "reload"     = reloadE     -- not in vim
+      fn "reload"     = reloadE >> return ()    -- not in vim
 
       fn "redr"       = refreshE
       fn "redraw"     = refreshE

@@ -4,7 +4,7 @@
 -- nothing about Yi (at the haskell level; it can know names of
 -- modules/functions at strings)
 
-module Yi.Kernel (initialize, Kernel(..), eval, startYi, yiContext) where
+module Yi.Kernel (initialize, Kernel(..), eval, startYi, moduleName) where
 
 import Yi.Debug hiding (error)
 
@@ -15,6 +15,7 @@ import qualified Packages
 import qualified DynFlags
 import qualified PackageConfig
 import qualified Linker
+import qualified Module
 import Outputable
 import Control.Monad
 
@@ -36,7 +37,7 @@ data Kernel = Kernel
      setContext :: [GHC.Module]	-- ^ entire top level scope of these modules
 	        -> [GHC.Module]	-- ^ exports only of these modules
 	        -> IO (),
-     setContextAfterLoad :: IO ()
+     setContextAfterLoad :: IO [GHC.Module]
      -- getModuleGraph
      -- isLoaded
      -- ms_mod_name
@@ -132,7 +133,9 @@ setContextAfterLoadL session = do
   targets <- GHC.getTargets session
   let targets' = [ m | Just m <- map (findTarget graph') targets ]
       modules = map GHC.ms_mod targets'
-  GHC.setContext session [] (preludeModule:yiModule:modules)
+      context = preludeModule:yiModule:modules
+  GHC.setContext session [] context
+  return context
  where
    findTarget ms t
     = case filter (`matches` t) ms of
@@ -145,3 +148,6 @@ setContextAfterLoadL session = do
 	| Just f' <- GHC.ml_hs_file (GHC.ms_location summary)	= f == f'
    summary `matches` target
 	= False
+
+moduleName :: GHC.Module -> String
+moduleName = Module.moduleNameString . Module.moduleName

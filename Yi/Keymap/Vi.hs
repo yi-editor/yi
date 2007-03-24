@@ -481,7 +481,7 @@ ex_eval cmd = do
       fn ('s':'/':cs) = viSub cs
 
       fn "reboot"     = rebootE     -- !
-      fn "reload"     = reloadE     -- !
+      fn "reload"     = reloadE >> return ()     -- !
 
       fn s            = errorE $ "The "++show s++ " command is unknown."
 

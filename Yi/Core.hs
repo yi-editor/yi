@@ -338,14 +338,15 @@ rebootE = do
     lift $ fn (Just e)
 
 -- | (Re)compile and reload the user's config files
-reloadE :: Action
+reloadE :: EditorM [String]
 reloadE = do
   -- lift $ rts_revertCAFs -- FIXME: GHCi does this; It currently has undesired effects on logging; investigate.
   result <- withKernel loadAllTargets
   case result of
     GHC.Failed -> errorE "failed to load targets"
     _ -> return ()
-  withKernel setContextAfterLoad
+  loaded <- withKernel setContextAfterLoad
+  return $ map moduleName loaded
   -- lift $ rts_revertCAFs
 
 foreign import ccall "revertCAFs" rts_revertCAFs  :: IO ()  
