@@ -275,6 +275,8 @@ withMinibuffer prompt completer act = do
                            closeE
                            act lineString
           rebindings = [("RET", write innerAction),
+                        ("M-p", write historyUp),
+                        ("M-n", write historyDown),
                         ("<up>", write historyUp),
                         ("<down>", write historyDown),
                         ("C-i", write (completionFunction completer)),
