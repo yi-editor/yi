@@ -134,7 +134,7 @@ normalKeymap = selfInsertKeymap +++ makeKeymap
 
 executeExtendedCommandE :: Action
 executeExtendedCommandE = do
-  withMinibuffer "M-x" execE
+  withMinibuffer "M-x" return execE
 
 evalRegionE :: Action
 evalRegionE = do
@@ -179,12 +179,13 @@ rebind :: [(String,Process)] -> Process -> Process
 rebind keys kl = (choice [events (readKey k) >> p | (k,p) <- keys]) <++ kl
 
 findFile :: Action
-findFile = withMinibuffer "find file:" $ \filename -> do msgE $ "loading " ++ filename
-                                                         fnewE filename
+findFile = withMinibuffer "find file:" return $ \filename -> do 
+             msgE $ "loading " ++ filename
+             fnewE filename
 
 -- | Goto a line specified in the mini buffer.
 gotoLineE :: Action
-gotoLineE = withMinibuffer "goto line:" $ gotoLnE . read
+gotoLineE = withMinibuffer "goto line:" return  $ gotoLnE . read
 
 debug :: String -> Process
 debug = write . lift . logPutStrLn
@@ -238,9 +239,32 @@ historyMove delta = do
               deleteN b sz
               insertN b nextValue
 
+commonPrefix [] = []
+commonPrefix strings 
+    | any null strings = []
+    | all (== prefix) heads = prefix : commonPrefix tails
+    | otherwise = []
+    where 
+          (heads, tails) = unzip [(h,t) | (h:t) <- strings]
+          prefix = head heads
 
-withMinibuffer :: String -> (String -> Action) -> Action
-withMinibuffer prompt act = do 
+completeBufferName :: String -> EditorM String
+completeBufferName s = do
+    bs <- getBuffers
+    let matching = filter (s `isPrefixOf`) (map nameB bs)
+    return (commonPrefix matching)
+
+completionFunction :: (String -> EditorM String) -> EditorM ()
+completionFunction f = do
+  p <- getPointE
+  gotoPointE 0
+  text <- readNM 0 p
+  deleteNE p
+  compl <- f text
+  insertNE compl
+
+withMinibuffer :: String -> (String -> EditorM String) -> (String -> Action) -> Action
+withMinibuffer prompt completer act = do 
   historyStart
   spawnMinibufferE prompt (runKeymap (rebind rebindings normalKeymap))
     -- | Read contents of current buffer (which should be the minibuffer), and
@@ -253,6 +277,7 @@ withMinibuffer prompt act = do
           rebindings = [("RET", write innerAction),
                         ("<up>", write historyUp),
                         ("<down>", write historyDown),
+                        ("C-i", write (completionFunction completer)),
                         ("C-g", write closeE)]
 
 scrollDownE :: Action
@@ -262,7 +287,7 @@ scrollDownE = withUnivArg $ \a ->
                  Just n -> replicateM_ n downE
 
 switchBufferE :: Action
-switchBufferE = withMinibuffer "switch to buffer:" $ \bufName -> do
+switchBufferE = withMinibuffer "switch to buffer:" completeBufferName $ \bufName -> do
                   b <- getBuffer -- current buffer
                   bs <- readEditor $ \e -> findBufferWithName e bufName
                   case filter (/= b) bs of
