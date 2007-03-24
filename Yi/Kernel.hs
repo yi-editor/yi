@@ -39,7 +39,8 @@ data Kernel = Kernel
 	        -> IO (),
      setContextAfterLoad :: IO [GHC.Module],
      getNamesInScope :: IO [GHC.Name],
-     nameToString :: GHC.Name -> String
+     getRdrNamesInScope :: IO [GHC.RdrName],
+     nameToString :: forall a. Outputable a => a -> String
      -- getModuleGraph
      -- isLoaded
      -- ms_mod_name
@@ -81,7 +82,8 @@ initialize = GHC.defaultErrorHandler DynFlags.defaultDynFlags $ do
                  setContext = GHC.setContext session,
                  setContextAfterLoad = setContextAfterLoadL session,
                  getNamesInScope = GHC.getNamesInScope session,
-                 nameToString = Outputable.showSDocDump . Outputable.ppr
+                 getRdrNamesInScope = GHC.getRdrNamesInScope session,
+                 nameToString = Outputable.showSDoc . Outputable.ppr
                 }
 
 

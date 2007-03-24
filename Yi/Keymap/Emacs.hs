@@ -249,6 +249,7 @@ commonPrefix strings
     where 
           (heads, tails) = unzip [(h,t) | (h:t) <- strings]
           prefix = head heads
+-- for an alternative implementation see GHC's InteractiveUI module.
 
 completeInList :: [String] -> String -> String
 completeInList l s = if null prefix then s else prefix

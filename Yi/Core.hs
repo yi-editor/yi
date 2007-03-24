@@ -960,7 +960,7 @@ loadE mod = do
 getNamesInScopeE :: EditorM [String]
 getNamesInScopeE = do
   withKernel $ \k -> do
-      names <- getNamesInScope k
+      names <- getRdrNamesInScope k
       return (map (nameToString k) names)
 
 ghcErrorReporter :: IORef Editor -> GHC.Severity -> SrcLoc.SrcSpan -> Outputable.PprStyle -> ErrUtils.Message -> IO () 
