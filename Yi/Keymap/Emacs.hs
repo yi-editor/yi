@@ -26,9 +26,11 @@ import Yi.Yi
 import Yi.Keymap.Emacs.KillRing
 import Yi.Keymap.Emacs.UnivArgument
 import Yi.Keymap.Emacs.Keys
+import Yi.Buffer
 import Data.Char
 import Data.Maybe
 import Data.List
+import Data.Dynamic
 import qualified Yi.UI as UI  -- FIXME this module should not depend on UI
 
 import Control.Monad
@@ -187,14 +189,71 @@ gotoLineE = withMinibuffer "goto line:" $ gotoLnE . read
 debug :: String -> Process
 debug = write . lift . logPutStrLn
 
+data History = History {historyCurrent :: Int, 
+                        historyContents :: [String]} 
+    deriving (Show, Typeable)
+instance Initializable History where
+    initial = return (History (-1) [])
+    
+
+historyUp :: EditorM ()
+historyUp = historyMove 1
+
+historyDown :: EditorM () 
+historyDown = historyMove (-1)
+
+historyStart :: EditorM ()
+historyStart = do
+  (History _cur cont) <- getDynamic
+  curValue <- readAllE
+  setDynamic (History 0 (nub ("":cont)))
+  debugHist
+
+historyFinish :: EditorM ()
+historyFinish = do
+  (History _cur cont) <- getDynamic
+  curValue <- readAllE
+  setDynamic $ History (-1) (nub $ dropWhile null $ (curValue:cont))
+
+debugHist = do
+  h :: History <- getDynamic
+  lift $ logPutStrLn (show h)
+
+historyMove :: Int -> EditorM ()
+historyMove delta = do
+  (History cur cont) <- getDynamic
+  curValue <- readAllE
+  let len = length cont
+      next = cur + delta
+      nextValue = cont !! next
+  case (next < 0, next >= len) of
+    (True, _) -> msgE "end of history, no next item."
+    (_, True) -> msgE "beginning of history, no previous item."
+    (_,_) -> do 
+         setDynamic (History next (take cur cont ++ [curValue] ++ drop (cur+1) cont))
+         debugHist
+         withBuffer $ \b -> do
+              sz <- sizeB b
+              moveTo b 0
+              deleteN b sz
+              insertN b nextValue
+
+
 withMinibuffer :: String -> (String -> Action) -> Action
-withMinibuffer prompt act = spawnMinibufferE prompt (runKeymap (rebind [("RET", write innerAction)] normalKeymap))
+withMinibuffer prompt act = do 
+  historyStart
+  spawnMinibufferE prompt (runKeymap (rebind rebindings normalKeymap))
     -- | Read contents of current buffer (which should be the minibuffer), and
     -- apply it to the desired action
     where innerAction :: Action
-          innerAction = do lineString <- readAllE
+          innerAction = do historyFinish
+                           lineString <- readAllE
                            closeE
                            act lineString
+          rebindings = [("RET", write innerAction),
+                        ("<up>", write historyUp),
+                        ("<down>", write historyDown),
+                        ("C-g", write closeE)]
 
 scrollDownE :: Action
 scrollDownE = withUnivArg $ \a ->
