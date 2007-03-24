@@ -101,11 +101,6 @@ eval kernel expr = do
     Nothing -> error $ "Could not compile expr: " ++ expr
     Just x -> return x
 
-yiContext :: Kernel -> IO ()
-yiContext kernel =
-    do preludeModule <- findModule kernel "Prelude"
-       yiModule <- findModule kernel "Yi.Yi" -- this module re-exports all useful stuff.
-       setContext kernel [] [preludeModule, yiModule]
 
 {- 
 Maybe useful in the future...
