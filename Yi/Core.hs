@@ -87,6 +87,9 @@ module Yi.Core (
         setUnchangedE,  -- :: Action
         setSynE,        -- :: String -> Action
 
+        -- * Buffer/Window
+        switchToBufferE,
+
         -- * Buffer point movement
         topE,           -- :: Action
         botE,           -- :: Action
@@ -790,6 +793,9 @@ newBufferE f s = do
     getWindow >>= UI.setWindowBuffer b
     lift $ logPutStrLn "newBufferE ended"
     return b
+
+switchToBufferE :: FBuffer -> EditorM ()
+switchToBufferE b = getWindow >>= UI.setWindowBuffer b
 
 -- TODO:
 -- add prompt
