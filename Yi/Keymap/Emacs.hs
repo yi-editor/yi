@@ -17,7 +17,11 @@
 -- 02111-1307, USA.
 --
 
-
+-- This module aims at a mode that should be (mostly) intuitive to
+-- emacs users, but mapping things into the Yi world when
+-- convenient. Hence, do not go into the trouble of trying 100%
+-- emulation. For example, M-x gives access to Yi (haskell) functions,
+-- with their native names.
 
 module Yi.Keymap.Emacs ( keymap, runKeymap, rebind, normalKeymap ) where
 
@@ -97,7 +101,7 @@ normalKeymap = selfInsertKeymap +++ makeKeymap
         ("C-x e e",  atomic $ evalRegionE),
         ("C-x o",    atomic $ nextWinE),
         ("C-x l",    atomic $ gotoLineE),
-        ("C-x k",    atomic $ closeE),
+        ("C-x k",    atomic $ killBufferE),
 --      ("C-x r k",  atomic $ killRectE),
 --      ("C-x r o",  atomic $ openRectE),
 --      ("C-x r t",  atomic $ stringRectE),
@@ -191,8 +195,8 @@ gotoLineE = withMinibuffer "goto line:" return  $ gotoLnE . read
 debug :: String -> Process
 debug = write . lift . logPutStrLn
 
-data History = History {historyCurrent :: Int, 
-                        historyContents :: [String]} 
+data History = History {_historyCurrent :: Int, 
+                        _historyContents :: [String]} 
     deriving (Show, Typeable)
 instance Initializable History where
     initial = return (History (-1) [])
@@ -207,7 +211,6 @@ historyDown = historyMove (-1)
 historyStart :: EditorM ()
 historyStart = do
   (History _cur cont) <- getDynamic
-  curValue <- readAllE
   setDynamic (History 0 (nub ("":cont)))
   debugHist
 
@@ -217,6 +220,7 @@ historyFinish = do
   curValue <- readAllE
   setDynamic $ History (-1) (nub $ dropWhile null $ (curValue:cont))
 
+debugHist :: EditorM ()
 debugHist = do
   h :: History <- getDynamic
   lift $ logPutStrLn (show h)
@@ -306,6 +310,17 @@ switchBufferE = withMinibuffer "switch to buffer:" completeBufferName $ \bufName
                   case filter (/= b) bs of
                     [] -> errorE "No such buffer"
                     (b':_) -> getWindow >>= UI.setWindowBuffer b'
+
+killBufferE :: Action
+killBufferE = withMinibuffer "kill buffer:" completeBufferName $ \bufName -> do
+                nextB <- nextBuffer
+                b <- getBuffer -- current buffer
+                bs <- if null bufName then return [b] else readEditor $ \e -> findBufferWithName e bufName
+                case bs of
+                    [] -> errorE "No such buffer"
+                    (b':_) -> do getWindow >>= UI.setWindowBuffer nextB
+                                 deleteBuffer b'
+  
 
 -- | Create a binding processor from 'kmap'.
 makeKeymap :: KList -> KProc ()

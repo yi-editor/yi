@@ -23,7 +23,7 @@
 
 module Yi.Editor where
 
-import Yi.Buffer                ( FBuffer (..), newB, keyB, hNewB, nameB )
+import Yi.Buffer                ( FBuffer (..), newB, keyB, hNewB, nameB, finaliseB )
 import Text.Regex.Posix.Wrap    ( Regex )
 import Yi.Window
 import Yi.Style                 ( uiStyle, UIStyle )
@@ -44,7 +44,7 @@ import Control.Monad.Reader
 import Control.Concurrent   ( forkIO )
 import Control.Exception
 
-import {-# source #-} Yi.UI as UI ( UI, scheduleRefresh )
+import {-# source #-} Yi.UI as UI ( UI )
 
 ------------------------------------------------------------------------
 
@@ -182,6 +182,11 @@ bufferEventLoop e b getKm = eventLoop
     eventLoop = do
       repeatM_ $ do km <- runReaderT getKm e -- get the new version of the keymap every time we need to start it.
                     handle handler (run km)
+
+deleteBuffer :: FBuffer -> EditorM ()
+deleteBuffer b = modifyEditor_ $ \e-> do
+                   finaliseB b
+                   return e { buffers = M.delete (bkey b) (buffers e)}
 
 ------------------------------------------------------------------------
 --

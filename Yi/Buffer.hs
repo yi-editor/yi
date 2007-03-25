@@ -134,7 +134,9 @@ newB nm s = do
 
 -- | Free any resources associated with this buffer
 finaliseB :: FBuffer -> IO ()
-finaliseB = lift finaliseBI
+finaliseB b = do 
+  maybe (return ()) killThread (bufferThread b)
+  lift finaliseBI $ b
 
 -- | Number of characters in the buffer
 sizeB     :: FBuffer -> IO Int
