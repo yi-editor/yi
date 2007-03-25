@@ -217,6 +217,7 @@ updateWindows = do
 
 showPoint :: Editor -> Window -> IO Window 
 showPoint e w = do
+  logPutStrLn $ "showPoint " ++ show w
   let b = findBufferWith e (bufkey w)          
   ln <- curLn b
   let gap = min (ln-1) ((height w) `div` 2)

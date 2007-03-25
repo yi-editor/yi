@@ -263,15 +263,24 @@ lineMoveRel b n = do
   targetCol <- case prefCol of
     Nothing -> offsetFromSol b
     Just x -> return x
-  --logPutStrLn $ "lineMoveRel: targetCol = " ++ show targetCol
   gotoLnFrom b n
   moveXorEol b targetCol
+  --logPutStrLn $ "lineMoveRel: targetCol = " ++ show targetCol
   writeIORef (preferCol b) (Just targetCol)
 
 forgetPerferCol :: FBuffer -> IO ()
 forgetPerferCol b = do
-  --logPutStrLn "forgetPerferCol"
+  --logPutStrLn $ "forgetPerferCol" ++ show b
   writeIORef (preferCol b) Nothing
+
+savingPrefCol :: FBuffer -> IO a -> IO a
+savingPrefCol b f = do
+  pc <- readIORef (preferCol b)
+  --logPutStrLn $ "saving prefcol: " ++ show pc
+  result <- f
+  writeIORef (preferCol b) pc
+  --logPutStrLn $ "restore prefcol: " ++ show pc
+  return result
 
 -- | Move point up one line
 lineUp :: FBuffer -> IO ()
@@ -353,7 +362,7 @@ atEof a = do p <- pointB a
 
 -- | Offset from start of line
 offsetFromSol :: FBuffer -> IO Int
-offsetFromSol a = do
+offsetFromSol a = savingPrefCol a $ do
     i <- pointB a
     moveToSol a
     j <- pointB a
@@ -363,7 +372,7 @@ offsetFromSol a = do
 
 -- | Index of start of line
 indexOfSol :: FBuffer -> IO Int
-indexOfSol a = do
+indexOfSol a = savingPrefCol a $ do
     i <- pointB a
     j <- offsetFromSol a
     return (i - j)
@@ -371,7 +380,7 @@ indexOfSol a = do
 
 -- | Index of end of line
 indexOfEol :: FBuffer -> IO Int
-indexOfEol a = do
+indexOfEol a = savingPrefCol a $ do
     i <- pointB a
     moveToEol a
     j <- pointB a
@@ -390,7 +399,7 @@ moveAXuntil b f x p
         let loop 0 = return ()
             loop i = do r <- p b
                         when (not r) $ f b >> loop (i-1)
-        loop x
+        savingPrefCol b (loop x)
 {-# INLINE moveAXuntil #-}
 
 -- | Move @x@ chars back, or to the sol, whichever is less

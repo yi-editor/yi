@@ -72,12 +72,12 @@ type BufferImpl = MVar FBufferData
 data HLState = forall a. Eq a => HLState !(Highlighter a)
 
 data FBufferData =
-        FBufferData { _rawmem  :: !(Ptr CChar)     -- raw memory           (ToDo unicode)
-                    , marks    :: !Marks
+        FBufferData { _rawmem  :: !(Ptr CChar)     -- ^ raw memory           (ToDo unicode)
+                    , marks    :: !Marks           -- ^ Marks for this buffer 0 -> point, 1 -> mark
                     -- TODO: use weak refs as to automatically free unreferenced marks.
-                    , _contsize :: !Int             -- length of contents
-                    , _rawsize  :: !Int             -- raw size of buffer
-                    , hlcache   :: !(Maybe HLState) -- syntax highlighting state
+                    , _contsize :: !Int             -- ^ length of contents
+                    , _rawsize  :: !Int             -- ^ raw size of buffer
+                    , hlcache   :: !(Maybe HLState) -- ^ syntax highlighting state
                     }
 
 
@@ -276,6 +276,7 @@ gotoLnI fb n = modifyMVar fb $ \(FBufferData ptr pnts e mx hl) -> do
               else return n         -- else it is this line
         return (fb', max 1 n')
 {-# INLINE gotoLnI #-}
+
 
     ---------------------------------------------------------------------
 
