@@ -39,6 +39,7 @@ module Yi.Core (
         reloadE,        -- :: Action
         reconfigE,
         loadE,
+        unloadE,
         refreshE,       -- :: Action
         suspendE,       -- :: Action
 
@@ -344,6 +345,10 @@ rebootE = do
 -- | (Re)compile and reload the user's config files
 reloadE :: EditorM [String]
 reloadE = do
+  modules <- readEditor editorModules
+  withKernel $ \kernel -> do
+    targets <- mapM (\m -> guessTarget kernel m Nothing) modules
+    setTargets kernel targets
   -- lift $ rts_revertCAFs -- FIXME: GHCi does this; It currently has undesired effects on logging; investigate.
   result <- withKernel loadAllTargets
   case result of
@@ -955,12 +960,13 @@ runConfig = do
     Just x -> (unsafeCoerce# x)
 
 loadE :: String -> EditorM [String]
-loadE mod = do
-  modules <- modifyEditor $ \e -> let ms = nub (mod : editorModules e) 
-                                  in return (e { editorModules = ms }, ms)
-  withKernel $ \kernel -> do
-    targets <- mapM (\m -> guessTarget kernel m Nothing) modules
-    setTargets kernel targets
+loadE modul = do
+  modifyEditor_ $ \e -> return e { editorModules = nub (editorModules e ++ [modul]) }
+  reloadE
+
+unloadE :: String -> EditorM [String]
+unloadE modul = do
+  modifyEditor_ $ \e -> return e { editorModules = delete modul (editorModules e) }
   reloadE
 
 getNamesInScopeE :: EditorM [String]
