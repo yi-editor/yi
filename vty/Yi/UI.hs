@@ -181,13 +181,7 @@ fromVtyMod Yi.Vty.MCtrl  = Yi.Event.MCtrl
 fromVtyMod Yi.Vty.MMeta  = Yi.Event.MMeta
 fromVtyMod Yi.Vty.MAlt   = Yi.Event.MMeta
 
---
 -- | Redraw the entire terminal from the UI state
---
--- It is crucial that redraw doesn't modify the editor state (of course
--- it shouldn't). Just slipping in a modifyEditor_ there will kill
--- your redraw speed, as every redraw will trigger another redraw...
--- So don't be tempted.
 --
 -- Two points remain: horizontal scrolling, and tab handling.
 --
