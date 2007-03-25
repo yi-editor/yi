@@ -248,26 +248,34 @@ commonPrefix :: [String] -> String
 commonPrefix [] = []
 commonPrefix strings 
     | any null strings = []
-    | all (== prefix) heads = prefix : commonPrefix tails
+    | all (== prefix) heads = prefix : commonPrefix tailz
     | otherwise = []
     where 
-          (heads, tails) = unzip [(h,t) | (h:t) <- strings]
+          (heads, tailz) = unzip [(h,t) | (h:t) <- strings]
           prefix = head heads
 -- for an alternative implementation see GHC's InteractiveUI module.
 
-completeInList :: [String] -> String -> String
-completeInList l s = if null prefix then s else prefix
-    where prefix = commonPrefix (filter (s `isPrefixOf`) l)
+completeInList :: String -> [String] -> EditorM String
+completeInList s l 
+    | null prefix = msgE "No match" >> return s
+    | prefix /= s = return prefix
+    | isSingleton filtered = msgE "Sole completion" >> return s
+    | prefix `elem` filtered = msgE ("Complete, but not unique: " ++ show filtered) >> return s
+    | otherwise = msgE ("Matches: " ++ show filtered) >> return s
+    where prefix = commonPrefix filtered
+          filtered = filter (s `isPrefixOf`) l
+          isSingleton [_] = True
+          isSingleton _ = False
 
 completeBufferName :: String -> EditorM String
 completeBufferName s = do
   bs <- getBuffers
-  return $ completeInList (map nameB bs) s
+  completeInList s (map nameB bs)
 
 completeFunctionName :: String -> EditorM String
 completeFunctionName s = do
   names <- getNamesInScopeE
-  return $ completeInList names s
+  completeInList s names
 
 completionFunction :: (String -> EditorM String) -> EditorM ()
 completionFunction f = do
