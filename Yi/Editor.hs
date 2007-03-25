@@ -349,6 +349,8 @@ shutdown = do ts <- readEditor threads
 --
 class Typeable a => Initializable a where initial :: IO a
 
+
+-- | Repeat indefinitely the parameter.
 repeatM_ :: forall m a. Monad m => m a -> m ()
 repeatM_ a = a >> repeatM_ a
 {-# SPECIALIZE repeatM_ :: IO a -> IO () #-}

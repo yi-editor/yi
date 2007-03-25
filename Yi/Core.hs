@@ -213,6 +213,7 @@ import GHC.Exts ( unsafeCoerce# )
 -- | A 'Direction' is either left or right.
 data Direction = GoLeft | GoRight
 
+nilKeymap :: [Event] -> [Action]
 nilKeymap (c:_) = [if eventToChar c == 'q' 
                    then quitE 
                    else errorE "Keymap not defined, type 'q' to quit. README file may help you."]
@@ -263,16 +264,16 @@ startE kernel st commandLineActions = do
 
     logPutStrLn "Starting event handler"
     let
+        handler e = flip runReaderT newSt $ errorE (show e)
         -- | The editor's input main loop. 
         -- Read key strokes from the ui and dispatches them to the buffer with focus.
         eventLoop :: IO ()
         eventLoop = do
             ch <- liftM input $ readIORef newSt 
             let run = mapM_ dispatch =<< getChanContents ch
-            repeatM_ $ (handle handler run >> logPutStrLn "Dispatcher execution ended")
+            repeatM_ $ (handle handler run >> logPutStrLn "Dispatching loop ended")
                      
             where
-              handler e = flip runReaderT newSt $ errorE (show e)
               dispatch action = flip runReaderT newSt $ withBuffer $ \b -> writeChan (bufferInput b) action
 
 
@@ -290,8 +291,7 @@ startE kernel st commandLineActions = do
         execLoop = do
             UI.scheduleRefresh theUI
             let loop = sequence_ . map interactive =<< getChanContents outCh
-            let handler exception = logPutStrLn $ "Buffer event loop crashed with: " ++ (show exception)
-            handle handler loop
+            repeatM_ $ (handle handler loop >> logPutStrLn "Execing loop ended")
       
     t1 <- forkIO eventLoop 
     t2 <- forkIO execLoop
