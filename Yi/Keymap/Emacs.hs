@@ -23,7 +23,7 @@
 -- emulation. For example, M-x gives access to Yi (haskell) functions,
 -- with their native names.
 
-module Yi.Keymap.Emacs ( keymap, runKeymap, rebind, normalKeymap ) where
+module Yi.Keymap.Emacs ( keymap, makeProcess, runKeymap, rebind, normalKeymap ) where
 
 import Yi.Yi
 
@@ -31,7 +31,6 @@ import Yi.Keymap.Emacs.KillRing
 import Yi.Keymap.Emacs.UnivArgument
 import Yi.Keymap.Emacs.Keys
 import Yi.Buffer
-import Yi.Kernel
 import Data.Char
 import Data.Maybe
 import Data.List
@@ -55,7 +54,7 @@ selfInsertKeymap = do
   write (insertSelf c)
 
 normalKeymap :: Process
-normalKeymap = selfInsertKeymap +++ makeKeymap 
+normalKeymap = selfInsertKeymap +++ makeProcess 
               [
         ("RET",      atomic $ repeatingArg $ insertE '\n'),
         ("DEL",      atomic $ repeatingArg deleteE),
@@ -65,7 +64,7 @@ normalKeymap = selfInsertKeymap +++ makeKeymap
         ("C-_",      atomic $ repeatingArg undoE),
         ("C-<left>", atomic $ repeatingArg prevWordE),
         ("C-<right>",atomic $ repeatingArg nextWordE),
-        ("C-@",    atomic $ (getPointE >>= setMarkE)), -- till vty correctly support C-SPC
+        ("C-@",      atomic $ (getPointE >>= setMarkE)), -- till vty correctly supports C-SPC
         ("C-SPC",    atomic $ (getPointE >>= setMarkE)),
         ("C-a",      atomic $ repeatingArg solE),
         ("C-b",      atomic $ repeatingArg leftE),
@@ -331,8 +330,8 @@ killBufferE = withMinibuffer "kill buffer:" completeBufferName $ \bufName -> do
   
 
 -- | Create a binding processor from 'kmap'.
-makeKeymap :: KList -> KProc ()
-makeKeymap kmap = choice [events (readKey k) >> a | (k,a) <- kmap]
+makeProcess :: KList -> KProc ()
+makeProcess kmap = choice [events (readKey k) >> a | (k,a) <- kmap]
 
 -- | entry point
 keymap :: Keymap
