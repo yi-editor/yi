@@ -2,23 +2,22 @@ module Yi.Eval (
         -- * Eval\/Interpretation
         evalE,
         execE,
+        jumpToErrorE,
 ) where
 
+import Control.Monad.Reader
+import Control.Monad.Trans
+import Data.Array
+import GHC.Exts ( unsafeCoerce# )
 import Prelude hiding (error)
-
+import System.Directory
+import Text.Regex.Posix
+import Yi.Core
 import Yi.Debug
 import Yi.Editor
-import Yi.Core
 import Yi.Kernel
-
-import Data.Maybe
-import Data.Dynamic
-import Data.List
-
-import Control.Monad.Reader
-
+import Yi.UI as UI
 import qualified GHC
-import GHC.Exts ( unsafeCoerce# )
 
 
 evalToStringE :: String -> EditorM String
@@ -57,7 +56,25 @@ ghcErrorHandlerE inner = do
 	    ) $
             inner
 
+jumpToE :: String -> Int -> Int -> EditorM ()
+jumpToE filename line column = do
+  bs <- readEditor $ \e -> findBufferWithName e filename
+  case bs of
+    [] -> do found <- lift $ doesFileExist filename
+             if found 
+               then fnewE filename
+               else error "file not found"
+    (b:_) -> getWindow >>= UI.setWindowBuffer b
+  gotoLnE line
+  rightOrEolE column
 
+parseErrorMessageE :: EditorM (String, Int, Int)
+parseErrorMessageE = do
+  ln <- readLnE 
+  result :: Array Int String <- ln =~~ "^(.+):([0-9]+):([0-9]+):.*$"
+  return (result!1, read (result!2), read (result!3))
 
-
-
+jumpToErrorE :: EditorM ()
+jumpToErrorE = do
+  (f,l,c) <- parseErrorMessageE
+  jumpToE f l c
