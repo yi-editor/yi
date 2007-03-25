@@ -5,6 +5,9 @@ Yi -- the Haskell extensible editor
 
 Copyright (c) Don Stewart 2004-5, <http://www.cse.unsw.edu.au/~dons>
 
+Yi is currently maintained by Jean-Philippe Bernardy. 
+(jeanphilippe.bernardy at google mail)
+
 ------------------------------------------------------------------------
 
 QUICK START: 
@@ -24,7 +27,8 @@ following your preferences.
 
 DEPENDENCIES
 
-see cabal files (find . "-name *.cabal")
+Cabal 1.1.8, or latest darcs repo version.
+see cabal files (find . -name "*.cabal")
 
 
 CONFIGURATION
