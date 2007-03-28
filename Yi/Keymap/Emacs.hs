@@ -180,7 +180,7 @@ readArg' acc = do
       _ -> write $ setDynamic $ UniversalArg $ Just $ fromMaybe 4 acc
 
 rebind :: [(String,Process)] -> Process -> Process
-rebind keys kl = (choice [events (readKey k) >> p | (k,p) <- keys]) <++ kl
+rebind keys kl = makeProcess keys <++ kl
 
 findFile :: Action
 findFile = withMinibuffer "find file:" return $ \filename -> do 
@@ -294,7 +294,7 @@ withMinibuffer prompt completer act = do
     where innerAction :: Action
           innerAction = do historyFinish
                            lineString <- readAllE
-                           closeE
+                           closeE -- FIXME: kill the buffer!
                            act lineString
           rebindings = [("RET", write innerAction),
                         ("M-p", write historyUp),
@@ -344,5 +344,16 @@ showFailures p = do result <- consumeLookahead p
                       Right _ -> return ()
                       Left e -> write $ errorE $ "Key not bound: " ++ showKey e
 
+-- NOTE: showFailures is unused because its error-recovery mechanism
+-- is in adequate when C-s (isearch) is implemented. When you type a
+-- key not recognized by isearch, it automatically reverts to the
+-- default keymap binding. This can be very simply implemented by
+-- embedding the whole keymap in a "forever" construct. However, in
+-- that case, when a altogether invalid key sequence is typed, the
+-- keymap crashes without a message for the user.
+
+-- The solution would be to make runProcess return the pending events
+-- when crashing.
+
 runKeymap :: Process -> Keymap
-runKeymap km evs = (setSynE "haskell" : runProcess (forever $ showFailures km) evs)
+runKeymap km evs = (setSynE "haskell" : runProcess (forever $ km) evs)
