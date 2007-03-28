@@ -355,7 +355,7 @@ reloadE = do
     GHC.Failed -> errorE "failed to load targets"
     _ -> return ()
   loaded <- withKernel setContextAfterLoad
-  return $ map moduleName loaded
+  return $ map (moduleNameString . moduleName) loaded
   -- lift $ rts_revertCAFs
 
 foreign import ccall "revertCAFs" rts_revertCAFs  :: IO ()  
@@ -954,10 +954,15 @@ reconfigE = reloadE >> runConfig
 
 runConfig :: Action
 runConfig = do
-  result <- withKernel $ \kernel -> compileExpr kernel "YiConfig.yiMain :: Yi.Yi.EditorM ()"
-  case result of
-    Nothing -> errorE "Could not run YiConfig.yiMain :: Yi.Yi.EditorM ()"
-    Just x -> (unsafeCoerce# x)
+  loaded <- withKernel $ \kernel -> do
+              let cfgMod = mkModuleName kernel "YiConfig"
+              isLoaded kernel cfgMod
+  if loaded 
+   then do result <- withKernel $ \kernel -> compileExpr kernel "YiConfig.yiMain :: Yi.Yi.EditorM ()"
+           case result of
+             Nothing -> errorE "Could not run YiConfig.yiMain :: Yi.Yi.EditorM ()"
+             Just x -> (unsafeCoerce# x)
+   else errorE "YiConfig not loaded"
 
 loadE :: String -> EditorM [String]
 loadE modul = do

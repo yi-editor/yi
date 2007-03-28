@@ -4,7 +4,7 @@
 -- nothing about Yi (at the haskell level; it can know names of
 -- modules/functions at strings)
 
-module Yi.Kernel (initialize, Kernel(..), eval, startYi, moduleName) where
+module Yi.Kernel (initialize, Kernel(..), eval, startYi, moduleName, moduleNameString) where
 
 import Yi.Debug hiding (error)
 
@@ -24,7 +24,8 @@ import GHC.Exts ( unsafeCoerce# )
 
 -- | GHC API Kernel. 
 -- Calls to the GHC API must go though this type. (Because of the use "global variables" in GHC I imagine)
--- ie. the simpler approach of passing just the GHC. Session does not work
+-- ie. the simpler approach of passing just the GHC session does not work.
+
 data Kernel = Kernel
     {
      getSessionDynFlags :: IO GHC.DynFlags,
@@ -40,9 +41,10 @@ data Kernel = Kernel
      setContextAfterLoad :: IO [GHC.Module],
      getNamesInScope :: IO [GHC.Name],
      getRdrNamesInScope :: IO [GHC.RdrName],
+     mkModuleName :: String -> GHC.ModuleName,
+     isLoaded :: GHC.ModuleName -> IO Bool,
      nameToString :: forall a. Outputable a => a -> String
      -- getModuleGraph
-     -- isLoaded
      -- ms_mod_name
     }
 
@@ -75,7 +77,7 @@ initialize = GHC.defaultErrorHandler DynFlags.defaultDynFlags $ do
                  getSessionDynFlags = GHC.getSessionDynFlags session,
                  setSessionDynFlags = GHC.setSessionDynFlags session,
                  compileExpr = GHC.compileExpr session,
-                  loadAllTargets = GHC.load session GHC.LoadAllTargets,
+                 loadAllTargets = GHC.load session GHC.LoadAllTargets,
                  setTargets = GHC.setTargets session,
                  guessTarget = GHC.guessTarget,
                  findModule = \s -> GHC.findModule session (GHC.mkModuleName s) Nothing,
@@ -83,7 +85,9 @@ initialize = GHC.defaultErrorHandler DynFlags.defaultDynFlags $ do
                  setContextAfterLoad = setContextAfterLoadL session,
                  getNamesInScope = GHC.getNamesInScope session,
                  getRdrNamesInScope = GHC.getRdrNamesInScope session,
-                 nameToString = Outputable.showSDoc . Outputable.ppr
+                 nameToString = Outputable.showSDoc . Outputable.ppr,
+                 isLoaded = GHC.isLoaded session,
+                 mkModuleName = Module.mkModuleName
                 }
 
 
@@ -133,5 +137,6 @@ setContextAfterLoadL session = do
    _summary `matches` _target
 	= False
 
-moduleName :: GHC.Module -> String
-moduleName = Module.moduleNameString . Module.moduleName
+moduleName = Module.moduleName
+
+moduleNameString = Module.moduleNameString
