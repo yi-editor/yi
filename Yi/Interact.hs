@@ -31,7 +31,7 @@ deserve a bit more explanation:
 
 @(a '+++' b)@ means
 
-* if @a@ produces output earlier than @b@, we commit to the @a@ process (the converse is true)
+* if @a@ produces output earlier than @b@, we commit to the @a@ process (the converse is true too)
 
 * if both produce output at the same time (ie. after reading the same
   character in the input), then we commit to @a@ (ie. left bias)
@@ -71,6 +71,7 @@ module Yi.Interact (
   between,    -- :: Interact open -> Interact close -> Interact a -> Interact a
   option,     -- :: a -> Interact a -> Interact a
   optional,   -- :: Interact a -> Interact ()
+  optional',
   many',
   many1',
   many,       -- :: Interact a -> Interact [a]
@@ -331,6 +332,11 @@ option x p = p +++ return x
 optional :: (MonadInteract m e) => m a -> m ()
 -- ^ @optional p@ optionally parses @p@ and always returns @()@.
 optional p = (p >> return ()) +++ return ()
+
+optional' :: (MonadInteract m e) => m a -> m ()
+-- ^ @optional' p@ optionally parses @p@ and always returns @()@.
+-- ^ Same as 'optional', but the preference is to running the given parser, using '<++'.
+optional' p = (p >> return ()) <++ return ()
 
 
 many :: (MonadInteract m e) => m a -> m [a]
