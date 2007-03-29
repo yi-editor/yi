@@ -2,6 +2,7 @@ module Yi.Eval (
         -- * Eval\/Interpretation
         evalE,
         execE,
+        msgE',
         jumpToErrorE,
 ) where
 
@@ -31,13 +32,17 @@ evalToStringE string = withKernel $ \kernel -> do
 evalE :: String -> EditorM ()
 evalE s = evalToStringE s >>= msgE
 
+-- | Same as msgE, but do nothing instead of printing @()@
+msgE' "()" = return ()
+msgE' s = msgE s
+
 -- | Run a (dynamically specified) editor command.
 execE :: String -> EditorM ()
 execE s = do
   ghcErrorHandlerE $ do
             result <- withKernel $ \kernel -> do
                                logPutStrLn $ "execing " ++ s
-                               compileExpr kernel ("(" ++ s ++ ") >>= msgE . show :: EditorM ()")
+                               compileExpr kernel ("(" ++ s ++ ") >>= msgE' . show :: EditorM ()")
             case result of
               Nothing -> errorE ("Could not compile: " ++ s)
               Just x -> do let (x' :: EditorM ()) = unsafeCoerce# x
