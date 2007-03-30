@@ -82,7 +82,7 @@ normalKeymap = selfInsertKeymap +++ makeProcess
         ("C-p",      atomic $ repeatingArg upE),
         ("C-q",               insertNextC),
 --      ("C-r",      atomic $ backwardsIncrementalSearchE),
---      ("C-s",      atomic $ incrementalSearchE),
+        ("C-s",      isearchProcess),
         ("C-t",      atomic $ repeatingArg $ swapE),
         ("C-u",               readArgC),
         ("C-v",      atomic $ scrollDownE),
@@ -135,6 +135,34 @@ normalKeymap = selfInsertKeymap +++ makeProcess
         ("<next>",   atomic $ repeatingArg downScreenE),
         ("<prior>",  atomic $ repeatingArg upScreenE)
         ]
+
+
+
+-----------------------------
+-- isearch
+
+selfSearchKeymap :: Process
+selfSearchKeymap = do
+  Event (KASCII c) [] <- satisfy (const True)
+  write (isearchAddE [c])
+
+searchKeymap :: Process
+searchKeymap = 
+    selfSearchKeymap +++ makeProcess 
+       [("C-s", write isearchNextE),
+        ("C-g", write isearchDelE),
+        ("BACKSP", write isearchDelE)]
+                 
+isearchProcess :: Process
+isearchProcess = do 
+  write isearchInitE
+  many' searchKeymap
+  optional' $ choice $ map (events . readKey) $ ["C-m", "RET"]
+  write isearchFinishE
+
+
+
+----------------------------
 
 executeExtendedCommandE :: Action
 executeExtendedCommandE = do

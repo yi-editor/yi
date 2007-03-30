@@ -37,6 +37,14 @@ module Yi.Search (
         searchDoE,          -- :: SearchExp
                             -- -> Direction
                             -- -> IO SearchResult
+
+        -- * Incremental Search
+
+        isearchInitE,
+        isearchAddE,
+        isearchNextE,
+        isearchDelE,
+        isearchFinishE
                  ) where
 
 
@@ -50,6 +58,7 @@ import qualified Yi.Editor as Editor
 import Data.Bits ( (.|.) )
 import Data.Maybe
 import Data.List
+import Data.Typeable
 
 import Control.Monad
 import Control.Monad.Reader
@@ -212,3 +221,58 @@ searchAndRepLocal re str = do
                 moveTo b p          -- and back to where we were!
                 return True -- signal success
         Nothing -> return False
+
+
+--------------------------
+-- Incremental search
+
+
+newtype Isearch = Isearch [(String, Int)] deriving Typeable
+
+instance Initializable Isearch where
+    initial = return (Isearch [])
+
+isearchInitE :: EditorM ()
+isearchInitE = do
+  p <- getPointE
+  setDynamic (Isearch [("",p)])
+  msgE $ "I-search: "
+
+isearchAddE :: String -> EditorM ()
+isearchAddE increment = do
+  Isearch s <- getDynamic
+  let (previous,p0) = head s
+  let current = previous ++ increment
+  msgE $ "I-search: " ++ current
+  gotoPointE p0
+  mp <- withBuffer $ \b -> searchB b current
+  case mp of
+    Nothing -> do gotoPointE (p0+length previous) -- go back to where we were
+                  msgE $ "Failing I-search: " ++ current
+    Just p -> do setDynamic $ Isearch ((current,p):s)
+                 gotoPointE (p+length current)
+
+isearchDelE :: EditorM ()
+isearchDelE = do
+  Isearch (_:(text,p):rest) <- getDynamic
+  gotoPointE (p+length text)
+  setDynamic $ Isearch ((text,p):rest)
+  msgE $ "I-search: " ++ text
+
+isearchNextE :: EditorM ()
+isearchNextE = do
+  Isearch ((current,p0):rest) <- getDynamic
+  gotoPointE (p0 + length current)
+  mp <- withBuffer $ \b -> searchB b current
+  case mp of
+    Nothing -> return ()
+    Just p -> do setDynamic $ Isearch ((current,p):rest)
+                 gotoPointE (p+length current)
+  
+isearchFinishE :: EditorM ()
+isearchFinishE = do
+  Isearch s <- getDynamic
+  let (_,p0) = last s
+  setMarkE p0
+  msgE "mark saved where search started"
+  
