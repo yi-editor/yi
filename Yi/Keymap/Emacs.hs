@@ -339,12 +339,17 @@ scrollDownE = withUnivArg $ \a ->
                  Just n -> replicateM_ n downE
 
 switchBufferE :: Action
-switchBufferE = withMinibuffer "switch to buffer:" completeBufferName $ \bufName -> do
-                  b <- getBuffer -- current buffer
-                  bs <- readEditor $ \e -> findBufferWithName e bufName
-                  case filter (/= b) bs of
-                    [] -> errorE "No such buffer"
-                    (b':_) -> getWindow >>= UI.setWindowBuffer b'
+switchBufferE = do 
+  b <- getBuffer -- current buffer
+  nextB <- nextBuffer
+  withMinibuffer "switch to buffer:" completeBufferName $ \bufName -> do
+                  if null bufName 
+                      then switchToBufferE nextB
+                      else do
+                            bs <- readEditor $ \e -> findBufferWithName e bufName
+                            case filter (/= b) bs of
+                              [] -> errorE "No such buffer"
+                              (b':_) -> switchToBufferE b'
 
 killBufferE :: Action
 killBufferE = withMinibuffer "kill buffer:" completeBufferName $ \bufName -> do
@@ -353,7 +358,7 @@ killBufferE = withMinibuffer "kill buffer:" completeBufferName $ \bufName -> do
                 bs <- if null bufName then return [b] else readEditor $ \e -> findBufferWithName e bufName
                 case bs of
                     [] -> errorE "No such buffer"
-                    (b':_) -> do getWindow >>= UI.setWindowBuffer nextB
+                    (b':_) -> do switchToBufferE nextB
                                  deleteBuffer b'
   
 
