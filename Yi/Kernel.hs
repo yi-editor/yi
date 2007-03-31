@@ -4,7 +4,7 @@
 -- nothing about Yi (at the haskell level; it can know names of
 -- modules/functions at strings)
 
-module Yi.Kernel (initialize, Kernel(..), eval, startYi, moduleName, moduleNameString) where
+module Yi.Kernel (initialize, Kernel(..), eval, startYi, moduleName, moduleNameString, ms_mod_name) where
 
 import Yi.Debug hiding (error)
 
@@ -43,9 +43,8 @@ data Kernel = Kernel
      getRdrNamesInScope :: IO [GHC.RdrName],
      mkModuleName :: String -> GHC.ModuleName,
      isLoaded :: GHC.ModuleName -> IO Bool,
-     nameToString :: forall a. Outputable a => a -> String
-     -- getModuleGraph
-     -- ms_mod_name
+     nameToString :: forall a. Outputable a => a -> String,
+     getModuleGraph :: IO GHC.ModuleGraph
     }
 
 
@@ -87,7 +86,8 @@ initialize = GHC.defaultErrorHandler DynFlags.defaultDynFlags $ do
                  getRdrNamesInScope = GHC.getRdrNamesInScope session,
                  nameToString = Outputable.showSDoc . Outputable.ppr,
                  isLoaded = GHC.isLoaded session,
-                 mkModuleName = Module.mkModuleName
+                 mkModuleName = Module.mkModuleName,
+                 getModuleGraph = GHC.getModuleGraph session
                 }
 
 
@@ -137,6 +137,11 @@ setContextAfterLoadL session = do
    _summary `matches` _target
 	= False
 
+moduleName :: GHC.Module -> GHC.ModuleName
 moduleName = Module.moduleName
 
+moduleNameString :: GHC.ModuleName -> String
 moduleNameString = Module.moduleNameString
+
+ms_mod_name :: GHC.ModSummary -> GHC.ModuleName
+ms_mod_name = GHC.ms_mod_name
