@@ -329,22 +329,29 @@ completionFunction f = do
 
 withMinibuffer :: String -> (String -> EditorM String) -> (String -> Action) -> Action
 withMinibuffer prompt completer act = do 
+  initialBuffer <- getBuffer
+  Just initialWindow <- getWindow
+  let innerAction :: Action
+      innerAction = do historyFinish
+                       lineString <- readAllE
+                       closeMinibuffer
+                       UI.setWindow initialWindow
+                       switchToBufferE initialBuffer 
+                       -- The above ensures that the action is performed on the buffer that originated the minibuffer.
+                       act lineString
+      rebindings = [("RET", write innerAction),
+                    ("C-m", write innerAction),
+                    ("M-p", write historyUp),
+                    ("M-n", write historyDown),
+                    ("<up>", write historyUp),
+                    ("<down>", write historyDown),
+                    ("C-i", write (completionFunction completer)),
+                    ("C-g", write closeMinibuffer)]
   historyStart
   spawnMinibufferE prompt (runKeymap (rebind rebindings normalKeymap))
     -- | Read contents of current buffer (which should be the minibuffer), and
     -- apply it to the desired action
-    where innerAction :: Action
-          innerAction = do historyFinish
-                           lineString <- readAllE
-                           closeE -- FIXME: kill the buffer!
-                           act lineString
-          rebindings = [("RET", write innerAction),
-                        ("M-p", write historyUp),
-                        ("M-n", write historyDown),
-                        ("<up>", write historyUp),
-                        ("<down>", write historyDown),
-                        ("C-i", write (completionFunction completer)),
-                        ("C-g", write closeE)]
+    where closeMinibuffer = do b <- getBuffer; closeE; deleteBuffer b 
 
 scrollDownE :: Action
 scrollDownE = withUnivArg $ \a ->
