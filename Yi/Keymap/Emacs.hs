@@ -39,6 +39,8 @@ import qualified Yi.UI as UI  -- FIXME this module should not depend on UI
 
 import Control.Monad
 import Control.Monad.Trans
+import System.FilePath
+import System.Directory
 
 import Yi.Editor
 
@@ -64,7 +66,7 @@ normalKeymap = selfInsertKeymap +++ makeProcess
         ("C-_",      atomic $ repeatingArg undoE),
         ("C-<left>", atomic $ repeatingArg prevWordE),
         ("C-<right>",atomic $ repeatingArg nextWordE),
-        ("C-@",      atomic $ (getPointE >>= setMarkE)), -- till vty correctly supports C-SPC
+        ("C-@",      atomic $ (getPointE >>= setMarkE)),
         ("C-SPC",    atomic $ (getPointE >>= setMarkE)),
         ("C-a",      atomic $ repeatingArg solE),
         ("C-b",      atomic $ repeatingArg leftE),
@@ -211,7 +213,7 @@ rebind :: [(String,Process)] -> Process -> Process
 rebind keys kl = makeProcess keys <++ kl
 
 findFile :: Action
-findFile = withMinibuffer "find file:" return $ \filename -> do 
+findFile = withMinibuffer "find file:" completeFileName $ \filename -> do 
              msgE $ "loading " ++ filename
              fnewE filename
 
@@ -298,6 +300,18 @@ completeBufferName :: String -> EditorM String
 completeBufferName s = do
   bs <- getBuffers
   completeInList s (map nameB bs)
+
+completeFileName :: String -> EditorM String
+completeFileName s = do
+  let searchDir = if hasTrailingPathSeparator s then s else takeDirectory s
+  files <- lift $ getDirectoryContents searchDir
+  fs <- lift $ mapM fixTrailingPathSeparator (map (searchDir </>) files)
+  completeInList s fs
+
+fixTrailingPathSeparator :: String -> IO String
+fixTrailingPathSeparator s = do 
+  isDir <- doesDirectoryExist s
+  return $ if isDir then addTrailingPathSeparator s else s
 
 completeFunctionName :: String -> EditorM String
 completeFunctionName s = do
