@@ -33,6 +33,7 @@ evalE :: String -> EditorM ()
 evalE s = evalToStringE s >>= msgE
 
 -- | Same as msgE, but do nothing instead of printing @()@
+msgE' :: String -> EditorM ()
 msgE' "()" = return ()
 msgE' s = msgE s
 

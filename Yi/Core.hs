@@ -813,7 +813,6 @@ spawnMinibufferE prompt km =
        w <- UI.newWindow b
        UI.setWindow w
 
-
 -- | Write current buffer to disk, if this buffer is associated with a file
 fwriteE :: Action
 fwriteE = withBuffer $ \b -> do
