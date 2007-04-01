@@ -52,8 +52,10 @@ type KList = [(String, Process)]
 
 selfInsertKeymap :: Process
 selfInsertKeymap = do
-  Event (KASCII c) [] <- satisfy (const True)
+  Event (KASCII c) [] <- satisfy isPrintableEvent
   write (insertSelf c)
+      where isPrintableEvent (Event (KASCII c) []) = c >= ' '
+            isPrintableEvent _ = False
 
 normalKeymap :: Process
 normalKeymap = selfInsertKeymap +++ makeProcess 
