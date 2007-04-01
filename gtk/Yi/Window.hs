@@ -27,12 +27,14 @@ import Yi.Buffer
 import Data.Unique              ( Unique, newUnique, hashUnique )
 
 import Graphics.UI.Gtk hiding (Window)
+import Graphics.UI.Gtk.SourceView
 
 data Window =
     Window {
         key         :: !Unique         -- ^ each window has a unique
        ,bufkey      :: !Unique         -- ^ the buffer this window opens to
-       ,textview    :: TextView
+--       ,textview    :: TextView
+       ,textview    :: SourceView
        ,widget      :: ScrolledWindow  -- ^ Top-level widget for this window.
 --     ,mode        :: !Bool           -- ^ this window has modeline?
     }
@@ -66,7 +68,7 @@ instance Show Window where
 emptyWindow :: FBuffer -> IO Window
 emptyWindow b = do
     wu <- newUnique
-    v <- textViewNewWithBuffer (textbuf $ rawbuf b)
+    v <- sourceViewNewWithBuffer (textbuf $ rawbuf b)
     scroll <- scrolledWindowNew Nothing Nothing
     set scroll [containerChild := v]
     let win = Window {

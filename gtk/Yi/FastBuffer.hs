@@ -35,13 +35,14 @@ import Data.IORef
 import Control.Monad
 
 import Graphics.UI.Gtk hiding ( Point, Size )
+import Graphics.UI.Gtk.SourceView
 
 type Point = Int
 type Size  = Int
 
 
 data BufferImpl =
-        BufferImpl { textbuf :: TextBuffer
+        BufferImpl { textbuf :: SourceBuffer
                    , point :: TextMark
                    , mark :: TextMark
                    , markActive :: IORef Bool
@@ -50,7 +51,7 @@ data BufferImpl =
 --
 -- | read @n@ chars from buffer @b@, starting at @i@
 --
-readChars :: TextBuffer -> Point -> Size -> IO String -- ByteString!
+readChars :: TextBufferClass b => b -> Point -> Size -> IO String -- ByteString!
 readChars buf p i = do 
   start <- textBufferGetIterAtOffset buf (p)
   end <- textBufferGetIterAtOffset buf (p+i)
@@ -62,7 +63,7 @@ readChars buf p i = do
 --
 -- | Write string into buffer.
 --
-writeChars :: TextBuffer -> [Char] -> Int -> IO ()
+writeChars :: TextBufferClass b => b -> [Char] -> Int -> IO ()
 writeChars buf cs p = do
   start <- textBufferGetIterAtOffset buf (min 0 p)
   end <- textBufferGetIterAtOffset buf (min 0 (p + length cs))
@@ -70,12 +71,12 @@ writeChars buf cs p = do
   textBufferInsert buf start cs
 {-# INLINE writeChars #-}
 
-insertN' :: TextBuffer -> String -> IO ()
+insertN' :: TextBufferClass b => b -> String -> IO ()
 insertN' buf cs = do 
   --logPutStrLn "insertN'"
   textBufferInsertAtCursor buf cs
 
-deleteN' :: TextBuffer -> Size -> Point -> IO ()
+deleteN' :: TextBufferClass b => b -> Size -> Point -> IO ()
 deleteN' _ 0 _ = return ()
 deleteN' tb n p = do
   start <- textBufferGetIterAtOffset tb p
@@ -108,7 +109,11 @@ lineMove f b = do
 -- | Construct a new buffer initialised with the supplied text
 newBI :: [Char] -> IO BufferImpl
 newBI s = do
-  buf <- textBufferNew Nothing
+  buf <- sourceBufferNew Nothing
+  lm <- sourceLanguagesManagerNew
+  Just haskellLang <- sourceLanguagesManagerGetLanguageFromMimeType lm "text/x-haskell"
+  sourceBufferSetLanguage buf haskellLang
+  sourceBufferSetHighlight buf True
   textBufferSetText buf s
   p <- textBufferGetInsert buf
   m <- textBufferGetSelectionBound buf

@@ -63,6 +63,7 @@ import qualified Data.Map as M
 
 import Graphics.UI.Gtk hiding ( Window, Event )          
 import qualified Graphics.UI.Gtk as Gtk
+import Graphics.UI.Gtk.SourceView
 
 
 ------------------------------------------------------------------------
@@ -177,6 +178,7 @@ addWindow editor w = do
       -- Duncan Coutts advises binding to the mark-set signal
 
       --forgetPerferCol (findBufferWith e (bufkey w))
+
   widgetShowAll (widget w)
 
 instance Show MovementStep where
