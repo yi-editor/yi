@@ -168,10 +168,13 @@ addWindow editor w = do
   f <- fontDescriptionNew
   fontDescriptionSetFamily f "Monospace"
   widgetModifyFont (textview w) (Just f)
-  textview w `onFocusIn` (\_event -> (modifyIORef editor $ \e -> e { curwin = Just $ key w }) >> return True)
+  textview w `onFocusIn` (\_event -> (modifyIORef editor $ \e -> e { curwin = Just $ key w }) >> return False)
+  -- We have to return false so that GTK correctly focuses the window when we use widgetGrabFocus
   textview w `onMoveCursor` \step amount user -> do
       logPutStrLn $ "moveCursor: " ++ show step ++ show amount ++ show user
-      -- gtk experts: we don't seem to get any of those events... why?
+      -- gtk experts: we don't seem to get any of those events... why? 
+      -- Duncan Coutts advises binding to the mark-set signal
+
       --forgetPerferCol (findBufferWith e (bufkey w))
   widgetShowAll (widget w)
 
@@ -282,5 +285,5 @@ setWindow :: Window -> EditorM ()
 setWindow w = do
   lift $ logPutStrLn $ "Focusing " ++ show w 
   modifyEditor_ $ \e -> return $ e { curwin = Just $ key w }
-  lift $ widgetGrabFocus (textview w) -- This doesn't seem to do the trick; would a gtk expert help?
+  lift $ widgetGrabFocus (textview w)
   debugWindows "Focused"
