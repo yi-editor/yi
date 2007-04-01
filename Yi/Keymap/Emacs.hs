@@ -346,6 +346,7 @@ withMinibuffer prompt completer act = do
                     ("<up>", write historyUp),
                     ("<down>", write historyDown),
                     ("C-i", write (completionFunction completer)),
+                    ("TAB", write (completionFunction completer)),
                     ("C-g", write closeMinibuffer)]
   historyStart
   spawnMinibufferE prompt (runKeymap (rebind rebindings normalKeymap))

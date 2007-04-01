@@ -158,6 +158,7 @@ keyTable = M.fromList
     ,("Insert",     KIns)
     ,("Escape",     KEsc)
     ,("Return",     KEnter)
+    ,("Tab",        KASCII '\t')
     ]
 
 
