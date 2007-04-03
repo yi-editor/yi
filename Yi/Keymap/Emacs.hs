@@ -60,6 +60,7 @@ selfInsertKeymap = do
 normalKeymap :: Process
 normalKeymap = selfInsertKeymap +++ makeProcess 
               [
+        ("TAB",      atomic $ autoIndentE),
         ("RET",      atomic $ repeatingArg $ insertE '\n'),
         ("DEL",      atomic $ repeatingArg deleteE),
         ("BACKSP",   atomic $ repeatingArg bdeleteE),
@@ -77,7 +78,7 @@ normalKeymap = selfInsertKeymap +++ makeProcess
         ("C-f",      atomic $ repeatingArg rightE),
         ("C-g",      atomic $ unsetMarkE), 
 --      ("C-g",      atomic $ keyboardQuitE), -- C-g should be a more general quit that also unsets the mark.
---      ("C-i",      atomic $ indentC),
+        ("C-i",      atomic $ autoIndentE),
         ("C-j",      atomic $ repeatingArg $ insertE '\n'),
         ("C-k",      atomic $ killLineE),
         ("C-m",      atomic $ repeatingArg $ insertE '\n'),
@@ -140,6 +141,62 @@ normalKeymap = selfInsertKeymap +++ makeProcess
         ("<prior>",  atomic $ repeatingArg upScreenE)
         ]
 
+
+----------------------------
+-- autoindent
+
+savingExcursion :: EditorM a -> EditorM a
+savingExcursion f = do
+    p <- getPointE
+    res <- f
+    gotoPointE p
+    return res
+
+getPreviousLineE :: EditorM String
+getPreviousLineE = savingExcursion $ do
+                     upE
+                     readLnE
+
+fetchPreviousIndentsE :: EditorM [Int]
+fetchPreviousIndentsE = do
+  p0 <- getPointE
+  upE
+  p1 <- getPointE
+  l <- readLnE
+  let i = indentOf l
+  if p0 == p1 || indentOf l == 0 then return [0] else do
+    is <- fetchPreviousIndentsE
+    return (i:is)
+    
+cycleIndentsE :: [Int] -> EditorM ()
+cycleIndentsE indents = do
+  l <- readLnE
+  let curIndent = indentOf l
+  let (below, above) = span (< curIndent) $ indents
+  msgE $ show (below, above)
+  indentToE $ last (above ++ below)
+
+autoIndentE :: EditorM ()
+autoIndentE = do
+  is <- savingExcursion fetchPreviousIndentsE
+  pl <- getPreviousLineE
+  let pli = indentOf pl
+  cycleIndentsE $ sort $ nub $ pli+2 : is
+
+indentOf :: String -> Int
+indentOf = spacingOf . takeWhile isSpace
+
+spacingOf :: String -> Int
+spacingOf = sum . map spacingOfChar
+    where spacingOfChar '\t' = 8
+          spacingOfChar _ = 1
+
+indentToE :: Int -> EditorM ()
+indentToE level = do 
+  l <- readLnE
+  solE
+  killE
+  insertNE (replicate level ' ' ++ dropWhile isSpace l)
 
 
 -----------------------------
