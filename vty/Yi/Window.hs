@@ -90,42 +90,6 @@ emptyWindow b (h,w) = do
               }
     return win
 
-------------------------------------------------------------------------
---
--- | Given a buffer, and some information update the modeline
--- There's some useful code in textinfo.window.c. Worth a read.
---
--- N.B. the contents of modelines should be specified by keymaps, and
--- not hardcoded.
---
-updateModeLine :: Window -> FBuffer -> IO (Maybe String)
-updateModeLine w' b = do
-    if not (mode w') then return Nothing else do
-    ln <- curLn b
-    let f    = nameB b
-        lns  = show ln
-        top  = toslineno w'
-        cols = show $ 1 + snd (cursor w')
-
-    p <- indexOfEol b
-    s <- sizeB b
-    let pct = if top == 1 then "Top" else getPercent p s
-
-    case flip replicate ' ' (16 - length cols - length pct) of { spc' ->
-    case flip replicate ' ' (width w' - (3 + sum
-                (map length [f,lns,cols,pct,spc']))) of { spaces ->
-    return $ Just $ "\"" ++ f ++ "\"" ++ spaces ++
-                    lns ++ "," ++ cols ++ spc' ++ pct
-    }}
-
---
--- | Give a point, and the file size, gives us a percent string
---
-getPercent :: Int -> Int -> String
-getPercent a b = show p ++ "%"
-    where p = ceiling ((fromIntegral a) / (fromIntegral b) * 100 :: Double) :: Int
-
-
 -- ---------------------------------------------------------------------
 -- Editing operations
 

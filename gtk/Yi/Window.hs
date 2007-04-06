@@ -93,24 +93,7 @@ emptyWindow b = do
               }
     return win
 
-------------------------------------------------------------------------
---
--- | Given a buffer, and some information update the modeline
--- There's some useful code in textinfo.window.c. Worth a read.
---
--- N.B. the contents of modelines should be specified by keymaps, and
--- not hardcoded.
---
-updateModeLine :: Window -> FBuffer -> IO String
-updateModeLine w' b = return "" -- FIXME
 
-
---
--- | Give a point, and the file size, gives us a percent string
---
-getPercent :: Int -> Int -> String
-getPercent a b = show p ++ "%"
-    where p = ceiling ((fromIntegral a) / (fromIntegral b) * 100 :: Double) :: Int
 
 
 

@@ -51,7 +51,7 @@ module Yi.UI (
 
 import Prelude hiding (error)
 
-import Yi.Buffer (Point, FBuffer (..), pointB, curLn, getMarkB )
+import Yi.Buffer (Point, FBuffer (..), pointB, curLn, getMarkB, getModeLine )
 import Yi.FastBuffer( nelemsBIH ) -- gah this is ugly
 import Yi.Editor
 import Yi.Window as Window
@@ -247,7 +247,7 @@ doDrawWindow e focused sty win = do
     let (rendered,bos,cur) = drawText h' w (tospnt win) point markPoint selsty wsty (bufData ++ [(' ',attr)])
                              -- we always add one character which can be used to position the cursor at the end of file
                                                                                                  
-    modeLine <- if m then updateModeLine win b else return Nothing
+    modeLine <- if m then liftM Just (getModeLine b) else return Nothing
     let modeLines = map (withStyle (modeStyle sty) . take w . (++ repeat ' ')) $ maybeToList $ modeLine
         modeStyle = if focused then modeline_focused else modeline        
         filler = take w (windowfill e : repeat ' ')

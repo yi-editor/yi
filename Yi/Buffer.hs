@@ -31,6 +31,7 @@ module Yi.Buffer ( FBuffer (..), keyB, curLn, nameB, indexOfEol,
                    deleteToEol, indexOfSol, nelemsB, writeB, getfileB,
                    setfileB, deleteNAt, readB, elemsB, undo, redo,
                    setMarkB, unsetMarkB, isUnchangedB, setSyntaxB, regexB, searchB, readAtB,
+                   getModeLine, getPercent
                     ) where
 
 import Text.Regex.Posix.Wrap    ( Regex  )
@@ -69,6 +70,32 @@ instance Eq FBuffer where
 
 instance Show FBuffer where
     showsPrec _ (FBuffer { bkey = u, name = f }) = showString $ "Buffer #" ++ show (hashUnique u) ++ " (" ++ show f ++ ")"
+
+-- | Given a buffer, and some information update the modeline
+--
+-- N.B. the contents of modelines should be specified by user, and
+-- not hardcoded.
+--
+getModeLine :: FBuffer -> IO String
+getModeLine b = do
+    col <- offsetFromSol b
+    pos <- pointB b
+    ln <- curLn b
+    p <- indexOfEol b
+    s <- sizeB b
+    let pct = if pos == 1 then "Top" else getPercent p s
+    return $ "\"" ++ nameB b ++ "\"" ++ 
+           replicate 5 ' ' ++
+           "L" ++ show ln ++ "  " ++ "C" ++ show col ++ 
+           replicate 2 ' ' ++ pct
+
+--
+-- | Give a point, and the file size, gives us a percent string
+--
+getPercent :: Int -> Int -> String
+getPercent a b = show p ++ "%"
+    where p = ceiling ((fromIntegral a) / (fromIntegral b) * 100 :: Double) :: Int
+
 
 lift :: (BufferImpl -> x) -> (FBuffer -> x)
 lift f = \b -> f (rawbuf b)

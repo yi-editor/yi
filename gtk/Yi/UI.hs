@@ -265,9 +265,9 @@ scheduleRefresh = do
         do buf <- getBufferWith (bufkey w)
            lift $ do 
              textViewScrollMarkOnscreen (textview w) (point $ rawbuf buf)
-             txt <- updateModeLine w buf
+             txt <- getModeLine buf
              set (modeline w) [labelText := txt]
-           
+    
 
 setCmdLine :: UI -> String -> IO ()
 setCmdLine i s = do 
