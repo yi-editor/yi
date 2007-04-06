@@ -33,7 +33,6 @@ data Window =
     Window {
         key         :: !Unique         -- ^ each window has a unique
        ,bufkey      :: !Unique         -- ^ the buffer this window opens to
---       ,textview    :: TextView
        ,textview    :: SourceView
        ,widget      :: ScrolledWindow  -- ^ Top-level widget for this window.
 --     ,mode        :: !Bool           -- ^ this window has modeline?

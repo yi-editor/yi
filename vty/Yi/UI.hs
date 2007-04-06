@@ -129,7 +129,7 @@ main editor = do
                                              logPutStrLn "refresh crashed with IO Error"
                                              logError $ show $ except)
                                      (runReaderT refresh editor)
-  scheduleRefresh (ui e)
+  scheduleRefresh' (ui e)
   logPutStrLn "refreshLoop started"
   refreshLoop
   
@@ -434,8 +434,12 @@ refreshAll = do
   refresh
 
 -- | Schedule a refresh of the UI.
-scheduleRefresh :: UI -> IO ()
-scheduleRefresh tui = tryPutMVar (uiRefresh tui) () >> return ()
+scheduleRefresh :: EditorM ()
+scheduleRefresh = readEditor ui >>= (lift . scheduleRefresh')
+
+
+scheduleRefresh' :: UI -> IO ()
+scheduleRefresh' tui = tryPutMVar (uiRefresh tui) () >> return ()
 
 -- | Reset the heights and widths of all the windows
 doResizeAll :: EditorM ()

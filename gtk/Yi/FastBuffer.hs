@@ -23,7 +23,7 @@
 module Yi.FastBuffer (Point, Size, BufferImpl, newBI, deleteNAtI,
                       moveToI, insertNI, pointBI, nelemsBI, finaliseBI, sizeBI, writeBI,
                       curLnI, gotoLnI, searchBI, regexBI, getMarkBI, setMarkBI, unsetMarkBI, 
-                      textbuf, setSyntaxBI)
+                      textbuf, setSyntaxBI, point)
 where
 
 import Prelude hiding (error)

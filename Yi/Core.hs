@@ -282,14 +282,13 @@ startE kernel st commandLineActions = do
         interactive :: EditorM () -> IO ()
         interactive action = do 
           logPutStrLn ">>>>>>> interactively"
-          runReaderT action newSt
+          runReaderT (action >> UI.scheduleRefresh)  newSt
           logPutStrLn "<<<<<<<"
-          UI.scheduleRefresh theUI
 
         -- | The editor's output main loop. 
         execLoop :: IO ()
         execLoop = do
-            UI.scheduleRefresh theUI
+            runReaderT UI.scheduleRefresh newSt
             let loop = sequence_ . map interactive =<< getChanContents outCh
             repeatM_ $ (handle handler loop >> logPutStrLn "Execing loop ended")
       

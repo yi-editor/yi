@@ -63,8 +63,6 @@ import qualified Data.Map as M
 
 import Graphics.UI.Gtk hiding ( Window, Event )          
 import qualified Graphics.UI.Gtk as Gtk
-import Graphics.UI.Gtk.SourceView
-
 
 ------------------------------------------------------------------------
 
@@ -256,8 +254,13 @@ hasRoomForExtraWindow = return True
 refreshAll :: EditorM ()
 refreshAll = return ()
 
-scheduleRefresh :: UI -> IO ()
-scheduleRefresh _gui = return ()
+scheduleRefresh :: EditorM ()
+scheduleRefresh = do
+    ws <- readEditor getWindows
+    flip mapM_ ws $ \w -> 
+        do buf <- getBufferWith (bufkey w)
+           lift $ textViewScrollMarkOnscreen (textview w) (point $ rawbuf buf)
+           
 
 setCmdLine :: UI -> String -> IO ()
 setCmdLine i s = do 
