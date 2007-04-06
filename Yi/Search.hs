@@ -44,7 +44,12 @@ module Yi.Search (
         isearchAddE,
         isearchNextE,
         isearchDelE,
-        isearchFinishE
+        isearchFinishE,
+
+        -- * Replace
+        qrNextE,
+        qrReplaceOneE
+
                  ) where
 
 
@@ -276,3 +281,20 @@ isearchFinishE = do
   setMarkE p0
   msgE "mark saved where search started"
   
+-----------------
+-- Query-Replace
+
+qrNextE :: FBuffer -> String -> EditorM ()
+qrNextE b what = do
+  mp <- lift $ searchB b what
+  case mp of
+    Nothing -> do
+            msgE "String to search not found"
+            closeE
+    Just p -> lift $ moveTo b p
+
+qrReplaceOneE :: FBuffer -> String -> String -> EditorM ()
+qrReplaceOneE b what with = do
+  lift $ deleteN b (length what)
+  lift $ insertN b with
+  qrNextE b what

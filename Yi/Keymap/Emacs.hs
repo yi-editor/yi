@@ -115,7 +115,7 @@ normalKeymap = selfInsertKeymap +++ makeProcess
         ("C-y",      atomic $ yankE),
         ("M-<",      atomic $ repeatingArg topE),
         ("M->",      atomic $ repeatingArg botE),
---      ("M-%",               searchReplaceC),
+        ("M-%",      atomic $ queryReplaceE),
         ("M-BACKSP", atomic $ repeatingArg bkillWordE),
 --      ("M-a",      atomic $ repeatingArg backwardSentenceE),
         ("M-b",      atomic $ repeatingArg prevWordE),
@@ -221,6 +221,33 @@ isearchProcess = do
   optional' $ choice $ map (events . readKey) $ ["C-m", "RET"]
   write isearchFinishE
 
+
+----------------------------
+-- query-replace
+
+-- This implementation of query-replace suffers from (at least) two
+-- problems: 1. the user doesn't clearly see what is going to be
+-- replaced. 2. the user must quit the current minibuffer with 'q'
+-- explicitly before resuming edit.
+
+queryReplaceE :: EditorM ()
+queryReplaceE = do
+    withMinibuffer "Replace:" return $ \replaceWhat -> do
+    withMinibuffer "With:" return $ \replaceWith -> do
+    b <- withBuffer return
+    let replaceBindings = [("n", write $ qrNextE b replaceWhat),
+                           ("y", write $ qrReplaceOneE b replaceWhat replaceWith),
+                           ("q", write $ closeE),
+                           ("C-g", write $ closeE)
+                           ]
+    mp <- lift $ searchB b replaceWhat
+    case mp of
+      Nothing -> msgE "String to search not found"
+      Just p -> do
+        gotoPointE p
+        spawnMinibufferE
+            ("Replacing " ++ replaceWhat ++ "with " ++ replaceWith ++ " (y,n,q):")
+            (runKeymap $ makeProcess replaceBindings)
 
 
 ----------------------------
