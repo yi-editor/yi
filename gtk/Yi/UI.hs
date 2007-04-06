@@ -263,7 +263,10 @@ scheduleRefresh = do
     ws <- readEditor getWindows
     flip mapM_ ws $ \w -> 
         do buf <- getBufferWith (bufkey w)
-           lift $ textViewScrollMarkOnscreen (textview w) (point $ rawbuf buf)
+           lift $ do 
+             textViewScrollMarkOnscreen (textview w) (point $ rawbuf buf)
+             txt <- updateModeLine w buf
+             set (modeline w) [labelText := txt]
            
 
 setCmdLine :: UI -> String -> IO ()

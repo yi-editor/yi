@@ -34,8 +34,8 @@ data Window =
         key         :: !Unique         -- ^ each window has a unique
        ,bufkey      :: !Unique         -- ^ the buffer this window opens to
        ,textview    :: SourceView
-       ,widget      :: ScrolledWindow  -- ^ Top-level widget for this window.
---     ,mode        :: !Bool           -- ^ this window has modeline?
+       ,modeline    :: Label
+       ,widget      :: VBox            -- ^ Top-level widget for this window.
     }
 
 -- Until we know better, lets pretend height and cursor position are constants to the rest of the code.
@@ -67,14 +67,29 @@ instance Show Window where
 emptyWindow :: FBuffer -> IO Window
 emptyWindow b = do
     wu <- newUnique
+
+    f <- fontDescriptionNew
+    fontDescriptionSetFamily f "Monospace"
+
+    ml <- labelNew Nothing
+    widgetModifyFont ml (Just f)
+    set ml [ miscXalign := 0.01 ] -- so the text is left-justified.
+
     v <- sourceViewNewWithBuffer (textbuf $ rawbuf b)
     scroll <- scrolledWindowNew Nothing Nothing
     set scroll [containerChild := v]
+
+    vb <- vBoxNew False 1
+    set vb [ containerChild := scroll, 
+             containerChild := ml, 
+             boxChildPacking ml := PackNatural] 
+
     let win = Window {
                     key       = wu
                    ,bufkey    = (keyB b)
                    ,textview  = v
-                   ,widget    = scroll
+                   ,modeline  = ml
+                   ,widget    = vb
               }
     return win
 
@@ -86,8 +101,9 @@ emptyWindow b = do
 -- N.B. the contents of modelines should be specified by keymaps, and
 -- not hardcoded.
 --
-updateModeLine :: Window -> FBuffer -> IO (Maybe String)
-updateModeLine _w' _b = return Nothing -- FIXME
+updateModeLine :: Window -> FBuffer -> IO String
+updateModeLine w' b = return "" -- FIXME
+
 
 --
 -- | Give a point, and the file size, gives us a percent string
