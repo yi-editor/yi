@@ -26,13 +26,14 @@ module Yi.FastBuffer (Point, Size, BufferImpl, newBI, deleteNAtI,
                       textbuf, setSyntaxBI, point)
 where
 
-import Prelude hiding (error)
+import Prelude hiding (error, mapM)
 
 import Yi.Debug
 import Text.Regex.Posix.Wrap
 
 import Data.IORef
-import Control.Monad
+import Control.Monad (when)
+import Data.Traversable
 
 import Graphics.UI.Gtk hiding ( Point, Size )
 import Graphics.UI.Gtk.SourceView
@@ -209,16 +210,17 @@ gotoLnI b n = do
 
 
 -- | Return index of next string in buffer that matches argument
-searchBI      :: BufferImpl -> [Char] -> IO (Maybe Int)
-searchBI fb s = error "searchBI not implemented"
+searchBI :: BufferImpl -> [Char] -> IO (Maybe Int)
+searchBI b s = do
+  p <- textBufferGetIterAtMark (textbuf b) (point b)
+  mapM (flip get textIterOffset . fst) =<< textIterForwardSearch p s [] Nothing
 
 -- | Return indices of next string in buffer matched by regex
 regexBI       :: BufferImpl -> Regex -> IO (Maybe (Int,Int))
 regexBI fb re = error "regexBI not implemented"
 
 
--- ------------------------------------------------------------------------
-    ---------------------------------------------------------------------
+---------------------------------------------------------------------
 
 getMarkBI :: BufferImpl -> IO Int
 getMarkBI b = do
