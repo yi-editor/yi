@@ -89,6 +89,10 @@ start = modifyEditor_ $ \e -> do
                 
   cmd <- labelNew Nothing
   set cmd [ miscXalign := 0.01 ]
+  f <- fontDescriptionNew
+  fontDescriptionSetFamily f "Monospace"
+  widgetModifyFont cmd (Just f)
+
   set vb [ containerChild := vb', 
            containerChild := cmd, 
            boxChildPacking cmd := PackNatural] 
