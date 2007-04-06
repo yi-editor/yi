@@ -83,8 +83,12 @@ getModeLine b = do
     ln <- curLn b
     p <- indexOfEol b
     s <- sizeB b
+    unchanged <- isUnchangedB b    
     let pct = if pos == 1 then "Top" else getPercent p s
-    return $ "\"" ++ nameB b ++ "\"" ++ 
+        chg = if unchanged then "-" else "*"
+    return $ 
+           chg ++ " " ++
+           "\"" ++ nameB b ++ "\"" ++ 
            replicate 5 ' ' ++
            "L" ++ show ln ++ "  " ++ "C" ++ show col ++ 
            replicate 2 ' ' ++ pct
