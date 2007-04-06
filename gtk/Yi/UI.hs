@@ -169,9 +169,6 @@ addWindow :: IORef Editor -> Window -> IO ()
 addWindow editor w = do
   i <- liftM ui $ readIORef editor
   set (uiBox i) [containerChild := widget w]
-  f <- fontDescriptionNew
-  fontDescriptionSetFamily f "Monospace"
-  widgetModifyFont (textview w) (Just f)
   textview w `onFocusIn` (\_event -> (modifyIORef editor $ \e -> e { curwin = Just $ key w }) >> return False)
   -- We have to return false so that GTK correctly focuses the window when we use widgetGrabFocus
   textview w `onMoveCursor` \step amount user -> do

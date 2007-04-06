@@ -76,6 +76,8 @@ emptyWindow b = do
     set ml [ miscXalign := 0.01 ] -- so the text is left-justified.
 
     v <- sourceViewNewWithBuffer (textbuf $ rawbuf b)
+    widgetModifyFont v (Just f)
+
     scroll <- scrolledWindowNew Nothing Nothing
     set scroll [containerChild := v]
 
