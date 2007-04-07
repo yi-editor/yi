@@ -27,8 +27,21 @@ following your preferences.
 
 DEPENDENCIES
 
-Cabal 1.1.8, or latest darcs repo version.
-see cabal files (find . -name "*.cabal")
+* Cabal 1.1.7, or latest darcs repo version.
+        http://darcs.haskell.org/packages/Cabal
+
+* filepath 1.0, or lastest darcs repo version.
+        http://darcs.haskell.org/packages/filepath/
+
+* for vty frontend
+  * vty 3.0.0, or latest darcs repo version. 
+        http://members.cox.net/stefanor/vty
+  * Alex (the haskell lexer generator)
+
+* for gtk frontend, gtk2hs 0.9.11
+        http://haskell.org/gtk2hs/download/
+
+see cabal files (find . -name "*.cabal") for other dependencies.
 
 
 CONFIGURATION
