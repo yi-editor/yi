@@ -886,7 +886,7 @@ splitE :: EditorM ()
 splitE = do
     canSplit <- UI.hasRoomForExtraWindow
     if canSplit 
-      then getBuffer >>= UI.newWindow False >>= UI.setWindow
+      then splitWindow
       else errorE "Not enough room to split"
 
 -- | Enlarge the current window

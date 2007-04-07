@@ -80,3 +80,14 @@ killBufferAndWindows n = do
         killB b = do killBufferWindows b
                      lift $ finaliseB b  
                      modifyEditor_ $ \e -> return $ e { buffers = M.delete (keyB b) (buffers e) }
+
+-- | Split the current window, opening a second window onto this buffer.
+-- Windows smaller than 3 lines cannot be split.
+splitWindow :: EditorM ()
+splitWindow = getBuffer >>= newWindow False >>= setWindow
+
+-- | Switch focus to some other window. If none is available, create one.
+shiftOtherWindow :: EditorM ()
+shiftOtherWindow = do
+  ws <- readEditor getWindows
+  if length ws == 1 then splitWindow else nextWindow

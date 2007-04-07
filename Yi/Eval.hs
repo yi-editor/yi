@@ -18,6 +18,7 @@ import Yi.Debug
 import Yi.Editor
 import Yi.Kernel
 import Yi.UI as UI
+import Yi.CoreUI as UI
 import qualified GHC
 
 
@@ -70,7 +71,7 @@ jumpToE filename line column = do
              if found 
                then fnewE filename
                else error "file not found"
-    (b:_) -> getWindow >>= UI.setWindowBuffer b
+    (b:_) -> shiftOtherWindow >> getWindow >>= UI.setWindowBuffer b
   gotoLnE line
   rightOrEolE column
 
