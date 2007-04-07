@@ -814,13 +814,9 @@ getBufferWithName bufName = do
 
 
 -- | Switch to the buffer specified as parameter. If the buffer name is empty, switch to the next buffer.
-switchToBufferWithNameE :: String -> EditorM Bool
-switchToBufferWithNameE "" = nextBufW >> return True
-switchToBufferWithNameE bufName = do
-  bs <- readEditor $ \e -> findBufferWithName e bufName
-  case bs of
-    [] -> return False
-    (b:_) -> switchToBufferE b >> return True
+switchToBufferWithNameE :: String -> EditorM ()
+switchToBufferWithNameE "" = nextBufW
+switchToBufferWithNameE bufName = switchToBufferE =<< getBufferWithName bufName
 
 -- | Open a minibuffer window with the given prompt and keymap
 spawnMinibufferE :: String -> Keymap -> Action
