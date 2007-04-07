@@ -82,8 +82,9 @@ start = modifyEditor_ $ \e -> do
   ch <- newChan
   onKeyPress win (processEvent ch)
 
-  vb <- vBoxNew False 1
+  vb <- vBoxNew False 1  -- Top-level vbox
   vb' <- vBoxNew False 1
+
   set win [ containerChild := vb ]
   onDestroy win mainQuit
                 
@@ -168,7 +169,8 @@ keyTable = M.fromList
 addWindow :: IORef Editor -> Window -> IO ()
 addWindow editor w = do
   i <- liftM ui $ readIORef editor
-  set (uiBox i) [containerChild := widget w]
+  set (uiBox i) [containerChild := widget w,
+                 boxChildPacking (widget w) := if isMini w then PackNatural else PackGrow]
   textview w `onFocusIn` (\_event -> (modifyIORef editor $ \e -> e { curwin = Just $ key w }) >> return False)
   -- We have to return false so that GTK correctly focuses the window when we use widgetGrabFocus
   textview w `onMoveCursor` \step amount user -> do
@@ -210,11 +212,11 @@ suspend = do
 
 -- | Create a new window onto this buffer.
 --
-newWindow :: FBuffer -> EditorM Window
-newWindow b = do
+newWindow :: Bool -> FBuffer -> EditorM Window
+newWindow mini b = do
   editor <- ask
   modifyEditor $ \e -> do
-    win <- emptyWindow b
+    win <- emptyWindow mini b
     logPutStrLn $ "Creating " ++ show win
     addWindow editor win
     let e' = e { windows = M.fromList $ mkAssoc (win : M.elems (windows e)) }
@@ -279,7 +281,7 @@ setWindowBuffer b mw = do
       Just w -> do lift $ textViewSetBuffer (textview w) (textbuf $ rawbuf b)
                    let w' = w { bufkey = bkey b }
                    return $ w' { key = key w }
-      Nothing -> newWindow b
+      Nothing -> newWindow False b
                    -- if there is no window, just create a new one.
     modifyEditor_ $ \e -> return $ e { windows = M.insert (key w'') w'' (windows e) }
     debugWindows "Buffer set"

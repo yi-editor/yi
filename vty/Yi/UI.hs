@@ -332,8 +332,8 @@ withStyle sty str = renderBS (styleToAttr sty) (B.pack str)
 -- Top of screen of other windows needs to get adjusted
 -- As does their modeslines.
 --
-newWindow :: FBuffer -> EditorM Window
-newWindow b = modifyEditor $ \e -> do
+newWindow :: Bool -> FBuffer -> EditorM Window
+newWindow _mini b = modifyEditor $ \e -> do
     (h,w) <- readIORef $ scrsize $ ui $ e
     let wls   = M.elems $ windows e
         (y,r) = getY h (1 + (length wls))   -- should be h-1..
@@ -488,7 +488,7 @@ setWindowBuffer b mw = do
                      w' <- lift $ emptyWindow b (height w, width w)
                      return $ w' { key = key w, mode = mode w } 
                      -- reuse the window's key (so it ends in the same place on the screen)
-             Nothing -> newWindow b -- if there is no window, just create a new one.
+             Nothing -> newWindow False b -- if there is no window, just create a new one.
     modifyEditor_ $ \e -> return $ e { windows = M.insert (key w'') w'' (windows e) }
     debugWindows "After setting buffer"
 

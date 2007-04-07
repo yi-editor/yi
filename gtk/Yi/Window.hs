@@ -35,7 +35,8 @@ data Window =
        ,bufkey      :: !Unique         -- ^ the buffer this window opens to
        ,textview    :: SourceView
        ,modeline    :: Label
-       ,widget      :: VBox            -- ^ Top-level widget for this window.
+       ,widget      :: Box            -- ^ Top-level widget for this window.
+       ,isMini      :: Bool
     }
 
 -- Until we know better, lets pretend height and cursor position are constants to the rest of the code.
@@ -64,8 +65,8 @@ instance Show Window where
 -- The origin, height and width should be calculated with reference to
 -- all existing windows.
 --
-emptyWindow :: FBuffer -> IO Window
-emptyWindow b = do
+emptyWindow :: Bool -> FBuffer -> IO Window
+emptyWindow mini b = do
     wu <- newUnique
 
     f <- fontDescriptionNew
@@ -78,20 +79,38 @@ emptyWindow b = do
     v <- sourceViewNewWithBuffer (textbuf $ rawbuf b)
     widgetModifyFont v (Just f)
 
-    scroll <- scrolledWindowNew Nothing Nothing
-    set scroll [containerChild := v]
 
-    vb <- vBoxNew False 1
-    set vb [ containerChild := scroll, 
-             containerChild := ml, 
-             boxChildPacking ml := PackNatural] 
+    box <- if mini 
+     then do
+      widgetSetSizeRequest v (-1) 1
+
+      prompt <- labelNew (Just $ nameB b)
+      widgetModifyFont prompt (Just f)
+
+      hb <- hBoxNew False 1
+      set hb [ containerChild := prompt, 
+               containerChild := v, 
+               boxChildPacking prompt := PackNatural,
+               boxChildPacking v := PackNatural] 
+
+      return (castToBox hb)
+     else do
+      scroll <- scrolledWindowNew Nothing Nothing
+      set scroll [containerChild := v]
+
+      vb <- vBoxNew False 1
+      set vb [ containerChild := scroll, 
+               containerChild := ml, 
+               boxChildPacking ml := PackNatural] 
+      return (castToBox vb)
 
     let win = Window {
                     key       = wu
                    ,bufkey    = (keyB b)
                    ,textview  = v
                    ,modeline  = ml
-                   ,widget    = vb
+                   ,widget    = box
+                   ,isMini    = mini
               }
     return win
 

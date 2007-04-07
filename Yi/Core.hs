@@ -238,7 +238,7 @@ startE kernel st commandLineActions = do
 
       -- Setting up the 1st buffer/window is a bit tricky because most functions assume there exists a "current window"
       -- or a "current buffer".
-      stringToNewBuffer "*console*" "" (readEditor defaultKeymap) >>= UI.newWindow >>= UI.setWindow    
+      stringToNewBuffer "*console*" "" (readEditor defaultKeymap) >>= UI.newWindow False >>= UI.setWindow    
 
       newBufferE "*messages*" ""
 
@@ -809,7 +809,7 @@ switchToBufferE b = getWindow >>= UI.setWindowBuffer b
 spawnMinibufferE :: String -> Keymap -> Action
 spawnMinibufferE prompt km =
     do b <- stringToNewBuffer ("Minibuffer: " ++ prompt) [] (return km) 
-       w <- UI.newWindow b
+       w <- UI.newWindow True b
        UI.setWindow w
 
 -- | Write current buffer to disk, if this buffer is associated with a file
@@ -886,7 +886,7 @@ splitE :: EditorM ()
 splitE = do
     canSplit <- UI.hasRoomForExtraWindow
     if canSplit 
-      then getBuffer >>= UI.newWindow >>= UI.setWindow
+      then getBuffer >>= UI.newWindow False >>= UI.setWindow
       else errorE "Not enough room to split"
 
 -- | Enlarge the current window
