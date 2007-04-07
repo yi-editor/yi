@@ -6,7 +6,6 @@ module Yi.Eval (
         jumpToErrorE,
 ) where
 
-import Control.Monad.Reader
 import Control.Monad.Trans
 import Data.Array
 import GHC.Exts ( unsafeCoerce# )
@@ -17,8 +16,6 @@ import Yi.Core
 import Yi.Debug
 import Yi.Editor
 import Yi.Kernel
-import Yi.UI as UI
-import Yi.CoreUI as UI
 import qualified GHC
 
 

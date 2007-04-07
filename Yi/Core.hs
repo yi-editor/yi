@@ -352,10 +352,10 @@ reloadE = do
     setTargets kernel targets
   -- lift $ rts_revertCAFs -- FIXME: GHCi does this; It currently has undesired effects on logging; investigate.
   result <- withKernel loadAllTargets
-  case result of
-    GHC.Failed -> errorE "failed to load targets"
-    _ -> return ()
   loaded <- withKernel setContextAfterLoad
+  case result of
+    GHC.Failed -> switchToBufferOtherWindowE =<< getBufferWithName "*messages*"
+    _ -> return ()
   return $ map (moduleNameString . moduleName) loaded
   -- lift $ rts_revertCAFs
 
@@ -803,6 +803,15 @@ switchToBufferE b = getWindow >>= UI.setWindowBuffer b
 -- | Attach the specified buffer to some other window than the current one
 switchToBufferOtherWindowE :: FBuffer -> EditorM ()
 switchToBufferOtherWindowE b = shiftOtherWindow >> switchToBufferE b
+
+-- | Find buffer with given name. Raise exception if not found.
+getBufferWithName :: String -> EditorM FBuffer
+getBufferWithName bufName = do
+  bs <- readEditor $ \e -> findBufferWithName e bufName
+  case bs of
+    [] -> fail ("Buffer not found: " ++ bufName)
+    (b:_) -> return b
+
 
 -- | Switch to the buffer specified as parameter. If the buffer name is empty, switch to the next buffer.
 switchToBufferWithNameE :: String -> EditorM Bool
