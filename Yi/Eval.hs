@@ -71,7 +71,7 @@ jumpToE filename line column = do
              if found 
                then fnewE filename
                else error "file not found"
-    (b:_) -> shiftOtherWindow >> getWindow >>= UI.setWindowBuffer b
+    (b:_) -> shiftOtherWindow >> switchToBufferE b
   gotoLnE line
   rightOrEolE column
 

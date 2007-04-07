@@ -762,15 +762,11 @@ setWindowStyleE sty = modifyEditor_ $ \e -> return $ e { uistyle = sty }
 -- | Attach the next buffer in the buffer list
 -- to the current window.
 nextBufW :: Action
-nextBufW = do
-    b <- Editor.nextBuffer
-    getWindow >>= UI.setWindowBuffer b
+nextBufW = Editor.nextBuffer >>= switchToBufferE
 
 -- | edit the previous buffer in the buffer list
 prevBufW :: Action
-prevBufW = do
-    b <- Editor.prevBuffer
-    getWindow >>= UI.setWindowBuffer b
+prevBufW = Editor.prevBuffer >>= switchToBufferE
 
 -- | If file exists, read contents of file into a new buffer, otherwise
 -- creating a new empty buffer. Replace the current window with a new
@@ -785,7 +781,7 @@ fnewE f = do
     e  <- lift $ doesFileExist f
     b  <- if e then hNewBuffer f else stringToNewBuffer f [] km
     lift $ setfileB b f        -- and associate with file f
-    getWindow >>= UI.setWindowBuffer b
+    switchToBufferE b
 
 -- | Like fnewE, create a new buffer filled with the String @s@,
 -- Open up a new window onto this buffer. Doesn't associate any file
@@ -795,7 +791,7 @@ newBufferE :: String -> String -> EditorM FBuffer
 newBufferE f s = do
     let km = readEditor defaultKeymap
     b <- stringToNewBuffer f s km
-    getWindow >>= UI.setWindowBuffer b
+    switchToBufferE b
     lift $ logPutStrLn "newBufferE ended"
     return b
 
