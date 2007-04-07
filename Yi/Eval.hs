@@ -71,7 +71,7 @@ jumpToE filename line column = do
              if found 
                then fnewE filename
                else error "file not found"
-    (b:_) -> shiftOtherWindow >> switchToBufferE b
+    (b:_) -> switchToBufferOtherWindowE b
   gotoLnE line
   rightOrEolE column
 

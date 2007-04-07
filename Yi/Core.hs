@@ -88,6 +88,7 @@ module Yi.Core (
 
         -- * Buffer/Window
         switchToBufferE,
+        switchToBufferOtherWindowE,
         switchToBufferWithNameE,
         nextBufW,       -- :: Action
         prevBufW,       -- :: Action
@@ -798,6 +799,10 @@ newBufferE f s = do
 -- | Attach the specified buffer to the current window
 switchToBufferE :: FBuffer -> EditorM ()
 switchToBufferE b = getWindow >>= UI.setWindowBuffer b
+
+-- | Attach the specified buffer to some other window than the current one
+switchToBufferOtherWindowE :: FBuffer -> EditorM ()
+switchToBufferOtherWindowE b = shiftOtherWindow >> switchToBufferE b
 
 -- | Switch to the buffer specified as parameter. If the buffer name is empty, switch to the next buffer.
 switchToBufferWithNameE :: String -> EditorM Bool
