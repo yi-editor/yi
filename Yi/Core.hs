@@ -79,8 +79,6 @@ module Yi.Core (
         backupE,        -- :: FilePath -> Action
 
         -- * Buffer only stuff
-        nextBufW,       -- :: Action
-        prevBufW,       -- :: Action
         newBufferE,     -- :: String -> String -> Action
         listBuffersE,   -- :: Action
         closeBufferE,   -- :: String -> Action
@@ -90,6 +88,9 @@ module Yi.Core (
 
         -- * Buffer/Window
         switchToBufferE,
+        switchToBufferWithNameE,
+        nextBufW,       -- :: Action
+        prevBufW,       -- :: Action
 
         -- * Buffer point movement
         topE,           -- :: Action
@@ -758,8 +759,8 @@ setWindowStyleE :: Style.UIStyle -> Action
 setWindowStyleE sty = modifyEditor_ $ \e -> return $ e { uistyle = sty }
 
 
--- | Close the current window, attach the next buffer in the buffer list
--- to a new window, and open it up
+-- | Attach the next buffer in the buffer list
+-- to the current window.
 nextBufW :: Action
 nextBufW = do
     b <- Editor.nextBuffer
@@ -798,14 +799,20 @@ newBufferE f s = do
     lift $ logPutStrLn "newBufferE ended"
     return b
 
+-- | Attach the specified buffer to the current window
 switchToBufferE :: FBuffer -> EditorM ()
 switchToBufferE b = getWindow >>= UI.setWindowBuffer b
 
--- TODO:
--- add prompt
--- resize
--- hide modeline (?)
+-- | Switch to the buffer specified as parameter. If the buffer name is empty, switch to the next buffer.
+switchToBufferWithNameE :: String -> EditorM Bool
+switchToBufferWithNameE "" = nextBufW >> return True
+switchToBufferWithNameE bufName = do
+  bs <- readEditor $ \e -> findBufferWithName e bufName
+  case bs of
+    [] -> return False
+    (b:_) -> switchToBufferE b >> return True
 
+-- | Open a minibuffer window with the given prompt and keymap
 spawnMinibufferE :: String -> Keymap -> Action
 spawnMinibufferE prompt km =
     do b <- stringToNewBuffer ("Minibuffer: " ++ prompt) [] (return km) 

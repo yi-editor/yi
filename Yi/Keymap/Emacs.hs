@@ -450,14 +450,9 @@ switchBufferE :: Action
 switchBufferE = do 
   b <- getBuffer -- current buffer
   nextB <- nextBuffer
-  withMinibuffer "switch to buffer:" completeBufferName $ \bufName -> do
-                  if null bufName 
-                      then switchToBufferE nextB
-                      else do
-                            bs <- readEditor $ \e -> findBufferWithName e bufName
-                            case filter (/= b) bs of
-                              [] -> errorE "No such buffer"
-                              (b':_) -> switchToBufferE b'
+  withMinibuffer "switch to buffer:" completeBufferName $ \bufname -> 
+      do found <- switchToBufferWithNameE  bufname
+         when (not found) (errorE "No such buffer")
 
 killBufferE :: Action
 killBufferE = withMinibuffer "kill buffer:" completeBufferName $ \bufName -> do
