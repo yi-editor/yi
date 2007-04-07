@@ -456,12 +456,8 @@ killBufferE :: Action
 killBufferE = withMinibuffer "kill buffer:" completeBufferName $ \bufName -> do
                 nextB <- nextBuffer
                 b <- getBuffer -- current buffer
-                bs <- if null bufName then return [b] else readEditor $ \e -> findBufferWithName e bufName
-                case bs of
-                    [] -> errorE "No such buffer"
-                    (b':_) -> do switchToBufferE nextB
-                                 deleteBuffer b'
-  
+                b' <- if null bufName then return b else getBufferWithName bufName
+                switchToBufferE nextB
 
 -- | Create a binding processor from 'kmap'.
 makeProcess :: KList -> KProc ()

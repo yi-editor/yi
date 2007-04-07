@@ -85,6 +85,7 @@ module Yi.Core (
         isUnchangedE,   -- :: IO Bool
         setUnchangedE,  -- :: Action
         setSynE,        -- :: String -> Action
+        getBufferWithName,
 
         -- * Buffer/Window
         switchToBufferE,
