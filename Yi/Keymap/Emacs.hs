@@ -389,10 +389,15 @@ completeBufferName s = do
 
 completeFileName :: String -> EditorM String
 completeFileName s = do
-  let searchDir = if hasTrailingPathSeparator s then s else takeDirectory s
+  curDir <- lift $ getCurrentDirectory
+  let sDir = if hasTrailingPathSeparator s then s else takeDirectory s
+      searchDir = if null sDir then curDir else s
+      fixTrailingPathSeparator f = do
+                       isDir <- doesDirectoryExist (searchDir </> f)
+                       return $ if isDir then addTrailingPathSeparator f else f
   files <- lift $ getDirectoryContents searchDir
-  fs <- lift $ mapM fixTrailingPathSeparator (map (searchDir </>) files)
-  completeInList s fs
+  fs <- lift $ mapM fixTrailingPathSeparator files
+  completeInList s $ map (sDir </>) fs
 
 fixTrailingPathSeparator :: String -> IO String
 fixTrailingPathSeparator s = do 
