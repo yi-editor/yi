@@ -23,7 +23,7 @@
 module Yi.FastBuffer (Point, Size, BufferImpl, newBI, deleteNAtI,
                       moveToI, insertNI, pointBI, nelemsBI, finaliseBI, sizeBI, writeBI,
                       curLnI, gotoLnI, searchBI, regexBI, getMarkBI, setMarkBI, unsetMarkBI, 
-                      textbuf, setSyntaxBI, point)
+                      textbuf, setSyntaxBI, point, updateCursorPosition)
 where
 
 import Prelude hiding (error, mapM)
@@ -72,10 +72,11 @@ writeChars buf cs p = do
   textBufferInsert buf start cs
 {-# INLINE writeChars #-}
 
-insertN' :: TextBufferClass b => b -> String -> IO ()
-insertN' buf cs = do 
+insertN' :: TextBufferClass b => b -> TextMark -> String -> IO ()
+insertN' buf mark cs = do 
   --logPutStrLn "insertN'"
-  textBufferInsertAtCursor buf cs
+  i <- textBufferGetIterAtMark buf mark
+  textBufferInsert buf i cs
 
 deleteN' :: TextBufferClass b => b -> Size -> Point -> IO ()
 deleteN' _ 0 _ = return ()
@@ -116,7 +117,10 @@ newBI s = do
   sourceBufferSetLanguage buf haskellLang
   sourceBufferSetHighlight buf True
   textBufferSetText buf s
-  p <- textBufferGetInsert buf
+  i <- textBufferGetStartIter buf
+  p <- textBufferCreateMark buf (Just "point") i False
+  -- we maintain our "own" point mark. The upper layers will have to move the insertion 
+  -- cursor to that point as needed by calling updateCursorPosition
   m <- textBufferGetSelectionBound buf
   a <- newIORef False
   let b = BufferImpl buf p m a
@@ -136,7 +140,7 @@ sizeBI b = do
 -- | Extract the current point
 pointBI :: BufferImpl -> IO Int
 pointBI b = do
-  i <-  textBufferGetIterAtMark (textbuf b) (point b)
+  i <- textBufferGetIterAtMark (textbuf b) (point b)
   get i textIterOffset
 {-# INLINE pointBI #-}
 
@@ -148,20 +152,25 @@ nelemsBI b n i = readChars (textbuf b) i n
 ------------------------------------------------------------------------
 -- Point based editing
 
-moveCursorAtIter :: BufferImpl -> TextIter -> IO ()
-moveCursorAtIter b p = do
-  active <- readIORef (markActive b)
-  if active
-    then textBufferMoveMark (textbuf b) (point b) p
-    else textBufferPlaceCursor (textbuf b) p
+movePointToIter :: BufferImpl -> TextIter -> IO ()
+movePointToIter b p = textBufferMoveMark (textbuf b) (point b) p
 
+updateCursorPosition :: BufferImpl -> IO ()
+updateCursorPosition b = do
+  active <- readIORef (markActive b)
+  p <- textBufferGetIterAtMark (textbuf b) (point b)
+  insert <- textBufferGetInsert (textbuf b) 
+  if active
+    then textBufferMoveMark (textbuf b) insert p
+    else textBufferPlaceCursor (textbuf b) p
+  
 
 -- | Move point in buffer to the given index
 moveToI :: BufferImpl -> Int -> IO ()
 moveToI b off = do
   --logPutStrLn $ "moveTo " ++ show off
   p <- textBufferGetIterAtOffset (textbuf b) off
-  moveCursorAtIter b p
+  movePointToIter b p
 {-# INLINE moveToI #-}
 
 
@@ -176,7 +185,7 @@ writeBI b c = do
 
 -- | Insert the list at current point, extending size of buffer
 insertNI    :: BufferImpl -> [Char] -> IO ()
-insertNI b = insertN' (textbuf b)
+insertNI b = insertN' (textbuf b) (point b)
 
 -- | @deleteNAt b n p@ deletes @n@ characters at position @p@
 deleteNAtI :: BufferImpl -> Size -> Point -> IO ()
@@ -200,7 +209,7 @@ gotoLnI :: BufferImpl -> Int -> IO Int
 gotoLnI b n = do
   p <- textBufferGetIterAtMark (textbuf b) (point b)
   textIterSetLine p n
-  moveCursorAtIter b p
+  movePointToIter b p
   textIterGetLine p
 {-# INLINE gotoLnI #-}
 
