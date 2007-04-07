@@ -64,7 +64,6 @@ module Yi.Interact (
   oneOf,
   satisfy,    -- :: (Char -> Bool) -> Interact Char
   event,      -- :: Char -> Interact Char
-  -- string,     -- :: String -> Interact String
   events,
   choice,     -- :: [Interact a] -> Interact a
   count,      -- :: Int -> Interact a -> Interact [a]
