@@ -372,7 +372,7 @@ commonPrefix strings
 
 completeInList :: String -> [String] -> EditorM String
 completeInList s l 
-    | null prefix = msgE "No match" >> return s
+    | null filtered = msgE "No match" >> return s
     | prefix /= s = return prefix
     | isSingleton filtered = msgE "Sole completion" >> return s
     | prefix `elem` filtered = msgE ("Complete, but not unique: " ++ show filtered) >> return s
