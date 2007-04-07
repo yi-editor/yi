@@ -388,21 +388,18 @@ completeBufferName s = do
   completeInList s (map nameB bs)
 
 completeFileName :: String -> EditorM String
-completeFileName s = do
+completeFileName s0 = do
   curDir <- lift $ getCurrentDirectory
-  let sDir = if hasTrailingPathSeparator s then s else takeDirectory s
-      searchDir = if null sDir then curDir else s
+  homeDir <- lift $ getHomeDirectory
+  let s = if (['~',pathSeparator] `isPrefixOf` s0) then addTrailingPathSeparator homeDir ++ drop 2 s0 else s0
+      sDir = if hasTrailingPathSeparator s then s else takeDirectory s
+      searchDir = if null sDir then curDir else sDir
       fixTrailingPathSeparator f = do
                        isDir <- doesDirectoryExist (searchDir </> f)
                        return $ if isDir then addTrailingPathSeparator f else f
   files <- lift $ getDirectoryContents searchDir
   fs <- lift $ mapM fixTrailingPathSeparator files
   completeInList s $ map (sDir </>) fs
-
-fixTrailingPathSeparator :: String -> IO String
-fixTrailingPathSeparator s = do 
-  isDir <- doesDirectoryExist s
-  return $ if isDir then addTrailingPathSeparator s else s
 
 completeFunctionName :: String -> EditorM String
 completeFunctionName s = do
