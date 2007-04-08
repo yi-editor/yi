@@ -1,5 +1,5 @@
 # Where to find ghc
-build-args = --with-ghc=/usr/bin/ghc
+ghc-path = /usr/bin/ghc
 
 # yi-vty or yi-gtk
 flavour=yi-vty
