@@ -96,7 +96,10 @@ emptyWindow mini b = do
       return (castToBox hb)
      else do
       scroll <- scrolledWindowNew Nothing Nothing
-      set scroll [containerChild := v]
+      set scroll [scrolledWindowPlacement := CornerTopRight,
+                  scrolledWindowVscrollbarPolicy := PolicyAlways,
+                  scrolledWindowHscrollbarPolicy := PolicyAutomatic,
+                  containerChild := v]
 
       vb <- vBoxNew False 1
       set vb [ containerChild := scroll, 
