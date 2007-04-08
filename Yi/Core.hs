@@ -253,14 +253,14 @@ startE kernel st commandLineActions = do
       loadE "YiConfig"
       runConfig
 
-      when (isNothing st) $ do -- process options if booting for the first time
-        sequence_ commandLineActions
-
       -- emacs-like behaviour
       newBufferE "*scratch*" $
                    "-- This buffer is for notes you don't want to save, and for haskell evaluation\n" ++
                    "-- If you want to create a file, open that file,\n" ++
                    "-- then enter the text in that file's own buffer.\n\n"
+
+      when (isNothing st) $ do -- process options if booting for the first time
+        sequence_ commandLineActions
 
 
     theUI <- liftM ui (readIORef newSt)
