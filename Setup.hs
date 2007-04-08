@@ -29,4 +29,4 @@ getLibDir [arg]
              return libDir
     where ghcPath = drop 1 (dropWhile (/='=') arg)
 
-getLibDir _ = error "failed to extract ghc path from command line"
+getLibDir _ = error "failed to extract ghc path from command line: use --with-ghc=<GHC_PATH>"
