@@ -26,13 +26,14 @@
 module Main ( main ) where
 
 import Yi.Kernel
+import Yi.Boot
 import Yi.Debug
 
 main :: IO ()
 main = do
   initDebug ".yi-static.dbg"
   kernel <- initialize
-  Yi.Kernel.startYi kernel -- call Yi.main dynamically
+  Yi.Boot.startYi kernel -- call Yi.main dynamically
   
 
 
