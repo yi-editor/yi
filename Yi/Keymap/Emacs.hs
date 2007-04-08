@@ -449,16 +449,12 @@ scrollDownE = withUnivArg $ \a ->
                  Just n -> replicateM_ n downE
 
 switchBufferE :: Action
-switchBufferE = do 
-  b <- getBuffer -- current buffer
-  nextB <- nextBuffer
-  withMinibuffer "switch to buffer:" completeBufferName switchToBufferWithNameE
+switchBufferE = withMinibuffer "switch to buffer:" completeBufferName switchToBufferWithNameE
 
 killBufferE :: Action
 killBufferE = withMinibuffer "kill buffer:" completeBufferName $ \bufName -> do
                 nextB <- nextBuffer
                 b <- getBuffer -- current buffer
-                b' <- if null bufName then return b else getBufferWithName bufName
                 switchToBufferE nextB
 
 -- | Create a binding processor from 'kmap'.
