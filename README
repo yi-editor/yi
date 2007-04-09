@@ -27,9 +27,6 @@ following your preferences.
 
 DEPENDENCIES
 
-* Cabal 1.1.7, or latest darcs repo version.
-        http://darcs.haskell.org/packages/Cabal
-
 * filepath 1.0, or lastest darcs repo version.
         http://darcs.haskell.org/packages/filepath/
 

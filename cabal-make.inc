@@ -23,7 +23,10 @@ build-args ?=
 configure-args ?= \
         $(extra-configure-args) \
 	$(configure-dirs) \
-	--disable-haddock-use-packages \
+#	--disable-haddock-use-packages \
+# Comment this out till nore recent cabal is out
+# (This is the #1 reason people fail to compile yi, and apparently the only
+# reason why cabal 1.1.8 is needed)
         --haddock-args="$(foreach iface,$(haddock-interfaces),--read-interface=$(iface)) $(source-args) $(comments-args)"
 show-configure-args:
 	@echo $(configure-args)
