@@ -40,7 +40,9 @@ data Event = Event Key [Modifier] deriving (Show,Eq,Ord)
 
 eventToChar :: Event -> Char
 eventToChar (Event KBS _) = keyBackspace
+eventToChar (Event KIns _) = keyIC
 eventToChar (Event KHome _) = keyHome
+eventToChar (Event KDel _) = keyDC
 eventToChar (Event KEnd _) = keyEnd
 eventToChar (Event KUp _) = keyUp
 eventToChar (Event KDown _) = keyDown
@@ -69,7 +71,7 @@ charToEvent c
     | c == keyLeft      = Event KLeft                    []
     | c == keyRight     = Event KRight                   []
     | c == '\n'         = Event KEnter                   []
-    | c == '\ESC'       = Event KEsc                     []
+    | c == '\ESC'       = Event KEsc                     []    
     | ord c < 32        = Event (KASCII (lowcaseCtrl c)) [MCtrl]
     | otherwise         = Event (KASCII c)               [MCtrl]
 
@@ -92,8 +94,8 @@ metaBit :: Int
 metaBit = 7
 
 
---
 -- | Some constants for easy symbolic manipulation.
+-- See man getch(3ncurses) for semantics.
 
 keyBreak :: Char
 keyBreak        = chr (257)
