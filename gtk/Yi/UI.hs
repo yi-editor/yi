@@ -26,7 +26,7 @@ module Yi.UI (
         start, end, suspend, main,
 
         -- * Refresh
-        refreshAll, scheduleRefresh,
+        refreshAll, scheduleRefresh, prepareAction,
 
         -- * Window manipulation
         newWindow, enlargeWindow, shrinkWindow, deleteWindow,
@@ -268,6 +268,14 @@ scheduleRefresh = do
              txt <- getModeLine buf
              set (modeline w) [labelText := txt]
     
+prepareAction :: EditorM ()
+prepareAction = do
+  withBuffer $ \b -> do
+     changed <- fetchCursorPosition (rawbuf b)
+     -- when the cursor position changed, it means the user clicked to change it,
+     -- and therefore if up/down is done we must go to the just set column.
+     -- (ie. forget the previous one)
+     when changed $ forgetPerferCol b
 
 setCmdLine :: UI -> String -> IO ()
 setCmdLine i s = do 

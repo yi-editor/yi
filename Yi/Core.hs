@@ -282,7 +282,7 @@ startE kernel st commandLineActions = do
         interactive :: EditorM () -> IO ()
         interactive action = do 
           logPutStrLn ">>>>>>> interactively"
-          runReaderT (action >> UI.scheduleRefresh)  newSt
+          runReaderT (UI.prepareAction >> action >> UI.scheduleRefresh)  newSt
           logPutStrLn "<<<<<<<"
 
         -- | The editor's output main loop. 

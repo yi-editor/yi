@@ -23,7 +23,7 @@
 module Yi.FastBuffer (Point, Size, BufferImpl, newBI, deleteNAtI,
                       moveToI, insertNI, pointBI, nelemsBI, finaliseBI, sizeBI, writeBI,
                       curLnI, gotoLnI, searchBI, regexBI, getMarkBI, setMarkBI, unsetMarkBI, 
-                      textbuf, setSyntaxBI, point, updateCursorPosition)
+                      textbuf, setSyntaxBI, point, updateCursorPosition, fetchCursorPosition)
 where
 
 import Prelude hiding (error, mapM)
@@ -119,8 +119,6 @@ newBI s = do
   textBufferSetText buf s
   i <- textBufferGetStartIter buf
   p <- textBufferCreateMark buf (Just "point") i False
-  -- we maintain our "own" point mark. The upper layers will have to move the insertion 
-  -- cursor to that point as needed by calling updateCursorPosition
   m <- textBufferGetSelectionBound buf
   a <- newIORef False
   let b = BufferImpl buf p m a
@@ -155,16 +153,28 @@ nelemsBI b n i = readChars (textbuf b) i n
 movePointToIter :: BufferImpl -> TextIter -> IO ()
 movePointToIter b p = textBufferMoveMark (textbuf b) (point b) p
 
+-- we maintain our "own" point mark. The upper layers will have to move the insertion 
+-- cursor to that point as needed by calling updateCursorPosition
+fetchCursorPosition :: BufferImpl -> IO Bool
+fetchCursorPosition b = do
+  insert <- textBufferGetInsert (textbuf b)
+  p <- textBufferGetIterAtMark (textbuf b) (point b)
+  q <- textBufferGetIterAtMark (textbuf b) insert  
+  o <- get p textIterOffset; logPutStrLn $ "fetchCursorPosition: " ++ show o  
+  textBufferMoveMark (textbuf b) (point b) q
+  eq <- textIterEqual p q
+  return (not eq)
+
 updateCursorPosition :: BufferImpl -> IO ()
 updateCursorPosition b = do
   active <- readIORef (markActive b)
   p <- textBufferGetIterAtMark (textbuf b) (point b)
+  o <- get p textIterOffset; logPutStrLn $ "updateCursorPosition: " ++ show o
   insert <- textBufferGetInsert (textbuf b) 
   if active
     then textBufferMoveMark (textbuf b) insert p
     else textBufferPlaceCursor (textbuf b) p
   
-
 -- | Move point in buffer to the given index
 moveToI :: BufferImpl -> Int -> IO ()
 moveToI b off = do

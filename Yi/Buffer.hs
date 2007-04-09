@@ -31,7 +31,7 @@ module Yi.Buffer ( FBuffer (..), keyB, curLn, nameB, indexOfEol,
                    deleteToEol, indexOfSol, nelemsB, writeB, getfileB,
                    setfileB, deleteNAt, readB, elemsB, undo, redo,
                    setMarkB, unsetMarkB, isUnchangedB, setSyntaxB, regexB, searchB, readAtB,
-                   getModeLine, getPercent
+                   getModeLine, getPercent, forgetPreferCol
                     ) where
 
 import Text.Regex.Posix.Wrap    ( Regex  )
