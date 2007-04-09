@@ -22,7 +22,11 @@ or
 
  $ make vim
 
-following your preferences.
+following your preferences. This will :
+
+* compile all the needed packages
+* install them with --user
+* run yi in the flavour you described in config.mk
 
 
 DEPENDENCIES
@@ -33,9 +37,10 @@ DEPENDENCIES
 * for vty frontend
   * vty 3.0.0, or latest darcs repo version. 
         http://members.cox.net/stefanor/vty
-  * Alex (the haskell lexer generator)
+  * Alex (the haskell lexer generator) 
+        http://www.haskell.org/alex/
 
-* for gtk frontend, gtk2hs 0.9.11
+* for gtk frontend, gtk2hs 0.9.11, configured with sourceview.
         http://haskell.org/gtk2hs/download/
 
 see cabal files (find . -name "*.cabal") for other dependencies.
@@ -44,7 +49,7 @@ see cabal files (find . -name "*.cabal") for other dependencies.
 CONFIGURATION
 
 All configuration (bindings, colours) is done with ~/.yi/YiConfig.hs
-See examples directory.
+See examples directory for files that you can use as ~/.yi/YiConfig.hs.
 Drop the --as=... when you have defined your YiConfig.hs
 
 PORTABILITY
