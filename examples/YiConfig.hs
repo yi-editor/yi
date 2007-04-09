@@ -1,14 +1,25 @@
-module YiConfig ( yiMain ) where
+-- This is jyp's YiConfig.
 
-import Yi.Yi
+-- Don't run with --as=..., that will overwrite the keymap set here.
+
+module YiConfig (yiMain) where
+
+import Yi.Yi  
 import Yi.Editor
 import Yi.Keymap.Emacs
-import Yi.Keymap.Vim
 import Control.Monad.Trans
--- You can import any number of packages that will be loaded at start.
--- They will have to be used fully qualified though.
+import Yi.Buffer
 
 yiMain :: EditorM ()
 yiMain = do
-  -- whatever code can be ran here.
-  msgE "User configuration finished."
+  changeKeymapE myKeymap  
+
+  -- The following will /dynamically/ fail with the vty frontend,
+  -- or if the Gtk module cannot be found in yiConfig.
+  loadE "Gtk" >> execE "Gtk.yiConfig"
+
+  msgE "User configuration successful."
+
+
+-- I prefer to use Emacs keymap, with haskell hilight in every buffer.
+myKeymap x = setSynE "haskell" : runProcess normalKeymap x

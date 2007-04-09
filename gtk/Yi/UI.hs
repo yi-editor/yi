@@ -38,9 +38,10 @@ module Yi.UI (
         -- * UI type, abstract.
         UI,
 
+        -- * For dynamic hacking, give access to the window.
+        uiWindow,
+
         module Yi.Event   -- UIs need to export the symbolic key names
-
-
   )   where
 
 import Prelude hiding (error)
