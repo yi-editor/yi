@@ -32,7 +32,7 @@ module Yi.UI (
         start, end, suspend, main,
 
         -- * Refresh
-        refreshAll, scheduleRefresh,
+        refreshAll, scheduleRefresh, prepareAction,
 
         -- * Window manipulation
         newWindow, enlargeWindow, shrinkWindow, deleteWindow,
@@ -436,6 +436,9 @@ refreshAll = do
 -- | Schedule a refresh of the UI.
 scheduleRefresh :: EditorM ()
 scheduleRefresh = readEditor ui >>= (lift . scheduleRefresh')
+
+prepareAction :: EditorM ()
+prepareAction = return ()
 
 
 scheduleRefresh' :: UI -> IO ()
