@@ -121,7 +121,8 @@ do_args args =
     case (getOpt (ReturnInOrder File) options args) of
         (o, [], []) -> do
             mapM do_opt o
-        (_, _, errs) -> error (concat errs)
+        (_, _, errs) -> do putStrLn (concat errs)
+                           exitWith (ExitFailure 1)
 
 -- ---------------------------------------------------------------------
 -- | Set up the signal handlers
