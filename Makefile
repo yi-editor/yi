@@ -6,12 +6,9 @@ include config.mk
 
 include $(cabal-make)/cabal-make.inc
 
-runtime-config: $(HOME)/.yi/YiConfig.hs
-
-$(HOME)/.yi/YiConfig.hs: examples/YiConfig.hs
+runtime-config:
 	mkdir -p $(HOME)/.yi
-	cp $< $@
-
+	cp examples/*.hs $(HOME)/.yi
 
 emacs: $(flavour) install
 	$(prefix)/bin/yi --as=emacs
