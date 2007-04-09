@@ -187,7 +187,7 @@ nelemsB = lift nelemsBI
 -- | Move point in buffer to the given index
 moveTo    :: FBuffer -> Int -> IO ()
 moveTo b x = do 
-  forgetPerferCol b  
+  forgetPreferCol b  
   lift moveToI b x
 
 ------------------------------------------------------------------------
@@ -197,7 +197,7 @@ moveTo b x = do
 -- TODO: undo is not atomic!
 writeB    :: FBuffer -> Char -> IO ()
 writeB b@FBuffer { undos = uv } c = do
-  forgetPerferCol b
+  forgetPreferCol b
   off <- pointB b
   oldc <- nelemsB b 1 off
   modifyMVar_ uv $ \u -> do
@@ -212,7 +212,7 @@ writeB b@FBuffer { undos = uv } c = do
 insertN   :: FBuffer -> [Char] -> IO ()
 insertN  _ [] = return ()
 insertN fb@FBuffer { undos = uv } cs = do
-  forgetPerferCol fb
+  forgetPreferCol fb
   pnt <- pointB fb
   modifyMVar_ uv $ \ur -> return $ addUR ur (Delete pnt (length cs))
   insertNI (rawbuf fb) cs
@@ -223,7 +223,7 @@ insertN fb@FBuffer { undos = uv } cs = do
 deleteNAt:: FBuffer -> Int -> Int -> IO ()
 deleteNAt _ 0 _ = return ()
 deleteNAt b@FBuffer { undos = uv }  n pos = 
-    do forgetPerferCol b
+    do forgetPreferCol b
        text <- nelemsB b n pos
        modifyMVar_ uv $ \ur -> return $ addUR ur (Insert pos text)
        lift deleteNAtI b n pos
@@ -299,8 +299,8 @@ lineMoveRel b n = do
   --logPutStrLn $ "lineMoveRel: targetCol = " ++ show targetCol
   writeIORef (preferCol b) (Just targetCol)
 
-forgetPerferCol :: FBuffer -> IO ()
-forgetPerferCol b = do
+forgetPreferCol :: FBuffer -> IO ()
+forgetPreferCol b = do
   --logPutStrLn $ "forgetPerferCol" ++ show b
   writeIORef (preferCol b) Nothing
 

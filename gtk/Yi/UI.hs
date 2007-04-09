@@ -275,7 +275,7 @@ prepareAction = do
      -- when the cursor position changed, it means the user clicked to change it,
      -- and therefore if up/down is done we must go to the just set column.
      -- (ie. forget the previous one)
-     when changed $ forgetPerferCol b
+     when changed $ forgetPreferCol b
 
 setCmdLine :: UI -> String -> IO ()
 setCmdLine i s = do 
