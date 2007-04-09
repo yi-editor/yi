@@ -219,7 +219,7 @@ curLnI b = do
 gotoLnI :: BufferImpl -> Int -> IO Int
 gotoLnI b n = do
   p <- textBufferGetIterAtMark (textbuf b) (point b)
-  textIterSetLine p (n-1)
+  textIterSetLine p (max 0 (n-1))
   movePointToIter b p
   textIterGetLine p
 {-# INLINE gotoLnI #-}
