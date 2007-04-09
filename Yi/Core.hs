@@ -262,9 +262,6 @@ startE kernel st commandLineActions = do
       when (isNothing st) $ do -- process options if booting for the first time
         sequence_ commandLineActions
 
-
-    theUI <- liftM ui (readIORef newSt)
-
     logPutStrLn "Starting event handler"
     let
         handler e = flip runReaderT newSt $ errorE (show e)
