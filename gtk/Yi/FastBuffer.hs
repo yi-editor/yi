@@ -209,7 +209,8 @@ curLnI       :: BufferImpl -> IO Int
 -- count number of \n from origin to point
 curLnI b = do
   p <- textBufferGetIterAtMark (textbuf b) (point b)
-  get p textIterLine
+  n <- get p textIterLine
+  return (n+1)
 {-# INLINE curLnI #-}
 
 -- | Go to line number @n@. @n@ is indexed from 1. Returns the
@@ -218,7 +219,7 @@ curLnI b = do
 gotoLnI :: BufferImpl -> Int -> IO Int
 gotoLnI b n = do
   p <- textBufferGetIterAtMark (textbuf b) (point b)
-  textIterSetLine p n
+  textIterSetLine p (n-1)
   movePointToIter b p
   textIterGetLine p
 {-# INLINE gotoLnI #-}
