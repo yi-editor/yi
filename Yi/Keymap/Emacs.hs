@@ -409,10 +409,12 @@ completeFunctionName s = do
 completionFunction :: (String -> EditorM String) -> EditorM ()
 completionFunction f = do
   p <- getPointE
-  gotoPointE 0
   text <- readNM 0 p
+  compl <- f text 
+  -- it's important to do this before removing the text, 
+  -- so if the completion function raises an exception, we don't delete the buffer contents.
+  gotoPointE 0
   deleteNE p
-  compl <- f text
   insertNE compl
 
 withMinibuffer :: String -> (String -> EditorM String) -> (String -> Action) -> Action
