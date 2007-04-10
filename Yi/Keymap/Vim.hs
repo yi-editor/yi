@@ -712,6 +712,9 @@ ex_eval cmd = do
                                 else errorE "No write since last change (add ! to override)"
       fn "q!"         = closeE
       fn "wq"         = viWrite >> closeE
+      fn "x"          = do unchanged <- isUnchangedE
+                           unless unchanged viWrite
+                           closeE
       fn "n"          = nextBufW
       fn "$"          = botE
       fn "p"          = prevBufW
