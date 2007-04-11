@@ -100,6 +100,7 @@ normalKeymap = selfInsertKeymap +++ makeProcess
         ("C-x C-c",  atomic $ quitE),
         ("C-x C-f",  atomic $ findFile),
         ("C-x C-s",  atomic $ fwriteE),
+        ("C-x C-w",  atomic $ withMinibuffer "Write file: " completeFileName fwriteToE),
         ("C-x C-x",  atomic $ exchangePointAndMarkE),
         ("C-x b",    atomic $ switchBufferE),
         ("C-x e e",  atomic $ evalRegionE),
