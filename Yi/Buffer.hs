@@ -112,7 +112,9 @@ hNewB nm = do
   return b
 
 hPutB :: FBuffer -> FilePath -> IO ()
-hPutB b nm = elemsB b >>= writeFile nm
+hPutB b nm = do
+  elemsB b >>= writeFile nm
+  modifyMVar_ (undos b) (\_ -> return emptyUR) -- Clear the undo list, so the changed "flag" is reset.
 
 nameB :: FBuffer -> String
 nameB (FBuffer { name = n }) = n
