@@ -142,6 +142,13 @@ data P event a
   | Result a (P event a)
   | Write Action (() -> P event a) -- TODO: Remove the dummy () parameter ?
 
+comap :: (ev1 -> ev2) -> P ev2 a -> P ev1 a
+comap f (Get g) = Get (\ev1 -> comap f (g (f ev1)))
+comap f (Look n g) = Look n (\evs1 -> comap f (g (map f evs1)))
+comap _f Fail = Fail
+comap f (Result a p) = Result a (comap f p)
+comap f (Write action g) = Write action (\u -> comap f (g u))
+
 -- Monad, MonadPlus
 
 instance Monad (P event) where
