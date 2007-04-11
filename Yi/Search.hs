@@ -253,16 +253,21 @@ isearchAddE increment = do
   mp <- withBuffer $ \b -> searchB b current
   case mp of
     Nothing -> do gotoPointE (p0+length previous) -- go back to where we were
+                  setDynamic $ Isearch ((current,p0):s)
                   msgE $ "Failing I-search: " ++ current
     Just p -> do setDynamic $ Isearch ((current,p):s)
                  gotoPointE (p+length current)
 
 isearchDelE :: EditorM ()
 isearchDelE = do
-  Isearch (_:(text,p):rest) <- getDynamic
-  gotoPointE (p+length text)
-  setDynamic $ Isearch ((text,p):rest)
-  msgE $ "I-search: " ++ text
+  Isearch s <- getDynamic
+  case s of
+    (_:(text,p):rest) -> do
+      gotoPointE (p+length text)
+      setDynamic $ Isearch ((text,p):rest)
+      msgE $ "I-search: " ++ text
+    _ -> return () -- if the searched string is empty, don't try to remove chars from it.
+    
 
 isearchNextE :: EditorM ()
 isearchNextE = do
