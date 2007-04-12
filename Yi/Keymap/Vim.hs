@@ -65,8 +65,7 @@ type VimProc a = StateT VimState (Interact Char) a
 --
 data VimState =
         St { hist :: ([String],Int) -- ex-mode command history
-           , cmdMode :: VimMode      -- (maybe augmented) cmd mode lexer
-           , ins :: VimMode }        -- (maybe augmented) ins mode lexer
+           }
 
 ------------------------------------------------------------------------
 --
@@ -135,7 +134,7 @@ keymap cs = setWindowFillE '~' : winStyleAct : runProcess (runStateT cmd_mode de
 
 -- | default lexer state, just the normal cmd and insert mode. no mappings
 defaultSt :: VimState
-defaultSt = St { hist = ([],0), cmdMode = cmd_mode, ins = ins_mode }
+defaultSt = St { hist = ([],0) }
 
 ------------------------------------------------------------------------
 
@@ -169,7 +168,6 @@ rep_mode = write (msgE "-- REPLACE --") >> many rep_char >> event '\ESC' >> writ
 --
 vis_mode :: VimMode
 vis_mode = do 
-  modify (\st->st{cmdMode=vis_mode})
   write (msgE "-- VISUAL --" >> getPointE >>= setMarkE) 
   many (eval cmd_move)
   (vis_multi +++ vis_single)
@@ -462,7 +460,7 @@ cmd_op = do
 --
 vis_single :: VimMode
 vis_single =
-        let beginIns a = do write (a >> unsetMarkE) >> get >>= ins
+        let beginIns a = do write (a >> unsetMarkE) >> ins_mode
             yank = do mrk <- getMarkE
                       pt <- getPointE
                       readRegionE (mkVimRegion mrk pt) >>= setRegE
@@ -538,13 +536,13 @@ vis_multi = do
 -- lexer. Some of these commands also perform an action before switching.
 --
 cmd2other :: VimMode
-cmd2other = let beginIns a = write a >> get >>= ins
+cmd2other = let beginIns a = write a >> ins_mode
                 beginIns :: Action -> VimMode
         in choice [
             do event ':'     ; ex_mode ":",
             do event 'v'     ; vis_mode,
             do event 'R'     ; rep_mode,
-            do event 'i'     ; get >>= ins,
+            do event 'i'     ; ins_mode,
             do event 'I'     ; beginIns solE,
             do event 'a'     ; beginIns $ rightOrEolE 1,
             do event 'A'     ; beginIns eolE,
@@ -555,8 +553,8 @@ cmd2other = let beginIns a = write a >> get >>= ins
             do event 'S'     ; beginIns $ solE >> readLnE >>= setRegE >> killE,
             do event '/'     ; ex_mode "/",
 --          do event '?'   ; (with (not_implemented '?'), st{acc=[]}, Just $ cmd st),
-            do event '\ESC'  ; write msgClrE >> get >>= cmdMode,
-            do event keyIC   ; get >>= ins]
+            do event '\ESC'  ; write msgClrE,
+            do event keyIC   ; ins_mode]
 
 
 -- ---------------------------------------------------------------------
