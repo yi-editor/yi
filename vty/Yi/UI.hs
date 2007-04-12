@@ -51,7 +51,7 @@ module Yi.UI (
 
 import Prelude hiding (error)
 
-import Yi.Buffer (Point, FBuffer (..), pointB, curLn, getMarkB, getModeLine )
+import Yi.Buffer (Point, FBuffer (..), pointB, curLn, getMarkB, getModeLine, nameB )
 import Yi.FastBuffer( nelemsBIH ) -- gah this is ugly
 import Yi.Editor
 import Yi.Window as Window
@@ -241,10 +241,13 @@ doDrawWindow e focused sty win = do
     markPoint <- getMarkB b
     point <- pointB b
     bufData <- nelemsBIH (rawbuf b) (w*h') (tospnt win) -- read enough chars from the buffer.
+    let prompt = if isMini win then nameB b ++ " " else ""
 
-    --pointData <- nelemsB b 5 point/logPutStrLn $ "doDrawWindow point=" ++ show point ++ " after: " ++ show pointData
-
-    let (rendered,bos,cur) = drawText h' w (tospnt win) point markPoint selsty wsty (bufData ++ [(' ',attr)])
+    let (rendered,bos,cur) = drawText h' w 
+                                (tospnt win - length prompt) 
+                                point markPoint 
+                                selsty wsty 
+                                (zip prompt (repeat wsty) ++ bufData ++ [(' ',attr)])
                              -- we always add one character which can be used to position the cursor at the end of file
                                                                                                  
     modeLine <- if m then liftM Just (getModeLine b) else return Nothing
