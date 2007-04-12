@@ -374,6 +374,8 @@ withMinibuffer prompt completer act = do
   initialBuffer <- getBuffer
   Just initialWindow <- getWindow
   let innerAction :: Action
+      -- ^ Read contents of current buffer (which should be the minibuffer), and
+      -- apply it to the desired action
       innerAction = do historyFinish
                        lineString <- readAllE
                        closeMinibuffer
@@ -392,8 +394,6 @@ withMinibuffer prompt completer act = do
                     ("C-g", write closeMinibuffer)]
   historyStart
   spawnMinibufferE prompt (runKeymap (rebind rebindings normalKeymap))
-    -- | Read contents of current buffer (which should be the minibuffer), and
-    -- apply it to the desired action
     where closeMinibuffer = do b <- getBuffer; closeE; deleteBuffer b 
 
 scrollDownE :: Action
