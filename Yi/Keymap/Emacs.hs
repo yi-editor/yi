@@ -34,7 +34,6 @@ import Yi.Buffer
 import Data.Char
 import Data.Maybe
 import Data.List
-import Data.Dynamic
 import qualified Yi.UI as UI  -- FIXME this module should not depend on UI
 
 import Control.Monad
@@ -43,6 +42,7 @@ import System.FilePath
 import System.Directory
 
 import Yi.Editor
+import Yi.History
 
 -- * The keymap abstract definition
 
@@ -310,55 +310,6 @@ gotoLineE = withMinibuffer "goto line:" return  $ gotoLnE . read
 
 debug :: String -> Process
 debug = write . lift . logPutStrLn
-
-data History = History {_historyCurrent :: Int, 
-                        _historyContents :: [String]} 
-    deriving (Show, Typeable)
-instance Initializable History where
-    initial = return (History (-1) [])
-    
-
-historyUp :: EditorM ()
-historyUp = historyMove 1
-
-historyDown :: EditorM () 
-historyDown = historyMove (-1)
-
-historyStart :: EditorM ()
-historyStart = do
-  (History _cur cont) <- getDynamic
-  setDynamic (History 0 (nub ("":cont)))
-  debugHist
-
-historyFinish :: EditorM ()
-historyFinish = do
-  (History _cur cont) <- getDynamic
-  curValue <- readAllE
-  setDynamic $ History (-1) (nub $ dropWhile null $ (curValue:cont))
-
-debugHist :: EditorM ()
-debugHist = do
-  h :: History <- getDynamic
-  lift $ logPutStrLn (show h)
-
-historyMove :: Int -> EditorM ()
-historyMove delta = do
-  (History cur cont) <- getDynamic
-  curValue <- readAllE
-  let len = length cont
-      next = cur + delta
-      nextValue = cont !! next
-  case (next < 0, next >= len) of
-    (True, _) -> msgE "end of history, no next item."
-    (_, True) -> msgE "beginning of history, no previous item."
-    (_,_) -> do 
-         setDynamic (History next (take cur cont ++ [curValue] ++ drop (cur+1) cont))
-         debugHist
-         withBuffer $ \b -> do
-              sz <- sizeB b
-              moveTo b 0
-              deleteN b sz
-              insertN b nextValue
 
 commonPrefix :: [String] -> String
 commonPrefix [] = []

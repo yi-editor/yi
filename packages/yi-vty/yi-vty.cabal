@@ -17,6 +17,7 @@ exposed-modules:
  Yi.Eval
  Yi.Event
  Yi.FastBuffer
+ Yi.History
  Yi.Interact
  Yi.Kernel
  Yi.Keymap
