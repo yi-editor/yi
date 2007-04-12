@@ -819,7 +819,7 @@ switchToBufferWithNameE bufName = switchToBufferE =<< getBufferWithName bufName
 -- | Open a minibuffer window with the given prompt and keymap
 spawnMinibufferE :: String -> Keymap -> Action
 spawnMinibufferE prompt km =
-    do b <- stringToNewBuffer ("Minibuffer: " ++ prompt) [] (return km) 
+    do b <- stringToNewBuffer prompt [] (return km) 
        w <- UI.newWindow True b
        UI.setWindow w
 
