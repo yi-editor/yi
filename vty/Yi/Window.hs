@@ -35,7 +35,8 @@ import Data.Unique              ( Unique, newUnique, hashUnique )
 
 data Window =
     Window {
-        key         :: !Unique         -- ^ each window has a unique
+        isMini      :: !Bool           -- ^ Is this a mini-window?
+       ,key         :: !Unique         -- ^ each window has a unique
        ,bufkey      :: !Unique         -- ^ the buffer this window opens to
        ,mode        :: !Bool           -- ^ this window has modeline?
        ,height      :: !Int            -- ^ height of this window
@@ -72,11 +73,12 @@ instance Show Window where
 -- The origin, height and width should be calculated with reference to
 -- all existing windows.
 --
-emptyWindow :: FBuffer -> (Int,Int) -> IO Window
-emptyWindow b (h,w) = do
+emptyWindow :: Bool -> FBuffer -> (Int,Int) -> IO Window
+emptyWindow mini b (h,w) = do
     wu <- newUnique
     let win = Window {
-                    key       = wu
+                    isMini = mini
+                   ,key       = wu
                    ,mode      = False
                    ,bufkey    = (keyB b)
                    ,height    = h      -- - 1 for the cmdline?

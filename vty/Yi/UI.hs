@@ -440,21 +440,20 @@ doResizeAll = do
   modifyEditor_ $ \e -> do
     let i = ui e
     (h,w) <- readIORef $ scrsize i
-    let wls   = M.elems (windows e)
-    if null wls 
-      then return e 
-      else let (y,r) = getY h (length wls) -- why -1?
-               wls' = map (doresize w y) (init wls)
-               wls'' = let win = last wls
-                           in (doresize w (y+r-1) win : wls') 
-           in return e { windows = M.fromList $ mkAssoc wls'' }
-  withEditor $ \e -> logPutStrLn $ "After resize: " ++ show (map width $ getWindows e)
-
+    let (mwls, wls) = partition isMini $ M.elems (windows e)
+        (y,r) = getY (h - length mwls) (length wls) 
+        mwls' = map (doresize w 1) mwls
+        wls' = case wls of
+                 [] -> []
+                 (w0:ws) -> doresize w (y+r-1) w0 : map (doresize w y) ws
+    return e { windows = M.fromList $ mkAssoc (mwls' ++ wls') }
+  withEditor $ \e -> logPutStrLn $ "After resize: " ++ show (getWindows e)
+                     
     where doresize x y win = resize y x win
 
 -- | Turn on modelines of all windows
 turnOnML :: [Window] -> [Window]
-turnOnML = map $ \w -> w { mode = True }
+turnOnML = map $ \w -> w { mode = not (isMini w) }
 
 -- | Has the frame enough room for an extra window.
 hasRoomForExtraWindow :: EditorM Bool
@@ -480,7 +479,7 @@ setWindowBuffer b mw = do
     lift $ logPutStrLn $ "Setting buffer for " ++ show mw
     w'' <- case mw of 
              Just w -> do
-                     w' <- lift $ emptyWindow b (height w, width w)
+                     w' <- lift $ emptyWindow False b (height w, width w)
                      return $ w' { key = key w, mode = mode w } 
                      -- reuse the window's key (so it ends in the same place on the screen)
              Nothing -> newWindow False b -- if there is no window, just create a new one.
