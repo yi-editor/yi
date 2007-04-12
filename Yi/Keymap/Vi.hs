@@ -24,7 +24,7 @@
 -- The goal is strict vi emulation
 --
 
-module Yi.Keymap.Vi ( keymap, keymapPlus, ViMode ) where
+module Yi.Keymap.Vi ( keymap, ViMode ) where
 
 import Yi.Yi         hiding ( count )
 
@@ -54,8 +54,7 @@ type ViProc a = StateT ViState (Interact Char) a
 --
 data ViState =
         St { hist :: ([String],Int) -- ex-mode command history
-           , cmdMode :: ViMode      -- (maybe augmented) cmd mode lexer
-           , ins :: ViMode }        -- (maybe augmented) ins mode lexer
+           }
 
 --
 -- | Top level. Lazily consume all the input, generating a list of
@@ -69,17 +68,7 @@ keymap cs = setWindowFillE '~' : runProcess (runStateT cmd_mode defaultSt) (map 
 
 -- | default lexer state, just the normal cmd and insert mode. no mappings
 defaultSt :: ViState
-defaultSt = St { hist = ([],0), cmdMode = cmd_mode, ins = ins_mode }
-
--- | like keymap, but takes a supplied lexer, which is used to augment the
--- existing lexer. Useful for user-added binds (to command mode only!)
-keymapPlus :: ViMode -> ViMode
-keymapPlus lexer' = do 
-  cmd0 <- return . cmdMode =<< get
-  let cmd' = lexer' <++ cmd0
-  modify (\s -> s {cmdMode = cmd'})
-  cmd'
-  
+defaultSt = St { hist = ([],0) }
 
 ------------------------------------------------------------------------
 
@@ -323,19 +312,18 @@ cmd_op = do
 --
 cmd2other :: ViMode
 cmd2other = do c <- modeSwitchChar
-               ins' <- return ins `ap` get
                case c of
                  ':' -> ex_mode ":"
                  'R' -> rep_mode
-                 'i' -> ins'
-                 'I' -> write solE >> ins'
-                 'a' -> write (rightOrEolE 1) >> ins'
-                 'A' -> write eolE >> ins'
-                 'o' -> write (eolE >> insertE '\n') >> ins'
-                 'O' -> write (solE >> insertE '\n' >> upE) >> ins'
-                 'c' -> write (not_implemented 'c') >> ins'
-                 'C' -> write (readRestOfLnE >>= setRegE >> killE) >> ins'
-                 'S' -> write (solE >> readLnE >>= setRegE >> killE) >> ins'
+                 'i' -> ins_mode
+                 'I' -> write solE >> ins_mode
+                 'a' -> write (rightOrEolE 1) >> ins_mode
+                 'A' -> write eolE >> ins_mode
+                 'o' -> write (eolE >> insertE '\n') >> ins_mode
+                 'O' -> write (solE >> insertE '\n' >> upE) >> ins_mode
+                 'c' -> write (not_implemented 'c') >> ins_mode
+                 'C' -> write (readRestOfLnE >>= setRegE >> killE) >> ins_mode
+                 'S' -> write (solE >> readLnE >>= setRegE >> killE) >> ins_mode
 
                  '/' -> ex_mode "/"
 
