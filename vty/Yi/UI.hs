@@ -329,22 +329,17 @@ withStyle sty str = renderBS (styleToAttr sty) (B.pack str)
 -- | Window manipulation
 
 -- | Create a new window onto this buffer.
--- Top of screen of other windows needs to get adjusted
--- As does their modeslines.
---
 newWindow :: Bool -> FBuffer -> EditorM Window
-newWindow _mini b = modifyEditor $ \e -> do
-    (h,w) <- readIORef $ scrsize $ ui $ e
-    let wls   = M.elems $ windows e
-        (y,r) = getY h (1 + (length wls))   -- should be h-1..
-        wls'  = resizeAll wls y w
-        wls'' = turnOnML wls'
-    win  <- emptyWindow b (y+r-1,w) -- -1 for the modeline
-    let [win'] = (if null wls then id else turnOnML) [win]
-        e' = e { windows = M.fromList $ mkAssoc (win':wls'') }
-    logPutStrLn $ "createdWindow #" ++ show (hashUnique $ key win')
-    return (e', win')
-
+newWindow mini b = do 
+  k <- modifyEditor $ \e -> do
+    win  <- emptyWindow mini b (1,1)
+    let wls  = win : M.elems (windows e)
+        wls' = if length wls > 1 then turnOnML wls else wls
+        e' = e { windows = M.fromList $ mkAssoc (wls') }
+    logPutStrLn $ "created #" ++ show win
+    return (e', key win)
+  doResizeAll
+  readEditor $ \e -> findWindowWith e (Just k)
 
 -- ---------------------------------------------------------------------
 -- | Grow the given window, and pick another to shrink
@@ -421,11 +416,6 @@ deleteWindow (Just win) = do
 
 ------------------------------------------------------------------------
 
--- | Update height of windows in window set
-resizeAll :: [Window] -> Int -> Int -> [Window]
-resizeAll wls y x = flip map wls (\w -> resize y x w)
-
-
 -- | Reset the heights and widths of all the windows;
 -- refresh the display.
 refreshAll :: EditorM ()
@@ -446,7 +436,8 @@ scheduleRefresh' tui = tryPutMVar (uiRefresh tui) () >> return ()
 
 -- | Reset the heights and widths of all the windows
 doResizeAll :: EditorM ()
-doResizeAll = modifyEditor_ $ \e -> do
+doResizeAll = do 
+  modifyEditor_ $ \e -> do
     let i = ui e
     (h,w) <- readIORef $ scrsize i
     let wls   = M.elems (windows e)
@@ -457,6 +448,7 @@ doResizeAll = modifyEditor_ $ \e -> do
                wls'' = let win = last wls
                            in (doresize w (y+r-1) win : wls') 
            in return e { windows = M.fromList $ mkAssoc wls'' }
+  withEditor $ \e -> logPutStrLn $ "After resize: " ++ show (map width $ getWindows e)
 
     where doresize x y win = resize y x win
 
