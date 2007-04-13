@@ -393,7 +393,7 @@ withMinibuffer prompt completer act = do
                     ("TAB", write (completionFunction completer)),
                     ("C-g", write closeMinibuffer)]
   historyStart
-  spawnMinibufferE prompt (runKeymap (rebind rebindings normalKeymap))
+  spawnMinibufferE (prompt ++ " ") (runKeymap (rebind rebindings normalKeymap))
     where closeMinibuffer = do b <- getBuffer; closeE; deleteBuffer b 
 
 scrollDownE :: Action
@@ -440,4 +440,4 @@ showFailures p = do result <- consumeLookahead p
 -- when crashing.
 
 runKeymap :: Process -> Keymap
-runKeymap km evs = (setSynE "haskell" : runProcess (forever $ km) evs)
+runKeymap = runProcess . forever

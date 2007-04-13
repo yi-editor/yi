@@ -241,7 +241,7 @@ doDrawWindow e focused sty win = do
     markPoint <- getMarkB b
     point <- pointB b
     bufData <- nelemsBIH (rawbuf b) (w*h') (tospnt win) -- read enough chars from the buffer.
-    let prompt = if isMini win then nameB b ++ " " else ""
+    let prompt = if isMini win then nameB b else ""
 
     let (rendered,bos,cur) = drawText h' w 
                                 (tospnt win - length prompt) 

@@ -323,6 +323,7 @@ withWindow f = modifyEditor $ \e -> do
 withBuffer :: (FBuffer -> IO a) -> EditorM a
 withBuffer f = withWindow (const f)
 
+-- | Return the current buffer
 getBuffer :: EditorM FBuffer
 getBuffer = withBuffer return
 
