@@ -34,6 +34,10 @@ import Data.Maybe           ( fromMaybe )
 import Control.Exception    ( ioErrors, try, evaluate )
 import Control.Monad.State
 
+import Yi.Editor
+import Yi.History
+import Yi.UI as UI
+
 --
 -- What's missing?
 --   fancier :s//
@@ -128,9 +132,12 @@ tabifySpacesOnLineAndShift numOfShifts =
 --    . also, maybe we shouldn't refresh automatically?
 --
 keymap :: Keymap
-keymap cs = setWindowFillE '~' : winStyleAct : runProcess (runStateT cmd_mode defaultSt) (map eventToChar cs)
+keymap cs = setWindowFillE '~' : winStyleAct : runVim cmd_mode cs
     where
       winStyleAct = unsetMarkE >> setWindowStyleE defaultVimUiStyle
+
+runVim :: VimMode -> Keymap
+runVim p evs = runProcess (runStateT p defaultSt) (map eventToChar evs)
 
 -- | default lexer state, just the normal cmd and insert mode. no mappings
 defaultSt :: VimState
@@ -627,50 +634,40 @@ rep_char = write . fn =<< anyButEsc
                             if e then insertE c else writeE c >> rightE
 
 -- ---------------------------------------------------------------------
--- Ex mode. We also lex regex searching mode here.
+-- Ex mode. We also process regex searching mode here.
 
---
--- | ex mode is either accumulating input or, on \n, executing the command
---
-ex_mode :: String -> VimMode
-ex_mode s0 = do write cmdlineFocusE >> loop s0 >> write cmdlineUnFocusE
-    where 
-      loop s = do
-        write (msgE s)
-        choice [do c <- anyButDelNlArrow; ex_mode (s++[c]),
-                do enter; ex_eval s,
-                do event '\ESC'; return (),
-                do delete; ex_mode (take (length s - 1) s),
-                do event keyUp; histMove True >>= ex_mode,
-                do event keyDown; histMove False >>= ex_mode]
+spawn_ex_buffer :: String -> Action
+spawn_ex_buffer prompt = do
+  initialBuffer <- getBuffer
+  Just initialWindow <- getWindow
+  -- The above ensures that the action is performed on the buffer that originated the minibuffer.
+  let closeMinibuffer = do b <- getBuffer; closeE; deleteBuffer b 
       anyButDelNlArrow = oneOf $ any' \\ (enter' ++ delete' ++ ['\ESC',keyUp,keyDown])
+      ex_buffer_finish = do 
+        historyFinish
+        lineString <- readAllE
+        closeMinibuffer
+        UI.setWindow initialWindow
+        switchToBufferE initialBuffer 
+        ex_eval (head prompt : lineString)
+      ex_process :: VimMode
+      ex_process = 
+          choice [do c <- anyButDelNlArrow; write $ insertNE [c],
+                  do enter; write ex_buffer_finish,
+                  do event '\ESC'; write closeMinibuffer,
+                  do delete; write bdeleteE,
+                  do event keyUp; write historyUp,
+                  do event keyDown; write historyDown]
+  historyStart
+  spawnMinibufferE prompt (runVim $ forever ex_process)
+
+
+ex_mode = write . spawn_ex_buffer
                            
--- TODO when you go up, then down, you need 2 keypresses to go up again.
-histMove :: Bool -> VimProc String
-histMove up = do
-  (h,i) <- return hist `ap` get
-  let (s,i') = msg (h,i)
-  modify $ \st -> st {hist=(h,i')}
-  return s
-      where
-        msg (h,i)
-               | null h = (":",0)
-               | up     = if i < length h - 1
-                           then (h !! i, i+1)
-                           else (last h, length h - 1)
-               | not up = if i > 0
-                           then (h !! i, i-1)
-                           else (head h, 0)
-               | otherwise = error "the impossible happened"
-
-
---
--- eval an ex command to an Action, also appends to the ex history
---
-ex_eval :: String -> VimMode
+-- | eval an ex command to an Action, also appends to the ex history
+ex_eval :: String -> Action
 ex_eval cmd = do
-  modify $ \st -> st {hist = (cmd:(fst $ hist st), snd $ hist st)}
-  write $ case cmd of
+  case cmd of
         -- regex searching
           ('/':pat) -> searchE (Just pat) [] GoRight
 
