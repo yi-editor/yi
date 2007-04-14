@@ -46,7 +46,7 @@ import Yi.CharMove
 import Yi.Style
 import Yi.Search
 import Yi.Region
-import Yi.Interact
+import Yi.Interact hiding (Interact, runProcess, write)
 import Yi.Debug
 import Yi.Keymap
 import Control.Monad

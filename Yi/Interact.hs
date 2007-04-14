@@ -58,7 +58,6 @@ module Yi.Interact (
   -- * Primitive operations
   MonadInteract (..),
   (+++),
-  gather,     -- :: Interact a -> Interact (String, a)
   
   -- * Other operations
   oneOf,
@@ -88,7 +87,6 @@ module Yi.Interact (
   manyTill,   -- :: Interact a -> Interact end -> Interact [a]
   forever,
   -- * Running a parser
-  runProcessParser, -- :: Interact a -> ReadS a
   runProcess, 
   
   -- * Properties
@@ -99,11 +97,11 @@ module Yi.Interact (
 import Control.Monad ( MonadPlus(..), sequence, liftM2 )
 import Control.Monad.State hiding ( get )
 
-import Yi.Keymap ( Action )
 infixr 5 +++, <++
 
-class (Monad m, MonadPlus m) => MonadInteract m e | m -> e where
-    write :: Action -> m ()
+
+class (Monad m0, Monad m, MonadPlus m) => MonadInteract m m0 e | m -> m0 e where
+    write :: m0 a -> m a
     -- ^ Outputs an action.
     anyEvent :: m e
     -- ^ Consumes and returns the next character.
@@ -115,14 +113,17 @@ class (Monad m, MonadPlus m) => MonadInteract m e | m -> e where
     --   In that case, it just consumes the the amount of characters demanded by its argument for it to fail.
     --   Typically this will be used in a "many" combinator
 
-instance MonadInteract (Interact event) event where
+
+instance Monad m => MonadInteract (Interact event m) m event where
     write = writeL
     anyEvent = get
     (<++) = mLeftPlusL
     consumeLookahead = consumeLookaheadL
 
+
+
 -- Needs -fallow-undecidable-instances
-instance MonadInteract m e => MonadInteract (StateT s m) e where
+instance MonadInteract m m0 e => MonadInteract (StateT s m) m0 e where
     write = lift . write
     anyEvent = lift anyEvent
     m <++ n = StateT $ \s -> runStateT m s <++ runStateT n s
@@ -135,34 +136,27 @@ instance MonadInteract m e => MonadInteract (StateT s m) e where
 -- The P type
 -- is representation type -- should be kept abstract
 
-data P event a
-  = Get (event -> P event a)
-  | Look Int ([event] -> P event a)
-  | Fail
-  | Result a (P event a)
-  | Write Action (() -> P event a) -- TODO: Remove the dummy () parameter ?
-
-comap :: (ev1 -> ev2) -> P ev2 a -> P ev1 a
-comap f (Get g) = Get (\ev1 -> comap f (g (f ev1)))
-comap f (Look n g) = Look n (\evs1 -> comap f (g (map f evs1)))
-comap _f Fail = Fail
-comap f (Result a p) = Result a (comap f p)
-comap f (Write action g) = Write action (\u -> comap f (g u))
+data P event m a where
+  Get :: (event -> P event m a) -> P event m a
+  Look :: Int -> ([event] -> P event m a) -> P event m a
+  Fail :: P event m a
+  Result :: a -> P event m a -> P event m a
+  Write :: m b -> (b -> P event m a) -> P event m a
 
 -- Monad, MonadPlus
 
-instance Monad (P event) where
+instance Monad (P event m) where
   return x = Result x Fail
 
   (Get f)      >>= k = Get (\c -> f c >>= k)
   (Look n f)   >>= k = Look n (\s -> f s >>= k)
   Fail         >>= _ = Fail
-  (Write w p)  >>= k = Write w (\u -> p u >>= k)
+  (Write w p)  >>= k = Write w (\b -> p b >>= k)
   (Result x p) >>= k = k x `mplus` (p >>= k)
 
   fail _ = Fail
 
-instance MonadPlus (P event) where
+instance MonadPlus (P event m) where
   mzero = Fail
 
   -- In case of conflicting Write, we commit to the leftmost writer.
@@ -189,76 +183,75 @@ instance MonadPlus (P event) where
 -- ---------------------------------------------------------------------------
 -- The Interact type
 
-newtype Interact event a = R (forall b . (a -> P event b) -> P event b)
+newtype Interact event m a = R (forall b . (a -> P event m b) -> P event m b)
 
 -- Functor, Monad, MonadPlus
 
-instance Functor (Interact event) where
+instance Functor (Interact event m) where
   fmap h (R f) = R (\k -> f (k . h))
 
-instance Monad (Interact event) where
+instance Monad (Interact event m) where
   return x  = R (\k -> k x)
   fail _    = R (\_ -> Fail)
   R m >>= f = R (\k -> m (\a -> let R m' = f a in m' k))
 
-instance MonadPlus (Interact event) where
+instance MonadPlus (Interact event m) where
   mzero = pfail
   mplus = mplusL
 
 -- ---------------------------------------------------------------------------
 -- Operations over P
+run :: P event m a -> [event] -> Bool
+run (Get f)     (c:s)  = run (f c) s
+run (Look _ f)     s   = run (f s) s
+run (Result _x _p) _   = True
+run (Write _w _p)  _   = True
+run _              _   = False
 
-run :: P event a -> [event] -> [(a,[event])]
-run (Get f)      (c:s) = run (f c) s
-run (Look _ f)   s     = run (f s) s
-run (Result x p) s     = (x,s) : run p s
-run (Write _ p)  s     = run (p ()) s -- drop the written things in this version.
-run _            _     = []
 
-
-runWrite :: P event a -> [event] -> [Action]
+runWrite :: Monad m => P event m a -> [event] -> m a
 runWrite (Get f)      (c:s) = runWrite (f c) s
 runWrite (Look _ f)   s     = runWrite (f s) s
 runWrite (Result _ p) s     = runWrite p s
-runWrite (Write w p)  s     = w : runWrite (p ()) s
-runWrite _            _     = []
+runWrite (Write w p)  s     = do a <- w; runWrite (p a) s
+runWrite _            _     = fail "Interact: no parse"
 
 
 -- | Returns the amount of demanded input for running the given parser.
-consumed :: P event a -> [event] -> Int
+consumed :: P event m a -> [event] -> Int
 consumed (Get f)       (c:s) = 1 + consumed (f c) s
 consumed (Look (-1) _) _     = error "indefinite look is not supported by consumeLookahead"
 consumed (Look n f)    s     = max n (consumed (f s) s)
 consumed (Result _ p)  s     = consumed p s
-consumed (Write _ p)   s     = consumed (p ()) s
+consumed (Write _ _)   _     = 0
 consumed _             _     = 0
 
 -- ---------------------------------------------------------------------------
 -- Operations over Interact
 
-writeL :: Action -> Interact event ()
+writeL :: m a -> Interact event m a
 writeL w = R (Write w)
 
-get :: Interact event event
+get :: Interact event m event
 get = R Get
 
-look :: Int -> Interact event [event]
+look :: Int -> Interact event m [event]
 -- ^ Look-ahead: returns the part of the input that is left, without
 --   consuming it. @n@ chars will be demanded.
 look n = R (Look n)
 
-pfail :: Interact event a
+pfail :: Interact event m a
 -- ^ Always fails.
 pfail = R (\_ -> Fail)
 
-(+++) :: MonadInteract m e => m a -> m a -> m a
+(+++) :: MonadInteract m m0 e => m a -> m a -> m a
 (+++) = mplus
 
-mplusL :: Interact event a -> Interact event a -> Interact event a
+mplusL :: Interact event m a -> Interact event m a -> Interact event m a
 -- ^ Symmetric choice.
 R f1 `mplusL` R f2 = R (\k -> f1 k `mplus` f2 k)
 
-mLeftPlusL :: Interact event a -> Interact event a -> Interact event a
+mLeftPlusL :: Interact event m a -> Interact event m a -> Interact event m a
 R r `mLeftPlusL` q =
   do s <- look 0 -- look 0 bypasses the protection in 'consumed'; 
                  -- it's ok because we do more specific looks below.
@@ -270,59 +263,47 @@ R r `mLeftPlusL` q =
   probe p@(Write  _ _) _     n = R (Look n) >> discard n >> R (p >>=)
   probe _              _     n = R (Look n) >> q
 
-discard :: Int -> Interact event ()
+discard :: Int -> Interact event m ()
 discard 0 = return ()
 discard n  = get >> discard (n-1)
 
-consumeLookaheadL :: Interact event a -> Interact event (Either [event] a)
+consumeLookaheadL :: Interact event m a -> Interact event m (Either [event] a)
 consumeLookaheadL (R f) = do
   s <- look (-1)
   case run (f return) s of    
-    [] -> let n = consumed (f return) s in discard n >> return (Left (take n s))
-    _ -> R f >>= return . Right
-
-gather :: Interact event a -> Interact event ([event], a)
--- ^ Transforms a parser into one that does the same, but
---   in addition returns the exact characters read.
-gather (R m) =
-  R (\k -> gath id (m (\a -> return (\s -> k (s,a)))))  
- where
-  gath l (Get f)      = Get (\c -> gath (l.(c:)) (f c))
-  gath _ Fail         = Fail
-  gath l (Look n f)   = Look n (\s -> gath l (f s))
-  gath l (Result k p) = k (l []) `mplus` gath l p
-  gath l (Write w p)  = Write w (\k -> gath l (p k))
+    False -> let n = consumed (f return) s in discard n >> return (Left (take n s))
+    True -> R f >>= return . Right
 
 -- ---------------------------------------------------------------------------
 -- Derived operations
-oneOf :: (Eq event, MonadInteract m event) => [event] -> m event
+oneOf :: (Eq event, MonadInteract m m0 event) => [event] -> m event
 oneOf s = satisfy (`elem` s)
 
-satisfy :: MonadInteract m event => (event -> Bool) -> m event
+satisfy :: MonadInteract m m0 event => (event -> Bool) -> m event
 -- ^ Consumes and returns the next character, if it satisfies the
 --   specified predicate.
 satisfy p = do c <- anyEvent; if p c then return c else fail "not satisfy'ed"
 
-event :: (Eq event, MonadInteract m event) => event -> m event
+event :: (Eq event, MonadInteract m m0 event) => event -> m event
 -- ^ Parses and returns the specified character.
 event c = satisfy (c ==)
 
-events :: (Eq event, MonadInteract m event) => [event] -> m [event]
+events :: (Eq event, MonadInteract m m0 event) => [event] -> m [event]
 -- ^ Parses and returns the specified list of events (lazily). 
 events = mapM event
 
-choice :: (MonadInteract m e) => [m a] -> m a
+choice :: (MonadInteract m m0 e) => [m a] -> m a
 -- ^ Combines all parsers in the specified list.
 choice []     = fail "No choice succeeds"
 choice [p]    = p
 choice (p:ps) = p +++ choice ps
 
-count :: Int -> Interact event a -> Interact event [a]
+count :: Int -> Interact event m a -> Interact event m [a]
 -- ^ @count n p@ parses @n@ occurrences of @p@ in sequence. A list of
 --   results is returned.
 count n p = sequence (replicate n p)
 
-between :: Interact event open -> Interact event close -> Interact event a -> Interact event a
+between :: Interact event m open -> Interact event m close -> Interact event m a -> Interact event m a
 -- ^ @between open close p@ parses @open@, followed by @p@ and finally
 --   @close@. Only the value of @p@ is returned.
 between open close p = do open
@@ -330,83 +311,83 @@ between open close p = do open
                           close
                           return x
 
-option :: (MonadInteract m e) => a -> m a -> m a
+option :: (MonadInteract m m0 e) => a -> m a -> m a
 -- ^ @option x p@ will either parse @p@ or return @x@ without consuming
 --   any input.
 option x p = p +++ return x
 
-optional :: (MonadInteract m e) => m a -> m ()
+optional :: (MonadInteract m m0 e) => m a -> m ()
 -- ^ @optional p@ optionally parses @p@ and always returns @()@.
 optional p = (p >> return ()) +++ return ()
 
-optional' :: (MonadInteract m e) => m a -> m ()
+optional' :: (MonadInteract m m0 e) => m a -> m ()
 -- ^ @optional' p@ optionally parses @p@ and always returns @()@.
 -- ^ Same as 'optional', but the preference is to running the given parser, using '<++'.
 optional' p = (p >> return ()) <++ return ()
 
 
-many :: (MonadInteract m e) => m a -> m [a]
+many :: (MonadInteract m m0 e) => m a -> m [a]
 -- ^ Parses zero or more occurrences of the given parser.
 many p = return [] +++ many1 p
 
-many1 :: (MonadInteract m e) => m a -> m [a]
+many1 :: (MonadInteract m m0 e) => m a -> m [a]
 -- ^ Parses one or more occurrences of the given parser.
 many1 p = liftM2 (:) p (many p)
 
-many' :: (MonadInteract m e) => m a -> m [a]
+many' :: (MonadInteract m m0 e) => m a -> m [a]
 -- ^ Parses zero or more occurrences of the given parser.
 -- ^ Same as 'many', but the preference is to the given parser instead of leaving the loop, using '<++'.
 many' p = many1' p <++ return []
 
-many1' :: (MonadInteract m e) => m a -> m [a]
+many1' :: (MonadInteract m m0 e) => m a -> m [a]
 -- ^ Parses one or more occurrences of the given parser.
 -- ^ Same as 'many1', but the preference is to the given parser instead of leaving the loop, using '<++'.
 many1' p = liftM2 (:) p (many' p)
 
 
-skipMany :: (MonadInteract m e) => m a -> m ()
+skipMany :: (MonadInteract m m0 e) => m a -> m ()
 -- ^ Like 'many', but discards the result.
 skipMany p = many p >> return ()
 
-skipMany1 :: (MonadInteract m e) => m a -> m ()
+skipMany1 :: (MonadInteract m m0 e) => m a -> m ()
 -- ^ Like 'many1', but discards the result.
 skipMany1 p = p >> skipMany p
 
-sepBy :: (MonadInteract m e) => m a -> m sep -> m [a]
+sepBy :: (MonadInteract m m0 e) => m a -> m sep -> m [a]
 -- ^ @sepBy p sep@ parses zero or more occurrences of @p@, separated by @sep@.
 --   Returns a list of values returned by @p@.
 sepBy p sep = sepBy1 p sep +++ return []
 
-sepBy1 :: (MonadInteract m e) => m a -> m sep -> m [a]
+sepBy1 :: (MonadInteract m m0 e) => m a -> m sep -> m [a]
 -- ^ @sepBy1 p sep@ parses one or more occurrences of @p@, separated by @sep@.
 --   Returns a list of values returned by @p@.
 sepBy1 p sep = liftM2 (:) p (many (sep >> p))
 
-endBy :: (MonadInteract m e) => m a -> m sep -> m [a]
+endBy :: (MonadInteract m m0 e) => m a -> m sep -> m [a]
 -- ^ @endBy p sep@ parses zero or more occurrences of @p@, separated and ended
 --   by @sep@.
 endBy p sep = many (do x <- p ; sep ; return x)
 
-endBy1 :: (MonadInteract m e) => m a -> m sep -> m [a]
+endBy1 :: (MonadInteract m m0 e) => m a -> m sep -> m [a]
 -- ^ @endBy p sep@ parses one or more occurrences of @p@, separated and ended
 --   by @sep@.
 endBy1 p sep = many1 (do x <- p ; sep ; return x)
 
-chainr :: (MonadInteract m e) => m a -> m (a -> a -> a) -> a -> m a
+chainr :: (MonadInteract m m0 e) => m a -> m (a -> a -> a) -> a -> m a
 -- ^ @chainr p op x@ parses zero or more occurrences of @p@, separated by @op@.
 --   Returns a value produced by a /right/ associative application of all
 --   functions returned by @op@. If there are no occurrences of @p@, @x@ is
 --   returned.
 chainr p op x = chainr1 p op +++ return x
 
-chainl :: (MonadInteract m e) => m a -> m (a -> a -> a) -> a -> m a
+chainl :: (MonadInteract m m0 e) => m a -> m (a -> a -> a) -> a -> m a
 -- ^ @chainl p op x@ parses zero or more occurrences of @p@, separated by @op@.
 --   Returns a value produced by a /left/ associative application of all
 --   functions returned by @op@. If there are no occurrences of @p@, @x@ is
 --   returned.
 chainl p op x = chainl1 p op +++ return x
 
-chainr1 :: (MonadInteract m e) => m a -> m (a -> a -> a) -> m a
+chainr1 :: (MonadInteract m m0 e) => m a -> m (a -> a -> a) -> m a
 -- ^ Like 'chainr', but parses one or more occurrences of @p@.
 chainr1 p op = scan
   where scan   = p >>= rest
@@ -415,7 +396,7 @@ chainr1 p op = scan
                     return (f x y)
                  +++ return x
 
-chainl1 :: (MonadInteract m e) => m a -> m (a -> a -> a) -> m a
+chainl1 :: (MonadInteract m m0 e) => m a -> m (a -> a -> a) -> m a
 -- ^ Like 'chainl', but parses one or more occurrences of @p@.
 chainl1 p op = p >>= rest
   where rest x = do f <- op
@@ -423,7 +404,7 @@ chainl1 p op = p >>= rest
                     rest (f x y)
                  +++ return x
 
-manyTill :: (MonadInteract m e) => m a -> m end -> m [a]
+manyTill :: (MonadInteract m m0 e) => m a -> m end -> m [a]
 -- ^ @manyTill p end@ parses zero or more occurrences of @p@, until @end@
 --   succeeds. Returns a list of values returned by @p@.
 manyTill p end = scan
@@ -432,18 +413,8 @@ manyTill p end = scan
 forever :: Monad m => m a -> m b
 forever f = f >> forever f
 
--- ---------------------------------------------------------------------------
--- Converting between Interact event and Read
-
-runProcessParser :: Interact event a -> [event] -> [(a,[event])]
--- ^ Converts a process into a Haskell ReadS-style parsing function. (for debugging)
-runProcessParser (R f) = run (f return)
-
-
-
-runProcess :: Interact event a -> [event] -> [Action]
+runProcess :: Monad m => Interact event m a -> [event] -> m a
 -- ^ Converts a process into a function that maps input to output.
 -- The process does not hold to the input stream (no space leak) and
 -- produces the output as soon as possible.
 runProcess (R f) = runWrite (f return)
-
