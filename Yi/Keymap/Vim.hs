@@ -57,19 +57,7 @@ defaultVimUiStyle = Style.uiStyle { selected = Style.modeline_focused Style.uiSt
 
 type VimMode = VimProc ()
 
-type VimProc a = StateT VimState (Interact Char) a
-
-
---
--- state threaded through the lexer
---
--- In vi, you may add bindings (:map) to cmd or insert mode. We thus
--- carry around the current cmd and insert lexers in the state. Calls to
--- switch editor modes therefore use the lexers in the state.
---
-data VimState =
-        St { hist :: ([String],Int) -- ex-mode command history
-           }
+type VimProc a = (Interact Char) a
 
 ------------------------------------------------------------------------
 --
@@ -137,11 +125,7 @@ keymap cs = setWindowFillE '~' : winStyleAct : runVim cmd_mode cs
       winStyleAct = unsetMarkE >> setWindowStyleE defaultVimUiStyle
 
 runVim :: VimMode -> Keymap
-runVim p evs = runProcess (runStateT p defaultSt) (map eventToChar evs)
-
--- | default lexer state, just the normal cmd and insert mode. no mappings
-defaultSt :: VimState
-defaultSt = St { hist = ([],0) }
+runVim p evs = runProcess p (map eventToChar evs)
 
 ------------------------------------------------------------------------
 
