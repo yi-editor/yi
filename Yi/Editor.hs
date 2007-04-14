@@ -183,7 +183,7 @@ bufferEventLoop e b getKm = eventLoop
     eventLoop :: IO ()
     eventLoop = do
       repeatM_ $ do km <- runReaderT getKm e -- get the new version of the keymap every time we need to start it.
-                    handle handler (run $ runKeymap km)
+                    handle handler (run $ runKeymap $ I.forever km)
 
 deleteBuffer :: FBuffer -> EditorM ()
 deleteBuffer b = modifyEditor_ $ \e-> do

@@ -139,7 +139,7 @@ runVim = comap eventToChar
 -- count is stored in the lexer state. also the replace cmd, which
 -- consumes one char of input, and commands that switch modes.
 cmd_mode :: VimMode
-cmd_mode = forever (choice [cmd_eval,eval cmd_move,cmd2other,cmd_op])
+cmd_mode = choice [cmd_eval,eval cmd_move,cmd2other,cmd_op]
 
 eval :: VimProc Action -> VimMode
 eval p = do a <- p; write a
@@ -645,7 +645,7 @@ spawn_ex_buffer prompt = do
                   do event keyUp; write historyUp,
                   do event keyDown; write historyDown]
   historyStart
-  spawnMinibufferE prompt (runVim $ forever ex_process)
+  spawnMinibufferE prompt (runVim $ ex_process)
 
 
 ex_mode = write . spawn_ex_buffer

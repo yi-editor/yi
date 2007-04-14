@@ -72,7 +72,7 @@ runVi = comap eventToChar
 -- count is stored in the lexer state. also the replace cmd, which
 -- consumes one char of input, and commands that switch modes.
 cmd_mode :: ViMode
-cmd_mode = forever (choice [cmd_eval,eval cmd_move,cmd2other,cmd_op])
+cmd_mode = choice [cmd_eval,eval cmd_move,cmd2other,cmd_op]
 
 eval :: ViProc Action -> ViMode
 eval p = do a <- p; write a
