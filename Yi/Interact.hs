@@ -54,7 +54,10 @@ Implementation notes:
 module Yi.Interact ( 
   -- * The 'Interact' type
   Interact,      -- :: * -> *; instance Functor, Monad, MonadPlus
-  
+
+  -- * Lifting the event type
+  comap,
+
   -- * Primitive operations
   MonadInteract (..),
   (+++),
@@ -136,12 +139,40 @@ instance MonadInteract m m0 e => MonadInteract (StateT s m) m0 e where
 -- The P type
 -- is representation type -- should be kept abstract
 
-data P event m a where
-  Get :: (event -> P event m a) -> P event m a
-  Look :: Int -> ([event] -> P event m a) -> P event m a
-  Fail :: P event m a
-  Result :: a -> P event m a -> P event m a
-  Write :: m b -> (b -> P event m a) -> P event m a
+data P event m a 
+    = Get (event -> P event m a)
+    | Look Int ([event] -> P event m a)
+    | Fail
+    | Result a (P event m a)
+    | forall b. Write (m b) (b -> P event m a) 
+
+-- Co-functor, on the event argument
+comapP :: (ev1 -> ev2) -> P ev2 m a -> P ev1 m a
+comapP f (Get g) = Get (\ev1 -> comapP f (g (f ev1)))
+comapP f (Look n g) = Look n (\evs1 -> comapP f (g (map f evs1)))
+comapP _f Fail = Fail
+comapP f (Result a p) = Result a (comapP f p)
+comapP f (Write action g) = Write action (\u -> comapP f (g u))
+
+-- Functor, on the event argument
+-- NOTE: This is a partial function.
+-- It can be used to map on the "Results" only, not the computations depending on input.
+f2map :: (ev1 -> ev2) -> P ev1 m a -> P ev2 m a
+f2map _ Fail = Fail
+f2map f (Result a p) = Result a (f2map f p)
+f2map f (Write action g) = Write action (\u -> f2map f (g u))
+
+f2map' :: (ev1 -> ev2) -> (b -> P ev1 m a) -> (b -> P ev2 m a)
+f2map' h f = \b -> f2map h (f b)
+
+-- | Cofunctor on the the event parameter. This can be used to convert
+-- from a specific event type to a general one. (e.g. from
+-- full-fleged events to chars)
+
+comap :: (ev1 -> ev2) -> Interact ev2 m a -> Interact ev1 m a 
+comap h (R f) = R (\k -> comapP h (f (f2map' h k)))
+-- NOTE: we use the partial function f2map'; but that's ok since the
+-- generator parameter of the Interact type is always a result case.
 
 -- Monad, MonadPlus
 
@@ -418,3 +449,4 @@ runProcess :: Monad m => Interact event m a -> [event] -> m a
 -- The process does not hold to the input stream (no space leak) and
 -- produces the output as soon as possible.
 runProcess (R f) = runWrite (f return)
+
