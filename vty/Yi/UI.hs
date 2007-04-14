@@ -196,15 +196,13 @@ refresh = do
     (_yss,xss) <- readIORef (scrsize (ui e))
     Yi.Vty.update (vty $ ui e) 
       pic {pImage = vertcat wImages <-> withStyle (window $ uistyle e) (take xss $ cmd ++ repeat ' '),
-           pCursor = if cmdlinefocus e
-                     then Cursor (length cmd) (sum $ map height $ ws)
-                     else case getWindowOf e of
-                            -- calculate origin of focused window
-                            -- sum of heights of windows above this one on screen.
-                            -- needs to be shifted 'x' by the width of the tabs on this line
-                            Just w -> let (y,x) = cursor w in
-                                      Cursor x (y + (sum $ map height $ takeWhile (/= w) $ ws))
-                            Nothing -> NoCursor}
+           pCursor = case getWindowOf e of
+                       -- calculate origin of focused window
+                       -- sum of heights of windows above this one on screen.
+                       -- needs to be shifted 'x' by the width of the tabs on this line
+                       Just w -> let (y,x) = cursor w in
+                                 Cursor x (y + (sum $ map height $ takeWhile (/= w) $ ws))
+                       Nothing -> NoCursor}
   return ()
 
 updateWindows :: EditorM ()

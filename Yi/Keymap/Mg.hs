@@ -447,9 +447,8 @@ metaOMode = do c <- oneOf metaoKeysList; keys2action [m_ 'O',c]; write msgClrE
 echoMode :: String -> Interact Char (Maybe String)
 echoMode prompt = do 
   write (lift $ logPutStrLn "echoMode")
-  write cmdlineFocusE 
   result <- lineEdit []
-  write (msgClrE >> cmdlineUnFocusE)
+  write msgClrE
   return result
     where lineEdit s =
               do write $ msgE (prompt ++ s)
@@ -495,15 +494,13 @@ describeChar prompt acc = do
   c <- anything
   let keys = acc ++ [c]
   case M.lookup keys keys2extended of
-            Just ex -> write $ do msgE $ (printable keys) ++ " runs the command " ++ ex
-                                  cmdlineUnFocusE
+            Just ex -> write $ msgE $ (printable keys) ++ " runs the command " ++ ex
             Nothing ->
                 -- only continue if this is the prefix of something in the table
                 if any (isPrefixOf keys) (M.keys keys2extended)
                    then do write $ msgE (prompt ++ keys)
                            describeChar prompt keys
-                   else write $ do msgE $ printable keys ++ " is not bound to any function"
-                                   cmdlineUnFocusE
+                   else write $ msgE $ printable keys ++ " is not bound to any function"
 
 ------------------------------------------------------------------------
 -- | Reading a filename, to open a buffer

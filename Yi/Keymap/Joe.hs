@@ -170,9 +170,7 @@ simpleq prompt initial act = do
 echoMode :: String -> String -> JoeProc (Maybe String)
 echoMode prompt initial = do 
   write (lift $ logPutStrLn "echoMode")
-  write cmdlineFocusE 
   result <- lineEdit initial
-  write cmdlineUnFocusE
   return result
     where lineEdit s =
               do write $ msgE (prompt ++ s)

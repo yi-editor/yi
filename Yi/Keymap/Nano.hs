@@ -121,8 +121,7 @@ cmdCharFM =
         -- | print a message and switch to sub-mode lexer for Y\/N questions
         --
         switch2WriteMode = do
-            write $ do msgE "Save modified buffer (ANSWERING \"No\" WILL DESTROY CHANGES) ? "
-                       cmdlineFocusE
+            write $ msgE "Save modified buffer (ANSWERING \"No\" WILL DESTROY CHANGES) ? "
             c <- anyChar "ynYN"
             when (toLower c == 'y') $ write fwriteE
             write quitE
@@ -153,8 +152,7 @@ cmdSwitch = choice [event c >> echoMode prompt (\s -> anyChar "\n\r" >> write (a
 searchChar :: NanoMode
 searchChar = do 
   event '\^W'
-  write $ do cmdlineFocusE
-             mre <- getRegexE
+  write $ do mre <- getRegexE
              let prompt = case mre of     -- create a prompt
                     Nothing      -> "Search: "
                     Just (pat,_) -> "Search ["++pat++"]: "
@@ -215,9 +213,7 @@ search_km p = choice [srch_g, srch_y, srch_v, srch_t, srch_c, srch_r, performSea
 echoMode :: String -> (String -> Interact Char a) -> Interact Char a
 echoMode prompt exitProcess = do 
   write (lift $ logPutStrLn "echoMode")
-  write cmdlineFocusE 
   result <- lineEdit []
-  write cmdlineUnFocusE
   return result
     where lineEdit s =
               do write $ msgE (prompt ++ s)

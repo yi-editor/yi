@@ -66,11 +66,6 @@ module Yi.Core (
         enlargeWinE,    -- :: Action
         shrinkWinE,     -- :: Action
 
-        -- * Switching to the command line
-        cmdlineFocusE,  -- :: Action
-        cmdlineUnFocusE,-- :: Action
-
-
         -- * File-based actions
         fnewE,          -- :: FilePath -> Action
         fwriteE,        -- :: Action
@@ -339,7 +334,6 @@ quitE = withUI UI.end
 -- | Reboot (!). Reboot the entire editor, reloading the Yi core.
 rebootE :: Action
 rebootE = do
-    cmdlineUnFocusE     -- return focus to buffer (seems natural)
     e  <- readEditor id
     fn <- readEditor reboot
     Editor.shutdown
@@ -929,16 +923,6 @@ closeOtherE = do
                         let ws = getWindows e
                         return (e, (filter (/= this) (map Just ws)))
         mapM_ UI.deleteWindow others
-
-------------------------------------------------------------------------
-
--- | Shift focus to command line window
-cmdlineFocusE :: Action
-cmdlineFocusE = modifyEditor_ $ \e -> return e { cmdlinefocus = True }
-
--- | Return focus to normal window
-cmdlineUnFocusE :: Action
-cmdlineUnFocusE = modifyEditor_ $ \e -> return e { cmdlinefocus = False }
 
 ------------------------------------------------------------------------
 --
