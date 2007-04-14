@@ -46,18 +46,7 @@ import Control.Monad.State
 
 type ViMode = ViProc ()
 
-type ViProc a = StateT ViState (Interact Char) a
-
---
--- state threaded through the lexer
---
--- In vi, you may add bindings (:map) to cmd or insert mode. We thus
--- carry around the current cmd and insert lexers in the state. Calls to
--- switch editor modes therefore use the lexers in the state.
---
-data ViState =
-        St { hist :: ([String],Int) -- ex-mode command history
-           }
+type ViProc a = (Interact Char) a
 
 --
 -- | Top level. Lazily consume all the input, generating a list of
@@ -70,11 +59,7 @@ keymap :: Keymap
 keymap cs = setWindowFillE '~' : runVi cmd_mode cs
 
 runVi :: ViMode -> Keymap
-runVi p evs = runProcess (runStateT p defaultSt) (map eventToChar evs)
-
--- | default lexer state, just the normal cmd and insert mode. no mappings
-defaultSt :: ViState
-defaultSt = St { hist = ([],0) }
+runVi p evs = runProcess p (map eventToChar evs)
 
 ------------------------------------------------------------------------
 
