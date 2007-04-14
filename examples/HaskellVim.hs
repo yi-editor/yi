@@ -11,4 +11,6 @@ yiMain = do
   msgE "User configuration finished."
 
 
-myKeymap events = setSynE "haskell" : Yi.Keymap.Vim.keymap events
+myKeymap = do
+  write $ setSynE "haskell" 
+  Yi.Keymap.Vim.keymap

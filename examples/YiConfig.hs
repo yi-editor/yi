@@ -17,9 +17,12 @@ yiMain = do
   -- The following will /dynamically/ fail with the vty frontend,
   -- or if the Gtk module cannot be found in yiConfig.
   loadE "Gtk" >> execE "Gtk.yiConfig"
+  -- However, the rest will continue running:
 
   msgE "User configuration successful."
 
 
 -- I prefer to use Emacs keymap, with haskell hilight in every buffer.
-myKeymap x = setSynE "haskell" : runProcess normalKeymap x
+myKeymap = do write $ setSynE "haskell" 
+              keymap
+
