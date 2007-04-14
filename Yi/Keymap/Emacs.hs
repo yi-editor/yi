@@ -23,7 +23,7 @@
 -- emulation. For example, M-x gives access to Yi (haskell) functions,
 -- with their native names.
 
-module Yi.Keymap.Emacs ( keymap, makeProcess, runKeymap, rebind, normalKeymap, withMinibuffer ) where
+module Yi.Keymap.Emacs ( keymap, makeProcess, runKeymap, rebind, withMinibuffer ) where
 
 import Yi.Yi
 
@@ -57,8 +57,8 @@ selfInsertKeymap = do
       where isPrintableEvent (Event (KASCII c) []) = c >= ' '
             isPrintableEvent _ = False
 
-normalKeymap :: Process
-normalKeymap = selfInsertKeymap +++ makeProcess 
+keymap :: Process
+keymap = selfInsertKeymap +++ makeProcess 
               [
         ("TAB",      atomic $ autoIndentE),
         ("RET",      atomic $ repeatingArg $ insertE '\n'),
@@ -393,7 +393,7 @@ withMinibuffer prompt completer act = do
                     ("TAB", write (completionFunction completer)),
                     ("C-g", write closeMinibuffer)]
   historyStart
-  spawnMinibufferE (prompt ++ " ") (rebind rebindings normalKeymap)
+  spawnMinibufferE (prompt ++ " ") (rebind rebindings keymap)
     where closeMinibuffer = do b <- getBuffer; closeE; deleteBuffer b 
 
 scrollDownE :: Action
@@ -416,11 +416,6 @@ killBufferE = withMinibuffer "kill buffer:" completeBufferName $ \bufName -> do
 -- | Create a binding processor from 'kmap'.
 makeProcess :: KList -> KProc ()
 makeProcess kmap = choice [events (readKey k) >> a | (k,a) <- kmap]
-
--- | entry point
-keymap :: Keymap
-keymap = normalKeymap
-
 
 showFailures :: Process -> Process
 showFailures p = do result <- consumeLookahead p 
