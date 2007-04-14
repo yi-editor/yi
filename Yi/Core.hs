@@ -220,9 +220,11 @@ data Direction = GoLeft | GoRight
 
 nilKeymap :: Keymap
 nilKeymap = do c <- anyEvent
-               write $ if eventToChar c == 'q' 
-                  then quitE 
-                  else errorE "Keymap not defined, type 'q' to quit. README file may help you."
+               write $ case eventToChar c of
+                         'q' -> quitE 
+                         'r' -> reconfigE
+                         _ -> errorE $ "Keymap not defined, type 'r' to reload config or 'q' to quit. " ++
+                                          "README file may help you."
 
 -- ---------------------------------------------------------------------
 -- | Start up the editor, setting any state with the user preferences
