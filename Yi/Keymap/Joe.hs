@@ -105,7 +105,7 @@ keymap :: Keymap
 keymap = runProc klist
 
 runProc :: JoeMode -> Keymap
-runProc p cs = runProcess p (map eventToChar cs)
+runProc = comap eventToChar
 
 -- ---------------------------------------------------------------------
 

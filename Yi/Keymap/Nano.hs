@@ -36,7 +36,7 @@ import Control.Monad.Trans ( lift )
 -- our default state.
 --
 keymap :: Keymap
-keymap = runProcess nano_km . map eventToChar
+keymap = comap eventToChar nano_km
 
 -- | @NanoMode@  is the type of our interactive process.
 type NanoMode = Interact Char ()

@@ -248,7 +248,7 @@ queryReplaceE = do
         gotoPointE p
         spawnMinibufferE
             ("Replacing " ++ replaceWhat ++ "with " ++ replaceWith ++ " (y,n,q):")
-            (runKeymap $ makeProcess replaceBindings)
+            (makeProcess replaceBindings)
 
 
 ----------------------------
@@ -393,7 +393,7 @@ withMinibuffer prompt completer act = do
                     ("TAB", write (completionFunction completer)),
                     ("C-g", write closeMinibuffer)]
   historyStart
-  spawnMinibufferE (prompt ++ " ") (runKeymap (rebind rebindings normalKeymap))
+  spawnMinibufferE (prompt ++ " ") (rebind rebindings normalKeymap)
     where closeMinibuffer = do b <- getBuffer; closeE; deleteBuffer b 
 
 scrollDownE :: Action
@@ -419,7 +419,7 @@ makeProcess kmap = choice [events (readKey k) >> a | (k,a) <- kmap]
 
 -- | entry point
 keymap :: Keymap
-keymap = runKeymap normalKeymap
+keymap = normalKeymap
 
 
 showFailures :: Process -> Process
@@ -439,5 +439,3 @@ showFailures p = do result <- consumeLookahead p
 -- The solution would be to make runProcess return the pending events
 -- when crashing.
 
-runKeymap :: Process -> Keymap
-runKeymap = runProcess . forever

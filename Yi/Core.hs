@@ -187,6 +187,8 @@ import Yi.Editor
 import Yi.CoreUI
 import Yi.Kernel
 import Yi.Event
+import Yi.Keymap (write)
+import Yi.Interact (anyEvent)
 import qualified Yi.Editor as Editor
 import qualified Yi.Style as Style
 import qualified Yi.UI as UI
@@ -216,11 +218,11 @@ import GHC.Exts ( unsafeCoerce# )
 -- | A 'Direction' is either left or right.
 data Direction = GoLeft | GoRight
 
-nilKeymap :: [Event] -> [Action]
-nilKeymap (c:_) = [if eventToChar c == 'q' 
-                   then quitE 
-                   else errorE "Keymap not defined, type 'q' to quit. README file may help you."]
-nilKeymap [] = error "stream of input event ended"
+nilKeymap :: Keymap
+nilKeymap = do c <- anyEvent
+               write $ if eventToChar c == 'q' 
+                  then quitE 
+                  else errorE "Keymap not defined, type 'q' to quit. README file may help you."
 
 -- ---------------------------------------------------------------------
 -- | Start up the editor, setting any state with the user preferences

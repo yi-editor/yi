@@ -26,7 +26,7 @@ module Yi.Keymap.Ee ( keymap ) where
 import Yi.Yi
 
 keymap :: Keymap
-keymap = runProcess (command +++ insert) . map eventToChar
+keymap = comap eventToChar (command +++ insert)
 
 --
 -- Control keys:

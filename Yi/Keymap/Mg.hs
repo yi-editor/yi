@@ -381,7 +381,7 @@ globalTable = [
 type MgMode = Interact Char ()
 
 keymap :: Keymap
-keymap = runProcess mode . map eventToChar
+keymap = comap eventToChar mode
 
 ------------------------------------------------------------------------
 

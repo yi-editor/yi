@@ -119,13 +119,15 @@ tabifySpacesOnLineAndShift numOfShifts =
 -- NB . if there is a (bad) exception, we'll lose any new bindings.. iorefs?
 --    . also, maybe we shouldn't refresh automatically?
 --
+
 keymap :: Keymap
-keymap cs = setWindowFillE '~' : winStyleAct : runVim cmd_mode cs
-    where
-      winStyleAct = unsetMarkE >> setWindowStyleE defaultVimUiStyle
+keymap = do write $ setWindowFillE '~' >> unsetMarkE >> setWindowStyleE defaultVimUiStyle
+            runVim cmd_mode
 
 runVim :: VimMode -> Keymap
-runVim p evs = runProcess p (map eventToChar evs)
+runVim = comap eventToChar
+
+
 
 ------------------------------------------------------------------------
 

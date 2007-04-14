@@ -30,6 +30,7 @@ import Yi.Style                 ( uiStyle, UIStyle )
 import Yi.Event
 import Yi.Debug
 import Yi.Kernel
+import qualified Yi.Interact as I
 import Prelude hiding (error)
 
 import Data.List                ( elemIndex )
@@ -41,6 +42,7 @@ import qualified Data.Map as M
 import Control.Concurrent       ( killThread, ThreadId )
 import Control.Concurrent.Chan
 import Control.Monad.Reader
+import Control.Monad.Writer
 import Control.Concurrent   ( forkIO )
 import Control.Exception
 
@@ -181,7 +183,7 @@ bufferEventLoop e b getKm = eventLoop
     eventLoop :: IO ()
     eventLoop = do
       repeatM_ $ do km <- runReaderT getKm e -- get the new version of the keymap every time we need to start it.
-                    handle handler (run km)
+                    handle handler (run $ runKeymap km)
 
 deleteBuffer :: FBuffer -> EditorM ()
 deleteBuffer b = modifyEditor_ $ \e-> do
@@ -363,7 +365,13 @@ repeatM_ a = a >> repeatM_ a
 --
 type Action = EditorM ()
 
-type Keymap = [Event] -> [Action]
+type Interact ev a = I.Interact ev (Writer [Action]) a
+
+type Keymap = Interact Event ()
+
+runKeymap :: Interact ev () -> [ev] -> [Action]
+runKeymap p evs = snd $ runWriter (I.runProcess p evs)
+
 
 catchJustE :: (Exception -> Maybe b) -- ^ Predicate to select exceptions
            -> EditorM a	-- ^ Computation to run
