@@ -32,21 +32,7 @@ import Yi.Char
 
 -- ---------------------------------------------------------------------
 
-
-data JoeState = JoeState {
-    js_search_dir :: Direction,
-    js_search_flags :: [SearchF],
-    js_search_replace :: Maybe String
-    }
-
-initial_state :: JoeState
-initial_state = JoeState {
-    js_search_dir = GoRight,
-    js_search_flags = [],
-    js_search_replace = Nothing
-    }
-
-type JoeProc a = StateT JoeState (Interact Char) a
+type JoeProc a = (Interact Char) a
 
 type JoeMode = JoeProc ()
 
@@ -119,7 +105,7 @@ keymap :: Keymap
 keymap = runProc klist
 
 runProc :: JoeMode -> Keymap
-runProc p cs = runProcess (runStateT p initial_state) (map eventToChar cs)
+runProc p cs = runProcess p (map eventToChar cs)
 
 -- ---------------------------------------------------------------------
 
