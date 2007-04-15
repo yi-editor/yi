@@ -242,7 +242,8 @@ startE kernel st commandLineActions = do
 
       -- Setting up the 1st buffer/window is a bit tricky because most functions assume there exists a "current window"
       -- or a "current buffer".
-      stringToNewBuffer "*messages*" "" id >>= UI.newWindow False >>= UI.setWindow
+      stringToNewBuffer "*console*" "" >>= UI.newWindow False >>= UI.setWindow
+      newBufferE "*messages*" "" >> return ()
 
       withKernel $ \k -> do
         dflags <- getSessionDynFlags k
@@ -295,7 +296,7 @@ changeKeymapE :: Keymap -> EditorM ()
 changeKeymapE km = do
   modifyEditor_ $ \e -> return e { defaultKeymap = km }
   bs <- getBuffers
-  lift $ mapM_ (flip throwDynTo "Keymap change") $ catMaybes $ map bufferThread bs
+  lift $ mapM_ restartBufferThread bs
 
 
 -- ---------------------------------------------------------------------
@@ -769,7 +770,7 @@ prevBufW = Editor.prevBuffer >>= switchToBufferE
 fnewE  :: FilePath -> Action
 fnewE f = do
     e  <- lift $ doesFileExist f
-    b  <- if e then hNewBuffer f else stringToNewBuffer f [] id
+    b  <- if e then hNewBuffer f else stringToNewBuffer f []
     lift $ setfileB b f        -- and associate with file f
     switchToBufferE b
 
@@ -777,9 +778,9 @@ fnewE f = do
 -- Open up a new window onto this buffer. Doesn't associate any file
 -- with the buffer (unlike fnewE) and so is good for popup internal
 -- buffers (like scratch)
-newBufferE :: String -> String -> KeymapMod -> EditorM FBuffer
-newBufferE f s kmMod = do
-    b <- stringToNewBuffer f s kmMod
+newBufferE :: String -> String -> EditorM FBuffer
+newBufferE f s = do
+    b <- stringToNewBuffer f s
     switchToBufferE b
     lift $ logPutStrLn "newBufferE ended"
     return b
@@ -809,7 +810,8 @@ switchToBufferWithNameE bufName = switchToBufferE =<< getBufferWithName bufName
 -- | Open a minibuffer window with the given prompt and keymap
 spawnMinibufferE :: String -> KeymapMod -> Action
 spawnMinibufferE prompt kmMod =
-    do b <- stringToNewBuffer prompt [] kmMod
+    do b <- stringToNewBuffer prompt []
+       lift $ setBufferKeymap b kmMod
        w <- UI.newWindow True b
        UI.setWindow w
 

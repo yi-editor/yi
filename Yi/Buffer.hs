@@ -31,7 +31,7 @@ module Yi.Buffer ( FBuffer (..), keyB, curLn, nameB, indexOfEol,
                    deleteToEol, indexOfSol, nelemsB, writeB, getfileB,
                    setfileB, deleteNAt, readB, elemsB, undo, redo,
                    setMarkB, unsetMarkB, isUnchangedB, setSyntaxB, regexB, searchB, readAtB,
-                   getModeLine, getPercent, forgetPreferCol
+                   getModeLine, getPercent, forgetPreferCol, setBufferKeymap, restartBufferThread
                     ) where
 
 import Text.Regex.Posix.Wrap    ( Regex  )
@@ -43,8 +43,9 @@ import Data.IORef
 import Data.Unique              ( newUnique, Unique, hashUnique )
 import Yi.Event
 import Yi.Keymap
-import Control.Concurrent
+import Control.Concurrent 
 import Control.Monad
+import Control.Exception
 
 --
 -- | The 'Buffer' class defines editing operations over one-dimensional`
@@ -63,7 +64,10 @@ data FBuffer =
                 , bmode  :: !(MVar BufferMode)       -- ^ a read-only bit
                 , preferCol :: !(IORef (Maybe Int))  -- ^ prefered column to arrive at when we do a lineDown / lineUp
                 , bufferInput  :: !(Chan Event)      -- ^ input stream
-                , bufferThread :: !(Maybe ThreadId)  -- ^ Id of the thread running the buffer's keymap.
+                , bufferThread :: !(Maybe ThreadId)  -- ^ Id of the thread running the buffer's keymap. 
+                , bufferKeymap :: !(IORef KeymapMod) -- ^ Buffer's local keymap modification
+                , bufferKeymapRestartable :: !(MVar ()) -- ^ Put () in this MVar to mark the buffer ready to restart.
+                                             -- FIXME: the bufferKeymap should really be an MVar, and that can be used to sync.
                 }
 
 instance Eq FBuffer where
@@ -153,6 +157,8 @@ newB nm s = do
     rw  <- newMVar ReadWrite
     u   <- newUnique
     ch  <- newChan
+    km <- newIORef id
+    r <- newEmptyMVar
     let result = FBuffer { name   = nm
                          , bkey   = u
                          , file   = mvf
@@ -162,9 +168,23 @@ newB nm s = do
                          , preferCol = pc 
                          , bufferInput = ch
                          , bufferThread = Nothing
+                         , bufferKeymap = km
+                         , bufferKeymapRestartable = r
                          }
     return result                    
 
+
+setBufferKeymap :: FBuffer -> KeymapMod -> IO ()
+setBufferKeymap b km = do 
+  writeIORef (bufferKeymap b) km
+  restartBufferThread b
+  logPutStrLn $ "Changed keymap for buffer " ++ show b
+
+restartBufferThread :: FBuffer -> IO ()
+restartBufferThread b = do
+  logPutStrLn $ "Waiting for buffer thread to start " ++ show b
+  takeMVar (bufferKeymapRestartable b) 
+  maybe (return ()) (flip throwDynTo "Keymap change") (bufferThread b)
 
 -- | Free any resources associated with this buffer
 finaliseB :: FBuffer -> IO ()

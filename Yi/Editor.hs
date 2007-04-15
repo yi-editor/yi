@@ -42,6 +42,7 @@ import qualified Data.Map as M
 
 import Control.Concurrent       ( killThread, ThreadId )
 import Control.Concurrent.Chan
+import Control.Concurrent.MVar
 import Control.Monad.Reader
 import Control.Monad.Writer
 import Control.Concurrent   ( forkIO )
@@ -146,33 +147,36 @@ withEditor f = do
 hNewBuffer :: FilePath -> EditorM FBuffer
 hNewBuffer f = do
     b <- lift $ hNewB f
-    insertBuffer b id
+    insertBuffer b
 
 -- | Create and fill a new buffer, using contents of string.
-stringToNewBuffer :: FilePath -> String -> KeymapMod -> EditorM FBuffer
-stringToNewBuffer f cs modKm = do
+stringToNewBuffer :: FilePath -> String -> EditorM FBuffer
+stringToNewBuffer f cs = do
     lift $ logPutStrLn $ "stringToNewBuffer: " ++ show f
     b <- lift $ newB f cs
-    insertBuffer b modKm
+    insertBuffer b
 
-insertBuffer :: FBuffer -> KeymapMod -> EditorM FBuffer
-insertBuffer b km = do
+insertBuffer :: FBuffer -> EditorM FBuffer
+insertBuffer b = do
   editor <- ask
-  thread <- lift $ forkIO (bufferEventLoop editor b km) -- FIXME: kill this thread when the buffer dies.  
+  thread <- lift $ forkIO (bufferEventLoop editor b) 
   let b' = b {bufferThread = Just thread}
   modifyEditor $ \e@(Editor{buffers=bs}) -> do
                      let e' = e { buffers = M.insert (keyB b) b' bs } :: Editor
                      return (e', b')
 
-bufferEventLoop :: IORef Editor -> FBuffer -> KeymapMod -> IO ()
-bufferEventLoop e b modKm = eventLoop 
+bufferEventLoop :: IORef Editor -> FBuffer -> IO ()
+bufferEventLoop e b = eventLoop 
   where
     handler exception = logPutStrLn $ "Buffer event loop crashed with: " ++ (show exception)
 
     run bkm = do
       -- logStream ("Event for " ++ show b) (bufferInput b)
+      logPutStrLn $ "Starting keymap thread for " ++ show b
+      tryPutMVar (bufferKeymapRestartable b) ()
       out <- liftM output $ readIORef e
       writeList2Chan out . bkm =<< getChanContents (bufferInput b)
+      takeMVar (bufferKeymapRestartable b)
       logPutStrLn "Keymap execution ended"
 
     -- | The buffer's main loop. Read key strokes from the ui and interpret
@@ -181,6 +185,7 @@ bufferEventLoop e b modKm = eventLoop
     eventLoop = do
       repeatM_ $ do -- get the new version of the keymap every time we need to start it.
                     defaultKm <- liftM defaultKeymap $ readIORef e                     
+                    modKm <- readIORef (bufferKeymap b)
                     handle handler (run $ runKeymap $ I.forever (modKm defaultKm))
 
 deleteBuffer :: FBuffer -> EditorM ()

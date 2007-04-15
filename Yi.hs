@@ -23,6 +23,7 @@ module Yi (main, Kernel) where
 import Prelude hiding (error)
 
 import Yi.Version                       ( package, version )
+import qualified Yi.Buffer  as Buffer
 import qualified Yi.Editor  as Editor
 import qualified Yi.Core    as Core
 import qualified Yi.Keymap  as Keymap
@@ -45,6 +46,7 @@ import Data.List                ( intersperse )
 import qualified Data.Map as M
 
 import Control.Monad            ( when )
+import Control.Monad.Trans      ( lift )
 import Control.Concurrent       ( myThreadId, throwTo )
 import Control.Exception        ( catch, throw )
 
@@ -171,7 +173,9 @@ releaseSignals =
 #endif
 
 startConsole :: Keymap.Action
-startConsole = Core.newBufferE "*console*" "" (Eval.consoleKeymap <++) >> return ()
+startConsole = do 
+  console <- Core.getBufferWithName "*console*"
+  lift $ Buffer.setBufferKeymap console (Eval.consoleKeymap <++)
 
 openScratchBuffer :: Keymap.Action
 openScratchBuffer = do     -- emacs-like behaviour
@@ -179,7 +183,6 @@ openScratchBuffer = do     -- emacs-like behaviour
                    ("-- This buffer is for notes you don't want to save, and for haskell evaluation\n" ++
                     "-- If you want to create a file, open that file,\n" ++
                     "-- then enter the text in that file's own buffer.\n\n")
-                   (Eval.consoleKeymap <++)
       return ()
 
 -- ---------------------------------------------------------------------
