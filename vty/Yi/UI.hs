@@ -478,7 +478,7 @@ setCmdLine i s = do
 -- | Display the given buffer in the given window.
 setWindowBuffer :: FBuffer -> Maybe Window -> EditorM ()
 setWindowBuffer b mw = do
-    lift $ logPutStrLn $ "Setting buffer for " ++ show mw
+    lift $ logPutStrLn $ "Setting buffer for " ++ show mw ++ ": " ++ show b
     w'' <- case mw of 
              Just w -> do
                      w' <- lift $ emptyWindow False b (height w, width w)
@@ -499,5 +499,5 @@ setWindow w = do
   modifyEditor_ $ \e -> do
                 logPutStrLn $ "Focusing " ++ show w
                 let fm = windows e                 
-                return $ e { windows = M.insert (key w) w fm, curwin = Just $ key w }
+                return $ e {  curwin = Just $ key w }
   debugWindows "After focus"
