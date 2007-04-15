@@ -389,9 +389,10 @@ spawn_ex_buffer prompt = do
                   do event keyUp; write historyUp,
                   do event keyDown; write historyDown]
   historyStart
-  spawnMinibufferE prompt (runVi $ forever ex_process)
+  spawnMinibufferE prompt (const $ runVi $ forever ex_process)
 
 
+ex_mode :: String -> ViMode
 ex_mode = write . spawn_ex_buffer
                            
 -- | eval an ex command to an Action, also appends to the ex history

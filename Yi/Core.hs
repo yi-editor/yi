@@ -777,9 +777,9 @@ fnewE f = do
 -- Open up a new window onto this buffer. Doesn't associate any file
 -- with the buffer (unlike fnewE) and so is good for popup internal
 -- buffers (like scratch)
-newBufferE :: String -> String -> EditorM FBuffer
-newBufferE f s = do
-    b <- stringToNewBuffer f s id
+newBufferE :: String -> String -> KeymapMod -> EditorM FBuffer
+newBufferE f s kmMod = do
+    b <- stringToNewBuffer f s kmMod
     switchToBufferE b
     lift $ logPutStrLn "newBufferE ended"
     return b
@@ -807,9 +807,9 @@ switchToBufferWithNameE "" = nextBufW
 switchToBufferWithNameE bufName = switchToBufferE =<< getBufferWithName bufName
 
 -- | Open a minibuffer window with the given prompt and keymap
-spawnMinibufferE :: String -> Keymap -> Action
-spawnMinibufferE prompt km =
-    do b <- stringToNewBuffer prompt [] (return km) 
+spawnMinibufferE :: String -> KeymapMod -> Action
+spawnMinibufferE prompt kmMod =
+    do b <- stringToNewBuffer prompt [] kmMod
        w <- UI.newWindow True b
        UI.setWindow w
 

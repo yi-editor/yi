@@ -248,7 +248,7 @@ queryReplaceE = do
         gotoPointE p
         spawnMinibufferE
             ("Replacing " ++ replaceWhat ++ "with " ++ replaceWith ++ " (y,n,q):")
-            (makeProcess replaceBindings)
+            (const (makeProcess replaceBindings))
 
 
 ----------------------------
@@ -296,8 +296,8 @@ readArg' acc = do
       Event (KASCII d) [] | isDigit d -> readArg' $ Just $ 10 * (fromMaybe 0 acc) + (ord d - ord '0')
       _ -> write $ setDynamic $ UniversalArg $ Just $ fromMaybe 4 acc
 
-rebind :: [(String,Process)] -> Process -> Process
-rebind keys kl = makeProcess keys <++ kl
+rebind :: [(String,Process)] -> KeymapMod
+rebind keys = (makeProcess keys <++)
 
 findFile :: Action
 findFile = withMinibuffer "find file:" completeFileName $ \filename -> do 
@@ -393,7 +393,7 @@ withMinibuffer prompt completer act = do
                     ("TAB", write (completionFunction completer)),
                     ("C-g", write closeMinibuffer)]
   historyStart
-  spawnMinibufferE (prompt ++ " ") (rebind rebindings keymap)
+  spawnMinibufferE (prompt ++ " ") (rebind rebindings)
     where closeMinibuffer = do b <- getBuffer; closeE; deleteBuffer b 
 
 scrollDownE :: Action

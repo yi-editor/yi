@@ -37,6 +37,7 @@ import qualified Yi.Keymap.Emacs  as Emacs
 import qualified Yi.Keymap.Joe    as Joe
 import qualified Yi.Keymap.Ee     as Ee
 import qualified Yi.Keymap.Mg     as Mg
+import Yi.Interact hiding (Interact, runProcess, write)
 
 import Data.Char
 import Data.List                ( intersperse )
@@ -169,14 +170,15 @@ releaseSignals =
 #endif
 
 startConsole :: Keymap.Action
-startConsole = Core.newBufferE "*console*" "" >> return ()
+startConsole = Core.newBufferE "*console*" "" (Eval.consoleKeymap <++) >> return ()
 
 openScratchBuffer :: Keymap.Action
 openScratchBuffer = do     -- emacs-like behaviour
-      Core.newBufferE "*scratch*" $
-                   "-- This buffer is for notes you don't want to save, and for haskell evaluation\n" ++
-                   "-- If you want to create a file, open that file,\n" ++
-                   "-- then enter the text in that file's own buffer.\n\n"
+      Core.newBufferE "*scratch*" 
+                   ("-- This buffer is for notes you don't want to save, and for haskell evaluation\n" ++
+                    "-- If you want to create a file, open that file,\n" ++
+                    "-- then enter the text in that file's own buffer.\n\n")
+                   id
       return ()
 
 -- ---------------------------------------------------------------------
