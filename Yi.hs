@@ -26,6 +26,7 @@ import Yi.Version                       ( package, version )
 import qualified Yi.Editor  as Editor
 import qualified Yi.Core    as Core
 import qualified Yi.Keymap  as Keymap
+import qualified Yi.Eval    as Eval
 import Yi.Kernel
 import Yi.Debug
 
@@ -178,7 +179,7 @@ openScratchBuffer = do     -- emacs-like behaviour
                    ("-- This buffer is for notes you don't want to save, and for haskell evaluation\n" ++
                     "-- If you want to create a file, open that file,\n" ++
                     "-- then enter the text in that file's own buffer.\n\n")
-                   id
+                   (Eval.consoleKeymap <++)
       return ()
 
 -- ---------------------------------------------------------------------
