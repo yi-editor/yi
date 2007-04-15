@@ -377,7 +377,7 @@ topE = withBuffer $ \b -> moveTo b 0
 botE :: Action
 botE = withBuffer $ \b -> do
             n <- sizeB b
-            moveTo b (n-1)
+            moveTo b n
 
 -- | Move cursor to start of line
 solE :: Action
