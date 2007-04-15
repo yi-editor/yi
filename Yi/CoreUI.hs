@@ -92,3 +92,11 @@ shiftOtherWindow :: EditorM ()
 shiftOtherWindow = do
   ws <- readEditor getWindows
   if length ws == 1 then splitWindow else nextWindow
+
+
+withOtherWindow :: EditorM () -> EditorM ()
+withOtherWindow f = do
+  Just w <- getWindow
+  shiftOtherWindow
+  f
+  setWindow w

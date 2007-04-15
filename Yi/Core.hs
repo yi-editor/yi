@@ -345,7 +345,7 @@ reloadE = do
   result <- withKernel loadAllTargets
   loaded <- withKernel setContextAfterLoad
   case result of
-    GHC.Failed -> switchToBufferOtherWindowE =<< getBufferWithName "*messages*"
+    GHC.Failed -> withOtherWindow (switchToBufferE =<< getBufferWithName "*console*")
     _ -> return ()
   return $ map (moduleNameString . moduleName) loaded
   -- lift $ rts_revertCAFs
@@ -976,7 +976,7 @@ ghcErrorReporter editor severity srcSpan pprStyle message =
     -- the following is written in very bad style.
     flip runReaderT editor $ do
       e <- readEditor id
-      let [b] = findBufferWithName e "*messages*"
+      let [b] = findBufferWithName e "*console*"
       lift $ do 
         moveTo b =<< sizeB b
         insertN b msg
