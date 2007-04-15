@@ -7,6 +7,7 @@ module Yi.Eval (
         consoleKeymap,
 ) where
 
+import Control.Monad
 import Control.Monad.Trans
 import Data.Array
 import GHC.Exts ( unsafeCoerce# )
@@ -99,9 +100,10 @@ consoleKeymap = do event (Event KEnter [])
                    write $ do x <- readLnE
                               case parseErrorMessage x of
                                 Just (f,l,c) -> jumpToE f l c
-                                Nothing -> do botE
-                                              insertNE ("\n" ++ x ++ "\n")
+                                Nothing -> do p <- getPointE
+                                              botE
+                                              p' <- getPointE
+                                              when (p /= p') $
+                                                 insertNE ("\n" ++ x)
+                                              insertNE "\n"
                                               execE x
-                   
-                   
-
