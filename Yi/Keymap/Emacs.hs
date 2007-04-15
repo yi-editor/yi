@@ -376,10 +376,10 @@ withMinibuffer prompt completer act = do
   let innerAction :: Action
       -- ^ Read contents of current buffer (which should be the minibuffer), and
       -- apply it to the desired action
+      closeMinibuffer = do b <- getBuffer; closeE; deleteBuffer b; UI.setWindow initialWindow
       innerAction = do historyFinish
                        lineString <- readAllE
                        closeMinibuffer
-                       UI.setWindow initialWindow
                        switchToBufferE initialBuffer 
                        -- The above ensures that the action is performed on the buffer that originated the minibuffer.
                        act lineString
@@ -394,7 +394,6 @@ withMinibuffer prompt completer act = do
                     ("C-g", write closeMinibuffer)]
   historyStart
   spawnMinibufferE (prompt ++ " ") (rebind rebindings)
-    where closeMinibuffer = do b <- getBuffer; closeE; deleteBuffer b 
 
 scrollDownE :: Action
 scrollDownE = withUnivArg $ \a ->
