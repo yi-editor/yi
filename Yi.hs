@@ -168,6 +168,17 @@ releaseSignals =
                (\sig -> installHandler sig Default Nothing)
 #endif
 
+startConsole :: Keymap.Action
+startConsole = Core.newBufferE "*console*" "" >> return ()
+
+openScratchBuffer :: Keymap.Action
+openScratchBuffer = do     -- emacs-like behaviour
+      Core.newBufferE "*scratch*" $
+                   "-- This buffer is for notes you don't want to save, and for haskell evaluation\n" ++
+                   "-- If you want to create a file, open that file,\n" ++
+                   "-- then enter the text in that file's own buffer.\n\n"
+      return ()
+
 -- ---------------------------------------------------------------------
 -- | Static main. This is the front end to the statically linked
 -- application, and the real front end, in a sense. 'dynamic_main' calls
@@ -194,7 +205,7 @@ main kernel = do
     Control.Exception.catch
         (do initSignals
             initDebug ".yi.dbg"
-            Core.startE kernel Nothing mopts )
+            Core.startE kernel Nothing (startConsole : openScratchBuffer : mopts))
         (\e -> do releaseSignals
                   -- FIXME: We should do this, but that's impossible with no access to the editor state:
                   -- Editor.shutdown

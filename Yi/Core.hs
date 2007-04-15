@@ -242,9 +242,7 @@ startE kernel st commandLineActions = do
 
       -- Setting up the 1st buffer/window is a bit tricky because most functions assume there exists a "current window"
       -- or a "current buffer".
-      stringToNewBuffer "*console*" "" id >>= UI.newWindow False >>= UI.setWindow    
-
-      newBufferE "*messages*" ""
+      stringToNewBuffer "*messages*" "" id >>= UI.newWindow False >>= UI.setWindow
 
       withKernel $ \k -> do
         dflags <- getSessionDynFlags k
@@ -253,12 +251,6 @@ startE kernel st commandLineActions = do
       -- run user configuration
       loadE "YiConfig"
       runConfig
-
-      -- emacs-like behaviour
-      newBufferE "*scratch*" $
-                   "-- This buffer is for notes you don't want to save, and for haskell evaluation\n" ++
-                   "-- If you want to create a file, open that file,\n" ++
-                   "-- then enter the text in that file's own buffer.\n\n"
 
       when (isNothing st) $ do -- process options if booting for the first time
         sequence_ commandLineActions
