@@ -31,6 +31,7 @@ import Yi.Window
 import qualified Data.Map as M
 import Data.List
 import Control.Monad.State
+import Yi.Keymap
 
 
 -- | Rotate focus to the next window

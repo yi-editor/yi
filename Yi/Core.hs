@@ -28,6 +28,8 @@
 --
 
 module Yi.Core (
+        -- * Keymap
+        module Yi.Keymap,
 
         Direction (..),
         -- * Construction and destruction
@@ -182,7 +184,7 @@ import Yi.Editor
 import Yi.CoreUI
 import Yi.Kernel
 import Yi.Event
-import Yi.Keymap (write)
+import Yi.Keymap
 import Yi.Interact (anyEvent)
 import qualified Yi.Editor as Editor
 import qualified Yi.Style as Style

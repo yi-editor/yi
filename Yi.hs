@@ -103,7 +103,7 @@ versinfo = putStrLn $ package++" "++version
 --
 -- deal with real options
 --
-do_opt :: Opts -> IO (Editor.Action)
+do_opt :: Opts -> IO (Keymap.Action)
 do_opt o = case o of
     Help     -> usage    >> exitWith ExitSuccess
     Version  -> versinfo >> exitWith ExitSuccess
@@ -116,7 +116,7 @@ do_opt o = case o of
 --
 -- everything that is left over
 --
-do_args :: [String] -> IO ([Editor.Action])
+do_args :: [String] -> IO ([Keymap.Action])
 do_args args =
     case (getOpt (ReturnInOrder File) options args) of
         (o, [], []) -> do

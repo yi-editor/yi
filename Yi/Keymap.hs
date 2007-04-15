@@ -1,8 +1,27 @@
-module Yi.Keymap ( module Yi.Editor, write ) where
+module Yi.Keymap where
 
-import Yi.Event
-import Yi.Editor ( Keymap, Action, EditorM, Interact )
-import qualified Yi.Interact as I
+import Control.Monad.Reader
 import Control.Monad.Writer
+import Data.IORef
+import Yi.Event
+import qualified Yi.Interact as I
+import {-# source #-} Yi.Editor
+
+-- ---------------------------------------------------------------------
+-- | The type of user-bindable functions
+--
 
 write x = I.write (tell [x])
+
+type EditorM = ReaderT (IORef Editor) IO
+
+type Action = EditorM ()
+
+type Interact ev a = I.Interact ev (Writer [Action]) a
+
+type Keymap = Interact Event ()
+
+type KeymapMod = Keymap -> Keymap
+
+runKeymap :: Interact ev () -> [ev] -> [Action]
+runKeymap p evs = snd $ runWriter (I.runProcess p evs)

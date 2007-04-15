@@ -16,6 +16,7 @@ import Yi.Core
 import Yi.Debug
 import Yi.Editor
 import Yi.Kernel
+import Yi.Keymap
 import qualified GHC
 
 

@@ -30,6 +30,7 @@ import Yi.Style                 ( uiStyle, UIStyle )
 import Yi.Event
 import Yi.Debug
 import Yi.Kernel
+import Yi.Keymap
 import qualified Yi.Interact as I
 import Prelude hiding (error)
 
@@ -79,8 +80,6 @@ data Editor = Editor {
        ,editorKernel  :: Kernel
        ,editorModules :: [String] -- ^ modules requested by user: (e.g. ["YiConfig", "Hoogle"])
     }
-
-type EditorM = ReaderT (IORef Editor) IO
 
 --
 -- | The initial state
@@ -358,18 +357,6 @@ repeatM_ a = a >> repeatM_ a
 {-# SPECIALIZE repeatM_ :: IO a -> IO () #-}
 {-# INLINE repeatM_ #-}
 
-
--- ---------------------------------------------------------------------
--- | The type of user-bindable functions
---
-type Action = EditorM ()
-
-type Interact ev a = I.Interact ev (Writer [Action]) a
-
-type Keymap = Interact Event ()
-
-runKeymap :: Interact ev () -> [ev] -> [Action]
-runKeymap p evs = snd $ runWriter (I.runProcess p evs)
 
 
 catchJustE :: (Exception -> Maybe b) -- ^ Predicate to select exceptions

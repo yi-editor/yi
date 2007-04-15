@@ -56,6 +56,7 @@ import Yi.FastBuffer( nelemsBIH ) -- gah this is ugly
 import Yi.Editor
 import Yi.Window as Window
 import Yi.Style
+import Yi.Keymap
 import Yi.Vty hiding (def, black, red, green, yellow, blue, magenta, cyan, white)
 import Yi.Event
 import Yi.Debug
