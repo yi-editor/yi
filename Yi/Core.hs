@@ -240,7 +240,7 @@ startE kernel st commandLineActions = do
 
       -- Setting up the 1st buffer/window is a bit tricky because most functions assume there exists a "current window"
       -- or a "current buffer".
-      stringToNewBuffer "*console*" "" (readEditor defaultKeymap) >>= UI.newWindow False >>= UI.setWindow    
+      stringToNewBuffer "*console*" "" id >>= UI.newWindow False >>= UI.setWindow    
 
       newBufferE "*messages*" ""
 
@@ -774,9 +774,8 @@ prevBufW = Editor.prevBuffer >>= switchToBufferE
 --
 fnewE  :: FilePath -> Action
 fnewE f = do
-    let km = readEditor defaultKeymap
     e  <- lift $ doesFileExist f
-    b  <- if e then hNewBuffer f else stringToNewBuffer f [] km
+    b  <- if e then hNewBuffer f else stringToNewBuffer f [] id
     lift $ setfileB b f        -- and associate with file f
     switchToBufferE b
 
@@ -786,8 +785,7 @@ fnewE f = do
 -- buffers (like scratch)
 newBufferE :: String -> String -> EditorM FBuffer
 newBufferE f s = do
-    let km = readEditor defaultKeymap
-    b <- stringToNewBuffer f s km
+    b <- stringToNewBuffer f s id
     switchToBufferE b
     lift $ logPutStrLn "newBufferE ended"
     return b

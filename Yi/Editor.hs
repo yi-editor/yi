@@ -147,16 +147,16 @@ withEditor f = do
 hNewBuffer :: FilePath -> EditorM FBuffer
 hNewBuffer f = do
     b <- lift $ hNewB f
-    insertBuffer b (readEditor defaultKeymap)
+    insertBuffer b id
 
 -- | Create and fill a new buffer, using contents of string.
-stringToNewBuffer :: FilePath -> String -> EditorM Keymap -> EditorM FBuffer
-stringToNewBuffer f cs getKm = do
+stringToNewBuffer :: FilePath -> String -> KeymapMod -> EditorM FBuffer
+stringToNewBuffer f cs modKm = do
     lift $ logPutStrLn $ "stringToNewBuffer: " ++ show f
     b <- lift $ newB f cs
-    insertBuffer b getKm
+    insertBuffer b modKm
 
-insertBuffer :: FBuffer -> EditorM Keymap -> EditorM FBuffer
+insertBuffer :: FBuffer -> KeymapMod -> EditorM FBuffer
 insertBuffer b km = do
   editor <- ask
   thread <- lift $ forkIO (bufferEventLoop editor b km) -- FIXME: kill this thread when the buffer dies.  
@@ -165,8 +165,8 @@ insertBuffer b km = do
                      let e' = e { buffers = M.insert (keyB b) b' bs } :: Editor
                      return (e', b')
 
-bufferEventLoop :: IORef Editor -> FBuffer -> EditorM Keymap -> IO ()
-bufferEventLoop e b getKm = eventLoop 
+bufferEventLoop :: IORef Editor -> FBuffer -> KeymapMod -> IO ()
+bufferEventLoop e b modKm = eventLoop 
   where
     handler exception = logPutStrLn $ "Buffer event loop crashed with: " ++ (show exception)
 
@@ -180,8 +180,9 @@ bufferEventLoop e b getKm = eventLoop
     -- them using the current key map. Keys are bound to core actions.
     eventLoop :: IO ()
     eventLoop = do
-      repeatM_ $ do km <- runReaderT getKm e -- get the new version of the keymap every time we need to start it.
-                    handle handler (run $ runKeymap $ I.forever km)
+      repeatM_ $ do -- get the new version of the keymap every time we need to start it.
+                    defaultKm <- liftM defaultKeymap $ readIORef e                     
+                    handle handler (run $ runKeymap $ I.forever (modKm defaultKm))
 
 deleteBuffer :: FBuffer -> EditorM ()
 deleteBuffer b = modifyEditor_ $ \e-> do
