@@ -49,6 +49,7 @@ import Prelude hiding (error)
 import Yi.Buffer
 import Yi.FastBuffer
 import Yi.Editor
+import Yi.Keymap
 import Yi.Window as Window
 import Yi.Event
 import Yi.Debug
