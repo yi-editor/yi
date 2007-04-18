@@ -86,7 +86,6 @@ cmdCharFM =
     ,('\^E',        write eolE)
     ,('\^F',        write rightE)
     ,('\^H',        write $ leftE >> deleteE)
-    ,('\^J',        write $ undef '\^J')
     ,('\^K',        write $ readRestOfLnE >>= setRegE >> killE)
     ,('\^L',        write refreshE)
     ,('\^M',        write $ insertE '\n')
