@@ -35,3 +35,9 @@ yi-vty:
 yi-gtk:
 	make -C packages/yi-gtk install
 	-ghc-pkg --user hide yi-vty
+
+Contributors: Contributors.hs
+	ghc --make $<
+
+CONTRIBUTORS: Contributors _darcs/patches/*
+	darcs changes | ./Contributors > $@
