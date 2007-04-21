@@ -94,6 +94,7 @@ jumpToErrorE = do
   (f,l,c) <- parseErrorMessageE
   jumpToE f l c
 
+prompt = "Yi> "
 
 consoleKeymap :: Keymap
 consoleKeymap = do event (Event KEnter [])
@@ -104,6 +105,10 @@ consoleKeymap = do event (Event KEnter [])
                                               botE
                                               p' <- getPointE
                                               when (p /= p') $
-                                                 insertNE ("\n" ++ x)
-                                              insertNE "\n"
-                                              execE x
+                                                 insertNE ("\n" ++ prompt ++ x)
+                                              insertNE "\n" 
+                                              pt <- getPointE
+                                              insertNE "Yi> "
+                                              bm <- getBookmarkE "errorInsert"
+                                              setBookmarkPointE bm pt
+                                              execE $ dropWhile (== '>') $ dropWhile (/= '>') $ x

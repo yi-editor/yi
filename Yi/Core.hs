@@ -983,14 +983,22 @@ getNamesInScopeE = do
       names <- getRdrNamesInScope k
       return (map (nameToString k) names)
 
+savingExcursion :: FBuffer -> IO a -> IO a
+savingExcursion b f = do
+    m <- getMarkB b Nothing
+    res <- f
+    moveTo b =<< getMarkPointB b m
+    return res
+
+
 ghcErrorReporter :: IORef Editor -> GHC.Severity -> SrcLoc.SrcSpan -> Outputable.PprStyle -> ErrUtils.Message -> IO () 
 ghcErrorReporter editor severity srcSpan pprStyle message = 
     -- the following is written in very bad style.
     flip runReaderT editor $ do
       e <- readEditor id
       let [b] = findBufferWithName e "*console*"
-      lift $ do 
-        moveTo b =<< sizeB b
+      lift $ savingExcursion b $ do 
+        moveTo b =<< getMarkPointB b =<< getMarkB b (Just "errorInsert")
         insertN b msg
         insertN b "\n"
     where msg = case severity of
