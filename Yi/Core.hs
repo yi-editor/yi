@@ -152,6 +152,9 @@ module Yi.Core (
         getMarkE,
         unsetMarkE,
         exchangePointAndMarkE,
+        getBookmarkE,
+        getBookmarkPointE,
+        setBookmarkPointE,
 
         -- * Dynamically extensible state
         getDynamic,
@@ -622,7 +625,7 @@ getRegE = readEditor yreg
 
 -- | Set the current buffer mark
 setMarkE :: Int -> Action
-setMarkE pos = withBuffer $ \b -> setMarkB b pos
+setMarkE pos = withBuffer $ \b -> do m <- getSelectionMarkB b; setMarkPointB b m pos
 
 -- | Unset the current buffer mark so that there is no selection
 unsetMarkE :: Action
@@ -630,7 +633,7 @@ unsetMarkE = withBuffer $ \b -> unsetMarkB b
 
 -- | Get the current buffer mark
 getMarkE :: EditorM Int
-getMarkE = withBuffer getMarkB
+getMarkE = withBuffer $ \b -> do m <- getSelectionMarkB b; getMarkPointB b m
 
 -- | Exchange point & mark.
 -- Maybe this is better put in Emacs\/Mg common file
@@ -639,6 +642,15 @@ exchangePointAndMarkE = do m <- getMarkE
                            p <- getPointE
                            setMarkE p
                            gotoPointE m
+
+getBookmarkE :: String -> EditorM Mark
+getBookmarkE nm = withBuffer $ \b -> getMarkB b (Just nm)
+
+setBookmarkPointE :: Mark -> Point -> EditorM ()
+setBookmarkPointE bookmark pos = withBuffer $ \b -> setMarkPointB b bookmark pos
+
+getBookmarkPointE :: Mark -> EditorM Point
+getBookmarkPointE bookmark = withBuffer $ \b -> getMarkPointB b bookmark
 
 -- ---------------------------------------------------------------------
 -- | Dynamically-extensible state components.

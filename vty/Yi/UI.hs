@@ -51,7 +51,7 @@ module Yi.UI (
 
 import Prelude hiding (error)
 
-import Yi.Buffer (Point, FBuffer (..), pointB, curLn, getMarkB, getModeLine, nameB )
+import Yi.Buffer (Point, FBuffer (..), pointB, curLn, getMarkPointB, getSelectionMarkB, getModeLine, nameB )
 import Yi.FastBuffer( nelemsBIH ) -- gah this is ugly
 import Yi.Editor
 import Yi.Window as Window
@@ -237,7 +237,7 @@ doDrawWindow e focused sty win = do
         wsty = styleToAttr (window sty)
         selsty = styleToAttr (selected sty)
         eofsty = eof sty
-    markPoint <- getMarkB b
+    markPoint <- getMarkPointB b =<< getSelectionMarkB b
     point <- pointB b
     bufData <- nelemsBIH (rawbuf b) (w*h') (tospnt win) -- read enough chars from the buffer.
     let prompt = if isMini win then nameB b else ""

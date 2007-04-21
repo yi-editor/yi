@@ -20,9 +20,10 @@
 -- | A 'Buffer' implementation based on the GTK TextBuffer. Eventually
 -- we want to get rid of this, and manage the whole thing ourselves.
 
-module Yi.FastBuffer (Point, Size, BufferImpl, newBI, deleteNAtI,
+module Yi.FastBuffer (Mark, Point, Size, BufferImpl, newBI, deleteNAtI,
                       moveToI, insertNI, pointBI, nelemsBI, finaliseBI, sizeBI, writeBI,
-                      curLnI, gotoLnI, searchBI, regexBI, getMarkBI, setMarkBI, unsetMarkBI, 
+                      curLnI, gotoLnI, searchBI, regexBI, 
+                      getMarkPointBI, setMarkPointBI, unsetMarkBI, getMarkBI, getSelectionMarkBI,
                       textbuf, setSyntaxBI, point, updateCursorPosition, fetchCursorPosition)
 where
 
@@ -40,7 +41,7 @@ import Graphics.UI.Gtk.SourceView
 
 type Point = Int
 type Size  = Int
-
+type Mark  = TextMark
 
 data BufferImpl =
         BufferImpl { textbuf :: SourceBuffer
@@ -242,19 +243,23 @@ regexBI fb re = error "regexBI not implemented"
 
 ---------------------------------------------------------------------
 
-getMarkBI :: BufferImpl -> IO Int
-getMarkBI b = do
-  i <- textBufferGetIterAtMark (textbuf b) (mark b)
+getSelectionMarkBI :: BufferImpl -> IO Mark
+getSelectionMarkBI b = return (mark b)
+
+getMarkPointBI :: BufferImpl -> Mark -> IO Point
+getMarkPointBI b m = do
+  i <- textBufferGetIterAtMark (textbuf b) m
   get i textIterOffset
 
+
 -- | Set this buffer mark (TODO: have a set of these (bookmarks, error list, etc.))
-setMarkBI :: BufferImpl -> Int -> IO ()
-setMarkBI b pos = do
+setMarkPointBI :: BufferImpl -> Mark -> Int -> IO ()
+setMarkPointBI b m pos = do
   let tb = textbuf b
   logPutStrLn $ "setMarkBI " ++ show pos
   writeIORef (markActive b) True
   p <- textBufferGetIterAtOffset tb pos
-  textBufferMoveMark tb (mark b) p
+  textBufferMoveMark tb m p
 
 {-
   We must allow the unsetting of this mark, this will have the property
@@ -276,3 +281,15 @@ inBounds i end | i <= 0    = 0
                | i >= end  = max 0 (end - 1)
                | otherwise = i
 {-# INLINE inBounds #-}
+
+
+
+getMarkBI :: BufferImpl -> Maybe String -> IO Mark
+getMarkBI b name = do
+  m :: Maybe Mark <- maybe (return Nothing) (textBufferGetMark (textbuf b)) name
+  case m of
+    Just m' -> return m'
+    Nothing -> do
+           i <- textBufferGetIterAtMark (textbuf b) (point b)
+           textBufferCreateMark (textbuf b) name i False
+

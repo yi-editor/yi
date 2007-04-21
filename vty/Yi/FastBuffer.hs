@@ -24,7 +24,11 @@
 -- NB buffers have no concept of multiwidth characters. There is an
 -- assumption that a character has width 1, including tabs.
 
-module Yi.FastBuffer (Point, Size, BufferImpl, newBI, deleteNAtI, moveToI, insertNI, pointBI, nelemsBI, finaliseBI, sizeBI, writeBI, curLnI, gotoLnI, searchBI, regexBI, getMarkBI, setMarkBI, unsetMarkBI, nelemsBIH, setSyntaxBI) where
+module Yi.FastBuffer (Point, Mark, Size, BufferImpl, newBI, deleteNAtI, moveToI, insertNI, 
+                      pointBI, nelemsBI, finaliseBI, sizeBI, writeBI, curLnI, 
+                      gotoLnI, searchBI, regexBI, 
+                      getMarkBI, getMarkPointBI, setMarkPointBI, unsetMarkBI, getSelectionMarkBI,
+                      nelemsBIH, setSyntaxBI) where
 
 import Yi.Debug
 
@@ -63,9 +67,9 @@ import qualified Data.ByteString.Char8 as B
 
 type Point = Int
 type Size  = Int
-type MarkKey = Int  -- 0: point, 1: mark
+type Mark  = Int  -- 0: point, 1: selection mark
 type MarkValue = (Int, Bool) -- (Point, leftBound)
-type Marks = M.Map MarkKey MarkValue
+type Marks = M.Map Mark MarkValue
 
 type BufferImpl = MVar FBufferData
 
@@ -75,6 +79,7 @@ data FBufferData =
         FBufferData { _rawmem  :: !(Ptr CChar)     -- ^ raw memory           (ToDo unicode)
                     , marks    :: !Marks           -- ^ Marks for this buffer 0 -> point, 1 -> mark
                     -- TODO: use weak refs as to automatically free unreferenced marks.
+                    , _markNames :: !(M.Map String Mark)
                     , _contsize :: !Int             -- ^ length of contents
                     , _rawsize  :: !Int             -- ^ raw size of buffer
                     , hlcache   :: !(Maybe HLState) -- ^ syntax highlighting state
@@ -86,9 +91,9 @@ data FBufferData =
 -- | Resize an FBufferData
 --
 resizeFB_ :: FBufferData -> Int -> IO FBufferData
-resizeFB_ (FBufferData ptr p e _ hl) sz = do
+resizeFB_ (FBufferData ptr p m e _ hl) sz = do
     ptr' <- reallocArray0 ptr sz
-    return (FBufferData ptr' p e sz hl)
+    return (FBufferData ptr' p m e sz hl)
 
 --
 -- | New FBuffer filled from string.
@@ -100,7 +105,7 @@ stringToFBuffer s = do
     ptr <- mallocArray0 r_size
     pokeArray ptr (map castCharToCChar s) -- Unicode
     poke (ptr `advancePtr` size_i) (castCharToCChar '\0')
-    return (FBufferData ptr (M.fromList [(0,(0,pointLeftBound)), (1,(0,markLeftBound))]) size_i r_size Nothing)
+    return (FBufferData ptr (M.fromList [(0,(0,pointLeftBound)), (1,(0,markLeftBound))]) M.empty size_i r_size Nothing)
 
 
 --
@@ -146,9 +151,9 @@ foreign import ccall unsafe "YiUtils.h findStartOfLineN"
 -- May need to resize buffer. How do we append to eof?
 insertN' :: FBufferData -> [Char] -> Int -> IO FBufferData
 insertN' fb [] _ = return fb
-insertN' fb@(FBufferData _ _ old_end old_max hl) cs cs_len = do
+insertN' fb@(FBufferData _ _ _ old_end old_max hl) cs cs_len = do
         let need_len = old_end + cs_len
-        (FBufferData ptr pnts end mx _) <-
+        (FBufferData ptr pnts nms end mx _) <-
             if need_len >= old_max then resizeFB_ fb (need_len + 2048)
                                    else return fb
         let (pnt,_) = pnts M.! 0
@@ -158,7 +163,7 @@ insertN' fb@(FBufferData _ _ old_end old_max hl) cs cs_len = do
         -- logPutStrLn $ "insertN' " ++ show cs ++ show pnt
         shiftChars ptr dst pnt len
         writeChars ptr cs pnt
-        return (FBufferData ptr (shiftMarks pnt cs_len pnts) nend mx hl)
+        return (FBufferData ptr (shiftMarks pnt cs_len pnts) nms nend mx hl)
 {-# INLINE insertN' #-}
 
 shiftMarks :: Point -> Int -> Marks -> Marks
@@ -172,12 +177,12 @@ shiftMarks from by = M.map $ \(p, leftBound) -> (shift p leftBound, leftBound)
 
 deleteN' :: FBufferData -> Int -> Int -> IO FBufferData
 deleteN' b 0 _ = return b
-deleteN' (FBufferData ptr pnts end mx hl) n pos = do
+deleteN' (FBufferData ptr pnts nms end mx hl) n pos = do
         let src = inBounds (pos + n) end     -- start shifting back from
             len = inBounds (end-pos-n) end   -- length of shift
             end'= pos + len                  -- new end
         shiftChars ptr pos src len
-        return (FBufferData ptr (shiftMarks pos (negate len) pnts) end' mx hl)
+        return (FBufferData ptr (shiftMarks pos (negate len) pnts) nms end' mx hl)
 {-# INLINE deleteN' #-}
 
 ------------------------------------------------------------------------
@@ -195,15 +200,15 @@ newBI s = newMVar =<< stringToFBuffer s
 
 -- | Free any resources associated with this buffer
 finaliseBI :: BufferImpl -> IO ()
-finaliseBI fb = withMVar fb $ \(FBufferData ptr _ _ _ _) -> free ptr
+finaliseBI fb = withMVar fb $ \(FBufferData ptr _ _ _ _ _) -> free ptr
 
 -- | Number of characters in the buffer
 sizeBI      :: BufferImpl -> IO Int
-sizeBI fb = withMVar fb $ \(FBufferData _ _ n _ _) -> return n
+sizeBI fb = withMVar fb $ \(FBufferData _ _ _ n _ _) -> return n
 
 -- | Extract the current point
 pointBI     :: BufferImpl -> IO Int
-pointBI fb = withMVar fb $ \(FBufferData _ pnts e mx _) -> do
+pointBI fb = withMVar fb $ \(FBufferData _ pnts _ e mx _) -> do
     let (p,_) = (pnts M.! 0)
     assert ((p >= 0 && (p < e || e == 0)) && e <= mx) $ return p
 {-# INLINE pointBI #-}
@@ -211,7 +216,7 @@ pointBI fb = withMVar fb $ \(FBufferData _ pnts e mx _) -> do
 
 -- | Return @n@ elems starting at @i@ of the buffer as a list
 nelemsBI    :: BufferImpl -> Int -> Int -> IO [Char]
-nelemsBI fb n i = withMVar fb $ \(FBufferData b _ e _ _) -> do
+nelemsBI fb n i = withMVar fb $ \(FBufferData b _ _ e _ _) -> do
         let i' = inBounds i e
             n' = min (e-i') n
         readChars b n' i'
@@ -221,10 +226,10 @@ nelemsBI fb n i = withMVar fb $ \(FBufferData b _ e _ _) -> do
 nelemsBIH    :: BufferImpl -> Int -> Int -> IO [(Char,Attr)]
 nelemsBIH fb n i = withMVar fb fun
     where
-      fun (FBufferData b _ e _ Nothing) = let i' = inBounds i e
-                                              n' = min (e-i') n
-                                          in fmap (map (flip (,) attr)) (readChars b n' i')
-      fun (FBufferData b _ e _ (Just (HLState hl))) = do
+      fun (FBufferData b _ _ e _ Nothing) = let i' = inBounds i e
+                                                n' = min (e-i') n
+                                            in fmap (map (flip (,) attr)) (readChars b n' i')
+      fun (FBufferData b _ _ e _ (Just (HLState hl))) = do
         bs <- B.copyCStringLen (b, e)
         let (finst,colors_) = hlColorize hl bs (hlStartState hl)
             colors = colors_ ++ hlColorizeEOF hl finst
@@ -235,14 +240,14 @@ nelemsBIH fb n i = withMVar fb fun
 
 -- | Move point in buffer to the given index
 moveToI     :: BufferImpl -> Int -> IO ()
-moveToI fb i = modifyMVar_ fb $ \(FBufferData ptr pnts end mx hl) ->
-    return $ FBufferData ptr (M.insert 0 (inBounds i end, pointLeftBound) pnts) end mx hl
+moveToI fb i = modifyMVar_ fb $ \(FBufferData ptr pnts nms end mx hl) ->
+    return $ FBufferData ptr (M.insert 0 (inBounds i end, pointLeftBound) pnts) nms end mx hl
 {-# INLINE moveToI #-}
 
 
 -- | Write an element into the buffer at the current point
 writeBI :: BufferImpl -> Char -> IO ()
-writeBI fb c = withMVar fb $ \ (FBufferData ptr pnts _ _ _) -> do
+writeBI fb c = withMVar fb $ \ (FBufferData ptr pnts _ _ _ _) -> do
         let off = fst (pnts M.! 0)
         writeChars ptr [c] off
 {-# INLINE writeBI #-}
@@ -261,16 +266,16 @@ deleteNAtI fb n pos = modifyMVar_ fb $ \fb' -> deleteN' fb' n pos
 -- | Return the current line number
 curLnI       :: BufferImpl -> IO Int
 -- count number of \n from origin to point
-curLnI fb = withMVar fb $ \(FBufferData ptr pnts _ _ _) -> ccountLines ptr 0 $ fst $ pnts M.! 0
+curLnI fb = withMVar fb $ \(FBufferData ptr pnts _ _ _ _) -> ccountLines ptr 0 $ fst $ pnts M.! 0
 {-# INLINE curLnI #-}
 
 -- | Go to line number @n@. @n@ is indexed from 1. Returns the
 -- actual line we went to (which may be not be the requested line,
 -- if it was out of range)
 gotoLnI      :: BufferImpl -> Int -> IO Int
-gotoLnI fb n = modifyMVar fb $ \(FBufferData ptr pnts e mx hl) -> do
+gotoLnI fb n = modifyMVar fb $ \(FBufferData ptr pnts nms e mx hl) -> do
         np <- cfindStartOfLineN ptr 0 e (n-1)       -- index from 0
-        let fb' = FBufferData ptr (M.insert 0 (np,pointLeftBound) pnts) e mx hl
+        let fb' = FBufferData ptr (M.insert 0 (np,pointLeftBound) pnts) nms e mx hl
         n' <- if np > e - 1 -- if next line is end of file, then find out what line this is
               then return . subtract 1 =<< ccountLines ptr 0 np
               else return n         -- else it is this line
@@ -285,7 +290,7 @@ gotoLnI fb n = modifyMVar fb $ \(FBufferData ptr pnts e mx hl) -> do
 
 -- | Return index of next string in buffer that matches argument
 searchBI      :: BufferImpl -> [Char] -> IO (Maybe Int)
-searchBI fb s = withMVar fb $ \(FBufferData ptr pnts _ _ _) -> 
+searchBI fb s = withMVar fb $ \(FBufferData ptr pnts _ _ _ _) -> 
         withCString s $ \str -> do
             p <- cstrstr (ptr `advancePtr` (fst $ pnts M.! 0)) str
             return $ if p == nullPtr then Nothing
@@ -293,7 +298,7 @@ searchBI fb s = withMVar fb $ \(FBufferData ptr pnts _ _ _) ->
 
 -- | Return indices of next string in buffer matched by regex
 regexBI       :: BufferImpl -> Regex -> IO (Maybe (Int,Int))
-regexBI fb re = withMVar fb $ \(FBufferData ptr pnts _ _ _) -> do
+regexBI fb re = withMVar fb $ \(FBufferData ptr pnts _ _ _ _) -> do
         let p = (fst $ pnts M.! 0)
         Right mmatch <- wrapMatch re (ptr `plusPtr` p)
         logPutStrLn $ show mmatch
@@ -312,16 +317,24 @@ regexBI fb re = withMVar fb $ \(FBufferData ptr pnts _ _ _) -> do
    return the point, which will mean that the calling function will
    see the selection area as null in length. 
 -}
-getMarkBI        :: BufferImpl -> IO Int
-getMarkBI fb = withMVar fb $ \(FBufferData { marks = p } ) ->
-  return $ fst $ M.findWithDefault (p M.! 0) 1 p
-    -- We look up position 1 in the marks, the default value to return
-    -- if position 1 is not set, is position 0, ie the point.
+getSelectionMarkBI :: BufferImpl -> IO Mark
+getSelectionMarkBI fb = withMVar fb $ \(FBufferData { marks = p } ) -> return $ if M.member 1 p then 1 else 0
+
+getMarkPointBI :: BufferImpl -> Mark -> IO Point
+getMarkPointBI fb m = withMVar fb $ \(FBufferData { marks = p } ) -> do
+                        logPutStrLn $ "get mark " ++ show m ++ " at " ++ show (M.findWithDefault (p M.! 0) m p)
+                        return $ fst $ M.findWithDefault (p M.! 0) m p
+    -- We look up position m in the marks, the default value to return
+    -- if position m is not set, is position 0, ie the point.
 
 
--- | Set this buffer mark (TODO: have a set of these (bookmarks, error list, etc.))
-setMarkBI        :: BufferImpl -> Int -> IO ()
-setMarkBI fb pos = modifyMVar_ fb $ \fb' -> return $ fb' {marks = (M.insert 1 (pos,markLeftBound) (marks fb'))}
+-- | Set this buffer mark
+setMarkPointBI :: BufferImpl -> Mark -> Point -> IO ()
+setMarkPointBI fb m pos = modifyMVar_ fb $ \fb' -> do
+                            logPutStrLn $ "set mark " ++ show m ++ " at " ++ show pos
+                            let marks' = M.insert m (pos,if m == 1 then markLeftBound else False) (marks fb')
+                            logPutStrLn $ "marks: " ++ show marks'
+                            return $ fb' {marks = marks'}
 
 {-
   We must allow the unsetting of this mark, this will have the property
@@ -348,15 +361,19 @@ inBounds i end | i <= 0    = 0
                | otherwise = i
 {-# INLINE inBounds #-}
 
-
-{-
--- | Create a mark associated with this buffer.
-newMarkB :: FBuffer -> Point -> Bool -> IO MarkKey
-newMarkB (FBuffer { rawbuf = mv }) point leftBound = do 
-  modifyMVar mv $ \fb -> do
-    let idx :: MarkKey
-        idx = case M.maxView (marks fb) of
-                   Nothing -> 0
-                   Just (_,(x,_)) -> x + 1 -- FIXME: this risk overflowing
-    return (fb {marks = M.insert idx (point, leftBound) (marks fb)}, idx)
--}
+getMarkBI :: BufferImpl -> Maybe String -> IO Mark
+getMarkBI b name = modifyMVar b $ \ fb@(FBufferData ptr pnts nms end mx hl) -> do
+  logPutStrLn $ "getMarkBI: " ++ show nms ++ ", " ++ show pnts
+  let m :: Maybe Mark = flip M.lookup nms =<< name
+  case m of
+    Just m' -> do
+           logPutStrLn $ "found mark: " ++ show name ++ " = " ++ show m'
+           return (fb, m')
+    Nothing -> do
+           let newMark = 1 + (max 1 $ fst $ M.findMax pnts)
+           let nms' = case name of
+                        Nothing -> nms
+                        Just nm -> M.insert nm newMark nms
+           let pnts' = M.insert newMark (fst $ pnts M.! 0,False) pnts
+           logPutStrLn $ "new mark: " ++ show name ++ " = " ++ show newMark
+           return (FBufferData ptr pnts' nms' end mx hl, newMark)

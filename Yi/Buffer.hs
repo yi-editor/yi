@@ -24,13 +24,14 @@
 
 module Yi.Buffer ( FBuffer (..), keyB, curLn, nameB, indexOfEol,
                    sizeB, pointB, moveToSol, moveTo, lineUp, lineDown,
-                   hNewB, newB, getMarkB, finaliseB, hPutB, Point,
+                   hNewB, newB, finaliseB, hPutB, Point, Mark,
                    moveToEol, gotoLn, gotoLnFrom, offsetFromSol,
                    atSol, atEol, atSof, atEof, leftB, rightB,
                    moveXorEol, moveXorSol, insertN, deleteN,
                    deleteToEol, indexOfSol, nelemsB, writeB, getfileB,
                    setfileB, deleteNAt, readB, elemsB, undo, redo,
-                   setMarkB, unsetMarkB, isUnchangedB, setSyntaxB, regexB, searchB, readAtB,
+                   getMarkB, getSelectionMarkB, getMarkPointB, setMarkPointB, unsetMarkB, 
+                   isUnchangedB, setSyntaxB, regexB, searchB, readAtB,
                    getModeLine, getPercent, forgetPreferCol, setBufferKeymap, restartBufferThread
                     ) where
 
@@ -280,15 +281,19 @@ regexB = lift regexBI
 
 ---------------------------------------------------------------------
 
--- | Set this buffer mark (TODO: have a set of these (bookmarks, error list, etc.))
-setMarkB       :: FBuffer -> Int -> IO ()
-setMarkB = lift setMarkBI
+-- | Set a mark in this buffer
+setMarkPointB       :: FBuffer -> Mark -> Int -> IO ()
+setMarkPointB = lift setMarkPointBI
 
-getMarkB       :: FBuffer -> IO Int
-getMarkB = lift getMarkBI
+getMarkPointB       :: FBuffer -> Mark -> IO Int
+getMarkPointB = lift getMarkPointBI
 
 unsetMarkB     :: FBuffer -> IO ()
 unsetMarkB = lift unsetMarkBI
+
+getMarkB = lift getMarkBI
+
+getSelectionMarkB = lift getSelectionMarkBI
 
 -- | Move point -1
 leftB       :: FBuffer -> IO ()
