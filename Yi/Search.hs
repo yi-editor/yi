@@ -296,7 +296,10 @@ qrNextE b what = do
     Nothing -> do
             msgE "String to search not found"
             closeE
-    Just p -> lift $ moveTo b p
+    Just p -> lift $ do moveTo b p
+                        m <- getSelectionMarkB b
+                        setMarkPointB b m (p+length what)
+          
 
 qrReplaceOneE :: FBuffer -> String -> String -> EditorM ()
 qrReplaceOneE b what with = do

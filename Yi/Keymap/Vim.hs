@@ -645,7 +645,7 @@ spawn_ex_buffer prompt = do
                   do event keyUp; write historyUp,
                   do event keyDown; write historyDown]
   historyStart
-  spawnMinibufferE prompt (const $ runVim $ ex_process)
+  spawnMinibufferE prompt (const $ runVim $ ex_process) (return ())
 
 
 ex_mode :: String -> VimMode

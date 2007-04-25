@@ -226,11 +226,6 @@ isearchProcess = do
 ----------------------------
 -- query-replace
 
--- This implementation of query-replace suffers from (at least) two
--- problems: 1. the user doesn't clearly see what is going to be
--- replaced. 2. the user must quit the current minibuffer with 'q'
--- explicitly before resuming edit.
-
 queryReplaceE :: EditorM ()
 queryReplaceE = do
     withMinibuffer "Replace:" return $ \replaceWhat -> do
@@ -241,14 +236,10 @@ queryReplaceE = do
                            ("q", write $ closeE),
                            ("C-g", write $ closeE)
                            ]
-    mp <- lift $ searchB b replaceWhat
-    case mp of
-      Nothing -> msgE "String to search not found"
-      Just p -> do
-        gotoPointE p
-        spawnMinibufferE
+    spawnMinibufferE
             ("Replacing " ++ replaceWhat ++ "with " ++ replaceWith ++ " (y,n,q):")
             (const (makeProcess replaceBindings))
+            (qrNextE b replaceWhat)
 
 
 ----------------------------
@@ -393,7 +384,7 @@ withMinibuffer prompt completer act = do
                     ("TAB", write (completionFunction completer)),
                     ("C-g", write closeMinibuffer)]
   historyStart
-  spawnMinibufferE (prompt ++ " ") (rebind rebindings)
+  spawnMinibufferE (prompt ++ " ") (rebind rebindings) (return ())
 
 scrollDownE :: Action
 scrollDownE = withUnivArg $ \a ->

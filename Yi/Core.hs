@@ -820,12 +820,13 @@ switchToBufferWithNameE "" = nextBufW
 switchToBufferWithNameE bufName = switchToBufferE =<< getBufferWithName bufName
 
 -- | Open a minibuffer window with the given prompt and keymap
-spawnMinibufferE :: String -> KeymapMod -> Action
-spawnMinibufferE prompt kmMod =
+spawnMinibufferE :: String -> KeymapMod -> Action -> Action
+spawnMinibufferE prompt kmMod initialAction =
     do b <- stringToNewBuffer prompt []
        lift $ setBufferKeymap b kmMod
        w <- UI.newWindow True b
        UI.setWindow w
+       initialAction
 
 -- | Write current buffer to disk, if this buffer is associated with a file
 fwriteE :: Action
