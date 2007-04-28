@@ -281,8 +281,8 @@ prepareAction = do
      when changed $ forgetPreferCol b
 
 setCmdLine :: UI -> String -> IO ()
-setCmdLine i s = do 
-  set (uiCmdLine i) [labelText := s]
+setCmdLine i s = do
+  set (uiCmdLine i) [labelText := if length s > 132 then take 129 s ++ "..." else s]
 
                 
 -- | Display the given buffer in the given window.
