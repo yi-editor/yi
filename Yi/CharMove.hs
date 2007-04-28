@@ -262,7 +262,7 @@ moveWhile_ f dir b = do
 readWordLeftE :: EditorM (String,Int,Int)
 readWordLeftE = withBuffer $ \b -> readWordLeft_ b
 
--- Core-internal worker, not threadsafe.
+-- Core-internal worker
 readWordLeft_ :: FBuffer -> IO (String,Int,Int)
 readWordLeft_ b = do
     p <- pointB b
