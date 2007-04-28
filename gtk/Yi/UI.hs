@@ -132,6 +132,7 @@ processEvent ch ev = do
   case gtkToYiEvent ev of
     Nothing -> logPutStrLn $ "Event not translatable: " ++ show ev
     Just e -> writeChan ch e
+  yield
   return True
             
 gtkToYiEvent :: Gtk.Event -> Maybe Event
