@@ -5,11 +5,10 @@ license-file:   LICENSE
 author:         Don Stewart
 maintainer:     dons@cse.unsw.edu.au
 build-depends:  ghc>=6.6, base, mtl, regex-posix
-        
+
 executable:     yi
 main-is:        Main.hs
-include-dirs:   cbits
-extensions:     CPP, ForeignFunctionInterface
+extensions:     CPP
 ghc-options:    -Wall -fglasgow-exts -O -funbox-strict-fields -fasm -optl-Wl,-s
 
 -- ghc-options:    -prof -auto-all -Wall -fglasgow-exts -O -funbox-strict-fields -fasm -optl-Wl,-s
