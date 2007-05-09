@@ -150,10 +150,10 @@ hNewBuffer f = do
     insertBuffer b
 
 -- | Create and fill a new buffer, using contents of string.
-stringToNewBuffer :: FilePath -> String -> EditorM FBuffer
-stringToNewBuffer f cs = do
-    lift $ logPutStrLn $ "stringToNewBuffer: " ++ show f
-    b <- lift $ newB f cs
+stringToNewBuffer :: String -> String -> EditorM FBuffer
+stringToNewBuffer nm cs = do
+    lift $ logPutStrLn $ "stringToNewBuffer: " ++ show nm
+    b <- lift $ newB nm cs
     insertBuffer b
 
 insertBuffer :: FBuffer -> EditorM FBuffer

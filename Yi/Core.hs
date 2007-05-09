@@ -33,9 +33,9 @@ module Yi.Core (
 
         Direction (..),
         -- * Construction and destruction
-        startE,         -- :: a -> Editor.Config -> Int -> Maybe [FilePath] -> IO ()
-        emptyE,         -- :: IO ()
-        runE,           -- :: IO ()
+        startE,         -- :: Kernel -> Maybe Editor -> [Action] -> IO ()
+        emptyE,         -- :: Action
+        runE,           -- :: String -> Action
         quitE,          -- :: Action
         rebootE,        -- :: Action
         reloadE,        -- :: Action
@@ -52,11 +52,11 @@ module Yi.Core (
         msgE,           -- :: String -> Action
         errorE,         -- :: String -> Action
         msgClrE,        -- :: Action
-        bufInfoE,       -- :: IO BufferFileInfo
-        fileNameE,      -- :: IO (Maybe FilePath)
-        bufNameE,       -- :: IO String
+        bufInfoE,       -- :: EditorM BufferFileInfo
+        fileNameE,      -- :: EditorM (Maybe FilePath)
+        bufNameE,       -- :: EditorM String
         setWindowFillE, -- :: Char -> Action
-	setWindowStyleE,-- :: UIStyle -> Action
+        setWindowStyleE,-- :: UIStyle -> Action
 
         -- * Window manipulation
         nextWinE,       -- :: Action
@@ -79,7 +79,7 @@ module Yi.Core (
         newBufferE,     -- :: String -> String -> Action
         listBuffersE,   -- :: Action
         closeBufferE,   -- :: String -> Action
-        isUnchangedE,   -- :: IO Bool
+        isUnchangedE,   -- :: EditorM Bool
         setUnchangedE,  -- :: Action
         setSynE,        -- :: String -> Action
         getBufferWithName,
@@ -105,13 +105,13 @@ module Yi.Core (
         gotoLnE,        -- :: Int -> Action
         gotoLnFromE,    -- :: Int -> Action
         gotoPointE,     -- :: Int -> Action
-        getPointE,      -- :: IO Int
-	getLineAndColE, -- :: IO (Int, Int)
+        getPointE,      -- :: EditorM Int
+        getLineAndColE, -- :: EditorM (Int, Int)
 
-        atSolE,         -- :: IO Bool
-        atEolE,         -- :: IO Bool
-        atSofE,         -- :: IO Bool
-        atEofE,         -- :: IO Bool
+        atSolE,         -- :: EditorM Bool
+        atEolE,         -- :: EditorM Bool
+        atSofE,         -- :: EditorM Bool
+        atEofE,         -- :: EditorM Bool
 
         -- * Window-based movement
         upScreenE,      -- :: Action
@@ -128,24 +128,25 @@ module Yi.Core (
         deleteE,        -- :: Action
         deleteNE,       -- :: Int -> Action
         killE,          -- :: Action
-        deleteRegionE,  -- :: (Int,Int) -> Action
+        deleteRegionE,  -- :: Region -> Action
         writeE,         -- :: Char -> Action
         undoE,          -- :: Action
         redoE,          -- :: Action
+        revertE,        -- :: Action
 
         -- * Read parts of the buffer
-        readE,          -- :: IO Char
-        readRegionE,    -- :: (Int,Int) -> IO String
-        readLnE,        -- :: IO String
-        readNM,         -- :: Int -> Int -> IO String
-        readRestOfLnE,  -- :: IO String
-        readAllE,       -- :: IO String
+        readE,          -- :: EditorM Char
+        readRegionE,    -- :: Region -> EditorM String
+        readLnE,        -- :: EditorM String
+        readNM,         -- :: Int -> Int -> EditorM String
+        readRestOfLnE,  -- :: EditorM String
+        readAllE,       -- :: EditorM String
 
         swapE,          -- :: Action
 
         -- * Basic registers
         setRegE,        -- :: String -> Action
-        getRegE,        -- :: IO String
+        getRegE,        -- :: EditorM String
 
         -- * Marks
         setMarkE,
@@ -161,10 +162,10 @@ module Yi.Core (
         setDynamic,
 
         -- * higher level ops
-        mapRangeE,              -- :: Int -> Int -> (Buffer' -> Action) -> Action
+        mapRangeE,              -- :: Int -> Int -> (Char -> Char) -> Action
 
         -- * Interacting with external commands
-        pipeE,                   -- :: String -> IO String
+        pipeE,                   -- :: String -> String -> EditorM String
  
         -- * Minibuffer
         spawnMinibufferE,
@@ -276,7 +277,7 @@ startE kernel st commandLineActions = do
 
         -- | Make an action suitable for an interactive run.
         -- Editor state will be refreshed after
-        interactive :: EditorM () -> IO ()
+        interactive :: Action -> IO ()
         interactive action = do 
           logPutStrLn ">>>>>>> interactively"
           runReaderT (UI.prepareAction >> action >> UI.scheduleRefresh)  newSt
@@ -295,7 +296,7 @@ startE kernel st commandLineActions = do
 
     UI.main newSt -- transfer control to UI: GTK must run in the main thread, or else it's not happy.
                 
-changeKeymapE :: Keymap -> EditorM ()
+changeKeymapE :: Keymap -> Action
 changeKeymapE km = do
   modifyEditor_ $ \e -> return e { defaultKeymap = km }
   bs <- getBuffers
@@ -309,7 +310,7 @@ changeKeymapE km = do
 -- editor with string as input, and is useful for testing keymaps.
 -- emptyE takes no input -- the ui blocks on stdin.
 --
-emptyE :: EditorM ()
+emptyE :: Action
 emptyE = modifyEditor_ $ const $ return $ emptyEditor
     -- need to get it into a state where we can just run core commands
     -- to make it reinitialisable, lets blank out the state
@@ -319,7 +320,7 @@ emptyE = modifyEditor_ $ const $ return $ emptyEditor
     -- no eventloop
 
 -- for testing keymaps:
-runE :: String -> EditorM ()
+runE :: String -> Action
 runE = undefined
 
 -- ---------------------------------------------------------------------
@@ -545,7 +546,7 @@ killE :: Action
 killE = withBuffer deleteToEol
 
 -- | Delete an arbitrary part of the buffer
-deleteRegionE :: Region -> EditorM ()
+deleteRegionE :: Region -> Action
 deleteRegionE r = withBuffer $ \b -> do
                     deleteNAt b (regionEnd r - regionStart r) (regionStart r)
 
@@ -646,7 +647,7 @@ exchangePointAndMarkE = do m <- getMarkE
 getBookmarkE :: String -> EditorM Mark
 getBookmarkE nm = withBuffer $ \b -> getMarkB b (Just nm)
 
-setBookmarkPointE :: Mark -> Point -> EditorM ()
+setBookmarkPointE :: Mark -> Point -> Action
 setBookmarkPointE bookmark pos = withBuffer $ \b -> setMarkPointB b bookmark pos
 
 getBookmarkPointE :: Mark -> EditorM Point
@@ -786,6 +787,25 @@ fnewE f = do
     lift $ setfileB b f        -- and associate with file f
     switchToBufferE b
 
+-- | Revert to the contents of the file on disk
+revertE :: Action
+revertE = do
+            mfp <- withBuffer getfileB
+            case mfp of
+                     Just fp -> do
+                             s <- liftIO $ readFile fp
+                             end <- withBuffer sizeB
+                             p <- getPointE
+                             deleteRegionE (mkRegion 0 end)
+                             topE
+                             insertNE s
+                             gotoPointE p
+                             withBuffer clearUndosB
+                             msgE ("Reverted from " ++ show fp)
+                     Nothing -> do
+                                msgE "Can't revert, no file associated with buffer."
+                                return ()
+
 -- | Like fnewE, create a new buffer filled with the String @s@,
 -- Open up a new window onto this buffer. Doesn't associate any file
 -- with the buffer (unlike fnewE) and so is good for popup internal
@@ -798,11 +818,11 @@ newBufferE f s = do
     return b
 
 -- | Attach the specified buffer to the current window
-switchToBufferE :: FBuffer -> EditorM ()
+switchToBufferE :: FBuffer -> Action
 switchToBufferE b = getWindow >>= UI.setWindowBuffer b
 
 -- | Attach the specified buffer to some other window than the current one
-switchToBufferOtherWindowE :: FBuffer -> EditorM ()
+switchToBufferOtherWindowE :: FBuffer -> Action
 switchToBufferOtherWindowE b = shiftOtherWindow >> switchToBufferE b
 
 -- | Find buffer with given name. Raise exception if not found.
@@ -815,7 +835,7 @@ getBufferWithName bufName = do
 
 
 -- | Switch to the buffer specified as parameter. If the buffer name is empty, switch to the next buffer.
-switchToBufferWithNameE :: String -> EditorM ()
+switchToBufferWithNameE :: String -> Action
 switchToBufferWithNameE "" = nextBufW
 switchToBufferWithNameE bufName = switchToBufferE =<< getBufferWithName bufName
 
@@ -898,7 +918,7 @@ setWinE = UI.setWindow
 
 -- | Split the current window, opening a second window onto this buffer.
 -- Windows smaller than 3 lines cannot be split.
-splitE :: EditorM ()
+splitE :: Action
 splitE = do
     canSplit <- UI.hasRoomForExtraWindow
     if canSplit 

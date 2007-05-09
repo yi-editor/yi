@@ -32,8 +32,11 @@ module Yi.Buffer ( FBuffer (..), keyB, curLn, nameB, indexOfEol,
                    setfileB, deleteNAt, readB, elemsB, undo, redo,
                    getMarkB, getSelectionMarkB, getMarkPointB, setMarkPointB, unsetMarkB, 
                    isUnchangedB, setSyntaxB, regexB, searchB, readAtB,
-                   getModeLine, getPercent, forgetPreferCol, setBufferKeymap, restartBufferThread
+                   getModeLine, getPercent, forgetPreferCol, setBufferKeymap, restartBufferThread,
+                   clearUndosB
                     ) where
+
+import System.FilePath
 
 import Text.Regex.Posix.Wrap    ( Regex  )
 import Yi.FastBuffer
@@ -93,8 +96,8 @@ getModeLine b = do
     let pct = if pos == 1 then "Top" else getPercent p s
         chg = if unchanged then "-" else "*"
     return $ 
-           chg ++ " " ++
-           "\"" ++ nameB b ++ "\"" ++ 
+           chg ++ " "
+           ++ nameB b ++ 
            replicate 5 ' ' ++
            "L" ++ show ln ++ "  " ++ "C" ++ show col ++ 
            replicate 2 ' ' ++ pct
@@ -111,15 +114,19 @@ lift :: (BufferImpl -> x) -> (FBuffer -> x)
 lift f = \b -> f (rawbuf b)
 
 hNewB :: FilePath -> IO FBuffer
-hNewB nm = do 
-  s <- readFile nm
-  b <- newB nm s
-  setfileB b nm
+hNewB fp = do
+  s <- readFile fp
+  b <- newB (takeFileName fp) s
+  setfileB b fp
   return b
 
 hPutB :: FBuffer -> FilePath -> IO ()
 hPutB b nm = do
   elemsB b >>= writeFile nm
+  clearUndosB b
+
+clearUndosB :: FBuffer -> IO ()
+clearUndosB b = do
   modifyMVar_ (undos b) (\_ -> return emptyUR) -- Clear the undo list, so the changed "flag" is reset.
 
 nameB :: FBuffer -> String
@@ -131,7 +138,6 @@ getfileB (FBuffer { file = mvf }) = readMVar mvf
 setfileB :: FBuffer -> FilePath -> IO ()
 setfileB (FBuffer { file = mvf }) f =
     modifyMVar_ mvf $ const $ return (Just f)
-
 
 keyB :: FBuffer -> Unique
 keyB (FBuffer { bkey = u }) = u
