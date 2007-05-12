@@ -179,11 +179,8 @@ updateCursorPosition b = do
 -- | Move point in buffer to the given index
 moveToI :: BufferImpl -> Int -> IO ()
 moveToI b off = do
-  --logPutStrLn $ "moveTo " ++ show off
-  p <- textBufferGetIterAtOffset (textbuf b) off
+  p <- textBufferGetIterAtOffset (textbuf b) (max 0 off)
   movePointToIter b p
-{-# INLINE moveToI #-}
-
 
 -- | Write an element into the buffer at the current point
 writeBI :: BufferImpl -> Char -> IO ()
