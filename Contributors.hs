@@ -3,11 +3,13 @@
 import Data.Array (elems, Array)
 import Data.ByteString.Char8 (pack, unpack, ByteString) 
 import Data.Char
-import Data.List (nub, sort, sortBy)
+import Data.List (nub, sort, sortBy, intersperse)
 import Prelude hiding (lines, readFile)
 import Text.Regex.Posix
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.Map as M
+
+capitalize s = BS.cons (toUpper $ BS.head s) (BS.tail s)
 
 splitN n [] = []
 splitN n l = let (c,ls) = splitAt n l in (l : splitN n ls)
@@ -17,6 +19,8 @@ tx = "Thu Oct 14 05:40:06 CEST 2004 "
 name :: ByteString -> ByteString
 name tag 
      | match :: Array Int ByteString <- tag =~ pack "^\"?(.+)<.*>\"?$", [_,name] <- elems match = name
+     | match :: Array Int ByteString <- tag =~ pack "^<?(.*)@(.*)\\.name>?$", [_,firstname, lastname] <- elems match 
+             = BS.concat . intersperse (BS.pack " ") . map capitalize $ [firstname, lastname]
      | match :: Array Int ByteString <- tag =~ pack "^<?(.*)@.*>?$", [_,user] <- elems match = user
      | otherwise = tag
 
