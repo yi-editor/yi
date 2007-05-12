@@ -67,7 +67,7 @@ readChars buf p i = do
 --
 writeChars :: TextBufferClass b => b -> [Char] -> Int -> IO ()
 writeChars buf cs p = do
-  start <- textBufferGetIterAtOffset buf (min 0 p)
+  start <- textBufferGetIterAtOffset buf (max 0 p)
   end <- textBufferGetIterAtOffset buf (min 0 (p + length cs))
   textBufferDelete buf start end
   textBufferInsert buf start cs
@@ -190,7 +190,9 @@ writeBI :: BufferImpl -> Char -> IO ()
 writeBI b c = do
     off <- pointBI b
     deleteN' (textbuf b) 1 off
-    writeChars (textbuf b) [c] off 
+    insertN' (textbuf b) (point b) [c] 
+    moveToI b off
+    
 
 {-# INLINE writeBI #-}
 
