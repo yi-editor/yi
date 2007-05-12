@@ -268,17 +268,18 @@ scheduleRefresh = do
            lift $ do              
              textViewScrollMarkOnscreen (textview w) (point $ rawbuf buf)
              updateCursorPosition (rawbuf buf)
-             txt <- getModeLine buf
+             txt <- runBuffer buf getModeLine 
              set (modeline w) [labelText := txt]
     
 prepareAction :: EditorM ()
 prepareAction = do
-  withBuffer $ \b -> do
-     changed <- fetchCursorPosition (rawbuf b)
+  withBuffer $ do
+     b <- ask
+     changed <- lift $ fetchCursorPosition (rawbuf b)
      -- when the cursor position changed, it means the user clicked to change it,
      -- and therefore if up/down is done we must go to the just set column.
      -- (ie. forget the previous one)
-     when changed $ forgetPreferCol b
+     when changed $ forgetPreferCol
 
 setCmdLine :: UI -> String -> IO ()
 setCmdLine i s = do

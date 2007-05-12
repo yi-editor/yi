@@ -98,17 +98,17 @@ emptyWindow mini b (h,w) = do
 --
 -- | return index of Sol on line @n@ above current line
 --
-indexOfSolAbove :: FBuffer -> Int -> IO Int
-indexOfSolAbove b n = do
-    p <- pointB b
-    moveToSol b
-    loop n b
-    q <- pointB b
-    moveTo b p
+indexOfSolAbove :: Int -> BufferM Int
+indexOfSolAbove n = do
+    p <- pointB
+    moveToSol
+    loop n
+    q <- pointB
+    moveTo p
     return q
 
-    where loop 0 _  = return ()
-          loop i b' = lineUp b' >> loop (i-1) b'
+    where loop 0 = return ()
+          loop i = lineUp >> loop (i-1)
 
 
 --

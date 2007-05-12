@@ -23,7 +23,7 @@
 
 module Yi.Editor where
 
-import Yi.Buffer                ( FBuffer (..), newB, keyB, hNewB, nameB, finaliseB )
+import Yi.Buffer                ( FBuffer (..), BufferM, newB, keyB, hNewB, runBuffer, finaliseB )
 import Text.Regex.Posix.Wrap    ( Regex )
 import Yi.Window
 import Yi.Style                 ( uiStyle, UIStyle )
@@ -189,9 +189,9 @@ bufferEventLoop e b = eventLoop
                     handle handler (run $ runKeymap $ I.forever (modKm defaultKm))
 
 deleteBuffer :: FBuffer -> EditorM ()
-deleteBuffer b = modifyEditor_ $ \e-> do
-                   finaliseB b
-                   return e { buffers = M.delete (bkey b) (buffers e)}
+deleteBuffer b = do
+  lift $ runBuffer b finaliseB
+  modifyEditor_ $ \e-> return e { buffers = M.delete (bkey b) (buffers e)}
 
 ------------------------------------------------------------------------
 --
@@ -213,7 +213,7 @@ findBufferWith e k =
 
 -- | Find buffer with this name
 findBufferWithName :: Editor -> String -> [FBuffer]
-findBufferWithName e n = filter (\b -> nameB b == n) (M.elems $ buffers e)
+findBufferWithName e n = filter (\b -> name b == n) (M.elems $ buffers e)
 
 --
 -- | Find the buffer connected to this window
@@ -325,12 +325,16 @@ withWindow f = modifyEditor $ \e -> do
         return (e,v)
 
 -- | Perform action with current window's buffer
-withBuffer :: (FBuffer -> IO a) -> EditorM a
-withBuffer f = withWindow (const f)
+withBuffer :: BufferM a -> EditorM a
+withBuffer f = withWindow (const $ flip runBuffer f)
+
+-- | Perform action with current window's buffer
+withBuffer' :: (FBuffer -> IO a) -> EditorM a
+withBuffer' f = withWindow (const f)
 
 -- | Return the current buffer
 getBuffer :: EditorM FBuffer
-getBuffer = withBuffer return
+getBuffer = withBuffer ask
 
 withUI :: (UI -> IO a) -> EditorM a
 withUI f = do

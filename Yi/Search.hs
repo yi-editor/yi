@@ -65,7 +65,6 @@ import Data.Maybe
 import Data.List
 import Data.Typeable
 
-import Control.Monad
 import Control.Monad.Reader
 
 import Yi.Core
@@ -172,21 +171,22 @@ searchInitE re fs = do
 -- Also, what's happening with ^ not matching sol?
 --
 searchF :: String -> Regex -> EditorM SearchResult
-searchF _ c_re = do
-    mp <- withBuffer $ \b -> do
-            p   <- pointB b
-            rightB b                  -- start immed. after cursor
-            mp  <- regexB b c_re
+searchF _ c_re = withBuffer $ do
+    mp <- do
+            p   <- pointB
+            rightB               -- start immed. after cursor
+            mp  <- regexB c_re
             case fmap Right mp of
                 x@(Just _) -> return x
-                _ -> do moveTo b 0
-                        np <- regexB b c_re
-                        moveTo b p
+                _ -> do moveTo 0
+                        np <- regexB c_re
+                        moveTo p
                         return (fmap Left np)
     case mp of
-        Just (Right (p,_)) -> gotoPointE p >> return mp
-        Just (Left  (p,_)) -> gotoPointE p >> return mp
-	_                  -> return mp
+        Just (Right (p,_)) -> moveTo p
+        Just (Left  (p,_)) -> moveTo p
+	_                  -> return ()
+    return mp
 
 ------------------------------------------------------------------------
 -- Global search and replace
@@ -205,25 +205,25 @@ searchAndRepLocal re str = do
     Right c_re <- lift $ compile compExtended execBlank re
     setRegexE (re,c_re)     -- store away for later use
 
-    mp <- withBuffer $ \b -> do   -- find the regex
-            mp <- regexB b c_re
+    mp <- withBuffer $ do   -- find the regex
+            mp <- regexB c_re
             return mp
     case mp of
-        Just (i,j) -> withBuffer $ \b -> do
-                p  <- pointB b      -- all buffer-level atm
-                moveToEol b
-                ep <- pointB b      -- eol point of current line
-                moveTo b i
-                moveToEol b
-                eq <- pointB b      -- eol of matched line
-                moveTo b p          -- go home. sub doesn't move
+        Just (i,j) -> withBuffer $ do
+                p  <- pointB      -- all buffer-level atm
+                moveToEol
+                ep <- pointB      -- eol point of current line
+                moveTo i
+                moveToEol
+                eq <- pointB      -- eol of matched line
+                moveTo p          -- go home. sub doesn't move
                 if (ep /= eq)       -- then match isn't on current line
                     then return False
                     else do         -- do the replacement
-                moveTo b i
-                deleteN b (j - i)
-                insertN b str
-                moveTo b p          -- and back to where we were!
+                moveTo i
+                deleteN (j - i)
+                insertN str
+                moveTo p          -- and back to where we were!
                 return True -- signal success
         Nothing -> return False
 
@@ -250,7 +250,7 @@ isearchAddE increment = do
   let current = previous ++ increment
   msgE $ "I-search: " ++ current
   gotoPointE p0
-  mp <- withBuffer $ \b -> searchB b current
+  mp <- withBuffer $ searchB current
   case mp of
     Nothing -> do gotoPointE (p0+length previous) -- go back to where we were
                   setDynamic $ Isearch ((current,p0):s)
@@ -273,7 +273,7 @@ isearchNextE :: EditorM ()
 isearchNextE = do
   Isearch ((current,p0):rest) <- getDynamic
   gotoPointE (p0 + length current)
-  mp <- withBuffer $ \b -> searchB b current
+  mp <- withBuffer $ searchB current
   case mp of
     Nothing -> return ()
     Just p -> do setDynamic $ Isearch ((current,p):rest)
@@ -291,18 +291,20 @@ isearchFinishE = do
 
 qrNextE :: FBuffer -> String -> EditorM ()
 qrNextE b what = do
-  mp <- lift $ searchB b what
+  mp <- lift $ runBuffer b $ searchB what
   case mp of
     Nothing -> do
             msgE "String to search not found"
             closeE
-    Just p -> lift $ do moveTo b p
-                        m <- getSelectionMarkB b
-                        setMarkPointB b m (p+length what)
+    Just p -> lift $ runBuffer b $ do 
+                   moveTo p
+                   m <- getSelectionMarkB
+                   setMarkPointB m (p+length what)
           
 
 qrReplaceOneE :: FBuffer -> String -> String -> EditorM ()
 qrReplaceOneE b what with = do
-  lift $ deleteN b (length what)
-  lift $ insertN b with
+  lift $ runBuffer b $ do
+    deleteN (length what)
+    insertN with
   qrNextE b what

@@ -84,7 +84,7 @@ emptyWindow mini b = do
      then do
       widgetSetSizeRequest v (-1) 1
 
-      prompt <- labelNew (Just $ nameB b)
+      prompt <- labelNew (Just $ name b)
       widgetModifyFont prompt (Just f)
 
       hb <- hBoxNew False 1

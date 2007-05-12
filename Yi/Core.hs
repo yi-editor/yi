@@ -272,7 +272,7 @@ startE kernel st commandLineActions = do
             repeatM_ $ (handle handler run >> logPutStrLn "Dispatching loop ended")
                      
             where
-              dispatch action = flip runReaderT newSt $ withBuffer $ \b -> writeChan (bufferInput b) action
+              dispatch action = flip runReaderT newSt $ withBuffer' $ \b -> writeChan (bufferInput b) action
 
 
         -- | Make an action suitable for an interactive run.
@@ -375,13 +375,13 @@ suspendE = UI.suspend
 
 -- | Move cursor to origin
 topE :: Action
-topE = withBuffer $ \b -> moveTo b 0
+topE = withBuffer $ moveTo 0
 
 -- | Move cursor to end of buffer
 botE :: Action
-botE = withBuffer $ \b -> do
-            n <- sizeB b
-            moveTo b n
+botE = withBuffer $ do
+            n <- sizeB
+            moveTo n
 
 -- | Move cursor to start of line
 solE :: Action
@@ -401,15 +401,15 @@ upE = withBuffer lineUp
 
 -- | Go to line number @n@
 gotoLnE :: Int -> Action
-gotoLnE n = withBuffer (flip gotoLn n) >> return ()
+gotoLnE n = withBuffer (gotoLn n >> return ())
 
 -- | Go to line @n@ offset from current line
 gotoLnFromE :: Int -> Action
-gotoLnFromE n = withBuffer (flip gotoLnFrom n) >> return ()
+gotoLnFromE n = withBuffer (gotoLnFrom n >> return ())
 
 -- | Go to a particular point.
 gotoPointE :: Int -> Action
-gotoPointE p = withBuffer $ flip moveTo p
+gotoPointE p = withBuffer $ moveTo p
 
 -- | Get the current point
 getPointE :: EditorM Int
@@ -417,12 +417,11 @@ getPointE = withBuffer pointB
 
 -- | Get the current line and column number
 getLineAndColE :: EditorM (Int, Int)
-getLineAndColE = 
-    withBuffer lineAndColumn
-    where lineAndColumn :: FBuffer -> IO (Int, Int)
-	  lineAndColumn b = 
-	      do lineNo <- curLn b
-		 colNo  <- offsetFromSol b
+getLineAndColE = withBuffer lineAndColumn
+    where lineAndColumn :: BufferM (Int, Int)
+	  lineAndColumn = 
+	      do lineNo <- curLn
+		 colNo  <- offsetFromSol
 		 return (lineNo, colNo)
 
 ------------------------------------------------------------------------
@@ -449,28 +448,28 @@ atEofE = withBuffer atEof
 upScreenE :: Action
 upScreenE = do
     (Just w) <- getWindow
-    withBuffer (flip gotoLnFrom (- (height w - 1)))
+    withBuffer (gotoLnFrom (- (height w - 1)))
     solE
 
 -- | Scroll up n screens
 upScreensE :: Int -> Action
 upScreensE n = do
     (Just w) <- getWindow
-    withBuffer (flip gotoLnFrom (- (n * (height w - 1))))
+    withBuffer (gotoLnFrom (- (n * (height w - 1))))
     solE
 
 -- | Scroll down 1 screen
 downScreenE :: Action
 downScreenE = do
     (Just w) <- getWindow
-    withBuffer (flip gotoLnFrom (height w - 1))
+    withBuffer (gotoLnFrom (height w - 1))
     return ()
 
 -- | Scroll down n screens
 downScreensE :: Int -> Action
 downScreensE n = do
     (Just w) <- getWindow
-    withBuffer (flip gotoLnFrom (n * (height w - 1)))
+    withBuffer (gotoLnFrom (n * (height w - 1)))
     return ()
 
 -- | Move to @n@ lines down from top of screen
@@ -503,11 +502,11 @@ rightE = withBuffer rightB
 
 -- | Move left @x@ or to start of line
 leftOrSolE :: Int -> Action
-leftOrSolE x = withBuffer $ flip moveXorSol x
+leftOrSolE x = withBuffer $ moveXorSol x
 
 -- | Move right @x@ or to end of line
 rightOrEolE :: Int -> Action
-rightOrEolE x = withBuffer $ flip moveXorEol x
+rightOrEolE x = withBuffer $ moveXorEol x
 
 -- ---------------------------------------------------------------------
 -- Window based operations
@@ -531,15 +530,15 @@ insertE c = insertNE [c]
 
 -- | Insert a string
 insertNE :: String -> Action
-insertNE str = withBuffer $ \b -> insertN b str
+insertNE str = withBuffer $ insertN str
 
 -- | Delete character under cursor
 deleteE :: Action
-deleteE = withBuffer $ \b -> deleteN b 1
+deleteE = withBuffer $ deleteN 1
 
 -- | Delete @n@ characters from under the cursor
 deleteNE :: Int -> Action
-deleteNE i = withBuffer $ \b -> deleteN b i
+deleteNE i = withBuffer $ deleteN i
 
 -- | Kill to end of line
 killE :: Action
@@ -547,8 +546,8 @@ killE = withBuffer deleteToEol
 
 -- | Delete an arbitrary part of the buffer
 deleteRegionE :: Region -> Action
-deleteRegionE r = withBuffer $ \b -> do
-                    deleteNAt b (regionEnd r - regionStart r) (regionStart r)
+deleteRegionE r = withBuffer $
+                    deleteNAt (regionEnd r - regionStart r) (regionStart r)
 
 
 -- | Read the char under the cursor
@@ -562,32 +561,30 @@ readRegionE r = readNM (regionStart r) (regionEnd r)
 
 -- | Read the line the point is on
 readLnE :: EditorM String
-readLnE = withBuffer $ \b -> do
-    i <- indexOfSol b
-    j <- indexOfEol b
-    s <- nelemsB b (j-i) i
-    return s
+readLnE = withBuffer $ do
+    i <- indexOfSol
+    j <- indexOfEol
+    nelemsB (j-i) i
 
 -- | Read from - to
 readNM :: Int -> Int -> EditorM String
-readNM i j = withBuffer $ \b -> nelemsB b (j-i) i
+readNM i j = withBuffer $ nelemsB (j-i) i
 
 -- | Return the contents of the buffer as a string (note that this will
 -- be very expensive on large (multi-megabyte) buffers)
 readAllE :: EditorM String
-readAllE = withBuffer $ \b -> elemsB b
+readAllE = withBuffer elemsB
 
 -- | Read from point to end of line
 readRestOfLnE :: EditorM String
-readRestOfLnE = withBuffer $ \b -> do
-    p <- pointB b
-    j <- indexOfEol b
-    s <- nelemsB b (j-p) p
-    return s
+readRestOfLnE = withBuffer $ do
+    p <- pointB
+    j <- indexOfEol
+    nelemsB (j-p) p
 
 -- | Write char to point
 writeE :: Char -> Action
-writeE c = withBuffer $ \b -> writeB b c
+writeE c = withBuffer $ writeB c
 
 -- | Transpose two characters, (the Emacs C-t action)
 swapE :: Action
@@ -626,15 +623,15 @@ getRegE = readEditor yreg
 
 -- | Set the current buffer mark
 setMarkE :: Int -> Action
-setMarkE pos = withBuffer $ \b -> do m <- getSelectionMarkB b; setMarkPointB b m pos
+setMarkE pos = withBuffer $ do m <- getSelectionMarkB; setMarkPointB m pos
 
 -- | Unset the current buffer mark so that there is no selection
 unsetMarkE :: Action
-unsetMarkE = withBuffer $ \b -> unsetMarkB b
+unsetMarkE = withBuffer $ unsetMarkB
 
 -- | Get the current buffer mark
 getMarkE :: EditorM Int
-getMarkE = withBuffer $ \b -> do m <- getSelectionMarkB b; getMarkPointB b m
+getMarkE = withBuffer $ do m <- getSelectionMarkB; getMarkPointB m
 
 -- | Exchange point & mark.
 -- Maybe this is better put in Emacs\/Mg common file
@@ -645,13 +642,13 @@ exchangePointAndMarkE = do m <- getMarkE
                            gotoPointE m
 
 getBookmarkE :: String -> EditorM Mark
-getBookmarkE nm = withBuffer $ \b -> getMarkB b (Just nm)
+getBookmarkE nm = withBuffer $ getMarkB (Just nm)
 
 setBookmarkPointE :: Mark -> Point -> Action
-setBookmarkPointE bookmark pos = withBuffer $ \b -> setMarkPointB b bookmark pos
+setBookmarkPointE bookmark pos = withBuffer $ setMarkPointB bookmark pos
 
 getBookmarkPointE :: Mark -> EditorM Point
-getBookmarkPointE bookmark = withBuffer $ \b -> getMarkPointB b bookmark
+getBookmarkPointE bookmark = withBuffer $ getMarkPointB bookmark
 
 -- ---------------------------------------------------------------------
 -- | Dynamically-extensible state components.
@@ -701,8 +698,7 @@ msgE s = do modifyEditor_ $ \e -> do
               UI.setCmdLine (ui e) s
               -- also show in the messages buffer, so we don't loose any message
               let [b] = findBufferWithName e "*messages*"
-              moveTo b =<< sizeB b
-              insertN b (s ++ "\n")
+              runBuffer b $ do moveTo =<< sizeB; insertN (s ++ "\n")
               return e
             
 
@@ -729,17 +725,18 @@ data BufferFileInfo =
 		   }
 
 -- | File info, size in chars, line no, col num, char num, percent
--- TODO: use the above data type
 bufInfoE :: EditorM BufferFileInfo
-bufInfoE = withWindow $ \w b -> do
-    s <- sizeB b
-    p <- pointB b
-    m <- isUnchangedB b
-    l <- curLn b
-    let bufInfo = BufferFileInfo { bufInfoFileName = nameB b
+bufInfoE = withBuffer $ do
+    s <- sizeB
+    p <- pointB
+    m <- isUnchangedB
+    l <- curLn
+    c <- offsetFromSol
+    nm <- nameB
+    let bufInfo = BufferFileInfo { bufInfoFileName = nm
 				 , bufInfoSize     = s
 				 , bufInfoLineNo   = l
-				 , bufInfoColNo    = 1 + (snd $ cursor w)
+				 , bufInfoColNo    = c
 				 , bufInfoCharNo   = p
 				 , bufInfoPercent  = getPercent p s 
 				 , bufInfoModified = not m
@@ -752,7 +749,7 @@ fileNameE = withBuffer getfileB
 
 -- | Name of this buffer
 bufNameE :: EditorM String
-bufNameE = withBuffer $ \b -> return (nameB b)
+bufNameE = withBuffer $ nameB
 
 -- | A character to fill blank lines in windows with. Usually '~' for
 -- vi-like editors, ' ' for everything else
@@ -784,7 +781,7 @@ fnewE  :: FilePath -> Action
 fnewE f = do
     e  <- lift $ doesFileExist f
     b  <- if e then hNewBuffer f else stringToNewBuffer f []
-    lift $ setfileB b f        -- and associate with file f
+    lift $ runBuffer b $ setfileB f        -- and associate with file f
     switchToBufferE b
 
 -- | Revert to the contents of the file on disk
@@ -850,21 +847,12 @@ spawnMinibufferE prompt kmMod initialAction =
 
 -- | Write current buffer to disk, if this buffer is associated with a file
 fwriteE :: Action
-fwriteE = withBuffer $ \b -> do
-        mf <- getfileB b
-        case mf of
-                Nothing -> error "buffer not associated with a file"
-                Just f  -> hPutB b f
+fwriteE = withBuffer hPutB
 
--- | Write current buffer to disk as @f@. If this buffer doesn't
--- currently have a file associated with it, the file is set to @f@
+-- | Write current buffer to disk as @f@. This buffer's associated file is set to @f@
 fwriteToE :: String -> Action
-fwriteToE f = withBuffer $ \b -> do
-        hPutB b f
-        mf <- getfileB b
-        case mf of
-                Nothing -> setfileB b f
-                Just _  -> return ()
+fwriteToE f = withBuffer $ do setfileB f
+                              hPutB
 
 -- | Write all open buffers
 fwriteAllE :: Action
@@ -878,7 +866,7 @@ backupE = undefined
 listBuffersE :: EditorM [(String,Int)]
 listBuffersE = do
         bs  <- getBuffers
-        return $ zip (map nameB bs) [0..]
+        return $ zip (map name bs) [0..]
 
 -- | Release resources associated with buffer, close any windows open
 -- onto buffer.
@@ -898,7 +886,7 @@ setUnchangedE = undefined
 
 -- | Set the current buffer's highlighting kind
 setSynE :: String -> Action
-setSynE sy = withBuffer (\b -> setSyntaxB b sy)
+setSynE sy = withBuffer $ setSyntaxB sy
 
 ------------------------------------------------------------------------
 --
@@ -957,20 +945,21 @@ closeOtherE = do
 --
 -- Fold over a range is probably useful too..
 --
+-- !!!This is a very bad implementation; delete; apply; and insert the result.
 mapRangeE :: Int -> Int -> (Char -> Char) -> Action
 mapRangeE from to fn
     | from < 0  = nopE
     | otherwise = do
-        withBuffer $ \b -> do
-            eof <- sizeB b
+        withBuffer $ do
+            eof <- sizeB
             when (to < eof) $ do
                 let loop j | j <= 0    = return ()
                            | otherwise = do
-                                readB b >>= return . fn >>= writeB b
-                                rightB b
+                                readB >>= return . fn >>= writeB
+                                rightB
                                 loop (j-1)
                 loop (max 0 (to - from))
-            moveTo b from
+            moveTo from
 
 
 reconfigE :: Action
@@ -1004,11 +993,11 @@ getNamesInScopeE = do
       names <- getRdrNamesInScope k
       return (map (nameToString k) names)
 
-savingExcursion :: FBuffer -> IO a -> IO a
-savingExcursion b f = do
-    m <- getMarkB b Nothing
+savingExcursion :: BufferM a -> BufferM a
+savingExcursion f = do
+    m <- getMarkB Nothing
     res <- f
-    moveTo b =<< getMarkPointB b m
+    moveTo =<< getMarkPointB m
     return res
 
 
@@ -1018,10 +1007,10 @@ ghcErrorReporter editor severity srcSpan pprStyle message =
     flip runReaderT editor $ do
       e <- readEditor id
       let [b] = findBufferWithName e "*console*"
-      lift $ savingExcursion b $ do 
-        moveTo b =<< getMarkPointB b =<< getMarkB b (Just "errorInsert")
-        insertN b msg
-        insertN b "\n"
+      lift $ runBuffer b $ savingExcursion $ do 
+        moveTo =<< getMarkPointB =<< getMarkB (Just "errorInsert")
+        insertN msg
+        insertN "\n"
     where msg = case severity of
                   GHC.SevInfo -> show (message pprStyle)
                   GHC.SevFatal -> show (message pprStyle)

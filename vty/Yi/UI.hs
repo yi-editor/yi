@@ -51,7 +51,8 @@ module Yi.UI (
 
 import Prelude hiding (error)
 
-import Yi.Buffer (Point, FBuffer (..), pointB, curLn, getMarkPointB, getSelectionMarkB, getModeLine, nameB )
+import Yi.Buffer (Point, FBuffer (..), pointB, curLn, getMarkPointB, getSelectionMarkB, 
+                  getModeLine, runBuffer )
 import Yi.FastBuffer( nelemsBIH ) -- gah this is ugly
 import Yi.Editor
 import Yi.Window as Window
@@ -218,12 +219,12 @@ showPoint :: Editor -> Window -> IO Window
 showPoint e w = do
   logPutStrLn $ "showPoint " ++ show w
   let b = findBufferWith e (bufkey w)          
-  ln <- curLn b
-  let gap = min (ln-1) ((height w) `div` 2)
-      topln = ln - gap
-  i <- indexOfSolAbove b gap
-  return w {toslineno = topln,
-            tospnt = i}
+  runBuffer b $ do ln <- curLn
+                   let gap = min (ln-1) ((height w) `div` 2)
+                       topln = ln - gap
+                   i <- indexOfSolAbove gap
+                   return w {toslineno = topln,
+                             tospnt = i}
 
 -- | redraw a window
 doDrawWindow :: Editor -> Bool -> UIStyle -> Window -> IO Window
@@ -237,10 +238,10 @@ doDrawWindow e focused sty win = do
         wsty = styleToAttr (window sty)
         selsty = styleToAttr (selected sty)
         eofsty = eof sty
-    markPoint <- getMarkPointB b =<< getSelectionMarkB b
-    point <- pointB b
+    markPoint <- runBuffer b (getMarkPointB =<< getSelectionMarkB)
+    point <- runBuffer b pointB
     bufData <- nelemsBIH (rawbuf b) (w*h') (tospnt win) -- read enough chars from the buffer.
-    let prompt = if isMini win then nameB b else ""
+    let prompt = if isMini win then name b else ""
 
     let (rendered,bos,cur) = drawText h' w 
                                 (tospnt win - length prompt) 
@@ -249,7 +250,7 @@ doDrawWindow e focused sty win = do
                                 (zip prompt (repeat wsty) ++ bufData ++ [(' ',attr)])
                              -- we always add one character which can be used to position the cursor at the end of file
                                                                                                  
-    modeLine <- if m then liftM Just (getModeLine b) else return Nothing
+    modeLine <- if m then liftM Just (runBuffer b getModeLine) else return Nothing
     let modeLines = map (withStyle (modeStyle sty) . take w . (++ repeat ' ')) $ maybeToList $ modeLine
         modeStyle = if focused then modeline_focused else modeline        
         filler = take w (windowfill e : repeat ' ')
@@ -268,7 +269,7 @@ drawWindow :: Editor
 
 drawWindow e focused sty win = do
     let b = findBufferWith e (bufkey win)
-    point <- pointB b
+    point <- runBuffer b pointB
     (if tospnt win <= point && point <= bospnt win then return win else showPoint e win) >>= doDrawWindow e focused sty   
 
 

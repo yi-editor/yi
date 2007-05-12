@@ -73,7 +73,6 @@ module Yi.CharMove (
 import Yi.Buffer 
 import Yi.Core
 import Yi.Editor
-import Yi.Window
 import Text.Regex.Posix.String ( compExtended, compile, execBlank)
 import Yi.Keymap
 
@@ -186,45 +185,45 @@ prevCExc c = prevCInc c >> rightE
 -- | Move to first non-space character in this line
 firstNonSpaceE :: Action
 firstNonSpaceE = do
-    withBuffer $ \b -> do
-        moveToSol b
+    withBuffer $ do
+        moveToSol
         fix $ \loop -> do
-            eol <- atEol b
+            eol <- atEol
             if eol then return ()
-                   else do k <- readB b
-                           when (isSpace k) (rightB b >> loop)
+                   else do k <- readB
+                           when (isSpace k) (rightB >> loop)
 
 -- | Move down next @n@ paragraphs
 nextNParagraphs :: Int -> Action    -- could be rewritten in a more functional style
 nextNParagraphs n = do
-    withBuffer $ \b -> do
-        eof <- sizeB b
+    withBuffer $ do
+        eof <- sizeB
         let loop = do
-                p <- pointB b
+                p <- pointB
                 when (p < eof-1) $ do
-                    moveWhile_ (/= '\n') GoRight b
-                    p' <- pointB b
+                    moveWhile_ (/= '\n') GoRight
+                    p' <- pointB
                     when (p' < eof-1) $ do
-                        rightB b
-                        x <- readB b
+                        rightB
+                        x <- readB
                         when (x /= '\n') loop
         replicateM_ n loop
 
 -- | Move up prev @n@ paragraphs
 prevNParagraphs :: Int -> Action
 prevNParagraphs n = do
-    withBuffer $ \b -> do
+    withBuffer $ do
         let loop = do
-                p <- pointB b
+                p <- pointB
                 when (p > 0) $ do
-                    leftB b
-                    moveWhile_ (/= '\n') GoLeft b
-                    p' <- pointB b
+                    leftB
+                    moveWhile_ (/= '\n') GoLeft
+                    p' <- pointB
                     when (p' > 0) $ do
-                        leftB b
-                        x <- readB b
+                        leftB
+                        x <- readB
                         if x == '\n'
-                            then rightB b
+                            then rightB
                             else loop
         replicateM_ n loop
 
@@ -241,45 +240,44 @@ moveWhileE f d = withBuffer (moveWhile_ f d)
 --
 moveWhile_ :: (Char -> Bool)
            -> Direction
-           -> FBuffer
-           -> IO ()
+           -> BufferM ()
 
-moveWhile_ f dir b = do
-    eof <- sizeB b
+moveWhile_ f dir = do
+    eof <- sizeB
     case dir of
-        GoRight -> fix $ \loop' -> do p <- pointB b
+        GoRight -> fix $ \loop' -> do p <- pointB
                                       when (p < eof - 1) $ do
-                                        x <- readB b
-                                        when (f x) $ rightB b >> loop'
-        GoLeft  -> fix $ \loop' -> do p <- pointB b
+                                        x <- readB
+                                        when (f x) $ rightB >> loop'
+        GoLeft  -> fix $ \loop' -> do p <- pointB
                                       when (p > 0) $ do
-                                        x <- readB b
-                                        when (f x) $ leftB b >> loop'
+                                        x <- readB
+                                        when (f x) $ leftB >> loop'
 
 ------------------------------------------------------------------------
 
 -- | Read word to the left of the cursor
 readWordLeftE :: EditorM (String,Int,Int)
-readWordLeftE = withBuffer $ \b -> readWordLeft_ b
+readWordLeftE = withBuffer readWordLeft_
 
 -- Core-internal worker
-readWordLeft_ :: FBuffer -> IO (String,Int,Int)
-readWordLeft_ b = do
-    p <- pointB b
-    c <- readB b
-    when (not $ isAlphaNum c) $ leftB b
-    moveWhile_ isAlphaNum GoLeft b
-    sof <- atSof b
-    c'  <- readB b
-    when (not sof || not (isAlphaNum c')) $ rightB b
-    q <- pointB b
-    s <- nelemsB b (p-q) q
-    moveTo b p
+readWordLeft_ :: BufferM (String,Int,Int)
+readWordLeft_ = do
+    p <- pointB
+    c <- readB
+    when (not $ isAlphaNum c) $ leftB
+    moveWhile_ isAlphaNum GoLeft
+    sof <- atSof
+    c'  <- readB
+    when (not sof || not (isAlphaNum c')) $ rightB
+    q <- pointB
+    s <- nelemsB (p-q) q
+    moveTo p
     return (s,q,p)
 
 -- | Read word under cursor
 readWordE :: EditorM (String,Int,Int)
-readWordE = withBuffer $ \b -> readWord_ b
+readWordE = withBuffer readWord_
 
 ------------------------------------------------------------------------
 
@@ -312,21 +310,21 @@ withPointE f = do p <- getPointE
 
 ------------------------------------------------------------------------
 
--- Internal, for readWordE, not threadsafe
-readWord_ :: FBuffer -> IO (String,Int,Int)
-readWord_ b = do
-    p <- pointB b
-    c <- readB b
-    if not (isAlphaNum c) then leftB b
-                          else moveWhile_ isAlphaNum GoRight b >> leftB b
-    y <- pointB b   -- end point
-    moveWhile_ isAlphaNum GoLeft b
-    sof <- atSof b
-    c'  <- readB b
-    when (not sof || not (isAlphaNum c')) $ rightB b
-    x <- pointB b
-    s <- nelemsB b (y-x+1) x
-    moveTo b p
+-- Internal, for readWordE
+readWord_ :: BufferM (String,Int,Int)
+readWord_ = do
+    p <- pointB
+    c <- readB
+    if not (isAlphaNum c) then leftB
+                          else moveWhile_ isAlphaNum GoRight >> leftB
+    y <- pointB   -- end point
+    moveWhile_ isAlphaNum GoLeft
+    sof <- atSof
+    c'  <- readB
+    when (not sof || not (isAlphaNum c')) $ rightB
+    x <- pointB
+    s <- nelemsB (y-x+1) x
+    moveTo p
     return (s,x,y)
 
 -- ---------------------------------------------------------------------
@@ -344,7 +342,7 @@ type Completion = (String,M.Map String (),Int)
 -- to do hardcore persistence at some point soon.
 --
 completions :: IORef (Maybe Completion)
-completions = unsafePerformIO $ newIORef Nothing -- FIXME:
+completions = unsafePerformIO $ newIORef Nothing -- FIXME! Unsafeperformio is not welcome in Yi
 
 --
 -- | Switch out of completion mode.
@@ -356,76 +354,75 @@ resetCompleteE = lift $ writeIORef completions Nothing
 -- The word-completion action, down the buffer
 --
 wordCompleteE :: Action
-wordCompleteE = do
-    withWindow $ \win buf -> do
-        readIORef completions >>= loop win buf >>= writeIORef completions
+wordCompleteE = withBuffer $ 
+        (lift $ readIORef completions) >>= loop >>= (lift . writeIORef completions)
 
   where
     --
     -- work out where to start our next search
     --
-    loop :: Window -> FBuffer -> (Maybe Completion) -> IO (Maybe Completion)
-    loop win buf (Just (w,fm,n)) = do
-            p  <- pointB buf
-            moveTo buf (n+1)        -- start where we left off
-            doloop p win buf (w,fm)
-    loop win buf Nothing = do
-            p  <- pointB buf
-            (w,_,_) <- readWordLeft_ buf
-            rightB buf  -- start past point
-            doloop p win buf (w,M.singleton w ())
+    loop :: (Maybe Completion) -> BufferM (Maybe Completion)
+    loop (Just (w,fm,n)) = do
+            p  <- pointB
+            moveTo (n+1)        -- start where we left off
+            doloop p (w,fm)
+    loop Nothing = do
+            p  <- pointB
+            (w,_,_) <- readWordLeft_
+            rightB  -- start past point
+            doloop p (w,M.singleton w ())
 
     --
     -- actually do the search, and analyse the result
     --
-    doloop :: Int -> Window -> FBuffer -> (String,M.Map String ())
-           -> IO (Maybe Completion)
+    doloop :: Int -> (String,M.Map String ())
+           -> BufferM (Maybe Completion)
 
-    doloop p win buf (w,fm) = do
-            m' <- nextWordMatch buf w
-            moveTo buf p
-            (_,j,_) <- readWord_ buf
+    doloop p (w,fm) = do
+            m' <- nextWordMatch w
+            moveTo p
+            (_,j,_) <- readWord_
             case m' of
                 Just (s,i)
                     | j == i                -- seen entire file
-                    -> do replaceLeftWith buf w
+                    -> do replaceLeftWith w
                           return Nothing
 
                     | s `M.member` fm         -- already seen
-                    -> loop win buf (Just (w,fm,i))
+                    -> loop (Just (w,fm,i))
 
                     | otherwise             -- new
-                    -> do replaceLeftWith buf s
+                    -> do replaceLeftWith s
                           return (Just (w,M.insert s () fm,i))
 
-                Nothing -> loop win buf (Just (w,fm,(-1))) -- goto start of file
+                Nothing -> loop (Just (w,fm,(-1))) -- goto start of file
 
     --
     -- replace word under cursor with @s@
     --
-    replaceLeftWith :: FBuffer -> String -> IO ()
-    replaceLeftWith buf s = do
-        (_,b,a) <- readWordLeft_ buf     -- back at start
-        moveTo buf b
-        deleteN buf (a-b)
-        insertN buf s
+    replaceLeftWith :: String -> BufferM ()
+    replaceLeftWith s = do
+        (_,b,a) <- readWordLeft_     -- back at start
+        moveTo b
+        deleteN (a-b)
+        insertN s
 
     --
     -- Return next match, and index of that match (to be used for later searches)
     -- Leaves the cursor at the next word.
     --
-    nextWordMatch :: FBuffer -> String -> IO (Maybe (String,Int))
-    nextWordMatch b w = do
+    nextWordMatch :: String -> BufferM (Maybe (String,Int))
+    nextWordMatch w = do
         let re = ("( |\t|\n|\r|^)"++w)
-        Right re_c <- compile compExtended execBlank re
-        mi   <- regexB b re_c
+        Right re_c <- lift $ compile compExtended execBlank re
+        mi   <- regexB re_c
         case mi of
             Nothing -> return Nothing
             Just (i,j) -> do
-                c <- readAtB b i
+                c <- readAtB i
                 let i' = if i == 0 && isAlphaNum c then 0 else i+1 -- for the space
-                moveTo b i'
-                (s,_,_) <- readWord_ b
+                moveTo i'
+                (s,_,_) <- readWord_
                 assert (s /= [] && i /= j) $ return $ Just (s,i')
 
 ------------------------------------------------------------------------

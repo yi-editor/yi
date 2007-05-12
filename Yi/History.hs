@@ -78,9 +78,9 @@ historyMove delta = do
     (_,_) -> do 
          setDynamic (History next (take cur cont ++ [curValue] ++ drop (cur+1) cont))
          debugHist
-         withBuffer $ \b -> do
-              sz <- sizeB b
-              moveTo b 0
-              deleteN b sz
-              insertN b nextValue
+         withBuffer $ do
+              sz <- sizeB
+              moveTo 0
+              deleteN sz
+              insertN nextValue
 

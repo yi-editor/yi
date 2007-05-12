@@ -66,7 +66,7 @@ deleteThisWindow = do
 -- | Close any windows onto the buffer b, then free the buffer
 killBufferWindows :: FBuffer -> EditorM ()
 killBufferWindows b = do
-  lift $ logPutStrLn $ "KillBufferWindows: " ++ nameB b
+  lift $ logPutStrLn $ "KillBufferWindows: " ++ name b
   ws <- readEditor getWindows
   mapM_ deleteWindow $ map Just $ filter (\w -> bufkey w == keyB b) ws
 
@@ -79,7 +79,7 @@ killBufferAndWindows n = do
     _ -> mapM_ killB bs
     where
         killB b = do killBufferWindows b
-                     lift $ finaliseB b  
+                     lift $ runBuffer b finaliseB
                      modifyEditor_ $ \e -> return $ e { buffers = M.delete (keyB b) (buffers e) }
 
 -- | Split the current window, opening a second window onto this buffer.

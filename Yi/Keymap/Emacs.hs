@@ -230,7 +230,7 @@ queryReplaceE :: EditorM ()
 queryReplaceE = do
     withMinibuffer "Replace:" return $ \replaceWhat -> do
     withMinibuffer "With:" return $ \replaceWith -> do
-    b <- withBuffer return
+    b <- getBuffer
     let replaceBindings = [("n", write $ qrNextE b replaceWhat),
                            ("y", write $ qrReplaceOneE b replaceWhat replaceWith),
                            ("q", write $ closeE),
@@ -328,7 +328,7 @@ completeInList s l
 completeBufferName :: String -> EditorM String
 completeBufferName s = do
   bs <- getBuffers
-  completeInList s (map nameB bs)
+  completeInList s (map name bs)
 
 completeFileName :: String -> EditorM String
 completeFileName s0 = do
