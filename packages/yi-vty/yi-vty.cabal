@@ -6,7 +6,7 @@ description:
   Core functions for the Vty backend of Yi.
   Note that you will need the yi package to use this.
 license:        GPL
-license-file:   ../../LICENSE
+license-file:   LICENSE
 author:         Don Stewart
 maintainer:     dons@cse.unsw.edu.au
 build-depends:  ghc>=6.6, base, mtl, vty>=3.0, regex-posix, filepath>=1.0
@@ -52,9 +52,9 @@ exposed-modules:
  Yi.Vty
  Yi.Window
  Yi.Yi
-include-dirs:   ../../cbits
-hs-source-dirs: ../../vty, ../..
-c-sources:      ../../cbits/YiUtils.c
+include-dirs:   cbits
+hs-source-dirs: vty, .
+c-sources:      cbits/YiUtils.c
 other-modules:  Yi.Syntax.Haskell
 extensions:     CPP, ForeignFunctionInterface
 ghc-options:    -Wall -fglasgow-exts -O -funbox-strict-fields -fasm -optl-Wl,-s

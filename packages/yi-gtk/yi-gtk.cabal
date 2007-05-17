@@ -6,7 +6,7 @@ description:
   Core functions for the GTK backend of Yi.
   Note that you will need the yi package to use this.
 license:        GPL
-license-file:   ../../LICENSE
+license-file:   LICENSE
 author:         Don Stewart
 maintainer:     dons@cse.unsw.edu.au
 build-depends:  ghc>=6.6, base, mtl, gtk>=0.9.11, sourceview>=0.9.11, regex-posix, filepath>=1.0
@@ -48,8 +48,8 @@ exposed-modules:
  Yi.Version
  Yi.Window
  Yi.Yi
-include-dirs:   ../../cbits
-hs-source-dirs: ../../gtk       , ../..
-c-sources:      ../../cbits/YiUtils.c
+include-dirs:   cbits
+hs-source-dirs: gtk, .
+c-sources:      cbits/YiUtils.c
 extensions:     CPP, ForeignFunctionInterface
 ghc-options:    -Wall -fglasgow-exts -O -funbox-strict-fields -fasm -optl-Wl,-s

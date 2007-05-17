@@ -128,8 +128,8 @@ show-config-args:
 show-build-args:
 	@echo $(build-args)
 
-
-setup: Setup.*hs
+# LICENSE dependency makes sure the links are created if that is needed.
+setup: LICENCE Setup.*hs 
 	ghc --make Setup.*hs -o setup
 
 # setup with my own (Windows-friendly) preferences.  You'll probably want
@@ -247,3 +247,7 @@ watch-comments:
 
 sdist: .setup-config
 	./setup sdist
+
+
+LICENCE Yi.hs Yi cbits gtk vty:
+	test -e LICENSE || ln -sf ../../Yi.hs ../../Yi ../../LICENSE ../../cbits ../../gtk ../../vty . 
