@@ -60,3 +60,6 @@ extensions:     CPP, ForeignFunctionInterface
 ghc-options:    -Wall -fglasgow-exts -O -funbox-strict-fields -fasm -optl-Wl,-s
 extra-source-files:
  vty/Yi/UI.hs-boot
+ Yi/Editor.hs-boot
+ cbits/YiUtils.h
+ Yi/Syntax/alex.hsinc
