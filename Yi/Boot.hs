@@ -8,7 +8,6 @@ import System.Directory     ( getHomeDirectory )
 import qualified GHC
 import qualified Packages
 import qualified DynFlags
-import qualified PackageConfig
 import qualified Module
 import Outputable
 import Control.Monad

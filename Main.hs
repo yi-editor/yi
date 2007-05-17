@@ -25,7 +25,6 @@
 --
 module Main ( main ) where
 
-import Yi.Kernel
 import Yi.Boot
 import Yi.Debug
 
