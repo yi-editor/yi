@@ -10,24 +10,16 @@ Yi is currently maintained by Jean-Philippe Bernardy.
 
 ------------------------------------------------------------------------
 
-QUICK START: 
+TARBALLS QUICK START: (if you got Yi via the Darcs repo, see HACKER'S QUICK START)
 
-edit config.mk so it suits your needs;
+* compile and install yi and yi-gtk or yi-vty, as you would do for any
+  other Cabal package
 
-run
+* run yi
 
- $ make emacs
-
-or 
-
- $ make vim
-
-following your preferences. This will :
-
-* compile all the needed packages
-* install them with --user
-* run yi in the flavour you described in config.mk
-
+$(install-prefix)/yi --as=vim 
+$(install-prefix)/yi --as=emacs 
+...
 
 DEPENDENCIES
 
@@ -45,6 +37,23 @@ DEPENDENCIES
 
 see cabal files (find . -name "*.cabal") for other dependencies.
 
+HACKER'S QUICK START: 
+
+edit config.mk so it suits your needs;
+
+run
+
+ $ make emacs
+
+or 
+
+ $ make vim
+
+following your preferences. This will :
+
+* compile all the needed packages
+* install them with --user
+* run yi in the flavour you described in config.mk
 
 CONFIGURATION
 
