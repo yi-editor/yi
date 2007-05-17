@@ -1,5 +1,10 @@
 name:           yi-vty
 version:        0.2
+category:       Editor
+synopsis:       Vty backend for Yi
+description:
+  Core functions for the Vty backend of Yi.
+  Note that you will need the yi package to use this.
 license:        GPL
 license-file:   ../../LICENSE
 author:         Don Stewart

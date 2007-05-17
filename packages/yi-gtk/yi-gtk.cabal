@@ -1,5 +1,10 @@
 name:           yi-gtk
 version:        0.2
+category:       Editor
+synopsis:       GTK backend for Yi
+description:
+  Core functions for the GTK backend of Yi.
+  Note that you will need the yi package to use this.
 license:        GPL
 license-file:   ../../LICENSE
 author:         Don Stewart
