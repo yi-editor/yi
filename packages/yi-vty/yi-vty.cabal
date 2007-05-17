@@ -1,7 +1,7 @@
 name:           yi-vty
 version:        0.2
 license:        GPL
-license-file:   LICENSE
+license-file:   ../../LICENSE
 author:         Don Stewart
 maintainer:     dons@cse.unsw.edu.au
 build-depends:  ghc>=6.6, base, mtl, vty>=3.0, regex-posix, filepath>=1.0

@@ -245,3 +245,5 @@ watch-comments:
 	echo Now watching all talk pages for $(package)
 
 
+sdist: .setup-config
+	./setup sdist

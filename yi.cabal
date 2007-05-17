@@ -8,7 +8,11 @@ build-depends:  ghc>=6.6, base, mtl, regex-posix
 
 executable:     yi
 main-is:        Main.hs
+other-modules:  
+  Yi.Boot
+  Yi.Debug
+  Yi.Kernel
 extensions:     CPP
 ghc-options:    -Wall -fglasgow-exts -O -funbox-strict-fields -fasm -optl-Wl,-s
 
--- ghc-options:    -prof -auto-all -Wall -fglasgow-exts -O -funbox-strict-fields -fasm -optl-Wl,-s
+

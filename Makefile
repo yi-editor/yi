@@ -41,3 +41,51 @@ Contributors: Contributors.hs
 
 CONTRIBUTORS: Contributors _darcs/patches/*
 	darcs changes | ./Contributors > $@
+
+
+dists: 
+	make sdist
+	make -C packages/yi-vty sdist
+	make -C packages/yi-gtk sdist
+	rm -fr hackage
+	mkdir -p hackage
+	cp dist/yi-$(version).tar.gz hackage
+	cp packages/yi-vty/dist/yi-vty-$(version).tar.gz hackage
+	cp packages/yi-gtk/dist/yi-gtk-$(version).tar.gz hackage
+
+test-dists:
+	-ghc-pkg --user unregister yi-gtk
+	-ghc-pkg --user unregister yi-vty
+
+	cd hackage;\
+	tar -zxvf yi-$(version).tar.gz;\
+	tar -zxvf yi-vty-$(version).tar.gz;\
+	tar -zxvf yi-gtk-$(version).tar.gz;\
+	cd yi-$(version);\
+	runghc Setup.hs configure --user --prefix=$(prefix);\
+	runghc Setup.hs build --with-ghc=/usr/bin/ghc;\
+	runghc Setup.hs install;\
+	cd ..;\
+	cd yi-vty-$(version);\
+	runghc Setup.hs configure --user --prefix=$(prefix);\
+	runghc Setup.hs build;\
+	runghc Setup.hs install;\
+	cd ..;\
+	cd yi-gtk-$(version);\
+	runghc Setup.hs configure --user --prefix=$(prefix);\
+	runghc Setup.hs build;\
+	runghc Setup.hs install;\
+	cd ..;\
+
+test-gtk:
+	-ghc-pkg --user expose yi-gtk
+	-ghc-pkg --user hide yi-vty
+	$(prefix)/bin/yi
+
+
+test-vty:
+	-ghc-pkg --user expose yi-vty
+	-ghc-pkg --user hide yi-gtk
+	$(prefix)/bin/yi
+
+

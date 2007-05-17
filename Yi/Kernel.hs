@@ -2,7 +2,7 @@
 
 -- | This module is the interface to GHC (interpreter).  It knows
 -- nothing about Yi (at the haskell level; it can know names of
--- modules/functions at strings)
+-- modules or functions as strings)
 
 module Yi.Kernel (Kernel(..), eval, moduleName, moduleNameString, ms_mod_name) where
 
