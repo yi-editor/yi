@@ -58,3 +58,5 @@ c-sources:      cbits/YiUtils.c
 other-modules:  Yi.Syntax.Haskell
 extensions:     CPP, ForeignFunctionInterface
 ghc-options:    -Wall -fglasgow-exts -O -funbox-strict-fields -fasm -optl-Wl,-s
+extra-source-files:
+ vty/Yi/UI.hs-boot
