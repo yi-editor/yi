@@ -1,6 +1,3 @@
-# Where to find ghc
-ghc-path = /usr/bin/ghc
-
 # yi-vty or yi-gtk
 flavour=yi-vty
 

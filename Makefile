@@ -1,7 +1,5 @@
 cabal-make = .
 
-build-args = --with-ghc=$(ghc-path)
-
 include config.mk
 
 include $(cabal-make)/cabal-make.inc
