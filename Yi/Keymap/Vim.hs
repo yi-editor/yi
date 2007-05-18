@@ -135,7 +135,7 @@ runVim = comap eventToChar
 -- to the different modes of vi. Each mode is in turn broken up into
 -- separate lexers for each phase of key input in that mode.
 
--- | command mode consits of simple commands that take a count arg - the
+-- | command mode consists of simple commands that take a count arg - the
 -- count is stored in the lexer state. also the replace cmd, which
 -- consumes one char of input, and commands that switch modes.
 cmd_mode :: VimMode
@@ -310,7 +310,7 @@ moveCmdFM =
     ,('{',          prevNParagraphs)
     ,('}',          nextNParagraphs)
 
--- debuging
+-- debugging
     ,('g',          \_ -> viewChar)
 
 -- misc
