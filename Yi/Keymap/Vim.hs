@@ -276,6 +276,7 @@ moveCmdFM =
     ,('l',          right)
     ,(' ',          right)
     ,(keyHome,      const solE)
+    ,('0',          const solE)
     ,('^',          const firstNonSpaceE)
     ,('$',          const eolE)
     ,(keyEnd,       const eolE)
