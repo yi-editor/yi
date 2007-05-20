@@ -49,7 +49,11 @@ import System.FilePath
 import System.Locale
 import System.Posix.Files
 import System.Posix.Types
+
 import System.Posix.User
+-- currently used to lookup the usernames for file owners. Any
+-- suggestions on how to drop the dependency welcome.
+
 import System.Time
 import Text.Printf
 import Text.Regex.Posix
@@ -79,7 +83,7 @@ diredKeymap = do
 
 diredE :: EditorM ()
 diredE = do
-    msgE "Dired...."
+    msgE "Dired..."
     dir <- liftIO getCurrentDirectory
     diredDirE dir
 
@@ -196,6 +200,8 @@ diredUpDirE = do
 diredRefreshE :: EditorM ()
 diredRefreshE = do
     -- FIXME - this loses all marks...
+    -- This will be solved in the future by having an underlying data
+    -- structure containing all the directory state.
     p <- getPointE
     end <- withBuffer sizeB
     deleteRegionE (mkRegion 0 end)
@@ -210,6 +216,6 @@ diredCreateDirE = do
     withMinibuffer "Create Dir:" return $ \nm -> do
     (Just dir) <- withBuffer getfileB
     let newdir = dir </> nm
-    msgE $ "Creating "++newdir++"...."
+    msgE $ "Creating "++newdir++"..."
     liftIO $ createDirectoryIfMissing True newdir
     diredRefreshE
