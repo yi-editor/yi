@@ -1,3 +1,4 @@
+-- -*- haskell -*- 
 --
 -- Lexical syntax for illiterate Haskell 98.
 --

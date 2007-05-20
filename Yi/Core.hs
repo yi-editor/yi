@@ -224,8 +224,12 @@ nilKeymap = do c <- anyEvent
                write $ case eventToChar c of
                          'q' -> quitE 
                          'r' -> reconfigE
-                         _ -> errorE $ "Keymap not defined, type 'r' to reload config or 'q' to quit. " ++
-                                          "README file may help you."
+                         'h' -> (configHelp >> return ())
+                         _ -> errorE $ "Keymap not defined, type 'r' to reload config, 'q' to quit, 'h' for help."
+    where configHelp = newBufferE "*configuration help*" $ unlines $
+                         ["To get a standard reasonable keymap, you can run yi with either --as=vim or --as=emacs.",
+                          "You can also create your own ~/.yi/YiConfig.hs file,",
+                          "see http://haskell.org/haskellwiki/Yi#How_to_Configure_Yi for help on how to do that."]
 
 -- ---------------------------------------------------------------------
 -- | Start up the editor, setting any state with the user preferences
