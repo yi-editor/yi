@@ -499,6 +499,6 @@ setWindow :: Window -> EditorM ()
 setWindow w = do
   modifyEditor_ $ \e -> do
                 logPutStrLn $ "Focusing " ++ show w
-                let fm = windows e                 
+                -- let fm = windows e
                 return $ e {  curwin = Just $ key w }
   debugWindows "After focus"

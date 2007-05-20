@@ -1,6 +1,7 @@
-module Yi.Vty 
+module Yi.Vty
     (
      styleToAttr,
+     defaultSty,
 
      module Vty
     ) where
@@ -21,8 +22,8 @@ nullA       = id
 
 ------------------------------------------------------------------------
 
-newtype CColor = CColor {fromCColor :: (Vty.Attr -> Vty.Attr, Vty.Color)}
--- 
+newtype CColor = CColor (Vty.Attr -> Vty.Attr, Vty.Color)
+--
 -- | Map Style rgb rgb colours to ncurses pairs
 -- TODO a generic way to turn an rgb into the nearest curses color
 --

@@ -161,6 +161,8 @@ f2map :: (ev1 -> ev2) -> P ev1 m a -> P ev2 m a
 f2map _ Fail = Fail
 f2map f (Result a p) = Result a (f2map f p)
 f2map f (Write action g) = Write action (\u -> f2map f (g u))
+f2map _ (Look _ _) = error "Interact:f2map f (Look _ _) not defined"
+f2map _ (Get _)    = error "Interact:f2map f (Get _) not defined"
 
 f2map' :: (ev1 -> ev2) -> (b -> P ev1 m a) -> (b -> P ev2 m a)
 f2map' h f = \b -> f2map h (f b)

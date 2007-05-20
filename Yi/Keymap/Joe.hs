@@ -122,10 +122,11 @@ killSolE = do
     pn <- getPointE
     deleteNE (p-pn)
 
-getFileE :: EditorM FilePath
-getFileE = do bufInfo <- bufInfoE
-	      let fp = bufInfoFileName bufInfo
-              return fp
+-- Commenting out to avoid compile warnings until fn is needed
+-- getFileE :: EditorM FilePath
+-- getFileE = do bufInfo <- bufInfoE
+-- 	      let fp = bufInfoFileName bufInfo
+--               return fp
 
 
 insertFileE :: String -> Action
@@ -141,14 +142,16 @@ isCancel '\^G' = True
 isCancel '\^C' = True
 isCancel _     = False
 
-isect :: Eq a => [a] -> [a] -> Bool
-[] `isect` _ = False
-(e:ee) `isect` l = e `elem` l || ee `isect` l
+-- Commenting out to avoid compile warnings until fn is needed
+-- isect :: Eq a => [a] -> [a] -> Bool
+-- [] `isect` _ = False
+-- (e:ee) `isect` l = e `elem` l || ee `isect` l
 
-escape2rx :: String -> String
-escape2rx []       = []
-escape2rx ('^':cs) = '\\':'^':escape2rx cs
-escape2rx (c:cs)   = '[':c:']':escape2rx cs
+-- Commenting out to avoid compile warnings until fn is needed
+-- escape2rx :: String -> String
+-- escape2rx []       = []
+-- escape2rx ('^':cs) = '\\':'^':escape2rx cs
+-- escape2rx (c:cs)   = '[':c:']':escape2rx cs
 
 
 -- ---------------------------------------------------------------------
@@ -178,18 +181,18 @@ echoMode prompt initial = do
                          satisfy isCancel >> return Nothing,
                          satisfy isDel >> lineEdit (take (length s - 1) s),
                          do c <- satisfy validChar; lineEdit (s++[c])]
- 
 
-query :: String -> [(String, JoeMode)] -> JoeMode
-query prompt ks = write (msgE prompt) >> loop
-    where loop = choice $ (satisfy (isEnter ||| isCancel) >> return ()) :
-                          [oneOf cs >> a | (cs,a) <- ks]
-                          ++ [(anyEvent >> loop)]
-          (|||) = liftM2 (||)
+-- Commenting out to avoid compile warnings until fn is needed
+-- query :: String -> [(String, JoeMode)] -> JoeMode
+-- query prompt ks = write (msgE prompt) >> loop
+--     where loop = choice $ (satisfy (isEnter ||| isCancel) >> return ()) :
+--                           [oneOf cs >> a | (cs,a) <- ks]
+--                           ++ [(anyEvent >> loop)]
+--           (|||) = liftM2 (||)
 
-                
-queryKeys :: String -> [(String, Action)] -> JoeMode
-queryKeys prompt ks = query prompt [(cs,write a) | (cs,a) <- ks]
+-- Commenting out to avoid compile warnings until fn is needed
+-- queryKeys :: String -> [(String, Action)] -> JoeMode
+-- queryKeys prompt ks = query prompt [(cs,write a) | (cs,a) <- ks]
 
 
 -- ---------------------------------------------------------------------

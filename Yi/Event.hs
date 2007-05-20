@@ -4,7 +4,7 @@ module Yi.Event
      Key(..), Modifier(..),
 
      -- * Key codes
-     eventToChar,
+     eventToChar, charToEvent,
      keyBreak, keyDown, keyUp, keyLeft, keyRight, keyHome,
      keyBackspace, keyDL, keyIL, keyDC, keyIC, keyEIC, keyClear,
      keyEOS, keyEOL, keySF, keySR, keyNPage, keyPPage, keySTab,
@@ -84,6 +84,7 @@ remapChar a1 b1 a2 _ c
 ctrlLowcase :: Char -> Char
 ctrlLowcase   = remapChar 'a'   'z'   '\^A' '\^Z'
 
+lowcaseCtrl :: Char -> Char
 lowcaseCtrl = remapChar '\^A' '\^Z' 'a'   'z'
 
 -- set the meta bit, as if Mod1/Alt had been pressed

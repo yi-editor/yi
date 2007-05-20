@@ -11,6 +11,7 @@ import {-# source #-} Yi.Editor
 -- | The type of user-bindable functions
 --
 
+write :: Action -> Interact ev ()
 write x = I.write (tell [x])
 
 type EditorM = ReaderT (IORef Editor) IO

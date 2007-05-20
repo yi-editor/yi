@@ -24,7 +24,7 @@
 
 module Yi.Buffer ( FBuffer (..), BufferM, runBuffer, keyB, curLn, nameB, indexOfEol,
                    sizeB, pointB, moveToSol, moveTo, lineUp, lineDown,
-                   hPutB, hNewB, newB, finaliseB, Point, Mark,
+                   hPutB, hNewB, newB, finaliseB, Point, Mark, BufferMode(..),
                    moveToEol, gotoLn, gotoLnFrom, offsetFromSol,
                    atSol, atEol, atSof, atEof, leftB, rightB,
                    moveXorEol, moveXorSol, insertN, deleteN,
@@ -122,6 +122,7 @@ withImpl1 f a = do b <- ask; lift $ f (rawbuf b) a
 withImpl2 :: (BufferImpl -> a -> b -> IO x) -> (a -> b -> BufferM x)
 withImpl2 f a b = do x <- ask; lift $ f (rawbuf x) a b
 
+runBuffer :: FBuffer -> BufferM a -> IO a
 runBuffer = flip runReaderT
 
 hNewB :: FilePath -> IO FBuffer
@@ -314,8 +315,10 @@ getMarkPointB = withImpl1 getMarkPointBI
 unsetMarkB :: BufferM ()
 unsetMarkB = withImpl unsetMarkBI
 
+getMarkB :: Maybe String -> BufferM Mark
 getMarkB = withImpl1 getMarkBI
 
+getSelectionMarkB :: BufferM Mark
 getSelectionMarkB = withImpl getSelectionMarkBI
 
 -- | Move point -1
@@ -337,8 +340,10 @@ rightN n = pointB >>= \p -> moveTo (p + n)
 -- ---------------------------------------------------------------------
 -- Line based movement and friends
 
+readPrefCol :: BufferM (Maybe Int)
 readPrefCol = lift . readIORef =<< asks preferCol
 
+setPrefCol :: Maybe Int -> BufferM ()
 setPrefCol c = do b <- ask; lift $ writeIORef (preferCol b) c
 
 -- | Move point down by @n@ lines. @n@ can be negative.

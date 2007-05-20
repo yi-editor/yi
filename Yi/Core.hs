@@ -358,7 +358,7 @@ reloadE = do
   return $ map (moduleNameString . moduleName) loaded
   -- lift $ rts_revertCAFs
 
-foreign import ccall "revertCAFs" rts_revertCAFs  :: IO ()  
+--foreign import ccall "revertCAFs" rts_revertCAFs  :: IO ()
 	-- Make it "safe", just in case
 
 
@@ -853,7 +853,8 @@ spawnMinibufferE prompt kmMod initialAction =
 fwriteE :: Action
 fwriteE = withBuffer hPutB
 
--- | Write current buffer to disk as @f@. This buffer's associated file is set to @f@
+-- | Write current buffer to disk as @f@. If this buffer doesn't
+-- currently have a file associated with it, the file is set to @f@
 fwriteToE :: String -> Action
 fwriteToE f = withBuffer $ do setfileB f
                               hPutB

@@ -94,6 +94,7 @@ jumpToErrorE = do
   (f,l,c) <- parseErrorMessageE
   jumpToE f l c
 
+prompt :: String
 prompt = "Yi> "
 
 consoleKeymap :: Keymap

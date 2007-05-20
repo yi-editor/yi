@@ -244,8 +244,8 @@ echoCharFM =
 -- ---------------------------------------------------------------------
 -- utilities
 
-undef :: Char -> Action
-undef c = errorE $ "Not implemented: " ++ show c
+-- undef :: Char -> Action
+-- undef c = errorE $ "Not implemented: " ++ show c
 
 deleteChars :: [Char]
 deleteChars  = ['\BS', '\127', keyBackspace]

@@ -300,8 +300,8 @@ findFile = withMinibuffer "find file:" completeFileName $ \filename -> do
 gotoLineE :: Action
 gotoLineE = withMinibuffer "goto line:" return  $ gotoLnE . read
 
-debug :: String -> Process
-debug = write . lift . logPutStrLn
+-- debug :: String -> Process
+-- debug = write . lift . logPutStrLn
 
 commonPrefix :: [String] -> String
 commonPrefix [] = []
@@ -408,11 +408,12 @@ killBufferE = withMinibuffer "kill buffer:" completeBufferName $ \bufName -> do
 makeProcess :: KList -> KProc ()
 makeProcess kmap = choice [events (readKey k) >> a | (k,a) <- kmap]
 
-showFailures :: Process -> Process
-showFailures p = do result <- consumeLookahead p 
-                    case result of
-                      Right _ -> return ()
-                      Left e -> write $ errorE $ "Key not bound: " ++ showKey e
+-- Commenting out to avoid compiler-warnings about unused function
+-- showFailures :: Process -> Process
+-- showFailures p = do result <- consumeLookahead p
+--                     case result of
+--                       Right _ -> return ()
+--                       Left e -> write $ errorE $ "Key not bound: " ++ showKey e
 
 -- NOTE: showFailures is unused because its error-recovery mechanism
 -- is in adequate when C-s (isearch) is implemented. When you type a
