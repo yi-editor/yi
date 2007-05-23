@@ -1,5 +1,5 @@
 name:           yi-gtk
-version:        0.2
+version:        0.3
 category:       Editor
 synopsis:       GTK backend for Yi
 description:

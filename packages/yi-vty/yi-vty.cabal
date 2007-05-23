@@ -1,5 +1,5 @@
 name:           yi-vty
-version:        0.2
+version:        0.3
 category:       Editor
 synopsis:       Vty backend for Yi
 description:
