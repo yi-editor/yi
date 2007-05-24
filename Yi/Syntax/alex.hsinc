@@ -19,10 +19,10 @@ alexGetChar bs | Data.ByteString.Char8.null bs = Nothing
 
 alexInputPrevChar = undefined
 
-c :: Yi.Vty.Attr -> Data.ByteString.Char8.ByteString -> a -> (a, [Yi.Vty.Attr])
+c :: Style -> Data.ByteString.Char8.ByteString -> a -> (a, [Style])
 c color str state = (state, replicate (Data.ByteString.Char8.length str) color)
 
-m :: (s -> s) -> Yi.Vty.Attr -> Data.ByteString.Char8.ByteString -> s -> (s, [Yi.Vty.Attr])
+m :: (s -> s) -> Style -> Data.ByteString.Char8.ByteString -> s -> (s, [Style])
 m mod color str state = (mod state, replicate (Data.ByteString.Char8.length str) color)
 
 highlighter :: Yi.Syntax.Highlighter (Data.ByteString.Char8.ByteString, HlState)

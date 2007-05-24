@@ -7,7 +7,6 @@ module Yi.Vty
     ) where
 
 import Yi.Style as Style
-
 import Graphics.Vty as Vty
 
 ------------------------------------------------------------------------

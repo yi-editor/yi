@@ -28,8 +28,11 @@
 module Yi.Syntax ( Highlighter(..)
                  ) where
 
-import Yi.Vty
+import Yi.Style
+
 import qualified Data.ByteString as B
+
+    
 
 -- | The main type of syntax highlighters.  This record type combines all
 -- the required functions, and is parametrized on the type of the internal
@@ -37,12 +40,13 @@ import qualified Data.ByteString as B
 --
 -- Highlighters currently directly use the Vty color types; among other
 -- things, this prevents the gtk port from using synhl.
-data Highlighter a = SynHL { hlStartState :: a -- ^ The start state for the highlighter.
+data Highlighter a = SynHL 
+                           { hlStartState :: a -- ^ The start state for the highlighter.
                              -- | Colorize a block of data passed in as a ByteString,
                              -- returning the new state and any attributes produced.
                              -- This *must* be implementable as a `B.foldl'.
-                           , hlColorize :: B.ByteString -> a -> (a, [Attr])
+                           , hlColorize :: B.ByteString -> a -> (a, [Style])
                              -- | Colorize the end of file; this exists only to inform
                              -- states that lookahead will never happen.
-                           , hlColorizeEOF :: a -> [Attr]
+                           , hlColorizeEOF :: a -> [Style]
                            }

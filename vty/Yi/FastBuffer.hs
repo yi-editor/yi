@@ -36,7 +36,7 @@ import Yi.Syntax
 import Yi.Syntax.Table
 
 import qualified Data.Map as M
-import Yi.Vty (Attr, attr)
+import Yi.Vty (Attr, attr, styleToAttr)
 
 import Control.Concurrent.MVar
 import Control.Exception        ( evaluate, assert )
@@ -233,7 +233,7 @@ nelemsBIH fb n i = withMVar fb fun
         bs <- B.copyCStringLen (b, e)
         let (finst,colors_) = hlColorize hl bs (hlStartState hl)
             colors = colors_ ++ hlColorizeEOF hl finst
-        return (take n (drop i (zip (B.unpack bs) colors)))
+        return (take n (drop i (zip (B.unpack bs) (map styleToAttr colors))))
 
 ------------------------------------------------------------------------
 -- Point based editing

@@ -12,7 +12,7 @@ module Yi.Syntax.Haskell ( highlighter ) where
 
 import qualified Data.ByteString.Char8
 import qualified Yi.Syntax
-import Yi.Vty
+import Yi.Style
 
 }
 
@@ -70,7 +70,7 @@ $charesc = [abfnrtv\\\"\'\&]
 
 haskell :-
 
-<0> $white+                                     { c attr } -- whitespace
+<0> $white+                                     { c defaultStyle } -- whitespace
 
 <nestcomm> {
   "{-"                                          { m (subtract 1) redA }
@@ -79,15 +79,15 @@ haskell :-
 }
 
 <0> {
-  "--"\-* $symbol $symchar*                     { c attr }
+  "--"\-* $symbol $symchar*                     { c defaultStyle }
   "--"\-*[^\n]*                                 { c redA }
 
  "{-"                                           { m (subtract 1) redA }
 
- $special                                       { c attr }
+ $special                                       { c defaultStyle }
 
- @reservedid                                    { c (setFG blue (setBold attr)) }
- @varid                                         { c attr }
+ @reservedid                                    { c (Style blue defaultbg) }
+ @varid                                         { c defaultStyle }
  @conid                                         { c greenA }
 
  @reservedop                                    { c yellowA }
@@ -96,19 +96,22 @@ haskell :-
 
  @decimal 
   | 0[oO] @octal
-  | 0[xX] @hexadecimal                          { c attr }
+  | 0[xX] @hexadecimal                          { c defaultStyle }
 
  @decimal \. @decimal @exponent?
-  | @decimal @exponent                          { c attr }
+  | @decimal @exponent                          { c defaultStyle }
 
  \' ($graphic # [\'\\] | " " | @escape) \'      { c greenA }
  \" @string* \"                                 { c greenA }
- .                                              { c (setBold redA) }
+ .                                              { c (Style brown defaultbg) }
 }
 
 {
 
-redA = setFG red attr ; greenA = setFG green attr ; yellowA = setFG yellow attr
+redA = Style red defaultbg
+greenA = Style green defaultbg
+yellowA = Style yellow defaultbg
+
 
 type HlState = Int
 

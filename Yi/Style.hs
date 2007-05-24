@@ -65,6 +65,9 @@ uiStyle = UIStyle {
         ,eof                = Style blue         defaultbg
      }
 
+defaultStyle = Style defaultfg defaultbg
+
+
 ------------------------------------------------------------------------
 
 -- | Foreground and background color pairs
