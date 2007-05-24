@@ -418,10 +418,16 @@ cmd_op :: VimMode
 cmd_op = do
   cnt <- count
   let i = maybe 1 id cnt
-  choice $ [events "dd" >> write (solE >> killE >> deleteE),
+  choice $ [events "dd" >> write delCurLine,
             events "yy" >> write (readLnE >>= setRegE)] ++
            [do event c; m <- cmd_move; write (a i m) | (c,a) <- opCmdFM]
     where
+        -- | Used to implement the 'dd' command.
+        delCurLine :: Action
+        delCurLine = solE >> killE >> deleteE >> 
+                     (atEofE >>= flip when upE) >> 
+                     firstNonSpaceE
+
         -- | operator (i.e. movement-parameterised) actions
         opCmdFM :: [(Char,Int -> Action -> Action)]
         opCmdFM =
