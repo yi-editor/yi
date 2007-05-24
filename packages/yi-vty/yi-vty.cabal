@@ -9,7 +9,7 @@ license:        GPL
 license-file:   LICENSE
 author:         Don Stewart
 maintainer:     dons@cse.unsw.edu.au
-build-depends:  ghc>=6.6, base, mtl, vty>=3.0, regex-posix, filepath>=1.0, unix>=1.0
+build-depends:  ghc>=6.6, base, mtl, vty>=3.0, regex-posix, filepath>=1.0, unix>=1.0, yi-lib
 exposed-modules:
  Yi
  Yi.Buffer
@@ -44,8 +44,6 @@ exposed-modules:
  Yi.Region
  Yi.Search
  Yi.String
- Yi.Style
- Yi.Syntax
  Yi.Syntax.Table
  Yi.UI
  Yi.Undo
@@ -55,12 +53,8 @@ exposed-modules:
  Yi.Yi
 include-dirs:   cbits
 hs-source-dirs: vty, .
-c-sources:      cbits/YiUtils.c
-other-modules:  Yi.Syntax.Haskell
 extensions:     CPP, ForeignFunctionInterface
 ghc-options:    -Wall -fglasgow-exts -O -funbox-strict-fields -fasm -optl-Wl,-s
 extra-source-files:
  vty/Yi/UI.hs-boot
  Yi/Editor.hs-boot
- cbits/YiUtils.h
- Yi/Syntax/alex.hsinc

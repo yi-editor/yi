@@ -26,6 +26,9 @@ interactive:
 	ghci -fglasgow-exts -package ghc -cpp -hidirdist/build/yi/yi-tmp/ -odirdist/build/yi/yi-tmp/ -i/home/jp/.yi ./dist/build/yi/yi-tmp/cbits/YiUtils.o Yi/Yi.hs 
 
 
+yi-lib:
+	make -C packages/yi-lib install
+
 yi-vty:
 	make -C packages/yi-vty install
 	-ghc-pkg --user hide yi-gtk

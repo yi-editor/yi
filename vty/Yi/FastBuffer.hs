@@ -31,7 +31,7 @@ module Yi.FastBuffer (Point, Mark, Size, BufferImpl, newBI, deleteNAtI, moveToI,
                       nelemsBIH, setSyntaxBI) where
 
 import Yi.Debug
-
+import Yi.Cbits
 import Yi.Syntax
 import Yi.Syntax.Table
 
@@ -137,14 +137,6 @@ shiftChars ptr dst_off src_off len = do
 
 ------------------------------------------------------------------------
 
-foreign import ccall unsafe "string.h strstr"
-    cstrstr :: Ptr CChar -> Ptr CChar -> IO (Ptr CChar)
-
-foreign import ccall unsafe "YiUtils.h countLines"
-   ccountLines :: Ptr CChar -> Int -> Int -> IO Int
-
-foreign import ccall unsafe "YiUtils.h findStartOfLineN"
-   cfindStartOfLineN :: Ptr CChar -> Int -> Int -> Int -> IO Int
 
 ------------------------------------------------------------------------
 

@@ -157,7 +157,7 @@ searchInitE re fs = do
         extended | Basic      `elem` fs = 0
                  | otherwise            = compExtended   -- extended regex dflt
         igcase   | IgnoreCase `elem` fs = compIgnoreCase
-                 | otherwise            = 0             -- case insensitive dflt
+                 | otherwise            = 0              -- case insensitive dflt
         newline  | NoNewLine  `elem` fs = 0
                  | otherwise            = compNewline    -- newline is special
 
