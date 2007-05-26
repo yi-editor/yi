@@ -129,7 +129,7 @@ show-build-args:
 	@echo $(build-args)
 
 # LICENSE dependency makes sure the links are created if that is needed.
-setup: LICENCE Setup.*hs 
+setup: mklinks Setup.*hs 
 	ghc --make Setup.*hs -o setup
 
 # setup with my own (Windows-friendly) preferences.  You'll probably want
@@ -249,5 +249,6 @@ sdist: .setup-config
 	./setup sdist
 
 
-LICENCE Yi.hs Yi cbits gtk vty:
-	test -e LICENSE || ln -sf ../../Yi.hs ../../Yi ../../LICENSE ../../cbits ../../gtk ../../vty . 
+mklinks:
+	if test -e LICENSE || test -e cbits; then :; else ln -sf ../../Yi.hs ../../Yi ../../LICENSE ../../cbits ../../gtk ../../vty .; fi
+

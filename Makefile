@@ -29,11 +29,11 @@ interactive:
 yi-lib:
 	make -C packages/yi-lib install
 
-yi-vty:
+yi-vty: yi-lib
 	make -C packages/yi-vty install
 	-ghc-pkg --user hide yi-gtk
 
-yi-gtk:
+yi-gtk: yi-lib
 	make -C packages/yi-gtk install
 	-ghc-pkg --user hide yi-vty
 
