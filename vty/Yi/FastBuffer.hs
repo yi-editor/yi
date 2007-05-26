@@ -232,8 +232,9 @@ nelemsBIH fb n i = withMVar fb fun
 
 -- | Move point in buffer to the given index
 moveToI     :: BufferImpl -> Int -> IO ()
-moveToI fb i = modifyMVar_ fb $ \(FBufferData ptr pnts nms end mx hl) ->
-    return $ FBufferData ptr (M.insert 0 (inBounds i end, pointLeftBound) pnts) nms end mx hl
+moveToI fb i = modifyMVar_ fb $ \(FBufferData ptr pnts nms end mx hl) -> do
+                 logPutStrLn $ "moveToI: " ++ show i
+                 return $ FBufferData ptr (M.insert 0 (inBounds i end, pointLeftBound) pnts) nms end mx hl
 {-# INLINE moveToI #-}
 
 

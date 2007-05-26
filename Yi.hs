@@ -60,13 +60,11 @@ import GHC.Exception            ( Exception(ExitException) )
 #include "ghcconfig.h"
 
 -- ---------------------------------------------------------------------
--- | Argument parsing. Pretty standard, except for the trick with -B.
--- The -B flag is needed, and used by Boot.hs to find the runtime
--- libraries. We still parse it here, but ignore it.
+-- | Argument parsing. Pretty standard.
 
 data Opts = Help
           | Version
-          | Libdir String
+          | OptIgnore String
           | LineNo String
           | EditorNm String
           | File String
@@ -87,8 +85,9 @@ editorFM = M.fromList $
 
 options :: [OptDescr Opts]
 options = [
+    Option ['f']  ["flavour"] (ReqArg OptIgnore "gtk|vty") "Select flavour",
     Option ['V']  ["version"] (NoArg Version) "Show version information",
-    Option ['B']  ["libdir"]  (ReqArg Libdir "libdir") "Path to runtime libraries",
+    Option ['B']  ["libdir"]  (ReqArg OptIgnore "libdir") "Path to runtime libraries",
     Option ['h']  ["help"]    (NoArg Help)    "Show this help",
     Option ['l']  ["line"]    (ReqArg LineNo "[num]") "Start on line number",
     Option []     ["as"]      (ReqArg EditorNm "[editor]")
@@ -111,7 +110,7 @@ do_opt :: Opts -> IO (Keymap.Action)
 do_opt o = case o of
     Help     -> usage    >> exitWith ExitSuccess
     Version  -> versinfo >> exitWith ExitSuccess
-    Libdir _ -> return Core.nopE  -- FIXME: don't ignore -B flag. 
+    OptIgnore _ -> return Core.nopE
     LineNo l -> return (Core.gotoLnE (read l))
     File file -> return (Core.fnewE file)
     EditorNm emul -> case M.lookup (map toLower emul) editorFM of
@@ -193,9 +192,9 @@ openScratchBuffer = do     -- emacs-like behaviour
 -- Initialise the ui getting an initial editor state, set signal
 -- handlers, then jump to ui event loop with the state.
 --
-main :: Kernel -> IO ()
-main kernel = do
-    mopts <- do_args =<< getArgs
+main :: Kernel -> [String] -> IO ()
+main kernel args = do
+    mopts <- do_args args
 
     --
     -- The only way out is by throwing an exception, or an external

@@ -23,27 +23,14 @@
 -- in -package yi, which lets us have multiple frontends, and load
 -- them all in ghci.
 --
-module Main ( main ) where
+module Static ( main ) where
 
-import Yi.Boot
 import Yi.Debug
-
-main :: IO ()
-main = do
-  initDebug ".yi-static.dbg"
-  (kernel, args) <- initialize
-  Yi.Boot.startYi kernel args -- call Yi.main dynamically
-  
-
-
-
-{-
+import Yi.Boot
 import qualified Yi 
 
 main :: IO ()
 main = do
   initDebug ".yi-static.dbg"
-  kernel <- initialize
-  Yi.main kernel
-  
--}
+  (kernel, args) <- initialize
+  Yi.main kernel args
