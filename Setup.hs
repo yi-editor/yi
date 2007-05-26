@@ -14,29 +14,24 @@ import Data.Maybe
 
 main :: IO ()
 main = defaultMainWithHooks defaultUserHooks
-       { postConf = pC, preBuild = setConfigInfo }
+       { buildHook = bHook }
 
-pC :: Args -> ConfigFlags -> PackageDescription -> LocalBuildInfo -> IO ExitCode
-pC args a b lbi = do
-    fmap (const ()) $ (postConf defaultUserHooks) args a b lbi  -- call default function (necessary ?)
-    getLibDir (compilerPath . compiler $ lbi) >>= \libdir ->
-      writeFile ".libdir" libdir
-    return $ ExitSuccess
-  where getLibDir ghcPath = do 
+getLibDir ghcPath = do 
           (_, out, _, pid) <- runInteractiveProcess ghcPath ["--print-libdir"]
                                                            Nothing Nothing
           libDir <- hGetLine out
           waitForProcess pid
           return libDir
 
-setConfigInfo args _
-    = readFile ".libdir" >>= \libdir ->
-      return
-      (Nothing,
+mkOpt (name,def) = "-D"++name++"="++def
+
+bHook :: PackageDescription -> LocalBuildInfo -> Maybe UserHooks -> BuildFlags -> IO ()
+bHook pd lbi hooks bfs = do
+  libdir <- getLibDir (compilerPath . compiler $ lbi)
+  let pbi = (Nothing,
        [("yi", emptyBuildInfo
          { options = [(GHC,[mkOpt ("GHC_LIBDIR",show libdir)])] })])
-    where mkOpt (name,def) = "-D"++name++"="++def
+      pd' = updatePackageDescription pbi pd
+  buildHook defaultUserHooks pd' lbi hooks bfs
 
--- Marc Weber: I don't like this patch because it's using the .libdir
--- file to store the libdir. There must be a better way but I don't
--- want to spend more time on this. 
+    
