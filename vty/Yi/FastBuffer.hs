@@ -202,7 +202,7 @@ sizeBI fb = withMVar fb $ \(FBufferData _ _ _ n _ _) -> return n
 pointBI     :: BufferImpl -> IO Int
 pointBI fb = withMVar fb $ \(FBufferData _ pnts _ e mx _) -> do
     let (p,_) = (pnts M.! 0)
-    assert ((p >= 0 && (p < e || e == 0)) && e <= mx) $ return p
+    assert ((p >= 0 && (p <= e || e == 0)) && e <= mx) $ return p
 {-# INLINE pointBI #-}
 
 
