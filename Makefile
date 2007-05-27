@@ -9,10 +9,10 @@ runtime-config:
 	mkdir -p $(HOME)/.yi
 	cp examples/*.hs $(HOME)/.yi
 
-emacs: $(flavour)-static install
+emacs: install
 	$(prefix)/bin/yi --as=emacs
 
-vim: $(flavour)-static install
+vim: install
 	$(prefix)/bin/yi --as=vim
 
 distclean: clean
@@ -22,17 +22,6 @@ distclean: clean
 maintainer-clean: distclean
 	rm -f configure cbits/config.h.in
 	rm -rf autom4te.cache
-
-yi-vty-static:
-	ghc -DGHC_LIBDIR=\"dummy\" -odir vty -hidir vty -ivty -fglasgow-exts -package ghc -cpp --make Static.hs
-
-yi-gtk-static:
-	ghc -DGHC_LIBDIR=\"dummy\" -odir gtk -hidir gtk -igtk -fglasgow-exts -package ghc -cpp --make Static.hs
-
-
-interactive:
-	ghci -fglasgow-exts -package ghc -cpp -hidirdist/build/yi/yi-tmp/ -odirdist/build/yi/yi-tmp/ -i/home/jp/.yi ./dist/build/yi/yi-tmp/cbits/YiUtils.o Yi/Yi.hs 
-
 
 yi-lib:
 	make -C packages/yi-lib install
