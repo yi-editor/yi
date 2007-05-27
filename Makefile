@@ -9,11 +9,11 @@ runtime-config:
 	mkdir -p $(HOME)/.yi
 	cp examples/*.hs $(HOME)/.yi
 
-emacs: $(flavour) install
+emacs: $(flavour)-static install
 	$(prefix)/bin/yi --as=emacs
 
-vim: $(flavour) install
-	dist/build/yi/yi --as=vim
+vim: $(flavour)-static install
+	$(prefix)/bin/yi --as=vim
 
 distclean: clean
 	rm -f yi.buildinfo testsuite/pp/logpp config.log config.cache config.status cbits/config.h .setup-config
@@ -23,10 +23,10 @@ maintainer-clean: distclean
 	rm -f configure cbits/config.h.in
 	rm -rf autom4te.cache
 
-yi-static-vty:
+yi-vty-static:
 	ghc -DGHC_LIBDIR=\"dummy\" -odir vty -hidir vty -ivty -fglasgow-exts -package ghc -cpp --make Static.hs
 
-yi-static-gtk:
+yi-gtk-static:
 	ghc -DGHC_LIBDIR=\"dummy\" -odir gtk -hidir gtk -igtk -fglasgow-exts -package ghc -cpp --make Static.hs
 
 
@@ -36,14 +36,6 @@ interactive:
 
 yi-lib:
 	make -C packages/yi-lib install
-
-yi-vty: yi-lib
-	make -C packages/yi-vty install
-	-ghc-pkg --user hide yi-gtk
-
-yi-gtk: yi-lib
-	make -C packages/yi-gtk install
-	-ghc-pkg --user hide yi-vty
 
 Contributors: Contributors.hs
 	ghc --make $<
