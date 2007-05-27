@@ -85,8 +85,7 @@ instance Eq FBuffer where
    FBuffer { bkey = u } == FBuffer { bkey = v } = u == v
 
 instance Show FBuffer where
-    showsPrec _ (FBuffer { bkey = u, name = f, bufferThread = t }) = 
-        showString $ "Buffer #" ++ show (hashUnique u) ++ "/" ++ show t ++ " (" ++ show f ++ ")"
+    showsPrec _ (FBuffer { bkey = u, name = f }) = showString $ "Buffer #" ++ show (hashUnique u) ++ " (" ++ show f ++ ")"
 
 -- | Given a buffer, and some information update the modeline
 --

@@ -53,22 +53,6 @@ import {-# source #-} Yi.UI as UI ( UI )
 
 ------------------------------------------------------------------------
 
-data Query = forall a. Query (EditorM a) (MVar a)
-
-query :: EditorM a -> EditorM a
-query f = do
-  o <- readEditor output
-  lift $ do mv <- newEmptyMVar
-            writeChan o (Query f mv)
-            readMVar mv
-
-reply :: IORef Editor -> Query -> IO ()
-reply e q =
-  case q of
-    Query f mv -> do a <- runReaderT f e
-                     putMVar mv a
-                     return ()
-
 --
 -- | The Editor state
 --
@@ -81,7 +65,7 @@ data Editor = Editor {
        ,curwin        :: !(Maybe Unique)            -- ^ the window with focus
        ,uistyle       :: !UIStyle                   -- ^ ui colours
        ,input         :: Chan Event                 -- ^ input stream
-       ,output        :: Chan Query                 -- ^ output stream
+       ,output        :: Chan Action                -- ^ output stream
        ,threads       :: [ThreadId]                 -- ^ all our threads
        ,reboot        :: (Maybe Editor) -> IO ()    -- ^ our reboot function
        ,dynamic       :: !(M.Map String Dynamic)    -- ^ dynamic components
@@ -193,8 +177,8 @@ bufferEventLoop e b = eventLoop
       -- logStream ("Event for " ++ show b) (bufferInput b)
       logPutStrLn $ "Starting keymap thread for " ++ show b
       tryPutMVar (bufferKeymapRestartable b) ()
-      in_ <- getChanContents (bufferInput b)
-      runReaderT (bkm in_) e
+      out <- liftM output $ readIORef e
+      writeList2Chan out . bkm =<< getChanContents (bufferInput b)
       takeMVar (bufferKeymapRestartable b)
       logPutStrLn "Keymap execution ended"
 
