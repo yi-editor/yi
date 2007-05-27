@@ -108,9 +108,9 @@ haskell :-
 
 {
 
-redA = Style red defaultbg
-greenA = Style green defaultbg
-yellowA = Style yellow defaultbg
+redA = Style darkred defaultbg
+greenA = Style darkgreen defaultbg
+yellowA = Style brown defaultbg
 
 
 type HlState = Int
