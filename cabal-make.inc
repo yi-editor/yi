@@ -250,5 +250,5 @@ sdist: .setup-config
 
 
 mklinks:
-	if test -e LICENSE || test -e cbits; then :; else ln -sf ../../Yi ../../LICENSE .; fi
+	test -e LICENSE || ln -sf ../../LICENSE
 

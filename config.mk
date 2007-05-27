@@ -1,5 +1,5 @@
-# yi-vty or yi-gtk
-flavour=yi-vty
+# vty or gtk
+flavour=vty
 
 # where to install executable and packages (running in-place -- without installing -- is not supported)
 prefix = $(HOME)/usr/
