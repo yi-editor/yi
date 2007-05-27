@@ -16,6 +16,10 @@ splitN n l = let (c,ls) = splitAt n l in (l : splitN n ls)
 
 tx = "Thu Oct 14 05:40:06 CEST 2004 "
 
+unquote x 
+    | BS.head x == '\'' && BS.last x == '\'' = unquote (BS.init $ BS.tail $ x)
+    | otherwise = x
+
 name :: ByteString -> ByteString
 name tag 
      | match :: Array Int ByteString <- tag =~ pack "^\"?(.+)<.*>\"?$", [_,name] <- elems match = name
@@ -48,7 +52,7 @@ main = do
   f <- BS.getContents
   let ls = BS.lines f
       ps = filter (not . isSpace . BS.head) $ filter (not . BS.null) $ ls
-      contrs = M.fromListWith (+) $ flip zip (repeat 1) $ map (trim . nick . name . BS.dropWhile isSpace . BS.drop (length tx)) $ ps
+      contrs = M.fromListWith (+) $ flip zip (repeat 1) $ map (trim . nick . name . unquote . BS.dropWhile isSpace . BS.drop (length tx)) $ ps
   -- print (length ps)
   -- mapM print $ sortBy (comparing fst) $ M.toList $ contrs
   mapM BS.putStrLn $ M.keys contrs
