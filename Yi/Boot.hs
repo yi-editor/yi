@@ -3,9 +3,10 @@ module Yi.Boot where
 import Yi.Debug hiding (error)
 import Yi.Kernel
 
-import System.Environment       ( getArgs )
-import System.Directory     ( getHomeDirectory )
 import System.Console.GetOpt
+import System.Environment   ( getArgs )
+import System.Directory     ( getHomeDirectory )
+import System.FilePath
 
 import qualified GHC
 import qualified Packages
@@ -25,10 +26,13 @@ options = [
     Option ['B']  ["libdir"]  (ReqArg Libdir "libdir") "Path to runtime libraries"
     ]
 
-
 forcedFlavour :: Opts -> Maybe String
 forcedFlavour (Flavour x) = Just x
 forcedFlavour _ = Nothing
+
+forcedLibdir :: Opts -> Maybe String
+forcedLibdir (Libdir x) = Just x
+forcedLibdir _ = Nothing
 
 override :: String ->  Maybe String -> String
 override def Nothing = def
@@ -46,8 +50,8 @@ initialize = GHC.defaultErrorHandler DynFlags.defaultDynFlags $ do
   bootArgs <- getArgs
   let (bootFlags, otherArgs, _) = getOpt Permute options bootArgs
   let flavour = foldl override "vty" $ map forcedFlavour bootFlags
-  let libDirs = [d | Libdir d <- bootFlags] ++ [".", flavour]
-
+  let libdir = foldl override YI_LIBDIR $ map forcedLibdir bootFlags
+  logPutStrLn $ "Using libdir: " ++ libdir
   session <- GHC.newSession GHC.Interactive (Just path)
   dflags1 <- GHC.getSessionDynFlags session
 
@@ -56,11 +60,11 @@ initialize = GHC.defaultErrorHandler DynFlags.defaultDynFlags $ do
                                                            "-package ghc", "-fglasgow-exts", "-cpp", 
                                                            "-i", -- clear the search directory (don't look in ./)
                                                            "-i" ++ home ++ "/.yi", -- First, we look for source files in ~/.yi
-                                                           "-i.", -- then look in ./
-                                                           "-i" ++ flavour,
-                                                           "-hidir " ++ flavour,
-                                                           "-odir " ++ flavour
-                                                          ] ++ map ("-i"++) libDirs
+                                                           "-i" ++ libdir,
+                                                           "-i" ++ libdir </> flavour,
+                                                           "-hidir " ++ libdir </> flavour,
+                                                           "-odir " ++ libdir </> flavour
+                                                          ]
   (dflags2, packageIds) <- Packages.initPackages dflags1'
   logPutStrLn $ "packagesIds: " ++ (showSDocDump $ ppr $ packageIds)
   GHC.setSessionDynFlags session dflags2{GHC.hscTarget=GHC.HscInterpreted}
@@ -86,7 +90,7 @@ initialize = GHC.defaultErrorHandler DynFlags.defaultDynFlags $ do
 -- | Dynamically start Yi. 
 startYi :: Kernel -> [String] -> IO ()
 startYi kernel args = GHC.defaultErrorHandler DynFlags.defaultDynFlags $ do
-  t <- (guessTarget kernel) "Yi/Main.hs" Nothing
+  t <- (guessTarget kernel) "Yi.Main" Nothing
   (setTargets kernel) [t]
   loadAllTargets kernel
   result <- compileExpr kernel ("Yi.Main.main :: Yi.Kernel.Kernel -> [Prelude.String] -> Prelude.IO ()") 

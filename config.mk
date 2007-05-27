@@ -13,7 +13,7 @@ prefix = $(HOME)/usr/
 tmp-dir = /tmp
 user = jpbernardy
 
-configure-dirs = --prefix=$(prefix) --datadir=--prefix=$(prefix)
+configure-dirs = --prefix=$(prefix) 
 hscolour-css = $(cabal-make)/hscolour.css
 
 haddock-interfaces=\
