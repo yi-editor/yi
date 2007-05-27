@@ -2,7 +2,8 @@
 -- riot/Main.hs
 --
 -- Copyright (c) Tuomo Valkonen 2004.
--- Copyright (c) Don Stewarti 2004-5.
+-- Copyright (c) Don Stewart 2004-5.
+-- Copyright (c) Jean-Philippe Bernardy 2006,2007.
 --
 -- This program is free software; you can redistribute it and/or modify
 -- it under the terms of the GNU General Public License as published by
@@ -18,7 +19,7 @@
 -- jumping into an event loop.
 --
 
-module Yi (main, Kernel) where
+module Yi.Main (main, Kernel) where
 
 import Prelude hiding (error)
 

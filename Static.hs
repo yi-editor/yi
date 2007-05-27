@@ -27,10 +27,10 @@ module Static ( main ) where
 
 import Yi.Debug
 import Yi.Boot
-import qualified Yi 
+import qualified Yi.Main 
 
 main :: IO ()
 main = do
   initDebug ".yi-static.dbg"
   (kernel, args) <- initialize
-  Yi.main kernel args
+  Yi.Main.main kernel args

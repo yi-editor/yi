@@ -84,10 +84,10 @@ initialize = GHC.defaultErrorHandler DynFlags.defaultDynFlags $ do
 -- | Dynamically start Yi. 
 startYi :: Kernel -> [String] -> IO ()
 startYi kernel args = GHC.defaultErrorHandler DynFlags.defaultDynFlags $ do
-  t <- (guessTarget kernel) "Yi.hs" Nothing
+  t <- (guessTarget kernel) "Yi/Main.hs" Nothing
   (setTargets kernel) [t]
   loadAllTargets kernel
-  result <- compileExpr kernel ("Yi.main :: Yi.Kernel.Kernel -> [Prelude.String] -> Prelude.IO ()") 
+  result <- compileExpr kernel ("Yi.Main.main :: Yi.Kernel.Kernel -> [Prelude.String] -> Prelude.IO ()") 
   -- coerce the interpreted expression, so we check that we are not making an horrible mistake.
   logPutStrLn "Starting Yi!"
   case result of
