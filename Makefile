@@ -68,14 +68,10 @@ test-dists:
 	cd ..;\
 
 test-gtk:
-	-ghc-pkg --user expose yi-gtk
-	-ghc-pkg --user hide yi-vty
-	$(prefix)/bin/yi
+	$(prefix)/bin/yi -fvty
 
 
 test-vty:
-	-ghc-pkg --user expose yi-vty
-	-ghc-pkg --user hide yi-gtk
-	$(prefix)/bin/yi
+	$(prefix)/bin/yi -fgtk
 
 
