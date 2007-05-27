@@ -249,10 +249,11 @@ isearchAddE increment = do
   let (previous,p0) = head s
   let current = previous ++ increment
   msgE $ "I-search: " ++ current
+  prevPoint <- getPointE
   gotoPointE p0
   mp <- withBuffer $ searchB current
   case mp of
-    Nothing -> do gotoPointE (p0+length previous) -- go back to where we were
+    Nothing -> do gotoPointE prevPoint -- go back to where we were
                   setDynamic $ Isearch ((current,p0):s)
                   msgE $ "Failing I-search: " ++ current
     Just p -> do setDynamic $ Isearch ((current,p):s)
