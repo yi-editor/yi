@@ -171,6 +171,7 @@ module Yi.Core (
         spawnMinibufferE,
 
         -- * Misc
+        write,
         catchJustE,
         changeKeymapE,
         getNamesInScopeE
@@ -189,7 +190,7 @@ import Yi.CoreUI
 import Yi.Kernel
 import Yi.Event
 import Yi.Keymap
-import Yi.Interact (anyEvent)
+import qualified Yi.Interact as Interact (anyEvent, write)
 import qualified Yi.Editor as Editor
 import qualified Yi.Style as Style
 import qualified Yi.UI as UI
@@ -219,8 +220,24 @@ import GHC.Exts ( unsafeCoerce# )
 -- | A 'Direction' is either left or right.
 data Direction = GoLeft | GoRight
 
+write :: EditorM a -> Interact ev a
+write x = Interact.write . query . interactive $ x
+
+
+-- | Make an action suitable for an interactive run.
+-- Editor state will be refreshed after
+interactive :: EditorM a -> EditorM a
+interactive action = do 
+  lift $ logPutStrLn ">>>>>>> interactively"
+  UI.prepareAction
+  x <- action
+  UI.scheduleRefresh
+  lift $ logPutStrLn "<<<<<<<"
+  return x
+
+
 nilKeymap :: Keymap
-nilKeymap = do c <- anyEvent
+nilKeymap = do c <- Interact.anyEvent
                write $ case eventToChar c of
                          'q' -> quitE 
                          'r' -> reconfigE
@@ -291,7 +308,7 @@ startE kernel st commandLineActions = do
         execLoop :: IO ()
         execLoop = do
             runReaderT UI.scheduleRefresh newSt
-            let loop = sequence_ . map interactive =<< getChanContents outCh
+            let loop = sequence_ . map (reply newSt) =<< getChanContents outCh
             repeatM_ $ (handle handler loop >> logPutStrLn "Execing loop ended")
       
     t1 <- forkIO eventLoop 
@@ -304,7 +321,9 @@ changeKeymapE :: Keymap -> Action
 changeKeymapE km = do
   modifyEditor_ $ \e -> return e { defaultKeymap = km }
   bs <- getBuffers
+  lift $ logPutStrLn "Changing keymap!"
   lift $ mapM_ restartBufferThread bs
+  return ()
 
 
 -- ---------------------------------------------------------------------
