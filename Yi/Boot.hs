@@ -26,11 +26,13 @@ options = [
     ]
 
 
+forcedFlavour :: Opts -> Maybe String
 forcedFlavour (Flavour x) = Just x
 forcedFlavour _ = Nothing
 
+override :: String ->  Maybe String -> String
 override def Nothing = def
-override def (Just x) = x
+override _ (Just x) = x
 
 -- the path of our GHC installation
 path :: FilePath
