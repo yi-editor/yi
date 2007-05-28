@@ -41,9 +41,11 @@ module Yi.Search (
         -- * Incremental Search
 
         isearchInitE,
+        isearchIsEmpty,
         isearchAddE,
         isearchNextE,
         isearchDelE,
+        isearchCancelE,
         isearchFinishE,
 
         -- * Replace
@@ -243,6 +245,11 @@ isearchInitE = do
   setDynamic (Isearch [("",p)])
   msgE $ "I-search: "
 
+isearchIsEmpty :: EditorM Bool
+isearchIsEmpty = do
+  Isearch s <- getDynamic
+  return $ not $ null $ fst $ head $ s
+
 isearchAddE :: String -> EditorM ()
 isearchAddE increment = do
   Isearch s <- getDynamic
@@ -286,7 +293,15 @@ isearchFinishE = do
   let (_,p0) = last s
   setMarkE p0
   msgE "mark saved where search started"
+
+isearchCancelE :: EditorM ()
+isearchCancelE = do
+  Isearch s <- getDynamic
+  let (_,p0) = last s
+  gotoPointE p0
+  msgE "Quit"
   
+
 -----------------
 -- Query-Replace
 

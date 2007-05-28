@@ -212,16 +212,18 @@ selfSearchKeymap = do
 searchKeymap :: Process
 searchKeymap = 
     selfSearchKeymap +++ makeProcess 
-       [("C-s", write isearchNextE),
-        ("C-g", write isearchDelE),
-        ("BACKSP", write isearchDelE)]
+        [--("C-g", isearchDelE), -- Only if string is not empty.
+         ("C-s", write isearchNextE),
+         ("BACKSP", write $ isearchDelE)]
                  
 isearchProcess :: Process
 isearchProcess = do 
   write isearchInitE
   many' searchKeymap
-  optional' $ choice $ map (events . readKey) $ ["C-m", "RET"]
-  write isearchFinishE
+  foldr1 (<++) [events (readKey "C-g") >> write isearchCancelE,
+                events (readKey "C-m") >> write isearchFinishE,
+                events (readKey "RET") >> write isearchFinishE,
+                write isearchFinishE]
 
 
 ----------------------------
