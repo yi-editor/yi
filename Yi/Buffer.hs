@@ -43,8 +43,10 @@ import Yi.FastBuffer
 import Yi.Undo
 
 import Yi.Debug
+import Yi.Dynamic
 import Data.IORef
 import Data.Unique              ( newUnique, Unique, hashUnique )
+import qualified Data.Map as M
 import Yi.Event
 import Yi.Keymap
 import Control.Concurrent 
@@ -66,6 +68,7 @@ data FBuffer =
                 , undos  :: !(MVar URList)           -- ^ undo/redo list
                 , rawbuf :: !BufferImpl
                 , bmode  :: !(MVar BufferMode)       -- ^ a read-only bit
+                , bufferDynamic :: !(IORef DynamicValues) -- ^ dynamic components
                 , preferCol :: !(IORef (Maybe Int))  -- ^ prefered column to arrive at when we do a lineDown / lineUp
                 , bufferInput  :: !(Chan Event)      -- ^ input stream
                 , bufferThread :: !(Maybe ThreadId)  -- ^ Id of the thread running the buffer's keymap. 
@@ -182,6 +185,7 @@ newB nm s = do
     ch  <- newChan
     km <- newIORef id
     r <- newEmptyMVar
+    dv <- newIORef emptyDV
     let result = FBuffer { name   = nm
                          , bkey   = u
                          , file   = mvf
@@ -189,6 +193,7 @@ newB nm s = do
                          , rawbuf = mv
                          , bmode  = rw
                          , preferCol = pc 
+                         , bufferDynamic = dv
                          , bufferInput = ch
                          , bufferThread = Nothing
                          , bufferKeymap = km
@@ -507,4 +512,18 @@ moveToSol = sizeB >>= moveXorSol
 -- | Move point to end of line
 moveToEol :: BufferM ()
 moveToEol = sizeB >>= moveXorEol 
+
+
+
+getDynamic :: Initializable a => BufferM a
+getDynamic = do
+  b <- ask
+  dv <- lift $ readIORef (bufferDynamic b)
+  return $ getDynamicValue dv
+
+-- | Insert a value into the extensible state, keyed by its type
+setDynamic :: Initializable a => a -> BufferM ()
+setDynamic x = do
+  b <- ask
+  lift $ modifyIORef (bufferDynamic b) $ setDynamicValue x
 
