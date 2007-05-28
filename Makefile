@@ -11,10 +11,10 @@ runtime-config:
 	mkdir -p $(HOME)/.yi
 	cp examples/*.hs $(HOME)/.yi
 
-emacs: install
+emacs: install yi-lib
 	$(prefix)/bin/yi --as=emacs
 
-vim: install
+vim: install yi-lib
 	$(prefix)/bin/yi --as=vim
 
 distclean: clean
