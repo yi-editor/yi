@@ -10,7 +10,7 @@ license:        GPL
 license-file:   LICENSE
 author:         Don Stewart
 maintainer:     jeanphilippe.bernardy@gmail.com
-build-depends:  yi-lib>=0.3, filepath>=1.0, ghc>=6.6, base, mtl, regex-posix
+build-depends:  yi-lib>=0.3, filepath>=1.0, ghc>=6.6, base, mtl, regex-posix==0.71
 
 executable:     yi
 main-is:        Main.hs
