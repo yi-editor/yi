@@ -31,6 +31,7 @@ import Yi.Event
 import Yi.Debug
 import Yi.Kernel
 import Yi.Keymap
+import Yi.Dynamic
 import qualified Yi.Interact as I
 import Prelude hiding (error)
 
@@ -369,11 +370,6 @@ shutdown :: EditorM ()
 shutdown = do ts <- readEditor threads
               lift $ mapM_ killThread ts
               modifyEditor_ $ const (return emptyEditor)
-
--- ---------------------------------------------------------------------
--- | Class of values that can go in the extensible state component
---
-class Typeable a => Initializable a where initial :: IO a
 
 
 -- | Repeat indefinitely the parameter.

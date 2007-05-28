@@ -39,7 +39,7 @@ data History = History {_historyCurrent :: Int,
 
     deriving (Show, Typeable)
 instance Initializable History where
-    initial = return (History (-1) [])
+    initial = (History (-1) [])
     
 
 historyUp :: EditorM ()

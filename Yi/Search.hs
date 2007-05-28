@@ -235,7 +235,7 @@ searchAndRepLocal re str = do
 newtype Isearch = Isearch [(String, Int)] deriving Typeable
 
 instance Initializable Isearch where
-    initial = return (Isearch [])
+    initial = (Isearch [])
 
 isearchInitE :: EditorM ()
 isearchInitE = do

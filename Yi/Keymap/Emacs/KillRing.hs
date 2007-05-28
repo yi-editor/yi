@@ -41,8 +41,7 @@ data Killring = Killring { krKilled :: Bool
     deriving (Typeable, Show)
 
 instance Initializable Killring where
-    initial = return $
-              Killring { krKilled = False
+    initial = Killring { krKilled = False
                        , krAccumulate = False
                        , krContents = [[]]
                        , krLastYank = False

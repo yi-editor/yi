@@ -28,9 +28,10 @@
 --
 
 module Yi.Core (
+                module Yi.Dynamic,
         -- * Keymap
         module Yi.Keymap,
-
+        
         Direction (..),
         -- * Construction and destruction
         startE,         -- :: Kernel -> Maybe Editor -> [Action] -> IO ()
@@ -181,6 +182,7 @@ import Prelude hiding (error)
 
 import Yi.Debug
 import Yi.Buffer
+import Yi.Dynamic
 import Yi.Region
 import Yi.Window
 import Yi.String
@@ -683,23 +685,16 @@ getBookmarkPointE bookmark = withBuffer $ getMarkPointB bookmark
 -- The `dynamic' field is a type-indexed map.
 --
 
--- | Retrieve the extensible state
-
+-- | Retrieve a value from the extensible state
 getDynamic :: Initializable a => EditorM a
-getDynamic = getDynamic' (undefined :: a)
-    where
-        getDynamic' :: Initializable b => b -> EditorM b
-        getDynamic' a = do
-                ps <- readEditor dynamic
-                case M.lookup (show $ typeOf a) ps of
-                    Nothing -> lift $ initial
-                    Just x -> return $ fromJust $ fromDynamic x
+getDynamic = do 
+  ps <- readEditor dynamic
+  return $ getDynamicValue ps
 
 -- | Insert a value into the extensible state, keyed by its type
-setDynamic :: Typeable a => a -> Action
+setDynamic :: Initializable a => a -> Action
 setDynamic x = modifyEditor_ $ \e ->
-        return e { dynamic = M.insert (show $ typeOf x) (toDyn x) (dynamic e) }
-
+        return e { dynamic = setDynamicValue x (dynamic e) }
 
 ------------------------------------------------------------------------
 -- | Pipe a string through an external command, returning the stdout

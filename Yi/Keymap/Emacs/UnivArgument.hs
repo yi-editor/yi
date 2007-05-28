@@ -36,7 +36,7 @@ newtype UniversalArg = UniversalArg (Maybe Int)
 -- and: http://www.gnu.org/software/emacs/elisp-manual/html_node/elisp_318.html
 
 instance Initializable UniversalArg where
-    initial = return $ UniversalArg Nothing
+    initial = UniversalArg Nothing
 
 withUnivArg :: (Maybe Int -> Action) -> Action
 withUnivArg cmd = do UniversalArg a <- getDynamic
