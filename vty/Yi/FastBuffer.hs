@@ -174,7 +174,7 @@ deleteN' (FBufferData ptr pnts nms end mx hl) n pos = do
             len = inBounds (end-pos-n) end   -- length of shift
             end'= pos + len                  -- new end
         shiftChars ptr pos src len
-        return (FBufferData ptr (shiftMarks pos (negate len) pnts) nms end' mx hl)
+        return (FBufferData ptr (shiftMarks pos (negate n) pnts) nms end' mx hl)
 {-# INLINE deleteN' #-}
 
 ------------------------------------------------------------------------
