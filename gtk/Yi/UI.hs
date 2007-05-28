@@ -132,6 +132,13 @@ processEvent ch ev = do
   case gtkToYiEvent ev of
     Nothing -> logPutStrLn $ "Event not translatable: " ++ show ev
     Just e -> writeChan ch e
+  -- This is very ridiculous, but improves responsivity dramatically.
+  -- The idea is to give other threads the chance to process their queues immediately.
+  -- One yield is not enough for this (I guess GHC 6.6.1 scheduler is to blame), I 
+  -- empirically found that 4 is a good value for me.
+  yield 
+  yield
+  yield
   yield
   return True
             
