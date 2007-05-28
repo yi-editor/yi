@@ -75,7 +75,7 @@ haskell :-
 <nestcomm> {
   "{-"                                          { m (subtract 1) redA }
   "-}"                                          { m (+1) redA }
-  $white+                                       { c attr } -- whitespace
+  $white+                                       { c defaultStyle } -- whitespace
   .                                             { c redA }
 }
 
