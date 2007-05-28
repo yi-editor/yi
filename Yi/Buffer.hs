@@ -272,7 +272,7 @@ insertN cs = do
 
 ------------------------------------------------------------------------
 
--- | @deleteNAt b n p@ deletes @n@ characters at position @p@
+-- | @deleteNAt n p@ deletes @n@ characters forwards from position @p@
 deleteNAt :: Int -> Int -> BufferM ()
 deleteNAt 0 _ = return ()
 deleteNAt n pos = do

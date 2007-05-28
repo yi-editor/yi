@@ -30,10 +30,10 @@
 -- - delete
 -- - search
 -- set 'bmode' in buffer - ReadOnly
--- DO SOME DECENT SYNTAX HIGHLIGHTING FOR THE BUFFER - LIKE good 'ls' versions etc...
+-- Improve the colouring to show
 -- - loaded buffers
 -- - .hs files
--- - directories
+-- - marked files
 -- Fix old mod dates (> 6months) to show year
 -- Fix the 'number of links' field to show actual values not just 1...
 -- Automatic support for browsing .zip, .gz files etc...
@@ -63,6 +63,8 @@ import Yi.Core
 import Yi.Editor
 import Yi.Keymap.Emacs
 import Yi.Region
+import Yi.FastBuffer
+import Yi.Vty
 
 diredKeymap :: Keymap
 diredKeymap = do
@@ -102,20 +104,23 @@ diredDirE dir = do
 
 diredLoadNewDirE :: FilePath -> EditorM ()
 diredLoadNewDirE dir = do
+    setSynE "none" -- Colours for Dired come from overlays not syntax highlighting
     insertNE $ dir ++ ":\n"
+    p <- getPointE
+    withBuffer' (\b -> addOverlayBI (rawbuf b) 0 (p-2) headAttr)
     files <- liftIO $ getDirectoryContents dir
     let filteredFiles = filter (not . diredOmitFile) files
     linesToShow <- liftIO $ mapM (lineForFile dir) filteredFiles
-    mapM_ insertNE (intersperse "\n" linesToShow)
+    mapM_ insertDiredLine linesToShow
     topE >> downE
     where
-    lineForFile :: String -> String -> IO String
+    lineForFile :: String -> String -> IO (String, String, Bool)
     lineForFile d f = do
                         let fp = (d </> f)
                         isdir <- doesDirectoryExist fp
                         isfile <- doesFileExist fp
-                        if (isdir || isfile) then lineForFilePath fp isdir else return "---------- na na"
-    lineForFilePath :: FilePath -> Bool -> IO String
+                        if (isdir || isfile) then lineForFilePath fp isdir else return ("---------- na na", "na", False)
+    lineForFilePath :: FilePath -> Bool -> IO (String, String, Bool)
     lineForFilePath fp isdir = do
                         fileStatus <- getFileStatus fp
                         modTimeStr <- (getModificationTime fp >>= toCalendarTime >>= return . shortCalendarTimeToString)
@@ -129,8 +134,19 @@ diredLoadNewDirE dir = do
                             numLinks :: Int = 1
                             ownerStr = userName ownerEntry
                             groupStr = groupName groupEntry
-                        return $ printf "  %s%s %4d %s %s%8d %s %s" prefix fmodeStr numLinks ownerStr groupStr sz modTimeStr (takeFileName fp)
+                            fn = takeFileName fp
+                        return $ (printf "  %s%s %4d %s %s%8d %s" prefix fmodeStr numLinks ownerStr groupStr sz modTimeStr, fn, isdir)
     shortCalendarTimeToString = formatCalendarTime defaultTimeLocale "%b %d %H:%M"
+    insertDiredLine :: (String, String, Bool) -> EditorM ()
+    insertDiredLine (pre, fn, isdir) = do
+        insertNE $ (printf "%s %s\n" pre fn)
+        p <- getPointE
+        let p1 = p - length fn - 1
+            p2 = p - 1
+        when isdir $ withBuffer' (\b -> addOverlayBI (rawbuf b) p1 p2 dirAttr)
+
+    dirAttr = setFG cyan attr
+    headAttr = setFG yellow attr
 
 -- | Needed on Mac OS X 10.4
 scanForUid :: UserID -> [UserEntry] -> UserEntry
@@ -219,3 +235,4 @@ diredCreateDirE = do
     msgE $ "Creating "++newdir++"..."
     liftIO $ createDirectoryIfMissing True newdir
     diredRefreshE
+
