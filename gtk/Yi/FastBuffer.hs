@@ -24,12 +24,13 @@ module Yi.FastBuffer (Mark, Point, Size, BufferImpl, newBI, deleteNAtI,
                       moveToI, insertNI, pointBI, nelemsBI, finaliseBI, sizeBI, writeBI,
                       curLnI, gotoLnI, searchBI, regexBI, 
                       getMarkPointBI, setMarkPointBI, unsetMarkBI, getMarkBI, getSelectionMarkBI,
-                      textbuf, setSyntaxBI, point, updateCursorPosition, fetchCursorPosition)
+                      textbuf, setSyntaxBI, point, updateCursorPosition, fetchCursorPosition, addOverlayBI)
 where
 
 import Prelude hiding (error, mapM)
 
 import Yi.Debug
+import qualified Yi.Style
 import Text.Regex.Posix.Wrap
 
 import Data.IORef
@@ -49,6 +50,9 @@ data BufferImpl =
                    , mark :: TextMark
                    , markActive :: IORef Bool
                    }
+
+addOverlayBI :: BufferImpl -> Point -> Point -> Yi.Style.Style -> IO ()
+addOverlayBI fb s e sty = return ()
 
 --
 -- | read @n@ chars from buffer @b@, starting at @i@

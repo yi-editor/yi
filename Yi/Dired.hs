@@ -63,8 +63,7 @@ import Yi.Core
 import Yi.Editor
 import Yi.Keymap.Emacs
 import Yi.Region
-import Yi.FastBuffer
-import Yi.Vty
+import Yi.Style
 
 diredKeymap :: Keymap
 diredKeymap = do
@@ -107,7 +106,7 @@ diredLoadNewDirE dir = do
     setSynE "none" -- Colours for Dired come from overlays not syntax highlighting
     insertNE $ dir ++ ":\n"
     p <- getPointE
-    withBuffer' (\b -> addOverlayBI (rawbuf b) 0 (p-2) headAttr)
+    withBuffer (addOverlayB 0 (p-2) headStyle)
     files <- liftIO $ getDirectoryContents dir
     let filteredFiles = filter (not . diredOmitFile) files
     linesToShow <- liftIO $ mapM (lineForFile dir) filteredFiles
@@ -143,10 +142,10 @@ diredLoadNewDirE dir = do
         p <- getPointE
         let p1 = p - length fn - 1
             p2 = p - 1
-        when isdir $ withBuffer' (\b -> addOverlayBI (rawbuf b) p1 p2 dirAttr)
+        when isdir $ withBuffer (addOverlayB p1 p2 dirStyle)
 
-    dirAttr = setFG cyan attr
-    headAttr = setFG yellow attr
+    dirStyle = Style cyan black
+    headStyle = Style yellow black
 
 -- | Needed on Mac OS X 10.4
 scanForUid :: UserID -> [UserEntry] -> UserEntry

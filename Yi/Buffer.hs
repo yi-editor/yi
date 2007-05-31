@@ -33,7 +33,7 @@ module Yi.Buffer ( FBuffer (..), BufferM, runBuffer, keyB, curLn, nameB, indexOf
                    getMarkB, getSelectionMarkB, getMarkPointB, setMarkPointB, unsetMarkB, 
                    isUnchangedB, setSyntaxB, regexB, searchB, readAtB,
                    getModeLine, getPercent, forgetPreferCol, setBufferKeymap, restartBufferThread,
-                   clearUndosB
+                   clearUndosB, addOverlayB
                     ) where
 
 import Prelude hiding ( error )
@@ -41,6 +41,7 @@ import System.FilePath
 import Text.Regex.Posix.Wrap    ( Regex  )
 import Yi.FastBuffer
 import Yi.Undo
+import Yi.Style
 
 import Yi.Debug
 import Yi.Dynamic
@@ -125,6 +126,11 @@ withImpl1 f a = do b <- ask; lift $ f (rawbuf b) a
 
 withImpl2 :: (BufferImpl -> a -> b -> IO x) -> (a -> b -> BufferM x)
 withImpl2 f a b = do x <- ask; lift $ f (rawbuf x) a b
+
+addOverlayB :: Point -> Point -> Style -> BufferM ()
+addOverlayB s e sty = do
+                      bi <- ask
+                      liftIO $ addOverlayBI (rawbuf bi) s e sty
 
 runBuffer :: FBuffer -> BufferM a -> IO a
 runBuffer = flip runReaderT

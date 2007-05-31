@@ -37,6 +37,7 @@ import Yi.Syntax.Table
 
 import qualified Data.Map as M
 import Yi.Vty (Attr, attr, styleToAttr)
+import Yi.Style
 
 import Control.Concurrent.MVar
 import Control.Exception        ( evaluate, assert )
@@ -120,12 +121,12 @@ stringToFBuffer s = do
                       , (markMark, MarkValue 0 markLeftBound)
                      ]
 
-addOverlayBI :: BufferImpl -> Point -> Point -> Attr -> IO ()
-addOverlayBI fb s e a = do
+addOverlayBI :: BufferImpl -> Point -> Point -> Style -> IO ()
+addOverlayBI fb s e sty = do
                         sm <- getMarkDefaultPosBI fb Nothing s
                         em <- getMarkDefaultPosBI fb Nothing e
                         modifyMVar_ fb $ \bd -> do
-                        return $ bd{overlays=(sm,em,a):(overlays bd)}
+                        return $ bd{overlays=(sm,em,styleToAttr sty):(overlays bd)}
 
 --
 -- | read @n@ chars from buffer @b@, starting at @i@
