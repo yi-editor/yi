@@ -24,7 +24,7 @@ module Yi.FastBuffer (Mark, Point, Size, BufferImpl, newBI, deleteNAtI,
                       moveToI, insertNI, pointBI, nelemsBI, finaliseBI, sizeBI, writeBI,
                       curLnI, gotoLnI, searchBI, regexBI, 
                       getMarkPointBI, setMarkPointBI, unsetMarkBI, getMarkBI, getSelectionMarkBI,
-                      textbuf, setSyntaxBI, point, updateCursorPosition, fetchCursorPosition, addOverlayBI)
+                      textbuf, setSyntaxBI, point, updateCursorPosition, addOverlayBI)
 where
 
 import Prelude hiding (error, mapM)
@@ -157,18 +157,6 @@ nelemsBI b n i = readChars (textbuf b) i n
 
 movePointToIter :: BufferImpl -> TextIter -> IO ()
 movePointToIter b p = textBufferMoveMark (textbuf b) (point b) p
-
--- we maintain our "own" point mark. The upper layers will have to move the insertion 
--- cursor to that point as needed by calling updateCursorPosition
-fetchCursorPosition :: BufferImpl -> IO Bool
-fetchCursorPosition b = do
-  insert <- textBufferGetInsert (textbuf b)
-  p <- textBufferGetIterAtMark (textbuf b) (point b)
-  q <- textBufferGetIterAtMark (textbuf b) insert  
-  o <- get p textIterOffset; logPutStrLn $ "fetchCursorPosition: " ++ show o  
-  textBufferMoveMark (textbuf b) (point b) q
-  eq <- textIterEqual p q
-  return (not eq)
 
 updateCursorPosition :: BufferImpl -> IO ()
 updateCursorPosition b = do

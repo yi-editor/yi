@@ -276,14 +276,18 @@ refreshAll = return ()
 scheduleRefresh :: EditorM ()
 scheduleRefresh = modifyEditor_ $ \e-> do
     let ws = getWindows e
+    bufs <- readIORef $ uiBuffers $ ui $ e
+    sequence_ [applyUpdate (bufs M.! b) u | (b,u) <- editorUpdates e]
     flip mapM_ ws $ \w -> 
         do let buf = findBufferWith e (bufkey w)
-           textViewScrollMarkOnscreen (textview w) (point $ rawbuf buf)
-           updateCursorPosition (rawbuf buf)
+               gtkBuf = bufs M.! (bufkey w)
+           (p0, []) <- runBuffer buf pointB
+           insert <- textBufferGetInsert gtkBuf
+           i <- textBufferGetIterAtOffset gtkBuf p0
+           textBufferPlaceCursor gtkBuf i
+           textViewScrollMarkOnscreen (textview w) insert
            (txt, []) <- runBuffer buf getModeLine 
            set (modeline w) [labelText := txt]
-    bufs <- readIORef $ uiBuffers $ ui $ e
-    sequence [applyUpdate (bufs M.! b) u | (b,u) <- editorUpdates e]
     return e {editorUpdates = []}
 
 applyUpdate buf (Insert p s) = do
@@ -293,17 +297,21 @@ applyUpdate buf (Delete p s) = do
   start <- textBufferGetIterAtOffset buf p
   end <- textBufferGetIterAtOffset buf (p + s)
   textBufferDelete buf start end
-  
 
 prepareAction :: EditorM ()
 prepareAction = do
+  bufsRef <- withUI $ return . uiBuffers
   withBuffer $ do
-     b <- ask
-     changed <- lift $ fetchCursorPosition (rawbuf b)
-     -- when the cursor position changed, it means the user clicked to change it,
-     -- and therefore if up/down is done we must go to the just set column.
-     -- (ie. forget the previous one)
-     when changed $ forgetPreferCol
+    p0 <- pointB
+    b <- ask
+    
+    p1 <- lift $ do
+            tb <- liftM (M.! bkey b) $ readIORef bufsRef
+            insert <- textBufferGetInsert tb
+            i <- textBufferGetIterAtMark tb insert
+            get i textIterOffset
+    when (p1 /= p0) $ do
+       moveTo p1 -- as a side effect we forget the prefered column
 
 setCmdLine :: UI -> String -> IO ()
 setCmdLine i s = do
