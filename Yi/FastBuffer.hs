@@ -25,7 +25,7 @@
 -- assumption that a character has width 1, including tabs.
 
 module Yi.FastBuffer (Point, Mark, Size, BufferImpl, newBI, deleteNAtI, moveToI, insertNI, 
-                      pointBI, nelemsBI, finaliseBI, sizeBI, writeBI, curLnI, 
+                      pointBI, nelemsBI, finaliseBI, sizeBI, curLnI, 
                       gotoLnI, searchBI, regexBI, 
                       getMarkBI, getMarkPointBI, setMarkPointBI, unsetMarkBI, getSelectionMarkBI,
                       nelemsBIH, setSyntaxBI, addOverlayBI) where
@@ -278,15 +278,6 @@ moveToI     :: BufferImpl -> Int -> IO ()
 moveToI fb i = modifyMVar_ fb $ \(FBufferData ptr mks nms end mx hl ov) -> do
                  return $ FBufferData ptr (M.insert pointMark (MarkValue (inBounds i end) pointLeftBound) mks) nms end mx hl ov
 {-# INLINE moveToI #-}
-
-
--- | Write an element into the buffer at the current point
-writeBI :: BufferImpl -> Char -> IO ()
-writeBI fb c = withMVar fb $ \ (FBufferData ptr mks _ _ _ _ _) -> do
-        let off = markPosition (mks M.! pointMark)
-        writeChars ptr [c] off
-{-# INLINE writeBI #-}
-
 
 -- | Insert the list at current point, extending size of buffer
 insertNI    :: BufferImpl -> [Char] -> IO ()

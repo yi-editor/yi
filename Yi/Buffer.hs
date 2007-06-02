@@ -524,4 +524,3 @@ setDynamic :: Initializable a => a -> BufferM ()
 setDynamic x = do
   b <- ask
   lift $ modifyIORef (bufferDynamic b) $ setDynamicValue x
-
