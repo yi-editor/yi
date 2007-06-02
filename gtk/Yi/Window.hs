@@ -76,7 +76,7 @@ emptyWindow mini b = do
     widgetModifyFont ml (Just f)
     set ml [ miscXalign := 0.01 ] -- so the text is left-justified.
 
-    v <- sourceViewNewWithBuffer (textbuf $ rawbuf b)
+    v <- sourceViewNew
     widgetModifyFont v (Just f)
 
 

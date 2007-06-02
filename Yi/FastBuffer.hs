@@ -160,7 +160,7 @@ shiftChars ptr dst_off src_off len = do
 
 ------------------------------------------------------------------------
 
--- May need to resize buffer. How do we append to eof?
+-- May need to resize buffer.
 insertN' :: FBufferData -> [Char] -> Int -> IO FBufferData
 insertN' fb [] _ = return fb
 insertN' fb@(FBufferData _ _ _ old_end old_max hl ov) cs cs_len = do
@@ -319,10 +319,7 @@ gotoLnI fb n = modifyMVar fb $ \(FBufferData ptr mks nms e mx hl ov) -> do
 {-# INLINE gotoLnI #-}
 
 
-    ---------------------------------------------------------------------
-
-
-
+---------------------------------------------------------------------
 
 -- | Return index of next string in buffer that matches argument
 searchBI      :: BufferImpl -> [Char] -> IO (Maybe Int)
