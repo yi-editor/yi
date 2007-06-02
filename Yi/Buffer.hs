@@ -252,46 +252,35 @@ moveTo x = do
 
 ------------------------------------------------------------------------
 
+applyUpdate :: URAction -> BufferM ()
+applyUpdate update = do
+  forgetPreferCol
+  FBuffer { undos = uv } <- ask
+  reverse <- withImpl (getActionB update)
+  lift $ modifyMVar_ uv $ \u -> return $ addUR u reverse
+  tell [update]
+    
+
 -- | Write an element into the buffer at the current point
 -- This is an unsafe operation, no bounds checks are performed
 writeB :: Char -> BufferM ()
 writeB c = do 
-  FBuffer { undos = uv } <- ask
-  forgetPreferCol
   off <- pointB
-  oldc <- nelemsB 1 off
-  lift $ modifyMVar_ uv $ \u -> do
-    let u'  = addUR u  (Insert off oldc)
-        u'' = addUR u' (Delete off 1)
-    return u''
-  tell [Delete off 1, Insert off [c]]
-  withImpl1 writeBI c
+  mapM_ applyUpdate [Delete off 1, Insert off [c]]
 
 ------------------------------------------------------------------------
 
 -- | Insert the list at current point, extending size of buffer
 insertN :: [Char] -> BufferM ()
-insertN [] = return ()
 insertN cs = do 
-  FBuffer { undos = uv } <- ask
-  forgetPreferCol
   pnt <- pointB
-  lift $ modifyMVar_ uv $ \ur -> return $ addUR ur (Delete pnt (length cs))
-  tell [Insert pnt cs]
-  withImpl1 insertNI cs
+  applyUpdate (Insert pnt cs)
 
 ------------------------------------------------------------------------
 
 -- | @deleteNAt n p@ deletes @n@ characters forwards from position @p@
 deleteNAt :: Int -> Int -> BufferM ()
-deleteNAt 0 _ = return ()
-deleteNAt n pos = do
-       FBuffer { undos = uv } <- ask
-       forgetPreferCol
-       text <- nelemsB n pos
-       lift $ modifyMVar_ uv $ \ur -> return $ addUR ur (Insert pos text)
-       tell [Delete pos n]
-       withImpl2 deleteNAtI n pos
+deleteNAt n pos = applyUpdate (Delete pos n)
 
 ------------------------------------------------------------------------
 -- Line based editing
@@ -523,8 +512,6 @@ moveToSol = sizeB >>= moveXorSol
 -- | Move point to end of line
 moveToEol :: BufferM ()
 moveToEol = sizeB >>= moveXorEol 
-
-
 
 getDynamic :: Initializable a => BufferM a
 getDynamic = do

@@ -67,7 +67,7 @@ module Yi.Undo (
         redoUR,
         isEmptyUList,
         addBoundary,
-
+        getActionB,
         URList,             {- abstractly -}
         URAction(..),       {- non-abstractly, for concrete implementations -}
    ) where

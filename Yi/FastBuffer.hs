@@ -287,6 +287,7 @@ writeBI fb c = withMVar fb $ \ (FBufferData ptr mks _ _ _ _ _) -> do
         writeChars ptr [c] off
 {-# INLINE writeBI #-}
 
+
 -- | Insert the list at current point, extending size of buffer
 insertNI    :: BufferImpl -> [Char] -> IO ()
 insertNI fb cs = modifyMVar_ fb $ \fb'-> insertN' fb' cs (length cs)
