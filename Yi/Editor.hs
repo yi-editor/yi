@@ -97,7 +97,8 @@ data Editor = Editor {
        ,defaultKeymap :: Keymap
 
        ,editorKernel  :: Kernel
-       ,editorModules :: [String] -- ^ modules requested by user: (e.g. ["YiConfig", "Hoogle"])
+       ,editorModules :: [String] -- ^ modules requested by user: (e.g. ["YiConfig", "Yi.Dired"])
+       ,editorUpdates :: [(Unique, URAction)]
     }
 
 --
@@ -125,6 +126,7 @@ emptyEditor = Editor {
 
        ,editorKernel = error "GHC Kernel not initialized"
        ,editorModules = []
+       ,editorUpdates = []
     }
 
 -- ---------------------------------------------------------------------
@@ -342,18 +344,17 @@ withWindow f = modifyEditor $ \e -> do
         v <- f w b
         return (e,v)
 
+
 -- | Perform action with current window's buffer
 withGivenBuffer :: FBuffer -> BufferM a -> EditorM a
 withGivenBuffer b f = modifyEditor $ \e -> do
                         (v,updates) <- runBuffer b f
-                        return (e,v)
+                        return (e {editorUpdates = [(bkey b,u) | u <- updates ]},v)
 
 withBuffer :: BufferM a -> EditorM a
-withBuffer f =modifyEditor $ \e -> do
-        let w = findWindowWith e (curwin e)
-            b = findBufferWith e (bufkey w)
-        (v,updates) <- runBuffer b f
-        return (e,v)
+withBuffer f = do 
+  b <- readEditor $ \e -> findBufferWith e (bufkey $ findWindowWith e (curwin e))
+  withGivenBuffer b f                                                
 
 -- | Perform action with current window's buffer
 withBuffer' :: (FBuffer -> IO a) -> EditorM a

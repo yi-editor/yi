@@ -431,7 +431,9 @@ refreshAll = do
 
 -- | Schedule a refresh of the UI.
 scheduleRefresh :: EditorM ()
-scheduleRefresh = readEditor ui >>= (lift . scheduleRefresh')
+scheduleRefresh = do
+  modifyEditor_ $ \e -> return e {editorUpdates = []}
+  readEditor ui >>= (lift . scheduleRefresh')
 
 prepareAction :: EditorM ()
 prepareAction = return ()

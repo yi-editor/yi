@@ -53,6 +53,7 @@ import Yi.Keymap
 import Yi.Window as Window
 import Yi.Event
 import Yi.Debug
+import Yi.Undo
 
 import Control.Concurrent ( yield )
 import Control.Concurrent.Chan
@@ -61,10 +62,12 @@ import Control.Monad.Reader
 import Data.IORef
 import Data.List
 import Data.Maybe
+import Data.Unique
 import qualified Data.Map as M
 
 import Graphics.UI.Gtk hiding ( Window, Event )          
 import qualified Graphics.UI.Gtk as Gtk
+import Graphics.UI.Gtk.SourceView
 
 ------------------------------------------------------------------------
 
@@ -72,6 +75,7 @@ data UI = UI {
               uiWindow :: Gtk.Window
              ,uiBox :: VBox
              ,uiCmdLine :: Label
+             ,uiBuffers :: IORef (M.Map Unique SourceBuffer)
              }
 
 -- | Initialise the ui
@@ -104,7 +108,9 @@ start = modifyEditor_ $ \e -> do
   timeoutAddFull (yield >> return True) priorityDefaultIdle 50
 
   widgetShowAll win
-  return $ e { input = ch, ui = UI win vb' cmd }
+
+  bufs <- newIORef M.empty
+  return $ e { input = ch, ui = UI win vb' cmd bufs }
 
 main :: IORef Editor -> IO ()
 main _editor = 
@@ -268,16 +274,27 @@ refreshAll :: EditorM ()
 refreshAll = return ()
 
 scheduleRefresh :: EditorM ()
-scheduleRefresh = do
-    ws <- readEditor getWindows
+scheduleRefresh = modifyEditor_ $ \e-> do
+    let ws = getWindows e
     flip mapM_ ws $ \w -> 
-        do buf <- getBufferWith (bufkey w)
-           lift $ do              
-             textViewScrollMarkOnscreen (textview w) (point $ rawbuf buf)
-             updateCursorPosition (rawbuf buf)
-             (txt, []) <- runBuffer buf getModeLine 
-             set (modeline w) [labelText := txt]
-    
+        do let buf = findBufferWith e (bufkey w)
+           textViewScrollMarkOnscreen (textview w) (point $ rawbuf buf)
+           updateCursorPosition (rawbuf buf)
+           (txt, []) <- runBuffer buf getModeLine 
+           set (modeline w) [labelText := txt]
+    bufs <- readIORef $ uiBuffers $ ui $ e
+    sequence [applyUpdate (bufs M.! b) u | (b,u) <- editorUpdates e]
+    return e {editorUpdates = []}
+
+applyUpdate buf (Insert p s) = do
+  i <- textBufferGetIterAtOffset buf p
+  textBufferInsert buf i s
+applyUpdate buf (Delete p s) = do
+  start <- textBufferGetIterAtOffset buf p
+  end <- textBufferGetIterAtOffset buf (p + s)
+  textBufferDelete buf start end
+  
+
 prepareAction :: EditorM ()
 prepareAction = do
   withBuffer $ do
@@ -292,20 +309,35 @@ setCmdLine :: UI -> String -> IO ()
 setCmdLine i s = do
   set (uiCmdLine i) [labelText := if length s > 132 then take 129 s ++ "..." else s]
 
-                
 -- | Display the given buffer in the given window.
 setWindowBuffer :: FBuffer -> Maybe Window -> EditorM ()
-setWindowBuffer b mw = do
-    lift $ logPutStrLn $ "Setting buffer for " ++ show mw ++ " to " ++ show b
-    w'' <- case mw of 
-      Just w -> do lift $ textViewSetBuffer (textview w) (textbuf $ rawbuf b)
-                   let w' = w { bufkey = bkey b }
-                   return $ w' { key = key w }
-      Nothing -> newWindow False b
-                   -- if there is no window, just create a new one.
-    modifyEditor_ $ \e -> return $ e { windows = M.insert (key w'') w'' (windows e) }
+setWindowBuffer b Nothing = do w <- newWindow False b; setWindowBuffer b (Just w)
+ -- if there is no window, just create a new one.
+setWindowBuffer b (Just w) = do
+    lift $ logPutStrLn $ "Setting buffer for " ++ show w ++ " to " ++ show b
+    bufsRef <- withUI $ return . uiBuffers
+    bufs <- lift $ readIORef bufsRef
+    gtkBuf <- case M.lookup (bkey b) bufs of
+      Just gtkBuf -> return gtkBuf
+      Nothing -> lift $ newBuffer b
+    lift $ textViewSetBuffer (textview w) gtkBuf
+    lift $ modifyIORef bufsRef (M.insert (bkey b) gtkBuf)
+    let w' = w { bufkey = bkey b }
+    modifyEditor_ $ \e -> return $ e { windows = M.insert (key w') w' (windows e) }
     debugWindows "Buffer set"
 
+-- FIXME: when a buffer is deleted its GTK counterpart should be too.
+newBuffer :: FBuffer -> IO SourceBuffer
+newBuffer b = do
+  buf <- sourceBufferNew Nothing
+  lm <- sourceLanguagesManagerNew
+  Just haskellLang <- sourceLanguagesManagerGetLanguageFromMimeType lm "text/x-haskell"
+  sourceBufferSetLanguage buf haskellLang
+  sourceBufferSetHighlight buf True
+  (txt, []) <- runBuffer b elemsB
+  textBufferSetText buf txt
+  return buf
+  
 
 --
 -- | Set current window
