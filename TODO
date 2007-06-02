@@ -5,9 +5,6 @@ Refactorings/Frameworks:
         - ui type class
         - hot swappable user interfaces
 
-Emacs modes:
-        - should always show the modeline (or minibuffer)
-
 Vim mode:
         - undo interferes with :w :q
         - empty tmp files don't complain when you try to write them.
@@ -22,6 +19,7 @@ Vim mode:
         - :!cmd , run an external command not implemented
         - deal with delay after hitting esc from command mode.
         - undo should coalesce so that dl is undone all at once.
+        - :eval, :type, .. etc. ghci stuff
 
 Darcs support:
         - what interesting things can we do with integrated darcs
@@ -33,7 +31,6 @@ Undo:
         - other forms of undo
  
 Build system:
-        - check how to install it from a port script
         - think about how to do a testsuite, unit testing
                 + icfp05/stefanw-style
 
@@ -43,16 +40,8 @@ Presentation/Rendering:
 other stuff:
 	- compilation errors from make() go to stderr (and screw up the
 	  window). 
-	- the unChanged test doesn't seem to be accurate. what's up with
-	  that?
-
-        - :eval, :type, .. etc. ghci stuff
-        - make the cmd line a buffer.
         - start drawing buffer before it is all loaded. (ie. load buffers lazily)
-        - either generalise registers, or make them entirely keymap-local
         - errorE should display in colour
-
-        - closing window and terminating on OSX produces infinite loop?
 
 ------------------------------------------------------------------------
 Syntax Highlighting -- Ideas parallel to the current one:
