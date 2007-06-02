@@ -219,12 +219,14 @@ showPoint :: Editor -> Window -> IO Window
 showPoint e w = do
   logPutStrLn $ "showPoint " ++ show w
   let b = findBufferWith e (bufkey w)          
-  runBuffer b $ do ln <- curLn
-                   let gap = min (ln-1) ((height w) `div` 2)
-                       topln = ln - gap
-                   i <- indexOfSolAbove gap
-                   return w {toslineno = topln,
-                             tospnt = i}
+  (result, []) <- runBuffer b $ 
+            do ln <- curLn
+               let gap = min (ln-1) ((height w) `div` 2)
+                   topln = ln - gap
+               i <- indexOfSolAbove gap
+               return w {toslineno = topln,
+                         tospnt = i}
+  return result
 
 -- | redraw a window
 doDrawWindow :: Editor -> Bool -> UIStyle -> Window -> IO Window
@@ -238,8 +240,8 @@ doDrawWindow e focused sty win = do
         wsty = styleToAttr (window sty)
         selsty = styleToAttr (selected sty)
         eofsty = eof sty
-    markPoint <- runBuffer b (getMarkPointB =<< getSelectionMarkB)
-    point <- runBuffer b pointB
+    (markPoint, []) <- runBuffer b (getMarkPointB =<< getSelectionMarkB)
+    (point, []) <- runBuffer b pointB
     bufData <- nelemsBIH (rawbuf b) (w*h') (tospnt win) -- read enough chars from the buffer.
     let prompt = if isMini win then name b else ""
 
@@ -250,7 +252,8 @@ doDrawWindow e focused sty win = do
                                 (zip prompt (repeat wsty) ++ bufData ++ [(' ',attr)])
                              -- we always add one character which can be used to position the cursor at the end of file
                                                                                                  
-    modeLine <- if m then liftM Just (runBuffer b getModeLine) else return Nothing
+    (modeLine0, []) <- runBuffer b getModeLine
+    let modeLine = if m then Just modeLine0 else Nothing
     let modeLines = map (withStyle (modeStyle sty) . take w . (++ repeat ' ')) $ maybeToList $ modeLine
         modeStyle = if focused then modeline_focused else modeline        
         filler = take w (windowfill e : repeat ' ')
@@ -269,7 +272,7 @@ drawWindow :: Editor
 
 drawWindow e focused sty win = do
     let b = findBufferWith e (bufkey win)
-    point <- runBuffer b pointB
+    (point, []) <- runBuffer b pointB
     (if tospnt win <= point && point <= bospnt win then return win else showPoint e win) >>= doDrawWindow e focused sty   
 
 

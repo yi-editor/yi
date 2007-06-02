@@ -1026,7 +1026,7 @@ ghcErrorReporter editor severity srcSpan pprStyle message =
     flip runReaderT editor $ do
       e <- readEditor id
       let [b] = findBufferWithName e "*console*"
-      lift $ runBuffer b $ savingExcursion $ do 
+      withGivenBuffer b $ savingExcursion $ do 
         moveTo =<< getMarkPointB =<< getMarkB (Just "errorInsert")
         insertN msg
         insertN "\n"

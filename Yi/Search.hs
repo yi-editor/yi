@@ -307,12 +307,12 @@ isearchCancelE = do
 
 qrNextE :: FBuffer -> String -> EditorM ()
 qrNextE b what = do
-  mp <- lift $ runBuffer b $ searchB what
+  mp <- withGivenBuffer b $ searchB what
   case mp of
     Nothing -> do
             msgE "String to search not found"
             closeE
-    Just p -> lift $ runBuffer b $ do 
+    Just p -> withGivenBuffer b $ do 
                    moveTo p
                    m <- getSelectionMarkB
                    setMarkPointB m (p+length what)

@@ -275,7 +275,7 @@ scheduleRefresh = do
            lift $ do              
              textViewScrollMarkOnscreen (textview w) (point $ rawbuf buf)
              updateCursorPosition (rawbuf buf)
-             txt <- runBuffer buf getModeLine 
+             (txt, []) <- runBuffer buf getModeLine 
              set (modeline w) [labelText := txt]
     
 prepareAction :: EditorM ()

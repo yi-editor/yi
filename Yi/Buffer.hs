@@ -53,6 +53,7 @@ import Yi.Keymap
 import Control.Concurrent 
 import Control.Monad
 import Control.Monad.Reader
+import Control.Monad.RWS
 import Control.Exception
 
 --
@@ -78,7 +79,7 @@ data FBuffer =
                                              -- FIXME: the bufferKeymap should really be an MVar, and that can be used to sync.
                 }
 
-type BufferM a = ReaderT FBuffer IO a
+type BufferM a = RWST FBuffer [URAction] () IO a
 
 instance Eq FBuffer where
    FBuffer { bkey = u } == FBuffer { bkey = v } = u == v
@@ -130,10 +131,12 @@ withImpl2 f a b = do x <- ask; lift $ f (rawbuf x) a b
 addOverlayB :: Point -> Point -> Style -> BufferM ()
 addOverlayB s e sty = do
                       bi <- ask
-                      liftIO $ addOverlayBI (rawbuf bi) s e sty
+                      lift $ addOverlayBI (rawbuf bi) s e sty
 
-runBuffer :: FBuffer -> BufferM a -> IO a
-runBuffer = flip runReaderT
+runBuffer :: FBuffer -> BufferM a -> IO (a, [URAction])
+runBuffer b f = do 
+  (a, (), ur) <- runRWST f b ()
+  return (a, ur)
 
 hNewB :: FilePath -> IO FBuffer
 hNewB fp = do
@@ -274,6 +277,7 @@ insertN cs = do
   forgetPreferCol
   pnt <- pointB
   lift $ modifyMVar_ uv $ \ur -> return $ addUR ur (Delete pnt (length cs))
+  tell [Insert pnt cs]
   withImpl1 insertNI cs
 
 ------------------------------------------------------------------------
@@ -286,6 +290,7 @@ deleteNAt n pos = do
        forgetPreferCol
        text <- nelemsB n pos
        lift $ modifyMVar_ uv $ \ur -> return $ addUR ur (Insert pos text)
+       tell [Delete pos n]
        withImpl2 deleteNAtI n pos
 
 ------------------------------------------------------------------------

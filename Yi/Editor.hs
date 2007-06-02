@@ -32,6 +32,7 @@ import Yi.Debug
 import Yi.Kernel
 import Yi.Keymap
 import Yi.Dynamic
+import Yi.Undo
 import qualified Yi.Interact as I
 import Prelude hiding (error)
 
@@ -342,8 +343,17 @@ withWindow f = modifyEditor $ \e -> do
         return (e,v)
 
 -- | Perform action with current window's buffer
+withGivenBuffer :: FBuffer -> BufferM a -> EditorM a
+withGivenBuffer b f = modifyEditor $ \e -> do
+                        (v,updates) <- runBuffer b f
+                        return (e,v)
+
 withBuffer :: BufferM a -> EditorM a
-withBuffer f = withWindow (const $ flip runBuffer f)
+withBuffer f =modifyEditor $ \e -> do
+        let w = findWindowWith e (curwin e)
+            b = findBufferWith e (bufkey w)
+        (v,updates) <- runBuffer b f
+        return (e,v)
 
 -- | Perform action with current window's buffer
 withBuffer' :: (FBuffer -> IO a) -> EditorM a
