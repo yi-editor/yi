@@ -4,8 +4,8 @@ include config.mk
 
 include $(cabal-make)/cabal-make.inc
 
-run-inplace: yi-lib install
-	$(prefix)/bin/yi -B. -f$(flavour)
+run-inplace: yi-lib
+	dist/build/yi/yi -B. -f$(flavour)
 
 runtime-config:
 	mkdir -p $(HOME)/.yi
