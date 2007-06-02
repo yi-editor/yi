@@ -231,12 +231,13 @@ suspend = do
 newWindow :: Bool -> FBuffer -> EditorM Window
 newWindow mini b = do
   editor <- ask
-  modifyEditor $ \e -> do
+  win <- lift $ do 
     win <- emptyWindow mini b
     logPutStrLn $ "Creating " ++ show win
     addWindow editor win
-    let e' = e { windows = M.fromList $ mkAssoc (win : M.elems (windows e)) }
-    return (e', win)
+    return win
+  setWindowBuffer b (Just win)
+  return win
 
 -- ---------------------------------------------------------------------
 -- | Grow the given window, and pick another to shrink
