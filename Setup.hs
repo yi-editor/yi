@@ -63,6 +63,7 @@ precompArgs flavour = ["-DGHC_LIBDIR=\"dummy1\"",
                        "-fglasgow-exts", 
                        "-package ghc",
                        "-cpp",
+                       "-Wall",
                        "--make","Static.hs"]
                       -- please note: These args must match the args given in Yi.Boot
                       -- TODO: factorize.

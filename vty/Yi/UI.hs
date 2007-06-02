@@ -67,7 +67,6 @@ import Control.Concurrent.Chan
 import Control.Exception
 import Control.Monad.Reader
 
-import Data.Unique
 import Data.List
 import Data.Maybe
 import Data.Char (ord,chr)

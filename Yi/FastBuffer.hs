@@ -154,10 +154,6 @@ shiftChars ptr dst_off src_off len = do
     poke (dst `advancePtr` len) (castCharToCChar '\0')
 {-# INLINE shiftChars #-}
 
-
-------------------------------------------------------------------------
-
-
 ------------------------------------------------------------------------
 
 -- May need to resize buffer.

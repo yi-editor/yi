@@ -198,9 +198,7 @@ import qualified Yi.Style as Style
 import qualified Yi.UI as UI
 
 import Data.Maybe
-import Data.Dynamic
 import Data.List
-import qualified Data.Map as M        ( lookup, insert )
 import Data.IORef
 
 import System.Directory     ( doesFileExist )
@@ -296,15 +294,6 @@ startE kernel st commandLineActions = do
                      
             where
               dispatch action = flip runReaderT newSt $ withBuffer' $ \b -> writeChan (bufferInput b) action
-
-
-        -- | Make an action suitable for an interactive run.
-        -- Editor state will be refreshed after
-        interactive :: Action -> IO ()
-        interactive action = do 
-          logPutStrLn ">>>>>>> interactively"
-          runReaderT (UI.prepareAction >> action >> UI.scheduleRefresh)  newSt
-          logPutStrLn "<<<<<<<"
 
         -- | The editor's output main loop. 
         execLoop :: IO ()

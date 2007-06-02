@@ -160,8 +160,8 @@ isCancel _     = False
 
 
 simpleq :: String -> String -> (String -> Action) -> JoeMode
-simpleq prompt initial act = do
-  s <- echoMode prompt initial
+simpleq prompt initialValue act = do
+  s <- echoMode prompt initialValue
   maybe (return ()) (write . act) s
 
 -- | A simple line editor. 

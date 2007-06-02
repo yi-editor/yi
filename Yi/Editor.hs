@@ -31,7 +31,6 @@ import Yi.Event
 import Yi.Debug
 import Yi.Kernel
 import Yi.Keymap
-import Yi.Dynamic
 import Yi.Undo
 import qualified Yi.Interact as I
 import Prelude hiding (error)

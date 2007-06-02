@@ -33,7 +33,8 @@ module Yi.Buffer ( FBuffer (..), BufferM, runBuffer, keyB, curLn, nameB, indexOf
                    getMarkB, getSelectionMarkB, getMarkPointB, setMarkPointB, unsetMarkB, 
                    isUnchangedB, setSyntaxB, regexB, searchB, readAtB,
                    getModeLine, getPercent, forgetPreferCol, setBufferKeymap, restartBufferThread,
-                   clearUndosB, addOverlayB
+                   clearUndosB, addOverlayB,
+                   getDynamicB, setDynamicB
                     ) where
 
 import Prelude hiding ( error )
@@ -47,7 +48,6 @@ import Yi.Debug
 import Yi.Dynamic
 import Data.IORef
 import Data.Unique              ( newUnique, Unique, hashUnique )
-import qualified Data.Map as M
 import Yi.Event
 import Yi.Keymap
 import Control.Concurrent 
@@ -256,8 +256,8 @@ applyUpdate :: URAction -> BufferM ()
 applyUpdate update = do
   forgetPreferCol
   FBuffer { undos = uv } <- ask
-  reverse <- withImpl (getActionB update)
-  lift $ modifyMVar_ uv $ \u -> return $ addUR u reverse
+  reversed <- withImpl (getActionB update)
+  lift $ modifyMVar_ uv $ \u -> return $ addUR u reversed
   tell [update]
     
 
@@ -401,10 +401,6 @@ readAtB i = do
                [c] -> c
                _ -> '\0'
 
--- | Delete the character at current point, shrinking size of buffer
-deleteB :: BufferM ()
-deleteB = deleteN 1
-
 -- | Delete @n@ characters forward from the current point
 deleteN :: Int -> BufferM ()
 deleteN 0 = return ()
@@ -513,14 +509,14 @@ moveToSol = sizeB >>= moveXorSol
 moveToEol :: BufferM ()
 moveToEol = sizeB >>= moveXorEol 
 
-getDynamic :: Initializable a => BufferM a
-getDynamic = do
+getDynamicB :: Initializable a => BufferM a
+getDynamicB = do
   b <- ask
   dv <- lift $ readIORef (bufferDynamic b)
   return $ getDynamicValue dv
 
 -- | Insert a value into the extensible state, keyed by its type
-setDynamic :: Initializable a => a -> BufferM ()
-setDynamic x = do
+setDynamicB :: Initializable a => a -> BufferM ()
+setDynamicB x = do
   b <- ask
   lift $ modifyIORef (bufferDynamic b) $ setDynamicValue x

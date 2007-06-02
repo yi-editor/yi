@@ -47,7 +47,6 @@ module Yi.UI (
 import Prelude hiding (error)
 
 import Yi.Buffer
-import Yi.FastBuffer
 import Yi.Editor
 import Yi.Keymap
 import Yi.Window as Window
@@ -283,21 +282,22 @@ scheduleRefresh = modifyEditor_ $ \e-> do
         do let buf = findBufferWith e (bufkey w)
                gtkBuf = bufs M.! (bufkey w)
            (p0, []) <- runBuffer buf pointB
-           insert <- textBufferGetInsert gtkBuf
+           insertMark <- textBufferGetInsert gtkBuf
            i <- textBufferGetIterAtOffset gtkBuf p0
            textBufferPlaceCursor gtkBuf i
-           textViewScrollMarkOnscreen (textview w) insert
+           textViewScrollMarkOnscreen (textview w) insertMark
            (txt, []) <- runBuffer buf getModeLine 
            set (modeline w) [labelText := txt]
     return e {editorUpdates = []}
 
+applyUpdate :: SourceBuffer -> URAction -> IO ()
 applyUpdate buf (Insert p s) = do
   i <- textBufferGetIterAtOffset buf p
   textBufferInsert buf i s
 applyUpdate buf (Delete p s) = do
-  start <- textBufferGetIterAtOffset buf p
-  end <- textBufferGetIterAtOffset buf (p + s)
-  textBufferDelete buf start end
+  i0 <- textBufferGetIterAtOffset buf p
+  i1 <- textBufferGetIterAtOffset buf (p + s)
+  textBufferDelete buf i0 i1
 
 prepareAction :: EditorM ()
 prepareAction = do
@@ -308,8 +308,8 @@ prepareAction = do
     
     p1 <- lift $ do
             tb <- liftM (M.! bkey b) $ readIORef bufsRef
-            insert <- textBufferGetInsert tb
-            i <- textBufferGetIterAtMark tb insert
+            insertMark <- textBufferGetInsert tb
+            i <- textBufferGetIterAtMark tb insertMark
             get i textIterOffset
     when (p1 /= p0) $ do
        moveTo p1 -- as a side effect we forget the prefered column
