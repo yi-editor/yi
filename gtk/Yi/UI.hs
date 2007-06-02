@@ -277,7 +277,7 @@ scheduleRefresh :: EditorM ()
 scheduleRefresh = modifyEditor_ $ \e-> do
     let ws = getWindows e
     bufs <- readIORef $ uiBuffers $ ui $ e
-    sequence_ [applyUpdate (bufs M.! b) u | (b,u) <- editorUpdates e]
+    sequence_ [applyUpdate (bufs M.! b) u >> logPutStrLn (show $ u) | (b,u) <- editorUpdates e]
     flip mapM_ ws $ \w -> 
         do let buf = findBufferWith e (bufkey w)
                gtkBuf = bufs M.! (bufkey w)

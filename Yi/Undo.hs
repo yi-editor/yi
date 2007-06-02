@@ -91,6 +91,7 @@ data URList = URList ![URAction] ![URAction]
 data URAction = Insert !Point !String -- FIXME: use ByteString
               | Delete !Point !Size
       --      | Boundary
+                deriving Show
 
 
 -- | A new empty 'URList'.

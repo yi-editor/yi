@@ -349,7 +349,7 @@ withWindow f = modifyEditor $ \e -> do
 withGivenBuffer :: FBuffer -> BufferM a -> EditorM a
 withGivenBuffer b f = modifyEditor $ \e -> do
                         (v,updates) <- runBuffer b f
-                        return (e {editorUpdates = [(bkey b,u) | u <- updates ]},v)
+                        return (e {editorUpdates = editorUpdates e ++ [(bkey b,u) | u <- updates]},v)
 
 withBuffer :: BufferM a -> EditorM a
 withBuffer f = do 

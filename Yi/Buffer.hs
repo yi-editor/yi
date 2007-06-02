@@ -254,7 +254,6 @@ moveTo x = do
 
 -- | Write an element into the buffer at the current point
 -- This is an unsafe operation, no bounds checks are performed
--- TODO: undo is not atomic!
 writeB :: Char -> BufferM ()
 writeB c = do 
   FBuffer { undos = uv } <- ask
@@ -265,6 +264,7 @@ writeB c = do
     let u'  = addUR u  (Insert off oldc)
         u'' = addUR u' (Delete off 1)
     return u''
+  tell [Delete off 1, Insert off [c]]
   withImpl1 writeBI c
 
 ------------------------------------------------------------------------
