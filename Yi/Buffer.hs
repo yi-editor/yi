@@ -177,10 +177,10 @@ isUnchangedB = do
   return $ isEmptyUList ur
 
 undo :: BufferM ()
-undo = do fb@(FBuffer { undos = mv }) <- ask; lift $ modifyMVar_ mv (undoUR (rawbuf fb))
+undo = do fb@(FBuffer { undos = mv }) <- ask; u <- lift $ modifyMVar mv (undoUR (rawbuf fb)); tell u
 
 redo :: BufferM ()
-redo = do fb@(FBuffer { undos = mv }) <- ask; lift $ modifyMVar_ mv (redoUR (rawbuf fb))
+redo = do fb@(FBuffer { undos = mv }) <- ask; u <- lift $ modifyMVar mv (redoUR (rawbuf fb)); tell u
 
 -- | Create buffer named @nm@ with contents @s@
 newB :: String -> [Char] -> IO FBuffer

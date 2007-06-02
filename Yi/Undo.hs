@@ -108,20 +108,20 @@ addUR (URList us _rs) u =
 --
 -- | Undo the last action that mutated the buffer contents. The action's
 -- inverse is added to the redo list. 
-undoUR :: BufferImpl -> URList -> IO URList
-undoUR _ u@(URList [] _) = return u
+undoUR :: BufferImpl -> URList -> IO (URList, [URAction])
+undoUR _ u@(URList [] _) = return (u, [])
 undoUR b (URList (u:us) rs) = do
     r <- (getActionB u) b
-    return (URList us (r:rs))
+    return (URList us (r:rs), [u])
 
 --
 -- | Redo the last action that mutated the buffer contents. The action's
 -- inverse is added to the undo list.
-redoUR :: BufferImpl -> URList -> IO URList
-redoUR _ u@(URList _ []) = return u
+redoUR :: BufferImpl -> URList -> IO (URList, [URAction])
+redoUR _ u@(URList _ []) = return (u, [])
 redoUR b (URList us (r:rs)) = do
     u <- (getActionB r) b
-    return (URList (u:us) rs)
+    return (URList (u:us) rs, [u])
 
 
 -- | isEmptyUndoList. @True@ if the undo list is empty, and hence the
