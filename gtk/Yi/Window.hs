@@ -21,7 +21,6 @@
 
 module Yi.Window where
 
-import Yi.FastBuffer
 import Yi.Buffer
 
 import Data.Unique              ( Unique, newUnique, hashUnique )

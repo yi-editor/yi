@@ -27,20 +27,12 @@ import qualified Yi.Keymap  as Keymap
 import qualified Yi.Eval    as Eval
 import Yi.Kernel
 import Yi.Debug
+import Yi.String
 
-{- All the standard editor front ends -}
-import qualified Yi.Keymap.Vi     as Vi
-import qualified Yi.Keymap.Vim    as Vim
-import qualified Yi.Keymap.Nano   as Nano
-import qualified Yi.Keymap.Emacs  as Emacs
-import qualified Yi.Keymap.Joe    as Joe
-import qualified Yi.Keymap.Ee     as Ee
-import qualified Yi.Keymap.Mg     as Mg
 import Yi.Interact hiding (Interact, runProcess, write)
 
 import Data.Char
 import Data.List                ( intersperse )
-import qualified Data.Map as M
 
 import Control.Monad            ( when )
 import Control.Monad.Trans      ( lift )
@@ -66,19 +58,16 @@ data Opts = Help
           | EditorNm String
           | File String
 
---
--- In case the user wants to start with a certain editor
---
-editorFM :: M.Map [Char] (Keymap.Keymap)
-editorFM = M.fromList $
-    [ ("vi"      ,      Vi.keymap)
-    , ("vim"     ,     Vim.keymap)
-    , ("nano"    ,    Nano.keymap)
-    , ("emacs"   ,   Emacs.keymap)
-    , ("joe"     ,     Joe.keymap)
-    , ("ee"      ,      Ee.keymap)
-    , ("mg"      ,      Mg.keymap)
-    ]
+-- | List of editors for which we provide an emulation.
+editors :: [String]
+editors = ["vi", "vim", "nano", "emacs", "joe", "ee", "mg"]
+
+editorToKeymap :: String -> String
+editorToKeymap (c:cs) = "Yi.Keymap." ++ toUpper c : map toLower cs ++ ".keymap"
+editorToKeymap [] = []
+
+moduleNameOf :: String -> String
+moduleNameOf s = concat $ intersperse "." $ init $ split "." $ s
 
 options :: [OptDescr Opts]
 options = [
@@ -89,7 +78,7 @@ options = [
     Option ['l']  ["line"]    (ReqArg LineNo "[num]") "Start on line number",
     Option []     ["as"]      (ReqArg EditorNm "[editor]")
         ("Start with editor keymap, where editor is one of:\n" ++
-                (concat . intersperse ", ") (M.keys editorFM))
+                (concat . intersperse ", ") editors)
     ]
 
 --
@@ -110,9 +99,11 @@ do_opt o = case o of
     OptIgnore _ -> return Core.nopE
     LineNo l -> return (Core.gotoLnE (read l))
     File file -> return (Core.fnewE file)
-    EditorNm emul -> case M.lookup (map toLower emul) editorFM of
-                    Just km -> return (Core.changeKeymapE km)
-                    Nothing -> putStrLn ("Unknown emulation: " ++ show emul) >> exitWith (ExitFailure 1)
+    EditorNm emul -> case map toLower emul `elem` editors of
+                       True -> let km = editorToKeymap emul in return $ do                                  
+                                 Core.execE ("loadE " ++ show (moduleNameOf km)) 
+                                 Core.execE ("changeKeymapE " ++ km)
+                       False -> putStrLn ("Unknown emulation: " ++ show emul) >> exitWith (ExitFailure 1)
 --
 -- everything that is left over
 --
