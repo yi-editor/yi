@@ -26,9 +26,9 @@ data Kernel = Kernel
      setTargets :: [GHC.Target] -> IO (),
      loadAllTargets :: IO GHC.SuccessFlag,
      findModule :: String -> IO GHC.Module,
-     setContext :: [GHC.Module]	-- ^ entire top level scope of these modules
-	        -> [GHC.Module]	-- ^ exports only of these modules
-	        -> IO (),
+     setContext :: [GHC.Module]
+	        -> [GHC.Module]
+	        -> IO (), -- ^ entire top level scope of 1st arg modules; exports only of 2nd arg modules
      setContextAfterLoad :: IO [GHC.Module],
      getNamesInScope :: IO [GHC.Name],
      getRdrNamesInScope :: IO [GHC.RdrName],
