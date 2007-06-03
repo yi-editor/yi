@@ -20,7 +20,6 @@
 
 module Yi.Keymap.Emacs.KillRing where
 
-import Yi.Editor
 import Yi.Core
 import Yi.Keymap.Emacs.UnivArgument
 import Yi.Region

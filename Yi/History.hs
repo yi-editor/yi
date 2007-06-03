@@ -28,7 +28,6 @@ import Data.Char
 import Data.List
 import Data.Dynamic
 
-import Control.Monad
 import Control.Monad.Trans
 
 import Yi.Editor

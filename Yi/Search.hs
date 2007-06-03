@@ -54,9 +54,6 @@ module Yi.Search (
 
                  ) where
 
-
-
-import Yi.Debug
 import Yi.Buffer
 import Text.Regex.Posix.String  ( Regex, compExtended, compIgnoreCase, compNewline, compile, execBlank )
 import Yi.Editor
