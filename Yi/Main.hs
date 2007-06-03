@@ -21,9 +21,7 @@ module Yi.Main (main, Kernel) where
 
 import Prelude hiding (error)
 
-import Yi.Version                       ( package, version )
 import qualified Yi.Buffer  as Buffer
-import qualified Yi.Editor  as Editor
 import qualified Yi.Core    as Core
 import qualified Yi.Keymap  as Keymap
 import qualified Yi.Eval    as Eval
@@ -100,7 +98,7 @@ options = [
 usage, versinfo :: IO ()
 usage    = putStr   $ usageInfo "Usage: yi [option...] [file]" options
 
-versinfo = putStrLn $ package++" "++version
+versinfo = putStrLn $ "yi 0.3.0"
 
 --
 -- deal with real options
