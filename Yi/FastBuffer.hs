@@ -96,18 +96,16 @@ data FBufferData =
                     }
 
 
+--------------------------------------------------
+-- Low-level primitives.
 
---
 -- | Resize an FBufferData
---
 resizeFB_ :: FBufferData -> Int -> IO FBufferData
 resizeFB_ (FBufferData ptr p m e _ hl ov) sz = do
     ptr' <- reallocArray0 ptr sz
     return (FBufferData ptr' p m e sz hl ov)
 
---
 -- | New FBuffer filled from string.
---
 stringToFBuffer :: String -> IO FBufferData
 stringToFBuffer s = do
     let size_i = length s
@@ -121,31 +119,18 @@ stringToFBuffer s = do
                       , (markMark, MarkValue 0 markLeftBound)
                      ]
 
-addOverlayBI :: Point -> Point -> Style -> BufferImpl -> IO ()
-addOverlayBI s e sty fb = do
-                        sm <- getMarkDefaultPosBI Nothing s fb
-                        em <- getMarkDefaultPosBI Nothing e fb
-                        modifyMVar_ fb $ \bd -> do
-                        return $ bd{overlays=(sm,em,styleToAttr sty):(overlays bd)}
-
---
 -- | read @n@ chars from buffer @b@, starting at @i@
---
 readChars :: Ptr CChar -> Int -> Int -> IO [Char]
 readChars p n i = do s <- peekArray n (p `advancePtr` i)
                      return $ map castCCharToChar s
 {-# INLINE readChars #-}
 
---
 -- | Write string into buffer.
---
 writeChars :: Ptr CChar -> [Char] -> Int -> IO ()
 writeChars p cs i = pokeArray (p `advancePtr` i) (map castCharToCChar cs)
 {-# INLINE writeChars #-}
 
---
 -- | Copy chars around the buffer.
---
 shiftChars :: Ptr CChar -> Int -> Int -> Int -> IO ()
 shiftChars ptr dst_off src_off len = do
     let dst = ptr `advancePtr` dst_off :: Ptr CChar
@@ -154,7 +139,23 @@ shiftChars ptr dst_off src_off len = do
     poke (dst `advancePtr` len) (castCharToCChar '\0')
 {-# INLINE shiftChars #-}
 
+-- | calculate whether a move is in bounds. 
+-- Note that one can move to 1 char past the end of the buffer.
+inBounds :: Int -> Int -> Int
+inBounds i end | i <= 0    = 0
+               | i > end   = max 0 end
+               | otherwise = i
+{-# INLINE inBounds #-}
+
 ------------------------------------------------------------------------
+-- Mid-level insert/delete
+
+shiftMarks :: Point -> Int -> Marks -> Marks
+shiftMarks from by = M.map $ \(MarkValue p leftBound) -> (MarkValue (shift p leftBound) leftBound)
+    where shift p leftBound | p < from  = p
+                            | p == from = if leftBound then p else p'
+                            | otherwise {- p > from -} = p'
+                     where p' = max from (p + by)
 
 -- May need to resize buffer.
 insertN' :: FBufferData -> [Char] -> Int -> IO FBufferData
@@ -174,15 +175,6 @@ insertN' fb@(FBufferData _ _ _ old_end old_max hl ov) cs cs_len = do
         return (FBufferData ptr (shiftMarks pnt cs_len mks) nms nend mx hl ov)
 {-# INLINE insertN' #-}
 
-shiftMarks :: Point -> Int -> Marks -> Marks
-shiftMarks from by = M.map $ \(MarkValue p leftBound) -> (MarkValue (shift p leftBound) leftBound)
-    where shift p leftBound | p < from  = p
-                            | p == from = if leftBound then p else p'
-                            | otherwise {- p > from -} = p'
-                     where p' = max from (p + by)
-
-------------------------------------------------------------------------
-
 -- | @deleteN' b n p@ deletes @n@ characters forwards from position @p@
 deleteN' :: FBufferData -> Int -> Int -> IO FBufferData
 deleteN' b 0 _ = return b
@@ -194,14 +186,9 @@ deleteN' (FBufferData ptr mks nms end mx hl ov) n pos = do
         return (FBufferData ptr (shiftMarks pos (negate n) mks) nms end' mx hl ov)
 {-# INLINE deleteN' #-}
 
-------------------------------------------------------------------------
---
--- | 'FBuffer' is a member of the 'Buffer' class, providing fast
--- indexing operations. It is implemented in terms of a mutable byte
--- array.
---
 
---instance Buffer FBufferData where
+-------------------------------------
+-- * "high-level" (exported) operations
 
 -- | Construct a new buffer initialised with the supplied text
 newBI :: [Char] -> IO BufferImpl
@@ -229,6 +216,15 @@ nelemsBI n i fb = withMVar fb $ \(FBufferData b _ _ e _ _ _) -> do
         let i' = inBounds i e
             n' = min (e-i') n
         readChars b n' i'
+
+
+-- | Add a style "overlay" between the given points.
+addOverlayBI :: Point -> Point -> Style -> BufferImpl -> IO ()
+addOverlayBI s e sty fb = do
+                        sm <- getMarkDefaultPosBI Nothing s fb
+                        em <- getMarkDefaultPosBI Nothing e fb
+                        modifyMVar_ fb $ \bd -> do
+                        return $ bd{overlays=(sm,em,styleToAttr sty):(overlays bd)}
 
 -- | Return @n@ elems starting at @i@ of the buffer as a list.
 -- This routine also does syntax highlighting and applies overlays.
@@ -328,9 +324,6 @@ regexBI re fb = withMVar fb $ \(FBufferData ptr mks _ _ _ _ _) -> do
             Just ((i,j):_) -> return (Just (p+fromIntegral i,p+fromIntegral j))    -- offset from point
 
 
--- ------------------------------------------------------------------------
-    ---------------------------------------------------------------------
-
 
 {- 
    Okay if the mark is set then we return that, otherwise we
@@ -380,14 +373,6 @@ pointLeftBound = False
 markLeftBound = True
 
 ------------------------------------------------------------------------
-
--- | calculate whether a move is in bounds. 
--- Note that one can always move to 1 char past the end of the buffer.
-inBounds :: Int -> Int -> Int
-inBounds i end | i <= 0    = 0
-               | i > end   = max 0 end
-               | otherwise = i
-{-# INLINE inBounds #-}
 
 -- | Returns the requested mark, creating a new mark with that name (at point) if needed
 getMarkBI :: Maybe String -> BufferImpl -> IO Mark
