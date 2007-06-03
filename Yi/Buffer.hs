@@ -51,6 +51,8 @@ import Data.Unique              ( newUnique, Unique, hashUnique )
 import Yi.Event
 import Yi.Keymap
 import Control.Concurrent 
+import Control.Monad
+import Control.Monad.Trans
 import Control.Monad.RWS
 import Control.Exception
 
