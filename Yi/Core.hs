@@ -182,7 +182,6 @@ module Yi.Core (
 import Prelude hiding (error)
 
 import Yi.Debug
-import {-# source #-} Yi.Dired (diredDirBufferE)
 import Yi.Buffer
 import Yi.Dynamic
 import Yi.Region
@@ -801,7 +800,10 @@ fnewE f = do
     where
     newBufferForPath :: Bool -> Bool -> EditorM FBuffer
     newBufferForPath True _      = hNewBuffer f                                 -- Load the file into a new buffer
-    newBufferForPath False True  = diredDirBufferE f                            -- Open the dir in Dired
+    newBufferForPath False True  = do           -- Open the dir in Dired
+            loadE "Yi.Dired"
+            execE $ "Yi.Dired.diredDirBufferE " ++ show f
+            getBuffer
     newBufferForPath False False = stringToNewBuffer f []                       -- Create new empty buffer
 
 -- | Revert to the contents of the file on disk
