@@ -175,7 +175,8 @@ module Yi.Core (
         write,
         catchJustE,
         changeKeymapE,
-        getNamesInScopeE
+        getNamesInScopeE,
+        execE
    ) where
 
 import Prelude hiding (error)
@@ -1038,3 +1039,27 @@ ghcErrorReporter editor severity srcSpan pprStyle message =
                   _ -> show ((ErrUtils.mkLocMessage srcSpan message) pprStyle)
 
 
+-- | Run a (dynamically specified) editor command.
+execE :: String -> EditorM ()
+execE s = do
+  ghcErrorHandlerE $ do
+            result <- withKernel $ \kernel -> do
+                               logPutStrLn $ "execing " ++ s
+                               compileExpr kernel ("(" ++ s ++ ") >>= msgE' . show :: EditorM ()")
+            case result of
+              Nothing -> errorE ("Could not compile: " ++ s)
+              Just x -> do let (x' :: EditorM ()) = unsafeCoerce# x
+                           x'
+                           return ()
+
+-- | Install some default exception handlers and run the inner computation.
+ghcErrorHandlerE :: EditorM () -> EditorM ()
+ghcErrorHandlerE inner = do
+  flip catchDynE (\dyn -> do
+  		    case dyn of
+		     GHC.PhaseFailed _ code -> errorE $ "Exitted with " ++ show code
+		     GHC.Interrupted -> errorE $ "Interrupted!"
+		     _ -> do errorE $ "GHC exeption: " ++ (show (dyn :: GHC.GhcException))
+			     
+	    ) $
+            inner
