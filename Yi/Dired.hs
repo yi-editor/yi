@@ -38,7 +38,11 @@
 -- Fix the 'number of links' field to show actual values not just 1...
 -- Automatic support for browsing .zip, .gz files etc...
 
-module Yi.Dired where
+module Yi.Dired (
+        diredE
+       ,diredDirE
+       ,diredDirBufferE
+    ) where
 
 import Control.Concurrent
 import Control.Monad
@@ -86,20 +90,19 @@ diredE :: EditorM ()
 diredE = do
     msgE "Dired..."
     dir <- liftIO getCurrentDirectory
-    diredDirE dir
+    fnewE dir
 
 diredDirE :: FilePath -> EditorM ()
-diredDirE dir = do
-    bufs <- getBuffers
-    bufsWithThisFilename <- liftIO $ filterM (\b -> readMVar (file b) >>= return . (==Just dir)) bufs
-    case bufsWithThisFilename of
-             [] -> do
-                   b <- stringToNewBuffer ("dired-"++dir) ""
-                   switchToBufferE b
-                   lift $ runBuffer b (setfileB dir) -- associate the buffer with the dir
-                   diredLoadNewDirE dir
-                   liftIO $ setBufferKeymap b (const diredKeymap)
-             _ -> switchToBufferE (head bufsWithThisFilename)
+diredDirE dir = diredDirBufferE dir >> return ()
+
+diredDirBufferE :: FilePath -> EditorM FBuffer
+diredDirBufferE dir = do
+                b <- stringToNewBuffer ("dired-"++dir) ""
+                withGivenBuffer b (setfileB dir) -- associate the buffer with the dir
+                switchToBufferE b
+                diredLoadNewDirE dir
+                lift $ setBufferKeymap b (const diredKeymap)
+                return b
 
 diredLoadNewDirE :: FilePath -> EditorM ()
 diredLoadNewDirE dir = do
@@ -202,10 +205,10 @@ diredLoadE :: EditorM ()
 diredLoadE = do
     rl <- readLnE
     (Just dir) <- withBuffer getfileB
-    let selected = dir </> (fileFromLine rl)
-    msgE selected
-    isdir <- liftIO $ doesDirectoryExist selected
-    if isdir then diredDirE selected else fnewE selected
+    let sel = dir </> (fileFromLine rl)
+    msgE sel
+    isdir <- liftIO $ doesDirectoryExist sel
+    if isdir then diredDirE sel >> return () else fnewE sel
 
 diredUpDirE :: EditorM ()
 diredUpDirE = do

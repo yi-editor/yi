@@ -181,6 +181,7 @@ module Yi.Core (
 import Prelude hiding (error)
 
 import Yi.Debug
+import {-# source #-} Yi.Dired (diredDirBufferE)
 import Yi.Buffer
 import Yi.Dynamic
 import Yi.Region
@@ -201,7 +202,7 @@ import Data.Maybe
 import Data.List
 import Data.IORef
 
-import System.Directory     ( doesFileExist )
+import System.Directory     ( doesFileExist, doesDirectoryExist )
 
 import Control.Monad.Reader
 import Control.Exception
@@ -786,10 +787,21 @@ prevBufW = Editor.prevBuffer >>= switchToBufferE
 --
 fnewE  :: FilePath -> Action
 fnewE f = do
-    e  <- lift $ doesFileExist f
-    b  <- if e then hNewBuffer f else stringToNewBuffer f []
-    lift $ runBuffer b $ setfileB f        -- and associate with file f
+    bufs <- getBuffers
+    bufsWithThisFilename <- liftIO $ filterM (\b -> readMVar (file b) >>= return . (==Just f)) bufs
+    b <- case bufsWithThisFilename of
+             [] -> do
+                   fe  <- lift $ doesFileExist f
+                   de  <- lift $ doesDirectoryExist f
+                   newBufferForPath fe de
+             _  -> return (head bufsWithThisFilename)
+    withGivenBuffer b $ setfileB f        -- associate buffer with file
     switchToBufferE b
+    where
+    newBufferForPath :: Bool -> Bool -> EditorM FBuffer
+    newBufferForPath True _      = hNewBuffer f                                 -- Load the file into a new buffer
+    newBufferForPath False True  = diredDirBufferE f                            -- Open the dir in Dired
+    newBufferForPath False False = stringToNewBuffer f []                       -- Create new empty buffer
 
 -- | Revert to the contents of the file on disk
 revertE :: Action
