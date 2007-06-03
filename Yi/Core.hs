@@ -998,8 +998,9 @@ unloadE modul = do
 getNamesInScopeE :: EditorM [String]
 getNamesInScopeE = do
   withKernel $ \k -> do
-      names <- getRdrNamesInScope k
-      return (map (nameToString k) names)
+      rdrNames <- getRdrNamesInScope k
+      names <- getNamesInScope k
+      return $ map (nameToString k) rdrNames ++ map (nameToString k) names
 
 savingExcursion :: BufferM a -> BufferM a
 savingExcursion f = do
