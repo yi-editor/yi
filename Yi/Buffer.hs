@@ -51,7 +51,6 @@ import Data.Unique              ( newUnique, Unique, hashUnique )
 import Yi.Event
 import Yi.Keymap
 import Control.Concurrent 
-import Control.Monad
 import Control.Monad.Reader
 import Control.Monad.RWS
 import Control.Exception
@@ -118,20 +117,11 @@ getPercent :: Int -> Int -> String
 getPercent a b = show p ++ "%"
     where p = ceiling ((fromIntegral a) / (fromIntegral b) * 100 :: Double) :: Int
 
-
 withImpl :: (BufferImpl -> IO x) -> (BufferM x)
 withImpl f = do b <- ask; lift $ f (rawbuf b)
 
-withImpl1 :: (BufferImpl -> a -> IO x) -> (a -> BufferM x)
-withImpl1 f a = do b <- ask; lift $ f (rawbuf b) a
-
-withImpl2 :: (BufferImpl -> a -> b -> IO x) -> (a -> b -> BufferM x)
-withImpl2 f a b = do x <- ask; lift $ f (rawbuf x) a b
-
 addOverlayB :: Point -> Point -> Style -> BufferM ()
-addOverlayB s e sty = do
-                      bi <- ask
-                      lift $ addOverlayBI (rawbuf bi) s e sty
+addOverlayB s e sty = withImpl $ addOverlayBI s e sty
 
 runBuffer :: FBuffer -> BufferM a -> IO (a, [URAction])
 runBuffer b f = do 
@@ -239,7 +229,7 @@ pointB = withImpl pointBI
 
 -- | Return @n@ elems starting at @i@ of the buffer as a list
 nelemsB :: Int -> Int -> BufferM [Char]
-nelemsB = withImpl2 nelemsBI
+nelemsB n i = withImpl $ nelemsBI n i
 
 ------------------------------------------------------------------------
 -- Point based operations
@@ -248,7 +238,7 @@ nelemsB = withImpl2 nelemsBI
 moveTo :: Int -> BufferM ()
 moveTo x = do 
   forgetPreferCol
-  withImpl1 moveToI x
+  withImpl $ moveToI x
 
 ------------------------------------------------------------------------
 
@@ -293,36 +283,36 @@ curLn = withImpl curLnI
 -- actual line we went to (which may be not be the requested line,
 -- if it was out of range)
 gotoLn :: Int -> BufferM Int
-gotoLn = withImpl1 gotoLnI
+gotoLn = withImpl . gotoLnI
 
 ---------------------------------------------------------------------
 
 -- | Return index of next string in buffer that matches argument
 searchB :: [Char] -> BufferM (Maybe Int)
-searchB = withImpl1 searchBI
+searchB = withImpl . searchBI
 
 -- | Set name of syntax highlighting mode
 setSyntaxB :: [Char] -> BufferM ()
-setSyntaxB = withImpl1 setSyntaxBI
+setSyntaxB = withImpl . setSyntaxBI
 
 -- | Return indices of next string in buffer matched by regex
 regexB :: Regex -> BufferM (Maybe (Int,Int))
-regexB = withImpl1 regexBI
+regexB = withImpl . regexBI
 
 ---------------------------------------------------------------------
 
 -- | Set a mark in this buffer
 setMarkPointB :: Mark -> Int -> BufferM ()
-setMarkPointB = withImpl2 setMarkPointBI
+setMarkPointB m pos = withImpl $ setMarkPointBI m pos
 
 getMarkPointB :: Mark -> BufferM Int
-getMarkPointB = withImpl1 getMarkPointBI
+getMarkPointB = withImpl . getMarkPointBI
 
 unsetMarkB :: BufferM ()
 unsetMarkB = withImpl unsetMarkBI
 
 getMarkB :: Maybe String -> BufferM Mark
-getMarkB = withImpl1 getMarkBI
+getMarkB = withImpl . getMarkBI
 
 getSelectionMarkB :: BufferM Mark
 getSelectionMarkB = withImpl getSelectionMarkBI
@@ -403,7 +393,6 @@ readAtB i = do
 
 -- | Delete @n@ characters forward from the current point
 deleteN :: Int -> BufferM ()
-deleteN 0 = return ()
 deleteN n = pointB >>= deleteNAt n
 
 -- | Delete to the end of line, excluding it.

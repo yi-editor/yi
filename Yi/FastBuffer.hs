@@ -121,10 +121,10 @@ stringToFBuffer s = do
                       , (markMark, MarkValue 0 markLeftBound)
                      ]
 
-addOverlayBI :: BufferImpl -> Point -> Point -> Style -> IO ()
-addOverlayBI fb s e sty = do
-                        sm <- getMarkDefaultPosBI fb Nothing s
-                        em <- getMarkDefaultPosBI fb Nothing e
+addOverlayBI :: Point -> Point -> Style -> BufferImpl -> IO ()
+addOverlayBI s e sty fb = do
+                        sm <- getMarkDefaultPosBI Nothing s fb
+                        em <- getMarkDefaultPosBI Nothing e fb
                         modifyMVar_ fb $ \bd -> do
                         return $ bd{overlays=(sm,em,styleToAttr sty):(overlays bd)}
 
@@ -224,8 +224,8 @@ pointBI fb = withMVar fb $ \(FBufferData _ mks _ e mx _ _) -> do
 
 
 -- | Return @n@ elems starting at @i@ of the buffer as a list
-nelemsBI    :: BufferImpl -> Int -> Int -> IO [Char]
-nelemsBI fb n i = withMVar fb $ \(FBufferData b _ _ e _ _ _) -> do
+nelemsBI    :: Int -> Int -> BufferImpl -> IO [Char]
+nelemsBI n i fb = withMVar fb $ \(FBufferData b _ _ e _ _ _) -> do
         let i' = inBounds i e
             n' = min (e-i') n
         readChars b n' i'
@@ -270,8 +270,8 @@ nelemsBIH fb n i = withMVar fb fun
 -- Point based editing
 
 -- | Move point in buffer to the given index
-moveToI     :: BufferImpl -> Int -> IO ()
-moveToI fb i = modifyMVar_ fb $ \(FBufferData ptr mks nms end mx hl ov) -> do
+moveToI :: Int -> BufferImpl -> IO ()
+moveToI i fb = modifyMVar_ fb $ \(FBufferData ptr mks nms end mx hl ov) -> do
                  return $ FBufferData ptr (M.insert pointMark (MarkValue (inBounds i end) pointLeftBound) mks) nms end mx hl ov
 {-# INLINE moveToI #-}
 
@@ -295,8 +295,8 @@ curLnI fb = withMVar fb $ \(FBufferData ptr mks _ _ _ _ _) -> ccountLines ptr 0 
 -- | Go to line number @n@. @n@ is indexed from 1. Returns the
 -- actual line we went to (which may be not be the requested line,
 -- if it was out of range)
-gotoLnI      :: BufferImpl -> Int -> IO Int
-gotoLnI fb n = modifyMVar fb $ \(FBufferData ptr mks nms e mx hl ov) -> do
+gotoLnI :: Int -> BufferImpl -> IO Int
+gotoLnI n fb = modifyMVar fb $ \(FBufferData ptr mks nms e mx hl ov) -> do
         np <- cfindStartOfLineN ptr 0 e (n-1)       -- index from 0
         let fb' = FBufferData ptr (M.insert pointMark (MarkValue np pointLeftBound) mks) nms e mx hl ov
         n' <- if np > e - 1 -- if next line is end of file, then find out what line this is
@@ -309,16 +309,16 @@ gotoLnI fb n = modifyMVar fb $ \(FBufferData ptr mks nms e mx hl ov) -> do
 ---------------------------------------------------------------------
 
 -- | Return index of next string in buffer that matches argument
-searchBI      :: BufferImpl -> [Char] -> IO (Maybe Int)
-searchBI fb s = withMVar fb $ \(FBufferData ptr mks _ _ _ _ _) -> 
+searchBI :: [Char] -> BufferImpl -> IO (Maybe Int)
+searchBI s fb = withMVar fb $ \(FBufferData ptr mks _ _ _ _ _) -> 
         withCString s $ \str -> do
             p <- cstrstr (ptr `advancePtr` (markPosition $ mks M.! pointMark)) str
             return $ if p == nullPtr then Nothing
                                      else Just (p `minusPtr` ptr)
 
 -- | Return indices of next string in buffer matched by regex
-regexBI       :: BufferImpl -> Regex -> IO (Maybe (Int,Int))
-regexBI fb re = withMVar fb $ \(FBufferData ptr mks _ _ _ _ _) -> do
+regexBI :: Regex -> BufferImpl -> IO (Maybe (Int,Int))
+regexBI re fb = withMVar fb $ \(FBufferData ptr mks _ _ _ _ _) -> do
         let p = markPosition $ mks M.! pointMark
         Right mmatch <- wrapMatch re (ptr `plusPtr` p)
         logPutStrLn $ show mmatch
@@ -341,8 +341,8 @@ getSelectionMarkBI :: BufferImpl -> IO Mark
 getSelectionMarkBI fb = withMVar fb $ \(FBufferData { marks = marksMap } ) -> return $ if M.member markMark marksMap then markMark else pointMark
 
 -- | Returns ths position of the 'point' mark if the requested mark is unknown
-getMarkPointBI :: BufferImpl -> Mark -> IO Point
-getMarkPointBI fb m = do
+getMarkPointBI :: Mark -> BufferImpl -> IO Point
+getMarkPointBI m fb = do
                       mv <- getMark fb m
                       logPutStrLn $ "get mark " ++ show m ++ " at " ++ show mv
                       return $ markPosition mv
@@ -355,8 +355,8 @@ getMark fb m = withMVar fb $ \(FBufferData { marks = marksMap } ) -> do
 
 
 -- | Set this buffer mark
-setMarkPointBI :: BufferImpl -> Mark -> Point -> IO ()
-setMarkPointBI fb m pos = modifyMVar_ fb $ \fb' -> do
+setMarkPointBI :: Mark -> Point -> BufferImpl -> IO ()
+setMarkPointBI m pos fb = modifyMVar_ fb $ \fb' -> do
                             logPutStrLn $ "set mark " ++ show m ++ " at " ++ show pos
                             let marks' = M.insert m (MarkValue pos (if m == markMark then markLeftBound else False)) (marks fb')
                             logPutStrLn $ "marks: " ++ show marks'
@@ -371,8 +371,8 @@ unsetMarkBI fb = modifyMVar_ fb $ \fb'-> return $ fb' { marks = (M.delete markMa
 
 -- Basically this function just takes the name of a 'Highlighter a' (from Yi.Syntax.Table)
 -- and sets that to be the current highlighter for this buffer.
-setSyntaxBI      :: BufferImpl -> String -> IO ()
-setSyntaxBI fb sy = modifyMVar_ fb $ \fb' -> do (ExtHL e) <- evaluate (highlighters M.! sy)
+setSyntaxBI :: String -> BufferImpl -> IO ()
+setSyntaxBI sy fb = modifyMVar_ fb $ \fb' -> do (ExtHL e) <- evaluate (highlighters M.! sy)
                                                 return fb' { hlcache = HLState `fmap` e }
 
 pointLeftBound, markLeftBound :: Bool
@@ -390,12 +390,12 @@ inBounds i end | i <= 0    = 0
 {-# INLINE inBounds #-}
 
 -- | Returns the requested mark, creating a new mark with that name (at point) if needed
-getMarkBI :: BufferImpl -> Maybe String -> IO Mark
-getMarkBI b name = pointBI b >>= getMarkDefaultPosBI b name
+getMarkBI :: Maybe String -> BufferImpl -> IO Mark
+getMarkBI name b = do p <- pointBI b; getMarkDefaultPosBI name p b
 
 -- | Returns the requested mark, creating a new mark with that name (at the supplied position) if needed
-getMarkDefaultPosBI :: BufferImpl -> Maybe String -> Int -> IO Mark
-getMarkDefaultPosBI b name defaultPos = modifyMVar b $ \ fb@(FBufferData ptr mks nms end mx hl ov) -> do
+getMarkDefaultPosBI :: Maybe String -> Int -> BufferImpl -> IO Mark
+getMarkDefaultPosBI name defaultPos b = modifyMVar b $ \ fb@(FBufferData ptr mks nms end mx hl ov) -> do
   logPutStrLn $ "getMarkBI: " ++ show nms ++ ", " ++ show mks
   let m :: Maybe Mark = flip M.lookup nms =<< name
   case m of

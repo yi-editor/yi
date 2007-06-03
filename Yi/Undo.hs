@@ -142,14 +142,14 @@ addBoundary = undefined
 --
 getActionB :: URAction -> BufferImpl -> IO URAction
 getActionB (Delete p n) b = do
-    moveToI b p
+    moveToI p b
     p' <- pointBI b
-    text <- nelemsBI b n p'
+    text <- nelemsBI n p' b
     deleteNAtI b n p'
     return $ Insert p' text
 
 getActionB (Insert p cs) b = do
-    moveToI b p
+    moveToI p b
     insertNI b cs
     return $ Delete p (length cs)
 
