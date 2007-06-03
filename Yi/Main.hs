@@ -191,9 +191,9 @@ openScratchBuffer = do     -- emacs-like behaviour
 -- Initialise the ui getting an initial editor state, set signal
 -- handlers, then jump to ui event loop with the state.
 --
-main :: Kernel -> [String] -> IO ()
-main kernel args = do
-    mopts <- do_args args
+main :: Kernel -> IO ()
+main kernel = do
+    mopts <- do_args =<< getArgs
 
     --
     -- The only way out is by throwing an exception, or an external

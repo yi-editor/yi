@@ -17,6 +17,7 @@ import qualified Packages
 -- Calls to the GHC API must go though this type. (Because of the use "global variables" in GHC I imagine)
 -- ie. the simpler approach of passing just the GHC session does not work.
 
+
 data Kernel = Kernel
     {
      getSessionDynFlags :: IO GHC.DynFlags,

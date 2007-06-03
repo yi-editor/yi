@@ -44,11 +44,11 @@ path = GHC_LIBDIR -- See Setup.hs
 
 -- | Create a suitable Yi Kernel, via a GHC session.
 -- Also return the non-boot flags.
-initialize :: IO (Kernel, [String])
+initialize :: IO Kernel
 initialize = GHC.defaultErrorHandler DynFlags.defaultDynFlags $ do
   -- here we have to make an early choice between vty and gtk.
   bootArgs <- getArgs
-  let (bootFlags, otherArgs, _) = getOpt Permute options bootArgs
+  let (bootFlags, _, _) = getOpt Permute options bootArgs
   let flavour = foldl override "vty" $ map forcedFlavour bootFlags
   let libdir = foldl override YI_LIBDIR $ map forcedLibdir bootFlags
   logPutStrLn $ "Using libdir: " ++ libdir
@@ -68,7 +68,7 @@ initialize = GHC.defaultErrorHandler DynFlags.defaultDynFlags $ do
   (dflags2, packageIds) <- Packages.initPackages dflags1'
   logPutStrLn $ "packagesIds: " ++ (showSDocDump $ ppr $ packageIds)
   GHC.setSessionDynFlags session dflags2{GHC.hscTarget=GHC.HscInterpreted}
-  return (Kernel { 
+  return Kernel { 
                  getSessionDynFlags = GHC.getSessionDynFlags session,
                  setSessionDynFlags = GHC.setSessionDynFlags session,
                  compileExpr = GHC.compileExpr session,
@@ -84,22 +84,22 @@ initialize = GHC.defaultErrorHandler DynFlags.defaultDynFlags $ do
                  isLoaded = GHC.isLoaded session,
                  mkModuleName = Module.mkModuleName,
                  getModuleGraph = GHC.getModuleGraph session
-                }, otherArgs)
+                }
 
 
 -- | Dynamically start Yi. 
-startYi :: Kernel -> [String] -> IO ()
-startYi kernel args = GHC.defaultErrorHandler DynFlags.defaultDynFlags $ do
+startYi :: Kernel -> IO ()
+startYi kernel = GHC.defaultErrorHandler DynFlags.defaultDynFlags $ do
   t <- (guessTarget kernel) "Yi.Main" Nothing
   (setTargets kernel) [t]
   loadAllTargets kernel
-  result <- compileExpr kernel ("Yi.Main.main :: Yi.Kernel.Kernel -> [Prelude.String] -> Prelude.IO ()") 
+  result <- compileExpr kernel ("Yi.Main.main :: Yi.Kernel.Kernel -> Prelude.IO ()") 
   -- coerce the interpreted expression, so we check that we are not making an horrible mistake.
   logPutStrLn "Starting Yi!"
   case result of
     Nothing -> error "Could not compile Yi.main!"
-    Just x -> do let (x' :: Kernel -> [String] -> IO ()) = unsafeCoerce# x
-                 x' kernel args
+    Just x -> do let (x' :: Kernel -> IO ()) = unsafeCoerce# x
+                 x' kernel
                  return ()
 
 setContextAfterLoadL :: GHC.Session -> IO [GHC.Module]

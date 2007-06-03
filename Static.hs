@@ -32,5 +32,5 @@ import qualified Yi.Main
 main :: IO ()
 main = do
   initDebug ".yi-static.dbg"
-  (kernel, args) <- initialize
-  Yi.Main.main kernel args
+  kernel <- initialize
+  Yi.Main.main kernel

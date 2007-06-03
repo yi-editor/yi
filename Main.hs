@@ -31,8 +31,8 @@ import Yi.Debug
 main :: IO ()
 main = do
   initDebug ".yi-static.dbg"
-  (kernel, args) <- initialize
-  Yi.Boot.startYi kernel args -- call Yi.main dynamically
+  kernel <- initialize
+  Yi.Boot.startYi kernel -- call Yi.main dynamically
   
 
 
