@@ -116,38 +116,48 @@ diredLoadNewDirE dir = do
     mapM_ insertDiredLine linesToShow
     topE >> downE
     where
-    lineForFile :: String -> String -> IO (String, String, Bool)
+    lineForFile :: String -> String -> IO (String, String, Style)
     lineForFile d f = do
                         let fp = (d </> f)
-                        isdir <- doesDirectoryExist fp
-                        isfile <- doesFileExist fp
-                        if (isdir || isfile) then lineForFilePath fp isdir else return ("---------- na na", "na", False)
-    lineForFilePath :: FilePath -> Bool -> IO (String, String, Bool)
-    lineForFilePath fp isdir = do
-                        fileStatus <- getFileStatus fp
-                        modTimeStr <- (getModificationTime fp >>= toCalendarTime >>= return . shortCalendarTimeToString)
+                        fileStatus <- getSymbolicLinkStatus fp
+                        let isdir = isDirectory fileStatus
+                            isfile = isRegularFile fileStatus
+                            islink = isSymbolicLink fileStatus
+                        if (isdir || isfile || islink) then lineForFilePath fp fileStatus else return (fp++" : Not a file/dir/symlink", fp, defaultStyle)
+    lineForFilePath :: FilePath -> FileStatus -> IO (String, String, Style)
+    lineForFilePath fp fileStatus = do
+                        modTimeStr <- return . shortCalendarTimeToString =<< toCalendarTime (TOD (floor $ toRational $ modificationTime fileStatus) 0)
                         let uid = fileOwner fileStatus
                             gid = fileGroup fileStatus
+                        filenm <- if (isSymbolicLink fileStatus) then
+                                  return . ((++) (takeFileName fp ++ " -> ")) =<< readSymbolicLink fp else
+                                  return $ takeFileName fp
                         ownerEntry <- catch (getUserEntryForID uid) (\_ -> getAllUserEntries >>= return . scanForUid uid)
                         groupEntry <- catch (getGroupEntryForID gid) (\_ -> getAllGroupEntries >>= return . scanForGid gid)
-                        let prefix = if isdir then "d" else "-"
+                        let prefix = codeLetterForFileStatus fileStatus
                             fmodeStr = (modeString . fileMode) fileStatus
                             sz = toInteger $ fileSize fileStatus
-                            numLinks :: Int = 1
                             ownerStr = userName ownerEntry
                             groupStr = groupName groupEntry
-                            fn = takeFileName fp
-                        return $ (printf "  %s%s %4d %s %s%8d %s" prefix fmodeStr numLinks ownerStr groupStr sz modTimeStr, fn, isdir)
+                            numLinks = toInteger $ linkCount fileStatus
+                        return $ (printf "  %s%s %4d %s  %s%8d %s" prefix fmodeStr numLinks ownerStr groupStr sz modTimeStr, filenm, styleForFileStatus fileStatus)
     shortCalendarTimeToString = formatCalendarTime defaultTimeLocale "%b %d %H:%M"
-    insertDiredLine :: (String, String, Bool) -> EditorM ()
-    insertDiredLine (pre, fn, isdir) = do
-        insertNE $ (printf "%s %s\n" pre fn)
+    insertDiredLine :: (String, String, Style) -> EditorM ()
+    insertDiredLine (pre, filenm, sty) = do
+        insertNE $ (printf "%s %s\n" pre filenm)
         p <- getPointE
-        let p1 = p - length fn - 1
+        let p1 = p - length filenm - 1
             p2 = p - 1
-        when isdir $ withBuffer (addOverlayB p1 p2 dirStyle)
+        when (sty /= defaultStyle) $ withBuffer (addOverlayB p1 p2 sty)
 
-    dirStyle = Style cyan black
+    codeLetterForFileStatus fs | isDirectory fs = "d"
+    codeLetterForFileStatus fs | isSymbolicLink fs = "l"
+    codeLetterForFileStatus fs {- | isRegularFile fs -} = "-"
+
+    styleForFileStatus fs | isDirectory fs = Style purple black
+    styleForFileStatus fs | isSymbolicLink fs = Style cyan black
+    styleForFileStatus fs {- | isRegularFile fs -} = defaultStyle
+
     headStyle = Style yellow black
 
 -- | Needed on Mac OS X 10.4
