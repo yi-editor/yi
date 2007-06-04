@@ -48,6 +48,8 @@ import Control.Concurrent
 import Control.Monad
 import Control.Monad.Trans
 import Data.List
+import qualified Data.Map as M
+import Data.Typeable
 import System.Directory
 import System.FilePath
 import System.Locale
@@ -64,10 +66,38 @@ import Text.Regex.Posix
 
 import Yi.Buffer
 import Yi.Core
+import Yi.Dynamic
 import Yi.Editor
 import Yi.Keymap.Emacs
 import Yi.Region
 import Yi.Style
+
+data DiredFileInfo = DiredFileInfo {  permString :: String
+                                    , numLinks :: Integer
+                                    , owner :: String
+                                    , grp :: String
+                                    , sizeInBytes :: Integer
+                                    , modificationTimeString :: String
+                                 }
+                deriving (Show, Eq, Typeable)
+
+data DiredEntry = DiredFile DiredFileInfo
+                | DiredDir DiredFileInfo
+                | DiredSymLink DiredFileInfo String
+                | DiredNoInfo
+                deriving (Show, Eq, Typeable)
+
+data DiredState = DiredState {
+                                diredDir :: FilePath -- ^ The full path to the directory being viewed
+                                -- FIXME Choose better data structure for Marks...
+                              , diredMarks :: M.Map Char [FilePath] -- ^ Map values are just leafnames, not full paths
+                              , diredEntries :: M.Map FilePath DiredEntry -- ^ keys are just leafnames, not full paths
+                              , diredFilePoints :: [(Point,Point,FilePath)] -- ^ position in the buffer where filename is
+                             }
+                  deriving (Show, Eq, Typeable)
+
+instance Initializable DiredState where
+    initial = DiredState "" M.empty M.empty []
 
 diredKeymap :: Keymap
 diredKeymap = do
@@ -104,27 +134,81 @@ diredDirBufferE dir = do
                 lift $ setBufferKeymap b (const diredKeymap)
                 return b
 
-diredLoadNewDirE :: FilePath -> EditorM ()
-diredLoadNewDirE dir = do
-    setSynE "none" -- Colours for Dired come from overlays not syntax highlighting
+diredRefreshE :: EditorM ()
+diredRefreshE = do
+    -- Clear buffer
+    end <- withBuffer sizeB
+    deleteRegionE (mkRegion 0 end)
+    topE
+    -- Write Header
+    (Just dir) <- withBuffer getfileB
     insertNE $ dir ++ ":\n"
     p <- getPointE
     withBuffer (addOverlayB 0 (p-2) headStyle)
-    files <- liftIO $ getDirectoryContents dir
-    let filteredFiles = filter (not . diredOmitFile) files
-    linesToShow <- liftIO $ mapM (lineForFile dir) filteredFiles
-    mapM_ insertDiredLine linesToShow
-    topE >> downE
+    -- Scan directory
+    di <- lift $ diredScanDir dir
+    let ds = DiredState dir M.empty di []
+    withBuffer $ setDynamicB ds
+    -- Display results
+    lines <- linesToDisplay
+    ptsList <- mapM insertDiredLine lines
+    withBuffer $ setDynamicB ds{diredFilePoints=ptsList}
+    gotoPointE p
+    return ()
     where
-    lineForFile :: String -> String -> IO (String, String, Style)
-    lineForFile d f = do
+    headStyle = Style yellow black
+
+insertDiredLine :: (String, String, Style, String) -> EditorM (Point, Point, FilePath)
+insertDiredLine (pre, displaynm, sty, filenm) = do
+    insertNE $ (printf "%s %s\n" pre displaynm)
+    p <- getPointE
+    let p1 = p - length displaynm - 1
+        p2 = p - 1
+    when (sty /= defaultStyle) $ withBuffer (addOverlayB p1 p2 sty)
+    return (p1, p2, filenm)
+
+-- | Return a List of (prefix, fullDisplayNameIncludingSourceAndDestOfLink, style, filename)
+linesToDisplay :: EditorM ([(String, String, Style, String)])
+linesToDisplay = do
+    (DiredState _ _ des _) <- withBuffer getDynamicB
+    return $ map (uncurry lineToDisplay) (M.assocs des)
+    where
+    lineToDisplay k (DiredFile v) = (" -" ++ l v, k, defaultStyle, k)
+    lineToDisplay k (DiredDir v) = (" d" ++ l v, k, Style purple black, k)
+    lineToDisplay k (DiredSymLink v s) = (" l" ++ l v, k ++ " -> " ++ s, Style cyan black, k)
+    lineToDisplay k DiredNoInfo = ("", k++" : Not a file/dir/symlink", defaultStyle, k)
+
+    l v = printf "%s %4d %s  %s%8d %s" (permString v) (numLinks v) (owner v) (grp v) (sizeInBytes v) (modificationTimeString v)
+
+-- | Write the contents of the supplied directory into the current buffer in dired format
+diredLoadNewDirE :: FilePath -> EditorM ()
+diredLoadNewDirE dir = do
+    setSynE "none" -- Colours for Dired come from overlays not syntax highlighting
+    diredRefreshE
+
+-- | Return dired entries for the contents of the supplied directory
+diredScanDir :: FilePath -> IO (M.Map FilePath DiredEntry)
+diredScanDir dir = do
+    files <- getDirectoryContents dir
+    let filteredFiles = filter (not . diredOmitFile) files
+    foldM (lineForFile dir) M.empty filteredFiles
+    where
+    lineForFile :: String -> M.Map FilePath DiredEntry -> String -> IO (M.Map FilePath DiredEntry)
+    lineForFile d m f = do
                         let fp = (d </> f)
                         fileStatus <- getSymbolicLinkStatus fp
+                        dfi <- lineForFilePath fp fileStatus
+                        let islink = isSymbolicLink fileStatus
+                        linkTarget <- if islink then readSymbolicLink fp else return ""
                         let isdir = isDirectory fileStatus
                             isfile = isRegularFile fileStatus
-                            islink = isSymbolicLink fileStatus
-                        if (isdir || isfile || islink) then lineForFilePath fp fileStatus else return (fp++" : Not a file/dir/symlink", fp, defaultStyle)
-    lineForFilePath :: FilePath -> FileStatus -> IO (String, String, Style)
+                            de = if isdir then (DiredDir dfi) else
+                                   if isfile then (DiredFile dfi) else
+                                     if islink then (DiredSymLink dfi linkTarget) else
+                                       DiredNoInfo
+                        return (M.insert f de m)
+
+    lineForFilePath :: FilePath -> FileStatus -> IO DiredFileInfo
     lineForFilePath fp fileStatus = do
                         modTimeStr <- return . shortCalendarTimeToString =<< toCalendarTime (TOD (floor $ toRational $ modificationTime fileStatus) 0)
                         let uid = fileOwner fileStatus
@@ -134,31 +218,17 @@ diredLoadNewDirE dir = do
                                   return $ takeFileName fp
                         ownerEntry <- catch (getUserEntryForID uid) (\_ -> getAllUserEntries >>= return . scanForUid uid)
                         groupEntry <- catch (getGroupEntryForID gid) (\_ -> getAllGroupEntries >>= return . scanForGid gid)
-                        let prefix = codeLetterForFileStatus fileStatus
-                            fmodeStr = (modeString . fileMode) fileStatus
+                        let fmodeStr = (modeString . fileMode) fileStatus
                             sz = toInteger $ fileSize fileStatus
                             ownerStr = userName ownerEntry
                             groupStr = groupName groupEntry
                             numLinks = toInteger $ linkCount fileStatus
-                        return $ (printf "  %s%s %4d %s  %s%8d %s" prefix fmodeStr numLinks ownerStr groupStr sz modTimeStr, filenm, styleForFileStatus fileStatus)
+                        return $ DiredFileInfo {permString = fmodeStr, numLinks = numLinks, owner = ownerStr, grp = groupStr, sizeInBytes = sz, modificationTimeString = modTimeStr}
+
+    shortCalendarTimeToString :: CalendarTime -> String
     shortCalendarTimeToString = formatCalendarTime defaultTimeLocale "%b %d %H:%M"
-    insertDiredLine :: (String, String, Style) -> EditorM ()
-    insertDiredLine (pre, filenm, sty) = do
-        insertNE $ (printf "%s %s\n" pre filenm)
-        p <- getPointE
-        let p1 = p - length filenm - 1
-            p2 = p - 1
-        when (sty /= defaultStyle) $ withBuffer (addOverlayB p1 p2 sty)
 
-    codeLetterForFileStatus fs | isDirectory fs = "d"
-    codeLetterForFileStatus fs | isSymbolicLink fs = "l"
-    codeLetterForFileStatus fs {- | isRegularFile fs -} = "-"
 
-    styleForFileStatus fs | isDirectory fs = Style purple black
-    styleForFileStatus fs | isSymbolicLink fs = Style cyan black
-    styleForFileStatus fs {- | isRegularFile fs -} = defaultStyle
-
-    headStyle = Style yellow black
 
 -- | Needed on Mac OS X 10.4
 scanForUid :: UserID -> [UserEntry] -> UserEntry
@@ -167,11 +237,6 @@ scanForUid uid entries = maybe (UserEntry "?" "" uid 0 "" "" "") id (find ((== u
 -- | Needed on Mac OS X 10.4
 scanForGid :: GroupID -> [GroupEntry] -> GroupEntry
 scanForGid gid entries = maybe (GroupEntry "?" "" gid []) id (find ((== gid) . groupID) entries)
-
--- | Extract the filename portion from a text line
--- This is ugly - The number of 'tails' below must match the number of fields in a line
-fileFromLine :: String -> String
-fileFromLine = unwords . tail . tail . tail . tail . tail . tail . tail . tail . words . stripMark
 
 modeString :: FileMode -> String
 modeString fm = ""
@@ -186,10 +251,6 @@ modeString fm = ""
                 ++ strIfSet "x" otherExecuteMode
     where
     strIfSet s mode = if fm == (fm `unionFileModes` mode) then s else "-"
-
--- | Remove leading two characters
-stripMark :: String -> String
-stripMark = tail . tail
 
 -- Default Filter: omit files ending in '~' or '#' and also '.' and '..'.
 diredOmitFile :: String -> Bool
@@ -213,31 +274,38 @@ diredUnmarkE = diredMarkWithChar ' ' upE
 
 diredLoadE :: EditorM ()
 diredLoadE = do
-    rl <- readLnE
     (Just dir) <- withBuffer getfileB
-    let sel = dir </> (fileFromLine rl)
-    msgE sel
-    isdir <- liftIO $ doesDirectoryExist sel
-    if isdir then diredDirE sel >> return () else fnewE sel
+    (fn, de) <- fileFromPoint
+    let sel = dir </> fn
+    case de of
+            (DiredFile dfi) -> do
+                               exists <- liftIO $ doesFileExist sel
+                               if exists then fnewE sel else msgE $ sel ++ " no longer exists"
+            (DiredDir dfi) -> do
+                              exists <- liftIO $ doesDirectoryExist sel
+                              if exists then diredDirE sel else msgE $ sel ++ " no longer exists"
+            (DiredSymLink dfi dest) -> do
+                                       let target = if isAbsolute dest then dest else dir </> dest
+                                       existsFile <- liftIO $ doesFileExist target
+                                       existsDir <- liftIO $ doesDirectoryExist target
+                                       msgE $ "Following link:"++target
+                                       if existsFile then fnewE target else
+                                          if existsDir then diredDirE target else
+                                             msgE $ target ++ " does not exist"
+            DiredNoInfo -> msgE $ "No File Info for:"++sel
+
+-- | Extract the filename at point. NB this may fail if the buffer has been edited. Maybe use Markers instead.
+fileFromPoint :: EditorM (FilePath, DiredEntry)
+fileFromPoint = do
+    p <- getPointE
+    (DiredState _ _ des pl) <- withBuffer getDynamicB
+    let (_,_,f) = head $ filter (\(p1,p2,_)->p<=p2) pl
+    return (f, des M.! f)
 
 diredUpDirE :: EditorM ()
 diredUpDirE = do
     (Just dir) <- withBuffer getfileB
     diredDirE $ takeDirectory dir
-
-diredRefreshE :: EditorM ()
-diredRefreshE = do
-    -- FIXME - this loses all marks...
-    -- This will be solved in the future by having an underlying data
-    -- structure containing all the directory state.
-    p <- getPointE
-    end <- withBuffer sizeB
-    deleteRegionE (mkRegion 0 end)
-    topE
-    (Just dir) <- withBuffer getfileB
-    diredLoadNewDirE dir
-    gotoPointE p
-    return ()
 
 diredCreateDirE :: EditorM ()
 diredCreateDirE = do
