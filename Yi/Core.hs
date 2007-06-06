@@ -220,6 +220,18 @@ import GHC.Exts ( unsafeCoerce# )
 -- | A 'Direction' is either left or right.
 data Direction = GoLeft | GoRight
 
+-- | Make an action suitable for an interactive run.
+-- UI will be refreshed.
+interactive :: EditorM a -> EditorM a
+interactive action = do 
+  lift $ logPutStrLn ">>>>>>> interactively"
+  UI.prepareAction
+  x <- action
+  UI.scheduleRefresh
+  lift $ logPutStrLn "<<<<<<<"
+  return x
+
+
 nilKeymap :: Keymap
 nilKeymap = do c <- anyEvent
                write $ case eventToChar c of
@@ -282,8 +294,9 @@ startE kernel st commandLineActions = do
         -- | The editor's output main loop. 
         execLoop :: IO ()
         execLoop = do
-            runReaderT UI.scheduleRefresh newSt
-            let loop = sequence_ . map interactive =<< getChanContents outCh
+            let run f = runReaderT f newSt
+            run UI.scheduleRefresh
+            let loop = sequence_ . map run . map interactive =<< getChanContents outCh
             repeatM_ $ (handle handler loop >> logPutStrLn "Execing loop ended")
       
     t1 <- forkIO eventLoop 
