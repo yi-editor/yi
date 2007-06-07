@@ -151,34 +151,63 @@ diredRefreshE = do
     withBuffer $ setDynamicB ds
     -- Display results
     lines <- linesToDisplay
-    ptsList <- mapM insertDiredLine lines
+    let (strss, stys, strs) = unzip3 lines
+        strss' = transpose $ map doPadding $ transpose $ strss
+    ptsList <- mapM insertDiredLine $ zip3 strss' stys strs
     withBuffer $ setDynamicB ds{diredFilePoints=ptsList}
     gotoPointE p
     return ()
     where
     headStyle = Style yellow black
+    doPadding :: [DRStrings] -> [String]
+    doPadding drs = map (pad ((maximum . map drlength) drs)) drs
 
-insertDiredLine :: (String, String, Style, String) -> EditorM (Point, Point, FilePath)
-insertDiredLine (pre, displaynm, sty, filenm) = do
-    insertNE $ (printf "%s %s\n" pre displaynm)
+    pad n (DRPerms s) = s
+    pad n (DRLinks s) = (replicate (max 0 (n - length s)) ' ') ++ s
+    pad n (DROwners s) = s ++ (replicate (max 0 (n - length s)) ' ') ++ " "
+    pad n (DRGroups s) = s ++ (replicate (max 0 (n - length s)) ' ')
+    pad n (DRSizes s) = (replicate (max 0 (n - length s)) ' ') ++ s
+    pad n (DRDates s) = (replicate (max 0 (n - length s)) ' ') ++ s
+    pad n (DRFiles s) = s       -- Don't right-justify the filename
+
+    drlength = length . undrs
+
+-- | Returns a tuple containing the textual region (the end of) which is used for 'click' detection
+--   and the FilePath of the file represented by that textual region
+insertDiredLine :: ([String], Style, String) -> EditorM (Point, Point, FilePath)
+insertDiredLine (fields, sty, filenm) = do
+    insertNE $ (concat $ intersperse " " fields) ++ "\n"
     p <- getPointE
-    let p1 = p - length displaynm - 1
+    let p1 = p - length (last fields) - 1
         p2 = p - 1
     when (sty /= defaultStyle) $ withBuffer (addOverlayB p1 p2 sty)
     return (p1, p2, filenm)
 
+data DRStrings = DRPerms {undrs :: String}
+               | DRLinks {undrs :: String}
+               | DROwners {undrs :: String}
+               | DRGroups {undrs :: String}
+               | DRSizes {undrs :: String}
+               | DRDates {undrs :: String}
+               | DRFiles {undrs :: String}
+
 -- | Return a List of (prefix, fullDisplayNameIncludingSourceAndDestOfLink, style, filename)
-linesToDisplay :: EditorM ([(String, String, Style, String)])
+linesToDisplay :: EditorM ([([DRStrings], Style, String)])
 linesToDisplay = do
     (DiredState _ _ des _) <- withBuffer getDynamicB
     return $ map (uncurry lineToDisplay) (M.assocs des)
     where
-    lineToDisplay k (DiredFile v) = (" -" ++ l v, k, defaultStyle, k)
-    lineToDisplay k (DiredDir v) = (" d" ++ l v, k, Style purple black, k)
-    lineToDisplay k (DiredSymLink v s) = (" l" ++ l v, k ++ " -> " ++ s, Style cyan black, k)
-    lineToDisplay k DiredNoInfo = ("", k++" : Not a file/dir/symlink", defaultStyle, k)
+    lineToDisplay k (DiredFile v)      = (l " -" v ++ [DRFiles k], defaultStyle, k)
+    lineToDisplay k (DiredDir v)       = (l " d" v ++ [DRFiles k], Style purple black, k)
+    lineToDisplay k (DiredSymLink v s) = (l " l" v ++ [DRFiles $ k ++ " -> " ++ s], Style cyan black, k)
+    lineToDisplay k DiredNoInfo        = ([DRFiles $ k ++ " : Not a file/dir/symlink"], defaultStyle, k)
 
-    l v = printf "%s %4d %s  %s%8d %s" (permString v) (numLinks v) (owner v) (grp v) (sizeInBytes v) (modificationTimeString v)
+    l pre v = [DRPerms $ pre ++ permString v,
+               DRLinks $ printf "%4d" (numLinks v),
+               DROwners $ owner v,
+               DRGroups $ grp v,
+               DRSizes $ printf "%8d" (sizeInBytes v),
+               DRDates $ modificationTimeString v]
 
 -- | Write the contents of the supplied directory into the current buffer in dired format
 diredLoadNewDirE :: FilePath -> EditorM ()
