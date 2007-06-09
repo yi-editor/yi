@@ -116,25 +116,25 @@ diredKeymap = do
              ("BACKSP", write $ diredUnmarkE)
                        ] keymap)
 
-diredE :: EditorM ()
+diredE :: YiM ()
 diredE = do
     msgE "Dired..."
     dir <- liftIO getCurrentDirectory
     fnewE dir
 
-diredDirE :: FilePath -> EditorM ()
+diredDirE :: FilePath -> YiM ()
 diredDirE dir = diredDirBufferE dir >> return ()
 
-diredDirBufferE :: FilePath -> EditorM FBuffer
+diredDirBufferE :: FilePath -> YiM FBuffer
 diredDirBufferE dir = do
-                b <- stringToNewBuffer ("dired-"++dir) ""
+                b <- withEditor $ stringToNewBuffer ("dired-"++dir) ""
                 withGivenBuffer b (setfileB dir) -- associate the buffer with the dir
                 switchToBufferE b
                 diredLoadNewDirE dir
-                lift $ setBufferKeymap b (const diredKeymap)
+                setBufferKeymap b (const diredKeymap)
                 return b
 
-diredRefreshE :: EditorM ()
+diredRefreshE :: YiM ()
 diredRefreshE = do
     -- Clear buffer
     end <- withBuffer sizeB
@@ -174,7 +174,7 @@ diredRefreshE = do
 
 -- | Returns a tuple containing the textual region (the end of) which is used for 'click' detection
 --   and the FilePath of the file represented by that textual region
-insertDiredLine :: ([String], Style, String) -> EditorM (Point, Point, FilePath)
+insertDiredLine :: ([String], Style, String) -> YiM (Point, Point, FilePath)
 insertDiredLine (fields, sty, filenm) = do
     insertNE $ (concat $ intersperse " " fields) ++ "\n"
     p <- getPointE
@@ -192,7 +192,7 @@ data DRStrings = DRPerms {undrs :: String}
                | DRFiles {undrs :: String}
 
 -- | Return a List of (prefix, fullDisplayNameIncludingSourceAndDestOfLink, style, filename)
-linesToDisplay :: EditorM ([([DRStrings], Style, String)])
+linesToDisplay :: YiM ([([DRStrings], Style, String)])
 linesToDisplay = do
     (DiredState _ _ des _) <- withBuffer getDynamicB
     return $ map (uncurry lineToDisplay) (M.assocs des)
@@ -210,7 +210,7 @@ linesToDisplay = do
                DRDates $ modificationTimeString v]
 
 -- | Write the contents of the supplied directory into the current buffer in dired format
-diredLoadNewDirE :: FilePath -> EditorM ()
+diredLoadNewDirE :: FilePath -> YiM ()
 diredLoadNewDirE dir = do
     setSynE "none" -- Colours for Dired come from overlays not syntax highlighting
     diredRefreshE
@@ -285,23 +285,23 @@ modeString fm = ""
 diredOmitFile :: String -> Bool
 diredOmitFile = (=~".*~$|.*#$|^\\.$|^\\..$")
 
-diredMarkE :: EditorM ()
+diredMarkE :: YiM ()
 diredMarkE = diredMarkWithChar '*' downE
 
-diredMarkDelE :: EditorM ()
+diredMarkDelE :: YiM ()
 diredMarkDelE = diredMarkWithChar 'D' downE
 
-diredMarkWithChar :: Char -> EditorM () -> EditorM ()
+diredMarkWithChar :: Char -> YiM () -> YiM ()
 diredMarkWithChar c mv = do
     p <- getPointE
     solE >> insertE c >> deleteE
     gotoPointE p
     mv
 
-diredUnmarkE :: EditorM ()
+diredUnmarkE :: YiM ()
 diredUnmarkE = diredMarkWithChar ' ' upE
 
-diredLoadE :: EditorM ()
+diredLoadE :: YiM ()
 diredLoadE = do
     (Just dir) <- withBuffer getfileB
     (fn, de) <- fileFromPoint
@@ -324,19 +324,19 @@ diredLoadE = do
             DiredNoInfo -> msgE $ "No File Info for:"++sel
 
 -- | Extract the filename at point. NB this may fail if the buffer has been edited. Maybe use Markers instead.
-fileFromPoint :: EditorM (FilePath, DiredEntry)
+fileFromPoint :: YiM (FilePath, DiredEntry)
 fileFromPoint = do
     p <- getPointE
     (DiredState _ _ des pl) <- withBuffer getDynamicB
     let (_,_,f) = head $ filter (\(p1,p2,_)->p<=p2) pl
     return (f, des M.! f)
 
-diredUpDirE :: EditorM ()
+diredUpDirE :: YiM ()
 diredUpDirE = do
     (Just dir) <- withBuffer getfileB
     diredDirE $ takeDirectory dir
 
-diredCreateDirE :: EditorM ()
+diredCreateDirE :: YiM ()
 diredCreateDirE = do
     withMinibuffer "Create Dir:" return $ \nm -> do
     (Just dir) <- withBuffer getfileB

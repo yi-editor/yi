@@ -29,6 +29,7 @@ import Yi.Debug
 import Yi.Boot
 import Yi.Keymap.Emacs ()
 import Yi.Keymap.Vim ()
+import Yi.Dired ()
 import qualified Yi.Main 
 
 main :: IO ()
