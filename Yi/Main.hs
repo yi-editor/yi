@@ -21,7 +21,6 @@ module Yi.Main (main, Kernel) where
 
 import Prelude hiding (error)
 
-import qualified Yi.Buffer  as Buffer
 import qualified Yi.Core    as Core
 import qualified Yi.Keymap  as Keymap
 import qualified Yi.Eval    as Eval
@@ -160,9 +159,9 @@ releaseSignals =
 #endif
 
 startConsole :: Keymap.Action
-startConsole = return () -- do FIXME
-  --console <- Core.getBufferWithName "*console*"
-  --lift $ Buffer.setBufferKeymap console (Eval.consoleKeymap <++)
+startConsole = do
+  console <- Core.getBufferWithName "*console*"
+  Keymap.setBufferKeymap console (Eval.consoleKeymap <++)
 
 openScratchBuffer :: Keymap.Action
 openScratchBuffer = do     -- emacs-like behaviour
