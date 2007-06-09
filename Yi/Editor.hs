@@ -38,22 +38,18 @@ import Data.Dynamic
 import Data.IORef
 import qualified Data.Map as M
 
-import Control.Concurrent       ( killThread, ThreadId )
 import Control.Monad.Reader
 import Control.Monad.Writer
 
 ------------------------------------------------------------------------
 
---
 -- | The Editor state
---
 data Editor = Editor {
         buffers       :: !(M.Map Unique FBuffer)    -- ^ all the buffers
        ,windows       :: !(M.Map Unique Window)     -- ^ all the windows
 
        ,curwin        :: !(Maybe Unique)            -- ^ the window with focus
        ,uistyle       :: !UIStyle                   -- ^ ui colours
-       ,reboot        :: (Maybe Editor) -> IO ()    -- ^ our reboot function
        ,dynamic       :: !(M.Map String Dynamic)    -- ^ dynamic components
 
        ,windowfill    :: !Char                      -- ^ char to fill empty window space with
@@ -62,8 +58,8 @@ data Editor = Editor {
        ,yreg          :: !String                    -- ^ yank register
        ,regex         :: !(Maybe (String,Regex))    -- ^ most recent regex
        -- should be moved into dynamic component, perhaps
-       ,editorUpdates :: [(Unique, URAction)]
 
+       ,editorUpdates :: [(Unique, URAction)]
     }
 
 --
@@ -80,7 +76,6 @@ emptyEditor = Editor {
        ,regex        = Nothing
        ,curwin       = Nothing
        ,uistyle      = Yi.Style.uiStyle
-       ,reboot       = const $ return ()
        ,dynamic      = M.empty
 
        ,editorUpdates = []
