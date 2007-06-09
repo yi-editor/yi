@@ -250,8 +250,12 @@ startE :: Kernel -> Maybe Editor -> [Action] -> IO ()
 startE kernel st commandLineActions = do
     logPutStrLn "Starting Core"
 
+    -- Setting up the 1st buffer/window is a bit tricky because most functions assume there exists a "current window"
+    -- or a "current buffer".
+    consoleB <- newB "*console*" ""  --FIXME: don't do this if 'isJust st'
+
     -- restore the old state
-    newSt <- newIORef $ maybe emptyEditor id st
+    newSt <- newIORef $ maybe (emptyEditor consoleB) id st
     let runEd f = runReaderT f newSt
     (inCh, ui) <- runEd UI.start
     outCh <- newChan
@@ -264,9 +268,6 @@ startE kernel st commandLineActions = do
 
     runYi $ do 
 
-      -- Setting up the 1st buffer/window is a bit tricky because most functions assume there exists a "current window"
-      -- or a "current buffer".
-      consoleB <- withEditor $ stringToNewBuffer "*console*" "" 
       consoleW <- withUI $ UI.newWindow False consoleB
       withEditor $ UI.setWindow consoleW
       newBufferE "*messages*" "" >> return ()

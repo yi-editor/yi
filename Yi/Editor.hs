@@ -27,12 +27,11 @@ import Yi.Buffer                ( FBuffer (..), BufferM, newB, keyB, hNewB, runB
 import Text.Regex.Posix.Wrap    ( Regex )
 import Yi.Window
 import Yi.Style                 ( uiStyle, UIStyle )
-import Yi.Event
 import Yi.Debug
 import Yi.Undo
 import Prelude hiding (error)
 
-import Data.List                ( elemIndex )
+import Data.List                ( nub, delete, find )
 import Data.Unique              ( Unique, hashUnique )
 import Data.Dynamic
 import Data.IORef
@@ -45,7 +44,7 @@ import Control.Monad.Writer
 
 -- | The Editor state
 data Editor = Editor {
-        buffers       :: !(M.Map Unique FBuffer)    -- ^ all the buffers
+        buffers       :: ![FBuffer]                 -- ^ all the buffers. Never empty; first buffer is the current one.
        ,windows       :: !(M.Map Unique Window)     -- ^ all the windows
 
        ,curwin        :: !(Maybe Unique)            -- ^ the window with focus
@@ -65,9 +64,9 @@ data Editor = Editor {
 --
 -- | The initial state
 --
-emptyEditor :: Editor
-emptyEditor = Editor {
-        buffers      = M.empty
+emptyEditor :: FBuffer -> Editor
+emptyEditor buf = Editor {
+        buffers      = [buf]
        ,windows      = M.empty
 
        ,windowfill   = ' '
@@ -131,67 +130,46 @@ stringToNewBuffer nm cs = do
 insertBuffer :: FBuffer -> EditorM FBuffer
 insertBuffer b = do
   modifyEditor $ \e@(Editor{buffers=bs}) -> do
-                     let e' = e { buffers = M.insert (keyB b) b bs } :: Editor
-                     return (e', b)
+                     return (e { buffers = nub $ (b:bs) }, b)
 
 deleteBuffer :: FBuffer -> EditorM ()
 deleteBuffer b = do
   lift $ runBuffer b finaliseB
-  modifyEditor_ $ \e-> return e { buffers = M.delete (bkey b) (buffers e)}
+  modifyEditor_ $ \e-> return e { buffers = nub $ delete b $ buffers e}
 
-------------------------------------------------------------------------
---
--- | return the buffers we have
--- TODO we need to order the buffers some how.
---
+-- | Return the buffers we have
 getBuffers :: EditorM [FBuffer]
-getBuffers = readEditor $ M.elems . buffers
+getBuffers = readEditor buffers
 
-
---
 -- | Find buffer with this key
---
 findBufferWith :: Editor -> Unique -> FBuffer
 findBufferWith e k =
-    case M.lookup k (buffers e) of
+    case find ((== k) . keyB) (buffers e) of
         Just b  -> b
         Nothing -> error "Editor.findBufferWith: no buffer has this key"
 
 -- | Find buffer with this name
 findBufferWithName :: Editor -> String -> [FBuffer]
-findBufferWithName e n = filter (\b -> name b == n) (M.elems $ buffers e)
+findBufferWithName e n = filter (\b -> name b == n) (buffers e)
 
---
--- | Safely lookup buffer using it's key.
---
-getBufferWith :: Unique -> EditorM FBuffer
-getBufferWith u = readEditor $ \e -> findBufferWith (e :: Editor) u
 
 ------------------------------------------------------------------------
 
 -- | Return the next buffer
 nextBuffer :: EditorM FBuffer
-nextBuffer = shiftBuffer (+1)
+nextBuffer = shiftBuffer 1
 
 -- | Return the prev buffer
 prevBuffer :: EditorM FBuffer
-prevBuffer = shiftBuffer (subtract 1)
-
--- | Return the nth buffer in the buffer list, module buffer count
-bufferAt :: Int -> EditorM FBuffer
-bufferAt n = shiftBuffer (const n)
+prevBuffer = shiftBuffer (negate 1)
 
 -- | Return the buffer using a function applied to the current window's
 -- buffer's index.
-shiftBuffer :: (Int -> Int) -> EditorM FBuffer
-shiftBuffer f = readEditor $ \e ->
-    let bs  = M.elems $ buffers (e :: Editor)
-        win = findWindowWith e (curwin e)
-        buf = findBufferWith e (bufkey win)
-    in case elemIndex buf bs of
-        Nothing -> error "Editor: current buffer has been lost."
-        Just i -> let l = length bs in bs !! ((f i) `mod` l)
-
+shiftBuffer :: Int -> EditorM FBuffer
+shiftBuffer shift = readEditor $ \e ->
+    let bs  = buffers e
+        n   = shift `mod` length bs
+    in (bs !! n)
 
 ------------------------------------------------------------------------
     
@@ -243,6 +221,7 @@ getWindowOf e = case curwin e of
 sizeWindows :: EditorM Int
 sizeWindows = readEditor $ \e -> length $ M.elems (windows e)
 
+
 --
 -- | Find the window with this key
 --
@@ -254,7 +233,7 @@ findWindowWith e (Just k) =
             Nothing -> error $ "Editor: no window has key #" ++ (show (hashUnique k))
 
 ------------------------------------------------------------------------
---
+
 -- | Perform action with current window
 withWindow0 :: (Window -> IO a) -> EditorM a
 withWindow0 f = modifyEditor $ \e -> do
@@ -271,7 +250,7 @@ withGivenBuffer0 b f = modifyEditor $ \e -> do
 
 withBuffer0 :: BufferM a -> EditorM a
 withBuffer0 f = do 
-  b <- readEditor $ \e -> findBufferWith e (bufkey $ findWindowWith e (curwin e))
+  b <- readEditor $ \e -> head $ buffers e
   withGivenBuffer0 b f                                                
 
 -- | Return the current buffer

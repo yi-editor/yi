@@ -28,9 +28,7 @@ import Yi.Editor hiding (readEditor)
 import Yi.Debug
 import Yi.Buffer
 import Yi.Window
-import qualified Data.Map as M
 import Data.List
-import Control.Monad.State
 import Yi.Keymap
 import Control.Monad.Reader
 
@@ -84,7 +82,7 @@ killBufferAndWindows n = do
         killB b = do killBufferWindows b
                      deleteBufferKeymap b
                      lift $ runBuffer b finaliseB
-                     withEditor $ modifyEditor_ $ \e -> return $ e { buffers = M.delete (keyB b) (buffers e) }
+                     withEditor $ deleteBuffer b
 
 -- | Split the current window, opening a second window onto this buffer.
 -- Windows smaller than 3 lines cannot be split.
