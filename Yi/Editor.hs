@@ -53,7 +53,6 @@ data Editor = Editor {
 
        ,curwin        :: !(Maybe Unique)            -- ^ the window with focus
        ,uistyle       :: !UIStyle                   -- ^ ui colours
-       ,threads       :: [ThreadId]                 -- ^ all our threads
        ,reboot        :: (Maybe Editor) -> IO ()    -- ^ our reboot function
        ,dynamic       :: !(M.Map String Dynamic)    -- ^ dynamic components
 
@@ -81,7 +80,6 @@ emptyEditor = Editor {
        ,regex        = Nothing
        ,curwin       = Nothing
        ,uistyle      = Yi.Style.uiStyle
-       ,threads      = []
        ,reboot       = const $ return ()
        ,dynamic      = M.empty
 
@@ -300,13 +298,6 @@ getBuffer = withBuffer0 ask
 
 -- ---------------------------------------------------------------------
 
---
--- | Shut down all of our threads. Should free buffers etc.
---
-shutdown :: EditorM ()
-shutdown = do ts <- readEditor threads
-              lift $ mapM_ killThread ts
-              modifyEditor_ $ const (return emptyEditor)
 
 
 

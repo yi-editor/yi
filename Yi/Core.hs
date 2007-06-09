@@ -257,8 +257,9 @@ startE kernel st commandLineActions = do
     outCh <- newChan
     startKm <- newIORef nilKeymap
     startModules <- newIORef []
+    startThreads <- newIORef []
     keymaps <- newIORef M.empty
-    let yi = Yi newSt ui inCh outCh startKm keymaps kernel startModules
+    let yi = Yi newSt ui startThreads inCh outCh startKm keymaps kernel startModules
         runYi f = runReaderT f yi
 
     runYi $ do 
@@ -301,7 +302,7 @@ startE kernel st commandLineActions = do
       
     t1 <- forkIO eventLoop 
     t2 <- forkIO execLoop
-    modifyIORef newSt $ \e -> e { threads = t1 : t2 : threads e }
+    runYi $ modifyRef threads (\ts -> t1 : t2 : ts)
 
     UI.main newSt ui -- transfer control to UI: GTK must run in the main thread, or else it's not happy.
                 

@@ -59,6 +59,7 @@ data BufferKeymap = BufferKeymap
 
 data Yi = Yi {yiEditor :: IORef Editor,
               yiUi :: UI,
+              threads       :: IORef [ThreadId],                 -- ^ all our threads
               input         :: Chan Event,                 -- ^ input stream
               output        :: Chan Action,                -- ^ output stream
               defaultKeymap :: IORef Keymap,
@@ -214,3 +215,9 @@ catchJustE p c h = ReaderT (\r -> catchJust p (runReaderT c r) (\b -> runReaderT
 
 handleJustE :: (Exception -> Maybe b) -> (b -> YiM a) -> YiM a -> YiM a
 handleJustE p h c = catchJustE p c h
+
+-- | Shut down all of our threads. Should free buffers etc.
+shutdown :: YiM ()
+shutdown = do ts <- readRef threads
+              lift $ mapM_ killThread ts
+
