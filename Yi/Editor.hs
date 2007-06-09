@@ -162,12 +162,6 @@ findBufferWithName :: Editor -> String -> [FBuffer]
 findBufferWithName e n = filter (\b -> name b == n) (M.elems $ buffers e)
 
 --
--- | Find the buffer connected to this window
---
-win2buf :: Window -> Editor -> FBuffer
-win2buf w e = findBufferWith e (bufkey w)
-
---
 -- | Safely lookup buffer using it's key.
 --
 getBufferWith :: Unique -> EditorM FBuffer
@@ -282,19 +276,12 @@ withBuffer0 f = do
   b <- readEditor $ \e -> findBufferWith e (bufkey $ findWindowWith e (curwin e))
   withGivenBuffer0 b f                                                
 
--- | Perform action with current window's buffer
-withBuffer' :: (FBuffer -> IO a) -> EditorM a
-withBuffer' f = withWindow0 (const f)
-
 -- | Return the current buffer
 getBuffer :: EditorM FBuffer
 getBuffer = withBuffer0 ask
 
 
 -- ---------------------------------------------------------------------
-
-
-
 
 type EditorM = ReaderT (IORef Editor) IO
 
