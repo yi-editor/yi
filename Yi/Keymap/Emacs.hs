@@ -147,19 +147,19 @@ keymap = selfInsertKeymap +++ makeProcess
 ----------------------------
 -- autoindent
 
-savingExcursion :: EditorM a -> EditorM a
+savingExcursion :: YiM a -> YiM a
 savingExcursion f = do
     p <- getPointE
     res <- f
     gotoPointE p
     return res
 
-getPreviousLineE :: EditorM String
+getPreviousLineE :: YiM String
 getPreviousLineE = savingExcursion $ do
                      upE
                      readLnE
 
-fetchPreviousIndentsE :: EditorM [Int]
+fetchPreviousIndentsE :: YiM [Int]
 fetchPreviousIndentsE = do
   p0 <- getPointE
   upE
@@ -170,7 +170,7 @@ fetchPreviousIndentsE = do
     is <- fetchPreviousIndentsE
     return (i:is)
     
-cycleIndentsE :: [Int] -> EditorM ()
+cycleIndentsE :: [Int] -> YiM ()
 cycleIndentsE indents = do
   l <- readLnE
   let curIndent = indentOf l
@@ -178,7 +178,7 @@ cycleIndentsE indents = do
   msgE $ show (below, above)
   indentToE $ last (above ++ below)
 
-autoIndentE :: EditorM ()
+autoIndentE :: YiM ()
 autoIndentE = do
   is <- savingExcursion fetchPreviousIndentsE
   pl <- getPreviousLineE
@@ -193,7 +193,7 @@ spacingOf = sum . map spacingOfChar
     where spacingOfChar '\t' = 8
           spacingOfChar _ = 1
 
-indentToE :: Int -> EditorM ()
+indentToE :: Int -> YiM ()
 indentToE level = do 
   l <- readLnE
   solE
@@ -229,11 +229,11 @@ isearchProcess = do
 ----------------------------
 -- query-replace
 
-queryReplaceE :: EditorM ()
+queryReplaceE :: YiM ()
 queryReplaceE = do
     withMinibuffer "Replace:" return $ \replaceWhat -> do
     withMinibuffer "With:" return $ \replaceWith -> do
-    b <- getBuffer
+    b <- withEditor $ getBuffer
     let replaceBindings = [("n", write $ qrNextE b replaceWhat),
                            ("y", write $ qrReplaceOneE b replaceWhat replaceWith),
                            ("q", write $ closeE),
@@ -316,7 +316,7 @@ commonPrefix strings
           prefix = head heads
 -- for an alternative implementation see GHC's InteractiveUI module.
 
-completeInList :: String -> [String] -> EditorM String
+completeInList :: String -> [String] -> YiM String
 completeInList s l 
     | null filtered = msgE "No match" >> return s
     | prefix /= s = return prefix
@@ -328,12 +328,12 @@ completeInList s l
           isSingleton [_] = True
           isSingleton _ = False
 
-completeBufferName :: String -> EditorM String
+completeBufferName :: String -> YiM String
 completeBufferName s = do
-  bs <- getBuffers
+  bs <- withEditor getBuffers
   completeInList s (map name bs)
 
-completeFileName :: String -> EditorM String
+completeFileName :: String -> YiM String
 completeFileName s0 = do
   curDir <- lift $ getCurrentDirectory
   homeDir <- lift $ getHomeDirectory
@@ -347,12 +347,12 @@ completeFileName s0 = do
   fs <- lift $ mapM fixTrailingPathSeparator files
   completeInList s $ map (sDir </>) fs
 
-completeFunctionName :: String -> EditorM String
+completeFunctionName :: String -> YiM String
 completeFunctionName s = do
   names <- getNamesInScopeE
   completeInList s names
 
-completionFunction :: (String -> EditorM String) -> EditorM ()
+completionFunction :: (String -> YiM String) -> YiM ()
 completionFunction f = do
   p <- getPointE
   text <- readNM 0 p
@@ -363,14 +363,14 @@ completionFunction f = do
   deleteNE p
   insertNE compl
 
-withMinibuffer :: String -> (String -> EditorM String) -> (String -> Action) -> Action
+withMinibuffer :: String -> (String -> YiM String) -> (String -> Action) -> Action
 withMinibuffer prompt completer act = do 
-  initialBuffer <- getBuffer
-  Just initialWindow <- getWindow
+  initialBuffer <- withEditor getBuffer
+  Just initialWindow <- withEditor getWindow
   let innerAction :: Action
       -- ^ Read contents of current buffer (which should be the minibuffer), and
       -- apply it to the desired action
-      closeMinibuffer = do b <- getBuffer; closeE; deleteBuffer b; UI.setWindow initialWindow
+      closeMinibuffer = do b <- withEditor getBuffer; closeE; withEditor $ deleteBuffer b; withEditor $ UI.setWindow initialWindow
       innerAction = do historyFinish
                        lineString <- readAllE
                        closeMinibuffer
@@ -400,11 +400,11 @@ switchBufferE = withMinibuffer "switch to buffer:" completeBufferName switchToBu
 
 killBufferE :: Action
 killBufferE = withMinibuffer "kill buffer:" completeBufferName $ \bufName -> do
-                nextB <- nextBuffer
-                b <- getBuffer
+                nextB <- withEditor nextBuffer
+                b <- withEditor getBuffer
                 b' <- if null bufName then return b else getBufferWithName bufName
                 switchToBufferE nextB
-                deleteBuffer b'
+                withEditor $ deleteBuffer b'
 
 -- | Create a binding processor from 'kmap'.
 makeProcess :: KList -> KProc ()

@@ -24,7 +24,7 @@ module Yi.CoreUI where
 
 import Prelude hiding (error)
 import Yi.UI
-import Yi.Editor
+import Yi.Editor hiding (readEditor)
 import Yi.Debug
 import Yi.Buffer
 import Yi.Window
@@ -32,46 +32,56 @@ import qualified Data.Map as M
 import Data.List
 import Control.Monad.State
 import Yi.Keymap
+import Yi.Kernel
+import Control.Concurrent.Chan
+import Control.Monad.Reader
+
+import Data.IORef
+
+-----------------------------------------------------------
+
+
+--------------------------------------------------------
 
 
 -- | Rotate focus to the next window
-nextWindow :: EditorM ()
+nextWindow :: YiM ()
 nextWindow = shiftFocus (+1)
 
 -- | Rotate focus to the previous window
-prevWindow :: EditorM ()
+prevWindow :: YiM ()
 prevWindow = shiftFocus (subtract 1)
 
 -- | Shift focus to the nth window, modulo the number of windows
-windowAt :: Int -> EditorM ()
+windowAt :: Int -> YiM ()
 windowAt n = shiftFocus (const n)
 
 -- | Set the new current window using a function applied to the old
 -- window's index
-shiftFocus :: (Int -> Int) -> EditorM ()
+shiftFocus :: (Int -> Int) -> YiM ()
 shiftFocus f = do
   ws <- readEditor getWindows
-  mw <- getWindow
+  mw <- withEditor $ getWindow
   case mw of
     Just w | Just i <- elemIndex w ws
-          -> setWindow (ws !! ((f i) `mod` (length ws)))
+          -> withEditor $ setWindow (ws !! ((f i) `mod` (length ws)))
     _     -> error "Editor: current window has been lost."
 
 -- | Delete the focused window
-deleteThisWindow :: EditorM ()
+deleteThisWindow :: YiM ()
 deleteThisWindow = do
   lift $ logPutStrLn "deleting current window"
-  getWindow >>= deleteWindow  
+  withEditor getWindow >>= \w -> withUI (deleteWindow w)
 
 -- | Close any windows onto the buffer b, then free the buffer
-killBufferWindows :: FBuffer -> EditorM ()
-killBufferWindows b = do
+killBufferWindows :: FBuffer -> YiM ()
+killBufferWindows b = do 
   lift $ logPutStrLn $ "KillBufferWindows: " ++ name b
   ws <- readEditor getWindows
-  mapM_ deleteWindow $ map Just $ filter (\w -> bufkey w == keyB b) ws
+  withUI $ \u -> mapM_ (flip deleteWindow u)  $ map Just $ filter (\w -> bufkey w == keyB b) ws
 
 -- | Close any windows onto the buffer associated with name 'n', then free the buffer
-killBufferAndWindows :: String -> EditorM ()
+killBufferAndWindows :: String -> YiM ()
 killBufferAndWindows n = do
   bs <- readEditor $ \e -> findBufferWithName e n
   case bs of
@@ -79,24 +89,29 @@ killBufferAndWindows n = do
     _ -> mapM_ killB bs
     where
         killB b = do killBufferWindows b
+                     deleteBufferKeymap b
                      lift $ runBuffer b finaliseB
-                     modifyEditor_ $ \e -> return $ e { buffers = M.delete (keyB b) (buffers e) }
+                     withEditor $ modifyEditor_ $ \e -> return $ e { buffers = M.delete (keyB b) (buffers e) }
 
 -- | Split the current window, opening a second window onto this buffer.
 -- Windows smaller than 3 lines cannot be split.
-splitWindow :: EditorM ()
-splitWindow = getBuffer >>= newWindow False >>= setWindow
+splitWindow :: YiM ()
+splitWindow = do 
+  b <- withEditor $ getBuffer
+  w <- withUI $ newWindow False b
+  withEditor $ setWindow w
 
 -- | Switch focus to some other window. If none is available, create one.
-shiftOtherWindow :: EditorM ()
+shiftOtherWindow :: YiM ()
 shiftOtherWindow = do
   ws <- readEditor getWindows
   if length ws == 1 then splitWindow else nextWindow
 
 
-withOtherWindow :: EditorM () -> EditorM ()
+withOtherWindow :: YiM () -> YiM ()
 withOtherWindow f = do
-  Just w <- getWindow
+  Just w <- withEditor $ getWindow
   shiftOtherWindow
   f
-  setWindow w
+  withEditor $ setWindow w
+

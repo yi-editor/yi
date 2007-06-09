@@ -1,5 +1,3 @@
--- -fglasgow-exts for deriving Typeable
---
 -- Copyright (c) Tuomo Valkonen 2004.
 -- Copyright (c) Don Stewart 2004-5. http://www.cse.unsw.edu.au/~dons
 --
@@ -35,10 +33,10 @@ module Yi.Core (
         Direction (..),
         -- * Construction and destruction
         startE,         -- :: Kernel -> Maybe Editor -> [Action] -> IO ()
-        emptyE,         -- :: Action
-        runE,           -- :: String -> Action
+        --emptyE,         -- :: Action
+        --runE,           -- :: String -> Action
         quitE,          -- :: Action
-        rebootE,        -- :: Action
+        --rebootE,        -- :: Action
         reloadE,        -- :: Action
         reconfigE,
         loadE,
@@ -187,17 +185,19 @@ import Yi.Region
 import Yi.Window
 import Yi.String
 import Yi.Process           ( popen )
-import Yi.Editor
+import Yi.Editor hiding (readEditor)
 import Yi.CoreUI
 import Yi.Kernel
 import Yi.Event
 import Yi.Keymap
 import Yi.Interact (anyEvent)
+import Yi.Monad
 import qualified Yi.Editor as Editor
 import qualified Yi.Style as Style
 import qualified Yi.UI as UI
 
 import Data.Maybe
+import qualified Data.Map as M
 import Data.List
 import Data.IORef
 
@@ -222,15 +222,14 @@ data Direction = GoLeft | GoRight
 
 -- | Make an action suitable for an interactive run.
 -- UI will be refreshed.
-interactive :: EditorM a -> EditorM a
+interactive :: YiM a -> YiM a
 interactive action = do 
   lift $ logPutStrLn ">>>>>>> interactively"
-  UI.prepareAction
+  withUI UI.prepareAction
   x <- action
-  UI.scheduleRefresh
+  withUI UI.scheduleRefresh
   lift $ logPutStrLn "<<<<<<<"
   return x
-
 
 nilKeymap :: Keymap
 nilKeymap = do c <- anyEvent
@@ -254,21 +253,27 @@ startE kernel st commandLineActions = do
 
     -- restore the old state
     newSt <- newIORef $ maybe emptyEditor id st
+    let runEd f = runReaderT f newSt
+    (inCh, ui) <- runEd UI.start
     outCh <- newChan
-    flip runReaderT newSt $ do 
-      modifyEditor_ $ \e -> return e { output = outCh, 
-                                       editorKernel = kernel, 
-                                       defaultKeymap = nilKeymap }
-      UI.start  
+    startKm <- newIORef nilKeymap
+    startModules <- newIORef []
+    keymaps <- newIORef M.empty
+    let yi = Yi newSt ui inCh outCh startKm keymaps kernel startModules
+        runYi f = runReaderT f yi
+
+    runYi $ do 
 
       -- Setting up the 1st buffer/window is a bit tricky because most functions assume there exists a "current window"
       -- or a "current buffer".
-      stringToNewBuffer "*console*" "" >>= UI.newWindow False >>= UI.setWindow
+      consoleB <- withEditor $ stringToNewBuffer "*console*" "" 
+      consoleW <- withUI $ UI.newWindow False consoleB
+      withEditor $ UI.setWindow consoleW
       newBufferE "*messages*" "" >> return ()
 
       withKernel $ \k -> do
         dflags <- getSessionDynFlags k
-        setSessionDynFlags k dflags { GHC.log_action = ghcErrorReporter newSt }
+        setSessionDynFlags k dflags { GHC.log_action = ghcErrorReporter yi }
 
       -- run user configuration
       loadE "YiConfig"
@@ -279,78 +284,47 @@ startE kernel st commandLineActions = do
 
     logPutStrLn "Starting event handler"
     let
-        handler e = flip runReaderT newSt $ errorE (show e)
+        handler e = runYi $ errorE (show e)
         -- | The editor's input main loop. 
         -- Read key strokes from the ui and dispatches them to the buffer with focus.
         eventLoop :: IO ()
         eventLoop = do
-            ch <- liftM input $ readIORef newSt 
-            let run = mapM_ dispatch =<< getChanContents ch
+            let run = mapM_ (\ev -> runYi (dispatch ev)) =<< getChanContents inCh
             repeatM_ $ (handle handler run >> logPutStrLn "Dispatching loop ended")
                      
-            where
-              dispatch action = flip runReaderT newSt $ withBuffer' $ \b -> writeChan (bufferInput b) action
 
         -- | The editor's output main loop. 
         execLoop :: IO ()
         execLoop = do
-            let run f = runReaderT f newSt
-            run UI.scheduleRefresh
-            let loop = sequence_ . map run . map interactive =<< getChanContents outCh
+            runYi $ withUI UI.scheduleRefresh
+            let loop = sequence_ . map runYi . map interactive =<< getChanContents outCh
             repeatM_ $ (handle handler loop >> logPutStrLn "Execing loop ended")
       
     t1 <- forkIO eventLoop 
     t2 <- forkIO execLoop
     modifyIORef newSt $ \e -> e { threads = t1 : t2 : threads e }
 
-    UI.main newSt -- transfer control to UI: GTK must run in the main thread, or else it's not happy.
+    UI.main newSt ui -- transfer control to UI: GTK must run in the main thread, or else it's not happy.
                 
 changeKeymapE :: Keymap -> Action
 changeKeymapE km = do
-  modifyEditor_ $ \e -> return e { defaultKeymap = km }
-  bs <- getBuffers
-  lift $ mapM_ restartBufferThread bs
-
-
--- ---------------------------------------------------------------------
--- | @emptyE@ and @runE@ are for automated testing purposes. The former
--- initialises the editor state, and returns, enabling the tester to
--- invoke various core commands from a program. The latter runs the
--- editor with string as input, and is useful for testing keymaps.
--- emptyE takes no input -- the ui blocks on stdin.
---
-emptyE :: Action
-emptyE = modifyEditor_ $ const $ return $ emptyEditor
-    -- need to get it into a state where we can just run core commands
-    -- to make it reinitialisable, lets blank out the state
-    -- make up an abitrary screen size
-
-    -- no ui thread
-    -- no eventloop
-
--- for testing keymaps:
-runE :: String -> Action
-runE = undefined
+  modifyRef defaultKeymap (const km)
+  bs <- withEditor getBuffers
+  mapM_ restartBufferThread bs
+  return ()
 
 -- ---------------------------------------------------------------------
 -- Meta operations
 
 -- | Quit.
 quitE :: Action
-quitE = withUI UI.end
+quitE = withUI' UI.end
 
--- | Reboot (!). Reboot the entire editor, reloading the Yi core.
-rebootE :: Action
-rebootE = do
-    e  <- readEditor id
-    fn <- readEditor reboot
-    Editor.shutdown
-    lift $ fn (Just e)
 
 -- | (Re)compile and reload the user's config files
-reloadE :: EditorM [String]
+reloadE :: YiM [String]
 reloadE = do
-  modules <- readEditor editorModules
+  modules <- readRef editorModules
   withKernel $ \kernel -> do
     targets <- mapM (\m -> guessTarget kernel m Nothing) modules
     setTargets kernel targets
@@ -369,7 +343,7 @@ reloadE = do
 
 -- | Reset the size, and force a complete redraw
 refreshE :: Action
-refreshE = UI.refreshAll
+refreshE = withUI UI.refreshAll
 
 -- | Do nothing
 nopE :: Action
@@ -377,7 +351,7 @@ nopE = return ()
 
 -- | Suspend the program
 suspendE :: Action
-suspendE = UI.suspend
+suspendE = withUI UI.suspend
 
 -- ---------------------------------------------------------------------
 -- Movement operations
@@ -421,11 +395,11 @@ gotoPointE :: Int -> Action
 gotoPointE p = withBuffer $ moveTo p
 
 -- | Get the current point
-getPointE :: EditorM Int
+getPointE :: YiM Int
 getPointE = withBuffer pointB
 
 -- | Get the current line and column number
-getLineAndColE :: EditorM (Int, Int)
+getLineAndColE :: YiM (Int, Int)
 getLineAndColE = withBuffer lineAndColumn
     where lineAndColumn :: BufferM (Int, Int)
 	  lineAndColumn = 
@@ -436,19 +410,19 @@ getLineAndColE = withBuffer lineAndColumn
 ------------------------------------------------------------------------
 
 -- | Is the point at the start of the line
-atSolE :: EditorM Bool
+atSolE :: YiM Bool
 atSolE = withBuffer atSol
 
 -- | Is the point at the end of the line
-atEolE :: EditorM Bool
+atEolE :: YiM Bool
 atEolE = withBuffer atEol
 
 -- | Is the point at the start of the file
-atSofE :: EditorM Bool
+atSofE :: YiM Bool
 atSofE = withBuffer atSof
 
 -- | Is the point at the end of the file
-atEofE :: EditorM Bool
+atEofE :: YiM Bool
 atEofE = withBuffer atEof
 
 ------------------------------------------------------------------------
@@ -456,28 +430,28 @@ atEofE = withBuffer atEof
 -- | Scroll up 1 screen
 upScreenE :: Action
 upScreenE = do
-    (Just w) <- getWindow
+    (Just w) <- withEditor getWindow
     withBuffer (gotoLnFrom (- (height w - 1)))
     solE
 
 -- | Scroll up n screens
 upScreensE :: Int -> Action
 upScreensE n = do
-    (Just w) <- getWindow
+    (Just w) <- withEditor getWindow
     withBuffer (gotoLnFrom (- (n * (height w - 1))))
     solE
 
 -- | Scroll down 1 screen
 downScreenE :: Action
 downScreenE = do
-    (Just w) <- getWindow
+    (Just w) <- withEditor getWindow
     withBuffer (gotoLnFrom (height w - 1))
     return ()
 
 -- | Scroll down n screens
 downScreensE :: Int -> Action
 downScreensE n = do
-    (Just w) <- getWindow
+    (Just w) <- withEditor getWindow
     withBuffer (gotoLnFrom (n * (height w - 1)))
     return ()
 
@@ -560,32 +534,32 @@ deleteRegionE r = withBuffer $
 
 
 -- | Read the char under the cursor
-readE :: EditorM Char
+readE :: YiM Char
 readE = withBuffer readB
 
 
 -- | Read an arbitrary part of the buffer
-readRegionE :: Region -> EditorM String
+readRegionE :: Region -> YiM String
 readRegionE r = readNM (regionStart r) (regionEnd r)
 
 -- | Read the line the point is on
-readLnE :: EditorM String
+readLnE :: YiM String
 readLnE = withBuffer $ do
     i <- indexOfSol
     j <- indexOfEol
     nelemsB (j-i) i
 
 -- | Read from - to
-readNM :: Int -> Int -> EditorM String
+readNM :: Int -> Int -> YiM String
 readNM i j = withBuffer $ nelemsB (j-i) i
 
 -- | Return the contents of the buffer as a string (note that this will
 -- be very expensive on large (multi-megabyte) buffers)
-readAllE :: EditorM String
+readAllE :: YiM String
 readAllE = withBuffer elemsB
 
 -- | Read from point to end of line
-readRestOfLnE :: EditorM String
+readRestOfLnE :: YiM String
 readRestOfLnE = withBuffer $ do
     p <- pointB
     j <- indexOfEol
@@ -620,10 +594,10 @@ redoE = withBuffer redo
 
 -- | Put string into yank register
 setRegE :: String -> Action
-setRegE s = modifyEditor_ $ \e -> return e { yreg = s }
+setRegE s = withEditor $  modifyEditor_ $ \e -> return e { yreg = s }
 
 -- | Return the contents of the yank register
-getRegE :: EditorM String
+getRegE :: YiM String
 getRegE = readEditor yreg
 
 
@@ -639,7 +613,7 @@ unsetMarkE :: Action
 unsetMarkE = withBuffer $ unsetMarkB
 
 -- | Get the current buffer mark
-getMarkE :: EditorM Int
+getMarkE :: YiM Int
 getMarkE = withBuffer $ do m <- getSelectionMarkB; getMarkPointB m
 
 -- | Exchange point & mark.
@@ -650,13 +624,13 @@ exchangePointAndMarkE = do m <- getMarkE
                            setMarkE p
                            gotoPointE m
 
-getBookmarkE :: String -> EditorM Mark
+getBookmarkE :: String -> YiM Mark
 getBookmarkE nm = withBuffer $ getMarkB (Just nm)
 
 setBookmarkPointE :: Mark -> Point -> Action
 setBookmarkPointE bookmark pos = withBuffer $ setMarkPointB bookmark pos
 
-getBookmarkPointE :: Mark -> EditorM Point
+getBookmarkPointE :: Mark -> YiM Point
 getBookmarkPointE bookmark = withBuffer $ getMarkPointB bookmark
 
 -- ---------------------------------------------------------------------
@@ -670,14 +644,14 @@ getBookmarkPointE bookmark = withBuffer $ getMarkPointB bookmark
 --
 
 -- | Retrieve a value from the extensible state
-getDynamic :: Initializable a => EditorM a
+getDynamic :: Initializable a => YiM a
 getDynamic = do 
   ps <- readEditor dynamic
   return $ getDynamicValue ps
 
 -- | Insert a value into the extensible state, keyed by its type
 setDynamic :: Initializable a => a -> Action
-setDynamic x = modifyEditor_ $ \e ->
+setDynamic x = withEditor $ modifyEditor_ $ \e ->
         return e { dynamic = setDynamicValue x (dynamic e) }
 
 ------------------------------------------------------------------------
@@ -686,7 +660,7 @@ setDynamic x = modifyEditor_ $ \e ->
 --
 -- Todo: varients with marks?
 --
-pipeE :: String -> String -> EditorM String
+pipeE :: String -> String -> YiM String
 pipeE cmd inp = do
     let (f:args) = split " " cmd
     (out,_err,_) <- lift $ popen f args (Just inp)
@@ -696,8 +670,9 @@ pipeE cmd inp = do
 
 -- | Set the cmd buffer, and draw message at bottom of screen
 msgE :: String -> Action
-msgE s = do modifyEditor_ $ \e -> do
-              UI.setCmdLine (ui e) s
+msgE s = do 
+  withUI' $ UI.setCmdLine s
+  withEditor $ modifyEditor_ $ \e -> do
               -- also show in the messages buffer, so we don't loose any message
               let [b] = findBufferWithName e "*messages*"
               runBuffer b $ do moveTo =<< sizeB; insertN (s ++ "\n")
@@ -727,7 +702,7 @@ data BufferFileInfo =
 		   }
 
 -- | File info, size in chars, line no, col num, char num, percent
-bufInfoE :: EditorM BufferFileInfo
+bufInfoE :: YiM BufferFileInfo
 bufInfoE = withBuffer $ do
     s <- sizeB
     p <- pointB
@@ -746,31 +721,31 @@ bufInfoE = withBuffer $ do
     return bufInfo
 
 -- | Maybe a file associated with this buffer
-fileNameE :: EditorM (Maybe FilePath)
+fileNameE :: YiM (Maybe FilePath)
 fileNameE = withBuffer getfileB
 
 -- | Name of this buffer
-bufNameE :: EditorM String
+bufNameE :: YiM String
 bufNameE = withBuffer $ nameB
 
 -- | A character to fill blank lines in windows with. Usually '~' for
 -- vi-like editors, ' ' for everything else
 setWindowFillE :: Char -> Action
-setWindowFillE c = modifyEditor_ $ \e -> return $ e { windowfill = c }
+setWindowFillE c = withEditor $ modifyEditor_ $ \e -> return $ e { windowfill = c }
 
 -- | Sets the window style.
 setWindowStyleE :: Style.UIStyle -> Action
-setWindowStyleE sty = modifyEditor_ $ \e -> return $ e { uistyle = sty }
+setWindowStyleE sty = withEditor $ modifyEditor_ $ \e -> return $ e { uistyle = sty }
 
 
 -- | Attach the next buffer in the buffer list
 -- to the current window.
 nextBufW :: Action
-nextBufW = Editor.nextBuffer >>= switchToBufferE
+nextBufW = withEditor Editor.nextBuffer >>= switchToBufferE
 
 -- | edit the previous buffer in the buffer list
 prevBufW :: Action
-prevBufW = Editor.prevBuffer >>= switchToBufferE
+prevBufW = withEditor Editor.prevBuffer >>= switchToBufferE
 
 -- | If file exists, read contents of file into a new buffer, otherwise
 -- creating a new empty buffer. Replace the current window with a new
@@ -781,7 +756,7 @@ prevBufW = Editor.prevBuffer >>= switchToBufferE
 --
 fnewE  :: FilePath -> Action
 fnewE f = do
-    bufs <- getBuffers
+    bufs <- withEditor getBuffers
     bufsWithThisFilename <- liftIO $ filterM (\b -> readMVar (file b) >>= return . (==Just f)) bufs
     b <- case bufsWithThisFilename of
              [] -> do
@@ -792,13 +767,16 @@ fnewE f = do
     withGivenBuffer b $ setfileB f        -- associate buffer with file
     switchToBufferE b
     where
-    newBufferForPath :: Bool -> Bool -> EditorM FBuffer
-    newBufferForPath True _      = hNewBuffer f                                 -- Load the file into a new buffer
+    newBufferForPath :: Bool -> Bool -> YiM FBuffer
+    newBufferForPath True _      = do b <- withEditor $ hNewBuffer f                 -- Load the file into a new buffer
+                                      return b
     newBufferForPath False True  = do           -- Open the dir in Dired
             loadE "Yi.Dired"
             execE $ "Yi.Dired.diredDirBufferE " ++ show f
-            getBuffer
-    newBufferForPath False False = stringToNewBuffer f []                       -- Create new empty buffer
+            withEditor getBuffer
+    newBufferForPath False False = do b <- withEditor $ stringToNewBuffer f []                       -- Create new empty buffer
+                                      return b
+
 
 -- | Revert to the contents of the file on disk
 revertE :: Action
@@ -823,23 +801,23 @@ revertE = do
 -- Open up a new window onto this buffer. Doesn't associate any file
 -- with the buffer (unlike fnewE) and so is good for popup internal
 -- buffers (like scratch)
-newBufferE :: String -> String -> EditorM FBuffer
+newBufferE :: String -> String -> YiM FBuffer
 newBufferE f s = do
-    b <- stringToNewBuffer f s
+    b <- withEditor $ stringToNewBuffer f s
     switchToBufferE b
     lift $ logPutStrLn "newBufferE ended"
     return b
 
 -- | Attach the specified buffer to the current window
 switchToBufferE :: FBuffer -> Action
-switchToBufferE b = getWindow >>= UI.setWindowBuffer b
+switchToBufferE b = withEditor getWindow >>= \w -> (withUI $ UI.setWindowBuffer b w)
 
 -- | Attach the specified buffer to some other window than the current one
 switchToBufferOtherWindowE :: FBuffer -> Action
 switchToBufferOtherWindowE b = shiftOtherWindow >> switchToBufferE b
 
 -- | Find buffer with given name. Raise exception if not found.
-getBufferWithName :: String -> EditorM FBuffer
+getBufferWithName :: String -> YiM FBuffer
 getBufferWithName bufName = do
   bs <- readEditor $ \e -> findBufferWithName e bufName
   case bs of
@@ -855,10 +833,10 @@ switchToBufferWithNameE bufName = switchToBufferE =<< getBufferWithName bufName
 -- | Open a minibuffer window with the given prompt and keymap
 spawnMinibufferE :: String -> KeymapMod -> Action -> Action
 spawnMinibufferE prompt kmMod initialAction =
-    do b <- stringToNewBuffer prompt []
-       lift $ setBufferKeymap b kmMod
-       w <- UI.newWindow True b
-       UI.setWindow w
+    do b <- withEditor $ stringToNewBuffer prompt []
+       setBufferKeymap b kmMod
+       w <- withUI $ UI.newWindow True b
+       withEditor $ UI.setWindow w
        initialAction
 
 -- | Write current buffer to disk, if this buffer is associated with a file
@@ -880,9 +858,9 @@ backupE :: FilePath -> Action
 backupE = undefined
 
 -- | Return a list of all buffers, and their indicies
-listBuffersE :: EditorM [(String,Int)]
+listBuffersE :: YiM [(String,Int)]
 listBuffersE = do
-        bs  <- getBuffers
+        bs  <- withEditor getBuffers
         return $ zip (map name bs) [0..]
 
 -- | Release resources associated with buffer, close any windows open
@@ -894,7 +872,7 @@ closeBufferE f = killBufferAndWindows f
 
 -- | Is the current buffer unmodifed? (currently buggy, we need
 -- bounaries in the undo list)
-isUnchangedE :: EditorM Bool
+isUnchangedE :: YiM Bool
 isUnchangedE = withBuffer isUnchangedB
 
 -- | Set the current buffer to be unmodifed
@@ -919,24 +897,24 @@ prevWinE = prevWindow
 
 -- | Make window with key @k@ the current window
 setWinE :: Window -> Action
-setWinE = UI.setWindow
+setWinE w = withEditor $ UI.setWindow w
 
 -- | Split the current window, opening a second window onto this buffer.
 -- Windows smaller than 3 lines cannot be split.
 splitE :: Action
 splitE = do
-    canSplit <- UI.hasRoomForExtraWindow
+    canSplit <- withUI UI.hasRoomForExtraWindow
     if canSplit 
       then splitWindow
       else errorE "Not enough room to split"
 
 -- | Enlarge the current window
 enlargeWinE :: Action
-enlargeWinE = getWindow >>= UI.enlargeWindow
+enlargeWinE = withEditor getWindow >>= \w -> withUI $ UI.enlargeWindow w
 
 -- | Shrink the current window
 shrinkWinE :: Action
-shrinkWinE = getWindow >>= UI.shrinkWindow
+shrinkWinE = withEditor getWindow >>= \w -> withUI $ UI.shrinkWindow w
 
 -- | Close the current window.
 -- If this is the last window open, quit the program. TODO this
@@ -944,17 +922,17 @@ shrinkWinE = getWindow >>= UI.shrinkWindow
 closeE :: Action
 closeE = do
         deleteThisWindow
-        i <- sizeWindows
+        i <- withEditor $ sizeWindows
         when (i == 0) quitE
 
 -- | Make the current window the only window on the screen
 closeOtherE :: Action
 closeOtherE = do
-        this   <- getWindow -- current window
-        others <- modifyEditor $ \e -> do
+        this   <- withEditor getWindow -- current window
+        others <- withEditor $ modifyEditor $ \e -> do
                         let ws = getWindows e
                         return (e, (filter (/= this) (map Just ws)))
-        mapM_ UI.deleteWindow others
+        sequence_ [withUI $ UI.deleteWindow w | w <- others]
 
 ------------------------------------------------------------------------
 --
@@ -988,23 +966,23 @@ runConfig = do
               let cfgMod = mkModuleName kernel "YiConfig"
               isLoaded kernel cfgMod
   if loaded 
-   then do result <- withKernel $ \kernel -> compileExpr kernel "YiConfig.yiMain :: Yi.Yi.EditorM ()"
+   then do result <- withKernel $ \kernel -> compileExpr kernel "YiConfig.yiMain :: Yi.Yi.YiM ()"
            case result of
-             Nothing -> errorE "Could not run YiConfig.yiMain :: Yi.Yi.EditorM ()"
+             Nothing -> errorE "Could not run YiConfig.yiMain :: Yi.Yi.YiM ()"
              Just x -> (unsafeCoerce# x)
    else errorE "YiConfig not loaded"
 
-loadE :: String -> EditorM [String]
+loadE :: String -> YiM [String]
 loadE modul = do
-  modifyEditor_ $ \e -> return e { editorModules = nub (editorModules e ++ [modul]) }
+  modifyRef editorModules (++ [modul])
   reloadE
 
-unloadE :: String -> EditorM [String]
+unloadE :: String -> YiM [String]
 unloadE modul = do
-  modifyEditor_ $ \e -> return e { editorModules = delete modul (editorModules e) }
+  modifyRef editorModules $ delete modul
   reloadE
 
-getNamesInScopeE :: EditorM [String]
+getNamesInScopeE :: YiM [String]
 getNamesInScopeE = do
   withKernel $ \k -> do
       rdrNames <- getRdrNamesInScope k
@@ -1019,10 +997,10 @@ savingExcursion f = do
     return res
 
 
-ghcErrorReporter :: IORef Editor -> GHC.Severity -> SrcLoc.SrcSpan -> Outputable.PprStyle -> ErrUtils.Message -> IO () 
-ghcErrorReporter editor severity srcSpan pprStyle message = 
+ghcErrorReporter :: Yi -> GHC.Severity -> SrcLoc.SrcSpan -> Outputable.PprStyle -> ErrUtils.Message -> IO () 
+ghcErrorReporter yi severity srcSpan pprStyle message = 
     -- the following is written in very bad style.
-    flip runReaderT editor $ do
+    flip runReaderT yi $ do
       e <- readEditor id
       let [b] = findBufferWithName e "*console*"
       withGivenBuffer b $ savingExcursion $ do 
@@ -1036,20 +1014,20 @@ ghcErrorReporter editor severity srcSpan pprStyle message =
 
 
 -- | Run a (dynamically specified) editor command.
-execE :: String -> EditorM ()
+execE :: String -> YiM ()
 execE s = do
   ghcErrorHandlerE $ do
             result <- withKernel $ \kernel -> do
                                logPutStrLn $ "execing " ++ s
-                               compileExpr kernel ("(" ++ s ++ ") >>= msgE' . show :: EditorM ()")
+                               compileExpr kernel ("(" ++ s ++ ") >>= msgE' . show :: YiM ()")
             case result of
               Nothing -> errorE ("Could not compile: " ++ s)
-              Just x -> do let (x' :: EditorM ()) = unsafeCoerce# x
+              Just x -> do let (x' :: YiM ()) = unsafeCoerce# x
                            x'
                            return ()
 
 -- | Install some default exception handlers and run the inner computation.
-ghcErrorHandlerE :: EditorM () -> EditorM ()
+ghcErrorHandlerE :: YiM () -> YiM ()
 ghcErrorHandlerE inner = do
   flip catchDynE (\dyn -> do
   		    case dyn of

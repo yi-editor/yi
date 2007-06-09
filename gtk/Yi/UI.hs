@@ -48,7 +48,6 @@ import Prelude hiding (error)
 
 import Yi.Buffer
 import Yi.Editor
-import Yi.Keymap
 import Yi.Window as Window
 import Yi.Event
 import Yi.Debug
@@ -78,8 +77,8 @@ data UI = UI {
              }
 
 -- | Initialise the ui
-start :: EditorM ()
-start = modifyEditor_ $ \e -> do
+start :: EditorM (Chan Event, UI)
+start = lift $ do
   initGUI
 
   win <- windowNew
@@ -109,10 +108,11 @@ start = modifyEditor_ $ \e -> do
   widgetShowAll win
 
   bufs <- newIORef M.empty
-  return $ e { input = ch, ui = UI win vb' cmd bufs }
+  return $ (ch, UI win vb' cmd bufs)
 
-main :: IORef Editor -> IO ()
-main _editor = 
+
+main :: IORef Editor -> UI -> IO ()
+main _editor _ui = 
     do logPutStrLn "GTK main loop running"
        mainGUI
 
@@ -181,9 +181,8 @@ keyTable = M.fromList
     ]
 
 
-addWindow :: IORef Editor -> Window -> IO ()
-addWindow editor w = do
-  i <- liftM ui $ readIORef editor
+addWindow :: UI -> IORef Editor -> Window -> IO ()
+addWindow i editor w = do
   set (uiBox i) [containerChild := widget w,
                  boxChildPacking (widget w) := if isMini w then PackNatural else PackGrow]
   textview w `onFocusIn` (\_event -> (modifyIORef editor $ \e -> e { curwin = Just $ key w }) >> return False)
@@ -214,10 +213,9 @@ end :: UI -> IO ()
 end _ = mainQuit
 
 -- | Suspend the program
-suspend :: EditorM ()
-suspend = do 
-  i <- readEditor ui
-  lift $ windowIconify (uiWindow i) 
+suspend :: UI -> EditorM ()
+suspend ui = do 
+ lift $ windowIconify (uiWindow ui) 
 
 
 
@@ -227,38 +225,37 @@ suspend = do
 
 -- | Create a new window onto this buffer.
 --
-newWindow :: Bool -> FBuffer -> EditorM Window
-newWindow mini b = do
+newWindow :: Bool -> FBuffer -> UI ->EditorM Window
+newWindow mini b ui = do
   editor <- ask
   win <- lift $ do 
     win <- emptyWindow mini b
     logPutStrLn $ "Creating " ++ show win
-    addWindow editor win
+    addWindow ui editor win
     return win
-  setWindowBuffer b (Just win)
+  setWindowBuffer b (Just win) ui
   return win
 
 -- ---------------------------------------------------------------------
 -- | Grow the given window, and pick another to shrink
 -- grow and shrink compliment each other, they could be refactored.
 --
-enlargeWindow :: Maybe Window -> EditorM ()
-enlargeWindow _ = return () -- TODO
+enlargeWindow :: Maybe Window -> UI -> EditorM ()
+enlargeWindow _ _ = return () -- TODO
 
 -- | shrink given window (just grow another)
-shrinkWindow :: Maybe Window -> EditorM ()
-shrinkWindow _ = return () -- TODO
+shrinkWindow :: Maybe Window -> UI -> EditorM ()
+shrinkWindow _ _ = return () -- TODO
 
 
 --
 -- | Delete a window. Note that the buffer that was connected to this
 -- window is still open.
 --
-deleteWindow :: (Maybe Window) -> EditorM ()
-deleteWindow Nothing    = return ()
-deleteWindow (Just win) = do
+deleteWindow :: (Maybe Window) -> UI -> EditorM ()
+deleteWindow Nothing ui    = return ()
+deleteWindow (Just win) i = do
   deleteWindow' win
-  i <- readEditor ui
   lift $ containerRemove (uiBox i) (widget win)
   -- now switch focus to a random window
   ws <- readEditor getWindows
@@ -267,16 +264,16 @@ deleteWindow (Just win) = do
     (w:_) -> setWindow w 
 
 -- | Has the frame enough room for an extra window.
-hasRoomForExtraWindow :: EditorM Bool
-hasRoomForExtraWindow = return True
+hasRoomForExtraWindow :: UI -> EditorM Bool
+hasRoomForExtraWindow _ = return True
 
-refreshAll :: EditorM ()
-refreshAll = return ()
+refreshAll :: UI -> EditorM ()
+refreshAll _ = return ()
 
-scheduleRefresh :: EditorM ()
-scheduleRefresh = modifyEditor_ $ \e-> do
+scheduleRefresh :: UI -> EditorM ()
+scheduleRefresh ui = modifyEditor_ $ \e-> do
     let ws = getWindows e
-    bufs <- readIORef $ uiBuffers $ ui $ e
+    bufs <- readIORef $ uiBuffers $ ui
     sequence_ [applyUpdate (bufs M.! b) u >> logPutStrLn (show $ u) | (b,u) <- editorUpdates e]
     flip mapM_ ws $ \w -> 
         do let buf = findBufferWith e (bufkey w)
@@ -299,10 +296,10 @@ applyUpdate buf (Delete p s) = do
   i1 <- textBufferGetIterAtOffset buf (p + s)
   textBufferDelete buf i0 i1
 
-prepareAction :: EditorM ()
-prepareAction = do
-  bufsRef <- withUI $ return . uiBuffers
-  withBuffer $ do
+prepareAction :: UI -> EditorM ()
+prepareAction ui = do
+  let bufsRef = uiBuffers ui
+  withBuffer0 $ do
     p0 <- pointB
     b <- ask
     
@@ -314,17 +311,17 @@ prepareAction = do
     when (p1 /= p0) $ do
        moveTo p1 -- as a side effect we forget the prefered column
 
-setCmdLine :: UI -> String -> IO ()
-setCmdLine i s = do
+setCmdLine :: String -> UI -> IO ()
+setCmdLine s i = do
   set (uiCmdLine i) [labelText := if length s > 132 then take 129 s ++ "..." else s]
 
 -- | Display the given buffer in the given window.
-setWindowBuffer :: FBuffer -> Maybe Window -> EditorM ()
-setWindowBuffer b Nothing = do w <- newWindow False b; setWindowBuffer b (Just w)
+setWindowBuffer :: FBuffer -> Maybe Window -> UI -> EditorM ()
+setWindowBuffer b  Nothing ui = do w <- newWindow False b ui; setWindowBuffer b (Just w) ui
  -- if there is no window, just create a new one.
-setWindowBuffer b (Just w) = do
+setWindowBuffer b (Just w) ui = do
     lift $ logPutStrLn $ "Setting buffer for " ++ show w ++ " to " ++ show b
-    bufsRef <- withUI $ return . uiBuffers
+    let bufsRef = uiBuffers ui
     bufs <- lift $ readIORef bufsRef
     gtkBuf <- case M.lookup (bkey b) bufs of
       Just gtkBuf -> return gtkBuf
@@ -360,3 +357,4 @@ setWindow w = do
   modifyEditor_ $ \e -> return $ e { curwin = Just $ key w }
   lift $ widgetGrabFocus (textview w)
   debugWindows "Focused"
+

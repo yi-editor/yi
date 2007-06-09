@@ -160,9 +160,9 @@ releaseSignals =
 #endif
 
 startConsole :: Keymap.Action
-startConsole = do 
-  console <- Core.getBufferWithName "*console*"
-  lift $ Buffer.setBufferKeymap console (Eval.consoleKeymap <++)
+startConsole = return () -- do FIXME
+  --console <- Core.getBufferWithName "*console*"
+  --lift $ Buffer.setBufferKeymap console (Eval.consoleKeymap <++)
 
 openScratchBuffer :: Keymap.Action
 openScratchBuffer = do     -- emacs-like behaviour

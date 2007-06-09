@@ -41,30 +41,30 @@ instance Initializable History where
     initial = (History (-1) [])
     
 
-historyUp :: EditorM ()
+historyUp :: YiM ()
 historyUp = historyMove 1
 
-historyDown :: EditorM () 
+historyDown :: YiM () 
 historyDown = historyMove (-1)
 
-historyStart :: EditorM ()
+historyStart :: YiM ()
 historyStart = do
   (History _cur cont) <- getDynamic
   setDynamic (History 0 (nub ("":cont)))
   debugHist
 
-historyFinish :: EditorM ()
+historyFinish :: YiM ()
 historyFinish = do
   (History _cur cont) <- getDynamic
   curValue <- readAllE
   setDynamic $ History (-1) (nub $ dropWhile null $ (curValue:cont))
 
-debugHist :: EditorM ()
+debugHist :: YiM ()
 debugHist = do
   h :: History <- getDynamic
   lift $ logPutStrLn (show h)
 
-historyMove :: Int -> EditorM ()
+historyMove :: Int -> YiM ()
 historyMove delta = do
   (History cur cont) <- getDynamic
   curValue <- readAllE

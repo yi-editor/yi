@@ -15,13 +15,13 @@ import System.Directory
 import Text.Regex.Posix
 import Yi.Core
 import Yi.Debug
-import Yi.Editor
+import Yi.Editor hiding (readEditor)
 import Yi.Kernel
 import Yi.Keymap
 import Yi.Interact hiding (write)
 import Yi.Event
 
-evalToStringE :: String -> EditorM String
+evalToStringE :: String -> YiM String
 evalToStringE string = withKernel $ \kernel -> do
   result <- compileExpr kernel ("show (" ++ string ++ ")")
   case result of
@@ -29,16 +29,16 @@ evalToStringE string = withKernel $ \kernel -> do
     Just x -> return (unsafeCoerce# x)
 
 -- | Evaluate some text and show the result in the message line.
-evalE :: String -> EditorM ()
+evalE :: String -> YiM ()
 evalE s = evalToStringE s >>= msgE
 
 -- | Same as msgE, but do nothing instead of printing @()@
-msgE' :: String -> EditorM ()
+msgE' :: String -> YiM ()
 msgE' "()" = return ()
 msgE' s = msgE s
 
 
-jumpToE :: String -> Int -> Int -> EditorM ()
+jumpToE :: String -> Int -> Int -> YiM ()
 jumpToE filename line column = do
   bs <- readEditor $ \e -> findBufferWithName e filename -- FIXME: should find by associated file-name
   case bs of
@@ -56,13 +56,13 @@ parseErrorMessage ln = do
   result :: (Array Int String) <- ln =~~ "^(.+):([0-9]+):([0-9]+):.*$"
   return (result!1, read (result!2), read (result!3))
 
-parseErrorMessageE :: EditorM (String, Int, Int)
+parseErrorMessageE :: YiM (String, Int, Int)
 parseErrorMessageE = do
   ln <- readLnE 
   let Just location = parseErrorMessage ln
   return location
 
-jumpToErrorE :: EditorM ()
+jumpToErrorE :: YiM ()
 jumpToErrorE = do
   (f,l,c) <- parseErrorMessageE
   jumpToE f l c

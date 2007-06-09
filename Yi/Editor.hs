@@ -29,10 +29,8 @@ import Yi.Window
 import Yi.Style                 ( uiStyle, UIStyle )
 import Yi.Event
 import Yi.Debug
-import Yi.Kernel
-import Yi.Keymap
+-- import Yi.Keymap
 import Yi.Undo
-import qualified Yi.Interact as I
 import Prelude hiding (error)
 
 import Data.List                ( elemIndex )
@@ -42,14 +40,8 @@ import Data.IORef
 import qualified Data.Map as M
 
 import Control.Concurrent       ( killThread, ThreadId )
-import Control.Concurrent.Chan
-import Control.Concurrent.MVar
 import Control.Monad.Reader
 import Control.Monad.Writer
-import Control.Concurrent   ( forkIO )
-import Control.Exception
-
-import {-# source #-} Yi.UI as UI ( UI )
 
 ------------------------------------------------------------------------
 
@@ -60,12 +52,8 @@ data Editor = Editor {
         buffers       :: !(M.Map Unique FBuffer)    -- ^ all the buffers
        ,windows       :: !(M.Map Unique Window)     -- ^ all the windows
 
-       ,ui            :: UI
-
        ,curwin        :: !(Maybe Unique)            -- ^ the window with focus
        ,uistyle       :: !UIStyle                   -- ^ ui colours
-       ,input         :: Chan Event                 -- ^ input stream
-       ,output        :: Chan Action                -- ^ output stream
        ,threads       :: [ThreadId]                 -- ^ all our threads
        ,reboot        :: (Maybe Editor) -> IO ()    -- ^ our reboot function
        ,dynamic       :: !(M.Map String Dynamic)    -- ^ dynamic components
@@ -76,12 +64,8 @@ data Editor = Editor {
        ,yreg          :: !String                    -- ^ yank register
        ,regex         :: !(Maybe (String,Regex))    -- ^ most recent regex
        -- should be moved into dynamic component, perhaps
-
-       ,defaultKeymap :: Keymap
-
-       ,editorKernel  :: Kernel
-       ,editorModules :: [String] -- ^ modules requested by user: (e.g. ["YiConfig", "Yi.Dired"])
        ,editorUpdates :: [(Unique, URAction)]
+
     }
 
 --
@@ -92,23 +76,16 @@ emptyEditor = Editor {
         buffers      = M.empty
        ,windows      = M.empty
 
-       ,ui           = error "UI not initialized"
-
        ,windowfill   = ' '
        ,tabwidth     = 8        -- has to be for now
        ,yreg         = []
        ,regex        = Nothing
        ,curwin       = Nothing
-       ,defaultKeymap = error "No keymap defined."
        ,uistyle      = Yi.Style.uiStyle
-       ,input        = error "No input channel open"
-       ,output       = error "No output channel open"
        ,threads      = []
        ,reboot       = const $ return ()
        ,dynamic      = M.empty
 
-       ,editorKernel = error "GHC Kernel not initialized"
-       ,editorModules = []
        ,editorUpdates = []
     }
 
@@ -137,8 +114,8 @@ modifyEditor f = do
   lift $ writeIORef e e'
   return result
 
-withEditor :: (Editor -> IO a) -> EditorM a
-withEditor f = do
+withEditor0 :: (Editor -> IO a) -> EditorM a
+withEditor0 f = do
   e <- ask
   lift $ f =<< readIORef e
 
@@ -162,34 +139,11 @@ stringToNewBuffer nm cs = do
 insertBuffer :: FBuffer -> EditorM FBuffer
 insertBuffer b = do
   editor <- ask
-  thread <- lift $ forkIO (bufferEventLoop editor b) 
-  let b' = b {bufferThread = Just thread}
+  -- FIXME thread <- lift $ forkIO (bufferEventLoop editor b) 
+  -- let b' = b {bufferThread = Just thread}
   modifyEditor $ \e@(Editor{buffers=bs}) -> do
-                     let e' = e { buffers = M.insert (keyB b) b' bs } :: Editor
-                     return (e', b')
-
-bufferEventLoop :: IORef Editor -> FBuffer -> IO ()
-bufferEventLoop e b = eventLoop 
-  where
-    handler exception = logPutStrLn $ "Buffer event loop crashed with: " ++ (show exception)
-
-    run bkm = do
-      -- logStream ("Event for " ++ show b) (bufferInput b)
-      logPutStrLn $ "Starting keymap thread for " ++ show b
-      tryPutMVar (bufferKeymapRestartable b) ()
-      out <- liftM output $ readIORef e
-      writeList2Chan out . bkm =<< getChanContents (bufferInput b)
-      takeMVar (bufferKeymapRestartable b)
-      logPutStrLn "Keymap execution ended"
-
-    -- | The buffer's main loop. Read key strokes from the ui and interpret
-    -- them using the current key map. Keys are bound to core actions.
-    eventLoop :: IO ()
-    eventLoop = do
-      repeatM_ $ do -- get the new version of the keymap every time we need to start it.
-                    defaultKm <- liftM defaultKeymap $ readIORef e                     
-                    modKm <- readIORef (bufferKeymap b)
-                    handle handler (run $ runKeymap $ I.forever (modKm defaultKm))
+                     let e' = e { buffers = M.insert (keyB b) b bs } :: Editor
+                     return (e', b)
 
 deleteBuffer :: FBuffer -> EditorM ()
 deleteBuffer b = do
@@ -320,8 +274,8 @@ findWindowWith e (Just k) =
 --
 -- | Perform action with current window
 --
-withWindow :: (Window -> FBuffer -> IO a) -> EditorM a
-withWindow f = modifyEditor $ \e -> do
+withWindow0 :: (Window -> FBuffer -> IO a) -> EditorM a
+withWindow0 f = modifyEditor $ \e -> do
         let w = findWindowWith e (curwin e)
             b = findBufferWith e (bufkey w)
         v <- f w b
@@ -329,31 +283,24 @@ withWindow f = modifyEditor $ \e -> do
 
 
 -- | Perform action with current window's buffer
-withGivenBuffer :: FBuffer -> BufferM a -> EditorM a
-withGivenBuffer b f = modifyEditor $ \e -> do
+withGivenBuffer0 :: FBuffer -> BufferM a -> EditorM a
+withGivenBuffer0 b f = modifyEditor $ \e -> do
                         (v,updates) <- runBuffer b f
                         return (e {editorUpdates = editorUpdates e ++ [(bkey b,u) | u <- updates]},v)
 
-withBuffer :: BufferM a -> EditorM a
-withBuffer f = do 
+withBuffer0 :: BufferM a -> EditorM a
+withBuffer0 f = do 
   b <- readEditor $ \e -> findBufferWith e (bufkey $ findWindowWith e (curwin e))
-  withGivenBuffer b f                                                
+  withGivenBuffer0 b f                                                
 
 -- | Perform action with current window's buffer
 withBuffer' :: (FBuffer -> IO a) -> EditorM a
-withBuffer' f = withWindow (const f)
+withBuffer' f = withWindow0 (const f)
 
 -- | Return the current buffer
 getBuffer :: EditorM FBuffer
-getBuffer = withBuffer ask
+getBuffer = withBuffer0 ask
 
-withUI :: (UI -> IO a) -> EditorM a
-withUI f = do
-  e <- ask
-  lift $ f . ui =<< readIORef e 
-
-withKernel :: (Kernel -> IO a) -> EditorM a
-withKernel f = withEditor $ \e -> f (editorKernel e)
 
 -- ---------------------------------------------------------------------
 
@@ -366,22 +313,7 @@ shutdown = do ts <- readEditor threads
               modifyEditor_ $ const (return emptyEditor)
 
 
--- | Repeat indefinitely the parameter.
-repeatM_ :: forall m a. Monad m => m a -> m ()
-repeatM_ a = a >> repeatM_ a
-{-# SPECIALIZE repeatM_ :: IO a -> IO () #-}
-{-# INLINE repeatM_ #-}
+
+type EditorM = ReaderT (IORef Editor) IO
 
 
-
-catchJustE :: (Exception -> Maybe b) -- ^ Predicate to select exceptions
-           -> EditorM a	-- ^ Computation to run
-           -> (b -> EditorM a) -- ^	Handler
-           -> EditorM a
-catchJustE p c h = ReaderT (\r -> catchJust p (runReaderT c r) (\b -> runReaderT (h b) r))
-
-handleJustE :: (Exception -> Maybe b) -> (b -> EditorM a) -> EditorM a -> EditorM a
-handleJustE p h c = catchJustE p c h
-
-catchDynE :: Typeable exception => EditorM a -> (exception -> EditorM a) -> EditorM a
-catchDynE inner handler = ReaderT (\r -> catchDyn (runReaderT inner r) (\e -> runReaderT (handler e) r))

@@ -203,7 +203,7 @@ cmd_move = do
 --   would make it really very configurable even by
 --   nonprogrammers.. using a nice gui
 --
-detectMovement :: Action -> EditorM Bool
+detectMovement :: Action -> YiM Bool
 detectMovement act = do x <- getPointE
                         act
                         y <- getPointE
@@ -445,7 +445,7 @@ cmd_op = do
         -- some location specified by the sequence @m@, then return.
         -- Return the current, and remote point.
         --
-        withPointMove :: Action -> EditorM (Int,Int)
+        withPointMove :: Action -> YiM (Int,Int)
         withPointMove m = do p <- getPointE
                              m
                              q <- getPointE
@@ -631,16 +631,16 @@ rep_char = write . fn =<< anyButEsc
 
 spawn_ex_buffer :: String -> Action
 spawn_ex_buffer prompt = do
-  initialBuffer <- getBuffer
-  Just initialWindow <- getWindow
+  initialBuffer <- withEditor getBuffer
+  Just initialWindow <- withEditor getWindow
   -- The above ensures that the action is performed on the buffer that originated the minibuffer.
-  let closeMinibuffer = do b <- getBuffer; closeE; deleteBuffer b 
+  let closeMinibuffer = do b <- withEditor getBuffer; closeE; withEditor $ deleteBuffer b 
       anyButDelNlArrow = oneOf $ any' \\ (enter' ++ delete' ++ ['\ESC',keyUp,keyDown])
       ex_buffer_finish = do 
         historyFinish
         lineString <- readAllE
         closeMinibuffer
-        UI.setWindow initialWindow
+        withEditor $ UI.setWindow initialWindow
         switchToBufferE initialBuffer 
         ex_eval (head prompt : lineString)
       ex_process :: VimMode
@@ -725,7 +725,7 @@ ex_eval cmd = do
 --    Needs to occur in another buffer
 --    fn ('!':f) = pipeE f []
 
-      fn "reboot"     = rebootE     -- not in vim
+      fn "reboot"     = error "rebootE does not exist any more, use reloadE"     -- not in vim
       fn "reload"     = reloadE >> return ()    -- not in vim
 
       fn "redr"       = refreshE

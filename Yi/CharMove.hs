@@ -89,7 +89,7 @@ import Data.IORef
 import System.IO.Unsafe     ( unsafePerformIO )
 
 -- | Read character before point.
-breadE :: EditorM Char
+breadE :: YiM Char
 breadE = do
     p <- getPointE
     if p == 0
@@ -100,7 +100,7 @@ breadE = do
 -- | Perform movement action specified by @mov@ while not @chkend@ and
 -- @check@ applied to the 'Char' retuned by @rd@ are true.
 --
-doSkipWhile :: Action -> EditorM Char -> EditorM Bool -> (Char -> Bool) -> Action
+doSkipWhile :: Action -> YiM Char -> YiM Bool -> (Char -> Bool) -> Action
 doSkipWhile mov rd chkend check = do
     e <- chkend
     c <- rd
@@ -110,7 +110,7 @@ doSkipWhile mov rd chkend check = do
 -- | Similar to 'doSkipWhile', but perform check on the char returned
 -- by @rd@, then always move, before branching.
 --
-doSkipCond :: Action -> EditorM Char -> EditorM Bool -> (Char -> Bool) -> Action
+doSkipCond :: Action -> YiM Char -> YiM Bool -> (Char -> Bool) -> Action
 doSkipCond mov rd chkend check = do
     c <- rd
     mov
@@ -257,7 +257,7 @@ moveWhile_ f dir = do
 ------------------------------------------------------------------------
 
 -- | Read word to the left of the cursor
-readWordLeftE :: EditorM (String,Int,Int)
+readWordLeftE :: YiM (String,Int,Int)
 readWordLeftE = withBuffer readWordLeft_
 
 -- Core-internal worker
@@ -276,7 +276,7 @@ readWordLeft_ = do
     return (s,q,p)
 
 -- | Read word under cursor
-readWordE :: EditorM (String,Int,Int)
+readWordE :: YiM (String,Int,Int)
 readWordE = withBuffer readWord_
 
 ------------------------------------------------------------------------

@@ -50,6 +50,7 @@ import Yi.Debug
 import Control.Monad
 import Yi.Eval
 
+
 import Yi.Event -- so we can see key defns
 
 

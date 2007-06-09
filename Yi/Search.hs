@@ -56,7 +56,7 @@ module Yi.Search (
 
 import Yi.Buffer
 import Text.Regex.Posix.String  ( Regex, compExtended, compIgnoreCase, compNewline, compile, execBlank )
-import Yi.Editor
+import Yi.Editor hiding (readEditor)
 import qualified Yi.Editor as Editor
 
 import Data.Bits ( (.|.) )
@@ -78,10 +78,10 @@ import Yi.Core
 
 -- | Put regex into regex 'register'
 setRegexE :: SearchExp -> Action
-setRegexE re = modifyEditor_ $ \e -> return e { regex = Just re }
+setRegexE re = withEditor $ modifyEditor_ $ \e -> return e { regex = Just re }
 
 -- Return contents of regex register
-getRegexE :: EditorM (Maybe SearchExp)
+getRegexE :: YiM (Maybe SearchExp)
 getRegexE = readEditor regex
 
 
@@ -135,7 +135,7 @@ searchE s fs d =
 
 searchDoE :: SearchExp
           -> Direction
-          -> EditorM SearchResult
+          -> YiM SearchResult
 
 searchDoE _ GoLeft = do
         errorE "Backward searching is unimplemented"
@@ -145,7 +145,7 @@ searchDoE (s, re) _ = searchF s re
 --
 -- Set up a search.
 --
-searchInitE :: String -> [SearchF] -> EditorM SearchExp
+searchInitE :: String -> [SearchF] -> YiM SearchExp
 searchInitE re fs = do
     Right c_re <- lift $ compile (extended .|. igcase .|. newline) execBlank re
     let p = (re,c_re)
@@ -169,7 +169,7 @@ searchInitE re fs = do
 -- Keymaps may implement their own regex language. How do we provide for this?
 -- Also, what's happening with ^ not matching sol?
 --
-searchF :: String -> Regex -> EditorM SearchResult
+searchF :: String -> Regex -> YiM SearchResult
 searchF _ c_re = withBuffer $ do
     mp <- do
             p   <- pointB
@@ -198,7 +198,7 @@ searchF _ c_re = withBuffer $ do
 --
 -- TODO too complex.
 --
-searchAndRepLocal :: String -> String -> EditorM Bool
+searchAndRepLocal :: String -> String -> YiM Bool
 searchAndRepLocal [] _ = return False   -- hmm...
 searchAndRepLocal re str = do
     Right c_re <- lift $ compile compExtended execBlank re
@@ -236,18 +236,18 @@ newtype Isearch = Isearch [(String, Int)] deriving Typeable
 instance Initializable Isearch where
     initial = (Isearch [])
 
-isearchInitE :: EditorM ()
+isearchInitE :: YiM ()
 isearchInitE = do
   p <- getPointE
   setDynamic (Isearch [("",p)])
   msgE $ "I-search: "
 
-isearchIsEmpty :: EditorM Bool
+isearchIsEmpty :: YiM Bool
 isearchIsEmpty = do
   Isearch s <- getDynamic
   return $ not $ null $ fst $ head $ s
 
-isearchAddE :: String -> EditorM ()
+isearchAddE :: String -> YiM ()
 isearchAddE increment = do
   Isearch s <- getDynamic
   let (previous,p0) = head s
@@ -263,7 +263,7 @@ isearchAddE increment = do
     Just p -> do setDynamic $ Isearch ((current,p):s)
                  gotoPointE (p+length current)
 
-isearchDelE :: EditorM ()
+isearchDelE :: YiM ()
 isearchDelE = do
   Isearch s <- getDynamic
   case s of
@@ -274,7 +274,7 @@ isearchDelE = do
     _ -> return () -- if the searched string is empty, don't try to remove chars from it.
     
 
-isearchNextE :: EditorM ()
+isearchNextE :: YiM ()
 isearchNextE = do
   Isearch ((current,p0):rest) <- getDynamic
   gotoPointE (p0 + length current)
@@ -284,14 +284,14 @@ isearchNextE = do
     Just p -> do setDynamic $ Isearch ((current,p):rest)
                  gotoPointE (p+length current)
   
-isearchFinishE :: EditorM ()
+isearchFinishE :: YiM ()
 isearchFinishE = do
   Isearch s <- getDynamic
   let (_,p0) = last s
   setMarkE p0
   msgE "mark saved where search started"
 
-isearchCancelE :: EditorM ()
+isearchCancelE :: YiM ()
 isearchCancelE = do
   Isearch s <- getDynamic
   let (_,p0) = last s
@@ -302,7 +302,7 @@ isearchCancelE = do
 -----------------
 -- Query-Replace
 
-qrNextE :: FBuffer -> String -> EditorM ()
+qrNextE :: FBuffer -> String -> YiM ()
 qrNextE b what = do
   mp <- withGivenBuffer b $ searchB what
   case mp of
@@ -315,7 +315,7 @@ qrNextE b what = do
                    setMarkPointB m (p+length what)
           
 
-qrReplaceOneE :: FBuffer -> String -> String -> EditorM ()
+qrReplaceOneE :: FBuffer -> String -> String -> YiM ()
 qrReplaceOneE b what with = do
   lift $ runBuffer b $ do
     deleteN (length what)
