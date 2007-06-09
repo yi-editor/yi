@@ -19,7 +19,6 @@
 --
 module Yi.Keymap.Emacs.UnivArgument where
 
-import Yi.Editor
 import Yi.Core
 import Yi.Keymap
 

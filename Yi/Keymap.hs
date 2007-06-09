@@ -120,7 +120,7 @@ startBufferKeymap' b = do
   modifyRef bufferKeymaps (M.insert (keyB b) bkm)
   return bkm
 
-
+getBufferKeymap :: FBuffer -> YiM BufferKeymap
 getBufferKeymap b = do
   kms <- readRef bufferKeymaps
   case M.lookup (keyB b) kms of

@@ -29,7 +29,6 @@ import Yi.Window
 import Yi.Style                 ( uiStyle, UIStyle )
 import Yi.Event
 import Yi.Debug
--- import Yi.Keymap
 import Yi.Undo
 import Prelude hiding (error)
 
@@ -138,9 +137,6 @@ stringToNewBuffer nm cs = do
 
 insertBuffer :: FBuffer -> EditorM FBuffer
 insertBuffer b = do
-  editor <- ask
-  -- FIXME thread <- lift $ forkIO (bufferEventLoop editor b) 
-  -- let b' = b {bufferThread = Just thread}
   modifyEditor $ \e@(Editor{buffers=bs}) -> do
                      let e' = e { buffers = M.insert (keyB b) b bs } :: Editor
                      return (e', b)

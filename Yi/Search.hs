@@ -316,8 +316,8 @@ qrNextE b what = do
           
 
 qrReplaceOneE :: FBuffer -> String -> String -> YiM ()
-qrReplaceOneE b what with = do
+qrReplaceOneE b what replacement = do
   lift $ runBuffer b $ do
     deleteN (length what)
-    insertN with
+    insertN replacement
   qrNextE b what

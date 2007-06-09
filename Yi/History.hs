@@ -30,9 +30,6 @@ import Data.Dynamic
 
 import Control.Monad.Trans
 
-import Yi.Editor
-
-
 data History = History {_historyCurrent :: Int, 
                         _historyContents :: [String]} 
 

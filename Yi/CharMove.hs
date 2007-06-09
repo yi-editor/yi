@@ -72,7 +72,6 @@ module Yi.CharMove (
 
 import Yi.Buffer 
 import Yi.Core
-import Yi.Editor
 import Text.Regex.Posix.String ( compExtended, compile, execBlank)
 import Yi.Keymap
 

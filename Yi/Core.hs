@@ -170,7 +170,6 @@ module Yi.Core (
         spawnMinibufferE,
 
         -- * Misc
-        catchJustE,
         changeKeymapE,
         getNamesInScopeE,
         execE

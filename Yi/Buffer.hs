@@ -173,7 +173,6 @@ newB nm s = do
     mvf <- newMVar Nothing      -- has name, not connected to a file
     rw  <- newMVar ReadWrite
     u   <- newUnique
-    km <- newIORef id
     dv <- newIORef emptyDV
     let result = FBuffer { name   = nm
                          , bkey   = u

@@ -32,14 +32,7 @@ import qualified Data.Map as M
 import Data.List
 import Control.Monad.State
 import Yi.Keymap
-import Yi.Kernel
-import Control.Concurrent.Chan
 import Control.Monad.Reader
-
-import Data.IORef
-
------------------------------------------------------------
-
 
 --------------------------------------------------------
 
