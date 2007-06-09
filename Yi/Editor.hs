@@ -256,12 +256,10 @@ findWindowWith e (Just k) =
 ------------------------------------------------------------------------
 --
 -- | Perform action with current window
---
-withWindow0 :: (Window -> FBuffer -> IO a) -> EditorM a
+withWindow0 :: (Window -> IO a) -> EditorM a
 withWindow0 f = modifyEditor $ \e -> do
         let w = findWindowWith e (curwin e)
-            b = findBufferWith e (bufkey w)
-        v <- f w b
+        v <- f w
         return (e,v)
 
 

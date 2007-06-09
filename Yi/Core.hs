@@ -458,7 +458,7 @@ downScreensE n = do
 -- | Move to @n@ lines down from top of screen
 downFromTosE :: Int -> Action
 downFromTosE n = do
-    (i,fn) <- withWindow $ \w _ -> do
+    (i,fn) <- withWindow $ \w -> do
                     let y  = fst $ cursor w
                         n' = min n (height w - 1 - 1)
                         d  = n' - y
@@ -467,11 +467,11 @@ downFromTosE n = do
 
 -- | Move to @n@ lines up from the bottom of the screen
 upFromBosE :: Int -> Action
-upFromBosE n = (withWindow $ \w _ -> return (height w -1 -1 - n)) >>= downFromTosE
+upFromBosE n = (withWindow $ \w -> return (height w -1 -1 - n)) >>= downFromTosE
 
 -- | Move to middle line in screen
 middleE :: Action
-middleE = (withWindow $ \w _ -> return ((height w -1-1) `div` 2)) >>= downFromTosE
+middleE = (withWindow $ \w -> return ((height w -1-1) `div` 2)) >>= downFromTosE
 
 -- ---------------------------------------------------------------------
 
