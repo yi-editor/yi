@@ -70,10 +70,8 @@ import Control.Monad.Reader
 
 import Data.Traversable as T
 import Data.List
-import Data.Unique
 import Data.Maybe
 import Data.Char (ord,chr)
-import qualified Data.Map as M
 import qualified Yi.WindowSet as WS
 import Data.IORef
 import System.Exit
@@ -100,32 +98,31 @@ start buf = do
           w0 <- emptyWindow False buf (1,1)
           ws0 <- newIORef  (WS.new w0)
           v <- mkVty
-          (x,y) <- Yi.Vty.getSize v
-          s <- newIORef (y,x)
+          (x0,y0) <- Yi.Vty.getSize v
+          sz <- newIORef (y0,x0)
           -- fork input-reading thread. important to block *thread* on getKey
           -- otherwise all threads will block waiting for input
           ch <- newChan
           t <- myThreadId
           cmd <- newIORef ""
           tuiRefresh <- newEmptyMVar
-          let result = UI v s t cmd tuiRefresh ws0
+          let result = UI v sz t cmd tuiRefresh ws0
               -- | Action to read characters into a channel
-              getcLoop editor v s ch = repeatM_ $ getKey editor v s >>= writeChan ch
+              getcLoop = repeatM_ $ getKey >>= writeChan ch
 
               -- | Read a key. UIs need to define a method for getting events.
-              getKey editor v sz = do 
+              getKey = do 
                 event <- getEvent v
                 case event of 
                   (EvResize x y) -> do logPutStrLn $ "UI: EvResize: " ++ show (x,y)
-                                       writeIORef sz (y,x) >> runReaderT (refreshAll result) editor >> getKey editor v sz
+                                       writeIORef sz (y,x) >> runReaderT (refreshAll result) editor >> getKey
                   _ -> return (fromVtyEvent event)
-          forkIO $ getcLoop editor v s ch 
+          forkIO $ getcLoop
           return (ch, result)
         
 
 main :: IORef Editor -> UI -> IO ()
 main editor ui = do
-  e <- readIORef editor
   let
       -- | When the editor state isn't being modified, refresh, then wait for
       -- it to be modified again. 
