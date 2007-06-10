@@ -187,13 +187,14 @@ import Yi.Process           ( popen )
 import Yi.Editor hiding (readEditor)
 import Yi.CoreUI
 import Yi.Kernel
-import Yi.Event
+import Yi.Event (eventToChar)
 import Yi.Keymap
 import Yi.Interact (anyEvent)
 import Yi.Monad
 import qualified Yi.Editor as Editor
 import qualified Yi.Style as Style
-import qualified Yi.UI as UI
+import qualified Yi.CommonUI as UI
+import qualified Yi.UI as ThisFlavourUI
 
 import Data.Maybe
 import qualified Data.Map as M
@@ -204,7 +205,7 @@ import Data.Foldable
 import System.Directory     ( doesFileExist, doesDirectoryExist )
 
 import Control.Monad (when, replicateM_, filterM)
-import Control.Monad.Reader (runReaderT)
+import Control.Monad.Reader (runReaderT, asks)
 import Control.Monad.Trans
 import Control.Exception
 import Control.Concurrent 
@@ -260,7 +261,7 @@ startE kernel st commandLineActions = do
     -- restore the old state
     newSt <- newIORef $ maybe (emptyEditor consoleB) id st
     let runEd f = runReaderT f newSt
-    (inCh, ui) <- runEd (UI.start consoleB)
+    (inCh, ui) <- runEd (ThisFlavourUI.start consoleB)
     outCh <- newChan
     startKm <- newIORef nilKeymap
     startModules <- newIORef []
@@ -269,10 +270,10 @@ startE kernel st commandLineActions = do
     let yi = Yi newSt ui startThreads inCh outCh startKm keymaps kernel startModules
         runYi f = runReaderT f yi
 
+    consoleW <- runEd $ UI.newWindow ui False consoleB
     runYi $ do 
 
-      consoleW <- withUI $ UI.newWindow False consoleB
-      withUI $ UI.setWindow consoleW
+      withUI2 UI.setWindow consoleW
       newBufferE "*messages*" "" >> return ()
 
       withKernel $ \k -> do
@@ -308,7 +309,7 @@ startE kernel st commandLineActions = do
     t2 <- forkIO execLoop
     runYi $ modifiesRef threads (\ts -> t1 : t2 : ts)
 
-    UI.main newSt ui -- transfer control to UI: GTK must run in the main thread, or else it's not happy.
+    UI.main ui newSt -- transfer control to UI: GTK must run in the main thread, or else it's not happy.
                 
 changeKeymapE :: Keymap -> Action
 changeKeymapE km = do
@@ -675,7 +676,8 @@ pipeE cmd inp = do
 -- | Set the cmd buffer, and draw message at bottom of screen
 msgE :: String -> Action
 msgE s = do 
-  withUI' $ UI.setCmdLine s
+  ui <- asks yiUi
+  lift $ UI.setCmdLine ui s
   withEditor $ modifyEditor_ $ \e -> do
               -- also show in the messages buffer, so we don't loose any message
               let [b] = findBufferWithName e "*messages*"
@@ -814,7 +816,9 @@ newBufferE f s = do
 
 -- | Attach the specified buffer to the current window
 switchToBufferE :: FBuffer -> Action
-switchToBufferE b = withUI UI.getWindow >>= \w -> (withUI $ UI.setWindowBuffer b w)
+switchToBufferE b = do
+  ui <- asks yiUi
+  withEditor $ UI.getWindow ui >>= UI.setWindowBuffer ui b
 
 -- | Attach the specified buffer to some other window than the current one
 switchToBufferOtherWindowE :: FBuffer -> Action
@@ -839,8 +843,8 @@ spawnMinibufferE :: String -> KeymapMod -> Action -> Action
 spawnMinibufferE prompt kmMod initialAction =
     do b <- withEditor $ stringToNewBuffer prompt []
        setBufferKeymap b kmMod
-       w <- withUI $ UI.newWindow True b
-       withUI $ UI.setWindow w
+       ui <- asks yiUi
+       withEditor $ UI.setWindow ui =<< UI.newWindow ui True b 
        initialAction
 
 -- | Write current buffer to disk, if this buffer is associated with a file
@@ -901,7 +905,7 @@ prevWinE = prevWindow
 
 -- | Make window with key @k@ the current window
 setWinE :: Window -> Action
-setWinE w = withUI $ UI.setWindow w
+setWinE w = withUI2 UI.setWindow w
 
 -- | Split the current window, opening a second window onto this buffer.
 -- Windows smaller than 3 lines cannot be split.
@@ -914,11 +918,15 @@ splitE = do
 
 -- | Enlarge the current window
 enlargeWinE :: Action
-enlargeWinE = withUI UI.getWindow >>= \w -> withUI $ UI.enlargeWindow w
+enlargeWinE = do
+  ui <- asks yiUi
+  withEditor $ UI.getWindow ui >>= UI.enlargeWindow ui
 
 -- | Shrink the current window
 shrinkWinE :: Action
-shrinkWinE = withUI UI.getWindow >>= \w -> withUI $ UI.shrinkWindow w
+shrinkWinE = do
+  ui <- asks yiUi
+  withEditor $ UI.getWindow ui >>= UI.shrinkWindow ui
 
 -- | Close the current window.
 -- If this is the last window open, quit the program.
@@ -928,9 +936,10 @@ closeE = deleteThisWindow
 -- | Make the current window the only window on the screen
 closeOtherE :: Action
 closeOtherE = do
-        this   <- withUI UI.getWindow -- current window
-        ws <- withUI UI.getWindows
-        mapM_ (\w -> when (w /= this) $ withUI $ UI.deleteWindow w) ws
+        ui <- asks yiUi
+        this <- UI.getWindow ui -- current window
+        ws <- UI.getWindows ui
+        withEditor $ mapM_ (\w -> when (w /= this) $ UI.deleteWindow ui w) ws
 
 ------------------------------------------------------------------------
 --

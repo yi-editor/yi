@@ -19,7 +19,7 @@
 module Yi.Keymap where
 
 import Prelude hiding (error)
-import Yi.UI
+import Yi.CommonUI
 import qualified Yi.Editor as Editor
 import Yi.Editor (EditorM, Editor, getBuffer)
 import Yi.Debug
@@ -36,6 +36,9 @@ import Yi.Buffer
 import qualified Yi.Interact as I
 import Yi.Monad
 import Control.Monad.Writer
+import Yi.Window
+import Yi.CommonUI
+import Yi.Event
 
 type Action = YiM ()
 
@@ -58,7 +61,7 @@ data BufferKeymap = BufferKeymap
     }
 
 data Yi = Yi {yiEditor :: IORef Editor,
-              yiUi :: UI,
+              yiUi          :: UI,
               threads       :: IORef [ThreadId],                 -- ^ all our threads
               input         :: Chan Event,                 -- ^ input stream
               output        :: Chan Action,                -- ^ output stream
@@ -176,6 +179,11 @@ withKernel = with yiKernel
 withUI' :: (UI -> IO a) -> YiM a
 withUI' = with yiUi
 
+withUI2 :: (UI -> x -> EditorM a) -> (x -> YiM a)
+withUI2 f x = do
+  e <- ask
+  withEditor $ f (yiUi e) x
+
 withUI :: (UI -> EditorM a) -> YiM a
 withUI f = do
   e <- ask
@@ -188,7 +196,12 @@ withEditor f = do
 
 withGivenBuffer b f = withEditor (Editor.withGivenBuffer0 b f)
 withBuffer f = withEditor (Editor.withBuffer0 f)
-withWindow f = withUI' (withWindow0 f)
+
+withWindow :: (Window -> a) -> YiM a
+withWindow f = do
+  ui <- asks yiUi
+  lift $ withWindow0 ui f 
+
 readEditor f = withEditor (Editor.readEditor f)
 
 catchDynE :: Typeable exception => YiM a -> (exception -> YiM a) -> YiM a

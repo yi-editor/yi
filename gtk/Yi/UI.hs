@@ -54,6 +54,7 @@ import Yi.Event
 import Yi.Debug
 import Yi.Undo
 import Yi.Monad
+import qualified Yi.CommonUI as Common
 import qualified Yi.WindowSet as WS
 
 import Control.Concurrent ( yield )
@@ -81,8 +82,30 @@ data UI = UI {
              ,windows   :: IORef (WS.WindowSet Window)     -- ^ all the windows
              }
 
+
+mkUI ui = Common.UI 
+  {
+   Common.main                  = main                  ui,
+   Common.end                   = end,
+   Common.suspend               = suspend               ui,
+   Common.refreshAll            = return (),
+   Common.scheduleRefresh       = scheduleRefresh       ui,
+   Common.prepareAction         = prepareAction         ui,
+   Common.newWindow             = newWindow             ui,
+   Common.enlargeWindow         = enlargeWindow         ui,
+   Common.shrinkWindow          = shrinkWindow          ui,
+   Common.deleteWindow          = deleteWindow          ui,
+   Common.hasRoomForExtraWindow = hasRoomForExtraWindow ui,
+   Common.setWindowBuffer       = setWindowBuffer       ui,
+   Common.setWindow             = setWindow             ui,
+   Common.setCmdLine            = setCmdLine            ui,
+   Common.withWindow0           = withWindow0           ui,
+   Common.getWindows            = getWindows            ui,
+   Common.getWindow             = getWindow             ui
+  }
+
 -- | Initialise the ui
-start :: FBuffer -> EditorM (Chan Event, UI)
+start :: FBuffer -> EditorM (Chan Event, Common.UI)
 start buf = lift $ do
   initGUI
 
@@ -120,10 +143,10 @@ start buf = lift $ do
   let ui = UI win vb' cmd bufs ws0
   addWindow ui w0
 
-  return (ch, ui)
+  return (ch, mkUI ui)
 
 
-main :: IORef Editor -> UI -> IO ()
+main :: UI -> IORef Editor -> IO ()
 main _editor _ui = 
     do logPutStrLn "GTK main loop running"
        mainGUI
@@ -221,8 +244,8 @@ instance Show MovementStep where
     show MovementHorizontalPages  = "MovementHorizontalPages"         
 
 -- | Clean up and go home
-end :: UI -> IO ()
-end _ = mainQuit
+end :: IO ()
+end = mainQuit
 
 -- | Suspend the program
 suspend :: UI -> EditorM ()
@@ -237,25 +260,25 @@ suspend ui = do
 
 -- | Create a new window onto this buffer.
 --
-newWindow :: Bool -> FBuffer -> UI ->EditorM Window
-newWindow mini b ui = do
+newWindow :: UI -> Bool -> FBuffer -> EditorM Window
+newWindow ui mini b = do
   win <- lift $ do 
     win <- emptyWindow mini b
     logPutStrLn $ "Creating " ++ show win
     addWindow ui win
     return win
-  setWindowBuffer b win ui
+  setWindowBuffer ui b win
   return win
 
 -- ---------------------------------------------------------------------
 -- | Grow the given window, and pick another to shrink
 -- grow and shrink compliment each other, they could be refactored.
 --
-enlargeWindow :: Window -> UI -> EditorM ()
+enlargeWindow :: UI -> Window -> EditorM ()
 enlargeWindow _ _ = return () -- TODO
 
 -- | shrink given window (just grow another)
-shrinkWindow :: Window -> UI -> EditorM ()
+shrinkWindow :: UI -> Window -> EditorM ()
 shrinkWindow _ _ = return () -- TODO
 
 
@@ -263,19 +286,19 @@ shrinkWindow _ _ = return () -- TODO
 -- | Delete a window. Note that the buffer that was connected to this
 -- window is still open.
 --
-deleteWindow :: Window -> UI -> EditorM ()
-deleteWindow win i = do
+deleteWindow :: UI -> Window -> EditorM ()
+deleteWindow i win = do
   modifyRef (windows i) (WS.delete win)
   lift $ containerRemove (uiBox i) (widget win)
   w <- getWindow i
-  setWindow w i
+  setWindow i w
 
 -- | Has the frame enough room for an extra window.
 hasRoomForExtraWindow :: UI -> EditorM Bool
 hasRoomForExtraWindow _ = return True
 
-refreshAll :: UI -> EditorM ()
-refreshAll _ = return ()
+refreshAll :: EditorM ()
+refreshAll = return ()
 
 scheduleRefresh :: UI -> EditorM ()
 scheduleRefresh ui = modifyEditor_ $ \e-> do
@@ -318,13 +341,13 @@ prepareAction ui = do
     when (p1 /= p0) $ do
        moveTo p1 -- as a side effect we forget the prefered column
 
-setCmdLine :: String -> UI -> IO ()
-setCmdLine s i = do
+setCmdLine :: UI -> String -> IO ()
+setCmdLine i s = do
   set (uiCmdLine i) [labelText := if length s > 132 then take 129 s ++ "..." else s]
 
 -- | Display the given buffer in the given window.
-setWindowBuffer :: FBuffer -> Window -> UI -> EditorM ()
-setWindowBuffer b w ui = do
+setWindowBuffer :: UI -> FBuffer -> Window -> EditorM ()
+setWindowBuffer ui b w = do
     logPutStrLn $ "Setting buffer for " ++ show w ++ " to " ++ show b
     let bufsRef = uiBuffers ui
     bufs <- readRef bufsRef
@@ -352,16 +375,16 @@ newBuffer b = do
 
 -- FIXME: reset the buffer point from the window point
 
-setWindow :: Window -> UI -> EditorM ()
-setWindow w ui = do
+setWindow :: UI -> Window -> EditorM ()
+setWindow ui w = do
   logPutStrLn $ "Focusing " ++ show w 
   setBuffer (bufkey w)
   modifyRef (windows ui) (WS.setFocus w)
   liftIO $ widgetGrabFocus (textview w)
 
-withWindow0 :: (Window -> a) -> UI -> IO a
-withWindow0 f ui = do
-  ws <- readIORef (windows ui)
+withWindow0 :: MonadIO m => UI -> (Window -> a) -> m a
+withWindow0 ui f = do
+  ws <- readRef (windows ui)
   return (f $ WS.current ws)
 
 getWindows :: MonadIO m => UI -> m (WS.WindowSet Window)

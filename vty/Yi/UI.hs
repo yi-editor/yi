@@ -72,6 +72,7 @@ import Data.Traversable as T
 import Data.List
 import Data.Maybe
 import Data.Char (ord,chr)
+import qualified Yi.CommonUI as Common
 import qualified Yi.WindowSet as WS
 import Data.IORef
 import System.Exit
@@ -90,8 +91,30 @@ data UI = UI {
              ,windows   :: IORef (WS.WindowSet Window)     -- ^ all the windows
              }
 
+mkUI ui = Common.UI 
+  {
+   Common.main                  = main ui,
+   Common.end                   = end ui,
+   Common.suspend               = suspend               ui,
+   Common.refreshAll            = return (),
+   Common.scheduleRefresh       = scheduleRefresh       ui,
+   Common.prepareAction         = prepareAction         ui,
+   Common.newWindow             = newWindow             ui,
+   Common.enlargeWindow         = enlargeWindow         ui,
+   Common.shrinkWindow          = shrinkWindow          ui,
+   Common.deleteWindow          = deleteWindow          ui,
+   Common.hasRoomForExtraWindow = hasRoomForExtraWindow ui,
+   Common.setWindowBuffer       = setWindowBuffer       ui,
+   Common.setWindow             = setWindow             ui,
+   Common.setCmdLine            = setCmdLine            ui,
+   Common.withWindow0           = withWindow0           ui,
+   Common.getWindows            = getWindows            ui,
+   Common.getWindow             = getWindow             ui
+  }
+
+
 -- | Initialise the ui
-start :: FBuffer -> EditorM (Chan Yi.Event.Event, UI)
+start :: FBuffer -> EditorM (Chan Yi.Event.Event, Common.UI)
 start buf = do
   editor <- ask
   liftIO $ do 
@@ -118,11 +141,11 @@ start buf = do
                                        writeIORef sz (y,x) >> runReaderT (refreshAll result) editor >> getKey
                   _ -> return (fromVtyEvent event)
           forkIO $ getcLoop
-          return (ch, result)
+          return (ch, mkUI result)
         
 
-main :: IORef Editor -> UI -> IO ()
-main editor ui = do
+main :: UI -> IORef Editor -> IO ()
+main ui editor = do
   let
       -- | When the editor state isn't being modified, refresh, then wait for
       -- it to be modified again. 
@@ -337,8 +360,8 @@ withStyle sty str = renderBS (styleToAttr sty) (B.pack str)
 -- | Window manipulation
 
 -- | Create a new window onto this buffer.
-newWindow :: Bool -> FBuffer -> UI -> EditorM Window
-newWindow mini b ui = do 
+newWindow :: UI -> Bool -> FBuffer -> EditorM Window
+newWindow ui mini b = do 
   win <- liftIO $ emptyWindow mini b (1,1)
   modifyRef (windows ui) (turnOnML . WS.add win)
   logPutStrLn $ "created #" ++ show win
@@ -350,8 +373,8 @@ newWindow mini b ui = do
 -- | Grow the given window, and pick another to shrink
 -- grow and shrink compliment each other, they could be refactored.
 --
-enlargeWindow :: Window -> UI -> EditorM ()
-enlargeWindow _ ui = return ()
+enlargeWindow :: UI -> Window -> EditorM ()
+enlargeWindow ui _ = return ()
 -- enlargeWindow (Just win) ui = modifyEditor_ $ \e -> do
 --     let wls      = (M.elems . windows) e
 --     (maxy,x) <- readIORef $ scrsize $ ui
@@ -373,8 +396,8 @@ enlargeWindow _ ui = return ()
 -- 
 
 -- | shrink given window (just grow another)
-shrinkWindow :: Window -> UI -> EditorM ()
-shrinkWindow _ ui = return ()
+shrinkWindow :: UI -> Window -> EditorM ()
+shrinkWindow ui _ = return ()
 -- shrinkWindow (Just win) ui = modifyEditor_ $ \e -> do
 --     let wls      = (M.elems . windows) e
 --     (maxy,x) <- readIORef $ scrsize $ ui
@@ -409,8 +432,8 @@ getWinWithHeight wls i n p
 -- | Delete a window. Note that the buffer that was connected to this
 -- window is still open.
 --
-deleteWindow :: Window -> UI -> EditorM ()
-deleteWindow win ui = do 
+deleteWindow :: UI -> Window -> EditorM ()
+deleteWindow ui win = do 
   modifyRef (windows ui) (WS.delete win)
   doResizeAll ui
 
@@ -471,13 +494,13 @@ getY :: Int -> Int -> (Int,Int)
 getY screenHeight 0               = (screenHeight, 0)
 getY screenHeight numberOfWindows = screenHeight `quotRem` numberOfWindows
 
-setCmdLine :: String -> UI -> IO ()
-setCmdLine s i = do 
+setCmdLine :: UI -> String -> IO ()
+setCmdLine i s = do 
   writeIORef (cmdline i) s
                 
 -- | Display the given buffer in the given window.
-setWindowBuffer :: FBuffer -> Window -> UI -> EditorM ()
-setWindowBuffer b w ui = do
+setWindowBuffer :: UI -> FBuffer -> Window -> EditorM ()
+setWindowBuffer ui b w = do
     logPutStrLn $ "Setting buffer for " ++ show w ++ ": " ++ show b
     w'' <- do
                      w' <- lift $ emptyWindow False b (height w, width w)
@@ -492,16 +515,16 @@ setWindowBuffer b w ui = do
 --
 -- Factor in shift focus.
 --
-setWindow :: Window -> UI -> EditorM ()
-setWindow w ui = do
+setWindow :: UI -> Window -> EditorM ()
+setWindow ui w = do
   setBuffer (bufkey w)
   modifyRef (windows ui) (WS.setFocus w)
   --  WS.debug "After focus" ws
 
 
-withWindow0 :: (Window -> a) -> UI -> IO a
-withWindow0 f ui = do
-  ws <- readIORef (windows ui)
+withWindow0 :: MonadIO m => UI -> (Window -> a) -> m a
+withWindow0 ui f = do
+  ws <- readRef (windows ui)
   return (f $ WS.current ws)
 
 getWindows :: MonadIO m => UI -> m (WS.WindowSet Window)

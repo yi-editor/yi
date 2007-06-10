@@ -23,7 +23,7 @@
 module Yi.CoreUI where
 
 import Prelude hiding (error)
-import Yi.UI
+import Yi.CommonUI
 import Yi.Editor hiding (readEditor)
 import Yi.Debug
 import Yi.Buffer
@@ -55,21 +55,23 @@ shiftFocus f = do
   let ws = WS.contents wset
   w <- withUI getWindow
   case elemIndex w ws of
-    Just i -> withUI $ setWindow (ws !! ((f i) `mod` (length ws)))
+    Just i -> withUI2 setWindow (ws !! ((f i) `mod` (length ws)))
     _      -> error "Editor: current window has been lost."
 
 -- | Delete the focused window
 deleteThisWindow :: YiM ()
 deleteThisWindow = do
   logPutStrLn "deleting current window"
-  withUI getWindow >>= \w -> withUI (deleteWindow w)
+  ui <- asks yiUi
+  withEditor (getWindow ui >>= deleteWindow ui)
 
 -- | Close any windows onto the buffer b, then free the buffer
 killBufferWindows :: FBuffer -> YiM ()
 killBufferWindows b = do 
   logPutStrLn $ "KillBufferWindows: " ++ name b
-  ws <- withUI getWindows
-  withUI $ \u -> mapM_ (flip deleteWindow u) $ filter (\w -> bufkey w == keyB b) (WS.contents ws)
+  ui <- asks yiUi
+  ws <- getWindows ui
+  withEditor $ mapM_ (deleteWindow ui) $ filter (\w -> bufkey w == keyB b) (WS.contents ws)
 
 -- | Close any windows onto the buffer associated with name 'n', then free the buffer
 killBufferAndWindows :: String -> YiM ()
@@ -89,8 +91,8 @@ killBufferAndWindows n = do
 splitWindow :: YiM ()
 splitWindow = do 
   b <- withEditor $ getBuffer
-  w <- withUI $ newWindow False b
-  withUI $ setWindow w
+  ui <- asks yiUi
+  withEditor $ setWindow ui =<< newWindow ui False b
 
 -- | Switch focus to some other window. If none is available, create one.
 shiftOtherWindow :: YiM ()
@@ -104,4 +106,4 @@ withOtherWindow f = do
   w <- withUI $ getWindow
   shiftOtherWindow
   f
-  withUI $ setWindow w
+  withUI2 setWindow w

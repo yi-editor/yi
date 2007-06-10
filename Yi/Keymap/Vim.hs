@@ -33,10 +33,11 @@ import Data.Maybe           ( fromMaybe )
 
 import Control.Exception    ( ioErrors, try, evaluate )
 import Control.Monad.State
+import Control.Monad.Reader (asks)
 
 import Yi.Editor
 import Yi.History
-import Yi.UI as UI
+import Yi.CommonUI as UI
 
 --
 -- What's missing?
@@ -632,7 +633,8 @@ rep_char = write . fn =<< anyButEsc
 spawn_ex_buffer :: String -> Action
 spawn_ex_buffer prompt = do
   initialBuffer <- withEditor getBuffer
-  initialWindow <- withUI getWindow
+  ui <- asks yiUi
+  initialWindow <- withEditor $ getWindow ui
   -- The above ensures that the action is performed on the buffer that originated the minibuffer.
   let closeMinibuffer = do b <- withEditor getBuffer; closeE; withEditor $ deleteBuffer b 
       anyButDelNlArrow = oneOf $ any' \\ (enter' ++ delete' ++ ['\ESC',keyUp,keyDown])
@@ -640,7 +642,7 @@ spawn_ex_buffer prompt = do
         historyFinish
         lineString <- readAllE
         closeMinibuffer
-        withUI $ UI.setWindow initialWindow
+        withEditor $ UI.setWindow ui initialWindow
         switchToBufferE initialBuffer 
         ex_eval (head prompt : lineString)
       ex_process :: VimMode
