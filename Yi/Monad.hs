@@ -14,7 +14,10 @@ repeatM_ a = a >> repeatM_ a
 readRef :: (MonadIO m) => IORef a -> m a
 readRef r = liftIO $ readIORef r
 
+writeRef :: (MonadIO m) => IORef a -> a -> m ()
 writeRef r x = liftIO $ writeIORef r x
+
+modifyRef :: (MonadIO m) => IORef a -> (a -> a) -> m ()
 modifyRef r f = liftIO $ modifyIORef r f
 
 

@@ -74,7 +74,7 @@ import Yi.Buffer
 import Yi.Core
 import Text.Regex.Posix.String ( compExtended, compile, execBlank)
 import Yi.Keymap
-
+import Yi.Monad
 import Data.Char
 import qualified Data.Map as M
 
@@ -347,14 +347,14 @@ completions = unsafePerformIO $ newIORef Nothing -- FIXME! Unsafeperformio is no
 -- | Switch out of completion mode.
 --
 resetCompleteE :: Action
-resetCompleteE = lift $ writeIORef completions Nothing
+resetCompleteE = writeRef completions Nothing
 
 --
 -- The word-completion action, down the buffer
 --
 wordCompleteE :: Action
 wordCompleteE = withBuffer $ 
-        (lift $ readIORef completions) >>= loop >>= (lift . writeIORef completions)
+        (readRef completions) >>= loop >>= (writeRef completions)
 
   where
     --

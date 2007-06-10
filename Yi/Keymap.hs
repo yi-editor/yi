@@ -92,7 +92,7 @@ write x = I.write (tell [x])
 setBufferKeymap :: FBuffer -> KeymapMod -> YiM ()
 setBufferKeymap b km = do 
   bkm <- getBufferKeymap b
-  lift $ writeIORef (bufferKeymap bkm) km
+  writeRef (bufferKeymap bkm) km
   restartBufferThread b
   logPutStrLn $ "Changed keymap for buffer " ++ show b
  

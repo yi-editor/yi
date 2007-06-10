@@ -43,7 +43,7 @@ import Text.Regex.Posix.Wrap    ( Regex  )
 import Yi.FastBuffer
 import Yi.Undo
 import Yi.Style
-
+import Yi.Monad
 import Yi.Debug
 import Yi.Dynamic
 import Data.IORef
@@ -309,10 +309,10 @@ rightN n = pointB >>= \p -> moveTo (p + n)
 -- Line based movement and friends
 
 readPrefCol :: BufferM (Maybe Int)
-readPrefCol = lift . readIORef =<< asks preferCol
+readPrefCol = readRef =<< asks preferCol
 
 setPrefCol :: Maybe Int -> BufferM ()
-setPrefCol c = do b <- ask; lift $ writeIORef (preferCol b) c
+setPrefCol c = do b <- ask; writeRef (preferCol b) c
 
 -- | Move point down by @n@ lines. @n@ can be negative.
 lineMoveRel :: Int -> BufferM ()
@@ -324,14 +324,14 @@ lineMoveRel n = do
   gotoLnFrom n
   moveXorEol targetCol
   --logPutStrLn $ "lineMoveRel: targetCol = " ++ show targetCol
-  b <- ask; lift $ writeIORef (preferCol b) (Just targetCol)
+  b <- ask; writeRef (preferCol b) (Just targetCol)
 
 forgetPreferCol :: BufferM ()
 forgetPreferCol = setPrefCol Nothing
 
 savingPrefCol :: BufferM a -> BufferM a
 savingPrefCol f = do
-  pc <- lift . readIORef =<< asks preferCol
+  pc <- readRef =<< asks preferCol
   result <- f
   setPrefCol pc
   return result
@@ -473,11 +473,11 @@ moveToEol = sizeB >>= moveXorEol
 getDynamicB :: Initializable a => BufferM a
 getDynamicB = do
   b <- ask
-  dv <- lift $ readIORef (bufferDynamic b)
+  dv <- readRef (bufferDynamic b)
   return $ getDynamicValue dv
 
 -- | Insert a value into the extensible state, keyed by its type
 setDynamicB :: Initializable a => a -> BufferM ()
 setDynamicB x = do
   b <- ask
-  lift $ modifyIORef (bufferDynamic b) $ setDynamicValue x
+  modifyRef (bufferDynamic b) $ setDynamicValue x

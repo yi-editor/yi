@@ -41,6 +41,7 @@ import qualified Data.Map as M
 
 import Control.Monad.Reader
 import Control.Monad.Writer
+import Yi.Monad
 
 ------------------------------------------------------------------------
 
@@ -86,21 +87,21 @@ emptyEditor buf = Editor {
 readEditor :: (Editor -> b) -> EditorM b
 readEditor f = do
   e <- ask
-  lift $ liftM f (readIORef e)
+  liftM f (readRef e)
 
 -- | Modify the contents, using an IO action.
 modifyEditor_ :: (Editor -> IO Editor) -> EditorM ()
 modifyEditor_ f = do
   e <- ask
-  e' <- lift $ (f =<< readIORef e)
-  lift $ writeIORef e e'  
+  e' <- lift (f =<< readIORef e)
+  writeRef e e'  
 
 -- | Variation on modifyEditor_ that lets you return a value
 modifyEditor :: (Editor -> IO (Editor,b)) -> EditorM b
 modifyEditor f = do
   e <- ask
   (e',result) <- lift (f =<< readIORef e)
-  lift $ writeIORef e e'
+  writeRef e e'
   return result
 
 withEditor0 :: (Editor -> IO a) -> EditorM a

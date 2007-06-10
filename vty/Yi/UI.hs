@@ -150,7 +150,7 @@ suspend _ = lift $ raiseSignal sigTSTP
 
 -- | Find the current screen height and width.
 screenSize :: UI -> EditorM (Int, Int)
-screenSize ui = lift . readIORef . scrsize $ ui
+screenSize ui = readRef . scrsize $ ui
 
 
 fromVtyEvent :: Yi.Vty.Event -> Yi.Event.Event
@@ -193,7 +193,7 @@ refresh :: UI -> EditorM ()
 refresh ui = do
   logPutStrLn "refreshing screen."
   updateWindows ui
-  ws <- liftIO $ readIORef (windows ui)
+  ws <- readRef (windows ui)
   let w = WS.current ws
   withEditor0 $ \e -> do
     let wImages = map picture (WS.contents ws)
@@ -210,12 +210,12 @@ refresh ui = do
 
 updateWindows :: UI -> EditorM ()
 updateWindows ui = do
-  ws0 <- liftIO $ readIORef (windows ui)
+  ws0 <- readRef (windows ui)
   WS.debug "Updating windows" ws0
-  e <- (liftIO . readIORef) =<< ask
+  e <- readRef =<< ask
   ws <- liftIO $ T.mapM (\w -> drawWindow e (w == WS.current ws0) (uistyle e) w) ws0
   logPutStrLn "Windows updated!"
-  liftIO $ writeIORef (windows ui) ws
+  writeRef (windows ui) ws
 
 showPoint :: Editor -> Window -> IO Window 
 showPoint e w = do
@@ -340,10 +340,10 @@ withStyle sty str = renderBS (styleToAttr sty) (B.pack str)
 newWindow :: Bool -> FBuffer -> UI -> EditorM Window
 newWindow mini b ui = do 
   win <- liftIO $ emptyWindow mini b (1,1)
-  liftIO $ modifyIORef (windows ui) (turnOnML . WS.add win)
+  modifyRef (windows ui) (turnOnML . WS.add win)
   logPutStrLn $ "created #" ++ show win
   doResizeAll ui
-  ws <- liftIO (readIORef (windows ui))
+  ws <- readRef (windows ui)
   return $ WS.current ws
 
 -- ---------------------------------------------------------------------
@@ -411,7 +411,7 @@ getWinWithHeight wls i n p
 --
 deleteWindow :: Window -> UI -> EditorM ()
 deleteWindow win ui = do 
-  liftIO $ modifyIORef (windows ui) (WS.delete win)
+  modifyRef (windows ui) (WS.delete win)
   doResizeAll ui
 
 ------------------------------------------------------------------------
@@ -460,7 +460,7 @@ turnOnML = fmap $ \w -> w { mode = not (isMini w) }
 -- | Has the frame enough room for an extra window.
 hasRoomForExtraWindow :: UI -> EditorM Bool
 hasRoomForExtraWindow ui = do
-    ws <- liftIO (readIORef (windows ui))
+    ws <- readRef (windows ui)
     (y,_) <- screenSize ui 
     let (sy,r) = getY y (WS.size ws)
     return $ sy + r > 4  -- min window size
@@ -483,7 +483,7 @@ setWindowBuffer b w ui = do
                      w' <- lift $ emptyWindow False b (height w, width w)
                      return $ w' { key = key w, mode = mode w } 
                      -- reuse the window's key (so it ends in the same place on the screen)
-    liftIO $ modifyIORef (windows ui) (WS.update w'')
+    modifyRef (windows ui) (WS.update w'')
     -- WS.debug "After setbuffer" =<< readRef windows
 
 --
@@ -495,7 +495,7 @@ setWindowBuffer b w ui = do
 setWindow :: Window -> UI -> EditorM ()
 setWindow w ui = do
   setBuffer (bufkey w)
-  liftIO $ modifyIORef (windows ui) (WS.setFocus w)
+  modifyRef (windows ui) (WS.setFocus w)
   --  WS.debug "After focus" ws
 
 
@@ -505,7 +505,7 @@ withWindow0 f ui = do
   return (f $ WS.current ws)
 
 getWindows :: MonadIO m => UI -> m (WS.WindowSet Window)
-getWindows ui = liftIO $ readIORef $ windows ui
+getWindows ui = readRef $ windows ui
 
 getWindow :: MonadIO m => UI -> m Window
 getWindow ui = do

@@ -53,6 +53,7 @@ import Yi.Window as Window
 import Yi.Event
 import Yi.Debug
 import Yi.Undo
+import Yi.Monad
 import qualified Yi.WindowSet as WS
 
 import Control.Concurrent ( yield )
@@ -264,7 +265,7 @@ shrinkWindow _ _ = return () -- TODO
 --
 deleteWindow :: Window -> UI -> EditorM ()
 deleteWindow win i = do
-  liftIO $ modifyIORef (windows i) (WS.delete win)
+  modifyRef (windows i) (WS.delete win)
   lift $ containerRemove (uiBox i) (widget win)
   w <- getWindow i
   setWindow w i
@@ -278,7 +279,7 @@ refreshAll _ = return ()
 
 scheduleRefresh :: UI -> EditorM ()
 scheduleRefresh ui = modifyEditor_ $ \e-> do
-    ws <- liftIO $ readIORef (windows ui)
+    ws <- readRef (windows ui)
     bufs <- readIORef $ uiBuffers $ ui
     sequence_ [applyUpdate (bufs M.! b) u >> logPutStrLn (show $ u) | (b,u) <- editorUpdates e]
     forM_ ws $ \w -> 
@@ -326,14 +327,14 @@ setWindowBuffer :: FBuffer -> Window -> UI -> EditorM ()
 setWindowBuffer b w ui = do
     logPutStrLn $ "Setting buffer for " ++ show w ++ " to " ++ show b
     let bufsRef = uiBuffers ui
-    bufs <- lift $ readIORef bufsRef
+    bufs <- readRef bufsRef
     gtkBuf <- case M.lookup (bkey b) bufs of
       Just gtkBuf -> return gtkBuf
       Nothing -> lift $ newBuffer b
     lift $ textViewSetBuffer (textview w) gtkBuf
-    lift $ modifyIORef bufsRef (M.insert (bkey b) gtkBuf)
+    modifyRef bufsRef (M.insert (bkey b) gtkBuf)
     let w' = w { bufkey = bkey b }
-    liftIO $ modifyIORef (windows ui) (WS.update w')
+    modifyRef (windows ui) (WS.update w')
 
 -- FIXME: when a buffer is deleted its GTK counterpart should be too.
 newBuffer :: FBuffer -> IO SourceBuffer
@@ -355,7 +356,7 @@ setWindow :: Window -> UI -> EditorM ()
 setWindow w ui = do
   logPutStrLn $ "Focusing " ++ show w 
   setBuffer (bufkey w)
-  liftIO $ modifyIORef (windows ui) (WS.setFocus w)
+  modifyRef (windows ui) (WS.setFocus w)
   liftIO $ widgetGrabFocus (textview w)
 
 withWindow0 :: (Window -> a) -> UI -> IO a
@@ -364,7 +365,7 @@ withWindow0 f ui = do
   return (f $ WS.current ws)
 
 getWindows :: MonadIO m => UI -> m (WS.WindowSet Window)
-getWindows ui = liftIO $ readIORef $ windows ui
+getWindows ui = readRef $ windows ui
 
 getWindow :: MonadIO m => UI -> m Window
 getWindow ui = do
