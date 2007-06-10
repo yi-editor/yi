@@ -2,6 +2,7 @@ module Yi.Monad where
 
 import Data.IORef
 import Control.Monad.Reader
+import Control.Monad.Trans
 
 -- | Repeat indefinitely the parameter.
 repeatM_ :: forall m a. Monad m => m a -> m ()
@@ -10,23 +11,30 @@ repeatM_ a = a >> repeatM_ a
 {-# INLINE repeatM_ #-}
 
 
-modifiesRef :: (b -> IORef a) -> (a -> a) -> ReaderT b IO ()
-modifiesRef f g = do
-  b <- ask
-  lift $ modifyIORef (f b) g
+readRef :: (MonadIO m) => IORef a -> m a
+readRef r = liftIO $ readIORef r
 
-readsRef :: (b -> IORef a) -> ReaderT b IO a
+writeRef r x = liftIO $ writeIORef r x
+modifyRef r f = liftIO $ modifyIORef r f
+
+
+modifiesRef :: (MonadReader r m, MonadIO m) => (r -> IORef a) -> (a -> a) -> m ()
+modifiesRef f g = do
+  b <- asks f
+  modifyRef b g
+
+readsRef :: (MonadReader r m, MonadIO m) => (r -> IORef a) -> m a
 readsRef f = do
   r <- asks f
-  lift $ readIORef r
+  readRef r
 
+writesRef :: (MonadReader r m, MonadIO m) => (r -> IORef a) -> a -> m ()
 writesRef f x = do
   r <- asks f
-  liftIO $ writeIORef r x
+  writeRef r x
 
 
-
-with :: (yi -> a) -> (a -> IO b) -> ReaderT yi IO b
+with :: (MonadReader yi m, MonadIO m) => (yi -> component) -> (component -> IO a) -> m a
 with f g = do
     yi <- ask
-    lift $ g (f yi)
+    liftIO $ g (f yi)
