@@ -10,17 +10,17 @@ repeatM_ a = a >> repeatM_ a
 {-# INLINE repeatM_ #-}
 
 
-modifyRef :: (b -> IORef a) -> (a -> a) -> ReaderT b IO ()
-modifyRef f g = do
+modifiesRef :: (b -> IORef a) -> (a -> a) -> ReaderT b IO ()
+modifiesRef f g = do
   b <- ask
   lift $ modifyIORef (f b) g
 
-readRef :: (b -> IORef a) -> ReaderT b IO a
-readRef f = do
+readsRef :: (b -> IORef a) -> ReaderT b IO a
+readsRef f = do
   r <- asks f
   lift $ readIORef r
 
-writeRef f x = do
+writesRef f x = do
   r <- asks f
   liftIO $ writeIORef r x
 

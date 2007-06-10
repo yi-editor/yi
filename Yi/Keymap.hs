@@ -110,7 +110,7 @@ deleteBufferKeymap b = do
   lift $ do logPutStrLn $ "Waiting for buffer thread to start: " ++ show b
             takeMVar (bufferKeymapRestartable bkm) 
             maybe (return ()) killThread (bufferThread bkm)
-  modifyRef bufferKeymaps (M.delete (keyB b))
+  modifiesRef bufferKeymaps (M.delete (keyB b))
 
 startBufferKeymap :: FBuffer -> YiM BufferKeymap
 startBufferKeymap b = do
@@ -127,12 +127,12 @@ startBufferKeymap b = do
                                    }
             t <- forkIO $ bufferEventLoop yi b bkm
             return bkm {bufferThread = Just t}
-  modifyRef bufferKeymaps (M.insert (keyB b) bkm)
+  modifiesRef bufferKeymaps (M.insert (keyB b) bkm)
   return bkm
 
 getBufferKeymap :: FBuffer -> YiM BufferKeymap
 getBufferKeymap b = do
-  kms <- readRef bufferKeymaps
+  kms <- readsRef bufferKeymaps
   case M.lookup (keyB b) kms of
     Just bkm -> return bkm 
     Nothing -> startBufferKeymap b
@@ -205,6 +205,6 @@ handleJustE p h c = catchJustE p c h
 
 -- | Shut down all of our threads. Should free buffers etc.
 shutdown :: YiM ()
-shutdown = do ts <- readRef threads
+shutdown = do ts <- readsRef threads
               lift $ mapM_ killThread ts
 

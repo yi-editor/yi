@@ -306,13 +306,13 @@ startE kernel st commandLineActions = do
       
     t1 <- forkIO eventLoop 
     t2 <- forkIO execLoop
-    runYi $ modifyRef threads (\ts -> t1 : t2 : ts)
+    runYi $ modifiesRef threads (\ts -> t1 : t2 : ts)
 
     UI.main newSt ui -- transfer control to UI: GTK must run in the main thread, or else it's not happy.
                 
 changeKeymapE :: Keymap -> Action
 changeKeymapE km = do
-  modifyRef defaultKeymap (const km)
+  modifiesRef defaultKeymap (const km)
   bs <- withEditor getBuffers
   mapM_ restartBufferThread bs
   return ()
@@ -328,7 +328,7 @@ quitE = withUI' UI.end
 -- | (Re)compile and reload the user's config files
 reloadE :: YiM [String]
 reloadE = do
-  modules <- readRef editorModules
+  modules <- readsRef editorModules
   withKernel $ \kernel -> do
     targets <- mapM (\m -> guessTarget kernel m Nothing) modules
     setTargets kernel targets
@@ -972,12 +972,12 @@ runConfig = do
 
 loadE :: String -> YiM [String]
 loadE modul = do
-  modifyRef editorModules (++ [modul])
+  modifiesRef editorModules (++ [modul])
   reloadE
 
 unloadE :: String -> YiM [String]
 unloadE modul = do
-  modifyRef editorModules $ delete modul
+  modifiesRef editorModules $ delete modul
   reloadE
 
 getNamesInScopeE :: YiM [String]
