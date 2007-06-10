@@ -59,7 +59,7 @@ historyFinish = do
 debugHist :: YiM ()
 debugHist = do
   h :: History <- getDynamic
-  lift $ logPutStrLn (show h)
+  logPutStrLn (show h)
 
 historyMove :: Int -> YiM ()
 historyMove delta = do

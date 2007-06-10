@@ -324,7 +324,7 @@ setCmdLine s i = do
 -- | Display the given buffer in the given window.
 setWindowBuffer :: FBuffer -> Window -> UI -> EditorM ()
 setWindowBuffer b w ui = do
-    lift $ logPutStrLn $ "Setting buffer for " ++ show w ++ " to " ++ show b
+    logPutStrLn $ "Setting buffer for " ++ show w ++ " to " ++ show b
     let bufsRef = uiBuffers ui
     bufs <- lift $ readIORef bufsRef
     gtkBuf <- case M.lookup (bkey b) bufs of
@@ -353,10 +353,10 @@ newBuffer b = do
 
 setWindow :: Window -> UI -> EditorM ()
 setWindow w ui = do
-  lift $ logPutStrLn $ "Focusing " ++ show w 
+  logPutStrLn $ "Focusing " ++ show w 
   setBuffer (bufkey w)
   liftIO $ modifyIORef (windows ui) (WS.setFocus w)
-  lift $ widgetGrabFocus (textview w)
+  liftIO $ widgetGrabFocus (textview w)
 
 withWindow0 :: (Window -> a) -> UI -> IO a
 withWindow0 f ui = do

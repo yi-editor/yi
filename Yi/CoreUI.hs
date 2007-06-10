@@ -61,13 +61,13 @@ shiftFocus f = do
 -- | Delete the focused window
 deleteThisWindow :: YiM ()
 deleteThisWindow = do
-  lift $ logPutStrLn "deleting current window"
+  logPutStrLn "deleting current window"
   withUI getWindow >>= \w -> withUI (deleteWindow w)
 
 -- | Close any windows onto the buffer b, then free the buffer
 killBufferWindows :: FBuffer -> YiM ()
 killBufferWindows b = do 
-  lift $ logPutStrLn $ "KillBufferWindows: " ++ name b
+  logPutStrLn $ "KillBufferWindows: " ++ name b
   ws <- withUI getWindows
   withUI $ \u -> mapM_ (flip deleteWindow u) $ filter (\w -> bufkey w == keyB b) (WS.contents ws)
 

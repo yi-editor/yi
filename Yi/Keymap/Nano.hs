@@ -211,7 +211,7 @@ search_km p = choice [srch_g, srch_y, srch_v, srch_t, srch_c, srch_r, performSea
 
 echoMode :: String -> (String -> Interact Char a) -> Interact Char a
 echoMode prompt exitProcess = do 
-  write (lift $ logPutStrLn "echoMode")
+  write (logPutStrLn "echoMode")
   result <- lineEdit []
   return result
     where lineEdit s =

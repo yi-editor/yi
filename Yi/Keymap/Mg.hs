@@ -446,7 +446,7 @@ metaOMode = do c <- oneOf metaoKeysList; keys2action [m_ 'O',c]; write msgClrE
 
 echoMode :: String -> Interact Char (Maybe String)
 echoMode prompt = do 
-  write (lift $ logPutStrLn "echoMode")
+  write (logPutStrLn "echoMode")
   result <- lineEdit []
   write msgClrE
   return result

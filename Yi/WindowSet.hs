@@ -58,4 +58,4 @@ update w (WindowSet ws) = WindowSet (map (\w' -> if w == w' then w else w') ws)
 size :: WindowSet a -> Int
 size (WindowSet ws) = length ws
 
-debug msg (WindowSet ws) = liftIO $ logPutStrLn $ msg ++ ": " ++ show ws 
+debug msg (WindowSet ws) = logPutStrLn $ msg ++ ": " ++ show ws 

@@ -279,7 +279,7 @@ insertNextC = do c <- satisfy (const True)
 readArgC :: KProc ()
 readArgC = do readArg' Nothing
               write $ do UniversalArg u <- getDynamic
-                         lift $ logPutStrLn (show u)
+                         logPutStrLn (show u)
                          msgE ""
 
 readArg' :: Maybe Int -> KProc ()
@@ -303,7 +303,7 @@ gotoLineE :: Action
 gotoLineE = withMinibuffer "goto line:" return  $ gotoLnE . read
 
 -- debug :: String -> Process
--- debug = write . lift . logPutStrLn
+-- debug = write . logPutStrLn
 
 commonPrefix :: [String] -> String
 commonPrefix [] = []

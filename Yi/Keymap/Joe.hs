@@ -172,7 +172,7 @@ simpleq prompt initialValue act = do
 
 echoMode :: String -> String -> JoeProc (Maybe String)
 echoMode prompt initialValue = do 
-  write (lift $ logPutStrLn "echoMode")
+  write (logPutStrLn "echoMode")
   result <- lineEdit initialValue
   return result
     where lineEdit s =

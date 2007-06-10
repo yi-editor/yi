@@ -121,7 +121,7 @@ hNewBuffer f = do
 -- | Create and fill a new buffer, using contents of string.
 stringToNewBuffer :: String -> String -> EditorM FBuffer
 stringToNewBuffer nm cs = do
-    lift $ logPutStrLn $ "stringToNewBuffer: " ++ show nm
+    logPutStrLn $ "stringToNewBuffer: " ++ show nm
     b <- lift $ newB nm cs
     insertBuffer b
 

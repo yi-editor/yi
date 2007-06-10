@@ -94,7 +94,7 @@ setBufferKeymap b km = do
   bkm <- getBufferKeymap b
   lift $ writeIORef (bufferKeymap bkm) km
   restartBufferThread b
-  lift $ logPutStrLn $ "Changed keymap for buffer " ++ show b
+  logPutStrLn $ "Changed keymap for buffer " ++ show b
  
 restartBufferThread :: FBuffer -> YiM ()
 restartBufferThread b = do
@@ -102,7 +102,7 @@ restartBufferThread b = do
   lift $ do logPutStrLn $ "Waiting for buffer thread to start: " ++ show b
             takeMVar (bufferKeymapRestartable bkm) 
             maybe (return ()) (flip throwDynTo "Keymap change") (bufferThread bkm)
-            logPutStrLn $ "Restart signal sent: " ++ show b
+  logPutStrLn $ "Restart signal sent: " ++ show b
             
 deleteBufferKeymap :: FBuffer -> YiM ()
 deleteBufferKeymap b = do
@@ -114,7 +114,7 @@ deleteBufferKeymap b = do
 
 startBufferKeymap :: FBuffer -> YiM BufferKeymap
 startBufferKeymap b = do
-  lift $ logPutStrLn $ "Starting buffer keymap: " ++ show b
+  logPutStrLn $ "Starting buffer keymap: " ++ show b
   yi <- ask
   bkm <- lift $ 
          do r <- newEmptyMVar

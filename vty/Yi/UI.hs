@@ -191,7 +191,7 @@ fromVtyMod Yi.Vty.MAlt   = Yi.Event.MMeta
 --
 refresh :: UI -> EditorM ()
 refresh ui = do
-  lift $ logPutStrLn "refreshing screen."
+  logPutStrLn "refreshing screen."
   updateWindows ui
   ws <- liftIO $ readIORef (windows ui)
   let w = WS.current ws
@@ -214,7 +214,7 @@ updateWindows ui = do
   WS.debug "Updating windows" ws0
   e <- (liftIO . readIORef) =<< ask
   ws <- liftIO $ T.mapM (\w -> drawWindow e (w == WS.current ws0) (uistyle e) w) ws0
-  liftIO $ logPutStrLn "Windows updated!"
+  logPutStrLn "Windows updated!"
   liftIO $ writeIORef (windows ui) ws
 
 showPoint :: Editor -> Window -> IO Window 
@@ -341,7 +341,7 @@ newWindow :: Bool -> FBuffer -> UI -> EditorM Window
 newWindow mini b ui = do 
   win <- liftIO $ emptyWindow mini b (1,1)
   liftIO $ modifyIORef (windows ui) (turnOnML . WS.add win)
-  liftIO $ logPutStrLn $ "created #" ++ show win
+  logPutStrLn $ "created #" ++ show win
   doResizeAll ui
   ws <- liftIO (readIORef (windows ui))
   return $ WS.current ws
@@ -478,7 +478,7 @@ setCmdLine s i = do
 -- | Display the given buffer in the given window.
 setWindowBuffer :: FBuffer -> Window -> UI -> EditorM ()
 setWindowBuffer b w ui = do
-    lift $ logPutStrLn $ "Setting buffer for " ++ show w ++ ": " ++ show b
+    logPutStrLn $ "Setting buffer for " ++ show w ++ ": " ++ show b
     w'' <- do
                      w' <- lift $ emptyWindow False b (height w, width w)
                      return $ w' { key = key w, mode = mode w } 

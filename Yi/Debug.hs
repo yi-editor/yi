@@ -8,6 +8,7 @@ module Yi.Debug (
     ) where
 
 import Control.Concurrent
+import Control.Monad.Trans
 import Data.IORef
 import System.IO        
 import System.IO.Unsafe ( unsafePerformIO )
@@ -36,14 +37,15 @@ error :: String -> a
 error s = unsafePerformIO $ do logPutStrLn s
                                Prelude.error s
 
-logPutStrLn :: String -> IO ()
-logPutStrLn s = do time <- toCalendarTime =<< getClockTime
+logPutStrLn :: (MonadIO m) => [Char] -> m ()
+logPutStrLn s = liftIO $ do 
+                   time <- toCalendarTime =<< getClockTime
                    tId <- myThreadId
                    h <- readIORef dbgHandle
                    hPutStrLn h $ calendarTimeToString time ++ " " ++ show tId ++ " " ++ s
                    hFlush h
 
-logError :: String -> IO ()
+logError :: (MonadIO m) => String -> m ()
 logError s = logPutStrLn $ "error: " ++ s
 
 logStream :: Show a => String -> Chan a -> IO ()

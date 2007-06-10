@@ -226,11 +226,11 @@ data Direction = GoLeft | GoRight
 -- UI will be refreshed.
 interactive :: YiM a -> YiM a
 interactive action = do 
-  liftIO $ logPutStrLn ">>>>>>> interactively"
+  logPutStrLn ">>>>>>> interactively"
   withUI UI.prepareAction
   x <- action
   withUI UI.scheduleRefresh
-  liftIO $ logPutStrLn "<<<<<<<"
+  logPutStrLn "<<<<<<<"
   return x
 
 nilKeymap :: Keymap
@@ -686,7 +686,7 @@ msgE s = do
 -- | Set the cmd buffer, and draw a pretty error message
 errorE :: String -> Action
 errorE s = do msgE ("error: " ++ s)
-              lift $ logPutStrLn $ "errorE: " ++ s
+              logPutStrLn $ "errorE: " ++ s
 
 -- | Clear the message line at bottom of screen
 msgClrE :: Action
@@ -809,7 +809,7 @@ newBufferE :: String -> String -> YiM FBuffer
 newBufferE f s = do
     b <- withEditor $ stringToNewBuffer f s
     switchToBufferE b
-    lift $ logPutStrLn "newBufferE ended"
+    logPutStrLn "newBufferE ended"
     return b
 
 -- | Attach the specified buffer to the current window
