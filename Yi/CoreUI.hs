@@ -37,25 +37,20 @@ import Yi.WindowSet as WS
 
 -- | Rotate focus to the next window
 nextWindow :: YiM ()
-nextWindow = shiftFocus (+1)
+nextWindow = shiftFocus 1
 
 -- | Rotate focus to the previous window
 prevWindow :: YiM ()
-prevWindow = shiftFocus (subtract 1)
+prevWindow = shiftFocus (negate 1)
 
--- | Shift focus to the nth window, modulo the number of windows
-windowAt :: Int -> YiM ()
-windowAt n = shiftFocus (const n)
-
--- | Set the new current window using a function applied to the old
--- window's index
-shiftFocus :: (Int -> Int) -> YiM ()
-shiftFocus f = do
+-- | Shift the focus to some other window.
+shiftFocus :: Int -> YiM ()
+shiftFocus amount = do
   wset <- withUI getWindows
   let ws = WS.contents wset
   w <- withUI getWindow
   case elemIndex w ws of
-    Just i -> withUI2 setWindow (ws !! ((f i) `mod` (length ws)))
+    Just i -> withUI2 setWindow (ws !! ((amount + i) `mod` (length ws)))
     _      -> error "Editor: current window has been lost."
 
 -- | Delete the focused window

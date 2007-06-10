@@ -45,7 +45,7 @@ type Action = YiM ()
 type Interact ev a = I.Interact ev (Writer [Action]) a
 
 type Keymap = Interact Event ()
-
+ 
 type KeymapMod = Keymap -> Keymap
 
 
