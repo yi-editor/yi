@@ -31,6 +31,7 @@ module Yi.UI (
         -- * Window manipulation
         newWindow, enlargeWindow, shrinkWindow, deleteWindow,
         hasRoomForExtraWindow, setWindowBuffer, setWindow,
+        withWindow0, getWindow, getWindows,
 
         -- * Command line
         setCmdLine,
@@ -44,7 +45,7 @@ module Yi.UI (
         module Yi.Event   -- UIs need to export the symbolic key names
   )   where
 
-import Prelude hiding (error)
+import Prelude hiding (error, sequence_)
 
 import Yi.Buffer
 import Yi.Editor
@@ -52,15 +53,17 @@ import Yi.Window as Window
 import Yi.Event
 import Yi.Debug
 import Yi.Undo
+import qualified Yi.WindowSet as WS
 
 import Control.Concurrent ( yield )
 import Control.Concurrent.Chan
-import Control.Monad.Reader
+import Control.Monad.Reader (ask, lift, liftIO, liftM, when, MonadIO)
 
 import Data.IORef
 import Data.List
 import Data.Maybe
 import Data.Unique
+import Data.Foldable
 import qualified Data.Map as M
 
 import Graphics.UI.Gtk hiding ( Window, Event )          
@@ -74,11 +77,12 @@ data UI = UI {
              ,uiBox :: VBox
              ,uiCmdLine :: Label
              ,uiBuffers :: IORef (M.Map Unique SourceBuffer)
+             ,windows   :: IORef (WS.WindowSet Window)     -- ^ all the windows
              }
 
 -- | Initialise the ui
-start :: EditorM (Chan Event, UI)
-start = lift $ do
+start :: FBuffer -> EditorM (Chan Event, UI)
+start buf = lift $ do
   initGUI
 
   win <- windowNew
@@ -108,7 +112,14 @@ start = lift $ do
   widgetShowAll win
 
   bufs <- newIORef M.empty
-  return $ (ch, UI win vb' cmd bufs)
+
+  -- creation of the 1st window is a bit tricky because we disallow an empty WindowSet.
+  w0 <- emptyWindow False buf
+  ws0 <- newIORef (WS.new w0)
+  let ui = UI win vb' cmd bufs ws0
+  addWindow ui w0
+
+  return (ch, ui)
 
 
 main :: IORef Editor -> UI -> IO ()
@@ -181,11 +192,11 @@ keyTable = M.fromList
     ]
 
 
-addWindow :: UI -> IORef Editor -> Window -> IO ()
-addWindow i editor w = do
+addWindow :: UI -> Window -> IO ()
+addWindow i w = do
   set (uiBox i) [containerChild := widget w,
                  boxChildPacking (widget w) := if isMini w then PackNatural else PackGrow]
-  textview w `onFocusIn` (\_event -> (modifyIORef editor $ \e -> e { curwin = Just $ key w }) >> return False)
+  textview w `onFocusIn` (\_event -> (modifyIORef (windows i) (WS.setFocus w)) >> return False)
   -- We have to return false so that GTK correctly focuses the window when we use widgetGrabFocus
   textview w `onMoveCursor` \step amount user -> do
       logPutStrLn $ "moveCursor: " ++ show step ++ show amount ++ show user
@@ -227,24 +238,23 @@ suspend ui = do
 --
 newWindow :: Bool -> FBuffer -> UI ->EditorM Window
 newWindow mini b ui = do
-  editor <- ask
   win <- lift $ do 
     win <- emptyWindow mini b
     logPutStrLn $ "Creating " ++ show win
-    addWindow ui editor win
+    addWindow ui win
     return win
-  setWindowBuffer b (Just win) ui
+  setWindowBuffer b win ui
   return win
 
 -- ---------------------------------------------------------------------
 -- | Grow the given window, and pick another to shrink
 -- grow and shrink compliment each other, they could be refactored.
 --
-enlargeWindow :: Maybe Window -> UI -> EditorM ()
+enlargeWindow :: Window -> UI -> EditorM ()
 enlargeWindow _ _ = return () -- TODO
 
 -- | shrink given window (just grow another)
-shrinkWindow :: Maybe Window -> UI -> EditorM ()
+shrinkWindow :: Window -> UI -> EditorM ()
 shrinkWindow _ _ = return () -- TODO
 
 
@@ -252,16 +262,12 @@ shrinkWindow _ _ = return () -- TODO
 -- | Delete a window. Note that the buffer that was connected to this
 -- window is still open.
 --
-deleteWindow :: (Maybe Window) -> UI -> EditorM ()
-deleteWindow Nothing ui    = return ()
-deleteWindow (Just win) i = do
-  deleteWindow' win
+deleteWindow :: Window -> UI -> EditorM ()
+deleteWindow win i = do
+  liftIO $ modifyIORef (windows i) (WS.delete win)
   lift $ containerRemove (uiBox i) (widget win)
-  -- now switch focus to a random window
-  ws <- readEditor getWindows
-  case ws of
-    [] -> lift $ logPutStrLn "All windows deleted!"
-    (w:_) -> setWindow w 
+  w <- getWindow i
+  setWindow w i
 
 -- | Has the frame enough room for an extra window.
 hasRoomForExtraWindow :: UI -> EditorM Bool
@@ -272,10 +278,10 @@ refreshAll _ = return ()
 
 scheduleRefresh :: UI -> EditorM ()
 scheduleRefresh ui = modifyEditor_ $ \e-> do
-    let ws = getWindows e
+    ws <- liftIO $ readIORef (windows ui)
     bufs <- readIORef $ uiBuffers $ ui
     sequence_ [applyUpdate (bufs M.! b) u >> logPutStrLn (show $ u) | (b,u) <- editorUpdates e]
-    flip mapM_ ws $ \w -> 
+    forM_ ws $ \w -> 
         do let buf = findBufferWith e (bufkey w)
                gtkBuf = bufs M.! (bufkey w)
            (p0, []) <- runBuffer buf pointB
@@ -316,10 +322,8 @@ setCmdLine s i = do
   set (uiCmdLine i) [labelText := if length s > 132 then take 129 s ++ "..." else s]
 
 -- | Display the given buffer in the given window.
-setWindowBuffer :: FBuffer -> Maybe Window -> UI -> EditorM ()
-setWindowBuffer b  Nothing ui = do w <- newWindow False b ui; setWindowBuffer b (Just w) ui
- -- if there is no window, just create a new one.
-setWindowBuffer b (Just w) ui = do
+setWindowBuffer :: FBuffer -> Window -> UI -> EditorM ()
+setWindowBuffer b w ui = do
     lift $ logPutStrLn $ "Setting buffer for " ++ show w ++ " to " ++ show b
     let bufsRef = uiBuffers ui
     bufs <- lift $ readIORef bufsRef
@@ -329,8 +333,7 @@ setWindowBuffer b (Just w) ui = do
     lift $ textViewSetBuffer (textview w) gtkBuf
     lift $ modifyIORef bufsRef (M.insert (bkey b) gtkBuf)
     let w' = w { bufkey = bkey b }
-    modifyEditor_ $ \e -> return $ e { windows = M.insert (key w') w' (windows e) }
-    debugWindows "Buffer set"
+    liftIO $ modifyIORef (windows ui) (WS.update w')
 
 -- FIXME: when a buffer is deleted its GTK counterpart should be too.
 newBuffer :: FBuffer -> IO SourceBuffer
@@ -344,17 +347,26 @@ newBuffer b = do
   textBufferSetText buf txt
   return buf
   
-
---
 -- | Set current window
--- !! reset the buffer point from the window point
---
--- Factor in shift focus.
---
-setWindow :: Window -> EditorM ()
-setWindow w = do
-  lift $ logPutStrLn $ "Focusing " ++ show w 
-  modifyEditor_ $ \e -> return $ e { curwin = Just $ key w }
-  lift $ widgetGrabFocus (textview w)
-  debugWindows "Focused"
 
+-- FIXME: reset the buffer point from the window point
+
+setWindow :: Window -> UI -> EditorM ()
+setWindow w ui = do
+  lift $ logPutStrLn $ "Focusing " ++ show w 
+  setBuffer (bufkey w)
+  liftIO $ modifyIORef (windows ui) (WS.setFocus w)
+  lift $ widgetGrabFocus (textview w)
+
+withWindow0 :: (Window -> a) -> UI -> IO a
+withWindow0 f ui = do
+  ws <- readIORef (windows ui)
+  return (f $ WS.current ws)
+
+getWindows :: MonadIO m => UI -> m (WS.WindowSet Window)
+getWindows ui = liftIO $ readIORef $ windows ui
+
+getWindow :: MonadIO m => UI -> m Window
+getWindow ui = do
+  ws <- getWindows ui
+  return (WS.current ws)

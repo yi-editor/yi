@@ -37,6 +37,7 @@ module Yi.UI (
         -- * Window manipulation
         newWindow, enlargeWindow, shrinkWindow, deleteWindow,
         hasRoomForExtraWindow, setWindowBuffer, setWindow,
+        withWindow0, getWindow, getWindows,
 
         -- * Command line
         setCmdLine,
@@ -57,7 +58,6 @@ import Yi.FastBuffer( nelemsBIH ) -- gah this is ugly
 import Yi.Editor
 import Yi.Window as Window
 import Yi.Style
---import Yi.Keymap
 import Yi.Vty hiding (def, black, red, green, yellow, blue, magenta, cyan, white)
 import Yi.Event
 import Yi.Debug
@@ -68,11 +68,13 @@ import Control.Concurrent.Chan
 import Control.Exception
 import Control.Monad.Reader
 
+import Data.Traversable as T
 import Data.List
+import Data.Unique
 import Data.Maybe
 import Data.Char (ord,chr)
 import qualified Data.Map as M
-
+import qualified Yi.WindowSet as WS
 import Data.IORef
 import System.Exit
 import System.Posix.Signals         ( raiseSignal, sigTSTP )
@@ -82,18 +84,21 @@ import qualified Data.ByteString.Char8 as B
 ------------------------------------------------------------------------
 
 data UI = UI { 
-              vty :: Vty                     -- ^ Vty
-             ,scrsize :: !(IORef (Int,Int))  -- ^ screen size
-             ,uiThread :: ThreadId
-             ,cmdline :: IORef String
+              vty       :: Vty                     -- ^ Vty
+             ,scrsize   :: !(IORef (Int,Int))  -- ^ screen size
+             ,uiThread  :: ThreadId
+             ,cmdline   :: IORef String
              ,uiRefresh :: MVar ()
+             ,windows   :: IORef (WS.WindowSet Window)     -- ^ all the windows
              }
 
 -- | Initialise the ui
-start :: EditorM (Chan Yi.Event.Event, UI)
-start = do
+start :: FBuffer -> EditorM (Chan Yi.Event.Event, UI)
+start buf = do
   editor <- ask
-  lift $ do 
+  liftIO $ do 
+          w0 <- emptyWindow False buf (1,1)
+          ws0 <- newIORef  (WS.new w0)
           v <- mkVty
           (x,y) <- Yi.Vty.getSize v
           s <- newIORef (y,x)
@@ -103,7 +108,7 @@ start = do
           t <- myThreadId
           cmd <- newIORef ""
           tuiRefresh <- newEmptyMVar
-          let result = UI v s t cmd tuiRefresh
+          let result = UI v s t cmd tuiRefresh ws0
               -- | Action to read characters into a channel
               getcLoop editor v s ch = repeatM_ $ getKey editor v s >>= writeChan ch
 
@@ -191,29 +196,29 @@ refresh :: UI -> EditorM ()
 refresh ui = do
   lift $ logPutStrLn "refreshing screen."
   updateWindows ui
+  ws <- liftIO $ readIORef (windows ui)
+  let w = WS.current ws
   withEditor0 $ \e -> do
-    let ws = getWindows e
-        wImages = map picture ws
+    let wImages = map picture (WS.contents ws)
     cmd <- readIORef (cmdline ui)
     (_yss,xss) <- readIORef (scrsize ui)
     Yi.Vty.update (vty $ ui) 
       pic {pImage = vertcat wImages <-> withStyle (window $ uistyle e) (take xss $ cmd ++ repeat ' '),
-           pCursor = case getWindowOf e of
+           pCursor = let (y,x) = cursor w in
+                     Cursor x (y + (sum $ map height $ takeWhile (/= w) $ (WS.contents ws)))}
                        -- calculate origin of focused window
                        -- sum of heights of windows above this one on screen.
                        -- needs to be shifted 'x' by the width of the tabs on this line
-                       Just w -> let (y,x) = cursor w in
-                                 Cursor x (y + (sum $ map height $ takeWhile (/= w) $ ws))
-                       Nothing -> NoCursor}
   return ()
 
 updateWindows :: UI -> EditorM ()
 updateWindows ui = do
-  debugWindows "Updating windows"
-  modifyEditor_ $ \e -> do
-                  ws <- mapM (\w -> drawWindow e (Just w == getWindowOf e) (uistyle e) w) (getWindows e)
-                  logPutStrLn "Windows updated!"
-                  return $ e { windows = M.fromList [(key w, w) | w <- ws]}
+  ws0 <- liftIO $ readIORef (windows ui)
+  WS.debug "Updating windows" ws0
+  e <- (liftIO . readIORef) =<< ask
+  ws <- liftIO $ T.mapM (\w -> drawWindow e (w == WS.current ws0) (uistyle e) w) ws0
+  liftIO $ logPutStrLn "Windows updated!"
+  liftIO $ writeIORef (windows ui) ws
 
 showPoint :: Editor -> Window -> IO Window 
 showPoint e w = do
@@ -337,62 +342,60 @@ withStyle sty str = renderBS (styleToAttr sty) (B.pack str)
 -- | Create a new window onto this buffer.
 newWindow :: Bool -> FBuffer -> UI -> EditorM Window
 newWindow mini b ui = do 
-  k <- modifyEditor $ \e -> do
-    win  <- emptyWindow mini b (1,1)
-    let wls  = win : M.elems (windows e)
-        wls' = if length wls > 1 then turnOnML wls else wls
-        e' = e { windows = M.fromList $ mkAssoc (wls') }
-    logPutStrLn $ "created #" ++ show win
-    return (e', key win)
+  win <- liftIO $ emptyWindow mini b (1,1)
+  liftIO $ modifyIORef (windows ui) (turnOnML . WS.add win)
+  liftIO $ logPutStrLn $ "created #" ++ show win
   doResizeAll ui
-  readEditor $ \e -> findWindowWith e (Just k)
+  ws <- liftIO (readIORef (windows ui))
+  return $ WS.current ws
 
 -- ---------------------------------------------------------------------
 -- | Grow the given window, and pick another to shrink
 -- grow and shrink compliment each other, they could be refactored.
 --
-enlargeWindow :: Maybe Window -> UI -> EditorM ()
-enlargeWindow Nothing ui = return ()
-enlargeWindow (Just win) ui = modifyEditor_ $ \e -> do
-    let wls      = (M.elems . windows) e
-    (maxy,x) <- readIORef $ scrsize $ ui
-
-    -- can't resize if only window on screen, or if no room left
-    if length wls == 1 || height win >= maxy - (2*length wls-1)
-        then return e else do
-    case elemIndex win wls of
-        Nothing -> error "Editor.Window: window not found"
-        Just i  -> -- else pick next window up to shrink
-            case getWinWithHeight wls i 1 (> 2) of
-                Nothing -> return e    -- give up
-                Just winnext -> do {
-    ;let win'     = resize (height win + 1)     x win
-    ;let winnext' = resize (height winnext -1)  x winnext
-    ;return $ e { windows = (M.insert (key winnext') winnext' $
-                              M.insert (key win') win' $ windows e) }
-    }
+enlargeWindow :: Window -> UI -> EditorM ()
+enlargeWindow _ ui = return ()
+-- enlargeWindow (Just win) ui = modifyEditor_ $ \e -> do
+--     let wls      = (M.elems . windows) e
+--     (maxy,x) <- readIORef $ scrsize $ ui
+-- 
+--     -- can't resize if only window on screen, or if no room left
+--     if length wls == 1 || height win >= maxy - (2*length wls-1)
+--         then return e else do
+--     case elemIndex win wls of
+--         Nothing -> error "Editor.Window: window not found"
+--         Just i  -> -- else pick next window up to shrink
+--             case getWinWithHeight wls i 1 (> 2) of
+--                 Nothing -> return e    -- give up
+--                 Just winnext -> do {
+--     ;let win'     = resize (height win + 1)     x win
+--     ;let winnext' = resize (height winnext -1)  x winnext
+--     ;return $ e { windows = (M.insert (key winnext') winnext' $
+--                               M.insert (key win') win' $ windows e) }
+--     }
+-- 
 
 -- | shrink given window (just grow another)
-shrinkWindow :: Maybe Window -> UI -> EditorM ()
-shrinkWindow Nothing ui = return ()
-shrinkWindow (Just win) ui = modifyEditor_ $ \e -> do
-    let wls      = (M.elems . windows) e
-    (maxy,x) <- readIORef $ scrsize $ ui
-    -- can't resize if only window on screen, or if no room left
-    if length wls == 1 || height win <= 3 -- rem..
-        then return e else do
-    case elemIndex win wls of
-        Nothing -> error "Editor.Window: window not found"
-        Just i  -> -- else pick a window that could be grown
-            case getWinWithHeight wls i 1 (< (maxy - (2 * length wls))) of
-                Nothing -> return e    -- give up
-                Just winnext -> do {
-    ;let win'     = resize (height win - 1)      x win
-    ;let winnext' = resize (height winnext + 1)  x winnext
-    ;return $ e { windows = (M.insert (key winnext') winnext' $
-                              M.insert (key win') win' $ windows e) }
-    }
-
+shrinkWindow :: Window -> UI -> EditorM ()
+shrinkWindow _ ui = return ()
+-- shrinkWindow (Just win) ui = modifyEditor_ $ \e -> do
+--     let wls      = (M.elems . windows) e
+--     (maxy,x) <- readIORef $ scrsize $ ui
+--     -- can't resize if only window on screen, or if no room left
+--     if length wls == 1 || height win <= 3 -- rem..
+--         then return e else do
+--     case elemIndex win wls of
+--         Nothing -> error "Editor.Window: window not found"
+--         Just i  -> -- else pick a window that could be grown
+--             case getWinWithHeight wls i 1 (< (maxy - (2 * length wls))) of
+--                 Nothing -> return e    -- give up
+--                 Just winnext -> do {
+--     ;let win'     = resize (height win - 1)      x win
+--     ;let winnext' = resize (height winnext + 1)  x winnext
+--     ;return $ e { windows = (M.insert (key winnext') winnext' $
+--                               M.insert (key win') win' $ windows e) }
+--     }
+-- 
 
 -- | find a window, starting at offset @i + n@, whose height satisifies pred
 --
@@ -409,16 +412,10 @@ getWinWithHeight wls i n p
 -- | Delete a window. Note that the buffer that was connected to this
 -- window is still open.
 --
-deleteWindow :: (Maybe Window) -> UI -> EditorM ()
-deleteWindow Nothing ui    = return ()
-deleteWindow (Just win) ui = do 
-  deleteWindow' win
+deleteWindow :: Window -> UI -> EditorM ()
+deleteWindow win ui = do 
+  liftIO $ modifyIORef (windows ui) (WS.delete win)
   doResizeAll ui
-  -- now switch focus to a random window
-  ws <- readEditor getWindows
-  case ws of
-    [] -> lift $ logPutStrLn "All windows deleted!"
-    (w:_) -> setWindow w 
 
 ------------------------------------------------------------------------
 
@@ -444,31 +441,31 @@ scheduleRefresh' tui = tryPutMVar (uiRefresh tui) () >> return ()
 
 -- | Reset the heights and widths of all the windows
 doResizeAll :: UI -> EditorM ()
-doResizeAll ui = do 
-  modifyEditor_ $ \e -> do
-    let i = ui
-    (h,w) <- readIORef $ scrsize i
-    let (mwls, wls) = partition isMini $ M.elems (windows e)
-        (y,r) = getY (h - length mwls) (length wls) 
-        mwls' = map (doresize w 1) mwls
-        wls' = case wls of
-                 [] -> []
-                 (w0:ws) -> doresize w (y+r-1) w0 : map (doresize w y) ws
-    return e { windows = M.fromList $ mkAssoc (mwls' ++ wls') }
-  withEditor0 $ \e -> logPutStrLn $ "After resize: " ++ show (getWindows e)
+doResizeAll i = liftIO $ do 
+  ws <- readIORef (windows i) 
+  (h,w) <- readIORef $ scrsize i
+  let (mwls, wls) = partition isMini $ WS.contents ws
+      (y,r) = getY (h - length mwls) (length wls) 
+      mwls' = map (doresize w 1) mwls
+      wls' = case wls of
+               [] -> []
+               (w0:ws) -> doresize w (y+r-1) w0 : map (doresize w y) ws
+      result = WS.WindowSet (mwls' ++ wls')
+  writeIORef (windows i) result
+  WS.debug "After resize: " result
                      
     where doresize x y win = resize y x win
 
 -- | Turn on modelines of all windows
-turnOnML :: [Window] -> [Window]
-turnOnML = map $ \w -> w { mode = not (isMini w) }
+turnOnML :: WS.WindowSet Window -> WS.WindowSet Window
+turnOnML = fmap $ \w -> w { mode = not (isMini w) }
 
 -- | Has the frame enough room for an extra window.
 hasRoomForExtraWindow :: UI -> EditorM Bool
 hasRoomForExtraWindow ui = do
-    i     <- sizeWindows
+    ws <- liftIO (readIORef (windows ui))
     (y,_) <- screenSize ui 
-    let (sy,r) = getY y i
+    let (sy,r) = getY y (WS.size ws)
     return $ sy + r > 4  -- min window size
 
 -- | Calculate window heights, given all the windows and current height.
@@ -482,17 +479,15 @@ setCmdLine s i = do
   writeIORef (cmdline i) s
                 
 -- | Display the given buffer in the given window.
-setWindowBuffer :: FBuffer -> Maybe Window -> UI -> EditorM ()
-setWindowBuffer b mw ui = do
-    lift $ logPutStrLn $ "Setting buffer for " ++ show mw ++ ": " ++ show b
-    w'' <- case mw of 
-             Just w -> do
+setWindowBuffer :: FBuffer -> Window -> UI -> EditorM ()
+setWindowBuffer b w ui = do
+    lift $ logPutStrLn $ "Setting buffer for " ++ show w ++ ": " ++ show b
+    w'' <- do
                      w' <- lift $ emptyWindow False b (height w, width w)
                      return $ w' { key = key w, mode = mode w } 
                      -- reuse the window's key (so it ends in the same place on the screen)
-             Nothing -> newWindow False b ui -- if there is no window, just create a new one.
-    modifyEditor_ $ \e -> return $ e { windows = M.insert (key w'') w'' (windows e) }
-    debugWindows "After setting buffer"
+    liftIO $ modifyIORef (windows ui) (WS.update w'')
+    -- WS.debug "After setbuffer" =<< readRef windows
 
 --
 -- | Set current window
@@ -500,10 +495,22 @@ setWindowBuffer b mw ui = do
 --
 -- Factor in shift focus.
 --
-setWindow :: Window -> EditorM ()
-setWindow w = do
-  modifyEditor_ $ \e -> do
-                logPutStrLn $ "Focusing " ++ show w
-                -- let fm = windows e
-                return $ e {  curwin = Just $ key w }
-  debugWindows "After focus"
+setWindow :: Window -> UI -> EditorM ()
+setWindow w ui = do
+  setBuffer (bufkey w)
+  liftIO $ modifyIORef (windows ui) (WS.setFocus w)
+  --  WS.debug "After focus" ws
+
+
+withWindow0 :: (Window -> a) -> UI -> IO a
+withWindow0 f ui = do
+  ws <- readIORef (windows ui)
+  return (f $ WS.current ws)
+
+getWindows :: MonadIO m => UI -> m (WS.WindowSet Window)
+getWindows ui = liftIO $ readIORef $ windows ui
+
+getWindow :: MonadIO m => UI -> m Window
+getWindow ui = do
+  ws <- getWindows ui
+  return (WS.current ws)

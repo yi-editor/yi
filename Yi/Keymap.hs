@@ -168,23 +168,10 @@ dispatch ev = do b <- withEditor getBuffer
 --------------------------------
 -- Uninteresting glue code
 
-with :: (yi -> a) -> (a -> IO b) -> ReaderT yi IO b
-with f g = do
-    yi <- ask
-    lift $ g (f yi)
 
 withKernel :: (Kernel -> IO a) -> YiM a
 withKernel = with yiKernel 
 
-modifyRef :: (b -> IORef a) -> (a -> a) -> ReaderT b IO ()
-modifyRef f g = do
-  b <- ask
-  lift $ modifyIORef (f b) g
-
-readRef :: (b -> IORef a) -> ReaderT b IO a
-readRef f = do
-  b <- ask
-  lift $ readIORef (f b)
 
 withUI' :: (UI -> IO a) -> YiM a
 withUI' = with yiUi
@@ -201,7 +188,7 @@ withEditor f = do
 
 withGivenBuffer b f = withEditor (Editor.withGivenBuffer0 b f)
 withBuffer f = withEditor (Editor.withBuffer0 f)
-withWindow f = withEditor (Editor.withWindow0 f)
+withWindow f = withUI' (withWindow0 f)
 readEditor f = withEditor (Editor.readEditor f)
 
 catchDynE :: Typeable exception => YiM a -> (exception -> YiM a) -> YiM a

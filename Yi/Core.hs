@@ -175,7 +175,7 @@ module Yi.Core (
         execE
    ) where
 
-import Prelude hiding (error)
+import Prelude hiding (error, sequence_, mapM_)
 
 import Yi.Debug
 import Yi.Buffer
@@ -199,10 +199,13 @@ import Data.Maybe
 import qualified Data.Map as M
 import Data.List
 import Data.IORef
+import Data.Foldable
 
 import System.Directory     ( doesFileExist, doesDirectoryExist )
 
-import Control.Monad.Reader
+import Control.Monad (when, replicateM_, filterM)
+import Control.Monad.Reader (runReaderT)
+import Control.Monad.Trans
 import Control.Exception
 import Control.Concurrent 
 import Control.Concurrent.Chan
@@ -223,11 +226,11 @@ data Direction = GoLeft | GoRight
 -- UI will be refreshed.
 interactive :: YiM a -> YiM a
 interactive action = do 
-  lift $ logPutStrLn ">>>>>>> interactively"
+  liftIO $ logPutStrLn ">>>>>>> interactively"
   withUI UI.prepareAction
   x <- action
   withUI UI.scheduleRefresh
-  lift $ logPutStrLn "<<<<<<<"
+  liftIO $ logPutStrLn "<<<<<<<"
   return x
 
 nilKeymap :: Keymap
@@ -257,7 +260,7 @@ startE kernel st commandLineActions = do
     -- restore the old state
     newSt <- newIORef $ maybe (emptyEditor consoleB) id st
     let runEd f = runReaderT f newSt
-    (inCh, ui) <- runEd UI.start
+    (inCh, ui) <- runEd (UI.start consoleB)
     outCh <- newChan
     startKm <- newIORef nilKeymap
     startModules <- newIORef []
@@ -269,7 +272,7 @@ startE kernel st commandLineActions = do
     runYi $ do 
 
       consoleW <- withUI $ UI.newWindow False consoleB
-      withEditor $ UI.setWindow consoleW
+      withUI $ UI.setWindow consoleW
       newBufferE "*messages*" "" >> return ()
 
       withKernel $ \k -> do
@@ -431,48 +434,48 @@ atEofE = withBuffer atEof
 -- | Scroll up 1 screen
 upScreenE :: Action
 upScreenE = do
-    (Just w) <- withEditor getWindow
+    w <- withUI UI.getWindow
     withBuffer (gotoLnFrom (- (height w - 1)))
     solE
 
 -- | Scroll up n screens
 upScreensE :: Int -> Action
 upScreensE n = do
-    (Just w) <- withEditor getWindow
+    w <- withUI UI.getWindow
     withBuffer (gotoLnFrom (- (n * (height w - 1))))
     solE
 
 -- | Scroll down 1 screen
 downScreenE :: Action
 downScreenE = do
-    (Just w) <- withEditor getWindow
+    w <- withUI UI.getWindow
     withBuffer (gotoLnFrom (height w - 1))
     return ()
 
 -- | Scroll down n screens
 downScreensE :: Int -> Action
 downScreensE n = do
-    (Just w) <- withEditor getWindow
+    w <- withUI UI.getWindow
     withBuffer (gotoLnFrom (n * (height w - 1)))
     return ()
 
 -- | Move to @n@ lines down from top of screen
 downFromTosE :: Int -> Action
 downFromTosE n = do
-    (i,fn) <- withWindow $ \w -> do
+    (i,fn) <- withWindow $ \w ->
                     let y  = fst $ cursor w
                         n' = min n (height w - 1 - 1)
                         d  = n' - y
-                    return (abs d, if d < 0 then upE else downE)
+                    in (abs d, if d < 0 then upE else downE)
     replicateM_ i fn
 
 -- | Move to @n@ lines up from the bottom of the screen
 upFromBosE :: Int -> Action
-upFromBosE n = (withWindow $ \w -> return (height w -1 -1 - n)) >>= downFromTosE
+upFromBosE n = (withWindow $ \w -> (height w -1 -1 - n)) >>= downFromTosE
 
 -- | Move to middle line in screen
 middleE :: Action
-middleE = (withWindow $ \w -> return ((height w -1-1) `div` 2)) >>= downFromTosE
+middleE = (withWindow $ \w -> ((height w -1-1) `div` 2)) >>= downFromTosE
 
 -- ---------------------------------------------------------------------
 
@@ -811,7 +814,7 @@ newBufferE f s = do
 
 -- | Attach the specified buffer to the current window
 switchToBufferE :: FBuffer -> Action
-switchToBufferE b = withEditor getWindow >>= \w -> (withUI $ UI.setWindowBuffer b w)
+switchToBufferE b = withUI UI.getWindow >>= \w -> (withUI $ UI.setWindowBuffer b w)
 
 -- | Attach the specified buffer to some other window than the current one
 switchToBufferOtherWindowE :: FBuffer -> Action
@@ -837,7 +840,7 @@ spawnMinibufferE prompt kmMod initialAction =
     do b <- withEditor $ stringToNewBuffer prompt []
        setBufferKeymap b kmMod
        w <- withUI $ UI.newWindow True b
-       withEditor $ UI.setWindow w
+       withUI $ UI.setWindow w
        initialAction
 
 -- | Write current buffer to disk, if this buffer is associated with a file
@@ -898,7 +901,7 @@ prevWinE = prevWindow
 
 -- | Make window with key @k@ the current window
 setWinE :: Window -> Action
-setWinE w = withEditor $ UI.setWindow w
+setWinE w = withUI $ UI.setWindow w
 
 -- | Split the current window, opening a second window onto this buffer.
 -- Windows smaller than 3 lines cannot be split.
@@ -911,29 +914,23 @@ splitE = do
 
 -- | Enlarge the current window
 enlargeWinE :: Action
-enlargeWinE = withEditor getWindow >>= \w -> withUI $ UI.enlargeWindow w
+enlargeWinE = withUI UI.getWindow >>= \w -> withUI $ UI.enlargeWindow w
 
 -- | Shrink the current window
 shrinkWinE :: Action
-shrinkWinE = withEditor getWindow >>= \w -> withUI $ UI.shrinkWindow w
+shrinkWinE = withUI UI.getWindow >>= \w -> withUI $ UI.shrinkWindow w
 
 -- | Close the current window.
--- If this is the last window open, quit the program. TODO this
--- behaviour may be undesirable
+-- If this is the last window open, quit the program.
 closeE :: Action
-closeE = do
-        deleteThisWindow
-        i <- withEditor $ sizeWindows
-        when (i == 0) quitE
+closeE = deleteThisWindow
 
 -- | Make the current window the only window on the screen
 closeOtherE :: Action
 closeOtherE = do
-        this   <- withEditor getWindow -- current window
-        others <- withEditor $ modifyEditor $ \e -> do
-                        let ws = getWindows e
-                        return (e, (filter (/= this) (map Just ws)))
-        sequence_ [withUI $ UI.deleteWindow w | w <- others]
+        this   <- withUI UI.getWindow -- current window
+        ws <- withUI UI.getWindows
+        mapM_ (\w -> when (w /= this) $ withUI $ UI.deleteWindow w) ws
 
 ------------------------------------------------------------------------
 --

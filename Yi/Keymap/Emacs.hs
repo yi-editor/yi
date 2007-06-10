@@ -366,11 +366,11 @@ completionFunction f = do
 withMinibuffer :: String -> (String -> YiM String) -> (String -> Action) -> Action
 withMinibuffer prompt completer act = do 
   initialBuffer <- withEditor getBuffer
-  Just initialWindow <- withEditor getWindow
+  initialWindow <- withUI UI.getWindow
   let innerAction :: Action
       -- ^ Read contents of current buffer (which should be the minibuffer), and
       -- apply it to the desired action
-      closeMinibuffer = do b <- withEditor getBuffer; closeE; withEditor $ deleteBuffer b; withEditor $ UI.setWindow initialWindow
+      closeMinibuffer = do b <- withEditor getBuffer; closeE; withEditor $ deleteBuffer b; withUI $ UI.setWindow initialWindow
       innerAction = do historyFinish
                        lineString <- readAllE
                        closeMinibuffer

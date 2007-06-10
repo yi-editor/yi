@@ -27,12 +27,14 @@ import Yi.Buffer                ( FBuffer (..), BufferM, newB, keyB, hNewB, runB
 import Text.Regex.Posix.Wrap    ( Regex )
 import Yi.Window
 import Yi.Style                 ( uiStyle, UIStyle )
+
 import Yi.Debug
 import Yi.Undo
 import Prelude hiding (error)
 
 import Data.List                ( nub, delete, find )
-import Data.Unique              ( Unique, hashUnique )
+import Data.Unique              ( Unique )
+
 import Data.Dynamic
 import Data.IORef
 import qualified Data.Map as M
@@ -45,9 +47,6 @@ import Control.Monad.Writer
 -- | The Editor state
 data Editor = Editor {
         buffers       :: ![FBuffer]                 -- ^ all the buffers. Never empty; first buffer is the current one.
-       ,windows       :: !(M.Map Unique Window)     -- ^ all the windows
-
-       ,curwin        :: !(Maybe Unique)            -- ^ the window with focus
        ,uistyle       :: !UIStyle                   -- ^ ui colours
        ,dynamic       :: !(M.Map String Dynamic)    -- ^ dynamic components
 
@@ -64,19 +63,18 @@ data Editor = Editor {
 --
 -- | The initial state
 --
+
 emptyEditor :: FBuffer -> Editor
 emptyEditor buf = Editor {
         buffers      = [buf]
-       ,windows      = M.empty
 
        ,windowfill   = ' '
-       ,tabwidth     = 8        -- has to be for now
+       ,tabwidth     = 8 
        ,yreg         = []
        ,regex        = Nothing
-       ,curwin       = Nothing
        ,uistyle      = Yi.Style.uiStyle
        ,dynamic      = M.empty
-
+       
        ,editorUpdates = []
     }
 
@@ -134,8 +132,10 @@ insertBuffer b = do
 
 deleteBuffer :: FBuffer -> EditorM ()
 deleteBuffer b = do
-  lift $ runBuffer b finaliseB
-  modifyEditor_ $ \e-> return e { buffers = nub $ delete b $ buffers e}
+  bs <- readEditor buffers
+  when (length bs > 0) $ do -- never delete the last buffer.
+    lift $ runBuffer b finaliseB
+    modifyEditor_ $ \e-> return e { buffers = delete b $ buffers e}
 
 -- | Return the buffers we have
 getBuffers :: EditorM [FBuffer]
@@ -173,19 +173,6 @@ shiftBuffer shift = readEditor $ \e ->
 
 ------------------------------------------------------------------------
     
-deleteWindow' :: Window -> EditorM ()
-deleteWindow' win = (modifyEditor_ $ \e -> do
-    logPutStrLn $ "Deleting window #" ++ show (hashUnique $ key win)
-    let ws = M.delete (key win) (windows e) -- delete window
-    return e { windows = ws }) >> debugWindows "After deletion"
-  
-
-debugWindows :: String -> EditorM ()
-debugWindows msg = do 
-  ws <- readEditor getWindows
-  w <- readEditor curwin
-  lift $ logPutStrLn $ msg ++ ": editor windows: " ++ show ws ++ " current window " ++ show (fmap hashUnique w)
-
 killAllBuffers :: IO ()
 killAllBuffers = error "killAllBuffers undefined"
 
@@ -194,53 +181,6 @@ killAllBuffers = error "killAllBuffers undefined"
 mkAssoc :: [Window] -> [(Unique,Window)]
 mkAssoc []     = []
 mkAssoc (w:ws) = (key w, w) : mkAssoc ws
-
--- ---------------------------------------------------------------------
--- | Get all the windows
--- TODO by key
---
-getWindows :: Editor -> [Window]
-getWindows = M.elems . windows
-
--- | Get current window
-getWindow :: EditorM (Maybe Window)
-getWindow = readEditor getWindowOf
-
-
---
--- | Get window, from the given editor state.
---
-getWindowOf :: Editor -> (Maybe Window)
-getWindowOf e = case curwin e of
-                    Nothing -> Nothing
-                    k       -> Just $ findWindowWith e k
-
---
--- | How many windows do we have
---
-sizeWindows :: EditorM Int
-sizeWindows = readEditor $ \e -> length $ M.elems (windows e)
-
-
---
--- | Find the window with this key
---
-findWindowWith :: Editor -> (Maybe Unique) -> Window
-findWindowWith _ Nothing  = error "Editor: no current window!"
-findWindowWith e (Just k) =
-    case M.lookup k (windows e) of
-            Just w  -> w
-            Nothing -> error $ "Editor: no window has key #" ++ (show (hashUnique k))
-
-------------------------------------------------------------------------
-
--- | Perform action with current window
-withWindow0 :: (Window -> IO a) -> EditorM a
-withWindow0 f = modifyEditor $ \e -> do
-        let w = findWindowWith e (curwin e)
-        v <- f w
-        return (e,v)
-
 
 -- | Perform action with current window's buffer
 withGivenBuffer0 :: FBuffer -> BufferM a -> EditorM a
@@ -257,6 +197,10 @@ withBuffer0 f = do
 getBuffer :: EditorM FBuffer
 getBuffer = withBuffer0 ask
 
+setBuffer :: Unique -> EditorM FBuffer
+setBuffer k = do
+  b <- withEditor0 $ \e -> return $ findBufferWith e k
+  insertBuffer b
 
 -- ---------------------------------------------------------------------
 

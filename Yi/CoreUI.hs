@@ -31,7 +31,7 @@ import Yi.Window
 import Data.List
 import Yi.Keymap
 import Control.Monad.Reader
-
+import Yi.WindowSet as WS
 --------------------------------------------------------
 
 
@@ -51,25 +51,25 @@ windowAt n = shiftFocus (const n)
 -- window's index
 shiftFocus :: (Int -> Int) -> YiM ()
 shiftFocus f = do
-  ws <- readEditor getWindows
-  mw <- withEditor $ getWindow
-  case mw of
-    Just w | Just i <- elemIndex w ws
-          -> withEditor $ setWindow (ws !! ((f i) `mod` (length ws)))
-    _     -> error "Editor: current window has been lost."
+  wset <- withUI getWindows
+  let ws = WS.contents wset
+  w <- withUI getWindow
+  case elemIndex w ws of
+    Just i -> withUI $ setWindow (ws !! ((f i) `mod` (length ws)))
+    _      -> error "Editor: current window has been lost."
 
 -- | Delete the focused window
 deleteThisWindow :: YiM ()
 deleteThisWindow = do
   lift $ logPutStrLn "deleting current window"
-  withEditor getWindow >>= \w -> withUI (deleteWindow w)
+  withUI getWindow >>= \w -> withUI (deleteWindow w)
 
 -- | Close any windows onto the buffer b, then free the buffer
 killBufferWindows :: FBuffer -> YiM ()
 killBufferWindows b = do 
   lift $ logPutStrLn $ "KillBufferWindows: " ++ name b
-  ws <- readEditor getWindows
-  withUI $ \u -> mapM_ (flip deleteWindow u)  $ map Just $ filter (\w -> bufkey w == keyB b) ws
+  ws <- withUI getWindows
+  withUI $ \u -> mapM_ (flip deleteWindow u) $ filter (\w -> bufkey w == keyB b) (WS.contents ws)
 
 -- | Close any windows onto the buffer associated with name 'n', then free the buffer
 killBufferAndWindows :: String -> YiM ()
@@ -90,19 +90,18 @@ splitWindow :: YiM ()
 splitWindow = do 
   b <- withEditor $ getBuffer
   w <- withUI $ newWindow False b
-  withEditor $ setWindow w
+  withUI $ setWindow w
 
 -- | Switch focus to some other window. If none is available, create one.
 shiftOtherWindow :: YiM ()
 shiftOtherWindow = do
-  ws <- readEditor getWindows
-  if length ws == 1 then splitWindow else nextWindow
+  ws <- withUI getWindows
+  if length (WS.contents ws) == 1 then splitWindow else nextWindow
 
 
 withOtherWindow :: YiM () -> YiM ()
 withOtherWindow f = do
-  Just w <- withEditor $ getWindow
+  w <- withUI $ getWindow
   shiftOtherWindow
   f
-  withEditor $ setWindow w
-
+  withUI $ setWindow w
