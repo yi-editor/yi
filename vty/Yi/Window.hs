@@ -44,8 +44,6 @@ data Window =
 
        ,cursor      :: !(Int,Int)      -- ^ cursor point on screen (y,x)
 
-       ,pnt         :: !Int            -- ^ current point
-
        ,tospnt      :: !Int            -- ^ the buffer point of the top of screen
        ,bospnt      :: !Int            -- ^ the buffer point of the bottom of screen
        ,picture     :: !Image          -- ^ the picture currently displayed.
@@ -82,7 +80,6 @@ emptyWindow mini b (h,w) = do
                    ,height    = h      -- - 1 for the cmdline?
                    ,width     = w
                    ,cursor    = (0,0)  -- (y,x) (screen columns, needs to know about tabs)
-                   ,pnt       = 0      -- cache point when out of focus
                    ,tospnt    = 0
                    ,bospnt    = 0
                    ,picture = empty

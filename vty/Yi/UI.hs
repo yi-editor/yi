@@ -247,7 +247,6 @@ showPoint e w = do
   (result, []) <- runBuffer b $ 
             do ln <- curLn
                let gap = min (ln-1) ((height w) `div` 2)
-                   topln = ln - gap
                i <- indexOfSolAbove gap
                return w {tospnt = i}
   return result
