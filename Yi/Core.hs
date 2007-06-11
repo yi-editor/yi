@@ -818,7 +818,7 @@ newBufferE f s = do
 switchToBufferE :: FBuffer -> Action
 switchToBufferE b = do
   ui <- asks yiUi
-  withEditor $ UI.getWindow ui >>= UI.setWindowBuffer ui b
+  withEditor $ UI.setFocusedWindowBuffer ui b
 
 -- | Attach the specified buffer to some other window than the current one
 switchToBufferOtherWindowE :: FBuffer -> Action

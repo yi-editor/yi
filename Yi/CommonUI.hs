@@ -31,12 +31,13 @@ data UI = UI
                                                                      --   Note that the buffer that was connected to this window is
                                                                      --   still open.
      hasRoomForExtraWindow :: EditorM Bool,                          -- ^ Has the display enough room for an extra window.
-     setWindowBuffer       :: FBuffer -> Window -> EditorM (),       -- ^ Display the given buffer in the given window.
+     setFocusedWindowBuffer:: FBuffer -> EditorM (),       -- ^ Display the given buffer in the given window.
      setWindow             :: Window -> EditorM (),                  -- ^ set the focused window
 
      withWindow0           :: forall m a. MonadIO m => (Window -> a) -> m a,
      getWindows            :: forall m. MonadIO m => m (WindowSet Window),
      getWindow             :: forall m. MonadIO m => m Window,
+     setWindows            :: forall m. MonadIO m => (WindowSet Window) -> m (),
 
      -- Command line
      setCmdLine            :: String -> IO ()

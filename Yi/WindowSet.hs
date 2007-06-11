@@ -20,42 +20,65 @@
 module Yi.WindowSet where
 -- FIXME: export abstractly
 
+import Prelude hiding (elem, error)
 
 import Yi.Debug
 import Control.Monad.Trans
 import Data.List as List (nub, delete)
 import Data.Foldable
 import Data.Traversable
+import Data.Monoid
+import Control.Applicative
 
-newtype WindowSet a = WindowSet { contents :: [a] }
-    deriving (Show, Functor, Foldable, Traversable)
+data WindowSet a = WindowSet { before::[a], current::a, after :: [a] }
+    deriving (Show)
 
+instance Foldable WindowSet where
+    foldMap f (WindowSet b c a) = getDual (foldMap (Dual . f) b) `mappend` (f c) `mappend` foldMap f a
+
+instance Functor WindowSet where
+    fmap f (WindowSet b c a) = WindowSet (fmap f b) (f c) (fmap f a)
+
+instance Traversable WindowSet where
+    traverse f (WindowSet b c a) = WindowSet <$> traverse f b <*> f c <*> traverse f a
 
 new :: a -> WindowSet a
-new w = WindowSet [w]
+new w = WindowSet [] w []
 
+-- | Add a window, focus it.
 add :: Eq a => a -> WindowSet a -> WindowSet a
-add w (WindowSet ws) = WindowSet $ List.nub (w:ws) 
+add w (WindowSet b c a) = WindowSet b w (c:a)
 
-delete :: Eq a => a -> WindowSet a -> WindowSet a
-delete _ (WindowSet [w']) = WindowSet [w'] -- never delete the last window
-delete w (WindowSet ws) = WindowSet $ List.delete w ws
+next :: WindowSet a -> a
+next = current . forward
 
-current :: WindowSet a -> a
-current (WindowSet ws) = head ws
+delete :: WindowSet a -> WindowSet a
+delete (WindowSet [] c []) = WindowSet [] c [] -- never delete the last window
+delete (WindowSet b _ (a:as)) = WindowSet b a as
+delete (WindowSet (b:bs) _ []) = WindowSet bs b []
 
+deleteOthers (WindowSet b c a) = WindowSet [] c []
 
-shift :: Int -> WindowSet a -> WindowSet a
-shift n (WindowSet ws) = WindowSet ((drop m) ws ++ (take m) ws)
-                          where m = n `mod` length ws
+forward :: WindowSet a -> WindowSet a
+forward (WindowSet [] c []) = WindowSet [] c []
+forward (WindowSet b c (a:as)) = WindowSet (c:b) a as
+forward (WindowSet b c []) = WindowSet [] (last b) ((reverse (init b)) ++ [c])
+
+backward :: WindowSet a -> WindowSet a
+backward (WindowSet [] c []) = WindowSet [] c []
+backward (WindowSet (b:bs) c a) = WindowSet bs b (c:a)
+backward (WindowSet [] c a) = WindowSet (c:reverse (init a)) (last a) []
 
 setFocus :: Eq a => a -> WindowSet a -> WindowSet a
-setFocus w (WindowSet ws) = WindowSet (nub (w:ws)) --FIXME: this sucks!
+setFocus w ws@(WindowSet b c a) 
+    | c == w = ws
+    | c `elem` a = setFocus w (forward ws)
+    | c `elem` b = setFocus w (backward ws)
+    | otherwise = error "window lost" 
 
-update :: Eq a => a -> WindowSet a -> WindowSet a
-update w (WindowSet ws) = WindowSet (map (\w' -> if w == w' then w else w') ws)
+modifyCurrent :: (a -> a) -> WindowSet a -> WindowSet a
+modifyCurrent f (WindowSet b c a) = WindowSet b (f c) a
 
-size :: WindowSet a -> Int
-size (WindowSet ws) = length ws
+debug msg (WindowSet b c a) = logPutStrLn $ msg ++ ": " ++ show b ++ show c ++ show a
 
-debug msg (WindowSet ws) = logPutStrLn $ msg ++ ": " ++ show ws 
+

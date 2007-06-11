@@ -30,7 +30,7 @@ module Yi.UI (
 
         -- * Window manipulation
         newWindow, enlargeWindow, shrinkWindow, deleteWindow,
-        hasRoomForExtraWindow, setWindowBuffer, setWindow,
+        hasRoomForExtraWindow, setFocusedWindowBuffer, setWindow,
         withWindow0, getWindow, getWindows,
 
         -- * Command line
@@ -96,11 +96,12 @@ mkUI ui = Common.UI
    Common.shrinkWindow          = shrinkWindow          ui,
    Common.deleteWindow          = deleteWindow          ui,
    Common.hasRoomForExtraWindow = hasRoomForExtraWindow ui,
-   Common.setWindowBuffer       = setWindowBuffer       ui,
+   Common.setFocusedWindowBuffer= setFocusedWindowBuffer ui,
    Common.setWindow             = setWindow             ui,
    Common.setCmdLine            = setCmdLine            ui,
    Common.withWindow0           = withWindow0           ui,
    Common.getWindows            = getWindows            ui,
+   Common.setWindows            = setWindows            ui,
    Common.getWindow             = getWindow             ui
   }
 
@@ -218,6 +219,7 @@ keyTable = M.fromList
 
 addWindow :: UI -> Window -> IO ()
 addWindow i w = do
+  modifyRef (windows i) (WS.add w)
   set (uiBox i) [containerChild := widget w,
                  boxChildPacking (widget w) := if isMini w then PackNatural else PackGrow]
   textview w `onFocusIn` (\_event -> (modifyIORef (windows i) (WS.setFocus w)) >> return False)
@@ -267,7 +269,8 @@ newWindow ui mini b = do
     logPutStrLn $ "Creating " ++ show win
     addWindow ui win
     return win
-  setWindowBuffer ui b win
+  setWindow ui win
+  setFocusedWindowBuffer ui b
   return win
 
 -- ---------------------------------------------------------------------
@@ -288,7 +291,7 @@ shrinkWindow _ _ = return () -- TODO
 --
 deleteWindow :: UI -> Window -> EditorM ()
 deleteWindow i win = do
-  modifyRef (windows i) (WS.delete win)
+  modifyRef (windows i) (WS.delete . WS.setFocus win)
   lift $ containerRemove (uiBox i) (widget win)
   w <- getWindow i
   setWindow i w
@@ -346,18 +349,17 @@ setCmdLine i s = do
   set (uiCmdLine i) [labelText := if length s > 132 then take 129 s ++ "..." else s]
 
 -- | Display the given buffer in the given window.
-setWindowBuffer :: UI -> FBuffer -> Window -> EditorM ()
-setWindowBuffer ui b w = do
-    logPutStrLn $ "Setting buffer for " ++ show w ++ " to " ++ show b
+setFocusedWindowBuffer :: UI -> FBuffer -> EditorM ()
+setFocusedWindowBuffer ui b = do
     let bufsRef = uiBuffers ui
     bufs <- readRef bufsRef
     gtkBuf <- case M.lookup (bkey b) bufs of
       Just gtkBuf -> return gtkBuf
       Nothing -> lift $ newBuffer b
-    lift $ textViewSetBuffer (textview w) gtkBuf
+    ws <- readRef (windows ui)
+    lift $ textViewSetBuffer (textview $ WS.current ws) gtkBuf
     modifyRef bufsRef (M.insert (bkey b) gtkBuf)
-    let w' = w { bufkey = bkey b }
-    modifyRef (windows ui) (WS.update w')
+    modifyRef (windows ui) (WS.modifyCurrent $ \w -> w { bufkey = bkey b })
 
 -- FIXME: when a buffer is deleted its GTK counterpart should be too.
 newBuffer :: FBuffer -> IO SourceBuffer
@@ -389,6 +391,8 @@ withWindow0 ui f = do
 
 getWindows :: MonadIO m => UI -> m (WS.WindowSet Window)
 getWindows ui = readRef $ windows ui
+
+setWindows ui ws = writeRef (windows ui) ws
 
 getWindow :: MonadIO m => UI -> m Window
 getWindow ui = do

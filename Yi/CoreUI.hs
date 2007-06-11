@@ -32,26 +32,24 @@ import Data.List
 import Yi.Keymap
 import Control.Monad.Reader
 import Yi.WindowSet as WS
+import Data.Foldable (toList)
 --------------------------------------------------------
 
 
 -- | Rotate focus to the next window
 nextWindow :: YiM ()
-nextWindow = shiftFocus 1
+nextWindow = shiftFocus WS.forward
 
 -- | Rotate focus to the previous window
 prevWindow :: YiM ()
-prevWindow = shiftFocus (negate 1)
+prevWindow = shiftFocus WS.backward
 
 -- | Shift the focus to some other window.
-shiftFocus :: Int -> YiM ()
-shiftFocus amount = do
-  wset <- withUI getWindows
-  let ws = WS.contents wset
-  w <- withUI getWindow
-  case elemIndex w ws of
-    Just i -> withUI2 setWindow (ws !! ((amount + i) `mod` (length ws)))
-    _      -> error "Editor: current window has been lost."
+shiftFocus f = do
+  ui <- asks yiUi  
+  withEditor $ do ws <- getWindows ui; setWindows ui (f ws)
+  withEditor $ getWindow ui >>= setWindow ui
+
 
 -- | Delete the focused window
 deleteThisWindow :: YiM ()
@@ -66,7 +64,7 @@ killBufferWindows b = do
   logPutStrLn $ "KillBufferWindows: " ++ name b
   ui <- asks yiUi
   ws <- getWindows ui
-  withEditor $ mapM_ (deleteWindow ui) $ filter (\w -> bufkey w == keyB b) (WS.contents ws)
+  withEditor $ mapM_ (deleteWindow ui) $ filter (\w -> bufkey w == keyB b) (toList ws)
 
 -- | Close any windows onto the buffer associated with name 'n', then free the buffer
 killBufferAndWindows :: String -> YiM ()
@@ -93,7 +91,7 @@ splitWindow = do
 shiftOtherWindow :: YiM ()
 shiftOtherWindow = do
   ws <- withUI getWindows
-  if length (WS.contents ws) == 1 then splitWindow else nextWindow
+  if length (toList ws) == 1 then splitWindow else nextWindow
 
 
 withOtherWindow :: YiM () -> YiM ()

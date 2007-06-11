@@ -36,7 +36,7 @@ module Yi.UI (
 
         -- * Window manipulation
         newWindow, enlargeWindow, shrinkWindow, deleteWindow,
-        hasRoomForExtraWindow, setWindowBuffer, setWindow,
+        hasRoomForExtraWindow, setFocusedWindowBuffer, setWindow,
         withWindow0, getWindow, getWindows,
 
         -- * Command line
@@ -50,35 +50,34 @@ module Yi.UI (
 
   )   where
 
-import Prelude hiding (error)
-
-import Yi.Buffer (Point, FBuffer (..), pointB, curLn, getMarkPointB, getSelectionMarkB, 
-                  getModeLine, runBuffer )
-import Yi.FastBuffer( nelemsBIH ) -- gah this is ugly
-import Yi.Editor
-import Yi.Window as Window
-import Yi.Style
-import Yi.Vty hiding (def, black, red, green, yellow, blue, magenta, cyan, white)
-import Yi.Event
-import Yi.Debug
-import Yi.Monad
+import Prelude hiding (error, concatMap, sum, mapM)
 
 import Control.Concurrent
 import Control.Concurrent.Chan
 import Control.Exception
-import Control.Monad.Reader
-
-import Data.Traversable as T
-import Data.List
-import Data.Maybe
+import Control.Monad.Reader (ask, runReaderT)
+import Control.Monad.State (runState, State, gets, modify)
+import Control.Monad.Trans (liftIO, MonadIO)
 import Data.Char (ord,chr)
-import qualified Yi.CommonUI as Common
-import qualified Yi.WindowSet as WS
+import Data.Foldable
 import Data.IORef
+import Data.List (partition, sort)
+import Data.Maybe
+import Data.Traversable
 import System.Exit
 import System.Posix.Signals         ( raiseSignal, sigTSTP )
-
+import Yi.Buffer (Point, FBuffer (..), pointB, curLn, getMarkPointB, getSelectionMarkB, getModeLine, runBuffer )
+import Yi.Debug
+import Yi.Editor
+import Yi.Event
+import Yi.FastBuffer ( nelemsBIH ) -- gah this is ugly
+import Yi.Monad
+import Yi.Style
+import Yi.Vty hiding (def, black, red, green, yellow, blue, magenta, cyan, white)
+import Yi.Window as Window
 import qualified Data.ByteString.Char8 as B
+import qualified Yi.CommonUI as Common
+import qualified Yi.WindowSet as WS
 
 ------------------------------------------------------------------------
 
@@ -104,11 +103,12 @@ mkUI ui = Common.UI
    Common.shrinkWindow          = shrinkWindow          ui,
    Common.deleteWindow          = deleteWindow          ui,
    Common.hasRoomForExtraWindow = hasRoomForExtraWindow ui,
-   Common.setWindowBuffer       = setWindowBuffer       ui,
+   Common.setFocusedWindowBuffer= setFocusedWindowBuffer ui,
    Common.setWindow             = setWindow             ui,
    Common.setCmdLine            = setCmdLine            ui,
    Common.withWindow0           = withWindow0           ui,
    Common.getWindows            = getWindows            ui,
+   Common.setWindows            = setWindows            ui,
    Common.getWindow             = getWindow             ui
   }
 
@@ -169,7 +169,7 @@ end i = do
 
 -- | Suspend the program
 suspend :: UI -> EditorM ()
-suspend _ = lift $ raiseSignal sigTSTP
+suspend _ = liftIO $ raiseSignal sigTSTP
 
 -- | Find the current screen height and width.
 screenSize :: UI -> EditorM (Int, Int)
@@ -219,13 +219,13 @@ refresh ui = do
   ws <- readRef (windows ui)
   let w = WS.current ws
   withEditor0 $ \e -> do
-    let wImages = map picture (WS.contents ws)
+    let wImages = map picture (toList ws)
     cmd <- readIORef (cmdline ui)
     (_yss,xss) <- readIORef (scrsize ui)
     Yi.Vty.update (vty $ ui) 
       pic {pImage = vertcat wImages <-> withStyle (window $ uistyle e) (take xss $ cmd ++ repeat ' '),
            pCursor = let (y,x) = cursor w in
-                     Cursor x (y + (sum $ map height $ takeWhile (/= w) $ (WS.contents ws)))}
+                     Cursor x (y + (sum $ map height $ takeWhile (/= w) $ (toList ws)))}
                        -- calculate origin of focused window
                        -- sum of heights of windows above this one on screen.
                        -- needs to be shifted 'x' by the width of the tabs on this line
@@ -236,7 +236,7 @@ updateWindows ui = do
   ws0 <- readRef (windows ui)
   WS.debug "Updating windows" ws0
   e <- readRef =<< ask
-  ws <- liftIO $ T.mapM (\w -> drawWindow e (w == WS.current ws0) (uistyle e) w) ws0
+  ws <- liftIO $ mapM (\w -> drawWindow e (w == WS.current ws0) (uistyle e) w) ws0
   logPutStrLn "Windows updated!"
   writeRef (windows ui) ws
 
@@ -434,7 +434,7 @@ getWinWithHeight wls i n p
 --
 deleteWindow :: UI -> Window -> EditorM ()
 deleteWindow ui win = do 
-  modifyRef (windows ui) (WS.delete win)
+  modifyRef (windows ui) (WS.delete . WS.setFocus win)
   doResizeAll ui
 
 ------------------------------------------------------------------------
@@ -450,7 +450,7 @@ refreshAll ui = do
 scheduleRefresh :: UI -> EditorM ()
 scheduleRefresh ui = do
   modifyEditor_ $ \e -> return e {editorUpdates = []}
-  lift $ scheduleRefresh' ui
+  liftIO $ scheduleRefresh' ui
 
 prepareAction :: UI -> EditorM ()
 prepareAction _ = return ()
@@ -464,17 +464,21 @@ doResizeAll :: UI -> EditorM ()
 doResizeAll i = liftIO $ do 
   ws <- readIORef (windows i) 
   (h,w) <- readIORef $ scrsize i
-  let (mwls, wls) = partition isMini $ WS.contents ws
+  let (mwls, wls) = partition isMini $ toList ws
       (y,r) = getY (h - length mwls) (length wls) 
-      mwls' = map (doresize w 1) mwls
-      wls' = case wls of
-               [] -> []
-               (w0:ws) -> doresize w (y+r-1) w0 : map (doresize w y) ws
-      result = WS.WindowSet (mwls' ++ wls')
-  writeIORef (windows i) result
-  WS.debug "After resize: " result
-                     
-    where doresize x y win = resize y x win
+      heights = (y+r-1) : repeat y
+      (ws', _) = runState (Data.Traversable.mapM distribute (fmap (\win -> win { width = w }) ws)) heights
+
+  writeIORef (windows i) ws'
+  WS.debug "After resize: " ws'
+       
+distribute :: Window -> State [Int] Window              
+distribute win = case isMini win of
+                 True -> return win {height = 1}
+                 False -> do h <- gets head
+                             modify tail
+                             return (win {height = h})
+       
 
 -- | Turn on modelines of all windows
 turnOnML :: WS.WindowSet Window -> WS.WindowSet Window
@@ -485,7 +489,7 @@ hasRoomForExtraWindow :: UI -> EditorM Bool
 hasRoomForExtraWindow ui = do
     ws <- readRef (windows ui)
     (y,_) <- screenSize ui 
-    let (sy,r) = getY y (WS.size ws)
+    let (sy,r) = getY y (length $ toList ws)
     return $ sy + r > 4  -- min window size
 
 -- | Calculate window heights, given all the windows and current height.
@@ -499,14 +503,8 @@ setCmdLine i s = do
   writeIORef (cmdline i) s
                 
 -- | Display the given buffer in the given window.
-setWindowBuffer :: UI -> FBuffer -> Window -> EditorM ()
-setWindowBuffer ui b w = do
-    logPutStrLn $ "Setting buffer for " ++ show w ++ ": " ++ show b
-    w'' <- do
-                     w' <- lift $ emptyWindow False b (height w, width w)
-                     return $ w' { key = key w, mode = mode w } 
-                     -- reuse the window's key (so it ends in the same place on the screen)
-    modifyRef (windows ui) (WS.update w'')
+setFocusedWindowBuffer :: UI -> FBuffer -> EditorM ()
+setFocusedWindowBuffer ui b = modifyRef (windows ui) (WS.modifyCurrent $ \w -> w {bufkey = bkey b})
     -- WS.debug "After setbuffer" =<< readRef windows
 
 --
@@ -529,6 +527,8 @@ withWindow0 ui f = do
 
 getWindows :: MonadIO m => UI -> m (WS.WindowSet Window)
 getWindows ui = readRef $ windows ui
+
+setWindows ui ws = writeRef (windows ui) ws
 
 getWindow :: MonadIO m => UI -> m Window
 getWindow ui = do
