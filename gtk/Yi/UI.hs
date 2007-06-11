@@ -224,26 +224,7 @@ addWindow i w = do
                  boxChildPacking (widget w) := if isMini w then PackNatural else PackGrow]
   textview w `onFocusIn` (\_event -> (modifyIORef (windows i) (WS.setFocus w)) >> return False)
   -- We have to return false so that GTK correctly focuses the window when we use widgetGrabFocus
-  textview w `onMoveCursor` \step amount user -> do
-      logPutStrLn $ "moveCursor: " ++ show step ++ show amount ++ show user
-      -- gtk experts: we don't seem to get any of those events... why? 
-      -- Duncan Coutts advises binding to the mark-set signal
-
-      --forgetPerferCol (findBufferWith e (bufkey w))
-
   widgetShowAll (widget w)
-
-instance Show MovementStep where
-    show MovementLogicalPositions = "MovementLogicalPosition"		
-    show MovementVisualPositions  = "MovementVisualPositions"         
-    show MovementWords	      = "MovementWords	        " 
-    show MovementDisplayLines     = "MovementDisplayLines	" 
-    show MovementDisplayLineEnds  = "MovementDisplayLineEnds"         
-    show MovementParagraphs	      = "MovementParagraphs	"         
-    show MovementParagraphEnds    = "MovementParagraphEnds	" 
-    show MovementPages	      = "MovementPages	        " 
-    show MovementBufferEnds	      = "MovementBufferEnds	"         
-    show MovementHorizontalPages  = "MovementHorizontalPages"         
 
 -- | Clean up and go home
 end :: IO ()
