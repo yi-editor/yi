@@ -47,8 +47,6 @@ data Window =
        ,pnt         :: !Int            -- ^ current point
 
        ,tospnt      :: !Int            -- ^ the buffer point of the top of screen
-       ,toslineno   :: !Int            -- ^ line number of top of screen
-                       
        ,bospnt      :: !Int            -- ^ the buffer point of the bottom of screen
        ,picture     :: !Image          -- ^ the picture currently displayed.
     }
@@ -87,7 +85,6 @@ emptyWindow mini b (h,w) = do
                    ,pnt       = 0      -- cache point when out of focus
                    ,tospnt    = 0
                    ,bospnt    = 0
-                   ,toslineno = 1      -- start on line 1
                    ,picture = empty
               }
     return win

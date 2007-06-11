@@ -249,8 +249,7 @@ showPoint e w = do
                let gap = min (ln-1) ((height w) `div` 2)
                    topln = ln - gap
                i <- indexOfSolAbove gap
-               return w {toslineno = topln,
-                         tospnt = i}
+               return w {tospnt = i}
   return result
 
 -- | redraw a window
