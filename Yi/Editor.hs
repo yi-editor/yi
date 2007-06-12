@@ -177,12 +177,6 @@ shiftBuffer shift = readEditor $ \e ->
 killAllBuffers :: IO ()
 killAllBuffers = error "killAllBuffers undefined"
 
-
--- | turn a list of windows into an association list suitable for fromList
-mkAssoc :: [Window] -> [(Unique,Window)]
-mkAssoc []     = []
-mkAssoc (w:ws) = (key w, w) : mkAssoc ws
-
 -- | Perform action with current window's buffer
 withGivenBuffer0 :: FBuffer -> BufferM a -> EditorM a
 withGivenBuffer0 b f = modifyEditor $ \e -> do
