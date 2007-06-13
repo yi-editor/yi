@@ -69,12 +69,12 @@ backward (WindowSet [] c []) = WindowSet [] c []
 backward (WindowSet (b:bs) c a) = WindowSet bs b (c:a)
 backward (WindowSet [] c a) = WindowSet (c:reverse (init a)) (last a) []
 
-setFocus :: Eq a => a -> WindowSet a -> WindowSet a
+setFocus :: (Show a, Eq a) => a -> WindowSet a -> WindowSet a
 setFocus w ws@(WindowSet b c a) 
     | c == w = ws
-    | c `elem` a = setFocus w (forward ws)
-    | c `elem` b = setFocus w (backward ws)
-    | otherwise = error "window lost" 
+    | w `elem` a = setFocus w (forward ws)
+    | w `elem` b = setFocus w (backward ws)
+    | otherwise = error $ "Lost window: " ++ show w ++ " among " ++ show ws
 
 modifyCurrent :: (a -> a) -> WindowSet a -> WindowSet a
 modifyCurrent f (WindowSet b c a) = WindowSet b (f c) a
