@@ -104,7 +104,7 @@ keymap = selfInsertKeymap +++ makeProcess
         ("C-x C-w",  atomic $ withMinibuffer "Write file: " completeFileName fwriteToE),
         ("C-x C-x",  atomic $ exchangePointAndMarkE),
         ("C-x b",    atomic $ switchBufferE),
-        ("C-x d",    atomic $ execE "Yi.Dired.diredE"),
+        ("C-x d",    atomic $ loadE "Yi.Dired" >> execE "Yi.Dired.diredE"),
         ("C-x e e",  atomic $ evalRegionE),
         ("C-x o",    atomic $ nextWinE),
         ("C-x l",    atomic $ gotoLineE),

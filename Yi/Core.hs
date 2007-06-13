@@ -981,7 +981,7 @@ runConfig = do
 
 loadE :: String -> YiM [String]
 loadE modul = do
-  modifiesRef editorModules (++ [modul])
+  modifiesRef editorModules (\ms -> if Data.List.notElem modul ms then ms++[modul] else ms)
   reloadE
 
 unloadE :: String -> YiM [String]
