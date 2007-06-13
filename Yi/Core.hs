@@ -264,7 +264,7 @@ startE kernel st commandLineActions = do
     (inCh, ui) <- runEd (ThisFlavourUI.start consoleB)
     outCh <- newChan
     startKm <- newIORef nilKeymap
-    startModules <- newIORef []
+    startModules <- newIORef ["Yi.Yi"] -- this module re-exports all useful stuff, so we want it loaded at all times.
     startThreads <- newIORef []
     keymaps <- newIORef M.empty
     let yi = Yi newSt ui startThreads inCh outCh startKm keymaps kernel startModules

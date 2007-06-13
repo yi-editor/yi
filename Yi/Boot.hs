@@ -105,13 +105,12 @@ startYi kernel = GHC.defaultErrorHandler DynFlags.defaultDynFlags $ do
 setContextAfterLoadL :: GHC.Session -> IO [GHC.Module]
 setContextAfterLoadL session = do
   preludeModule <- GHC.findModule session (GHC.mkModuleName "Prelude") Nothing
-  yiModule <- GHC.findModule session (GHC.mkModuleName "Yi.Yi") Nothing -- this module re-exports all useful stuff.
   graph <- GHC.getModuleGraph session
   graph' <- filterM (GHC.isLoaded session . GHC.ms_mod_name) graph
   targets <- GHC.getTargets session
   let targets' = [ m | Just m <- map (findTarget graph') targets ]
       modules = map GHC.ms_mod targets'
-      context = preludeModule:yiModule:modules
+      context = preludeModule:modules
   GHC.setContext session [] context
   return context
  where
