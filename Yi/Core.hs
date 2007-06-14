@@ -865,10 +865,14 @@ listBuffersE = do
         bs  <- withEditor getBuffers
         return $ zip (map name bs) [0..]
 
--- | Release resources associated with buffer, close any windows open
--- onto buffer.
+-- | Release resources associated with buffer
 closeBufferE :: String -> Action
-closeBufferE f = killBufferAndWindows f
+closeBufferE bufName = do
+  nextB <- withEditor nextBuffer
+  b <- withEditor getBuffer
+  b' <- if null bufName then return b else getBufferWithName bufName
+  switchToBufferE nextB
+  withEditor $ deleteBuffer b'
 
 ------------------------------------------------------------------------
 

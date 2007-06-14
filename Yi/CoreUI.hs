@@ -66,19 +66,6 @@ killBufferWindows b = do
   ws <- getWindows ui
   withEditor $ mapM_ (deleteWindow ui) $ filter (\w -> bufkey w == keyB b) (toList ws)
 
--- | Close any windows onto the buffer associated with name 'n', then free the buffer
-killBufferAndWindows :: String -> YiM ()
-killBufferAndWindows n = do
-  bs <- readEditor $ \e -> findBufferWithName e n
-  case bs of
-    [] -> return ()     -- no buffer to kill, so nothing to do
-    _ -> mapM_ killB bs
-    where
-        killB b = do killBufferWindows b
-                     deleteBufferKeymap b
-                     lift $ runBuffer b finaliseB
-                     withEditor $ deleteBuffer b
-
 -- | Split the current window, opening a second window onto this buffer.
 -- Windows smaller than 3 lines cannot be split.
 splitWindow :: YiM ()

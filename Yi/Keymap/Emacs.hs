@@ -401,12 +401,7 @@ switchBufferE :: Action
 switchBufferE = withMinibuffer "switch to buffer:" completeBufferName switchToBufferWithNameE
 
 killBufferE :: Action
-killBufferE = withMinibuffer "kill buffer:" completeBufferName $ \bufName -> do
-                nextB <- withEditor nextBuffer
-                b <- withEditor getBuffer
-                b' <- if null bufName then return b else getBufferWithName bufName
-                switchToBufferE nextB
-                withEditor $ deleteBuffer b'
+killBufferE = withMinibuffer "kill buffer:" completeBufferName closeBufferE
 
 -- | Create a binding processor from 'kmap'.
 makeProcess :: KList -> KProc ()
