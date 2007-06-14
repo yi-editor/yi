@@ -434,10 +434,7 @@ atEofE = withBuffer atEof
 
 -- | Scroll up 1 screen
 upScreenE :: Action
-upScreenE = do
-    w <- withUI UI.getWindow
-    withBuffer (gotoLnFrom (- (height w - 1)))
-    solE
+upScreenE = upScreensE 1
 
 -- | Scroll up n screens
 upScreensE :: Int -> Action
@@ -448,10 +445,7 @@ upScreensE n = do
 
 -- | Scroll down 1 screen
 downScreenE :: Action
-downScreenE = do
-    w <- withUI UI.getWindow
-    withBuffer (gotoLnFrom (height w - 1))
-    return ()
+downScreenE = downScreensE 1
 
 -- | Scroll down n screens
 downScreensE :: Int -> Action
