@@ -58,14 +58,6 @@ deleteThisWindow = do
   ui <- asks yiUi
   withEditor (getWindow ui >>= deleteWindow ui)
 
--- | Close any windows onto the buffer b, then free the buffer
-killBufferWindows :: FBuffer -> YiM ()
-killBufferWindows b = do 
-  logPutStrLn $ "KillBufferWindows: " ++ name b
-  ui <- asks yiUi
-  ws <- getWindows ui
-  withEditor $ mapM_ (deleteWindow ui) $ filter (\w -> bufkey w == keyB b) (toList ws)
-
 -- | Split the current window, opening a second window onto this buffer.
 -- Windows smaller than 3 lines cannot be split.
 splitWindow :: YiM ()
