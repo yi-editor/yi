@@ -10,7 +10,7 @@ import Yi.Keymap.Emacs
 import Control.Monad.Trans
 import Yi.Buffer
 
-yiMain :: EditorM ()
+yiMain :: YiM ()
 yiMain = do
   changeKeymapE myKeymap  
 

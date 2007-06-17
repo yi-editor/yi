@@ -5,7 +5,7 @@ import Yi.Editor
 import Yi.Keymap.Vim
 import Control.Monad.Trans
 
-yiMain :: EditorM ()
+yiMain :: YiM ()
 yiMain = do
   changeKeymapE myKeymap
   msgE "User configuration finished."
