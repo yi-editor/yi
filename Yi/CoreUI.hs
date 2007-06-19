@@ -27,55 +27,67 @@ import Yi.CommonUI
 import Yi.Editor hiding (readEditor)
 import Yi.Debug
 import Yi.Buffer
-import Yi.Window
 import Data.List
 import Yi.Keymap
 import Control.Monad.Reader
 import Yi.WindowSet as WS
+import Control.Concurrent.MVar
 import Data.Foldable (toList)
 --------------------------------------------------------
 
 
 -- | Rotate focus to the next window
 nextWindow :: YiM ()
-nextWindow = shiftFocus WS.forward
+nextWindow = modifyWindows WS.forward
 
 -- | Rotate focus to the previous window
 prevWindow :: YiM ()
-prevWindow = shiftFocus WS.backward
+prevWindow = modifyWindows WS.backward
 
--- | Shift the focus to some other window.
-shiftFocus f = do
-  ui <- asks yiUi  
-  withEditor $ do ws <- getWindows ui; setWindows ui (f ws)
-  withEditor $ getWindow ui >>= setWindow ui
+-- | Apply a function to the windowset.
+modifyWindows f = do
+  wsRef <- asks yiWindows
+  b <- liftIO $ modifyMVar wsRef $ \ws -> let ws' = f ws in return (ws', bufkey $ WS.current ws')
+  withEditor (setBuffer b)
+  return ()
+  
+withWindows f = do
+  wsRef <- asks yiWindows
+  liftIO $ withMVar wsRef $ \ws -> return (f ws)
+
+withWindow :: (Window -> a) -> YiM a
+withWindow f = withWindows (f . WS.current)
+
+withWindowAndBuffer :: (Window -> BufferM a) -> YiM a
+withWindowAndBuffer f = do
+  wsRef <- asks yiWindows 
+  editorRef <- asks yiEditor
+  liftIO $ withMVar wsRef $ \ws -> runReaderT (withBuffer0 (f (WS.current ws))) editorRef
 
 
 -- | Delete the focused window
 deleteThisWindow :: YiM ()
-deleteThisWindow = do
-  logPutStrLn "deleting current window"
-  ui <- asks yiUi
-  withEditor (getWindow ui >>= deleteWindow ui)
+deleteThisWindow = modifyWindows WS.delete
 
 -- | Split the current window, opening a second window onto this buffer.
 -- Windows smaller than 3 lines cannot be split.
 splitWindow :: YiM ()
 splitWindow = do 
   b <- withEditor $ getBuffer
-  ui <- asks yiUi
-  withEditor $ setWindow ui =<< newWindow ui False b
+  let w = Window False (keyB b) 0 0 0
+  modifyWindows (WS.add w)
 
 -- | Switch focus to some other window. If none is available, create one.
 shiftOtherWindow :: YiM ()
 shiftOtherWindow = do
-  ws <- withUI getWindows
-  if length (toList ws) == 1 then splitWindow else nextWindow
+  len <- withWindows (length . toList)
+  when (len == 1) splitWindow
+  nextWindow
 
 
 withOtherWindow :: YiM () -> YiM ()
 withOtherWindow f = do
-  w <- withUI $ getWindow
   shiftOtherWindow
   f
-  withUI2 setWindow w
+  prevWindow
+

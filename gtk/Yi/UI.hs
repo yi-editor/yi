@@ -20,49 +20,28 @@
 
 -- | This module defines a user interface implemented using gtk2hs.
 
-module Yi.UI (
+module Yi.UI (start) where
 
-        -- * UI initialisation
-        start, end, suspend, main,
-
-        -- * Refresh
-        refreshAll, scheduleRefresh, prepareAction,
-
-        -- * Window manipulation
-        newWindow, enlargeWindow, shrinkWindow, deleteWindow,
-        hasRoomForExtraWindow, setFocusedWindowBuffer, setWindow,
-        withWindow0, getWindow, getWindows,
-
-        -- * Command line
-        setCmdLine,
-
-        -- * UI type, abstract.
-        UI,
-
-        -- * For dynamic hacking, give access to the window.
-        uiWindow,
-
-        module Yi.Event   -- UIs need to export the symbolic key names
-  )   where
-
-import Prelude hiding (error, sequence_)
+import Prelude hiding (error, sequence_, elem, mapM_)
 
 import Yi.Buffer
 import Yi.Editor
-import Yi.Window as Window
 import Yi.Event
 import Yi.Debug
 import Yi.Undo
 import Yi.Monad
 import qualified Yi.CommonUI as Common
+import Yi.CommonUI (Window)
 import qualified Yi.WindowSet as WS
 
 import Control.Concurrent ( yield )
 import Control.Concurrent.Chan
+import Control.Concurrent.MVar
 import Control.Monad.Reader (ask, lift, liftIO, liftM, when, MonadIO)
+import Control.Monad (ap)
 
 import Data.IORef
-import Data.List
+import Data.List ( nub )
 import Data.Maybe
 import Data.Unique
 import Data.Foldable
@@ -79,8 +58,23 @@ data UI = UI {
              ,uiBox :: VBox
              ,uiCmdLine :: Label
              ,uiBuffers :: IORef (M.Map Unique SourceBuffer)
-             ,windows   :: IORef (WS.WindowSet Window)     -- ^ all the windows
+             ,windows   :: MVar (WS.WindowSet Window)     -- ^ all the windows
+             ,windowCache :: IORef [WinInfo]
              }
+
+data WinInfo = WinInfo 
+    {
+     bufkey      :: !Unique         -- ^ the buffer this window opens to
+    ,textview    :: SourceView
+    ,modeline    :: Label
+    ,widget      :: Box            -- ^ Top-level widget for this window.
+    ,isMini      :: Bool
+    }
+
+instance Show WinInfo where
+    show w = "W" ++ show (hashUnique $ bufkey w)
+
+winkey w = (isMini w, bufkey w)
 
 
 mkUI ui = Common.UI 
@@ -91,23 +85,12 @@ mkUI ui = Common.UI
    Common.refreshAll            = return (),
    Common.scheduleRefresh       = scheduleRefresh       ui,
    Common.prepareAction         = prepareAction         ui,
-   Common.newWindow             = newWindow             ui,
-   Common.enlargeWindow         = enlargeWindow         ui,
-   Common.shrinkWindow          = shrinkWindow          ui,
-   Common.deleteWindow          = deleteWindow          ui,
-   Common.hasRoomForExtraWindow = hasRoomForExtraWindow ui,
-   Common.setFocusedWindowBuffer= setFocusedWindowBuffer ui,
-   Common.setWindow             = setWindow             ui,
-   Common.setCmdLine            = setCmdLine            ui,
-   Common.withWindow0           = withWindow0           ui,
-   Common.getWindows            = getWindows            ui,
-   Common.setWindows            = setWindows            ui,
-   Common.getWindow             = getWindow             ui
+   Common.setCmdLine            = setCmdLine            ui
   }
 
 -- | Initialise the ui
-start :: FBuffer -> EditorM (Chan Event, Common.UI)
-start buf = lift $ do
+start :: MVar (WS.WindowSet Common.Window) -> EditorM (Chan Yi.Event.Event, Common.UI)
+start ws0 = lift $ do
   initGUI
 
   win <- windowNew
@@ -137,12 +120,8 @@ start buf = lift $ do
   widgetShowAll win
 
   bufs <- newIORef M.empty
-
-  -- creation of the 1st window is a bit tricky because we disallow an empty WindowSet.
-  w0 <- emptyWindow False buf
-  ws0 <- newIORef (WS.new w0)
-  let ui = UI win vb' cmd bufs ws0
-  addWindow ui w0
+  wc <- newIORef []
+  let ui = UI win vb' cmd bufs ws0 wc
 
   return (ch, mkUI ui)
 
@@ -217,15 +196,6 @@ keyTable = M.fromList
     ]
 
 
-addWindow :: UI -> Window -> IO ()
-addWindow i w = do
-  modifyRef (windows i) (WS.add w)
-  set (uiBox i) [containerChild := widget w,
-                 boxChildPacking (widget w) := if isMini w then PackNatural else PackGrow]
-  textview w `onFocusIn` (\_event -> (modifyIORef (windows i) (WS.setFocus w)) >> return False)
-  -- We have to return false so that GTK correctly focuses the window when we use widgetGrabFocus
-  widgetShowAll (widget w)
-
 -- | Clean up and go home
 end :: IO ()
 end = mainQuit
@@ -233,65 +203,110 @@ end = mainQuit
 -- | Suspend the program
 suspend :: UI -> EditorM ()
 suspend ui = do 
- lift $ windowIconify (uiWindow ui) 
-
-
-
-
-------------------------------------------------------------------------
--- | Window manipulation
-
--- | Create a new window onto this buffer.
---
-newWindow :: UI -> Bool -> FBuffer -> EditorM Window
-newWindow ui mini b = do
-  win <- lift $ do 
-    win <- emptyWindow mini b
-    logPutStrLn $ "Creating " ++ show win
-    addWindow ui win
-    return win
-  setWindow ui win
-  setFocusedWindowBuffer ui b
-  return win
-
--- ---------------------------------------------------------------------
--- | Grow the given window, and pick another to shrink
--- grow and shrink compliment each other, they could be refactored.
---
-enlargeWindow :: UI -> Window -> EditorM ()
-enlargeWindow _ _ = return () -- TODO
-
--- | shrink given window (just grow another)
-shrinkWindow :: UI -> Window -> EditorM ()
-shrinkWindow _ _ = return () -- TODO
-
-
---
--- | Delete a window. Note that the buffer that was connected to this
--- window is still open.
---
-deleteWindow :: UI -> Window -> EditorM ()
-deleteWindow i win = do
-  modifyRef (windows i) (WS.delete . WS.setFocus win)
-  lift $ containerRemove (uiBox i) (widget win)
-  w <- getWindow i
-  setWindow i w
-
--- | Has the frame enough room for an extra window.
-hasRoomForExtraWindow :: UI -> EditorM Bool
-hasRoomForExtraWindow _ = return True
+  lift $ windowIconify (uiWindow ui) 
 
 refreshAll :: EditorM ()
 refreshAll = return ()
 
+syncWindows :: Editor -> UI -> [(Window, Bool)] -> [WinInfo] -> IO [WinInfo]
+syncWindows e ui (wfocused@(w,focused):ws) (c:cs) 
+    | Common.winkey w == winkey c = do when focused (setFocus c)
+                                       return (c:) `ap` syncWindows e ui ws cs
+    | Common.winkey w `elem` map winkey cs = removeWindow ui c >> syncWindows e ui (wfocused:ws) cs
+    | otherwise = do c' <- insertWindowBefore e ui w c
+                     when focused (setFocus c')
+                     return (c':) `ap` syncWindows e ui ws (c:cs)
+syncWindows e ui ws [] = mapM (insertWindowAtEnd e ui) (map fst ws)
+syncWindows e ui [] cs = mapM_ (removeWindow ui) cs >> return []
+    
+setFocus w = widgetGrabFocus (textview w)
+
+removeWindow i win = containerRemove (uiBox i) (widget win)
+
+-- | Make A new window
+newWindow :: UI -> Bool -> FBuffer -> IO WinInfo
+newWindow ui mini b = do
+    wu <- newUnique
+
+    f <- fontDescriptionNew
+    fontDescriptionSetFamily f "Monospace"
+
+    ml <- labelNew Nothing
+    widgetModifyFont ml (Just f)
+    set ml [ miscXalign := 0.01 ] -- so the text is left-justified.
+
+    v <- sourceViewNew
+    widgetModifyFont v (Just f)
+
+
+    box <- if mini 
+     then do
+      widgetSetSizeRequest v (-1) 1
+
+      prompt <- labelNew (Just $ name b)
+      widgetModifyFont prompt (Just f)
+
+      hb <- hBoxNew False 1
+      set hb [ containerChild := prompt, 
+               containerChild := v, 
+               boxChildPacking prompt := PackNatural,
+               boxChildPacking v := PackNatural] 
+
+      return (castToBox hb)
+     else do
+      scroll <- scrolledWindowNew Nothing Nothing
+      set scroll [scrolledWindowPlacement := CornerTopRight,
+                  scrolledWindowVscrollbarPolicy := PolicyAlways,
+                  scrolledWindowHscrollbarPolicy := PolicyAutomatic,
+                  containerChild := v]
+
+      vb <- vBoxNew False 1
+      set vb [ containerChild := scroll, 
+               containerChild := ml, 
+               boxChildPacking ml := PackNatural] 
+      return (castToBox vb)
+
+    gtkBuf <- getGtkBuffer ui b
+
+    textViewSetBuffer v gtkBuf
+
+    let win = WinInfo {
+                    bufkey    = (keyB b)
+                   ,textview  = v
+                   ,modeline  = ml
+                   ,widget    = box
+                   ,isMini    = mini
+              }
+    return win
+
+insertWindowBefore e i w c = insertWindow e i w
+
+insertWindowAtEnd e i w = insertWindow e i w
+
+insertWindow e i win = do
+  let buf = findBufferWith e (Common.bufkey win)
+  liftIO $ do w <- newWindow i (Common.isMini win) buf
+              set (uiBox i) [containerChild := widget w,
+                             boxChildPacking (widget w) := if isMini w then PackNatural else PackGrow]
+              -- FIXME: textview w `onFocusIn` (\_event -> (modifyRef (windows i) (WS.setFocus w)) >> return False)
+              -- We have to return false so that GTK correctly focuses the window when we use widgetGrabFocus
+              widgetShowAll (widget w)
+              return w
+
+
 scheduleRefresh :: UI -> EditorM ()
-scheduleRefresh ui = modifyEditor_ $ \e-> do
-    ws <- readRef (windows ui)
-    bufs <- readIORef $ uiBuffers $ ui
-    sequence_ [applyUpdate (bufs M.! b) u >> logPutStrLn (show $ u) | (b,u) <- editorUpdates e]
-    forM_ ws $ \w -> 
+scheduleRefresh ui = modifyEditor_ $ \e -> withMVar (windows ui) $ \ws -> do
+    cache <- readRef $ windowCache ui
+    sequence_ [do buf <- getGtkBuffer ui (findBufferWith e b); applyUpdate buf u; logPutStrLn (show $ u) | (b,u) <- editorUpdates e]
+
+    cache' <- syncWindows e ui (toList $ WS.withFocus $ ws) cache  
+    WS.debug "syncing" ws
+    logPutStrLn $ "with: " ++ show cache
+    logPutStrLn $ "Yields: " ++ show cache'
+    writeRef (windowCache ui) cache'
+    forM_ cache' $ \w -> 
         do let buf = findBufferWith e (bufkey w)
-               gtkBuf = bufs M.! (bufkey w)
+           gtkBuf <- getGtkBuffer ui buf
            (p0, []) <- runBuffer buf pointB
            insertMark <- textBufferGetInsert gtkBuf
            i <- textBufferGetIterAtOffset gtkBuf p0
@@ -300,6 +315,7 @@ scheduleRefresh ui = modifyEditor_ $ \e-> do
            (txt, []) <- runBuffer buf getModeLine 
            set (modeline w) [labelText := txt]
     return e {editorUpdates = []}
+
 
 applyUpdate :: SourceBuffer -> URAction -> IO ()
 applyUpdate buf (Insert p s) = do
@@ -329,22 +345,19 @@ setCmdLine :: UI -> String -> IO ()
 setCmdLine i s = do
   set (uiCmdLine i) [labelText := if length s > 132 then take 129 s ++ "..." else s]
 
--- | Display the given buffer in the given window.
-setFocusedWindowBuffer :: UI -> FBuffer -> EditorM ()
-setFocusedWindowBuffer ui b = do
+getGtkBuffer :: UI -> FBuffer -> IO SourceBuffer
+getGtkBuffer ui b = do
     let bufsRef = uiBuffers ui
     bufs <- readRef bufsRef
     gtkBuf <- case M.lookup (bkey b) bufs of
       Just gtkBuf -> return gtkBuf
-      Nothing -> lift $ newBuffer b
-    ws <- readRef (windows ui)
-    lift $ textViewSetBuffer (textview $ WS.current ws) gtkBuf
+      Nothing -> newGtkBuffer b
     modifyRef bufsRef (M.insert (bkey b) gtkBuf)
-    modifyRef (windows ui) (WS.modifyCurrent $ \w -> w { bufkey = bkey b })
+    return gtkBuf
 
 -- FIXME: when a buffer is deleted its GTK counterpart should be too.
-newBuffer :: FBuffer -> IO SourceBuffer
-newBuffer b = do
+newGtkBuffer :: FBuffer -> IO SourceBuffer
+newGtkBuffer b = do
   buf <- sourceBufferNew Nothing
   lm <- sourceLanguagesManagerNew
   Just haskellLang <- sourceLanguagesManagerGetLanguageFromMimeType lm "text/x-haskell"
@@ -353,29 +366,3 @@ newBuffer b = do
   (txt, []) <- runBuffer b elemsB
   textBufferSetText buf txt
   return buf
-  
--- | Set current window
-
--- FIXME: reset the buffer point from the window point
-
-setWindow :: UI -> Window -> EditorM ()
-setWindow ui w = do
-  logPutStrLn $ "Focusing " ++ show w 
-  setBuffer (bufkey w)
-  modifyRef (windows ui) (WS.setFocus w)
-  liftIO $ widgetGrabFocus (textview w)
-
-withWindow0 :: MonadIO m => UI -> (Window -> a) -> m a
-withWindow0 ui f = do
-  ws <- readRef (windows ui)
-  return (f $ WS.current ws)
-
-getWindows :: MonadIO m => UI -> m (WS.WindowSet Window)
-getWindows ui = readRef $ windows ui
-
-setWindows ui ws = writeRef (windows ui) ws
-
-getWindow :: MonadIO m => UI -> m Window
-getWindow ui = do
-  ws <- getWindows ui
-  return (WS.current ws)

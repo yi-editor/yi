@@ -28,7 +28,7 @@ myKeymap = runKeymap (rebind [("C-h r", write $ reconfigureE),
                               ("C-h t", write $ testActionE)
                              ] normalKeymap)
 
-helpE = msgE "Change ~/.yi/YiConfig.testAction, type C-h r to reload, then C-h t to test your changes. Errors are in the *messages* buffer"
+helpE = msgE "Change ~/.yi/YiConfig.testAction, type C-h r to reload, then C-h t to test your changes. Errors are in the *messages* and *console* buffer"
 
 testActionE = msgE "Have fun changing this! :)"
 

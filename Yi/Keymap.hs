@@ -36,9 +36,9 @@ import Yi.Buffer
 import qualified Yi.Interact as I
 import Yi.Monad
 import Control.Monad.Writer
-import Yi.Window
 import Yi.CommonUI
 import Yi.Event
+import Yi.WindowSet as WS
 
 type Action = YiM ()
 
@@ -61,8 +61,9 @@ data BufferKeymap = BufferKeymap
     }
 
 data Yi = Yi {yiEditor :: IORef Editor,
+              yiWindows :: MVar (WindowSet Window),
               yiUi          :: UI,
-              threads       :: IORef [ThreadId],                 -- ^ all our threads
+              threads       :: IORef [ThreadId],           -- ^ all our threads
               input         :: Chan Event,                 -- ^ input stream
               output        :: Chan Action,                -- ^ output stream
               defaultKeymap :: IORef Keymap,
@@ -196,11 +197,6 @@ withEditor f = do
 
 withGivenBuffer b f = withEditor (Editor.withGivenBuffer0 b f)
 withBuffer f = withEditor (Editor.withBuffer0 f)
-
-withWindow :: (Window -> a) -> YiM a
-withWindow f = do
-  ui <- asks yiUi
-  lift $ withWindow0 ui f 
 
 readEditor f = withEditor (Editor.readEditor f)
 

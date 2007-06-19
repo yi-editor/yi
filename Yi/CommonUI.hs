@@ -4,8 +4,26 @@ import Control.Monad.Trans
 import Data.IORef
 import Yi.Buffer
 import Yi.Editor
-import Yi.Window as Window
 import Yi.WindowSet
+import Data.Unique
+
+-- | A window onto a buffer.
+
+data Window = Window {
+                      isMini :: !Bool   -- ^ regular or mini window?
+                     ,bufkey :: !Unique -- ^ the buffer this window opens to
+                     ,tospnt :: !Int    -- ^ the buffer point of the top of screen
+                     ,bospnt :: !Int    -- ^ the buffer point of the bottom of screen
+                     ,height :: !Int    -- ^ height of the window (in number of lines displayed)
+                     }
+
+winkey w = (isMini w, bufkey w)
+
+instance Show Window where
+    show Window { bufkey = u } = "Window to " ++ show (hashUnique u)
+
+pointInWindow :: Point -> Window -> Bool
+pointInWindow point win = tospnt win <= point && point <= bospnt win
 
 data UI = UI
     {
@@ -16,28 +34,14 @@ data UI = UI
 
 
      -- Refresh/Sync
-     refreshAll            :: EditorM (),                            -- ^ Reset the heights and widths of all the windows; 
-                                                                     -- refresh the display.
+     refreshAll            :: EditorM (),                            -- ^ Reset the heights and widths of all the windows; -- refresh the display.
+        -- FIXME: remove one of those.
+        
 
      scheduleRefresh       :: EditorM (),                            -- ^ Schedule a refresh of the UI.
      prepareAction         :: EditorM (),                            -- ^ Ran before an action is executed
 
 
-     -- Window manipulation
-     newWindow             :: Bool -> FBuffer -> EditorM Window,     -- ^ Create a new window onto this buffer.
-     enlargeWindow         :: Window -> EditorM (),
-     shrinkWindow          :: Window -> EditorM (),
-     deleteWindow          :: Window -> EditorM (),                  -- ^ Delete a window. 
-                                                                     --   Note that the buffer that was connected to this window is
-                                                                     --   still open.
-     hasRoomForExtraWindow :: EditorM Bool,                          -- ^ Has the display enough room for an extra window.
-     setFocusedWindowBuffer:: FBuffer -> EditorM (),       -- ^ Display the given buffer in the given window.
-     setWindow             :: Window -> EditorM (),                  -- ^ set the focused window
-
-     withWindow0           :: forall m a. MonadIO m => (Window -> a) -> m a,
-     getWindows            :: forall m. MonadIO m => m (WindowSet Window),
-     getWindow             :: forall m. MonadIO m => m Window,
-     setWindows            :: forall m. MonadIO m => (WindowSet Window) -> m (),
 
      -- Command line
      setCmdLine            :: String -> IO ()

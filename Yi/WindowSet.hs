@@ -46,7 +46,7 @@ new :: a -> WindowSet a
 new w = WindowSet [] w []
 
 -- | Add a window, focus it.
-add :: Eq a => a -> WindowSet a -> WindowSet a
+add :: a -> WindowSet a -> WindowSet a
 add w (WindowSet b c a) = WindowSet b w (c:a)
 
 next :: WindowSet a -> a
@@ -75,6 +75,9 @@ setFocus w ws@(WindowSet b c a)
     | w `elem` a = setFocus w (forward ws)
     | w `elem` b = setFocus w (backward ws)
     | otherwise = error $ "Lost window: " ++ show w ++ " among " ++ show ws
+
+withFocus :: WindowSet a -> WindowSet (a, Bool)
+withFocus (WindowSet b c a) = WindowSet (zip b (repeat False)) (c, True) (zip a (repeat False))
 
 modifyCurrent :: (a -> a) -> WindowSet a -> WindowSet a
 modifyCurrent f (WindowSet b c a) = WindowSet b (f c) a

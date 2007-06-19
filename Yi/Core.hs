@@ -60,7 +60,6 @@ module Yi.Core (
         -- * Window manipulation
         nextWinE,       -- :: Action
         prevWinE,       -- :: Action
-        setWinE,        -- :: Window -> Action
         closeE,         -- :: Action
         closeOtherE,    -- :: Action
         splitE,         -- :: Action
@@ -181,7 +180,6 @@ import Yi.Debug
 import Yi.Buffer
 import Yi.Dynamic
 import Yi.Region
-import Yi.Window
 import Yi.String
 import Yi.Process           ( popen )
 import Yi.Editor hiding (readEditor)
@@ -191,9 +189,11 @@ import Yi.Event (eventToChar)
 import Yi.Keymap
 import Yi.Interact (anyEvent)
 import Yi.Monad
+import qualified Yi.WindowSet as WS
 import qualified Yi.Editor as Editor
 import qualified Yi.Style as Style
 import qualified Yi.CommonUI as UI
+import Yi.CommonUI as UI (Window (..))
 import qualified Yi.UI as ThisFlavourUI
 
 import Data.Maybe
@@ -260,20 +260,20 @@ startE kernel st commandLineActions = do
 
     -- restore the old state
     newSt <- newIORef $ maybe (emptyEditor consoleB) id st
+    wins <- newMVar (WS.new $ Window False (keyB consoleB) 0 0 0)
     let runEd f = runReaderT f newSt
-    (inCh, ui) <- runEd (ThisFlavourUI.start consoleB)
+    
+    (inCh, ui) <- runEd (ThisFlavourUI.start wins)
     outCh <- newChan
     startKm <- newIORef nilKeymap
     startModules <- newIORef ["Yi.Yi"] -- this module re-exports all useful stuff, so we want it loaded at all times.
     startThreads <- newIORef []
     keymaps <- newIORef M.empty
-    let yi = Yi newSt ui startThreads inCh outCh startKm keymaps kernel startModules
+    let yi = Yi newSt wins ui startThreads inCh outCh startKm keymaps kernel startModules
         runYi f = runReaderT f yi
 
-    consoleW <- runEd $ UI.newWindow ui False consoleB
     runYi $ do 
 
-      withUI2 UI.setWindow consoleW
       newBufferE "*messages*" "" >> return ()
 
       withKernel $ \k -> do
@@ -438,10 +438,9 @@ upScreenE = upScreensE 1
 
 -- | Scroll up n screens
 upScreensE :: Int -> Action
-upScreensE n = do
-    w <- withUI UI.getWindow
-    withBuffer (gotoLnFrom (- (n * (height w - 1))))
-    solE
+upScreensE n = withWindowAndBuffer $ \w -> do
+                 gotoLnFrom (- (n * (height w - 1)))
+                 moveToSol
 
 -- | Scroll down 1 screen
 downScreenE :: Action
@@ -449,28 +448,28 @@ downScreenE = downScreensE 1
 
 -- | Scroll down n screens
 downScreensE :: Int -> Action
-downScreensE n = do
-    w <- withUI UI.getWindow
-    withBuffer (gotoLnFrom (n * (height w - 1)))
-    return ()
+downScreensE n = withWindowAndBuffer $ \w -> do
+                   gotoLnFrom (n * (height w - 1))
+                   return ()
 
 -- | Move to @n@ lines down from top of screen
 downFromTosE :: Int -> Action
-downFromTosE n = do
-    (i,fn) <- withWindow $ \w ->
-                    let y  = fst $ cursor w
-                        n' = min n (height w - 1 - 1)
-                        d  = n' - y
-                    in (abs d, if d < 0 then upE else downE)
-    replicateM_ i fn
+downFromTosE n = withWindowAndBuffer $ \w -> do
+                   moveTo (tospnt w)
+                   replicateM_ n lineDown
 
 -- | Move to @n@ lines up from the bottom of the screen
 upFromBosE :: Int -> Action
-upFromBosE n = (withWindow $ \w -> (height w -1 -1 - n)) >>= downFromTosE
+upFromBosE n = withWindowAndBuffer $ \w -> do
+                   moveTo (bospnt w)
+                   moveToSol
+                   replicateM_ n lineUp
 
 -- | Move to middle line in screen
 middleE :: Action
-middleE = (withWindow $ \w -> ((height w -1-1) `div` 2)) >>= downFromTosE
+middleE = withWindowAndBuffer $ \w -> do
+                   moveTo (tospnt w)
+                   replicateM_ (height w `div` 2) lineDown
 
 -- ---------------------------------------------------------------------
 
@@ -810,9 +809,7 @@ newBufferE f s = do
 
 -- | Attach the specified buffer to the current window
 switchToBufferE :: FBuffer -> Action
-switchToBufferE b = do
-  ui <- asks yiUi
-  withEditor $ UI.setFocusedWindowBuffer ui b
+switchToBufferE b = modifyWindows (WS.modifyCurrent (\w -> w {bufkey = keyB b}))
 
 -- | Attach the specified buffer to some other window than the current one
 switchToBufferOtherWindowE :: FBuffer -> Action
@@ -837,8 +834,7 @@ spawnMinibufferE :: String -> KeymapMod -> Action -> Action
 spawnMinibufferE prompt kmMod initialAction =
     do b <- withEditor $ stringToNewBuffer prompt []
        setBufferKeymap b kmMod
-       ui <- asks yiUi
-       withEditor $ UI.setWindow ui =<< UI.newWindow ui True b 
+       modifyWindows (WS.add $ Window True (keyB b) 0 0 0)
        initialAction
 
 -- | Write current buffer to disk, if this buffer is associated with a file
@@ -866,6 +862,7 @@ listBuffersE = do
         return $ zip (map name bs) [0..]
 
 -- | Release resources associated with buffer
+
 closeBufferE :: String -> Action
 closeBufferE bufName = do
   nextB <- withEditor nextBuffer
@@ -873,6 +870,9 @@ closeBufferE bufName = do
   b' <- if null bufName then return b else getBufferWithName bufName
   switchToBufferE nextB
   withEditor $ deleteBuffer b'
+
+killBufferE :: FBuffer -> Action
+killBufferE = withEditor . deleteBuffer
 
 ------------------------------------------------------------------------
 
@@ -901,30 +901,18 @@ nextWinE = nextWindow
 prevWinE :: Action
 prevWinE = prevWindow
 
--- | Make window with key @k@ the current window
-setWinE :: Window -> Action
-setWinE w = withUI2 UI.setWindow w
-
 -- | Split the current window, opening a second window onto this buffer.
 -- Windows smaller than 3 lines cannot be split.
 splitE :: Action
-splitE = do
-    canSplit <- withUI UI.hasRoomForExtraWindow
-    if canSplit 
-      then splitWindow
-      else errorE "Not enough room to split"
+splitE = splitWindow
 
 -- | Enlarge the current window
 enlargeWinE :: Action
-enlargeWinE = do
-  ui <- asks yiUi
-  withEditor $ UI.getWindow ui >>= UI.enlargeWindow ui
+enlargeWinE = error "enlargeWinE: not implemented"
 
 -- | Shrink the current window
 shrinkWinE :: Action
-shrinkWinE = do
-  ui <- asks yiUi
-  withEditor $ UI.getWindow ui >>= UI.shrinkWindow ui
+shrinkWinE = error "shrinkWinE: not implemented"
 
 -- | Close the current window.
 -- If this is the last window open, quit the program.
@@ -933,11 +921,7 @@ closeE = deleteThisWindow
 
 -- | Make the current window the only window on the screen
 closeOtherE :: Action
-closeOtherE = do
-        ui <- asks yiUi
-        this <- UI.getWindow ui -- current window
-        ws <- UI.getWindows ui
-        withEditor $ mapM_ (\w -> when (w /= this) $ UI.deleteWindow ui w) ws
+closeOtherE = modifyWindows WS.deleteOthers
 
 ------------------------------------------------------------------------
 --

@@ -25,7 +25,6 @@ module Yi.Editor where
 
 import Yi.Buffer                ( FBuffer (..), BufferM, newB, keyB, hNewB, runBuffer, finaliseB )
 import Text.Regex.Posix.Wrap    ( Regex )
-import Yi.Window
 import Yi.Style                 ( uiStyle, UIStyle )
 
 import Yi.Debug
@@ -192,10 +191,11 @@ withBuffer0 f = do
 getBuffer :: EditorM FBuffer
 getBuffer = withBuffer0 ask
 
+-- | Set the current buffer
 setBuffer :: Unique -> EditorM FBuffer
 setBuffer k = do
   b <- withEditor0 $ \e -> return $ findBufferWith e k
-  insertBuffer b
+  insertBuffer b -- a bit of a hack.
 
 -- ---------------------------------------------------------------------
 
