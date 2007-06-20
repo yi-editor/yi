@@ -1,12 +1,5 @@
-# vty or gtk
-flavour=vty
-
 # where to install executable and packages (running in-place -- without installing -- is not supported)
 prefix = $(HOME)/usr/
-
-
-
-
 
 # The following are web-publishing options.
 
