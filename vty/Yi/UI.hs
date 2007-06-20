@@ -193,7 +193,7 @@ refresh ui eRef = modifyMVar_ (windows ui) $ \ws0 -> do
   cmd <- readRef (cmdline ui)
   zzz <- mapM (scrollAndRenderWindow e (uistyle e) xss) (WS.withFocus ws1)
 
-  let startXs = scanrT (+) 0 (fmap imgHeight wImages)
+  let startXs = scanrT (+) 0 (fmap height ws1)
       wImages = fmap picture $ fmap snd $ zzz
      
   WS.debug "Drawing: " ws1
