@@ -89,13 +89,12 @@ mkUI ui = Common.UI
   }
 
 -- | Initialise the ui
-start :: MVar (WS.WindowSet Common.Window) -> EditorM (Chan Yi.Event.Event, Common.UI)
-start ws0 = lift $ do
+start :: Chan Yi.Event.Event -> MVar (WS.WindowSet Common.Window) -> EditorM Common.UI
+start ch ws0 = lift $ do
   initGUI
 
   win <- windowNew
 
-  ch <- newChan
   onKeyPress win (processEvent ch)
 
   vb <- vBoxNew False 1  -- Top-level vbox
@@ -123,7 +122,7 @@ start ws0 = lift $ do
   wc <- newIORef []
   let ui = UI win vb' cmd bufs ws0 wc
 
-  return (ch, mkUI ui)
+  return (mkUI ui)
 
 
 main :: UI -> IORef Editor -> IO ()

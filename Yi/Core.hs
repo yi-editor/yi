@@ -262,9 +262,9 @@ startE kernel st commandLineActions = do
     newSt <- newIORef $ maybe (emptyEditor consoleB) id st
     wins <- newMVar (WS.new $ Window False (keyB consoleB) 0 0 0)
     let runEd f = runReaderT f newSt
-    
-    (inCh, ui) <- runEd (ThisFlavourUI.start wins)
+    inCh <- newChan
     outCh <- newChan
+    ui <- runEd (ThisFlavourUI.start inCh wins)
     startKm <- newIORef nilKeymap
     startModules <- newIORef ["Yi.Yi"] -- this module re-exports all useful stuff, so we want it loaded at all times.
     startThreads <- newIORef []

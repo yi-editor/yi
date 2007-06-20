@@ -93,8 +93,8 @@ mkUI ui = Common.UI
 
 
 -- | Initialise the ui
-start :: MVar (WS.WindowSet Common.Window) -> EditorM (Chan Yi.Event.Event, Common.UI)
-start ws0 = do
+start :: Chan Yi.Event.Event -> MVar (WS.WindowSet Common.Window) -> EditorM Common.UI
+start ch ws0 = do
   editor <- ask
   liftIO $ do 
           v <- mkVty
@@ -102,7 +102,6 @@ start ws0 = do
           sz <- newIORef (y0,x0)
           -- fork input-reading thread. important to block *thread* on getKey
           -- otherwise all threads will block waiting for input
-          ch <- newChan
           t <- myThreadId
           cmd <- newIORef ""
           tuiRefresh <- newEmptyMVar
@@ -118,7 +117,7 @@ start ws0 = do
                                        writeIORef sz (y,x) >> refresh result editor >> getKey
                   _ -> return (fromVtyEvent event)
           forkIO $ getcLoop
-          return (ch, mkUI result)
+          return (mkUI result)
         
 
 main :: UI -> IORef Editor -> IO ()
