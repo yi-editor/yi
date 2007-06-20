@@ -348,7 +348,9 @@ cmd_eval :: VimMode
 cmd_eval = do
    cnt <- count 
    let i = maybe 1 id cnt
-   choice [event c >> write (a i) | (c,a) <- cmdCmdFM ] +++
+   choice
+    ([event c >> write (a i) | (c,a) <- singleCmdFM ] ++
+    [events sequence >> write (action i) | (sequence, action) <- multiCmdFM ]) +++
     (do event 'r'; c <- anyButEscOrDel; write (writeE c)) +++
     (events ">>" >> write (tabifySpacesOnLineAndShift i))+++
     (events "<<" >> write (tabifySpacesOnLineAndShift (-i)))+++
@@ -361,14 +363,13 @@ anyButEscOrDel = oneOf $ any' \\ ('\ESC':delete')
 --
 -- cmd mode commands
 --
-cmdCmdFM :: [(Char, Int -> Action)]
-cmdCmdFM =
+singleCmdFM :: [(Char, Int -> Action)]
+singleCmdFM =
     [('\^B',    upScreensE)             -- vim does (firstNonSpaceE;leftOrSolE)
     ,('\^F',    downScreensE)
     ,('\^G',    const viFileInfo)        -- hmm. not working. duh. we clear
     ,('\^L',    const refreshE)
     ,('\^R',    flip replicateM_ redoE )
-    ,('\^W',    const nextWinE)
     ,('\^Z',    const suspendE)
     ,('D',      const (readRestOfLnE >>= setRegE >> killE))
     ,('J',      const (eolE >> deleteE))    -- the "\n"
@@ -406,6 +407,11 @@ cmdCmdFM =
                          gotoPointE q)
     ]
 
+multiCmdFM :: [(String, Int -> Action)]
+multiCmdFM =
+    [("\^W\^W",    const nextWinE)
+    ,("\^W\^S",    const splitE)
+    ]
 --
 -- | So-called 'operators', which take movement actions as arguments.
 --
@@ -527,7 +533,7 @@ vis_multi = do
                                    let convert '\n' = '\n'
                                        convert  _   = x
                                    insertNE . map convert $ text] ++
-           [event c >> write (a i) | (c,a) <- cmdCmdFM ])
+           [event c >> write (a i) | (c,a) <- singleCmdFM ])
 
 
 --
