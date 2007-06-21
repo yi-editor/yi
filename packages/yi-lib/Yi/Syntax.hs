@@ -22,7 +22,7 @@
 --
 -- Yi syntax highlighters are expressed as explicit lazy computations
 -- of type 'Highligher a' below; this type is effectively isomorphic
--- to [Char] -> [Attr], but are explicitly lazy to admit safe fast uses.
+-- to [Char] -> [Style], but are explicitly lazy to admit safe fast uses.
 --
 
 module Yi.Syntax ( Highlighter(..)
