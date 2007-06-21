@@ -24,7 +24,6 @@ import Prelude hiding (elem, error)
 
 import Yi.Debug
 import Control.Monad.Trans
-import Data.List as List (nub, delete)
 import Data.Foldable
 import Data.Traversable
 import Data.Monoid
@@ -57,7 +56,8 @@ delete (WindowSet [] c []) = WindowSet [] c [] -- never delete the last window
 delete (WindowSet b _ (a:as)) = WindowSet b a as
 delete (WindowSet (b:bs) _ []) = WindowSet bs b []
 
-deleteOthers (WindowSet b c a) = WindowSet [] c []
+deleteOthers :: WindowSet a -> WindowSet a
+deleteOthers (WindowSet _ c _) = WindowSet [] c []
 
 forward :: WindowSet a -> WindowSet a
 forward (WindowSet [] c []) = WindowSet [] c []
@@ -82,6 +82,7 @@ withFocus (WindowSet b c a) = WindowSet (zip b (repeat False)) (c, True) (zip a 
 modifyCurrent :: (a -> a) -> WindowSet a -> WindowSet a
 modifyCurrent f (WindowSet b c a) = WindowSet b (f c) a
 
+debug :: (Show a, MonadIO m) => String -> WindowSet a -> m ()
 debug msg (WindowSet b c a) = logPutStrLn $ msg ++ ": " ++ show b ++ show c ++ show a
 
 

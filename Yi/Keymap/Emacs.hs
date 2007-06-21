@@ -34,7 +34,6 @@ import Yi.Buffer
 import Data.Char
 import Data.Maybe
 import Data.List
-import qualified Yi.CoreUI as UI  -- FIXME this module should not depend on UI
 
 import Control.Monad
 import Control.Monad.Trans
@@ -44,7 +43,6 @@ import System.Directory
 
 import Yi.Editor
 import Yi.History
-import Yi.WindowSet as WS
 
 -- * The keymap abstract definition
 
@@ -405,7 +403,6 @@ completionFunction f = do
 withMinibuffer :: String -> (String -> YiM String) -> (String -> Action) -> Action
 withMinibuffer prompt completer act = do 
   initialBuffer <- withEditor getBuffer
-  ui <- asks yiUi
   let innerAction :: Action
       -- ^ Read contents of current buffer (which should be the minibuffer), and
       -- apply it to the desired action

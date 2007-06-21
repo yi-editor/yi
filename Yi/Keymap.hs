@@ -36,7 +36,6 @@ import Yi.Buffer
 import qualified Yi.Interact as I
 import Yi.Monad
 import Control.Monad.Writer
-import Yi.CommonUI
 import Yi.Event
 import Yi.WindowSet as WS
 
@@ -195,9 +194,13 @@ withEditor f = do
   e <- ask
   lift $ runReaderT f (yiEditor e)
 
+withGivenBuffer :: FBuffer -> BufferM a -> YiM a
 withGivenBuffer b f = withEditor (Editor.withGivenBuffer0 b f)
+
+withBuffer :: BufferM a -> YiM a
 withBuffer f = withEditor (Editor.withBuffer0 f)
 
+readEditor :: (Editor -> a) -> YiM a
 readEditor f = withEditor (Editor.readEditor f)
 
 catchDynE :: Typeable exception => YiM a -> (exception -> YiM a) -> YiM a

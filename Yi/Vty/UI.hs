@@ -34,7 +34,7 @@ import Control.Concurrent
 import Control.Concurrent.Chan
 import Control.Exception
 import Control.Monad (liftM)
-import Control.Monad.Reader (ask, runReaderT)
+import Control.Monad.Reader (ask)
 import Control.Monad.State (runState, State, gets, modify, get, put)
 import Control.Monad.Trans (liftIO, MonadIO)
 import Control.Arrow (second)
@@ -51,7 +51,6 @@ import Yi.FastBuffer
 import Yi.Debug
 import Yi.Editor
 import Yi.Event
-import Yi.FastBuffer ( nelemsBIH ) -- gah this is ugly
 import Yi.Monad
 import Yi.Style
 import Yi.Vty hiding (def, black, red, green, yellow, blue, magenta, cyan, white)
@@ -59,7 +58,6 @@ import Yi.WindowSet as WS
 import qualified Data.ByteString.Char8 as B
 import qualified Yi.CommonUI as Common
 import Yi.CommonUI (Window (..), pointInWindow)
-import qualified Yi.WindowSet as WS
 
 ------------------------------------------------------------------------
 

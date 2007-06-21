@@ -4,7 +4,6 @@ import Control.Monad.Trans
 import Data.IORef
 import Yi.Buffer
 import Yi.Editor
-import Yi.WindowSet
 import Data.Unique
 
 -- | A window onto a buffer.
@@ -17,6 +16,8 @@ data Window = Window {
                      ,height :: !Int    -- ^ height of the window (in number of lines displayed)
                      }
 
+-- | Get the identification of a window.
+winkey :: Window -> (Bool, Unique)
 winkey w = (isMini w, bufkey w)
 
 instance Show Window where

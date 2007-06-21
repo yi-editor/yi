@@ -45,6 +45,7 @@ prevWindow :: YiM ()
 prevWindow = modifyWindows WS.backward
 
 -- | Apply a function to the windowset.
+modifyWindows :: (WindowSet Window -> WindowSet Window) -> YiM ()
 modifyWindows f = do
   wsRef <- asks yiWindows
   b <- liftIO $ modifyMVar wsRef $ \ws -> let ws' = f ws in return (ws', bufkey $ WS.current ws')

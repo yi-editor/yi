@@ -37,7 +37,6 @@ import Control.Monad.Reader (asks)
 
 import Yi.Editor
 import Yi.History
-import Yi.CommonUI as UI
 
 --
 -- What's missing?
@@ -350,7 +349,7 @@ cmd_eval = do
    let i = maybe 1 id cnt
    choice
     ([event c >> write (a i) | (c,a) <- singleCmdFM ] ++
-    [events sequence >> write (action i) | (sequence, action) <- multiCmdFM ]) +++
+    [events evs >> write (action i) | (evs, action) <- multiCmdFM ]) +++
     (do event 'r'; c <- anyButEscOrDel; write (writeE c)) +++
     (events ">>" >> write (tabifySpacesOnLineAndShift i))+++
     (events "<<" >> write (tabifySpacesOnLineAndShift (-i)))+++
@@ -638,8 +637,6 @@ rep_char = write . fn =<< anyButEsc
 
 spawn_ex_buffer :: String -> Action
 spawn_ex_buffer prompt = do
-  initialBuffer <- withEditor getBuffer
-  ui <- asks yiUi
   -- The above ensures that the action is performed on the buffer that originated the minibuffer.
   let closeMinibuffer = do b <- withEditor getBuffer; closeE; withEditor $ deleteBuffer b 
       anyButDelNlArrow = oneOf $ any' \\ (enter' ++ delete' ++ ['\ESC',keyUp,keyDown])
