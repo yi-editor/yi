@@ -61,10 +61,20 @@ precompArgs flavour = ["-DGHC_LIBDIR=\"dummy1\"",
                        "-odir " ++ flavour,
                        "-hidir "++flavour,
                        "-fglasgow-exts", 
+                       "-hide-all-packages", -- otherwise wrong versions of packages will be picked.
+                       "-package base",
+                       "-package mtl",
+                       "-package regex-posix-0.71",
+                       "-package yi-lib",
                        "-package ghc",
+                       "-package filepath",
+                       "-package unix", -- dired
                        "-cpp",
                        "-Wall",
-                       "--make","Static.hs"]
+                       "--make","Static.hs"] ++ (if flavour == "vty" 
+                                                 then ["-package vty"] 
+                                                 else ["-package gtk", "-package sourceview"])
+
                       -- please note: These args must match the args given in Yi.Boot
                       -- TODO: factorize.
 
