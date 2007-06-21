@@ -30,21 +30,23 @@ name tag
 
 trim = fst . BS.spanEnd isSpace
 
-name' "Zapf"                  = "Bastiaan Zapf"
-name' "a.d.clark"             = "Allan Clark"
-name' "alson"                 = "Alson Kemp"
-name' "andrii.z"              = "Andrii Zvorygin"
-name' "cgibbard"              = "Cale Gibbard"
-name' "dons"                  = "Don Stewart"
-name' "jeanphilippe.bernardy" = "Jean-Philippe Bernardy"
-name' "mlang"                 = "Mario Lang"
-name' "mwotton"               = "Mark Wotton"
-name' "newsham"               = "Tim Newsham"
-name' "shae"                  = "Shae Erisson"
-name' "sjw"                   = "Simon Winwood"
-name' "vintermann"            = "Harald Korneliussen"
-name' "vivian.mcphail"        = "Vivian McPhail"
-name' x                       = x
+name' x = case map toLower x of 
+            "a.d.clark"             -> "Allan Clark"
+            "alson"                 -> "Alson Kemp"
+            "andrii.z"              -> "Andrii Zvorygin"
+            "cgibbard"              -> "Cale Gibbard"
+            "coreyoconnor"          -> "Corey O'Connor"
+            "dons"                  -> "Don Stewart"
+            "jeanphilippe.bernardy" -> "Jean-Philippe Bernardy"
+            "mlang"                 -> "Mario Lang"
+            "mwotton"               -> "Mark Wotton"
+            "newsham"               -> "Tim Newsham"
+            "shae"                  -> "Shae Erisson"
+            "sjw"                   -> "Simon Winwood"
+            "vintermann"            -> "Harald Korneliussen"
+            "vivian.mcphail"        -> "Vivian McPhail"
+            "zapf"                  -> "Bastiaan Zapf"
+            _                       -> x
 
 nick = pack . name' . unpack
 
