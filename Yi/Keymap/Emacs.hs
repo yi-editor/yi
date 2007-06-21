@@ -102,7 +102,7 @@ keymap = selfInsertKeymap +++ makeProcess
         ("C-x C-c",  atomic $ quitE),
         ("C-x C-f",  atomic $ findFile),
         ("C-x C-s",  atomic $ fwriteE),
-        ("C-x C-w",  atomic $ withMinibuffer "Write file: " completeFileName fwriteToE),
+        ("C-x C-w",  atomic $ withMinibuffer "Write file: " (completeFileName Nothing) fwriteToE),
         ("C-x C-x",  atomic $ exchangePointAndMarkE),
         ("C-x b",    atomic $ switchBufferE),
         ("C-x d",    atomic $ loadE "Yi.Dired" >> execE "Yi.Dired.diredE"),
@@ -296,9 +296,42 @@ rebind :: [(String,Process)] -> KeymapMod
 rebind keys = (makeProcess keys <++)
 
 findFile :: Action
-findFile = withMinibuffer "find file:" completeFileName $ \filename -> do 
-             msgE $ "loading " ++ filename
-             fnewE filename
+findFile = do maybePath <- fileNameE
+              startPath <- liftIO $ getFolder maybePath
+              withMinibuffer "find file:" (completeFileName (Just startPath)) $ \filename -> do {
+               let filename' = fixFilePath startPath filename
+             ; msgE $ "loading " ++ filename'
+             ; fnewE filename'
+                                                                                                  }
+
+
+-- | Fix entered file path by prepending the start folder if necessary,
+-- | removing .. bits, and normalising.
+fixFilePath :: String -> String -> String
+fixFilePath start path = 
+    let path' = if isAbsolute path then path else start </> path
+    in (normalise . joinPath . dropDotDot . splitDirectories) path'
+
+-- | turn a/b/../c into a/c etc
+dropDotDot :: [String] -> [String]
+dropDotDot pathElems = case ddd pathElems of
+                         (False, result) -> result
+                         (True, result)  -> dropDotDot result
+    where ddd [] = (False, [])
+          ddd ("/":"..":xs) = (True, "/":xs)
+          ddd (_:"..":xs) = (True, xs)
+          ddd (x:xs) = let (changed, rest) = ddd xs
+                       in (changed, x:rest)
+
+-- | Given a path, trim the file name bit if it exists.  If no path given,
+-- | return current directory
+getFolder :: Maybe String -> IO String
+getFolder Nothing     = getCurrentDirectory
+getFolder (Just path) = do
+  isDir <- doesDirectoryExist path
+  let dir = if isDir then path else takeDirectory path
+  if null dir then getCurrentDirectory else return dir
+
 
 -- | Goto a line specified in the mini buffer.
 gotoLineE :: Action
@@ -335,13 +368,17 @@ completeBufferName s = do
   bs <- withEditor getBuffers
   completeInList s (map name bs)
 
-completeFileName :: String -> YiM String
-completeFileName s0 = do
-  curDir <- lift $ getCurrentDirectory
+completeFileName :: Maybe String -> String -> YiM String
+completeFileName start s0 = do
+  curDir <- case start of Nothing -> do bufferPath <- fileNameE
+                                        liftIO $ getFolder bufferPath
+                          (Just path) -> return path
   homeDir <- lift $ getHomeDirectory
   let s = if (['~',pathSeparator] `isPrefixOf` s0) then addTrailingPathSeparator homeDir ++ drop 2 s0 else s0
       sDir = if hasTrailingPathSeparator s then s else takeDirectory s
-      searchDir = if null sDir then curDir else sDir
+      searchDir = if null sDir then curDir 
+                  else if isAbsolute sDir then sDir
+                  else curDir </> sDir
       fixTrailingPathSeparator f = do
                        isDir <- doesDirectoryExist (searchDir </> f)
                        return $ if isDir then addTrailingPathSeparator f else f
