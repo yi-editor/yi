@@ -49,7 +49,6 @@ import qualified Data.Map as M
 
 import Graphics.UI.Gtk hiding ( Window, Event )          
 import qualified Graphics.UI.Gtk as Gtk
-import Graphics.UI.Gtk.SourceView
 
 ------------------------------------------------------------------------
 
@@ -57,7 +56,7 @@ data UI = UI {
               uiWindow :: Gtk.Window
              ,uiBox :: VBox
              ,uiCmdLine :: Label
-             ,uiBuffers :: IORef (M.Map Unique SourceBuffer)
+             ,uiBuffers :: IORef (M.Map Unique TextBuffer)
              ,windows   :: MVar (WS.WindowSet Window)     -- ^ all the windows
              ,windowCache :: IORef [WinInfo]
              }
@@ -65,7 +64,7 @@ data UI = UI {
 data WinInfo = WinInfo 
     {
      bufkey      :: !Unique         -- ^ the buffer this window opens to
-    ,textview    :: SourceView
+    ,textview    :: TextView
     ,modeline    :: Label
     ,widget      :: Box            -- ^ Top-level widget for this window.
     ,isMini      :: Bool
@@ -234,7 +233,7 @@ newWindow ui mini b = do
     widgetModifyFont ml (Just f)
     set ml [ miscXalign := 0.01 ] -- so the text is left-justified.
 
-    v <- sourceViewNew
+    v <- textViewNew
     widgetModifyFont v (Just f)
 
 
@@ -296,7 +295,9 @@ insertWindow e i win = do
 scheduleRefresh :: UI -> EditorM ()
 scheduleRefresh ui = modifyEditor_ $ \e -> withMVar (windows ui) $ \ws -> do
     cache <- readRef $ windowCache ui
-    sequence_ [do buf <- getGtkBuffer ui (findBufferWith e b); applyUpdate buf u; logPutStrLn (show $ u) | (b,u) <- editorUpdates e]
+    forM_ (editorUpdates e) $ \(b,u) -> do
+      buf <- getGtkBuffer ui (findBufferWith e b)
+      applyUpdate buf u
 
     cache' <- syncWindows e ui (toList $ WS.withFocus $ ws) cache  
     WS.debug "syncing" ws
@@ -316,7 +317,7 @@ scheduleRefresh ui = modifyEditor_ $ \e -> withMVar (windows ui) $ \ws -> do
     return e {editorUpdates = []}
 
 
-applyUpdate :: SourceBuffer -> URAction -> IO ()
+applyUpdate :: TextBuffer -> URAction -> IO ()
 applyUpdate buf (Insert p s) = do
   i <- textBufferGetIterAtOffset buf p
   textBufferInsert buf i s
@@ -344,7 +345,7 @@ setCmdLine :: UI -> String -> IO ()
 setCmdLine i s = do
   set (uiCmdLine i) [labelText := if length s > 132 then take 129 s ++ "..." else s]
 
-getGtkBuffer :: UI -> FBuffer -> IO SourceBuffer
+getGtkBuffer :: UI -> FBuffer -> IO TextBuffer
 getGtkBuffer ui b = do
     let bufsRef = uiBuffers ui
     bufs <- readRef bufsRef
@@ -355,13 +356,9 @@ getGtkBuffer ui b = do
     return gtkBuf
 
 -- FIXME: when a buffer is deleted its GTK counterpart should be too.
-newGtkBuffer :: FBuffer -> IO SourceBuffer
+newGtkBuffer :: FBuffer -> IO TextBuffer
 newGtkBuffer b = do
-  buf <- sourceBufferNew Nothing
-  lm <- sourceLanguagesManagerNew
-  Just haskellLang <- sourceLanguagesManagerGetLanguageFromMimeType lm "text/x-haskell"
-  sourceBufferSetLanguage buf haskellLang
-  sourceBufferSetHighlight buf True
+  buf <- textBufferNew Nothing
   (txt, []) <- runBuffer b elemsB
   textBufferSetText buf txt
   return buf
