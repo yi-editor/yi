@@ -36,7 +36,6 @@ import Yi.Syntax
 import Yi.Syntax.Table
 
 import qualified Data.Map as M
-import Yi.Vty (Attr, attr, styleToAttr)
 import Yi.Style
 
 import Control.Concurrent.MVar
@@ -92,7 +91,7 @@ data FBufferData =
                     , _contsize :: !Int             -- ^ length of contents
                     , _rawsize  :: !Int             -- ^ raw size of buffer
                     , hlcache   :: !(Maybe HLState) -- ^ syntax highlighting state
-                    , overlays  :: ![(Mark, Mark, Attr)] -- ^ list of visual overlay regions
+                    , overlays  :: ![(Mark, Mark, Style)] -- ^ list of visual overlay regions
                     }
 
 
@@ -224,11 +223,11 @@ addOverlayBI s e sty fb = do
                         sm <- getMarkDefaultPosBI Nothing s fb
                         em <- getMarkDefaultPosBI Nothing e fb
                         modifyMVar_ fb $ \bd -> do
-                        return $ bd{overlays=(sm,em,styleToAttr sty):(overlays bd)}
+                        return $ bd{overlays=(sm,em,sty):(overlays bd)}
 
 -- | Return @n@ elems starting at @i@ of the buffer as a list.
 -- This routine also does syntax highlighting and applies overlays.
-nelemsBIH    :: BufferImpl -> Int -> Int -> IO [(Char,Attr)]
+nelemsBIH    :: BufferImpl -> Int -> Int -> IO [(Char,Style)]
 nelemsBIH fb n i = withMVar fb fun
     where
       -- The first case is to handle when no 'Highlighter a' has
@@ -236,7 +235,7 @@ nelemsBIH fb n i = withMVar fb fun
       fun bd@(FBufferData b _ _ e _ Nothing _) = do
              let i' = inBounds i e
                  n' = min (e-i') n
-             cas <- fmap (map (flip (,) attr)) (readChars b n' i')
+             cas <- fmap (map (flip (,) defaultStyle)) (readChars b n' i')
              return $ overlay bd cas
       -- in this, second, case 'hl' will be bound to a 'Highlighter a'
       -- eg Yi.Syntax.Haskell.highlighter (see Yi.Syntax for defn of Highlighter) which
@@ -245,12 +244,12 @@ nelemsBIH fb n i = withMVar fb fun
         bs <- B.copyCStringLen (b, e)
         let (finst,colors_) = hlColorize hl bs (hlStartState hl)
             colors = colors_ ++ hlColorizeEOF hl finst
-        return $ overlay bd (take n (drop i (zip (B.unpack bs) (map styleToAttr colors))))
+        return $ overlay bd (take n (drop i (zip (B.unpack bs) colors)))
 
-      overlay :: FBufferData -> [(Char,Attr)] -> [(Char,Attr)]
+      overlay :: FBufferData -> [(Char,Style)] -> [(Char,Style)]
       overlay bd xs = map (\((c,a),j)->(c, ov bd (a,j))) (zip xs [i..])
 
-      ov :: FBufferData -> (Attr, Int) -> Attr
+      ov :: FBufferData -> (Style, Int) -> Style
       ov bd (sh_attr, ind) = foldr (\(sm, em, a) att ->
                                     if betweenMarks (marks bd) sm em ind
                                     then a `attrOver` att

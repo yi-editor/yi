@@ -37,6 +37,7 @@ import Control.Monad (liftM)
 import Control.Monad.Reader (ask, runReaderT)
 import Control.Monad.State (runState, State, gets, modify, get, put)
 import Control.Monad.Trans (liftIO, MonadIO)
+import Control.Arrow (second)
 import Data.Char (ord,chr)
 import Data.Foldable
 import Data.IORef
@@ -264,7 +265,7 @@ drawWindow e sty focused w win = do
                                 (tospnt win - length prompt) 
                                 point markPoint 
                                 selsty wsty 
-                                (zip prompt (repeat wsty) ++ bufData ++ [(' ',attr)])
+                                (zip prompt (repeat wsty) ++ map (second styleToAttr) bufData ++ [(' ',attr)])
                              -- we always add one character which can be used to position the cursor at the end of file
                                                                                                  
     (modeLine0, []) <- runBuffer b getModeLine
