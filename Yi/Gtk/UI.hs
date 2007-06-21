@@ -20,7 +20,7 @@
 
 -- | This module defines a user interface implemented using gtk2hs.
 
-module Yi.UI (start) where
+module Yi.Gtk.UI (start) where
 
 import Prelude hiding (error, sequence_, elem, mapM_)
 

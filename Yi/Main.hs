@@ -56,21 +56,24 @@ data Opts = Help
           | LineNo String
           | EditorNm String
           | File String
+          | Frontend String
 
 -- | List of editors for which we provide an emulation.
 editors :: [String]
 editors = ["vi", "vim", "nano", "emacs", "joe", "ee", "mg"]
 
+frontends :: [String]
+frontends = ["vty", "gtk"]
+
 editorToKeymap :: String -> String
-editorToKeymap (c:cs) = "Yi.Keymap." ++ toUpper c : map toLower cs ++ ".keymap"
-editorToKeymap [] = []
+editorToKeymap s = "Yi.Keymap." ++ capitalize s ++ ".keymap"
 
 moduleNameOf :: String -> String
 moduleNameOf s = concat $ intersperse "." $ init $ split "." $ s
 
 options :: [OptDescr Opts]
 options = [
-    Option ['f']  ["flavour"] (ReqArg OptIgnore "gtk|vty") "Select flavour",
+    Option ['f']  ["frontend"] (ReqArg Frontend "gtk|vty") "Select frontend",
     Option ['V']  ["version"] (NoArg Version) "Show version information",
     Option ['B']  ["libdir"]  (ReqArg OptIgnore "libdir") "Path to runtime libraries",
     Option ['h']  ["help"]    (NoArg Help)    "Show this help",
@@ -93,6 +96,9 @@ versinfo = putStrLn $ "yi 0.3.0"
 --
 do_opt :: Opts -> IO (Keymap.Action)
 do_opt o = case o of
+    Frontend f -> case map toLower f `elem` frontends of
+                       False -> putStrLn ("Unknown frontend: " ++ show f) >> exitWith (ExitFailure 1)
+                       _ -> return (return ()) -- Processed differently
     Help     -> usage    >> exitWith ExitSuccess
     Version  -> versinfo >> exitWith ExitSuccess
     OptIgnore _ -> return Core.nopE
@@ -103,14 +109,17 @@ do_opt o = case o of
                                  Core.execE ("loadE " ++ show (moduleNameOf km)) 
                                  Core.execE ("changeKeymapE " ++ km)
                        False -> putStrLn ("Unknown emulation: " ++ show emul) >> exitWith (ExitFailure 1)
+    
 --
 -- everything that is left over
 --
-do_args :: [String] -> IO ([Keymap.Action])
-do_args args =
+do_args :: [String] -> IO (String, [Keymap.Action])
+do_args args = 
     case (getOpt (ReturnInOrder File) options args) of
-        (o, [], []) -> do
-            mapM do_opt o
+        (o, [], []) ->  do
+            let frontend = head $ [f | Frontend f <- o] ++ ["vty"] -- default should be more clever.
+            actions <- mapM do_opt o
+            return (frontend, actions)
         (_, _, errs) -> do putStrLn (concat errs)
                            exitWith (ExitFailure 1)
 
@@ -181,7 +190,7 @@ openScratchBuffer = do     -- emacs-like behaviour
 --
 main :: Kernel -> IO ()
 main kernel = do
-    mopts <- do_args =<< getArgs
+    (frontend, mopts) <- do_args =<< getArgs
 
     --
     -- The only way out is by throwing an exception, or an external
@@ -197,7 +206,7 @@ main kernel = do
     Control.Exception.catch
         (do initSignals
             initDebug ".yi.dbg"
-            Core.startE kernel Nothing (startConsole : openScratchBuffer : mopts))
+            Core.startE frontend kernel Nothing (startConsole : openScratchBuffer : mopts))
         (\e -> do releaseSignals
                   -- FIXME: We should do this, but that's impossible with no access to the editor state:
                   -- Editor.shutdown

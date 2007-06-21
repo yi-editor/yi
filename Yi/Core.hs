@@ -185,7 +185,7 @@ import Yi.Process           ( popen )
 import Yi.Editor hiding (readEditor)
 import Yi.CoreUI
 import Yi.Kernel
-import Yi.Event (eventToChar)
+import Yi.Event (eventToChar, Event)
 import Yi.Keymap
 import Yi.Interact (anyEvent)
 import Yi.Monad
@@ -194,7 +194,6 @@ import qualified Yi.Editor as Editor
 import qualified Yi.Style as Style
 import qualified Yi.CommonUI as UI
 import Yi.CommonUI as UI (Window (..))
-import qualified Yi.UI as ThisFlavourUI
 
 import Data.Maybe
 import qualified Data.Map as M
@@ -250,8 +249,22 @@ nilKeymap = do c <- anyEvent
 -- | Start up the editor, setting any state with the user preferences
 -- and file names passed in, and turning on the UI
 --
-startE :: Kernel -> Maybe Editor -> [Action] -> IO ()
-startE kernel st commandLineActions = do
+startE :: String -> Kernel -> Maybe Editor -> [Action] -> IO ()
+startE frontend kernel st commandLineActions = do
+    let frontendModule = "Yi." ++ capitalize frontend ++ ".UI"
+    logPutStrLn $ "Starting frontend: " ++ frontend
+
+    targets <- mapM (\m -> guessTarget kernel m Nothing) [frontendModule]
+    setTargets kernel targets
+    result <- loadAllTargets kernel
+    case result of
+      GHC.Failed -> error $ "Panic: could not load " ++ frontend ++ " frontend. Use -fgtk or -fvty, or install the needed packages."
+      _ -> return ()
+    uiStartM <- compileExpr kernel (frontendModule ++ ".start") 
+    let uiStart :: (Chan Event -> MVar (WS.WindowSet Window) -> EditorM UI.UI) = case uiStartM of
+             Nothing -> do error "Could not compile frontend!"
+             Just x -> unsafeCoerce# x
+
     logPutStrLn "Starting Core"
 
     -- Setting up the 1st buffer/window is a bit tricky because most functions assume there exists a "current window"
@@ -264,7 +277,7 @@ startE kernel st commandLineActions = do
     let runEd f = runReaderT f newSt
     inCh <- newChan
     outCh <- newChan
-    ui <- runEd (ThisFlavourUI.start inCh wins)
+    ui <- runEd (uiStart inCh wins)
     startKm <- newIORef nilKeymap
     startModules <- newIORef ["Yi.Yi"] -- this module re-exports all useful stuff, so we want it loaded at all times.
     startThreads <- newIORef []

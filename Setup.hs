@@ -2,7 +2,7 @@
 module Main where
 
 import Control.Monad(when, filterM, unless)
-import Data.List
+import Data.List (intersect)
 import Data.Maybe
 import Distribution.PackageDescription
 import Distribution.Setup
@@ -41,52 +41,52 @@ bHook pd lbi hooks bfs = do
       pd' = updatePackageDescription pbi pd
   buildHook defaultUserHooks pd' lbi hooks bfs
 
-  let preCompile flavour = do
-         putStrLn ("Precompiling " ++ flavour)
-         exitCode <- rawSystemVerbose 0 ghc $ precompArgs flavour
-         when (exitCode /= ExitSuccess) $
-              putStrLn $ "Precompile of " ++ flavour ++ " failed. Install the corresponding library if needed."
-         return exitCode
-  exitCodes <- mapM preCompile ["vty", "gtk"]
-  let exitCode = foldr1 optimistic exitCodes
-  unless (exitCode == ExitSuccess) $ exitWith exitCode
+  res <- mapM (precompile ghc) precompiles
+  let sucessfuls = [m | (m,code) <- res, code == ExitSuccess]
+      nok = null $ intersect sucessfuls ["Yi.Vty.UI", "Yi.Gtk.UI"]
+  putStrLn $ "Sucessfully compiled: " ++ show sucessfuls
+  when nok $ do
+       putStrLn "No frontend was compiled sucessfully. Giving up."
+       exitWith (ExitFailure 1)
 
-optimistic ExitSuccess x = ExitSuccess
-optimistic x ExitSuccess = ExitSuccess      
-optimistic (ExitFailure x) (ExitFailure y) = ExitFailure (min x y)
+precompile ghc (moduleName, dependencies) = do
+  putStrLn ("Precompiling " ++ moduleName)
+  exitCode <- rawSystemVerbose 0 ghc (precompArgs ++ map ("-package "++) dependencies ++ [moduleName])
+  when (exitCode /= ExitSuccess) $
+       putStrLn $ "Precompiling failed: " ++ moduleName
+  return (moduleName, exitCode)
+  
+precompiles = [("Yi.Keymap.Emacs", []),
+               ("Yi.Keymap.Vim", []),
+               ("Yi.Vty.UI", ["vty"]),
+               ("Yi.Gtk.UI", ["gtk", "sourceview"]),
+               ("Yi.Dired", ["unix"])]
 
-precompArgs flavour = ["-DGHC_LIBDIR=\"dummy1\"", 
-                       "-DYI_LIBDIR=\"dummy2\"", 
-                       "-i" ++ flavour,
-                       "-odir " ++ flavour,
-                       "-hidir "++flavour,
-                       "-fglasgow-exts", 
-                       "-hide-all-packages", -- otherwise wrong versions of packages will be picked.
-                       "-package base",
-                       "-package mtl",
-                       "-package regex-posix-0.71",
-                       "-package yi-lib",
-                       "-package ghc",
-                       "-package filepath",
-                       "-package unix", -- dired
-                       "-cpp",
-                       "-Wall",
-                       "--make","Static.hs"] ++ (if flavour == "vty" 
-                                                 then ["-package vty"] 
-                                                 else ["-package gtk", "-package sourceview"])
-
-                      -- please note: These args must match the args given in Yi.Boot
-                      -- TODO: factorize.
+precompArgs = ["-DGHC_LIBDIR=\"dummy1\"", 
+               "-DYI_LIBDIR=\"dummy2\"", 
+               "-fglasgow-exts", 
+               "-package ghc",
+               "-package filepath",
+               "-cpp",
+               "-Wall",
+               "-hide-all-packages", -- otherwise wrong versions of packages will be picked.
+               "-package base",
+               "-package mtl",
+               "-package regex-posix-0.71",
+               "-package yi-lib",
+               "--make"]
+               -- please note: These args must match the args given in Yi.Boot
+               -- TODO: factorize.
 
 install :: PackageDescription -> LocalBuildInfo -> Maybe UserHooks -> InstallFlags -> IO ()
 install pd lbi hooks bfs = do
   curdir <- getCurrentDirectory
-  allFiles0 <- mapM unixFind $ map (curdir </>) $ ["vty", "gtk", "Yi"]
+  allFiles0 <- mapM unixFind $ map (curdir </>) $ ["Yi"]
   let allFiles = map (makeRelative curdir) $ concat allFiles0
       sourceFiles = filter ((`elem` [".hs-boot",".hs"]) . takeExtension) allFiles      
       targetFiles = filter ((`elem` [".hi",".o"]) . takeExtension) allFiles
       --NOTE: It's important that source files are copied before target files,
-      -- otherwise GHC think it has to recompile them.
+      -- otherwise GHC (via Yi) thinks it has to recompile them.
       pd' = pd {dataFiles = dataFiles pd ++ sourceFiles ++ targetFiles}
   instHook defaultUserHooks pd' lbi hooks bfs
   

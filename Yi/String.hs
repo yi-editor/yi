@@ -20,9 +20,14 @@
 -- | String manipulation utilities
 --
 
-module Yi.String (chomp,split) where
+module Yi.String (chomp,split,capitalize) where
 
 import Data.List    (isSuffixOf,isPrefixOf)
+import Data.Char (toUpper, toLower)
+
+capitalize :: String -> String
+capitalize [] = []
+capitalize (c:cs) = toUpper c : map toLower cs
 
 -- | Remove any trailing strings matching /irs/ (input record separator)
 -- from input string. Like perl's chomp(1).

@@ -26,7 +26,7 @@
 
 -- | This module defines a user interface implemented using ncurses.
 
-module Yi.UI (start) where
+module Yi.Vty.UI (start) where
 
 import Prelude hiding (error, concatMap, sum, mapM, sequence)
 

@@ -17,22 +17,15 @@ import Control.Monad
 
 import GHC.Exts ( unsafeCoerce# )
 
-data Opts = Flavour String
-          | Libdir String
+data Opts = Libdir String
 
 options :: [OptDescr Opts]
 options = [
-    Option ['f']  ["flavour"] (ReqArg Flavour "gtk|vty") "Select flavour",
     Option ['B']  ["libdir"]  (ReqArg Libdir "libdir") "Path to runtime libraries"
     ]
 
-forcedFlavour :: Opts -> Maybe String
-forcedFlavour (Flavour x) = Just x
-forcedFlavour _ = Nothing
-
 forcedLibdir :: Opts -> Maybe String
 forcedLibdir (Libdir x) = Just x
-forcedLibdir _ = Nothing
 
 override :: String ->  Maybe String -> String
 override def Nothing = def
@@ -49,7 +42,6 @@ initialize = GHC.defaultErrorHandler DynFlags.defaultDynFlags $ do
   -- here we have to make an early choice between vty and gtk.
   bootArgs <- getArgs
   let (bootFlags, _, _) = getOpt Permute options bootArgs
-  let flavour = foldl override "vty" $ map forcedFlavour bootFlags
   let libdir = foldl override YI_LIBDIR $ map forcedLibdir bootFlags
   logPutStrLn $ "Using libdir: " ++ libdir
   session <- GHC.newSession GHC.Interactive (Just path)
@@ -60,10 +52,7 @@ initialize = GHC.defaultErrorHandler DynFlags.defaultDynFlags $ do
                                                            "-package ghc", "-fglasgow-exts", "-cpp", 
                                                            "-i", -- clear the search directory (don't look in ./)
                                                            "-i" ++ home ++ "/.yi", -- First, we look for source files in ~/.yi
-                                                           "-i" ++ libdir,
-                                                           "-i" ++ libdir </> flavour,
-                                                           "-hidir " ++ libdir </> flavour,
-                                                           "-odir " ++ libdir </> flavour
+                                                           "-i" ++ libdir
                                                           ]
   (dflags2, packageIds) <- Packages.initPackages dflags1'
   logPutStrLn $ "packagesIds: " ++ (showSDocDump $ ppr $ packageIds)
