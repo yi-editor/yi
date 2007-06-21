@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://web.resource.org/cc/"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="744.09448819"
+   height="1052.3622047"
+   id="svg2"
+   sodipodi:version="0.32"
+   inkscape:version="0.45"
+   sodipodi:docbase="/home/jp/yi-art"
+   sodipodi:docname="yi+lambda.svg"
+   inkscape:output_extension="org.inkscape.output.svg.inkscape"
+   sodipodi:modified="true">
+  <defs
+     id="defs4" />
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     gridtolerance="10000"
+     guidetolerance="10"
+     objecttolerance="10"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="1"
+     inkscape:cx="375"
+     inkscape:cy="718.31968"
+     inkscape:document-units="px"
+     inkscape:current-layer="layer1"
+     inkscape:window-width="1280"
+     inkscape:window-height="983"
+     inkscape:window-x="0"
+     inkscape:window-y="0" />
+  <metadata
+     id="metadata7">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <text
+       xml:space="preserve"
+       style="font-size:517.82849121px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;fill:#2433bd;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:GentiumAlt"
+       x="133.13818"
+       y="-110.36567"
+       id="text2198"
+       sodipodi:linespacing="125%"
+       transform="scale(1.0903426,0.9171429)"><tspan
+         sodipodi:role="line"
+         id="tspan2200"
+         x="133.13818"
+         y="-110.36567"></tspan><tspan
+         sodipodi:role="line"
+         x="133.13818"
+         y="536.91994"
+         id="tspan2202">λ</tspan><tspan
+         sodipodi:role="line"
+         x="133.13818"
+         y="1184.2056"
+         id="tspan2204" /></text>
+    <text
+       xml:space="preserve"
+       style="font-size:314.74459839px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:0.84482757;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:AR PL ZenKai Uni"
+       x="152.48546"
+       y="24.881786"
+       id="text2170"
+       sodipodi:linespacing="125%"
+       transform="scale(0.910409,1.0984074)"><tspan
+         sodipodi:role="line"
+         id="tspan2172"
+         x="152.48546"
+         y="24.881786" /><tspan
+         sodipodi:role="line"
+         x="152.48546"
+         y="418.31253"
+         id="tspan2176">義</tspan></text>
+  </g>
+</svg>
