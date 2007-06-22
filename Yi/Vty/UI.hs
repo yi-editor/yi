@@ -351,9 +351,9 @@ scheduleRefresh' tui = tryPutMVar (uiRefresh tui) () >> return ()
 -- | Calculate window heights, given all the windows and current height.
 -- (No specific code for modelines)
 computeHeights :: Int -> WindowSet Window  -> WindowSet Window
-computeHeights height ws = result
+computeHeights totalHeight ws = result
   where (mwls, wls) = partition isMini (toList ws)
-        (y,r) = getY (height - length mwls) (length wls) 
+        (y,r) = getY (totalHeight - length mwls) (length wls) 
         (result, _) = runState (Data.Traversable.mapM distribute ws) ((y+r-1) : repeat y)
 
 distribute :: Window -> State [Int] Window
