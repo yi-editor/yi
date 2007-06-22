@@ -4,17 +4,17 @@ include config.mk
 
 include $(cabal-make)/cabal-make.inc
 
-run-inplace: yi-lib
+run-inplace: 
 	dist/build/yi/yi -B. -f$(flavour)
 
 runtime-config:
 	mkdir -p $(HOME)/.yi
 	cp examples/*.hs $(HOME)/.yi
 
-emacs: install yi-lib
+emacs: install 
 	$(prefix)/bin/yi --as=emacs
 
-vim: install yi-lib
+vim: install 
 	$(prefix)/bin/yi --as=vim
 
 distclean: clean
@@ -24,9 +24,6 @@ distclean: clean
 maintainer-clean: distclean
 	rm -f configure cbits/config.h.in
 	rm -rf autom4te.cache
-
-yi-lib:
-	make -C packages/yi-lib install
 
 Contributors: Contributors.hs
 	ghc --make $<

@@ -73,7 +73,6 @@ precompArgs = ["-DGHC_LIBDIR=\"dummy1\"",
                "-package base",
                "-package mtl",
                "-package regex-posix-0.71",
-               "-package yi-lib",
                "--make"]
                -- please note: These args must match the args given in Yi.Boot
                -- TODO: factorize.
@@ -83,12 +82,17 @@ install pd lbi hooks bfs = do
   curdir <- getCurrentDirectory
   allFiles0 <- mapM unixFind $ map (curdir </>) $ ["Yi"]
   let allFiles = map (makeRelative curdir) $ concat allFiles0
-      sourceFiles = filter ((`elem` [".hs-boot",".hs"]) . takeExtension) allFiles      
+      sourceFiles = filter ((`elem` [".hs-boot",".hs",".hsinc"]) . takeExtension) allFiles      
       targetFiles = filter ((`elem` [".hi",".o"]) . takeExtension) allFiles
       --NOTE: It's important that source files are copied before target files,
       -- otherwise GHC (via Yi) thinks it has to recompile them.
       pd' = pd {dataFiles = dataFiles pd ++ sourceFiles ++ targetFiles}
   instHook defaultUserHooks pd' lbi hooks bfs
+  -- TODO: The location of the built cbits can likely be determined programmatically.
+  let absoluteDataDirPath = mkDataDir pd' lbi NoCopyDest 
+      absoluteCbitsDestPath = absoluteDataDirPath </> "cbits"
+      relativeCbitsDirPath = "dist/build/yi/yi-tmp/cbits"
+  copyDirectoryRecursiveVerbose 0 relativeCbitsDirPath absoluteCbitsDestPath
   
 
 unixFind dir = do

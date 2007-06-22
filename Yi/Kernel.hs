@@ -36,7 +36,9 @@ data Kernel = Kernel
      mkModuleName :: String -> GHC.ModuleName,
      isLoaded :: GHC.ModuleName -> IO Bool,
      nameToString :: forall a. Outputable a => a -> String,
-     getModuleGraph :: IO GHC.ModuleGraph
+     getModuleGraph :: IO GHC.ModuleGraph,
+     loadObjectFile :: String -> IO (),
+     libraryDirectory :: String
     }
 
 -- | Dynamic evaluation

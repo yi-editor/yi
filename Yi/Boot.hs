@@ -12,8 +12,11 @@ import qualified GHC
 import qualified Packages
 import qualified DynFlags
 import qualified Module
+import qualified ObjLink 
 import Outputable
 import Control.Monad
+
+import Yi.BaseExternalObjects 
 
 import GHC.Exts ( unsafeCoerce# )
 
@@ -72,7 +75,9 @@ initialize = GHC.defaultErrorHandler DynFlags.defaultDynFlags $ do
                  nameToString = Outputable.showSDoc . Outputable.ppr,
                  isLoaded = GHC.isLoaded session,
                  mkModuleName = Module.mkModuleName,
-                 getModuleGraph = GHC.getModuleGraph session
+                 getModuleGraph = GHC.getModuleGraph session,
+                 loadObjectFile = ObjLink.loadObj,
+                 libraryDirectory = libdir
                 }
 
 
@@ -80,6 +85,7 @@ initialize = GHC.defaultErrorHandler DynFlags.defaultDynFlags $ do
 startYi :: Kernel -> IO ()
 startYi kernel = GHC.defaultErrorHandler DynFlags.defaultDynFlags $ do
   t <- (guessTarget kernel) "Yi.Main" Nothing
+  loadAllRequiredObjectFiles kernel
   (setTargets kernel) [t]
   loadAllTargets kernel
   result <- compileExpr kernel ("Yi.Main.main :: Yi.Kernel.Kernel -> Prelude.IO ()") 
@@ -90,6 +96,13 @@ startYi kernel = GHC.defaultErrorHandler DynFlags.defaultDynFlags $ do
     Just x -> do let (x' :: Kernel -> IO ()) = unsafeCoerce# x
                  x' kernel
                  return ()
+
+loadAllRequiredObjectFiles :: Kernel -> IO ()
+loadAllRequiredObjectFiles kernel = do
+  let theLibraryDirectory = libraryDirectory kernel
+      absolutePathForObjectFile obj = theLibraryDirectory </> "cbits" </> obj
+  mapM_ (loadObjectFile kernel) (map absolutePathForObjectFile allExternalObjectFiles)
+    
 
 setContextAfterLoadL :: GHC.Session -> IO [GHC.Module]
 setContextAfterLoadL session = do
