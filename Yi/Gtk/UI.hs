@@ -22,7 +22,7 @@
 
 module Yi.Gtk.UI (start) where
 
-import Prelude hiding (error, sequence_, elem, mapM_)
+import Prelude hiding (error, sequence_, elem, mapM_, mapM)
 
 import Yi.FastBuffer (inBounds)
 import Yi.Buffer
@@ -41,12 +41,14 @@ import Control.Concurrent.Chan
 import Control.Concurrent.MVar
 import Control.Monad.Reader (ask, lift, liftIO, liftM, when, MonadIO)
 import Control.Monad (ap)
+import Control.Monad.State (runState, State, gets, modify)
 
 import Data.IORef
 import Data.List ( nub )
 import Data.Maybe
 import Data.Unique
 import Data.Foldable
+import Data.Traversable
 import qualified Data.Map as M
 
 import Graphics.UI.Gtk hiding ( Window, Event, Point, Style )          
@@ -76,9 +78,13 @@ data WinInfo = WinInfo
 instance Show WinInfo where
     show w = "W" ++ show (hashUnique $ bufkey w)
 
+
+-- | Get the identification of a window.
+winkey :: WinInfo -> (Bool, Unique)
 winkey w = (isMini w, bufkey w)
 
 
+mkUI :: UI -> Common.UI
 mkUI ui = Common.UI 
   {
    Common.main                  = main                  ui,
@@ -210,9 +216,6 @@ suspend :: UI -> EditorM ()
 suspend ui = do 
   lift $ windowIconify (uiWindow ui) 
 
-refreshAll :: EditorM ()
-refreshAll = return ()
-
 syncWindows :: Editor -> UI -> [(Window, Bool)] -> [WinInfo] -> IO [WinInfo]
 syncWindows e ui (wfocused@(w,focused):ws) (c:cs) 
     | Common.winkey w == winkey c = do when focused (setFocus c)
@@ -222,17 +225,17 @@ syncWindows e ui (wfocused@(w,focused):ws) (c:cs)
                      when focused (setFocus c')
                      return (c':) `ap` syncWindows e ui ws (c:cs)
 syncWindows e ui ws [] = mapM (insertWindowAtEnd e ui) (map fst ws)
-syncWindows e ui [] cs = mapM_ (removeWindow ui) cs >> return []
+syncWindows _e ui [] cs = mapM_ (removeWindow ui) cs >> return []
     
+setFocus :: WinInfo -> IO ()
 setFocus w = widgetGrabFocus (textview w)
 
+removeWindow :: UI -> WinInfo -> IO ()
 removeWindow i win = containerRemove (uiBox i) (widget win)
 
 -- | Make A new window
 newWindow :: UI -> Bool -> FBuffer -> IO WinInfo
 newWindow ui mini b = do
-    wu <- newUnique
-
     f <- fontDescriptionNew
     fontDescriptionSetFamily f "Monospace"
 
@@ -284,10 +287,13 @@ newWindow ui mini b = do
               }
     return win
 
-insertWindowBefore e i w c = insertWindow e i w
+insertWindowBefore :: Editor -> UI -> Window -> WinInfo -> IO WinInfo
+insertWindowBefore e i w _c = insertWindow e i w
 
+insertWindowAtEnd :: Editor -> UI -> Window -> IO WinInfo
 insertWindowAtEnd e i w = insertWindow e i w
 
+insertWindow :: Editor -> UI -> Window -> IO WinInfo
 insertWindow e i win = do
   let buf = findBufferWith e (Common.bufkey win)
   liftIO $ do w <- newWindow i (Common.isMini win) buf
@@ -311,9 +317,9 @@ scheduleRefresh ui = modifyEditor_ $ \e -> withMVar (windows ui) $ \ws -> do
       replaceTagsIn ui (inBounds (p-100) size) (inBounds (p+100) size) buf gtkBuf
 
     cache' <- syncWindows e ui (toList $ WS.withFocus $ ws) cache  
-    WS.debug "syncing" ws
-    logPutStrLn $ "with: " ++ show cache
-    logPutStrLn $ "Yields: " ++ show cache'
+    -- WS.debug "syncing" ws
+    -- logPutStrLn $ "with: " ++ show cache
+    -- logPutStrLn $ "Yields: " ++ show cache'
     writeRef (windowCache ui) cache'
     forM_ cache' $ \w -> 
         do let buf = findBufferWith e (bufkey w)
@@ -359,7 +365,7 @@ applyUpdate buf (Delete p s) = do
 
 
 styleToTag :: UI -> Style -> IO TextTag
-styleToTag ui (Style fg bg) = do
+styleToTag ui (Style fg _bg) = do
   let fgText = colorToText fg
   mtag <- textTagTableLookup (tagTable ui) fgText
   case mtag of 
@@ -372,6 +378,24 @@ styleToTag ui (Style fg bg) = do
 prepareAction :: UI -> EditorM ()
 prepareAction ui = do
   let bufsRef = uiBuffers ui
+  liftIO $ do
+-- FIXME
+-- The below is a failed attempt at computing the height of a gtk window (in lines). 
+-- How am I supposed to do that???
+--     gtkWins <- readRef (windowCache ui)
+--     heights <- forM gtkWins $ \w -> do
+--                      let gtkWin = textview w
+--                      (_,y0) <- textViewWindowToBufferCoords gtkWin TextWindowText (0,0)
+--                      (i0,_) <- textViewGetLineAtY gtkWin y0
+--                      l0 <- get i0 textIterLineOffset
+--                      (_,y1) <- textViewWindowToBufferCoords gtkWin TextWindowText (0,200)
+--                      (i1,_) <- textViewGetLineAtY gtkWin y1
+--                      l1 <- get i1 textIterLineOffset
+--                      logPutStrLn $ "Height: " ++ show ((y0,l0),(y1,l1))
+--                      return (l1 - l0)
+    modifyMVar_ (windows ui) $ \ws -> do
+        let (ws', _) = runState (mapM distribute ws) (repeat 40)
+        return ws'
   withBuffer0 $ do
     p0 <- pointB
     b <- ask
@@ -383,6 +407,15 @@ prepareAction ui = do
             get i textIterOffset
     when (p1 /= p0) $ do
        moveTo p1 -- as a side effect we forget the prefered column
+
+
+
+distribute :: Window -> State [Int] Window
+distribute win = do
+  h <- gets head
+  modify tail
+  return win {Common.height = h}
+
 
 setCmdLine :: UI -> String -> IO ()
 setCmdLine i s = do
