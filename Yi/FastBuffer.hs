@@ -44,7 +44,7 @@ import Control.Exception        ( evaluate, assert )
 import Control.Monad
 
 import Foreign.C.String
-import Foreign.C.Types          ( CChar )
+import Foreign.C.Types          ( CChar, CSize )
 import Foreign.Marshal.Alloc    ( free )
 import Foreign.Marshal.Array
 import Foreign.Ptr              ( Ptr, nullPtr, minusPtr, plusPtr )
@@ -56,6 +56,7 @@ import qualified Data.ByteString.Char8 as B
 import Data.ByteString.Base 
 
 import Data.Char (ord)
+import Data.Word
 
 import GHC.Exts (unsafeCoerce#)
 
@@ -295,12 +296,25 @@ curLnI fb = withMVar fb $ \(FBufferData ptr mks _ _ _ _ _) -> do
               return (1 + fromIntegral result)
 {-# INLINE curLnI #-}
 
+
+findStartOfLineN :: Ptr Word8 -> Int -> CSize -> IO (Ptr Word8)
+findStartOfLineN p n s 
+    | n <= 0 = return p
+    | otherwise = do
+  found <- memchr p (fromIntegral $ ord $ '\n') s
+  let p' = found `plusPtr` 1
+      diff = p' `minusPtr` p 
+  if found == nullPtr
+    then return $ p
+    else findStartOfLineN p' (n-1) (s - fromIntegral diff) 
+
 -- | Go to line number @n@. @n@ is indexed from 1. Returns the
 -- actual line we went to (which may be not be the requested line,
 -- if it was out of range)
 gotoLnI :: Int -> BufferImpl -> IO Int
 gotoLnI n fb = modifyMVar fb $ \(FBufferData ptr mks nms e mx hl ov) -> do
-        np <- cfindStartOfLineN ptr 0 e (n-1)       -- index from 0
+        ptr' <- findStartOfLineN (unsafeCoerce# ptr) (n-1) (fromIntegral e)
+        let np = ptr' `minusPtr` ptr
         let fb' = FBufferData ptr (M.insert pointMark (MarkValue np pointLeftBound) mks) nms e mx hl ov
         n' <- if np > e - 1 -- if next line is end of file, then find out what line this is
               then return . subtract 1 =<< ccountLines ptr 0 np
