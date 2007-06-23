@@ -34,7 +34,8 @@ module Yi.Buffer ( FBuffer (..), BufferM, runBuffer, keyB, curLn, nameB, indexOf
                    isUnchangedB, setSyntaxB, regexB, searchB, readAtB,
                    getModeLine, getPercent, forgetPreferCol,
                    clearUndosB, addOverlayB,
-                   getDynamicB, setDynamicB
+                   getDynamicB, setDynamicB,
+                   nelemsBH
                     ) where
 
 import Prelude hiding ( error )
@@ -202,6 +203,10 @@ pointB = withImpl pointBI
 -- | Return @n@ elems starting at @i@ of the buffer as a list
 nelemsB :: Int -> Int -> BufferM [Char]
 nelemsB n i = withImpl $ nelemsBI n i
+
+-- | Return @n@ elems starting at @i@ of the buffer as a list
+nelemsBH :: Int -> Int -> BufferM [(Char,Style)]
+nelemsBH n i = withImpl $ nelemsBIH n i
 
 ------------------------------------------------------------------------
 -- Point based operations

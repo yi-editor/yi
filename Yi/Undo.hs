@@ -88,8 +88,8 @@ data URList = URList ![URAction] ![URAction]
 -- The state (i.e. editor contents) are stored CChars, this has
 -- implications for Unicode.
 --
-data URAction = Insert !Point !String -- FIXME: use ByteString
-              | Delete !Point !Size
+data URAction = Insert {updatePoint :: !Point, insertUpdateString :: !String} -- FIXME: use ByteString
+              | Delete {updatePoint :: !Point, deleteUpdateSize :: !Size}
       --      | Boundary
                 deriving Show
 

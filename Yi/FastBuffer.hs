@@ -28,7 +28,8 @@ module Yi.FastBuffer (Point, Mark, Size, BufferImpl, newBI, deleteNAtI, moveToI,
                       pointBI, nelemsBI, finaliseBI, sizeBI, curLnI, 
                       gotoLnI, searchBI, regexBI, 
                       getMarkBI, getMarkPointBI, setMarkPointBI, unsetMarkBI, getSelectionMarkBI,
-                      nelemsBIH, setSyntaxBI, addOverlayBI) where
+                      nelemsBIH, setSyntaxBI, addOverlayBI,
+                      inBounds) where
 
 import Yi.Debug
 import Yi.Cbits
@@ -210,7 +211,7 @@ pointBI fb = withMVar fb $ \(FBufferData _ mks _ e mx _ _) -> do
 
 
 -- | Return @n@ elems starting at @i@ of the buffer as a list
-nelemsBI    :: Int -> Int -> BufferImpl -> IO [Char]
+nelemsBI :: Int -> Int -> BufferImpl -> IO [Char]
 nelemsBI n i fb = withMVar fb $ \(FBufferData b _ _ e _ _ _) -> do
         let i' = inBounds i e
             n' = min (e-i') n
@@ -227,8 +228,8 @@ addOverlayBI s e sty fb = do
 
 -- | Return @n@ elems starting at @i@ of the buffer as a list.
 -- This routine also does syntax highlighting and applies overlays.
-nelemsBIH    :: BufferImpl -> Int -> Int -> IO [(Char,Style)]
-nelemsBIH fb n i = withMVar fb fun
+nelemsBIH :: Int -> Int -> BufferImpl -> IO [(Char,Style)]
+nelemsBIH n i fb = withMVar fb fun
     where
       -- The first case is to handle when no 'Highlighter a' has
       -- been assigned to the buffer (via eg 'setSyntaxBI bi "haskell"')

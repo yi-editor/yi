@@ -78,7 +78,7 @@ data UI = UI {
              ,uiRefresh :: MVar ()
              ,windows   :: MVar (WS.WindowSet Common.Window)
              }
-
+mkUI :: UI -> Common.UI
 mkUI ui = Common.UI 
   {
    Common.main                  = main ui,
@@ -256,7 +256,7 @@ drawWindow e sty focused w win = do
         eofsty = eof sty
     (markPoint, []) <- runBuffer b (getMarkPointB =<< getSelectionMarkB)
     (point, []) <- runBuffer b pointB
-    bufData <- nelemsBIH (rawbuf b) (w*h') (tospnt win) -- read enough chars from the buffer.
+    (bufData, []) <- runBuffer b (nelemsBH (w*h') (tospnt win)) -- read enough chars from the buffer.
     let prompt = if isMini win then name b else ""
 
     let (rendered,bos,cur) = drawText h' w 

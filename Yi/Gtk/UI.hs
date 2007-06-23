@@ -24,6 +24,7 @@ module Yi.Gtk.UI (start) where
 
 import Prelude hiding (error, sequence_, elem, mapM_)
 
+import Yi.FastBuffer (inBounds)
 import Yi.Buffer
 import Yi.Editor
 import Yi.Event
@@ -32,6 +33,7 @@ import Yi.Undo
 import Yi.Monad
 import qualified Yi.CommonUI as Common
 import Yi.CommonUI (Window)
+import Yi.Style hiding (modeline)
 import qualified Yi.WindowSet as WS
 
 import Control.Concurrent ( yield )
@@ -47,7 +49,7 @@ import Data.Unique
 import Data.Foldable
 import qualified Data.Map as M
 
-import Graphics.UI.Gtk hiding ( Window, Event )          
+import Graphics.UI.Gtk hiding ( Window, Event, Point, Style )          
 import qualified Graphics.UI.Gtk as Gtk
 
 ------------------------------------------------------------------------
@@ -57,6 +59,7 @@ data UI = UI {
              ,uiBox :: VBox
              ,uiCmdLine :: Label
              ,uiBuffers :: IORef (M.Map Unique TextBuffer)
+             ,tagTable :: TextTagTable
              ,windows   :: MVar (WS.WindowSet Window)     -- ^ all the windows
              ,windowCache :: IORef [WinInfo]
              }
@@ -92,6 +95,8 @@ start :: Chan Yi.Event.Event -> MVar (WS.WindowSet Common.Window) -> EditorM Com
 start ch ws0 = lift $ do
   initGUI
 
+
+  -- rest.
   win <- windowNew
 
   onKeyPress win (processEvent ch)
@@ -119,7 +124,9 @@ start ch ws0 = lift $ do
 
   bufs <- newIORef M.empty
   wc <- newIORef []
-  let ui = UI win vb' cmd bufs ws0 wc
+  tt <- textTagTableNew
+
+  let ui = UI win vb' cmd bufs tt ws0 wc
 
   return (mkUI ui)
 
@@ -296,8 +303,12 @@ scheduleRefresh :: UI -> EditorM ()
 scheduleRefresh ui = modifyEditor_ $ \e -> withMVar (windows ui) $ \ws -> do
     cache <- readRef $ windowCache ui
     forM_ (editorUpdates e) $ \(b,u) -> do
-      buf <- getGtkBuffer ui (findBufferWith e b)
-      applyUpdate buf u
+      let buf = findBufferWith e b
+      gtkBuf <- getGtkBuffer ui buf
+      applyUpdate gtkBuf u
+      (size, []) <- runBuffer buf sizeB
+      let p = updatePoint u
+      replaceTagsIn ui (inBounds (p-100) size) (inBounds (p+100) size) buf gtkBuf
 
     cache' <- syncWindows e ui (toList $ WS.withFocus $ ws) cache  
     WS.debug "syncing" ws
@@ -317,14 +328,46 @@ scheduleRefresh ui = modifyEditor_ $ \e -> withMVar (windows ui) $ \ws -> do
     return e {editorUpdates = []}
 
 
+replaceTagsIn :: UI -> Point -> Point -> FBuffer -> TextBuffer -> IO ()
+replaceTagsIn ui from to buf gtkBuf = do
+  i <- textBufferGetIterAtOffset gtkBuf from
+  i' <- textBufferGetIterAtOffset gtkBuf to
+  (styledText, []) <- runBuffer buf (nelemsBH (to - from) from)
+  let styles = zip (map snd styledText) [from..]
+      styleSwitches = [(style,point) 
+                       | ((style,point),style') <- zip styles (defaultStyle:map fst styles), 
+                       style /= style']
+      styleSpans = [(l,style,r) 
+                    | ((style,l),r) <- zip styleSwitches (tail (map snd styleSwitches) ++ [to]),
+                   style /= defaultStyle]
+  textBufferRemoveAllTags gtkBuf i i'
+  forM_ styleSpans $ \(l,style,r) -> do
+    f <- textBufferGetIterAtOffset gtkBuf l
+    t <- textBufferGetIterAtOffset gtkBuf r
+    tag <- styleToTag ui style
+    textBufferApplyTag gtkBuf tag f t                         
+
 applyUpdate :: TextBuffer -> URAction -> IO ()
 applyUpdate buf (Insert p s) = do
   i <- textBufferGetIterAtOffset buf p
   textBufferInsert buf i s
+
 applyUpdate buf (Delete p s) = do
   i0 <- textBufferGetIterAtOffset buf p
   i1 <- textBufferGetIterAtOffset buf (p + s)
   textBufferDelete buf i0 i1
+
+
+styleToTag :: UI -> Style -> IO TextTag
+styleToTag ui (Style fg bg) = do
+  let fgText = colorToText fg
+  mtag <- textTagTableLookup (tagTable ui) fgText
+  case mtag of 
+    Just x -> return x
+    Nothing -> do x <- textTagNew (Just fgText)
+                  set x [textTagForeground := fgText]
+                  textTagTableAdd (tagTable ui) x
+                  return x
 
 prepareAction :: UI -> EditorM ()
 prepareAction ui = do
@@ -351,14 +394,15 @@ getGtkBuffer ui b = do
     bufs <- readRef bufsRef
     gtkBuf <- case M.lookup (bkey b) bufs of
       Just gtkBuf -> return gtkBuf
-      Nothing -> newGtkBuffer b
+      Nothing -> newGtkBuffer ui b
     modifyRef bufsRef (M.insert (bkey b) gtkBuf)
     return gtkBuf
 
 -- FIXME: when a buffer is deleted its GTK counterpart should be too.
-newGtkBuffer :: FBuffer -> IO TextBuffer
-newGtkBuffer b = do
-  buf <- textBufferNew Nothing
+newGtkBuffer :: UI -> FBuffer -> IO TextBuffer
+newGtkBuffer ui b = do
+  buf <- textBufferNew (Just (tagTable ui))
   (txt, []) <- runBuffer b elemsB
   textBufferSetText buf txt
+  replaceTagsIn ui 0 (length txt) b buf
   return buf

@@ -24,7 +24,8 @@
 module Yi.Style where
 
 import Data.Word                (Word8)
-
+import Data.Char (chr, ord)
+import Numeric (showHex)
 --
 -- | The UI type
 --
@@ -42,6 +43,21 @@ data Color
     | Default
     | Reverse
     deriving (Eq,Ord,Show)
+
+-- | Convert a color to its text specification, as to be accepted by XParseColor
+
+showHex1 :: Word8 -> Char
+showHex1 x | x < 10 = chr (ord '0' + fromIntegral x)
+           | otherwise = chr (ord 'A' + fromIntegral x - 10)
+
+showsHex :: Word8 -> (String -> String)
+showsHex x s =
+    showHex1 (x `div` 16) : showHex1 (x `mod` 16) : s
+
+colorToText :: Color -> String
+colorToText Default = "black"
+colorToText Reverse = "white"
+colorToText (RGB r g b) = ('#':) . showsHex r . showsHex g . showsHex b $ []
 
 
 --
@@ -65,6 +81,7 @@ uiStyle = UIStyle {
         ,eof                = Style blue         defaultbg
      }
 
+defaultStyle :: Style
 defaultStyle = Style defaultfg defaultbg
 
 
@@ -74,11 +91,9 @@ defaultStyle = Style defaultfg defaultbg
 data Style = Style {-# UNPACK #-} !Color !Color deriving (Eq,Ord,Show)
 
 ------------------------------------------------------------------------
---
+
 -- | Some simple colours (derivied from proxima/src/common/CommonTypes.hs)
---
--- But we don't have a light blue?
---
+
 black, grey, darkred, red, darkgreen, green, brown, yellow          :: Color
 darkblue, blue, purple, magenta, darkcyan, cyan, white, brightwhite :: Color
 black       = RGB 0 0 0
