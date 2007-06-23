@@ -53,6 +53,11 @@ import Foreign.Storable         ( poke )
 import Text.Regex.Posix.Wrap
 
 import qualified Data.ByteString.Char8 as B
+import Data.ByteString.Base 
+
+import Data.Char (ord)
+
+import GHC.Exts (unsafeCoerce#)
 
 -- ---------------------------------------------------------------------
 --
@@ -282,10 +287,12 @@ deleteNAtI fb n pos = modifyMVar_ fb $ \fb' -> deleteN' fb' n pos
 ------------------------------------------------------------------------
 -- Line based editing
 
--- | Return the current line number
+-- | Return the current line number. Lines are indexed from 1.
 curLnI       :: BufferImpl -> IO Int
 -- count number of \n from origin to point
-curLnI fb = withMVar fb $ \(FBufferData ptr mks _ _ _ _ _) -> ccountLines ptr 0 $ markPosition $ mks M.! pointMark
+curLnI fb = withMVar fb $ \(FBufferData ptr mks _ _ _ _ _) -> do
+              result <- c_count (unsafeCoerce# ptr) (fromIntegral $ markPosition $ mks M.! pointMark) (fromIntegral $ ord '\n')
+              return (1 + fromIntegral result)
 {-# INLINE curLnI #-}
 
 -- | Go to line number @n@. @n@ is indexed from 1. Returns the
