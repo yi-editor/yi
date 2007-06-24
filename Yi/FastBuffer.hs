@@ -32,7 +32,6 @@ module Yi.FastBuffer (Point, Mark, Size, BufferImpl, newBI, deleteNAtI, moveToI,
                       inBounds) where
 
 import Yi.Debug
-import Yi.Cbits
 import Yi.Syntax
 import Yi.Syntax.Table
 
@@ -288,12 +287,15 @@ deleteNAtI fb n pos = modifyMVar_ fb $ \fb' -> deleteN' fb' n pos
 ------------------------------------------------------------------------
 -- Line based editing
 
+countLines :: Ptr CChar -> Int -> IO Int
+countLines ptr size = do
+  result <- c_count (unsafeCoerce# ptr) (fromIntegral $ size) (fromIntegral $ ord '\n')
+  return (1 + fromIntegral result)
+
 -- | Return the current line number. Lines are indexed from 1.
 curLnI       :: BufferImpl -> IO Int
 -- count number of \n from origin to point
-curLnI fb = withMVar fb $ \(FBufferData ptr mks _ _ _ _ _) -> do
-              result <- c_count (unsafeCoerce# ptr) (fromIntegral $ markPosition $ mks M.! pointMark) (fromIntegral $ ord '\n')
-              return (1 + fromIntegral result)
+curLnI fb = withMVar fb $ \(FBufferData ptr mks _ _ _ _ _) -> countLines ptr (markPosition $ mks M.! pointMark)
 {-# INLINE curLnI #-}
 
 
@@ -317,13 +319,16 @@ gotoLnI n fb = modifyMVar fb $ \(FBufferData ptr mks nms e mx hl ov) -> do
         let np = ptr' `minusPtr` ptr
         let fb' = FBufferData ptr (M.insert pointMark (MarkValue np pointLeftBound) mks) nms e mx hl ov
         n' <- if np > e - 1 -- if next line is end of file, then find out what line this is
-              then return . subtract 1 =<< ccountLines ptr 0 np
+              then return . subtract 1 =<< countLines ptr np
               else return n         -- else it is this line
         return (fb', max 1 n')
 {-# INLINE gotoLnI #-}
 
 
 ---------------------------------------------------------------------
+
+foreign import ccall unsafe "string.h strstr"
+    cstrstr :: Ptr CChar -> Ptr CChar -> IO (Ptr CChar)
 
 -- | Return index of next string in buffer that matches argument
 searchBI :: [Char] -> BufferImpl -> IO (Maybe Int)

@@ -88,11 +88,6 @@ install pd lbi hooks bfs = do
       -- otherwise GHC (via Yi) thinks it has to recompile them.
       pd' = pd {dataFiles = dataFiles pd ++ sourceFiles ++ targetFiles}
   instHook defaultUserHooks pd' lbi hooks bfs
-  -- TODO: The location of the built cbits can likely be determined programmatically.
-  let absoluteDataDirPath = mkDataDir pd' lbi NoCopyDest 
-      absoluteCbitsDestPath = absoluteDataDirPath </> "cbits"
-      relativeCbitsDirPath = "dist/build/yi/yi-tmp/cbits"
-  copyDirectoryRecursiveVerbose 0 relativeCbitsDirPath absoluteCbitsDestPath
   
 
 unixFind dir = do

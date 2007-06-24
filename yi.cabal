@@ -12,7 +12,6 @@ author:         Don Stewart
 maintainer:     jeanphilippe.bernardy@gmail.com
 build-depends:  filepath>=1.0, ghc>=6.6, base, mtl, regex-posix==0.71
 extra-source-files:
- cbits/YiUtils.h
  Yi/Syntax/alex.hsinc
 
 executable:     yi
@@ -21,10 +20,7 @@ other-modules:
   Yi.Boot
   Yi.Debug
   Yi.Kernel
-  Yi.Cbits
   Yi.Syntax.Haskell
-c-sources:      cbits/YiUtils.c
-include-dirs:   cbits
 extensions:     CPP, ForeignFunctionInterface
 ghc-options:    -Wall -fglasgow-exts -O -funbox-strict-fields -fasm -optl-Wl,-s
 
