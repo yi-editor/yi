@@ -4,18 +4,19 @@ include config.mk
 
 include $(cabal-make)/cabal-make.inc
 
-run-inplace: 
-	dist/build/yi/yi -B. -f$(flavour)
 
 runtime-config:
 	mkdir -p $(HOME)/.yi
 	cp examples/*.hs $(HOME)/.yi
 
-emacs: install 
-	$(prefix)/bin/yi --as=emacs
+run-inplace: build #using YiConfig's keybinding.
+	dist/build/yi/yi -B. -f$(flavour)
 
-vim: install 
-	$(prefix)/bin/yi --as=vim
+emacs: build
+	dist/build/yi/yi -B. -f$(flavour) --as=emacs
+
+vim: build
+	dist/build/yi/yi -B. -f$(flavour) --as=vim
 
 distclean: clean
 	rm -f yi.buildinfo testsuite/pp/logpp config.log config.cache config.status cbits/config.h .setup-config
