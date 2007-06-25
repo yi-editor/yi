@@ -379,22 +379,20 @@ prepareAction :: UI -> EditorM ()
 prepareAction ui = do
   let bufsRef = uiBuffers ui
   liftIO $ do
--- FIXME
--- The below is a failed attempt at computing the height of a gtk window (in lines). 
--- How am I supposed to do that???
---     gtkWins <- readRef (windowCache ui)
---     heights <- forM gtkWins $ \w -> do
---                      let gtkWin = textview w
---                      (_,y0) <- textViewWindowToBufferCoords gtkWin TextWindowText (0,0)
---                      (i0,_) <- textViewGetLineAtY gtkWin y0
---                      l0 <- get i0 textIterLineOffset
---                      (_,y1) <- textViewWindowToBufferCoords gtkWin TextWindowText (0,200)
---                      (i1,_) <- textViewGetLineAtY gtkWin y1
---                      l1 <- get i1 textIterLineOffset
---                      logPutStrLn $ "Height: " ++ show ((y0,l0),(y1,l1))
---                      return (l1 - l0)
+    gtkWins <- readRef (windowCache ui)
+    heights <- forM gtkWins $ \w -> do
+                     let gtkWin = textview w
+                     d <- widgetGetDrawWindow gtkWin
+                     (_w,h) <- drawableGetSize d
+                     (_,y0) <- textViewWindowToBufferCoords gtkWin TextWindowText (0,0)
+                     (i0,_) <- textViewGetLineAtY gtkWin y0
+                     l0 <- get i0 textIterLine
+                     (_,y1) <- textViewWindowToBufferCoords gtkWin TextWindowText (0,h)
+                     (i1,_) <- textViewGetLineAtY gtkWin y1
+                     l1 <- get i1 textIterLine
+                     return (l1 - l0)
     modifyMVar_ (windows ui) $ \ws -> do
-        let (ws', _) = runState (mapM distribute ws) (repeat 40)
+        let (ws', _) = runState (mapM distribute ws) heights
         return ws'
   withBuffer0 $ do
     p0 <- pointB
