@@ -50,6 +50,7 @@ import Yi.Dynamic
 import Data.IORef
 import Data.Unique              ( newUnique, Unique, hashUnique )
 import Control.Concurrent 
+import Control.Concurrent.QSem
 import Control.Monad
 import Control.Monad.Trans
 import Control.Monad.RWS
@@ -70,6 +71,7 @@ data FBuffer =
                 , bmode  :: !(MVar BufferMode)       -- ^ a read-only bit
                 , bufferDynamic :: !(IORef DynamicValues) -- ^ dynamic components
                 , preferCol :: !(IORef (Maybe Int))  -- ^ prefered column to arrive at when we do a lineDown / lineUp
+                , runLock :: !QSem
                 }
 
 type BufferM a = RWST FBuffer [URAction] () IO a
@@ -111,14 +113,18 @@ getPercent a b = show p ++ "%"
     where p = ceiling ((fromIntegral a) / (fromIntegral b) * 100 :: Double) :: Int
 
 withImpl :: (BufferImpl -> IO x) -> (BufferM x)
-withImpl f = do b <- ask; lift $ f (rawbuf b)
+withImpl f = do 
+   b <- ask 
+   lift $ f (rawbuf b)
 
 addOverlayB :: Point -> Point -> Style -> BufferM ()
 addOverlayB s e sty = withImpl $ addOverlayBI s e sty
 
 runBuffer :: FBuffer -> BufferM a -> IO (a, [URAction])
 runBuffer b f = do 
+  waitQSem (runLock b)
   (a, (), ur) <- runRWST f b ()
+  signalQSem (runLock b)
   return (a, ur)
 
 hNewB :: FilePath -> IO FBuffer
@@ -175,6 +181,7 @@ newB nm s = do
     rw  <- newMVar ReadWrite
     u   <- newUnique
     dv <- newIORef emptyDV
+    theRunLock <- newQSem 1
     let result = FBuffer { name   = nm
                          , bkey   = u
                          , file   = mvf
@@ -183,6 +190,7 @@ newB nm s = do
                          , bmode  = rw
                          , preferCol = pc 
                          , bufferDynamic = dv
+                         , runLock = theRunLock
                          }
     return result                    
 
