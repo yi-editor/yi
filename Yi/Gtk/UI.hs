@@ -229,7 +229,9 @@ syncWindows e ui ws [] = mapM (insertWindowAtEnd e ui) (map fst ws)
 syncWindows _e ui [] cs = mapM_ (removeWindow ui) cs >> return []
     
 setFocus :: WinInfo -> IO ()
-setFocus w = widgetGrabFocus (textview w)
+setFocus w = do
+  hasFocus <- widgetIsFocus (textview w)
+  when (not hasFocus) $ widgetGrabFocus (textview w)
 
 removeWindow :: UI -> WinInfo -> IO ()
 removeWindow i win = containerRemove (uiBox i) (widget win)
@@ -246,7 +248,6 @@ newWindow ui mini b = do
 
     v <- textViewNew
     widgetModifyFont v (Just f)
-
 
     box <- if mini 
      then do
@@ -302,17 +303,8 @@ insertWindow e i win = do
   liftIO $ do w <- newWindow i (Common.isMini win) buf
               set (uiBox i) [containerChild := widget w,
                              boxChildPacking (widget w) := if isMini w then PackNatural else PackGrow]
-              textview w `onButtonPress` (\_event -> (focusWindows i (wkey w) >> return False))
-              -- We have to return false so that GTK correctly focuses the window when we use widgetGrabFocus
               widgetShowAll (widget w)
               return w
-
-
-focusWindows ui key = do
-  cache <- readRef (windowCache ui)
-  let Just idx = findIndex ((== key) . wkey) cache
-  modifyMVar_ (windows ui) (\ws -> return  (WS.focusIndex idx ws))
-
 
 scheduleRefresh :: UI -> EditorM ()
 scheduleRefresh ui = modifyEditor_ $ \e -> withMVar (windows ui) $ \ws -> do
@@ -400,8 +392,13 @@ prepareAction ui = do
                      (i1,_) <- textViewGetLineAtY gtkWin y1
                      l1 <- get i1 textIterLine
                      return (l1 - l0)
+    focused <- forM gtkWins (widgetIsFocus . textview)
+    let wsFoc = case findIndex id focused of
+                  Just idx -> WS.focusIndex idx
+                  Nothing -> id -- no gtk window focused
+      
     modifyMVar (windows ui) $ \ws -> do 
-        let (ws', _) = runState (mapM distribute ws) heights
+        let (ws', _) = runState (mapM distribute (wsFoc ws)) heights
         return (ws', ws')
   setBuffer (Common.bufkey $ WS.current ws)   -- find out which window has been focused, and focus the corresponding buffer
   withBuffer0 $ do
