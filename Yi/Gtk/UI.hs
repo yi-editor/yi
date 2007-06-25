@@ -44,7 +44,7 @@ import Control.Monad (ap)
 import Control.Monad.State (runState, State, gets, modify)
 
 import Data.IORef
-import Data.List ( nub )
+import Data.List ( nub, findIndex )
 import Data.Maybe
 import Data.Unique
 import Data.Foldable
@@ -69,6 +69,7 @@ data UI = UI {
 data WinInfo = WinInfo 
     {
      bufkey      :: !Unique         -- ^ the buffer this window opens to
+    ,wkey        :: !Unique
     ,textview    :: TextView
     ,modeline    :: Label
     ,widget      :: Box            -- ^ Top-level widget for this window.
@@ -278,8 +279,10 @@ newWindow ui mini b = do
 
     textViewSetBuffer v gtkBuf
 
+    k <- newUnique
     let win = WinInfo {
                     bufkey    = (keyB b)
+                   ,wkey      = k
                    ,textview  = v
                    ,modeline  = ml
                    ,widget    = box
@@ -299,10 +302,16 @@ insertWindow e i win = do
   liftIO $ do w <- newWindow i (Common.isMini win) buf
               set (uiBox i) [containerChild := widget w,
                              boxChildPacking (widget w) := if isMini w then PackNatural else PackGrow]
-              -- FIXME: textview w `onFocusIn` (\_event -> (modifyRef (windows i) (WS.setFocus w)) >> return False)
+              textview w `onButtonPress` (\_event -> (focusWindows i (wkey w) >> return False))
               -- We have to return false so that GTK correctly focuses the window when we use widgetGrabFocus
               widgetShowAll (widget w)
               return w
+
+
+focusWindows ui key = do
+  cache <- readRef (windowCache ui)
+  let Just idx = findIndex ((== key) . wkey) cache
+  modifyMVar_ (windows ui) (\ws -> return  (WS.focusIndex idx ws))
 
 
 scheduleRefresh :: UI -> EditorM ()
@@ -378,7 +387,7 @@ styleToTag ui (Style fg _bg) = do
 prepareAction :: UI -> EditorM ()
 prepareAction ui = do
   let bufsRef = uiBuffers ui
-  liftIO $ do
+  ws <- liftIO $ do
     gtkWins <- readRef (windowCache ui)
     heights <- forM gtkWins $ \w -> do
                      let gtkWin = textview w
@@ -391,9 +400,10 @@ prepareAction ui = do
                      (i1,_) <- textViewGetLineAtY gtkWin y1
                      l1 <- get i1 textIterLine
                      return (l1 - l0)
-    modifyMVar_ (windows ui) $ \ws -> do
+    modifyMVar (windows ui) $ \ws -> do 
         let (ws', _) = runState (mapM distribute ws) heights
-        return ws'
+        return (ws', ws')
+  setBuffer (Common.bufkey $ WS.current ws)   -- find out which window has been focused, and focus the corresponding buffer
   withBuffer0 $ do
     p0 <- pointB
     b <- ask
