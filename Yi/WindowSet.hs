@@ -46,15 +46,19 @@ new w = WindowSet [] w []
 
 -- | Add a window, focus it.
 add :: a -> WindowSet a -> WindowSet a
-add w (WindowSet b c a) = WindowSet b w (c:a)
+add w (WindowSet b c a) = WindowSet (c:b) w a
 
 next :: WindowSet a -> a
 next = current . forward
 
+-- | Delete a window
 delete :: WindowSet a -> WindowSet a
 delete (WindowSet [] c []) = WindowSet [] c [] -- never delete the last window
-delete (WindowSet b _ (a:as)) = WindowSet b a as
 delete (WindowSet (b:bs) _ []) = WindowSet bs b []
+delete (WindowSet b _ (a:as)) = WindowSet b a as
+
+-- property: delete (add w) ws == ws
+
 
 deleteOthers :: WindowSet a -> WindowSet a
 deleteOthers (WindowSet _ c _) = WindowSet [] c []
