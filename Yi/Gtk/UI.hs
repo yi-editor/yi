@@ -44,7 +44,7 @@ import Control.Monad (ap)
 import Control.Monad.State (runState, State, gets, modify)
 
 import Data.IORef
-import Data.List ( nub, findIndex )
+import Data.List ( nub, findIndex, sort )
 import Data.Maybe
 import Data.Unique
 import Data.Foldable
@@ -234,41 +234,66 @@ syncWindows _e ui [] cs = mapM_ (removeWindow ui) cs >> return []
     
 setFocus :: WinInfo -> IO ()
 setFocus w = do
+  logPutStrLn $ "gtk focusing " ++ show w
   hasFocus <- widgetIsFocus (textview w)
   when (not hasFocus) $ widgetGrabFocus (textview w)
 
 removeWindow :: UI -> WinInfo -> IO ()
 removeWindow i win = containerRemove (uiBox i) (widget win)
 
-showStuff ui w _event = do
+instance Show Click where
+    show x = case x of
+               SingleClick  -> "SingleClick "
+               DoubleClick  -> "DoubleClick "
+               TripleClick  -> "TripleClick "
+               ReleaseClick -> "ReleaseClick"
 
-  tb <- liftM (M.! bufkey w) $ readIORef (uiBuffers ui)
-  insertMark <- textBufferGetInsert tb
-  i <- textBufferGetIterAtMark tb insertMark
+
+handleClick ui w e = do
+  logPutStrLn $ "Click: " ++ show (eventX e, eventY e, eventClick e)
+
+  -- retrieve the clicked offset.
+  let tv = textview w
+  let wx = round (eventX e)  
+  let wy = round (eventY e)  
+  (bx, by) <- textViewWindowToBufferCoords tv TextWindowText (wx,wy) 
+  i <- textViewGetIterAtLocation tv bx by 
   p1 <- get i textIterOffset
 
-    
-  selMark <- textBufferGetSelectionBound tb
-  i' <- textBufferGetIterAtMark tb selMark
-  p2 <- get i' textIterOffset
-
-  logPutStrLn $ "p1, p2 = " ++ show (p1,p2)
-
-
+  -- maybe focus the window
+  case eventClick e of 
+    SingleClick -> do wCache <- readIORef (windowCache ui)
+                      let Just idx = findIndex ((wkey w ==) . wkey) wCache
+                      modifyMVar_ (windows ui) (\ws -> return (WS.focusIndex idx ws))
+    _ -> return ()
+  
+  
   let editorAction = do
         b <- withEditor0 $ \ed -> return $ findBufferWith ed (bufkey w)
-        withGivenBuffer0 b $ do
-          m <- getSelectionMarkB
-          setMarkPointB m p2
-          moveTo p1 -- as a side effect we forget the prefered column
+        case (eventClick e, eventButton e) of
+          (SingleClick, LeftButton) -> 
+              withGivenBuffer0 b $ moveTo p1 -- as a side effect we forget the prefered column
+          (ReleaseClick, LeftButton) -> do
+            p0 <- withGivenBuffer0 b $ pointB
+            if p1 == p0
+              then withGivenBuffer0 b unsetMarkB
+              else do txt <- withGivenBuffer0 b $ do m <- getSelectionMarkB
+                                                     setMarkPointB m p1
+                                                     let [i,j] = sort [p1,p0]
+                                                     nelemsB (j-i) i
+                      modifyEditor_ (\e -> return e {yreg = txt})
+          (ReleaseClick, MiddleButton) -> do
+            txt <- readEditor yreg
+            withGivenBuffer0 b $ do
+              unsetMarkB
+              moveTo p1
+              insertN txt
+
+          _ -> return ()
+
   case ui of
     UI {uiActionCh = ch, uiRunEd = run} -> writeChan ch (run editorAction)
-  return False
-
-
-  
-
-
+  return True
 
 
 -- | Make A new window
@@ -338,7 +363,8 @@ insertWindow e i win = do
   liftIO $ do w <- newWindow i (Common.isMini win) buf
               set (uiBox i) [containerChild := widget w,
                              boxChildPacking (widget w) := if isMini w then PackNatural else PackGrow]
-              textview w `onButtonRelease` showStuff i w
+              textview w `onButtonRelease` handleClick i w
+              textview w `onButtonPress` handleClick i w
               widgetShowAll (widget w)
               return w
 
@@ -353,10 +379,10 @@ scheduleRefresh ui = modifyEditor_ $ \e -> withMVar (windows ui) $ \ws -> do
       let p = updatePoint u
       replaceTagsIn ui (inBounds (p-100) size) (inBounds (p+100) size) buf gtkBuf
 
+    WS.debug "syncing" ws
+    logPutStrLn $ "with: " ++ show cache
     cache' <- syncWindows e ui (toList $ WS.withFocus $ ws) cache  
-    -- WS.debug "syncing" ws
-    -- logPutStrLn $ "with: " ++ show cache
-    -- logPutStrLn $ "Yields: " ++ show cache'
+    logPutStrLn $ "Yields: " ++ show cache'
     writeRef (windowCache ui) cache'
     forM_ cache' $ \w -> 
         do let buf = findBufferWith e (bufkey w)
@@ -430,13 +456,8 @@ prepareAction ui = do
                      (i1,_) <- textViewGetLineAtY gtkWin y1
                      l1 <- get i1 textIterLine
                      return (l1 - l0)
-    focused <- forM gtkWins (widgetIsFocus . textview)
-    let wsFoc = case findIndex id focused of
-                  Just idx -> WS.focusIndex idx
-                  Nothing -> id -- no gtk window focused
-      
     modifyMVar (windows ui) $ \ws -> do 
-        let (ws', _) = runState (mapM distribute (wsFoc ws)) heights
+        let (ws', _) = runState (mapM distribute ws) heights
         return (ws', ws')
 
   setBuffer (Common.bufkey $ WS.current ws)   
