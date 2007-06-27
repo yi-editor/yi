@@ -39,7 +39,7 @@ import qualified Yi.WindowSet as WS
 import Control.Concurrent ( yield )
 import Control.Concurrent.Chan
 import Control.Concurrent.MVar
-import Control.Monad.Reader (ask, lift, liftIO, liftM, when, MonadIO)
+import Control.Monad.Reader (lift, liftIO, liftM, when, MonadIO)
 import Control.Monad (ap)
 import Control.Monad.State (runState, State, gets, modify)
 
@@ -56,7 +56,7 @@ import qualified Graphics.UI.Gtk as Gtk
 
 ------------------------------------------------------------------------
 
-data UI = UI {
+data UI = forall action. UI {
               uiWindow :: Gtk.Window
              ,uiBox :: VBox
              ,uiCmdLine :: Label
@@ -64,6 +64,8 @@ data UI = UI {
              ,tagTable :: TextTagTable
              ,windows   :: MVar (WS.WindowSet Window)     -- ^ all the windows
              ,windowCache :: IORef [WinInfo]
+             ,uiActionCh :: Chan action
+             ,uiRunEd :: EditorM () -> action
              }
 
 data WinInfo = WinInfo 
@@ -135,7 +137,7 @@ start ch outCh runEd ws0 = lift $ do
   wc <- newIORef []
   tt <- textTagTableNew
 
-  let ui = UI win vb' cmd bufs tt ws0 wc
+  let ui = UI win vb' cmd bufs tt ws0 wc outCh runEd
 
   return (mkUI ui)
 
@@ -238,6 +240,37 @@ setFocus w = do
 removeWindow :: UI -> WinInfo -> IO ()
 removeWindow i win = containerRemove (uiBox i) (widget win)
 
+showStuff ui w _event = do
+
+  tb <- liftM (M.! bufkey w) $ readIORef (uiBuffers ui)
+  insertMark <- textBufferGetInsert tb
+  i <- textBufferGetIterAtMark tb insertMark
+  p1 <- get i textIterOffset
+
+    
+  selMark <- textBufferGetSelectionBound tb
+  i' <- textBufferGetIterAtMark tb selMark
+  p2 <- get i' textIterOffset
+
+  logPutStrLn $ "p1, p2 = " ++ show (p1,p2)
+
+
+  let editorAction = do
+        b <- withEditor0 $ \ed -> return $ findBufferWith ed (bufkey w)
+        withGivenBuffer0 b $ do
+          m <- getSelectionMarkB
+          setMarkPointB m p2
+          moveTo p1 -- as a side effect we forget the prefered column
+  case ui of
+    UI {uiActionCh = ch, uiRunEd = run} -> writeChan ch (run editorAction)
+  return False
+
+
+  
+
+
+
+
 -- | Make A new window
 newWindow :: UI -> Bool -> FBuffer -> IO WinInfo
 newWindow ui mini b = do
@@ -305,6 +338,7 @@ insertWindow e i win = do
   liftIO $ do w <- newWindow i (Common.isMini win) buf
               set (uiBox i) [containerChild := widget w,
                              boxChildPacking (widget w) := if isMini w then PackNatural else PackGrow]
+              textview w `onButtonRelease` showStuff i w
               widgetShowAll (widget w)
               return w
 
@@ -327,10 +361,13 @@ scheduleRefresh ui = modifyEditor_ $ \e -> withMVar (windows ui) $ \ws -> do
     forM_ cache' $ \w -> 
         do let buf = findBufferWith e (bufkey w)
            gtkBuf <- getGtkBuffer ui buf
+
            (p0, []) <- runBuffer buf pointB
+           (p1, []) <- runBuffer buf (getSelectionMarkB >>= getMarkPointB)
            insertMark <- textBufferGetInsert gtkBuf
            i <- textBufferGetIterAtOffset gtkBuf p0
-           textBufferPlaceCursor gtkBuf i
+           i' <- textBufferGetIterAtOffset gtkBuf p1
+           textBufferSelectRange gtkBuf i i'
            textViewScrollMarkOnscreen (textview w) insertMark
            (txt, []) <- runBuffer buf getModeLine 
            set (modeline w) [labelText := txt]
@@ -380,7 +417,6 @@ styleToTag ui (Style fg _bg) = do
 
 prepareAction :: UI -> EditorM ()
 prepareAction ui = do
-  let bufsRef = uiBuffers ui
   ws <- liftIO $ do
     gtkWins <- readRef (windowCache ui)
     heights <- forM gtkWins $ \w -> do
@@ -402,18 +438,9 @@ prepareAction ui = do
     modifyMVar (windows ui) $ \ws -> do 
         let (ws', _) = runState (mapM distribute (wsFoc ws)) heights
         return (ws', ws')
-  setBuffer (Common.bufkey $ WS.current ws)   -- find out which window has been focused, and focus the corresponding buffer
-  withBuffer0 $ do
-    p0 <- pointB
-    b <- ask
-    
-    p1 <- lift $ do
-            tb <- liftM (M.! bkey b) $ readIORef bufsRef
-            insertMark <- textBufferGetInsert tb
-            i <- textBufferGetIterAtMark tb insertMark
-            get i textIterOffset
-    when (p1 /= p0) $ do
-       moveTo p1 -- as a side effect we forget the prefered column
+
+  setBuffer (Common.bufkey $ WS.current ws)   
+  return ()
 
 
 
