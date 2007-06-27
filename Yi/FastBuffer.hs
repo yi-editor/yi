@@ -120,9 +120,7 @@ stringToFBuffer s = do
     poke (ptr `advancePtr` size_i) (castCharToCChar '\0')
     return (FBufferData ptr mks M.empty size_i r_size Nothing [])
     where
-    mks = M.fromList [(pointMark, MarkValue 0 pointLeftBound)
-                      , (markMark, MarkValue 0 markLeftBound)
-                     ]
+    mks = M.fromList [(pointMark, MarkValue 0 pointLeftBound)]
 
 -- | read @n@ chars from buffer @b@, starting at @i@
 readChars :: Ptr CChar -> Int -> Int -> IO [Char]
@@ -351,15 +349,10 @@ regexBI re fb = withMVar fb $ \(FBufferData ptr mks _ _ _ _ _) -> do
 
 
 
-{- 
-   Okay if the mark is set then we return that, otherwise we
-   return the point, which will mean that the calling function will
-   see the selection area as null in length. 
--}
 getSelectionMarkBI :: BufferImpl -> IO Mark
-getSelectionMarkBI fb = withMVar fb $ \(FBufferData { marks = marksMap } ) -> return $ if M.member markMark marksMap then markMark else pointMark
+getSelectionMarkBI _fb = return markMark
 
--- | Returns ths position of the 'point' mark if the requested mark is unknown
+-- | Returns ths position of the 'point' mark if the requested mark is unknown (or unset)
 getMarkPointBI :: Mark -> BufferImpl -> IO Point
 getMarkPointBI m fb = do
                       mv <- getMark fb m
@@ -373,7 +366,7 @@ getMark fb m = withMVar fb $ \(FBufferData { marks = marksMap } ) -> do
                  -- if mark m is not set, is the pointMark
 
 
--- | Set this buffer mark
+-- | Set a mark point
 setMarkPointBI :: Mark -> Point -> BufferImpl -> IO ()
 setMarkPointBI m pos fb = modifyMVar_ fb $ \fb' -> do
                             logPutStrLn $ "set mark " ++ show m ++ " at " ++ show pos
