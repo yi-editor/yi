@@ -349,6 +349,10 @@ prepareAction _ = return ()
 
 scheduleRefresh' :: UI -> IO ()
 scheduleRefresh' tui = tryPutMVar (uiRefresh tui) () >> return ()
+-- The non-blocking behviour was set up with this in mind: if the display
+-- thread is not able to catch up with the editor updates (possible since
+-- display is much more time consuming than simple editor operations),
+-- then there will be fewer display refreshes. 
 
 -- | Calculate window heights, given all the windows and current height.
 -- (No specific code for modelines)
