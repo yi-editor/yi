@@ -98,8 +98,10 @@ mkUI ui = Common.UI
   }
 
 -- | Initialise the ui
-start :: Chan Yi.Event.Event -> MVar (WS.WindowSet Common.Window) -> EditorM Common.UI
-start ch ws0 = lift $ do
+start :: Chan Yi.Event.Event -> Chan action ->
+         (EditorM () -> action) -> 
+         MVar (WS.WindowSet Common.Window) -> EditorM Common.UI
+start ch outCh runEd ws0 = lift $ do
   initGUI
 
 

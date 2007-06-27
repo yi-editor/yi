@@ -193,7 +193,7 @@ import qualified Yi.WindowSet as WS
 import qualified Yi.Editor as Editor
 import qualified Yi.Style as Style
 import qualified Yi.CommonUI as UI
-import Yi.CommonUI as UI (Window (..))
+import Yi.CommonUI as UI (Window (..), UI)
 
 import Data.Maybe
 import qualified Data.Map as M
@@ -261,7 +261,12 @@ startE frontend kernel st commandLineActions = do
       GHC.Failed -> error $ "Panic: could not load " ++ frontend ++ " frontend. Use -fgtk or -fvty, or install the needed packages."
       _ -> return ()
     uiStartM <- compileExpr kernel (frontendModule ++ ".start") 
-    let uiStart :: (Chan Event -> MVar (WS.WindowSet Window) -> EditorM UI.UI) = case uiStartM of
+    let uiStart :: (forall action. 
+                    Chan Yi.Event.Event -> 
+                    Chan action ->
+                    (EditorM () -> action) -> 
+                    MVar (WS.WindowSet Window) -> 
+                    EditorM UI) = case uiStartM of
              Nothing -> do error "Could not compile frontend!"
              Just x -> unsafeCoerce# x
 
@@ -276,8 +281,8 @@ startE frontend kernel st commandLineActions = do
     wins <- newMVar (WS.new $ Window False (keyB consoleB) 0 0 0)
     let runEd f = runReaderT f newSt
     inCh <- newChan
-    outCh <- newChan
-    ui <- runEd (uiStart inCh wins)
+    outCh :: Chan Action <- newChan
+    ui <- runEd (uiStart inCh outCh withEditor wins)
     startKm <- newIORef nilKeymap
     startModules <- newIORef ["Yi.Yi"] -- this module re-exports all useful stuff, so we want it loaded at all times.
     startThreads <- newIORef []
