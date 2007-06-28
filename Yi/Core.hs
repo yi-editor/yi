@@ -61,6 +61,7 @@ module Yi.Core (
         nextWinE,       -- :: Action
         prevWinE,       -- :: Action
         closeE,         -- :: Action
+        tryCloseE,         -- :: Action
         closeOtherE,    -- :: Action
         splitE,         -- :: Action
         enlargeWinE,    -- :: Action
@@ -939,6 +940,10 @@ closeE = do
     n <- withWindows (length . toList)
     when (n == 1) quitE
     modifyWindows WS.delete
+
+-- | Close the current window, unless it is the last window open.
+tryCloseE :: Action
+tryCloseE = modifyWindows WS.delete
 
 -- | Make the current window the only window on the screen
 closeOtherE :: Action
