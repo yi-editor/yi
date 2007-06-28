@@ -51,7 +51,8 @@ modifyWindows f = do
   b <- liftIO $ modifyMVar wsRef $ \ws -> let ws' = f ws in return (ws', bufkey $ WS.current ws')
   withEditor (setBuffer b)
   return ()
-  
+
+withWindows :: (WindowSet Window -> a) -> YiM a
 withWindows f = do
   wsRef <- asks yiWindows
   liftIO $ withMVar wsRef $ \ws -> return (f ws)
@@ -64,11 +65,6 @@ withWindowAndBuffer f = do
   wsRef <- asks yiWindows 
   editorRef <- asks yiEditor
   liftIO $ withMVar wsRef $ \ws -> runReaderT (withBuffer0 (f (WS.current ws))) editorRef
-
-
--- | Delete the focused window
-deleteThisWindow :: YiM ()
-deleteThisWindow = modifyWindows WS.delete
 
 -- | Split the current window, opening a second window onto this buffer.
 -- Windows smaller than 3 lines cannot be split.

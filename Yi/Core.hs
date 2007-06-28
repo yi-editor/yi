@@ -935,7 +935,10 @@ shrinkWinE = error "shrinkWinE: not implemented"
 -- | Close the current window.
 -- If this is the last window open, quit the program.
 closeE :: Action
-closeE = deleteThisWindow
+closeE = do
+    n <- withWindows (length . toList)
+    when (n == 1) quitE
+    modifyWindows WS.delete
 
 -- | Make the current window the only window on the screen
 closeOtherE :: Action
