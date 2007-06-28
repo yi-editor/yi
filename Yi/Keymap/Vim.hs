@@ -421,7 +421,7 @@ multiCmdFM =
 -- We then apply the returned action 
 -- and then the operator. For example, we 'd'
 -- command stores the current point, does a movement, then deletes from
--- the old to the new point. FIXME: d is buggy!
+-- the old to the new point.
 cmd_op :: VimMode
 cmd_op = do
   cnt <- count
@@ -854,4 +854,4 @@ delete'  = ['\BS', '\127', keyBackspace ]
 any'     = ['\0' .. '\255']
 
 cursc' :: [Char]
-cursc'   = [keyPPage, keyNPage, keyLeft, keyRight, keyDown, keyUp, keyHome, keyEnd]
+cursc' = [keyPPage, keyNPage, keyLeft, keyRight, keyDown, keyUp, keyHome, keyEnd]
