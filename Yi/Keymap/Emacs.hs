@@ -333,7 +333,7 @@ getFolder (Just path) = do
 
 -- | Goto a line specified in the mini buffer.
 gotoLineE :: Action
-gotoLineE = withMinibuffer "goto line:" return  $ (\s -> gotoLnE (read s) >> return ())
+gotoLineE = withMinibuffer "goto line:" return  $ (\s -> withBuffer (gotoLn (read s) >> return ()))
 
 -- debug :: String -> Process
 -- debug = write . logPutStrLn

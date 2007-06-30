@@ -96,8 +96,6 @@ module Yi.Core (
         rightE,         -- :: Action
         leftOrSolE,     -- :: Int -> Action
         rightOrEolE,    -- :: Int -> Action
-        gotoLnE,        -- :: Int -> Action
-        gotoLnFromE,    -- :: Int -> Action
         gotoPointE,     -- :: Int -> Action
         getPointE,      -- :: EditorM Int
         getLineAndColE, -- :: EditorM (Int, Int)
@@ -380,14 +378,6 @@ botB :: BufferM ()
 botB = do
   n <- sizeB
   moveTo n
-
--- | Go to line number @n@
-gotoLnE :: Int -> YiM Int
-gotoLnE n = withBuffer (gotoLn n)
-
--- | Go to line @n@ offset from current line
-gotoLnFromE :: Int -> YiM Int
-gotoLnFromE n = withBuffer (gotoLnFrom n)
 
 -- | Go to a particular point.
 gotoPointE :: Int -> Action

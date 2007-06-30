@@ -20,6 +20,7 @@ import Yi.Kernel
 import Yi.Keymap
 import Yi.Interact hiding (write)
 import Yi.Event
+import Yi.Buffer
 
 evalToStringE :: String -> YiM String
 evalToStringE string = withKernel $ \kernel -> do
@@ -47,7 +48,7 @@ jumpToE filename line column = do
                then fnewE filename
                else error "file not found"
     (b:_) -> switchToBufferOtherWindowE b
-  gotoLnE line
+  withBuffer $ gotoLn line
   rightOrEolE column
 
 

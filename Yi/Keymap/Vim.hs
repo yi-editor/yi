@@ -80,16 +80,15 @@ tabifySpacesOnLineAndShift numOfShifts =
                         sol <- getPointE
                         firstNonSpaceE
                         -- ptOfNonSpace <- getPointE
-                        atSol <- atSolE 
-                        if (not atSol) then leftE
-                                       else return ()
+                        isAtSol <- atSolE 
+                        when (not isAtSol) leftE
                         ptOfLastSpace <- getPointE
                         msgE ("ptOfLastSpace= " ++ (show ptOfLastSpace) ++ "-" ++ (show sol) ++ "=" ++ (show (ptOfLastSpace - sol)))
                         let countSpace '\t' = tabsize
                             countSpace _ = 1 -- we'll assume nothing but tabs and spaces
-                        cnt <- if (atSol) then return 0
-                                            else readRegionE (mkVimRegion sol ptOfLastSpace) >>= return . sum . map countSpace
-                        if (not atSol) then deleteRegionE (mkVimRegion sol ptOfLastSpace)
+                        cnt <- if isAtSol then return 0
+                                          else readRegionE (mkVimRegion sol ptOfLastSpace) >>= return . sum . map countSpace
+                        if not isAtSol then deleteRegionE (mkVimRegion sol ptOfLastSpace)
                                        else return ()
 
                         let newcount = cnt + (shiftwidth * numOfShifts)
@@ -191,9 +190,9 @@ cmd_move = do
   let x = maybe 1 id cnt
   choice ([event c >> return (a x) | (c,a) <- moveCmdFM] ++
           [do event c; c' <- anyButEsc; return (a x c') | (c,a) <- move2CmdFM]) +++
-   (do event 'G'; return $ case cnt of 
-                            Nothing -> withBuffer (botB >> moveToSol)
-                            Just n  -> gotoLnE n >> return ())
+   (do event 'G'; return $ withBuffer $ case cnt of 
+                            Nothing -> botB >> moveToSol
+                            Just n  -> gotoLn n >> return ())
 
 --
 -- TODO: Does this belong in CharMove.hs ?
@@ -326,8 +325,8 @@ moveCmdFM =
     where
         left  i = leftOrSolE i
         right i = rightOrEolE i
-        up    i = gotoLnFromE (-i) >> return ()
-        down  i = gotoLnFromE i    >> return ()
+        up    i = withBuffer $ gotoLnFrom (-i) >> return ()
+        down  i = withBuffer $ gotoLnFrom i    >> return ()
         sol   _ = withBuffer moveToSol
         eol   _ = withBuffer moveToEol
 
@@ -699,7 +698,7 @@ ex_eval cmd = do
       fn s@(c:_) | isDigit c = do
         e <- lift $ try $ evaluate $ read s
         case e of Left _ -> errorE $ "The " ++show s++ " command is unknown."
-                  Right lineNum -> gotoLnE lineNum >> return ()
+                  Right lineNum -> withBuffer (gotoLn lineNum) >> return ()
 
       fn "w"          = viWrite
       fn ('w':' ':f)  = viWriteTo f
