@@ -37,13 +37,13 @@ newtype UniversalArg = UniversalArg (Maybe Int)
 instance Initializable UniversalArg where
     initial = UniversalArg Nothing
 
-withUnivArg :: (Maybe Int -> Action) -> Action
+withUnivArg :: YiAction m => (Maybe Int -> m ()) -> YiM ()
 withUnivArg cmd = do UniversalArg a <- getDynamic
-                     cmd a
+                     makeAction (cmd a)
                      setDynamic $ UniversalArg Nothing
 
-withIntArg :: (Int -> Action) -> Action
+withIntArg :: YiAction m => (Int -> m ()) -> Action
 withIntArg cmd = withUnivArg $ \arg -> cmd (fromMaybe 1 arg)
 
-repeatingArg :: Action -> Action
-repeatingArg f = withIntArg $ \n->replicateM_ n f
+repeatingArg :: (Monad m, YiAction m) => m () -> Action
+repeatingArg f = withIntArg $ \n -> replicateM_ n f
