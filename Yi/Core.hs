@@ -105,8 +105,6 @@ module Yi.Core (
 
         -- * Buffer editing
         deleteRegionB,
-        undoE,          -- :: Action
-        redoE,          -- :: Action
         revertE,        -- :: Action
 
         -- * Read parts of the buffer
@@ -125,7 +123,6 @@ module Yi.Core (
         setSelectionMarkPointB,
         getSelectionMarkPointB,
         exchangePointAndMarkB,
-        unsetMarkE,
         getBookmarkB,
 
         -- * Dynamically extensible state
@@ -354,9 +351,7 @@ topB = moveTo 0
 
 -- | Move cursor to end of buffer
 botB :: BufferM ()
-botB = do
-  n <- sizeB
-  moveTo n
+botB = moveTo =<< sizeB
 
 -- | Get the current line and column number
 getLineAndCol :: BufferM (Int, Int)
@@ -461,14 +456,6 @@ swapB = do eol <- atEol
            rightB
 
 -- ---------------------------------------------------------------------
-
-undoE :: Action
-undoE = withBuffer undo
-
-redoE :: Action
-redoE = withBuffer redo
-
--- ---------------------------------------------------------------------
 -- registers (TODO these may be redundant now that it is easy to thread
 -- state in key bindings, or maybe not.
 --
@@ -488,10 +475,6 @@ getRegE = readEditor yreg
 -- | Set the current buffer mark
 setSelectionMarkPointB :: Int -> BufferM ()
 setSelectionMarkPointB pos = do m <- getSelectionMarkB; setMarkPointB m pos
-
--- | Unset the current buffer mark so that there is no selection
-unsetMarkE :: Action
-unsetMarkE = withBuffer $ unsetMarkB
 
 -- | Get the current buffer mark
 getSelectionMarkPointB :: BufferM Int
@@ -728,11 +711,11 @@ fwriteToE f = withBuffer $ do setfileB f
 
 -- | Write all open buffers
 fwriteAllE :: Action
-fwriteAllE = undefined
+fwriteAllE = error "fwriteAllE not implemented"
 
 -- | Make a backup copy of file
 backupE :: FilePath -> Action
-backupE = undefined
+backupE = error "backupE not implemented"
 
 -- | Return a list of all buffers, and their indicies
 listBuffersE :: YiM [(String,Int)]

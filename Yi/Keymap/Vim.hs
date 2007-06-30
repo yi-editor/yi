@@ -79,7 +79,7 @@ tabifySpacesOnLineAndShift numOfShifts = withBuffer $ do
                         moveToSol
                         sol <- pointB
                         firstNonSpaceB
-                        -- ptOfNonSpace <- withBuffer pointB
+                        -- ptOfNonSpace <- pointB
                         isAtSol <- atSol
                         when (not isAtSol) leftB
                         ptOfLastSpace <- pointB
@@ -121,7 +121,7 @@ tabifySpacesOnLineAndShift numOfShifts = withBuffer $ do
 --
 
 keymap :: Keymap
-keymap = do write $ setWindowFillE '~' >> unsetMarkE >> setWindowStyleE defaultVimUiStyle
+keymap = do write $ setWindowFillE '~' >> withBuffer unsetMarkB >> setWindowStyleE defaultVimUiStyle
             runVim cmd_mode
 
 runVim :: VimMode -> Keymap
@@ -164,7 +164,7 @@ vis_mode = do
   write (msgE "-- VISUAL --" >> withBuffer (pointB >>= setSelectionMarkPointB)) 
   many (eval cmd_move)
   (vis_multi +++ vis_single)
-  write (msgClrE >> unsetMarkE)
+  write (msgClrE >> withBuffer unsetMarkB)
 
 
 ------------------------------------------------------------------------
@@ -184,7 +184,8 @@ count = option Nothing (many1' (satisfy isDigit) >>= return . Just . read)
 -- /operator/ commands (like d).
 --
 
-cmd_move :: VimProc (YiM ())
+cmd_move :: VimProc (YiM ()) 
+-- FIXME: This returns a general YiM action; however this makes sense only for buffer-only commands.
 cmd_move = do 
   cnt <- count
   let x = maybe 1 id cnt
@@ -366,30 +367,30 @@ anyButEscOrDel = oneOf $ any' \\ ('\ESC':delete')
 --
 singleCmdFM :: [(Char, Int -> Action)]
 singleCmdFM =
-    [('\^B',    upScreensE)             -- vim does (firstNonSpaceB;withBuffer $ moveXorSol)
+    [('\^B',    upScreensE)             -- vim does (firstNonSpaceB;moveXorSol)
     ,('\^F',    downScreensE)
     ,('\^G',    const viFileInfo)        -- hmm. not working. duh. we clear
     ,('\^L',    const refreshE)
-    ,('\^R',    flip replicateM_ redoE )
+    ,('\^R',    withBuffer . flip replicateM_ redo)
     ,('\^Z',    const suspendE)
     ,('D',      const (withBuffer readRestOfLnB >>= setRegE >> withBuffer deleteToEol))
     ,('J',      const (withBuffer (moveToEol >> deleteB)))    -- the "\n"
-    ,('U',      flip replicateM_ undoE)    -- NB not correct
+    ,('U',      withBuffer . flip replicateM_ undo)    -- NB not correct
     ,('n',      const $ do getRegexE >>=
                                msgE . ("/" ++) . fst . fromMaybe ([],undefined)
                            searchE Nothing [] GoRight)
-    ,('u',      flip replicateM_ undoE )
+    ,('u',      withBuffer . flip replicateM_ undo)
 
-    ,('X',      \i -> do p <- withBuffer pointB
-                         withBuffer $ moveXorSol i
-                         q <- withBuffer pointB
-                         withBuffer $ when (p-q > 0) $ deleteN (p-q) )
+    ,('X',      \i -> withBuffer $ do p <- pointB
+                                      moveXorSol i
+                                      q <- pointB
+                                      when (p-q > 0) $ deleteN (p-q) )
 
-    ,('x',      \i -> do p <- withBuffer pointB -- not handling eol properly
-                         withBuffer $ moveXorEol i
-                         q <- withBuffer pointB
-                         withBuffer $ moveTo p
-                         withBuffer $ when (q-p > 0) $ deleteN (q-p))
+    ,('x',      \i -> withBuffer $ do p <- pointB -- not handling eol properly
+                                      moveXorEol i
+                                      q <- pointB
+                                      moveTo p
+                                      when (q-p > 0) $ deleteN (q-p))
 
     ,('p',      (const $ do txt <- getRegE; withBuffer (moveXorEol 1 >> insertN txt >> leftB)))
 
@@ -471,7 +472,7 @@ cmd_op = do
 --
 vis_single :: VimMode
 vis_single =
-        let beginIns a = do write (a >> unsetMarkE) >> ins_mode
+        let beginIns a = do write (a >> withBuffer unsetMarkB) >> ins_mode
             yank = do txt <- withBuffer $ do
                          mrk <- getSelectionMarkPointB
                          pt <- pointB
@@ -737,10 +738,10 @@ ex_eval cmd = do
       fn "redr"       = refreshE
       fn "redraw"     = refreshE
 
-      fn "u"          = undoE
-      fn "undo"       = undoE
-      fn "r"          = redoE
-      fn "redo"       = redoE
+      fn "u"          = withBuffer undo
+      fn "undo"       = withBuffer undo
+      fn "r"          = withBuffer redo
+      fn "redo"       = withBuffer redo
 
       fn "sus"        = suspendE
       fn "suspend"    = suspendE
