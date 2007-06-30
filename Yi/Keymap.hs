@@ -228,3 +228,9 @@ class YiAction a where
 instance YiAction YiM where
     makeAction = id
 
+
+instance YiAction EditorM where
+    makeAction = withEditor
+
+instance YiAction BufferM where
+    makeAction = withBuffer
