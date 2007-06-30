@@ -100,7 +100,7 @@ killLineE = withUnivArg $ \a -> case a of
 -- | Kill the rest of line
 killRestOfLineE :: Action
 killRestOfLineE =
-    do eol <- atEolE
+    do eol <- withBuffer atEol
        l <- readRestOfLnE
        killringPut l
        killE

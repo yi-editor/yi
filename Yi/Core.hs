@@ -98,11 +98,6 @@ module Yi.Core (
         rightOrEolE,    -- :: Int -> Action
         getLineAndCol, -- :: EditorM (Int, Int)
 
-        atSolE,         -- :: EditorM Bool
-        atEolE,         -- :: EditorM Bool
-        atSofE,         -- :: EditorM Bool
-        atEofE,         -- :: EditorM Bool
-
         -- * Window-based movement
         upScreenE,      -- :: Action
         upScreensE,     -- :: Int -> Action
@@ -386,24 +381,6 @@ getLineAndCol = do
 
 ------------------------------------------------------------------------
 
--- | Is the point at the start of the line
-atSolE :: YiM Bool
-atSolE = withBuffer atSol
-
--- | Is the point at the end of the line
-atEolE :: YiM Bool
-atEolE = withBuffer atEol
-
--- | Is the point at the start of the file
-atSofE :: YiM Bool
-atSofE = withBuffer atSof
-
--- | Is the point at the end of the file
-atEofE :: YiM Bool
-atEofE = withBuffer atEof
-
-------------------------------------------------------------------------
-
 -- | Scroll up 1 screen
 upScreenE :: Action
 upScreenE = upScreensE 1
@@ -541,7 +518,7 @@ writeE c = withBuffer $ writeB c
 
 -- | Transpose two characters, (the Emacs C-t action)
 swapE :: Action
-swapE = do eol <- atEolE
+swapE = do eol <- withBuffer atEol
            when eol leftE
            c <- readE
            deleteE

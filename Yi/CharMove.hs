@@ -99,9 +99,9 @@ breadE = do
 -- | Perform movement action specified by @mov@ while not @chkend@ and
 -- @check@ applied to the 'Char' retuned by @rd@ are true.
 --
-doSkipWhile :: Action -> YiM Char -> YiM Bool -> (Char -> Bool) -> Action
+doSkipWhile :: Action -> YiM Char -> BufferM Bool -> (Char -> Bool) -> Action
 doSkipWhile mov rd chkend check = do
-    e <- chkend
+    e <- withBuffer chkend
     c <- rd
     when (not e && check c) (mov >> doSkipWhile mov rd chkend check)
 
@@ -109,7 +109,7 @@ doSkipWhile mov rd chkend check = do
 -- | Similar to 'doSkipWhile', but perform check on the char returned
 -- by @rd@, then always move, before branching.
 --
-doSkipCond :: Action -> YiM Char -> YiM Bool -> (Char -> Bool) -> Action
+doSkipCond :: Action -> YiM Char -> BufferM Bool -> (Char -> Bool) -> Action
 doSkipCond mov rd chkend check = do
     c <- rd
     mov
@@ -126,12 +126,12 @@ isNonWord = isSpace
 -- | Skip to next whitespace or non-whitespace inversely depending on
 -- the character under point.
 skipWordE :: Action
-skipWordE = doSkipCond rightE readE atEolE isNonWord
+skipWordE = doSkipCond rightE readE atEol isNonWord
 
 -- | Backwards skip to next whitespace or non-whitespace inversely
 -- depending on the character before point.
 bskipWordE :: Action
-bskipWordE = doSkipCond leftE breadE atSolE isNonWord
+bskipWordE = doSkipCond leftE breadE atSol isNonWord
 
 ------------------------------------------------------------------------
 
@@ -142,12 +142,12 @@ bdeleteE = leftE >> deleteE
 -- | Delete forward whitespace or non-whitespace depending on
 -- the character under point.
 killWordE :: Action
-killWordE = doSkipCond deleteE readE atEolE isNonWord
+killWordE = doSkipCond deleteE readE atEol isNonWord
 
 -- | Delete backward whitespace or non-whitespace depending on
 -- the character before point.
 bkillWordE :: Action
-bkillWordE = doSkipCond bdeleteE breadE atSolE isNonWord
+bkillWordE = doSkipCond bdeleteE breadE atSol isNonWord
 
 ------------------------------------------------------------------------
 

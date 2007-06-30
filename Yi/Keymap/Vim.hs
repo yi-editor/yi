@@ -80,7 +80,7 @@ tabifySpacesOnLineAndShift numOfShifts =
                         sol <- withBuffer pointB
                         firstNonSpaceE
                         -- ptOfNonSpace <- withBuffer pointB
-                        isAtSol <- atSolE 
+                        isAtSol <- withBuffer atSol
                         when (not isAtSol) leftE
                         ptOfLastSpace <- withBuffer pointB
                         msgE ("ptOfLastSpace= " ++ (show ptOfLastSpace) ++ "-" ++ (show sol) ++ "=" ++ (show (ptOfLastSpace - sol)))
@@ -435,7 +435,7 @@ cmd_op = do
         -- | Used to implement the 'dd' command.
         delCurLine :: Action
         delCurLine = (withBuffer moveToSol) >> killE >> deleteE >> 
-                     (atEofE >>= flip when (withBuffer lineUp)) >> 
+                     (withBuffer atEof >>= flip when (withBuffer lineUp)) >> 
                      firstNonSpaceE
 
         -- | operator (i.e. movement-parameterised) actions
@@ -581,7 +581,7 @@ cmd2other = let beginIns a = write a >> ins_mode
 ins_char :: VimMode
 ins_char = write . fn =<< anyButEscOrCtlN
     where fn c = case c of
-                    k | isDel k       -> do s <- atSofE
+                    k | isDel k       -> do s <- withBuffer atSof
                                             unless s (leftE >> deleteE)
                       | k == keyPPage -> upScreenE
                       | k == keyNPage -> downScreenE
@@ -591,7 +591,7 @@ ins_char = write . fn =<< anyButEscOrCtlN
                       | k == keyRight -> rightE
                       | k == keyEnd   -> (withBuffer moveToEol)
                       | k == keyHome  -> (withBuffer moveToSol)
-                    '\t' -> mapM_ insertE "    " -- XXX
+                    '\t' -> insertN "    "
                     _    -> insertE c
 
 anyButEscOrCtlN :: VimProc Char
@@ -633,7 +633,7 @@ rep_char = write . fn =<< anyButEsc
                       | k == keyHome  -> (withBuffer moveToSol)
                     '\t' -> mapM_ insertE "    " -- XXX
                     '\r' -> insertE '\n'
-                    _ -> do e <- atEolE
+                    _ -> do e <- withBuffer atEol
                             if e then insertE c else writeE c >> rightE
 
 -- ---------------------------------------------------------------------
