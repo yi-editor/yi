@@ -766,12 +766,12 @@ viFileInfo =
     where 
     showBufInfo :: BufferFileInfo -> String
     showBufInfo bufInfo = concat [ show $ bufInfoFileName bufInfo
-				 , " Line "
-				 , show $ bufInfoLineNo bufInfo
-				 , " ["
-				 , bufInfoPercent bufInfo
-				 , "]"
-				 ]
+         , " Line "
+         , show $ bufInfoLineNo bufInfo
+         , " ["
+         , bufInfoPercent bufInfo
+         , "]"
+         ]
 
 
 -- | Try to write a file in the manner of vi\/vim
@@ -783,7 +783,7 @@ viWrite = do
         Nothing -> errorE "no file name associate with buffer"
         Just f  -> do
             bufInfo <- bufInfoE
-	    let s   = bufInfoFileName bufInfo
+            let s   = bufInfoFileName bufInfo
             let msg = msgE $ show f ++" "++show s ++ "C written"
             catchJustE ioErrors (fwriteToE f >> msg) (msgE . show)
 
