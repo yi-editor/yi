@@ -137,12 +137,12 @@ bskipWordE = doSkipCond leftE breadE atSol isNonWord
 
 -- | Delete one character backward
 bdeleteE :: Action
-bdeleteE = leftE >> deleteE
+bdeleteE = leftE >> withBuffer deleteB
 
 -- | Delete forward whitespace or non-whitespace depending on
 -- the character under point.
 killWordE :: Action
-killWordE = doSkipCond deleteE readE atEol isNonWord
+killWordE = doSkipCond (withBuffer deleteB) readE atEol isNonWord
 
 -- | Delete backward whitespace or non-whitespace depending on
 -- the character before point.

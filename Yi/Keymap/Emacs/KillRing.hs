@@ -89,7 +89,7 @@ killRegionE :: Action
 killRegionE = do r <- getRegionE
                  text <- readRegionE r
                  killringPut text
-                 deleteRegionE r
+                 withBuffer $ deleteRegionB r
 
 -- | C-k
 killLineE :: Action
@@ -103,11 +103,11 @@ killRestOfLineE =
     do eol <- withBuffer atEol
        l <- readRestOfLnE
        killringPut l
-       killE
+       withBuffer deleteToEol
        when eol $
             do c <- readE
                killringPut [c]
-               deleteE
+               withBuffer deleteB
 
 -- | C-y
 yankE :: Action
@@ -126,7 +126,7 @@ killRingSaveE = do text <- readRegionE =<< getRegionE
 -- TODO: Handle argument, verify last command was a yank
 yankPopE :: Action
 yankPopE = do r <- getRegionE
-              deleteRegionE r
+              withBuffer $ deleteRegionB r
               kr@Killring {krContents = ring} <- getDynamic
               setDynamic $ kr {krContents = tail ring ++ [head ring]}
               yankE

@@ -136,14 +136,13 @@ diredDirBufferE dir = do
 diredRefreshE :: YiM ()
 diredRefreshE = do
     -- Clear buffer
-    end <- withBuffer sizeB
-    deleteRegionE (mkRegion 0 end)
-    withBuffer topB
+    withBuffer $ do end <- sizeB
+                    deleteRegionB (mkRegion 0 end)
     -- Write Header
-    (Just dir) <- withBuffer getfileB
+    Just dir <- withBuffer getfileB
     withBuffer $ insertN $ dir ++ ":\n"
     p <- withBuffer pointB
-    withBuffer (addOverlayB 0 (p-2) headStyle)
+    withBuffer $ (addOverlayB 0 (p-2) headStyle)
     -- Scan directory
     di <- lift $ diredScanDir dir
     let ds = DiredState dir M.empty di []
@@ -153,8 +152,8 @@ diredRefreshE = do
     let (strss, stys, strs) = unzip3 lines
         strss' = transpose $ map doPadding $ transpose $ strss
     ptsList <- mapM insertDiredLine $ zip3 strss' stys strs
-    withBuffer $ setDynamicB ds{diredFilePoints=ptsList}
-    withBuffer $ moveTo p
+    withBuffer $ do setDynamicB ds{diredFilePoints=ptsList}
+                    moveTo p
     return ()
     where
     headStyle = Style yellow black

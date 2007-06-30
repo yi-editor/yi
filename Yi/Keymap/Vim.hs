@@ -88,8 +88,8 @@ tabifySpacesOnLineAndShift numOfShifts =
                             countSpace _ = 1 -- we'll assume nothing but tabs and spaces
                         cnt <- if isAtSol then return 0
                                           else readRegionE (mkVimRegion sol ptOfLastSpace) >>= return . sum . map countSpace
-                        if not isAtSol then deleteRegionE (mkVimRegion sol ptOfLastSpace)
-                                       else return ()
+                        withBuffer $if not isAtSol then deleteRegionB (mkVimRegion sol ptOfLastSpace)
+                                                   else return ()
 
                         let newcount = cnt + (shiftwidth * numOfShifts)
                         if (newcount <= 0)
@@ -372,8 +372,8 @@ singleCmdFM =
     ,('\^L',    const refreshE)
     ,('\^R',    flip replicateM_ redoE )
     ,('\^Z',    const suspendE)
-    ,('D',      const (readRestOfLnE >>= setRegE >> killE))
-    ,('J',      const (withBuffer moveToEol >> deleteE))    -- the "\n"
+    ,('D',      const (readRestOfLnE >>= setRegE >> withBuffer deleteToEol))
+    ,('J',      const (withBuffer (moveToEol >> deleteB)))    -- the "\n"
     ,('U',      flip replicateM_ undoE )    -- NB not correct
     ,('n',      const $ do getRegexE >>=
                                msgE . ("/" ++) . fst . fromMaybe ([],undefined)
@@ -383,13 +383,13 @@ singleCmdFM =
     ,('X',      \i -> do p <- withBuffer pointB
                          leftOrSolE i
                          q <- withBuffer pointB
-                         when (p-q > 0) $ deleteNE (p-q) )
+                         withBuffer $ when (p-q > 0) $ deleteN (p-q) )
 
     ,('x',      \i -> do p <- withBuffer pointB -- not handling eol properly
                          rightOrEolE i
                          q <- withBuffer pointB
                          withBuffer $ moveTo p
-                         when (q-p > 0) $ deleteNE (q-p))
+                         withBuffer $ when (q-p > 0) $ deleteN (q-p))
 
     ,('p',      (const $ rightOrEolE 1 >> getRegE >>= (withBuffer . insertN) >> leftE))
 
@@ -434,8 +434,8 @@ cmd_op = do
     where
         -- | Used to implement the 'dd' command.
         delCurLine :: Action
-        delCurLine = (withBuffer moveToSol) >> killE >> deleteE >> 
-                     (withBuffer atEof >>= flip when (withBuffer lineUp)) >> 
+        delCurLine = withBuffer (moveToSol >> deleteToEol >> deleteB >> 
+                                 atEof >>= flip when lineUp) >> 
                      firstNonSpaceE
 
         -- | operator (i.e. movement-parameterised) actions
@@ -443,7 +443,7 @@ cmd_op = do
         opCmdFM =
             [('d', \i m -> replicateM_ i $ do
                               (p,q) <- withPointMove m
-                              deleteNE (max 0 (abs (q - p) + 1))  -- inclusive
+                              withBuffer $ deleteN (max 0 (abs (q - p) + 1))  -- inclusive
              ),
              ('y', \_ m -> do (p,q) <- withPointMove m
                               s <- (if p < q then readNM p q else readNM q p)
@@ -485,7 +485,7 @@ vis_single =
                            pt <- withBuffer pointB
                            text <- getRegE
                            withBuffer $ moveTo mrk
-                           deleteRegionE (mkVimRegion mrk pt)
+                           withBuffer $ deleteRegionB (mkVimRegion mrk pt)
                            (withBuffer . insertN) text
             cut  = do mrk <- withBuffer getSelectionMarkPointB
                       pt <- withBuffer pointB
@@ -493,7 +493,7 @@ vis_single =
                       readRegionE (mkVimRegion mrk pt) >>= setRegE
                       withBuffer $ moveTo mrk
                       (mrkRow,_) <- withBuffer getLineAndCol
-                      deleteRegionE (mkVimRegion mrk pt)
+                      withBuffer $ deleteRegionB (mkVimRegion mrk pt)
                       let rowsCut = ptRow - mrkRow
                       if (rowsCut > 2) then msgE ( (show rowsCut) ++ " fewer lines")
                                        else return ()
@@ -532,7 +532,7 @@ vis_multi = do
                                    pt <- withBuffer pointB
                                    text <- readRegionE (mkVimRegion mrk pt)
                                    withBuffer $ moveTo mrk
-                                   deleteRegionE (mkVimRegion mrk pt)
+                                   withBuffer $ deleteRegionB (mkVimRegion mrk pt)
                                    let convert '\n' = '\n'
                                        convert  _   = x
                                    (withBuffer . insertN) . map convert $ text] ++
@@ -559,8 +559,8 @@ cmd2other = let beginIns a = write a >> ins_mode
             do event 'o'     ; beginIns $ withBuffer $ moveToEol >> insertB '\n',
             do event 'O'     ; beginIns $ withBuffer $ moveToSol >> insertB '\n' >> lineUp,
             do event 'c'     ; beginIns $ not_implemented 'c',
-            do event 'C'     ; beginIns $ readRestOfLnE >>= setRegE >> killE,
-            do event 'S'     ; beginIns $ (withBuffer moveToSol) >> readLnE >>= setRegE >> killE,
+            do event 'C'     ; beginIns $ readRestOfLnE >>= setRegE >> withBuffer deleteToEol,
+            do event 'S'     ; beginIns $ (withBuffer moveToSol) >> readLnE >>= setRegE >> withBuffer deleteToEol,
             do event '/'     ; ex_mode "/",
 --          do event '?'   ; (with (not_implemented '?'), st{acc=[]}, Just $ cmd st),
             do event '\ESC'  ; write msgClrE,
@@ -582,7 +582,7 @@ ins_char :: VimMode
 ins_char = write . fn =<< anyButEscOrCtlN
     where fn c = case c of
                     k | isDel k       -> do s <- withBuffer atSof
-                                            unless s (leftE >> deleteE)
+                                            unless s (leftE >> withBuffer deleteB)
                       | k == keyPPage -> upScreenE
                       | k == keyNPage -> downScreenE
                       | k == keyUp    -> (withBuffer lineUp)
@@ -723,10 +723,10 @@ ex_eval cmd = do
       fn ('.':'!':f) = do
             ln  <- readLnE
             ln' <- pipeE f ln
-            withBuffer moveToSol
-            killE
-            (withBuffer . insertN) ln'
-            withBuffer moveToSol
+            withBuffer $ do moveToSol
+                            deleteToEol
+                            insertN ln'
+                            moveToSol
 
 --    Needs to occur in another buffer
 --    fn ('!':f) = pipeE f []

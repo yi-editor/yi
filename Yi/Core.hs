@@ -108,10 +108,7 @@ module Yi.Core (
         middleE,        -- :: Action
 
         -- * Buffer editing
-        deleteE,        -- :: Action
-        deleteNE,       -- :: Int -> Action
-        killE,          -- :: Action
-        deleteRegionE,  -- :: Region -> Action
+        deleteRegionB,
         writeE,         -- :: Char -> Action
         undoE,          -- :: Action
         redoE,          -- :: Action
@@ -452,22 +449,9 @@ scrollDownE = withWindow_ scrollDownW
 
 ------------------------------------------------------------------------
 
--- | Delete character under cursor
-deleteE :: Action
-deleteE = withBuffer $ deleteN 1
-
--- | Delete @n@ characters from under the cursor
-deleteNE :: Int -> Action
-deleteNE i = withBuffer $ deleteN i
-
--- | Kill to end of line
-killE :: Action
-killE = withBuffer deleteToEol
-
 -- | Delete an arbitrary part of the buffer
-deleteRegionE :: Region -> Action
-deleteRegionE r = withBuffer $
-                    deleteNAt (regionEnd r - regionStart r) (regionStart r)
+deleteRegionB :: Region -> BufferM ()
+deleteRegionB r = deleteNAt (regionEnd r - regionStart r) (regionStart r)
 
 
 -- | Read the char under the cursor
@@ -511,7 +495,7 @@ swapE :: Action
 swapE = do eol <- withBuffer atEol
            when eol leftE
            c <- readE
-           deleteE
+           withBuffer deleteB
            leftE
            withBuffer $ insertN [c]
            rightE

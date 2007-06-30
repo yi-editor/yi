@@ -62,7 +62,7 @@ keymap = selfInsertKeymap +++ makeProcess
               [
         ("TAB",      atomic $ autoIndentE),
         ("RET",      atomic $ repeatingArg $ insertB '\n'),
-        ("DEL",      atomic $ repeatingArg deleteE),
+        ("DEL",      atomic $ repeatingArg deleteB),
         ("BACKSP",   atomic $ repeatingArg bdeleteE),
         ("C-M-w",    atomic $ appendNextKillE),
         ("C-/",      atomic $ repeatingArg undoE),
@@ -73,7 +73,7 @@ keymap = selfInsertKeymap +++ makeProcess
         ("C-SPC",    atomic $ (pointB >>= setSelectionMarkPointB)),
         ("C-a",      atomic $ repeatingArg moveToSol),
         ("C-b",      atomic $ repeatingArg leftE),
-        ("C-d",      atomic $ repeatingArg deleteE),
+        ("C-d",      atomic $ repeatingArg deleteB),
         ("C-e",      atomic $ repeatingArg moveToEol),
         ("C-f",      atomic $ repeatingArg rightE),
         ("C-g",      atomic $ unsetMarkE), 
@@ -196,9 +196,9 @@ spacingOf = sum . map spacingOfChar
 indentToE :: Int -> YiM ()
 indentToE level = do 
   l <- readLnE
-  withBuffer moveToSol
-  killE
-  withBuffer $ insertN (replicate level ' ' ++ dropWhile isSpace l)
+  withBuffer $ do moveToSol
+                  deleteToEol
+                  insertN (replicate level ' ' ++ dropWhile isSpace l)
 
 
 -----------------------------
@@ -396,9 +396,9 @@ completionFunction f = do
   compl <- f text 
   -- it's important to do this before removing the text, 
   -- so if the completion function raises an exception, we don't delete the buffer contents.
-  withBuffer $ moveTo 0
-  deleteNE p
-  withBuffer $ insertN compl
+  withBuffer $ do moveTo 0
+                  deleteN p
+                  insertN compl
 
 withMinibuffer :: String -> (String -> YiM String) -> (String -> Action) -> Action
 withMinibuffer prompt completer act = do 
