@@ -84,8 +84,8 @@ type YiM = ReaderT Yi IO
 runKeymap :: Interact ev () -> [ev] -> [Action]
 runKeymap p evs = snd $ runWriter (I.runProcess p evs)
 
-write :: Action -> Interact ev ()
-write x = I.write (tell [x])
+write :: YiAction a => a () -> Interact ev ()
+write x = I.write (tell [makeAction x])
 
 
 -----------------------
@@ -219,4 +219,12 @@ handleJustE p h c = catchJustE p c h
 shutdown :: YiM ()
 shutdown = do ts <- readsRef threads
               lift $ mapM_ killThread ts
+
+-- -------------------------------------------
+
+class YiAction a where
+    makeAction :: a x -> YiM x
+
+instance YiAction YiM where
+    makeAction = id
 
