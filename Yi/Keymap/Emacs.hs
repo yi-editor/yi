@@ -69,8 +69,8 @@ keymap = selfInsertKeymap +++ makeProcess
         ("C-_",      atomic $ repeatingArg undoE),
         ("C-<left>", atomic $ repeatingArg prevWordE),
         ("C-<right>",atomic $ repeatingArg nextWordE),
-        ("C-@",      atomic $ (getPointE >>= setMarkE)),
-        ("C-SPC",    atomic $ (getPointE >>= setMarkE)),
+        ("C-@",      atomic $ (pointB >>= setSelectionMarkPointB)),
+        ("C-SPC",    atomic $ (pointB >>= setSelectionMarkPointB)),
         ("C-a",      atomic $ repeatingArg moveToSol),
         ("C-b",      atomic $ repeatingArg leftE),
         ("C-d",      atomic $ repeatingArg deleteE),
@@ -101,7 +101,7 @@ keymap = selfInsertKeymap +++ makeProcess
         ("C-x C-f",  atomic $ findFile),
         ("C-x C-s",  atomic $ fwriteE),
         ("C-x C-w",  atomic $ withMinibuffer "Write file: " (completeFileName Nothing) fwriteToE),
-        ("C-x C-x",  atomic $ exchangePointAndMarkE),
+        ("C-x C-x",  atomic $ exchangePointAndMarkB),
         ("C-x b",    atomic $ switchBufferE),
         ("C-x d",    atomic $ loadE "Yi.Dired" >> execE "Yi.Dired.diredE"),
         ("C-x e e",  atomic $ evalRegionE),
@@ -149,9 +149,9 @@ keymap = selfInsertKeymap +++ makeProcess
 
 savingExcursion :: YiM a -> YiM a
 savingExcursion f = do
-    p <- getPointE
+    p <- withBuffer pointB
     res <- f
-    gotoPointE p
+    withBuffer $ moveTo p
     return res
 
 getPreviousLineE :: YiM String
@@ -161,9 +161,9 @@ getPreviousLineE = savingExcursion $ do
 
 fetchPreviousIndentsE :: YiM [Int]
 fetchPreviousIndentsE = do
-  p0 <- getPointE
+  p0 <- withBuffer pointB
   withBuffer lineUp
-  p1 <- getPointE
+  p1 <- withBuffer pointB
   l <- readLnE
   let i = indentOf l
   if p0 == p1 || indentOf l == 0 then return [0] else do
@@ -391,12 +391,12 @@ completeFunctionName s = do
 
 completionFunction :: (String -> YiM String) -> YiM ()
 completionFunction f = do
-  p <- getPointE
+  p <- withBuffer pointB
   text <- readNM 0 p
   compl <- f text 
   -- it's important to do this before removing the text, 
   -- so if the completion function raises an exception, we don't delete the buffer contents.
-  gotoPointE 0
+  withBuffer $ moveTo 0
   deleteNE p
   insertNE compl
 

@@ -238,7 +238,7 @@ instance Initializable Isearch where
 
 isearchInitE :: YiM ()
 isearchInitE = do
-  p <- getPointE
+  p <- withBuffer pointB
   setDynamic (Isearch [("",p)])
   msgE $ "I-search: "
 
@@ -253,22 +253,22 @@ isearchAddE increment = do
   let (previous,p0) = head s
   let current = previous ++ increment
   msgE $ "I-search: " ++ current
-  prevPoint <- getPointE
-  gotoPointE p0
+  prevPoint <- withBuffer pointB
+  withBuffer $ moveTo p0
   mp <- withBuffer $ searchB current
   case mp of
-    Nothing -> do gotoPointE prevPoint -- go back to where we were
+    Nothing -> do withBuffer $ moveTo prevPoint -- go back to where we were
                   setDynamic $ Isearch ((current,p0):s)
                   msgE $ "Failing I-search: " ++ current
     Just p -> do setDynamic $ Isearch ((current,p):s)
-                 gotoPointE (p+length current)
+                 withBuffer $ moveTo (p+length current)
 
 isearchDelE :: YiM ()
 isearchDelE = do
   Isearch s <- getDynamic
   case s of
     (_:(text,p):rest) -> do
-      gotoPointE (p+length text)
+      withBuffer $ moveTo (p+length text)
       setDynamic $ Isearch ((text,p):rest)
       msgE $ "I-search: " ++ text
     _ -> return () -- if the searched string is empty, don't try to remove chars from it.
@@ -277,25 +277,25 @@ isearchDelE = do
 isearchNextE :: YiM ()
 isearchNextE = do
   Isearch ((current,p0):rest) <- getDynamic
-  gotoPointE (p0 + length current)
+  withBuffer $ moveTo (p0 + length current)
   mp <- withBuffer $ searchB current
   case mp of
     Nothing -> return ()
     Just p -> do setDynamic $ Isearch ((current,p):rest)
-                 gotoPointE (p+length current)
+                 withBuffer $ moveTo (p+length current)
   
 isearchFinishE :: YiM ()
 isearchFinishE = do
   Isearch s <- getDynamic
   let (_,p0) = last s
-  setMarkE p0
+  withBuffer $ setSelectionMarkPointB p0
   msgE "mark saved where search started"
 
 isearchCancelE :: YiM ()
 isearchCancelE = do
   Isearch s <- getDynamic
   let (_,p0) = last s
-  gotoPointE p0
+  withBuffer $ moveTo p0
   msgE "Quit"
   
 

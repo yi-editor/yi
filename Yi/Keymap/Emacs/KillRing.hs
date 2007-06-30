@@ -24,7 +24,7 @@ import Yi.Core
 import Yi.Keymap.Emacs.UnivArgument
 import Yi.Region
 import Yi.Keymap
-
+import Yi.Buffer
 import Data.Dynamic
 
 import Control.Monad ( when, replicateM_ )
@@ -80,8 +80,8 @@ killringModify f = do
 
 -- | Get the current region boundaries
 getRegionE :: YiM Region
-getRegionE = do m <- getMarkE
-                p <- getPointE
+getRegionE = do m <- withBuffer getSelectionMarkPointB
+                p <- withBuffer pointB
                 return $ mkRegion m p
 
 -- | C-w
@@ -114,7 +114,7 @@ yankE :: Action
 yankE = do (text:_) <- killringGet
            --kr@(Killring _ _ _) <- getDynamic undefined
            --let text = show kr
-           getPointE >>= setMarkE
+           withBuffer (pointB >>= setSelectionMarkPointB)
            insertNE text
 
 -- | M-w

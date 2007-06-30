@@ -90,7 +90,7 @@ import System.IO.Unsafe     ( unsafePerformIO )
 -- | Read character before point.
 breadE :: YiM Char
 breadE = do
-    p <- getPointE
+    p <- withBuffer pointB
     if p == 0
         then return '\0'
         else readNM (p-1) p >>= return . head
@@ -284,28 +284,28 @@ readWordE = withBuffer readWord_
 uppercaseWordE :: Action
 uppercaseWordE = withPointE $ do
         (_,i,j) <- readWordE
-        gotoPointE i
+        withBuffer $ moveTo i
         mapRangeE i (j+1) toUpper
 
 -- | lowerise word under the cursor
 lowercaseWordE :: Action
 lowercaseWordE = withPointE $ do
         (_,i,j) <- readWordE
-        gotoPointE i
+        withBuffer $ moveTo i
         mapRangeE i (j+1) toLower
 
 -- | capitalise the first letter of this word
 capitaliseWordE :: Action
 capitaliseWordE = withPointE $ do
         (_,i,_) <- readWordE
-        gotoPointE i
+        withBuffer $ moveTo i
         mapRangeE i (i+1) toUpper
 
 -- perform an action, and return to the current point
 withPointE :: Action -> Action
-withPointE f = do p <- getPointE
+withPointE f = do p <- withBuffer pointB
                   f
-                  gotoPointE p
+                  withBuffer $ moveTo p
 
 ------------------------------------------------------------------------
 

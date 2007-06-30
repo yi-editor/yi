@@ -96,9 +96,7 @@ module Yi.Core (
         rightE,         -- :: Action
         leftOrSolE,     -- :: Int -> Action
         rightOrEolE,    -- :: Int -> Action
-        gotoPointE,     -- :: Int -> Action
-        getPointE,      -- :: EditorM Int
-        getLineAndColE, -- :: EditorM (Int, Int)
+        getLineAndCol, -- :: EditorM (Int, Int)
 
         atSolE,         -- :: EditorM Bool
         atEolE,         -- :: EditorM Bool
@@ -141,10 +139,10 @@ module Yi.Core (
         getRegE,        -- :: EditorM String
 
         -- * Marks
-        setMarkE,
-        getMarkE,
+        setSelectionMarkPointB,
+        getSelectionMarkPointB,
+        exchangePointAndMarkB,
         unsetMarkE,
-        exchangePointAndMarkE,
         getBookmarkE,
         getBookmarkPointE,
         setBookmarkPointE,
@@ -379,22 +377,12 @@ botB = do
   n <- sizeB
   moveTo n
 
--- | Go to a particular point.
-gotoPointE :: Int -> Action
-gotoPointE p = withBuffer $ moveTo p
-
--- | Get the current point
-getPointE :: YiM Int
-getPointE = withBuffer pointB
-
 -- | Get the current line and column number
-getLineAndColE :: YiM (Int, Int)
-getLineAndColE = withBuffer lineAndColumn
-    where lineAndColumn :: BufferM (Int, Int)
-	  lineAndColumn = 
-	      do lineNo <- curLn
-		 colNo  <- offsetFromSol
-		 return (lineNo, colNo)
+getLineAndCol :: BufferM (Int, Int)
+getLineAndCol = do
+  lineNo <- curLn
+  colNo  <- offsetFromSol
+  return (lineNo, colNo)
 
 ------------------------------------------------------------------------
 
@@ -587,24 +575,24 @@ getRegE = readEditor yreg
 -- | Marks
 
 -- | Set the current buffer mark
-setMarkE :: Int -> Action
-setMarkE pos = withBuffer $ do m <- getSelectionMarkB; setMarkPointB m pos
+setSelectionMarkPointB :: Int -> BufferM ()
+setSelectionMarkPointB pos = do m <- getSelectionMarkB; setMarkPointB m pos
 
 -- | Unset the current buffer mark so that there is no selection
 unsetMarkE :: Action
 unsetMarkE = withBuffer $ unsetMarkB
 
 -- | Get the current buffer mark
-getMarkE :: YiM Int
-getMarkE = withBuffer $ do m <- getSelectionMarkB; getMarkPointB m
+getSelectionMarkPointB :: BufferM Int
+getSelectionMarkPointB = do m <- getSelectionMarkB; getMarkPointB m
 
 -- | Exchange point & mark.
 -- Maybe this is better put in Emacs\/Mg common file
-exchangePointAndMarkE :: Action
-exchangePointAndMarkE = do m <- getMarkE
-                           p <- getPointE
-                           setMarkE p
-                           gotoPointE m
+exchangePointAndMarkB :: BufferM ()
+exchangePointAndMarkB = do m <- getSelectionMarkPointB
+                           p <- pointB
+                           setSelectionMarkPointB p
+                           moveTo m
 
 getBookmarkE :: String -> YiM Mark
 getBookmarkE nm = withBuffer $ getMarkB (Just nm)

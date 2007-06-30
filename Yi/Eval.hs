@@ -76,13 +76,13 @@ consoleKeymap = do event (Event KEnter [])
                    write $ do x <- readLnE
                               case parseErrorMessage x of
                                 Just (f,l,c) -> jumpToE f l c
-                                Nothing -> do p <- getPointE
+                                Nothing -> do p <- withBuffer pointB
                                               withBuffer botB
-                                              p' <- getPointE
+                                              p' <- withBuffer pointB
                                               when (p /= p') $
                                                  insertNE ("\n" ++ prompt ++ x)
                                               insertNE "\n" 
-                                              pt <- getPointE
+                                              pt <- withBuffer pointB
                                               insertNE "Yi> "
                                               bm <- getBookmarkE "errorInsert"
                                               setBookmarkPointE bm pt

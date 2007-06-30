@@ -142,7 +142,7 @@ diredRefreshE = do
     -- Write Header
     (Just dir) <- withBuffer getfileB
     insertNE $ dir ++ ":\n"
-    p <- getPointE
+    p <- withBuffer pointB
     withBuffer (addOverlayB 0 (p-2) headStyle)
     -- Scan directory
     di <- lift $ diredScanDir dir
@@ -154,7 +154,7 @@ diredRefreshE = do
         strss' = transpose $ map doPadding $ transpose $ strss
     ptsList <- mapM insertDiredLine $ zip3 strss' stys strs
     withBuffer $ setDynamicB ds{diredFilePoints=ptsList}
-    gotoPointE p
+    withBuffer $ moveTo p
     return ()
     where
     headStyle = Style yellow black
@@ -176,7 +176,7 @@ diredRefreshE = do
 insertDiredLine :: ([String], Style, String) -> YiM (Point, Point, FilePath)
 insertDiredLine (fields, sty, filenm) = do
     insertNE $ (concat $ intersperse " " fields) ++ "\n"
-    p <- getPointE
+    p <- withBuffer pointB
     let p1 = p - length (last fields) - 1
         p2 = p - 1
     when (sty /= defaultStyle) $ withBuffer (addOverlayB p1 p2 sty)
@@ -325,7 +325,7 @@ diredLoadE = do
 -- | Extract the filename at point. NB this may fail if the buffer has been edited. Maybe use Markers instead.
 fileFromPoint :: YiM (FilePath, DiredEntry)
 fileFromPoint = do
-    p <- getPointE
+    p <- withBuffer pointB
     (DiredState _ _ des pl) <- withBuffer getDynamicB
     let (_,_,f) = head $ filter (\(p1,p2,_)->p<=p2) pl
     return (f, des M.! f)

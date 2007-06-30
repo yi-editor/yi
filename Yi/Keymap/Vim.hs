@@ -77,12 +77,12 @@ tabsize = 8  -- ts
 tabifySpacesOnLineAndShift :: Int -> Action
 tabifySpacesOnLineAndShift numOfShifts = 
                      do withBuffer moveToSol
-                        sol <- getPointE
+                        sol <- withBuffer pointB
                         firstNonSpaceE
-                        -- ptOfNonSpace <- getPointE
+                        -- ptOfNonSpace <- withBuffer pointB
                         isAtSol <- atSolE 
                         when (not isAtSol) leftE
-                        ptOfLastSpace <- getPointE
+                        ptOfLastSpace <- withBuffer pointB
                         msgE ("ptOfLastSpace= " ++ (show ptOfLastSpace) ++ "-" ++ (show sol) ++ "=" ++ (show (ptOfLastSpace - sol)))
                         let countSpace '\t' = tabsize
                             countSpace _ = 1 -- we'll assume nothing but tabs and spaces
@@ -161,7 +161,7 @@ rep_mode = write (msgE "-- REPLACE --") >> many rep_char >> event '\ESC' >> writ
 --
 vis_mode :: VimMode
 vis_mode = do 
-  write (msgE "-- VISUAL --" >> getPointE >>= setMarkE) 
+  write (msgE "-- VISUAL --" >> withBuffer (pointB >>= setSelectionMarkPointB)) 
   many (eval cmd_move)
   (vis_multi +++ vis_single)
   write (msgClrE >> unsetMarkE)
@@ -204,9 +204,9 @@ cmd_move = do
 --   nonprogrammers.. using a nice gui
 --
 detectMovement :: Action -> YiM Bool
-detectMovement act = do x <- getPointE
+detectMovement act = do x <- withBuffer pointB
                         act
-                        y <- getPointE
+                        y <- withBuffer pointB
                         if (x /= y) then return True
                                     else return False
 
@@ -380,15 +380,15 @@ singleCmdFM =
                            searchE Nothing [] GoRight)
     ,('u',      flip replicateM_ undoE )
 
-    ,('X',      \i -> do p <- getPointE
+    ,('X',      \i -> do p <- withBuffer pointB
                          leftOrSolE i
-                         q <- getPointE
+                         q <- withBuffer pointB
                          when (p-q > 0) $ deleteNE (p-q) )
 
-    ,('x',      \i -> do p <- getPointE -- not handling eol properly
+    ,('x',      \i -> do p <- withBuffer pointB -- not handling eol properly
                          rightOrEolE i
-                         q <- getPointE
-                         gotoPointE p
+                         q <- withBuffer pointB
+                         withBuffer $ moveTo p
                          when (q-p > 0) $ deleteNE (q-p))
 
     ,('p',      (const $ rightOrEolE 1 >> getRegE >>= insertNE >> leftE))
@@ -399,13 +399,13 @@ singleCmdFM =
     ,(keyNPage, downScreensE)
     ,(keyLeft,  leftOrSolE)
     ,(keyRight, rightOrEolE)
-    ,('~',      \i -> do p <- getPointE
+    ,('~',      \i -> do p <- withBuffer pointB
                          rightOrEolE i
-                         q <- getPointE
-                         gotoPointE p
+                         q <- withBuffer pointB
+                         withBuffer $ moveTo p
                          mapRangeE p q $ \c ->
                              if isUpper c then toLower c else toUpper c
-                         gotoPointE q)
+                         withBuffer $ moveTo q)
     ]
 
 multiCmdFM :: [(String, Int -> Action)]
@@ -456,10 +456,10 @@ cmd_op = do
         -- Return the current, and remote point.
         --
         withPointMove :: Action -> YiM (Int,Int)
-        withPointMove m = do p <- getPointE
+        withPointMove m = do p <- withBuffer pointB
                              m
-                             q <- getPointE
-                             when (p < q) $ gotoPointE p
+                             q <- withBuffer pointB
+                             when (p < q) $ withBuffer $ moveTo p
                              return (p,q)
 
 --
@@ -471,28 +471,28 @@ cmd_op = do
 vis_single :: VimMode
 vis_single =
         let beginIns a = do write (a >> unsetMarkE) >> ins_mode
-            yank = do mrk <- getMarkE
-                      pt <- getPointE
+            yank = do mrk <- withBuffer getSelectionMarkPointB
+                      pt <- withBuffer pointB
                       readRegionE (mkVimRegion mrk pt) >>= setRegE
-                      gotoPointE mrk
-                      (mrkRow,_) <- getLineAndColE
-                      gotoPointE pt
-                      (ptRow,_) <- getLineAndColE
+                      withBuffer $ moveTo mrk
+                      (mrkRow,_) <- withBuffer getLineAndCol
+                      withBuffer $ moveTo pt
+                      (ptRow,_) <- withBuffer getLineAndCol
                       let rowsYanked = ptRow - mrkRow
                       if (rowsYanked > 2) then msgE ( (show rowsYanked) ++ " lines yanked")
                                           else return ()
-            pasteOver = do mrk <- getMarkE
-                           pt <- getPointE
+            pasteOver = do mrk <- withBuffer getSelectionMarkPointB
+                           pt <- withBuffer pointB
                            text <- getRegE
-                           gotoPointE mrk
+                           withBuffer $ moveTo mrk
                            deleteRegionE (mkVimRegion mrk pt)
                            insertNE text
-            cut  = do mrk <- getMarkE
-                      pt <- getPointE
-                      (ptRow,_) <- getLineAndColE
+            cut  = do mrk <- withBuffer getSelectionMarkPointB
+                      pt <- withBuffer pointB
+                      (ptRow,_) <- withBuffer getLineAndCol
                       readRegionE (mkVimRegion mrk pt) >>= setRegE
-                      gotoPointE mrk
-                      (mrkRow,_) <- getLineAndColE
+                      withBuffer $ moveTo mrk
+                      (mrkRow,_) <- withBuffer getLineAndCol
                       deleteRegionE (mkVimRegion mrk pt)
                       let rowsCut = ptRow - mrkRow
                       if (rowsCut > 2) then msgE ( (show rowsCut) ++ " fewer lines")
@@ -516,10 +516,10 @@ vis_multi :: VimMode
 vis_multi = do
    cnt <- count 
    let i = maybe 1 id cnt
-       shiftBy x = do mark <- getMarkE
-                      (row2,_) <- getLineAndColE
-                      gotoPointE mark
-                      (row1,_) <- getLineAndColE
+       shiftBy x = do mark <- withBuffer getSelectionMarkPointB
+                      (row2,_) <- withBuffer getLineAndCol
+                      withBuffer $ moveTo mark
+                      (row1,_) <- withBuffer getLineAndCol
                       let step = if (row2 > row1) then (withBuffer lineDown)
                                                   else (withBuffer lineUp)
                           numOfLines = 1 + (abs (row2 - row1))
@@ -528,10 +528,10 @@ vis_multi = do
             events ">>" >> write (shiftBy i),
             events "<<" >> write (shiftBy (-i)),
             do event 'r'; x <- anyEvent; write $ do
-                                   mrk <- getMarkE
-                                   pt <- getPointE
+                                   mrk <- withBuffer getSelectionMarkPointB
+                                   pt <- withBuffer pointB
                                    text <- readRegionE (mkVimRegion mrk pt)
-                                   gotoPointE mrk
+                                   withBuffer $ moveTo mrk
                                    deleteRegionE (mkVimRegion mrk pt)
                                    let convert '\n' = '\n'
                                        convert  _   = x
