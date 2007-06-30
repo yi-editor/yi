@@ -37,6 +37,7 @@ import Control.Monad.Reader (asks)
 
 import Yi.Editor
 import Yi.History
+import Yi.Buffer
 
 --
 -- What's missing?
@@ -75,7 +76,7 @@ tabsize = 8  -- ts
 -- |  expandtabs is set.
 tabifySpacesOnLineAndShift :: Int -> Action
 tabifySpacesOnLineAndShift numOfShifts = 
-                     do solE
+                     do withBuffer moveToSol
                         sol <- getPointE
                         firstNonSpaceE
                         -- ptOfNonSpace <- getPointE
@@ -97,7 +98,7 @@ tabifySpacesOnLineAndShift numOfShifts =
                            else do
                              let tabs   = replicate (newcount `div` tabsize) '\t'
                                  spaces = replicate (newcount `mod` tabsize) ' '
-                             solE
+                             withBuffer moveToSol
                              insertNE $ if expandTabs then replicate newcount ' '
                                                       else tabs ++ spaces
                                                                                   
@@ -191,7 +192,7 @@ cmd_move = do
   choice ([event c >> return (a x) | (c,a) <- moveCmdFM] ++
           [do event c; c' <- anyButEsc; return (a x c') | (c,a) <- move2CmdFM]) +++
    (do event 'G'; return $ case cnt of 
-                            Nothing -> botE >> solE
+                            Nothing -> withBuffer (botB >> moveToSol)
                             Just n  -> gotoLnE n)
 
 --
@@ -275,12 +276,12 @@ moveCmdFM =
     ,('\127',       left)
     ,('l',          right)
     ,(' ',          right)
-    ,(keyHome,      const solE)
-    ,('0',          const solE)
+    ,(keyHome,      sol)
+    ,('0',          sol)
     ,('^',          const firstNonSpaceE)
-    ,('$',          const eolE)
-    ,(keyEnd,       const eolE)
-    ,('|',          \i -> solE >> rightOrEolE (i-1))
+    ,('$',          eol)
+    ,(keyEnd,       eol)
+    ,('|',          \i -> withBuffer moveToSol >> rightOrEolE (i-1))
 
 -- up/down
     ,('k',          up)
@@ -325,8 +326,10 @@ moveCmdFM =
     where
         left  i = leftOrSolE i
         right i = rightOrEolE i
-        up    i = if i > 100 then gotoLnFromE (-i) else replicateM_ i upE
-        down  i = if i > 100 then gotoLnFromE i    else replicateM_ i downE
+        up    i = if i > 100 then gotoLnFromE (-i) else withBuffer $ replicateM_ i lineUp
+        down  i = if i > 100 then gotoLnFromE i    else withBuffer $ replicateM_ i lineDown
+        sol   _ = withBuffer moveToSol
+        eol   _ = withBuffer moveToEol
 
 --
 -- more movement commands. these ones are paramaterised by a character
@@ -371,7 +374,7 @@ singleCmdFM =
     ,('\^R',    flip replicateM_ redoE )
     ,('\^Z',    const suspendE)
     ,('D',      const (readRestOfLnE >>= setRegE >> killE))
-    ,('J',      const (eolE >> deleteE))    -- the "\n"
+    ,('J',      const (withBuffer moveToEol >> deleteE))    -- the "\n"
     ,('U',      flip replicateM_ undoE )    -- NB not correct
     ,('n',      const $ do getRegexE >>=
                                msgE . ("/" ++) . fst . fromMaybe ([],undefined)
@@ -432,8 +435,8 @@ cmd_op = do
     where
         -- | Used to implement the 'dd' command.
         delCurLine :: Action
-        delCurLine = solE >> killE >> deleteE >> 
-                     (atEofE >>= flip when upE) >> 
+        delCurLine = (withBuffer moveToSol) >> killE >> deleteE >> 
+                     (atEofE >>= flip when (withBuffer lineUp)) >> 
                      firstNonSpaceE
 
         -- | operator (i.e. movement-parameterised) actions
@@ -518,8 +521,8 @@ vis_multi = do
                       (row2,_) <- getLineAndColE
                       gotoPointE mark
                       (row1,_) <- getLineAndColE
-                      let step = if (row2 > row1) then downE
-                                                  else upE
+                      let step = if (row2 > row1) then (withBuffer lineDown)
+                                                  else (withBuffer lineUp)
                           numOfLines = 1 + (abs (row2 - row1))
                       replicateM_ numOfLines (tabifySpacesOnLineAndShift x>>step)
    choice ([events "ZZ" >> write (viWrite >> quitE),
@@ -551,14 +554,14 @@ cmd2other = let beginIns a = write a >> ins_mode
             do event 'v'     ; vis_mode,
             do event 'R'     ; rep_mode,
             do event 'i'     ; ins_mode,
-            do event 'I'     ; beginIns solE,
+            do event 'I'     ; beginIns (withBuffer moveToSol),
             do event 'a'     ; beginIns $ rightOrEolE 1,
-            do event 'A'     ; beginIns eolE,
-            do event 'o'     ; beginIns $ eolE >> insertE '\n',
-            do event 'O'     ; beginIns $ solE >> insertE '\n' >> upE,
+            do event 'A'     ; beginIns (withBuffer moveToEol),
+            do event 'o'     ; beginIns $ (withBuffer moveToEol) >> insertE '\n',
+            do event 'O'     ; beginIns $ (withBuffer moveToSol) >> insertE '\n' >> (withBuffer lineUp),
             do event 'c'     ; beginIns $ not_implemented 'c',
             do event 'C'     ; beginIns $ readRestOfLnE >>= setRegE >> killE,
-            do event 'S'     ; beginIns $ solE >> readLnE >>= setRegE >> killE,
+            do event 'S'     ; beginIns $ (withBuffer moveToSol) >> readLnE >>= setRegE >> killE,
             do event '/'     ; ex_mode "/",
 --          do event '?'   ; (with (not_implemented '?'), st{acc=[]}, Just $ cmd st),
             do event '\ESC'  ; write msgClrE,
@@ -583,12 +586,12 @@ ins_char = write . fn =<< anyButEscOrCtlN
                                             unless s (leftE >> deleteE)
                       | k == keyPPage -> upScreenE
                       | k == keyNPage -> downScreenE
-                      | k == keyUp    -> upE
-                      | k == keyDown  -> downE
+                      | k == keyUp    -> (withBuffer lineUp)
+                      | k == keyDown  -> (withBuffer lineDown)
                       | k == keyLeft  -> leftE
                       | k == keyRight -> rightE
-                      | k == keyEnd   -> eolE
-                      | k == keyHome  -> solE
+                      | k == keyEnd   -> (withBuffer moveToEol)
+                      | k == keyHome  -> (withBuffer moveToSol)
                     '\t' -> mapM_ insertE "    " -- XXX
                     _    -> insertE c
 
@@ -623,12 +626,12 @@ rep_char = write . fn =<< anyButEsc
                     k | isDel k       -> leftE -- should undo unless pointer has been moved
                       | k == keyPPage -> upScreenE
                       | k == keyNPage -> downScreenE
-                      | k == keyUp    -> upE
-                      | k == keyDown  -> downE
+                      | k == keyUp    -> (withBuffer lineUp)
+                      | k == keyDown  -> (withBuffer lineDown)
                       | k == keyLeft  -> leftE
                       | k == keyRight -> rightE
-                      | k == keyEnd   -> eolE
-                      | k == keyHome  -> solE
+                      | k == keyEnd   -> (withBuffer moveToEol)
+                      | k == keyHome  -> (withBuffer moveToSol)
                     '\t' -> mapM_ insertE "    " -- XXX
                     '\r' -> insertE '\n'
                     _ -> do e <- atEolE
@@ -709,7 +712,7 @@ ex_eval cmd = do
                            unless unchanged viWrite
                            closeE
       fn "n"          = nextBufW
-      fn "$"          = botE
+      fn "$"          = withBuffer botB
       fn "p"          = prevBufW
       fn ('s':'p':_)  = splitE
       fn ('e':' ':f)  = fnewE f
@@ -721,10 +724,10 @@ ex_eval cmd = do
       fn ('.':'!':f) = do
             ln  <- readLnE
             ln' <- pipeE f ln
-            solE
+            withBuffer moveToSol
             killE
-            mapM_ insertE ln' -- urgh.
-            solE
+            insertNE ln'
+            withBuffer moveToSol
 
 --    Needs to occur in another buffer
 --    fn ('!':f) = pipeE f []

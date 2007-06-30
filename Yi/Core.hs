@@ -91,12 +91,8 @@ module Yi.Core (
         prevBufW,       -- :: Action
 
         -- * Buffer point movement
-        topE,           -- :: Action
-        botE,           -- :: Action
-        solE,           -- :: Action
-        eolE,           -- :: Action
-        downE,          -- :: Action
-        upE,            -- :: Action
+        topB,
+        botB,
         leftE,          -- :: Action
         rightE,         -- :: Action
         leftOrSolE,     -- :: Int -> Action
@@ -381,30 +377,14 @@ suspendE = withUI UI.suspend
 -- Movement operations
 
 -- | Move cursor to origin
-topE :: Action
-topE = withBuffer $ moveTo 0
+topB :: BufferM ()
+topB = moveTo 0
 
 -- | Move cursor to end of buffer
-botE :: Action
-botE = withBuffer $ do
-            n <- sizeB
-            moveTo n
-
--- | Move cursor to start of line
-solE :: Action
-solE = withBuffer moveToSol
-
--- | Move cursor to end of line
-eolE :: Action
-eolE = withBuffer moveToEol
-
--- | Move cursor down 1 line
-downE :: Action
-downE = withBuffer lineDown
-
--- | Move cursor up to the same point on the previous line
-upE :: Action
-upE = withBuffer lineUp
+botB :: BufferM ()
+botB = do
+  n <- sizeB
+  moveTo n
 
 -- | Go to line number @n@
 gotoLnE :: Int -> Action
@@ -803,13 +783,14 @@ revertE = do
             case mfp of
                      Just fp -> do
                              s <- liftIO $ readFile fp
-                             end <- withBuffer sizeB
-                             p <- getPointE
-                             deleteRegionE (mkRegion 0 end)
-                             topE
-                             insertNE s
-                             gotoPointE p
-                             withBuffer clearUndosB
+                             withBuffer $ do
+                                  end <- sizeB
+                                  p <- pointB
+                                  moveTo 0
+                                  deleteN end
+                                  insertN s
+                                  moveTo p
+                                  clearUndosB
                              msgE ("Reverted from " ++ show fp)
                      Nothing -> do
                                 msgE "Can't revert, no file associated with buffer."
@@ -890,9 +871,6 @@ closeBufferE bufName = do
   switchToBufferE nextB
   withEditor $ deleteBuffer b'
 
-killBufferE :: FBuffer -> Action
-killBufferE = withEditor . deleteBuffer
-
 ------------------------------------------------------------------------
 
 -- | Is the current buffer unmodifed? (currently buggy, we need
@@ -920,8 +898,7 @@ nextWinE = nextWindow
 prevWinE :: Action
 prevWinE = prevWindow
 
--- | Split the current window, opening a second window onto this buffer.
--- Windows smaller than 3 lines cannot be split.
+-- | Split the current window, opening a second window onto this buffer
 splitE :: Action
 splitE = splitWindow
 

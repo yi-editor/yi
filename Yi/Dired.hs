@@ -44,7 +44,6 @@ module Yi.Dired (
        ,diredDirBufferE
     ) where
 
-import Control.Concurrent
 import Control.Monad
 import Control.Monad.Trans
 import Data.List
@@ -102,18 +101,18 @@ instance Initializable DiredState where
 diredKeymap :: Keymap
 diredKeymap = do
     (rebind [
-             ("p", write $ upE),
-             ("n", write $ downE),
+             ("p", write $ lineUp),
+             ("n", write $ lineDown),
              ("b", write $ leftE),
              ("f", write $ rightE),
-             ("m", write $ diredMarkE),
-             ("d", write $ diredMarkDelE),
+             ("m", write $ diredMark),
+             ("d", write $ diredMarkDel),
              ("g", write $ diredRefreshE),
              ("^", write $ diredUpDirE),
              ("+", write $ diredCreateDirE),
              ("RET", write $ diredLoadE),
-             ("SPC", write $ downE),
-             ("BACKSP", write $ diredUnmarkE)
+             ("SPC", write $ lineDown),
+             ("BACKSP", write $ diredUnmark)
                        ] keymap)
 
 diredE :: YiM ()
@@ -139,7 +138,7 @@ diredRefreshE = do
     -- Clear buffer
     end <- withBuffer sizeB
     deleteRegionE (mkRegion 0 end)
-    topE
+    withBuffer topB
     -- Write Header
     (Just dir) <- withBuffer getfileB
     insertNE $ dir ++ ":\n"
@@ -285,21 +284,21 @@ modeString fm = ""
 diredOmitFile :: String -> Bool
 diredOmitFile = (=~".*~$|.*#$|^\\.$|^\\..$")
 
-diredMarkE :: YiM ()
-diredMarkE = diredMarkWithChar '*' downE
+diredMark :: BufferM ()
+diredMark = diredMarkWithChar '*' lineDown
 
-diredMarkDelE :: YiM ()
-diredMarkDelE = diredMarkWithChar 'D' downE
+diredMarkDel :: BufferM ()
+diredMarkDel = diredMarkWithChar 'D' lineDown
 
-diredMarkWithChar :: Char -> YiM () -> YiM ()
+diredMarkWithChar :: Char -> BufferM () -> BufferM ()
 diredMarkWithChar c mv = do
-    p <- getPointE
-    solE >> insertE c >> deleteE
-    gotoPointE p
+    p <- pointB
+    moveToSol >> insertN [c] >> deleteB
+    moveTo p
     mv
 
-diredUnmarkE :: YiM ()
-diredUnmarkE = diredMarkWithChar ' ' upE
+diredUnmark :: BufferM ()
+diredUnmark = diredMarkWithChar ' ' lineUp
 
 diredLoadE :: YiM ()
 diredLoadE = do

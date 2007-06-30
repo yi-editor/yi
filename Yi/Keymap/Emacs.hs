@@ -37,7 +37,7 @@ import Data.List
 
 import Control.Monad
 import Control.Monad.Trans
-import Control.Monad.Reader (asks)
+
 import System.FilePath
 import System.Directory
 
@@ -71,10 +71,10 @@ keymap = selfInsertKeymap +++ makeProcess
         ("C-<right>",atomic $ repeatingArg nextWordE),
         ("C-@",      atomic $ (getPointE >>= setMarkE)),
         ("C-SPC",    atomic $ (getPointE >>= setMarkE)),
-        ("C-a",      atomic $ repeatingArg solE),
+        ("C-a",      atomic $ repeatingArg moveToSol),
         ("C-b",      atomic $ repeatingArg leftE),
         ("C-d",      atomic $ repeatingArg deleteE),
-        ("C-e",      atomic $ repeatingArg eolE),
+        ("C-e",      atomic $ repeatingArg moveToEol),
         ("C-f",      atomic $ repeatingArg rightE),
         ("C-g",      atomic $ unsetMarkE), 
 --      ("C-g",      atomic $ keyboardQuitE), -- C-g should be a more general quit that also unsets the mark.
@@ -82,9 +82,9 @@ keymap = selfInsertKeymap +++ makeProcess
         ("C-j",      atomic $ repeatingArg $ insertE '\n'),
         ("C-k",      atomic $ killLineE),
         ("C-m",      atomic $ repeatingArg $ insertE '\n'),
-        ("C-n",      atomic $ repeatingArg downE),
+        ("C-n",      atomic $ repeatingArg lineDown),
         ("C-o",      atomic $ repeatingArg (insertE '\n' >> leftE)),
-        ("C-p",      atomic $ repeatingArg upE),
+        ("C-p",      atomic $ repeatingArg lineUp),
         ("C-q",               insertNextC),
 --      ("C-r",      atomic $ backwardsIncrementalSearchE),
         ("C-s",      isearchProcess),
@@ -115,8 +115,8 @@ keymap = selfInsertKeymap +++ makeProcess
         ("C-x u",    atomic $ repeatingArg undoE),
         ("C-x v",    atomic $ repeatingArg shrinkWinE),
         ("C-y",      atomic $ yankE),
-        ("M-<",      atomic $ repeatingArg topE),
-        ("M->",      atomic $ repeatingArg botE),
+        ("M-<",      atomic $ repeatingArg topB),
+        ("M->",      atomic $ repeatingArg botB),
         ("M-%",      atomic $ queryReplaceE),
         ("M-BACKSP", atomic $ repeatingArg bkillWordE),
 --      ("M-a",      atomic $ repeatingArg backwardSentenceE),
@@ -133,12 +133,12 @@ keymap = selfInsertKeymap +++ makeProcess
         ("M-w",      atomic $ killRingSaveE),
         ("M-x",      atomic $ executeExtendedCommandE),
         ("M-y",      atomic $ yankPopE),
-        ("<home>",   atomic $ repeatingArg solE),
-        ("<end>",    atomic $ repeatingArg eolE),
+        ("<home>",   atomic $ repeatingArg moveToSol),
+        ("<end>",    atomic $ repeatingArg moveToEol),
         ("<left>",   atomic $ repeatingArg leftE),
         ("<right>",  atomic $ repeatingArg rightE),
-        ("<up>",     atomic $ repeatingArg upE),
-        ("<down>",   atomic $ repeatingArg downE),
+        ("<up>",     atomic $ repeatingArg lineUp),
+        ("<down>",   atomic $ repeatingArg lineDown),
         ("<next>",   atomic $ repeatingArg downScreenE),
         ("<prior>",  atomic $ repeatingArg upScreenE)
         ]
@@ -156,13 +156,13 @@ savingExcursion f = do
 
 getPreviousLineE :: YiM String
 getPreviousLineE = savingExcursion $ do
-                     upE
+                     withBuffer lineUp
                      readLnE
 
 fetchPreviousIndentsE :: YiM [Int]
 fetchPreviousIndentsE = do
   p0 <- getPointE
-  upE
+  withBuffer lineUp
   p1 <- getPointE
   l <- readLnE
   let i = indentOf l
@@ -196,7 +196,7 @@ spacingOf = sum . map spacingOfChar
 indentToE :: Int -> YiM ()
 indentToE level = do 
   l <- readLnE
-  solE
+  withBuffer moveToSol
   killE
   insertNE (replicate level ' ' ++ dropWhile isSpace l)
 
@@ -258,8 +258,8 @@ evalRegionE = do
 
 -- | Define an atomic interactive command.
 -- Purose is to define "transactional" boundaries for killring, undo, etc.
-atomic :: Action -> KProc ()
-atomic cmd = write $ do cmd
+atomic :: YiAction a => a x -> KProc ()
+atomic cmd = write $ do makeAction cmd
                         killringEndCmd
 
 -- * Code for various commands
@@ -429,7 +429,7 @@ scrollDownE :: Action
 scrollDownE = withUnivArg $ \a ->
               case a of
                  Nothing -> downScreenE
-                 Just n -> replicateM_ n downE
+                 Just n -> withBuffer $ replicateM_ n lineDown
 
 switchBufferE :: Action
 switchBufferE = withMinibuffer "switch to buffer:" completeBufferName switchToBufferWithNameE

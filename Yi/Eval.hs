@@ -76,7 +76,7 @@ consoleKeymap = do event (Event KEnter [])
                               case parseErrorMessage x of
                                 Just (f,l,c) -> jumpToE f l c
                                 Nothing -> do p <- getPointE
-                                              botE
+                                              withBuffer botB
                                               p' <- getPointE
                                               when (p /= p') $
                                                  insertNE ("\n" ++ prompt ++ x)
