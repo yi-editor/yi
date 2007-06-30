@@ -56,7 +56,8 @@ precompile ghc (moduleName, dependencies) = do
        putStrLn $ "Precompiling failed: " ++ moduleName
   return (moduleName, exitCode)
   
-precompiles = [("Yi.Keymap.Emacs", []),
+precompiles = [("Yi.Main", []),
+               ("Yi.Keymap.Emacs", []),
                ("Yi.Keymap.Vim", []),
                ("Yi.Vty.UI", ["vty"]),
                ("Yi.Gtk.UI", ["gtk", "sourceview"]),

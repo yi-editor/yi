@@ -22,6 +22,7 @@ module Yi.Main (main, Kernel) where
 import Prelude hiding (error)
 
 import qualified Yi.Core    as Core
+import qualified Yi.Buffer  as Buffer
 import qualified Yi.Keymap  as Keymap
 import qualified Yi.Eval    as Eval
 import Yi.Kernel
@@ -101,8 +102,8 @@ do_opt o = case o of
                        _ -> return (return ()) -- Processed differently
     Help     -> usage    >> exitWith ExitSuccess
     Version  -> versinfo >> exitWith ExitSuccess
-    OptIgnore _ -> return Core.nopE
-    LineNo l -> return (Core.gotoLnE (read l))
+    OptIgnore _ -> return (return ())
+    LineNo l -> return (Keymap.withBuffer (Buffer.gotoLn (read l)) >> return ())
     File file -> return (Core.fnewE file)
     EditorNm emul -> case map toLower emul `elem` editors of
                        True -> let km = editorToKeymap emul in return $ do                                  
