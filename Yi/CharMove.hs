@@ -24,48 +24,48 @@
 module Yi.CharMove (
 
         -- * Parameterised movement
-        doSkipWhile,    -- :: Action -> IO Bool -> (Char -> Bool) -> Action
-        doSkipCond,     -- :: Action -> IO Bool -> (Char -> Bool) -> Action
-        moveWhileE,     -- :: (Char -> Bool) -> Direction -> Action
-        withPointE,     -- :: Action -> Action
+        doSkipWhile,    -- :: BufferM () -> IO Bool -> (Char -> Bool) -> BufferM ()
+        doSkipCond,     -- :: BufferM () -> IO Bool -> (Char -> Bool) -> BufferM ()
+        moveWhileB,     -- :: (Char -> Bool) -> Direction -> BufferM ()
+        withPointB,     -- :: BufferM () -> BufferM ()
 
         (>>||),         -- :: IO Bool -> IO Bool -> IO Bool
 
         -- * Word movement
-        skipWordE,      -- :: Action
-        bskipWordE,     -- :: Action
-        firstNonSpaceE, -- :: Action
-        nextWordE,      -- :: Action
-        prevWordE,      -- :: Action
+        skipWordB,      -- :: BufferM ()
+        bskipWordB,     -- :: BufferM ()
+        firstNonSpaceB, -- :: BufferM ()
+        nextWordB,      -- :: BufferM ()
+        prevWordB,      -- :: BufferM ()
 
         -- * Moving to a specific character
-        nextCInc,       -- :: Char -> Action
-        nextCExc,       -- :: Char -> Action
-        prevCInc,       -- :: Char -> Action
-        prevCExc,       -- :: Char -> Action
+        nextCInc,       -- :: Char -> BufferM ()
+        nextCExc,       -- :: Char -> BufferM ()
+        prevCInc,       -- :: Char -> BufferM ()
+        prevCExc,       -- :: Char -> BufferM ()
 
         -- * Paragraph movement
-        nextNParagraphs,    -- :: Int -> Action
-        prevNParagraphs,    -- :: Int -> Action
+        nextNParagraphs,    -- :: Int -> BufferM ()
+        prevNParagraphs,    -- :: Int -> BufferM ()
 
         -- * Reading words
-        readWordE,      -- :: IO (String,Int,Int)
-        readWordLeftE,  -- :: IO (String,Int,Int)
+        readWordB,      -- :: IO (String,Int,Int)
+        readWordLeftB,  -- :: IO (String,Int,Int)
 
         -- * Word completion
-        wordCompleteE,  -- :: Action
-        resetCompleteE, -- :: Action
+        wordCompleteB,  -- :: BufferM ()
+        resetCompleteB, -- :: BufferM ()
 
-        breadE,         -- :: IO Char
+        breadB,         -- :: IO Char
 
         -- * Delete
-        bdeleteE,       -- :: Action
-        killWordE,      -- :: Action
-        bkillWordE,     -- :: Action
+        bdeleteB,       -- :: BufferM ()
+        killWordB,      -- :: BufferM ()
+        bkillWordB,     -- :: BufferM ()
 
-        capitaliseWordE, -- :: Action
-        uppercaseWordE,  -- :: Action
-        lowercaseWordE,  -- :: Action
+        capitaliseWordB, -- :: BufferM ()
+        uppercaseWordB,  -- :: BufferM ()
+        lowercaseWordB,  -- :: BufferM ()
 
         dropSpace,      -- :: String -> String
     ) where
@@ -73,7 +73,6 @@ module Yi.CharMove (
 import Yi.Buffer 
 import Yi.Core
 import Text.Regex.Posix.String ( compExtended, compile, execBlank)
-import Yi.Keymap
 import Yi.Monad
 import Data.Char
 import qualified Data.Map as M
@@ -88,20 +87,20 @@ import Data.IORef
 import System.IO.Unsafe     ( unsafePerformIO )
 
 -- | Read character before point.
-breadE :: YiM Char
-breadE = do
-    p <- withBuffer pointB
+breadB :: BufferM Char
+breadB = do
+    p <- pointB
     if p == 0
         then return '\0'
         else readNM (p-1) p >>= return . head
 
 --
--- | Perform movement action specified by @mov@ while not @chkend@ and
+-- | Perform movement BufferM () specified by @mov@ while not @chkend@ and
 -- @check@ applied to the 'Char' retuned by @rd@ are true.
 --
-doSkipWhile :: Action -> YiM Char -> BufferM Bool -> (Char -> Bool) -> Action
+doSkipWhile :: BufferM () -> BufferM Char -> BufferM Bool -> (Char -> Bool) -> BufferM ()
 doSkipWhile mov rd chkend check = do
-    e <- withBuffer chkend
+    e <- chkend
     c <- rd
     when (not e && check c) (mov >> doSkipWhile mov rd chkend check)
 
@@ -109,7 +108,7 @@ doSkipWhile mov rd chkend check = do
 -- | Similar to 'doSkipWhile', but perform check on the char returned
 -- by @rd@, then always move, before branching.
 --
-doSkipCond :: Action -> YiM Char -> BufferM Bool -> (Char -> Bool) -> Action
+doSkipCond :: BufferM () -> BufferM Char -> BufferM Bool -> (Char -> Bool) -> BufferM ()
 doSkipCond mov rd chkend check = do
     c <- rd
     mov
@@ -125,66 +124,65 @@ isNonWord = isSpace
 
 -- | Skip to next whitespace or non-whitespace inversely depending on
 -- the character under point.
-skipWordE :: Action
-skipWordE = doSkipCond rightE readE atEol isNonWord
+skipWordB :: BufferM ()
+skipWordB = doSkipCond rightB readB atEol isNonWord
 
 -- | Backwards skip to next whitespace or non-whitespace inversely
 -- depending on the character before point.
-bskipWordE :: Action
-bskipWordE = doSkipCond leftE breadE atSol isNonWord
+bskipWordB :: BufferM ()
+bskipWordB = doSkipCond leftB breadB atSol isNonWord
 
 ------------------------------------------------------------------------
 
 -- | Delete one character backward
-bdeleteE :: Action
-bdeleteE = leftE >> withBuffer deleteB
+bdeleteB :: BufferM ()
+bdeleteB = leftB >> deleteB
 
 -- | Delete forward whitespace or non-whitespace depending on
 -- the character under point.
-killWordE :: Action
-killWordE = doSkipCond (withBuffer deleteB) readE atEol isNonWord
+killWordB :: BufferM ()
+killWordB = doSkipCond deleteB readB atEol isNonWord
 
 -- | Delete backward whitespace or non-whitespace depending on
 -- the character before point.
-bkillWordE :: Action
-bkillWordE = doSkipCond bdeleteE breadE atSol isNonWord
+bkillWordB :: BufferM ()
+bkillWordB = doSkipCond bdeleteB breadB atSol isNonWord
 
 ------------------------------------------------------------------------
 
 -- | Move to first char of next word forwards
-nextWordE :: Action
-nextWordE = do moveWhileE (isAlphaNum) GoRight
-               moveWhileE (not.isAlphaNum)  GoRight
+nextWordB :: BufferM ()
+nextWordB = do moveWhileB (isAlphaNum) GoRight
+               moveWhileB (not.isAlphaNum)  GoRight
 
 -- | Move to first char of next word backwards
-prevWordE :: Action
-prevWordE = do moveWhileE (isAlphaNum)      GoLeft
-               moveWhileE (not.isAlphaNum)  GoLeft
+prevWordB :: BufferM ()
+prevWordB = do moveWhileB (isAlphaNum)      GoLeft
+               moveWhileB (not.isAlphaNum)  GoLeft
 
 ------------------------------------------------------------------------
 
 -- | Move to the next occurence of @c@
-nextCInc :: Char -> Action
-nextCInc c = rightE >> moveWhileE (/= c) GoRight
+nextCInc :: Char -> BufferM ()
+nextCInc c = rightB >> moveWhileB (/= c) GoRight
 
 -- | Move to the character before the next occurence of @c@
-nextCExc :: Char -> Action
-nextCExc c = nextCInc c >> leftE
+nextCExc :: Char -> BufferM ()
+nextCExc c = nextCInc c >> leftB
 
 -- | Move to the previous occurence of @c@
-prevCInc :: Char -> Action
-prevCInc c = leftE  >> moveWhileE (/= c) GoLeft
+prevCInc :: Char -> BufferM ()
+prevCInc c = leftB  >> moveWhileB (/= c) GoLeft
 
 -- | Move to the character after the previous occurence of @c@
-prevCExc :: Char -> Action
-prevCExc c = prevCInc c >> rightE
+prevCExc :: Char -> BufferM ()
+prevCExc c = prevCInc c >> rightB
 
 ------------------------------------------------------------------------
 
 -- | Move to first non-space character in this line
-firstNonSpaceE :: Action
-firstNonSpaceE = do
-    withBuffer $ do
+firstNonSpaceB :: BufferM ()
+firstNonSpaceB = do
         moveToSol
         fix $ \loop -> do
             eol <- atEol
@@ -193,9 +191,8 @@ firstNonSpaceE = do
                            when (isSpace k) (rightB >> loop)
 
 -- | Move down next @n@ paragraphs
-nextNParagraphs :: Int -> Action    -- could be rewritten in a more functional style
+nextNParagraphs :: Int -> BufferM ()    -- could be rewritten in a more functional style
 nextNParagraphs n = do
-    withBuffer $ do
         eof <- sizeB
         let loop = do
                 p <- pointB
@@ -209,9 +206,8 @@ nextNParagraphs n = do
         replicateM_ n loop
 
 -- | Move up prev @n@ paragraphs
-prevNParagraphs :: Int -> Action
+prevNParagraphs :: Int -> BufferM ()
 prevNParagraphs n = do
-    withBuffer $ do
         let loop = do
                 p <- pointB
                 when (p > 0) $ do
@@ -231,8 +227,8 @@ prevNParagraphs n = do
 -- | Shift the point, until predicate is true, leaving point at final
 -- location.
 
-moveWhileE :: (Char -> Bool) -> Direction -> Action
-moveWhileE f d = withBuffer (moveWhile_ f d)
+moveWhileB :: (Char -> Bool) -> Direction -> BufferM ()
+moveWhileB f d = moveWhile_ f d
 --
 -- Internal moveWhile function to avoid unnec. ui updates
 -- not for external consumption
@@ -256,8 +252,8 @@ moveWhile_ f dir = do
 ------------------------------------------------------------------------
 
 -- | Read word to the left of the cursor
-readWordLeftE :: YiM (String,Int,Int)
-readWordLeftE = withBuffer readWordLeft_
+readWordLeftB :: BufferM (String,Int,Int)
+readWordLeftB = readWordLeft_
 
 -- Core-internal worker
 readWordLeft_ :: BufferM (String,Int,Int)
@@ -275,37 +271,37 @@ readWordLeft_ = do
     return (s,q,p)
 
 -- | Read word under cursor
-readWordE :: YiM (String,Int,Int)
-readWordE = withBuffer readWord_
+readWordB :: BufferM (String,Int,Int)
+readWordB = readWord_
 
 ------------------------------------------------------------------------
 
 -- | capitalise the word under the cursor
-uppercaseWordE :: Action
-uppercaseWordE = withPointE $ do
-        (_,i,j) <- readWordE
-        withBuffer $ moveTo i
-        mapRangeE i (j+1) toUpper
+uppercaseWordB :: BufferM ()
+uppercaseWordB = withPointB $ do
+        (_,i,j) <- readWordB
+        moveTo i
+        mapRangeB i (j+1) toUpper
 
 -- | lowerise word under the cursor
-lowercaseWordE :: Action
-lowercaseWordE = withPointE $ do
-        (_,i,j) <- readWordE
-        withBuffer $ moveTo i
-        mapRangeE i (j+1) toLower
+lowercaseWordB :: BufferM ()
+lowercaseWordB = withPointB $ do
+        (_,i,j) <- readWordB
+        moveTo i
+        mapRangeB i (j+1) toLower
 
 -- | capitalise the first letter of this word
-capitaliseWordE :: Action
-capitaliseWordE = withPointE $ do
-        (_,i,_) <- readWordE
-        withBuffer $ moveTo i
-        mapRangeE i (i+1) toUpper
+capitaliseWordB :: BufferM ()
+capitaliseWordB = withPointB $ do
+        (_,i,_) <- readWordB
+        moveTo i
+        mapRangeB i (i+1) toUpper
 
--- perform an action, and return to the current point
-withPointE :: Action -> Action
-withPointE f = do p <- withBuffer pointB
+-- perform an BufferM (), and return to the current point
+withPointB :: BufferM () -> BufferM ()
+withPointB f = do p <- pointB
                   f
-                  withBuffer $ moveTo p
+                  moveTo p
 
 ------------------------------------------------------------------------
 
@@ -330,7 +326,7 @@ readWord_ = do
 -- | Word completion
 --
 -- when doing keyword completion, we need to keep track of the word
--- we're trying to complete. Finding this word is an IO action.
+-- we're trying to complete. Finding this word is an IO BufferM ().
 --
 
 -- remember the word, if any, we're trying to complete, previous matches
@@ -346,15 +342,14 @@ completions = unsafePerformIO $ newIORef Nothing -- FIXME! Unsafeperformio is no
 --
 -- | Switch out of completion mode.
 --
-resetCompleteE :: Action
-resetCompleteE = writeRef completions Nothing
+resetCompleteB :: BufferM ()
+resetCompleteB = writeRef completions Nothing
 
 --
--- The word-completion action, down the buffer
+-- The word-completion BufferM (), down the buffer
 --
-wordCompleteE :: Action
-wordCompleteE = withBuffer $ 
-        (readRef completions) >>= loop >>= (writeRef completions)
+wordCompleteB :: BufferM ()
+wordCompleteB = (readRef completions) >>= loop >>= (writeRef completions)
 
   where
     --

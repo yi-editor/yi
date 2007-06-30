@@ -103,8 +103,8 @@ diredKeymap = do
     (rebind [
              ("p", write $ lineUp),
              ("n", write $ lineDown),
-             ("b", write $ leftE),
-             ("f", write $ rightE),
+             ("b", write $ leftB),
+             ("f", write $ rightB),
              ("m", write $ diredMark),
              ("d", write $ diredMarkDel),
              ("g", write $ diredRefreshE),

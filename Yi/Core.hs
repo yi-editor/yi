@@ -92,10 +92,6 @@ module Yi.Core (
         -- * Buffer point movement
         topB,
         botB,
-        leftE,          -- :: Action
-        rightE,         -- :: Action
-        leftOrSolE,     -- :: Int -> Action
-        rightOrEolE,    -- :: Int -> Action
         getLineAndCol, -- :: EditorM (Int, Int)
 
         -- * Window-based movement
@@ -109,20 +105,17 @@ module Yi.Core (
 
         -- * Buffer editing
         deleteRegionB,
-        writeE,         -- :: Char -> Action
         undoE,          -- :: Action
         redoE,          -- :: Action
         revertE,        -- :: Action
 
         -- * Read parts of the buffer
-        readE,          -- :: EditorM Char
-        readRegionE,    -- :: Region -> EditorM String
-        readLnE,        -- :: EditorM String
+        readRegionB,    -- :: Region -> EditorM String
+        readLnB,        -- :: EditorM String
         readNM,         -- :: Int -> Int -> EditorM String
-        readRestOfLnE,  -- :: EditorM String
-        readAllE,       -- :: EditorM String
+        readRestOfLnB,  -- :: EditorM String
 
-        swapE,          -- :: Action
+        swapB,          -- :: Action
 
         -- * Basic registers
         setRegE,        -- :: String -> Action
@@ -133,16 +126,14 @@ module Yi.Core (
         getSelectionMarkPointB,
         exchangePointAndMarkB,
         unsetMarkE,
-        getBookmarkE,
-        getBookmarkPointE,
-        setBookmarkPointE,
+        getBookmarkB,
 
         -- * Dynamically extensible state
         getDynamic,
         setDynamic,
 
         -- * higher level ops
-        mapRangeE,              -- :: Int -> Int -> (Char -> Char) -> Action
+        mapRangeB,
 
         -- * Interacting with external commands
         pipeE,                   -- :: String -> String -> EditorM String
@@ -415,23 +406,6 @@ middleE = withWindowAndBuffer $ \w -> do
                    moveTo (tospnt w)
                    replicateM_ (height w `div` 2) lineDown
 
--- ---------------------------------------------------------------------
-
--- | move the point left (backwards) in the buffer
-leftE :: Action
-leftE = withBuffer leftB
-
--- | move the point right (forwards) in the buffer
-rightE :: Action
-rightE = withBuffer rightB
-
--- | Move left @x@ or to start of line
-leftOrSolE :: Int -> Action
-leftOrSolE x = withBuffer $ moveXorSol x
-
--- | Move right @x@ or to end of line
-rightOrEolE :: Int -> Action
-rightOrEolE x = withBuffer $ moveXorEol x
 
 -- ---------------------------------------------------------------------
 -- Window based operations
@@ -454,51 +428,37 @@ deleteRegionB :: Region -> BufferM ()
 deleteRegionB r = deleteNAt (regionEnd r - regionStart r) (regionStart r)
 
 
--- | Read the char under the cursor
-readE :: YiM Char
-readE = withBuffer readB
-
-
 -- | Read an arbitrary part of the buffer
-readRegionE :: Region -> YiM String
-readRegionE r = readNM (regionStart r) (regionEnd r)
+readRegionB :: Region -> BufferM String
+readRegionB r = readNM (regionStart r) (regionEnd r)
 
 -- | Read the line the point is on
-readLnE :: YiM String
-readLnE = withBuffer $ do
+readLnB :: BufferM String
+readLnB = do
     i <- indexOfSol
     j <- indexOfEol
     nelemsB (j-i) i
 
 -- | Read from - to
-readNM :: Int -> Int -> YiM String
-readNM i j = withBuffer $ nelemsB (j-i) i
-
--- | Return the contents of the buffer as a string (note that this will
--- be very expensive on large (multi-megabyte) buffers)
-readAllE :: YiM String
-readAllE = withBuffer elemsB
+readNM :: Int -> Int -> BufferM String
+readNM i j = nelemsB (j-i) i
 
 -- | Read from point to end of line
-readRestOfLnE :: YiM String
-readRestOfLnE = withBuffer $ do
+readRestOfLnB :: BufferM String
+readRestOfLnB = do
     p <- pointB
     j <- indexOfEol
     nelemsB (j-p) p
 
--- | Write char to point
-writeE :: Char -> Action
-writeE c = withBuffer $ writeB c
-
 -- | Transpose two characters, (the Emacs C-t action)
-swapE :: Action
-swapE = do eol <- withBuffer atEol
-           when eol leftE
-           c <- readE
-           withBuffer deleteB
-           leftE
-           withBuffer $ insertN [c]
-           rightE
+swapB :: BufferM ()
+swapB = do eol <- atEol
+           when eol leftB
+           c <- readB
+           deleteB
+           leftB
+           insertN [c]
+           rightB
 
 -- ---------------------------------------------------------------------
 
@@ -545,14 +505,9 @@ exchangePointAndMarkB = do m <- getSelectionMarkPointB
                            setSelectionMarkPointB p
                            moveTo m
 
-getBookmarkE :: String -> YiM Mark
-getBookmarkE nm = withBuffer $ getMarkB (Just nm)
+getBookmarkB :: String -> BufferM Mark
+getBookmarkB nm = getMarkB (Just nm)
 
-setBookmarkPointE :: Mark -> Point -> Action
-setBookmarkPointE bookmark pos = withBuffer $ setMarkPointB bookmark pos
-
-getBookmarkPointE :: Mark -> YiM Point
-getBookmarkPointE bookmark = withBuffer $ getMarkPointB bookmark
 
 -- ---------------------------------------------------------------------
 -- | Dynamically-extensible state components.
@@ -825,11 +780,10 @@ closeE = do
 -- Fold over a range is probably useful too..
 --
 -- !!!This is a very bad implementation; delete; apply; and insert the result.
-mapRangeE :: Int -> Int -> (Char -> Char) -> Action
-mapRangeE from to fn
+mapRangeB :: Int -> Int -> (Char -> Char) -> BufferM ()
+mapRangeB from to fn
     | from < 0  = return ()
     | otherwise = do
-        withBuffer $ do
             eof <- sizeB
             when (to < eof) $ do
                 let loop j | j <= 0    = return ()

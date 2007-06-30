@@ -79,15 +79,15 @@ killringModify f = do
 -- * Killring actions
 
 -- | Get the current region boundaries
-getRegionE :: YiM Region
-getRegionE = do m <- withBuffer getSelectionMarkPointB
-                p <- withBuffer pointB
+getRegionB :: BufferM Region
+getRegionB = do m <- getSelectionMarkPointB
+                p <- pointB
                 return $ mkRegion m p
 
 -- | C-w
 killRegionE :: Action
-killRegionE = do r <- getRegionE
-                 text <- readRegionE r
+killRegionE = do r <- withBuffer getRegionB
+                 text <- withBuffer $ readRegionB r
                  killringPut text
                  withBuffer $ deleteRegionB r
 
@@ -101,11 +101,11 @@ killLineE = withUnivArg $ \a -> case a of
 killRestOfLineE :: Action
 killRestOfLineE =
     do eol <- withBuffer atEol
-       l <- readRestOfLnE
+       l <- withBuffer readRestOfLnB
        killringPut l
        withBuffer deleteToEol
        when eol $
-            do c <- readE
+            do c <- withBuffer readB
                killringPut [c]
                withBuffer deleteB
 
@@ -119,13 +119,13 @@ yankE = do (text:_) <- killringGet
 
 -- | M-w
 killRingSaveE :: Action
-killRingSaveE = do text <- readRegionE =<< getRegionE
+killRingSaveE = do text <- withBuffer (readRegionB =<< getRegionB)
                    killringPut text
 -- | M-y
 
 -- TODO: Handle argument, verify last command was a yank
 yankPopE :: Action
-yankPopE = do r <- getRegionE
+yankPopE = do r <- withBuffer getRegionB
               withBuffer $ deleteRegionB r
               kr@Killring {krContents = ring} <- getDynamic
               setDynamic $ kr {krContents = tail ring ++ [head ring]}

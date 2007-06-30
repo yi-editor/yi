@@ -48,8 +48,8 @@ jumpToE filename line column = do
                then fnewE filename
                else error "file not found"
     (b:_) -> switchToBufferOtherWindowE b
-  withBuffer $ gotoLn line
-  rightOrEolE column
+  withBuffer $ do gotoLn line
+                  moveXorEol column
 
 
 parseErrorMessage :: String -> Maybe (String, Int, Int)
@@ -57,15 +57,15 @@ parseErrorMessage ln = do
   result :: (Array Int String) <- ln =~~ "^(.+):([0-9]+):([0-9]+):.*$"
   return (result!1, read (result!2), read (result!3))
 
-parseErrorMessageE :: YiM (String, Int, Int)
-parseErrorMessageE = do
-  ln <- readLnE 
+parseErrorMessageB :: BufferM (String, Int, Int)
+parseErrorMessageB = do
+  ln <- readLnB
   let Just location = parseErrorMessage ln
   return location
 
 jumpToErrorE :: YiM ()
 jumpToErrorE = do
-  (f,l,c) <- parseErrorMessageE
+  (f,l,c) <- withBuffer parseErrorMessageB
   jumpToE f l c
 
 prompt :: String
@@ -73,17 +73,18 @@ prompt = "Yi> "
 
 consoleKeymap :: Keymap
 consoleKeymap = do event (Event KEnter [])
-                   write $ do x <- readLnE
+                   write $ do x <- withBuffer readLnB
                               case parseErrorMessage x of
                                 Just (f,l,c) -> jumpToE f l c
-                                Nothing -> do p <- withBuffer pointB
-                                              withBuffer botB
-                                              p' <- withBuffer pointB
-                                              when (p /= p') $
-                                                 withBuffer $ insertN ("\n" ++ prompt ++ x)
-                                              withBuffer $ insertN "\n" 
-                                              pt <- withBuffer pointB
-                                              withBuffer $ insertN "Yi> "
-                                              bm <- getBookmarkE "errorInsert"
-                                              setBookmarkPointE bm pt
+                                Nothing -> do withBuffer $ do
+                                                p <- pointB
+                                                botB
+                                                p' <- pointB
+                                                when (p /= p') $
+                                                   insertN ("\n" ++ prompt ++ x)
+                                                insertN "\n" 
+                                                pt <- pointB
+                                                insertN "Yi> "
+                                                bm <- getBookmarkB "errorInsert"
+                                                setMarkPointB bm pt
                                               execE $ dropWhile (== '>') $ dropWhile (/= '>') $ x

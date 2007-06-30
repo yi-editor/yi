@@ -53,7 +53,7 @@ historyStart = do
 historyFinish :: YiM ()
 historyFinish = do
   (History _cur cont) <- getDynamic
-  curValue <- readAllE
+  curValue <- withBuffer elemsB
   setDynamic $ History (-1) (nub $ dropWhile null $ (curValue:cont))
 
 debugHist :: YiM ()
@@ -64,7 +64,7 @@ debugHist = do
 historyMove :: Int -> YiM ()
 historyMove delta = do
   (History cur cont) <- getDynamic
-  curValue <- readAllE
+  curValue <- withBuffer elemsB
   let len = length cont
       next = cur + delta
       nextValue = cont !! next

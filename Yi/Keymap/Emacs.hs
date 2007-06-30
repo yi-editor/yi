@@ -63,19 +63,19 @@ keymap = selfInsertKeymap +++ makeProcess
         ("TAB",      atomic $ autoIndentE),
         ("RET",      atomic $ repeatingArg $ insertB '\n'),
         ("DEL",      atomic $ repeatingArg deleteB),
-        ("BACKSP",   atomic $ repeatingArg bdeleteE),
+        ("BACKSP",   atomic $ repeatingArg bdeleteB),
         ("C-M-w",    atomic $ appendNextKillE),
         ("C-/",      atomic $ repeatingArg undoE),
         ("C-_",      atomic $ repeatingArg undoE),
-        ("C-<left>", atomic $ repeatingArg prevWordE),
-        ("C-<right>",atomic $ repeatingArg nextWordE),
+        ("C-<left>", atomic $ repeatingArg prevWordB),
+        ("C-<right>",atomic $ repeatingArg nextWordB),
         ("C-@",      atomic $ (pointB >>= setSelectionMarkPointB)),
         ("C-SPC",    atomic $ (pointB >>= setSelectionMarkPointB)),
         ("C-a",      atomic $ repeatingArg moveToSol),
-        ("C-b",      atomic $ repeatingArg leftE),
+        ("C-b",      atomic $ repeatingArg leftB),
         ("C-d",      atomic $ repeatingArg deleteB),
         ("C-e",      atomic $ repeatingArg moveToEol),
-        ("C-f",      atomic $ repeatingArg rightE),
+        ("C-f",      atomic $ repeatingArg rightB),
         ("C-g",      atomic $ unsetMarkE), 
 --      ("C-g",      atomic $ keyboardQuitE), -- C-g should be a more general quit that also unsets the mark.
         ("C-i",      atomic $ autoIndentE),
@@ -83,12 +83,12 @@ keymap = selfInsertKeymap +++ makeProcess
         ("C-k",      atomic $ killLineE),
         ("C-m",      atomic $ repeatingArg $ insertB '\n'),
         ("C-n",      atomic $ repeatingArg lineDown),
-        ("C-o",      atomic $ repeatingArg (withBuffer (insertB '\n') >> leftE)),
+        ("C-o",      atomic $ repeatingArg (insertB '\n' >> leftB)),
         ("C-p",      atomic $ repeatingArg lineUp),
         ("C-q",               insertNextC),
 --      ("C-r",      atomic $ backwardsIncrementalSearchE),
         ("C-s",      isearchProcess),
-        ("C-t",      atomic $ repeatingArg $ swapE),
+        ("C-t",      atomic $ repeatingArg $ swapB),
         ("C-u",               readArgC),
         ("C-v",      atomic $ scrollDownE),
         ("C-w",      atomic $ killRegionE),
@@ -118,25 +118,25 @@ keymap = selfInsertKeymap +++ makeProcess
         ("M-<",      atomic $ repeatingArg topB),
         ("M->",      atomic $ repeatingArg botB),
         ("M-%",      atomic $ queryReplaceE),
-        ("M-BACKSP", atomic $ repeatingArg bkillWordE),
+        ("M-BACKSP", atomic $ repeatingArg bkillWordB),
 --      ("M-a",      atomic $ repeatingArg backwardSentenceE),
-        ("M-b",      atomic $ repeatingArg prevWordE),
-        ("M-c",      atomic $ repeatingArg capitaliseWordE),
-        ("M-d",      atomic $ repeatingArg killWordE),
+        ("M-b",      atomic $ repeatingArg prevWordB),
+        ("M-c",      atomic $ repeatingArg capitaliseWordB),
+        ("M-d",      atomic $ repeatingArg killWordB),
 --      ("M-e",      atomic $ repeatingArg forwardSentenceE),
-        ("M-f",      atomic $ repeatingArg nextWordE),
+        ("M-f",      atomic $ repeatingArg nextWordB),
 --      ("M-h",      atomic $ repeatingArg markParagraphE),
 --      ("M-k",      atomic $ repeatingArg killSentenceE),
-        ("M-l",      atomic $ repeatingArg lowercaseWordE),
+        ("M-l",      atomic $ repeatingArg lowercaseWordB),
 --      ("M-t",      atomic $ repeatingArg transposeWordsE),
-        ("M-u",      atomic $ repeatingArg uppercaseWordE),
+        ("M-u",      atomic $ repeatingArg uppercaseWordB),
         ("M-w",      atomic $ killRingSaveE),
         ("M-x",      atomic $ executeExtendedCommandE),
         ("M-y",      atomic $ yankPopE),
         ("<home>",   atomic $ repeatingArg moveToSol),
         ("<end>",    atomic $ repeatingArg moveToEol),
-        ("<left>",   atomic $ repeatingArg leftE),
-        ("<right>",  atomic $ repeatingArg rightE),
+        ("<left>",   atomic $ repeatingArg leftB),
+        ("<right>",  atomic $ repeatingArg rightB),
         ("<up>",     atomic $ repeatingArg lineUp),
         ("<down>",   atomic $ repeatingArg lineDown),
         ("<next>",   atomic $ repeatingArg downScreenE),
@@ -147,41 +147,41 @@ keymap = selfInsertKeymap +++ makeProcess
 ----------------------------
 -- autoindent
 
-savingExcursion :: YiM a -> YiM a
+savingExcursion :: BufferM a -> BufferM a
 savingExcursion f = do
-    p <- withBuffer pointB
+    p <- pointB
     res <- f
-    withBuffer $ moveTo p
+    moveTo p
     return res
 
-getPreviousLineE :: YiM String
-getPreviousLineE = savingExcursion $ do
-                     withBuffer lineUp
-                     readLnE
+getPreviousLineB :: BufferM String
+getPreviousLineB = savingExcursion $ do
+                     lineUp
+                     readLnB
 
-fetchPreviousIndentsE :: YiM [Int]
+fetchPreviousIndentsE :: BufferM [Int]
 fetchPreviousIndentsE = do
-  p0 <- withBuffer pointB
-  withBuffer lineUp
-  p1 <- withBuffer pointB
-  l <- readLnE
+  p0 <- pointB
+  lineUp
+  p1 <- pointB
+  l <- readLnB
   let i = indentOf l
   if p0 == p1 || indentOf l == 0 then return [0] else do
     is <- fetchPreviousIndentsE
     return (i:is)
     
-cycleIndentsE :: [Int] -> YiM ()
+cycleIndentsE :: [Int] -> BufferM ()
 cycleIndentsE indents = do
-  l <- readLnE
+  l <- readLnB
   let curIndent = indentOf l
   let (below, above) = span (< curIndent) $ indents
-  msgE $ show (below, above)
+  -- msgE $ show (below, above)
   indentToE $ last (above ++ below)
 
-autoIndentE :: YiM ()
+autoIndentE :: BufferM ()
 autoIndentE = do
   is <- savingExcursion fetchPreviousIndentsE
-  pl <- getPreviousLineE
+  pl <- getPreviousLineB
   let pli = indentOf pl
   cycleIndentsE $ sort $ nub $ pli+2 : is
 
@@ -193,12 +193,12 @@ spacingOf = sum . map spacingOfChar
     where spacingOfChar '\t' = 8
           spacingOfChar _ = 1
 
-indentToE :: Int -> YiM ()
+indentToE :: Int -> BufferM ()
 indentToE level = do 
-  l <- readLnE
-  withBuffer $ do moveToSol
-                  deleteToEol
-                  insertN (replicate level ' ' ++ dropWhile isSpace l)
+  l <- readLnB
+  moveToSol
+  deleteToEol
+  insertN (replicate level ' ' ++ dropWhile isSpace l)
 
 
 -----------------------------
@@ -253,7 +253,7 @@ executeExtendedCommandE = do
 
 evalRegionE :: Action
 evalRegionE = do
-  getRegionE >>= readRegionE >>= evalE
+  withBuffer (getRegionB >>= readRegionB) >>= evalE
 
 
 -- | Define an atomic interactive command.
@@ -392,7 +392,7 @@ completeFunctionName s = do
 completionFunction :: (String -> YiM String) -> YiM ()
 completionFunction f = do
   p <- withBuffer pointB
-  text <- readNM 0 p
+  text <- withBuffer $ readNM 0 p
   compl <- f text 
   -- it's important to do this before removing the text, 
   -- so if the completion function raises an exception, we don't delete the buffer contents.
@@ -408,7 +408,7 @@ withMinibuffer prompt completer act = do
       -- apply it to the desired action
       closeMinibuffer = do b <- withEditor getBuffer; closeE; withEditor (deleteBuffer b);
       innerAction = do historyFinish
-                       lineString <- readAllE
+                       lineString <- withBuffer elemsB
                        closeMinibuffer
                        switchToBufferE initialBuffer 
                        -- The above ensures that the action is performed on the buffer that originated the minibuffer.
