@@ -82,7 +82,7 @@ tabifySpacesOnLineAndShift numOfShifts =
                         -- ptOfNonSpace <- getPointE
                         atSol <- atSolE 
                         if (not atSol) then leftE
-                                       else nopE
+                                       else return ()
                         ptOfLastSpace <- getPointE
                         msgE ("ptOfLastSpace= " ++ (show ptOfLastSpace) ++ "-" ++ (show sol) ++ "=" ++ (show (ptOfLastSpace - sol)))
                         let countSpace '\t' = tabsize
@@ -90,11 +90,11 @@ tabifySpacesOnLineAndShift numOfShifts =
                         cnt <- if (atSol) then return 0
                                             else readRegionE (mkVimRegion sol ptOfLastSpace) >>= return . sum . map countSpace
                         if (not atSol) then deleteRegionE (mkVimRegion sol ptOfLastSpace)
-                                       else nopE
+                                       else return ()
 
                         let newcount = cnt + (shiftwidth * numOfShifts)
                         if (newcount <= 0)
-                           then nopE
+                           then return ()
                            else do
                              let tabs   = replicate (newcount `div` tabsize) '\t'
                                  spaces = replicate (newcount `mod` tabsize) ' '
@@ -321,7 +321,7 @@ moveCmdFM =
     ,('L',          \i -> upFromBosE (i - 1))
 
 -- bogus entry
-    ,('G',          const nopE)
+    ,('G',          const (return ()))
     ]
     where
         left  i = leftOrSolE i
@@ -481,7 +481,7 @@ vis_single =
                       (ptRow,_) <- getLineAndColE
                       let rowsYanked = ptRow - mrkRow
                       if (rowsYanked > 2) then msgE ( (show rowsYanked) ++ " lines yanked")
-                                          else nopE
+                                          else return ()
             pasteOver = do mrk <- getMarkE
                            pt <- getPointE
                            text <- getRegE
@@ -497,10 +497,10 @@ vis_single =
                       deleteRegionE (mkVimRegion mrk pt)
                       let rowsCut = ptRow - mrkRow
                       if (rowsCut > 2) then msgE ( (show rowsCut) ++ " fewer lines")
-                                       else nopE
+                                       else return ()
         in choice [
-            event '\ESC' >> write nopE,
-            event 'v'    >> write nopE,
+            event '\ESC' >> return (),
+            event 'v'    >> return (),
             event ':'    >> ex_mode ":'<,'>",
             event 'y'    >> write yank,
             event 'x'    >> write cut,
@@ -691,7 +691,7 @@ ex_eval cmd = do
           (_:src) -> fn src
 
         -- can't happen, but deal with it
-          [] -> nopE
+          [] -> return ()
 
     where
       fn ""           = msgClrE

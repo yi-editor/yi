@@ -47,7 +47,6 @@ module Yi.Core (
         -- * Global editor actions
         BufferFileInfo ( .. ), 
 
-        nopE,           -- :: Action
         msgE,           -- :: String -> Action
         errorE,         -- :: String -> Action
         msgClrE,        -- :: Action
@@ -364,10 +363,6 @@ reloadE = do
 -- | Reset the size, and force a complete redraw
 refreshE :: Action
 refreshE = withUI UI.refreshAll
-
--- | Do nothing
-nopE :: Action
-nopE = return ()
 
 -- | Suspend the program
 suspendE :: Action
@@ -903,7 +898,7 @@ closeE = do
 -- !!!This is a very bad implementation; delete; apply; and insert the result.
 mapRangeE :: Int -> Int -> (Char -> Char) -> Action
 mapRangeE from to fn
-    | from < 0  = nopE
+    | from < 0  = return ()
     | otherwise = do
         withBuffer $ do
             eof <- sizeB
