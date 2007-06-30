@@ -413,7 +413,7 @@ wordCompleteE = withBuffer $
     nextWordMatch :: String -> BufferM (Maybe (String,Int))
     nextWordMatch w = do
         let re = ("( |\t|\n|\r|^)"++w)
-        Right re_c <- lift $ compile compExtended execBlank re
+        Right re_c <- liftIO $ compile compExtended execBlank re
         mi   <- regexB re_c
         case mi of
             Nothing -> return Nothing

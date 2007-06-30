@@ -74,7 +74,8 @@ data FBuffer =
                 , runLock :: !QSem
                 }
 
-type BufferM a = RWST FBuffer [URAction] () IO a
+newtype BufferM a = BufferM { fromBufferM :: RWST FBuffer [URAction] () IO a }
+    deriving (MonadIO, Monad, Functor, MonadWriter [URAction], MonadReader FBuffer)
 
 instance Eq FBuffer where
    FBuffer { bkey = u } == FBuffer { bkey = v } = u == v
@@ -115,7 +116,7 @@ getPercent a b = show p ++ "%"
 withImpl :: (BufferImpl -> IO x) -> (BufferM x)
 withImpl f = do 
    b <- ask 
-   lift $ f (rawbuf b)
+   liftIO $ f (rawbuf b)
 
 addOverlayB :: Point -> Point -> Style -> BufferM ()
 addOverlayB s e sty = withImpl $ addOverlayBI s e sty
@@ -123,7 +124,7 @@ addOverlayB s e sty = withImpl $ addOverlayBI s e sty
 runBuffer :: FBuffer -> BufferM a -> IO (a, [URAction])
 runBuffer b f = do 
   waitQSem (runLock b)
-  (a, (), ur) <- runRWST f b ()
+  (a, (), ur) <- runRWST (fromBufferM f) b ()
   signalQSem (runLock b)
   return (a, ur)
 
@@ -139,21 +140,21 @@ hPutB = do
   mf <- getfileB
   case mf of
     Nothing -> error "buffer not associated with a file"
-    Just f  -> lift . writeFile f =<< elemsB
+    Just f  -> liftIO . writeFile f =<< elemsB
   clearUndosB
 
 
 clearUndosB :: BufferM ()
-clearUndosB = do b <- ask; lift $ modifyMVar_ (undos b) (\_ -> return emptyUR) -- Clear the undo list, so the changed "flag" is reset.
+clearUndosB = do b <- ask; liftIO $ modifyMVar_ (undos b) (\_ -> return emptyUR) -- Clear the undo list, so the changed "flag" is reset.
 
 nameB :: BufferM String
 nameB = asks name
 
 getfileB :: BufferM (Maybe FilePath)
-getfileB = do (FBuffer { file = mvf }) <- ask; lift $ readMVar mvf
+getfileB = do (FBuffer { file = mvf }) <- ask; liftIO $ readMVar mvf
 
 setfileB :: FilePath -> BufferM ()
-setfileB f = do (FBuffer { file = mvf }) <- ask; lift $ modifyMVar_ mvf $ const $ return (Just f)
+setfileB f = do (FBuffer { file = mvf }) <- ask; liftIO $ modifyMVar_ mvf $ const $ return (Just f)
 
 keyB :: FBuffer -> Unique
 keyB (FBuffer { bkey = u }) = u
@@ -162,14 +163,14 @@ keyB (FBuffer { bkey = u }) = u
 isUnchangedB :: BufferM Bool
 isUnchangedB = do
   b <- ask
-  ur <- lift $ readMVar $ undos b
+  ur <- liftIO $ readMVar $ undos b
   return $ isEmptyUList ur
 
 undo :: BufferM ()
-undo = do fb@(FBuffer { undos = mv }) <- ask; u <- lift $ modifyMVar mv (undoUR (rawbuf fb)); tell u
+undo = do fb@(FBuffer { undos = mv }) <- ask; u <- liftIO $ modifyMVar mv (undoUR (rawbuf fb)); tell u
 
 redo :: BufferM ()
-redo = do fb@(FBuffer { undos = mv }) <- ask; u <- lift $ modifyMVar mv (redoUR (rawbuf fb)); tell u
+redo = do fb@(FBuffer { undos = mv }) <- ask; u <- liftIO $ modifyMVar mv (redoUR (rawbuf fb)); tell u
 
 -- | Create buffer named @nm@ with contents @s@
 newB :: String -> [Char] -> IO FBuffer
@@ -232,7 +233,7 @@ applyUpdate update = do
   forgetPreferCol
   FBuffer { undos = uv } <- ask
   reversed <- withImpl (getActionB update)
-  lift $ modifyMVar_ uv $ \u -> return $ addUR u reversed
+  liftIO $ modifyMVar_ uv $ \u -> return $ addUR u reversed
   tell [update]
     
 
