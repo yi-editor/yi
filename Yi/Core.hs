@@ -886,45 +886,13 @@ setUnchangedE = undefined
 setSynE :: String -> Action
 setSynE sy = withBuffer $ setSyntaxB sy
 
-------------------------------------------------------------------------
---
--- Window operations
-
--- | Make the next window (down the screen) the current window
-nextWinE :: Action
-nextWinE = nextWindow
-
--- | Make the previous window (up the screen) the current window
-prevWinE :: Action
-prevWinE = prevWindow
-
--- | Split the current window, opening a second window onto this buffer
-splitE :: Action
-splitE = splitWindow
-
--- | Enlarge the current window
-enlargeWinE :: Action
-enlargeWinE = error "enlargeWinE: not implemented"
-
--- | Shrink the current window
-shrinkWinE :: Action
-shrinkWinE = error "shrinkWinE: not implemented"
-
 -- | Close the current window.
 -- If this is the last window open, quit the program.
 closeE :: Action
 closeE = do
     n <- withWindows (length . toList)
     when (n == 1) quitE
-    modifyWindows WS.delete
-
--- | Close the current window, unless it is the last window open.
-tryCloseE :: Action
-tryCloseE = modifyWindows WS.delete
-
--- | Make the current window the only window on the screen
-closeOtherE :: Action
-closeOtherE = modifyWindows WS.deleteOthers
+    tryCloseE
 
 ------------------------------------------------------------------------
 --

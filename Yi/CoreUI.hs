@@ -37,12 +37,12 @@ import Data.Foldable (toList)
 
 
 -- | Rotate focus to the next window
-nextWindow :: YiM ()
-nextWindow = modifyWindows WS.forward
+nextWinE :: YiM ()
+nextWinE = modifyWindows WS.forward
 
 -- | Rotate focus to the previous window
-prevWindow :: YiM ()
-prevWindow = modifyWindows WS.backward
+prevWinE :: YiM ()
+prevWinE = modifyWindows WS.backward
 
 -- | Apply a function to the windowset.
 modifyWindows :: (WindowSet Window -> WindowSet Window) -> YiM ()
@@ -66,10 +66,9 @@ withWindowAndBuffer f = do
   editorRef <- asks yiEditor
   liftIO $ withMVar wsRef $ \ws -> runReaderT (withBuffer0 (f (WS.current ws))) editorRef
 
--- | Split the current window, opening a second window onto this buffer.
--- Windows smaller than 3 lines cannot be split.
-splitWindow :: YiM ()
-splitWindow = do 
+-- | Split the current window, opening a second window onto current buffer.
+splitE :: YiM ()
+splitE = do 
   b <- withEditor $ getBuffer
   let w = Window False (keyB b) 0 0 0
   modifyWindows (WS.add w)
@@ -78,13 +77,30 @@ splitWindow = do
 shiftOtherWindow :: YiM ()
 shiftOtherWindow = do
   len <- withWindows (length . toList)
-  when (len == 1) splitWindow
-  nextWindow
+  when (len == 1) splitE
+  nextWinE
 
 
 withOtherWindow :: YiM () -> YiM ()
 withOtherWindow f = do
   shiftOtherWindow
   f
-  prevWindow
+  prevWinE
 
+
+-- | Enlarge the current window
+enlargeWinE :: Action
+enlargeWinE = error "enlargeWinE: not implemented"
+
+-- | Shrink the current window
+shrinkWinE :: Action
+shrinkWinE = error "shrinkWinE: not implemented"
+
+
+-- | Close the current window, unless it is the last window open.
+tryCloseE :: Action
+tryCloseE = modifyWindows WS.delete
+
+-- | Make the current window the only window on the screen
+closeOtherE :: Action
+closeOtherE = modifyWindows WS.deleteOthers
