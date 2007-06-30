@@ -193,7 +193,7 @@ cmd_move = do
           [do event c; c' <- anyButEsc; return (a x c') | (c,a) <- move2CmdFM]) +++
    (do event 'G'; return $ case cnt of 
                             Nothing -> withBuffer (botB >> moveToSol)
-                            Just n  -> gotoLnE n)
+                            Just n  -> gotoLnE n >> return ())
 
 --
 -- TODO: Does this belong in CharMove.hs ?
@@ -326,8 +326,8 @@ moveCmdFM =
     where
         left  i = leftOrSolE i
         right i = rightOrEolE i
-        up    i = if i > 100 then gotoLnFromE (-i) else withBuffer $ replicateM_ i lineUp
-        down  i = if i > 100 then gotoLnFromE i    else withBuffer $ replicateM_ i lineDown
+        up    i = gotoLnFromE (-i) >> return ()
+        down  i = gotoLnFromE i    >> return ()
         sol   _ = withBuffer moveToSol
         eol   _ = withBuffer moveToEol
 
@@ -699,7 +699,7 @@ ex_eval cmd = do
       fn s@(c:_) | isDigit c = do
         e <- lift $ try $ evaluate $ read s
         case e of Left _ -> errorE $ "The " ++show s++ " command is unknown."
-                  Right lineNum -> gotoLnE lineNum
+                  Right lineNum -> gotoLnE lineNum >> return ()
 
       fn "w"          = viWrite
       fn ('w':' ':f)  = viWriteTo f

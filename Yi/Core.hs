@@ -382,12 +382,12 @@ botB = do
   moveTo n
 
 -- | Go to line number @n@
-gotoLnE :: Int -> Action
-gotoLnE n = withBuffer (gotoLn n >> return ())
+gotoLnE :: Int -> YiM Int
+gotoLnE n = withBuffer (gotoLn n)
 
 -- | Go to line @n@ offset from current line
-gotoLnFromE :: Int -> Action
-gotoLnFromE n = withBuffer (gotoLnFrom n >> return ())
+gotoLnFromE :: Int -> YiM Int
+gotoLnFromE n = withBuffer (gotoLnFrom n)
 
 -- | Go to a particular point.
 gotoPointE :: Int -> Action
