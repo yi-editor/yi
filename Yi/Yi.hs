@@ -29,6 +29,7 @@
 module Yi.Yi (
               -- all things re-exported here are made available to keymaps definitions.
         module Yi.Core,
+        module Yi.Buffer,
         module Yi.CharMove,
         module Yi.Style,
         module Yi.Eval,
@@ -41,6 +42,7 @@ module Yi.Yi (
    ) where
 
 import Yi.Core
+import Yi.Buffer
 import Yi.CharMove
 import Yi.Style
 import Yi.Search

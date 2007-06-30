@@ -840,7 +840,7 @@ execE s = do
   ghcErrorHandlerE $ do
             result <- withKernel $ \kernel -> do
                                logPutStrLn $ "execing " ++ s
-                               compileExpr kernel ("(" ++ s ++ ") >>= msgE' . show :: YiM ()")
+                               compileExpr kernel ("makeAction (" ++ s ++ ") >>= msgE' . show :: YiM ()")
             case result of
               Nothing -> errorE ("Could not compile: " ++ s)
               Just x -> do let (x' :: YiM ()) = unsafeCoerce# x
