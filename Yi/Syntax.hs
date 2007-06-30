@@ -1,4 +1,3 @@
-{-# OPTIONS -#include "YiUtils.h" #-}
 --
 -- Copyright (C) 2007 Don Stewart - http://www.cse.unsw.edu.au/~dons
 --
