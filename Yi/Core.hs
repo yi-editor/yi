@@ -108,8 +108,6 @@ module Yi.Core (
         middleE,        -- :: Action
 
         -- * Buffer editing
-        insertE,        -- :: Char -> Action
-        insertNE,       -- :: String -> Action
         deleteE,        -- :: Action
         deleteNE,       -- :: Int -> Action
         killE,          -- :: Action
@@ -454,14 +452,6 @@ scrollDownE = withWindow_ scrollDownW
 
 ------------------------------------------------------------------------
 
--- | Insert new character
-insertE :: Char -> Action
-insertE c = insertNE [c]
-
--- | Insert a string
-insertNE :: String -> Action
-insertNE str = withBuffer $ insertN str
-
 -- | Delete character under cursor
 deleteE :: Action
 deleteE = withBuffer $ deleteN 1
@@ -523,7 +513,7 @@ swapE = do eol <- withBuffer atEol
            c <- readE
            deleteE
            leftE
-           insertE c
+           withBuffer $ insertN [c]
            rightE
 
 -- ---------------------------------------------------------------------

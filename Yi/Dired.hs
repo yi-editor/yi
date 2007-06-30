@@ -141,7 +141,7 @@ diredRefreshE = do
     withBuffer topB
     -- Write Header
     (Just dir) <- withBuffer getfileB
-    insertNE $ dir ++ ":\n"
+    withBuffer $ insertN $ dir ++ ":\n"
     p <- withBuffer pointB
     withBuffer (addOverlayB 0 (p-2) headStyle)
     -- Scan directory
@@ -175,7 +175,7 @@ diredRefreshE = do
 --   and the FilePath of the file represented by that textual region
 insertDiredLine :: ([String], Style, String) -> YiM (Point, Point, FilePath)
 insertDiredLine (fields, sty, filenm) = do
-    insertNE $ (concat $ intersperse " " fields) ++ "\n"
+    withBuffer $ insertN $ (concat $ intersperse " " fields) ++ "\n"
     p <- withBuffer pointB
     let p1 = p - length (last fields) - 1
         p2 = p - 1

@@ -98,7 +98,7 @@ tabifySpacesOnLineAndShift numOfShifts =
                              let tabs   = replicate (newcount `div` tabsize) '\t'
                                  spaces = replicate (newcount `mod` tabsize) ' '
                              withBuffer moveToSol
-                             insertNE $ if expandTabs then replicate newcount ' '
+                             (withBuffer . insertN) $ if expandTabs then replicate newcount ' '
                                                       else tabs ++ spaces
                                                                                   
                              firstNonSpaceE
@@ -391,9 +391,9 @@ singleCmdFM =
                          withBuffer $ moveTo p
                          when (q-p > 0) $ deleteNE (q-p))
 
-    ,('p',      (const $ rightOrEolE 1 >> getRegE >>= insertNE >> leftE))
+    ,('p',      (const $ rightOrEolE 1 >> getRegE >>= (withBuffer . insertN) >> leftE))
 
-    ,('P',      (const $ getRegE >>= insertNE >> leftE))
+    ,('P',      (const $ getRegE >>= (withBuffer . insertN) >> leftE))
 
     ,(keyPPage, upScreensE)
     ,(keyNPage, downScreensE)
@@ -486,7 +486,7 @@ vis_single =
                            text <- getRegE
                            withBuffer $ moveTo mrk
                            deleteRegionE (mkVimRegion mrk pt)
-                           insertNE text
+                           (withBuffer . insertN) text
             cut  = do mrk <- withBuffer getSelectionMarkPointB
                       pt <- withBuffer pointB
                       (ptRow,_) <- withBuffer getLineAndCol
@@ -535,7 +535,7 @@ vis_multi = do
                                    deleteRegionE (mkVimRegion mrk pt)
                                    let convert '\n' = '\n'
                                        convert  _   = x
-                                   insertNE . map convert $ text] ++
+                                   (withBuffer . insertN) . map convert $ text] ++
            [event c >> write (a i) | (c,a) <- singleCmdFM ])
 
 
@@ -556,8 +556,8 @@ cmd2other = let beginIns a = write a >> ins_mode
             do event 'I'     ; beginIns (withBuffer moveToSol),
             do event 'a'     ; beginIns $ rightOrEolE 1,
             do event 'A'     ; beginIns (withBuffer moveToEol),
-            do event 'o'     ; beginIns $ (withBuffer moveToEol) >> insertE '\n',
-            do event 'O'     ; beginIns $ (withBuffer moveToSol) >> insertE '\n' >> (withBuffer lineUp),
+            do event 'o'     ; beginIns $ withBuffer $ moveToEol >> insertB '\n',
+            do event 'O'     ; beginIns $ withBuffer $ moveToSol >> insertB '\n' >> lineUp,
             do event 'c'     ; beginIns $ not_implemented 'c',
             do event 'C'     ; beginIns $ readRestOfLnE >>= setRegE >> killE,
             do event 'S'     ; beginIns $ (withBuffer moveToSol) >> readLnE >>= setRegE >> killE,
@@ -591,8 +591,8 @@ ins_char = write . fn =<< anyButEscOrCtlN
                       | k == keyRight -> rightE
                       | k == keyEnd   -> (withBuffer moveToEol)
                       | k == keyHome  -> (withBuffer moveToSol)
-                    '\t' -> insertN "    "
-                    _    -> insertE c
+                    '\t' -> withBuffer $ insertN "    "
+                    _    -> withBuffer $ insertB c
 
 anyButEscOrCtlN :: VimProc Char
 anyButEscOrCtlN = oneOf $ (keyBackspace : any' ++ cursc') \\ ['\ESC','\^N']
@@ -631,10 +631,10 @@ rep_char = write . fn =<< anyButEsc
                       | k == keyRight -> rightE
                       | k == keyEnd   -> (withBuffer moveToEol)
                       | k == keyHome  -> (withBuffer moveToSol)
-                    '\t' -> mapM_ insertE "    " -- XXX
-                    '\r' -> insertE '\n'
+                    '\t' -> withBuffer $ insertN "    "
+                    '\r' -> withBuffer $ insertB '\n'
                     _ -> do e <- withBuffer atEol
-                            if e then insertE c else writeE c >> rightE
+                            if e then withBuffer (insertB c) else writeE c >> rightE
 
 -- ---------------------------------------------------------------------
 -- Ex mode. We also process regex searching mode here.
@@ -651,7 +651,7 @@ spawn_ex_buffer prompt = do
         ex_eval (head prompt : lineString)
       ex_process :: VimMode
       ex_process = 
-          choice [do c <- anyButDelNlArrow; write $ insertNE [c],
+          choice [do c <- anyButDelNlArrow; write $ (withBuffer . insertN) [c],
                   do enter; write ex_buffer_finish,
                   do event '\ESC'; write closeMinibuffer,
                   do delete; write bdeleteE,
@@ -725,7 +725,7 @@ ex_eval cmd = do
             ln' <- pipeE f ln
             withBuffer moveToSol
             killE
-            insertNE ln'
+            (withBuffer . insertN) ln'
             withBuffer moveToSol
 
 --    Needs to occur in another buffer

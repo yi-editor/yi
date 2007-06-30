@@ -61,7 +61,7 @@ keymap :: Process
 keymap = selfInsertKeymap +++ makeProcess 
               [
         ("TAB",      atomic $ autoIndentE),
-        ("RET",      atomic $ repeatingArg $ insertE '\n'),
+        ("RET",      atomic $ repeatingArg $ insertB '\n'),
         ("DEL",      atomic $ repeatingArg deleteE),
         ("BACKSP",   atomic $ repeatingArg bdeleteE),
         ("C-M-w",    atomic $ appendNextKillE),
@@ -79,11 +79,11 @@ keymap = selfInsertKeymap +++ makeProcess
         ("C-g",      atomic $ unsetMarkE), 
 --      ("C-g",      atomic $ keyboardQuitE), -- C-g should be a more general quit that also unsets the mark.
         ("C-i",      atomic $ autoIndentE),
-        ("C-j",      atomic $ repeatingArg $ insertE '\n'),
+        ("C-j",      atomic $ repeatingArg $ insertB '\n'),
         ("C-k",      atomic $ killLineE),
-        ("C-m",      atomic $ repeatingArg $ insertE '\n'),
+        ("C-m",      atomic $ repeatingArg $ insertB '\n'),
         ("C-n",      atomic $ repeatingArg lineDown),
-        ("C-o",      atomic $ repeatingArg (insertE '\n' >> leftE)),
+        ("C-o",      atomic $ repeatingArg (withBuffer (insertB '\n') >> leftE)),
         ("C-p",      atomic $ repeatingArg lineUp),
         ("C-q",               insertNextC),
 --      ("C-r",      atomic $ backwardsIncrementalSearchE),
@@ -198,7 +198,7 @@ indentToE level = do
   l <- readLnE
   withBuffer moveToSol
   killE
-  insertNE (replicate level ' ' ++ dropWhile isSpace l)
+  withBuffer $ insertN (replicate level ' ' ++ dropWhile isSpace l)
 
 
 -----------------------------
@@ -269,11 +269,11 @@ atomic cmd = write $ do makeAction cmd
 
 
 insertSelf :: Char -> Action
-insertSelf c = repeatingArg $ insertNE [c]
+insertSelf = repeatingArg . insertB
 
 insertNextC :: KProc ()
 insertNextC = do c <- satisfy (const True)
-                 write $ repeatingArg $ insertE (eventToChar c)
+                 write $ repeatingArg $ insertB (eventToChar c)
 
 -- | C-u stuff
 readArgC :: KProc ()
@@ -398,7 +398,7 @@ completionFunction f = do
   -- so if the completion function raises an exception, we don't delete the buffer contents.
   withBuffer $ moveTo 0
   deleteNE p
-  insertNE compl
+  withBuffer $ insertN compl
 
 withMinibuffer :: String -> (String -> YiM String) -> (String -> Action) -> Action
 withMinibuffer prompt completer act = do 

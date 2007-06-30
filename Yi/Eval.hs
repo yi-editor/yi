@@ -80,10 +80,10 @@ consoleKeymap = do event (Event KEnter [])
                                               withBuffer botB
                                               p' <- withBuffer pointB
                                               when (p /= p') $
-                                                 insertNE ("\n" ++ prompt ++ x)
-                                              insertNE "\n" 
+                                                 withBuffer $ insertN ("\n" ++ prompt ++ x)
+                                              withBuffer $ insertN "\n" 
                                               pt <- withBuffer pointB
-                                              insertNE "Yi> "
+                                              withBuffer $ insertN "Yi> "
                                               bm <- getBookmarkE "errorInsert"
                                               setBookmarkPointE bm pt
                                               execE $ dropWhile (== '>') $ dropWhile (/= '>') $ x

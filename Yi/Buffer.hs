@@ -27,7 +27,7 @@ module Yi.Buffer ( FBuffer (..), BufferM, runBuffer, keyB, curLn, nameB, indexOf
                    hPutB, hNewB, newB, finaliseB, Point, Mark, BufferMode(..),
                    moveToEol, gotoLn, gotoLnFrom, offsetFromSol,
                    atSol, atEol, atSof, atEof, leftB, rightB,
-                   moveXorEol, moveXorSol, insertN, deleteN,
+                   moveXorEol, moveXorSol, insertN, insertB, deleteN,
                    deleteToEol, indexOfSol, nelemsB, writeB, getfileB,
                    setfileB, deleteNAt, readB, elemsB, undo, redo,
                    getMarkB, getSelectionMarkB, getMarkPointB, setMarkPointB, unsetMarkB, 
@@ -251,6 +251,10 @@ insertN :: [Char] -> BufferM ()
 insertN cs = do 
   pnt <- pointB
   applyUpdate (Insert pnt cs)
+
+-- | Insert the char at current point, extending size of buffer
+insertB :: Char -> BufferM ()
+insertB = insertN . return
 
 ------------------------------------------------------------------------
 

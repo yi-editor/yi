@@ -114,8 +114,8 @@ yankE :: Action
 yankE = do (text:_) <- killringGet
            --kr@(Killring _ _ _) <- getDynamic undefined
            --let text = show kr
-           withBuffer (pointB >>= setSelectionMarkPointB)
-           insertNE text
+           withBuffer $ do pointB >>= setSelectionMarkPointB
+                           insertN text
 
 -- | M-w
 killRingSaveE :: Action
