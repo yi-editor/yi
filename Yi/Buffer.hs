@@ -35,7 +35,7 @@ module Yi.Buffer ( FBuffer (..), BufferM, runBuffer, keyB, curLn, nameB, indexOf
                    getModeLine, getPercent, forgetPreferCol,
                    clearUndosB, addOverlayB,
                    getDynamicB, setDynamicB,
-                   nelemsBH
+                   nelemsBH, deleteB
                     ) where
 
 import Prelude hiding ( error )
@@ -376,6 +376,10 @@ readAtB i = do
     return $ case s of
                [c] -> c
                _ -> '\0'
+
+-- | Delete 1 character forward from the current point 
+deleteB :: BufferM ()
+deleteB = deleteN 1
 
 -- | Delete @n@ characters forward from the current point
 deleteN :: Int -> BufferM ()
