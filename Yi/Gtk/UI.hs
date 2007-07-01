@@ -39,7 +39,7 @@ import qualified Yi.WindowSet as WS
 import Control.Concurrent ( yield )
 import Control.Concurrent.Chan
 import Control.Concurrent.MVar
-import Control.Monad.Reader (lift, liftIO, liftM, when, MonadIO)
+import Control.Monad.Reader (lift, liftIO, when, MonadIO)
 import Control.Monad (ap)
 import Control.Monad.State (runState, State, gets, modify)
 
@@ -248,20 +248,20 @@ instance Show Click where
                TripleClick  -> "TripleClick "
                ReleaseClick -> "ReleaseClick"
 
-
-handleClick ui w e = do
-  logPutStrLn $ "Click: " ++ show (eventX e, eventY e, eventClick e)
+handleClick :: UI -> WinInfo -> Gtk.Event -> IO Bool
+handleClick ui w event = do
+  -- logPutStrLn $ "Click: " ++ show (eventX e, eventY e, eventClick e)
 
   -- retrieve the clicked offset.
   let tv = textview w
-  let wx = round (eventX e)  
-  let wy = round (eventY e)  
+  let wx = round (eventX event)  
+  let wy = round (eventY event)  
   (bx, by) <- textViewWindowToBufferCoords tv TextWindowText (wx,wy) 
-  i <- textViewGetIterAtLocation tv bx by 
-  p1 <- get i textIterOffset
+  iter <- textViewGetIterAtLocation tv bx by 
+  p1 <- get iter textIterOffset
 
   -- maybe focus the window
-  case eventClick e of 
+  case eventClick event of 
     SingleClick -> do wCache <- readIORef (windowCache ui)
                       let Just idx = findIndex ((wkey w ==) . wkey) wCache
                       modifyMVar_ (windows ui) (\ws -> return (WS.focusIndex idx ws))
@@ -270,7 +270,7 @@ handleClick ui w e = do
   
   let editorAction = do
         b <- withEditor0 $ \ed -> return $ findBufferWith ed (bufkey w)
-        case (eventClick e, eventButton e) of
+        case (eventClick event, eventButton event) of
           (SingleClick, LeftButton) -> 
               withGivenBuffer0 b $ moveTo p1 -- as a side effect we forget the prefered column
           (ReleaseClick, LeftButton) -> do
