@@ -22,7 +22,7 @@
 
 module Yi.Gtk.UI (start) where
 
-import Prelude hiding (error, sequence_, elem, mapM_, mapM)
+import Prelude hiding (error, sequence_, elem, mapM_, mapM, concatMap)
 
 import Yi.FastBuffer (inBounds)
 import Yi.Buffer
@@ -180,16 +180,16 @@ processEvent ch ev = do
             
 gtkToYiEvent :: Gtk.Event -> Maybe Event
 gtkToYiEvent (Key {eventKeyName = keyName, eventModifier = modifier, eventKeyChar = char})
-    = fmap (\k -> Event k $ (nub $ (if isShift then filter (not . (== MShift)) else id) $ map modif modifier)) key'
+    = fmap (\k -> Event k $ (nub $ (if isShift then filter (not . (== MShift)) else id) $ concatMap modif modifier)) key'
       where (key',isShift) = 
                 case char of
                   Just c -> (Just $ KASCII c, True)
                   Nothing -> (M.lookup keyName keyTable, False)
-            modif Control = MCtrl
-            modif Alt = MMeta
-            modif Shift = MShift
-            modif Apple = MMeta
-            modif Compose = MMeta
+            modif Control = [MCtrl]
+            modif Alt = [MMeta]
+            modif Shift = [MShift]
+            modif Apple = []
+            modif Compose = []
 gtkToYiEvent _ = Nothing
 
 -- | Map GTK long names to Keys
