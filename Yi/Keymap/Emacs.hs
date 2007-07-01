@@ -115,6 +115,7 @@ keymap = selfInsertKeymap +++ makeProcess
         ("C-x u",    atomic $ repeatingArg undo),
         ("C-x v",    atomic $ repeatingArg shrinkWinE),
         ("C-y",      atomic $ yankE),
+        ("M-!",      atomic $ shellCommandE),
         ("M-<",      atomic $ repeatingArg topB),
         ("M->",      atomic $ repeatingArg botB),
         ("M-%",      atomic $ queryReplaceE),
@@ -224,6 +225,15 @@ isearchProcess = do
                 events (readKey "C-m") >> write isearchFinishE,
                 events (readKey "RET") >> write isearchFinishE,
                 write isearchFinishE]
+
+
+----------------------------
+-- shell-command
+
+shellCommandE :: YiM ()
+shellCommandE = do
+    withMinibuffer "Shell command:" return $ \command -> do
+    pipeE command "" >>= newBufferE "*Shell Command Output*" >> return ()
 
 
 ----------------------------
