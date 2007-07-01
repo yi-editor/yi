@@ -215,6 +215,7 @@ searchKeymap =
     selfSearchKeymap +++ makeProcess 
         [--("C-g", isearchDelE), -- Only if string is not empty.
          ("C-s", write isearchNextE),
+         ("C-w", write isearchWordE),
          ("BACKSP", write $ isearchDelE)]
                  
 isearchProcess :: Process

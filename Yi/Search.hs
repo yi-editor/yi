@@ -44,6 +44,7 @@ module Yi.Search (
         isearchIsEmpty,
         isearchAddE,
         isearchNextE,
+        isearchWordE,
         isearchDelE,
         isearchCancelE,
         isearchFinishE,
@@ -60,6 +61,7 @@ import Yi.Editor hiding (readEditor)
 import qualified Yi.Editor as Editor
 
 import Data.Bits ( (.|.) )
+import Data.Char
 import Data.Maybe
 import Data.List
 import Data.Typeable
@@ -283,7 +285,15 @@ isearchNextE = do
     Nothing -> return ()
     Just p -> do setDynamic $ Isearch ((current,p):rest)
                  withBuffer $ moveTo (p+length current)
-  
+
+isearchWordE :: YiM ()
+isearchWordE = do
+  text <- withBuffer (pointB >>= nelemsB 32) -- add maximum 32 chars at a time.
+  let (prefix, rest) = span (not . isAlpha) text
+      word = takeWhile isAlpha rest
+  isearchAddE (prefix ++ word)
+
+
 isearchFinishE :: YiM ()
 isearchFinishE = do
   Isearch s <- getDynamic
