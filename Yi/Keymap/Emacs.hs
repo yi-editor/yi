@@ -44,6 +44,8 @@ import System.Directory
 import Yi.Editor
 import Yi.History
 
+import Yi.Indent
+
 -- * The keymap abstract definition
 
 type KProc a = Interact Event a
@@ -60,7 +62,7 @@ selfInsertKeymap = do
 keymap :: Process
 keymap = selfInsertKeymap +++ makeProcess 
               [
-        ("TAB",      atomic $ autoIndentE),
+        ("TAB",      atomic $ autoIndentB),
         ("RET",      atomic $ repeatingArg $ insertB '\n'),
         ("DEL",      atomic $ repeatingArg deleteB),
         ("BACKSP",   atomic $ repeatingArg bdeleteB),
@@ -78,7 +80,7 @@ keymap = selfInsertKeymap +++ makeProcess
         ("C-f",      atomic $ repeatingArg rightB),
         ("C-g",      atomic $ unsetMarkB), 
 --      ("C-g",      atomic $ keyboardQuitE), -- C-g should be a more general quit that also unsets the mark.
-        ("C-i",      atomic $ autoIndentE),
+        ("C-i",      atomic $ autoIndentB),
         ("C-j",      atomic $ repeatingArg $ insertB '\n'),
         ("C-k",      atomic $ killLineE),
         ("C-m",      atomic $ repeatingArg $ insertB '\n'),
@@ -143,64 +145,6 @@ keymap = selfInsertKeymap +++ makeProcess
         ("<next>",   atomic $ repeatingArg downScreenE),
         ("<prior>",  atomic $ repeatingArg upScreenE)
         ]
-
-
-----------------------------
--- autoindent
-
-savingExcursion :: BufferM a -> BufferM a
-savingExcursion f = do
-    p <- pointB
-    res <- f
-    moveTo p
-    return res
-
-getPreviousLineB :: BufferM String
-getPreviousLineB = savingExcursion $ do
-                     lineUp
-                     readLnB
-
-fetchPreviousIndentsE :: BufferM [Int]
-fetchPreviousIndentsE = do
-  p0 <- pointB
-  lineUp
-  p1 <- pointB
-  l <- readLnB
-  let i = indentOf l
-  if p0 == p1 || indentOf l == 0 then return [0] else do
-    is <- fetchPreviousIndentsE
-    return (i:is)
-    
-cycleIndentsE :: [Int] -> BufferM ()
-cycleIndentsE indents = do
-  l <- readLnB
-  let curIndent = indentOf l
-  let (below, above) = span (< curIndent) $ indents
-  -- msgE $ show (below, above)
-  indentToE $ last (above ++ below)
-
-autoIndentE :: BufferM ()
-autoIndentE = do
-  is <- savingExcursion fetchPreviousIndentsE
-  pl <- getPreviousLineB
-  let pli = indentOf pl
-  cycleIndentsE $ sort $ nub $ pli+2 : is
-
-indentOf :: String -> Int
-indentOf = spacingOf . takeWhile isSpace
-
-spacingOf :: String -> Int
-spacingOf = sum . map spacingOfChar
-    where spacingOfChar '\t' = 8
-          spacingOfChar _ = 1
-
-indentToE :: Int -> BufferM ()
-indentToE level = do 
-  l <- readLnB
-  moveToSol
-  deleteToEol
-  insertN (replicate level ' ' ++ dropWhile isSpace l)
-
 
 -----------------------------
 -- isearch

@@ -38,6 +38,10 @@ import Control.Monad.Reader (asks)
 import Yi.Editor
 import Yi.History
 import Yi.Buffer
+import Yi.Debug
+
+import Yi.Indent
+
 
 --
 -- What's missing?
@@ -60,48 +64,6 @@ type VimMode = VimProc ()
 
 type VimProc a = (Interact Char) a
 
-------------------------------------------------------------------------
---
--- | Settings variables. These should really be stored in a mutable map.
---
-shiftwidth :: Int
-shiftwidth = 4 -- sw
-expandTabs :: Bool
-expandTabs = True -- et
-tabsize :: Int
-tabsize = 8  -- ts
-
--- | tabifySpacesOnLineAndShift num 
--- |  shifts right (or left if num is negative) num times, filling in tabs if
--- |  expandtabs is set.
-tabifySpacesOnLineAndShift :: Int -> Action
-tabifySpacesOnLineAndShift numOfShifts = withBuffer $ do
-                        moveToSol
-                        sol <- pointB
-                        firstNonSpaceB
-                        -- ptOfNonSpace <- pointB
-                        isAtSol <- atSol
-                        when (not isAtSol) leftB
-                        ptOfLastSpace <- pointB
-                        -- msgE ("ptOfLastSpace= " ++ (show ptOfLastSpace) ++ "-" ++ (show sol) ++ "=" ++ (show (ptOfLastSpace - sol)))
-                        let countSpace '\t' = tabsize
-                            countSpace _ = 1 -- we'll assume nothing but tabs and spaces
-                        cnt <- if isAtSol then return 0
-                                          else readRegionB (mkVimRegion sol ptOfLastSpace) >>= return . sum . map countSpace
-                        if not isAtSol then deleteRegionB (mkVimRegion sol ptOfLastSpace)
-                                       else return ()
-
-                        let newcount = cnt + (shiftwidth * numOfShifts)
-                        if (newcount <= 0)
-                           then return ()
-                           else do
-                             let tabs   = replicate (newcount `div` tabsize) '\t'
-                                 spaces = replicate (newcount `mod` tabsize) ' '
-                             moveToSol
-                             insertN $ if expandTabs then replicate newcount ' '
-                                                     else tabs ++ spaces
-                                                                                  
-                             firstNonSpaceB
                         
 ------------------------------------------------------------------------
 --
@@ -354,8 +316,8 @@ cmd_eval = do
     ([event c >> write (a i) | (c,a) <- singleCmdFM ] ++
     [events evs >> write (action i) | (evs, action) <- multiCmdFM ]) +++
     (do event 'r'; c <- anyButEscOrDel; write (writeB c)) +++
-    (events ">>" >> write (tabifySpacesOnLineAndShift i))+++
-    (events "<<" >> write (tabifySpacesOnLineAndShift (-i)))+++
+    (events ">>" >> write (shiftIndentOfLine i))+++
+    (events "<<" >> write (shiftIndentOfLine (-i)))+++
     (events "ZZ" >> write (viWrite >> quitE))
 
 anyButEscOrDel :: VimProc Char
@@ -517,17 +479,9 @@ vis_multi :: VimMode
 vis_multi = do
    cnt <- count 
    let i = maybe 1 id cnt
-       shiftBy x = do mark <- withBuffer getSelectionMarkPointB
-                      (row2,_) <- withBuffer getLineAndCol
-                      withBuffer $ moveTo mark
-                      (row1,_) <- withBuffer getLineAndCol
-                      let step = if (row2 > row1) then (withBuffer lineDown)
-                                                  else (withBuffer lineUp)
-                          numOfLines = 1 + (abs (row2 - row1))
-                      replicateM_ numOfLines (tabifySpacesOnLineAndShift x>>step)
    choice ([events "ZZ" >> write (viWrite >> quitE),
-            events ">>" >> write (shiftBy i),
-            events "<<" >> write (shiftBy (-i)),
+            events ">>" >> write (shiftIndentOfSelection i),
+            events "<<" >> write (shiftIndentOfSelection (-i)),
             do event 'r'; x <- anyEvent; write $ do
                                    mrk <- getSelectionMarkPointB
                                    pt <- pointB
@@ -592,7 +546,7 @@ ins_char = write . fn =<< anyButEscOrCtlN
                       | k == keyRight -> withBuffer rightB
                       | k == keyEnd   -> withBuffer moveToEol
                       | k == keyHome  -> withBuffer moveToSol
-                    '\t' -> withBuffer $ insertN "    "
+                    '\t' -> withBuffer $ insertTabB
                     _    -> withBuffer $ insertB c
 
 anyButEscOrCtlN :: VimProc Char
