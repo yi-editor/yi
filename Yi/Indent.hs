@@ -25,6 +25,7 @@ module Yi.Indent where
 import Control.Monad
 
 import Yi.Buffer
+import Yi.Buffer.HighLevel
 import Yi.Core
 -- import Yi.Debug
 import Yi.Dynamic
@@ -69,13 +70,6 @@ indentSettingsB :: BufferM IndentSettings
 indentSettingsB = do
     getDynamicB
   
-savingExcursionB :: BufferM a -> BufferM a
-savingExcursionB f = do
-    p <- pointB
-    res <- f
-    moveTo p
-    return res
-
 getPreviousLineB :: BufferM String
 getPreviousLineB = 
   savingExcursionB $ do

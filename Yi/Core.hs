@@ -30,13 +30,9 @@ module Yi.Core (
         -- * Keymap
         module Yi.Keymap,
         
-        Direction (..),
         -- * Construction and destruction
         startE,         -- :: Kernel -> Maybe Editor -> [Action] -> IO ()
-        --emptyE,         -- :: Action
-        --runE,           -- :: String -> Action
         quitE,          -- :: Action
-        --rebootE,        -- :: Action
         reloadE,        -- :: Action
         reconfigE,
         loadE,
@@ -45,24 +41,14 @@ module Yi.Core (
         suspendE,       -- :: Action
 
         -- * Global editor actions
-        BufferFileInfo ( .. ), 
-
         msgE,           -- :: String -> Action
         errorE,         -- :: String -> Action
         msgClrE,        -- :: Action
-        bufInfoB,       -- :: EditorM BufferFileInfo
         setWindowFillE, -- :: Char -> Action
         setWindowStyleE,-- :: UIStyle -> Action
 
         -- * Window manipulation
-        nextWinE,       -- :: Action
-        prevWinE,       -- :: Action
         closeE,         -- :: Action
-        tryCloseE,         -- :: Action
-        closeOtherE,    -- :: Action
-        splitE,         -- :: Action
-        enlargeWinE,    -- :: Action
-        shrinkWinE,     -- :: Action
 
         -- * File-based actions
         fnewE,          -- :: FilePath -> Action
@@ -84,11 +70,6 @@ module Yi.Core (
         nextBufW,       -- :: Action
         prevBufW,       -- :: Action
 
-        -- * Buffer point movement
-        topB,
-        botB,
-        getLineAndCol, -- :: EditorM (Int, Int)
-
         -- * Window-based movement
         upScreenE,      -- :: Action
         upScreensE,     -- :: Int -> Action
@@ -99,33 +80,15 @@ module Yi.Core (
         middleE,        -- :: Action
 
         -- * Buffer editing
-        deleteRegionB,
         revertE,        -- :: Action
-
-        -- * Read parts of the buffer
-        readRegionB,    -- :: Region -> EditorM String
-        readLnB,        -- :: EditorM String
-        readNM,         -- :: Int -> Int -> EditorM String
-        readRestOfLnB,  -- :: EditorM String
-
-        swapB,          -- :: Action
 
         -- * Basic registers
         setRegE,        -- :: String -> Action
         getRegE,        -- :: EditorM String
 
-        -- * Marks
-        setSelectionMarkPointB,
-        getSelectionMarkPointB,
-        exchangePointAndMarkB,
-        getBookmarkB,
-
         -- * Dynamically extensible state
         getDynamic,
         setDynamic,
-
-        -- * higher level ops
-        mapRangeB,
 
         -- * Interacting with external commands
         pipeE,                   -- :: String -> String -> EditorM String
@@ -143,8 +106,8 @@ import Prelude hiding (error, sequence_, mapM_)
 
 import Yi.Debug
 import Yi.Buffer
+import Yi.Buffer.HighLevel
 import Yi.Dynamic
-import Yi.Region
 import Yi.String
 import Yi.Process           ( popen )
 import Yi.Editor hiding (readEditor)
@@ -182,10 +145,6 @@ import qualified ErrUtils
 import Outputable
 
 import GHC.Exts ( unsafeCoerce# )
-
-
--- | A 'Direction' is either left or right.
-data Direction = GoLeft | GoRight
 
 -- | Make an action suitable for an interactive run.
 -- UI will be refreshed.
@@ -337,24 +296,6 @@ refreshE = withUI UI.refreshAll
 suspendE :: Action
 suspendE = withUI UI.suspend
 
--- ---------------------------------------------------------------------
--- Movement operations
-
--- | Move cursor to origin
-topB :: BufferM ()
-topB = moveTo 0
-
--- | Move cursor to end of buffer
-botB :: BufferM ()
-botB = moveTo =<< sizeB
-
--- | Get the current line and column number
-getLineAndCol :: BufferM (Int, Int)
-getLineAndCol = do
-  lineNo <- curLn
-  colNo  <- offsetFromSol
-  return (lineNo, colNo)
-
 ------------------------------------------------------------------------
 
 -- | Scroll up 1 screen
@@ -411,45 +352,6 @@ scrollDownE :: Action
 scrollDownE = withWindow_ scrollDownW
 -}
 
-------------------------------------------------------------------------
-
--- | Delete an arbitrary part of the buffer
-deleteRegionB :: Region -> BufferM ()
-deleteRegionB r = deleteNAt (regionEnd r - regionStart r) (regionStart r)
-
-
--- | Read an arbitrary part of the buffer
-readRegionB :: Region -> BufferM String
-readRegionB r = readNM (regionStart r) (regionEnd r)
-
--- | Read the line the point is on
-readLnB :: BufferM String
-readLnB = do
-    i <- indexOfSol
-    j <- indexOfEol
-    nelemsB (j-i) i
-
--- | Read from - to
-readNM :: Int -> Int -> BufferM String
-readNM i j = nelemsB (j-i) i
-
--- | Read from point to end of line
-readRestOfLnB :: BufferM String
-readRestOfLnB = do
-    p <- pointB
-    j <- indexOfEol
-    nelemsB (j-p) p
-
--- | Transpose two characters, (the Emacs C-t action)
-swapB :: BufferM ()
-swapB = do eol <- atEol
-           when eol leftB
-           c <- readB
-           deleteB
-           leftB
-           insertN [c]
-           rightB
-
 -- ---------------------------------------------------------------------
 -- registers (TODO these may be redundant now that it is easy to thread
 -- state in key bindings, or maybe not.
@@ -462,30 +364,6 @@ setRegE s = withEditor $  modifyEditor_ $ \e -> return e { yreg = s }
 -- | Return the contents of the yank register
 getRegE :: YiM String
 getRegE = readEditor yreg
-
-
--- ----------------------------------------------------
--- | Marks
-
--- | Set the current buffer mark
-setSelectionMarkPointB :: Int -> BufferM ()
-setSelectionMarkPointB pos = do m <- getSelectionMarkB; setMarkPointB m pos
-
--- | Get the current buffer mark
-getSelectionMarkPointB :: BufferM Int
-getSelectionMarkPointB = do m <- getSelectionMarkB; getMarkPointB m
-
--- | Exchange point & mark.
--- Maybe this is better put in Emacs\/Mg common file
-exchangePointAndMarkB :: BufferM ()
-exchangePointAndMarkB = do m <- getSelectionMarkPointB
-                           p <- pointB
-                           setSelectionMarkPointB p
-                           moveTo m
-
-getBookmarkB :: String -> BufferM Mark
-getBookmarkB nm = getMarkB (Just nm)
-
 
 -- ---------------------------------------------------------------------
 -- | Dynamically-extensible state components.
@@ -543,37 +421,6 @@ errorE s = do msgE ("error: " ++ s)
 msgClrE :: Action
 msgClrE = msgE ""
 
--- ---------------------------------------------------------------------
--- Buffer operations
-
-data BufferFileInfo =
-    BufferFileInfo { bufInfoFileName :: FilePath
-		   , bufInfoSize     :: Int
-		   , bufInfoLineNo   :: Int
-		   , bufInfoColNo    :: Int
-		   , bufInfoCharNo   :: Int
-		   , bufInfoPercent  :: String
-		   , bufInfoModified :: Bool
-		   }
-
--- | File info, size in chars, line no, col num, char num, percent
-bufInfoB :: BufferM BufferFileInfo
-bufInfoB = do
-    s <- sizeB
-    p <- pointB
-    m <- isUnchangedB
-    l <- curLn
-    c <- offsetFromSol
-    nm <- nameB
-    let bufInfo = BufferFileInfo { bufInfoFileName = nm
-				 , bufInfoSize     = s
-				 , bufInfoLineNo   = l
-				 , bufInfoColNo    = c
-				 , bufInfoCharNo   = p
-				 , bufInfoPercent  = getPercent p s 
-				 , bufInfoModified = not m
-				 }
-    return bufInfo
 
 -- | A character to fill blank lines in windows with. Usually '~' for
 -- vi-like editors, ' ' for everything else
@@ -672,7 +519,6 @@ getBufferWithName bufName = do
     [] -> fail ("Buffer not found: " ++ bufName)
     (b:_) -> return b
 
-
 -- | Switch to the buffer specified as parameter. If the buffer name is empty, switch to the next buffer.
 switchToBufferWithNameE :: String -> Action
 switchToBufferWithNameE "" = nextBufW
@@ -730,28 +576,6 @@ closeE = do
     when (n == 1) quitE
     tryCloseE
 
-------------------------------------------------------------------------
---
--- Map a char function over a range of the buffer.
---
--- Fold over a range is probably useful too..
---
--- !!!This is a very bad implementation; delete; apply; and insert the result.
-mapRangeB :: Int -> Int -> (Char -> Char) -> BufferM ()
-mapRangeB from to fn
-    | from < 0  = return ()
-    | otherwise = do
-            eof <- sizeB
-            when (to < eof) $ do
-                let loop j | j <= 0    = return ()
-                           | otherwise = do
-                                readB >>= return . fn >>= writeB
-                                rightB
-                                loop (j-1)
-                loop (max 0 (to - from))
-            moveTo from
-
-
 reconfigE :: Action
 reconfigE = reloadE >> runConfig
 
@@ -784,21 +608,13 @@ getNamesInScopeE = do
       names <- getNamesInScope k
       return $ map (nameToString k) rdrNames ++ map (nameToString k) names
 
-savingExcursion :: BufferM a -> BufferM a
-savingExcursion f = do
-    m <- getMarkB Nothing
-    res <- f
-    moveTo =<< getMarkPointB m
-    return res
-
-
 ghcErrorReporter :: Yi -> GHC.Severity -> SrcLoc.SrcSpan -> Outputable.PprStyle -> ErrUtils.Message -> IO () 
 ghcErrorReporter yi severity srcSpan pprStyle message = 
     -- the following is written in very bad style.
     flip runReaderT yi $ do
       e <- readEditor id
       let [b] = findBufferWithName e "*console*"
-      withGivenBuffer b $ savingExcursion $ do 
+      withGivenBuffer b $ savingExcursionB $ do 
         moveTo =<< getMarkPointB =<< getMarkB (Just "errorInsert")
         insertN msg
         insertN "\n"

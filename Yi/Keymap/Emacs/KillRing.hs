@@ -25,6 +25,7 @@ import Yi.Keymap.Emacs.UnivArgument
 import Yi.Region
 import Yi.Keymap
 import Yi.Buffer
+import Yi.Buffer.HighLevel
 import Data.Dynamic
 
 import Control.Monad ( when, replicateM_ )

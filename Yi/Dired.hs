@@ -63,13 +63,8 @@ import System.Time
 import Text.Printf
 import Text.Regex.Posix
 
-import Yi.Buffer
-import Yi.Core
-import Yi.Dynamic
-import Yi.Editor
+import Yi.Yi
 import Yi.Keymap.Emacs
-import Yi.Region
-import Yi.Style
 
 data DiredFileInfo = DiredFileInfo {  permString :: String
                                     , numLinks :: Integer

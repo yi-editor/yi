@@ -18,6 +18,7 @@ yiMain = do
 
 
 -- I prefer to use Emacs keymap, with haskell hilight in every buffer.
-myKeymap = do write $ setSynE "haskell" 
+myKeymap = do write $ setSyntaxB "haskell" 
               keymap
 
+ 

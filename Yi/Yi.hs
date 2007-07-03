@@ -28,31 +28,38 @@
 
 module Yi.Yi (
               -- all things re-exported here are made available to keymaps definitions.
-        module Yi.Core,
+
+        module Control.Monad, -- since all actions are monadic, this is very useful to combine them.
         module Yi.Buffer,
+        module Yi.Buffer.HighLevel,
         module Yi.CharMove,
-        module Yi.Style,
+        module Yi.Core,
+        module Yi.CoreUI,
+        module Yi.Debug,
+        module Yi.Editor,
         module Yi.Eval,
         module Yi.Event, -- hack, for key defns
-        module Yi.Search,
-        module Yi.Region,
         module Yi.Interact,
-        module Yi.Debug,
-        module Control.Monad -- since all actions are monadic, this is very useful to combine them.
+        module Yi.Region,
+        module Yi.Search,
+        module Yi.Style
    ) where
-
-import Yi.Core
-import Yi.Buffer
-import Yi.CharMove
-import Yi.Style
-import Yi.Search
-import Yi.Region
-import Yi.Interact hiding (Interact, runProcess, write)
-import Yi.Debug
 import Control.Monad
+import Yi.Buffer
+import Yi.Buffer.HighLevel
+import Yi.CharMove
+import Yi.Core
+import Yi.CoreUI
+import Yi.Debug
+import Yi.Editor hiding (readEditor)
 import Yi.Eval
-
-
 import Yi.Event -- so we can see key defns
+import Yi.Interact hiding (Interact, runProcess, write)
+import Yi.Region
+import Yi.Search
+import Yi.Style
+
+
+
 
 

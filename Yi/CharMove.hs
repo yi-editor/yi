@@ -71,7 +71,7 @@ module Yi.CharMove (
     ) where
 
 import Yi.Buffer 
-import Yi.Core
+import Yi.Buffer.HighLevel
 import Text.Regex.Posix.String ( compExtended, compile, execBlank)
 import Yi.Monad
 import Data.Char

@@ -56,6 +56,7 @@ module Yi.Search (
                  ) where
 
 import Yi.Buffer
+import Yi.Buffer.HighLevel
 import Text.Regex.Posix.String  ( Regex, compExtended, compIgnoreCase, compNewline, compile, execBlank )
 import Yi.Editor hiding (readEditor)
 import qualified Yi.Editor as Editor
