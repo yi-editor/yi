@@ -657,12 +657,12 @@ ex_eval cmd = do
 
       fn "w"          = viWrite
       fn ('w':' ':f)  = viWriteTo f
-      fn "q"          = do b <- isUnchangedE
+      fn "q"          = do b <- withBuffer isUnchangedB
                            if b then closeE
                                 else errorE "No write since last change (add ! to override)"
       fn "q!"         = closeE
       fn "wq"         = viWrite >> closeE
-      fn "x"          = do unchanged <- isUnchangedE
+      fn "x"          = do unchanged <- withBuffer isUnchangedB
                            unless unchanged viWrite
                            closeE
       fn "n"          = nextBufW
@@ -670,7 +670,7 @@ ex_eval cmd = do
       fn "p"          = prevBufW
       fn ('s':'p':_)  = splitE
       fn ('e':' ':f)  = fnewE f
-      fn ('s':'e':'t':' ':'f':'t':'=':ft)  = setSynE ft
+      fn ('s':'e':'t':' ':'f':'t':'=':ft)  = withBuffer $ setSyntaxB ft
       fn ('n':'e':'w':' ':f) = splitE >> fnewE f
       fn ('s':'/':cs) = viSub cs
 

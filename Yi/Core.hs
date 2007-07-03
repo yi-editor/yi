@@ -75,9 +75,6 @@ module Yi.Core (
         newBufferE,     -- :: String -> String -> Action
         listBuffersE,   -- :: Action
         closeBufferE,   -- :: String -> Action
-        isUnchangedE,   -- :: EditorM Bool
-        setUnchangedE,  -- :: Action
-        setSynE,        -- :: String -> Action
         getBufferWithName,
 
         -- * Buffer/Window
@@ -724,19 +721,6 @@ closeBufferE bufName = do
   withEditor $ deleteBuffer b'
 
 ------------------------------------------------------------------------
-
--- | Is the current buffer unmodifed? (currently buggy, we need
--- bounaries in the undo list)
-isUnchangedE :: YiM Bool
-isUnchangedE = withBuffer isUnchangedB
-
--- | Set the current buffer to be unmodifed
-setUnchangedE :: Action
-setUnchangedE = undefined
-
--- | Set the current buffer's highlighting kind
-setSynE :: String -> Action
-setSynE sy = withBuffer $ setSyntaxB sy
 
 -- | Close the current window.
 -- If this is the last window open, quit the program.

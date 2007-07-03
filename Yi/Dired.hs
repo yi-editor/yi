@@ -210,7 +210,7 @@ linesToDisplay = do
 -- | Write the contents of the supplied directory into the current buffer in dired format
 diredLoadNewDirE :: FilePath -> YiM ()
 diredLoadNewDirE dir = do
-    setSynE "none" -- Colours for Dired come from overlays not syntax highlighting
+    withBuffer $ setSyntaxB "none" -- Colours for Dired come from overlays not syntax highlighting
     diredRefreshE
 
 -- | Return dired entries for the contents of the supplied directory
