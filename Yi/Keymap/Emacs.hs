@@ -249,7 +249,7 @@ rebind :: [(String,Process)] -> KeymapMod
 rebind keys = (makeProcess keys <++)
 
 findFile :: Action
-findFile = do maybePath <- fileNameE
+findFile = do maybePath <- withBuffer getfileB
               startPath <- liftIO $ getFolder maybePath
               withMinibuffer "find file:" (completeFileName (Just startPath)) $ \filename -> do {
                let filename' = fixFilePath startPath filename
@@ -323,7 +323,7 @@ completeBufferName s = do
 
 completeFileName :: Maybe String -> String -> YiM String
 completeFileName start s0 = do
-  curDir <- case start of Nothing -> do bufferPath <- fileNameE
+  curDir <- case start of Nothing -> do bufferPath <- withBuffer getfileB
                                         liftIO $ getFolder bufferPath
                           (Just path) -> return path
   homeDir <- lift $ getHomeDirectory

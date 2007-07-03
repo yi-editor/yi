@@ -50,9 +50,7 @@ module Yi.Core (
         msgE,           -- :: String -> Action
         errorE,         -- :: String -> Action
         msgClrE,        -- :: Action
-        bufInfoE,       -- :: EditorM BufferFileInfo
-        fileNameE,      -- :: EditorM (Maybe FilePath)
-        bufNameE,       -- :: EditorM String
+        bufInfoB,       -- :: EditorM BufferFileInfo
         setWindowFillE, -- :: Char -> Action
         setWindowStyleE,-- :: UIStyle -> Action
 
@@ -535,7 +533,7 @@ msgE s = do
   withEditor $ modifyEditor_ $ \e -> do
               -- also show in the messages buffer, so we don't loose any message
               let [b] = findBufferWithName e "*messages*"
-              runBuffer b $ do moveTo =<< sizeB; insertN (s ++ "\n")
+              runBuffer b $ do botB; insertN (s ++ "\n")
               return e
             
 
@@ -562,8 +560,8 @@ data BufferFileInfo =
 		   }
 
 -- | File info, size in chars, line no, col num, char num, percent
-bufInfoE :: YiM BufferFileInfo
-bufInfoE = withBuffer $ do
+bufInfoB :: BufferM BufferFileInfo
+bufInfoB = do
     s <- sizeB
     p <- pointB
     m <- isUnchangedB
@@ -579,14 +577,6 @@ bufInfoE = withBuffer $ do
 				 , bufInfoModified = not m
 				 }
     return bufInfo
-
--- | Maybe a file associated with this buffer
-fileNameE :: YiM (Maybe FilePath)
-fileNameE = withBuffer getfileB
-
--- | Name of this buffer
-bufNameE :: YiM String
-bufNameE = withBuffer $ nameB
 
 -- | A character to fill blank lines in windows with. Usually '~' for
 -- vi-like editors, ' ' for everything else

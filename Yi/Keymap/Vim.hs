@@ -715,7 +715,7 @@ not_implemented c = errorE $ "Not implemented: " ++ show c
 
 viFileInfo :: Action
 viFileInfo = 
-    do bufInfo <- bufInfoE
+    do bufInfo <- withBuffer bufInfoB
        msgE $ showBufInfo bufInfo
     where 
     showBufInfo :: BufferFileInfo -> String
@@ -732,11 +732,11 @@ viFileInfo =
 -- Need to catch any exception to avoid losing bindings
 viWrite :: Action
 viWrite = do
-    mf <- fileNameE
+    mf <- withBuffer getfileB
     case mf of
         Nothing -> errorE "no file name associate with buffer"
         Just f  -> do
-            bufInfo <- bufInfoE
+            bufInfo <- withBuffer bufInfoB
             let s   = bufInfoFileName bufInfo
             let msg = msgE $ show f ++" "++show s ++ "C written"
             catchJustE ioErrors (fwriteToE f >> msg) (msgE . show)
@@ -746,7 +746,7 @@ viWrite = do
 viWriteTo :: String -> Action
 viWriteTo f = do
     let f' = (takeWhile (/= ' ') . dropWhile (== ' ')) f
-    bufInfo <- bufInfoE
+    bufInfo <- withBuffer bufInfoB
     let s   = bufInfoFileName bufInfo
     let msg = msgE $ show f'++" "++show s ++ "C written"
     catchJustE ioErrors (fwriteToE f' >> msg) (msgE . show)
