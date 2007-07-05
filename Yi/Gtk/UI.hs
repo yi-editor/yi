@@ -109,6 +109,7 @@ start ch outCh runEd ws0 = lift $ do
 
   -- rest.
   win <- windowNew
+  windowSetDefaultSize win 500 400
 
   onKeyPress win (processEvent ch)
 
