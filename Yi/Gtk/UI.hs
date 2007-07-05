@@ -307,6 +307,7 @@ newWindow ui mini b = do
     set ml [ miscXalign := 0.01 ] -- so the text is left-justified.
 
     v <- textViewNew
+    textViewSetWrapMode v WrapChar
     widgetModifyFont v (Just f)
 
     box <- if mini 
