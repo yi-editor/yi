@@ -24,7 +24,7 @@
 
 module Yi.Buffer ( FBuffer (..), BufferM, runBuffer, keyB, curLn, nameB, indexOfEol,
                    sizeB, pointB, moveToSol, moveTo, lineUp, lineDown,
-                   hPutB, hNewB, newB, finaliseB, Point, Mark, BufferMode(..),
+                   hPutB, hNewB, newB, Point, Mark, BufferMode(..),
                    moveToEol, gotoLn, gotoLnFrom, offsetFromSol,
                    atSol, atEol, atSof, atEof, leftB, rightB,
                    moveXorEol, moveXorSol, insertN, insertB, deleteN,
@@ -67,7 +67,7 @@ data FBuffer =
                 , bkey   :: !Unique                  -- ^ immutable unique key
                 , file   :: !(MVar (Maybe FilePath)) -- ^ maybe a filename associated with this buffer
                 , undos  :: !(MVar URList)           -- ^ undo/redo list
-                , rawbuf :: !BufferImpl
+                , rawbuf :: !(MVar BufferImpl)
                 , bmode  :: !(MVar BufferMode)       -- ^ a read-only bit
                 , bufferDynamic :: !(IORef DynamicValues) -- ^ dynamic components
                 , preferCol :: !(IORef (Maybe Int))  -- ^ prefered column to arrive at when we do a lineDown / lineUp
@@ -113,13 +113,25 @@ getPercent :: Int -> Int -> String
 getPercent a b = show p ++ "%"
     where p = ceiling ((fromIntegral a) / (fromIntegral b) * 100 :: Double) :: Int
 
-withImpl :: (BufferImpl -> IO x) -> (BufferM x)
-withImpl f = do 
-   b <- ask 
-   liftIO $ f (rawbuf b)
+
+queryBuffer :: (BufferImpl -> x) -> (BufferM x)
+queryBuffer f = do
+  b <- ask
+  liftIO $ withMVar (rawbuf b) (return . f)
+
+modifyBuffer :: (BufferImpl -> BufferImpl) -> BufferM ()
+modifyBuffer f = do
+  b <- ask
+  liftIO $ modifyMVar_ (rawbuf b) (return . f)
+  
+queryAndModify :: (BufferImpl -> (BufferImpl,x)) -> BufferM x
+queryAndModify f = do
+  b <- ask
+  liftIO $ modifyMVar (rawbuf b) (return . f)
+
 
 addOverlayB :: Point -> Point -> Style -> BufferM ()
-addOverlayB s e sty = withImpl $ addOverlayBI s e sty
+addOverlayB s e sty = modifyBuffer $ addOverlayBI s e sty
 
 runBuffer :: FBuffer -> BufferM a -> IO (a, [URAction])
 runBuffer b f = do 
@@ -167,16 +179,20 @@ isUnchangedB = do
   return $ isEmptyUList ur
 
 undo :: BufferM ()
-undo = do fb@(FBuffer { undos = mv }) <- ask; u <- liftIO $ modifyMVar mv (undoUR (rawbuf fb)); tell u
+undo = do fb <- ask
+          u <- liftIO $ modifyMVar (undos fb) $ \u -> modifyMVar (rawbuf fb) $ return . undoUR u
+          tell u
 
 redo :: BufferM ()
-redo = do fb@(FBuffer { undos = mv }) <- ask; u <- liftIO $ modifyMVar mv (redoUR (rawbuf fb)); tell u
+redo = do fb <- ask
+          u <- liftIO $ modifyMVar (undos fb) $ \u -> modifyMVar (rawbuf fb) $ return . redoUR u
+          tell u
 
 -- | Create buffer named @nm@ with contents @s@
 newB :: String -> [Char] -> IO FBuffer
 newB nm s = do 
     pc <- newIORef Nothing
-    mv <- newBI s
+    mv <- newMVar $ newBI s
     mv' <- newMVar emptyUR
     mvf <- newMVar Nothing      -- has name, not connected to a file
     rw  <- newMVar ReadWrite
@@ -195,27 +211,21 @@ newB nm s = do
                          }
     return result                    
 
-
--- | Free any resources associated with this buffer
-finaliseB :: BufferM ()
-finaliseB = do 
-  withImpl finaliseBI
-
 -- | Number of characters in the buffer
 sizeB :: BufferM Int
-sizeB = withImpl sizeBI
+sizeB = queryBuffer sizeBI
 
 -- | Extract the current point
 pointB :: BufferM Int
-pointB = withImpl pointBI
+pointB = queryBuffer pointBI
 
 -- | Return @n@ elems starting at @i@ of the buffer as a list
 nelemsB :: Int -> Int -> BufferM [Char]
-nelemsB n i = withImpl $ nelemsBI n i
+nelemsB n i = queryBuffer $ nelemsBI n i
 
 -- | Return @n@ elems starting at @i@ of the buffer as a list
 nelemsBH :: Int -> Int -> BufferM [(Char,Style)]
-nelemsBH n i = withImpl $ nelemsBIH n i
+nelemsBH n i = queryBuffer $ nelemsBIH n i
 
 ------------------------------------------------------------------------
 -- Point based operations
@@ -224,7 +234,7 @@ nelemsBH n i = withImpl $ nelemsBIH n i
 moveTo :: Int -> BufferM ()
 moveTo x = do 
   forgetPreferCol
-  withImpl $ moveToI x
+  modifyBuffer $ moveToI x
 
 ------------------------------------------------------------------------
 
@@ -232,7 +242,7 @@ applyUpdate :: URAction -> BufferM ()
 applyUpdate update = do
   forgetPreferCol
   FBuffer { undos = uv } <- ask
-  reversed <- withImpl (getActionB update)
+  reversed <- queryAndModify (getActionB update)
   liftIO $ modifyMVar_ uv $ \u -> return $ addUR u reversed
   tell [update]
     
@@ -267,45 +277,45 @@ deleteNAt n pos = applyUpdate (Delete pos n)
 
 -- | Return the current line number
 curLn :: BufferM Int
-curLn = withImpl curLnI 
+curLn = queryBuffer curLnI 
 
 -- | Go to line number @n@. @n@ is indexed from 1. Returns the
 -- actual line we went to (which may be not be the requested line,
 -- if it was out of range)
 gotoLn :: Int -> BufferM Int
-gotoLn = withImpl . gotoLnI
+gotoLn = queryAndModify . gotoLnI
 
 ---------------------------------------------------------------------
 
 -- | Return index of next string in buffer that matches argument
 searchB :: [Char] -> BufferM (Maybe Int)
-searchB = withImpl . searchBI
+searchB = queryBuffer . searchBI
 
 -- | Set name of syntax highlighting mode
 setSyntaxB :: [Char] -> BufferM ()
-setSyntaxB = withImpl . setSyntaxBI
+setSyntaxB = modifyBuffer . setSyntaxBI
 
 -- | Return indices of next string in buffer matched by regex
 regexB :: Regex -> BufferM (Maybe (Int,Int))
-regexB = withImpl . regexBI
+regexB = queryBuffer . regexBI
 
 ---------------------------------------------------------------------
 
 -- | Set a mark in this buffer
 setMarkPointB :: Mark -> Int -> BufferM ()
-setMarkPointB m pos = withImpl $ setMarkPointBI m pos
+setMarkPointB m pos = modifyBuffer $ setMarkPointBI m pos
 
 getMarkPointB :: Mark -> BufferM Int
-getMarkPointB = withImpl . getMarkPointBI
+getMarkPointB = queryBuffer . getMarkPointBI
 
 unsetMarkB :: BufferM ()
-unsetMarkB = withImpl unsetMarkBI
+unsetMarkB = modifyBuffer unsetMarkBI
 
 getMarkB :: Maybe String -> BufferM Mark
-getMarkB = withImpl . getMarkBI
+getMarkB = queryBuffer . getMarkBI
 
 getSelectionMarkB :: BufferM Mark
-getSelectionMarkB = withImpl getSelectionMarkBI
+getSelectionMarkB = queryBuffer getSelectionMarkBI
 
 -- | Move point -1
 leftB :: BufferM ()

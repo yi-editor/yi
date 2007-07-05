@@ -23,7 +23,7 @@
 
 module Yi.Editor where
 
-import Yi.Buffer                ( FBuffer (..), BufferM, newB, keyB, hNewB, runBuffer, finaliseB )
+import Yi.Buffer                ( FBuffer (..), BufferM, newB, keyB, hNewB, runBuffer )
 import Text.Regex.Posix.Wrap    ( Regex )
 import Yi.Style                 ( uiStyle, UIStyle )
 
@@ -134,7 +134,6 @@ deleteBuffer :: FBuffer -> EditorM ()
 deleteBuffer b = do
   bs <- readEditor buffers
   when (length bs > 0) $ do -- never delete the last buffer.
-    lift $ runBuffer b finaliseB
     modifyEditor_ $ \e-> return e { buffers = delete b $ buffers e}
 
 -- | Return the buffers we have

@@ -109,20 +109,20 @@ addUR (URList us _rs) u =
 --
 -- | Undo the last action that mutated the buffer contents. The action's
 -- inverse is added to the redo list. 
-undoUR :: BufferImpl -> URList -> IO (URList, [URAction])
-undoUR _ u@(URList [] _) = return (u, [])
-undoUR b (URList (u:us) rs) = do
-    r <- (getActionB u) b
-    return (URList us (r:rs), [u])
+undoUR :: URList -> BufferImpl -> (BufferImpl, (URList, [URAction]))
+undoUR u@(URList [] _) b = (b, (u, []))
+undoUR (URList (u:us) rs) b = 
+    let (b', r) = (getActionB u) b 
+    in (b', (URList us (r:rs), [u]))
 
 --
 -- | Redo the last action that mutated the buffer contents. The action's
 -- inverse is added to the undo list.
-redoUR :: BufferImpl -> URList -> IO (URList, [URAction])
-redoUR _ u@(URList _ []) = return (u, [])
-redoUR b (URList us (r:rs)) = do
-    u <- (getActionB r) b
-    return (URList (u:us) rs, [u])
+redoUR :: URList -> BufferImpl -> (BufferImpl, (URList, [URAction]))
+redoUR u@(URList _ []) b = (b, (u, []))
+redoUR (URList us (r:rs)) b =
+    let (b', u) = (getActionB r) b
+    in (b', (URList (u:us) rs, [u]))
 
 
 -- | isEmptyUndoList. @True@ if the undo list is empty, and hence the
@@ -140,16 +140,7 @@ addBoundary = undefined
 -- | Given a URAction, apply it to the buffer, and return the
 -- URAction that reverses it.
 --
-getActionB :: URAction -> BufferImpl -> IO URAction
-getActionB (Delete p n) b = do
-    moveToI p b
-    p' <- pointBI b
-    text <- nelemsBI n p' b
-    deleteNAtI b n p'
-    return $ Insert p' text
-
-getActionB (Insert p cs) b = do
-    moveToI p b
-    insertNI b cs
-    return $ Delete p (length cs)
+getActionB :: URAction -> BufferImpl -> (BufferImpl, URAction)
+getActionB (Delete p n) b = (deleteNAtI (moveToI p b) n p, Insert p (nelemsBI n p b))
+getActionB (Insert p cs) b = (insertNI (moveToI p b) cs, Delete p (length cs))
 
