@@ -322,7 +322,7 @@ newWindow ui mini b = do
       set hb [ containerChild := prompt, 
                containerChild := v, 
                boxChildPacking prompt := PackNatural,
-               boxChildPacking v := PackNatural] 
+               boxChildPacking v := PackGrow] 
 
       return (castToBox hb)
      else do
