@@ -250,6 +250,7 @@ curLnI fb@(FBufferData ptr _ _ _ _) = 1 + B.count '\n'  (B.take (pointBI fb) ptr
 -- actual line we went to (which may be not be the requested line,
 -- if it was out of range)
 gotoLnI :: Int -> BufferImpl -> (BufferImpl, Int)
+gotoLnI n fb | n < 1 = (moveToI 0 fb, 1)
 gotoLnI n fb = 
         let lineEnds = B.elemIndices '\n' (mem fb)
             lineStarts = 0 : map (+1) lineEnds
