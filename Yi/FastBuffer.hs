@@ -79,7 +79,7 @@ data FBufferData =
                     , marks      :: !Marks                 -- ^ Marks for this buffer
                     , _markNames :: !(M.Map String Mark)
                     , hlcache    :: !(Maybe HLState)       -- ^ syntax highlighting state
-                    , overlays   :: ![(Mark, Mark, Style)] -- ^ list of visual overlay regions
+                    , overlays   :: ![(MarkValue, MarkValue, Style)] -- ^ list of visual overlay regions
                     -- Overlays should not use Mark, but directly Point
                     }
 
@@ -135,12 +135,14 @@ inBounds i end | i <= 0    = 0
 ------------------------------------------------------------------------
 -- Mid-level insert/delete
 
-shiftMarks :: Point -> Int -> Marks -> Marks
-shiftMarks from by = M.map $ \(MarkValue p leftBound) -> (MarkValue (shift p leftBound) leftBound)
-    where shift p leftBound | p < from  = p
-                            | p == from = if leftBound then p else p'
-                            | otherwise {- p > from -} = p'
-                     where p' = max from (p + by)
+shiftMarkValue from by (MarkValue p leftBound) = MarkValue shifted leftBound
+    where shifted | p < from  = p
+                  | p == from = if leftBound then p else p'
+                  | otherwise {- p > from -} = p'
+              where p' = max from (p + by)
+
+
+mapOvlMarks f (s,e,v) = (f s, f e, v)
 
 -------------------------------------
 -- * "high-level" (exported) operations
@@ -166,9 +168,9 @@ nelemsBI n i (FBufferData b _ _ _ _) =
 -- | Add a style "overlay" between the given points.
 addOverlayBI :: Point -> Point -> Style -> BufferImpl -> BufferImpl
 addOverlayBI s e sty fb = 
-    let sm = snd $ getMarkDefaultPosBI Nothing s fb
-        em = snd $ getMarkDefaultPosBI Nothing e fb
-    in fb{overlays=(sm,em,sty):(overlays fb)}
+    let sm = MarkValue s True
+        em = MarkValue e False
+    in fb{overlays=(sm,em,sty) : overlays fb}
 
 -- | Return @n@ elems starting at @i@ of the buffer as a list.
 -- This routine also does syntax highlighting and applies overlays.
@@ -197,12 +199,12 @@ nelemsBIH n i fb = fun fb
 
       ov :: FBufferData -> (Style, Int) -> Style
       ov bd (sh_attr, ind) = foldr (\(sm, em, a) att ->
-                                    if betweenMarks (marks bd) sm em ind
+                                    if betweenMarks sm em ind
                                     then a `attrOver` att
                                     else att)
                              sh_attr (overlays bd)
 
-      betweenMarks mks m1 m2 pos = pos>=(markPosition (mks M.! m1)) && pos<(markPosition (mks M.! m2))
+      betweenMarks m1 m2 pos = pos >= markPosition m1 && pos < markPosition m2
 
       --attrOver att1 att2 = att1 .|. (att2 .&. 0xFFFF0000) -- Overwrite colors, keep attrs (bold, underline etc)
       attrOver att1 _att2 = att1 -- Until Vty exposes interface for attr merging....
@@ -224,17 +226,18 @@ applyUpdateI (Insert p cs) b = insertNAtI b cs p
 -- | Insert the list at current point, extending size of buffer
 insertNAtI :: BufferImpl -> [Char] -> Point -> BufferImpl
 insertNAtI (FBufferData p mks nms hl ov) cs pnt = 
-    FBufferData (insertChars p (B.pack cs) pnt) (shiftMarks pnt (length cs) mks) nms hl ov
-
+    FBufferData (insertChars p (B.pack cs) pnt) (M.map shift mks) nms hl (map (mapOvlMarks shift) ov)
+    where shift = shiftMarkValue pnt (length cs)
 
 
 -- | @deleteNAtI b n p@ deletes @n@ characters forwards from position @p@
 deleteNAtI :: BufferImpl -> Int -> Int -> BufferImpl
 deleteNAtI (FBufferData ptr mks nms hl ov) n pos =
-        let src = inBounds pos end               -- start shifting from
-            len = inBounds n (end - src)   -- length of shift
-        in FBufferData (deleteChars ptr src len) (shiftMarks src (negate len) mks) nms hl ov
-    where end = B.length ptr
+    FBufferData (deleteChars ptr src len) (M.map shift mks) nms hl (map (mapOvlMarks shift) ov)
+    where shift = shiftMarkValue src (negate len)
+          end = B.length ptr
+          src = inBounds pos end               -- start shifting from
+          len = inBounds n (end - src)   -- length of shift
 -- FIXME: remove collapsed overlays 
 
 ------------------------------------------------------------------------
@@ -269,8 +272,8 @@ regexBI re fb@(FBufferData ptr _ _ _ _) =
     let p = pointBI fb
         mmatch = matchOnce re (B.drop p ptr)
     in case mmatch of
-         Nothing        -> Nothing
          Just arr | ((off,len):_) <- elems arr -> Just (p+off,p+off+len)
+         _ -> Nothing
 
 getSelectionMarkBI :: BufferImpl -> Mark
 getSelectionMarkBI _ = markMark -- FIXME: simplify this.
