@@ -1,4 +1,6 @@
 # where to install executable and packages (running in-place -- without installing -- is not supported)
+frontend = vty
+
 prefix = $(HOME)/usr/
 
 # The following are web-publishing options.

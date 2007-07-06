@@ -10,13 +10,13 @@ runtime-config:
 	cp examples/*.hs $(HOME)/.yi
 
 run-inplace: build #using YiConfig's keybinding.
-	dist/build/yi/yi -B. -f$(flavour)
+	dist/build/yi/yi -B. -f$(frontend)
 
 emacs: build
-	dist/build/yi/yi -B. -f$(flavour) --as=emacs
+	dist/build/yi/yi -B. -f$(frontend) --as=emacs
 
 vim: build
-	dist/build/yi/yi -B. -f$(flavour) --as=vim
+	dist/build/yi/yi -B. -f$(frontend) --as=vim
 
 distclean: clean
 	rm -f yi.buildinfo testsuite/pp/logpp config.log config.cache config.status cbits/config.h .setup-config
