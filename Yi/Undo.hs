@@ -66,64 +66,43 @@ module Yi.Undo (
         undoUR,
         redoUR,
         isEmptyUList,
-        addBoundary,
+        reverseUpdate,
         getActionB,
         URList,             {- abstractly -}
-        URAction(..),       {- non-abstractly, for concrete implementations -}
+        Update(..),       {- non-abstractly, for concrete implementations -}
    ) where
 
 import Yi.FastBuffer            
 
---
 -- | A URList consists of an undo and a redo list.
---
-data URList = URList ![URAction] ![URAction]
-
---
--- | Mutation actions (from the undo or redo list)
---
--- We use the /partial checkpoint/ (Berlage, pg16) strategy to store
--- just the components of the state that change.
---
--- The state (i.e. editor contents) are stored CChars, this has
--- implications for Unicode.
---
-data URAction = Insert {updatePoint :: !Point, insertUpdateString :: !String} -- FIXME: use ByteString
-              | Delete {updatePoint :: !Point, deleteUpdateSize :: !Size}
-      --      | Boundary
-                deriving Show
-
+data URList = URList ![Update] ![Update]
 
 -- | A new empty 'URList'.
 emptyUR :: URList
 emptyUR = URList [] []
 
---
 -- | Add an action to the undo list.
 -- According to the restricted, linear undo model, if we add a command
 -- whilst the redo list is not empty, we will lose our redoable changes.
-addUR :: URList -> URAction -> URList
+addUR :: URList -> Update -> URList
 addUR (URList us _rs) u =
     URList (u:us) []
 
---
 -- | Undo the last action that mutated the buffer contents. The action's
 -- inverse is added to the redo list. 
-undoUR :: URList -> BufferImpl -> (BufferImpl, (URList, [URAction]))
+undoUR :: URList -> BufferImpl -> (BufferImpl, (URList, [Update]))
 undoUR u@(URList [] _) b = (b, (u, []))
 undoUR (URList (u:us) rs) b = 
     let (b', r) = (getActionB u) b 
     in (b', (URList us (r:rs), [u]))
 
---
 -- | Redo the last action that mutated the buffer contents. The action's
 -- inverse is added to the undo list.
-redoUR :: URList -> BufferImpl -> (BufferImpl, (URList, [URAction]))
+redoUR :: URList -> BufferImpl -> (BufferImpl, (URList, [Update]))
 redoUR u@(URList _ []) b = (b, (u, []))
 redoUR (URList us (r:rs)) b =
     let (b', u) = (getActionB r) b
     in (b', (URList (u:us) rs, [u]))
-
 
 -- | isEmptyUndoList. @True@ if the undo list is empty, and hence the
 -- buffer is not modified
@@ -131,16 +110,12 @@ isEmptyUList :: URList -> Bool
 isEmptyUList (URList [] _) = True
 isEmptyUList (URList _  _) = False
 
--- | Add an undo `boundary', for save-points and the like
-addBoundary :: URList -> URList
-addBoundary = undefined
+-- | Given a Update, apply it to the buffer, and return the
+-- Update that reverses it.
+getActionB :: Update -> BufferImpl -> (BufferImpl, Update)
+getActionB u b = (applyUpdateI u (moveToI (updatePoint u) b), reverseUpdate u b)
 
-
-
--- | Given a URAction, apply it to the buffer, and return the
--- URAction that reverses it.
---
-getActionB :: URAction -> BufferImpl -> (BufferImpl, URAction)
-getActionB (Delete p n) b = (deleteNAtI (moveToI p b) n p, Insert p (nelemsBI n p b))
-getActionB (Insert p cs) b = (insertNI (moveToI p b) cs, Delete p (length cs))
-
+-- | Reverse the given update
+reverseUpdate :: Update -> BufferImpl -> Update
+reverseUpdate (Delete p n) b = Insert p (nelemsBI n p b)
+reverseUpdate (Insert p cs) _ = Delete p (length cs)

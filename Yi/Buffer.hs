@@ -74,8 +74,8 @@ data FBuffer =
                 , runLock :: !QSem
                 }
 
-newtype BufferM a = BufferM { fromBufferM :: RWST FBuffer [URAction] () IO a }
-    deriving (MonadIO, Monad, Functor, MonadWriter [URAction], MonadReader FBuffer)
+newtype BufferM a = BufferM { fromBufferM :: RWST FBuffer [Update] () IO a }
+    deriving (MonadIO, Monad, Functor, MonadWriter [Update], MonadReader FBuffer)
 
 instance Eq FBuffer where
    FBuffer { bkey = u } == FBuffer { bkey = v } = u == v
@@ -133,7 +133,7 @@ queryAndModify f = do
 addOverlayB :: Point -> Point -> Style -> BufferM ()
 addOverlayB s e sty = modifyBuffer $ addOverlayBI s e sty
 
-runBuffer :: FBuffer -> BufferM a -> IO (a, [URAction])
+runBuffer :: FBuffer -> BufferM a -> IO (a, [Update])
 runBuffer b f = do 
   waitQSem (runLock b)
   (a, (), ur) <- runRWST (fromBufferM f) b ()
@@ -238,7 +238,7 @@ moveTo x = do
 
 ------------------------------------------------------------------------
 
-applyUpdate :: URAction -> BufferM ()
+applyUpdate :: Update -> BufferM ()
 applyUpdate update = do
   forgetPreferCol
   FBuffer { undos = uv } <- ask

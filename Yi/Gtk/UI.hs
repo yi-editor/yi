@@ -421,7 +421,7 @@ replaceTagsIn ui from to buf gtkBuf = do
     tag <- styleToTag ui style
     textBufferApplyTag gtkBuf tag f t                         
 
-applyUpdate :: TextBuffer -> URAction -> IO ()
+applyUpdate :: TextBuffer -> Update -> IO ()
 applyUpdate buf (Insert p s) = do
   i <- textBufferGetIterAtOffset buf p
   textBufferInsert buf i s

@@ -57,7 +57,7 @@ data Editor = Editor {
        ,regex         :: !(Maybe (String,Regex))    -- ^ most recent regex
        -- should be moved into dynamic component, perhaps
 
-       ,editorUpdates :: [(Unique, URAction)]
+       ,editorUpdates :: [(Unique, Update)]
     }
 
 --

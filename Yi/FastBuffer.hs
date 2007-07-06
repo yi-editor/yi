@@ -24,7 +24,7 @@
 -- NB buffers have no concept of multiwidth characters. There is an
 -- assumption that a character has width 1, including tabs.
 
-module Yi.FastBuffer (Point, Mark, Size, BufferImpl, deleteNAtI, moveToI, insertNI, 
+module Yi.FastBuffer (Update(..), Point, Mark, Size, BufferImpl, moveToI, applyUpdateI, 
                       pointBI, nelemsBI, sizeBI, curLnI, newBI,
                       gotoLnI, searchBI, regexBI, 
                       getMarkBI, getMarkPointBI, setMarkPointBI, unsetMarkBI, getSelectionMarkBI,
@@ -82,6 +82,18 @@ data FBufferData =
                     , overlays   :: ![(Mark, Mark, Style)] -- ^ list of visual overlay regions
                     -- Overlays should not use Mark, but directly Point
                     }
+
+
+--
+-- | Mutation actions (from the undo or redo list)
+--
+-- We use the /partial checkpoint/ (Berlage, pg16) strategy to store
+-- just the components of the state that change.
+--
+
+data Update = Insert {updatePoint :: !Point, insertUpdateString :: !String} -- FIXME: use ByteString
+            | Delete {updatePoint :: !Point, deleteUpdateSize :: !Size}
+              deriving Show
 
 
 --------------------------------------------------
@@ -205,14 +217,14 @@ moveToI i (FBufferData ptr mks nms hl ov) =
     where end = B.length ptr
 {-# INLINE moveToI #-}
 
+applyUpdateI :: Update -> BufferImpl -> BufferImpl
+applyUpdateI (Delete p n) b = deleteNAtI b n p
+applyUpdateI (Insert p cs) b = insertNAtI b cs p
+
 -- | Insert the list at current point, extending size of buffer
-insertNI :: BufferImpl -> [Char] -> BufferImpl
-insertNI (FBufferData p mks nms hl ov) cs =
-        let (MarkValue pnt _) = mks M.! pointMark
-            cs_len = length cs
-        -- logPutStrLn $ "insertN' " ++ show cs ++ show pnt
-            
-        in FBufferData (insertChars p (B.pack cs) pnt) (shiftMarks pnt cs_len mks) nms hl ov
+insertNAtI :: BufferImpl -> [Char] -> Point -> BufferImpl
+insertNAtI (FBufferData p mks nms hl ov) cs pnt = 
+    FBufferData (insertChars p (B.pack cs) pnt) (shiftMarks pnt (length cs) mks) nms hl ov
 
 
 
@@ -311,4 +323,5 @@ getMarkDefaultPosBI name defaultPos fb@(FBufferData ptr mks nms hl ov) =
                         Just nm -> M.insert nm newMark nms
                mks' = M.insert newMark (MarkValue defaultPos False) mks
            in (FBufferData ptr mks' nms' hl ov, newMark)
+
 
