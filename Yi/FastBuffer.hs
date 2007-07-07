@@ -308,8 +308,8 @@ markLeftBound = True
 ------------------------------------------------------------------------
 
 -- | Returns the requested mark, creating a new mark with that name (at point) if needed
-getMarkBI :: Maybe String -> BufferImpl -> Mark
-getMarkBI name b = snd $ getMarkDefaultPosBI name (pointBI b) b
+getMarkBI :: Maybe String -> BufferImpl -> (BufferImpl, Mark)
+getMarkBI name b = getMarkDefaultPosBI name (pointBI b) b
 
 -- | Returns the requested mark, creating a new mark with that name (at the supplied position) if needed
 getMarkDefaultPosBI :: Maybe String -> Int -> BufferImpl -> (BufferImpl, Mark)

@@ -315,7 +315,7 @@ unsetMarkB :: BufferM ()
 unsetMarkB = modifyBuffer unsetMarkBI
 
 getMarkB :: Maybe String -> BufferM Mark
-getMarkB = queryBuffer . getMarkBI
+getMarkB = queryAndModify . getMarkBI
 
 getSelectionMarkB :: BufferM Mark
 getSelectionMarkB = queryBuffer getSelectionMarkBI
