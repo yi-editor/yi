@@ -24,7 +24,7 @@
 -- NB buffers have no concept of multiwidth characters. There is an
 -- assumption that a character has width 1, including tabs.
 
-module Yi.FastBuffer (Update(..), Point, Mark, Size, BufferImpl, moveToI, applyUpdateI, 
+module Yi.FastBuffer (Update(..), Point, Mark, Size, BufferImpl, moveToI, applyUpdateI, isValidUpdate,
                       pointBI, nelemsBI, sizeBI, curLnI, newBI,
                       gotoLnI, searchBI, regexBI, 
                       getMarkBI, getMarkPointBI, setMarkPointBI, unsetMarkBI, getSelectionMarkBI,
@@ -219,26 +219,22 @@ moveToI i (FBufferData ptr mks nms hl ov) =
     where end = B.length ptr
 {-# INLINE moveToI #-}
 
+-- | Checks if an Update is valid
+isValidUpdate :: Update -> BufferImpl -> Bool
+isValidUpdate u b = case u of
+                    (Delete p n) -> check p && check (p + n)
+                    (Insert p _) -> check p
+    where check x = x >= 0 && x <= B.length (mem b)
+
+
+-- | Apply a /valid/ update 
 applyUpdateI :: Update -> BufferImpl -> BufferImpl
-applyUpdateI (Delete p n) b = deleteNAtI b n p
-applyUpdateI (Insert p cs) b = insertNAtI b cs p
-
--- | Insert the list at current point, extending size of buffer
-insertNAtI :: BufferImpl -> [Char] -> Point -> BufferImpl
-insertNAtI (FBufferData p mks nms hl ov) cs pnt = 
-    FBufferData (insertChars p (B.pack cs) pnt) (M.map shift mks) nms hl (map (mapOvlMarks shift) ov)
-    where shift = shiftMarkValue pnt (length cs)
-
-
--- | @deleteNAtI b n p@ deletes @n@ characters forwards from position @p@
-deleteNAtI :: BufferImpl -> Int -> Int -> BufferImpl
-deleteNAtI (FBufferData ptr mks nms hl ov) n pos =
-    FBufferData (deleteChars ptr src len) (M.map shift mks) nms hl (map (mapOvlMarks shift) ov)
-    where shift = shiftMarkValue src (negate len)
-          end = B.length ptr
-          src = inBounds pos end               -- start shifting from
-          len = inBounds n (end - src)   -- length of shift
--- FIXME: remove collapsed overlays 
+applyUpdateI u (FBufferData p mks nms hl ov) = FBufferData p' (M.map shift mks) nms hl (map (mapOvlMarks shift) ov)
+    where (p', amount) = case u of
+                           Insert pnt cs  -> (insertChars p (B.pack cs) pnt, length cs)
+                           Delete pnt len -> (deleteChars p pnt len, negate len)
+          shift = shiftMarkValue (updatePoint u) amount
+          -- FIXME: remove collapsed overlays 
 
 ------------------------------------------------------------------------
 -- Line based editing

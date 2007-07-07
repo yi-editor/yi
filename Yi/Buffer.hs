@@ -240,11 +240,14 @@ moveTo x = do
 
 applyUpdate :: Update -> BufferM ()
 applyUpdate update = do
-  forgetPreferCol
-  FBuffer { undos = uv } <- ask
-  reversed <- queryAndModify (getActionB update)
-  liftIO $ modifyMVar_ uv $ \u -> return $ addUR u reversed
-  tell [update]
+  valid <- queryBuffer (isValidUpdate update)
+  when valid $ do
+       forgetPreferCol
+       FBuffer { undos = uv } <- ask
+       reversed <- queryAndModify (getActionB update)
+       liftIO $ modifyMVar_ uv $ \u -> return $ addUR u reversed
+       tell [update]
+  -- otherwise, just ignore.
     
 
 -- | Write an element into the buffer at the current point
