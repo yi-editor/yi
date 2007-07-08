@@ -135,6 +135,7 @@ inBounds i end | i <= 0    = 0
 ------------------------------------------------------------------------
 -- Mid-level insert/delete
 
+shiftMarkValue :: Point -> Size -> MarkValue -> MarkValue
 shiftMarkValue from by (MarkValue p leftBound) = MarkValue shifted leftBound
     where shifted | p < from  = p
                   | p == from = if leftBound then p else p'
@@ -142,6 +143,7 @@ shiftMarkValue from by (MarkValue p leftBound) = MarkValue shifted leftBound
               where p' = max from (p + by)
 
 
+mapOvlMarks :: (a -> b) -> (a, a, v) -> (b, b, v)
 mapOvlMarks f (s,e,v) = (f s, f e, v)
 
 -------------------------------------
