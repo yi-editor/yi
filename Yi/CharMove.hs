@@ -67,13 +67,11 @@ module Yi.CharMove (
         uppercaseWordB,  -- :: BufferM ()
         lowercaseWordB,  -- :: BufferM ()
 
-        dropSpace,      -- :: String -> String
     ) where
 
 import Yi.Buffer 
 import Yi.Buffer.HighLevel
 import Text.Regex
-import Text.Regex.Posix.String ( compExtended, compile, execBlank)
 import Yi.Monad
 import Data.Char
 import qualified Data.Map as M
@@ -420,8 +418,3 @@ wordCompleteB = (readRef completions) >>= loop >>= (writeRef completions)
                 (s,_,_) <- readWord_
                 assert (s /= [] && i /= j) $ return $ Just (s,i')
 
-------------------------------------------------------------------------
-
--- utility, drop spaces
-dropSpace :: [Char] -> [Char]
-dropSpace = let f = reverse . dropWhile isSpace in f . f

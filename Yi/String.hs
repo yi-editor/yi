@@ -20,10 +20,14 @@
 -- | String manipulation utilities
 --
 
-module Yi.String (chomp,split,capitalize) where
+module Yi.String (chomp,
+                  split,
+                  capitalize,
+                  dropSpace      -- :: String -> String
+) where
 
 import Data.List    (isSuffixOf,isPrefixOf)
-import Data.Char (toUpper, toLower)
+import Data.Char (toUpper, toLower, isSpace)
 
 capitalize :: String -> String
 capitalize [] = []
@@ -72,3 +76,8 @@ breakOnGlue glue rest@(x:xs)
     | otherwise = (x:piece, rest')
         where (piece, rest') = breakOnGlue glue xs
 {-# INLINE breakOnGlue #-}
+
+
+-- | Trim spaces at beginning /and/ end
+dropSpace :: [Char] -> [Char]
+dropSpace = let f = reverse . dropWhile isSpace in f . f

@@ -322,7 +322,7 @@ fileFromPoint = do
     p <- withBuffer pointB
     (DiredState _ _ des pl) <- withBuffer getDynamicB
     let (_,_,f) = head $ filter (\(p1,p2,_)->p<=p2) pl
-    return (f, des M.! f)
+    return (f, M.findWithDefault DiredNoInfo f des)
 
 diredUpDirE :: YiM ()
 diredUpDirE = do
