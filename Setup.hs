@@ -73,6 +73,7 @@ precompArgs = ["-DGHC_LIBDIR=\"dummy1\"",
                "-hide-all-packages", -- otherwise wrong versions of packages will be picked.
                "-package base",
                "-package mtl",
+               "-package regex-compat-0.71",
                "-package regex-posix-0.71",
                "-package regex-base-0.71",
                "--make"]

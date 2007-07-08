@@ -72,6 +72,7 @@ module Yi.CharMove (
 
 import Yi.Buffer 
 import Yi.Buffer.HighLevel
+import Text.Regex
 import Text.Regex.Posix.String ( compExtended, compile, execBlank)
 import Yi.Monad
 import Data.Char
@@ -408,7 +409,7 @@ wordCompleteB = (readRef completions) >>= loop >>= (writeRef completions)
     nextWordMatch :: String -> BufferM (Maybe (String,Int))
     nextWordMatch w = do
         let re = ("( |\t|\n|\r|^)"++w)
-        Right re_c <- liftIO $ compile compExtended execBlank re
+        let re_c = mkRegex re
         mi   <- regexB re_c
         case mi of
             Nothing -> return Nothing
