@@ -75,7 +75,7 @@ precompArgs = ["-DGHC_LIBDIR=\"dummy1\"",
                "-package mtl",
                "-package regex-compat-0.71",
                "-package regex-posix-0.71",
-               "-package regex-base-0.71",
+               "-package regex-base-0.72",
                "--make"]
                -- please note: These args must match the args given in Yi.Boot
                -- TODO: factorize.
