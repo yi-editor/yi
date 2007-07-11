@@ -55,11 +55,12 @@ data Editor = Editor {
        ,windowfill    :: !Char                      -- ^ char to fill empty window space with
        ,tabwidth      :: !Int                       -- ^ width of tabs
 
-       ,yreg          :: !String                    -- ^ yank register
-       ,regex         :: !(Maybe (String,Regex))    -- ^ most recent regex
-       -- should be moved into dynamic component, perhaps
 
        ,editorUpdates :: [(Unique, Update)]
+
+       -- consider make the below fields part of dynamic component
+       ,yreg          :: !String                    -- ^ yank register
+       ,regex         :: !(Maybe (String,Regex))    -- ^ most recent regex
     }
 
 --
