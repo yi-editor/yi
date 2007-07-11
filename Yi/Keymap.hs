@@ -78,6 +78,9 @@ data Yi = Yi {yiEditor :: IORef Editor,
 -- | The type of user-bindable functions
 type YiM = ReaderT Yi IO
 
+instance Show BufferRef where
+    show = show . hashUnique
+
 -----------------------
 -- Keymap basics
 
@@ -92,14 +95,14 @@ write x = I.write (tell [makeAction x])
 -- Keymap thread handling
 
 
-setBufferKeymap :: FBuffer -> KeymapMod -> YiM ()
+setBufferKeymap :: BufferRef -> KeymapMod -> YiM ()
 setBufferKeymap b km = do 
   bkm <- getBufferKeymap b
   writeRef (bufferKeymap bkm) km
   restartBufferThread b
   logPutStrLn $ "Changed keymap for buffer " ++ show b
  
-restartBufferThread :: FBuffer -> YiM ()
+restartBufferThread :: BufferRef -> YiM ()
 restartBufferThread b = do
   bkm <- getBufferKeymap b
   lift $ do logPutStrLn $ "Waiting for buffer thread to start: " ++ show b
@@ -107,15 +110,15 @@ restartBufferThread b = do
             maybe (return ()) (flip throwDynTo "Keymap change") (bufferThread bkm)
   logPutStrLn $ "Restart signal sent: " ++ show b
             
-deleteBufferKeymap :: FBuffer -> YiM ()
+deleteBufferKeymap :: BufferRef -> YiM ()
 deleteBufferKeymap b = do
   bkm <- getBufferKeymap b
   lift $ do logPutStrLn $ "Waiting for buffer thread to start: " ++ show b
             takeMVar (bufferKeymapRestartable bkm) 
             maybe (return ()) killThread (bufferThread bkm)
-  modifiesRef bufferKeymaps (M.delete (keyB b))
+  modifiesRef bufferKeymaps (M.delete b)
 
-startBufferKeymap :: FBuffer -> YiM BufferKeymap
+startBufferKeymap :: BufferRef -> YiM BufferKeymap
 startBufferKeymap b = do
   logPutStrLn $ "Starting buffer keymap: " ++ show b
   yi <- ask
@@ -130,17 +133,17 @@ startBufferKeymap b = do
                                    }
             t <- forkIO $ bufferEventLoop yi b bkm
             return bkm {bufferThread = Just t}
-  modifiesRef bufferKeymaps (M.insert (keyB b) bkm)
+  modifiesRef bufferKeymaps (M.insert b bkm)
   return bkm
 
-getBufferKeymap :: FBuffer -> YiM BufferKeymap
+getBufferKeymap :: BufferRef -> YiM BufferKeymap
 getBufferKeymap b = do
   kms <- readsRef bufferKeymaps
-  case M.lookup (keyB b) kms of
+  case M.lookup b kms of
     Just bkm -> return bkm 
     Nothing -> startBufferKeymap b
                            
-bufferEventLoop :: Yi -> FBuffer -> BufferKeymap -> IO ()
+bufferEventLoop :: Yi -> BufferRef -> BufferKeymap -> IO ()
 bufferEventLoop yi buf b = eventLoop 
   where
     handler exception = logPutStrLn $ "Buffer event loop crashed with: " ++ (show exception)
@@ -194,7 +197,7 @@ withEditor f = do
   e <- ask
   lift $ runReaderT f (yiEditor e)
 
-withGivenBuffer :: FBuffer -> BufferM a -> YiM a
+withGivenBuffer :: BufferRef -> BufferM a -> YiM a
 withGivenBuffer b f = withEditor (Editor.withGivenBuffer0 b f)
 
 withBuffer :: BufferM a -> YiM a

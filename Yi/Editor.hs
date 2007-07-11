@@ -23,7 +23,7 @@
 
 module Yi.Editor where
 
-import Yi.Buffer                ( FBuffer (..), BufferM, newB, keyB, hNewB, runBuffer )
+import Yi.Buffer                ( BufferRef, FBuffer (..), BufferM, newB, hNewB, runBuffer )
 import Text.Regex.Posix.Wrap    ( Regex )
 import Yi.Style                 ( uiStyle, UIStyle )
 
@@ -31,14 +31,14 @@ import Yi.Debug
 import Yi.Undo
 import Prelude hiding (error)
 
-import Data.List                ( nub, delete, find )
-import Data.Unique              ( Unique )
-
+import Data.List                ( nub )
+import Data.Unique             
 import Data.Dynamic
 import Data.IORef
 import qualified Data.Map as M
 
 import Control.Monad.Reader
+import Control.Monad.State
 import Control.Monad.Writer
 import Yi.Monad
 
@@ -46,7 +46,9 @@ import Yi.Monad
 
 -- | The Editor state
 data Editor = Editor {
-        buffers       :: ![FBuffer]                 -- ^ all the buffers. Never empty; first buffer is the current one.
+        bufferStack   :: ![BufferRef]               -- ^ Stack of all the buffers. Never empty; 
+                                                    -- first buffer is the current one.
+       ,buffers       :: M.Map BufferRef FBuffer
        ,uistyle       :: !UIStyle                   -- ^ ui colours
        ,dynamic       :: !(M.Map String Dynamic)    -- ^ dynamic components
 
@@ -66,8 +68,8 @@ data Editor = Editor {
 
 emptyEditor :: FBuffer -> Editor
 emptyEditor buf = Editor {
-        buffers      = [buf]
-
+        buffers      = M.singleton (bkey buf) buf
+       ,bufferStack  = [bkey buf]
        ,windowfill   = ' '
        ,tabwidth     = 8 
        ,yreg         = []
@@ -122,70 +124,79 @@ hNewBuffer f = do
 stringToNewBuffer :: String -> String -> EditorM FBuffer
 stringToNewBuffer nm cs = do
     logPutStrLn $ "stringToNewBuffer: " ++ show nm
-    b <- lift $ newB nm cs
+    u <- liftIO $ newUnique
+    let b = newB u nm cs
     insertBuffer b
 
 insertBuffer :: FBuffer -> EditorM FBuffer
 insertBuffer b = do
-  modifyEditor $ \e@(Editor{buffers=bs}) -> do
-                     return (e { buffers = nub $ (b:bs) }, b)
+  modifyEditor $ \e -> do
+                     return (e { bufferStack = nub $ (bkey b : bufferStack e),
+                                 buffers = M.insert (bkey b) b (buffers e)
+                               }, b)
 
-deleteBuffer :: FBuffer -> EditorM ()
-deleteBuffer b = do
-  bs <- readEditor buffers
+deleteBuffer :: BufferRef -> EditorM ()
+deleteBuffer k = do
+  bs <- readEditor bufferStack
   when (length bs > 0) $ do -- never delete the last buffer.
-    modifyEditor_ $ \e-> return e { buffers = delete b $ buffers e}
+    modifyEditor_ $ \e-> return e { bufferStack = filter (k /=) $ bufferStack e,
+                                    buffers = M.delete k (buffers e)
+                                  }
 
 -- | Return the buffers we have
 getBuffers :: EditorM [FBuffer]
-getBuffers = readEditor buffers
+getBuffers = readEditor (M.elems . buffers)
 
 -- | Find buffer with this key
-findBufferWith :: Editor -> Unique -> FBuffer
+findBufferWith :: Editor -> BufferRef -> FBuffer
 findBufferWith e k =
-    case find ((== k) . keyB) (buffers e) of
+    case M.lookup k (buffers e) of
         Just b  -> b
         Nothing -> error "Editor.findBufferWith: no buffer has this key"
 
 -- | Find buffer with this name
-findBufferWithName :: Editor -> String -> [FBuffer]
-findBufferWithName e n = filter (\b -> name b == n) (buffers e)
+findBufferWithName :: Editor -> String -> [BufferRef]
+findBufferWithName e n = map bkey $ filter (\b -> name b == n) (M.elems $ buffers e)
 
 
 ------------------------------------------------------------------------
 
 -- | Return the next buffer
-nextBuffer :: EditorM FBuffer
+nextBuffer :: EditorM BufferRef
 nextBuffer = shiftBuffer 1
 
 -- | Return the prev buffer
-prevBuffer :: EditorM FBuffer
+prevBuffer :: EditorM BufferRef
 prevBuffer = shiftBuffer (negate 1)
 
 -- | Return the buffer using a function applied to the current window's
 -- buffer's index.
-shiftBuffer :: Int -> EditorM FBuffer
+shiftBuffer :: Int -> EditorM BufferRef
 shiftBuffer shift = readEditor $ \e ->
-    let bs  = buffers e
+    let bs  = bufferStack e
         n   = shift `mod` length bs
     in (bs !! n)
 
 ------------------------------------------------------------------------
-    
--- | Perform action with current window's buffer
-withGivenBuffer0 :: FBuffer -> BufferM a -> EditorM a
-withGivenBuffer0 b f = modifyEditor $ \e -> do
-                        (v,updates) <- runBuffer b f
-                        return (e {editorUpdates = editorUpdates e ++ [(bkey b,u) | u <- updates]},v)
 
+-- | Perform action with any given buffer    
+withGivenBuffer0 :: BufferRef -> BufferM a -> EditorM a
+withGivenBuffer0 k f = modifyEditor $ \e -> do
+                        let b = findBufferWith e k
+                        let (v, b', updates) = runBuffer b f 
+                        return (e {editorUpdates = editorUpdates e ++ [(bkey b,u) | u <- updates],
+                                   buffers = M.adjust (const b') k (buffers e)
+                                  },v)
+
+-- | Perform action with current window's buffer
 withBuffer0 :: BufferM a -> EditorM a
 withBuffer0 f = do 
-  b <- readEditor $ \e -> head $ buffers e
-  withGivenBuffer0 b f                                                
-
+  b <- readEditor $ \e -> head $ bufferStack e
+  withGivenBuffer0 b f
+                                                
 -- | Return the current buffer
-getBuffer :: EditorM FBuffer
-getBuffer = withBuffer0 ask
+getBuffer :: EditorM BufferRef
+getBuffer = withEditor0 $ \e -> return (head . bufferStack $ e)
 
 -- | Set the current buffer
 setBuffer :: Unique -> EditorM FBuffer

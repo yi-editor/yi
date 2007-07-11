@@ -17,7 +17,7 @@ module Yi.Buffer.HighLevel where
 
 import Yi.Buffer
 import Yi.Region
-import Control.Monad
+import Control.Monad.State
 
 -- | A 'Direction' is either left or right.
 data Direction = GoLeft | GoRight
@@ -125,7 +125,7 @@ bufInfoB = do
     m <- isUnchangedB
     l <- curLn
     c <- offsetFromSol
-    nm <- nameB
+    nm <- gets name
     let bufInfo = BufferFileInfo { bufInfoFileName = nm
 				 , bufInfoSize     = s
 				 , bufInfoLineNo   = l

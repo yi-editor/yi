@@ -270,7 +270,7 @@ handleClick ui w event = do
   
   
   let editorAction = do
-        b <- withEditor0 $ \ed -> return $ findBufferWith ed (bufkey w)
+        b <- withEditor0 $ \ed -> return $ bkey $ findBufferWith ed (bufkey w)
         case (eventClick event, eventButton event) of
           (SingleClick, LeftButton) -> 
               withGivenBuffer0 b $ moveTo p1 -- as a side effect we forget the prefered column
@@ -377,7 +377,7 @@ scheduleRefresh ui = modifyEditor_ $ \e -> withMVar (windows ui) $ \ws -> do
       let buf = findBufferWith e b
       gtkBuf <- getGtkBuffer ui buf
       applyUpdate gtkBuf u
-      (size, []) <- runBuffer buf sizeB
+      let (size, _, []) = runBuffer buf sizeB
       let p = updatePoint u
       replaceTagsIn ui (inBounds (p-100) size) (inBounds (p+100) size) buf gtkBuf
 
@@ -390,14 +390,14 @@ scheduleRefresh ui = modifyEditor_ $ \e -> withMVar (windows ui) $ \ws -> do
         do let buf = findBufferWith e (bufkey w)
            gtkBuf <- getGtkBuffer ui buf
 
-           (p0, []) <- runBuffer buf pointB
-           (p1, []) <- runBuffer buf (getSelectionMarkB >>= getMarkPointB)
+           let (p0, _, []) = runBuffer buf pointB
+           let (p1, _, []) = runBuffer buf (getSelectionMarkB >>= getMarkPointB)
            insertMark <- textBufferGetInsert gtkBuf
            i <- textBufferGetIterAtOffset gtkBuf p0
            i' <- textBufferGetIterAtOffset gtkBuf p1
            textBufferSelectRange gtkBuf i i'
            textViewScrollMarkOnscreen (textview w) insertMark
-           (txt, []) <- runBuffer buf getModeLine 
+           let (txt, _, []) = runBuffer buf getModeLine 
            set (modeline w) [labelText := txt]
     return e {editorUpdates = []}
 
@@ -406,7 +406,7 @@ replaceTagsIn :: UI -> Point -> Point -> FBuffer -> TextBuffer -> IO ()
 replaceTagsIn ui from to buf gtkBuf = do
   i <- textBufferGetIterAtOffset gtkBuf from
   i' <- textBufferGetIterAtOffset gtkBuf to
-  (styledText, []) <- runBuffer buf (nelemsBH (to - from) from)
+  let (styledText, _, []) = runBuffer buf (nelemsBH (to - from) from)
   let styles = zip (map snd styledText) [from..]
       styleSwitches = [(style,point) 
                        | ((style,point),style') <- zip styles (defaultStyle:map fst styles), 
@@ -492,7 +492,7 @@ getGtkBuffer ui b = do
 newGtkBuffer :: UI -> FBuffer -> IO TextBuffer
 newGtkBuffer ui b = do
   buf <- textBufferNew (Just (tagTable ui))
-  (txt, []) <- runBuffer b elemsB
+  let (txt, _, []) = runBuffer b elemsB
   textBufferSetText buf txt
   replaceTagsIn ui 0 (length txt) b buf
   return buf

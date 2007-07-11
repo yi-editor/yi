@@ -123,6 +123,7 @@ import qualified Yi.Style as Style
 import qualified Yi.CommonUI as UI
 import Yi.CommonUI as UI (Window (..), UI)
 
+import Data.Unique
 import Data.Maybe
 import qualified Data.Map as M
 import Data.List
@@ -131,9 +132,10 @@ import Data.Foldable
 
 import System.Directory     ( doesFileExist, doesDirectoryExist )
 
-import Control.Monad (when, replicateM_, filterM)
+import Control.Monad (when, replicateM_)
 import Control.Monad.Reader (runReaderT, asks)
 import Control.Monad.Trans
+import Control.Monad.State (gets)
 import Control.Exception
 import Control.Concurrent 
 import Control.Concurrent.Chan
@@ -198,7 +200,8 @@ startE frontend kernel st commandLineActions = do
 
     -- Setting up the 1st buffer/window is a bit tricky because most functions assume there exists a "current window"
     -- or a "current buffer".
-    consoleB <- newB "*console*" ""  --FIXME: don't do this if 'isJust st'
+    consoleU <- newUnique
+    let consoleB = newB consoleU "*console*" ""  --FIXME: don't do this if 'isJust st'
 
     -- restore the old state
     newSt <- newIORef $ maybe (emptyEditor consoleB) id st
@@ -257,7 +260,7 @@ changeKeymapE :: Keymap -> Action
 changeKeymapE km = do
   modifiesRef defaultKeymap (const km)
   bs <- withEditor getBuffers
-  mapM_ restartBufferThread bs
+  mapM_ (restartBufferThread . bkey) bs
   return ()
 
 -- ---------------------------------------------------------------------
@@ -405,12 +408,9 @@ msgE :: String -> Action
 msgE s = do 
   ui <- asks yiUi
   lift $ UI.setCmdLine ui s
-  withEditor $ modifyEditor_ $ \e -> do
-              -- also show in the messages buffer, so we don't loose any message
-              let [b] = findBufferWithName e "*messages*"
-              runBuffer b $ do botB; insertN (s ++ "\n")
-              return e
-            
+  -- also show in the messages buffer, so we don't loose any message
+  b <- getBufferWithName "*messages*"
+  withGivenBuffer b $ do botB; insertN (s ++ "\n")
 
 -- | Set the cmd buffer, and draw a pretty error message
 errorE :: String -> Action
@@ -451,25 +451,25 @@ prevBufW = withEditor Editor.prevBuffer >>= switchToBufferE
 fnewE  :: FilePath -> Action
 fnewE f = do
     bufs <- withEditor getBuffers
-    bufsWithThisFilename <- liftIO $ filterM (\b -> readMVar (file b) >>= return . (==Just f)) bufs
+    let bufsWithThisFilename = filter ((== Just f) . file) bufs
     b <- case bufsWithThisFilename of
              [] -> do
                    fe  <- lift $ doesFileExist f
                    de  <- lift $ doesDirectoryExist f
                    newBufferForPath fe de
-             _  -> return (head bufsWithThisFilename)
+             _  -> return (bkey $ head bufsWithThisFilename)
     withGivenBuffer b $ setfileB f        -- associate buffer with file
     switchToBufferE b
     where
-    newBufferForPath :: Bool -> Bool -> YiM FBuffer
+    newBufferForPath :: Bool -> Bool -> YiM BufferRef
     newBufferForPath True _      = do b <- withEditor $ hNewBuffer f                 -- Load the file into a new buffer
-                                      return b
+                                      return (bkey b)
     newBufferForPath False True  = do           -- Open the dir in Dired
             loadE "Yi.Dired"
             execE $ "Yi.Dired.diredDirBufferE " ++ show f
             withEditor getBuffer
     newBufferForPath False False = do b <- withEditor $ stringToNewBuffer f []                       -- Create new empty buffer
-                                      return b
+                                      return (bkey b)
 
 
 -- | Revert to the contents of the file on disk
@@ -496,23 +496,23 @@ revertE = do
 -- Open up a new window onto this buffer. Doesn't associate any file
 -- with the buffer (unlike fnewE) and so is good for popup internal
 -- buffers (like scratch)
-newBufferE :: String -> String -> YiM FBuffer
+newBufferE :: String -> String -> YiM BufferRef
 newBufferE f s = do
-    b <- withEditor $ stringToNewBuffer f s
+    b <- fmap bkey $ withEditor $ stringToNewBuffer f s
     switchToBufferE b
     logPutStrLn "newBufferE ended"
     return b
 
 -- | Attach the specified buffer to the current window
-switchToBufferE :: FBuffer -> Action
-switchToBufferE b = modifyWindows (WS.modifyCurrent (\w -> w {bufkey = keyB b}))
+switchToBufferE :: BufferRef -> Action
+switchToBufferE b = modifyWindows (WS.modifyCurrent (\w -> w {bufkey = b}))
 
 -- | Attach the specified buffer to some other window than the current one
-switchToBufferOtherWindowE :: FBuffer -> Action
+switchToBufferOtherWindowE :: BufferRef -> Action
 switchToBufferOtherWindowE b = shiftOtherWindow >> switchToBufferE b
 
 -- | Find buffer with given name. Raise exception if not found.
-getBufferWithName :: String -> YiM FBuffer
+getBufferWithName :: String -> YiM BufferRef
 getBufferWithName bufName = do
   bs <- readEditor $ \e -> findBufferWithName e bufName
   case bs of
@@ -528,19 +528,23 @@ switchToBufferWithNameE bufName = switchToBufferE =<< getBufferWithName bufName
 spawnMinibufferE :: String -> KeymapMod -> Action -> Action
 spawnMinibufferE prompt kmMod initialAction =
     do b <- withEditor $ stringToNewBuffer prompt []
-       setBufferKeymap b kmMod
+       setBufferKeymap (bkey b) kmMod
        modifyWindows (WS.add $ Window True (keyB b) 0 0 0)
        initialAction
 
 -- | Write current buffer to disk, if this buffer is associated with a file
 fwriteE :: Action
-fwriteE = withBuffer hPutB
+fwriteE = do contents <- withBuffer elemsB
+             fname <- withBuffer (gets file)
+             case fname of
+               Just n -> liftIO $ writeFile n contents
+               Nothing -> msgE "Buffer not associated with a file."
 
 -- | Write current buffer to disk as @f@. If this buffer doesn't
 -- currently have a file associated with it, the file is set to @f@
 fwriteToE :: String -> Action
-fwriteToE f = withBuffer $ do setfileB f
-                              hPutB
+fwriteToE f = do withBuffer $ setfileB f
+                 fwriteE
 
 -- | Write all open buffers
 fwriteAllE :: Action

@@ -119,9 +119,9 @@ diredE = do
 diredDirE :: FilePath -> YiM ()
 diredDirE dir = diredDirBufferE dir >> return ()
 
-diredDirBufferE :: FilePath -> YiM FBuffer
+diredDirBufferE :: FilePath -> YiM BufferRef
 diredDirBufferE dir = do
-                b <- withEditor $ stringToNewBuffer ("dired-"++dir) ""
+                b <- withEditor $ fmap bkey $ stringToNewBuffer ("dired-"++dir) ""
                 withGivenBuffer b (setfileB dir) -- associate the buffer with the dir
                 switchToBufferE b
                 diredLoadNewDirE dir

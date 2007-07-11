@@ -84,16 +84,15 @@ emptyUR = URList [] []
 -- | Add an action to the undo list.
 -- According to the restricted, linear undo model, if we add a command
 -- whilst the redo list is not empty, we will lose our redoable changes.
-addUR :: URList -> Update -> URList
-addUR (URList us _rs) u =
-    URList (u:us) []
+addUR :: Update -> URList -> URList
+addUR u (URList us _rs) = URList (u:us) []
 
 -- | Undo the last action that mutated the buffer contents. The action's
 -- inverse is added to the redo list. 
 undoUR :: URList -> BufferImpl -> (BufferImpl, (URList, [Update]))
 undoUR u@(URList [] _) b = (b, (u, []))
 undoUR (URList (u:us) rs) b = 
-    let (b', r) = (getActionB u) b 
+    let (b', r) = getActionB u b 
     in (b', (URList us (r:rs), [u]))
 
 -- | Redo the last action that mutated the buffer contents. The action's
@@ -101,7 +100,7 @@ undoUR (URList (u:us) rs) b =
 redoUR :: URList -> BufferImpl -> (BufferImpl, (URList, [Update]))
 redoUR u@(URList _ []) b = (b, (u, []))
 redoUR (URList us (r:rs)) b =
-    let (b', u) = (getActionB r) b
+    let (b', u) = getActionB r b
     in (b', (URList (u:us) rs, [u]))
 
 -- | isEmptyUndoList. @True@ if the undo list is empty, and hence the

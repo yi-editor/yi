@@ -22,7 +22,7 @@
 -- cursor movement and editing commands
 --
 
-module Yi.Buffer ( FBuffer (..), BufferM, runBuffer, keyB, curLn, nameB, indexOfEol,
+module Yi.Buffer ( BufferRef, FBuffer (..), BufferM, runBuffer, keyB, curLn, indexOfEol,
                    sizeB, pointB, moveToSol, moveTo, lineUp, lineDown,
                    hPutB, hNewB, newB, Point, Mark, BufferMode(..),
                    moveToEol, gotoLn, gotoLnFrom, offsetFromSol,
@@ -47,10 +47,7 @@ import Yi.Style
 import Yi.Monad
 import Yi.Debug
 import Yi.Dynamic
-import Data.IORef
 import Data.Unique              ( newUnique, Unique, hashUnique )
-import Control.Concurrent 
-import Control.Concurrent.QSem
 import Control.Monad
 import Control.Monad.Trans
 import Control.Monad.RWS
@@ -60,22 +57,27 @@ import Control.Monad.RWS
 -- mutable buffers, which maintain a current /point/.
 --
 
+-- In addition to FastBuffer, this manages (among others):
+--  * Log of updates mades
+--  * Undo
+
 data BufferMode = ReadOnly | ReadWrite
 
+type BufferRef = Unique
+
 data FBuffer =
-        FBuffer { name   :: !String                  -- ^ immutable buffer name
-                , bkey   :: !Unique                  -- ^ immutable unique key
-                , file   :: !(MVar (Maybe FilePath)) -- ^ maybe a filename associated with this buffer
-                , undos  :: !(MVar URList)           -- ^ undo/redo list
-                , rawbuf :: !(MVar BufferImpl)
-                , bmode  :: !(MVar BufferMode)       -- ^ a read-only bit
-                , bufferDynamic :: !(IORef DynamicValues) -- ^ dynamic components
-                , preferCol :: !(IORef (Maybe Int))  -- ^ prefered column to arrive at when we do a lineDown / lineUp
-                , runLock :: !QSem
+        FBuffer { name   :: !String               -- ^ immutable buffer name
+                , bkey   :: !BufferRef            -- ^ immutable unique key
+                , file   :: !(Maybe FilePath)     -- ^ maybe a filename associated with this buffer
+                , undos  :: !URList               -- ^ undo/redo list
+                , rawbuf :: !BufferImpl
+                , bmode  :: !BufferMode           -- ^ a read-only bit
+                , bufferDynamic :: !DynamicValues -- ^ dynamic components
+                , preferCol :: !(Maybe Int)       -- ^ prefered column to arrive at when we do a lineDown / lineUp
                 }
 
-newtype BufferM a = BufferM { fromBufferM :: RWST FBuffer [Update] () IO a }
-    deriving (MonadIO, Monad, Functor, MonadWriter [Update], MonadReader FBuffer)
+newtype BufferM a = BufferM { fromBufferM :: RWS () [Update] FBuffer a }
+    deriving (Monad, Functor, MonadWriter [Update], MonadState FBuffer)
 
 instance Eq FBuffer where
    FBuffer { bkey = u } == FBuffer { bkey = v } = u == v
@@ -98,7 +100,7 @@ getModeLine = do
     unchanged <- isUnchangedB
     let pct = if pos == 1 then "Top" else getPercent p s
         chg = if unchanged then "-" else "*"
-    nm <- nameB
+    nm <- gets name
     return $ 
            chg ++ " "
            ++ nm ++ 
@@ -115,101 +117,86 @@ getPercent a b = show p ++ "%"
 
 
 queryBuffer :: (BufferImpl -> x) -> (BufferM x)
-queryBuffer f = do
-  b <- ask
-  liftIO $ withMVar (rawbuf b) (return . f)
+queryBuffer f = gets (f . rawbuf)
+
+modifyRawbuf    f x = x {rawbuf        = f (rawbuf        x)}
+modifyUndos     f x = x {undos         = f (undos         x)}
+modifyFile      f x = x {file          = f (file          x)}
+modifyPreferCol f x = x {preferCol     = f (preferCol     x)}
+modifyDynamic   f x = x {bufferDynamic = f (bufferDynamic x)}
 
 modifyBuffer :: (BufferImpl -> BufferImpl) -> BufferM ()
-modifyBuffer f = do
-  b <- ask
-  liftIO $ modifyMVar_ (rawbuf b) (return . f)
+modifyBuffer f = modify (modifyRawbuf f)
   
 queryAndModify :: (BufferImpl -> (BufferImpl,x)) -> BufferM x
 queryAndModify f = do
-  b <- ask
-  liftIO $ modifyMVar (rawbuf b) (return . f)
-
+  b <- gets rawbuf
+  let (b',x) = f b
+  modify (modifyRawbuf $ const b')
+  return x
 
 addOverlayB :: Point -> Point -> Style -> BufferM ()
 addOverlayB s e sty = modifyBuffer $ addOverlayBI s e sty
 
-runBuffer :: FBuffer -> BufferM a -> IO (a, [Update])
-runBuffer b f = do 
-  waitQSem (runLock b)
-  (a, (), ur) <- runRWST (fromBufferM f) b ()
-  signalQSem (runLock b)
-  return (a, ur)
+runBuffer :: FBuffer -> BufferM a -> (a, FBuffer, [Update])
+runBuffer b f = runRWS (fromBufferM f) () b
 
 hNewB :: FilePath -> IO FBuffer
 hNewB fp = do
+  u <- newUnique
   s <- readFile fp
-  b <- newB (takeFileName fp) s -- FIXME: Here we should somehow insure that no 2 buffers get the same name
-  runBuffer b (setfileB fp)
-  return b
+  let b = newB u (takeFileName fp) s -- FIXME: Here we should somehow insure that no 2 buffers get the same name
+  return b { file = Just fp}
 
-hPutB :: BufferM ()
-hPutB = do
-  mf <- getfileB
-  case mf of
+hPutB :: FBuffer -> IO FBuffer
+hPutB b = do
+  let bi = rawbuf b
+  case file b of
     Nothing -> error "buffer not associated with a file"
-    Just f  -> liftIO . writeFile f =<< elemsB
-  clearUndosB
-
+    Just f  -> writeFile f (nelemsBI (sizeBI bi) 0 bi)
+  return (b {undos = emptyUR})
 
 clearUndosB :: BufferM ()
-clearUndosB = do b <- ask; liftIO $ modifyMVar_ (undos b) (\_ -> return emptyUR) -- Clear the undo list, so the changed "flag" is reset.
-
-nameB :: BufferM String
-nameB = asks name
+clearUndosB = modify $ modifyUndos (const emptyUR) -- Clear the undo list, so the changed "flag" is reset.
 
 getfileB :: BufferM (Maybe FilePath)
-getfileB = do (FBuffer { file = mvf }) <- ask; liftIO $ readMVar mvf
+getfileB = gets file
 
 setfileB :: FilePath -> BufferM ()
-setfileB f = do (FBuffer { file = mvf }) <- ask; liftIO $ modifyMVar_ mvf $ const $ return (Just f)
+setfileB f = modify $ modifyFile $ const (Just f)
 
 keyB :: FBuffer -> Unique
 keyB (FBuffer { bkey = u }) = u
 
 
 isUnchangedB :: BufferM Bool
-isUnchangedB = do
-  b <- ask
-  ur <- liftIO $ readMVar $ undos b
-  return $ isEmptyUList ur
+isUnchangedB = gets (isEmptyUList . undos)
+
+
+undoRedo f = do
+  ur <- gets undos
+  (ur',updates) <- queryAndModify (f ur)
+  modify $ modifyUndos $ const ur'
+  tell updates
 
 undo :: BufferM ()
-undo = do fb <- ask
-          u <- liftIO $ modifyMVar (undos fb) $ \u -> modifyMVar (rawbuf fb) $ return . undoUR u
-          tell u
+undo = undoRedo undoUR
 
 redo :: BufferM ()
-redo = do fb <- ask
-          u <- liftIO $ modifyMVar (undos fb) $ \u -> modifyMVar (rawbuf fb) $ return . redoUR u
-          tell u
+redo = undoRedo redoUR
 
 -- | Create buffer named @nm@ with contents @s@
-newB :: String -> [Char] -> IO FBuffer
-newB nm s = do 
-    pc <- newIORef Nothing
-    mv <- newMVar $ newBI s
-    mv' <- newMVar emptyUR
-    mvf <- newMVar Nothing      -- has name, not connected to a file
-    rw  <- newMVar ReadWrite
-    u   <- newUnique
-    dv <- newIORef emptyDV
-    theRunLock <- newQSem 1
-    let result = FBuffer { name   = nm
-                         , bkey   = u
-                         , file   = mvf
-                         , undos  = mv'
-                         , rawbuf = mv
-                         , bmode  = rw
-                         , preferCol = pc 
-                         , bufferDynamic = dv
-                         , runLock = theRunLock
-                         }
-    return result                    
+newB :: Unique -> String -> [Char] -> FBuffer
+newB unique nm s = 
+    FBuffer { name   = nm
+            , bkey   = unique
+            , file   = Nothing          -- has name, not connected to a file
+            , undos  = emptyUR
+            , rawbuf = newBI s
+            , bmode  = ReadWrite
+            , preferCol = Nothing 
+            , bufferDynamic = emptyDV
+            }
 
 -- | Number of characters in the buffer
 sizeB :: BufferM Int
@@ -243,9 +230,8 @@ applyUpdate update = do
   valid <- queryBuffer (isValidUpdate update)
   when valid $ do
        forgetPreferCol
-       FBuffer { undos = uv } <- ask
        reversed <- queryAndModify (getActionB update)
-       liftIO $ modifyMVar_ uv $ \u -> return $ addUR u reversed
+       modify $ modifyUndos $ addUR reversed
        tell [update]
   -- otherwise, just ignore.
     
@@ -340,10 +326,10 @@ rightN n = pointB >>= \p -> moveTo (p + n)
 -- Line based movement and friends
 
 readPrefCol :: BufferM (Maybe Int)
-readPrefCol = readRef =<< asks preferCol
+readPrefCol = gets preferCol
 
 setPrefCol :: Maybe Int -> BufferM ()
-setPrefCol c = do b <- ask; writeRef (preferCol b) c
+setPrefCol c = modify $ modifyPreferCol (const c)
 
 -- | Move point down by @n@ lines. @n@ can be negative.
 lineMoveRel :: Int -> BufferM ()
@@ -355,14 +341,14 @@ lineMoveRel n = do
   gotoLnFrom n
   moveXorEol targetCol
   --logPutStrLn $ "lineMoveRel: targetCol = " ++ show targetCol
-  b <- ask; writeRef (preferCol b) (Just targetCol)
+  setPrefCol (Just targetCol)
 
 forgetPreferCol :: BufferM ()
 forgetPreferCol = setPrefCol Nothing
 
 savingPrefCol :: BufferM a -> BufferM a
 savingPrefCol f = do
-  pc <- readRef =<< asks preferCol
+  pc <- gets preferCol
   result <- f
   setPrefCol pc
   return result
@@ -506,13 +492,8 @@ moveToEol :: BufferM ()
 moveToEol = sizeB >>= moveXorEol 
 
 getDynamicB :: Initializable a => BufferM a
-getDynamicB = do
-  b <- ask
-  dv <- readRef (bufferDynamic b)
-  return $ getDynamicValue dv
+getDynamicB = gets (getDynamicValue . bufferDynamic)
 
 -- | Insert a value into the extensible state, keyed by its type
 setDynamicB :: Initializable a => a -> BufferM ()
-setDynamicB x = do
-  b <- ask
-  modifyRef (bufferDynamic b) $ setDynamicValue x
+setDynamicB x = modify $ modifyDynamic $ setDynamicValue x

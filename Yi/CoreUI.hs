@@ -70,7 +70,7 @@ withWindowAndBuffer f = do
 splitE :: YiM ()
 splitE = do 
   b <- withEditor $ getBuffer
-  let w = Window False (keyB b) 0 0 0
+  let w = Window False b 0 0 0
   modifyWindows (WS.add w)
 
 -- | Switch focus to some other window. If none is available, create one.

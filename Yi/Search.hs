@@ -313,7 +313,7 @@ isearchCancelE = do
 -----------------
 -- Query-Replace
 
-qrNextE :: FBuffer -> String -> YiM ()
+qrNextE :: BufferRef -> String -> YiM ()
 qrNextE b what = do
   mp <- withGivenBuffer b $ searchB what
   case mp of
@@ -326,9 +326,9 @@ qrNextE b what = do
                    setMarkPointB m (p+length what)
           
 
-qrReplaceOneE :: FBuffer -> String -> String -> YiM ()
+qrReplaceOneE :: BufferRef -> String -> String -> YiM ()
 qrReplaceOneE b what replacement = do
-  lift $ runBuffer b $ do
+  withGivenBuffer b $ do
     deleteN (length what)
     insertN replacement
   qrNextE b what
