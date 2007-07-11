@@ -73,17 +73,15 @@ import Yi.Buffer
 import Yi.Buffer.HighLevel
 import Text.Regex
 import Yi.Monad
+import Yi.Dynamic
 import Data.Char
+import Data.Typeable
 import qualified Data.Map as M
 
 import Control.Monad        ( when, replicateM_ )
 import Control.Monad.Fix    ( fix )
 import Control.Exception    ( assert )
 import Control.Monad.Trans
-
--- For word completion:
-import Data.IORef
-import System.IO.Unsafe     ( unsafePerformIO )
 
 -- | Read character before point.
 breadB :: BufferM Char
@@ -325,41 +323,37 @@ readWord_ = do
 -- | Word completion
 --
 -- when doing keyword completion, we need to keep track of the word
--- we're trying to complete. Finding this word is an IO BufferM ().
+-- we're trying to complete.
 --
 
 -- remember the word, if any, we're trying to complete, previous matches
 -- we've seen, and the point in the search we are up to.
-type Completion = (String,M.Map String (),Int)
+newtype Completion = Completion (Maybe (String,M.Map String (),Int)) deriving Typeable
 
--- FIXME: This must go in the single editor state. Esp. if we want
--- to do hardcore persistence at some point soon.
---
-completions :: IORef (Maybe Completion)
-completions = unsafePerformIO $ newIORef Nothing -- FIXME! Unsafeperformio is not welcome in Yi
-
+instance Initializable Completion where
+    initial = Completion Nothing
 --
 -- | Switch out of completion mode.
 --
 resetCompleteB :: BufferM ()
-resetCompleteB = writeRef completions Nothing
+resetCompleteB = setDynamicB (Completion Nothing)
 
 --
 -- The word-completion BufferM (), down the buffer
 --
 wordCompleteB :: BufferM ()
-wordCompleteB = (readRef completions) >>= loop >>= (writeRef completions)
+wordCompleteB = getDynamicB >>= loop >>= setDynamicB
 
   where
     --
     -- work out where to start our next search
     --
-    loop :: (Maybe Completion) -> BufferM (Maybe Completion)
-    loop (Just (w,fm,n)) = do
+    loop :: Completion -> BufferM Completion
+    loop (Completion (Just (w,fm,n))) = do
             p  <- pointB
             moveTo (n+1)        -- start where we left off
             doloop p (w,fm)
-    loop Nothing = do
+    loop (Completion Nothing) = do
             p  <- pointB
             (w,_,_) <- readWordLeft_
             rightB  -- start past point
@@ -369,7 +363,7 @@ wordCompleteB = (readRef completions) >>= loop >>= (writeRef completions)
     -- actually do the search, and analyse the result
     --
     doloop :: Int -> (String,M.Map String ())
-           -> BufferM (Maybe Completion)
+           -> BufferM Completion
 
     doloop p (w,fm) = do
             m' <- nextWordMatch w
@@ -379,16 +373,16 @@ wordCompleteB = (readRef completions) >>= loop >>= (writeRef completions)
                 Just (s,i)
                     | j == i                -- seen entire file
                     -> do replaceLeftWith w
-                          return Nothing
+                          return (Completion Nothing)
 
                     | s `M.member` fm         -- already seen
-                    -> loop (Just (w,fm,i))
+                    -> loop (Completion (Just (w,fm,i)))
 
                     | otherwise             -- new
                     -> do replaceLeftWith s
-                          return (Just (w,M.insert s () fm,i))
+                          return (Completion (Just (w,M.insert s () fm,i)))
 
-                Nothing -> loop (Just (w,fm,(-1))) -- goto start of file
+                Nothing -> loop (Completion (Just (w,fm,(-1)))) -- goto start of file
 
     --
     -- replace word under cursor with @s@
