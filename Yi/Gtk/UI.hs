@@ -39,7 +39,7 @@ import qualified Yi.WindowSet as WS
 import Control.Concurrent ( yield )
 import Control.Concurrent.Chan
 import Control.Concurrent.MVar
-import Control.Monad.Reader (lift, liftIO, when, MonadIO)
+import Control.Monad.Reader (liftIO, when, MonadIO)
 import Control.Monad (ap)
 import Control.Monad.State (runState, State, gets, modify)
 
@@ -94,15 +94,14 @@ mkUI ui = Common.UI
    Common.end                   = end,
    Common.suspend               = windowIconify (uiWindow ui),
    Common.scheduleRefresh       = scheduleRefresh       ui,
-   Common.prepareAction         = prepareAction         ui,
-   Common.setCmdLine            = setCmdLine            ui
+   Common.prepareAction         = prepareAction         ui
   }
 
 -- | Initialise the ui
 start :: Chan Yi.Event.Event -> Chan action ->
          Editor -> (EditorM () -> action) -> 
          MVar (WS.WindowSet Common.Window) -> IO Common.UI
-start ch outCh ed runEd ws0 = do
+start ch outCh _ed runEd ws0 = do
   initGUI
 
   -- rest.
@@ -365,6 +364,9 @@ insertWindow e i win = do
 
 scheduleRefresh :: UI -> Editor -> IO ()
 scheduleRefresh ui e = withMVar (windows ui) $ \ws -> do
+    let takeEllipsis s = if length s > 132 then take 129 s ++ "..." else s
+    set (uiCmdLine ui) [labelText := takeEllipsis (statusLine e)]
+
     cache <- readRef $ windowCache ui
     forM_ (editorUpdates e) $ \(b,u) -> do
       let buf = findBufferWith e b
@@ -463,11 +465,6 @@ distribute win = do
   h <- gets head
   modify tail
   return win {Common.height = h}
-
-
-setCmdLine :: UI -> String -> IO ()
-setCmdLine i s = do
-  set (uiCmdLine i) [labelText := if length s > 132 then take 129 s ++ "..." else s]
 
 getGtkBuffer :: UI -> FBuffer -> IO TextBuffer
 getGtkBuffer ui b = do

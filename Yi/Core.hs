@@ -133,7 +133,7 @@ import System.Directory     ( doesFileExist, doesDirectoryExist )
 import System.FilePath      
 
 import Control.Monad (when, replicateM_)
-import Control.Monad.Reader (runReaderT, asks)
+import Control.Monad.Reader (runReaderT)
 import Control.Monad.Trans
 import Control.Monad.State (gets, modify)
 import Control.Exception
@@ -407,8 +407,7 @@ pipeE cmd inp = do
 -- | Set the cmd buffer, and draw message at bottom of screen
 msgE :: String -> Action
 msgE s = do 
-  ui <- asks yiUi
-  lift $ UI.setCmdLine ui s
+  withEditor $ modify $ \e -> e { statusLine = s}
   -- also show in the messages buffer, so we don't loose any message
   b <- getBufferWithName "*messages*"
   withGivenBuffer b $ do botB; insertN (s ++ "\n")

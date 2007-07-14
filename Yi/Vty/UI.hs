@@ -71,7 +71,6 @@ data UI = UI {
               vty       :: Vty                     -- ^ Vty
              ,scrsize   :: !(IORef (Int,Int))  -- ^ screen size
              ,uiThread  :: ThreadId
-             ,cmdline   :: IORef String
              ,uiRefresh :: MVar ()
              ,uiEditor  :: IORef Editor
              ,windows   :: MVar (WS.WindowSet Common.Window)
@@ -83,8 +82,7 @@ mkUI ui = Common.UI
    Common.end                   = end ui,
    Common.suspend               = raiseSignal sigTSTP,
    Common.scheduleRefresh       = scheduleRefresh       ui,
-   Common.prepareAction         = return (return ()),
-   Common.setCmdLine            = setCmdLine            ui
+   Common.prepareAction         = return (return ())
   }
 
 
@@ -100,10 +98,9 @@ start ch _outCh editor _runEd ws0 = do
           -- fork input-reading thread. important to block *thread* on getKey
           -- otherwise all threads will block waiting for input
           t <- myThreadId
-          cmd <- newIORef ""
           tuiRefresh <- newEmptyMVar
           editorRef <- newIORef editor
-          let result = UI v sz t cmd tuiRefresh editorRef ws0
+          let result = UI v sz t tuiRefresh editorRef ws0
               -- | Action to read characters into a channel
               getcLoop = repeatM_ $ getKey >>= writeChan ch
 
@@ -183,7 +180,7 @@ refresh ui e = modifyMVar_ (windows ui) $ \ws0 -> do
   logPutStrLn "refreshing screen."
   (yss,xss) <- readRef (scrsize ui)
   let ws1 = computeHeights yss ws0
-  cmd <- readRef (cmdline ui)
+      cmd = statusLine e
   zzz <- mapM (scrollAndRenderWindow e (uistyle e) xss) (WS.withFocus ws1)
 
   let startXs = scanrT (+) 0 (fmap height ws1)
@@ -365,6 +362,3 @@ getY :: Int -> Int -> (Int,Int)
 getY screenHeight 0               = (screenHeight, 0)
 getY screenHeight numberOfWindows = screenHeight `quotRem` numberOfWindows
 
-setCmdLine :: UI -> String -> IO ()
-setCmdLine i s = do 
-  writeIORef (cmdline i) s

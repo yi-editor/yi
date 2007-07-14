@@ -56,16 +56,14 @@ data Editor = Editor {
        ,editorUpdates :: [(BufferRef, Update)]
 
        -- consider make the below fields part of dynamic component
+       ,statusLine    :: !String
        ,yreg          :: !String                    -- ^ yank register
        ,regex         :: !(Maybe (String,Regex))    -- ^ most recent regex
     }
 
 modifyBufferRefSupply f e = e {bufferRefSupply = f (bufferRefSupply e)}
 
---
 -- | The initial state
---
-
 emptyEditor :: Editor
 emptyEditor = Editor {
         buffers      = M.singleton (bkey buf) buf
@@ -77,7 +75,7 @@ emptyEditor = Editor {
        ,regex        = Nothing
        ,uistyle      = Yi.Style.uiStyle
        ,dynamic      = M.empty
-       
+       ,statusLine   = ""
        ,editorUpdates = []
     }
         where buf = newB 0 "*console*" ""

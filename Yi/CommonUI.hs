@@ -25,17 +25,10 @@ pointInWindow point win = tospnt win <= point && point <= bospnt win
 
 data UI = UI
     {
-     -- UI initialisation
      main                  :: IO (),           -- ^ Main loop
      end                   :: IO (),           -- ^ Clean up
      suspend               :: IO (),           -- ^ Suspend the program
-
-
-     -- Refresh/Sync
      scheduleRefresh       :: Editor -> IO (), -- ^ Schedule a full refresh of the with the given state.
-     prepareAction         :: IO (EditorM ()),      -- ^ Ran before an action is executed
-
-     -- Command line
-     setCmdLine            :: String -> IO ()
+     prepareAction         :: IO (EditorM ())  -- ^ Ran before an action is executed
     }
 
