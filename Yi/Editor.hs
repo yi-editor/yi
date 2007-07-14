@@ -127,15 +127,15 @@ getBuffers :: EditorM [FBuffer]
 getBuffers = gets (M.elems . buffers)
 
 -- | Find buffer with this key
-findBufferWith :: Editor -> BufferRef -> FBuffer
-findBufferWith e k =
+findBufferWith :: BufferRef -> Editor -> FBuffer
+findBufferWith k e =
     case M.lookup k (buffers e) of
         Just b  -> b
         Nothing -> error "Editor.findBufferWith: no buffer has this key"
 
 -- | Find buffer with this name
-findBufferWithName :: Editor -> String -> [BufferRef]
-findBufferWithName e n = map bkey $ filter (\b -> name b == n) (M.elems $ buffers e)
+findBufferWithName :: String -> Editor -> [BufferRef]
+findBufferWithName n e = map bkey $ filter (\b -> name b == n) (M.elems $ buffers e)
 
 
 ------------------------------------------------------------------------
@@ -161,7 +161,7 @@ shiftBuffer shift = gets $ \e ->
 -- | Perform action with any given buffer    
 withGivenBuffer0 :: BufferRef -> BufferM a -> EditorM a
 withGivenBuffer0 k f = modifyEditor $ \e -> 
-                        let b = findBufferWith e k
+                        let b = findBufferWith k e
                             (v, b', updates) = runBuffer b f 
                         in (e {editorUpdates = editorUpdates e ++ [(bkey b,u) | u <- updates],
                                buffers = M.adjust (const b') k (buffers e)
@@ -180,7 +180,7 @@ getBuffer = gets (head . bufferStack)
 -- | Set the current buffer
 setBuffer :: BufferRef -> EditorM BufferRef
 setBuffer k = do
-  b <- gets $ \e -> findBufferWith e k
+  b <- gets $ findBufferWith k
   insertBuffer b -- a bit of a hack.
 
 -- ---------------------------------------------------------------------

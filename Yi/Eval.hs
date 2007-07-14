@@ -42,7 +42,7 @@ msgE' s = msgE s
 
 jumpToE :: String -> Int -> Int -> YiM ()
 jumpToE filename line column = do
-  bs <- readEditor $ \e -> findBufferWithName e filename -- FIXME: should find by associated file-name
+  bs <- readEditor $ findBufferWithName filename -- FIXME: should find by associated file-name
   case bs of
     [] -> do found <- lift $ doesFileExist filename
              if found 

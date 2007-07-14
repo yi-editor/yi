@@ -262,7 +262,7 @@ handleClick ui w event = do
   
   
   let editorAction = do
-        b <- gets $ (bkey . flip findBufferWith (bufkey w))
+        b <- gets $ (bkey . findBufferWith (bufkey w))
         case (eventClick event, eventButton event) of
           (SingleClick, LeftButton) -> 
               withGivenBuffer0 b $ moveTo p1 -- as a side effect we forget the prefered column
@@ -353,7 +353,7 @@ insertWindowAtEnd e i w = insertWindow e i w
 
 insertWindow :: Editor -> UI -> Window -> IO WinInfo
 insertWindow e i win = do
-  let buf = findBufferWith e (Common.bufkey win)
+  let buf = findBufferWith (Common.bufkey win) e
   liftIO $ do w <- newWindow i (Common.isMini win) buf
               set (uiBox i) [containerChild := widget w,
                              boxChildPacking (widget w) := if isMini w then PackNatural else PackGrow]
@@ -369,7 +369,7 @@ scheduleRefresh ui e = withMVar (windows ui) $ \ws -> do
 
     cache <- readRef $ windowCache ui
     forM_ (editorUpdates e) $ \(b,u) -> do
-      let buf = findBufferWith e b
+      let buf = findBufferWith b e
       gtkBuf <- getGtkBuffer ui buf
       applyUpdate gtkBuf u
       let (size, _, []) = runBuffer buf sizeB
@@ -382,7 +382,7 @@ scheduleRefresh ui e = withMVar (windows ui) $ \ws -> do
     logPutStrLn $ "Yields: " ++ show cache'
     writeRef (windowCache ui) cache'
     forM_ cache' $ \w -> 
-        do let buf = findBufferWith e (bufkey w)
+        do let buf = findBufferWith (bufkey w) e
            gtkBuf <- getGtkBuffer ui buf
 
            let (p0, _, []) = runBuffer buf pointB

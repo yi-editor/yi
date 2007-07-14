@@ -205,7 +205,7 @@ scanrT (+*+) k t = fst $ runState (mapM f t) k
 -- | Scrolls the window to show the point if needed
 scrollAndRenderWindow :: Editor -> UIStyle -> Int -> (Window, Bool) -> IO (Window, Rendered)
 scrollAndRenderWindow e sty width (win,hasFocus) = do
-    let b = findBufferWith e (bufkey win)
+    let b = findBufferWith (bufkey win) e
     let (point, _, []) = runBuffer b pointB
     win' <- (if not hasFocus || pointInWindow point win then return win else showPoint e win)
     (rendered, bos) <- drawWindow e sty hasFocus width win'
@@ -227,7 +227,7 @@ indexOfSolAbove n = do
 showPoint :: Editor -> Window -> IO Window 
 showPoint e w = do
   logPutStrLn $ "showPoint " ++ show w
-  let b = findBufferWith e (bufkey w)          
+  let b = findBufferWith (bufkey w) e
   let (result, _, []) = runBuffer b $ 
             do ln <- curLn
                let gap = min (ln-1) (height w `div` 2)
@@ -239,7 +239,7 @@ showPoint e w = do
 -- TODO: horizontal scrolling.
 drawWindow :: Editor -> UIStyle -> Bool -> Int -> Window -> IO (Rendered, Int)
 drawWindow e sty focused w win = do
-    let b = findBufferWith e (bufkey win)
+    let b = findBufferWith (bufkey win) e
         m = not (isMini win)
         off = if m then 1 else 0
         h' = height win - off

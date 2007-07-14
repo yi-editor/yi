@@ -202,7 +202,7 @@ startE frontend kernel st commandLineActions = do
 
     -- restore the old state
     let initEditor = maybe emptyEditor id st
-    let [consoleB] = flip findBufferWithName "*console*" initEditor
+    let [consoleB] = findBufferWithName "*console*" initEditor
     newSt <- newIORef initEditor
     -- Setting up the 1st window is a bit tricky because most functions assume there exists a "current window"
     wins <- newMVar (WS.new $ Window False (consoleB) 0 0 0)
@@ -518,7 +518,7 @@ switchToBufferOtherWindowE b = shiftOtherWindow >> switchToBufferE b
 -- | Find buffer with given name. Raise exception if not found.
 getBufferWithName :: String -> YiM BufferRef
 getBufferWithName bufName = do
-  bs <- readEditor $ \e -> findBufferWithName e bufName
+  bs <- withEditor $ gets $ findBufferWithName bufName
   case bs of
     [] -> fail ("Buffer not found: " ++ bufName)
     (b:_) -> return b
@@ -621,7 +621,7 @@ ghcErrorReporter yi severity srcSpan pprStyle message =
     -- the following is written in very bad style.
     flip runReaderT yi $ do
       e <- readEditor id
-      let [b] = findBufferWithName e "*console*"
+      let [b] = findBufferWithName "*console*" e
       withGivenBuffer b $ savingExcursionB $ do 
         moveTo =<< getMarkPointB =<< getMarkB (Just "errorInsert")
         insertN msg
