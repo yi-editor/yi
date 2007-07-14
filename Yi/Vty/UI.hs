@@ -32,8 +32,6 @@ import Prelude hiding (error, concatMap, sum, mapM, sequence)
 import Control.Concurrent
 import Control.Concurrent.Chan
 import Control.Exception
-import Control.Monad (liftM)
-import Control.Monad.Reader (ask)
 import Control.Monad.State (runState, State, gets, modify, get, put)
 import Control.Monad.Trans (liftIO, MonadIO)
 import Control.Arrow (second)
@@ -75,6 +73,7 @@ data UI = UI {
              ,uiThread  :: ThreadId
              ,cmdline   :: IORef String
              ,uiRefresh :: MVar ()
+             ,uiEditor  :: IORef Editor
              ,windows   :: MVar (WS.WindowSet Common.Window)
              }
 mkUI :: UI -> Common.UI
@@ -82,20 +81,18 @@ mkUI ui = Common.UI
   {
    Common.main                  = main ui,
    Common.end                   = end ui,
-   Common.suspend               = suspend               ui,
-   Common.refreshAll            = return (),
+   Common.suspend               = raiseSignal sigTSTP,
    Common.scheduleRefresh       = scheduleRefresh       ui,
-   Common.prepareAction         = prepareAction         ui,
+   Common.prepareAction         = return (return ()),
    Common.setCmdLine            = setCmdLine            ui
   }
 
 
 -- | Initialise the ui
 start :: Chan Yi.Event.Event -> Chan action ->
-         (EditorM () -> action) -> 
-         MVar (WS.WindowSet Common.Window) -> EditorM Common.UI
-start ch _outCh _runEd ws0 = do
-  editor <- ask
+         Editor -> (EditorM () -> action) -> 
+         MVar (WS.WindowSet Common.Window) -> IO Common.UI
+start ch _outCh editor _runEd ws0 = do
   liftIO $ do 
           v <- mkVty
           (x0,y0) <- Yi.Vty.getSize v
@@ -105,7 +102,8 @@ start ch _outCh _runEd ws0 = do
           t <- myThreadId
           cmd <- newIORef ""
           tuiRefresh <- newEmptyMVar
-          let result = UI v sz t cmd tuiRefresh ws0
+          editorRef <- newIORef editor
+          let result = UI v sz t cmd tuiRefresh editorRef ws0
               -- | Action to read characters into a channel
               getcLoop = repeatM_ $ getKey >>= writeChan ch
 
@@ -114,25 +112,26 @@ start ch _outCh _runEd ws0 = do
                 event <- getEvent v
                 case event of 
                   (EvResize x y) -> do logPutStrLn $ "UI: EvResize: " ++ show (x,y)
-                                       writeIORef sz (y,x) >> refresh result editor >> getKey
+                                       writeIORef sz (y,x) >> readRef (uiEditor result) >>= refresh result >> getKey
                   _ -> return (fromVtyEvent event)
           forkIO $ getcLoop
           return (mkUI result)
         
 
-main :: UI -> IORef Editor -> IO ()
-main ui editor = do
+main :: UI -> IO ()
+main ui = do
   let
       -- | When the editor state isn't being modified, refresh, then wait for
       -- it to be modified again. 
       refreshLoop :: IO ()
       refreshLoop = repeatM_ $ do 
+                      logPutStrLn "waiting for refresh"
                       takeMVar (uiRefresh ui)
                       handleJust ioErrors (\except -> do 
                                              logPutStrLn "refresh crashed with IO Error"
                                              logError $ show $ except)
-                                     (refresh ui editor)
-  scheduleRefresh' ui
+                                     (readRef (uiEditor ui) >>= refresh ui)
+  readRef (uiEditor ui) >>= scheduleRefresh ui
   logPutStrLn "refreshLoop started"
   refreshLoop
   
@@ -142,10 +141,6 @@ end :: UI -> IO ()
 end i = do  
   Yi.Vty.shutdown (vty i)
   throwTo (uiThread i) (ExitException ExitSuccess)
-
--- | Suspend the program
-suspend :: UI -> EditorM ()
-suspend _ = liftIO $ raiseSignal sigTSTP
 
 fromVtyEvent :: Yi.Vty.Event -> Yi.Event.Event
 fromVtyEvent (EvKey k mods) = Event (fromVtyKey k) (map fromVtyMod mods)
@@ -183,9 +178,8 @@ fromVtyMod Yi.Vty.MAlt   = Yi.Event.MMeta
 -- Among others, this re-computes the heights and widths of all the windows.
 
 -- Two points remain: horizontal scrolling, and tab handling.
-refresh :: UI -> IORef Editor -> IO ()
-refresh ui eRef = modifyMVar_ (windows ui) $ \ws0 -> do
-  e <- readRef eRef                 
+refresh :: UI -> Editor -> IO ()
+refresh ui e = modifyMVar_ (windows ui) $ \ws0 -> do
   logPutStrLn "refreshing screen."
   (yss,xss) <- readRef (scrsize ui)
   let ws1 = computeHeights yss ws0
@@ -337,17 +331,16 @@ withStyle sty str = renderBS (styleToAttr sty) (B.pack str)
 
 
 -- | Schedule a refresh of the UI.
-scheduleRefresh :: UI -> EditorM ()
-scheduleRefresh ui = do
-  modifyEditor_ $ \e -> return e {editorUpdates = []}
-  liftIO $ scheduleRefresh' ui
-
-prepareAction :: UI -> EditorM ()
-prepareAction _ = return ()
-
+scheduleRefresh :: UI -> Editor -> IO ()
+scheduleRefresh ui e = do
+  writeRef (uiEditor ui) e
+  scheduleRefresh' ui
 
 scheduleRefresh' :: UI -> IO ()
-scheduleRefresh' tui = tryPutMVar (uiRefresh tui) () >> return ()
+scheduleRefresh' tui = do
+    logPutStrLn "scheduleRefresh'"
+    tryPutMVar (uiRefresh tui) ()
+    return ()
 -- The non-blocking behviour was set up with this in mind: if the display
 -- thread is not able to catch up with the editor updates (possible since
 -- display is much more time consuming than simple editor operations),

@@ -72,7 +72,6 @@ module Yi.CharMove (
 import Yi.Buffer 
 import Yi.Buffer.HighLevel
 import Text.Regex
-import Yi.Monad
 import Yi.Dynamic
 import Data.Char
 import Data.Typeable
@@ -81,7 +80,6 @@ import qualified Data.Map as M
 import Control.Monad        ( when, replicateM_ )
 import Control.Monad.Fix    ( fix )
 import Control.Exception    ( assert )
-import Control.Monad.Trans
 
 -- | Read character before point.
 breadB :: BufferM Char

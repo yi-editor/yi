@@ -24,11 +24,12 @@ module Yi.CoreUI where
 
 import Prelude hiding (error)
 import Yi.CommonUI
-import Yi.Editor hiding (readEditor)
+import Yi.Editor
 import Yi.Debug
 import Yi.Buffer
 import Data.List
 import Yi.Keymap
+import Yi.Monad
 import Control.Monad.Reader
 import Yi.WindowSet as WS
 import Control.Concurrent.MVar
@@ -64,7 +65,10 @@ withWindowAndBuffer :: (Window -> BufferM a) -> YiM a
 withWindowAndBuffer f = do
   wsRef <- asks yiWindows 
   editorRef <- asks yiEditor
-  liftIO $ withMVar wsRef $ \ws -> runReaderT (withBuffer0 (f (WS.current ws))) editorRef
+  liftIO $ withMVar wsRef $ \ws -> do e <- readRef editorRef
+                                      let (a,e') = runEditor (withBuffer0 (f (WS.current ws))) e
+                                      writeRef editorRef e'
+                                      return a
 
 -- | Split the current window, opening a second window onto current buffer.
 splitE :: YiM ()

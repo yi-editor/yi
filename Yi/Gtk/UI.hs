@@ -60,7 +60,7 @@ data UI = forall action. UI {
               uiWindow :: Gtk.Window
              ,uiBox :: VBox
              ,uiCmdLine :: Label
-             ,uiBuffers :: IORef (M.Map Unique TextBuffer)
+             ,uiBuffers :: IORef (M.Map BufferRef TextBuffer)
              ,tagTable :: TextTagTable
              ,windows   :: MVar (WS.WindowSet Window)     -- ^ all the windows
              ,windowCache :: IORef [WinInfo]
@@ -70,7 +70,7 @@ data UI = forall action. UI {
 
 data WinInfo = WinInfo 
     {
-     bufkey      :: !Unique         -- ^ the buffer this window opens to
+     bufkey      :: !BufferRef         -- ^ the buffer this window opens to
     ,wkey        :: !Unique
     ,textview    :: TextView
     ,modeline    :: Label
@@ -79,11 +79,11 @@ data WinInfo = WinInfo
     }
 
 instance Show WinInfo where
-    show w = "W" ++ show (hashUnique $ bufkey w)
+    show w = "W" ++ show (hashUnique $ wkey w) ++ " on " ++ show (bufkey w) 
 
 
 -- | Get the identification of a window.
-winkey :: WinInfo -> (Bool, Unique)
+winkey :: WinInfo -> (Bool, BufferRef)
 winkey w = (isMini w, bufkey w)
 
 
@@ -92,8 +92,7 @@ mkUI ui = Common.UI
   {
    Common.main                  = main                  ui,
    Common.end                   = end,
-   Common.suspend               = suspend               ui,
-   Common.refreshAll            = return (),
+   Common.suspend               = windowIconify (uiWindow ui),
    Common.scheduleRefresh       = scheduleRefresh       ui,
    Common.prepareAction         = prepareAction         ui,
    Common.setCmdLine            = setCmdLine            ui
@@ -101,11 +100,10 @@ mkUI ui = Common.UI
 
 -- | Initialise the ui
 start :: Chan Yi.Event.Event -> Chan action ->
-         (EditorM () -> action) -> 
-         MVar (WS.WindowSet Common.Window) -> EditorM Common.UI
-start ch outCh runEd ws0 = lift $ do
+         Editor -> (EditorM () -> action) -> 
+         MVar (WS.WindowSet Common.Window) -> IO Common.UI
+start ch outCh ed runEd ws0 = do
   initGUI
-
 
   -- rest.
   win <- windowNew
@@ -143,8 +141,8 @@ start ch outCh runEd ws0 = lift $ do
   return (mkUI ui)
 
 
-main :: UI -> IORef Editor -> IO ()
-main _editor _ui = 
+main :: UI -> IO ()
+main _ui = 
     do logPutStrLn "GTK main loop running"
        mainGUI
 
@@ -217,11 +215,6 @@ keyTable = M.fromList
 end :: IO ()
 end = mainQuit
 
--- | Suspend the program
-suspend :: UI -> EditorM ()
-suspend ui = do 
-  lift $ windowIconify (uiWindow ui) 
-
 syncWindows :: Editor -> UI -> [(Window, Bool)] -> [WinInfo] -> IO [WinInfo]
 syncWindows e ui (wfocused@(w,focused):ws) (c:cs) 
     | Common.winkey w == winkey c = do when focused (setFocus c)
@@ -270,7 +263,7 @@ handleClick ui w event = do
   
   
   let editorAction = do
-        b <- withEditor0 $ \ed -> return $ bkey $ findBufferWith ed (bufkey w)
+        b <- gets $ (bkey . flip findBufferWith (bufkey w))
         case (eventClick event, eventButton event) of
           (SingleClick, LeftButton) -> 
               withGivenBuffer0 b $ moveTo p1 -- as a side effect we forget the prefered column
@@ -282,9 +275,9 @@ handleClick ui w event = do
                                                      setMarkPointB m p1
                                                      let [i,j] = sort [p1,p0]
                                                      nelemsB (j-i) i
-                      modifyEditor_ (\e -> return e {yreg = txt})
+                      modify (\e ->e {yreg = txt})
           (ReleaseClick, MiddleButton) -> do
-            txt <- readEditor yreg
+            txt <- gets yreg
             withGivenBuffer0 b $ do
               unsetMarkB
               moveTo p1
@@ -370,8 +363,8 @@ insertWindow e i win = do
               widgetShowAll (widget w)
               return w
 
-scheduleRefresh :: UI -> EditorM ()
-scheduleRefresh ui = modifyEditor_ $ \e -> withMVar (windows ui) $ \ws -> do
+scheduleRefresh :: UI -> Editor -> IO ()
+scheduleRefresh ui e = withMVar (windows ui) $ \ws -> do
     cache <- readRef $ windowCache ui
     forM_ (editorUpdates e) $ \(b,u) -> do
       let buf = findBufferWith e b
@@ -399,7 +392,7 @@ scheduleRefresh ui = modifyEditor_ $ \e -> withMVar (windows ui) $ \ws -> do
            textViewScrollMarkOnscreen (textview w) insertMark
            let (txt, _, []) = runBuffer buf getModeLine 
            set (modeline w) [labelText := txt]
-    return e {editorUpdates = []}
+
 
 
 replaceTagsIn :: UI -> Point -> Point -> FBuffer -> TextBuffer -> IO ()
@@ -443,9 +436,8 @@ styleToTag ui (Style fg _bg) = do
                   textTagTableAdd (tagTable ui) x
                   return x
 
-prepareAction :: UI -> EditorM ()
+prepareAction :: UI -> IO (EditorM ())
 prepareAction ui = do
-  ws <- liftIO $ do
     gtkWins <- readRef (windowCache ui)
     heights <- forM gtkWins $ \w -> do
                      let gtkWin = textview w
@@ -460,10 +452,9 @@ prepareAction ui = do
                      return (l1 - l0)
     modifyMVar (windows ui) $ \ws -> do 
         let (ws', _) = runState (mapM distribute ws) heights
-        return (ws', ws')
+        return (ws', setBuffer (Common.bufkey $ WS.current ws') >> return ())
 
-  setBuffer (Common.bufkey $ WS.current ws)   
-  return ()
+
 
 
 

@@ -21,14 +21,13 @@ module Yi.Keymap where
 import Prelude hiding (error)
 import Yi.CommonUI
 import qualified Yi.Editor as Editor
-import Yi.Editor (EditorM, Editor, getBuffer)
+import Yi.Editor (EditorM, Editor, getBuffer, runEditor)
 import Yi.Debug
 import qualified Data.Map as M
 import Yi.Kernel
 import Control.Monad.Reader
 import Data.Typeable
 import Data.IORef
-import Data.Unique
 import Control.Exception
 import Control.Concurrent
 import Control.Concurrent.MVar
@@ -36,6 +35,7 @@ import Yi.Buffer
 import qualified Yi.Interact as I
 import Yi.Monad
 import Control.Monad.Writer
+import Control.Monad.State
 import Yi.Event
 import Yi.WindowSet as WS
 
@@ -66,7 +66,7 @@ data Yi = Yi {yiEditor :: IORef Editor,
               input         :: Chan Event,                 -- ^ input stream
               output        :: Chan Action,                -- ^ output stream
               defaultKeymap :: IORef Keymap,
-              bufferKeymaps :: IORef (M.Map Unique BufferKeymap),
+              bufferKeymaps :: IORef (M.Map BufferRef BufferKeymap),
               -- FIXME: there is a latent bug here: the bufferkeymaps
               -- can be modified concurrently by the dispatcher thread
               -- and the worker thread.
@@ -77,9 +77,6 @@ data Yi = Yi {yiEditor :: IORef Editor,
 
 -- | The type of user-bindable functions
 type YiM = ReaderT Yi IO
-
-instance Show BufferRef where
-    show = show . hashUnique
 
 -----------------------
 -- Keymap basics
@@ -179,23 +176,21 @@ withKernel :: (Kernel -> IO a) -> YiM a
 withKernel = with yiKernel 
 
 
-withUI' :: (UI -> IO a) -> YiM a
-withUI' = with yiUi
+withUI :: (UI -> IO a) -> YiM a
+withUI = with yiUi
 
 withUI2 :: (UI -> x -> EditorM a) -> (x -> YiM a)
 withUI2 f x = do
   e <- ask
   withEditor $ f (yiUi e) x
 
-withUI :: (UI -> EditorM a) -> YiM a
-withUI f = do
-  e <- ask
-  withEditor $ f $ yiUi $ e 
-
 withEditor :: EditorM a -> YiM a
 withEditor f = do
-  e <- ask
-  lift $ runReaderT f (yiEditor e)
+  r <- asks yiEditor
+  e <- readRef r
+  let (a,e') = runEditor f e
+  writeRef r e'
+  return a
 
 withGivenBuffer :: BufferRef -> BufferM a -> YiM a
 withGivenBuffer b f = withEditor (Editor.withGivenBuffer0 b f)
@@ -204,7 +199,7 @@ withBuffer :: BufferM a -> YiM a
 withBuffer f = withEditor (Editor.withBuffer0 f)
 
 readEditor :: (Editor -> a) -> YiM a
-readEditor f = withEditor (Editor.readEditor f)
+readEditor f = withEditor (gets f)
 
 catchDynE :: Typeable exception => YiM a -> (exception -> YiM a) -> YiM a
 catchDynE inner handler = ReaderT (\r -> catchDyn (runReaderT inner r) (\e -> runReaderT (handler e) r))

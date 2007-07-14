@@ -24,7 +24,7 @@
 
 module Yi.Buffer ( BufferRef, FBuffer (..), BufferM, runBuffer, keyB, curLn, indexOfEol,
                    sizeB, pointB, moveToSol, moveTo, lineUp, lineDown,
-                   hPutB, hNewB, newB, Point, Mark, BufferMode(..),
+                   hPutB, newB, Point, Mark, BufferMode(..),
                    moveToEol, gotoLn, gotoLnFrom, offsetFromSol,
                    atSol, atEol, atSof, atEof, leftB, rightB,
                    moveXorEol, moveXorSol, insertN, insertB, deleteN,
@@ -44,12 +44,9 @@ import Text.Regex.Posix.Wrap    ( Regex  )
 import Yi.FastBuffer
 import Yi.Undo
 import Yi.Style
-import Yi.Monad
 import Yi.Debug
 import Yi.Dynamic
-import Data.Unique              ( newUnique, Unique, hashUnique )
 import Control.Monad
-import Control.Monad.Trans
 import Control.Monad.RWS
 
 --
@@ -63,7 +60,7 @@ import Control.Monad.RWS
 
 data BufferMode = ReadOnly | ReadWrite
 
-type BufferRef = Unique
+type BufferRef = Int
 
 data FBuffer =
         FBuffer { name   :: !String               -- ^ immutable buffer name
@@ -83,7 +80,7 @@ instance Eq FBuffer where
    FBuffer { bkey = u } == FBuffer { bkey = v } = u == v
 
 instance Show FBuffer where
-    showsPrec _ (FBuffer { bkey = u, name = f }) = showString $ "Buffer #" ++ show (hashUnique u) ++ " (" ++ show f ++ ")"
+    showsPrec _ (FBuffer { bkey = u, name = f }) = showString $ "Buffer #" ++ show u ++ " (" ++ show f ++ ")"
 
 -- | Given a buffer, and some information update the modeline
 --
@@ -141,12 +138,6 @@ addOverlayB s e sty = modifyBuffer $ addOverlayBI s e sty
 runBuffer :: FBuffer -> BufferM a -> (a, FBuffer, [Update])
 runBuffer b f = runRWS (fromBufferM f) () b
 
-hNewB :: FilePath -> IO FBuffer
-hNewB fp = do
-  u <- newUnique
-  s <- readFile fp
-  let b = newB u (takeFileName fp) s -- FIXME: Here we should somehow insure that no 2 buffers get the same name
-  return b { file = Just fp}
 
 hPutB :: FBuffer -> IO FBuffer
 hPutB b = do
@@ -165,7 +156,7 @@ getfileB = gets file
 setfileB :: FilePath -> BufferM ()
 setfileB f = modify $ modifyFile $ const (Just f)
 
-keyB :: FBuffer -> Unique
+keyB :: FBuffer -> BufferRef
 keyB (FBuffer { bkey = u }) = u
 
 
@@ -186,7 +177,7 @@ redo :: BufferM ()
 redo = undoRedo redoUR
 
 -- | Create buffer named @nm@ with contents @s@
-newB :: Unique -> String -> [Char] -> FBuffer
+newB :: BufferRef -> String -> [Char] -> FBuffer
 newB unique nm s = 
     FBuffer { name   = nm
             , bkey   = unique

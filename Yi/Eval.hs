@@ -15,7 +15,7 @@ import System.Directory
 import Text.Regex.Posix
 import Yi.Core
 import Yi.Debug
-import Yi.Editor hiding (readEditor)
+import Yi.Editor
 import Yi.Kernel
 import Yi.Keymap
 import Yi.Interact hiding (write)

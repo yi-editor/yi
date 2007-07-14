@@ -58,7 +58,7 @@ module Yi.Search (
 import Yi.Buffer
 import Yi.Buffer.HighLevel
 import Text.Regex.Posix.String  ( Regex, compExtended, compIgnoreCase, compNewline, compile, execBlank )
-import Yi.Editor hiding (readEditor)
+import Yi.Editor
 import qualified Yi.Editor as Editor
 
 import Data.Bits ( (.|.) )
@@ -67,7 +67,7 @@ import Data.Maybe
 import Data.List
 import Data.Typeable
 
-import Control.Monad.Reader
+import Control.Monad.State
 
 import Yi.Core
 
@@ -81,7 +81,7 @@ import Yi.Core
 
 -- | Put regex into regex 'register'
 setRegexE :: SearchExp -> Action
-setRegexE re = withEditor $ modifyEditor_ $ \e -> return e { regex = Just re }
+setRegexE re = withEditor $ modify $ \e -> e { regex = Just re }
 
 -- Return contents of regex register
 getRegexE :: YiM (Maybe SearchExp)

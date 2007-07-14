@@ -51,7 +51,7 @@ import Yi.CharMove
 import Yi.Core
 import Yi.CoreUI
 import Yi.Debug
-import Yi.Editor hiding (readEditor)
+import Yi.Editor
 import Yi.Eval
 import Yi.Event -- so we can see key defns
 import Yi.Interact hiding (Interact, runProcess, write)

@@ -35,7 +35,6 @@ import Data.Char
 import Data.List                ( intersperse )
 
 import Control.Monad            ( when )
-import Control.Monad.Trans      ( lift )
 import Control.Concurrent       ( myThreadId, throwTo )
 import Control.Exception        ( catch, throw )
 

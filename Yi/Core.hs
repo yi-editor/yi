@@ -110,7 +110,7 @@ import Yi.Buffer.HighLevel
 import Yi.Dynamic
 import Yi.String
 import Yi.Process           ( popen )
-import Yi.Editor hiding (readEditor)
+import Yi.Editor
 import Yi.CoreUI
 import Yi.Kernel
 import Yi.Event (eventToChar, Event)
@@ -123,7 +123,6 @@ import qualified Yi.Style as Style
 import qualified Yi.CommonUI as UI
 import Yi.CommonUI as UI (Window (..), UI)
 
-import Data.Unique
 import Data.Maybe
 import qualified Data.Map as M
 import Data.List
@@ -131,11 +130,12 @@ import Data.IORef
 import Data.Foldable
 
 import System.Directory     ( doesFileExist, doesDirectoryExist )
+import System.FilePath      
 
 import Control.Monad (when, replicateM_)
 import Control.Monad.Reader (runReaderT, asks)
 import Control.Monad.Trans
-import Control.Monad.State (gets)
+import Control.Monad.State (gets, modify)
 import Control.Exception
 import Control.Concurrent 
 import Control.Concurrent.Chan
@@ -153,9 +153,10 @@ import GHC.Exts ( unsafeCoerce# )
 interactive :: YiM a -> YiM a
 interactive action = do 
   logPutStrLn ">>>>>>> interactively"
-  withUI UI.prepareAction
+  prepAction <- withUI UI.prepareAction
+  withEditor prepAction
   x <- action
-  withUI UI.scheduleRefresh
+  refreshE 
   logPutStrLn "<<<<<<<"
   return x
 
@@ -190,26 +191,24 @@ startE frontend kernel st commandLineActions = do
     let uiStart :: (forall action. 
                     Chan Yi.Event.Event -> 
                     Chan action ->
-                    (EditorM () -> action) -> 
+                    Editor -> (EditorM () -> action) -> 
                     MVar (WS.WindowSet Window) -> 
-                    EditorM UI) = case uiStartM of
+                    IO UI) = case uiStartM of
              Nothing -> do error "Could not compile frontend!"
              Just x -> unsafeCoerce# x
 
     logPutStrLn "Starting Core"
 
-    -- Setting up the 1st buffer/window is a bit tricky because most functions assume there exists a "current window"
-    -- or a "current buffer".
-    consoleU <- newUnique
-    let consoleB = newB consoleU "*console*" ""  --FIXME: don't do this if 'isJust st'
 
     -- restore the old state
-    newSt <- newIORef $ maybe (emptyEditor consoleB) id st
-    wins <- newMVar (WS.new $ Window False (keyB consoleB) 0 0 0)
-    let runEd f = runReaderT f newSt
+    let initEditor = maybe emptyEditor id st
+    let [consoleB] = flip findBufferWithName "*console*" initEditor
+    newSt <- newIORef initEditor
+    -- Setting up the 1st window is a bit tricky because most functions assume there exists a "current window"
+    wins <- newMVar (WS.new $ Window False (consoleB) 0 0 0)
     inCh <- newChan
     outCh :: Chan Action <- newChan
-    ui <- runEd (uiStart inCh outCh withEditor wins)
+    ui <- uiStart inCh outCh initEditor withEditor wins
     startKm <- newIORef nilKeymap
     startModules <- newIORef ["Yi.Yi"] -- this module re-exports all useful stuff, so we want it loaded at all times.
     startThreads <- newIORef []
@@ -246,7 +245,7 @@ startE frontend kernel st commandLineActions = do
         -- | The editor's output main loop. 
         execLoop :: IO ()
         execLoop = do
-            runYi $ withUI UI.scheduleRefresh
+            runYi refreshE
             let loop = sequence_ . map runYi . map interactive =<< getChanContents outCh
             repeatM_ $ (handle handler loop >> logPutStrLn "Execing loop ended")
       
@@ -254,7 +253,7 @@ startE frontend kernel st commandLineActions = do
     t2 <- forkIO execLoop
     runYi $ modifiesRef threads (\ts -> t1 : t2 : ts)
 
-    UI.main ui newSt -- transfer control to UI: GTK must run in the main thread, or else it's not happy.
+    UI.main ui -- transfer control to UI: GTK must run in the main thread, or else it's not happy.
                 
 changeKeymapE :: Keymap -> Action
 changeKeymapE km = do
@@ -268,7 +267,7 @@ changeKeymapE km = do
 
 -- | Quit.
 quitE :: Action
-quitE = withUI' UI.end
+quitE = withUI UI.end
 
 
 -- | (Re)compile and reload the user's config files
@@ -291,9 +290,12 @@ reloadE = do
 	-- Make it "safe", just in case
 
 
--- | Reset the size, and force a complete redraw
+-- | Force a complete redraw
 refreshE :: Action
-refreshE = withUI UI.refreshAll
+refreshE = do editor <- with yiEditor readRef
+              withUI $ flip UI.scheduleRefresh editor
+              withEditor $ modify $ \e -> e {editorUpdates = []}
+
 
 -- | Suspend the program
 suspendE :: Action
@@ -362,11 +364,11 @@ scrollDownE = withWindow_ scrollDownW
 
 -- | Put string into yank register
 setRegE :: String -> Action
-setRegE s = withEditor $  modifyEditor_ $ \e -> return e { yreg = s }
+setRegE s = withEditor $ modify $ \e -> e { yreg = s }
 
 -- | Return the contents of the yank register
 getRegE :: YiM String
-getRegE = readEditor yreg
+getRegE = withEditor $ gets $ yreg
 
 -- ---------------------------------------------------------------------
 -- | Dynamically-extensible state components.
@@ -386,8 +388,7 @@ getDynamic = do
 
 -- | Insert a value into the extensible state, keyed by its type
 setDynamic :: Initializable a => a -> Action
-setDynamic x = withEditor $ modifyEditor_ $ \e ->
-        return e { dynamic = setDynamicValue x (dynamic e) }
+setDynamic x = withEditor $ modify $ \e -> e { dynamic = setDynamicValue x (dynamic e) }
 
 ------------------------------------------------------------------------
 -- | Pipe a string through an external command, returning the stdout
@@ -425,11 +426,11 @@ msgClrE = msgE ""
 -- | A character to fill blank lines in windows with. Usually '~' for
 -- vi-like editors, ' ' for everything else
 setWindowFillE :: Char -> Action
-setWindowFillE c = withEditor $ modifyEditor_ $ \e -> return $ e { windowfill = c }
+setWindowFillE c = withEditor $ modify $ \e -> e { windowfill = c }
 
 -- | Sets the window style.
 setWindowStyleE :: Style.UIStyle -> Action
-setWindowStyleE sty = withEditor $ modifyEditor_ $ \e -> return $ e { uistyle = sty }
+setWindowStyleE sty = withEditor $ modify $ \e -> e { uistyle = sty }
 
 
 -- | Attach the next buffer in the buffer list
@@ -462,15 +463,19 @@ fnewE f = do
     switchToBufferE b
     where
     newBufferForPath :: Bool -> Bool -> YiM BufferRef
-    newBufferForPath True _      = do b <- withEditor $ hNewBuffer f                 -- Load the file into a new buffer
-                                      return (bkey b)
+    newBufferForPath True _      = fileToNewBuffer f                 -- Load the file into a new buffer
     newBufferForPath False True  = do           -- Open the dir in Dired
             loadE "Yi.Dired"
             execE $ "Yi.Dired.diredDirBufferE " ++ show f
             withEditor getBuffer
-    newBufferForPath False False = do b <- withEditor $ stringToNewBuffer f []                       -- Create new empty buffer
-                                      return (bkey b)
+    newBufferForPath False False = withEditor $ stringToNewBuffer f []                       -- Create new empty buffer
 
+
+fileToNewBuffer :: FilePath -> YiM BufferRef
+fileToNewBuffer path = do
+  contents <- liftIO $ readFile path
+  withEditor $ stringToNewBuffer (takeFileName path) contents
+  -- FIXME: we should not create 2 buffers with the same name.
 
 -- | Revert to the contents of the file on disk
 revertE :: Action
@@ -498,7 +503,7 @@ revertE = do
 -- buffers (like scratch)
 newBufferE :: String -> String -> YiM BufferRef
 newBufferE f s = do
-    b <- fmap bkey $ withEditor $ stringToNewBuffer f s
+    b <- withEditor $ stringToNewBuffer f s
     switchToBufferE b
     logPutStrLn "newBufferE ended"
     return b
@@ -528,8 +533,8 @@ switchToBufferWithNameE bufName = switchToBufferE =<< getBufferWithName bufName
 spawnMinibufferE :: String -> KeymapMod -> Action -> Action
 spawnMinibufferE prompt kmMod initialAction =
     do b <- withEditor $ stringToNewBuffer prompt []
-       setBufferKeymap (bkey b) kmMod
-       modifyWindows (WS.add $ Window True (keyB b) 0 0 0)
+       setBufferKeymap b kmMod
+       modifyWindows (WS.add $ Window True b 0 0 0)
        initialAction
 
 -- | Write current buffer to disk, if this buffer is associated with a file

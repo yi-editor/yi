@@ -28,8 +28,6 @@ import Data.Char
 import Data.List
 import Data.Dynamic
 
-import Control.Monad.Trans
-
 data History = History {_historyCurrent :: Int, 
                         _historyContents :: [String]} 
 

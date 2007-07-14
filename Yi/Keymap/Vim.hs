@@ -33,7 +33,6 @@ import Data.Maybe           ( fromMaybe )
 
 import Control.Exception    ( ioErrors, try, evaluate )
 import Control.Monad.State
-import Control.Monad.Reader (asks)
 
 import Yi.Editor
 import Yi.History
