@@ -190,9 +190,13 @@ refresh ui e = modifyMVar_ (windows ui) $ \ws0 -> do
   logPutStrLn $ "startXs: " ++ show startXs
   Yi.Vty.update (vty $ ui) 
       pic {pImage = vertcat (toList wImages) <-> withStyle (window $ uistyle e) (take xss $ cmd ++ repeat ' '),
-           pCursor = let Just (y,x) = cursor (snd $ WS.current zzz) in
-                     Cursor x (y + WS.current startXs)}
-  
+           pCursor = case cursor (snd $ WS.current zzz) of
+                       Just (y,x) -> Cursor x (y + WS.current startXs)
+                       Nothing -> NoCursor
+                       -- This can happen if the user resizes the window. 
+                       -- Not really nice, but upon the next refresh the cursor will show.
+                       }
+
   return (fmap fst zzz)
 
 scanrT (+*+) k t = fst $ runState (mapM f t) k
