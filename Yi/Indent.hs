@@ -26,7 +26,6 @@ import Control.Monad
 
 import Yi.Buffer
 import Yi.Buffer.HighLevel
-import Yi.Core
 -- import Yi.Debug
 import Yi.Dynamic
 
@@ -67,8 +66,7 @@ insertTabB = do
     else ['\t']
   
 indentSettingsB :: BufferM IndentSettings
-indentSettingsB = do
-    getDynamicB
+indentSettingsB = getDynamicB
   
 getPreviousLineB :: BufferM String
 getPreviousLineB = 
@@ -123,8 +121,8 @@ indentToB level = do
 -- |  shifts right (or left if num is negative) num times, filling in tabs if
 -- |  expandTabs is set in the buffers IndentSettings
 -- TODO: This uses mkVimRegion
-shiftIndentOfLine :: Int -> Action
-shiftIndentOfLine numOfShifts = withBuffer $ do
+shiftIndentOfLine :: Int -> BufferM ()
+shiftIndentOfLine numOfShifts = do
   moveToSol
   sol <- pointB
   firstNonSpaceB
@@ -153,15 +151,15 @@ shiftIndentOfLine numOfShifts = withBuffer $ do
 
        firstNonSpaceB
 
-shiftIndentOfSelection :: Int -> Action
+shiftIndentOfSelection :: Int -> BufferM ()
 shiftIndentOfSelection shiftCount = do
-  mark <- withBuffer getSelectionMarkPointB
-  (row2,_) <- withBuffer getLineAndCol
-  withBuffer $ moveTo mark
-  (row1,_) <- withBuffer getLineAndCol
+  mark <- getSelectionMarkPointB
+  (row2,_) <- getLineAndCol
+  moveTo mark
+  (row1,_) <- getLineAndCol
   let step = if (row2 > row1) 
-             then (withBuffer lineDown)
-             else (withBuffer lineUp)
+             then lineDown
+             else lineUp
       numOfLines = 1 + (abs (row2 - row1))
   replicateM_ numOfLines (shiftIndentOfLine shiftCount >> step)
 
