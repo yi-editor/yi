@@ -16,9 +16,9 @@ haddock-interfaces=\
   http://haskell.org/ghc/docs/latest/html/libraries/QuickCheck,/home/jp/haskell/ghc/libraries/QuickCheck/QuickCheck.haddock
 
 
-extra-configure-args = --user --with-haddock=$(prefix)/bin/haddock
+extra-configure-args = --user
 
-HsColour = $(prefix)/bin/HsColour
+HsColour = HsColour
 
 
 
