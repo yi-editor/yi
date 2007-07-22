@@ -78,6 +78,10 @@ data DiredFileInfo = DiredFileInfo {  permString :: String
 data DiredEntry = DiredFile DiredFileInfo
                 | DiredDir DiredFileInfo
                 | DiredSymLink DiredFileInfo String
+                | DiredSocket DiredFileInfo
+                | DiredBlockDevice DiredFileInfo
+                | DiredCharacterDevice DiredFileInfo
+                | DiredNamedPipe DiredFileInfo
                 | DiredNoInfo
                 deriving (Show, Eq, Typeable)
 
@@ -151,7 +155,7 @@ diredRefreshE = do
                     moveTo p
     return ()
     where
-    headStyle = Style yellow black
+    headStyle = Style grey defaultbg
     doPadding :: [DRStrings] -> [String]
     doPadding drs = map (pad ((maximum . map drlength) drs)) drs
 
@@ -191,8 +195,12 @@ linesToDisplay = do
     return $ map (uncurry lineToDisplay) (M.assocs des)
     where
     lineToDisplay k (DiredFile v)      = (l " -" v ++ [DRFiles k], defaultStyle, k)
-    lineToDisplay k (DiredDir v)       = (l " d" v ++ [DRFiles k], Style purple black, k)
-    lineToDisplay k (DiredSymLink v s) = (l " l" v ++ [DRFiles $ k ++ " -> " ++ s], Style cyan black, k)
+    lineToDisplay k (DiredDir v)       = (l " d" v ++ [DRFiles k], Style blue defaultbg, k)
+    lineToDisplay k (DiredSymLink v s) = (l " l" v ++ [DRFiles $ k ++ " -> " ++ s], Style cyan defaultbg, k)
+    lineToDisplay k (DiredSocket v) = (l " s" v ++ [DRFiles $ k], Style magenta defaultbg, k)
+    lineToDisplay k (DiredCharacterDevice v) = (l " c" v ++ [DRFiles $ k], Style yellow defaultbg, k)
+    lineToDisplay k (DiredBlockDevice v) = (l " b" v ++ [DRFiles $ k], Style yellow defaultbg, k)
+    lineToDisplay k (DiredNamedPipe v) = (l " p" v ++ [DRFiles $ k], Style brown defaultbg, k)
     lineToDisplay k DiredNoInfo        = ([DRFiles $ k ++ " : Not a file/dir/symlink"], defaultStyle, k)
 
     l pre v = [DRPerms $ pre ++ permString v,
@@ -222,12 +230,13 @@ diredScanDir dir = do
                         dfi <- lineForFilePath fp fileStatus
                         let islink = isSymbolicLink fileStatus
                         linkTarget <- if islink then readSymbolicLink fp else return ""
-                        let isdir = isDirectory fileStatus
-                            isfile = isRegularFile fileStatus
-                            de = if isdir then (DiredDir dfi) else
-                                   if isfile then (DiredFile dfi) else
+                        let de = if (isDirectory fileStatus) then (DiredDir dfi) else
+                                   if (isRegularFile fileStatus) then (DiredFile dfi) else
                                      if islink then (DiredSymLink dfi linkTarget) else
-                                       DiredNoInfo
+                                       if (isSocket fileStatus) then (DiredSocket dfi) else
+                                         if (isCharacterDevice fileStatus) then (DiredCharacterDevice dfi) else
+                                           if (isBlockDevice fileStatus) then (DiredBlockDevice dfi) else
+                                             if (isNamedPipe fileStatus) then (DiredNamedPipe dfi) else DiredNoInfo
                         return (M.insert f de m)
 
     lineForFilePath :: FilePath -> FileStatus -> IO DiredFileInfo
@@ -314,6 +323,18 @@ diredLoadE = do
                                        if existsFile then fnewE target else
                                           if existsDir then diredDirE target else
                                              msgE $ target ++ " does not exist"
+            (DiredSocket _dfi) -> do
+                               exists <- liftIO $ doesFileExist sel
+                               if exists then msgE ("Can't open Socket " ++ sel) else msgE $ sel ++ " no longer exists"
+            (DiredBlockDevice _dfi) -> do
+                               exists <- liftIO $ doesFileExist sel
+                               if exists then msgE ("Can't open Block Device " ++ sel) else msgE $ sel ++ " no longer exists"
+            (DiredCharacterDevice _dfi) -> do
+                               exists <- liftIO $ doesFileExist sel
+                               if exists then msgE ("Can't open Character Device " ++ sel) else msgE $ sel ++ " no longer exists"
+            (DiredNamedPipe _dfi) -> do
+                               exists <- liftIO $ doesFileExist sel
+                               if exists then msgE ("Can't open Pipe " ++ sel) else msgE $ sel ++ " no longer exists"
             DiredNoInfo -> msgE $ "No File Info for:"++sel
 
 -- | Extract the filename at point. NB this may fail if the buffer has been edited. Maybe use Markers instead.
