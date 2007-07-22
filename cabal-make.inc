@@ -181,7 +181,7 @@ hscolour:
 	mkdir -p dist/doc/html
 	cp $(hscolour-css) dist/doc/html
 	$(foreach module, $(modules),\
-	   $(HsColour) -css -anchor $(top-src-dir)$(subst .,/,$(module)).hs > dist/doc/html/$(top-src-dot)$(module).hs.html; )
+	   $(HsColour) -anchorCSS $(top-src-dir)$(subst .,/,$(module)).hs > dist/doc/html/$(top-src-dot)$(module).hs.html; )
 
 # hscolour:
 # 	mkdir -p dist/doc/html
