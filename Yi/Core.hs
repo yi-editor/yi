@@ -269,33 +269,45 @@ changeKeymapE km = do
 quitE :: Action
 quitE = withUI UI.end
 
-
--- | (Re)compile and reload the user's config files
-reloadE :: YiM [String]
-reloadE = do
-  modules <- readsRef editorModules
+loadModulesE :: [String] -> YiM (Bool, [String])
+loadModulesE modules = do
   withKernel $ \kernel -> do
     targets <- mapM (\m -> guessTarget kernel m Nothing) modules
     setTargets kernel targets
   -- lift $ rts_revertCAFs -- FIXME: GHCi does this; It currently has undesired effects on logging; investigate.
   result <- withKernel loadAllTargets
   loaded <- withKernel setContextAfterLoad
-  case result of
-    GHC.Failed -> withOtherWindow (switchToBufferE =<< getBufferWithName "*console*")
-    _ -> return ()
-  return $ map (moduleNameString . moduleName) loaded
-  -- lift $ rts_revertCAFs
+  ok <- case result of
+    GHC.Failed -> withOtherWindow (switchToBufferE =<< getBufferWithName "*console*") >> return False
+    _ -> return True
+  let newModules = map (moduleNameString . moduleName) loaded
+  writesRef editorModules newModules
+  logPutStrLn $ "tryLoadModulesE: " ++ show modules ++ " -> " ++ show (ok, newModules)
+  return (ok, newModules)
 
 --foreign import ccall "revertCAFs" rts_revertCAFs  :: IO ()
 	-- Make it "safe", just in case
 
+tryLoadModulesE :: [String] -> YiM [String]
+tryLoadModulesE [] = return []
+tryLoadModulesE  modules = do
+  (ok, newModules) <- loadModulesE modules
+  if ok 
+    then return newModules 
+    else tryLoadModulesE (init modules) 
+    -- when failed, try to drop the most recently loaded module.
+    -- We do this because GHC stops trying to load modules upon the 1st failing modules.
+    -- This allows to load more modules if we ever try loading a wrong module.
 
--- | Force a complete redraw
+-- | (Re)compile 
+reloadE :: YiM [String]
+reloadE = tryLoadModulesE =<< readsRef editorModules
+
+-- | Redraw
 refreshE :: Action
 refreshE = do editor <- with yiEditor readRef
               withUI $ flip UI.scheduleRefresh editor
               withEditor $ modify $ \e -> e {editorUpdates = []}
-
 
 -- | Suspend the program
 suspendE :: Action
@@ -584,6 +596,7 @@ closeE = do
     when (n == 1) quitE
     tryCloseE
 
+-- | Recompile and reload the user's config files
 reconfigE :: Action
 reconfigE = reloadE >> runConfig
 
@@ -601,13 +614,14 @@ runConfig = do
 
 loadE :: String -> YiM [String]
 loadE modul = do
-  modifiesRef editorModules (\ms -> if Data.List.notElem modul ms then ms++[modul] else ms)
-  reloadE
+  logPutStrLn $ "loadE: " ++ modul
+  ms <- readsRef editorModules
+  tryLoadModulesE (if Data.List.notElem modul ms then ms++[modul] else ms)
 
 unloadE :: String -> YiM [String]
 unloadE modul = do
-  modifiesRef editorModules $ delete modul
-  reloadE
+  ms <- readsRef editorModules
+  tryLoadModulesE $ delete modul ms
 
 getNamesInScopeE :: YiM [String]
 getNamesInScopeE = do

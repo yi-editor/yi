@@ -104,7 +104,7 @@ setContextAfterLoadL session = do
       modules = map GHC.ms_mod targets'
       context = preludeModule:modules
   GHC.setContext session [] context
-  return context
+  return modules
  where
    findTarget ms t
     = case filter (`matches` t) ms of
