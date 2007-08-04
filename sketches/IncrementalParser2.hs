@@ -17,20 +17,12 @@ Key points:
   
   (It's strongly advised to read the papers!)
 
-  This lifts the LL(k) restriction of the previous implementation.
-
+  => No LL(k) restriction on the grammar.
 
 - The parser has "online" behaviour.
 
   This is a big advantage because we don't have to parse the whole file to begin syntax 
   highlight the beginning of it.
-
-- Resilient to insert parse errors. 
-
-  The structure around the inserted error
-  is preserved. This would allow things like "wiggly underlining" of errors in realtime;
-  also things like indentation, etc. can continue working at a coarse level in presence
-  of errors.
   
 - Based on Applicative functors.
 
@@ -191,24 +183,18 @@ fstrd (a,b,c) = (a,c)
 repair :: (Result s a b r, [s]) -> (Result s a b r, [s])
 repair (Tip x p, over) = (Tip x p, over)
 repair c@(Cha s err pr r, over) 
-    | err = let (r', over') = fstrd (pEvalSteps pr (s ++ getSymbols r ++ over))
-            in if hasErr r' then c else (r', over')
+    | err = fstrd (pEvalSteps pr (s ++ getSymbols r ++ over))
     | hasErr r = let (r', over') = repair (r,over)
                  in (Cha s err pr r', over')
     | otherwise = (Cha s err pr r, over) 
 repair (Err _ _ p, over) = fstrd (pEvalSteps p over)
 repair (r@(Bin l x p err rl rr), over)
     | not err    = ((Bin l  x  p err rl  rr),  over)
-    -- when both sides have errors, we must re-sync at the common level.
-    | hasErr rl && hasErr rr = fstrd $ pEvalSteps p (getSymbols r ++ over)
-    -- if left is still in error, don't bother reparsing (we're as good with the current parse)
-    | hasErr rl' = ((Bin l  x  p err  rl  rr),  over)
+    -- left side has an error, we must re-parse the whole the whole
+    | hasErr rl = fstrd $ pEvalSteps p (getSymbols r ++ over)
     | otherwise  = ((Bin l' x' p err' rl' rr'), over')
-    where (rl', overl) = repair (rl, getSymbols rr ++ over)
-          (rr', over') = if getLength rl == getLength rl' 
-                         then repair (rr, over)
-                         else fstrd $ pEvalSteps (getParser rr) overl
-                         -- when the length of left is different, we cannot re-use the parser for right side.
+    where (rr', over') = repair (rr, over)
+          rl' = rl
           x' = (getResult rl') (getResult rr')
           l' = getLength rl' + getLength rr'
           err' = hasErr rl' || hasErr rr'
