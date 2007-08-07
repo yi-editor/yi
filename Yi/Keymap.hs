@@ -39,7 +39,8 @@ import Control.Monad.State
 import Yi.Event
 import Yi.WindowSet as WS
 
-type Action = YiM ()
+data Action = forall a. YiA (YiM a)
+-- to be extended with EditorA, BufferA, etc.
 
 type Interact ev a = I.Interact ev (Writer [Action]) a
 
@@ -221,14 +222,19 @@ shutdown = do ts <- readsRef threads
 -- -------------------------------------------
 
 class YiAction a where
-    makeAction :: a x -> YiM x
+    makeAction :: a x -> Action
 
 instance YiAction YiM where
-    makeAction = id
+    makeAction = YiA
 
 
 instance YiAction EditorM where
-    makeAction = withEditor
+    makeAction = YiA . withEditor
 
 instance YiAction BufferM where
-    makeAction = withBuffer
+    makeAction = YiA . withBuffer
+
+runAction :: Action -> YiM ()
+runAction (YiA act) = do 
+  act
+  return ()

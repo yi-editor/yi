@@ -23,14 +23,14 @@
 --
 
 module Yi.Search (
-        setRegexE,      -- :: SearchExp -> Action
+        setRegexE,      -- :: SearchExp -> YiM ()
         getRegexE,      -- :: IO (Maybe SearchExp)
         SearchMatch,
         SearchExp,
         SearchF(..),
         searchAndRepLocal,  -- :: String -> String -> IO Bool
         searchE,            -- :: (Maybe String) -> [SearchF]
-                            -- -> Direction -> Action
+                            -- -> Direction -> YiM ()
         searchInitE,        -- :: String
                             -- -> [SearchF]
                             -- -> IO SearchExp
@@ -80,7 +80,7 @@ import Yi.Core
 --
 
 -- | Put regex into regex 'register'
-setRegexE :: SearchExp -> Action
+setRegexE :: SearchExp -> YiM ()
 setRegexE re = withEditor $ modify $ \e -> e { regex = Just re }
 
 -- Return contents of regex register
@@ -119,7 +119,7 @@ searchE :: (Maybe String)       -- ^ @Nothing@ means used previous
                                 -- Use getRegexE to check for previous patterns
         -> [SearchF]            -- ^ Flags to modify the compiled regex
         -> Direction            -- ^ @Left@ means backwards, @Right@ means forward
-        -> Action
+        -> YiM ()
 
 searchE s fs d =
      case s of
@@ -276,6 +276,17 @@ isearchDelE = do
       msgE $ "I-search: " ++ text
     _ -> return () -- if the searched string is empty, don't try to remove chars from it.
     
+
+isearchPrevE :: YiM ()
+isearchPrevE = do
+  Isearch ((current,p0):rest) <- getDynamic
+  withBuffer $ moveTo (p0 + length current)
+  mp <- withBuffer $ searchB current
+  case mp of
+    Nothing -> return ()
+    Just p -> do setDynamic $ Isearch ((current,p):rest)
+                 withBuffer $ moveTo (p+length current)
+
 
 isearchNextE :: YiM ()
 isearchNextE = do

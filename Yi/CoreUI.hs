@@ -93,18 +93,18 @@ withOtherWindow f = do
 
 
 -- | Enlarge the current window
-enlargeWinE :: Action
+enlargeWinE :: YiM ()
 enlargeWinE = error "enlargeWinE: not implemented"
 
 -- | Shrink the current window
-shrinkWinE :: Action
+shrinkWinE :: YiM ()
 shrinkWinE = error "shrinkWinE: not implemented"
 
 
 -- | Close the current window, unless it is the last window open.
-tryCloseE :: Action
+tryCloseE :: YiM ()
 tryCloseE = modifyWindows WS.delete
 
 -- | Make the current window the only window on the screen
-closeOtherE :: Action
+closeOtherE :: YiM ()
 closeOtherE = modifyWindows WS.deleteOthers

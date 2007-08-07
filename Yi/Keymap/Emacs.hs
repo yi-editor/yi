@@ -202,11 +202,11 @@ queryReplaceE = do
 
 ----------------------------
 
-executeExtendedCommandE :: Action
+executeExtendedCommandE :: YiM ()
 executeExtendedCommandE = do
   withMinibuffer "M-x" completeFunctionName execE
 
-evalRegionE :: Action
+evalRegionE :: YiM ()
 evalRegionE = do
   withBuffer (getRegionB >>= readRegionB) >>= evalE
 
@@ -214,7 +214,7 @@ evalRegionE = do
 -- | Define an atomic interactive command.
 -- Purose is to define "transactional" boundaries for killring, undo, etc.
 atomic :: YiAction a => a x -> KProc ()
-atomic cmd = write $ do makeAction cmd
+atomic cmd = write $ do runAction (makeAction cmd)
                         killringEndCmd
 
 -- * Code for various commands
@@ -223,7 +223,7 @@ atomic cmd = write $ do makeAction cmd
 -- by looking up that module's contents
 
 
-insertSelf :: Char -> Action
+insertSelf :: Char -> YiM ()
 insertSelf = repeatingArg . insertB
 
 insertNextC :: KProc ()
@@ -248,7 +248,7 @@ readArg' acc = do
 rebind :: [(String,Process)] -> KeymapMod
 rebind keys = (makeProcess keys <++)
 
-findFile :: Action
+findFile :: YiM ()
 findFile = do maybePath <- withBuffer getfileB
               startPath <- liftIO $ getFolder maybePath
               withMinibuffer "find file:" (completeFileName (Just startPath)) $ \filename -> do {
@@ -287,7 +287,7 @@ getFolder (Just path) = do
 
 
 -- | Goto a line specified in the mini buffer.
-gotoLineE :: Action
+gotoLineE :: YiM ()
 gotoLineE = withMinibuffer "goto line:" return  $ (\s -> withBuffer (gotoLn (read s) >> return ()))
 
 -- debug :: String -> Process
@@ -355,10 +355,10 @@ completionFunction f = do
                   deleteN p
                   insertN compl
 
-withMinibuffer :: String -> (String -> YiM String) -> (String -> Action) -> Action
+withMinibuffer :: String -> (String -> YiM String) -> (String -> YiM ()) -> YiM ()
 withMinibuffer prompt completer act = do 
   initialBuffer <- withEditor getBuffer
-  let innerAction :: Action
+  let innerAction :: YiM ()
       -- ^ Read contents of current buffer (which should be the minibuffer), and
       -- apply it to the desired action
       closeMinibuffer = do b <- withEditor getBuffer; closeE; withEditor (deleteBuffer b);
@@ -380,16 +380,16 @@ withMinibuffer prompt completer act = do
   historyStart
   spawnMinibufferE (prompt ++ " ") (rebind rebindings) (return ())
 
-scrollDownE :: Action
+scrollDownE :: YiM ()
 scrollDownE = withUnivArg $ \a ->
               case a of
                  Nothing -> downScreenE
                  Just n -> withBuffer $ replicateM_ n lineDown
 
-switchBufferE :: Action
+switchBufferE :: YiM ()
 switchBufferE = withMinibuffer "switch to buffer:" completeBufferName switchToBufferWithNameE
 
-killBufferE :: Action
+killBufferE :: YiM ()
 killBufferE = withMinibuffer "kill buffer:" completeBufferName closeBufferE
 
 -- | Create a binding processor from 'kmap'.

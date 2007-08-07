@@ -218,7 +218,7 @@ nextWord = do
             moveWhileB (sameWord c) GoRight
             moveWhileB (betweenWord) GoRight
 
-viewChar :: Action
+viewChar :: YiM ()
 viewChar = do
    c <- withBuffer readB
    msgE . show $ c
@@ -326,7 +326,7 @@ anyButEscOrDel = oneOf $ any' \\ ('\ESC':delete')
 --
 -- cmd mode commands
 --
-singleCmdFM :: [(Char, Int -> Action)]
+singleCmdFM :: [(Char, Int -> YiM ())]
 singleCmdFM =
     [('\^B',    upScreensE)             -- vim does (firstNonSpaceB;moveXorSol)
     ,('\^F',    downScreensE)
@@ -371,7 +371,7 @@ singleCmdFM =
                          moveTo q)
     ]
 
-multiCmdFM :: [(String, Int -> Action)]
+multiCmdFM :: [(String, Int -> YiM ())]
 multiCmdFM =
     [("\^W\^C", const tryCloseE)
     ,("\^W\^O", const closeOtherE)
@@ -402,7 +402,7 @@ cmd_op = do
                      firstNonSpaceB
 
         -- | operator (i.e. movement-parameterised) actions
-        opCmdFM :: [(Char,Int -> Action -> Action)]
+        opCmdFM :: [(Char,Int -> YiM () -> YiM ())]
         opCmdFM =
             [('d', \i m -> replicateM_ i $ do
                               (p,q) <- withPointMove m
@@ -418,7 +418,7 @@ cmd_op = do
         -- some location specified by the sequence @m@, then return.
         -- Return the current, and remote point.
         --
-        withPointMove :: Action -> YiM (Int,Int)
+        withPointMove :: YiM () -> YiM (Int,Int)
         withPointMove m = do p <- withBuffer pointB
                              m
                              q <- withBuffer pointB
@@ -501,7 +501,7 @@ vis_multi = do
 --
 cmd2other :: VimMode
 cmd2other = let beginIns a = write a >> ins_mode
-                beginIns :: Action -> VimMode
+                beginIns :: YiM () -> VimMode
         in choice [
             do event ':'     ; ex_mode ":",
             do event 'v'     ; vis_mode,
@@ -593,7 +593,7 @@ rep_char = write . fn =<< anyButEsc
 -- ---------------------------------------------------------------------
 -- Ex mode. We also process regex searching mode here.
 
-spawn_ex_buffer :: String -> Action
+spawn_ex_buffer :: String -> YiM ()
 spawn_ex_buffer prompt = do
   -- The above ensures that the action is performed on the buffer that originated the minibuffer.
   let closeMinibuffer = do b <- withEditor getBuffer; closeE; withEditor $ deleteBuffer b 
@@ -618,8 +618,8 @@ spawn_ex_buffer prompt = do
 ex_mode :: String -> VimMode
 ex_mode = write . spawn_ex_buffer
                            
--- | eval an ex command to an Action, also appends to the ex history
-ex_eval :: String -> Action
+-- | eval an ex command to an YiM (), also appends to the ex history
+ex_eval :: String -> YiM ()
 ex_eval cmd = do
   case cmd of
         -- regex searching
@@ -706,13 +706,13 @@ ex_eval cmd = do
 
 ------------------------------------------------------------------------
 
-not_implemented :: Char -> Action
+not_implemented :: Char -> YiM ()
 not_implemented c = errorE $ "Not implemented: " ++ show c
 
 -- ---------------------------------------------------------------------
 -- Misc functions
 
-viFileInfo :: Action
+viFileInfo :: YiM ()
 viFileInfo = 
     do bufInfo <- withBuffer bufInfoB
        msgE $ showBufInfo bufInfo
@@ -729,7 +729,7 @@ viFileInfo =
 
 -- | Try to write a file in the manner of vi\/vim
 -- Need to catch any exception to avoid losing bindings
-viWrite :: Action
+viWrite :: YiM ()
 viWrite = do
     mf <- withBuffer getfileB
     case mf of
@@ -742,7 +742,7 @@ viWrite = do
 
 
 -- | Try to write to a named file in the manner of vi\/vim
-viWriteTo :: String -> Action
+viWriteTo :: String -> YiM ()
 viWriteTo f = do
     let f' = (takeWhile (/= ' ') . dropWhile (== ' ')) f
     bufInfo <- withBuffer bufInfoB
@@ -751,7 +751,7 @@ viWriteTo f = do
     catchJustE ioErrors (fwriteToE f' >> msg) (msgE . show)
 
 -- | Try to do a substitution
-viSub :: [Char] -> Action
+viSub :: [Char] -> YiM ()
 viSub cs = do
     let (pat,rep') = break (== '/')  cs
         (rep,opts) = case rep' of

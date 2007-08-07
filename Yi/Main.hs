@@ -94,7 +94,7 @@ versinfo = putStrLn $ "yi 0.3.0"
 --
 -- deal with real options
 --
-do_opt :: Opts -> IO (Keymap.Action)
+do_opt :: Opts -> IO (Keymap.YiM ())
 do_opt o = case o of
     Frontend f -> case map toLower f `elem` frontends of
                        False -> putStrLn ("Unknown frontend: " ++ show f) >> exitWith (ExitFailure 1)
@@ -113,7 +113,7 @@ do_opt o = case o of
 --
 -- everything that is left over
 --
-do_args :: [String] -> IO (String, [Keymap.Action])
+do_args :: [String] -> IO (String, [Keymap.YiM ()])
 do_args args = 
     case (getOpt (ReturnInOrder File) options args) of
         (o, [], []) ->  do
@@ -167,12 +167,12 @@ releaseSignals =
                (\sig -> installHandler sig Default Nothing)
 #endif
 
-startConsole :: Keymap.Action
+startConsole :: Keymap.YiM ()
 startConsole = do
   console <- Core.getBufferWithName "*console*"
   Keymap.setBufferKeymap console (Eval.consoleKeymap <++)
 
-openScratchBuffer :: Keymap.Action
+openScratchBuffer :: Keymap.YiM ()
 openScratchBuffer = do     -- emacs-like behaviour
       Core.newBufferE "*scratch*" 
                    ("-- This buffer is for notes you don't want to save, and for haskell evaluation\n" ++

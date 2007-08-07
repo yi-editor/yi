@@ -31,59 +31,59 @@ module Yi.Core (
         module Yi.Keymap,
         
         -- * Construction and destruction
-        startE,         -- :: Kernel -> Maybe Editor -> [Action] -> IO ()
-        quitE,          -- :: Action
-        reloadE,        -- :: Action
+        startE,         -- :: Kernel -> Maybe Editor -> [YiM ()] -> IO ()
+        quitE,          -- :: YiM ()
+        reloadE,        -- :: YiM ()
         reconfigE,
         loadE,
         unloadE,
-        refreshE,       -- :: Action
-        suspendE,       -- :: Action
+        refreshE,       -- :: YiM ()
+        suspendE,       -- :: YiM ()
 
         -- * Global editor actions
-        msgE,           -- :: String -> Action
-        errorE,         -- :: String -> Action
-        msgClrE,        -- :: Action
-        setWindowFillE, -- :: Char -> Action
-        setWindowStyleE,-- :: UIStyle -> Action
+        msgE,           -- :: String -> YiM ()
+        errorE,         -- :: String -> YiM ()
+        msgClrE,        -- :: YiM ()
+        setWindowFillE, -- :: Char -> YiM ()
+        setWindowStyleE,-- :: UIStyle -> YiM ()
 
         -- * Window manipulation
-        closeE,         -- :: Action
+        closeE,         -- :: YiM ()
 
         -- * File-based actions
-        fnewE,          -- :: FilePath -> Action
-        fwriteE,        -- :: Action
-        fwriteAllE,     -- :: Action
-        fwriteToE,      -- :: String -> Action
-        backupE,        -- :: FilePath -> Action
+        fnewE,          -- :: FilePath -> YiM ()
+        fwriteE,        -- :: YiM ()
+        fwriteAllE,     -- :: YiM ()
+        fwriteToE,      -- :: String -> YiM ()
+        backupE,        -- :: FilePath -> YiM ()
 
         -- * Buffer only stuff
-        newBufferE,     -- :: String -> String -> Action
-        listBuffersE,   -- :: Action
-        closeBufferE,   -- :: String -> Action
+        newBufferE,     -- :: String -> String -> YiM ()
+        listBuffersE,   -- :: YiM ()
+        closeBufferE,   -- :: String -> YiM ()
         getBufferWithName,
 
         -- * Buffer/Window
         switchToBufferE,
         switchToBufferOtherWindowE,
         switchToBufferWithNameE,
-        nextBufW,       -- :: Action
-        prevBufW,       -- :: Action
+        nextBufW,       -- :: YiM ()
+        prevBufW,       -- :: YiM ()
 
         -- * Window-based movement
-        upScreenE,      -- :: Action
-        upScreensE,     -- :: Int -> Action
-        downScreenE,    -- :: Action
-        downScreensE,   -- :: Int -> Action
-        downFromTosE,   -- :: Int -> Action
-        upFromBosE,     -- :: Int -> Action
-        middleE,        -- :: Action
+        upScreenE,      -- :: YiM ()
+        upScreensE,     -- :: Int -> YiM ()
+        downScreenE,    -- :: YiM ()
+        downScreensE,   -- :: Int -> YiM ()
+        downFromTosE,   -- :: Int -> YiM ()
+        upFromBosE,     -- :: Int -> YiM ()
+        middleE,        -- :: YiM ()
 
         -- * Buffer editing
-        revertE,        -- :: Action
+        revertE,        -- :: YiM ()
 
         -- * Basic registers
-        setRegE,        -- :: String -> Action
+        setRegE,        -- :: String -> YiM ()
         getRegE,        -- :: EditorM String
 
         -- * Dynamically extensible state
@@ -150,15 +150,15 @@ import GHC.Exts ( unsafeCoerce# )
 
 -- | Make an action suitable for an interactive run.
 -- UI will be refreshed.
-interactive :: YiM a -> YiM a
-interactive action = do 
+interactive :: Action -> YiM ()
+interactive (YiA action) = do 
   logPutStrLn ">>>>>>> interactively"
   prepAction <- withUI UI.prepareAction
   withEditor prepAction
-  x <- action
+  _ <- action
   refreshE 
   logPutStrLn "<<<<<<<"
-  return x
+  return ()
 
 nilKeymap :: Keymap
 nilKeymap = do c <- anyEvent
@@ -176,7 +176,7 @@ nilKeymap = do c <- anyEvent
 -- | Start up the editor, setting any state with the user preferences
 -- and file names passed in, and turning on the UI
 --
-startE :: String -> Kernel -> Maybe Editor -> [Action] -> IO ()
+startE :: String -> Kernel -> Maybe Editor -> [YiM ()] -> IO ()
 startE frontend kernel st commandLineActions = do
     let frontendModule = "Yi." ++ capitalize frontend ++ ".UI"
     logPutStrLn $ "Starting frontend: " ++ frontend
@@ -208,7 +208,7 @@ startE frontend kernel st commandLineActions = do
     wins <- newMVar (WS.new $ Window False (consoleB) 0 0 0)
     inCh <- newChan
     outCh :: Chan Action <- newChan
-    ui <- uiStart inCh outCh initEditor withEditor wins
+    ui <- uiStart inCh outCh initEditor makeAction wins
     startKm <- newIORef nilKeymap
     startModules <- newIORef ["Yi.Yi"] -- this module re-exports all useful stuff, so we want it loaded at all times.
     startThreads <- newIORef []
@@ -255,7 +255,7 @@ startE frontend kernel st commandLineActions = do
 
     UI.main ui -- transfer control to UI: GTK must run in the main thread, or else it's not happy.
                 
-changeKeymapE :: Keymap -> Action
+changeKeymapE :: Keymap -> YiM ()
 changeKeymapE km = do
   modifiesRef defaultKeymap (const km)
   bs <- withEditor getBuffers
@@ -266,7 +266,7 @@ changeKeymapE km = do
 -- Meta operations
 
 -- | Quit.
-quitE :: Action
+quitE :: YiM ()
 quitE = withUI UI.end
 
 loadModulesE :: [String] -> YiM (Bool, [String])
@@ -304,52 +304,52 @@ reloadE :: YiM [String]
 reloadE = tryLoadModulesE =<< readsRef editorModules
 
 -- | Redraw
-refreshE :: Action
+refreshE :: YiM ()
 refreshE = do editor <- with yiEditor readRef
               withUI $ flip UI.scheduleRefresh editor
               withEditor $ modify $ \e -> e {editorUpdates = []}
 
 -- | Suspend the program
-suspendE :: Action
+suspendE :: YiM ()
 suspendE = withUI UI.suspend
 
 ------------------------------------------------------------------------
 
 -- | Scroll up 1 screen
-upScreenE :: Action
+upScreenE :: YiM ()
 upScreenE = upScreensE 1
 
 -- | Scroll up n screens
-upScreensE :: Int -> Action
+upScreensE :: Int -> YiM ()
 upScreensE n = withWindowAndBuffer $ \w -> do
                  gotoLnFrom (- (n * (height w - 1)))
                  moveToSol
 
 -- | Scroll down 1 screen
-downScreenE :: Action
+downScreenE :: YiM ()
 downScreenE = downScreensE 1
 
 -- | Scroll down n screens
-downScreensE :: Int -> Action
+downScreensE :: Int -> YiM ()
 downScreensE n = withWindowAndBuffer $ \w -> do
                    gotoLnFrom (n * (height w - 1))
                    return ()
 
 -- | Move to @n@ lines down from top of screen
-downFromTosE :: Int -> Action
+downFromTosE :: Int -> YiM ()
 downFromTosE n = withWindowAndBuffer $ \w -> do
                    moveTo (tospnt w)
                    replicateM_ n lineDown
 
 -- | Move to @n@ lines up from the bottom of the screen
-upFromBosE :: Int -> Action
+upFromBosE :: Int -> YiM ()
 upFromBosE n = withWindowAndBuffer $ \w -> do
                    moveTo (bospnt w)
                    moveToSol
                    replicateM_ n lineUp
 
 -- | Move to middle line in screen
-middleE :: Action
+middleE :: YiM ()
 middleE = withWindowAndBuffer $ \w -> do
                    moveTo (tospnt w)
                    replicateM_ (height w `div` 2) lineDown
@@ -361,11 +361,11 @@ middleE = withWindowAndBuffer $ \w -> do
 
 {-
 -- | scroll window up
-scrollUpE :: Action
+scrollUpE :: YiM ()
 scrollUpE = withWindow_ scrollUpW
 
 -- | scroll window down
-scrollDownE :: Action
+scrollDownE :: YiM ()
 scrollDownE = withWindow_ scrollDownW
 -}
 
@@ -375,7 +375,7 @@ scrollDownE = withWindow_ scrollDownW
 --
 
 -- | Put string into yank register
-setRegE :: String -> Action
+setRegE :: String -> YiM ()
 setRegE s = withEditor $ modify $ \e -> e { yreg = s }
 
 -- | Return the contents of the yank register
@@ -399,7 +399,7 @@ getDynamic = do
   return $ getDynamicValue ps
 
 -- | Insert a value into the extensible state, keyed by its type
-setDynamic :: Initializable a => a -> Action
+setDynamic :: Initializable a => a -> YiM ()
 setDynamic x = withEditor $ modify $ \e -> e { dynamic = setDynamicValue x (dynamic e) }
 
 ------------------------------------------------------------------------
@@ -417,7 +417,7 @@ pipeE cmd inp = do
 ------------------------------------------------------------------------
 
 -- | Set the cmd buffer, and draw message at bottom of screen
-msgE :: String -> Action
+msgE :: String -> YiM ()
 msgE s = do 
   withEditor $ modify $ \e -> e { statusLine = s}
   -- also show in the messages buffer, so we don't loose any message
@@ -425,32 +425,32 @@ msgE s = do
   withGivenBuffer b $ do botB; insertN (s ++ "\n")
 
 -- | Set the cmd buffer, and draw a pretty error message
-errorE :: String -> Action
+errorE :: String -> YiM ()
 errorE s = do msgE ("error: " ++ s)
               logPutStrLn $ "errorE: " ++ s
 
 -- | Clear the message line at bottom of screen
-msgClrE :: Action
+msgClrE :: YiM ()
 msgClrE = msgE ""
 
 
 -- | A character to fill blank lines in windows with. Usually '~' for
 -- vi-like editors, ' ' for everything else
-setWindowFillE :: Char -> Action
+setWindowFillE :: Char -> YiM ()
 setWindowFillE c = withEditor $ modify $ \e -> e { windowfill = c }
 
 -- | Sets the window style.
-setWindowStyleE :: Style.UIStyle -> Action
+setWindowStyleE :: Style.UIStyle -> YiM ()
 setWindowStyleE sty = withEditor $ modify $ \e -> e { uistyle = sty }
 
 
 -- | Attach the next buffer in the buffer list
 -- to the current window.
-nextBufW :: Action
+nextBufW :: YiM ()
 nextBufW = withEditor Editor.nextBuffer >>= switchToBufferE
 
 -- | edit the previous buffer in the buffer list
-prevBufW :: Action
+prevBufW :: YiM ()
 prevBufW = withEditor Editor.prevBuffer >>= switchToBufferE
 
 -- | If file exists, read contents of file into a new buffer, otherwise
@@ -460,7 +460,7 @@ prevBufW = withEditor Editor.prevBuffer >>= switchToBufferE
 -- Need to clean up semantics for when buffers exist, and how to attach
 -- windows to buffers.
 --
-fnewE  :: FilePath -> Action
+fnewE  :: FilePath -> YiM ()
 fnewE f = do
     bufs <- withEditor getBuffers
     let bufsWithThisFilename = filter ((== Just f) . file) bufs
@@ -489,7 +489,7 @@ fileToNewBuffer path = do
   -- FIXME: we should not create 2 buffers with the same name.
 
 -- | Revert to the contents of the file on disk
-revertE :: Action
+revertE :: YiM ()
 revertE = do
             mfp <- withBuffer getfileB
             case mfp of
@@ -520,11 +520,11 @@ newBufferE f s = do
     return b
 
 -- | Attach the specified buffer to the current window
-switchToBufferE :: BufferRef -> Action
+switchToBufferE :: BufferRef -> YiM ()
 switchToBufferE b = modifyWindows (WS.modifyCurrent (\w -> w {bufkey = b}))
 
 -- | Attach the specified buffer to some other window than the current one
-switchToBufferOtherWindowE :: BufferRef -> Action
+switchToBufferOtherWindowE :: BufferRef -> YiM ()
 switchToBufferOtherWindowE b = shiftOtherWindow >> switchToBufferE b
 
 -- | Find buffer with given name. Raise exception if not found.
@@ -536,12 +536,12 @@ getBufferWithName bufName = do
     (b:_) -> return b
 
 -- | Switch to the buffer specified as parameter. If the buffer name is empty, switch to the next buffer.
-switchToBufferWithNameE :: String -> Action
+switchToBufferWithNameE :: String -> YiM ()
 switchToBufferWithNameE "" = nextBufW
 switchToBufferWithNameE bufName = switchToBufferE =<< getBufferWithName bufName
 
 -- | Open a minibuffer window with the given prompt and keymap
-spawnMinibufferE :: String -> KeymapMod -> Action -> Action
+spawnMinibufferE :: String -> KeymapMod -> YiM () -> YiM ()
 spawnMinibufferE prompt kmMod initialAction =
     do b <- withEditor $ stringToNewBuffer prompt []
        setBufferKeymap b kmMod
@@ -549,7 +549,7 @@ spawnMinibufferE prompt kmMod initialAction =
        initialAction
 
 -- | Write current buffer to disk, if this buffer is associated with a file
-fwriteE :: Action
+fwriteE :: YiM ()
 fwriteE = do contents <- withBuffer elemsB
              fname <- withBuffer (gets file)
              case fname of
@@ -558,16 +558,16 @@ fwriteE = do contents <- withBuffer elemsB
 
 -- | Write current buffer to disk as @f@. If this buffer doesn't
 -- currently have a file associated with it, the file is set to @f@
-fwriteToE :: String -> Action
+fwriteToE :: String -> YiM ()
 fwriteToE f = do withBuffer $ setfileB f
                  fwriteE
 
 -- | Write all open buffers
-fwriteAllE :: Action
+fwriteAllE :: YiM ()
 fwriteAllE = error "fwriteAllE not implemented"
 
 -- | Make a backup copy of file
-backupE :: FilePath -> Action
+backupE :: FilePath -> YiM ()
 backupE = error "backupE not implemented"
 
 -- | Return a list of all buffers, and their indicies
@@ -578,7 +578,7 @@ listBuffersE = do
 
 -- | Release resources associated with buffer
 
-closeBufferE :: String -> Action
+closeBufferE :: String -> YiM ()
 closeBufferE bufName = do
   nextB <- withEditor nextBuffer
   b <- withEditor getBuffer
@@ -590,17 +590,17 @@ closeBufferE bufName = do
 
 -- | Close the current window.
 -- If this is the last window open, quit the program.
-closeE :: Action
+closeE :: YiM ()
 closeE = do
     n <- withWindows (length . toList)
     when (n == 1) quitE
     tryCloseE
 
 -- | Recompile and reload the user's config files
-reconfigE :: Action
+reconfigE :: YiM ()
 reconfigE = reloadE >> runConfig
 
-runConfig :: Action
+runConfig :: YiM ()
 runConfig = do
   loaded <- withKernel $ \kernel -> do
               let cfgMod = mkModuleName kernel "YiConfig"

@@ -54,13 +54,13 @@ killringMaxDepth :: Int
 killringMaxDepth = 10
 
 -- | Finish an atomic command, for the purpose of killring accumulation.
-killringEndCmd :: Action
+killringEndCmd :: YiM ()
 killringEndCmd = do kr@Killring {krKilled = killed} <- getDynamic
                     setDynamic $ kr {krKilled = False, krAccumulate = killed }
 
 -- | Put some text in the killring.
 -- It's accumulated if the last command was a kill too
-killringPut :: String -> Action
+killringPut :: String -> YiM ()
 killringPut s = do kr@Killring {krContents = r@(x:xs), krAccumulate=acc} <- getDynamic
                    setDynamic $ kr {krKilled = True,
                                     krContents =
@@ -86,20 +86,20 @@ getRegionB = do m <- getSelectionMarkPointB
                 return $ mkRegion m p
 
 -- | C-w
-killRegionE :: Action
+killRegionE :: YiM ()
 killRegionE = do r <- withBuffer getRegionB
                  text <- withBuffer $ readRegionB r
                  killringPut text
                  withBuffer $ deleteRegionB r
 
 -- | C-k
-killLineE :: Action
+killLineE :: YiM ()
 killLineE = withUnivArg $ \a -> case a of
                Nothing -> killRestOfLineE
                Just n -> replicateM_ (2*n) killRestOfLineE
 
 -- | Kill the rest of line
-killRestOfLineE :: Action
+killRestOfLineE :: YiM ()
 killRestOfLineE =
     do eol <- withBuffer atEol
        l <- withBuffer readRestOfLnB
@@ -111,7 +111,7 @@ killRestOfLineE =
                withBuffer deleteB
 
 -- | C-y
-yankE :: Action
+yankE :: YiM ()
 yankE = do (text:_) <- killringGet
            --kr@(Killring _ _ _) <- getDynamic undefined
            --let text = show kr
@@ -119,13 +119,13 @@ yankE = do (text:_) <- killringGet
                            insertN text
 
 -- | M-w
-killRingSaveE :: Action
+killRingSaveE :: YiM ()
 killRingSaveE = do text <- withBuffer (readRegionB =<< getRegionB)
                    killringPut text
 -- | M-y
 
 -- TODO: Handle argument, verify last command was a yank
-yankPopE :: Action
+yankPopE :: YiM ()
 yankPopE = do r <- withBuffer getRegionB
               withBuffer $ deleteRegionB r
               kr@Killring {krContents = ring} <- getDynamic
@@ -133,5 +133,5 @@ yankPopE = do r <- withBuffer getRegionB
               yankE
 
 -- | C-M-w
-appendNextKillE :: Action
+appendNextKillE :: YiM ()
 appendNextKillE = killringModify (\kr -> kr {krKilled=True})
