@@ -151,11 +151,11 @@ import GHC.Exts ( unsafeCoerce# )
 -- | Make an action suitable for an interactive run.
 -- UI will be refreshed.
 interactive :: Action -> YiM ()
-interactive (YiA action) = do 
+interactive action = do 
   logPutStrLn ">>>>>>> interactively"
   prepAction <- withUI UI.prepareAction
   withEditor prepAction
-  _ <- action
+  runAction action
   refreshE 
   logPutStrLn "<<<<<<<"
   return ()

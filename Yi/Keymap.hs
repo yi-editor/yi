@@ -40,7 +40,13 @@ import Yi.Event
 import Yi.WindowSet as WS
 
 data Action = forall a. YiA (YiM a)
--- to be extended with EditorA, BufferA, etc.
+            | forall a. EditorA (EditorM a)
+            | forall a. BufferA (BufferM a)
+--            | TextA Direction Unit Operation          
+-- data Direction = Backward | Forward
+-- data Unit = Character | Word | Line | Vertical | Paragraph | Page | Document | Searched
+-- data Operation = Move | Delete | Transpose | Copy
+
 
 type Interact ev a = I.Interact ev (Writer [Action]) a
 
@@ -229,12 +235,18 @@ instance YiAction YiM where
 
 
 instance YiAction EditorM where
-    makeAction = YiA . withEditor
+    makeAction = EditorA
 
 instance YiAction BufferM where
-    makeAction = YiA . withBuffer
+    makeAction = BufferA
 
 runAction :: Action -> YiM ()
 runAction (YiA act) = do 
   act
+  return ()
+runAction (EditorA act) = do 
+  withEditor act
+  return ()
+runAction (BufferA act) = do 
+  withBuffer act
   return ()
