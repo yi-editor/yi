@@ -42,10 +42,8 @@ import Yi.WindowSet as WS
 data Action = forall a. YiA (YiM a)
             | forall a. EditorA (EditorM a)
             | forall a. BufferA (BufferM a)
---            | TextA Direction Unit Operation          
--- data Direction = Backward | Forward
--- data Unit = Character | Word | Line | Vertical | Paragraph | Page | Document | Searched
--- data Operation = Move | Delete | Transpose | Copy
+            | InsertA String
+--             | TextA Direction Unit Operation          
 
 
 type Interact ev a = I.Interact ev (Writer [Action]) a

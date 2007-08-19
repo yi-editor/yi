@@ -17,10 +17,8 @@
 -- 02111-1307, USA.
 --
 
---
--- | An interface to a one dimensional mutable 'Buffer', providing
--- cursor movement and editing commands
---
+-- | The 'Buffer' module defines monadic editing operations over one-dimensional
+-- buffers, which maintain a current /point/.
 
 module Yi.Buffer ( BufferRef, FBuffer (..), BufferM, runBuffer, keyB, curLn, indexOfEol,
                    sizeB, pointB, moveToSol, moveTo, lineUp, lineDown,
