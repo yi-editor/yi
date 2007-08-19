@@ -196,27 +196,27 @@ betweenWord ch = (isSpace ch) -- && (ch /= '\n')
 
 begWord :: BufferM ()
 begWord = do 
-      moveWhileB (betweenWord) GoLeft
+      moveWhileB (betweenWord) Backward
       c <- readB
-      skippedAlpha <- detectMovement (moveWhileB (sameWord c) GoLeft)
-      when skippedAlpha $ moveWhileB (not . sameWord c) GoRight
+      skippedAlpha <- detectMovement (moveWhileB (sameWord c) Backward)
+      when skippedAlpha $ moveWhileB (not . sameWord c) Forward
 
 endWord :: BufferM ()
 endWord = do 
-      moveWhileB (betweenWord) GoRight
+      moveWhileB (betweenWord) Forward
       c <- readB
-      skippedAlpha <- detectMovement (moveWhileB (sameWord c) GoRight)
-      when skippedAlpha $ moveWhileB (not.sameWord c) GoLeft
+      skippedAlpha <- detectMovement (moveWhileB (sameWord c) Forward)
+      when skippedAlpha $ moveWhileB (not.sameWord c) Backward
 
 nextWord :: BufferM ()
 nextWord = do 
-      wasBetween <- detectMovement ( moveWhileB (betweenWord) GoRight)
+      wasBetween <- detectMovement ( moveWhileB (betweenWord) Forward)
       if wasBetween
          then return ()
          else do
             c <- readB
-            moveWhileB (sameWord c) GoRight
-            moveWhileB (betweenWord) GoRight
+            moveWhileB (sameWord c) Forward
+            moveWhileB (betweenWord) Forward
 
 viewChar :: YiM ()
 viewChar = do
@@ -339,7 +339,7 @@ singleCmdFM =
     ,('U',      withBuffer . flip replicateM_ undo)    -- NB not correct
     ,('n',      const $ do getRegexE >>=
                                msgE . ("/" ++) . fst . fromMaybe ([],undefined)
-                           searchE Nothing [] GoRight)
+                           searchE Nothing [] Forward)
     ,('u',      withBuffer . flip replicateM_ undo)
 
     ,('X',      \i -> withBuffer $ do p <- pointB
@@ -623,7 +623,7 @@ ex_eval :: String -> YiM ()
 ex_eval cmd = do
   case cmd of
         -- regex searching
-          ('/':pat) -> searchE (Just pat) [] GoRight
+          ('/':pat) -> searchE (Just pat) [] Forward
 
         -- TODO: We give up on re-mapping till there exists a generic Yi mechanism to do so.
 

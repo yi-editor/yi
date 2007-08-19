@@ -35,7 +35,7 @@ module Yi.Buffer ( BufferRef, FBuffer (..), BufferM, runBuffer, keyB, curLn, ind
                    getModeLine, getPercent, forgetPreferCol,
                    clearUndosB, addOverlayB,
                    getDynamicB, setDynamicB,
-                   nelemsBH, deleteB
+                   nelemsBH, deleteB, Direction (..),
                     ) where
 
 import Prelude hiding ( error )
@@ -49,10 +49,14 @@ import Yi.Dynamic
 import Control.Monad
 import Control.Monad.RWS
 
---
--- | The 'Buffer' class defines editing operations over one-dimensional`
--- mutable buffers, which maintain a current /point/.
---
+
+-- | Direction of movement inside a buffer
+data Direction = Backward 
+               | Forward  
+
+--data Unit = Character | Word | Line | Vertical | Paragraph | Page | Document | Searched
+--data Operation = Move | Delete | Transpose | Copy
+
 
 -- In addition to FastBuffer, this manages (among others):
 --  * Log of updates mades

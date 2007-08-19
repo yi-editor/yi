@@ -140,7 +140,7 @@ searchDoE :: SearchExp
           -> Direction
           -> YiM SearchResult
 
-searchDoE _ GoLeft = do
+searchDoE _ Backward = do
         errorE "Backward searching is unimplemented"
 	return Nothing
 searchDoE (s, re) _ = searchF s re

@@ -122,7 +122,7 @@ isNonWord = isSpace
 skipWordB :: BufferM ()
 skipWordB = doSkipCond rightB readB atEol isNonWord
 
--- | Backwards skip to next whitespace or non-whitespace inversely
+-- | Backward skip to next whitespace or non-whitespace inversely
 -- depending on the character before point.
 bskipWordB :: BufferM ()
 bskipWordB = doSkipCond leftB breadB atSol isNonWord
@@ -147,19 +147,19 @@ bkillWordB = doSkipCond bdeleteB breadB atSol isNonWord
 
 -- | Move to first char of next word forwards
 nextWordB :: BufferM ()
-nextWordB = do moveWhileB (isAlphaNum) GoRight
-               moveWhileB (not.isAlphaNum)  GoRight
+nextWordB = do moveWhileB (isAlphaNum) Forward
+               moveWhileB (not.isAlphaNum)  Forward
 
 -- | Move to first char of next word backwards
 prevWordB :: BufferM ()
-prevWordB = do moveWhileB (isAlphaNum)      GoLeft
-               moveWhileB (not.isAlphaNum)  GoLeft
+prevWordB = do moveWhileB (isAlphaNum)      Backward
+               moveWhileB (not.isAlphaNum)  Backward
 
 ------------------------------------------------------------------------
 
 -- | Move to the next occurence of @c@
 nextCInc :: Char -> BufferM ()
-nextCInc c = rightB >> moveWhileB (/= c) GoRight
+nextCInc c = rightB >> moveWhileB (/= c) Forward
 
 -- | Move to the character before the next occurence of @c@
 nextCExc :: Char -> BufferM ()
@@ -167,7 +167,7 @@ nextCExc c = nextCInc c >> leftB
 
 -- | Move to the previous occurence of @c@
 prevCInc :: Char -> BufferM ()
-prevCInc c = leftB  >> moveWhileB (/= c) GoLeft
+prevCInc c = leftB  >> moveWhileB (/= c) Backward
 
 -- | Move to the character after the previous occurence of @c@
 prevCExc :: Char -> BufferM ()
@@ -192,7 +192,7 @@ nextNParagraphs n = do
         let loop = do
                 p <- pointB
                 when (p < eof-1) $ do
-                    moveWhile_ (/= '\n') GoRight
+                    moveWhile_ (/= '\n') Forward
                     p' <- pointB
                     when (p' < eof-1) $ do
                         rightB
@@ -207,7 +207,7 @@ prevNParagraphs n = do
                 p <- pointB
                 when (p > 0) $ do
                     leftB
-                    moveWhile_ (/= '\n') GoLeft
+                    moveWhile_ (/= '\n') Backward
                     p' <- pointB
                     when (p' > 0) $ do
                         leftB
@@ -235,14 +235,16 @@ moveWhile_ :: (Char -> Bool)
 moveWhile_ f dir = do
     eof <- sizeB
     case dir of
-        GoRight -> fix $ \loop' -> do p <- pointB
-                                      when (p < eof - 1) $ do
-                                        x <- readB
-                                        when (f x) $ rightB >> loop'
-        GoLeft  -> fix $ \loop' -> do p <- pointB
-                                      when (p > 0) $ do
-                                        x <- readB
-                                        when (f x) $ leftB >> loop'
+        Forward   -> fix $ \loop' -> do 
+                       p <- pointB
+                       when (p < eof - 1) $ do
+                                       x <- readB
+                                       when (f x) $ rightB >> loop'
+        Backward -> fix $ \loop' -> do 
+                       p <- pointB
+                       when (p > 0) $ do
+                                       x <- readB
+                                       when (f x) $ leftB >> loop'
 
 ------------------------------------------------------------------------
 
@@ -256,7 +258,7 @@ readWordLeft_ = do
     p <- pointB
     c <- readB
     when (not $ isAlphaNum c) $ leftB
-    moveWhile_ isAlphaNum GoLeft
+    moveWhile_ isAlphaNum Backward
     sof <- atSof
     c'  <- readB
     when (not sof || not (isAlphaNum c')) $ rightB
@@ -306,9 +308,9 @@ readWord_ = do
     p <- pointB
     c <- readB
     if not (isAlphaNum c) then leftB
-                          else moveWhile_ isAlphaNum GoRight >> leftB
+                          else moveWhile_ isAlphaNum Forward >> leftB
     y <- pointB   -- end point
-    moveWhile_ isAlphaNum GoLeft
+    moveWhile_ isAlphaNum Backward
     sof <- atSof
     c'  <- readB
     when (not sof || not (isAlphaNum c')) $ rightB

@@ -19,10 +19,6 @@ import Yi.Buffer
 import Yi.Region
 import Control.Monad.State
 
--- | A 'Direction' is either left or right.
-data Direction = GoLeft | GoRight
-
-
 -- ---------------------------------------------------------------------
 -- Movement operations
 
