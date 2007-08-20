@@ -17,12 +17,7 @@
 -- 02111-1307, USA.
 --
 
---
--- | A fast 'Buffer' implementation
---
-
--- NB buffers have no concept of multiwidth characters. There is an
--- assumption that a character has width 1, including tabs.
+-- | 'Buffer' implementation, wrapping bytestring.
 
 module Yi.FastBuffer (Update(..), Point, Mark, Size, BufferImpl, moveToI, applyUpdateI, isValidUpdate,
                       pointBI, nelemsBI, sizeBI, curLnI, newBI,
@@ -48,14 +43,6 @@ import Data.ByteString.Base
 
 import Data.Array
 
--- ---------------------------------------------------------------------
---
--- | The buffer text itself is stored as ByteString. 
---
--- Problems with this implementation:
--- * Does not support unicode
--- * Is not optimized (O(n) operations)
---
 
 type Point = Int
 type Size  = Int
@@ -73,6 +60,15 @@ type Marks = M.Map Mark MarkValue
 type BufferImpl = FBufferData
 
 data HLState = forall a. Eq a => HLState !(Highlighter a)
+
+-- ---------------------------------------------------------------------
+--
+-- | The buffer text itself is stored as ByteString. 
+--
+-- Problems with this implementation:
+-- * Does not support unicode
+-- * Is not optimized (O(n) operations)
+--
 
 data FBufferData =
         FBufferData { mem        :: !ByteString            -- ^ buffer text
