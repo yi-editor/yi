@@ -552,6 +552,7 @@ spawnMinibufferE prompt kmMod initialAction =
 fwriteE :: YiM ()
 fwriteE = do contents <- withBuffer elemsB
              fname <- withBuffer (gets file)
+             withBuffer clearUndosB
              case fname of
                Just n -> liftIO $ writeFile n contents
                Nothing -> msgE "Buffer not associated with a file."
