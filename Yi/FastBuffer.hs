@@ -89,6 +89,7 @@ data FBufferData =
 
 data Update = Insert {updatePoint :: !Point, insertUpdateString :: !String} -- FIXME: use ByteString
             | Delete {updatePoint :: !Point, deleteUpdateSize :: !Size}
+            | SavedFilePoint
               deriving Show
 
 

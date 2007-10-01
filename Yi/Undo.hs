@@ -61,15 +61,17 @@
 --
 
 module Yi.Undo (
-        emptyUR,
-        addUR,
-        undoUR,
-        redoUR,
-        isEmptyUList,
-        reverseUpdate,
-        getActionB,
-        URList,             {- abstractly -}
-        Update(..),       {- non-abstractly, for concrete implementations -}
+    emptyUR
+  , addUR
+  , setSavedPointUR
+  , undoUR
+  , redoUR
+  , isEmptyUList
+  , isUnchangedUList
+  , reverseUpdate
+  , getActionB
+  , URList             {- abstractly -}
+  , Update(..)       {- non-abstractly, for concrete implementations -}
    ) where
 
 import Yi.FastBuffer            
@@ -87,11 +89,28 @@ emptyUR = URList [] []
 addUR :: Update -> URList -> URList
 addUR u (URList us _rs) = URList (u:us) []
 
+
+-- | Add a saved file point so that we can tell that the buffer has not
+-- been modified since the previous saved file point.
+-- Notice that we must be sure to remove the previous saved file points
+-- since they are now worthless.
+setSavedPointUR :: URList -> URList
+setSavedPointUR (URList undos redos) =
+  URList (SavedFilePoint : cleanUndos) cleanRedos
+  where
+  cleanUndos = filter isNotSavedFilePoint undos
+  cleanRedos = filter isNotSavedFilePoint redos
+  isNotSavedFilePoint :: Update -> Bool
+  isNotSavedFilePoint SavedFilePoint = False
+  isNotSavedFilePoint _              = True
+
 -- | Undo the last action that mutated the buffer contents. The action's
 -- inverse is added to the redo list. 
 undoUR :: URList -> BufferImpl -> (BufferImpl, (URList, [Update]))
-undoUR u@(URList [] _) b = (b, (u, []))
-undoUR (URList (u:us) rs) b = 
+undoUR u@(URList [] _) b                     = (b, (u, []))
+undoUR (URList (SavedFilePoint : rest) rs) b = 
+  undoUR (URList rest (SavedFilePoint : rs)) b
+undoUR (URList (u:us) rs) b                  = 
     let (b', r) = getActionB u b 
     in (b', (URList us (r:rs), [u]))
 
@@ -99,15 +118,34 @@ undoUR (URList (u:us) rs) b =
 -- inverse is added to the undo list.
 redoUR :: URList -> BufferImpl -> (BufferImpl, (URList, [Update]))
 redoUR u@(URList _ []) b = (b, (u, []))
+redoUR (URList us (SavedFilePoint : rest)) b =
+  redoUR (URList (SavedFilePoint : us) rest) b
 redoUR (URList us (r:rs)) b =
     let (b', u) = getActionB r b
     in (b', (URList (u:us) rs, [u]))
 
 -- | isEmptyUndoList. @True@ if the undo list is empty, and hence the
 -- buffer is not modified
+-- Be careful this does NOT indicate that the buffer has not been modified
+-- since the last save, only that it has not been modified since we opened it.
+-- Eg. If one opens a file, types some letters then saves, then undoes all the
+-- typing, the file is different from that which is saved on disk but the undo
+-- list is empty.
 isEmptyUList :: URList -> Bool
 isEmptyUList (URList [] _) = True
 isEmptyUList (URList _  _) = False
+
+
+-- | isUnchangedUndoList. @True@ if the undo list is either empty or we are at a
+-- SavedFilePoint indicated that the buffer has not been modified since we
+-- last saved the file.
+-- Note: that an empty undo list does NOT mean that the buffer is not modified since
+-- the last save. Because we may have saved the file and then undone actions done before
+-- the save.
+isUnchangedUList :: URList -> Bool
+isUnchancedUList (URList [] _)                   = False
+isUnchangedUList (URList (SavedFilePoint : _) _) = True
+isUnchangedUList (URList _ _)                    = False
 
 -- | Given a Update, apply it to the buffer, and return the
 -- Update that reverses it.

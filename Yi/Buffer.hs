@@ -149,8 +149,11 @@ hPutB b = do
     Just f  -> writeFile f (nelemsBI (sizeBI bi) 0 bi)
   return (b {undos = emptyUR})
 
+-- Clear the undo list, so the changed "flag" is reset.
+-- This has now been updated so that instead of clearing the undo list we
+-- mark the point at which the file was saved.
 clearUndosB :: BufferM ()
-clearUndosB = modify $ modifyUndos (const emptyUR) -- Clear the undo list, so the changed "flag" is reset.
+clearUndosB = modify $ modifyUndos setSavedPointUR
 
 getfileB :: BufferM (Maybe FilePath)
 getfileB = gets file
@@ -163,7 +166,7 @@ keyB (FBuffer { bkey = u }) = u
 
 
 isUnchangedB :: BufferM Bool
-isUnchangedB = gets (isEmptyUList . undos)
+isUnchangedB = gets (isUnchangedUList . undos)
 
 
 undoRedo f = do
