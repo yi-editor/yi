@@ -80,8 +80,10 @@ import Yi.FastBuffer
 data URList = URList ![Update] ![Update]
 
 -- | A new empty 'URList'.
+-- Notice we must have a saved file point as this is when we assume we are
+-- opening the file so it is currently the same as the one on disk
 emptyUR :: URList
-emptyUR = URList [] []
+emptyUR = URList [SavedFilePoint] []
 
 -- | Add an action to the undo list.
 -- According to the restricted, linear undo model, if we add a command
