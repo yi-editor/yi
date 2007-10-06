@@ -653,11 +653,11 @@ execE s = do
   ghcErrorHandlerE $ do
             result <- withKernel $ \kernel -> do
                                logPutStrLn $ "execing " ++ s
-                               compileExpr kernel ("makeAction (" ++ s ++ ") >>= msgE' . show :: YiM ()")
+                               compileExpr kernel ("makeAction (" ++ s ++ ") :: Action")
             case result of
               Nothing -> errorE ("Could not compile: " ++ s)
-              Just x -> do let (x' :: YiM ()) = unsafeCoerce# x
-                           x'
+              Just x -> do let (x' :: Action) = unsafeCoerce# x
+                           runAction x'
                            return ()
 
 -- | Install some default exception handlers and run the inner computation.
