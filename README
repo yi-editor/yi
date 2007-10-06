@@ -1,19 +1,40 @@
 
 Yi -- the Haskell extensible editor
 
-<http://www.cse.unsw.edu.au/~dons/yi.html>
+<http://haskell.org/haskellwiki/Yi>
 
 Copyright (c) Don Stewart 2004-5, <http://www.cse.unsw.edu.au/~dons>
+Copyright (c) JP Bernardy 2007
 
-Yi is currently maintained by Jean-Philippe Bernardy. 
-(jeanphilippe.bernardy at google mail)
+report bugs at: http://code.google.com/p/yi-editor/issues/list
 
 ------------------------------------------------------------------------
 
-TARBALLS QUICK START: (if you got Yi via the Darcs repo, see HACKER'S QUICK START)
 
-* compile and install yi and yi-gtk or yi-vty, as you would do for any
-  other Cabal package
+
+DEPENDENCIES
+
+* filepath 1.0, or lastest darcs repo version.
+        http://darcs.haskell.org/packages/filepath/
+
+* Alex (the haskell lexer generator) 
+	http://www.haskell.org/alex/
+
+* for vty frontend
+  * vty 3.0.0, or latest darcs repo version. 
+        http://members.cox.net/stefanor/vty
+
+* for gtk frontend, gtk2hs 0.9.12.
+        http://haskell.org/gtk2hs/download/
+
+see also yi.cabal file for other dependencies.
+
+
+QUICK START:
+
+* compile yi as you would do for any other Cabal package
+
+* copy examples/YiConfig.hs to ~/.yi/ and taylor to your needs
 
 * run yi
 
@@ -21,43 +42,25 @@ $(install-prefix)/yi --as=vim
 $(install-prefix)/yi --as=emacs 
 ...
 
-DEPENDENCIES
-
-* filepath 1.0, or lastest darcs repo version.
-        http://darcs.haskell.org/packages/filepath/
-
-* for vty frontend
-  * vty 3.0.0, or latest darcs repo version. 
-        http://members.cox.net/stefanor/vty
-  * Alex (the haskell lexer generator) 
-        http://www.haskell.org/alex/
-
-* for gtk frontend, gtk2hs 0.9.11, configured with sourceview.
-        http://haskell.org/gtk2hs/download/
-
-see cabal files (find . -name "*.cabal") for other dependencies.
-
-HACKER'S QUICK START: 
-
-edit config.mk so it suits your needs;
-
 run
 
- $ make emacs
+yi --help
 
-or 
+for a list of options.
 
- $ make vim
 
-following your preferences. This will :
 
-* compile all the needed packages
-* install them with --user
+HACKER'S GUIDE: 
 
-You can then run Yi with:
+You can run Yi "in place" by running:
 
-$install-prefix/yi -f gtk
-$install-prefix/yi -f vty
+dist/build/yi/yi -B.
+
+
+You can then try your changes by running the "reconfigE" command. (M-x
+reconfigE in emacs mode)
+
+
 
 CONFIGURATION
 
@@ -65,9 +68,12 @@ All configuration (bindings, colours) is done with ~/.yi/YiConfig.hs
 See examples directory for files that you can use as ~/.yi/YiConfig.hs.
 Drop the --as=... when you have defined your YiConfig.hs
 
+
+
 PORTABILITY
 
-Yi is developed on OpenBSD, FreeBSD and Debian Linux. 
+Yi is developed on Linux, and should be easily ported to FreeBSD and
+OpenBSD. Running Gtk fronted to MS Windows should be possible.
 
 A porting checklist:
         * you have GNU make
@@ -75,27 +81,50 @@ A porting checklist:
         * you have either gtk or vty support
         * you have haddock installed (for the documentation)
 
+
+
 CREDITS
 
-Yi has been developed by Don Stewart <http://www.cse.unsw.edu.au/~dons>
-with the help of the #haskell irc community.
-
-Yi is derived from Riot <http://iki.fi/tuomov/riot/>, written by
+2004-- Yi is derived from Riot <http://iki.fi/tuomov/riot/>, written by
 Tuomo Valkonen.
 
+2005-- Yi is developed by Don Stewart <http://www.cse.unsw.edu.au/~dons>
+with the help of the #haskell irc community.
+
+2007-- Yi is heavily modified by Jean-Philippe Bernardy who takes over
+maintainance
+
 The following people have contributed patches to Yi, in alphabetical order:
-(not up to date; see darcs!)
-        Bastiaan Zapf
-        Cale Gibbard
-        Don Stewart
-        Jason Dagit
-        Jean-Philippe Bernardy
-        Mark Wotton
-        Samuel Bronson
-        Shae Erisson
-        Simon Winwood
-        Suleiman Souhlal
-        Tuomo Valkonen
-        Vivian McPhail
+
+Allan Clark
+Alson Kemp
+Andres Loeh
+Andrii Zvorygin
+Bastiaan Zapf
+Ben Moseley
+Cale Gibbard
+Corey O'Connor
+Daniel McAllansmith
+Don Stewart
+Duncan Coutts
+Fraser Wilson
+Harald Korneliussen
+Henning Guenther
+Jason Dagit
+Jean-Philippe Bernardy
+Jens Petersen
+Mario Lang
+Mark Wotton
+Samuel Bronson
+Shae Erisson
+Simon Winwood
+Spencer Janssen
+Stefan O'Rear
+Suleiman Souhlal
+Taral
+Tim Newsham
+Tuomo Valkonen
+Vivian McPhail
+Yang Zhang
 
 Yi was born on October 14th, 2004
