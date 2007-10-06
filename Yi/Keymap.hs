@@ -39,9 +39,9 @@ import Control.Monad.State
 import Yi.Event
 import Yi.WindowSet as WS
 
-data Action = forall a. YiA (YiM a)
-            | forall a. EditorA (EditorM a)
-            | forall a. BufferA (BufferM a)
+data Action = forall a. Show a => YiA (YiM a)
+            | forall a. Show a => EditorA (EditorM a)
+            | forall a. Show a => BufferA (BufferM a)
             | InsertA String
 --             | TextA Direction Unit Operation          
 
@@ -226,7 +226,7 @@ shutdown = do ts <- readsRef threads
 -- -------------------------------------------
 
 class YiAction a where
-    makeAction :: a x -> Action
+    makeAction :: Show x => a x -> Action
 
 instance YiAction YiM where
     makeAction = YiA
@@ -238,13 +238,3 @@ instance YiAction EditorM where
 instance YiAction BufferM where
     makeAction = BufferA
 
-runAction :: Action -> YiM ()
-runAction (YiA act) = do 
-  act
-  return ()
-runAction (EditorA act) = do 
-  withEditor act
-  return ()
-runAction (BufferA act) = do 
-  withBuffer act
-  return ()

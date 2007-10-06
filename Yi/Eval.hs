@@ -1,7 +1,6 @@
 module Yi.Eval (
         -- * Eval\/Interpretation
         evalE,
-        msgE',
         jumpToErrorE,
         consoleKeymap,
 ) where
@@ -34,10 +33,6 @@ evalToStringE string = withKernel $ \kernel -> do
 evalE :: String -> YiM ()
 evalE s = evalToStringE s >>= msgE
 
--- | Same as msgE, but do nothing instead of printing @()@
-msgE' :: String -> YiM ()
-msgE' "()" = return ()
-msgE' s = msgE s
 
 
 jumpToE :: String -> Int -> Int -> YiM ()

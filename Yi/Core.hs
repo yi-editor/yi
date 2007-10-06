@@ -99,7 +99,8 @@ module Yi.Core (
         -- * Misc
         changeKeymapE,
         getNamesInScopeE,
-        execE
+        execE,
+        runAction
    ) where
 
 import Prelude hiding (error, sequence_, mapM_)
@@ -415,6 +416,23 @@ pipeE cmd inp = do
     return (chomp "\n" out)
 
 ------------------------------------------------------------------------
+
+-- | Same as msgE, but do nothing instead of printing @()@
+msgE' :: String -> YiM ()
+msgE' "()" = return ()
+msgE' s = msgE s
+
+runAction :: Action -> YiM ()
+runAction (YiA act) = do 
+  act >>= msgE' . show
+  return ()
+runAction (EditorA act) = do 
+  withEditor act >>= msgE' . show
+  return ()
+runAction (BufferA act) = do 
+  withBuffer act >>= msgE' . show
+  return ()
+
 
 -- | Set the cmd buffer, and draw message at bottom of screen
 msgE :: String -> YiM ()

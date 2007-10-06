@@ -213,7 +213,7 @@ evalRegionE = do
 
 -- | Define an atomic interactive command.
 -- Purose is to define "transactional" boundaries for killring, undo, etc.
-atomic :: YiAction a => a x -> KProc ()
+atomic :: (Show x, YiAction a) => a x -> KProc ()
 atomic cmd = write $ do runAction (makeAction cmd)
                         killringEndCmd
 
