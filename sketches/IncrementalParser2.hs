@@ -5,6 +5,9 @@ module IncrementalParser2 where
 import Data.Generics
 import Data.Char
 import Control.Applicative
+import Data.List (nub)
+import Data.Maybe (isJust)
+import Data.Tree
 
 {- ----------------------------------------
 
@@ -23,6 +26,13 @@ Key points:
 
   This is a big advantage because we don't have to parse the whole file to begin syntax 
   highlight the beginning of it.
+
+- Resilient to insert parse errors. 
+
+  The structure around the inserted error
+  is preserved. This would allow things like "wiggly underlining" of errors in realtime;
+  also things like indentation, etc. can continue working at a coarse level in presence
+  of errors.
   
 - Based on Applicative functors.
 
@@ -64,7 +74,7 @@ data Steps s a r where
     App   :: Steps s (b -> a) (Steps s b r) -> Steps s a r
     Shift :: ([s] -> Steps s a r)           -> Steps s a r
     Done  :: Steps s a r                    -> Steps s a r
-    Fails :: String                         -> Steps s a r
+    Fails :: [String]                       -> Steps s a r
 
 -- For debugging:
 instance Show (Steps x a s) where
@@ -72,11 +82,11 @@ instance Show (Steps x a s) where
     show (App   x) = "." ++ show x
     show (Shift x) = ">" 
     show (Done  x) = "!" ++ show x
-    show (Fails s) = "?" ++ s
+    show (Fails s) = "?" ++ show s
 
 -- | Choose the non-failing option, (or the one that fails latest)
 best :: Steps x a s -> Steps x a s ->  Steps x a s
-Fails x `best` Fails y = Fails (x ++ "|" ++ y) -- TODO: record list of expected stuff, etc. (see Parsek)
+Fails x `best` Fails y = Fails (nub $ x ++ y)
 Fails _ `best` p       = p
 q       `best` Fails _ = q
 Done _  `best` Done _  = error "ambiguous grammar"
@@ -94,12 +104,12 @@ getProgress f (Done p)  = Done (f p)
 getProgress f (Shift s) = Shift (\input -> f (s input))
 getProgress f (Fails s) = Fails s
 
--- | Get the process' value (non incrementally -- but still online!)
+-- | Get the process' value (online)
 evalSteps :: Steps s a (Steps s b r) -> [s] -> (a, Steps s b r, [s])
 evalSteps (Val a s) xs = (a, s, xs)
 evalSteps (Shift v) xs = evalSteps (v xs) (drop 1 xs)
 evalSteps (Done v)  xs = evalSteps v xs
-evalSteps (Fails s) xs = (error s, Fails s, xs)
+evalSteps (Fails s) xs = (error (show s), Fails s, xs)
 evalSteps (App s)   xs = let (f,s',  xs')  = evalSteps s  xs
                              (a,s'', xs'') = evalSteps s' xs'
                          in (f a, s'', xs'')
@@ -120,8 +130,7 @@ data Result s a w r where
            Result s b w r                      -> -- material to re-build right hand
            Result s a w r
     Tip :: a -> Process s a w r -> Result s a w r   -- An atomic value
-    Err :: String -> a -> Process s a w r -> Result s a w r   -- An error
-    Cha :: [s]  -> Bool -> Process s a w r -> Result s a w r -> Result s a w r   -- 
+    Una :: [s]  -> Maybe ErrorMessage -> Process s a w r -> Result s a w r -> Result s a w r  
 
 -- For debugging:
 instance Show (Result Char a w r) where
@@ -129,46 +138,49 @@ instance Show (Result Char a w r) where
                     -- (if hasErr r then showChar '?' else showChar ' ') .
                     case r of 
                       (Tip _ _) -> id
-                      (Cha s err _ p) -> (if err then  showChar '?' else id) . 
+                      (Una s err _ p) -> (if isJust err then  showChar '?' else id) . 
                                          showString s . showsPrec 11 p
-                      (Err msg s _) -> showChar '!' . showString msg
                       (Bin n _a _p _err l r) -> -- showParen (d > 10) $ 
                                                 showsPrec 11 l . showsPrec 11 r
+
+
+
+toTree :: Show s => Result s a w r -> Tree String
+toTree (Tip _ _) = Node "." []
+toTree (Una s err _ r) = Node (show s) [toTree r]
+toTree (Bin _ _ _ _ l r) = Node "2" [toTree l, toTree r]
 
 getResult :: Result s a w r -> a
 getResult (Bin _ x _ _ _ _) = x
 getResult (Tip x _) = x
-getResult (Err _ x _) = x
-getResult (Cha _ _ _ x) = getResult x
+getResult (Una _ _ _ x) = getResult x
 
 getLength (Bin l _ _ _ _ _) = l
 getLength (Tip _ _) = 0
-getLength (Err _ _ _) = 0
-getLength (Cha s _ _ r) = length s + getLength r
+getLength (Una s _ _ r) = length s + getLength r
 
 getParser (Bin _ _ p _ _ _) = p
-getParser (Err _ _ p) = p
 getParser (Tip _ p) = p
-getParser (Cha _ _ p _) = p
+getParser (Una _ _ p _) = p
 
 getSymbols :: Result s a w r -> [s]
 getSymbols (Bin _ _ _ _ l r) = getSymbols l ++ getSymbols r 
 getSymbols (Tip _ _) = []
-getSymbols (Err _ _ _) = []
-getSymbols (Cha s _ _ r) = s ++ getSymbols r
+getSymbols (Una s _ _ r) = s ++ getSymbols r
 
 hasErr (Bin _ _ _ err _ _) = err
-hasErr (Err _ _ _) = True
 hasErr (Tip _ _) = False
-hasErr (Cha _ err _ r) = err || hasErr r
+hasErr (Una _ err _ r) = isJust err || hasErr r
                      
 -- | Get the process' "Result"
 pEvalSteps :: Steps s a (Steps s b r) -> [s] -> (Result s a b r, Steps s b r, [s])
 pEvalSteps p@(Val a s) xs = (Tip a p, s, xs)
 pEvalSteps p@(Shift v) xs = let (proto, s', xs') = pEvalSteps (v xs) (drop 1 xs)
-                            in (Cha (take 1 xs) False p proto, s', xs')
+                            in (Una (take 1 xs) Nothing p proto, s', xs')
 pEvalSteps p@(Done v)  xs = pEvalSteps v xs
-pEvalSteps p@(Fails s) xs = (Err s (error s) p, Fails s, xs)
+pEvalSteps p@(Fails s) xs = (Una xs (Just msg) p $ Tip v p, Fails s, [])
+    where msg = show s
+          v = error msg
 pEvalSteps p@(App s)   xs = (Bin (m + n) (f b) p (hasErr protoF || hasErr protoB) protoF protoB, s'', xs'')
     where (protoF,s',  xs')  = pEvalSteps s  xs
           (protoB,s'', xs'') = pEvalSteps s' xs'
@@ -179,25 +191,34 @@ pEvalSteps p@(App s)   xs = (Bin (m + n) (f b) p (hasErr protoF || hasErr protoB
 
 fstrd (a,b,c) = (a,c)
 
--- | Repairs a Result that's been marked with errors
+-- | Repair a Result that's been marked with errors
 repair :: (Result s a b r, [s]) -> (Result s a b r, [s])
 repair (Tip x p, over) = (Tip x p, over)
-repair c@(Cha s err pr r, over) 
-    | err = fstrd (pEvalSteps pr (s ++ getSymbols r ++ over))
+repair c@(Una s err pr r, over) 
+    | isJust err = fstrd (pEvalSteps pr (s ++ getSymbols r ++ over))
     | hasErr r = let (r', over') = repair (r,over)
-                 in (Cha s err pr r', over')
-    | otherwise = (Cha s err pr r, over) 
-repair (Err _ _ p, over) = fstrd (pEvalSteps p over)
+                 in (Una s err pr r', over')
+    | otherwise = c -- no error
 repair (r@(Bin l x p err rl rr), over)
-    | not err    = ((Bin l  x  p err rl  rr),  over)
-    -- left side has an error, we must re-parse the whole the whole
-    | hasErr rl = fstrd $ pEvalSteps p (getSymbols r ++ over)
-    | otherwise  = ((Bin l' x' p err' rl' rr'), over')
+    -- no error => don't change anything.
+    | not err = ((Bin l  x  p err rl  rr),  over)
+
+    -- only right side has an eror, just re-parse it.
+    | not (hasErr rl) = ((Bin l' x' p err' rl' rr'), over') 
+
+
+    -- left side had a fixable error, we must re-parse the whole;
+    -- boths sides have error, we must re-parse the whole
+    | hasErr rl && not (hasErr rl') || hasErr rl && hasErr rr
+        = fstrd $ pEvalSteps p (getSymbols r ++ over)
+    -- If left is still in error after trying to fix it: we're better off
+    -- keeping the local error, so don't change anything.
+    | hasErr rl && hasErr rl' = ((Bin l  x  p err rl  rr),  over)
     where (rr', over') = repair (rr, over)
-          rl' = rl
-          x' = (getResult rl') (getResult rr')
-          l' = getLength rl' + getLength rr'
-          err' = hasErr rl' || hasErr rr'
+          (rl', _) = repair (rl, getSymbols rr ++ over)
+          x' = (getResult rl) (getResult rr')
+          l' = getLength rl + getLength rr'
+          err' = hasErr rl || hasErr rr'
 
 
 -- | Turns a parser specification into the corresponding parsing processes (in CPS)
@@ -208,16 +229,18 @@ mkPar (Symb sho n f) = \k -> Shift (\input ->
                                     case input of
                                       (s:ss) -> if f s
                                                   then Val s k
-                                                  else Fails $ "expected: " ++ n ++ " (got " ++ sho s ++ ")"
-                                      [] -> Fails "end of input (2)")
+                                                  else Fails ["expected: " ++ n]
+                                      [] -> Fails ["end of input (2)"])
 mkPar (Pure a) = Val a
 mkPar (Star p q) = App . mkPar p . mkPar q
 mkPar (Pipe p q) = \k -> mkPar p k `best` mkPar q k
-mkPar (Fail m) = \fut -> Fails m
+mkPar (Fail m) = \fut -> Fails [m]
+
+terminalProcess x = Done $ Val x $ Fails ["Done"]
 
 eof = Shift (\input -> case input of 
-                         (s:ss) -> Fails "expected eof"
-                         [] -> Done $ Val () $ Fails "Done")
+                         (s:ss) -> Fails ["expected eof"]
+                         [] -> terminalProcess ())
 
 parse p input = evalSteps ((mkPar p) eof) input
 
@@ -229,14 +252,14 @@ insertStr at ins s = l ++ ins ++ r
 
 insert' at ins (r,over) 
     | at < getLength r = (insert at ins r, over)
-    | otherwise = (r, insertStr at ins over)
+    | otherwise = (r, insertStr (at - getLength r) ins over)
+
+iMsg = Just "inserted stuff"
 
 insert :: Int -> [s] -> Result s a w r -> Result s a w r
-insert at ins r@(Cha s err pr p)
-    | at < length s     = Cha (insertStr at ins s) True pr p
-    | otherwise         = Cha s                    err  pr (insert (at - length s) ins p)
-insert at ins (Tip x p) = error "can't insert at Tip!"
-insert at ins (Err _ x p) = error "can't insert at Err!"
+insert at ins r@(Una s err pr p)
+    | at < length s     = Una (insertStr at ins s) iMsg pr p
+    | otherwise         = Una s                    err  pr (insert (at - length s) ins p)
 insert at ins (Bin l x p err rl rr) 
     | at < getLength rl = Bin (l+length ins) x p True (insert at ins rl) rr
     | otherwise         = Bin (l+length ins) x p True rl (insert (at - getLength rl) ins rr)
@@ -250,9 +273,7 @@ deleteStr at len s = l ++ drop len r
 
 delete :: Int -> Int -> Result s a w r -> Result s a w r
 delete at 0   r = r
-delete at len (Tip x p) = Tip x p
-delete at len (Err m x p) = Err m x p
-delete at len (Cha s err pr p) = Cha (deleteStr at ll s) (err || (ll > 0)) pr (delete atr lr p)
+delete at len (Una s err pr p) = Una (deleteStr at ll s) iMsg pr (delete atr lr p)
     where (ll, lr, atr) = dls at len (length s)
 delete at len (Bin l x p err rl rr) = Bin (l-len) x p True (delete at ll rl) (delete atr lr rr)
     where (ll, lr, atr) = dls at len (getLength rl)
@@ -260,10 +281,11 @@ delete at len (Bin l x p err rl rr) = Bin (l-len) x p True (delete at ll rl) (de
 dls at len l0 = let ll = max 0 $ min len $ (l0-at) in (ll, len - ll, max 0 $ at - l0)
 
 -----------------------------------
-data Expr = AtomExpr Atom | BinExpr Expr Op Expr
+data Expr = Var String 
+          | Lit String
+          | BinExpr Expr Op Expr
            deriving (Typeable, Data, Show)
 
-type Atom = Char
 type Op = Char
 
 type Parser = P Char
@@ -272,14 +294,43 @@ pExpr :: Parser Expr
 pExpr = chainr1 pAtom pOp
 
 
+-- many p = empty <|> many1 p
+
+space = symbol " " isSpace
+
+comment = () <$ string "--" <* many (symbol "." (/='\n')) <* symbol "n" (== '\n')
+
+skipMany :: Alternative f => f a -> f ()
+skipMany v = skipMany_v
+  where skipMany_v = some_v <|> pure ()
+	some_v = v *> skipMany_v
+
+munch :: Alternative f => f a -> f ()
+munch v = many_v
+  where many_v = some_v <|> pure ()
+	some_v = v *> many_v
+
+
+token x = skipMany space *> x
+
+tok s = token (string s)
+
+string [] = pure ()
+string (x:xs) = symbol [x] (== x) *> string xs
+
+number = token $ some (symbol "9" isDigit)
+
+pId = token $ some (symbol "a" isLetter)
+
 pOp :: Parser (Expr -> Expr -> Expr)
-pOp = pure (\op x y -> BinExpr x op y) <*> symbol "*" (`elem` "+-*/")
+pOp = token $ pure (\op x y -> BinExpr x op y) <*> symbol "*" (`elem` "+-*/")
 
 pAtom :: Parser Expr
-pAtom = (pure AtomExpr <*> (symbol "a" isLetter))
-       <|> parens pExpr
+pAtom =     Var <$> pId 
+        <|> Lit <$> number
+        <|> parens pExpr
 
-parens p = symbol "(" (== '(') *> p <* symbol ")" (== ')')
+parens p = tok "(" *> p <* tok ")"
 
 chainr :: Parser a -> Parser (a -> a -> a) -> a -> Parser a
 chainr p op x = chainr1 p op <|> pure x
@@ -292,7 +343,8 @@ chainr1 p op = scan
 
 ----------
 
-initial = (Cha "" True ((mkPar pExpr) eof) $ Tip (error "Initial") ((mkPar pExpr) eof), [])
+initial = (Una "" iMsg ((mkPar pExpr) eof) $ 
+               Tip (error "Initial") ((mkPar pExpr) eof), [])
 
 -- updates :: [PResult Char Expr -> PResult Char Expr]
 updates = [insert' 0 "a*b+c+d", repair, 
@@ -301,8 +353,8 @@ updates = [insert' 0 "a*b+c+d", repair,
            insert' 2 "+", repair, 
            insert' 2 "x", repair, 
            insert' 0 "y+", repair, 
-           insert' 8 "z", repair,
            insert' 8 "/", repair,
+           insert' 9 "z", repair,
 --           insert' 8 "*", repair,
            delete' 2 1, repair,
            delete' 2 1, repair
