@@ -73,27 +73,27 @@ haskell :-
 <0> $white+                                     { c defaultStyle } -- whitespace
 
 <nestcomm> {
-  "{-"                                          { m (subtract 1) redA }
-  "-}"                                          { m (+1) redA }
+  "{-"                                          { m (subtract 1) commentStyle }
+  "-}"                                          { m (+1) commentStyle }
   $white+                                       { c defaultStyle } -- whitespace
-  .                                             { c redA }
+  .                                             { c commentStyle }
 }
 
 <0> {
   "--"\-* $symbol $symchar*                     { c defaultStyle }
-  "--"\-*[^\n]*                                 { c redA }
+  "--"\-*[^\n]*                                 { c commentStyle }
 
- "{-"                                           { m (subtract 1) redA }
+ "{-"                                           { m (subtract 1) commentStyle }
 
  $special                                       { c defaultStyle }
 
- @reservedid                                    { c (Style blue defaultbg) }
+ @reservedid                                    { c keywordStyle }
  @varid                                         { c defaultStyle }
- @conid                                         { c greenA }
+ @conid                                         { c upperIdStyle }
 
- @reservedop                                    { c yellowA }
- @varsym                                        { c yellowA }
- @consym                                        { c greenA }
+ @reservedop                                    { c operatorStyle }
+ @varsym                                        { c operatorStyle }
+ @consym                                        { c upperIdStyle }
 
  @decimal 
   | 0[oO] @octal
@@ -102,16 +102,49 @@ haskell :-
  @decimal \. @decimal @exponent?
   | @decimal @exponent                          { c defaultStyle }
 
- \' ($graphic # [\'\\] | " " | @escape) \'      { c greenA }
- \" @string* \"                                 { c greenA }
- .                                              { c (Style brown defaultbg) }
+ \' ($graphic # [\'\\] | " " | @escape) \'      { c stringStyle }
+ \" @string* \"                                 { c stringStyle }
+ .                                              { c operatorStyle }
 }
 
 {
 
-redA = Style darkred defaultbg
-greenA = Style darkgreen defaultbg
-yellowA = Style brown defaultbg
+commentStyle :: Style
+commentStyle = lineCommentStyle
+
+lineCommentStyle :: Style
+lineCommentStyle = purpleA
+
+keywordStyle :: Style
+keywordStyle = darkredA
+
+operatorStyle :: Style
+operatorStyle = brownA
+
+upperIdStyle :: Style
+upperIdStyle = darkgreenA
+
+stringStyle :: Style
+stringStyle = darkcyanA
+
+
+
+blackA       = Style black defaultbg
+greyA        = Style grey defaultbg
+darkredA     = Style darkred defaultbg
+redA         = Style red defaultbg
+darkgreenA   = Style darkgreen defaultbg
+greenA       = Style green defaultbg
+brownA       = Style brown defaultbg
+yellowA      = Style yellow defaultbg
+darkblueA    = Style darkblue defaultbg
+blueA        = Style blue defaultbg
+purpleA      = Style purple defaultbg
+magentaA     = Style magenta defaultbg
+darkcyanA    = Style darkcyan defaultbg
+cyanA        = Style cyan defaultbg
+whiteA       = Style white defaultbg
+brightwhiteA = Style brightwhite defaultbg
 
 
 type HlState = Int
