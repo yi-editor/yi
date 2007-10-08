@@ -110,6 +110,7 @@ setSavedPointUR (URList undos redos) =
 -- inverse is added to the redo list. 
 undoUR :: URList -> BufferImpl -> (BufferImpl, (URList, [Update]))
 undoUR u@(URList [] _) b                     = (b, (u, []))
+undoUR u@(URList [SavedFilePoint] _) b       = (b, (u, []))
 undoUR (URList (SavedFilePoint : rest) rs) b = 
   undoUR (URList rest (SavedFilePoint : rs)) b
 undoUR (URList (u:us) rs) b                  = 
@@ -120,6 +121,7 @@ undoUR (URList (u:us) rs) b                  =
 -- inverse is added to the undo list.
 redoUR :: URList -> BufferImpl -> (BufferImpl, (URList, [Update]))
 redoUR u@(URList _ []) b = (b, (u, []))
+redoUR u@(URList _ [SavedFilePoint]) b = (b, (u, []))
 redoUR (URList us (SavedFilePoint : rest)) b =
   redoUR (URList (SavedFilePoint : us) rest) b
 redoUR (URList us (r:rs)) b =
@@ -134,8 +136,9 @@ redoUR (URList us (r:rs)) b =
 -- typing, the file is different from that which is saved on disk but the undo
 -- list is empty.
 isEmptyUList :: URList -> Bool
-isEmptyUList (URList [] _) = True
-isEmptyUList (URList _  _) = False
+isEmptyUList (URList [] _)               = True
+isEmptyUList (URList [SavedFilePoint] _) = True
+isEmptyUList (URList _  _)               = False
 
 
 -- | isUnchangedUndoList. @True@ if the undo list is either empty or we are at a
