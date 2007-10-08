@@ -77,7 +77,7 @@ uiStyle = UIStyle {
          window             = Style defaultfg    defaultbg
         ,modeline           = Style black        darkcyan
         ,modeline_focused   = Style brightwhite  darkcyan
-        ,selected           = Style defaultbg    defaultfg
+        ,selected           = Style reversefg    reversebg
         ,eof                = Style blue         defaultbg
      }
 
