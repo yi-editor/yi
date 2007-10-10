@@ -90,6 +90,7 @@ killRegionE :: YiM ()
 killRegionE = do r <- withBuffer getRegionB
                  text <- withBuffer $ readRegionB r
                  killringPut text
+                 withBuffer unsetMarkB
                  withBuffer $ deleteRegionB r
 
 -- | C-k
@@ -117,6 +118,7 @@ yankE = do (text:_) <- killringGet
            --let text = show kr
            withBuffer $ do pointB >>= setSelectionMarkPointB
                            insertN text
+                           unsetMarkB
 
 -- | M-w
 killRingSaveE :: YiM ()
