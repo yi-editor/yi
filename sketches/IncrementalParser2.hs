@@ -159,10 +159,6 @@ getLength (Bin l _ _ _ _ _) = l
 getLength (Tip _ _) = 0
 getLength (Una s _ _ r) = length s + getLength r
 
-getParser (Bin _ _ p _ _ _) = p
-getParser (Tip _ p) = p
-getParser (Una _ _ p _) = p
-
 getSymbols :: Result s a w r -> [s]
 getSymbols (Bin _ _ _ _ l r) = getSymbols l ++ getSymbols r 
 getSymbols (Tip _ _) = []
@@ -250,20 +246,19 @@ parse p input = evalSteps ((mkPar p) eof) input
 insertStr at ins s = l ++ ins ++ r 
     where (l,r) = splitAt at s
 
-insert' at ins (r,over) 
-    | at < getLength r = (insert at ins r, over)
-    | otherwise = (r, insertStr (at - getLength r) ins over)
+insert' at ins (r,over) = (insert at ins r, over)
 
 iMsg = Just "inserted stuff"
 
 insert :: Int -> [s] -> Result s a w r -> Result s a w r
 insert at ins r@(Una s err pr p)
-    | at < length s     = Una (insertStr at ins s) iMsg pr p
-    | otherwise         = Una s                    err  pr (insert (at - length s) ins p)
+    | length s > 0, at <= length s
+        = Una (insertStr at ins s) iMsg pr p
+    | otherwise
+        = Una s                    err  pr (insert (at - length s) ins p)
 insert at ins (Bin l x p err rl rr) 
-    | at < getLength rl = Bin (l+length ins) x p True (insert at ins rl) rr
+    | getLength rl > 0, at <= getLength rl = Bin (l+length ins) x p True (insert at ins rl) rr
     | otherwise         = Bin (l+length ins) x p True rl (insert (at - getLength rl) ins rr)
-    
 
 delete' at len (r,over) = (delete at ll r, deleteStr atr lr over)
     where (ll, lr, atr) = dls at len (getLength r)
@@ -273,8 +268,9 @@ deleteStr at len s = l ++ drop len r
 
 delete :: Int -> Int -> Result s a w r -> Result s a w r
 delete at 0   r = r
-delete at len (Una s err pr p) = Una (deleteStr at ll s) iMsg pr (delete atr lr p)
+delete at len (Una s err pr p) = Una (deleteStr at ll s) err' pr (delete atr lr p)
     where (ll, lr, atr) = dls at len (length s)
+          err' = if ll == 0 || isJust err then err else Just "deleted stuff"
 delete at len (Bin l x p err rl rr) = Bin (l-len) x p True (delete at ll rl) (delete atr lr rr)
     where (ll, lr, atr) = dls at len (getLength rl)
 
@@ -343,7 +339,7 @@ chainr1 p op = scan
 
 ----------
 
-initial = (Una "" iMsg ((mkPar pExpr) eof) $ 
+initial = (Una " " iMsg ((mkPar pExpr) eof) $ 
                Tip (error "Initial") ((mkPar pExpr) eof), [])
 
 -- updates :: [PResult Char Expr -> PResult Char Expr]
@@ -367,7 +363,7 @@ nacsr k (f:fs) = k : nacsr (f k) fs
 
 states = nacsr initial updates 
 
-main = mapM_ (putStrLn . show) states
+main_test = mapM_ (putStrLn . show) states
 
 -- Properties:
 -- prop_parser_consistent: parse (show t) = t
