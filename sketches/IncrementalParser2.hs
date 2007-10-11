@@ -187,6 +187,9 @@ pEvalSteps p@(App s)   xs = (Bin (m + n) (f b) p (hasErr protoF || hasErr protoB
 
 fstrd (a,b,c) = (a,c)
 
+repair' x = fst $ repair (x,[])
+-- TODO: re-inject overhead if overhead is created.
+
 -- | Repair a Result that's been marked with errors
 repair :: (Result s a b r, [s]) -> (Result s a b r, [s])
 repair (Tip x p, over) = (Tip x p, over)
@@ -246,7 +249,9 @@ parse p input = evalSteps ((mkPar p) eof) input
 insertStr at ins s = l ++ ins ++ r 
     where (l,r) = splitAt at s
 
-insert' at ins (r,over) = (insert at ins r, over)
+insert' at ins r = insert at ins r -- TODO: bounds check
+-- TODO: this is a bit not nice because we don't have a way to distinguish
+-- shifting the end of input and not shifting anything.
 
 iMsg = Just "inserted stuff"
 
@@ -260,7 +265,8 @@ insert at ins (Bin l x p err rl rr)
     | getLength rl > 0, at <= getLength rl = Bin (l+length ins) x p True (insert at ins rl) rr
     | otherwise         = Bin (l+length ins) x p True rl (insert (at - getLength rl) ins rr)
 
-delete' at len (r,over) = (delete at ll r, deleteStr atr lr over)
+delete' at len r = delete at ll r
+    -- TODO: check bounds
     where (ll, lr, atr) = dls at len (getLength r)
 
 deleteStr at len s = l ++ drop len r
@@ -339,21 +345,21 @@ chainr1 p op = scan
 
 ----------
 
-initial = (Una " " iMsg ((mkPar pExpr) eof) $ 
-               Tip (error "Initial") ((mkPar pExpr) eof), [])
+initial = Una " " iMsg ((mkPar pExpr) eof) $ 
+          Tip (error "Initial") ((mkPar pExpr) eof)
 
 -- updates :: [PResult Char Expr -> PResult Char Expr]
-updates = [insert' 0 "a*b+c+d", repair, 
-           insert' 2 "(", repair,
-           insert' 6 ")", repair,
-           insert' 2 "+", repair, 
-           insert' 2 "x", repair, 
-           insert' 0 "y+", repair, 
-           insert' 8 "/", repair,
-           insert' 9 "z", repair,
---           insert' 8 "*", repair,
-           delete' 2 1, repair,
-           delete' 2 1, repair
+updates = [insert' 0 "a*b+c+d", repair', 
+           insert' 2 "(", repair',
+           insert' 6 ")", repair',
+           insert' 2 "+", repair', 
+           insert' 2 "x", repair', 
+           insert' 0 "y+", repair', 
+           insert' 8 "/", repair',
+           insert' 9 "z", repair',
+--           insert' 8 "*", repair',
+           delete' 2 1, repair',
+           delete' 2 1, repair'
           ]
 
 

@@ -20,17 +20,16 @@ play vt s p sx =
                               EvKey KRight []         -> (s, p+1)
                               EvKey KBS    []         -> (delete' (p-1) 1 s, p-1)
                               ev                      -> (insert' p (showBtl ev) s, p+1)
-              in play vt (repair s') (max 0 $ min (getLength (fst s')) $ p') sx
+              in play vt (repair' s') (max 0 $ min (getLength s') $ p') sx
 
 showBtl (EvKey (KASCII c) _)  = [c]
 showBtl _ = ""
 
-renderImg (s,left) p sx = pic { pCursor = Cursor cur 0,
-                                pImage = img <|> renderChar attr '|'}
+renderImg s p sx = pic { pCursor = Cursor cur 0,
+                         pImage = img}
     where 
       (Just cur, img) = render (p, s) <||> 
-                   (Just (p-getLength s), 
-                    renderBS (setFG yellow attr) (B.pack left))
+                   (Just (p-getLength s), renderChar attr '|')
 
 -- type Renderer :: Int -> (Maybe Int, Image)
 -- (<+>) :: Renderer -> Renderer -> Renderer
