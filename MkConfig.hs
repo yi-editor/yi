@@ -31,19 +31,21 @@ helpUsage = unwords [ "runhaskell"
                     , " MkConfig.hs"
                     , "[ --prefix PREFIX ]"
                     , "[ --haddock-interface IFACE ]"
+                    , "[ --user USERNAME ]"
+                    , "[ --frontend {vty|gtk} ]"
                     ]
 
 processArgs :: [ String ] -> String
 processArgs args =
   unlines [ "# where to install executable and packages (running in-place -- without installing -- is not supported)"
-          , "frontend = vty"
+          , "frontend = " ++ frontend
           , ""
           , "prefix = " ++ prefix 
           , ""
           , "# The following are web-publishing options."
           , ""
           , "tmp-dir = /tmp"
-          , "user = allan"
+          , "user = " ++ user
           , ""
           , "configure-dirs = --prefix=$(prefix) "
           , "hscolour-css = $(cabal-make)/hscolour.css"
@@ -64,8 +66,10 @@ processArgs args =
           , ""
           ]
   where
-  prefix  = maybe "$(HOME)/install" id $ getOptionArg "--prefix" args
-  haddock = maybe haddockDefault id $ getOptionArg "--haddock-interfaces" args
+  frontend = maybe "vty" id $ getOptionArg "--frontend" args
+  prefix   = maybe "$(HOME)/install" id $ getOptionArg "--prefix" args
+  haddock  = maybe haddockDefault id $ getOptionArg "--haddock-interfaces" args
+  user     = maybe "" id $ getOptionArg "--user" args
 
   haddockDefault = 
     unlines [ "http://haskell.org/ghc/docs/latest/html/libraries/base \\"
