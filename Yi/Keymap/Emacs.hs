@@ -23,7 +23,16 @@
 -- emulation. For example, M-x gives access to Yi (haskell) functions,
 -- with their native names.
 
-module Yi.Keymap.Emacs ( keymap, makeProcess, runKeymap, rebind, withMinibuffer ) where
+module Yi.Keymap.Emacs 
+  ( keymap
+  , makeProcess
+  , runKeymap
+  , rebind
+  , withMinibuffer
+  , atomic
+  , queryReplaceE
+  ) 
+where
 
 import Yi.Yi
 
