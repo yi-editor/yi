@@ -31,6 +31,16 @@ module Yi.Keymap.Emacs
   , withMinibuffer
   , atomic
   , queryReplaceE
+  , isearchProcess
+  , shellCommandE
+  , executeExtendedCommandE 
+  , evalRegionE 
+  , readArgC
+  , gotoLineE
+  , withMinibuffer
+  , scrollDownE
+  , switchBufferE
+  , killBufferE
   ) 
 where
 
