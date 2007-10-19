@@ -124,6 +124,7 @@ yankE = do (text:_) <- killringGet
 killRingSaveE :: YiM ()
 killRingSaveE = do text <- withBuffer (readRegionB =<< getRegionB)
                    killringPut text
+                   withBuffer unsetMarkB
 -- | M-y
 
 -- TODO: Handle argument, verify last command was a yank
