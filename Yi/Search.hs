@@ -43,6 +43,7 @@ module Yi.Search (
         isearchInitE,
         isearchIsEmpty,
         isearchAddE,
+        isearchPrevE,
         isearchNextE,
         isearchWordE,
         isearchDelE,

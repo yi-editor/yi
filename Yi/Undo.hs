@@ -77,6 +77,13 @@ module Yi.Undo (
 import Yi.FastBuffer            
 
 -- | A URList consists of an undo and a redo list.
+-- adc: I'm a little unhappy that 'SavedFilePoint' is part of the 'Update'
+-- type and is hence exported from here. It might be better to for example
+-- have a different type for the update list, sort of update list to the
+-- left and the right of the last saved file point, although that's a little
+-- tricky to maintain. Alternatively we could have a further type say
+-- UpdateS which is either a SavedFilePoint or an Update, and thne noone
+-- outside this module need see the 'SavedFilePoint' constructor.
 data URList = URList ![Update] ![Update]
 
 -- | A new empty 'URList'.
@@ -148,7 +155,7 @@ isEmptyUList (URList _  _)               = False
 -- the last save. Because we may have saved the file and then undone actions done before
 -- the save.
 isUnchangedUList :: URList -> Bool
-isUnchancedUList (URList [] _)                   = False
+isUnchangedUList (URList [] _)                   = False
 isUnchangedUList (URList (SavedFilePoint : _) _) = True
 isUnchangedUList (URList _ _)                    = False
 
@@ -159,5 +166,6 @@ getActionB u b = (applyUpdateI u (moveToI (updatePoint u) b), reverseUpdate u b)
 
 -- | Reverse the given update
 reverseUpdate :: Update -> BufferImpl -> Update
-reverseUpdate (Delete p n) b = Insert p (nelemsBI n p b)
-reverseUpdate (Insert p cs) _ = Delete p (length cs)
+reverseUpdate (Delete p n)   b  = Insert p (nelemsBI n p b)
+reverseUpdate (Insert p cs)  _ = Delete p (length cs)
+reverseUpdate SavedFilePoint _ = SavedFilePoint

@@ -97,7 +97,7 @@ module Yi.Interact (
   ) 
  where
 
-import Control.Monad ( MonadPlus(..), sequence, liftM2 )
+-- import Control.Monad ( MonadPlus(..), sequence, liftM2 )
 import Control.Monad.State hiding ( get )
 
 infixr 5 +++, <++

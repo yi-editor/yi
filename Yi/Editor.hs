@@ -61,6 +61,7 @@ data Editor = Editor {
        ,regex         :: !(Maybe (String,Regex))    -- ^ most recent regex
     }
 
+modifyBufferRefSupply :: (BufferRef -> BufferRef) -> Editor -> Editor
 modifyBufferRefSupply f e = e {bufferRefSupply = f (bufferRefSupply e)}
 
 -- | The initial state
@@ -82,6 +83,7 @@ emptyEditor = Editor {
 
 -- ---------------------------------------------------------------------
 
+runEditor :: EditorM a -> Editor -> (a, Editor)
 runEditor = runState . fromEditorM
 
 -- | Variation on modifyEditor_ that lets you return a value

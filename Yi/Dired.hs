@@ -44,7 +44,6 @@ module Yi.Dired (
        ,diredDirBufferE
     ) where
 
-import Control.Monad
 import Control.Monad.Trans
 import Data.List
 import qualified Data.Map as M
@@ -85,17 +84,21 @@ data DiredEntry = DiredFile DiredFileInfo
                 | DiredNoInfo
                 deriving (Show, Eq, Typeable)
 
-data DiredState = DiredState {
-                                diredDir :: FilePath -- ^ The full path to the directory being viewed
-                                -- FIXME Choose better data structure for Marks...
-                              , diredMarks :: M.Map Char [FilePath] -- ^ Map values are just leafnames, not full paths
-                              , diredEntries :: M.Map FilePath DiredEntry -- ^ keys are just leafnames, not full paths
-                              , diredFilePoints :: [(Point,Point,FilePath)] -- ^ position in the buffer where filename is
-                             }
-                  deriving (Show, Eq, Typeable)
+data DiredState = DiredState 
+  { diredDir :: FilePath -- ^ The full path to the directory being viewed
+    -- FIXME Choose better data structure for Marks...
+   , diredMarks :: M.Map Char [FilePath] -- ^ Map values are just leafnames, not full paths
+   , diredEntries :: M.Map FilePath DiredEntry -- ^ keys are just leafnames, not full paths
+   , diredFilePoints :: [(Point,Point,FilePath)] -- ^ position in the buffer where filename is
+  }
+  deriving (Show, Eq, Typeable)
 
 instance Initializable DiredState where
-    initial = DiredState "" M.empty M.empty []
+    initial = DiredState { diredDir        = ""
+                         , diredMarks      = M.empty
+                         , diredEntries    = M.empty
+                         , diredFilePoints = []
+                         }
 
 diredKeymap :: Keymap
 diredKeymap = do
@@ -144,11 +147,15 @@ diredRefreshE = do
     withBuffer $ (addOverlayB 0 (p-2) headStyle)
     -- Scan directory
     di <- lift $ diredScanDir dir
-    let ds = DiredState dir M.empty di []
+    let ds = DiredState { diredDir        = dir
+                        , diredMarks      = M.empty
+                        , diredEntries    = di
+                        , diredFilePoints = []
+                        }
     withBuffer $ setDynamicB ds
     -- Display results
-    lines <- linesToDisplay
-    let (strss, stys, strs) = unzip3 lines
+    dlines <- linesToDisplay
+    let (strss, stys, strs) = unzip3 dlines
         strss' = transpose $ map doPadding $ transpose $ strss
     ptsList <- mapM insertDiredLine $ zip3 strss' stys strs
     withBuffer $ do setDynamicB ds{diredFilePoints=ptsList}
@@ -159,13 +166,13 @@ diredRefreshE = do
     doPadding :: [DRStrings] -> [String]
     doPadding drs = map (pad ((maximum . map drlength) drs)) drs
 
-    pad n (DRPerms s) = s
-    pad n (DRLinks s) = (replicate (max 0 (n - length s)) ' ') ++ s
-    pad n (DROwners s) = s ++ (replicate (max 0 (n - length s)) ' ') ++ " "
-    pad n (DRGroups s) = s ++ (replicate (max 0 (n - length s)) ' ')
-    pad n (DRSizes s) = (replicate (max 0 (n - length s)) ' ') ++ s
-    pad n (DRDates s) = (replicate (max 0 (n - length s)) ' ') ++ s
-    pad n (DRFiles s) = s       -- Don't right-justify the filename
+    pad _n (DRPerms s)  = s
+    pad n  (DRLinks s)  = (replicate (max 0 (n - length s)) ' ') ++ s
+    pad n  (DROwners s) = s ++ (replicate (max 0 (n - length s)) ' ') ++ " "
+    pad n  (DRGroups s) = s ++ (replicate (max 0 (n - length s)) ' ')
+    pad n  (DRSizes s)  = (replicate (max 0 (n - length s)) ' ') ++ s
+    pad n  (DRDates s)  = (replicate (max 0 (n - length s)) ' ') ++ s
+    pad _n (DRFiles s)  = s       -- Don't right-justify the filename
 
     drlength = length . undrs
 
@@ -191,8 +198,8 @@ data DRStrings = DRPerms {undrs :: String}
 -- | Return a List of (prefix, fullDisplayNameIncludingSourceAndDestOfLink, style, filename)
 linesToDisplay :: YiM ([([DRStrings], Style, String)])
 linesToDisplay = do
-    (DiredState _ _ des _) <- withBuffer getDynamicB
-    return $ map (uncurry lineToDisplay) (M.assocs des)
+    dState <- withBuffer getDynamicB
+    return $ map (uncurry lineToDisplay) (M.assocs $ diredEntries dState)
     where
     lineToDisplay k (DiredFile v)      = (l " -" v ++ [DRFiles k], defaultStyle, k)
     lineToDisplay k (DiredDir v)       = (l " d" v ++ [DRFiles k], Style blue defaultbg, k)
@@ -212,7 +219,7 @@ linesToDisplay = do
 
 -- | Write the contents of the supplied directory into the current buffer in dired format
 diredLoadNewDirE :: FilePath -> YiM ()
-diredLoadNewDirE dir = do
+diredLoadNewDirE _dir = do
     withBuffer $ setSyntaxB "none" -- Colours for Dired come from overlays not syntax highlighting
     diredRefreshE
 
@@ -244,17 +251,22 @@ diredScanDir dir = do
                         modTimeStr <- return . shortCalendarTimeToString =<< toCalendarTime (TOD (floor $ toRational $ modificationTime fileStatus) 0)
                         let uid = fileOwner fileStatus
                             gid = fileGroup fileStatus
-                        filenm <- if (isSymbolicLink fileStatus) then
+                        _filenm <- if (isSymbolicLink fileStatus) then
                                   return . ((++) (takeFileName fp ++ " -> ")) =<< readSymbolicLink fp else
                                   return $ takeFileName fp
                         ownerEntry <- catch (getUserEntryForID uid) (\_ -> getAllUserEntries >>= return . scanForUid uid)
                         groupEntry <- catch (getGroupEntryForID gid) (\_ -> getAllGroupEntries >>= return . scanForGid gid)
-                        let fmodeStr = (modeString . fileMode) fileStatus
+                        let fmodeStr   = (modeString . fileMode) fileStatus
                             sz = toInteger $ fileSize fileStatus
-                            ownerStr = userName ownerEntry
-                            groupStr = groupName groupEntry
-                            numLinks = toInteger $ linkCount fileStatus
-                        return $ DiredFileInfo {permString = fmodeStr, numLinks = numLinks, owner = ownerStr, grp = groupStr, sizeInBytes = sz, modificationTimeString = modTimeStr}
+                            ownerStr   = userName ownerEntry
+                            groupStr   = groupName groupEntry
+                            numOfLinks = toInteger $ linkCount fileStatus
+                        return $ DiredFileInfo { permString = fmodeStr
+                                               , numLinks = numOfLinks
+                                               , owner = ownerStr
+                                               , grp = groupStr
+                                               , sizeInBytes = sz
+                                               , modificationTimeString = modTimeStr}
 
     shortCalendarTimeToString :: CalendarTime -> String
     shortCalendarTimeToString = formatCalendarTime defaultTimeLocale "%b %d %H:%M"
@@ -309,13 +321,13 @@ diredLoadE = do
     (fn, de) <- fileFromPoint
     let sel = dir </> fn
     case de of
-            (DiredFile dfi) -> do
+            (DiredFile _dfi) -> do
                                exists <- liftIO $ doesFileExist sel
                                if exists then fnewE sel else msgE $ sel ++ " no longer exists"
-            (DiredDir dfi) -> do
+            (DiredDir _dfi)  -> do
                               exists <- liftIO $ doesDirectoryExist sel
                               if exists then diredDirE sel else msgE $ sel ++ " no longer exists"
-            (DiredSymLink dfi dest) -> do
+            (DiredSymLink _dfi dest) -> do
                                        let target = if isAbsolute dest then dest else dir </> dest
                                        existsFile <- liftIO $ doesFileExist target
                                        existsDir <- liftIO $ doesDirectoryExist target
@@ -341,9 +353,9 @@ diredLoadE = do
 fileFromPoint :: YiM (FilePath, DiredEntry)
 fileFromPoint = do
     p <- withBuffer pointB
-    (DiredState _ _ des pl) <- withBuffer getDynamicB
-    let (_,_,f) = head $ filter (\(p1,p2,_)->p<=p2) pl
-    return (f, M.findWithDefault DiredNoInfo f des)
+    dState <- withBuffer getDynamicB
+    let (_,_,f) = head $ filter (\(_,p2,_)->p<=p2) (diredFilePoints dState)
+    return (f, M.findWithDefault DiredNoInfo f $ diredEntries dState)
 
 diredUpDirE :: YiM ()
 diredUpDirE = do

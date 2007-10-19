@@ -25,7 +25,7 @@ module Yi.Style where
 
 import Data.Word                (Word8)
 import Data.Char (chr, ord)
-import Numeric (showHex)
+
 --
 -- | The UI type
 --

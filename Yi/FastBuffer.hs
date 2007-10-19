@@ -26,7 +26,6 @@ module Yi.FastBuffer (Update(..), Point, Mark, Size, BufferImpl, moveToI, applyU
                       nelemsBIH, setSyntaxBI, addOverlayBI,
                       inBounds) where
 
-import Yi.Debug
 import Yi.Syntax
 import Yi.Syntax.Table
 
@@ -221,8 +220,9 @@ moveToI i (FBufferData ptr mks nms hl ov) =
 -- | Checks if an Update is valid
 isValidUpdate :: Update -> BufferImpl -> Bool
 isValidUpdate u b = case u of
-                    (Delete p n) -> check p && check (p + n)
-                    (Insert p _) -> check p
+                    (Delete p n)   -> check p && check (p + n)
+                    (Insert p _)   -> check p
+                    SavedFilePoint -> True
     where check x = x >= 0 && x <= B.length (mem b)
 
 
@@ -232,6 +232,7 @@ applyUpdateI u (FBufferData p mks nms hl ov) = FBufferData p' (M.map shift mks) 
     where (p', amount) = case u of
                            Insert pnt cs  -> (insertChars p (B.pack cs) pnt, length cs)
                            Delete pnt len -> (deleteChars p pnt len, negate len)
+                           SavedFilePoint -> (p, 0)
           shift = shiftMarkValue (updatePoint u) amount
           -- FIXME: remove collapsed overlays 
 
@@ -250,9 +251,11 @@ gotoLnI n fb =
         let lineEnds = B.elemIndices '\n' (mem fb)
             lineStarts = 0 : map (+1) lineEnds
 
-            findLine acc _ [x] = (acc, x)
-            findLine acc 1 (x:_) = (acc, x)
+            findLine acc _ [x]    = (acc, x)
+            findLine acc 1 (x:_)  = (acc, x)
             findLine acc l (_:xs) = findLine (acc + 1) (l - 1) xs
+            findLine _ _ []       = 
+              error "lineStarts begins with 0 : ... this cannot hapen"
 
             (n', np) = findLine 1 n lineStarts
         in (moveToI np fb, max 1 n')

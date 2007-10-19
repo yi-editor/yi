@@ -425,7 +425,8 @@ applyUpdate buf (Delete p s) = do
   i0 <- textBufferGetIterAtOffset buf p
   i1 <- textBufferGetIterAtOffset buf (p + s)
   textBufferDelete buf i0 i1
-
+-- Shouldn't really occur we shouldn't really pass such a savedfilepoint here.
+applyUpdate _buf (SavedFilePoint) = return ()
 
 styleToTag :: UI -> Style -> IO TextTag
 styleToTag ui (Style fg _bg) = do

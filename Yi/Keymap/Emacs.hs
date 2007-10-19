@@ -38,7 +38,6 @@ module Yi.Keymap.Emacs
   , evalRegionE 
   , readArgC
   , gotoLineE
-  , withMinibuffer
   , scrollDownE
   , switchBufferE
   , killBufferE

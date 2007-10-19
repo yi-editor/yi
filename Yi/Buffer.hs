@@ -119,10 +119,20 @@ getPercent a b = show p ++ "%"
 queryBuffer :: (BufferImpl -> x) -> (BufferM x)
 queryBuffer f = gets (f . rawbuf)
 
+
+modifyRawbuf :: (BufferImpl -> BufferImpl) -> (FBuffer -> FBuffer)
 modifyRawbuf    f x = x {rawbuf        = f (rawbuf        x)}
+
+modifyUndos :: (URList -> URList) -> (FBuffer -> FBuffer)
 modifyUndos     f x = x {undos         = f (undos         x)}
+
+modifyFile :: (Maybe FilePath -> Maybe FilePath) -> (FBuffer -> FBuffer)
 modifyFile      f x = x {file          = f (file          x)}
+
+modifyPreferCol :: (Maybe Int -> Maybe Int) -> (FBuffer -> FBuffer)
 modifyPreferCol f x = x {preferCol     = f (preferCol     x)}
+
+modifyDynamic :: (DynamicValues -> DynamicValues) -> (FBuffer -> FBuffer)
 modifyDynamic   f x = x {bufferDynamic = f (bufferDynamic x)}
 
 modifyBuffer :: (BufferImpl -> BufferImpl) -> BufferM ()
@@ -170,6 +180,7 @@ isUnchangedB :: BufferM Bool
 isUnchangedB = gets (isUnchangedUList . undos)
 
 
+undoRedo :: ( URList -> BufferImpl -> (BufferImpl, (URList, [Update])) ) -> BufferM () 
 undoRedo f = do
   ur <- gets undos
   (ur',updates) <- queryAndModify (f ur)

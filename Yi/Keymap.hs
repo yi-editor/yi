@@ -42,7 +42,7 @@ import Yi.WindowSet as WS
 data Action = forall a. Show a => YiA (YiM a)
             | forall a. Show a => EditorA (EditorM a)
             | forall a. Show a => BufferA (BufferM a)
-            | InsertA String
+--            | InsertA String
 --             | TextA Direction Unit Operation          
 
 

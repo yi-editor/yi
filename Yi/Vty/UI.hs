@@ -199,6 +199,7 @@ refresh ui e = modifyMVar_ (windows ui) $ \ws0 -> do
 
   return (fmap fst zzz)
 
+scanrT :: (Int -> Int -> Int) -> Int -> WindowSet Int -> WindowSet Int
 scanrT (+*+) k t = fst $ runState (mapM f t) k
     where f x = do s <- get
                    let s' = s +*+ x
