@@ -25,6 +25,7 @@ module Yi.Buffer ( BufferRef, FBuffer (..), BufferM, runBuffer, keyB, curLn, ind
                    hPutB, newB, Point, Mark, BufferMode(..),
                    moveToEol, gotoLn, gotoLnFrom, offsetFromSol,
                    atSol, atEol, atSof, atEof, leftB, rightB,
+                   leftN, rightN,
                    moveXorEol, moveXorSol, insertN, insertB, deleteN,
                    deleteToEol, indexOfSol, nelemsB, writeB, getfileB,
                    setfileB, deleteNAt, readB, elemsB, undo, redo,

@@ -112,10 +112,25 @@ spacingOfB text = do
 
 indentToB :: Int -> BufferM ()
 indentToB level = do 
-  l <- readLnB
+  l   <- readLnB
+  cur <- offsetFromSol
   moveToSol
   deleteToEol
-  insertN (replicate level ' ' ++ dropWhile isSpace l)
+  let (curIndent, restOfLine) = span isSpace l
+      origOffsetFromIndent = cur - (length curIndent)
+      newFromEol = if origOffsetFromIndent <= 0
+                      then length restOfLine
+                      else (length restOfLine - origOffsetFromIndent)
+  insertN (replicate level ' ' ++ restOfLine)
+  leftN newFromEol
+
+-- | Indent as much as the previous line
+indentAsPreviousB :: BufferM ()
+indentAsPreviousB =
+  do pl  <- getPreviousLineB
+     pli <- indentOfB pl
+     indentToB pli
+
 
 -- | shiftIndent num 
 -- |  shifts right (or left if num is negative) num times, filling in tabs if
