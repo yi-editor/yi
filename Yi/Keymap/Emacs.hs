@@ -31,6 +31,7 @@ module Yi.Keymap.Emacs
   , withMinibuffer
   , atomic
   , queryReplaceE
+  , completeWordB
   , isearchProcess
   , shellCommandE
   , executeExtendedCommandE 
@@ -220,6 +221,46 @@ queryReplaceE = do
 
 
 ----------------------------
+-- Word Completion
+completeWordB :: YiM ()
+completeWordB = veryQuickCompleteWord
+
+
+{-
+  This is a very quick and dirty way to complete the current word.
+  It works in a similar way to the completion of words in the mini-buffer
+  it uses the message buffer to give simple feedback such as,
+  "Matches:" and "Complete, but not unique:"
+
+  It is by no means perfect but it's also not bad, pretty usable.
+-}
+veryQuickCompleteWord :: YiM ()
+veryQuickCompleteWord =
+  do (curWord, curWords) <- withBuffer wordsAndCurrentWord
+     let condition :: String -> Bool
+         condition x   = (isPrefixOf curWord x) && (x /= curWord)
+     preText             <- completeInList curWord condition curWords
+     if curWord == ""
+        then msgE "No word to complete"
+        else withBuffer $ insertN $ drop (length curWord) preText
+
+wordsAndCurrentWord :: BufferM (String, [ String ])
+wordsAndCurrentWord =
+  do curSize          <- sizeB
+     curText          <- readNM 0 curSize
+     (curWord, _, _)  <- readWordLeftB
+     let curWords     = words curText
+     return (curWord, curWords)
+
+{-
+  Finally obviously we wish to have a much more sophisticated completeword.
+  One which spawns a mini-buffer and allows searching in hoogle databases
+  or in other files etc.
+-}
+
+---------------------------
+
+
 
 executeExtendedCommandE :: YiM ()
 executeExtendedCommandE = do
@@ -323,22 +364,22 @@ commonPrefix strings
           prefix = head heads
 -- for an alternative implementation see GHC's InteractiveUI module.
 
-completeInList :: String -> [String] -> YiM String
-completeInList s l 
+completeInList :: String -> (String -> Bool) -> [ String ] -> YiM String
+completeInList s condition l
     | null filtered = msgE "No match" >> return s
     | prefix /= s = return prefix
     | isSingleton filtered = msgE "Sole completion" >> return s
     | prefix `elem` filtered = msgE ("Complete, but not unique: " ++ show filtered) >> return s
     | otherwise = msgE ("Matches: " ++ show filtered) >> return s
     where prefix = commonPrefix filtered
-          filtered = filter (s `isPrefixOf`) l
+          filtered = filter condition l
           isSingleton [_] = True
           isSingleton _ = False
 
 completeBufferName :: String -> YiM String
 completeBufferName s = do
   bs <- withEditor getBuffers
-  completeInList s (map name bs)
+  completeInList s (isPrefixOf s) (map name bs)
 
 completeFileName :: Maybe String -> String -> YiM String
 completeFileName start s0 = do
@@ -356,12 +397,12 @@ completeFileName start s0 = do
                        return $ if isDir then addTrailingPathSeparator f else f
   files <- lift $ getDirectoryContents searchDir
   fs <- lift $ mapM fixTrailingPathSeparator files
-  completeInList s $ map (sDir </>) fs
+  completeInList s (isPrefixOf s) $ map (sDir </>) fs
 
 completeFunctionName :: String -> YiM String
 completeFunctionName s = do
   names <- getNamesInScopeE
-  completeInList s names
+  completeInList s (isPrefixOf s) names
 
 completionFunction :: (String -> YiM String) -> YiM ()
 completionFunction f = do
