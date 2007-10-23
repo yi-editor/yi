@@ -17,10 +17,13 @@ all:
 
 #### Default settings.  To override, define before including this file.
 
+ghc ?= $(shell which ghc)
+
 build-args ?= 
 
 # Pass to "./setup configure"
 configure-args ?= \
+	--with-compiler=$(ghc) \
         $(extra-configure-args) \
 	$(configure-dirs) \
 #	--disable-haddock-use-packages \
@@ -130,7 +133,7 @@ show-build-args:
 
 # LICENSE dependency makes sure the links are created if that is needed.
 setup: mklinks Setup.*hs 
-	ghc --make Setup.*hs -o setup
+	$(ghc) -Wall --make Setup.*hs -o setup
 
 # setup with my own (Windows-friendly) preferences.  You'll probably want
 # to use "make setup; ./setup configure" instead.  I've avoided using
@@ -215,7 +218,7 @@ test-get-build:
 	rm -rf $(package); \
 	darcs get http://darcs.haskell.org/packages/$(package); \
 	cd $(package); \
-	ghc --make Setup.*hs; \
+	$(ghc) --make Setup.*hs; \
 	./setup configure; \
 	./setup build
 
