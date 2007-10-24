@@ -21,7 +21,7 @@
 -- buffers, which maintain a current /point/.
 
 module Yi.Buffer ( BufferRef, FBuffer (..), BufferM, runBuffer, keyB, curLn, indexOfEol,
-                   sizeB, pointB, moveToSol, moveTo, lineUp, lineDown,
+                   sizeB, pointB, moveToSol, moveTo, lineMoveRel, lineUp, lineDown,
                    hPutB, newB, Point, Mark, BufferMode(..),
                    moveToEol, gotoLn, gotoLnFrom, offsetFromSol,
                    atSol, atEol, atSof, atEof, leftB, rightB,

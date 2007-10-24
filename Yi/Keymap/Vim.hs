@@ -287,8 +287,8 @@ moveCmdFM =
     where
         left  i = withBuffer $ moveXorSol i
         right i = withBuffer $ moveXorEol i
-        up    i = withBuffer $ gotoLnFrom (-i) >> return ()
-        down  i = withBuffer $ gotoLnFrom i    >> return ()
+        up    i = withBuffer $ lineMoveRel (-i) >> return ()
+        down  i = withBuffer $ lineMoveRel i    >> return ()
         sol   _ = withBuffer moveToSol
         eol   _ = withBuffer moveToEol
 
