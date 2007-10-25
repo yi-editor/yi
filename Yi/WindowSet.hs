@@ -54,8 +54,8 @@ next = current . forward
 -- | Delete a window
 delete :: WindowSet a -> WindowSet a
 delete (WindowSet [] c []) = WindowSet [] c [] -- never delete the last window
-delete (WindowSet (b:bs) _ []) = WindowSet bs b []
-delete (WindowSet b _ (a:as)) = WindowSet b a as
+delete (WindowSet (b:bs) _ a) = WindowSet bs b a
+delete (WindowSet [] _ (a:as)) = WindowSet [] a as
 
 -- property: delete (add w) ws == ws
 
