@@ -117,7 +117,7 @@ insertBuffer b = do
 deleteBuffer :: BufferRef -> EditorM ()
 deleteBuffer k = do
   bs <- gets bufferStack
-  when (length bs > 0) $ do -- never delete the last buffer.
+  when (length bs > 1) $ do -- never delete the last buffer.
     modify $ \e -> e { bufferStack = filter (k /=) $ bufferStack e,
                        buffers = M.delete k (buffers e)
                      }
