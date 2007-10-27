@@ -12,5 +12,5 @@ yiMain = do
 
 
 myKeymap = do
-  write $ setSynE "haskell" 
+  write $ setSyntaxB "haskell" 
   Yi.Keymap.Vim.keymap
