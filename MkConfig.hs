@@ -33,6 +33,7 @@ helpUsage = unwords [ "runhaskell"
                     , "[ --haddock-interface IFACE ]"
                     , "[ --user USERNAME ]"
                     , "[ --frontend {vty|gtk} ]"
+                    , "[ --ghc ]"
                     ]
 
 processArgs :: [ String ] -> String
@@ -41,6 +42,8 @@ processArgs args =
           , "frontend = " ++ frontend
           , ""
           , "prefix = " ++ prefix 
+          , ""
+          , ghcDefine
           , ""
           , "# The following are web-publishing options."
           , ""
@@ -66,10 +69,11 @@ processArgs args =
           , ""
           ]
   where
-  frontend = maybe "vty" id $ getOptionArg "--frontend" args
-  prefix   = maybe "$(HOME)/install" id $ getOptionArg "--prefix" args
-  haddock  = maybe haddockDefault id $ getOptionArg "--haddock-interfaces" args
-  user     = maybe "" id $ getOptionArg "--user" args
+  frontend  = maybe "vty" id $ getOptionArg "--frontend" args
+  prefix    = maybe "$(HOME)/install" id $ getOptionArg "--prefix" args
+  haddock   = maybe haddockDefault id $ getOptionArg "--haddock-interfaces" args
+  user      = maybe "" id $ getOptionArg "--user" args
+  ghcDefine = maybe "" ("ghc = " ++) $ getOptionArg "--ghc" args
 
   haddockDefault = 
     unlines [ "http://haskell.org/ghc/docs/latest/html/libraries/base \\"
