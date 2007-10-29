@@ -489,6 +489,7 @@ fnewE f = do
                    newBufferForPath fe de
              _  -> return (bkey $ head bufsWithThisFilename)
     withGivenBuffer b $ setfileB f        -- associate buffer with file
+    withGivenBuffer b $ setSyntaxB (syntaxFromExtension $ takeExtension f)
     switchToBufferE b
     where
     newBufferForPath :: Bool -> Bool -> YiM BufferRef
@@ -497,7 +498,13 @@ fnewE f = do
             loadE "Yi.Dired"
             execE $ "Yi.Dired.diredDirBufferE " ++ show f
             withEditor getBuffer
-    newBufferForPath False False = withEditor $ stringToNewBuffer f []                       -- Create new empty buffer
+    newBufferForPath False False = withEditor $ stringToNewBuffer f []  -- Create new empty buffer
+    
+    syntaxFromExtension :: String -> String
+    syntaxFromExtension ".hs"  = "haskell"
+    syntaxFromExtension ".tex" = "latex"
+    syntaxFromExtension ".sty" = "latex"
+    syntaxFromExtension _      = "none"
 
 
 fileToNewBuffer :: FilePath -> YiM BufferRef

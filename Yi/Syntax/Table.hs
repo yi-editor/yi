@@ -25,6 +25,8 @@ module Yi.Syntax.Table ( ExtHL(..), highlighters ) where
 
 import Yi.Syntax
 import qualified Yi.Syntax.Haskell
+import qualified Yi.Syntax.Latex
+
 
 import qualified Data.Map as M
 
@@ -32,5 +34,6 @@ data ExtHL = forall a. Eq a => ExtHL (Maybe (Highlighter a))
 
 highlighters :: M.Map String ExtHL
 highlighters = M.fromList [ ( "haskell", ExtHL (Just Yi.Syntax.Haskell.highlighter) )
+                          , ( "latex",   ExtHL (Just Yi.Syntax.Latex.highlighter) )
                           , ( "none",    ExtHL (Nothing :: Maybe (Highlighter ())) )
                           ]

@@ -21,6 +21,7 @@ other-modules:
   Yi.Debug
   Yi.Kernel
   Yi.Syntax.Haskell
+  Yi.Syntax.Latex
 extensions:     CPP, ForeignFunctionInterface
 ghc-options:    -Wall -fglasgow-exts -O -funbox-strict-fields -fasm -optl-Wl,-s
 
