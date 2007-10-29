@@ -40,7 +40,7 @@ $idchar    = [$alpha $digit \']
 $symchar   = [$symbol \:]
 $nl        = [\n\r]
 
-@reservedid = newcommand|begin|end
+@reservedid = \\newcommand|\\begin|\\end
 
 @reservedop =
         ".." | ":" | "::" | "=" | \\ | "|" | "<-" | "->" | "@" | "~" | "=>"
