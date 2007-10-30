@@ -31,7 +31,8 @@ module Yi.Core (
         module Yi.Keymap,
         
         -- * Construction and destruction
-        startE,         -- :: Kernel -> Maybe Editor -> [YiM ()] -> IO ()
+        StartConfig    ( .. ), -- Must be passed as the first argument to 'startE'
+        startE,         -- :: StartConfig -> Kernel -> Maybe Editor -> [YiM ()] -> IO ()
         quitE,          -- :: YiM ()
         reloadE,        -- :: YiM ()
         reconfigE,
@@ -173,13 +174,20 @@ nilKeymap = do c <- anyEvent
                           "You can also create your own ~/.yi/YiConfig.hs file,",
                           "see http://haskell.org/haskellwiki/Yi#How_to_Configure_Yi for help on how to do that."]
 
+
+data StartConfig = StartConfig { startFrontEnd   :: String
+                               , startConfigFile :: FilePath
+                               }
+
 -- ---------------------------------------------------------------------
 -- | Start up the editor, setting any state with the user preferences
 -- and file names passed in, and turning on the UI
 --
-startE :: String -> Kernel -> Maybe Editor -> [YiM ()] -> IO ()
-startE frontend kernel st commandLineActions = do
-    let frontendModule = "Yi." ++ capitalize frontend ++ ".UI"
+startE :: StartConfig -> Kernel -> Maybe Editor -> [YiM ()] -> IO ()
+startE startConfig kernel st commandLineActions = do
+    let frontend       = startFrontEnd startConfig
+        yiConfigFile   = startConfigFile startConfig
+        frontendModule = "Yi." ++ capitalize frontend ++ ".UI"
     logPutStrLn $ "Starting frontend: " ++ frontend
 
     targets <- mapM (\m -> guessTarget kernel m Nothing) [frontendModule]
@@ -226,7 +234,7 @@ startE frontend kernel st commandLineActions = do
         setSessionDynFlags k dflags { GHC.log_action = ghcErrorReporter yi }
 
       -- run user configuration
-      loadE "YiConfig"
+      loadE yiConfigFile -- "YiConfig"
       runConfig
 
       when (isNothing st) $ do -- process options if booting for the first time

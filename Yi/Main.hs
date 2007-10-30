@@ -57,6 +57,7 @@ data Opts = Help
           | EditorNm String
           | File String
           | Frontend String
+          | ConfigFile String
 
 -- | List of editors for which we provide an emulation.
 editors :: [String]
@@ -73,12 +74,13 @@ moduleNameOf s = concat $ intersperse "." $ init $ split "." $ s
 
 options :: [OptDescr Opts]
 options = [
-    Option ['f']  ["frontend"] (ReqArg Frontend "gtk|vty") "Select frontend",
-    Option ['V']  ["version"] (NoArg Version) "Show version information",
-    Option ['B']  ["libdir"]  (ReqArg OptIgnore "libdir") "Path to runtime libraries",
-    Option ['h']  ["help"]    (NoArg Help)    "Show this help",
-    Option ['l']  ["line"]    (ReqArg LineNo "[num]") "Start on line number",
-    Option []     ["as"]      (ReqArg EditorNm "[editor]")
+    Option ['f']  ["frontend"]    (ReqArg Frontend "gtk|vty") "Select frontend",
+    Option ['y']  ["config-file"] (ReqArg ConfigFile  "path") "Specify a configuration file",
+    Option ['V']  ["version"]     (NoArg Version) "Show version information",
+    Option ['B']  ["libdir"]      (ReqArg OptIgnore "libdir") "Path to runtime libraries",
+    Option ['h']  ["help"]        (NoArg Help)    "Show this help",
+    Option ['l']  ["line"]        (ReqArg LineNo "[num]") "Start on line number",
+    Option []     ["as"]          (ReqArg EditorNm "[editor]")
         ("Start with editor keymap, where editor is one of:\n" ++
                 (concat . intersperse ", ") editors)
     ]
@@ -96,30 +98,37 @@ versinfo = putStrLn $ "yi 0.3.0"
 --
 do_opt :: Opts -> IO (Keymap.YiM ())
 do_opt o = case o of
-    Frontend f -> case map toLower f `elem` frontends of
-                       False -> putStrLn ("Unknown frontend: " ++ show f) >> exitWith (ExitFailure 1)
-                       _ -> return (return ()) -- Processed differently
-    Help     -> usage    >> exitWith ExitSuccess
-    Version  -> versinfo >> exitWith ExitSuccess
-    OptIgnore _ -> return (return ())
-    LineNo l -> return (Keymap.withBuffer (Buffer.gotoLn (read l)) >> return ())
-    File file -> return (Core.fnewE file)
+    Frontend f     -> case map toLower f `elem` frontends of
+                        False -> do putStrLn ("Unknown frontend: " ++ show f)
+                                    exitWith (ExitFailure 1)
+                        _     -> return (return ()) -- Processed differently
+    OptIgnore _   -> return (return ())
+    ConfigFile _  -> return (return ())
+    Help          -> usage    >> exitWith ExitSuccess
+    Version       -> versinfo >> exitWith ExitSuccess    
+    LineNo l      -> return (Keymap.withBuffer (Buffer.gotoLn (read l)) >> return ())
+    File file     -> return (Core.fnewE file)
     EditorNm emul -> case map toLower emul `elem` editors of
-                       True -> let km = editorToKeymap emul in return $ do                                  
+                       True -> let km = editorToKeymap emul in return $ do
                                  Core.execE ("loadE " ++ show (moduleNameOf km)) 
                                  Core.execE ("changeKeymapE " ++ km)
-                       False -> putStrLn ("Unknown emulation: " ++ show emul) >> exitWith (ExitFailure 1)
+                       False -> do putStrLn ("Unknown emulation: " ++ show emul)
+                                   exitWith (ExitFailure 1)
     
 --
 -- everything that is left over
 --
-do_args :: [String] -> IO (String, [Keymap.YiM ()])
+do_args :: [String] -> IO (Core.StartConfig, [Keymap.YiM ()])
 do_args args = 
     case (getOpt (ReturnInOrder File) options args) of
         (o, [], []) ->  do
-            let frontend = head $ [f | Frontend f <- o] ++ ["vty"] -- default should be more clever.
+            let frontend = head $ [f | Frontend   f <- o] ++ ["vty"] -- default should be more clever.
+                yiConfig = head $ [f | ConfigFile f <- o] ++ ["YiConfig"]
+                config   = Core.StartConfig { Core.startFrontEnd   = frontend
+                                            , Core.startConfigFile = yiConfig
+                                            }
             actions <- mapM do_opt o
-            return (frontend, actions)
+            return (config, actions)
         (_, _, errs) -> do putStrLn (concat errs)
                            exitWith (ExitFailure 1)
 
@@ -190,7 +199,7 @@ openScratchBuffer = do     -- emacs-like behaviour
 --
 main :: Kernel -> IO ()
 main kernel = do
-    (frontend, mopts) <- do_args =<< getArgs
+    (config, mopts) <- do_args =<< getArgs
 
     --
     -- The only way out is by throwing an exception, or an external
@@ -206,7 +215,7 @@ main kernel = do
     Control.Exception.catch
         (do initSignals
             initDebug ".yi.dbg"
-            Core.startE frontend kernel Nothing (startConsole : openScratchBuffer : mopts))
+            Core.startE config kernel Nothing (startConsole : openScratchBuffer : mopts))
         (\e -> do releaseSignals
                   -- FIXME: We should do this, but that's impossible with no access to the editor state:
                   -- Editor.shutdown

@@ -49,12 +49,14 @@ initialize = GHC.defaultErrorHandler DynFlags.defaultDynFlags $ do
   dflags1 <- GHC.getSessionDynFlags session
 
   home <- getHomeDirectory
-  (dflags1',_otherFlags) <- GHC.parseDynamicFlags dflags1 $ [
-                                                           "-package ghc", "-fglasgow-exts", "-cpp", 
-                                                           "-i", -- clear the search directory (don't look in ./)
-                                                           "-i" ++ home ++ "/.yi", -- First, we look for source files in ~/.yi
-                                                           "-i" ++ libdir
-                                                          ]
+  let extraflags        = [ "-package ghc"
+                          , "-fglasgow-exts"
+                          , "-cpp" 
+                          , "-i" -- clear the search directory (don't look in ./)
+                          , "-i" ++ home ++ "/.yi"  -- First, we look for source files in ~/.yi
+                          , "-i" ++ libdir
+                          ]
+  (dflags1',_otherFlags) <- GHC.parseDynamicFlags dflags1 extraflags
   (dflags2, packageIds) <- Packages.initPackages dflags1'
   logPutStrLn $ "packagesIds: " ++ (showSDocDump $ ppr $ packageIds)
   GHC.setSessionDynFlags session dflags2{GHC.hscTarget=GHC.HscInterpreted}
@@ -105,16 +107,16 @@ setContextAfterLoadL session = do
       context = preludeModule:modules
   GHC.setContext session [] context
   return modules
- where
-   findTarget ms t
-    = case filter (`matches` t) ms of
-	[]    -> Nothing
-	(m:_) -> Just m
+  where
+  findTarget ms t = 
+    case filter (`matches` t) ms of
+      []    -> Nothing
+      (m:_) -> Just m
 
-   summary `matches` GHC.Target (GHC.TargetModule m) _
-	= GHC.ms_mod_name summary == m
-   summary `matches` GHC.Target (GHC.TargetFile f _) _ 
-	| Just f' <- GHC.ml_hs_file (GHC.ms_location summary)	= f == f'
-   _summary `matches` _target
-	= False
+  summary `matches` GHC.Target (GHC.TargetModule m) _
+    = GHC.ms_mod_name summary == m
+  summary `matches` GHC.Target (GHC.TargetFile f _) _ 
+    | Just f' <- GHC.ml_hs_file (GHC.ms_location summary)	= f == f'
+  _summary `matches` _target
+    = False
 
