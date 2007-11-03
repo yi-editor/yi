@@ -288,9 +288,16 @@ data Expr = Var String
           | BinExpr Expr Op Expr
            deriving (Typeable, Data, Show)
 
+data Decl = Decl String Expr
+
 type Op = Char
 
 type Parser = P Char
+
+pDecl :: Parser ()
+pDecl = Decl <$> pId <* tok "=" <*> pExpr
+
+
 
 pExpr :: Parser Expr
 pExpr = chainr1 pAtom pOp
