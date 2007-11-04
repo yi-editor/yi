@@ -43,9 +43,25 @@ Key points:
 -------------------------------------------}
 
 
--- | A parser, on the applicative functor model (see Swierstra papers)
+-- | A parser, on the applicative functor model (see Swierstra papers).
+--
+-- This data type used to construct a parser.  Each constructor represents one
+-- of the five possible operators: 'symbol', 'fail', 'pure', choice and
+-- application.
+--
+-- For parsing, values of this type (i.e., parsers) are transformed (compiled)
+-- into parsing processes, of type 'Process'.  The corresponding function is
+-- 'mkPar' but, in most cases this is done implicitly using the 'parse'
+-- function.
+-- 
+-- A parser is parameterized over the symbol/token type @s@ and the parser
+-- result type @a@.
+-- 
 data P s a where
-    Symb :: (s -> String) -> String -> (s -> Bool) -> P s s
+    Symb :: (s -> String) -- ^ Print function for the matched symbol
+         -> String        -- ^ Description of the symbol type
+         -> (s -> Bool)   -- ^ Predicate
+         -> P s s
     Fail :: String -> P s a
     Pure :: a -> P s a
     Pipe :: P s a -> P s a -> P s a
@@ -62,13 +78,64 @@ instance Alternative (P s) where
     empty = Fail "no parse"
     (<|>) = Pipe
 
+-- | Matches any symbol for which the predicate function returns true.  The
+-- string argument is used for describing the symbol type in error messages.
 symbol :: Show s => String -> (s -> Bool) -> P s s
 symbol s f = Symb show s f
 
 
--- | Interleaved parsing processes. This is a mix between 
--- "Polish Parsers, Step by Step (Hughes and Swierstra)", 
--- and "Parallel Parsing Processes (Claessen)"
+-- | Interleaved parsing processes. This is a mix between "Polish Parsers,
+-- Step by Step (Hughes and Swierstra)", and "Parallel Parsing Processes
+-- (Claessen)".
+--
+-- To understand the design of this data type it is important to consider the
+-- basic design goal: Our parser should return a (partial) result as soon as
+-- possible, that is, as soon as only one of all possible parses of an input
+-- can succeed.  This also means we want to be able to return partial results.
+-- We therefore have to transform our parse tree into a linearized form that
+-- allows us to return parts of it as we parse them.  Consider the following
+-- data type:
+--
+-- > data BinTree = Node BinTree BinTree | Leaf Int
+-- > ex1 = Node (Leaf 1) (Node (Leaf 2) (Leaf 3))
+--
+-- Provided we know the arity of each constructor, we can unambiguously
+-- represent @ex1@ (without using parentheses to resolve ambigouity) as:
+--
+-- > Node Leaf 1 Node Leaf 2 Leaf 3
+--
+-- This is simply a pre-order printing of the tree type and, in this case, is
+-- exactly how we defined @ex1@ without all the parentheses.  It would,
+-- however, be unnecessarily complicated to keep track of the arity of each
+-- constructor, so we use a well-known trick: currying.  Note, that the
+-- original definition of @ex1@ is actually a shorter notation for
+--
+-- > ((Node $ (Leaf $ 1)) $ ((Node $ (Leaf $ 2)) $ (Leaf $ 3)))
+--
+-- or as a tree
+-- 
+-- >                      $
+-- >        .-------------'----------------------.
+-- >        $                                    $
+-- >     .--'-------.              .-------------'-------.
+-- >   Node         $              $                     $
+-- >             .--'-.         .--'-------.          .--'-.
+-- >           Leaf   1       Node         $        Leaf   3
+-- >                                    .--'-.
+-- >                                  Leaf   2
+--
+-- where @$@ represents function application.  We can print the tree in
+-- prefix-order:
+--
+-- > ($) ($) Node ($) Leaf 1 ($) ($) Node ($) Leaf 2 ($) Leaf 3
+--
+-- This consists of only two types of nodes -- values and applications -- but
+-- we can construct values of any (non-strict) Haskell data type with it.
+--
+-- Unfortunately, it is a bit tricky to type those kinds of expressions in
+-- Haskell.  [XXX: example; develop solution step by step; continuations]
+--
+-- The parameter @r@ represents the type of the remaining of our expression.
 data Steps s a r where
     Val   :: a -> Steps s b r               -> Steps s a (Steps s b r)
     App   :: Steps s (b -> a) (Steps s b r) -> Steps s a r
