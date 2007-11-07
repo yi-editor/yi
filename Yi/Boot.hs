@@ -91,21 +91,31 @@ initialize = GHC.defaultErrorHandler DynFlags.defaultDynFlags $ do
                  libraryDirectory = libdir
                 }
 
-
 -- | Dynamically start Yi. 
 startYi :: Kernel -> IO ()
 startYi kernel = GHC.defaultErrorHandler DynFlags.defaultDynFlags $ do
   t <- (guessTarget kernel) "Yi.Main" Nothing
   (setTargets kernel) [t]
   loadAllTargets kernel
-  result <- compileExpr kernel ("Yi.Main.main :: Yi.Kernel.Kernel -> Prelude.IO ()") 
+  yi <- join $ evalExpr kernel ("Yi.Main.main :: Yi.Kernel.Kernel -> Prelude.IO ()") 
   -- coerce the interpreted expression, so we check that we are not making an horrible mistake.
   logPutStrLn "Starting Yi!"
-  case result of
-    Nothing -> error "Could not compile Yi.main!"
-    Just x -> do let (x' :: Kernel -> IO ()) = unsafeCoerce# x
-                 x' kernel
-                 return ()
+  yi kernel
+
+evalExpr :: Monad m => Kernel -> String -> IO (m a)
+evalExpr kernel expr = do
+  result <- compileExpr kernel expr
+  return $ case result of
+    Nothing -> fail $ "Could not compile: " ++ expr
+    Just x -> (unsafeCoerce# x :: a)
+
+-- evalDynExpr :: Typeable a => Kernel -> String -> IO (m a)
+-- evalDynExpr kernel expr = do
+--   result <- compileExpr kernel (toDynamic (expr :: show typeRep (undefined :: a))
+--   return $ case result of
+--     Nothing -> fail $ "Could not compile: " ++ expr
+--     Just x -> (unsafeCoerce# x :: a)
+  
 
 setContextAfterLoadL :: GHC.Session -> IO [GHC.Module]
 setContextAfterLoadL session = do

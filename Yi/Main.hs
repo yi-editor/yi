@@ -215,7 +215,6 @@ main kernel = do
     --
     Control.Exception.catch
         (do initSignals
-            initDebug ".yi.dbg"
             Core.startE config kernel Nothing (startConsole : openScratchBuffer : mopts))
         (\e -> do releaseSignals
                   -- FIXME: We should do this, but that's impossible with no access to the editor state:

@@ -27,23 +27,38 @@ module Main ( main ) where
 
 import Yi.Boot
 import Yi.Debug
+import Yi.Kernel
 
+{-
 main :: IO ()
 main = do
   initDebug ".yi-static.dbg"
   kernel <- initialize
   Yi.Boot.startYi kernel -- call Yi.main dynamically
   
+-- TODO: also init the debug system
+
+-}
 
 
 
-{-
 import qualified Yi.Main as Yi
+import Control.Monad
 
 main :: IO ()
 main = do
   initDebug ".yi-static.dbg"
   kernel <- initialize
+
+  -- Setup the debug module in the dynamic session (this needs to be done only because
+  -- debug uses "global" variables.
+  debugMod <- guessTarget kernel "Yi.Debug" Nothing
+  setTargets kernel [debugMod]
+  loadAllTargets kernel
+  initDebug' <- join $ evalExpr kernel "Yi.Debug.initDebug \".yi.dbg\""
+  initDebug' :: IO ()
+
+  -- Fire up Yi
   Yi.main kernel
   
--}
+
