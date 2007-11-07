@@ -26,7 +26,7 @@ module Yi.Buffer ( BufferRef, FBuffer (..), BufferM, runBuffer, keyB, curLn, ind
                    moveToEol, gotoLn, gotoLnFrom, offsetFromSol,
                    atSol, atEol, atSof, atEof, leftB, rightB,
                    leftN, rightN,
-                   moveXorEol, moveXorSol, insertN, insertB, deleteN,
+                   moveXorEol, moveXorSol, insertN, insertNAt, insertB, deleteN,
                    deleteToEol, indexOfSol, nelemsB, writeB, getfileB,
                    setfileB, deleteNAt, readB, elemsB, undo, redo,
                    getMarkB, getSelectionMarkB, getMarkPointB, setMarkPointB, unsetMarkB, 
@@ -252,6 +252,11 @@ writeB c = do
   mapM_ applyUpdate [Delete off 1, Insert off [c]]
 
 ------------------------------------------------------------------------
+
+-- | Insert the list at specified point, extending size of buffer
+insertNAt :: [Char] -> Int -> BufferM ()
+insertNAt cs pnt = applyUpdate (Insert pnt cs)
+
 
 -- | Insert the list at current point, extending size of buffer
 insertN :: [Char] -> BufferM ()
