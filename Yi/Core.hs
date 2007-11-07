@@ -686,7 +686,7 @@ execE s = do
   ghcErrorHandlerE $ do
             result <- withKernel $ \kernel -> do
                                logPutStrLn $ "execing " ++ s
-                               compileExpr kernel ("makeAction (" ++ s ++ ") :: Action")
+                               compileExpr kernel ("makeAction (" ++ s ++ ") :: Yi.Yi.Action")
             case result of
               Nothing -> errorE ("Could not compile: " ++ s)
               Just x -> do let (x' :: Action) = unsafeCoerce# x
