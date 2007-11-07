@@ -16,8 +16,6 @@ import qualified ObjLink
 import Outputable
 import Control.Monad
 
-import GHC.Exts ( unsafeCoerce# )
-
 data Opts = Libdir String
 
 options :: [OptDescr Opts]
@@ -97,25 +95,11 @@ startYi kernel = GHC.defaultErrorHandler DynFlags.defaultDynFlags $ do
   t <- (guessTarget kernel) "Yi.Main" Nothing
   (setTargets kernel) [t]
   loadAllTargets kernel
-  yi <- join $ evalExpr kernel ("Yi.Main.main :: Yi.Kernel.Kernel -> Prelude.IO ()") 
+  yi <- join $ evalMono kernel ("Yi.Main.main :: Yi.Kernel.Kernel -> Prelude.IO ()") 
   -- coerce the interpreted expression, so we check that we are not making an horrible mistake.
   logPutStrLn "Starting Yi!"
   yi kernel
 
-evalExpr :: Monad m => Kernel -> String -> IO (m a)
-evalExpr kernel expr = do
-  result <- compileExpr kernel expr
-  return $ case result of
-    Nothing -> fail $ "Could not compile: " ++ expr
-    Just x -> (unsafeCoerce# x :: a)
-
--- evalDynExpr :: Typeable a => Kernel -> String -> IO (m a)
--- evalDynExpr kernel expr = do
---   result <- compileExpr kernel (toDynamic (expr :: show typeRep (undefined :: a))
---   return $ case result of
---     Nothing -> fail $ "Could not compile: " ++ expr
---     Just x -> (unsafeCoerce# x :: a)
-  
 
 setContextAfterLoadL :: GHC.Session -> IO [GHC.Module]
 setContextAfterLoadL session = do

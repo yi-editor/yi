@@ -55,7 +55,7 @@ main = do
   debugMod <- guessTarget kernel "Yi.Debug" Nothing
   setTargets kernel [debugMod]
   loadAllTargets kernel
-  initDebug' <- join $ evalExpr kernel "Yi.Debug.initDebug \".yi.dbg\""
+  initDebug' <- join $ evalMono kernel "Yi.Debug.initDebug \".yi.dbg\""
   initDebug' :: IO ()
 
   -- Fire up Yi

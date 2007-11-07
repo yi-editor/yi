@@ -8,7 +8,6 @@ module Yi.Eval (
 import Control.Monad
 import Control.Monad.Trans
 import Data.Array
-import GHC.Exts ( unsafeCoerce# )
 import Prelude hiding (error)
 import System.Directory
 import Text.Regex.Posix
@@ -24,10 +23,10 @@ import Yi.Buffer.HighLevel
 
 evalToStringE :: String -> YiM String
 evalToStringE string = withKernel $ \kernel -> do
-  result <- compileExpr kernel ("show (" ++ string ++ ")")
-  case result of
-    Nothing -> return ""
-    Just x -> return (unsafeCoerce# x)
+  result <- evalMono kernel ("show (" ++ string ++ ")")
+  return $ case result of
+    Left err -> err
+    Right x -> x
 
 -- | Evaluate some text and show the result in the message line.
 evalE :: String -> YiM ()

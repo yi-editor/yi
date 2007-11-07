@@ -134,7 +134,7 @@ import Data.Foldable
 import System.Directory     ( doesFileExist, doesDirectoryExist )
 import System.FilePath      
 
-import Control.Monad (when, replicateM_)
+import Control.Monad (join, when, replicateM_)
 import Control.Monad.Reader (runReaderT)
 import Control.Monad.Trans
 import Control.Monad.State (gets, modify)
@@ -196,15 +196,14 @@ startE startConfig kernel st commandLineActions = do
     case result of
       GHC.Failed -> error $ "Panic: could not load " ++ frontend ++ " frontend. Use -fgtk or -fvty, or install the needed packages."
       _ -> return ()
-    uiStartM <- compileExpr kernel (frontendModule ++ ".start") 
+    uiStartHV <- join $ evalHValue kernel (frontendModule ++ ".start") 
     let uiStart :: (forall action. 
                     Chan Yi.Event.Event -> 
                     Chan action ->
                     Editor -> (EditorM () -> action) -> 
                     MVar (WS.WindowSet Window) -> 
-                    IO UI) = case uiStartM of
-             Nothing -> do error "Could not compile frontend!"
-             Just x -> unsafeCoerce# x
+                    IO UI)
+        uiStart = unsafeCoerce# uiStartHV
 
     logPutStrLn "Starting Core"
 
@@ -640,10 +639,10 @@ runConfig = do
               let cfgMod = mkModuleName kernel "YiConfig"
               isLoaded kernel cfgMod
   if loaded 
-   then do result <- withKernel $ \kernel -> compileExpr kernel "YiConfig.yiMain :: Yi.Yi.YiM ()"
+   then do result <- withKernel $ \kernel -> evalMono kernel "YiConfig.yiMain :: Yi.Yi.YiM ()"
            case result of
              Nothing -> errorE "Could not run YiConfig.yiMain :: Yi.Yi.YiM ()"
-             Just x -> (unsafeCoerce# x)
+             Just x -> x
    else errorE "YiConfig not loaded"
 
 loadE :: String -> YiM [String]
@@ -686,12 +685,11 @@ execE s = do
   ghcErrorHandlerE $ do
             result <- withKernel $ \kernel -> do
                                logPutStrLn $ "execing " ++ s
-                               compileExpr kernel ("makeAction (" ++ s ++ ") :: Yi.Yi.Action")
+                               evalMono kernel ("makeAction (" ++ s ++ ") :: Yi.Yi.Action")
             case result of
-              Nothing -> errorE ("Could not compile: " ++ s)
-              Just x -> do let (x' :: Action) = unsafeCoerce# x
-                           runAction x'
-                           return ()
+              Left err -> errorE err
+              Right x -> do runAction x
+                            return ()
 
 -- | Install some default exception handlers and run the inner computation.
 ghcErrorHandlerE :: YiM () -> YiM ()

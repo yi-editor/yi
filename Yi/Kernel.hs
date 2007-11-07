@@ -4,7 +4,7 @@
 -- nothing about Yi (at the haskell level; it can know names of
 -- modules or functions as strings)
 
-module Yi.Kernel (Kernel(..), eval, moduleName, moduleNameString, ms_mod_name) where
+module Yi.Kernel (Kernel(..), evalHValue, evalMono, moduleName, moduleNameString, ms_mod_name) where
 
 import Control.Monad
 import Outputable
@@ -12,6 +12,7 @@ import qualified GHC
 import qualified Linker
 import qualified Module
 import qualified Packages
+import GHC.Exts ( unsafeCoerce# )
 
 -- | GHC API Kernel. 
 -- Calls to the GHC API must go though this type. (Because of the use "global variables" in GHC I imagine)
@@ -42,12 +43,18 @@ data Kernel = Kernel
     }
 
 -- | Dynamic evaluation
-eval :: Kernel -> String -> IO GHC.HValue
-eval kernel expr = do
+evalHValue :: Monad m => Kernel -> String -> IO (m GHC.HValue)
+evalHValue kernel expr = do
   result <- compileExpr kernel expr
-  case result of
-    Nothing -> error $ "Could not compile expr: " ++ expr
+  return $ case result of
+    Nothing -> fail $ "Could not compile: " ++ expr
     Just x -> return x
+
+evalMono :: Monad m => Kernel -> String -> IO (m a)
+evalMono kernel expr = liftM (liftM (unsafeCoerce# :: GHC.HValue -> a)) (evalHValue kernel expr)
+
+-- evalTyp :: Typeable a => Kernel -> String -> IO (m a)
+  
 
  
 moduleName :: GHC.Module -> GHC.ModuleName
