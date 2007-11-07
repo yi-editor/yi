@@ -17,6 +17,8 @@ all:
 
 #### Default settings.  To override, define before including this file.
 
+cabal_config=dist/setup-config
+
 ghc ?= $(shell which ghc)
 
 build-args ?= 
@@ -103,9 +105,9 @@ HsColour ?= HsColour
 
 all:  configure build doc install
 
-configure: .setup-config
+configure: $(cabal_config)
 
-build: .setup-config
+build: $(cabal_config)
 	./setup build $(build-args)
 
 install: build
@@ -117,8 +119,9 @@ hasktags:
 	hasktags *.cabal `find $(top-src-dir) -name '*.*hs'`
 
 clean:
+	-./setup clean
 	rm -rf dist
-	rm -f .setup-config .installed-pkg-config ./setup `find . -name '*.hi' -o -name '*.o'`
+	rm -f $(cabal_config) .installed-pkg-config ./setup `find . -name '*.hi' -o -name '*.o'`
 
 version ?= $(strip $(shell cat *.cabal | egrep -i 'version:' | sed -e 's/version://I'))
 
@@ -131,8 +134,7 @@ show-config-args:
 show-build-args:
 	@echo $(build-args)
 
-# LICENSE dependency makes sure the links are created if that is needed.
-setup: mklinks Setup.*hs 
+setup: Setup.*hs 
 	$(ghc) -Wall --make Setup.*hs -o setup
 
 # setup with my own (Windows-friendly) preferences.  You'll probably want
@@ -140,17 +142,8 @@ setup: mklinks Setup.*hs
 # $(package).cabal here, in case the package & Cabal names differ, such as
 # "monads" vs "monadLib".  If Cabal relaxes the one-cabal-file
 # restriction, revisit.
-.setup-config: setup *.cabal
+$(cabal_config): setup *.cabal
 	./setup configure $(configure-args)
-	sed -e 's/\\\\/\//g' < .setup-config > .tmp.setup-config
-	mv .tmp.setup-config .setup-config
-
-# The previous two lines provide a workaround for a strange problem on
-# Windows.  The forward slashes in that file all get changed to
-# backslashes.  The difficulty is that some of those slashes are part of
-# URLs rather than file paths.  The sed & mv restore the back-slashes.
-# This workaround works fine for cygwin.  I haven't tried under msys.
-
 
 # modules with "." replaced by "/"
 slash-modules = $(subst .,/,$(modules))
@@ -193,7 +186,7 @@ hscolour:
 # 	   $(HsColour) -css -anchor $(file) > dist/doc/html/$(subst /,.,$(basename $(file))).hs.html; )
 
 # Generate Haddock docs.  See variables source-args, comments, and comment-args
-haddock: .setup-config
+haddock: $(cabal_config)
 	./setup haddock
 
 # Make a new repo (requires account)
@@ -252,6 +245,5 @@ sdist: .setup-config
 	./setup sdist
 
 
-mklinks:
-	test -e LICENSE || ln -sf ../../LICENSE
+
 

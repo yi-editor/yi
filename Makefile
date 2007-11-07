@@ -10,6 +10,7 @@ runtime-config:
 	cp examples/*.hs $(HOME)/.yi
 
 run-inplace: build #using YiConfig's keybinding.
+	cp --preserve=timestamps -R dist/build/Yi .
 	dist/build/yi/yi -B. -f$(frontend)
 
 emacs: build

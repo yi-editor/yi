@@ -1,5 +1,6 @@
 name:           yi
 version:        0.3
+Cabal-Version:  >= 1.2.1
 category:       Editor
 synopsis:       The Haskell-Scriptable Editor
 description:
@@ -10,11 +11,37 @@ license:        GPL
 license-file:   LICENSE
 author:         Don Stewart
 maintainer:     jeanphilippe.bernardy@gmail.com
-build-depends:  filepath>=1.0, ghc>=6.6, base, mtl, regex-posix==0.71
+
+Flag vty {
+  Description: Precompile vty UI
+  Default:     True
+}
+
+Flag gtk {
+  Description: Precompile gtk UI
+  Default:     True
+}
+
+
+Executable yi {
+build-depends:  array,  base,  bytestring,  containers,  directory,  filepath>=1.0,  ghc>=6.8,  mtl, process, old-locale, old-time,  regex-base>=0.72, regex-compat>=0.71, regex-posix>=0.72,  unix
+-- unix dependency should be eventually removed
+
+if flag(vty) {
+  build-depends: vty>=3.0.0
+}
+
+if flag(gtk) {
+  build-depends: gtk>=0.9.12
+}
+
+include-dirs:
+ Yi/Syntax
+-- for alex.hsinc
+
 extra-source-files:
  Yi/Syntax/alex.hsinc
 
-executable:     yi
 main-is:        Main.hs
 other-modules:  
   Yi.Boot
@@ -24,4 +51,4 @@ other-modules:
   Yi.Syntax.Latex
 extensions:     CPP, ForeignFunctionInterface
 ghc-options:    -Wall -fglasgow-exts -O -funbox-strict-fields -fasm -optl-Wl,-s
-
+}

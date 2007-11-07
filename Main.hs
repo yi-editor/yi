@@ -38,7 +38,7 @@ main = do
 
 
 {-
-import qualified Yi 
+import qualified Yi.Main as Yi
 
 main :: IO ()
 main = do

@@ -1,96 +1,80 @@
 #!/usr/bin/env runhaskell
 module Main where
 
-import Control.Monad(when, filterM, unless)
-import Data.List (intersect)
+import Control.Applicative
+import Control.Monad
+import Data.List
 import Data.Maybe
 import Distribution.PackageDescription
-import Distribution.Setup
 import Distribution.Simple
+import Distribution.Simple.GHC as GHC
 import Distribution.Simple.LocalBuildInfo
-import Distribution.Simple.Utils
+import Distribution.Simple.Program
+import Distribution.Simple.Setup
+import Distribution.Verbosity
 import System.Directory
-import System.Exit
-import System.IO
-import System.Info
-import System.Process
 import System.FilePath
+import System.IO
 
 main :: IO ()
 main = defaultMainWithHooks defaultUserHooks
        { buildHook = bHook, instHook = install }
 
-getLibDir ghcPath = do 
-          (_, out, _, pid) <- runInteractiveProcess ghcPath ["--print-libdir"]
-                                                           Nothing Nothing
-          libDir <- hGetLine out
-          waitForProcess pid
-          return libDir
-
 mkOpt (name,def) = "-D"++name++"="++def
 
-bHook :: PackageDescription -> LocalBuildInfo -> Maybe UserHooks -> BuildFlags -> IO ()
-bHook pd lbi hooks bfs = do
-  let ghc = compilerPath . compiler $ lbi
+-- TODO: add a configuration hook that does not want to build for
+-- certain combination of flags
+
+bHook :: PackageDescription -> LocalBuildInfo -> UserHooks -> BuildFlags -> IO ()
+bHook pd lbi hooks flags = do
+  let verbosity = buildVerbose flags
   let dataPref = mkDataDir pd lbi NoCopyDest 
+      ghcOut = rawSystemProgramStdoutConf verbosity ghcProgram (withPrograms lbi)
   print dataPref
-  libdir <- getLibDir ghc
+  libdir <- head . lines <$> ghcOut ["--print-libdir"]
+  putStrLn $ "GHC libdir = " ++ show libdir
   let pbi = (Nothing,
        [("yi", emptyBuildInfo
          { options = [(GHC,[mkOpt ("GHC_LIBDIR",show libdir), mkOpt ("YI_LIBDIR", show dataPref)])] })])
       pd' = updatePackageDescription pbi pd
-  buildHook defaultUserHooks pd' lbi hooks bfs
+  buildHook defaultUserHooks pd' lbi hooks flags
+  mapM_ (precompile pd' lbi verbosity flags) precompiles
 
-  res <- mapM (precompile ghc) precompiles
-  let sucessfuls = [m | (m,code) <- res, code == ExitSuccess]
-      nok = null $ intersect sucessfuls ["Yi.Vty.UI", "Yi.Gtk.UI"]
-  putStrLn $ "Sucessfully compiled: " ++ show sucessfuls
-  when nok $ do
-       putStrLn "No frontend was compiled sucessfully. Giving up."
-       exitWith (ExitFailure 1)
+dependencyName (Dependency name _) = name
 
-precompile ghc (moduleName, dependencies) = do
+precompile pd lbi verbosity bflags (moduleName, dependencies) = when ok $ do  
+  -- just pretend that we build a library with the given modules
   putStrLn ("Precompiling " ++ moduleName)
-  exitCode <- rawSystemVerbose 0 ghc (precompArgs ++ map ("-package "++) dependencies ++ [moduleName])
-  when (exitCode /= ExitSuccess) $
-       putStrLn $ "Precompiling failed: " ++ moduleName
-  return (moduleName, exitCode)
+  let [Executable "yi" _ yiBuildInfo] = executables pd
+      pd' = pd {package = PackageIdentifier "main" (Version [] []),
+                          -- we pretend we build package main, so that GHCi 
+                          -- can associate the source files and the precompiled modules
+                executables = [], 
+                library = Just (Library {exposedModules = [moduleName],
+                                         libBuildInfo = yiBuildInfo})}
+  buildHook defaultUserHooks pd' lbi defaultUserHooks bflags -- {buildVerbose = deafening }
+     where availablePackages = map dependencyName $ buildDepends pd
+           ok = all (`elem` availablePackages) dependencies
+                               
   
 precompiles = [("Yi.Main", []),
                ("Yi.Keymap.Emacs", []),
                ("Yi.Keymap.Vim", []),
                ("Yi.Vty.UI", ["vty"]),
-               ("Yi.Gtk.UI", ["gtk", "sourceview"]),
-               ("Yi.Dired", ["unix"])]
+               ("Yi.Gtk.UI", ["gtk"]),
+               ("Yi.Dired", [])]
 
-precompArgs = ["-DGHC_LIBDIR=\"dummy1\"", 
-               "-DYI_LIBDIR=\"dummy2\"", 
-               "-fglasgow-exts", 
-               "-package ghc",
-               "-package filepath",
-               "-cpp",
-               "-Wall",
-               "-hide-all-packages", -- otherwise wrong versions of packages will be picked.
-               "-package base",
-               "-package mtl",
-               "-package regex-compat-0.71",
-               "-package regex-posix-0.71",
-               "-package regex-base-0.72",
-               "--make"]
-               -- please note: These args must match the args given in Yi.Boot
-               -- TODO: factorize.
-
-install :: PackageDescription -> LocalBuildInfo -> Maybe UserHooks -> InstallFlags -> IO ()
-install pd lbi hooks bfs = do
+install :: PackageDescription -> LocalBuildInfo -> UserHooks -> InstallFlags -> IO ()
+install pd lbi hooks flags = do
   curdir <- getCurrentDirectory
-  allFiles0 <- mapM unixFind $ map (curdir </>) $ ["Yi"]
-  let allFiles = map (makeRelative curdir) $ concat allFiles0
+  allFiles0 <- mapM unixFind $ map (curdir </>) $ ["Yi", foldl1 (</>) ["dist","build","Yi"]]
+  let allFiles = map (makeRelative curdir) $ nub $ concat allFiles0
       sourceFiles = filter ((`elem` [".hs-boot",".hs",".hsinc"]) . takeExtension) allFiles      
       targetFiles = filter ((`elem` [".hi",".o"]) . takeExtension) allFiles
       --NOTE: It's important that source files are copied before target files,
-      -- otherwise GHC (via Yi) thinks it has to recompile them.
+      -- otherwise GHC (via Yi) thinks it has to recompile them when Yi is started.
       pd' = pd {dataFiles = dataFiles pd ++ sourceFiles ++ targetFiles}
-  instHook defaultUserHooks pd' lbi hooks bfs
+  instHook defaultUserHooks pd' lbi hooks flags
   
 
 unixFind dir = do

@@ -33,22 +33,33 @@ override def Nothing = def
 override _ (Just x) = x
 
 -- the path of our GHC installation
-path :: FilePath
-path = GHC_LIBDIR -- See Setup.hs
+ghcLibdir :: FilePath
+ghcLibdir = GHC_LIBDIR -- See Setup.hs
 
 -- | Create a suitable Yi Kernel, via a GHC session.
 -- Also return the non-boot flags.
 initialize :: IO Kernel
 initialize = GHC.defaultErrorHandler DynFlags.defaultDynFlags $ do
-  -- here we have to make an early choice between vty and gtk.
   bootArgs <- getArgs
   let (bootFlags, _, _) = getOpt Permute options bootArgs
   let libdir = foldl override YI_LIBDIR $ map forcedLibdir bootFlags
-  logPutStrLn $ "Using libdir: " ++ libdir
-  session <- GHC.newSession GHC.Interactive (Just path)
-  dflags1 <- GHC.getSessionDynFlags session
+  logPutStrLn $ "Using Yi libdir: " ++ libdir
+  logPutStrLn $ "Using GHC libdir: " ++ ghcLibdir
+  GHC.parseStaticFlags [] -- no static flags for now
+  session <- GHC.newSession (Just ghcLibdir)
+  logPutStrLn $ "Session started!"
+  dflags0 <- GHC.getSessionDynFlags session
+  -- see GHC's Main.hs 
+  let dflags1 = dflags0{ GHC.ghcMode   = GHC.CompManager, 
+                  	 GHC.hscTarget = GHC.HscInterpreted,
+                         GHC.ghcLink   = GHC.LinkInMemory,
+		  	 GHC.verbosity = 1
+			}
 
   home <- getHomeDirectory
+  -- note: These args must match the args given by cabal at pre-compilation, currently this is 
+  -- not done correctly, so sometimes we use a different version of some package here.
+  -- (FIXME)
   let extraflags        = [ "-package ghc"
                           , "-fglasgow-exts"
                           , "-cpp" 
@@ -59,7 +70,7 @@ initialize = GHC.defaultErrorHandler DynFlags.defaultDynFlags $ do
   (dflags1',_otherFlags) <- GHC.parseDynamicFlags dflags1 extraflags
   (dflags2, packageIds) <- Packages.initPackages dflags1'
   logPutStrLn $ "packagesIds: " ++ (showSDocDump $ ppr $ packageIds)
-  GHC.setSessionDynFlags session dflags2{GHC.hscTarget=GHC.HscInterpreted}
+  GHC.setSessionDynFlags session dflags2
   return Kernel { 
                  getSessionDynFlags = GHC.getSessionDynFlags session,
                  setSessionDynFlags = GHC.setSessionDynFlags session,

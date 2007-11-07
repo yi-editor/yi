@@ -443,9 +443,6 @@ manyTill :: (MonadInteract m m0 e) => m a -> m end -> m [a]
 manyTill p end = scan
   where scan = (end >> return []) <++ (liftM2 (:) p scan)
 
-forever :: Monad m => m a -> m b
-forever f = f >> forever f
-
 runProcess :: Monad m => Interact event m a -> [event] -> m a
 -- ^ Converts a process into a function that maps input to output.
 -- The process does not hold to the input stream (no space leak) and

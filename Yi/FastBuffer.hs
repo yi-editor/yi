@@ -38,7 +38,7 @@ import Text.Regex.Base
 import Text.Regex.Posix
 
 import qualified Data.ByteString.Char8 as B
-import Data.ByteString.Base 
+import Data.ByteString (ByteString)
 
 import Data.Array
 
