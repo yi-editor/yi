@@ -165,7 +165,7 @@ bufferEventLoop yi buf b = eventLoop
       repeatM_ $ do -- get the new version of the keymap every time we need to start it.
                     defaultKm <- readIORef (defaultKeymap yi)
                     modKm <- readIORef (bufferKeymap b)
-                    handle handler (run $ runKeymap $ I.forever (modKm defaultKm))
+                    handle handler (run $ runKeymap $ forever (modKm defaultKm))
 
 dispatch :: Event -> YiM ()
 dispatch ev = do b <- withEditor getBuffer
