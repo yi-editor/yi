@@ -29,8 +29,6 @@ module Yi.CharMove (
         moveWhileB,     -- :: (Char -> Bool) -> Direction -> BufferM ()
         withPointB,     -- :: BufferM () -> BufferM ()
 
-        (>>||),         -- :: IO Bool -> IO Bool -> IO Bool
-
         -- * Word movement
         skipWordB,      -- :: BufferM ()
         bskipWordB,     -- :: BufferM ()
@@ -104,10 +102,6 @@ doSkipCond mov rd chkend check = do
     c <- rd
     mov
     doSkipWhile mov rd chkend (if check c then check else not . check)
-
---  Monadic OR operation.
-(>>||) :: Monad a => a Bool -> a Bool -> a Bool
-a >>|| b = a >>= \ra -> if (not ra) then b else return True
 
 -- Just to make this more easily changed everywhere.
 isNonWord :: Char -> Bool
