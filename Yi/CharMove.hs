@@ -77,17 +77,13 @@ import Data.Char
 import Data.Typeable
 import qualified Data.Map as M
 
-import Control.Monad        ( when, replicateM_ )
+import Control.Monad        ( liftM, when, replicateM_ )
 import Control.Monad.Fix    ( fix )
 import Control.Exception    ( assert )
 
 -- | Read character before point.
 breadB :: BufferM Char
-breadB = do
-    p <- pointB
-    if p == 0
-        then return '\0'
-        else readNM (p-1) p >>= return . head
+breadB = readAtB =<< liftM (\x -> x-1) pointB
 
 --
 -- | Perform movement BufferM () specified by @mov@ while not @chkend@ and
@@ -192,7 +188,7 @@ nextNParagraphs n = do
         let loop = do
                 p <- pointB
                 when (p < eof-1) $ do
-                    moveWhile_ (/= '\n') Forward
+                    moveWhileB (/= '\n') Forward
                     p' <- pointB
                     when (p' < eof-1) $ do
                         rightB
@@ -207,7 +203,7 @@ prevNParagraphs n = do
                 p <- pointB
                 when (p > 0) $ do
                     leftB
-                    moveWhile_ (/= '\n') Backward
+                    moveWhileB (/= '\n') Backward
                     p' <- pointB
                     when (p' > 0) $ do
                         leftB
@@ -223,16 +219,7 @@ prevNParagraphs n = do
 -- location.
 
 moveWhileB :: (Char -> Bool) -> Direction -> BufferM ()
-moveWhileB f d = moveWhile_ f d
---
--- Internal moveWhile function to avoid unnec. ui updates
--- not for external consumption
---
-moveWhile_ :: (Char -> Bool)
-           -> Direction
-           -> BufferM ()
-
-moveWhile_ f dir = do
+moveWhileB f dir = do
     eof <- sizeB
     case dir of
         Forward   -> fix $ \loop' -> do 
@@ -250,15 +237,11 @@ moveWhile_ f dir = do
 
 -- | Read word to the left of the cursor
 readWordLeftB :: BufferM (String,Int,Int)
-readWordLeftB = readWordLeft_
-
--- Core-internal worker
-readWordLeft_ :: BufferM (String,Int,Int)
-readWordLeft_ = do
+readWordLeftB = do
     p <- pointB
     c <- readB
     when (not $ isAlphaNum c) $ leftB
-    moveWhile_ isAlphaNum Backward
+    moveWhileB isAlphaNum Backward
     sof <- atSof
     c'  <- readB
     when (not sof || not (isAlphaNum c')) $ rightB
@@ -266,10 +249,6 @@ readWordLeft_ = do
     s <- nelemsB (p-q) q
     moveTo p
     return (s,q,p)
-
--- | Read word under cursor
-readWordB :: BufferM (String,Int,Int)
-readWordB = readWord_
 
 ------------------------------------------------------------------------
 
@@ -302,15 +281,15 @@ withPointB f = do p <- pointB
 
 ------------------------------------------------------------------------
 
--- Internal, for readWordE
-readWord_ :: BufferM (String,Int,Int)
-readWord_ = do
+-- | Read word under cursor
+readWordB :: BufferM (String,Int,Int)
+readWordB = do
     p <- pointB
     c <- readB
     if not (isAlphaNum c) then leftB
-                          else moveWhile_ isAlphaNum Forward >> leftB
+                          else moveWhileB isAlphaNum Forward >> leftB
     y <- pointB   -- end point
-    moveWhile_ isAlphaNum Backward
+    moveWhileB isAlphaNum Backward
     sof <- atSof
     c'  <- readB
     when (not sof || not (isAlphaNum c')) $ rightB
@@ -355,7 +334,7 @@ wordCompleteB = getDynamicB >>= loop >>= setDynamicB
             doloop p (w,fm)
     loop (Completion Nothing) = do
             p  <- pointB
-            (w,_,_) <- readWordLeft_
+            (w,_,_) <- readWordLeftB
             rightB  -- start past point
             doloop p (w,M.singleton w ())
 
@@ -368,7 +347,7 @@ wordCompleteB = getDynamicB >>= loop >>= setDynamicB
     doloop p (w,fm) = do
             m' <- nextWordMatch w
             moveTo p
-            (_,j,_) <- readWord_
+            (_,j,_) <- readWordB
             case m' of
                 Just (s,i)
                     | j == i                -- seen entire file
@@ -389,7 +368,7 @@ wordCompleteB = getDynamicB >>= loop >>= setDynamicB
     --
     replaceLeftWith :: String -> BufferM ()
     replaceLeftWith s = do
-        (_,b,a) <- readWordLeft_     -- back at start
+        (_,b,a) <- readWordLeftB     -- back at start
         moveTo b
         deleteN (a-b)
         insertN s
@@ -409,6 +388,6 @@ wordCompleteB = getDynamicB >>= loop >>= setDynamicB
                 c <- readAtB i
                 let i' = if i == 0 && isAlphaNum c then 0 else i+1 -- for the space
                 moveTo i'
-                (s,_,_) <- readWord_
+                (s,_,_) <- readWordB
                 assert (s /= [] && i /= j) $ return $ Just (s,i')
 

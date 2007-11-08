@@ -88,7 +88,6 @@ module Yi.Interact (
   chainl1,    -- :: Interact a -> Interact (a -> a -> a) -> Interact a
   chainr1,    -- :: Interact a -> Interact (a -> a -> a) -> Interact a
   manyTill,   -- :: Interact a -> Interact end -> Interact [a]
-  forever,
   -- * Running a parser
   runProcess, 
   
