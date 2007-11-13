@@ -24,17 +24,21 @@ mkOpt (name,def) = "-D" ++ name ++ "=" ++ def
 -- TODO: add a configuration hook that does not want to build for
 -- certain combination of flags
 
+
 bHook :: PackageDescription -> LocalBuildInfo -> UserHooks -> BuildFlags -> IO ()
 bHook pd lbi hooks flags = do
   let verbosity = buildVerbose flags
   let dataPref = mkDataDir pd lbi NoCopyDest
+      pkgOpts = concat [ ["-package", showPackageId pkg] | pkg <- packageDeps lbi ]
       ghcOut = rawSystemProgramStdoutConf verbosity ghcProgram (withPrograms lbi)
   print dataPref
   libdr <- head . lines <$> ghcOut ["--print-libdir"]
   putStrLn $ "GHC libdir = " ++ show libdr
   let pbi = (Nothing,
        [("yi", emptyBuildInfo
-         { options = [(GHC,[mkOpt ("GHC_LIBDIR",show libdr), mkOpt ("YI_LIBDIR", show dataPref)])] })])
+         { options = [(GHC,[mkOpt ("GHC_LIBDIR",show libdr), 
+                            mkOpt ("YI_LIBDIR", show dataPref),
+                            mkOpt ("YI_PKG_OPTS", show pkgOpts)])] })])
       pd' = updatePackageDescription pbi pd
   buildHook defaultUserHooks pd' lbi hooks flags
   mapM_ (precompile pd' lbi verbosity flags) precompiles

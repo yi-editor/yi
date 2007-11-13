@@ -34,6 +34,10 @@ override _ (Just x) = x
 ghcLibdir :: FilePath
 ghcLibdir = GHC_LIBDIR -- See Setup.hs
 
+-- | All the packages Yi depends on, as Cabal sees it. (see Setup.hs)
+pkgOpts :: [String]
+pkgOpts = YI_PKG_OPTS
+
 -- | Create a suitable Yi Kernel, via a GHC session.
 -- Also return the non-boot flags.
 initialize :: IO Kernel
@@ -55,17 +59,14 @@ initialize = GHC.defaultErrorHandler DynFlags.defaultDynFlags $ do
 			}
 
   home <- getHomeDirectory
-  -- note: These args must match the args given by cabal at pre-compilation, currently this is 
-  -- not done correctly, so sometimes we use a different version of some package here.
-  -- (FIXME)
-  let extraflags        = [ "-package ghc"
-                          , "-fglasgow-exts"
+  let extraflags        = [ -- dubious: maybe YiConfig wants to use other pkgs: "-hide-all-packages"
+                            "-fglasgow-exts"
                           , "-cpp" 
                           , "-i" -- clear the search directory (don't look in ./)
                           , "-i" ++ home ++ "/.yi"  -- First, we look for source files in ~/.yi
                           , "-i" ++ libdir
                           ]
-  (dflags1',_otherFlags) <- GHC.parseDynamicFlags dflags1 extraflags
+  (dflags1',_otherFlags) <- GHC.parseDynamicFlags dflags1 (pkgOpts ++ extraflags)
   (dflags2, packageIds) <- Packages.initPackages dflags1'
   logPutStrLn $ "packagesIds: " ++ (showSDocDump $ ppr $ packageIds)
   GHC.setSessionDynFlags session dflags2
