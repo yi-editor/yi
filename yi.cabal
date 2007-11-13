@@ -24,7 +24,10 @@ Flag gtk {
 
 
 Executable yi {
-build-depends:  array,  base,  bytestring,  containers,  directory,  filepath>=1.0,  ghc>=6.8,  mtl, process, old-locale, old-time,  regex-base>=0.72, regex-compat>=0.71, regex-posix>=0.72,  unix
+build-depends:  array,  base,  bytestring,  containers,  directory,  filepath>=1.0,  ghc>=6.8,  mtl, process, old-locale, old-time, unix
+build-depends: regex-base>=0.72, regex-base<0.73
+build-depends: regex-compat>=0.71, regex-compat<0.73
+build-depends: regex-posix>=0.72, regex-posix<0.73
 -- unix dependency should be eventually removed
 
 if flag(vty) {
