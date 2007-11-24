@@ -33,10 +33,8 @@ import Yi.Yi
 
 import Yi.Keymap.Emacs.KillRing
 import Yi.Keymap.Emacs.UnivArgument
-import Yi.Keymap.Emacs.Keys
 import Yi.Keymap.Emacs.Utils
-  ( completeInList
-  , atomic
+  ( atomic
   , withMinibuffer
   , scrollDownE
   , readArgC
@@ -57,18 +55,9 @@ import Yi.Keymap.Emacs.Utils
   , executeExtendedCommandE
   )
 import Yi.Buffer
-import Data.Char
 import Data.Maybe
-import Data.List
 
 import Control.Monad
-import Control.Monad.Trans
-
-import System.FilePath
-import System.Directory
-
-import Yi.Editor
-import Yi.History
 
 import Yi.Indent
 

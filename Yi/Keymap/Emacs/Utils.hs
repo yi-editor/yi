@@ -96,7 +96,6 @@ import Yi.Buffer
 import Yi.Editor
 import Yi.History
 
-import Yi.Indent
 
 {- End of Module Imports -}
 
