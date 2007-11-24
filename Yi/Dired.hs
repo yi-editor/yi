@@ -64,6 +64,10 @@ import Text.Regex.Posix
 
 import Yi.Yi
 import Yi.Keymap.Emacs
+import Yi.Keymap.Emacs.Utils
+  ( rebind
+  , withMinibuffer
+  )
 
 data DiredFileInfo = DiredFileInfo {  permString :: String
                                     , numLinks :: Integer
