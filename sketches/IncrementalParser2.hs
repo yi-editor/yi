@@ -24,26 +24,26 @@ Key points:
 
 - The parser has "online" behaviour.
 
-  This is a big advantage because we don't have to parse the whole file to begin syntax 
-  highlight the beginning of it.
+  This is a big advantage because we don't have to parse the whole file to
+  begin syntax highlight the beginning of it.
 
 - Resilient to insert parse errors. 
 
-  The structure around the inserted error
-  is preserved. This would allow things like "wiggly underlining" of errors in realtime;
-  also things like indentation, etc. can continue working at a coarse level in presence
-  of errors.
-  
+  The structure around the inserted error is preserved. This would allow
+  things like "wiggly underlining" of errors in realtime; also things like
+  indentation, etc. can continue working at a coarse level in presence of
+  errors.
+
 - Based on Applicative functors.
 
-  This is not as powerful as Monadic parsers, but easier to work with. This is needed if
-  we want to build the result lazily.
+  This is not as powerful as Monadic parsers, but easier to work with. This is
+  needed if we want to build the result lazily.
 
 
 -------------------------------------------}
 
 
--- | A parser, on the applicative functor model (see Swierstra papers).
+-- | A parser, based on the applicative functor model (see Swierstra papers).
 --
 -- This data type used to construct a parser.  Each constructor represents one
 -- of the five possible operators: 'symbol', 'fail', 'pure', choice and
@@ -100,7 +100,7 @@ symbol s f = Symb show s f
 -- > ex1 = Node (Leaf 1) (Node (Leaf 2) (Leaf 3))
 --
 -- Provided we know the arity of each constructor, we can unambiguously
--- represent @ex1@ (without using parentheses to resolve ambigouity) as:
+-- represent @ex1@ (without using parentheses to resolve ambiguity) as:
 --
 -- > Node Leaf 1 Node Leaf 2 Leaf 3
 --
@@ -124,7 +124,7 @@ symbol s f = Symb show s f
 -- >                                    .--'-.
 -- >                                  Leaf   2
 --
--- where @$@ represents function application.  We can print the tree in
+-- where @$@ represents function application.  We can print this tree in
 -- prefix-order:
 --
 -- > ($) ($) Node ($) Leaf 1 ($) ($) Node ($) Leaf 2 ($) Leaf 3
@@ -135,13 +135,32 @@ symbol s f = Symb show s f
 -- Unfortunately, it is a bit tricky to type those kinds of expressions in
 -- Haskell.  [XXX: example; develop solution step by step; continuations]
 --
--- The parameter @r@ represents the type of the remaining of our expression.
+-- The parameter @r@ represents the type of the remainder of our expression.
 data Steps s a r where
     Val   :: a -> Steps s b r               -> Steps s a (Steps s b r)
+    -- ^ The process that returns the value of type @a@ which is followed by a
+    -- parser returning a value of type @b@.
     App   :: Steps s (b -> a) (Steps s b r) -> Steps s a r
+    -- ^ Takes a process that returns a function @f@ of type @b -> a@ and is
+    -- followed by a process returning a value @x@ of type @b@.  The resulting
+    -- process will return the result of applying the function @f@ to @x@.
     Shift :: ([s] -> Steps s a r)           -> Steps s a r
+    -- ^ This is the only process that consumes any input.  It takes a
+    -- function that takes the full input and returns a parser to use for the
+    -- rest of the input.
+    --
+    -- [XXX: I'm not sure why it takes a full list.  It seems to be an
+    -- implicit assumption, that only one element is being consumed.  Having
+    -- type @Maybe s@ should be sufficient ('Maybe' because we might have
+    -- EOF.)  Alternatively, the function argument could return the input it
+    -- didn't consume, but that could complicate functions such as 'best'.]
     Done  :: Steps s a r                    -> Steps s a r
+    -- ^ The parser that signals success.  The argument is the continuation.
     Fails :: [String]                       -> Steps s a r
+    -- ^ The parser that signals failure.  The argument is a list of error
+    -- messages.  It is a list, so that we can combine multiple error
+    -- messages.
+
 
 -- For debugging:
 instance Show (Steps x a s) where
