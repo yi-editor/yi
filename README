@@ -59,7 +59,7 @@ QUICK START:
 
   it means that you have no UI package available. See DEPENDENCIES.
 
-* copy examples/YiConfig.hs to ~/.yi/ and taylor to your needs
+* copy examples/YiConfig.hs to ~/.yi/ and tailor to your needs
 
 * run yi
 
