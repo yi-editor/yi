@@ -28,7 +28,7 @@ module Yi.Buffer ( BufferRef, FBuffer (..), BufferM, runBuffer, keyB, curLn, ind
                    leftN, rightN,
                    moveXorEol, moveXorSol, insertN, insertNAt, insertB, deleteN,
                    deleteToEol, indexOfSol, nelemsB, writeB, getfileB,
-                   setfileB, deleteNAt, readB, elemsB, undo, redo,
+                   setfileB, setnameB, deleteNAt, readB, elemsB, undo, redo,
                    getMarkB, getSelectionMarkB, getMarkPointB, setMarkPointB, unsetMarkB, 
                    isUnchangedB, setSyntaxB, regexB, searchB, readAtB,
                    getModeLine, getPercent, forgetPreferCol,
@@ -119,7 +119,6 @@ getPercent a b = show p ++ "%"
 queryBuffer :: (BufferImpl -> x) -> (BufferM x)
 queryBuffer f = gets (f . rawbuf)
 
-
 modifyRawbuf :: (BufferImpl -> BufferImpl) -> (FBuffer -> FBuffer)
 modifyRawbuf    f x = x {rawbuf        = f (rawbuf        x)}
 
@@ -171,6 +170,10 @@ getfileB = gets file
 
 setfileB :: FilePath -> BufferM ()
 setfileB f = modify $ modifyFile $ const (Just f)
+
+setnameB :: String -> BufferM ()
+setnameB s = modify (\fbuff -> fbuff { name = s })
+
 
 keyB :: FBuffer -> BufferRef
 keyB (FBuffer { bkey = u }) = u

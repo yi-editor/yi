@@ -29,6 +29,7 @@ module Yi.Keymap.Emacs.Utils
   , completeWordB
   , completeInList
 
+  , changeBufferNameE
   , runKeymap
   , rebind
   , withMinibuffer
@@ -217,7 +218,15 @@ wordsAndCurrentWord =
 -}
 
 ---------------------------
+-- Changing the buffer name quite useful if you have
+-- several the same.
 
+changeBufferNameE :: YiM ()
+changeBufferNameE =
+  withMinibuffer "New buffer name:" return strFun
+  where
+  strFun :: String -> YiM ()
+  strFun = withBuffer . setnameB
 
 ----------------------------
 -- shell-command
