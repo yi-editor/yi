@@ -1,5 +1,5 @@
-{-# OPTIONS -fglasgow-exts #-}
-
+{-# LANGUAGE TypeOperators, GADTs, FlexibleInstances, DeriveDataTypeable,
+             Rank2Types, PatternGuards #-}
 module IncrementalParser2 where
 
 import Data.Generics
