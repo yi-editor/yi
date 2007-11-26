@@ -104,7 +104,7 @@ module Yi.Core (
         runAction
    ) where
 
-import Prelude hiding (error, sequence_, mapM_)
+import Prelude hiding (error, sequence_, mapM_, elem, concat)
 
 import Yi.Debug
 import Yi.Buffer
@@ -128,6 +128,9 @@ import Yi.CommonUI as UI (Window (..), UI)
 import Data.Maybe
 import qualified Data.Map as M
 import Data.List
+  ( notElem
+  , delete
+  )
 import Data.IORef
 import Data.Foldable
 
@@ -488,24 +491,35 @@ prevBufW = withEditor Editor.prevBuffer >>= switchToBufferE
 fnewE  :: FilePath -> YiM ()
 fnewE f = do
     bufs <- withEditor getBuffers
+        -- The file names associated with the list of current buffers
     let bufsWithThisFilename = filter ((== Just f) . file) bufs
+        -- The names of the existing buffers
+        currentBufferNames   = map name bufs
+        -- The new name for the buffer
+        bufferName           = bestNewName currentBufferNames
     b <- case bufsWithThisFilename of
              [] -> do
                    fe  <- lift $ doesFileExist f
                    de  <- lift $ doesDirectoryExist f
-                   newBufferForPath fe de
+                   newBufferForPath bufferName fe de
              _  -> return (bkey $ head bufsWithThisFilename)
     withGivenBuffer b $ setfileB f        -- associate buffer with file
     withGivenBuffer b $ setSyntaxB (syntaxFromExtension $ takeExtension f)
     switchToBufferE b
     where
-    newBufferForPath :: Bool -> Bool -> YiM BufferRef
-    newBufferForPath True _      = fileToNewBuffer f                 -- Load the file into a new buffer
-    newBufferForPath False True  = do           -- Open the dir in Dired
-            loadE "Yi.Dired"
-            execE $ "Yi.Dired.diredDirBufferE " ++ show f
-            withEditor getBuffer
-    newBufferForPath False False = withEditor $ stringToNewBuffer f []  -- Create new empty buffer
+    -- The first argument is the buffer name the second argument is
+    -- whether or not the file currently exists and the third argument
+    -- is whether or not the file is a directory that exists.
+    newBufferForPath :: String -> Bool -> Bool -> YiM BufferRef
+    newBufferForPath bufferName True _       = 
+      fileToNewBuffer bufferName f -- Load the file into a new buffer
+    newBufferForPath _bufferName False True  =
+      do -- Open the dir in Dired
+         loadE "Yi.Dired"
+         execE $ "Yi.Dired.diredDirBufferE " ++ show f
+         withEditor getBuffer
+    newBufferForPath bufferName False False  = 
+      withEditor $ stringToNewBuffer bufferName []  -- Create new empty buffer
     
     syntaxFromExtension :: String -> String
     syntaxFromExtension ".hs"  = "haskell"
@@ -513,11 +527,37 @@ fnewE f = do
     syntaxFromExtension ".sty" = "latex"
     syntaxFromExtension _      = "none"
 
+    -- The first argument is the buffer name
+    fileToNewBuffer :: String -> FilePath -> YiM BufferRef
+    fileToNewBuffer bufferName path = do
+      contents <- liftIO $ readFile path
+      withEditor $ stringToNewBuffer bufferName contents
 
-fileToNewBuffer :: FilePath -> YiM BufferRef
-fileToNewBuffer path = do
-  contents <- liftIO $ readFile path
-  withEditor $ stringToNewBuffer (takeFileName path) contents
+    -- Given the desired buffer name, plus a list of current buffer
+    -- names returns the best name for the new buffer. This will
+    -- be the desired one in the case that it doesn't currently exist.
+    -- Otherwise we will suffix it with <n> where n is one more than the
+    -- current number of suffixed similar names.
+    -- IOW if we want "file.hs" but one already exists then we'll create
+    -- "file.hs<1>" but if that already exists then we'll create "file.hs<2>"
+    -- and so on.
+    desiredBufferName  = takeFileName f
+    bestNewName :: [ String ] -> String
+    bestNewName currentBufferNames 
+      | elem desiredBufferName currentBufferNames = addSuffixBName 1
+      | otherwise                                 = desiredBufferName
+      where
+      addSuffixBName :: Int -> String
+      addSuffixBName i
+        | elem possibleName currentBufferNames = addSuffixBName (i + 1)
+        | otherwise                            = possibleName
+        where
+        possibleName = concat [ desiredBufferName
+                              , "<"
+                              , show i
+                              , ">"
+                              ]
+
   -- FIXME: we should not create 2 buffers with the same name.
 
 -- | Revert to the contents of the file on disk

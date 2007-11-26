@@ -104,7 +104,9 @@ newBufferRef = do
   gets bufferRefSupply
 
 -- | Create and fill a new buffer, using contents of string.
-stringToNewBuffer :: String -> String -> EditorM BufferRef
+stringToNewBuffer :: String -- ^ The buffer name *not* the associated file
+                  -> String -- ^ The contents with which to populate the buffer
+                  -> EditorM BufferRef
 stringToNewBuffer nm cs = do
     u <- newBufferRef
     let b = newB u nm cs
