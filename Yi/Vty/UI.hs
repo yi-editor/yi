@@ -278,48 +278,75 @@ drawWindow e sty focused w win = do
 -- This also returns 
 -- * the index of the last character fitting in the rectangle
 -- * the position of the Point in (x,y) coordinates, if in the window.
-drawText :: Int -> Int -> Point -> Point -> Point -> Attr -> Attr -> [(Char,Attr)] -> ([Image], Point, Maybe (Int,Int))
+drawText :: Int    -- ^ The height of the part of the window we are in
+         -> Int    -- ^ The width of the part of the window we are in
+         -> Point  -- ^ The position of the first character to draw
+         -> Point  -- ^ The position of the cursor (or insertion mark)
+         -> Point  -- ^ The position of the selection mark
+         -> Attr   -- ^ The attribute with which to draw selected text
+         -> Attr   -- ^ The attribute with which to draw the background
+                   -- this is not used for drawing but only to compare
+                   -- it against the selection attribute to avoid making
+                   -- the selection invisible.
+         -> [(Char,Attr)]  -- ^ The data to draw.
+         -> ([Image], Point, Maybe (Int,Int))
 drawText h w topPoint point markPoint selsty wsty bufData 
     | h == 0 || w == 0 = ([], topPoint, Nothing)
     | otherwise        = (rendered_lines, bottomPoint, pntpos)
-  where [startSelect, stopSelect] = sort [markPoint,point]
+  where 
+  -- Get the start and the end of the selection so that we do not
+  -- later have to worry which is the lesser of the two.
+  [startSelect, stopSelect] = sort [markPoint,point]
 
-        -- | Remember the point of each char
-        annotateWithPoint text = zipWith (\(c,a) p -> (c,(a,p))) text [topPoint..]  
+  -- | Remember the point of each char
+  annotateWithPoint text = zipWith (\(c,a) p -> (c,(a,p))) text [topPoint..]  
 
-        lns0 = take h $ concatMap (wrapLine w) $ map (concatMap expandGraphic) $ lines' $ annotateWithPoint $ bufData
+  lns0 = take h $ concatMap (wrapLine w) $ map (concatMap expandGraphic) $ lines' $ annotateWithPoint $ bufData
 
-        bottomPoint = case lns0 of 
-                        [] -> topPoint 
-                        _ -> snd $ snd $ last $ last $ lns0
+  bottomPoint = case lns0 of 
+                 [] -> topPoint 
+                 _ -> snd $ snd $ last $ last $ lns0
 
-        pntpos = listToMaybe [(y,x) | (y,l) <- zip [0..] lns0, (x,(_char,(_attr,p))) <- zip [0..] l, p == point]
+  pntpos = listToMaybe [(y,x) | (y,l) <- zip [0..] lns0, (x,(_char,(_attr,p))) <- zip [0..] l, p == point]
 
-        rendered_lines = map fillColorLine $ lns0 -- fill lines with blanks, so the selection looks ok.
-        colorChar (c, (a, x)) = renderChar (pointStyle x a) c
-        pointStyle x a = if startSelect < x && x <= stopSelect && selsty /= wsty then selsty else a
+  -- fill lines with blanks, so the selection looks ok.
+  rendered_lines = map fillColorLine lns0
+  colorChar (c, (a, x)) = renderChar (pointStyle x a) c
 
-        fillColorLine [] = renderHFill attr ' ' w
-        fillColorLine l = horzcat (map colorChar l) <|> renderHFill (pointStyle x a) ' ' (w - length l)
-            where (_,(a,x)) = last l
+  pointStyle :: Point -> Attr -> Attr
+  pointStyle x a 
+    | startSelect <= x 
+      && x < stopSelect 
+      && selsty /= wsty  = selsty
+    | otherwise          = a
 
-        -- | Cut a string in lines separated by a '\n' char. Note
-        -- that we add a blank character where the \n was, so the
-        -- cursor can be positioned there.
+  fillColorLine :: [(Char, (Attr, Point))] -> Image
+  fillColorLine [] = renderHFill attr ' ' w
+  fillColorLine l = horzcat (map colorChar l) 
+                    <|>
+                    renderHFill (pointStyle x a) ' ' (w - length l)
+                    where (_,(a,x)) = last l
 
-        lines' :: [(Char,a)] -> [[(Char,a)]]
-        lines' [] =  []
-        lines' s  =  let (l, s') = break ((== '\n') . fst) s in case s' of
-                                                                  [] -> [l]
-                                                                  ((_,x):s'') -> (l++[(' ',x)]) : lines' s''
+  -- | Cut a string in lines separated by a '\n' char. Note
+  -- that we add a blank character where the \n was, so the
+  -- cursor can be positioned there.
 
-        wrapLine :: Int -> [x] -> [[x]]
-        wrapLine _ [] = []
-        wrapLine n l = let (x,rest) = splitAt n l in x : wrapLine n rest
+  lines' :: [(Char,a)] -> [[(Char,a)]]
+  lines' [] =  []
+  lines' s  = case s' of
+                []          -> [l]
+                ((_,x):s'') -> (l++[(' ',x)]) : lines' s''
+              where
+              (l, s') = break ((== '\n') . fst) s
+
+  wrapLine :: Int -> [x] -> [[x]]
+  wrapLine _ [] = []
+  wrapLine n l = let (x,rest) = splitAt n l in x : wrapLine n rest
                                       
-        expandGraphic (c,p) | ord c < 32 = [('^',p),(chr (ord c + 64),p)]
-                            | ord c < 128 = [(c,p)]
-                            | otherwise = zip ('\\':show (ord c)) (repeat p)
+  expandGraphic (c,p) 
+    | ord c < 32 = [('^',p),(chr (ord c + 64),p)]
+    | ord c < 128 = [(c,p)]
+    | otherwise = zip ('\\':show (ord c)) (repeat p)
                                             
 
 
