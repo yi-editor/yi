@@ -315,6 +315,7 @@ drawText h w topPoint point markPoint selsty wsty bufData
 
   pointStyle :: Point -> Attr -> Attr
   pointStyle x a 
+    | x == point         = a
     | startSelect <= x 
       && x < stopSelect 
       && selsty /= wsty  = selsty
