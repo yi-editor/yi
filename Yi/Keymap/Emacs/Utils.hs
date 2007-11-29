@@ -63,7 +63,9 @@ import Data.Char
   , isDigit
   )
 import Data.List
-  ( isPrefixOf )
+  ( isPrefixOf
+  , nub
+  )
 import Data.Maybe
   ( fromMaybe )
 
@@ -150,10 +152,14 @@ completeInList s condition l
     | isSingleton filtered = msgE "Sole completion" >> return s
     | prefix `elem` filtered = msgE ("Complete, but not unique: " ++ show filtered) >> return s
     | otherwise = msgE ("Matches: " ++ show filtered) >> return s
-    where prefix = commonPrefix filtered
-          filtered = filter condition l
-          isSingleton [_] = True
-          isSingleton _ = False
+    where 
+    prefix   = commonPrefix filtered
+    filtered = nub $ filter condition l
+
+    -- Not really necessary but a bit faster than @(length l) == 1@
+    isSingleton :: [ a ] -> Bool
+    isSingleton [_] = True
+    isSingleton _   = False
 
 ----------------------------
 -- Alternative Word Completion
@@ -198,6 +204,7 @@ veryQuickCompleteWord =
   do (curWord, curWords) <- withBuffer wordsAndCurrentWord
      let condition :: String -> Bool
          condition x   = (isPrefixOf curWord x) && (x /= curWord)
+         
      preText             <- completeInList curWord condition curWords
      if curWord == ""
         then msgE "No word to complete"
