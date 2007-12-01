@@ -520,12 +520,36 @@ fnewE f = do
          withEditor getBuffer
     newBufferForPath bufferName False False  = 
       withEditor $ stringToNewBuffer bufferName []  -- Create new empty buffer
-    
+
+    {-
+      Working out the name of the syntax from the extension of
+      the file. Some of these are a little questionably haskell
+      relatex. For example ".x" is an alex lexer specification
+      I dare say that there are other file types that use ".x"
+      as the file extension. 
+      For now though this is probably okay given the users of
+      'yi' are mostly haskell hackers, as of yet.
+    -}
     syntaxFromExtension :: String -> String
-    syntaxFromExtension ".hs"  = "haskell"
-    syntaxFromExtension ".tex" = "latex"
-    syntaxFromExtension ".sty" = "latex"
-    syntaxFromExtension _      = "none"
+    syntaxFromExtension ".hs"    = "haskell"
+    syntaxFromExtension ".x"     = "haskell"
+    -- anyone want to come up with a literate haskell syntax?
+    syntaxFromExtension ".lhs"   = "haskell"
+    -- haskell include files such as Yi/Syntax/alex.hsinc
+    syntaxFromExtension ".hsinc" = "haskell"
+    syntaxFromExtension ".cabal" = "cabal"
+    syntaxFromExtension ".tex"   = "latex"
+    syntaxFromExtension ".sty"   = "latex"
+    syntaxFromExtension ".cxx"   = "cplusplus"
+    syntaxFromExtension ".cpp"   = "cplusplus"
+    syntaxFromExtension ".h"     = "cplusplus"
+    -- I treat c file as cpp files, most users are smart enough
+    -- to allow for that.
+    syntaxFromExtension ".c"     = "cplusplus"
+    -- pepa is a subset of srmc
+    syntaxFromExtension ".pepa"  = "srmc"
+    syntaxFromExtension ".srmc"  = "srmc"
+    syntaxFromExtension _        = "none"
 
     -- The first argument is the buffer name
     fileToNewBuffer :: String -> FilePath -> YiM BufferRef

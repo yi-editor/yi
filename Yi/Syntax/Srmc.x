@@ -1,19 +1,32 @@
 -- -*- haskell -*- 
 --
--- Simple syntax highlighting for Latex source files
---
--- This is not intended to be a lexical analyser for
--- latex, merely good enough to provide some syntax
--- highlighting for latex source files.
+--  Simple syntax highlighting for srmc source.
+--  Also to be used for pepa source files since pepa
+--  is a subset of srmc.
+--  I also believe that this makes a reasonable example
+--  for new syntax files
 --
 
 {
 {-# OPTIONS -w  #-}
-module Yi.Syntax.Latex ( highlighter ) where
-
+module Yi.Syntax.Srmc ( highlighter ) where
+{- Standard Library Modules Imported -}
 import qualified Data.ByteString.Char8
+{- External Library Modules Imported -}
+{- Local Modules Imported -}
 import qualified Yi.Syntax
 import Yi.Style
+  ( Style             ( .. )
+  , defaultStyle
+  , commentStyle
+  , lineCommentStyle
+  , keywordStyle
+  , operatorStyle
+  , upperIdStyle
+  , stringStyle
+  , numberStyle
+  )
+{- End of Module Imports -}
 
 }
 
@@ -24,9 +37,10 @@ $ascdigit  = 0-9
 $unidigit  = [] -- TODO
 $digit     = [$ascdigit $unidigit]
 
-$ascsymbol = [\!\#\$\%\&\*\+\.\/\<\=\>\?\@\\\^\|\-\~]
-$unisymbol = [] -- TODO
-$symbol    = [$ascsymbol $unisymbol] # [$special \_\:\"\']
+$ascsymbol  = [\!\#\$\%\&\*\+\.\/\<\=\>\?\@\\\^\|\-\~]
+$unisymbol  = [] -- TODO
+$pepasymbol = [\;\.\,\+=\<\>]
+$symbol     = [$pepasymbol]
 
 $large     = [A-Z \xc0-\xd6 \xd8-\xde]
 $small     = [a-z \xdf-\xf6 \xf8-\xff \_]
@@ -37,13 +51,12 @@ $graphic   = [$small $large $symbol $digit $special \:\"\']
 $octit     = 0-7
 $hexit     = [0-9 A-F a-f]
 $idchar    = [$alpha $digit \']
-$symchar   = [$symbol \:]
+$symchar   = [$symbol]
 $nl        = [\n\r]
 
-@reservedid = \\newcommand|\\begin|\\end
+@reservedid = Stop|infty
 
-@reservedop =
-        ".." | ":" | "::" | "=" | \\ | "|" | "<-" | "->" | "@" | "~" | "=>"
+@reservedop = "&&" | "||"
 
 @varid  = $small $idchar*
 @conid  = $large $idchar*
@@ -51,6 +64,7 @@ $nl        = [\n\r]
 @consym = \: $symchar*
 
 @decimal     = $digit+
+@double      = $digit+ \. $digit+
 @octal       = $octit+
 @hexadecimal = $hexit+
 @exponent    = [eE] [\-\+] @decimal
@@ -72,20 +86,22 @@ haskell :-
 
 <0> {
   "%"\-*[^\n]*                                  { c commentStyle }
+  "//"\-*[^\n]*                                 { c commentStyle }
 
- $special                                       { c defaultStyle }
+ -- $special                                       { c defaultStyle }
 
  @reservedid                                    { c keywordStyle }
 
- \\ @varid                                      { c upperIdStyle }
+ @varid                                         { c stringStyle }
+ @conid                                         { c upperIdStyle }
 
  @reservedop                                    { c operatorStyle }
  @varsym                                        { c operatorStyle }
- @consym                                        { c upperIdStyle }
 
  @decimal 
+  | @double
   | 0[oO] @octal
-  | 0[xX] @hexadecimal                          { c operatorStyle }
+  | 0[xX] @hexadecimal                          { c numberStyle }
 
  @decimal \. @decimal @exponent?
   | @decimal @exponent                          { c defaultStyle }
@@ -95,11 +111,11 @@ haskell :-
 
 {
 
-
 type HlState = Int
 
-{- See Haskell.x which uses this to say whether we are in a
-   comment (perhaps a nested comment) or not.
+{- 
+  See Haskell.x which uses this to say whether we are in a
+  comment (perhaps a nested comment) or not.
 -}
 stateToInit x = 0
 

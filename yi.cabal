@@ -52,6 +52,9 @@ other-modules:
   Yi.Kernel
   Yi.Syntax.Haskell
   Yi.Syntax.Latex
+  Yi.Syntax.Srmc
+  Yi.Syntax.Cabal
+  Yi.Syntax.Cplusplus
 extensions:     CPP, ForeignFunctionInterface
 ghc-options:    -Wall -fglasgow-exts -O -funbox-strict-fields -fasm -optl-Wl,-s
 }

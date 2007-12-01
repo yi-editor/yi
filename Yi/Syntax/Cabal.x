@@ -8,12 +8,23 @@
 
 {
 {-# OPTIONS -w  #-}
-module Yi.Syntax.Haskell ( highlighter ) where
+module Yi.Syntax.Cabal
+  ( highlighter ) 
+where
 
 import qualified Data.ByteString.Char8
 import qualified Yi.Syntax
 import Yi.Style
-
+  ( Style             ( .. )
+  , defaultStyle
+  , commentStyle
+  , lineCommentStyle
+  , keywordStyle
+  , operatorStyle
+  , upperIdStyle
+  , stringStyle
+  , numberStyle
+  )
 }
 
 $whitechar = [\ \t\n\r\f\v]
@@ -40,13 +51,53 @@ $symchar   = [$symbol \:]
 $nl        = [\n\r]
 
 @reservedid = 
-        as|case|class|data|default|deriving|do|else|hiding|if|
-        import|in|infix|infixl|infixr|instance|let|module|newtype|
-        of|qualified|then|type|where|forall|mdo|foreign|export|dynamic|
-        safe|threadsafe|unsafe|stdcall|ccall|dotnet
+  GPL
+  |LGPL
+  |BSD3
+  |BSD4
+  |PublicDomain
+  |AllRightsReserved
+  |OtherLicense
+  |if
+  |flag
+
+@fieldid =
+  [Nn]ame
+  |[Vv]ersion
+  |[Cc]abal\-Version
+  |[Cc]abal\-version
+  |[Dd]escription
+  |[Ll]icense
+  |[Ll]icense\-file
+  |[Aa]uthor
+  |[Mm]aintainer
+  |[Bb]uild\-Depends
+  |[Bb]uild\-depends
+  |[Ee]xecutable
+  |[Mm]ain\-Is
+  |[Mm]ain\-is
+  |[Oo]ther\-Modules
+  |[Oo]ther\-modules
+  |[Gg]hc\-Options
+  |[Gg]hc\-options
+  |[Cc]opyright
+  |[Hh]omepage
+  |[Ss]ynopsis
+  |[Ee]xposed\-Modules
+  |[Ee]xposed\-modules
+  |[Ii]nclude\-Dirs
+  |[Ii]nclude\-dirs
+  |[Cc]\-Sources
+  |[Cc]\-sources
+  |[Ee]xtra\-Libraries
+  |[Ee]xtra\-libraries
+  |[Ee]xtensions
+  |[Cc]ategory
+  |[Bb]uildabl
+  |[Ee]xtra\-[Ss]ource\-[Ff]iles
 
 @reservedop =
-        ".." | ":" | "::" | "=" | \\ | "|" | "<-" | "->" | "@" | "~" | "=>"
+        ">" | ">=" | "<" | "<="
 
 @varid  = $small $idchar*
 @conid  = $large $idchar*
@@ -72,6 +123,10 @@ haskell :-
 
 <0> $white+                                     { c defaultStyle } -- whitespace
 
+
+-- I'm allowing full haskell style comments here, I think that maybe
+-- in the future cabal will allow this too so ... Also I don't think it
+-- does significant harm at the moment
 <nestcomm> {
   "{-"                                          { m (subtract 1) commentStyle }
   "-}"                                          { m (+1) commentStyle }
@@ -89,11 +144,13 @@ haskell :-
 
  @reservedid                                    { c keywordStyle }
  @varid                                         { c defaultStyle }
- @conid                                         { c upperIdStyle }
+ @conid                                         { c defaultStyle }
+
+ @fieldid ":"                                   { c upperIdStyle }
 
  @reservedop                                    { c operatorStyle }
  @varsym                                        { c operatorStyle }
- @consym                                        { c upperIdStyle }
+ @consym                                        { c defaultStyle  }
 
  @decimal 
   | 0[oO] @octal

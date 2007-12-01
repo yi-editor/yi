@@ -21,19 +21,37 @@
 -- | This module defines the list of syntax highlighter modules.
 --
 
-module Yi.Syntax.Table ( ExtHL(..), highlighters ) where
+module Yi.Syntax.Table 
+  ( ExtHL(..)
+  , highlighters 
+  ) 
+where
 
+{- Standard Library Modules Imported -}
+import qualified Data.Map as M
+{- External Library Modules Imported -}
+{- Local Modules Imported -}
 import Yi.Syntax
+  ( Highlighter )
 import qualified Yi.Syntax.Haskell
 import qualified Yi.Syntax.Latex
-
-
-import qualified Data.Map as M
+import qualified Yi.Syntax.Srmc
+import qualified Yi.Syntax.Cabal
+import qualified Yi.Syntax.Cplusplus
+{- End of Imports -}
 
 data ExtHL = forall a. Eq a => ExtHL (Maybe (Highlighter a))
 
 highlighters :: M.Map String ExtHL
-highlighters = M.fromList [ ( "haskell", ExtHL (Just Yi.Syntax.Haskell.highlighter) )
-                          , ( "latex",   ExtHL (Just Yi.Syntax.Latex.highlighter) )
-                          , ( "none",    ExtHL (Nothing :: Maybe (Highlighter ())) )
-                          ]
+highlighters = M.fromList highList
+
+
+highList :: [ (String, ExtHL) ]
+highList =
+  [ ( "haskell"  , ExtHL (Just Yi.Syntax.Haskell.highlighter) )
+  , ( "latex"    , ExtHL (Just Yi.Syntax.Latex.highlighter) )
+  , ( "cabal"    , ExtHL (Just Yi.Syntax.Cabal.highlighter) )
+  , ( "cplusplus", ExtHL (Just Yi.Syntax.Cplusplus.highlighter) )
+  , ( "srmc"     , ExtHL (Just Yi.Syntax.Srmc.highlighter) )
+  , ( "none"     , ExtHL (Nothing :: Maybe (Highlighter ())) )
+  ]

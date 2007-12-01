@@ -84,6 +84,47 @@ uiStyle = UIStyle {
 defaultStyle :: Style
 defaultStyle = Style defaultfg defaultbg
 
+commentStyle :: Style
+commentStyle = lineCommentStyle
+
+lineCommentStyle :: Style
+lineCommentStyle = purpleA
+
+keywordStyle :: Style
+keywordStyle = darkblueA
+
+operatorStyle :: Style
+operatorStyle = brownA
+
+upperIdStyle :: Style
+upperIdStyle = darkgreenA
+
+stringStyle :: Style
+stringStyle = darkcyanA
+
+numberStyle :: Style
+numberStyle = darkredA
+
+
+blackA , greyA, darkredA, redA, darkgreenA, greenA, brownA :: Style
+yellowA, darkblueA, blueA, purpleA, magentaA, darkcyanA    :: Style
+cyanA, whiteA, brightwhiteA                                :: Style
+blackA       = Style black defaultbg
+greyA        = Style grey defaultbg
+darkredA     = Style darkred defaultbg
+redA         = Style red defaultbg
+darkgreenA   = Style darkgreen defaultbg
+greenA       = Style green defaultbg
+brownA       = Style brown defaultbg
+yellowA      = Style yellow defaultbg
+darkblueA    = Style darkblue defaultbg
+blueA        = Style blue defaultbg
+purpleA      = Style purple defaultbg
+magentaA     = Style magenta defaultbg
+darkcyanA    = Style darkcyan defaultbg
+cyanA        = Style cyan defaultbg
+whiteA       = Style white defaultbg
+brightwhiteA = Style brightwhite defaultbg
 
 ------------------------------------------------------------------------
 

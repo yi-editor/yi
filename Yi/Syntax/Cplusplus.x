@@ -1,18 +1,28 @@
 -- -*- haskell -*- 
 --
--- Lexical syntax for illiterate Haskell 98.
---
--- (c) Simon Marlow 2003, with the caveat that much of this is
--- translated directly from the syntax in the Haskell 98 report.
+--  Simple syntax highlighting for c/c++ files
 --
 
 {
 {-# OPTIONS -w  #-}
-module Yi.Syntax.Haskell ( highlighter ) where
-
+module Yi.Syntax.Cplusplus ( highlighter ) where
+{- Standard Library Modules Imported -}
 import qualified Data.ByteString.Char8
+{- External Library Modules Imported -}
+{- Local Modules Imported -}
 import qualified Yi.Syntax
 import Yi.Style
+  ( Style             ( .. )
+  , defaultStyle
+  , commentStyle
+  , lineCommentStyle
+  , keywordStyle
+  , operatorStyle
+  , upperIdStyle
+  , stringStyle
+  , numberStyle
+  )
+{- End of Module Imports -}
 
 }
 
@@ -40,13 +50,104 @@ $symchar   = [$symbol \:]
 $nl        = [\n\r]
 
 @reservedid = 
-        as|case|class|data|default|deriving|do|else|hiding|if|
-        import|in|infix|infixl|infixr|instance|let|module|newtype|
-        of|qualified|then|type|where|forall|mdo|foreign|export|dynamic|
-        safe|threadsafe|unsafe|stdcall|ccall|dotnet
+  asm
+  |break
+  |case
+  |continue
+  |default
+  |do
+  |else
+  |enum
+  |for
+  |fortran
+  |goto
+  |if
+  |return
+  |sizeof
+  |struct
+  |switch
+  |typedef
+  |union
+  |while
+  |_Bool
+  |_Complex
+  |_Imaginary
+  |bool
+  |char
+  |double
+  |float
+  |int
+  |long
+  |short
+  |signed
+  |size_t
+  |unsigned
+  |void
+  |auto
+  |const
+  |extern
+  |inline
+  |register
+  |restrict
+  |static
+  |volatile
+  |NULL
+  |MAX
+  |MIN
+  |TRUE
+  |FALSE
+  |__LINE__
+  |__DATA__
+  |__FILE__
+  |__func__
+  |__TIME__
+  |__STDC__
+  |and
+  |and_eq
+  |bitand
+  |bitor
+  |catch
+  |compl
+  |const_cast
+  |delete
+  |dynamic_cast
+  |false
+  |for
+  |friend
+  |new
+  |not
+  |not_eq
+  |operator
+  |or
+  |or_eq
+  |private
+  |protected
+  |public
+  |reinterpret_cast
+  |static_cast
+  |this
+  |throw
+  |true
+  |try
+  |typeid
+  |using
+  |xor
+  |xor_eq
+  |class
+  |namespace
+  |typename
+  |template
+  |virtual
+  |bool
+  |explicit
+  |export
+  |inline
+  |mutable
+  |wchar_t
 
-@reservedop =
-        ".." | ":" | "::" | "=" | \\ | "|" | "<-" | "->" | "@" | "~" | "=>"
+
+@reservedop = 
+  "->" | "*" | "+" | "-" | "%" | \\ | "||" | "&&" | "?" | ":"
 
 @varid  = $small $idchar*
 @conid  = $large $idchar*
@@ -73,17 +174,17 @@ haskell :-
 <0> $white+                                     { c defaultStyle } -- whitespace
 
 <nestcomm> {
-  "{-"                                          { m (subtract 1) commentStyle }
-  "-}"                                          { m (+1) commentStyle }
+  -- We could do nested comments like this
+  -- "/*"                                       { m (subtract 1) commentStyle }
+  "*/"                                          { m (+1) commentStyle }
   $white+                                       { c defaultStyle } -- whitespace
   .                                             { c commentStyle }
 }
 
 <0> {
-  "--"\-* $symbol $symchar*                     { c defaultStyle }
-  "--"\-*[^\n]*                                 { c commentStyle }
+  "//"[^\n]*                                    { c commentStyle }
 
- "{-"                                           { m (subtract 1) commentStyle }
+ "/*"                                           { m (subtract 1) commentStyle }
 
  $special                                       { c defaultStyle }
 
@@ -107,10 +208,11 @@ haskell :-
  .                                              { c operatorStyle }
 }
 
+
 {
 
-
 type HlState = Int
+
 
 stateToInit x | x < 0     = nestcomm
               | otherwise = 0
