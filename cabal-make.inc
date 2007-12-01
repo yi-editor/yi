@@ -173,17 +173,17 @@ doc-clean:
 	rm -rf dist/doc
 
 # Add syntax-coloring and anchors to sources.  Use CSS and copy in $(hscolour-css).
+#hscolour:
+#	mkdir -p dist/doc/html
+#	cp $(hscolour-css) dist/doc/html
+#	$(foreach module, $(modules),\
+#	   $(HsColour) -anchorCSS $(top-src-dir)$(subst .,/,$(module)).hs > dist/doc/html/$(top-src-dot)$(module).hs.html; )
+
 hscolour:
 	mkdir -p dist/doc/html
 	cp $(hscolour-css) dist/doc/html
-	$(foreach module, $(modules),\
-	   $(HsColour) -anchorCSS $(top-src-dir)$(subst .,/,$(module)).hs > dist/doc/html/$(top-src-dot)$(module).hs.html; )
-
-# hscolour:
-# 	mkdir -p dist/doc/html
-# 	cp $(hscolour-css) dist/doc/html
-# 	$(foreach file, $(sources),\
-# 	   $(HsColour) -css -anchor $(file) > dist/doc/html/$(subst /,.,$(basename $(file))).hs.html; )
+	$(foreach file, $(sources),\
+	   $(HsColour) -css -anchor $(file) > dist/doc/html/$(subst /,.,$(basename $(file))).hs.html; )
 
 # Generate Haddock docs.  See variables source-args, comments, and comment-args
 haddock: $(cabal_config)
