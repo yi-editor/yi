@@ -48,7 +48,19 @@ yi --help
 
 for a list of options.
 
+QUICK START with cabal-make:
 
+* To use the Makefile you need a working config.mk file you can
+  obtain this in one of two ways:
+  1 - copy config.sample to config.mk and edit as required
+  2 - runhaskell MkConfig.hs --help
+      this will show you the options available re-run with the
+      appropriate options, you probably at least want:
+      runhaskells MkConfig.hs --prefix <path-to-prefix> --user username
+      This will produce a config.test copy this across to config.mk
+
+* make all
+  will configure, build, document and install.
 
 HACKER'S GUIDE: 
 
