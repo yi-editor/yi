@@ -1,6 +1,7 @@
-# where to install executable and packages (running in-place -- without installing -- is not supported)
+# preferred frontend
 frontend = vty
 
+# where to install executable and packages
 prefix = $(HOME)/usr/
 
 # The following are web-publishing options.
