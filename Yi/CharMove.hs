@@ -78,6 +78,7 @@ import qualified Data.Map as M
 import Control.Monad        ( liftM, when, replicateM_ )
 import Control.Monad.Fix    ( fix )
 import Control.Exception    ( assert )
+import Yi.Buffer.Normal
 
 -- | Read character before point.
 breadB :: BufferM Char
@@ -121,29 +122,27 @@ bskipWordB = doSkipCond leftB breadB atSol isNonWord
 
 -- | Delete one character backward
 bdeleteB :: BufferM ()
-bdeleteB = leftB >> deleteB
+bdeleteB = execB Delete Character Backward
 
 -- | Delete forward whitespace or non-whitespace depending on
 -- the character under point.
 killWordB :: BufferM ()
-killWordB = doSkipCond deleteB readB atEol isNonWord
+killWordB = execB Delete Word Forward
 
 -- | Delete backward whitespace or non-whitespace depending on
 -- the character before point.
 bkillWordB :: BufferM ()
-bkillWordB = doSkipCond bdeleteB breadB atSol isNonWord
+bkillWordB = execB Delete Word Forward
 
 ------------------------------------------------------------------------
 
 -- | Move to first char of next word forwards
 nextWordB :: BufferM ()
-nextWordB = do moveWhileB (isAlphaNum) Forward
-               moveWhileB (not.isAlphaNum)  Forward
+nextWordB = execB Move Word Forward
 
 -- | Move to first char of next word backwards
 prevWordB :: BufferM ()
-prevWordB = do moveWhileB (isAlphaNum)      Backward
-               moveWhileB (not.isAlphaNum)  Backward
+prevWordB = execB Move Word Backward
 
 ------------------------------------------------------------------------
 
@@ -176,36 +175,12 @@ firstNonSpaceB = do
                            when (isSpace k) (rightB >> loop)
 
 -- | Move down next @n@ paragraphs
-nextNParagraphs :: Int -> BufferM ()    -- could be rewritten in a more functional style
-nextNParagraphs n = do
-        eof <- sizeB
-        let loop = do
-                p <- pointB
-                when (p < eof-1) $ do
-                    moveWhileB (/= '\n') Forward
-                    p' <- pointB
-                    when (p' < eof-1) $ do
-                        rightB
-                        x <- readB
-                        when (x /= '\n') loop
-        replicateM_ n loop
+nextNParagraphs :: Int -> BufferM ()
+nextNParagraphs n = replicateM_ n $ execB Move Paragraph Forward
 
 -- | Move up prev @n@ paragraphs
 prevNParagraphs :: Int -> BufferM ()
-prevNParagraphs n = do
-        let loop = do
-                p <- pointB
-                when (p > 0) $ do
-                    leftB
-                    moveWhileB (/= '\n') Backward
-                    p' <- pointB
-                    when (p' > 0) $ do
-                        leftB
-                        x <- readB
-                        if x == '\n'
-                            then rightB
-                            else loop
-        replicateM_ n loop
+prevNParagraphs n = replicateM_ n $ execB Move Paragraph Backward 
 
 ------------------------------------------------------------------------
 --

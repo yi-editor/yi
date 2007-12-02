@@ -4,22 +4,20 @@ module Yi.Buffer.Normal (execB, Unit(..), Operation(..)) where
 
 import Yi.Buffer
 import Data.Char
-import Control.Applicative
+-- import Control.Applicative
 import Control.Monad
 
 data Unit = Character | Word | Line | Vertical | Paragraph -- | Page | Document | Searched
 data Operation = MaybeMove | Move | Delete | Transpose
 
-
-indic Forward = 1
-indic Backward = negate 1
-
+halfIndic :: Direction -> Int
 halfIndic Forward = 0
 halfIndic Backward = (-1)
 
+isWordChar :: Char -> Bool
 isWordChar = isAlpha
 
-isNl = (== '\n')
+-- isNl = (== '\n')
 
 -- read some characters in the specified direction, for boundary testing purposes
 -- peek :: Direction -> Int -> Int -> BufferM String
@@ -35,11 +33,12 @@ isNl = (== '\n')
 
 -- | Is the point at a @Unit@ boundary in the specified @Direction@?
 atBoundary :: Unit -> Direction -> BufferM Bool
+atBoundary Character _ = return True
 atBoundary Word direction = do
   p <- pointB
   c <- readAtB (p + halfIndic direction)
   c' <- readAtB (p - 1 - halfIndic direction)
-  return (isAlpha c' && not (isAlpha c))
+  return (isWordChar c' && not (isWordChar c))
 
 atBoundary Line direction = do
   p <- pointB
@@ -64,11 +63,13 @@ atBoundary Paragraph Backward = do
 
 
 -- | Repeat an action while the condition is fulfilled or the cursor stops moving.
+repWhile :: BufferM a -> BufferM Bool -> BufferM ()
 repWhile f cond = do
   stop <- cond
   when (not stop) (repUntil f cond)
   
 -- | Repeat an action until the condition is fulfilled or the cursor stops moving.
+repUntil :: BufferM a -> BufferM Bool -> BufferM ()
 repUntil f cond = do
   p <- pointB
   f
@@ -106,11 +107,17 @@ execB Transpose unit direction = do
   swap (w0,w0') (w1,w1')
   moveTo w1'
 
+opposite :: Direction -> Direction
 opposite Backward = Forward
 opposite Forward = Backward  
 
+deleteBetween :: Int -> Int -> BufferM ()
 deleteBetween x y = deleteNAt (abs (x-y)) (min x y) 
+
+readBetween :: Int -> Int -> BufferM String
 readBetween x y = nelemsB (abs (x-y)) (min x y)
+
+replaceBetween :: Int -> Int -> String -> BufferM ()
 replaceBetween x y s = do
   deleteBetween x y
   insertNAt s (min x y)
