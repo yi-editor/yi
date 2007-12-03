@@ -33,6 +33,7 @@ module Yi.Yi (
         module Yi.Buffer,
         module Yi.Buffer.HighLevel,
         module Yi.CharMove,
+        module Yi.Buffer.Normal,
         module Yi.Core,
         module Yi.CoreUI,
         module Yi.Debug,
@@ -48,6 +49,7 @@ import Control.Monad
 import Yi.Buffer
 import Yi.Buffer.HighLevel
 import Yi.CharMove
+import Yi.Buffer.Normal
 import Yi.Core
 import Yi.CoreUI
 import Yi.Debug
