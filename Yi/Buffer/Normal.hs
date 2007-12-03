@@ -10,57 +10,45 @@ import Control.Monad
 data Unit = Character | Word | Line | Vertical | Paragraph -- | Page | Document | Searched
 data Operation = MaybeMove | Move | Delete | Transpose
 
-halfIndic :: Direction -> Int
-halfIndic Forward = 0
-halfIndic Backward = (-1)
-
 isWordChar :: Char -> Bool
 isWordChar = isAlpha
 
--- isNl = (== '\n')
+isNl = (== '\n')
 
--- read some characters in the specified direction, for boundary testing purposes
--- peek :: Direction -> Int -> Int -> BufferM String
--- peek dir siz ofs = do
---   p <- pointB
---   rev dir <$> nelemsB siz (p + dirOfs dir ofs)
--- 
--- rev Forward = id
--- rev Backward = reverse
--- 
--- dirOfs Forward ofs = ofs
--- dirOfs Backward ofs = 0 - 1 - ofs
+
+-- | Verifies that the list matches all the predicates, pairwise.
+checks :: [a -> Bool] -> [a] -> Bool
+checks [] _ = True
+checks _ [] = False
+checks (p:ps) (x:xs) = p x && checks ps xs
+
+
+-- | read some characters in the specified direction, for boundary testing purposes
+peek :: Direction -> Int -> Int -> BufferM String
+peek dir siz ofs = do
+  p <- pointB
+  rev dir <$> nelemsB siz (p + dirOfs dir siz ofs)
+ 
+rev :: Direction -> [a] -> [a]
+rev Forward = id
+rev Backward = reverse
+
+dirOfs :: Direction -> Int -> Int -> Int
+dirOfs Forward siz ofs = ofs
+dirOfs Backward siz ofs = 0 - siz - ofs
+
+
 
 -- | Is the point at a @Unit@ boundary in the specified @Direction@?
-atBoundary :: Unit -> Direction -> BufferM Bool
+atBoundary :: TextUnit -> Direction -> BufferM Bool
 atBoundary Character _ = return True
-atBoundary Word direction = do
-  p <- pointB
-  c <- readAtB (p + halfIndic direction)
-  c' <- readAtB (p - 1 - halfIndic direction)
-  return (isWordChar c' && not (isWordChar c))
+atBoundary Word direction =
+    checks [isWordChar, not . isWordChar] <$> peek direction 2 (-1)
 
-atBoundary Line direction = do
-  p <- pointB
-  c <- readAtB (p + halfIndic direction)
-  return (c == '\n')
+atBoundary Line direction = checks [isNl] <$> peek direction 1 0
 
-atBoundary Paragraph Forward = do
-  p <- pointB
-  c <- readAtB (p)
-  c' <- readAtB (p - 1)
-  c'' <- readAtB (p - 2)
-  return (c == '\n' && c' == '\n' && c'' /= '\n')
-
-
-atBoundary Paragraph Backward = do
-  p <- pointB
-  c <- readAtB (p-1)
-  c' <- readAtB (p )
-  c'' <- readAtB (p + 1)
-  return (c == '\n' && c' == '\n' && c'' /= '\n')
-
-
+atBoundary Paragraph direction =
+    checks [not . isNl, isNl,isNl] <$> peek direction 3 (-2)
 
 -- | Repeat an action while the condition is fulfilled or the cursor stops moving.
 repWhile :: BufferM a -> BufferM Bool -> BufferM ()
@@ -78,16 +66,16 @@ repUntil f cond = do
   when (p /= p' && not stop) (repUntil f cond)
 
 -- | Execute the specified triple (operation, unit, direction)
-execB :: Operation -> Unit -> Direction -> BufferM ()
+execB :: Operation -> TextUnit -> Direction -> BufferM ()
 execB Move Character Forward = rightB
 execB Move Character Backward = leftB
 execB Move Vertical Forward = lineDown
 execB Move Vertical Backward = lineUp
 execB Move unit direction = do
   execB Move Character direction `repUntil` atBoundary unit direction
+
 execB MaybeMove unit direction = do
-  execB Move Character direction `repWhile` atBoundary unit direction
-  
+  execB Move Character direction `repWhile` atBoundary unit direction  
 
 execB Delete unit direction = do
   p <- pointB
