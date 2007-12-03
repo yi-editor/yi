@@ -50,8 +50,6 @@ module Yi.CharMove (
         wordCompleteB,  -- :: BufferM ()
         resetCompleteB, -- :: BufferM ()
 
-        breadB,         -- :: IO Char
-
         -- * Delete
         bdeleteB,       -- :: BufferM ()
         killWordB,      -- :: BufferM ()
@@ -75,10 +73,6 @@ import Control.Monad.Fix    ( fix )
 import Control.Exception    ( assert )
 import Yi.Buffer.Normal
 import Yi.String
-
--- | Read character before point.
-breadB :: BufferM Char
-breadB = readAtB =<< liftM (\x -> x-1) pointB
 
 ------------------------------------------------------------------------
 
