@@ -132,7 +132,7 @@ killWordB = execB Delete Word Forward
 -- | Delete backward whitespace or non-whitespace depending on
 -- the character before point.
 bkillWordB :: BufferM ()
-bkillWordB = execB Delete Word Forward
+bkillWordB = execB Delete Word Backward
 
 ------------------------------------------------------------------------
 
