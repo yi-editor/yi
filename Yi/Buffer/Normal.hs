@@ -1,18 +1,19 @@
 -- A normalized (orthogonal) API to many buffer operations
 -- This should replace most of the CharMove junk.
-module Yi.Buffer.Normal (execB, Unit(..), Operation(..)) where
+module Yi.Buffer.Normal (execB, TextUnit(..), Operation(..), peekB) where
 
 import Yi.Buffer
 import Data.Char
--- import Control.Applicative
+import Control.Applicative
 import Control.Monad
 
-data Unit = Character | Word | Line | Vertical | Paragraph -- | Page | Document | Searched
+data TextUnit = Character | Word | Line | Vertical | Paragraph -- | Page | Document | Searched
 data Operation = MaybeMove | Move | Delete | Transpose
 
 isWordChar :: Char -> Bool
 isWordChar = isAlpha
 
+isNl :: Char -> Bool
 isNl = (== '\n')
 
 
@@ -24,8 +25,8 @@ checks (p:ps) (x:xs) = p x && checks ps xs
 
 
 -- | read some characters in the specified direction, for boundary testing purposes
-peek :: Direction -> Int -> Int -> BufferM String
-peek dir siz ofs = do
+peekB :: Direction -> Int -> Int -> BufferM String
+peekB dir siz ofs = do
   p <- pointB
   rev dir <$> nelemsB siz (p + dirOfs dir siz ofs)
  
@@ -34,21 +35,19 @@ rev Forward = id
 rev Backward = reverse
 
 dirOfs :: Direction -> Int -> Int -> Int
-dirOfs Forward siz ofs = ofs
+dirOfs Forward _siz ofs = ofs
 dirOfs Backward siz ofs = 0 - siz - ofs
-
-
 
 -- | Is the point at a @Unit@ boundary in the specified @Direction@?
 atBoundary :: TextUnit -> Direction -> BufferM Bool
 atBoundary Character _ = return True
 atBoundary Word direction =
-    checks [isWordChar, not . isWordChar] <$> peek direction 2 (-1)
+    checks [isWordChar, not . isWordChar] <$> peekB direction 2 (-1)
 
-atBoundary Line direction = checks [isNl] <$> peek direction 1 0
+atBoundary Line direction = checks [isNl] <$> peekB direction 1 0
 
 atBoundary Paragraph direction =
-    checks [not . isNl, isNl,isNl] <$> peek direction 3 (-2)
+    checks [not . isNl, isNl, isNl] <$> peekB direction 3 (-2)
 
 -- | Repeat an action while the condition is fulfilled or the cursor stops moving.
 repWhile :: BufferM a -> BufferM Bool -> BufferM ()
