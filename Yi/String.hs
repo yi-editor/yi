@@ -23,15 +23,23 @@
 module Yi.String (chomp,
                   split,
                   capitalize,
+                  capitalizeFirst,
                   dropSpace      -- :: String -> String
 ) where
 
 import Data.List    (isSuffixOf,isPrefixOf)
-import Data.Char (toUpper, toLower, isSpace)
+import Data.Char (toUpper, toLower, isSpace, isAlphaNum)
 
 capitalize :: String -> String
 capitalize [] = []
 capitalize (c:cs) = toUpper c : map toLower cs
+
+capitalizeFirst :: String -> String
+capitalizeFirst [] = []
+capitalizeFirst (c:cs) 
+    | isAlphaNum c = toUpper c : map toLower cs
+    | otherwise = c : capitalizeFirst cs
+
 
 -- | Remove any trailing strings matching /irs/ (input record separator)
 -- from input string. Like perl's chomp(1).

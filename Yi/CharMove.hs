@@ -64,7 +64,6 @@ module Yi.CharMove (
     ) where
 
 import Yi.Buffer 
-import Yi.Buffer.HighLevel
 import Text.Regex
 import Yi.Dynamic
 import Data.Char
@@ -75,30 +74,11 @@ import Control.Monad        ( liftM, when, replicateM_ )
 import Control.Monad.Fix    ( fix )
 import Control.Exception    ( assert )
 import Yi.Buffer.Normal
+import Yi.String
 
 -- | Read character before point.
 breadB :: BufferM Char
 breadB = readAtB =<< liftM (\x -> x-1) pointB
-
---
--- | Perform movement BufferM () specified by @mov@ while not @chkend@ and
--- @check@ applied to the 'Char' retuned by @rd@ are true.
---
-doSkipWhile :: BufferM () -> BufferM Char -> BufferM Bool -> (Char -> Bool) -> BufferM ()
-doSkipWhile mov rd chkend check = do
-    e <- chkend
-    c <- rd
-    when (not e && check c) (mov >> doSkipWhile mov rd chkend check)
-
---
--- | Similar to 'doSkipWhile', but perform check on the char returned
--- by @rd@, then always move, before branching.
---
-doSkipCond :: BufferM () -> BufferM Char -> BufferM Bool -> (Char -> Bool) -> BufferM ()
-doSkipCond mov rd chkend check = do
-    c <- rd
-    mov
-    doSkipWhile mov rd chkend (if check c then check else not . check)
 
 ------------------------------------------------------------------------
 
@@ -205,24 +185,15 @@ readWordLeftB = do
 
 -- | capitalise the word under the cursor
 uppercaseWordB :: BufferM ()
-uppercaseWordB = withPointB $ do
-        (_,i,j) <- readWordB
-        moveTo i
-        mapRangeB i (j+1) toUpper
+uppercaseWordB = execB (Transform (map toUpper)) Word Forward
 
 -- | lowerise word under the cursor
 lowercaseWordB :: BufferM ()
-lowercaseWordB = withPointB $ do
-        (_,i,j) <- readWordB
-        moveTo i
-        mapRangeB i (j+1) toLower
+lowercaseWordB = execB (Transform (map toLower)) Word Forward
 
 -- | capitalise the first letter of this word
 capitaliseWordB :: BufferM ()
-capitaliseWordB = withPointB $ do
-        (_,i,_) <- readWordB
-        moveTo i
-        mapRangeB i (i+1) toUpper
+capitaliseWordB = execB (Transform capitalizeFirst) Word Forward
 
 -- perform an BufferM (), and return to the current point
 withPointB :: BufferM () -> BufferM ()

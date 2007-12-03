@@ -8,7 +8,8 @@ import Control.Applicative
 import Control.Monad
 
 data TextUnit = Character | Word | Line | Vertical | Paragraph -- | Page | Document | Searched
-data Operation = MaybeMove | Move | Delete | Transpose
+data Operation = MaybeMove | Move | Delete | Transpose 
+               | Transform (String -> String)
 
 isWordChar :: Char -> Bool
 isWordChar = isAlpha
@@ -76,6 +77,7 @@ execB Move unit direction = do
 execB MaybeMove unit direction = do
   execB Move Character direction `repWhile` atBoundary unit direction  
 
+-- TODO: save in the kill ring.
 execB Delete unit direction = do
   p <- pointB
   execB Move unit direction
@@ -93,6 +95,12 @@ execB Transpose unit direction = do
   w1 <- pointB
   swap (w0,w0') (w1,w1')
   moveTo w1'
+
+execB (Transform f) unit direction = do
+  p <- pointB
+  execB Move unit direction
+  q <- pointB
+  replaceBetween p q =<< f <$> readBetween p q
 
 opposite :: Direction -> Direction
 opposite Backward = Forward
