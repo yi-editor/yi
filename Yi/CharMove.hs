@@ -24,14 +24,10 @@
 module Yi.CharMove (
 
         -- * Parameterised movement
-        doSkipWhile,    -- :: BufferM () -> IO Bool -> (Char -> Bool) -> BufferM ()
-        doSkipCond,     -- :: BufferM () -> IO Bool -> (Char -> Bool) -> BufferM ()
         moveWhileB,     -- :: (Char -> Bool) -> Direction -> BufferM ()
         withPointB,     -- :: BufferM () -> BufferM ()
 
         -- * Word movement
-        skipWordB,      -- :: BufferM ()
-        bskipWordB,     -- :: BufferM ()
         firstNonSpaceB, -- :: BufferM ()
         nextWordB,      -- :: BufferM ()
         prevWordB,      -- :: BufferM ()
@@ -103,20 +99,6 @@ doSkipCond mov rd chkend check = do
     c <- rd
     mov
     doSkipWhile mov rd chkend (if check c then check else not . check)
-
--- Just to make this more easily changed everywhere.
-isNonWord :: Char -> Bool
-isNonWord = isSpace
-
--- | Skip to next whitespace or non-whitespace inversely depending on
--- the character under point.
-skipWordB :: BufferM ()
-skipWordB = doSkipCond rightB readB atEol isNonWord
-
--- | Backward skip to next whitespace or non-whitespace inversely
--- depending on the character before point.
-bskipWordB :: BufferM ()
-bskipWordB = doSkipCond leftB breadB atSol isNonWord
 
 ------------------------------------------------------------------------
 
