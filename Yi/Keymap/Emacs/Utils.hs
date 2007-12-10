@@ -46,6 +46,7 @@ module Yi.Keymap.Emacs.Utils
   , killBufferE
   , insertSelf
   , insertNextC
+  , insertTemplate
   , findFile
   , completeFileName
   ) 
@@ -98,7 +99,8 @@ import Yi.Buffer
 
 import Yi.Editor
 import Yi.History
-
+import Yi.Templates
+  ( addTemplate )
 
 {- End of Module Imports -}
 
@@ -318,6 +320,12 @@ insertSelf = repeatingArg . insertB
 insertNextC :: KProc ()
 insertNextC = do c <- satisfy (const True)
                  write $ repeatingArg $ insertB (eventToChar c)
+
+
+-- Inserting a template from the templates defined in Yi.Templates.hs
+insertTemplate :: YiM ()
+insertTemplate =
+  withMinibuffer "template-name:" return $ addTemplate
 
 -- | C-u stuff
 readArgC :: KProc ()
