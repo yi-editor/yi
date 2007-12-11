@@ -21,6 +21,7 @@
 
 module Yi.Templates
   ( templates
+  , templateNames
   , lookupTemplate
   , addTemplate
   )
@@ -49,6 +50,9 @@ type TemplateLookup = Map.Map TemplateName Template
 templates :: TemplateLookup
 templates =
   Map.fromList $ concat [ haskellTemplates ]
+
+templateNames :: [ TemplateName ]
+templateNames = Map.keys templates
 
 
 lookupTemplate :: TemplateName -> Maybe Template

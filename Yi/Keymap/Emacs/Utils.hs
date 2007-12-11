@@ -100,7 +100,9 @@ import Yi.Buffer
 import Yi.Editor
 import Yi.History
 import Yi.Templates
-  ( addTemplate )
+  ( addTemplate
+  , templateNames
+  )
 
 {- End of Module Imports -}
 
@@ -325,7 +327,10 @@ insertNextC = do c <- satisfy (const True)
 -- Inserting a template from the templates defined in Yi.Templates.hs
 insertTemplate :: YiM ()
 insertTemplate =
-  withMinibuffer "template-name:" return $ addTemplate
+  withMinibuffer "template-name:" completeTemplateName $ addTemplate
+  where
+  completeTemplateName :: String -> YiM String
+  completeTemplateName s = completeInList s (isPrefixOf s) templateNames
 
 -- | C-u stuff
 readArgC :: KProc ()
