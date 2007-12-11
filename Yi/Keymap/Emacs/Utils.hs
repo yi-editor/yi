@@ -62,6 +62,7 @@ import Control.Monad.Trans
 import Data.Char
   ( ord
   , isDigit
+  , isSpace
   )
 import Data.List
   ( isPrefixOf
@@ -390,7 +391,33 @@ getFolder (Just path) = do
 
 -- | Goto a line specified in the mini buffer.
 gotoLineE :: YiM ()
-gotoLineE = withMinibuffer "goto line:" return  $ (\s -> withBuffer (gotoLn (read s) >> return ()))
+gotoLineE = 
+  withMinibuffer "goto line:" return gotoAction
+  where
+  gotoAction :: String -> YiM ()
+  gotoAction s =
+    case parseLineAndChar s of
+      Nothing     -> msgE "line and column number parse error"
+      -- considering putting "gotoLineAndCol :: Int -> Int -> BufferM ()
+      -- into Buffer.hs
+      Just (l, c) -> withBuffer $ do gotoLn l
+                                     rightN c
+
+  -- This is actually relatively forgiving, for example "10.23xyh" will still
+  -- take you to line number 10 column number 23
+  -- in fact you can have any non digit character as the separator eg
+  -- "10:24" or "10 23"
+  -- In fact it need not be one character that is the separator, for example
+  -- you can have: "3 my giddy aunt 43" and this will take you to line 3
+  -- column 43.
+  parseLineAndChar :: String -> Maybe (Int, Int)
+  parseLineAndChar s
+    | null lineString         = Nothing
+    | null colString          = Just (read lineString, 0)
+    | otherwise               = Just (read lineString, read colString)
+    where
+    (lineString, rest) = break (not . isDigit) $ dropWhile isSpace s
+    colString          = takeWhile isDigit $ dropWhile (not . isDigit) rest
 
 -- debug :: String -> Process
 -- debug = write . logPutStrLn
