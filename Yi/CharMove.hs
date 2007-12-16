@@ -42,7 +42,6 @@ module Yi.CharMove (
         prevNParagraphs,    -- :: Int -> BufferM ()
 
         -- * Reading 
-        readWordB,      -- :: IO (String,Int,Int)
         readWordLeftB,  -- :: IO (String,Int,Int)
         readLnB,
 
@@ -69,9 +68,11 @@ import Data.Typeable
 import qualified Data.Map as M
 
 import Control.Monad        ( when, replicateM_ )
+import Control.Applicative
 import Control.Monad.Fix    ( fix )
 import Control.Exception    ( assert )
 import Yi.Buffer.Normal
+import Yi.Region
 import Yi.String
 
 ------------------------------------------------------------------------
@@ -195,23 +196,6 @@ capitaliseWordB = execB (Transform capitalizeFirst) Word Forward
 readLnB :: BufferM String
 readLnB = readUnitB Line
 
--- | Read word under cursor
-readWordB :: BufferM (String,Int,Int)
-readWordB = do
-    p <- pointB
-    c <- readB
-    if not (isAlphaNum c) then leftB
-                          else moveWhileB isAlphaNum Forward >> leftB
-    y <- pointB   -- end point
-    moveWhileB isAlphaNum Backward
-    sof <- atSof
-    c'  <- readB
-    when (not sof || not (isAlphaNum c')) $ rightB
-    x <- pointB
-    s <- nelemsB (y-x+1) x
-    moveTo p
-    return (s,x,y)
-
 -- ---------------------------------------------------------------------
 -- | Word completion
 --
@@ -261,7 +245,7 @@ wordCompleteB = getDynamicB >>= loop >>= setDynamicB
     doloop p (w,fm) = do
             m' <- nextWordMatch w
             moveTo p
-            (_,j,_) <- readWordB
+            j <-regionStart <$> regionOfB Word
             case m' of
                 Just (s,i)
                     | j == i                -- seen entire file
@@ -302,6 +286,6 @@ wordCompleteB = getDynamicB >>= loop >>= setDynamicB
                 c <- readAtB i
                 let i' = if i == 0 && isAlphaNum c then 0 else i+1 -- for the space
                 moveTo i'
-                (s,_,_) <- readWordB
+                s <- readUnitB Word
                 assert (s /= [] && i /= j) $ return $ Just (s,i')
 
