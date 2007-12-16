@@ -44,6 +44,7 @@ module Yi.CharMove (
         -- * Reading 
         readWordLeftB,  -- :: IO (String,Int,Int)
         readLnB,
+        readRestOfLnB,
 
         -- * Word completion
         wordCompleteB,  -- :: BufferM ()
@@ -195,6 +196,10 @@ capitaliseWordB = execB (Transform capitalizeFirst) Word Forward
 -- | Read the line the point is on
 readLnB :: BufferM String
 readLnB = readUnitB Line
+
+-- | Read from point to end of line
+readRestOfLnB :: BufferM String
+readRestOfLnB = readRegionB =<< regionOfPartB Line Forward
 
 -- ---------------------------------------------------------------------
 -- | Word completion

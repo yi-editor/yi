@@ -63,12 +63,6 @@ mapRegionB r f = do
 readNM :: Int -> Int -> BufferM String
 readNM i j = nelemsB (j-i) i
 
--- | Read from point to end of line
-readRestOfLnB :: BufferM String
-readRestOfLnB = do
-    p <- pointB
-    j <- indexOfEol
-    nelemsB (j-p) p
 
 -- | Transpose two characters, (the Emacs C-t action)
 swapB :: BufferM ()
