@@ -214,7 +214,7 @@ wordsAndCurrentWord :: BufferM (String, [ String ])
 wordsAndCurrentWord =
   do curSize          <- sizeB
      curText          <- readNM 0 curSize
-     (curWord, _, _)  <- readWordLeftB
+     curWord          <- readRegionB =<< regionOfPartB Word Backward
      let curWords     = words curText
      return (curWord, curWords)
 

@@ -42,7 +42,6 @@ module Yi.CharMove (
         prevNParagraphs,    -- :: Int -> BufferM ()
 
         -- * Reading 
-        readWordLeftB,  -- :: IO (String,Int,Int)
         readLnB,
         readRestOfLnB,
 
@@ -73,6 +72,7 @@ import Control.Applicative
 import Control.Monad.Fix    ( fix )
 import Control.Exception    ( assert )
 import Yi.Buffer.Normal
+import Yi.Buffer.HighLevel
 import Yi.Region
 import Yi.String
 
@@ -160,22 +160,6 @@ moveWhileB f dir = do
                                        x <- readB
                                        when (f x) $ leftB >> loop'
 
-------------------------------------------------------------------------
-
--- | Read word to the left of the cursor
-readWordLeftB :: BufferM (String,Int,Int)
-readWordLeftB = do
-    p <- pointB
-    c <- readB
-    when (not $ isAlphaNum c) $ leftB
-    moveWhileB isAlphaNum Backward
-    sof <- atSof
-    c'  <- readB
-    when (not sof || not (isAlphaNum c')) $ rightB
-    q <- pointB
-    s <- nelemsB (p-q) q
-    moveTo p
-    return (s,q,p)
 
 ------------------------------------------------------------------------
 
@@ -237,7 +221,7 @@ wordCompleteB = getDynamicB >>= loop >>= setDynamicB
             doloop p (w,fm)
     loop (Completion Nothing) = do
             p  <- pointB
-            (w,_,_) <- readWordLeftB
+            w <- readRegionB =<< regionOfPartB Word Backward
             rightB  -- start past point
             doloop p (w,M.singleton w ())
 
@@ -270,11 +254,10 @@ wordCompleteB = getDynamicB >>= loop >>= setDynamicB
     -- replace word under cursor with @s@
     --
     replaceLeftWith :: String -> BufferM ()
-    replaceLeftWith s = do
-        (_,b,a) <- readWordLeftB     -- back at start
-        moveTo b
-        deleteN (a-b)
-        insertN s
+    replaceLeftWith s = do 
+        r <- regionOfPartB Word Backward     -- back at start
+        replaceRegionB r s
+        moveTo (regionStart r + length s)
 
     --
     -- Return next match, and index of that match (to be used for later searches)

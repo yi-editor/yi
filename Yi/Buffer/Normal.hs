@@ -1,6 +1,7 @@
 -- A normalized (orthogonal) API to many buffer operations
 -- This should replace most of the CharMove junk.
-module Yi.Buffer.Normal (execB, TextUnit(..), Operation(..), peekB, readUnitB) where
+module Yi.Buffer.Normal (execB, TextUnit(..), Operation(..), 
+                         peekB, regionOfB, regionOfPartB, readUnitB) where
 
 import Yi.Buffer
 import Yi.Region
@@ -116,6 +117,14 @@ regionOfB :: TextUnit -> BufferM Region
 regionOfB unit = mkRegion
                  <$> indexAfterB (execB MaybeMove unit Backward)
                  <*> indexAfterB (execB MaybeMove unit Forward)
+
+
+regionOfPartB :: TextUnit -> Direction -> BufferM Region
+regionOfPartB unit dir = savingPointB $ do
+         b <- pointB
+         execB MaybeMove unit dir
+         e <- pointB
+         return $ mkRegion b e  
 
 
 readUnitB :: TextUnit -> BufferM String
