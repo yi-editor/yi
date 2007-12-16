@@ -332,15 +332,15 @@ singleCmdFM =
     ,('\^F',    downScreensE)
     ,('\^G',    const viFileInfo)        -- hmm. not working. duh. we clear
     ,('\^L',    const refreshE)
-    ,('\^R',    withBuffer . flip replicateM_ redo)
+    ,('\^R',    withBuffer . flip replicateM_ redoB)
     ,('\^Z',    const suspendE)
     ,('D',      const (withBuffer readRestOfLnB >>= setRegE >> withBuffer deleteToEol))
     ,('J',      const (withBuffer (moveToEol >> deleteB)))    -- the "\n"
-    ,('U',      withBuffer . flip replicateM_ undo)    -- NB not correct
+    ,('U',      withBuffer . flip replicateM_ undoB)    -- NB not correct
     ,('n',      const $ do getRegexE >>=
                                msgE . ("/" ++) . fst . fromMaybe ([],undefined)
                            searchE Nothing [] Forward)
-    ,('u',      withBuffer . flip replicateM_ undo)
+    ,('u',      withBuffer . flip replicateM_ undoB)
 
     ,('X',      \i -> withBuffer $ do p <- pointB
                                       moveXorSol i
@@ -691,10 +691,10 @@ ex_eval cmd = do
       fn "redr"       = refreshE
       fn "redraw"     = refreshE
 
-      fn "u"          = withBuffer undo
-      fn "undo"       = withBuffer undo
-      fn "r"          = withBuffer redo
-      fn "redo"       = withBuffer redo
+      fn "u"          = withBuffer undoB
+      fn "undo"       = withBuffer undoB
+      fn "r"          = withBuffer redoB
+      fn "redo"       = withBuffer redoB
 
       fn "sus"        = suspendE
       fn "suspend"    = suspendE

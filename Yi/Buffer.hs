@@ -28,7 +28,7 @@ module Yi.Buffer ( BufferRef, FBuffer (..), BufferM, runBuffer, keyB, curLn, ind
                    leftN, rightN,
                    moveXorEol, moveXorSol, insertN, insertNAt, insertB, deleteN,
                    deleteToEol, indexOfSol, nelemsB, writeB, getfileB,
-                   setfileB, setnameB, deleteNAt, readB, elemsB, undo, redo,
+                   setfileB, setnameB, deleteNAt, readB, elemsB, undoB, redoB,
                    getMarkB, getSelectionMarkB, getMarkPointB, setMarkPointB, unsetMarkB, 
                    isUnchangedB, setSyntaxB, regexB, searchB, readAtB,
                    getModeLine, getPercent, forgetPreferCol,
@@ -190,11 +190,11 @@ undoRedo f = do
   modify $ modifyUndos $ const ur'
   tell updates
 
-undo :: BufferM ()
-undo = undoRedo undoUR
+undoB :: BufferM ()
+undoB = undoRedo undoUR
 
-redo :: BufferM ()
-redo = undoRedo redoUR
+redoB :: BufferM ()
+redoB = undoRedo redoUR
 
 -- | Create buffer named @nm@ with contents @s@
 newB :: BufferRef -> String -> [Char] -> FBuffer
