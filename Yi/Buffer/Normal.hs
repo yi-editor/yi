@@ -26,13 +26,15 @@ checks [] _ = True
 checks _ [] = False
 checks (p:ps) (x:xs) = p x && checks ps xs
 
-
 -- | read some characters in the specified direction, for boundary testing purposes
 peekB :: Direction -> Int -> Int -> BufferM String
 peekB dir siz ofs = do
   p <- pointB
   rev dir <$> nelemsB siz (p + dirOfs dir siz ofs)
- 
+
+checkPeekB :: Int -> [Char -> Bool] -> Direction -> BufferM Bool
+checkPeekB offset conds dir = checks conds <$> peekB dir (length conds) offset
+
 rev :: Direction -> [a] -> [a]
 rev Forward = id
 rev Backward = reverse
@@ -46,12 +48,12 @@ atBoundary :: TextUnit -> Direction -> BufferM Bool
 atBoundary Character _ = return True
 atBoundary Vertical _ = return True -- a fallacy; this needs a little refactoring.
 atBoundary Word direction =
-    checks [isWordChar, not . isWordChar] <$> peekB direction 2 (-1)
+    checkPeekB (-1) [isWordChar, not . isWordChar] direction
 
-atBoundary Line direction = checks [isNl] <$> peekB direction 1 0
+atBoundary Line direction = checkPeekB 0 [isNl] direction
 
 atBoundary Paragraph direction =
-    checks [not . isNl, isNl, isNl] <$> peekB direction 3 (-2)
+    checkPeekB (-2) [not . isNl, isNl, isNl] direction
 
 -- | Repeat an action while the condition is fulfilled or the cursor stops moving.
 repWhile :: BufferM a -> BufferM Bool -> BufferM ()
@@ -107,10 +109,13 @@ execB (Transform f) unit direction = do
   replaceRegionB r =<< f <$> readRegionB r
 
 
+indexAfterB :: BufferM a -> BufferM Point
+indexAfterB f = savingPointB (f >> pointB)
+
 regionOfB :: TextUnit -> BufferM Region
 regionOfB unit = mkRegion
-                 <$> savingPointB (execB MaybeMove unit Backward >> pointB)
-                 <*> savingPointB (execB MaybeMove unit Forward  >> pointB)
+                 <$> indexAfterB (execB MaybeMove unit Backward)
+                 <*> indexAfterB (execB MaybeMove unit Forward)
 
 
 readUnitB :: TextUnit -> BufferM String
