@@ -45,7 +45,7 @@ import Yi.Undo
 import Yi.Style
 import Yi.Debug
 import Yi.Dynamic
-import Control.Monad
+import Control.Applicative
 import Control.Monad.RWS
 
 
@@ -78,6 +78,13 @@ data FBuffer =
 
 newtype BufferM a = BufferM { fromBufferM :: RWS () [Update] FBuffer a }
     deriving (Monad, Functor, MonadWriter [Update], MonadState FBuffer)
+
+instance Applicative BufferM where
+    pure = return
+    af <*> ax = do 
+      f <- af
+      x <- ax
+      return (f x)
 
 instance Eq FBuffer where
    FBuffer { bkey = u } == FBuffer { bkey = v } = u == v
