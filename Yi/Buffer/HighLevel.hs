@@ -163,7 +163,7 @@ savingExcursionB f = do
 
 -- | perform an BufferM (), and return to the current point
 savingPointB :: BufferM a -> BufferM a
-savingPointB f = do 
+savingPointB f = savingPrefCol $ do 
   p <- pointB
   res <- f
   moveTo p

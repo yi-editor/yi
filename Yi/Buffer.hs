@@ -35,6 +35,7 @@ module Yi.Buffer ( BufferRef, FBuffer (..), BufferM, runBuffer, keyB, curLn, ind
                    clearUndosB, addOverlayB,
                    getDynamicB, setDynamicB,
                    nelemsBH, deleteB, Direction (..),
+                   savingPrefCol,
                     ) where
 
 import Prelude hiding ( error )

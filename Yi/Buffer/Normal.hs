@@ -108,13 +108,10 @@ execB (Transform f) unit direction = do
 
 
 regionOfB :: TextUnit -> BufferM Region
-regionOfB Line = mkRegion <$> indexOfSol <*> indexOfEol
-regionOfB unit = savingPointB $ do
-                   execB MaybeMove unit Backward
-                   b <- pointB
-                   execB Move unit Forward
-                   e <- pointB
-                   return $ mkRegion b e  
+regionOfB unit = mkRegion
+                 <$> savingPointB (execB MaybeMove unit Backward >> pointB)
+                 <*> savingPointB (execB MaybeMove unit Forward  >> pointB)
+
 
 readUnitB :: TextUnit -> BufferM String
 readUnitB unit = readRegionB =<< regionOfB unit
