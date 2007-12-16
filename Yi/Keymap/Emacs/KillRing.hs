@@ -27,6 +27,7 @@ import Yi.Keymap
 import Yi.Buffer
 import Yi.Buffer.HighLevel
 import Data.Dynamic
+import Yi.CharMove
 
 import Control.Monad ( when, replicateM_ )
 
