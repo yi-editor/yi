@@ -110,10 +110,10 @@ class (Monad m0, Monad m, MonadPlus m) => MonadInteract m m0 e | m -> m0 e where
     --   Fails if there is no input left.
     (<++) :: m a -> m a -> m a
     -- ^ @(a '<++' b)@ will commit to @a@, unless it fails before producing any output.
+    --   Typically this will be used in a "many" combinator
     consumeLookahead :: m a -> m (Either [e] a)
     -- ^ Transforms a parser into one that does the same, except when it fails.
     --   In that case, it just consumes the the amount of characters demanded by its argument for it to fail.
-    --   Typically this will be used in a "many" combinator
 
 
 instance Monad m => MonadInteract (Interact event m) m event where

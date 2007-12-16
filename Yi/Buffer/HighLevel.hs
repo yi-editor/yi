@@ -133,13 +133,10 @@ bufInfoB = do
     return bufInfo
 
 
-------------------------------------------------------------------------
---
--- Map a char function over a range of the buffer.
---
 -- Fold over a range is probably useful too..
---
+
 -- !!!This is a very bad implementation; delete; apply; and insert the result.
+-- | Map a char function over a range of the buffer.
 mapRangeB :: Int -> Int -> (Char -> Char) -> BufferM ()
 mapRangeB from to fn
     | from < 0  = return ()
