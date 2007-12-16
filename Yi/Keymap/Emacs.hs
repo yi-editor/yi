@@ -127,6 +127,7 @@ keymap = selfInsertKeymap +++ makeProcess
         ("C-x v",    atomic $ repeatingArg shrinkWinE),
         ("C-y",      atomic $ yankE),
         ("M-!",      atomic $ shellCommandE),
+        ("M-/",      atomic $ wordCompleteB),
         ("M-<",      atomic $ repeatingArg topB),
         ("M->",      atomic $ repeatingArg botB),
         ("M-%",      atomic $ queryReplaceE),
