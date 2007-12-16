@@ -103,7 +103,7 @@ getModeLine = do
     col <- offsetFromSol
     pos <- pointB
     ln <- curLn
-    p <- indexOfEol
+    p <- pointB
     s <- sizeB
     unchanged <- isUnchangedB
     let pct = if pos == 1 then "Top" else getPercent p s
@@ -459,16 +459,6 @@ offsetFromSol = savingPrefCol $ do
     moveTo i
     return (i - j)
 {-# INLINE offsetFromSol #-}
-
--- | Index of end of line
-indexOfEol :: BufferM Int
-indexOfEol = savingPrefCol $ do
-    i <- pointB
-    moveToEol
-    j <- pointB
-    moveTo i
-    return j
-{-# INLINE indexOfEol #-}
 
 
 -- | Move using the direction specified by the 1st argument, until
