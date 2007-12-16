@@ -19,6 +19,7 @@ import Yi.Keymap
 import Yi.Interact hiding (write)
 import Yi.Event
 import Yi.Buffer
+import Yi.CharMove
 import Yi.Buffer.HighLevel
 
 evalToStringE :: String -> YiM String

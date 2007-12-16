@@ -45,18 +45,20 @@ getLineAndCol = do
 deleteRegionB :: Region -> BufferM ()
 deleteRegionB r = deleteNAt (regionEnd r - regionStart r) (regionStart r)
 
-
 -- | Read an arbitrary part of the buffer
 readRegionB :: Region -> BufferM String
 readRegionB r = readNM (regionStart r) (regionEnd r)
 
--- | Read the line the point is on
-readLnB :: BufferM String
-readLnB = do
-    i <- indexOfSol
-    j <- indexOfEol
-    nelemsB (j-i) i
+replaceRegionB :: Region -> String -> BufferM ()
+replaceRegionB r s = savingPointB $ do
+  deleteRegionB r
+  insertNAt s (regionStart r)
 
+mapRegionB :: Region -> (Char -> Char) -> BufferM ()
+mapRegionB r f = do
+  text <- readRegionB r
+  replaceRegionB r (map f text)
+  
 -- | Read from - to
 readNM :: Int -> Int -> BufferM String
 readNM i j = nelemsB (j-i) i
@@ -151,9 +153,18 @@ mapRangeB from to fn
                 loop (max 0 (to - from))
             moveTo from
 
+-- | perform an BufferM (), and return to the current point. (by using a mark)
 savingExcursionB :: BufferM a -> BufferM a
 savingExcursionB f = do
     m <- getMarkB Nothing
     res <- f
     moveTo =<< getMarkPointB m
     return res
+
+-- | perform an BufferM (), and return to the current point
+savingPointB :: BufferM a -> BufferM a
+savingPointB f = do 
+  p <- pointB
+  res <- f
+  moveTo p
+  return res

@@ -1,8 +1,10 @@
 -- A normalized (orthogonal) API to many buffer operations
 -- This should replace most of the CharMove junk.
-module Yi.Buffer.Normal (execB, TextUnit(..), Operation(..), peekB) where
+module Yi.Buffer.Normal (execB, TextUnit(..), Operation(..), peekB, readUnitB) where
 
 import Yi.Buffer
+import Yi.Region
+import Yi.Buffer.HighLevel
 import Data.Char
 import Control.Applicative
 import Control.Monad
@@ -42,6 +44,7 @@ dirOfs Backward siz ofs = 0 - siz - ofs
 -- | Is the point at a @Unit@ boundary in the specified @Direction@?
 atBoundary :: TextUnit -> Direction -> BufferM Bool
 atBoundary Character _ = return True
+atBoundary Vertical _ = return True -- a fallacy; this needs a little refactoring.
 atBoundary Word direction =
     checks [isWordChar, not . isWordChar] <$> peekB direction 2 (-1)
 
@@ -82,7 +85,7 @@ execB Delete unit direction = do
   p <- pointB
   execB Move unit direction
   q <- pointB
-  deleteBetween p q
+  deleteRegionB $ mkRegion p q
 
 execB Transpose unit direction = do
   execB Move unit (opposite direction)
@@ -93,37 +96,40 @@ execB Transpose unit direction = do
   w1' <- pointB
   execB Move unit (opposite direction)
   w1 <- pointB
-  swap (w0,w0') (w1,w1')
+  swapRegions (mkRegion w0 w0') (mkRegion w1 w1')
   moveTo w1'
 
 execB (Transform f) unit direction = do
   p <- pointB
   execB Move unit direction
   q <- pointB
-  replaceBetween p q =<< f <$> readBetween p q
+  let r = mkRegion p q
+  replaceRegionB r =<< f <$> readRegionB r
+
+
+regionOfB :: TextUnit -> BufferM Region
+regionOfB Line = mkRegion <$> indexOfSol <*> indexOfEol
+regionOfB unit = savingPointB $ do
+                   execB MaybeMove unit Backward
+                   b <- pointB
+                   execB Move unit Forward
+                   e <- pointB
+                   return $ mkRegion b e  
+
+readUnitB :: TextUnit -> BufferM String
+readUnitB unit = readRegionB =<< regionOfB unit
 
 opposite :: Direction -> Direction
 opposite Backward = Forward
 opposite Forward = Backward  
 
-deleteBetween :: Int -> Int -> BufferM ()
-deleteBetween x y = deleteNAt (abs (x-y)) (min x y) 
-
-readBetween :: Int -> Int -> BufferM String
-readBetween x y = nelemsB (abs (x-y)) (min x y)
-
-replaceBetween :: Int -> Int -> String -> BufferM ()
-replaceBetween x y s = do
-  deleteBetween x y
-  insertNAt s (min x y)
-
--- | swap the content of two "regions"
-swap :: (Int,Int) -> (Int,Int) -> BufferM ()  
-swap (a,b) (x,y) 
-    | a > x = swap (x,y) (a,b)
-    | otherwise = do w0 <- readBetween a b
-                     w1 <- readBetween x y
-                     replaceBetween x y w0
-                     replaceBetween a b w1
+-- | swap the content of two Regions
+swapRegions :: Region -> Region -> BufferM ()  
+swapRegions r r'
+    | regionStart r > regionStart r' = swapRegions r' r
+    | otherwise = do w0 <- readRegionB r
+                     w1 <- readRegionB r'
+                     replaceRegionB r' w0
+                     replaceRegionB r  w1
                      
 

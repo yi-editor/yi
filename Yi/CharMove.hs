@@ -25,7 +25,6 @@ module Yi.CharMove (
 
         -- * Parameterised movement
         moveWhileB,     -- :: (Char -> Bool) -> Direction -> BufferM ()
-        withPointB,     -- :: BufferM () -> BufferM ()
 
         -- * Word movement
         firstNonSpaceB, -- :: BufferM ()
@@ -42,9 +41,10 @@ module Yi.CharMove (
         nextNParagraphs,    -- :: Int -> BufferM ()
         prevNParagraphs,    -- :: Int -> BufferM ()
 
-        -- * Reading words
+        -- * Reading 
         readWordB,      -- :: IO (String,Int,Int)
         readWordLeftB,  -- :: IO (String,Int,Int)
+        readLnB,
 
         -- * Word completion
         wordCompleteB,  -- :: BufferM ()
@@ -68,7 +68,7 @@ import Data.Char
 import Data.Typeable
 import qualified Data.Map as M
 
-import Control.Monad        ( liftM, when, replicateM_ )
+import Control.Monad        ( when, replicateM_ )
 import Control.Monad.Fix    ( fix )
 import Control.Exception    ( assert )
 import Yi.Buffer.Normal
@@ -189,13 +189,11 @@ lowercaseWordB = execB (Transform (map toLower)) Word Forward
 capitaliseWordB :: BufferM ()
 capitaliseWordB = execB (Transform capitalizeFirst) Word Forward
 
--- perform an BufferM (), and return to the current point
-withPointB :: BufferM () -> BufferM ()
-withPointB f = do p <- pointB
-                  f
-                  moveTo p
-
 ------------------------------------------------------------------------
+
+-- | Read the line the point is on
+readLnB :: BufferM String
+readLnB = readUnitB Line
 
 -- | Read word under cursor
 readWordB :: BufferM (String,Int,Int)
