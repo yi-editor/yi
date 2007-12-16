@@ -20,14 +20,14 @@
 -- | The 'Buffer' module defines monadic editing operations over one-dimensional
 -- buffers, which maintain a current /point/.
 
-module Yi.Buffer ( BufferRef, FBuffer (..), BufferM, runBuffer, keyB, curLn, indexOfEol,
+module Yi.Buffer ( BufferRef, FBuffer (..), BufferM, runBuffer, keyB, curLn, 
                    sizeB, pointB, moveToSol, moveTo, lineMoveRel, lineUp, lineDown,
                    hPutB, newB, Point, Mark, BufferMode(..),
                    moveToEol, gotoLn, gotoLnFrom, offsetFromSol,
                    atSol, atEol, atSof, atEof, leftB, rightB,
                    leftN, rightN,
                    moveXorEol, moveXorSol, insertN, insertNAt, insertB, deleteN,
-                   deleteToEol, indexOfSol, nelemsB, writeB, getfileB,
+                   deleteToEol, nelemsB, writeB, getfileB,
                    setfileB, setnameB, deleteNAt, readB, elemsB, undoB, redoB,
                    getMarkB, getSelectionMarkB, getMarkPointB, setMarkPointB, unsetMarkB, 
                    isUnchangedB, setSyntaxB, regexB, searchB, readAtB,
@@ -459,14 +459,6 @@ offsetFromSol = savingPrefCol $ do
     moveTo i
     return (i - j)
 {-# INLINE offsetFromSol #-}
-
--- | Index of start of line
-indexOfSol :: BufferM Int
-indexOfSol = savingPrefCol $ do
-    i <- pointB
-    j <- offsetFromSol
-    return (i - j)
-{-# INLINE indexOfSol #-}
 
 -- | Index of end of line
 indexOfEol :: BufferM Int
