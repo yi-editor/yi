@@ -89,7 +89,7 @@ type YiM = ReaderT Yi IO
 runKeymap :: Interact ev () -> [ev] -> [Action]
 runKeymap p evs = snd $ runWriter (I.runProcess p evs)
 
-write :: YiAction a => a () -> Interact ev ()
+write :: (I.MonadInteract m (Writer [Action]) ev, YiAction a) => a () -> m ()
 write x = I.write (tell [makeAction x])
 
 

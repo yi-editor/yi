@@ -63,6 +63,7 @@ precompile pd lbi _ bflags (moduleName, dependencies) = when ok $ do
 
 precompiles :: [(String, [String])]
 precompiles = [("Yi.Main", []),
+               ("Yi.Keymap.Normal", []),
                ("Yi.Keymap.Emacs", []),
                ("Yi.Keymap.Vim", []),
                ("Yi.Vty.UI", ["vty"]),
