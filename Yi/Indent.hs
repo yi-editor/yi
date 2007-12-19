@@ -96,9 +96,33 @@ cycleIndentsB indents = do
 autoIndentB :: BufferM ()
 autoIndentB = do
   is <- savingExcursionB fetchPreviousIndentsB
-  pl <- getPreviousLineB
+  pl <- getPreviousLineB  
   pli <- indentOfB pl
-  cycleIndentsB $ sort $ nub $ pli+2 : is
+  let i       = lastOpenBracket pl 
+      indents = pli+2 : i : is
+  cycleIndentsB $ sort $ nub indents
+
+
+-- returns the position of the last opening bracket
+-- (where bracket is parens, braces or curly braces)
+-- on the given line, if there is one.
+lastOpenBracket :: String -> Int
+lastOpenBracket s =
+  -- The 'max' is really here because if there is no opening
+  -- bracket in then 'afterLastOpen' is the whole line and
+  -- consequently 'fromEnd + 1' is one more than the whole
+  -- of the line.
+  max 0 indentation
+  where
+  indentation   = (length s) - (fromEnd + 1)
+  fromEnd       = length afterLastOpen
+  afterLastOpen = takeWhile (not . isOpening) $ reverse s
+
+  isOpening :: Char -> Bool
+  isOpening '(' = True
+  isOpening '[' = True
+  isOpening '{' = True
+  isOpening _   = False
 
 indentOfB :: String -> BufferM Int
 indentOfB = spacingOfB . takeWhile isSpace
