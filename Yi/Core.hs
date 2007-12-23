@@ -141,6 +141,7 @@ import Control.Monad (join, when, replicateM_)
 import Control.Monad.Reader (runReaderT)
 import Control.Monad.Trans
 import Control.Monad.State (gets, modify)
+import Control.Monad.Error ()
 import Control.Exception
 import Control.Concurrent 
 import Control.Concurrent.Chan
