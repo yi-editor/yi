@@ -42,7 +42,7 @@ data Kernel = Kernel
      libraryDirectory :: String
     }
 
--- | Dynamic evaluation
+-- | Dynamic evaluation to an HValue; fails in the monad if compilation failed.
 evalHValue :: Monad m => Kernel -> String -> IO (m GHC.HValue)
 evalHValue kernel expr = do
   result <- compileExpr kernel expr
@@ -50,6 +50,8 @@ evalHValue kernel expr = do
     Nothing -> fail $ "Could not compile: " ++ expr
     Just x -> return x
 
+
+-- | Evaluate a monomorphic value dynamically. Fails in the monad if compilation failed.
 evalMono :: Monad m => Kernel -> String -> IO (m a)
 evalMono kernel expr = liftM (liftM (unsafeCoerce# :: GHC.HValue -> a)) (evalHValue kernel expr)
 
