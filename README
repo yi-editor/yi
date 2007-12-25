@@ -14,14 +14,16 @@ report bugs at: http://code.google.com/p/yi-editor/issues/list
 
 DEPENDENCIES
 
-* filepath 1.0, or lastest darcs repo version.
-        http://darcs.haskell.org/packages/filepath/
+* ghc 6.8.x
+
+* many packages shipped with GHC (filepath, ...)
+  see the cabal file for complete list.
 
 * Alex (the haskell lexer generator) 
 	http://www.haskell.org/alex/
 
 * for vty frontend
-  * vty 3.0.0, or latest darcs repo version. 
+  * latest darcs repo version. 
         http://members.cox.net/stefanor/vty
 
 * for gtk frontend, gtk2hs 0.9.12.
