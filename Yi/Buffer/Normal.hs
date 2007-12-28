@@ -38,12 +38,13 @@ checks (p:ps) (x:xs) = p x && checks ps xs
 
 -- | read some characters in the specified direction, for boundary testing purposes
 peekB :: Direction -> Int -> Int -> BufferM String
-peekB dir siz ofs = do
-  p <- pointB
-  rev dir <$> nelemsB siz (p + dirOfs dir siz ofs)
-      where dirOfs :: Direction -> Int -> Int -> Int
-            dirOfs Forward _siz ofs = ofs
-            dirOfs Backward siz ofs = 0 - siz - ofs
+peekB dir siz ofs = 
+  do p <- pointB
+     rev dir <$> nelemsB siz (p + dirOfs)
+  where 
+  dirOfs = case dir of
+             Forward  -> ofs
+             Backward -> 0 - siz - ofs
 
 checkPeekB :: Int -> [Char -> Bool] -> Direction -> BufferM Bool
 checkPeekB offset conds dir = checks conds <$> peekB dir (length conds) offset
