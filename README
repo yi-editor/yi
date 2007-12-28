@@ -14,7 +14,7 @@ report bugs at: http://code.google.com/p/yi-editor/issues/list
 
 DEPENDENCIES
 
-* ghc 6.8.x
+* ghc 6.8.2 or above
 
 * many packages shipped with GHC (filepath, ...)
   see the cabal file for complete list.
