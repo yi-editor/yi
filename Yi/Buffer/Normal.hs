@@ -1,5 +1,5 @@
 -- A normalized (orthogonal) API to many buffer operations
--- This should replace most of the CharMove junk.
+
 module Yi.Buffer.Normal (execB, TextUnit(..), Operation(..), 
                          peekB, regionOfB, regionOfPartB, readUnitB) where
 
@@ -10,9 +10,18 @@ import Data.Char
 import Control.Applicative
 import Control.Monad
 
-data TextUnit = Character | Word | Line | Vertical | Paragraph -- | Page | Document | Searched
-data Operation = MaybeMove | Move | Delete | Transpose 
-               | Transform (String -> String)
+-- | Designate a given "unit" of text.
+data TextUnit = Character | Word
+              | Line  -- ^ a line of text (between newlines)
+              | VLine -- ^ a "vertical" line of text (area of text between to characters at the same column number)
+              | Paragraph 
+   -- | Page | Document | Searched
+
+data Operation = Move       -- ^ move the next unit boundary
+               | MaybeMove  -- ^ as the above, unless the point is at a unit boundary
+               | Delete     -- ^ delete between point and next unit boundary
+               | Transpose 
+               | Transform (String -> String) 
 
 isWordChar :: Char -> Bool
 isWordChar = isAlpha
@@ -32,22 +41,23 @@ peekB :: Direction -> Int -> Int -> BufferM String
 peekB dir siz ofs = do
   p <- pointB
   rev dir <$> nelemsB siz (p + dirOfs dir siz ofs)
+      where dirOfs :: Direction -> Int -> Int -> Int
+            dirOfs Forward _siz ofs = ofs
+            dirOfs Backward siz ofs = 0 - siz - ofs
 
 checkPeekB :: Int -> [Char -> Bool] -> Direction -> BufferM Bool
 checkPeekB offset conds dir = checks conds <$> peekB dir (length conds) offset
 
+-- | reverse if Backward
 rev :: Direction -> [a] -> [a]
 rev Forward = id
 rev Backward = reverse
 
-dirOfs :: Direction -> Int -> Int -> Int
-dirOfs Forward _siz ofs = ofs
-dirOfs Backward siz ofs = 0 - siz - ofs
 
 -- | Is the point at a @Unit@ boundary in the specified @Direction@?
 atBoundary :: TextUnit -> Direction -> BufferM Bool
 atBoundary Character _ = return True
-atBoundary Vertical _ = return True -- a fallacy; this needs a little refactoring.
+atBoundary VLine _ = return True -- a fallacy; this needs a little refactoring.
 atBoundary Word direction =
     checkPeekB (-1) [isWordChar, not . isWordChar] direction
 
@@ -75,8 +85,8 @@ repUntil f cond = do
 execB :: Operation -> TextUnit -> Direction -> BufferM ()
 execB Move Character Forward = rightB
 execB Move Character Backward = leftB
-execB Move Vertical Forward = lineDown
-execB Move Vertical Backward = lineUp
+execB Move VLine Forward = lineDown
+execB Move VLine Backward = lineUp
 execB Move unit direction = do
   execB Move Character direction `repUntil` atBoundary unit direction
 
@@ -113,12 +123,13 @@ execB (Transform f) unit direction = do
 indexAfterB :: BufferM a -> BufferM Point
 indexAfterB f = savingPointB (f >> pointB)
 
+-- | Region of the whole textunit where the current point is
 regionOfB :: TextUnit -> BufferM Region
 regionOfB unit = mkRegion
                  <$> indexAfterB (execB MaybeMove unit Backward)
                  <*> indexAfterB (execB MaybeMove unit Forward)
 
-
+-- | Region between the point and the next boundary
 regionOfPartB :: TextUnit -> Direction -> BufferM Region
 regionOfPartB unit dir = savingPointB $ do
          b <- pointB

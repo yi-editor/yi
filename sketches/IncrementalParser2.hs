@@ -154,6 +154,7 @@ data Steps s a r where
     -- type @Maybe s@ should be sufficient ('Maybe' because we might have
     -- EOF.)  Alternatively, the function argument could return the input it
     -- didn't consume, but that could complicate functions such as 'best'.]
+    -- [JP: Correct, one should replace [s] by Maybe s]
     Done  :: Steps s a r                    -> Steps s a r
     -- ^ The parser that signals success.  The argument is the continuation.
     Fails :: [String]                       -> Steps s a r
