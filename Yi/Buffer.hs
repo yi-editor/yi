@@ -1,4 +1,4 @@
- --
+--
 -- Copyright (C) 2004 Don Stewart - http://www.cse.unsw.edu.au/~dons
 --
 -- This program is free software; you can redistribute it and/or
@@ -20,23 +20,78 @@
 -- | The 'Buffer' module defines monadic editing operations over one-dimensional
 -- buffers, which maintain a current /point/.
 
-module Yi.Buffer ( BufferRef, FBuffer (..), BufferM, runBuffer, keyB, curLn, 
-                   sizeB, pointB, moveToSol, moveTo, lineMoveRel, lineUp, lineDown,
-                   hPutB, newB, Point, Mark, BufferMode(..),
-                   moveToEol, gotoLn, gotoLnFrom, offsetFromSol,
-                   atSol, atEol, atSof, atEof, leftB, rightB,
-                   leftN, rightN,
-                   moveXorEol, moveXorSol, insertN, insertNAt, insertB, deleteN,
-                   deleteToEol, nelemsB, writeB, getfileB,
-                   setfileB, setnameB, deleteNAt, readB, elemsB, undoB, redoB,
-                   getMarkB, getSelectionMarkB, getMarkPointB, setMarkPointB, unsetMarkB, 
-                   isUnchangedB, setSyntaxB, regexB, searchB, readAtB,
-                   getModeLine, getPercent, forgetPreferCol,
-                   clearUndosB, addOverlayB,
-                   getDynamicB, setDynamicB,
-                   nelemsBH, deleteB, Direction (..),
-                   savingPrefCol,
-                    ) where
+module Yi.Buffer 
+  ( BufferRef
+  , FBuffer       ( .. )
+  , BufferM
+  , runBuffer
+  , keyB
+  , curLn
+  , numberOfLines
+  , sizeB
+  , pointB
+  , moveToSol
+  , moveTo
+  , lineMoveRel
+  , lineUp
+  , lineDown
+  , hPutB
+  , newB
+  , Point
+  , Mark
+  , BufferMode    ( .. )
+  , moveToEol
+  , gotoLn
+  , gotoLnFrom
+  , offsetFromSol
+  , atSol
+  , atEol
+  , atSof
+  , atEof
+  , leftB
+  , rightB
+  , leftN
+  , rightN
+  , moveXorEol
+  , moveXorSol
+  , insertN
+  , insertNAt
+  , insertB
+  , deleteN
+  , deleteToEol
+  , nelemsB
+  , writeB
+  , getfileB
+  , setfileB
+  , setnameB
+  , deleteNAt
+  , readB
+  , elemsB
+  , undoB
+  , redoB
+  , getMarkB
+  , getSelectionMarkB
+  , getMarkPointB
+  , setMarkPointB
+  , unsetMarkB
+  , isUnchangedB
+  , setSyntaxB
+  , regexB
+  , searchB
+  , readAtB
+  , getModeLine
+  , getPercent
+  , forgetPreferCol
+  , clearUndosB
+  , addOverlayB
+  , getDynamicB
+  , setDynamicB
+  , nelemsBH
+  , deleteB
+  , Direction        ( .. )
+  , savingPrefCol
+  ) 
+where
 
 import Prelude hiding ( error )
 import System.FilePath
@@ -291,6 +346,10 @@ deleteNAt n pos = applyUpdate (Delete pos n)
 -- | Return the current line number
 curLn :: BufferM Int
 curLn = queryBuffer curLnI 
+
+-- | The number of lines in the whole buffer
+numberOfLines :: BufferM Int
+numberOfLines = queryBuffer (length . getLineStartsI)
 
 -- | Go to line number @n@. @n@ is indexed from 1. Returns the
 -- actual line we went to (which may be not be the requested line,

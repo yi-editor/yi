@@ -19,12 +19,35 @@
 
 -- | 'Buffer' implementation, wrapping bytestring.
 
-module Yi.FastBuffer (Update(..), Point, Mark, Size, BufferImpl, moveToI, applyUpdateI, isValidUpdate,
-                      pointBI, nelemsBI, sizeBI, curLnI, newBI,
-                      gotoLnI, searchBI, regexBI, 
-                      getMarkBI, getMarkPointBI, setMarkPointBI, unsetMarkBI, getSelectionMarkBI,
-                      nelemsBIH, setSyntaxBI, addOverlayBI,
-                      inBounds) where
+module Yi.FastBuffer 
+  ( Update     ( .. )
+  , Point
+  , Mark
+  , Size
+  , BufferImpl
+  , moveToI
+  , applyUpdateI
+  , isValidUpdate
+  , pointBI
+  , nelemsBI
+  , sizeBI
+  , curLnI
+  , newBI
+  , gotoLnI
+  , getLineStartsI
+  , searchBI
+  , regexBI
+  , getMarkBI
+  , getMarkPointBI
+  , setMarkPointBI
+  , unsetMarkBI
+  , getSelectionMarkBI
+  , nelemsBIH
+  , setSyntaxBI
+  , addOverlayBI
+  , inBounds
+)
+where
 
 import Yi.Syntax
 import Yi.Syntax.Table
@@ -248,8 +271,7 @@ curLnI fb@(FBufferData ptr _ _ _ _) = 1 + B.count '\n'  (B.take (pointBI fb) ptr
 gotoLnI :: Int -> BufferImpl -> (BufferImpl, Int)
 gotoLnI n fb | n < 1 = (moveToI 0 fb, 1)
 gotoLnI n fb = 
-        let lineEnds = B.elemIndices '\n' (mem fb)
-            lineStarts = 0 : map (+1) lineEnds
+        let lineStarts = getLineStartsI fb
 
             findLine acc _ [x]    = (acc, x)
             findLine acc 1 (x:_)  = (acc, x)
@@ -259,6 +281,13 @@ gotoLnI n fb =
 
             (n', np) = findLine 1 n lineStarts
         in (moveToI np fb, max 1 n')
+
+
+getLineStartsI :: BufferImpl -> [ Int ]
+getLineStartsI fb = 
+  0 : map (+1) lineEnds
+  where
+  lineEnds = B.elemIndices '\n' (mem fb)
 
 -- | Return index of next string in buffer that matches argument
 searchBI :: [Char] -> BufferImpl -> Maybe Int

@@ -83,16 +83,27 @@ repUntil f cond = do
 
 -- | Execute the specified triple (operation, unit, direction)
 execB :: Operation -> TextUnit -> Direction -> BufferM ()
-execB Move Character Forward = rightB
+execB Move Character Forward  = rightB
 execB Move Character Backward = leftB
-execB Move VLine Forward = lineDown
-execB Move VLine Backward = lineUp
+execB Move VLine Forward      = 
+  do i    <- curLn
+     size <- numberOfLines
+     if i == size
+       then moveToEol
+       else lineDown
+execB Move VLine Backward     =
+  do i <- curLn
+     if i == 1
+        then moveToSol
+        else lineUp
 execB Move unit direction = do
   execB Move Character direction `repUntil` atBoundary unit direction
 
+-- So for example here MaybeMove Line Forward should act like moveToEol
+-- in that it will move to the end of current line and no where if we
+-- are already at the end of the current line. Similarly for moveToSol.
 execB MaybeMove unit direction = do
   execB Move Character direction `repWhile` atBoundary unit direction  
-
 -- TODO: save in the kill ring.
 execB Delete unit direction = do
   p <- pointB
