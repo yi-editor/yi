@@ -34,7 +34,6 @@ import Control.Concurrent.MVar
 import Yi.Buffer
 import qualified Yi.Interact as I
 import Yi.Monad
-import Control.Monad.Writer
 import Control.Monad.State
 import Yi.Event
 import Yi.WindowSet as WS
@@ -45,8 +44,10 @@ data Action = forall a. Show a => YiA (YiM a)
 --            | InsertA String
 --             | TextA Direction Unit Operation          
 
+instance I.PEq Action where
+    equiv _ _ = False
 
-type Interact ev a = I.Interact ev (Writer [Action]) a
+type Interact ev a = I.I ev Action a
 
 type Keymap = Interact Event ()
  
@@ -87,10 +88,10 @@ type YiM = ReaderT Yi IO
 -- Keymap basics
 
 runKeymap :: Interact ev () -> [ev] -> [Action]
-runKeymap p evs = snd $ runWriter (I.runProcess p evs)
+runKeymap p evs = I.runProcess p evs
 
-write :: (I.MonadInteract m (Writer [Action]) ev, YiAction a) => a () -> m ()
-write x = I.write (tell [makeAction x])
+write :: (I.MonadInteract m Action ev, YiAction a) => a () -> m ()
+write x = I.write (makeAction x)
 
 
 -----------------------

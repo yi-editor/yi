@@ -282,7 +282,7 @@ selfSearchKeymap = do
 
 searchKeymap :: Process
 searchKeymap = 
-    selfSearchKeymap +++ makeProcess 
+    selfSearchKeymap <|> makeProcess 
         [--("C-g", isearchDelE), -- Only if string is not empty.
          ("C-s", write isearchNextE),
          ("C-w", write isearchWordE),
@@ -291,8 +291,8 @@ searchKeymap =
 isearchProcess :: Process
 isearchProcess = do 
   write isearchInitE
-  many' searchKeymap
-  foldr1 (<++) [events (readKey "C-g") >> write isearchCancelE,
+  many searchKeymap
+  foldr1 (<||) [events (readKey "C-g") >> write isearchCancelE,
                 events (readKey "C-m") >> write isearchFinishE,
                 events (readKey "RET") >> write isearchFinishE,
                 write isearchFinishE]
@@ -372,7 +372,7 @@ readArg' acc = do
       _ -> write $ setDynamic $ UniversalArg $ Just $ fromMaybe 4 acc
 
 rebind :: [(String,Process)] -> KeymapMod
-rebind keys = (makeProcess keys <++)
+rebind keys = (makeProcess keys <||)
 
 findFile :: YiM ()
 findFile = do maybePath <- withBuffer getfileB

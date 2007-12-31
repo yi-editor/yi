@@ -23,7 +23,7 @@
 
 module Yi.Keymap.Vim ( keymap, VimMode ) where
 
-import Yi.Yi hiding ( count )
+import Yi.Yi
 import Yi.Style as Style
 import Prelude       hiding ( any, error )
 
@@ -109,7 +109,7 @@ eval p = do a <- p; write a
 -- | insert mode is either insertion actions, or the meta \ESC action
 --
 ins_mode :: VimMode
-ins_mode = write (msgE "-- INSERT --") >> many (ins_char +++ kwd_mode) >> event '\ESC' >> write msgClrE
+ins_mode = write (msgE "-- INSERT --") >> many (ins_char <|> kwd_mode) >> event '\ESC' >> write msgClrE
 
 --
 -- | replace mode is like insert, except it performs writes, not inserts
@@ -124,7 +124,7 @@ vis_mode :: VimMode
 vis_mode = do 
   write (msgE "-- VISUAL --" >> withBuffer (pointB >>= setSelectionMarkPointB)) 
   many (eval cmd_move)
-  (vis_multi +++ vis_single)
+  (vis_multi <|> vis_single)
   write (msgClrE >> withBuffer unsetMarkB)
 
 
@@ -136,7 +136,7 @@ vis_mode = do
 -- ToDo don't handle 0 properly
 --
 count :: VimProc (Maybe Int)
-count = option Nothing (many1' (satisfy isDigit) >>= return . Just . read)
+count = option Nothing (some (satisfy isDigit) >>= return . Just . read)
 
 -- ---------------------------------------------------------------------
 -- | Movement commands
@@ -151,7 +151,7 @@ cmd_move = do
   cnt <- count
   let x = maybe 1 id cnt
   choice ([event c >> return (a x) | (c,a) <- moveCmdFM] ++
-          [do event c; c' <- anyButEsc; return (withBuffer (a x c')) | (c,a) <- move2CmdFM]) +++
+          [do event c; c' <- anyButEsc; return (withBuffer (a x c')) | (c,a) <- move2CmdFM]) <|>
    (do event 'G'; return $ withBuffer $ case cnt of 
                             Nothing -> botB >> moveToSol
                             Just n  -> gotoLn n >> return ())
@@ -313,10 +313,10 @@ cmd_eval = do
    let i = maybe 1 id cnt
    choice
     ([event c >> write (a i) | (c,a) <- singleCmdFM ] ++
-    [events evs >> write (action i) | (evs, action) <- multiCmdFM ]) +++
-    (do event 'r'; c <- anyButEscOrDel; write (writeB c)) +++
-    (events ">>" >> write (shiftIndentOfLine i))+++
-    (events "<<" >> write (shiftIndentOfLine (-i)))+++
+    [events evs >> write (action i) | (evs, action) <- multiCmdFM ]) <|>
+    (do event 'r'; c <- anyButEscOrDel; write (writeB c)) <|>
+    (events ">>" >> write (shiftIndentOfLine i)) <|>
+    (events "<<" >> write (shiftIndentOfLine (-i))) <|>
     (events "ZZ" >> write (viWrite >> quitE))
 
 anyButEscOrDel :: VimProc Char
@@ -555,10 +555,9 @@ anyButEscOrCtlN = oneOf $ (keyBackspace : any' ++ cursc') \\ ['\ESC','\^N']
 -- | Keyword 
 --
 kwd_mode :: VimMode
-kwd_mode = many1' (event '\^N' >> write wordCompleteB) >> write resetCompleteB
--- Use many1' (not many1), otherwise resetCompleteE would always be chosen (because
--- it produces output earlier)
-
+kwd_mode = some (event '\^N' >> write wordCompleteB) >> deprioritize (write resetCompleteB)
+           -- 'deprioritize' is there to lift the ambiguity between "continuing" completion
+           -- and resetting it.
 
 -- ---------------------------------------------------------------------
 -- | vim replace mode

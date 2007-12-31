@@ -60,6 +60,7 @@ import Yi.Buffer.Normal
 import Data.Maybe
 
 import Control.Monad
+import Control.Applicative
 
 import Yi.Indent
 
@@ -72,7 +73,7 @@ selfInsertKeymap = do
 
 keymap :: Process
 keymap = 
-  selfInsertKeymap +++ makeProcess keys
+  selfInsertKeymap <|> makeProcess keys
 
 keys :: KList
 keys =

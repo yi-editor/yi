@@ -6,6 +6,7 @@ import qualified Yi.Interact as I
 import Yi.Buffer
 import Data.Char
 import Control.Monad
+import Control.Applicative
 import Control.Monad.State
 import Control.Monad.Writer
 import Yi.Yi
@@ -23,7 +24,7 @@ qqq www eee rrr ttt yyy uuu iii ooo ppp
 
 -}
 
-type Process a = (StateT TextUnit (I.Interact Event (Writer [Action]))) a
+type Process a = (StateT TextUnit (I.I Event Action)) a
 
 
 -- data Mark = Paste | SetMark | Cut | Copy | SwitchMark
@@ -50,7 +51,7 @@ retKeymap = do
 
 insertKeymap = do
   keyEv 'g'
-  many' (selfInsertKeymap +++ retKeymap +++ quickCmdKeymap)
+  many (selfInsertKeymap <|> retKeymap <|> quickCmdKeymap)
   Event KEnter [MCtrl] <- anyEvent
   return ()
 
@@ -71,7 +72,7 @@ unrecognized = do
   write (msgE $ "unrecognized: " ++ show e)
 
 commandsKeymap :: Process ()
-commandsKeymap = quitKeymap <++ (I.choice $ insertKeymap : (concat $ (cmds ++ unts))) <++ unrecognized
+commandsKeymap = quitKeymap <|| (I.choice $ insertKeymap : (concat $ (cmds ++ unts))) <|| unrecognized
     where 
       cmds :: [[Process ()]]
       cmds = zipWith (zipWith mkCmd) commands rightHand
@@ -87,7 +88,7 @@ commandsKeymap = quitKeymap <++ (I.choice $ insertKeymap : (concat $ (cmds ++ un
 
 keyEv c = satisfy (== Event (KASCII c) [])
 
-keymap = runProcess $ (many' commandsKeymap >> return ())
+keymap = runProcess $ (many commandsKeymap >> return ())
 
 
 {-
@@ -146,7 +147,7 @@ page = Character
 column = Character
 
 units = [
-         [document, page, column, Vertical],
+         [document, page, column, VLine],
          [Paragraph, Line, Word, Character]
         ]
 

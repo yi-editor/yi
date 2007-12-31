@@ -30,6 +30,7 @@ module Yi.Yi (
               -- all things re-exported here are made available to keymaps definitions.
 
         module Control.Monad, -- since all actions are monadic, this is very useful to combine them.
+        module Control.Applicative, -- same reasoning
         module Yi.Buffer,
         module Yi.Buffer.HighLevel,
         module Yi.CharMove,
@@ -46,6 +47,7 @@ module Yi.Yi (
         module Yi.Style
    ) where
 import Control.Monad
+import Control.Applicative
 import Yi.Buffer
 import Yi.Buffer.HighLevel
 import Yi.CharMove
@@ -56,7 +58,7 @@ import Yi.Debug
 import Yi.Editor
 import Yi.Eval
 import Yi.Event -- so we can see key defns
-import Yi.Interact hiding (Interact, runProcess, write)
+import Yi.Interact hiding (runProcess, write)
 import Yi.Region
 import Yi.Search
 import Yi.Style

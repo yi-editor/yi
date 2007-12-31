@@ -29,7 +29,7 @@ import Yi.Kernel
 import Yi.Debug
 import Yi.String
 
-import Yi.Interact hiding (Interact, runProcess, write)
+import Yi.Interact hiding (runProcess, write)
 
 import Data.Char
 import Data.List                ( intersperse )
@@ -180,7 +180,7 @@ releaseSignals =
 startConsole :: Keymap.YiM ()
 startConsole = do
   console <- Core.getBufferWithName "*console*"
-  Keymap.setBufferKeymap console (Eval.consoleKeymap <++)
+  Keymap.setBufferKeymap console (Eval.consoleKeymap <||)
 
 openScratchBuffer :: Keymap.YiM ()
 openScratchBuffer = do     -- emacs-like behaviour
