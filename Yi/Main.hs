@@ -29,7 +29,7 @@ import Yi.Kernel
 import Yi.Debug
 import Yi.String
 
-import Yi.Interact hiding (runProcess, write)
+import Yi.Interact hiding (write)
 
 import Data.Char
 import Data.List                ( intersperse )

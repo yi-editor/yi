@@ -31,7 +31,6 @@ module Yi.Keymap.Emacs.Utils
   , completeInList
 
   , changeBufferNameE
-  , runKeymap
   , rebind
   , withMinibuffer
   , atomic

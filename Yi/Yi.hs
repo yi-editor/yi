@@ -58,7 +58,7 @@ import Yi.Debug
 import Yi.Editor
 import Yi.Eval
 import Yi.Event -- so we can see key defns
-import Yi.Interact hiding (runProcess, write)
+import Yi.Interact hiding (write)
 import Yi.Region
 import Yi.Search
 import Yi.Style

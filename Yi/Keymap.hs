@@ -47,22 +47,23 @@ data Action = forall a. Show a => YiA (YiM a)
 instance I.PEq Action where
     equiv _ _ = False
 
+instance Show Action where
+    show (YiA _) = "@Y"
+    show (EditorA _) = "@E"
+    show (BufferA _) = "@B"
+
 type Interact ev a = I.I ev Action a
 
 type Keymap = Interact Event ()
- 
+
+type KeymapProcess = I.P Event Action 
+
 type KeymapMod = Keymap -> Keymap
 
 
 data BufferKeymap = BufferKeymap 
-    { bufferInput  :: !(Chan Event)      -- ^ input stream
-    , bufferThread :: !(Maybe ThreadId)  -- ^ Id of the thread running the buffer's keymap. 
-    , bufferKeymap :: !(IORef KeymapMod) -- ^ Buffer's local keymap modification
-    , bufferKeymapRestartable :: !(MVar ()) -- ^ Put () in this MVar to mark the buffer ready to restart.
-                                            -- FIXME: the bufferKeymap should really be an MVar, and that can be used to sync.
-    -- In general , this is way more complicated than it should
-    -- be. Just killing the thread and restarting another one looks
-    -- like a better approach. 
+    { bufferKeymap :: KeymapMod -- ^ Buffer's local keymap modification
+    , bufferKeymapProcess :: KeymapProcess -- ^ Current state of the keymap automaton
     }
 
 data Yi = Yi {yiEditor :: IORef Editor,
@@ -87,9 +88,6 @@ type YiM = ReaderT Yi IO
 -----------------------
 -- Keymap basics
 
-runKeymap :: Interact ev () -> [ev] -> [Action]
-runKeymap p evs = I.runProcess p evs
-
 write :: (I.MonadInteract m Action ev, YiAction a) => a () -> m ()
 write x = I.write (makeAction x)
 
@@ -101,79 +99,42 @@ write x = I.write (makeAction x)
 setBufferKeymap :: BufferRef -> KeymapMod -> YiM ()
 setBufferKeymap b km = do 
   bkm <- getBufferKeymap b
-  writeRef (bufferKeymap bkm) km
-  restartBufferThread b
-  logPutStrLn $ "Changed keymap for buffer " ++ show b
- 
+  modifiesRef bufferKeymaps (M.insert b bkm {bufferKeymap = km, bufferKeymapProcess = I.Fail})
+
 restartBufferThread :: BufferRef -> YiM ()
 restartBufferThread b = do
   bkm <- getBufferKeymap b
-  lift $ do logPutStrLn $ "Waiting for buffer thread to start: " ++ show b
-            takeMVar (bufferKeymapRestartable bkm) 
-            maybe (return ()) (flip throwDynTo "Keymap change") (bufferThread bkm)
-  logPutStrLn $ "Restart signal sent: " ++ show b
-            
-deleteBufferKeymap :: BufferRef -> YiM ()
-deleteBufferKeymap b = do
-  bkm <- getBufferKeymap b
-  lift $ do logPutStrLn $ "Waiting for buffer thread to start: " ++ show b
-            takeMVar (bufferKeymapRestartable bkm) 
-            maybe (return ()) killThread (bufferThread bkm)
-  modifiesRef bufferKeymaps (M.delete b)
+  modifiesRef bufferKeymaps (M.insert b bkm {bufferKeymapProcess = I.Fail})
 
-startBufferKeymap :: BufferRef -> YiM BufferKeymap
-startBufferKeymap b = do
-  logPutStrLn $ "Starting buffer keymap: " ++ show b
-  yi <- ask
-  bkm <- lift $ 
-         do r <- newEmptyMVar
-            ch <- newChan
-            km <- newIORef id
-            let bkm = BufferKeymap { bufferInput = ch
-                                   , bufferThread = Nothing
-                                   , bufferKeymap = km
-                                   , bufferKeymapRestartable = r
-                                   }
-            t <- forkIO $ bufferEventLoop yi b bkm
-            return bkm {bufferThread = Just t}
-  modifiesRef bufferKeymaps (M.insert b bkm)
-  return bkm
+deleteBufferKeymap :: BufferRef -> YiM ()
+deleteBufferKeymap b = modifiesRef bufferKeymaps (M.delete b)
 
 getBufferKeymap :: BufferRef -> YiM BufferKeymap
 getBufferKeymap b = do
   kms <- readsRef bufferKeymaps
-  case M.lookup b kms of
-    Just bkm -> return bkm 
-    Nothing -> startBufferKeymap b
+  return $ case M.lookup b kms of
+    Just bkm -> bkm 
+    Nothing -> BufferKeymap {bufferKeymap = id, bufferKeymapProcess = I.Fail}
                            
-bufferEventLoop :: Yi -> BufferRef -> BufferKeymap -> IO ()
-bufferEventLoop yi buf b = eventLoop 
-  where
-    handler exception = logPutStrLn $ "Buffer event loop crashed with: " ++ (show exception)
-
-    run bkm = do
-      -- logStream ("Event for " ++ show b) (bufferInput b)
-      logPutStrLn $ "Starting keymap thread for " ++ show buf
-      tryPutMVar (bufferKeymapRestartable b) ()
-      writeList2Chan (output yi) . bkm =<< getChanContents (bufferInput b)
-      takeMVar (bufferKeymapRestartable b)
-      logPutStrLn "Keymap execution ended"
-
-    -- | The buffer's main loop. Read key strokes from the ui and interpret
-    -- them using the current key map. Keys are bound to core actions.
-    eventLoop :: IO ()
-    eventLoop = do
-      repeatM_ $ do -- get the new version of the keymap every time we need to start it.
-                    defaultKm <- readIORef (defaultKeymap yi)
-                    modKm <- readIORef (bufferKeymap b)
-                    handle handler (run $ runKeymap $ forever (modKm defaultKm))
-
+-- | Process an event by advancing the current keymap automaton an 
+-- execing the generated actions
 dispatch :: Event -> YiM ()
-dispatch ev = do b <- withEditor getBuffer
-                 bkm <- getBufferKeymap b
-                 lift $ writeChan (bufferInput bkm) ev
-
-
+dispatch ev = 
+    do yi <- ask
+       b <- withEditor getBuffer
+       bkm <- getBufferKeymap b
+       defKm <- readRef (defaultKeymap yi)
+       let p0 = bufferKeymapProcess bkm
+           p = if I.isFail p0 
+                 then I.mkAutomaton $ bufferKeymap bkm $ defKm
+                 else p0
+           (actions, p') = I.processOneEvent p ev
+       logPutStrLn $ "Processing: " ++ show ev
+       logPutStrLn $ "Actions posted:" ++ show actions
+       logPutStrLn $ "New automation: " ++ show p'
+       lift $ writeList2Chan (output yi) actions
+       modifiesRef bufferKeymaps (M.insert b bkm { bufferKeymapProcess = p' })
+                 
 --------------------------------
 -- Uninteresting glue code
 

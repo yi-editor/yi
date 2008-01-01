@@ -41,21 +41,24 @@ input (prefix), but produce conflicting output?
 
 module Yi.Interact 
     (
-     I, P,
+     I, P (Fail),
      MonadInteract (..),
      PEq (..),
      (<||),
      comap,
      option,
      oneOf,
-     runProcess,
+     processOneEvent,
      event,
      events,
      satisfy,
-     choice
+     choice,
+     isFail,
+     mkAutomaton
     ) where
 
 import Control.Applicative
+import Control.Arrow (first)
 import Control.Monad.State hiding ( get )
 
 ------------------------------------------------
@@ -111,10 +114,9 @@ comap :: (ev1 -> ev2) -> I ev2 m a -> I ev1 m a
 comap _f (Returns a) = Returns a
 comap f Gets = fmap f Gets
 comap f (Binds a b) = Binds (comap f a) (comap f . b)
-comap f Fails = Fails
-comap f (Writes p w) = Writes p w
+comap _f Fails = Fails
+comap _f (Writes p w) = Writes p w
 comap f (Plus a b) = Plus (comap f a) (comap f b)
-
 
 instance Functor (I event w) where
   fmap f i = pure f <*> i
@@ -213,21 +215,21 @@ runWrite (Get _f)      []    = []
 runWrite (Write _ w p)  s   = w : runWrite p s
 runWrite Fail         _s     = []
 
-stepProcess :: P event w -> [event] -> (Maybe w, P event w, [event])
-stepProcess (Get f)      (c:s) = (Nothing, f c, s)
-stepProcess (Get f)      []    = (Nothing, Fail, [])
-stepProcess (Write _ w p)  s     = (Just w, p, s)
-stepProcess Fail         s     = (Nothing, Fail, s)
+processOneEvent :: P event w -> event -> ([w], P event w)
+processOneEvent (Write _ w p) c = first (w:) (processOneEvent p c)
+processOneEvent Fail _c = ([], Fail)
+processOneEvent (Get f) c = processZeroEvent (f c)
+    where processZeroEvent (Get f) = ([], Get f)
+          processZeroEvent (Write _ w p) = first (w:) (processZeroEvent p)
+          processZeroEvent Fail = ([], Fail)
 
-
-
-run :: P event w -> [event] -> [P event w]
-run p s = p:let (_,p',s') = stepProcess p s in run p' s'
-
+isFail :: P event w -> Bool
+isFail Fail = True
+isFail _ = False
 
 instance (Show w, Show ev) => Show (P ev w) where
-    show (Get f) = "?"
-    show (Write prior w p) = "!" ++ show prior ++ ":" ++ show w
+    show (Get _) = "?"
+    show (Write prior w p) = "!" ++ show prior ++ ":" ++ show w ++ ">" ++ show p
     show (Fail) = "."
 
 -- ---------------------------------------------------------------------------
@@ -254,95 +256,21 @@ choice []     = fail "No choice succeeds"
 choice [p]    = p
 choice (p:ps) = p `mplus` choice ps
 
-
-
--- ^ @between open close p@ parses @open@, followed by @p@ and finally
---   @close@. Only the value of @p@ is returned.
-between open close p = do open
-                          x <- p
-                          close
-                          return x
-
 option :: (MonadInteract m w e) => a -> m a -> m a
 -- ^ @option x p@ will either parse @p@ or return @x@ without consuming
 --   any input.
 option x p = p `mplus` return x
-
-skipMany :: (MonadInteract m w e) => m a -> m ()
--- ^ Like 'many', but discards the result.
-skipMany p = many p >> return ()
-
-skipMany1 :: (MonadInteract m w e) => m a -> m ()
--- ^ Like 'many1', but discards the result.
-skipMany1 p = p >> skipMany p
-
-sepBy :: (MonadInteract m w e) => m a -> m sep -> m [a]
--- ^ @sepBy p sep@ parses zero or more occurrences of @p@, separated by @sep@.
---   Returns a list of values returned by @p@.
-sepBy p sep = sepBy1 p sep `mplus` return []
-
-sepBy1 :: (MonadInteract m w e) => m a -> m sep -> m [a]
--- ^ @sepBy1 p sep@ parses one or more occurrences of @p@, separated by @sep@.
---   Returns a list of values returned by @p@.
-sepBy1 p sep = liftM2 (:) p (many (sep >> p))
-
-endBy :: (MonadInteract m w e) => m a -> m sep -> m [a]
--- ^ @endBy p sep@ parses zero or more occurrences of @p@, separated and ended
---   by @sep@.
-endBy p sep = many (do x <- p ; sep ; return x)
-
--- ^ @endBy p sep@ parses one or more occurrences of @p@, separated and ended
---   by @sep@.
-endBy1 p sep = some (do x <- p ; sep ; return x)
-
-chainr :: (MonadInteract m w e) => m a -> m (a -> a -> a) -> a -> m a
--- ^ @chainr p op x@ parses zero or more occurrences of @p@, separated by @op@.
---   Returns a value produced by a /right/ associative application of all
---   functions returned by @op@. If there are no occurrences of @p@, @x@ is
---   returned.
-chainr p op x = chainr1 p op `mplus` return x
-
-chainl :: (MonadInteract m w e) => m a -> m (a -> a -> a) -> a -> m a
--- ^ @chainl p op x@ parses zero or more occurrences of @p@, separated by @op@.
---   Returns a value produced by a /left/ associative application of all
---   functions returned by @op@. If there are no occurrences of @p@, @x@ is
---   returned.
-chainl p op x = chainl1 p op `mplus` return x
-
-chainr1 :: (MonadInteract m w e) => m a -> m (a -> a -> a) -> m a
--- ^ Like 'chainr', but parses one or more occurrences of @p@.
-chainr1 p op = scan
-  where scan   = p >>= rest
-        rest x = do f <- op
-                    y <- scan
-                    return (f x y)
-                 `mplus` return x
-
-chainl1 :: (MonadInteract m w e) => m a -> m (a -> a -> a) -> m a
--- ^ Like 'chainl', but parses one or more occurrences of @p@.
-chainl1 p op = p >>= rest
-  where rest x = do f <- op
-                    y <- p
-                    rest (f x y)
-                 `mplus` return x
-
-manyTill :: (MonadInteract m w e) => m a -> m end -> m [a]
--- ^ @manyTill p end@ parses zero or more occurrences of @p@, until @end@
---   succeeds. Returns a list of values returned by @p@.
-manyTill p end = scan
-  where scan = (end >> return []) `mplus` (liftM2 (:) p scan)
 
 
 runProcess :: PEq w => I event w a -> [event] -> [w]
 -- ^ Converts a process into a function that maps input to output.
 -- The process does not hold to the input stream (no space leak) and
 -- produces the output as soon as possible.
-runProcess f = runWrite (mkP f)
+runProcess f = runWrite (mkF f)
+    where mkF i = mkProcess i (const (Get (const Fail)))
 
-runP :: PEq w => I event w a -> [event] -> [P event w]
-runP f = run (mkP f)
+mkAutomaton :: PEq w => I ev w a -> P ev w
+mkAutomaton i = mkProcess i (const (Fail))
 
-mkP i = mkProcess i (const (Fail))
 
-mkF i = mkProcess i (const (Get (\c -> Fail)))
 
