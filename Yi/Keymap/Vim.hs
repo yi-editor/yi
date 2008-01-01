@@ -604,7 +604,7 @@ spawn_ex_buffer prompt = do
         ex_eval (head prompt : lineString)
       ex_process :: VimMode
       ex_process = 
-          choice [do c <- anyButDelNlArrow; write $ (withBuffer . insertN) [c],
+          choice [do c <- anyButDelNlArrow; write $ insertN [c],
                   do enter; write ex_buffer_finish,
                   do event '\ESC'; write closeMinibuffer,
                   do delete; write bdeleteB,
