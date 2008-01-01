@@ -158,7 +158,7 @@ a <|| b = a <|> (deprioritize b)
 
 
 -- | Convert a process description to an "executable" process.
-mkProcess :: PEq w => I ev w a -> (forall b. (a -> P ev w b) -> P ev w b)
+mkProcess :: PEq w => I ev w a -> ((a -> P ev w) -> P ev w)
 mkProcess (Returns x) = \fut -> fut x
 mkProcess Fails = (\_fut -> Fail) 
 mkProcess (m `Binds` f) = \fut -> (mkProcess m) (\a -> mkProcess (f a) fut)
@@ -171,14 +171,14 @@ mkProcess (Plus a b) = \fut -> best (mkProcess a fut) (mkProcess b fut)
 -- Process type
 
 -- | Operational representation of a process
-data P event w a 
-    = Get (event -> P event w a)
+data P event w
+    = Get (event -> P event w)
     | Fail
-    | Write Int w (P event w a)  -- low numbers indicate high priority
+    | Write Int w (P event w)  -- low numbers indicate high priority
 
 
 -- | Merge two processes so they run in parallel.
-best :: PEq w => P ev w a -> P ev w a -> P ev w a
+best :: PEq w => P ev w -> P ev w -> P ev w
 Write p w c  `best` Write q x d
 -- Prioritized write:
     | p < q = Write p w c
@@ -198,7 +198,7 @@ p          `best` Fail       = p
 best p q = progress id p `best` progress id q 
 
 -- | Progress in the input, delaying the writes.
-progress :: (P ev w a -> P ev w b) -> (P ev w a -> P ev w b)
+progress :: (P ev w -> P ev w) -> (P ev w -> P ev w)
 progress f (Get s) = Get (\ev -> f (s ev))
 progress _f (Fail)  = Fail
 progress f (Write prior w s) = progress (\fut -> f (Write prior w fut)) s
@@ -207,13 +207,13 @@ progress f (Write prior w s) = progress (\fut -> f (Write prior w fut)) s
 -- ---------------------------------------------------------------------------
 -- Operations over P
 
-runWrite :: P event w a -> [event] -> [w]
+runWrite :: P event w -> [event] -> [w]
 runWrite (Get f)      (c:s) = runWrite (f c) s
 runWrite (Get _f)      []    = []
 runWrite (Write _ w p)  s   = w : runWrite p s
 runWrite Fail         _s     = []
 
-stepProcess :: P event w a -> [event] -> (Maybe w, P event w a, [event])
+stepProcess :: P event w -> [event] -> (Maybe w, P event w, [event])
 stepProcess (Get f)      (c:s) = (Nothing, f c, s)
 stepProcess (Get f)      []    = (Nothing, Fail, [])
 stepProcess (Write _ w p)  s     = (Just w, p, s)
@@ -221,11 +221,11 @@ stepProcess Fail         s     = (Nothing, Fail, s)
 
 
 
-run :: P event w a -> [event] -> [P event w a]
+run :: P event w -> [event] -> [P event w]
 run p s = p:let (_,p',s') = stepProcess p s in run p' s'
 
 
-instance (Show w, Show ev) => Show (P ev w a) where
+instance (Show w, Show ev) => Show (P ev w) where
     show (Get f) = "?"
     show (Write prior w p) = "!" ++ show prior ++ ":" ++ show w
     show (Fail) = "."
@@ -339,7 +339,7 @@ runProcess :: PEq w => I event w a -> [event] -> [w]
 -- produces the output as soon as possible.
 runProcess f = runWrite (mkP f)
 
-runP :: PEq w => I event w a -> [event] -> [P event w a]
+runP :: PEq w => I event w a -> [event] -> [P event w]
 runP f = run (mkP f)
 
 mkP i = mkProcess i (const (Fail))
