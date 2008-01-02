@@ -137,7 +137,7 @@ import Data.Foldable
 import System.Directory     ( doesFileExist, doesDirectoryExist )
 import System.FilePath      
 
-import Control.Monad (join, when, replicateM_)
+import Control.Monad (join, when, forever, replicateM_)
 import Control.Monad.Reader (runReaderT)
 import Control.Monad.Trans
 import Control.Monad.State (gets, modify)
@@ -251,7 +251,7 @@ startE startConfig kernel st commandLineActions = do
         eventLoop :: IO ()
         eventLoop = do
             let run = mapM_ (\ev -> runYi (dispatch ev)) =<< getChanContents inCh
-            repeatM_ $ (handle handler run >> logPutStrLn "Dispatching loop ended")
+            forever $ (handle handler run >> logPutStrLn "Dispatching loop ended")
                      
 
         -- | The editor's output main loop. 
@@ -259,7 +259,7 @@ startE startConfig kernel st commandLineActions = do
         execLoop = do
             runYi refreshE
             let loop = sequence_ . map runYi . map interactive =<< getChanContents outCh
-            repeatM_ $ (handle handler loop >> logPutStrLn "Execing loop ended")
+            forever $ (handle handler loop >> logPutStrLn "Execing loop ended")
       
     t1 <- forkIO eventLoop 
     t2 <- forkIO execLoop

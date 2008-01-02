@@ -4,13 +4,6 @@ import Data.IORef
 import Control.Monad.Reader
 import Control.Monad.Trans
 
--- | Repeat indefinitely the parameter.
-repeatM_ :: forall m a. Monad m => m a -> m ()
-repeatM_ a = a >> repeatM_ a
-{-# SPECIALIZE repeatM_ :: IO a -> IO () #-}
-{-# INLINE repeatM_ #-}
-
-
 readRef :: (MonadIO m) => IORef a -> m a
 readRef r = liftIO $ readIORef r
 

@@ -32,6 +32,7 @@ import Prelude hiding (error, concatMap, sum, mapM, sequence)
 import Control.Concurrent
 import Control.Concurrent.Chan
 import Control.Exception
+import Control.Monad (forever)
 import Control.Monad.State (runState, State, gets, modify, get, put)
 import Control.Monad.Trans (liftIO, MonadIO)
 import Control.Arrow (second)
@@ -102,7 +103,7 @@ start ch _outCh editor _runEd ws0 = do
           editorRef <- newIORef editor
           let result = UI v sz t tuiRefresh editorRef ws0
               -- | Action to read characters into a channel
-              getcLoop = repeatM_ $ getKey >>= writeChan ch
+              getcLoop = forever $ getKey >>= writeChan ch
 
               -- | Read a key. UIs need to define a method for getting events.
               getKey = do 
@@ -121,7 +122,7 @@ main ui = do
       -- | When the editor state isn't being modified, refresh, then wait for
       -- it to be modified again. 
       refreshLoop :: IO ()
-      refreshLoop = repeatM_ $ do 
+      refreshLoop = forever $ do 
                       logPutStrLn "waiting for refresh"
                       takeMVar (uiRefresh ui)
                       handleJust ioErrors (\except -> do 
