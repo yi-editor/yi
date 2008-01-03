@@ -76,14 +76,18 @@ install pd lbi hooks flags = do
   let rel = map . makeRelative
       buildDir = curdir </> "dist" </> "build" 
   sourceFiles <- rel curdir   <$> unixFindExt               "Yi"  [".hs-boot",".hs",".hsinc"]
-  targetFiles <- rel buildDir <$> unixFindExt (buildDir </> "Yi") [".hi",".o"]
+  targetFiles <- rel buildDir <$> unixFindExt (buildDir </> "Yi") [".hs", ".hi",".o"]
   print targetFiles
   let InstallDirs {datadir = dataPref} = absoluteInstallDirs pd lbi NoCopyDest
       verbosity = installVerbose flags
       copyFile :: FilePath -> FilePath -> FilePath -> IO ()
-      copyFile srcDir dstDir file = copyFileVerbose verbosity (srcDir </> file) (dstDir </> file)
+      copyFile srcDir dstDir file = do
+	let destination = dstDir </> file 
+	createDirectoryIfMissing True (dropFileName destination)
+ 	copyFileVerbose verbosity (srcDir </> file) destination
   -- NOTE: It's important that source files are copied before target files,
   -- otherwise GHC (via Yi) thinks it has to recompile them when Yi is started.
+  
   mapM_ (copyFile curdir dataPref) sourceFiles
   mapM_ (copyFile buildDir dataPref) targetFiles
   instHook defaultUserHooks pd lbi hooks flags
