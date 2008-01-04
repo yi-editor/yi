@@ -37,6 +37,7 @@ name' x = case map toLower x of
             "cgibbard"              -> "Cale Gibbard"
             "coreyoconnor"          -> "Corey O'Connor"
             "dons"                  -> "Don Stewart"
+            "grddev"                -> "Gustav Munkby"
             "jeanphilippe.bernardy" -> "Jean-Philippe Bernardy"
             "mlang"                 -> "Mario Lang"
             "mwotton"               -> "Mark Wotton"
