@@ -42,16 +42,9 @@ import qualified Yi.Vty.UI
 import Data.Char
 import Data.List                ( intersperse )
 
-import Control.Monad            ( when )
-import Control.Concurrent       ( myThreadId, throwTo )
-import Control.Exception        ( catch, throw )
-
 import System.Console.GetOpt
 import System.Environment       ( getArgs )
 import System.Exit
-import System.Posix.Signals
-
-import GHC.Exception            ( Exception(ExitException) )
 
 #include "ghcconfig.h"
 
@@ -154,50 +147,6 @@ do_args args =
         (_, _, errs) -> do putStrLn (concat errs)
                            exitWith (ExitFailure 1)
 
--- ---------------------------------------------------------------------
--- | Set up the signal handlers
-
---
--- Notes on setStoppedChildFlag:
---      If this bit is set when installing a catching function for the SIGCHLD
---      signal, the SIGCHLD signal will be generated only when a child process
---      exits, not when a child process stops.
---
--- setStoppedChildFlag True
---
-#ifdef mingw32_HOST_OS
--- Stubs, no signals in win32.
-initSignals :: IO ()
-initSignals = return ()
-releaseSignals :: IO ()
-releaseSignals = return ()
-
-#else
-initSignals :: IO ()
-initSignals = do
-
-    tid <- myThreadId
-
-    -- ignore
-    flip mapM_ [sigPIPE, sigALRM]
-               (\sig -> installHandler sig Ignore Nothing)
-
-    -- and exit if we get the following:
-    -- we have to do our own quitE here.
-    flip mapM_ [sigINT, sigHUP, sigABRT, sigTERM] $ \sig -> do
-            installHandler sig (CatchOnce $ do
-                    releaseSignals
-                    -- FIXME: We should do this, but that's impossible with no access to the editor state:
-                    -- UI.end =<< Editor.readEditor Editor.ui
-                    -- Editor.shutdown
-                    throwTo tid (ExitException (ExitFailure 2))) Nothing
-
-releaseSignals :: IO ()
-releaseSignals =
-    flip mapM_ [sigINT, sigPIPE, sigHUP, sigABRT, sigTERM]
-               (\sig -> installHandler sig Default Nothing)
-#endif
-
 startConsole :: Keymap.YiM ()
 startConsole = do
   console <- Core.getBufferWithName "*console*"
@@ -222,28 +171,6 @@ openScratchBuffer = do     -- emacs-like behaviour
 main :: Kernel -> IO ()
 main kernel = do
     (config, mopts) <- do_args =<< getArgs
+    Core.startE config kernel Nothing (startConsole : openScratchBuffer : mopts)
 
-    --
-    -- The only way out is by throwing an exception, or an external
-    -- signal. Is this alright?
-    --
-    -- catch any exception thrown by the main loop, clean up and quit
-    -- (catching an ExitException), then re throw the original
-    -- exception. catch that and print it, if it wasn't exit.
-    --
-    -- If we've rebooted, then we have two levels of catch wrapped
-    -- around. (is this still true? -- 04/05)
-    --
-    Control.Exception.catch
-        (do initSignals
-            Core.startE config kernel Nothing (startConsole : openScratchBuffer : mopts))
-        (\e -> do releaseSignals
-                  -- FIXME: We should do this, but that's impossible with no access to the editor state:
-                  -- Editor.shutdown
-                  when (not $ isExitCall e) $ print e
-                  throw e)
-
-    where
-      isExitCall (ExitException _) = True
-      isExitCall _ = False
 
