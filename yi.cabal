@@ -33,10 +33,12 @@ build-depends: regex-posix>=0.72, regex-posix<0.73
 
 if flag(vty) {
   build-depends: vty>=3.0.0
+  GHC-Options: -DFRONTEND_VTY
 }
 
 if flag(gtk) {
   build-depends: gtk>=0.9.12
+  GHC-Options: -DFRONTEND_GTK
 }
 
 include-dirs:

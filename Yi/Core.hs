@@ -137,7 +137,7 @@ import Data.Foldable
 import System.Directory     ( doesFileExist, doesDirectoryExist )
 import System.FilePath      
 
-import Control.Monad (join, when, forever, replicateM_)
+import Control.Monad (when, forever, replicateM_)
 import Control.Monad.Reader (runReaderT)
 import Control.Monad.Trans
 import Control.Monad.State (gets, modify)
@@ -152,7 +152,24 @@ import qualified SrcLoc
 import qualified ErrUtils
 import Outputable
 
-import GHC.Exts ( unsafeCoerce# )
+#ifdef FRONTEND_GTK
+import qualified Yi.Gtk.UI
+#endif
+#ifdef FRONTEND_VTY
+import qualified Yi.Vty.UI
+#endif
+
+type UIBoot = forall action. (Chan Event -> Chan action ->  Editor -> (EditorM () -> action) -> MVar (WS.WindowSet UI.Window) -> IO UI.UI)
+
+availableUIs :: [(String,UIBoot)]
+availableUIs = 
+#ifdef FRONTEND_GTK
+   ("gtk", Yi.Gtk.UI.start) :
+#endif
+#ifdef FRONTEND_VTY
+   ("vty", Yi.Vty.UI.start) :
+#endif
+   []
 
 -- | Make an action suitable for an interactive run.
 -- UI will be refreshed.
@@ -191,26 +208,11 @@ startE :: StartConfig -> Kernel -> Maybe Editor -> [YiM ()] -> IO ()
 startE startConfig kernel st commandLineActions = do
     let frontend       = startFrontEnd startConfig
         yiConfigFile   = startConfigFile startConfig
-        frontendModule = "Yi." ++ capitalize frontend ++ ".UI"
-    logPutStrLn $ "Starting frontend: " ++ frontend
-
-    targets <- mapM (\m -> guessTarget kernel m Nothing) [frontendModule]
-    setTargets kernel targets
-    result <- loadAllTargets kernel
-    case result of
-      GHC.Failed -> error $ "Panic: could not load " ++ frontend ++ " frontend. Use -fgtk or -fvty, or install the needed packages."
-      _ -> return ()
-    uiStartHV <- join $ evalHValue kernel (frontendModule ++ ".start") 
-    let uiStart :: (forall action. 
-                    Chan Yi.Event.Event -> 
-                    Chan action ->
-                    Editor -> (EditorM () -> action) -> 
-                    MVar (WS.WindowSet Window) -> 
-                    IO UI)
-        uiStart = unsafeCoerce# uiStartHV
+        uiStart = case lookup frontend availableUIs of
+           Nothing -> error $ "Panic: could not load " ++ frontend ++ " frontend."
+           Just x -> x
 
     logPutStrLn "Starting Core"
-
 
     -- restore the old state
     let initEditor = maybe emptyEditor id st
