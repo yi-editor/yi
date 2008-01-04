@@ -23,17 +23,11 @@
 --
 module Yi.Process (popen) where
 
-#if __GLASGOW_HASKELL__ >= 604
 import System.IO
 import System.Process
 import Control.Concurrent       (forkIO)
-#else
-import qualified Posix as P
-#endif
 
 import qualified Control.Exception
-
-#if __GLASGOW_HASKELL__ >= 604
 
 type ProcessID = ProcessHandle
 
@@ -64,25 +58,3 @@ popen file args minput =
 
     -- so what's the point of returning the pid then?
     return (output,errput,pid)
-
-#else
-
---
--- catch so that we can deal with forkProcess failing gracefully.  and
--- getProcessStatus is needed so as not to get a bunch of zombies,
--- leading to forkProcess failing.
---
--- Large amounts of input will cause problems with blocking as we wait
--- on the process to finish. Make sure no lambdabot processes will
--- generate 1000s of lines of output.
---
-popen :: FilePath -> [String] -> Maybe String -> IO (String,String,P.ProcessID)
-popen f s m =
-    Control.Exception.handle (\e -> return ([], show e, error $ show e )) $ do
-        x@(_,_,pid) <- P.popen f s m
-        b <- P.getProcessStatus True False pid  -- wait
-        return $ case b of
-            Nothing -> ([], "process has disappeared", pid)
-            _       -> x
-
-#endif
