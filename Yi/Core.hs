@@ -115,7 +115,7 @@ import Yi.Process           ( popen )
 import Yi.Editor
 import Yi.CoreUI
 import Yi.Kernel
-import Yi.Event (eventToChar, Event)
+import Yi.Event (eventToChar)
 import Yi.Keymap
 import Yi.Interact (anyEvent)
 import Yi.Monad
@@ -152,24 +152,6 @@ import qualified SrcLoc
 import qualified ErrUtils
 import Outputable
 
-#ifdef FRONTEND_GTK
-import qualified Yi.Gtk.UI
-#endif
-#ifdef FRONTEND_VTY
-import qualified Yi.Vty.UI
-#endif
-
-type UIBoot = forall action. (Chan Event -> Chan action ->  Editor -> (EditorM () -> action) -> MVar (WS.WindowSet UI.Window) -> IO UI.UI)
-
-availableUIs :: [(String,UIBoot)]
-availableUIs = 
-#ifdef FRONTEND_GTK
-   ("gtk", Yi.Gtk.UI.start) :
-#endif
-#ifdef FRONTEND_VTY
-   ("vty", Yi.Vty.UI.start) :
-#endif
-   []
 
 -- | Make an action suitable for an interactive run.
 -- UI will be refreshed.
@@ -196,7 +178,7 @@ nilKeymap = do c <- anyEvent
                           "see http://haskell.org/haskellwiki/Yi#How_to_Configure_Yi for help on how to do that."]
 
 
-data StartConfig = StartConfig { startFrontEnd   :: String
+data StartConfig = StartConfig { startFrontEnd   :: UI.UIBoot
                                , startConfigFile :: FilePath
                                }
 
@@ -206,11 +188,8 @@ data StartConfig = StartConfig { startFrontEnd   :: String
 --
 startE :: StartConfig -> Kernel -> Maybe Editor -> [YiM ()] -> IO ()
 startE startConfig kernel st commandLineActions = do
-    let frontend       = startFrontEnd startConfig
-        yiConfigFile   = startConfigFile startConfig
-        uiStart = case lookup frontend availableUIs of
-           Nothing -> error $ "Panic: could not load " ++ frontend ++ " frontend."
-           Just x -> x
+    let yiConfigFile   = startConfigFile startConfig
+        uiStart        = startFrontEnd startConfig
 
     logPutStrLn "Starting Core"
 

@@ -2,7 +2,10 @@ module Yi.CommonUI where
 
 import Yi.Buffer
 import Yi.Editor
-
+import Yi.Event
+import Yi.WindowSet
+import Control.Concurrent.Chan
+import Control.Concurrent.MVar
 -- | A window onto a buffer.
 
 data Window = Window {
@@ -32,3 +35,4 @@ data UI = UI
      prepareAction         :: IO (EditorM ())  -- ^ Ran before an action is executed
     }
 
+type UIBoot = forall action. (Chan Event -> Chan action ->  Editor -> (EditorM () -> action) -> MVar (WindowSet Window) -> IO UI)

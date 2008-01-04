@@ -66,8 +66,6 @@ precompiles = [("Yi.Main", []),
                ("Yi.Keymap.Normal", []),
                ("Yi.Keymap.Emacs", []),
                ("Yi.Keymap.Vim", []),
-               ("Yi.Vty.UI", ["vty"]),
-               ("Yi.Gtk.UI", ["gtk"]),
                ("Yi.Dired", [])]
 
 install :: PackageDescription -> LocalBuildInfo -> UserHooks -> InstallFlags -> IO ()

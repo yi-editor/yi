@@ -25,11 +25,19 @@ import qualified Yi.Core    as Core
 import qualified Yi.Buffer  as Buffer
 import qualified Yi.Keymap  as Keymap
 import qualified Yi.Eval    as Eval
+import Yi.CommonUI (UIBoot)
 import Yi.Kernel
 import Yi.Debug
 import Yi.String
 
 import Yi.Interact hiding (write)
+
+#ifdef FRONTEND_GTK
+import qualified Yi.Gtk.UI
+#endif
+#ifdef FRONTEND_VTY
+import qualified Yi.Vty.UI
+#endif
 
 import Data.Char
 import Data.List                ( intersperse )
@@ -47,6 +55,22 @@ import GHC.Exception            ( Exception(ExitException) )
 
 #include "ghcconfig.h"
 
+
+frontends :: [(String,UIBoot)]
+frontends = 
+#ifdef FRONTEND_GTK
+   ("gtk", Yi.Gtk.UI.start) :
+#endif
+#ifdef FRONTEND_VTY
+   ("vty", Yi.Vty.UI.start) :
+#endif
+   []
+
+frontendNames :: [String]
+frontendNames = map fst' frontends
+  where fst' :: (a,UIBoot) -> a
+        fst' (x,_) = x
+
 -- ---------------------------------------------------------------------
 -- | Argument parsing. Pretty standard.
 
@@ -63,9 +87,6 @@ data Opts = Help
 editors :: [String]
 editors = ["vi", "vim", "nano", "emacs", "joe", "ee", "mg"]
 
-frontends :: [String]
-frontends = ["vty", "gtk"]
-
 editorToKeymap :: String -> String
 editorToKeymap s = "Yi.Keymap." ++ capitalize s ++ ".keymap"
 
@@ -74,7 +95,9 @@ moduleNameOf s = concat $ intersperse "." $ init $ split "." $ s
 
 options :: [OptDescr Opts]
 options = [
-    Option ['f']  ["frontend"]    (ReqArg Frontend "gtk|vty") "Select frontend",
+    Option ['f']  ["frontend"]    (ReqArg Frontend "[frontend]")  
+        ("Select frontend, which can be one of:\n" ++
+         (concat . intersperse ", ") frontendNames),
     Option ['y']  ["config-file"] (ReqArg ConfigFile  "path") "Specify a configuration file",
     Option ['V']  ["version"]     (NoArg Version) "Show version information",
     Option ['B']  ["libdir"]      (ReqArg OptIgnore "libdir") "Path to runtime libraries",
@@ -85,21 +108,17 @@ options = [
                 (concat . intersperse ", ") editors)
     ]
 
---
--- usage string.
---
+-- | usage string.
 usage, versinfo :: IO ()
 usage    = putStr   $ usageInfo "Usage: yi [option...] [file]" options
 
 versinfo = putStrLn $ "yi 0.3.0"
 -- TODO: pull this out of the cabal configuration
 
---
--- deal with real options
---
+-- | deal with real options
 do_opt :: Opts -> IO (Keymap.YiM ())
 do_opt o = case o of
-    Frontend f     -> case map toLower f `elem` frontends of
+    Frontend f     -> case map toLower f `elem` frontendNames of
                         False -> do putStrLn ("Unknown frontend: " ++ show f)
                                     exitWith (ExitFailure 1)
                         _     -> return (return ()) -- Processed differently
@@ -123,9 +142,11 @@ do_args :: [String] -> IO (Core.StartConfig, [Keymap.YiM ()])
 do_args args = 
     case (getOpt (ReturnInOrder File) options args) of
         (o, [], []) ->  do
-            let frontend = head $ [f | Frontend   f <- o] ++ ["vty"] -- default should be more clever.
+            let frontend = head $ [f | Frontend   f <- o] ++ [head frontendNames]
                 yiConfig = head $ [f | ConfigFile f <- o] ++ ["YiConfig"]
-                config   = Core.StartConfig { Core.startFrontEnd   = frontend
+                config   = Core.StartConfig { Core.startFrontEnd   = case lookup frontend frontends of
+                                                                       Nothing -> error "Panic: frontend not found"
+                                                                       Just x -> x
                                             , Core.startConfigFile = yiConfig
                                             }
             actions <- mapM do_opt o
