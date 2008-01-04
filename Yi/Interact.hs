@@ -232,7 +232,7 @@ processOneEvent :: P event w -> event -> ([w], P event w)
 processOneEvent (Write _ w p) c = first (w:) (processOneEvent p c)
 processOneEvent Fail _c = ([], Fail)
 processOneEvent (Get f) c = processZeroEvent (f c)
-    where processZeroEvent (Get f) = ([], Get f)
+    where processZeroEvent (Get f') = ([], Get f')
           processZeroEvent (Write _ w p) = first (w:) (processZeroEvent p)
           processZeroEvent Fail = ([], Fail)
 
