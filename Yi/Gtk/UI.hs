@@ -214,7 +214,9 @@ keyTable = M.fromList
 end :: IO ()
 end = mainQuit
 
-syncWindows :: Editor -> UI -> [(Window, Bool)] -> [WinInfo] -> IO [WinInfo]
+-- | Synchronized the windows displayed by GTK with the status of windows in the Core.
+syncWindows :: Editor -> UI -> [(Window, Bool)] -- ^ windows paired with their "isFocused" state.
+            -> [WinInfo] -> IO [WinInfo]
 syncWindows e ui (wfocused@(w,focused):ws) (c:cs) 
     | Common.winkey w == winkey c = do when focused (setFocus c)
                                        return (c:) `ap` syncWindows e ui ws cs
@@ -441,6 +443,7 @@ styleToTag ui (Style fg _bg) = do
 
 prepareAction :: UI -> IO (EditorM ())
 prepareAction ui = do
+    -- compute the heights of all windows (in number of lines)
     gtkWins <- readRef (windowCache ui)
     heights <- forM gtkWins $ \w -> do
                      let gtkWin = textview w
@@ -453,13 +456,10 @@ prepareAction ui = do
                      (i1,_) <- textViewGetLineAtY gtkWin y1
                      l1 <- get i1 textIterLine
                      return (l1 - l0)
+    -- updates the heights of the windows
     modifyMVar (windows ui) $ \ws -> do 
         let (ws', _) = runState (mapM distribute ws) heights
         return (ws', setBuffer (Common.bufkey $ WS.current ws') >> return ())
-
-
-
-
 
 distribute :: Window -> State [Int] Window
 distribute win = do

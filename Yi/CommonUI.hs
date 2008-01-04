@@ -27,7 +27,7 @@ data UI = UI
     {
      main                  :: IO (),           -- ^ Main loop
      end                   :: IO (),           -- ^ Clean up
-     suspend               :: IO (),           -- ^ Suspend the program
+     suspend               :: IO (),           -- ^ Suspend (or minimize) the program
      scheduleRefresh       :: Editor -> IO (), -- ^ Schedule a full refresh of the with the given state.
      prepareAction         :: IO (EditorM ())  -- ^ Ran before an action is executed
     }

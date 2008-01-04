@@ -583,8 +583,6 @@ fnewE f = do
                               , ">"
                               ]
 
-  -- FIXME: we should not create 2 buffers with the same name.
-
 -- | Revert to the contents of the file on disk
 revertE :: YiM ()
 revertE = do
