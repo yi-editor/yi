@@ -16,6 +16,7 @@
 module Yi.Buffer.HighLevel where
 
 import Yi.Buffer
+import Yi.Buffer.Normal
 import Control.Monad.State
 
 -- ---------------------------------------------------------------------
@@ -28,6 +29,14 @@ deleteToEol = do
     moveToEol
     q <- pointB
     deleteNAt (q-p) p
+
+-- | Move point to start of line
+moveToSol :: BufferM ()
+moveToSol = execB MaybeMove Line Backward
+
+-- | Move point to end of line
+moveToEol :: BufferM ()
+moveToEol = execB MaybeMove Line Forward
 
 -- | Move cursor to origin
 topB :: BufferM ()

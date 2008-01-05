@@ -30,7 +30,6 @@ module Yi.Buffer
   , numberOfLines
   , sizeB
   , pointB
-  , moveToSol
   , moveTo
   , lineMoveRel
   , lineUp
@@ -40,7 +39,6 @@ module Yi.Buffer
   , Point
   , Mark
   , BufferMode    ( .. )
-  , moveToEol
   , gotoLn
   , gotoLnFrom
   , offsetFromSol
@@ -501,14 +499,7 @@ atEof = do p <- pointB
 
 -- | Offset from start of line
 offsetFromSol :: BufferM Int
-offsetFromSol = savingPrefCol $ do
-    i <- pointB
-    moveToSol
-    j <- pointB
-    moveTo i
-    return (i - j)
-{-# INLINE offsetFromSol #-}
-
+offsetFromSol = queryBuffer offsetFromSolBI
 
 -- | Move using the direction specified by the 1st argument, until
 -- either we've moved @n@, the 2nd argument, or @p@ the 3rd argument
@@ -537,14 +528,6 @@ gotoLnFrom :: Int -> BufferM Int
 gotoLnFrom x = do 
   l <- curLn
   gotoLn (x+l) -- FIXME: this should not be O(buffersize)
-
--- | Move point to start of line
-moveToSol :: BufferM ()
-moveToSol = sizeB >>= moveXorSol  
-
--- | Move point to end of line
-moveToEol :: BufferM ()
-moveToEol = sizeB >>= moveXorEol 
 
 getDynamicB :: Initializable a => BufferM a
 getDynamicB = gets (getDynamicValue . bufferDynamic)

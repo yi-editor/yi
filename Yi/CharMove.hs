@@ -72,6 +72,7 @@ import Control.Applicative
 import Control.Monad.Fix    ( fix )
 import Control.Exception    ( assert )
 import Yi.Buffer.Normal
+import Yi.Buffer.HighLevel
 import Yi.Buffer.Region
 import Yi.String
 

@@ -109,18 +109,18 @@ execB Move VLine Forward      = -- FIXME: this should be O(buffersize)
   do i    <- curLn 
      size <- numberOfLines
      if i == size
-       then moveToEol
+       then execB MaybeMove Line Forward
        else lineDown
 execB Move VLine Backward     = -- FIXME: this should not be O(buffersize)
   do i <- curLn
      if i == 1
-        then moveToSol
+        then execB MaybeMove Line Backward
         else lineUp
 execB Move unit direction = do
   execB Move Character direction `repUntil` atBoundary unit direction
 
--- So for example here MaybeMove Line Forward acts like moveToEol
--- in that it will move to the end of current line and no where if we
+-- So for example here moveToEol = execB MaybeMove Line Forward;
+-- in that it will move to the end of current line and nowhere if we
 -- are already at the end of the current line. Similarly for moveToSol.
 execB MaybeMove unit direction = do
   execB Move Character direction `repWhile` atBoundary unit direction  

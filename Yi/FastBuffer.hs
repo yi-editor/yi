@@ -35,6 +35,7 @@ module Yi.FastBuffer
   , newBI
   , gotoLnI
   , getLineStartsI
+  , offsetFromSolBI
   , searchBI
   , regexBI
   , getMarkBI
@@ -293,6 +294,11 @@ getLineStartsI fb =
 searchBI :: [Char] -> BufferImpl -> Maybe Int
 searchBI s fb@(FBufferData ptr _ _ _ _) = fmap (+ pnt) $ B.findSubstring (B.pack s) $ B.drop pnt ptr
     where pnt = pointBI fb
+
+offsetFromSolBI :: BufferImpl -> Int
+offsetFromSolBI fb@(FBufferData ptr _ _ _ _) = pnt - maybe 1 id (B.elemIndexEnd '\n' (B.take pnt ptr)) - 1
+    where pnt = pointBI fb
+                                                                     
 
 -- | Return indices of next string in buffer matched by regex
 regexBI :: Regex -> BufferImpl -> Maybe (Int,Int)

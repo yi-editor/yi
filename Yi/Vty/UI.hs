@@ -45,6 +45,7 @@ import Data.Traversable
 import System.Exit
 import System.Posix.Signals         ( raiseSignal, sigTSTP )
 import Yi.Buffer
+import Yi.Buffer.HighLevel
 import Yi.FastBuffer
 import Yi.Debug
 import Yi.Editor
