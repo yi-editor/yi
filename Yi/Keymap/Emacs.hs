@@ -151,7 +151,7 @@ keys =
   -- , ( "M-h",      atomic $ repeatingArg markParagraphE)
   -- , ( "M-k",      atomic $ repeatingArg killSentenceE)
   , ( "M-l",      atomic $ repeatingArg lowercaseWordB)
-  -- , ( "M-t",      atomic $ repeatingArg transposeWordsE)
+  , ( "M-t",      atomic $ repeatingArg $ execB Transpose Word Forward)
   , ( "M-u",      atomic $ repeatingArg uppercaseWordB)
   , ( "M-w",      atomic $ killRingSaveE)
   , ( "M-x",      atomic $ executeExtendedCommandE)
