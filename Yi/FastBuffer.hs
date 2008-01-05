@@ -296,7 +296,7 @@ searchBI s fb@(FBufferData ptr _ _ _ _) = fmap (+ pnt) $ B.findSubstring (B.pack
     where pnt = pointBI fb
 
 offsetFromSolBI :: BufferImpl -> Int
-offsetFromSolBI fb@(FBufferData ptr _ _ _ _) = pnt - maybe 1 id (B.elemIndexEnd '\n' (B.take pnt ptr)) - 1
+offsetFromSolBI fb@(FBufferData ptr _ _ _ _) = pnt - maybe 0 (1 +) (B.elemIndexEnd '\n' (B.take pnt ptr))
     where pnt = pointBI fb
                                                                      
 
