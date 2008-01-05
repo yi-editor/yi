@@ -102,7 +102,7 @@ import Yi.Debug
 import Yi.Dynamic
 import Control.Applicative
 import Control.Monad.RWS
-
+import Data.List (elemIndex)
 
 -- | Direction of movement inside a buffer
 data Direction = Backward 
@@ -418,7 +418,9 @@ lineMoveRel n = do
     Nothing -> offsetFromSol
     Just x -> return x
   gotoLnFrom n
-  moveXorEol targetCol
+  solPnt <- pointB
+  chrs <- nelemsB targetCol solPnt
+  moveTo $ solPnt + maybe targetCol id (elemIndex '\n' chrs)
   --logPutStrLn $ "lineMoveRel: targetCol = " ++ show targetCol
   setPrefCol (Just targetCol)
 
