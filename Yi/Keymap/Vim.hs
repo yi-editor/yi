@@ -290,12 +290,12 @@ singleCmdFM =
     ,(keyNPage, downScreensE)
     ,(keyLeft,  withBuffer . moveXorSol)
     ,(keyRight, withBuffer . moveXorEol)
-    ,('~',      \i -> withBuffer $ do 
+    ,('~',      \i -> withBuffer $ do
                          p <- pointB
                          moveXorEol i
                          q <- pointB
                          moveTo p
-                         mapRangeB p q $ \c ->
+                         mapRegionB (mkRegion p q) $ \c ->
                              if isUpper c then toLower c else toUpper c
                          moveTo q)
     ]

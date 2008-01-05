@@ -16,7 +16,6 @@
 module Yi.Buffer.HighLevel where
 
 import Yi.Buffer
-import Yi.Buffer.Normal
 import Control.Monad.State
 
 -- ---------------------------------------------------------------------
@@ -109,21 +108,3 @@ bufInfoB = do
 				 }
     return bufInfo
 
-
--- Fold over a range is probably useful too..
-
--- !!!This is a very bad implementation; delete; apply; and insert the result.
--- | Map a char function over a range of the buffer.
-mapRangeB :: Int -> Int -> (Char -> Char) -> BufferM ()
-mapRangeB from to fn
-    | from < 0  = return ()
-    | otherwise = do
-            eof <- sizeB
-            when (to < eof) $ do
-                let loop j | j <= 0    = return ()
-                           | otherwise = do
-                                readB >>= return . fn >>= writeB
-                                rightB
-                                loop (j-1)
-                loop (max 0 (to - from))
-            moveTo from
