@@ -45,7 +45,6 @@ import Data.Traversable
 import System.Exit
 import System.Posix.Signals         ( raiseSignal, sigTSTP )
 import Yi.Buffer
-import Yi.Buffer.HighLevel
 import Yi.FastBuffer
 import Yi.Debug
 import Yi.Editor
@@ -220,16 +219,9 @@ scrollAndRenderWindow e sty width (win,hasFocus) = do
 
 -- | return index of Sol on line @n@ above current line
 indexOfSolAbove :: Int -> BufferM Int
-indexOfSolAbove n = do
-    p <- pointB
-    moveToSol
-    loop n
-    q <- pointB
-    moveTo p
-    return q
-
-    where loop 0 = return ()
-          loop i = lineUp >> loop (i-1)
+indexOfSolAbove n = savingPointB $ do
+    gotoLnFrom (negate n)
+    pointB
 
 showPoint :: Editor -> Window -> IO Window 
 showPoint e w = do
