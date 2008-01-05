@@ -334,25 +334,22 @@ cmd_op = do
         opCmdFM :: [(Char,Int -> YiM () -> YiM ())]
         opCmdFM =
             [('d', \i m -> replicateM_ i $ do
-                              (p,q) <- withPointMove m
-                              withBuffer $ deleteN (max 0 (abs (q - p) + 1))  -- inclusive
+                              r <- withPointMove m
+                              withBuffer $ deleteRegionB r
              ),
-             ('y', \_ m -> do (p,q) <- withPointMove m
-                              s <- withBuffer $ readRegionB $ mkRegion p q 
+             ('y', \_ m -> do r <- withPointMove m
+                              s <- withBuffer $ readRegionB r
                               setRegE s -- ToDo registers not global.
              )]
 
-        --
-        -- A strange, useful action. Save the current point, move to
-        -- some location specified by the sequence @m@, then return.
-        -- Return the current, and remote point.
-        --
-        withPointMove :: YiM () -> YiM (Int,Int)
+        -- | Save the current point, move to some location specified
+        -- by the @m@, then return.  Return the region between current
+        -- and remote point.
+        withPointMove :: YiM () -> YiM Region
         withPointMove m = do p <- withBuffer pointB
                              m
                              q <- withBuffer pointB
-                             when (p < q) $ withBuffer $ moveTo p
-                             return (p,q)
+                             return $ mkRegion p q
 
 --
 -- | Switching to another mode from visual mode.
