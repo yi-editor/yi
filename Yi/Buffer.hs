@@ -536,7 +536,7 @@ moveXorEol x = moveAXuntil rightB x atEol
 gotoLnFrom :: Int -> BufferM Int
 gotoLnFrom x = do 
   l <- curLn
-  gotoLn (x+l)
+  gotoLn (x+l) -- FIXME: this should not be O(buffersize)
 
 -- | Move point to start of line
 moveToSol :: BufferM ()

@@ -105,13 +105,13 @@ moveBeginB unit dir = do
 execB :: Operation -> TextUnit -> Direction -> BufferM ()
 execB Move Character Forward  = rightB
 execB Move Character Backward = leftB
-execB Move VLine Forward      = 
-  do i    <- curLn
+execB Move VLine Forward      = -- FIXME: this should be O(buffersize)
+  do i    <- curLn 
      size <- numberOfLines
      if i == size
        then moveToEol
        else lineDown
-execB Move VLine Backward     =
+execB Move VLine Backward     = -- FIXME: this should not be O(buffersize)
   do i <- curLn
      if i == 1
         then moveToSol
