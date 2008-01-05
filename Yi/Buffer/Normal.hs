@@ -5,8 +5,7 @@ module Yi.Buffer.Normal (execB, TextUnit(..), Operation(..),
                          moveEndB, moveBeginB) where
 
 import Yi.Buffer
-import Yi.Region
-import Yi.Buffer.HighLevel
+import Yi.Buffer.Region
 import Data.Char
 import Control.Applicative
 import Control.Monad

@@ -338,7 +338,7 @@ cmd_op = do
                               withBuffer $ deleteN (max 0 (abs (q - p) + 1))  -- inclusive
              ),
              ('y', \_ m -> do (p,q) <- withPointMove m
-                              s <- withBuffer (if p < q then readNM p q else readNM q p)
+                              s <- withBuffer $ readRegionB $ mkRegion p q 
                               setRegE s -- ToDo registers not global.
              )]
 

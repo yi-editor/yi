@@ -30,7 +30,7 @@ import Yi.Buffer.HighLevel
 import Yi.Dynamic
 
 import Yi.CharMove
-import Yi.Region
+import Yi.Buffer.Region
 
 import Data.Char
 import Data.Typeable

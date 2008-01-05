@@ -16,12 +16,19 @@
 module Yi.Buffer.HighLevel where
 
 import Yi.Buffer
-import Yi.Region
+import Yi.Buffer.Normal
 import Control.Monad.State
 
 -- ---------------------------------------------------------------------
 -- Movement operations
 
+-- | Delete to the end of line, excluding it.
+deleteToEol :: BufferM ()
+deleteToEol = do
+    p <- pointB
+    moveToEol
+    q <- pointB
+    deleteNAt (q-p) p
 
 -- | Move cursor to origin
 topB :: BufferM ()
@@ -37,32 +44,6 @@ getLineAndCol = do
   lineNo <- curLn
   colNo  <- offsetFromSol
   return (lineNo, colNo)
-
------------------
--- Text regions
-
--- | Delete an arbitrary part of the buffer
-deleteRegionB :: Region -> BufferM ()
-deleteRegionB r = deleteNAt (regionEnd r - regionStart r) (regionStart r)
-
--- | Read an arbitrary part of the buffer
-readRegionB :: Region -> BufferM String
-readRegionB r = readNM (regionStart r) (regionEnd r)
-
-replaceRegionB :: Region -> String -> BufferM ()
-replaceRegionB r s = savingPointB $ do
-  deleteRegionB r
-  insertNAt s (regionStart r)
-
-mapRegionB :: Region -> (Char -> Char) -> BufferM ()
-mapRegionB r f = do
-  text <- readRegionB r
-  replaceRegionB r (map f text)
-  
--- | Read from - to
-readNM :: Int -> Int -> BufferM String
-readNM i j = nelemsB (j-i) i
-
 
 -- | Transpose two characters, (the Emacs C-t action)
 swapB :: BufferM ()
@@ -146,19 +127,3 @@ mapRangeB from to fn
                                 loop (j-1)
                 loop (max 0 (to - from))
             moveTo from
-
--- | perform an BufferM (), and return to the current point. (by using a mark)
-savingExcursionB :: BufferM a -> BufferM a
-savingExcursionB f = do
-    m <- getMarkB Nothing
-    res <- f
-    moveTo =<< getMarkPointB m
-    return res
-
--- | perform an BufferM (), and return to the current point
-savingPointB :: BufferM a -> BufferM a
-savingPointB f = savingPrefCol $ do 
-  p <- pointB
-  res <- f
-  moveTo p
-  return res

@@ -42,7 +42,7 @@ module Yi.Yi (
         module Yi.Eval,
         module Yi.Event, -- hack, for key defns
         module Yi.Interact,
-        module Yi.Region,
+        module Yi.Buffer.Region,
         module Yi.Search,
         module Yi.Style
    ) where
@@ -59,7 +59,7 @@ import Yi.Editor
 import Yi.Eval
 import Yi.Event -- so we can see key defns
 import Yi.Interact hiding (write)
-import Yi.Region
+import Yi.Buffer.Region
 import Yi.Search
 import Yi.Style
 

@@ -22,7 +22,7 @@ module Yi.Keymap.Emacs.KillRing where
 
 import Yi.Core
 import Yi.Keymap.Emacs.UnivArgument
-import Yi.Region
+import Yi.Buffer.Region
 import Yi.Keymap
 import Yi.Buffer
 import Yi.Buffer.HighLevel

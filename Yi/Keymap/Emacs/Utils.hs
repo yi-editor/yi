@@ -220,7 +220,7 @@ veryQuickCompleteWord =
 wordsAndCurrentWord :: BufferM (String, [ String ])
 wordsAndCurrentWord =
   do curSize          <- sizeB
-     curText          <- readNM 0 curSize
+     curText          <- readRegionB $ mkRegion 0 curSize
      curWord          <- readRegionB =<< regionOfPartB Word Backward
      let curWords     = words curText
      return (curWord, curWords)
@@ -475,7 +475,7 @@ completeFunctionName s = do
 completionFunction :: (String -> YiM String) -> YiM ()
 completionFunction f = do
   p <- withBuffer pointB
-  text <- withBuffer $ readNM 0 p
+  text <- withBuffer $ readRegionB $ mkRegion 0 p
   compl <- f text 
   -- it's important to do this before removing the text, 
   -- so if the completion function raises an exception, we don't delete the buffer contents.

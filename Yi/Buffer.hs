@@ -58,7 +58,6 @@ module Yi.Buffer
   , insertNAt
   , insertB
   , deleteN
-  , deleteToEol
   , nelemsB
   , writeB
   , getfileB
@@ -90,6 +89,8 @@ module Yi.Buffer
   , deleteB
   , Direction        ( .. )
   , savingPrefCol
+  , savingExcursionB
+  , savingPointB
   ) 
 where
 
@@ -468,14 +469,6 @@ deleteB = deleteN 1
 deleteN :: Int -> BufferM ()
 deleteN n = pointB >>= deleteNAt n
 
--- | Delete to the end of line, excluding it.
-deleteToEol :: BufferM ()
-deleteToEol = do
-    p <- pointB
-    moveToEol
-    q <- pointB
-    deleteNAt (q-p) p
-
 ------------------------------------------------------------------------
 
 -- | Return true if the current point is the start of a line
@@ -559,3 +552,20 @@ getDynamicB = gets (getDynamicValue . bufferDynamic)
 -- | Insert a value into the extensible state, keyed by its type
 setDynamicB :: Initializable a => a -> BufferM ()
 setDynamicB x = modify $ modifyDynamic $ setDynamicValue x
+
+
+-- | perform an BufferM (), and return to the current point. (by using a mark)
+savingExcursionB :: BufferM a -> BufferM a
+savingExcursionB f = do
+    m <- getMarkB Nothing
+    res <- f
+    moveTo =<< getMarkPointB m
+    return res
+
+-- | perform an BufferM (), and return to the current point
+savingPointB :: BufferM a -> BufferM a
+savingPointB f = savingPrefCol $ do 
+  p <- pointB
+  res <- f
+  moveTo p
+  return res
