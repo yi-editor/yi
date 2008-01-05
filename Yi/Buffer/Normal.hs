@@ -1,7 +1,8 @@
 -- A normalized (orthogonal) API to many buffer operations
 
 module Yi.Buffer.Normal (execB, TextUnit(..), Operation(..), 
-                         peekB, regionOfB, regionOfPartB, readUnitB) where
+                         peekB, regionOfB, regionOfPartB, readUnitB,
+                         moveEndB) where
 
 import Yi.Buffer
 import Yi.Region
@@ -11,7 +12,8 @@ import Control.Applicative
 import Control.Monad
 
 -- | Designate a given "unit" of text.
-data TextUnit = Character | Word
+data TextUnit = Character | Word 
+              | ViWord -- ^ a word as in use in Vim
               | Line  -- ^ a line of text (between newlines)
               | VLine -- ^ a "vertical" line of text (area of text between to characters at the same column number)
               | Paragraph 
@@ -61,6 +63,13 @@ atBoundary Character _ = return True
 atBoundary VLine _ = return True -- a fallacy; this needs a little refactoring.
 atBoundary Word direction =
     checkPeekB (-1) [isWordChar, not . isWordChar] direction
+atBoundary ViWord direction = do
+    ~cs@[c1,c2] <- peekB direction 2 (-1)
+    return (length cs /= 2 || (not (isSpace c1) && (charType c1 /= charType c2)))
+        where charType c | isSpace c = 1::Int
+                         | isAlpha c = 2
+                         | otherwise = 3
+
 
 atBoundary Line direction = checkPeekB 0 [isNl] direction
 
@@ -82,6 +91,20 @@ repUntil f cond = do
   stop <- cond
   when (p /= p' && not stop) (repUntil f cond)
 
+moveEndB :: TextUnit -> BufferM ()
+moveEndB unit = do
+  execB Move Character Forward
+  execB Move unit Forward
+  execB Move Character Backward
+
+moveBeginB :: TextUnit -> Direction -> BufferM ()
+moveBeginB unit Backward = execB Move unit Backward
+moveBeginB unit Forward = do
+  execB Move Character Forward
+  execB Move unit Forward
+  execB Move Character Backward
+
+
 -- | Execute the specified triple (operation, unit, direction)
 execB :: Operation -> TextUnit -> Direction -> BufferM ()
 execB Move Character Forward  = rightB
@@ -100,7 +123,7 @@ execB Move VLine Backward     =
 execB Move unit direction = do
   execB Move Character direction `repUntil` atBoundary unit direction
 
--- So for example here MaybeMove Line Forward should act like moveToEol
+-- So for example here MaybeMove Line Forward acts like moveToEol
 -- in that it will move to the end of current line and no where if we
 -- are already at the end of the current line. Similarly for moveToSol.
 execB MaybeMove unit direction = do

@@ -108,10 +108,7 @@ import Control.Monad.RWS
 -- | Direction of movement inside a buffer
 data Direction = Backward 
                | Forward  
-
---data Unit = Character | Word | Line | Vertical | Paragraph | Page | Document | Searched
---data Operation = Move | Delete | Transpose | Copy
-
+                 deriving Eq
 
 -- In addition to FastBuffer, this manages (among others):
 --  * Log of updates mades

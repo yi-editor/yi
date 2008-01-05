@@ -654,7 +654,6 @@ listBuffersE = do
         return $ zip (map name bs) [0..]
 
 -- | Release resources associated with buffer
-
 closeBufferE :: String -> YiM ()
 closeBufferE bufName = do
   nextB <- withEditor nextBuffer
