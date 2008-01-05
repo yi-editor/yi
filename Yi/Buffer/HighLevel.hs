@@ -57,11 +57,7 @@ getLineAndCol = do
 swapB :: BufferM ()
 swapB = do eol <- atEol
            when eol leftB
-           c <- readB
-           deleteB
-           leftB
-           insertN [c]
-           rightB
+           execB Transpose Character Forward
 
 -- ----------------------------------------------------
 -- | Marks
