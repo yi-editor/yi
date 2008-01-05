@@ -2,7 +2,7 @@
 
 module Yi.Buffer.Normal (execB, TextUnit(..), Operation(..), 
                          peekB, regionOfB, regionOfPartB, readUnitB,
-                         moveEndB) where
+                         moveEndB, moveBeginB) where
 
 import Yi.Buffer
 import Yi.Region
@@ -98,11 +98,8 @@ moveEndB unit = do
   execB Move Character Backward
 
 moveBeginB :: TextUnit -> Direction -> BufferM ()
-moveBeginB unit Backward = execB Move unit Backward
-moveBeginB unit Forward = do
-  execB Move Character Forward
-  execB Move unit Forward
-  execB Move Character Backward
+moveBeginB unit dir = do
+  execB Move Character dir `repUntil` atBoundary unit (opposite dir)
 
 
 -- | Execute the specified triple (operation, unit, direction)
