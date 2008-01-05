@@ -147,6 +147,7 @@ count = option Nothing (some (satisfy isDigit) >>= return . Just . read)
 
 cmd_move :: VimProc (YiM ()) 
 -- FIXME: This returns a general YiM action; however this makes sense only for buffer-only commands.
+-- this can yield downFromTosE however. (does not really make a lot of sense...)
 cmd_move = do 
   cnt <- count
   let x = maybe 1 id cnt
@@ -155,68 +156,6 @@ cmd_move = do
    (do event 'G'; return $ withBuffer $ case cnt of 
                             Nothing -> botB >> moveToSol
                             Just n  -> gotoLn n >> return ())
-
---
--- TODO: Does this belong in CharMove.hs ?
---          Actually, more like Movement.hs
---
---   If we had each set of movement actions with
---   a common interface and a registered plugin, it
---   would make it really very configurable even by
---   nonprogrammers.. using a nice gui
---
-detectMovement :: BufferM a -> BufferM Bool
-detectMovement act = do x <- pointB
-                        act
-                        y <- pointB
-                        if (x /= y) then return True
-                                    else return False
-
--- The next 4 functions facilitate the default *word* concept 
--- of Vim. In vim, the iskeyword variable modifies this concept,
--- and it is configured differently for different filetypes.
-
--- TODO: word can be abstracted to textUnit to deal with 
---       all the various chunks of text that vim uses,
---       such as paragraph, WORD, sentence ...
-
--- sameWord c returns a function which tests other
---   characters to see if they can be part of the same
---   word
-sameWord :: Char -> Char -> Bool
-sameWord ch = head . filter ($ ch) $ [ type1, type2, type3 ]
-              where type1 c = (isAlphaNum c) || (c == '_') -- vim has two types of words
-                    type2 c = not (type1 c || type3 c)
-                    type3 c = betweenWord c  -- actually I dont expect this should ever happen
-                                             -- but i'll include it for robustness
-
-
-betweenWord :: Char -> Bool
-betweenWord ch = (isSpace ch) -- && (ch /= '\n')
-
-begWord :: BufferM ()
-begWord = do 
-      moveWhileB (betweenWord) Backward
-      c <- readB
-      skippedAlpha <- detectMovement (moveWhileB (sameWord c) Backward)
-      when skippedAlpha $ moveWhileB (not . sameWord c) Forward
-
-endWord :: BufferM ()
-endWord = do 
-      moveWhileB (betweenWord) Forward
-      c <- readB
-      skippedAlpha <- detectMovement (moveWhileB (sameWord c) Forward)
-      when skippedAlpha $ moveWhileB (not.sameWord c) Backward
-
-nextWord :: BufferM ()
-nextWord = do 
-      wasBetween <- detectMovement ( moveWhileB (betweenWord) Forward)
-      if wasBetween
-         then return ()
-         else do
-            c <- readB
-            moveWhileB (sameWord c) Forward
-            moveWhileB (betweenWord) Forward
 
 viewChar :: YiM ()
 viewChar = do
@@ -255,19 +194,9 @@ moveCmdFM =
     ,('\r',         down)
 
 -- words
-    -- TODO: These handle blanks differently
-    --       than vim .. (is our way better tho?)
-    ,('w',          \i -> withBuffer $ replicateM_ i nextWord)
-    ,('b',          \i -> withBuffer $ replicateM_ i (do
-         moved <- detectMovement begWord
-         when (not moved) (leftB >> begWord)
-         ))
-    ,('e',          \i -> withBuffer $ replicateM_ i (do
-         moved <- detectMovement endWord
-         when (not moved) (rightB >> endWord)
-         ))
-
-
+    ,('w',          \i -> withBuffer $ replicateM_ i $ moveBeginB ViWord Forward)
+    ,('b',          \i -> withBuffer $ replicateM_ i $ execB Move ViWord Backward)
+    ,('e',          \i -> withBuffer $ replicateM_ i $ moveEndB ViWord)
 
 -- text
     ,('{',          withBuffer . prevNParagraphs)
