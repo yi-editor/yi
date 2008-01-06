@@ -12,12 +12,14 @@ import Control.Applicative
 import Control.Monad
 
 -- | Designate a given "unit" of text.
-data TextUnit = Character | Word 
+data TextUnit = Character
+              | Word 
               | ViWord -- ^ a word as in use in Vim
               | Line  -- ^ a line of text (between newlines)
               | VLine -- ^ a "vertical" line of text (area of text between to characters at the same column number)
               | Paragraph 
-   -- | Page | Document | Searched
+              | Document
+   -- | Page | Searched
 
 data Operation = Move       -- ^ move the next unit boundary
                | MaybeMove  -- ^ as the above, unless the point is at a unit boundary
@@ -56,9 +58,10 @@ rev :: Direction -> [a] -> [a]
 rev Forward = id
 rev Backward = reverse
 
-
 -- | Is the point at a @Unit@ boundary in the specified @Direction@?
 atBoundary :: TextUnit -> Direction -> BufferM Bool
+atBoundary Document Backward = (== 0) <$> pointB
+atBoundary Document Forward  = (>=)   <$> pointB <*> sizeB
 atBoundary Character _ = return True
 atBoundary VLine _ = return True -- a fallacy; this needs a little refactoring.
 atBoundary Word direction =
@@ -72,7 +75,6 @@ atBoundary ViWord direction = do
 
 
 atBoundary Line direction = checkPeekB 0 [isNl] direction
-
 atBoundary Paragraph direction =
     checkPeekB (-2) [not . isNl, isNl, isNl] direction
 
