@@ -3,6 +3,7 @@
 module Yi.Buffer.Normal (execB, TextUnit(..), Operation(..), 
                          peekB, regionOfB, regionOfPartB, readUnitB, 
                          untilB,
+                         atBoundaryB,
                          moveEndB, moveBeginB) where
 
 import Yi.Buffer
@@ -77,6 +78,12 @@ atBoundary ViWord direction = do
 atBoundary Line direction = checkPeekB 0 [isNl] direction
 atBoundary Paragraph direction =
     checkPeekB (-2) [not . isNl, isNl, isNl] direction
+
+atEnclosingBoundary :: TextUnit -> Direction -> BufferM Bool
+atEnclosingBoundary unit direction = atBoundary Document direction
+
+atBoundaryB :: TextUnit -> Direction -> BufferM Bool
+atBoundaryB u d = (||) <$> atBoundary u d <*> atEnclosingBoundary u d
 
 -- | Repeat an action until the condition is fulfilled or the cursor stops moving.
 -- The Action may be performed zero times.
