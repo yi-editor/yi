@@ -143,7 +143,7 @@ execB Transpose unit direction = do
   w1' <- pointB
   execB Move unit (opposite direction)
   w1 <- pointB
-  swapRegions (mkRegion w0 w0') (mkRegion w1 w1')
+  swapRegionsB (mkRegion w0 w0') (mkRegion w1 w1')
   moveTo w1'
 
 execB (Transform f) unit direction = do
@@ -179,13 +179,4 @@ opposite :: Direction -> Direction
 opposite Backward = Forward
 opposite Forward = Backward  
 
--- | swap the content of two Regions
-swapRegions :: Region -> Region -> BufferM ()  
-swapRegions r r'
-    | regionStart r > regionStart r' = swapRegions r' r
-    | otherwise = do w0 <- readRegionB r
-                     w1 <- readRegionB r'
-                     replaceRegionB r' w0
-                     replaceRegionB r  w1
-                     
 
