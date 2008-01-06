@@ -38,26 +38,13 @@ topB = moveTo 0
 botB :: BufferM ()
 botB = moveTo =<< sizeB
 
--- | Move using the direction specified by the 1st argument, until
--- either we've moved @n@, the 2nd argument, or @p@ the 3rd argument
--- is True
-moveAXuntil :: BufferM () -> Int -> (BufferM Bool) -> BufferM ()
-moveAXuntil f x p
-    | x <= 0    = return ()
-    | otherwise = do -- will be slow on long lines...
-        let loop 0 = return ()
-            loop i = do r <- p
-                        when (not r) $ f >> loop (i-1)
-        savingPrefCol (loop x)
-{-# INLINE moveAXuntil #-}
-
 -- | Move @x@ chars back, or to the sol, whichever is less
 moveXorSol :: Int -> BufferM ()
-moveXorSol x = moveAXuntil leftB x atSol
+moveXorSol x = replicateM_ x $ untilB atSol leftB
 
 -- | Move @x@ chars forward, or to the eol, whichever is less
 moveXorEol :: Int -> BufferM ()
-moveXorEol x = moveAXuntil rightB x atEol
+moveXorEol x = replicateM_ x $ untilB atEol rightB
 
 -----------------------------------------------------------------------
 -- Queries
