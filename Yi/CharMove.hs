@@ -23,9 +23,6 @@
 --
 module Yi.CharMove (
 
-        -- * Parameterised movement
-        moveWhileB,     -- :: (Char -> Bool) -> Direction -> BufferM ()
-
         -- * Word movement
         firstNonSpaceB, -- :: BufferM ()
         nextWordB,      -- :: BufferM ()
