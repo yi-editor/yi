@@ -42,16 +42,10 @@ module Yi.Buffer
   , gotoLn
   , gotoLnFrom
   , offsetFromSol
-  , atSol
-  , atEol
-  , atSof
-  , atEof
   , leftB
   , rightB
   , leftN
   , rightN
-  , moveXorEol
-  , moveXorSol
   , insertN
   , insertNAt
   , insertB
@@ -471,59 +465,9 @@ deleteN n = pointB >>= deleteNAt n
 
 ------------------------------------------------------------------------
 
--- | Return true if the current point is the start of a line
-atSol :: BufferM Bool
-atSol = do p <- pointB
-           if p == 0 then return True
-                     else do c <- readAtB (p-1)
-                             return (c == '\n')
-
--- | Return true if the current point is the end of a line
-atEol :: BufferM Bool
-atEol = do p <- pointB
-           e <- sizeB
-           if p == e
-                  then return True
-                  else do c <- readAtB p
-                          return (c == '\n')
-
--- | True if point at start of file
-atSof :: BufferM Bool
-atSof = do p <- pointB
-           return (p == 0)
-
--- | True if point at end of file
-atEof :: BufferM Bool
-atEof = do p <- pointB
-           e <- sizeB
-           return (p == e)
-
-
 -- | Offset from start of line
 offsetFromSol :: BufferM Int
 offsetFromSol = queryBuffer offsetFromSolBI
-
--- | Move using the direction specified by the 1st argument, until
--- either we've moved @n@, the 2nd argument, or @p@ the 3rd argument
--- is True
-moveAXuntil :: BufferM () -> Int -> (BufferM Bool) -> BufferM ()
-moveAXuntil f x p
-    | x <= 0    = return ()
-    | otherwise = do -- will be slow on long lines...
-        let loop 0 = return ()
-            loop i = do r <- p
-                        when (not r) $ f >> loop (i-1)
-        savingPrefCol (loop x)
-{-# INLINE moveAXuntil #-}
-
--- | Move @x@ chars back, or to the sol, whichever is less
-moveXorSol :: Int -> BufferM ()
-moveXorSol x = moveAXuntil leftB x atSol
-
--- | Move @x@ chars forward, or to the eol, whichever is less
-moveXorEol :: Int -> BufferM ()
-moveXorEol x = moveAXuntil rightB x atEol
-
 
 -- | Go to line indexed from current point
 gotoLnFrom :: Int -> BufferM Int
