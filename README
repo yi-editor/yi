@@ -68,10 +68,10 @@ HACKER'S GUIDE:
 
 You can run Yi "in place" by running:
 
-dist/build/yi/yi -B.
+dist/build/yi/yi -B. -bdist/build
 
 
-You can then try your changes by running the "reconfigE" command. (M-x
+You can then try your changes dynamically by running the "reconfigE" command. (M-x
 reconfigE in emacs mode)
 
 
@@ -90,11 +90,8 @@ Yi is developed on Linux, and should be easily ported to FreeBSD and
 OpenBSD. Running Gtk fronted to MS Windows should be possible.
 
 A porting checklist:
-        * you have GNU make
         * you have a working GHCi
         * you have either gtk or vty support
-        * you have haddock installed (for the documentation)
-
 
 
 CREDITS

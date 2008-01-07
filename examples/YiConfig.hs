@@ -7,18 +7,13 @@ module YiConfig (yiMain) where
 import Yi.Yi  
 import Yi.Editor
 import Yi.Keymap.Emacs
+-- import Yi.Keymap.Vim
 import Control.Monad.Trans
 import Yi.Buffer
 
 yiMain :: YiM ()
 yiMain = do
-  changeKeymapE myKeymap  
- 
+  -- I prefer to use Emacs keymap
+  changeKeymapE keymap
   msgE "User configuration successful."
 
-
--- I prefer to use Emacs keymap, with haskell hilight in every buffer.
-myKeymap = do write $ setSyntaxB "haskell" 
-              keymap
-
- 

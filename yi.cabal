@@ -45,7 +45,7 @@ include-dirs:
  Yi/Syntax
 -- for alex.hsinc
 
-extra-source-files:
+includes:
  Yi/Syntax/alex.hsinc
 
 main-is:        Main.hs

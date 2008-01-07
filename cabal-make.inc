@@ -241,7 +241,7 @@ watch-comments:
 	echo Now watching all talk pages for $(package)
 
 
-sdist: .setup-config
+sdist: $(cabal_config)
 	./setup sdist
 
 

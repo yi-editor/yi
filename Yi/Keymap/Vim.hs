@@ -610,7 +610,6 @@ ex_eval cmd = do
 --    Needs to occur in another buffer
 --    fn ('!':f) = pipeE f []
 
-      fn "reboot"     = error "rebootE does not exist any more, use reloadE"     -- not in vim
       fn "reload"     = reloadE >> return ()    -- not in vim
 
       fn "redr"       = refreshE
@@ -692,27 +691,6 @@ viSub cs = do
     where do_single p r = do
                 s <- searchAndRepLocal p r
                 if not s then errorE ("Pattern not found: "++p) else msgClrE
-
-{-
-          -- inefficient. we recompile the regex each time.
-          -- stupido
-          do_line   p r = do
-                let loop i = do s <- searchAndRepLocal p r
-                                if s then loop (i+1) else return i
-                s <- loop (0 :: Int)
-                if s == 0 then msgE ("Pattern not found: "++p) else msgClrE
--}
-
--- ---------------------------------------------------------------------
--- | Handle delete chars in a string
---
-{-
-clean :: [Char] -> [Char]
-clean (_:c:cs) | isDel c = clean cs
-clean (c:cs)   | isDel c = clean cs
-clean (c:cs) = c : clean cs
-clean [] = []
--}
 
 -- | Is a delete sequence
 isDel :: Char -> Bool
