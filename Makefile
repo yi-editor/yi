@@ -10,6 +10,8 @@ runtime-config:
 	cp examples/*.hs $(HOME)/.yi
 
 run-inplace: build #using YiConfig's keybinding.
+	cp --preserve=timestamps -R dist/build/Yi/Syntax/*.hs Yi/Syntax
+# the above is the dirtiest hack to be able to run Yi "in-place".
 	dist/build/yi/yi -B. -bdist/build/ -f$(frontend)
 
 emacs: build
