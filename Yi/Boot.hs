@@ -38,8 +38,8 @@ initialize :: IO Kernel
 initialize = GHC.defaultErrorHandler DynFlags.defaultDynFlags $ do
   bootArgs <- getArgs
   let (bootFlags, _, _) = getOpt Permute options bootArgs
-  let libdir = last $ [x | Libdir x <- bootFlags] ++ [YI_LIBDIR]
-      bindir = last $ [x | Bindir x <- bootFlags] ++ [libdir]
+  let libdir = last $ YI_LIBDIR : [x | Libdir x <- bootFlags]
+      bindir = last $ libdir    : [x | Bindir x <- bootFlags]
   logPutStrLn $ "Using Yi libdir: " ++ libdir
   logPutStrLn $ "Using GHC libdir: " ++ ghcLibdir
   GHC.parseStaticFlags [] -- no static flags for now
