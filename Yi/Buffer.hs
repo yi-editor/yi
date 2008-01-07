@@ -197,13 +197,17 @@ queryAndModify f = do
   modify (modifyRawbuf $ const b')
   return x
 
+-- | @addOverlayB s e sty@ overlays the style @sty@ between points @s@ and @e@
 addOverlayB :: Point -> Point -> Style -> BufferM ()
 addOverlayB s e sty = modifyBuffer $ addOverlayBI s e sty
 
+-- | Execute a @BufferM@ value on a given buffer.  The new state of
+-- the buffer and the list of updates performed are returned alongside
+-- the result of the computation.
 runBuffer :: FBuffer -> BufferM a -> (a, FBuffer, [Update])
 runBuffer b f = runRWS (fromBufferM f) () b
 
-
+-- | Commit a buffer content to disk. Error is raised if no file name is associated with the buffer.
 hPutB :: FBuffer -> IO FBuffer
 hPutB b = do
   let bi = rawbuf b
