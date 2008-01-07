@@ -94,6 +94,7 @@ options = [
     Option ['y']  ["config-file"] (ReqArg ConfigFile  "path") "Specify a configuration file",
     Option ['V']  ["version"]     (NoArg Version) "Show version information",
     Option ['B']  ["libdir"]      (ReqArg OptIgnore "libdir") "Path to runtime libraries",
+    Option ['b']  ["bindir"]      (ReqArg OptIgnore "bindir") "Path to runtime library binaries\n(default: libdir)",
     Option ['h']  ["help"]        (NoArg Help)    "Show this help",
     Option ['l']  ["line"]        (ReqArg LineNo "[num]") "Start on line number",
     Option []     ["as"]          (ReqArg EditorNm "[editor]")

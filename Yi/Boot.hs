@@ -16,19 +16,13 @@ import qualified ObjLink
 import Outputable
 import Control.Monad
 
-data Opts = Libdir String
+data Opts = Libdir String | Bindir String
 
 options :: [OptDescr Opts]
 options = [
-    Option ['B']  ["libdir"]  (ReqArg Libdir "libdir") "Path to runtime libraries"
+    Option ['B']  ["libdir"]  (ReqArg Libdir "libdir") "Path to runtime libraries",
+    Option ['b']  ["bindir"]  (ReqArg Bindir "bindir") "Path to runtime library binaries\n(default: libdir)"
     ]
-
-forcedLibdir :: Opts -> Maybe String
-forcedLibdir (Libdir x) = Just x
-
-override :: String ->  Maybe String -> String
-override def Nothing = def
-override _ (Just x) = x
 
 -- the path of our GHC installation
 ghcLibdir :: FilePath
@@ -44,7 +38,8 @@ initialize :: IO Kernel
 initialize = GHC.defaultErrorHandler DynFlags.defaultDynFlags $ do
   bootArgs <- getArgs
   let (bootFlags, _, _) = getOpt Permute options bootArgs
-  let libdir = foldl override YI_LIBDIR $ map forcedLibdir bootFlags
+  let libdir = last $ [x | Libdir x <- bootFlags] ++ [YI_LIBDIR]
+      bindir = last $ [x | Bindir x <- bootFlags] ++ [libdir]
   logPutStrLn $ "Using Yi libdir: " ++ libdir
   logPutStrLn $ "Using GHC libdir: " ++ ghcLibdir
   GHC.parseStaticFlags [] -- no static flags for now
@@ -65,6 +60,8 @@ initialize = GHC.defaultErrorHandler DynFlags.defaultDynFlags $ do
                           , "-i" -- clear the search directory (don't look in ./)
                           , "-i" ++ home ++ "/.yi"  -- First, we look for source files in ~/.yi
                           , "-i" ++ libdir
+                          , "-odir" ++ bindir
+                          , "-hidir" ++ bindir
                           ]
   (dflags1',_otherFlags) <- GHC.parseDynamicFlags dflags1 (pkgOpts ++ extraflags)
   (dflags2, packageIds) <- Packages.initPackages dflags1'
