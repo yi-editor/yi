@@ -128,9 +128,7 @@ do_opt o = case o of
                        False -> do putStrLn ("Unknown emulation: " ++ show emul)
                                    exitWith (ExitFailure 1)
     
---
--- everything that is left over
---
+-- | everything that is left over
 do_args :: [String] -> IO (Core.StartConfig, [Keymap.YiM ()])
 do_args args = 
     case (getOpt (ReturnInOrder File) options args) of
@@ -164,9 +162,6 @@ openScratchBuffer = do     -- emacs-like behaviour
 -- | Static main. This is the front end to the statically linked
 -- application, and the real front end, in a sense. 'dynamic_main' calls
 -- this after setting preferences passed from the boot loader.
---
--- Initialise the ui getting an initial editor state, set signal
--- handlers, then jump to ui event loop with the state.
 --
 main :: Kernel -> IO ()
 main kernel = do

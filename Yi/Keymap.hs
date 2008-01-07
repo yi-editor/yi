@@ -74,10 +74,6 @@ data Yi = Yi {yiEditor :: IORef Editor,
               output        :: Chan Action,                -- ^ output stream
               defaultKeymap :: IORef Keymap,
               bufferKeymaps :: IORef (M.Map BufferRef BufferKeymap),
-              -- FIXME: there is a latent bug here: the bufferkeymaps
-              -- can be modified concurrently by the dispatcher thread
-              -- and the worker thread.
-
               yiKernel  :: Kernel,
               editorModules :: IORef [String] -- ^ modules requested by user: (e.g. ["YiConfig", "Yi.Dired"])
              }
