@@ -46,27 +46,27 @@ bHook pd lbi hooks flags = do
 dependencyName :: Dependency -> String
 dependencyName (Dependency name _) = name
 
-precompile :: PackageDescription -> LocalBuildInfo -> t -> BuildFlags -> ([Char], [String]) -> IO ()
-precompile pd lbi _ bflags (moduleName, dependencies) = when ok $ do
+precompile :: PackageDescription -> LocalBuildInfo -> t -> BuildFlags -> ([String], [String]) -> IO ()
+precompile pd lbi _ bflags (moduleNames, dependencies) = when ok $ do
   -- just pretend that we build a library with the given modules
-  putStrLn ("Precompiling " ++ moduleName)
+  putStrLn ("Precompiling " ++ show moduleNames)
   let [Executable "yi" _ yiBuildInfo] = executables pd
       pd' = pd {package = PackageIdentifier "main" (Version [] []),
                           -- we pretend we build package main, so that GHCi
                           -- can associate the source files and the precompiled modules
                 executables = [],
-                library = Just (Library {exposedModules = [moduleName],
+                library = Just (Library {exposedModules = moduleNames,
                                          libBuildInfo = yiBuildInfo})}
   buildHook defaultUserHooks pd' lbi defaultUserHooks bflags -- {buildVerbose = deafening }
      where availablePackages = map dependencyName $ buildDepends pd
            ok = all (`elem` availablePackages) dependencies
 
-precompiles :: [(String, [String])]
-precompiles = [("Yi.Main", []),
-               ("Yi.Keymap.Normal", []),
-               ("Yi.Keymap.Emacs", []),
-               ("Yi.Keymap.Vim", []),
-               ("Yi.Dired", [])]
+precompiles :: [([String], [String])]
+precompiles = [(["Yi.Main",
+                 "Yi.Keymap.Normal",
+                 "Yi.Keymap.Emacs",
+                 "Yi.Keymap.Vim",
+                 "Yi.Dired"], [])]
 
 install :: PackageDescription -> LocalBuildInfo -> UserHooks -> InstallFlags -> IO ()
 install pd lbi hooks flags = do
