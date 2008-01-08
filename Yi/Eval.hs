@@ -8,6 +8,7 @@ module Yi.Eval (
 import Control.Monad
 import Control.Monad.Trans
 import Data.Array
+import Data.List
 import Prelude hiding (error)
 import System.Directory
 import Text.Regex.Posix
@@ -67,6 +68,10 @@ jumpToErrorE = do
 prompt :: String
 prompt = "Yi> "
 
+takeCommand :: String -> String
+takeCommand x | prompt `isPrefixOf` x = drop (length prompt) x
+              | otherwise = x
+
 consoleKeymap :: Keymap
 consoleKeymap = do event (Event KEnter [])
                    write $ do x <- withBuffer readLnB
@@ -77,10 +82,10 @@ consoleKeymap = do event (Event KEnter [])
                                                 botB
                                                 p' <- pointB
                                                 when (p /= p') $
-                                                   insertN ("\n" ++ prompt ++ x)
+                                                   insertN ("\n" ++ prompt ++ takeCommand x)
                                                 insertN "\n" 
                                                 pt <- pointB
-                                                insertN "Yi> "
+                                                insertN prompt
                                                 bm <- getBookmarkB "errorInsert"
                                                 setMarkPointB bm pt
-                                              execE $ dropWhile (== '>') $ dropWhile (/= '>') $ x
+                                              execE $ takeCommand x
