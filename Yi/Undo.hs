@@ -120,8 +120,9 @@ setSavedPointUR (URList undos redos) =
   isNotSavedFilePoint SavedFilePoint = False
   isNotSavedFilePoint _              = True
 
-undoInteractivePoint ur@(URList (InteractivePoint:cs) rs) b =  (b, (URList cs (InteractivePoint:rs), []))
-undoInteractivePoint ur@(URList (InteractivePoint:cs) rs) b =  (b, (URList cs (InteractivePoint:rs), []))
+undoInteractivePoint :: URList -> BufferImpl -> (BufferImpl, (URList, [Change]))
+undoInteractivePoint (URList (InteractivePoint:cs) rs) b =  (b, (URList cs (InteractivePoint:rs), []))
+undoInteractivePoint ur b = (b, (ur, []))
 
 -- | Undo actions until we find an InteractivePoint.
 undoesUR :: URList -> BufferImpl -> (BufferImpl, (URList, [Change]))
@@ -155,19 +156,6 @@ redoUR (URList us (r:rs)) b =
     let (b', u) = getActionB r b
     in (b', (URList (u:us) rs, [u]))
 
--- | isEmptyUndoList. @True@ if the undo list is empty, and hence the
--- buffer is not modified
--- Be careful this does NOT indicate that the buffer has not been modified
--- since the last save, only that it has not been modified since we opened it.
--- Eg. If one opens a file, types some letters then saves, then undoes all the
--- typing, the file is different from that which is saved on disk but the undo
--- list is empty.
-isEmptyUList :: URList -> Bool
-isEmptyUList (URList [] _)               = True
-isEmptyUList (URList [SavedFilePoint] _) = True
-isEmptyUList (URList _  _)               = False
-
-
 -- | isUnchangedUndoList. @True@ if the undo list is either empty or we are at a
 -- SavedFilePoint indicated that the buffer has not been modified since we
 -- last saved the file.
@@ -175,6 +163,7 @@ isEmptyUList (URList _  _)               = False
 -- the last save. Because we may have saved the file and then undone actions done before
 -- the save.
 isUnchangedUList :: URList -> Bool
+isUnchangedUList (URList (InteractivePoint:us) rs) = isUnchangedUList (URList us rs)
 isUnchangedUList (URList [] _)                   = False
 isUnchangedUList (URList (SavedFilePoint : _) _) = True
 isUnchangedUList (URList _ _)                    = False
