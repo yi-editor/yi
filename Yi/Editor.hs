@@ -23,7 +23,7 @@
 
 module Yi.Editor where
 
-import Yi.Buffer                ( BufferRef, FBuffer (..), BufferM, newB, runBuffer )
+import Yi.Buffer                ( BufferRef, FBuffer (..), BufferM, newB, runBuffer, modifyUndos )
 import Text.Regex.Posix.Wrap    ( Regex )
 import Yi.Style                 ( uiStyle, UIStyle )
 
@@ -167,7 +167,8 @@ shiftBuffer shift = gets $ \e ->
 withGivenBuffer0 :: BufferRef -> BufferM a -> EditorM a
 withGivenBuffer0 k f = modifyEditor $ \e -> 
                         let b = findBufferWith k e
-                            (v, b', updates) = runBuffer b f 
+                            b0 = modifyUndos (addUR InteractivePoint) b
+                            (v, b', updates) = runBuffer b0 f 
                         in (e {editorUpdates = editorUpdates e ++ [(bkey b,u) | u <- updates],
                                buffers = M.adjust (const b') k (buffers e)
                               },v)

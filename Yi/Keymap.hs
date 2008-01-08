@@ -152,6 +152,7 @@ withEditor f = do
   r <- asks yiEditor
   e <- readRef r
   let (a,e') = runEditor f e
+  logPutStrLn $ "Buffers = " ++ (show $ M.elems $ buffers e')
   writeRef r e'
   return a
 

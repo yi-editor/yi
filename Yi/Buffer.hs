@@ -58,6 +58,7 @@ module Yi.Buffer
   , deleteNAt
   , readB
   , elemsB
+  , modifyUndos
   , undoB
   , redoB
   , getMarkB
@@ -137,7 +138,7 @@ instance Eq FBuffer where
    FBuffer { bkey = u } == FBuffer { bkey = v } = u == v
 
 instance Show FBuffer where
-    showsPrec _ (FBuffer { bkey = u, name = f }) = showString $ "Buffer #" ++ show u ++ " (" ++ show f ++ ")"
+    showsPrec _ (FBuffer { bkey = u, name = f, undos = us }) = showString $ "Buffer #" ++ show u ++ " (" ++ show f ++ "..." ++ show us ++ ")"
 
 -- | Given a buffer, and some information update the modeline
 --
@@ -249,7 +250,7 @@ undoRedo f = do
   tell (concatMap changeUpdates changes)
 
 undoB :: BufferM ()
-undoB = undoRedo undoUR
+undoB = undoRedo undoInteractivePoint >> undoRedo undoesUR
 
 redoB :: BufferM ()
 redoB = undoRedo redoUR

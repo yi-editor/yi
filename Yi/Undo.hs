@@ -64,26 +64,28 @@ module Yi.Undo (
     emptyUR
   , addUR
   , setSavedPointUR
-  , undoUR
+  , undoesUR
+  , undoInteractivePoint
   , redoUR
-  , isEmptyUList
   , isUnchangedUList
   , reverseUpdate
   , getActionB
   , URList             {- abstractly -}
-  , Change(AtomicChange)
+  , Change(AtomicChange, InteractivePoint)
   , changeUpdates
    ) where
 
 import Yi.FastBuffer            
 
 data Change = SavedFilePoint
+            | InteractivePoint
             | AtomicChange Update
             deriving Show
 
 changeUpdates :: Change -> [Update]
 changeUpdates (AtomicChange u) = [u]
 changeUpdates SavedFilePoint = []
+changeUpdates InteractivePoint = []
 
 
 -- | A URList consists of an undo and a redo list.
@@ -100,6 +102,7 @@ emptyUR = URList [SavedFilePoint] []
 -- According to the restricted, linear undo model, if we add a command
 -- whilst the redo list is not empty, we will lose our redoable changes.
 addUR :: Change -> URList -> URList
+addUR InteractivePoint ur@(URList (InteractivePoint:_) _) = ur
 addUR u (URList us _rs) = URList (u:us) []
 
 
@@ -116,6 +119,17 @@ setSavedPointUR (URList undos redos) =
   isNotSavedFilePoint :: Change -> Bool
   isNotSavedFilePoint SavedFilePoint = False
   isNotSavedFilePoint _              = True
+
+-- | Undo (pass) one interactivepoint
+undoInteractivePoint ur@(URList (InteractivePoint:cs) rs) b =  (b, (URList cs (InteractivePoint:rs), []))
+
+-- | Undo actions until we find an InteractivePoint.
+undoesUR :: URList -> BufferImpl -> (BufferImpl, (URList, [Change]))
+undoesUR ur@(URList (InteractivePoint:cs) rs) b =  (b, (ur, []))
+undoesUR ur@(URList _ _) b = 
+    let (b', (ur', cs')) = undoUR ur b
+        (b'', (ur'', cs'')) = undoesUR ur' b'
+        in (b'', (ur'', cs'' ++ cs'))
 
 -- | Undo the last action that mutated the buffer contents. The action's
 -- inverse is added to the redo list. 
