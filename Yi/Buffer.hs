@@ -250,10 +250,10 @@ undoRedo f = do
   tell (concatMap changeUpdates changes)
 
 undoB :: BufferM ()
-undoB = undoRedo undoInteractivePoint >> undoRedo undoesUR
+undoB = undoRedo undoInteractivePoint >> undoRedo (manyUR undoUR)
 
 redoB :: BufferM ()
-redoB = undoRedo redoUR
+redoB = undoRedo undoInteractivePoint >> undoRedo (manyUR redoUR)
 
 -- | Create buffer named @nm@ with contents @s@
 newB :: BufferRef -> String -> [Char] -> FBuffer

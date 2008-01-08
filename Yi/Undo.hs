@@ -64,8 +64,9 @@ module Yi.Undo (
     emptyUR
   , addUR
   , setSavedPointUR
-  , undoesUR
+  , manyUR
   , undoInteractivePoint
+  , undoUR
   , redoUR
   , isUnchangedUList
   , reverseUpdate
@@ -124,14 +125,14 @@ undoInteractivePoint :: URList -> BufferImpl -> (BufferImpl, (URList, [Change]))
 undoInteractivePoint (URList (InteractivePoint:cs) rs) b =  (b, (URList cs (InteractivePoint:rs), []))
 undoInteractivePoint ur b = (b, (ur, []))
 
--- | Undo actions until we find an InteractivePoint.
-undoesUR :: URList -> BufferImpl -> (BufferImpl, (URList, [Change]))
-undoesUR ur@(URList [] _) b = (b, (ur, []))
-undoesUR ur@(URList [SavedFilePoint] _) b     = (b, (ur, []))
-undoesUR ur@(URList (InteractivePoint:_) _) b = (b, (ur, []))
-undoesUR ur@(URList _ _) b = 
-    let (b', (ur', cs')) = undoUR ur b
-        (b'', (ur'', cs'')) = undoesUR ur' b'
+-- | repeat ur action until we find an InteractivePoint.
+manyUR :: (URList -> t -> (t, (URList, [a])))-> URList -> t -> (t, (URList, [a]))
+manyUR f ur@(URList [] _) b = (b, (ur, []))
+manyUR f ur@(URList [SavedFilePoint] _) b     = (b, (ur, []))
+manyUR f ur@(URList (InteractivePoint:_) _) b = (b, (ur, []))
+manyUR f ur@(URList _ _) b = 
+    let (b', (ur', cs')) = f ur b
+        (b'', (ur'', cs'')) = manyUR f ur' b'
         in (b'', (ur'', cs'' ++ cs'))
 
 -- | Undo the last action that mutated the buffer contents. The action's
