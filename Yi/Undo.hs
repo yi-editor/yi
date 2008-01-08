@@ -82,7 +82,7 @@ import Yi.FastBuffer
 -- have a different type for the update list, sort of update list to the
 -- left and the right of the last saved file point, although that's a little
 -- tricky to maintain. Alternatively we could have a further type say
--- UpdateS which is either a SavedFilePoint or an Update, and thne noone
+-- UpdateS which is either a SavedFilePoint or an Update, and then no one
 -- outside this module need see the 'SavedFilePoint' constructor.
 data URList = URList ![Update] ![Update]
 

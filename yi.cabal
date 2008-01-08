@@ -13,12 +13,12 @@ author:         Don Stewart
 maintainer:     jeanphilippe.bernardy@gmail.com
 
 Flag vty {
-  Description: Precompile vty UI
+  Description: Provide Vty UI
   Default:     True
 }
 
 Flag gtk {
-  Description: Precompile gtk UI
+  Description: Provide Gtk UI
   Default:     True
 }
 
