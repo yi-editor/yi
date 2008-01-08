@@ -120,12 +120,14 @@ setSavedPointUR (URList undos redos) =
   isNotSavedFilePoint SavedFilePoint = False
   isNotSavedFilePoint _              = True
 
--- | Undo (pass) one interactivepoint
+undoInteractivePoint ur@(URList (InteractivePoint:cs) rs) b =  (b, (URList cs (InteractivePoint:rs), []))
 undoInteractivePoint ur@(URList (InteractivePoint:cs) rs) b =  (b, (URList cs (InteractivePoint:rs), []))
 
 -- | Undo actions until we find an InteractivePoint.
 undoesUR :: URList -> BufferImpl -> (BufferImpl, (URList, [Change]))
-undoesUR ur@(URList (InteractivePoint:cs) rs) b =  (b, (ur, []))
+undoesUR ur@(URList [] _) b = (b, (ur, []))
+undoesUR ur@(URList [SavedFilePoint] _) b     = (b, (ur, []))
+undoesUR ur@(URList (InteractivePoint:_) _) b = (b, (ur, []))
 undoesUR ur@(URList _ _) b = 
     let (b', (ur', cs')) = undoUR ur b
         (b'', (ur'', cs'')) = undoesUR ur' b'
