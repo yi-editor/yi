@@ -21,7 +21,7 @@ module Yi.Keymap where
 import Prelude hiding (error)
 import Yi.CommonUI
 import qualified Yi.Editor as Editor
-import Yi.Editor (EditorM, Editor, getBuffer, runEditor)
+import Yi.Editor (EditorM, Editor, getBuffer, runEditor, buffers)
 import Yi.Debug
 import qualified Data.Map as M
 import Yi.Kernel

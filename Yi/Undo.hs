@@ -71,20 +71,24 @@ module Yi.Undo (
   , reverseUpdate
   , getActionB
   , URList             {- abstractly -}
-  , Update(..)       {- non-abstractly, for concrete implementations -}
+  , Change(AtomicChange)
+  , changeUpdates
    ) where
 
 import Yi.FastBuffer            
 
+data Change = SavedFilePoint
+            | AtomicChange Update
+            deriving Show
+
+changeUpdates :: Change -> [Update]
+changeUpdates (AtomicChange u) = [u]
+changeUpdates SavedFilePoint = []
+
+
 -- | A URList consists of an undo and a redo list.
--- adc: I'm a little unhappy that 'SavedFilePoint' is part of the 'Update'
--- type and is hence exported from here. It might be better to for example
--- have a different type for the update list, sort of update list to the
--- left and the right of the last saved file point, although that's a little
--- tricky to maintain. Alternatively we could have a further type say
--- UpdateS which is either a SavedFilePoint or an Update, and then no one
--- outside this module need see the 'SavedFilePoint' constructor.
-data URList = URList ![Update] ![Update]
+data URList = URList [Change] [Change]
+            deriving Show
 
 -- | A new empty 'URList'.
 -- Notice we must have a saved file point as this is when we assume we are
@@ -95,7 +99,7 @@ emptyUR = URList [SavedFilePoint] []
 -- | Add an action to the undo list.
 -- According to the restricted, linear undo model, if we add a command
 -- whilst the redo list is not empty, we will lose our redoable changes.
-addUR :: Update -> URList -> URList
+addUR :: Change -> URList -> URList
 addUR u (URList us _rs) = URList (u:us) []
 
 
@@ -109,13 +113,13 @@ setSavedPointUR (URList undos redos) =
   where
   cleanUndos = filter isNotSavedFilePoint undos
   cleanRedos = filter isNotSavedFilePoint redos
-  isNotSavedFilePoint :: Update -> Bool
+  isNotSavedFilePoint :: Change -> Bool
   isNotSavedFilePoint SavedFilePoint = False
   isNotSavedFilePoint _              = True
 
 -- | Undo the last action that mutated the buffer contents. The action's
 -- inverse is added to the redo list. 
-undoUR :: URList -> BufferImpl -> (BufferImpl, (URList, [Update]))
+undoUR :: URList -> BufferImpl -> (BufferImpl, (URList, [Change]))
 undoUR u@(URList [] _) b                     = (b, (u, []))
 undoUR u@(URList [SavedFilePoint] _) b       = (b, (u, []))
 undoUR (URList (SavedFilePoint : rest) rs) b = 
@@ -126,7 +130,7 @@ undoUR (URList (u:us) rs) b                  =
 
 -- | Redo the last action that mutated the buffer contents. The action's
 -- inverse is added to the undo list.
-redoUR :: URList -> BufferImpl -> (BufferImpl, (URList, [Update]))
+redoUR :: URList -> BufferImpl -> (BufferImpl, (URList, [Change]))
 redoUR u@(URList _ []) b = (b, (u, []))
 redoUR u@(URList _ [SavedFilePoint]) b = (b, (u, []))
 redoUR (URList us (SavedFilePoint : rest)) b =
@@ -161,11 +165,14 @@ isUnchangedUList (URList _ _)                    = False
 
 -- | Given a Update, apply it to the buffer, and return the
 -- Update that reverses it.
-getActionB :: Update -> BufferImpl -> (BufferImpl, Update)
-getActionB u b = (applyUpdateI u (moveToI (updatePoint u) b), reverseUpdate u b)
+getActionB :: Change -> BufferImpl -> (BufferImpl, Change)
+getActionB (AtomicChange u) b = (applyUpdateI u (moveToI (updatePoint u) b), 
+                                 AtomicChange (reverseUpdate u b))
+getActionB c b = (b,c)
 
 -- | Reverse the given update
 reverseUpdate :: Update -> BufferImpl -> Update
 reverseUpdate (Delete p n)   b  = Insert p (nelemsBI n p b)
 reverseUpdate (Insert p cs)  _ = Delete p (length cs)
-reverseUpdate SavedFilePoint _ = SavedFilePoint
+
+

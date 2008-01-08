@@ -24,12 +24,11 @@ module Yi.Gtk.UI (start) where
 
 import Prelude hiding (error, sequence_, elem, mapM_, mapM, concatMap)
 
-import Yi.FastBuffer (inBounds)
+import Yi.FastBuffer (inBounds, Update(..))
 import Yi.Buffer
 import Yi.Editor
 import Yi.Event
 import Yi.Debug
-import Yi.Undo
 import Yi.Monad
 import qualified Yi.CommonUI as Common
 import Yi.CommonUI (Window)
@@ -428,7 +427,7 @@ applyUpdate buf (Delete p s) = do
   i1 <- textBufferGetIterAtOffset buf (p + s)
   textBufferDelete buf i0 i1
 -- Shouldn't really occur we shouldn't really pass such a savedfilepoint here.
-applyUpdate _buf (SavedFilePoint) = return ()
+
 
 styleToTag :: UI -> Style -> IO TextTag
 styleToTag ui (Style fg _bg) = do

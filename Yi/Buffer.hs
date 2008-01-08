@@ -122,6 +122,7 @@ data FBuffer =
                 , preferCol :: !(Maybe Int)       -- ^ prefered column to arrive at when we do a lineDown / lineUp
                 }
 
+-- | The BufferM monad writes the updates performed.
 newtype BufferM a = BufferM { fromBufferM :: RWS () [Update] FBuffer a }
     deriving (Monad, Functor, MonadWriter [Update], MonadState FBuffer)
 
@@ -240,12 +241,12 @@ isUnchangedB :: BufferM Bool
 isUnchangedB = gets (isUnchangedUList . undos)
 
 
-undoRedo :: ( URList -> BufferImpl -> (BufferImpl, (URList, [Update])) ) -> BufferM () 
+undoRedo :: ( URList -> BufferImpl -> (BufferImpl, (URList, [Change])) ) -> BufferM () 
 undoRedo f = do
   ur <- gets undos
-  (ur',updates) <- queryAndModify (f ur)
+  (ur',changes) <- queryAndModify (f ur)
   modify $ modifyUndos $ const ur'
-  tell updates
+  tell (concatMap changeUpdates changes)
 
 undoB :: BufferM ()
 undoB = undoRedo undoUR
@@ -298,7 +299,7 @@ applyUpdate update = do
   valid <- queryBuffer (isValidUpdate update)
   when valid $ do
        forgetPreferCol
-       reversed <- queryAndModify (getActionB update)
+       reversed <- queryAndModify (getActionB (AtomicChange update))
        modify $ modifyUndos $ addUR reversed
        tell [update]
   -- otherwise, just ignore.

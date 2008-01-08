@@ -112,7 +112,6 @@ data FBufferData =
 
 data Update = Insert {updatePoint :: !Point, insertUpdateString :: !String} -- FIXME: use ByteString
             | Delete {updatePoint :: !Point, deleteUpdateSize :: !Size}
-            | SavedFilePoint
               deriving Show
 
 
@@ -246,7 +245,6 @@ isValidUpdate :: Update -> BufferImpl -> Bool
 isValidUpdate u b = case u of
                     (Delete p n)   -> check p && check (p + n)
                     (Insert p _)   -> check p
-                    SavedFilePoint -> True
     where check x = x >= 0 && x <= B.length (mem b)
 
 
@@ -256,7 +254,6 @@ applyUpdateI u (FBufferData p mks nms hl ov) = FBufferData p' (M.map shift mks) 
     where (p', amount) = case u of
                            Insert pnt cs  -> (insertChars p (B.pack cs) pnt, length cs)
                            Delete pnt len -> (deleteChars p pnt len, negate len)
-                           SavedFilePoint -> (p, 0)
           shift = shiftMarkValue (updatePoint u) amount
           -- FIXME: remove collapsed overlays 
 

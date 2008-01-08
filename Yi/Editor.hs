@@ -29,6 +29,7 @@ import Yi.Style                 ( uiStyle, UIStyle )
 
 import Yi.Debug
 import Yi.Undo
+import Yi.FastBuffer
 import Prelude hiding (error)
 
 import Data.List                ( nub )
