@@ -253,7 +253,7 @@ undoB :: BufferM ()
 undoB = undoRedo undoInteractivePoint >> undoRedo (manyUR undoUR)
 
 redoB :: BufferM ()
-redoB = undoRedo undoInteractivePoint >> undoRedo (manyUR redoUR)
+redoB = undoRedo (manyUR redoUR)
 
 -- | Create buffer named @nm@ with contents @s@
 newB :: BufferRef -> String -> [Char] -> FBuffer

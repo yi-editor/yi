@@ -127,9 +127,9 @@ undoInteractivePoint ur b = (b, (ur, []))
 
 -- | repeat ur action until we find an InteractivePoint.
 manyUR :: (URList -> t -> (t, (URList, [a])))-> URList -> t -> (t, (URList, [a]))
-manyUR f ur@(URList [] _) b = (b, (ur, []))
-manyUR f ur@(URList [SavedFilePoint] _) b     = (b, (ur, []))
-manyUR f ur@(URList (InteractivePoint:_) _) b = (b, (ur, []))
+manyUR _ ur@(URList [] _) b = (b, (ur, []))
+manyUR _ ur@(URList [SavedFilePoint] _) b     = (b, (ur, []))
+manyUR _ ur@(URList (InteractivePoint:_) _) b = (b, (ur, []))
 manyUR f ur@(URList _ _) b = 
     let (b', (ur', cs')) = f ur b
         (b'', (ur'', cs'')) = manyUR f ur' b'
