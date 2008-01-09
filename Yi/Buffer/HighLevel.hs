@@ -40,11 +40,11 @@ botB = moveTo =<< sizeB
 
 -- | Move @x@ chars back, or to the sol, whichever is less
 moveXorSol :: Int -> BufferM ()
-moveXorSol x = replicateM_ x $ untilB atSol leftB
+moveXorSol x = replicateM_ x $ do c <- atSol; when (not c) leftB
 
 -- | Move @x@ chars forward, or to the eol, whichever is less
 moveXorEol :: Int -> BufferM ()
-moveXorEol x = replicateM_ x $ untilB atEol rightB
+moveXorEol x = replicateM_ x $ do c <- atEol; when (not c) rightB
 
 -----------------------------------------------------------------------
 -- Queries
