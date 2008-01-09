@@ -22,9 +22,6 @@ main = defaultMainWithHooks defaultUserHooks
 mkOpt :: (String, String) -> String
 mkOpt (name,def) = "-D" ++ name ++ "=" ++ def
 
--- TODO: add a configuration hook that does not want to build for
--- certain combination of flags
-
 bHook :: PackageDescription -> LocalBuildInfo -> UserHooks -> BuildFlags -> IO ()
 bHook pd lbi hooks flags = do
   let verbosity = buildVerbose flags

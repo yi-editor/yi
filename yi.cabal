@@ -41,6 +41,10 @@ if flag(gtk) {
   GHC-Options: -DFRONTEND_GTK
 }
 
+if !(flag(vty) || flag (gtk)) {
+  buildable: False
+}
+
 include-dirs:
  Yi/Syntax
 -- for alex.hsinc
