@@ -17,10 +17,8 @@
 -- 02111-1307, USA.
 --
 
---
--- | Vim keymap for Yi. Emulates vim :set nocompatible
---
 
+-- | Vim keymap for Yi. Emulates vim :set nocompatible
 module Yi.Keymap.Vim ( keymap, VimMode ) where
 
 import Yi.Yi
@@ -64,62 +62,41 @@ type VimMode = VimProc ()
 type VimProc a = (Interact Char) a
 
                         
-------------------------------------------------------------------------
---
--- | Top level. Lazily consume all the input, generating a list of
--- actions, which then need to be forced
---
--- NB . if there is a (bad) exception, we'll lose any new bindings.. iorefs?
---    . also, maybe we shouldn't refresh automatically?
---
-
---
--- | Top level. Lazily consume all the input, generating a list of
--- actions, which then need to be forced
---
--- NB . if there is a (bad) exception, we'll lose any new bindings.. iorefs?
---    . also, maybe we shouldn't refresh automatically?
---
-
+-- | Top level
 keymap :: Keymap
-keymap = do write $ setWindowFillE '~' >> withBuffer unsetMarkB >> setWindowStyleE defaultVimUiStyle
+keymap = do write $ do setWindowFillE '~'
+                       withBuffer unsetMarkB
+                       setWindowStyleE defaultVimUiStyle
             runVim cmd_mode
 
 runVim :: VimMode -> Keymap
 runVim = comap eventToChar
 
-
-
 ------------------------------------------------------------------------
 
--- The vim lexer is divided into several parts, roughly corresponding
+-- The Vim VimProc is divided into several parts, roughly corresponding
 -- to the different modes of vi. Each mode is in turn broken up into
--- separate lexers for each phase of key input in that mode.
+-- separate VimProcs for each phase of key input in that mode.
 
--- | command mode consists of simple commands that take a count arg - the
--- count is stored in the lexer state. also the replace cmd, which
--- consumes one char of input, and commands that switch modes.
+-- | Command mode consists of simple commands that take a count arg,
+-- the replace cmd, which consumes one char of input, and commands
+-- that switch modes.
 cmd_mode :: VimMode
 cmd_mode = choice [cmd_eval,eval cmd_move,cmd2other,cmd_op]
 
+-- | Take a VimMode that returns and action; "run" it and write the returned action.
 eval :: YiAction m => VimProc (m ()) -> VimMode
 eval p = do a <- p; write a
 
---
--- | insert mode is either insertion actions, or the meta \ESC action
---
+-- | Insert mode is either insertion actions, or the meta (\ESC) action
 ins_mode :: VimMode
 ins_mode = write (msgE "-- INSERT --") >> many (ins_char <|> kwd_mode) >> event '\ESC' >> write msgClrE
 
---
--- | replace mode is like insert, except it performs writes, not inserts
---
+-- | Replace mode is like insert, except it performs writes, not inserts
 rep_mode :: VimMode
 rep_mode = write (msgE "-- REPLACE --") >> many rep_char >> event '\ESC' >> write msgClrE
 
---
--- | visual mode, similar to command mode
---
+-- | Visual mode, similar to command mode
 vis_mode :: VimMode
 vis_mode = do 
   write (msgE "-- VISUAL --" >> withBuffer (pointB >>= setSelectionMarkPointB)) 
@@ -128,9 +105,7 @@ vis_mode = do
   write (msgClrE >> withBuffer unsetMarkB)
 
 
-------------------------------------------------------------------------
---
--- A parser to accumulate digits.
+-- | A VimProc to accumulate digits.
 -- typically what is needed for integer repetition arguments to commands
 --
 -- ToDo don't handle 0 properly
@@ -139,7 +114,7 @@ count :: VimProc (Maybe Int)
 count = option Nothing (some (satisfy isDigit) >>= return . Just . read)
 
 -- ---------------------------------------------------------------------
--- | Movement commands
+-- | VimProc for movement commands
 --
 -- The may be invoked directly, or sometimes as arguments to other
 -- /operator/ commands (like d).
@@ -163,9 +138,7 @@ viewChar = do
    msgE . show $ c
 
 
---
--- movement commands
---
+-- | movement commands
 moveCmdFM :: [(Char, Int -> YiM ())]
 moveCmdFM = 
 -- left/right
@@ -221,10 +194,8 @@ moveCmdFM =
         sol   _ = withBuffer moveToSol
         eol   _ = withBuffer moveToEol
 
---
--- more movement commands. these ones are paramaterised by a character
+--  | more movement commands. these ones are paramaterised by a character
 -- to find in the buffer.
---
 move2CmdFM :: [(Char, Int -> Char -> BufferM ())]
 move2CmdFM =
     [('f',  \i c -> replicateM_ i $ nextCInc c)
@@ -233,9 +204,7 @@ move2CmdFM =
     ,('T',  \i c -> replicateM_ i $ prevCExc c)
     ]
 
---
 -- | Other command mode functions
---
 cmd_eval :: VimMode
 cmd_eval = do
    cnt <- count 
@@ -252,9 +221,7 @@ anyButEscOrDel :: VimProc Char
 anyButEscOrDel = oneOf $ any' \\ ('\ESC':delete')
 
 
---
--- cmd mode commands
---
+-- | cmd mode commands
 singleCmdFM :: [(Char, Int -> YiM ())]
 singleCmdFM =
     [('\^B',    upScreensE)             -- vim does (firstNonSpaceB;moveXorSol)
@@ -307,15 +274,14 @@ multiCmdFM =
     ,("\^W\^S", const splitE)
     ,("\^W\^W", const nextWinE)
     ]
---
+
 -- | So-called 'operators', which take movement actions as arguments.
 --
--- How do we achive this? We look for the known operator chars
--- (op_char), then parse one of the known movement commands.
--- We then apply the returned action 
--- and then the operator. For example, we 'd'
--- command stores the current point, does a movement, then deletes from
--- the old to the new point.
+-- How do we achive this? We parse a known operator char then parse
+-- one of the known movement commands.  We then apply the returned
+-- action and then the operator. For example, we 'd' command stores
+-- the current point, does a movement, then deletes from the old to
+-- the new point.
 cmd_op :: VimMode
 cmd_op = do
   cnt <- count
@@ -351,11 +317,10 @@ cmd_op = do
                              q <- withBuffer pointB
                              return $ mkRegion p q
 
---
 -- | Switching to another mode from visual mode.
 --
 -- All visual commands are meta actions, as they transfer control to another
--- lexer. In this way vis_single is analogous to cmd2other
+-- VimProc. In this way vis_single is analogous to cmd2other
 --
 vis_single :: VimMode
 vis_single =
@@ -395,11 +360,9 @@ vis_single =
             event 'c'    >> beginIns cut]
 
 
---
--- | These also switch mode, as all visual commands do, but
--- | these are analogous to the commands in cmd_eval.
--- | They are different in that they are multiple characters
---
+-- | These also switch mode, as all visual commands do, but these are
+-- analogous to the commands in cmd_eval.  They are different in that
+-- they are multiple characters
 vis_multi :: VimMode
 vis_multi = do
    cnt <- count 
@@ -419,11 +382,10 @@ vis_multi = do
            [event c >> write (a i) | (c,a) <- singleCmdFM ])
 
 
---
 -- | Switch to another vim mode from command mode.
 --
 -- These commands are meta actions, as they transfer control to another
--- lexer. Some of these commands also perform an action before switching.
+-- VimProc. Some of these commands also perform an action before switching.
 --
 cmd2other :: VimMode
 cmd2other = let beginIns a = write a >> ins_mode
@@ -479,7 +441,6 @@ anyButEscOrCtlN = oneOf $ (keyBackspace : any' ++ cursc') \\ ['\ESC','\^N']
 
 -- --------------------
 -- | Keyword 
---
 kwd_mode :: VimMode
 kwd_mode = some (event '\^N' >> write wordCompleteB) >> deprioritize (write resetCompleteB)
            -- 'deprioritize' is there to lift the ambiguity between "continuing" completion
@@ -494,10 +455,6 @@ kwd_mode = some (event '\^N' >> write wordCompleteB) >> deprioritize (write rese
 --  typed character is appended (as in Insert mode).  Thus the number of
 --  characters in a line stays the same until you get to the end of the line.
 --  If a <NL> is typed, a line break is inserted and no character is deleted.
---
--- ToDo implement the undo features
---
-
 rep_char :: VimMode
 rep_char = write . fn =<< anyButEsc
     where fn c = case c of
@@ -700,7 +657,7 @@ isDel c | c == keyBackspace = True
 isDel _            = False
 
 -- ---------------------------------------------------------------------
--- | character ranges
+-- | Character ranges
 --
 delete, enter, anyButEsc :: VimProc Char
 enter   = oneOf enter'
