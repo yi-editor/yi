@@ -479,7 +479,6 @@ spawn_ex_buffer :: String -> YiM ()
 spawn_ex_buffer prompt = do
   -- The above ensures that the action is performed on the buffer that originated the minibuffer.
   let closeMinibuffer = do b <- withEditor getBuffer; closeE; withEditor $ deleteBuffer b 
-      anyButDelNlArrow = oneOf $ any' \\ (enter' ++ delete' ++ ['\ESC',keyUp,keyDown])
       ex_buffer_finish = do 
         historyFinish
         lineString <- withBuffer elemsB
@@ -487,12 +486,12 @@ spawn_ex_buffer prompt = do
         ex_eval (head prompt : lineString)
       ex_process :: VimMode
       ex_process = 
-          choice [do c <- anyButDelNlArrow; write $ insertN [c],
-                  do enter; write ex_buffer_finish,
-                  do event '\ESC'; write closeMinibuffer,
-                  do delete; write bdeleteB,
-                  do event keyUp; write historyUp,
-                  do event keyDown; write historyDown]
+          choice [enter         >> write ex_buffer_finish,
+                  event '\ESC'  >> write closeMinibuffer,
+                  delete        >> write bdeleteB,
+                  event keyUp   >> write historyUp,
+                  event keyDown >> write historyDown]
+             <|| (do c <- anyEvent; write $ insertN [c])
   historyStart
   spawnMinibufferE prompt (const $ runVim $ ex_process) (return ())
 
