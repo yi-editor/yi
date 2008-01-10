@@ -30,7 +30,7 @@ The processes are:
 * composable
 
 * extensible: it is always possible to override a behaviour by combination of 
-  'deprioritize' and '<|>'. (See also '<||' for a convenient combination of the two.)
+  'adjustPriority' and '<|>'. (See also '<||' for a convenient combination of the two.)
 
 * monadic: sequencing is done via monadic bind. (leveraging the whole
   battery of monadic tools that Haskell provides)
@@ -54,9 +54,10 @@ input (prefix), but produce conflicting output?
 
 module Yi.Interact 
     (
-     I, P (Fail),
+     I, P (Fail, End),
      MonadInteract (..),
      PEq (..),
+     deprioritize,
      (<||),
      comap,
      option,
@@ -66,7 +67,6 @@ module Yi.Interact
      events,
      satisfy,
      choice,
-     isFail,
      mkAutomaton
     ) where
 
@@ -86,7 +86,7 @@ class (PEq w, Monad m, Alternative m, Applicative m, MonadPlus m) => MonadIntera
     anyEvent :: m e
     -- ^ Consumes and returns the next character.
     --   Fails if there is no input left.
-    deprioritize :: m a -> m a
+    adjustPriority :: Int -> m a -> m a
 
 
 -------------------------------------------------
@@ -96,7 +96,7 @@ class (PEq w, Monad m, Alternative m, Applicative m, MonadPlus m) => MonadIntera
 instance MonadInteract m w e => MonadInteract (StateT s m) w e where
     write = lift . write
     anyEvent = lift anyEvent
-    deprioritize (StateT f) = StateT (\s -> deprioritize (f s))
+    adjustPriority p (StateT f) = StateT (\s -> adjustPriority p (f s))
                          
 instance (MonadInteract m w e) => Alternative (StateT s m) where
     empty = mzero
@@ -154,21 +154,24 @@ instance PEq w => MonadPlus (I event w) where
 instance PEq w => MonadInteract (I event w) w event where
     write = Writes 0
     anyEvent = Gets
-    deprioritize i = case i of
+    adjustPriority dp i = case i of
       Returns x -> Returns x
-      Binds x f -> Binds (deprioritize x) (\y -> deprioritize (f y)) 
+      Binds x f -> Binds (adjustPriority dp x) (\y -> adjustPriority dp (f y)) 
       Gets -> Gets
       Fails -> Fails
-      Writes p w -> Writes (p + 1) w
-      Plus a b -> Plus (deprioritize a) (deprioritize b)
+      Writes p w -> Writes (p + dp) w
+      Plus a b -> Plus (adjustPriority dp a) (adjustPriority dp b)
 
 
 
 
 infixl 3 <||
 
+deprioritize :: (MonadInteract f w e) => f a -> f a
+deprioritize = adjustPriority 1
+
 (<||) :: (MonadInteract f w e) => f a -> f a -> f a
-a <|| b = a <|> (deprioritize b)
+a <|| b = a <|> (adjustPriority 1 b)
 
 
 
@@ -179,7 +182,7 @@ mkProcess Fails = (\_fut -> Fail)
 mkProcess (m `Binds` f) = \fut -> (mkProcess m) (\a -> mkProcess (f a) fut)
 mkProcess Gets = Get
 mkProcess (Writes prior w) = \fut -> Write prior w (fut ())
-mkProcess (Plus a b) = \fut -> best (mkProcess a fut) (mkProcess b fut)
+mkProcess (Plus a b) = \fut -> Best (mkProcess a fut) (mkProcess b fut)
 
 
 ----------------------------------------------------------------------
@@ -190,60 +193,66 @@ data P event w
     = Get (event -> P event w)
     | Fail
     | Write Int w (P event w)  -- low numbers indicate high priority
+    | Best (P event w) (P event w)
+    | End
 
+-- ---------------------------------------------------------------------------
+-- Operations over P
 
--- | Merge two processes so they run in parallel.
+runWrite :: PEq w => P event w -> [event] -> [w]
+runWrite _ [] = []
+runWrite Fail _ = []
+runWrite p (c:cs) = let (ws, p') = processOneEvent p c in ws ++ runWrite p' cs
+
+processOneEvent :: PEq w => P event w -> event -> ([w], P event w)
+processOneEvent p e = pullWrites $ simplify $ pushEvent p e
+
+pushEvent :: P ev w -> ev -> P ev w
+
+pushEvent (Best c d) e = Best (pushEvent c e) (pushEvent d e)
+pushEvent (Write p w c) e = Write p w (pushEvent c e)
+pushEvent (Get f) e = f e
+pushEvent Fail _ = Fail
+pushEvent End _ = End
+
+-- | Remove failing cases; fuse writes; 
+simplify :: PEq w => P ev w -> P ev w
+simplify (Best c d) = best' c d 
+simplify (Write p w c) = case simplify c of
+      Fail -> Fail
+      c' -> Write p w c'
+simplify p = p
+
+best' :: PEq w => P ev w -> P ev w -> P ev w
+best' c d = best (simplify c) (simplify d)
+
+-- | Pull the most writes from two parallel processes; both are guaranteed not to contain any "best"
 best :: PEq w => P ev w -> P ev w -> P ev w
 Write p w c  `best` Write q x d
 -- Prioritized write:
     | p < q = Write p w c
     | p > q = Write q x d
 -- Agreeing writes:
-    | equiv w x = Write p w (best c d)
+    | equiv w x = Write p w (best' c d)
 -- (Disagreeing writes will be delayed)
-
--- two gets are combined
-Get f1     `best` Get f2     = Get (\c -> f1 c `best` f2 c)
 
 -- fail disappears
 Fail       `best` p          = p
 p          `best` Fail       = p
 
--- otherwise, bring Get or Fail to the top in both processes and continue.
-best p q = progress id p `best` progress id q 
+-- impossible to pull anything; leave Best constructor
+p          `best` q = Best p q
 
--- | Progress in the input, delaying the writes.
-progress :: (P ev w -> P ev w) -> (P ev w -> P ev w)
-progress f (Get s) = Get (\ev -> f (s ev))
-progress _f (Fail)  = Fail
-progress f (Write prior w s) = progress (\fut -> f (Write prior w fut)) s
-
-
--- ---------------------------------------------------------------------------
--- Operations over P
-
-runWrite :: P event w -> [event] -> [w]
-runWrite (Get f)      (c:s) = runWrite (f c) s
-runWrite (Get _f)      []    = []
-runWrite (Write _ w p)  s   = w : runWrite p s
-runWrite Fail         _s     = []
-
-processOneEvent :: P event w -> event -> ([w], P event w)
-processOneEvent (Write _ w p) c = first (w:) (processOneEvent p c)
-processOneEvent Fail _c = ([], Fail)
-processOneEvent (Get f) c = processZeroEvent (f c)
-    where processZeroEvent (Get f') = ([], Get f')
-          processZeroEvent (Write _ w p) = first (w:) (processZeroEvent p)
-          processZeroEvent Fail = ([], Fail)
-
-isFail :: P event w -> Bool
-isFail Fail = True
-isFail _ = False
+pullWrites :: P event w -> ([w], P event w)
+pullWrites (Write _ w p) = first (w:) (pullWrites p)
+pullWrites p = ([], p)
 
 instance (Show w, Show ev) => Show (P ev w) where
     show (Get _) = "?"
-    show (Write prior w p) = "!" ++ show prior ++ ":" ++ show w ++ ">" ++ show p
-    show (Fail) = "."
+    show (Write prior w p) = "!" ++ show prior ++ ":" ++ show w ++ "->" ++ show p
+    show (End) = "."
+    show (Fail) = "*"
+    show (Best p q) = "{" ++ show p ++ "|" ++ show q ++ "}"
 
 -- ---------------------------------------------------------------------------
 -- Derived operations
@@ -283,7 +292,7 @@ runProcess f = runWrite (mkF f)
     where mkF i = mkProcess i (const (Get (const Fail)))
 
 mkAutomaton :: PEq w => I ev w a -> P ev w
-mkAutomaton i = mkProcess i (const (Fail))
+mkAutomaton i = mkProcess i (const End)
 
 
 

@@ -121,9 +121,11 @@ dispatch ev =
        bkm <- getBufferKeymap b
        defKm <- readRef (defaultKeymap yi)
        let p0 = bufferKeymapProcess bkm
-           p = if I.isFail p0 
-                 then I.mkAutomaton $ bufferKeymap bkm $ defKm
-                 else p0
+           freshP = I.mkAutomaton $ bufferKeymap bkm $ defKm
+           p = case p0 of
+                 I.End -> freshP
+                 I.Fail -> freshP -- TODO: output error message about unhandled input
+                 _ -> p0
            (actions, p') = I.processOneEvent p ev
        logPutStrLn $ "Processing: " ++ show ev
        logPutStrLn $ "Actions posted:" ++ show actions
@@ -152,7 +154,7 @@ withEditor f = do
   r <- asks yiEditor
   e <- readRef r
   let (a,e') = runEditor f e
-  logPutStrLn $ "Buffers = " ++ (show $ M.elems $ buffers e')
+  -- logPutStrLn $ "Buffers = " ++ (show $ M.elems $ buffers e')
   writeRef r e'
   return a
 
