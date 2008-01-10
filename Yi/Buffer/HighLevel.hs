@@ -51,30 +51,19 @@ moveXorEol x = replicateM_ x $ do c <- atEol; when (not c) rightB
 
 -- | Return true if the current point is the start of a line
 atSol :: BufferM Bool
-atSol = do p <- pointB
-           if p == 0 then return True
-                     else do c <- readAtB (p-1)
-                             return (c == '\n')
+atSol = atBoundaryB Line Backward
 
 -- | Return true if the current point is the end of a line
 atEol :: BufferM Bool
-atEol = do p <- pointB
-           e <- sizeB
-           if p == e
-                  then return True
-                  else do c <- readAtB p
-                          return (c == '\n')
+atEol = atBoundaryB Line Forward
 
 -- | True if point at start of file
 atSof :: BufferM Bool
-atSof = do p <- pointB
-           return (p == 0)
+atSof = atBoundaryB Document Backward
 
 -- | True if point at end of file
 atEof :: BufferM Bool
-atEof = do p <- pointB
-           e <- sizeB
-           return (p == e)
+atEof = atBoundaryB Document Forward
 
 -- | Get the current line and column number
 getLineAndCol :: BufferM (Int, Int)
