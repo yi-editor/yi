@@ -1,7 +1,6 @@
 -- A normalized (orthogonal) API to many buffer operations
-
-module Yi.Buffer.Normal (execB, TextUnit(..), Operation(..), 
-                         peekB, regionOfB, regionOfPartB, readUnitB, 
+module Yi.Buffer.Normal (execB, TextUnit(..), Operation(..),
+                         peekB, regionOfB, regionOfPartB, readUnitB,
                          untilB,
                          atBoundaryB,
                          moveEndB, moveBeginB) where
@@ -14,19 +13,19 @@ import Control.Monad
 
 -- | Designate a given "unit" of text.
 data TextUnit = Character
-              | Word 
+              | Word
               | ViWord -- ^ a word as in use in Vim
               | Line  -- ^ a line of text (between newlines)
               | VLine -- ^ a "vertical" line of text (area of text between to characters at the same column number)
-              | Paragraph 
+              | Paragraph
               | Document
    -- | Page | Searched
 
 data Operation = Move       -- ^ move the next unit boundary
                | MaybeMove  -- ^ as the above, unless the point is at a unit boundary
                | Delete     -- ^ delete between point and next unit boundary
-               | Transpose 
-               | Transform (String -> String) 
+               | Transpose
+               | Transform (String -> String)
 
 isWordChar :: Char -> Bool
 isWordChar = isAlpha
@@ -43,10 +42,10 @@ checks (p:ps) (x:xs) = p x && checks ps xs
 
 -- | read some characters in the specified direction, for boundary testing purposes
 peekB :: Direction -> Int -> Int -> BufferM String
-peekB dir siz ofs = 
+peekB dir siz ofs =
   do p <- pointB
      rev dir <$> nelemsB siz (p + dirOfs)
-  where 
+  where
   dirOfs = case dir of
              Forward  -> ofs
              Backward -> 0 - siz - ofs
@@ -80,7 +79,7 @@ atBoundary Paragraph direction =
     checkPeekB (-2) [not . isNl, isNl, isNl] direction
 
 atEnclosingBoundary :: TextUnit -> Direction -> BufferM Bool
-atEnclosingBoundary unit direction = atBoundary Document direction
+atEnclosingBoundary _ direction = atBoundary Document direction
 
 atBoundaryB :: TextUnit -> Direction -> BufferM Bool
 atBoundaryB u d = (||) <$> atBoundary u d <*> atEnclosingBoundary u d
@@ -91,7 +90,7 @@ untilB :: BufferM Bool -> BufferM a -> BufferM ()
 untilB cond f = do
   stop <- cond
   when (not stop) (doUntilB cond f)
-  
+
 -- | Repeat an action until the condition is fulfilled or the cursor stops moving.
 -- The Action is performed at least once.
 doUntilB :: BufferM Bool -> BufferM a -> BufferM ()
@@ -118,7 +117,7 @@ execB :: Operation -> TextUnit -> Direction -> BufferM ()
 execB Move Character Forward  = rightB
 execB Move Character Backward = leftB
 execB Move VLine Forward      = -- FIXME: this should be O(buffersize)
-  do i    <- curLn 
+  do i    <- curLn
      size <- numberOfLines
      if i == size
        then execB MaybeMove Line Forward
@@ -178,7 +177,7 @@ regionOfPartB unit dir = savingPointB $ do
          b <- pointB
          execB MaybeMove unit dir
          e <- pointB
-         return $ mkRegion b e  
+         return $ mkRegion b e
 
 
 readUnitB :: TextUnit -> BufferM String
@@ -186,6 +185,6 @@ readUnitB unit = readRegionB =<< regionOfB unit
 
 opposite :: Direction -> Direction
 opposite Backward = Forward
-opposite Forward = Backward  
+opposite Forward = Backward
 
 
