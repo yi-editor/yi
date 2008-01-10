@@ -94,9 +94,9 @@ getRegexE = readEditor regex
 -- | Global searching. Search for regex and move point to that position.
 -- @Nothing@ means reuse the last regular expression. @Just s@ means use
 -- @s@ as the new regular expression. Direction of search can be
--- specified as either @Left@ (backwards) or @Right@ (forwards in the
--- buffer). Arguments to modify the compiled regular expression can be
--- supplied as well.
+-- specified as either @Backward@ or @Forward@ (forwards in the buffer).
+-- Arguments to modify the compiled regular expression can be supplied
+-- as well.
 --
 
 --
@@ -119,7 +119,7 @@ searchE :: (Maybe String)       -- ^ @Nothing@ means used previous
                                 -- pattern, if any. Complain otherwise.
                                 -- Use getRegexE to check for previous patterns
         -> [SearchF]            -- ^ Flags to modify the compiled regex
-        -> Direction            -- ^ @Left@ means backwards, @Right@ means forward
+        -> Direction            -- ^ @Backward@ or @Forward@
         -> YiM ()
 
 searchE s fs d =
