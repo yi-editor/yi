@@ -306,8 +306,7 @@ applyUpdate update = do
   -- otherwise, just ignore.
     
 
--- | Write an element into the buffer at the current point
--- This is an unsafe operation, no bounds checks are performed
+-- | Write an element into the buffer at the current point.
 writeB :: Char -> BufferM ()
 writeB c = do 
   off <- pointB

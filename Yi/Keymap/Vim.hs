@@ -26,7 +26,6 @@ import Yi.Style as Style
 import Prelude       hiding ( any, error )
 
 import Data.Char
-import Data.List            ( (\\) )
 import Data.Maybe           ( fromMaybe )
 
 import Control.Exception    ( ioErrors, try, evaluate )
@@ -88,13 +87,17 @@ cmd_mode = choice [cmd_eval,eval cmd_move,cmd2other,cmd_op]
 eval :: YiAction m => VimProc (m ()) -> VimMode
 eval p = do a <- p; write a
 
+-- | Leave a mode. This always has priority over catch-all actions inside the mode.
+leave :: VimMode
+leave = event '\ESC' >> adjustPriority (-1) (write msgClrE)
+
 -- | Insert mode is either insertion actions, or the meta (\ESC) action
 ins_mode :: VimMode
-ins_mode = write (msgE "-- INSERT --") >> many (ins_char <|> kwd_mode) >> event '\ESC' >> write msgClrE
+ins_mode = write (msgE "-- INSERT --") >> many (ins_char <|> kwd_mode) >> leave
 
 -- | Replace mode is like insert, except it performs writes, not inserts
 rep_mode :: VimMode
-rep_mode = write (msgE "-- REPLACE --") >> many rep_char >> event '\ESC' >> write msgClrE
+rep_mode = write (msgE "-- REPLACE --") >> many rep_char >> leave
 
 -- | Visual mode, similar to command mode
 vis_mode :: VimMode
@@ -127,7 +130,7 @@ cmd_move = do
   cnt <- count
   let x = maybe 1 id cnt
   choice ([event c >> return (a x) | (c,a) <- moveCmdFM] ++
-          [do event c; c' <- anyButEsc; return (withBuffer (a x c')) | (c,a) <- move2CmdFM]) <|>
+          [do event c; c' <- anyEvent; return (withBuffer (a x c')) | (c,a) <- move2CmdFM]) <|>
    (do event 'G'; return $ withBuffer $ case cnt of 
                             Nothing -> botB >> moveToSol
                             Just n  -> gotoLn n >> return ())
@@ -218,7 +221,7 @@ cmd_eval = do
     (events "ZZ" >> write (viWrite >> quitE))
 
 anyButEscOrDel :: VimProc Char
-anyButEscOrDel = oneOf $ any' \\ ('\ESC':delete')
+anyButEscOrDel = satisfy (not . (`elem` ('\ESC':delete')))
 
 
 -- | cmd mode commands
@@ -405,8 +408,19 @@ cmd2other = let beginIns a = write a >> ins_mode
             do event 'S'     ; beginIns $ withBuffer (moveToSol >> readLnB) >>= setRegE >> withBuffer deleteToEol,
             do event '/'     ; ex_mode "/",
 --          do event '?'   ; (with (not_implemented '?'), st{acc=[]}, Just $ cmd st),
-            do event '\ESC'  ; write msgClrE,
+            leave,
             do event keyIC   ; ins_mode]
+
+
+ins_mov_char :: VimMode
+ins_mov_char = choice [event keyPPage >> write upScreenE,
+                       event keyNPage >> write downScreenE,
+                       event keyUp    >> write lineUp,
+                       event keyDown  >> write lineDown,
+                       event keyLeft  >> write leftB,
+                       event keyRight >> write rightB,
+                       event keyEnd   >> write moveToEol,
+                       event keyHome  >> write moveToSol]
 
 
 -- ---------------------------------------------------------------------
@@ -421,30 +435,17 @@ cmd2other = let beginIns a = write a >> ins_mode
 -- with delete.
 --
 ins_char :: VimMode
-ins_char = write . fn =<< anyButEscOrCtlN
-    where fn c = case c of
-                    k | isDel k       -> withBuffer $ do s <- atSof
-                                                         unless s (leftB >> deleteB)
-                      | k == keyPPage -> upScreenE
-                      | k == keyNPage -> downScreenE
-                      | k == keyUp    -> withBuffer lineUp
-                      | k == keyDown  -> withBuffer lineDown
-                      | k == keyLeft  -> withBuffer leftB
-                      | k == keyRight -> withBuffer rightB
-                      | k == keyEnd   -> withBuffer moveToEol
-                      | k == keyHome  -> withBuffer moveToSol
-                    '\t' -> withBuffer $ insertTabB
-                    _    -> withBuffer $ insertB c
-
-anyButEscOrCtlN :: VimProc Char
-anyButEscOrCtlN = oneOf $ (keyBackspace : any' ++ cursc') \\ ['\ESC','\^N']
+ins_char = choice [satisfy isDel  >> write (do s <- atSof; unless s (leftB >> deleteB)),
+                   event '\t'     >> write insertTabB] 
+           <|> ins_mov_char
+           <|| do c <- anyEvent; write (insertB c)
 
 -- --------------------
 -- | Keyword 
 kwd_mode :: VimMode
-kwd_mode = some (event '\^N' >> write wordCompleteB) >> deprioritize (write resetCompleteB)
-           -- 'deprioritize' is there to lift the ambiguity between "continuing" completion
-           -- and resetting it.
+kwd_mode = some (event '\^N' >> adjustPriority (-1) (write wordCompleteB)) >> (write resetCompleteB)
+           -- 'adjustPriority' is there to lift the ambiguity between "continuing" completion
+           -- and resetting it (restarting at the 1st completion).
 
 -- ---------------------------------------------------------------------
 -- | vim replace mode
@@ -456,21 +457,11 @@ kwd_mode = some (event '\^N' >> write wordCompleteB) >> deprioritize (write rese
 --  characters in a line stays the same until you get to the end of the line.
 --  If a <NL> is typed, a line break is inserted and no character is deleted.
 rep_char :: VimMode
-rep_char = write . fn =<< anyButEsc
-    where fn c = case c of
-                    k | isDel k       -> withBuffer leftB -- should undo unless pointer has been moved
-                      | k == keyPPage -> upScreenE
-                      | k == keyNPage -> downScreenE
-                      | k == keyUp    -> (withBuffer lineUp)
-                      | k == keyDown  -> (withBuffer lineDown)
-                      | k == keyLeft  -> withBuffer leftB
-                      | k == keyRight -> withBuffer rightB
-                      | k == keyEnd   -> (withBuffer moveToEol)
-                      | k == keyHome  -> (withBuffer moveToSol)
-                    '\t' -> withBuffer $ insertN "    "
-                    '\r' -> withBuffer $ insertB '\n'
-                    _ -> withBuffer $ do e <- atEol
-                                         if e then insertB c else writeB c >> rightB
+rep_char = choice [satisfy isDel  >> write leftB, -- should undo unless pointer has been moved
+                   event '\t'     >> write (insertN "    "),
+                   event '\r'     >> write (insertB '\n')] 
+           <|> ins_mov_char
+           <|| do c <- anyEvent; write (do e <- atEol; if e then insertB c else writeB c)
 
 -- ---------------------------------------------------------------------
 -- Ex mode. We also process regex searching mode here.
@@ -658,15 +649,9 @@ isDel _            = False
 -- ---------------------------------------------------------------------
 -- | Character ranges
 --
-delete, enter, anyButEsc :: VimProc Char
-enter   = oneOf enter'
+delete, enter :: VimProc Char
+enter   = oneOf ['\n', '\r']
 delete  = oneOf delete'
-anyButEsc = oneOf $ (keyBackspace : any' ++ cursc') \\ ['\ESC']
 
-enter', any', delete' :: [Char]
-enter'   = ['\n', '\r']
-delete'  = ['\BS', '\127', keyBackspace ]
-any'     = ['\0' .. '\255']
-
-cursc' :: [Char]
-cursc' = [keyPPage, keyNPage, keyLeft, keyRight, keyDown, keyUp, keyHome, keyEnd]
+delete' :: [Char]
+delete' =  ['\BS', '\127', keyBackspace ]
