@@ -135,7 +135,8 @@ cmd_move = do
           [do event c; c' <- anyEvent; return (withBuffer (a x c')) | (c,a) <- move2CmdFM]) <|>
    (do event 'G'; return $ withBuffer $ case cnt of 
                             Nothing -> botB >> moveToSol
-                            Just n  -> gotoLn n >> return ())
+                            Just n  -> gotoLn n >> return ()) <|>
+   (do events "gg"; return $ withBuffer $ gotoLn 0 >> return ())
 
 viewChar :: YiM ()
 viewChar = do
@@ -188,8 +189,6 @@ moveCmdFM =
     ,('M',          const middleE)
     ,('L',          \i -> upFromBosE (i - 1))
 
--- bogus entry
-    ,('G',          const (return ()))
     ]
     where
         left  i = withBuffer $ moveXorSol i
