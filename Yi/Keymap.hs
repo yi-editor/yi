@@ -21,7 +21,7 @@ module Yi.Keymap where
 import Prelude hiding (error)
 import Yi.CommonUI
 import qualified Yi.Editor as Editor
-import Yi.Editor (EditorM, Editor, getBuffer, runEditor, buffers)
+import Yi.Editor (EditorM, Editor, getBuffer, runEditor)
 import Yi.Debug
 import qualified Data.Map as M
 import Yi.Kernel
@@ -42,7 +42,7 @@ data Action = forall a. Show a => YiA (YiM a)
             | forall a. Show a => EditorA (EditorM a)
             | forall a. Show a => BufferA (BufferM a)
 --            | InsertA String
---             | TextA Direction Unit Operation          
+--             | TextA Direction Unit Operation
 
 instance I.PEq Action where
     equiv _ _ = False
@@ -56,12 +56,12 @@ type Interact ev a = I.I ev Action a
 
 type Keymap = Interact Event ()
 
-type KeymapProcess = I.P Event Action 
+type KeymapProcess = I.P Event Action
 
 type KeymapMod = Keymap -> Keymap
 
 
-data BufferKeymap = BufferKeymap 
+data BufferKeymap = BufferKeymap
     { bufferKeymap :: KeymapMod -- ^ Buffer's local keymap modification
     , bufferKeymapProcess :: KeymapProcess -- ^ Current state of the keymap automaton
     }
@@ -91,9 +91,8 @@ write x = I.write (makeAction x)
 -----------------------
 -- Keymap thread handling
 
-
 setBufferKeymap :: BufferRef -> KeymapMod -> YiM ()
-setBufferKeymap b km = do 
+setBufferKeymap b km = do
   bkm <- getBufferKeymap b
   modifiesRef bufferKeymaps (M.insert b bkm {bufferKeymap = km, bufferKeymapProcess = I.Fail})
 
@@ -109,13 +108,13 @@ getBufferKeymap :: BufferRef -> YiM BufferKeymap
 getBufferKeymap b = do
   kms <- readsRef bufferKeymaps
   return $ case M.lookup b kms of
-    Just bkm -> bkm 
+    Just bkm -> bkm
     Nothing -> BufferKeymap {bufferKeymap = id, bufferKeymapProcess = I.Fail}
-                           
--- | Process an event by advancing the current keymap automaton an 
+
+-- | Process an event by advancing the current keymap automaton an
 -- execing the generated actions
 dispatch :: Event -> YiM ()
-dispatch ev = 
+dispatch ev =
     do yi <- ask
        b <- withEditor getBuffer
        bkm <- getBufferKeymap b
@@ -132,14 +131,12 @@ dispatch ev =
        logPutStrLn $ "New automation: " ++ show p'
        lift $ writeList2Chan (output yi) actions
        modifiesRef bufferKeymaps (M.insert b bkm { bufferKeymapProcess = p' })
-                 
+
 --------------------------------
 -- Uninteresting glue code
 
-
 withKernel :: (Kernel -> IO a) -> YiM a
-withKernel = with yiKernel 
-
+withKernel = with yiKernel
 
 withUI :: (UI -> IO a) -> YiM a
 withUI = with yiUi
@@ -171,8 +168,8 @@ catchDynE :: Typeable exception => YiM a -> (exception -> YiM a) -> YiM a
 catchDynE inner handler = ReaderT (\r -> catchDyn (runReaderT inner r) (\e -> runReaderT (handler e) r))
 
 catchJustE :: (Exception -> Maybe b) -- ^ Predicate to select exceptions
-           -> YiM a	-- ^ Computation to run
-           -> (b -> YiM a) -- ^	Handler
+           -> YiM a      -- ^ Computation to run
+           -> (b -> YiM a) -- ^   Handler
            -> YiM a
 catchJustE p c h = ReaderT (\r -> catchJust p (runReaderT c r) (\b -> runReaderT (h b) r))
 
