@@ -1,16 +1,11 @@
 {-# OPTIONS -fglasgow-exts #-}
 module Yi.Keymap.Normal where
 
-import Yi.Event
-import qualified Yi.Interact as I
-import Yi.Buffer
-import Data.Char
-import Control.Monad
-import Control.Applicative
 import Control.Monad.State
-import Control.Monad.Writer
-import Yi.Yi
+import Data.Char
 import Yi.Keymap.Emacs.Utils (insertSelf)
+import Yi.Yi
+import qualified Yi.Interact as I (choice, I())
 
 leftHand, rightHand :: [String]
 leftHand = ["qwert", "asdfg", "zxcvb"]
@@ -33,10 +28,9 @@ type Process a = (StateT TextUnit (I.I Event Action)) a
 {-
 data Action = TextA Direction Unit Operation
             | YiA (YiM ())
-            | EditorA 
+            | EditorA
 -}
 
-          
 selfInsertKeymap :: Process ()
 selfInsertKeymap = do
   Event (KASCII c) [] <- satisfy isPrintableEvent
@@ -49,19 +43,21 @@ retKeymap = do
   Event KEnter [] <- anyEvent
   write (insertSelf '\n')
 
+insertKeymap :: StateT TextUnit (I Event Action) ()
 insertKeymap = do
   keyEv 'g'
   many (selfInsertKeymap <|> retKeymap <|> quickCmdKeymap)
   Event KEnter [MCtrl] <- anyEvent
   return ()
 
+quickCmdKeymap :: (MonadInteract m Action Event) => m ()
 quickCmdKeymap = I.choice $ concat $ zipWith (zipWith mkCmd) commands rightHand
     where mkCmd cmd ch = do
             Event (KASCII c) [MCtrl] <- anyEvent
             when (c /= ch) $ fail $ "expected " ++ [ch]
             write (cmd Character)
- 
-quitKeymap :: Process ()             
+
+quitKeymap :: Process ()
 quitKeymap = do
   keyEv 'q'
   write quitE
@@ -73,7 +69,7 @@ unrecognized = do
 
 commandsKeymap :: Process ()
 commandsKeymap = quitKeymap <|| (I.choice $ insertKeymap : (concat $ (cmds ++ unts))) <|| unrecognized
-    where 
+    where
       cmds :: [[Process ()]]
       cmds = zipWith (zipWith mkCmd) commands rightHand
       unts = zipWith (zipWith mkUnt) units leftHand
@@ -86,18 +82,20 @@ commandsKeymap = quitKeymap <|| (I.choice $ insertKeymap : (concat $ (cmds ++ un
         keyEv ch
         put unt
 
+keyEv :: (MonadInteract m w Event) => Char -> m Event
 keyEv c = satisfy (== Event (KASCII c) [])
 
+keymap :: Keymap
 keymap = runProcess $ (many commandsKeymap >> return ())
 
 
 {-
 Commands: (right hand)
 
-                       
+
                 cop  cut del del com
-                 pop  pas mov mov sea ''' 
-                  mpp  mxp xpo xpo und    
+                 pop  pas mov mov sea '''
+                  mpp  mxp xpo xpo und
 
 com: complete
 und: undo
@@ -112,7 +110,7 @@ cop: copy
 
 -}
 
-
+commands :: [[TextUnit -> BufferM ()]]
 commands = [[copy, cut,   del  b, del f,  complete],
             [pop,  paste, move b, move f, search],
             [mpp,  mxp,   xpo  b, xpo  f, undo]]
@@ -142,10 +140,12 @@ doc pag col ver   ovr
   *** *** *** sea   buf
 -}
 
+document, page, column :: TextUnit
 document = Character
 page = Character
 column = Character
 
+units :: [[TextUnit]]
 units = [
          [document, page, column, VLine],
          [Paragraph, Line, Word, Character]
@@ -170,7 +170,6 @@ C-: briefly switch to character mode
 M-: briefly switch to word mode
 
 C-mode: go to that mode
-
 
 -}
 
