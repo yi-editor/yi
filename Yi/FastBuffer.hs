@@ -19,7 +19,7 @@
 
 -- | 'Buffer' implementation, wrapping bytestring.
 
-module Yi.FastBuffer 
+module Yi.FastBuffer
   ( Update     ( .. )
   , Point
   , Mark
@@ -86,7 +86,7 @@ data HLState = forall a. Eq a => HLState !(Highlighter a)
 
 -- ---------------------------------------------------------------------
 --
--- | The buffer text itself is stored as ByteString. 
+-- | The buffer text itself is stored as ByteString.
 --
 -- Problems with this implementation:
 -- * Does not support unicode
@@ -143,7 +143,7 @@ deleteChars p i n = left `B.append` right
           right = B.drop n rest
 {-# INLINE deleteChars #-}
 
--- | calculate whether a move is in bounds. 
+-- | calculate whether a move is in bounds.
 -- Note that one can move to 1 char past the end of the buffer.
 inBounds :: Int -> Int -> Int
 inBounds i end | i <= 0    = 0
@@ -177,10 +177,9 @@ pointBI :: BufferImpl -> Int
 pointBI (FBufferData _ mks _ _ _) = markPosition (mks M.! pointMark)
 {-# INLINE pointBI #-}
 
-
 -- | Return @n@ elems starting at @i@ of the buffer as a list
 nelemsBI :: Int -> Int -> BufferImpl -> [Char]
-nelemsBI n i (FBufferData b _ _ _ _) = 
+nelemsBI n i (FBufferData b _ _ _ _) =
         let i' = inBounds i (B.length b)
             n' = min (B.length b - i') n
         in B.unpack $ readChars b n' i'
@@ -188,7 +187,7 @@ nelemsBI n i (FBufferData b _ _ _ _) =
 
 -- | Add a style "overlay" between the given points.
 addOverlayBI :: Point -> Point -> Style -> BufferImpl -> BufferImpl
-addOverlayBI s e sty fb = 
+addOverlayBI s e sty fb =
     let sm = MarkValue s True
         em = MarkValue e False
     in fb{overlays=(sm,em,sty) : overlays fb}
@@ -210,7 +209,7 @@ nelemsBIH n i fb = fun fb
       -- eg Yi.Syntax.Haskell.highlighter (see Yi.Syntax for defn of Highlighter) which
       -- uses '(Data.ByteString.Char8.ByteString, Int)' as its parameterized state
       fun bd@(FBufferData b _ _ (Just (HLState hl)) _) =
-        
+
         let (finst,colors_) = hlColorize hl b (hlStartState hl)
             colors = colors_ ++ hlColorizeEOF hl finst
         in overlay bd (take n (drop i (zip (B.unpack b) colors)))
@@ -248,14 +247,14 @@ isValidUpdate u b = case u of
     where check x = x >= 0 && x <= B.length (mem b)
 
 
--- | Apply a /valid/ update 
+-- | Apply a /valid/ update
 applyUpdateI :: Update -> BufferImpl -> BufferImpl
 applyUpdateI u (FBufferData p mks nms hl ov) = FBufferData p' (M.map shift mks) nms hl (map (mapOvlMarks shift) ov)
     where (p', amount) = case u of
                            Insert pnt cs  -> (insertChars p (B.pack cs) pnt, length cs)
                            Delete pnt len -> (deleteChars p pnt len, negate len)
           shift = shiftMarkValue (updatePoint u) amount
-          -- FIXME: remove collapsed overlays 
+          -- FIXME: remove collapsed overlays
 
 ------------------------------------------------------------------------
 -- Line based editing
@@ -268,13 +267,13 @@ curLnI fb@(FBufferData ptr _ _ _ _) = 1 + B.count '\n'  (B.take (pointBI fb) ptr
 -- if it was out of range)
 gotoLnI :: Int -> BufferImpl -> (BufferImpl, Int)
 gotoLnI n fb | n < 1 = (moveToI 0 fb, 1)
-gotoLnI n fb = 
+gotoLnI n fb =
         let lineStarts = getLineStartsI fb
 
             findLine acc _ [x]    = (acc, x)
             findLine acc 1 (x:_)  = (acc, x)
             findLine acc l (_:xs) = findLine (acc + 1) (l - 1) xs
-            findLine _ _ []       = 
+            findLine _ _ []       =
               error "lineStarts begins with 0 : ... this cannot hapen"
 
             (n', np) = findLine 1 n lineStarts
@@ -282,7 +281,7 @@ gotoLnI n fb =
 
 
 getLineStartsI :: BufferImpl -> [ Int ]
-getLineStartsI fb = 
+getLineStartsI fb =
   0 : map (+1) lineEnds
   where
   lineEnds = B.elemIndices '\n' (mem fb)
@@ -295,11 +294,11 @@ searchBI s fb@(FBufferData ptr _ _ _ _) = fmap (+ pnt) $ B.findSubstring (B.pack
 offsetFromSolBI :: BufferImpl -> Int
 offsetFromSolBI fb@(FBufferData ptr _ _ _ _) = pnt - maybe 0 (1 +) (B.elemIndexEnd '\n' (B.take pnt ptr))
     where pnt = pointBI fb
-                                                                     
+
 
 -- | Return indices of next string in buffer matched by regex
 regexBI :: Regex -> BufferImpl -> Maybe (Int,Int)
-regexBI re fb@(FBufferData ptr _ _ _ _) = 
+regexBI re fb@(FBufferData ptr _ _ _ _) =
     let p = pointBI fb
         mmatch = matchOnce re (B.drop p ptr)
     in case mmatch of
