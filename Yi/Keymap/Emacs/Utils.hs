@@ -51,6 +51,7 @@ module Yi.Keymap.Emacs.Utils
   , insertTemplate
   , findFile
   , completeFileName
+  , completeBufferName
   ) 
 where
 

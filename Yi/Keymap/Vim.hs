@@ -38,6 +38,8 @@ import Yi.Debug
 
 import Yi.Indent
 
+import Yi.Keymap.Emacs.Utils (completeFileName,completeBufferName)
+
 
 --
 -- What's missing?
@@ -478,11 +480,21 @@ spawn_ex_buffer prompt = do
       ex_process :: VimMode
       ex_process = 
           choice [enter         >> write ex_buffer_finish,
+                  event '\t'    >> write completeMinibuffer,
                   event '\ESC'  >> write closeMinibuffer,
                   delete        >> write bdeleteB,
                   event keyUp   >> write historyUp,
                   event keyDown >> write historyDown]
-             <|| (do c <- anyEvent; write $ insertN [c])
+             <|| (do c <- anyEvent; write $ insertB c)
+      completeMinibuffer = withBuffer elemsB >>= ex_complete >>= withBuffer . insertN
+      ex_complete ('e':' ':f) = do
+        f' <- completeFileName Nothing f
+        return $ drop (length f) f'
+      ex_complete ('b':' ':f) = do
+        f' <- completeBufferName f
+        return $ drop (length f) f'
+      ex_complete _ = return ""
+
   historyStart
   spawnMinibufferE prompt (const $ runVim $ ex_process) (return ())
 
