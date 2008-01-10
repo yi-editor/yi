@@ -537,13 +537,19 @@ ex_eval cmd = do
                            unless unchanged viWrite
                            closeE
       fn "n"          = nextBufW
+      fn "next"       = nextBufW
       fn "$"          = withBuffer botB
       fn "p"          = prevBufW
+      fn "prev"       = prevBufW
       fn ('s':'p':_)  = splitE
+      fn "e"          = revertE
       fn ('e':' ':f)  = fnewE f
       fn ('s':'e':'t':' ':'f':'t':'=':ft)  = withBuffer $ setSyntaxB ft
       fn ('n':'e':'w':' ':f) = splitE >> fnewE f
       fn ('s':'/':cs) = viSub cs
+
+      fn ('b':' ':"m") = switchToBufferWithNameE "*messages*"
+      fn ('b':' ':f) = switchToBufferWithNameE f
 
       -- send just this line through external command /fn/
       fn ('.':'!':f) = do
