@@ -1,4 +1,4 @@
-{-# OPTIONS_GHC -fglasgow-exts -fallow-undecidable-instances #-}
+{-# OPTIONS_GHC -fallow-undecidable-instances #-}
 
 -- Copyright (c) Jean-Philippe Bernardy 2007-8
 --
@@ -17,11 +17,10 @@
 -- Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 -- 02111-1307, USA.
 
-
 {- |
 
 This is a library of interactive processes combinators, usable to
-define extensible keymaps. 
+define extensible keymaps.
 
 (Inspired by the Parsek library, written by Koen Claessen)
 
@@ -29,7 +28,7 @@ The processes are:
 
 * composable
 
-* extensible: it is always possible to override a behaviour by combination of 
+* extensible: it is always possible to override a behaviour by combination of
   'adjustPriority' and '<|>'. (See also '<||' for a convenient combination of the two.)
 
 * monadic: sequencing is done via monadic bind. (leveraging the whole
@@ -48,11 +47,9 @@ input (prefix), but produce conflicting output?
 * otherwise, the output will be delayed until one of the branches can be discarded.
 * if there is no way to disambiguate, then no output will be generated anymore. (oops!)
 
-
-
 -}
 
-module Yi.Interact 
+module Yi.Interact
     (
      I, P (Fail, End),
      MonadInteract (..),
@@ -67,12 +64,13 @@ module Yi.Interact
      events,
      satisfy,
      choice,
+     isFail,
      mkAutomaton
     ) where
 
 import Control.Applicative
 import Control.Arrow (first)
-import Control.Monad.State hiding ( get )
+import Control.Monad.State hiding (get)
 
 ------------------------------------------------
 -- Classes
@@ -88,7 +86,6 @@ class (PEq w, Monad m, Alternative m, Applicative m, MonadPlus m) => MonadIntera
     --   Fails if there is no input left.
     adjustPriority :: Int -> m a -> m a
 
-
 -------------------------------------------------
 -- State transformation
 
@@ -97,7 +94,7 @@ instance MonadInteract m w e => MonadInteract (StateT s m) w e where
     write = lift . write
     anyEvent = lift anyEvent
     adjustPriority p (StateT f) = StateT (\s -> adjustPriority p (f s))
-                         
+
 instance (MonadInteract m w e) => Alternative (StateT s m) where
     empty = mzero
     (<|>) = mplus
@@ -118,12 +115,11 @@ data I ev w a where
     Plus :: I ev w a -> I ev w a -> I ev w a
 
 
-                   
+
 -- | Cofunctor on the the event parameter. This can be used to convert
 -- from a specific event type to a general one. (e.g. from
 -- full-fleged events to chars)
-
-comap :: (ev1 -> ev2) -> I ev2 m a -> I ev1 m a 
+comap :: (ev1 -> ev2) -> I ev2 m a -> I ev1 m a
 comap _f (Returns a) = Returns a
 comap f Gets = fmap f Gets
 comap f (Binds a b) = Binds (comap f a) (comap f . b)
@@ -156,14 +152,11 @@ instance PEq w => MonadInteract (I event w) w event where
     anyEvent = Gets
     adjustPriority dp i = case i of
       Returns x -> Returns x
-      Binds x f -> Binds (adjustPriority dp x) (\y -> adjustPriority dp (f y)) 
+      Binds x f -> Binds (deprioritize x) (\y -> deprioritize (f y)) 
       Gets -> Gets
       Fails -> Fails
       Writes p w -> Writes (p + dp) w
       Plus a b -> Plus (adjustPriority dp a) (adjustPriority dp b)
-
-
-
 
 infixl 3 <||
 
@@ -173,17 +166,14 @@ deprioritize = adjustPriority 1
 (<||) :: (MonadInteract f w e) => f a -> f a -> f a
 a <|| b = a <|> (adjustPriority 1 b)
 
-
-
 -- | Convert a process description to an "executable" process.
 mkProcess :: PEq w => I ev w a -> ((a -> P ev w) -> P ev w)
 mkProcess (Returns x) = \fut -> fut x
-mkProcess Fails = (\_fut -> Fail) 
+mkProcess Fails = (\_fut -> Fail)
 mkProcess (m `Binds` f) = \fut -> (mkProcess m) (\a -> mkProcess (f a) fut)
 mkProcess Gets = Get
 mkProcess (Writes prior w) = \fut -> Write prior w (fut ())
 mkProcess (Plus a b) = \fut -> Best (mkProcess a fut) (mkProcess b fut)
-
 
 ----------------------------------------------------------------------
 -- Process type
@@ -223,10 +213,8 @@ simplify (Write p w c) = case simplify c of
       c' -> Write p w c'
 simplify p = p
 
-best' :: PEq w => P ev w -> P ev w -> P ev w
-best' c d = best (simplify c) (simplify d)
 
--- | Pull the most writes from two parallel processes; both are guaranteed not to contain any "best"
+-- | Merge two processes so they run in parallel.
 best :: PEq w => P ev w -> P ev w -> P ev w
 Write p w c  `best` Write q x d
 -- Prioritized write:
@@ -240,8 +228,32 @@ Write p w c  `best` Write q x d
 Fail       `best` p          = p
 p          `best` Fail       = p
 
--- impossible to pull anything; leave Best constructor
-p          `best` q = Best p q
+-- otherwise, bring Get or Fail to the top in both processes and continue.
+best p q = progress id p `best` progress id q 
+
+-- | Progress in the input, delaying the writes.
+progress :: (P ev w -> P ev w) -> (P ev w -> P ev w)
+progress f (Get s) = Get (\ev -> f (s ev))
+progress _f (Fail)  = Fail
+progress f (Write prior w s) = progress (\fut -> f (Write prior w fut)) s
+
+
+-- ---------------------------------------------------------------------------
+-- Operations over P
+
+runWrite :: P event w -> [event] -> [w]
+runWrite (Get f)      (c:s) = runWrite (f c) s
+runWrite (Get _f)      []    = []
+runWrite (Write _ w p)  s   = w : runWrite p s
+runWrite Fail         _s     = []
+
+processOneEvent :: P event w -> event -> ([w], P event w)
+processOneEvent (Write _ w p) c = first (w:) (processOneEvent p c)
+processOneEvent Fail _c = ([], Fail)
+processOneEvent (Get f) c = processZeroEvent (f c)
+    where processZeroEvent (Get f') = ([], Get f')
+          processZeroEvent (Write _ w p) = first (w:) (processZeroEvent p)
+          processZeroEvent Fail = ([], Fail)
 
 pullWrites :: P event w -> ([w], P event w)
 pullWrites (Write _ w p) = first (w:) (pullWrites p)
@@ -269,7 +281,7 @@ event :: (Eq event, MonadInteract m w event) => event -> m event
 event c = satisfy (c ==)
 
 events :: (Eq event, MonadInteract m w event) => [event] -> m [event]
--- ^ Parses and returns the specified list of events (lazily). 
+-- ^ Parses and returns the specified list of events (lazily).
 events = mapM event
 
 choice :: (MonadInteract m w e) => [m a] -> m a
@@ -283,13 +295,12 @@ option :: (MonadInteract m w e) => a -> m a -> m a
 --   any input.
 option x p = p `mplus` return x
 
-
-runProcess :: PEq w => I event w a -> [event] -> [w]
--- ^ Converts a process into a function that maps input to output.
--- The process does not hold to the input stream (no space leak) and
--- produces the output as soon as possible.
-runProcess f = runWrite (mkF f)
-    where mkF i = mkProcess i (const (Get (const Fail)))
+-- runProcess :: PEq w => I event w a -> [event] -> [w]
+-- -- ^ Converts a process into a function that maps input to output.
+-- -- The process does not hold to the input stream (no space leak) and
+-- -- produces the output as soon as possible.
+-- runProcess f = runWrite (mkF f)
+--     where mkF i = mkProcess i (const (Get (const Fail)))
 
 mkAutomaton :: PEq w => I ev w a -> P ev w
 mkAutomaton i = mkProcess i (const End)
