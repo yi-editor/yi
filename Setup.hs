@@ -33,7 +33,7 @@ bHook pd lbi hooks flags = do
   putStrLn $ "GHC libdir = " ++ show libdr
   let pbi = (Nothing,
        [("yi", emptyBuildInfo
-         { options = [(GHC,[mkOpt ("GHC_LIBDIR",show libdr), 
+         { options = [(GHC,[mkOpt ("GHC_LIBDIR",show libdr),
                             mkOpt ("YI_LIBDIR", show dataPref),
                             mkOpt ("YI_PKG_OPTS", show pkgOpts)])] })])
       pd' = updatePackageDescription pbi pd
@@ -69,7 +69,7 @@ install :: PackageDescription -> LocalBuildInfo -> UserHooks -> InstallFlags -> 
 install pd lbi hooks flags = do
   curdir <- getCurrentDirectory
   let rel = map . makeRelative
-      buildDir = curdir </> "dist" </> "build" 
+      buildDir = curdir </> "dist" </> "build"
   sourceFiles <- rel curdir   <$> unixFindExt               "Yi"  [".hs-boot",".hs",".hsinc"]
   targetFiles <- rel buildDir <$> unixFindExt (buildDir </> "Yi") [".hs", ".hi",".o"]
   print targetFiles
@@ -77,16 +77,16 @@ install pd lbi hooks flags = do
       verbosity = installVerbose flags
       copyFile :: FilePath -> FilePath -> FilePath -> IO ()
       copyFile srcDir dstDir file = do
-	let destination = dstDir </> file 
-	createDirectoryIfMissing True (dropFileName destination)
- 	copyFileVerbose verbosity (srcDir </> file) destination
+                               let destination = dstDir </> file
+                               createDirectoryIfMissing True (dropFileName destination)
+                               copyFileVerbose verbosity (srcDir </> file) destination
   -- NOTE: It's important that source files are copied before target files,
   -- otherwise GHC (via Yi) thinks it has to recompile them when Yi is started.
-  
+
   mapM_ (copyFile curdir dataPref) sourceFiles
   mapM_ (copyFile buildDir dataPref) targetFiles
   instHook defaultUserHooks pd lbi hooks flags
-  
+
 unixFindExt :: FilePath -> [String] -> IO [FilePath]
 unixFindExt dir exts = filter ((`elem` exts) . takeExtension) <$> unixFind dir
 
