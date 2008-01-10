@@ -15,12 +15,11 @@
 -- along with this program; if not, write to the Free Software
 -- Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 -- 02111-1307, USA.
---
 
 -- | The 'Buffer' module defines monadic editing operations over one-dimensional
 -- buffers, which maintain a current /point/.
 
-module Yi.Buffer 
+module Yi.Buffer
   ( BufferRef
   , FBuffer       ( .. )
   , BufferM
@@ -84,12 +83,12 @@ module Yi.Buffer
   , savingPrefCol
   , savingExcursionB
   , savingPointB
-  ) 
+  )
 where
 
-import Prelude hiding ( error )
+import Prelude hiding (error)
 import System.FilePath
-import Text.Regex.Posix.Wrap    ( Regex  )
+import Text.Regex.Posix.Wrap    (Regex)
 import Yi.FastBuffer
 import Yi.Undo
 import Yi.Style
@@ -100,14 +99,13 @@ import Control.Monad.RWS
 import Data.List (elemIndex)
 
 -- | Direction of movement inside a buffer
-data Direction = Backward 
-               | Forward  
+data Direction = Backward
+               | Forward
                  deriving Eq
 
 -- In addition to FastBuffer, this manages (among others):
 --  * Log of updates mades
 --  * Undo
-
 data BufferMode = ReadOnly | ReadWrite
 
 type BufferRef = Int
@@ -129,7 +127,7 @@ newtype BufferM a = BufferM { fromBufferM :: RWS () [Update] FBuffer a }
 
 instance Applicative BufferM where
     pure = return
-    af <*> ax = do 
+    af <*> ax = do
       f <- af
       x <- ax
       return (f x)
@@ -156,11 +154,11 @@ getModeLine = do
     let pct = if pos == 1 then "Top" else getPercent p s
         chg = if unchanged then "-" else "*"
     nm <- gets name
-    return $ 
+    return $
            chg ++ " "
-           ++ nm ++ 
+           ++ nm ++
            replicate 5 ' ' ++
-           "L" ++ show ln ++ "  " ++ "C" ++ show col ++ 
+           "L" ++ show ln ++ "  " ++ "C" ++ show col ++
            replicate 2 ' ' ++ pct
 
 --
@@ -191,7 +189,7 @@ modifyDynamic   f x = x {bufferDynamic = f (bufferDynamic x)}
 
 modifyBuffer :: (BufferImpl -> BufferImpl) -> BufferM ()
 modifyBuffer f = modify (modifyRawbuf f)
-  
+
 queryAndModify :: (BufferImpl -> (BufferImpl,x)) -> BufferM x
 queryAndModify f = do
   b <- gets rawbuf
@@ -233,16 +231,14 @@ setfileB f = modify $ modifyFile $ const (Just f)
 setnameB :: String -> BufferM ()
 setnameB s = modify (\fbuff -> fbuff { name = s })
 
-
 keyB :: FBuffer -> BufferRef
 keyB (FBuffer { bkey = u }) = u
-
 
 isUnchangedB :: BufferM Bool
 isUnchangedB = gets (isUnchangedUList . undos)
 
 
-undoRedo :: ( URList -> BufferImpl -> (BufferImpl, (URList, [Change])) ) -> BufferM () 
+undoRedo :: ( URList -> BufferImpl -> (BufferImpl, (URList, [Change])) ) -> BufferM ()
 undoRedo f = do
   ur <- gets undos
   (ur',changes) <- queryAndModify (f ur)
@@ -257,14 +253,14 @@ redoB = undoRedo (manyUR redoUR)
 
 -- | Create buffer named @nm@ with contents @s@
 newB :: BufferRef -> String -> [Char] -> FBuffer
-newB unique nm s = 
+newB unique nm s =
     FBuffer { name   = nm
             , bkey   = unique
             , file   = Nothing          -- has name, not connected to a file
             , undos  = emptyUR
             , rawbuf = newBI s
             , bmode  = ReadWrite
-            , preferCol = Nothing 
+            , preferCol = Nothing
             , bufferDynamic = emptyDV
             }
 
@@ -289,7 +285,7 @@ nelemsBH n i = queryBuffer $ nelemsBIH n i
 
 -- | Move point in buffer to the given index
 moveTo :: Int -> BufferM ()
-moveTo x = do 
+moveTo x = do
   forgetPreferCol
   modifyBuffer $ moveToI x
 
@@ -304,11 +300,10 @@ applyUpdate update = do
        modify $ modifyUndos $ addUR reversed
        tell [update]
   -- otherwise, just ignore.
-    
 
 -- | Write an element into the buffer at the current point.
 writeB :: Char -> BufferM ()
-writeB c = do 
+writeB c = do
   off <- pointB
   mapM_ applyUpdate [Delete off 1, Insert off [c]]
 
@@ -321,7 +316,7 @@ insertNAt cs pnt = applyUpdate (Insert pnt cs)
 
 -- | Insert the list at current point, extending size of buffer
 insertN :: [Char] -> BufferM ()
-insertN cs = do 
+insertN cs = do
   pnt <- pointB
   applyUpdate (Insert pnt cs)
 
@@ -340,7 +335,7 @@ deleteNAt n pos = applyUpdate (Delete pos n)
 
 -- | Return the current line number
 curLn :: BufferM Int
-curLn = queryBuffer curLnI 
+curLn = queryBuffer curLnI
 
 -- | The number of lines in the whole buffer
 numberOfLines :: BufferM Int
@@ -460,7 +455,7 @@ readAtB i = do
                [c] -> c
                _ -> '\0'
 
--- | Delete 1 character forward from the current point 
+-- | Delete 1 character forward from the current point
 deleteB :: BufferM ()
 deleteB = deleteN 1
 
@@ -476,7 +471,7 @@ offsetFromSol = queryBuffer offsetFromSolBI
 
 -- | Go to line indexed from current point
 gotoLnFrom :: Int -> BufferM Int
-gotoLnFrom x = do 
+gotoLnFrom x = do
   l <- curLn
   gotoLn (x+l) -- FIXME: this should not be O(buffersize)
 
@@ -498,7 +493,7 @@ savingExcursionB f = do
 
 -- | perform an BufferM (), and return to the current point
 savingPointB :: BufferM a -> BufferM a
-savingPointB f = savingPrefCol $ do 
+savingPointB f = savingPrefCol $ do
   p <- pointB
   res <- f
   moveTo p
