@@ -11,6 +11,8 @@ license:        GPL
 license-file:   LICENSE
 author:         AUTHORS
 maintainer:     yi-devel@googlegroups.com
+extra-source-files:
+  Yi/Syntax/alex.hsinc
 
 Flag vty {
   Description: Provide Vty UI
@@ -61,8 +63,6 @@ include-dirs:
  Yi/Syntax
 -- for alex.hsinc
 
-includes:
- Yi/Syntax/alex.hsinc
 
 main-is:        Main.hs
 other-modules:  
