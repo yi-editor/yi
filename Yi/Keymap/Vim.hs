@@ -181,9 +181,6 @@ moveCmdFM =
     ,('{',          withBuffer . prevNParagraphs)
     ,('}',          withBuffer . nextNParagraphs)
 
--- debugging
-    ,('g',          \_ -> viewChar)
-
 -- misc
     ,('H',          \i -> downFromTosE (i - 1))
     ,('M',          const middleE)
