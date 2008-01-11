@@ -9,8 +9,8 @@ description:
   scriptable in Haskell.
 license:        GPL
 license-file:   LICENSE
-author:         Don Stewart
-maintainer:     jeanphilippe.bernardy@gmail.com
+author:         AUTHORS
+maintainer:     yi-devel@googlegroups.com
 
 Flag vty {
   Description: Provide Vty UI
