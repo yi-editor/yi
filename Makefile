@@ -4,7 +4,6 @@ include config.mk
 
 include $(cabal-make)/cabal-make.inc
 
-
 runtime-config:
 	mkdir -p $(HOME)/.yi
 	cp examples/*.hs $(HOME)/.yi

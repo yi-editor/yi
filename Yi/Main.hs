@@ -32,6 +32,10 @@ import Yi.String
 
 import Yi.Interact hiding (write)
 
+#ifdef FRONTEND_COCOA
+import qualified Yi.Cocoa.UI
+import Foundation (withAutoreleasePool)
+#endif
 #ifdef FRONTEND_GTK
 import qualified Yi.Gtk.UI
 #endif
@@ -51,6 +55,9 @@ import System.Exit
 
 frontends :: [(String,UIBoot)]
 frontends = 
+#ifdef FRONTEND_COCOA
+   ("cocoa", Yi.Cocoa.UI.start) :
+#endif
 #ifdef FRONTEND_GTK
    ("gtk", Yi.Gtk.UI.start) :
 #endif
@@ -165,8 +172,10 @@ openScratchBuffer = do     -- emacs-like behaviour
 -- this after setting preferences passed from the boot loader.
 --
 main :: Kernel -> IO ()
+#ifdef FRONTEND_COCOA
+main kernel = withAutoreleasePool $ do
+#else
 main kernel = do
+#endif
     (config, mopts) <- do_args =<< getArgs
     Core.startE config kernel Nothing (startConsole : openScratchBuffer : mopts)
-
-

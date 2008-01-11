@@ -41,6 +41,7 @@ initialize = GHC.defaultErrorHandler DynFlags.defaultDynFlags $ do
   let libdir = last $ YI_LIBDIR : [x | Libdir x <- bootFlags]
       bindir = last $ libdir    : [x | Bindir x <- bootFlags]
   logPutStrLn $ "Using Yi libdir: " ++ libdir
+  logPutStrLn $ "Using Yi bindir: " ++ bindir
   logPutStrLn $ "Using GHC libdir: " ++ ghcLibdir
   GHC.parseStaticFlags [] -- no static flags for now
   session <- GHC.newSession (Just ghcLibdir)

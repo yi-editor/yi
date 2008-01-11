@@ -22,6 +22,13 @@ Flag gtk {
   Default:     True
 }
 
+Flag cocoa {
+  Description: Provide experimental Cocoa UI
+  Default:     False
+  -- Cocoa UI is experimental (and at the moment probably even broken)
+  -- It seems that it suffers from bugs in HOC
+}
+
 
 Executable yi {
 build-tools: alex >= 2.0.1 && < 3
@@ -41,7 +48,12 @@ if flag(gtk) {
   GHC-Options: -DFRONTEND_GTK
 }
 
-if !(flag(vty) || flag (gtk)) {
+if flag(cocoa) {
+  build-depends: HOC, AppKit, Foundation
+  GHC-Options: -DFRONTEND_COCOA
+}
+
+if !(flag(vty) || flag (gtk) || flag(cocoa)) {
   buildable: False
 }
 
