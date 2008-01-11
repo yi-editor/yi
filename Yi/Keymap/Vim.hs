@@ -138,12 +138,6 @@ cmd_move = do
                             Just n  -> gotoLn n >> return ()) <|>
    (do events "gg"; return $ withBuffer $ gotoLn 0 >> return ())
 
-viewChar :: YiM ()
-viewChar = do
-   c <- withBuffer readB
-   msgE . show $ c
-
-
 -- | movement commands
 moveCmdFM :: [(Char, Int -> YiM ())]
 moveCmdFM = 
