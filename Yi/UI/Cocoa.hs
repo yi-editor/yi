@@ -22,7 +22,7 @@
 
 -- | This module defines a user interface implemented using Cocoa.
 
-module Yi.Cocoa.UI (start) where
+module Yi.UI.Cocoa (start) where
 
 import Prelude hiding (init, error, sequence_, elem, mapM_, mapM, concatMap)
 
@@ -33,8 +33,8 @@ import Yi.Event
 import Yi.Debug
 import Yi.FastBuffer
 import Yi.Monad
-import qualified Yi.CommonUI as Common
-import Yi.CommonUI (Window)
+import qualified Yi.UI.Common as Common
+import Yi.UI.Common (Window)
 import qualified Yi.WindowSet as WS
 
 import Control.Concurrent ( yield )

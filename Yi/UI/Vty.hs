@@ -25,7 +25,7 @@
 
 -- | This module defines a user interface implemented using ncurses.
 
-module Yi.Vty.UI (start) where
+module Yi.UI.Vty (start) where
 
 import Prelude hiding (error, concatMap, sum, mapM, sequence)
 
@@ -54,8 +54,8 @@ import Yi.Style
 import Yi.Vty hiding (def, black, red, green, yellow, blue, magenta, cyan, white)
 import Yi.WindowSet as WS
 import qualified Data.ByteString.Char8 as B
-import qualified Yi.CommonUI as Common
-import Yi.CommonUI (Window (..), pointInWindow)
+import qualified Yi.UI.Common as Common
+import Yi.UI.Common (Window (..), pointInWindow)
 
 ------------------------------------------------------------------------
 

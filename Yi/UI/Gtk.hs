@@ -20,7 +20,7 @@
 
 -- | This module defines a user interface implemented using gtk2hs.
 
-module Yi.Gtk.UI (start) where
+module Yi.UI.Gtk (start) where
 
 import Prelude hiding (error, sequence_, elem, mapM_, mapM, concatMap)
 
@@ -30,8 +30,8 @@ import Yi.Editor
 import Yi.Event
 import Yi.Debug
 import Yi.Monad
-import qualified Yi.CommonUI as Common
-import Yi.CommonUI (Window)
+import qualified Yi.UI.Common as Common
+import Yi.UI.Common (Window)
 import Yi.Style hiding (modeline)
 import qualified Yi.WindowSet as WS
 

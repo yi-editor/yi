@@ -1,4 +1,4 @@
-module Yi.CommonUI where
+module Yi.UI.Common where
 
 import Yi.Buffer
 import Yi.Editor

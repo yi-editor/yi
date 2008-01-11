@@ -23,7 +23,7 @@
 module Yi.CoreUI where
 
 import Prelude hiding (error)
-import Yi.CommonUI
+import Yi.UI.Common
 import Yi.Editor
 import Yi.Debug
 import Yi.Buffer

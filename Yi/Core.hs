@@ -119,8 +119,8 @@ import Yi.Monad
 import qualified Yi.WindowSet as WS
 import qualified Yi.Editor as Editor
 import qualified Yi.Style as Style
-import qualified Yi.CommonUI as UI
-import Yi.CommonUI as UI (Window (..), UI)
+import qualified Yi.UI.Common as UI
+import Yi.UI.Common as UI (Window (..), UI)
 
 import Data.Maybe
 import qualified Data.Map as M

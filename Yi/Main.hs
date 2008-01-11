@@ -25,7 +25,7 @@ import qualified Yi.Core    as Core
 import qualified Yi.Buffer  as Buffer
 import qualified Yi.Keymap  as Keymap
 import qualified Yi.Eval    as Eval
-import Yi.CommonUI (UIBoot)
+import Yi.UI.Common (UIBoot)
 import Yi.Kernel
 import Yi.Debug
 import Yi.String
@@ -33,14 +33,14 @@ import Yi.String
 import Yi.Interact hiding (write)
 
 #ifdef FRONTEND_COCOA
-import qualified Yi.Cocoa.UI
+import qualified Yi.UI.Cocoa
 import Foundation (withAutoreleasePool)
 #endif
 #ifdef FRONTEND_GTK
-import qualified Yi.Gtk.UI
+import qualified Yi.UI.Gtk
 #endif
 #ifdef FRONTEND_VTY
-import qualified Yi.Vty.UI
+import qualified Yi.UI.Vty
 #endif
 
 import Data.Char
@@ -56,13 +56,13 @@ import System.Exit
 frontends :: [(String,UIBoot)]
 frontends = 
 #ifdef FRONTEND_COCOA
-   ("cocoa", Yi.Cocoa.UI.start) :
+   ("cocoa", Yi.UI.Cocoa.start) :
 #endif
 #ifdef FRONTEND_GTK
-   ("gtk", Yi.Gtk.UI.start) :
+   ("gtk", Yi.UI.Gtk.start) :
 #endif
 #ifdef FRONTEND_VTY
-   ("vty", Yi.Vty.UI.start) :
+   ("vty", Yi.UI.Vty.start) :
 #endif
    []
 
