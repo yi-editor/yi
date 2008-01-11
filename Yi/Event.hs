@@ -36,8 +36,8 @@ data Event = Event Key [Modifier] deriving (Show,Eq,Ord)
 
 
 
--- | Map an event to a char. This should be gotten rid of, eventually.
-
+-- | Map an Event to a Char. This should be gotten rid of, eventually.
+-- (the vim keymap should handle event directly)
 eventToChar :: Event -> Char
 eventToChar (Event KBS _) = keyBackspace
 eventToChar (Event KIns _) = keyIC
@@ -59,6 +59,7 @@ eventToChar (Event (KASCII c) mods) = (if MMeta `elem` mods then setMeta else id
 
 eventToChar ev = trace ("Got event " ++ show ev) keyOops
 
+-- | Map a Char to an Event. This should be gotten rid of, eventually.
 charToEvent :: Char -> Event
 charToEvent c 
     | c == keyBackspace = Event KBS                      [] 
