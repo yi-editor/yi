@@ -278,10 +278,10 @@ singleCmdFM =
 
 multiCmdFM :: [(String, Int -> YiM ())]
 multiCmdFM =
-    [("\^W\^C", const tryCloseE)
-    ,("\^W\^O", const closeOtherE)
-    ,("\^W\^S", const splitE)
-    ,("\^W\^W", const nextWinE)
+    [("\^Wc", const tryCloseE)
+    ,("\^Wo", const closeOtherE)
+    ,("\^Ws", const splitE)
+    ,("\^Ww", const nextWinE)
     ]
 
 -- | So-called 'operators', which take movement actions as arguments.
