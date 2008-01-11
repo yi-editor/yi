@@ -73,7 +73,7 @@ charToEvent c
     | c == '\n'         = Event KEnter                   []
     | c == '\ESC'       = Event KEsc                     []    
     | ord c < 32        = Event (KASCII (lowcaseCtrl c)) [MCtrl]
-    | otherwise         = Event (KASCII c)               [MCtrl]
+    | otherwise         = Event (KASCII c)               []
 
 
 remapChar :: Char -> Char -> Char -> Char -> Char -> Char
