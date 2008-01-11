@@ -221,6 +221,13 @@ cmd_eval = do
     (events "<<" >> write (shiftIndentOfLine (-i))) <|>
     (events "ZZ" >> write (viWrite >> quitE))
 
+-- TODO: escape the current word
+--       at word bounds: search for \<word\>
+searchCurrentWord :: YiM ()
+searchCurrentWord = do
+  w <- withBuffer $ readRegionB =<< regionOfB ViWord
+  searchE (Just w) [] Forward
+
 anyButEscOrDel :: VimProc Char
 anyButEscOrDel = satisfy (not . (`elem` ('\ESC':delete')))
 
@@ -261,6 +268,7 @@ singleCmdFM =
     ,(keyNPage, downScreensE)
     ,(keyLeft,  withBuffer . moveXorSol)
     ,(keyRight, withBuffer . moveXorEol)
+    ,('*',      const $ searchCurrentWord)
     ,('~',      \i -> withBuffer $ do
                          p <- pointB
                          moveXorEol i
