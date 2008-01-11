@@ -2,6 +2,8 @@
 2004-- Yi is derived from Riot <http://iki.fi/tuomov/riot/>, written by
 Tuomo Valkonen.
 
+Yi was born on October 14th, 2004
+
 2005-- Yi is developed by Don Stewart <http://www.cse.unsw.edu.au/~dons>
 with the help of the #haskell irc community.
 
@@ -22,6 +24,7 @@ Daniel McAllansmith
 Don Stewart
 Duncan Coutts
 Fraser Wilson
+Gustav Munkby
 Harald Korneliussen
 Henning Guenther
 Jason Dagit
@@ -29,6 +32,8 @@ Jean-Philippe Bernardy
 Jens Petersen
 Mario Lang
 Mark Wotton
+Nicolas Pouillard
+Paulo Tanimoto
 Samuel Bronson
 Shae Erisson
 Simon Winwood
@@ -36,10 +41,9 @@ Spencer Janssen
 Stefan O'Rear
 Suleiman Souhlal
 Taral
+Thomas Schilling
 Tim Newsham
 Tuomo Valkonen
 Vivian McPhail
+Walter Moreira
 Yang Zhang
-
-Yi was born on October 14th, 2004
-
