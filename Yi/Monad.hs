@@ -2,7 +2,17 @@ module Yi.Monad where
 
 import Data.IORef
 import Control.Monad.Reader
+import Control.Monad.State
 import Control.Monad.Trans
+
+
+-- | Combination of the Control.Monad.State 'modify' and 'gets'
+getsAndModify :: MonadState s m => (s -> (s,a)) -> m a
+getsAndModify f = do
+  e <- get
+  let (e',result) = f e
+  put e'
+  return result
 
 readRef :: (MonadIO m) => IORef a -> m a
 readRef r = liftIO $ readIORef r

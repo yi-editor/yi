@@ -29,6 +29,7 @@ import Yi.Style                 ( uiStyle, UIStyle )
 
 import Yi.Debug
 import Yi.Undo
+import Yi.Monad
 import Yi.FastBuffer
 import Prelude hiding (error)
 
@@ -54,7 +55,7 @@ data Editor = Editor {
        ,tabwidth      :: !Int                       -- ^ width of tabs
 
 
-       ,editorUpdates :: [(BufferRef, Update)]
+       ,editorUpdates :: [(BufferRef, Update)]      -- ^ pending updates that haven't been synched in the UI
 
        -- consider make the below fields part of dynamic component
        ,statusLine    :: !String
@@ -87,15 +88,6 @@ emptyEditor = Editor {
 runEditor :: EditorM a -> Editor -> (a, Editor)
 runEditor = runState . fromEditorM
 
--- | Variation on modifyEditor_ that lets you return a value
--- FIXME: move to Yi.Monad
-modifyEditor :: (Editor -> (Editor,b)) -> EditorM b
-modifyEditor f = do
-  e <- get
-  let (e',result) = f e
-  put e'
-  return result
-
 -- ---------------------------------------------------------------------
 -- Buffer operations
 
@@ -114,8 +106,8 @@ stringToNewBuffer nm cs = do
     insertBuffer b
 
 insertBuffer :: FBuffer -> EditorM BufferRef
-insertBuffer b = do
-  modifyEditor $ \e -> (e { bufferStack = nub $ (bkey b : bufferStack e),
+insertBuffer b = getsAndModify $
+                 \e -> (e { bufferStack = nub $ (bkey b : bufferStack e),
                             buffers = M.insert (bkey b) b (buffers e)
                           }, bkey b)
 
@@ -165,7 +157,7 @@ shiftBuffer shift = gets $ \e ->
 
 -- | Perform action with any given buffer    
 withGivenBuffer0 :: BufferRef -> BufferM a -> EditorM a
-withGivenBuffer0 k f = modifyEditor $ \e -> 
+withGivenBuffer0 k f = getsAndModify $ \e -> 
                         let b = findBufferWith k e
                             b0 = modifyUndos (addUR InteractivePoint) b
                             (v, b', updates) = runBuffer b0 f 
