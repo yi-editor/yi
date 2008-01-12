@@ -34,45 +34,29 @@ CONTRIBUTORS: Contributors _darcs/patches/*
 	darcs changes | ./Contributors > $@
 
 
-dists: 
-	make sdist
-	make -C packages/yi-vty sdist
-	make -C packages/yi-gtk sdist
+dist/yi-$(version).tar.gz:
+	make sdist # does not work atm 
+
+test_prefix := $(shell pwd)/hackage
+
+test-dist: dist/yi-$(version).tar.gz
 	rm -fr hackage
 	mkdir -p hackage
 	cp dist/yi-$(version).tar.gz hackage
-	cp packages/yi-vty/dist/yi-vty-$(version).tar.gz hackage
-	cp packages/yi-gtk/dist/yi-gtk-$(version).tar.gz hackage
+	cd hackage &&\
+	tar zxvf yi-$(version).tar.gz &&\
+	cd yi-$(version) &&\
+	runghc Setup.hs configure --user --prefix=$(test_prefix) &&\
+	runghc Setup.hs build &&\
+	runghc Setup.hs install &&\
+	cd ..;\
 
-test-dists:
-	-ghc-pkg --user unregister yi-gtk
-	-ghc-pkg --user unregister yi-vty
-
-	cd hackage;\
-	tar -zxvf yi-$(version).tar.gz;\
-	tar -zxvf yi-vty-$(version).tar.gz;\
-	tar -zxvf yi-gtk-$(version).tar.gz;\
-	cd yi-$(version);\
-	runghc Setup.hs configure --user --prefix=$(prefix);\
-	runghc Setup.hs build --with-ghc=/usr/bin/ghc;\
-	runghc Setup.hs install;\
-	cd ..;\
-	cd yi-vty-$(version);\
-	runghc Setup.hs configure --user --prefix=$(prefix);\
-	runghc Setup.hs build;\
-	runghc Setup.hs install;\
-	cd ..;\
-	cd yi-gtk-$(version);\
-	runghc Setup.hs configure --user --prefix=$(prefix);\
-	runghc Setup.hs build;\
-	runghc Setup.hs install;\
-	cd ..;\
 
 test-gtk:
-	$(prefix)/bin/yi -fvty
+	$(test_prefix)/bin/yi -fvty
 
 
 test-vty:
-	$(prefix)/bin/yi -fgtk
+	$(test_prefix)/bin/yi -fgtk
 
 

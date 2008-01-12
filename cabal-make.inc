@@ -123,7 +123,7 @@ clean:
 	rm -rf dist
 	rm -f $(cabal_config) .installed-pkg-config ./setup `find . -name '*.hi' -o -name '*.o'`
 
-version ?= $(strip $(shell cat *.cabal | egrep -i 'version:' | sed -e 's/version://I'))
+version ?= $(strip $(shell cat *.cabal | egrep -i '^version:' | sed -e 's/version://I'))
 
 show-version:
 	@echo $(version)
