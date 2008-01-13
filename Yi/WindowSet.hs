@@ -84,7 +84,7 @@ withFocus :: WindowSet a -> WindowSet (a, Bool)
 withFocus (WindowSet b c a) = WindowSet (zip b (repeat False)) (c, True) (zip a (repeat False))
 
 focusIndex :: Int -> WindowSet a -> WindowSet a
-focusIndex n ws = WindowSet b c a
+focusIndex n ws = WindowSet (reverse b) c a
     where (b,c:a) = splitAt n $ toList ws
 
 modifyCurrent :: (a -> a) -> WindowSet a -> WindowSet a
