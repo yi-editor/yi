@@ -181,7 +181,7 @@ ytv_mouseDown event self = do
 
 data UI = forall action. UI {
               uiWindow :: NSWindow ()
-             ,uiBox :: NSView ()
+             ,uiBox :: NSSplitView ()
              ,uiCmdLine :: NSTextField ()
              ,uiBuffers :: IORef (M.Map BufferRef (NSTextStorage ()))
              ,windowCache :: IORef [WinInfo]
@@ -263,32 +263,33 @@ newTextLine :: IO (NSTextField ())
 newTextLine = do
   tl <- new _NSTextField
   tl # setAlignment nsLeftTextAlignment
-  tl # setAutoresizingMask nsViewWidthSizable
+  tl # setAutoresizingMask (nsViewWidthSizable .|. nsViewMaxYMargin) 
   tl # setMonospaceFont
   tl # setSelectable True
+  tl # setEditable False   
   tl # sizeToFit
   return tl
 
-addSubviewWithTextLine :: forall t1 t2. NSView t1 -> NSView t2 -> IO (NSTextField ())
 addSubviewWithTextLine view parent = do
   view # setAutoresizingMask allSizable
-  parent # addSubview view
+  parent' # addSubview view
 
   text <- newTextLine
-  parent # addSubview text
-
+  parent' # addSubview text
+  parent # addSubview parent'
   -- Adjust frame sizes, as superb cocoa cannot do this itself...
   txtbox <- text # frame
-  winbox <- parent # bounds
+  winbox <- parent' # bounds
   view # setFrame (rect 0 (height txtbox) (width winbox) (height winbox - height txtbox))
   text # setFrame (rect 0 0 (width winbox) (height txtbox))
 
-  return text
+  return (text, parent')
 
 -- | Initialise the ui
 start :: Chan Yi.Event.Event -> Chan action ->
-         Editor -> (EditorM () -> action) -> IO Common.UI
-start ch outCh _ed runEd = do
+         Editor -> (EditorM () -> action) -> 
+         MVar (WS.WindowSet Common.Window) -> IO Common.UI
+start ch outCh _ed runEd ws0 = do
 
   -- Publish Objective-C classes...
   initializeClass_YiApplication
@@ -309,8 +310,8 @@ start ch outCh _ed runEd = do
   content # setAutoresizingMask allSizable
 
   -- Create yi window container
-  winContainer <- autonew _NSView
-  cmd <- content # addSubviewWithTextLine winContainer
+  main <- new _NSView
+  cmd <- content # addSubviewWithTextLine main
 
   -- Ensure that our command line application is also treated as a gui application
   fptr <- mallocForeignPtrBytes 32 -- way to many bytes, but hey...
@@ -330,9 +331,26 @@ start ch outCh _ed runEd = do
 
 -- | Run the main loop
 main :: UI -> IO ()
-main _ = do
+main ui = withAutoreleasePool $ main' ui
+main' ui = do
   logPutStrLn "Cocoa main loop running"
-  _YiApplication # sharedApplication >>= run
+  app <- _YiApplication # sharedApplication >>= return . toYiApplication
+
+  -- This should really be app # run, but that doesn't seem to work
+  -- We therefore need to replicate the run-loop in Haskell, which is
+  -- only done for the rudimentary parts, since we shouldn't have to
+  -- do this.
+  let mode = toNSString "kCFRunLoopDefaultMode"
+      loop = do
+        -- GAH, we need these in the run loop, or else the other haskell threads don't run
+        yield >> yield >> yield >> yield
+        future <- _NSDate # dateWithTimeIntervalSinceNow 1.0
+        event <- app # nextEventMatchingMaskUntilDateInModeDequeue 0xffffffff (castObject future) mode True
+        if event == nil then return () else app # sendEvent event
+        running <- app # isRunning
+        if running then loop else return ()
+
+  loop
 
 -- | Clean up and go home
 end :: IO ()
@@ -355,7 +373,7 @@ setFocus w = do
   (textview w) # NSView.window >>= makeFirstResponder (textview w) >> return ()
 
 removeWindow :: UI -> WinInfo -> IO ()
-removeWindow _i win = (widget win) # removeFromSuperview
+removeWindow _i win = (widget win)  # removeFromSuperview
 
 -- | Make A new window
 newWindow :: UI -> Bool -> FBuffer -> IO WinInfo
@@ -371,37 +389,53 @@ newWindow ui mini b = do
   v # setAlignment nsLeftTextAlignment
   v # setMonospaceFont
   v # sizeToFit
-  v # setHorizontallyResizable True
-  v # setVerticallyResizable True
   v # setIVar _runBuffer ((uiRunEditor ui) . withGivenBuffer0 (keyB b))
 
-  view <- if mini 
+  (ml, view) <- if mini 
    then do
+    v # setHorizontallyResizable False
+    v # setVerticallyResizable False
     prompt <- newTextLine
     prompt # setStringValue (toNSString (name b))
+    prompt # sizeToFit
 
-    hb <- new _NSView
+    prect <- prompt # frame
+    vrect <- v # frame
+    
+    hb <- _NSView # alloc >>= initWithFrame (rect 0 0 (width prect + width vrect) (height prect))
+    v # setFrameOrigin (NSPoint (width prect) 0)
+    v # setAutoresizingMask nsViewWidthSizable
     hb # addSubview prompt
     hb # addSubview v
+    hb # setAutoresizingMask nsViewWidthSizable
+   
+    brect <- (uiBox ui) # bounds
+    hb # setFrame (rect 0 0 (width brect) (height prect))
 
-    return hb
+    (uiBox ui) # addSubview hb
+
+    return (prompt, hb)
    else do
-    clip <- new _NSClipView
-    clip # setDocumentView v
-    clip # setAutoresizingMask allSizable
+    v # setHorizontallyResizable True
+    v # setVerticallyResizable True
+--    clip <- new _NSClipView
+--    clip # setDocumentView v
+--    clip # setAutoresizingMask allSizable
     
     scroll <- new _NSScrollView
-    scroll # setContentView clip
+--    scroll # setContentView clip
     scroll # setDocumentView v
-    clip # setAutoresizingMask allSizable
+--    clip # setAutoresizingMask allSizable
+    scroll # setAutoresizingMask allSizable
 
     scroll # setHasVerticalScroller True
     scroll # setHasHorizontalScroller False
     scroll # setAutohidesScrollers False
 
-    return (toNSView $ toID scroll)
+    let vv =  (toNSView $ toID scroll)
 
-  ml <- (uiBox ui) # addSubviewWithTextLine view
+    (ml, wid) <- (uiBox ui) # packSubviewWithTextLine vv
+    return (ml, wid)
 
   storage <- getTextStorage ui b
   layoutManager v >>= replaceTextStorage storage
@@ -428,10 +462,10 @@ insertWindow :: Editor -> UI -> Window -> IO WinInfo
 insertWindow e i win = do
   let buf = findBufferWith (Common.bufkey win) e
   liftIO $ do w <- newWindow i (Common.isMini win) buf
-              (widget w) # setAutoresizingMask (if isMini w
-	                                        then nsViewWidthSizable
-	                                        else allSizable)
-              (uiBox i) # addSubview (widget w)
+--               (widget w) # setAutoresizingMask (if isMini w
+-- 	                                        then nsViewWidthSizable
+-- 	                                        else allSizable)
+--               (uiBox i) # addSubview (widget w)
               return w
 
 refresh :: UI -> Editor -> IO ()
@@ -452,11 +486,15 @@ refresh ui e = do
       --let p = updatePoint u
       --replaceTagsIn ui (inBounds (p-100) size) (inBounds (p+100) size) buf storage
 
+    (uiWindow ui) # setAutodisplay False -- avoid redrawing while window syncing
     WS.debug "syncing" ws
     logPutStrLn $ "with: " ++ show cache
     cache' <- syncWindows e ui (toList $ WS.withFocus $ ws) cache  
     logPutStrLn $ "Yields: " ++ show cache'
     writeRef (windowCache ui) cache'
+    (uiBox ui) # adjustSubviews -- FIX: maybe it is not needed
+    (uiWindow ui) # setAutodisplay True -- reenable automatic redrawing
+
     forM_ cache' $ \w -> 
         do let buf = findBufferWith (bufkey w) e
            let (p0, _, []) = runBuffer buf pointB
