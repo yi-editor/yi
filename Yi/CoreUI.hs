@@ -23,88 +23,71 @@
 module Yi.CoreUI where
 
 import Prelude hiding (error)
-import Yi.UI.Common
+import Yi.Accessor
 import Yi.Editor
 import Yi.Debug
 import Yi.Buffer
 import Data.List
-import Yi.Keymap
-import Yi.Monad
 import Control.Monad.Reader
 import Yi.WindowSet as WS
-import Control.Concurrent.MVar
 import Data.Foldable (toList)
 --------------------------------------------------------
 
 
 -- | Rotate focus to the next window
-nextWinE :: YiM ()
+nextWinE :: EditorM ()
 nextWinE = modifyWindows WS.forward
 
 -- | Rotate focus to the previous window
-prevWinE :: YiM ()
+prevWinE :: EditorM ()
 prevWinE = modifyWindows WS.backward
 
 -- | Apply a function to the windowset.
-modifyWindows :: (WindowSet Window -> WindowSet Window) -> YiM ()
+modifyWindows :: (WindowSet Window -> WindowSet Window) -> EditorM ()
 modifyWindows f = do
-  wsRef <- asks yiWindows
-  b <- liftIO $ modifyMVar wsRef $ \ws -> let ws' = f ws in return (ws', bufkey $ WS.current ws')
-  withEditor (setBuffer b)
+  b <- getsAndModifyA windowsA $ \ws -> let ws' = f ws in (ws', bufkey $ WS.current ws')
+  setBuffer b
   return ()
 
-withWindows :: (WindowSet Window -> a) -> YiM a
-withWindows f = do
-  wsRef <- asks yiWindows
-  liftIO $ withMVar wsRef $ \ws -> return (f ws)
+withWindows :: (WindowSet Window -> a) -> EditorM a
+withWindows = getsA windowsA
 
-withWindow :: (Window -> a) -> YiM a
-withWindow f = withWindows (f . WS.current)
+withWindow :: (Window -> a) -> EditorM a
+withWindow f = getsA (WS.currentA .> windowsA) f
 
-withWindowAndBuffer :: (Window -> BufferM a) -> YiM a
+withWindowAndBuffer :: (Window -> BufferM a) -> EditorM a
 withWindowAndBuffer f = do
-  wsRef <- asks yiWindows 
-  editorRef <- asks yiEditor
-  liftIO $ withMVar wsRef $ \ws -> do e <- readRef editorRef
-                                      let (a,e') = runEditor (withBuffer0 (f (WS.current ws))) e
-                                      writeRef editorRef e'
-                                      return a
+  w <- getA (WS.currentA .> windowsA)
+  withBuffer0 (f w)
 
 -- | Split the current window, opening a second window onto current buffer.
-splitE :: YiM ()
+splitE :: EditorM ()
 splitE = do 
-  b <- withEditor $ getBuffer
+  b <- getBuffer
   let w = Window False b 0 0 0
   modifyWindows (WS.add w)
 
--- | Switch focus to some other window. If none is available, create one.
-shiftOtherWindow :: YiM ()
-shiftOtherWindow = do
-  len <- withWindows (length . toList)
-  when (len == 1) splitE
-  nextWinE
-
-
-withOtherWindow :: YiM () -> YiM ()
-withOtherWindow f = do
-  shiftOtherWindow
-  f
-  prevWinE
-
 
 -- | Enlarge the current window
-enlargeWinE :: YiM ()
+enlargeWinE :: EditorM ()
 enlargeWinE = error "enlargeWinE: not implemented"
 
 -- | Shrink the current window
-shrinkWinE :: YiM ()
+shrinkWinE :: EditorM ()
 shrinkWinE = error "shrinkWinE: not implemented"
 
 
 -- | Close the current window, unless it is the last window open.
-tryCloseE :: YiM ()
+tryCloseE :: EditorM ()
 tryCloseE = modifyWindows WS.delete
 
 -- | Make the current window the only window on the screen
-closeOtherE :: YiM ()
+closeOtherE :: EditorM ()
 closeOtherE = modifyWindows WS.deleteOthers
+
+-- | Switch focus to some other window. If none is available, create one.
+shiftOtherWindow :: EditorM ()
+shiftOtherWindow = do
+  len <- withWindows (length . toList)
+  when (len == 1) splitE
+  nextWinE

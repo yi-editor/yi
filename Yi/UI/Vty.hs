@@ -55,7 +55,6 @@ import Yi.Vty hiding (def, black, red, green, yellow, blue, magenta, cyan, white
 import Yi.WindowSet as WS
 import qualified Data.ByteString.Char8 as B
 import qualified Yi.UI.Common as Common
-import Yi.UI.Common (Window (..), pointInWindow)
 
 ------------------------------------------------------------------------
 
@@ -74,24 +73,23 @@ data UI = UI {
              ,uiThread  :: ThreadId
              ,uiRefresh :: MVar ()
              ,uiEditor  :: IORef Editor
-             ,windows   :: MVar (WS.WindowSet Common.Window)
              }
 mkUI :: UI -> Common.UI
 mkUI ui = Common.UI 
   {
-   Common.main                  = main ui,
-   Common.end                   = end ui,
-   Common.suspend               = raiseSignal sigTSTP,
-   Common.scheduleRefresh       = scheduleRefresh       ui,
-   Common.prepareAction         = return (return ())
+   Common.main           = main ui,
+   Common.end            = end ui,
+   Common.suspend        = raiseSignal sigTSTP,
+   Common.refresh        = refresh ui,
+   Common.prepareAction  = return (return ())
   }
 
 
 -- | Initialise the ui
 start :: Chan Yi.Event.Event -> Chan action ->
          Editor -> (EditorM () -> action) -> 
-         MVar (WS.WindowSet Common.Window) -> IO Common.UI
-start ch _outCh editor _runEd ws0 = do
+         IO Common.UI
+start ch _outCh editor _runEd = do
   liftIO $ do 
           v <- mkVty
           (x0,y0) <- Yi.Vty.getSize v
@@ -101,7 +99,7 @@ start ch _outCh editor _runEd ws0 = do
           t <- myThreadId
           tuiRefresh <- newEmptyMVar
           editorRef <- newIORef editor
-          let result = UI v sz t tuiRefresh editorRef ws0
+          let result = UI v sz t tuiRefresh editorRef
               -- | Action to read characters into a channel
               getcLoop = forever $ getKey >>= writeChan ch
 
@@ -128,7 +126,7 @@ main ui = do
                       handleJust ioErrors (\except -> do 
                                              logPutStrLn "refresh crashed with IO Error"
                                              logError $ show $ except)
-                                     (readRef (uiEditor ui) >>= refresh ui)
+                                     (readRef (uiEditor ui) >>= refresh ui >> return ())
   readRef (uiEditor ui) >>= scheduleRefresh ui
   logPutStrLn "refreshLoop started"
   refreshLoop
@@ -176,8 +174,9 @@ fromVtyMod Yi.Vty.MAlt   = Yi.Event.MMeta
 -- Among others, this re-computes the heights and widths of all the windows.
 
 -- Two points remain: horizontal scrolling, and tab handling.
-refresh :: UI -> Editor -> IO ()
-refresh ui e = modifyMVar_ (windows ui) $ \ws0 -> do
+refresh :: UI -> Editor -> IO (WS.WindowSet Window)
+refresh ui e = do
+  let ws0 = windows e
   logPutStrLn "refreshing screen."
   (yss,xss) <- readRef (scrsize ui)
   let ws1 = computeHeights yss ws0

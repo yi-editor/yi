@@ -26,18 +26,18 @@ import Prelude hiding (error, sequence_, elem, mapM_, mapM, concatMap)
 
 import Yi.FastBuffer (inBounds, Update(..))
 import Yi.Buffer
-import Yi.Editor
+import Yi.Editor hiding (bufkey, isMini, winkey, windows)
+import qualified Yi.Editor as Common
 import Yi.Event
 import Yi.Debug
 import Yi.Monad
+import Yi.CoreUI
 import qualified Yi.UI.Common as Common
-import Yi.UI.Common (Window)
 import Yi.Style hiding (modeline)
 import qualified Yi.WindowSet as WS
 
 import Control.Concurrent ( yield )
 import Control.Concurrent.Chan
-import Control.Concurrent.MVar
 import Control.Monad.Reader (liftIO, when, MonadIO)
 import Control.Monad (ap)
 import Control.Monad.State (runState, State, gets, modify)
@@ -61,7 +61,6 @@ data UI = forall action. UI {
              ,uiCmdLine :: Label
              ,uiBuffers :: IORef (M.Map BufferRef TextBuffer)
              ,tagTable :: TextTagTable
-             ,windows   :: MVar (WS.WindowSet Window)     -- ^ all the windows
              ,windowCache :: IORef [WinInfo]
              ,uiActionCh :: Chan action
              ,uiRunEd :: EditorM () -> action
@@ -92,15 +91,15 @@ mkUI ui = Common.UI
    Common.main                  = main                  ui,
    Common.end                   = end,
    Common.suspend               = windowIconify (uiWindow ui),
-   Common.scheduleRefresh       = scheduleRefresh       ui,
+   Common.refresh               = scheduleRefresh       ui,
    Common.prepareAction         = prepareAction         ui
   }
 
 -- | Initialise the ui
 start :: Chan Yi.Event.Event -> Chan action ->
          Editor -> (EditorM () -> action) -> 
-         MVar (WS.WindowSet Common.Window) -> IO Common.UI
-start ch outCh _ed runEd ws0 = do
+         IO Common.UI
+start ch outCh _ed runEd = do
   initGUI
 
   -- rest.
@@ -134,7 +133,7 @@ start ch outCh _ed runEd ws0 = do
   wc <- newIORef []
   tt <- textTagTableNew
 
-  let ui = UI win vb' cmd bufs tt ws0 wc outCh runEd
+  let ui = UI win vb' cmd bufs tt wc outCh runEd
 
   return (mkUI ui)
 
@@ -213,7 +212,7 @@ keyTable = M.fromList
 end :: IO ()
 end = mainQuit
 
--- | Synchronized the windows displayed by GTK with the status of windows in the Core.
+-- | Synchronize the windows displayed by GTK with the status of windows in the Core.
 syncWindows :: Editor -> UI -> [(Window, Bool)] -- ^ windows paired with their "isFocused" state.
             -> [WinInfo] -> IO [WinInfo]
 syncWindows e ui (wfocused@(w,focused):ws) (c:cs) 
@@ -255,18 +254,19 @@ handleClick ui w event = do
   p1 <- get iter textIterOffset
 
   -- maybe focus the window
-  case eventClick event of 
-    SingleClick -> do wCache <- readIORef (windowCache ui)
-                      let Just idx = findIndex ((wkey w ==) . wkey) wCache
-                      modifyMVar_ (windows ui) (\ws -> return (WS.focusIndex idx ws))
-    _ -> return ()
-  
-  
+  logPutStrLn $ "Clicked inside window: " ++ show w
+  wCache <- readIORef (windowCache ui)
+  let Just idx = findIndex ((wkey w ==) . wkey) wCache
+      focusWindow = modifyWindows (WS.focusIndex idx)
+  logPutStrLn $ "Will focus to index: " ++ show (findIndex ((wkey w ==) . wkey) wCache)
+
   let editorAction = do
         b <- gets $ (bkey . findBufferWith (bufkey w))
         case (eventClick event, eventButton event) of
-          (SingleClick, LeftButton) -> 
+          (SingleClick, LeftButton) -> do
+              focusWindow
               withGivenBuffer0 b $ moveTo p1 -- as a side effect we forget the prefered column
+          (SingleClick, _) -> focusWindow
           (ReleaseClick, LeftButton) -> do
             p0 <- withGivenBuffer0 b $ pointB
             if p1 == p0
@@ -363,8 +363,9 @@ insertWindow e i win = do
               widgetShowAll (widget w)
               return w
 
-scheduleRefresh :: UI -> Editor -> IO ()
-scheduleRefresh ui e = withMVar (windows ui) $ \ws -> do
+scheduleRefresh :: UI -> Editor -> IO (WS.WindowSet Common.Window)
+scheduleRefresh ui e = do
+    let ws = Common.windows e
     let takeEllipsis s = if length s > 132 then take 129 s ++ "..." else s
     set (uiCmdLine ui) [labelText := takeEllipsis (statusLine e)]
 
@@ -377,7 +378,7 @@ scheduleRefresh ui e = withMVar (windows ui) $ \ws -> do
       let p = updatePoint u
       replaceTagsIn ui (inBounds (p-100) size) (inBounds (p+100) size) buf gtkBuf
 
-    WS.debug "syncing" ws
+    logPutStrLn $ "syncing: " ++ show ws
     logPutStrLn $ "with: " ++ show cache
     cache' <- syncWindows e ui (toList $ WS.withFocus $ ws) cache  
     logPutStrLn $ "Yields: " ++ show cache'
@@ -395,7 +396,7 @@ scheduleRefresh ui e = withMVar (windows ui) $ \ws -> do
            textViewScrollMarkOnscreen (textview w) insertMark
            let (txt, _, []) = runBuffer buf getModeLine 
            set (modeline w) [labelText := txt]
-
+    return ws
 
 
 replaceTagsIn :: UI -> Point -> Point -> FBuffer -> TextBuffer -> IO ()
@@ -456,9 +457,8 @@ prepareAction ui = do
                      l1 <- get i1 textIterLine
                      return (l1 - l0)
     -- updates the heights of the windows
-    modifyMVar (windows ui) $ \ws -> do 
-        let (ws', _) = runState (mapM distribute ws) heights
-        return (ws', setBuffer (Common.bufkey $ WS.current ws') >> return ())
+    return $ modifyWindows (\ws -> fst $ runState (mapM distribute ws) heights)
+
 
 distribute :: Window -> State [Int] Window
 distribute win = do

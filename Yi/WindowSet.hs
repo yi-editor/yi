@@ -28,6 +28,7 @@ import Data.Foldable
 import Data.Traversable
 import Data.Monoid
 import Control.Applicative
+import Yi.Accessor
 
 data WindowSet a = WindowSet { before::[a], current::a, after :: [a] }
     deriving (Show)
@@ -40,6 +41,12 @@ instance Functor WindowSet where
 
 instance Traversable WindowSet where
     traverse f (WindowSet b c a) = WindowSet <$> traverse f (reverse b) <*> f c <*> traverse f a
+
+currentA :: Accessor (WindowSet a) a
+currentA = Accessor current modifyCurrent
+    where modifyCurrent :: (a -> a) -> WindowSet a -> WindowSet a
+          modifyCurrent f (WindowSet b c a) = WindowSet b (f c) a
+
 
 new :: a -> WindowSet a
 new w = WindowSet [] w []
@@ -86,9 +93,6 @@ withFocus (WindowSet b c a) = WindowSet (zip b (repeat False)) (c, True) (zip a 
 focusIndex :: Int -> WindowSet a -> WindowSet a
 focusIndex n ws = WindowSet (reverse b) c a
     where (b,c:a) = splitAt n $ toList ws
-
-modifyCurrent :: (a -> a) -> WindowSet a -> WindowSet a
-modifyCurrent f (WindowSet b c a) = WindowSet b (f c) a
 
 debug :: (Show a, MonadIO m) => String -> WindowSet a -> m ()
 debug msg (WindowSet b c a) = logPutStrLn $ msg ++ ": " ++ show b ++ show c ++ show a

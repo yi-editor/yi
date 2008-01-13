@@ -272,10 +272,10 @@ singleCmdFM =
 
 multiCmdFM :: [(String, Int -> YiM ())]
 multiCmdFM =
-    [("\^Wc", const tryCloseE)
-    ,("\^Wo", const closeOtherE)
-    ,("\^Ws", const splitE)
-    ,("\^Ww", const nextWinE)
+    [("\^Wc", const $ withEditor tryCloseE)
+    ,("\^Wo", const $ withEditor closeOtherE)
+    ,("\^Ws", const $ withEditor splitE)
+    ,("\^Ww", const $ withEditor nextWinE)
     ]
 
 -- | So-called 'operators', which take movement actions as arguments.
@@ -551,11 +551,11 @@ ex_eval cmd = do
       fn "$"          = withBuffer botB
       fn "p"          = prevBufW
       fn "prev"       = prevBufW
-      fn ('s':'p':_)  = splitE
+      fn ('s':'p':_)  = withEditor splitE
       fn "e"          = revertE
       fn ('e':' ':f)  = fnewE f
       fn ('s':'e':'t':' ':'f':'t':'=':ft)  = withBuffer $ setSyntaxB ft
-      fn ('n':'e':'w':' ':f) = splitE >> fnewE f
+      fn ('n':'e':'w':' ':f) = withEditor splitE >> fnewE f
       fn ('s':'/':cs) = viSub cs
 
       fn ('b':' ':"m") = switchToBufferWithNameE "*messages*"

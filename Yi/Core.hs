@@ -121,7 +121,7 @@ import qualified Yi.WindowSet as WS
 import qualified Yi.Editor as Editor
 import qualified Yi.Style as Style
 import qualified Yi.UI.Common as UI
-import Yi.UI.Common as UI (Window (..), UI)
+import Yi.UI.Common as UI (UI)
 
 import Data.Maybe
 import qualified Data.Map as M
@@ -193,18 +193,16 @@ startE startConfig kernel st commandLineActions = do
 
     -- restore the old state
     let initEditor = maybe emptyEditor id st
-    let [consoleB] = findBufferWithName "*console*" initEditor
     newSt <- newIORef initEditor
     -- Setting up the 1st window is a bit tricky because most functions assume there exists a "current window"
-    wins <- newMVar (WS.new $ Window False (consoleB) 0 0 0)
     inCh <- newChan
     outCh :: Chan Action <- newChan
-    ui <- uiStart inCh outCh initEditor makeAction wins
+    ui <- uiStart inCh outCh initEditor makeAction
     startKm <- newIORef nilKeymap
     startModules <- newIORef ["Yi.Yi"] -- this module re-exports all useful stuff, so we want it loaded at all times.
     startThreads <- newIORef []
     keymaps <- newIORef M.empty
-    let yi = Yi newSt wins ui startThreads inCh outCh startKm keymaps kernel startModules
+    let yi = Yi newSt ui startThreads inCh outCh startKm keymaps kernel startModules
         runYi f = runReaderT f yi
 
     runYi $ do 
@@ -298,8 +296,8 @@ reloadE = tryLoadModulesE =<< readsRef editorModules
 -- | Redraw
 refreshE :: YiM ()
 refreshE = do editor <- with yiEditor readRef
-              withUI $ flip UI.scheduleRefresh editor
-              withEditor $ modify $ \e -> e {editorUpdates = []}
+              ws <- withUI $ flip UI.refresh editor
+              withEditor $ modify $ \e -> e {editorUpdates = [], windows = ws}
 
 -- | Suspend the program
 suspendE :: YiM ()
@@ -313,7 +311,7 @@ upScreenE = upScreensE 1
 
 -- | Scroll up n screens
 upScreensE :: Int -> YiM ()
-upScreensE n = withWindowAndBuffer $ \w -> do
+upScreensE n = withEditor $ withWindowAndBuffer $ \w -> do
                  gotoLnFrom (- (n * (height w - 1)))
                  moveToSol
 
@@ -323,26 +321,26 @@ downScreenE = downScreensE 1
 
 -- | Scroll down n screens
 downScreensE :: Int -> YiM ()
-downScreensE n = withWindowAndBuffer $ \w -> do
+downScreensE n = withEditor $ withWindowAndBuffer $ \w -> do
                    gotoLnFrom (n * (height w - 1))
                    return ()
 
 -- | Move to @n@ lines down from top of screen
 downFromTosE :: Int -> YiM ()
-downFromTosE n = withWindowAndBuffer $ \w -> do
+downFromTosE n = withEditor $ withWindowAndBuffer $ \w -> do
                    moveTo (tospnt w)
                    replicateM_ n lineDown
 
 -- | Move to @n@ lines up from the bottom of the screen
 upFromBosE :: Int -> YiM ()
-upFromBosE n = withWindowAndBuffer $ \w -> do
+upFromBosE n = withEditor $ withWindowAndBuffer $ \w -> do
                    moveTo (bospnt w)
                    moveToSol
                    replicateM_ n lineUp
 
 -- | Move to middle line in screen
 middleE :: YiM ()
-middleE = withWindowAndBuffer $ \w -> do
+middleE = withEditor $ withWindowAndBuffer $ \w -> do
                    moveTo (tospnt w)
                    replicateM_ (height w `div` 2) lineDown
 
@@ -431,7 +429,7 @@ msgE s = do
   b <- getBufferWithName "*messages*"
   withGivenBuffer b $ do botB; insertN (s ++ "\n")
 
--- | Set the cmd buffer, and draw a pretty error message
+-- | Show an error on the status line and log it.
 errorE :: String -> YiM ()
 errorE s = do msgE ("error: " ++ s)
               logPutStrLn $ "errorE: " ++ s
@@ -594,11 +592,11 @@ newBufferE f s = do
 
 -- | Attach the specified buffer to the current window
 switchToBufferE :: BufferRef -> YiM ()
-switchToBufferE b = modifyWindows (WS.modifyCurrent (\w -> w {bufkey = b}))
+switchToBufferE b = withEditor $ modifyWindows (modifier WS.currentA (\w -> w {bufkey = b}))
 
 -- | Attach the specified buffer to some other window than the current one
 switchToBufferOtherWindowE :: BufferRef -> YiM ()
-switchToBufferOtherWindowE b = shiftOtherWindow >> switchToBufferE b
+switchToBufferOtherWindowE b = withEditor shiftOtherWindow >> switchToBufferE b
 
 -- | Find buffer with given name. Raise exception if not found.
 getBufferWithName :: String -> YiM BufferRef
@@ -618,7 +616,7 @@ spawnMinibufferE :: String -> KeymapMod -> YiM () -> YiM ()
 spawnMinibufferE prompt kmMod initialAction =
     do b <- withEditor $ stringToNewBuffer prompt []
        setBufferKeymap b kmMod
-       modifyWindows (WS.add $ Window True b 0 0 0)
+       withEditor $ modifyWindows (WS.add $ Window True b 0 0 0)
        initialAction
 
 -- | Write current buffer to disk, if this buffer is associated with a file
@@ -665,9 +663,9 @@ closeBufferE bufName = do
 -- If this is the last window open, quit the program.
 closeE :: YiM ()
 closeE = do
-    n <- withWindows (length . toList)
+    n <- withEditor $ withWindows (length . toList)
     when (n == 1) quitE
-    tryCloseE
+    withEditor $ tryCloseE
 
 -- | Recompile and reload the user's config files
 reconfigE :: YiM ()
@@ -742,3 +740,9 @@ ghcErrorHandlerE inner = do
 			     
 	    ) $
             inner
+
+withOtherWindow :: YiM () -> YiM ()
+withOtherWindow f = do
+  withEditor $ shiftOtherWindow
+  f
+  withEditor $ prevWinE

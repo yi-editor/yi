@@ -30,13 +30,11 @@ import Data.Typeable
 import Data.IORef
 import Control.Exception
 import Control.Concurrent
-import Control.Concurrent.MVar
 import Yi.Buffer
 import qualified Yi.Interact as I
 import Yi.Monad
 import Control.Monad.State
 import Yi.Event
-import Yi.WindowSet as WS
 
 data Action = forall a. Show a => YiA (YiM a)
             | forall a. Show a => EditorA (EditorM a)
@@ -67,7 +65,6 @@ data BufferKeymap = BufferKeymap
     }
 
 data Yi = Yi {yiEditor :: IORef Editor,
-              yiWindows :: MVar (WindowSet Window),
               yiUi          :: UI,
               threads       :: IORef [ThreadId],           -- ^ all our threads
               input         :: Chan Event,                 -- ^ input stream

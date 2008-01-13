@@ -33,6 +33,8 @@ import Yi.Monad
 import Yi.FastBuffer
 import Yi.Accessor
 import Yi.Dynamic
+import Yi.WindowSet
+
 import Prelude hiding (error)
 
 import Data.List                ( nub )
@@ -42,6 +44,24 @@ import Control.Monad.State
 import Control.Monad.Writer
 
 ------------------------------------------------------------------------
+-- | A window onto a buffer.
+
+data Window = Window {
+                      isMini :: !Bool   -- ^ regular or mini window?
+                     ,bufkey :: !BufferRef -- ^ the buffer this window opens to
+                     ,tospnt :: !Int    -- ^ the buffer point of the top of screen
+                     ,bospnt :: !Int    -- ^ the buffer point of the bottom of screen
+                     ,height :: !Int    -- ^ height of the window (in number of lines displayed)
+                     }
+-- | Get the identification of a window.
+winkey :: Window -> (Bool, BufferRef)
+winkey w = (isMini w, bufkey w)
+
+instance Show Window where
+    show Window { bufkey = u } = "Window to " ++ show u
+
+pointInWindow :: Point -> Window -> Bool
+pointInWindow point win = tospnt win <= point && point <= bospnt win
 
 -- | The Editor state
 data Editor = Editor {
@@ -49,6 +69,9 @@ data Editor = Editor {
                                                     -- first buffer is the current one.
        ,buffers       :: M.Map BufferRef FBuffer
        ,bufferRefSupply :: BufferRef          
+
+       ,windows       :: WindowSet Window
+
        ,uistyle       :: !UIStyle                   -- ^ ui colours
        ,dynamic       :: DynamicValues              -- ^ dynamic components
 
@@ -71,10 +94,15 @@ bufferRefSupplyA = Accessor bufferRefSupply (\f e -> e {bufferRefSupply = f (buf
 dynamicA :: Accessor Editor DynamicValues
 dynamicA = Accessor dynamic (\f e -> e {dynamic = f (dynamic e)})
 
+windowsA :: Accessor Editor (WindowSet Window)
+windowsA = Accessor windows (\f e -> e {windows = f (windows e)})
+
+
 -- | The initial state
 emptyEditor :: Editor
 emptyEditor = Editor {
         buffers      = M.singleton (bkey buf) buf
+       ,windows      = new (Window False (bkey buf) 0 0 0)
        ,bufferStack  = [bkey buf]
        ,bufferRefSupply = 1
        ,windowfill   = ' '
