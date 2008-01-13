@@ -116,6 +116,7 @@ import Yi.Event (eventToChar)
 import Yi.Keymap
 import Yi.Interact (anyEvent)
 import Yi.Monad
+import Yi.Accessor
 import qualified Yi.WindowSet as WS
 import qualified Yi.Editor as Editor
 import qualified Yi.Style as Style
@@ -265,6 +266,7 @@ loadModulesE modules = do
     targets <- mapM (\m -> guessTarget kernel m Nothing) modules
     setTargets kernel targets
   -- lift $ rts_revertCAFs -- FIXME: GHCi does this; It currently has undesired effects on logging; investigate.
+  logPutStrLn $ "Loading targets..."
   result <- withKernel loadAllTargets
   loaded <- withKernel setContextAfterLoad
   ok <- case result of
@@ -272,7 +274,7 @@ loadModulesE modules = do
     _ -> return True
   let newModules = map (moduleNameString . moduleName) loaded
   writesRef editorModules newModules
-  logPutStrLn $ "tryLoadModulesE: " ++ show modules ++ " -> " ++ show (ok, newModules)
+  logPutStrLn $ "loadModulesE: " ++ show modules ++ " -> " ++ show (ok, newModules)
   return (ok, newModules)
 
 --foreign import ccall "revertCAFs" rts_revertCAFs  :: IO ()
@@ -384,13 +386,11 @@ getRegE = withEditor $ gets $ yreg
 
 -- | Retrieve a value from the extensible state
 getDynamic :: Initializable a => YiM a
-getDynamic = do 
-  ps <- readEditor dynamic
-  return $ getDynamicValue ps
+getDynamic = withEditor $ getA (dynamicValueA .> dynamicA)
 
 -- | Insert a value into the extensible state, keyed by its type
 setDynamic :: Initializable a => a -> YiM ()
-setDynamic x = withEditor $ modify $ \e -> e { dynamic = setDynamicValue x (dynamic e) }
+setDynamic x = withEditor $ setA (dynamicValueA .> dynamicA) x
 
 ------------------------------------------------------------------------
 -- | Pipe a string through an external command, returning the stdout

@@ -23,7 +23,7 @@
 
 module Yi.Editor where
 
-import Yi.Buffer                ( BufferRef, FBuffer (..), BufferM, newB, runBuffer, modifyUndos )
+import Yi.Buffer                ( BufferRef, FBuffer (..), BufferM, newB, runBuffer, undosA )
 import Text.Regex.Posix.Wrap    ( Regex )
 import Yi.Style                 ( uiStyle, UIStyle )
 
@@ -31,10 +31,11 @@ import Yi.Debug
 import Yi.Undo
 import Yi.Monad
 import Yi.FastBuffer
+import Yi.Accessor
+import Yi.Dynamic
 import Prelude hiding (error)
 
 import Data.List                ( nub )
-import Data.Dynamic
 import qualified Data.Map as M
 
 import Control.Monad.State
@@ -49,7 +50,7 @@ data Editor = Editor {
        ,buffers       :: M.Map BufferRef FBuffer
        ,bufferRefSupply :: BufferRef          
        ,uistyle       :: !UIStyle                   -- ^ ui colours
-       ,dynamic       :: !(M.Map String Dynamic)    -- ^ dynamic components
+       ,dynamic       :: DynamicValues              -- ^ dynamic components
 
        ,windowfill    :: !Char                      -- ^ char to fill empty window space with
        ,tabwidth      :: !Int                       -- ^ width of tabs
@@ -63,8 +64,12 @@ data Editor = Editor {
        ,regex         :: !(Maybe (String,Regex))    -- ^ most recent regex
     }
 
-modifyBufferRefSupply :: (BufferRef -> BufferRef) -> Editor -> Editor
-modifyBufferRefSupply f e = e {bufferRefSupply = f (bufferRefSupply e)}
+
+bufferRefSupplyA :: Accessor Editor BufferRef
+bufferRefSupplyA = Accessor bufferRefSupply (\f e -> e {bufferRefSupply = f (bufferRefSupply e)})
+
+dynamicA :: Accessor Editor DynamicValues
+dynamicA = Accessor dynamic (\f e -> e {dynamic = f (dynamic e)})
 
 -- | The initial state
 emptyEditor :: Editor
@@ -93,17 +98,16 @@ runEditor = runState . fromEditorM
 
 newBufferRef :: EditorM BufferRef
 newBufferRef = do
-  modify (modifyBufferRefSupply (+1))
-  gets bufferRefSupply
+  modifyA bufferRefSupplyA (+ 1)
+  getA bufferRefSupplyA
 
 -- | Create and fill a new buffer, using contents of string.
-stringToNewBuffer :: String -- ^ The buffer name *not* the associated file
+stringToNewBuffer :: String -- ^ The buffer name (*not* the associated file)
                   -> String -- ^ The contents with which to populate the buffer
                   -> EditorM BufferRef
 stringToNewBuffer nm cs = do
     u <- newBufferRef
-    let b = newB u nm cs
-    insertBuffer b
+    insertBuffer (newB u nm cs)
 
 insertBuffer :: FBuffer -> EditorM BufferRef
 insertBuffer b = getsAndModify $
@@ -159,7 +163,7 @@ shiftBuffer shift = gets $ \e ->
 withGivenBuffer0 :: BufferRef -> BufferM a -> EditorM a
 withGivenBuffer0 k f = getsAndModify $ \e -> 
                         let b = findBufferWith k e
-                            b0 = modifyUndos (addUR InteractivePoint) b
+                            b0 = modifier undosA (addUR InteractivePoint) b
                             (v, b', updates) = runBuffer b0 f 
                         in (e {editorUpdates = editorUpdates e ++ [(bkey b,u) | u <- updates],
                                buffers = M.adjust (const b') k (buffers e)

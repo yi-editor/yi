@@ -57,7 +57,7 @@ module Yi.Buffer
   , deleteNAt
   , readB
   , elemsB
-  , modifyUndos
+  , undosA
   , undoB
   , redoB
   , getMarkB
@@ -89,6 +89,7 @@ where
 import Prelude hiding (error)
 import System.FilePath
 import Text.Regex.Posix.Wrap    (Regex)
+import Yi.Accessor
 import Yi.FastBuffer
 import Yi.Undo
 import Yi.Style
@@ -120,6 +121,21 @@ data FBuffer =
                 , bufferDynamic :: !DynamicValues -- ^ dynamic components
                 , preferCol :: !(Maybe Int)       -- ^ prefered column to arrive at when we do a lineDown / lineUp
                 }
+
+rawbufA :: Accessor (FBuffer) (BufferImpl)
+rawbufA = Accessor rawbuf (\f e -> e {rawbuf = f (rawbuf e)})
+
+undosA :: Accessor (FBuffer) (URList)
+undosA = Accessor undos (\f e -> e {undos = f (undos e)})
+
+fileA :: Accessor (FBuffer) (Maybe FilePath)
+fileA = Accessor file (\f e -> e {file = f (file e)})
+
+preferColA :: Accessor (FBuffer) (Maybe Int)
+preferColA = Accessor preferCol (\f e -> e {preferCol = f (preferCol e)})
+
+bufferDynamicA :: Accessor (FBuffer) (DynamicValues)
+bufferDynamicA = Accessor bufferDynamic (\f e -> e {bufferDynamic = f (bufferDynamic e)})
 
 -- | The BufferM monad writes the updates performed.
 newtype BufferM a = BufferM { fromBufferM :: RWS () [Update] FBuffer a }
@@ -168,34 +184,14 @@ getPercent :: Int -> Int -> String
 getPercent a b = show p ++ "%"
     where p = ceiling ((fromIntegral a) / (fromIntegral b) * 100 :: Double) :: Int
 
-
 queryBuffer :: (BufferImpl -> x) -> (BufferM x)
-queryBuffer f = gets (f . rawbuf)
-
-modifyRawbuf :: (BufferImpl -> BufferImpl) -> (FBuffer -> FBuffer)
-modifyRawbuf    f x = x {rawbuf        = f (rawbuf        x)}
-
-modifyUndos :: (URList -> URList) -> (FBuffer -> FBuffer)
-modifyUndos     f x = x {undos         = f (undos         x)}
-
-modifyFile :: (Maybe FilePath -> Maybe FilePath) -> (FBuffer -> FBuffer)
-modifyFile      f x = x {file          = f (file          x)}
-
-modifyPreferCol :: (Maybe Int -> Maybe Int) -> (FBuffer -> FBuffer)
-modifyPreferCol f x = x {preferCol     = f (preferCol     x)}
-
-modifyDynamic :: (DynamicValues -> DynamicValues) -> (FBuffer -> FBuffer)
-modifyDynamic   f x = x {bufferDynamic = f (bufferDynamic x)}
+queryBuffer = getsA rawbufA
 
 modifyBuffer :: (BufferImpl -> BufferImpl) -> BufferM ()
-modifyBuffer f = modify (modifyRawbuf f)
+modifyBuffer = modifyA rawbufA
 
 queryAndModify :: (BufferImpl -> (BufferImpl,x)) -> BufferM x
-queryAndModify f = do
-  b <- gets rawbuf
-  let (b',x) = f b
-  modify (modifyRawbuf $ const b')
-  return x
+queryAndModify = getsAndModifyA rawbufA
 
 -- | @addOverlayB s e sty@ overlays the style @sty@ between points @s@ and @e@
 addOverlayB :: Point -> Point -> Style -> BufferM ()
@@ -220,13 +216,13 @@ hPutB b = do
 -- This has now been updated so that instead of clearing the undo list we
 -- mark the point at which the file was saved.
 clearUndosB :: BufferM ()
-clearUndosB = modify $ modifyUndos setSavedPointUR
+clearUndosB = modifyA undosA setSavedPointUR
 
 getfileB :: BufferM (Maybe FilePath)
 getfileB = gets file
 
 setfileB :: FilePath -> BufferM ()
-setfileB f = modify $ modifyFile $ const (Just f)
+setfileB f = setA fileA (Just f)
 
 setnameB :: String -> BufferM ()
 setnameB s = modify (\fbuff -> fbuff { name = s })
@@ -242,7 +238,7 @@ undoRedo :: ( URList -> BufferImpl -> (BufferImpl, (URList, [Change])) ) -> Buff
 undoRedo f = do
   ur <- gets undos
   (ur',changes) <- queryAndModify (f ur)
-  modify $ modifyUndos $ const ur'
+  setA undosA ur'
   tell (concatMap changeUpdates changes)
 
 undoB :: BufferM ()
@@ -297,7 +293,7 @@ applyUpdate update = do
   when valid $ do
        forgetPreferCol
        reversed <- queryAndModify (getActionB (AtomicChange update))
-       modify $ modifyUndos $ addUR reversed
+       modifyA undosA $ addUR reversed
        tell [update]
   -- otherwise, just ignore.
 
@@ -398,16 +394,13 @@ rightN n = pointB >>= \p -> moveTo (p + n)
 -- ---------------------------------------------------------------------
 -- Line based movement and friends
 
-readPrefCol :: BufferM (Maybe Int)
-readPrefCol = gets preferCol
-
 setPrefCol :: Maybe Int -> BufferM ()
-setPrefCol c = modify $ modifyPreferCol (const c)
+setPrefCol = setA preferColA
 
 -- | Move point down by @n@ lines. @n@ can be negative.
 lineMoveRel :: Int -> BufferM ()
 lineMoveRel n = do
-  prefCol <- readPrefCol
+  prefCol <- getA preferColA
   targetCol <- case prefCol of
     Nothing -> offsetFromSol
     Just x -> return x
@@ -435,7 +428,6 @@ lineUp = lineMoveRel (-1)
 -- | Move point down one line
 lineDown :: BufferM ()
 lineDown = lineMoveRel 1
-
 
 -- | Return the contents of the buffer as a list
 elemsB :: BufferM [Char]
@@ -475,15 +467,18 @@ gotoLnFrom x = do
   l <- curLn
   gotoLn (x+l) -- FIXME: this should not be O(buffersize)
 
+bufferDynamicValueA :: Initializable a => Accessor FBuffer a
+bufferDynamicValueA = dynamicValueA .> bufferDynamicA
+
 getDynamicB :: Initializable a => BufferM a
-getDynamicB = gets (getDynamicValue . bufferDynamic)
+getDynamicB = getA bufferDynamicValueA
 
 -- | Insert a value into the extensible state, keyed by its type
 setDynamicB :: Initializable a => a -> BufferM ()
-setDynamicB x = modify $ modifyDynamic $ setDynamicValue x
+setDynamicB = setA bufferDynamicValueA
 
 
--- | perform an BufferM (), and return to the current point. (by using a mark)
+-- | perform a @BufferM a@, and return to the current point. (by using a mark)
 savingExcursionB :: BufferM a -> BufferM a
 savingExcursionB f = do
     m <- getMarkB Nothing
@@ -491,7 +486,7 @@ savingExcursionB f = do
     moveTo =<< getMarkPointB m
     return res
 
--- | perform an BufferM (), and return to the current point
+-- | perform an @BufferM a@, and return to the current point
 savingPointB :: BufferM a -> BufferM a
 savingPointB f = savingPrefCol $ do
   p <- pointB
