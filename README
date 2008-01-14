@@ -26,6 +26,24 @@ DEPENDENCIES
 * for gtk frontend, gtk2hs 0.9.12.
         http://haskell.org/gtk2hs/download/
 
+* for cocoa frontend
+  * latest SVN repo version of HOC:
+        # First you need to install libffi (unless you have leopard)
+        svn co http://hoc.googlecode.com/svn/trunk/libffi
+        cd libffi/src
+        ../configure --prefix=/usr/local CFLAGS=-DMACOSX
+        make
+        sudo make install
+        
+        # Then you install the latest hoc version
+        svn co http://hoc.googlecode.com/svn/trunk/hoc
+        cd hoc
+        runhaskell Setup configure --prefix=/usr/local
+        runhaskell Setup build
+        sudo runhaskell Setup install
+        cd Bindings
+        sudo bash make-bindings-macos.sh --prefix=/usr/local
+
 
 QUICK START:
 

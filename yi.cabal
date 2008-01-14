@@ -53,7 +53,7 @@ if flag(gtk) {
 }
 
 if flag(cocoa) {
-  build-depends: HOC, AppKit, Foundation
+  build-depends: HOC, HOC-AppKit, HOC-Foundation
   GHC-Options: -DFRONTEND_COCOA
 }
 

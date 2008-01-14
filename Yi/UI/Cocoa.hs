@@ -56,14 +56,13 @@ import Foundation hiding (length, name, new, parent, error)
 import Foundation.NSObject (init)
 import Foundation.NSAttributedString (string)
 
-import AppKit hiding (name, windows, start, rect, width, content, prompt)
+import AppKit hiding (windows, start, rect, width, content, prompt)
 import AppKit.NSWindow (contentView)
 import AppKit.NSEvent (characters)
 import AppKit.NSText (selectedRange)
 import qualified AppKit.NSView as NSView
 
 import HOC
-import HOC.ID
 
 import Foreign.C
 import Foreign hiding (new)
