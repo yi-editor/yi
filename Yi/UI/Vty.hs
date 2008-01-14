@@ -68,8 +68,8 @@ data Rendered =
 
 
 data UI = UI { 
-              vty       :: Vty                     -- ^ Vty
-             ,scrsize   :: !(IORef (Int,Int))  -- ^ screen size
+              vty       :: Vty              -- ^ Vty
+             ,scrsize   :: IORef (Int,Int)  -- ^ screen size
              ,uiThread  :: ThreadId
              ,uiRefresh :: MVar ()
              ,uiEditor  :: IORef Editor
@@ -181,7 +181,7 @@ refresh ui e = do
   (yss,xss) <- readRef (scrsize ui)
   let ws1 = computeHeights yss ws0
       cmd = statusLine e
-  zzz <- mapM (scrollAndRenderWindow e (uistyle e) xss) (WS.withFocus ws1)
+      zzz = fmap (scrollAndRenderWindow e (uistyle e) xss) (WS.withFocus ws1)
 
   let startXs = scanrT (+) 0 (fmap height ws1)
       wImages = fmap picture $ fmap snd $ zzz
@@ -208,13 +208,12 @@ scanrT (+*+) k t = fst $ runState (mapM f t) k
            
 
 -- | Scrolls the window to show the point if needed
-scrollAndRenderWindow :: Editor -> UIStyle -> Int -> (Window, Bool) -> IO (Window, Rendered)
-scrollAndRenderWindow e sty width (win,hasFocus) = do
-    let b = findBufferWith (bufkey win) e
-    let (point, _, []) = runBuffer b pointB
-    win' <- (if not hasFocus || pointInWindow point win then return win else showPoint e win)
-    (rendered, bos) <- drawWindow e sty hasFocus width win'
-    return (win' {bospnt = bos}, rendered)
+scrollAndRenderWindow :: Editor -> UIStyle -> Int -> (Window, Bool) -> (Window, Rendered)
+scrollAndRenderWindow e sty width (win,hasFocus) = (win' {bospnt = bos}, rendered)
+    where b = findBufferWith (bufkey win) e
+          (point, _, []) = runBuffer b pointB
+          win' = if not hasFocus || pointInWindow point win then win else showPoint e win
+          (rendered, bos) = drawWindow e sty hasFocus width win'
 
 -- | return index of Sol on line @n@ above current line
 indexOfSolAbove :: Int -> BufferM Int
@@ -222,50 +221,47 @@ indexOfSolAbove n = savingPointB $ do
     gotoLnFrom (negate n)
     pointB
 
-showPoint :: Editor -> Window -> IO Window 
-showPoint e w = do
-  logPutStrLn $ "showPoint " ++ show w
-  let b = findBufferWith (bufkey w) e
-  let (result, _, []) = runBuffer b $ 
+showPoint :: Editor -> Window -> Window 
+showPoint e w = result
+  where b = findBufferWith (bufkey w) e
+        (result, _, []) = runBuffer b $ 
             do ln <- curLn
                let gap = min (ln-1) (height w `div` 2)
                i <- indexOfSolAbove gap
                return w {tospnt = i}
-  return result
 
 -- | Draw a window
 -- TODO: horizontal scrolling.
-drawWindow :: Editor -> UIStyle -> Bool -> Int -> Window -> IO (Rendered, Int)
-drawWindow e sty focused w win = do
-    let b = findBufferWith (bufkey win) e
+drawWindow :: Editor -> UIStyle -> Bool -> Int -> Window -> (Rendered, Int)
+drawWindow e sty focused w win = (Rendered { picture = pict,cursor = cur}, bos)
+            
+    where
+        b = findBufferWith (bufkey win) e
         m = not (isMini win)
         off = if m then 1 else 0
         h' = height win - off
         wsty = styleToAttr (window sty)
         selsty = styleToAttr (selected sty)
         eofsty = eof sty
-    let (markPoint, _, []) = runBuffer b (getMarkPointB =<< getSelectionMarkB)
-    let (point, _, []) = runBuffer b pointB
-    let (bufData, _, []) = runBuffer b (nelemsBH (w*h') (tospnt win)) -- read enough chars from the buffer.
-    let prompt = if isMini win then name b else ""
+        (markPoint, _, []) = runBuffer b (getMarkPointB =<< getSelectionMarkB)
+        (point, _, []) = runBuffer b pointB
+        (bufData, _, []) = runBuffer b (nelemsBH (w*h') (tospnt win)) -- read enough chars from the buffer.
+        prompt = if isMini win then name b else ""
 
-    let (rendered,bos,cur) = drawText h' w 
+        (rendered,bos,cur) = drawText h' w 
                                 (tospnt win - length prompt) 
                                 point markPoint 
                                 selsty wsty 
                                 (zip prompt (repeat wsty) ++ map (second styleToAttr) bufData ++ [(' ',attr)])
                              -- we always add one character which can be used to position the cursor at the end of file
                                                                                                  
-    let (modeLine0, _, []) = runBuffer b getModeLine
-    let modeLine = if m then Just modeLine0 else Nothing
-    let modeLines = map (withStyle (modeStyle sty) . take w . (++ repeat ' ')) $ maybeToList $ modeLine
+        (modeLine0, _, []) = runBuffer b getModeLine
+        modeLine = if m then Just modeLine0 else Nothing
+        modeLines = map (withStyle (modeStyle sty) . take w . (++ repeat ' ')) $ maybeToList $ modeLine
         modeStyle = if focused then modeline_focused else modeline        
         filler = take w (windowfill e : repeat ' ')
     
-    return (Rendered { picture = vertcat (take h' (rendered ++ repeat (withStyle eofsty filler)) ++ modeLines),
-                       cursor = cur}, 
-            bos)
-            
+        pict = vertcat (take h' (rendered ++ repeat (withStyle eofsty filler)) ++ modeLines)
   
 -- | Renders text in a rectangle.
 -- This also returns 
