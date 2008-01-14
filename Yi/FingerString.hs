@@ -39,6 +39,9 @@ import Data.Monoid
 import Data.Foldable (foldl)
 import Data.Maybe (listToMaybe)
 
+chunkSize :: Int
+chunkSize = 128
+
 data Size = Size { unSize :: Int }
 data FingerString = FingerString { unFingerString :: FingerTree Size ByteString }
   deriving (Eq, Show)
@@ -60,7 +63,7 @@ fromByteString :: ByteString -> FingerString
 fromByteString = FingerString . treeFromByteString
   where
     treeFromByteString b | B.null b = T.empty
-    treeFromByteString b = let (h,t) = B.splitAt 128 b in h <| treeFromByteString t
+    treeFromByteString b = let (h,t) = B.splitAt chunkSize b in h <| treeFromByteString t
 
 -- | Convert into a standard String.
 toString :: FingerString -> String
@@ -80,7 +83,14 @@ length = unSize . measure . unFingerString
 
 -- | Append two strings by merging the two finger trees.
 append :: FingerString -> FingerString -> FingerString
-append (FingerString a) (FingerString b) = FingerString $ a >< b
+append (FingerString a) (FingerString b) = FingerString $
+    case T.viewr a of
+      EmptyR -> b
+      l :> x -> case T.viewl b of
+                  EmptyL  -> a
+                  x' :< r -> if B.length x + B.length x' < chunkSize 
+                               then l >< singleton (x `B.append` x') >< r
+                               else a >< b
 
 take, drop :: Int -> FingerString -> FingerString
 take n = fst . splitAt n
@@ -130,7 +140,7 @@ isPrefixOf :: ByteString -> FingerString -> Bool
 isPrefixOf x = treeIPO x . unFingerString
   where
     treeIPO :: ByteString -> FingerTree Size ByteString -> Bool
-    treeIPO x t = case T.viewl t of
-      s :< r -> x `B.isPrefixOf` s || 
-        (s `B.isPrefixOf` x && treeIPO (B.drop (B.length s) x) r)
+    treeIPO x' t = case T.viewl t of
+      s :< r -> x' `B.isPrefixOf` s || 
+        (s `B.isPrefixOf` x' && treeIPO (B.drop (B.length s) x') r)
       EmptyL -> False
