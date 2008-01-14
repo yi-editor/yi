@@ -296,8 +296,8 @@ reloadE = tryLoadModulesE =<< readsRef editorModules
 -- | Redraw
 refreshE :: YiM ()
 refreshE = do editor <- with yiEditor readRef
-              ws <- withUI $ flip UI.refresh editor
-              withEditor $ modify $ \e -> e {editorUpdates = [], windows = ws}
+              withUI $ flip UI.refresh editor
+              withEditor $ modify $ \e -> e {editorUpdates = []}
 
 -- | Suspend the program
 suspendE :: YiM ()

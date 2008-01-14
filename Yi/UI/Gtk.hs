@@ -91,7 +91,7 @@ mkUI ui = Common.UI
    Common.main                  = main                  ui,
    Common.end                   = end,
    Common.suspend               = windowIconify (uiWindow ui),
-   Common.refresh               = scheduleRefresh       ui,
+   Common.refresh               = refresh       ui,
    Common.prepareAction         = prepareAction         ui
   }
 
@@ -363,8 +363,8 @@ insertWindow e i win = do
               widgetShowAll (widget w)
               return w
 
-scheduleRefresh :: UI -> Editor -> IO (WS.WindowSet Common.Window)
-scheduleRefresh ui e = do
+refresh :: UI -> Editor -> IO ()
+refresh ui e = do
     let ws = Common.windows e
     let takeEllipsis s = if length s > 132 then take 129 s ++ "..." else s
     set (uiCmdLine ui) [labelText := takeEllipsis (statusLine e)]
@@ -396,8 +396,6 @@ scheduleRefresh ui e = do
            textViewScrollMarkOnscreen (textview w) insertMark
            let (txt, _, []) = runBuffer buf getModeLine 
            set (modeline w) [labelText := txt]
-    return ws
-
 
 replaceTagsIn :: UI -> Point -> Point -> FBuffer -> TextBuffer -> IO ()
 replaceTagsIn ui from to buf gtkBuf = do

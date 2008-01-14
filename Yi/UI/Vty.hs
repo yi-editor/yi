@@ -179,6 +179,7 @@ prepareAction ui = do
     modifyWindows $ \ws0 ->      
       let ws1 = computeHeights yss ws0
           zzz = fmap (scrollAndRenderWindow e (uistyle e) xss) (WS.withFocus ws1)
+          -- note that the rendering won't actually be performed because of laziness.
       in  (fmap fst zzz)
 
 
@@ -362,17 +363,12 @@ withStyle sty str = renderBS (styleToAttr sty) (B.pack str)
 
 
 -- | Schedule a refresh of the UI.
-scheduleRefresh :: UI -> Editor -> IO (WindowSet Window)
+scheduleRefresh :: UI -> Editor -> IO ()
 scheduleRefresh ui e = do
   writeRef (uiEditor ui) e
-  scheduleRefresh' ui
-  return (windows e) -- FIXME: this is completely useless
-
-scheduleRefresh' :: UI -> IO ()
-scheduleRefresh' tui = do
-    logPutStrLn "scheduleRefresh'"
-    tryPutMVar (uiRefresh tui) ()
-    return ()
+  logPutStrLn "scheduleRefresh"
+  tryPutMVar (uiRefresh ui) ()
+  return ()
 -- The non-blocking behviour was set up with this in mind: if the display
 -- thread is not able to catch up with the editor updates (possible since
 -- display is much more time consuming than simple editor operations),

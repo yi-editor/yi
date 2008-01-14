@@ -449,7 +449,7 @@ insertWindow e i win = do
               (uiBox i) # addSubview (widget w)
               return w
 
-refresh :: UI -> Editor -> IO (WS.WindowSet Window)
+refresh :: UI -> Editor -> IO ()
 refresh ui e = do
     let ws = Common.windows e
     let takeEllipsis s = if length s > 132 then take 129 s ++ "..." else s
@@ -481,7 +481,6 @@ refresh ui e = do
            (textview w) # scrollRangeToVisible range
            let (txt, _, []) = runBuffer buf getModeLine 
            (modeline w) # setStringValue (toNSString txt)
-    return ws
 
 applyUpdate :: NSTextStorage () -> Update -> IO ()
 applyUpdate buf (Insert p s) =
