@@ -61,8 +61,9 @@ import Control.Monad
 import Text.Regex.Base
 import Text.Regex.Posix
 
+import qualified Yi.FingerString as F
+import Yi.FingerString (FingerString)
 import qualified Data.ByteString.Char8 as B
-import Data.ByteString (ByteString)
 
 import Data.Array
 
@@ -94,7 +95,7 @@ data HLState = forall a. Eq a => HLState !(Highlighter a)
 --
 
 data FBufferData =
-        FBufferData { mem        :: !ByteString            -- ^ buffer text
+        FBufferData { mem        :: !FingerString          -- ^ buffer text
                     , marks      :: !Marks                 -- ^ Marks for this buffer
                     , _markNames :: !(M.Map String Mark)
                     , hlcache    :: !(Maybe HLState)       -- ^ syntax highlighting state
@@ -120,27 +121,27 @@ data Update = Insert {updatePoint :: !Point, insertUpdateString :: !String} -- F
 
 -- | New FBuffer filled from string.
 newBI :: String -> FBufferData
-newBI s = FBufferData (B.pack s) mks M.empty Nothing []
+newBI s = FBufferData (F.fromString s) mks M.empty Nothing []
     where
     mks = M.fromList [(pointMark, MarkValue 0 pointLeftBound)]
 
 -- | read @n@ chars from buffer @b@, starting at @i@
-readChars :: ByteString -> Int -> Int -> ByteString
-readChars p n i = B.take n $ B.drop i $ p
+readChars :: FingerString -> Int -> Int -> FingerString
+readChars p n i = F.take n $ F.drop i $ p
 {-# INLINE readChars #-}
 
 -- | Write string into buffer.
-insertChars :: ByteString -> ByteString -> Int -> ByteString
-insertChars p cs i = left `B.append` cs `B.append` right
-    where (left,right) = B.splitAt i p
+insertChars :: FingerString -> FingerString -> Int -> FingerString
+insertChars p cs i = left `F.append` cs `F.append` right
+    where (left,right) = F.splitAt i p
 {-# INLINE insertChars #-}
 
 
 -- | Write string into buffer.
-deleteChars :: ByteString -> Int -> Int -> ByteString
-deleteChars p i n = left `B.append` right
-    where (left,rest) = B.splitAt i p
-          right = B.drop n rest
+deleteChars :: FingerString -> Int -> Int -> FingerString
+deleteChars p i n = left `F.append` right
+    where (left,rest) = F.splitAt i p
+          right = F.drop n rest
 {-# INLINE deleteChars #-}
 
 -- | calculate whether a move is in bounds.
@@ -170,7 +171,7 @@ mapOvlMarks f (s,e,v) = (f s, f e, v)
 
 -- | Number of characters in the buffer
 sizeBI :: BufferImpl -> Int
-sizeBI (FBufferData p _ _ _ _) = B.length p
+sizeBI (FBufferData p _ _ _ _) = F.length p
 
 -- | Extract the current point
 pointBI :: BufferImpl -> Int
@@ -180,9 +181,9 @@ pointBI (FBufferData _ mks _ _ _) = markPosition (mks M.! pointMark)
 -- | Return @n@ elems starting at @i@ of the buffer as a list
 nelemsBI :: Int -> Int -> BufferImpl -> [Char]
 nelemsBI n i (FBufferData b _ _ _ _) =
-        let i' = inBounds i (B.length b)
-            n' = min (B.length b - i') n
-        in B.unpack $ readChars b n' i'
+        let i' = inBounds i (F.length b)
+            n' = min (F.length b - i') n
+        in F.toString $ readChars b n' i'
 
 
 -- | Add a style "overlay" between the given points.
@@ -200,19 +201,19 @@ nelemsBIH n i fb = fun fb
       -- The first case is to handle when no 'Highlighter a' has
       -- been assigned to the buffer (via eg 'setSyntaxBI bi "haskell"')
       fun bd@(FBufferData b _ _ Nothing _) =
-             let e = B.length b
+             let e = F.length b
                  i' = inBounds i e
                  n' = min (e-i') n
-                 cas = map (flip (,) defaultStyle) (B.unpack $ readChars b n' i')
+                 cas = map (flip (,) defaultStyle) (F.toString $ readChars b n' i')
              in overlay bd cas
       -- in this, second, case 'hl' will be bound to a 'Highlighter a'
       -- eg Yi.Syntax.Haskell.highlighter (see Yi.Syntax for defn of Highlighter) which
       -- uses '(Data.ByteString.Char8.ByteString, Int)' as its parameterized state
       fun bd@(FBufferData b _ _ (Just (HLState hl)) _) =
 
-        let (finst,colors_) = hlColorize hl b (hlStartState hl)
+        let (finst,colors_) = hlColorize hl (F.toByteString b) (hlStartState hl)
             colors = colors_ ++ hlColorizeEOF hl finst
-        in overlay bd (take n (drop i (zip (B.unpack b) colors)))
+        in overlay bd (take n (drop i (zip (F.toString b) colors)))
 
       overlay :: FBufferData -> [(Char,Style)] -> [(Char,Style)]
       overlay bd xs = map (\((c,a),j)->(c, ov bd (a,j))) (zip xs [i..])
@@ -236,7 +237,7 @@ nelemsBIH n i fb = fun fb
 moveToI :: Int -> BufferImpl -> BufferImpl
 moveToI i (FBufferData ptr mks nms hl ov) =
                  FBufferData ptr (M.insert pointMark (MarkValue (inBounds i end) pointLeftBound) mks) nms hl ov
-    where end = B.length ptr
+    where end = F.length ptr
 {-# INLINE moveToI #-}
 
 -- | Checks if an Update is valid
@@ -244,14 +245,14 @@ isValidUpdate :: Update -> BufferImpl -> Bool
 isValidUpdate u b = case u of
                     (Delete p n)   -> check p && check (p + n)
                     (Insert p _)   -> check p
-    where check x = x >= 0 && x <= B.length (mem b)
+    where check x = x >= 0 && x <= F.length (mem b)
 
 
 -- | Apply a /valid/ update
 applyUpdateI :: Update -> BufferImpl -> BufferImpl
 applyUpdateI u (FBufferData p mks nms hl ov) = FBufferData p' (M.map shift mks) nms hl (map (mapOvlMarks shift) ov)
     where (p', amount) = case u of
-                           Insert pnt cs  -> (insertChars p (B.pack cs) pnt, length cs)
+                           Insert pnt cs  -> (insertChars p (F.fromString cs) pnt, length cs)
                            Delete pnt len -> (deleteChars p pnt len, negate len)
           shift = shiftMarkValue (updatePoint u) amount
           -- FIXME: remove collapsed overlays
@@ -260,7 +261,7 @@ applyUpdateI u (FBufferData p mks nms hl ov) = FBufferData p' (M.map shift mks) 
 -- Line based editing
 
 curLnI :: BufferImpl -> Int
-curLnI fb@(FBufferData ptr _ _ _ _) = 1 + B.count '\n'  (B.take (pointBI fb) ptr)
+curLnI fb@(FBufferData ptr _ _ _ _) = 1 + F.count '\n'  (F.take (pointBI fb) ptr)
 
 -- | Go to line number @n@. @n@ is indexed from 1. Returns the
 -- actual line we went to (which may be not be the requested line,
@@ -284,15 +285,15 @@ getLineStartsI :: BufferImpl -> [ Int ]
 getLineStartsI fb =
   0 : map (+1) lineEnds
   where
-  lineEnds = B.elemIndices '\n' (mem fb)
+  lineEnds = F.elemIndices '\n' (mem fb)
 
 -- | Return index of next string in buffer that matches argument
 searchBI :: [Char] -> BufferImpl -> Maybe Int
-searchBI s fb@(FBufferData ptr _ _ _ _) = fmap (+ pnt) $ B.findSubstring (B.pack s) $ B.drop pnt ptr
+searchBI s fb@(FBufferData ptr _ _ _ _) = fmap (+ pnt) $ F.findSubstring (B.pack s) $ F.drop pnt ptr
     where pnt = pointBI fb
 
 offsetFromSolBI :: BufferImpl -> Int
-offsetFromSolBI fb@(FBufferData ptr _ _ _ _) = pnt - maybe 0 (1 +) (B.elemIndexEnd '\n' (B.take pnt ptr))
+offsetFromSolBI fb@(FBufferData ptr _ _ _ _) = pnt - maybe 0 (1 +) (F.elemIndexEnd '\n' (F.take pnt ptr))
     where pnt = pointBI fb
 
 
@@ -300,7 +301,7 @@ offsetFromSolBI fb@(FBufferData ptr _ _ _ _) = pnt - maybe 0 (1 +) (B.elemIndexE
 regexBI :: Regex -> BufferImpl -> Maybe (Int,Int)
 regexBI re fb@(FBufferData ptr _ _ _ _) =
     let p = pointBI fb
-        mmatch = matchOnce re (B.drop p ptr)
+        mmatch = matchOnce re (F.toByteString $ F.drop p ptr)
     in case mmatch of
          Just arr | ((off,len):_) <- elems arr -> Just (p+off,p+off+len)
          _ -> Nothing
