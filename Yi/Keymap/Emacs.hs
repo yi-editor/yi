@@ -1,5 +1,5 @@
 --
--- Copyright (c) 2005,2007 Jean-Philippe Bernardy
+-- Copyright (c) 2005,2007,2008 Jean-Philippe Bernardy
 --
 -- This program is free software; you can redistribute it and/or
 -- modify it under the terms of the GNU General Public License as
@@ -23,10 +23,10 @@
 -- emulation. For example, M-x gives access to Yi (haskell) functions,
 -- with their native names.
 
-module Yi.Keymap.Emacs 
+module Yi.Keymap.Emacs
   ( keymap
   , makeProcess
-  ) 
+  )
 where
 
 import Yi.Yi
@@ -72,7 +72,7 @@ selfInsertKeymap = do
             isPrintableEvent _ = False
 
 keymap :: Process
-keymap = 
+keymap =
   selfInsertKeymap <|> makeProcess keys
 
 keys :: KList
@@ -86,6 +86,8 @@ keys =
   , ( "C-_",      atomic $ repeatingArg undoB)
   , ( "C-<left>", atomic $ repeatingArg prevWordB)
   , ( "C-<right>",atomic $ repeatingArg nextWordB)
+  , ( "C-<home>", atomic $ repeatingArg topB)
+  , ( "C-<end>",  atomic $ repeatingArg botB)
   , ( "C-@",      atomic $ (pointB >>= setSelectionMarkPointB))
   , ( "C-SPC",    atomic $ (pointB >>= setSelectionMarkPointB))
   , ( "C-a",      atomic $ repeatingArg (execB MaybeMove Line Backward))
@@ -93,7 +95,7 @@ keys =
   , ( "C-d",      atomic $ repeatingArg deleteB)
   , ( "C-e",      atomic $ repeatingArg (execB MaybeMove Line Forward))
   , ( "C-f",      atomic $ repeatingArg rightB)
-  , ( "C-g",      atomic $ unsetMarkB) 
+  , ( "C-g",      atomic $ unsetMarkB)
   -- , ( "C-g",      atomic $ keyboardQuitE)
   -- C-g should be a more general quit that also unsets the mark.
   , ( "C-i",      atomic $ autoIndentB)
@@ -118,8 +120,8 @@ keys =
   , ( "C-x C-c",  atomic $ quitE)
   , ( "C-x C-f",  atomic $ findFile)
   , ( "C-x C-s",  atomic $ fwriteE)
-  , ( "C-x C-w",  atomic $ withMinibuffer "Write file: " 
-                                          (completeFileName Nothing) 
+  , ( "C-x C-w",  atomic $ withMinibuffer "Write file: "
+                                          (completeFileName Nothing)
                                           fwriteToE
     )
   , ( "C-x C-x",  atomic $ exchangePointAndMarkB)
