@@ -164,6 +164,8 @@ keys =
   , ( "<right>",  atomic $ repeatingArg rightB)
   , ( "<up>",     atomic $ repeatingArg (execB Move VLine Backward))
   , ( "<down>",   atomic $ repeatingArg (execB Move VLine Forward))
+  , ( "C-<up>",   atomic $ repeatingArg $ prevNParagraphs 1)
+  , ( "C-<down>", atomic $ repeatingArg $ nextNParagraphs 1)
   , ( "<next>",   atomic $ repeatingArg downScreenE)
   , ( "<prior>",  atomic $ repeatingArg upScreenE)
   ]
