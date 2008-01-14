@@ -34,7 +34,8 @@ Flag cocoa {
 
 Executable yi {
 build-tools: alex >= 2.0.1 && < 3
-build-depends:  array,  base,  bytestring,  containers,  directory,  filepath>=1.0,  ghc>=6.8.2,  mtl, process, old-locale, old-time, unix
+build-depends: bytestring >= 0.9 && < 0.9.0.4
+build-depends:  array,  base,  containers,  directory,  filepath>=1.0,  ghc>=6.8.2,  mtl, process, old-locale, old-time, unix
 build-depends: regex-base>=0.72, regex-base<0.73
 build-depends: regex-compat>=0.71, regex-compat<0.73
 build-depends: regex-posix>=0.72, regex-posix<0.73
