@@ -1,4 +1,4 @@
-{-# OPTIONS -XTemplateHaskell #-}
+{-# LANGUAGE TemplateHaskell #-}
 --
 -- Copyright (c) 2007 Jean-Philippe Bernardy
 -- Copyright (c) 2008 Gustav Munkby
@@ -28,13 +28,13 @@ import Prelude hiding (init, error, sequence_, elem, mapM_, mapM, concatMap)
 
 import Yi.Buffer
 import Yi.Buffer.HighLevel
-import Yi.Editor
+import Yi.Editor (Window, Editor, EditorM, withGivenBuffer0, findBufferWith, statusLine, editorUpdates)
+import qualified Yi.Editor as Common
 import Yi.Event
 import Yi.Debug
 import Yi.FastBuffer
 import Yi.Monad
 import qualified Yi.UI.Common as Common
-import Yi.UI.Common (Window)
 import qualified Yi.WindowSet as WS
 
 import Control.Concurrent ( yield )
@@ -195,7 +195,6 @@ data UI = forall action. UI {
              ,uiBox :: NSView ()
              ,uiCmdLine :: NSTextField ()
              ,uiBuffers :: IORef (M.Map BufferRef (NSTextStorage ()))
-             ,windows   :: MVar (WS.WindowSet Window)     -- ^ all the windows
              ,windowCache :: IORef [WinInfo]
              ,uiRunEditor :: EditorM () -> IO ()
              }
@@ -225,7 +224,7 @@ mkUI ui = Common.UI
    Common.main                  = main                  ui,
    Common.end                   = end,
    Common.suspend               = uiWindow ui # performMiniaturize nil,
-   Common.scheduleRefresh       = scheduleRefresh       ui,
+   Common.refresh               = refresh       ui,
    Common.prepareAction         = prepareAction         ui
   }
 
@@ -293,9 +292,8 @@ addSubviewWithTextLine view parent = do
 
 -- | Initialise the ui
 start :: Chan Yi.Event.Event -> Chan action ->
-         Editor -> (EditorM () -> action) -> 
-         MVar (WS.WindowSet Common.Window) -> IO Common.UI
-start ch outCh _ed runEd ws0 = do
+         Editor -> (EditorM () -> action) -> IO Common.UI
+start ch outCh _ed runEd = do
 
   -- Publish Objective-C classes...
   initializeClass_YiApplication
@@ -332,7 +330,7 @@ start ch outCh _ed runEd ws0 = do
   bufs <- newIORef M.empty
   wc <- newIORef []
 
-  return (mkUI $ UI win main cmd bufs ws0 wc (writeChan outCh . runEd))
+  return (mkUI $ UI win main cmd bufs wc (writeChan outCh . runEd))
 
 
 -- | Run the main loop
@@ -452,9 +450,9 @@ insertWindow e i win = do
               (uiBox i) # addSubview (widget w)
               return w
 
-scheduleRefresh :: UI -> Editor -> IO ()
-scheduleRefresh ui e = withMVar (windows ui) $ \ws -> do
-    logPutStrLn $ "scheduleRefresh"
+refresh :: UI -> Editor -> IO (WS.WindowSet Window)
+refresh ui e = do
+    let ws = Common.windows e
     let takeEllipsis s = if length s > 132 then take 129 s ++ "..." else s
     (uiCmdLine ui) # setStringValue (toNSString (takeEllipsis (statusLine e)))
 
@@ -484,6 +482,7 @@ scheduleRefresh ui e = withMVar (windows ui) $ \ws -> do
            (textview w) # scrollRangeToVisible range
            let (txt, _, []) = runBuffer buf getModeLine 
            (modeline w) # setStringValue (toNSString txt)
+    return ws
 
 applyUpdate :: NSTextStorage () -> Update -> IO ()
 applyUpdate buf (Insert p s) =
