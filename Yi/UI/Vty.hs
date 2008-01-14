@@ -80,7 +80,7 @@ mkUI ui = Common.UI
    Common.main           = main ui,
    Common.end            = end ui,
    Common.suspend        = raiseSignal sigTSTP,
-   Common.refresh        = refresh ui,
+   Common.refresh        = scheduleRefresh ui,
    Common.prepareAction  = return (return ())
   }
 
@@ -350,10 +350,11 @@ withStyle sty str = renderBS (styleToAttr sty) (B.pack str)
 
 
 -- | Schedule a refresh of the UI.
-scheduleRefresh :: UI -> Editor -> IO ()
+scheduleRefresh :: UI -> Editor -> IO (WindowSet Window)
 scheduleRefresh ui e = do
   writeRef (uiEditor ui) e
   scheduleRefresh' ui
+  return (windows e) -- FIXME: this is completely useless; window sizes should be computed in the "prepareAction" hook.
 
 scheduleRefresh' :: UI -> IO ()
 scheduleRefresh' tui = do
