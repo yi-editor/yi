@@ -44,6 +44,7 @@ import Data.Maybe
 import Data.Traversable
 import System.Exit
 import System.Posix.Signals         ( raiseSignal, sigTSTP )
+import Yi.CoreUI
 import Yi.Buffer
 import Yi.FastBuffer
 import Yi.Debug
@@ -81,7 +82,7 @@ mkUI ui = Common.UI
    Common.end            = end ui,
    Common.suspend        = raiseSignal sigTSTP,
    Common.refresh        = scheduleRefresh ui,
-   Common.prepareAction  = return (return ())
+   Common.prepareAction  = prepareAction ui
   }
 
 
@@ -169,6 +170,17 @@ fromVtyMod Yi.Vty.MShift = Yi.Event.MShift
 fromVtyMod Yi.Vty.MCtrl  = Yi.Event.MCtrl
 fromVtyMod Yi.Vty.MMeta  = Yi.Event.MMeta
 fromVtyMod Yi.Vty.MAlt   = Yi.Event.MMeta
+
+prepareAction :: UI -> IO (EditorM ())
+prepareAction ui = do
+  (yss,xss) <- readRef (scrsize ui)
+  return $ do
+    e <- get
+    modifyWindows $ \ws0 ->      
+      let ws1 = computeHeights yss ws0
+          zzz = fmap (scrollAndRenderWindow e (uistyle e) xss) (WS.withFocus ws1)
+      in  (fmap fst zzz)
+
 
 -- | Redraw the entire terminal from the UI.
 -- Among others, this re-computes the heights and widths of all the windows.
@@ -354,7 +366,7 @@ scheduleRefresh :: UI -> Editor -> IO (WindowSet Window)
 scheduleRefresh ui e = do
   writeRef (uiEditor ui) e
   scheduleRefresh' ui
-  return (windows e) -- FIXME: this is completely useless; window sizes should be computed in the "prepareAction" hook.
+  return (windows e) -- FIXME: this is completely useless
 
 scheduleRefresh' :: UI -> IO ()
 scheduleRefresh' tui = do
