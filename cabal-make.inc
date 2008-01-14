@@ -70,7 +70,7 @@ tmp-dir ?= c:/tmp
 user ?= UnknownUser
 
 # Package name.   Extract from cabal file.
-package ?= $(strip $(shell cat *.cabal | egrep -i 'name:' | sed -e 's/name://I'))
+package ?= $(strip $(shell cat *.cabal | egrep -i 'name:' | sed -e 's/[^:]*://'))
 show-package:
 	@echo $(package)
 
@@ -123,7 +123,7 @@ clean:
 	rm -rf dist
 	rm -f $(cabal_config) .installed-pkg-config ./setup `find . -name '*.hi' -o -name '*.o'`
 
-version ?= $(strip $(shell cat *.cabal | egrep -i '^version:' | sed -e 's/version://I'))
+version ?= $(strip $(shell cat *.cabal | egrep -i '^version:' | sed -e 's/[^:]*://'))
 
 show-version:
 	@echo $(version)
