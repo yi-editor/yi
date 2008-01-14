@@ -90,13 +90,22 @@ yc_applicationShouldTerminateAfterLastWindowClosed _app _self = return True
 -- This declares an application subclass which enables us to insert
 -- ourselves into the application event loop and trap key-events application wide
 $(declareClass "YiApplication" "NSApplication")
+$(declareSelector "doTick" [t| IO () |] )
 $(exportClass "YiApplication" "ya_" [
     InstanceVariable "eventChannel" [t| Maybe (Chan Yi.Event.Event) |] [| Nothing |]
   , InstanceVariable "running" [t| Bool |] [| True |]
   , InstanceMethod 'sendEvent -- '
+  , InstanceMethod 'nextEventMatchingMaskUntilDateInModeDequeue -- '
   ])
 
-ya_sendEvent :: forall t. NSEvent t -> YiApplication () -> IO ()
+ya_nextEventMatchingMaskUntilDateInModeDequeue mask date mode deq self = do
+  yield >> yield >> yield >> yield
+  super self # nextEventMatchingMaskUntilDateInModeDequeue mask date mode deq 
+
+ya_isRunning self = self # getIVar _eventChannel >>= return . isJust
+
+ya_terminate_ _ self = self # setIVar _eventChannel Nothing
+
 ya_sendEvent event self = do
   t <- event # rawType
   if t == fromCEnum nsKeyDown
@@ -211,7 +220,7 @@ mkUI :: UI -> Common.UI
 mkUI ui = Common.UI 
   {
    Common.main                  = main                  ui,
-   Common.end                   = end,
+   Common.end                   = end ,
    Common.suspend               = uiWindow ui # performMiniaturize nil,
    Common.refresh               = refresh       ui,
    Common.prepareAction         = prepareAction         ui
@@ -288,8 +297,15 @@ addSubviewWithTextLine view parent = do
 -- | Initialise the ui
 start :: Chan Yi.Event.Event -> Chan action ->
          Editor -> (EditorM () -> action) -> 
-         MVar (WS.WindowSet Common.Window) -> IO Common.UI
-start ch outCh _ed runEd ws0 = do
+         IO Common.UI
+start ch outCh _ed runEd  = withAutoreleasePool $ start' ch outCh _ed runEd 
+start' ch outCh _ed runEd = do
+
+  -- Ensure that our command line application is also treated as a gui application
+  fptr <- mallocForeignPtrBytes 32 -- way to many bytes, but hey...
+  withForeignPtr fptr $ getCurrentProcess
+  withForeignPtr fptr $ (flip transformProcessType) 1
+  withForeignPtr fptr $ setFrontProcess
 
   -- Publish Objective-C classes...
   initializeClass_YiApplication
@@ -302,6 +318,16 @@ start ch outCh _ed runEd ws0 = do
   -- Initialize the app delegate, which allows quit-on-window-close
   controller <- autonew _YiController >>= return . toYiController
   app # setDelegate controller
+
+
+  -- init menus
+  mm <- _NSMenu # alloc >>= init
+  mm' <- _NSMenu # alloc >>= init
+  mm'' <- _NSMenu # alloc >>= init
+  app # setMainMenu mm 
+--  app # setAppleMenu mm' 
+  app # setWindowsMenu mm'' 
+
   
   -- Create main cocoa window...
   win <- _NSWindow # alloc >>= initWithContentRect (rect 0 0 480 340)
@@ -313,11 +339,6 @@ start ch outCh _ed runEd ws0 = do
   main <- new _NSView
   cmd <- content # addSubviewWithTextLine main
 
-  -- Ensure that our command line application is also treated as a gui application
-  fptr <- mallocForeignPtrBytes 32 -- way to many bytes, but hey...
-  withForeignPtr fptr $ getCurrentProcess
-  withForeignPtr fptr $ (flip transformProcessType) 1
-  withForeignPtr fptr $ setFrontProcess
 
   -- Activate application window
   win # makeKeyAndOrderFront nil
@@ -327,6 +348,7 @@ start ch outCh _ed runEd ws0 = do
   wc <- newIORef []
 
   return (mkUI $ UI win winContainer cmd bufs wc (writeChan outCh . runEd))
+
 
 
 -- | Run the main loop
@@ -387,7 +409,7 @@ newWindow ui mini b = do
   v # setRichText False
   v # setSelectable True
   v # setAlignment nsLeftTextAlignment
-  v # setMonospaceFont
+--  v # setMonospaceFont
   v # sizeToFit
   v # setIVar _runBuffer ((uiRunEditor ui) . withGivenBuffer0 (keyB b))
 
@@ -399,11 +421,11 @@ newWindow ui mini b = do
     prompt # setStringValue (toNSString (name b))
     prompt # sizeToFit
 
-    prect <- prompt # frame
+    prect <- prompt # frame 
     vrect <- v # frame
     
     hb <- _NSView # alloc >>= initWithFrame (rect 0 0 (width prect + width vrect) (height prect))
-    v # setFrameOrigin (NSPoint (width prect) 0)
+    v # setFrame (rect (width prect) 0 (width vrect) (height prect))
     v # setAutoresizingMask nsViewWidthSizable
     hb # addSubview prompt
     hb # addSubview v
@@ -439,6 +461,8 @@ newWindow ui mini b = do
 
   storage <- getTextStorage ui b
   layoutManager v >>= replaceTextStorage storage
+  f <- _NSFont # userFixedPitchFontOfSize 0.0
+  storage # setFont f
 
   k <- newUnique
   let win = WinInfo {
@@ -467,6 +491,7 @@ insertWindow e i win = do
 -- 	                                        else allSizable)
 --               (uiBox i) # addSubview (widget w)
               return w
+
 
 refresh :: UI -> Editor -> IO ()
 refresh ui e = do
@@ -504,6 +529,7 @@ refresh ui e = do
            (textview w) # scrollRangeToVisible range
            let (txt, _, []) = runBuffer buf getModeLine 
            (modeline w) # setStringValue (toNSString txt)
+
 
 applyUpdate :: NSTextStorage () -> Update -> IO ()
 applyUpdate buf (Insert p s) =
