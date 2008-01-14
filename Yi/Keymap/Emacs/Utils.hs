@@ -74,6 +74,8 @@ import Data.List
 import Data.Maybe
   ( fromMaybe )
 
+import System.Exit
+  ( ExitCode( ExitSuccess,ExitFailure ) )
 import System.FilePath
   ( takeDirectory
   , isAbsolute
@@ -248,9 +250,11 @@ changeBufferNameE =
 
 shellCommandE :: YiM ()
 shellCommandE = do
-    withMinibuffer "Shell command:" return $ \command -> do
-    pipeE command "" >>= newBufferE "*Shell Command Output*" >> return ()
-
+    withMinibuffer "Shell command:" return $ \cmd -> do
+      (cmdOut,cmdErr,exitCode) <- runShellCommand cmd
+      case exitCode of 
+        ExitSuccess -> newBufferE "*Shell Command Output*" cmdOut >> return ()
+        ExitFailure _ -> msgE cmdErr
 
 -----------------------------
 -- Some updated movement commands

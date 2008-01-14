@@ -25,13 +25,12 @@ module Yi.Process (popen) where
 
 import System.IO
 import System.Process
+import System.Exit ( ExitCode )
 import Control.Concurrent       (forkIO)
 
 import qualified Control.Exception
 
-type ProcessID = ProcessHandle
-
-popen :: FilePath -> [String] -> Maybe String -> IO (String,String,ProcessID)
+popen :: FilePath -> [String] -> Maybe String -> IO (String,String,ExitCode)
 popen file args minput =
     Control.Exception.handle (\e -> return ([],show e,error (show e))) $ do
 
@@ -54,7 +53,6 @@ popen file args minput =
     forkIO (Control.Exception.evaluate (length errput) >> return ())
 
     -- And now we wait. We must wait after we read, unsurprisingly.
-    waitForProcess pid -- blocks without -threaded, you're warned.
+    exitCode <- waitForProcess pid -- blocks without -threaded, you're warned.
 
-    -- so what's the point of returning the pid then?
-    return (output,errput,pid)
+    return (output,errput,exitCode)

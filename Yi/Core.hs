@@ -90,7 +90,8 @@ module Yi.Core (
 
         -- * Interacting with external commands
         pipeE,                   -- :: String -> String -> EditorM String
- 
+        runShellCommand,
+
         -- * Minibuffer
         spawnMinibufferE,
 
@@ -134,6 +135,8 @@ import Data.Foldable
 
 import System.Directory     ( doesFileExist, doesDirectoryExist )
 import System.FilePath      
+import System.Environment ( getEnv )
+import System.Exit ( ExitCode )
 
 import Control.Monad (when, forever, replicateM_)
 import Control.Monad.Reader (runReaderT)
@@ -401,6 +404,20 @@ pipeE cmd inp = do
     let (f:args) = split " " cmd
     (out,_err,_) <- lift $ popen f args (Just inp)
     return (chomp "\n" out)
+
+------------------------------------------------------------------------
+-- | Run a command using the system shell, returning stdout, stderr and exit code
+
+shellFileName :: IO String
+shellFileName = Prelude.catch (getEnv "SHELL") (\_ -> return "/bin/bash")
+
+shellCommandSwitch :: String
+shellCommandSwitch = "-c"
+
+runShellCommand :: String -> YiM (String,String,ExitCode)
+runShellCommand cmd = do
+      shell <- lift shellFileName
+      lift $ popen shell [shellCommandSwitch, cmd] Nothing
 
 ------------------------------------------------------------------------
 
