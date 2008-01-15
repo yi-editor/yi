@@ -24,10 +24,11 @@ module Yi.FingerString (
   FingerString,
   fromString, toString, fromByteString, toByteString, rebalance,
   length, take, drop, append, splitAt, count,
-  elemIndices, findSubstring, elemIndexEnd
+  elemIndices, findSubstring, elemIndexEnd, elemIndicesEnd
 ) where
 
-import Prelude hiding (length, take, drop, splitAt, head, tail, foldl)
+import Prelude hiding (length, take, drop, splitAt, head, tail, foldl, reverse)
+import qualified Data.List as L
 
 import qualified Data.ByteString.Char8 as B
 import Data.ByteString (ByteString)
@@ -114,14 +115,21 @@ count x = foldl counter 0 . unFingerString
 
 -- | Get the last index of the specified character
 elemIndexEnd :: Char -> FingerString -> Maybe Int
-elemIndexEnd x = treeEIE . unFingerString
+elemIndexEnd x t = listToMaybe (elemIndicesEnd x t)
+
+-- | Get all indices of the specified character, in reverse order.
+-- This function has good lazy behaviour: taking the head of the resulting list is O(1)
+elemIndicesEnd :: Char -> FingerString -> [Int]
+elemIndicesEnd x = treeEIE . unFingerString
   where
-    treeEIE :: FingerTree Size ByteString -> Maybe Int
+    treeEIE :: FingerTree Size ByteString -> [Int]
     treeEIE t = case T.viewr t of
-      l :> s -> maybe (treeEIE l) (Just . (+ unSize (measure l))) (B.elemIndexEnd x s)
-      EmptyR -> Nothing
+      l :> s -> fmap (+ unSize (measure l)) (L.reverse (B.elemIndices x s)) ++ treeEIE l
+      EmptyR -> []
+
 
 -- | Get all indices of the specified character
+-- This function has good lazy behaviour: taking the head of the resulting list is O(1)
 elemIndices :: Char -> FingerString -> [Int]
 elemIndices x = treeEI . unFingerString
   where
