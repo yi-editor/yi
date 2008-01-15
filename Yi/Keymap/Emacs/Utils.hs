@@ -102,7 +102,7 @@ import Yi.Keymap.Emacs.KillRing
 import Yi.Keymap.Emacs.UnivArgument
 import Yi.Keymap.Emacs.Keys
 import Yi.Buffer
-
+import Yi.Process
 import Yi.Editor
 import Yi.History
 import Yi.Templates
@@ -251,7 +251,7 @@ changeBufferNameE =
 shellCommandE :: YiM ()
 shellCommandE = do
     withMinibuffer "Shell command:" return $ \cmd -> do
-      (cmdOut,cmdErr,exitCode) <- runShellCommand cmd
+      (cmdOut,cmdErr,exitCode) <- lift $ runShellCommand cmd
       case exitCode of 
         ExitSuccess -> newBufferE "*Shell Command Output*" cmdOut >> return ()
         ExitFailure _ -> msgE cmdErr

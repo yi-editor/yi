@@ -21,12 +21,13 @@
 -- | A Posix.popen compatibility mapping.
 -- Based on PosixCompat, originally written by Derek Elkins for lambdabot
 --
-module Yi.Process (popen) where
+module Yi.Process (popen, runShellCommand) where
 
 import System.IO
 import System.Process
 import System.Exit ( ExitCode )
 import Control.Concurrent       (forkIO)
+import System.Environment ( getEnv )
 
 import qualified Control.Exception
 
@@ -56,3 +57,17 @@ popen file args minput =
     exitCode <- waitForProcess pid -- blocks without -threaded, you're warned.
 
     return (output,errput,exitCode)
+
+------------------------------------------------------------------------
+-- | Run a command using the system shell, returning stdout, stderr and exit code
+
+shellFileName :: IO String
+shellFileName = Prelude.catch (getEnv "SHELL") (\_ -> return "/bin/sh")
+
+shellCommandSwitch :: String
+shellCommandSwitch = "-c"
+
+runShellCommand :: String -> IO (String,String,ExitCode)
+runShellCommand cmd = do
+      shell <- shellFileName
+      popen shell [shellCommandSwitch, cmd] Nothing
