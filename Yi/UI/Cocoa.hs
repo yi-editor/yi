@@ -37,14 +37,12 @@ import Yi.Monad
 import qualified Yi.UI.Common as Common
 import qualified Yi.WindowSet as WS
 
-import Control.Concurrent ( yield, threadDelay )
+import Control.Concurrent (threadDelay)
 import Control.Concurrent.Chan
-import Control.Concurrent (forkIO)
 import Control.Concurrent.MVar
 import Control.Monad.Reader (liftIO, when, MonadIO)
 import Control.Monad (ap)
 
-import Data.Bits ((.|.), (.&.), bit)
 import Data.IORef
 import Data.Maybe
 import Data.Unique
@@ -52,13 +50,11 @@ import Data.Foldable
 import Data.Traversable
 import qualified Data.Map as M
 
-import Foundation hiding (length, name, new, parent, error)
+import Foundation hiding (length, name, new, parent, error, self)
 import Foundation.NSObject (init)
-import Foundation.NSAttributedString (string)
 
 import AppKit hiding (windows, start, rect, width, content, prompt)
 import AppKit.NSWindow (contentView)
-import AppKit.NSEvent (characters)
 import AppKit.NSText (selectedRange)
 import qualified AppKit.NSView as NSView
 
@@ -86,7 +82,8 @@ $(exportClass "YiController" "yc_" [
     InstanceMethod 'applicationShouldTerminateAfterLastWindowClosed -- '
   ])
 
-yc_applicationShouldTerminateAfterLastWindowClosed app self = return True
+yc_applicationShouldTerminateAfterLastWindowClosed :: forall t. NSApplication t -> YiController () -> IO Bool
+yc_applicationShouldTerminateAfterLastWindowClosed _app _self = return True
 
 ------------------------------------------------------------------------
 
@@ -109,9 +106,9 @@ ya_sendEvent event self = do
       --logPutStrLn $ "Event " ++ d
       super self # sendEvent event
 
+handleKeyEvent :: forall t. NSEvent t -> Maybe (Chan Yi.Event.Event) -> IO ()
 handleKeyEvent event ch = do
   mask <- event # modifierFlags
-  code <- event # keyCode
   str <- event # charactersIgnoringModifiers >>= haskellString
   let (k,shift) = case str of
                 "\r"     -> (Just KEnter, True)
@@ -134,6 +131,8 @@ handleKeyEvent event ch = do
 modifierTable :: Bool -> [(CUInt, Modifier)]
 modifierTable False = [(bit 18,MCtrl), (bit 19,MMeta)]
 modifierTable True  = (bit 17,MShift) : modifierTable False
+
+modifiers :: Bool -> CUInt -> [Modifier]
 modifiers shift mask = [yi | (cocoa, yi) <- modifierTable shift, (cocoa .&. mask) /= 0]
 
 ------------------------------------------------------------------------
@@ -147,6 +146,7 @@ $(exportClass "YiTextView" "ytv_" [
   , InstanceMethod 'mouseDown -- '
   ])
 
+ytv_mouseDown :: forall t. NSEvent t -> YiTextView () -> IO ()
 ytv_mouseDown event self = do
   -- Determine the starting location before tracking mouse
   layout <- self # layoutManager
@@ -154,11 +154,11 @@ ytv_mouseDown event self = do
   mousewin <- event # locationInWindow
   NSPoint ex ey <- self # convertPointFromView mousewin nil
   NSPoint ox oy <- self # textContainerOrigin
-  let mouse@(NSPoint mx my) = NSPoint (ex - ox) (ey - oy)
+  let mouse@(NSPoint mx _) = NSPoint (ex - ox) (ey - oy)
   index <- layout # glyphIndexForPointInTextContainer mouse container >>= return . fromEnum
   NSRect (NSPoint cx _) (NSSize cw _) <-
     layout # boundingRectForGlyphRangeInTextContainer (NSRange (toEnum index) 1) container
-  let start = if mx - cx < cx + cw - mx then index else index + 1
+  let startIndex = if mx - cx < cx + cw - mx then index else index + 1
 
   -- The super-class deals Cocoa-ishly with mouse events
   super self # mouseDown event
@@ -167,13 +167,13 @@ ytv_mouseDown event self = do
   NSRange p l <- selectedRange self
   let p1 = fromEnum p
       p2 = p1 + fromEnum l
-  run <- self #. _runBuffer
-  run $ do
+  runbuf <- self #. _runBuffer
+  runbuf $ do
     if p1 == p2
       then do
         unsetMarkB -- Should really be called unsetSelectionMarkB?
         moveTo p1
-      else if abs (start - p2) < min (abs (start - p1)) 2
+      else if abs (startIndex - p2) < min (abs (startIndex - p1)) 2
         then setSelectionMarkPointB p2 >> moveTo p1
         else setSelectionMarkPointB p1 >> moveTo p2
 
@@ -220,12 +220,15 @@ mkUI ui = Common.UI
 rect :: Float -> Float -> Float -> Float -> NSRect
 rect x y w h = NSRect (NSPoint x y) (NSSize w h)
 
+new, autonew :: forall t. Class (NSObject_ t) -> IO (NSObject t)
 new x = do 
   d <- description x >>= haskellString
   o <- alloc x
   logPutStrLn $ "New " ++ d
   init o
 autonew x = new x >>= autoreleased
+
+autoreleased :: forall t. NSObject t -> IO (NSObject t)
 autoreleased o = do
   retain o
   autorelease o
@@ -236,8 +239,10 @@ allSizable = nsViewWidthSizable .|. nsViewHeightSizable
 normalWindowMask =
   nsTitledWindowMask .|. nsResizableWindowMask .|. nsClosableWindowMask .|. nsMiniaturizableWindowMask
 
+initWithContentRect :: NSRect -> NewlyAllocated (NSWindow ()) -> IO (NSWindow ())
 initWithContentRect r =
   initWithContentRectStyleMaskBackingDefer r normalWindowMask nsBackingStoreBuffered True
+width, height :: NSRect -> Float
 width (NSRect _ (NSSize w _)) = w
 height (NSRect _ (NSSize _ h)) = h
 
@@ -264,6 +269,7 @@ newTextLine = do
   tl # sizeToFit
   return tl
 
+addSubviewWithTextLine :: forall t1 t2. NSView t1 -> NSView t2 -> IO (NSTextField ())
 addSubviewWithTextLine view parent = do
   view # setAutoresizingMask allSizable
   parent # addSubview view
@@ -303,8 +309,8 @@ start ch outCh _ed runEd = do
   content # setAutoresizingMask allSizable
 
   -- Create yi window container
-  main <- new _NSView
-  cmd <- content # addSubviewWithTextLine main
+  winContainer <- autonew _NSView
+  cmd <- content # addSubviewWithTextLine winContainer
 
   -- Ensure that our command line application is also treated as a gui application
   fptr <- mallocForeignPtrBytes 32 -- way to many bytes, but hey...
@@ -319,7 +325,7 @@ start ch outCh _ed runEd = do
   bufs <- newIORef M.empty
   wc <- newIORef []
 
-  return (mkUI $ UI win main cmd bufs wc (writeChan outCh . runEd))
+  return (mkUI $ UI win winContainer cmd bufs wc (writeChan outCh . runEd))
 
 
 -- | Run the main loop
@@ -409,6 +415,7 @@ newWindow ui mini b = do
                  ,widget    = view
                  ,isMini    = mini
             }
+
   return win
 
 insertWindowBefore :: Editor -> UI -> Window -> WinInfo -> IO WinInfo
@@ -525,6 +532,8 @@ newTextStorage _ui b = do
 
 -- Debugging helpers
 
+{-
+
 data Hierarchy = View String NSRect [Hierarchy]
   deriving Show
 
@@ -544,3 +553,4 @@ mkHierarchy v = do
   ss <- v # subviews >>= haskellList >>= mapM (mkHierarchy . toNSView) 
   return $ View d f ss
 
+-}
