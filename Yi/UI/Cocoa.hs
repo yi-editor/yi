@@ -37,7 +37,7 @@ import Yi.Monad
 import qualified Yi.UI.Common as Common
 import qualified Yi.WindowSet as WS
 
-import Control.Concurrent ( yield )
+import Control.Concurrent ( yield, threadDelay )
 import Control.Concurrent.Chan
 import Control.Concurrent (forkIO)
 import Control.Concurrent.MVar
@@ -96,20 +96,10 @@ $(declareClass "YiApplication" "NSApplication")
 $(exportClass "YiApplication" "ya_" [
     InstanceVariable "eventChannel" [t| Maybe (Chan Yi.Event.Event) |] [| Nothing |]
   , InstanceVariable "running" [t| Bool |] [| True |]
-  , InstanceMethod 'terminate_ -- '
-  , InstanceMethod 'isRunning -- '
   , InstanceMethod 'sendEvent -- '
-  , InstanceMethod 'nextEventMatchingMaskUntilDateInModeDequeue -- '
   ])
 
-ya_nextEventMatchingMaskUntilDateInModeDequeue mask date mode deq self = do
-  yield >> yield >> yield >> yield
-  super self # nextEventMatchingMaskUntilDateInModeDequeue mask date mode deq 
-
-ya_isRunning self = self # getIVar _eventChannel >>= return . isJust
-
-ya_terminate_ _ self = self # setIVar _eventChannel Nothing
-
+ya_sendEvent :: forall t. NSEvent t -> YiApplication () -> IO ()
 ya_sendEvent event self = do
   t <- event # rawType
   if t == fromCEnum nsKeyDown
@@ -336,23 +326,7 @@ start ch outCh _ed runEd = do
 main :: UI -> IO ()
 main _ = do
   logPutStrLn "Cocoa main loop running"
-  app <- _YiApplication # sharedApplication >>= return . toYiApplication
-
-  -- This should really be app # run, but that doesn't seem to work
-  -- We therefore need to replicate the run-loop in Haskell, which is
-  -- only done for the rudimentary parts, since we shouldn't have to
-  -- do this.
-  let mode = toNSString "kCFRunLoopDefaultMode"
-      loop = do
-        -- GAH, we need these in the run loop, or else the other haskell threads don't run
-        yield >> yield >> yield >> yield
-        future <- _NSDate # dateWithTimeIntervalSinceNow 1.0
-        event <- app # nextEventMatchingMaskUntilDateInModeDequeue 0xffffffff (castObject future) mode True
-        if event == nil then return () else app # sendEvent event
-        running <- app # isRunning
-        if running then loop else return ()
-
-  loop
+  _YiApplication # sharedApplication >>= run
 
 -- | Clean up and go home
 end :: IO ()
@@ -379,7 +353,11 @@ removeWindow _i win = (widget win) # removeFromSuperview
 
 -- | Make A new window
 newWindow :: UI -> Bool -> FBuffer -> IO WinInfo
-newWindow ui mini b = flip catch (\e -> logPutStrLn (show e) >> error "Bläp") $ do
+newWindow ui mini b = do
+  -- This mysterious thread delay seems to solve the Cocoa issues...
+  -- It seems as if initWithFrame mustn't be active while the application
+  -- run method is called... 
+  threadDelay 100
 
   v <- alloc _YiTextView >>= initWithFrame (rect 0 0 100 100)
   v # setRichText False
