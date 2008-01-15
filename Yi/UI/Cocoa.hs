@@ -90,22 +90,15 @@ yc_applicationShouldTerminateAfterLastWindowClosed _app _self = return True
 -- This declares an application subclass which enables us to insert
 -- ourselves into the application event loop and trap key-events application wide
 $(declareClass "YiApplication" "NSApplication")
-$(declareSelector "doTick" [t| IO () |] )
+$(declareSelector "setAppleMenu:" [t| forall t. NSMenu t -> IO () |] )
+instance Has_setAppleMenu (NSApplication a)
 $(exportClass "YiApplication" "ya_" [
     InstanceVariable "eventChannel" [t| Maybe (Chan Yi.Event.Event) |] [| Nothing |]
   , InstanceVariable "running" [t| Bool |] [| True |]
   , InstanceMethod 'sendEvent -- '
-  , InstanceMethod 'nextEventMatchingMaskUntilDateInModeDequeue -- '
   ])
 
-ya_nextEventMatchingMaskUntilDateInModeDequeue mask date mode deq self = do
-  yield >> yield >> yield >> yield
-  super self # nextEventMatchingMaskUntilDateInModeDequeue mask date mode deq 
-
-ya_isRunning self = self # getIVar _eventChannel >>= return . isJust
-
-ya_terminate_ _ self = self # setIVar _eventChannel Nothing
-
+ya_sendEvent :: forall t. NSEvent t -> YiApplication () -> IO ()
 ya_sendEvent event self = do
   t <- event # rawType
   if t == fromCEnum nsKeyDown
@@ -279,27 +272,30 @@ newTextLine = do
   tl # sizeToFit
   return tl
 
+addSubviewWithTextLine :: forall t1 t2. NSView t1 -> NSView t2 -> IO (NSTextField (), NSView ())
 addSubviewWithTextLine view parent = do
+  container <- new _NSView 
+  parent # bounds >>= flip setFrame container
+  container # setAutoresizingMask allSizable
   view # setAutoresizingMask allSizable
-  parent' # addSubview view
+  container # addSubview view
 
   text <- newTextLine
-  parent' # addSubview text
-  parent # addSubview parent'
+  container # addSubview text
+  parent # addSubview container
   -- Adjust frame sizes, as superb cocoa cannot do this itself...
   txtbox <- text # frame
-  winbox <- parent' # bounds
+  winbox <- container # bounds
   view # setFrame (rect 0 (height txtbox) (width winbox) (height winbox - height txtbox))
   text # setFrame (rect 0 0 (width winbox) (height txtbox))
 
-  return (text, parent')
+  return (text, container)
 
 -- | Initialise the ui
 start :: Chan Yi.Event.Event -> Chan action ->
          Editor -> (EditorM () -> action) -> 
          IO Common.UI
-start ch outCh _ed runEd  = withAutoreleasePool $ start' ch outCh _ed runEd 
-start' ch outCh _ed runEd = do
+start ch outCh _ed runEd = do
 
   -- Ensure that our command line application is also treated as a gui application
   fptr <- mallocForeignPtrBytes 32 -- way to many bytes, but hey...
@@ -325,7 +321,7 @@ start' ch outCh _ed runEd = do
   mm' <- _NSMenu # alloc >>= init
   mm'' <- _NSMenu # alloc >>= init
   app # setMainMenu mm 
---  app # setAppleMenu mm' 
+  app # setAppleMenu mm' 
   app # setWindowsMenu mm'' 
 
   
@@ -336,8 +332,8 @@ start' ch outCh _ed runEd = do
   content # setAutoresizingMask allSizable
 
   -- Create yi window container
-  main <- new _NSView
-  cmd <- content # addSubviewWithTextLine main
+  winContainer <- new _NSSplitView
+  (cmd,_) <- content # addSubviewWithTextLine winContainer
 
 
   -- Activate application window
@@ -353,26 +349,9 @@ start' ch outCh _ed runEd = do
 
 -- | Run the main loop
 main :: UI -> IO ()
-main ui = withAutoreleasePool $ main' ui
-main' ui = do
+main _ui = do
   logPutStrLn "Cocoa main loop running"
-  app <- _YiApplication # sharedApplication >>= return . toYiApplication
-
-  -- This should really be app # run, but that doesn't seem to work
-  -- We therefore need to replicate the run-loop in Haskell, which is
-  -- only done for the rudimentary parts, since we shouldn't have to
-  -- do this.
-  let mode = toNSString "kCFRunLoopDefaultMode"
-      loop = do
-        -- GAH, we need these in the run loop, or else the other haskell threads don't run
-        yield >> yield >> yield >> yield
-        future <- _NSDate # dateWithTimeIntervalSinceNow 1.0
-        event <- app # nextEventMatchingMaskUntilDateInModeDequeue 0xffffffff (castObject future) mode True
-        if event == nil then return () else app # sendEvent event
-        running <- app # isRunning
-        if running then loop else return ()
-
-  loop
+  _YiApplication # sharedApplication >>= run
 
 -- | Clean up and go home
 end :: IO ()
@@ -409,7 +388,6 @@ newWindow ui mini b = do
   v # setRichText False
   v # setSelectable True
   v # setAlignment nsLeftTextAlignment
---  v # setMonospaceFont
   v # sizeToFit
   v # setIVar _runBuffer ((uiRunEditor ui) . withGivenBuffer0 (keyB b))
 
@@ -440,24 +418,16 @@ newWindow ui mini b = do
    else do
     v # setHorizontallyResizable True
     v # setVerticallyResizable True
---    clip <- new _NSClipView
---    clip # setDocumentView v
---    clip # setAutoresizingMask allSizable
     
     scroll <- new _NSScrollView
---    scroll # setContentView clip
     scroll # setDocumentView v
---    clip # setAutoresizingMask allSizable
     scroll # setAutoresizingMask allSizable
 
     scroll # setHasVerticalScroller True
     scroll # setHasHorizontalScroller False
     scroll # setAutohidesScrollers False
 
-    let vv =  (toNSView $ toID scroll)
-
-    (ml, wid) <- (uiBox ui) # packSubviewWithTextLine vv
-    return (ml, wid)
+    addSubviewWithTextLine scroll (uiBox ui)
 
   storage <- getTextStorage ui b
   layoutManager v >>= replaceTextStorage storage
@@ -485,12 +455,7 @@ insertWindowAtEnd e i w = insertWindow e i w
 insertWindow :: Editor -> UI -> Window -> IO WinInfo
 insertWindow e i win = do
   let buf = findBufferWith (Common.bufkey win) e
-  liftIO $ do w <- newWindow i (Common.isMini win) buf
---               (widget w) # setAutoresizingMask (if isMini w
--- 	                                        then nsViewWidthSizable
--- 	                                        else allSizable)
---               (uiBox i) # addSubview (widget w)
-              return w
+  liftIO $ newWindow i (Common.isMini win) buf
 
 
 refresh :: UI -> Editor -> IO ()
