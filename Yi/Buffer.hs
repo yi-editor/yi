@@ -26,7 +26,6 @@ module Yi.Buffer
   , runBuffer
   , keyB
   , curLn
-  , numberOfLines
   , sizeB
   , pointB
   , moveTo
@@ -333,15 +332,12 @@ deleteNAt n pos = applyUpdate (Delete pos n)
 curLn :: BufferM Int
 curLn = queryBuffer curLnI
 
--- | The number of lines in the whole buffer
-numberOfLines :: BufferM Int
-numberOfLines = queryBuffer (length . getLineStartsI)
-
 -- | Go to line number @n@. @n@ is indexed from 1. Returns the
 -- actual line we went to (which may be not be the requested line,
 -- if it was out of range)
 gotoLn :: Int -> BufferM Int
-gotoLn = queryAndModify . gotoLnI
+gotoLn x = do moveTo 0
+              gotoLnFrom x
 
 ---------------------------------------------------------------------
 
@@ -398,18 +394,20 @@ setPrefCol :: Maybe Int -> BufferM ()
 setPrefCol = setA preferColA
 
 -- | Move point down by @n@ lines. @n@ can be negative.
-lineMoveRel :: Int -> BufferM ()
+lineMoveRel :: Int -> BufferM Int
 lineMoveRel n = do
   prefCol <- getA preferColA
   targetCol <- case prefCol of
     Nothing -> offsetFromSol
     Just x -> return x
-  gotoLnFrom n
+  ofs <- gotoLnFrom n
+  gotoLnFrom 0 -- make sure we are at the start of line.
   solPnt <- pointB
   chrs <- nelemsB targetCol solPnt
   moveTo $ solPnt + maybe targetCol id (elemIndex '\n' chrs)
   --logPutStrLn $ "lineMoveRel: targetCol = " ++ show targetCol
   setPrefCol (Just targetCol)
+  return ofs
 
 forgetPreferCol :: BufferM ()
 forgetPreferCol = setPrefCol Nothing
@@ -423,11 +421,11 @@ savingPrefCol f = do
 
 -- | Move point up one line
 lineUp :: BufferM ()
-lineUp = lineMoveRel (-1)
+lineUp = lineMoveRel (-1) >> return ()
 
 -- | Move point down one line
 lineDown :: BufferM ()
-lineDown = lineMoveRel 1
+lineDown = lineMoveRel 1 >> return ()
 
 -- | Return the contents of the buffer as a list
 elemsB :: BufferM [Char]
@@ -463,9 +461,7 @@ offsetFromSol = queryBuffer offsetFromSolBI
 
 -- | Go to line indexed from current point
 gotoLnFrom :: Int -> BufferM Int
-gotoLnFrom x = do
-  l <- curLn
-  gotoLn (x+l) -- FIXME: this should not be O(buffersize)
+gotoLnFrom x = queryAndModify $ gotoLnRelI x
 
 bufferDynamicValueA :: Initializable a => Accessor FBuffer a
 bufferDynamicValueA = dynamicValueA .> bufferDynamicA

@@ -33,8 +33,7 @@ module Yi.FastBuffer
   , sizeBI
   , curLnI
   , newBI
-  , gotoLnI
-  , getLineStartsI
+  , gotoLnRelI
   , offsetFromSolBI
   , searchBI
   , regexBI
@@ -57,6 +56,7 @@ import qualified Data.Map as M
 import Yi.Style
 
 import Control.Monad
+import Control.Arrow (second)
 
 import Text.Regex.Base
 import Text.Regex.Posix
@@ -261,31 +261,32 @@ applyUpdateI u (FBufferData p mks nms hl ov) = FBufferData p' (M.map shift mks) 
 -- Line based editing
 
 curLnI :: BufferImpl -> Int
-curLnI fb@(FBufferData ptr _ _ _ _) = 1 + F.count '\n'  (F.take (pointBI fb) ptr)
+curLnI fb@(FBufferData ptr _ _ _ _) = 1 + F.count '\n' (F.take (pointBI fb) ptr)
 
--- | Go to line number @n@. @n@ is indexed from 1. Returns the
--- actual line we went to (which may be not be the requested line,
--- if it was out of range)
-gotoLnI :: Int -> BufferImpl -> (BufferImpl, Int)
-gotoLnI n fb | n < 1 = (moveToI 0 fb, 1)
-gotoLnI n fb =
-        let lineStarts = getLineStartsI fb
-
+-- | Go to line number @n@, relatively from this line. @0@ will go to
+-- the start of this line. Returns the actual line difference we went
+-- to (which may be not be the requested one, if it was out of range)
+gotoLnRelI :: Int -> BufferImpl -> (BufferImpl, Int)
+gotoLnRelI n fb = (moveToI np fb, max 1 n')
+    where 
+     s = mem fb
+     point = pointBI fb
+     (n', np) = if n <= 0                      
+      then
+        let lineStarts = map (+1) ((F.elemIndicesEnd '\n') (F.take point s)) ++ [0]
             findLine acc _ [x]    = (acc, x)
+            findLine acc 0 (x:_)  = (acc, x)
+            findLine acc l (_:xs) = findLine (acc - 1) (l + 1) xs
+            findLine _ _ []       =
+              error "lineStarts ends with 0 : ... this cannot happen"
+        in findLine 0 n lineStarts 
+      else
+        let lineStarts = map (+1) ((F.elemIndices '\n') (F.drop point s))
+            findLine acc _ []     = (acc, 0) -- try to go forward, but there is no such line.
+            findLine acc _ [x]    = (acc + 1, x)
             findLine acc 1 (x:_)  = (acc, x)
             findLine acc l (_:xs) = findLine (acc + 1) (l - 1) xs
-            findLine _ _ []       =
-              error "lineStarts begins with 0 : ... this cannot hapen"
-
-            (n', np) = findLine 1 n lineStarts
-        in (moveToI np fb, max 1 n')
-
-
-getLineStartsI :: BufferImpl -> [ Int ]
-getLineStartsI fb =
-  0 : map (+1) lineEnds
-  where
-  lineEnds = F.elemIndices '\n' (mem fb)
+        in second (point +) (findLine 0 n lineStarts)
 
 -- | Return index of next string in buffer that matches argument
 searchBI :: [Char] -> BufferImpl -> Maybe Int

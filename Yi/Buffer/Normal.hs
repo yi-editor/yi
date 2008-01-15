@@ -116,17 +116,11 @@ moveBeginB unit dir = do
 execB :: Operation -> TextUnit -> Direction -> BufferM ()
 execB Move Character Forward  = rightB
 execB Move Character Backward = leftB
-execB Move VLine Forward      = -- FIXME: this should be O(buffersize)
-  do i    <- curLn
-     size <- numberOfLines
-     if i == size
-       then execB MaybeMove Line Forward
-       else lineDown
-execB Move VLine Backward     = -- FIXME: this should not be O(buffersize)
-  do i <- curLn
-     if i == 1
-        then execB MaybeMove Line Backward
-        else lineUp
+execB Move VLine Forward      = 
+  do ofs <- lineMoveRel 1
+     when (ofs < 1) (execB MaybeMove Line Forward)
+            
+execB Move VLine Backward = lineUp
 execB Move unit direction = do
   doUntilB (atBoundary unit direction) (execB Move Character direction)
 
