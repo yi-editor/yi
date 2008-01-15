@@ -33,6 +33,8 @@ Contributors: Contributors.hs
 CONTRIBUTORS: Contributors _darcs/inventory
 	darcs changes | ./Contributors > $@
 
+activity.png: _darcs/inventory
+	darcs-graph . -o $@
 
 dist/yi-$(version).tar.gz:
 	make sdist # does not work atm 
