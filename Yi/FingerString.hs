@@ -126,9 +126,9 @@ elemIndices :: Char -> FingerString -> [Int]
 elemIndices x = treeEI . unFingerString
   where
     treeEI :: FingerTree Size ByteString -> [Int]
-    treeEI t = case T.viewr t of
-      l :> s -> treeEI l ++ fmap (+ unSize (measure l)) (B.elemIndices x s)
-      EmptyR -> []
+    treeEI t = case T.viewl t of
+      s :< r -> B.elemIndices x s ++ fmap (B.length s +) (treeEI r)
+      EmptyL -> []
 
 -- | Determine the first index of the ByteString in the buffer.
 findSubstring :: ByteString -> FingerString -> Maybe Int
