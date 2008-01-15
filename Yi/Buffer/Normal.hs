@@ -1,8 +1,32 @@
--- A normalized (orthogonal) API to many buffer operations
+--
+-- Copyright (C) 2008 JP Bernardy
+--
+-- This program is free software; you can redistribute it and/or
+-- modify it under the terms of the GNU General Public License as
+-- published by the Free Software Foundation; either version 2 of
+-- the License, or (at your option) any later version.
+--
+-- This program is distributed in the hope that it will be useful,
+-- but WITHOUT ANY WARRANTY; without even the implied warranty of
+-- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+-- General Public License for more details.
+--
+-- You should have received a copy of the GNU General Public License
+-- along with this program; if not, write to the Free Software
+-- Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+-- 02111-1307, USA.
+
+-- * A normalized API to many buffer operations.
+
+-- The idea is that most operations should be parametric in both
+--  * the textual units they work on
+--  * the direction towards which they operate (if applicable)
+
 module Yi.Buffer.Normal (execB, TextUnit(..), Operation(..),
                          peekB, regionOfB, regionOfPartB, readUnitB,
                          untilB,
                          atBoundaryB,
+                         numberOfB,
                          moveEndB, moveBeginB) where
 
 import Yi.Buffer
@@ -84,22 +108,41 @@ atEnclosingBoundary _ direction = atBoundary Document direction
 atBoundaryB :: TextUnit -> Direction -> BufferM Bool
 atBoundaryB u d = (||) <$> atBoundary u d <*> atEnclosingBoundary u d
 
+numberOfB :: TextUnit -> TextUnit -> BufferM Int
+numberOfB unit containingUnit = savingPointB $ do
+                   execB MaybeMove containingUnit Backward
+                   start <- pointB
+                   execB Move containingUnit Forward
+                   end <- pointB
+                   moveTo start
+                   length <$> untilB ((>= end) <$> pointB) (execB Move unit Forward)
+
 -- | Repeat an action until the condition is fulfilled or the cursor stops moving.
 -- The Action may be performed zero times.
-untilB :: BufferM Bool -> BufferM a -> BufferM ()
+untilB :: BufferM Bool -> BufferM a -> BufferM [a]
 untilB cond f = do
   stop <- cond
-  when (not stop) (doUntilB cond f)
+  if stop then return [] else doUntilB cond f
 
 -- | Repeat an action until the condition is fulfilled or the cursor stops moving.
 -- The Action is performed at least once.
-doUntilB :: BufferM Bool -> BufferM a -> BufferM ()
-doUntilB cond f = do
-  p <- pointB
-  f
-  p' <- pointB
-  stop <- cond
-  when (p /= p' && not stop) (doUntilB cond f)
+doUntilB :: BufferM Bool -> BufferM a -> BufferM [a]
+doUntilB cond f = loop
+      where loop = do
+              p <- pointB
+              x <- f
+              p' <- pointB
+              stop <- cond
+              (x:) <$> if (p /= p' && not stop) 
+                then loop
+                else return []
+
+doUntilB_ :: BufferM Bool -> BufferM a -> BufferM ()
+doUntilB_ cond f = doUntilB cond f >> return () -- maybe do an optimized version?
+
+untilB_ :: BufferM Bool -> BufferM a -> BufferM ()
+untilB_ cond f = untilB cond f >> return () -- maybe do an optimized version?
+
 
 moveEndB :: TextUnit -> BufferM ()
 moveEndB unit = do
@@ -109,8 +152,7 @@ moveEndB unit = do
 
 moveBeginB :: TextUnit -> Direction -> BufferM ()
 moveBeginB unit dir = do
-  doUntilB (atBoundary unit (opposite dir)) (execB Move Character dir)
-
+  doUntilB_ (atBoundary unit (opposite dir)) (execB Move Character dir)
 
 -- | Execute the specified triple (operation, unit, direction)
 execB :: Operation -> TextUnit -> Direction -> BufferM ()
@@ -122,13 +164,13 @@ execB Move VLine Forward      =
             
 execB Move VLine Backward = lineUp
 execB Move unit direction = do
-  doUntilB (atBoundary unit direction) (execB Move Character direction)
+  doUntilB_ (atBoundary unit direction) (execB Move Character direction)
 
 -- So for example here moveToEol = execB MaybeMove Line Forward;
 -- in that it will move to the end of current line and nowhere if we
 -- are already at the end of the current line. Similarly for moveToSol.
 execB MaybeMove unit direction = do
-  untilB (atBoundary unit direction) (execB Move Character direction)
+  untilB_ (atBoundary unit direction) (execB Move Character direction)
 -- TODO: save in the kill ring.
 execB Delete unit direction = do
   p <- pointB
