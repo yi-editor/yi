@@ -30,7 +30,7 @@ maintainer-clean: distclean
 Contributors: Contributors.hs
 	ghc --make $<
 
-CONTRIBUTORS: Contributors _darcs/patches/*
+CONTRIBUTORS: Contributors _darcs/inventory
 	darcs changes | ./Contributors > $@
 
 

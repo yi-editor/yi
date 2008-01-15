@@ -27,6 +27,7 @@ mkName match | [_,firstname, lastname] <- elems match
        = BS.concat . intersperse " " . map capitalize $ [firstname, lastname]
 
 name :: ByteString -> ByteString
+name "andy@nobugs.org" = "Andrew Birkett"
 name tag 
      | match :: M <- tag =~ pack "^\"?(.+)<.*>\"?$", [_,name] <- elems match = name
      | match :: M <- tag =~ pack "^<?(.*)@(.*)\\.name>?$", 
@@ -47,6 +48,7 @@ nickToName x = case BS.map toLower x of
             "grddev"                -> "Gustav Munkby"
             "gwern0"                -> "Gwern Branwen"
             "jeanphilippe.bernardy" -> "Jean-Philippe Bernardy"
+            "m.gubinelli"           -> "Massimiliano Gubinelli"
             "mlang"                 -> "Mario Lang"
             "mwotton"               -> "Mark Wotton"
             "newsham"               -> "Tim Newsham"
