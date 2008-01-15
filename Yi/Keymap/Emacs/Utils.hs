@@ -37,8 +37,6 @@ module Yi.Keymap.Emacs.Utils
   , queryReplaceE
   , isearchProcess
   , shellCommandE
-  , lineDownOrEnd
-  , lineUpOrStart
   , executeExtendedCommandE 
   , evalRegionE 
   , readArgC
@@ -255,26 +253,6 @@ shellCommandE = do
       case exitCode of 
         ExitSuccess -> newBufferE "*Shell Command Output*" cmdOut >> return ()
         ExitFailure _ -> msgE cmdErr
-
------------------------------
--- Some updated movement commands
-
--- | Move down one line, if on the last line already move to the end
--- Yi.Buffer.lineDown will do nothing if you are on the last line.
-lineDownOrEnd :: BufferM ()
-lineDownOrEnd =
-  do i    <- curLn
-     size <- numberOfLines
-     if i == size
-       then moveToEol
-       else lineDown
-
-lineUpOrStart :: BufferM ()
-lineUpOrStart =
-  do i <- curLn
-     if i == 1
-        then moveToSol
-        else lineUp
 
 -----------------------------
 -- isearch
