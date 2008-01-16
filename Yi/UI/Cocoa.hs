@@ -36,6 +36,7 @@ import Yi.FastBuffer
 import Yi.Monad
 import qualified Yi.UI.Common as Common
 import qualified Yi.WindowSet as WS
+import Paths_yi (getDataFileName)
 
 import Control.Concurrent (threadDelay)
 import Control.Concurrent.Chan
@@ -310,11 +311,15 @@ start ch outCh _ed runEd = do
 
   app <- _YiApplication # sharedApplication >>= return . toYiApplication
   app # setIVar _eventChannel (Just ch)
+  
+  icon <- getDataFileName "art/yi+lambda-fat.pdf"
+  _NSImage # alloc >>=
+    initWithContentsOfFile (toNSString icon) >>=
+    flip setApplicationIconImage app
 
   -- Initialize the app delegate, which allows quit-on-window-close
   controller <- autonew _YiController >>= return . toYiController
   app # setDelegate controller
-
 
   -- init menus
   mm <- _NSMenu # alloc >>= init
@@ -337,6 +342,8 @@ start ch outCh _ed runEd = do
 
 
   -- Activate application window
+  win # center
+  win # setFrameAutosaveName (toNSString "main")
   win # makeKeyAndOrderFront nil
   app # activateIgnoringOtherApps False
     
@@ -431,8 +438,7 @@ newWindow ui mini b = do
 
   storage <- getTextStorage ui b
   layoutManager v >>= replaceTextStorage storage
-  f <- _NSFont # userFixedPitchFontOfSize 0.0
-  storage # setFont f
+  storage # setMonospaceFont
 
   k <- newUnique
   let win = WinInfo {

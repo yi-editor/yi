@@ -13,6 +13,8 @@ author:         AUTHORS
 maintainer:     yi-devel@googlegroups.com
 extra-source-files:
   Yi/Syntax/alex.hsinc
+data-files:
+  art/yi+lambda-fat.pdf
 
 Flag vty {
   Description: Provide Vty UI
