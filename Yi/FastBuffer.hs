@@ -1,5 +1,4 @@
---
--- Copyright (c) 2004-5, 8 Don Stewart - http://www.cse.unsw.edu.au/~dons
+-- Copyright (c) 2004-5, 7-8 Don Stewart - http://www.cse.unsw.edu.au/~dons
 --
 -- This program is free software; you can redistribute it and/or
 -- modify it under the terms of the GNU General Public License as
@@ -67,6 +66,7 @@ import Yi.FingerString (FingerString)
 import qualified Data.ByteString.Char8 as B
 
 import Data.Array
+import Data.Maybe
 
 
 type Point = Int
@@ -295,10 +295,8 @@ searchBI s fb@(FBufferData ptr _ _ _ _) = fmap (+ pnt) $ F.findSubstring (B.pack
     where pnt = pointBI fb
 
 searchBackwards :: String -> BufferImpl -> Maybe Int
-searchBackwards s fb@(FBufferData ptr _ _ _ _) = case results of
-                                                   Nothing -> Nothing
-                                                   Just a -> Just $ head a
-    where results :: Maybe [Int]
+searchBackwards s fb@(FBufferData ptr _ _ _ _) = listToMaybe results
+    where results :: [Int]
           results = F.findSubstrings (B.pack s) $ F.take pnt ptr --
           pnt :: Int
           pnt = pointBI fb -- pnt == current point
