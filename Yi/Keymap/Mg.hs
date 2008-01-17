@@ -1,5 +1,5 @@
 --
--- Copyright (c) 2005 Don Stewart - http://www.cse.unsw.edu.au/~dons
+-- Copyright (c) 2005, 2008 Don Stewart - http://www.cse.unsw.edu.au/~dons
 --
 -- This program is free software; you can redistribute it and/or
 -- modify it under the terms of the GNU General Public License as
@@ -439,13 +439,13 @@ metaOSwitch = event (m_ 'O') >> write (msgE "ESC-O-") >> metaOMode
 
 metaOMode :: MgMode
 metaOMode = do c <- oneOf metaoKeysList; keys2action [m_ 'O',c]; write msgClrE
-               
+
 -- ---------------------------------------------------------------------
 -- build a generic line buffer editor, given a mode to transition to
 --
 
 echoMode :: String -> Interact Char (Maybe String)
-echoMode prompt = do 
+echoMode prompt = do
   write (logPutStrLn "echoMode")
   result <- lineEdit []
   write msgClrE
@@ -462,7 +462,7 @@ echoMode prompt = do
 withLineEditor :: String -> (String -> MgMode) -> MgMode
 withLineEditor prompt cont = do
   s <- echoMode prompt
-  case s of 
+  case s of
     Nothing -> return ()
     Just x -> cont x
 
@@ -490,7 +490,7 @@ describeKeyMode :: MgMode
 describeKeyMode = describeChar "Describe key briefly: " []
 
 describeChar :: String -> String -> MgMode
-describeChar prompt acc = do 
+describeChar prompt acc = do
   c <- anything
   let keys = acc ++ [c]
   case M.lookup keys keys2extended of
@@ -538,7 +538,7 @@ gotoMode = withLineEditor "goto line: " $ \l -> write $ do
              i <- lift $ try . evaluate . read $ l
              case i of Left _   -> errorE "Invalid number"
                        Right i' -> gotoLnE i'
-             
+
 
 -- ---------------------------------------------------------------------
 -- | insert the first character, then switch back to normal mode
