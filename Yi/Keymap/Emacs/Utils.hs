@@ -286,8 +286,8 @@ queryReplaceE = do
     b <- withEditor $ getBuffer
     let replaceBindings = [("n", write $ qrNextE b replaceWhat),
                            ("y", write $ qrReplaceOneE b replaceWhat replaceWith),
-                           ("q", write $ closeE),
-                           ("C-g", write $ closeE)
+                           ("q", write $ closeBufferAndWindowE),
+                           ("C-g", write $ closeBufferAndWindowE)
                            ]
     spawnMinibufferE
             ("Replacing " ++ replaceWhat ++ "with " ++ replaceWith ++ " (y,n,q):")
@@ -464,10 +464,10 @@ withMinibuffer prompt completer act = do
   let innerAction :: YiM ()
       -- ^ Read contents of current buffer (which should be the minibuffer), and
       -- apply it to the desired action
-      closeMinibuffer = do b <- withEditor getBuffer; closeE; withEditor (deleteBuffer b);
+      closeMinibuffer = closeBufferAndWindowE
       innerAction = do historyFinish
                        lineString <- withBuffer elemsB
-                       closeMinibuffer
+                       withEditor $ closeMinibuffer
                        switchToBufferE initialBuffer
                        -- The above ensures that the action is performed on the buffer that originated the minibuffer.
                        act lineString
