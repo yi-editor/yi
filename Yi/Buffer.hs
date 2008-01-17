@@ -90,7 +90,7 @@ import Prelude hiding (error)
 import System.FilePath
 import Text.Regex.Posix.Wrap    (Regex)
 import Yi.Accessor
-import Yi.FastBuffer
+import Yi.Buffer.Implementation
 import Yi.Undo
 import Yi.Style
 import Yi.Debug

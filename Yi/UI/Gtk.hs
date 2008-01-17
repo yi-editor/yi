@@ -24,7 +24,7 @@ module Yi.UI.Gtk (start) where
 
 import Prelude hiding (error, sequence_, elem, mapM_, mapM, concatMap)
 
-import Yi.FastBuffer (inBounds, Update(..))
+import Yi.Buffer.Implementation (inBounds, Update(..))
 import Yi.Buffer
 import Yi.Editor hiding (bufkey, isMini, winkey, windows)
 import qualified Yi.Editor as Common

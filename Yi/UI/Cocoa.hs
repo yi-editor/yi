@@ -32,7 +32,7 @@ import Yi.Editor (Window, Editor, EditorM, withGivenBuffer0, findBufferWith, sta
 import qualified Yi.Editor as Common
 import Yi.Event
 import Yi.Debug
-import Yi.FastBuffer
+import Yi.Buffer.Implementation
 import Yi.Monad
 import qualified Yi.UI.Common as Common
 import qualified Yi.WindowSet as WS

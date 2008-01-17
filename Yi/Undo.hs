@@ -76,7 +76,7 @@ module Yi.Undo (
   , changeUpdates
    ) where
 
-import Yi.FastBuffer            
+import Yi.Buffer.Implementation            
 
 data Change = SavedFilePoint
             | InteractivePoint

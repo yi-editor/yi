@@ -46,7 +46,7 @@ import System.Exit
 import System.Posix.Signals         ( raiseSignal, sigTSTP )
 import Yi.CoreUI
 import Yi.Buffer
-import Yi.FastBuffer
+import Yi.Buffer.Implementation
 import Yi.Debug
 import Yi.Editor
 import Yi.Event

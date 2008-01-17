@@ -30,7 +30,7 @@ import Yi.Style                 ( uiStyle, UIStyle )
 import Yi.Debug
 import Yi.Undo
 import Yi.Monad
-import Yi.FastBuffer
+import Yi.Buffer.Implementation
 import Yi.Accessor
 import Yi.Dynamic
 import Yi.WindowSet

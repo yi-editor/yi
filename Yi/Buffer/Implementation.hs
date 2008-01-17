@@ -18,7 +18,7 @@
 
 -- | 'Buffer' implementation, wrapping bytestring.
 
-module Yi.FastBuffer
+module Yi.Buffer.Implementation
   ( Update     ( .. )
   , Point
   , Mark
