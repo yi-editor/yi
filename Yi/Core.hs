@@ -62,6 +62,7 @@ module Yi.Core (
         getBufferWithName,
 
         -- * Buffer/Window
+        closeBufferAndWindowE,
         switchToBufferE,
         switchToBufferOtherWindowE,
         switchToBufferWithNameE,
@@ -659,6 +660,12 @@ closeBufferE bufName = do
   withEditor $ deleteBuffer b'
 
 ------------------------------------------------------------------------
+
+-- | Close current buffer and window, unless it's the last one.
+closeBufferAndWindowE :: EditorM ()
+closeBufferAndWindowE = do
+  deleteBuffer =<< getBuffer
+  tryCloseE
 
 -- | Close the current window.
 -- If this is the last window open, quit the program.
