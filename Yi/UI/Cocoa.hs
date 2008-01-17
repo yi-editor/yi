@@ -34,6 +34,7 @@ import Yi.Event
 import Yi.Debug
 import Yi.Buffer.Implementation
 import Yi.Monad
+import Yi.Style hiding (modeline)
 import qualified Yi.UI.Common as Common
 import qualified Yi.WindowSet as WS
 import Paths_yi (getDataFileName)
@@ -54,7 +55,7 @@ import qualified Data.Map as M
 import Foundation hiding (length, name, new, parent, error, self)
 import Foundation.NSObject (init)
 
-import AppKit hiding (windows, start, rect, width, content, prompt)
+import AppKit hiding (windows, start, rect, width, content, prompt, dictionary, icon)
 import AppKit.NSWindow (contentView)
 import AppKit.NSText (selectedRange)
 import qualified AppKit.NSView as NSView
@@ -474,13 +475,13 @@ refresh ui e = do
     forM_ (editorUpdates e) $ \(b,u) -> do
       let buf = findBufferWith b e
       storage <- getTextStorage ui buf
+      storage # beginEditing
       applyUpdate storage u
       contents <- storage # string >>= haskellString
       logPutStrLn $ "Contents is " ++ show contents
-      --TODO:
-      --let (size, _, []) = runBuffer buf sizeB
-      --let p = updatePoint u
-      --replaceTagsIn ui (inBounds (p-100) size) (inBounds (p+100) size) buf storage
+      let (size, _, []) = runBuffer buf sizeB
+      replaceTagsIn 0 size buf storage
+      storage # endEditing
 
     (uiWindow ui) # setAutodisplay False -- avoid redrawing while window syncing
     WS.debug "syncing" ws
@@ -501,6 +502,21 @@ refresh ui e = do
            let (txt, _, []) = runBuffer buf getModeLine 
            (modeline w) # setStringValue (toNSString txt)
 
+
+replaceTagsIn :: forall t. Point -> Point -> FBuffer -> NSTextStorage t -> IO ()
+replaceTagsIn from to buf storage = do
+  let (styleSpans, _, []) = runBuffer buf (styleRangesB (to - from) from)
+  forM_ (zip styleSpans (drop 1 styleSpans)) $ \((l,Style fg bg),(r,_)) -> do
+    logPutStrLn $ "Setting style " ++ show fg ++ show bg ++ " on " ++ show l ++ " - " ++ show r
+    fg' <- color True fg
+    bg' <- color False bg
+    let range = NSRange (toEnum l) (toEnum $ r-l)
+    storage # addAttributeValueRange nsForegroundColorAttributeName fg' range
+    storage # addAttributeValueRange nsBackgroundColorAttributeName bg' range
+  where 
+    color fg Default = if fg then _NSColor # blackColor else _NSColor # whiteColor
+    color fg Reverse = if fg then _NSColor # whiteColor else _NSColor # blackColor
+    color _g (RGB r g b) = _NSColor # colorWithDeviceRedGreenBlueAlpha ((fromIntegral r)/255) ((fromIntegral g)/255) ((fromIntegral b)/255) 1.0
 
 applyUpdate :: NSTextStorage () -> Update -> IO ()
 applyUpdate buf (Insert p s) =
@@ -562,7 +578,7 @@ newTextStorage _ui b = do
   buf <- new _NSTextStorage
   let (txt, _, []) = runBuffer b elemsB
   buf # mutableString >>= setString (toNSString txt)
-  --replaceTagsIn ui 0 (length txt) b buf
+  replaceTagsIn 0 (length txt) b buf
   return buf
 
 -- Debugging helpers
