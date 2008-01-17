@@ -1,6 +1,6 @@
 --
 -- Copyright (c) Tuomo Valkonen 2004.
--- Copyright (c) 2005 Don Stewart - http://www.cse.unsw.edu.au/~dons
+-- Copyright (c) 2005, 2008 Don Stewart - http://www.cse.unsw.edu.au/~dons
 -- Copyright (c) 2007 Jean-Philippe Bernardy
 --
 -- This program is free software; you can redistribute it and/or
@@ -126,7 +126,7 @@ searchE s fs d =
      case s of
         Just re -> searchInitE re fs >>= (flip searchDoE) d >>= f
         Nothing -> do
-	    mre <- getRegexE
+            mre <- getRegexE
             case mre of
                 Nothing -> errorE "No previous search pattern" -- NB
                 Just r -> searchDoE r d >>= f
@@ -143,7 +143,7 @@ searchDoE :: SearchExp
 
 searchDoE _ Backward = do
         errorE "Backward searching is unimplemented"
-	return Nothing
+        return Nothing
 searchDoE (s, re) _ = searchF s re
 
 --
@@ -188,7 +188,7 @@ searchF _ c_re = withBuffer $ do
     case mp of
         Just (Right (p,_)) -> moveTo p
         Just (Left  (p,_)) -> moveTo p
-	_                  -> return ()
+        _                  -> return ()
     return mp
 
 ------------------------------------------------------------------------
@@ -276,7 +276,6 @@ isearchDelE = do
       setDynamic $ Isearch ((text,p):rest)
       msgE $ "I-search: " ++ text
     _ -> return () -- if the searched string is empty, don't try to remove chars from it.
-    
 
 isearchPrevE :: YiM ()
 isearchPrevE = do
@@ -287,7 +286,6 @@ isearchPrevE = do
     Nothing -> return ()
     Just p -> do setDynamic $ Isearch ((current,p):rest)
                  withBuffer $ moveTo (p+length current)
-
 
 isearchNextE :: YiM ()
 isearchNextE = do
@@ -306,7 +304,6 @@ isearchWordE = do
       word = takeWhile isAlpha rest
   isearchAddE (prefix ++ word)
 
-
 isearchFinishE :: YiM ()
 isearchFinishE = do
   Isearch s <- getDynamic
@@ -320,7 +317,7 @@ isearchCancelE = do
   let (_,p0) = last s
   withBuffer $ moveTo p0
   msgE "Quit"
-  
+
 
 -----------------
 -- Query-Replace
@@ -332,11 +329,11 @@ qrNextE b what = do
     Nothing -> do
             msgE "String to search not found"
             closeE
-    Just p -> withGivenBuffer b $ do 
+    Just p -> withGivenBuffer b $ do
                    moveTo p
                    m <- getSelectionMarkB
                    setMarkPointB m (p+length what)
-          
+
 
 qrReplaceOneE :: BufferRef -> String -> String -> YiM ()
 qrReplaceOneE b what replacement = do
