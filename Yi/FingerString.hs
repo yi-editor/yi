@@ -23,8 +23,8 @@
 module Yi.FingerString (
   FingerString,
   fromString, toString, fromByteString, toByteString, rebalance,
-  length, take, drop, append, splitAt, count,
-  elemIndices, findSubstring, elemIndexEnd, elemIndicesEnd
+  take, drop, append, splitAt, count, length,
+  elemIndices, findSubstring, findSubstrings, elemIndexEnd, elemIndicesEnd
 ) where
 
 import Prelude hiding (length, take, drop, splitAt, head, tail, foldl, reverse)
