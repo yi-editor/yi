@@ -1,5 +1,5 @@
 --
--- Copyright (c) 2005,2007 Jean-Philippe Bernardy
+-- Copyright (c) 2005,2007,2008 Jean-Philippe Bernardy
 --
 -- This program is free software; you can redistribute it and/or
 -- modify it under the terms of the GNU General Public License as
@@ -23,8 +23,8 @@
   keymap derived from or based on the Emacs one.
 -}
 
-module Yi.Keymap.Emacs.Utils 
-  ( Process        
+module Yi.Keymap.Emacs.Utils
+  ( Process
   , KList
   , makeProcess
   , completeWordB
@@ -37,8 +37,8 @@ module Yi.Keymap.Emacs.Utils
   , queryReplaceE
   , isearchProcess
   , shellCommandE
-  , executeExtendedCommandE 
-  , evalRegionE 
+  , executeExtendedCommandE
+  , evalRegionE
   , readArgC
   , gotoLineE
   , scrollDownE
@@ -50,7 +50,7 @@ module Yi.Keymap.Emacs.Utils
   , findFile
   , completeFileName
   , completeBufferName
-  ) 
+  )
 where
 
 {- Standard Library Module Imports -}
@@ -144,11 +144,11 @@ makeProcess kmap = choice [events (readKey k) >> a | (k,a) <- kmap]
 -------------------------------------------
 commonPrefix :: [String] -> String
 commonPrefix [] = []
-commonPrefix strings 
+commonPrefix strings
     | any null strings = []
     | all (== prefix) heads = prefix : commonPrefix tailz
     | otherwise = []
-    where 
+    where
           (heads, tailz) = unzip [(h,t) | (h:t) <- strings]
           prefix = head heads
 -- for an alternative implementation see GHC's InteractiveUI module.
@@ -160,7 +160,7 @@ completeInList s condition l
     | isSingleton filtered = msgE "Sole completion" >> return s
     | prefix `elem` filtered = msgE ("Complete, but not unique: " ++ show filtered) >> return s
     | otherwise = msgE ("Matches: " ++ show filtered) >> return s
-    where 
+    where
     prefix   = commonPrefix filtered
     filtered = nub $ filter condition l
 
@@ -191,9 +191,9 @@ completeInList s condition l
   which just guesses the completion from a list of possible completion
   and then re-hitting the key-binding will cause it to guess again.
   I think this is very nice for things such as completing a word within
-  a tex-buffer. However using the mini-buffer might be nicer when we allow
+  a TeX-buffer. However using the mini-buffer might be nicer when we allow
   syntax knowledge to allow completion for example we may complete from
-  a hoogle database.
+  a Hoogle database.
 -}
 completeWordB :: YiM ()
 completeWordB = veryQuickCompleteWord
@@ -212,7 +212,7 @@ veryQuickCompleteWord =
   do (curWord, curWords) <- withBuffer wordsAndCurrentWord
      let condition :: String -> Bool
          condition x   = (isPrefixOf curWord x) && (x /= curWord)
-         
+
      preText             <- completeInList curWord condition curWords
      if curWord == ""
         then msgE "No word to complete"
@@ -228,7 +228,7 @@ wordsAndCurrentWord =
 
 {-
   Finally obviously we wish to have a much more sophisticated completeword.
-  One which spawns a mini-buffer and allows searching in hoogle databases
+  One which spawns a mini-buffer and allows searching in Hoogle databases
   or in other files etc.
 -}
 
@@ -245,18 +245,16 @@ changeBufferNameE =
 
 ----------------------------
 -- shell-command
-
 shellCommandE :: YiM ()
 shellCommandE = do
     withMinibuffer "Shell command:" return $ \cmd -> do
       (cmdOut,cmdErr,exitCode) <- lift $ runShellCommand cmd
-      case exitCode of 
+      case exitCode of
         ExitSuccess -> newBufferE "*Shell Command Output*" cmdOut >> return ()
         ExitFailure _ -> msgE cmdErr
 
 -----------------------------
 -- isearch
-
 selfSearchKeymap :: Process
 selfSearchKeymap = do
   Event (KASCII c) [] <- satisfy (const True)
@@ -271,7 +269,7 @@ searchKeymap =
          ("BACKSP", write $ isearchDelE)]
                  
 isearchProcess :: Process
-isearchProcess = do 
+isearchProcess = do
   write isearchInitE
   many searchKeymap
   foldr1 (<||) [events (readKey "C-g") >> write isearchCancelE,
@@ -279,11 +277,8 @@ isearchProcess = do
                 events (readKey "RET") >> write isearchFinishE,
                 write isearchFinishE]
 
-
-
 ----------------------------
 -- query-replace
-
 queryReplaceE :: YiM ()
 queryReplaceE = do
     withMinibuffer "Replace:" return $ \replaceWhat -> do
@@ -299,8 +294,6 @@ queryReplaceE = do
             (const (makeProcess replaceBindings))
             (qrNextE b replaceWhat)
 
-
-
 executeExtendedCommandE :: YiM ()
 executeExtendedCommandE = do
   withMinibuffer "M-x" completeFunctionName execE
@@ -308,7 +301,6 @@ executeExtendedCommandE = do
 evalRegionE :: YiM ()
 evalRegionE = do
   withBuffer (getRegionB >>= readRegionB) >>= evalE
-
 
 -- | Define an atomic interactive command.
 -- Purose is to define "transactional" boundaries for killring, undo, etc.
@@ -369,7 +361,7 @@ findFile = do maybePath <- withBuffer getfileB
 -- | Fix entered file path by prepending the start folder if necessary,
 -- | removing .. bits, and normalising.
 fixFilePath :: String -> String -> String
-fixFilePath start path = 
+fixFilePath start path =
     let path' = if isAbsolute path then path else start </> path
     in (normalise . joinPath . dropDotDot . splitDirectories) path'
 
@@ -396,7 +388,7 @@ getFolder (Just path) = do
 
 -- | Goto a line specified in the mini buffer.
 gotoLineE :: YiM ()
-gotoLineE = 
+gotoLineE =
   withMinibuffer "goto line:" return gotoAction
   where
   gotoAction :: String -> YiM ()
@@ -440,7 +432,7 @@ completeFileName start s0 = do
   homeDir <- lift $ getHomeDirectory
   let s = if (['~',pathSeparator] `isPrefixOf` s0) then addTrailingPathSeparator homeDir ++ drop 2 s0 else s0
       sDir = if hasTrailingPathSeparator s then s else takeDirectory s
-      searchDir = if null sDir then curDir 
+      searchDir = if null sDir then curDir
                   else if isAbsolute sDir then sDir
                   else curDir </> sDir
       fixTrailingPathSeparator f = do
@@ -459,15 +451,15 @@ completionFunction :: (String -> YiM String) -> YiM ()
 completionFunction f = do
   p <- withBuffer pointB
   text <- withBuffer $ readRegionB $ mkRegion 0 p
-  compl <- f text 
-  -- it's important to do this before removing the text, 
+  compl <- f text
+  -- it's important to do this before removing the text,
   -- so if the completion function raises an exception, we don't delete the buffer contents.
   withBuffer $ do moveTo 0
                   deleteN p
                   insertN compl
 
 withMinibuffer :: String -> (String -> YiM String) -> (String -> YiM ()) -> YiM ()
-withMinibuffer prompt completer act = do 
+withMinibuffer prompt completer act = do
   initialBuffer <- withEditor getBuffer
   let innerAction :: YiM ()
       -- ^ Read contents of current buffer (which should be the minibuffer), and
@@ -476,7 +468,7 @@ withMinibuffer prompt completer act = do
       innerAction = do historyFinish
                        lineString <- withBuffer elemsB
                        closeMinibuffer
-                       switchToBufferE initialBuffer 
+                       switchToBufferE initialBuffer
                        -- The above ensures that the action is performed on the buffer that originated the minibuffer.
                        act lineString
       rebindings = [("RET", write innerAction),
