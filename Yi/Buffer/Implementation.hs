@@ -1,4 +1,4 @@
--- Copyright (c) 2004-5, 7-8 Don Stewart - http://www.cse.unsw.edu.au/~dons
+-- Copyright (c) 2004-5, 7-8, 8 Don Stewart - http://www.cse.unsw.edu.au/~dons
 --
 -- This program is free software; you can redistribute it and/or
 -- modify it under the terms of the GNU General Public License as
@@ -16,8 +16,7 @@
 -- 02111-1307, USA.
 --
 
--- | 'Buffer' implementation, wrapping bytestring.
-
+-- | 'Buffer' implementation, wrapping ByteString.
 module Yi.Buffer.Implementation
   ( Update     ( .. )
   , Point
@@ -232,8 +231,8 @@ styleRangesBI n i fb = fun fb
     -- The parser produces a list of token sizes, convert them to buffer indices
     makeRanges :: Int -> [(Int,Style)] -> [(Int, Style)]
     makeRanges o [] = [(o,defaultStyle)]
-    makeRanges o ((n,c):cs) = (o, c):makeRanges (o + n) cs
-    
+    makeRanges o ((m,c):cs) = (o, c):makeRanges (o + m) cs
+
     -- Split the range list so that all split points less then x
     -- is in the left and all greater or equal in the right.
     -- Insert a new switch at x if there is none. If the new
@@ -245,21 +244,21 @@ styleRangesBI n i fb = fun fb
         LT -> ([], (x,a):(y,b):ys)
         EQ -> ([], (y,b):ys)
         GT -> let (ls, rs) = splitRangesDefault b x ys in ((y,b):ls, rs)
-    
+
     splitRanges :: Int -> [(Int, Style)] -> ([(Int, Style)], [(Int, Style)])
     splitRanges = splitRangesDefault defaultStyle
-    
+
     cutRanges :: Int -> Int -> [(Int, Style)] -> [(Int, Style)]
-    cutRanges n i =
-      (++ [(i+n, defaultStyle)]) . (fst . splitRanges n) . (snd . splitRanges i)
+    cutRanges m j =
+      (++ [(j+m, defaultStyle)]) . (fst . splitRanges m) . (snd . splitRanges j)
 
     overlayRanges :: Int -> Int -> Style -> [(Int, Style)] -> [(Int, Style)]
     overlayRanges l h a rs = left ++ adjusted ++ right
       where
         (left, rest)    = splitRanges l rs
         (center, right) = splitRanges h rest
-        adjusted        = fmap (\(n,b) -> (n, attrOver a b)) center
-    
+        adjusted        = fmap (\(m,b) -> (m, attrOver a b)) center
+
 
     overlay :: FBufferData -> [(Int, Style)] -> [(Int, Style)]
     overlay bd rs =
@@ -267,7 +266,7 @@ styleRangesBI n i fb = fun fb
 
     --attrOver att1 att2 = att1 .|. (att2 .&. 0xFFFF0000) -- Overwrite colors, keep attrs (bold, underline etc)
     attrOver att1 _att2 = att1 -- Until Vty exposes interface for attr merging....
-      
+
 
 ------------------------------------------------------------------------
 -- Point based editing
