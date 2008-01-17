@@ -421,8 +421,9 @@ newWindow ui mini b = do
     hb # setFrame (rect 0 0 (width brect) (height prect))
 
     (uiBox ui) # addSubview hb
+    dummy <- _NSTextField # alloc >>= init
 
-    return (prompt, hb)
+    return (dummy, hb)
    else do
     v # setHorizontallyResizable True
     v # setVerticallyResizable True
@@ -491,6 +492,7 @@ refresh ui e = do
     writeRef (windowCache ui) cache'
     (uiBox ui) # adjustSubviews -- FIX: maybe it is not needed
     (uiWindow ui) # setAutodisplay True -- reenable automatic redrawing
+    (uiWindow ui) # display
 
     forM_ cache' $ \w -> 
         do let buf = findBufferWith (bufkey w) e
