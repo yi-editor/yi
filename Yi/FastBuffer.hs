@@ -36,6 +36,7 @@ module Yi.FastBuffer
   , gotoLnRelI
   , offsetFromSolBI
   , searchBI
+  , searchBackwards
   , regexBI
   , getMarkBI
   , getMarkPointBI
