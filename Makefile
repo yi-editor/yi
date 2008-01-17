@@ -34,7 +34,7 @@ CONTRIBUTORS: Contributors _darcs/inventory
 	darcs changes | ./Contributors > $@
 
 activity.png: _darcs/inventory
-	darcs-graph . -name=yi -o $@
+	darcs-graph . --name=yi -o $@
 
 dist/yi-$(version).tar.gz:
 	make sdist # does not work atm 
