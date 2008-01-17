@@ -106,7 +106,7 @@ keys =
   , ( "C-o",      atomic $ repeatingArg (insertB '\n' >> leftB))
   , ( "C-p",      atomic $ repeatingArg $ execB Move VLine Backward)
   , ( "C-q",               insertNextC)
-  -- , ( "C-r",      atomic $ backwardsIncrementalSearchE)
+  , ( "C-r",      isearchProcess)
   , ( "C-s",      isearchProcess)
   , ( "C-t",      atomic $ repeatingArg $ swapB)
   , ( "C-u",               readArgC)
