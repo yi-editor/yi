@@ -1,4 +1,4 @@
--- Copyright (c) 2004-5, 7-8, 8 Don Stewart - http://www.cse.unsw.edu.au/~dons
+-- Copyright (c) 2004-5, 7-8, 8, 8 Don Stewart - http://www.cse.unsw.edu.au/~dons
 --
 -- This program is free software; you can redistribute it and/or
 -- modify it under the terms of the GNU General Public License as
@@ -331,8 +331,11 @@ searchBI :: String -> BufferImpl -> Maybe Int
 searchBI s fb@(FBufferData ptr _ _ _ _) = fmap (+ pnt) $ F.findSubstring (B.pack s) $ F.drop pnt ptr
     where pnt = pointBI fb
 
+-- | Return index of previous string in buffer that matches argument
+-- Originally I was going to use 'last', but 'last' and 'reverse' have the same complexity, and reverse
+-- leads to shorter code.
 searchBackwards :: String -> BufferImpl -> Maybe Int
-searchBackwards s fb@(FBufferData ptr _ _ _ _) = listToMaybe results
+searchBackwards s fb@(FBufferData ptr _ _ _ _) = (listToMaybe . reverse) results
     where results :: [Int]
           results = F.findSubstrings (B.pack s) $ F.take pnt ptr --
           pnt :: Int
