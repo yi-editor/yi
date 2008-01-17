@@ -293,6 +293,15 @@ searchBI :: String -> BufferImpl -> Maybe Int
 searchBI s fb@(FBufferData ptr _ _ _ _) = fmap (+ pnt) $ F.findSubstring (B.pack s) $ F.drop pnt ptr
     where pnt = pointBI fb
 
+searchBackwards :: String -> BufferImpl -> Maybe Int
+searchBackwards s fb@(FBufferData ptr _ _ _ _) = case results of
+                                                   Nothing -> Nothing
+                                                   Just a -> Just $ head a
+    where results :: Maybe [Int]
+          results = F.findSubstrings (B.pack s) $ F.take pnt ptr --
+          pnt :: Int
+          pnt = pointBI fb -- pnt == current point
+
 offsetFromSolBI :: BufferImpl -> Int
 offsetFromSolBI fb@(FBufferData ptr _ _ _ _) = pnt - maybe 0 (1 +) (F.elemIndexEnd '\n' (F.take pnt ptr))
     where pnt = pointBI fb
