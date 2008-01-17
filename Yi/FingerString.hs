@@ -138,8 +138,14 @@ elemIndices x = treeEI . unFingerString
 
 -- | Determine the first index of the ByteString in the buffer.
 findSubstring :: ByteString -> FingerString -> Maybe Int
-findSubstring x m = if B.null x then Just 0 else
-  listToMaybe [i | i <- elemIndices (B.head x) m, x `isPrefixOf` drop i m]
+findSubstring x m = if B.null x then Just 0 else case (findSubstrings x m) of
+                                                   Nothing -> Nothing
+                                                   Just a -> Just $ L.head a
+
+-- | Determine the indices of the given ByteString in the buffer.
+findSubstrings :: ByteString -> FingerString -> Maybe [Int]
+findSubstrings x m = if (L.length strings == 0) then Nothing else Just strings
+    where strings = [i | i <- elemIndices (B.head x) m, x `isPrefixOf` drop i m]
 
 -- | Determine whether the ByteString is a prefix of the buffer.
 isPrefixOf :: ByteString -> FingerString -> Bool
