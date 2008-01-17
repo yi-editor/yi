@@ -1,5 +1,5 @@
 --
--- Copyright (C) 2004 Don Stewart - http://www.cse.unsw.edu.au/~dons
+-- Copyright (C) 2004, 2008 Don Stewart - http://www.cse.unsw.edu.au/~dons
 --
 -- This program is free software; you can redistribute it and/or
 -- modify it under the terms of the GNU General Public License as
@@ -68,6 +68,7 @@ module Yi.Buffer
   , setSyntaxB
   , regexB
   , searchB
+  , searchBw
   , readAtB
   , getModeLine
   , getPercent
@@ -344,6 +345,10 @@ gotoLn x = do moveTo 0
 -- | Return index of next string in buffer that matches argument
 searchB :: [Char] -> BufferM (Maybe Int)
 searchB = queryBuffer . searchBI
+
+-- | Return index of previous string in buffer that matches argument
+searchBw :: [Char] -> BufferM (Maybe Int)
+searchBw = queryBuffer . searchBackwards
 
 -- | Set name of syntax highlighting mode
 setSyntaxB :: [Char] -> BufferM ()
