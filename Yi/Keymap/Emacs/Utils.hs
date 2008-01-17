@@ -261,13 +261,13 @@ selfSearchKeymap = do
   write (isearchAddE [c])
 
 searchKeymap :: Process
-searchKeymap = 
-    selfSearchKeymap <|> makeProcess 
-        [--("C-g", isearchDelE), -- Only if string is not empty.
-         ("C-s", write isearchNextE),
-         ("C-w", write isearchWordE),
-         ("BACKSP", write $ isearchDelE)]
-                 
+searchKeymap = selfSearchKeymap <|> makeProcess
+               [--("C-g", isearchDelE), -- Only if string is not empty.
+                ("C-r", write isearchPrevE),
+                ("C-s", write isearchNextE),
+                ("C-w", write isearchWordE),
+                ("BACKSP", write $ isearchDelE)]
+
 isearchProcess :: Process
 isearchProcess = do
   write isearchInitE
