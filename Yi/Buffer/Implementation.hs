@@ -43,6 +43,7 @@ module Yi.Buffer.Implementation
   , unsetMarkBI
   , getSelectionMarkBI
   , nelemsBIH
+  , styleRangesBI
   , setSyntaxBI
   , addOverlayBI
   , inBounds
@@ -197,39 +198,76 @@ addOverlayBI s e sty fb =
 -- | Return @n@ elems starting at @i@ of the buffer as a list.
 -- This routine also does syntax highlighting and applies overlays.
 nelemsBIH :: Int -> Int -> BufferImpl -> [(Char,Style)]
-nelemsBIH n i fb = fun fb
-    where
-      -- The first case is to handle when no 'Highlighter a' has
-      -- been assigned to the buffer (via eg 'setSyntaxBI bi "haskell"')
-      fun bd@(FBufferData b _ _ Nothing _) =
-             let e = F.length b
-                 i' = inBounds i e
-                 n' = min (e-i') n
-                 cas = map (flip (,) defaultStyle) (F.toString $ readChars b n' i')
-             in overlay bd cas
-      -- in this, second, case 'hl' will be bound to a 'Highlighter a'
-      -- eg Yi.Syntax.Haskell.highlighter (see Yi.Syntax for defn of Highlighter) which
-      -- uses '(Data.ByteString.Char8.ByteString, Int)' as its parameterized state
-      fun bd@(FBufferData b _ _ (Just (HLState hl)) _) =
+nelemsBIH n i fb = concat $ helper $ styleRangesBI n i fb
+  where
+    helper ((l,a):xs@((h,_):_)) = (fmap (flip (,) a) (nelemsBI (h-l) l fb)) : helper xs
+    helper _                    = []
 
-        let (finst,colors_) = hlColorize hl (F.toByteString b) (hlStartState hl)
-            colors = colors_ ++ hlColorizeEOF hl finst
-        in overlay bd (take n (drop i (zip (F.toString b) colors)))
+-- | Return style information for the range of @n@ characters starting
+--   at @i@. Style information is derived from syntax highlighting and
+--   active overlays.
+--   The returned list contains tuples (@p@,@s@) where every tuple is to
+--   be interpreted as apply the style @s@ until position @p@ in the buffer.
+--   In the final element @p@ = @n@ + @i@.
+styleRangesBI :: Int -> Int -> BufferImpl -> [(Int, Style)]
+styleRangesBI n i fb = fun fb
+  where
+    -- The first case is to handle when no 'Highlighter a' has
+    -- been assigned to the buffer (via eg 'setSyntaxBI bi "haskell"')
+    fun bd@(FBufferData b _ _ Nothing _) =
+           let e = F.length b
+               i' = inBounds i e
+               n' = min (e-i') n
+               cas = [(0, defaultStyle),(e, defaultStyle)]
+           in cutRanges n' i' (overlay bd cas)
+    -- in this, second, case 'hl' will be bound to a 'Highlighter a'
+    -- eg Yi.Syntax.Haskell.highlighter (see Yi.Syntax for defn of Highlighter) which
+    -- uses '(Data.ByteString.Char8.ByteString, Int)' as its parameterized state
+    fun bd@(FBufferData b _ _ (Just (HLState hl)) _) =
 
-      overlay :: FBufferData -> [(Char,Style)] -> [(Char,Style)]
-      overlay bd xs = map (\((c,a),j)->(c, ov bd (a,j))) (zip xs [i..])
+      let (finst,colors_) = hlColorize hl (F.toByteString b) (hlStartState hl)
+          colors = colors_ ++ hlColorizeEOF hl finst
+      in cutRanges n i (overlay bd (makeRanges 0 colors))
 
-      ov :: FBufferData -> (Style, Int) -> Style
-      ov bd (sh_attr, ind) = foldr (\(sm, em, a) att ->
-                                    if betweenMarks sm em ind
-                                    then a `attrOver` att
-                                    else att)
-                             sh_attr (overlays bd)
+    -- The parser produces a list of token sizes, convert them to buffer indices
+    makeRanges :: Int -> [(Int,Style)] -> [(Int, Style)]
+    makeRanges o [] = [(o,defaultStyle)]
+    makeRanges o ((n,c):cs) = (o, c):makeRanges (o + n) cs
+    
+    -- Split the range list so that all split points less then x
+    -- is in the left and all greater or equal in the right.
+    -- Insert a new switch at x if there is none. If the new
+    -- switch is left of existing switches, use a as default attribute
+    splitRangesDefault :: a -> Int -> [(Int, a)] -> ([(Int, a)], [(Int, a)])
+    splitRangesDefault a x [] = ([], [(x,a)])
+    splitRangesDefault a x ((y,b):ys) =
+      case x `compare` y of
+        LT -> ([], (x,a):(y,b):ys)
+        EQ -> ([], (y,b):ys)
+        GT -> let (ls, rs) = splitRangesDefault b x ys in ((y,b):ls, rs)
+    
+    splitRanges :: Int -> [(Int, Style)] -> ([(Int, Style)], [(Int, Style)])
+    splitRanges = splitRangesDefault defaultStyle
+    
+    cutRanges :: Int -> Int -> [(Int, Style)] -> [(Int, Style)]
+    cutRanges n i =
+      (++ [(i+n, defaultStyle)]) . (fst . splitRanges n) . (snd . splitRanges i)
 
-      betweenMarks m1 m2 pos = pos >= markPosition m1 && pos < markPosition m2
+    overlayRanges :: Int -> Int -> Style -> [(Int, Style)] -> [(Int, Style)]
+    overlayRanges l h a rs = left ++ adjusted ++ right
+      where
+        (left, rest)    = splitRanges l rs
+        (center, right) = splitRanges h rest
+        adjusted        = fmap (\(n,b) -> (n, attrOver a b)) center
+    
 
-      --attrOver att1 att2 = att1 .|. (att2 .&. 0xFFFF0000) -- Overwrite colors, keep attrs (bold, underline etc)
-      attrOver att1 _att2 = att1 -- Until Vty exposes interface for attr merging....
+    overlay :: FBufferData -> [(Int, Style)] -> [(Int, Style)]
+    overlay bd rs =
+      foldr (\(sm, em, a) -> overlayRanges (markPosition sm) (markPosition em) a) rs (overlays bd)
+
+    --attrOver att1 att2 = att1 .|. (att2 .&. 0xFFFF0000) -- Overwrite colors, keep attrs (bold, underline etc)
+    attrOver att1 _att2 = att1 -- Until Vty exposes interface for attr merging....
+      
 
 ------------------------------------------------------------------------
 -- Point based editing

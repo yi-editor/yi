@@ -78,6 +78,7 @@ module Yi.Buffer
   , getDynamicB
   , setDynamicB
   , nelemsBH
+  , styleRangesB
   , deleteB
   , Direction        ( .. )
   , savingPrefCol
@@ -275,6 +276,9 @@ nelemsB n i = queryBuffer $ nelemsBI n i
 -- | Return @n@ elems starting at @i@ of the buffer as a list
 nelemsBH :: Int -> Int -> BufferM [(Char,Style)]
 nelemsBH n i = queryBuffer $ nelemsBIH n i
+
+styleRangesB :: Int -> Int -> BufferM [(Int,Style)]
+styleRangesB n i = queryBuffer $ styleRangesBI n i
 
 ------------------------------------------------------------------------
 -- Point based operations
