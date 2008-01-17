@@ -18,8 +18,8 @@
 --
 
 
--- | This module defines a string represntation in terms of
--- | bytestrings stored in a finger tree.
+-- | This module defines a string representation in terms of
+-- | ByteStrings stored in a finger tree.
 module Yi.FingerString (
   FingerString,
   fromString, toString, fromByteString, toByteString, rebalance,
@@ -53,7 +53,6 @@ instance Monoid Size where
 
 instance Measured Size ByteString where
   measure = Size . B.length
-
 
 -- | Convert into a ByteString.
 toByteString :: FingerString -> ByteString
@@ -89,7 +88,7 @@ append (FingerString a) (FingerString b) = FingerString $
       EmptyR -> b
       l :> x -> case T.viewl b of
                   EmptyL  -> a
-                  x' :< r -> if B.length x + B.length x' < chunkSize 
+                  x' :< r -> if B.length x + B.length x' < chunkSize
                                then l >< singleton (x `B.append` x') >< r
                                else a >< b
 
@@ -108,14 +107,14 @@ splitAt n (FingerString t) =
     (l, c) = T.split ((> n) . unSize) t
     n' = n - unSize (measure l)
 
--- | Count the number of occurances of the specified character.    
+-- | Count the number of occurrences of the specified character.
 count :: Char -> FingerString -> Int
 count x = foldl counter 0 . unFingerString
   where counter c = (c +) . (B.count x)
 
 -- | Get the last index of the specified character
 elemIndexEnd :: Char -> FingerString -> Maybe Int
-elemIndexEnd x t = listToMaybe (elemIndicesEnd x t)
+elemIndexEnd x t = listToMaybe $ elemIndicesEnd x t
 
 -- | Get all indices of the specified character, in reverse order.
 -- This function has good lazy behaviour: taking the head of the resulting list is O(1)
@@ -126,7 +125,6 @@ elemIndicesEnd x = treeEIE . unFingerString
     treeEIE t = case T.viewr t of
       l :> s -> fmap (+ unSize (measure l)) (L.reverse (B.elemIndices x s)) ++ treeEIE l
       EmptyR -> []
-
 
 -- | Get all indices of the specified character
 -- This function has good lazy behaviour: taking the head of the resulting list is O(1)
@@ -149,6 +147,6 @@ isPrefixOf x = treeIPO x . unFingerString
   where
     treeIPO :: ByteString -> FingerTree Size ByteString -> Bool
     treeIPO x' t = case T.viewl t of
-      s :< r -> x' `B.isPrefixOf` s || 
+      s :< r -> x' `B.isPrefixOf` s ||
         (s `B.isPrefixOf` x' && treeIPO (B.drop (B.length s) x') r)
       EmptyL -> False
