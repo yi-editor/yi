@@ -1,5 +1,5 @@
 --
--- Copyright (c) 2004-5 Don Stewart - http://www.cse.unsw.edu.au/~dons
+-- Copyright (c) 2004-5, 8 Don Stewart - http://www.cse.unsw.edu.au/~dons
 --
 -- This program is free software; you can redistribute it and/or
 -- modify it under the terms of the GNU General Public License as
@@ -179,7 +179,7 @@ pointBI (FBufferData _ mks _ _ _) = markPosition (mks M.! pointMark)
 {-# INLINE pointBI #-}
 
 -- | Return @n@ elems starting at @i@ of the buffer as a list
-nelemsBI :: Int -> Int -> BufferImpl -> [Char]
+nelemsBI :: Int -> Int -> BufferImpl -> String
 nelemsBI n i (FBufferData b _ _ _ _) =
         let i' = inBounds i (F.length b)
             n' = min (F.length b - i') n
@@ -268,10 +268,10 @@ curLnI fb@(FBufferData ptr _ _ _ _) = 1 + F.count '\n' (F.take (pointBI fb) ptr)
 -- to (which may be not be the requested one, if it was out of range)
 gotoLnRelI :: Int -> BufferImpl -> (BufferImpl, Int)
 gotoLnRelI n fb = (moveToI np fb, max 1 n')
-    where 
+    where
      s = mem fb
      point = pointBI fb
-     (n', np) = if n <= 0                      
+     (n', np) = if n <= 0
       then
         let lineStarts = map (+1) ((F.elemIndicesEnd '\n') (F.take point s)) ++ [0]
             findLine acc _ [x]    = (acc, x)
@@ -279,7 +279,7 @@ gotoLnRelI n fb = (moveToI np fb, max 1 n')
             findLine acc l (_:xs) = findLine (acc - 1) (l + 1) xs
             findLine _ _ []       =
               error "lineStarts ends with 0 : ... this cannot happen"
-        in findLine 0 n lineStarts 
+        in findLine 0 n lineStarts
       else
         let lineStarts = map (+1) ((F.elemIndices '\n') (F.drop point s))
             findLine acc _ []     = (acc, 0) -- try to go forward, but there is no such line.
@@ -289,7 +289,7 @@ gotoLnRelI n fb = (moveToI np fb, max 1 n')
         in second (point +) (findLine 0 n lineStarts)
 
 -- | Return index of next string in buffer that matches argument
-searchBI :: [Char] -> BufferImpl -> Maybe Int
+searchBI :: String -> BufferImpl -> Maybe Int
 searchBI s fb@(FBufferData ptr _ _ _ _) = fmap (+ pnt) $ F.findSubstring (B.pack s) $ F.drop pnt ptr
     where pnt = pointBI fb
 
