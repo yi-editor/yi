@@ -8,6 +8,7 @@
 module Yi.Syntax.Cplusplus ( highlighter ) where
 {- Standard Library Modules Imported -}
 import qualified Data.ByteString.Char8
+import qualified Yi.FingerString
 {- External Library Modules Imported -}
 {- Local Modules Imported -}
 import qualified Yi.Syntax

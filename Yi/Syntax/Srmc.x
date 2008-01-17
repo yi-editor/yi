@@ -12,6 +12,7 @@
 module Yi.Syntax.Srmc ( highlighter ) where
 {- Standard Library Modules Imported -}
 import qualified Data.ByteString.Char8
+import qualified Yi.FingerString
 {- External Library Modules Imported -}
 {- Local Modules Imported -}
 import qualified Yi.Syntax

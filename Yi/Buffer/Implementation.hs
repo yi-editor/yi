@@ -225,7 +225,7 @@ styleRangesBI n i fb = fun fb
     -- uses '(Data.ByteString.Char8.ByteString, Int)' as its parameterized state
     fun bd@(FBufferData b _ _ (Just (HLState hl)) _) =
 
-      let (finst,colors_) = hlColorize hl (F.toByteString b) (hlStartState hl)
+      let (finst,colors_) = hlColorize hl b (hlStartState hl)
           colors = colors_ ++ hlColorizeEOF hl finst
       in cutRanges n i (overlay bd (makeRanges 0 colors))
 

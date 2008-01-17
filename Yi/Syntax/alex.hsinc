@@ -4,38 +4,38 @@
 -- declares its own types, any wrapper must have the highlighter in scope...
 -- so it must be included.  Doubleplusyuck.
 --
--- You will need to import qualified Data.ByteString.Char8, Yi.Vty, and Yi.Syntax.
+-- You will need to import qualified Yi.FingerString, Yi.Vty, and Yi.Syntax.
 --
 -- You will need to define initState and stateToInit and type HlState
 --
 -- Your actions must have type String -> $state -> ($state, [Attr])
 
-type AlexInput = Data.ByteString.Char8.ByteString
-type Action a = Data.ByteString.Char8.ByteString -> a -> (a,[(Int,Style)])
+type AlexInput = Yi.FingerString.FingerString
+type Action a = AlexInput -> a -> (a,[(Int,Style)])
 
-alexGetChar :: Data.ByteString.Char8.ByteString -> Maybe (Char, Data.ByteString.Char8.ByteString)
-alexGetChar bs | Data.ByteString.Char8.null bs = Nothing
-               | otherwise                     = Just (Data.ByteString.Char8.head bs,
-                                                       Data.ByteString.Char8.tail bs)
+alexGetChar :: AlexInput -> Maybe (Char, AlexInput)
+alexGetChar bs | Yi.FingerString.null bs = Nothing
+               | otherwise               = Just (Yi.FingerString.head bs,
+                                                 Yi.FingerString.tail bs)
 
 alexInputPrevChar = undefined
 
 c :: Style -> Action a
-c color str state = (state, [(Data.ByteString.Char8.length str, color)])
+c color str state = (state, [(Yi.FingerString.length str, color)])
 
 m :: (s -> s) -> Style -> Action s
-m mod color str state = (mod state, [(Data.ByteString.Char8.length str, color)])
+m mod color str state = (mod state, [(Yi.FingerString.length str, color)])
 
-highlighter :: Yi.Syntax.Highlighter (Data.ByteString.Char8.ByteString, HlState)
-highlighter = Yi.Syntax.SynHL (Data.ByteString.Char8.empty , initState) fun funEOF
+highlighter :: Yi.Syntax.Highlighter (AlexInput, HlState)
+highlighter = Yi.Syntax.SynHL (Yi.FingerString.empty , initState) fun funEOF
     where
       fun bs (scrap, st) = iter' full st
           where
-            full = Data.ByteString.Char8.append scrap bs
+            full = Yi.FingerString.append scrap bs
             iter' bs s = case hl_alex_scan_tkn undefined bs 0# bs (iUnbox (stateToInit s)) AlexNone of
 	                        (AlexNone, _) -> ((bs, s), [])
 	                        (AlexLastSkip _ _, _) -> error "no skipping!"
-                                (AlexLastAcc k input len, _) -> let (nst, attrs) = k (Data.ByteString.Char8.take len bs) s
+                                (AlexLastAcc k input len, _) -> let (nst, attrs) = k (Yi.FingerString.take len bs) s
                                                                     ((str', finst), fattr) = iter' input nst
                                                                 in ((str', finst), attrs++fattr)
       funEOF (scrap, st) = snd (iter' scrap st)
@@ -43,7 +43,7 @@ highlighter = Yi.Syntax.SynHL (Data.ByteString.Char8.empty , initState) fun funE
             iter' bs s = case alex_scan_tkn undefined bs 0# bs (iUnbox (stateToInit s)) AlexNone of
 	                   (AlexNone, _) -> ((bs, s), [])
 	                   (AlexLastSkip _ _, _) -> error "no skipping!"
-                           (AlexLastAcc k input len, _) -> let (nst, attrs) = k (Data.ByteString.Char8.take len bs) s
+                           (AlexLastAcc k input len, _) -> let (nst, attrs) = k (Yi.FingerString.take len bs) s
                                                                ((str', finst), fattr) = iter' input nst
                                                            in ((str', finst), attrs++fattr)
 

@@ -23,18 +23,18 @@
 module Yi.FingerString (
   FingerString,
   fromString, toString, fromByteString, toByteString, rebalance,
-  take, drop, append, splitAt, count, length,
+  null, head, tail, empty, take, drop, append, splitAt, count, length,
   elemIndices, findSubstring, findSubstrings, elemIndexEnd, elemIndicesEnd
 ) where
 
-import Prelude hiding (length, take, drop, splitAt, head, tail, foldl, reverse)
+import Prelude hiding (null, head, tail, length, take, drop, splitAt, head, tail, foldl, reverse)
 import qualified Data.List as L
 
 import qualified Data.ByteString.Char8 as B
 import Data.ByteString (ByteString)
 
-import Data.FingerTree as T
-import Data.FingerTree ((|>), (<|), (><))
+import qualified Data.FingerTree as T
+import Data.FingerTree hiding (null, empty)
 
 import Data.Monoid
 import Data.Foldable (foldl)
@@ -46,6 +46,14 @@ chunkSize = 128
 data Size = Size { unSize :: Int }
 data FingerString = FingerString { unFingerString :: FingerTree Size ByteString }
   deriving (Eq, Show)
+
+(-|) :: ByteString -> FingerTree Size ByteString -> FingerTree Size ByteString
+b -| t | B.null b  = t
+       | otherwise = b <| t
+
+(|-) :: FingerTree Size ByteString -> ByteString -> FingerTree Size ByteString
+t |- b | B.null b  = t
+       | otherwise = t |> b
 
 instance Monoid Size where
   mempty = Size 0
@@ -77,6 +85,22 @@ fromString = fromByteString . B.pack
 rebalance :: FingerString -> FingerString
 rebalance = fromByteString . toByteString
 
+null :: FingerString -> Bool
+null (FingerString a) = T.null a
+
+head :: FingerString -> Char
+head (FingerString a) = case T.viewl a of
+  EmptyL -> error "FingerString.head: empty string"
+  x :< _ -> B.head x
+  
+tail :: FingerString -> FingerString
+tail (FingerString a) = case T.viewl a of
+  EmptyL -> error "FingerString.tail: empty string"
+  x :< r -> FingerString $ (B.tail x) -| r
+
+empty :: FingerString 
+empty = FingerString T.empty
+
 -- | Get the length of the standard string.
 length :: FingerString -> Int
 length = unSize . measure . unFingerString
@@ -101,7 +125,7 @@ splitAt :: Int -> FingerString -> (FingerString, FingerString)
 splitAt n (FingerString t) =
   case T.viewl c of
     x :< r | n' /= 0 ->
-      let (lx, rx) = B.splitAt n' x in (FingerString $ l |> lx, FingerString $ rx <| r)
+      let (lx, rx) = B.splitAt n' x in (FingerString $ l |- lx, FingerString $ rx -| r)
     _ -> (FingerString l, FingerString c)
   where
     (l, c) = T.split ((> n) . unSize) t
