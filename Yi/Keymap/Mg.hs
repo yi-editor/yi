@@ -71,6 +71,7 @@ import Control.Exception    ( try, evaluate )
 import Control.Monad
 import Control.Monad.Trans
 import Yi.Debug
+import Yi.Keymap.Emacs.Utils (isearchProcess)
 
 ------------------------------------------------------------------------
 
@@ -240,10 +241,10 @@ globalTable = [
         write $ errorE "insert-file unimplemented"),
   ("isearch-backward",
         [[c_ 'r']],
-        write $ errorE "isearch-backward unimplemented"),
+        isearchProcess),
   ("isearch-forward",
         [[c_ 's']],
-        write $ errorE "isearch-forward unimplemented"),
+        isearchProcess),
   ("just-one-space",
         [[m_ ' ']],
         write $ insertE ' '),
