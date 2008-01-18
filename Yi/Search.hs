@@ -263,7 +263,9 @@ isearchAddE increment = do
   msgE $ "I-search: " ++ current
   prevPoint <- withBuffer pointB
   withBuffer $ moveTo p0
-  mp <- withBuffer $ searchB current
+  mp <- case direction of
+         Forward -> withBuffer $ searchB current
+         Backward -> withBuffer $ searchBw current
   case mp of
     Nothing -> do withBuffer $ moveTo prevPoint -- go back to where we were
                   setDynamic $ Isearch ((current,p0,direction):s)
