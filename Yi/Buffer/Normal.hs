@@ -43,6 +43,8 @@ data TextUnit = Character
               | VLine -- ^ a "vertical" line of text (area of text between to characters at the same column number)
               | Paragraph
               | Document
+              | GenUnit {genEnclosingUnit :: TextUnit,
+                         genUnitBoundary :: Direction -> BufferM Bool}
    -- | Page | Searched
 
 data Operation = Move       -- ^ move the next unit boundary
@@ -96,17 +98,18 @@ atBoundary ViWord direction = do
         where charType c | isSpace c = 1::Int
                          | isAlpha c = 2
                          | otherwise = 3
-
-
 atBoundary Line direction = checkPeekB 0 [isNl] direction
 atBoundary Paragraph direction =
     checkPeekB (-2) [not . isNl, isNl, isNl] direction
+atBoundary (GenUnit _ atBound) dir = atBound dir
 
-atEnclosingBoundary :: TextUnit -> Direction -> BufferM Bool
-atEnclosingBoundary _ direction = atBoundary Document direction
+enclosingUnit :: TextUnit -> TextUnit
+enclosingUnit (GenUnit enclosing _) = enclosing
+enclosingUnit _ = Document 
 
 atBoundaryB :: TextUnit -> Direction -> BufferM Bool
-atBoundaryB u d = (||) <$> atBoundary u d <*> atEnclosingBoundary u d
+atBoundaryB Document d = atBoundary Document d
+atBoundaryB u d = (||) <$> atBoundary u d <*> atBoundaryB (enclosingUnit u) d
 
 numberOfB :: TextUnit -> TextUnit -> BufferM Int
 numberOfB unit containingUnit = savingPointB $ do
