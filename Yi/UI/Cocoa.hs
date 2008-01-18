@@ -407,6 +407,7 @@ newWindow ui mini b = do
     prompt <- newTextLine
     prompt # setStringValue (toNSString (name b))
     prompt # sizeToFit
+    prompt # setAutoresizingMask nsViewNotSizable
 
     prect <- prompt # frame 
     vrect <- v # frame
@@ -441,7 +442,6 @@ newWindow ui mini b = do
 
   storage <- getTextStorage ui b
   layoutManager v >>= replaceTextStorage storage
-  storage # setMonospaceFont
 
   k <- newUnique
   let win = WinInfo {
@@ -484,6 +484,7 @@ refresh ui e = do
       contents <- storage # string >>= haskellString
       logPutStrLn $ "Contents is " ++ show contents
       let (size, _, []) = runBuffer buf sizeB
+      storage # setMonospaceFont -- FIXME: Why is this needed for mini buffers?
       replaceTagsIn 0 size buf storage
       storage # endEditing
 
@@ -583,6 +584,7 @@ newTextStorage _ui b = do
   buf <- new _NSTextStorage
   let (txt, _, []) = runBuffer b elemsB
   buf # mutableString >>= setString (toNSString txt)
+  buf # setMonospaceFont
   replaceTagsIn 0 (length txt) b buf
   return buf
 
