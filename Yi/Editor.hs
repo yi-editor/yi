@@ -79,8 +79,6 @@ data Editor = Editor {
        ,tabwidth      :: !Int                       -- ^ width of tabs
 
 
-       ,editorUpdates :: [(BufferRef, Update)]      -- ^ pending updates that haven't been synched in the UI
-
        -- consider make the below fields part of dynamic component
        ,statusLine    :: !String
        ,yreg          :: !String                    -- ^ yank register
@@ -90,6 +88,9 @@ data Editor = Editor {
 
 bufferRefSupplyA :: Accessor Editor BufferRef
 bufferRefSupplyA = Accessor bufferRefSupply (\f e -> e {bufferRefSupply = f (bufferRefSupply e)})
+
+buffersA :: Accessor Editor (M.Map BufferRef FBuffer)
+buffersA = Accessor buffers (\f e -> e {buffers = f (buffers e)})
 
 dynamicA :: Accessor Editor DynamicValues
 dynamicA = Accessor dynamic (\f e -> e {dynamic = f (dynamic e)})
@@ -112,7 +113,6 @@ emptyEditor = Editor {
        ,uistyle      = Yi.Style.uiStyle
        ,dynamic      = M.empty
        ,statusLine   = ""
-       ,editorUpdates = []
     }
         where buf = newB 0 "*console*" ""
 
@@ -192,10 +192,8 @@ withGivenBuffer0 :: BufferRef -> BufferM a -> EditorM a
 withGivenBuffer0 k f = getsAndModify $ \e -> 
                         let b = findBufferWith k e
                             b0 = modifier undosA (addUR InteractivePoint) b
-                            (v, b', updates) = runBuffer b0 f 
-                        in (e {editorUpdates = editorUpdates e ++ [(bkey b,u) | u <- updates],
-                               buffers = M.adjust (const b') k (buffers e)
-                              },v)
+                            (v, b') = runBuffer b0 f 
+                        in (e {buffers = M.adjust (const b') k (buffers e)},v)
 
 -- | Perform action with current window's buffer
 withBuffer0 :: BufferM a -> EditorM a

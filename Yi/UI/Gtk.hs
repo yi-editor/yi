@@ -38,6 +38,7 @@ import qualified Yi.WindowSet as WS
 
 import Control.Concurrent ( yield )
 import Control.Concurrent.Chan
+import Control.Applicative
 import Control.Monad.Reader (liftIO, when, MonadIO)
 import Control.Monad (ap)
 import Control.Monad.State (runState, State, gets, modify)
@@ -370,12 +371,10 @@ refresh ui e = do
     set (uiCmdLine ui) [labelText := takeEllipsis (statusLine e)]
 
     cache <- readRef $ windowCache ui
-    forM_ (editorUpdates e) $ \(b,u) -> do
-      let buf = findBufferWith b e
+    forM_ (buffers e) $ \buf -> when (not $ null $ pendingUpdates $ buf) $ do
       gtkBuf <- getGtkBuffer ui buf
-      applyUpdate gtkBuf u
-      let (size, _, []) = runBuffer buf sizeB
-      let p = updatePoint u
+      forM_ (pendingUpdates buf) $ applyUpdate gtkBuf
+      let ((size,p),_) = runBuffer buf ((,) <$> sizeB <*> pointB)
       replaceTagsIn ui (inBounds (p-100) size) (inBounds (p+100) size) buf gtkBuf
 
     logPutStrLn $ "syncing: " ++ show ws
@@ -387,21 +386,21 @@ refresh ui e = do
         do let buf = findBufferWith (bufkey w) e
            gtkBuf <- getGtkBuffer ui buf
 
-           let (p0, _, []) = runBuffer buf pointB
-           let (p1, _, []) = runBuffer buf (getSelectionMarkB >>= getMarkPointB)
+           let (p0, _) = runBuffer buf pointB
+           let (p1, _) = runBuffer buf (getSelectionMarkB >>= getMarkPointB)
            insertMark <- textBufferGetInsert gtkBuf
            i <- textBufferGetIterAtOffset gtkBuf p0
            i' <- textBufferGetIterAtOffset gtkBuf p1
            textBufferSelectRange gtkBuf i i'
            textViewScrollMarkOnscreen (textview w) insertMark
-           let (txt, _, []) = runBuffer buf getModeLine 
+           let (txt, _) = runBuffer buf getModeLine 
            set (modeline w) [labelText := txt]
 
 replaceTagsIn :: UI -> Point -> Point -> FBuffer -> TextBuffer -> IO ()
 replaceTagsIn ui from to buf gtkBuf = do
   i <- textBufferGetIterAtOffset gtkBuf from
   i' <- textBufferGetIterAtOffset gtkBuf to
-  let (styledText, _, []) = runBuffer buf (nelemsBH (to - from) from)
+  let (styledText, _) = runBuffer buf (nelemsBH (to - from) from)
   let styles = zip (map snd styledText) [from..]
       styleSwitches = [(style,point) 
                        | ((style,point),style') <- zip styles (defaultStyle:map fst styles), 
@@ -475,10 +474,11 @@ getGtkBuffer ui b = do
     return gtkBuf
 
 -- FIXME: when a buffer is deleted its GTK counterpart should be too.
+-- FIXME: "unapply" the pending updates to the buffer. (???)
 newGtkBuffer :: UI -> FBuffer -> IO TextBuffer
 newGtkBuffer ui b = do
   buf <- textBufferNew (Just (tagTable ui))
-  let (txt, _, []) = runBuffer b elemsB
+  let (txt, _) = runBuffer b elemsB
   textBufferSetText buf txt
   replaceTagsIn ui 0 (length txt) b buf
   return buf

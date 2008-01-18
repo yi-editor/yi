@@ -84,6 +84,7 @@ module Yi.Buffer
   , savingPrefCol
   , savingExcursionB
   , savingPointB
+  , pendingUpdatesA
   )
 where
 
@@ -121,6 +122,9 @@ data FBuffer =
                 , bmode  :: !BufferMode           -- ^ a read-only bit
                 , bufferDynamic :: !DynamicValues -- ^ dynamic components
                 , preferCol :: !(Maybe Int)       -- ^ prefered column to arrive at when we do a lineDown / lineUp
+                ,pendingUpdates :: [Update]       -- ^ updates that haven't been synched in the UI yet
+
+
                 }
 
 rawbufA :: Accessor (FBuffer) (BufferImpl)
@@ -137,6 +141,10 @@ preferColA = Accessor preferCol (\f e -> e {preferCol = f (preferCol e)})
 
 bufferDynamicA :: Accessor (FBuffer) (DynamicValues)
 bufferDynamicA = Accessor bufferDynamic (\f e -> e {bufferDynamic = f (bufferDynamic e)})
+
+pendingUpdatesA :: Accessor (FBuffer) ([Update])
+pendingUpdatesA = Accessor pendingUpdates (\f e -> e {pendingUpdates = f (pendingUpdates e)})
+
 
 -- | The BufferM monad writes the updates performed.
 newtype BufferM a = BufferM { fromBufferM :: RWS () [Update] FBuffer a }
@@ -199,10 +207,10 @@ addOverlayB :: Point -> Point -> Style -> BufferM ()
 addOverlayB s e sty = modifyBuffer $ addOverlayBI s e sty
 
 -- | Execute a @BufferM@ value on a given buffer.  The new state of
--- the buffer and the list of updates performed are returned alongside
--- the result of the computation.
-runBuffer :: FBuffer -> BufferM a -> (a, FBuffer, [Update])
-runBuffer b f = runRWS (fromBufferM f) () b
+-- the buffer is returned alongside the result of the computation.
+runBuffer :: FBuffer -> BufferM a -> (a, FBuffer)
+runBuffer b f = let (a, b0, updates) = runRWS (fromBufferM f) () b
+                in (a, modifier pendingUpdatesA (++ updates) b0)
 
 -- | Commit a buffer content to disk. Error is raised if no file name is associated with the buffer.
 hPutB :: FBuffer -> IO FBuffer
@@ -259,6 +267,7 @@ newB unique nm s =
             , bmode  = ReadWrite
             , preferCol = Nothing
             , bufferDynamic = emptyDV
+            , pendingUpdates = []
             }
 
 -- | Number of characters in the buffer

@@ -224,7 +224,7 @@ scanrT (+*+) k t = fst $ runState (mapM f t) k
 scrollAndRenderWindow :: Editor -> UIStyle -> Int -> (Window, Bool) -> (Window, Rendered)
 scrollAndRenderWindow e sty width (win,hasFocus) = (win' {bospnt = bos}, rendered)
     where b = findBufferWith (bufkey win) e
-          (point, _, []) = runBuffer b pointB
+          (point, _) = runBuffer b pointB
           win' = if not hasFocus || pointInWindow point win then win else showPoint e win
           (rendered, bos) = drawWindow e sty hasFocus width win'
 
@@ -237,7 +237,7 @@ indexOfSolAbove n = savingPointB $ do
 showPoint :: Editor -> Window -> Window 
 showPoint e w = result
   where b = findBufferWith (bufkey w) e
-        (result, _, []) = runBuffer b $ 
+        (result, _) = runBuffer b $ 
             do ln <- curLn
                let gap = min (ln-1) (height w `div` 2)
                i <- indexOfSolAbove gap
@@ -256,9 +256,9 @@ drawWindow e sty focused w win = (Rendered { picture = pict,cursor = cur}, bos)
         wsty = styleToAttr (window sty)
         selsty = styleToAttr (selected sty)
         eofsty = eof sty
-        (markPoint, _, []) = runBuffer b (getMarkPointB =<< getSelectionMarkB)
-        (point, _, []) = runBuffer b pointB
-        (bufData, _, []) = runBuffer b (nelemsBH (w*h') (tospnt win)) -- read enough chars from the buffer.
+        (markPoint, _) = runBuffer b (getMarkPointB =<< getSelectionMarkB)
+        (point, _) = runBuffer b pointB
+        (bufData, _) = runBuffer b (nelemsBH (w*h') (tospnt win)) -- read enough chars from the buffer.
         prompt = if isMini win then name b else ""
 
         (rendered,bos,cur) = drawText h' w 
@@ -268,7 +268,7 @@ drawWindow e sty focused w win = (Rendered { picture = pict,cursor = cur}, bos)
                                 (zip prompt (repeat wsty) ++ map (second styleToAttr) bufData ++ [(' ',attr)])
                              -- we always add one character which can be used to position the cursor at the end of file
                                                                                                  
-        (modeLine0, _, []) = runBuffer b getModeLine
+        (modeLine0, _) = runBuffer b getModeLine
         modeLine = if m then Just modeLine0 else Nothing
         modeLines = map (withStyle (modeStyle sty) . take w . (++ repeat ' ')) $ maybeToList $ modeLine
         modeStyle = if focused then modeline_focused else modeline        
