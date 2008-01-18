@@ -332,12 +332,10 @@ searchBI s fb@(FBufferData ptr _ _ _ _) = fmap (+ pnt) $ F.findSubstring (B.pack
     where pnt = pointBI fb
 
 -- | Return index of previous string in buffer that matches argument
--- Originally I was going to use 'last', but 'last' and 'reverse' have the same complexity, and reverse
--- leads to shorter code.
 searchBackwards :: String -> BufferImpl -> Maybe Int
 searchBackwards s fb@(FBufferData ptr _ _ _ _) = (listToMaybe . reverse) results
     where results :: [Int]
-          results = F.findSubstrings (B.pack s) $ F.take pnt ptr --
+          results = F.findSubstrings (B.pack s) $ F.take (pnt + length s) ptr
           pnt :: Int
           pnt = pointBI fb -- pnt == current point
 
