@@ -45,6 +45,7 @@ import Control.Concurrent.MVar
 import Control.Monad.Reader (liftIO, when, MonadIO)
 import Control.Monad (ap)
 
+import Data.List (groupBy)
 import Data.IORef
 import Data.Maybe
 import Data.Unique
@@ -465,6 +466,8 @@ insertWindow e i win = do
   let buf = findBufferWith (Common.bufkey win) e
   liftIO $ newWindow i (Common.isMini win) buf
 
+groupOn :: Eq a => (b -> a) -> [b] -> [[b]]
+groupOn f = groupBy (\x y -> f x == f y)
 
 refresh :: UI -> Editor -> IO ()
 refresh ui e = do
@@ -473,11 +476,11 @@ refresh ui e = do
     (uiCmdLine ui) # setStringValue (toNSString (takeEllipsis (statusLine e)))
 
     cache <- readRef $ windowCache ui
-    forM_ (editorUpdates e) $ \(b,u) -> do
+    forM_ (groupOn fst (editorUpdates e)) $ \us@((b,_):_) -> do
       let buf = findBufferWith b e
       storage <- getTextStorage ui buf
       storage # beginEditing
-      applyUpdate storage u
+      forM_ (snd $ unzip us) (applyUpdate storage)
       contents <- storage # string >>= haskellString
       logPutStrLn $ "Contents is " ++ show contents
       let (size, _, []) = runBuffer buf sizeB
