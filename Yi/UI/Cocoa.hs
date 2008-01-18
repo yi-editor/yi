@@ -14,7 +14,7 @@ import Prelude hiding (init, error, sequence_, elem, mapM_, mapM, concatMap)
 
 import Yi.Buffer
 import Yi.Buffer.HighLevel
-import Yi.Editor (Window, Editor, EditorM, withGivenBuffer0, findBufferWith, statusLine, editorUpdates)
+import Yi.Editor (Window, Editor, EditorM, withGivenBuffer0, findBufferWith, statusLine, buffers)
 import qualified Yi.Editor as Common
 import Yi.Event
 import Yi.Debug
@@ -39,7 +39,7 @@ import Data.Foldable
 import Data.Traversable
 import qualified Data.Map as M
 
-import Foundation hiding (length, name, new, parent, error, self)
+import Foundation hiding (length, name, new, parent, error, self, null)
 import Foundation.NSObject (init)
 
 import AppKit hiding (windows, start, rect, width, content, prompt, dictionary, icon)
@@ -482,17 +482,16 @@ refresh ui e = logNSException "refresh" $ do
     (uiCmdLine ui) # setStringValue (toNSString (takeEllipsis (statusLine e)))
 
     cache <- readRef $ windowCache ui
-    forM_ (groupOn fst (editorUpdates e)) $ \us@((b,_):_) -> do
-      let buf = findBufferWith b e
+    forM_ (buffers e) $ \buf -> when (not $ null $ pendingUpdates $ buf) $ do
       storage <- getTextStorage ui buf
       storage # beginEditing
-      forM_ (snd $ unzip us) (applyUpdate storage)
+      forM_ (pendingUpdates buf) $ applyUpdate storage
+      storage # endEditing
       contents <- storage # string >>= haskellString
       logPutStrLn $ "Contents is " ++ show contents
-      let (size, _, []) = runBuffer buf sizeB
+      let (size,_) = runBuffer buf sizeB
       storage # setMonospaceFont -- FIXME: Why is this needed for mini buffers?
       replaceTagsIn 0 size buf storage
-      storage # endEditing
 
     (uiWindow ui) # setAutodisplay False -- avoid redrawing while window syncing
     WS.debug "syncing" ws
@@ -505,18 +504,17 @@ refresh ui e = logNSException "refresh" $ do
 
     forM_ cache' $ \w -> 
         do let buf = findBufferWith (bufkey w) e
-           let (p0, _, []) = runBuffer buf pointB
-           let (p1, _, []) = runBuffer buf (getSelectionMarkB >>= getMarkPointB)
-           range@(NSRange _ _) <- (textview w) # selectedRange
+           let (p0, _) = runBuffer buf pointB
+           let (p1, _) = runBuffer buf (getSelectionMarkB >>= getMarkPointB)
            (textview w) # setSelectedRange (NSRange (toEnum $ min p0 p1) (toEnum $ abs $ p1-p0))
-           (textview w) # scrollRangeToVisible range
-           let (txt, _, []) = runBuffer buf getModeLine 
+           (textview w) # scrollRangeToVisible (NSRange (toEnum p0) 0)
+           let (txt, _) = runBuffer buf getModeLine 
            (modeline w) # setStringValue (toNSString txt)
 
 
 replaceTagsIn :: forall t. Point -> Point -> FBuffer -> NSTextStorage t -> IO ()
 replaceTagsIn from to buf storage = do
-  let (styleSpans, _, []) = runBuffer buf (styleRangesB (to - from) from)
+  let (styleSpans, _) = runBuffer buf (styleRangesB (to - from) from)
   forM_ (zip styleSpans (drop 1 styleSpans)) $ \((l,Style fg bg),(r,_)) -> do
     logPutStrLn $ "Setting style " ++ show fg ++ show bg ++ " on " ++ show l ++ " - " ++ show r
     fg' <- color True fg
@@ -587,7 +585,7 @@ getTextStorage ui b = do
 newTextStorage :: UI -> FBuffer -> IO (NSTextStorage ())
 newTextStorage _ui b = do
   buf <- new _NSTextStorage
-  let (txt, _, []) = runBuffer b elemsB
+  let (txt, _) = runBuffer b (revertPendingUpdatesB >> elemsB)
   buf # mutableString >>= setString (toNSString txt)
   buf # setMonospaceFont
   replaceTagsIn 0 (length txt) b buf
