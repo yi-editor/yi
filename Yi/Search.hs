@@ -258,7 +258,6 @@ isearchAddE :: String -> YiM ()
 isearchAddE increment = do
   Isearch s <- getDynamic
   let (previous,p0,direction) = head s
-  -- FIXME: take in account direction
   let current = previous ++ increment
   msgE $ "I-search: " ++ current
   prevPoint <- withBuffer pointB
@@ -286,7 +285,7 @@ isearchDelE = do
 isearchPrevE :: YiM ()
 isearchPrevE = do
   Isearch ((current,p0,_dir):rest) <- getDynamic
-  withBuffer $ moveTo p0
+  withBuffer $ moveTo (p0 - 1)
   mp <- withBuffer $ searchBw current
   case mp of
     Nothing -> return ()
@@ -296,7 +295,7 @@ isearchPrevE = do
 isearchNextE :: YiM ()
 isearchNextE = do
   Isearch ((current,p0,_dir):rest) <- getDynamic
-  withBuffer $ moveTo (p0 + length current)
+  withBuffer $ moveTo (p0 + 1)
   mp <- withBuffer $ searchB current
   case mp of
     Nothing -> return ()
