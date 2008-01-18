@@ -301,7 +301,7 @@ applyUpdate update = do
 revertPendingUpdatesB :: BufferM ()
 revertPendingUpdatesB = do
   updates <- getA pendingUpdatesA
-  modifyBuffer (flip (foldl (\bi u -> applyUpdateI (reverseUpdate u bi) bi)) updates)
+  modifyBuffer (flip (foldr (\u bi -> applyUpdateI (reverseUpdate u bi) bi)) updates)
 
 -- | Write an element into the buffer at the current point.
 writeB :: Char -> BufferM ()
