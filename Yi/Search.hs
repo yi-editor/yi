@@ -280,7 +280,7 @@ isearchDelE = do
 isearchPrevE :: YiM ()
 isearchPrevE = do
   Isearch ((current,p0):rest) <- getDynamic
-  withBuffer $ moveTo (p0 + length current)
+  withBuffer $ moveTo p0
   mp <- withBuffer $ searchBw current
   case mp of
     Nothing -> return ()
