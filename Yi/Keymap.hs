@@ -108,27 +108,6 @@ getBufferKeymap b = do
     Just bkm -> bkm
     Nothing -> BufferKeymap {bufferKeymap = id, bufferKeymapProcess = I.Fail}
 
--- | Process an event by advancing the current keymap automaton an
--- execing the generated actions
-dispatch :: Event -> YiM ()
-dispatch ev =
-    do yi <- ask
-       b <- withEditor getBuffer
-       bkm <- getBufferKeymap b
-       defKm <- readRef (defaultKeymap yi)
-       let p0 = bufferKeymapProcess bkm
-           freshP = I.mkAutomaton $ bufferKeymap bkm $ defKm
-           p = case p0 of
-                 I.End -> freshP
-                 I.Fail -> freshP -- TODO: output error message about unhandled input
-                 _ -> p0
-           (actions, p') = I.processOneEvent p ev
-       logPutStrLn $ "Processing: " ++ show ev
-       logPutStrLn $ "Actions posted:" ++ show actions
-       logPutStrLn $ "New automation: " ++ show p'
-       lift $ writeList2Chan (output yi) actions
-       modifiesRef bufferKeymaps (M.insert b bkm { bufferKeymapProcess = p' })
-
 --------------------------------
 -- Uninteresting glue code
 

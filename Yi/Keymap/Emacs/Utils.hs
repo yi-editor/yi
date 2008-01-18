@@ -121,24 +121,6 @@ type KList = [(String, Process)]
 makeProcess :: KList -> KProc ()
 makeProcess kmap = choice [events (readKey k) >> a | (k,a) <- kmap]
 
--- Commenting out to avoid compiler-warnings about unused function
--- showFailures :: Process -> Process
--- showFailures p = do result <- consumeLookahead p
---                     case result of
---                       Right _ -> return ()
---                       Left e -> write $ errorE $ "Key not bound: " ++ showKey e
-
--- NOTE: showFailures is unused because its error-recovery mechanism
--- is in adequate when C-s (isearch) is implemented. When you type a
--- key not recognized by isearch, it automatically reverts to the
--- default keymap binding. This can be very simply implemented by
--- embedding the whole keymap in a "forever" construct. However, in
--- that case, when a altogether invalid key sequence is typed, the
--- keymap crashes without a message for the user.
-
--- The solution would be to make runProcess return the pending events
--- when crashing.
-
 -------------------------------------------
 -- General completion
 -------------------------------------------

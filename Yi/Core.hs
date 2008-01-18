@@ -113,9 +113,9 @@ import Yi.Process           ( popen )
 import Yi.Editor
 import Yi.CoreUI
 import Yi.Kernel
-import Yi.Event (eventToChar)
+import Yi.Event (eventToChar, Event)
 import Yi.Keymap
-import Yi.Interact (anyEvent)
+import qualified Yi.Interact as I
 import Yi.Monad
 import Yi.Accessor
 import qualified Yi.WindowSet as WS
@@ -137,7 +137,7 @@ import System.Directory     ( doesFileExist, doesDirectoryExist )
 import System.FilePath      
 
 import Control.Monad (when, forever, replicateM_)
-import Control.Monad.Reader (runReaderT)
+import Control.Monad.Reader (runReaderT, ask)
 import Control.Monad.Trans
 import Control.Monad.State (gets, modify)
 import Control.Monad.Error ()
@@ -165,7 +165,7 @@ interactive action = do
   return ()
 
 nilKeymap :: Keymap
-nilKeymap = do c <- anyEvent
+nilKeymap = do c <- I.anyEvent
                write $ case eventToChar c of
                          'q' -> quitE 
                          'r' -> reconfigE
@@ -244,7 +244,35 @@ startE startConfig kernel st commandLineActions = do
     runYi $ modifiesRef threads (\ts -> t1 : t2 : ts)
 
     UI.main ui -- transfer control to UI: GTK must run in the main thread, or else it's not happy.
-                
+
+postActions :: [Action] -> YiM ()
+postActions actions = do yi <- ask; lift $ writeList2Chan (output yi) actions
+
+-- | Process an event by advancing the current keymap automaton an
+-- execing the generated actions
+dispatch :: Event -> YiM ()
+dispatch ev =
+    do yi <- ask
+       b <- withEditor getBuffer
+       bkm <- getBufferKeymap b
+       defKm <- readRef (defaultKeymap yi)
+       let p0 = bufferKeymapProcess bkm
+           freshP = I.mkAutomaton $ bufferKeymap bkm $ defKm
+           p = case p0 of
+                 I.End -> freshP
+                 I.Fail -> freshP -- TODO: output error message about unhandled input
+                 _ -> p0
+           (actions, p') = I.processOneEvent p ev
+       logPutStrLn $ "Processing: " ++ show ev
+       logPutStrLn $ "Actions posted:" ++ show actions
+       logPutStrLn $ "New automation: " ++ show p'
+       logPutStrLn $ "Ambact: " ++ show (I.ambiguousActions p')
+       postActions actions
+       when (not $ null $ I.ambiguousActions p') $ 
+            postActions [makeAction $ msgE "Keymap is in an ambiguous state!"]
+       modifiesRef bufferKeymaps (M.insert b bkm { bufferKeymapProcess = p' })
+
+
 changeKeymapE :: Keymap -> YiM ()
 changeKeymapE km = do
   modifiesRef defaultKeymap (const km)
