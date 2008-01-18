@@ -71,6 +71,7 @@ module Yi.Buffer
   , savingExcursionB
   , savingPointB
   , pendingUpdatesA
+  , revertPendingUpdatesB
   )
 where
 
@@ -295,6 +296,12 @@ applyUpdate update = do
        modifyA undosA $ addUR reversed
        tell [update]
   -- otherwise, just ignore.
+
+-- | Revert all the pending updates; don't touch the point.
+revertPendingUpdatesB :: BufferM ()
+revertPendingUpdatesB = do
+  updates <- getA pendingUpdatesA
+  modifyBuffer (flip (foldl (\bi u -> applyUpdateI (reverseUpdate u bi) bi)) updates)
 
 -- | Write an element into the buffer at the current point.
 writeB :: Char -> BufferM ()

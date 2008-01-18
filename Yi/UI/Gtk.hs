@@ -460,11 +460,10 @@ getGtkBuffer ui b = do
     return gtkBuf
 
 -- FIXME: when a buffer is deleted its GTK counterpart should be too.
--- FIXME: "unapply" the pending updates to the buffer. (???)
 newGtkBuffer :: UI -> FBuffer -> IO TextBuffer
 newGtkBuffer ui b = do
   buf <- textBufferNew (Just (tagTable ui))
-  let (txt, _) = runBuffer b elemsB
+  let (txt, _) = runBuffer b (revertPendingUpdatesB >> elemsB)
   textBufferSetText buf txt
   replaceTagsIn ui 0 (length txt) b buf
   return buf
