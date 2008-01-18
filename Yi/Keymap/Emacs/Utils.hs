@@ -268,9 +268,9 @@ searchKeymap = selfSearchKeymap <|> makeProcess
                 ("C-w", write isearchWordE),
                 ("BACKSP", write $ isearchDelE)]
 
-isearchProcess :: Process
-isearchProcess = do
-  write isearchInitE
+isearchProcess :: Direction -> Process
+isearchProcess direction = do
+  write $ isearchInitE direction
   many searchKeymap
   foldr1 (<||) [events (readKey "C-g") >> write isearchCancelE,
                 events (readKey "C-m") >> write isearchFinishE,

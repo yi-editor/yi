@@ -235,26 +235,30 @@ searchAndRepLocal re str = do
 -- Incremental search
 
 
-newtype Isearch = Isearch [(String, Int)] deriving Typeable
+newtype Isearch = Isearch [(String, Int, Direction)] deriving Typeable
+-- Maybe this should not be saved in a Dynamic component!
+-- it could be embedded in the Keymap state.
 
 instance Initializable Isearch where
     initial = (Isearch [])
 
-isearchInitE :: YiM ()
-isearchInitE = do
+isearchInitE :: Direction -> YiM ()
+isearchInitE dir = do
   p <- withBuffer pointB
-  setDynamic (Isearch [("",p)])
+  setDynamic (Isearch [("",p,dir)])
   msgE $ "I-search: "
 
 isearchIsEmpty :: YiM Bool
 isearchIsEmpty = do
   Isearch s <- getDynamic
-  return $ not $ null $ fst $ head $ s
+  return $ not $ null $ fst3 $ head $ s
+      where fst3 (x,_,_) = x
 
 isearchAddE :: String -> YiM ()
 isearchAddE increment = do
   Isearch s <- getDynamic
-  let (previous,p0) = head s
+  let (previous,p0,direction) = head s
+  -- FIXME: take in account direction
   let current = previous ++ increment
   msgE $ "I-search: " ++ current
   prevPoint <- withBuffer pointB
@@ -262,39 +266,39 @@ isearchAddE increment = do
   mp <- withBuffer $ searchB current
   case mp of
     Nothing -> do withBuffer $ moveTo prevPoint -- go back to where we were
-                  setDynamic $ Isearch ((current,p0):s)
+                  setDynamic $ Isearch ((current,p0,direction):s)
                   msgE $ "Failing I-search: " ++ current
-    Just p -> do setDynamic $ Isearch ((current,p):s)
+    Just p -> do setDynamic $ Isearch ((current,p,direction):s)
                  withBuffer $ moveTo (p+length current)
 
 isearchDelE :: YiM ()
 isearchDelE = do
   Isearch s <- getDynamic
   case s of
-    (_:(text,p):rest) -> do
+    (_:(text,p,dir):rest) -> do
       withBuffer $ moveTo (p+length text)
-      setDynamic $ Isearch ((text,p):rest)
+      setDynamic $ Isearch ((text,p,dir):rest)
       msgE $ "I-search: " ++ text
     _ -> return () -- if the searched string is empty, don't try to remove chars from it.
 
 isearchPrevE :: YiM ()
 isearchPrevE = do
-  Isearch ((current,p0):rest) <- getDynamic
+  Isearch ((current,p0,_dir):rest) <- getDynamic
   withBuffer $ moveTo p0
   mp <- withBuffer $ searchBw current
   case mp of
     Nothing -> return ()
-    Just p -> do setDynamic $ Isearch ((current,p):rest)
+    Just p -> do setDynamic $ Isearch ((current,p,Backward):rest)
                  withBuffer $ moveTo (p+length current)
 
 isearchNextE :: YiM ()
 isearchNextE = do
-  Isearch ((current,p0):rest) <- getDynamic
+  Isearch ((current,p0,_dir):rest) <- getDynamic
   withBuffer $ moveTo (p0 + length current)
   mp <- withBuffer $ searchB current
   case mp of
     Nothing -> return ()
-    Just p -> do setDynamic $ Isearch ((current,p):rest)
+    Just p -> do setDynamic $ Isearch ((current,p,Forward):rest)
                  withBuffer $ moveTo (p+length current)
 
 isearchWordE :: YiM ()
@@ -307,14 +311,14 @@ isearchWordE = do
 isearchFinishE :: YiM ()
 isearchFinishE = do
   Isearch s <- getDynamic
-  let (_,p0) = last s
+  let (_,p0,_) = last s
   withBuffer $ setSelectionMarkPointB p0
   msgE "mark saved where search started"
 
 isearchCancelE :: YiM ()
 isearchCancelE = do
   Isearch s <- getDynamic
-  let (_,p0) = last s
+  let (_,p0,_) = last s
   withBuffer $ moveTo p0
   msgE "Quit"
 
