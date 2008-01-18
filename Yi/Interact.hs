@@ -60,6 +60,7 @@ module Yi.Interact
      option,
      oneOf,
      processOneEvent,
+     ambiguousActions,
      event,
      events,
      satisfy,
@@ -71,12 +72,14 @@ module Yi.Interact
 import Control.Applicative
 import Control.Arrow (first)
 import Control.Monad.State hiding ( get )
+import Data.List (nubBy)
 
 ------------------------------------------------
 -- Classes
 
 class PEq a where
     equiv :: a -> a -> Bool
+
 -- | Abstraction of monadic interactive processes
 class (PEq w, Monad m, Alternative m, Applicative m, MonadPlus m) => MonadInteract m w e | m -> w e where
     write :: w -> m ()
@@ -224,7 +227,7 @@ simplify p = p
 best' :: PEq w => P ev w -> P ev w -> P ev w
 best' c d = best (simplify c) (simplify d)
 
--- | Pull the most writes from two parallel processes; both are guaranteed not to contain any "best"
+-- | Pull the most writes from two parallel processes; both are guaranteed not to contain any "Best"
 best :: PEq w => P ev w -> P ev w -> P ev w
 Write p w c  `best` Write q x d
 -- Prioritized write:
@@ -244,6 +247,17 @@ p          `best` q = Best p q
 pullWrites :: P event w -> ([w], P event w)
 pullWrites (Write _ w p) = first (w:) (pullWrites p)
 pullWrites p = ([], p)
+
+-- | Return the list of possible actions to write.
+-- 'Nothing' indicates a read.
+ambiguousActions :: P event w -> [Maybe w]
+ambiguousActions = nubBy equiv' . helper
+    where helper (Get _) = [Nothing]
+          helper (Write _ w _) = [Just w]
+          helper (Best p q) = helper p ++ helper q
+          helper _ = []
+          equiv' Nothing Nothing = True
+          equiv' _ _ = False
 
 instance (Show w, Show ev) => Show (P ev w) where
     show (Get _) = "?"
