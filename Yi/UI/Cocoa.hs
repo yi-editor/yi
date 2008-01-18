@@ -70,6 +70,11 @@ foreign import ccall "Processes.h TransformProcessType" transformProcessType :: 
 foreign import ccall "Processes.h SetFrontProcess" setFrontProcess :: Ptr (CInt) -> IO (CInt)
 foreign import ccall "Processes.h GetCurrentProcess" getCurrentProcess :: Ptr (CInt) -> IO (CInt)
 
+
+logNSException string action =
+  catchNS action (\e -> description e >>= haskellString >>=
+                        logPutStrLn . (("NSException " ++ string ++ ":") ++))
+
 ------------------------------------------------------------------------
 
 -- The selector is used since NSEvent#type treats the c enum
@@ -117,7 +122,7 @@ ya_run self = do
   super self # run
 
 ya_sendEvent :: forall t. NSEvent t -> YiApplication () -> IO ()
-ya_sendEvent event self = do
+ya_sendEvent event self = logNSException "sendEvent" $ do
   t <- event # rawType
   if t == fromCEnum nsKeyDown
     then self #. _eventChannel >>= handleKeyEvent event
@@ -485,7 +490,7 @@ groupOn :: Eq a => (b -> a) -> [b] -> [[b]]
 groupOn f = groupBy (\x y -> f x == f y)
 
 refresh :: UI -> Editor -> IO ()
-refresh ui e = do
+refresh ui e = logNSException "refresh" $ do
     let ws = Common.windows e
     let takeEllipsis s = if length s > 132 then take 129 s ++ "..." else s
     (uiCmdLine ui) # setStringValue (toNSString (takeEllipsis (statusLine e)))
