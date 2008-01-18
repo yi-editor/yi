@@ -93,13 +93,28 @@ yc_applicationShouldTerminateAfterLastWindowClosed _app _self = return True
 -- This declares an application subclass which enables us to insert
 -- ourselves into the application event loop and trap key-events application wide
 $(declareClass "YiApplication" "NSApplication")
+$(declareSelector "doTick" [t| IO () |])
 $(declareSelector "setAppleMenu:" [t| forall t. NSMenu t -> IO () |] )
 instance Has_setAppleMenu (NSApplication a)
 $(exportClass "YiApplication" "ya_" [
     InstanceVariable "eventChannel" [t| Maybe (Chan Yi.Event.Event) |] [| Nothing |]
   , InstanceVariable "running" [t| Bool |] [| True |]
+  , InstanceMethod 'run -- '
+  , InstanceMethod 'doTick -- '
   , InstanceMethod 'sendEvent -- '
   ])
+
+ya_doTick :: YiApplication () -> IO ()
+ya_doTick _self = return () -- Does nothing, just enables some Haskell to run...
+
+ya_run :: YiApplication () -> IO ()
+ya_run self = do
+  -- Schedule a timer that repeatedly invokes ya_doTick in order to have
+  -- some Haskell code running all the time. This will prevent other
+  -- Haskell threads to stall while waiting for the Cocoa run loop to finish.
+  _NSTimer # scheduledTimerWithTimeIntervalTargetSelectorUserInfoRepeats 
+                0.05 self (getSelectorForName "doTick") nil True
+  super self # run
 
 ya_sendEvent :: forall t. NSEvent t -> YiApplication () -> IO ()
 ya_sendEvent event self = do
@@ -496,7 +511,6 @@ refresh ui e = do
     writeRef (windowCache ui) cache'
     (uiBox ui) # adjustSubviews -- FIX: maybe it is not needed
     (uiWindow ui) # setAutodisplay True -- reenable automatic redrawing
-    (uiWindow ui) # display
 
     forM_ cache' $ \w -> 
         do let buf = findBufferWith (bufkey w) e
