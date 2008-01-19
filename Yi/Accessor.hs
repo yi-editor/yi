@@ -48,6 +48,10 @@ getsA a f = gets (f . getter a)
 modifyA :: MonadState s m => Accessor s p -> (p -> p) -> m ()
 modifyA a f = modify (modifier a f)
 
+modifyAllA :: (MonadState s m, Functor f) => Accessor s (f w) -> Accessor w p -> (p -> p) -> m ()
+modifyAllA a a' f = modifyA a (fmap $ modifier a' f)
+
+
 setA :: MonadState s m => Accessor s p -> p -> m ()
 setA a p = modifyA a (const p)
 

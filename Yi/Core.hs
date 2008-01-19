@@ -312,7 +312,7 @@ reloadE = tryLoadModulesE =<< readsRef editorModules
 refreshE :: YiM ()
 refreshE = do editor <- with yiEditor readRef
               withUI $ flip UI.refresh editor
-              withEditor $ modifyA buffersA (fmap $ modifier pendingUpdatesA (const []))
+              withEditor $ modifyAllA buffersA pendingUpdatesA (const [])
 
 -- | Suspend the program
 suspendE :: YiM ()
