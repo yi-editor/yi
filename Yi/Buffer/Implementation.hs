@@ -183,16 +183,18 @@ addOverlayBI s e sty fb =
 -- | Return @n@ elems starting at @i@ of the buffer as a list.
 -- This routine also does syntax highlighting and applies overlays.
 nelemsBIH :: Int -> Int -> BufferImpl -> [(Char,Style)]
-nelemsBIH n i fb = concat $ helper $ styleRangesBI n i fb
+nelemsBIH n i fb = helper i defaultStyle (styleRangesBI n i fb) (nelemsBI n i fb)
   where
-    helper ((l,a):xs@((h,_):_)) = (fmap (flip (,) a) (nelemsBI (h-l) l fb)) : helper xs
-    helper _                    = []
+    helper pos sty [] cs = setSty sty cs
+    helper pos sty ((end,sty'):xs) cs = setSty sty left ++ helper end sty' xs right
+        where (left, right) = splitAt (end - pos) cs
+    setSty sty cs = [(c,sty) | c <- cs]
 
 -- | Return style information for the range of @n@ characters starting
 --   at @i@. Style information is derived from syntax highlighting and
 --   active overlays.
 --   The returned list contains tuples (@p@,@s@) where every tuple is to
---   be interpreted as apply the style @s@ until position @p@ in the buffer.
+--   be interpreted as apply the style @s@ from position @p@ in the buffer.
 --   In the final element @p@ = @n@ + @i@.
 styleRangesBI :: Int -> Int -> BufferImpl -> [(Int, Style)]
 styleRangesBI n i fb = fun fb
