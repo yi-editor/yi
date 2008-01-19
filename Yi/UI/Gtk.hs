@@ -386,16 +386,9 @@ replaceTagsIn :: UI -> Point -> Point -> FBuffer -> TextBuffer -> IO ()
 replaceTagsIn ui from to buf gtkBuf = do
   i <- textBufferGetIterAtOffset gtkBuf from
   i' <- textBufferGetIterAtOffset gtkBuf to
-  let (styledText, _) = runBuffer buf (nelemsBH (to - from) from)
-  let styles = zip (map snd styledText) [from..]
-      styleSwitches = [(style,point) 
-                       | ((style,point),style') <- zip styles (defaultStyle:map fst styles), 
-                       style /= style']
-      styleSpans = [(l,style,r) 
-                    | ((style,l),r) <- zip styleSwitches (tail (map snd styleSwitches) ++ [to]),
-                   style /= defaultStyle]
+  let (styleSpans, _) = runBuffer buf (styleRangesB (to - from) from)
   textBufferRemoveAllTags gtkBuf i i'
-  forM_ styleSpans $ \(l,style,r) -> do
+  forM_ (zip styleSpans (drop 1 styleSpans)) $ \((l,style),(r,_)) -> do
     f <- textBufferGetIterAtOffset gtkBuf l
     t <- textBufferGetIterAtOffset gtkBuf r
     tag <- styleToTag ui style
@@ -410,8 +403,6 @@ applyUpdate buf (Delete p s) = do
   i0 <- textBufferGetIterAtOffset buf p
   i1 <- textBufferGetIterAtOffset buf (p + s)
   textBufferDelete buf i0 i1
--- Shouldn't really occur we shouldn't really pass such a savedfilepoint here.
-
 
 styleToTag :: UI -> Style -> IO TextTag
 styleToTag ui (Style fg _bg) = do
