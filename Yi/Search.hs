@@ -248,9 +248,7 @@ isearchAddE increment = do
   msgE $ "I-search: " ++ current
   prevPoint <- withBuffer pointB
   withBuffer $ moveTo p0
-  mp <- case direction of
-         Forward -> withBuffer $ searchB current
-         Backward -> withBuffer $ searchBw current
+  mp <- withBuffer $ searchB direction current
   case mp of
     Nothing -> do withBuffer $ moveTo prevPoint -- go back to where we were
                   setDynamic $ Isearch ((current,p0,direction):s)
@@ -268,11 +266,12 @@ isearchDelE = do
       msgE $ "I-search: " ++ text
     _ -> return () -- if the searched string is empty, don't try to remove chars from it.
 
+-- TODO: merge isearchPrevE and isearchNextE
 isearchPrevE :: YiM ()
 isearchPrevE = do
   Isearch ((current,p0,_dir):rest) <- getDynamic
   withBuffer $ moveTo (p0 - 1)
-  mp <- withBuffer $ searchBw current
+  mp <- withBuffer $ searchB Backward current
   case mp of
     Nothing -> return ()
     Just p -> do setDynamic $ Isearch ((current,p,Backward):rest)
@@ -282,7 +281,7 @@ isearchNextE :: YiM ()
 isearchNextE = do
   Isearch ((current,p0,_dir):rest) <- getDynamic
   withBuffer $ moveTo (p0 + 1)
-  mp <- withBuffer $ searchB current
+  mp <- withBuffer $ searchB Forward current
   case mp of
     Nothing -> return ()
     Just p -> do setDynamic $ Isearch ((current,p,Forward):rest)
@@ -315,7 +314,7 @@ isearchCancelE = do
 
 qrNextE :: BufferRef -> String -> YiM ()
 qrNextE b what = do
-  mp <- withGivenBuffer b $ searchB what
+  mp <- withGivenBuffer b $ searchB Forward what
   case mp of
     Nothing -> do
             msgE "String to search not found"

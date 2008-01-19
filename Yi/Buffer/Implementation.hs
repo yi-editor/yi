@@ -8,6 +8,7 @@ module Yi.Buffer.Implementation
   , Point
   , Mark
   , Size
+  , Direction (..)
   , BufferImpl
   , moveToI
   , applyUpdateI
@@ -20,7 +21,6 @@ module Yi.Buffer.Implementation
   , gotoLnRelI
   , offsetFromSolBI
   , searchBI
-  , searchBackwards
   , regexBI
   , getMarkBI
   , getMarkPointBI
@@ -54,6 +54,11 @@ import qualified Data.ByteString.Char8 as B
 import Data.Array
 import Data.Maybe
 
+
+-- | Direction of movement inside a buffer
+data Direction = Backward
+               | Forward
+                 deriving Eq
 
 type Point = Int
 type Size  = Int
@@ -185,7 +190,7 @@ addOverlayBI s e sty fb =
 nelemsBIH :: Int -> Int -> BufferImpl -> [(Char,Style)]
 nelemsBIH n i fb = helper i defaultStyle (styleRangesBI n i fb) (nelemsBI n i fb)
   where
-    helper pos sty [] cs = setSty sty cs
+    helper _   sty [] cs = setSty sty cs
     helper pos sty ((end,sty'):xs) cs = setSty sty left ++ helper end sty' xs right
         where (left, right) = splitAt (end - pos) cs
     setSty sty cs = [(c,sty) | c <- cs]
@@ -315,17 +320,11 @@ gotoLnRelI n fb = (moveToI np fb, max 1 n')
         in second (point +) (findLine 0 n lineStarts)
 
 -- | Return index of next string in buffer that matches argument
-searchBI :: String -> BufferImpl -> Maybe Int
-searchBI s fb@(FBufferData ptr _ _ _ _) = fmap (+ pnt) $ F.findSubstring (B.pack s) $ F.drop pnt ptr
-    where pnt = pointBI fb
-
--- | Return index of previous string in buffer that matches argument
-searchBackwards :: String -> BufferImpl -> Maybe Int
-searchBackwards s fb@(FBufferData ptr _ _ _ _) = (listToMaybe . reverse) results
-    where results :: [Int]
-          results = F.findSubstrings (B.pack s) $ F.take (pnt + length s) ptr
-          pnt :: Int
-          pnt = pointBI fb -- pnt == current point
+searchBI :: Direction -> String -> BufferImpl -> Maybe Int
+searchBI dir s fb@(FBufferData ptr _ _ _ _) = case dir of 
+      Forward -> fmap (+ pnt) $ F.findSubstring (B.pack s) $ F.drop pnt ptr
+      Backward -> listToMaybe $ reverse $ F.findSubstrings (B.pack s) $ F.take (pnt + length s) ptr
+    where pnt = pointBI fb -- pnt == current point
 
 offsetFromSolBI :: BufferImpl -> Int
 offsetFromSolBI fb@(FBufferData ptr _ _ _ _) = pnt - maybe 0 (1 +) (F.elemIndexEnd '\n' (F.take pnt ptr))

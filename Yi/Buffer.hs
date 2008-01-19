@@ -54,7 +54,6 @@ module Yi.Buffer
   , setSyntaxB
   , regexB
   , searchB
-  , searchBw
   , readAtB
   , getModeLine
   , getPercent
@@ -88,10 +87,6 @@ import Control.Applicative
 import Control.Monad.RWS
 import Data.List (elemIndex)
 
--- | Direction of movement inside a buffer
-data Direction = Backward
-               | Forward
-                 deriving Eq
 
 -- In addition to FastBuffer, this manages (among others):
 --  * Log of updates mades
@@ -348,13 +343,9 @@ gotoLn x = do moveTo 0
 
 ---------------------------------------------------------------------
 
--- | Return index of next string in buffer that matches argument
-searchB :: [Char] -> BufferM (Maybe Int)
-searchB = queryBuffer . searchBI
-
--- | Return index of previous string in buffer that matches argument
-searchBw :: [Char] -> BufferM (Maybe Int)
-searchBw = queryBuffer . searchBackwards
+-- | Return index of next (or previous) string in buffer that matches argument
+searchB :: Direction -> [Char] -> BufferM (Maybe Int)
+searchB dir = queryBuffer . searchBI dir
 
 -- | Set name of syntax highlighting mode
 setSyntaxB :: [Char] -> BufferM ()
