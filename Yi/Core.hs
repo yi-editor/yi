@@ -91,6 +91,7 @@ module Yi.Core (
 import Prelude hiding (error, sequence_, mapM_, elem, concat)
 
 import Yi.Debug
+import Yi.Undo
 import Yi.Buffer
 import Yi.Buffer.HighLevel
 import Yi.Dynamic
@@ -144,7 +145,8 @@ interactive :: Action -> YiM ()
 interactive action = do 
   logPutStrLn ">>>>>>> interactively"
   prepAction <- withUI UI.prepareAction
-  withEditor prepAction
+  withEditor $ do prepAction
+                  modifyAllA buffersA undosA (addUR InteractivePoint)
   runAction action
   refreshE 
   logPutStrLn "<<<<<<<"

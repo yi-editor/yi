@@ -9,12 +9,11 @@
 
 module Yi.Editor where
 
-import Yi.Buffer                ( BufferRef, FBuffer (..), BufferM, newB, runBuffer, undosA )
+import Yi.Buffer                ( BufferRef, FBuffer (..), BufferM, newB, runBuffer )
 import Text.Regex.Posix.Wrap    ( Regex )
 import Yi.Style                 ( uiStyle, UIStyle )
 
 import Yi.Debug
-import Yi.Undo
 import Yi.Monad
 import Yi.Buffer.Implementation
 import Yi.Accessor
@@ -177,8 +176,7 @@ shiftBuffer shift = gets $ \e ->
 withGivenBuffer0 :: BufferRef -> BufferM a -> EditorM a
 withGivenBuffer0 k f = getsAndModify $ \e -> 
                         let b = findBufferWith k e
-                            b0 = modifier undosA (addUR InteractivePoint) b
-                            (v, b') = runBuffer b0 f 
+                            (v, b') = runBuffer b f 
                         in (e {buffers = M.adjust (const b') k (buffers e)},v)
 
 -- | Perform action with current window's buffer
