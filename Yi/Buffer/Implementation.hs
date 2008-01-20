@@ -242,9 +242,8 @@ styleRangesBI n i fb = fun fb
     splitRanges = splitRangesDefault defaultStyle
 
     cutRanges :: Int -> Int -> [(Int, Style)] -> [(Int, Style)]
-    cutRanges m j =
-      (++ [(j+m, defaultStyle)]) . (takeRanges (j+m)) . (snd . splitRanges j)
-      where takeRanges i xs = let (ls, r:rs) = splitRanges i xs in ls ++ [r]
+    cutRanges m j = takeRanges (j+m) . snd . splitRanges j
+      where takeRanges i xs = let (ls, r:_) = splitRanges i xs in ls ++ [r]
 
     overlayRanges :: Int -> Int -> Style -> [(Int, Style)] -> [(Int, Style)]
     overlayRanges l h a rs = left ++ adjusted ++ right
