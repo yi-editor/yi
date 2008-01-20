@@ -2,6 +2,7 @@
 -- Copyright (c) 2005,2007,2008 Jean-Philippe Bernardy
 --
 --
+{-# OPTIONS -fallow-undecidable-instances #-}
 
 {-
   This module is aimed at being a helper for the Emacs keybindings.
@@ -53,7 +54,7 @@ import Data.List
   )
 import Data.Maybe
   ( fromMaybe )
-
+import Data.Typeable
 import System.Exit
   ( ExitCode( ExitSuccess,ExitFailure ) )
 import System.FilePath
@@ -176,7 +177,7 @@ evalRegionE = do
 
 -- | Define an atomic interactive command.
 -- Purose is to define "transactional" boundaries for killring, undo, etc.
-atomic :: (Show x, YiAction a) => a x -> KProc ()
+atomic :: (Show x, YiAction a x) => a -> KProc ()
 atomic cmd = write $ do runAction (makeAction cmd)
                         killringEndCmd
 
@@ -367,3 +368,7 @@ switchBufferE = withMinibuffer "switch to buffer:" completeBufferName switchToBu
 killBufferE :: YiM ()
 killBufferE = withMinibuffer "kill buffer:" completeBufferName closeBufferE
 
+-- TODO: be a bit more clever than 'Read r'
+instance (YiAction a x, Read r, Typeable r) => YiAction (r -> a) x where
+    makeAction f = YiA $ withMinibuffer (show $ typeOf (undefined::r)) return $
+                   \string ->  runAction $ makeAction $ f $ read string

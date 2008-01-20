@@ -72,7 +72,7 @@ cmd_mode :: VimMode
 cmd_mode = choice [cmd_eval,eval cmd_move,cmd2other,cmd_op]
 
 -- | Take a VimMode that returns and action; "run" it and write the returned action.
-eval :: YiAction m => VimProc (m ()) -> VimMode
+eval :: YiAction a () => VimProc a -> VimMode
 eval p = do a <- p; write a
 
 -- | Leave a mode. This always has priority over catch-all actions inside the mode.

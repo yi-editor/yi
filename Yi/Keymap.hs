@@ -67,7 +67,7 @@ type YiM = ReaderT Yi IO
 -----------------------
 -- Keymap basics
 
-write :: (I.MonadInteract m Action ev, YiAction a) => a () -> m ()
+write :: (I.MonadInteract m Action ev, YiAction a ()) => a -> m ()
 write x = I.write (makeAction x)
 
 
@@ -145,16 +145,16 @@ shutdown = do ts <- readsRef threads
 
 -- -------------------------------------------
 
-class YiAction a where
-    makeAction :: Show x => a x -> Action
+class YiAction a x | a -> x where
+    makeAction :: Show x => a -> Action
 
-instance YiAction YiM where
+instance YiAction (YiM x) x where
     makeAction = YiA
 
 
-instance YiAction EditorM where
+instance YiAction (EditorM x) x where
     makeAction = EditorA
 
-instance YiAction BufferM where
+instance YiAction (BufferM x) x where
     makeAction = BufferA
 

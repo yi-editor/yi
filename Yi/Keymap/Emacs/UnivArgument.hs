@@ -24,13 +24,13 @@ instance Initializable UniversalArg where
     initial = UniversalArg Nothing
 
 
-withUnivArg :: YiAction m => (Maybe Int -> m ()) -> YiM ()
+withUnivArg :: YiAction (m ()) () => (Maybe Int -> m ()) -> YiM ()
 withUnivArg cmd = do UniversalArg a <- getDynamic
                      runAction $ makeAction (cmd a)
                      setDynamic $ UniversalArg Nothing
 
-withIntArg :: YiAction m => (Int -> m ()) -> YiM ()
+withIntArg :: YiAction (m ()) () => (Int -> m ()) -> YiM ()
 withIntArg cmd = withUnivArg $ \arg -> cmd (fromMaybe 1 arg)
 
-repeatingArg :: (Monad m, YiAction m) => m () -> YiM ()
+repeatingArg :: (Monad m, YiAction (m ()) ()) => m () -> YiM ()
 repeatingArg f = withIntArg $ \n -> replicateM_ n f
