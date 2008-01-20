@@ -79,7 +79,7 @@ module Yi.Core (
         runAction
    ) where
 
-import Prelude hiding (error, sequence_, mapM_, elem, concat)
+import Prelude hiding (error, sequence_, mapM_, elem, concat, all)
 
 import Yi.Debug
 import Yi.Undo
@@ -243,13 +243,16 @@ dispatch ev =
                  I.Fail -> freshP -- TODO: output error message about unhandled input
                  _ -> p0
            (actions, p') = I.processOneEvent p ev
+           possibilities = I.ambiguousActions p'
+           ambiguous = not (null possibilities) && all isJust possibilities
        logPutStrLn $ "Processing: " ++ show ev
        logPutStrLn $ "Actions posted:" ++ show actions
        logPutStrLn $ "New automation: " ++ show p'
        logPutStrLn $ "Ambact: " ++ show (I.ambiguousActions p')
+       -- TODO: if no action is posted, accumulate the input and give feedback to the user.
        postActions actions
-       when (not $ null $ filter isJust $ I.ambiguousActions p') $ 
-            postActions [makeAction $ msgE "Keymap is in an ambiguous state!"]
+       when ambiguous $
+            postActions [makeAction $ msgE "Keymap was in an ambiguous state!"]
        modifiesRef bufferKeymaps (M.insert b bkm { bufferKeymapProcess = p' })
 
 
