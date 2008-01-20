@@ -12,8 +12,10 @@ import Prelude hiding (error, sequence_, elem, mapM_, mapM, concatMap)
 
 import Yi.Buffer.Implementation (inBounds, Update(..))
 import Yi.Buffer
-import Yi.Editor hiding (bufkey, isMini, winkey, windows)
-import qualified Yi.Editor as Common
+import qualified Yi.Editor as Editor
+import Yi.Editor hiding (windows)
+import qualified Yi.Window as Window
+import Yi.Window (Window)
 import Yi.Event
 import Yi.Debug
 import Yi.Monad
@@ -203,9 +205,9 @@ end = mainQuit
 syncWindows :: Editor -> UI -> [(Window, Bool)] -- ^ windows paired with their "isFocused" state.
             -> [WinInfo] -> IO [WinInfo]
 syncWindows e ui (wfocused@(w,focused):ws) (c:cs) 
-    | Common.winkey w == winkey c = do when focused (setFocus c)
+    | Window.winkey w == winkey c = do when focused (setFocus c)
                                        return (c:) `ap` syncWindows e ui ws cs
-    | Common.winkey w `elem` map winkey cs = removeWindow ui c >> syncWindows e ui (wfocused:ws) cs
+    | Window.winkey w `elem` map winkey cs = removeWindow ui c >> syncWindows e ui (wfocused:ws) cs
     | otherwise = do c' <- insertWindowBefore e ui w c
                      when focused (setFocus c')
                      return (c':) `ap` syncWindows e ui ws (c:cs)
@@ -341,8 +343,8 @@ insertWindowAtEnd e i w = insertWindow e i w
 
 insertWindow :: Editor -> UI -> Window -> IO WinInfo
 insertWindow e i win = do
-  let buf = findBufferWith (Common.bufkey win) e
-  liftIO $ do w <- newWindow i (Common.isMini win) buf
+  let buf = findBufferWith (Window.bufkey win) e
+  liftIO $ do w <- newWindow i (Window.isMini win) buf
               set (uiBox i) [containerChild := widget w,
                              boxChildPacking (widget w) := if isMini w then PackNatural else PackGrow]
               textview w `onButtonRelease` handleClick i w
@@ -352,7 +354,7 @@ insertWindow e i win = do
 
 refresh :: UI -> Editor -> IO ()
 refresh ui e = do
-    let ws = Common.windows e
+    let ws = Editor.windows e
     let takeEllipsis s = if length s > 132 then take 129 s ++ "..." else s
     set (uiCmdLine ui) [labelText := takeEllipsis (statusLine e)]
 
@@ -360,7 +362,7 @@ refresh ui e = do
     forM_ (buffers e) $ \buf -> when (not $ null $ pendingUpdates $ buf) $ do
       gtkBuf <- getGtkBuffer ui buf
       forM_ (pendingUpdates buf) $ applyUpdate gtkBuf
-      let ((size,p),_) = runBuffer buf ((,) <$> sizeB <*> pointB)
+      let ((size,p),_) = runBufferDummyWindow buf ((,) <$> sizeB <*> pointB)
       replaceTagsIn ui (inBounds (p-100) size) (inBounds (p+100) size) buf gtkBuf
 
     logPutStrLn $ "syncing: " ++ show ws
@@ -372,21 +374,21 @@ refresh ui e = do
         do let buf = findBufferWith (bufkey w) e
            gtkBuf <- getGtkBuffer ui buf
 
-           let (p0, _) = runBuffer buf pointB
-           let (p1, _) = runBuffer buf (getSelectionMarkB >>= getMarkPointB)
+           let (p0, _) = runBufferDummyWindow buf pointB
+           let (p1, _) = runBufferDummyWindow buf (getSelectionMarkB >>= getMarkPointB)
            insertMark <- textBufferGetInsert gtkBuf
            i <- textBufferGetIterAtOffset gtkBuf p0
            i' <- textBufferGetIterAtOffset gtkBuf p1
            textBufferSelectRange gtkBuf i i'
            textViewScrollMarkOnscreen (textview w) insertMark
-           let (txt, _) = runBuffer buf getModeLine 
+           let (txt, _) = runBufferDummyWindow buf getModeLine 
            set (modeline w) [labelText := txt]
 
 replaceTagsIn :: UI -> Point -> Point -> FBuffer -> TextBuffer -> IO ()
 replaceTagsIn ui from to buf gtkBuf = do
   i <- textBufferGetIterAtOffset gtkBuf from
   i' <- textBufferGetIterAtOffset gtkBuf to
-  let (styleSpans, _) = runBuffer buf (styleRangesB (to - from) from)
+  let (styleSpans, _) = runBufferDummyWindow buf (styleRangesB (to - from) from)
   textBufferRemoveAllTags gtkBuf i i'
   forM_ (zip styleSpans (drop 1 styleSpans)) $ \((l,style),(r,_)) -> do
     f <- textBufferGetIterAtOffset gtkBuf l
@@ -438,7 +440,7 @@ distribute :: Window -> State [Int] Window
 distribute win = do
   h <- gets head
   modify tail
-  return win {Common.height = h}
+  return win {Window.height = h}
 
 getGtkBuffer :: UI -> FBuffer -> IO TextBuffer
 getGtkBuffer ui b = do
@@ -454,7 +456,7 @@ getGtkBuffer ui b = do
 newGtkBuffer :: UI -> FBuffer -> IO TextBuffer
 newGtkBuffer ui b = do
   buf <- textBufferNew (Just (tagTable ui))
-  let (txt, _) = runBuffer b (revertPendingUpdatesB >> elemsB)
+  let (txt, _) = runBufferDummyWindow b (revertPendingUpdatesB >> elemsB)
   textBufferSetText buf txt
   replaceTagsIn ui 0 (length txt) b buf
   return buf

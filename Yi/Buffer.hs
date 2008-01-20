@@ -10,6 +10,7 @@ module Yi.Buffer
   , FBuffer       ( .. )
   , BufferM
   , runBuffer
+  , runBufferDummyWindow
   , keyB
   , curLn
   , sizeB
@@ -83,17 +84,16 @@ import Yi.Undo
 import Yi.Style
 import Yi.Debug
 import Yi.Dynamic
+import Yi.Window
 import Control.Applicative
 import Control.Monad.RWS
 import Data.List (elemIndex)
 
 
--- In addition to FastBuffer, this manages (among others):
+-- In addition to Buffer's text, this manages (among others):
 --  * Log of updates mades
 --  * Undo
 data BufferMode = ReadOnly | ReadWrite
-
-type BufferRef = Int
 
 data FBuffer =
         FBuffer { name   :: !String               -- ^ immutable buffer name
@@ -105,9 +105,8 @@ data FBuffer =
                 , bufferDynamic :: !DynamicValues -- ^ dynamic components
                 , preferCol :: !(Maybe Int)       -- ^ prefered column to arrive at when we do a lineDown / lineUp
                 ,pendingUpdates :: [Update]       -- ^ updates that haven't been synched in the UI yet
-
-
                 }
+
 
 rawbufA :: Accessor (FBuffer) (BufferImpl)
 rawbufA = Accessor rawbuf (\f e -> e {rawbuf = f (rawbuf e)})
@@ -129,8 +128,8 @@ pendingUpdatesA = Accessor pendingUpdates (\f e -> e {pendingUpdates = f (pendin
 
 
 -- | The BufferM monad writes the updates performed.
-newtype BufferM a = BufferM { fromBufferM :: RWS () [Update] FBuffer a }
-    deriving (Monad, Functor, MonadWriter [Update], MonadState FBuffer)
+newtype BufferM a = BufferM { fromBufferM :: RWS Window [Update] FBuffer a }
+    deriving (Monad, Functor, MonadWriter [Update], MonadState FBuffer, MonadReader Window)
 
 instance Applicative BufferM where
     pure = return
@@ -188,11 +187,17 @@ queryAndModify = getsAndModifyA rawbufA
 addOverlayB :: Point -> Point -> Style -> BufferM ()
 addOverlayB s e sty = modifyBuffer $ addOverlayBI s e sty
 
--- | Execute a @BufferM@ value on a given buffer.  The new state of
+-- | Execute a @BufferM@ value on a given buffer and window.  The new state of
 -- the buffer is returned alongside the result of the computation.
-runBuffer :: FBuffer -> BufferM a -> (a, FBuffer)
-runBuffer b f = let (a, b0, updates) = runRWS (fromBufferM f) () b
+runBuffer :: Window -> FBuffer -> BufferM a -> (a, FBuffer)
+runBuffer w b f = let (a, b0, updates) = runRWS (fromBufferM f) w b
                 in (a, modifier pendingUpdatesA (++ updates) b0)
+
+-- | Execute a @BufferM@ value on a given buffer, using a dummy window.  The new state of
+-- the buffer is returned alongside the result of the computation.
+runBufferDummyWindow :: FBuffer -> BufferM a -> (a, FBuffer)
+runBufferDummyWindow b = runBuffer (dummyWindow $ bkey b) b
+
 
 -- | Commit a buffer content to disk. Error is raised if no file name is associated with the buffer.
 hPutB :: FBuffer -> IO FBuffer

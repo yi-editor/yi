@@ -13,6 +13,7 @@ import Yi.Accessor
 import Yi.Editor
 import Yi.Debug
 import Yi.Buffer
+import Yi.Window
 import Data.List
 import Control.Monad.Reader
 import Yi.WindowSet as WS

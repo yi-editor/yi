@@ -15,9 +15,9 @@ import Yi.Style                 ( uiStyle, UIStyle )
 
 import Yi.Debug
 import Yi.Monad
-import Yi.Buffer.Implementation
 import Yi.Accessor
 import Yi.Dynamic
+import Yi.Window
 import Yi.WindowSet
 
 import Prelude hiding (error)
@@ -28,25 +28,6 @@ import qualified Data.Map as M
 import Control.Monad.State
 import Control.Monad.Writer
 
-------------------------------------------------------------------------
--- | A window onto a buffer.
-
-data Window = Window {
-                      isMini :: !Bool   -- ^ regular or mini window?
-                     ,bufkey :: !BufferRef -- ^ the buffer this window opens to
-                     ,tospnt :: !Int    -- ^ the buffer point of the top of screen
-                     ,bospnt :: !Int    -- ^ the buffer point of the bottom of screen
-                     ,height :: !Int    -- ^ height of the window (in number of lines displayed)
-                     }
--- | Get the identification of a window.
-winkey :: Window -> (Bool, BufferRef)
-winkey w = (isMini w, bufkey w)
-
-instance Show Window where
-    show Window { bufkey = u } = "Window to " ++ show u
-
-pointInWindow :: Point -> Window -> Bool
-pointInWindow point win = tospnt win <= point && point <= bospnt win
 
 -- | The Editor state
 data Editor = Editor {
@@ -88,7 +69,7 @@ windowsA = Accessor windows (\f e -> e {windows = f (windows e)})
 emptyEditor :: Editor
 emptyEditor = Editor {
         buffers      = M.singleton (bkey buf) buf
-       ,windows      = new (Window False (bkey buf) 0 0 0)
+       ,windows      = new (dummyWindow $ bkey buf)
        ,bufferStack  = [bkey buf]
        ,bufferRefSupply = 1
        ,windowfill   = ' '
@@ -174,16 +155,21 @@ shiftBuffer shift = gets $ \e ->
 
 -- | Perform action with any given buffer    
 withGivenBuffer0 :: BufferRef -> BufferM a -> EditorM a
-withGivenBuffer0 k f = getsAndModify $ \e -> 
+withGivenBuffer0 k f = withGivenBufferAndWindow0 (dummyWindow k) k f
+
+-- | Perform action with any given buffer    
+withGivenBufferAndWindow0 :: Window -> BufferRef -> BufferM a -> EditorM a
+withGivenBufferAndWindow0 w k f = getsAndModify $ \e -> 
                         let b = findBufferWith k e
-                            (v, b') = runBuffer b f 
+                            (v, b') = runBuffer w b f 
                         in (e {buffers = M.adjust (const b') k (buffers e)},v)
+
 
 -- | Perform action with current window's buffer
 withBuffer0 :: BufferM a -> EditorM a
 withBuffer0 f = do 
-  b <- getBuffer
-  withGivenBuffer0 b f
+  w <- getA (currentA .> windowsA)
+  withGivenBufferAndWindow0 w (bufkey w) f
                                                 
 -- | Return the current buffer
 getBuffer :: EditorM BufferRef

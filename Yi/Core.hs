@@ -93,6 +93,7 @@ import Prelude hiding (error, sequence_, mapM_, elem, concat)
 import Yi.Debug
 import Yi.Undo
 import Yi.Buffer
+import Yi.Window
 import Yi.Buffer.HighLevel
 import Yi.Dynamic
 import Yi.String
