@@ -46,7 +46,7 @@ module Yi.Interact
      option,
      oneOf,
      processOneEvent,
-     ambiguousActions,
+     possibleActions,
      event,
      events,
      satisfy,
@@ -236,8 +236,8 @@ pullWrites p = ([], p)
 
 -- | Return the list of possible actions to write.
 -- 'Nothing' indicates a read.
-ambiguousActions :: P event w -> [Maybe w]
-ambiguousActions = nubBy equiv' . helper
+possibleActions :: P event w -> [Maybe w]
+possibleActions = nubBy equiv' . helper
     where helper (Get _) = [Nothing]
           helper (Write _ w _) = [Just w]
           helper (Best p q) = helper p ++ helper q

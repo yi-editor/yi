@@ -243,17 +243,17 @@ dispatch ev =
                  I.Fail -> freshP -- TODO: output error message about unhandled input
                  _ -> p0
            (actions, p') = I.processOneEvent p ev
-           possibilities = I.ambiguousActions p'
+           possibilities = I.possibleActions p' 
            ambiguous = not (null possibilities) && all isJust possibilities
        logPutStrLn $ "Processing: " ++ show ev
        logPutStrLn $ "Actions posted:" ++ show actions
        logPutStrLn $ "New automation: " ++ show p'
-       logPutStrLn $ "Ambact: " ++ show (I.ambiguousActions p')
        -- TODO: if no action is posted, accumulate the input and give feedback to the user.
        postActions actions
        when ambiguous $
-            postActions [makeAction $ msgE "Keymap was in an ambiguous state!"]
-       modifiesRef bufferKeymaps (M.insert b bkm { bufferKeymapProcess = p' })
+            postActions [makeAction $ msgE "Keymap was in an ambiguous state! Resetting it."]
+       modifiesRef bufferKeymaps (M.insert b bkm { bufferKeymapProcess = if ambiguous then freshP
+                                                                         else p'})
 
 
 changeKeymapE :: Keymap -> YiM ()
