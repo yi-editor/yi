@@ -55,6 +55,7 @@ nickToName x = case BS.map toLower x of
             "nominolo"              -> "Thomas Schilling"
             "shae"                  -> "Shae Erisson"
             "sjw"                   -> "Simon Winwood"
+            "tactics40"             -> "Michael Maloney"
             "vintermann"            -> "Harald Korneliussen"
             "vivian.mcphail"        -> "Vivian McPhail"
             "zapf"                  -> "Bastiaan Zapf"
