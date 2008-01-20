@@ -79,5 +79,5 @@ other-modules:
   Yi.Syntax.Cabal
   Yi.Syntax.Cplusplus
 extensions:     CPP, ForeignFunctionInterface
-ghc-options:    -Wall -fglasgow-exts -O
+ghc-options:    -Wall -fglasgow-exts
 }
