@@ -23,6 +23,7 @@ import Yi.Keymap.Emacs.Utils
   ( atomic
   , withMinibuffer
   , scrollDownE
+  , scrollUpE
   , readArgC
   , isearchProcess
   , Process
@@ -97,6 +98,7 @@ keys =
   , ( "C-t",      atomic $ repeatingArg $ swapB)
   , ( "C-u",               readArgC)
   , ( "C-v",      atomic $ scrollDownE)
+  , ( "M-v",      atomic $ scrollUpE)
   , ( "C-w",      atomic $ killRegionE)
   , ( "C-z",      atomic $ suspendE)
   , ( "C-x ^",    atomic $ repeatingArg enlargeWinE)

@@ -26,6 +26,7 @@ module Yi.Keymap.Emacs.Utils
   , readArgC
   , gotoLineE
   , scrollDownE
+  , scrollUpE
   , switchBufferE
   , killBufferE
   , insertSelf
@@ -51,6 +52,7 @@ import Data.Char
   )
 import Data.List
   ( isPrefixOf
+  , nub
   )
 import Data.Maybe
   ( fromMaybe )
@@ -298,10 +300,11 @@ completeBufferName s = do
   completeInList s (isPrefixOf s) (map name bs)
 
 completeFileName :: Maybe String -> String -> YiM String
-completeFileName start s0 = do
-  curDir <- case start of Nothing -> do bufferPath <- withBuffer getfileB
-                                        liftIO $ getFolder bufferPath
-                          (Just path) -> return path
+completeFileName start s0 = do  
+  curDir <- case start of 
+            Nothing -> do bufferPath <- withBuffer getfileB
+                          liftIO $ getFolder bufferPath
+            (Just path) -> return path
   homeDir <- lift $ getHomeDirectory
   let s = if (['~',pathSeparator] `isPrefixOf` s0) then addTrailingPathSeparator homeDir ++ drop 2 s0 else s0
       sDir = if hasTrailingPathSeparator s then s else takeDirectory s
@@ -312,7 +315,8 @@ completeFileName start s0 = do
                        isDir <- doesDirectoryExist (searchDir </> f)
                        return $ if isDir then addTrailingPathSeparator f else f
   files <- lift $ getDirectoryContents searchDir
-  fs <- lift $ mapM fixTrailingPathSeparator files
+  let files' = files \\ [".", ".."]
+  fs <- lift $ mapM fixTrailingPathSeparator files'
   completeInList s (isPrefixOf s) $ map (sDir </>) fs
 
 completeFunctionName :: String -> YiM String
@@ -361,6 +365,12 @@ scrollDownE = withUnivArg $ \a -> withBuffer $
               case a of
                  Nothing -> downScreenE
                  Just n -> replicateM_ n lineDown
+
+scrollUpE :: YiM ()
+scrollUpE = withUnivArg $ \a -> 
+              case a of 
+                 Nothing -> upScreenE
+                 Just n -> withBuffer $ replicateM_ n lineUp
 
 switchBufferE :: YiM ()
 switchBufferE = withMinibuffer "switch to buffer:" completeBufferName switchToBufferWithNameE

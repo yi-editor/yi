@@ -23,6 +23,7 @@ data UIStyle =
        , selected         :: !Style    -- ^ the selected portion
        , eof              :: !Style    -- ^ empty file marker colours
      } 
+    deriving (Eq, Show, Ord)
 
 data Color
     = RGB {-# UNPACK #-} !Word8 !Word8 !Word8
