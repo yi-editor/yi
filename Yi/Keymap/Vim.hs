@@ -111,21 +111,19 @@ count = option Nothing (some (satisfy isDigit) >>= return . Just . read)
 -- /operator/ commands (like d).
 --
 
-cmd_move :: VimProc (YiM ()) 
--- FIXME: This returns a general YiM action; however this makes sense only for buffer-only commands.
--- this can yield downFromTosE however. (does not really make a lot of sense...)
+cmd_move :: VimProc (BufferM ()) 
 cmd_move = do 
   cnt <- count
   let x = maybe 1 id cnt
   choice ([event c >> return (a x) | (c,a) <- moveCmdFM] ++
-          [do event c; c' <- anyEvent; return (withBuffer (a x c')) | (c,a) <- move2CmdFM]) <|>
-   (do event 'G'; return $ withBuffer $ case cnt of 
+          [do event c; c' <- anyEvent; return (a x c') | (c,a) <- move2CmdFM]) <|>
+   (do event 'G'; return $ case cnt of 
                             Nothing -> botB >> moveToSol
                             Just n  -> gotoLn n >> return ()) <|>
-   (do events "gg"; return $ withBuffer $ gotoLn 0 >> return ())
+   (do events "gg"; return $ gotoLn 0 >> return ())
 
 -- | movement commands
-moveCmdFM :: [(Char, Int -> YiM ())]
+moveCmdFM :: [(Char, Int -> BufferM ())]
 moveCmdFM = 
 -- left/right
     [('h',          left)
@@ -137,10 +135,10 @@ moveCmdFM =
     ,(' ',          right)
     ,(keyHome,      sol)
     ,('0',          sol)
-    ,('^',          const $ withBuffer firstNonSpaceB)
+    ,('^',          const firstNonSpaceB)
     ,('$',          eol)
     ,(keyEnd,       eol)
-    ,('|',          \i -> withBuffer (moveToSol >> moveXorEol (i-1)))
+    ,('|',          \i -> moveToSol >> moveXorEol (i-1))
 
 -- up/down
     ,('k',          up)
@@ -153,27 +151,27 @@ moveCmdFM =
     ,('\r',         down)
 
 -- words
-    ,('w',          \i -> withBuffer $ replicateM_ i $ moveBeginB ViWord Forward)
-    ,('b',          \i -> withBuffer $ replicateM_ i $ execB Move ViWord Backward)
-    ,('e',          \i -> withBuffer $ replicateM_ i $ moveEndB ViWord)
+    ,('w',          \i -> replicateM_ i $ moveBeginB ViWord Forward)
+    ,('b',          \i -> replicateM_ i $ execB Move ViWord Backward)
+    ,('e',          \i -> replicateM_ i $ moveEndB ViWord)
 
 -- text
-    ,('{',          withBuffer . prevNParagraphs)
-    ,('}',          withBuffer . nextNParagraphs)
+    ,('{',          prevNParagraphs)
+    ,('}',          nextNParagraphs)
 
 -- misc
-    ,('H',          \i -> withBuffer $ downFromTosE (i - 1))
-    ,('M',          withBuffer . const middleE)
-    ,('L',          \i -> withBuffer $ upFromBosE (i - 1))
+    ,('H',          \i -> downFromTosE (i - 1))
+    ,('M',          const middleE)
+    ,('L',          \i -> upFromBosE (i - 1))
 
     ]
     where
-        left  i = withBuffer $ moveXorSol i
-        right i = withBuffer $ moveXorEol i
-        up    i = withBuffer $ lineMoveRel (-i) >> return ()
-        down  i = withBuffer $ lineMoveRel i    >> return ()
-        sol   _ = withBuffer moveToSol
-        eol   _ = withBuffer moveToEol
+        left  = moveXorSol
+        right = moveXorEol
+        up    i = lineMoveRel (-i) >> return ()
+        down  i = lineMoveRel i    >> return ()
+        sol   _ = moveToSol
+        eol   _ = moveToEol
 
 --  | more movement commands. these ones are paramaterised by a character
 -- to find in the buffer.
@@ -286,13 +284,13 @@ cmd_op = do
                      firstNonSpaceB
 
         -- | operator (i.e. movement-parameterised) actions
-        opCmdFM :: [(Char,Int -> YiM () -> YiM ())]
+        opCmdFM :: [(Char,Int -> BufferM () -> YiM ())]
         opCmdFM =
-            [('d', \i m -> replicateM_ i $ do
+            [('d', \i m -> withBuffer $ replicateM_ i $ do
                               r <- withPointMove m
-                              withBuffer $ deleteRegionB r
+                              deleteRegionB r
              ),
-             ('y', \_ m -> do r <- withPointMove m
+             ('y', \_ m -> do r <- withBuffer $ withPointMove m
                               s <- withBuffer $ readRegionB r
                               setRegE s -- ToDo registers not global.
              )]
@@ -300,10 +298,10 @@ cmd_op = do
         -- | Save the current point, move to some location specified
         -- by the @m@, then return.  Return the region between current
         -- and remote point.
-        withPointMove :: YiM () -> YiM Region
-        withPointMove m = do p <- withBuffer pointB
+        withPointMove :: BufferM () -> BufferM Region
+        withPointMove m = do p <- pointB
                              m
-                             q <- withBuffer pointB
+                             q <- pointB
                              return $ mkRegion p q
 
 -- | Switching to another mode from visual mode.
