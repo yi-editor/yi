@@ -72,6 +72,7 @@ module Yi.Buffer
   , savingPointB
   , pendingUpdatesA
   , revertPendingUpdatesB
+  , askWindow
   )
 where
 
@@ -496,3 +497,9 @@ savingPointB f = savingPrefCol $ do
   res <- f
   moveTo p
   return res
+
+-------------
+-- Window
+
+askWindow :: (Window -> a) -> BufferM a
+askWindow = asks

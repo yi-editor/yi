@@ -162,9 +162,9 @@ moveCmdFM =
     ,('}',          withBuffer . nextNParagraphs)
 
 -- misc
-    ,('H',          \i -> downFromTosE (i - 1))
-    ,('M',          const middleE)
-    ,('L',          \i -> upFromBosE (i - 1))
+    ,('H',          \i -> withBuffer $ downFromTosE (i - 1))
+    ,('M',          withBuffer . const middleE)
+    ,('L',          \i -> withBuffer $ upFromBosE (i - 1))
 
     ]
     where
@@ -212,8 +212,8 @@ anyButEscOrDel = satisfy (not . (`elem` ('\ESC':delete')))
 -- | cmd mode commands
 singleCmdFM :: [(Char, Int -> YiM ())]
 singleCmdFM =
-    [('\^B',    upScreensE)             -- vim does (firstNonSpaceB;moveXorSol)
-    ,('\^F',    downScreensE)
+    [('\^B',    withBuffer . upScreensE)             -- vim does (firstNonSpaceB;moveXorSol)
+    ,('\^F',    withBuffer . downScreensE)
     ,('\^G',    const viFileInfo)        -- hmm. not working. duh. we clear
     ,('\^L',    const refreshE)
     ,('\^R',    withBuffer . flip replicateM_ redoB)
@@ -241,8 +241,8 @@ singleCmdFM =
 
     ,('P',      (const $ do txt <- getRegE; withBuffer (insertN txt >> leftB)))
 
-    ,(keyPPage, upScreensE)
-    ,(keyNPage, downScreensE)
+    ,(keyPPage, withBuffer . upScreensE)
+    ,(keyNPage, withBuffer . downScreensE)
     ,(keyLeft,  withBuffer . moveXorSol)
     ,(keyRight, withBuffer . moveXorEol)
     ,('*',      const $ searchCurrentWord)

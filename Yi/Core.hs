@@ -257,7 +257,7 @@ dispatch ev =
        logPutStrLn $ "New automation: " ++ show p'
        logPutStrLn $ "Ambact: " ++ show (I.ambiguousActions p')
        postActions actions
-       when (not $ null $ I.ambiguousActions p') $ 
+       when (not $ null $ filter isJust $ I.ambiguousActions p') $ 
             postActions [makeAction $ msgE "Keymap is in an ambiguous state!"]
        modifiesRef bufferKeymaps (M.insert b bkm { bufferKeymapProcess = p' })
 
@@ -324,43 +324,47 @@ suspendE = withUI UI.suspend
 ------------------------------------------------------------------------
 
 -- | Scroll up 1 screen
-upScreenE :: YiM ()
+upScreenE :: BufferM ()
 upScreenE = upScreensE 1
 
+-- TODO: add a direction parameter instead of duplicating code.
 -- | Scroll up n screens
-upScreensE :: Int -> YiM ()
-upScreensE n = withEditor $ withWindowAndBuffer $ \w -> do
-                 gotoLnFrom (- (n * (height w - 1)))
-                 moveToSol
+upScreensE :: Int -> BufferM ()
+upScreensE n = do
+  h <- askWindow height
+  gotoLnFrom (- (n * (h - 1)))
+  moveToSol
 
 -- | Scroll down 1 screen
-downScreenE :: YiM ()
+downScreenE :: BufferM ()
 downScreenE = downScreensE 1
 
 -- | Scroll down n screens
-downScreensE :: Int -> YiM ()
-downScreensE n = withEditor $ withWindowAndBuffer $ \w -> do
-                   gotoLnFrom (n * (height w - 1))
-                   return ()
+downScreensE :: Int -> BufferM ()
+downScreensE n = do
+  h <- askWindow height
+  gotoLnFrom (n * (h - 1))
+  moveToSol
 
 -- | Move to @n@ lines down from top of screen
-downFromTosE :: Int -> YiM ()
-downFromTosE n = withEditor $ withWindowAndBuffer $ \w -> do
-                   moveTo (tospnt w)
-                   replicateM_ n lineDown
+downFromTosE :: Int -> BufferM ()
+downFromTosE n = do
+  moveTo =<< askWindow tospnt
+  replicateM_ n lineDown
 
 -- | Move to @n@ lines up from the bottom of the screen
-upFromBosE :: Int -> YiM ()
-upFromBosE n = withEditor $ withWindowAndBuffer $ \w -> do
-                   moveTo (bospnt w)
-                   moveToSol
-                   replicateM_ n lineUp
+upFromBosE :: Int -> BufferM ()
+upFromBosE n = do
+  moveTo =<< askWindow bospnt
+  moveToSol
+  replicateM_ n lineUp
 
 -- | Move to middle line in screen
-middleE :: YiM ()
-middleE = withEditor $ withWindowAndBuffer $ \w -> do
-                   moveTo (tospnt w)
-                   replicateM_ (height w `div` 2) lineDown
+middleE :: BufferM ()
+middleE = do
+  w <- askWindow id
+  moveTo (tospnt w)
+  replicateM_ (height w `div` 2) lineDown
 
 
 -- ---------------------------------------------------------------------

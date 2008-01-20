@@ -452,10 +452,10 @@ withMinibuffer prompt completer act = do
   spawnMinibufferE (prompt ++ " ") (rebind rebindings) (return ())
 
 scrollDownE :: YiM ()
-scrollDownE = withUnivArg $ \a ->
+scrollDownE = withUnivArg $ \a -> withBuffer $ 
               case a of
                  Nothing -> downScreenE
-                 Just n -> withBuffer $ replicateM_ n lineDown
+                 Just n -> replicateM_ n lineDown
 
 switchBufferE :: YiM ()
 switchBufferE = withMinibuffer "switch to buffer:" completeBufferName switchToBufferWithNameE
