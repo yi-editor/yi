@@ -11,20 +11,15 @@ module Yi.TextCompletion (
 import Yi.Completion
 import Yi.Buffer 
 import Text.Regex
-import Yi.Dynamic
 import Data.Char
 import Data.Typeable
 import Data.List
 import qualified Data.Map as M
 
-import Control.Monad        ( when, replicateM_ )
 import Control.Applicative
-import Control.Monad.Fix    ( fix )
 import Control.Exception    ( assert )
 import Yi.Buffer.Normal
-import Yi.Buffer.HighLevel
 import Yi.Buffer.Region
-import Yi.String
 import Yi.Core
 
 -- ---------------------------------------------------------------------
