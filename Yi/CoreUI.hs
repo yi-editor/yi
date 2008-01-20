@@ -12,7 +12,6 @@ import Prelude hiding (error)
 import Yi.Accessor
 import Yi.Editor
 import Yi.Debug
-import Yi.Buffer
 import Yi.Window
 import Data.List
 import Control.Monad.Reader
@@ -33,6 +32,7 @@ prevWinE = modifyWindows WS.backward
 modifyWindows :: (WindowSet Window -> WindowSet Window) -> EditorM ()
 modifyWindows f = do
   b <- getsAndModifyA windowsA $ \ws -> let ws' = f ws in (ws', bufkey $ WS.current ws')
+  -- TODO: push this fiddling with current buffer into windowsA
   setBuffer b
   return ()
 
@@ -42,17 +42,11 @@ withWindows = getsA windowsA
 withWindow :: (Window -> a) -> EditorM a
 withWindow f = getsA (WS.currentA .> windowsA) f
 
-withWindowAndBuffer :: (Window -> BufferM a) -> EditorM a
-withWindowAndBuffer f = do
-  w <- getA (WS.currentA .> windowsA)
-  withBuffer0 (f w)
-
 -- | Split the current window, opening a second window onto current buffer.
 splitE :: EditorM ()
 splitE = do 
   b <- getBuffer
-  let w = Window False b 0 0 0
-  modifyWindows (WS.add w)
+  modifyWindows (WS.add $ dummyWindow b)
 
 
 -- | Enlarge the current window
