@@ -18,20 +18,10 @@ module Yi.CharMove (
     ) where
 
 import Yi.Buffer 
-import Text.Regex
-import Yi.Dynamic
 import Data.Char
-import Data.Typeable
-import qualified Data.Map as M
-
-import Control.Monad        ( when, replicateM_ )
-import Control.Applicative
+import Control.Monad        ( when )
 import Control.Monad.Fix    ( fix )
-import Control.Exception    ( assert )
-import Yi.Buffer.Normal
 import Yi.Buffer.HighLevel
-import Yi.Buffer.Region
-import Yi.String
 
 
 -- | Shift the point, until predicate is true, leaving point at final
