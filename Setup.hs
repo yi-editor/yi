@@ -10,10 +10,11 @@ import Distribution.Simple
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Program
 import Distribution.Simple.Setup
-import System.Directory
+import System.Directory hiding (copyFile)
 import System.FilePath
 import System.IO
 import Distribution.Simple.Utils (copyFileVerbose)
+import Distribution.Verbosity (Verbosity)
 
 main :: IO ()
 main = defaultMainWithHooks defaultUserHooks
@@ -38,6 +39,13 @@ bHook pd lbi hooks flags = do
                             mkOpt ("YI_PKG_OPTS", show pkgOpts)])] })])
       pd' = updatePackageDescription pbi pd
   buildHook defaultUserHooks pd' lbi hooks flags
+  -- Copy compiled files to avoid duplicated precompilation
+  curdir <- getCurrentDirectory
+  let rel = map . makeRelative
+      buildDir = curdir </> "dist" </> "build"
+      yiBuildDir = buildDir </> "yi" </> "yi-tmp"
+  compiledFiles <- rel yiBuildDir <$> unixFindExt (yiBuildDir </> "Yi") [".hi",".o"]
+  mapM_ (copyFile verbosity yiBuildDir buildDir) compiledFiles
   mapM_ (precompile pd' lbi verbosity flags) precompiles
 
 dependencyName :: Dependency -> String
@@ -75,17 +83,20 @@ install pd lbi hooks flags = do
   print targetFiles
   let InstallDirs {datadir = dataPref} = absoluteInstallDirs pd lbi NoCopyDest
       verbosity = installVerbose flags
-      copyFile :: FilePath -> FilePath -> FilePath -> IO ()
-      copyFile srcDir dstDir file = do
-                               let destination = dstDir </> file
-                               createDirectoryIfMissing True (dropFileName destination)
-                               copyFileVerbose verbosity (srcDir </> file) destination
   -- NOTE: It's important that source files are copied before target files,
   -- otherwise GHC (via Yi) thinks it has to recompile them when Yi is started.
 
-  mapM_ (copyFile curdir dataPref) sourceFiles
-  mapM_ (copyFile buildDir dataPref) targetFiles
+  mapM_ (copyFile verbosity curdir dataPref) sourceFiles
+  mapM_ (copyFile verbosity buildDir dataPref) targetFiles
   instHook defaultUserHooks pd lbi hooks flags
+
+
+copyFile :: Verbosity -> FilePath -> FilePath -> FilePath -> IO ()
+copyFile verbosity srcDir dstDir file = do
+                         let destination = dstDir </> file
+                         createDirectoryIfMissing True (dropFileName destination)
+                         copyFileVerbose verbosity (srcDir </> file) destination
+
 
 unixFindExt :: FilePath -> [String] -> IO [FilePath]
 unixFindExt dir exts = filter ((`elem` exts) . takeExtension) <$> unixFind dir
