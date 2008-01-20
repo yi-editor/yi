@@ -55,15 +55,6 @@ module Yi.Core (
         nextBufW,       -- :: YiM ()
         prevBufW,       -- :: YiM ()
 
-        -- * Window-based movement
-        upScreenE,      -- :: YiM ()
-        upScreensE,     -- :: Int -> YiM ()
-        downScreenE,    -- :: YiM ()
-        downScreensE,   -- :: Int -> YiM ()
-        downFromTosE,   -- :: Int -> YiM ()
-        upFromBosE,     -- :: Int -> YiM ()
-        middleE,        -- :: YiM ()
-
         -- * Buffer editing
         revertE,        -- :: YiM ()
 
@@ -124,7 +115,7 @@ import Data.Foldable
 import System.Directory     ( doesFileExist, doesDirectoryExist )
 import System.FilePath      
 
-import Control.Monad (when, forever, replicateM_)
+import Control.Monad (when, forever)
 import Control.Monad.Reader (runReaderT, ask)
 import Control.Monad.Trans
 import Control.Monad.State (gets, modify)
@@ -322,50 +313,6 @@ suspendE :: YiM ()
 suspendE = withUI UI.suspend
 
 ------------------------------------------------------------------------
-
--- | Scroll up 1 screen
-upScreenE :: BufferM ()
-upScreenE = upScreensE 1
-
--- TODO: add a direction parameter instead of duplicating code.
--- | Scroll up n screens
-upScreensE :: Int -> BufferM ()
-upScreensE n = do
-  h <- askWindow height
-  gotoLnFrom (- (n * (h - 1)))
-  moveToSol
-
--- | Scroll down 1 screen
-downScreenE :: BufferM ()
-downScreenE = downScreensE 1
-
--- | Scroll down n screens
-downScreensE :: Int -> BufferM ()
-downScreensE n = do
-  h <- askWindow height
-  gotoLnFrom (n * (h - 1))
-  moveToSol
-
--- | Move to @n@ lines down from top of screen
-downFromTosE :: Int -> BufferM ()
-downFromTosE n = do
-  moveTo =<< askWindow tospnt
-  replicateM_ n lineDown
-
--- | Move to @n@ lines up from the bottom of the screen
-upFromBosE :: Int -> BufferM ()
-upFromBosE n = do
-  moveTo =<< askWindow bospnt
-  moveToSol
-  replicateM_ n lineUp
-
--- | Move to middle line in screen
-middleE :: BufferM ()
-middleE = do
-  w <- askWindow id
-  moveTo (tospnt w)
-  replicateM_ (height w `div` 2) lineDown
-
 
 -- ---------------------------------------------------------------------
 -- Window based operations

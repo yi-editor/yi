@@ -16,7 +16,7 @@ module Yi.Keymap.Emacs
 where
 
 import Yi.Yi
-
+import Yi.TextCompletion
 import Yi.Keymap.Emacs.KillRing
 import Yi.Keymap.Emacs.UnivArgument
 import Yi.Keymap.Emacs.Utils

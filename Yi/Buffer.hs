@@ -503,3 +503,5 @@ savingPointB f = savingPrefCol $ do
 
 askWindow :: (Window -> a) -> BufferM a
 askWindow = asks
+
+

@@ -1,10 +1,13 @@
-
+-- Copyright (C) 2008 JP Bernardy
 module Yi.Buffer.HighLevel where
 
+import Data.Char
+import Yi.String
 import Yi.Buffer
 import Yi.Buffer.Normal
+import Yi.Buffer.Region
+import Yi.Window
 import Control.Monad.State
-
 -- ---------------------------------------------------------------------
 -- Movement operations
 
@@ -32,6 +35,25 @@ moveXorSol x = replicateM_ x $ do c <- atSol; when (not c) leftB
 moveXorEol :: Int -> BufferM ()
 moveXorEol x = replicateM_ x $ do c <- atEol; when (not c) rightB
 
+-- | Move to first char of next word forwards
+nextWordB :: BufferM ()
+nextWordB = execB Move Word Forward
+
+-- | Move to first char of next word backwards
+prevWordB :: BufferM ()
+prevWordB = execB Move Word Backward
+
+------------
+
+-- | Move down next @n@ paragraphs
+nextNParagraphs :: Int -> BufferM ()
+nextNParagraphs n = replicateM_ n $ execB Move Paragraph Forward
+
+-- | Move up prev @n@ paragraphs
+prevNParagraphs :: Int -> BufferM ()
+prevNParagraphs n = replicateM_ n $ execB Move Paragraph Backward 
+
+
 -----------------------------------------------------------------------
 -- Queries
 
@@ -58,9 +80,47 @@ getLineAndCol = do
   colNo  <- offsetFromSol
   return (lineNo, colNo)
 
+-- | Read the line the point is on
+readLnB :: BufferM String
+readLnB = readUnitB Line
+
+-- | Read from point to end of line
+readRestOfLnB :: BufferM String
+readRestOfLnB = readRegionB =<< regionOfPartB Line Forward
+
+--------------------------
+-- Deletes
+
+-- | Delete one character backward
+bdeleteB :: BufferM ()
+bdeleteB = execB Delete Character Backward
+
+-- | Delete forward whitespace or non-whitespace depending on
+-- the character under point.
+killWordB :: BufferM ()
+killWordB = execB Delete Word Forward
+
+-- | Delete backward whitespace or non-whitespace depending on
+-- the character before point.
+bkillWordB :: BufferM ()
+bkillWordB = execB Delete Word Backward
+
 
 ----------------------------------------
 -- Transform operations
+
+-- | capitalise the word under the cursor
+uppercaseWordB :: BufferM ()
+uppercaseWordB = execB (Transform (map toUpper)) Word Forward
+
+-- | lowerise word under the cursor
+lowercaseWordB :: BufferM ()
+lowercaseWordB = execB (Transform (map toLower)) Word Forward
+
+-- | capitalise the first letter of this word
+capitaliseWordB :: BufferM ()
+capitaliseWordB = execB (Transform capitalizeFirst) Word Forward
+
 
 -- | Delete to the end of line, excluding it.
 deleteToEol :: BufferM ()
@@ -129,4 +189,50 @@ bufInfoB = do
 				 , bufInfoModified = not m
 				 }
     return bufInfo
+
+-----------------------------
+-- Window-related operations
+
+-- | Scroll up 1 screen
+upScreenE :: BufferM ()
+upScreenE = upScreensE 1
+
+-- TODO: add a direction parameter instead of duplicating code.
+-- | Scroll up n screens
+upScreensE :: Int -> BufferM ()
+upScreensE n = do
+  h <- askWindow height
+  gotoLnFrom (- (n * (h - 1)))
+  moveToSol
+
+-- | Scroll down 1 screen
+downScreenE :: BufferM ()
+downScreenE = downScreensE 1
+
+-- | Scroll down n screens
+downScreensE :: Int -> BufferM ()
+downScreensE n = do
+  h <- askWindow height
+  gotoLnFrom (n * (h - 1))
+  moveToSol
+
+-- | Move to @n@ lines down from top of screen
+downFromTosE :: Int -> BufferM ()
+downFromTosE n = do
+  moveTo =<< askWindow tospnt
+  replicateM_ n lineDown
+
+-- | Move to @n@ lines up from the bottom of the screen
+upFromBosE :: Int -> BufferM ()
+upFromBosE n = do
+  moveTo =<< askWindow bospnt
+  moveToSol
+  replicateM_ n lineUp
+
+-- | Move to middle line in screen
+middleE :: BufferM ()
+middleE = do
+  w <- askWindow id
+  moveTo (tospnt w)
+  replicateM_ (height w `div` 2) lineDown
 

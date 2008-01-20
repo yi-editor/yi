@@ -13,9 +13,6 @@ module Yi.Keymap.Emacs.Utils
   ( Process
   , KList
   , makeProcess
-  , completeWordB
-  , completeInList
-
   , changeBufferNameE
   , rebind
   , withMinibuffer
@@ -53,7 +50,6 @@ import Data.Char
   )
 import Data.List
   ( isPrefixOf
-  , nub
   )
 import Data.Maybe
   ( fromMaybe )
@@ -89,6 +85,7 @@ import Yi.Buffer
 import Yi.Process
 import Yi.Editor
 import Yi.History
+import Yi.Completion
 import Yi.Templates
   ( addTemplate
   , templateNames
@@ -106,99 +103,6 @@ type KList = [(String, Process)]
 -- | Create a binding processor from 'kmap'.
 makeProcess :: KList -> KProc ()
 makeProcess kmap = choice [events (readKey k) >> a | (k,a) <- kmap]
-
--------------------------------------------
--- General completion
--------------------------------------------
-commonPrefix :: [String] -> String
-commonPrefix [] = []
-commonPrefix strings
-    | any null strings = []
-    | all (== prefix) heads = prefix : commonPrefix tailz
-    | otherwise = []
-    where
-          (heads, tailz) = unzip [(h,t) | (h:t) <- strings]
-          prefix = head heads
--- for an alternative implementation see GHC's InteractiveUI module.
-
-completeInList :: String -> (String -> Bool) -> [ String ] -> YiM String
-completeInList s condition l
-    | null filtered = msgE "No match" >> return s
-    | prefix /= s = return prefix
-    | isSingleton filtered = msgE "Sole completion" >> return s
-    | prefix `elem` filtered = msgE ("Complete, but not unique: " ++ show filtered) >> return s
-    | otherwise = msgE ("Matches: " ++ show filtered) >> return s
-    where
-    prefix   = commonPrefix filtered
-    filtered = nub $ filter condition l
-
-    -- Not really necessary but a bit faster than @(length l) == 1@
-    isSingleton :: [ a ] -> Bool
-    isSingleton [_] = True
-    isSingleton _   = False
-
-----------------------------
--- Alternative Word Completion
-
-{-
-  'completeWordB' is an alternative to 'Yi.CharMove.wordCompleteB'.
-  Currently the main reason for this extra function is that the
-  aforementioned is rather buggy, two problems I currently have with
-  it is that it occasionally remembers the previous word it was completing
-  before and completes that rather than the current one. More seriously
-  it occasionally crashes yi by going into an infinite loop.
-
-  In the longer term assuming that 'Yi.CharMove.wordCompleteB' is fixed
-  (which I would love) then 'completeWordB' offers a slightly different
-  interface. The user completes the word using the mini-buffer in the
-  same way a user completes a buffer or file name when switching buffers
-  or opening a file. This means that it never guesses and completes
-  only as much as it can without guessing.
-
-  I think there is room for both approaches. The 'wordCompleteB' approach
-  which just guesses the completion from a list of possible completion
-  and then re-hitting the key-binding will cause it to guess again.
-  I think this is very nice for things such as completing a word within
-  a TeX-buffer. However using the mini-buffer might be nicer when we allow
-  syntax knowledge to allow completion for example we may complete from
-  a Hoogle database.
--}
-completeWordB :: YiM ()
-completeWordB = veryQuickCompleteWord
-
-
-{-
-  This is a very quick and dirty way to complete the current word.
-  It works in a similar way to the completion of words in the mini-buffer
-  it uses the message buffer to give simple feedback such as,
-  "Matches:" and "Complete, but not unique:"
-
-  It is by no means perfect but it's also not bad, pretty usable.
--}
-veryQuickCompleteWord :: YiM ()
-veryQuickCompleteWord =
-  do (curWord, curWords) <- withBuffer wordsAndCurrentWord
-     let condition :: String -> Bool
-         condition x   = (isPrefixOf curWord x) && (x /= curWord)
-
-     preText             <- completeInList curWord condition curWords
-     if curWord == ""
-        then msgE "No word to complete"
-        else withBuffer $ insertN $ drop (length curWord) preText
-
-wordsAndCurrentWord :: BufferM (String, [ String ])
-wordsAndCurrentWord =
-  do curSize          <- sizeB
-     curText          <- readRegionB $ mkRegion 0 curSize
-     curWord          <- readRegionB =<< regionOfPartB Word Backward
-     let curWords     = words curText
-     return (curWord, curWords)
-
-{-
-  Finally obviously we wish to have a much more sophisticated completeword.
-  One which spawns a mini-buffer and allows searching in Hoogle databases
-  or in other files etc.
--}
 
 ---------------------------
 -- Changing the buffer name quite useful if you have

@@ -25,7 +25,7 @@ import Yi.Debug
 import Yi.Indent
 
 import Yi.Keymap.Emacs.Utils (completeFileName,completeBufferName)
-
+import Yi.TextCompletion
 
 --
 -- What's missing?
