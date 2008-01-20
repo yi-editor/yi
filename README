@@ -48,6 +48,11 @@ DEPENDENCIES
 QUICK START:
 
 * configure, compile and install yi as you would do for any other Cabal package
+  NOTE: if you get 
+
+    Setup.hs: Package yi-0.3 can't be built on this system.
+
+  it means that you have no UI package available. See DEPENDENCIES.
 
 * copy examples/YiConfig.hs to ~/.yi/ and taylor to your needs
 
@@ -95,9 +100,11 @@ Drop the --as=... when you have defined your YiConfig.hs
 
 PORTABILITY
 
-Yi is developed on Linux, and should be easily ported to FreeBSD and
-OpenBSD. Running Gtk fronted to MS Windows should be possible.
-Vty frontend should work on OSX.
+Yi is developed on Linux.
+FreeBSD and OpenBSD: should be ok.
+OS X: Vty Ok, Gtk should work; you can also help us debug the Cocoa frontend.
+MS Windows: you can try Gtk frontend.
+
 
 A porting checklist:
         * you have a working GHCi
