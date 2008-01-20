@@ -8,7 +8,9 @@
 -- | ByteStrings stored in a finger tree.
 module Yi.FingerString (
   FingerString,
-  fromString, toString, fromByteString, toByteString, rebalance,
+  fromString, fromByteString, fromLazyByteString,
+  toString, toByteString, toLazyByteString,
+  rebalance,
   null, head, tail, empty, take, drop, append, splitAt, count, length,
   elemIndices, findSubstring, findSubstrings, elemIndexEnd, elemIndicesEnd
 ) where
@@ -18,12 +20,13 @@ import qualified Data.List as L
 
 import qualified Data.ByteString.Char8 as B
 import Data.ByteString (ByteString)
+import qualified Data.ByteString.Lazy.Char8 as LB
 
 import qualified Data.FingerTree as T
 import Data.FingerTree hiding (null, empty)
 
 import Data.Monoid
-import Data.Foldable (foldl)
+import Data.Foldable (toList)
 import Data.Maybe (listToMaybe)
 
 chunkSize :: Int
@@ -48,28 +51,37 @@ instance Monoid Size where
 instance Measured Size ByteString where
   measure = Size . B.length
 
--- | Convert into a ByteString.
+toLazyByteString :: FingerString -> LB.ByteString
+toLazyByteString = LB.fromChunks . toList . unFingerString
+
 toByteString :: FingerString -> ByteString
-toByteString = foldl B.append B.empty . unFingerString
+toByteString = B.concat . toList . unFingerString
 
--- | Convert from a ByteString.
-fromByteString :: ByteString -> FingerString
-fromByteString = FingerString . treeFromByteString
-  where
-    treeFromByteString b | B.null b = T.empty
-    treeFromByteString b = let (h,t) = B.splitAt chunkSize b in h <| treeFromByteString t
-
--- | Convert into a standard String.
 toString :: FingerString -> String
-toString = B.unpack . toByteString
+toString = LB.unpack . toLazyByteString
 
--- | Convert from a standard String.
+fromLazyByteString :: LB.ByteString -> FingerString
+fromLazyByteString = FingerString . toTree
+  where
+    toTree b | LB.null b = T.empty
+    toTree b = let (h,t) = LB.splitAt (fromIntegral chunkSize) b in 
+               (B.concat $ LB.toChunks h) <| toTree t
+
+fromByteString :: ByteString -> FingerString
+fromByteString = FingerString . toTree
+  where
+    toTree b | B.null b = T.empty
+    toTree b = let (h,t) = B.splitAt chunkSize b in h <| toTree t
+
 fromString :: String -> FingerString
-fromString = fromByteString . B.pack
+fromString = FingerString . toTree
+  where
+    toTree [] = T.empty
+    toTree b = let (h,t) = L.splitAt chunkSize b in B.pack h <| toTree t
 
 -- | Optimize the tree, to contain equally sized substrings
 rebalance :: FingerString -> FingerString
-rebalance = fromByteString . toByteString
+rebalance = fromLazyByteString . toLazyByteString
 
 null :: FingerString -> Bool
 null (FingerString a) = T.null a
@@ -119,12 +131,11 @@ splitAt n (FingerString t) =
 
 -- | Count the number of occurrences of the specified character.
 count :: Char -> FingerString -> Int
-count x = foldl counter 0 . unFingerString
-  where counter c = (c +) . (B.count x)
+count x = fromIntegral . LB.count x . toLazyByteString
 
 -- | Get the last index of the specified character
 elemIndexEnd :: Char -> FingerString -> Maybe Int
-elemIndexEnd x t = listToMaybe $ elemIndicesEnd x t
+elemIndexEnd x = listToMaybe . elemIndicesEnd x
 
 -- | Get all indices of the specified character, in reverse order.
 -- This function has good lazy behaviour: taking the head of the resulting list is O(1)
@@ -139,16 +150,11 @@ elemIndicesEnd x = treeEIE . unFingerString
 -- | Get all indices of the specified character
 -- This function has good lazy behaviour: taking the head of the resulting list is O(1)
 elemIndices :: Char -> FingerString -> [Int]
-elemIndices x = treeEI . unFingerString
-  where
-    treeEI :: FingerTree Size ByteString -> [Int]
-    treeEI t = case T.viewl t of
-      s :< r -> B.elemIndices x s ++ fmap (B.length s +) (treeEI r)
-      EmptyL -> []
+elemIndices x = map fromIntegral . LB.elemIndices x . toLazyByteString
 
 -- | Determine the first index of the ByteString in the buffer.
 findSubstring :: ByteString -> FingerString -> Maybe Int
-findSubstring x m = listToMaybe (findSubstrings x m)
+findSubstring x = listToMaybe . findSubstrings x
 
 -- | Determine the indices of the given ByteString in the buffer.
 findSubstrings :: ByteString -> FingerString -> [Int]
@@ -156,10 +162,4 @@ findSubstrings x m = [i | i <- elemIndices (B.head x) m, x `isPrefixOf` drop i m
 
 -- | Determine whether the ByteString is a prefix of the buffer.
 isPrefixOf :: ByteString -> FingerString -> Bool
-isPrefixOf x = treeIPO x . unFingerString
-  where
-    treeIPO :: ByteString -> FingerTree Size ByteString -> Bool
-    treeIPO x' t = case T.viewl t of
-      s :< r -> x' `B.isPrefixOf` s ||
-        (s `B.isPrefixOf` x' && treeIPO (B.drop (B.length s) x') r)
-      EmptyL -> False
+isPrefixOf x = LB.isPrefixOf (LB.fromChunks [x]) . toLazyByteString
