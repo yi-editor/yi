@@ -52,7 +52,7 @@ import Data.Char
   )
 import Data.List
   ( isPrefixOf
-  , nub
+  , (\\)
   )
 import Data.Maybe
   ( fromMaybe )
@@ -367,10 +367,10 @@ scrollDownE = withUnivArg $ \a -> withBuffer $
                  Just n -> replicateM_ n lineDown
 
 scrollUpE :: YiM ()
-scrollUpE = withUnivArg $ \a -> 
+scrollUpE = withUnivArg $ \a -> withBuffer $
               case a of 
                  Nothing -> upScreenE
-                 Just n -> withBuffer $ replicateM_ n lineUp
+                 Just n -> replicateM_ n lineUp
 
 switchBufferE :: YiM ()
 switchBufferE = withMinibuffer "switch to buffer:" completeBufferName switchToBufferWithNameE
