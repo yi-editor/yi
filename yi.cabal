@@ -1,6 +1,6 @@
 name:           yi
 version:        0.3
-Cabal-Version:  >= 1.2.1
+Cabal-Version:  == 1.2.3.0
 category:       Editor
 synopsis:       The Haskell-Scriptable Editor
 description:

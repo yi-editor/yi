@@ -124,6 +124,8 @@ clean:
 	rm -f $(cabal_config) .installed-pkg-config ./setup `find . -name '*.hi' -o -name '*.o'`
 
 version ?= $(strip $(shell cat *.cabal | egrep -i '^version:' | sed -e 's/[^:]*://'))
+cabal-version ?= $(strip $(shell cat *.cabal | egrep -i '^cabal-version:.[ \t]*==' | sed -e 's/[^=]*==//'))
+
 
 show-version:
 	@echo $(version)
@@ -135,7 +137,7 @@ show-build-args:
 	@echo $(build-args)
 
 setup: Setup.*hs 
-	$(ghc) -Wall --make Setup.*hs -o setup
+	$(ghc) -Wall --make -package Cabal-$(cabal-version) Setup.*hs -o setup
 
 # setup with my own (Windows-friendly) preferences.  You'll probably want
 # to use "make setup; ./setup configure" instead.  I've avoided using
