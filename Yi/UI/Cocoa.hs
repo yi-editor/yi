@@ -14,8 +14,8 @@ import Prelude hiding (init, error, sequence_, elem, mapM_, mapM, concatMap)
 
 import Yi.Buffer
 import Yi.Buffer.HighLevel
-import Yi.Editor (Window, Editor, EditorM, withGivenBuffer0, findBufferWith, statusLine, buffers)
-import qualified Yi.Editor as Common
+import Yi.Editor (Editor, EditorM, withGivenBuffer0, findBufferWith, statusLine, buffers)
+import qualified Yi.Editor as Editor
 import Yi.Event
 import Yi.Debug
 import Yi.Buffer.Implementation
@@ -23,6 +23,8 @@ import Yi.Monad
 import Yi.Style hiding (modeline)
 import qualified Yi.UI.Common as Common
 import qualified Yi.WindowSet as WS
+import qualified Yi.Window as Window
+import Yi.Window (Window)
 import Paths_yi (getDataFileName)
 
 import Control.Concurrent (threadDelay)
@@ -374,9 +376,9 @@ end = _YiApplication # sharedApplication >>= terminate_ nil
 
 syncWindows :: Editor -> UI -> [(Window, Bool)] -> [WinInfo] -> IO [WinInfo]
 syncWindows e ui (wfocused@(w,focused):ws) (c:cs) 
-    | Common.winkey w == winkey c = do when focused (setFocus c)
+    | Window.winkey w == winkey c = do when focused (setFocus c)
                                        return (c:) `ap` syncWindows e ui ws cs
-    | Common.winkey w `elem` map winkey cs = removeWindow ui c >> syncWindows e ui (wfocused:ws) cs
+    | Window.winkey w `elem` map winkey cs = removeWindow ui c >> syncWindows e ui (wfocused:ws) cs
     | otherwise = do c' <- insertWindowBefore e ui w c
                      when focused (setFocus c')
                      return (c':) `ap` syncWindows e ui ws (c:cs)
@@ -469,15 +471,15 @@ insertWindowAtEnd e i w = insertWindow e i w
 
 insertWindow :: Editor -> UI -> Window -> IO WinInfo
 insertWindow e i win = do
-  let buf = findBufferWith (Common.bufkey win) e
-  liftIO $ newWindow i (Common.isMini win) buf
+  let buf = findBufferWith (Window.bufkey win) e
+  liftIO $ newWindow i (Window.isMini win) buf
 
 groupOn :: Eq a => (b -> a) -> [b] -> [[b]]
 groupOn f = groupBy (\x y -> f x == f y)
 
 refresh :: UI -> Editor -> IO ()
 refresh ui e = logNSException "refresh" $ do
-    let ws = Common.windows e
+    let ws = Editor.windows e
     let takeEllipsis s = if length s > 132 then take 129 s ++ "..." else s
     (uiCmdLine ui) # setStringValue (toNSString (takeEllipsis (statusLine e)))
 
@@ -504,17 +506,17 @@ refresh ui e = logNSException "refresh" $ do
 
     forM_ cache' $ \w -> 
         do let buf = findBufferWith (bufkey w) e
-           let (p0, _) = runBuffer buf pointB
-           let (p1, _) = runBuffer buf (getSelectionMarkB >>= getMarkPointB)
+           let (p0, _) = runBufferDummyWindow buf pointB
+           let (p1, _) = runBufferDummyWindow buf (getSelectionMarkB >>= getMarkPointB)
            (textview w) # setSelectedRange (NSRange (toEnum $ min p0 p1) (toEnum $ abs $ p1-p0))
            (textview w) # scrollRangeToVisible (NSRange (toEnum p0) 0)
-           let (txt, _) = runBuffer buf getModeLine 
+           let (txt, _) = runBufferDummyWindow buf getModeLine 
            (modeline w) # setStringValue (toNSString txt)
 
 
 replaceTagsIn :: forall t. Point -> Point -> FBuffer -> NSTextStorage t -> IO ()
 replaceTagsIn from to buf storage = do
-  let (styleSpans, _) = runBuffer buf (styleRangesB (to - from) from)
+  let (styleSpans, _) = runBufferDummyWindow buf (styleRangesB (to - from) from)
   forM_ (zip styleSpans (drop 1 styleSpans)) $ \((l,Style fg bg),(r,_)) -> do
     logPutStrLn $ "Setting style " ++ show fg ++ show bg ++ " on " ++ show l ++ " - " ++ show r
     fg' <- color True fg
@@ -564,13 +566,13 @@ prepareAction _ui = return (return ())
 --                     return (l1 - l0)
 --    modifyMVar (windows ui) $ \ws -> do 
 --        let (ws', _) = runState (mapM distribute ws) heights
---        return (ws', setBuffer (Common.bufkey $ WS.current ws') >> return ())
+--        return (ws', setBuffer (Window.bufkey $ WS.current ws') >> return ())
 --
 --distribute :: Window -> State [Int] Window
 --distribute win = do
 --  h <- gets head
 --  modify tail
---  return win {Common.height = h}
+--  return win {Window.height = h}
 
 getTextStorage :: UI -> FBuffer -> IO (NSTextStorage ())
 getTextStorage ui b = do
@@ -585,7 +587,7 @@ getTextStorage ui b = do
 newTextStorage :: UI -> FBuffer -> IO (NSTextStorage ())
 newTextStorage _ui b = do
   buf <- new _NSTextStorage
-  let (txt, _) = runBuffer b (revertPendingUpdatesB >> elemsB)
+  let (txt, _) = runBufferDummyWindow b (revertPendingUpdatesB >> elemsB)
   buf # mutableString >>= setString (toNSString txt)
   buf # setMonospaceFont
   replaceTagsIn 0 (length txt) b buf
