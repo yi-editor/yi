@@ -65,7 +65,7 @@ keys :: KList
 keys =
   [ ( "TAB",      atomic $ autoIndentB)
   , ( "RET",      atomic $ repeatingArg $ insertB '\n')
-  , ( "DEL",      atomic $ repeatingArg deleteB)
+  , ( "DEL",      atomic $ repeatingArg $ deleteN 1)
   , ( "BACKSP",   atomic $ repeatingArg bdeleteB)
   , ( "C-M-w",    atomic $ appendNextKillE)
   , ( "C-/",      atomic $ repeatingArg undoB)
@@ -78,7 +78,7 @@ keys =
   , ( "C-SPC",    atomic $ (pointB >>= setSelectionMarkPointB))
   , ( "C-a",      atomic $ repeatingArg (execB MaybeMove Line Backward))
   , ( "C-b",      atomic $ repeatingArg leftB)
-  , ( "C-d",      atomic $ repeatingArg deleteB)
+  , ( "C-d",      atomic $ repeatingArg $ deleteN 1)
   , ( "C-e",      atomic $ repeatingArg (execB MaybeMove Line Forward))
   , ( "C-f",      atomic $ repeatingArg rightB)
   , ( "C-g",      atomic $ unsetMarkB)

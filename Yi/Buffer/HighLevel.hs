@@ -93,17 +93,17 @@ readRestOfLnB = readRegionB =<< regionOfPartB Line Forward
 
 -- | Delete one character backward
 bdeleteB :: BufferM ()
-bdeleteB = execB Delete Character Backward
+bdeleteB = deleteB Character Backward
 
 -- | Delete forward whitespace or non-whitespace depending on
 -- the character under point.
 killWordB :: BufferM ()
-killWordB = execB Delete Word Forward
+killWordB = deleteB Word Forward
 
 -- | Delete backward whitespace or non-whitespace depending on
 -- the character before point.
 bkillWordB :: BufferM ()
-bkillWordB = execB Delete Word Backward
+bkillWordB = deleteB Word Backward
 
 
 ----------------------------------------

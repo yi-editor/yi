@@ -13,6 +13,7 @@ module Yi.Buffer.Normal (execB, TextUnit(..), Operation(..),
                          untilB,
                          atBoundaryB,
                          numberOfB,
+                         deleteB,
                          moveEndB, moveBeginB) where
 
 import Yi.Buffer
@@ -35,7 +36,6 @@ data TextUnit = Character
 
 data Operation = Move       -- ^ move the next unit boundary
                | MaybeMove  -- ^ as the above, unless the point is at a unit boundary
-               | Delete     -- ^ delete between point and next unit boundary
                | Transpose
                | Transform (String -> String)
 
@@ -161,11 +161,6 @@ execB Move unit direction = do
 execB MaybeMove unit direction = do
   untilB_ (atBoundary unit direction) (execB Move Character direction)
 -- TODO: save in the kill ring.
-execB Delete unit direction = do
-  p <- pointB
-  execB Move unit direction
-  q <- pointB
-  deleteRegionB $ mkRegion p q
 
 execB Transpose unit direction = do
   execB Move unit (opposite direction)
@@ -185,6 +180,15 @@ execB (Transform f) unit direction = do
   q <- pointB
   let r = mkRegion p q
   replaceRegionB r =<< f <$> readRegionB r
+
+-- | delete between point and next unit boundary, return the deleted region
+deleteB :: TextUnit -> Direction -> BufferM ()
+deleteB unit direction = do
+  p <- pointB
+  execB Move unit direction
+  q <- pointB
+  deleteRegionB $ mkRegion p q      
+  
 
 
 indexAfterB :: BufferM a -> BufferM Point

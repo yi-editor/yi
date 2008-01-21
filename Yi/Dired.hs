@@ -298,7 +298,7 @@ diredMarkDel = diredMarkWithChar 'D' lineDown
 diredMarkWithChar :: Char -> BufferM () -> BufferM ()
 diredMarkWithChar c mv = do
     p <- pointB
-    moveToSol >> insertN [c] >> deleteB
+    moveToSol >> insertN [c] >> deleteN 1
     moveTo p
     mv
 

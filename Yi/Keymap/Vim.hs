@@ -217,7 +217,7 @@ singleCmdFM =
     ,('\^R',    withBuffer . flip replicateM_ redoB)
     ,('\^Z',    const suspendE)
     ,('D',      const (withBuffer readRestOfLnB >>= setRegE >> withBuffer deleteToEol))
-    ,('J',      const (withBuffer (moveToEol >> deleteB)))    -- the "\n"
+    ,('J',      const (withBuffer (moveToEol >> deleteN 1)))    -- the "\n"
     ,('U',      withBuffer . flip replicateM_ undoB)    -- NB not correct
     ,('n',      const $ do getRegexE >>=
                                msgE . ("/" ++) . fst . fromMaybe ([],undefined)
@@ -279,7 +279,7 @@ cmd_op = do
     where
         -- | Used to implement the 'dd' command.
         delCurLine :: BufferM ()
-        delCurLine = moveToSol >> deleteToEol >> deleteB >> 
+        delCurLine = moveToSol >> deleteToEol >> deleteN 1 >> 
                      atEof >>= flip when lineUp >> 
                      firstNonSpaceB
 
@@ -419,7 +419,7 @@ ins_mov_char = choice [event keyPPage >> write upScreenE,
 -- with delete.
 --
 ins_char :: VimMode
-ins_char = choice [satisfy isDel  >> write (do s <- atSof; unless s (leftB >> deleteB)),
+ins_char = choice [satisfy isDel  >> write (deleteB Character Backward),
                    event '\t'     >> write insertTabB] 
            <|> ins_mov_char
            <|| do c <- anyEvent; write (insertB c)

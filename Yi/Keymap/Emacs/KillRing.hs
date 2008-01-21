@@ -79,7 +79,7 @@ killRestOfLineE =
        when eol $
             do c <- withBuffer readB
                killringPut [c]
-               withBuffer deleteB
+               withBuffer (deleteN 1)
 
 -- | C-y
 yankE :: YiM ()
