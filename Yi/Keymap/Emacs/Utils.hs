@@ -80,7 +80,7 @@ import System.Directory
 {- External Library Module Imports -}
 {- Local (yi) module imports -}
 import Yi.Yi
-
+import Yi.Accessor
 import Yi.Keymap.Emacs.KillRing
 import Yi.Keymap.Emacs.UnivArgument
 import Yi.Keymap.Emacs.Keys
@@ -175,13 +175,13 @@ executeExtendedCommandE = do
 
 evalRegionE :: YiM ()
 evalRegionE = do
-  withBuffer (getRegionB >>= readRegionB) >>= evalE
+  withBuffer (getSelectRegionB >>= readRegionB) >>= evalE
 
 -- | Define an atomic interactive command.
 -- Purose is to define "transactional" boundaries for killring, undo, etc.
 atomic :: (Show x, YiAction a x) => a -> KProc ()
 atomic cmd = write $ do runAction (makeAction cmd)
-                        killringEndCmd
+                        withEditor $ modifyA killringA krEndCmd
 
 -- * Code for various commands
 -- This ideally should be put in their own module,

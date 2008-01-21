@@ -1,8 +1,4 @@
-{-# OPTIONS -fglasgow-exts #-}
---
--- Copyright (c) 2005 Jean-Philippe Bernardy
---
---
+-- Copyright (c) 2005,8 Jean-Philippe Bernardy
 
 module Yi.Keymap.Emacs.KillRing where
 
@@ -13,7 +9,8 @@ import Yi.Keymap
 import Yi.Buffer
 import Yi.Buffer.HighLevel
 import Data.Dynamic
-
+import Yi.Accessor
+import Yi.Editor
 import Control.Monad ( when, replicateM_ )
 
 -- * Killring structure
@@ -22,7 +19,6 @@ data Killring = Killring { krKilled :: Bool
                          , krAccumulate :: Bool
                          , krContents :: [String]
                          , krLastYank :: Bool
-                         , krYanked :: Bool
                          }
     deriving (Typeable, Show)
 
@@ -31,49 +27,34 @@ instance Initializable Killring where
                        , krAccumulate = False
                        , krContents = [[]]
                        , krLastYank = False
-                       , krYanked = False
                        }
 
 -- * Killring "ADT"
 
-killringMaxDepth :: Int
-killringMaxDepth = 10
+killringA :: Accessor Editor Killring
+killringA = dynamicValueA .> dynamicA
+
+maxDepth :: Int
+maxDepth = 10
 
 -- | Finish an atomic command, for the purpose of killring accumulation.
-killringEndCmd :: YiM ()
-killringEndCmd = do kr@Killring {krKilled = killed} <- getDynamic
-                    setDynamic $ kr {krKilled = False, krAccumulate = killed }
+krEndCmd :: Killring -> Killring
+krEndCmd kr@Killring {krKilled = killed} = kr {krKilled = False, krAccumulate = killed }
 
 -- | Put some text in the killring.
 -- It's accumulated if the last command was a kill too
-killringPut :: String -> YiM ()
-killringPut s = do kr@Killring {krContents = r@(x:xs), krAccumulate=acc} <- getDynamic
-                   setDynamic $ kr {krKilled = True,
-                                    krContents =
-                                        if acc then (x++s):xs
-                                               else s:take killringMaxDepth r }
-
--- | Return the killring contents as a list. Head is most recent.
-killringGet :: YiM [String]
-killringGet = do Killring {krContents = r} <- getDynamic
-                 return r
-
-killringModify :: (Killring -> Killring) -> YiM ()
-killringModify f = do
-                   kr <- getDynamic
-                   setDynamic $ f kr
+krPut :: String -> Killring -> Killring
+krPut s kr@Killring {krContents = r@(x:xs), krAccumulate=acc}
+    = kr {krKilled = True,
+          krContents = if acc then (x++s):xs
+                              else s:take maxDepth r }
+krPut _ _ = error "killring invariant violated"
 
 -- * Killring actions
 
--- | Get the current region boundaries
-getRegionB :: BufferM Region
-getRegionB = do m <- getSelectionMarkPointB
-                p <- pointB
-                return $ mkRegion m p
-
--- | C-w
+--- | C-w
 killRegionE :: YiM ()
-killRegionE = do r <- withBuffer getRegionB
+killRegionE = do r <- withBuffer getSelectRegionB
                  text <- withBuffer $ readRegionB r
                  killringPut text
                  withBuffer unsetMarkB
@@ -84,6 +65,9 @@ killLineE :: YiM ()
 killLineE = withUnivArg $ \a -> case a of
                Nothing -> killRestOfLineE
                Just n -> replicateM_ (2*n) killRestOfLineE
+
+killringPut :: String -> YiM ()
+killringPut s = withEditor $ modifyA killringA $ krPut s
 
 -- | Kill the rest of line
 killRestOfLineE :: YiM ()
@@ -99,7 +83,7 @@ killRestOfLineE =
 
 -- | C-y
 yankE :: YiM ()
-yankE = do (text:_) <- killringGet
+yankE = do (text:_) <- withEditor $ getsA killringA krContents
            --kr@(Killring _ _ _) <- getDynamic undefined
            --let text = show kr
            withBuffer $ do pointB >>= setSelectionMarkPointB
@@ -108,19 +92,20 @@ yankE = do (text:_) <- killringGet
 
 -- | M-w
 killRingSaveE :: YiM ()
-killRingSaveE = do text <- withBuffer (readRegionB =<< getRegionB)
+killRingSaveE = do text <- withBuffer (readRegionB =<< getSelectRegionB)
                    killringPut text
                    withBuffer unsetMarkB
 -- | M-y
 
 -- TODO: Handle argument, verify last command was a yank
 yankPopE :: YiM ()
-yankPopE = do r <- withBuffer getRegionB
+yankPopE = do r <- withBuffer getSelectRegionB
               withBuffer $ deleteRegionB r
-              kr@Killring {krContents = ring} <- getDynamic
-              setDynamic $ kr {krContents = tail ring ++ [head ring]}
+              withEditor $ modifyA killringA $ \kr -> 
+                  let ring = krContents kr 
+                  in kr {krContents = tail ring ++ [head ring]}
               yankE
 
 -- | C-M-w
 appendNextKillE :: YiM ()
-appendNextKillE = killringModify (\kr -> kr {krKilled=True})
+appendNextKillE = withEditor $ modifyA killringA (\kr -> kr {krKilled=True})

@@ -1,7 +1,8 @@
 -- This module defines the Region ADT
 
 module Yi.Buffer.Region (Region, mkRegion, mkVimRegion, regionStart, regionEnd,
-                         swapRegionsB, deleteRegionB, replaceRegionB, readRegionB, mapRegionB) where
+                         swapRegionsB, deleteRegionB, replaceRegionB, readRegionB, mapRegionB,
+                         getSelectRegionB) where
 
 import Yi.Buffer
 
@@ -50,3 +51,9 @@ swapRegionsB r r'
                      replaceRegionB r' w0
                      replaceRegionB r  w1
                      
+-- | Get the current region boundaries
+getSelectRegionB :: BufferM Region
+getSelectRegionB = do 
+  m <- getMarkPointB =<< getSelectionMarkB
+  p <- pointB
+  return $ mkRegion m p
