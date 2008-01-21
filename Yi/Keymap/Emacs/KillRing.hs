@@ -82,13 +82,11 @@ killRestOfLineE =
                withBuffer (deleteN 1)
 
 -- | C-y
-yankE :: YiM ()
-yankE = do (text:_) <- withEditor $ getsA killringA krContents
-           --kr@(Killring _ _ _) <- getDynamic undefined
-           --let text = show kr
-           withBuffer $ do pointB >>= setSelectionMarkPointB
-                           insertN text
-                           unsetMarkB
+yankE :: EditorM ()
+yankE = do (text:_) <- getsA killringA krContents
+           withBuffer0 $ do pointB >>= setSelectionMarkPointB
+                            insertN text
+                            unsetMarkB
 
 -- | M-w
 killRingSaveE :: YiM ()
@@ -98,10 +96,9 @@ killRingSaveE = do text <- withBuffer (readRegionB =<< getSelectRegionB)
 -- | M-y
 
 -- TODO: Handle argument, verify last command was a yank
-yankPopE :: YiM ()
-yankPopE = do r <- withBuffer getSelectRegionB
-              withBuffer $ deleteRegionB r
-              withEditor $ modifyA killringA $ \kr -> 
+yankPopE :: EditorM ()
+yankPopE = do withBuffer0 (deleteRegionB =<< getSelectRegionB)
+              modifyA killringA $ \kr -> 
                   let ring = krContents kr 
                   in kr {krContents = tail ring ++ [head ring]}
               yankE
