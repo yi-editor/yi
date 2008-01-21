@@ -36,7 +36,6 @@ import Yi.Keymap.Emacs.Utils
   , completeFileName
   , switchBufferE
   , evalRegionE
-  , gotoLineE
   , killBufferE
   , shellCommandE
   , queryReplaceE
@@ -117,7 +116,7 @@ keys =
   , ( "C-x d",    atomic $ loadE "Yi.Dired" >> execE "Yi.Dired.diredE")
   , ( "C-x e e",  atomic $ evalRegionE)
   , ( "C-x o",    atomic $ nextWinE)
-  , ( "C-x l",    atomic $ gotoLineE)
+  , ( "C-x l",    atomic $ gotoLn)
   , ( "C-x k",    atomic $ killBufferE)
   -- , ( "C-x r k",  atomic $ killRectE)
   -- , ( "C-x r o",  atomic $ openRectE)
