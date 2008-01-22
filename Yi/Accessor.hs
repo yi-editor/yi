@@ -2,7 +2,7 @@
 --
 
 
--- * A module for "rich" accesssors.
+-- | A module for "rich" accesssors.
 
 module Yi.Accessor where
 import Control.Monad.State

@@ -2,7 +2,7 @@
 -- Copyright (C) 2008 JP Bernardy
 --
 
--- * A normalized API to many buffer operations.
+-- | A normalized API to many buffer operations.
 
 -- The idea is that most operations should be parametric in both
 --  * the textual units they work on
@@ -32,7 +32,7 @@ data TextUnit = Character
               | Document
               | GenUnit {genEnclosingUnit :: TextUnit,
                          genUnitBoundary :: Direction -> BufferM Bool}
-   -- | Page | Searched
+   -- (haddock, stay away) | Page | Searched
 
 data Operation = Move       -- ^ move the next unit boundary
                | MaybeMove  -- ^ as the above, unless the point is at a unit boundary

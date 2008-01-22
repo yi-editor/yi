@@ -18,26 +18,12 @@ import Distribution.Verbosity (Verbosity)
 
 main :: IO ()
 main = defaultMainWithHooks defaultUserHooks
-       { buildHook = bHook, instHook = install }
-
-mkOpt :: (String, String) -> String
-mkOpt (name,def) = "-D" ++ name ++ "=" ++ def
+       { buildHook = bHook, instHook = install, haddockHook = hdHook }
 
 bHook :: PackageDescription -> LocalBuildInfo -> UserHooks -> BuildFlags -> IO ()
 bHook pd lbi hooks flags = do
-  let verbosity = buildVerbose flags
-  let dataPref = mkDataDir pd lbi NoCopyDest
-      pkgOpts = concat [ ["-package", showPackageId pkg] | pkg <- packageDeps lbi ]
-      ghcOut = rawSystemProgramStdoutConf verbosity ghcProgram (withPrograms lbi)
-  print dataPref
-  libdr <- head . lines <$> ghcOut ["--print-libdir"]
-  putStrLn $ "GHC libdir = " ++ show libdr
-  let pbi = (Nothing,
-       [("yi", emptyBuildInfo
-         { options = [(GHC,[mkOpt ("GHC_LIBDIR",show libdr),
-                            mkOpt ("YI_LIBDIR", show dataPref),
-                            mkOpt ("YI_PKG_OPTS", show pkgOpts)])] })])
-      pd' = updatePackageDescription pbi pd
+  pd' <- addPackageOptions pd lbi (buildVerbose flags)
+  -- Compile main executable
   buildHook defaultUserHooks pd' lbi hooks flags
   -- Copy compiled files to avoid duplicated precompilation
   curdir <- getCurrentDirectory
@@ -45,33 +31,24 @@ bHook pd lbi hooks flags = do
       buildDir = curdir </> "dist" </> "build"
       yiBuildDir = buildDir </> "yi" </> "yi-tmp"
   compiledFiles <- rel yiBuildDir <$> unixFindExt (yiBuildDir </> "Yi") [".hi",".o"]
-  mapM_ (copyFile verbosity yiBuildDir buildDir) compiledFiles
-  mapM_ (precompile pd' lbi verbosity flags) precompiles
+  mapM_ (copyFile (buildVerbose flags) yiBuildDir buildDir) compiledFiles
+  -- Precompile loadable modules, by compiling a pseudo package
+  -- we pretend we build package main, so that GHCi
+  -- can associate the source files and the precompiled modules
+  let pd'' = pseudoLibraryPkg pd' "main" ["Yi.Main", "Yi.Dired"]
+  buildHook defaultUserHooks pd'' lbi defaultUserHooks flags
 
-dependencyName :: Dependency -> String
-dependencyName (Dependency name _) = name
-
-precompile :: PackageDescription -> LocalBuildInfo -> t -> BuildFlags -> ([String], [String]) -> IO ()
-precompile pd lbi _ bflags (moduleNames, dependencies) = when ok $ do
-  -- just pretend that we build a library with the given modules
-  putStrLn ("Precompiling " ++ show moduleNames)
-  let [Executable "yi" _ yiBuildInfo] = executables pd
-      pd' = pd {package = PackageIdentifier "main" (Version [] []),
-                          -- we pretend we build package main, so that GHCi
-                          -- can associate the source files and the precompiled modules
-                executables = [],
-                library = Just (Library {exposedModules = moduleNames,
-                                         libBuildInfo = yiBuildInfo})}
-  buildHook defaultUserHooks pd' lbi defaultUserHooks bflags -- {buildVerbose = deafening }
-     where availablePackages = map dependencyName $ buildDepends pd
-           ok = all (`elem` availablePackages) dependencies
-
-precompiles :: [([String], [String])]
-precompiles = [(["Yi.Main",
-                 "Yi.Keymap.Normal",
-                 "Yi.Keymap.Emacs",
-                 "Yi.Keymap.Vim",
-                 "Yi.Dired"], [])]
+hdHook :: PackageDescription -> LocalBuildInfo -> UserHooks -> HaddockFlags -> IO ()
+hdHook pd lbi hooks flags = do
+  pd' <- addPackageOptions pd lbi (haddockVerbose flags)
+  let pd'' = pseudoLibraryPkg pd' "yi" ["Yi.Yi"]
+  (conf,_) <- requireProgram (haddockVerbose flags) haddockProgram (orLaterVersion (Version [0,6] [])) (withPrograms lbi)
+  let Just version = programVersion conf
+  let have_src_hyperlink_flags = version >= Version [0,8] []
+  putStrLn $ "Haddock is to old?"
+  when (True && not have_src_hyperlink_flags) $
+    putStrLn $ "Haddock is to old... " ++ show (version)
+  haddockHook defaultUserHooks pd'' lbi hooks flags
 
 install :: PackageDescription -> LocalBuildInfo -> UserHooks -> InstallFlags -> IO ()
 install pd lbi hooks flags = do
@@ -90,6 +67,35 @@ install pd lbi hooks flags = do
   mapM_ (copyFile verbosity buildDir dataPref) targetFiles
   instHook defaultUserHooks pd lbi hooks flags
 
+
+mkOpt :: (String, String) -> String
+mkOpt (name,def) = "-D" ++ name ++ "=" ++ def
+
+-- Add our special package options to 
+addPackageOptions pd lbi verbosity = do
+  let dataPref = mkDataDir pd lbi NoCopyDest
+      pkgOpts = concat [ ["-package", showPackageId pkg] | pkg <- packageDeps lbi ]
+      ghcOut = rawSystemProgramStdoutConf verbosity ghcProgram (withPrograms lbi)
+  print dataPref
+  libdr <- head . lines <$> ghcOut ["--print-libdir"]
+  putStrLn $ "GHC libdir = " ++ show libdr
+  let pbi = (Nothing,
+       [("yi", emptyBuildInfo
+         { options = [(GHC,[mkOpt ("GHC_LIBDIR",show libdr),
+                            mkOpt ("YI_LIBDIR", show dataPref),
+                            mkOpt ("YI_PKG_OPTS", show pkgOpts)])] })])
+  return $ updatePackageDescription pbi pd
+
+-- just pretend that we build a library with the given modules
+pseudoLibraryPkg :: PackageDescription -> String -> [String] -> PackageDescription
+pseudoLibraryPkg pd name mods =
+  pd {package = PackageIdentifier name (Version [] []),
+      executables = [],
+      library = Just (Library {
+        exposedModules = mods,
+        libBuildInfo = yiBuildInfo{otherModules = []}})}
+
+  where [Executable "yi" _ yiBuildInfo] = executables pd
 
 copyFile :: Verbosity -> FilePath -> FilePath -> FilePath -> IO ()
 copyFile verbosity srcDir dstDir file = do
