@@ -36,6 +36,9 @@ CONTRIBUTORS: Contributors _darcs/inventory
 activity.png: _darcs/inventory
 	darcs-graph . --name=yi -o $@
 
+haddock.view: haddock
+	firefox dist/doc/html/yi/index.html
+
 dist/yi-$(version).tar.gz:
 	make sdist # does not work atm 
 
