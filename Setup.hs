@@ -26,12 +26,15 @@ bHook pd lbi hooks flags = do
   -- Compile main executable
   buildHook defaultUserHooks pd' lbi hooks flags
   -- Copy compiled files to avoid duplicated precompilation
+  -- Attn: we cannot do this after all because it does not copy the preprocessed files.
+  -- A pain.
   curdir <- getCurrentDirectory
   let rel = map . makeRelative
       buildDir = curdir </> "dist" </> "build"
       yiBuildDir = buildDir </> "yi" </> "yi-tmp"
   compiledFiles <- rel yiBuildDir <$> unixFindExt (yiBuildDir </> "Yi") [".hi",".o"]
-  mapM_ (copyFile (buildVerbose flags) yiBuildDir buildDir) compiledFiles
+  -- mapM_ (copyFile (buildVerbose flags) yiBuildDir buildDir) compiledFiles
+
   -- Precompile loadable modules, by compiling a pseudo package
   -- we pretend we build package main, so that GHCi
   -- can associate the source files and the precompiled modules
