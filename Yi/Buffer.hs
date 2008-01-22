@@ -66,7 +66,6 @@ module Yi.Buffer
   , nelemsBH
   , styleRangesB
   , Direction        ( .. )
-  , savingPrefCol
   , savingExcursionB
   , savingPointB
   , pendingUpdatesA
