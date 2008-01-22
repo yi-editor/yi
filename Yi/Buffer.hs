@@ -344,7 +344,7 @@ curLn = queryBuffer curLnI
 -- if it was out of range)
 gotoLn :: Int -> BufferM Int
 gotoLn x = do moveTo 0
-              gotoLnFrom x
+              (1 +) <$> gotoLnFrom (x - 1)
 
 ---------------------------------------------------------------------
 
