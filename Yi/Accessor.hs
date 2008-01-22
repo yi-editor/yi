@@ -11,7 +11,7 @@ import Data.Foldable
 
 -- | A way to access and modify a part of a complex structure.
 -- Categorically, an arrow from @whole@ to @part@.
-data Accessor whole part 
+data Accessor whole part
     = Accessor { getter :: whole -> part,
                  modifier :: (part -> part) -> (whole -> whole)
                }
@@ -19,18 +19,18 @@ data Accessor whole part
 -- Should be made instance of the upcoming Control.Category class as such:
 -- import qualified Prelude
 -- import Prelude hiding (id,(.))
--- 
+--
 -- instance Category (->) where
 -- 	id = Prelude.id
 -- 	(.) = (Prelude..)
--- 
+--
 -- class Category cat where
 -- 	-- | the identity morphism
 -- 	id :: cat a a
--- 
+--
 -- 	-- | morphism composition
 -- 	(.) :: cat b c -> cat a b -> cat a c
--- 
+--
 -- instance Category Accessor where
 --     id = Accessor id id
 --     (.) = (.>)
@@ -56,7 +56,7 @@ setA :: MonadState s m => Accessor s p -> p -> m ()
 setA a p = modifyA a (const p)
 
 
-allA :: forall whole part t. Traversable t => Accessor whole part -> Accessor (t whole) (t part)
+allA :: Traversable t => Accessor whole part -> Accessor (t whole) (t part)
 allA (Accessor g m) = Accessor (fmap g) modifier'
     where modifier' mapParts wholes = distribute wholes (toList $ mapParts $ fmap g wholes)
           distribute wholes parts = fst $ runState (Traversable.mapM setOne wholes) parts

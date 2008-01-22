@@ -1,4 +1,3 @@
-{-# OPTIONS -fglasgow-exts #-}
 module Yi.Keymap.Normal where
 
 import Control.Monad.State

@@ -1,8 +1,6 @@
---
+{-# OPTIONS -fglasgow-exts #-}
+
 -- Copyright (c) 2005,2007,2008 Jean-Philippe Bernardy
---
---
-{-# OPTIONS -fallow-undecidable-instances #-}
 
 {-
   This module is aimed at being a helper for the Emacs keybindings.
@@ -301,8 +299,8 @@ completeBufferName s = do
   completeInList s (isPrefixOf s) (map name bs)
 
 completeFileName :: Maybe String -> String -> YiM String
-completeFileName start s0 = do  
-  curDir <- case start of 
+completeFileName start s0 = do
+  curDir <- case start of
             Nothing -> do bufferPath <- withBuffer getfileB
                           liftIO $ getFolder bufferPath
             (Just path) -> return path
@@ -362,14 +360,14 @@ withMinibuffer prompt completer act = do
   spawnMinibufferE (prompt ++ " ") (rebind rebindings) (return ())
 
 scrollDownE :: YiM ()
-scrollDownE = withUnivArg $ \a -> withBuffer $ 
+scrollDownE = withUnivArg $ \a -> withBuffer $
               case a of
                  Nothing -> downScreenE
                  Just n -> replicateM_ n lineDown
 
 scrollUpE :: YiM ()
 scrollUpE = withUnivArg $ \a -> withBuffer $
-              case a of 
+              case a of
                  Nothing -> upScreenE
                  Just n -> replicateM_ n lineUp
 

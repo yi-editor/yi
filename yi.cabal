@@ -69,7 +69,7 @@ include-dirs:
 
 
 main-is:        Main.hs
-other-modules:  
+other-modules:
   Yi.Boot
   Yi.Debug
   Yi.Kernel
@@ -78,6 +78,6 @@ other-modules:
   Yi.Syntax.Srmc
   Yi.Syntax.Cabal
   Yi.Syntax.Cplusplus
-extensions:     CPP, ForeignFunctionInterface
-ghc-options:    -Wall -fglasgow-exts
+extensions:     CPP, ForeignFunctionInterface, UndecidableInstances, GADTs, MultiParamTypeClasses, FunctionalDependencies, FlexibleInstances, ParallelListComp, GeneralizedNewtypeDeriving, PatternGuards, MagicHash, Rank2Types, FlexibleContexts, TypeSynonymInstances, PatternSignatures, DeriveDataTypeable
+ghc-options:    -Wall
 }

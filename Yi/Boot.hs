@@ -12,7 +12,7 @@ import qualified GHC
 import qualified Packages
 import qualified DynFlags
 import qualified Module
-import qualified ObjLink 
+import qualified ObjLink
 import Outputable
 import Control.Monad
 
@@ -47,17 +47,16 @@ initialize = GHC.defaultErrorHandler DynFlags.defaultDynFlags $ do
   session <- GHC.newSession (Just ghcLibdir)
   logPutStrLn $ "Session started!"
   dflags0 <- GHC.getSessionDynFlags session
-  -- see GHC's Main.hs 
-  let dflags1 = dflags0{ GHC.ghcMode   = GHC.CompManager, 
-                  	 GHC.hscTarget = GHC.HscInterpreted,
+  -- see GHC's Main.hs
+  let dflags1 = dflags0{ GHC.ghcMode   = GHC.CompManager,
+                         GHC.hscTarget = GHC.HscInterpreted,
                          GHC.ghcLink   = GHC.LinkInMemory,
-		  	 GHC.verbosity = 1
-			}
+                         GHC.verbosity = 1
+                        }
 
   home <- getHomeDirectory
   let extraflags        = [ -- dubious: maybe YiConfig wants to use other pkgs: "-hide-all-packages"
-                            "-fglasgow-exts"
-                          , "-cpp" 
+                          "-cpp"
                           , "-i" -- clear the search directory (don't look in ./)
                           , "-i" ++ home ++ "/.yi"  -- First, we look for source files in ~/.yi
                           , "-i" ++ libdir
@@ -68,7 +67,7 @@ initialize = GHC.defaultErrorHandler DynFlags.defaultDynFlags $ do
   (dflags2, packageIds) <- Packages.initPackages dflags1'
   logPutStrLn $ "packagesIds: " ++ (showSDocDump $ ppr $ packageIds)
   GHC.setSessionDynFlags session dflags2
-  return Kernel { 
+  return Kernel {
                  getSessionDynFlags = GHC.getSessionDynFlags session,
                  setSessionDynFlags = GHC.setSessionDynFlags session,
                  compileExpr = GHC.compileExpr session,
@@ -88,13 +87,13 @@ initialize = GHC.defaultErrorHandler DynFlags.defaultDynFlags $ do
                  libraryDirectory = libdir
                 }
 
--- | Dynamically start Yi. 
+-- | Dynamically start Yi.
 startYi :: Kernel -> IO ()
 startYi kernel = GHC.defaultErrorHandler DynFlags.defaultDynFlags $ do
   t <- (guessTarget kernel) "Yi.Main" Nothing
   (setTargets kernel) [t]
   loadAllTargets kernel
-  yi <- join $ evalMono kernel ("Yi.Main.main :: Yi.Kernel.Kernel -> Prelude.IO ()") 
+  yi <- join $ evalMono kernel ("Yi.Main.main :: Yi.Kernel.Kernel -> Prelude.IO ()")
   -- coerce the interpreted expression, so we check that we are not making an horrible mistake.
   logPutStrLn "Starting Yi!"
   yi kernel
@@ -112,15 +111,15 @@ setContextAfterLoadL session = do
   GHC.setContext session [] context
   return modules
   where
-  findTarget ms t = 
+  findTarget ms t =
     case filter (`matches` t) ms of
       []    -> Nothing
       (m:_) -> Just m
 
   summary `matches` GHC.Target (GHC.TargetModule m) _
     = GHC.ms_mod_name summary == m
-  summary `matches` GHC.Target (GHC.TargetFile f _) _ 
-    | Just f' <- GHC.ml_hs_file (GHC.ms_location summary)	= f == f'
+  summary `matches` GHC.Target (GHC.TargetFile f _) _
+    | Just f' <- GHC.ml_hs_file (GHC.ms_location summary)        = f == f'
   _summary `matches` _target
     = False
 

@@ -1,3 +1,5 @@
+{-# LANGUAGE Rank2Types #-}
+
 module Yi.UI.Common where
 
 import Yi.Editor

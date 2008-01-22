@@ -1,6 +1,6 @@
--- Copyright (c) 2004-5, 7-8, 8, 8 Don Stewart - http://www.cse.unsw.edu.au/~dons
---
---
+{-# PatternGuards #-}
+
+-- Copyright (c) 2004-5, 7-8, 8, 8, 8 Don Stewart - http://www.cse.unsw.edu.au/~dons
 
 -- | 'Buffer' implementation, wrapping ByteString.
 module Yi.Buffer.Implementation
@@ -321,7 +321,7 @@ gotoLnRelI n fb = (moveToI np fb, max 1 n')
 
 -- | Return index of next string in buffer that matches argument
 searchBI :: Direction -> String -> BufferImpl -> Maybe Int
-searchBI dir s fb@(FBufferData ptr _ _ _ _) = case dir of 
+searchBI dir s fb@(FBufferData ptr _ _ _ _) = case dir of
       Forward -> fmap (+ pnt) $ F.findSubstring (B.pack s) $ F.drop pnt ptr
       Backward -> listToMaybe $ reverse $ F.findSubstrings (B.pack s) $ F.take (pnt + length s) ptr
     where pnt = pointBI fb -- pnt == current point

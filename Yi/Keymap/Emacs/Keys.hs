@@ -1,8 +1,6 @@
-{-# OPTIONS -cpp -fglasgow-exts #-}
---
--- Copyright (c) 2005 Jean-Philippe Bernardy
---
---
+{-# LANGUAGE CPP #-}
+
+-- Copyright (c) 2005, 2008 Jean-Philippe Bernardy
 
 module Yi.Keymap.Emacs.Keys (readKey, showKey, printableChars) where
 

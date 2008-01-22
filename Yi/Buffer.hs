@@ -1,4 +1,4 @@
---
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 -- Copyright (C) 2004, 2008 Don Stewart - http://www.cse.unsw.edu.au/~dons
 --
 

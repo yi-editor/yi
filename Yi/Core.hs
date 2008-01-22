@@ -1,18 +1,18 @@
+{-# LANGUAGE PatternSignatures #-}
+
 -- Copyright (c) Tuomo Valkonen 2004.
 -- Copyright (c) Don Stewart 2004-5. http://www.cse.unsw.edu.au/~dons
---
 
 --
 -- | The core actions of yi. This module is the link between the editor
 -- and the UI. Key bindings, and libraries should manipulate Yi through
 -- the interface defined here.
---
 
 module Yi.Core (
                 module Yi.Dynamic,
         -- * Keymap
         module Yi.Keymap,
-        
+
         -- * Construction and destruction
         StartConfig    ( .. ), -- Must be passed as the first argument to 'startE'
         startE,         -- :: StartConfig -> Kernel -> Maybe Editor -> [YiM ()] -> IO ()
@@ -113,7 +113,7 @@ import Data.IORef
 import Data.Foldable
 
 import System.Directory     ( doesFileExist, doesDirectoryExist )
-import System.FilePath      
+import System.FilePath
 
 import Control.Monad (when, forever)
 import Control.Monad.Reader (runReaderT, ask)
@@ -121,7 +121,7 @@ import Control.Monad.Trans
 import Control.Monad.State (gets, modify)
 import Control.Monad.Error ()
 import Control.Exception
-import Control.Concurrent 
+import Control.Concurrent
 import Control.Concurrent.Chan
 
 import qualified GHC
@@ -134,20 +134,20 @@ import Outputable
 -- | Make an action suitable for an interactive run.
 -- UI will be refreshed.
 interactive :: Action -> YiM ()
-interactive action = do 
+interactive action = do
   logPutStrLn ">>>>>>> interactively"
   prepAction <- withUI UI.prepareAction
   withEditor $ do prepAction
                   modifyAllA buffersA undosA (addUR InteractivePoint)
   runAction action
-  refreshE 
+  refreshE
   logPutStrLn "<<<<<<<"
   return ()
 
 nilKeymap :: Keymap
 nilKeymap = do c <- I.anyEvent
                write $ case eventToChar c of
-                         'q' -> quitE 
+                         'q' -> quitE
                          'r' -> reconfigE
                          'h' -> (configHelp >> return ())
                          _ -> errorE $ "Keymap not defined, type 'r' to reload config, 'q' to quit, 'h' for help."
@@ -186,7 +186,7 @@ startE startConfig kernel st commandLineActions = do
     let yi = Yi newSt ui startThreads inCh outCh startKm keymaps kernel startModules
         runYi f = runReaderT f yi
 
-    runYi $ do 
+    runYi $ do
 
       newBufferE "*messages*" "" >> return ()
 
@@ -204,22 +204,22 @@ startE startConfig kernel st commandLineActions = do
     logPutStrLn "Starting event handler"
     let
         handler e = runYi $ errorE (show e)
-        -- | The editor's input main loop. 
+        -- | The editor's input main loop.
         -- Read key strokes from the ui and dispatches them to the buffer with focus.
         eventLoop :: IO ()
         eventLoop = do
             let run = mapM_ (\ev -> runYi (dispatch ev)) =<< getChanContents inCh
             forever $ (handle handler run >> logPutStrLn "Dispatching loop ended")
-                     
 
-        -- | The editor's output main loop. 
+
+        -- | The editor's output main loop.
         execLoop :: IO ()
         execLoop = do
             runYi refreshE
             let loop = sequence_ . map runYi . map interactive =<< getChanContents outCh
             forever $ (handle handler loop >> logPutStrLn "Execing loop ended")
-      
-    t1 <- forkIO eventLoop 
+
+    t1 <- forkIO eventLoop
     t2 <- forkIO execLoop
     runYi $ modifiesRef threads (\ts -> t1 : t2 : ts)
 
@@ -243,7 +243,7 @@ dispatch ev =
                  I.Fail -> freshP -- TODO: output error message about unhandled input
                  _ -> p0
            (actions, p') = I.processOneEvent p ev
-           possibilities = I.possibleActions p' 
+           possibilities = I.possibleActions p'
            ambiguous = not (null possibilities) && all isJust possibilities
        logPutStrLn $ "Processing: " ++ show ev
        logPutStrLn $ "Actions posted:" ++ show actions
@@ -294,14 +294,14 @@ tryLoadModulesE :: [String] -> YiM [String]
 tryLoadModulesE [] = return []
 tryLoadModulesE  modules = do
   (ok, newModules) <- loadModulesE modules
-  if ok 
-    then return newModules 
-    else tryLoadModulesE (init modules) 
+  if ok
+    then return newModules
+    else tryLoadModulesE (init modules)
     -- when failed, try to drop the most recently loaded module.
     -- We do this because GHC stops trying to load modules upon the 1st failing modules.
     -- This allows to load more modules if we ever try loading a wrong module.
 
--- | (Re)compile 
+-- | (Re)compile
 reloadE :: YiM [String]
 reloadE = tryLoadModulesE =<< readsRef editorModules
 
@@ -383,20 +383,20 @@ msgE' "()" = return ()
 msgE' s = msgE s
 
 runAction :: Action -> YiM ()
-runAction (YiA act) = do 
+runAction (YiA act) = do
   act >>= msgE' . show
   return ()
-runAction (EditorA act) = do 
+runAction (EditorA act) = do
   withEditor act >>= msgE' . show
   return ()
-runAction (BufferA act) = do 
+runAction (BufferA act) = do
   withBuffer act >>= msgE' . show
   return ()
 
 
 -- | Set the cmd buffer, and draw message at bottom of screen
 msgE :: String -> YiM ()
-msgE s = do 
+msgE s = do
   withEditor $ modify $ \e -> e { statusLine = s}
   -- also show in the messages buffer, so we don't loose any message
   b <- getBufferWithName "*messages*"
@@ -461,14 +461,14 @@ fnewE f = do
     -- whether or not the file currently exists and the third argument
     -- is whether or not the file is a directory that exists.
     newBufferForPath :: String -> Bool -> Bool -> YiM BufferRef
-    newBufferForPath bufferName True _       = 
+    newBufferForPath bufferName True _       =
       fileToNewBuffer bufferName f -- Load the file into a new buffer
     newBufferForPath _bufferName False True  =
       do -- Open the dir in Dired
          loadE "Yi.Dired"
          execE $ "Yi.Dired.diredDirBufferE " ++ show f
          withEditor getBuffer
-    newBufferForPath bufferName False False  = 
+    newBufferForPath bufferName False False  =
       withEditor $ stringToNewBuffer bufferName []  -- Create new empty buffer
 
     {-
@@ -476,7 +476,7 @@ fnewE f = do
       the file. Some of these are a little questionably haskell
       relatex. For example ".x" is an alex lexer specification
       I dare say that there are other file types that use ".x"
-      as the file extension. 
+      as the file extension.
       For now though this is probably okay given the users of
       'yi' are mostly haskell hackers, as of yet.
     -}
@@ -517,7 +517,7 @@ fnewE f = do
     -- and so on.
     desiredBufferName  = takeFileName f
     bestNewName :: [ String ] -> String
-    bestNewName currentBufferNames 
+    bestNewName currentBufferNames
       | elem desiredBufferName currentBufferNames = addSuffixBName 1
       | otherwise                                 = desiredBufferName
       where
@@ -655,7 +655,7 @@ runConfig = do
   loaded <- withKernel $ \kernel -> do
               let cfgMod = mkModuleName kernel "YiConfig"
               isLoaded kernel cfgMod
-  if loaded 
+  if loaded
    then do result <- withKernel $ \kernel -> evalMono kernel "YiConfig.yiMain :: Yi.Yi.YiM ()"
            case result of
              Nothing -> errorE "Could not run YiConfig.yiMain :: Yi.Yi.YiM ()"
@@ -680,13 +680,13 @@ getNamesInScopeE = do
       names <- getNamesInScope k
       return $ map (nameToString k) rdrNames ++ map (nameToString k) names
 
-ghcErrorReporter :: Yi -> GHC.Severity -> SrcLoc.SrcSpan -> Outputable.PprStyle -> ErrUtils.Message -> IO () 
-ghcErrorReporter yi severity srcSpan pprStyle message = 
+ghcErrorReporter :: Yi -> GHC.Severity -> SrcLoc.SrcSpan -> Outputable.PprStyle -> ErrUtils.Message -> IO ()
+ghcErrorReporter yi severity srcSpan pprStyle message =
     -- the following is written in very bad style.
     flip runReaderT yi $ do
       e <- readEditor id
       let [b] = findBufferWithName "*console*" e
-      withGivenBuffer b $ savingExcursionB $ do 
+      withGivenBuffer b $ savingExcursionB $ do
         moveTo =<< getMarkPointB =<< getMarkB (Just "errorInsert")
         insertN msg
         insertN "\n"
@@ -716,7 +716,7 @@ ghcErrorHandlerE inner = do
 		     GHC.PhaseFailed _ code -> errorE $ "Exitted with " ++ show code
 		     GHC.Interrupted -> errorE $ "Interrupted!"
 		     _ -> do errorE $ "GHC exeption: " ++ (show (dyn :: GHC.GhcException))
-			     
+
 	    ) $
             inner
 

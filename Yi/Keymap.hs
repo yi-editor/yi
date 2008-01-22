@@ -1,6 +1,6 @@
+{-# LANGUAGE FlexibleContexts, TypeSynonymInstances #-}
+
 -- Copyright (c) Jean-Philippe Bernardy 2007.
---
---
 
 module Yi.Keymap where
 
@@ -8,7 +8,6 @@ import Prelude hiding (error)
 import Yi.UI.Common
 import qualified Yi.Editor as Editor
 import Yi.Editor (EditorM, Editor, runEditor)
-import Yi.Debug
 import qualified Data.Map as M
 import Yi.Kernel
 import Control.Monad.Reader

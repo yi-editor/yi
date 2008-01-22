@@ -1,6 +1,5 @@
---
+{-# LANGUAGE DeriveDataTypeable #-}
 
---
 -- Handles indentation in the keymaps. Includes:
 --  * (TODO) Auto-indentation to the previous lines indentation
 --  * Tab-expansion
@@ -22,7 +21,7 @@ import Data.Char
 import Data.Typeable
 import Data.List
 
-{- Currently duplicates some of Vim's indent settings. Allowing a buffer to 
+{- Currently duplicates some of Vim's indent settings. Allowing a buffer to
  - specify settings that are more dynamic, perhaps via closures, could be
  - useful.
  -}
@@ -35,7 +34,7 @@ data IndentSettings = IndentSettings {  expandTabs :: Bool
 {- The default indent settings should likely be initializable from a global
  - preference.
  - Currently the initial settings reflect what's usually used in Yi's sources.
- - One aspect that is common in Yi that is not covered is that the first 
+ - One aspect that is common in Yi that is not covered is that the first
  - indent is usually 4 spaces instead of 2.
  -}
 instance Initializable IndentSettings where
@@ -50,12 +49,12 @@ insertTabB = do
   insertN $ if expandTabs indentSettings
     then replicate (tabSize indentSettings) ' '
     else ['\t']
-  
+
 indentSettingsB :: BufferM IndentSettings
 indentSettingsB = getDynamicB
-  
+
 getPreviousLineB :: BufferM String
-getPreviousLineB = 
+getPreviousLineB =
   savingExcursionB $ do
     lineUp
     readLnB
@@ -82,9 +81,9 @@ cycleIndentsB indents = do
 autoIndentB :: BufferM ()
 autoIndentB = do
   is <- savingExcursionB fetchPreviousIndentsB
-  pl <- getPreviousLineB  
+  pl <- getPreviousLineB
   pli <- indentOfB pl
-  let i       = lastOpenBracket pl 
+  let i       = lastOpenBracket pl
       indents = pli+2 : i : is
   cycleIndentsB $ sort $ nub indents
 
@@ -121,7 +120,7 @@ spacingOfB text = do
   return $ sum $ map spacingOfChar text
 
 indentToB :: Int -> BufferM ()
-indentToB level = do 
+indentToB level = do
   l   <- readLnB
   cur <- offsetFromSol
   moveToSol
@@ -142,7 +141,7 @@ indentAsPreviousB =
      indentToB pli
 
 
--- | shiftIndent num 
+-- | shiftIndent num
 -- |  shifts right (or left if num is negative) num times, filling in tabs if
 -- |  expandTabs is set in the buffers IndentSettings
 -- TODO: This uses mkVimRegion
@@ -182,7 +181,7 @@ shiftIndentOfSelection shiftCount = do
   (row2,_) <- getLineAndCol
   moveTo mark
   (row1,_) <- getLineAndCol
-  let step = if (row2 > row1) 
+  let step = if (row2 > row1)
              then lineDown
              else lineUp
       numOfLines = 1 + (abs (row2 - row1))

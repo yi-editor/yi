@@ -1,4 +1,4 @@
--- Copyright (C) 2004 Don Stewart - http://www.cse.unsw.edu.au/~dons
+-- Copyright (C) 2004, 2008 Don Stewart - http://www.cse.unsw.edu.au/~dons
 
 --
 -- | Frontend to the static binary. We have a separte frontend (rather
@@ -18,7 +18,7 @@ main = do
   initDebug ".yi-static.dbg"
   kernel <- initialize
   Yi.Boot.startYi kernel -- call Yi.main dynamically
-  
+
 -- TODO: also init the debug system
 
 -}
@@ -41,4 +41,3 @@ main = do
 
   -- Fire up Yi
   Yi.main kernel
-  

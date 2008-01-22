@@ -1,10 +1,8 @@
-{-# OPTIONS_GHC -fglasgow-exts -fallow-undecidable-instances #-}
+{-# LANGUAGE UndecidableInstances, GADTs, MultiParamTypeClasses, FunctionalDependencies, FlexibleInstances #-}
 
 -- Copyright (c) Jean-Philippe Bernardy 2007-8
---
 
 {- |
-
 This is a library of interactive processes combinators, usable to
 define extensible keymaps.
 
@@ -32,7 +30,6 @@ input (prefix), but produce conflicting output?
 * if a Write is more prioritized than the other, the one with low priority will be discarded
 * otherwise, the output will be delayed until one of the branches can be discarded.
 * if there is no way to disambiguate, then no output will be generated anymore. (oops!)
-
 -}
 
 module Yi.Interact

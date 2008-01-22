@@ -1,5 +1,7 @@
+{-# LANGUAGE ParallelListComp #-}
+
 module Yi.Debug (
-        initDebug       -- :: FilePath -> IO () 
+        initDebug       -- :: FilePath -> IO ()
        ,trace           -- :: String -> a -> a
        ,logPutStrLn
        ,logError
@@ -10,7 +12,7 @@ module Yi.Debug (
 import Control.Concurrent
 import Control.Monad.Trans
 import Data.IORef
-import System.IO        
+import System.IO
 import System.IO.Unsafe ( unsafePerformIO )
 import System.Time
 
@@ -18,11 +20,11 @@ dbgHandle :: IORef Handle
 dbgHandle = unsafePerformIO $ newIORef stderr
 
 -- Set the file to which debugging output should be written. Though this
--- is called /init/Debug. This function should be called at most once. 
+-- is called /init/Debug. This function should be called at most once.
 -- Debugging output is sent to stderr by default (i.e., if this function
 -- is never called.
 initDebug :: FilePath -> IO ()
-initDebug f = do 
+initDebug f = do
   openFile f WriteMode >>= writeIORef dbgHandle
   logPutStrLn "Logging initialized."
 
@@ -38,7 +40,7 @@ error s = unsafePerformIO $ do logPutStrLn s
                                Prelude.error s
 
 logPutStrLn :: (MonadIO m) => [Char] -> m ()
-logPutStrLn s = liftIO $ do 
+logPutStrLn s = liftIO $ do
                    time <- toCalendarTime =<< getClockTime
                    tId <- myThreadId
                    h <- readIORef dbgHandle
