@@ -38,7 +38,7 @@ bHook pd lbi hooks flags = do
   -- Precompile loadable modules, by compiling a pseudo package
   -- we pretend we build package main, so that GHCi
   -- can associate the source files and the precompiled modules
-  let pd'' = pseudoLibraryPkg pd' "main" ["Yi.Main", "Yi.Dired"]
+  let pd'' = pseudoLibraryPkg pd' "main" ["Yi.Main", "Yi.Dired", "Yi.Keymap.Vim", "Yi.Keymap.Emacs"]
   buildHook defaultUserHooks pd'' lbi defaultUserHooks flags
 
 hdHook :: PackageDescription -> LocalBuildInfo -> UserHooks -> HaddockFlags -> IO ()
