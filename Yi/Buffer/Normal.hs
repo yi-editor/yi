@@ -13,7 +13,7 @@ module Yi.Buffer.Normal (execB, TextUnit(..), Operation(..),
                          untilB,
                          atBoundaryB,
                          numberOfB,
-                         deleteB,
+                         deleteB, genMoveB, BoundarySide(..),
                          moveEndB, moveBeginB) where
 
 import Yi.Buffer
@@ -97,6 +97,17 @@ atBoundaryB :: TextUnit -> Direction -> BufferM Bool
 atBoundaryB Document d = atBoundary Document d
 atBoundaryB u d = (||) <$> atBoundary u d <*> atBoundaryB (enclosingUnit u) d
 
+genAtBoundaryB :: TextUnit -> Direction -> BoundarySide -> BufferM Bool
+genAtBoundaryB u d s = withOffset (off d s) $ atBoundaryB u d
+    where withOffset 0 f = f
+          withOffset ofs f = savingPointB (((ofs +) <$> pointB) >>= moveTo >> f)
+          off Backward  InsideBound = 0
+          off Backward OutsideBound = 1
+          off Forward   InsideBound = 1
+          off Forward  OutsideBound = 0
+
+
+
 numberOfB :: TextUnit -> TextUnit -> BufferM Int
 numberOfB unit containingUnit = savingPointB $ do
                    execB MaybeMove containingUnit Backward
@@ -143,8 +154,34 @@ moveBeginB :: TextUnit -> Direction -> BufferM ()
 moveBeginB unit dir = do
   doUntilB_ (atBoundary unit (opposite dir)) (execB Move Character dir)
 
+-- | Boundary side
+data BoundarySide = InsideBound | OutsideBound
+
+-- | Generic move operation
+-- Warning: moving To the (OutsideBound, Backward) bound of Document  is impossible (offset -1!)
+-- @genMoveB u b d@: move in direction d until encountering boundary b or unit u.
+-- Explanation of @b = (d',s')@, taking Word as example. 
+--       Word 
+--      ^^  ^^
+--      12  34
+-- 1: (Backward,Outside)
+-- 2: (Backward,Inside)
+-- 3: (Forward,Inside)
+-- 4: (Forward,Outside)
+genMoveB :: TextUnit -> (Direction, BoundarySide) -> Direction -> BufferM ()
+genMoveB Character _ Forward  = rightB
+genMoveB Character _ Backward = leftB
+genMoveB VLine     _ Forward  = 
+  do ofs <- lineMoveRel 1
+     when (ofs < 1) (execB MaybeMove Line Forward)
+genMoveB VLine _ Backward = lineUp
+genMoveB unit (boundDir, boundSide) moveDir = 
+  doUntilB_ (genAtBoundaryB unit boundDir boundSide) (execB Move Character moveDir)
+    
+
 -- | Execute the specified triple (operation, unit, direction)
 execB :: Operation -> TextUnit -> Direction -> BufferM ()
+-- todo: define move in terms of genMoveB
 execB Move Character Forward  = rightB
 execB Move Character Backward = leftB
 execB Move VLine Forward      = 
@@ -160,8 +197,6 @@ execB Move unit direction = do
 -- are already at the end of the current line. Similarly for moveToSol.
 execB MaybeMove unit direction = do
   untilB_ (atBoundary unit direction) (execB Move Character direction)
--- TODO: save in the kill ring.
-
 execB Transpose unit direction = do
   execB Move unit (opposite direction)
   w0 <- pointB
@@ -182,6 +217,7 @@ execB (Transform f) unit direction = do
   replaceRegionB r =<< f <$> readRegionB r
 
 -- | delete between point and next unit boundary, return the deleted region
+-- TODO: save in the kill ring. (?)
 deleteB :: TextUnit -> Direction -> BufferM ()
 deleteB unit direction = do
   p <- pointB
