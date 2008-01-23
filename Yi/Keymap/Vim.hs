@@ -92,7 +92,7 @@ vis_mode :: VimMode
 vis_mode = do 
   write (msgE "-- VISUAL --" >> withBuffer (pointB >>= setSelectionMarkPointB)) 
   many (eval cmd_move)
-  (vis_multi <|> vis_single)
+  (vis_single <|| vis_multi)
   write (msgClrE >> withBuffer unsetMarkB)
 
 
