@@ -1,8 +1,6 @@
---
--- Copyright (c) 2008 Gustav Munkby
---
---
+{-# LANGUAGE MultiParamTypeClasses #-}
 
+-- Copyright (c) 2008 Gustav Munkby
 
 -- | This module defines a string representation in terms of
 -- | ByteStrings stored in a finger tree.
@@ -64,7 +62,7 @@ fromLazyByteString :: LB.ByteString -> FingerString
 fromLazyByteString = FingerString . toTree
   where
     toTree b | LB.null b = T.empty
-    toTree b = let (h,t) = LB.splitAt (fromIntegral chunkSize) b in 
+    toTree b = let (h,t) = LB.splitAt (fromIntegral chunkSize) b in
                (B.concat $ LB.toChunks h) <| toTree t
 
 fromByteString :: ByteString -> FingerString
@@ -90,13 +88,13 @@ head :: FingerString -> Char
 head (FingerString a) = case T.viewl a of
   EmptyL -> error "FingerString.head: empty string"
   x :< _ -> B.head x
-  
+
 tail :: FingerString -> FingerString
 tail (FingerString a) = case T.viewl a of
   EmptyL -> error "FingerString.tail: empty string"
   x :< r -> FingerString $ (B.tail x) -| r
 
-empty :: FingerString 
+empty :: FingerString
 empty = FingerString T.empty
 
 -- | Get the length of the standard string.
