@@ -10,7 +10,7 @@
 
 module Yi.Buffer.Normal (execB, TextUnit(..), Operation(..),
                          peekB, regionOfB, regionOfPartB, readUnitB,
-                         untilB,
+                         untilB, doUntilB_, untilB_,
                          atBoundaryB,
                          numberOfB,
                          deleteB, 
