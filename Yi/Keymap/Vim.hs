@@ -151,6 +151,8 @@ moveCmdFM =
     ,(keyBackspace, left)
     ,('\BS',        left)
     ,('\127',       left)
+    ,(keyLeft,      left)
+    ,(keyRight,     right)
     ,('l',          right)
     ,(' ',          right)
     ,(keyHome,      sol)
@@ -265,8 +267,6 @@ singleCmdFM =
 
     ,(keyPPage, withBuffer . upScreensE)
     ,(keyNPage, withBuffer . downScreensE)
-    ,(keyLeft,  withBuffer . moveXorSol)
-    ,(keyRight, withBuffer . moveXorEol)
     ,('*',      const $ searchCurrentWord)
     ,('~',      \i -> withBuffer $ do
                          p <- pointB
@@ -513,7 +513,9 @@ spawn_ex_buffer prompt = do
                   event '\ESC'  >> write closeMinibuffer,
                   delete        >> write bdeleteB,
                   event keyUp   >> write historyUp,
-                  event keyDown >> write historyDown]
+                  event keyDown >> write historyDown,
+                  event keyLeft  >> write (moveXorSol 1),
+                  event keyRight >> write (moveXorEol 1)]
              <|| (do c <- anyEvent; write $ insertB c)
       completeMinibuffer = withBuffer elemsB >>= ex_complete >>= withBuffer . insertN
       ex_complete ('e':' ':f) = do
