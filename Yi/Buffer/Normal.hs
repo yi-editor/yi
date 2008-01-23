@@ -13,8 +13,9 @@ module Yi.Buffer.Normal (execB, TextUnit(..), Operation(..),
                          untilB,
                          atBoundaryB,
                          numberOfB,
-                         deleteB, genMoveB, BoundarySide(..),
-                         moveEndB, moveBeginB) where
+                         deleteB, 
+                         genMoveB, BoundarySide(..), genAtBoundaryB
+                         ) where
 
 import Yi.Buffer
 import Yi.Buffer.Region
@@ -143,16 +144,6 @@ doUntilB_ cond f = doUntilB cond f >> return () -- maybe do an optimized version
 untilB_ :: BufferM Bool -> BufferM a -> BufferM ()
 untilB_ cond f = untilB cond f >> return () -- maybe do an optimized version?
 
-
-moveEndB :: TextUnit -> BufferM ()
-moveEndB unit = do
-  execB Move Character Forward
-  execB Move unit Forward
-  execB Move Character Backward
-
-moveBeginB :: TextUnit -> Direction -> BufferM ()
-moveBeginB unit dir = do
-  doUntilB_ (atBoundary unit (opposite dir)) (execB Move Character dir)
 
 -- | Boundary side
 data BoundarySide = InsideBound | OutsideBound

@@ -151,9 +151,9 @@ moveCmdFM =
     ,('\r',         down)
 
 -- words
-    ,('w',          \i -> replicateM_ i $ moveBeginB ViWord Forward)
-    ,('b',          \i -> replicateM_ i $ execB Move ViWord Backward)
-    ,('e',          \i -> replicateM_ i $ moveEndB ViWord)
+    ,('w',          \i -> replicateM_ i $ genMoveB ViWord (Backward,InsideBound) Forward)
+    ,('b',          \i -> replicateM_ i $ genMoveB ViWord (Backward,InsideBound) Backward)
+    ,('e',          \i -> replicateM_ i $ genMoveB ViWord (Forward, InsideBound) Forward)
 
 -- text
     ,('{',          prevNParagraphs)
