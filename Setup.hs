@@ -96,8 +96,7 @@ pseudoLibraryPkg pd name mods =
       executables = [],
       library = Just (Library {
         exposedModules = mods,
-        libBuildInfo = yiBuildInfo{otherModules = []}})}
-
+        libBuildInfo = yiBuildInfo})}
   where [Executable "yi" _ yiBuildInfo] = executables pd
 
 copyFile :: Verbosity -> FilePath -> FilePath -> FilePath -> IO ()
