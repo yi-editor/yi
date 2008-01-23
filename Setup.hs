@@ -76,7 +76,7 @@ mkOpt (name,def) = "-D" ++ name ++ "=" ++ def
 
 -- Add our special package options to 
 addPackageOptions pd lbi verbosity = do
-  let dataPref = mkDataDir pd lbi NoCopyDest
+  let dataPref = datadir $ absoluteInstallDirs pd lbi NoCopyDest
       pkgOpts = concat [ ["-package", showPackageId pkg] | pkg <- packageDeps lbi ]
       ghcOut = rawSystemProgramStdoutConf verbosity ghcProgram (withPrograms lbi)
   print dataPref
