@@ -7,7 +7,7 @@
 
 
 -- | Vim keymap for Yi. Emulates vim :set nocompatible
-module Yi.Keymap.Vim ( keymap, VimMode ) where
+module Yi.Keymap.Vim ( keymap, VimMode, viWrite ) where
 
 import Yi.Yi
 import Yi.Style as Style
