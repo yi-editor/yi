@@ -174,7 +174,6 @@ loaders dynamically.
         Loading package plugins ... linking ... done.
         Loading object (dynamic) iconv ... done
         final link ... done
-    Prelude> :set -cpp -fglasgow-exts
     Prelude> :set -DLIBDIR="/usr/local/lib/yi"
     Prelude> :set args -B/home/dons/src/projects/yi
     Prelude> :l Boot.hs
@@ -188,7 +187,7 @@ For example, to modify \code{\$(TOP)/Yi.hs} in ghci, you would:
 
 {\small
 \begin{verbatim}
-        manzano$ ghci -package-conf yi.conf -package yi -cpp -fglasgow-exts
+        manzano$ ghci -package-conf yi.conf -package yi
         Prelude> :l Yi.hs
         *Yi> :t dynamic_main
         dynamic_main :: Maybe ConfigData -> IO ()
@@ -209,9 +208,8 @@ yi-static:
 We have 3 problems:
 \begin{itemize}
     \item We rely on some non-nhc98 libraries: MVar, threads, Unique..
-    \item We use hsc2hs for ffi files
-    \item There's still a couple of files with -fglasgow-exts (I think just
-      simple existentials, though, which nhc can handle(?))
+    \item We use hsc2hs for FFI files
+    \item There's still files which use GHC extensions
 \end{itemize}
 
 The big problem is the extra libraries.

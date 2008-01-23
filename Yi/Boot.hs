@@ -56,8 +56,7 @@ initialize = GHC.defaultErrorHandler DynFlags.defaultDynFlags $ do
 
   home <- getHomeDirectory
   let extraflags        = [ -- dubious: maybe YiConfig wants to use other pkgs: "-hide-all-packages"
-                          "-cpp"
-                          , "-i" -- clear the search directory (don't look in ./)
+                            "-i" -- clear the search directory (don't look in ./)
                           , "-i" ++ home ++ "/.yi"  -- First, we look for source files in ~/.yi
                           , "-i" ++ libdir
                           , "-odir" ++ bindir
@@ -122,4 +121,3 @@ setContextAfterLoadL session = do
     | Just f' <- GHC.ml_hs_file (GHC.ms_location summary)        = f == f'
   _summary `matches` _target
     = False
-

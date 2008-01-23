@@ -1,4 +1,4 @@
-{-# OPTIONS -fglasgow-exts #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 -- Copyright (c) 2005,2007,2008 Jean-Philippe Bernardy
 

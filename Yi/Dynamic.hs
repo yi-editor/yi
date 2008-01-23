@@ -1,6 +1,5 @@
-{-# OPTIONS -fglasgow-exts #-}
-
---- Copyright (c) Jean-Philippe Bernardy 2005-2007.
+{-# LANGUAGE ScopedTypeVariables #-}
+-- Copyright (c) Jean-Philippe Bernardy 2005-2007.
 
 module Yi.Dynamic where
 
