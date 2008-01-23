@@ -33,16 +33,16 @@ highlighter = Yi.Syntax.SynHL (Yi.FingerString.empty , initState) fun funEOF
           where
             full = Yi.FingerString.append scrap bs
             iter' bs s = case hl_alex_scan_tkn undefined bs 0# bs (iUnbox (stateToInit s)) AlexNone of
-	                        (AlexNone, _) -> ((bs, s), [])
-	                        (AlexLastSkip _ _, _) -> error "no skipping!"
+                                (AlexNone, _) -> ((bs, s), [])
+                                (AlexLastSkip _ _, _) -> error "no skipping!"
                                 (AlexLastAcc k input len, _) -> let (nst, attrs) = k (Yi.FingerString.take len bs) s
                                                                     ((str', finst), fattr) = iter' input nst
                                                                 in ((str', finst), attrs++fattr)
       funEOF (scrap, st) = snd (iter' scrap st)
           where
             iter' bs s = case alex_scan_tkn undefined bs 0# bs (iUnbox (stateToInit s)) AlexNone of
-	                   (AlexNone, _) -> ((bs, s), [])
-	                   (AlexLastSkip _ _, _) -> error "no skipping!"
+                           (AlexNone, _) -> ((bs, s), [])
+                           (AlexLastSkip _ _, _) -> error "no skipping!"
                            (AlexLastAcc k input len, _) -> let (nst, attrs) = k (Yi.FingerString.take len bs) s
                                                                ((str', finst), fattr) = iter' input nst
                                                            in ((str', finst), attrs++fattr)
@@ -56,42 +56,41 @@ highlighter = Yi.Syntax.SynHL (Yi.FingerString.empty , initState) fun funEOF
 -- Our interface parses a token, but only if it is certain that the token is
 -- the longest given available data.
 
-
 hl_alex_scan_tkn user orig_input len input s last_acc =
   input `seq` -- strict in the input
-  case s of 
+  case s of
     -1# -> (last_acc, input)
     _ -> hl_alex_scan_tkn' user orig_input len input s last_acc
 
 hl_alex_scan_tkn' user orig_input len input s last_acc =
-  let 
-	new_acc = check_accs (alex_accept `quickIndex` (I# (s)))
+  let
+        new_acc = check_accs (alex_accept `quickIndex` (I# (s)))
   in
   new_acc `seq`
   case alexGetChar input of
      Nothing -> (AlexNone, input) -- fail on EOF - important!
-     Just (c, new_input) -> 
+     Just (c, new_input) ->
 
-	let
-		base   = alexIndexInt32OffAddr alex_base s
-		(I# (ord_c)) = ord c
-		offset = (base +# ord_c)
-		check  = alexIndexInt16OffAddr alex_check offset
-		
-		new_s = if (offset >=# 0#) && (check ==# ord_c)
-			  then alexIndexInt16OffAddr alex_table offset
-			  else alexIndexInt16OffAddr alex_deflt s
-	in
-	hl_alex_scan_tkn user orig_input (len +# 1#) new_input new_s new_acc
+        let
+                base   = alexIndexInt32OffAddr alex_base s
+                (I# (ord_c)) = ord c
+                offset = (base +# ord_c)
+                check  = alexIndexInt16OffAddr alex_check offset
+
+                new_s = if (offset >=# 0#) && (check ==# ord_c)
+                          then alexIndexInt16OffAddr alex_table offset
+                          else alexIndexInt16OffAddr alex_deflt s
+        in
+        hl_alex_scan_tkn user orig_input (len +# 1#) new_input new_s new_acc
 
   where
-	check_accs [] = last_acc
-	check_accs (AlexAcc a : _) = AlexLastAcc a input (I# (len))
-	check_accs (AlexAccSkip : _)  = AlexLastSkip  input (I# (len))
-	check_accs (AlexAccPred a pred : rest)
-	   | pred user orig_input (I# (len)) input
-	   = AlexLastAcc a input (I# (len))
-	check_accs (AlexAccSkipPred pred : rest)
-	   | pred user orig_input (I# (len)) input
-	   = AlexLastSkip input (I# (len))
-	check_accs (_ : rest) = check_accs rest
+        check_accs [] = last_acc
+        check_accs (AlexAcc a : _) = AlexLastAcc a input (I# (len))
+        check_accs (AlexAccSkip : _)  = AlexLastSkip  input (I# (len))
+        check_accs (AlexAccPred a pred : rest)
+           | pred user orig_input (I# (len)) input
+           = AlexLastAcc a input (I# (len))
+        check_accs (AlexAccSkipPred pred : rest)
+           | pred user orig_input (I# (len)) input
+           = AlexLastSkip input (I# (len))
+        check_accs (_ : rest) = check_accs rest
