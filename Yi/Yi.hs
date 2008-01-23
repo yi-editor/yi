@@ -19,7 +19,6 @@ module Yi.Yi (
         module Control.Applicative, -- same reasoning
         module Yi.Buffer,
         module Yi.Buffer.HighLevel,
-        module Yi.CharMove,
         module Yi.Buffer.Normal,
         module Yi.Core,
         module Yi.CoreUI,
@@ -36,7 +35,6 @@ import Control.Monad
 import Control.Applicative
 import Yi.Buffer
 import Yi.Buffer.HighLevel
-import Yi.CharMove
 import Yi.Buffer.Normal
 import Yi.Core
 import Yi.CoreUI

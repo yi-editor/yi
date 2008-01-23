@@ -14,7 +14,6 @@ import Yi.Buffer.HighLevel
 -- import Yi.Debug
 import Yi.Dynamic
 
-import Yi.CharMove
 import Yi.Buffer.Region
 
 import Data.Char

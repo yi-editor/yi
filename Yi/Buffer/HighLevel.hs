@@ -8,6 +8,7 @@ import Yi.Buffer.Normal
 import Yi.Buffer.Region
 import Yi.Window
 import Control.Monad.State
+import Control.Applicative
 -- ---------------------------------------------------------------------
 -- Movement operations
 
@@ -42,6 +43,33 @@ nextWordB = execB Move Word Forward
 -- | Move to first char of next word backwards
 prevWordB :: BufferM ()
 prevWordB = execB Move Word Backward
+
+-- * Char-based movement actions.
+
+-- | Move to the next occurence of @c@
+nextCInc :: Char -> BufferM ()
+nextCInc c = doUntilB_ ((c ==) <$> readB) rightB
+
+-- | Move to the character before the next occurence of @c@
+nextCExc :: Char -> BufferM ()
+nextCExc c = nextCInc c >> leftB
+
+-- | Move to the previous occurence of @c@
+prevCInc :: Char -> BufferM ()
+prevCInc c = doUntilB_ ((c ==) <$> readB) leftB
+
+-- | Move to the character after the previous occurence of @c@
+prevCExc :: Char -> BufferM ()
+prevCExc c = prevCInc c >> rightB
+
+-- | Move to first non-space character in this line
+firstNonSpaceB :: BufferM ()
+firstNonSpaceB = do moveToSol 
+                    untilB_ ((||) <$> atEol <*> (isSpace <$> readB)) rightB
+
+
+
+
 
 ------------
 
