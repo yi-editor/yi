@@ -22,7 +22,7 @@ Nano.hs keymap:
 
     Now edit ~/.yi/Config.hs to use ~/.yi/Nano.hs
     you need to replace:
-                "import qualified Keymap" 
+                "import qualified Keymap"
            with "import qualified Nano"
 
            and  "keymap = Keymap.keymap"
@@ -47,7 +47,7 @@ the defaults, this is also what is used in yi-static.
 To get at yi internals from your config script, either import Yi.Yi,
 which brings most of the commonly used modules into scope, or explicitly
 import something from \code{Yi/*}. You can read the haddock-generated
-docs from some api details. Generate them with \code{make html}.
+docs for some API details. Generate them with \code{make html}.
 
 \subsection{Plugin architecture}
 
@@ -55,7 +55,7 @@ All configuration takes place via dynamically loaded Haskell modules.
 Additionally, the editor itself is a dynamically loaded library,
 allowing us to implement \code{:reboot}, such that you can edit the
 editor itself, and reload it, without having to quit the editor.
-        
+
 The boot process is as follows:
 
 \begin{verbatim}
@@ -71,18 +71,18 @@ dependencies, and passes the config value to the top level module of the
 editor package (Yi.o). It also passes the reload and reboot functions,
 so that the editor is able to jump back to the boot loader and unload
 itself. Boot.main jumps to Yi.dynamic\_main. It is Yi.o that then
-performs argument checks, and intialises the editor, before jumping to
+performs argument checks, and initialises the editor, before jumping to
 the editor main loop. When Yi is built the \code{static} way, we skip
 the boot loader, and instead start at \code{Main.main}. The structure of
 yi can be seen in Figure \ref{overview}.
 
 % flow-diagram of how from source to Haskell value
-\begin{figure} 
+\begin{figure}
   \begin{center}
-    \includegraphics[scale=0.7]{yi_overview.eps} 
+    \includegraphics[scale=0.7]{yi_overview.eps}
     \caption{Structure of yi}
-    \label{overview} 
-  \end{center} 
+    \label{overview}
+  \end{center}
 \end{figure}
 %
 
@@ -93,7 +93,7 @@ The undo library is based on the restricted, linear undo described in
 
 \section{Build system}
 
-Extra args can be passed at runtime as: make HC\_OPTS=-ddump-minimal-imports
+Extra arguments can be passed at runtime as: make HC\_OPTS=-ddump-minimal-imports
 
 \subsection{Profiling}
 
@@ -115,13 +115,13 @@ statistics.
 Please make sure you code compiles with -Wall -Werror -fno-glasgow-exts
 (we're trying to support nhc98). Use Haddock markup to document any
 functions that are exported -- user's may want to use this code at some
-point. We use cpp to pass platform specific options into files. Please
+point. We use CPP to pass platform specific options into files. Please
 provide explicit import lists where reasonable, and keep imports in some
-sorted order. Please don't introduce posix dependencies.
+sorted order. Please don't introduce POSIX dependencies.
 
 \subsection{GHCi}
 
-You can actually run this stuff in ghci! To just run yi-core (the gui
+You can actually run this stuff in GHCi! To just run yi-core (the GUI
 etc, without worrying about booting the thing):
 
 {\small
@@ -147,10 +147,10 @@ etc, without worrying about booting the thing):
 }
 
 To run the whole thing is a bit harder, and requires faking the package
-lib flags in yi.conf (leave off the last 2 args if you're on linux). And
+lib flags in yi.conf (leave off the last 2 arguments if you're on Linux). And
 if we haven't installed it yet (you want to run in-tree), then you have
-to set the command line args. Also, to do this trick you need ghc-6.2.2
-or greater, which contain appropriate rts patches for running dynamic
+to set the command line arguments. Also, to do this trick you need ghc-6.2.2
+or greater, which contain appropriate RTS patches for running dynamic
 loaders dynamically.
 
 {\small
@@ -183,7 +183,7 @@ loaders dynamically.
 \end{verbatim}
 }
 
-For example, to modify \code{\$(TOP)/Yi.hs} in ghci, you would:
+For example, to modify \code{\$(TOP)/Yi.hs} in GHCi, you would:
 
 {\small
 \begin{verbatim}
@@ -218,3 +218,4 @@ The big problem is the extra libraries.
 \bibliography{yi}
 
 \end{document}
+
