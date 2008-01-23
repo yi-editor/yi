@@ -27,11 +27,12 @@ import qualified Yi.Window as Window
 import Yi.Window (Window)
 import Paths_yi (getDataFileName)
 
-import Control.Concurrent (threadDelay)
+import Control.Concurrent (yield, threadDelay)
 import Control.Concurrent.Chan
 import Control.Concurrent.MVar
 import Control.Monad.Reader (liftIO, when, MonadIO)
-import Control.Monad (ap)
+import Control.Monad (ap, replicateM_)
+import Control.Applicative ((<*>), (<$>))
 
 import Data.List (groupBy)
 import Data.IORef
@@ -91,14 +92,18 @@ $(declareSelector "setAppleMenu:" [t| forall t. NSMenu t -> IO () |] )
 instance Has_setAppleMenu (NSApplication a)
 $(exportClass "YiApplication" "ya_" [
     InstanceVariable "eventChannel" [t| Maybe (Chan Yi.Event.Event) |] [| Nothing |]
-  , InstanceVariable "running" [t| Bool |] [| True |]
+  , InstanceVariable "lock" [t| Maybe (MVar ()) |] [| Nothing |]
   , InstanceMethod 'run -- '
   , InstanceMethod 'doTick -- '
   , InstanceMethod 'sendEvent -- '
   ])
 
 ya_doTick :: YiApplication () -> IO ()
-ya_doTick _self = return () -- Does nothing, just enables some Haskell to run...
+ya_doTick self = do
+  Just lock <- self  #. _lock
+  putMVar lock ()
+  replicateM_ 4 yield
+  takeMVar lock
 
 ya_run :: YiApplication () -> IO ()
 ya_run self = do
@@ -199,6 +204,7 @@ data UI = forall action. UI {
              ,uiBuffers :: IORef (M.Map BufferRef (NSTextStorage ()))
              ,windowCache :: IORef [WinInfo]
              ,uiRunEditor :: EditorM () -> IO ()
+             ,uiLock :: MVar ()
              }
 
 data WinInfo = WinInfo 
@@ -321,6 +327,9 @@ start ch outCh _ed runEd = do
 
   app <- _YiApplication # sharedApplication >>= return . toYiApplication
   app # setIVar _eventChannel (Just ch)
+
+  lock <- newMVar ()
+  app # setIVar _lock (Just lock)
   
   icon <- getDataFileName "art/yi+lambda-fat.pdf"
   _NSImage # alloc >>=
@@ -360,13 +369,14 @@ start ch outCh _ed runEd = do
   bufs <- newIORef M.empty
   wc <- newIORef []
 
-  return (mkUI $ UI win winContainer cmd bufs wc (writeChan outCh . runEd))
+  return (mkUI $ UI win winContainer cmd bufs wc (writeChan outCh . runEd) lock)
 
 
 
 -- | Run the main loop
 main :: UI -> IO ()
-main _ui = do
+main ui = do
+  takeMVar (uiLock ui)
   logPutStrLn "Cocoa main loop running"
   _YiApplication # sharedApplication >>= run
 
@@ -478,7 +488,7 @@ groupOn :: Eq a => (b -> a) -> [b] -> [[b]]
 groupOn f = groupBy (\x y -> f x == f y)
 
 refresh :: UI -> Editor -> IO ()
-refresh ui e = logNSException "refresh" $ do
+refresh ui e = withMVar (uiLock ui) $ \_ -> logNSException "refresh" $ do
     let ws = Editor.windows e
     let takeEllipsis s = if length s > 132 then take 129 s ++ "..." else s
     (uiCmdLine ui) # setStringValue (toNSString (takeEllipsis (statusLine e)))
@@ -490,10 +500,9 @@ refresh ui e = logNSException "refresh" $ do
       forM_ (pendingUpdates buf) $ applyUpdate storage
       storage # endEditing
       contents <- storage # string >>= haskellString
-      logPutStrLn $ "Contents is " ++ show contents
-      let (size,_) = runBuffer buf sizeB
       storage # setMonospaceFont -- FIXME: Why is this needed for mini buffers?
-      replaceTagsIn 0 size buf storage
+      let ((size,p),_) = runBufferDummyWindow buf ((,) <$> sizeB <*> pointB)
+      replaceTagsIn (inBounds (p-100) size) (inBounds (p+100) size) buf storage
 
     (uiWindow ui) # setAutodisplay False -- avoid redrawing while window syncing
     WS.debug "syncing" ws
