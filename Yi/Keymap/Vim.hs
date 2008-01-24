@@ -609,6 +609,7 @@ ex_eval cmd = do
 --    fn ('!':f) = pipeE f []
 
       fn "reload"     = reloadE >> return ()    -- not in vim
+      fn "eval"       = withBuffer (wholeBuffer >>= readRegionB) >>= evalE -- not in vim
 
       fn "redr"       = refreshE
       fn "redraw"     = refreshE
