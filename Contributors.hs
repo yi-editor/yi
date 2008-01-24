@@ -1,7 +1,6 @@
-{-# OPTIONS -fglasgow-exts #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, PatternSignatures #-}
 import Data.Array (elems, Array)
-import Data.ByteString.Char8 (pack, ByteString) 
+import Data.ByteString.Char8 (pack, ByteString)
 import Data.Char
 import Data.String
 import Data.List (intersperse)
@@ -17,7 +16,7 @@ capitalize s = BS.cons (toUpper $ BS.head s) (BS.tail s)
 
 tx :: String = "Thu Oct 14 05:40:06 CEST 2004 "
 
-unquote x 
+unquote x
     | BS.head x == '\'' && BS.last x == '\'' = unquote (BS.init $ BS.tail $ x)
     | otherwise = x
 
@@ -28,17 +27,17 @@ mkName match | [_,firstname, lastname] <- elems match
 
 name :: ByteString -> ByteString
 name "andy@nobugs.org" = "Andrew Birkett"
-name tag 
+name tag
      | match :: M <- tag =~ pack "^\"?(.+)<.*>\"?$", [_,name] <- elems match = name
-     | match :: M <- tag =~ pack "^<?(.*)@(.*)\\.name>?$", 
-       [_,_,_] <- elems match = mkName match 
+     | match :: M <- tag =~ pack "^<?(.*)@(.*)\\.name>?$",
+       [_,_,_] <- elems match = mkName match
      | match :: M <- tag =~ pack "^<?(.*)@.*>?$", [_,user] <- elems match = nickToName user
      | otherwise = nickToName tag
 
 trim = fst . BS.spanEnd isSpace
 
 nickToName :: ByteString -> ByteString
-nickToName x = case BS.map toLower x of 
+nickToName x = case BS.map toLower x of
             "a.d.clark"             -> "Allan Clark"
             "alson"                 -> "Alson Kemp"
             "andrii.z"              -> "Andrii Zvorygin"
