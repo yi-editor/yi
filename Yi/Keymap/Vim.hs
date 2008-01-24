@@ -37,7 +37,7 @@ import Yi.TextCompletion
 --
 
 {-
-  For now we just make the selected style the same as the 
+  For now we just make the selected style the same as the
   modeline_focused style... Just because i'm not good with
   styles yet - Jim
 -}
@@ -50,7 +50,7 @@ type VimMode = VimProc ()
 
 type VimProc a = (Interact Char) a
 
-                        
+
 -- | Top level
 keymap :: Keymap
 keymap = do write $ do setWindowFillE '~'
@@ -214,7 +214,7 @@ move2CmdFM =
 -- | Other command mode functions
 cmd_eval :: VimMode
 cmd_eval = do
-   cnt <- count 
+   cnt <- count
    let i = maybe 1 id cnt
    choice
     ([event c >> write (a i) | (c,a) <- singleCmdFM ] ++
@@ -399,7 +399,7 @@ vis_single =
 -- they are multiple characters
 vis_multi :: VimMode
 vis_multi = do
-   cnt <- count 
+   cnt <- count
    let i = maybe 1 id cnt
    choice ([events "ZZ" >> write (viWrite >> quitE),
             events ">>" >> write (shiftIndentOfSelection i),
@@ -469,12 +469,12 @@ ins_mov_char = choice [event keyPPage >> write upScreenE,
 --
 ins_char :: VimMode
 ins_char = choice [satisfy isDel  >> write (deleteB Character Backward),
-                   event '\t'     >> write insertTabB] 
+                   event '\t'     >> write insertTabB]
            <|> ins_mov_char
            <|| do c <- anyEvent; write (insertB c)
 
 -- --------------------
--- | Keyword 
+-- | Keyword
 kwd_mode :: VimMode
 kwd_mode = some (event '\^N' >> adjustPriority (-1) (write wordCompleteB)) >> (write resetCompleteB)
            -- 'adjustPriority' is there to lift the ambiguity between "continuing" completion
@@ -492,7 +492,7 @@ kwd_mode = some (event '\^N' >> adjustPriority (-1) (write wordCompleteB)) >> (w
 rep_char :: VimMode
 rep_char = choice [satisfy isDel  >> write leftB, -- should undo unless pointer has been moved
                    event '\t'     >> write (insertN "    "),
-                   event '\r'     >> write (insertB '\n')] 
+                   event '\r'     >> write (insertB '\n')]
            <|> ins_mov_char
            <|| do c <- anyEvent; write (do e <- atEol; if e then insertB c else writeB c)
 
@@ -502,14 +502,14 @@ rep_char = choice [satisfy isDel  >> write leftB, -- should undo unless pointer 
 spawn_ex_buffer :: String -> YiM ()
 spawn_ex_buffer prompt = do
   -- The above ensures that the action is performed on the buffer that originated the minibuffer.
-  let closeMinibuffer = do b <- withEditor getBuffer; closeE; withEditor $ deleteBuffer b 
-      ex_buffer_finish = do 
+  let closeMinibuffer = do b <- withEditor getBuffer; closeE; withEditor $ deleteBuffer b
+      ex_buffer_finish = do
         historyFinish
         lineString <- withBuffer elemsB
         closeMinibuffer
         ex_eval (head prompt : lineString)
       ex_process :: VimMode
-      ex_process = 
+      ex_process =
           choice [enter         >> write ex_buffer_finish,
                   event '\t'    >> write completeMinibuffer,
                   event '\ESC'  >> write closeMinibuffer,
@@ -534,7 +534,7 @@ spawn_ex_buffer prompt = do
 
 ex_mode :: String -> VimMode
 ex_mode = write . spawn_ex_buffer
-                           
+
 -- | eval an ex command to an YiM (), also appends to the ex history
 ex_eval :: String -> YiM ()
 ex_eval cmd = do
@@ -635,10 +635,10 @@ not_implemented c = errorE $ "Not implemented: " ++ show c
 -- Misc functions
 
 viFileInfo :: YiM ()
-viFileInfo = 
+viFileInfo =
     do bufInfo <- withBuffer bufInfoB
        msgE $ showBufInfo bufInfo
-    where 
+    where
     showBufInfo :: BufferFileInfo -> String
     showBufInfo bufInfo = concat [ show $ bufInfoFileName bufInfo
          , " Line "
