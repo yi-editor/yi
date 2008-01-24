@@ -1,8 +1,6 @@
---
--- Copyright (c) 2007 Jean-Philippe Bernardy
---
---
+{-# LANGUAGE BangPatterns #-}
 
+-- Copyright (c) 2007, 2008 Jean-Philippe Bernardy
 
 -- | This module defines a user interface implemented using gtk2hs.
 
