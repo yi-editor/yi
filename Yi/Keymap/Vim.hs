@@ -98,11 +98,13 @@ vis_mode = do
 
 -- | A VimProc to accumulate digits.
 -- typically what is needed for integer repetition arguments to commands
---
--- ToDo don't handle 0 properly
---
 count :: VimProc (Maybe Int)
-count = option Nothing (some (satisfy isDigit) >>= return . Just . read)
+count = option Nothing $ do
+    c <- satisfy isDigitNon0
+    cs <- many (satisfy isDigit)
+    return $ Just $ read (c:cs)
+  where isDigitNon0 '0' = False
+        isDigitNon0 x   = isDigit x
 
 data RegionStyle = LineBased
                  | CharBased
@@ -132,7 +134,7 @@ cmd_move :: VimProc (RegionStyle, BufferM ())
 cmd_move = do
   cnt <- count
   let x = maybe 1 id cnt
-  choice ([event c >> return (CharBased, a x) | (c,a) <- moveCmdFM] ++
+  choice ([event c >> return (CharBased, a x) | (c,a) <- moveCmdFM, (c /= '0' || Nothing == cnt) ] ++
           [event c >> return (LineBased, a x) | (c,a) <- moveUpDownCmdFM] ++
           [do event c; c' <- anyEvent; return (CharBased, a x c') | (c,a) <- move2CmdFM]) <|>
    (do event 'G'; return (LineBased, case cnt of
