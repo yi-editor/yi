@@ -432,9 +432,11 @@ cmd2other = let beginIns a = write a >> ins_mode
             do event 'A'     ; beginIns (withBuffer moveToEol),
             do event 'o'     ; beginIns $ withBuffer $ moveToEol >> insertB '\n',
             do event 'O'     ; beginIns $ withBuffer $ moveToSol >> insertB '\n' >> lineUp,
-            do event 'c'     ; beginIns $ not_implemented 'c',
-            do event 'C'     ; beginIns $ withBuffer readRestOfLnB >>= setRegE >> withBuffer deleteToEol,
-            do event 'S'     ; beginIns $ cut moveToSol moveToEol LineDown,
+            do event 'c'     ; (regionStyle, m) <- cmd_move ; beginIns $ cut pointB m regionStyle,
+            do events "cc"   ; beginIns $ cut (moveToSol >> pointB) moveToEol CharBased,
+            do event 'C'     ; beginIns $ cut pointB moveToEol CharBased, -- alias of "c$"
+            do event 'S'     ; beginIns $ cut (moveToSol >> pointB) moveToEol CharBased, -- alias of "cc"
+            do event 's'     ; beginIns $ cut pointB (moveXorEol 1) CharBased, -- alias of "cl"
             do event '/'     ; ex_mode "/",
             do event '?'     ; write $ not_implemented '?',
             leave,
