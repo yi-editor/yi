@@ -1,4 +1,4 @@
--- Copyright (c) 2005,8 Jean-Philippe Bernardy
+-- Copyright (c) 2005,8,8 Jean-Philippe Bernardy
 
 module Yi.Keymap.Emacs.KillRing where
 
@@ -98,8 +98,8 @@ killRingSaveE = do text <- withBuffer (readRegionB =<< getSelectRegionB)
 -- TODO: Handle argument, verify last command was a yank
 yankPopE :: EditorM ()
 yankPopE = do withBuffer0 (deleteRegionB =<< getSelectRegionB)
-              modifyA killringA $ \kr -> 
-                  let ring = krContents kr 
+              modifyA killringA $ \kr ->
+                  let ring = krContents kr
                   in kr {krContents = tail ring ++ [head ring]}
               yankE
 

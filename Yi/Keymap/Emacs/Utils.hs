@@ -263,7 +263,7 @@ getFolder (Just path) = do
 {-# DEPRECATED gotoLineE "This is not necessary for Emacs keymap; should be moved to contrib" #-}
 gotoLineE :: YiM ()
 gotoLineE =
-  withMinibuffer "goto line:" return gotoAction
+  withMinibuffer "Go to line:" return gotoAction
   where
   gotoAction :: String -> YiM ()
   gotoAction s =

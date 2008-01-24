@@ -20,26 +20,26 @@ import Yi.TextCompletion
 import Yi.Keymap.Emacs.KillRing
 import Yi.Keymap.Emacs.UnivArgument
 import Yi.Keymap.Emacs.Utils
-  ( atomic
-  , withMinibuffer
+  ( KList
+  , Process
+  , atomic
+  , completeFileName
+  , evalRegionE
+  , executeExtendedCommandE
+  , findFile
+  , gotoLineE
+  , insertNextC
+  , insertSelf
+  , isearchProcess
+  , killBufferE
+  , makeProcess
+  , queryReplaceE
+  , readArgC
   , scrollDownE
   , scrollUpE
-  , readArgC
-  , isearchProcess
-  , Process
-  , KList
-  , makeProcess
-
-  , insertSelf
-  , insertNextC
-  , findFile
-  , completeFileName
-  , switchBufferE
-  , evalRegionE
-  , killBufferE
   , shellCommandE
-  , queryReplaceE
-  , executeExtendedCommandE
+  , switchBufferE
+  , withMinibuffer
   )
 import Yi.Buffer
 import Yi.Buffer.Normal
@@ -137,6 +137,7 @@ keys =
   , ( "M-d",      atomic $ repeatingArg killWordB)
   -- , ( "M-e",      atomic $ repeatingArg forwardSentenceE)
   , ( "M-f",      atomic $ repeatingArg nextWordB)
+  , ( "M-g",      atomic $ gotoLineE)
   -- , ( "M-h",      atomic $ repeatingArg markParagraphE)
   -- , ( "M-k",      atomic $ repeatingArg killSentenceE)
   , ( "M-l",      atomic $ repeatingArg lowercaseWordB)
