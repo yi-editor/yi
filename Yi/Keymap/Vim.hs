@@ -72,8 +72,8 @@ cmd_mode :: VimMode
 cmd_mode = choice [cmd_eval,eval cmd_move,cmd2other,cmd_op]
 
 -- | Take a VimMode that returns and action; "run" it and write the returned action.
-eval :: YiAction a () => VimProc a -> VimMode
-eval p = do a <- p; write a
+eval :: YiAction a () => VimProc (b, a) -> VimMode
+eval p = do (_, a) <- p; write a
 
 -- | Leave a mode. This always has priority over catch-all actions inside the mode.
 leave :: VimMode
@@ -104,6 +104,23 @@ vis_mode = do
 count :: VimProc (Maybe Int)
 count = option Nothing (some (satisfy isDigit) >>= return . Just . read)
 
+data RegionStyle = LineBased
+                 | CharBased
+  deriving (Eq)
+
+lineBasedRegion :: Region -> BufferM Region
+lineBasedRegion region = do
+  let start' = regionStart region
+  let stop' = regionEnd region
+  moveTo $ min start' stop'
+  moveToSol
+  start <- pointB
+  moveTo $ max start' stop'
+  moveToEol
+  rightB
+  stop <- pointB
+  return $ mkRegion start stop
+
 -- ---------------------------------------------------------------------
 -- | VimProc for movement commands
 --
@@ -111,20 +128,21 @@ count = option Nothing (some (satisfy isDigit) >>= return . Just . read)
 -- /operator/ commands (like d).
 --
 
-cmd_move :: VimProc (BufferM ()) 
-cmd_move = do 
+cmd_move :: VimProc (RegionStyle, BufferM ())
+cmd_move = do
   cnt <- count
   let x = maybe 1 id cnt
-  choice ([event c >> return (a x) | (c,a) <- moveCmdFM] ++
-          [do event c; c' <- anyEvent; return (a x c') | (c,a) <- move2CmdFM]) <|>
-   (do event 'G'; return $ case cnt of 
-                            Nothing -> botB >> moveToSol
-                            Just n  -> gotoLn n >> return ()) <|>
-   (do events "gg"; return $ gotoLn 0 >> return ())
+  choice ([event c >> return (CharBased, a x) | (c,a) <- moveCmdFM] ++
+          [event c >> return (LineBased, a x) | (c,a) <- moveUpDownCmdFM] ++
+          [do event c; c' <- anyEvent; return (CharBased, a x c') | (c,a) <- move2CmdFM]) <|>
+   (do event 'G'; return (LineBased, case cnt of
+                                       Nothing -> botB >> moveToSol
+                                       Just n  -> gotoLn n >> return ())) <|>
+   (do events "gg"; return (LineBased, gotoLn 0 >> return ()))
 
 -- | movement commands
 moveCmdFM :: [(Char, Int -> BufferM ())]
-moveCmdFM = 
+moveCmdFM =
 -- left/right
     [('h',          left)
     ,('\^H',        left)
@@ -140,16 +158,6 @@ moveCmdFM =
     ,(keyEnd,       eol)
     ,('|',          \i -> moveToSol >> moveXorEol (i-1))
 
--- up/down
-    ,('k',          up)
-    ,(keyUp,        up)
-    ,('\^P',        up)
-    ,('j',          down)
-    ,(keyDown,      down)
-    ,('\^J',        down)
-    ,('\^N',        down)
-    ,('\r',         down)
-
 -- words
     ,('w',          \i -> replicateM_ i $ genMoveB ViWord (Backward,InsideBound) Forward)
     ,('b',          \i -> replicateM_ i $ genMoveB ViWord (Backward,InsideBound) Backward)
@@ -163,15 +171,29 @@ moveCmdFM =
     ,('H',          \i -> downFromTosE (i - 1))
     ,('M',          const middleE)
     ,('L',          \i -> upFromBosE (i - 1))
-
     ]
     where
         left  = moveXorSol
         right = moveXorEol
-        up    i = lineMoveRel (-i) >> return ()
-        down  i = lineMoveRel i    >> return ()
         sol   _ = moveToSol
         eol   _ = moveToEol
+
+-- | up/down movement commands. these one are separated from moveCmdFM
+-- because they behave differently when yanking/cuting (line mode).
+moveUpDownCmdFM :: [(Char, Int -> BufferM ())]
+moveUpDownCmdFM =
+    [('k',          up)
+    ,(keyUp,        up)
+    ,('\^P',        up)
+    ,('j',          down)
+    ,(keyDown,      down)
+    ,('\^J',        down)
+    ,('\^N',        down)
+    ,('\r',         down)
+    ]
+    where
+        up   i = lineMoveRel (-i) >> return ()
+        down i = lineMoveRel i    >> return ()
 
 --  | more movement commands. these ones are paramaterised by a character
 -- to find in the buffer.
@@ -235,9 +257,9 @@ singleCmdFM =
                                       moveTo p
                                       when (q-p > 0) $ deleteN (q-p))
 
-    ,('p',      (const $ do txt <- getRegE; withBuffer (moveXorEol 1 >> insertN txt >> leftB)))
+    ,('p',      flip replicateM_ pasteAfter)
 
-    ,('P',      (const $ do txt <- getRegE; withBuffer (insertN txt >> leftB)))
+    ,('P',      flip replicateM_ pasteBefore)
 
     ,(keyPPage, withBuffer . upScreensE)
     ,(keyNPage, withBuffer . downScreensE)
@@ -273,36 +295,81 @@ cmd_op :: VimMode
 cmd_op = do
   cnt <- count
   let i = maybe 1 id cnt
-  choice $ [events "dd" >> write delCurLine,
-            events "yy" >> write (withBuffer readLnB >>= setRegE)] ++
-           [do event c; m <- cmd_move; write (a i m) | (c,a) <- opCmdFM]
+  choice $ [events "dd" >> write (cut  pointB (lineMoveRel (i-1) >> return ()) LineBased),
+            events "yy" >> write (yank pointB (lineMoveRel (i-1) >> return ()) LineBased)] ++
+           [do event c
+               (regionStyle, m) <- cmd_move
+               write $ a (replicateM_ i m) regionStyle
+           | (c,a) <- opCmdFM]
     where
-        -- | Used to implement the 'dd' command.
-        delCurLine :: BufferM ()
-        delCurLine = moveToSol >> deleteToEol >> deleteN 1 >> 
-                     atEof >>= flip when lineUp >> 
-                     firstNonSpaceB
-
         -- | operator (i.e. movement-parameterised) actions
-        opCmdFM :: [(Char,Int -> BufferM () -> YiM ())]
+        opCmdFM :: [(Char, BufferM () -> RegionStyle -> YiM ())]
         opCmdFM =
-            [('d', \i m -> withBuffer $ replicateM_ i $ do
-                              r <- withPointMove m
-                              deleteRegionB r
-             ),
-             ('y', \_ m -> do r <- withBuffer $ withPointMove m
-                              s <- withBuffer $ readRegionB r
-                              setRegE s -- ToDo registers not global.
-             )]
+            [('d', cut  pointB),
+             ('y', yank pointB)]
 
-        -- | Save the current point, move to some location specified
-        -- by the @m@, then return.  Return the region between current
-        -- and remote point.
-        withPointMove :: BufferM () -> BufferM Region
-        withPointMove m = do p <- pointB
-                             m
-                             q <- pointB
-                             return $ mkRegion p q
+regionFromTo :: BufferM Point -> BufferM () -> RegionStyle -> BufferM Region
+regionFromTo mstart move regionStyle = do
+  start <- mstart
+  move
+  stop <- pointB
+  let region = mkRegion start stop
+  case regionStyle of
+    LineBased -> lineBasedRegion region
+    CharBased -> return region
+
+yank :: BufferM Point -> BufferM () -> RegionStyle -> YiM ()
+yank mstart move regionStyle = do
+  txt <- withBuffer $ do
+    p <- pointB
+    region <- regionFromTo mstart move regionStyle
+    moveTo p
+    readRegionB region
+  setRegE $ if (regionStyle /= CharBased) then '\n':txt else txt
+  let rowsYanked = length (filter (== '\n') txt)
+  when (rowsYanked > 2) $ msgE $ (show rowsYanked) ++ " lines yanked"
+
+cut :: BufferM Point -> BufferM () -> RegionStyle -> YiM ()
+cut mstart move regionStyle = do
+  txt <- withBuffer $ do
+    region <- regionFromTo mstart move regionStyle
+    txt <- readRegionB region
+    deleteRegionB region
+    return txt
+  setRegE $ if (regionStyle /= CharBased) then '\n':txt else txt
+  let rowsCut = length (filter (== '\n') txt)
+  when (rowsCut > 2) $ msgE ( (show rowsCut) ++ " fewer lines")
+
+cutSelection :: YiM ()
+cutSelection = cut getSelectionMarkPointB (return ()) CharBased
+
+yankSelection :: YiM ()
+yankSelection = yank getSelectionMarkPointB (return ()) CharBased
+
+pasteOverSelection :: YiM ()
+pasteOverSelection = do
+  txt <- getRegE
+  withBuffer $ do 
+    region <- regionFromTo getSelectionMarkPointB (return ()) CharBased
+    moveTo $ regionStart region
+    deleteRegionB region
+    insertN txt
+
+pasteAfter :: YiM ()
+pasteAfter = do
+  txt' <- getRegE
+  withBuffer $
+    case txt' of
+      '\n':txt -> moveToEol >> rightB >> insertN txt >> leftN (length txt)
+      _      -> moveXorEol 1 >> insertN txt' >> leftB
+
+pasteBefore :: YiM ()
+pasteBefore = do
+  txt' <- getRegE
+  withBuffer $ do
+    case txt' of
+      '\n':txt -> moveToSol >> insertN txt >> leftN (length txt)
+      _      -> insertN txt' >> leftB
 
 -- | Switching to another mode from visual mode.
 --
@@ -312,39 +379,15 @@ cmd_op = do
 vis_single :: VimMode
 vis_single =
         let beginIns a = do write (a >> withBuffer unsetMarkB) >> ins_mode
-            yank = do txt <- withBuffer $ do
-                         mrk <- getSelectionMarkPointB
-                         pt <- pointB
-                         readRegionB (mkVimRegion mrk pt)
-                      setRegE txt
-                      let rowsYanked = 1 + length (filter (== '\n') txt)
-                      if rowsYanked > 2 then msgE ( (show rowsYanked) ++ " lines yanked")
-                                        else return ()
-            pasteOver = do text <- getRegE
-                           withBuffer $ do 
-                             mrk <- getSelectionMarkPointB
-                             pt <- pointB
-                             moveTo mrk
-                             deleteRegionB (mkVimRegion mrk pt)
-                             insertN text
-            cut  = do txt <- withBuffer $ do
-                        mrk <- getSelectionMarkPointB
-                        pt <- pointB
-                        txt <- readRegionB (mkVimRegion mrk pt)
-                        deleteRegionB (mkVimRegion mrk pt)
-                        return txt
-                      setRegE txt
-                      let rowsCut = 1 + length (filter (== '\n') txt)
-                      if rowsCut > 2 then msgE ( (show rowsCut) ++ " fewer lines")
-                                     else return ()
         in choice [
             event '\ESC' >> return (),
             event 'v'    >> return (),
             event ':'    >> ex_mode ":'<,'>",
-            event 'y'    >> write yank,
-            event 'x'    >> write cut,
-            event 'p'    >> write pasteOver,
-            event 'c'    >> beginIns cut]
+            event 'y'    >> write yankSelection,
+            event 'x'    >> write cutSelection,
+            event 'd'    >> write cutSelection,
+            event 'p'    >> write pasteOverSelection,
+            event 'c'    >> beginIns cutSelection]
 
 
 -- | These also switch mode, as all visual commands do, but these are
@@ -389,7 +432,7 @@ cmd2other = let beginIns a = write a >> ins_mode
             do event 'O'     ; beginIns $ withBuffer $ moveToSol >> insertB '\n' >> lineUp,
             do event 'c'     ; beginIns $ not_implemented 'c',
             do event 'C'     ; beginIns $ withBuffer readRestOfLnB >>= setRegE >> withBuffer deleteToEol,
-            do event 'S'     ; beginIns $ withBuffer (moveToSol >> readLnB) >>= setRegE >> withBuffer deleteToEol,
+            do event 'S'     ; beginIns $ cut moveToSol moveToEol LineDown,
             do event '/'     ; ex_mode "/",
             do event '?'     ; write $ not_implemented '?',
             leave,
