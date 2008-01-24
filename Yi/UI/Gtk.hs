@@ -22,58 +22,56 @@ import qualified Yi.UI.Common as Common
 import Yi.Style hiding (modeline)
 import qualified Yi.WindowSet as WS
 
+import Control.Applicative
 import Control.Concurrent ( yield )
 import Control.Concurrent.Chan
-import Control.Applicative
-import Control.Monad.Reader (liftIO, when, MonadIO)
 import Control.Monad (ap)
+import Control.Monad.Reader (liftIO, when, MonadIO)
 import Control.Monad.State (runState, State, gets, modify)
 
+import Data.Foldable
 import Data.IORef
 import Data.List ( nub, findIndex, sort )
 import Data.Maybe
-import Data.Unique
-import Data.Foldable
 import Data.Traversable
+import Data.Unique
 import qualified Data.Map as M
 
-import Graphics.UI.Gtk hiding ( Window, Event, Point, Style )          
+import Graphics.UI.Gtk hiding ( Window, Event, Point, Style )
 import qualified Graphics.UI.Gtk as Gtk
 
 ------------------------------------------------------------------------
 
 data UI = forall action. UI {
               uiWindow :: Gtk.Window
-             ,uiBox :: VBox
-             ,uiCmdLine :: Label
-             ,uiBuffers :: IORef (M.Map BufferRef TextBuffer)
-             ,tagTable :: TextTagTable
-             ,windowCache :: IORef [WinInfo]
-             ,uiActionCh :: Chan action
-             ,uiRunEd :: EditorM () -> action
+             , uiBox :: VBox
+             , uiCmdLine :: Label
+             , uiBuffers :: IORef (M.Map BufferRef TextBuffer)
+             , tagTable :: TextTagTable
+             , windowCache :: IORef [WinInfo]
+             , uiActionCh :: Chan action
+             , uiRunEd :: EditorM () -> action
              }
 
-data WinInfo = WinInfo 
+data WinInfo = WinInfo
     {
-     bufkey      :: !BufferRef         -- ^ the buffer this window opens to
-    ,wkey        :: !Unique
-    ,textview    :: TextView
-    ,modeline    :: Label
-    ,widget      :: Box            -- ^ Top-level widget for this window.
-    ,isMini      :: Bool
+      bufkey      :: !BufferRef         -- ^ the buffer this window opens to
+    , wkey        :: !Unique
+    , textview    :: TextView
+    , modeline    :: Label
+    , widget      :: Box            -- ^ Top-level widget for this window.
+    , isMini      :: Bool
     }
 
 instance Show WinInfo where
-    show w = "W" ++ show (hashUnique $ wkey w) ++ " on " ++ show (bufkey w) 
-
+    show w = "W" ++ show (hashUnique $ wkey w) ++ " on " ++ show (bufkey w)
 
 -- | Get the identification of a window.
 winkey :: WinInfo -> (Bool, BufferRef)
 winkey w = (isMini w, bufkey w)
 
-
 mkUI :: UI -> Common.UI
-mkUI ui = Common.UI 
+mkUI ui = Common.UI
   {
    Common.main                  = main                  ui,
    Common.end                   = end,
@@ -84,7 +82,7 @@ mkUI ui = Common.UI
 
 -- | Initialise the ui
 start :: Chan Yi.Event.Event -> Chan action ->
-         Editor -> (EditorM () -> action) -> 
+         Editor -> (EditorM () -> action) ->
          IO Common.UI
 start ch outCh _ed runEd = do
   initGUI
@@ -100,16 +98,16 @@ start ch outCh _ed runEd = do
 
   set win [ containerChild := vb ]
   onDestroy win mainQuit
-                
+
   cmd <- labelNew Nothing
   set cmd [ miscXalign := 0.01 ]
   f <- fontDescriptionNew
   fontDescriptionSetFamily f "Monospace"
   widgetModifyFont cmd (Just f)
 
-  set vb [ containerChild := vb', 
-           containerChild := cmd, 
-           boxChildPacking cmd := PackNatural] 
+  set vb [ containerChild := vb',
+           containerChild := cmd,
+           boxChildPacking cmd := PackNatural]
 
   -- use our magic threads thingy (http://haskell.org/gtk2hs/archives/2005/07/24/writing-multi-threaded-guis/)
   timeoutAddFull (yield >> return True) priorityDefaultIdle 50
@@ -124,16 +122,14 @@ start ch outCh _ed runEd = do
 
   return (mkUI ui)
 
-
 main :: UI -> IO ()
-main _ui = 
+main _ui =
     do logPutStrLn "GTK main loop running"
        mainGUI
 
-
 instance Show Gtk.Event where
-    show (Key _eventRelease _eventSent _eventTime eventModifier' _eventWithCapsLock _eventWithNumLock 
-                  _eventWithScrollLock _eventKeyVal eventKeyName' eventKeyChar') 
+    show (Key _eventRelease _eventSent _eventTime eventModifier' _eventWithCapsLock _eventWithNumLock
+                  _eventWithScrollLock _eventKeyVal eventKeyName' eventKeyChar')
         = show eventModifier' ++ " " ++ show eventKeyName' ++ " " ++ show eventKeyChar'
     show _ = "Not a key event"
 
@@ -143,7 +139,7 @@ instance Show Gtk.Modifier where
     show Shift = "Shift"
     show Apple = "Apple"
     show Compose = "Compose"
-    
+
 processEvent :: Chan Event -> Gtk.Event -> IO Bool
 processEvent ch ev = do
   -- logPutStrLn $ "Gtk.Event: " ++ show ev
@@ -160,11 +156,11 @@ processEvent ch ev = do
   yield
   yield
   return True
-            
+
 gtkToYiEvent :: Gtk.Event -> Maybe Event
 gtkToYiEvent (Key {eventKeyName = keyName, eventModifier = modifier, eventKeyChar = char})
     = fmap (\k -> Event k $ (nub $ (if isShift then filter (not . (== MShift)) else id) $ concatMap modif modifier)) key'
-      where (key',isShift) = 
+      where (key',isShift) =
                 case char of
                   Just c -> (Just $ KASCII c, True)
                   Nothing -> (M.lookup keyName keyTable, False)
@@ -177,7 +173,7 @@ gtkToYiEvent _ = Nothing
 
 -- | Map GTK long names to Keys
 keyTable :: M.Map String Key
-keyTable = M.fromList 
+keyTable = M.fromList
     [("Down",       KDown)
     ,("Up",         KUp)
     ,("Left",       KLeft)
@@ -194,7 +190,6 @@ keyTable = M.fromList
     ,("Tab",        KASCII '\t')
     ]
 
-
 -- | Clean up and go home
 end :: IO ()
 end = mainQuit
@@ -202,7 +197,7 @@ end = mainQuit
 -- | Synchronize the windows displayed by GTK with the status of windows in the Core.
 syncWindows :: Editor -> UI -> [(Window, Bool)] -- ^ windows paired with their "isFocused" state.
             -> [WinInfo] -> IO [WinInfo]
-syncWindows e ui (wfocused@(w,focused):ws) (c:cs) 
+syncWindows e ui (wfocused@(w,focused):ws) (c:cs)
     | Window.winkey w == winkey c = do when focused (setFocus c)
                                        return (c:) `ap` syncWindows e ui ws cs
     | Window.winkey w `elem` map winkey cs = removeWindow ui c >> syncWindows e ui (wfocused:ws) cs
@@ -211,7 +206,7 @@ syncWindows e ui (wfocused@(w,focused):ws) (c:cs)
                      return (c':) `ap` syncWindows e ui ws (c:cs)
 syncWindows e ui ws [] = mapM (insertWindowAtEnd e ui) (map fst ws)
 syncWindows _e ui [] cs = mapM_ (removeWindow ui) cs >> return []
-    
+
 setFocus :: WinInfo -> IO ()
 setFocus w = do
   logPutStrLn $ "gtk focusing " ++ show w
@@ -234,10 +229,10 @@ handleClick ui w event = do
 
   -- retrieve the clicked offset.
   let tv = textview w
-  let wx = round (eventX event)  
-  let wy = round (eventY event)  
-  (bx, by) <- textViewWindowToBufferCoords tv TextWindowText (wx,wy) 
-  iter <- textViewGetIterAtLocation tv bx by 
+  let wx = round (eventX event)
+  let wy = round (eventY event)
+  (bx, by) <- textViewWindowToBufferCoords tv TextWindowText (wx,wy)
+  iter <- textViewGetIterAtLocation tv bx by
   p1 <- get iter textIterOffset
 
   -- maybe focus the window
@@ -291,7 +286,7 @@ newWindow ui mini b = do
     textViewSetWrapMode v WrapChar
     widgetModifyFont v (Just f)
 
-    box <- if mini 
+    box <- if mini
      then do
       widgetSetSizeRequest v (-1) 1
 
@@ -299,10 +294,10 @@ newWindow ui mini b = do
       widgetModifyFont prompt (Just f)
 
       hb <- hBoxNew False 1
-      set hb [ containerChild := prompt, 
-               containerChild := v, 
+      set hb [ containerChild := prompt,
+               containerChild := v,
                boxChildPacking prompt := PackNatural,
-               boxChildPacking v := PackGrow] 
+               boxChildPacking v := PackGrow]
 
       return (castToBox hb)
      else do
@@ -313,9 +308,9 @@ newWindow ui mini b = do
                   containerChild := v]
 
       vb <- vBoxNew False 1
-      set vb [ containerChild := scroll, 
-               containerChild := ml, 
-               boxChildPacking ml := PackNatural] 
+      set vb [ containerChild := scroll,
+               containerChild := ml,
+               boxChildPacking ml := PackNatural]
       return (castToBox vb)
 
     gtkBuf <- getGtkBuffer ui b
@@ -324,12 +319,12 @@ newWindow ui mini b = do
 
     k <- newUnique
     let win = WinInfo {
-                    bufkey    = (keyB b)
-                   ,wkey      = k
-                   ,textview  = v
-                   ,modeline  = ml
-                   ,widget    = box
-                   ,isMini    = mini
+                     bufkey    = (keyB b)
+                   , wkey      = k
+                   , textview  = v
+                   , modeline  = ml
+                   , widget    = box
+                   , isMini    = mini
               }
     return win
 
@@ -365,10 +360,10 @@ refresh ui e = do
 
     logPutStrLn $ "syncing: " ++ show ws
     logPutStrLn $ "with: " ++ show cache
-    cache' <- syncWindows e ui (toList $ WS.withFocus $ ws) cache  
-    logPutStrLn $ "Yields: " ++ show cache'
+    cache' <- syncWindows e ui (toList $ WS.withFocus $ ws) cache
+    logPutStrLn $ "Gives: " ++ show cache'
     writeRef (windowCache ui) cache'
-    forM_ cache' $ \w -> 
+    forM_ cache' $ \w ->
         do let buf = findBufferWith (bufkey w) e
            gtkBuf <- getGtkBuffer ui buf
 
@@ -379,7 +374,7 @@ refresh ui e = do
            i' <- textBufferGetIterAtOffset gtkBuf p1
            textBufferSelectRange gtkBuf i i'
            textViewScrollMarkOnscreen (textview w) insertMark
-           let (txt, _) = runBufferDummyWindow buf getModeLine 
+           let (txt, _) = runBufferDummyWindow buf getModeLine
            set (modeline w) [labelText := txt]
 
 replaceTagsIn :: UI -> Point -> Point -> FBuffer -> TextBuffer -> IO ()
@@ -392,7 +387,7 @@ replaceTagsIn ui from to buf gtkBuf = do
     f <- textBufferGetIterAtOffset gtkBuf l
     t <- textBufferGetIterAtOffset gtkBuf r
     tag <- styleToTag ui style
-    textBufferApplyTag gtkBuf tag f t                         
+    textBufferApplyTag gtkBuf tag f t
 
 applyUpdate :: TextBuffer -> Update -> IO ()
 applyUpdate buf (Insert p s) = do
@@ -408,7 +403,7 @@ styleToTag :: UI -> Style -> IO TextTag
 styleToTag ui (Style fg _bg) = do
   let fgText = colorToText fg
   mtag <- textTagTableLookup (tagTable ui) fgText
-  case mtag of 
+  case mtag of
     Just x -> return x
     Nothing -> do x <- textTagNew (Just fgText)
                   set x [textTagForeground := fgText]
@@ -432,7 +427,6 @@ prepareAction ui = do
                      return (l1 - l0)
     -- updates the heights of the windows
     return $ modifyWindows (\ws -> fst $ runState (mapM distribute ws) heights)
-
 
 distribute :: Window -> State [Int] Window
 distribute win = do
