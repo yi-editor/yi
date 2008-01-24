@@ -1,14 +1,16 @@
 -- Copyright (C) 2008 JP Bernardy
 module Yi.Buffer.HighLevel where
 
+import Control.Applicative
+import Control.Monad.State
 import Data.Char
-import Yi.String
+
 import Yi.Buffer
 import Yi.Buffer.Normal
 import Yi.Buffer.Region
+import Yi.String
 import Yi.Window
-import Control.Monad.State
-import Control.Applicative
+
 -- ---------------------------------------------------------------------
 -- Movement operations
 
@@ -64,7 +66,7 @@ prevCExc c = prevCInc c >> rightB
 
 -- | Move to first non-space character in this line
 firstNonSpaceB :: BufferM ()
-firstNonSpaceB = do moveToSol 
+firstNonSpaceB = do moveToSol
                     untilB_ ((||) <$> atEol <*> (isSpace <$> readB)) rightB
 
 
@@ -79,7 +81,7 @@ nextNParagraphs n = replicateM_ n $ execB Move Paragraph Forward
 
 -- | Move up prev @n@ paragraphs
 prevNParagraphs :: Int -> BufferM ()
-prevNParagraphs n = replicateM_ n $ execB Move Paragraph Backward 
+prevNParagraphs n = replicateM_ n $ execB Move Paragraph Backward
 
 
 -----------------------------------------------------------------------
@@ -191,13 +193,13 @@ getBookmarkB nm = getMarkB (Just nm)
 
 data BufferFileInfo =
     BufferFileInfo { bufInfoFileName :: FilePath
-		   , bufInfoSize     :: Int
-		   , bufInfoLineNo   :: Int
-		   , bufInfoColNo    :: Int
-		   , bufInfoCharNo   :: Int
-		   , bufInfoPercent  :: String
-		   , bufInfoModified :: Bool
-		   }
+                   , bufInfoSize     :: Int
+                   , bufInfoLineNo   :: Int
+                   , bufInfoColNo    :: Int
+                   , bufInfoCharNo   :: Int
+                   , bufInfoPercent  :: String
+                   , bufInfoModified :: Bool
+                   }
 
 -- | File info, size in chars, line no, col num, char num, percent
 bufInfoB :: BufferM BufferFileInfo
@@ -209,13 +211,13 @@ bufInfoB = do
     c <- offsetFromSol
     nm <- gets name
     let bufInfo = BufferFileInfo { bufInfoFileName = nm
-				 , bufInfoSize     = s
-				 , bufInfoLineNo   = l
-				 , bufInfoColNo    = c
-				 , bufInfoCharNo   = p
-				 , bufInfoPercent  = getPercent p s 
-				 , bufInfoModified = not m
-				 }
+                                 , bufInfoSize     = s
+                                 , bufInfoLineNo   = l
+                                 , bufInfoColNo    = c
+                                 , bufInfoCharNo   = p
+                                 , bufInfoPercent  = getPercent p s
+                                 , bufInfoModified = not m
+                                 }
     return bufInfo
 
 -----------------------------
@@ -225,24 +227,24 @@ bufInfoB = do
 upScreenE :: BufferM ()
 upScreenE = upScreensE 1
 
--- TODO: add a direction parameter instead of duplicating code.
--- | Scroll up n screens
-upScreensE :: Int -> BufferM ()
-upScreensE n = do
-  h <- askWindow height
-  gotoLnFrom (- (n * (h - 1)))
-  moveToSol
-
 -- | Scroll down 1 screen
 downScreenE :: BufferM ()
 downScreenE = downScreensE 1
 
+-- | Scroll up n screens
+upScreensE :: Int -> BufferM ()
+upScreensE = moveScreenE Forward
+
 -- | Scroll down n screens
 downScreensE :: Int -> BufferM ()
-downScreensE n = do
-  h <- askWindow height
-  gotoLnFrom (n * (h - 1))
-  moveToSol
+downScreensE = moveScreenE Backward
+
+moveScreenE :: Direction -> Int -> BufferM ()
+moveScreenE dir n = do h <- askWindow height
+                       case dir of
+                         Forward -> gotoLnFrom (- (n * (h - 1)))
+                         Backward -> gotoLnFrom $ n * (h - 1)
+                       moveToSol
 
 -- | Move to @n@ lines down from top of screen
 downFromTosE :: Int -> BufferM ()
