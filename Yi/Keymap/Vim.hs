@@ -391,7 +391,7 @@ cmd2other = let beginIns a = write a >> ins_mode
             do event 'C'     ; beginIns $ withBuffer readRestOfLnB >>= setRegE >> withBuffer deleteToEol,
             do event 'S'     ; beginIns $ withBuffer (moveToSol >> readLnB) >>= setRegE >> withBuffer deleteToEol,
             do event '/'     ; ex_mode "/",
---          do event '?'   ; (with (not_implemented '?'), st{acc=[]}, Just $ cmd st),
+            do event '?'     ; write $ not_implemented '?',
             leave,
             do event keyIC   ; ins_mode]
 
