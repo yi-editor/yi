@@ -564,6 +564,20 @@ ex_eval cmd = do
           [] -> return ()
 
     where
+      quitB = do unchanged <- withBuffer isUnchangedB
+                 if unchanged then closeE
+                              else errorE "No write since last change (add ! to override)"
+
+      quitNoW = do withEditor $ deleteBuffer =<< getBuffer
+                   bufs <- readEditor bufferStack
+                   bufs' <- mapM (\x -> withGivenBuffer x isUnchangedB) bufs
+                   if all id bufs'
+                     then quitE
+                     else errorE "No write since last change (add ! to override)"
+
+      quitall  = withAllBuffers quitB
+      wquitall = withAllBuffers viWrite >> quitE
+
       fn ""           = msgClrE
 
       fn s@(c:_) | isDigit c = do
@@ -573,11 +587,28 @@ ex_eval cmd = do
 
       fn "w"          = viWrite
       fn ('w':' ':f)  = viWriteTo f
-      fn "q"          = do b <- withBuffer isUnchangedB
-                           if b then closeE
-                                else errorE "No write since last change (add ! to override)"
-      fn "q!"         = closeE
+      fn "qa"         = quitall
+      fn "qal"        = quitall
+      fn "qall"       = quitall
+      fn "quita"      = quitall
+      fn "quital"     = quitall
+      fn "quitall"    = quitall
+      fn "q"          = quitB
+      fn "qu"         = quitB
+      fn "qui"        = quitB
+      fn "quit"       = quitB
+      fn "q!"         = quitNoW
+      fn "qu!"        = quitNoW
+      fn "qui!"       = quitNoW
+      fn "quit!"      = quitNoW
+      fn "qa!"        = quitE
+      fn "quita!"     = quitE
+      fn "quital!"    = quitE
+      fn "quitall!"   = quitE
       fn "wq"         = viWrite >> closeE
+      fn "wqa"        = wquitall
+      fn "wqal"       = wquitall
+      fn "wqall"      = wquitall
       fn "x"          = do unchanged <- withBuffer isUnchangedB
                            unless unchanged viWrite
                            closeE
@@ -634,6 +665,9 @@ not_implemented c = errorE $ "Not implemented: " ++ show c
 
 -- ---------------------------------------------------------------------
 -- Misc functions
+
+withAllBuffers :: YiM () -> YiM ()
+withAllBuffers m = mapM_ (\b -> withEditor (setBuffer b) >> m) =<< readEditor bufferStack
 
 viFileInfo :: YiM ()
 viFileInfo =
