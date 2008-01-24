@@ -397,7 +397,7 @@ runAction (BufferA act) = do
 -- | Set the cmd buffer, and draw message at bottom of screen
 msgE :: String -> YiM ()
 msgE s = do
-  withEditor $ modify $ \e -> e { statusLine = s}
+  withEditor $ modify $ \e -> e { statusLine = takeWhile (/= '\n') s }
   -- also show in the messages buffer, so we don't loose any message
   b <- getBufferWithName "*messages*"
   withGivenBuffer b $ do botB; insertN (s ++ "\n")
