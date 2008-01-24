@@ -4,12 +4,14 @@ module Yi.Buffer.HighLevel where
 import Control.Applicative
 import Control.Monad.State
 import Data.Char
+import Data.Dynamic
 
 import Yi.Buffer
 import Yi.Buffer.Normal
 import Yi.Buffer.Region
 import Yi.String
 import Yi.Window
+import Yi.Dynamic
 
 -- ---------------------------------------------------------------------
 -- Movement operations
@@ -266,3 +268,26 @@ middleE = do
   moveTo (tospnt w)
   replicateM_ (height w `div` 2) lineDown
 
+lineBasedRegion :: Region -> BufferM Region
+lineBasedRegion region = do
+  moveTo $ regionStart region
+  moveToSol
+  start <- pointB
+  moveTo $ regionEnd region
+  moveToEol
+  rightB
+  stop <- pointB
+  return $ mkRegion start stop
+
+newtype LineBasedSelection = LBS Bool deriving (Typeable,Show)
+instance Initializable LineBasedSelection where
+  initial = LBS False
+
+-- | Get the current region boundaries
+getSelectRegionB :: BufferM Region
+getSelectRegionB = do
+  m <- getMarkPointB =<< getSelectionMarkB
+  p <- pointB
+  let region = mkRegion m p
+  LBS lineBasedSelection <- getDynamicB
+  if lineBasedSelection then lineBasedRegion region else return region

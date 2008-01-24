@@ -15,11 +15,13 @@ import Prelude       hiding ( any, error )
 
 import Data.Char
 import Data.Maybe           ( fromMaybe )
+import Data.Dynamic
 
 import Control.Exception    ( ioErrors, try, evaluate )
 import Control.Monad.State
 
 import Yi.Editor
+import Yi.Accessor
 import Yi.History
 import Yi.Buffer
 import Yi.Debug
@@ -90,13 +92,26 @@ rep_mode :: VimMode
 rep_mode = write (msgE "-- REPLACE --") >> many rep_char >> leave
 
 -- | Visual mode, similar to command mode
-vis_mode :: VimMode
-vis_mode = do 
-  write (msgE "-- VISUAL --" >> withBuffer (pointB >>= setSelectionMarkPointB)) 
-  many (eval cmd_move)
-  (vis_single <|| vis_multi)
-  write (msgClrE >> withBuffer unsetMarkB)
+vis_mode :: RegionStyle -> VimMode
+vis_mode regionStyle = do
+  write (withBuffer (pointB >>= setSelectionMarkPointB))
+  core_vis_mode regionStyle
+  write (msgClrE >> withBuffer unsetMarkB >> withBuffer (setDynamicB $ LBS False))
 
+core_vis_mode :: RegionStyle -> VimMode
+core_vis_mode regionStyle = do
+  write $ do withEditor $ setA regionStyleA regionStyle
+             withBuffer $ setDynamicB $ LBS (regionStyle == LineBased)
+             msgE $ msg regionStyle
+  many (eval cmd_move)
+  (vis_single regionStyle <|| vis_multi)
+  where msg CharBased = "-- VISUAL --"
+        msg LineBased = "-- VISUAL LINE --"
+
+-- | Change visual mode
+change_vis_mode :: RegionStyle -> RegionStyle -> VimMode
+change_vis_mode src dst | src == dst = return ()
+change_vis_mode _   dst              = core_vis_mode dst
 
 -- | A VimProc to accumulate digits.
 -- typically what is needed for integer repetition arguments to commands
@@ -110,20 +125,13 @@ count = option Nothing $ do
 
 data RegionStyle = LineBased
                  | CharBased
-  deriving (Eq)
+  deriving (Eq, Typeable, Show)
 
-lineBasedRegion :: Region -> BufferM Region
-lineBasedRegion region = do
-  let start' = regionStart region
-  let stop' = regionEnd region
-  moveTo $ min start' stop'
-  moveToSol
-  start <- pointB
-  moveTo $ max start' stop'
-  moveToEol
-  rightB
-  stop <- pointB
-  return $ mkRegion start stop
+instance Initializable RegionStyle where
+  initial = CharBased
+
+regionStyleA :: Accessor Editor RegionStyle
+regionStyleA = dynamicValueA .> dynamicA
 
 -- ---------------------------------------------------------------------
 -- | VimProc for movement commands
@@ -345,16 +353,17 @@ cut mstart move regionStyle = do
   when (rowsCut > 2) $ msgE ( (show rowsCut) ++ " fewer lines")
 
 cutSelection :: YiM ()
-cutSelection = cut getSelectionMarkPointB (return ()) CharBased
+cutSelection = cut getSelectionMarkPointB (return ()) =<< withEditor (getA regionStyleA)
 
 yankSelection :: YiM ()
-yankSelection = yank getSelectionMarkPointB (return ()) CharBased
+yankSelection = yank getSelectionMarkPointB (return ()) =<< withEditor (getA regionStyleA)
 
 pasteOverSelection :: YiM ()
 pasteOverSelection = do
   txt <- getRegE
-  withBuffer $ do 
-    region <- regionFromTo getSelectionMarkPointB (return ()) CharBased
+  regionStyle <- withEditor (getA regionStyleA)
+  withBuffer $ do
+    region <- regionFromTo getSelectionMarkPointB (return ()) regionStyle
     moveTo $ regionStart region
     deleteRegionB region
     insertN txt
@@ -380,12 +389,13 @@ pasteBefore = do
 -- All visual commands are meta actions, as they transfer control to another
 -- VimProc. In this way vis_single is analogous to cmd2other
 --
-vis_single :: VimMode
-vis_single =
+vis_single :: RegionStyle -> VimMode
+vis_single regionStyle =
         let beginIns a = do write (a >> withBuffer unsetMarkB) >> ins_mode
         in choice [
             event '\ESC' >> return (),
-            event 'v'    >> return (),
+            event 'V'    >> change_vis_mode regionStyle LineBased,
+            event 'v'    >> change_vis_mode regionStyle CharBased,
             event ':'    >> ex_mode ":'<,'>",
             event 'y'    >> write yankSelection,
             event 'x'    >> write cutSelection,
@@ -426,7 +436,8 @@ cmd2other = let beginIns a = write a >> ins_mode
                 beginIns :: YiM () -> VimMode
         in choice [
             do event ':'     ; ex_mode ":",
-            do event 'v'     ; vis_mode,
+            do event 'v'     ; vis_mode CharBased,
+            do event 'V'     ; vis_mode LineBased,
             do event 'R'     ; rep_mode,
             do event 'i'     ; ins_mode,
             do event 'I'     ; beginIns (withBuffer moveToSol),

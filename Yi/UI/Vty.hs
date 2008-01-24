@@ -25,7 +25,7 @@ import Control.Arrow (second)
 import Data.Char (ord,chr)
 import Data.Foldable
 import Data.IORef
-import Data.List (partition, sort)
+import Data.List (partition)
 import Data.Maybe
 import Data.Traversable
 import System.Exit
@@ -33,6 +33,8 @@ import System.Posix.Signals         ( raiseSignal, sigTSTP )
 import Yi.CoreUI
 import Yi.Buffer
 import Yi.Buffer.Implementation
+import Yi.Buffer.Region
+import Yi.Buffer.HighLevel
 import Yi.Debug
 import Yi.Editor
 import Yi.Event
@@ -242,14 +244,14 @@ drawWindow e sty focused w win = (Rendered { picture = pict,cursor = cur}, bos)
         wsty = styleToAttr (window sty)
         selsty = styleToAttr (selected sty)
         eofsty = eof sty
-        (markPoint, _) = runBufferDummyWindow b (getMarkPointB =<< getSelectionMarkB)
+        (selreg, _) = runBufferDummyWindow b getSelectRegionB
         (point, _) = runBufferDummyWindow b pointB
         (bufData, _) = runBufferDummyWindow b (nelemsBH (w*h') (tospnt win)) -- read enough chars from the buffer.
         prompt = if isMini win then name b else ""
 
-        (rendered,bos,cur) = drawText h' w 
+        (rendered,bos,cur) = drawText h' w
                                 (tospnt win - length prompt) 
-                                point markPoint 
+                                point selreg
                                 selsty wsty 
                                 (zip prompt (repeat wsty) ++ map (second styleToAttr) bufData ++ [(' ',attr)])
                              -- we always add one character which can be used to position the cursor at the end of file
@@ -269,8 +271,8 @@ drawWindow e sty focused w win = (Rendered { picture = pict,cursor = cur}, bos)
 drawText :: Int    -- ^ The height of the part of the window we are in
          -> Int    -- ^ The width of the part of the window we are in
          -> Point  -- ^ The position of the first character to draw
-         -> Point  -- ^ The position of the cursor (or insertion mark)
-         -> Point  -- ^ The position of the selection mark
+         -> Point  -- ^ The position of the cursor
+         -> Region -- ^ The selected region
          -> Attr   -- ^ The attribute with which to draw selected text
          -> Attr   -- ^ The attribute with which to draw the background
                    -- this is not used for drawing but only to compare
@@ -278,14 +280,10 @@ drawText :: Int    -- ^ The height of the part of the window we are in
                    -- the selection invisible.
          -> [(Char,Attr)]  -- ^ The data to draw.
          -> ([Image], Point, Maybe (Int,Int))
-drawText h w topPoint point markPoint selsty wsty bufData 
+drawText h w topPoint point selreg selsty wsty bufData
     | h == 0 || w == 0 = ([], topPoint, Nothing)
     | otherwise        = (rendered_lines, bottomPoint, pntpos)
   where 
-  -- Get the start and the end of the selection so that we do not
-  -- later have to worry which is the lesser of the two.
-  [startSelect, stopSelect] = sort [markPoint,point]
-
   -- | Remember the point of each char
   annotateWithPoint text = zipWith (\(c,a) p -> (c,(a,p))) text [topPoint..]  
 
@@ -303,11 +301,10 @@ drawText h w topPoint point markPoint selsty wsty bufData
 
   pointStyle :: Point -> Attr -> Attr
   pointStyle x a 
-    | x == point         = a
-    | startSelect <= x 
-      && x < stopSelect 
-      && selsty /= wsty  = selsty
-    | otherwise          = a
+    | x == point          = a
+    | x `inRegion` selreg 
+      && selsty /= wsty   = selsty
+    | otherwise           = a
 
   fillColorLine :: [(Char, (Attr, Point))] -> Image
   fillColorLine [] = renderHFill attr ' ' w

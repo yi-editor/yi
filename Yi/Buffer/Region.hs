@@ -2,7 +2,7 @@
 
 module Yi.Buffer.Region (Region, mkRegion, mkVimRegion, regionStart, regionEnd, wholeBuffer,
                          swapRegionsB, deleteRegionB, replaceRegionB, readRegionB, mapRegionB,
-                         getSelectRegionB) where
+                         inRegion) where
 
 import Yi.Buffer
 
@@ -55,10 +55,7 @@ swapRegionsB r r'
                      w1 <- readRegionB r'
                      replaceRegionB r' w0
                      replaceRegionB r  w1
-                     
--- | Get the current region boundaries
-getSelectRegionB :: BufferM Region
-getSelectRegionB = do 
-  m <- getMarkPointB =<< getSelectionMarkB
-  p <- pointB
-  return $ mkRegion m p
+
+-- | True if the given point is inside the given region.
+inRegion :: Point -> Region -> Bool
+p `inRegion` (Region start stop) = start <= p && p < stop

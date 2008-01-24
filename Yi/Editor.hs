@@ -61,7 +61,6 @@ dynamicA = Accessor dynamic (\f e -> e {dynamic = f (dynamic e)})
 windowsA :: Accessor Editor (WindowSet Window)
 windowsA = Accessor windows (\f e -> e {windows = f (windows e)})
 
-
 -- | The initial state
 emptyEditor :: Editor
 emptyEditor = Editor {
