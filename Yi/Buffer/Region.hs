@@ -1,6 +1,6 @@
 -- This module defines the Region ADT
 
-module Yi.Buffer.Region (Region, mkRegion, mkVimRegion, regionStart, regionEnd,
+module Yi.Buffer.Region (Region, mkRegion, mkVimRegion, regionStart, regionEnd, wholeBuffer,
                          swapRegionsB, deleteRegionB, replaceRegionB, readRegionB, mapRegionB,
                          getSelectRegionB) where
 
@@ -41,6 +41,11 @@ mapRegionB :: Region -> (Char -> Char) -> BufferM ()
 mapRegionB r f = do
   text <- readRegionB r
   replaceRegionB r (map f text)
+
+-- | Given a buffer, construct a region that represent the whole buffer.
+wholeBuffer :: BufferM Region
+wholeBuffer = do s <- sizeB
+                 return $ Region 0 s
 
 -- | swap the content of two Regions
 swapRegionsB :: Region -> Region -> BufferM ()  
