@@ -44,16 +44,16 @@ $(tests "core" [d|
     assert v
 
  testNopE = do
-   v <- nopE
+   v <- return ()
    assertEqual () v
 
  testTopE = do
    emptyE >> fnewE "data"
    topE
    v <- getW
-   downE
+   (execB Move VLine Forward)
    u <- getW
-   upE
+   (execB Move VLine Backward)
    v' <- getW
    assertEqual [0,0,0,0,1,0,1] v
    assertEqual v v'
@@ -61,36 +61,36 @@ $(tests "core" [d|
 
  testBotE = do
    emptyE >> fnewE "data"
-   botE >> solE
+   botE >> moveToSol
    v <- getW
-   upE
-   downE >> solE
+   (execB Move VLine Backward)
+   (execB Move VLine Backward) >> moveToSol
    u <- getW
    assertEqual [256927,256927,30,0,3926,255597,3896] v
    assertEqual u v
 
  testSolEolE = do
    emptyE >> fnewE "data"
-   gotoLnE 20
-   solE
+   gotoLn 20
+   moveToSol
    v <- getW
-   eolE
+   moveToEol
    u <- getW
-   solE
+   moveToSol
    v' <- getW
-   eolE
+   moveToEol
    u' <- getW
    assertEqual v v'
    assertEqual u u'
 
  testGotoLnE  = do
    emptyE >> fnewE "data"
-   ws <- sequence [ gotoLnE i >> getW >>= \i -> return (i !! 4) | i <- [1 .. 3926] ]
+   ws <- sequence [ gotoLn i >> getW >>= \i -> return (i !! 4) | i <- [1 .. 3926] ]
    assertEqual [1..3926] ws
 
  testGotoLnFromE  = do
    emptyE >> fnewE "data"
-   ws <- sequence [ do gotoLnE i
+   ws <- sequence [ do gotoLn i
                        gotoLnFromE 2
                        i <- getW
                        return (i !! 4)
@@ -100,7 +100,7 @@ $(tests "core" [d|
  testGotoPointE = do
    emptyE >> fnewE "data"
    gotoPointE 100000
-   i <- getPointE
+   i <- getSelectionMarkPointB
    v <- getW
    assertEqual i 100000
    assertEqual [100000,100000,30,6,1501,97850,1471] v
