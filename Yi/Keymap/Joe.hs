@@ -92,7 +92,7 @@ runProc = comap eventToChar
 
 -- Commenting out to avoid compile warnings until fn is needed
 -- getFileE :: EditorM FilePath
--- getFileE = do bufInfo <- bufInfoE
+-- getFileE = do bufInfo <- bufInfoB
 --            let fp = bufInfoFileName bufInfo
 --               return fp
 
@@ -223,7 +223,7 @@ queryReplace m s sfn =
             return w
 
         do_next j = do
-            op <- getPointE
+            op <- getSelectionMarkPointB
             gotoPointE (j-1) -- Don't replace within replacement
                              -- TODO: backwards search
             res <- sfn
@@ -240,7 +240,7 @@ doSearch srchexp = do
             Nothing -> metaM $ keymap
     where
         sfn = do
-            op <- getPointE
+            op <- getSelectionMarkPointB
             res <- searchDoE srchexp (js_search_dir st)
             case res of
                 Just (Left _) -> gotoPointE op >> return Nothing
