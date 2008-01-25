@@ -19,7 +19,6 @@ module Yi.Buffer
   , lineMoveRel
   , lineUp
   , lineDown
-  , hPutB
   , newB
   , Point
   , Mark
@@ -197,15 +196,6 @@ runBuffer w b f = let (a, b0, updates) = runRWS (fromBufferM f) w b
 runBufferDummyWindow :: FBuffer -> BufferM a -> (a, FBuffer)
 runBufferDummyWindow b = runBuffer (dummyWindow $ bkey b) b
 
-
--- | Commit a buffer content to disk. Error is raised if no file name is associated with the buffer.
-hPutB :: FBuffer -> IO FBuffer
-hPutB b = do
-  let bi = rawbuf b
-  case file b of
-    Nothing -> error "buffer not associated with a file"
-    Just f  -> writeFile f (nelemsBI (sizeBI bi) 0 bi)
-  return (b {undos = emptyUR})
 
 -- Clear the undo list, so the changed "flag" is reset.
 -- This has now been updated so that instead of clearing the undo list we
