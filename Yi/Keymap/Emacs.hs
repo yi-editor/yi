@@ -6,7 +6,7 @@
 -- This module aims at a mode that should be (mostly) intuitive to
 -- emacs users, but mapping things into the Yi world when
 -- convenient. Hence, do not go into the trouble of trying 100%
--- emulation. For example, M-x gives access to Yi (haskell) functions,
+-- emulation. For example, M-x gives access to Yi (Haskell) functions,
 -- with their native names.
 
 module Yi.Keymap.Emacs

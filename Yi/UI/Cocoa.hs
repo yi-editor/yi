@@ -1,6 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 --
--- Copyright (c) 2007 Jean-Philippe Bernardy
+-- Copyright (c) 2007, 2008 Jean-Philippe Bernardy
 -- Copyright (c) 2008 Gustav Munkby
 --
 --
@@ -110,7 +110,7 @@ ya_run self = do
   -- Schedule a timer that repeatedly invokes ya_doTick in order to have
   -- some Haskell code running all the time. This will prevent other
   -- Haskell threads to stall while waiting for the Cocoa run loop to finish.
-  _NSTimer # scheduledTimerWithTimeIntervalTargetSelectorUserInfoRepeats 
+  _NSTimer # scheduledTimerWithTimeIntervalTargetSelectorUserInfoRepeats
                 0.05 self (getSelectorForName "doTick") nil True
   super self # run
 
@@ -207,7 +207,7 @@ data UI = forall action. UI {
              ,uiLock :: MVar ()
              }
 
-data WinInfo = WinInfo 
+data WinInfo = WinInfo
     {
      bufkey      :: !BufferRef         -- ^ the buffer this window opens to
     ,wkey        :: !Unique
@@ -218,7 +218,7 @@ data WinInfo = WinInfo
     }
 
 instance Show WinInfo where
-    show w = "W" ++ show (hashUnique $ wkey w) ++ " on " ++ show (bufkey w) 
+    show w = "W" ++ show (hashUnique $ wkey w) ++ " on " ++ show (bufkey w)
 
 
 -- | Get the identification of a window.
@@ -227,7 +227,7 @@ winkey w = (isMini w, bufkey w)
 
 
 mkUI :: UI -> Common.UI
-mkUI ui = Common.UI 
+mkUI ui = Common.UI
   {
    Common.main                  = main                  ui,
    Common.end                   = end ,
@@ -240,7 +240,7 @@ rect :: Float -> Float -> Float -> Float -> NSRect
 rect x y w h = NSRect (NSPoint x y) (NSSize w h)
 
 new, autonew :: forall t. Class (NSObject_ t) -> IO (NSObject t)
-new x = do 
+new x = do
   d <- description x >>= haskellString
   o <- alloc x
   logPutStrLn $ "New " ++ d
@@ -252,7 +252,7 @@ autoreleased o = do
   retain o
   autorelease o
   return o
-  
+
 allSizable, normalWindowMask :: CUInt
 allSizable = nsViewWidthSizable .|. nsViewHeightSizable
 normalWindowMask =
@@ -282,16 +282,16 @@ newTextLine :: IO (NSTextField ())
 newTextLine = do
   tl <- new _NSTextField
   tl # setAlignment nsLeftTextAlignment
-  tl # setAutoresizingMask (nsViewWidthSizable .|. nsViewMaxYMargin) 
+  tl # setAutoresizingMask (nsViewWidthSizable .|. nsViewMaxYMargin)
   tl # setMonospaceFont
   tl # setSelectable True
-  tl # setEditable False   
+  tl # setEditable False
   tl # sizeToFit
   return tl
 
 addSubviewWithTextLine :: forall t1 t2. NSView t1 -> NSView t2 -> IO (NSTextField (), NSView ())
 addSubviewWithTextLine view parent = do
-  container <- new _NSView 
+  container <- new _NSView
   parent # bounds >>= flip setFrame container
   container # setAutoresizingMask allSizable
   view # setAutoresizingMask allSizable
@@ -310,7 +310,7 @@ addSubviewWithTextLine view parent = do
 
 -- | Initialise the ui
 start :: Chan Yi.Event.Event -> Chan action ->
-         Editor -> (EditorM () -> action) -> 
+         Editor -> (EditorM () -> action) ->
          IO Common.UI
 start ch outCh _ed runEd = do
 
@@ -330,7 +330,7 @@ start ch outCh _ed runEd = do
 
   lock <- newMVar ()
   app # setIVar _lock (Just lock)
-  
+
   icon <- getDataFileName "art/yi+lambda-fat.pdf"
   _NSImage # alloc >>=
     initWithContentsOfFile (toNSString icon) >>=
@@ -344,11 +344,11 @@ start ch outCh _ed runEd = do
   mm <- _NSMenu # alloc >>= init
   mm' <- _NSMenu # alloc >>= init
   mm'' <- _NSMenu # alloc >>= init
-  app # setMainMenu mm 
-  app # setAppleMenu mm' 
-  app # setWindowsMenu mm'' 
+  app # setMainMenu mm
+  app # setAppleMenu mm'
+  app # setWindowsMenu mm''
 
-  
+
   -- Create main cocoa window...
   win <- _NSWindow # alloc >>= initWithContentRect (rect 0 0 480 340)
   win # setTitle (toNSString "Yi")
@@ -365,7 +365,7 @@ start ch outCh _ed runEd = do
   win # setFrameAutosaveName (toNSString "main")
   win # makeKeyAndOrderFront nil
   app # activateIgnoringOtherApps False
-    
+
   bufs <- newIORef M.empty
   wc <- newIORef []
 
@@ -385,7 +385,7 @@ end :: IO ()
 end = _YiApplication # sharedApplication >>= terminate_ nil
 
 syncWindows :: Editor -> UI -> [(Window, Bool)] -> [WinInfo] -> IO [WinInfo]
-syncWindows e ui (wfocused@(w,focused):ws) (c:cs) 
+syncWindows e ui (wfocused@(w,focused):ws) (c:cs)
     | Window.winkey w == winkey c = do when focused (setFocus c)
                                        return (c:) `ap` syncWindows e ui ws cs
     | Window.winkey w `elem` map winkey cs = removeWindow ui c >> syncWindows e ui (wfocused:ws) cs
@@ -394,7 +394,7 @@ syncWindows e ui (wfocused@(w,focused):ws) (c:cs)
                      return (c':) `ap` syncWindows e ui ws (c:cs)
 syncWindows e ui ws [] = mapM (insertWindowAtEnd e ui) (map fst ws)
 syncWindows _e ui [] cs = mapM_ (removeWindow ui) cs >> return []
-    
+
 setFocus :: WinInfo -> IO ()
 setFocus w = do
   logPutStrLn $ "Cocoa focusing " ++ show w
@@ -408,7 +408,7 @@ newWindow :: UI -> Bool -> FBuffer -> IO WinInfo
 newWindow ui mini b = do
   -- This mysterious thread delay seems to solve the Cocoa issues...
   -- It seems as if initWithFrame mustn't be active while the application
-  -- run method is called... 
+  -- run method is called...
   threadDelay 100
 
   v <- alloc _YiTextView >>= initWithFrame (rect 0 0 100 100)
@@ -418,7 +418,7 @@ newWindow ui mini b = do
   v # sizeToFit
   v # setIVar _runBuffer ((uiRunEditor ui) . withGivenBuffer0 (keyB b))
 
-  (ml, view) <- if mini 
+  (ml, view) <- if mini
    then do
     v # setHorizontallyResizable False
     v # setVerticallyResizable False
@@ -427,16 +427,16 @@ newWindow ui mini b = do
     prompt # sizeToFit
     prompt # setAutoresizingMask nsViewNotSizable
 
-    prect <- prompt # frame 
+    prect <- prompt # frame
     vrect <- v # frame
-    
+
     hb <- _NSView # alloc >>= initWithFrame (rect 0 0 (width prect + width vrect) (height prect))
     v # setFrame (rect (width prect) 0 (width vrect) (height prect))
     v # setAutoresizingMask nsViewWidthSizable
     hb # addSubview prompt
     hb # addSubview v
     hb # setAutoresizingMask nsViewWidthSizable
-   
+
     brect <- (uiBox ui) # bounds
     hb # setFrame (rect 0 0 (width brect) (height prect))
 
@@ -447,7 +447,7 @@ newWindow ui mini b = do
    else do
     v # setHorizontallyResizable True
     v # setVerticallyResizable True
-    
+
     scroll <- new _NSScrollView
     scroll # setDocumentView v
     scroll # setAutoresizingMask allSizable
@@ -507,19 +507,19 @@ refresh ui e = withMVar (uiLock ui) $ \_ -> logNSException "refresh" $ do
     (uiWindow ui) # setAutodisplay False -- avoid redrawing while window syncing
     WS.debug "syncing" ws
     logPutStrLn $ "with: " ++ show cache
-    cache' <- syncWindows e ui (toList $ WS.withFocus $ ws) cache  
+    cache' <- syncWindows e ui (toList $ WS.withFocus $ ws) cache
     logPutStrLn $ "Yields: " ++ show cache'
     writeRef (windowCache ui) cache'
     (uiBox ui) # adjustSubviews -- FIX: maybe it is not needed
     (uiWindow ui) # setAutodisplay True -- reenable automatic redrawing
 
-    forM_ cache' $ \w -> 
+    forM_ cache' $ \w ->
         do let buf = findBufferWith (bufkey w) e
            let (p0, _) = runBufferDummyWindow buf pointB
            let (p1, _) = runBufferDummyWindow buf (getSelectionMarkB >>= getMarkPointB)
            (textview w) # setSelectedRange (NSRange (toEnum $ min p0 p1) (toEnum $ abs $ p1-p0))
            (textview w) # scrollRangeToVisible (NSRange (toEnum p0) 0)
-           let (txt, _) = runBufferDummyWindow buf getModeLine 
+           let (txt, _) = runBufferDummyWindow buf getModeLine
            (modeline w) # setStringValue (toNSString txt)
 
 
@@ -533,7 +533,7 @@ replaceTagsIn from to buf storage = do
     let range = NSRange (toEnum l) (toEnum $ r-l)
     storage # addAttributeValueRange nsForegroundColorAttributeName fg' range
     storage # addAttributeValueRange nsBackgroundColorAttributeName bg' range
-  where 
+  where
     color fg Default = if fg then _NSColor # blackColor else _NSColor # whiteColor
     color fg Reverse = if fg then _NSColor # whiteColor else _NSColor # blackColor
     color _g (RGB r g b) = _NSColor # colorWithDeviceRedGreenBlueAlpha ((fromIntegral r)/255) ((fromIntegral g)/255) ((fromIntegral b)/255) 1.0
@@ -542,7 +542,7 @@ applyUpdate :: NSTextStorage () -> Update -> IO ()
 applyUpdate buf (Insert p s) =
   buf # mutableString >>= insertStringAtIndex (toNSString s) (toEnum p)
 
-applyUpdate buf (Delete p s) = 
+applyUpdate buf (Delete p s) =
   buf # mutableString >>= deleteCharactersInRange (NSRange (toEnum p) (toEnum s))
 
 prepareAction :: UI -> IO (EditorM ())
@@ -553,12 +553,12 @@ prepareAction _ui = return (return ())
 --     NSPoint containerOrigin = [textView textContainerOrigin];
 --     NSRect visibleRect = [textView visibleRect];
 --
---     visibleRect.origin.x -= containerOrigin.x;	// convert from view 
+--     visibleRect.origin.x -= containerOrigin.x;	// convert from view
 --coordinates to container coordinates
 --     visibleRect.origin.y -= containerOrigin.y;
---     visibleGlyphRange = [layoutManager 
+--     visibleGlyphRange = [layoutManager
 --glyphRangeForBoundingRect:visibleRect inTextContainer:textContainer];
---     visibleCharRange = [layoutManager 
+--     visibleCharRange = [layoutManager
 --characterRangeForGlyphRange:visibleGlyphRange actualGlyphRange:NULL];
 --do
 --    gtkWins <- readRef (windowCache ui)
@@ -573,7 +573,7 @@ prepareAction _ui = return (return ())
 --                     (i1,_) <- textViewGetLineAtY gtkWin y1
 --                     l1 <- get i1 textIterLine
 --                     return (l1 - l0)
---    modifyMVar (windows ui) $ \ws -> do 
+--    modifyMVar (windows ui) $ \ws -> do
 --        let (ws', _) = runState (mapM distribute ws) heights
 --        return (ws', setBuffer (Window.bufkey $ WS.current ws') >> return ())
 --
@@ -611,7 +611,7 @@ data Hierarchy = View String NSRect [Hierarchy]
 
 haskellList :: forall t1. NSArray t1 -> IO [ID ()]
 haskellList a = a # objectEnumerator >>= helper
-  where 
+  where
     helper enum = do
       e <- enum # nextObject
       if e == nil
@@ -622,7 +622,7 @@ mkHierarchy :: forall t. NSView t -> IO Hierarchy
 mkHierarchy v = do
   d <- v # description >>= haskellString
   f <- v # frame
-  ss <- v # subviews >>= haskellList >>= mapM (mkHierarchy . toNSView) 
+  ss <- v # subviews >>= haskellList >>= mapM (mkHierarchy . toNSView)
   return $ View d f ss
 
 -}
