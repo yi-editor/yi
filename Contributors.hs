@@ -9,9 +9,6 @@ import Text.Regex.Posix
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.Map as M
 
-instance IsString ByteString where
-    fromString = BS.pack
-
 capitalize s = BS.cons (toUpper $ BS.head s) (BS.tail s)
 
 tx :: String = "Thu Oct 14 05:40:06 CEST 2004 "
