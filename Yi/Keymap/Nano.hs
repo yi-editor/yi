@@ -1,26 +1,23 @@
---
--- Copyright (c) 2004 Don Stewart - http://www.cse.unsw.edu.au/~dons
---
---
+-- Copyright (c) 2004, 2008 Don Stewart - http://www.cse.unsw.edu.au/~dons
 
---
 -- | An emulation of the Nano editor
---
 
 module Yi.Keymap.Nano ( keymap ) where
 
 import Yi.Yi
+import Yi.Keymap.Emacs.KillRing
 
 import Data.Char            ( chr, isAlphaNum, toLower )
+import Control.Arrow
 
 import Control.Exception    ( ioErrors, try, evaluate )
 import Control.Monad ( when )
 import Control.Monad.Trans ( lift )
---
+
 -- | Top level function. A function of this type is used by the editor
 -- main loop to interpret actions. The second argument to @execLexer@ is
 -- our default state.
---
+
 keymap :: Keymap
 keymap = comap eventToChar nano_km
 
@@ -49,7 +46,7 @@ nano_km = choice [cmdChar, cmdSwitch, searchChar, insChar]
 --
 insChar :: NanoMode
 insChar = do c <- anyChar ('\n' : map chr [32 .. 126])
-             write $ insertE c
+             write $ insertN c
 
 --
 -- | Command chars run actions.
@@ -62,43 +59,44 @@ cmdChar = choice [event c >> act | (c,act) <- cmdCharFM]
 -- to actions.
 --
 cmdCharFM :: [(Char, NanoMode)]
-cmdCharFM = 
-    [('\127',       write $ leftE >> deleteE)
-    ,('\188',       write prevBufW)    -- 'M-<' ?
+cmdCharFM =
+    [
+     -- ('\127',       write $ bdeleteB1), -- ?
+    ('\188',       write prevBufW)    -- 'M-<' ?
     ,('\190',       write nextBufW)    -- 'M->' ?
-    ,('\^A',        write solE)
-    ,('\^B',        write leftE)
-    ,('\^D',        write deleteE)
-    ,('\^E',        write eolE)
-    ,('\^F',        write rightE)
-    ,('\^H',        write $ leftE >> deleteE)
-    ,('\^K',        write $ readRestOfLnE >>= setRegE >> killE)
+    ,('\^A',        write moveToSol)
+    ,('\^B',        write leftB)
+    ,('\^D',        write deleteN 1)
+    ,('\^E',        write moveToEol)
+    ,('\^F',        write rightB)
+    ,('\^H',        write $ leftB >> deleteN 1)
+    ,('\^K',        write $ killLineE)
     ,('\^L',        write refreshE)
-    ,('\^M',        write $ insertE '\n')
-    ,('\^N',        write downE)
-    ,('\^P',        write upE)
-    ,('\^U',        write undoE)
+    ,('\^M',        write $ insertN '\n')
+    ,('\^N',        write (execB Move VLine Forward))
+    ,('\^P',        write (execB Move VLine Backward))
+    ,('\^U',        write undoB)
     ,('\^V',        write downScreenE)
-    ,('\^X',        do write $ do b <- isUnchangedE ; if b then quitE else return ()
-                       switch2WriteMode) -- TODO: separate this 
+    ,('\^X',        do write $ do b <- isUnchangedB ; if b then quitE else return ()
+                       switch2WriteMode) -- TODO: separate this
     ,('\^Y',        write upScreenE)
     ,('\^Z',        write suspendE)
     ,('\0',         write $ do moveWhileE (isAlphaNum)      GoRight
                                moveWhileE (not . isAlphaNum)  GoRight )
-    ,(keyBackspace, write $ leftE >> deleteE)
-    ,(keyDown,      write downE)
-    ,(keyLeft,      write leftE)
-    ,(keyRight,     write rightE)
-    ,(keyUp,        write upE)
+    ,(keyBackspace, write $ leftB >> deleteN 1)
+    ,(keyDown,      write (execB Move VLine Backward))
+    ,(keyLeft,      write leftB)
+    ,(keyRight,     write rightB)
+    ,(keyUp,        write (execB Move VLine Backward))
     ,('\^G',        write $ msgE "nano-yi : yi emulating nano")
-    ,('\^I',        write (do bufInfo <- bufInfoE
-		              let s   = bufInfoFileName bufInfo
-		                  ln  = bufInfoLineNo   bufInfo
+    ,('\^I',        write (do bufInfo <- bufInfoB
+                              let s   = bufInfoFileName bufInfo
+                                  ln  = bufInfoLineNo   bufInfo
                                   col = bufInfoColNo    bufInfo
-		                  pt  = bufInfoCharNo   bufInfo
-		                  pct = bufInfoPercent  bufInfo
+                                  pt  = bufInfoCharNo   bufInfo
+                                  pct = bufInfoPercent  bufInfo
                               msgE $ "[ line "++show ln++", col "++show col++
-		                     ", char "++show pt++"/"++show s++" ("++pct++") ]"))
+                                     ", char "++show pt++"/"++show s++" ("++pct++") ]"))
     ]
 
     where
@@ -135,17 +133,17 @@ cmdSwitch = choice [event c >> echoMode prompt (\s -> anyChar "\n\r" >> write (a
 --
 
 searchChar :: NanoMode
-searchChar = do 
+searchChar = do
   event '\^W'
   write $ do mre <- getRegexE
              let prompt = case mre of     -- create a prompt
                     Nothing      -> "Search: "
                     Just (pat,_) -> "Search ["++pat++"]: "
-             msgE prompt  
+             msgE prompt
              -- FIXME: the prompt currently cannot be passed to the echoMode, this prompt will get overwritten.
              -- The fix is NOT to use MetaM!!!
              -- The fix is to stop using getRegexE to remember the last thing searched.
-  echoMode "Search: " search_km 
+  echoMode "Search: " search_km
   return ()
 
 --
@@ -165,10 +163,10 @@ search_km p = choice [srch_g, srch_y, srch_v, srch_t, srch_c, srch_r, performSea
   where -- TODO: use the same style as other modes (list of Char, String -> Action)
     srch_g = event '\^G' >> write (msgE "nano-yi : yi emulating nano")
 
-    srch_y = event '\^Y' >> write (gotoLnE 0 >> solE)
-    srch_v = event '\^V' >> write (do bufInfo <- bufInfoE
-				      let x = bufInfoLineNo bufInfo
-                                      gotoLnE x >> solE)
+    srch_y = event '\^Y' >> write (gotoLn 0 >> moveToSol)
+    srch_v = event '\^V' >> write (do bufInfo <- bufInfoB
+                                      let x = bufInfoLineNo bufInfo
+                                      gotoLn x >> moveToSol)
 
     srch_t = event '\^T' >> write (msgE "unimplemented") -- goto line
 
@@ -189,14 +187,14 @@ search_km p = choice [srch_g, srch_y, srch_v, srch_t, srch_c, srch_r, performSea
 -- echo buffer mode
 --
 
--- | A simple line editor. 
+-- | A simple line editor.
 -- @echoMode prompt exitProcess@ runs the line editor; @prompt@ will
 -- be displayed as prompt, @exitProcess@ is a process that will be
 -- used to exit the line-editor sub-process if it succeeds on input
 -- typed during edition.
 
 echoMode :: String -> (String -> Interact Char a) -> Interact Char a
-echoMode prompt exitProcess = do 
+echoMode prompt exitProcess = do
   write (logPutStrLn "echoMode")
   result <- lineEdit []
   return result
@@ -205,17 +203,16 @@ echoMode prompt exitProcess = do
                  (exitProcess s +++
                   (anyChar deleteChars >> lineEdit (take (length s - 1) s)) +++
                   (do c <- anyChar ('\n' : map chr [32 .. 126]); lineEdit (s++[c])))
-                   
+
 -- | Actions that mess with the echo (or command) buffer. Notice how
 -- these actions take a @String@ as an argument, and the second
 -- component of the elem of the fm is a string that is used as a
 -- prompt.
-
 echoCharFM :: [(Char, String -> Action, String)]
 echoCharFM =
     [('\^O',
       \f -> if f == []
-            then nopE
+            then return ()
             else catchJustE ioErrors (do fwriteToE f ; msgE "Wrote current file.")
                                      (msgE . show)
      ,"File Name to Write: ")
@@ -223,7 +220,7 @@ echoCharFM =
     ,('\^_',
      \s -> do e <- lift $ try $ evaluate $ read s
               case e of Left _   -> errorE "[ Come on, be reasonable ]"
-                        Right ln -> gotoLnE ln >> solE >> msgClrE
+                        Right ln -> gotoLn ln >> moveToSol >> msgClrE
      ,"Enter line number: ")
     ]
 
