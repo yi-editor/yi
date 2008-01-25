@@ -1,20 +1,15 @@
---
--- Copyright (c) 2004 Don Stewart - http://www.cse.unsw.edu.au/~dons
---
---
+-- Copyright (c) 2004, 2008 Don Stewart - http://www.cse.unsw.edu.au/~dons
 
---
 -- | Vi keymap for Yi.
 -- Based on version 1.79 (7\/14\/97) of nex\/nvi
 --
 -- The goal is strict vi emulation
---
 
 module Yi.Keymap.Vi ( keymap, ViMode ) where
 
-import Yi.Yi         hiding ( count )
+import Yi.Yi
 import Yi.Editor
-import Yi.UI as UI
+-- import Yi.UI as UI
 import Yi.History
 
 import Prelude       hiding ( any, error )
@@ -22,6 +17,7 @@ import Prelude       hiding ( any, error )
 import Data.Char
 import Data.List            ( (\\) )
 
+import Control.Arrow ((+++))
 import Control.Exception    ( ioErrors, try, evaluate )
 
 import Control.Monad.State
@@ -92,21 +88,21 @@ count = option Nothing (many1' (satisfy isDigit) >>= return . Just . read)
 -- /operator/ commands (like d).
 --
 cmd_move :: ViProc Action
-cmd_move = do 
+cmd_move = do
   cnt <- count
   let x = maybe 1 id cnt
-  choice [event c >> return (a x) | (c,a) <- moveCmdFM] +++ 
+  choice [event c >> return (a x) | (c,a) <- moveCmdFM] +++
    choice [do event c; c' <- anyButEsc; return (a x c') | (c,a) <- move2CmdFM] +++
-   (do event 'G'; return $ case cnt of 
-                            Nothing -> botE >> solE
-                            Just n  -> gotoLnE n)
-               
+   (do event 'G'; return $ case cnt of
+                            Nothing -> botE >> moveToSol
+                            Just n  -> gotoLn n)
+
 
 --
 -- movement commands
 --
 moveCmdFM :: [(Char, Int -> Action)]
-moveCmdFM = 
+moveCmdFM =
 -- left/right
     [('h',          left)
     ,('\^H',        left)
@@ -114,10 +110,10 @@ moveCmdFM =
     ,('\BS',        left)
     ,('l',          right)
     ,(' ',          right)
-    ,(keyHome,      const firstNonSpaceE)   -- vim does solE
+    ,(keyHome,      const firstNonSpaceE)   -- vim does moveToSol
     ,('^',          const firstNonSpaceE)
-    ,('$',          const eolE)
-    ,('|',          \i -> solE >> rightOrEolE (i-1))
+    ,('$',          const moveToEol)
+    ,('|',          \i -> moveToSol >> rightOrEolE (i-1))
 
 -- up/down
     ,('k',          up)
@@ -150,13 +146,13 @@ moveCmdFM =
     ,('L',          \i -> upFromBosE (i - 1))
 
 -- bogus entry
-    ,('G',          const nopE)
+    ,('G',          const (return ()))
     ]
     where
         left  i = leftOrSolE i
         right i = rightOrEolE i
-        up    i = if i > 100 then gotoLnFromE (-i) else replicateM_ i upE
-        down  i = if i > 100 then gotoLnFromE i    else replicateM_ i downE
+        up    i = if i > 100 then gotoLnFromE (-i) else replicateM_ i (execB Move VLine Backward)
+        down  i = if i > 100 then gotoLnFromE i    else replicateM_ i (execB Move VLine Forward)
 
 --
 -- more movement commands. these ones are paramaterised by a character
@@ -164,10 +160,10 @@ moveCmdFM =
 --
 move2CmdFM :: [(Char, Int -> Char -> Action)]
 move2CmdFM =
-    [('f',  \i c -> replicateM_ i $ rightE >> moveWhileE (/= c) GoRight)
-    ,('F',  \i c -> replicateM_ i $ leftE  >> moveWhileE (/= c) GoLeft)
-    ,('t',  \i c -> replicateM_ i $ rightE >> moveWhileE (/= c) GoRight >> leftE)
-    ,('T',  \i c -> replicateM_ i $ leftE  >> moveWhileE (/= c) GoLeft  >> rightE)
+    [('f',  \i c -> replicateM_ i $ rightB >> moveWhileE (/= c) GoRight)
+    ,('F',  \i c -> replicateM_ i $ leftB  >> moveWhileE (/= c) GoLeft)
+    ,('t',  \i c -> replicateM_ i $ rightB >> moveWhileE (/= c) GoRight >> leftB)
+    ,('T',  \i c -> replicateM_ i $ leftB  >> moveWhileE (/= c) GoLeft  >> rightB)
     ]
 
 --
@@ -175,17 +171,17 @@ move2CmdFM =
 --
 cmd_eval :: ViMode
 cmd_eval = do
-   cnt <- count 
+   cnt <- count
    let i = maybe 1 id cnt
    choice [event c >> write (a i) | (c,a) <- cmdCmdFM ] +++
     (do event 'r'; c <- anyButEscOrDel; write (writeE c)) +++
-    (events ">>" >> write (do replicateM_ i $ solE >> mapM_ insertE "    "
+    (events ">>" >> write (do replicateM_ i $ moveToSol >> mapM_ insertN "    "
                               firstNonSpaceE)) +++
-    (events "<<" >> write (do solE
+    (events "<<" >> write (do moveToSol
                               replicateM_ i $
                                 replicateM_ 4 $
-                                    readE >>= \k ->
-                                        when (isSpace k) deleteE
+                                    readB >>= \k ->
+                                        when (isSpace k) deleteN 1
                               firstNonSpaceE)) +++
     (events "ZZ" >> write (viWrite >> quitE))
 
@@ -195,30 +191,30 @@ cmd_eval = do
 -- cmd mode commands
 --
 cmdCmdFM :: [(Char, Int -> Action)]
-cmdCmdFM = 
+cmdCmdFM =
     [('\^B',    upScreensE)
     ,('\^F',    downScreensE)
     ,('\^G',    const viFileInfo)
     ,('\^W',    const nextWinE)
     ,('\^Z',    const suspendE)
-    ,('D',      const (readRestOfLnE >>= setRegE >> killE))
-    ,('J',      const (eolE >> deleteE))    -- the "\n"
+    ,('D',      killLineE)
+    ,('J',      const (moveToEol >> deleteN 1))    -- the "\n"
     ,('n',      const (searchE Nothing [] GoRight))
 
-    ,('X',      \i -> do p <- getPointE
+    ,('X',      \i -> do p <- getSelectionMarkPointB
                          leftOrSolE i
-                         q <- getPointE -- how far did we really move?
+                         q <- getSelectionMarkPointB -- how far did we really move?
                          when (p-q > 0) $ deleteNE (p-q) )
 
-    ,('x',      \i -> do p <- getPointE -- not handling eol properly
+    ,('x',      \i -> do p <- getSelectionMarkPointB -- not handling eol properly
                          rightOrEolE i
-                         q <- getPointE
+                         q <- getSelectionMarkPointB
                          gotoPointE p
                          when (q-p > 0) $ deleteNE (q-p) )
 
     ,('p',      (\_ -> getRegE >>= \s ->
-                        eolE >> insertE '\n' >>
-                            mapM_ insertE s >> solE)) -- ToDo insertNE
+                        moveToEol >> insertN '\n' >>
+                            mapM_ insertN s >> moveToSol)) -- ToDo insertNE
 
     ,(keyPPage, upScreensE)
     ,(keyNPage, downScreensE)
@@ -244,7 +240,7 @@ cmd_op :: ViMode
 cmd_op = do
   cnt <- count
   let i = maybe 1 id cnt
-  choice $ [events "dd" >> write (solE >> killE >> deleteE),
+  choice $ [events "dd" >> write (moveToSol >> killE >> deleteN 1),
             events "yy" >> write (readLnE >>= setRegE)] ++
            [do event c; m <- cmd_move; write (a i m) | (c,a) <- opCmdFM]
     where
@@ -275,9 +271,9 @@ cmd_op = do
         -- Return the current, and remote point.
         --
         withPointMove :: Action -> EditorM (Int,Int)
-        withPointMove m = do p <- getPointE
+        withPointMove m = do p <- getSelectionMarkPointB
                              m
-                             q <- getPointE
+                             q <- getSelectionMarkPointB
                              when (p < q) $ gotoPointE p
                              return (p,q)
 
@@ -294,14 +290,14 @@ cmd2other = do c <- modeSwitchChar
                  ':' -> ex_mode ":"
                  'R' -> rep_mode
                  'i' -> ins_mode
-                 'I' -> write solE >> ins_mode
+                 'I' -> write moveToSol >> ins_mode
                  'a' -> write (rightOrEolE 1) >> ins_mode
-                 'A' -> write eolE >> ins_mode
-                 'o' -> write (eolE >> insertE '\n') >> ins_mode
-                 'O' -> write (solE >> insertE '\n' >> upE) >> ins_mode
+                 'A' -> write moveToEol >> ins_mode
+                 'o' -> write (moveToEol >> insertN '\n') >> ins_mode
+                 'O' -> write (moveToSol >> insertN '\n' >> (execB Move VLine Backward)) >> ins_mode
                  'c' -> write (not_implemented 'c') >> ins_mode
-                 'C' -> write (readRestOfLnE >>= setRegE >> killE) >> ins_mode
-                 'S' -> write (solE >> readLnE >>= setRegE >> killE) >> ins_mode
+                 'C' -> write (killLineE) >> ins_mode
+                 'S' -> write (moveToSol >> readLnE >>= setRegE >> killE) >> ins_mode
 
                  '/' -> ex_mode "/"
 
@@ -316,13 +312,13 @@ cmd2other = do c <- modeSwitchChar
 -- | vi insert mode
 --
 ins_char :: ViMode
-ins_char = write . fn =<< anyButEsc 
+ins_char = write . fn =<< anyButEsc
     where fn c = case c of
-                    k | isDel k       -> leftE >> deleteE
+                    k | isDel k       -> leftB >> deleteN 1
                       | k == keyPPage -> upScreenE
                       | k == keyNPage -> downScreenE
-                      | k == '\t'     -> mapM_ insertE "    " -- XXX
-                    _ -> insertE c
+                      | k == '\t'     -> mapM_ insertN "    " -- XXX
+                    _ -> insertN c
 
 
 -- ---------------------------------------------------------------------
@@ -339,15 +335,15 @@ ins_char = write . fn =<< anyButEsc
 --
 
 rep_char :: ViMode
-rep_char = write . fn =<< anyButEsc 
+rep_char = write . fn =<< anyButEsc
     where fn c = case c of
-                    k | isDel k       -> leftE >> deleteE
+                    k | isDel k       -> leftB >> deleteN 1
                       | k == keyPPage -> upScreenE
                       | k == keyNPage -> downScreenE
-                    '\t' -> mapM_ insertE "    " -- XXX
-                    '\r' -> insertE '\n'
+                    '\t' -> mapM_ insertN "    " -- XXX
+                    '\r' -> insertN '\n'
                     _ -> do e <- atEolE
-                            if e then insertE c else writeE c >> rightE
+                            if e then insertN c else writeE c >> rightB
 
 -- ---------------------------------------------------------------------
 -- Ex mode. We also process regex searching mode here.
@@ -357,21 +353,21 @@ spawn_ex_buffer prompt = do
   initialBuffer <- getBuffer
   Just initialWindow <- getWindow
   -- The above ensures that the action is performed on the buffer that originated the minibuffer.
-  let closeMinibuffer = do b <- getBuffer; closeE; deleteBuffer b 
+  let closeMinibuffer = do b <- getBuffer; closeE; deleteBuffer b
       anyButDelNlArrow = oneOf $ any' \\ (enter' ++ delete' ++ ['\ESC',keyUp,keyDown])
-      ex_buffer_finish = do 
+      ex_buffer_finish = do
         historyFinish
         lineString <- readAllE
         closeMinibuffer
-        UI.setWindow initialWindow
-        switchToBufferE initialBuffer 
+--        UI.setWindow initialWindow
+        switchToBufferE initialBuffer
         ex_eval (head prompt : lineString)
       ex_process :: ViMode
-      ex_process = 
+      ex_process =
           choice [do c <- anyButDelNlArrow; write $ insertNE [c],
                   do enter; write ex_buffer_finish,
                   do event '\ESC'; write closeMinibuffer,
-                  do delete; write bdeleteE,
+                  do delete; write bdeleteB,
                   do event keyUp; write historyUp,
                   do event keyDown; write historyDown]
   historyStart
@@ -380,7 +376,7 @@ spawn_ex_buffer prompt = do
 
 ex_mode :: String -> ViMode
 ex_mode = write . spawn_ex_buffer
-                           
+
 -- | eval an ex command to an Action, also appends to the ex history
 ex_eval :: String -> Action
 ex_eval cmd = do
@@ -407,7 +403,7 @@ ex_eval cmd = do
           (_:src) -> fn src
 
         -- can't happen, but deal with it
-          [] -> nopE
+          [] -> (return ())
 
     where
       fn ""           = msgClrE
@@ -415,12 +411,12 @@ ex_eval cmd = do
       fn s@(c:_) | isDigit c = do
         e <- lift $ try $ evaluate $ read s
         case e of Left _ -> errorE $ "The " ++show s++ " command is unknown."
-                  Right lineNum -> gotoLnE lineNum
+                  Right lineNum -> gotoLn lineNum
 
       fn "w"          = viWrite
       fn ('w':' ':f)  = viWriteTo f
       fn "q"          = do
-            b <- isUnchangedE
+            b <- isUnchangedB
             if b then closeE
                  else errorE $ "File modified since last complete write; "++
                                "write or use ! to override."
@@ -448,18 +444,18 @@ not_implemented c = errorE $ "Not implemented: " ++ show c
 -- Misc functions
 
 viFileInfo :: Action
-viFileInfo = 
-    do bufInfo <- bufInfoE
+viFileInfo =
+    do bufInfo <- bufInfoB
        msgE $ showBufInfo bufInfo
-    where 
+    where
     showBufInfo :: BufferFileInfo -> String
     showBufInfo bufInfo = concat [ show $ bufInfoFileName bufInfo
-				 , " Line "
-				 , show $ bufInfoLineNo bufInfo
-				 , " ["
-				 , bufInfoPercent bufInfo
-				 , "]"
-				 ]
+                                 , " Line "
+                                 , show $ bufInfoLineNo bufInfo
+                                 , " ["
+                                 , bufInfoPercent bufInfo
+                                 , "]"
+                                 ]
 
 
 -- | Try to write a file in the manner of vi\/vim
@@ -470,8 +466,8 @@ viWrite = do
     case mf of
         Nothing -> errorE "no file name associate with buffer"
         Just f  -> do
-            bufInfo <- bufInfoE
-	    let s   = bufInfoFileName bufInfo
+            bufInfo <- bufInfoB
+            let s   = bufInfoFileName bufInfo
             let msg = msgE $ show f ++" "++show s ++ "C written"
             catchJustE ioErrors (fwriteToE f >> msg) (msgE . show)
 
@@ -479,7 +475,7 @@ viWrite = do
 viWriteTo :: String -> Action
 viWriteTo f = do
     let f' = (takeWhile (/= ' ') . dropWhile (== ' ')) f
-    bufInfo <- bufInfoE
+    bufInfo <- bufInfoB
     let s   = bufInfoFileName bufInfo
     let msg = msgE $ show f'++" "++show s ++ "C written"
     catchJustE ioErrors (fwriteToE f' >> msg) (msgE . show)
