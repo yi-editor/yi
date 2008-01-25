@@ -67,7 +67,7 @@ prevCExc c = prevCInc c >> rightB
 -- | Move to first non-space character in this line
 firstNonSpaceB :: BufferM ()
 firstNonSpaceB = do moveToSol
-                    untilB_ ((||) <$> atEol <*> (isSpace <$> readB)) rightB
+                    untilB_ ((||) <$> atEol <*> ((not . isSpace) <$> readB)) rightB
 
 
 
