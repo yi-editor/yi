@@ -1,9 +1,5 @@
---
 -- Copyright (c) 2005, 2008 Don Stewart - http://www.cse.unsw.edu.au/~dons
---
---
 
---
 -- | An keymap that emulates @mg@, an emacs-like text editor. For more
 -- information see <http://www.openbsd.org/cgi-bin/man.cgi?query=mg>
 --
@@ -42,7 +38,6 @@
 -- >     ^X-U   Undo.
 --
 -- For more key bindings, type ``M-x describe-bindings''.
---
 
 module Yi.Keymap.Mg (keymap) where
 
@@ -53,11 +48,14 @@ import Numeric              ( showOct )
 import Data.Char            ( ord, chr )
 import Data.List            ((\\), isPrefixOf)
 import qualified Data.Map as M
+import Control.Arrow
 import Control.Exception    ( try, evaluate )
 import Control.Monad
 import Control.Monad.Trans
 import Yi.Debug
-import Yi.Keymap.Emacs.Utils (isearchProcess)
+import Yi.Keymap.Emacs.Utils (findFile, isearchProcess, withMinibuffer, completeFileName)
+import Yi.Keymap.Emacs.KillRing
+import Yi.String (dropSpace)
 
 ------------------------------------------------------------------------
 
@@ -116,37 +114,37 @@ globalTable = [
         write $ errorE "apropos unimplemented"),
   ("backward-char",
         [[c_ 'b'], [m_ 'O', 'D'], [keyLeft]],
-        write $ leftE),
+        write $ leftB),
   ("backward-kill-word",
         [[m_ '\127']],
-        write $ bkillWordE),
+        write $ bkillWordB),
   ("backward-word",
         [[m_ 'b']],
-        write $ prevWordE),
+        write $ prevWordB),
   ("beginning-of-buffer",
         [[m_ '<']],
-        write $ topE),
+        write $ topB),
   ("beginning-of-line",
         [[c_ 'a'], [m_ 'O', 'H']],
-        write $ solE),
+        write $ moveToSol),
   ("call-last-kbd-macro",
         [[c_ 'x', 'e']],
         write $ errorE "call-last-kbd-macro unimplemented"),
   ("capitalize-word",
         [[m_ 'c']],
-        write $ capitaliseWordE),
+        write $ capitaliseWordB),
   ("copy-region-as-kill",
         [[m_ 'w']],
         write $ errorE "copy-region-as-kill unimplemented"),
   ("delete-backward-char",
         [['\127'], ['\BS'], [keyBackspace]],
-        write $ bdeleteE),
+        write $ bdeleteB),
   ("delete-blank-lines",
         [[c_ 'x', c_ 'o']],
         write $ mgDeleteBlanks),
   ("delete-char",
         [[c_ 'd']],
-        write $ deleteE),
+        write $ deleteN 1),
   ("delete-horizontal-space",
         [[m_ '\\']],
         write $ mgDeleteHorizBlanks),
@@ -173,16 +171,16 @@ globalTable = [
         write $ errorE "downcase-region unimplemented"),
   ("downcase-word",
         [[m_ 'l']],
-        write $ lowercaseWordE),
+        write $ lowercaseWordB),
   ("end-kbd-macro",
         [[c_ 'x', ')']],
         write $ errorE "end-kbd-macro unimplemented"),
   ("end-of-buffer",
         [[m_ '>']],
-        write $ botE),
+        write $ botB),
   ("end-of-line",
         [[c_ 'e'], [m_ 'O', 'F']],
-        write $ eolE),
+        write $ moveToEol),
   ("enlarge-window",
         [[c_ 'x', '^']],
         write $ enlargeWinE),
@@ -203,19 +201,19 @@ globalTable = [
         write $ errorE "find-alternate-file unimplemented"),
   ("find-file",
         [[c_ 'x', c_ 'f']],
-        findFileMode),
+        findFile),
   ("find-file-other-window",
         [[c_ 'x', '4', c_ 'f']],
         write $ errorE "find-file-other-window unimplemented"),
   ("forward-char",
         [[c_ 'f'], [m_ 'O', 'C'], [keyRight]],
-        write $ rightE),
+        write $ rightB),
   ("forward-paragraph",
         [[m_ ']']],
         write $ nextNParagraphs 1),
   ("forward-word",
         [[m_ 'f']],
-        write $ nextWordE),
+        write $ nextWordB),
   ("goto-line",
         [[c_ 'x', 'g']],
         gotoMode),
@@ -233,7 +231,7 @@ globalTable = [
         isearchProcess),
   ("just-one-space",
         [[m_ ' ']],
-        write $ insertE ' '),
+        write $ insertN ' '),
   ("keyboard-quit",
         [[c_ 'g'],
          [c_ 'h', c_ 'g'],
@@ -247,13 +245,13 @@ globalTable = [
         killBufferMode),
   ("kill-line",
         [[c_ 'k']],
-        write $ readRestOfLnE >>= setRegE >> killE),
+        write $ killLineE),
   ("kill-region",
         [[c_ 'w']],
         write $ errorE "kill-region unimplemented"),
   ("kill-word",
         [[m_ 'd']],
-        write $ killWordE),
+        write $ killWordB),
   ("list-buffers",
         [[c_ 'x', c_ 'b']],
         write $ mgListBuffers),
@@ -262,25 +260,25 @@ globalTable = [
         write $ errorE "negative-argument unimplemented"),
   ("newline",
         [[c_ 'm']],
-        write $ insertE '\n'),
+        write $ insertN '\n'),
   ("newline-and-indent",
         [],
         write $ errorE "newline-and-indent unimplemented"),
   ("next-line",
         [[c_ 'n'], [m_ 'O', 'B'], [keyDown]], -- doesn't remember goal column
-        write $ downE),
+        write $ (execB Move VLine Forward)),
   ("not-modified",
         [[m_ '~']],
         write $ errorE "not-modified unimplemented"),
   ("open-line",
         [[c_ 'o']],
-        write $ insertE '\n' >> leftE),
+        write $ insertB '\n'),
   ("other-window",
         [[c_ 'x', 'n'], [c_ 'x', 'o']],
         write $ nextWinE),
   ("previous-line",
         [[c_ 'p'], [m_ 'O', 'A'], [keyUp]],
-        write $ upE),
+        write $ (execB Move VLine Backward)),
   ("previous-window",
         [[c_ 'x', 'p']],
         write $ prevWinE),
@@ -295,7 +293,7 @@ globalTable = [
         write $ errorE "recenter unimplemented"),
   ("save-buffer",
         [[c_ 'x', c_ 's']],
-        write $ mgWrite),
+        write $ writeFileMode),
   ("save-buffers-kill-emacs",
         [[c_ 'x', c_ 'c']],
         write $ quitE), -- should ask to save buffers
@@ -340,10 +338,10 @@ globalTable = [
         write $ errorE "switch-to-buffer-other-window unimplemented"),
   ("transpose-chars",
         [[c_ 't']],
-        write $ swapE),
+        write $ swapB),
   ("undo",
         [[c_ 'x', 'u'], ['\^_']],
-        write $ undoE),
+        write $ undoB),
   ("universal-argument",
         [[c_ 'u']],
         write $ errorE "universal-argument unimplemented"),
@@ -352,7 +350,7 @@ globalTable = [
         write $ errorE "upcase-region unimplemented"),
   ("upcase-word",
         [[m_ 'u']],
-        write $ uppercaseWordE),
+        write $ uppercaseWordB),
   ("what-cursor-position",
         [[c_ 'x', '=']],
         write $ whatCursorPos),
@@ -361,7 +359,7 @@ globalTable = [
         writeFileMode),
   ("yank",
         [[c_ 'y']],
-        write $ getRegE >>= mapM_ insertE) ]
+        write $ getRegE >>= mapM_ insertN) ]
 
 ------------------------------------------------------------------------
 
@@ -384,7 +382,7 @@ mode = command +++
 
 -- self insertion
 insert :: MgMode
-insert  = do c <- satisfy (const True); write $ insertE c
+insert  = do c <- satisfy (const True); write $ insertN c
 
 -- C- commands
 command :: MgMode
@@ -489,25 +487,14 @@ describeChar prompt acc = do
                            describeChar prompt keys
                    else write $ msgE $ printable keys ++ " is not bound to any function"
 
-------------------------------------------------------------------------
--- | Reading a filename, to open a buffer
---
-
-findFileMode :: MgMode
-findFileMode = withLineEditor "Find file: " $ \f -> write $ do
-                 fnewE f
-                 bufInfo <- bufInfoE
-                 let s = bufInfoFileName bufInfo
-                 msgE $ "(Read "++show s++" bytes)"
-
 -- ---------------------------------------------------------------------
 -- | Writing a file
 --
 
 writeFileMode :: MgMode
-writeFileMode = withLineEditor "Write file: "$ \f -> write $ do
-                  fwriteToE f
-                  msgE $ "Wrote "++ f
+writeFileMode = withMinibuffer "Write file: "
+                                          (completeFileName Nothing)
+                                          fwriteToE
 
 -- ---------------------------------------------------------------------
 -- | Killing a buffer by name
@@ -524,19 +511,14 @@ gotoMode :: MgMode
 gotoMode = withLineEditor "goto line: " $ \l -> write $ do
              i <- lift $ try . evaluate . read $ l
              case i of Left _   -> errorE "Invalid number"
-                       Right i' -> gotoLnE i'
+                       Right i' -> gotoLn i'
 
 
--- ---------------------------------------------------------------------
 -- | insert the first character, then switch back to normal mode
---
-
 insertAnyMode :: MgMode
-insertAnyMode = do c <- oneOf ['\0' .. '\255']; write (insertE c)
+insertAnyMode = do c <- oneOf ['\0' .. '\255']; write (insertN c)
 
-------------------------------------------------------------------------
--- | translate a string into the emacs encoding of that string
---
+-- | translate a string into the Emacs encoding of that string
 printable :: String -> String
 printable = dropSpace . printable'
     where
@@ -568,12 +550,12 @@ printable = dropSpace . printable'
 
 whatCursorPos :: Action
 whatCursorPos = do
-	bufInfo <- bufInfoE
-	let ln  = bufInfoLineNo  bufInfo
-	    col = bufInfoColNo   bufInfo
-	    pt  = bufInfoCharNo  bufInfo
-	    pct = bufInfoPercent bufInfo
-        c <- readE
+        bufInfo <- bufInfoB
+        let ln  = bufInfoLineNo  bufInfo
+            col = bufInfoColNo   bufInfo
+            pt  = bufInfoCharNo  bufInfo
+            pct = bufInfoPercent bufInfo
+        c <- readB
         msgE $ "Char: "++[c]++" (0"++showOct (ord c) ""++
                 ")  point="++show pt++
                 "("++pct++
@@ -601,33 +583,22 @@ mgListBuffers = do
         name = "*Buffer List*"
         f bs = unlines [ "  "++(show i)++"\t"++(show n) | (n,i) <- bs ]
 
--- save a file in the style of Mg
-mgWrite :: Action
-mgWrite = do
-        u <- isUnchangedE      -- just  the current buffer
-        if u then msgE "(No changes need to be saved)"
-             else do
-                mf <- fileNameE
-                case mf of
-                        Nothing -> errorE "No filename connected to this buffer"
-                        Just f  -> fwriteE >> msgE ("Wrote " ++ f)
-
 --
 -- delete all blank lines from this point
 mgDeleteBlanks :: Action
 mgDeleteBlanks = do
-        p <- getPointE
+        p <- getSelectionMarkPointB
         moveWhileE (== '\n') GoRight
-        q <- getPointE
+        q <- getSelectionMarkPointB
         gotoPointE p
         deleteNE (q - p)
 
 -- not quite right, as it will delete, even if no blanks
 mgDeleteHorizBlanks :: Action
 mgDeleteHorizBlanks = do
-        p <- getPointE
+        p <- getSelectionMarkPointB
         moveWhileE (\c -> c == ' ' || c == '\t') GoRight
-        q <- getPointE
+        q <- getSelectionMarkPointB
         gotoPointE p
         deleteNE (q - p)
 
