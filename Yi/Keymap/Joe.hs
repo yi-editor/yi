@@ -1,11 +1,6 @@
---
--- Copyright (c) 2004 Tuomo Valkonen
---
---
+-- Copyright (c) 2004, 2008 Tuomo Valkonen
 
---
 -- Joe-ish keymap for Yi.
---
 
 module Yi.Keymap.Joe (
     keymap
@@ -13,8 +8,8 @@ module Yi.Keymap.Joe (
 
 import Control.Monad.State
 import Yi.Yi
-import Yi.CharMove
 import Yi.Char
+import Yi.Keymap.Emacs.KillRing
 
 -- ---------------------------------------------------------------------
 
@@ -35,32 +30,32 @@ s &&> p = mapM_ event s >> p
 klist :: JoeMode
 klist = choice [
     -- Editing and movement
-    "\^K\^U" ++> topE,
-    "\^K\^V" ++> botE,
-    "\^A"  ++> solE,
-    "\^E"  ++> eolE,
-    "\^B"  ++> leftE,
-    "\^F"  ++> rightE,
-    "\^P"  ++> upE,
-    "\^N"  ++> downE,
+    "\^K\^U" ++> topB,
+    "\^K\^V" ++> botB,
+    "\^A"  ++> moveToSol,
+    "\^E"  ++> moveToSol,
+    "\^B"  ++> leftB,
+    "\^F"  ++> rightB,
+    "\^P"  ++> (execB Move VLine Backward),
+    "\^N"  ++> (execB Move VLine Forward),
     "\^U"  ++> upScreenE,
     "\^V"  ++> downScreenE,
-    "\^D"  ++> deleteE,
-    "\BS"  ++> bdeleteE,
-    "\^J"  ++> killEolE,
-    "\^[J" ++> killSolE,
+    "\^D"  ++> (deleteN 1),
+    "\BS"  ++> bdeleteB,
+    "\^J"  ++> killLineE,
+    "\^[J" ++> (moveToSol >> killLineE),
     "\^Y"  ++> killLineE,
-    "\^_"  ++> undoE,
-    "\^^"  ++> redoE,
-    "\^X"  ++> skipWordE,
-    "\^Z"  ++> bskipWordE,
-    "\^W"  ++> killWordE,
-    "\^O"  ++> bkillWordE,
-    "\^K\^R" &&> queryInsertFileE,
+    "\^_"  ++> undoB,
+    "\^^"  ++> redoB,
+    "\^X"  ++> nextWordB,
+    "\^Z"  ++> prevWordB,
+    "\^W"  ++> killWordB,
+    "\^O"  ++> bkillWordB,
+--    "\^K\^R" &&> queryInsertFileE,
     -- Search
     --"\^K\^F" &&> querySearchRepE,
     --"\^L"  &&> nextSearchRepE,
-    "\^K\^L" &&> queryGotoLineE,
+    "\^K\^L" &&> gotoLn,
     -- Buffers
     "\^K\^S" &&> queryBufW,
     "\^C"  ++> closeE,
@@ -95,28 +90,15 @@ runProc = comap eventToChar
 
 -- ---------------------------------------------------------------------
 
--- Extra actions
-
-
-killEolE, killSolE, killLineE :: Action
-
-killEolE = killE
-killLineE = solE >> killE >> deleteE
-killSolE = do
-    p <- getPointE
-    solE
-    pn <- getPointE
-    deleteNE (p-pn)
-
 -- Commenting out to avoid compile warnings until fn is needed
 -- getFileE :: EditorM FilePath
 -- getFileE = do bufInfo <- bufInfoE
--- 	      let fp = bufInfoFileName bufInfo
+--            let fp = bufInfoFileName bufInfo
 --               return fp
 
 
-insertFileE :: String -> Action
-insertFileE f = lift (readFile f) >>= insertNE
+-- insertFileE :: String -> Action
+-- insertFileE f = lift (readFile f) >>= insertNE
 
 
 -- ---------------------------------------------------------------------
@@ -150,14 +132,14 @@ simpleq prompt initialValue act = do
   s <- echoMode prompt initialValue
   maybe (return ()) (write . act) s
 
--- | A simple line editor. 
+-- | A simple line editor.
 -- @echoMode prompt exitProcess@ runs the line editor; @prompt@ will
 -- be displayed as prompt, @exitProcess@ is a process that will be
 -- used to exit the line-editor sub-process if it succeeds on input
 -- typed during edition.
 
 echoMode :: String -> String -> JoeProc (Maybe String)
-echoMode prompt initialValue = do 
+echoMode prompt initialValue = do
   write (logPutStrLn "echoMode")
   result <- lineEdit initialValue
   return result
@@ -185,19 +167,19 @@ echoMode prompt initialValue = do
 
 -- Some queries
 
-queryNewE, querySaveE, queryGotoLineE, queryInsertFileE,
-    queryBufW :: JoeMode
+queryNewE, querySaveE, queryGotoLineE, queryBufW :: JoeMode
 
 -- querySearchRepE, nextSearchRepE :: JoeMode
 
 
 queryNewE = simpleq "File name: " [] fnewE
-queryGotoLineE = simpleq "Line number: " [] (gotoLnE . read)
-queryInsertFileE = simpleq "File name: " [] insertFileE
+queryGotoLineE = simpleq "Line number: " [] (gotoLn . read)
+-- queryInsertFileE :: JoeMode
+-- queryInsertFileE = simpleq "File name: " [] insertFileE
 queryBufW = simpleq "Buffer: " [] unimplementedQ
 
 
--- TODO: this could either use the method in the Nano keymap or the Emacs keymap. 
+-- TODO: this could either use the method in the Nano keymap or the Emacs keymap.
 -- (metaM used change the current keymap)
 querySaveE = return ()
 --querySaveE = write $
@@ -218,52 +200,52 @@ queryReplace :: SearchMatch
 queryReplace m s sfn =
     queryKeys "Replace? (Y)es (N)o (R)est? " [("yY", repl m False), ("rR", repl m True), ("nN", skip m)]
     where
-	skip (_, j) st _ = return $ do
-	    res <- do_next j
+        skip (_, j) st _ = return $ do
+            res <- do_next j
             case res of
                 Nothing -> metaM keymap
                 Just p -> metaM $ runProc $ queryReplace p s sfn
-	
-	repl mm_ rest_ st_ cs_ = return $ repl_ mm_ rest_ st_ cs_
-	   where
-	       repl_ mm@(i, _) rest st cs = do
-	           do_replace mm s
+
+        repl mm_ rest_ st_ cs_ = return $ repl_ mm_ rest_ st_ cs_
+           where
+               repl_ mm@(i, _) rest st cs = do
+                   do_replace mm s
                    res <- do_next (i+length s)
                    case (res, rest) of
                        (Nothing, _)    -> metaM keymap
                        (Just p, True)  -> repl_ p rest st cs
                        (Just p, False) -> metaM $ runProc $ queryReplace p s sfn
 
-	do_replace (i, j) ss = withWindow_ $ \w b -> do
-	    moveTo b i
+        do_replace (i, j) ss = withWindow_ $ \w b -> do
+            moveTo b i
             deleteN b (j-i)
             insertN b ss
             return w
 
         do_next j = do
             op <- getPointE
-	    gotoPointE (j-1) -- Don't replace within replacement
-	                     -- TODO: backwards search
-	    res <- sfn
-	    when (isNothing res) (gotoPointE op)
-	    return res
-	
+            gotoPointE (j-1) -- Don't replace within replacement
+                             -- TODO: backwards search
+            res <- sfn
+            when (isNothing res) (gotoPointE op)
+            return res
+
 doSearch :: SearchExp -> Action
 doSearch srchexp = do
     res <- sfn
     case res of
         Nothing -> errorE "Not found." >> metaM keymap
-	Just p -> case js_search_replace st of
+        Just p -> case js_search_replace st of
             Just rep -> metaM $ runProc $ queryReplace p rep (sfn)
             Nothing -> metaM $ keymap
     where
         sfn = do
             op <- getPointE
             res <- searchDoE srchexp (js_search_dir st)
-	    case res of
+            case res of
                 Just (Left _) -> gotoPointE op >> return Nothing
                 Just (Right p) -> return (Just p)
-		Nothing -> return Nothing
+                Nothing -> return Nothing
 
 
 mksearch :: String -> String -> Maybe String -> JoeMode
@@ -285,10 +267,10 @@ querySearchRepE =
     where
         flagprompt = "(I)gnore, (R)eplace, (B)ackward Reg.E(x)p? "
         qflags s = query flagprompt [] (qreplace s)
-	qreplace s flags | isect "rR" flags =
-	    query "Replace with: " [] (mksearch s flags . Just)
-	qreplace s flags =
-	    mksearch s flags Nothing
+        qreplace s flags | isect "rR" flags =
+            query "Replace with: " [] (mksearch s flags . Just)
+        qreplace s flags =
+            mksearch s flags Nothing
 
 nextSearchRepE =
     getRegexE >>= \e -> case e of
@@ -297,4 +279,4 @@ nextSearchRepE =
 -}
 
 unimplementedQ :: String -> Action
-unimplementedQ _ = nopE
+unimplementedQ a = errorE (a ++ " not implemented.")
