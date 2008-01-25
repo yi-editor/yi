@@ -13,6 +13,7 @@ author:         AUTHORS
 maintainer:     yi-devel@googlegroups.com
 extra-source-files:
   Yi/Syntax/alex.hsinc
+
 data-files:
   art/yi+lambda-fat.pdf
 
@@ -39,7 +40,7 @@ build-tools: haddock >= 2.0
 build-tools: alex >= 2.0.1 && < 3
 build-depends: bytestring >= 0.9 && < 0.9.0.4
 build-depends: fingertree
-build-depends:  array,  base,  containers,  directory,  filepath>=1.0,  ghc>=6.8.2,  mtl, process, old-locale, old-time, unix
+build-depends:  array,  base,  containers,  directory,  filepath>=1.0,  ghc>=6.8.2,  mtl, process, old-locale, old-time, unix, random
 build-depends: regex-base>=0.72, regex-base<0.73
 build-depends: regex-compat>=0.71, regex-compat<0.73
 build-depends: regex-posix>=0.72, regex-posix<0.73
@@ -67,7 +68,6 @@ if !(flag(vty) || flag (gtk) || flag(cocoa)) {
 include-dirs:
  Yi/Syntax
 -- for alex.hsinc
-
 
 main-is:        Main.hs
 other-modules:
