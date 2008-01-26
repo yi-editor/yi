@@ -15,6 +15,9 @@ homepage:       http://haskell.org/haskellwiki/Yi
 cabal-Version:  == 1.2.3.0
 tested-with:    GHC==6.8.2
 build-type:     Custom
+data-files:
+  art/yi+lambda-fat.pdf
+  -- FIXME: Install Cocoa icon only when Cocoa configured
 
 Flag vty {
   Description: Provide Vty UI
