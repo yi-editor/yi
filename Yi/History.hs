@@ -6,12 +6,13 @@
 
 module Yi.History where
 
-import Yi.Yi
-
 import Yi.Buffer
 import Data.Char
 import Data.List
 import Data.Dynamic
+import Yi.Dynamic
+import Yi.Editor
+import Yi.Accessor
 
 data History = History {_historyCurrent :: Int,
                         _historyContents :: [String]}
@@ -21,43 +22,42 @@ instance Initializable History where
     initial = (History (-1) [])
 
 
-historyUp :: YiM ()
+historyUp :: EditorM ()
 historyUp = historyMove 1
 
-historyDown :: YiM ()
+historyDown :: EditorM ()
 historyDown = historyMove (-1)
 
-historyStart :: YiM ()
+historyStart :: EditorM ()
 historyStart = do
-  (History _cur cont) <- getDynamic
-  setDynamic (History 0 (nub ("":cont)))
+  (History _cur cont) <- getA dynA
+  setA dynA (History 0 (nub ("":cont)))
   debugHist
 
-historyFinish :: YiM ()
+historyFinish :: EditorM ()
 historyFinish = do
-  (History _cur cont) <- getDynamic
-  curValue <- withBuffer elemsB
-  setDynamic $ History (-1) (nub $ dropWhile null $ (curValue:cont))
+  (History _cur cont) <- getA dynA
+  curValue <- withBuffer0 elemsB
+  setA dynA $ History (-1) (nub $ dropWhile null $ (curValue:cont))
 
-debugHist :: YiM ()
-debugHist = do
-  h :: History <- getDynamic
-  logPutStrLn (show h)
+-- TODO: scrap
+debugHist :: EditorM ()
+debugHist = return ()
 
-historyMove :: Int -> YiM ()
+historyMove :: Int -> EditorM ()
 historyMove delta = do
-  (History cur cont) <- getDynamic
-  curValue <- withBuffer elemsB
+  (History cur cont) <- getA dynA
+  curValue <- withBuffer0 elemsB
   let len = length cont
       next = cur + delta
       nextValue = cont !! next
   case (next < 0, next >= len) of
-    (True, _) -> msgE "end of history, no next item."
-    (_, True) -> msgE "beginning of history, no previous item."
+    (True, _) -> printMsg "end of history, no next item."
+    (_, True) -> printMsg "beginning of history, no previous item."
     (_,_) -> do
-         setDynamic (History next (take cur cont ++ [curValue] ++ drop (cur+1) cont))
+         setA dynA (History next (take cur cont ++ [curValue] ++ drop (cur+1) cont))
          debugHist
-         withBuffer $ do
+         withBuffer0 $ do
               sz <- sizeB
               moveTo 0
               deleteN sz
