@@ -45,12 +45,6 @@ hdHook :: PackageDescription -> LocalBuildInfo -> UserHooks -> HaddockFlags -> I
 hdHook pd lbi hooks flags = do
   pd' <- addPackageOptions pd lbi (haddockVerbose flags)
   let pd'' = pseudoLibraryPkg pd' "yi" ["Yi.Yi"]
-  (conf,_) <- requireProgram (haddockVerbose flags) haddockProgram (orLaterVersion (Version [0,6] [])) (withPrograms lbi)
-  let Just version = programVersion conf
-  let have_src_hyperlink_flags = version >= Version [0,8] []
-  putStrLn $ "Haddock is to old?"
-  when (True && not have_src_hyperlink_flags) $
-    putStrLn $ "Haddock is to old... " ++ show (version)
   haddockHook defaultUserHooks pd'' lbi hooks flags
 
 install :: PackageDescription -> LocalBuildInfo -> UserHooks -> InstallFlags -> IO ()
@@ -75,6 +69,7 @@ mkOpt :: (String, String) -> String
 mkOpt (name,def) = "-D" ++ name ++ "=" ++ def
 
 -- Add our special package options to
+addPackageOptions :: PackageDescription -> LocalBuildInfo -> Verbosity -> IO PackageDescription
 addPackageOptions pd lbi verbosity = do
   let dataPref = datadir $ absoluteInstallDirs pd lbi NoCopyDest
       pkgOpts = concat [ ["-package", showPackageId pkg] | pkg <- packageDeps lbi ]
