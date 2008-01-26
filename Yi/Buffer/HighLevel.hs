@@ -265,22 +265,30 @@ middleE = do
   moveTo (tospnt w)
   replicateM_ (height w `div` 2) lineDown
 
-lineBasedRegion :: Region -> BufferM Region
-lineBasedRegion region = do
+-- | Extend the given region to boundaries of the text unit.
+-- For instance one can extend the selection to to complete lines, or
+-- paragraphs.
+extendRegionToBoundaries :: TextUnit -> BoundarySide -> BoundarySide -> Region -> BufferM Region
+extendRegionToBoundaries unit bs1 bs2 region = do
   moveTo $ regionStart region
-  moveToSol
+  genMaybeMoveB unit (Backward, bs1) Backward
   start <- pointB
   moveTo $ regionEnd region
-  moveToEol
-  rightB
+  genMoveB unit (Forward, bs2) Forward
   stop <- pointB
   return $ mkRegion start stop
 
 -- TODO: either decide this is evil and contain it to Vim, or embrace it and move it to the
 -- Buffer record.
-newtype LineBasedSelection = LBS Bool deriving (Typeable,Show)
-instance Initializable LineBasedSelection where
-  initial = LBS False
+lineWiseRegion :: Region -> BufferM Region
+lineWiseRegion = extendRegionToBoundaries Line InsideBound OutsideBound
+
+data SelectionStyle = LineWiseSelection
+                    | CharWiseSelection
+  deriving (Eq,Typeable,Show)
+
+instance Initializable SelectionStyle where
+  initial = CharWiseSelection
 
 -- | Get the current region boundaries
 getSelectRegionB :: BufferM Region
@@ -288,5 +296,7 @@ getSelectRegionB = do
   m <- getMarkPointB =<< getSelectionMarkB
   p <- pointB
   let region = mkRegion m p
-  LBS lineBasedSelection <- getDynamicB
-  if lineBasedSelection then lineBasedRegion region else return region
+  selectionStyle <- getDynamicB
+  case selectionStyle of
+    LineWiseSelection -> lineWiseRegion region
+    CharWiseSelection -> return region

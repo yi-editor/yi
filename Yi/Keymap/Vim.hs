@@ -99,17 +99,18 @@ vis_mode :: RegionStyle -> VimMode
 vis_mode regionStyle = do
   write (withBuffer (pointB >>= setSelectionMarkPointB))
   core_vis_mode regionStyle
-  write (msgClrE >> withBuffer unsetMarkB >> withBuffer (setDynamicB $ LBS False))
+  write (msgClrE >> withBuffer unsetMarkB >> withBuffer (setDynamicB CharWiseSelection))
 
 core_vis_mode :: RegionStyle -> VimMode
 core_vis_mode regionStyle = do
-  write $ do withEditor $ setA regionStyleA regionStyle
-             withBuffer $ setDynamicB $ LBS (regionStyle == LineBased)
-             msgE $ msg regionStyle
+  write $ withEditor $ do setA regionStyleA regionStyle
+                          withBuffer0 $ setDynamicB $
+                            case regionStyle of { LineWise -> LineWiseSelection; CharWise -> CharWiseSelection }
+                          printMsg $ msg regionStyle
   many (eval cmd_move)
   (vis_single regionStyle <|| vis_multi)
-  where msg CharBased = "-- VISUAL --"
-        msg LineBased = "-- VISUAL LINE --"
+  where msg CharWise = "-- VISUAL --"
+        msg LineWise = "-- VISUAL LINE --"
 
 -- | Change visual mode
 change_vis_mode :: RegionStyle -> RegionStyle -> VimMode
@@ -126,12 +127,12 @@ count = option Nothing $ do
   where isDigitNon0 '0' = False
         isDigitNon0 x   = isDigit x
 
-data RegionStyle = LineBased
-                 | CharBased
+data RegionStyle = LineWise
+                 | CharWise
   deriving (Eq, Typeable, Show)
 
 instance Initializable RegionStyle where
-  initial = CharBased
+  initial = CharWise
 
 regionStyleA :: Accessor Editor RegionStyle
 regionStyleA = dynamicValueA .> dynamicA
@@ -147,14 +148,14 @@ cmd_move :: VimProc (RegionStyle, BufferM ())
 cmd_move = do
   cnt <- count
   let x = maybe 1 id cnt
-  choice ([event c >> return (CharBased, a x) | (c,a) <- moveCmdFM, (c /= '0' || Nothing == cnt) ] ++
-          [event c >> return (LineBased, a x) | (c,a) <- moveUpDownCmdFM] ++
-          [do event c; c' <- anyEvent; return (CharBased, a x c') | (c,a) <- move2CmdFM] ++
-          [do event 'G'; return (LineBased, case cnt of
+  choice ([event c >> return (CharWise, a x) | (c,a) <- moveCmdFM, (c /= '0' || Nothing == cnt) ] ++
+          [event c >> return (LineWise, a x) | (c,a) <- moveUpDownCmdFM] ++
+          [do event c; c' <- anyEvent; return (CharWise, a x c') | (c,a) <- move2CmdFM] ++
+          [do event 'G'; return (LineWise, case cnt of
                                        Nothing -> botB >> moveToSol
                                        Just n  -> gotoLn n >> return ())
-          ,do events "gg"; return (LineBased, gotoLn 0 >> return ())
-          ,do events "ge"; return (CharBased, replicateM_ x $ genMoveB ViWord (Forward, InsideBound) Backward)])
+          ,do events "gg"; return (LineWise, gotoLn 0 >> return ())
+          ,do events "ge"; return (CharWise, replicateM_ x $ genMoveB ViWord (Forward, InsideBound) Backward)])
 
 -- | movement commands
 moveCmdFM :: [(Char, Int -> BufferM ())]
@@ -311,8 +312,8 @@ cmd_op :: VimMode
 cmd_op = do
   cnt <- count
   let i = maybe 1 id cnt
-  choice $ [events "dd" >> write (cut  pointB (lineMoveRel (i-1) >> return ()) LineBased),
-            events "yy" >> write (yank pointB (lineMoveRel (i-1) >> return ()) LineBased)] ++
+  choice $ [events "dd" >> write (cut  pointB (lineMoveRel (i-1) >> return ()) LineWise),
+            events "yy" >> write (yank pointB (lineMoveRel (i-1) >> return ()) LineWise)] ++
            [do event c
                (regionStyle, m) <- cmd_move
                write $ a (replicateM_ i m) regionStyle
@@ -331,8 +332,8 @@ regionFromTo mstart move regionStyle = do
   stop <- pointB
   let region = mkRegion start stop
   case regionStyle of
-    LineBased -> lineBasedRegion region
-    CharBased -> return region
+    LineWise -> lineWiseRegion region
+    CharWise -> return region
 
 yank :: BufferM Point -> BufferM () -> RegionStyle -> YiM ()
 yank mstart move regionStyle = do
@@ -341,7 +342,7 @@ yank mstart move regionStyle = do
     region <- regionFromTo mstart move regionStyle
     moveTo p
     readRegionB region
-  setRegE $ if (regionStyle /= CharBased) then '\n':txt else txt
+  setRegE $ if (regionStyle /= CharWise) then '\n':txt else txt
   let rowsYanked = length (filter (== '\n') txt)
   when (rowsYanked > 2) $ msgE $ (show rowsYanked) ++ " lines yanked"
 
@@ -352,7 +353,7 @@ cut mstart move regionStyle = do
     txt <- readRegionB region
     deleteRegionB region
     return txt
-  setRegE $ if (regionStyle /= CharBased) then '\n':txt else txt
+  setRegE $ if (regionStyle /= CharWise) then '\n':txt else txt
   let rowsCut = length (filter (== '\n') txt)
   when (rowsCut > 2) $ msgE ( (show rowsCut) ++ " fewer lines")
 
@@ -398,8 +399,8 @@ vis_single regionStyle =
         let beginIns a = do write (a >> withBuffer unsetMarkB) >> ins_mode
         in choice [
             event '\ESC' >> return (),
-            event 'V'    >> change_vis_mode regionStyle LineBased,
-            event 'v'    >> change_vis_mode regionStyle CharBased,
+            event 'V'    >> change_vis_mode regionStyle LineWise,
+            event 'v'    >> change_vis_mode regionStyle CharWise,
             event ':'    >> ex_mode ":'<,'>",
             event 'y'    >> write yankSelection,
             event 'x'    >> write cutSelection,
@@ -440,8 +441,8 @@ cmd2other = let beginIns a = write a >> ins_mode
                 beginIns :: YiM () -> VimMode
         in choice [
             do event ':'     ; ex_mode ":",
-            do event 'v'     ; vis_mode CharBased,
-            do event 'V'     ; vis_mode LineBased,
+            do event 'v'     ; vis_mode CharWise,
+            do event 'V'     ; vis_mode LineWise,
             do event 'R'     ; rep_mode,
             do event 'i'     ; ins_mode,
             do event 'I'     ; beginIns (withBuffer moveToSol),
@@ -450,10 +451,10 @@ cmd2other = let beginIns a = write a >> ins_mode
             do event 'o'     ; beginIns $ withBuffer $ moveToEol >> insertB '\n',
             do event 'O'     ; beginIns $ withBuffer $ moveToSol >> insertB '\n' >> lineUp,
             do event 'c'     ; (regionStyle, m) <- cmd_move ; beginIns $ cut pointB m regionStyle,
-            do events "cc"   ; beginIns $ cut (moveToSol >> pointB) moveToEol CharBased,
-            do event 'C'     ; beginIns $ cut pointB moveToEol CharBased, -- alias of "c$"
-            do event 'S'     ; beginIns $ cut (moveToSol >> pointB) moveToEol CharBased, -- alias of "cc"
-            do event 's'     ; beginIns $ cut pointB (moveXorEol 1) CharBased, -- alias of "cl"
+            do events "cc"   ; beginIns $ cut (moveToSol >> pointB) moveToEol CharWise,
+            do event 'C'     ; beginIns $ cut pointB moveToEol CharWise, -- alias of "c$"
+            do event 'S'     ; beginIns $ cut (moveToSol >> pointB) moveToEol CharWise, -- alias of "cc"
+            do event 's'     ; beginIns $ cut pointB (moveXorEol 1) CharWise, -- alias of "cl"
             do event '/'     ; ex_mode "/",
             do event '?'     ; write $ not_implemented '?',
             leave,

@@ -99,13 +99,14 @@ atBoundaryB Document d = atBoundary Document d
 atBoundaryB u d = (||) <$> atBoundary u d <*> atBoundaryB (enclosingUnit u) d
 
 genAtBoundaryB :: TextUnit -> Direction -> BoundarySide -> BufferM Bool
-genAtBoundaryB u d s = withOffset (off d s) $ atBoundaryB u d
+genAtBoundaryB u d s = withOffset (off u d s) $ atBoundaryB u d
     where withOffset 0 f = f
           withOffset ofs f = savingPointB (((ofs +) <$> pointB) >>= moveTo >> f)
-          off Backward  InsideBound = 0
-          off Backward OutsideBound = 1
-          off Forward   InsideBound = 1
-          off Forward  OutsideBound = 0
+          off _    Backward  InsideBound = 0
+          off _    Backward OutsideBound = 1
+          off _    Forward   InsideBound = 1
+          off Line Forward  OutsideBound = -1
+          off _    Forward  OutsideBound = 0
 
 
 
