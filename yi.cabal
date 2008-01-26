@@ -18,73 +18,83 @@ build-type:     Custom
 data-files:
   art/yi+lambda-fat.pdf
   -- FIXME: Install Cocoa icon only when Cocoa configured
-
-Flag vty {
+flag vty
   Description: Provide Vty UI
-  Default:     True
-}
 
-Flag gtk {
-  Description: Provide Gtk UI
-  Default:     True
-}
+flag gtk
+  Description: Provide GTK UI
 
-Flag cocoa {
+-- Cocoa UI is experimental (and at the moment probably even broken)
+-- It seems that it suffers from bugs in HOC
+flag cocoa
   Description: Provide experimental Cocoa UI
   Default:     False
-  -- Cocoa UI is experimental (and at the moment probably even broken)
-  -- It seems that it suffers from bugs in HOC
-}
+
+-- library
+--  exposed-modules:
+--         Yi.Accessor, Yi.Buffer, Yi.Buffer.HighLevel, Yi.Buffer.Implementation,
+--         Yi.Buffer.Normal, Yi.Buffer.Region, Yi.Char, Yi.Completion, Yi.Core, Yi.CoreUI,
+--         Yi.Debug, Yi.Dired, Yi.Dynamic, Yi.Editor, Yi.Eval, Yi.Event, Yi.FingerString, Yi.History,
+--         Yi.Indent, Yi.Interact, Yi.Kernel, Yi.Keymap, Yi.Keymap.Completion, Yi.Keymap.Emacs,
+--         Yi.Keymap.Emacs.Keys, Yi.Keymap.Emacs.KillRing, Yi.Keymap.Emacs.UnivArgument,
+--         Yi.Keymap.Emacs.Utils, Yi.Keymap.Normal, Yi.Keymap.Vim, Yi.Main, Yi.MkTemp, Yi.Monad, Yi.Process,
+--         Yi.Search, Yi.String, Yi.Style, Yi.Syntax, Yi.Syntax.Table, Yi.Templates, Yi.TextCompletion,
+--         Yi.UI.Common, Yi.UI.Gtk, Yi.UI.Vty, Yi.Undo, Yi.Vty, Yi.Window, Yi.WindowSet, Yi.Yi, Yi.Syntax.Cplusplus,
+--         Yi.Syntax.Haskell, Yi.Syntax.Latex, Yi.Syntax.Srmc, Yi.Syntax.Cabal
+-- --         Broken:
+-- --                Yi.Keymap.Ee,
+-- --                Yi.Keymap.Gwern,
+-- --                Yi.Keymap.Joe,
+-- --                Yi.Keymap.Mg,
+-- --                Yi.Keymap.Nano,
+-- --                Yi.Keymap.Vi,
+-- --         Broken?
+-- --                Yi.UI.Cocoa
+-- --         We can specify the two UIs (VTY and GTK) - which forces them to be built -
+-- --         because they are set to build by default (True) anyway.
+-- 
+--  include-dirs: Yi/Syntax
+--  -- for alex.hsinc
+-- 
 
 
-Executable yi {
-build-tools: haddock >= 2.0
-build-tools: alex >= 2.0.1 && < 3
-build-depends: bytestring >= 0.9 && < 0.9.0.4
-build-depends: fingertree
-build-depends:  array,  base,  containers,  directory,  filepath>=1.0,  ghc>=6.8.2,  mtl, process, old-locale, old-time, unix, random
-build-depends: regex-base>=0.72, regex-base<0.73
-build-depends: regex-compat>=0.71, regex-compat<0.73
-build-depends: regex-posix>=0.72, regex-posix<0.73
--- unix dependency should be eventually removed
+-- 
+--  extensions:   CPP, DeriveDataTypeable, FlexibleContexts, FlexibleInstances,
+--                ForeignFunctionInterface, FunctionalDependencies, GADTs,
+--                GeneralizedNewtypeDeriving, MagicHash, MultiParamTypeClasses,
+--                ParallelListComp, PatternGuards, PatternSignatures, Rank2Types,
+--                ScopedTypeVariables TypeSynonymInstances, UndecidableInstances
 
-if flag(vty) {
-  build-depends: vty>=3.0.0
-  GHC-Options: -DFRONTEND_VTY
-}
+executable yi
+        build-tools: haddock >= 2.0
+        build-tools: alex >= 2.0.1 && < 3
+        build-depends: bytestring >= 0.9 && < 0.9.0.4
+        build-depends: fingertree
+        build-depends:  array,  base,  containers,  directory,  filepath>=1.0,
+                        ghc>=6.8.2,  mtl, process, old-locale, old-time, unix, random
+        build-depends: regex-base>=0.72 && <0.73
+        build-depends: regex-compat>=0.71 && <0.73
+        build-depends: regex-posix>=0.72 && <0.73
+        --         unix dependency should be eventually removed
 
-if flag(gtk) {
-  build-depends: gtk>=0.9.12
-  GHC-Options: -DFRONTEND_GTK
-}
+        if flag (vty)
+           build-depends: vty>=3.0.0
+           ghc-options: -DFRONTEND_VTY
 
-if flag(cocoa) {
-  build-depends: HOC, HOC-AppKit, HOC-Foundation
-  GHC-Options: -DFRONTEND_COCOA
-}
+        if flag (gtk)
+          build-depends: gtk>=0.9.12
+          ghc-options: -DFRONTEND_GTK
 
-if !(flag(vty) || flag (gtk) || flag(cocoa)) {
-  buildable: False
-}
+        if flag (cocoa)
+          build-depends: HOC, HOC-AppKit, HOC-Foundation
+          ghc-options: -DFRONTEND_COCOA
 
-include-dirs:
- Yi/Syntax
--- for alex.hsinc
+        if !(flag(vty) || flag (gtk) || flag(cocoa))
+         buildable: False
 
-main-is:        Main.hs
-other-modules:
-  Yi.Boot
-  Yi.Debug
-  Yi.Kernel
-  Yi.Syntax.Haskell
-  Yi.Syntax.Latex
-  Yi.Syntax.Srmc
-  Yi.Syntax.Cabal
-  Yi.Syntax.Cplusplus
-extensions:     CPP, DeriveDataTypeable, FlexibleContexts, FlexibleInstances,
-                ForeignFunctionInterface, FunctionalDependencies, GADTs,
-                GeneralizedNewtypeDeriving, MagicHash, MultiParamTypeClasses,
-                ParallelListComp, PatternGuards, PatternSignatures, Rank2Types,
-                ScopedTypeVariables TypeSynonymInstances, UndecidableInstances
-ghc-options:    -Wall
-}
+        main-is:        Main.hs
+        other-modules: Yi.Syntax.Cplusplus, Yi.Syntax.Haskell, Yi.Syntax.Latex, Yi.Syntax.Srmc, Yi.Syntax.Cabal
+        include-dirs: Yi/Syntax
+        extensions: CPP
+        ghc-options:    -Wall
+
