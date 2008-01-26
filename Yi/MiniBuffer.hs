@@ -2,50 +2,17 @@
         spawnMinibufferE, withMinibuffer
 )where
 
-import Yi.Core
-import Yi.Debug
-import Yi.Undo
 import Yi.Buffer
-import Yi.Window
-import Yi.Buffer.HighLevel
-import Yi.Dynamic
-import Yi.String
-import Yi.Process           ( popen )
-import Yi.Editor
-import Yi.CoreUI
-import Yi.Kernel
-import Yi.Event (eventToChar, Event)
-import Yi.Keymap
 import Yi.Buffer.Region
-import qualified Yi.Interact as I
-import Yi.Monad
-import Yi.Accessor
-import qualified Yi.WindowSet as WS
-import qualified Yi.Editor as Editor
-import qualified Yi.Style as Style
-import qualified Yi.UI.Common as UI
-import Yi.UI.Common as UI (UI)
-import Yi.Keymap.Emacs.Keys
-import Data.Maybe
-import qualified Data.Map as M
-import Data.List
-  ( notElem
-  , delete
-  )
-import Data.IORef
-import Data.Foldable
-
-import System.FilePath
-
-import Control.Monad (when, forever)
-import Control.Monad.Reader (runReaderT, ask)
-import Control.Monad.Trans
-import Control.Monad.State (gets, modify)
-import Control.Monad.Error ()
-import Control.Exception
-import Control.Concurrent
-import Control.Concurrent.Chan
+import Yi.Core
+import Yi.CoreUI
+import Yi.Editor
 import Yi.History
+import Yi.Keymap
+import Yi.Keymap.Emacs.Keys
+import Yi.Window
+import qualified Yi.Editor as Editor
+import qualified Yi.WindowSet as WS
 
 -- | Open a minibuffer window with the given prompt and keymap
 spawnMinibufferE :: String -> KeymapEndo -> YiM () -> YiM ()

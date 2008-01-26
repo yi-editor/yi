@@ -23,7 +23,7 @@ import Yi.Interact hiding (write)
 import Yi.Event
 import Yi.Buffer
 import Yi.Buffer.HighLevel
-import Yi.File
+import Yi.Dired
 
 evalToStringE :: String -> YiM String
 evalToStringE string = withKernel $ \kernel -> do

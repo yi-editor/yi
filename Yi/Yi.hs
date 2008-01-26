@@ -23,6 +23,7 @@ module Yi.Yi (
         module Yi.Core,
         module Yi.CoreUI,
         module Yi.Debug,
+        module Yi.Dired,
         module Yi.Editor,
         module Yi.Eval,
         module Yi.Event, -- hack, for key defns
@@ -40,6 +41,7 @@ import Yi.Buffer.Normal
 import Yi.Core
 import Yi.CoreUI
 import Yi.Debug
+import Yi.Dired
 import Yi.Editor
 import Yi.Eval
 import Yi.Event -- so we can see key defns
