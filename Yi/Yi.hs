@@ -26,6 +26,7 @@ module Yi.Yi (
         module Yi.Editor,
         module Yi.Eval,
         module Yi.Event, -- hack, for key defns
+        module Yi.File,
         module Yi.Interact,
         module Yi.Buffer.Region,
         module Yi.Search,
@@ -42,6 +43,7 @@ import Yi.Debug
 import Yi.Editor
 import Yi.Eval
 import Yi.Event -- so we can see key defns
+import Yi.File
 import Yi.Interact hiding (write)
 import Yi.Buffer.Region
 import Yi.Search

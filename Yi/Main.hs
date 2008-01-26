@@ -22,6 +22,7 @@ module Yi.Main (main, Kernel) where
 import Prelude hiding (error)
 
 import qualified Yi.Core    as Core
+import qualified Yi.File    as File
 import qualified Yi.Buffer  as Buffer
 import qualified Yi.Keymap  as Keymap
 import qualified Yi.Eval    as Eval
@@ -128,7 +129,7 @@ do_opt o = case o of
     Help          -> usage    >> exitWith ExitSuccess
     Version       -> versinfo >> exitWith ExitSuccess
     LineNo l      -> return (Keymap.withBuffer (Buffer.gotoLn (read l)) >> return ())
-    File file     -> return (Core.fnewE file)
+    File file     -> return (File.fnewE file)
     EditorNm emul -> case map toLower emul `elem` editors of
                        True -> let km = editorToKeymap emul in return $ do
                                  Core.execE ("loadE " ++ show (moduleNameOf km))
