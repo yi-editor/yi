@@ -72,7 +72,6 @@ import Yi.Debug
 import Yi.Undo
 import Yi.Buffer
 import Yi.Window
-import Yi.Buffer.HighLevel
 import Yi.Dynamic
 import Yi.String
 import Yi.Process           ( popen )
@@ -382,11 +381,7 @@ runAction (BufferA act) = do
 
 -- | Set the cmd buffer, and draw message at bottom of screen
 msgE :: String -> YiM ()
-msgE s = do
-  withEditor $ modify $ \e -> e { statusLine = takeWhile (/= '\n') s }
-  -- also show in the messages buffer, so we don't loose any message
-  b <- getBufferWithName "*messages*"
-  withGivenBuffer b $ do botB; insertN (s ++ "\n")
+msgE = withEditor . printMsg
 
 -- | Show an error on the status line and log it.
 errorE :: String -> YiM ()
@@ -439,11 +434,7 @@ switchToBufferOtherWindowE b = withEditor shiftOtherWindow >> switchToBufferE b
 
 -- | Find buffer with given name. Raise exception if not found.
 getBufferWithName :: String -> YiM BufferRef
-getBufferWithName bufName = do
-  bs <- withEditor $ gets $ findBufferWithName bufName
-  case bs of
-    [] -> fail ("Buffer not found: " ++ bufName)
-    (b:_) -> return b
+getBufferWithName = withEditor . getBufferWithName0
 
 -- | Switch to the buffer specified as parameter. If the buffer name is empty, switch to the next buffer.
 switchToBufferWithNameE :: String -> YiM ()
