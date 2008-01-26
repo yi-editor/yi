@@ -37,15 +37,17 @@ instance Show Action where
 
 type Interact ev a = I.I ev Action a
 
-type Keymap = Interact Event ()
+type KeymapM a = Interact Event a
+
+type Keymap = KeymapM ()
+
+type KeymapEndo = Keymap -> Keymap
 
 type KeymapProcess = I.P Event Action
 
-type KeymapMod = Keymap -> Keymap
-
 
 data BufferKeymap = BufferKeymap
-    { bufferKeymap :: KeymapMod -- ^ Buffer's local keymap modification
+    { bufferKeymap :: KeymapEndo -- ^ Buffer's local keymap modification
     , bufferKeymapProcess :: KeymapProcess -- ^ Current state of the keymap automaton
     }
 
@@ -73,7 +75,7 @@ write x = I.write (makeAction x)
 -----------------------
 -- Keymap thread handling
 
-setBufferKeymap :: BufferRef -> KeymapMod -> YiM ()
+setBufferKeymap :: BufferRef -> KeymapEndo -> YiM ()
 setBufferKeymap b km = do
   bkm <- getBufferKeymap b
   modifiesRef bufferKeymaps (M.insert b bkm {bufferKeymap = km, bufferKeymapProcess = I.Fail})

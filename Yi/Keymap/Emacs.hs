@@ -11,7 +11,7 @@
 
 module Yi.Keymap.Emacs
   ( keymap
-  , makeProcess
+  , makeKeymap
   )
 where
 
@@ -21,7 +21,6 @@ import Yi.Keymap.Emacs.KillRing
 import Yi.Keymap.Emacs.UnivArgument
 import Yi.Keymap.Emacs.Utils
   ( KList
-  , Process
   , atomic
   , completeFileName
   , evalRegionE
@@ -29,9 +28,9 @@ import Yi.Keymap.Emacs.Utils
   , findFile
   , insertNextC
   , insertSelf
-  , isearchProcess
+  , isearchKeymap
   , killBufferE
-  , makeProcess
+  , makeKeymap
   , queryReplaceE
   , readArgC
   , scrollDownE
@@ -49,16 +48,16 @@ import Control.Applicative
 
 import Yi.Indent
 
-selfInsertKeymap :: Process
+selfInsertKeymap :: Keymap
 selfInsertKeymap = do
   Event (KASCII c) [] <- satisfy isPrintableEvent
   write (insertSelf c)
       where isPrintableEvent (Event (KASCII c) []) = c >= ' '
             isPrintableEvent _ = False
 
-keymap :: Process
+keymap :: Keymap
 keymap =
-  selfInsertKeymap <|> makeProcess keys
+  selfInsertKeymap <|> makeKeymap keys
 
 keys :: KList
 keys =
@@ -91,8 +90,8 @@ keys =
   , ( "C-o",      atomic $ repeatingArg (insertB '\n' >> leftB))
   , ( "C-p",      atomic $ repeatingArg $ execB Move VLine Backward)
   , ( "C-q",      insertNextC)
-  , ( "C-r",      isearchProcess Backward)
-  , ( "C-s",      isearchProcess Forward)
+  , ( "C-r",      isearchKeymap Backward)
+  , ( "C-s",      isearchKeymap Forward)
   , ( "C-t",      atomic $ repeatingArg $ swapB)
   , ( "C-u",      readArgC)
   , ( "C-v",      atomic $ scrollDownE)

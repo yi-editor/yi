@@ -9,15 +9,14 @@
 -}
 
 module Yi.Keymap.Emacs.Utils
-  ( Process
-  , KList
-  , makeProcess
+  ( KList
+  , makeKeymap
   , changeBufferNameE
   , rebind
   , withMinibuffer
   , atomic
   , queryReplaceE
-  , isearchProcess
+  , isearchKeymap
   , shellCommandE
   , executeExtendedCommandE
   , evalRegionE
@@ -96,14 +95,11 @@ import Yi.Templates
 
 -- * The keymap abstract definition
 
-type KProc a = Interact Event a
-type Process = KProc ()
-type KList = [(String, Process)]
-
+type KList = [(String, Keymap)]
 
 -- | Create a binding processor from 'kmap'.
-makeProcess :: KList -> KProc ()
-makeProcess kmap = choice [events (readKey k) >> a | (k,a) <- kmap]
+makeKeymap :: KList -> KeymapM ()
+makeKeymap kmap = choice [events (readKey k) >> a | (k,a) <- kmap]
 
 ---------------------------
 -- Changing the buffer name quite useful if you have
@@ -128,21 +124,21 @@ shellCommandE = do
 
 -----------------------------
 -- isearch
-selfSearchKeymap :: Process
+selfSearchKeymap :: Keymap
 selfSearchKeymap = do
   Event (KASCII c) [] <- satisfy (const True)
   write (isearchAddE [c])
 
-searchKeymap :: Process
-searchKeymap = selfSearchKeymap <|> makeProcess
+searchKeymap :: Keymap
+searchKeymap = selfSearchKeymap <|> makeKeymap
                [--("C-g", isearchDelE), -- Only if string is not empty.
                 ("C-r", write isearchPrevE),
                 ("C-s", write isearchNextE),
                 ("C-w", write isearchWordE),
                 ("BACKSP", write $ isearchDelE)]
 
-isearchProcess :: Direction -> Process
-isearchProcess direction = do
+isearchKeymap :: Direction -> Keymap
+isearchKeymap direction = do
   write $ isearchInitE direction
   many searchKeymap
   foldr1 (<||) [events (readKey "C-g") >> write isearchCancelE,
@@ -164,7 +160,7 @@ queryReplaceE = do
                            ]
     spawnMinibufferE
             ("Replacing " ++ replaceWhat ++ "with " ++ replaceWith ++ " (y,n,q):")
-            (const (makeProcess replaceBindings))
+            (const (makeKeymap replaceBindings))
             (qrNextE b replaceWhat)
 
 executeExtendedCommandE :: YiM ()
@@ -177,7 +173,7 @@ evalRegionE = do
 
 -- | Define an atomic interactive command.
 -- Purose is to define "transactional" boundaries for killring, undo, etc.
-atomic :: (Show x, YiAction a x) => a -> KProc ()
+atomic :: (Show x, YiAction a x) => a -> KeymapM ()
 atomic cmd = write $ do runAction (makeAction cmd)
                         withEditor $ modifyA killringA krEndCmd
 
@@ -190,7 +186,7 @@ atomic cmd = write $ do runAction (makeAction cmd)
 insertSelf :: Char -> YiM ()
 insertSelf = repeatingArg . insertB
 
-insertNextC :: KProc ()
+insertNextC :: KeymapM ()
 insertNextC = do c <- satisfy (const True)
                  write $ repeatingArg $ insertB (eventToChar c)
 
@@ -204,13 +200,13 @@ insertTemplate =
   completeTemplateName s = completeInList s (isPrefixOf s) templateNames
 
 -- | C-u stuff
-readArgC :: KProc ()
+readArgC :: KeymapM ()
 readArgC = do readArg' Nothing
               write $ do UniversalArg u <- getDynamic
                          logPutStrLn (show u)
                          msgE ""
 
-readArg' :: Maybe Int -> KProc ()
+readArg' :: Maybe Int -> KeymapM ()
 readArg' acc = do
     write $ msgE $ "Argument: " ++ show acc
     c <- satisfy (const True) -- FIXME: the C-u will read one character that should be part of the next command!
@@ -218,8 +214,8 @@ readArg' acc = do
       Event (KASCII d) [] | isDigit d -> readArg' $ Just $ 10 * (fromMaybe 0 acc) + (ord d - ord '0')
       _ -> write $ setDynamic $ UniversalArg $ Just $ fromMaybe 4 acc
 
-rebind :: [(String,Process)] -> KeymapMod
-rebind keys = (makeProcess keys <||)
+rebind :: [(String,Keymap)] -> KeymapEndo
+rebind keys = (makeKeymap keys <||)
 
 findFile :: YiM ()
 findFile = do maybePath <- withBuffer getfileB
@@ -290,7 +286,7 @@ gotoLineE =
     (lineString, rest) = break (not . isDigit) $ dropWhile isSpace s
     colString          = takeWhile isDigit $ dropWhile (not . isDigit) rest
 
--- debug :: String -> Process
+-- debug :: String -> Keymap
 -- debug = write . logPutStrLn
 
 completeBufferName :: String -> YiM String

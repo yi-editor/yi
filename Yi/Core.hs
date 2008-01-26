@@ -585,7 +585,7 @@ switchToBufferWithNameE "" = nextBufW
 switchToBufferWithNameE bufName = switchToBufferE =<< getBufferWithName bufName
 
 -- | Open a minibuffer window with the given prompt and keymap
-spawnMinibufferE :: String -> KeymapMod -> YiM () -> YiM ()
+spawnMinibufferE :: String -> KeymapEndo -> YiM () -> YiM ()
 spawnMinibufferE prompt kmMod initialAction =
     do b <- withEditor $ stringToNewBuffer prompt []
        setBufferKeymap b kmMod
