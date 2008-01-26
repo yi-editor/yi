@@ -62,6 +62,7 @@ initialize = GHC.defaultErrorHandler DynFlags.defaultDynFlags $ do
                           , "-i" ++ libdir
                           , "-odir" ++ bindir
                           , "-hidir" ++ bindir
+                          , "-cpp"
                           ]
   (dflags1',_otherFlags) <- GHC.parseDynamicFlags dflags1 (pkgOpts ++ extraflags)
   (dflags2, packageIds) <- Packages.initPackages dflags1'

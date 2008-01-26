@@ -18,6 +18,13 @@ build-type:     Custom
 data-files:
   art/yi+lambda-fat.pdf
   -- FIXME: Install Cocoa icon only when Cocoa configured
+
+flag dynamic
+  Description: enable Yi dynamic features
+  Default: True
+  -- disabling this is experimental and for testing purposes only
+  -- DO NOT write code that depends on this
+
 flag vty
   Description: Provide Vty UI
 
@@ -71,11 +78,15 @@ executable yi
         build-depends: bytestring >= 0.9 && < 0.9.0.4
         build-depends: fingertree
         build-depends:  array,  base,  containers,  directory,  filepath>=1.0,
-                        ghc>=6.8.2,  mtl, process, old-locale, old-time, unix, random
+                        mtl, process, old-locale, old-time, unix, random
         build-depends: regex-base>=0.72 && <0.73
         build-depends: regex-compat>=0.71 && <0.73
         build-depends: regex-posix>=0.72 && <0.73
         --         unix dependency should be eventually removed
+
+        if flag (dynamic)
+           build-depends: ghc>=6.8.2
+           ghc-options: -DDYNAMIC
 
         if flag (vty)
            build-depends: vty>=3.0.0

@@ -4,6 +4,8 @@
 -- nothing about Yi (at the haskell level; it can know names of
 -- modules or functions as strings)
 
+#ifdef DYNAMIC
+
 module Yi.Kernel (Kernel(..), evalHValue, evalMono, moduleName, moduleNameString, ms_mod_name) where
 
 import Control.Monad
@@ -67,3 +69,10 @@ moduleNameString = Module.moduleNameString
 
 ms_mod_name :: GHC.ModSummary -> GHC.ModuleName
 ms_mod_name = GHC.ms_mod_name
+
+#else
+
+module Yi.Kernel where
+data Kernel = Kernel
+
+#endif

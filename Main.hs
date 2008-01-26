@@ -8,9 +8,12 @@
 --
 module Main ( main ) where
 
-import Yi.Boot
+import qualified Yi.Main as Yi
+
 import Yi.Debug
 import Yi.Kernel
+#ifdef DYNAMIC
+import Yi.Boot
 
 {-
 main :: IO ()
@@ -23,7 +26,6 @@ main = do
 
 -}
 
-import qualified Yi.Main as Yi
 import Control.Monad
 
 main :: IO ()
@@ -41,3 +43,9 @@ main = do
 
   -- Fire up Yi
   Yi.main kernel
+
+#else 
+main = do 
+  initDebug ".yi-static.dbg"
+  Yi.main Kernel
+#endif

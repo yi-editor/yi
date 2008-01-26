@@ -25,6 +25,8 @@ import Yi.Buffer
 import Yi.Buffer.HighLevel
 import Yi.Dired
 
+#ifdef DYNAMIC
+
 evalToStringE :: String -> YiM String
 evalToStringE string = withKernel $ \kernel -> do
   result <- evalMono kernel ("show (" ++ string ++ ")")
@@ -32,10 +34,12 @@ evalToStringE string = withKernel $ \kernel -> do
     Left err -> err
     Right x -> x
 
+#else
+evalToStringE = return
+#endif
 -- | Evaluate some text and show the result in the message line.
 evalE :: String -> YiM ()
 evalE s = evalToStringE s >>= msgE
-
 
 
 jumpToE :: String -> Int -> Int -> YiM ()

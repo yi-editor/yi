@@ -17,10 +17,16 @@ module Yi.Core (
         StartConfig    ( .. ), -- Must be passed as the first argument to 'startE'
         startE,         -- :: StartConfig -> Kernel -> Maybe Editor -> [YiM ()] -> IO ()
         quitE,          -- :: YiM ()
-        reloadE,        -- :: YiM ()
+
+#ifdef DYNAMIC
         reconfigE,
         loadE,
         unloadE,
+#endif
+        reloadE,        -- :: YiM ()
+        getNamesInScopeE,
+        execE,
+
         refreshE,       -- :: YiM ()
         suspendE,       -- :: YiM ()
 
@@ -61,8 +67,6 @@ module Yi.Core (
 
         -- * Misc
         changeKeymapE,
-        getNamesInScopeE,
-        execE,
         runAction
    ) where
 
@@ -109,12 +113,15 @@ import Control.Exception
 import Control.Concurrent
 import Control.Concurrent.Chan
 
+#ifdef DYNAMIC
+
 import qualified GHC
 import qualified DynFlags
 import qualified SrcLoc
 import qualified ErrUtils
 import Outputable
 
+#endif
 
 -- | Make an action suitable for an interactive run.
 -- UI will be refreshed.
@@ -175,13 +182,14 @@ startE startConfig kernel st commandLineActions = do
 
       newBufferE "*messages*" "" >> return ()
 
+#ifdef DYNAMIC
       withKernel $ \k -> do
         dflags <- getSessionDynFlags k
         setSessionDynFlags k dflags { GHC.log_action = ghcErrorReporter yi }
-
       -- run user configuration
       loadE yiConfigFile -- "YiConfig"
       runConfig
+#endif
 
       when (isNothing st) $ do -- process options if booting for the first time
         sequence_ commandLineActions
@@ -255,6 +263,7 @@ changeKeymapE km = do
 quitE :: YiM ()
 quitE = withUI UI.end
 
+#ifdef DYNAMIC
 loadModulesE :: [String] -> YiM (Bool, [String])
 loadModulesE modules = do
   withKernel $ \kernel -> do
@@ -289,7 +298,7 @@ tryLoadModulesE  modules = do
 -- | (Re)compile
 reloadE :: YiM [String]
 reloadE = tryLoadModulesE =<< readsRef editorModules
-
+#endif
 -- | Redraw
 refreshE :: YiM ()
 refreshE = do editor <- with yiEditor readRef
@@ -472,6 +481,8 @@ closeE = do
     when (n == 1) quitE
     withEditor $ tryCloseE
 
+#ifdef DYNAMIC
+
 -- | Recompile and reload the user's config files
 reconfigE :: YiM ()
 reconfigE = reloadE >> runConfig
@@ -545,6 +556,15 @@ ghcErrorHandlerE inner = do
 
 	    ) $
             inner
+
+#else
+reloadE = msgE "reloadE: Not supported"
+execE s = msgE "execE: Not supported"
+reconfigE = msgE "reconfigE: Not supported"
+
+getNamesInScopeE :: YiM [String]
+getNamesInScopeE = return []
+#endif
 
 withOtherWindow :: YiM () -> YiM ()
 withOtherWindow f = do
