@@ -147,11 +147,12 @@ cmd_move = do
   let x = maybe 1 id cnt
   choice ([event c >> return (CharBased, a x) | (c,a) <- moveCmdFM, (c /= '0' || Nothing == cnt) ] ++
           [event c >> return (LineBased, a x) | (c,a) <- moveUpDownCmdFM] ++
-          [do event c; c' <- anyEvent; return (CharBased, a x c') | (c,a) <- move2CmdFM]) <|>
-   (do event 'G'; return (LineBased, case cnt of
+          [do event c; c' <- anyEvent; return (CharBased, a x c') | (c,a) <- move2CmdFM] ++
+          [do event 'G'; return (LineBased, case cnt of
                                        Nothing -> botB >> moveToSol
-                                       Just n  -> gotoLn n >> return ())) <|>
-   (do events "gg"; return (LineBased, gotoLn 0 >> return ()))
+                                       Just n  -> gotoLn n >> return ())
+          ,do events "gg"; return (LineBased, gotoLn 0 >> return ())
+          ,do events "ge"; return (CharBased, replicateM_ x $ genMoveB ViWord (Forward, InsideBound) Backward)])
 
 -- | movement commands
 moveCmdFM :: [(Char, Int -> BufferM ())]
@@ -481,6 +482,7 @@ ins_mov_char = choice [event keyPPage >> write upScreenE,
 --
 ins_char :: VimMode
 ins_char = choice [satisfy isDel  >> write (deleteB Character Backward),
+                   event keyDC    >> write (deleteB Character Forward),
                    event '\t'     >> write insertTabB]
            <|> ins_mov_char
            <|| do c <- anyEvent; write (insertB c)
