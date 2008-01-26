@@ -41,7 +41,7 @@ processArgs args =
   unlines [ "# where to install executable and packages (running in-place -- without installing -- is not supported)"
           , "frontend = " ++ frontend
           , ""
-          , "prefix = " ++ prefix 
+          , "prefix = " ++ prefix
           , ""
           , ghcDefine
           , ""
@@ -75,17 +75,17 @@ processArgs args =
   user      = maybe "" id $ getOptionArg "--user" args
   ghcDefine = maybe "" ("ghc = " ++) $ getOptionArg "--ghc" args
 
-  haddockDefault = 
+  haddockDefault =
     unlines [ "http://haskell.org/ghc/docs/latest/html/libraries/base \\"
             , "http://haskell.org/ghc/docs/latest/html/libraries/QuickCheck"
             ]
 
-getNoArgOption :: String -> [ String ] -> Bool
-getNoArgOption = elem 
+-- getNoArgOption :: String -> [ String ] -> Bool
+-- getNoArgOption = elem
 
 getOptionArg :: String -> [ String ] -> Maybe String
-getOptionArg s []     = Nothing
-getOptionArg s [ _ ]  = Nothing  -- really an error if the last element = option
+getOptionArg _ []     = Nothing
+getOptionArg _ [_]  = Nothing  -- really an error if the last element = option
 getOptionArg s (s1 : s2 : rest)
   | s == s1   = Just s2
   | otherwise = getOptionArg s rest
