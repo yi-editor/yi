@@ -11,15 +11,15 @@ runtime-config:
 	cp examples/*.hs $(HOME)/.yi
 
 run-inplace: build #using YiConfig's keybinding.
-	cp -p dist/build/Yi/Syntax/*.hs Yi/Syntax
+	cp -p dist/build/yi/yi-tmp/Yi/Syntax/*.hs Yi/Syntax
 # the above is the dirtiest hack to be able to run Yi "in-place".
-	dist/build/yi/yi -B. -bdist/build/ -f$(frontend)
+	dist/build/yi/yi -B. -bdist/build/yi/yi-tmp -f$(frontend)
 
 emacs: build
-	dist/build/yi/yi -B. -bdist/build/ -f$(frontend) --as=emacs
+	dist/build/yi/yi -B. -bdist/build/yi/yi-tmp -f$(frontend) --as=emacs
 
 vim: build
-	dist/build/yi/yi -B. -bdist/build/ -f$(frontend) --as=vim
+	dist/build/yi/yi -B. -bdist/build/yi/yi-tmp -f$(frontend) --as=vim
 
 distclean: clean
 	rm -f yi.buildinfo testsuite/pp/logpp config.log config.cache config.status cbits/config.h .setup-config
