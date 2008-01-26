@@ -26,10 +26,11 @@ import qualified Yi.Dired   as Dired
 import qualified Yi.Buffer  as Buffer
 import qualified Yi.Keymap  as Keymap
 import qualified Yi.Eval    as Eval
+import qualified Yi.Keymap.Emacs  as Emacs
+import qualified Yi.Keymap.Vim  as Vim
 import Yi.UI.Common (UIBoot)
 import Yi.Kernel
 import Yi.Debug
-import Yi.String
 
 import Yi.Interact hiding (write)
 
@@ -85,14 +86,9 @@ data Opts = Help
           | ConfigFile String
 
 -- | List of editors for which we provide an emulation.
-editors :: [String]
-editors = ["vi", "vim", "nano", "emacs", "joe", "ee", "mg"]
-
-editorToKeymap :: String -> String
-editorToKeymap s = "Yi.Keymap." ++ capitalize s ++ ".keymap"
-
-moduleNameOf :: String -> String
-moduleNameOf s = concat $ intersperse "." $ init $ split "." $ s
+editors :: [(String,Keymap.Keymap)]
+editors = [("emacs", Emacs.keymap),
+           ("vim", Vim.keymap)]
 
 options :: [OptDescr Opts]
 options = [
@@ -107,7 +103,7 @@ options = [
     Option ['l']  ["line"]        (ReqArg LineNo "[num]") "Start on line number",
     Option []     ["as"]          (ReqArg EditorNm "[editor]")
         ("Start with editor keymap, where editor is one of:\n" ++
-                (concat . intersperse ", ") editors)
+                (concat . intersperse ", " . map fst) editors)
     ]
 
 -- | usage string.
@@ -130,12 +126,10 @@ do_opt o = case o of
     Version       -> versinfo >> exitWith ExitSuccess
     LineNo l      -> return (Keymap.withBuffer (Buffer.gotoLn (read l)) >> return ())
     File file     -> return (Dired.fnewE file)
-    EditorNm emul -> case map toLower emul `elem` editors of
-                       True -> let km = editorToKeymap emul in return $ do
-                                 Core.execE ("loadE " ++ show (moduleNameOf km))
-                                 Core.execE ("changeKeymapE " ++ km)
-                       False -> do putStrLn ("Unknown emulation: " ++ show emul)
-                                   exitWith (ExitFailure 1)
+    EditorNm emul -> case lookup (map toLower emul) editors of
+                       Just km -> return $ Core.changeKeymapE km
+                       Nothing -> do putStrLn ("Unknown emulation: " ++ show emul)
+                                     exitWith (ExitFailure 1)
 
 -- | everything that is left over
 do_args :: [String] -> IO (Core.StartConfig, [Keymap.YiM ()])
