@@ -1,16 +1,14 @@
+{-# LANGUAGE ScopedTypeVariables, ExistentialQuantification #-}
 {-# OPTIONS -#include "YiUtils.h" #-}
---
--- Copyright (C) 2007 Stefan O'Rear
---
---
+
+-- Copyright (C) 2007, 2008 Stefan O'Rear
 
 -- | This module defines the list of syntax highlighter modules.
---
 
-module Yi.Syntax.Table 
+module Yi.Syntax.Table
   ( ExtHL(..)
-  , highlighters 
-  ) 
+  , highlighters
+  )
 where
 
 {- Standard Library Modules Imported -}

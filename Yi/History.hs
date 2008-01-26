@@ -1,7 +1,6 @@
---
--- Copyright (c) 2005,2007 Jean-Philippe Bernardy
---
---
+{-# LANGUAGE PatternSignatures, DeriveDataTypeable #-}
+
+-- Copyright (c) 2005,2007,2008 Jean-Philippe Bernardy
 
 -- "command history" implementation
 
@@ -14,18 +13,18 @@ import Data.Char
 import Data.List
 import Data.Dynamic
 
-data History = History {_historyCurrent :: Int, 
-                        _historyContents :: [String]} 
+data History = History {_historyCurrent :: Int,
+                        _historyContents :: [String]}
 
     deriving (Show, Typeable)
 instance Initializable History where
     initial = (History (-1) [])
-    
+
 
 historyUp :: YiM ()
 historyUp = historyMove 1
 
-historyDown :: YiM () 
+historyDown :: YiM ()
 historyDown = historyMove (-1)
 
 historyStart :: YiM ()
@@ -55,7 +54,7 @@ historyMove delta = do
   case (next < 0, next >= len) of
     (True, _) -> msgE "end of history, no next item."
     (_, True) -> msgE "beginning of history, no previous item."
-    (_,_) -> do 
+    (_,_) -> do
          setDynamic (History next (take cur cont ++ [curValue] ++ drop (cur+1) cont))
          debugHist
          withBuffer $ do

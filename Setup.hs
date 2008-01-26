@@ -74,7 +74,7 @@ install pd lbi hooks flags = do
 mkOpt :: (String, String) -> String
 mkOpt (name,def) = "-D" ++ name ++ "=" ++ def
 
--- Add our special package options to 
+-- Add our special package options to
 addPackageOptions pd lbi verbosity = do
   let dataPref = datadir $ absoluteInstallDirs pd lbi NoCopyDest
       pkgOpts = concat [ ["-package", showPackageId pkg] | pkg <- packageDeps lbi ]

@@ -1,15 +1,16 @@
--- Copyright (C) 2008 JP Bernardy
+{-# LANGUAGE DeriveDataTypeable, GeneralizedNewtypeDeriving #-}
 
+-- Copyright (C) 2008 JP Bernardy
 
 module Yi.TextCompletion (
         -- * Word completion
-        wordCompleteB, 
+        wordCompleteB,
         resetCompleteB,
         completeWordB,
 ) where
 
 import Yi.Completion
-import Yi.Buffer 
+import Yi.Buffer
 import Text.Regex
 import Data.Char
 import Data.Typeable
@@ -27,7 +28,6 @@ import Yi.Core
 --
 -- when doing keyword completion, we need to keep track of the word
 -- we're trying to complete.
---
 
 -- remember the word, if any, we're trying to complete, previous matches
 -- we've seen, and the point in the search we are up to.
@@ -91,7 +91,7 @@ wordCompleteB = getDynamicB >>= loop >>= setDynamicB
     -- replace word under cursor with @s@
     --
     replaceLeftWith :: String -> BufferM ()
-    replaceLeftWith s = do 
+    replaceLeftWith s = do
         r <- regionOfPartB Word Backward     -- back at start
         replaceRegionB r s
         moveTo (regionStart r + length s)

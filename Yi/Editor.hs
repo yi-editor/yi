@@ -1,11 +1,8 @@
---
--- Copyright (c) 2004-5 Don Stewart - http://www.cse.unsw.edu.au/~dons
---
---
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
---
+-- Copyright (c) 2004-5, 8, Don Stewart - http://www.cse.unsw.edu.au/~dons
+
 -- | The top level editor state, and operations on it.
---
 
 module Yi.Editor where
 
@@ -31,10 +28,10 @@ import Control.Monad.Writer
 
 -- | The Editor state
 data Editor = Editor {
-        bufferStack   :: ![BufferRef]               -- ^ Stack of all the buffers. Never empty; 
+        bufferStack   :: ![BufferRef]               -- ^ Stack of all the buffers. Never empty;
                                                     -- first buffer is the current one.
        ,buffers       :: M.Map BufferRef FBuffer
-       ,bufferRefSupply :: BufferRef          
+       ,bufferRefSupply :: BufferRef
 
        ,windows       :: WindowSet Window
 
@@ -73,7 +70,7 @@ emptyEditor = Editor {
        ,bufferStack  = [bkey buf]
        ,bufferRefSupply = 1
        ,windowfill   = ' '
-       ,tabwidth     = 8 
+       ,tabwidth     = 8
        ,yreg         = []
        ,regex        = Nothing
        ,uistyle      = Yi.Style.uiStyle
@@ -153,24 +150,24 @@ shiftBuffer shift = gets $ \e ->
 
 ------------------------------------------------------------------------
 
--- | Perform action with any given buffer    
+-- | Perform action with any given buffer
 withGivenBuffer0 :: BufferRef -> BufferM a -> EditorM a
 withGivenBuffer0 k f = withGivenBufferAndWindow0 (dummyWindow k) k f
 
--- | Perform action with any given buffer    
+-- | Perform action with any given buffer
 withGivenBufferAndWindow0 :: Window -> BufferRef -> BufferM a -> EditorM a
-withGivenBufferAndWindow0 w k f = getsAndModify $ \e -> 
+withGivenBufferAndWindow0 w k f = getsAndModify $ \e ->
                         let b = findBufferWith k e
-                            (v, b') = runBuffer w b f 
+                            (v, b') = runBuffer w b f
                         in (e {buffers = M.adjust (const b') k (buffers e)},v)
 
 
 -- | Perform action with current window's buffer
 withBuffer0 :: BufferM a -> EditorM a
-withBuffer0 f = do 
+withBuffer0 f = do
   w <- getA (currentA .> windowsA)
   withGivenBufferAndWindow0 w (bufkey w) f
-                                                
+
 -- | Return the current buffer
 getBuffer :: EditorM BufferRef
 getBuffer = gets (head . bufferStack)

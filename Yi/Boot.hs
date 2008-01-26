@@ -1,3 +1,4 @@
+{-# LANGUAGE PatternGuards #-}
 module Yi.Boot where
 
 import Yi.Debug hiding (error)

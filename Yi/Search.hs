@@ -1,12 +1,10 @@
---
+{-# LANGUAGE DeriveDataTypeable, GeneralizedNewtypeDeriving #-}
+
 -- Copyright (c) Tuomo Valkonen 2004.
 -- Copyright (c) 2005, 2008 Don Stewart - http://www.cse.unsw.edu.au/~dons
 -- Copyright (c) 2007 Jean-Philippe Bernardy
---
---
 
 -- | Search/Replace functions
---
 
 module Yi.Search (
         setRegexE,      -- :: SearchExp -> YiM ()

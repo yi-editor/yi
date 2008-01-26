@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleContexts, FlexibleInstances, TypeSynonymInstances, ExistentialQuantification, MultiParamTypeClasses, FunctionalDependencies #-}
 
 -- Copyright (c) Jean-Philippe Bernardy 2007.
 

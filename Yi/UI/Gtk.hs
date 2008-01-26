@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE BangPatterns, ExistentialQuantification #-}
 
 -- Copyright (c) 2007, 2008 Jean-Philippe Bernardy
 

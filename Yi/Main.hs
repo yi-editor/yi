@@ -54,7 +54,7 @@ import System.Exit
 
 
 frontends :: [(String,UIBoot)]
-frontends = 
+frontends =
 #ifdef FRONTEND_COCOA
    ("cocoa", Yi.UI.Cocoa.start) :
 #endif
@@ -95,7 +95,7 @@ moduleNameOf s = concat $ intersperse "." $ init $ split "." $ s
 
 options :: [OptDescr Opts]
 options = [
-    Option ['f']  ["frontend"]    (ReqArg Frontend "[frontend]")  
+    Option ['f']  ["frontend"]    (ReqArg Frontend "[frontend]")
         ("Select frontend, which can be one of:\n" ++
          (concat . intersperse ", ") frontendNames),
     Option ['y']  ["config-file"] (ReqArg ConfigFile  "path") "Specify a configuration file",
@@ -126,19 +126,19 @@ do_opt o = case o of
     OptIgnore _   -> return (return ())
     ConfigFile _  -> return (return ())
     Help          -> usage    >> exitWith ExitSuccess
-    Version       -> versinfo >> exitWith ExitSuccess    
+    Version       -> versinfo >> exitWith ExitSuccess
     LineNo l      -> return (Keymap.withBuffer (Buffer.gotoLn (read l)) >> return ())
     File file     -> return (Core.fnewE file)
     EditorNm emul -> case map toLower emul `elem` editors of
                        True -> let km = editorToKeymap emul in return $ do
-                                 Core.execE ("loadE " ++ show (moduleNameOf km)) 
+                                 Core.execE ("loadE " ++ show (moduleNameOf km))
                                  Core.execE ("changeKeymapE " ++ km)
                        False -> do putStrLn ("Unknown emulation: " ++ show emul)
                                    exitWith (ExitFailure 1)
-    
+
 -- | everything that is left over
 do_args :: [String] -> IO (Core.StartConfig, [Keymap.YiM ()])
-do_args args = 
+do_args args =
     case (getOpt (ReturnInOrder File) options args) of
         (o, [], []) ->  do
             let frontend = head $ [f | Frontend   f <- o] ++ [head frontendNames]
@@ -160,7 +160,7 @@ startConsole = do
 
 openScratchBuffer :: Keymap.YiM ()
 openScratchBuffer = do     -- emacs-like behaviour
-      Core.newBufferE "*scratch*" 
+      Core.newBufferE "*scratch*"
                    ("-- This buffer is for notes you don't want to save, and for haskell evaluation\n" ++
                     "-- If you want to create a file, open that file,\n" ++
                     "-- then enter the text in that file's own buffer.\n\n")

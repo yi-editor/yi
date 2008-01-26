@@ -1,3 +1,5 @@
+{-# LANGUAGE PatternSignatures #-}
+
 module Yi.Eval (
         -- * Eval\/Interpretation
         evalE,
@@ -40,7 +42,7 @@ jumpToE filename line column = do
   bs <- readEditor $ findBufferWithName filename -- FIXME: should find by associated file-name
   case bs of
     [] -> do found <- lift $ doesFileExist filename
-             if found 
+             if found
                then fnewE filename
                else error "file not found"
     (b:_) -> switchToBufferOtherWindowE b
@@ -82,7 +84,7 @@ consoleKeymap = do event (Event KEnter [])
                                                 p' <- pointB
                                                 when (p /= p') $
                                                    insertN ("\n" ++ prompt ++ takeCommand x)
-                                                insertN "\n" 
+                                                insertN "\n"
                                                 pt <- pointB
                                                 insertN prompt
                                                 bm <- getBookmarkB "errorInsert"

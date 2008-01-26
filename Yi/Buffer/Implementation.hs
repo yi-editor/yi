@@ -1,6 +1,6 @@
-{-# PatternGuards #-}
+{-# LANGUAGE PatternGuards, ExistentialQuantification #-}
 
--- Copyright (c) 2004-5, 7-8, 8, 8, 8 Don Stewart - http://www.cse.unsw.edu.au/~dons
+-- Copyright (c) 2004-5, 7-8, 8, 8, 8, 8, 8 Don Stewart - http://www.cse.unsw.edu.au/~dons
 
 -- | 'Buffer' implementation, wrapping ByteString.
 module Yi.Buffer.Implementation

@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE CPP, DeriveDataTypeable, FlexibleContexts, GeneralizedNewtypeDeriving #-}
 
 -- Copyright (c) 2005, 2008 Jean-Philippe Bernardy
 

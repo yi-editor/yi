@@ -1,12 +1,9 @@
---
--- Copyright (c) 2007 Ben Moseley
---
---
+{-# LANGUAGE DeriveDataTypeable #-}
+
+-- Copyright (c) 2007, 2008 Ben Moseley
 
 
---
--- A Simple Dired Implementation for Yi
---
+-- | A Simple Dired Implementation for Yi
 
 -- TODO
 -------
@@ -74,7 +71,7 @@ data DiredEntry = DiredFile DiredFileInfo
                 | DiredNoInfo
                 deriving (Show, Eq, Typeable)
 
-data DiredState = DiredState 
+data DiredState = DiredState
   { diredDir :: FilePath -- ^ The full path to the directory being viewed
     -- FIXME Choose better data structure for Marks...
    , diredMarks :: M.Map Char [FilePath] -- ^ Map values are just leafnames, not full paths
