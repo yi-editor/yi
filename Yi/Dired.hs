@@ -105,8 +105,7 @@ fnewE f = do
     syntaxFromExtension :: String -> String
     syntaxFromExtension ".hs"    = "haskell"
     syntaxFromExtension ".x"     = "haskell"
-    -- anyone want to come up with a literate haskell syntax?
-    syntaxFromExtension ".lhs"   = "haskell"
+    syntaxFromExtension ".lhs"   = "lithaskell"
     -- haskell include files such as Yi/Syntax/alex.hsinc
     syntaxFromExtension ".hsinc" = "haskell"
     syntaxFromExtension ".cabal" = "cabal"

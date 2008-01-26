@@ -93,7 +93,7 @@ executable yi
          buildable: False
 
         main-is:        Main.hs
-        other-modules: Yi.Syntax.Cplusplus, Yi.Syntax.Haskell, Yi.Syntax.Latex, Yi.Syntax.Srmc, Yi.Syntax.Cabal
+        other-modules: Yi.Syntax.Cplusplus, Yi.Syntax.Haskell, Yi.Syntax.LitterateHaskell, Yi.Syntax.Latex, Yi.Syntax.Srmc, Yi.Syntax.Cabal
         include-dirs: Yi/Syntax
         extensions: CPP
         ghc-options:    -Wall

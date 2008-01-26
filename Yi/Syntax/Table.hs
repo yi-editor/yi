@@ -18,6 +18,7 @@ import qualified Data.Map as M
 import Yi.Syntax
   ( Highlighter )
 import qualified Yi.Syntax.Haskell
+import qualified Yi.Syntax.LitterateHaskell (highlighter)
 import qualified Yi.Syntax.Latex
 import qualified Yi.Syntax.Srmc
 import qualified Yi.Syntax.Cabal
@@ -33,6 +34,7 @@ highlighters = M.fromList highList
 highList :: [ (String, ExtHL) ]
 highList =
   [ ( "haskell"  , ExtHL (Just Yi.Syntax.Haskell.highlighter) )
+  , ("lithaskell", ExtHL (Just Yi.Syntax.LitterateHaskell.highlighter) )
   , ( "latex"    , ExtHL (Just Yi.Syntax.Latex.highlighter) )
   , ( "cabal"    , ExtHL (Just Yi.Syntax.Cabal.highlighter) )
   , ( "cplusplus", ExtHL (Just Yi.Syntax.Cplusplus.highlighter) )
