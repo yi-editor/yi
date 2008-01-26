@@ -280,6 +280,8 @@ lineBasedRegion region = do
   stop <- pointB
   return $ mkRegion start stop
 
+-- TODO: either decide this is evil and contain it to Vim, or embrace it and move it to the
+-- Buffer record.
 newtype LineBasedSelection = LBS Bool deriving (Typeable,Show)
 instance Initializable LineBasedSelection where
   initial = LBS False

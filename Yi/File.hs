@@ -15,17 +15,15 @@ import Yi.Core
 import Yi.Debug
 import Yi.Buffer
 import Yi.Window
-import Yi.Process           ( popen )
 import Yi.Editor
 import Yi.Keymap
 import qualified Yi.Editor as Editor
-import Yi.UI.Common as UI (UI)
 
 import System.Directory     ( doesFileExist, doesDirectoryExist )
 import System.FilePath
 
 import Control.Monad.Trans
-import Control.Monad.State (gets, modify)
+import Control.Monad.State (gets)
 import Control.Monad.Error ()
 
 -- | If file exists, read contents of file into a new buffer, otherwise
