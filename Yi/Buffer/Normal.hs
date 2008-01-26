@@ -13,7 +13,7 @@ module Yi.Buffer.Normal (execB, TextUnit(..), Operation(..),
                          untilB, doUntilB_, untilB_,
                          atBoundaryB,
                          numberOfB,
-                         deleteB, 
+                         deleteB, genMaybeMoveB,
                          genMoveB, BoundarySide(..), genAtBoundaryB
                          ) where
 
@@ -169,6 +169,10 @@ genMoveB VLine _ Backward = lineUp
 genMoveB unit (boundDir, boundSide) moveDir = 
   doUntilB_ (genAtBoundaryB unit boundDir boundSide) (execB Move Character moveDir)
     
+-- | Generic maybe move operation
+genMaybeMoveB :: TextUnit -> (Direction, BoundarySide) -> Direction -> BufferM ()
+genMaybeMoveB unit (boundDir, boundSide) moveDir =
+  untilB_ (genAtBoundaryB unit boundDir boundSide) (execB Move Character moveDir)
 
 -- | Execute the specified triple (operation, unit, direction)
 execB :: Operation -> TextUnit -> Direction -> BufferM ()
@@ -210,13 +214,7 @@ execB (Transform f) unit direction = do
 -- | delete between point and next unit boundary, return the deleted region
 -- TODO: save in the kill ring. (?)
 deleteB :: TextUnit -> Direction -> BufferM ()
-deleteB unit direction = do
-  p <- pointB
-  execB Move unit direction
-  q <- pointB
-  deleteRegionB $ mkRegion p q      
-  
-
+deleteB unit dir = deleteRegionB =<< regionOfPartNonEmptyB unit dir
 
 indexAfterB :: BufferM a -> BufferM Point
 indexAfterB f = savingPointB (f >> pointB)
@@ -227,11 +225,21 @@ regionOfB unit = mkRegion
                  <$> indexAfterB (execB MaybeMove unit Backward)
                  <*> indexAfterB (execB MaybeMove unit Forward)
 
--- | Region between the point and the next boundary
+-- | Region between the point and the next boundary.
+-- The region is empty if the point is at the boundary.
 regionOfPartB :: TextUnit -> Direction -> BufferM Region
 regionOfPartB unit dir = savingPointB $ do
          b <- pointB
          execB MaybeMove unit dir
+         e <- pointB
+         return $ mkRegion b e
+
+-- | Non empty region between the point and the next boundary,
+-- In fact the region can be empty if we are at the end of file.
+regionOfPartNonEmptyB :: TextUnit -> Direction -> BufferM Region
+regionOfPartNonEmptyB unit dir = savingPointB $ do
+         b <- pointB
+         execB Move unit dir
          e <- pointB
          return $ mkRegion b e
 

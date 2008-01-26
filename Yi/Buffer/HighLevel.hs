@@ -157,11 +157,7 @@ capitaliseWordB = execB (Transform capitalizeFirst) Word Forward
 
 -- | Delete to the end of line, excluding it.
 deleteToEol :: BufferM ()
-deleteToEol = do
-    p <- pointB
-    moveToEol
-    q <- pointB
-    deleteNAt (q-p) p
+deleteToEol = deleteRegionB =<< regionOfPartB Line Forward
 
 -- | Transpose two characters, (the Emacs C-t action)
 swapB :: BufferM ()
