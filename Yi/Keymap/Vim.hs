@@ -56,7 +56,7 @@ type VimProc a = (Interact Char) a
 -- | Top level
 keymap :: Keymap
 keymap = do write $ do setWindowFillE '~'
-                       withBuffer unsetMarkB
+                       withBuffer0 unsetMarkB
                        setWindowStyleE defaultVimUiStyle
             runVim cmd_mode
 

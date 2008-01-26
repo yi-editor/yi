@@ -414,12 +414,12 @@ msgClrE = msgE ""
 
 -- | A character to fill blank lines in windows with. Usually '~' for
 -- vi-like editors, ' ' for everything else
-setWindowFillE :: Char -> YiM ()
-setWindowFillE c = withEditor $ modify $ \e -> e { windowfill = c }
+setWindowFillE :: Char -> EditorM ()
+setWindowFillE c = modify $ \e -> e { windowfill = c }
 
 -- | Sets the window style.
-setWindowStyleE :: Style.UIStyle -> YiM ()
-setWindowStyleE sty = withEditor $ modify $ \e -> e { uistyle = sty }
+setWindowStyleE :: Style.UIStyle -> EditorM ()
+setWindowStyleE sty = modify $ \e -> e { uistyle = sty }
 
 
 -- | Attach the next buffer in the buffer list
