@@ -14,8 +14,7 @@ maintainer:     yi-devel@googlegroups.com
 extra-source-files:
   Yi/Syntax/alex.hsinc
 
-data-files:
-  art/yi+lambda-fat.pdf
+build-type:     Custom
 
 Flag vty {
   Description: Provide Vty UI
