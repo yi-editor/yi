@@ -52,6 +52,8 @@ delete (WindowSet [] _ (a:as)) = WindowSet [] a as
 
 -- property: delete (add w) ws == ws
 
+size :: WindowSet a -> Int
+size (WindowSet as _ bs) = length as + 1 + length bs
 
 deleteOthers :: WindowSet a -> WindowSet a
 deleteOthers (WindowSet _ c _) = WindowSet [] c []

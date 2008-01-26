@@ -468,7 +468,7 @@ closeBufferAndWindowE = do
 -- If this is the last window open, quit the program.
 closeE :: YiM ()
 closeE = do
-    n <- withEditor $ withWindows (length . toList)
+    n <- withEditor $ withWindows WS.size
     when (n == 1) quitE
     withEditor $ tryCloseE
 

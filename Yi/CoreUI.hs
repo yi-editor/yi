@@ -13,10 +13,8 @@ import Yi.Accessor
 import Yi.Editor
 import Yi.Debug
 import Yi.Window
-import Data.List
 import Control.Monad.Reader
 import Yi.WindowSet as WS
-import Data.Foldable (toList)
 --------------------------------------------------------
 
 
@@ -69,6 +67,6 @@ closeOtherE = modifyWindows WS.deleteOthers
 -- | Switch focus to some other window. If none is available, create one.
 shiftOtherWindow :: EditorM ()
 shiftOtherWindow = do
-  len <- withWindows (length . toList)
+  len <- withWindows WS.size
   when (len == 1) splitE
   nextWinE
