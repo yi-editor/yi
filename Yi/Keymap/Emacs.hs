@@ -27,7 +27,6 @@ import Yi.Keymap.Emacs.Utils
   , evalRegionE
   , executeExtendedCommandE
   , findFile
-  , gotoLineE
   , insertNextC
   , insertSelf
   , isearchProcess
