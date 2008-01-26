@@ -6,7 +6,8 @@
 
 module Yi.Editor where
 
-import Yi.Buffer                ( BufferRef, FBuffer (..), BufferM, newB, runBuffer )
+import Yi.Buffer                ( BufferRef, FBuffer (..), BufferM, newB, runBuffer, insertN )
+import Yi.Buffer.HighLevel (botB)
 import Text.Regex.Posix.Wrap    ( Regex )
 import Yi.Style                 ( uiStyle, UIStyle )
 
@@ -60,6 +61,9 @@ dynamicA = Accessor dynamic (\f e -> e {dynamic = f (dynamic e)})
 
 windowsA :: Accessor Editor (WindowSet Window)
 windowsA = Accessor windows (\f e -> e {windows = f (windows e)})
+
+dynA :: Initializable a => Accessor Editor a
+dynA = dynamicValueA .> dynamicA
 
 -- | The initial state
 emptyEditor :: Editor
@@ -181,5 +185,24 @@ setBuffer k = do
 
 newtype EditorM a = EditorM {fromEditorM :: State Editor a}
     deriving (Monad, MonadState Editor)
+
+--------------
+
+-- | Find buffer with given name. Raise exception if not found.
+getBufferWithName0 :: String -> EditorM BufferRef
+getBufferWithName0 bufName = do
+  bs <- gets $ findBufferWithName bufName
+  case bs of
+    [] -> fail ("Buffer not found: " ++ bufName)
+    (b:_) -> return b
+
+
+-- | Set the cmd buffer, and draw message at bottom of screen
+printMsg :: String -> EditorM ()
+printMsg s = do
+  modify $ \e -> e { statusLine = takeWhile (/= '\n') s }
+  -- also show in the messages buffer, so we don't loose any message
+  [b] <- gets $ findBufferWithName "*messages*"
+  withGivenBuffer0 b $ do botB; insertN (s ++ "\n")
 
 
