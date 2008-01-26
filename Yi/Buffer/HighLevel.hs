@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveDataTypeable #-}
 -- Copyright (C) 2008 JP Bernardy
 module Yi.Buffer.HighLevel where
 
