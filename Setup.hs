@@ -25,6 +25,19 @@ bHook pd lbi hooks flags = do
   pd' <- addPackageOptions pd lbi (buildVerbose flags)
   -- Compile main executable
   buildHook defaultUserHooks pd' lbi hooks flags
+  -- Copy compiled files to avoid duplicated precompilation
+  curdir <- getCurrentDirectory
+  let rel = map . makeRelative
+      buildDir = curdir </> "dist" </> "build"
+      yiBuildDir = buildDir </> "yi" </> "yi-tmp"
+  compiledFiles <- rel yiBuildDir <$> unixFindExt (yiBuildDir </> "Yi") [".hs",".hi",".o"]
+  mapM_ (copyFile (buildVerbose flags) yiBuildDir buildDir) compiledFiles
+
+  -- Precompile loadable modules, by compiling a pseudo package
+  -- we pretend we build package main, so that GHCi
+  -- can associate the source files and the precompiled modules
+  let pd'' = pseudoLibraryPkg pd' "main" ["Yi.Main", "Yi.Keymap.Vim", "Yi.Keymap.Emacs"]
+  buildHook defaultUserHooks pd'' lbi defaultUserHooks flags
 
 hdHook :: PackageDescription -> LocalBuildInfo -> UserHooks -> HaddockFlags -> IO ()
 hdHook pd lbi hooks flags = do
