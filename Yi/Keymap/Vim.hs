@@ -29,6 +29,7 @@ import Yi.Debug
 import Yi.Indent
 
 import Yi.Keymap.Emacs.Utils (completeFileName,completeBufferName)
+import Yi.MiniBuffer
 import Yi.TextCompletion
 
 --
@@ -515,7 +516,7 @@ spawn_ex_buffer prompt = do
   -- The above ensures that the action is performed on the buffer that originated the minibuffer.
   let closeMinibuffer = do b <- withEditor getBuffer; closeE; withEditor $ deleteBuffer b
       ex_buffer_finish = do
-        historyFinish
+        withEditor $ historyFinish
         lineString <- withBuffer elemsB
         closeMinibuffer
         ex_eval (head prompt : lineString)
@@ -539,7 +540,7 @@ spawn_ex_buffer prompt = do
         return $ drop (length f) f'
       ex_complete _ = return ""
 
-  historyStart
+  withEditor $ historyStart
   spawnMinibufferE prompt (const $ runVim $ ex_process) (return ())
 
 

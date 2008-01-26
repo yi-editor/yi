@@ -84,8 +84,8 @@ import Yi.Keymap.Emacs.Keys
 import Yi.Buffer
 import Yi.Process
 import Yi.Editor
-import Yi.History
 import Yi.Completion
+import Yi.MiniBuffer
 import Yi.Templates
   ( addTemplate
   , templateNames
@@ -309,42 +309,6 @@ completeFunctionName :: String -> YiM String
 completeFunctionName s = do
   names <- getNamesInScopeE
   completeInList s (isPrefixOf s) names
-
-completionFunction :: (String -> YiM String) -> YiM ()
-completionFunction f = do
-  p <- withBuffer pointB
-  text <- withBuffer $ readRegionB $ mkRegion 0 p
-  compl <- f text
-  -- it's important to do this before removing the text,
-  -- so if the completion function raises an exception, we don't delete the buffer contents.
-  withBuffer $ do moveTo 0
-                  deleteN p
-                  insertN compl
-
-withMinibuffer :: String -> (String -> YiM String) -> (String -> YiM ()) -> YiM ()
-withMinibuffer prompt completer act = do
-  initialBuffer <- withEditor getBuffer
-  let innerAction :: YiM ()
-      -- ^ Read contents of current buffer (which should be the minibuffer), and
-      -- apply it to the desired action
-      closeMinibuffer = closeBufferAndWindowE
-      innerAction = do historyFinish
-                       lineString <- withBuffer elemsB
-                       withEditor $ closeMinibuffer
-                       switchToBufferE initialBuffer
-                       -- The above ensures that the action is performed on the buffer that originated the minibuffer.
-                       act lineString
-      rebindings = [("RET", write innerAction),
-                    ("C-m", write innerAction),
-                    ("M-p", write historyUp),
-                    ("M-n", write historyDown),
-                    ("<up>", write historyUp),
-                    ("<down>", write historyDown),
-                    ("C-i", write (completionFunction completer)),
-                    ("TAB", write (completionFunction completer)),
-                    ("C-g", write closeMinibuffer)]
-  historyStart
-  spawnMinibufferE (prompt ++ " ") (rebind rebindings) (return ())
 
 scrollDownE :: YiM ()
 scrollDownE = withUnivArg $ \a -> withBuffer $

@@ -59,9 +59,6 @@ module Yi.Core (
         -- * Interacting with external commands
         pipeE,                   -- :: String -> String -> EditorM String
 
-        -- * Minibuffer
-        spawnMinibufferE,
-
         -- * Misc
         changeKeymapE,
         getNamesInScopeE,
@@ -452,14 +449,6 @@ getBufferWithName bufName = do
 switchToBufferWithNameE :: String -> YiM ()
 switchToBufferWithNameE "" = nextBufW
 switchToBufferWithNameE bufName = switchToBufferE =<< getBufferWithName bufName
-
--- | Open a minibuffer window with the given prompt and keymap
-spawnMinibufferE :: String -> KeymapEndo -> YiM () -> YiM ()
-spawnMinibufferE prompt kmMod initialAction =
-    do b <- withEditor $ stringToNewBuffer prompt []
-       setBufferKeymap b kmMod
-       withEditor $ modifyWindows (WS.add $ Window True b 0 0 0)
-       initialAction
 
 -- | Return a list of all buffers, and their indicies
 listBuffersE :: YiM [(String,Int)]
