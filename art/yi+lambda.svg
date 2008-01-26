@@ -8,15 +8,15 @@
    xmlns="http://www.w3.org/2000/svg"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   width="744.09448819"
-   height="1052.3622047"
+   width="295.81396"
+   height="357.35153"
    id="svg2"
    sodipodi:version="0.32"
-   inkscape:version="0.45"
-   sodipodi:docbase="/home/jp/yi-art"
+   inkscape:version="0.45.1"
+   sodipodi:docbase="/home/jp/project/yi/art"
    sodipodi:docname="yi+lambda.svg"
    inkscape:output_extension="org.inkscape.output.svg.inkscape"
-   sodipodi:modified="true">
+   version="1.0">
   <defs
      id="defs4" />
   <sodipodi:namedview
@@ -34,9 +34,9 @@
      inkscape:cy="718.31968"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
-     inkscape:window-width="1280"
-     inkscape:window-height="983"
-     inkscape:window-x="0"
+     inkscape:window-width="417"
+     inkscape:window-height="510"
+     inkscape:window-x="861"
      inkscape:window-y="0" />
   <metadata
      id="metadata7">
@@ -52,7 +52,8 @@
   <g
      inkscape:label="Layer 1"
      inkscape:groupmode="layer"
-     id="layer1">
+     id="layer1"
+     transform="translate(-150.68001,-142.26956)">
     <text
        xml:space="preserve"
        style="font-size:517.82849121px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;fill:#2433bd;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:GentiumAlt"
@@ -64,7 +65,7 @@
          sodipodi:role="line"
          id="tspan2200"
          x="133.13818"
-         y="-110.36567"></tspan><tspan
+         y="-110.36567" /><tspan
          sodipodi:role="line"
          x="133.13818"
          y="536.91994"
