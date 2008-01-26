@@ -10,7 +10,7 @@
 
 {
 {-# OPTIONS -w  #-}
-module Yi.Syntax.LitterateHaskell ( highlighter ) where
+module Yi.Syntax.LiterateHaskell ( highlighter ) where
 
 import qualified Data.ByteString.Char8
 import qualified Yi.FingerString
