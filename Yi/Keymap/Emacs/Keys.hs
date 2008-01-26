@@ -2,8 +2,9 @@
 
 -- Copyright (c) 2005, 2008 Jean-Philippe Bernardy
 
-module Yi.Keymap.Emacs.Keys (readKey, showKey, printableChars) where
-
+module Yi.Keymap.Emacs.Keys (readKey, showKey, printableChars, 
+                             KList, makeKeymap, rebind) where
+    
 import Yi.Event
 import Yi.Debug
 import Data.Char
@@ -12,6 +13,19 @@ import Data.Maybe
 import qualified Data.Map as M
 import Prelude hiding (error)
 import Text.ParserCombinators.ReadP
+import Yi.Keymap
+import qualified Yi.Interact as I
+
+-- * The keymap abstract definition
+
+type KList = [(String, Keymap)]
+
+-- | Create a binding processor from 'kmap'.
+makeKeymap :: KList -> KeymapM ()
+makeKeymap kmap = I.choice [I.events (readKey k) >> a | (k,a) <- kmap]
+
+rebind :: KList -> KeymapEndo
+rebind keys = (makeKeymap keys I.<||)
 
 
 printableChars :: [Char]

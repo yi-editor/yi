@@ -93,13 +93,6 @@ import Yi.Templates
 
 {- End of Module Imports -}
 
--- * The keymap abstract definition
-
-type KList = [(String, Keymap)]
-
--- | Create a binding processor from 'kmap'.
-makeKeymap :: KList -> KeymapM ()
-makeKeymap kmap = choice [events (readKey k) >> a | (k,a) <- kmap]
 
 ---------------------------
 -- Changing the buffer name quite useful if you have
@@ -214,8 +207,6 @@ readArg' acc = do
       Event (KASCII d) [] | isDigit d -> readArg' $ Just $ 10 * (fromMaybe 0 acc) + (ord d - ord '0')
       _ -> write $ setDynamic $ UniversalArg $ Just $ fromMaybe 4 acc
 
-rebind :: [(String,Keymap)] -> KeymapEndo
-rebind keys = (makeKeymap keys <||)
 
 findFile :: YiM ()
 findFile = do maybePath <- withBuffer getfileB
