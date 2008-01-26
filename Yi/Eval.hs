@@ -35,6 +35,7 @@ evalToStringE string = withKernel $ \kernel -> do
     Right x -> x
 
 #else
+evalToStringE :: (Monad m) => a -> m a
 evalToStringE = return
 #endif
 -- | Evaluate some text and show the result in the message line.

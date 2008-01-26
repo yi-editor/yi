@@ -81,7 +81,6 @@ import Yi.Buffer.Implementation
 import Yi.Syntax
 import Yi.Undo
 import Yi.Style
-import Yi.Debug
 import Yi.Dynamic
 import Yi.Window
 import Control.Applicative

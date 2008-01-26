@@ -44,8 +44,9 @@ main = do
   -- Fire up Yi
   Yi.main kernel
 
-#else 
-main = do 
+#else
+main :: IO ()
+main = do
   initDebug ".yi-static.dbg"
   Yi.main Kernel
 #endif

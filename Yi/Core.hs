@@ -81,7 +81,9 @@ import Yi.String
 import Yi.Process           ( popen )
 import Yi.Editor
 import Yi.CoreUI
-import Yi.Kernel
+#ifdef DYNAMIC
+
+#endif
 import Yi.Event (eventToChar, Event)
 import Yi.Keymap
 import qualified Yi.Interact as I
@@ -96,10 +98,7 @@ import Yi.UI.Common as UI (UI)
 
 import Data.Maybe
 import qualified Data.Map as M
-import Data.List
-  ( notElem
-  , delete
-  )
+
 import Data.IORef
 import Data.Foldable
 
@@ -113,13 +112,15 @@ import Control.Monad.Error ()
 import Control.Exception
 import Control.Concurrent
 import Control.Concurrent.Chan
+import Yi.Kernel
 
 #ifdef DYNAMIC
 
-import qualified GHC
+import Data.List (notElem, delete)
 import qualified DynFlags
-import qualified SrcLoc
 import qualified ErrUtils
+import qualified GHC
+import qualified SrcLoc
 import Outputable
 
 #endif
@@ -128,13 +129,13 @@ import Outputable
 -- UI will be refreshed.
 interactive :: Action -> YiM ()
 interactive action = do
-  logPutStrLn ">>>>>>> interactively"
+  logPutStrLn ">>> interactively"
   prepAction <- withUI UI.prepareAction
   withEditor $ do prepAction
                   modifyAllA buffersA undosA (addUR InteractivePoint)
   runAction action
   refreshE
-  logPutStrLn "<<<<<<<"
+  logPutStrLn "<<<"
   return ()
 
 nilKeymap :: Keymap
@@ -160,7 +161,10 @@ data StartConfig = StartConfig { startFrontEnd   :: UI.UIBoot
 --
 startE :: StartConfig -> Kernel -> Maybe Editor -> [YiM ()] -> IO ()
 startE startConfig kernel st commandLineActions = do
-    let yiConfigFile   = startConfigFile startConfig
+    let
+#ifdef DYNAMIC
+        yiConfigFile   = startConfigFile startConfig
+#endif
         uiStart        = startFrontEnd startConfig
 
     logPutStrLn "Starting Core"
@@ -283,7 +287,7 @@ loadModulesE modules = do
   return (ok, newModules)
 
 --foreign import ccall "revertCAFs" rts_revertCAFs  :: IO ()
-	-- Make it "safe", just in case
+        -- Make it "safe", just in case
 
 tryLoadModulesE :: [String] -> YiM [String]
 tryLoadModulesE [] = return []
@@ -550,25 +554,27 @@ execE s = do
 ghcErrorHandlerE :: YiM () -> YiM ()
 ghcErrorHandlerE inner = do
   flip catchDynE (\dyn -> do
-  		    case dyn of
-		     GHC.PhaseFailed _ code -> errorE $ "Exitted with " ++ show code
-		     GHC.Interrupted -> errorE $ "Interrupted!"
-		     _ -> do errorE $ "GHC exeption: " ++ (show (dyn :: GHC.GhcException))
+                    case dyn of
+                     GHC.PhaseFailed _ code -> errorE $ "Exitted with " ++ show code
+                     GHC.Interrupted -> errorE $ "Interrupted!"
+                     _ -> do errorE $ "GHC exeption: " ++ (show (dyn :: GHC.GhcException))
 
-	    ) $
+            ) $
             inner
-
-#else
-reloadE = msgE "reloadE: Not supported"
-execE s = msgE "execE: Not supported"
-reconfigE = msgE "reconfigE: Not supported"
-
-getNamesInScopeE :: YiM [String]
-getNamesInScopeE = return []
-#endif
 
 withOtherWindow :: YiM () -> YiM ()
 withOtherWindow f = do
   withEditor $ shiftOtherWindow
   f
   withEditor $ prevWinE
+
+#else
+reloadE, reconfigE :: YiM ()
+reconfigE = msgE "reconfigE: Not supported"
+reloadE = msgE "reloadE: Not supported"
+execE :: t -> YiM ()
+execE _ = msgE "execE: Not supported"
+
+getNamesInScopeE :: YiM [String]
+getNamesInScopeE = return []
+#endif
