@@ -3,10 +3,28 @@
 -- Copyright (c) 2007, 2008 Jean-Philippe Bernardy
 -- Copyright (c) 2008 Gustav Munkby
 --
---
-
 
 -- | This module defines a user interface implemented using Cocoa.
+
+-- For a Cocoa application to work we need to have the Cocoa
+-- event-loop running. Since we don't want to re-implement the
+-- event-loop in Haskell, we simply dispatch to the Objective-C
+-- version and hook into events.
+--
+-- This however, is not completely trivial, since calling the
+-- long-running Objective-C loop causes Haskell code not to be
+-- executed at all. Upon receiving an event we must also make
+-- sure to dispatch to other Haskell threads in order to make
+-- progress. Since the Cocoa run-loop installs and frees an
+-- NSAutoreleasePool for every iteration of the loop, we must
+-- make sure that we don't allocate an object in one iteration,
+-- and then try to use it in the next.
+--
+-- We therefore use a lock to ensure that only one thread
+-- executes Cocoa calls at a time. This means that if a thread
+-- claims the lock, it can perform allocation and use Cocoa
+-- resources knowing that either the whole operation is performed
+-- in one iteration, or it is never even started.
 
 module Yi.UI.Cocoa (start) where
 
@@ -34,7 +52,6 @@ import Control.Monad.Reader (liftIO, when, MonadIO)
 import Control.Monad (ap, replicateM_)
 import Control.Applicative ((<*>), (<$>))
 
-import Data.List (groupBy)
 import Data.IORef
 import Data.Maybe
 import Data.Unique
@@ -60,9 +77,10 @@ foreign import ccall "Processes.h SetFrontProcess" setFrontProcess :: Ptr (CInt)
 foreign import ccall "Processes.h GetCurrentProcess" getCurrentProcess :: Ptr (CInt) -> IO (CInt)
 
 
-logNSException string action =
-  catchNS action (\e -> description e >>= haskellString >>=
-                        logPutStrLn . (("NSException " ++ string ++ ":") ++))
+logNSException :: String -> IO () -> IO ()
+logNSException str act =
+  catchNS act (\e -> description e >>= haskellString >>=
+                     logPutStrLn . (("NSException " ++ str ++ ":") ++))
 
 ------------------------------------------------------------------------
 
@@ -119,10 +137,7 @@ ya_sendEvent event self = logNSException "sendEvent" $ do
   t <- event # rawType
   if t == fromCEnum nsKeyDown
     then self #. _eventChannel >>= handleKeyEvent event
-    else do
-      --d <- event # description >>= haskellString
-      --logPutStrLn $ "Event " ++ d
-      super self # sendEvent event
+    else super self # sendEvent event
 
 handleKeyEvent :: forall t. NSEvent t -> Maybe (Chan Yi.Event.Event) -> IO ()
 handleKeyEvent event ch = do
@@ -406,11 +421,6 @@ removeWindow _i win = (widget win)  # removeFromSuperview
 -- | Make A new window
 newWindow :: UI -> Bool -> FBuffer -> IO WinInfo
 newWindow ui mini b = do
-  -- This mysterious thread delay seems to solve the Cocoa issues...
-  -- It seems as if initWithFrame mustn't be active while the application
-  -- run method is called...
-  threadDelay 100
-
   v <- alloc _YiTextView >>= initWithFrame (rect 0 0 100 100)
   v # setRichText False
   v # setSelectable True
@@ -483,9 +493,6 @@ insertWindow :: Editor -> UI -> Window -> IO WinInfo
 insertWindow e i win = do
   let buf = findBufferWith (Window.bufkey win) e
   liftIO $ newWindow i (Window.isMini win) buf
-
-groupOn :: Eq a => (b -> a) -> [b] -> [[b]]
-groupOn f = groupBy (\x y -> f x == f y)
 
 refresh :: UI -> Editor -> IO ()
 refresh ui e = withMVar (uiLock ui) $ \_ -> logNSException "refresh" $ do
