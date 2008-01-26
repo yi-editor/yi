@@ -1,4 +1,5 @@
-{-# LANGUAGE OverloadedStrings, PatternSignatures #-}
+{-# LANGUAGE OverloadedStrings, PatternSignatures, PatternGuards  #-}
+{-# OPIONS -package bytestring-0.9.0.4 -packge regex-posix-0.93.1 #-}
 import Data.Array (elems, Array)
 import Data.ByteString.Char8 (pack, ByteString)
 import Data.Char
@@ -6,6 +7,7 @@ import Data.String
 import Data.List (intersperse)
 import Prelude hiding (lines, readFile)
 import Text.Regex.Posix
+import Text.Regex.Posix.ByteString
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.Map as M
 
@@ -17,18 +19,15 @@ unquote x
     | BS.head x == '\'' && BS.last x == '\'' = unquote (BS.init $ BS.tail $ x)
     | otherwise = x
 
-type M = Array Int ByteString
-
-mkName match | [_,firstname, lastname] <- elems match
-       = BS.concat . intersperse " " . map capitalize $ [firstname, lastname]
+mkName firstname lastname = BS.concat . intersperse " " . map capitalize $ [firstname, lastname]
 
 name :: ByteString -> ByteString
 name "andy@nobugs.org" = "Andrew Birkett"
 name tag
-     | match :: M <- tag =~ pack "^\"?(.+)<.*>\"?$", [_,name] <- elems match = name
-     | match :: M <- tag =~ pack "^<?(.*)@(.*)\\.name>?$",
-       [_,_,_] <- elems match = mkName match
-     | match :: M <- tag =~ pack "^<?(.*)@.*>?$", [_,user] <- elems match = nickToName user
+     | AllTextSubmatches [_,name] <- tag =~ pack "^\"?(.+)<.*>\"?$" = name
+     | AllTextSubmatches [_,firstname,lastname] <- tag =~ pack "^<?(.*)@(.*)\\.name>?$"
+                                                = mkName firstname lastname
+     | AllTextSubmatches [_,user] <- tag =~ pack "^<?(.*)@.*>?$" = nickToName user
      | otherwise = nickToName tag
 
 trim = fst . BS.spanEnd isSpace
@@ -55,8 +54,8 @@ nickToName x = case BS.map toLower x of
             "vintermann"            -> "Harald Korneliussen"
             "vivian.mcphail"        -> "Vivian McPhail"
             "zapf"                  -> "Bastiaan Zapf"
-            _ | match :: M <- x =~ pack "^(.*)\\.(.*)$",
-                [_,_,_] <- elems match -> mkName match
+            _ | AllTextSubmatches [_,firstname,lastname] <- x =~ pack "^(.*)\\.(.*)$"
+                                                         -> mkName firstname lastname
               | otherwise -> x
 
 main = do
