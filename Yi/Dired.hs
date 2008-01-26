@@ -46,7 +46,6 @@ import Text.Printf
 import Text.Regex.Posix
 
 import Yi.Yi
-import Yi.Keymap.Emacs
 import Yi.Keymap.Emacs.Utils
   ( rebind
   , withMinibuffer
@@ -87,7 +86,7 @@ instance Initializable DiredState where
                          , diredFilePoints = []
                          }
 
-diredKeymap :: Keymap
+diredKeymap :: Keymap -> Keymap
 diredKeymap = do
     (rebind [
              ("p", write $ lineUp),
@@ -102,7 +101,7 @@ diredKeymap = do
              ("RET", write $ diredLoadE),
              ("SPC", write $ lineDown),
              ("BACKSP", write $ diredUnmark)
-                       ] keymap)
+                       ])
 
 diredE :: YiM ()
 diredE = do
@@ -119,7 +118,7 @@ diredDirBufferE dir = do
                 withGivenBuffer b (setfileB dir) -- associate the buffer with the dir
                 switchToBufferE b
                 diredLoadNewDirE dir
-                setBufferKeymap b (const diredKeymap)
+                setBufferKeymap b diredKeymap
                 return b
 
 diredRefreshE :: YiM ()
