@@ -56,9 +56,6 @@ top-src-dir ?= src/
 # Version with dots in place of slashes
 top-src-dot = $(subst /,.,$(top-src-dir))
 
-# Location of the hscolour css file
-hscolour-css ?= hscolour.css
-
 # The package's home on the web.
 package-home ?= darcs.haskell.org:/home/darcs/packages/$(package)
 
@@ -85,21 +82,6 @@ BROWSER ?= firefox
 
 HsColour ?= HsColour
 
-# source-args comment:
-# 
-# Note: (a) no project-level source link (--source-base), and (b)
-# hscolour'd source code is generated at "dist/src.Foo.Bar.hs.html".  I
-# prefer (a) project-level source link and (b) "dist/src/Foo.Bar.hs.html",
-# but I don't know how to get haddock to keep the first slash and replace
-# the others.  I took out the --source-base rather than link to a
-# directory that mixes hscolour'd code and haddock docs.  Better solution:
-# add a hscolour flag for the hscolour.css file location, and put the
-# sources back into a tree with links to that file.  I don't know how to
-# construct the necessary relative references, which would be something
-# like "../../hscolour.css".  Another idea: add per-source-directory
-# symlinks to the shared CSS.  Simple but less browser-cache-friendly.  I
-# don't know how to make this idea work either, since I don't know how to
-# make real symlinks in my cygwin environment.
 
 #### Rules
 
@@ -113,7 +95,7 @@ build: $(cabal_config)
 install: build
 	./setup install
 
-doc: doc-clean hscolour haddock
+doc: doc-clean haddock
 
 hasktags:
 	hasktags *.cabal `find $(top-src-dir) -name '*.*hs'`
@@ -173,19 +155,6 @@ dosify-sources:
 # Remove old docs first, in case some modules have been renamed or deleted.
 doc-clean:
 	rm -rf dist/doc
-
-# Add syntax-coloring and anchors to sources.  Use CSS and copy in $(hscolour-css).
-#hscolour:
-#	mkdir -p dist/doc/html
-#	cp $(hscolour-css) dist/doc/html
-#	$(foreach module, $(modules),\
-#	   $(HsColour) -anchorCSS $(top-src-dir)$(subst .,/,$(module)).hs > dist/doc/html/$(top-src-dot)$(module).hs.html; )
-
-hscolour:
-	mkdir -p dist/doc/html
-	cp $(hscolour-css) dist/doc/html
-	$(foreach file, $(sources),\
-	   $(HsColour) -css -anchor $(file) > dist/doc/html/$(subst /,.,$(basename $(file))).hs.html; )
 
 # Generate Haddock docs.  See variables source-args, comments, and comment-args
 haddock: $(cabal_config)
