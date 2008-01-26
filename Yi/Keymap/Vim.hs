@@ -518,17 +518,16 @@ rep_char = choice [satisfy isDel  >> write leftB, -- should undo unless pointer 
 spawn_ex_buffer :: String -> YiM ()
 spawn_ex_buffer prompt = do
   -- The above ensures that the action is performed on the buffer that originated the minibuffer.
-  let closeMinibuffer = do b <- withEditor getBuffer; closeE; withEditor $ deleteBuffer b
-      ex_buffer_finish = do
+  let ex_buffer_finish = do
         withEditor $ historyFinish
         lineString <- withBuffer elemsB
-        closeMinibuffer
+        withEditor closeBufferAndWindowE
         ex_eval (head prompt : lineString)
       ex_process :: VimMode
       ex_process =
           choice [enter         >> write ex_buffer_finish,
                   event '\t'    >> write completeMinibuffer,
-                  event '\ESC'  >> write closeMinibuffer,
+                  event '\ESC'  >> write closeBufferAndWindowE,
                   delete        >> write bdeleteB,
                   event keyUp   >> write historyUp,
                   event keyDown >> write historyDown,
@@ -536,12 +535,14 @@ spawn_ex_buffer prompt = do
                   event keyRight >> write (moveXorEol 1)]
              <|| (do c <- anyEvent; write $ insertB c)
       completeMinibuffer = withBuffer elemsB >>= ex_complete >>= withBuffer . insertN
-      ex_complete ('e':' ':f) = do
-        f' <- completeFileName Nothing f
-        return $ drop (length f) f'
-      ex_complete ('b':' ':f) = do
-        f' <- completeBufferName f
-        return $ drop (length f) f'
+      b_complete f = completeBufferName f >>= return . drop (length f)
+      ex_complete ('e':' ':f) = completeFileName Nothing f >>= return . drop (length f)
+      ex_complete ('b':' ':f)                             = b_complete f
+      ex_complete ('b':'u':'f':'f':'e':'r':' ':f)         = b_complete f
+      ex_complete ('b':'d':' ':f)                         = b_complete f
+      ex_complete ('b':'d':'!':' ':f)                     = b_complete f
+      ex_complete ('b':'d':'e':'l':'e':'t':'e':' ':f)     = b_complete f
+      ex_complete ('b':'d':'e':'l':'e':'t':'e':'!':' ':f) = b_complete f
       ex_complete _ = return ""
 
   withEditor $ historyStart
@@ -580,19 +581,20 @@ ex_eval cmd = do
           [] -> return ()
 
     where
-      quitB = do unchanged <- withBuffer isUnchangedB
-                 if unchanged then closeE
-                              else errorE "No write since last change (add ! to override)"
+      whenUnchanged mu f = do u <- mu
+                              if u then f
+                                   else errorE "No write since last change (add ! to override)"
+      quitB = whenUnchanged (withBuffer isUnchangedB) closeE
 
-      quitNoW = do withEditor $ deleteBuffer =<< getBuffer
+      quitNoW = do closeBufferE ""
                    bufs <- readEditor bufferStack
                    bufs' <- mapM (\x -> withGivenBuffer x isUnchangedB) bufs
-                   if all id bufs'
-                     then quitE
-                     else errorE "No write since last change (add ! to override)"
+                   whenUnchanged (return $ all id bufs') quitE
 
       quitall  = withAllBuffers quitB
       wquitall = withAllBuffers viWrite >> quitE
+      bdelete  = whenUnchanged (withBuffer isUnchangedB) . closeBufferE
+      bdeleteNoW = closeBufferE
 
       fn ""           = msgClrE
 
@@ -642,6 +644,15 @@ ex_eval cmd = do
 
       fn ('b':' ':"m") = switchToBufferWithNameE "*messages*"
       fn ('b':' ':f) = switchToBufferWithNameE f
+      fn "bd"                                    = bdelete ""
+      fn "bdelete"                               = bdelete ""
+      fn ('b':'d':' ':f)                         = bdelete f
+      fn ('b':'d':'e':'l':'e':'t':'e':' ':f)     = bdelete f
+      fn "bd!"                                   = bdeleteNoW ""
+      fn "bdelete!"                              = bdeleteNoW ""
+      fn ('b':'d':'!':' ':f)                     = bdeleteNoW f
+      fn ('b':'d':'e':'l':'e':'t':'e':'!':' ':f) = bdeleteNoW f
+      -- TODO: bd[!] [N]
 
       -- send just this line through external command /fn/
       fn ('.':'!':f) = do
