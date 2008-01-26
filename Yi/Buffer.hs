@@ -78,6 +78,7 @@ import System.FilePath
 import Text.Regex.Posix.Wrap    (Regex)
 import Yi.Accessor
 import Yi.Buffer.Implementation
+import Yi.Syntax
 import Yi.Undo
 import Yi.Style
 import Yi.Debug
@@ -341,8 +342,8 @@ gotoLn x = do moveTo 0
 searchB :: Direction -> [Char] -> BufferM (Maybe Int)
 searchB dir = queryBuffer . searchBI dir
 
--- | Set name of syntax highlighting mode
-setSyntaxB :: [Char] -> BufferM ()
+-- | Set the syntax highlighting mode
+setSyntaxB :: ExtHL -> BufferM ()
 setSyntaxB = modifyBuffer . setSyntaxBI
 
 -- | Return indices of next string in buffer matched by regex

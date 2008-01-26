@@ -1,4 +1,3 @@
-{-# LANGUAGE ScopedTypeVariables, ExistentialQuantification #-}
 {-# OPTIONS -#include "YiUtils.h" #-}
 
 -- Copyright (C) 2007, 2008 Stefan O'Rear
@@ -6,9 +5,7 @@
 -- | This module defines the list of syntax highlighter modules.
 
 module Yi.Syntax.Table
-  ( ExtHL(..)
-  , highlighters
-  )
+  ( highlighters )
 where
 
 {- Standard Library Modules Imported -}
@@ -16,7 +13,7 @@ import qualified Data.Map as M
 {- External Library Modules Imported -}
 {- Local Modules Imported -}
 import Yi.Syntax
-  ( Highlighter )
+  ( Highlighter, ExtHL(..) )
 import qualified Yi.Syntax.Haskell
 import qualified Yi.Syntax.LiterateHaskell (highlighter)
 import qualified Yi.Syntax.Latex
@@ -24,8 +21,6 @@ import qualified Yi.Syntax.Srmc
 import qualified Yi.Syntax.Cabal
 import qualified Yi.Syntax.Cplusplus
 {- End of Imports -}
-
-data ExtHL = forall a. Eq a => ExtHL (Maybe (Highlighter a))
 
 highlighters :: M.Map String ExtHL
 highlighters = M.fromList highList

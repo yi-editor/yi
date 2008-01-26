@@ -36,7 +36,6 @@ module Yi.Buffer.Implementation
 where
 
 import Yi.Syntax
-import Yi.Syntax.Table
 
 import qualified Data.Map as M
 import Yi.Style
@@ -363,11 +362,12 @@ setMarkPointBI m pos fb = fb {marks = M.insert m (MarkValue pos (if m == markMar
 unsetMarkBI :: BufferImpl -> BufferImpl
 unsetMarkBI fb = fb { marks = (M.delete markMark (marks fb)) }
 
--- Basically this function just takes the name of a 'Highlighter a' (from Yi.Syntax.Table)
--- and sets that to be the current highlighter for this buffer.
-setSyntaxBI :: String -> BufferImpl -> BufferImpl
-setSyntaxBI sy fb = case highlighters M.! sy of
-                      ExtHL e -> fb { hlcache = HLState `fmap` e }
+-- Formerly the highlighters table was directly used
+-- 'Yi.Syntax.Table.highlighters'. However avoiding to depends on all
+-- highlighters implementation speed up compilation a lot when working on a
+-- syntax highlighter.
+setSyntaxBI :: ExtHL -> BufferImpl -> BufferImpl
+setSyntaxBI (ExtHL e) fb = fb { hlcache = HLState `fmap` e }
 
 pointLeftBound, markLeftBound :: Bool
 pointLeftBound = False

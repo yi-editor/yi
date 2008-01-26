@@ -91,6 +91,7 @@ import qualified Yi.WindowSet as WS
 import qualified Yi.Editor as Editor
 import qualified Yi.Style as Style
 import qualified Yi.UI.Common as UI
+import Yi.Syntax.Table (highlighters)
 import Yi.UI.Common as UI (UI)
 
 import Data.Maybe

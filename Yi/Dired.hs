@@ -55,6 +55,8 @@ import Yi.Core
 import Yi.Editor
 import Yi.Buffer.Region
 import Yi.Style
+import Yi.Syntax ( Highlighter, ExtHL(..) )
+import Yi.Syntax.Table ( highlighters )
 
 ------------------------------------------------
 -- | If file exists, read contents of file into a new buffer, otherwise
@@ -80,7 +82,7 @@ fnewE f = do
                    newBufferForPath bufferName fe de
              _  -> return (bkey $ head bufsWithThisFilename)
     withGivenBuffer b $ setfileB f        -- associate buffer with file
-    withGivenBuffer b $ setSyntaxB (syntaxFromExtension $ takeExtension f)
+    withGivenBuffer b $ setSyntaxB (highlighters M.! (syntaxFromExtension $ takeExtension f))
     switchToBufferE b
     where
     -- The first argument is the buffer name the second argument is
@@ -310,7 +312,7 @@ linesToDisplay = do
 -- | Write the contents of the supplied directory into the current buffer in dired format
 diredLoadNewDirE :: FilePath -> YiM ()
 diredLoadNewDirE _dir = do
-    withBuffer $ setSyntaxB "none" -- Colours for Dired come from overlays not syntax highlighting
+    withBuffer $ setSyntaxB (ExtHL (Nothing :: Maybe (Highlighter ()))) -- Colours for Dired come from overlays not syntax highlighting
     diredRefreshE
 
 -- | Return dired entries for the contents of the supplied directory

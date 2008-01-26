@@ -16,6 +16,7 @@ import Prelude       hiding ( any, error )
 import Data.Char
 import Data.Maybe           ( fromMaybe )
 import Data.Dynamic
+import qualified Data.Map as M
 
 import Control.Exception    ( ioErrors, try, evaluate )
 import Control.Monad.State
@@ -31,6 +32,7 @@ import Yi.Indent
 import Yi.Keymap.Emacs.Utils (completeFileName,completeBufferName)
 import Yi.MiniBuffer
 import Yi.TextCompletion
+import Yi.Syntax.Table (highlighters)
 
 --
 -- What's missing?
@@ -634,7 +636,7 @@ ex_eval cmd = do
       fn ('s':'p':_)  = withEditor splitE
       fn "e"          = revertE
       fn ('e':' ':f)  = fnewE f
-      fn ('s':'e':'t':' ':'f':'t':'=':ft)  = withBuffer $ setSyntaxB ft
+      fn ('s':'e':'t':' ':'f':'t':'=':ft)  = withBuffer $ setSyntaxB $ highlighters M.! ft
       fn ('n':'e':'w':' ':f) = withEditor splitE >> fnewE f
       fn ('s':'/':cs) = viSub cs
 
