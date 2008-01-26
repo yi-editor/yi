@@ -4,6 +4,8 @@ include config.mk
 
 include $(cabal-make)/cabal-make.inc
 
+test: build # should also run the test suite.
+
 runtime-config:
 	mkdir -p $(HOME)/.yi
 	cp examples/*.hs $(HOME)/.yi
