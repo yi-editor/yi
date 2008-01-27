@@ -1,4 +1,4 @@
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TemplateHaskell, ForeignFunctionInterface, ExistentialQuantification, TypeSynonymInstances, FlexibleInstances, MultiParamTypeClasses, DeriveDataTypeable #-}
 --
 -- Copyright (c) 2007, 2008 Jean-Philippe Bernardy
 -- Copyright (c) 2008 Gustav Munkby

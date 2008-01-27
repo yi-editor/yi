@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 module Yi.Keymap.Normal where
 
 import Control.Monad.State
