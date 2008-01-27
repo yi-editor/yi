@@ -7,8 +7,8 @@
 -- | Search/Replace functions
 
 module Yi.Search (
-        setRegexE,      -- :: SearchExp -> YiM ()
-        getRegexE,      -- :: IO (Maybe SearchExp)
+        setRegexE,      -- :: SearchExp -> EditorM ()
+        getRegexE,      -- :: EditorM (Maybe SearchExp)
         SearchMatch,
         SearchExp,
         SearchF(..),
@@ -65,12 +65,12 @@ import Yi.Core
 --
 
 -- | Put regex into regex 'register'
-setRegexE :: SearchExp -> YiM ()
-setRegexE re = withEditor $ modify $ \e -> e { regex = Just re }
+setRegexE :: SearchExp -> EditorM ()
+setRegexE re = modify $ \e -> e { regex = Just re }
 
 -- Return contents of regex register
-getRegexE :: YiM (Maybe SearchExp)
-getRegexE = readEditor regex
+getRegexE :: EditorM (Maybe SearchExp)
+getRegexE = gets regex
 
 
 -- ---------------------------------------------------------------------
@@ -110,7 +110,7 @@ searchE s fs d =
      case s of
         Just re -> searchInitE re fs >>= (flip searchDoE) d >>= f
         Nothing -> do
-            mre <- getRegexE
+            mre <- withEditor getRegexE
             case mre of
                 Nothing -> errorE "No previous search pattern" -- NB
                 Just r -> searchDoE r d >>= f
@@ -137,7 +137,7 @@ searchInitE :: String -> [SearchF] -> YiM SearchExp
 searchInitE re fs = do
     Right c_re <- lift $ compile (extended .|. igcase .|. newline) execBlank re
     let p = (re,c_re)
-    setRegexE p
+    withEditor $ setRegexE p
     return p
 
     where
@@ -190,7 +190,7 @@ searchAndRepLocal :: String -> String -> YiM Bool
 searchAndRepLocal [] _ = return False   -- hmm...
 searchAndRepLocal re str = do
     Right c_re <- lift $ compile compExtended execBlank re
-    setRegexE (re,c_re)     -- store away for later use
+    withEditor $ setRegexE (re,c_re)     -- store away for later use
 
     mp <- withBuffer $ do   -- find the regex
             mp <- regexB c_re
