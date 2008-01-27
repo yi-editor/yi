@@ -18,7 +18,7 @@ import Distribution.Verbosity (Verbosity)
 
 main :: IO ()
 main = defaultMainWithHooks defaultUserHooks
-       { buildHook = bHook, instHook = install, haddockHook = hdHook }
+       { buildHook = bHook, instHook = install, haddockHook = hdHook, sDistHook = sDist }
 
 bHook :: PackageDescription -> LocalBuildInfo -> UserHooks -> BuildFlags -> IO ()
 bHook pd lbi hooks flags = do
@@ -62,6 +62,25 @@ install pd lbi hooks flags = do
   mapM_ (copyFile verbosity buildDir dataPref) targetFiles
   instHook defaultUserHooks pd lbi hooks flags
 
+
+sDist :: PackageDescription -> Maybe LocalBuildInfo -> UserHooks -> SDistFlags -> IO ()
+sDist pd lbi hooks flags = do
+  curdir <- getCurrentDirectory
+  sources <- (map . makeRelative) curdir <$> unixFindExt (curdir </> "Yi") [".hs",".hsinc",".x"]
+  -- Make run-inplace injects some files into the source directory,
+  -- we need to make sure not to include those...
+  let ss = [s | s <- sources, not (".hs" `isSuffixOf` s) ||
+                              "Syntax.hs" `isSuffixOf` s ||
+                              "Table.hs" `isSuffixOf` s ||
+                              not ("Syntax" `isInfixOf` s)]
+  -- Ugly hack that adds all the files we need as dataFiles, since
+  -- Cabal seriously don't want to play our game...
+  let pd' = pd{
+    dataFiles = "Main.hs" : ss ++ dataFiles pd, executables = [], library=Nothing }
+  
+  -- Run the standard hook for our cripled package
+  sDistHook defaultUserHooks pd' lbi hooks flags
+  
 
 mkOpt :: (String, String) -> String
 mkOpt (name,def) = "-D" ++ name ++ "=" ++ def

@@ -46,7 +46,7 @@ dist/yi-$(version).tar.gz:
 
 test_prefix := $(shell pwd)/hackage
 
-test-dist: dist/yi-$(version).tar.gz
+test-dist: sdist
 	rm -fr hackage
 	mkdir -p hackage
 	cp dist/yi-$(version).tar.gz hackage
