@@ -587,15 +587,15 @@ ex_eval cmd = do
                                    else errorE "No write since last change (add ! to override)"
       quitB = whenUnchanged (withBuffer isUnchangedB) closeE
 
-      quitNoW = do closeBufferE ""
-                   bufs <- readEditor bufferStack
-                   bufs' <- mapM (\x -> withGivenBuffer x isUnchangedB) bufs
-                   whenUnchanged (return $ all id bufs') quitE
+      quitNoW = do bufs <- withEditor $ do closeBufferE ""
+                                           bufs <- gets bufferStack
+                                           mapM (\x -> withGivenBuffer0 x isUnchangedB) bufs
+                   whenUnchanged (return $ all id bufs) quitE
 
       quitall  = withAllBuffers quitB
       wquitall = withAllBuffers viWrite >> quitE
-      bdelete  = whenUnchanged (withBuffer isUnchangedB) . closeBufferE
-      bdeleteNoW = closeBufferE
+      bdelete  = whenUnchanged (withBuffer isUnchangedB) . withEditor . closeBufferE
+      bdeleteNoW = withEditor . closeBufferE
 
       fn ""           = msgClrE
 
@@ -631,11 +631,11 @@ ex_eval cmd = do
       fn "x"          = do unchanged <- withBuffer isUnchangedB
                            unless unchanged viWrite
                            closeE
-      fn "n"          = nextBufW
-      fn "next"       = nextBufW
+      fn "n"          = withEditor nextBufW
+      fn "next"       = withEditor nextBufW
       fn "$"          = withBuffer botB
-      fn "p"          = prevBufW
-      fn "prev"       = prevBufW
+      fn "p"          = withEditor prevBufW
+      fn "prev"       = withEditor prevBufW
       fn ('s':'p':_)  = withEditor splitE
       fn "e"          = revertE
       fn ('e':' ':f)  = fnewE f
@@ -643,8 +643,8 @@ ex_eval cmd = do
       fn ('n':'e':'w':' ':f) = withEditor splitE >> fnewE f
       fn ('s':'/':cs) = viSub cs
 
-      fn ('b':' ':"m") = switchToBufferWithNameE "*messages*"
-      fn ('b':' ':f) = switchToBufferWithNameE f
+      fn ('b':' ':"m") = withEditor $ switchToBufferWithNameE "*messages*"
+      fn ('b':' ':f)   = withEditor $ switchToBufferWithNameE f
       fn "bd"                                    = bdelete ""
       fn "bdelete"                               = bdelete ""
       fn ('b':'d':' ':f)                         = bdelete f

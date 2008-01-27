@@ -26,6 +26,7 @@ import qualified Yi.Dired   as Dired
 import qualified Yi.Buffer  as Buffer
 import qualified Yi.Keymap  as Keymap
 import qualified Yi.Eval    as Eval
+import qualified Yi.Editor  as Editor
 import qualified Yi.Keymap.Emacs  as Emacs
 import qualified Yi.Keymap.Vim  as Vim
 import Yi.UI.Common (UIBoot)
@@ -150,7 +151,7 @@ do_args args =
 
 startConsole :: Keymap.YiM ()
 startConsole = do
-  console <- Core.getBufferWithName "*console*"
+  console <- Core.withEditor $ Editor.getBufferWithName "*console*"
   Keymap.setBufferKeymap console (Eval.consoleKeymap <||)
 
 openScratchBuffer :: Keymap.YiM ()

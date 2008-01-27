@@ -21,6 +21,7 @@ import Control.Applicative
 import Control.Exception    ( assert )
 import Yi.Buffer.Normal
 import Yi.Buffer.Region
+import Yi.Editor
 import Yi.Core
 
 -- ---------------------------------------------------------------------
@@ -141,7 +142,7 @@ wordCompleteB = getDynamicB >>= loop >>= setDynamicB
   syntax knowledge to allow completion for example we may complete from
   a Hoogle database.
 -}
-completeWordB :: YiM ()
+completeWordB :: EditorM ()
 completeWordB = veryQuickCompleteWord
 
 
@@ -153,16 +154,16 @@ completeWordB = veryQuickCompleteWord
 
   It is by no means perfect but it's also not bad, pretty usable.
 -}
-veryQuickCompleteWord :: YiM ()
+veryQuickCompleteWord :: EditorM ()
 veryQuickCompleteWord =
-  do (curWord, curWords) <- withBuffer wordsAndCurrentWord
+  do (curWord, curWords) <- withBuffer0 wordsAndCurrentWord
      let condition :: String -> Bool
          condition x   = (isPrefixOf curWord x) && (x /= curWord)
 
      preText             <- completeInList curWord condition curWords
      if curWord == ""
-        then msgE "No word to complete"
-        else withBuffer $ insertN $ drop (length curWord) preText
+        then printMsg "No word to complete"
+        else withBuffer0 $ insertN $ drop (length curWord) preText
 
 wordsAndCurrentWord :: BufferM (String, [ String ])
 wordsAndCurrentWord =

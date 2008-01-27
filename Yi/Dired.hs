@@ -83,7 +83,7 @@ fnewE f = do
              _  -> return (bkey $ head bufsWithThisFilename)
     withGivenBuffer b $ setfileB f        -- associate buffer with file
     withGivenBuffer b $ setSyntaxB (highlighters M.! (syntaxFromExtension $ takeExtension f))
-    switchToBufferE b
+    withEditor $ switchToBufferE b
     where
     -- The first argument is the buffer name the second argument is
     -- whether or not the file currently exists and the third argument
@@ -222,7 +222,7 @@ diredDirBufferE :: FilePath -> YiM BufferRef
 diredDirBufferE dir = do
                 b <- withEditor $ stringToNewBuffer ("dired-"++dir) ""
                 withGivenBuffer b (setfileB dir) -- associate the buffer with the dir
-                switchToBufferE b
+                withEditor $ switchToBufferE b
                 diredLoadNewDirE dir
                 setBufferKeymap b diredKeymap
                 return b

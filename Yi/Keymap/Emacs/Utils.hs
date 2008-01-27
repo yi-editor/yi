@@ -187,15 +187,15 @@ insertNextC = do c <- satisfy (const True)
 -- Inserting a template from the templates defined in Yi.Templates.hs
 insertTemplate :: YiM ()
 insertTemplate =
-  withMinibuffer "template-name:" completeTemplateName $ addTemplate
+  withMinibuffer "template-name:" completeTemplateName $ withEditor . addTemplate
   where
   completeTemplateName :: String -> YiM String
-  completeTemplateName s = completeInList s (isPrefixOf s) templateNames
+  completeTemplateName s = withEditor $ completeInList s (isPrefixOf s) templateNames
 
 -- | C-u stuff
 readArgC :: KeymapM ()
 readArgC = do readArg' Nothing
-              write $ do UniversalArg u <- getDynamic
+              write $ do UniversalArg u <- withEditor getDynamic
                          logPutStrLn (show u)
                          msgE ""
 
@@ -281,8 +281,8 @@ gotoLineE =
 -- debug = write . logPutStrLn
 
 completeBufferName :: String -> YiM String
-completeBufferName s = do
-  bs <- withEditor getBuffers
+completeBufferName s = withEditor $ do
+  bs <- getBuffers
   completeInList s (isPrefixOf s) (map name bs)
 
 completeFileName :: Maybe String -> String -> YiM String
@@ -303,12 +303,12 @@ completeFileName start s0 = do
   files <- lift $ getDirectoryContents searchDir
   let files' = files \\ [".", ".."]
   fs <- lift $ mapM fixTrailingPathSeparator files'
-  completeInList s (isPrefixOf s) $ map (sDir </>) fs
+  withEditor $ completeInList s (isPrefixOf s) $ map (sDir </>) fs
 
 completeFunctionName :: String -> YiM String
 completeFunctionName s = do
   names <- getNamesInScopeE
-  completeInList s (isPrefixOf s) names
+  withEditor $ completeInList s (isPrefixOf s) names
 
 scrollDownE :: YiM ()
 scrollDownE = withUnivArg $ \a -> withBuffer $
@@ -323,10 +323,10 @@ scrollUpE = withUnivArg $ \a -> withBuffer $
                  Just n -> replicateM_ n lineUp
 
 switchBufferE :: YiM ()
-switchBufferE = withMinibuffer "switch to buffer:" completeBufferName switchToBufferWithNameE
+switchBufferE = withMinibuffer "switch to buffer:" completeBufferName $ withEditor . switchToBufferWithNameE
 
 killBufferE :: YiM ()
-killBufferE = withMinibuffer "kill buffer:" completeBufferName closeBufferE
+killBufferE = withMinibuffer "kill buffer:" completeBufferName $ withEditor . closeBufferE
 
 -- TODO: be a bit more clever than 'Read r'
 instance (YiAction a x, Read r, Typeable r) => YiAction (r -> a) x where

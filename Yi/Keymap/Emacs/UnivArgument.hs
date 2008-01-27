@@ -24,9 +24,9 @@ instance Initializable UniversalArg where
 
 
 withUnivArg :: YiAction (m ()) () => (Maybe Int -> m ()) -> YiM ()
-withUnivArg cmd = do UniversalArg a <- getDynamic
+withUnivArg cmd = do UniversalArg a <- withEditor getDynamic
                      runAction $ makeAction (cmd a)
-                     setDynamic $ UniversalArg Nothing
+                     withEditor $ setDynamic $ UniversalArg Nothing
 
 withIntArg :: YiAction (m ()) () => (Int -> m ()) -> YiM ()
 withIntArg cmd = withUnivArg $ \arg -> cmd (fromMaybe 1 arg)

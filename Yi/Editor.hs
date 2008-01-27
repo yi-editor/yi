@@ -132,6 +132,14 @@ findBufferWith k e =
 findBufferWithName :: String -> Editor -> [BufferRef]
 findBufferWithName n e = map bkey $ filter (\b -> name b == n) (M.elems $ buffers e)
 
+-- | Find buffer with given name. Fail if not found.
+getBufferWithName :: String -> EditorM BufferRef
+getBufferWithName bufName = do
+  bs <- gets $ findBufferWithName bufName
+  case bs of
+    [] -> fail ("Buffer not found: " ++ bufName)
+    (b:_) -> return b
+
 
 ------------------------------------------------------------------------
 

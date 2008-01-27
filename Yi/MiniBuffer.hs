@@ -30,12 +30,15 @@ withMinibuffer prompt completer act = do
       -- ^ Read contents of current buffer (which should be the minibuffer), and
       -- apply it to the desired action
       closeMinibuffer = closeBufferAndWindowE
-      innerAction = do withEditor $ historyFinish
-                       lineString <- withBuffer elemsB
-                       withEditor $ closeMinibuffer
-                       switchToBufferE initialBuffer
-                       -- The above ensures that the action is performed on the buffer that originated the minibuffer.
-                       act lineString
+      innerAction = do
+        lineString <- withEditor $ do historyFinish
+                                      lineString <- withBuffer0 elemsB
+                                      closeMinibuffer
+                                      switchToBufferE initialBuffer
+                                      -- The above ensures that the action is performed on the buffer
+                                      -- that originated the minibuffer.
+                                      return lineString
+        act lineString
       rebindings = [("RET", write innerAction),
                     ("C-m", write innerAction),
                     ("M-p", write historyUp),

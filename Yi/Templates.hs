@@ -21,12 +21,11 @@ import Yi.Buffer
   ( BufferM
   , insertN
   )
-import Yi.Keymap
-  ( YiM
-  , withBuffer
+import Yi.Editor
+  ( EditorM
+  , withBuffer0
+  , printMsg
   )
-import Yi.Core
-  ( msgE )
 {- End of Module Imports -}
 
 type Template       = String
@@ -122,11 +121,11 @@ haskellTemplates =
     )
   ]
 
-addTemplate :: String -> YiM ()
+addTemplate :: String -> EditorM ()
 addTemplate tName =
   case lookupTemplate tName of
-    Nothing -> msgE "template-name not found"
-    Just t  -> withBuffer $ addTemplateBuffer t
+    Nothing -> printMsg "template-name not found"
+    Just t  -> withBuffer0 $ addTemplateBuffer t
   where
   addTemplateBuffer :: Template -> BufferM ()
   addTemplateBuffer t = insertN t

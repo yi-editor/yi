@@ -226,85 +226,85 @@ newtype Isearch = Isearch [(String, Int, Direction)] deriving Typeable
 instance Initializable Isearch where
     initial = (Isearch [])
 
-isearchInitE :: Direction -> YiM ()
+isearchInitE :: Direction -> EditorM ()
 isearchInitE dir = do
-  p <- withBuffer pointB
+  p <- withBuffer0 pointB
   setDynamic (Isearch [("",p,dir)])
-  msgE $ "I-search: "
+  printMsg "I-search: "
 
-isearchIsEmpty :: YiM Bool
+isearchIsEmpty :: EditorM Bool
 isearchIsEmpty = do
   Isearch s <- getDynamic
   return $ not $ null $ fst3 $ head $ s
       where fst3 (x,_,_) = x
 
-isearchAddE :: String -> YiM ()
+isearchAddE :: String -> EditorM ()
 isearchAddE increment = do
   Isearch s <- getDynamic
   let (previous,p0,direction) = head s
   let current = previous ++ increment
-  msgE $ "I-search: " ++ current
-  prevPoint <- withBuffer pointB
-  withBuffer $ moveTo p0
-  mp <- withBuffer $ searchB direction current
+  printMsg $ "I-search: " ++ current
+  prevPoint <- withBuffer0 pointB
+  withBuffer0 $ moveTo p0
+  mp <- withBuffer0 $ searchB direction current
   case mp of
-    Nothing -> do withBuffer $ moveTo prevPoint -- go back to where we were
+    Nothing -> do withBuffer0 $ moveTo prevPoint -- go back to where we were
                   setDynamic $ Isearch ((current,p0,direction):s)
-                  msgE $ "Failing I-search: " ++ current
+                  printMsg $ "Failing I-search: " ++ current
     Just p -> do setDynamic $ Isearch ((current,p,direction):s)
-                 withBuffer $ moveTo (p+length current)
+                 withBuffer0 $ moveTo (p+length current)
 
-isearchDelE :: YiM ()
+isearchDelE :: EditorM ()
 isearchDelE = do
   Isearch s <- getDynamic
   case s of
     (_:(text,p,dir):rest) -> do
-      withBuffer $ moveTo (p+length text)
+      withBuffer0 $ moveTo (p+length text)
       setDynamic $ Isearch ((text,p,dir):rest)
-      msgE $ "I-search: " ++ text
+      printMsg $ "I-search: " ++ text
     _ -> return () -- if the searched string is empty, don't try to remove chars from it.
 
 -- TODO: merge isearchPrevE and isearchNextE
-isearchPrevE :: YiM ()
+isearchPrevE :: EditorM ()
 isearchPrevE = do
   Isearch ((current,p0,_dir):rest) <- getDynamic
-  withBuffer $ moveTo (p0 - 1)
-  mp <- withBuffer $ searchB Backward current
+  withBuffer0 $ moveTo (p0 - 1)
+  mp <- withBuffer0 $ searchB Backward current
   case mp of
     Nothing -> return ()
     Just p -> do setDynamic $ Isearch ((current,p,Backward):rest)
-                 withBuffer $ moveTo (p+length current)
+                 withBuffer0 $ moveTo (p+length current)
 
-isearchNextE :: YiM ()
+isearchNextE :: EditorM ()
 isearchNextE = do
   Isearch ((current,p0,_dir):rest) <- getDynamic
-  withBuffer $ moveTo (p0 + 1)
-  mp <- withBuffer $ searchB Forward current
+  withBuffer0 $ moveTo (p0 + 1)
+  mp <- withBuffer0 $ searchB Forward current
   case mp of
     Nothing -> return ()
     Just p -> do setDynamic $ Isearch ((current,p,Forward):rest)
-                 withBuffer $ moveTo (p+length current)
+                 withBuffer0 $ moveTo (p+length current)
 
-isearchWordE :: YiM ()
+isearchWordE :: EditorM ()
 isearchWordE = do
-  text <- withBuffer (pointB >>= nelemsB 32) -- add maximum 32 chars at a time.
+  text <- withBuffer0 (pointB >>= nelemsB 32) -- add maximum 32 chars at a time.
   let (prefix, rest) = span (not . isAlpha) text
       word = takeWhile isAlpha rest
   isearchAddE (prefix ++ word)
 
-isearchFinishE :: YiM ()
+isearchFinishE :: EditorM ()
 isearchFinishE = do
   Isearch s <- getDynamic
   let (_,p0,_) = last s
-  withBuffer $ setSelectionMarkPointB p0
-  msgE "mark saved where search started"
+  withBuffer0 $ setSelectionMarkPointB p0
+  printMsg "mark saved where search started"
 
-isearchCancelE :: YiM ()
+isearchCancelE :: EditorM ()
 isearchCancelE = do
   Isearch s <- getDynamic
   let (_,p0,_) = last s
-  withBuffer $ moveTo p0
-  msgE "Quit"
+  withBuffer0 $ moveTo p0
+  printMsg "Quit"
 
 
 -----------------
@@ -315,7 +315,7 @@ qrNextE b what = do
   mp <- withGivenBuffer b $ searchB Forward what
   case mp of
     Nothing -> do
-            msgE "String to search not found"
+            withEditor $ printMsg "String to search not found"
             closeE
     Just p -> withGivenBuffer b $ do
                    moveTo p

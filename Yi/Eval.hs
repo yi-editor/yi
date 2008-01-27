@@ -51,7 +51,7 @@ jumpToE filename line column = do
              if found
                then fnewE filename
                else error "file not found"
-    (b:_) -> switchToBufferOtherWindowE b
+    (b:_) -> withEditor $ switchToBufferOtherWindowE b
   withBuffer $ do gotoLn line
                   moveXorEol column
 

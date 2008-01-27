@@ -44,7 +44,6 @@ module Yi.Core (
         newBufferE,     -- :: String -> String -> YiM ()
         listBuffersE,   -- :: YiM ()
         closeBufferE,   -- :: String -> YiM ()
-        getBufferWithName,
 
         -- * Buffer/Window
         closeBufferAndWindowE,
@@ -93,7 +92,6 @@ import qualified Yi.WindowSet as WS
 import qualified Yi.Editor as Editor
 import qualified Yi.Style as Style
 import qualified Yi.UI.Common as UI
-import Yi.Syntax.Table (highlighters)
 import Yi.UI.Common as UI (UI)
 
 import Data.Maybe
@@ -117,7 +115,6 @@ import Yi.Kernel
 #ifdef DYNAMIC
 
 import Data.List (notElem, delete)
-import qualified DynFlags
 import qualified ErrUtils
 import qualified GHC
 import qualified SrcLoc
@@ -279,7 +276,7 @@ loadModulesE modules = do
   result <- withKernel loadAllTargets
   loaded <- withKernel setContextAfterLoad
   ok <- case result of
-    GHC.Failed -> withOtherWindow (switchToBufferE =<< getBufferWithName "*console*") >> return False
+    GHC.Failed -> withOtherWindow (withEditor (switchToBufferE =<< getBufferWithName "*console*")) >> return False
     _ -> return True
   let newModules = map (moduleNameString . moduleName) loaded
   writesRef editorModules newModules
@@ -354,12 +351,12 @@ getRegE = withEditor $ gets $ yreg
 --
 
 -- | Retrieve a value from the extensible state
-getDynamic :: Initializable a => YiM a
-getDynamic = withEditor $ getA (dynamicValueA .> dynamicA)
+getDynamic :: Initializable a => EditorM a
+getDynamic = getA (dynamicValueA .> dynamicA)
 
 -- | Insert a value into the extensible state, keyed by its type
-setDynamic :: Initializable a => a -> YiM ()
-setDynamic x = withEditor $ setA (dynamicValueA .> dynamicA) x
+setDynamic :: Initializable a => a -> EditorM ()
+setDynamic x = setA (dynamicValueA .> dynamicA) x
 
 ------------------------------------------------------------------------
 -- | Pipe a string through an external command, returning the stdout
@@ -393,7 +390,6 @@ runAction (BufferA act) = do
   return ()
 
 
--- | Set the cmd buffer, and draw message at bottom of screen
 msgE :: String -> YiM ()
 msgE = withEditor . printMsg
 
@@ -419,12 +415,12 @@ setWindowStyleE sty = modify $ \e -> e { uistyle = sty }
 
 -- | Attach the next buffer in the buffer list
 -- to the current window.
-nextBufW :: YiM ()
-nextBufW = withEditor Editor.nextBuffer >>= switchToBufferE
+nextBufW :: EditorM ()
+nextBufW = Editor.nextBuffer >>= switchToBufferE
 
 -- | edit the previous buffer in the buffer list
-prevBufW :: YiM ()
-prevBufW = withEditor Editor.prevBuffer >>= switchToBufferE
+prevBufW :: EditorM ()
+prevBufW = Editor.prevBuffer >>= switchToBufferE
 
 
 -- | Like fnewE, create a new buffer filled with the String @s@,
@@ -434,24 +430,20 @@ prevBufW = withEditor Editor.prevBuffer >>= switchToBufferE
 newBufferE :: String -> String -> YiM BufferRef
 newBufferE f s = do
     b <- withEditor $ stringToNewBuffer f s
-    switchToBufferE b
+    withEditor $ switchToBufferE b
     logPutStrLn "newBufferE ended"
     return b
 
 -- | Attach the specified buffer to the current window
-switchToBufferE :: BufferRef -> YiM ()
-switchToBufferE b = withEditor $ modifyWindows (modifier WS.currentA (\w -> w {bufkey = b}))
+switchToBufferE :: BufferRef -> EditorM ()
+switchToBufferE b = modifyWindows (modifier WS.currentA (\w -> w {bufkey = b}))
 
 -- | Attach the specified buffer to some other window than the current one
-switchToBufferOtherWindowE :: BufferRef -> YiM ()
-switchToBufferOtherWindowE b = withEditor shiftOtherWindow >> switchToBufferE b
-
--- | Find buffer with given name. Raise exception if not found.
-getBufferWithName :: String -> YiM BufferRef
-getBufferWithName = withEditor . getBufferWithName0
+switchToBufferOtherWindowE :: BufferRef -> EditorM ()
+switchToBufferOtherWindowE b = shiftOtherWindow >> switchToBufferE b
 
 -- | Switch to the buffer specified as parameter. If the buffer name is empty, switch to the next buffer.
-switchToBufferWithNameE :: String -> YiM ()
+switchToBufferWithNameE :: String -> EditorM ()
 switchToBufferWithNameE "" = nextBufW
 switchToBufferWithNameE bufName = switchToBufferE =<< getBufferWithName bufName
 
@@ -462,13 +454,14 @@ listBuffersE = do
         return $ zip (map name bs) [0..]
 
 -- | Release resources associated with buffer
-closeBufferE :: String -> YiM ()
+-- Note: close the current buffer if the empty string is given
+closeBufferE :: String -> EditorM ()
 closeBufferE bufName = do
-  nextB <- withEditor nextBuffer
-  b <- withEditor getBuffer
+  nextB <- nextBuffer
+  b <- getBuffer
   b' <- if null bufName then return b else getBufferWithName bufName
   switchToBufferE nextB
-  withEditor $ deleteBuffer b'
+  deleteBuffer b'
 
 ------------------------------------------------------------------------
 

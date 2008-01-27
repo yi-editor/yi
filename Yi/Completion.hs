@@ -3,7 +3,7 @@
 
 module Yi.Completion (completeInList) where
 
-import Yi.Core
+import Yi.Editor
 import Data.List
 
 -------------------------------------------
@@ -22,13 +22,13 @@ commonPrefix strings
 
 
 
-completeInList :: String -> (String -> Bool) -> [ String ] -> YiM String
+completeInList :: String -> (String -> Bool) -> [ String ] -> EditorM String
 completeInList s condition l
-    | null filtered = msgE "No match" >> return s
+    | null filtered = printMsg "No match" >> return s
     | prefix /= s = return prefix
-    | isSingleton filtered = msgE "Sole completion" >> return s
-    | prefix `elem` filtered = msgE ("Complete, but not unique: " ++ show filtered) >> return s
-    | otherwise = msgE ("Matches: " ++ show filtered) >> return s
+    | isSingleton filtered = printMsg "Sole completion" >> return s
+    | prefix `elem` filtered = printMsg ("Complete, but not unique: " ++ show filtered) >> return s
+    | otherwise = printMsg ("Matches: " ++ show filtered) >> return s
     where
     prefix   = commonPrefix filtered
     filtered = nub $ filter condition l
