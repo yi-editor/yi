@@ -30,8 +30,8 @@ import Data.Maybe (listToMaybe)
 chunkSize :: Int
 chunkSize = 128
 
-data Size = Size { unSize :: Int }
-data FingerString = FingerString { unFingerString :: FingerTree Size ByteString }
+newtype Size = Size { unSize :: Int }
+newtype FingerString = FingerString { unFingerString :: FingerTree Size ByteString }
   deriving (Eq, Show)
 
 (-|) :: ByteString -> FingerTree Size ByteString -> FingerTree Size ByteString
