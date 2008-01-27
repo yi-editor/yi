@@ -141,9 +141,9 @@ moveCmdFM =
     ,('}',          nextNParagraphs)
 
 -- misc
-    ,('H',          \i -> downFromTosE (i - 1))
-    ,('M',          const middleE)
-    ,('L',          \i -> upFromBosE (i - 1))
+    ,('H',          \i -> downFromTosB (i - 1))
+    ,('M',          const middleB)
+    ,('L',          \i -> upFromBosB (i - 1))
 
 -- bogus entry
     ,('G',          const (return ()))
@@ -192,8 +192,8 @@ cmd_eval = do
 --
 cmdCmdFM :: [(Char, Int -> Action)]
 cmdCmdFM =
-    [('\^B',    upScreensE)
-    ,('\^F',    downScreensE)
+    [('\^B',    upScreensB)
+    ,('\^F',    downScreensB)
     ,('\^G',    const viFileInfo)
     ,('\^W',    const nextWinE)
     ,('\^Z',    const suspendE)
@@ -216,8 +216,8 @@ cmdCmdFM =
                         moveToEol >> insertN '\n' >>
                             mapM_ insertN s >> moveToSol)) -- ToDo insertNE
 
-    ,(keyPPage, upScreensE)
-    ,(keyNPage, downScreensE)
+    ,(keyPPage, upScreensB)
+    ,(keyNPage, downScreensB)
     ,(keyLeft,  leftOrSolE)          -- not really vi, but fun
     ,(keyRight, rightOrEolE)
     ]
@@ -315,8 +315,8 @@ ins_char :: ViMode
 ins_char = write . fn =<< anyButEsc
     where fn c = case c of
                     k | isDel k       -> leftB >> deleteN 1
-                      | k == keyPPage -> upScreenE
-                      | k == keyNPage -> downScreenE
+                      | k == keyPPage -> upScreenB
+                      | k == keyNPage -> downScreenB
                       | k == '\t'     -> mapM_ insertN "    " -- XXX
                     _ -> insertN c
 
@@ -338,8 +338,8 @@ rep_char :: ViMode
 rep_char = write . fn =<< anyButEsc
     where fn c = case c of
                     k | isDel k       -> leftB >> deleteN 1
-                      | k == keyPPage -> upScreenE
-                      | k == keyNPage -> downScreenE
+                      | k == keyPPage -> upScreenB
+                      | k == keyNPage -> downScreenB
                     '\t' -> mapM_ insertN "    " -- XXX
                     '\r' -> insertN '\n'
                     _ -> do e <- atEolE

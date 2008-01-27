@@ -76,10 +76,10 @@ cmdCharFM =
     ,('\^N',        write (execB Move VLine Forward))
     ,('\^P',        write (execB Move VLine Backward))
     ,('\^U',        write undoB)
-    ,('\^V',        write downScreenE)
+    ,('\^V',        write downScreenB)
     ,('\^X',        do write $ do b <- isUnchangedB ; if b then quitE else return ()
                        switch2WriteMode) -- TODO: separate this
-    ,('\^Y',        write upScreenE)
+    ,('\^Y',        write upScreenB)
     ,('\^Z',        write suspendE)
     ,('\0',         write $ do moveWhileE (isAlphaNum)      GoRight
                                moveWhileE (not . isAlphaNum)  GoRight )

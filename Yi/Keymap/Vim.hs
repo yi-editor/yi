@@ -187,9 +187,9 @@ moveCmdFM =
     ,('}',          nextNParagraphs)
 
 -- misc
-    ,('H',          \i -> downFromTosE (i - 1))
-    ,('M',          const middleE)
-    ,('L',          \i -> upFromBosE (i - 1))
+    ,('H',          \i -> downFromTosB (i - 1))
+    ,('M',          const middleB)
+    ,('L',          \i -> upFromBosB (i - 1))
     ]
     where
         left  = moveXorSol
@@ -251,8 +251,8 @@ anyButEscOrDel = satisfy (not . (`elem` ('\ESC':delete')))
 -- | cmd mode commands
 singleCmdFM :: [(Char, Int -> YiM ())]
 singleCmdFM =
-    [('\^B',    withBuffer . upScreensE)             -- vim does (firstNonSpaceB;moveXorSol)
-    ,('\^F',    withBuffer . downScreensE)
+    [('\^B',    withBuffer . upScreensB)             -- vim does (firstNonSpaceB;moveXorSol)
+    ,('\^F',    withBuffer . downScreensB)
     ,('\^G',    const viFileInfo)        -- hmm. not working. duh. we clear
     ,('\^L',    const refreshE)
     ,('\^R',    withBuffer . flip replicateM_ redoB)
@@ -280,8 +280,8 @@ singleCmdFM =
 
     ,('P',      withEditor . flip replicateM_ pasteBefore)
 
-    ,(keyPPage, withBuffer . upScreensE)
-    ,(keyNPage, withBuffer . downScreensE)
+    ,(keyPPage, withBuffer . upScreensB)
+    ,(keyNPage, withBuffer . downScreensB)
     ,('*',      const $ searchCurrentWord)
     ,('~',      \i -> withBuffer $ do
                          p <- pointB
@@ -462,8 +462,8 @@ cmd2other = let beginIns a = write a >> ins_mode
 
 
 ins_mov_char :: VimMode
-ins_mov_char = choice [event keyPPage >> write upScreenE,
-                       event keyNPage >> write downScreenE,
+ins_mov_char = choice [event keyPPage >> write upScreenB,
+                       event keyNPage >> write downScreenB,
                        event keyUp    >> write lineUp,
                        event keyDown  >> write lineDown,
                        event keyLeft  >> write leftB,

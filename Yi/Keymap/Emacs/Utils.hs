@@ -312,13 +312,13 @@ completeFunctionName s = do
 scrollDownE :: YiM ()
 scrollDownE = withUnivArg $ \a -> withBuffer $
               case a of
-                 Nothing -> downScreenE
+                 Nothing -> downScreenB
                  Just n -> replicateM_ n lineDown
 
 scrollUpE :: YiM ()
 scrollUpE = withUnivArg $ \a -> withBuffer $
               case a of
-                 Nothing -> upScreenE
+                 Nothing -> upScreenB
                  Just n -> replicateM_ n lineUp
 
 switchBufferE :: YiM ()

@@ -223,44 +223,44 @@ bufInfoB = do
 -- Window-related operations
 
 -- | Scroll up 1 screen
-upScreenE :: BufferM ()
-upScreenE = upScreensE 1
+upScreenB :: BufferM ()
+upScreenB = upScreensB 1
 
 -- | Scroll down 1 screen
-downScreenE :: BufferM ()
-downScreenE = downScreensE 1
+downScreenB :: BufferM ()
+downScreenB = downScreensB 1
 
 -- | Scroll up n screens
-upScreensE :: Int -> BufferM ()
-upScreensE = moveScreenE Forward
+upScreensB :: Int -> BufferM ()
+upScreensB = moveScreenB Forward
 
 -- | Scroll down n screens
-downScreensE :: Int -> BufferM ()
-downScreensE = moveScreenE Backward
+downScreensB :: Int -> BufferM ()
+downScreensB = moveScreenB Backward
 
-moveScreenE :: Direction -> Int -> BufferM ()
-moveScreenE dir n = do h <- askWindow height
+moveScreenB :: Direction -> Int -> BufferM ()
+moveScreenB dir n = do h <- askWindow height
                        case dir of
                          Forward -> gotoLnFrom (- (n * (h - 1)))
                          Backward -> gotoLnFrom $ n * (h - 1)
                        moveToSol
 
 -- | Move to @n@ lines down from top of screen
-downFromTosE :: Int -> BufferM ()
-downFromTosE n = do
+downFromTosB :: Int -> BufferM ()
+downFromTosB n = do
   moveTo =<< askWindow tospnt
   replicateM_ n lineDown
 
 -- | Move to @n@ lines up from the bottom of the screen
-upFromBosE :: Int -> BufferM ()
-upFromBosE n = do
+upFromBosB :: Int -> BufferM ()
+upFromBosB n = do
   moveTo =<< askWindow bospnt
   moveToSol
   replicateM_ n lineUp
 
 -- | Move to middle line in screen
-middleE :: BufferM ()
-middleE = do
+middleB :: BufferM ()
+middleB = do
   w <- askWindow id
   moveTo (tospnt w)
   replicateM_ (height w `div` 2) lineDown
