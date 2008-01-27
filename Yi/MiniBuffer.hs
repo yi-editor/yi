@@ -1,7 +1,10 @@
+{-# LANGUAGE ScopedTypeVariables, FlexibleInstances, MultiParamTypeClasses, UndecidableInstances #-}
+
  module Yi.MiniBuffer (
         spawnMinibufferE, withMinibuffer
-)where
+) where
 
+import Data.Typeable
 import Yi.Buffer
 import Yi.Buffer.Region
 import Yi.Core
@@ -13,6 +16,7 @@ import Yi.Keymap.Emacs.Keys
 import Yi.Window
 import qualified Yi.Editor as Editor
 import qualified Yi.WindowSet as WS
+
 
 -- | Open a minibuffer window with the given prompt and keymap
 spawnMinibufferE :: String -> KeymapEndo -> YiM () -> YiM ()
@@ -61,3 +65,9 @@ completionFunction f = do
   withBuffer $ do moveTo 0
                   deleteN p
                   insertN compl
+
+
+-- TODO: be a bit more clever than 'Read r'
+instance (YiAction a x, Read r, Typeable r) => YiAction (r -> a) x where
+    makeAction f = YiA $ withMinibuffer (show $ typeOf (undefined::r)) return $
+                   \string ->  runAction $ makeAction $ f $ read string
