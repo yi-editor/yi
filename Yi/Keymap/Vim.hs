@@ -247,6 +247,10 @@ searchCurrentWord = do
 anyButEscOrDel :: VimProc Char
 anyButEscOrDel = satisfy (not . (`elem` ('\ESC':delete')))
 
+continueSearching :: Direction -> YiM ()
+continueSearching direction = do
+  withEditor $ getRegexE >>= printMsg . ("/" ++) . fst . fromMaybe ([],undefined)
+  searchE Nothing [] direction
 
 -- | cmd mode commands
 singleCmdFM :: [(Char, Int -> YiM ())]
@@ -260,9 +264,7 @@ singleCmdFM =
     ,('D',      const (withEditor $ withBuffer0 readRestOfLnB >>= setRegE >> withBuffer0 deleteToEol))
     ,('J',      const (withBuffer (moveToEol >> deleteN 1)))    -- the "\n"
     ,('U',      withBuffer . flip replicateM_ undoB)    -- NB not correct
-    ,('n',      const $ do getRegexE >>=
-                               msgE . ("/" ++) . fst . fromMaybe ([],undefined)
-                           searchE Nothing [] Forward)
+    ,('n',      const $ continueSearching Forward)
     ,('u',      withBuffer . flip replicateM_ undoB)
 
     ,('X',      \i -> withBuffer $ do p <- pointB
