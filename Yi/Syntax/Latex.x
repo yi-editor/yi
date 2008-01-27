@@ -12,6 +12,7 @@
 module Yi.Syntax.Latex ( highlighter ) where
 
 import qualified Data.ByteString.Char8
+import qualified Data.ByteString.Lazy.Char8 as LB
 import qualified Yi.FingerString
 import qualified Yi.Syntax
 import Yi.Style

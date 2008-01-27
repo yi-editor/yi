@@ -4,38 +4,38 @@
 -- declares its own types, any wrapper must have the highlighter in scope...
 -- so it must be included.  Doubleplusyuck.
 --
--- You will need to import qualified Yi.FingerString, Yi.Vty, and Yi.Syntax.
+-- You will need to import qualified Yi.Vty, and Yi.Syntax.
 --
 -- You will need to define initState and stateToInit and type HlState
 --
 -- Your actions must have type String -> $state -> ($state, [Attr])
 
-type AlexInput = Yi.FingerString.FingerString
+type AlexInput = LB.ByteString
 type Action a = AlexInput -> a -> (a,[(Int,Style)])
 
 alexGetChar :: AlexInput -> Maybe (Char, AlexInput)
-alexGetChar bs | Yi.FingerString.null bs = Nothing
-               | otherwise               = Just (Yi.FingerString.head bs,
-                                                 Yi.FingerString.tail bs)
+alexGetChar bs | LB.null bs = Nothing
+               | otherwise               = Just (LB.head bs,
+                                                 LB.tail bs)
 
 alexInputPrevChar = undefined
 
 c :: Style -> Action a
-c color str state = (state, [(Yi.FingerString.length str, color)])
+c color str state = (state, [(fromIntegral $ LB.length str, color)])
 
 m :: (s -> s) -> Style -> Action s
-m mod color str state = (mod state, [(Yi.FingerString.length str, color)])
+m mod color str state = (mod state, [(fromIntegral $ LB.length str, color)])
 
 highlighter :: Yi.Syntax.Highlighter (AlexInput, HlState)
-highlighter = Yi.Syntax.SynHL (Yi.FingerString.empty , initState) fun funEOF
+highlighter = Yi.Syntax.SynHL (LB.empty , initState) fun funEOF
     where
       fun bs (scrap, st) = iter' full st
           where
-            full = Yi.FingerString.append scrap bs
+            full = LB.append scrap bs
             iter' bs s = case hl_alex_scan_tkn undefined bs 0# bs (iUnbox (stateToInit s)) AlexNone of
                                 (AlexNone, _) -> ((bs, s), [])
                                 (AlexLastSkip _ _, _) -> error "no skipping!"
-                                (AlexLastAcc k input len, _) -> let (nst, attrs) = k (Yi.FingerString.take len bs) s
+                                (AlexLastAcc k input len, _) -> let (nst, attrs) = k (LB.take (fromIntegral len) bs) s
                                                                     ((str', finst), fattr) = iter' input nst
                                                                 in ((str', finst), attrs++fattr)
       funEOF (scrap, st) = snd (iter' scrap st)
@@ -43,7 +43,7 @@ highlighter = Yi.Syntax.SynHL (Yi.FingerString.empty , initState) fun funEOF
             iter' bs s = case alex_scan_tkn undefined bs 0# bs (iUnbox (stateToInit s)) AlexNone of
                            (AlexNone, _) -> ((bs, s), [])
                            (AlexLastSkip _ _, _) -> error "no skipping!"
-                           (AlexLastAcc k input len, _) -> let (nst, attrs) = k (Yi.FingerString.take len bs) s
+                           (AlexLastAcc k input len, _) -> let (nst, attrs) = k (LB.take (fromIntegral len) bs) s
                                                                ((str', finst), fattr) = iter' input nst
                                                            in ((str', finst), attrs++fattr)
 

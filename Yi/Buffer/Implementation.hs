@@ -1,6 +1,6 @@
 {-# LANGUAGE PatternGuards, ExistentialQuantification #-}
 
--- Copyright (c) 2004-5, 7-8, 8, 8, 8, 8, 8 Don Stewart - http://www.cse.unsw.edu.au/~dons
+-- Copyright (c) 2004-5, 7-8 Don Stewart - http://www.cse.unsw.edu.au/~dons
 
 -- | 'Buffer' implementation, wrapping ByteString.
 module Yi.Buffer.Implementation
@@ -216,7 +216,7 @@ styleRangesBI n i fb = fun fb
     -- uses '(Data.ByteString.Char8.ByteString, Int)' as its parameterized state
     fun bd@(FBufferData b _ _ (Just (HLState hl)) _) =
 
-      let (finst,colors_) = hlColorize hl b (hlStartState hl)
+      let (finst,colors_) = hlColorize hl (F.toLazyByteString b) (hlStartState hl)
           colors = colors_ ++ hlColorizeEOF hl finst
       in cutRanges n i (overlay bd (makeRanges 0 colors))
 

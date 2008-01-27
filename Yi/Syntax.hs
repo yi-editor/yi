@@ -16,7 +16,8 @@ module Yi.Syntax ( Highlighter(..)
                  ) where
 
 import Yi.Style
-import Yi.FingerString
+import qualified Data.ByteString.Lazy.Char8 as LB
+
 
     
 
@@ -31,7 +32,7 @@ data Highlighter a = SynHL
                              -- | Colorize a block of data passed in as a ByteString,
                              -- returning the new state and any attributes produced.
                              -- This *must* be implementable as a `B.foldl'.
-                           , hlColorize :: FingerString -> a -> (a, [(Int,Style)])
+                           , hlColorize :: LB.ByteString -> a -> (a, [(Int,Style)])
                              -- | Colorize the end of file; this exists only to inform
                              -- states that lookahead will never happen.
                            , hlColorizeEOF :: a -> [(Int,Style)]
