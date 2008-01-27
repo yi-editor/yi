@@ -35,34 +35,12 @@ module Yi.Core (
         errorE,         -- :: String -> YiM ()
         msgClrE,        -- :: YiM ()
         setWindowFillE, -- :: Char -> YiM ()
-        setWindowStyleE,-- :: UIStyle -> YiM ()
 
         -- * Window manipulation
         closeE,         -- :: YiM ()
 
-        -- * Buffer only stuff
-        newBufferE,     -- :: String -> String -> YiM ()
-        listBuffersE,   -- :: YiM ()
-        closeBufferE,   -- :: String -> YiM ()
-
-        -- * Buffer/Window
-        closeBufferAndWindowE,
-        switchToBufferE,
-        switchToBufferOtherWindowE,
-        switchToBufferWithNameE,
-        nextBufW,       -- :: YiM ()
-        prevBufW,       -- :: YiM ()
-
-        -- * Basic registers
-        setRegE,        -- :: String -> YiM ()
-        getRegE,        -- :: EditorM String
-
-        -- * Dynamically extensible state
-        getDynamic,
-        setDynamic,
-
         -- * Interacting with external commands
-        pipeE,                   -- :: String -> String -> EditorM String
+        pipeE,          -- :: String -> String -> YiM String
 
         -- * Misc
         changeKeymapE,
@@ -74,12 +52,10 @@ import Prelude hiding (error, sequence_, mapM_, elem, concat, all)
 import Yi.Debug
 import Yi.Undo
 import Yi.Buffer
-import Yi.Window
 import Yi.Dynamic
 import Yi.String
 import Yi.Process           ( popen )
 import Yi.Editor
-import Yi.CoreUI
 #ifdef DYNAMIC
 
 #endif
@@ -90,7 +66,6 @@ import Yi.Monad
 import Yi.Accessor
 import qualified Yi.WindowSet as WS
 import qualified Yi.Editor as Editor
-import qualified Yi.Style as Style
 import qualified Yi.UI.Common as UI
 import Yi.UI.Common as UI (UI)
 
@@ -105,7 +80,6 @@ import System.FilePath
 import Control.Monad (when, forever)
 import Control.Monad.Reader (runReaderT, ask)
 import Control.Monad.Trans
-import Control.Monad.State (gets, modify)
 import Control.Monad.Error ()
 import Control.Exception
 import Control.Concurrent
@@ -142,7 +116,7 @@ nilKeymap = do c <- I.anyEvent
                          'r' -> reconfigE
                          'h' -> (configHelp >> return ())
                          _ -> errorE $ "Keymap not defined, type 'r' to reload config, 'q' to quit, 'h' for help."
-    where configHelp = newBufferE "*configuration help*" $ unlines $
+    where configHelp = withEditor $ newBufferE "*configuration help*" $ unlines $
                          ["To get a standard reasonable keymap, you can run yi with either --as=vim or --as=emacs.",
                           "You can also create your own ~/.yi/YiConfig.hs file,",
                           "see http://haskell.org/haskellwiki/Yi#How_to_Configure_Yi for help on how to do that."]
@@ -182,7 +156,7 @@ startE startConfig kernel st commandLineActions = do
 
     runYi $ do
 
-      newBufferE "*messages*" "" >> return ()
+      withEditor $ newBufferE "*messages*" "" >> return ()
 
 #ifdef DYNAMIC
       withKernel $ \k -> do
@@ -313,51 +287,6 @@ suspendE = withUI UI.suspend
 
 ------------------------------------------------------------------------
 
--- ---------------------------------------------------------------------
--- Window based operations
---
-
-{-
--- | scroll window up
-scrollUpE :: YiM ()
-scrollUpE = withWindow_ scrollUpW
-
--- | scroll window down
-scrollDownE :: YiM ()
-scrollDownE = withWindow_ scrollDownW
--}
-
--- ---------------------------------------------------------------------
--- registers (TODO these may be redundant now that it is easy to thread
--- state in key bindings, or maybe not.
---
-
--- | Put string into yank register
-setRegE :: String -> YiM ()
-setRegE s = withEditor $ modify $ \e -> e { yreg = s }
-
--- | Return the contents of the yank register
-getRegE :: YiM String
-getRegE = withEditor $ gets $ yreg
-
--- ---------------------------------------------------------------------
--- | Dynamically-extensible state components.
---
--- These hooks are used by keymaps to store values that result from
--- Actions (i.e. that restult from IO), as opposed to the pure values
--- they generate themselves, and can be stored internally.
---
--- The `dynamic' field is a type-indexed map.
---
-
--- | Retrieve a value from the extensible state
-getDynamic :: Initializable a => EditorM a
-getDynamic = getA (dynamicValueA .> dynamicA)
-
--- | Insert a value into the extensible state, keyed by its type
-setDynamic :: Initializable a => a -> EditorM ()
-setDynamic x = setA (dynamicValueA .> dynamicA) x
-
 ------------------------------------------------------------------------
 -- | Pipe a string through an external command, returning the stdout
 -- chomp any trailing newline (is this desirable?)
@@ -401,75 +330,6 @@ errorE s = do msgE ("error: " ++ s)
 -- | Clear the message line at bottom of screen
 msgClrE :: YiM ()
 msgClrE = msgE ""
-
-
--- | A character to fill blank lines in windows with. Usually '~' for
--- vi-like editors, ' ' for everything else
-setWindowFillE :: Char -> EditorM ()
-setWindowFillE c = modify $ \e -> e { windowfill = c }
-
--- | Sets the window style.
-setWindowStyleE :: Style.UIStyle -> EditorM ()
-setWindowStyleE sty = modify $ \e -> e { uistyle = sty }
-
-
--- | Attach the next buffer in the buffer list
--- to the current window.
-nextBufW :: EditorM ()
-nextBufW = Editor.nextBuffer >>= switchToBufferE
-
--- | edit the previous buffer in the buffer list
-prevBufW :: EditorM ()
-prevBufW = Editor.prevBuffer >>= switchToBufferE
-
-
--- | Like fnewE, create a new buffer filled with the String @s@,
--- Open up a new window onto this buffer. Doesn't associate any file
--- with the buffer (unlike fnewE) and so is good for popup internal
--- buffers (like scratch)
-newBufferE :: String -> String -> YiM BufferRef
-newBufferE f s = do
-    b <- withEditor $ stringToNewBuffer f s
-    withEditor $ switchToBufferE b
-    logPutStrLn "newBufferE ended"
-    return b
-
--- | Attach the specified buffer to the current window
-switchToBufferE :: BufferRef -> EditorM ()
-switchToBufferE b = modifyWindows (modifier WS.currentA (\w -> w {bufkey = b}))
-
--- | Attach the specified buffer to some other window than the current one
-switchToBufferOtherWindowE :: BufferRef -> EditorM ()
-switchToBufferOtherWindowE b = shiftOtherWindow >> switchToBufferE b
-
--- | Switch to the buffer specified as parameter. If the buffer name is empty, switch to the next buffer.
-switchToBufferWithNameE :: String -> EditorM ()
-switchToBufferWithNameE "" = nextBufW
-switchToBufferWithNameE bufName = switchToBufferE =<< getBufferWithName bufName
-
--- | Return a list of all buffers, and their indicies
-listBuffersE :: YiM [(String,Int)]
-listBuffersE = do
-        bs  <- withEditor getBuffers
-        return $ zip (map name bs) [0..]
-
--- | Release resources associated with buffer
--- Note: close the current buffer if the empty string is given
-closeBufferE :: String -> EditorM ()
-closeBufferE bufName = do
-  nextB <- nextBuffer
-  b <- getBuffer
-  b' <- if null bufName then return b else getBufferWithName bufName
-  switchToBufferE nextB
-  deleteBuffer b'
-
-------------------------------------------------------------------------
-
--- | Close current buffer and window, unless it's the last one.
-closeBufferAndWindowE :: EditorM ()
-closeBufferAndWindowE = do
-  deleteBuffer =<< getBuffer
-  tryCloseE
 
 -- | Close the current window.
 -- If this is the last window open, quit the program.

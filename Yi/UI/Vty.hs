@@ -30,7 +30,6 @@ import Data.Maybe
 import Data.Traversable
 import System.Exit
 import System.Posix.Signals         ( raiseSignal, sigTSTP )
-import Yi.CoreUI
 import Yi.Buffer
 import Yi.Buffer.Implementation
 import Yi.Buffer.Region

@@ -155,8 +155,8 @@ startConsole = do
   Keymap.setBufferKeymap console (Eval.consoleKeymap <||)
 
 openScratchBuffer :: Keymap.YiM ()
-openScratchBuffer = do     -- emacs-like behaviour
-      Core.newBufferE "*scratch*"
+openScratchBuffer = Core.withEditor $ do     -- emacs-like behaviour
+      Editor.newBufferE "*scratch*"
                    ("-- This buffer is for notes you don't want to save, and for haskell evaluation\n" ++
                     "-- If you want to create a file, open that file,\n" ++
                     "-- then enter the text in that file's own buffer.\n\n")

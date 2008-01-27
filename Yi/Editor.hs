@@ -4,7 +4,34 @@
 
 -- | The top level editor state, and operations on it.
 
-module Yi.Editor where
+module Yi.Editor
+
+{-
+        -- * Buffer only stuff
+        newBufferE,     -- :: String -> String -> YiM ()
+        listBuffersE,   -- :: YiM ()
+        closeBufferE,   -- :: String -> YiM ()
+
+        -- * Buffer/Window
+        closeBufferAndWindowE,
+        switchToBufferE,
+        switchToBufferOtherWindowE,
+        switchToBufferWithNameE,
+        nextBufW,       -- :: YiM ()
+        prevBufW,       -- :: YiM ()
+
+        -- * Basic registers
+        setRegE,        -- :: String -> YiM ()
+        getRegE,        -- :: EditorM String
+
+        -- * Dynamically extensible state
+        getDynamic,
+        setDynamic,
+
+        setWindowStyleE,-- :: UIStyle -> EditorM ()
+-}
+
+where
 
 import Yi.Buffer                ( BufferRef, FBuffer (..), BufferM, newB, runBuffer, insertN )
 import Yi.Buffer.HighLevel (botB)
@@ -16,7 +43,8 @@ import Yi.Monad
 import Yi.Accessor
 import Yi.Dynamic
 import Yi.Window
-import Yi.WindowSet
+import Yi.WindowSet (WindowSet)
+import qualified Yi.WindowSet as WS
 
 import Prelude hiding (error)
 
@@ -69,7 +97,7 @@ dynA = dynamicValueA .> dynamicA
 emptyEditor :: Editor
 emptyEditor = Editor {
         buffers      = M.singleton (bkey buf) buf
-       ,windows      = new (dummyWindow $ bkey buf)
+       ,windows      = WS.new (dummyWindow $ bkey buf)
        ,bufferStack  = [bkey buf]
        ,bufferRefSupply = 1
        ,windowfill   = ' '
@@ -176,7 +204,7 @@ withGivenBufferAndWindow0 w k f = getsAndModify $ \e ->
 -- | Perform action with current window's buffer
 withBuffer0 :: BufferM a -> EditorM a
 withBuffer0 f = do
-  w <- getA (currentA .> windowsA)
+  w <- getA (WS.currentA .> windowsA)
   withGivenBufferAndWindow0 w (bufkey w) f
 
 -- | Return the current buffer
@@ -214,3 +242,152 @@ printMsg s = do
   withGivenBuffer0 b $ do botB; insertN (s ++ "\n")
 
 
+-- ---------------------------------------------------------------------
+-- registers (TODO these may be redundant now that it is easy to thread
+-- state in key bindings, or maybe not.
+--
+
+-- | Put string into yank register
+setRegE :: String -> EditorM ()
+setRegE s = modify $ \e -> e { yreg = s }
+
+-- | Return the contents of the yank register
+getRegE :: EditorM String
+getRegE = gets $ yreg
+
+-- ---------------------------------------------------------------------
+-- | Dynamically-extensible state components.
+--
+-- These hooks are used by keymaps to store values that result from
+-- Actions (i.e. that restult from IO), as opposed to the pure values
+-- they generate themselves, and can be stored internally.
+--
+-- The `dynamic' field is a type-indexed map.
+--
+
+-- | Retrieve a value from the extensible state
+getDynamic :: Initializable a => EditorM a
+getDynamic = getA (dynamicValueA .> dynamicA)
+
+-- | Insert a value into the extensible state, keyed by its type
+setDynamic :: Initializable a => a -> EditorM ()
+setDynamic x = setA (dynamicValueA .> dynamicA) x
+
+-- | A character to fill blank lines in windows with. Usually '~' for
+-- vi-like editors, ' ' for everything else
+setWindowFillE :: Char -> EditorM ()
+setWindowFillE c = modify $ \e -> e { windowfill = c }
+
+-- | Sets the window style.
+setWindowStyleE :: UIStyle -> EditorM ()
+setWindowStyleE sty = modify $ \e -> e { uistyle = sty }
+
+
+-- | Attach the next buffer in the buffer list
+-- to the current window.
+nextBufW :: EditorM ()
+nextBufW = nextBuffer >>= switchToBufferE
+
+-- | edit the previous buffer in the buffer list
+prevBufW :: EditorM ()
+prevBufW = prevBuffer >>= switchToBufferE
+
+-- | Like fnewE, create a new buffer filled with the String @s@,
+-- Open up a new window onto this buffer. Doesn't associate any file
+-- with the buffer (unlike fnewE) and so is good for popup internal
+-- buffers (like scratch)
+newBufferE :: String -> String -> EditorM BufferRef
+newBufferE f s = do
+    b <- stringToNewBuffer f s
+    switchToBufferE b
+    return b
+
+-- | Attach the specified buffer to the current window
+switchToBufferE :: BufferRef -> EditorM ()
+switchToBufferE b = modifyWindows (modifier WS.currentA (\w -> w {bufkey = b}))
+
+-- | Attach the specified buffer to some other window than the current one
+switchToBufferOtherWindowE :: BufferRef -> EditorM ()
+switchToBufferOtherWindowE b = shiftOtherWindow >> switchToBufferE b
+
+-- | Switch to the buffer specified as parameter. If the buffer name is empty, switch to the next buffer.
+switchToBufferWithNameE :: String -> EditorM ()
+switchToBufferWithNameE "" = nextBufW
+switchToBufferWithNameE bufName = switchToBufferE =<< getBufferWithName bufName
+
+-- | Return a list of all buffers, and their indicies
+listBuffersE :: EditorM [(String,Int)]
+listBuffersE = do
+        bs  <- getBuffers
+        return $ zip (map name bs) [0..]
+
+-- | Release resources associated with buffer
+-- Note: close the current buffer if the empty string is given
+closeBufferE :: String -> EditorM ()
+closeBufferE bufName = do
+  nextB <- nextBuffer
+  b <- getBuffer
+  b' <- if null bufName then return b else getBufferWithName bufName
+  switchToBufferE nextB
+  deleteBuffer b'
+
+------------------------------------------------------------------------
+
+-- | Close current buffer and window, unless it's the last one.
+closeBufferAndWindowE :: EditorM ()
+closeBufferAndWindowE = do
+  deleteBuffer =<< getBuffer
+  tryCloseE
+
+-- | Rotate focus to the next window
+nextWinE :: EditorM ()
+nextWinE = modifyWindows WS.forward
+
+-- | Rotate focus to the previous window
+prevWinE :: EditorM ()
+prevWinE = modifyWindows WS.backward
+
+-- | Apply a function to the windowset.
+modifyWindows :: (WindowSet Window -> WindowSet Window) -> EditorM ()
+modifyWindows f = do
+  b <- getsAndModifyA windowsA $ \ws -> let ws' = f ws in (ws', bufkey $ WS.current ws')
+  -- TODO: push this fiddling with current buffer into windowsA
+  setBuffer b
+  return ()
+
+withWindows :: (WindowSet Window -> a) -> EditorM a
+withWindows = getsA windowsA
+
+withWindow :: (Window -> a) -> EditorM a
+withWindow f = getsA (WS.currentA .> windowsA) f
+
+-- | Split the current window, opening a second window onto current buffer.
+splitE :: EditorM ()
+splitE = do
+  b <- getBuffer
+  modifyWindows (WS.add $ dummyWindow b)
+
+
+-- | Enlarge the current window
+enlargeWinE :: EditorM ()
+enlargeWinE = error "enlargeWinE: not implemented"
+
+-- | Shrink the current window
+shrinkWinE :: EditorM ()
+shrinkWinE = error "shrinkWinE: not implemented"
+
+
+-- | Close the current window, unless it is the last window open.
+tryCloseE :: EditorM ()
+tryCloseE = modifyWindows WS.delete
+
+-- | Make the current window the only window on the screen
+closeOtherE :: EditorM ()
+closeOtherE = modifyWindows WS.deleteOthers
+
+-- | Switch focus to some other window. If none is available, create one.
+shiftOtherWindow :: EditorM ()
+shiftOtherWindow = do
+  len <- withWindows WS.size
+  when (len == 1) splitE
+  nextWinE

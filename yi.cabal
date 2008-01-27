@@ -41,7 +41,7 @@ flag cocoa
 -- library
 --  exposed-modules:
 --         Yi.Accessor, Yi.Buffer, Yi.Buffer.HighLevel, Yi.Buffer.Implementation,
---         Yi.Buffer.Normal, Yi.Buffer.Region, Yi.Char, Yi.Completion, Yi.Core, Yi.CoreUI,
+--         Yi.Buffer.Normal, Yi.Buffer.Region, Yi.Char, Yi.Completion, Yi.Core,
 --         Yi.Debug, Yi.Dired, Yi.Dynamic, Yi.Editor, Yi.Eval, Yi.Event, Yi.FingerString, Yi.History,
 --         Yi.Indent, Yi.Interact, Yi.Kernel, Yi.Keymap, Yi.Keymap.Completion, Yi.Keymap.Emacs,
 --         Yi.Keymap.Emacs.Keys, Yi.Keymap.Emacs.KillRing, Yi.Keymap.Emacs.UnivArgument,

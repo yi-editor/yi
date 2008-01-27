@@ -111,7 +111,7 @@ shellCommandE = do
     withMinibuffer "Shell command:" return $ \cmd -> do
       (cmdOut,cmdErr,exitCode) <- lift $ runShellCommand cmd
       case exitCode of
-        ExitSuccess -> newBufferE "*Shell Command Output*" cmdOut >> return ()
+        ExitSuccess -> withEditor $ newBufferE "*Shell Command Output*" cmdOut >> return ()
         ExitFailure _ -> msgE cmdErr
 
 -----------------------------

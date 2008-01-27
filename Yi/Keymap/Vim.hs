@@ -257,7 +257,7 @@ singleCmdFM =
     ,('\^L',    const refreshE)
     ,('\^R',    withBuffer . flip replicateM_ redoB)
     ,('\^Z',    const suspendE)
-    ,('D',      const (withBuffer readRestOfLnB >>= setRegE >> withBuffer deleteToEol))
+    ,('D',      const (withEditor $ withBuffer0 readRestOfLnB >>= setRegE >> withBuffer0 deleteToEol))
     ,('J',      const (withBuffer (moveToEol >> deleteN 1)))    -- the "\n"
     ,('U',      withBuffer . flip replicateM_ undoB)    -- NB not correct
     ,('n',      const $ do getRegexE >>=
@@ -276,9 +276,9 @@ singleCmdFM =
                                       moveTo p
                                       when (q-p > 0) $ deleteN (q-p))
 
-    ,('p',      flip replicateM_ pasteAfter)
+    ,('p',      withEditor . flip replicateM_ pasteAfter)
 
-    ,('P',      flip replicateM_ pasteBefore)
+    ,('P',      withEditor . flip replicateM_ pasteBefore)
 
     ,(keyPPage, withBuffer . upScreensE)
     ,(keyNPage, withBuffer . downScreensE)
@@ -320,7 +320,7 @@ cmd_op = do
            | (c,a) <- opCmdFM]
     where
         -- | operator (i.e. movement-parameterised) actions
-        opCmdFM :: [(Char, BufferM () -> RegionStyle -> YiM ())]
+        opCmdFM :: [(Char, BufferM () -> RegionStyle -> EditorM ())]
         opCmdFM =
             [('d', cut  pointB),
              ('y', yank pointB)]
@@ -335,56 +335,56 @@ regionFromTo mstart move regionStyle = do
     LineWise -> lineWiseRegion region
     CharWise -> return region
 
-yank :: BufferM Point -> BufferM () -> RegionStyle -> YiM ()
+yank :: BufferM Point -> BufferM () -> RegionStyle -> EditorM ()
 yank mstart move regionStyle = do
-  txt <- withBuffer $ do
+  txt <- withBuffer0 $ do
     p <- pointB
     region <- regionFromTo mstart move regionStyle
     moveTo p
     readRegionB region
   setRegE $ if (regionStyle /= CharWise) then '\n':txt else txt
   let rowsYanked = length (filter (== '\n') txt)
-  when (rowsYanked > 2) $ msgE $ (show rowsYanked) ++ " lines yanked"
+  when (rowsYanked > 2) $ printMsg $ (show rowsYanked) ++ " lines yanked"
 
-cut :: BufferM Point -> BufferM () -> RegionStyle -> YiM ()
+cut :: BufferM Point -> BufferM () -> RegionStyle -> EditorM ()
 cut mstart move regionStyle = do
-  txt <- withBuffer $ do
+  txt <- withBuffer0 $ do
     region <- regionFromTo mstart move regionStyle
     txt <- readRegionB region
     deleteRegionB region
     return txt
   setRegE $ if (regionStyle /= CharWise) then '\n':txt else txt
   let rowsCut = length (filter (== '\n') txt)
-  when (rowsCut > 2) $ msgE ( (show rowsCut) ++ " fewer lines")
+  when (rowsCut > 2) $ printMsg ( (show rowsCut) ++ " fewer lines")
 
-cutSelection :: YiM ()
-cutSelection = cut getSelectionMarkPointB (return ()) =<< withEditor (getA regionStyleA)
+cutSelection :: EditorM ()
+cutSelection = cut getSelectionMarkPointB (return ()) =<< getA regionStyleA
 
-yankSelection :: YiM ()
-yankSelection = yank getSelectionMarkPointB (return ()) =<< withEditor (getA regionStyleA)
+yankSelection :: EditorM ()
+yankSelection = yank getSelectionMarkPointB (return ()) =<< getA regionStyleA
 
-pasteOverSelection :: YiM ()
+pasteOverSelection :: EditorM ()
 pasteOverSelection = do
   txt <- getRegE
-  regionStyle <- withEditor (getA regionStyleA)
-  withBuffer $ do
+  regionStyle <- getA regionStyleA
+  withBuffer0 $ do
     region <- regionFromTo getSelectionMarkPointB (return ()) regionStyle
     moveTo $ regionStart region
     deleteRegionB region
     insertN txt
 
-pasteAfter :: YiM ()
+pasteAfter :: EditorM ()
 pasteAfter = do
   txt' <- getRegE
-  withBuffer $
+  withBuffer0 $
     case txt' of
       '\n':txt -> moveToEol >> rightB >> insertN txt >> leftN (length txt)
       _      -> moveXorEol 1 >> insertN txt' >> leftB
 
-pasteBefore :: YiM ()
+pasteBefore :: EditorM ()
 pasteBefore = do
   txt' <- getRegE
-  withBuffer $ do
+  withBuffer0 $ do
     case txt' of
       '\n':txt -> moveToSol >> insertN txt >> leftN (length txt)
       _      -> insertN txt' >> leftB
@@ -396,7 +396,7 @@ pasteBefore = do
 --
 vis_single :: RegionStyle -> VimMode
 vis_single regionStyle =
-        let beginIns a = do write (a >> withBuffer unsetMarkB) >> ins_mode
+        let beginIns a = do write (a >> withBuffer0 unsetMarkB) >> ins_mode
         in choice [
             event '\ESC' >> return (),
             event 'V'    >> change_vis_mode regionStyle LineWise,
@@ -438,18 +438,18 @@ vis_multi = do
 --
 cmd2other :: VimMode
 cmd2other = let beginIns a = write a >> ins_mode
-                beginIns :: YiM () -> VimMode
+                beginIns :: EditorM () -> VimMode
         in choice [
             do event ':'     ; ex_mode ":",
             do event 'v'     ; vis_mode CharWise,
             do event 'V'     ; vis_mode LineWise,
             do event 'R'     ; rep_mode,
             do event 'i'     ; ins_mode,
-            do event 'I'     ; beginIns (withBuffer moveToSol),
-            do event 'a'     ; beginIns $ withBuffer $ moveXorEol 1,
-            do event 'A'     ; beginIns (withBuffer moveToEol),
-            do event 'o'     ; beginIns $ withBuffer $ moveToEol >> insertB '\n',
-            do event 'O'     ; beginIns $ withBuffer $ moveToSol >> insertB '\n' >> lineUp,
+            do event 'I'     ; beginIns (withBuffer0 moveToSol),
+            do event 'a'     ; beginIns $ withBuffer0 $ moveXorEol 1,
+            do event 'A'     ; beginIns (withBuffer0 moveToEol),
+            do event 'o'     ; beginIns $ withBuffer0 $ moveToEol >> insertB '\n',
+            do event 'O'     ; beginIns $ withBuffer0 $ moveToSol >> insertB '\n' >> lineUp,
             do event 'c'     ; (regionStyle, m) <- cmd_move ; beginIns $ cut pointB m regionStyle,
             do events "cc"   ; beginIns $ cut (moveToSol >> pointB) moveToEol CharWise,
             do event 'C'     ; beginIns $ cut pointB moveToEol CharWise, -- alias of "c$"

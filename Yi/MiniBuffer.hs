@@ -8,7 +8,6 @@ import Data.Typeable
 import Yi.Buffer
 import Yi.Buffer.Region
 import Yi.Core
-import Yi.CoreUI
 import Yi.Editor
 import Yi.History
 import Yi.Keymap

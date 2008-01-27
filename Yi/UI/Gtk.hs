@@ -17,7 +17,6 @@ import Yi.Window (Window)
 import Yi.Event
 import Yi.Debug
 import Yi.Monad
-import Yi.CoreUI
 import qualified Yi.UI.Common as Common
 import Yi.Style hiding (modeline)
 import qualified Yi.WindowSet as WS

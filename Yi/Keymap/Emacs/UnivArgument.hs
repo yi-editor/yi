@@ -5,6 +5,7 @@
 module Yi.Keymap.Emacs.UnivArgument where
 
 import Yi.Core
+import Yi.Editor
 import Yi.Keymap
 
 import Data.Maybe
