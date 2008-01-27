@@ -34,7 +34,6 @@ module Yi.Core (
         msgE,           -- :: String -> YiM ()
         errorE,         -- :: String -> YiM ()
         msgClrE,        -- :: YiM ()
-        setWindowFillE, -- :: Char -> YiM ()
 
         -- * Window manipulation
         closeE,         -- :: YiM ()
