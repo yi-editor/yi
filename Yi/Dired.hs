@@ -22,9 +22,9 @@
 -- Automatic support for browsing .zip, .gz files etc...
 
 module Yi.Dired (
-        diredE
-       ,diredDirE
-       ,diredDirBufferE
+        dired
+       ,diredDir
+       ,diredDirBuffer
        ,fnewE
     ) where
 
@@ -91,7 +91,7 @@ fnewE f = do
     newBufferForPath :: String -> Bool -> Bool -> YiM BufferRef
     newBufferForPath bufferName True _       =
       fileToNewBuffer bufferName f -- Load the file into a new buffer
-    newBufferForPath _bufferName False True  = diredDirBufferE f
+    newBufferForPath _bufferName False True  = diredDirBuffer f
     newBufferForPath bufferName False False  =
       withEditor $ stringToNewBuffer bufferName []  -- Create new empty buffer
 
@@ -177,7 +177,7 @@ data DiredEntry = DiredFile DiredFileInfo
                 deriving (Show, Eq, Typeable)
 
 data DiredState = DiredState
-  { diredDir :: FilePath -- ^ The full path to the directory being viewed
+  { diredPath :: FilePath -- ^ The full path to the directory being viewed
     -- FIXME Choose better data structure for Marks...
    , diredMarks :: M.Map Char [FilePath] -- ^ Map values are just leafnames, not full paths
    , diredEntries :: M.Map FilePath DiredEntry -- ^ keys are just leafnames, not full paths
@@ -186,7 +186,7 @@ data DiredState = DiredState
   deriving (Show, Eq, Typeable)
 
 instance Initializable DiredState where
-    initial = DiredState { diredDir        = ""
+    initial = DiredState { diredPath        = ""
                          , diredMarks      = M.empty
                          , diredEntries    = M.empty
                          , diredFilePoints = []
@@ -201,34 +201,34 @@ diredKeymap = do
              ("f", write $ rightB),
              ("m", write $ diredMark),
              ("d", write $ diredMarkDel),
-             ("g", write $ diredRefreshE),
-             ("^", write $ diredUpDirE),
-             ("+", write $ diredCreateDirE),
-             ("RET", write $ diredLoadE),
+             ("g", write $ diredRefresh),
+             ("^", write $ diredUpDir),
+             ("+", write $ diredCreateDir),
+             ("RET", write $ diredLoad),
              ("SPC", write $ lineDown),
              ("BACKSP", write $ diredUnmark)
                        ])
 
-diredE :: YiM ()
-diredE = do
+dired :: YiM ()
+dired = do
     msgE "Dired..."
     dir <- liftIO getCurrentDirectory
     fnewE dir
 
-diredDirE :: FilePath -> YiM ()
-diredDirE dir = diredDirBufferE dir >> return ()
+diredDir :: FilePath -> YiM ()
+diredDir dir = diredDirBuffer dir >> return ()
 
-diredDirBufferE :: FilePath -> YiM BufferRef
-diredDirBufferE dir = do
+diredDirBuffer :: FilePath -> YiM BufferRef
+diredDirBuffer dir = do
                 b <- withEditor $ stringToNewBuffer ("dired-"++dir) ""
                 withGivenBuffer b (setfileB dir) -- associate the buffer with the dir
                 withEditor $ switchToBufferE b
-                diredLoadNewDirE dir
+                diredLoadNewDir dir
                 setBufferKeymap b diredKeymap
                 return b
 
-diredRefreshE :: YiM ()
-diredRefreshE = do
+diredRefresh :: YiM ()
+diredRefresh = do
     -- Clear buffer
     withBuffer $ do end <- sizeB
                     deleteRegionB (mkRegion 0 end)
@@ -239,7 +239,7 @@ diredRefreshE = do
     withBuffer $ (addOverlayB 0 (p-2) headStyle)
     -- Scan directory
     di <- lift $ diredScanDir dir
-    let ds = DiredState { diredDir        = dir
+    let ds = DiredState { diredPath        = dir
                         , diredMarks      = M.empty
                         , diredEntries    = di
                         , diredFilePoints = []
@@ -310,10 +310,10 @@ linesToDisplay = do
                DRDates $ modificationTimeString v]
 
 -- | Write the contents of the supplied directory into the current buffer in dired format
-diredLoadNewDirE :: FilePath -> YiM ()
-diredLoadNewDirE _dir = do
+diredLoadNewDir :: FilePath -> YiM ()
+diredLoadNewDir _dir = do
     withBuffer $ setSyntaxB (ExtHL (Nothing :: Maybe (Highlighter ()))) -- Colours for Dired come from overlays not syntax highlighting
-    diredRefreshE
+    diredRefresh
 
 -- | Return dired entries for the contents of the supplied directory
 diredScanDir :: FilePath -> IO (M.Map FilePath DiredEntry)
@@ -407,8 +407,8 @@ diredMarkWithChar c mv = do
 diredUnmark :: BufferM ()
 diredUnmark = diredMarkWithChar ' ' lineUp
 
-diredLoadE :: YiM ()
-diredLoadE = do
+diredLoad :: YiM ()
+diredLoad = do
     (Just dir) <- withBuffer getfileB
     (fn, de) <- fileFromPoint
     let sel = dir </> fn
@@ -418,14 +418,14 @@ diredLoadE = do
                                if exists then fnewE sel else msgE $ sel ++ " no longer exists"
             (DiredDir _dfi)  -> do
                               exists <- liftIO $ doesDirectoryExist sel
-                              if exists then diredDirE sel else msgE $ sel ++ " no longer exists"
+                              if exists then diredDir sel else msgE $ sel ++ " no longer exists"
             (DiredSymLink _dfi dest) -> do
                                        let target = if isAbsolute dest then dest else dir </> dest
                                        existsFile <- liftIO $ doesFileExist target
                                        existsDir <- liftIO $ doesDirectoryExist target
                                        msgE $ "Following link:"++target
                                        if existsFile then fnewE target else
-                                          if existsDir then diredDirE target else
+                                          if existsDir then diredDir target else
                                              msgE $ target ++ " does not exist"
             (DiredSocket _dfi) -> do
                                exists <- liftIO $ doesFileExist sel
@@ -449,17 +449,17 @@ fileFromPoint = do
     let (_,_,f) = head $ filter (\(_,p2,_)->p<=p2) (diredFilePoints dState)
     return (f, M.findWithDefault DiredNoInfo f $ diredEntries dState)
 
-diredUpDirE :: YiM ()
-diredUpDirE = do
+diredUpDir :: YiM ()
+diredUpDir = do
     (Just dir) <- withBuffer getfileB
-    diredDirE $ takeDirectory dir
+    diredDir $ takeDirectory dir
 
-diredCreateDirE :: YiM ()
-diredCreateDirE = do
+diredCreateDir :: YiM ()
+diredCreateDir = do
     withMinibuffer "Create Dir:" return $ \nm -> do
     (Just dir) <- withBuffer getfileB
     let newdir = dir </> nm
     msgE $ "Creating "++newdir++"..."
     liftIO $ createDirectoryIfMissing True newdir
-    diredRefreshE
+    diredRefresh
 

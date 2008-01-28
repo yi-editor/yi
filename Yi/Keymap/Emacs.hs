@@ -111,7 +111,7 @@ keys =
     )
   , ( "C-x C-x",  atomic $ exchangePointAndMarkB)
   , ( "C-x b",    atomic $ switchBufferE)
-  , ( "C-x d",    atomic $ diredE)
+  , ( "C-x d",    atomic $ dired)
   , ( "C-x e e",  atomic $ evalRegionE)
   , ( "C-x o",    atomic $ nextWinE)
   , ( "C-x k",    atomic $ killBufferE)
