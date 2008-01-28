@@ -99,13 +99,13 @@ vis_mode :: RegionStyle -> VimMode
 vis_mode regionStyle = do
   write (withBuffer (pointB >>= setSelectionMarkPointB))
   core_vis_mode regionStyle
-  write (msgClrE >> withBuffer unsetMarkB >> withBuffer (setDynamicB CharWiseSelection))
+  write (msgClrE >> withBuffer unsetMarkB >> withBuffer (setDynamicB $ SelectionStyle Character))
 
 core_vis_mode :: RegionStyle -> VimMode
 core_vis_mode regionStyle = do
   write $ withEditor $ do setA regionStyleA regionStyle
-                          withBuffer0 $ setDynamicB $
-                            case regionStyle of { LineWise -> LineWiseSelection; CharWise -> CharWiseSelection }
+                          withBuffer0 $ setDynamicB $ SelectionStyle $
+                            case regionStyle of { LineWise -> Line; CharWise -> Character }
                           printMsg $ msg regionStyle
   many (eval cmd_move)
   (vis_single regionStyle <|| vis_multi)
@@ -133,6 +133,10 @@ data RegionStyle = LineWise
 
 instance Initializable RegionStyle where
   initial = CharWise
+
+regionStyleToUnit :: RegionStyle -> TextUnit
+regionStyleToUnit LineWise = Line
+regionStyleToUnit CharWise = Character
 
 regionStyleA :: Accessor Editor RegionStyle
 regionStyleA = dynamicValueA .> dynamicA
@@ -333,9 +337,7 @@ regionFromTo mstart move regionStyle = do
   move
   stop <- pointB
   let region = mkRegion start stop
-  case regionStyle of
-    LineWise -> lineWiseRegion region
-    CharWise -> return region
+  unitWiseRegion (regionStyleToUnit regionStyle) region
 
 yank :: BufferM Point -> BufferM () -> RegionStyle -> EditorM ()
 yank mstart move regionStyle = do

@@ -278,17 +278,17 @@ extendRegionToBoundaries unit bs1 bs2 region = do
   stop <- pointB
   return $ mkRegion start stop
 
+unitWiseRegion :: TextUnit -> Region -> BufferM Region
+unitWiseRegion unit = extendRegionToBoundaries unit InsideBound OutsideBound
+
+
 -- TODO: either decide this is evil and contain it to Vim, or embrace it and move it to the
 -- Buffer record.
-lineWiseRegion :: Region -> BufferM Region
-lineWiseRegion = extendRegionToBoundaries Line InsideBound OutsideBound
-
-data SelectionStyle = LineWiseSelection
-                    | CharWiseSelection
-  deriving (Eq,Typeable,Show)
+newtype SelectionStyle = SelectionStyle TextUnit
+  deriving (Typeable)
 
 instance Initializable SelectionStyle where
-  initial = CharWiseSelection
+  initial = SelectionStyle Character
 
 -- | Get the current region boundaries
 getSelectRegionB :: BufferM Region
@@ -296,7 +296,6 @@ getSelectRegionB = do
   m <- getMarkPointB =<< getSelectionMarkB
   p <- pointB
   let region = mkRegion m p
-  selectionStyle <- getDynamicB
-  case selectionStyle of
-    LineWiseSelection -> lineWiseRegion region
-    CharWiseSelection -> return region
+  SelectionStyle unit <- getDynamicB
+  unitWiseRegion unit region
+
