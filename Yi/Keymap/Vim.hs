@@ -468,8 +468,8 @@ ins_mov_char = choice [event keyPPage >> write upScreenB,
                        event keyNPage >> write downScreenB,
                        event keyUp    >> write lineUp,
                        event keyDown  >> write lineDown,
-                       event keyLeft  >> write leftB,
-                       event keyRight >> write rightB,
+                       event keyLeft  >> write (moveXorSol 1),
+                       event keyRight >> write (moveXorEol 1),
                        event keyEnd   >> write moveToEol,
                        event keyHome  >> write moveToSol]
 
