@@ -199,7 +199,7 @@ cmdCmdFM =
     ,('\^Z',    const suspendE)
     ,('D',      killLineE)
     ,('J',      const (moveToEol >> deleteN 1))    -- the "\n"
-    ,('n',      const (searchE Nothing [] GoRight))
+    ,('n',      const (doSearch Nothing [] GoRight))
 
     ,('X',      \i -> do p <- getSelectionMarkPointB
                          leftOrSolE i
@@ -382,7 +382,7 @@ ex_eval :: String -> Action
 ex_eval cmd = do
   case cmd of
         -- regex searching
-          ('/':pat) -> searchE (Just pat) [] GoRight
+          ('/':pat) -> doSearch (Just pat) [] GoRight
 
         -- TODO: We give up on re-mapping till there exists a generic Yi mechanism to do so.
 

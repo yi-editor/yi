@@ -145,15 +145,15 @@ queryReplaceE = do
     withMinibuffer "Replace:" return $ \replaceWhat -> do
     withMinibuffer "With:" return $ \replaceWith -> do
     b <- withEditor $ getBuffer
-    let replaceBindings = [("n", write $ qrNextE b replaceWhat),
-                           ("y", write $ qrReplaceOneE b replaceWhat replaceWith),
+    let replaceBindings = [("n", write $ qrNext b replaceWhat),
+                           ("y", write $ qrReplaceOne b replaceWhat replaceWith),
                            ("q", write $ closeBufferAndWindowE),
                            ("C-g", write $ closeBufferAndWindowE)
                            ]
     spawnMinibufferE
             ("Replacing " ++ replaceWhat ++ "with " ++ replaceWith ++ " (y,n,q):")
             (const (makeKeymap replaceBindings))
-            (qrNextE b replaceWhat)
+            (qrNext b replaceWhat)
 
 executeExtendedCommandE :: YiM ()
 executeExtendedCommandE = do

@@ -242,7 +242,7 @@ cmd_eval = do
 searchCurrentWord :: YiM ()
 searchCurrentWord = do
   w <- withBuffer $ readRegionB =<< regionOfB ViWord
-  searchE (Just w) [] Forward
+  doSearch (Just w) [] Forward
 
 anyButEscOrDel :: VimProc Char
 anyButEscOrDel = satisfy (not . (`elem` ('\ESC':delete')))
@@ -250,7 +250,7 @@ anyButEscOrDel = satisfy (not . (`elem` ('\ESC':delete')))
 continueSearching :: Direction -> YiM ()
 continueSearching direction = do
   withEditor $ getRegexE >>= printMsg . ("/" ++) . fst . fromMaybe ([],undefined)
-  searchE Nothing [] direction
+  doSearch Nothing [] direction
 
 -- | cmd mode commands
 singleCmdFM :: [(Char, Int -> YiM ())]
@@ -560,7 +560,7 @@ ex_eval :: String -> YiM ()
 ex_eval cmd = do
   case cmd of
         -- regex searching
-          ('/':pat) -> searchE (Just pat) [] Forward
+          ('/':pat) -> doSearch (Just pat) [] Forward
 
         -- TODO: We give up on re-mapping till there exists a generic Yi mechanism to do so.
 

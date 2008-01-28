@@ -230,8 +230,8 @@ queryReplace m s sfn =
             when (isNothing res) (gotoPointE op)
             return res
 
-doSearch :: SearchExp -> Action
-doSearch srchexp = do
+joeDoSearch :: SearchExp -> Action
+joeDoSearch srchexp = do
     res <- sfn
     case res of
         Nothing -> errorE "Not found." >> metaM keymap
@@ -241,7 +241,7 @@ doSearch srchexp = do
     where
         sfn = do
             op <- getSelectionMarkPointB
-            res <- searchDoE srchexp (js_search_dir st)
+            res <- continueSearch srchexp (js_search_dir st)
             case res of
                 Just (Left _) -> gotoPointE op >> return Nothing
                 Just (Right p) -> return (Just p)
@@ -250,8 +250,8 @@ doSearch srchexp = do
 
 mksearch :: String -> String -> Maybe String -> JoeMode
 mksearch s flags repl st _ = return $ do
-    srchexp <- searchInitE searchrx (js_search_flags newst)
-    doSearch srchexp newst
+    srchexp <- searchInit searchrx (js_search_flags newst)
+    joeDoSearch srchexp newst
     where
         ignore   = if isect "iI" flags then [IgnoreCase] else []
         dir      = if isect "bB" flags then GoLeft else GoRight
@@ -275,7 +275,7 @@ querySearchRepE =
 nextSearchRepE =
     getRegexE >>= \e -> case e of
         Nothing -> metaM $ runProc $ querySearchRepE
-        Just se -> doSearch se
+        Just se -> joeDoSearch se
 -}
 
 unimplementedQ :: String -> Action

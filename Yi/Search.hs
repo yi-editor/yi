@@ -13,12 +13,12 @@ module Yi.Search (
         SearchExp,
         SearchF(..),
         searchAndRepLocal,  -- :: String -> String -> IO Bool
-        searchE,            -- :: (Maybe String) -> [SearchF]
+        doSearch,            -- :: (Maybe String) -> [SearchF]
                             -- -> Direction -> YiM ()
-        searchInitE,        -- :: String
+        searchInit,        -- :: String
                             -- -> [SearchF]
                             -- -> IO SearchExp
-        searchDoE,          -- :: SearchExp
+        continueSearch,          -- :: SearchExp
                             -- -> Direction
                             -- -> IO SearchResult
 
@@ -35,8 +35,8 @@ module Yi.Search (
         isearchFinishE,
 
         -- * Replace
-        qrNextE,
-        qrReplaceOneE
+        qrNext,
+        qrReplaceOne
 
                  ) where
 
@@ -99,21 +99,21 @@ type SearchMatch = (Int, Int)
 type SearchResult = Maybe (Either SearchMatch SearchMatch)
 type SearchExp = (String, Regex)
 
-searchE :: (Maybe String)       -- ^ @Nothing@ means used previous
+doSearch :: (Maybe String)       -- ^ @Nothing@ means used previous
                                 -- pattern, if any. Complain otherwise.
                                 -- Use getRegexE to check for previous patterns
         -> [SearchF]            -- ^ Flags to modify the compiled regex
         -> Direction            -- ^ @Backward@ or @Forward@
         -> YiM ()
 
-searchE s fs d =
+doSearch s fs d =
      case s of
-        Just re -> searchInitE re fs >>= (flip searchDoE) d >>= f
+        Just re -> searchInit re fs >>= (flip continueSearch) d >>= f
         Nothing -> do
             mre <- withEditor getRegexE
             case mre of
                 Nothing -> errorE "No previous search pattern" -- NB
-                Just r -> searchDoE r d >>= f
+                Just r -> continueSearch r d >>= f
     where
         f mp = case mp of
             Just (Right _) -> return ()
@@ -121,20 +121,20 @@ searchE s fs d =
             Nothing        -> errorE "Pattern not found"
 
 
-searchDoE :: SearchExp
+continueSearch :: SearchExp
           -> Direction
           -> YiM SearchResult
 
-searchDoE _ Backward = do
+continueSearch _ Backward = do
         errorE "Backward searching is unimplemented"
         return Nothing
-searchDoE (s, re) _ = searchF s re
+continueSearch (s, re) _ = searchF s re
 
 --
 -- Set up a search.
 --
-searchInitE :: String -> [SearchF] -> YiM SearchExp
-searchInitE re fs = do
+searchInit :: String -> [SearchF] -> YiM SearchExp
+searchInit re fs = do
     Right c_re <- lift $ compile (extended .|. igcase .|. newline) execBlank re
     let p = (re,c_re)
     withEditor $ setRegexE p
@@ -310,8 +310,8 @@ isearchCancelE = do
 -----------------
 -- Query-Replace
 
-qrNextE :: BufferRef -> String -> YiM ()
-qrNextE b what = do
+qrNext :: BufferRef -> String -> YiM ()
+qrNext b what = do
   mp <- withGivenBuffer b $ searchB Forward what
   case mp of
     Nothing -> do
@@ -323,9 +323,9 @@ qrNextE b what = do
                    setMarkPointB m (p+length what)
 
 
-qrReplaceOneE :: BufferRef -> String -> String -> YiM ()
-qrReplaceOneE b what replacement = do
+qrReplaceOne :: BufferRef -> String -> String -> YiM ()
+qrReplaceOne b what replacement = do
   withGivenBuffer b $ do
     deleteN (length what)
     insertN replacement
-  qrNextE b what
+  qrNext b what

@@ -174,8 +174,8 @@ search_km p = choice [srch_g, srch_y, srch_v, srch_t, srch_c, srch_r, performSea
     srch_r = event '\^R' >> write (msgE "unimplemented")
 
     performSearch = event '\n' >> write (case p of
-                                           [] -> searchE Nothing  [] GoRight
-                                           _  -> searchE (Just p) [] GoRight)
+                                           [] -> doSearch Nothing  [] GoRight
+                                           _  -> doSearch (Just p) [] GoRight)
 
     -- M-C
     -- M-R
