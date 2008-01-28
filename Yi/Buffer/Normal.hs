@@ -98,6 +98,17 @@ atBoundaryB :: TextUnit -> Direction -> BufferM Bool
 atBoundaryB Document d = atBoundary Document d
 atBoundaryB u d = (||) <$> atBoundary u d <*> atBoundaryB (enclosingUnit u) d
 
+
+
+-- | @genUnitBoundary u d s@ returns whether the point is at a given boundary @(d,s)@ .
+-- Boundary @(d,s)@ , taking Word as example, means:
+--      Word 
+--     ^^  ^^
+--     12  34
+-- 1: (Backward,Outside)
+-- 2: (Backward,Inside)
+-- 3: (Forward,Inside)
+-- 4: (Forward,Outside)
 genAtBoundaryB :: TextUnit -> Direction -> BoundarySide -> BufferM Bool
 genAtBoundaryB u d s = withOffset (off u d s) $ atBoundaryB u d
     where withOffset 0 f = f
@@ -106,6 +117,8 @@ genAtBoundaryB u d s = withOffset (off u d s) $ atBoundaryB u d
           off _    Backward OutsideBound = 1
           off _    Forward   InsideBound = 1
           off Line Forward  OutsideBound = -1
+          -- ugly... why do we need this?
+          -- this will have to be removed; so we can also remove 'execB Move'
           off _    Forward  OutsideBound = 0
 
 
@@ -151,15 +164,7 @@ data BoundarySide = InsideBound | OutsideBound
 
 -- | Generic move operation
 -- Warning: moving To the (OutsideBound, Backward) bound of Document  is impossible (offset -1!)
--- @genMoveB u b d@: move in direction d until encountering boundary b or unit u.
--- Explanation of @b = (d',s')@, taking Word as example. 
---       Word 
---      ^^  ^^
---      12  34
--- 1: (Backward,Outside)
--- 2: (Backward,Inside)
--- 3: (Forward,Inside)
--- 4: (Forward,Outside)
+-- @genMoveB u b d@: move in direction d until encountering boundary b or unit u. See 'genAtBoundaryB' for boundary explanation.
 genMoveB :: TextUnit -> (Direction, BoundarySide) -> Direction -> BufferM ()
 genMoveB Character _ Forward  = rightB
 genMoveB Character _ Backward = leftB
@@ -170,7 +175,8 @@ genMoveB VLine _ Backward = lineUp
 genMoveB unit (boundDir, boundSide) moveDir = 
   doUntilB_ (genAtBoundaryB unit boundDir boundSide) (execB Move Character moveDir)
     
--- | Generic maybe move operation
+-- | Generic maybe move operation.
+-- As genMoveB, but don't move if we are at boundary already.
 genMaybeMoveB :: TextUnit -> (Direction, BoundarySide) -> Direction -> BufferM ()
 genMaybeMoveB unit (boundDir, boundSide) moveDir =
   untilB_ (genAtBoundaryB unit boundDir boundSide) (execB Move Character moveDir)
