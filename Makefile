@@ -41,7 +41,7 @@ activity.png: _darcs/inventory
 haddock.view: haddock
 	firefox dist/doc/html/yi/index.html
 
-dist/yi-$(version).tar.gz:
+dist/yi-$(version).tar.gz::
 	make sdist # does not work atm 
 
 test_prefix := $(shell pwd)/hackage
@@ -53,9 +53,11 @@ test-dist: sdist
 	cd hackage &&\
 	tar zxvf yi-$(version).tar.gz &&\
 	cd yi-$(version) &&\
-	runghc Setup.hs configure --user --prefix=$(test_prefix) &&\
-	runghc Setup.hs build &&\
-	runghc Setup.hs install &&\
+	ghc --make -package Cabal-$(cabal-version) Setup.hs &&\
+	./Setup configure --user --prefix=$(test_prefix) &&\
+	./Setup build &&\
+	./Setup haddock &&\
+	./Setup install &&\
 	cd ..;\
 
 

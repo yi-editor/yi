@@ -11,10 +11,7 @@ report bugs at: http://code.google.com/p/yi-editor/issues/list
 
 DEPENDENCIES
 
-* ghc 6.8.2 or above
-
-* many packages shipped with GHC (filepath, ...)
-  see the cabal file for complete list.
+* ghc 6.8.2
 
 * Alex (the haskell lexer generator) 
 	http://www.haskell.org/alex/
@@ -44,10 +41,18 @@ DEPENDENCIES
         cd Bindings
         sudo bash make-bindings-macos.sh --prefix=/usr/local
 
+* many packages shipped with GHC or found on hackage.
+  see the cabal file for complete list.
+
 
 QUICK START:
 
-* configure, compile and install yi as you would do for any other Cabal package
+* configure, compile and install yi as you would do for any other Cabal package.
+  NOTE: you need to use Cabal version 1.2.3. To make sure you use it, use:
+
+    ghc -package Cabal-1.2.3.0 --make Setup.hs
+    ./Setup configure ...
+
   NOTE: if you get 
 
     Setup.hs: Package yi-0.3 can't be built on this system.
