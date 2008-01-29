@@ -8,7 +8,9 @@
 --  * the textual units they work on
 --  * the direction towards which they operate (if applicable)
 
-module Yi.Buffer.Normal (execB, TextUnit(..), Operation(..),
+module Yi.Buffer.Normal (TextUnit(..), 
+                         moveB, maybeMoveB,
+                         transformB, transposeB,
                          peekB, regionOfB, regionOfPartB, readUnitB,
                          untilB, doUntilB_, untilB_,
                          atBoundaryB,
@@ -34,11 +36,6 @@ data TextUnit = Character
               | GenUnit {genEnclosingUnit :: TextUnit,
                          genUnitBoundary :: Direction -> BufferM Bool}
    -- (haddock, stay away) | Page | Searched
-
-data Operation = Move       -- ^ move the next unit boundary
-               | MaybeMove  -- ^ as the above, unless the point is at a unit boundary
-               | Transpose
-               | Transform (String -> String)
 
 isWordChar :: Char -> Bool
 isWordChar = isAlpha
@@ -122,12 +119,12 @@ genAtBoundaryB u d s = withOffset (off u d s) $ atBoundaryB u d
 
 numberOfB :: TextUnit -> TextUnit -> BufferM Int
 numberOfB unit containingUnit = savingPointB $ do
-                   execB MaybeMove containingUnit Backward
+                   maybeMoveB containingUnit Backward
                    start <- pointB
-                   execB Move containingUnit Forward
+                   moveB containingUnit Forward
                    end <- pointB
                    moveTo start
-                   length <$> untilB ((>= end) <$> pointB) (execB Move unit Forward)
+                   length <$> untilB ((>= end) <$> pointB) (moveB unit Forward)
 
 -- | Repeat an action until the condition is fulfilled or the cursor stops moving.
 -- The Action may be performed zero times.
@@ -167,50 +164,49 @@ genMoveB Character _ Forward  = rightB
 genMoveB Character _ Backward = leftB
 genMoveB VLine     _ Forward  = 
   do ofs <- lineMoveRel 1
-     when (ofs < 1) (execB MaybeMove Line Forward)
+     when (ofs < 1) (maybeMoveB Line Forward)
 genMoveB VLine _ Backward = lineUp
 genMoveB unit (boundDir, boundSide) moveDir = 
-  doUntilB_ (genAtBoundaryB unit boundDir boundSide) (execB Move Character moveDir)
+  doUntilB_ (genAtBoundaryB unit boundDir boundSide) (moveB Character moveDir)
     
 -- | Generic maybe move operation.
 -- As genMoveB, but don't move if we are at boundary already.
 genMaybeMoveB :: TextUnit -> (Direction, BoundarySide) -> Direction -> BufferM ()
 genMaybeMoveB unit (boundDir, boundSide) moveDir =
-  untilB_ (genAtBoundaryB unit boundDir boundSide) (execB Move Character moveDir)
+  untilB_ (genAtBoundaryB unit boundDir boundSide) (moveB Character moveDir)
 
--- | Execute the specified triple (operation, unit, direction)
-execB :: Operation -> TextUnit -> Direction -> BufferM ()
--- todo: define move in terms of genMoveB
-execB Move Character Forward  = rightB
-execB Move Character Backward = leftB
-execB Move VLine Forward      = 
-  do ofs <- lineMoveRel 1
-     when (ofs < 1) (execB MaybeMove Line Forward)
-            
-execB Move VLine Backward = lineUp
-execB Move unit direction = do
-  doUntilB_ (atBoundary unit direction) (execB Move Character direction)
 
--- So for example here moveToEol = execB MaybeMove Line Forward;
+-- | Move to the next unit boundary
+moveB :: TextUnit -> Direction -> BufferM ()
+moveB u d = genMoveB u (d, case d of Forward -> OutsideBound; Backward -> InsideBound) d
+
+
+ -- | As 'moveB', unless the point is at a unit boundary
+
+-- So for example here moveToEol = maybeMoveB Line Forward;
 -- in that it will move to the end of current line and nowhere if we
 -- are already at the end of the current line. Similarly for moveToSol.
-execB MaybeMove unit direction = do
-  untilB_ (atBoundary unit direction) (execB Move Character direction)
-execB Transpose unit direction = do
-  execB Move unit (opposite direction)
+
+maybeMoveB :: TextUnit -> Direction -> BufferM ()
+maybeMoveB u d = genMaybeMoveB u (d, case d of Forward -> OutsideBound; Backward -> InsideBound) d
+
+transposeB :: TextUnit -> Direction -> BufferM ()
+transposeB unit direction = do
+  moveB unit (opposite direction)
   w0 <- pointB
-  execB Move unit direction
+  moveB unit direction
   w0' <- pointB
-  execB Move unit direction
+  moveB unit direction
   w1' <- pointB
-  execB Move unit (opposite direction)
+  moveB unit (opposite direction)
   w1 <- pointB
   swapRegionsB (mkRegion w0 w0') (mkRegion w1 w1')
   moveTo w1'
 
-execB (Transform f) unit direction = do
+transformB :: (String -> String) -> TextUnit -> Direction -> BufferM ()
+transformB f unit direction = do
   p <- pointB
-  execB Move unit direction
+  moveB unit direction
   q <- pointB
   let r = mkRegion p q
   replaceRegionB r =<< f <$> readRegionB r
@@ -226,15 +222,15 @@ indexAfterB f = savingPointB (f >> pointB)
 -- | Region of the whole textunit where the current point is
 regionOfB :: TextUnit -> BufferM Region
 regionOfB unit = mkRegion
-                 <$> indexAfterB (execB MaybeMove unit Backward)
-                 <*> indexAfterB (execB MaybeMove unit Forward)
+                 <$> indexAfterB (maybeMoveB unit Backward)
+                 <*> indexAfterB (maybeMoveB unit Forward)
 
 -- | Region between the point and the next boundary.
 -- The region is empty if the point is at the boundary.
 regionOfPartB :: TextUnit -> Direction -> BufferM Region
 regionOfPartB unit dir = savingPointB $ do
          b <- pointB
-         execB MaybeMove unit dir
+         maybeMoveB unit dir
          e <- pointB
          return $ mkRegion b e
 
@@ -243,7 +239,7 @@ regionOfPartB unit dir = savingPointB $ do
 regionOfPartNonEmptyB :: TextUnit -> Direction -> BufferM Region
 regionOfPartNonEmptyB unit dir = savingPointB $ do
          b <- pointB
-         execB Move unit dir
+         moveB unit dir
          e <- pointB
          return $ mkRegion b e
 

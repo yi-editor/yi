@@ -19,11 +19,11 @@ import Yi.Dynamic
 
 -- | Move point to start of line
 moveToSol :: BufferM ()
-moveToSol = execB MaybeMove Line Backward
+moveToSol = maybeMoveB Line Backward
 
 -- | Move point to end of line
 moveToEol :: BufferM ()
-moveToEol = execB MaybeMove Line Forward
+moveToEol = maybeMoveB Line Forward
 
 -- | Move cursor to origin
 topB :: BufferM ()
@@ -43,11 +43,11 @@ moveXorEol x = replicateM_ x $ do c <- atEol; when (not c) rightB
 
 -- | Move to first char of next word forwards
 nextWordB :: BufferM ()
-nextWordB = execB Move Word Forward
+nextWordB = moveB Word Forward
 
 -- | Move to first char of next word backwards
 prevWordB :: BufferM ()
-prevWordB = execB Move Word Backward
+prevWordB = moveB Word Backward
 
 -- * Char-based movement actions.
 
@@ -80,11 +80,11 @@ firstNonSpaceB = do moveToSol
 
 -- | Move down next @n@ paragraphs
 nextNParagraphs :: Int -> BufferM ()
-nextNParagraphs n = replicateM_ n $ execB Move Paragraph Forward
+nextNParagraphs n = replicateM_ n $ moveB Paragraph Forward
 
 -- | Move up prev @n@ paragraphs
 prevNParagraphs :: Int -> BufferM ()
-prevNParagraphs n = replicateM_ n $ execB Move Paragraph Backward
+prevNParagraphs n = replicateM_ n $ moveB Paragraph Backward
 
 
 -----------------------------------------------------------------------
@@ -144,15 +144,15 @@ bkillWordB = deleteB Word Backward
 
 -- | capitalise the word under the cursor
 uppercaseWordB :: BufferM ()
-uppercaseWordB = execB (Transform (map toUpper)) Word Forward
+uppercaseWordB = transformB (map toUpper) Word Forward
 
 -- | lowerise word under the cursor
 lowercaseWordB :: BufferM ()
-lowercaseWordB = execB (Transform (map toLower)) Word Forward
+lowercaseWordB = transformB (map toLower) Word Forward
 
 -- | capitalise the first letter of this word
 capitaliseWordB :: BufferM ()
-capitaliseWordB = execB (Transform capitalizeFirst) Word Forward
+capitaliseWordB = transformB capitalizeFirst Word Forward
 
 
 -- | Delete to the end of line, excluding it.
@@ -163,7 +163,7 @@ deleteToEol = deleteRegionB =<< regionOfPartB Line Forward
 swapB :: BufferM ()
 swapB = do eol <- atEol
            when eol leftB
-           execB Transpose Character Forward
+           transposeB Character Forward
 
 -- ----------------------------------------------------
 -- | Marks
