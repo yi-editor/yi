@@ -311,6 +311,15 @@ multiCmdFM =
     ,("\^Wo", const $ withEditor closeOtherE)
     ,("\^Ws", const $ withEditor splitE)
     ,("\^Ww", const $ withEditor nextWinE)
+    ,("\^WW", const $ withEditor prevWinE)
+    ,("\^Wp", const $ withEditor prevWinE)
+
+    -- since we don't have vertical splitting,
+    -- these moving can be done using next/prev.
+    ,(['\^W',keyDown], const $ withEditor nextWinE)
+    ,(['\^W',keyUp], const $ withEditor prevWinE)
+    ,(['\^W',keyRight], const $ withEditor nextWinE)
+    ,(['\^W',keyLeft], const $ withEditor prevWinE)
     ]
 
 -- | So-called 'operators', which take movement actions as arguments.
