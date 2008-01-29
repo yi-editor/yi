@@ -68,7 +68,7 @@ type YiM = ReaderT Yi IO
 -----------------------
 -- Keymap basics
 
-write :: (I.MonadInteract m Action ev, YiAction a ()) => a -> m ()
+write :: (I.MonadInteract m Action ev, YiAction a x, Show x) => a -> m ()
 write x = I.write (makeAction x)
 
 
