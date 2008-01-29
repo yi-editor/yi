@@ -16,6 +16,7 @@ cabal-Version:  == 1.2.3.0
 tested-with:    GHC==6.8.2
 build-type:     Custom
 data-files:
+  examples/YiConfig.hs
   art/yi+lambda-fat.pdf
   -- FIXME: Install Cocoa icon only when Cocoa configured
 
