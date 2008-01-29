@@ -116,9 +116,6 @@ genAtBoundaryB u d s = withOffset (off u d s) $ atBoundaryB u d
           off _    Backward  InsideBound = 0
           off _    Backward OutsideBound = 1
           off _    Forward   InsideBound = 1
-          off Line Forward  OutsideBound = -1
-          -- ugly... why do we need this?
-          -- this will have to be removed; so we can also remove 'execB Move'
           off _    Forward  OutsideBound = 0
 
 

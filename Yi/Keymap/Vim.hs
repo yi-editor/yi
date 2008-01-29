@@ -105,7 +105,7 @@ core_vis_mode :: RegionStyle -> VimMode
 core_vis_mode regionStyle = do
   write $ withEditor $ do setA regionStyleA regionStyle
                           withBuffer0 $ setDynamicB $ SelectionStyle $
-                            case regionStyle of { LineWise -> Line; CharWise -> Character }
+                            case regionStyle of { LineWise -> fullLine; CharWise -> Character }
                           printMsg $ msg regionStyle
   many (eval cmd_move)
   (vis_single regionStyle <|| vis_multi)
@@ -135,8 +135,14 @@ instance Initializable RegionStyle where
   initial = CharWise
 
 regionStyleToUnit :: RegionStyle -> TextUnit
-regionStyleToUnit LineWise = Line
+regionStyleToUnit LineWise = fullLine
 regionStyleToUnit CharWise = Character
+
+fullLine :: TextUnit
+fullLine = GenUnit {genEnclosingUnit=Document, genUnitBoundary=bound}
+  where bound d = withOffset d $ atBoundaryB Line d
+        withOffset Backward f = f
+        withOffset Forward  f = savingPointB (leftB >> f)
 
 regionStyleA :: Accessor Editor RegionStyle
 regionStyleA = dynamicValueA .> dynamicA
