@@ -1,6 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
 -- Copyright (C) 2004, 2008 Don Stewart - http://www.cse.unsw.edu.au/~dons
---
 
 -- | The 'Buffer' module defines monadic editing operations over one-dimensional
 -- buffers, which maintain a current /point/.
@@ -8,7 +8,7 @@
 module Yi.Buffer
   ( BufferRef
   , FBuffer       ( .. )
-  , BufferM
+  , BufferM       ( .. )
   , runBuffer
   , runBufferDummyWindow
   , keyB
@@ -487,5 +487,3 @@ savingPointB f = savingPrefCol $ do
 
 askWindow :: (Window -> a) -> BufferM a
 askWindow = asks
-
-
