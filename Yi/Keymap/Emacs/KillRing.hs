@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 
--- Copyright (c) 2005,8,8,8 Jean-Philippe Bernardy
+-- Copyright (c) 2005,8 Jean-Philippe Bernardy
 
 module Yi.Keymap.Emacs.KillRing where
 
