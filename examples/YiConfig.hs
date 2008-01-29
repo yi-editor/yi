@@ -14,6 +14,6 @@ import Yi.Buffer
 yiMain :: YiM ()
 yiMain = do
   -- I prefer to use Emacs keymap
-  changeKeymapE keymap
-  msgE "User configuration successful."
+  changeKeymap keymap
+  msgEditor "User configuration successful."
 
