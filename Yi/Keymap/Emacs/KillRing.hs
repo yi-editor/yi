@@ -4,55 +4,19 @@
 
 module Yi.Keymap.Emacs.KillRing where
 
-import Yi.Core
 import Yi.Keymap.Emacs.UnivArgument
 import Yi.Buffer.Region
 import Yi.Keymap
 import Yi.Buffer
 import Yi.Buffer.HighLevel
-import Data.Dynamic
 import Yi.Accessor
 import Yi.Editor
 import Control.Monad ( when, replicateM_ )
+import Yi.KillRing
 
--- * Killring structure
-
-data Killring = Killring { krKilled :: Bool
-                         , krAccumulate :: Bool
-                         , krContents :: [String]
-                         , krLastYank :: Bool
-                         }
-    deriving (Typeable, Show)
-
-instance Initializable Killring where
-    initial = Killring { krKilled = False
-                       , krAccumulate = False
-                       , krContents = [[]]
-                       , krLastYank = False
-                       }
-
--- * Killring "ADT"
-
-killringA :: Accessor Editor Killring
-killringA = dynamicValueA .> dynamicA
-
-maxDepth :: Int
-maxDepth = 10
-
--- | Finish an atomic command, for the purpose of killring accumulation.
-krEndCmd :: Killring -> Killring
-krEndCmd kr@Killring {krKilled = killed} = kr {krKilled = False, krAccumulate = killed }
-
--- | Put some text in the killring.
--- It's accumulated if the last command was a kill too
-krPut :: String -> Killring -> Killring
-krPut s kr@Killring {krContents = r@(x:xs), krAccumulate=acc}
-    = kr {krKilled = True,
-          krContents = if acc then (x++s):xs
-                              else s:take maxDepth r }
-krPut _ _ = error "killring invariant violated"
 
 -- * Killring actions
+
 
 --- | C-w
 killRegionE :: YiM ()

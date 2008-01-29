@@ -14,7 +14,6 @@ module Yi.Keymap.Emacs.Utils
   , changeBufferNameE
   , rebind
   , withMinibuffer
-  , atomic
   , queryReplaceE
   , isearchKeymap
   , shellCommandE
@@ -76,8 +75,6 @@ import System.Directory
 {- External Library Module Imports -}
 {- Local (yi) module imports -}
 import Yi.Yi
-import Yi.Accessor
-import Yi.Keymap.Emacs.KillRing
 import Yi.Keymap.Emacs.UnivArgument
 import Yi.Keymap.Emacs.Keys
 import Yi.Buffer
@@ -162,12 +159,6 @@ executeExtendedCommandE = do
 evalRegionE :: YiM ()
 evalRegionE = do
   withBuffer (getSelectRegionB >>= readRegionB) >>= evalE
-
--- | Define an atomic interactive command.
--- Purose is to define "transactional" boundaries for killring, undo, etc.
-atomic :: (Show x, YiAction a x) => a -> KeymapM ()
-atomic cmd = write $ do runAction (makeAction cmd)
-                        withEditor $ modifyA killringA krEndCmd
 
 -- * Code for various commands
 -- This ideally should be put in their own module,

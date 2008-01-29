@@ -60,6 +60,7 @@ import Yi.Editor
 #endif
 import Yi.Event (eventToChar, Event)
 import Yi.Keymap
+import Yi.KillRing (krEndCmd)
 import qualified Yi.Interact as I
 import Yi.Monad
 import Yi.Accessor
@@ -104,6 +105,7 @@ interactive action = do
   withEditor $ do prepAction
                   modifyAllA buffersA undosA (addUR InteractivePoint)
   runAction action
+  withEditor $ modifyA killringA krEndCmd
   refreshEditor
   logPutStrLn "<<<"
   return ()

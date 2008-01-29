@@ -42,6 +42,7 @@ import Yi.Debug
 import Yi.Monad
 import Yi.Accessor
 import Yi.Dynamic
+import Yi.KillRing
 import Yi.Window
 import Yi.WindowSet (WindowSet)
 import qualified Yi.WindowSet as WS
@@ -74,6 +75,7 @@ data Editor = Editor {
        -- consider make the below fields part of dynamic component
        ,statusLine    :: !String
        ,yreg          :: !String                    -- ^ yank register
+       ,killring      :: !Killring
        ,regex         :: !(Maybe (String,Regex))    -- ^ most recent regex
     }
 
@@ -89,6 +91,10 @@ dynamicA = Accessor dynamic (\f e -> e {dynamic = f (dynamic e)})
 
 windowsA :: Accessor Editor (WindowSet Window)
 windowsA = Accessor windows (\f e -> e {windows = f (windows e)})
+
+killringA :: Accessor Editor Killring
+killringA = Accessor killring (\f e -> e {killring = f (killring e)})
+
 
 dynA :: Initializable a => Accessor Editor a
 dynA = dynamicValueA .> dynamicA
@@ -107,7 +113,8 @@ emptyEditor = Editor {
        ,uistyle      = Yi.Style.uiStyle
        ,dynamic      = M.empty
        ,statusLine   = ""
-    }
+       ,killring     = krEmpty
+       }
         where buf = newB 0 "*console*" ""
 
 -- ---------------------------------------------------------------------
