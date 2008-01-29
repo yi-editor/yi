@@ -60,12 +60,12 @@ quickCmdKeymap = I.choice $ concat $ zipWith (zipWith mkCmd) commands rightHand
 quitKeymap :: Process ()
 quitKeymap = do
   keyEv 'q'
-  write quitE
+  write quitEditor
 
 unrecognized :: Process ()
 unrecognized = do
   e <- anyEvent
-  write (msgE $ "unrecognized: " ++ show e)
+  write (msgEditor $ "unrecognized: " ++ show e)
 
 commandsKeymap :: Process ()
 commandsKeymap = quitKeymap <|| (I.choice $ insertKeymap : (concat $ (cmds ++ unts))) <|| unrecognized

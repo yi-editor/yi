@@ -112,7 +112,7 @@ shellCommandE = do
       (cmdOut,cmdErr,exitCode) <- lift $ runShellCommand cmd
       case exitCode of
         ExitSuccess -> withEditor $ newBufferE "*Shell Command Output*" cmdOut >> return ()
-        ExitFailure _ -> msgE cmdErr
+        ExitFailure _ -> msgEditor cmdErr
 
 -----------------------------
 -- isearch
@@ -157,7 +157,7 @@ queryReplaceE = do
 
 executeExtendedCommandE :: YiM ()
 executeExtendedCommandE = do
-  withMinibuffer "M-x" completeFunctionName execE
+  withMinibuffer "M-x" completeFunctionName execEditorAction
 
 evalRegionE :: YiM ()
 evalRegionE = do
@@ -196,11 +196,11 @@ readArgC :: KeymapM ()
 readArgC = do readArg' Nothing
               write $ do UniversalArg u <- withEditor getDynamic
                          logPutStrLn (show u)
-                         msgE ""
+                         msgEditor ""
 
 readArg' :: Maybe Int -> KeymapM ()
 readArg' acc = do
-    write $ msgE $ "Argument: " ++ show acc
+    write $ msgEditor $ "Argument: " ++ show acc
     c <- satisfy (const True) -- FIXME: the C-u will read one character that should be part of the next command!
     case c of
       Event (KASCII d) [] | isDigit d -> readArg' $ Just $ 10 * (fromMaybe 0 acc) + (ord d - ord '0')
@@ -212,7 +212,7 @@ findFile = do maybePath <- withBuffer getfileB
               startPath <- liftIO $ getFolder maybePath
               withMinibuffer "find file:" (completeFileName (Just startPath)) $ \filename -> do {
                let filename' = fixFilePath startPath filename
-             ; msgE $ "loading " ++ filename'
+             ; msgEditor $ "loading " ++ filename'
              ; fnewE filename'
                                                                                                   }
 
@@ -254,7 +254,7 @@ gotoLineE =
   gotoAction :: String -> YiM ()
   gotoAction s =
     case parseLineAndChar s of
-      Nothing     -> msgE "line and column number parse error"
+      Nothing     -> msgEditor "line and column number parse error"
       -- considering putting "gotoLineAndCol :: Int -> Int -> BufferM ()
       -- into Buffer.hs
       Just (l, c) -> withBuffer $ do gotoLn l
@@ -306,7 +306,7 @@ completeFileName start s0 = do
 
 completeFunctionName :: String -> YiM String
 completeFunctionName s = do
-  names <- getNamesInScopeE
+  names <- getAllNamesInScope
   withEditor $ completeInList s (isPrefixOf s) names
 
 scrollDownE :: YiM ()

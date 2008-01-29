@@ -122,7 +122,7 @@ moveCmdFM =
     ,('j',          down)
     ,(keyDown,      down)
     ,('\^J',        down)
-    ,('\^L',        const refreshE)
+    ,('\^L',        const refreshEditor)
     ,('\^N',        down)
     ,('\r',         down)
 
@@ -183,7 +183,7 @@ cmd_eval = do
                                     readB >>= \k ->
                                         when (isSpace k) deleteN 1
                               firstNonSpaceE)) +++
-    (events "ZZ" >> write (viWrite >> quitE))
+    (events "ZZ" >> write (viWrite >> quitEditor))
 
    where anyButEscOrDel = oneOf $ any' \\ ('\ESC':delete')
 
@@ -196,7 +196,7 @@ cmdCmdFM =
     ,('\^F',    downScreensB)
     ,('\^G',    const viFileInfo)
     ,('\^W',    const nextWinE)
-    ,('\^Z',    const suspendE)
+    ,('\^Z',    const suspendEditor)
     ,('D',      killLineE)
     ,('J',      const (moveToEol >> deleteN 1))    -- the "\n"
     ,('n',      const (doSearch Nothing [] GoRight))
@@ -301,9 +301,9 @@ cmd2other = do c <- modeSwitchChar
 
                  '/' -> ex_mode "/"
 
-                 '\ESC'-> write msgClrE
+                 '\ESC'-> write msgClr
 
-                 s   -> write $ errorE ("The "++show s++" command is unknown.")
+                 s   -> write $ errorEditor ("The "++show s++" command is unknown.")
 
 
     where modeSwitchChar = oneOf ":RiIaAoOcCS/?\ESC"
@@ -353,7 +353,7 @@ spawn_ex_buffer prompt = do
   initialBuffer <- getBuffer
   Just initialWindow <- getWindow
   -- The above ensures that the action is performed on the buffer that originated the minibuffer.
-  let closeMinibuffer = do b <- getBuffer; closeE; deleteBuffer b
+  let closeMinibuffer = do b <- getBuffer; closeWindow; deleteBuffer b
       anyButDelNlArrow = oneOf $ any' \\ (enter' ++ delete' ++ ['\ESC',keyUp,keyDown])
       ex_buffer_finish = do
         historyFinish
@@ -406,23 +406,23 @@ ex_eval cmd = do
           [] -> (return ())
 
     where
-      fn ""           = msgClrE
+      fn ""           = msgClr
 
       fn s@(c:_) | isDigit c = do
         e <- lift $ try $ evaluate $ read s
-        case e of Left _ -> errorE $ "The " ++show s++ " command is unknown."
+        case e of Left _ -> errorEditor $ "The " ++show s++ " command is unknown."
                   Right lineNum -> gotoLn lineNum
 
       fn "w"          = viWrite
       fn ('w':' ':f)  = viWriteTo f
       fn "q"          = do
             b <- isUnchangedB
-            if b then closeE
-                 else errorE $ "File modified since last complete write; "++
+            if b then closeWindow
+                 else errorEditor $ "File modified since last complete write; "++
                                "write or use ! to override."
-      fn "q!"         = closeE
+      fn "q!"         = closeWindow
       fn "$"          = botE
-      fn "wq"         = viWrite >> closeE
+      fn "wq"         = viWrite >> closeWindow
       fn "n"          = nextBufW
       fn "p"          = prevBufW
       fn ('s':'p':_)  = splitE
@@ -430,15 +430,15 @@ ex_eval cmd = do
       fn ('s':'/':cs) = viSub cs
 
       fn "reboot"     = rebootE     -- !
-      fn "reload"     = reloadE >> return ()     -- !
+      fn "reload"     = reloadEditor >> return ()     -- !
 
-      fn s            = errorE $ "The "++show s++ " command is unknown."
+      fn s            = errorEditor $ "The "++show s++ " command is unknown."
 
 
 ------------------------------------------------------------------------
 
 not_implemented :: Char -> Action
-not_implemented c = errorE $ "Not implemented: " ++ show c
+not_implemented c = errorEditor $ "Not implemented: " ++ show c
 
 -- ---------------------------------------------------------------------
 -- Misc functions
@@ -446,7 +446,7 @@ not_implemented c = errorE $ "Not implemented: " ++ show c
 viFileInfo :: Action
 viFileInfo =
     do bufInfo <- bufInfoB
-       msgE $ showBufInfo bufInfo
+       msgEditor $ showBufInfo bufInfo
     where
     showBufInfo :: BufferFileInfo -> String
     showBufInfo bufInfo = concat [ show $ bufInfoFileName bufInfo
@@ -464,12 +464,12 @@ viWrite :: Action
 viWrite = do
     mf <- fileNameE
     case mf of
-        Nothing -> errorE "no file name associate with buffer"
+        Nothing -> errorEditor "no file name associate with buffer"
         Just f  -> do
             bufInfo <- bufInfoB
             let s   = bufInfoFileName bufInfo
-            let msg = msgE $ show f ++" "++show s ++ "C written"
-            catchJustE ioErrors (fwriteToE f >> msg) (msgE . show)
+            let msg = msgEditor $ show f ++" "++show s ++ "C written"
+            catchJustE ioErrors (fwriteToE f >> msg) (msgEditor . show)
 
 -- | Try to write to a named file in the manner of vi\/vim
 viWriteTo :: String -> Action
@@ -477,8 +477,8 @@ viWriteTo f = do
     let f' = (takeWhile (/= ' ') . dropWhile (== ' ')) f
     bufInfo <- bufInfoB
     let s   = bufInfoFileName bufInfo
-    let msg = msgE $ show f'++" "++show s ++ "C written"
-    catchJustE ioErrors (fwriteToE f' >> msg) (msgE . show)
+    let msg = msgEditor $ show f'++" "++show s ++ "C written"
+    catchJustE ioErrors (fwriteToE f' >> msg) (msgEditor . show)
 
 
 -- | Try to do a substitution
@@ -497,7 +497,7 @@ viSub cs = do
 
     where do_single p r = do
                 s <- searchAndRepLocal p r
-                if not s then errorE ("Pattern not found: "++p) else msgClrE
+                if not s then errorEditor ("Pattern not found: "++p) else msgClr
 
 {-
           -- inefficient. we recompile the regex each time.
@@ -506,7 +506,7 @@ viSub cs = do
                 let loop i = do s <- searchAndRepLocal p r
                                 if s then loop (i+1) else return i
                 s <- loop (0 :: Int)
-                if s == 0 then msgE ("Pattern not found: "++p) else msgClrE
+                if s == 0 then msgEditor ("Pattern not found: "++p) else msgClr
 -}
 
 -- ---------------------------------------------------------------------

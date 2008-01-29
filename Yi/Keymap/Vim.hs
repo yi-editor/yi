@@ -84,22 +84,22 @@ eval p = do (_, a) <- p; write a
 
 -- | Leave a mode. This always has priority over catch-all actions inside the mode.
 leave :: VimMode
-leave = event '\ESC' >> adjustPriority (-1) (write msgClrE)
+leave = event '\ESC' >> adjustPriority (-1) (write msgClr)
 
 -- | Insert mode is either insertion actions, or the meta (\ESC) action
 ins_mode :: VimMode
-ins_mode = write (msgE "-- INSERT --") >> many (ins_char <|> kwd_mode) >> leave
+ins_mode = write (msgEditor "-- INSERT --") >> many (ins_char <|> kwd_mode) >> leave
 
 -- | Replace mode is like insert, except it performs writes, not inserts
 rep_mode :: VimMode
-rep_mode = write (msgE "-- REPLACE --") >> many rep_char >> leave
+rep_mode = write (msgEditor "-- REPLACE --") >> many rep_char >> leave
 
 -- | Visual mode, similar to command mode
 vis_mode :: RegionStyle -> VimMode
 vis_mode regionStyle = do
   write (withBuffer (pointB >>= setSelectionMarkPointB))
   core_vis_mode regionStyle
-  write (msgClrE >> withBuffer unsetMarkB >> withBuffer (setDynamicB $ SelectionStyle Character))
+  write (msgClr >> withBuffer unsetMarkB >> withBuffer (setDynamicB $ SelectionStyle Character))
 
 core_vis_mode :: RegionStyle -> VimMode
 core_vis_mode regionStyle = do
@@ -245,7 +245,7 @@ cmd_eval = do
     (do event 'r'; c <- anyButEscOrDel; write (writeB c)) <|>
     (events ">>" >> write (shiftIndentOfLine i)) <|>
     (events "<<" >> write (shiftIndentOfLine (-i))) <|>
-    (events "ZZ" >> write (viWrite >> quitE))
+    (events "ZZ" >> write (viWrite >> quitEditor))
 
 -- TODO: escape the current word
 --       at word bounds: search for \<word\>
@@ -268,9 +268,9 @@ singleCmdFM =
     [('\^B',    withBuffer . upScreensB)             -- vim does (firstNonSpaceB;moveXorSol)
     ,('\^F',    withBuffer . downScreensB)
     ,('\^G',    const viFileInfo)        -- hmm. not working. duh. we clear
-    ,('\^L',    const refreshE)
+    ,('\^L',    const refreshEditor)
     ,('\^R',    withBuffer . flip replicateM_ redoB)
-    ,('\^Z',    const suspendE)
+    ,('\^Z',    const suspendEditor)
     ,('D',      const (withEditor $ withBuffer0 readRestOfLnB >>= setRegE >> withBuffer0 deleteToEol))
     ,('J',      const (withBuffer (moveToEol >> deleteN 1)))    -- the "\n"
     ,('U',      withBuffer . flip replicateM_ undoB)    -- NB not correct
@@ -435,7 +435,7 @@ vis_multi :: VimMode
 vis_multi = do
    cnt <- count
    let i = maybe 1 id cnt
-   choice ([events "ZZ" >> write (viWrite >> quitE),
+   choice ([events "ZZ" >> write (viWrite >> quitEditor),
             events ">>" >> write (shiftIndentOfSelection i),
             events "<<" >> write (shiftIndentOfSelection (-i)),
             do event 'r'; x <- anyEvent; write $ do
@@ -603,24 +603,24 @@ ex_eval cmd = do
     where
       whenUnchanged mu f = do u <- mu
                               if u then f
-                                   else errorE "No write since last change (add ! to override)"
-      quitB = whenUnchanged (withBuffer isUnchangedB) closeE
+                                   else errorEditor "No write since last change (add ! to override)"
+      quitB = whenUnchanged (withBuffer isUnchangedB) closeWindow
 
       quitNoW = do bufs <- withEditor $ do closeBufferE ""
                                            bufs <- gets bufferStack
                                            mapM (\x -> withGivenBuffer0 x isUnchangedB) bufs
-                   whenUnchanged (return $ all id bufs) quitE
+                   whenUnchanged (return $ all id bufs) quitEditor
 
       quitall  = withAllBuffers quitB
-      wquitall = withAllBuffers viWrite >> quitE
+      wquitall = withAllBuffers viWrite >> quitEditor
       bdelete  = whenUnchanged (withBuffer isUnchangedB) . withEditor . closeBufferE
       bdeleteNoW = withEditor . closeBufferE
 
-      fn ""           = msgClrE
+      fn ""           = msgClr
 
       fn s@(c:_) | isDigit c = do
         e <- lift $ try $ evaluate $ read s
-        case e of Left _ -> errorE $ "The " ++show s++ " command is unknown."
+        case e of Left _ -> errorEditor $ "The " ++show s++ " command is unknown."
                   Right lineNum -> withBuffer (gotoLn lineNum) >> return ()
 
       fn "w"          = viWrite
@@ -639,17 +639,17 @@ ex_eval cmd = do
       fn "qu!"        = quitNoW
       fn "qui!"       = quitNoW
       fn "quit!"      = quitNoW
-      fn "qa!"        = quitE
-      fn "quita!"     = quitE
-      fn "quital!"    = quitE
-      fn "quitall!"   = quitE
-      fn "wq"         = viWrite >> closeE
+      fn "qa!"        = quitEditor
+      fn "quita!"     = quitEditor
+      fn "quital!"    = quitEditor
+      fn "quitall!"   = quitEditor
+      fn "wq"         = viWrite >> closeWindow
       fn "wqa"        = wquitall
       fn "wqal"       = wquitall
       fn "wqall"      = wquitall
       fn "x"          = do unchanged <- withBuffer isUnchangedB
                            unless unchanged viWrite
-                           closeE
+                           closeWindow
       fn "n"          = withEditor nextBufW
       fn "next"       = withEditor nextBufW
       fn "$"          = withBuffer botB
@@ -677,38 +677,38 @@ ex_eval cmd = do
       -- send just this line through external command /fn/
       fn ('.':'!':f) = do
             ln  <- withBuffer readLnB
-            ln' <- pipeE f ln
+            ln' <- runProcessWithInput f ln
             withBuffer $ do moveToSol
                             deleteToEol
                             insertN ln'
                             moveToSol
 
 --    Needs to occur in another buffer
---    fn ('!':f) = pipeE f []
+--    fn ('!':f) = runProcessWithInput f []
 
-      fn "reload"     = reloadE >> return ()    -- not in vim
+      fn "reload"     = reloadEditor >> return ()    -- not in vim
       fn "eval"       = withBuffer (regionOfB Document >>= readRegionB) >>= evalE -- not in vim
 
-      fn "redr"       = refreshE
-      fn "redraw"     = refreshE
+      fn "redr"       = refreshEditor
+      fn "redraw"     = refreshEditor
 
       fn "u"          = withBuffer undoB
       fn "undo"       = withBuffer undoB
       fn "r"          = withBuffer redoB
       fn "redo"       = withBuffer redoB
 
-      fn "sus"        = suspendE
-      fn "suspend"    = suspendE
-      fn "st"         = suspendE
-      fn "stop"       = suspendE
+      fn "sus"        = suspendEditor
+      fn "suspend"    = suspendEditor
+      fn "st"         = suspendEditor
+      fn "stop"       = suspendEditor
 
-      fn s            = errorE $ "The "++show s++ " command is unknown."
+      fn s            = errorEditor $ "The "++show s++ " command is unknown."
 
 
 ------------------------------------------------------------------------
 
 not_implemented :: Char -> YiM ()
-not_implemented c = errorE $ "Not implemented: " ++ show c
+not_implemented c = errorEditor $ "Not implemented: " ++ show c
 
 -- ---------------------------------------------------------------------
 -- Misc functions
@@ -719,7 +719,7 @@ withAllBuffers m = mapM_ (\b -> withEditor (setBuffer b) >> m) =<< readEditor bu
 viFileInfo :: YiM ()
 viFileInfo =
     do bufInfo <- withBuffer bufInfoB
-       msgE $ showBufInfo bufInfo
+       msgEditor $ showBufInfo bufInfo
     where
     showBufInfo :: BufferFileInfo -> String
     showBufInfo bufInfo = concat [ show $ bufInfoFileName bufInfo
@@ -737,12 +737,12 @@ viWrite :: YiM ()
 viWrite = do
     mf <- withBuffer getfileB
     case mf of
-        Nothing -> errorE "no file name associate with buffer"
+        Nothing -> errorEditor "no file name associate with buffer"
         Just f  -> do
             bufInfo <- withBuffer bufInfoB
             let s   = bufInfoFileName bufInfo
-            let msg = msgE $ show f ++" "++show s ++ "C written"
-            catchJustE ioErrors (fwriteToE f >> msg) (msgE . show)
+            let msg = msgEditor $ show f ++" "++show s ++ "C written"
+            catchJustE ioErrors (fwriteToE f >> msg) (msgEditor . show)
 
 
 -- | Try to write to a named file in the manner of vi\/vim
@@ -751,8 +751,8 @@ viWriteTo f = do
     let f' = (takeWhile (/= ' ') . dropWhile (== ' ')) f
     bufInfo <- withBuffer bufInfoB
     let s   = bufInfoFileName bufInfo
-    let msg = msgE $ show f'++" "++show s ++ "C written"
-    catchJustE ioErrors (fwriteToE f' >> msg) (msgE . show)
+    let msg = msgEditor $ show f'++" "++show s ++ "C written"
+    catchJustE ioErrors (fwriteToE f' >> msg) (msgEditor . show)
 
 -- | Try to do a substitution
 viSub :: [Char] -> YiM ()
@@ -770,7 +770,7 @@ viSub cs = do
 
     where do_single p r = do
                 s <- searchAndRepLocal p r
-                if not s then errorE ("Pattern not found: "++p) else msgClrE
+                if not s then errorEditor ("Pattern not found: "++p) else msgClr
 
 -- | Is a delete sequence
 isDel :: Char -> Bool

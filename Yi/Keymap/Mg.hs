@@ -83,7 +83,7 @@ keys2extended   = M.fromList [ (k,ex) | (ex,ks,_) <- globalTable, k <- ks ]
 keys2action :: [Char] -> MgMode
 keys2action ks | Just ex <- M.lookup ks keys2extended
                , Just a  <- M.lookup ex extended2action = a
-               | otherwise = write $ errorE $ "No binding for "++ show ks
+               | otherwise = write $ errorEditor $ "No binding for "++ show ks
 
 --
 -- keystrokes only 1 character long
@@ -111,7 +111,7 @@ globalTable :: [(String,[String],MgMode)]
 globalTable = [
   ("apropos",
         [[c_ 'h', 'a']],
-        write $ errorE "apropos unimplemented"),
+        write $ errorEditor "apropos unimplemented"),
   ("backward-char",
         [[c_ 'b'], [m_ 'O', 'D'], [keyLeft]],
         write $ leftB),
@@ -129,13 +129,13 @@ globalTable = [
         write $ moveToSol),
   ("call-last-kbd-macro",
         [[c_ 'x', 'e']],
-        write $ errorE "call-last-kbd-macro unimplemented"),
+        write $ errorEditor "call-last-kbd-macro unimplemented"),
   ("capitalize-word",
         [[m_ 'c']],
         write $ capitaliseWordB),
   ("copy-region-as-kill",
         [[m_ 'w']],
-        write $ errorE "copy-region-as-kill unimplemented"),
+        write $ errorEditor "copy-region-as-kill unimplemented"),
   ("delete-backward-char",
         [['\127'], ['\BS'], [keyBackspace]],
         write $ bdeleteB),
@@ -153,7 +153,7 @@ globalTable = [
         write $ closeOtherE),
   ("delete-window",
         [[c_ 'x', '0']],
-        write $ closeE),
+        write $ closeWindow),
   ("describe-bindings",
         [[c_ 'h', 'b']],
         write $ describeBindings),
@@ -162,19 +162,19 @@ globalTable = [
         describeKeyMode),
   ("digit-argument",
         [ [m_ d] | d <- ['0' .. '9'] ],
-        write $ errorE "digit-argument unimplemented"),
+        write $ errorEditor "digit-argument unimplemented"),
   ("dired",
         [[c_ 'x', 'd']],
-        write $ errorE "dired unimplemented"),
+        write $ errorEditor "dired unimplemented"),
   ("downcase-region",
         [[c_ 'x', c_ 'l']],
-        write $ errorE "downcase-region unimplemented"),
+        write $ errorEditor "downcase-region unimplemented"),
   ("downcase-word",
         [[m_ 'l']],
         write $ lowercaseWordB),
   ("end-kbd-macro",
         [[c_ 'x', ')']],
-        write $ errorE "end-kbd-macro unimplemented"),
+        write $ errorEditor "end-kbd-macro unimplemented"),
   ("end-of-buffer",
         [[m_ '>']],
         write $ botB),
@@ -189,22 +189,22 @@ globalTable = [
         write $ shrinkWinE),
   ("exchange-point-and-mark",
         [[c_ 'x', c_ 'x']],
-        write $ errorE "exchange-point-and-mark unimplemented"),
+        write $ errorEditor "exchange-point-and-mark unimplemented"),
   ("execute-extended-command",
         [[m_ 'x']],
         metaXSwitch),
   ("fill-paragraph",
         [[m_ 'q']],
-        write $ errorE "fill-paragraph unimplemented"),
+        write $ errorEditor "fill-paragraph unimplemented"),
   ("find-alternate-file",
         [[c_ 'c', c_ 'v']],
-        write $ errorE "find-alternate-file unimplemented"),
+        write $ errorEditor "find-alternate-file unimplemented"),
   ("find-file",
         [[c_ 'x', c_ 'f']],
         findFile),
   ("find-file-other-window",
         [[c_ 'x', '4', c_ 'f']],
-        write $ errorE "find-file-other-window unimplemented"),
+        write $ errorEditor "find-file-other-window unimplemented"),
   ("forward-char",
         [[c_ 'f'], [m_ 'O', 'C'], [keyRight]],
         write $ rightB),
@@ -219,10 +219,10 @@ globalTable = [
         gotoMode),
   ("help-help",
         [[c_ 'h', c_ 'h']],
-        write $ errorE "help-help unimplemented"),
+        write $ errorEditor "help-help unimplemented"),
   ("insert-file",
         [[c_ 'x', 'i']],
-        write $ errorE "insert-file unimplemented"),
+        write $ errorEditor "insert-file unimplemented"),
   ("isearch-backward",
         [[c_ 'r']],
         isearchProcess),
@@ -239,7 +239,7 @@ globalTable = [
          [c_ 'x', '4', c_ 'g'],
          [m_ (c_ 'g')]
         ],
-        write $ msgE "Quit"),
+        write $ msgEditor "Quit"),
   ("kill-buffer",
         [[c_ 'x', 'k']],
         killBufferMode),
@@ -248,7 +248,7 @@ globalTable = [
         write $ killLineE),
   ("kill-region",
         [[c_ 'w']],
-        write $ errorE "kill-region unimplemented"),
+        write $ errorEditor "kill-region unimplemented"),
   ("kill-word",
         [[m_ 'd']],
         write $ killWordB),
@@ -257,19 +257,19 @@ globalTable = [
         write $ mgListBuffers),
   ("negative-argument",
         [[m_ '-']],
-        write $ errorE "negative-argument unimplemented"),
+        write $ errorEditor "negative-argument unimplemented"),
   ("newline",
         [[c_ 'm']],
         write $ insertN '\n'),
   ("newline-and-indent",
         [],
-        write $ errorE "newline-and-indent unimplemented"),
+        write $ errorEditor "newline-and-indent unimplemented"),
   ("next-line",
         [[c_ 'n'], [m_ 'O', 'B'], [keyDown]], -- doesn't remember goal column
         write $ (execB Move VLine Forward)),
   ("not-modified",
         [[m_ '~']],
-        write $ errorE "not-modified unimplemented"),
+        write $ errorEditor "not-modified unimplemented"),
   ("open-line",
         [[c_ 'o']],
         write $ insertB '\n'),
@@ -284,58 +284,58 @@ globalTable = [
         write $ prevWinE),
   ("query-replace",
         [[m_ '%']],
-        write $ errorE "query-replace unimplemented"),
+        write $ errorEditor "query-replace unimplemented"),
   ("quoted-insert",
         [[c_ 'q']],
         insertAnyMode),
   ("recenter",
         [[c_ 'l']],
-        write $ errorE "recenter unimplemented"),
+        write $ errorEditor "recenter unimplemented"),
   ("save-buffer",
         [[c_ 'x', c_ 's']],
         write $ writeFileMode),
   ("save-buffers-kill-emacs",
         [[c_ 'x', c_ 'c']],
-        write $ quitE), -- should ask to save buffers
+        write $ quitEditor), -- should ask to save buffers
   ("save-some-buffers",
         [[c_ 'x', 's']],
-        write $ errorE "save-some-buffers unimplemented"),
+        write $ errorEditor "save-some-buffers unimplemented"),
   ("scroll-down",
         [[m_ '[', '5', '~'], [m_ 'v'], [keyPPage]],
         write $ upScreenB),
   ("scroll-other-window",
         [[m_ (c_ 'v')]],
-        write $ errorE "scroll-other-window unimplemented"),
+        write $ errorEditor "scroll-other-window unimplemented"),
   ("scroll-up",
         [[c_ 'v'], [m_ '[', '6', '~'], [keyNPage]],
         write $ downScreenB),
   ("search-backward",
         [[m_ 'r']],
-        write $ errorE "search-backward unimplemented"),
+        write $ errorEditor "search-backward unimplemented"),
   ("search-forward",
         [[m_ 's']],
-        write $ errorE "search-forward unimplemented"),
+        write $ errorEditor "search-forward unimplemented"),
   ("set-fill-column",
         [[c_ 'x', 'f']],
-        write $ errorE "set-fill-column unimplemented"),
+        write $ errorEditor "set-fill-column unimplemented"),
   ("set-mark-command",
         [['\NUL']],
-        write $ errorE "set-mark-command unimplemented"),
+        write $ errorEditor "set-mark-command unimplemented"),
   ("split-window-vertically",
         [[c_ 'x', '2']],
         write $ splitE),
   ("start-kbd-macro",
         [[c_ 'x', '(']],
-        write $ errorE "start-kbd-macro unimplemented"),
+        write $ errorEditor "start-kbd-macro unimplemented"),
   ("suspend-emacs",
         [[c_ 'z']],
-        write $ suspendE),
+        write $ suspendEditor),
   ("switch-to-buffer",
         [[c_ 'x', 'b']],
-        write $ errorE "switch-to-buffer unimplemented"),
+        write $ errorEditor "switch-to-buffer unimplemented"),
   ("switch-to-buffer-other-window",
         [[c_ 'x', '4', 'b']],
-        write $ errorE "switch-to-buffer-other-window unimplemented"),
+        write $ errorEditor "switch-to-buffer-other-window unimplemented"),
   ("transpose-chars",
         [[c_ 't']],
         write $ swapB),
@@ -344,10 +344,10 @@ globalTable = [
         write $ undoB),
   ("universal-argument",
         [[c_ 'u']],
-        write $ errorE "universal-argument unimplemented"),
+        write $ errorEditor "universal-argument unimplemented"),
   ("upcase-region",
         [[c_ 'x', c_ 'u']],
-        write $ errorE "upcase-region unimplemented"),
+        write $ errorEditor "upcase-region unimplemented"),
   ("upcase-word",
         [[m_ 'u']],
         write $ uppercaseWordB),
@@ -392,12 +392,12 @@ command = do c <- oneOf unitKeysList; keys2action [c]
 
 -- switch to ctrl-X submap
 ctrlxSwitch :: MgMode
-ctrlxSwitch = do event '\^X' ; write (msgE "C-x-"); ctrlxMode
+ctrlxSwitch = do event '\^X' ; write (msgEditor "C-x-"); ctrlxMode
 
 
 -- ctrl x submap
 ctrlxMode :: MgMode
-ctrlxMode = do c <- oneOf ctrlxKeysList; keys2action ['\^X',c]; write msgClrE
+ctrlxMode = do c <- oneOf ctrlxKeysList; keys2action ['\^X',c]; write msgClr
 
 ------------------------------------------------------------------------
 --
@@ -406,7 +406,7 @@ ctrlxMode = do c <- oneOf ctrlxKeysList; keys2action ['\^X',c]; write msgClrE
 
 -- switch to meta mode
 metaSwitch :: MgMode
-metaSwitch = do event '\ESC' ; write  (msgE "ESC-"); metaMode       -- hitting ESC also triggers a meta char
+metaSwitch = do event '\ESC' ; write  (msgEditor "ESC-"); metaMode       -- hitting ESC also triggers a meta char
 
 --
 -- a fake mode. really just looking up the binding for: m_ c
@@ -414,16 +414,16 @@ metaSwitch = do event '\ESC' ; write  (msgE "ESC-"); metaMode       -- hitting E
 metaMode :: MgMode
 metaMode = do c <- oneOf ['\0' .. '\255']       -- not quite right
               when ((m_ c) `elem` unitKeysList) $ keys2action [m_ c]
-              write msgClrE
+              write msgClr
 
 ------------------------------------------------------------------------
 
 -- switch to meta O mode
 metaOSwitch :: MgMode
-metaOSwitch = event (m_ 'O') >> write (msgE "ESC-O-") >> metaOMode
+metaOSwitch = event (m_ 'O') >> write (msgEditor "ESC-O-") >> metaOMode
 
 metaOMode :: MgMode
-metaOMode = do c <- oneOf metaoKeysList; keys2action [m_ 'O',c]; write msgClrE
+metaOMode = do c <- oneOf metaoKeysList; keys2action [m_ 'O',c]; write msgClr
 
 -- ---------------------------------------------------------------------
 -- build a generic line buffer editor, given a mode to transition to
@@ -433,10 +433,10 @@ echoMode :: String -> Interact Char (Maybe String)
 echoMode prompt = do
   write (logPutStrLn "echoMode")
   result <- lineEdit []
-  write msgClrE
+  write msgClr
   return result
     where lineEdit s =
-              do write $ msgE (prompt ++ s)
+              do write $ msgEditor (prompt ++ s)
                  (do delete; lineEdit (take (length s - 1) s)
                   +++ do c <- anyButDelNlArrow; lineEdit (s++[c])
                   +++ do event '\^G'; return Nothing
@@ -464,7 +464,7 @@ metaXSwitch = do (event (m_ 'x') +++ event (m_ 'X')); withLineEditor "M-x " meta
 -- | M-x mode, evaluate a string entered after M-x
 metaXEval :: String -> MgMode
 metaXEval cmd = case M.lookup cmd extended2action of
-                  Nothing -> write $ msgE "[No match]"
+                  Nothing -> write $ msgEditor "[No match]"
                   Just a  -> a
 
 -- metaXTab :: MgMode
@@ -479,13 +479,13 @@ describeChar prompt acc = do
   c <- anything
   let keys = acc ++ [c]
   case M.lookup keys keys2extended of
-            Just ex -> write $ msgE $ (printable keys) ++ " runs the command " ++ ex
+            Just ex -> write $ msgEditor $ (printable keys) ++ " runs the command " ++ ex
             Nothing ->
                 -- only continue if this is the prefix of something in the table
                 if any (isPrefixOf keys) (M.keys keys2extended)
-                   then do write $ msgE (prompt ++ keys)
+                   then do write $ msgEditor (prompt ++ keys)
                            describeChar prompt keys
-                   else write $ msgE $ printable keys ++ " is not bound to any function"
+                   else write $ msgEditor $ printable keys ++ " is not bound to any function"
 
 -- ---------------------------------------------------------------------
 -- | Writing a file
@@ -510,7 +510,7 @@ killBufferMode = withLineEditor "Kill buffer: " $ \buf -> write $ do
 gotoMode :: MgMode
 gotoMode = withLineEditor "goto line: " $ \l -> write $ do
              i <- lift $ try . evaluate . read $ l
-             case i of Left _   -> errorE "Invalid number"
+             case i of Left _   -> errorEditor "Invalid number"
                        Right i' -> gotoLn i'
 
 
@@ -556,7 +556,7 @@ whatCursorPos = do
             pt  = bufInfoCharNo  bufInfo
             pct = bufInfoPercent bufInfo
         c <- readB
-        msgE $ "Char: "++[c]++" (0"++showOct (ord c) ""++
+        msgEditor $ "Char: "++[c]++" (0"++showOct (ord c) ""++
                 ")  point="++show pt++
                 "("++pct++
                 ")  line="++show ln++

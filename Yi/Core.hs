@@ -14,35 +14,35 @@ module Yi.Core (
         module Yi.Keymap,
 
         -- * Construction and destruction
-        StartConfig    ( .. ), -- Must be passed as the first argument to 'startE'
-        startE,         -- :: StartConfig -> Kernel -> Maybe Editor -> [YiM ()] -> IO ()
-        quitE,          -- :: YiM ()
+        StartConfig    ( .. ), -- Must be passed as the first argument to 'startEditor'
+        startEditor,         -- :: StartConfig -> Kernel -> Maybe Editor -> [YiM ()] -> IO ()
+        quitEditor,          -- :: YiM ()
 
 #ifdef DYNAMIC
-        reconfigE,
-        loadE,
-        unloadE,
+        reconfigEditor,
+        loadModule,
+        unloadModule,
 #endif
-        reloadE,        -- :: YiM ()
-        getNamesInScopeE,
-        execE,
+        reloadEditor,        -- :: YiM ()
+        getAllNamesInScope,
+        execEditorAction,
 
-        refreshE,       -- :: YiM ()
-        suspendE,       -- :: YiM ()
+        refreshEditor,       -- :: YiM ()
+        suspendEditor,       -- :: YiM ()
 
         -- * Global editor actions
-        msgE,           -- :: String -> YiM ()
-        errorE,         -- :: String -> YiM ()
-        msgClrE,        -- :: YiM ()
+        msgEditor,           -- :: String -> YiM ()
+        errorEditor,         -- :: String -> YiM ()
+        msgClr,        -- :: YiM ()
 
         -- * Window manipulation
-        closeE,         -- :: YiM ()
+        closeWindow,         -- :: YiM ()
 
         -- * Interacting with external commands
-        pipeE,          -- :: String -> String -> YiM String
+        runProcessWithInput,          -- :: String -> String -> YiM String
 
         -- * Misc
-        changeKeymapE,
+        changeKeymap,
         runAction
    ) where
 
@@ -104,17 +104,17 @@ interactive action = do
   withEditor $ do prepAction
                   modifyAllA buffersA undosA (addUR InteractivePoint)
   runAction action
-  refreshE
+  refreshEditor
   logPutStrLn "<<<"
   return ()
 
 nilKeymap :: Keymap
 nilKeymap = do c <- I.anyEvent
                write $ case eventToChar c of
-                         'q' -> quitE
-                         'r' -> reconfigE
+                         'q' -> quitEditor
+                         'r' -> reconfigEditor
                          'h' -> (configHelp >> return ())
-                         _ -> errorE $ "Keymap not defined, type 'r' to reload config, 'q' to quit, 'h' for help."
+                         _ -> errorEditor $ "Keymap not defined, type 'r' to reload config, 'q' to quit, 'h' for help."
     where configHelp = withEditor $ newBufferE "*configuration help*" $ unlines $
                          ["To get a standard reasonable keymap, you can run yi with either --as=vim or --as=emacs.",
                           "You can also create your own ~/.yi/YiConfig.hs file,",
@@ -129,8 +129,8 @@ data StartConfig = StartConfig { startFrontEnd   :: UI.UIBoot
 -- | Start up the editor, setting any state with the user preferences
 -- and file names passed in, and turning on the UI
 --
-startE :: StartConfig -> Kernel -> Maybe Editor -> [YiM ()] -> IO ()
-startE startConfig kernel st commandLineActions = do
+startEditor :: StartConfig -> Kernel -> Maybe Editor -> [YiM ()] -> IO ()
+startEditor startConfig kernel st commandLineActions = do
     let
 #ifdef DYNAMIC
         yiConfigFile   = startConfigFile startConfig
@@ -162,7 +162,7 @@ startE startConfig kernel st commandLineActions = do
         dflags <- getSessionDynFlags k
         setSessionDynFlags k dflags { GHC.log_action = ghcErrorReporter yi }
       -- run user configuration
-      loadE yiConfigFile -- "YiConfig"
+      loadModule yiConfigFile -- "YiConfig"
       runConfig
 #endif
 
@@ -171,7 +171,7 @@ startE startConfig kernel st commandLineActions = do
 
     logPutStrLn "Starting event handler"
     let
-        handler e = runYi $ errorE (show e)
+        handler e = runYi $ errorEditor (show e)
         -- | The editor's input main loop.
         -- Read key strokes from the ui and dispatches them to the buffer with focus.
         eventLoop :: IO ()
@@ -183,7 +183,7 @@ startE startConfig kernel st commandLineActions = do
         -- | The editor's output main loop.
         execLoop :: IO ()
         execLoop = do
-            runYi refreshE
+            runYi refreshEditor
             let loop = sequence_ . map runYi . map interactive =<< getChanContents outCh
             forever $ (handle handler loop >> logPutStrLn "Execing loop ended")
 
@@ -219,13 +219,13 @@ dispatch ev =
        -- TODO: if no action is posted, accumulate the input and give feedback to the user.
        postActions actions
        when ambiguous $
-            postActions [makeAction $ msgE "Keymap was in an ambiguous state! Resetting it."]
+            postActions [makeAction $ msgEditor "Keymap was in an ambiguous state! Resetting it."]
        modifiesRef bufferKeymaps (M.insert b bkm { bufferKeymapProcess = if ambiguous then freshP
                                                                          else p'})
 
 
-changeKeymapE :: Keymap -> YiM ()
-changeKeymapE km = do
+changeKeymap :: Keymap -> YiM ()
+changeKeymap km = do
   modifiesRef defaultKeymap (const km)
   bs <- withEditor getBuffers
   mapM_ (restartBufferThread . bkey) bs
@@ -235,12 +235,12 @@ changeKeymapE km = do
 -- Meta operations
 
 -- | Quit.
-quitE :: YiM ()
-quitE = withUI UI.end
+quitEditor :: YiM ()
+quitEditor = withUI UI.end
 
 #ifdef DYNAMIC
-loadModulesE :: [String] -> YiM (Bool, [String])
-loadModulesE modules = do
+loadModules :: [String] -> YiM (Bool, [String])
+loadModules modules = do
   withKernel $ \kernel -> do
     targets <- mapM (\m -> guessTarget kernel m Nothing) modules
     setTargets kernel targets
@@ -253,36 +253,36 @@ loadModulesE modules = do
     _ -> return True
   let newModules = map (moduleNameString . moduleName) loaded
   writesRef editorModules newModules
-  logPutStrLn $ "loadModulesE: " ++ show modules ++ " -> " ++ show (ok, newModules)
+  logPutStrLn $ "loadModules: " ++ show modules ++ " -> " ++ show (ok, newModules)
   return (ok, newModules)
 
 --foreign import ccall "revertCAFs" rts_revertCAFs  :: IO ()
         -- Make it "safe", just in case
 
-tryLoadModulesE :: [String] -> YiM [String]
-tryLoadModulesE [] = return []
-tryLoadModulesE  modules = do
-  (ok, newModules) <- loadModulesE modules
+tryLoadModules :: [String] -> YiM [String]
+tryLoadModules [] = return []
+tryLoadModules  modules = do
+  (ok, newModules) <- loadModules modules
   if ok
     then return newModules
-    else tryLoadModulesE (init modules)
+    else tryLoadModules (init modules)
     -- when failed, try to drop the most recently loaded module.
     -- We do this because GHC stops trying to load modules upon the 1st failing modules.
     -- This allows to load more modules if we ever try loading a wrong module.
 
 -- | (Re)compile
-reloadE :: YiM [String]
-reloadE = tryLoadModulesE =<< readsRef editorModules
+reloadEditor :: YiM [String]
+reloadEditor = tryLoadModules =<< readsRef editorModules
 #endif
 -- | Redraw
-refreshE :: YiM ()
-refreshE = do editor <- with yiEditor readRef
-              withUI $ flip UI.refresh editor
-              withEditor $ modifyAllA buffersA pendingUpdatesA (const [])
+refreshEditor :: YiM ()
+refreshEditor = do editor <- with yiEditor readRef
+                   withUI $ flip UI.refresh editor
+                   withEditor $ modifyAllA buffersA pendingUpdatesA (const [])
 
 -- | Suspend the program
-suspendE :: YiM ()
-suspendE = withUI UI.suspend
+suspendEditor :: YiM ()
+suspendEditor = withUI UI.suspend
 
 ------------------------------------------------------------------------
 
@@ -292,8 +292,8 @@ suspendE = withUI UI.suspend
 --
 -- Todo: varients with marks?
 --
-pipeE :: String -> String -> YiM String
-pipeE cmd inp = do
+runProcessWithInput :: String -> String -> YiM String
+runProcessWithInput cmd inp = do
     let (f:args) = split " " cmd
     (out,_err,_) <- lift $ popen f args (Just inp)
     return (chomp "\n" out)
@@ -301,48 +301,48 @@ pipeE cmd inp = do
 
 ------------------------------------------------------------------------
 
--- | Same as msgE, but do nothing instead of printing @()@
-msgE' :: String -> YiM ()
-msgE' "()" = return ()
-msgE' s = msgE s
+-- | Same as msgEditor, but do nothing instead of printing @()@
+msgEditor' :: String -> YiM ()
+msgEditor' "()" = return ()
+msgEditor' s = msgEditor s
 
 runAction :: Action -> YiM ()
 runAction (YiA act) = do
-  act >>= msgE' . show
+  act >>= msgEditor' . show
   return ()
 runAction (EditorA act) = do
-  withEditor act >>= msgE' . show
+  withEditor act >>= msgEditor' . show
   return ()
 runAction (BufferA act) = do
-  withBuffer act >>= msgE' . show
+  withBuffer act >>= msgEditor' . show
   return ()
 
 
-msgE :: String -> YiM ()
-msgE = withEditor . printMsg
+msgEditor :: String -> YiM ()
+msgEditor = withEditor . printMsg
 
 -- | Show an error on the status line and log it.
-errorE :: String -> YiM ()
-errorE s = do msgE ("error: " ++ s)
-              logPutStrLn $ "errorE: " ++ s
+errorEditor :: String -> YiM ()
+errorEditor s = do msgEditor ("error: " ++ s)
+                   logPutStrLn $ "errorEditor: " ++ s
 
 -- | Clear the message line at bottom of screen
-msgClrE :: YiM ()
-msgClrE = msgE ""
+msgClr :: YiM ()
+msgClr = msgEditor ""
 
 -- | Close the current window.
 -- If this is the last window open, quit the program.
-closeE :: YiM ()
-closeE = do
+closeWindow :: YiM ()
+closeWindow = do
     n <- withEditor $ withWindows WS.size
-    when (n == 1) quitE
+    when (n == 1) quitEditor
     withEditor $ tryCloseE
 
 #ifdef DYNAMIC
 
 -- | Recompile and reload the user's config files
-reconfigE :: YiM ()
-reconfigE = reloadE >> runConfig
+reconfigEditor :: YiM ()
+reconfigEditor = reloadEditor >> runConfig
 
 runConfig :: YiM ()
 runConfig = do
@@ -352,23 +352,23 @@ runConfig = do
   if loaded
    then do result <- withKernel $ \kernel -> evalMono kernel "YiConfig.yiMain :: Yi.Yi.YiM ()"
            case result of
-             Nothing -> errorE "Could not run YiConfig.yiMain :: Yi.Yi.YiM ()"
+             Nothing -> errorEditor "Could not run YiConfig.yiMain :: Yi.Yi.YiM ()"
              Just x -> x
-   else errorE "YiConfig not loaded"
+   else errorEditor "YiConfig not loaded"
 
-loadE :: String -> YiM [String]
-loadE modul = do
-  logPutStrLn $ "loadE: " ++ modul
+loadModule :: String -> YiM [String]
+loadModule modul = do
+  logPutStrLn $ "loadModule: " ++ modul
   ms <- readsRef editorModules
-  tryLoadModulesE (if Data.List.notElem modul ms then ms++[modul] else ms)
+  tryLoadModules (if Data.List.notElem modul ms then ms++[modul] else ms)
 
-unloadE :: String -> YiM [String]
-unloadE modul = do
+unloadModule :: String -> YiM [String]
+unloadModule modul = do
   ms <- readsRef editorModules
-  tryLoadModulesE $ delete modul ms
+  tryLoadModules $ delete modul ms
 
-getNamesInScopeE :: YiM [String]
-getNamesInScopeE = do
+getAllNamesInScope :: YiM [String]
+getAllNamesInScope = do
   withKernel $ \k -> do
       rdrNames <- getRdrNamesInScope k
       names <- getNamesInScope k
@@ -391,25 +391,25 @@ ghcErrorReporter yi severity srcSpan pprStyle message =
 
 
 -- | Run a (dynamically specified) editor command.
-execE :: String -> YiM ()
-execE s = do
-  ghcErrorHandlerE $ do
+execEditorAction :: String -> YiM ()
+execEditorAction s = do
+  ghcErrorHandler $ do
             result <- withKernel $ \kernel -> do
                                logPutStrLn $ "execing " ++ s
                                evalMono kernel ("makeAction (" ++ s ++ ") :: Yi.Yi.Action")
             case result of
-              Left err -> errorE err
+              Left err -> errorEditor err
               Right x -> do runAction x
                             return ()
 
 -- | Install some default exception handlers and run the inner computation.
-ghcErrorHandlerE :: YiM () -> YiM ()
-ghcErrorHandlerE inner = do
+ghcErrorHandler :: YiM () -> YiM ()
+ghcErrorHandler inner = do
   flip catchDynE (\dyn -> do
                     case dyn of
-                     GHC.PhaseFailed _ code -> errorE $ "Exitted with " ++ show code
-                     GHC.Interrupted -> errorE $ "Interrupted!"
-                     _ -> do errorE $ "GHC exeption: " ++ (show (dyn :: GHC.GhcException))
+                     GHC.PhaseFailed _ code -> errorEditor $ "Exitted with " ++ show code
+                     GHC.Interrupted -> errorEditor $ "Interrupted!"
+                     _ -> do errorEditor $ "GHC exeption: " ++ (show (dyn :: GHC.GhcException))
 
             ) $
             inner
@@ -421,12 +421,12 @@ withOtherWindow f = do
   withEditor $ prevWinE
 
 #else
-reloadE, reconfigE :: YiM ()
-reconfigE = msgE "reconfigE: Not supported"
-reloadE = msgE "reloadE: Not supported"
-execE :: t -> YiM ()
-execE _ = msgE "execE: Not supported"
+reloadEditor, reconfigEditor :: YiM ()
+reconfigEditor = msgEditor "reconfigEditor: Not supported"
+reloadEditor = msgEditor "reloadEditor: Not supported"
+execEditorAction :: t -> YiM ()
+execEditorAction _ = msgEditor "execEditorAction: Not supported"
 
-getNamesInScopeE :: YiM [String]
-getNamesInScopeE = return []
+getAllNamesInScope :: YiM [String]
+getAllNamesInScope = return []
 #endif

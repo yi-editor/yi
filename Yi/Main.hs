@@ -128,7 +128,7 @@ do_opt o = case o of
     LineNo l      -> return (Keymap.withBuffer (Buffer.gotoLn (read l)) >> return ())
     File file     -> return (Dired.fnewE file)
     EditorNm emul -> case lookup (map toLower emul) editors of
-                       Just km -> return $ Core.changeKeymapE km
+                       Just km -> return $ Core.changeKeymap km
                        Nothing -> do putStrLn ("Unknown emulation: " ++ show emul)
                                      exitWith (ExitFailure 1)
 
@@ -174,4 +174,4 @@ main kernel = withAutoreleasePool $ do
 main kernel = do
 #endif
     (config, mopts) <- do_args =<< getArgs
-    Core.startE config kernel Nothing (startConsole : openScratchBuffer : mopts)
+    Core.startEditor config kernel Nothing (startConsole : openScratchBuffer : mopts)

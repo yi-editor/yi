@@ -40,7 +40,7 @@ evalToStringE = return
 #endif
 -- | Evaluate some text and show the result in the message line.
 evalE :: String -> YiM ()
-evalE s = evalToStringE s >>= msgE
+evalE s = evalToStringE s >>= msgEditor
 
 
 jumpToE :: String -> Int -> Int -> YiM ()
@@ -95,4 +95,4 @@ consoleKeymap = do event (Event KEnter [])
                                                 insertN prompt
                                                 bm <- getBookmarkB "errorInsert"
                                                 setMarkPointB bm pt
-                                              execE $ takeCommand x
+                                              execEditorAction $ takeCommand x

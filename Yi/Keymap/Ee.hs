@@ -38,6 +38,6 @@ command = choice [event c >> write act | (c, act) <- cmds]
                   ('\^O', moveToEol       ),
                   ('\^Y', killLineE       ),
                   ('\^H', bdeleteB        ),
-                  ('\^X', quitE           )]
+                  ('\^X', quitEditor           )]
 
 

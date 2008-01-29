@@ -58,7 +58,7 @@ klist = choice [
     "\^K\^L" &&> gotoLn,
     -- Buffers
     "\^K\^S" &&> queryBufW,
-    "\^C"  ++> closeE,
+    "\^C"  ++> closeWindow,
     "\^K\^D" &&> querySaveE,
     -- Copy&paste
     --"\^K^B" ++> setMarkE,
@@ -73,12 +73,12 @@ klist = choice [
     "\^K\^P" ++> prevBufW,
     "\^K\^S" ++> splitE,
     "\^K\^O" ++> nextWinE,
-    "\^C"  ++> closeE, -- Wrong, should close buffer
+    "\^C"  ++> closeWindow, -- Wrong, should close buffer
 
     -- Global
-    "\^R"  ++> refreshE,
-    "\^K\^X" ++> quitE,
-    "\^K\^Z" ++> suspendE,
+    "\^R"  ++> refreshEditor,
+    "\^K\^X" ++> quitEditor,
+    "\^K\^Z" ++> suspendEditor,
     "\^K\^E" &&> queryNewE
     ]
 
@@ -144,7 +144,7 @@ echoMode prompt initialValue = do
   result <- lineEdit initialValue
   return result
     where lineEdit s =
-              do write $ msgE (prompt ++ s)
+              do write $ msgEditor (prompt ++ s)
                  choice [satisfy isEnter >> return (Just s),
                          satisfy isCancel >> return Nothing,
                          satisfy isDel >> lineEdit (take (length s - 1) s),
@@ -152,7 +152,7 @@ echoMode prompt initialValue = do
 
 -- Commenting out to avoid compile warnings until fn is needed
 -- query :: String -> [(String, JoeMode)] -> JoeMode
--- query prompt ks = write (msgE prompt) >> loop
+-- query prompt ks = write (msgEditor prompt) >> loop
 --     where loop = choice $ (satisfy (isEnter ||| isCancel) >> return ()) :
 --                           [oneOf cs >> a | (cs,a) <- ks]
 --                           ++ [(anyEvent >> loop)]
@@ -234,7 +234,7 @@ joeDoSearch :: SearchExp -> Action
 joeDoSearch srchexp = do
     res <- sfn
     case res of
-        Nothing -> errorE "Not found." >> metaM keymap
+        Nothing -> errorEditor "Not found." >> metaM keymap
         Just p -> case js_search_replace st of
             Just rep -> metaM $ runProc $ queryReplace p rep (sfn)
             Nothing -> metaM $ keymap
@@ -279,4 +279,4 @@ nextSearchRepE =
 -}
 
 unimplementedQ :: String -> Action
-unimplementedQ a = errorE (a ++ " not implemented.")
+unimplementedQ a = errorEditor (a ++ " not implemented.")

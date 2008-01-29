@@ -74,7 +74,7 @@ cycleIndentsB indents = do
   l <- readLnB
   curIndent <- indentOfB l
   let (below, above) = span (< curIndent) $ indents
-  -- msgE $ show (below, above)
+  -- msgEditor $ show (below, above)
   indentToB $ last (above ++ below)
 
 autoIndentB :: BufferM ()
@@ -153,7 +153,7 @@ shiftIndentOfLine numOfShifts = do
   isAtSol <- atSol
   when (not isAtSol) leftB
   ptOfLastSpace <- pointB
-  -- msgE ("ptOfLastSpace= " ++ (show ptOfLastSpace) ++ "-" ++ (show sol) ++ "=" ++ (show (ptOfLastSpace - sol)))
+  -- msgEditor ("ptOfLastSpace= " ++ (show ptOfLastSpace) ++ "-" ++ (show sol) ++ "=" ++ (show (ptOfLastSpace - sol)))
   indentSettings <- indentSettingsB
   let countSpace '\t' = tabSize indentSettings
       countSpace _ = 1 -- we'll assume nothing but tabs and spaces

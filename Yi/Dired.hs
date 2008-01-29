@@ -211,7 +211,7 @@ diredKeymap = do
 
 dired :: YiM ()
 dired = do
-    msgE "Dired..."
+    msgEditor "Dired..."
     dir <- liftIO getCurrentDirectory
     fnewE dir
 
@@ -415,31 +415,31 @@ diredLoad = do
     case de of
             (DiredFile _dfi) -> do
                                exists <- liftIO $ doesFileExist sel
-                               if exists then fnewE sel else msgE $ sel ++ " no longer exists"
+                               if exists then fnewE sel else msgEditor $ sel ++ " no longer exists"
             (DiredDir _dfi)  -> do
                               exists <- liftIO $ doesDirectoryExist sel
-                              if exists then diredDir sel else msgE $ sel ++ " no longer exists"
+                              if exists then diredDir sel else msgEditor $ sel ++ " no longer exists"
             (DiredSymLink _dfi dest) -> do
                                        let target = if isAbsolute dest then dest else dir </> dest
                                        existsFile <- liftIO $ doesFileExist target
                                        existsDir <- liftIO $ doesDirectoryExist target
-                                       msgE $ "Following link:"++target
+                                       msgEditor $ "Following link:"++target
                                        if existsFile then fnewE target else
                                           if existsDir then diredDir target else
-                                             msgE $ target ++ " does not exist"
+                                             msgEditor $ target ++ " does not exist"
             (DiredSocket _dfi) -> do
                                exists <- liftIO $ doesFileExist sel
-                               if exists then msgE ("Can't open Socket " ++ sel) else msgE $ sel ++ " no longer exists"
+                               if exists then msgEditor ("Can't open Socket " ++ sel) else msgEditor $ sel ++ " no longer exists"
             (DiredBlockDevice _dfi) -> do
                                exists <- liftIO $ doesFileExist sel
-                               if exists then msgE ("Can't open Block Device " ++ sel) else msgE $ sel ++ " no longer exists"
+                               if exists then msgEditor ("Can't open Block Device " ++ sel) else msgEditor $ sel ++ " no longer exists"
             (DiredCharacterDevice _dfi) -> do
                                exists <- liftIO $ doesFileExist sel
-                               if exists then msgE ("Can't open Character Device " ++ sel) else msgE $ sel ++ " no longer exists"
+                               if exists then msgEditor ("Can't open Character Device " ++ sel) else msgEditor $ sel ++ " no longer exists"
             (DiredNamedPipe _dfi) -> do
                                exists <- liftIO $ doesFileExist sel
-                               if exists then msgE ("Can't open Pipe " ++ sel) else msgE $ sel ++ " no longer exists"
-            DiredNoInfo -> msgE $ "No File Info for:"++sel
+                               if exists then msgEditor ("Can't open Pipe " ++ sel) else msgEditor $ sel ++ " no longer exists"
+            DiredNoInfo -> msgEditor $ "No File Info for:"++sel
 
 -- | Extract the filename at point. NB this may fail if the buffer has been edited. Maybe use Markers instead.
 fileFromPoint :: YiM (FilePath, DiredEntry)
@@ -459,7 +459,7 @@ diredCreateDir = do
     withMinibuffer "Create Dir:" return $ \nm -> do
     (Just dir) <- withBuffer getfileB
     let newdir = dir </> nm
-    msgE $ "Creating "++newdir++"..."
+    msgEditor $ "Creating "++newdir++"..."
     liftIO $ createDirectoryIfMissing True newdir
     diredRefresh
 

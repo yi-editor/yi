@@ -112,13 +112,13 @@ doSearch s fs d =
         Nothing -> do
             mre <- withEditor getRegexE
             case mre of
-                Nothing -> errorE "No previous search pattern" -- NB
+                Nothing -> errorEditor "No previous search pattern" -- NB
                 Just r -> continueSearch r d >>= f
     where
         f mp = case mp of
             Just (Right _) -> return ()
-            Just (Left  _) -> msgE "Search wrapped"
-            Nothing        -> errorE "Pattern not found"
+            Just (Left  _) -> msgEditor "Search wrapped"
+            Nothing        -> errorEditor "Pattern not found"
 
 
 continueSearch :: SearchExp
@@ -126,7 +126,7 @@ continueSearch :: SearchExp
           -> YiM SearchResult
 
 continueSearch _ Backward = do
-        errorE "Backward searching is unimplemented"
+        errorEditor "Backward searching is unimplemented"
         return Nothing
 continueSearch (s, re) _ = searchF s re
 
@@ -316,7 +316,7 @@ qrNext b what = do
   case mp of
     Nothing -> do
             withEditor $ printMsg "String to search not found"
-            closeE
+            closeWindow
     Just p -> withGivenBuffer b $ do
                    moveTo p
                    m <- getSelectionMarkB

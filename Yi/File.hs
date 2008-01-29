@@ -35,9 +35,9 @@ revertE = do
                                   insertN s
                                   moveTo p
                                   clearUndosB
-                             msgE ("Reverted from " ++ show fp)
+                             msgEditor ("Reverted from " ++ show fp)
                      Nothing -> do
-                                msgE "Can't revert, no file associated with buffer."
+                                msgEditor "Can't revert, no file associated with buffer."
                                 return ()
 
 -- | Write current buffer to disk, if this buffer is associated with a file
@@ -47,7 +47,7 @@ fwriteE = do contents <- withBuffer elemsB
              withBuffer clearUndosB
              case fname of
                Just n -> liftIO $ writeFile n contents
-               Nothing -> msgE "Buffer not associated with a file."
+               Nothing -> msgEditor "Buffer not associated with a file."
 
 -- | Write current buffer to disk as @f@. If this buffer doesn't
 -- currently have a file associated with it, the file is set to @f@

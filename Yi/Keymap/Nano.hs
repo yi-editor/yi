@@ -71,16 +71,16 @@ cmdCharFM =
     ,('\^F',        write rightB)
     ,('\^H',        write $ leftB >> deleteN 1)
     ,('\^K',        write $ killLineE)
-    ,('\^L',        write refreshE)
+    ,('\^L',        write refreshEditor)
     ,('\^M',        write $ insertN '\n')
     ,('\^N',        write (execB Move VLine Forward))
     ,('\^P',        write (execB Move VLine Backward))
     ,('\^U',        write undoB)
     ,('\^V',        write downScreenB)
-    ,('\^X',        do write $ do b <- isUnchangedB ; if b then quitE else return ()
+    ,('\^X',        do write $ do b <- isUnchangedB ; if b then quitEditor else return ()
                        switch2WriteMode) -- TODO: separate this
     ,('\^Y',        write upScreenB)
-    ,('\^Z',        write suspendE)
+    ,('\^Z',        write suspendEditor)
     ,('\0',         write $ do moveWhileE (isAlphaNum)      GoRight
                                moveWhileE (not . isAlphaNum)  GoRight )
     ,(keyBackspace, write $ leftB >> deleteN 1)
@@ -88,14 +88,14 @@ cmdCharFM =
     ,(keyLeft,      write leftB)
     ,(keyRight,     write rightB)
     ,(keyUp,        write (execB Move VLine Backward))
-    ,('\^G',        write $ msgE "nano-yi : yi emulating nano")
+    ,('\^G',        write $ msgEditor "nano-yi : yi emulating nano")
     ,('\^I',        write (do bufInfo <- bufInfoB
                               let s   = bufInfoFileName bufInfo
                                   ln  = bufInfoLineNo   bufInfo
                                   col = bufInfoColNo    bufInfo
                                   pt  = bufInfoCharNo   bufInfo
                                   pct = bufInfoPercent  bufInfo
-                              msgE $ "[ line "++show ln++", col "++show col++
+                              msgEditor $ "[ line "++show ln++", col "++show col++
                                      ", char "++show pt++"/"++show s++" ("++pct++") ]"))
     ]
 
@@ -104,10 +104,10 @@ cmdCharFM =
         -- | print a message and switch to sub-mode lexer for Y\/N questions
         --
         switch2WriteMode = do
-            write $ msgE "Save modified buffer (ANSWERING \"No\" WILL DESTROY CHANGES) ? "
+            write $ msgEditor "Save modified buffer (ANSWERING \"No\" WILL DESTROY CHANGES) ? "
             c <- anyChar "ynYN"
             when (toLower c == 'y') $ write fwriteE
-            write quitE
+            write quitEditor
 
 --
 -- | Switching to the command buffer
@@ -139,7 +139,7 @@ searchChar = do
              let prompt = case mre of     -- create a prompt
                     Nothing      -> "Search: "
                     Just (pat,_) -> "Search ["++pat++"]: "
-             msgE prompt
+             msgEditor prompt
              -- FIXME: the prompt currently cannot be passed to the echoMode, this prompt will get overwritten.
              -- The fix is NOT to use MetaM!!!
              -- The fix is to stop using getRegexE to remember the last thing searched.
@@ -161,17 +161,17 @@ searchChar = do
 search_km :: String -> NanoMode
 search_km p = choice [srch_g, srch_y, srch_v, srch_t, srch_c, srch_r, performSearch]
   where -- TODO: use the same style as other modes (list of Char, String -> Action)
-    srch_g = event '\^G' >> write (msgE "nano-yi : yi emulating nano")
+    srch_g = event '\^G' >> write (msgEditor "nano-yi : yi emulating nano")
 
     srch_y = event '\^Y' >> write (gotoLn 0 >> moveToSol)
     srch_v = event '\^V' >> write (do bufInfo <- bufInfoB
                                       let x = bufInfoLineNo bufInfo
                                       gotoLn x >> moveToSol)
 
-    srch_t = event '\^T' >> write (msgE "unimplemented") -- goto line
+    srch_t = event '\^T' >> write (msgEditor "unimplemented") -- goto line
 
-    srch_c = event '\^C' >> write (msgE "[ Search Cancelled ]")
-    srch_r = event '\^R' >> write (msgE "unimplemented")
+    srch_c = event '\^C' >> write (msgEditor "[ Search Cancelled ]")
+    srch_r = event '\^R' >> write (msgEditor "unimplemented")
 
     performSearch = event '\n' >> write (case p of
                                            [] -> doSearch Nothing  [] GoRight
@@ -199,7 +199,7 @@ echoMode prompt exitProcess = do
   result <- lineEdit []
   return result
     where lineEdit s =
-              do write $ msgE (prompt ++ s)
+              do write $ msgEditor (prompt ++ s)
                  (exitProcess s +++
                   (anyChar deleteChars >> lineEdit (take (length s - 1) s)) +++
                   (do c <- anyChar ('\n' : map chr [32 .. 126]); lineEdit (s++[c])))
@@ -213,14 +213,14 @@ echoCharFM =
     [('\^O',
       \f -> if f == []
             then return ()
-            else catchJustE ioErrors (do fwriteToE f ; msgE "Wrote current file.")
-                                     (msgE . show)
+            else catchJustE ioErrors (do fwriteToE f ; msgEditor "Wrote current file.")
+                                     (msgEditor . show)
      ,"File Name to Write: ")
 
     ,('\^_',
      \s -> do e <- lift $ try $ evaluate $ read s
-              case e of Left _   -> errorE "[ Come on, be reasonable ]"
-                        Right ln -> gotoLn ln >> moveToSol >> msgClrE
+              case e of Left _   -> errorEditor "[ Come on, be reasonable ]"
+                        Right ln -> gotoLn ln >> moveToSol >> msgClr
      ,"Enter line number: ")
     ]
 
@@ -228,7 +228,7 @@ echoCharFM =
 -- utilities
 
 -- undef :: Char -> Action
--- undef c = errorE $ "Not implemented: " ++ show c
+-- undef c = errorEditor $ "Not implemented: " ++ show c
 
 deleteChars :: [Char]
 deleteChars  = ['\BS', '\127', keyBackspace]
