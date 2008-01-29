@@ -14,18 +14,12 @@ module Yi.KillRing (Killring
     where
 
 
-import Data.Dynamic
-import Yi.Dynamic
-
 data Killring = Killring { krKilled :: Bool
                          , krAccumulate :: Bool
                          , krContents :: [String]
                          , krLastYank :: Bool
                          }
-    deriving (Typeable, Show)
-
-instance Initializable Killring where
-    initial = krEmpty
+    deriving (Show)
 
 maxDepth :: Int
 maxDepth = 10
