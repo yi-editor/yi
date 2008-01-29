@@ -60,13 +60,13 @@ flag cocoa
 -- --                Yi.UI.Cocoa
 -- --         We can specify the two UIs (VTY and GTK) - which forces them to be built -
 -- --         because they are set to build by default (True) anyway.
--- 
+--
 --  include-dirs: Yi/Syntax
 --  -- for alex.hsinc
--- 
+--
 
 
--- 
+--
 --  extensions:   CPP, DeriveDataTypeable, FlexibleContexts, FlexibleInstances,
 --                ForeignFunctionInterface, FunctionalDependencies, GADTs,
 --                GeneralizedNewtypeDeriving, MagicHash, MultiParamTypeClasses,
@@ -105,8 +105,9 @@ executable yi
          buildable: False
 
         main-is:        Main.hs
-        other-modules: Yi.Syntax.Cplusplus, Yi.Syntax.Haskell, Yi.Syntax.LiterateHaskell, Yi.Syntax.Latex, Yi.Syntax.Srmc, Yi.Syntax.Cabal
-        include-dirs: Yi/Syntax
-        extensions: CPP
-        ghc-options:    -Wall
+        other-modules:  Yi.Syntax.Cplusplus, Yi.Syntax.Haskell, Yi.Syntax.LiterateHaskell,
+                        Yi.Syntax.Latex, Yi.Syntax.Srmc, Yi.Syntax.Cabal
+        include-dirs:   Yi/Syntax
+        extensions:     CPP
+        ghc-options:    -Wall -optl-Wl,-s
 
