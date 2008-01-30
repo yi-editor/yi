@@ -181,7 +181,7 @@ moveB :: TextUnit -> Direction -> BufferM ()
 moveB u d = genMoveB u (d, case d of Forward -> OutsideBound; Backward -> InsideBound) d
 
 
- -- | As 'moveB', unless the point is at a unit boundary
+-- | As 'moveB', unless the point is at a unit boundary
 
 -- So for example here moveToEol = maybeMoveB Line Forward;
 -- in that it will move to the end of current line and nowhere if we
