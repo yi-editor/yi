@@ -114,8 +114,11 @@ withEditor f = do
   r <- asks yiEditor
   e <- readRef r
   let (a,e') = runEditor f e
-  -- logPutStrLn $ "Buffers = " ++ (show $ M.elems $ buffers e')
-  writeRef r e'
+  -- Make sure that the result of runEditor is evaluated before
+  -- replacing the editor state. Otherwise, we might replace e
+  -- with an exception-producing thunk, which makes it impossible
+  -- to look at or update the editor state.
+  e' `seq` a `seq` writeRef r e'
   return a
 
 withGivenBuffer :: BufferRef -> BufferM a -> YiM a
