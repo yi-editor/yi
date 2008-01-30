@@ -108,7 +108,7 @@ PORTABILITY
 Yi is developed on Linux.
 FreeBSD and OpenBSD: should be ok.
 OS X: Vty Ok, Gtk should work; you can also help us debug the Cocoa frontend.
-MS Windows: you can try Gtk frontend.
+MS Windows: Yi could be ported to MS Windows, using the Gtk frontend.
 
 
 A porting checklist:

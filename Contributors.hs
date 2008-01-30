@@ -48,6 +48,7 @@ nickToName x = case BS.map toLower x of
             "mwotton"               -> "Mark Wotton"
             "newsham"               -> "Tim Newsham"
             "nominolo"              -> "Thomas Schilling"
+            "scottw"                -> "Scott Williams"
             "shae"                  -> "Shae Erisson"
             "sjw"                   -> "Simon Winwood"
             "tactics40"             -> "Michael Maloney"
