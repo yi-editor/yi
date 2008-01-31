@@ -55,9 +55,6 @@ import Yi.Dynamic
 import Yi.String
 import Yi.Process           ( popen )
 import Yi.Editor
-#ifdef DYNAMIC
-
-#endif
 import Yi.Event (eventToChar, Event)
 import Yi.Keymap
 import Yi.KillRing (krEndCmd)
