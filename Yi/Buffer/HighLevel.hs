@@ -269,7 +269,7 @@ middleB = do
 -- For instance one can extend the selection to to complete lines, or
 -- paragraphs.
 extendRegionToBoundaries :: TextUnit -> BoundarySide -> BoundarySide -> Region -> BufferM Region
-extendRegionToBoundaries unit bs1 bs2 region = do
+extendRegionToBoundaries unit bs1 bs2 region = savingPointB $ do
   moveTo $ regionStart region
   genMaybeMoveB unit (Backward, bs1) Backward
   start <- pointB
