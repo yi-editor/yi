@@ -29,6 +29,7 @@ import qualified Yi.Eval    as Eval
 import qualified Yi.Editor  as Editor
 import qualified Yi.Keymap.Emacs  as Emacs
 import qualified Yi.Keymap.Vim  as Vim
+import qualified Yi.Keymap.Users.Ertai
 import Yi.UI.Common (UIBoot)
 import Yi.Kernel
 import Yi.Debug
@@ -89,7 +90,8 @@ data Opts = Help
 -- | List of editors for which we provide an emulation.
 editors :: [(String,Keymap.Keymap)]
 editors = [("emacs", Emacs.keymap),
-           ("vim", Vim.keymap)]
+           ("vim", Vim.keymap),
+           ("users/ertai", Yi.Keymap.Users.Ertai.keymap)]
 
 options :: [OptDescr Opts]
 options = [
