@@ -134,10 +134,6 @@ data RegionStyle = LineWise
 instance Initializable RegionStyle where
   initial = CharWise
 
-regionStyleToUnit :: RegionStyle -> TextUnit
-regionStyleToUnit LineWise = fullLine
-regionStyleToUnit CharWise = Character
-
 fullLine :: TextUnit
 fullLine = GenUnit {genEnclosingUnit=Document, genUnitBoundary=bound}
   where bound d = withOffset d $ atBoundaryB Line d
@@ -352,7 +348,10 @@ regionFromTo mstart move regionStyle = do
   move
   stop <- pointB
   let region = mkRegion start stop
-  unitWiseRegion (regionStyleToUnit regionStyle) region
+  case regionStyle of
+    LineWise -> unitWiseRegion fullLine region
+    -- not equivalent to unitWiseRegion Char region, since one don't want to move at all
+    CharWise -> return region
 
 yank :: BufferM Point -> BufferM () -> RegionStyle -> EditorM ()
 yank mstart move regionStyle = do
