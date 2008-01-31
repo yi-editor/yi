@@ -30,6 +30,7 @@ hdHook pd lbi hooks flags = do
   pd' <- addPackageOptions pd lbi (haddockVerbose flags)
   let pd'' = pseudoLibraryPkg pd' "yi" ["Yi.Yi"]
   haddockHook defaultUserHooks pd'' lbi hooks flags
+  putStrLn "Note that you need haddock 2.0 for this to work."
 
 install :: PackageDescription -> LocalBuildInfo -> UserHooks -> InstallFlags -> IO ()
 install pd lbi hooks flags = do

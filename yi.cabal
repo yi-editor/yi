@@ -79,13 +79,17 @@ executable yi
                        mtl, process, old-locale, old-time, unix, random
 -- unix dependency should be eventually removed
 
-        build-tools:   haddock >= 2.0, alex >= 2.0.1 && < 3
-        build-depends: bytestring >= 0.9 && < 0.9.0.4
+        build-tools:   alex >= 2.0.1 && < 3
+        -- haddock >= 2.0, 
+        -- it seems harsh to require haddock 2.0 to even configure Yi;
+        -- and there is a message about haddock 2 in Setup.hs
+        build-depends: bytestring ==0.9.0.1 
+                               -- >= 0.9 && < 0.9.0.4        
         build-depends: fingertree
 
-        build-depends: regex-base>=0.72 && <0.73
-        build-depends: regex-compat>=0.71 && <0.73
-        build-depends: regex-posix>=0.72 && <0.73
+        build-depends: regex-base ==0.72.0.1
+        build-depends: regex-compat ==0.71.0.1
+        build-depends: regex-posix ==0.72.0.2
 
         ghc-options:   -Wall -optl-Wl,-s
 -- ghc-options later on get appended to the original
