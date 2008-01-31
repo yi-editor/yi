@@ -248,9 +248,9 @@ handleClick ui w event = do
                                                      setMarkPointB m p1
                                                      let [i,j] = sort [p1,p0]
                                                      nelemsB (j-i) i
-                      modify (\e ->e {yreg = txt})
+                      setRegE txt
           (ReleaseClick, MiddleButton) -> do
-            txt <- gets yreg
+            txt <- getRegE
             withGivenBuffer0 b $ do
               unsetMarkB
               moveTo p1

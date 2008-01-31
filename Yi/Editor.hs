@@ -74,7 +74,6 @@ data Editor = Editor {
 
        -- consider make the below fields part of dynamic component
        ,statusLine    :: !String
-       ,yreg          :: !String                    -- ^ yank register
        ,killring      :: !Killring
        ,regex         :: !(Maybe (String,Regex))    -- ^ most recent regex
     }
@@ -108,7 +107,6 @@ emptyEditor = Editor {
        ,bufferRefSupply = 1
        ,windowfill   = ' '
        ,tabwidth     = 8
-       ,yreg         = []
        ,regex        = Nothing
        ,uistyle      = Yi.Style.uiStyle
        ,dynamic      = M.empty
@@ -256,11 +254,11 @@ printMsg s = do
 
 -- | Put string into yank register
 setRegE :: String -> EditorM ()
-setRegE s = modify $ \e -> e { yreg = s }
+setRegE s = modifyA killringA $ krPut s
 
 -- | Return the contents of the yank register
 getRegE :: EditorM String
-getRegE = gets $ yreg
+getRegE = getsA killringA krGet
 
 -- ---------------------------------------------------------------------
 -- | Dynamically-extensible state components.
