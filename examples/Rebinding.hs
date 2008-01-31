@@ -9,7 +9,7 @@ import Yi.Buffer
 yiMain :: YiM ()
 yiMain = do
   -- override 'h' so it inserts "hello"
-  changeKeymapE ((event (Event (KASCII 'h') []) >> write (insertN "hello"))
+  changeKeymap ((event (Event (KASCII 'h') []) >> write (insertN "hello"))
                     <|| keymap)
-  msgE "User configuration successful."
+  msgEditor "User configuration successful."
 
