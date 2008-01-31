@@ -41,6 +41,9 @@ activity.png: _darcs/inventory
 haddock.view: haddock
 	firefox dist/doc/html/yi/index.html
 
+haddock.upload:
+	rsync -r dist/doc/html/yi/ $(user)@community.haskell.org:/srv/code/yi/doc
+
 dist/yi-$(version).tar.gz::
 	make sdist # does not work atm 
 
