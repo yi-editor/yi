@@ -38,7 +38,7 @@ data TextUnit = Character
    -- (haddock, stay away) | Page | Searched
 
 isWordChar :: Char -> Bool
-isWordChar = isAlpha
+isWordChar x = isAlphaNum x || x == '_'
 
 isNl :: Char -> Bool
 isNl = (== '\n')
@@ -79,9 +79,9 @@ atBoundary Word direction =
 atBoundary ViWord direction = do
     ~cs@[c1,c2] <- peekB direction 2 (-1)
     return (length cs /= 2 || (not (isSpace c1) && (charType c1 /= charType c2)))
-        where charType c | isSpace c = 1::Int
-                         | isAlpha c = 2
-                         | otherwise = 3
+        where charType c | isSpace    c = 1::Int
+                         | isWordChar c = 2
+                         | otherwise    = 3
 atBoundary Line direction = checkPeekB 0 [isNl] direction
 atBoundary Paragraph direction =
     checkPeekB (-2) [not . isNl, isNl, isNl] direction
