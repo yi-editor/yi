@@ -113,7 +113,7 @@ options = [
 usage, versinfo :: IO ()
 usage    = putStr   $ usageInfo "Usage: yi [option...] [file]" options
 
-versinfo = putStrLn $ "yi 0.3.0"
+versinfo = putStrLn $ "yi 0.4.0"
 -- TODO: pull this out of the cabal configuration
 
 -- | deal with real options
