@@ -113,8 +113,12 @@ fnewE f = do
     syntaxFromExtension ".cabal" = "cabal"
     syntaxFromExtension ".tex"   = "latex"
     syntaxFromExtension ".sty"   = "latex"
+    syntaxFromExtension ".ltx"   = "latex"
     syntaxFromExtension ".cxx"   = "cplusplus"
     syntaxFromExtension ".cpp"   = "cplusplus"
+    syntaxFromExtension ".C"     = "cplusplus"
+    syntaxFromExtension ".hxx"   = "cplusplus"
+    syntaxFromExtension ".H"     = "cplusplus"
     syntaxFromExtension ".h"     = "cplusplus"
     -- I treat c file as cpp files, most users are smart enough
     -- to allow for that.
