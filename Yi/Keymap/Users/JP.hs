@@ -25,12 +25,6 @@ type Process a = (StateT TextUnit (I.I Event Action)) a
 -- data Mark = Paste | SetMark | Cut | Copy | SwitchMark
 -- data Special = Complete | Undo | Indent | Search
 
-{-
-data Action = TextA Direction Unit Operation
-            | YiA (YiM ())
-            | EditorA
--}
-
 selfInsertKeymap :: Process ()
 selfInsertKeymap = do
   Event (KASCII c) [] <- satisfy isPrintableEvent

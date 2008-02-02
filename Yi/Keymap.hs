@@ -105,11 +105,6 @@ withKernel = with yiKernel
 withUI :: (UI -> IO a) -> YiM a
 withUI = with yiUi
 
-withUI2 :: (UI -> x -> EditorM a) -> (x -> YiM a)
-withUI2 f x = do
-  e <- ask
-  withEditor $ f (yiUi e) x
-
 withEditor :: EditorM a -> YiM a
 withEditor f = do
   r <- asks yiEditor
