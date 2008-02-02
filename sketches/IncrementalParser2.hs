@@ -1,5 +1,6 @@
 {-# LANGUAGE TypeOperators, GADTs, FlexibleInstances, DeriveDataTypeable,
              Rank2Types, PatternGuards #-}
+{-# OPTIONS -Wall #-}
 module IncrementalParser2 where
 
 import Data.Generics
@@ -8,6 +9,8 @@ import Control.Applicative
 import Data.List (nub)
 import Data.Maybe (isJust)
 import Data.Tree
+
+import Debug.Trace
 
 {- ----------------------------------------
 
@@ -45,8 +48,8 @@ Key points:
 
 -- | A parser, based on the applicative functor model (see Swierstra papers).
 --
--- This data type used to construct a parser.  Each constructor represents one
--- of the five possible operators: 'symbol', 'fail', 'pure', choice and
+-- This data type is used to construct a parser.  Each constructor represents
+-- one of the five possible operators: 'symbol', 'fail', 'pure', choice and
 -- application.
 --
 -- For parsing, values of this type (i.e., parsers) are transformed (compiled)
@@ -64,6 +67,7 @@ data P s a where
          -> P s s
     Fail :: String -> P s a
     Pure :: a -> P s a
+    LkAh :: (Maybe s -> Maybe a) -> P s a
     Pipe :: P s a -> P s a -> P s a
     Star :: P s (a -> b) -> P s a -> P s b
 
@@ -155,6 +159,7 @@ data Steps s a r where
     -- EOF.)  Alternatively, the function argument could return the input it
     -- didn't consume, but that could complicate functions such as 'best'.]
     -- [JP: Correct, one should replace [s] by Maybe s]
+    Look :: ([s] -> Steps s a r)       -> Steps s a r
     Done  :: Steps s a r                    -> Steps s a r
     -- ^ The parser that signals success.  The argument is the continuation.
     Fails :: [String]                       -> Steps s a r
@@ -167,12 +172,31 @@ data Steps s a r where
 instance Show (Steps x a s) where
     show (Val _ x) = "v" ++ show x
     show (App   x) = "." ++ show x
-    show (Shift x) = ">" 
+    show (Shift _) = ">" 
+    show (Look _)  = "*"
     show (Done  x) = "!" ++ show x
     show (Fails s) = "?" ++ show s
+{-
+newtype PR s a = PR { unPR :: forall k . ([s] -> k) -> ([s] -> Steps s a k) }
 
+data Q s a = Q { proc  :: PR s a
+               , zerop :: Maybe (Bool, Q s a)
+                 -- ^ Result for 'zeroP' and whether the parser is a 'pLow'.
+               }
+
+-- ^ Return @Nothing@ if the parser cannot parse the empty
+-- string.  Return @Just p@ if it can, where @p@ is a parser
+-- that parses the empty string.
+zeroP :: Q s a -> Maybe (Q s a)
+zeroP (Q _ (Just (_,p))) = Just p
+zeroP _ = Nothing
+
+qSucceed x = let r = Q p (Just (False, r)) in r
+  where p = PR $ \k inp -> 
+-}
 -- | Choose the non-failing option, (or the one that fails latest)
 best :: Steps x a s -> Steps x a s ->  Steps x a s
+--l `best` r | trace ("best: "++show (l,r)) False = undefined
 Fails x `best` Fails y = Fails (nub $ x ++ y)
 Fails _ `best` p       = p
 q       `best` Fails _ = q
@@ -190,17 +214,33 @@ getProgress f (App s)   = getProgress (f . App) s
 getProgress f (Done p)  = Done (f p)
 getProgress f (Shift s) = Shift (\input -> f (s input))
 getProgress f (Fails s) = Fails s
+getProgress f (Look s)  = Look (\input -> f (s input))
 
--- | Get the process' value (online)
+-- | Get the process' value (online).  Returns value, continuation and
+--   remaining input.
 evalSteps :: Steps s a (Steps s b r) -> [s] -> (a, Steps s b r, [s])
 evalSteps (Val a s) xs = (a, s, xs)
 evalSteps (Shift v) xs = evalSteps (v xs) (drop 1 xs)
+evalSteps (Look v)  xs = evalSteps (v xs) xs
 evalSteps (Done v)  xs = evalSteps v xs
 evalSteps (Fails s) xs = (error (show s), Fails s, xs)
 evalSteps (App s)   xs = let (f,s',  xs')  = evalSteps s  xs
                              (a,s'', xs'') = evalSteps s' xs'
                          in (f a, s'', xs'')
 
+evalSteps' :: Process s a b r -> [s] -> Either [ErrorMessage] (a, Steps s b r, [s])
+evalSteps' (Val a k) xs = Right (a, k, xs)
+evalSteps' (Shift k) xs = evalSteps' (k xs) (drop 1 xs)
+evalSteps' (Look k)  xs = evalSteps' (k xs) xs
+evalSteps' (Done k)  xs = evalSteps' k xs
+evalSteps' (Fails e) xs = Left e
+evalSteps' (App k)   xs = evalSteps' k xs `bind` (\(f, k', xs') ->
+                          evalSteps' k' xs' `bind` (\(a, k'', xs'') ->
+                          Right (f a, k'', xs'')))
+  where
+    bind :: Either e a -> (a -> Either e b) -> Either e b 
+    Left x `bind` _ = Left x
+    Right x `bind` m = m x
 
 type Process s a b r = Steps s a (Steps s b r)
 
@@ -223,18 +263,20 @@ data Result s a w r where
 instance Show (Result Char a w r) where
     showsPrec d r = -- shows (getLength r) .
                     -- (if hasErr r then showChar '?' else showChar ' ') .
-                    case r of 
-                      (Tip _ _) -> id
-                      (Una s err _ p) -> (if isJust err then  showChar '?' else id) . 
-                                         showString s . showsPrec 11 p
-                      (Bin n _a _p _err l r) -> -- showParen (d > 10) $ 
+       case r of 
+         (Tip _ _) -> id
+         (Una s err _ p) -> (if isJust err 
+                             then (\q -> showBraces True q) 
+                             else id) 
+                            (showString s . showsPrec 11 p)
+         (Bin n _a _p _err l r) -> -- showParen (d > 10) $ 
                                                 showsPrec 11 l . showsPrec 11 r
 
-
+showBraces b p = if b then showChar '{' . p . showChar '}' else p
 
 toTree :: Show s => Result s a w r -> Tree String
 toTree (Tip _ _) = Node "." []
-toTree (Una s err _ r) = Node (show s) [toTree r]
+toTree p@(Una s err _ r) = Node (show s++if hasErr p then "?" else "") [toTree r]
 toTree (Bin _ _ _ _ l r) = Node "2" [toTree l, toTree r]
 
 getResult :: Result s a w r -> a
@@ -256,10 +298,12 @@ hasErr (Tip _ _) = False
 hasErr (Una _ err _ r) = isJust err || hasErr r
                      
 -- | Get the process' "Result"
-pEvalSteps :: Steps s a (Steps s b r) -> [s] -> (Result s a b r, Steps s b r, [s])
+pEvalSteps :: Show s => Process s a b r -> [s] -> (Result s a b r, Steps s b r, [s])
+--pEvalSteps p xs | trace ("eval: "++show (p, xs)) False = undefined
 pEvalSteps p@(Val a s) xs = (Tip a p, s, xs)
 pEvalSteps p@(Shift v) xs = let (proto, s', xs') = pEvalSteps (v xs) (drop 1 xs)
                             in (Una (take 1 xs) Nothing p proto, s', xs')
+pEvalSteps p@(Look v)  xs = pEvalSteps (v xs) xs
 pEvalSteps p@(Done v)  xs = pEvalSteps v xs
 pEvalSteps p@(Fails s) xs = (Una xs (Just msg) p $ Tip v p, Fails s, [])
     where msg = show s
@@ -278,7 +322,7 @@ repair' x = fst $ repair (x,[])
 -- TODO: re-inject overhead if overhead is created.
 
 -- | Repair a Result that's been marked with errors
-repair :: (Result s a b r, [s]) -> (Result s a b r, [s])
+repair :: Show s => (Result s a b r, [s]) -> (Result s a b r, [s])
 repair (Tip x p, over) = (Tip x p, over)
 repair c@(Una s err pr r, over) 
     | isJust err = fstrd (pEvalSteps pr (s ++ getSymbols r ++ over))
@@ -311,12 +355,20 @@ repair (r@(Bin l x p err rl rr), over)
 mkPar :: P s a -> (forall b r.
                          (Steps s b r) ->
                          (Steps s a (Steps s b r)))
+-- a symbol is parsed by 
 mkPar (Symb sho n f) = \k -> Shift (\input -> 
                                     case input of
                                       (s:ss) -> if f s
                                                   then Val s k
                                                   else Fails ["expected: " ++ n]
                                       [] -> Fails ["end of input (2)"])
+mkPar (LkAh f) = \k -> Look (\input ->
+                                 case input of
+                                   (s:ss) -> f' (Just s) k
+                                   [] -> f' Nothing k)
+  where f' s k = case f s of
+                   Nothing -> Fails ["look-ahead fail"]
+                   Just a  -> Val a k
 mkPar (Pure a) = Val a
 mkPar (Star p q) = App . mkPar p . mkPar q
 mkPar (Pipe p q) = \k -> mkPar p k `best` mkPar q k
@@ -324,10 +376,13 @@ mkPar (Fail m) = \fut -> Fails [m]
 
 terminalProcess x = Done $ Val x $ Fails ["Done"]
 
-eof = Shift (\input -> case input of 
+eof :: Show s => Steps s () (Steps s b r)
+eof = Shift (\input -> --trace ("[eof: "++show input++"]") $
+                       case input of 
                          (s:ss) -> Fails ["expected eof"]
                          [] -> terminalProcess ())
 
+--parse :: P s a -> [s] -> (a, Steps s () (Steps s b r), [s])
 parse p input = evalSteps ((mkPar p) eof) input
 
 -----------------------------------
@@ -344,10 +399,11 @@ iMsg = Just "inserted stuff"
 
 insert :: Int -> [s] -> Result s a w r -> Result s a w r
 insert at ins r@(Una s err pr p)
-    | length s > 0, at <= length s
+    | l > 0, at <= l
         = Una (insertStr at ins s) iMsg pr p
     | otherwise
-        = Una s                    err  pr (insert (at - length s) ins p)
+        = Una s                    err  pr (insert (at - l) ins p)
+  where l = length s
 insert at ins (Bin l x p err rl rr) 
     | getLength rl > 0, at <= getLength rl = Bin (l+length ins) x p True (insert at ins rl) rr
     | otherwise         = Bin (l+length ins) x p True rl (insert (at - getLength rl) ins rr)
@@ -366,6 +422,7 @@ delete at len (Una s err pr p) = Una (deleteStr at ll s) err' pr (delete atr lr 
           err' = if ll == 0 || isJust err then err else Just "deleted stuff"
 delete at len (Bin l x p err rl rr) = Bin (l-len) x p True (delete at ll rl) (delete atr lr rr)
     where (ll, lr, atr) = dls at len (getLength rl)
+delete _ _ (Tip _ _) = undefined 
 
 dls at len l0 = let ll = max 0 $ min len $ (l0-at) in (ll, len - ll, max 0 $ at - l0)
 
@@ -381,7 +438,7 @@ type Op = Char
 
 type Parser = P Char
 
-pDecl :: Parser ()
+pDecl :: Parser Decl
 pDecl = Decl <$> pId <* tok "=" <*> pExpr
 
 
@@ -437,13 +494,25 @@ chainr1 p op = scan
  scan = p <**> rest
  rest = fmap flip op <*> scan <|> pure id
 
+--notFollowedBy :: Parser a -> Parser a
+--notFollowedBy p = ?
+
+lookAhead :: (Maybe Char -> Maybe a) -> Parser a
+lookAhead f = LkAh f
+
+--many_gr :: Parser a -> 
+
+--manyCharGr :: (Char -> Bool) -> Parser a
+--manyCharGr =
+
 ----------
 
-initial = Una " " iMsg ((mkPar pExpr) eof) $ 
-          Tip (error "Initial") ((mkPar pExpr) eof)
+initial = Una " " iMsg ((mkPar p) eof) $ 
+          Tip (error "Initial") ((mkPar p) eof)
+  where p = pExpr
 
 -- updates :: [PResult Char Expr -> PResult Char Expr]
-updates = [insert' 0 "a*b+c+d", repair', 
+updates = [insert' 0 "a*b+c+d", repair' ,
            insert' 2 "(", repair',
            insert' 6 ")", repair',
            insert' 2 "+", repair', 
@@ -454,7 +523,7 @@ updates = [insert' 0 "a*b+c+d", repair',
 --           insert' 8 "*", repair',
            delete' 2 1, repair',
            delete' 2 1, repair'
-          ]
+          ] -- -}
 
 
 nacsr :: a -> [a -> a] -> [a]
@@ -470,4 +539,48 @@ main_test = mapM_ (putStrLn . show) states
 -- prop_partial: not (hasErr pResult) ==> getResult pResult == parse (getSymbols pResult)
 -- prop_no_lost_edit: getSymbols (applyUpdate u pResult) = applyUpdate (getSymbols u pResult)
 
+sepBy :: (Alternative f) => f a -> f b -> f [a]
+sepBy p s = sepBy1 p s <|> pure []
 
+sepBy1 :: (Alternative f) => f a -> f b -> f [a]
+sepBy1 p s = (:) <$> p <*> many (s *> p)
+
+tst_ex1 = do --putStrLn $ drawTree (toTree r)
+             --print $ p eof
+             --print $ getResult r
+             --print $ getSymbols r
+             print (r, k, s)
+             --print $ evalSteps' (p eof) inp
+  where
+    p = mkPar $ hVarId `sepBy` some space
+    inp = "  xyz yz" 
+    (r, k, s) = pEvalSteps (p eof) inp
+
+mynum = token (some (symbol "digit" isDigit))
+
+data BinTree = BN BinTree BinTree | Leaf Char deriving Show
+
+leaf = Leaf <$> symbol "character" (isDigit)
+node = BN <$> leaf <*> leaf
+
+--many' p = 
+
+--manySym_gr :: (Char -> Bool) -> (Char -> Bool) -> Parser a
+
+notFollowedBy :: Parser a -> (Char -> Bool) -> Parser a
+notFollowedBy p f = id <$> p <* lookAhead f'
+  where f' Nothing = Just ()
+        f' (Just x) | f x       = Just ()
+                    | otherwise = Nothing
+   
+------------------------------------------------------------------------------
+
+hChar c = symbol (show c) (==c)
+hSmall = symbol "lower-case letter" isLower <|> hChar '_'
+hLarge = symbol "upper-case letter" isUpper
+hLetter = symbol "letter" isLetter <|> hChar '_'
+hDigit = symbol "digit" isDigit
+
+hVarId = token $
+    (:) <$> hSmall <*> many (hLetter <|> hDigit <|> hChar '\'')
+  
