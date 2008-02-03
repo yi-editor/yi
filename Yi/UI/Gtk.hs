@@ -101,7 +101,7 @@ start ch outCh _ed runEd = do
   cmd <- labelNew Nothing
   set cmd [ miscXalign := 0.01 ]
   f <- fontDescriptionNew
-  fontDescriptionSetFamily f "Sans mono"
+  fontDescriptionSetFamily f "Monospace"
   widgetModifyFont cmd (Just f)
 
   set vb [ containerChild := vb',
@@ -267,7 +267,7 @@ handleClick ui w event = do
 newWindow :: UI -> Bool -> FBuffer -> IO WinInfo
 newWindow ui mini b = do
     f <- fontDescriptionNew
-    fontDescriptionSetFamily f "Sans mono"
+    fontDescriptionSetFamily f "Monospace"
 
     ml <- labelNew Nothing
     widgetModifyFont ml (Just f)
