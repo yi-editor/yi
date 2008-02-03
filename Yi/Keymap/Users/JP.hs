@@ -1,86 +1,110 @@
 {-# LANGUAGE FlexibleContexts #-}
-module Yi.Keymap.Normal where
+-- * 
+-- This is an attempt at a completely "normalized" keymap.
+-- Choose your mode/unit with the left hand;
+-- Perform commands with the right hand.
+module Yi.Keymap.Users.JP where
 
+import Prelude hiding (error)
 import Control.Monad.State
 import Data.Char
 import Yi.Keymap.Emacs.Utils (insertSelf)
 import Yi.Yi
 import qualified Yi.Interact as I (choice, I())
 
-leftHand, rightHand :: [String]
-leftHand = ["qwert", "asdfg", "zxcvb"]
-rightHand = ["yuiop", "hjkl;", "nm,./"]
+-- | Enhanced keymap type, where the current unit is remembered using a StateT
+type KM a = (StateT (TextUnit, String) (I.I Event Action)) a
+
 
 {-
+  We'll assume QWERTY layout:
 
 qqq www eee rrr ttt yyy uuu iii ooo ppp
  aaa sss ddd fff ggg hhh jjj kkk lll ;;;
   zzz xxx ccc vvv bbb nnn mmm ,,, ... ///
-
 -}
 
-type Process a = (StateT TextUnit (I.I Event Action)) a
+-- | Keyboard layout definition
+leftHand, rightHand :: [String]
+leftHand = ["qwert", "asdfg", "zxcvb"]
+rightHand = ["yuiop", "hjkl;", "nm,./"]
+
+-- * Some event transformers.
+
+shi_,ctr_ :: Event -> Event
+shi_ (Event (KASCII c) ms) | isAlpha c = Event (KASCII (toUpper c)) ms
+shi_ (Event (KASCII ',') ms)  = Event (KASCII '<') ms
+shi_ (Event (KASCII '.') ms)  = Event (KASCII '>') ms
+shi_ (Event (KASCII '/') ms)  = Event (KASCII '?') ms
+shi_ (Event (KASCII ';') ms)  = Event (KASCII ':') ms
+shi_ _ = error "shi_: unhandled event"                          
+ctr_ (Event k ms) = Event k (MCtrl:ms)
+
+key_ :: Char -> Event
+key_ c = Event (KASCII c) []
 
 
 -- data Mark = Paste | SetMark | Cut | Copy | SwitchMark
 -- data Special = Complete | Undo | Indent | Search
 
-selfInsertKeymap :: Process ()
+selfInsertKeymap :: KM ()
 selfInsertKeymap = do
   Event (KASCII c) [] <- satisfy isPrintableEvent
   write (insertSelf c)
       where isPrintableEvent (Event (KASCII c) []) = c >= ' '
             isPrintableEvent _ = False
 
-retKeymap :: Process ()
+retKeymap :: KM ()
 retKeymap = do
   Event KEnter [] <- anyEvent
   write (insertSelf '\n')
 
-insertKeymap :: StateT TextUnit (I Event Action) ()
+insertKeymap :: KM ()
 insertKeymap = do
-  keyEv 'g'
-  many (selfInsertKeymap <|> retKeymap <|> quickCmdKeymap)
-  Event KEnter [MCtrl] <- anyEvent
+  event $ key_ 'g'
+  write $ msgEditor "-- INSERT --"
+  many $ do
+    write $ msgEditor "-- INSERT --"
+    (selfInsertKeymap <|> retKeymap <|> quickCmdKeymap) <|| unrecognized
+  satisfy (`elem` [Event KEnter [MCtrl], Event KEsc []])
   return ()
 
-quickCmdKeymap :: (MonadInteract m Action Event) => m ()
-quickCmdKeymap = I.choice $ concat $ zipWith (zipWith mkCmd) commands rightHand
-    where mkCmd cmd ch = do
-            Event (KASCII c) [MCtrl] <- anyEvent
-            when (c /= ch) $ fail $ "expected " ++ [ch]
-            write (cmd Character)
 
-quitKeymap :: Process ()
+quickCmdKeymap :: KM ()
+quickCmdKeymap =     mkCmdKeymap (return Character)  ctr_
+                 <|> mkCmdKeymap (return Word)      (ctr_ . shi_)
+
+quitKeymap :: KM ()
 quitKeymap = do
-  keyEv 'q'
+  Event KEsc [] <- anyEvent
   write quitEditor
 
-unrecognized :: Process ()
+unrecognized :: KM ()
 unrecognized = do
   e <- anyEvent
   write (msgEditor $ "unrecognized: " ++ show e)
 
-commandsKeymap :: Process ()
-commandsKeymap = quitKeymap <|| (I.choice $ insertKeymap : (concat $ (cmds ++ unts))) <|| unrecognized
+commandsKeymap :: KM ()
+commandsKeymap = do
+  (_, unitName) <- get
+  write $ msgEditor $ "-- CMD: " ++ unitName
+  quitKeymap <|| (I.choice $ insertKeymap : cmds : concat unts)
     where
-      cmds :: [[Process ()]]
-      cmds = zipWith (zipWith mkCmd) commands rightHand
+      cmds = mkCmdKeymap (fst <$> get) id
       unts = zipWith (zipWith mkUnt) units leftHand
-      mkCmd :: (TextUnit -> BufferM ()) -> Char -> Process ()
-      mkCmd cmd ch = do
-            keyEv ch
-            currentUnit <- get
-            write (cmd currentUnit)
       mkUnt unt ch = do
-        keyEv ch
+        event $ key_ ch
         put unt
 
-keyEv :: (MonadInteract m w Event) => Char -> m Event
-keyEv c = satisfy (== Event (KASCII c) [])
+mkCmdKeymap :: KM TextUnit -> (Event -> Event) -> KM ()
+mkCmdKeymap getUnit mods = I.choice $ concat $ zipWith (zipWith mkCmd) commands rightHand
+    where mkCmd cmd ch = do
+            event $ mods $ key_ ch
+            unt <- getUnit
+            write (cmd unt)
 
 keymap :: Keymap
-keymap = runProcess $ (many commandsKeymap >> return ())
+keymap = runKM $ forever commandsKeymap
 
 
 {-
@@ -117,9 +141,9 @@ commands = [[copy, cut,   del  b, del f,  complete],
           paste = todo
           search = todo
           undo = const undoB
-          move dir u = execB Move u dir
+          move dir u = moveB u dir
           del dir u = deleteB u dir
-          xpo dir u = execB Transpose u dir
+          xpo dir u = transposeB u dir
           b = Backward
           f = Forward
           todo = \_ -> return ()
@@ -139,14 +163,14 @@ document = Character
 page = Character
 column = Character
 
-units :: [[TextUnit]]
+units :: [[(TextUnit, String)]]
 units = [
-         [document, page, column, VLine],
-         [Paragraph, Line, Word, Character]
+         [(document, "DOC"), (page, "PAGE"), (column, "COL"), (VLine, "↕")],
+         [(Paragraph, "§"), (Line, "Line"), (Word, "Word"), (Character, "Char")]
         ]
 
-runProcess :: Process () -> Keymap
-runProcess p = fmap fst $ runStateT p Character
+runKM :: KM () -> Keymap
+runKM p = fmap fst $ runStateT p (Character, "Char")
 
 {-
 ins: go to insert mode
