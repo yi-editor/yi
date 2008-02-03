@@ -41,7 +41,6 @@ import qualified Data.Map as M
 import Yi.Style
 
 import Control.Monad
-import Control.Arrow (second)
 
 import Text.Regex.Base
 import Text.Regex.Posix
@@ -293,30 +292,62 @@ applyUpdateI u (FBufferData p mks nms hl ov) = FBufferData p' (M.map shift mks) 
 curLnI :: BufferImpl -> Int
 curLnI fb@(FBufferData ptr _ _ _ _) = 1 + F.count '\n' (F.take (pointBI fb) ptr)
 
+
 -- | Go to line number @n@, relatively from this line. @0@ will go to
 -- the start of this line. Returns the actual line difference we went
 -- to (which may be not be the requested one, if it was out of range)
+-- Note that the line-difference returned will always be positive
+-- that is, it's the number of lines we have moved in the specified
+-- direction, not the movement.
+-- Also note: it's legal to do a @gotoLnRelI 0@ this will move to
+-- the start of the current line, which maybe what was required.
 gotoLnRelI :: Int -> BufferImpl -> (BufferImpl, Int)
-gotoLnRelI n fb = (moveToI np fb, max 1 n')
-    where
-     s = mem fb
-     point = pointBI fb
-     (n', np) = if n <= 0
-      then
-        let lineStarts = map (+1) ((F.elemIndicesEnd '\n') (F.take point s)) ++ [0]
-            findLine acc _ [x]    = (acc, x)
-            findLine acc 0 (x:_)  = (acc, x)
-            findLine acc l (_:xs) = findLine (acc - 1) (l + 1) xs
-            findLine _ _ []       =
-              error "lineStarts ends with 0 : ... this cannot happen"
-        in findLine 0 n lineStarts
-      else
-        let lineStarts = map (+1) ((F.elemIndices '\n') (F.drop point s))
-            findLine acc _ []     = (acc, 0) -- try to go forward, but there is no such line.
-            findLine acc _ [x]    = (acc + 1, x)
-            findLine acc 1 (x:_)  = (acc, x)
-            findLine acc l (_:xs) = findLine (acc + 1) (l - 1) xs
-        in second (point +) (findLine 0 n lineStarts)
+gotoLnRelI n fb = 
+  (moveToI newPoint fb, difference)
+  where
+  -- The text of the buffer
+  s     = mem fb
+  -- The current point that we are at in the buffer.
+  point = pointBI fb
+  (difference, newPoint)
+    -- Important that we go up if it is 0 since findDownLine
+    -- fails for zero.
+    | n <= 0    = findUpLine 0 n upLineStarts
+    | otherwise = findDownLine 1 n downLineStarts
+
+  -- The offsets of all line beginnings above the current point.
+  upLineStarts = map (+1) ((F.elemIndicesEnd '\n') (F.take point s)) ++ [0]
+
+  -- Go up to find the line we wish for the returned value is a pair
+  -- consisting of the point of the start of the line to which we move
+  -- and the number of lines we have actually moved.
+  findUpLine :: Int -> Int -> [ Int ] -> (Int, Int)
+  findUpLine acc _ [x]    = (acc, x)
+  findUpLine acc 0 (x:_)  = (acc, x)
+  findUpLine acc l (_:xs) = findUpLine (acc - 1) (l + 1) xs
+  findUpLine _ _ []       =
+    error $ "we append [0] to the end of upLineStarts" ++
+            " hence this cannot happen."
+
+  -- The offsets of all the line beginnings below the current point
+  -- so we drop everything before the point, find all the indices of
+  -- the newlines from there and add the point (plus 1) to them.
+  downLineStarts = map (+(1 + point)) ((F.elemIndices '\n') (F.drop point s))
+
+  -- Go down to find the line we wish for, the returned value is a pair
+  -- consisting of the point of the start of the line to which we move
+  -- and the number of lines we have actually moved.
+  -- Note: that this doesn't work if the number of lines to move down
+  -- is zero. 
+  findDownLine :: Int -> Int -> [ Int ] -> (Int, Int)
+  -- try to go forward, but there is no such line
+  -- this cannot happen on a recursive call so it can only happen if
+  -- we started on the last line, so we return the current point.
+  findDownLine acc _ []     = (acc, point) 
+  findDownLine acc _ [x]    = (acc + 1, x)
+  findDownLine acc 1 (x:_)  = (acc, x)
+  findDownLine acc l (_:xs) = findDownLine (acc + 1) (l - 1) xs
+
 
 -- | Return index of next string in buffer that matches argument
 searchBI :: Direction -> String -> BufferImpl -> Maybe Int
