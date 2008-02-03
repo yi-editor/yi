@@ -79,12 +79,12 @@ write x = I.write (makeAction x)
 setBufferKeymap :: BufferRef -> KeymapEndo -> YiM ()
 setBufferKeymap b km = do
   bkm <- getBufferKeymap b
-  modifiesRef bufferKeymaps (M.insert b bkm {bufferKeymap = km, bufferKeymapProcess = I.Fail})
+  modifiesRef bufferKeymaps (M.insert b bkm {bufferKeymap = km, bufferKeymapProcess = I.End})
 
 restartBufferThread :: BufferRef -> YiM ()
 restartBufferThread b = do
   bkm <- getBufferKeymap b
-  modifiesRef bufferKeymaps (M.insert b bkm {bufferKeymapProcess = I.Fail})
+  modifiesRef bufferKeymaps (M.insert b bkm {bufferKeymapProcess = I.End})
 
 deleteBufferKeymap :: BufferRef -> YiM ()
 deleteBufferKeymap b = modifiesRef bufferKeymaps (M.delete b)
@@ -94,7 +94,7 @@ getBufferKeymap b = do
   kms <- readsRef bufferKeymaps
   return $ case M.lookup b kms of
     Just bkm -> bkm
-    Nothing -> BufferKeymap {bufferKeymap = id, bufferKeymapProcess = I.Fail}
+    Nothing -> BufferKeymap {bufferKeymap = id, bufferKeymapProcess = I.End}
 
 --------------------------------
 -- Uninteresting glue code

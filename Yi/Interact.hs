@@ -186,6 +186,7 @@ data P event w
 runWrite :: PEq w => P event w -> [event] -> [w]
 runWrite _ [] = []
 runWrite Fail _ = []
+runWrite End _ = []
 runWrite p (c:cs) = let (ws, p') = processOneEvent p c in ws ++ runWrite p' cs
 
 processOneEvent :: PEq w => P event w -> event -> ([w], P event w)

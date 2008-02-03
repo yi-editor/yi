@@ -205,10 +205,10 @@ dispatch ev =
        defKm <- readRef (defaultKeymap yi)
        let p0 = bufferKeymapProcess bkm
            freshP = I.mkAutomaton $ bufferKeymap bkm $ defKm
-           (p, err) = case p0 of
-                 I.End -> (freshP, return ())
-                 I.Fail -> (freshP, msgEditor "Unrecognized input")
-                 _ -> (p0, return ())
+           p = case p0 of
+                 I.End  -> freshP
+                 I.Fail -> freshP
+                 _      -> p0
            (actions, p') = I.processOneEvent p ev
            possibilities = I.possibleActions p'
            ambiguous = not (null possibilities) && all isJust possibilities
@@ -216,8 +216,10 @@ dispatch ev =
        logPutStrLn $ "Actions posted:" ++ show actions
        logPutStrLn $ "New automation: " ++ show p'
        -- TODO: if no action is posted, accumulate the input and give feedback to the user.
-       err
-       postActions actions
+
+       postActions $ case p' of 
+                       I.Fail -> [makeAction $ msgEditor "Unrecognized input"]
+                       _ -> actions
        when ambiguous $
             postActions [makeAction $ msgEditor "Keymap was in an ambiguous state! Resetting it."]
        modifiesRef bufferKeymaps (M.insert b bkm { bufferKeymapProcess = if ambiguous then freshP
