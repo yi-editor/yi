@@ -237,11 +237,8 @@ cmd_eval = do
    let i = maybe 1 id cnt
    choice
     ([event c >> write (a i) | (c,a) <- singleCmdFM ] ++
-    [events evs >> write (action i) | (evs, action) <- multiCmdFM ]) <|>
-    (do event 'r'; c <- anyButEscOrDel; write (writeB c)) <|>
-    (events ">>" >> write (shiftIndentOfLine i)) <|>
-    (events "<<" >> write (shiftIndentOfLine (-i))) <|>
-    (events "ZZ" >> write (viWrite >> quitEditor))
+     [events evs >> write (action i) | (evs, action) <- multiCmdFM ] ++
+     [do event 'r'; c <- anyButEscOrDel; write (writeB c)])
 
 -- TODO: escape the current word
 --       at word bounds: search for \<word\>
@@ -316,6 +313,10 @@ multiCmdFM =
     ,(['\^W',keyUp], const $ withEditor prevWinE)
     ,(['\^W',keyRight], const $ withEditor nextWinE)
     ,(['\^W',keyLeft], const $ withEditor prevWinE)
+
+    ,(">>", withBuffer . shiftIndentOfLine)
+    ,("<<", withBuffer . shiftIndentOfLine . negate)
+    ,("ZZ", const $ viWrite >> quitEditor)
     ]
 
 -- | So-called 'operators', which take movement actions as arguments.
@@ -435,8 +436,8 @@ vis_multi = do
    cnt <- count
    let i = maybe 1 id cnt
    choice ([events "ZZ" >> write (viWrite >> quitEditor),
-            events ">>" >> write (shiftIndentOfSelection i),
-            events "<<" >> write (shiftIndentOfSelection (-i)),
+            event '>' >> write (shiftIndentOfSelection i),
+            event '<' >> write (shiftIndentOfSelection (-i)),
             do event 'r'; x <- anyEvent; write $ do
                                    mrk <- getSelectionMarkPointB
                                    pt <- pointB
