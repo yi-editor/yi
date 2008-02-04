@@ -390,8 +390,8 @@ setPrefCol :: Maybe Int -> BufferM ()
 setPrefCol = setA preferColA
 
 -- | Move point down by @n@ lines. @n@ can be negative.
--- Returns the actual number of lines which we moved (always positive
--- even if @n@ was negative).
+-- Returns the actual difference in lines which we moved which
+-- may be negative if the requested line difference is negative.
 lineMoveRel :: Int -> BufferM Int
 lineMoveRel n = do
   prefCol <- getA preferColA
@@ -454,7 +454,8 @@ offsetFromSol :: BufferM Int
 offsetFromSol = queryBuffer offsetFromSolBI
 
 -- | Go to line indexed from current point
--- Returns the actual number of lines moved.
+-- Returns the actual moved difference which of course
+-- may be negative if the requested difference was negative.
 gotoLnFrom :: Int -> BufferM Int
 gotoLnFrom x = queryAndModify $ gotoLnRelI x
 

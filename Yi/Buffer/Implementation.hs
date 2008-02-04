@@ -296,9 +296,8 @@ curLnI fb@(FBufferData ptr _ _ _ _) = 1 + F.count '\n' (F.take (pointBI fb) ptr)
 -- | Go to line number @n@, relatively from this line. @0@ will go to
 -- the start of this line. Returns the actual line difference we went
 -- to (which may be not be the requested one, if it was out of range)
--- Note that the line-difference returned will always be positive
--- that is, it's the number of lines we have moved in the specified
--- direction, not the movement.
+-- Note that the line-difference returned will be negative if we are
+-- going backwards to previous lines (that is if @n@ was negative).
 -- Also note: it's legal to do a @gotoLnRelI 0@ this will move to
 -- the start of the current line, which maybe what was required.
 gotoLnRelI :: Int -> BufferImpl -> (BufferImpl, Int)
@@ -320,7 +319,7 @@ gotoLnRelI n fb =
 
   -- Go up to find the line we wish for the returned value is a pair
   -- consisting of the point of the start of the line to which we move
-  -- and the number of lines we have actually moved.
+  -- and the difference in lines we have moved (negative here if we move at all)
   findUpLine :: Int -> Int -> [ Int ] -> (Int, Int)
   findUpLine acc _ [x]    = (acc, x)
   findUpLine acc 0 (x:_)  = (acc, x)
@@ -344,7 +343,7 @@ gotoLnRelI n fb =
   -- this cannot happen on a recursive call so it can only happen if
   -- we started on the last line, so we return the current point.
   findDownLine acc _ []     = (acc, point) 
-  findDownLine acc _ [x]    = (acc + 1, x)
+  findDownLine acc _ [x]    = (acc, x)
   findDownLine acc 1 (x:_)  = (acc, x)
   findDownLine acc l (_:xs) = findDownLine (acc + 1) (l - 1) xs
 
