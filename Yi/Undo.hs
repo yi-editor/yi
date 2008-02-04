@@ -119,7 +119,7 @@ manyUR _ ur@(URList (InteractivePoint:_) _) b = (b, (ur, []))
 manyUR f ur@(URList _ _) b = 
     let (b', (ur', cs')) = f ur b
         (b'', (ur'', cs'')) = manyUR f ur' b'
-        in (b'', (ur'', cs'' ++ cs'))
+        in (b'', (ur'', cs' ++ cs''))
 
 -- | Undo the last action that mutated the buffer contents. The action's
 -- inverse is added to the redo list. 
