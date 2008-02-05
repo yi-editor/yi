@@ -13,6 +13,8 @@ module Yi.Buffer.Implementation
   , moveToI
   , applyUpdateI
   , isValidUpdate
+  , applyUpdateWithMoveI
+  , reverseUpdateI
   , pointBI
   , nelemsBI
   , sizeBI
@@ -285,6 +287,16 @@ applyUpdateI u (FBufferData p mks nms hl ov) = FBufferData p' (M.map shift mks) 
                            Delete pnt len -> (deleteChars p pnt len, negate len)
           shift = shiftMarkValue (updatePoint u) amount
           -- FIXME: remove collapsed overlays
+
+-- | Apply a /valid/ update and also move point in buffer to update position
+applyUpdateWithMoveI :: Update -> BufferImpl -> BufferImpl
+applyUpdateWithMoveI u b = applyUpdateI u (moveToI (updatePoint u) b)
+
+-- | Reverse the given update
+reverseUpdateI :: Update -> BufferImpl -> Update
+reverseUpdateI (Delete p n)  b = Insert p (nelemsBI n p b)
+reverseUpdateI (Insert p cs) _ = Delete p (length cs)
+
 
 ------------------------------------------------------------------------
 -- Line based editing

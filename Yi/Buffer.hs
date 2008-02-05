@@ -201,7 +201,7 @@ runBufferDummyWindow b = runBuffer (dummyWindow $ bkey b) b
 -- This has now been updated so that instead of clearing the undo list we
 -- mark the point at which the file was saved.
 clearUndosB :: BufferM ()
-clearUndosB = modifyA undosA setSavedPointUR
+clearUndosB = modifyA undosA setSavedFilePointU
 
 getfileB :: BufferM (Maybe FilePath)
 getfileB = gets file
@@ -216,21 +216,21 @@ keyB :: FBuffer -> BufferRef
 keyB (FBuffer { bkey = u }) = u
 
 isUnchangedB :: BufferM Bool
-isUnchangedB = gets (isUnchangedUList . undos)
+isUnchangedB = gets (isAtSavedFilePointU . undos)
 
 
-undoRedo :: ( URList -> BufferImpl -> (BufferImpl, (URList, [Change])) ) -> BufferM ()
+undoRedo :: ( URList -> BufferImpl -> (BufferImpl, (URList, [Update])) ) -> BufferM ()
 undoRedo f = do
   ur <- gets undos
-  (ur',changes) <- queryAndModify (f ur)
+  (ur', updates) <- queryAndModify (f ur)
   setA undosA ur'
-  tell (concatMap changeUpdates changes)
+  tell updates
 
 undoB :: BufferM ()
-undoB = undoRedo undoInteractivePoint >> undoRedo (manyUR undoUR)
+undoB = undoRedo undoU
 
 redoB :: BufferM ()
-redoB = undoRedo (manyUR redoUR)
+redoB = undoRedo redoU
 
 -- | Create buffer named @nm@ with contents @s@
 newB :: BufferRef -> String -> [Char] -> FBuffer
@@ -238,7 +238,7 @@ newB unique nm s =
     FBuffer { name   = nm
             , bkey   = unique
             , file   = Nothing          -- has name, not connected to a file
-            , undos  = emptyUR
+            , undos  = emptyU
             , rawbuf = newBI s
             , bmode  = ReadWrite
             , preferCol = Nothing
@@ -281,8 +281,9 @@ applyUpdate update = do
   valid <- queryBuffer (isValidUpdate update)
   when valid $ do
        forgetPreferCol
-       reversed <- queryAndModify (getActionB (AtomicChange update))
-       modifyA undosA $ addUR reversed
+       reversed <- queryBuffer (reverseUpdateI update)
+       modifyBuffer (applyUpdateWithMoveI update)
+       modifyA undosA $ addChangeU $ AtomicChange $ reversed
        tell [update]
   -- otherwise, just ignore.
 
@@ -290,7 +291,7 @@ applyUpdate update = do
 revertPendingUpdatesB :: BufferM ()
 revertPendingUpdatesB = do
   updates <- getA pendingUpdatesA
-  modifyBuffer (flip (foldr (\u bi -> applyUpdateI (reverseUpdate u bi) bi)) updates)
+  modifyBuffer (flip (foldr (\u bi -> applyUpdateI (reverseUpdateI u bi) bi)) updates)
 
 -- | Write an element into the buffer at the current point.
 writeB :: Char -> BufferM ()

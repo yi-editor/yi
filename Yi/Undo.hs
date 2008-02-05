@@ -47,19 +47,14 @@
 --
 
 module Yi.Undo (
-    emptyUR
-  , addUR
-  , setSavedPointUR
-  , manyUR
-  , undoInteractivePoint
-  , undoUR
-  , redoUR
-  , isUnchangedUList
-  , reverseUpdate
-  , getActionB
+    emptyU
+  , addChangeU
+  , setSavedFilePointU
+  , isAtSavedFilePointU
+  , undoU
+  , redoU
   , URList             {- abstractly -}
   , Change(AtomicChange, InteractivePoint)
-  , changeUpdates
    ) where
 
 import Yi.Buffer.Implementation            
@@ -69,12 +64,6 @@ data Change = SavedFilePoint
             | AtomicChange Update
             deriving Show
 
-changeUpdates :: Change -> [Update]
-changeUpdates (AtomicChange u) = [u]
-changeUpdates SavedFilePoint = []
-changeUpdates InteractivePoint = []
-
-
 -- | A URList consists of an undo and a redo list.
 data URList = URList [Change] [Change]
             deriving Show
@@ -82,23 +71,22 @@ data URList = URList [Change] [Change]
 -- | A new empty 'URList'.
 -- Notice we must have a saved file point as this is when we assume we are
 -- opening the file so it is currently the same as the one on disk
-emptyUR :: URList
-emptyUR = URList [SavedFilePoint] []
+emptyU :: URList
+emptyU = URList [SavedFilePoint] []
 
 -- | Add an action to the undo list.
 -- According to the restricted, linear undo model, if we add a command
 -- whilst the redo list is not empty, we will lose our redoable changes.
-addUR :: Change -> URList -> URList
-addUR InteractivePoint ur@(URList (InteractivePoint:_) _) = ur
-addUR u (URList us _rs) = URList (u:us) []
-
+addChangeU :: Change -> URList -> URList
+addChangeU InteractivePoint (URList us rs) = URList (addIP us) rs
+addChangeU u (URList us _rs) = URList (u:us) []
 
 -- | Add a saved file point so that we can tell that the buffer has not
 -- been modified since the previous saved file point.
 -- Notice that we must be sure to remove the previous saved file points
 -- since they are now worthless.
-setSavedPointUR :: URList -> URList
-setSavedPointUR (URList undos redos) =
+setSavedFilePointU :: URList -> URList
+setSavedFilePointU (URList undos redos) =
   URList (SavedFilePoint : cleanUndos) cleanRedos
   where
   cleanUndos = filter isNotSavedFilePoint undos
@@ -107,64 +95,63 @@ setSavedPointUR (URList undos redos) =
   isNotSavedFilePoint SavedFilePoint = False
   isNotSavedFilePoint _              = True
 
-undoInteractivePoint :: URList -> BufferImpl -> (BufferImpl, (URList, [Change]))
-undoInteractivePoint (URList (InteractivePoint:cs) rs) b =  (b, (URList cs (InteractivePoint:rs), []))
-undoInteractivePoint ur b = (b, (ur, []))
+-- | This undoes one interaction step.
+undoU :: URList -> BufferImpl -> (BufferImpl, (URList, [Update]))
+undoU ur b = undoUntilInteractive [] (undoInteractive ur) b
 
--- | repeat ur action until we find an InteractivePoint.
-manyUR :: (URList -> t -> (t, (URList, [a])))-> URList -> t -> (t, (URList, [a]))
-manyUR _ ur@(URList [] _) b = (b, (ur, []))
-manyUR _ ur@(URList [SavedFilePoint] _) b     = (b, (ur, []))
-manyUR _ ur@(URList (InteractivePoint:_) _) b = (b, (ur, []))
-manyUR f ur@(URList _ _) b = 
-    let (b', (ur', cs')) = f ur b
-        (b'', (ur'', cs'')) = manyUR f ur' b'
-        in (b'', (ur'', cs' ++ cs''))
+-- | This redoes one iteraction step.
+redoU :: URList -> BufferImpl -> (BufferImpl, (URList, [Update]))
+redoU = asRedo undoU
 
--- | Undo the last action that mutated the buffer contents. The action's
--- inverse is added to the redo list. 
-undoUR :: URList -> BufferImpl -> (BufferImpl, (URList, [Change]))
-undoUR u@(URList [] _) b                     = (b, (u, []))
-undoUR u@(URList [SavedFilePoint] _) b       = (b, (u, []))
-undoUR (URList (SavedFilePoint : rest) rs) b = 
-  undoUR (URList rest (SavedFilePoint : rs)) b
-undoUR (URList (u:us) rs) b                  = 
-    let (b', r) = getActionB u b 
-    in (b', (URList us (r:rs), [u]))
+-- | Prepare undo by moving one interaction point from undoes to redoes.
+undoInteractive :: URList -> URList
+undoInteractive (URList us rs) = URList (remIP us) (addIP rs)
 
--- | Redo the last action that mutated the buffer contents. The action's
--- inverse is added to the undo list.
-redoUR :: URList -> BufferImpl -> (BufferImpl, (URList, [Change]))
-redoUR u@(URList _ []) b = (b, (u, []))
-redoUR u@(URList _ [SavedFilePoint]) b = (b, (u, []))
-redoUR (URList us (SavedFilePoint : rest)) b =
-  redoUR (URList (SavedFilePoint : us) rest) b
-redoUR (URList us (r:rs)) b =
-    let (b', u) = getActionB r b
-    in (b', (URList (u:us) rs, [u]))
+remIP, addIP :: [Change] -> [Change]
 
--- | isUnchangedUndoList. @True@ if the undo list is either empty or we are at a
--- SavedFilePoint indicated that the buffer has not been modified since we
--- last saved the file.
+-- | Remove an initial interactive point, if there is one
+remIP (InteractivePoint:xs) = xs
+remIP xs = xs
+
+-- | Insert an initial interactive point, if there is none
+addIP xs@(InteractivePoint:_) = xs
+addIP xs = InteractivePoint:xs
+    
+-- | Repeatedly undo actions, storing away the inverse operations in the
+--   redo list.
+undoUntilInteractive :: [Update] -> URList -> BufferImpl -> (BufferImpl, (URList, [Update]))
+undoUntilInteractive xs ur@(URList cs rs) b = case cs of
+  []                   -> (b, (ur, xs))
+  [SavedFilePoint]     -> (b, (ur, xs)) -- Why this special case?
+  (InteractivePoint:_) -> (b, (ur, xs))
+  (SavedFilePoint:cs') ->
+    undoUntilInteractive xs (URList cs' (SavedFilePoint:rs)) b
+  (AtomicChange u:cs') -> 
+    let ur' = (URList cs' (AtomicChange (reverseUpdateI u b):rs))
+        b' = (applyUpdateWithMoveI u b)
+        (b'', (ur'', xs'')) = undoUntilInteractive xs ur' b'
+    in (b'', (ur'', u:xs''))
+
+-- | Run the undo-function @f@ on a swapped URList making it
+--   operate in a redo fashion instead of undo.
+asRedo :: (URList -> t -> (t, (URList, [Update]))) -> URList -> t -> (t, (URList, [Update]))
+asRedo f ur x = let (y,(ur',rs)) = f (swapUndoRedo ur) x in (y,(swapUndoRedo ur',rs))
+  where 
+    swapUndoRedo :: URList -> URList
+    swapUndoRedo (URList us rs) = URList rs us
+
+-- | undoIsAtSavedFilePoint. @True@ if the undo list is at a SavedFilePoint indicating
+--   that the buffer has not been modified since we last saved the file.
 -- Note: that an empty undo list does NOT mean that the buffer is not modified since
 -- the last save. Because we may have saved the file and then undone actions done before
 -- the save.
-isUnchangedUList :: URList -> Bool
-isUnchangedUList (URList (InteractivePoint:us) rs) = isUnchangedUList (URList us rs)
-isUnchangedUList (URList [] _)                   = False
-isUnchangedUList (URList (SavedFilePoint : _) _) = True
-isUnchangedUList (URList _ _)                    = False
-
--- | Given a Update, apply it to the buffer, and return the
--- Update that reverses it.
-getActionB :: Change -> BufferImpl -> (BufferImpl, Change)
-getActionB (AtomicChange u) b = (applyUpdateI u (moveToI (updatePoint u) b), 
-                                 AtomicChange (reverseUpdate u b))
-getActionB c b = (b,c)
-
--- | Reverse the given update
-reverseUpdate :: Update -> BufferImpl -> Update
-reverseUpdate (Delete p n)   b  = Insert p (nelemsBI n p b)
-reverseUpdate (Insert p cs)  _ = Delete p (length cs)
+isAtSavedFilePointU :: URList -> Bool
+isAtSavedFilePointU (URList us _) = isUnchanged us
+  where
+    isUnchanged cs = case cs of
+      []                       -> False
+      (SavedFilePoint : _)     -> True
+      (InteractivePoint : cs') -> isUnchanged cs'
+      _                        -> False
 
 

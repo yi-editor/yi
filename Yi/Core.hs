@@ -100,7 +100,7 @@ interactive action = do
   logPutStrLn ">>> interactively"
   prepAction <- withUI UI.prepareAction
   withEditor $ do prepAction
-                  modifyAllA buffersA undosA (addUR InteractivePoint)
+                  modifyAllA buffersA undosA (addChangeU InteractivePoint)
   runAction action
   withEditor $ modifyA killringA krEndCmd
   refreshEditor
