@@ -82,26 +82,55 @@ autoIndentB = do
   cycleIndentsB $ sort $ nub indents
 
 
--- returns the position of the last opening bracket
--- (where bracket is parens, braces or curly braces)
--- on the given line, if there is one.
+-- Returns the position of the last opening bracket on the
+-- line which is not closed on the same line.
+-- Note that if we have unmatched parentheses such as "( ]"
+-- then we may not get the correct answer, but in that case
+-- then arguably we don't really care if we get the correct
+-- answer (at least if we get it wrong the user may notice
+-- their error).
 lastOpenBracket :: String -> Int
 lastOpenBracket s =
-  -- The 'max' is really here because if there is no opening
-  -- bracket in then 'afterLastOpen' is the whole line and
-  -- consequently 'fromEnd + 1' is one more than the whole
-  -- of the line.
-  max 0 indentation
+  getOpen 0 $ reverse s
   where
-  indentation   = (length s) - (fromEnd + 1)
-  fromEnd       = length afterLastOpen
-  afterLastOpen = takeWhile (not . isOpening) $ reverse s
-
+  -- We get the last open bracket by counting through
+  -- the reversed line, when we see a closed bracket we
+  -- add one to the count. When we see an opening bracket
+  -- decrease the count. If we see a close bracket when the
+  -- count is 0 we return the remaining length of the
+  -- (reversed) string as the indentation.
+  -- Note then that this assumes that the parentheses are
+  -- well matched, although it arguably does the correct thing
+  -- in the case that they are not.
+  getOpen :: Int -> String -> Int
+  -- If we don't see an unmatched open bracket then we just
+  -- have to return 0.
+  getOpen _ [] = 0
+  getOpen i (c : rest)
+      -- If it is opening and we have no closing to match
+      -- then we return the length of the rest of the line
+      -- as the indentation.
+    | isOpening c && i == 0 = length rest
+      -- If i is not zero then we have matched one of the
+      -- closing parentheses and we can decrease the nesting count.
+    | isOpening c           = getOpen (i - 1) rest
+      -- If the character is a closing bracket then we must increase
+      -- the nesting count
+    | isClosing c           = getOpen (i + 1) rest
+      -- If it is just a normal character forget about it and move on.
+    | otherwise             = getOpen i rest
+            
   isOpening :: Char -> Bool
   isOpening '(' = True
   isOpening '[' = True
   isOpening '{' = True
   isOpening _   = False
+
+  isClosing :: Char -> Bool
+  isClosing ')' = True
+  isClosing ']' = True
+  isClosing '}' = True
+  isClosing _   = False
 
 indentOfB :: String -> BufferM Int
 indentOfB = spacingOfB . takeWhile isSpace
