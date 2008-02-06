@@ -95,8 +95,21 @@ haskell :-
 
   $white+                                       { c defaultStyle } -- whitespace
 
-  "--"\-* $symbol $symchar*                     { c defaultStyle }
-  "--"\-*[^\n]*                                 { c commentStyle }
+-- The first rule matches operators that begin with --, eg --++-- is a valid
+-- operator and *not* a comment. 
+-- Note that we have to dissallow '-' as a symbol char for the first one
+-- of these because we may have -------- which would stilljust be the 
+-- start of a comment.
+  "--"\-* [$symbol # \-] $symchar*              { c defaultStyle }
+-- The next rule allows for the start of a comment basically
+-- it is -- followed by anything which isn't a symbol character
+-- (OR more '-'s). So for example "-----:" is still the start of a comment.
+  "--"~[$symbol # \-][^$nl]*                    { c commentStyle }
+-- Finally because the above rule had to add in a non symbol character 
+-- it's also possible that we have just finishing a line,
+-- people sometimes do this for example  when breaking up paragraphs
+-- in a long comment.
+  "--"$nl                                       { c commentStyle }
 
   "{-"                                          { m Comment commentStyle }
 
@@ -127,8 +140,10 @@ haskell :-
 
   [\ \t]+                                       { c defaultStyle } -- whitespace
 
-  "--"\-* $symbol $symchar*                     { c defaultStyle }
-  "--"\-*[^\n]*                                 { c commentStyle }
+-- Same three rules for line comments as above (see above for explanation).
+  "--"\-* [$symbol # \-] $symchar*              { c defaultStyle }
+  "--"~[$symbol # \-][^$nl]*                    { c commentStyle }
+  "--"$nl                                       { c commentStyle }
 
   "{-"                                          { m Comment commentStyle }
 
