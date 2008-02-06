@@ -103,7 +103,7 @@ executable yi
            ghc-options: -DFRONTEND_VTY
 
         if flag (gtk)
-          build-depends: gtk>=0.9.12 && < 0.9.13
+          build-depends: gtk>=0.9.12 && < 0.9.12.2
           ghc-options: -DFRONTEND_GTK
 
         if flag (cocoa)
