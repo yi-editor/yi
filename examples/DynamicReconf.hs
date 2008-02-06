@@ -6,6 +6,7 @@ module YiConfig where
 import Yi.Yi
 import Yi.Editor
 import Yi.Keymap.Emacs
+import Yi.Keymap.Emacs.Keys
 import Control.Monad.Trans
 -- You can import any number of packages that will be loaded at start.
 -- They will have to be used fully qualified though.
@@ -14,24 +15,22 @@ yiMain :: YiM ()
 yiMain = do
   reconfigure
   -- whatever code can be ran here.
-  msgE "User configuration successful."
-
+  msgEditor "User configuration successful."
 
 -- | reload YiConfig and run reconfigure.
-reconfigureE = do
-  reloadE
-  execE "YiConfig.reconfigure" -- Must be dynamic (if we want to see the new reconfigure that has (hopefully) been just loaded)
-  msgE "reconfiguration finished." 
+myReconfigure = do
+  reloadEditor
+  execEditorAction "YiConfig.reconfigure" -- Must be dynamic (if we want to see the new reconfigure that has (hopefully) been just loaded)
+  msgEditor "reconfiguration finished."
 
-myKeymap = runKeymap (rebind [("C-h r", write $ reconfigureE),
-                              ("C-h i", write $ helpE),
-                              ("C-h t", write $ testActionE)
-                             ] normalKeymap)
+myKeymap = rebind [("C-h r", write $ myReconfigure),
+                   ("C-h i", write $ help),
+                   ("C-h t", write $ testAction)
+                  ] keymap
 
-helpE = msgE "Change ~/.yi/YiConfig.testAction, type C-h r to reload, then C-h t to test your changes. Errors are in the *messages* and *console* buffer"
+help = msgEditor "Change ~/.yi/YiConfig.testAction, type C-h r to reload, then C-h t to test your changes. Errors are in the *messages* and *console* buffer"
 
-testActionE = msgE "Have fun changing this! :)"
-
+testAction = msgEditor "Have fun changing this! :)"
 
 reconfigure = do
-  changeKeymapE myKeymap
+  changeKeymap myKeymap
