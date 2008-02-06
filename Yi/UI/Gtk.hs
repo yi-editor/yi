@@ -88,7 +88,8 @@ start ch outCh _ed runEd = do
 
   -- rest.
   win <- windowNew
-  windowFullscreen win
+  windowSetDefaultSize win 500 700
+  --windowFullscreen win
 
   onKeyPress win (processEvent ch)
 
