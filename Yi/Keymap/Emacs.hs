@@ -97,6 +97,7 @@ keys =
   , ( "M-v",      write $ scrollUpE)
   , ( "C-w",      write $ killRegionE)
   , ( "C-z",      write $ suspendEditor)
+  , ( "C-x C-o",  write deleteBlankLinesB)
   , ( "C-x ^",    write $ repeatingArg enlargeWinE)
   , ( "C-x 0",    write $ closeWindow)
   , ( "C-x 1",    write $ closeOtherE)

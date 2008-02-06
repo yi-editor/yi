@@ -17,8 +17,6 @@ import Yi.Dynamic
 import Yi.Buffer.Region
 
 import Data.Char
-import Data.Maybe
-  ( fromMaybe )
 import Data.Typeable
 import Data.List
 
@@ -55,53 +53,6 @@ indentSettingsB :: BufferM IndentSettings
 indentSettingsB = getDynamicB
 
 
-{-
-  Get the previous line of text.
--}
-getPreviousLineB :: BufferM String
-getPreviousLineB =
-  savingExcursionB $ do
-    lineUp
-    readLnB
-
-
-{-
-  Get closest line above the current line (not including the current line
-  which satisfies the given condition. Returns 'Nothing' if there is
-  no line above the current one which satisfies the condition.
--}
-getPreviousLineWhichB :: (String -> Bool) -> BufferM (Maybe String)
-getPreviousLineWhichB cond =
-  do savingExcursionB getPLine
-  where
-  -- Recusively get the previous line of text which statisfies 'cond'
-  getPLine :: BufferM (Maybe String)
-  getPLine = do ofs <- lineMoveRel (-1)
-                li  <- readLnB
-                -- if we didn't move then we are on the top line
-                -- and hence there is no line above the current line
-                -- which satisfies the given condition.
-                if (ofs == 0)
-                  then return Nothing
-                          -- If we did move up one line and the given
-                          -- line satisfies the condition then we of
-                          -- course return that, otherwise we recursively
-                          -- attempt to find one.
-                  else if cond li
-                         then return $ Just li
-                         else getPLine 
-
-{-
-  Returns the closest line above the current line which is non-blank.
-  Returns the empty string if there is no such line (for example if
-  we are on the top line already).
--}
-getPreviousNonBlankLineB :: BufferM String
-getPreviousNonBlankLineB =
-  liftM (fromMaybe "") 
-        (getPreviousLineWhichB $ any (not . isSpace))
-  
-
 fetchPreviousIndentsB :: BufferM [Int]
 fetchPreviousIndentsB = do
   p0 <- pointB
@@ -123,8 +74,8 @@ cycleIndentsB indents = do
 
 autoIndentB :: BufferM ()
 autoIndentB = do
-  is <- savingExcursionB fetchPreviousIndentsB
-  pl <- getPreviousLineB
+  is  <- savingExcursionB fetchPreviousIndentsB
+  pl  <- getPreviousLineB
   pli <- indentOfB pl
   let i       = lastOpenBracket pl
       indents = pli+2 : i : is

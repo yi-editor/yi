@@ -6,6 +6,8 @@ import Control.Applicative
 import Control.Monad.State
 import Data.Char
 import Data.Dynamic
+import Data.Maybe
+  ( fromMaybe )
 
 import Yi.Buffer
 import Yi.Buffer.Normal
@@ -159,6 +161,14 @@ capitaliseWordB = transformB capitalizeFirst Word Forward
 deleteToEol :: BufferM ()
 deleteToEol = deleteRegionB =<< regionOfPartB Line Forward
 
+-- | Delete whole line moving to the next line
+deleteLineForward :: BufferM ()
+deleteLineForward = 
+  do moveToSol   -- Move to the start of the line
+     deleteToEol -- Delete the rest of the line not including the newline char
+     deleteN 1   -- Delete the newline character
+     
+
 -- | Transpose two characters, (the Emacs C-t action)
 swapB :: BufferM ()
 swapB = do eol <- atEol
@@ -299,3 +309,156 @@ getSelectRegionB = do
   SelectionStyle unit <- getDynamicB
   unitWiseRegion unit region
 
+
+------------------------------------------
+-- Some line related movements/operations
+
+deleteBlankLinesB :: BufferM ()
+deleteBlankLinesB =
+  do isBlank <- isBlankLineB
+     if isBlank
+        then moveUpToLastBlankB >> deleteLines
+        else return ()
+  where
+  deleteLines :: BufferM ()
+  deleteLines =
+    do b1 <- isBlankLineB 
+       b2 <- atEof
+       if b1 && (not b2)
+         then do deleteLineForward 
+                 deleteLines
+         else return ()
+
+  moveUpToLastBlankB :: BufferM ()
+  moveUpToLastBlankB = moveUpToLastLineWhichB $ all isSpace
+                           
+
+{-
+  TODO: Needs a little more thought this one:
+  I think it would be best done by defining a
+    getLineAt :: Int -> BufferM (Maybe String)
+    and/or
+    getLineRelAt :: Int -> BufferM (Maybe String)
+moveRelToLastLineWhichB :: Int -> (String -> Bool) -> BufferM ()
+moveRelToLastLineWhichB n 
+-}
+
+
+{-
+  Moves us up to the last which satisfies the given condition.
+  Note that we do not move beyond that last line, so after calling
+  this function the point will be on a line which currently satisfies
+  the condition. For the other behaviour, that is moving up until
+  the current line does not satisfy the condition use 'moveUpUntil'
+-}
+moveUpToLastLineWhichB :: (String -> Bool) -> BufferM ()
+moveUpToLastLineWhichB cond =
+  do mLine <- getMaybePreviousLineB
+     case mLine of
+       Just s  -> if cond s
+                     then lineUp >> (moveUpToLastLineWhichB cond)
+                     else return ()
+       Nothing -> return ()
+
+
+{-|
+  Moves the given amount (which may be negative to go upwards)
+  of lines until the target of the move satisfies the given
+  condition.
+  If the move is not possible, for example we are moving -10
+  but are on the 3rd line, then we will move to the top line
+  and return 'False'.
+  In general returning 'False' indicates that no line was found
+  to satisfy the condition, of course if the magnaitude of the
+  move is greater than one then we may have skipped over a line
+  which satisfies the condition.
+-}
+moveRelUntil :: Int -> (String -> Bool) -> BufferM Bool
+moveRelUntil n cond =
+  do li <- readLnB
+     if cond li
+        then return True
+        else do ofs <- lineMoveRel n
+                if ofs /= n
+                   then return False
+                   else lineUp >> (moveUpUntil cond)
+
+
+{-|
+  Moves up until the given condition is true. After this action is returned
+  the current line *will* satisfy the condition, unless all the lines above
+  the original point do not satisfy the condition in which case the point 
+  will be on the top line. We return a bool, this is true if the condition 
+  stopped the upwards movement rather than the top of the file.
+-}
+moveUpUntil :: (String -> Bool) -> BufferM Bool
+moveUpUntil = moveRelUntil (-1)
+
+{-|
+  The same as 'moveUpUntil' only we move downwards.
+-}
+moveDownUntil :: (String -> Bool) -> BufferM Bool
+moveDownUntil = moveRelUntil 1
+
+{-
+  Returns true if the current line is a blank line.
+-}
+isBlankLineB :: BufferM Bool
+isBlankLineB =
+  do li <- readLnB
+     return $ all isSpace li
+
+{-
+  Get the previous line of text. This returns simply 'Nothing' if there
+  is no previous line of text.
+-}
+getMaybePreviousLineB :: BufferM (Maybe String)
+getMaybePreviousLineB =
+  savingExcursionB $ do ofs <- lineMoveRel (-1)
+                        if ofs /= (-1)
+                           then return Nothing
+                           else liftM Just readLnB
+
+{-
+  The same as 'getMaybePreviousLineB' but avoids the use of the 'Maybe'
+  type in the return by returning the empty string if there is no previous line.
+-}
+getPreviousLineB :: BufferM String
+getPreviousLineB = liftM (fromMaybe "") getMaybePreviousLineB
+
+
+{-
+  Get closest line above the current line (not including the current line
+  which satisfies the given condition. Returns 'Nothing' if there is
+  no line above the current one which satisfies the condition.
+-}
+getPreviousLineWhichB :: (String -> Bool) -> BufferM (Maybe String)
+getPreviousLineWhichB cond =
+  do savingExcursionB getPLine
+  where
+  -- Recusively get the previous line of text which statisfies 'cond'
+  getPLine :: BufferM (Maybe String)
+  getPLine = do ofs <- lineMoveRel (-1)
+                li  <- readLnB
+                -- if we didn't move then we are on the top line
+                -- and hence there is no line above the current line
+                -- which satisfies the given condition.
+                if (ofs == 0)
+                  then return Nothing
+                          -- If we did move up one line and the given
+                          -- line satisfies the condition then we of
+                          -- course return that, otherwise we recursively
+                          -- attempt to find one.
+                  else if cond li
+                         then return $ Just li
+                         else getPLine 
+
+{-
+  Returns the closest line above the current line which is non-blank.
+  Returns the empty string if there is no such line (for example if
+  we are on the top line already).
+-}
+getPreviousNonBlankLineB :: BufferM String
+getPreviousNonBlankLineB =
+  liftM (fromMaybe "") 
+        (getPreviousLineWhichB $ any (not . isSpace))
