@@ -154,12 +154,18 @@ deleteBuffer k = do
 getBuffers :: EditorM [FBuffer]
 getBuffers = gets (M.elems . buffers)
 
+
+-- | Check that the buffer has not been deleted
+bufferExists :: BufferRef -> EditorM Bool
+bufferExists k = gets ((M.member k) . buffers)
+
 -- | Find buffer with this key
 findBufferWith :: BufferRef -> Editor -> FBuffer
 findBufferWith k e =
     case M.lookup k (buffers e) of
         Just b  -> b
         Nothing -> error "Editor.findBufferWith: no buffer has this key"
+
 
 -- | Find buffer with this name
 findBufferWithName :: String -> Editor -> [BufferRef]

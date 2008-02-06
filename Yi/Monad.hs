@@ -39,8 +39,25 @@ writesRef f x = do
   r <- asks f
   writeRef r x
 
+modifiesThenReadsRef :: (MonadReader r m, MonadIO m) => (r -> IORef a) -> (a -> a) -> m a
+modifiesThenReadsRef f g = do
+  modifiesRef f g
+  readsRef f
 
 with :: (MonadReader yi m, MonadIO m) => (yi -> component) -> (component -> IO a) -> m a
 with f g = do
     yi <- ask
     liftIO $ g (f yi)
+
+whenM :: Monad m => m Bool -> m () -> m ()
+whenM mtest ma = mtest >>= flip when ma  
+
+-- | Rerun the monad until the boolean result is false, collecting list of results.
+repeatUntilM :: Monad m => m (Bool,a) -> m [a]
+repeatUntilM m = do
+  (proceed,x) <- m
+  case proceed of 
+    False -> return [x]
+    True -> do xs <- repeatUntilM m
+               return (x:xs)
+

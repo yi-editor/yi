@@ -20,6 +20,7 @@ import qualified Yi.Interact as I
 import Yi.Monad
 import Control.Monad.State
 import Yi.Event
+import Yi.Process ( SubprocessInfo, SubprocessId )
 
 data Action = forall a. Show a => YiA (YiM a)
             | forall a. Show a => EditorA (EditorM a)
@@ -59,7 +60,10 @@ data Yi = Yi {yiEditor :: IORef Editor,
               defaultKeymap :: IORef Keymap,
               bufferKeymaps :: IORef (M.Map BufferRef BufferKeymap),
               yiKernel  :: Kernel,
-              editorModules :: IORef [String] -- ^ modules requested by user: (e.g. ["YiConfig", "Yi.Dired"])
+              editorModules :: IORef [String], -- ^ modules requested by user: (e.g. ["YiConfig", "Yi.Dired"])
+
+              yiSubprocessIdSource :: IORef SubprocessId,
+              yiSubprocesses :: IORef (M.Map SubprocessId SubprocessInfo)
              }
 
 -- | The type of user-bindable functions

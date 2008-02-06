@@ -40,6 +40,7 @@ module Yi.Core (
 
         -- * Interacting with external commands
         runProcessWithInput,          -- :: String -> String -> YiM String
+        startSubprocess,                 -- :: FilePath -> [String] -> YiM ()
 
         -- * Misc
         changeKeymap,
@@ -53,7 +54,7 @@ import Yi.Undo
 import Yi.Buffer
 import Yi.Dynamic
 import Yi.String
-import Yi.Process           ( popen )
+import Yi.Process           ( popen, createSubprocess, readAvailable, SubprocessInfo(..) )
 import Yi.Editor
 import Yi.Event (eventToChar, Event)
 import Yi.Keymap
@@ -70,11 +71,12 @@ import Data.Maybe
 import qualified Data.Map as M
 
 import Data.IORef
-import Data.Foldable
+import Data.Foldable ( sequence_, mapM_,all )
 
 import System.FilePath
+import System.Process ( getProcessExitCode )
 
-import Control.Monad (when, forever)
+import Control.Monad (when,forever,liftM)
 import Control.Monad.Reader (runReaderT, ask)
 import Control.Monad.Trans
 import Control.Monad.Error ()
@@ -148,8 +150,10 @@ startEditor startConfig kernel st commandLineActions = do
     startKm <- newIORef nilKeymap
     startModules <- newIORef ["Yi.Yi"] -- this module re-exports all useful stuff, so we want it loaded at all times.
     startThreads <- newIORef []
+    startSubprocessId <- newIORef 1
+    startSubprocesses <- newIORef M.empty
     keymaps <- newIORef M.empty
-    let yi = Yi newSt ui startThreads inCh outCh startKm keymaps kernel startModules
+    let yi = Yi newSt ui startThreads inCh outCh startKm keymaps kernel startModules startSubprocessId startSubprocesses
         runYi f = runReaderT f yi
 
     runYi $ do
@@ -186,9 +190,17 @@ startEditor startConfig kernel st commandLineActions = do
             let loop = sequence_ . map runYi . map interactive =<< getChanContents outCh
             forever $ (handle handler loop >> logPutStrLn "Execing loop ended")
 
+        subprocessLoop :: IO ()
+        subprocessLoop = do
+          forever $ do
+            runYi $ postActions [YiA readSubprocessOutput]
+            runYi $ postActions [YiA checkSubprocessExit ]
+            threadDelay (500 * 1000)
+
     t1 <- forkIO eventLoop
     t2 <- forkIO execLoop
-    runYi $ modifiesRef threads (\ts -> t1 : t2 : ts)
+    t3 <- forkIO subprocessLoop
+    runYi $ modifiesRef threads (\ts -> t1 : t2 : t3 : ts)
 
     UI.main ui -- transfer control to UI: GTK must run in the main thread, or else it's not happy.
 
@@ -432,3 +444,46 @@ execEditorAction _ = msgEditor "execEditorAction: Not supported"
 getAllNamesInScope :: YiM [String]
 getAllNamesInScope = return []
 #endif
+
+-- | Start a subprocess with the given command and arguments.
+startSubprocess :: FilePath -> [String] -> YiM ()
+startSubprocess cmd args = do
+  let buffer_name = "output from " ++ cmd
+  bufref <- withEditor $ newBufferE buffer_name ""
+
+  procid <- modifiesThenReadsRef yiSubprocessIdSource $ (+1)
+  procinfo <- liftIO $ createSubprocess cmd args bufref
+
+  modifiesRef yiSubprocesses $ M.insert procid procinfo
+  msgEditor ("Launched process: " ++ cmd )
+
+appendToSubprocessBuffer :: SubprocessInfo -> String -> YiM ()
+appendToSubprocessBuffer _ "" = return ()
+appendToSubprocessBuffer pinfo s = 
+    withGivenBuffer (bufRef pinfo) $ savingExcursionB $ (sizeB >>= insertNAt s)
+
+readSubprocessOutput :: YiM ()
+readSubprocessOutput = do
+   mapM_ tryToRead =<< readsRef yiSubprocesses  
+   where errorHandler _ = return ""
+         tryToRead pinfo = do
+           sout <- liftIO $ handle errorHandler (readAvailable (hOut pinfo))
+           serr <- liftIO $ handle errorHandler (readAvailable (hErr pinfo))
+           bufferOk <- withEditor $ bufferExists (bufRef pinfo)
+           when bufferOk $ appendToSubprocessBuffer pinfo (sout ++ serr)
+
+checkSubprocessExit :: YiM ()
+checkSubprocessExit = do
+   processTable <- readsRef yiSubprocesses
+   mapM_ checkForProcessExit $ M.toList processTable
+   where 
+     checkForProcessExit (pid,procinfo) = whenM hasExited reportExit
+       where
+       errorHandler _ = return True -- io error is thrown if process was killed
+       hasExited = liftIO $ handle errorHandler $ 
+                     (liftM isJust) $ getProcessExitCode $ procHandle procinfo
+       reportExit = do
+         appendToSubprocessBuffer procinfo "Process exited\n"
+         modifiesRef yiSubprocesses $ M.delete pid
+         
+

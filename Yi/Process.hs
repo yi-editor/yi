@@ -7,15 +7,21 @@
 -- | A Posix.popen compatibility mapping.
 -- Based on PosixCompat, originally written by Derek Elkins for lambdabot
 --
-module Yi.Process (popen, runShellCommand) where
-
+module Yi.Process (popen, runShellCommand, createSubprocess, readAvailable, SubprocessInfo(..), SubprocessId) where
 import System.IO
 import System.Process
 import System.Exit ( ExitCode )
-import Control.Concurrent       (forkIO)
 import System.Environment ( getEnv )
 
+import Control.Concurrent       (forkIO)
+import Control.Monad(liftM)
 import qualified Control.Exception
+
+import Foreign.Marshal.Alloc(allocaBytes)
+import Foreign.C.String
+
+import Yi.Buffer (BufferRef)
+import Yi.Monad(repeatUntilM)
 
 popen :: FilePath -> [String] -> Maybe String -> IO (String,String,ExitCode)
 popen file args minput =
@@ -57,3 +63,40 @@ runShellCommand :: String -> IO (String,String,ExitCode)
 runShellCommand cmd = do
       shell <- shellFileName
       popen shell [shellCommandSwitch, cmd] Nothing
+
+
+--------------------------------------------------------------------------------
+-- Subprocess support (ie. async processes whose output goes to a buffer)
+
+type SubprocessId = Integer
+
+data SubprocessInfo = SubprocessInfo {
+      procCmd :: FilePath,
+      procArgs :: [String],
+      procHandle :: ProcessHandle,
+      hIn  :: Handle,
+      hOut :: Handle,
+      hErr :: Handle,
+      bufRef :: BufferRef
+      }
+
+createSubprocess :: FilePath -> [String] -> BufferRef -> IO SubprocessInfo
+createSubprocess cmd args bufref = do
+    (inp,out,err,handle) <- runInteractiveProcess cmd args Nothing Nothing
+    return $ SubprocessInfo { procCmd=cmd, procArgs=args, procHandle=handle, hIn=inp, hOut=out, hErr=err, bufRef=bufref }
+
+-- Read as much as possible from handle without blocking
+readAvailable :: Handle -> IO String
+readAvailable handle = (liftM concat) $ repeatUntilM $ read_chunk handle
+
+-- Read a chunk from a handle, bool indicates if there is potentially more data available
+read_chunk :: Handle -> IO (Bool,String)  
+read_chunk handle = do 
+    let bufferSize = 1024
+    allocaBytes bufferSize $ \buffer -> do
+                 bytesRead <- hGetBufNonBlocking handle buffer bufferSize
+                 s <- peekCStringLen (buffer,bytesRead)
+                 let mightHaveMore = (bytesRead == bufferSize)
+                 return (mightHaveMore, s)
+
+
