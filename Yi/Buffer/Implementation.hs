@@ -217,9 +217,10 @@ styleRangesBI n i fb = fun fb
     -- uses '(Data.ByteString.Char8.ByteString, Int)' as its parameterized state
     fun bd@(FBufferData b _ _ (Just (HLState hl)) _) =
 
-      let (finst,colors_) = hlColorize hl (F.toLazyByteString b) (hlStartState hl)
-          colors = colors_ ++ hlColorizeEOF hl finst
+      let colors = hlColorizeEOF hl 
+                   (hlColorize hl (F.toLazyByteString b) (hlStartState hl))
       in cutRanges n i (overlay bd (makeRanges 0 colors))
+
 
     -- The parser produces a list of token sizes, convert them to buffer indices
     makeRanges :: Int -> [(Int,Style)] -> [(Int, Style)]

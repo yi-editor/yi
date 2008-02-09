@@ -29,12 +29,7 @@ import qualified Data.ByteString.Lazy.Char8 as LB
 
 data Highlighter a = 
   SynHL { hlStartState :: a -- ^ The start state for the highlighter.
-          -- | Colorize a block of data passed in as a ByteString,
-          -- returning the new state and any attributes produced.
-          -- This *must* be implementable as a `B.foldl'.
-        , hlColorize :: LB.ByteString -> a -> (a, [ (Int,Style)] )
-        -- | Colorize the end of file; this exists only to inform
-        -- states that lookahead will never happen.
+        , hlColorize :: LB.ByteString -> a -> a
         , hlColorizeEOF :: a -> [ (Int,Style) ]
         }
 

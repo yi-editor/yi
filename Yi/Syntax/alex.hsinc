@@ -29,24 +29,24 @@ c color str state = (state, [(fromIntegral $ LB.length str, color)])
 m :: (s -> s) -> Style -> Action s
 m mod color str state = (mod state, [(fromIntegral $ LB.length str, color)])
 
-highlighter :: Yi.Syntax.Highlighter AlexState
+highlighter :: Yi.Syntax.Highlighter (AlexState, AlexResult)
 highlighter = 
   Yi.Syntax.SynHL { Yi.Syntax.hlStartState   = startState
                   , Yi.Syntax.hlColorize     = fun
                   , Yi.Syntax.hlColorizeEOF  = funEOF
                   }
   where
-  startState         = ( LB.empty, initState )
-  fun :: AlexInput -> AlexState -> (AlexState, AlexResult)
-  fun bs (scrap, st) = 
-    iter' hl_alex_scan_tkn full st
+  startState         = ((LB.empty, initState), [])
+  fun :: AlexInput -> (AlexState, AlexResult) -> (AlexState, AlexResult)
+  fun bs ((scrap, st), resultSoFar) = (newState, resultSoFar ++ newResults)
     where
     full = LB.append scrap bs
+    (newState, newResults) = iter' hl_alex_scan_tkn full st
 
 
-  funEOF :: AlexState -> AlexResult
-  funEOF (scrap, st) = 
-    snd $ iter' alex_scan_tkn scrap st
+  funEOF :: (AlexState, AlexResult) -> AlexResult
+  funEOF ((scrap, st), resultSoFar) = 
+    resultSoFar ++ snd (iter' alex_scan_tkn scrap st) 
 
   iter' :: ScanFun -> AlexInput -> HlState -> (AlexState, AlexResult)
   iter' scanFun bs s =
