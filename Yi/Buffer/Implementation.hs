@@ -50,6 +50,7 @@ import Text.Regex.Posix
 import qualified Yi.FingerString as F
 import Yi.FingerString (FingerString)
 import qualified Data.ByteString.Char8 as B
+import qualified Data.ByteString.Lazy.Char8 as LB
 
 import Data.Array
 import Data.Maybe
@@ -75,7 +76,10 @@ type Marks = M.Map Mark MarkValue
 
 type BufferImpl = FBufferData
 
-data HLState = forall a. Eq a => HLState !(Highlighter a)
+hlChunkSize :: Int
+hlChunkSize = 1024
+
+data HLState = forall a. HLState !(Highlighter a) [a]
 
 -- ---------------------------------------------------------------------
 --
@@ -114,7 +118,7 @@ data Update = Insert {updatePoint :: !Point, insertUpdateString :: !String} -- F
 
 -- | New FBuffer filled from string.
 newBI :: String -> FBufferData
-newBI s = FBufferData (F.fromString s) mks M.empty (HLState noHighlighter) [] []
+newBI s = FBufferData (F.fromString s) mks M.empty (HLState noHighlighter []) [] []
     where
     mks = M.fromList [(pointMark, MarkValue 0 pointLeftBound)]
 
@@ -265,7 +269,8 @@ isValidUpdate u b = case u of
 
 -- | Apply a /valid/ update
 applyUpdateI :: Update -> BufferImpl -> BufferImpl
-applyUpdateI u fb = updateHl $ fb {mem = p', marks = M.map shift (marks fb),
+applyUpdateI u fb = updateHl (updatePoint u) $ 
+                    fb {mem = p', marks = M.map shift (marks fb),
                                    overlays = map (mapOvlMarks shift) (overlays fb)}
     where (p', amount) = case u of
                            Insert pnt cs  -> (insertChars p (F.fromString cs) pnt, length cs)
@@ -398,13 +403,24 @@ unsetMarkBI fb = fb { marks = (M.delete markMark (marks fb)) }
 -- highlighters implementation speed up compilation a lot when working on a
 -- syntax highlighter.
 setSyntaxBI :: ExtHL -> BufferImpl -> BufferImpl
-setSyntaxBI (ExtHL e) fb = updateHl $ fb { hlCache = HLState e }
+setSyntaxBI (ExtHL e) fb = updateHl 0 $ fb {hlCache = HLState e []}
 
-updateHl :: BufferImpl -> BufferImpl
-updateHl fb@FBufferData {hlCache = HLState hl}
-    = fb {hlResult = hlColorizeEOF hl 
-          (hlColorize hl (F.toLazyByteString (mem fb)) (hlStartState hl))}
-
+updateHl :: Point -> BufferImpl -> BufferImpl
+updateHl touchedIndex fb@FBufferData {hlCache = HLState hl cachedStates0} 
+    = fb {hlCache = HLState hl newCachedStates, hlResult =  hlColorizeEOF hl newState}
+    where reusableChunksCount = touchedIndex `div` hlChunkSize
+          resumeIndex = reusableChunksCount * hlChunkSize
+          reused = take reusableChunksCount cachedStates
+          resumeState = cachedStates !! reusableChunksCount
+          cachedStates = if null cachedStates0 then [hlStartState hl] else cachedStates0
+          newCachedStates = reused ++ recomputed
+          newState = last newCachedStates 
+          recomputed = scanl (flip (hlColorize hl)) resumeState chunks
+                       -- use scanl so that the list can be read lazily
+          chunks = mkChunks (F.toLazyByteString (F.drop resumeIndex (mem fb)))
+          mkChunks s | LB.null s = []
+                     | otherwise = let (h,t) = LB.splitAt (fromIntegral hlChunkSize) s 
+                                   in h:mkChunks t
 
 pointLeftBound, markLeftBound :: Bool
 pointLeftBound = False
