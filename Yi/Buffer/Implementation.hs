@@ -89,8 +89,9 @@ data HLState = forall a. Eq a => HLState !(Highlighter a)
 data FBufferData =
         FBufferData { mem        :: !FingerString          -- ^ buffer text
                     , marks      :: !Marks                 -- ^ Marks for this buffer
-                    , _markNames :: !(M.Map String Mark)
-                    , hlcache    :: !HLState       -- ^ syntax highlighting state
+                    , markNames  :: !(M.Map String Mark)
+                    , hlCache    :: !HLState       -- ^ syntax highlighting state
+--                    , hlResult   :: [(Int,Style)] -- ^ note: Lazy component!
                     , overlays   :: ![(MarkValue, MarkValue, Style)] -- ^ list of visual overlay regions
                     -- Overlays should not use Mark, but directly Point
                     }
@@ -163,17 +164,18 @@ mapOvlMarks f (s,e,v) = (f s, f e, v)
 
 -- | Number of characters in the buffer
 sizeBI :: BufferImpl -> Int
-sizeBI (FBufferData p _ _ _ _) = F.length p
+sizeBI fb = F.length $ mem fb
 
 -- | Extract the current point
 pointBI :: BufferImpl -> Int
-pointBI (FBufferData _ mks _ _ _) = markPosition (mks M.! pointMark)
+pointBI fb = markPosition ((marks fb) M.! pointMark)
 {-# INLINE pointBI #-}
 
 -- | Return @n@ elems starting at @i@ of the buffer as a list
 nelemsBI :: Int -> Int -> BufferImpl -> String
-nelemsBI n i (FBufferData b _ _ _ _) =
-        let i' = inBounds i (F.length b)
+nelemsBI n i fb =
+        let b = mem fb
+            i' = inBounds i (F.length b)
             n' = min (F.length b - i') n
         in F.toString $ readChars b n' i'
 
@@ -202,13 +204,13 @@ nelemsBIH n i fb = helper i defaultStyle (styleRangesBI n i fb) (nelemsBI n i fb
 --   be interpreted as apply the style @s@ from position @p@ in the buffer.
 --   In the final element @p@ = @n@ + @i@.
 styleRangesBI :: Int -> Int -> BufferImpl -> [(Int, Style)]
-styleRangesBI n i fb = fun fb
+styleRangesBI n i fb@FBufferData {hlCache = HLState hl} = fun
   where
-    fun bd@(FBufferData b _ _ (HLState hl) _) =
-
-      let colors = hlColorizeEOF hl 
+    fun =
+      let b = mem fb
+          colors = hlColorizeEOF hl 
                    (hlColorize hl (F.toLazyByteString b) (hlStartState hl))
-      in cutRanges n i (overlay bd (makeRanges 0 colors))
+      in cutRanges n i (overlay fb (makeRanges 0 colors))
 
 
     -- The parser produces a list of token sizes, convert them to buffer indices
@@ -256,9 +258,8 @@ styleRangesBI n i fb = fun fb
 
 -- | Move point in buffer to the given index
 moveToI :: Int -> BufferImpl -> BufferImpl
-moveToI i (FBufferData ptr mks nms hl ov) =
-                 FBufferData ptr (M.insert pointMark (MarkValue (inBounds i end) pointLeftBound) mks) nms hl ov
-    where end = F.length ptr
+moveToI i fb = fb {marks = M.insert pointMark (MarkValue (inBounds i end) pointLeftBound) $ marks fb}
+    where end = F.length (mem fb)
 {-# INLINE moveToI #-}
 
 -- | Checks if an Update is valid
@@ -271,13 +272,15 @@ isValidUpdate u b = case u of
 
 -- | Apply a /valid/ update
 applyUpdateI :: Update -> BufferImpl -> BufferImpl
-applyUpdateI u (FBufferData p mks nms hl ov) = FBufferData p' (M.map shift mks) nms hl (map (mapOvlMarks shift) ov)
+applyUpdateI u fb = fb {mem = p', marks = M.map shift (marks fb),
+                        overlays = map (mapOvlMarks shift) (overlays fb)}
     where (p', amount) = case u of
                            Insert pnt cs  -> (insertChars p (F.fromString cs) pnt, length cs)
                            Delete pnt len -> (deleteChars p pnt len, negate len)
           shift = shiftMarkValue (updatePoint u) amount
+          p = mem fb
           -- FIXME: remove collapsed overlays
-
+   
 -- | Apply a /valid/ update and also move point in buffer to update position
 applyUpdateWithMoveI :: Update -> BufferImpl -> BufferImpl
 applyUpdateWithMoveI u b = applyUpdateI u (moveToI (updatePoint u) b)
@@ -292,7 +295,7 @@ reverseUpdateI (Insert p cs) _ = Delete p (length cs)
 -- Line based editing
 
 curLnI :: BufferImpl -> Int
-curLnI fb@(FBufferData ptr _ _ _ _) = 1 + F.count '\n' (F.take (pointBI fb) ptr)
+curLnI fb = 1 + F.count '\n' (F.take (pointBI fb) (mem fb))
 
 
 -- | Go to line number @n@, relatively from this line. @0@ will go to
@@ -352,20 +355,23 @@ gotoLnRelI n fb =
 
 -- | Return index of next string in buffer that matches argument
 searchBI :: Direction -> String -> BufferImpl -> Maybe Int
-searchBI dir s fb@(FBufferData ptr _ _ _ _) = case dir of
+searchBI dir s fb = case dir of
       Forward -> fmap (+ pnt) $ F.findSubstring (B.pack s) $ F.drop pnt ptr
       Backward -> listToMaybe $ reverse $ F.findSubstrings (B.pack s) $ F.take (pnt + length s) ptr
     where pnt = pointBI fb -- pnt == current point
+          ptr = mem fb
 
 offsetFromSolBI :: BufferImpl -> Int
-offsetFromSolBI fb@(FBufferData ptr _ _ _ _) = pnt - maybe 0 (1 +) (F.elemIndexEnd '\n' (F.take pnt ptr))
+offsetFromSolBI fb = pnt - maybe 0 (1 +) (F.elemIndexEnd '\n' (F.take pnt ptr))
     where pnt = pointBI fb
+          ptr = mem fb
 
 
 -- | Return indices of next string in buffer matched by regex
 regexBI :: Regex -> BufferImpl -> Maybe (Int,Int)
-regexBI re fb@(FBufferData ptr _ _ _ _) =
+regexBI re fb = 
     let p = pointBI fb
+        ptr = mem fb
         mmatch = matchOnce re (F.toByteString $ F.drop p ptr)
     in case mmatch of
          Just arr | ((off,len):_) <- elems arr -> Just (p+off,p+off+len)
@@ -399,7 +405,9 @@ unsetMarkBI fb = fb { marks = (M.delete markMark (marks fb)) }
 -- highlighters implementation speed up compilation a lot when working on a
 -- syntax highlighter.
 setSyntaxBI :: ExtHL -> BufferImpl -> BufferImpl
-setSyntaxBI (ExtHL e) fb = fb { hlcache = HLState e }
+setSyntaxBI (ExtHL e) fb = -- updateHl 0 $
+                           fb { hlCache = HLState e }
+
 
 pointLeftBound, markLeftBound :: Bool
 pointLeftBound = False
@@ -413,7 +421,7 @@ getMarkBI name b = getMarkDefaultPosBI name (pointBI b) b
 
 -- | Returns the requested mark, creating a new mark with that name (at the supplied position) if needed
 getMarkDefaultPosBI :: Maybe String -> Int -> BufferImpl -> (BufferImpl, Mark)
-getMarkDefaultPosBI name defaultPos fb@(FBufferData ptr mks nms hl ov) =
+getMarkDefaultPosBI name defaultPos fb@FBufferData {marks = mks, markNames = nms} =
   case flip M.lookup nms =<< name of
     Just m' -> (fb, m')
     Nothing ->
@@ -422,6 +430,6 @@ getMarkDefaultPosBI name defaultPos fb@(FBufferData ptr mks nms hl ov) =
                         Nothing -> nms
                         Just nm -> M.insert nm newMark nms
                mks' = M.insert newMark (MarkValue defaultPos False) mks
-           in (FBufferData ptr mks' nms' hl ov, newMark)
+           in (fb {marks = mks', markNames = nms'}, newMark)
 
 
