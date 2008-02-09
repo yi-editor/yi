@@ -55,7 +55,7 @@ import Yi.Core
 import Yi.Editor
 import Yi.Buffer.Region
 import Yi.Style
-import Yi.Syntax ( Highlighter, ExtHL(..) )
+import Yi.Syntax ( ExtHL(..), noHighlighter )
 import Yi.Syntax.Table ( highlighters )
 
 ------------------------------------------------
@@ -316,7 +316,7 @@ linesToDisplay = do
 -- | Write the contents of the supplied directory into the current buffer in dired format
 diredLoadNewDir :: FilePath -> YiM ()
 diredLoadNewDir _dir = do
-    withBuffer $ setSyntaxB (ExtHL (Nothing :: Maybe (Highlighter ()))) -- Colours for Dired come from overlays not syntax highlighting
+    withBuffer $ setSyntaxB (ExtHL noHighlighter) -- Colours for Dired come from overlays not syntax highlighting
     diredRefresh
 
 -- | Return dired entries for the contents of the supplied directory

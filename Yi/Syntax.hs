@@ -14,6 +14,7 @@
 module Yi.Syntax 
   ( Highlighter  ( .. )
   , ExtHL        ( .. )
+  , noHighlighter
   ) 
 where
 
@@ -33,4 +34,9 @@ data Highlighter a =
         , hlColorizeEOF :: a -> [ (Int,Style) ]
         }
 
-data ExtHL = forall a. Eq a => ExtHL (Maybe (Highlighter a))
+noHighlighter :: Highlighter ()
+noHighlighter = SynHL {hlStartState = (), 
+                       hlColorize = \_ _ -> (),
+                       hlColorizeEOF = \_-> []}
+
+data ExtHL = forall a. Eq a => ExtHL (Highlighter a)

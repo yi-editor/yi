@@ -90,7 +90,7 @@ data FBufferData =
         FBufferData { mem        :: !FingerString          -- ^ buffer text
                     , marks      :: !Marks                 -- ^ Marks for this buffer
                     , _markNames :: !(M.Map String Mark)
-                    , hlcache    :: !(Maybe HLState)       -- ^ syntax highlighting state
+                    , hlcache    :: !HLState       -- ^ syntax highlighting state
                     , overlays   :: ![(MarkValue, MarkValue, Style)] -- ^ list of visual overlay regions
                     -- Overlays should not use Mark, but directly Point
                     }
@@ -113,7 +113,7 @@ data Update = Insert {updatePoint :: !Point, insertUpdateString :: !String} -- F
 
 -- | New FBuffer filled from string.
 newBI :: String -> FBufferData
-newBI s = FBufferData (F.fromString s) mks M.empty Nothing []
+newBI s = FBufferData (F.fromString s) mks M.empty (HLState noHighlighter) []
     where
     mks = M.fromList [(pointMark, MarkValue 0 pointLeftBound)]
 
@@ -204,18 +204,7 @@ nelemsBIH n i fb = helper i defaultStyle (styleRangesBI n i fb) (nelemsBI n i fb
 styleRangesBI :: Int -> Int -> BufferImpl -> [(Int, Style)]
 styleRangesBI n i fb = fun fb
   where
-    -- The first case is to handle when no 'Highlighter a' has
-    -- been assigned to the buffer (via eg 'setSyntaxBI bi "haskell"')
-    fun bd@(FBufferData b _ _ Nothing _) =
-           let e = F.length b
-               i' = inBounds i e
-               n' = min (e-i') n
-               cas = [(0, defaultStyle),(e, defaultStyle)]
-           in cutRanges n' i' (overlay bd cas)
-    -- in this, second, case 'hl' will be bound to a 'Highlighter a'
-    -- eg Yi.Syntax.Haskell.highlighter (see Yi.Syntax for defn of Highlighter) which
-    -- uses '(Data.ByteString.Char8.ByteString, Int)' as its parameterized state
-    fun bd@(FBufferData b _ _ (Just (HLState hl)) _) =
+    fun bd@(FBufferData b _ _ (HLState hl) _) =
 
       let colors = hlColorizeEOF hl 
                    (hlColorize hl (F.toLazyByteString b) (hlStartState hl))
@@ -410,7 +399,7 @@ unsetMarkBI fb = fb { marks = (M.delete markMark (marks fb)) }
 -- highlighters implementation speed up compilation a lot when working on a
 -- syntax highlighter.
 setSyntaxBI :: ExtHL -> BufferImpl -> BufferImpl
-setSyntaxBI (ExtHL e) fb = fb { hlcache = HLState `fmap` e }
+setSyntaxBI (ExtHL e) fb = fb { hlcache = HLState e }
 
 pointLeftBound, markLeftBound :: Bool
 pointLeftBound = False

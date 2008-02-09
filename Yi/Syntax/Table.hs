@@ -13,7 +13,7 @@ import qualified Data.Map as M
 {- External Library Modules Imported -}
 {- Local Modules Imported -}
 import Yi.Syntax
-  ( Highlighter, ExtHL(..) )
+  ( ExtHL(..), noHighlighter )
 import qualified Yi.Syntax.Haskell
 import qualified Yi.Syntax.LiterateHaskell (highlighter)
 import qualified Yi.Syntax.Latex
@@ -26,13 +26,13 @@ highlighters :: M.Map String ExtHL
 highlighters = M.fromList highList
 
 
-highList :: [ (String, ExtHL) ]
+highList :: [(String, ExtHL)]
 highList =
-  [ ( "haskell"  , ExtHL (Just Yi.Syntax.Haskell.highlighter) )
-  , ("lithaskell", ExtHL (Just Yi.Syntax.LiterateHaskell.highlighter) )
-  , ( "latex"    , ExtHL (Just Yi.Syntax.Latex.highlighter) )
-  , ( "cabal"    , ExtHL (Just Yi.Syntax.Cabal.highlighter) )
-  , ( "cplusplus", ExtHL (Just Yi.Syntax.Cplusplus.highlighter) )
-  , ( "srmc"     , ExtHL (Just Yi.Syntax.Srmc.highlighter) )
-  , ( "none"     , ExtHL (Nothing :: Maybe (Highlighter ())) )
+  [ ("haskell"   , ExtHL (Yi.Syntax.Haskell.highlighter))
+  , ("lithaskell", ExtHL (Yi.Syntax.LiterateHaskell.highlighter))
+  , ("latex"     , ExtHL (Yi.Syntax.Latex.highlighter))
+  , ("cabal"     , ExtHL (Yi.Syntax.Cabal.highlighter))
+  , ("cplusplus" , ExtHL (Yi.Syntax.Cplusplus.highlighter))
+  , ("srmc"      , ExtHL (Yi.Syntax.Srmc.highlighter))
+  , ("none"      , ExtHL (Yi.Syntax.noHighlighter))
   ]
