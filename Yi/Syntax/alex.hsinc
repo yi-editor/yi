@@ -4,7 +4,7 @@
 -- declares its own types, any wrapper must have the highlighter in scope...
 -- so it must be included.  Doubleplusyuck.
 --
--- You will need to import qualified Yi.Vty, and Yi.Syntax.
+-- You will need to import qualified Yi.Style, Yi.Syntax and some other modules.
 --
 -- You will need to define initState and stateToInit and type HlState
 --

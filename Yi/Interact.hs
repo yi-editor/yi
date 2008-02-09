@@ -10,7 +10,7 @@ define extensible keymaps.
 
 The processes are:
 
-* composable
+* composable: in parallel using '<|>', in sequence using monadic bind.
 
 * extensible: it is always possible to override a behaviour by combination of
   'adjustPriority' and '<|>'. (See also '<||' for a convenient combination of the two.)
@@ -29,7 +29,8 @@ input (prefix), but produce conflicting output?
 * if the output is the same (as by the PEq class), then the processes (prefixes) are "merged"
 * if a Write is more prioritized than the other, the one with low priority will be discarded
 * otherwise, the output will be delayed until one of the branches can be discarded.
-* if there is no way to disambiguate, then no output will be generated anymore. (oops!)
+* if there is no way to disambiguate, then no output will be generated anymore. 
+  This situation can be detected by using 'possibleActions' however.
 -}
 
 module Yi.Interact
