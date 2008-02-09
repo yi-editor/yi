@@ -31,7 +31,7 @@ import qualified Data.ByteString.Lazy.Char8 as LB
 data Highlighter a = 
   SynHL { hlStartState :: a -- ^ The start state for the highlighter.
         , hlColorize :: LB.ByteString -> a -> a
-        , hlColorizeEOF :: a -> [ (Int,Style) ]
+        , hlColorizeEOF :: a -> [(Int,Style)]
         }
 
 noHighlighter :: Highlighter ()

@@ -91,7 +91,7 @@ data FBufferData =
                     , marks      :: !Marks                 -- ^ Marks for this buffer
                     , markNames  :: !(M.Map String Mark)
                     , hlCache    :: !HLState       -- ^ syntax highlighting state
---                    , hlResult   :: [(Int,Style)] -- ^ note: Lazy component!
+                    , hlResult   :: [(Int,Style)] -- ^ note: Lazy component!
                     , overlays   :: ![(MarkValue, MarkValue, Style)] -- ^ list of visual overlay regions
                     -- Overlays should not use Mark, but directly Point
                     }
@@ -114,7 +114,7 @@ data Update = Insert {updatePoint :: !Point, insertUpdateString :: !String} -- F
 
 -- | New FBuffer filled from string.
 newBI :: String -> FBufferData
-newBI s = FBufferData (F.fromString s) mks M.empty (HLState noHighlighter) []
+newBI s = FBufferData (F.fromString s) mks M.empty (HLState noHighlighter) [] []
     where
     mks = M.fromList [(pointMark, MarkValue 0 pointLeftBound)]
 
@@ -204,15 +204,8 @@ nelemsBIH n i fb = helper i defaultStyle (styleRangesBI n i fb) (nelemsBI n i fb
 --   be interpreted as apply the style @s@ from position @p@ in the buffer.
 --   In the final element @p@ = @n@ + @i@.
 styleRangesBI :: Int -> Int -> BufferImpl -> [(Int, Style)]
-styleRangesBI n i fb@FBufferData {hlCache = HLState hl} = fun
+styleRangesBI n i fb = cutRanges n i (overlay fb (makeRanges 0 (hlResult fb)))
   where
-    fun =
-      let b = mem fb
-          colors = hlColorizeEOF hl 
-                   (hlColorize hl (F.toLazyByteString b) (hlStartState hl))
-      in cutRanges n i (overlay fb (makeRanges 0 colors))
-
-
     -- The parser produces a list of token sizes, convert them to buffer indices
     makeRanges :: Int -> [(Int,Style)] -> [(Int, Style)]
     makeRanges o [] = [(o,defaultStyle)]
@@ -272,8 +265,8 @@ isValidUpdate u b = case u of
 
 -- | Apply a /valid/ update
 applyUpdateI :: Update -> BufferImpl -> BufferImpl
-applyUpdateI u fb = fb {mem = p', marks = M.map shift (marks fb),
-                        overlays = map (mapOvlMarks shift) (overlays fb)}
+applyUpdateI u fb = updateHl $ fb {mem = p', marks = M.map shift (marks fb),
+                                   overlays = map (mapOvlMarks shift) (overlays fb)}
     where (p', amount) = case u of
                            Insert pnt cs  -> (insertChars p (F.fromString cs) pnt, length cs)
                            Delete pnt len -> (deleteChars p pnt len, negate len)
@@ -405,8 +398,12 @@ unsetMarkBI fb = fb { marks = (M.delete markMark (marks fb)) }
 -- highlighters implementation speed up compilation a lot when working on a
 -- syntax highlighter.
 setSyntaxBI :: ExtHL -> BufferImpl -> BufferImpl
-setSyntaxBI (ExtHL e) fb = -- updateHl 0 $
-                           fb { hlCache = HLState e }
+setSyntaxBI (ExtHL e) fb = updateHl $ fb { hlCache = HLState e }
+
+updateHl :: BufferImpl -> BufferImpl
+updateHl fb@FBufferData {hlCache = HLState hl}
+    = fb {hlResult = hlColorizeEOF hl 
+          (hlColorize hl (F.toLazyByteString (mem fb)) (hlStartState hl))}
 
 
 pointLeftBound, markLeftBound :: Bool
