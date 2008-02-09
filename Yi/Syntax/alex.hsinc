@@ -17,9 +17,7 @@ type AlexResult = [ (Int, Style) ]
 
 alexGetChar :: AlexInput -> Maybe (Char, AlexInput)
 alexGetChar bs | LB.null bs = Nothing
-               | otherwise  = Just ( LB.head bs
-                                   , LB.tail bs
-                                   )
+               | otherwise  = Just (LB.head bs, LB.tail bs)
 
 alexInputPrevChar = undefined
 
@@ -53,8 +51,7 @@ highlighter =
     case lastAction of
       (AlexNone, _)                -> ((bs, s), [])
       (AlexLastSkip _ _, _)        -> error "no skipping!"
-      (AlexLastAcc k input len, _) -> 
-        ( (str', finst), attrs ++ fattr )
+      (AlexLastAcc k input len, _) -> ((str', finst), attrs ++ fattr)
         where
         (nst, attrs)           = k (LB.take (fromIntegral len) bs) s
         ((str', finst), fattr) = iter' scanFun input nst
@@ -68,9 +65,9 @@ type ScanFun = Bool
             -> AlexInput 
             -> (Int#)
             -> AlexLastAcc KFun
-            -> ( AlexLastAcc KFun, AlexInput )
+            -> (AlexLastAcc KFun, AlexInput)
 
-type KFun = AlexInput -> HlState -> ( HlState, AlexResult)
+type KFun = AlexInput -> HlState -> (HlState, AlexResult)
 
 
 -- Push the input through the DFA, remembering the most recent accepting
@@ -121,3 +118,4 @@ hl_alex_scan_tkn' user orig_input len input s last_acc =
   check_accs (AlexAccSkipPred pred : rest)
     | pred user orig_input (I# (len)) input =  AlexLastSkip input (I# (len))
   check_accs (_ : rest) = check_accs rest
+
