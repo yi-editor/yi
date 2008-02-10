@@ -138,7 +138,7 @@ stringToNewBuffer nm cs = do
 
 insertBuffer :: FBuffer -> EditorM BufferRef
 insertBuffer b = getsAndModify $
-                 \e -> (e { bufferStack = nub $ (bkey b : bufferStack e),
+                 \e -> (e { bufferStack = nub (bkey b : bufferStack e),
                             buffers = M.insert (bkey b) b (buffers e)
                           }, bkey b)
 
@@ -304,7 +304,7 @@ prevBufW :: EditorM ()
 prevBufW = prevBuffer >>= switchToBufferE
 
 -- | Like fnewE, create a new buffer filled with the String @s@,
--- Open up a new window onto this buffer. Doesn't associate any file
+-- Switch the current window to this buffer. Doesn't associate any file
 -- with the buffer (unlike fnewE) and so is good for popup internal
 -- buffers (like scratch)
 newBufferE :: String -> String -> EditorM BufferRef

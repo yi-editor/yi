@@ -78,7 +78,7 @@ runVim = comap eventToChar
 cmd_mode :: VimMode
 cmd_mode = choice [cmd_eval,eval cmd_move,cmd2other,cmd_op]
 
--- | Take a VimMode that returns and action; "run" it and write the returned action.
+-- | Take a VimMode that returns an action; "run" it and write the returned action.
 eval :: YiAction a () => VimProc (b, a) -> VimMode
 eval p = do (_, a) <- p; write a
 
