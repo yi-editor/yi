@@ -314,6 +314,12 @@ multiCmdFM =
     ,(['\^W',keyRight], const $ withEditor nextWinE)
     ,(['\^W',keyLeft], const $ withEditor prevWinE)
 
+    ,("\^Wk",   const $ withEditor prevWinE)
+    ,("\^Wj",   const $ withEditor nextWinE)
+    -- Same as the above pair, when you're a bit slow to release ctl.
+    ,("\^W\^K", const $ withEditor prevWinE)
+    ,("\^W\^J", const $ withEditor nextWinE)
+
     ,(">>", withBuffer . shiftIndentOfLine)
     ,("<<", withBuffer . shiftIndentOfLine . negate)
     ,("ZZ", const $ viWrite >> quitEditor)
