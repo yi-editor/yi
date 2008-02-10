@@ -39,4 +39,4 @@ noHighlighter = SynHL {hlStartState = (),
                        hlRun = \_ _ -> [(0,())],
                        hlGetResult = \_-> []}
 
-data ExtHL = forall a. Eq a => ExtHL (Highlighter a)
+data ExtHL = forall a. ExtHL (Highlighter a)

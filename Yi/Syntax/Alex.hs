@@ -16,7 +16,7 @@ type AlexInput  = LB.ByteString
 type Action a   = AlexInput -> a -> (a, (Int, Style))
 type State hlState = (hlState, Result)
 type AlexState hlState = (AlexInput, hlState)
-type Result = [(Int, Style)]
+type Result = [(Int, Style)] -> [(Int, Style)]
 
 alexGetChar :: AlexInput -> Maybe (Char, AlexInput)
 alexGetChar bs | LB.null bs = Nothing
@@ -35,12 +35,12 @@ mkHighlighter :: s
               -> ((LB.ByteString, s) -> Maybe ((s, (Int, Style)), (LB.ByteString, s)))
               -> Yi.Syntax.Highlighter (State s)
 mkHighlighter initState alexScanToken = 
-  Yi.Syntax.SynHL { Yi.Syntax.hlStartState   = (initState, [])
+  Yi.Syntax.SynHL { Yi.Syntax.hlStartState   = (initState, id)
                   , Yi.Syntax.hlRun          = fun
-                  , Yi.Syntax.hlGetResult    = snd
+                  , Yi.Syntax.hlGetResult    = ($ []) . snd
                   }
       where --fun :: AlexInput -> (Int, State) -> [(Int, State)]
             fun input (startIndex, (state, resultSoFar)) = scanl f (startIndex, (state, resultSoFar)) tokens
                 where tokens = unfoldr alexScanToken (input,state)
                       --f :: (Int, State) -> (HlState, (Int, Style)) -> (Int,State)
-                      f (idx, (_s, r)) (s',r') = (idx + fst r', (s', r ++ [r']))
+                      f (idx, (_s, r)) (s',r') = (idx + fst r', (s', r . (r':)))
