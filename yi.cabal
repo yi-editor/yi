@@ -45,7 +45,7 @@ library
     if flag (vty)
        build-depends: vty>=3.0.0
        ghc-options: -DFRONTEND_VTY
-      exposed-modules: Yi.UI.Vty
+       exposed-modules: Yi.UI.Vty
 
     if flag (gtk)
       build-depends: gtk>=0.9.12 && < 0.9.12.2
