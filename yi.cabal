@@ -46,6 +46,7 @@ library
        build-depends: vty>=3.0.0
        ghc-options: -DFRONTEND_VTY
        exposed-modules: Yi.UI.Vty
+       other-modules: Yi.Vty
 
     if flag (gtk)
       build-depends: gtk>=0.9.12 && < 0.9.12.2
@@ -68,7 +69,7 @@ library
         Yi.Keymap.Emacs.Keys, Yi.Keymap.Emacs.KillRing, Yi.Keymap.Emacs.UnivArgument,
         Yi.Keymap.Emacs.Utils, Yi.Main, Yi.MkTemp, Yi.Monad, Yi.Process,
         Yi.Search, Yi.String, Yi.Style, Yi.Syntax, Yi.Syntax.Table, Yi.Templates, Yi.TextCompletion,
-        Yi.UI.Common, Yi.Undo, Yi.Vty, Yi.Window, Yi.WindowSet
+        Yi.UI.Common, Yi.Undo, Yi.Window, Yi.WindowSet
         Yi.MiniBuffer
         Yi.File
         Yi.KillRing
