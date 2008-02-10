@@ -135,8 +135,8 @@ do_opt o = case o of
                                      exitWith (ExitFailure 1)
 
 -- | everything that is left over
-do_args :: [String] -> IO (Core.StartConfig, [Keymap.YiM ()])
-do_args args =
+do_args :: Core.Config -> [String] -> IO (Core.StartConfig, [Keymap.YiM ()])
+do_args cfg args =
     case (getOpt (ReturnInOrder File) options args) of
         (o, [], []) ->  do
             let frontend = head $ [f | Frontend   f <- o] ++ [head frontendNames]
@@ -144,6 +144,7 @@ do_args args =
                 config   = Core.StartConfig { Core.startFrontEnd   = case lookup frontend frontends of
                                                                        Nothing -> error "Panic: frontend not found"
                                                                        Just x -> x
+                                            , Core.config = cfg
                                             , Core.startConfigFile = yiConfig
                                             }
             actions <- mapM do_opt o
@@ -169,11 +170,10 @@ openScratchBuffer = Core.withEditor $ do     -- emacs-like behaviour
 -- application, and the real front end, in a sense. 'dynamic_main' calls
 -- this after setting preferences passed from the boot loader.
 --
-main :: Kernel -> IO ()
+main :: Core.Config -> Kernel -> IO ()
+main cfg kernel =  do
 #ifdef FRONTEND_COCOA
-main kernel = withAutoreleasePool $ do
-#else
-main kernel = do
+       withAutoreleasePool $ do
 #endif
-    (config, mopts) <- do_args =<< getArgs
-    Core.startEditor config kernel Nothing (startConsole : openScratchBuffer : mopts)
+          (config, mopts) <- do_args cfg =<< getArgs
+          Core.startEditor config kernel Nothing (startConsole : openScratchBuffer : mopts)

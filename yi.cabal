@@ -4,8 +4,7 @@ category:       Editor
 synopsis:       The Haskell-Scriptable Editor
 description:
   Yi is a text editor written and extensible in Haskell. The goal of Yi is
-  to provide a flexible, powerful, and correct editor core which is dynamically
-  scriptable in Haskell.
+  to provide a flexible, powerful, and correct editor for haskell hacking.
 license:        GPL
 license-file:   LICENSE
 author:         AUTHORS
@@ -22,7 +21,7 @@ data-files:
 
 flag dynamic
   Description: enable Yi dynamic features
-  Default: True
+  Default: False
   -- disabling this is experimental and for testing purposes only
   -- DO NOT write code that depends on this
 
@@ -39,17 +38,49 @@ flag cocoa
   Default:     False
 
 
--- library
---  exposed-modules:
---         Yi.Accessor, Yi.Buffer, Yi.Buffer.HighLevel, Yi.Buffer.Implementation,
---         Yi.Buffer.Normal, Yi.Buffer.Region, Yi.Char, Yi.Completion, Yi.Core,
---         Yi.Debug, Yi.Dired, Yi.Dynamic, Yi.Editor, Yi.Eval, Yi.Event, Yi.FingerString, Yi.History,
---         Yi.Indent, Yi.Interact, Yi.Kernel, Yi.Keymap, Yi.Keymap.Completion, Yi.Keymap.Emacs,
---         Yi.Keymap.Emacs.Keys, Yi.Keymap.Emacs.KillRing, Yi.Keymap.Emacs.UnivArgument,
---         Yi.Keymap.Emacs.Utils, Yi.Keymap.Normal, Yi.Keymap.Vim, Yi.Main, Yi.MkTemp, Yi.Monad, Yi.Process,
---         Yi.Search, Yi.String, Yi.Style, Yi.Syntax, Yi.Syntax.Table, Yi.Templates, Yi.TextCompletion,
---         Yi.UI.Common, Yi.UI.Gtk, Yi.UI.Vty, Yi.Undo, Yi.Vty, Yi.Window, Yi.WindowSet, Yi.Yi, Yi.Syntax.Cplusplus,
---         Yi.Syntax.Haskell, Yi.Syntax.Latex, Yi.Syntax.Srmc, Yi.Syntax.Cabal
+library
+    exposed-modules:
+           Yi
+           Yi.Yi
+           Yi.Keymap.Emacs
+           Yi.Keymap.Vim
+           Yi.Keymap.Users.Ertai
+           Yi.Keymap.Users.JP
+    extensions:     CPP
+    include-dirs:   Yi/Syntax
+    if flag (dynamic)
+       build-depends: ghc>=6.8.2
+       ghc-options: -DDYNAMIC
+
+    if flag (vty)
+       build-depends: vty>=3.0.0
+       ghc-options: -DFRONTEND_VTY
+
+    if flag (gtk)
+      build-depends: gtk>=0.9.12 && < 0.9.12.2
+      ghc-options: -DFRONTEND_GTK
+
+    if flag (cocoa)
+      build-depends: HOC, HOC-AppKit, HOC-Foundation
+      ghc-options: -DFRONTEND_COCOA
+    other-modules:  
+        Yi.Syntax.Cplusplus, Yi.Syntax.Haskell, Yi.Syntax.LiterateHaskell,
+        Yi.Syntax.Latex, Yi.Syntax.Srmc, Yi.Syntax.Cabal
+
+        Yi.Accessor, Yi.Buffer, Yi.Buffer.HighLevel, Yi.Buffer.Implementation,
+        Yi.Buffer.Normal, Yi.Buffer.Region, Yi.Char, Yi.Completion, Yi.Core,
+        Yi.Debug, Yi.Dired, Yi.Dynamic, Yi.Editor, Yi.Eval, Yi.Event, Yi.FingerString, Yi.History,
+        Yi.Indent, Yi.Interact, Yi.Kernel, Yi.Keymap, Yi.Keymap.Completion,
+        Yi.Keymap.Emacs.Keys, Yi.Keymap.Emacs.KillRing, Yi.Keymap.Emacs.UnivArgument,
+        Yi.Keymap.Emacs.Utils, Yi.Main, Yi.MkTemp, Yi.Monad, Yi.Process,
+        Yi.Search, Yi.String, Yi.Style, Yi.Syntax, Yi.Syntax.Table, Yi.Templates, Yi.TextCompletion,
+        Yi.UI.Common, Yi.UI.Gtk, Yi.UI.Vty, Yi.Undo, Yi.Vty, Yi.Window, Yi.WindowSet
+        Yi.MiniBuffer
+        Yi.File
+        Yi.KillRing
+        Yi.Syntax.Alex
+        HConf
+
 -- --         Broken:
 -- --                Yi.Keymap.Ee,
 -- --                Yi.Keymap.Gwern,
@@ -61,10 +92,6 @@ flag cocoa
 -- --                Yi.UI.Cocoa
 -- --         We can specify the two UIs (VTY and GTK) - which forces them to be built -
 -- --         because they are set to build by default (True) anyway.
---
---  include-dirs: Yi/Syntax
---  -- for alex.hsinc
---
 
 
 --

@@ -14,6 +14,8 @@ module Yi.Core (
         module Yi.Keymap,
 
         -- * Construction and destruction
+        Config ( .. ), 
+        defaultConfig,
         StartConfig    ( .. ), -- Must be passed as the first argument to 'startEditor'
         startEditor,         -- :: StartConfig -> Kernel -> Maybe Editor -> [YiM ()] -> IO ()
         quitEditor,          -- :: YiM ()
@@ -96,19 +98,7 @@ import Outputable
 
 #endif
 
--- | Make an action suitable for an interactive run.
--- UI will be refreshed.
-interactive :: Action -> YiM ()
-interactive action = do
-  logPutStrLn ">>> interactively"
-  prepAction <- withUI UI.prepareAction
-  withEditor $ do prepAction
-                  modifyAllA buffersA undosA (addChangeU InteractivePoint)
-  runAction action
-  withEditor $ modifyA killringA krEndCmd
-  refreshEditor
-  logPutStrLn "<<<"
-  return ()
+data Config = Config {defaultKm :: Keymap}
 
 nilKeymap :: Keymap
 nilKeymap = do c <- I.anyEvent
@@ -123,8 +113,28 @@ nilKeymap = do c <- I.anyEvent
                           "see http://haskell.org/haskellwiki/Yi#How_to_Configure_Yi for help on how to do that."]
 
 
+defaultConfig :: Config
+defaultConfig = Config nilKeymap
+
+
+-- | Make an action suitable for an interactive run.
+-- UI will be refreshed.
+interactive :: Action -> YiM ()
+interactive action = do
+  logPutStrLn ">>> interactively"
+  prepAction <- withUI UI.prepareAction
+  withEditor $ do prepAction
+                  modifyAllA buffersA undosA (addChangeU InteractivePoint)
+  runAction action
+  withEditor $ modifyA killringA krEndCmd
+  refreshEditor
+  logPutStrLn "<<<"
+  return ()
+
+
 data StartConfig = StartConfig { startFrontEnd   :: UI.UIBoot
                                , startConfigFile :: FilePath
+                               , config :: Config
                                }
 
 -- ---------------------------------------------------------------------
@@ -148,7 +158,7 @@ startEditor startConfig kernel st commandLineActions = do
     inCh <- newChan
     outCh :: Chan Action <- newChan
     ui <- uiStart inCh outCh initEditor makeAction
-    startKm <- newIORef nilKeymap
+    startKm <- newIORef (defaultKm $ config $ startConfig)
     startModules <- newIORef ["Yi.Yi"] -- this module re-exports all useful stuff, so we want it loaded at all times.
     startThreads <- newIORef []
     startSubprocessId <- newIORef 1
