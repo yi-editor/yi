@@ -11,19 +11,13 @@ author:         AUTHORS
 maintainer:     yi-devel@googlegroups.com
 homepage:       http://haskell.org/haskellwiki/Yi
 
-cabal-Version:  == 1.2.3.0
+cabal-Version:  >= 1.2
 tested-with:    GHC==6.8.2
-build-type:     Custom
+build-type:     Simple
 data-files:
   examples/YiConfig.hs
   art/yi+lambda-fat.pdf
   -- FIXME: Install Cocoa icon only when Cocoa configured
-
-flag dynamic
-  Description: enable Yi dynamic features
-  Default: False
-  -- disabling this is experimental and for testing purposes only
-  -- DO NOT write code that depends on this
 
 flag vty
   Description: Provide Vty UI
@@ -48,21 +42,21 @@ library
            Yi.Keymap.Users.JP
     extensions:     CPP
     include-dirs:   Yi/Syntax
-    if flag (dynamic)
-       build-depends: ghc>=6.8.2
-       ghc-options: -DDYNAMIC
-
     if flag (vty)
        build-depends: vty>=3.0.0
        ghc-options: -DFRONTEND_VTY
+      exposed-modules: Yi.UI.Vty
 
     if flag (gtk)
       build-depends: gtk>=0.9.12 && < 0.9.12.2
       ghc-options: -DFRONTEND_GTK
+      exposed-modules: Yi.UI.Gtk
 
     if flag (cocoa)
       build-depends: HOC, HOC-AppKit, HOC-Foundation
       ghc-options: -DFRONTEND_COCOA
+      exposed-modules: Yi.UI.Cocoa
+
     other-modules:  
         Yi.Syntax.Cplusplus, Yi.Syntax.Haskell, Yi.Syntax.LiterateHaskell,
         Yi.Syntax.Latex, Yi.Syntax.Srmc, Yi.Syntax.Cabal
@@ -74,7 +68,7 @@ library
         Yi.Keymap.Emacs.Keys, Yi.Keymap.Emacs.KillRing, Yi.Keymap.Emacs.UnivArgument,
         Yi.Keymap.Emacs.Utils, Yi.Main, Yi.MkTemp, Yi.Monad, Yi.Process,
         Yi.Search, Yi.String, Yi.Style, Yi.Syntax, Yi.Syntax.Table, Yi.Templates, Yi.TextCompletion,
-        Yi.UI.Common, Yi.UI.Gtk, Yi.UI.Vty, Yi.Undo, Yi.Vty, Yi.Window, Yi.WindowSet
+        Yi.UI.Common, Yi.Undo, Yi.Vty, Yi.Window, Yi.WindowSet
         Yi.MiniBuffer
         Yi.File
         Yi.KillRing
@@ -88,11 +82,6 @@ library
 -- --                Yi.Keymap.Mg,
 -- --                Yi.Keymap.Nano,
 -- --                Yi.Keymap.Vi,
--- --         Broken?
--- --                Yi.UI.Cocoa
--- --         We can specify the two UIs (VTY and GTK) - which forces them to be built -
--- --         because they are set to build by default (True) anyway.
-
 
 --
 --  extensions:   CPP, DeriveDataTypeable, FlexibleContexts, FlexibleInstances,
@@ -120,10 +109,6 @@ executable yi
 
         ghc-options:   -Wall -optl-Wl,-s
 -- ghc-options later on get appended to the original
-
-        if flag (dynamic)
-           build-depends: ghc>=6.8.2
-           ghc-options: -DDYNAMIC
 
         if flag (vty)
            build-depends: vty>=3.0.0

@@ -119,7 +119,7 @@ show-build-args:
 	@echo $(build-args)
 
 setup: Setup.*hs 
-	$(ghc) -Wall --make -package Cabal-$(cabal-version) Setup.*hs -o setup
+	$(ghc) -Wall --make Setup.*hs -o setup
 
 # setup with my own (Windows-friendly) preferences.  You'll probably want
 # to use "make setup; ./setup configure" instead.  I've avoided using
