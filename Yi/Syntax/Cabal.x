@@ -11,11 +11,7 @@
 module Yi.Syntax.Cabal
   ( highlighter ) 
 where
-
-import qualified Data.ByteString.Char8
-import qualified Yi.FingerString
-import qualified Data.ByteString.Lazy.Char8 as LB
-import qualified Yi.Syntax
+import Yi.Syntax.Alex
 import Yi.Style
   ( Style             ( .. )
   , defaultStyle

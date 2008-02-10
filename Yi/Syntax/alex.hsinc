@@ -3,119 +3,19 @@
 -- | The include file for alex-generated syntax highlighters.  Because alex
 -- declares its own types, any wrapper must have the highlighter in scope...
 -- so it must be included.  Doubleplusyuck.
---
--- You will need to import qualified Yi.Style, Yi.Syntax and some other modules.
---
--- You will need to define initState and stateToInit and type HlState
---
--- Your actions must have type String -> $state -> ($state, [Attr])
-
-type AlexInput  = LB.ByteString
-type Action a   = AlexInput -> a -> (a, AlexResult)
-type AlexState  = (AlexInput, HlState)
-type AlexResult = [ (Int, Style) ]
-
-alexGetChar :: AlexInput -> Maybe (Char, AlexInput)
-alexGetChar bs | LB.null bs = Nothing
-               | otherwise  = Just (LB.head bs, LB.tail bs)
-
-alexInputPrevChar = undefined
-
-c :: Style -> Action a
-c color str state = (state, [(fromIntegral $ LB.length str, color)])
-
-m :: (s -> s) -> Style -> Action s
-m mod color str state = (mod state, [(fromIntegral $ LB.length str, color)])
-
-highlighter :: Yi.Syntax.Highlighter (AlexState, AlexResult)
-highlighter = 
-  Yi.Syntax.SynHL { Yi.Syntax.hlStartState   = startState
-                  , Yi.Syntax.hlColorize     = fun
-                  , Yi.Syntax.hlColorizeEOF  = funEOF
-                  }
-  where
-  startState         = ((LB.empty, initState), [])
-  fun :: AlexInput -> (AlexState, AlexResult) -> (AlexState, AlexResult)
-  fun bs ((scrap, st), resultSoFar) = (newState, resultSoFar ++ newResults)
-    where
-    full = LB.append scrap bs
-    (newState, newResults) = iter' hl_alex_scan_tkn full st
 
 
-  funEOF :: (AlexState, AlexResult) -> AlexResult
-  funEOF ((scrap, st), resultSoFar) = 
-    resultSoFar ++ snd (iter' alex_scan_tkn scrap st) 
+alexScanToken (inp,state) = case alexScan inp (stateToInit state) of
+		AlexEOF -> Nothing
+		AlexError _ -> error "lexical error"
+		AlexSkip  inp' len  -> error "alex skip unsupported"
+		AlexToken inp' len act -> let (state', r) = act (takeLB (fromIntegral len) inp) state 
+                                          in Just ((state',r), (inp',state'))
 
-  iter' :: ScanFun -> AlexInput -> HlState -> (AlexState, AlexResult)
-  iter' scanFun bs s =
-    case lastAction of
-      (AlexNone, _)                -> ((bs, s), [])
-      (AlexLastSkip _ _, _)        -> error "no skipping!"
-      (AlexLastAcc k input len, _) -> ((str', finst), attrs ++ fattr)
-        where
-        (nst, attrs)           = k (LB.take (fromIntegral len) bs) s
-        ((str', finst), fattr) = iter' scanFun input nst
-    where 
-    lastAction = scanFun undefined bs 0# bs start AlexNone
-    start      = iUnbox (stateToInit s)
-
-type ScanFun = Bool 
-            -> AlexInput 
-            -> (Int#)
-            -> AlexInput 
-            -> (Int#)
-            -> AlexLastAcc KFun
-            -> (AlexLastAcc KFun, AlexInput)
-
-type KFun = AlexInput -> HlState -> (HlState, AlexResult)
+highlighter = mkHighlighter initState alexScanToken
 
 
--- Push the input through the DFA, remembering the most recent accepting
--- state it encountered.
-
--- Since the documented interface is insufficiently expressive, we have to use
--- the undocumented one :(
-
--- Our interface parses a token, but only if it is certain that the token is
--- the longest given available data.
-
-hl_alex_scan_tkn :: ScanFun
-hl_alex_scan_tkn user orig_input len input s last_acc =
-  input `seq` -- strict in the input
-  case s of
-    -1# -> (last_acc, input)
-    _   -> hl_alex_scan_tkn' user orig_input len input s last_acc
-
-hl_alex_scan_tkn' :: ScanFun
-hl_alex_scan_tkn' user orig_input len input s last_acc =
-  new_acc `seq`
-  case alexGetChar input of
-    Nothing             -> (AlexNone, input) -- fail on EOF - important!
-    Just (c, new_input) ->
-      hl_alex_scan_tkn user orig_input (len +# 1#) new_input new_s new_acc
-      where
-      base   = alexIndexInt32OffAddr alex_base s
-      (I# (ord_c)) = ord c
-      offset = (base +# ord_c)
-      check  = alexIndexInt16OffAddr alex_check offset
-        
-      new_s
-        | (offset >=# 0#) && (check ==# ord_c) =
-          alexIndexInt16OffAddr alex_table offset
-        | otherwise                            =
-          alexIndexInt16OffAddr alex_deflt s
-      
 
 
-  where
-  new_acc = check_accs (alex_accept `quickIndex` (I# (s)))
 
-  check_accs []                             = last_acc
-  check_accs (AlexAcc a : _)                = AlexLastAcc a input (I# (len))
-  check_accs (AlexAccSkip : _)              = AlexLastSkip  input (I# (len))
-  check_accs (AlexAccPred a pred : rest)
-    | pred user orig_input (I# (len)) input =  AlexLastAcc a input (I# (len))
-  check_accs (AlexAccSkipPred pred : rest)
-    | pred user orig_input (I# (len)) input =  AlexLastSkip input (I# (len))
-  check_accs (_ : rest) = check_accs rest
 

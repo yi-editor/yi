@@ -50,7 +50,6 @@ import Text.Regex.Posix
 import qualified Yi.FingerString as F
 import Yi.FingerString (FingerString)
 import qualified Data.ByteString.Char8 as B
-import qualified Data.ByteString.Lazy.Char8 as LB
 
 import Data.Array
 import Data.Maybe
@@ -79,7 +78,9 @@ type BufferImpl = FBufferData
 hlChunkSize :: Int
 hlChunkSize = 1024
 
-data HLState = forall a. HLState !(Highlighter a) [a]
+data HLState = forall a. HLState 
+    !(Highlighter a) 
+    [(Int,a)] -- ^ list of cached intermediate states and their offsets.
 
 -- ---------------------------------------------------------------------
 --
@@ -119,8 +120,7 @@ data Update = Insert {updatePoint :: !Point, insertUpdateString :: !String} -- F
 -- | New FBuffer filled from string.
 newBI :: String -> FBufferData
 newBI s = FBufferData (F.fromString s) mks M.empty (HLState noHighlighter []) [] []
-    where
-    mks = M.fromList [(pointMark, MarkValue 0 pointLeftBound)]
+    where mks = M.fromList [(pointMark, MarkValue 0 pointLeftBound)]
 
 -- | read @n@ chars from buffer @b@, starting at @i@
 readChars :: FingerString -> Int -> Int -> FingerString
@@ -407,20 +407,16 @@ setSyntaxBI (ExtHL e) fb = updateHl 0 $ fb {hlCache = HLState e []}
 
 updateHl :: Point -> BufferImpl -> BufferImpl
 updateHl touchedIndex fb@FBufferData {hlCache = HLState hl cachedStates0} 
-    = fb {hlCache = HLState hl newCachedStates, hlResult =  hlColorizeEOF hl newState}
-    where reusableChunksCount = touchedIndex `div` hlChunkSize
-          resumeIndex = reusableChunksCount * hlChunkSize
-          reused = take reusableChunksCount cachedStates
-          resumeState = cachedStates !! reusableChunksCount
-          cachedStates = if null cachedStates0 then [hlStartState hl] else cachedStates0
-          newCachedStates = reused ++ recomputed
-          newState = last newCachedStates 
-          recomputed = scanl (flip (hlColorize hl)) resumeState chunks
+    = fb {hlCache = HLState hl newCachedStates, hlResult = hlGetResult hl newState}
+    where resumeIndex = fst resumeState
+          reused = takeWhile ((<= touchedIndex) . fst) cachedStates
+          resumeState = last reused
+          cachedStates = if null cachedStates0 then [(0, hlStartState hl)] else cachedStates0
+          newCachedStates = reused ++ tail recomputed
+          newState = snd $ last newCachedStates 
+          recomputed = (hlRun hl) text resumeState
                        -- use scanl so that the list can be read lazily
-          chunks = mkChunks (F.toLazyByteString (F.drop resumeIndex (mem fb)))
-          mkChunks s | LB.null s = []
-                     | otherwise = let (h,t) = LB.splitAt (fromIntegral hlChunkSize) s 
-                                   in h:mkChunks t
+          text = F.toLazyByteString (F.drop resumeIndex (mem fb))
 
 pointLeftBound, markLeftBound :: Bool
 pointLeftBound = False

@@ -7,9 +7,7 @@
 {-# OPTIONS -w  #-}
 module Yi.Syntax.Cplusplus ( highlighter ) where
 {- Standard Library Modules Imported -}
-import qualified Data.ByteString.Char8
-import qualified Yi.FingerString
-import qualified Data.ByteString.Lazy.Char8 as LB
+import Yi.Syntax.Alex
 {- External Library Modules Imported -}
 {- Local Modules Imported -}
 import qualified Yi.Syntax

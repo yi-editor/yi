@@ -10,12 +10,8 @@
 {
 {-# OPTIONS -w  #-}
 module Yi.Syntax.Srmc ( highlighter ) where
-{- Standard Library Modules Imported -}
-import qualified Data.ByteString.Char8
-import qualified Data.ByteString.Lazy.Char8 as LB
-import qualified Yi.FingerString
-{- External Library Modules Imported -}
 {- Local Modules Imported -}
+import Yi.Syntax.Alex
 import qualified Yi.Syntax
 import Yi.Style
   ( Style             ( .. )
