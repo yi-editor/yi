@@ -110,6 +110,7 @@ executable yi
 
         ghc-options:   -Wall -optl-Wl,-s
 -- ghc-options later on get appended to the original
+        ghc-prof-options:   -prof -auto-all
 
         if flag (vty)
            build-depends: vty>=3.0.0

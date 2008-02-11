@@ -118,6 +118,7 @@ withEditor f = do
   -- replacing the editor state. Otherwise, we might replace e
   -- with an exception-producing thunk, which makes it impossible
   -- to look at or update the editor state.
+  -- Maybe this could also be fixed by -fno-state-hack flag?
   e' `seq` a `seq` writeRef r e'
   return a
 
