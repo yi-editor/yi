@@ -15,7 +15,6 @@ module Yi.Core (
 
         -- * Construction and destruction
         Config ( .. ), 
-        defaultConfig,
         StartConfig    ( .. ), -- Must be passed as the first argument to 'startEditor'
         startEditor,         -- :: StartConfig -> Kernel -> Maybe Editor -> [YiM ()] -> IO ()
         quitEditor,          -- :: YiM ()
@@ -99,23 +98,6 @@ import Outputable
 #endif
 
 data Config = Config {defaultKm :: Keymap}
-
-nilKeymap :: Keymap
-nilKeymap = do c <- I.anyEvent
-               write $ case eventToChar c of
-                         'q' -> quitEditor
-                         'r' -> reconfigEditor
-                         'h' -> (configHelp >> return ())
-                         _ -> errorEditor $ "Keymap not defined, type 'r' to reload config, 'q' to quit, 'h' for help."
-    where configHelp = withEditor $ newBufferE "*configuration help*" $ unlines $
-                         ["To get a standard reasonable keymap, you can run yi with either --as=vim or --as=emacs.",
-                          "You can also create your own ~/.yi/YiConfig.hs file,",
-                          "see http://haskell.org/haskellwiki/Yi#How_to_Configure_Yi for help on how to do that."]
-
-
-defaultConfig :: Config
-defaultConfig = Config nilKeymap
-
 
 -- | Make an action suitable for an interactive run.
 -- UI will be refreshed.
@@ -357,9 +339,6 @@ closeWindow = do
 
 #ifdef DYNAMIC
 
--- | Recompile and reload the user's config files
-reconfigEditor :: YiM ()
-reconfigEditor = reloadEditor >> runConfig
 
 runConfig :: YiM ()
 runConfig = do

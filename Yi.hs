@@ -7,7 +7,8 @@ import Yi.Yi
 import qualified Yi.Main as Yi
 import HConf
 
-import Yi.Core (Config (..), defaultConfig)
+import Yi.Core (Config (..))
+import Yi.Main (defaultConfig)
 import Yi.Debug
 import Yi.Kernel
 #ifdef DYNAMIC

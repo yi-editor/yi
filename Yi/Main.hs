@@ -17,7 +17,7 @@
 -- jumping into an event loop.
 --
 
-module Yi.Main (main, Kernel) where
+module Yi.Main (main, Kernel, defaultConfig) where
 
 import Prelude hiding (error)
 
@@ -33,8 +33,11 @@ import qualified Yi.Keymap.Users.Ertai
 import Yi.UI.Common (UIBoot)
 import Yi.Kernel
 import Yi.Debug
+import Yi.Event (eventToChar, Event)
+import Yi.Yi
 
 import Yi.Interact hiding (write)
+import qualified Yi.Interact as I
 
 #ifdef FRONTEND_COCOA
 import qualified Yi.UI.Cocoa
@@ -115,6 +118,27 @@ usage    = putStr   $ usageInfo "Usage: yi [option...] [file]" options
 
 versinfo = putStrLn $ "yi 0.4.0"
 -- TODO: pull this out of the cabal configuration
+
+
+nilKeymap = do c <- anyEvent
+               case eventToChar c of
+                         'e' -> forever Emacs.keymap
+                         'v' -> forever Vim.keymap
+                         'q' -> write $ Core.quitEditor
+                         'r' -> write $ Core.reloadEditor
+                         'h' -> write $ configHelp
+                         _   -> write $ Core.errorEditor $ "Keymap not defined, 'q' to quit, 'h' for help."
+    where configHelp = Keymap.withEditor $ newBufferE "*configuration help*" $ unlines $
+                         ["To get a standard reasonable keymap, you can run yi with either --as=vim or --as=emacs.",
+                          "you can type 'e' or 'v' now to get a temporary emacs or vim keymap.",
+                          "You should however create your own ~/.yi/yi.hs file: ",
+                          "start by copying it from the examples directory and edit it."]
+                         -- TODO: create the default file and open it in the editor.
+
+
+defaultConfig :: Core.Config
+defaultConfig = Core.Config nilKeymap
+
 
 -- | deal with real options
 do_opt :: Opts -> IO (Keymap.YiM ())
