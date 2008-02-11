@@ -8,12 +8,11 @@ import HConf
 import Yi.Core (Config (..))
 import Yi.Main (defaultConfig)
 import Yi.Debug
-import Yi.Kernel
 
 main0 :: Config -> IO ()
 main0 cfg = do
   initDebug ".yi.dbg"
-  Yi.main cfg Kernel
+  Yi.main cfg
 
 recoverState _stateName = return ()
 

@@ -9,7 +9,6 @@ import Yi.UI.Common
 import qualified Yi.Editor as Editor
 import Yi.Editor (EditorM, Editor, runEditor)
 import qualified Data.Map as M
-import Yi.Kernel
 import Control.Monad.Reader
 import Data.Typeable
 import Data.IORef
@@ -63,7 +62,6 @@ data Yi = Yi {yiEditor :: IORef Editor,
               output        :: Chan Action,                -- ^ output stream
               defaultKeymap :: IORef Keymap,
               bufferKeymaps :: IORef (M.Map BufferRef BufferKeymap),
-              yiKernel  :: Kernel,
               editorModules :: IORef [String], -- ^ modules requested by user: (e.g. ["YiConfig", "Yi.Dired"])
 
               yiSubprocessIdSource :: IORef SubprocessId,
@@ -107,9 +105,6 @@ getBufferKeymap b = do
 
 --------------------------------
 -- Uninteresting glue code
-
-withKernel :: (Kernel -> IO a) -> YiM a
-withKernel = with yiKernel
 
 withUI :: (UI -> IO a) -> YiM a
 withUI = with yiUi

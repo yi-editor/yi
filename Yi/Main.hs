@@ -17,7 +17,7 @@
 -- jumping into an event loop.
 --
 
-module Yi.Main (main, Kernel, defaultConfig) where
+module Yi.Main (main, defaultConfig) where
 
 import Prelude hiding (error)
 
@@ -31,7 +31,6 @@ import qualified Yi.Keymap.Emacs  as Emacs
 import qualified Yi.Keymap.Vim  as Vim
 import qualified Yi.Keymap.Users.Ertai
 import Yi.UI.Common (UIBoot)
-import Yi.Kernel
 import Yi.Debug
 import Yi.Event (eventToChar, Event)
 import Yi.Yi
@@ -194,10 +193,10 @@ openScratchBuffer = Core.withEditor $ do     -- emacs-like behaviour
 -- application, and the real front end, in a sense. 'dynamic_main' calls
 -- this after setting preferences passed from the boot loader.
 --
-main :: Core.Config -> Kernel -> IO ()
-main cfg kernel =  do
+main :: Core.Config -> IO ()
+main cfg = do
 #ifdef FRONTEND_COCOA
        withAutoreleasePool $ do
 #endif
           (config, mopts) <- do_args cfg =<< getArgs
-          Core.startEditor config kernel Nothing (startConsole : openScratchBuffer : mopts)
+          Core.startEditor config Nothing (startConsole : openScratchBuffer : mopts)

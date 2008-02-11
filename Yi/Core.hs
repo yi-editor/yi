@@ -79,8 +79,6 @@ import Control.Monad.Error ()
 import Control.Exception
 import Control.Concurrent
 import Control.Concurrent.Chan
-import Yi.Kernel
-
 
 -- | Make an action suitable for an interactive run.
 -- UI will be refreshed.
@@ -106,8 +104,8 @@ data StartConfig = StartConfig { startFrontEnd   :: UI.UIBoot
 -- | Start up the editor, setting any state with the user preferences
 -- and file names passed in, and turning on the UI
 --
-startEditor :: StartConfig -> Kernel -> Maybe Editor -> [YiM ()] -> IO ()
-startEditor startConfig kernel st commandLineActions = do
+startEditor :: StartConfig -> Maybe Editor -> [YiM ()] -> IO ()
+startEditor startConfig st commandLineActions = do
     let
         uiStart        = startFrontEnd startConfig
 
@@ -126,7 +124,7 @@ startEditor startConfig kernel st commandLineActions = do
     startSubprocessId <- newIORef 1
     startSubprocesses <- newIORef M.empty
     keymaps <- newIORef M.empty
-    let yi = Yi newSt ui startThreads inCh outCh startKm keymaps kernel startModules startSubprocessId startSubprocesses (config startConfig)
+    let yi = Yi newSt ui startThreads inCh outCh startKm keymaps startModules startSubprocessId startSubprocesses (config startConfig)
         runYi f = runReaderT f yi
 
     runYi $ do
