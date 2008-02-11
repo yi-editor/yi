@@ -18,11 +18,6 @@ module Yi.Core (
         startEditor,         -- :: StartConfig -> Kernel -> Maybe Editor -> [YiM ()] -> IO ()
         quitEditor,          -- :: YiM ()
 
-#ifdef DYNAMIC
-        reconfigEditor,
-        loadModule,
-        unloadModule,
-#endif
         reloadEditor,        -- :: YiM ()
         getAllNamesInScope,
         execEditorAction,
@@ -86,16 +81,6 @@ import Control.Concurrent
 import Control.Concurrent.Chan
 import Yi.Kernel
 
-#ifdef DYNAMIC
-
-import Data.List (notElem, delete)
-import qualified ErrUtils
-import qualified GHC
-import qualified SrcLoc
-import Outputable
-
-#endif
-
 
 -- | Make an action suitable for an interactive run.
 -- UI will be refreshed.
@@ -124,9 +109,6 @@ data StartConfig = StartConfig { startFrontEnd   :: UI.UIBoot
 startEditor :: StartConfig -> Kernel -> Maybe Editor -> [YiM ()] -> IO ()
 startEditor startConfig kernel st commandLineActions = do
     let
-#ifdef DYNAMIC
-        yiConfigFile   = startConfigFile startConfig
-#endif
         uiStart        = startFrontEnd startConfig
 
     logPutStrLn "Starting Core"
@@ -150,15 +132,6 @@ startEditor startConfig kernel st commandLineActions = do
     runYi $ do
 
       withEditor $ newBufferE "*messages*" "" >> return ()
-
-#ifdef DYNAMIC
-      withKernel $ \k -> do
-        dflags <- getSessionDynFlags k
-        setSessionDynFlags k dflags { GHC.log_action = ghcErrorReporter yi }
-      -- run user configuration
-      loadModule yiConfigFile -- "YiConfig"
-      runConfig
-#endif
 
       when (isNothing st) $ do -- process options if booting for the first time
         sequence_ commandLineActions
@@ -235,42 +208,6 @@ changeKeymap km = do
 quitEditor :: YiM ()
 quitEditor = withUI UI.end
 
-#ifdef DYNAMIC
-loadModules :: [String] -> YiM (Bool, [String])
-loadModules modules = do
-  withKernel $ \kernel -> do
-    targets <- mapM (\m -> guessTarget kernel m Nothing) modules
-    setTargets kernel targets
-  -- lift $ rts_revertCAFs -- FIXME: GHCi does this; It currently has undesired effects on logging; investigate.
-  logPutStrLn $ "Loading targets..."
-  result <- withKernel loadAllTargets
-  loaded <- withKernel setContextAfterLoad
-  ok <- case result of
-    GHC.Failed -> withOtherWindow (withEditor (switchToBufferE =<< getBufferWithName "*console*")) >> return False
-    _ -> return True
-  let newModules = map (moduleNameString . moduleName) loaded
-  writesRef editorModules newModules
-  logPutStrLn $ "loadModules: " ++ show modules ++ " -> " ++ show (ok, newModules)
-  return (ok, newModules)
-
---foreign import ccall "revertCAFs" rts_revertCAFs  :: IO ()
-        -- Make it "safe", just in case
-
-tryLoadModules :: [String] -> YiM [String]
-tryLoadModules [] = return []
-tryLoadModules  modules = do
-  (ok, newModules) <- loadModules modules
-  if ok
-    then return newModules
-    else tryLoadModules (init modules)
-    -- when failed, try to drop the most recently loaded module.
-    -- We do this because GHC stops trying to load modules upon the 1st failing modules.
-    -- This allows to load more modules if we ever try loading a wrong module.
-
--- | (Re)compile
-reloadEditor :: YiM [String]
-reloadEditor = tryLoadModules =<< readsRef editorModules
-#endif
 -- | Redraw
 refreshEditor :: YiM ()
 refreshEditor = do editor <- with yiEditor readRef
@@ -335,86 +272,12 @@ closeWindow = do
     when (n == 1) quitEditor
     withEditor $ tryCloseE
 
-#ifdef DYNAMIC
-
-
-runConfig :: YiM ()
-runConfig = do
-  loaded <- withKernel $ \kernel -> do
-              let cfgMod = mkModuleName kernel "YiConfig"
-              isLoaded kernel cfgMod
-  if loaded
-   then do result <- withKernel $ \kernel -> evalMono kernel "YiConfig.yiMain :: Yi.Yi.YiM ()"
-           case result of
-             Nothing -> errorEditor "Could not run YiConfig.yiMain :: Yi.Yi.YiM ()"
-             Just x -> x
-   else errorEditor "YiConfig not loaded"
-
-loadModule :: String -> YiM [String]
-loadModule modul = do
-  logPutStrLn $ "loadModule: " ++ modul
-  ms <- readsRef editorModules
-  tryLoadModules (if Data.List.notElem modul ms then ms++[modul] else ms)
-
-unloadModule :: String -> YiM [String]
-unloadModule modul = do
-  ms <- readsRef editorModules
-  tryLoadModules $ delete modul ms
-
-getAllNamesInScope :: YiM [String]
-getAllNamesInScope = do
-  withKernel $ \k -> do
-      rdrNames <- getRdrNamesInScope k
-      names <- getNamesInScope k
-      return $ map (nameToString k) rdrNames ++ map (nameToString k) names
-
-ghcErrorReporter :: Yi -> GHC.Severity -> SrcLoc.SrcSpan -> Outputable.PprStyle -> ErrUtils.Message -> IO ()
-ghcErrorReporter yi severity srcSpan pprStyle message =
-    -- the following is written in very bad style.
-    flip runReaderT yi $ do
-      e <- readEditor id
-      let [b] = findBufferWithName "*console*" e
-      withGivenBuffer b $ savingExcursionB $ do
-        moveTo =<< getMarkPointB =<< getMarkB (Just "errorInsert")
-        insertN msg
-        insertN "\n"
-    where msg = case severity of
-                  GHC.SevInfo -> show (message pprStyle)
-                  GHC.SevFatal -> show (message pprStyle)
-                  _ -> show ((ErrUtils.mkLocMessage srcSpan message) pprStyle)
-
-
--- | Run a (dynamically specified) editor command.
-execEditorAction :: String -> YiM ()
-execEditorAction s = do
-  ghcErrorHandler $ do
-            result <- withKernel $ \kernel -> do
-                               logPutStrLn $ "execing " ++ s
-                               evalMono kernel ("makeAction (" ++ s ++ ") :: Yi.Yi.Action")
-            case result of
-              Left err -> errorEditor err
-              Right x -> do runAction x
-                            return ()
-
--- | Install some default exception handlers and run the inner computation.
-ghcErrorHandler :: YiM () -> YiM ()
-ghcErrorHandler inner = do
-  flip catchDynE (\dyn -> do
-                    case dyn of
-                     GHC.PhaseFailed _ code -> errorEditor $ "Exitted with " ++ show code
-                     GHC.Interrupted -> errorEditor $ "Interrupted!"
-                     _ -> do errorEditor $ "GHC exeption: " ++ (show (dyn :: GHC.GhcException))
-
-            ) $
-            inner
-
 withOtherWindow :: YiM () -> YiM ()
 withOtherWindow f = do
   withEditor $ shiftOtherWindow
   f
   withEditor $ prevWinE
 
-#else
 reloadEditor :: YiM ()
 reloadEditor = msgEditor "reloadEditor: Not supported"
 
@@ -427,7 +290,6 @@ getAllNamesInScope :: YiM [String]
 getAllNamesInScope = do 
   acts <- asks (publishedActions . yiConfig)
   return (M.keys acts)
-#endif
 
 -- | Start a subprocess with the given command and arguments.
 startSubprocess :: FilePath -> [String] -> YiM ()

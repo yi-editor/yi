@@ -158,7 +158,8 @@ executeExtendedCommandE = do
 
 evalRegionE :: YiM ()
 evalRegionE = do
-  withBuffer (getSelectRegionB >>= readRegionB) >>= evalE
+  withBuffer (getSelectRegionB >>= readRegionB) >>= return -- FIXME: do something sensible.
+  return ()
 
 -- * Code for various commands
 -- This ideally should be put in their own module,

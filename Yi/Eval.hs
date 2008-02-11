@@ -2,7 +2,6 @@
 
 module Yi.Eval (
         -- * Eval\/Interpretation
-        evalE,
         jumpToErrorE,
         consoleKeymap,
 ) where
@@ -24,24 +23,6 @@ import Yi.Event
 import Yi.Buffer
 import Yi.Buffer.HighLevel
 import Yi.Dired
-
-#ifdef DYNAMIC
-
-evalToStringE :: String -> YiM String
-evalToStringE string = withKernel $ \kernel -> do
-  result <- evalMono kernel ("show (" ++ string ++ ")")
-  return $ case result of
-    Left err -> err
-    Right x -> x
-
-#else
-evalToStringE :: (Monad m) => a -> m a
-evalToStringE = return
-#endif
--- | Evaluate some text and show the result in the message line.
-evalE :: String -> YiM ()
-evalE s = evalToStringE s >>= msgEditor
-
 
 jumpToE :: String -> Int -> Int -> YiM ()
 jumpToE filename line column = do
