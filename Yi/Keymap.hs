@@ -20,6 +20,7 @@ import Yi.Monad
 import Control.Monad.State
 import Yi.Event
 import Yi.Process ( SubprocessInfo, SubprocessId )
+import qualified Yi.UI.Common as UI
 
 data Action = forall a. Show a => YiA (YiM a)
             | forall a. Show a => EditorA (EditorM a)
@@ -51,7 +52,8 @@ data BufferKeymap = BufferKeymap
     , bufferKeymapProcess :: KeymapProcess -- ^ Current state of the keymap automaton
     }
 
-data Config = Config {defaultKm :: Keymap,
+data Config = Config {startFrontEnd :: UI.UIBoot,
+                      defaultKm :: Keymap,                      
                       publishedActions :: M.Map String Action}
 
 

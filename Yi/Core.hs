@@ -14,7 +14,6 @@ module Yi.Core (
         module Yi.Keymap,
 
         -- * Construction and destruction
-        StartConfig    ( .. ), -- Must be passed as the first argument to 'startEditor'
         startEditor,         -- :: StartConfig -> Kernel -> Maybe Editor -> [YiM ()] -> IO ()
         quitEditor,          -- :: YiM ()
 
@@ -94,20 +93,13 @@ interactive action = do
   logPutStrLn "<<<"
   return ()
 
-
-data StartConfig = StartConfig { startFrontEnd   :: UI.UIBoot
-                               , startConfigFile :: FilePath
-                               , config :: Config
-                               }
-
 -- ---------------------------------------------------------------------
 -- | Start up the editor, setting any state with the user preferences
 -- and file names passed in, and turning on the UI
 --
-startEditor :: StartConfig -> Maybe Editor -> [YiM ()] -> IO ()
-startEditor startConfig st commandLineActions = do
-    let
-        uiStart        = startFrontEnd startConfig
+startEditor :: Config -> Maybe Editor -> [YiM ()] -> IO ()
+startEditor cfg st commandLineActions = do
+    let uiStart = startFrontEnd cfg
 
     logPutStrLn "Starting Core"
 
@@ -118,13 +110,13 @@ startEditor startConfig st commandLineActions = do
     inCh <- newChan
     outCh :: Chan Action <- newChan
     ui <- uiStart inCh outCh initEditor makeAction
-    startKm <- newIORef (defaultKm $ config $ startConfig)
+    startKm <- newIORef (defaultKm cfg)
     startModules <- newIORef ["Yi.Yi"] -- this module re-exports all useful stuff, so we want it loaded at all times.
     startThreads <- newIORef []
     startSubprocessId <- newIORef 1
     startSubprocesses <- newIORef M.empty
     keymaps <- newIORef M.empty
-    let yi = Yi newSt ui startThreads inCh outCh startKm keymaps startModules startSubprocessId startSubprocesses (config startConfig)
+    let yi = Yi newSt ui startThreads inCh outCh startKm keymaps startModules startSubprocessId startSubprocesses cfg
         runYi f = runReaderT f yi
 
     runYi $ do
