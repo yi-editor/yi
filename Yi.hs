@@ -1,8 +1,6 @@
-module Yi (driver, yi, module Yi.Yi) where
+module Yi (driver, yi, defaultConfig, module Yi.Yi) where
 
 import Yi.Yi
-
-
 
 import qualified Yi.Main as Yi
 import HConf

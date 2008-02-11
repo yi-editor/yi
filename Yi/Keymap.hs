@@ -52,6 +52,10 @@ data BufferKeymap = BufferKeymap
     , bufferKeymapProcess :: KeymapProcess -- ^ Current state of the keymap automaton
     }
 
+data Config = Config {defaultKm :: Keymap,
+                      publishedActions :: M.Map String Action}
+
+
 data Yi = Yi {yiEditor :: IORef Editor,
               yiUi          :: UI,
               threads       :: IORef [ThreadId],           -- ^ all our threads
@@ -63,7 +67,8 @@ data Yi = Yi {yiEditor :: IORef Editor,
               editorModules :: IORef [String], -- ^ modules requested by user: (e.g. ["YiConfig", "Yi.Dired"])
 
               yiSubprocessIdSource :: IORef SubprocessId,
-              yiSubprocesses :: IORef (M.Map SubprocessId SubprocessInfo)
+              yiSubprocesses :: IORef (M.Map SubprocessId SubprocessInfo),
+              yiConfig :: Config
              }
 
 -- | The type of user-bindable functions

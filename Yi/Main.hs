@@ -137,7 +137,7 @@ nilKeymap = do c <- anyEvent
 
 
 defaultConfig :: Core.Config
-defaultConfig = Core.Config nilKeymap
+defaultConfig = Core.Config nilKeymap Yi.Yi.defaultPublishedActions
 
 
 -- | deal with real options

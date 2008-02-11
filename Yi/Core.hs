@@ -14,7 +14,6 @@ module Yi.Core (
         module Yi.Keymap,
 
         -- * Construction and destruction
-        Config ( .. ), 
         StartConfig    ( .. ), -- Must be passed as the first argument to 'startEditor'
         startEditor,         -- :: StartConfig -> Kernel -> Maybe Editor -> [YiM ()] -> IO ()
         quitEditor,          -- :: YiM ()
@@ -79,7 +78,7 @@ import System.FilePath
 import System.Process ( getProcessExitCode, ProcessHandle )
 
 import Control.Monad (when,forever)
-import Control.Monad.Reader (runReaderT, ask)
+import Control.Monad.Reader (runReaderT, ask, asks)
 import Control.Monad.Trans
 import Control.Monad.Error ()
 import Control.Exception
@@ -97,7 +96,6 @@ import Outputable
 
 #endif
 
-data Config = Config {defaultKm :: Keymap}
 
 -- | Make an action suitable for an interactive run.
 -- UI will be refreshed.
@@ -146,7 +144,7 @@ startEditor startConfig kernel st commandLineActions = do
     startSubprocessId <- newIORef 1
     startSubprocesses <- newIORef M.empty
     keymaps <- newIORef M.empty
-    let yi = Yi newSt ui startThreads inCh outCh startKm keymaps kernel startModules startSubprocessId startSubprocesses
+    let yi = Yi newSt ui startThreads inCh outCh startKm keymaps kernel startModules startSubprocessId startSubprocesses (config startConfig)
         runYi f = runReaderT f yi
 
     runYi $ do
@@ -417,14 +415,18 @@ withOtherWindow f = do
   withEditor $ prevWinE
 
 #else
-reloadEditor, reconfigEditor :: YiM ()
-reconfigEditor = msgEditor "reconfigEditor: Not supported"
+reloadEditor :: YiM ()
 reloadEditor = msgEditor "reloadEditor: Not supported"
-execEditorAction :: t -> YiM ()
-execEditorAction _ = msgEditor "execEditorAction: Not supported"
 
+execEditorAction :: String -> YiM ()
+execEditorAction s = do 
+  acts <- asks (publishedActions . yiConfig)
+  postActions [(acts M.! s)]
+  
 getAllNamesInScope :: YiM [String]
-getAllNamesInScope = return []
+getAllNamesInScope = do 
+  acts <- asks (publishedActions . yiConfig)
+  return (M.keys acts)
 #endif
 
 -- | Start a subprocess with the given command and arguments.

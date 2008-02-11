@@ -30,7 +30,8 @@ module Yi.Yi (
         module Yi.Interact,
         module Yi.Buffer.Region,
         module Yi.Search,
-        module Yi.Style
+        module Yi.Style,
+        defaultPublishedActions
    ) where
 import Control.Monad
 import Control.Applicative
@@ -48,8 +49,13 @@ import Yi.Interact hiding (write)
 import Yi.Buffer.Region
 import Yi.Search
 import Yi.Style
+import Data.Map as M
 
 
 
-
-
+-- | List of published Actions
+defaultPublishedActions :: M.Map String Action
+defaultPublishedActions = M.fromList $ 
+    [("leftB", makeAction leftB)]
+-- This must be of the form "name", makeAction name, so we can hope
+-- getting rid of this someday.
