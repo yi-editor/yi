@@ -84,7 +84,7 @@ import Yi.Style
 import Yi.Dynamic
 import Yi.Window
 import Control.Applicative
-import Control.Monad.RWS
+import Control.Monad.RWS.Strict
 import Data.List (elemIndex)
 
 

@@ -407,13 +407,13 @@ setSyntaxBI (ExtHL e) fb = updateHl 0 $ fb {hlCache = HLState e []}
 
 updateHl :: Point -> BufferImpl -> BufferImpl
 updateHl touchedIndex fb@FBufferData {hlCache = HLState hl cachedStates} 
-    = fb {hlCache = HLState hl newCachedStates, hlResult = hlGetResult hl newState}
+    = fb {hlCache = HLState hl newCachedStates, hlResult = result}
     where resumeIndex = fst resumeState
           reused = takeWhile ((< touchedIndex) . fst) cachedStates
           resumeState = if null reused then (0, hlStartState hl) else last reused
           newCachedStates = reused ++ tail recomputed
           newState = snd $ last newCachedStates 
-          recomputed = (hlRun hl) text resumeState
+          (recomputed, result) = (hlRun hl) text resumeState
           text = F.toLazyByteString (F.drop resumeIndex (mem fb))
 
 pointLeftBound, markLeftBound :: Bool

@@ -30,13 +30,11 @@ import qualified Data.ByteString.Lazy.Char8 as LB
 
 data Highlighter a = 
   SynHL { hlStartState :: a -- ^ The start state for the highlighter.
-        , hlRun :: LB.ByteString -> (Int,a) -> [(Int,a)]
-        , hlGetResult :: a -> [(Int,Style)]
+        , hlRun :: LB.ByteString -> (Int,a) -> ([(Int,a)], [(Int,Style)])
         }
 
 noHighlighter :: Highlighter ()
 noHighlighter = SynHL {hlStartState = (), 
-                       hlRun = \_ _ -> [(0,())],
-                       hlGetResult = \_-> []}
+                       hlRun = \_ _ -> ([],[])}
 
 data ExtHL = forall a. ExtHL (Highlighter a)

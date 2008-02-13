@@ -5,12 +5,12 @@
 -- so it must be included.  Doubleplusyuck.
 
 
-alexScanToken (inp,state) = case alexScan inp (stateToInit state) of
+alexScanToken (idx,inp,state) = case alexScan inp (stateToInit state) of
 		AlexEOF -> Nothing
 		AlexError _ -> error "lexical error"
 		AlexSkip  inp' len  -> error "alex skip unsupported"
 		AlexToken inp' len act -> let (state', r) = act (takeLB (fromIntegral len) inp) state 
-                                          in Just ((state',r), (inp',state'))
+                                          in Just (r, (idx + len,inp',state'))
 
 highlighter = mkHighlighter initState alexScanToken
 
