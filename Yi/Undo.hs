@@ -61,7 +61,10 @@ import Yi.Buffer.Implementation
 
 data Change = SavedFilePoint
             | InteractivePoint
-            | AtomicChange Update
+            | AtomicChange !Update 
+-- !!! It's very important that the updates are forced, otherwise
+-- !!! we'll keep a full copy of the buffer state for each update
+-- !!! (thunk) put in the URList.
             deriving Show
 
 -- | A URList consists of an undo and a redo list.
