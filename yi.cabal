@@ -31,8 +31,20 @@ flag cocoa
   Description: Provide experimental Cocoa UI
   Default:     False
 
+flag hacking
+  Default: False
+  Description: 
+     Hacking mode:
+        * Create HackerMain.hs by copying your ~/.yi/yi.hs
+        * Skip most library compilation
+        * You can run yi in-place with dist/build/yi/yi
 
 library
+  if flag(hacking)
+    exposed-modules: 
+           Yi.Accessor
+           -- the most insignificant module (with no dep) I can find.
+  else
     exposed-modules:
            Yi
            Yi.Yi
@@ -127,7 +139,10 @@ executable yi
         if !(flag(vty) || flag (gtk) || flag(cocoa))
          buildable: False
 
-        main-is:        Main.hs
+        if flag(hacking)
+          main-is:        HackerMain.hs
+        else
+          main-is:        Main.hs
         other-modules:  Yi.Syntax.Cplusplus, Yi.Syntax.Haskell, Yi.Syntax.LiterateHaskell,
                         Yi.Syntax.Latex, Yi.Syntax.Srmc, Yi.Syntax.Cabal
         include-dirs:   Yi/Syntax
