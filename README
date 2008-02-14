@@ -87,20 +87,26 @@ QUICK START with cabal-make:
 
 HACKER'S GUIDE: 
 
-You can run Yi "in place" by running:
+You can run yi in place without installing with the usual
+./dist/build/yi/yi
+but this will not work with your ~/.yi/yi.hs file.
 
-make run-inplace
+To use your own yi.hs file in place copy it across to yi/HackerMain.hs and
+then configure yi to run in hacker mode. So assuming you are in the yi top level
+directory (ie ls shows yi.cabal):
+$ cp ~/.yi/yi.hs HackerMain.hs
+$ runhaskell Setup.hs configure -f hacking
+$ runhaskell Setup.hs build
+$ ./dist/build/yi/yi
 
-You can then try your changes dynamically by running the "reconfigE" command. (M-x
-reconfigE in emacs mode)
+Though obviously the configure command should also include your usual
+cabal flags which may well include "--user" and "--prefix".
 
 
 CONFIGURATION
 
-All configuration (bindings, colours) is done with ~/.yi/YiConfig.hs
-See examples directory for files that you can use as ~/.yi/YiConfig.hs.
-Drop the --as=... when you have defined your YiConfig.hs
-
+All configuration (bindings, colours) is done with ~/.yi/yi.hs
+See examples directory for files that you can use as ~/.yi/yi.hs
 
 
 PORTABILITY
