@@ -129,9 +129,11 @@ nilKeymap = do c <- anyEvent
 
 
 defaultConfig :: Config
-defaultConfig = Config defaultFrontend nilKeymap Yi.Yi.defaultPublishedActions
-    where defaultFrontend = snd (head frontends)
-
+defaultConfig = 
+  Config { startFrontEnd    = snd (head frontends)
+         , defaultKm        = nilKeymap
+         , publishedActions = Yi.Yi.defaultPublishedActions
+         }
 
 -- | deal with real options
 do_opt :: Opts -> IO (YiM ())
@@ -156,15 +158,26 @@ do_args :: Config -> [String] -> IO (Config, [YiM ()])
 do_args cfg args =
     case (getOpt (ReturnInOrder File) options args) of
         (o, [], []) ->  do
-            let frontend = head $ [f | Frontend   f <- o] ++ [head frontendNames]
-                config   = cfg { startFrontEnd   = case lookup frontend frontends of
-                                                     Nothing -> error "Panic: frontend not found"
-                                                     Just x -> x
-                               }
+            let config = getConfig o
             actions <- mapM do_opt o
             return (config, actions)
         (_, _, errs) -> do putStrLn (concat errs)
                            exitWith (ExitFailure 1)
+    where
+    -- Update the default configuration based on the command-line options.
+    getConfig :: [ Opts ] -> Config
+    getConfig options
+      | null cliFrontEndNames = cfg
+      | otherwise             =
+        case lookup (head cliFrontEndNames) frontends of
+          Just frontEnd -> cfg { startFrontEnd = frontEnd }
+          Nothing       -> error "Panic: frontend not found"
+      
+      where
+      -- The names of frontends specified in the command-line options.
+      cliFrontEndNames :: [ String ]
+      cliFrontEndNames = [ f | Frontend f <- options ]
+            
 
 startConsole :: YiM ()
 startConsole = do
