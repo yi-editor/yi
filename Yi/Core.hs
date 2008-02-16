@@ -50,7 +50,7 @@ import Yi.Dynamic
 import Yi.String
 import Yi.Process ( popen, createSubprocess, readAvailable, SubprocessId, SubprocessInfo(..) )
 import Yi.Editor
-import Yi.Event (eventToChar, Event)
+import Yi.Event (Event)
 import Yi.Keymap
 import Yi.KillRing (krEndCmd)
 import qualified Yi.Interact as I
