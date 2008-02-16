@@ -15,14 +15,16 @@ module Yi.Syntax
   ( Highlighter  ( .. )
   , ExtHL        ( .. )
   , noHighlighter
+  , Point, Size, Stroke
   ) 
 where
 
 import Yi.Style
 import qualified Data.ByteString.Lazy.Char8 as LB
 
-
-    
+type Point = Int
+type Size = Int
+type Stroke = (Point,Style,Point)
 
 -- | The main type of syntax highlighters.  This record type combines all
 -- the required functions, and is parametrized on the type of the internal
@@ -30,7 +32,7 @@ import qualified Data.ByteString.Lazy.Char8 as LB
 
 data Highlighter a = 
   SynHL { hlStartState :: a -- ^ The start state for the highlighter.
-        , hlRun :: LB.ByteString -> (Int,a) -> ([(Int,a)], [(Int,Style)])
+        , hlRun :: LB.ByteString -> (Int,a) -> ([(Int,a)], [Stroke])
         }
 
 noHighlighter :: Highlighter ()

@@ -5,22 +5,20 @@ module Yi.Syntax.Alex where
 import Data.List
 import Data.Int
 import qualified Data.ByteString.Lazy.Char8 as LB
-import qualified Yi.Syntax
+import Yi.Syntax
 import Yi.Style
 
 
 takeLB :: Int64 -> LB.ByteString -> LB.ByteString
 takeLB = LB.take
 
-type Point = Int
 type Length = Int
 
 type AlexInput  = LB.ByteString
 type Action hlState = AlexInput -> hlState -> (hlState, Style)
 type State hlState = (hlState, Endo Result)
 type AlexState hlState = (Int, AlexInput, hlState)
-type Tok = (Length,Style)
-type Result = [Tok]
+type Result = [Stroke]
 type Endo a = a -> a
 alexGetChar :: AlexInput -> Maybe (Char, AlexInput)
 alexGetChar bs | LB.null bs = Nothing
@@ -44,9 +42,9 @@ origami gen seed (+>) l_c r_c = -- helper see
       Just (a, new_seed) -> let ~(partials,c) = origami gen new_seed (+>) (l_c . (a +>)) r_c
                             in ((seed,l_c):partials,a +> c)
 
-
+-- | Highlighter based on an Alex lexer 
 mkHighlighter :: forall s. s
-              -> (AlexState s -> Maybe (Tok, AlexState s))
+              -> (AlexState s -> Maybe (Stroke, AlexState s))
               -> Yi.Syntax.Highlighter (State s)
 mkHighlighter initState alexScanToken = 
   Yi.Syntax.SynHL { Yi.Syntax.hlStartState   = (initState, id)

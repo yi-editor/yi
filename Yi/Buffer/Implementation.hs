@@ -60,9 +60,6 @@ data Direction = Backward
                | Forward
                  deriving Eq
 
-type Point = Int
-type Size  = Int
-
 newtype Mark = Mark {markId::Int} deriving (Eq, Ord, Show)
 pointMark, markMark :: Mark
 pointMark = Mark 0 -- 'point' - the insertion point mark
@@ -96,9 +93,10 @@ data FBufferData =
                     , marks      :: !Marks                 -- ^ Marks for this buffer
                     , markNames  :: !(M.Map String Mark)
                     , hlCache    :: !HLState       -- ^ syntax highlighting state
-                    , hlResult   :: [(Int,Style)] -- ^ note: Lazy component!
+                    , hlResult   :: [Stroke] -- ^ note: Lazy component!
                     , overlays   :: ![(MarkValue, MarkValue, Style)] -- ^ list of visual overlay regions
-                    -- Overlays should not use Mark, but directly Point
+                    -- FIXME: Overlays should not use Mark, but directly Point
+                      -- (use Stroke type)
                     }
 
 
@@ -208,12 +206,10 @@ nelemsBIH n i fb = helper i defaultStyle (styleRangesBI n i fb) (nelemsBI n i fb
 --   be interpreted as apply the style @s@ from position @p@ in the buffer.
 --   In the final element @p@ = @n@ + @i@.
 styleRangesBI :: Int -> Int -> BufferImpl -> [(Int, Style)]
-styleRangesBI n i fb = cutRanges n i (overlay fb (makeRanges 0 (hlResult fb)))
+styleRangesBI n i fb = cutRanges n i (overlay fb (map makeRange (hlResult fb)))
   where
-    -- The parser produces a list of token sizes, convert them to buffer indices
-    makeRanges :: Int -> [(Int,Style)] -> [(Int, Style)]
-    makeRanges o [] = [(o,defaultStyle)]
-    makeRanges o ((m,c):cs) = (o, c):makeRanges (o + m) cs
+    makeRange :: Stroke -> (Int, Style)
+    makeRange (l,s,_) = (l,s)
 
     -- Split the range list so that all split points less then x
     -- is in the left and all greater or equal in the right.
