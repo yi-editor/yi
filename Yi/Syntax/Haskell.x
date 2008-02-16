@@ -67,12 +67,12 @@ $charesc = [abfnrtv\\\"\'\&]
 
 haskell :-
 
-<0> $white+                                     { c defaultStyle } -- whitespace
+<0> $white+                                     ;
 
 <nestcomm> {
   "{-"                                          { m (subtract 1) commentStyle }
   "-}"                                          { m (+1) commentStyle }
-  $white+                                       { c defaultStyle } -- whitespace
+  $white+                                       ; -- whitespace
   .                                             { c commentStyle }
 }
 
