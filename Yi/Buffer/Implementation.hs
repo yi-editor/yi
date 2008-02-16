@@ -37,6 +37,7 @@ module Yi.Buffer.Implementation
 )
 where
 
+import Prelude hiding (error)
 import Yi.Syntax
 
 import qualified Data.Map as M
@@ -53,7 +54,8 @@ import qualified Data.ByteString.Char8 as B
 
 import Data.Array
 import Data.Maybe
-
+import qualified Data.Set as Set
+import Yi.Debug
 
 -- | Direction of movement inside a buffer
 data Direction = Backward
@@ -66,7 +68,7 @@ pointMark = Mark 0 -- 'point' - the insertion point mark
 markMark = Mark 1 -- 'mark' - the selection mark
 
 data MarkValue = MarkValue {markPosition::Int, _markIsLeftBound::Bool}
-               deriving (Eq, Show)
+               deriving (Ord, Eq, Show)
 
 type Marks = M.Map Mark MarkValue
 
@@ -88,15 +90,16 @@ data HLState = forall a. HLState
 -- * Is not optimized (O(n) operations)
 --
 
+data Overlay = Overlay MarkValue MarkValue Style
+               deriving (Ord, Eq)
+
 data FBufferData =
         FBufferData { mem        :: !FingerString          -- ^ buffer text
                     , marks      :: !Marks                 -- ^ Marks for this buffer
                     , markNames  :: !(M.Map String Mark)
                     , hlCache    :: !HLState       -- ^ syntax highlighting state
-                    , hlResult   :: [Stroke] -- ^ note: Lazy component!
-                    , overlays   :: ![(MarkValue, MarkValue, Style)] -- ^ list of visual overlay regions
-                    -- FIXME: Overlays should not use Mark, but directly Point
-                      -- (use Stroke type)
+                    , hlResult   :: ![Stroke] 
+                    , overlays   :: !(Set.Set Overlay) -- ^ set of (non overlapping) visual overlay regions
                     }
 
 
@@ -117,7 +120,7 @@ data Update = Insert {updatePoint :: !Point, insertUpdateString :: !String} -- F
 
 -- | New FBuffer filled from string.
 newBI :: String -> FBufferData
-newBI s = FBufferData (F.fromString s) mks M.empty (HLState noHighlighter []) [] []
+newBI s = FBufferData (F.fromString s) mks M.empty (HLState noHighlighter []) [] Set.empty
     where mks = M.fromList [(pointMark, MarkValue 0 pointLeftBound)]
 
 -- | read @n@ chars from buffer @b@, starting at @i@
@@ -157,9 +160,8 @@ shiftMarkValue from by (MarkValue p leftBound) = MarkValue shifted leftBound
                   | otherwise {- p > from -} = p'
               where p' = max from (p + by)
 
-
-mapOvlMarks :: (a -> b) -> (a, a, v) -> (b, b, v)
-mapOvlMarks f (s,e,v) = (f s, f e, v)
+mapOvlMarks :: (MarkValue -> MarkValue) -> Overlay -> Overlay
+mapOvlMarks f (Overlay s e v) = Overlay (f s) (f e) v
 
 -------------------------------------
 -- * "high-level" (exported) operations
@@ -187,7 +189,7 @@ addOverlayBI :: Point -> Point -> Style -> BufferImpl -> BufferImpl
 addOverlayBI s e sty fb =
     let sm = MarkValue s True
         em = MarkValue e False
-    in fb{overlays=(sm,em,sty) : overlays fb}
+    in fb{overlays = Set.insert (Overlay sm em sty) (overlays fb)}
 
 -- | Return @n@ elems starting at @i@ of the buffer as a list.
 -- This routine also does syntax highlighting and applies overlays.
@@ -199,6 +201,18 @@ nelemsBIH n i fb = helper i defaultStyle (styleRangesBI n i fb) (nelemsBI n i fb
         where (left, right) = splitAt (end - pos) cs
     setSty sty cs = [(c,sty) | c <- cs]
 
+
+-- | @paintStrokes colorToTheRight strokes picture@: paint the strokes over a given picture.
+paintStrokes :: a -> [(Int,a,Int)] -> [(Int,a)] -> [(Int,a)]
+paintStrokes _  []     pic = pic
+paintStrokes s0 ss     [] = concat [[(l,s),(r,s0)] | (l,s,r) <- ss]
+paintStrokes s0 ls@((l,s,r):ts) lp@((p,s'):tp) 
+             | p < l  = (p,s') : paintStrokes s' ls tp
+             | p <= r =          paintStrokes s' ls tp
+             | r == p = (l,s) : (p,s') : paintStrokes s' ts tp 
+             | otherwise {-r < p-}  = (l,s) : (r,s0) : paintStrokes s' ts lp
+
+
 -- | Return style information for the range of @n@ characters starting
 --   at @i@. Style information is derived from syntax highlighting and
 --   active overlays.
@@ -206,46 +220,16 @@ nelemsBIH n i fb = helper i defaultStyle (styleRangesBI n i fb) (nelemsBI n i fb
 --   be interpreted as apply the style @s@ from position @p@ in the buffer.
 --   In the final element @p@ = @n@ + @i@.
 styleRangesBI :: Int -> Int -> BufferImpl -> [(Int, Style)]
-styleRangesBI n i fb = cutRanges n i $ overlay fb $ map makeRange $ dropWhile useless $ hlResult fb
+styleRangesBI n i fb = result
   where
-    useless (_l,_s,r) = r <= i
+    result = takeWhile ((n+i >=) . fst) $ dropWhile ((i >) . fst) picture
+    usefuls = dropWhile (\(_l,_s,r) -> r <= i)
 
-    makeRange :: Stroke -> (Int, Style)
-    makeRange (l,s,_r) = (l,s)
-
-    -- Split the range list so that all split points less then x
-    -- is in the left and all greater or equal in the right.
-    -- Insert a new switch at x if there is none. If the new
-    -- switch is left of existing switches, use a as default attribute
-    splitRangesDefault :: a -> Int -> [(Int, a)] -> ([(Int, a)], [(Int, a)])
-    splitRangesDefault a x [] = ([], [(x,a)])
-    splitRangesDefault a x ((y,b):ys) =
-      case x `compare` y of
-        LT -> ([], (x,a):(y,b):ys)
-        EQ -> ([], (y,b):ys)
-        GT -> let (ls, rs) = splitRangesDefault b x ys in ((y,b):ls, rs)
-
-    splitRanges :: Int -> [(Int, Style)] -> ([(Int, Style)], [(Int, Style)])
-    splitRanges = splitRangesDefault defaultStyle
-
-    cutRanges :: Int -> Int -> [(Int, Style)] -> [(Int, Style)]
-    cutRanges m j = takeRanges (j+m) . snd . splitRanges j
-      where takeRanges k xs = let (ls, r:_) = splitRanges k xs in ls ++ [r]
-
-    overlayRanges :: Int -> Int -> Style -> [(Int, Style)] -> [(Int, Style)]
-    overlayRanges l h a rs = left ++ adjusted ++ right
-      where
-        (left, rest)    = splitRanges l rs
-        (center, right) = splitRanges h rest
-        adjusted        = fmap (\(m,b) -> (m, attrOver a b)) center
-
-
-    overlay :: FBufferData -> [(Int, Style)] -> [(Int, Style)]
-    overlay bd rs =
-      foldr (\(sm, em, a) -> overlayRanges (markPosition sm) (markPosition em) a) rs (overlays bd)
-
-    --attrOver att1 att2 = att1 .|. (att2 .&. 0xFFFF0000) -- Overwrite colors, keep attrs (bold, underline etc)
-    attrOver att1 _att2 = att1 -- Until Vty exposes interface for attr merging....
+    layer0 = [(i,defaultStyle,n+i)] -- this layer ensures that there are bounds exactly at i and n+i
+    layer1 = hlResult fb
+    layer2 = map overlayStroke $ Set.toList $ overlays fb
+    picture = foldr (paintStrokes defaultStyle) [] $ map usefuls [layer2, layer1, layer0]
+    overlayStroke (Overlay sm  em a) = (markPosition sm, a, markPosition em)
 
 
 ------------------------------------------------------------------------
@@ -269,7 +253,9 @@ isValidUpdate u b = case u of
 applyUpdateI :: Update -> BufferImpl -> BufferImpl
 applyUpdateI u fb = updateHl (updatePoint u) $ 
                     fb {mem = p', marks = M.map shift (marks fb),
-                                   overlays = map (mapOvlMarks shift) (overlays fb)}
+                                   overlays = Set.map (mapOvlMarks shift) (overlays fb)}
+                                   -- FIXME: this is inefficient; find a way to use mapMonotonic
+                                   -- (problem is that marks can have different gravities)
     where (p', amount) = case u of
                            Insert pnt cs  -> (insertChars p (F.fromString cs) pnt, length cs)
                            Delete pnt len -> (deleteChars p pnt len, negate len)
