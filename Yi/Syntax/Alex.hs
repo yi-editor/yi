@@ -12,12 +12,15 @@ import Yi.Style
 takeLB :: Int64 -> LB.ByteString -> LB.ByteString
 takeLB = LB.take
 
+type Point = Int
+type Length = Int
 
 type AlexInput  = LB.ByteString
-type Action a   = AlexInput -> a -> (a, (Int, Style))
+type Action hlState = AlexInput -> hlState -> (hlState, Tok)
 type State hlState = (hlState, Endo Result)
 type AlexState hlState = (Int, AlexInput, hlState)
-type Result = [(Int, Style)]
+type Tok = (Length,Style)
+type Result = [Tok]
 type Endo a = a -> a
 alexGetChar :: AlexInput -> Maybe (Char, AlexInput)
 alexGetChar bs | LB.null bs = Nothing
@@ -43,7 +46,7 @@ origami gen seed (+>) l_c r_c = -- helper see
 
 
 mkHighlighter :: forall s. s
-              -> (AlexState s -> Maybe ((Int, Style), AlexState s))
+              -> (AlexState s -> Maybe (Tok, AlexState s))
               -> Yi.Syntax.Highlighter (State s)
 mkHighlighter initState alexScanToken = 
   Yi.Syntax.SynHL { Yi.Syntax.hlStartState   = (initState, id)
