@@ -16,7 +16,7 @@ type Point = Int
 type Length = Int
 
 type AlexInput  = LB.ByteString
-type Action hlState = AlexInput -> hlState -> (hlState, Tok)
+type Action hlState = AlexInput -> hlState -> (hlState, Style)
 type State hlState = (hlState, Endo Result)
 type AlexState hlState = (Int, AlexInput, hlState)
 type Tok = (Length,Style)
@@ -30,10 +30,10 @@ alexInputPrevChar :: AlexInput -> Char
 alexInputPrevChar = undefined
 
 c :: Style -> Action a
-c color str state = (state, (fromIntegral $ LB.length str, color))
+c color _str state = (state, color)
 
 m :: (s -> s) -> Style -> Action s
-m modifier color str state = (modifier state, (fromIntegral $ LB.length str, color))
+m modifier color _str state = (modifier state, color)
 
 -- Unfold, scanl and foldr at the same time :)
 origami :: (b -> Maybe (a, b)) -> b -> (a -> c -> c) -> (c -> c) -> c -> ([(b, c -> c)], c)
