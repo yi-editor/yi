@@ -68,11 +68,11 @@ import Yi.Syntax.Table ( highlighters )
 --
 fnewE  :: FilePath -> YiM ()
 fnewE f = do
-    bufs <- withEditor getBuffers
+    bufs                 <- withEditor getBuffers
         -- The file names associated with the list of current buffers
-    let bufsWithThisFilename = filter ((== Just f) . file) bufs
+    bufsWithThisFilename <- liftIO $ filterM assocWithSameFile bufs
         -- The names of the existing buffers
-        currentBufferNames   = map name bufs
+    let currentBufferNames   = map name bufs
         -- The new name for the buffer
         bufferName           = bestNewName currentBufferNames
     b <- case bufsWithThisFilename of
@@ -85,6 +85,19 @@ fnewE f = do
     withGivenBuffer b $ setSyntaxB (highlighters M.! (syntaxFromExtension $ takeExtension f))
     withEditor $ switchToBufferE b
     where
+    -- Determines whether or not a given buffer is associated with
+    -- the given file. 
+    -- If this turns out to be slow when there are a lot of buffers
+    -- we could consider canonicalising the path before associating
+    -- it with a file. Personally I find this more robust.
+    assocWithSameFile :: FBuffer -> IO Bool
+    assocWithSameFile fbuffer =
+      case file fbuffer of
+        Nothing -> return False
+        Just f2 -> do filename1 <- canonicalizePath f
+                      filename2 <- canonicalizePath f2
+                      return $ equalFilePath filename1 filename2
+
     -- The first argument is the buffer name the second argument is
     -- whether or not the file currently exists and the third argument
     -- is whether or not the file is a directory that exists.
