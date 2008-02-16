@@ -206,10 +206,12 @@ nelemsBIH n i fb = helper i defaultStyle (styleRangesBI n i fb) (nelemsBI n i fb
 --   be interpreted as apply the style @s@ from position @p@ in the buffer.
 --   In the final element @p@ = @n@ + @i@.
 styleRangesBI :: Int -> Int -> BufferImpl -> [(Int, Style)]
-styleRangesBI n i fb = cutRanges n i (overlay fb (map makeRange (hlResult fb)))
+styleRangesBI n i fb = cutRanges n i $ overlay fb $ map makeRange $ dropWhile useless $ hlResult fb
   where
+    useless (_l,_s,r) = r <= i
+
     makeRange :: Stroke -> (Int, Style)
-    makeRange (l,s,_) = (l,s)
+    makeRange (l,s,_r) = (l,s)
 
     -- Split the range list so that all split points less then x
     -- is in the left and all greater or equal in the right.
