@@ -572,3 +572,12 @@ substituteInList from to list@(h : rest)
   | otherwise            =
     h : (substituteInList from to rest)
 
+-- | Increases the indentation on the region by the given amount
+increaseIndentSelectionB :: Int -> BufferM ()
+increaseIndentSelectionB i =
+  lineCommentSelectionB $ replicate i ' '
+
+-- | Decreases the indentation on the region by the given amount
+decreaseIndentSelectionB :: Int -> BufferM ()
+decreaseIndentSelectionB i =
+  unLineCommentSelectionB $ replicate i ' '
