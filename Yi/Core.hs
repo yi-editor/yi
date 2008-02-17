@@ -97,8 +97,8 @@ interactive action = do
 -- | Start up the editor, setting any state with the user preferences
 -- and file names passed in, and turning on the UI
 --
-startEditor :: Config -> Maybe Editor -> [YiM ()] -> IO ()
-startEditor cfg st commandLineActions = do
+startEditor :: Config -> Maybe Editor -> IO ()
+startEditor cfg st = do
     let uiStart = startFrontEnd cfg
 
     logPutStrLn "Starting Core"
@@ -124,7 +124,7 @@ startEditor cfg st commandLineActions = do
       withEditor $ newBufferE "*messages*" "" >> return ()
 
       when (isNothing st) $ do -- process options if booting for the first time
-        sequence_ commandLineActions
+        startAction cfg
 
     logPutStrLn "Starting event handler"
     let

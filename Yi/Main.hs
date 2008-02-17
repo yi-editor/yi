@@ -45,6 +45,7 @@ import qualified Yi.UI.Vty
 import Data.Char
 import Data.List                ( intersperse )
 
+import Control.Monad.Error
 import System.Console.GetOpt
 import System.Environment       ( getArgs )
 import System.Exit
@@ -69,6 +70,11 @@ frontendNames :: [String]
 frontendNames = map fst' frontends
   where fst' :: (a,UIBoot) -> a
         fst' (x,_) = x
+
+data Err = Err String ExitCode
+
+instance Error Err where
+    strMsg s = Err s (ExitFailure 1)
 
 -- ---------------------------------------------------------------------
 -- | Argument parsing. Pretty standard.
@@ -105,10 +111,10 @@ options = [
     ]
 
 -- | usage string.
-usage, versinfo :: IO ()
-usage    = putStr   $ usageInfo "Usage: yi [option...] [file]" options
+usage, versinfo :: String
+usage    = usageInfo "Usage: yi [option...] [file]" options
 
-versinfo = putStrLn $ "yi 0.4.0"
+versinfo = "yi 0.4.0"
 -- TODO: pull this out of the cabal configuration
 
 nilKeymap :: Keymap
@@ -132,57 +138,9 @@ defaultConfig :: Config
 defaultConfig = 
   Config { startFrontEnd    = snd (head frontends)
          , defaultKm        = nilKeymap
+         , startAction      = openScratchBuffer -- emacs-style behaviour
          , publishedActions = Yi.Yi.defaultPublishedActions
          }
-
--- | deal with real options
-do_opt :: Opts -> IO (YiM ())
-do_opt o = case o of
-    Frontend f     -> case map toLower f `elem` frontendNames of
-                        False -> do putStrLn ("Unknown frontend: " ++ show f)
-                                    exitWith (ExitFailure 1)
-                        _     -> return (return ()) -- Processed differently
-    OptIgnore _   -> return (return ())
-    ConfigFile _  -> return (return ())
-    Help          -> usage    >> exitWith ExitSuccess
-    Version       -> versinfo >> exitWith ExitSuccess
-    LineNo l      -> return (withBuffer (gotoLn (read l)) >> return ())
-    File file     -> return (fnewE file)
-    EditorNm emul -> case lookup (map toLower emul) editors of
-                       Just km -> return $ changeKeymap km
-                       Nothing -> do putStrLn ("Unknown emulation: " ++ show emul)
-                                     exitWith (ExitFailure 1)
-
--- | everything that is left over
-do_args :: Config -> [String] -> IO (Config, [YiM ()])
-do_args cfg args =
-    case (getOpt (ReturnInOrder File) options args) of
-        (o, [], []) ->  do
-            let config = getConfig o
-            actions <- mapM do_opt o
-            return (config, actions)
-        (_, _, errs) -> do putStrLn (concat errs)
-                           exitWith (ExitFailure 1)
-    where
-    -- Update the default configuration based on the command-line options.
-    getConfig :: [ Opts ] -> Config
-    getConfig options
-      | null cliFrontEndNames = cfg
-      | otherwise             =
-        case lookup (head cliFrontEndNames) frontends of
-          Just frontEnd -> cfg { startFrontEnd = frontEnd }
-          Nothing       -> error "Panic: frontend not found"
-      
-      where
-      -- The names of frontends specified in the command-line options.
-      cliFrontEndNames :: [ String ]
-      cliFrontEndNames = [ f | Frontend f <- options ]
-            
-
-startConsole :: YiM ()
-startConsole = do
-  console <- withEditor $ getBufferWithName "*console*"
-  setBufferKeymap console (consoleKeymap <||)
 
 openScratchBuffer :: YiM ()
 openScratchBuffer = withEditor $ do     -- emacs-like behaviour
@@ -191,6 +149,35 @@ openScratchBuffer = withEditor $ do     -- emacs-like behaviour
                     "-- If you want to create a file, open that file,\n" ++
                     "-- then enter the text in that file's own buffer.\n\n")
       return ()
+
+startConsole :: YiM ()
+startConsole = do
+  console <- withEditor $ getBufferWithName "*console*"
+  setBufferKeymap console (consoleKeymap <||)
+
+-- | Transform the config with options
+do_args :: Config -> [String] -> Either Err Config
+do_args cfg args =
+    case (getOpt (ReturnInOrder File) options args) of
+        (o, [], []) -> foldM getConfig cfg o
+        (_, _, errs) -> fail (concat errs)
+
+-- | Update the default configuration based on a command-line option.
+getConfig :: Config -> Opts -> Either Err Config
+getConfig cfg opt =
+    case opt of
+      Frontend f -> case lookup f frontends of
+                      Just frontEnd -> return cfg { startFrontEnd = frontEnd }
+                      Nothing       -> fail "Panic: frontend not found"
+      Help          -> throwError $ Err usage ExitSuccess
+      Version       -> throwError $ Err versinfo ExitSuccess
+      LineNo l      -> appendAction (withBuffer (gotoLn (read l)))
+      File file     -> appendAction (fnewE file)
+      EditorNm emul -> case lookup (map toLower emul) editors of
+             Just km -> return cfg { defaultKm = km }
+             Nothing -> fail $ "Unknown emulation: " ++ show emul
+      _ -> return cfg
+  where appendAction a = return $ cfg { startAction = startAction cfg >> a >> return ()}
 
 -- ---------------------------------------------------------------------
 -- | Static main. This is the front end to the statically linked
@@ -202,5 +189,8 @@ main cfg = do
 #ifdef FRONTEND_COCOA
        withAutoreleasePool $ do
 #endif
-          (config, mopts) <- do_args cfg =<< getArgs
-          startEditor config Nothing (startConsole : openScratchBuffer : mopts)
+         args <- getArgs
+         case do_args cfg args of
+              Left (Err err code) -> do putStrLn err
+                                        exitWith code
+              Right finalCfg -> startEditor finalCfg Nothing

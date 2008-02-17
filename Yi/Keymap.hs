@@ -53,6 +53,7 @@ data BufferKeymap = BufferKeymap
     }
 
 data Config = Config {startFrontEnd :: UI.UIBoot,
+                      startAction :: YiM (),
                       defaultKm :: Keymap,                      
                       publishedActions :: M.Map String Action}
 
