@@ -1,8 +1,20 @@
 -- This module defines the Region ADT
 
-module Yi.Buffer.Region (Region, mkRegion, mkVimRegion, regionStart, regionEnd,
-                         swapRegionsB, deleteRegionB, replaceRegionB, readRegionB, mapRegionB,
-                         inRegion) where
+module Yi.Buffer.Region 
+  ( Region
+  , mkRegion
+  , mkVimRegion
+  , regionStart
+  , regionEnd
+  , swapRegionsB
+  , deleteRegionB
+  , replaceRegionB
+  , readRegionB
+  , mapRegionB
+  , inRegion
+  , modifyRegionB
+  )
+where
 
 import Yi.Buffer
 
@@ -54,3 +66,18 @@ swapRegionsB r r'
 -- | True if the given point is inside the given region.
 inRegion :: Point -> Region -> Bool
 p `inRegion` (Region start stop) = start <= p && p < stop
+
+
+
+-- | Modifies the given region according to the given
+-- string transformation function
+modifyRegionB :: -- | The string modification function
+                (String -> String)
+                -- | The region to modify
+             -> Region
+                -- | The returned buffer action
+             -> BufferM ()
+modifyRegionB transform region =
+  do text <- readRegionB region
+     replaceRegionB region $ transform text
+

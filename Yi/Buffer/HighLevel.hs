@@ -6,6 +6,11 @@ import Control.Applicative
 import Control.Monad.State
 import Data.Char
 import Data.Dynamic
+import Data.List
+  ( isPrefixOf
+  , intercalate
+  )
+
 import Data.Maybe
   ( fromMaybe )
 
@@ -462,3 +467,108 @@ getPreviousNonBlankLineB :: BufferM String
 getPreviousNonBlankLineB =
   liftM (fromMaybe "") 
         (getPreviousLineWhichB $ any (not . isSpace))
+
+
+------------------------------------------------
+-- Some more utility functions involving
+-- regions (generally that which is selected)
+
+-- | Uses a string modifying function to modify the current selection
+-- Currently unsets the mark such that we have no selection, arguably
+-- we could insteady work out where the new positions should be
+-- and move the mark and point accordingly.
+modifySelectionB :: (String -> String) -> BufferM ()
+modifySelectionB transform =
+  do selRegion <- getSelectRegionB
+     modifyRegionB transform selRegion
+     unsetMarkB
+
+
+-- | A helper function for creating functions suitable for
+-- 'modifySelectionB' and 'modifyRegionB'.
+-- To be used when the desired function should map across
+-- the lines of a region.
+modifyLines :: (String -> String) -> String -> String
+modifyLines transform input =
+  -- Note that we cannot use 'unlines' since this will add
+  -- a new-line to the end of the last line which is incorrect.
+  intercalate "\n" (map transform $ lines input)
+
+-- | Search and Replace all within the current region.
+-- Note the region is the final argument since we might perform
+-- the same search and replace over multiple regions however we are
+-- unlikely to perform several search and replaces over the same region
+-- since the first such may change the bounds of the region.
+searchReplaceRegionB :: -- | The String to search for
+                       String
+                       -- | The String to replace it with
+                    -> String
+                       -- | The region to perform this over
+                    -> Region
+                       -- | The returned buffer action
+                    -> BufferM ()
+searchReplaceRegionB from to =
+  modifyRegionB $ substituteInList from to
+
+
+-- | Peform a search and replace on the selection
+searchReplaceSelectionB :: -- | The String to search for
+                           String
+                           -- | The String to replace it with
+                        -> String
+                           -- | The returned buffer action
+                        -> BufferM ()
+searchReplaceSelectionB from to =
+  modifySelectionB $ substituteInList from to
+
+
+-- | Comments the selection using line comments that begin
+-- with the given string.
+lineCommentSelectionB :: -- The string that starts a line comment
+                         String
+                         -- The returned buffer action
+                      -> BufferM ()
+lineCommentSelectionB s =
+  modifySelectionB $ modifyLines (s ++)
+
+-- | Comments the region using haskell line comments
+haskellCommentSelectionB :: BufferM ()
+haskellCommentSelectionB = lineCommentSelectionB "-- "
+
+-- | Comments the region using latex line comments
+latexCommentSelectionB :: BufferM ()
+latexCommentSelectionB = lineCommentSelectionB "% "
+
+-- | Uncomments the selection using the given line comment
+-- starting string. This only works for the comments which
+-- begin at the start of the line.
+unLineCommentSelectionB :: -- | The string which begins a line comment
+                           String
+                           -- | The returned buffer action
+                        -> BufferM ()
+unLineCommentSelectionB s =
+  modifySelectionB $ modifyLines unCommentLine
+  where
+  unCommentLine :: String -> String
+  unCommentLine line
+    | isPrefixOf s line = drop (length s) line
+    | otherwise         = line
+
+-- | uncomments a region of haskell line commented code
+haskellUnCommentSelectionB :: BufferM ()
+haskellUnCommentSelectionB = unLineCommentSelectionB "-- "
+
+-- | uncomments a region of latex line commented code
+latexUnCommentSelectionB :: BufferM ()
+latexUnCommentSelectionB = unLineCommentSelectionB "% "
+
+
+-- Performs as search and replace on the given string.
+substituteInList :: Eq a => [ a ] -> [ a ] -> [ a ] -> [ a ]
+substituteInList _from _to []       = []
+substituteInList from to list@(h : rest)
+  | isPrefixOf from list = 
+    to ++ (substituteInList from to $ drop (length from) list)
+  | otherwise            =
+    h : (substituteInList from to rest)
+
