@@ -56,6 +56,15 @@ import Data.Map as M
 -- | List of published Actions
 defaultPublishedActions :: M.Map String Action
 defaultPublishedActions = M.fromList $ 
-    [("leftB", makeAction leftB)]
+    [ ( "leftB"
+      , makeAction leftB
+      ) 
+    , ( "line-comment-region"
+      , makeAction lineCommentSelectionB
+      )
+    , ( "unline-comment-region"
+      , makeAction unLineCommentSelectionB
+      )
+    ]
 -- This must be of the form "name", makeAction name, so we can hope
 -- getting rid of this someday.
