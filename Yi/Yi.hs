@@ -59,10 +59,10 @@ defaultPublishedActions = M.fromList $
     [ ( "leftB"
       , makeAction leftB
       ) 
-    , ( "line-comment-region"
+    , ( "lineCommentSelectionB"
       , makeAction lineCommentSelectionB
       )
-    , ( "unline-comment-region"
+    , ( "unLineCommentSelectionB"
       , makeAction unLineCommentSelectionB
       )
     ]
