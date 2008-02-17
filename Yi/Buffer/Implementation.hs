@@ -395,7 +395,7 @@ updateHl touchedIndex fb@FBufferData {hlCache = HLState hl cachedStates}
     where resumeIndex = fst resumeState
           reused = takeWhile ((< touchedIndex) . fst) cachedStates
           resumeState = if null reused then (0, hlStartState hl) else last reused
-          newCachedStates = reused ++ other 20 0 (drop 1 recomputed)
+          newCachedStates = reused ++ drop 1 recomputed
           (recomputed, result) = (hlRun hl) text resumeState
           text = F.toLazyByteString (F.drop resumeIndex (mem fb))
 
