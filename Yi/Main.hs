@@ -139,6 +139,7 @@ defaultConfig =
   Config { startFrontEnd    = snd (head frontends)
          , defaultKm        = nilKeymap
          , startAction      = openScratchBuffer -- emacs-style behaviour
+         , startQueuedActions = []
          , publishedActions = Yi.Yi.defaultPublishedActions
          }
 

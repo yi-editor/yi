@@ -125,7 +125,7 @@ startEditor cfg st = do
 
       when (isNothing st) $ do -- process options if booting for the first time
         startAction cfg
-
+        postActions $ startQueuedActions cfg
     logPutStrLn "Starting event handler"
     let
         handler e = runYi $ errorEditor (show e)

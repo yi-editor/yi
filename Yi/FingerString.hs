@@ -1,5 +1,5 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
-
+-- Consider splitting off as a separate package
 -- Copyright (c) 2008 Gustav Munkby
 
 -- | This module defines a string representation in terms of

@@ -54,6 +54,7 @@ data BufferKeymap = BufferKeymap
 
 data Config = Config {startFrontEnd :: UI.UIBoot,
                       startAction :: YiM (),
+                      startQueuedActions :: [Action], -- ^ for performance testing
                       defaultKm :: Keymap,                      
                       publishedActions :: M.Map String Action}
 
