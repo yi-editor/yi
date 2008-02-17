@@ -489,10 +489,18 @@ modifySelectionB transform =
 -- To be used when the desired function should map across
 -- the lines of a region.
 modifyLines :: (String -> String) -> String -> String
-modifyLines transform input =
+modifyLines transform input
+  -- Unfortunately the prelude function 'lines' may change the
+  -- input, for example : lines "1\n2\n" returns ["1", "2"]
+  -- which would mean our function here would 'eat' a newline
+  -- character. 
+  | last input == '\n' = output ++ "\n"
+  | otherwise          = output
+  where
   -- Note that we cannot use 'unlines' since this will add
   -- a new-line to the end of the last line which is incorrect.
-  intercalate "\n" (map transform $ lines input)
+  output = intercalate "\n" newLines
+  newLines = map transform $ lines input
 
 -- | Search and Replace all within the current region.
 -- Note the region is the final argument since we might perform
