@@ -490,16 +490,15 @@ modifySelectionB transform =
 -- the lines of a region.
 modifyLines :: (String -> String) -> String -> String
 modifyLines transform input
-  -- Unfortunately the prelude function 'lines' may change the
-  -- input, for example : lines "1\n2\n" returns ["1", "2"]
-  -- which would mean our function here would 'eat' a newline
-  -- character. 
-  | last input == '\n' = output ++ "\n"
-  | otherwise          = output
+  -- Note the simple definition "unlines (map transform $ lines input)"
+  -- only works if there is a newline character at the end of the input
+  -- Because 'lines' eats up the newline character but 'unlines' adds
+  -- one.
+  | last input == '\n' = unlines newLines
+  -- For other inputs if we use 'unlines' then a new line is inserted
+  -- at the end, so instead of 'unlines' we use 'intercalate.
+  | otherwise          = intercalate "\n" newLines
   where
-  -- Note that we cannot use 'unlines' since this will add
-  -- a new-line to the end of the last line which is incorrect.
-  output = intercalate "\n" newLines
   newLines = map transform $ lines input
 
 -- | Search and Replace all within the current region.

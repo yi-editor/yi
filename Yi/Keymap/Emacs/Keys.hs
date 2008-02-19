@@ -2,8 +2,16 @@
 
 -- Copyright (c) 2005, 2008 Jean-Philippe Bernardy
 
-module Yi.Keymap.Emacs.Keys (readKey, showKey, printableChars, 
-                             KList, makeKeymap, rebind) where
+module Yi.Keymap.Emacs.Keys 
+  ( readKey
+  , showKey
+  , printableChars
+  , KList
+  , makeKeymap
+  , makePartialKeymap
+  , rebind
+  ) 
+where
     
 import Yi.Event
 import Yi.Debug
@@ -23,6 +31,13 @@ type KList = [(String, Keymap)]
 -- | Create a binding processor from 'kmap'.
 makeKeymap :: KList -> KeymapM ()
 makeKeymap kmap = I.choice [I.events (readKey k) >> a | (k,a) <- kmap]
+
+
+-- | Creates a binding in the same way as 'makeKeymap' however the
+-- second argument is what to map all unrecognised events to.
+makePartialKeymap :: KList -> Keymap -> KeymapM ()
+makePartialKeymap kmap emptymap =
+  (makeKeymap kmap) I.<|| emptymap
 
 rebind :: KList -> KeymapEndo
 rebind keys = (makeKeymap keys I.<||)

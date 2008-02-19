@@ -11,6 +11,7 @@
 module Yi.Keymap.Emacs.Utils
   ( KList
   , makeKeymap
+  , makePartialKeymap
   , changeBufferNameE
   , rebind
   , withMinibuffer
@@ -125,13 +126,14 @@ searchKeymap = selfSearchKeymap <|> makeKeymap
                 ("BACKSP", write $ isearchDelE)]
 
 isearchKeymap :: Direction -> Keymap
-isearchKeymap direction = do
-  write $ isearchInitE direction
-  many searchKeymap
-  foldr1 (<||) [events (readKey "C-g") >> write isearchCancelE,
-                events (readKey "C-m") >> write isearchFinishE,
-                events (readKey "RET") >> write isearchFinishE,
-                write isearchFinishE]
+isearchKeymap direction = 
+  do write $ isearchInitE direction
+     many searchKeymap
+     makePartialKeymap [ ("C-g", write isearchCancelE)
+                       , ("C-m", write isearchFinishE)
+                       , ("RET", write isearchFinishE)
+                       ]
+                       (write isearchFinishE)
 
 ----------------------------
 -- query-replace
