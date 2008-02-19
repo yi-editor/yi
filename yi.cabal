@@ -29,7 +29,6 @@ flag gtk
 -- It seems that it suffers from bugs in HOC
 flag cocoa
   Description: Provide experimental Cocoa UI
-  Default:     False
 
 flag hacking
   Default: False
