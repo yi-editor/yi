@@ -52,7 +52,6 @@ import Yi.Style
 import Data.Map as M
 
 
-
 -- | List of published Actions
 defaultPublishedActions :: M.Map String Action
 defaultPublishedActions = M.fromList $ 
@@ -64,6 +63,12 @@ defaultPublishedActions = M.fromList $
       )
     , ( "unLineCommentSelectionB"
       , makeAction unLineCommentSelectionB
+      )
+
+      -- I have added an action to insert a tab character
+      -- because it is useful for makefiles.
+    , ( "insertTabCharB"
+      , makeAction $ insertB '\t'
       )
     ]
 -- This must be of the form "name", makeAction name, so we can hope
