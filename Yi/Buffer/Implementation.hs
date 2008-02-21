@@ -77,9 +77,7 @@ type BufferImpl = FBufferData
 hlChunkSize :: Int
 hlChunkSize = 1024
 
-data HLState = forall a. HLState 
-    !(Highlighter a) 
-    [(Int,a)] -- ^ list of cached intermediate states and their offsets.
+data HLState = forall a. HLState !(Highlighter a) a
 
 -- ---------------------------------------------------------------------
 --
@@ -98,7 +96,6 @@ data FBufferData =
                     , marks      :: !Marks                 -- ^ Marks for this buffer
                     , markNames  :: !(M.Map String Mark)
                     , hlCache    :: !HLState       -- ^ syntax highlighting state
-                    , hlResult   :: !([Stroke],[Stroke]) 
                     -- ^ syn hl result. Actual result is (reverse fst ++ snd)
                     , overlays   :: !(Set.Set Overlay) -- ^ set of (non overlapping) visual overlay regions
                     }
@@ -121,7 +118,7 @@ data Update = Insert {updatePoint :: !Point, insertUpdateString :: !String} -- F
 
 -- | New FBuffer filled from string.
 newBI :: String -> FBufferData
-newBI s = FBufferData (F.fromString s) mks M.empty (HLState noHighlighter []) ([],[]) Set.empty
+newBI s = FBufferData (F.fromString s) mks M.empty (HLState noHighlighter (hlStartState noHighlighter)) Set.empty
     where mks = M.fromList [(pointMark, MarkValue 0 pointLeftBound)]
 
 -- | read @n@ chars from buffer @b@, starting at @i@
@@ -221,18 +218,13 @@ paintStrokes s0 ls@((l,s,r):ts) lp@((p,s'):tp)
 --   be interpreted as apply the style @s@ from position @p@ in the buffer.
 --   In the final element @p@ = @n@ + @i@.
 styleRangesBI :: Int -> Int -> BufferImpl -> [(Int, Style)]
-styleRangesBI n i fb = result
+styleRangesBI n i fb@FBufferData {hlCache = HLState hl cache} = result
   where
     result = takeWhile ((n+i >=) . fst) $ dropWhile ((i >) . fst) picture
-    usefuls = dropWhile (\(_l,_s,r) -> r <= i) .
-              takeWhile (\(l,_s,_r) -> l <= i+n)
-
-    usefulsL = dropWhile (\(l,_s,_r) -> l >= i+n) .
-               takeWhile (\(_l,_s,r) -> r >= i)
+    usefuls = dropWhile (\(_l,_s,r) -> r <= i)
 
     layer0 = [(i,defaultStyle,n+i)] -- this layer ensures that there are bounds exactly at i and n+i
-    layer1 = reverse (usefulsL leftHL) ++ usefuls rightHL
-    (leftHL, rightHL) = hlResult fb
+    layer1 = hlGetStrokes hl i (n+i) cache
     layer2 = map overlayStroke $ Set.toList $ overlays fb
     picture = foldr (paintStrokes defaultStyle) [] $ [usefuls layer2, layer1, layer0]
     overlayStroke (Overlay sm  em a) = (markPosition sm, a, markPosition em)
@@ -393,27 +385,12 @@ unsetMarkBI fb = fb { marks = (M.delete markMark (marks fb)) }
 -- highlighters implementation speed up compilation a lot when working on a
 -- syntax highlighter.
 setSyntaxBI :: ExtHL -> BufferImpl -> BufferImpl
-setSyntaxBI (ExtHL e) fb = updateHl 0 $ fb {hlCache = HLState e []}
+setSyntaxBI (ExtHL e) fb = updateHl 0 $ fb {hlCache = HLState e (hlStartState e)}
 
 updateHl :: Point -> BufferImpl -> BufferImpl
-updateHl touchedIndex fb@FBufferData {hlCache = HLState hl cachedStates} 
-    = trace ("Restart: " ++ show resumeIndex) $
-      fb {hlCache = HLState hl newCachedStates, hlResult = (leftResult,rightResult)}
-    where resumeIndex = fst resumeState
-          reused = takeWhile ((< touchedIndex) . fst) cachedStates
-          resumeState = if null reused then (0, hlStartState hl) else last reused
-          newCachedStates = reused ++ other 20 0 (drop 1 recomputed)
-          (recomputed, leftResult, rightResult) = (hlRun hl) text resumeState
-          text = F.toLazyByteString (F.drop resumeIndex (mem fb))
-
-other :: Int -> Int -> [a] -> [a]
-other n m l = case l of
-                [] -> []
-                (h:t) ->
-                    case m of
-                      0 -> h:other n n     t
-                      _ ->   other n (m-1) t
-
+updateHl touchedIndex fb@FBufferData {hlCache = HLState hl cache} 
+    = fb {hlCache = HLState hl (hlRun hl getText touchedIndex cache)}
+    where getText idx = F.toLazyByteString (F.drop idx (mem fb))
 
 pointLeftBound, markLeftBound :: Bool
 pointLeftBound = False

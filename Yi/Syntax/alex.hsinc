@@ -15,8 +15,5 @@ alexScanToken (idx,inp,state) = case alexScan inp (stateToInit state) of
 
 highlighter = mkHighlighter initState alexScanToken
 
-
-
-
-
-
+c = colorConst
+m = colorAndModify

@@ -26,11 +26,16 @@ alexGetChar bs | LB.null bs = Nothing
 alexInputPrevChar :: AlexInput -> Char
 alexInputPrevChar = undefined
 
-c :: Style -> Action a
-c color _str state = (state, color)
+colorConst :: Style -> Action a
+colorConst color _str state = (state, color)
 
-m :: (s -> s) -> Style -> Action s
-m modifier color _str state = (modifier state, color)
+colorAndModify :: (s -> s) -> Style -> Action s
+colorAndModify modifier color _str state = (modifier state, color)
+
+
+data Cache s = Cache  
+    [(Int,State s)] -- ^ list of cached intermediate states and their offsets.
+    ([Stroke],[Stroke])
 
 -- Unfold, scanl and foldr at the same time :)
 -- origami :: (b -> Maybe (a, b)) -> b -> (a -> c -> c) -> (c -> c) -> c -> ([(b, c -> c)], c)
@@ -45,14 +50,43 @@ origami gen seed (<+) (+>) l_c r_c = case gen seed of
 -- | Highlighter based on an Alex lexer 
 mkHighlighter :: forall s. s
               -> (AlexState s -> Maybe (Stroke, AlexState s))
-              -> Yi.Syntax.Highlighter (State s)
+              -> Yi.Syntax.Highlighter (Cache s)
 mkHighlighter initState alexScanToken = 
-  Yi.Syntax.SynHL { Yi.Syntax.hlStartState   = (initState, [])
-                  , Yi.Syntax.hlRun          = fun
+  Yi.Syntax.SynHL { hlStartState   = Cache [] ([],[])
+                  , hlRun          = run
+                  , hlGetStrokes   = getStrokes
                   }
-      where fun :: AlexInput -> (Int,State s) -> ([(Int,State s)], Result, Result)
-            fun input (startIdx, (startState, startPartial)) = (map f partials, startPartial, result)
+      where 
+        startState = (initState, [])
+        getStrokes begin end (Cache _ (leftHL, rightHL)) = reverse (usefulsL leftHL) ++ usefulsR rightHL
+            where
+              usefulsR = dropWhile (\(_l,_s,r) -> r <= begin) .
+                        takeWhile (\(l,_s,_r) -> l <= end)
+                        
+              usefulsL = dropWhile (\(l,_s,_r) -> l >= end) .
+                         takeWhile (\(_l,_s,r) -> r >= begin)
+
+        run getInput dirtyOffset (Cache cachedStates _) = Cache newCachedStates (leftResult,rightResult)
+            where resumeIndex = fst resumeState
+                  reused = takeWhile ((< dirtyOffset) . fst) cachedStates
+                  resumeState = if null reused then (0, startState) else last reused
+                  newCachedStates = reused ++ other 20 0 (drop 1 recomputed)
+                  (recomputed, leftResult, rightResult) = updateState text resumeState
+                  text = getInput resumeIndex
+
+
+        updateState :: AlexInput -> (Int,State s) -> ([(Int,State s)], Result, Result)
+        updateState input (startIdx, (startState, startPartial)) = (map f partials, startPartial, result)
                 where result :: [Stroke]
                       (partials,result) = origami alexScanToken (startIdx,input,startState) (:) (flip (:)) startPartial []
                       f :: (AlexState s, [Stroke]) -> (Int,State s)
                       f ((idx,_input,state),partial) = (idx, (state,partial))
+
+
+other :: Int -> Int -> [a] -> [a]
+other n m l = case l of
+                [] -> []
+                (h:t) ->
+                    case m of
+                      0 -> h:other n n     t
+                      _ ->   other n (m-1) t

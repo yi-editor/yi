@@ -33,11 +33,13 @@ type Stroke = (Point,Style,Point)
 
 data Highlighter a = 
   SynHL { hlStartState :: a -- ^ The start state for the highlighter.
-        , hlRun :: LB.ByteString -> (Int,a) -> ([(Int,a)], [Stroke], [Stroke])
+        , hlRun :: (Int -> LB.ByteString) -> Int -> a -> a
+        , hlGetStrokes :: Int -> Int -> a -> [Stroke]
         }
 
 noHighlighter :: Highlighter ()
 noHighlighter = SynHL {hlStartState = (), 
-                       hlRun = \_ _ -> ([],[], [])}
+                       hlRun = \_ _ a -> a,
+                       hlGetStrokes = \_ _ _ -> []}
 
 data ExtHL = forall a. ExtHL (Highlighter a)
