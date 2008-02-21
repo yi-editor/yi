@@ -10,4 +10,5 @@ module Main ( main ) where
 
 import Yi
 
+main :: IO ()
 main = driver
