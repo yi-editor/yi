@@ -52,24 +52,26 @@ import Yi.Style
 import Data.Map as M
 
 
+
+
 -- | List of published Actions
+
+-- THIS MUST BE OF THE FORM:
+-- ("<expr>", makeAction "<expr>")
+-- So we can hope getting rid of this someday.
+-- Failing to conform to this rule exposes the code to instant deletion.
+
+-- TODO: This should be a list of published symbols, of
+-- arbitrary type; M-x shall conjure-up a small haskell-like
+-- interpreter.
+
 defaultPublishedActions :: M.Map String Action
 defaultPublishedActions = M.fromList $ 
-    [ ( "leftB"
-      , makeAction leftB
-      ) 
-    , ( "lineCommentSelectionB"
-      , makeAction lineCommentSelectionB
-      )
-    , ( "unLineCommentSelectionB"
-      , makeAction unLineCommentSelectionB
-      )
-
+    [ ("leftB"                  , makeAction leftB) 
+    , ("lineCommentSelectionB"  , makeAction lineCommentSelectionB)
+    , ("unLineCommentSelectionB", makeAction unLineCommentSelectionB)
+    , ("insertB '\t'"           , makeAction (insertB '\t'))
       -- I have added an action to insert a tab character
       -- because it is useful for makefiles.
-    , ( "insertTabCharB"
-      , makeAction $ insertB '\t'
-      )
     ]
--- This must be of the form "name", makeAction name, so we can hope
--- getting rid of this someday.
+
