@@ -198,6 +198,7 @@ autoIndentHaskellB =
                           , "do"
                           , "mdo"
                           , "{-"
+                          , "{-|"
                           , "--"
                           ]
 
@@ -276,22 +277,28 @@ keywordHints keywords =
   -- NOTE: that we have to take into account how long tab characters
   -- are according to the indentation settings.
   getHints :: Int -> String -> BufferM [ Int ]
-  getHints _i [] = return []
-  getHints i input@(_ : inputTail)
+  getHints _i []                     = return []
+  getHints i input
     -- If there are no non-white characters left return zero hints.
-    | null rest                              = return []
+    | null rest                      = return []
     -- Check if there are white space characters at the front and if
     -- so then calculate the ident of it and carry on.
-    | not $ null white                       = do spaceSize <- spacingOfB white
-                                                  getHints (i + spaceSize) rest
+    | not $ null white               = do spaceSize <- spacingOfB white
+                                          getHints (i + spaceSize) rest
     -- If there are no white space characters check if we are looking
     -- at a keyword and if so add it as a hint
-    | any ((flip isPrefixOf) input) keywords = liftM (i :) tailHints
+    | any (== initNonWhite) keywords = liftM (i :) $ whiteRestHints
     -- Finally we just continue with the tail.
-    | otherwise                              = tailHints
+    | otherwise                      = whiteRestHints
     where
-    (white, rest) = span isSpace input
-    tailHints     = getHints (i + 1) inputTail
+    -- Separate into the leading non-white characters and the rest
+    (initNonWhite, whiteRest) = break isSpace input
+    -- Separate into the leading white space characters and the rest
+    (white, rest)             = span isSpace input
+    -- Get the hints from everything after any leading non-white space.
+    -- This should only be used if there is no white space at the start.
+    whiteRestHints            = getHints (i + (length initNonWhite)) whiteRest
+
 
 -- | Returns the offsets of anything that isn't white space 'after'
 -- a keyword on the given line.
@@ -308,21 +315,21 @@ keywordAfterHints keywords =
   -- NOTE: that we have to take into account how long tab characters
   -- are according to the indentation settings.
   getHints :: Int -> String -> BufferM [ Int ]
-  getHints _i [] = return []
-  getHints i input@(_ : inputTail)
+  getHints _i []                  = return []
+  getHints i input
     -- If there is any preceding white space then just take the length
     -- of it (according to the indentation settings and proceed.
     | not $ null indentation      = do indent <- spacingOfB indentation
                                        getHints (i + indent) nonWhite
     -- If there is a keyword at the current position and
     -- the keyword isn't the last thing on the line.
-    | any ((flip isPrefixOf) input) keywords
+    | any (== key) keywords
       && (not $ null afterwhite)  =  do indent    <- spacingOfB white
                                         let hint  =  i + (length key) + indent
                                         tailHints <- getHints hint afterwhite
                                         return $ hint : tailHints
     -- we don't have a hint and we can re-try for the rest of the line
-    | otherwise                   = getHints (i + 1) inputTail
+    | otherwise                   = afterKeyHints
     where
     -- Split the input into the preceding white space and the rest
     (indentation, nonWhite) = span isSpace input
@@ -333,6 +340,10 @@ keywordAfterHints keywords =
     (key, afterkey)     = break isSpace input
     -- The white space and what is after the white space
     (white, afterwhite) = span  isSpace afterkey
+
+    -- Get the hints from everything after any leading non-white space.
+    -- This should only be used if there is no white space at the start.
+    afterKeyHints       = getHints (i + (length key)) afterkey
 
 
 {-|
