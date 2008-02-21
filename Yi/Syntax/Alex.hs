@@ -1,6 +1,9 @@
 {-# OPTIONS -fglasgow-exts #-}
 
-module Yi.Syntax.Alex where
+module Yi.Syntax.Alex (mkHighlighter, 
+                       alexGetChar, alexInputPrevChar,
+                       AlexState, AlexInput, Stroke,
+                       takeLB, colorConst, colorAndModify) where
 
 import Data.List
 import Data.Int
@@ -11,14 +14,11 @@ import Yi.Style
 takeLB :: Int64 -> LB.ByteString -> LB.ByteString
 takeLB = LB.take
 
-type Length = Int
-
 type AlexInput  = LB.ByteString
 type Action hlState = AlexInput -> hlState -> (hlState, Style)
 type State hlState = (hlState, [Stroke])
 type AlexState hlState = (Int, AlexInput, hlState)
 type Result = [Stroke]
-type Endo a = a -> a
 alexGetChar :: AlexInput -> Maybe (Char, AlexInput)
 alexGetChar bs | LB.null bs = Nothing
                | otherwise  = Just (LB.head bs, LB.tail bs)
@@ -76,9 +76,9 @@ mkHighlighter initState alexScanToken =
 
 
         updateState :: AlexInput -> (Int,State s) -> ([(Int,State s)], Result, Result)
-        updateState input (startIdx, (startState, startPartial)) = (map f partials, startPartial, result)
+        updateState input (startIdx, (restartState, startPartial)) = (map f partials, startPartial, result)
                 where result :: [Stroke]
-                      (partials,result) = origami alexScanToken (startIdx,input,startState) (:) (flip (:)) startPartial []
+                      (partials,result) = origami alexScanToken (startIdx,input,restartState) (:) (flip (:)) startPartial []
                       f :: (AlexState s, [Stroke]) -> (Int,State s)
                       f ((idx,_input,state),partial) = (idx, (state,partial))
 
