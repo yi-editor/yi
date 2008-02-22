@@ -8,38 +8,39 @@
 -- and the UI. Key bindings, and libraries should manipulate Yi through
 -- the interface defined here.
 
-module Yi.Core (
-                module Yi.Dynamic,
-        -- * Keymap
-        module Yi.Keymap,
+module Yi.Core 
+  ( module Yi.Dynamic
+    -- * Keymap
+  , module Yi.Keymap
 
-        -- * Construction and destruction
-        startEditor,         -- :: StartConfig -> Kernel -> Maybe Editor -> [YiM ()] -> IO ()
-        quitEditor,          -- :: YiM ()
+  -- * Construction and destruction
+  , startEditor         -- :: StartConfig -> Kernel -> Maybe Editor -> [YiM ()] -> IO ()
+  , quitEditor          -- :: YiM ()
 
-        reloadEditor,        -- :: YiM ()
-        getAllNamesInScope,
-        execEditorAction,
+  , reloadEditor        -- :: YiM ()
+  , getAllNamesInScope
+  , execEditorAction
 
-        refreshEditor,       -- :: YiM ()
-        suspendEditor,       -- :: YiM ()
+  , refreshEditor       -- :: YiM ()
+  , suspendEditor       -- :: YiM ()
 
-        -- * Global editor actions
-        msgEditor,           -- :: String -> YiM ()
-        errorEditor,         -- :: String -> YiM ()
-        msgClr,        -- :: YiM ()
+  -- * Global editor actions
+  , msgEditor           -- :: String -> YiM ()
+  , errorEditor         -- :: String -> YiM ()
+  , msgClr        -- :: YiM ()
 
-        -- * Window manipulation
-        closeWindow,         -- :: YiM ()
+  -- * Window manipulation
+  , closeWindow         -- :: YiM ()
 
-        -- * Interacting with external commands
-        runProcessWithInput,          -- :: String -> String -> YiM String
-        startSubprocess,                 -- :: FilePath -> [String] -> YiM ()
+  -- * Interacting with external commands
+  , runProcessWithInput          -- :: String -> String -> YiM String
+  , startSubprocess                 -- :: FilePath -> [String] -> YiM ()
 
-        -- * Misc
-        changeKeymap,
-        runAction
-   ) where
+  -- * Misc
+  , changeKeymap
+  , runAction
+  ) 
+where
 
 import Prelude hiding (error, sequence_, mapM_, elem, concat, all)
 

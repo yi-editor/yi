@@ -588,3 +588,31 @@ increaseIndentSelectionB i =
 decreaseIndentSelectionB :: Int -> BufferM ()
 decreaseIndentSelectionB i =
   unLineCommentSelectionB $ replicate i ' '
+
+
+-- | Justifies all the lines of the selection to be the same as
+-- the top line.
+-- NOTE: if the selection begins part way along a line, the other
+-- lines will be justified only with respect to the part of the indentation
+-- which is selected.
+justifySelectionWithTopB :: BufferM ()
+justifySelectionWithTopB =
+  modifySelectionB justifyLines
+  where
+  justifyLines :: String -> String
+  justifyLines input =
+    case lines input of
+      []           -> ""
+      [ one ]      -> one
+      (top : _)    -> modifyLines justifyLine input
+                      where
+                      -- The indentation of the top line.
+                      topIndent = takeWhile isSpace top
+
+                      -- Justify a single line by removing its current
+                      -- indentation and replacing it with that of the top
+                      -- line. Note that this will work even if the indentation
+                      -- contains tab characters.
+                      justifyLine :: String -> String
+                      justifyLine "" = ""
+                      justifyLine l  = topIndent ++ (dropWhile isSpace l)
