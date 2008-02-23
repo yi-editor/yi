@@ -31,14 +31,6 @@ shape :: Show a => Tree a -> [S.Tree String]
 shape Leaf = [] -- [S.Node "o"[]]
 shape (Node x l r) = [S.Node (show x) (shape l ++ shape r)]
 
-sz :: S.Tree a -> Int
-sz (S.Node a xs) = 1 + sum (map sz xs)
-
-trans :: (S.Tree a -> b) -> (S.Tree a -> S.Tree b)
-trans f n@(S.Node _ xs) = S.Node (f n) (map (trans f) xs)
-
-ev f (S.Node x xs) = S.Node (f x) (map (ev f) xs)
-
 parse :: Int -> Int -> P.P a (Tree a)
 parse leftSize maxSize
    | maxSize <= 0 = pure Leaf
@@ -68,23 +60,20 @@ mkHighlighter initState alexScanToken =
                   , hlRun          = run
                   , hlGetStrokes   = getS
                   }
-      where run source dirty cache = fst3 $ P.upd fst3 (alexScanTokens . source) dirty cache
+      where run source dirty cache = fst3 $ P.upd fst3 (tokenSource source) dirty cache
             getS begin end cache = getStrokes begin end (P.getValue cache)
-            alexScanTokens inp = unfoldr alexScanToken (0,inp,initState)
-
+            tokenSource source ofs = unfoldr alexScanToken (ofs,source ofs,initState)
+            fst3 (x,_,_) = x
 
 getStrokes :: Int -> Int -> Tree Stroke -> [Stroke]
 getStrokes _ _ Leaf = []
-getStrokes begin end (Node (i,_,_) lc rc) 
+getStrokes _     end (Node (i,_,_) _ _) 
     | end < i = []
 getStrokes begin end (Node s lc Leaf) 
     = s : getStrokes begin end lc
-getStrokes begin end (Node s lc rc@(Node (i,_,_) _ _))
+getStrokes begin end (Node s _ rc@(Node (i,_,_) _ _))
     | i < begin = s : getStrokes begin end rc
 getStrokes begin end (Node s lc rc)
     = s : getStrokes begin end lc ++ getStrokes begin end rc
 
 
-
-
-fst3 (x,_,_) = x
