@@ -1,5 +1,6 @@
 module Yi.Modes where
 
+import System.FilePath
 import qualified Yi.Syntax.Haskell
 import qualified Yi.Syntax.LiterateHaskell (highlighter)
 import qualified Yi.Syntax.Latex
@@ -7,6 +8,8 @@ import qualified Yi.Syntax.Srmc
 import qualified Yi.Syntax.Cabal
 import qualified Yi.Syntax.Cplusplus
 import qualified Yi.Syntax.Fractal as Fractal
+import Yi.Syntax
+import Yi.Keymap
 {- End of Imports -}
 
 cppMode = fundamentalMode {
@@ -22,7 +25,7 @@ literateHaskellMode = haskellMode {
      modeHL = ExtHL (Yi.Syntax.LiterateHaskell.highlighter)
                                   }
 cabalMode = fundamentalMode {
-     modeHL = ExtHL (Yi.Syntax.Cabal.highlighter))
+     modeHL = ExtHL (Yi.Syntax.Cabal.highlighter)
 }
 
 
