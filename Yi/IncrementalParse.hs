@@ -1,5 +1,5 @@
 {-# OPTIONS -fglasgow-exts #-}
-module Yi.IncrementalParse (IResult, Process, Result(..), Void, upd, symbol, eof, runPolish, run, getValue) where
+module Yi.IncrementalParse (IResult, Process, Result(..), Void, upd, symbol, eof, runPolish, run, getValue, P) where
 
 import Control.Applicative
 
