@@ -34,7 +34,7 @@ colorAndModify modifier color _str state = (modifier state, color)
 
 
 data Cache s = Cache  
-    [(Int,State s)] -- ^ list of cached intermediate states and their offsets.
+    [(Int,State s)] -- list of cached intermediate states and their offsets.
     ([Stroke],[Stroke])
 
 -- Unfold, scanl and foldr at the same time :)

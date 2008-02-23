@@ -1,9 +1,8 @@
 {-# LANGUAGE FlexibleContexts #-}
--- * 
+module Yi.Keymap.Users.JP where
 -- This is an attempt at a completely "normalized" keymap.
 -- Choose your mode/unit with the left hand;
 -- Perform commands with the right hand.
-module Yi.Keymap.Users.JP where
 
 import Prelude hiding (error)
 import Control.Monad.State

@@ -94,11 +94,10 @@ autoIndentB =
   the second argument, in particular we commonly wish to have the
   last opening bracket of the previous line as well as its indent.
 -}
-autoIndentHelperB :: -- | Action to fetch hints from previous lines
-                     BufferM [ Int ] 
-                     -- | Action to calculate hints from previous line
+autoIndentHelperB :: BufferM [ Int ] 
+                  -- ^ Action to fetch hints from previous lines
                  -> (String -> BufferM [ Int ])
-                     -- | Returned action to automatically indent.
+                 -- ^ Action to calculate hints from previous line
                  -> BufferM ()
 autoIndentHelperB getUpwards getPrevious = 
   do upwardHints   <- savingExcursionB getUpwards

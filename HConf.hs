@@ -117,11 +117,11 @@ mainSlave recoverState initState realMain = do
 
 
 
--- | Build "~/.Project/Project.hs" with ghc, then execute it.  If there are no
+-- | Build "~\/.Project\/Project.hs" with ghc, then execute it.  If there are no
 -- errors, this function does not return.  An exception is raised in any of
 -- these cases:
 --   * ghc missing
---   * ~/.Project/Project.hs missing
+--   * ~\/.Project\/Project.hs missing
 --   * Project.hs fails to compile
 --      ** wrong ghc in path (fails to compile)
 --      ** type error, syntax error, ..

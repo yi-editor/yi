@@ -69,13 +69,10 @@ p `inRegion` (Region start stop) = start <= p && p < stop
 
 
 
--- | Modifies the given region according to the given
--- string transformation function
-modifyRegionB :: -- | The string modification function
-                (String -> String)
-                -- | The region to modify
-             -> Region
-                -- | The returned buffer action
+-- | Modifies the given region according to the given string
+-- transformation function
+modifyRegionB ::(String -> String)  -- ^ The string modification function
+             -> Region -- ^ The region to modify
              -> BufferM ()
 modifyRegionB transform region =
   do text <- readRegionB region

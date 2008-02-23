@@ -506,24 +506,20 @@ modifyLines transform input
 -- the same search and replace over multiple regions however we are
 -- unlikely to perform several search and replaces over the same region
 -- since the first such may change the bounds of the region.
-searchReplaceRegionB :: -- | The String to search for
-                       String
-                       -- | The String to replace it with
-                    -> String
-                       -- | The region to perform this over
-                    -> Region
-                       -- | The returned buffer action
+searchReplaceRegionB :: 
+                       String -- ^ The String to search for
+                    -> String -- ^ The String to replace it with
+                    -> Region -- ^ The region to perform this over
                     -> BufferM ()
 searchReplaceRegionB from to =
   modifyRegionB $ substituteInList from to
 
 
 -- | Peform a search and replace on the selection
-searchReplaceSelectionB :: -- | The String to search for
-                           String
-                           -- | The String to replace it with
+searchReplaceSelectionB :: 
+                           String -- ^ The String to search for
                         -> String
-                           -- | The returned buffer action
+                           -- ^ The String to replace it with
                         -> BufferM ()
 searchReplaceSelectionB from to =
   modifySelectionB $ substituteInList from to
@@ -531,10 +527,10 @@ searchReplaceSelectionB from to =
 
 -- | Comments the selection using line comments that begin
 -- with the given string.
-lineCommentSelectionB :: -- The string that starts a line comment
-                         String
-                         -- The returned buffer action
+lineCommentSelectionB :: 
+                         String -- ^ The string that starts a line comment
                       -> BufferM ()
+                         -- The returned buffer action
 lineCommentSelectionB s =
   modifySelectionB $ modifyLines (s ++)
 
@@ -549,9 +545,7 @@ latexCommentSelectionB = lineCommentSelectionB "% "
 -- | Uncomments the selection using the given line comment
 -- starting string. This only works for the comments which
 -- begin at the start of the line.
-unLineCommentSelectionB :: -- | The string which begins a line comment
-                           String
-                           -- | The returned buffer action
+unLineCommentSelectionB :: String -- ^ The string which begins a line comment
                         -> BufferM ()
 unLineCommentSelectionB s =
   modifySelectionB $ modifyLines unCommentLine
