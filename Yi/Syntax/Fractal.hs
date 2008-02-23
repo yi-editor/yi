@@ -1,5 +1,5 @@
 {-# OPTIONS -fglasgow-exts #-}
-module Yi.Syntax.Fractal where
+module Yi.Syntax.Fractal (mkHighlighter) where
 
 import Yi.Syntax
 import Yi.Syntax.Alex (AlexState)
@@ -19,7 +19,7 @@ factor = 2
 toTree ::  [a] -> Tree a
 toTree = tt factor
     where tt _ [] = Leaf
-          tt level (x:xs) = let (l,r) = splitAt level xs -- should be lazy (?)
+          tt level (x:xs) = let (l,r) = splitAt level xs
                             in Node x (toTree l) (tt (level * factor) r)
 
 fromTree :: Tree a -> [a]
@@ -43,16 +43,10 @@ parse leftSize maxSize
     -- parser would have to keep this case until the very end of input
     -- is reached.
          
--- test1 = tt factor 30 <* P.eof
-
--- main = putStrLn $ S.drawForest $ shape $ snd $ fromJust $ unP test1 [1..100]
--- tree = P.runPolish test1 [1..100]
--- main = putStrLn $ S.drawForest  $ shape $ tree
-
 type Cache = P.IResult Stroke (Tree Stroke)
 
-mkHighlighter :: forall s. s
-              -> (AlexState s -> Maybe (Stroke, AlexState s))
+mkHighlighter :: forall lexState. lexState
+              -> (AlexState lexState -> Maybe (Stroke, AlexState lexState))
               -> Highlighter (Cache)
 mkHighlighter initState alexScanToken = 
   Yi.Syntax.SynHL { hlStartState   = P.Leaf Leaf 0 (P.run (parse 1 100000000))
@@ -63,6 +57,7 @@ mkHighlighter initState alexScanToken =
       where run source dirty cache = fst3 $ P.upd fst3 (tokenSource source) dirty cache
             getS begin end cache = getStrokes begin end (P.getValue cache)
             tokenSource source ofs = unfoldr alexScanToken (ofs,source ofs,initState)
+            -- FIXME: Starting re-parsing with initState is wrong!
             fst3 (x,_,_) = x
 
 getStrokes :: Int -> Int -> Tree Stroke -> [Stroke]
