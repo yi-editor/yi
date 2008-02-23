@@ -19,7 +19,8 @@ import System.Environment
 {- End of Module Imports -}
 
 main :: IO ()
-main = do args <- getArgs
+main = do putStrLn "!!! DEPRECATED !!!"
+          args <- getArgs
           let contents = processArgs args
               outfile  = "config.test"
           if args == [ "--help" ]

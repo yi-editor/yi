@@ -80,9 +80,6 @@ show-modules:
 # For seeing generated docs and setting up comment watch.
 BROWSER ?= firefox
 
-HsColour ?= HsColour
-
-
 #### Rules
 
 all:  configure build doc install
