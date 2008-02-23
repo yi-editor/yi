@@ -8,6 +8,7 @@ import Data.Maybe
 import qualified Data.Tree as S
 import Control.Applicative
 import Data.List
+import Yi.Prelude
 
 data Tree a = Node a (Tree a) (Tree a)
             | Leaf
@@ -55,20 +56,20 @@ mkHighlighter initState alexScanToken =
                   , hlGetStrokes   = getS
                   }
       where run source dirty cache = fst3 $ P.upd fst3 (tokenSource source) dirty cache
-            getS begin end cache = getStrokes begin end (P.getValue cache)
+            getS begin end cache = getStrokes begin end (P.getValue cache) []
             tokenSource source ofs = unfoldr alexScanToken (ofs,source ofs,initState)
             -- FIXME: Starting re-parsing with initState is wrong!
             fst3 (x,_,_) = x
 
-getStrokes :: Int -> Int -> Tree Stroke -> [Stroke]
-getStrokes _ _ Leaf = []
+getStrokes :: Int -> Int -> Tree Stroke -> Endom [Stroke]
+getStrokes _ _ Leaf = id
 getStrokes _     end (Node (i,_,_) _ _) 
-    | end < i = []
+    | end < i = id
 getStrokes begin end (Node s lc Leaf) 
-    = s : getStrokes begin end lc
+    = (s :) . getStrokes begin end lc
 getStrokes begin end (Node s _ rc@(Node (i,_,_) _ _))
-    | i < begin = s : getStrokes begin end rc
+    | i < begin = (s :) . getStrokes begin end rc
 getStrokes begin end (Node s lc rc)
-    = s : getStrokes begin end lc ++ getStrokes begin end rc
+    = (s :) . getStrokes begin end lc . getStrokes begin end rc
 
 
