@@ -21,7 +21,7 @@ import qualified Yi.WindowSet as WS
 spawnMinibufferE :: String -> KeymapEndo -> YiM () -> YiM ()
 spawnMinibufferE prompt kmMod initialAction =
     do b <- withEditor $ stringToNewBuffer prompt []
-       setBufferKeymap b kmMod
+       setBufferMode b fundamentalMode {modeKeymap = kmMod}
        withEditor $ modifyWindows (WS.add $ Window True b 0 0 0)
        initialAction
 

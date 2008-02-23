@@ -141,6 +141,7 @@ defaultConfig =
          , startAction      = openScratchBuffer -- emacs-style behaviour
          , startQueuedActions = []
          , publishedActions = Yi.Yi.defaultPublishedActions
+         , modeTable = const Nothing
          }
 
 openScratchBuffer :: YiM ()
@@ -150,11 +151,6 @@ openScratchBuffer = withEditor $ do     -- emacs-like behaviour
                     "-- If you want to create a file, open that file,\n" ++
                     "-- then enter the text in that file's own buffer.\n\n")
       return ()
-
-startConsole :: YiM ()
-startConsole = do
-  console <- withEditor $ getBufferWithName "*console*"
-  setBufferKeymap console (consoleKeymap <||)
 
 -- | Transform the config with options
 do_args :: Config -> [String] -> Either Err Config

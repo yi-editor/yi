@@ -19,6 +19,7 @@ import qualified Yi.Interact as I
 import Yi.Monad
 import Control.Monad.State
 import Yi.Event
+import Yi.Syntax
 import Yi.Process ( SubprocessInfo, SubprocessId )
 import qualified Yi.UI.Common as UI
 
@@ -47,17 +48,31 @@ type KeymapEndo = Keymap -> Keymap
 type KeymapProcess = I.P Event Action
 
 
-data BufferKeymap = BufferKeymap
-    { bufferKeymap :: KeymapEndo -- ^ Buffer's local keymap modification
-    , bufferKeymapProcess :: KeymapProcess -- ^ Current state of the keymap automaton
-    }
-
 data Config = Config {startFrontEnd :: UI.UIBoot,
                       startAction :: YiM (),
                       startQueuedActions :: [Action], -- ^ for performance testing
                       defaultKm :: Keymap,                      
+                      modeTable :: String -> Maybe Mode,
                       publishedActions :: M.Map String Action}
 
+data Mode = Mode 
+    {
+     bufferKeymapProcess :: KeymapProcess, -- ^ Current state of the keymap automaton
+                                           -- HACK: this should not be part of the mode.
+
+   -- modeName = "fundamental",   -- ^ So this could be serialized
+     modeHL :: ExtHL,
+     modeKeymap :: KeymapEndo, -- ^ Buffer's local keymap modification
+     modeIndent :: BufferM ()
+    }
+
+fundamentalMode = Mode 
+  { 
+   bufferKeymapProcess = I.End,
+   modeHL = ExtHL noHighlighter,
+   modeKeymap = id,
+   modeIndent = return () -- FIXME
+  }
 
 data Yi = Yi {yiEditor :: IORef Editor,
               yiUi          :: UI,
@@ -65,8 +80,8 @@ data Yi = Yi {yiEditor :: IORef Editor,
               input         :: Chan Event,                 -- ^ input stream
               output        :: Chan Action,                -- ^ output stream
               defaultKeymap :: IORef Keymap,
-              bufferKeymaps :: IORef (M.Map BufferRef BufferKeymap),
-              editorModules :: IORef [String], -- ^ modules requested by user: (e.g. ["YiConfig", "Yi.Dired"])
+              bufferMode    :: IORef (M.Map BufferRef Mode),
+              editorModules :: IORef [String], -- ^ modules requested by user: (e.g. ["YiConfig", "Yi.Dired"]) DEPRECATED
 
               yiSubprocessIdSource :: IORef SubprocessId,
               yiSubprocesses :: IORef (M.Map SubprocessId SubprocessInfo),
@@ -87,25 +102,24 @@ write x = I.write (makeAction x)
 -----------------------
 -- Keymap thread handling
 
-setBufferKeymap :: BufferRef -> KeymapEndo -> YiM ()
-setBufferKeymap b km = do
-  bkm <- getBufferKeymap b
-  modifiesRef bufferKeymaps (M.insert b bkm {bufferKeymap = km, bufferKeymapProcess = I.End})
+setBufferMode :: BufferRef -> Mode -> YiM ()
+setBufferMode b m = do
+  modifiesRef bufferMode (M.insert b m {bufferKeymapProcess = I.End})
 
 restartBufferThread :: BufferRef -> YiM ()
 restartBufferThread b = do
-  bkm <- getBufferKeymap b
-  modifiesRef bufferKeymaps (M.insert b bkm {bufferKeymapProcess = I.End})
+  bkm <- getBufferMode b
+  modifiesRef bufferMode (M.insert b bkm {bufferKeymapProcess = I.End})
 
-deleteBufferKeymap :: BufferRef -> YiM ()
-deleteBufferKeymap b = modifiesRef bufferKeymaps (M.delete b)
+deleteBufferMode :: BufferRef -> YiM ()
+deleteBufferMode b = modifiesRef bufferMode (M.delete b)
 
-getBufferKeymap :: BufferRef -> YiM BufferKeymap
-getBufferKeymap b = do
-  kms <- readsRef bufferKeymaps
+getBufferMode :: BufferRef -> YiM Mode
+getBufferMode b = do
+  kms <- readsRef bufferMode
   return $ case M.lookup b kms of
     Just bkm -> bkm
-    Nothing -> BufferKeymap {bufferKeymap = id, bufferKeymapProcess = I.End}
+    Nothing -> fundamentalMode
 
 --------------------------------
 -- Uninteresting glue code

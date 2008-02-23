@@ -160,10 +160,10 @@ dispatch :: Event -> YiM ()
 dispatch ev =
     do yi <- ask
        b <- withEditor getBuffer
-       bkm <- getBufferKeymap b
+       bkm <- getBufferMode b
        defKm <- readRef (defaultKeymap yi)
        let p0 = bufferKeymapProcess bkm
-           freshP = I.mkAutomaton $ bufferKeymap bkm $ defKm
+           freshP = I.mkAutomaton $ modeKeymap bkm $ defKm
            p = case p0 of
                  I.End  -> freshP
                  I.Fail -> freshP
@@ -181,7 +181,7 @@ dispatch ev =
                        _ -> actions
        when ambiguous $
             postActions [makeAction $ msgEditor "Keymap was in an ambiguous state! Resetting it."]
-       modifiesRef bufferKeymaps (M.insert b bkm { bufferKeymapProcess = if ambiguous then freshP
+       modifiesRef bufferMode (M.insert b bkm { bufferKeymapProcess = if ambiguous then freshP
                                                                          else p'})
 
 

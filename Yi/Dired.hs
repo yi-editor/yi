@@ -241,8 +241,10 @@ diredDirBuffer dir = do
                 withGivenBuffer b (setfileB dir) -- associate the buffer with the dir
                 withEditor $ switchToBufferE b
                 diredLoadNewDir dir
-                setBufferKeymap b diredKeymap
+                setBufferMode b diredMode
                 return b
+
+diredMode = fundamentalMode {modeKeymap = diredKeymap}
 
 diredRefresh :: YiM ()
 diredRefresh = do
