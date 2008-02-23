@@ -30,6 +30,7 @@ module Yi.Dired (
 
 import Control.Monad.Trans
 import Data.List
+import Data.Maybe
 import qualified Data.Map as M
 import Data.Typeable
 import System.Directory
@@ -37,7 +38,7 @@ import System.FilePath
 import System.Locale
 import System.Posix.Files
 import System.Posix.Types
-
+import Control.Monad.Reader
 import System.Posix.User
 -- currently used to lookup the usernames for file owners. Any
 -- suggestions on how to drop the dependency welcome.
@@ -56,7 +57,6 @@ import Yi.Editor
 import Yi.Buffer.Region
 import Yi.Style
 import Yi.Syntax ( ExtHL(..), noHighlighter )
-import Yi.Syntax.Table ( highlighters )
 
 ------------------------------------------------
 -- | If file exists, read contents of file into a new buffer, otherwise
@@ -82,7 +82,8 @@ fnewE f = do
                    newBufferForPath bufferName fe de
              _  -> return (bkey $ head bufsWithThisFilename)
     withGivenBuffer b $ setfileB f        -- associate buffer with file
-    withGivenBuffer b $ setSyntaxB (highlighters M.! (syntaxFromExtension $ takeExtension f))
+    tbl <- asks (modeTable . yiConfig)
+    setBufferMode b (fromMaybe fundamentalMode (tbl f))
     withEditor $ switchToBufferE b
     where
     -- Determines whether or not a given buffer is associated with
@@ -108,38 +109,6 @@ fnewE f = do
     newBufferForPath bufferName False False  =
       withEditor $ stringToNewBuffer bufferName []  -- Create new empty buffer
 
-    {-
-      Working out the name of the syntax from the extension of
-      the file. Some of these are a little questionably haskell
-      relatex. For example ".x" is an alex lexer specification
-      I dare say that there are other file types that use ".x"
-      as the file extension.
-      For now though this is probably okay given the users of
-      'yi' are mostly haskell hackers, as of yet.
-    -}
-    syntaxFromExtension :: String -> String
-    syntaxFromExtension ".hs"    = "haskell"
-    syntaxFromExtension ".x"     = "haskell"
-    syntaxFromExtension ".lhs"   = "lithaskell"
-    -- haskell include files such as Yi/Syntax/alex.hsinc
-    syntaxFromExtension ".hsinc" = "haskell"
-    syntaxFromExtension ".cabal" = "cabal"
-    syntaxFromExtension ".tex"   = "latex"
-    syntaxFromExtension ".sty"   = "latex"
-    syntaxFromExtension ".ltx"   = "latex"
-    syntaxFromExtension ".cxx"   = "cplusplus"
-    syntaxFromExtension ".cpp"   = "cplusplus"
-    syntaxFromExtension ".C"     = "cplusplus"
-    syntaxFromExtension ".hxx"   = "cplusplus"
-    syntaxFromExtension ".H"     = "cplusplus"
-    syntaxFromExtension ".h"     = "cplusplus"
-    -- I treat c file as cpp files, most users are smart enough
-    -- to allow for that.
-    syntaxFromExtension ".c"     = "cplusplus"
-    -- pepa is a subset of srmc
-    syntaxFromExtension ".pepa"  = "srmc"
-    syntaxFromExtension ".srmc"  = "srmc"
-    syntaxFromExtension _        = "none"
 
     -- The first argument is the buffer name
     fileToNewBuffer :: String -> FilePath -> YiM BufferRef
@@ -171,6 +140,7 @@ fnewE f = do
                               , show i
                               , ">"
                               ]
+
 ------------------------------------------------
 
 

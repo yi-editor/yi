@@ -59,6 +59,7 @@ data Mode = Mode
     {
      bufferKeymapProcess :: KeymapProcess, -- ^ Current state of the keymap automaton
                                            -- HACK: this should not be part of the mode.
+                            -- BUG: this also induces a race condition, because more than 1 thread can change the bufferKeymapProcess (input and worker)
 
    -- modeName = "fundamental",   -- ^ So this could be serialized
      modeHL :: ExtHL,
@@ -66,6 +67,7 @@ data Mode = Mode
      modeIndent :: BufferM ()
     }
 
+fundamentalMode :: Mode
 fundamentalMode = Mode 
   { 
    bufferKeymapProcess = I.End,
@@ -105,6 +107,7 @@ write x = I.write (makeAction x)
 setBufferMode :: BufferRef -> Mode -> YiM ()
 setBufferMode b m = do
   modifiesRef bufferMode (M.insert b m {bufferKeymapProcess = I.End})
+  withGivenBuffer b $ setSyntaxB (modeHL m)
 
 restartBufferThread :: BufferRef -> YiM ()
 restartBufferThread b = do

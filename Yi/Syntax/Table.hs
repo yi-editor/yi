@@ -5,7 +5,7 @@
 -- | This module defines the list of syntax highlighter modules.
 
 module Yi.Syntax.Table
-  ( highlighters )
+  ( )
 where
 
 {- Standard Library Modules Imported -}
