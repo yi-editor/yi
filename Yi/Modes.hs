@@ -31,8 +31,9 @@ cppMode = fundamental
 
 haskellMode = fundamental 
    {
-    modeHL = --ExtHL (Yi.Syntax.Haskell.highlighter)
-    ExtHL (Fractal.mkHighlighter Yi.Syntax.Haskell.initState Yi.Syntax.Haskell.alexScanToken)
+    modeHL = 
+    ExtHL (Yi.Syntax.Haskell.highlighter)
+    -- ExtHL (Fractal.mkHighlighter Yi.Syntax.Haskell.initState Yi.Syntax.Haskell.alexScanToken)
    , modeIndent = autoIndentHaskellB
    }
 
