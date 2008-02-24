@@ -51,6 +51,8 @@ library
            Yi.Keymap.Vim
            Yi.Keymap.Users.Ertai
            Yi.Keymap.Users.JP
+           Yi.Modes
+           Yi.Buffer
     extensions:     CPP
     include-dirs:   Yi/Syntax
     if flag (vty)
@@ -73,7 +75,8 @@ library
         Yi.Syntax.Cplusplus, Yi.Syntax.Haskell, Yi.Syntax.LiterateHaskell,
         Yi.Syntax.Latex, Yi.Syntax.Srmc, Yi.Syntax.Cabal
 
-        Yi.Accessor, Yi.Buffer, Yi.Buffer.HighLevel, Yi.Buffer.Implementation,
+        Yi.Accessor
+        Yi.Buffer.HighLevel, Yi.Buffer.Implementation,
         Yi.Buffer.Normal, Yi.Buffer.Region, Yi.Char, Yi.Completion, Yi.Core,
         Yi.Debug, Yi.Dired, Yi.Dynamic, Yi.Editor, Yi.Eval, Yi.Event, Yi.FingerString, Yi.History,
         Yi.Indent, Yi.Interact, Yi.Kernel, Yi.Keymap, Yi.Keymap.Completion,
@@ -85,6 +88,9 @@ library
         Yi.File
         Yi.KillRing
         Yi.Syntax.Alex
+        Yi.Syntax.Fractal
+        Yi.IncrementalParse
+        Yi.Prelude
         HConf
 
 -- --         Broken:
