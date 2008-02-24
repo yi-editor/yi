@@ -1,5 +1,5 @@
 {-# OPTIONS -fglasgow-exts #-}
-module Yi.IncrementalParse (IResult, Process, Result(..), Void, upd, symbol, eof, runPolish, run, getValue, P) where
+module Yi.IncrementalParse (IResult, Process, Result(..), Void, upd, symbol, eof, runPolish, run, getValue, P, InputState(..)) where
 
 import Control.Applicative
 import Yi.Debug
@@ -69,10 +69,10 @@ instance Alternative (P s) where
 
 -- | Get the process' value (online).  Returns value, continuation and
 --   remaining input.
-evalSteps :: Steps s a (Steps s b r) -> [s] -> (a, Steps s b r, [s])
+evalSteps :: Steps s a (Steps s b r) -> [(InputState lexState,s)] -> (a, Steps s b r, [(InputState lexState,s)])
 evalSteps (Val a s) xs = (a, s, xs)
 evalSteps (Shift v) xs = let (s, xs') = front xs
-                         in evalSteps (v s) xs'
+                         in evalSteps (v $ fmap snd s) xs'
 evalSteps (Done v)  xs = evalSteps v xs
 evalSteps (Fails)   xs = (error "evalSteps: no parse", Fails, xs)
 evalSteps (App s)   xs = let (f,s',  xs')  = evalSteps s  xs
@@ -82,38 +82,53 @@ evalSteps (App s)   xs = let (f,s',  xs')  = evalSteps s  xs
 front [] = (Nothing, [])
 front (x:xs) = (Just x, xs)
 
-data Result s a r where
-    Leaf :: a -> !Int -> Steps s a r -> Result s a r
-    Una  :: !Int -> Steps s a r -> Result s a r -> Result s a r
+data InputState lexState = InputState {
+    inputStateLex :: lexState,
+    inputStateOffset :: !Int
+}
+
+data Result lexState s a r where
+    Leaf :: a -> !(InputState lexState) -> Steps s a r -> Result lexState s a r
+    Una  :: !(InputState lexState) -> Steps s a r -> Result lexState s a r -> Result lexState s a r
     Bin  :: a 
-              -> !Int
-              -> (Result s (b->a) (Steps s b r)) -- left partial result
-              -> Result s b r                    -- right partial result
-              -> Result s a r
+              -> !(InputState lexState)
+              -> (Result lexState s (b->a) (Steps s b r)) -- left partial result
+              -> Result lexState s b r                    -- right partial result
+              -> Result lexState s a r
 
 getValue (Leaf a _ _) = a
 getValue (Bin a _ _ _) = a
 getValue (Una _ _ r) = getValue r
 
-getOfs (Leaf _ o _) = o
-getOfs (Bin _ o _ _) = o
-getOfs (Una o _ _) = o
+getOfs = inputStateOffset . getInp
 
-getSteps :: Result s a r -> Steps s a r
+getInp (Leaf _ o _) = o
+getInp (Bin _ o _ _) = o
+getInp (Una o _ _) = o
+
+
+getSteps :: Result lexState s a r -> Steps s a r
 getSteps (Leaf _ _ p) = p
 getSteps (Una _ p _) = p
 getSteps (Bin _ _ l r) = App (getSteps l)
 
-bin l r = Bin ((getValue l) (getValue r)) (getOfs l) l r
+bin l r = Bin ((getValue l) (getValue r)) (getInp l) l r
 
-upd :: forall s a b r. (s -> Int) -> (Int -> [s]) -> Int -> Result s a (Steps s b r) -> (Result s a (Steps s b r), Steps s b r, [s])
-upd tokOfs source dirty p 
+upd :: forall lexState s a b r. 
+       lexState ->
+       (InputState lexState -> [(InputState lexState, s)]) -> 
+       Int -> 
+       Result lexState s a (Steps s b r) ->
+      (Result lexState s a (Steps s b r), Steps s b r, [(InputState lexState,s)])
+upd initState source dirty p 
     | getOfs p < dirty = update p
-    | otherwise        = evalResult (getSteps p) (source 0)
+    | otherwise        = evalResult (getSteps p) (source $ inpState [])
     where 
+      -- type LexerResult = [(InputState lexState,s)]
+      tokSource = map snd . source
       -- Invariant:  getOfs p < dirty (otherwise evalResult is used)
-      update :: forall a b r. Result s a (Steps s b r) 
-             -> (Result s a (Steps s b r), Steps s b r, [s])
+      update :: forall a b r. Result lexState s a (Steps s b r) 
+             -> (Result lexState s a (Steps s b r), Steps s b r, [(InputState lexState,s)])
       update (Leaf _ o p) = trace "Update: leaf" $ evalResult p (source o)
       update (Una o p r) 
           | dirty < getOfs r = evalResult p (source o)
@@ -128,20 +143,23 @@ upd tokOfs source dirty p
                  in (trace "Update: r-branch" $ bin l r', s'', xs'')
           where ro = getOfs r
 
-      evalResult :: forall a b r. Steps s a (Steps s b r) -> [s] 
-                 -> (Result s a (Steps s b r), Steps s b r, [s])
+      evalResult :: forall a b r. Steps s a (Steps s b r) -> 
+                    [(InputState lexState,s)] ->
+                    (Result lexState s a (Steps s b r), Steps s b r, [(InputState lexState,s)])
       evalResult (App s) xs = let (f, s', xs' ) = evalResult s  xs
                                   (a, s'', xs'') = evalResult s' xs'
                               in (bin f a, s'', xs'')
-      evalResult (Shift c) xs = let (sym, xs') = front xs
-                                    (a, s'', xs'') = evalResult (c sym) xs'
-                                in (Una (inpOfs xs) (Shift c) a, s'', xs'')
+      evalResult (Shift c) xs = let sym :: Maybe (InputState lexState, s)
+                                    (sym, xs') = front xs
+                                    (a, s'', xs'') = evalResult (c $ fmap snd $ sym) xs'
+                                in (Una (inpState xs) (Shift c) a, s'', xs'')
       evalResult steps xs = let (a, s', xs') = evalSteps steps xs 
-                            in (Leaf a (inpOfs xs) steps, s', xs')
+                            in (Leaf a (inpState xs) steps, s', xs')
 
-      inpOfs [] = 0 -- Hack: we'll always recreate the right spine; that's
+      inpState :: [(InputState lexState,s)] -> InputState lexState
+      inpState [] = InputState initState 0 -- Hack: we'll always recreate the right spine; that's
                     -- fine because it must always be recreated anyway.
-      inpOfs (s:_) = tokOfs s
+      inpState ((inputState,_):_) = inputState
 
 -- | Advance in the result steps, pushing results in the continuation.
 -- (Must return one of: Done, Shift, Fail)
@@ -172,7 +190,7 @@ run (P p) = p (Done Stop)
 
 type Process s a = Steps s a (Steps s Void Void)
 
-type IResult s a = Result s a (Steps s Void Void)
+type IResult lexState s a = Result lexState s a (Steps s Void Void)
 
 fst3 (x,_,_) = x
 

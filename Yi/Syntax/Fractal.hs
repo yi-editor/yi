@@ -2,7 +2,7 @@
 module Yi.Syntax.Fractal (mkHighlighter) where
 
 import Yi.Syntax
-import Yi.Syntax.Alex (AlexState)
+import Yi.Syntax.Alex (AlexState, AlexInput)
 import qualified Yi.IncrementalParse as P
 import Data.Maybe
 import qualified Data.Tree as S
@@ -44,22 +44,30 @@ parse leftSize maxSize
     -- parser would have to keep this case until the very end of input
     -- is reached.
          
-type Cache = P.IResult Stroke (Tree Stroke)
+type Cache lexState = P.IResult lexState Stroke (Tree Stroke)
 
 mkHighlighter :: forall lexState. lexState
               -> (AlexState lexState -> Maybe (Stroke, AlexState lexState))
-              -> Highlighter (Cache)
+              -> Highlighter (Cache lexState)
 mkHighlighter initState alexScanToken = 
-  Yi.Syntax.SynHL { hlStartState   = P.Leaf Leaf 0 (P.run (parse 1 100000000))
+  Yi.Syntax.SynHL { hlStartState   = P.Leaf Leaf (P.InputState initState 0) 
+                                            (P.run (parse 1 1000000000))
                   -- FIXME: max int
                   , hlRun          = run
                   , hlGetStrokes   = getS
                   }
-      where run source dirty cache = fst3 $ P.upd fst3 (tokenSource source) dirty cache
+      where run source dirty cache = fst3 $ P.upd initState (tokenSource source) dirty cache
             getS begin end cache = getStrokes begin end (P.getValue cache) []
-            tokenSource source ofs = unfoldr alexScanToken (ofs,source ofs,initState)
-            -- FIXME: Starting re-parsing with initState is wrong!
+            tokenSource :: (Int -> AlexInput) -> P.InputState lexState -> [(P.InputState lexState, Stroke)]
+            tokenSource source (P.InputState lexState ofs) 
+                = unfoldLexer alexScanToken (ofs,source ofs,lexState)
             fst3 (x,_,_) = x
+
+unfoldLexer :: (AlexState lexState -> Maybe (token, AlexState lexState)) 
+             -> AlexState lexState -> [(P.InputState lexState, token)]
+unfoldLexer f b@(ofs,_,lexState) = case f b of
+             Nothing -> []
+             Just (t, b') -> (P.InputState lexState ofs, t) : unfoldLexer f b'
 
 getStrokes :: Int -> Int -> Tree Stroke -> Endom [Stroke]
 getStrokes _ _ Leaf = id
