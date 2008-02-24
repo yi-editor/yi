@@ -124,23 +124,21 @@ upd initState source dirty p
     | getOfs p < dirty = update p
     | otherwise        = evalResult (getSteps p) (source $ inpState [])
     where 
-      -- type LexerResult = [(InputState lexState,s)]
-      tokSource = map snd . source
       -- Invariant:  getOfs p < dirty (otherwise evalResult is used)
       update :: forall a b r. Result lexState s a (Steps s b r) 
              -> (Result lexState s a (Steps s b r), Steps s b r, [(InputState lexState,s)])
       update (Leaf _ o p) = trace "Update: leaf" $ evalResult p (source o)
       update (Una o p r) 
-          | dirty < getOfs r = evalResult p (source o)
-          | otherwise = let (r', s', xs') = update r
-                        in (Una o p r', s', xs')
+          | getOfs r < dirty = let (r', s', xs') = update r
+                               in (Una o p r', s', xs')
+          | otherwise = evalResult p (source o)
       update (Bin a _ l r)
-             | dirty < ro  = let (l',s',xs') = update l
-                                 (r',s'',xs'') = evalResult s' xs'
-                             in (trace "Update: l-branch" $ bin l' r', s'', xs'') 
-             | otherwise = 
+             | getOfs r < dirty =
                  let (r',s'',xs'') = update r
                  in (trace "Update: r-branch" $ bin l r', s'', xs'')
+             | otherwise  = let (l',s',xs') = update l
+                                (r',s'',xs'') = evalResult s' xs'
+                            in (trace "Update: l-branch" $ bin l' r', s'', xs'') 
           where ro = getOfs r
 
       evalResult :: forall a b r. Steps s a (Steps s b r) -> 
