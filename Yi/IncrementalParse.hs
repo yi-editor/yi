@@ -121,8 +121,9 @@ upd :: forall lexState s a b r.
        Result lexState s a (Steps s b r) ->
       (Result lexState s a (Steps s b r), Steps s b r, [(InputState lexState,s)])
 upd initState source dirty p 
-    | getOfs p < dirty = update p
-    | otherwise        = evalResult (getSteps p) (source $ inpState [])
+    | getOfs p < dirty = trace ("Update: dirty = " ++ show dirty) $ 
+                         update p
+    | otherwise        = evalResult (getSteps p) (source $ InputState initState 0)
     where 
       -- Invariant:  getOfs p < dirty (otherwise evalResult is used)
       update :: forall a b r. Result lexState s a (Steps s b r) 
@@ -135,10 +136,12 @@ upd initState source dirty p
       update (Bin a _ l r)
              | getOfs r < dirty =
                  let (r',s'',xs'') = update r
-                 in (trace "Update: r-branch" $ bin l r', s'', xs'')
+                 in trace ("Update: r-branch" ++ (show (getOfs r))) $
+                        (bin l r', s'', xs'')
              | otherwise  = let (l',s',xs') = update l
                                 (r',s'',xs'') = evalResult s' xs'
-                            in (trace "Update: l-branch" $ bin l' r', s'', xs'') 
+                            in trace ("Update: l-branch" ++ show (getOfs r)) $ 
+                                   (bin l' r', s'', xs'') 
           where ro = getOfs r
 
       evalResult :: forall a b r. Steps s a (Steps s b r) -> 
@@ -155,8 +158,7 @@ upd initState source dirty p
                             in (Leaf a (inpState xs) steps, s', xs')
 
       inpState :: [(InputState lexState,s)] -> InputState lexState
-      inpState [] = InputState initState 0 -- Hack: we'll always recreate the right spine; that's
-                    -- fine because it must always be recreated anyway.
+      inpState [] = InputState initState maxBound
       inpState ((inputState,_):_) = inputState
 
 -- | Advance in the result steps, pushing results in the continuation.
