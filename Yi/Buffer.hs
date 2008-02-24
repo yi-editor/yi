@@ -284,7 +284,7 @@ applyUpdate update = do
   when valid $ do
        forgetPreferCol
        reversed <- queryBuffer (reverseUpdateI update)
-       modifyBuffer (applyUpdateWithMoveI update)
+       modifyBuffer (applyUpdateI update)
        modifyA undosA $ addChangeU $ AtomicChange $ reversed
        tell [update]
   -- otherwise, just ignore.
