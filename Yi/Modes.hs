@@ -1,4 +1,5 @@
-module Yi.Modes where
+module Yi.Modes (defaultFundamentalMode,
+ latexMode, cppMode, haskellMode, literateHaskellMode, cabalMode, srmcMode, defaultModeMap) where
 
 import System.FilePath
 import qualified Yi.Syntax.Haskell
@@ -10,34 +11,53 @@ import qualified Yi.Syntax.Cplusplus
 import qualified Yi.Syntax.Fractal as Fractal
 import Yi.Syntax
 import Yi.Keymap
+import qualified Yi.Interact as I
+import Yi.Indent
+import Yi.Buffer
 {- End of Imports -}
 
-cppMode = fundamentalMode {
+fundamental, defaultFundamentalMode,
+ latexMode, cppMode, haskellMode, literateHaskellMode, cabalMode, srmcMode :: Mode
+
+fundamental = Mode 
+  { 
+   bufferKeymapProcess = I.End,
+   modeHL = ExtHL noHighlighter,
+   modeKeymap = id,
+   modeIndent = autoIndentB
+  }
+
+cppMode = fundamental {
      modeHL = ExtHL (Yi.Syntax.Cplusplus.highlighter)
                           }
 
-haskellMode = fundamentalMode {
+haskellMode = fundamental {
      modeHL = ExtHL (Yi.Syntax.Haskell.highlighter)
      -- ExtHL (Fractal.mkHighlighter Yi.Syntax.Haskell.initState Yi.Syntax.Haskell.alexScanToken))
-                              }
+     , modeIndent = autoIndentHaskellB
+                          }
 
 literateHaskellMode = haskellMode {
      modeHL = ExtHL (Yi.Syntax.LiterateHaskell.highlighter)
                                   }
-cabalMode = fundamentalMode {
+cabalMode = fundamental {
      modeHL = ExtHL (Yi.Syntax.Cabal.highlighter)
 }
 
 
-latexMode = fundamentalMode {
+latexMode = fundamental {
                              modeHL = ExtHL (Yi.Syntax.Latex.highlighter)
             }
 
-srmcMode = fundamentalMode {
+srmcMode = fundamental {
                              modeHL = ExtHL (Yi.Syntax.Srmc.highlighter)
            }
 
+defaultFundamentalMode = fundamental
+
+defaultModeMap :: FilePath -> Maybe Mode
 defaultModeMap = modeFromExtension . takeExtension
+
 
 
 

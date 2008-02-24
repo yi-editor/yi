@@ -27,7 +27,7 @@ import qualified Yi.Keymap.Users.Ertai
 import Yi.UI.Common (UIBoot)
 import Yi.Debug
 import Yi.Yi hiding (file, yiConfig)
-import Yi.Modes (defaultModeMap)
+import Yi.Modes (defaultModeMap, defaultFundamentalMode)
 import Yi.Interact hiding (write)
 import qualified Yi.Interact as I
 
@@ -142,6 +142,7 @@ defaultConfig =
          , startQueuedActions = []
          , publishedActions = Yi.Yi.defaultPublishedActions
          , modeTable = defaultModeMap
+         , fundamentalMode = defaultFundamentalMode
          }
 
 openScratchBuffer :: YiM ()

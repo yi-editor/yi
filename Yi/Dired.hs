@@ -28,7 +28,6 @@ module Yi.Dired (
        ,fnewE
     ) where
 
-import Control.Monad.Trans
 import Data.List
 import Data.Maybe
 import qualified Data.Map as M
@@ -57,7 +56,7 @@ import Yi.Editor
 import Yi.Buffer.Region
 import Yi.Style
 import Yi.Syntax ( ExtHL(..), noHighlighter )
-
+import Yi.Modes (defaultFundamentalMode)
 ------------------------------------------------
 -- | If file exists, read contents of file into a new buffer, otherwise
 -- creating a new empty buffer. Replace the current window with a new
@@ -83,7 +82,8 @@ fnewE f = do
              _  -> return (bkey $ head bufsWithThisFilename)
     withGivenBuffer b $ setfileB f        -- associate buffer with file
     tbl <- asks (modeTable . yiConfig)
-    setBufferMode b (fromMaybe fundamentalMode (tbl f))
+    fundamental <- asks (fundamentalMode . yiConfig)
+    setBufferMode b (fromMaybe fundamental (tbl f))
     withEditor $ switchToBufferE b
     where
     -- Determines whether or not a given buffer is associated with
@@ -214,7 +214,8 @@ diredDirBuffer dir = do
                 setBufferMode b diredMode
                 return b
 
-diredMode = fundamentalMode {modeKeymap = diredKeymap}
+diredMode :: Mode
+diredMode = defaultFundamentalMode {modeKeymap = diredKeymap}
 
 diredRefresh :: YiM ()
 diredRefresh = do

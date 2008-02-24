@@ -45,8 +45,6 @@ import Data.Maybe
 import Control.Monad
 import Control.Applicative
 
-import Yi.Indent
-
 selfInsertKeymap :: Keymap
 selfInsertKeymap = do
   Event (KASCII c) [] <- satisfy isPrintableEvent
@@ -60,7 +58,7 @@ keymap =
 
 keys :: KList
 keys =
-  [ ( "TAB",      write $ autoIndentB)
+  [ ( "TAB",      write $ withMode $ modeIndent)
   , ( "RET",      write $ repeatingArg $ insertB '\n')
   , ( "DEL",      write $ repeatingArg $ deleteN 1)
   , ( "BACKSP",   write $ repeatingArg bdeleteB)
@@ -81,7 +79,7 @@ keys =
   , ( "C-g",      write $ unsetMarkB)
   -- , ( "C-g",   write $ keyboardQuitE)
   -- C-g should be a more general quit that also unsets the mark.
-  , ( "C-i",      write $ autoIndentB)
+  , ( "C-i",      write $ withMode $ modeIndent)
   , ( "C-j",      write $ repeatingArg $ insertB '\n')
   , ( "C-k",      write $ killLineE)
   , ( "C-m",      write $ repeatingArg $ insertB '\n')

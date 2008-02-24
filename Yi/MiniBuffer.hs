@@ -15,13 +15,14 @@ import Yi.Keymap.Emacs.Keys
 import Yi.Window
 import qualified Yi.Editor as Editor
 import qualified Yi.WindowSet as WS
-
+import Control.Monad.Reader
 
 -- | Open a minibuffer window with the given prompt and keymap
 spawnMinibufferE :: String -> KeymapEndo -> YiM () -> YiM ()
 spawnMinibufferE prompt kmMod initialAction =
     do b <- withEditor $ stringToNewBuffer prompt []
-       setBufferMode b fundamentalMode {modeKeymap = kmMod}
+       fundamental <- asks (fundamentalMode . yiConfig)
+       setBufferMode b fundamental {modeKeymap = kmMod}
        withEditor $ modifyWindows (WS.add $ Window True b 0 0 0)
        initialAction
 

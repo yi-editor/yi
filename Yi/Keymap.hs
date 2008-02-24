@@ -53,6 +53,7 @@ data Config = Config {startFrontEnd :: UI.UIBoot,
                       startQueuedActions :: [Action], -- ^ for performance testing
                       defaultKm :: Keymap,                      
                       modeTable :: String -> Maybe Mode,
+                      fundamentalMode :: Mode,
                       publishedActions :: M.Map String Action}
 
 data Mode = Mode 
@@ -66,15 +67,6 @@ data Mode = Mode
      modeKeymap :: KeymapEndo, -- ^ Buffer's local keymap modification
      modeIndent :: BufferM ()
     }
-
-fundamentalMode :: Mode
-fundamentalMode = Mode 
-  { 
-   bufferKeymapProcess = I.End,
-   modeHL = ExtHL noHighlighter,
-   modeKeymap = id,
-   modeIndent = return () -- FIXME
-  }
 
 data Yi = Yi {yiEditor :: IORef Editor,
               yiUi          :: UI,
@@ -120,9 +112,9 @@ deleteBufferMode b = modifiesRef bufferMode (M.delete b)
 getBufferMode :: BufferRef -> YiM Mode
 getBufferMode b = do
   kms <- readsRef bufferMode
-  return $ case M.lookup b kms of
-    Just bkm -> bkm
-    Nothing -> fundamentalMode
+  case M.lookup b kms of
+    Just bkm -> return bkm
+    Nothing -> asks (fundamentalMode . yiConfig)
 
 --------------------------------
 -- Uninteresting glue code
@@ -183,4 +175,3 @@ instance YiAction (EditorM x) x where
 
 instance YiAction (BufferM x) x where
     makeAction = BufferA
-
