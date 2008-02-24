@@ -24,31 +24,37 @@ fundamental = Mode
    modeIndent = autoIndentB
   }
 
-cppMode = fundamental {
-     modeHL = ExtHL (Yi.Syntax.Cplusplus.highlighter)
-                          }
+cppMode = fundamental 
+  {
+   modeHL = ExtHL (Yi.Syntax.Cplusplus.highlighter)
+  }
 
-haskellMode = fundamental {
-     modeHL = ExtHL (Yi.Syntax.Haskell.highlighter)
-     -- ExtHL (Fractal.mkHighlighter Yi.Syntax.Haskell.initState Yi.Syntax.Haskell.alexScanToken))
-     , modeIndent = autoIndentHaskellB
-                          }
+haskellMode = fundamental 
+   {
+    modeHL = --ExtHL (Yi.Syntax.Haskell.highlighter)
+    ExtHL (Fractal.mkHighlighter Yi.Syntax.Haskell.initState Yi.Syntax.Haskell.alexScanToken)
+   , modeIndent = autoIndentHaskellB
+   }
 
-literateHaskellMode = haskellMode {
-     modeHL = ExtHL (Yi.Syntax.LiterateHaskell.highlighter)
-                                  }
-cabalMode = fundamental {
-     modeHL = ExtHL (Yi.Syntax.Cabal.highlighter)
-}
+literateHaskellMode = haskellMode 
+  {
+   modeHL = ExtHL (Yi.Syntax.LiterateHaskell.highlighter)
+  }
+cabalMode = fundamental 
+  {
+    modeHL = ExtHL (Yi.Syntax.Cabal.highlighter)
+  }
 
 
-latexMode = fundamental {
-                             modeHL = ExtHL (Yi.Syntax.Latex.highlighter)
-            }
+latexMode = fundamental 
+  {
+   modeHL = ExtHL (Yi.Syntax.Latex.highlighter)
+  }
 
-srmcMode = fundamental {
-                             modeHL = ExtHL (Yi.Syntax.Srmc.highlighter)
-           }
+srmcMode = fundamental 
+   {
+    modeHL = ExtHL (Yi.Syntax.Srmc.highlighter)
+   }
 
 defaultFundamentalMode = fundamental
 
