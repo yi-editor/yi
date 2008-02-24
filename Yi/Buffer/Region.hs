@@ -45,7 +45,7 @@ readRegionB r = nelemsB (regionEnd r - i) i
     where i = regionStart r
 
 replaceRegionB :: Region -> String -> BufferM ()
-replaceRegionB r s = savingPointB $ do
+replaceRegionB r s = do
   deleteRegionB r
   insertNAt s (regionStart r)
 
@@ -54,7 +54,7 @@ mapRegionB r f = do
   text <- readRegionB r
   replaceRegionB r (map f text)
 
--- | swap the content of two Regions
+-- | Swap the content of two Regions
 swapRegionsB :: Region -> Region -> BufferM ()  
 swapRegionsB r r'
     | regionStart r > regionStart r' = swapRegionsB r' r

@@ -477,26 +477,11 @@ getPreviousNonBlankLineB =
 -- Currently unsets the mark such that we have no selection, arguably
 -- we could instead work out where the new positions should be
 -- and move the mark and point accordingly.
--- However note that we *do* move the point if it was at the end
--- of the region to point to the new end of the region.
 modifySelectionB :: (String -> String) -> BufferM ()
 modifySelectionB transform =
-     -- The difference between the selection mark and point.
-     -- used to decide if we should move the point afterwards.
-  do diff <- pointSelectionPointDiffB
-     selRegion <- getSelectRegionB
-     offset    <- modifyRegionB transform selRegion
+  do modifyRegionB transform =<< getSelectRegionB
      -- Unset the mark so that there is no selection.
-     unsetMarkB
-     -- If the point was at the end of the region then we
-     -- wisht to set it to the end of the new region such
-     -- that we are pointing to the same character as before.
-     if diff >= 0 
-        then moveN offset
-        -- If the point was at the start of the region
-        -- then it will be in the correct position anyway.  
-        else return ()
-
+     unsetMarkB -- FIXME: to remove this once the transient-selection is done.
 
 -- | A helper function for creating functions suitable for
 -- 'modifySelectionB' and 'modifyRegionB'.
