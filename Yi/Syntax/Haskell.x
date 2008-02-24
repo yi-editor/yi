@@ -8,7 +8,7 @@
 
 {
 {-# OPTIONS -w  #-}
-module Yi.Syntax.Haskell ( highlighter ) where
+module Yi.Syntax.Haskell ( highlighter, initState, alexScanToken ) where
 import Yi.Syntax.Alex
 import Yi.Style
 }
