@@ -39,6 +39,7 @@ module Yi.Core
   -- * Misc
   , changeKeymap
   , runAction
+  , withMode
   ) 
 where
 
@@ -117,7 +118,8 @@ startEditor cfg st = do
     startSubprocessId <- newIORef 1
     startSubprocesses <- newIORef M.empty
     keymaps <- newIORef M.empty
-    let yi = Yi newSt ui startThreads inCh outCh startKm keymaps startModules startSubprocessId startSubprocesses cfg
+    modes <- newIORef M.empty
+    let yi = Yi newSt ui startThreads inCh outCh startKm modes keymaps startModules startSubprocessId startSubprocesses cfg
         runYi f = runReaderT f yi
 
     runYi $ do
@@ -160,10 +162,10 @@ dispatch :: Event -> YiM ()
 dispatch ev =
     do yi <- ask
        b <- withEditor getBuffer
-       bkm <- getBufferMode b
+       mode <- getBufferMode b
+       p0 <- getBufferProcess b
        defKm <- readRef (defaultKeymap yi)
-       let p0 = bufferKeymapProcess bkm
-           freshP = I.mkAutomaton $ modeKeymap bkm $ defKm
+       let freshP = I.mkAutomaton $ modeKeymap mode $ defKm
            p = case p0 of
                  I.End  -> freshP
                  I.Fail -> freshP
@@ -181,8 +183,7 @@ dispatch ev =
                        _ -> actions
        when ambiguous $
             postActions [makeAction $ msgEditor "Keymap was in an ambiguous state! Resetting it."]
-       modifiesRef bufferMode (M.insert b bkm { bufferKeymapProcess = if ambiguous then freshP
-                                                                         else p'})
+       modifiesRef bufferProcesses (M.insert b (if ambiguous then freshP else p'))
 
 
 changeKeymap :: Keymap -> YiM ()
@@ -325,5 +326,8 @@ waitForExit ph =
                      else threadDelay (500*1000) >> waitForExit ph
 
 
-
-
+withMode :: (Show x, YiAction a x) => (Mode -> a) -> YiM ()
+withMode f = do
+            b <- withEditor Editor.getBuffer
+            mode <- getBufferMode b
+            runAction $ makeAction $ f mode

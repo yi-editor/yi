@@ -58,11 +58,7 @@ data Config = Config {startFrontEnd :: UI.UIBoot,
 
 data Mode = Mode 
     {
-     bufferKeymapProcess :: KeymapProcess, -- ^ Current state of the keymap automaton
-                                           -- HACK: this should not be part of the mode.
-                            -- BUG: this also induces a race condition, because more than 1 thread can change the bufferKeymapProcess (input and worker)
-
-   -- modeName = "fundamental",   -- ^ So this could be serialized
+     -- modeName = "fundamental", -- ^ so this could be serialized, debugged.
      modeHL :: ExtHL,
      modeKeymap :: KeymapEndo, -- ^ Buffer's local keymap modification
      modeIndent :: BufferM ()
@@ -73,8 +69,9 @@ data Yi = Yi {yiEditor :: IORef Editor,
               threads       :: IORef [ThreadId],           -- ^ all our threads
               input         :: Chan Event,                 -- ^ input stream
               output        :: Chan Action,                -- ^ output stream
-              defaultKeymap :: IORef Keymap,
-              bufferMode    :: IORef (M.Map BufferRef Mode),
+              defaultKeymap :: IORef Keymap, -- TODO: remove this in favour of using the yiConfig one.
+              bufferMode    :: IORef (M.Map BufferRef Mode), -- FIXME: mode should be stored in the Buffer, but this would create a circular dependency.
+              bufferProcesses :: IORef (M.Map BufferRef KeymapProcess), -- FIXME: should be an MVar (can be accessed both by worker and input thread)
               editorModules :: IORef [String], -- ^ modules requested by user: (e.g. ["YiConfig", "Yi.Dired"]) DEPRECATED
 
               yiSubprocessIdSource :: IORef SubprocessId,
@@ -96,18 +93,17 @@ write x = I.write (makeAction x)
 -----------------------
 -- Keymap thread handling
 
+
+-- FIXME: we never cleanup buffer mode/processes
 setBufferMode :: BufferRef -> Mode -> YiM ()
 setBufferMode b m = do
-  modifiesRef bufferMode (M.insert b m {bufferKeymapProcess = I.End})
+  modifiesRef bufferMode (M.insert b m)
   withGivenBuffer b $ setSyntaxB (modeHL m)
+  restartBufferThread b
 
 restartBufferThread :: BufferRef -> YiM ()
 restartBufferThread b = do
-  bkm <- getBufferMode b
-  modifiesRef bufferMode (M.insert b bkm {bufferKeymapProcess = I.End})
-
-deleteBufferMode :: BufferRef -> YiM ()
-deleteBufferMode b = modifiesRef bufferMode (M.delete b)
+  modifiesRef bufferProcesses (M.insert b I.End)
 
 getBufferMode :: BufferRef -> YiM Mode
 getBufferMode b = do
@@ -115,6 +111,14 @@ getBufferMode b = do
   case M.lookup b kms of
     Just bkm -> return bkm
     Nothing -> asks (fundamentalMode . yiConfig)
+
+getBufferProcess :: BufferRef -> YiM KeymapProcess
+getBufferProcess b = do
+  kms <- readsRef bufferProcesses
+  return $ case M.lookup b kms of
+    Just bkm -> bkm
+    Nothing -> I.End
+
 
 --------------------------------
 -- Uninteresting glue code

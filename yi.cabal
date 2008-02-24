@@ -79,7 +79,7 @@ library
         Yi.Indent, Yi.Interact, Yi.Kernel, Yi.Keymap, Yi.Keymap.Completion,
         Yi.Keymap.Emacs.Keys, Yi.Keymap.Emacs.KillRing, Yi.Keymap.Emacs.UnivArgument,
         Yi.Keymap.Emacs.Utils, Yi.Main, Yi.MkTemp, Yi.Monad, Yi.Process,
-        Yi.Search, Yi.String, Yi.Style, Yi.Syntax, Yi.Syntax.Table, Yi.Templates, Yi.TextCompletion,
+        Yi.Search, Yi.String, Yi.Style, Yi.Syntax, Yi.Templates, Yi.TextCompletion,
         Yi.UI.Common, Yi.Undo, Yi.Window, Yi.WindowSet
         Yi.MiniBuffer
         Yi.File

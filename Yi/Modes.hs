@@ -11,9 +11,7 @@ import qualified Yi.Syntax.Cplusplus
 import qualified Yi.Syntax.Fractal as Fractal
 import Yi.Syntax
 import Yi.Keymap
-import qualified Yi.Interact as I
 import Yi.Indent
-import Yi.Buffer
 {- End of Imports -}
 
 fundamental, defaultFundamentalMode,
@@ -21,7 +19,6 @@ fundamental, defaultFundamentalMode,
 
 fundamental = Mode 
   { 
-   bufferKeymapProcess = I.End,
    modeHL = ExtHL noHighlighter,
    modeKeymap = id,
    modeIndent = autoIndentB
