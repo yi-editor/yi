@@ -28,6 +28,7 @@ module Yi.Buffer
   , offsetFromSol
   , leftB
   , rightB
+  , moveN
   , leftN
   , rightN
   , insertN
@@ -47,6 +48,7 @@ module Yi.Buffer
   , redoB
   , getMarkB
   , getSelectionMarkB
+  , pointSelectionPointDiffB
   , getMarkPointB
   , setMarkPointB
   , unsetMarkB
@@ -368,13 +370,34 @@ getMarkB = queryAndModify . getMarkBI
 getSelectionMarkB :: BufferM Mark
 getSelectionMarkB = queryBuffer getSelectionMarkBI
 
+-- | Returns the current difference in the selection point
+-- and the current point. This will be negative if the point
+-- ABOVE the selection point.
+-- This can be therefore used to test which is above or below.
+-- eg (do offset <- pointSelectionPointDiffB
+--        if offset < 0
+--           then point is above selection mark
+--           else point is at below the selection mark.
+pointSelectionPointDiffB :: BufferM Int
+pointSelectionPointDiffB =
+  do m <- getMarkPointB =<< getSelectionMarkB
+     p <- pointB
+     return (p - m)
+
+
+
+-- | Move point by the given offset.
+-- A negative offset moves left a positive one right.
+moveN :: Int -> BufferM ()
+moveN n = pointB >>= \p -> moveTo (p + n)
+
 -- | Move point -1
 leftB :: BufferM ()
 leftB = leftN 1
 
 -- | Move cursor -n
 leftN :: Int -> BufferM ()
-leftN n = pointB >>= \p -> moveTo (p - n)
+leftN n = moveN (-n)
 
 -- | Move cursor +1
 rightB :: BufferM ()
@@ -382,7 +405,7 @@ rightB = rightN 1
 
 -- | Move cursor +n
 rightN :: Int -> BufferM ()
-rightN n = pointB >>= \p -> moveTo (p + n)
+rightN = moveN
 
 -- ---------------------------------------------------------------------
 -- Line based movement and friends

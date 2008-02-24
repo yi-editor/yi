@@ -475,13 +475,27 @@ getPreviousNonBlankLineB =
 
 -- | Uses a string modifying function to modify the current selection
 -- Currently unsets the mark such that we have no selection, arguably
--- we could insteady work out where the new positions should be
+-- we could instead work out where the new positions should be
 -- and move the mark and point accordingly.
+-- However note that we *do* move the point if it was at the end
+-- of the region to point to the new end of the region.
 modifySelectionB :: (String -> String) -> BufferM ()
 modifySelectionB transform =
-  do selRegion <- getSelectRegionB
-     modifyRegionB transform selRegion
+     -- The difference between the selection mark and point.
+     -- used to decide if we should move the point afterwards.
+  do diff <- pointSelectionPointDiffB
+     selRegion <- getSelectRegionB
+     offset    <- modifyRegionB transform selRegion
+     -- Unset the mark so that there is no selection.
      unsetMarkB
+     -- If the point was at the end of the region then we
+     -- wisht to set it to the end of the new region such
+     -- that we are pointing to the same character as before.
+     if diff >= 0 
+        then moveN offset
+        -- If the point was at the start of the region
+        -- then it will be in the correct position anyway.  
+        else return ()
 
 
 -- | A helper function for creating functions suitable for
@@ -510,7 +524,10 @@ searchReplaceRegionB ::
                        String -- ^ The String to search for
                     -> String -- ^ The String to replace it with
                     -> Region -- ^ The region to perform this over
-                    -> BufferM ()
+                       -- The int contained is the difference
+                       -- in lengths between the region before and
+                       -- after the substitution.
+                    -> BufferM Int
 searchReplaceRegionB from to =
   modifyRegionB $ substituteInList from to
 
