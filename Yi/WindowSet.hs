@@ -26,7 +26,7 @@ instance Functor WindowSet where
     fmap f (WindowSet b c a) = WindowSet (fmap f b) (f c) (fmap f a)
 
 instance Traversable WindowSet where
-    traverse f (WindowSet b c a) = WindowSet <$> traverse f (reverse b) <*> f c <*> traverse f a
+    traverse f (WindowSet b c a) = WindowSet <$> (reverse <$> traverse f (reverse b)) <*> f c <*> traverse f a
 
 currentA :: Accessor (WindowSet a) a
 currentA = Accessor current modifyCurrent
