@@ -18,7 +18,7 @@ import Yi.KillRing
 -- * Killring actions
 
 
---- | C-w
+-- | C-w
 killRegionE :: YiM ()
 killRegionE = do r <- withBuffer getSelectRegionB
                  text <- withBuffer $ readRegionB r

@@ -72,13 +72,13 @@ p `inRegion` (Region start stop) = start <= p && p < stop
 
 -- | Modifies the given region according to the given
 -- string transformation function
-modifyRegionB :: -- | The string modification function
-                (String -> String)
-                -- | The region to modify
-             -> Region
-                -- | The returned buffer action, the Int contained
-                -- is the difference in length of the two regions.
-             -> BufferM Int
+modifyRegionB :: (String -> String)
+                 -- ^ The string modification function
+              -> Region
+                 -- ^ The region to modify
+              -> BufferM Int
+                 -- ^ The returned buffer action, the 'Int' contained
+                 -- is the difference in length of the two regions.
 modifyRegionB transform region =
   do text <- readRegionB region
      let newText = transform text

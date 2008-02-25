@@ -21,15 +21,15 @@ data Accessor whole part
 -- import Prelude hiding (id,(.))
 --
 -- instance Category (->) where
--- 	id = Prelude.id
--- 	(.) = (Prelude..)
+--   id = Prelude.id
+--   (.) = (Prelude..)
 --
 -- class Category cat where
--- 	-- | the identity morphism
--- 	id :: cat a a
+--   -- | the identity morphism
+--   id :: cat a a
 --
--- 	-- | morphism composition
--- 	(.) :: cat b c -> cat a b -> cat a c
+--   -- | morphism composition
+--   (.) :: cat b c -> cat a b -> cat a c
 --
 -- instance Category Accessor where
 --     id = Accessor id id
