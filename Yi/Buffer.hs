@@ -89,6 +89,22 @@ import Control.Applicative
 import Control.Monad.RWS.Strict
 import Data.List (elemIndex)
 
+#ifdef TESTING
+import Test.QuickCheck
+import Driver ()
+
+instance Arbitrary FBuffer where
+    arbitrary = do b0 <- return (newB 0 "*buffername*") `ap` arbitrary
+                   p0 <- arbitrary
+                   return $ snd $ runBufferDummyWindow b0 (moveTo p0)
+
+-- TODO: make this compile.
+-- prop_replace_point b = snd $ runBufferDummyWindow b $ do
+--   p0 <- pointB
+--   replaceRegionB r
+--   p1 <- pointB
+--   return $ (p1 - p0) == ...
+#endif
 
 -- In addition to Buffer's text, this manages (among others):
 --  * Log of updates mades
@@ -106,6 +122,8 @@ data FBuffer =
                 , preferCol :: !(Maybe Int)       -- ^ prefered column to arrive at when we do a lineDown / lineUp
                 ,pendingUpdates :: [Update]       -- ^ updates that haven't been synched in the UI yet
                 }
+
+
 
 
 rawbufA :: Accessor (FBuffer) (BufferImpl)
