@@ -4,7 +4,7 @@
 -- declares its own types, any wrapper must have the highlighter in scope...
 -- so it must be included.  Doubleplusyuck.
 
-alexScanToken :: AlexState HlState -> Maybe (Stroke, AlexState HlState)
+alexScanToken :: AlexState HlState -> Maybe ((Int,Token,Int), AlexState HlState)
 alexScanToken (idx,inp,state) = case alexScan inp (stateToInit state) of
 		AlexEOF -> Nothing
 		AlexError _ -> error "lexical error"
@@ -13,8 +13,6 @@ alexScanToken (idx,inp,state) = case alexScan inp (stateToInit state) of
                     let (state', style) = act (takeLB (fromIntegral len) inp) state 
                     in Just ((idx,style,idx+len), (idx + len,inp',state'))
 
-highlighter = mkHighlighter initState alexScanToken
-
-c = colorConst
-m = colorAndModify
+c = actionConst
+m = actionAndModify
 

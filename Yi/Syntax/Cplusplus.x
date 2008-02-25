@@ -5,7 +5,7 @@
 
 {
 {-# OPTIONS -w  #-}
-module Yi.Syntax.Cplusplus ( highlighter ) where
+module Yi.Syntax.Cplusplus ( initState, alexScanToken ) where
 {- Standard Library Modules Imported -}
 import Yi.Syntax.Alex
 {- External Library Modules Imported -}
@@ -212,11 +212,12 @@ haskell :-
 {
 
 type HlState = Int
-
+type Token = Style
 
 stateToInit x | x < 0     = nestcomm
               | otherwise = 0
 
+initState :: HlState
 initState = 0
 
 #include "alex.hsinc"

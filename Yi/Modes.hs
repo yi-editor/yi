@@ -2,16 +2,18 @@ module Yi.Modes (defaultFundamentalMode,
  latexMode, cppMode, haskellMode, literateHaskellMode, cabalMode, srmcMode, defaultModeMap) where
 
 import System.FilePath
-import qualified Yi.Syntax.Haskell
-import qualified Yi.Syntax.LiterateHaskell (highlighter)
-import qualified Yi.Syntax.Latex
-import qualified Yi.Syntax.Srmc
-import qualified Yi.Syntax.Cabal
-import qualified Yi.Syntax.Cplusplus
+import qualified Yi.Syntax.Haskell             as Haskell
+import qualified Yi.Syntax.LiterateHaskell     as LiterateHaskell
+import qualified Yi.Syntax.Latex               as Latex
+import qualified Yi.Syntax.Srmc                as Srmc
+import qualified Yi.Syntax.Cabal               as Cabal
+import qualified Yi.Syntax.Cplusplus           as Cplusplus
 import qualified Yi.Syntax.Fractal as Fractal
+import qualified Yi.Syntax.Alex as Alex
 import Yi.Syntax
 import Yi.Keymap
 import Yi.Indent
+import Control.Arrow (first)
 {- End of Imports -}
 
 fundamental, defaultFundamentalMode,
@@ -26,35 +28,36 @@ fundamental = Mode
 
 cppMode = fundamental 
   {
-   modeHL = ExtHL (Yi.Syntax.Cplusplus.highlighter)
+   modeHL = ExtHL (Alex.mkHighlighter Cplusplus.initState Cplusplus.alexScanToken)
   }
 
 haskellMode = fundamental 
    {
     modeHL = 
-    ExtHL (Yi.Syntax.Haskell.highlighter)
-    -- ExtHL (Fractal.mkHighlighter Yi.Syntax.Haskell.initState Yi.Syntax.Haskell.alexScanToken)
+    ExtHL (Alex.mkHighlighter Haskell.initState (fmap (first tokenToStroke) . Haskell.alexScanToken))
+    -- ExtHL (Fractal.mkHighlighter Haskell.initState Haskell.alexScanToken tokenToStroke)
    , modeIndent = autoIndentHaskellB
    }
+    where tokenToStroke (l,t,r) = (l,Haskell.tokenToStyle t,r)
 
 literateHaskellMode = haskellMode 
   {
-   modeHL = ExtHL (Yi.Syntax.LiterateHaskell.highlighter)
-  }
-cabalMode = fundamental 
-  {
-    modeHL = ExtHL (Yi.Syntax.Cabal.highlighter)
+   modeHL = ExtHL (Alex.mkHighlighter LiterateHaskell.initState LiterateHaskell.alexScanToken)
   }
 
+cabalMode = fundamental 
+  {
+    modeHL = ExtHL (Alex.mkHighlighter Cabal.initState Cabal.alexScanToken)
+  }
 
 latexMode = fundamental 
   {
-   modeHL = ExtHL (Yi.Syntax.Latex.highlighter)
+   modeHL = ExtHL (Alex.mkHighlighter Latex.initState Latex.alexScanToken)
   }
 
 srmcMode = fundamental 
    {
-    modeHL = ExtHL (Yi.Syntax.Srmc.highlighter)
+    modeHL = ExtHL (Alex.mkHighlighter Srmc.initState Srmc.alexScanToken)
    }
 
 defaultFundamentalMode = fundamental

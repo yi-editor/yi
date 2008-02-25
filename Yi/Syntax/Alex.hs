@@ -3,19 +3,18 @@
 module Yi.Syntax.Alex (mkHighlighter, 
                        alexGetChar, alexInputPrevChar,
                        AlexState, AlexInput, Stroke,
-                       takeLB, colorConst, colorAndModify) where
+                       takeLB, actionConst, actionAndModify) where
 
 import Data.List
 import Data.Int
 import qualified Data.ByteString.Lazy.Char8 as LB
 import Yi.Syntax
-import Yi.Style
 
 takeLB :: Int64 -> LB.ByteString -> LB.ByteString
 takeLB = LB.take
 
 type AlexInput  = LB.ByteString
-type Action hlState = AlexInput -> hlState -> (hlState, Style)
+type Action hlState token = AlexInput -> hlState -> (hlState, token)
 type State hlState = (hlState, [Stroke])
 type AlexState hlState = (Int, AlexInput, hlState)
 type Result = [Stroke]
@@ -26,11 +25,11 @@ alexGetChar bs | LB.null bs = Nothing
 alexInputPrevChar :: AlexInput -> Char
 alexInputPrevChar = undefined
 
-colorConst :: Style -> Action a
-colorConst color _str state = (state, color)
+actionConst :: token -> Action lexState token
+actionConst token _str state = (state, token)
 
-colorAndModify :: (s -> s) -> Style -> Action s
-colorAndModify modifier color _str state = (modifier state, color)
+actionAndModify :: (lexState -> lexState) -> token -> Action lexState token
+actionAndModify modifier token _str state = (modifier state, token)
 
 
 data Cache s = Cache  

@@ -9,7 +9,7 @@
 
 {
 {-# OPTIONS -w  #-}
-module Yi.Syntax.Latex ( highlighter ) where
+module Yi.Syntax.Latex ( initState, alexScanToken ) where
 import Yi.Syntax.Alex
 import Yi.Style
 }
@@ -100,7 +100,10 @@ type HlState = Int
 -}
 stateToInit x = 0
 
+initState :: HlState
 initState = 0
+
+type Token = Style
 
 #include "alex.hsinc"
 }

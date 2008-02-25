@@ -44,12 +44,14 @@ parse leftSize maxSize
     -- parser would have to keep this case until the very end of input
     -- is reached.
          
-type Cache lexState = P.IResult lexState Stroke (Tree Stroke)
+type T token = (Int,token,Int)
+type Cache lexState token = P.IResult lexState (T token) (Tree (T token))
 
-mkHighlighter :: forall lexState. lexState
-              -> (AlexState lexState -> Maybe (Stroke, AlexState lexState))
-              -> Highlighter (Cache lexState)
-mkHighlighter initState alexScanToken = 
+mkHighlighter :: forall lexState token. lexState
+              -> (AlexState lexState -> Maybe (T token, AlexState lexState))
+              -> (T token -> Stroke)
+              -> Highlighter (Cache lexState token)
+mkHighlighter initState alexScanToken tokenToStroke = 
   Yi.Syntax.SynHL { hlStartState   = P.Leaf Leaf (P.InputState initState 0) 
                                             (P.run (parse 1 1000000000))
                   -- FIXME: max int
@@ -57,11 +59,23 @@ mkHighlighter initState alexScanToken =
                   , hlGetStrokes   = getS
                   }
       where run source dirty cache = fst3 $ P.upd initState (tokenSource source) dirty cache
-            getS begin end cache = getStrokes begin end (P.getValue cache) []
-            tokenSource :: (Int -> AlexInput) -> P.InputState lexState -> [(P.InputState lexState, Stroke)]
+            getS begin end cache = fmap tokenToStroke $ getStrokes begin end (P.getValue cache) []
+            tokenSource :: (Int -> AlexInput) -> P.InputState lexState -> [(P.InputState lexState, T token)]
             tokenSource source (P.InputState lexState ofs) 
                 = unfoldLexer alexScanToken (ofs,source ofs,lexState)
             fst3 (x,_,_) = x
+
+            getStrokes :: Int -> Int -> Tree (T token) -> Endom [T token]
+            getStrokes _ _ Leaf = id
+            getStrokes _     end (Node (i,_,_) _ _) 
+                | end < i = id
+            getStrokes begin end (Node s lc Leaf) 
+                = (s :) . getStrokes begin end lc
+            getStrokes begin end (Node s _ rc@(Node (i,_,_) _ _))
+                | i < begin = (s :) . getStrokes begin end rc
+            getStrokes begin end (Node s lc rc)
+                = (s :) . getStrokes begin end lc . getStrokes begin end rc
+
 
 unfoldLexer :: (AlexState lexState -> Maybe (token, AlexState lexState)) 
              -> AlexState lexState -> [(P.InputState lexState, token)]
@@ -69,15 +83,5 @@ unfoldLexer f b@(ofs,_,lexState) = case f b of
              Nothing -> []
              Just (t, b') -> (P.InputState lexState ofs, t) : unfoldLexer f b'
 
-getStrokes :: Int -> Int -> Tree Stroke -> Endom [Stroke]
-getStrokes _ _ Leaf = id
-getStrokes _     end (Node (i,_,_) _ _) 
-    | end < i = id
-getStrokes begin end (Node s lc Leaf) 
-    = (s :) . getStrokes begin end lc
-getStrokes begin end (Node s _ rc@(Node (i,_,_) _ _))
-    | i < begin = (s :) . getStrokes begin end rc
-getStrokes begin end (Node s lc rc)
-    = (s :) . getStrokes begin end lc . getStrokes begin end rc
 
 

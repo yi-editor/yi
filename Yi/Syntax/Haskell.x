@@ -8,7 +8,7 @@
 
 {
 {-# OPTIONS -w  #-}
-module Yi.Syntax.Haskell ( highlighter, initState, alexScanToken ) where
+module Yi.Syntax.Haskell ( initState, alexScanToken, tokenToStyle ) where
 import Yi.Syntax.Alex
 import Yi.Style
 }
@@ -70,10 +70,10 @@ haskell :-
 <0> $white+                                     ;
 
 <nestcomm> {
-  "{-"                                          { m (subtract 1) commentStyle }
-  "-}"                                          { m (+1) commentStyle }
+  "{-"                                          { m (subtract 1) Comment }
+  "-}"                                          { m (+1) Comment }
   $white+                                       ; -- whitespace
-  .                                             { c commentStyle }
+  .                                             { c Comment }
 }
 
 <0> {
@@ -82,49 +82,69 @@ haskell :-
 -- Note that we have to dissallow '-' as a symbol char for the first one
 -- of these because we may have -------- which would stilljust be the 
 -- start of a comment.
-  "--"\-* [$symbol # \-] $symchar*              { c defaultStyle }
+  "--"\-* [$symbol # \-] $symchar*              { c Operator }
 -- The next rule allows for the start of a comment basically
 -- it is -- followed by anything which isn't a symbol character
 -- (OR more '-'s). So for example "-----:" is still the start of a comment.
-  "--"~[$symbol # \-][^$nl]*                    { c commentStyle }
+  "--"~[$symbol # \-][^$nl]*                    { c Comment }
 -- Finally because the above rule had to add in a non symbol character 
 -- it's also possible that we have just finishing a line,
 -- people sometimes do this for example  when breaking up paragraphs
 -- in a long comment.
-  "--"$nl                                       { c commentStyle }
+  "--"$nl                                       { c Comment }
 
- "{-"                                           { m (subtract 1) commentStyle }
+ "{-"                                           { m (subtract 1) Comment }
 
- $special                                       { c defaultStyle }
+ $special                                       { c Special }
 
- @reservedid                                    { c keywordStyle }
- @varid                                         { c defaultStyle }
- @conid                                         { c upperIdStyle }
+ @reservedid                                    { c Reserved }
+ @varid                                         { c VarIdent }
+ @conid                                         { c ConsIdent }
 
- @reservedop                                    { c operatorStyle }
- @varsym                                        { c operatorStyle }
- @consym                                        { c upperIdStyle }
+ @reservedop                                    { c Operator }
+ @varsym                                        { c Operator }
+ @consym                                        { c ConsOperator }
 
  @decimal 
   | 0[oO] @octal
-  | 0[xX] @hexadecimal                          { c defaultStyle }
+  | 0[xX] @hexadecimal                          { c Number }
 
  @decimal \. @decimal @exponent?
-  | @decimal @exponent                          { c defaultStyle }
+  | @decimal @exponent                          { c Number }
 
- \' ($graphic # [\'\\] | " " | @escape) \'      { c stringStyle }
- \" @string* \"                                 { c stringStyle }
- .                                              { c operatorStyle }
+ \' ($graphic # [\'\\] | " " | @escape) \'      { c CharTok }
+ \" @string* \"                                 { c StringTok }
+ .                                              { c Operator }
 }
 
 {
 
-
 type HlState = Int
+
+data Token = Number | CharTok | StringTok | VarIdent | ConsIdent
+           | Reserved | ReservedOp | Special
+           | ConsOperator | Operator
+           | Comment 
+
+tokenToStyle :: Token -> Style 
+tokenToStyle tok = case tok of
+  Number       -> defaultStyle
+  CharTok      -> stringStyle
+  StringTok    -> stringStyle
+  VarIdent     -> defaultStyle
+  ConsIdent    -> upperIdStyle
+  ReservedOp   -> operatorStyle
+  Reserved     -> keywordStyle
+  Special      -> defaultStyle
+  ConsOperator -> upperIdStyle
+  Operator     -> operatorStyle
+  Comment      -> commentStyle
+
 
 stateToInit x | x < 0     = nestcomm
               | otherwise = 0
 
+initState :: HlState
 initState = 0
 
 #include "alex.hsinc"

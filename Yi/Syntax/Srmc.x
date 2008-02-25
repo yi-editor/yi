@@ -9,7 +9,7 @@
 
 {
 {-# OPTIONS -w  #-}
-module Yi.Syntax.Srmc ( highlighter ) where
+module Yi.Syntax.Srmc ( initState, alexScanToken ) where
 {- Local Modules Imported -}
 import Yi.Syntax.Alex
 import qualified Yi.Syntax
@@ -110,13 +110,14 @@ haskell :-
 {
 
 type HlState = Int
+type Token = Style
 
 {- 
   See Haskell.x which uses this to say whether we are in a
   comment (perhaps a nested comment) or not.
 -}
 stateToInit x = 0
-
+initState :: HlState
 initState = 0
 
 #include "alex.hsinc"

@@ -10,7 +10,7 @@
 
 {
 {-# OPTIONS -w  #-}
-module Yi.Syntax.LiterateHaskell ( highlighter ) where
+module Yi.Syntax.LiterateHaskell ( initState, alexScanToken ) where
 import Yi.Syntax.Alex
 import Yi.Style
 }
@@ -165,7 +165,7 @@ haskell :-
 }
 
 {
-
+type Token = Style
 data HlState = CodeBlock
              | CodeLine
              | Comment { unComment :: HlState }

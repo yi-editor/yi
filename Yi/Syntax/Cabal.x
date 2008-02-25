@@ -9,7 +9,7 @@
 {
 {-# OPTIONS -w  #-}
 module Yi.Syntax.Cabal
-  ( highlighter ) 
+  ( initState, alexScanToken ) 
 where
 import Yi.Syntax.Alex
 import Yi.Style
@@ -163,13 +163,13 @@ haskell :-
 }
 
 {
-
-
 type HlState = Int
+type Token = Style
 
 stateToInit x | x < 0     = nestcomm
               | otherwise = 0
 
+initState :: HlState
 initState = 0
 
 #include "alex.hsinc"
