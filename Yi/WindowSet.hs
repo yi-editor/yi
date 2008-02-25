@@ -14,10 +14,19 @@ import Data.Foldable
 import Data.Traversable
 import Data.Monoid
 import Control.Applicative
+import Control.Monad
 import Yi.Accessor
+#ifdef TESTING
+import Test.QuickCheck
+
+
+instance Arbitrary a => Arbitrary (WindowSet a) where
+    arbitrary = return WindowSet `ap` arbitrary `ap` arbitrary `ap` arbitrary
+
+#endif
 
 data WindowSet a = WindowSet { before::[a], current::a, after :: [a] }
-    deriving (Show)
+    deriving (Show, Eq)
 
 instance Foldable WindowSet where
     foldMap f (WindowSet b c a) = getDual (foldMap (Dual . f) b) `mappend` (f c) `mappend` foldMap f a

@@ -31,6 +31,10 @@ import Yi.Modes (defaultModeMap, defaultFundamentalMode)
 import Yi.Interact hiding (write)
 import qualified Yi.Interact as I
 
+#ifdef TESTING
+import qualified TestSuite
+#endif
+
 #ifdef FRONTEND_COCOA
 import qualified Yi.UI.Cocoa
 import Foundation (withAutoreleasePool)
@@ -87,6 +91,7 @@ data Opts = Help
           | File String
           | Frontend String
           | ConfigFile String
+          | SelfCheck
 
 -- | List of editors for which we provide an emulation.
 editors :: [(String,Keymap)]
@@ -96,13 +101,12 @@ editors = [("emacs", Emacs.keymap),
 
 options :: [OptDescr Opts]
 options = [
+    Option []     ["self-check"]  (NoArg SelfCheck) "run self-checks",
     Option ['f']  ["frontend"]    (ReqArg Frontend "[frontend]")
         ("Select frontend, which can be one of:\n" ++
          (concat . intersperse ", ") frontendNames),
     Option ['y']  ["config-file"] (ReqArg ConfigFile  "path") "Specify a configuration file",
     Option ['V']  ["version"]     (NoArg Version) "Show version information",
-    Option ['B']  ["libdir"]      (ReqArg OptIgnore "libdir") "Path to runtime libraries",
-    Option ['b']  ["bindir"]      (ReqArg OptIgnore "bindir") "Path to runtime library binaries\n(default: libdir)",
     Option ['h']  ["help"]        (NoArg Help)    "Show this help",
     Option ['l']  ["line"]        (ReqArg LineNo "[num]") "Start on line number",
     Option []     ["as"]          (ReqArg EditorNm "[editor]")
@@ -188,6 +192,10 @@ main cfg = do
        withAutoreleasePool $ do
 #endif
          args <- getArgs
+#ifdef TESTING
+         when ("--self-check" `elem` args)
+              TestSuite.main
+#endif
          case do_args cfg args of
               Left (Err err code) -> do putStrLn err
                                         exitWith code
