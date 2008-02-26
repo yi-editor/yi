@@ -7,7 +7,7 @@
 module Yi.UI.Gtk (start) where
 
 import Prelude hiding (error, sequence_, elem, mapM_, mapM, concatMap)
-
+import Yi.Accessor
 import Yi.Buffer.Implementation (inBounds, Update(..))
 import Yi.Buffer
 import qualified Yi.Editor as Editor
@@ -150,8 +150,8 @@ processEvent ch ev = do
   return True
 
 gtkToYiEvent :: Gtk.Event -> Maybe Event
-gtkToYiEvent (Key {eventKeyName = keyName, eventModifier = modifier, eventKeyChar = char})
-    = fmap (\k -> Event k $ (nub $ (if isShift then filter (not . (== MShift)) else id) $ concatMap modif modifier)) key'
+gtkToYiEvent (Key {eventKeyName = keyName, eventModifier = evModifier, eventKeyChar = char})
+    = fmap (\k -> Event k $ (nub $ (if isShift then filter (not . (== MShift)) else id) $ concatMap modif evModifier)) key'
       where (key',isShift) =
                 case char of
                   Just c -> (Just $ KASCII c, True)
@@ -361,10 +361,15 @@ refresh ui e = do
 
            let (p0, _) = runBufferDummyWindow buf pointB
            let (p1, _) = runBufferDummyWindow buf (getSelectionMarkB >>= getMarkPointB)
-           insertMark <- textBufferGetInsert gtkBuf
+           let (showSel, _) = runBufferDummyWindow buf (getA highlightSelectionA)
            i <- textBufferGetIterAtOffset gtkBuf p0
-           i' <- textBufferGetIterAtOffset gtkBuf p1
-           textBufferSelectRange gtkBuf i i'
+           if showSel 
+              then do
+                 i' <- textBufferGetIterAtOffset gtkBuf p1
+                 textBufferSelectRange gtkBuf i i'
+              else do
+                 textBufferPlaceCursor gtkBuf i
+           insertMark <- textBufferGetInsert gtkBuf
            textViewScrollMarkOnscreen (textview w) insertMark
            let (txt, _) = runBufferDummyWindow buf getModeLine
            set (modeline w) [labelText := txt]
