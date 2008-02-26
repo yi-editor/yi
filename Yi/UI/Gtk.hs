@@ -10,6 +10,7 @@ import Prelude hiding (error, sequence_, elem, mapM_, mapM, concatMap)
 import Yi.Accessor
 import Yi.Buffer.Implementation (inBounds, Update(..))
 import Yi.Buffer
+import Yi.Buffer.HighLevel (setSelectionMarkPointB)
 import qualified Yi.Editor as Editor
 import Yi.Editor hiding (windows)
 import qualified Yi.Window as Window
@@ -239,12 +240,13 @@ handleClick ui w event = do
         case (eventClick event, eventButton event) of
           (SingleClick, LeftButton) -> do
               focusWindow
-              withGivenBuffer0 b $ moveTo p1 -- as a side effect we forget the prefered column
+              withGivenBuffer0 b $ do moveTo p1 -- as a side effect we forget the prefered column
+                                      setVisibleSelection True
           (SingleClick, _) -> focusWindow
           (ReleaseClick, LeftButton) -> do
             p0 <- withGivenBuffer0 b $ pointB
             if p1 == p0
-              then withGivenBuffer0 b unsetMarkB
+              then withGivenBuffer0 b $ setVisibleSelection False
               else do txt <- withGivenBuffer0 b $ do m <- getSelectionMarkB
                                                      setMarkPointB m p1
                                                      let [i,j] = sort [p1,p0]
@@ -253,7 +255,7 @@ handleClick ui w event = do
           (ReleaseClick, MiddleButton) -> do
             txt <- getRegE
             withGivenBuffer0 b $ do
-              unsetMarkB
+              pointB >>= setSelectionMarkPointB
               moveTo p1
               insertN txt
 

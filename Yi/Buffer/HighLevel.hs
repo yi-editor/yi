@@ -478,10 +478,7 @@ getPreviousNonBlankLineB =
 -- we could instead work out where the new positions should be
 -- and move the mark and point accordingly.
 modifySelectionB :: (String -> String) -> BufferM ()
-modifySelectionB transform =
-  do modifyRegionB transform =<< getSelectRegionB
-     -- Unset the mark so that there is no selection.
-     unsetMarkB -- FIXME: to remove this once the transient-selection is done.
+modifySelectionB transform = modifyRegionB transform =<< getSelectRegionB
 
 -- | A helper function for creating functions suitable for
 -- 'modifySelectionB' and 'modifyRegionB'.
@@ -512,7 +509,7 @@ searchReplaceRegionB ::
                        -- The int contained is the difference
                        -- in lengths between the region before and
                        -- after the substitution.
-                    -> BufferM Int
+                    -> BufferM ()
 searchReplaceRegionB from to =
   modifyRegionB $ substituteInList from to
 

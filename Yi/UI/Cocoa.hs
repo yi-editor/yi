@@ -204,7 +204,7 @@ ytv_mouseDown event self = do
   runbuf $ do
     if p1 == p2
       then do
-        unsetMarkB -- Should really be called unsetSelectionMarkB?
+        setVisibleSelection False
         moveTo p1
       else if abs (startIndex - p2) < min (abs (startIndex - p1)) 2
         then setSelectionMarkPointB p2 >> moveTo p1

@@ -51,7 +51,7 @@ module Yi.Buffer
   , pointSelectionPointDiffB
   , getMarkPointB
   , setMarkPointB
-  , unsetMarkB
+  , setVisibleSelection
   , isUnchangedB
   , setSyntaxB
   , regexB
@@ -386,6 +386,9 @@ getMarkPointB = queryBuffer . getMarkPointBI
 
 unsetMarkB :: BufferM ()
 unsetMarkB = modifyBuffer unsetMarkBI
+
+setVisibleSelection :: Bool -> BufferM ()
+setVisibleSelection = setA highlightSelectionA
 
 getMarkB :: Maybe String -> BufferM Mark
 getMarkB = queryAndModify . getMarkBI

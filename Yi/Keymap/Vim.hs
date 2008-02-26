@@ -57,7 +57,6 @@ type VimProc a = (Interact Char) a
 -- | Top level
 keymap :: Keymap
 keymap = do write $ do setWindowFillE '~'
-                       withBuffer0 unsetMarkB
                        setWindowStyleE defaultVimUiStyle
             runVim cmd_mode
 
@@ -97,7 +96,7 @@ vis_mode :: RegionStyle -> VimMode
 vis_mode regionStyle = do
   write (withBuffer (pointB >>= setSelectionMarkPointB))
   core_vis_mode regionStyle
-  write (msgClr >> withBuffer unsetMarkB >> withBuffer (setDynamicB $ SelectionStyle Character))
+  write (msgClr >> withBuffer (setVisibleSelection False) >> withBuffer (setDynamicB $ SelectionStyle Character))
 
 core_vis_mode :: RegionStyle -> VimMode
 core_vis_mode regionStyle = do
@@ -419,7 +418,7 @@ pasteBefore = do
 --
 vis_single :: RegionStyle -> VimMode
 vis_single regionStyle =
-        let beginIns a = do write (a >> withBuffer0 unsetMarkB) >> ins_mode
+        let beginIns a = do write (a >> withBuffer0 (setVisibleSelection False)) >> ins_mode
         in choice [
             event '\ESC' >> return (),
             event 'V'    >> change_vis_mode regionStyle LineWise,

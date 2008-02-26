@@ -23,7 +23,6 @@ killRegionE :: YiM ()
 killRegionE = do r <- withBuffer getSelectRegionB
                  text <- withBuffer $ readRegionB r
                  killringPut text
-                 withBuffer unsetMarkB
                  withBuffer $ deleteRegionB r
 
 -- | C-k
@@ -52,13 +51,11 @@ yankE :: EditorM ()
 yankE = do (text:_) <- getsA killringA krContents
            withBuffer0 $ do pointB >>= setSelectionMarkPointB
                             insertN text
-                            unsetMarkB
 
 -- | M-w
 killRingSaveE :: YiM ()
 killRingSaveE = do text <- withBuffer (readRegionB =<< getSelectRegionB)
                    killringPut text
-                   withBuffer unsetMarkB
 -- | M-y
 
 -- TODO: Handle argument, verify last command was a yank

@@ -18,6 +18,7 @@ module Yi.Buffer.Region
 where
 
 import Yi.Buffer
+import Control.Applicative
 
 -- | The region data type. 
 --The region is semi open: it includes the start but not the end bound. This allows simpler region-manipulation algorithms.
@@ -80,12 +81,7 @@ modifyRegionB :: (String -> String)
                  -- ^ The string modification function
               -> Region
                  -- ^ The region to modify
-              -> BufferM Int
-                 -- ^ The returned buffer action, the 'Int' contained
-                 -- is the difference in length of the two regions.
-modifyRegionB transform region =
-  do text <- readRegionB region
-     let newText = transform text
-     replaceRegionB region $ newText
-     return $ (length newText) - (length text)
+              -> BufferM ()
+modifyRegionB transform region = replaceRegionB region =<< transform <$> readRegionB region
+
 
