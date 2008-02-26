@@ -71,8 +71,6 @@ data Editor = Editor {
        ,windowfill    :: !Char                      -- ^ char to fill empty window space with
        ,tabwidth      :: !Int                       -- ^ width of tabs
 
-
-       -- consider make the below fields part of dynamic component
        ,statusLine    :: !String
        ,killring      :: !Killring
        ,regex         :: !(Maybe (String,Regex))    -- ^ most recent regex
@@ -93,7 +91,6 @@ windowsA = Accessor windows (\f e -> e {windows = f (windows e)})
 
 killringA :: Accessor Editor Killring
 killringA = Accessor killring (\f e -> e {killring = f (killring e)})
-
 
 dynA :: Initializable a => Accessor Editor a
 dynA = dynamicValueA .> dynamicA

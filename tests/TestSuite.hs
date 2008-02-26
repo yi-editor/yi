@@ -14,6 +14,7 @@ type Prop_Functor f a = f a -> Bool
 prop_functor :: (Eq (f a), Functor f) => f a -> Bool
 prop_functor ws = fmap id ws == ws
 
+prop_traversable :: (Eq (t b), Traversable t) => t a -> (a -> b) -> Bool
 prop_traversable ws f = runIdentity (Data.Traversable.mapM (Identity . f) ws) == fmap f ws
 
 tests :: [(String, Int -> IO (Bool, Int))]

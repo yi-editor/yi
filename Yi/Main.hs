@@ -85,7 +85,6 @@ instance Error Err where
 
 data Opts = Help
           | Version
-          | OptIgnore String
           | LineNo String
           | EditorNm String
           | File String
