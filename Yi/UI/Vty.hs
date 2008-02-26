@@ -246,11 +246,12 @@ drawWindow e sty focused w win = (Rendered { picture = pict,cursor = cur}, bos)
         (selreg, _) = runBufferDummyWindow b getSelectRegionB
         (point, _) = runBufferDummyWindow b pointB
         (bufData, _) = runBufferDummyWindow b (nelemsBH (w*h') (tospnt win)) -- read enough chars from the buffer.
+        (showSel, _) = runBufferDummyWindow b (gets highlightSelection)
         prompt = if isMini win then name b else ""
 
         (rendered,bos,cur) = drawText h' w
                                 (tospnt win - length prompt) 
-                                point selreg
+                                point (if showSel then selreg else emptyRegion)
                                 selsty wsty 
                                 (zip prompt (repeat wsty) ++ map (second styleToAttr) bufData ++ [(' ',attr)])
                              -- we always add one character which can be used to position the cursor at the end of file

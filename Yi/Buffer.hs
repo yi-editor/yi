@@ -70,6 +70,7 @@ module Yi.Buffer
   , savingExcursionB
   , savingPointB
   , pendingUpdatesA
+  , highlightSelectionA
   , revertPendingUpdatesB
   , askWindow
   )
@@ -121,6 +122,7 @@ data FBuffer =
                 , bufferDynamic :: !DynamicValues -- ^ dynamic components
                 , preferCol :: !(Maybe Int)       -- ^ prefered column to arrive at when we do a lineDown / lineUp
                 ,pendingUpdates :: [Update]       -- ^ updates that haven't been synched in the UI yet
+                ,highlightSelection :: !Bool
                 }
 
 
@@ -144,6 +146,8 @@ bufferDynamicA = Accessor bufferDynamic (\f e -> e {bufferDynamic = f (bufferDyn
 pendingUpdatesA :: Accessor (FBuffer) ([Update])
 pendingUpdatesA = Accessor pendingUpdates (\f e -> e {pendingUpdates = f (pendingUpdates e)})
 
+highlightSelectionA :: Accessor FBuffer Bool
+highlightSelectionA = Accessor highlightSelection (\f e -> e {highlightSelection = f (highlightSelection e)})
 
 -- | The BufferM monad writes the updates performed.
 newtype BufferM a = BufferM { fromBufferM :: RWS Window [Update] FBuffer a }
@@ -264,6 +268,7 @@ newB unique nm s =
             , preferCol = Nothing
             , bufferDynamic = emptyDV
             , pendingUpdates = []
+            , highlightSelection = False
             }
 
 -- | Number of characters in the buffer

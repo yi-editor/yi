@@ -202,9 +202,15 @@ quitEditor = withUI UI.end
 
 -- | Redraw
 refreshEditor :: YiM ()
-refreshEditor = do editor <- with yiEditor readRef
-                   withUI $ flip UI.refresh editor
-                   withEditor $ modifyAllA buffersA pendingUpdatesA (const [])
+refreshEditor = do e0 <- with yiEditor readRef
+                   let e1 = modifier buffersA (fmap clearHighlight) e0
+                       e2 = modifier buffersA (fmap clearUpdates)   e1
+                   withUI $ flip UI.refresh e1
+                   with yiEditor (flip writeRef e2)
+    where clearHighlight fb@FBuffer {pendingUpdates = us, highlightSelection = h} 
+              = fb {highlightSelection = h && null us}
+          clearUpdates fb = fb {pendingUpdates = []}
+          
 
 -- | Suspend the program
 suspendEditor :: YiM ()

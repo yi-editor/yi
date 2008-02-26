@@ -38,6 +38,7 @@ import Yi.Keymap.Emacs.Utils
   , switchBufferE
   , withMinibuffer
   )
+import Yi.Accessor
 import Yi.Buffer
 import Yi.Buffer.Normal
 import Data.Maybe
@@ -56,6 +57,11 @@ keymap :: Keymap
 keymap =
   selfInsertKeymap <|> makeKeymap keys
 
+placeMark :: BufferM ()
+placeMark = do
+  setA highlightSelectionA True
+  pointB >>= setSelectionMarkPointB
+
 keys :: KList
 keys =
   [ ( "TAB",      write $ withMode $ modeIndent)
@@ -69,14 +75,14 @@ keys =
   , ( "C-<right>",write $ repeatingArg nextWordB)
   , ( "C-<home>", write $ repeatingArg topB)
   , ( "C-<end>",  write $ repeatingArg botB)
-  , ( "C-@",      write $ (pointB >>= setSelectionMarkPointB))
-  , ( "C-SPC",    write $ (pointB >>= setSelectionMarkPointB))
+  , ( "C-@",      write $ placeMark)
+  , ( "C-SPC",    write $ placeMark)
   , ( "C-a",      write $ repeatingArg (maybeMoveB Line Backward))
   , ( "C-b",      write $ repeatingArg leftB)
   , ( "C-d",      write $ repeatingArg $ deleteN 1)
   , ( "C-e",      write $ repeatingArg (maybeMoveB Line Forward))
   , ( "C-f",      write $ repeatingArg rightB)
-  , ( "C-g",      write $ unsetMarkB)
+  , ( "C-g",      write $ (setA highlightSelectionA False :: BufferM ()))
   -- , ( "C-g",   write $ keyboardQuitE)
   -- C-g should be a more general quit that also unsets the mark.
   , ( "C-i",      write $ withMode $ modeIndent)
@@ -107,7 +113,7 @@ keys =
                                           (completeFileName Nothing)
                                           fwriteToE
     )
-  , ( "C-x C-x",  write $ exchangePointAndMarkB)
+  , ( "C-x C-x",  write $ (exchangePointAndMarkB >> setA highlightSelectionA True))
   , ( "C-x b",    write $ switchBufferE)
   , ( "C-x d",    write $ dired)
   , ( "C-x e e",  write $ evalRegionE)

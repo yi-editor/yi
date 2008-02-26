@@ -2,6 +2,7 @@
 
 module Yi.Buffer.Region 
   ( Region
+  , emptyRegion
   , mkRegion
   , mkVimRegion
   , regionStart
@@ -34,6 +35,9 @@ mkVimRegion x y = if x < y then Region x (y+1) else Region y (x+1)
 mkRegion :: Point -> Point -> Region
 mkRegion x y = if x < y then Region x y else Region y x
 
+-- | The empty region
+emptyRegion :: Region
+emptyRegion = Region 0 0 
 
 -- | Delete an arbitrary part of the buffer
 deleteRegionB :: Region -> BufferM ()
