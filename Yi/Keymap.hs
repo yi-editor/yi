@@ -74,7 +74,7 @@ data Yi = Yi {yiEditor :: IORef Editor,
               bufferProcesses :: IORef (M.Map BufferRef KeymapProcess), -- FIXME: should be an MVar (can be accessed both by worker and input thread)
               editorModules :: IORef [String], -- ^ modules requested by user: (e.g. ["YiConfig", "Yi.Dired"]) DEPRECATED
 
-              yiSubprocessIdSource :: IORef SubprocessId,
+              yiSubprocessIdSource :: IORef SubprocessId, -- TODO: rename to yiSubprocessIdSupply
               yiSubprocesses :: IORef (M.Map SubprocessId SubprocessInfo),
               yiConfig :: Config
              }

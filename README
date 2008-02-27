@@ -102,6 +102,8 @@ $ ./dist/build/yi/yi
 Though obviously the configure command should also include your usual
 cabal flags which may well include "--user" and "--prefix".
 
+This is the recommanded mode of operation if you're tracking the
+development repository.
 
 CONFIGURATION
 

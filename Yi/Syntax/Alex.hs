@@ -37,7 +37,6 @@ data Cache s = Cache
     ([Stroke],[Stroke])
 
 -- Unfold, scanl and foldr at the same time :)
--- origami :: (b -> Maybe (a, b)) -> b -> (a -> c -> c) -> (c -> c) -> c -> ([(b, c -> c)], c)
 origami :: (b -> Maybe (a, b)) -> b -> (a -> c -> c) -> (c -> a -> c) 
         -> c -> c -> ([(b, c)], c)
 origami gen seed (<+) (+>) l_c r_c = case gen seed of
