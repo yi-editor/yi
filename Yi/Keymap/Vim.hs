@@ -82,7 +82,7 @@ rep_mode = write (setStatus "-- REPLACE --") >> many rep_char >> leave
 -- | Visual mode, similar to command mode
 vis_mode :: RegionStyle -> VimMode
 vis_mode regionStyle = do
-  write (withBuffer (pointB >>= setSelectionMarkPointB))
+  write (withBuffer (setVisibleSelection True >> pointB >>= setSelectionMarkPointB))
   core_vis_mode regionStyle
   write (msgClr >> withBuffer0 (setVisibleSelection False) >> withBuffer0 (setDynamicB $ SelectionStyle Character))
 
