@@ -192,6 +192,7 @@ diredKeymap = do
              ("^", write $ diredUpDir),
              ("+", write $ diredCreateDir),
              ("RET", write $ diredLoad),
+             ("C-m", write $ diredLoad),
              ("SPC", write $ lineDown),
              ("BACKSP", write $ diredUnmark)
                        ])
