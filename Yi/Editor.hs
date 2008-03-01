@@ -236,7 +236,10 @@ printMsg :: String -> EditorM ()
 printMsg s = do
   modify $ \e -> e { statusLine = takeWhile (/= '\n') s }
   -- also show in the messages buffer, so we don't loose any message
-  [b] <- gets $ findBufferWithName "*messages*"
+  bs <- gets $ findBufferWithName "*messages*"
+  b <- case bs of
+         (b':_) -> return b'
+         [] -> newBufferE "*messages*" ""
   withGivenBuffer0 b $ do botB; insertN (s ++ "\n")
 
 
@@ -294,7 +297,9 @@ prevBufW = prevBuffer >>= switchToBufferE
 -- Switch the current window to this buffer. Doesn't associate any file
 -- with the buffer (unlike fnewE) and so is good for popup internal
 -- buffers (like scratch)
-newBufferE :: String -> String -> EditorM BufferRef
+newBufferE :: String -> -- ^ buffer name
+              String -> -- ^ buffer contents
+                  EditorM BufferRef
 newBufferE f s = do
     b <- stringToNewBuffer f s
     switchToBufferE b
