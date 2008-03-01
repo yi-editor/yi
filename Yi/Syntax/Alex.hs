@@ -9,15 +9,21 @@ import Data.List
 import Data.Int
 import qualified Data.ByteString.Lazy.Char8 as LB
 import Yi.Syntax
+import Yi.Debug
 
 takeLB :: Int64 -> LB.ByteString -> LB.ByteString
 takeLB = LB.take
 
+type RestartOffset = Int -- ^ if offsets before this is dirtied, must restart from that state.
 type AlexInput  = LB.ByteString
 type Action hlState token = AlexInput -> hlState -> (hlState, token)
 type State hlState = (hlState, [Stroke])
-type AlexState hlState = (Int, AlexInput, hlState)
-type Result = [Stroke]
+type AlexState hlState = (Int,       -- Start offset
+                          AlexInput, -- Input data
+                          hlState,   -- (user defined) lexer state
+                          RestartOffset -- Last offset looked at
+                         ) 
+type Result = ([Stroke], [Stroke])
 alexGetChar :: AlexInput -> Maybe (Char, AlexInput)
 alexGetChar bs | LB.null bs = Nothing
                | otherwise  = Just (LB.head bs, LB.tail bs)
@@ -31,9 +37,10 @@ actionConst token _str state = (state, token)
 actionAndModify :: (lexState -> lexState) -> token -> Action lexState token
 actionAndModify modifier token _str state = (modifier state, token)
 
+type Partial s = (Int,State s,RestartOffset)
 
 data Cache s = Cache  
-    [(Int,State s)] -- list of cached intermediate states and their offsets.
+    [Partial s] -- list of cached intermediate states and their offsets.
     ([Stroke],[Stroke])
 
 -- Unfold, scanl and foldr at the same time :)
@@ -64,22 +71,26 @@ mkHighlighter initState alexScanToken =
               usefulsL = dropWhile (\(l,_s,_r) -> l >= end) .
                          takeWhile (\(_l,_s,r) -> r >= begin)
 
-        run getInput dirtyOffset (Cache cachedStates _) = Cache newCachedStates (leftResult,rightResult)
-            where resumeIndex = fst resumeState
-                  reused = takeWhile ((< dirtyOffset) . fst) cachedStates
-                  resumeState = if null reused then (0, startState) else last reused
+        run getInput dirtyOffset (Cache cachedStates _) = -- trace (show $ map trd3 $ newCachedStates) $
+            Cache newCachedStates result
+            where resumeIndex = fst3 resumeState
+                  reused = takeWhile ((< dirtyOffset) . trd3) cachedStates
+                  resumeState = if null reused then (0, startState, 0) else last reused
                   newCachedStates = reused ++ other 20 0 (drop 1 recomputed)
-                  (recomputed, leftResult, rightResult) = updateState text resumeState
+                  (recomputed, result) = updateState text resumeState
                   text = getInput resumeIndex
 
 
-        updateState :: AlexInput -> (Int,State s) -> ([(Int,State s)], Result, Result)
-        updateState input (startIdx, (restartState, startPartial)) = (map f partials, startPartial, result)
+        updateState :: AlexInput -> Partial s -> ([Partial s], Result)
+        updateState input (startIdx, (restartState, startPartial), restartOfs) = 
+            (map f partials, (startPartial, result))
                 where result :: [Stroke]
-                      (partials,result) = origami alexScanToken (startIdx,input,restartState) (:) (flip (:)) startPartial []
-                      f :: (AlexState s, [Stroke]) -> (Int,State s)
-                      f ((idx,_input,state),partial) = (idx, (state,partial))
+                      (partials,result) = origami alexScanToken (startIdx,input,restartState,restartOfs) (:) (flip (:)) startPartial []
+                      f :: (AlexState s, [Stroke]) -> Partial s
+                      f ((idx,_input,state,restartOffset),partial) = (idx, (state,partial), restartOffset)
 
+        fst3 (x,_,_) = x
+        trd3 (_,_,x) = x
 
 other :: Int -> Int -> [a] -> [a]
 other n m l = case l of

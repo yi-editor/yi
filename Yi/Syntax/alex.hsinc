@@ -1,17 +1,76 @@
 -- -*- Haskell -*-
 
--- | The include file for alex-generated syntax highlighters.  Because alex
+-- The include file for alex-generated syntax highlighters.  Because alex
 -- declares its own types, any wrapper must have the highlighter in scope...
 -- so it must be included.  Doubleplusyuck.
 
+-- | Scan one token. Return (maybe) a token and a new state.
 alexScanToken :: AlexState HlState -> Maybe ((Int,Token,Int), AlexState HlState)
-alexScanToken (idx,inp,state) = case alexScan inp (stateToInit state) of
+alexScanToken (idx,inp,state,restartOfs) = let (scn,lookahead) = alexScan' inp (stateToInit state) 
+                                               restartOfs' = max restartOfs (idx + lookahead) in
+    case scn of
 		AlexEOF -> Nothing
 		AlexError _ -> error "lexical error"
-		AlexSkip  inp' len  -> alexScanToken (idx+len,inp',state)
+		AlexSkip  inp' len  -> alexScanToken (idx+len,inp',state,restartOfs')
 		AlexToken inp' len act -> 
                     let (state', style) = act (takeLB (fromIntegral len) inp) state 
-                    in Just ((idx,style,idx+len), (idx + len,inp',state'))
+                    in Just ((idx,style,idx+len), (idx + len,inp',state',restartOfs'))
+
+alexScan' input (I# (sc))
+  = alexScanUser' undefined input (I# (sc))
+
+alexScanUser' user input (I# (sc))
+  = case alex_scan_tkn' user input 0# input sc AlexNone of
+	(AlexNone, input', lookahead) ->
+		case alexGetChar input of
+			Nothing -> (AlexEOF, lookahead)
+			Just _  -> (AlexError input', lookahead)
+	(AlexLastSkip input len, _, lookahead) -> (AlexSkip input len, lookahead)
+	(AlexLastAcc k input len, _, lookahead) -> (AlexToken input len k, lookahead)
+
+
+-- Same as alex_scan_tkn, but also return the length of lookahead.
+alex_scan_tkn' user orig_input len input s last_acc =
+  input `seq` -- strict in the input
+  let 
+	new_acc = check_accs (alex_accept `quickIndex` (I# (s)))
+  in
+  new_acc `seq`
+  case alexGetChar input of
+     Nothing -> (new_acc, input, I# len)
+     Just (c, new_input) -> 
+
+
+
+	let
+		base   = alexIndexInt32OffAddr alex_base s
+		(I# (ord_c)) = ord c
+		offset = (base +# ord_c)
+		check  = alexIndexInt16OffAddr alex_check offset
+		
+		new_s = if (offset >=# 0#) && (check ==# ord_c)
+			  then alexIndexInt16OffAddr alex_table offset
+			  else alexIndexInt16OffAddr alex_deflt s
+                new_len = len +# 1#
+	in
+	case new_s of 
+	    -1# -> (new_acc, input, I# new_len)
+		-- on an error, we want to keep the input *before* the
+		-- character that failed, not after.
+    	    _ -> alex_scan_tkn' user orig_input new_len
+			new_input new_s new_acc
+
+  where
+	check_accs [] = last_acc
+	check_accs (AlexAcc a : _) = AlexLastAcc a input (I# (len))
+	check_accs (AlexAccSkip : _)  = AlexLastSkip  input (I# (len))
+	check_accs (AlexAccPred a pred : rest)
+	   | pred user orig_input (I# (len)) input
+	   = AlexLastAcc a input (I# (len))
+	check_accs (AlexAccSkipPred pred : rest)
+	   | pred user orig_input (I# (len)) input
+	   = AlexLastSkip input (I# (len))
+	check_accs (_ : rest) = check_accs rest
 
 c = actionConst
 m = actionAndModify
