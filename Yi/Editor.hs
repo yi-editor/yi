@@ -176,7 +176,6 @@ getBufferWithName bufName = do
     [] -> fail ("Buffer not found: " ++ bufName)
     (b:_) -> return b
 
-
 ------------------------------------------------------------------------
 
 -- | Return the next buffer
@@ -231,15 +230,6 @@ newtype EditorM a = EditorM {fromEditorM :: State Editor a}
     deriving (Monad, MonadState Editor)
 
 --------------
-
--- | Find buffer with given name. Raise exception if not found.
-getBufferWithName0 :: String -> EditorM BufferRef
-getBufferWithName0 bufName = do
-  bs <- gets $ findBufferWithName bufName
-  case bs of
-    [] -> fail ("Buffer not found: " ++ bufName)
-    (b:_) -> return b
-
 
 -- | Set the cmd buffer, and draw message at bottom of screen
 printMsg :: String -> EditorM ()
