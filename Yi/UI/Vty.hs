@@ -39,11 +39,12 @@ import Yi.Editor
 import Yi.Event
 import Yi.Monad
 import Yi.Style
-import Yi.Vty hiding (def, black, red, green, yellow, blue, magenta, cyan, white)
 import Yi.WindowSet as WS
 import qualified Data.ByteString.Char8 as B
 import qualified Yi.UI.Common as Common
 import Yi.Window
+import Yi.Style as Style
+import Graphics.Vty as Vty
 ------------------------------------------------------------------------
 
 data Rendered = 
@@ -80,7 +81,7 @@ start :: Chan Yi.Event.Event -> Chan action ->
 start ch _outCh editor _runEd = do
   liftIO $ do 
           v <- mkVty
-          (x0,y0) <- Yi.Vty.getSize v
+          (x0,y0) <- Vty.getSize v
           sz <- newIORef (y0,x0)
           -- fork input-reading thread. important to block *thread* on getKey
           -- otherwise all threads will block waiting for input
@@ -123,40 +124,40 @@ main ui = do
 -- | Clean up and go home
 end :: UI -> IO ()
 end i = do  
-  Yi.Vty.shutdown (vty i)
+  Vty.shutdown (vty i)
   throwTo (uiThread i) (ExitException ExitSuccess)
 
-fromVtyEvent :: Yi.Vty.Event -> Yi.Event.Event
+fromVtyEvent :: Vty.Event -> Yi.Event.Event
 fromVtyEvent (EvKey k mods) = Event (fromVtyKey k) (map fromVtyMod mods)
 fromVtyEvent _ = error "fromVtyEvent: unsupported event encountered."
 
 
-fromVtyKey :: Yi.Vty.Key -> Yi.Event.Key
-fromVtyKey (Yi.Vty.KEsc     ) = Yi.Event.KEsc      
-fromVtyKey (Yi.Vty.KFun x   ) = Yi.Event.KFun x    
-fromVtyKey (Yi.Vty.KPrtScr  ) = Yi.Event.KPrtScr   
-fromVtyKey (Yi.Vty.KPause   ) = Yi.Event.KPause    
-fromVtyKey (Yi.Vty.KASCII c ) = Yi.Event.KASCII c  
-fromVtyKey (Yi.Vty.KBS      ) = Yi.Event.KBS       
-fromVtyKey (Yi.Vty.KIns     ) = Yi.Event.KIns      
-fromVtyKey (Yi.Vty.KHome    ) = Yi.Event.KHome     
-fromVtyKey (Yi.Vty.KPageUp  ) = Yi.Event.KPageUp   
-fromVtyKey (Yi.Vty.KDel     ) = Yi.Event.KDel      
-fromVtyKey (Yi.Vty.KEnd     ) = Yi.Event.KEnd      
-fromVtyKey (Yi.Vty.KPageDown) = Yi.Event.KPageDown 
-fromVtyKey (Yi.Vty.KNP5     ) = Yi.Event.KNP5      
-fromVtyKey (Yi.Vty.KUp      ) = Yi.Event.KUp       
-fromVtyKey (Yi.Vty.KMenu    ) = Yi.Event.KMenu     
-fromVtyKey (Yi.Vty.KLeft    ) = Yi.Event.KLeft     
-fromVtyKey (Yi.Vty.KDown    ) = Yi.Event.KDown     
-fromVtyKey (Yi.Vty.KRight   ) = Yi.Event.KRight    
-fromVtyKey (Yi.Vty.KEnter   ) = Yi.Event.KEnter    
+fromVtyKey :: Vty.Key -> Yi.Event.Key
+fromVtyKey (Vty.KEsc     ) = Yi.Event.KEsc      
+fromVtyKey (Vty.KFun x   ) = Yi.Event.KFun x    
+fromVtyKey (Vty.KPrtScr  ) = Yi.Event.KPrtScr   
+fromVtyKey (Vty.KPause   ) = Yi.Event.KPause    
+fromVtyKey (Vty.KASCII c ) = Yi.Event.KASCII c  
+fromVtyKey (Vty.KBS      ) = Yi.Event.KBS       
+fromVtyKey (Vty.KIns     ) = Yi.Event.KIns      
+fromVtyKey (Vty.KHome    ) = Yi.Event.KHome     
+fromVtyKey (Vty.KPageUp  ) = Yi.Event.KPageUp   
+fromVtyKey (Vty.KDel     ) = Yi.Event.KDel      
+fromVtyKey (Vty.KEnd     ) = Yi.Event.KEnd      
+fromVtyKey (Vty.KPageDown) = Yi.Event.KPageDown 
+fromVtyKey (Vty.KNP5     ) = Yi.Event.KNP5      
+fromVtyKey (Vty.KUp      ) = Yi.Event.KUp       
+fromVtyKey (Vty.KMenu    ) = Yi.Event.KMenu     
+fromVtyKey (Vty.KLeft    ) = Yi.Event.KLeft     
+fromVtyKey (Vty.KDown    ) = Yi.Event.KDown     
+fromVtyKey (Vty.KRight   ) = Yi.Event.KRight    
+fromVtyKey (Vty.KEnter   ) = Yi.Event.KEnter    
 
-fromVtyMod :: Yi.Vty.Modifier -> Yi.Event.Modifier
-fromVtyMod Yi.Vty.MShift = Yi.Event.MShift
-fromVtyMod Yi.Vty.MCtrl  = Yi.Event.MCtrl
-fromVtyMod Yi.Vty.MMeta  = Yi.Event.MMeta
-fromVtyMod Yi.Vty.MAlt   = Yi.Event.MMeta
+fromVtyMod :: Vty.Modifier -> Yi.Event.Modifier
+fromVtyMod Vty.MShift = Yi.Event.MShift
+fromVtyMod Vty.MCtrl  = Yi.Event.MCtrl
+fromVtyMod Vty.MMeta  = Yi.Event.MMeta
+fromVtyMod Vty.MAlt   = Yi.Event.MMeta
 
 prepareAction :: UI -> IO (EditorM ())
 prepareAction ui = do
@@ -188,7 +189,7 @@ refresh ui e = do
      
   WS.debug "Drawing: " ws1
   logPutStrLn $ "startXs: " ++ show startXs
-  Yi.Vty.update (vty $ ui) 
+  Vty.update (vty $ ui) 
       pic {pImage = vertcat (toList wImages) <-> withStyle (window $ uistyle e) (take xss $ cmd ++ repeat ' '),
            pCursor = case cursor (snd $ WS.current zzz) of
                        Just (y,x) -> Cursor x (y + WS.current startXs)
@@ -376,3 +377,78 @@ getY :: Int -> Int -> (Int,Int)
 getY screenHeight 0               = (screenHeight, 0)
 getY screenHeight numberOfWindows = screenHeight `quotRem` numberOfWindows
 
+------------------------------
+-- Low-level stuff
+
+------------------------------------------------------------------------
+
+--
+-- Combine attribute with another attribute
+--
+boldA, reverseA, nullA :: Vty.Attr -> Vty.Attr
+boldA       = setBold
+reverseA    = setRV
+nullA       = id
+
+------------------------------------------------------------------------
+
+newtype CColor = CColor (Vty.Attr -> Vty.Attr, Vty.Color)
+--
+-- | Map Style rgb rgb colours to ncurses pairs
+-- TODO a generic way to turn an rgb into the nearest curses color
+--
+style2curses :: Style -> (CColor, CColor)
+style2curses (Style fg bg) = (fgCursCol fg, bgCursCol bg)
+{-# INLINE style2curses #-}
+
+fgCursCol :: Style.Color -> CColor
+fgCursCol c = case c of
+    RGB 0 0 0         -> CColor (nullA,    Vty.black)
+    RGB 128 128 128   -> CColor (boldA,    Vty.black)
+    RGB 139 0 0       -> CColor (nullA,    Vty.red)
+    RGB 255 0 0       -> CColor (boldA,    Vty.red)
+    RGB 0 100 0       -> CColor (nullA,    Vty.green)
+    RGB 0 128 0       -> CColor (boldA,    Vty.green)
+    RGB 165 42 42     -> CColor (nullA,    Vty.yellow)
+    RGB 255 255 0     -> CColor (boldA,    Vty.yellow)
+    RGB 0 0 139       -> CColor (nullA,    Vty.blue)
+    RGB 0 0 255       -> CColor (boldA,    Vty.blue)
+    RGB 128 0 128     -> CColor (nullA,    Vty.magenta)
+    RGB 255 0 255     -> CColor (boldA,    Vty.magenta)
+    RGB 0 139 139     -> CColor (nullA,    Vty.cyan)
+    RGB 0 255 255     -> CColor (boldA,    Vty.cyan)
+    RGB 165 165 165   -> CColor (nullA,    Vty.white)
+    RGB 255 255 255   -> CColor (boldA,    Vty.white)
+    Default           -> CColor (nullA,    Vty.def)
+    Reverse           -> CColor (reverseA, Vty.def)
+    _                 -> CColor (nullA,    Vty.black) -- NB
+
+bgCursCol :: Style.Color -> CColor
+bgCursCol c = case c of
+    RGB 0 0 0         -> CColor (nullA,    Vty.black)
+    RGB 128 128 128   -> CColor (nullA,    Vty.black)
+    RGB 139 0 0       -> CColor (nullA,    Vty.red)
+    RGB 255 0 0       -> CColor (nullA,    Vty.red)
+    RGB 0 100 0       -> CColor (nullA,    Vty.green)
+    RGB 0 128 0       -> CColor (nullA,    Vty.green)
+    RGB 165 42 42     -> CColor (nullA,    Vty.yellow)
+    RGB 255 255 0     -> CColor (nullA,    Vty.yellow)
+    RGB 0 0 139       -> CColor (nullA,    Vty.blue)
+    RGB 0 0 255       -> CColor (nullA,    Vty.blue)
+    RGB 128 0 128     -> CColor (nullA,    Vty.magenta)
+    RGB 255 0 255     -> CColor (nullA,    Vty.magenta)
+    RGB 0 139 139     -> CColor (nullA,    Vty.cyan)
+    RGB 0 255 255     -> CColor (nullA,    Vty.cyan)
+    RGB 165 165 165   -> CColor (nullA,    Vty.white)
+    RGB 255 255 255   -> CColor (nullA,    Vty.white)
+    Default           -> CColor (nullA,    Vty.def)
+    Reverse           -> CColor (reverseA, Vty.def)
+    _                 -> CColor (nullA,    Vty.white)    -- NB
+
+defaultSty :: Style
+defaultSty = Style Default Default
+
+styleToAttr :: Style -> Vty.Attr
+styleToAttr = ccolorToAttr . style2curses
+    where ccolorToAttr ((CColor (fmod, fcolor)), (CColor (bmod, bcol))) = 
+              fmod . bmod . setFG fcolor . setBG bcol $ attr
