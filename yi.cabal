@@ -91,7 +91,6 @@ library
         Yi.File
         Yi.KillRing
         Yi.Syntax.Alex
-        Yi.Syntax.Fractal
         Yi.IncrementalParse
         Yi.Prelude
         HConf
@@ -103,6 +102,7 @@ library
 -- --                Yi.Keymap.Mg,
 -- --                Yi.Keymap.Nano,
 -- --                Yi.Keymap.Vi,
+--        Yi.Syntax.Fractal
 
 --
 --  extensions:   CPP, DeriveDataTypeable, FlexibleContexts, FlexibleInstances,
