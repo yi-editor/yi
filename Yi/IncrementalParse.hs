@@ -1,5 +1,7 @@
 {-# OPTIONS -fglasgow-exts #-}
-module Yi.IncrementalParse (IResult, Process, Result(..), Void, upd, symbol, eof, runPolish, run, getValue, P, InputState(..)) where
+module Yi.IncrementalParse (IResult, Process, Result(..), Void, 
+                            upd, symbol, eof, runPolish, run, getValue, 
+                            P, InputState(..)) where
 
 import Control.Applicative
 import Yi.Debug
@@ -34,7 +36,7 @@ evalL (App f) = case evalL f of
 evalL x = x
 
 
--- | Push a number of symbols in the process
+-- | Push a some symbols in the process
 pushSyms :: [s] -> Steps s a r -> Steps s a r
 pushSyms ss p = case p of
                   (Shift f) -> case ss of 
@@ -84,7 +86,8 @@ front (x:xs) = (Just x, xs)
 
 data InputState lexState = InputState {
     inputStateLex :: lexState,
-    inputStateOffset :: !Int
+    inputStateOffset :: !Int,
+    inputStateLookedOffset :: !Int
 }
 
 data Result lexState s a r where
@@ -100,7 +103,7 @@ getValue (Leaf a _ _) = a
 getValue (Bin a _ _ _) = a
 getValue (Una _ _ r) = getValue r
 
-getOfs = inputStateOffset . getInp
+getOfs = inputStateLookedOffset . getInp
 
 getInp (Leaf _ o _) = o
 getInp (Bin _ o _ _) = o
@@ -123,7 +126,7 @@ upd :: forall lexState s a b r.
 upd initState source dirty p 
     | getOfs p < dirty = trace ("Update: dirty = " ++ show dirty) $ 
                          update p
-    | otherwise        = evalResult (getSteps p) (source $ InputState initState 0)
+    | otherwise        = evalResult (getSteps p) (source $ InputState initState 0 0)
     where 
       -- Invariant:  getOfs p < dirty (otherwise evalResult is used)
       update :: forall a b r. Result lexState s a (Steps s b r) 
@@ -158,7 +161,7 @@ upd initState source dirty p
                             in (Leaf a (inpState xs) steps, s', xs')
 
       inpState :: [(InputState lexState,s)] -> InputState lexState
-      inpState [] = InputState initState maxBound
+      inpState [] = InputState initState maxBound maxBound
       inpState ((inputState,_):_) = inputState
 
 -- | Advance in the result steps, pushing results in the continuation.

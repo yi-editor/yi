@@ -8,7 +8,7 @@ import qualified Yi.Syntax.Latex               as Latex
 import qualified Yi.Syntax.Srmc                as Srmc
 import qualified Yi.Syntax.Cabal               as Cabal
 import qualified Yi.Syntax.Cplusplus           as Cplusplus
--- import qualified Yi.Syntax.Fractal as Fractal
+import qualified Yi.Syntax.Fractal as Fractal
 import qualified Yi.Syntax.Alex as Alex
 import Yi.Syntax
 import Yi.Keymap

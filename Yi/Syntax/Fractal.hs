@@ -52,7 +52,7 @@ mkHighlighter :: forall lexState token. lexState
               -> (T token -> Stroke)
               -> Highlighter (Cache lexState token)
 mkHighlighter initState alexScanToken tokenToStroke = 
-  Yi.Syntax.SynHL { hlStartState   = P.Leaf Leaf (P.InputState initState 0) 
+  Yi.Syntax.SynHL { hlStartState   = P.Leaf Leaf (P.InputState initState 0 0) 
                                             (P.run (parse 1 1000000000))
                   -- FIXME: max int
                   , hlRun          = run
@@ -61,8 +61,8 @@ mkHighlighter initState alexScanToken tokenToStroke =
       where run source dirty cache = fst3 $ P.upd initState (tokenSource source) dirty cache
             getS begin end cache = fmap tokenToStroke $ getStrokes begin end (P.getValue cache) []
             tokenSource :: (Int -> AlexInput) -> P.InputState lexState -> [(P.InputState lexState, T token)]
-            tokenSource source (P.InputState lexState ofs) 
-                = unfoldLexer alexScanToken (ofs,source ofs,lexState)
+            tokenSource source (P.InputState lexState ofs lookOfs)
+                = unfoldLexer alexScanToken (ofs,source ofs,lexState,ofs)
             fst3 (x,_,_) = x
 
             getStrokes :: Int -> Int -> Tree (T token) -> Endom [T token]
@@ -79,9 +79,9 @@ mkHighlighter initState alexScanToken tokenToStroke =
 
 unfoldLexer :: (AlexState lexState -> Maybe (token, AlexState lexState)) 
              -> AlexState lexState -> [(P.InputState lexState, token)]
-unfoldLexer f b@(ofs,_,lexState) = case f b of
+unfoldLexer f b@(ofs,_,lexState,lookOfs) = case f b of
              Nothing -> []
-             Just (t, b') -> (P.InputState lexState ofs, t) : unfoldLexer f b'
+             Just (t, b') -> (P.InputState lexState ofs lookOfs, t) : unfoldLexer f b'
 
 
 
