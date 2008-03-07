@@ -17,7 +17,7 @@ takeLB = LB.take
 type RestartOffset = Int -- ^ if offsets before this is dirtied, must restart from that state.
 type AlexInput  = LB.ByteString
 type Action hlState token = AlexInput -> hlState -> (hlState, token)
-type State hlState = (hlState, [Stroke])
+type State hlState = (hlState, [Stroke]) -- ^ Lexer state; (reversed) list of tokens so far.
 type AlexState hlState = (Int,       -- Start offset
                           AlexInput, -- Input data
                           hlState,   -- (user defined) lexer state
@@ -37,11 +37,9 @@ actionConst token _str state = (state, token)
 actionAndModify :: (lexState -> lexState) -> token -> Action lexState token
 actionAndModify modifier token _str state = (modifier state, token)
 
-type Partial s = (Int,State s,RestartOffset)
+type Partial s = (Int,State s,RestartOffset) -- ^ list of cached intermediate state its offset; and looked up offset.
 
-data Cache s = Cache  
-    [Partial s] -- list of cached intermediate states and their offsets.
-    ([Stroke],[Stroke])
+data Cache s = Cache [Partial s] Result
 
 -- Unfold, scanl and foldr at the same time :)
 origami :: (b -> Maybe (a, b)) -> b -> (a -> c -> c) -> (c -> a -> c) 
