@@ -43,8 +43,9 @@ infixr 0 ?>
 
 keys :: [Keymap]
 keys = [
+        fun_ KEsc   ?> quitEditor,
         fun_ KRight ?> rightB,
-        fun_ KLeft  ?> rightB,
+        fun_ KLeft  ?> leftB,
         fun_ KUp    ?> moveB VLine Backward,
         fun_ KDown  ?> moveB VLine Forward,
         shi_ (fun_ KRight) ?> setMark >> rightB,
