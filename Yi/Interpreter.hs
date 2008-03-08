@@ -1,6 +1,10 @@
+{-# LANGUAGE GADTs #-}
+{-# OPTIONS -fglasgow-exts #-}
 {- A mockup haskell interpreter -}
 
-module Yi.Interpreter (eval)
+module Yi.Interpreter (
+                       UExpr(..),
+                       parse, rename, interpret, toMono) where
 
 import Data.Typeable
 import Data.Dynamic
@@ -29,20 +33,20 @@ instance Applicative (GenParser tok st) where
 data Atom = AVar String
           | AString String
           | AChar Char
-          | AInt Integer
+          | AInt Int
 
 instance Show Atom where
     show (AVar s) = s
     show (AString s) = show s
     show (AChar s) = show s
 
-type Env = M.Map String Dynamic
+type Env = M.Map String [Dynamic]
 
 -- TODO: parens
 patom = lexeme haskell (    AVar    <$> identifier     haskell
                         <|> AString <$> stringLiteral  haskell
                         <|> AChar   <$> charLiteral    haskell
-                        <|> AInt    <$> integer        haskell)
+                        <|> (AInt . fromIntegral) <$> integer        haskell)
 
 pexpr = chainl1 (UVal <$> patom) (pure UApp)
 
@@ -72,38 +76,45 @@ instance Show a => Show (UExpr a) where
 
 type Err = String
 
-rename :: Env -> UExpr Atom -> Either Err (UExpr Dynamic)
+rename :: Env -> UExpr Atom -> Either Err (UExpr [Dynamic])
 rename env = mapM renameOne
     where
-      renameOne :: Atom -> Either Err Dynamic
       renameOne (AVar v) = do
         val <- M.lookup v env
         return val
-      renameOne (AChar x) = return (toDyn x)
-      renameOne (AString x) = return (toDyn x)
-      renameOne (AInt x) = return (toDyn x)
+      renameOne (AChar x) = box x
+      renameOne (AString x) = box x
+      renameOne (AInt x) = box x
+      box x = return [toDyn x]
 
-typecheck :: UExpr Dynamic -> Either Err TypeRep
-typecheck (UVal da) = return $ dynTypeRep da
-typecheck (UApp df da) = do
-  t1 <- typecheck df
-  t2 <- typecheck da
-  case funResultTy t1 t2 of
-    Just t3 -> return t3
-    Nothing -> fail $ "Can't apply!"
+interpret :: UExpr [Dynamic] -> Either Err [Dynamic]
+interpret (UVal da) = return $ da
+interpret (UApp df da) = do
+  t1 <- interpret df
+  t2 <- interpret da
+  return $ catMaybes [dynApply f a | f <- t1, a <- t2]
 
-evalExpr :: UExpr Dynamic -> Dynamic
-evalExpr (UVal da) = da
-evalExpr (UApp df da) = dynApp (evalExpr df) (evalExpr da)
+
+eval :: Env -> String -> Either Err [Dynamic]
+eval env s =  interpret =<< rename env =<< parse s 
+
+toMono :: forall a. Typeable a => [Dynamic] -> Either Err a
+toMono rs = case catMaybes $ map fromDynamic rs of
+           [] -> Left $ "value doesn't have type " ++ show (typeOf (undefined::a))
+           [r] -> Right r
+           _ -> error "eval': ambiguous types"
     
 
-eval :: Env -> String -> Either Err Dynamic
-eval env s = do
-  r <- rename env =<< parse s
-  typecheck r
-  return $ evalExpr r
 
-test :: Typeable a => a -> String -> a
-test a s = fromDyn result a
-  where Right result = interpret symTable s
-        symTable = M.fromList [("one", toDyn (1::Int))]
+test :: String -> Maybe String
+test s = case eval symTable s of
+           Right [result] -> fromDynamic result
+           Right [] -> Just "type error"
+           Right _ -> Just "ambiguous"
+           Left err -> Just err
+           
+   where 
+        symTable = M.fromList [("one", [toDyn (1::Int)]),
+                               ("show",[toDyn (show :: Int -> String)])
+                              ]
+
