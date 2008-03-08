@@ -62,10 +62,11 @@ import qualified Yi.WindowSet as WS
 import qualified Yi.Editor as Editor
 import qualified Yi.UI.Common as UI
 import Yi.UI.Common as UI (UI)
+import Yi.Interpreter
 
 import Data.Maybe
 import qualified Data.Map as M
-
+import Data.Dynamic
 import Data.IORef
 import Data.Foldable ( sequence_, mapM_,all )
 
@@ -281,8 +282,17 @@ reloadEditor = msgEditor "reloadEditor: Not supported"
 
 execEditorAction :: String -> YiM ()
 execEditorAction s = do 
-  acts <- asks (publishedActions . yiConfig)
-  postActions [(acts M.! s)]
+  env <- asks (publishedActions . yiConfig)
+  case toMono =<< interpret =<< addMakeAction =<< rename env =<< parse s of
+    Left err -> errorEditor err
+    Right a -> postActions [a]
+  where addMakeAction expr = return $ UApp (UVal mkAct) expr
+        mkAct = [
+                 toDyn (makeAction :: BufferM () -> Action),
+                 toDyn (makeAction :: EditorM () -> Action),
+                 toDyn (makeAction :: YiM () -> Action)
+                ]
+            
   
 getAllNamesInScope :: YiM [String]
 getAllNamesInScope = do 

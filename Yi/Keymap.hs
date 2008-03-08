@@ -55,7 +55,7 @@ data Config = Config {startFrontEnd :: UI.UIBoot,
                       defaultKm :: Keymap,                      
                       modeTable :: String -> Maybe Mode,
                       fundamentalMode :: Mode,
-                      publishedActions :: M.Map String Action}
+                      publishedActions :: M.Map String [Dynamic]}
 
 data Mode = Mode 
     {

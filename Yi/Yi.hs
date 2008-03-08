@@ -50,7 +50,7 @@ import Yi.Buffer.Region
 import Yi.Search
 import Yi.Style
 import Data.Map as M
-
+import Data.Dynamic
 
 
 
@@ -65,13 +65,14 @@ import Data.Map as M
 -- arbitrary type; M-x shall conjure-up a small haskell-like
 -- interpreter.
 
-defaultPublishedActions :: M.Map String Action
+defaultPublishedActions :: M.Map String [Dynamic]
 defaultPublishedActions = M.fromList $ 
-    [ ("leftB"                  , makeAction leftB) 
-    , ("lineCommentSelectionB"  , makeAction lineCommentSelectionB)
-    , ("unLineCommentSelectionB", makeAction unLineCommentSelectionB)
-    , ("insertB '\t'"           , makeAction (insertB '\t'))
+    [ ("leftB"                  , box leftB) 
+    , ("lineCommentSelectionB"  , box lineCommentSelectionB)
+    , ("unLineCommentSelectionB", box unLineCommentSelectionB)
+    , ("insertB"                , box insertB)
       -- I have added an action to insert a tab character
       -- because it is useful for makefiles.
     ]
 
+  where box x = [toDyn x]
