@@ -1,10 +1,12 @@
+{-# LANGUAGE DeriveDataTypeable #-}
+
 --
 -- Copyright (c) 2008 JP Bernardy
 --
 --
 
 module Yi.Window where
-
+import Data.Typeable
 import Yi.Buffer.Implementation (Point)
 type BufferRef = Int
 
@@ -18,6 +20,7 @@ data Window = Window {
                      ,bospnt :: !Int    -- ^ the buffer point of the bottom of screen
                      ,height :: !Int    -- ^ height of the window (in number of lines displayed)
                      }
+        deriving Typeable
 -- | Get the identification of a window.
 winkey :: Window -> (Bool, BufferRef)
 winkey w = (isMini w, bufkey w)

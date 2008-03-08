@@ -1,6 +1,7 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, DeriveDataTypeable, StandaloneDeriving #-}
 
--- Copyright (c) 2004-5, 8, Don Stewart - http://www.cse.unsw.edu.au/~dons
+-- Copyright (c) 2004-5, Don Stewart - http://www.cse.unsw.edu.au/~dons
+-- Copyright (c) 2007-8, JP Bernardy
 
 -- | The top level editor state, and operations on it.
 
@@ -51,6 +52,7 @@ import Prelude hiding (error)
 
 import Data.List                ( nub )
 import qualified Data.Map as M
+import Data.Typeable
 
 import Control.Monad.State
 import Control.Monad.Writer
@@ -75,7 +77,7 @@ data Editor = Editor {
        ,killring      :: !Killring
        ,regex         :: !(Maybe (String,Regex))    -- ^ most recent regex
     }
-
+    deriving Typeable
 
 bufferRefSupplyA :: Accessor Editor BufferRef
 bufferRefSupplyA = Accessor bufferRefSupply (\f e -> e {bufferRefSupply = f (bufferRefSupply e)})
@@ -227,7 +229,9 @@ setBuffer k = do
 -- ---------------------------------------------------------------------
 
 newtype EditorM a = EditorM {fromEditorM :: State Editor a}
-    deriving (Monad, MonadState Editor)
+    deriving (Monad, MonadState Editor,Typeable1)
+
+deriving instance Typeable2 State
 
 --------------
 

@@ -1,4 +1,4 @@
-{-# LANGUAGE PatternGuards, ExistentialQuantification #-}
+{-# LANGUAGE PatternGuards, ExistentialQuantification, DeriveDataTypeable #-}
 
 -- Copyright (c) 2004-5, 7-8 Don Stewart - http://www.cse.unsw.edu.au/~dons
 
@@ -56,6 +56,7 @@ import Data.Array
 import Data.Maybe
 import qualified Data.Set as Set
 import Yi.Debug
+import Data.Typeable
 
 -- | Direction of movement inside a buffer
 data Direction = Backward
@@ -99,7 +100,7 @@ data FBufferData =
                     -- ^ syn hl result. Actual result is (reverse fst ++ snd)
                     , overlays   :: !(Set.Set Overlay) -- ^ set of (non overlapping) visual overlay regions
                     }
-
+        deriving Typeable
 
 --
 -- | Mutation actions (from the undo or redo list)
@@ -110,7 +111,7 @@ data FBufferData =
 
 data Update = Insert {updatePoint :: !Point, insertUpdateString :: !String} -- FIXME: use ByteString
             | Delete {updatePoint :: !Point, deleteUpdateSize :: !Size}
-              deriving Show
+              deriving (Show, Typeable)
 
 
 --------------------------------------------------
@@ -332,6 +333,7 @@ gotoLnRelI n fb =
   findDownLine acc 1 (x:_)  = (acc, x)
   findDownLine acc l (_:xs) = findDownLine (acc + 1) (l - 1) xs
 
+-- lineOffsets fb = 0 : map (+ 1) (F.elemIndices '\n') (mem fb)
 
 -- | Return index of next string in buffer that matches argument
 searchBI :: Direction -> String -> BufferImpl -> Maybe Int

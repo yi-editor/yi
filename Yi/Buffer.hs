@@ -1,4 +1,4 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, DeriveDataTypeable, StandaloneDeriving #-}
 
 -- Copyright (C) 2004, 2008 Don Stewart - http://www.cse.unsw.edu.au/~dons
 
@@ -89,6 +89,7 @@ import Yi.Window
 import Control.Applicative
 import Control.Monad.RWS.Strict
 import Data.List (elemIndex)
+import Data.Typeable
 
 #ifdef TESTING
 import Test.QuickCheck
@@ -124,7 +125,7 @@ data FBuffer =
                 ,pendingUpdates :: [Update]       -- ^ updates that haven't been synched in the UI yet
                 ,highlightSelection :: !Bool
                 }
-
+        deriving Typeable
 
 
 
@@ -151,7 +152,9 @@ highlightSelectionA = Accessor highlightSelection (\f e -> e {highlightSelection
 
 -- | The BufferM monad writes the updates performed.
 newtype BufferM a = BufferM { fromBufferM :: RWS Window [Update] FBuffer a }
-    deriving (Monad, Functor, MonadWriter [Update], MonadState FBuffer, MonadReader Window)
+    deriving (Monad, Functor, MonadWriter [Update], MonadState FBuffer, MonadReader Window, Typeable1)
+
+deriving instance Typeable4 RWS
 
 instance Applicative BufferM where
     pure = return

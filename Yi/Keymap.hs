@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, FlexibleInstances, TypeSynonymInstances, ExistentialQuantification, MultiParamTypeClasses, FunctionalDependencies #-}
+{-# LANGUAGE FlexibleContexts, FlexibleInstances, TypeSynonymInstances, ExistentialQuantification, MultiParamTypeClasses, FunctionalDependencies, DeriveDataTypeable, StandaloneDeriving, GeneralizedNewtypeDeriving #-}
 
 -- Copyright (c) Jean-Philippe Bernardy 2007.
 
@@ -22,13 +22,14 @@ import Yi.Event
 import Yi.Syntax
 import Yi.Process ( SubprocessInfo, SubprocessId )
 import qualified Yi.UI.Common as UI
-
+import Data.Dynamic
+import Data.Typeable
 data Action = forall a. Show a => YiA (YiM a)
             | forall a. Show a => EditorA (EditorM a)
             | forall a. Show a => BufferA (BufferM a)
 --            | InsertA String
 --             | TextA Direction Unit Operation
-
+        deriving Typeable
 instance I.PEq Action where
     equiv _ _ = False
 
@@ -78,6 +79,7 @@ data Yi = Yi {yiEditor :: IORef Editor,
               yiSubprocesses :: IORef (M.Map SubprocessId SubprocessInfo),
               yiConfig :: Config
              }
+             deriving Typeable
 
 -- | The type of user-bindable functions
 newtype YiM a = YiM {runYiM :: ReaderT Yi IO a}
