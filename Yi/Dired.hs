@@ -76,8 +76,8 @@ fnewE f = do
         bufferName           = bestNewName currentBufferNames
     b <- case bufsWithThisFilename of
              [] -> do
-                   fe  <- lift $ doesFileExist f
-                   de  <- lift $ doesDirectoryExist f
+                   fe  <- liftIO $ doesFileExist f
+                   de  <- liftIO $ doesDirectoryExist f
                    newBufferForPath bufferName fe de
              _  -> return (bkey $ head bufsWithThisFilename)
     withGivenBuffer b $ setfileB f        -- associate buffer with file
@@ -229,7 +229,7 @@ diredRefresh = do
     p <- withBuffer pointB
     withBuffer $ (addOverlayB 0 (p-2) headStyle)
     -- Scan directory
-    di <- lift $ diredScanDir dir
+    di <- liftIO $ diredScanDir dir
     let ds = DiredState { diredPath        = dir
                         , diredMarks      = M.empty
                         , diredEntries    = di

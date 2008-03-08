@@ -80,7 +80,9 @@ data Yi = Yi {yiEditor :: IORef Editor,
              }
 
 -- | The type of user-bindable functions
-type YiM = ReaderT Yi IO
+newtype YiM a = YiM {runYiM :: ReaderT Yi IO a}
+    deriving (Monad, MonadReader Yi, MonadIO, Typeable)
+
 
 -----------------------
 -- Keymap basics
@@ -149,13 +151,14 @@ readEditor :: (Editor -> a) -> YiM a
 readEditor f = withEditor (gets f)
 
 catchDynE :: Typeable exception => YiM a -> (exception -> YiM a) -> YiM a
-catchDynE inner handler = ReaderT (\r -> catchDyn (runReaderT inner r) (\e -> runReaderT (handler e) r))
+catchDynE (YiM inner) handler
+    = YiM $ ReaderT (\r -> catchDyn (runReaderT inner r) (\e -> runReaderT (runYiM $ handler e) r))
 
 catchJustE :: (Exception -> Maybe b) -- ^ Predicate to select exceptions
            -> YiM a      -- ^ Computation to run
            -> (b -> YiM a) -- ^   Handler
            -> YiM a
-catchJustE p c h = ReaderT (\r -> catchJust p (runReaderT c r) (\b -> runReaderT (h b) r))
+catchJustE p (YiM c) h = YiM $ ReaderT (\r -> catchJust p (runReaderT c r) (\b -> runReaderT (runYiM $ h b) r))
 
 handleJustE :: (Exception -> Maybe b) -> (b -> YiM a) -> YiM a -> YiM a
 handleJustE p h c = catchJustE p c h
@@ -163,7 +166,7 @@ handleJustE p h c = catchJustE p c h
 -- | Shut down all of our threads. Should free buffers etc.
 shutdown :: YiM ()
 shutdown = do ts <- readsRef threads
-              lift $ mapM_ killThread ts
+              liftIO $ mapM_ killThread ts
 
 -- -------------------------------------------
 

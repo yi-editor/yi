@@ -135,7 +135,7 @@ continueSearch (s, re) _ = searchF s re
 --
 searchInit :: String -> [SearchF] -> YiM SearchExp
 searchInit re fs = do
-    Right c_re <- lift $ compile (extended .|. igcase .|. newline) execBlank re
+    Right c_re <- liftIO $ compile (extended .|. igcase .|. newline) execBlank re
     let p = (re,c_re)
     withEditor $ setRegexE p
     return p
@@ -189,7 +189,7 @@ searchF _ c_re = withBuffer $ do
 searchAndRepLocal :: String -> String -> YiM Bool
 searchAndRepLocal [] _ = return False   -- hmm...
 searchAndRepLocal re str = do
-    Right c_re <- lift $ compile compExtended execBlank re
+    Right c_re <- liftIO $ compile compExtended execBlank re
     withEditor $ setRegexE (re,c_re)     -- store away for later use
 
     mp <- withBuffer $ do   -- find the regex

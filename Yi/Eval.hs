@@ -27,7 +27,7 @@ jumpToE :: String -> Int -> Int -> YiM ()
 jumpToE filename line column = do
   bs <- readEditor $ findBufferWithName filename -- FIXME: should find by associated file-name
   case bs of
-    [] -> do found <- lift $ doesFileExist filename
+    [] -> do found <- liftIO $ doesFileExist filename
              if found
                then fnewE filename
                else error "file not found"

@@ -120,7 +120,7 @@ startEditor cfg st = do
     keymaps <- newIORef M.empty
     modes <- newIORef M.empty
     let yi = Yi newSt ui startThreads inCh outCh startKm modes keymaps startModules startSubprocessId startSubprocesses cfg
-        runYi f = runReaderT f yi
+        runYi f = runReaderT (runYiM f) yi
 
     runYi $ do
 
@@ -154,7 +154,7 @@ startEditor cfg st = do
     UI.main ui -- transfer control to UI: GTK must run in the main thread, or else it's not happy.
 
 postActions :: [Action] -> YiM ()
-postActions actions = do yi <- ask; lift $ writeList2Chan (output yi) actions
+postActions actions = do yi <- ask; liftIO $ writeList2Chan (output yi) actions
 
 -- | Process an event by advancing the current keymap automaton an
 -- execing the generated actions
@@ -227,7 +227,7 @@ suspendEditor = withUI UI.suspend
 runProcessWithInput :: String -> String -> YiM String
 runProcessWithInput cmd inp = do
     let (f:args) = split " " cmd
-    (out,_err,_) <- lift $ popen f args (Just inp)
+    (out,_err,_) <- liftIO $ popen f args (Just inp)
     return (chomp "\n" out)
 
 
@@ -307,7 +307,7 @@ startSubprocess cmd args = do
 
 startSubprocessWatchers :: Chan Action -> SubprocessId -> SubprocessInfo -> YiM ()
 startSubprocessWatchers chan procid procinfo = do
-  mapM_ (lift . forkIO) [ pipeToBuffer (hOut procinfo) append,
+  mapM_ (liftIO . forkIO) [ pipeToBuffer (hOut procinfo) append,
                           pipeToBuffer (hErr procinfo) append,
                           waitForExit (procHandle procinfo) >>= reportExit ]
   where append s = send $ appendToBuffer (bufRef procinfo) s

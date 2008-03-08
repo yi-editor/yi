@@ -622,7 +622,7 @@ ex_eval cmd = do
       fn ""           = msgClr
 
       fn s@(c:_) | isDigit c = do
-        e <- lift $ try $ evaluate $ read s
+        e <- liftIO $ try $ evaluate $ read s
         case e of Left _ -> errorEditor $ "The " ++show s++ " command is unknown."
                   Right lineNum -> withBuffer (gotoLn lineNum) >> return ()
 

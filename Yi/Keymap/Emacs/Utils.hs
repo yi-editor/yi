@@ -37,10 +37,7 @@ where
 {- Standard Library Module Imports -}
 import Control.Monad
   ()
-import Control.Monad.Trans
-  ( lift
-  , liftIO
-  )
+import Control.Monad.Trans (liftIO)
 import Data.Char
   ( ord
   , isDigit
@@ -105,7 +102,7 @@ changeBufferNameE =
 shellCommandE :: YiM ()
 shellCommandE = do
     withMinibuffer "Shell command:" return $ \cmd -> do
-      (cmdOut,cmdErr,exitCode) <- lift $ runShellCommand cmd
+      (cmdOut,cmdErr,exitCode) <- liftIO $ runShellCommand cmd
       case exitCode of
         ExitSuccess -> withEditor $ newBufferE "*Shell Command Output*" cmdOut >> return ()
         ExitFailure _ -> msgEditor cmdErr
@@ -252,7 +249,7 @@ completeFileName start s0 = do
             Nothing -> do bufferPath <- withBuffer getfileB
                           liftIO $ getFolder bufferPath
             (Just path) -> return path
-  homeDir <- lift $ getHomeDirectory
+  homeDir <- liftIO $ getHomeDirectory
   let s = if (['~',pathSeparator] `isPrefixOf` s0) then addTrailingPathSeparator homeDir ++ drop 2 s0 else s0
       sDir = if hasTrailingPathSeparator s then s else takeDirectory s
       searchDir = if null sDir then curDir
@@ -261,9 +258,9 @@ completeFileName start s0 = do
       fixTrailingPathSeparator f = do
                        isDir <- doesDirectoryExist (searchDir </> f)
                        return $ if isDir then addTrailingPathSeparator f else f
-  files <- lift $ getDirectoryContents searchDir
+  files <- liftIO $ getDirectoryContents searchDir
   let files' = files \\ [".", ".."]
-  fs <- lift $ mapM fixTrailingPathSeparator files'
+  fs <- liftIO $ mapM fixTrailingPathSeparator files'
   withEditor $ completeInList s (isPrefixOf s) $ map (sDir </>) fs
 
 completeFunctionName :: String -> YiM String
