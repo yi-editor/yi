@@ -57,6 +57,13 @@ import Yi.Buffer.Region
 import Yi.Style
 import Yi.Syntax ( ExtHL(..), noHighlighter )
 import Yi.Modes (defaultFundamentalMode)
+
+-- | associate buffer with file
+setFileName :: BufferRef -> FilePath -> YiM ()
+setFileName b filename = do
+  cfn <- liftIO $ canonicalizePath filename
+  withGivenBuffer b $ setfileB cfn
+
 ------------------------------------------------
 -- | If file exists, read contents of file into a new buffer, otherwise
 -- creating a new empty buffer. Replace the current window with a new
@@ -79,8 +86,8 @@ fnewE f = do
                    fe  <- liftIO $ doesFileExist f
                    de  <- liftIO $ doesDirectoryExist f
                    newBufferForPath bufferName fe de
-             _  -> return (bkey $ head bufsWithThisFilename)
-    withGivenBuffer b $ setfileB f        -- associate buffer with file
+             (h:_)  -> return (bkey h)
+    setFileName b f
     tbl <- asks (modeTable . yiConfig)
     fundamental <- asks (fundamentalMode . yiConfig)
     setBufferMode b (fromMaybe fundamental (tbl f))
@@ -209,7 +216,7 @@ diredDir dir = diredDirBuffer dir >> return ()
 diredDirBuffer :: FilePath -> YiM BufferRef
 diredDirBuffer dir = do
                 b <- withEditor $ stringToNewBuffer ("dired-"++dir) ""
-                withGivenBuffer b (setfileB dir) -- associate the buffer with the dir
+                setFileName b dir -- associate the buffer with the dir
                 withEditor $ switchToBufferE b
                 diredLoadNewDir dir
                 setBufferMode b diredMode

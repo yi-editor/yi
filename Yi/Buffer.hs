@@ -116,7 +116,7 @@ data BufferMode = ReadOnly | ReadWrite
 data FBuffer =
         FBuffer { name   :: !String               -- ^ immutable buffer name
                 , bkey   :: !BufferRef            -- ^ immutable unique key
-                , file   :: !(Maybe FilePath)     -- ^ maybe a filename associated with this buffer
+                , file   :: !(Maybe FilePath)     -- ^ maybe a filename associated with this buffer. Filename is canonicalized.
                 , undos  :: !URList               -- ^ undo/redo list
                 , rawbuf :: !BufferImpl
                 , bmode  :: !BufferMode           -- ^ a read-only bit
