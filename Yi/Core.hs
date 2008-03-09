@@ -82,6 +82,10 @@ import Control.Monad.Error ()
 import Control.Exception
 import Control.Concurrent
 import Control.Concurrent.Chan
+#ifdef SHIM
+import Shim.Hsinfo
+import Shim.SHM
+#endif
 
 -- | Make an action suitable for an interactive run.
 -- UI will be refreshed.
@@ -121,7 +125,19 @@ startEditor cfg st = do
     startSubprocesses <- newIORef M.empty
     keymaps <- newIORef M.empty
     modes <- newIORef M.empty
-    let yi = Yi newSt ui startThreads inCh outCh startKm modes keymaps startModules startSubprocessId startSubprocesses cfg
+#ifdef SHIM
+    let ghc = "/home/jp/usr/bin/ghc"
+    session <- ghcInit ghc
+    shim <- newIORef ShimState
+               { ghcProgram = ghc,
+                 tempSession = session,
+                 sessionMap = M.empty,
+                 compBuffer = M.empty }
+#endif
+    let yi = Yi newSt ui startThreads inCh outCh startKm modes keymaps startModules startSubprocessId startSubprocesses cfg 
+#ifdef SHIM
+             shim
+#endif
         runYi f = runReaderT (runYiM f) yi
 
     runYi $ do

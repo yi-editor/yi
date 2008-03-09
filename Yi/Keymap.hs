@@ -24,6 +24,10 @@ import Yi.Process ( SubprocessInfo, SubprocessId )
 import qualified Yi.UI.Common as UI
 import Data.Dynamic
 import Data.Typeable
+#ifdef SHIM
+import Shim.SHM
+#endif
+
 data Action = forall a. Show a => YiA (YiM a)
             | forall a. Show a => EditorA (EditorM a)
             | forall a. Show a => BufferA (BufferM a)
@@ -78,6 +82,9 @@ data Yi = Yi {yiEditor :: IORef Editor,
               yiSubprocessIdSource :: IORef SubprocessId, -- TODO: rename to yiSubprocessIdSupply
               yiSubprocesses :: IORef (M.Map SubprocessId SubprocessInfo),
               yiConfig :: Config
+#ifdef SHIM
+              ,yiShim :: IORef ShimState
+#endif
              }
              deriving Typeable
 
@@ -148,6 +155,16 @@ withGivenBuffer b f = withEditor (Editor.withGivenBuffer0 b f)
 
 withBuffer :: BufferM a -> YiM a
 withBuffer f = withEditor (Editor.withBuffer0 f)
+
+#ifdef SHIM
+withShim :: SHM a -> YiM a
+withShim f = do
+  r <- asks yiShim
+  liftIO $ do e <- readRef r
+              (a,e') <- runStateT f e
+              writeRef r e'
+              return a
+#endif
 
 readEditor :: (Editor -> a) -> YiM a
 readEditor f = withEditor (gets f)

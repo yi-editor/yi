@@ -19,6 +19,10 @@ data-files:
   art/yi+lambda-fat.pdf
   -- FIXME: Install Cocoa icon only when Cocoa configured
 
+flag shim
+  Description: Bake in shim support
+  -- Can be useful to disable; ghc package is usually not available for profiling.
+
 flag vty
   Description: Provide Vty UI
 
@@ -40,6 +44,8 @@ flag hacking
 
 flag testing
   Description: bake-in the self-checks
+
+
 
 
 library
@@ -73,6 +79,14 @@ library
       build-depends: HOC, HOC-AppKit, HOC-Foundation
       ghc-options: -DFRONTEND_COCOA
       exposed-modules: Yi.UI.Cocoa
+
+    if flag (shim)
+      build-depends: ghc
+      build-depends: parallel
+      build-depends: Cabal==1.2.3.0
+      build-depends: Crypto==4.1.0
+      build-depends: haskell98
+      cpp-options: -DSHIM
 
     other-modules:  
         Yi.Syntax.Cplusplus, Yi.Syntax.Haskell, Yi.Syntax.LiterateHaskell,
@@ -143,6 +157,14 @@ executable yi
         if flag (cocoa)
           build-depends: HOC, HOC-AppKit, HOC-Foundation
           ghc-options: -DFRONTEND_COCOA
+
+        if flag (shim)
+          build-depends: ghc
+          build-depends: parallel
+          build-depends: Cabal==1.2.3.0
+          build-depends: Crypto==4.1.0
+          build-depends: haskell98
+          cpp-options: -DSHIM
 
         if !(flag(vty) || flag (gtk) || flag(cocoa))
          buildable: False
