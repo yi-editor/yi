@@ -58,11 +58,21 @@ jumpToNextNote = do
   case note of
     Nothing -> msgEditor "No note!"
     Just n -> jumpToSrcLoc $ srcSpanStart $ srcSpan $ n
-    
 
+typeAtPos :: YiM String
+typeAtPos = do
+  (Just filename,line,col) <- withBuffer $ do
+                               (,,) <$> gets file <*> curLn <*> offsetFromSol
+  withShim $ do
+              Hsinfo.findTypeOfPos filename line col Nothing
+
+-- NOTE: source argument to Hsinfo functions can be used to provide
+-- source text, apparently.
 mode = haskellMode
    {
     modeKeymap = rebind [
+              ("C-c C-t", write typeAtPos
+              ),
               ("C-c C-l", write $ do
                  msgEditor "Loading..."
                  Just filename <- withBuffer $ gets file
