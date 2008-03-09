@@ -59,20 +59,28 @@ jumpToNextNote = do
     Nothing -> msgEditor "No note!"
     Just n -> jumpToSrcLoc $ srcSpanStart $ srcSpan $ n
 
+cursorPos :: BufferM (Maybe String, Int, Int)
+cursorPos = (,,) <$> gets file <*> curLn <*> offsetFromSol
+
 typeAtPos :: YiM String
 typeAtPos = do
-  (Just filename,line,col) <- withBuffer $ do
-                               (,,) <$> gets file <*> curLn <*> offsetFromSol
+  (Just filename,line,col) <- withBuffer cursorPos
   withShim $ do
               Hsinfo.findTypeOfPos filename line col Nothing
+
+jumpToDefinition :: YiM ()
+jumpToDefinition = do
+  (Just filename,line,col) <- withBuffer cursorPos
+  locn <- withShim $ Hsinfo.findDefinition filename line col Nothing
+  jumpToSrcLoc locn
 
 -- NOTE: source argument to Hsinfo functions can be used to provide
 -- source text, apparently.
 mode = haskellMode
    {
     modeKeymap = rebind [
-              ("C-c C-t", write typeAtPos
-              ),
+              ("C-c C-t", write typeAtPos),
+              ("C-c C-d", write jumpToDefinition),
               ("C-c C-l", write $ do
                  msgEditor "Loading..."
                  Just filename <- withBuffer $ gets file

@@ -223,7 +223,7 @@ bufInfoB = do
     m <- isUnchangedB
     l <- curLn
     c <- offsetFromSol
-    nm <- gets name
+    nm <- gets name -- FIXME: should be gets file
     let bufInfo = BufferFileInfo { bufInfoFileName = nm
                                  , bufInfoSize     = s
                                  , bufInfoLineNo   = l
