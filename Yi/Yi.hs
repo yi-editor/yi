@@ -57,13 +57,9 @@ import Data.Dynamic
 -- | List of published Actions
 
 -- THIS MUST BE OF THE FORM:
--- ("<expr>", makeAction "<expr>")
--- So we can hope getting rid of this someday.
+-- ("symbol", box symbol")
+-- ... so we can hope getting rid of this someday.
 -- Failing to conform to this rule exposes the code to instant deletion.
-
--- TODO: This should be a list of published symbols, of
--- arbitrary type; M-x shall conjure-up a small haskell-like
--- interpreter.
 
 defaultPublishedActions :: M.Map String [Dynamic]
 defaultPublishedActions = M.fromList $ 
@@ -71,8 +67,7 @@ defaultPublishedActions = M.fromList $
     , ("lineCommentSelectionB"  , box lineCommentSelectionB)
     , ("unLineCommentSelectionB", box unLineCommentSelectionB)
     , ("insertB"                , box insertB)
-      -- I have added an action to insert a tab character
-      -- because it is useful for makefiles.
+    , ("revertE"                , box revertE)
     ]
 
   where box x = [toDyn x]
