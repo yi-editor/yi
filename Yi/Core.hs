@@ -31,6 +31,7 @@ module Yi.Core
 
   -- * Window manipulation
   , closeWindow         -- :: YiM ()
+  , withOtherWindow
 
   -- * Interacting with external commands
   , runProcessWithInput          -- :: String -> String -> YiM String
@@ -271,11 +272,13 @@ closeWindow = do
     when (n == 1) quitEditor
     withEditor $ tryCloseE
 
-withOtherWindow :: YiM () -> YiM ()
+-- | Execute the argument in the context of an other window. Create
+-- one if necessary.
+withOtherWindow :: EditorM () -> EditorM ()
 withOtherWindow f = do
-  withEditor $ shiftOtherWindow
+  shiftOtherWindow
   f
-  withEditor $ prevWinE
+  prevWinE
 
 reloadEditor :: YiM ()
 reloadEditor = msgEditor "reloadEditor: Not supported"
