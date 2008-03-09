@@ -69,6 +69,8 @@ setFileName b filename = do
 -- creating a new empty buffer. Replace the current window with a new
 -- window onto the new buffer.
 --
+-- If the file is already open, just switch to the corresponding buffer.
+--
 -- Need to clean up semantics for when buffers exist, and how to attach
 -- windows to buffers.
 --
