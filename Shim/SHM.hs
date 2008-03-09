@@ -36,6 +36,10 @@ data CompilationResult
   | NothingCompiled String [CompileNote]
     deriving Show
 
+compResultNotes (FileCompiled ns) = ns
+compResultNotes (ImportsOnly ns) = ns
+compResultNotes (PreludeOnly ns) = ns
+compResultNotes (NothingCompiled _ ns) = ns
 
 replaceWith :: CompilationResult -> CompilationResult -> Bool
 replaceWith _ (FileCompiled _ ) = True

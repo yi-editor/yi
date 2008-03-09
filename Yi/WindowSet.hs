@@ -5,6 +5,7 @@
 
 module Yi.WindowSet where
 -- FIXME: export abstractly
+-- TODO: rename to RoundRobin or somesuch.
 
 import Prelude hiding (elem, error)
 
@@ -42,6 +43,9 @@ currentA = Accessor current modifyCurrent
     where modifyCurrent :: (a -> a) -> WindowSet a -> WindowSet a
           modifyCurrent f (WindowSet b c a) = WindowSet b (f c) a
 
+fromList :: [a] -> Maybe (WindowSet a)
+fromList [] = Nothing
+fromList (x:xs) = Just $ WindowSet [] x xs
 
 new :: a -> WindowSet a
 new w = WindowSet [] w []
