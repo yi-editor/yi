@@ -1,4 +1,9 @@
 import Yi
 import Yi.Keymap.Emacs (keymap)
+import qualified Yi.Mode.Shim as Shim
 
-main = yi $ defaultConfig {defaultKm = keymap}
+main :: IO ()
+main = yi $ defaultConfig {
+                           defaultKm = keymap,
+                           modeTable = Shim.modeTable <|> modeTable defaultConfig
+                          }
