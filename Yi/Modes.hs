@@ -14,7 +14,8 @@ import Yi.Syntax
 import Yi.Keymap
 import Yi.Indent
 import Control.Arrow (first)
-{- End of Imports -}
+import Yi.Prelude
+import Prelude ()
 
 fundamental, defaultFundamentalMode,
  latexMode, cppMode, haskellMode, literateHaskellMode, cabalMode, srmcMode :: Mode
@@ -62,8 +63,8 @@ srmcMode = fundamental
 
 defaultFundamentalMode = fundamental
 
-defaultModeMap :: FilePath -> Maybe Mode
-defaultModeMap = modeFromExtension . takeExtension
+defaultModeMap :: ReaderT FilePath Maybe Mode
+defaultModeMap = ReaderT (modeFromExtension . takeExtension)
 
 
 

@@ -92,7 +92,7 @@ fnewE f = do
     setFileName b f
     tbl <- asks (modeTable . yiConfig)
     fundamental <- asks (fundamentalMode . yiConfig)
-    setBufferMode b (fromMaybe fundamental (tbl f))
+    setBufferMode b (fromMaybe fundamental (runReaderT tbl f))
     withEditor $ switchToBufferE b
     where
     -- Determines whether or not a given buffer is associated with

@@ -57,7 +57,7 @@ data Config = Config {startFrontEnd :: UI.UIBoot,
                       startAction :: YiM (),
                       startQueuedActions :: [Action], -- ^ for performance testing
                       defaultKm :: Keymap,                      
-                      modeTable :: String -> Maybe Mode,
+                      modeTable :: ReaderT String Maybe Mode,
                       fundamentalMode :: Mode,
                       publishedActions :: M.Map String [Dynamic]}
 

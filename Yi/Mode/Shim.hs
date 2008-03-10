@@ -12,23 +12,22 @@ import Control.Monad.State
 
 import qualified Shim.Hsinfo as Hsinfo
 import Shim.SHM
-import Shim.Sexp
-import Shim.Utils
 
 import SrcLoc
 import ErrUtils ( Severity(..) )
 import FastString
-import Directory
 
 import Control.Monad.State
-import System.FilePath ( (</>) )
 import Yi.WindowSet as Robin
 import Outputable
 import Yi.Accessor
 import Data.Typeable
-import Control.Arrow
-modeTable fname | ".hs" `isSuffixOf` fname = Just mode
-modeTable _ = Nothing
+import Yi.Prelude
+import Prelude ()
+
+modeTable = ReaderT $ \fname -> case () of 
+                        _ | ".hs" `isSuffixOf` fname -> Just mode
+                        _ ->  Nothing
 
 jumpToSrcLoc :: SrcLoc -> YiM ()
 jumpToSrcLoc locn = 

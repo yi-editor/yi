@@ -1,5 +1,6 @@
 module Yi.Prelude 
     (
+     
      String,
      Yi.Prelude.map,
      Monad(..),
@@ -15,12 +16,17 @@ otherwise,
 Ord(..),
 Functor(..),
 module Text.Show,
+module Yi.Debug,
+ReaderT(..),
+    Maybe(..),
+ Bool(..),
     ) where
 
-
+import Yi.Debug
 import Text.Show
 import Data.Function
 import Data.Int
+import Control.Monad.Reader
     
 type Endom a = a -> a
 
