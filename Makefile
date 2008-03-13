@@ -24,7 +24,7 @@ CONTRIBUTORS: Contributors _darcs/inventory
 	darcs changes | ./Contributors > $@
 
 activity.png: _darcs/inventory
-	darcs-graph . --name=yi -o $@
+	darcs-graph . -y20 --name=yi -o $@
 
 haddock.view: haddock
 	firefox dist/doc/html/yi/index.html
