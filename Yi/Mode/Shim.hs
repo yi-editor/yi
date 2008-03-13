@@ -25,6 +25,7 @@ import Data.Typeable
 import Yi.Prelude
 import Prelude ()
 
+modeTable :: ReaderT String Maybe Mode
 modeTable = ReaderT $ \fname -> case () of 
                         _ | ".hs" `isSuffixOf` fname -> Just mode
                         _ ->  Nothing

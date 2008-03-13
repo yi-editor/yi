@@ -30,5 +30,7 @@ import Control.Monad.Reader
     
 type Endom a = a -> a
 
+(+->) = ReaderT
+
 map :: Functor f => (a -> b) -> f a -> f b
 map = fmap
