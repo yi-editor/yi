@@ -91,8 +91,10 @@ fnewE f = do
              (h:_)  -> return (bkey h)
     setFileName b f
     tbl <- asks (modeTable . yiConfig)
-    fundamental <- asks (fundamentalMode . yiConfig)
-    setBufferMode b (fromMaybe fundamental (runReaderT tbl f))
+    curmode <- getBufferMode b 
+    -- by default stick with the current mode (eg. stick with dired if
+    -- set as such)
+    setBufferMode b (fromMaybe curmode (runReaderT tbl f))
     withEditor $ switchToBufferE b
     where
     -- Determines whether or not a given buffer is associated with
