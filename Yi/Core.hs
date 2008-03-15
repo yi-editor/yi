@@ -73,6 +73,7 @@ import Data.Foldable ( sequence_, mapM_,all )
 
 import System.IO ( Handle, hWaitForInput )
 import System.FilePath
+import System.Directory ( findExecutable )
 import System.Process ( getProcessExitCode, ProcessHandle )
 
 import Control.Monad (when,forever)
@@ -125,7 +126,8 @@ startEditor cfg st = do
     keymaps <- newIORef M.empty
     modes <- newIORef M.empty
 #ifdef SHIM
-    let ghc = "/home/jp/usr/bin/ghc" -- FIXME
+    ghc <- findExecutable "ghc" -- FIXME: Add version constraint
+           >>= maybe (error "Could not find ghc executable in path.") return
     session <- ghcInit ghc
     shim <- newIORef ShimState
                { ghcProgram = ghc,
