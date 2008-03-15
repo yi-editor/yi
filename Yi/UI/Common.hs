@@ -6,6 +6,10 @@ import Yi.Editor
 import Yi.Event
 import Control.Concurrent.Chan
 
+data UIConfig = UIConfig {
+   configFontSize :: Maybe Int
+}
+
 data UI = UI
     {
      main                  :: IO (),           -- ^ Main loop
@@ -15,4 +19,4 @@ data UI = UI
      prepareAction         :: IO (EditorM ())  -- ^ Ran before an action is executed
     }
 
-type UIBoot = forall action. (Chan Event -> Chan action ->  Editor -> (EditorM () -> action) -> IO UI)
+type UIBoot = forall action. (UIConfig -> Chan Event -> Chan action ->  Editor -> (EditorM () -> action) -> IO UI)

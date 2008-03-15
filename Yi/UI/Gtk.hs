@@ -51,6 +51,7 @@ data UI = forall action. UI {
              , windowCache :: IORef [WinInfo]
              , uiActionCh :: Chan action
              , uiRunEd :: EditorM () -> action
+             , uiConfig :: Common.UIConfig
              }
 
 data WinInfo = WinInfo
@@ -80,11 +81,20 @@ mkUI ui = Common.UI
    Common.prepareAction         = prepareAction         ui
   }
 
+mkFontDesc :: Common.UIConfig -> IO FontDescription
+mkFontDesc cfg = do
+  f <- fontDescriptionNew
+  fontDescriptionSetFamily f "Monospace"
+  case  Common.configFontSize cfg of
+    Just x -> fontDescriptionSetSize f (fromIntegral x)
+    Nothing -> return ()
+  return f
+
 -- | Initialise the ui
-start :: Chan Yi.Event.Event -> Chan action ->
+start :: Common.UIConfig -> Chan Yi.Event.Event -> Chan action ->
          Editor -> (EditorM () -> action) ->
          IO Common.UI
-start ch outCh _ed runEd = do
+start cfg ch outCh _ed runEd = do
   initGUI
 
   -- rest.
@@ -102,9 +112,7 @@ start ch outCh _ed runEd = do
 
   cmd <- labelNew Nothing
   set cmd [ miscXalign := 0.01 ]
-  f <- fontDescriptionNew
-  fontDescriptionSetFamily f "Monospace"
-  widgetModifyFont cmd (Just f)
+  widgetModifyFont cmd =<< Just <$> mkFontDesc cfg
 
   set vb [ containerChild := vb',
            containerChild := cmd,
@@ -119,7 +127,7 @@ start ch outCh _ed runEd = do
   wc <- newIORef []
   tt <- textTagTableNew
 
-  let ui = UI win vb' cmd bufs tt wc outCh runEd
+  let ui = UI win vb' cmd bufs tt wc outCh runEd cfg
 
   return (mkUI ui)
 
@@ -269,8 +277,7 @@ handleClick ui w event = do
 -- | Make A new window
 newWindow :: UI -> Bool -> FBuffer -> IO WinInfo
 newWindow ui mini b = do
-    f <- fontDescriptionNew
-    fontDescriptionSetFamily f "Monospace"
+    f <- mkFontDesc (uiConfig ui)
 
     ml <- labelNew Nothing
     widgetModifyFont ml (Just f)

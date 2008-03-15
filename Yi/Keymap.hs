@@ -54,6 +54,7 @@ type KeymapProcess = I.P Event Action
 
 
 data Config = Config {startFrontEnd :: UI.UIBoot,
+                      configUI :: UIConfig,
                       startAction :: YiM (),
                       startQueuedActions :: [Action], -- ^ for performance testing
                       defaultKm :: Keymap,                      

@@ -117,7 +117,7 @@ startEditor cfg st = do
     -- Setting up the 1st window is a bit tricky because most functions assume there exists a "current window"
     inCh <- newChan
     outCh :: Chan Action <- newChan
-    ui <- uiStart inCh outCh initEditor makeAction
+    ui <- uiStart (configUI cfg) inCh outCh initEditor makeAction
     startKm <- newIORef (defaultKm cfg)
     startModules <- newIORef ["Yi.Yi"] -- this module re-exports all useful stuff, so we want it loaded at all times.
     startThreads <- newIORef []

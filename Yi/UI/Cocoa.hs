@@ -324,10 +324,10 @@ addSubviewWithTextLine view parent = do
   return (text, container)
 
 -- | Initialise the ui
-start :: Chan Yi.Event.Event -> Chan action ->
+start :: Common.UIConfig -> Chan Yi.Event.Event -> Chan action ->
          Editor -> (EditorM () -> action) ->
          IO Common.UI
-start ch outCh _ed runEd = do
+start cfg ch outCh _ed runEd = do
 
   -- Ensure that our command line application is also treated as a gui application
   fptr <- mallocForeignPtrBytes 32 -- way to many bytes, but hey...

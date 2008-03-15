@@ -75,10 +75,10 @@ mkUI ui = Common.UI
 
 
 -- | Initialise the ui
-start :: Chan Yi.Event.Event -> Chan action ->
+start :: Common.UIConfig -> Chan Yi.Event.Event -> Chan action ->
          Editor -> (EditorM () -> action) -> 
          IO Common.UI
-start ch _outCh editor _runEd = do
+start cfg ch _outCh editor _runEd = do
   liftIO $ do 
           v <- mkVty
           (x0,y0) <- Vty.getSize v

@@ -24,7 +24,7 @@ import Prelude hiding (error)
 import qualified Yi.Keymap.Emacs  as Emacs
 import qualified Yi.Keymap.Vim  as Vim
 import qualified Yi.Keymap.Users.Ertai
-import Yi.UI.Common (UIBoot)
+import Yi.UI.Common (UIBoot, UIConfig(..))
 import Yi.Debug
 import Yi.Yi hiding (file, yiConfig)
 import Yi.Modes (defaultModeMap, defaultFundamentalMode)
@@ -140,6 +140,8 @@ nilKeymap = do c <- anyEvent
 defaultConfig :: Config
 defaultConfig = 
   Config { startFrontEnd    = snd (head frontends)
+         , configUI         =  UIConfig 
+           { configFontSize = Nothing }
          , defaultKm        = nilKeymap
          , startAction      = openScratchBuffer -- emacs-style behaviour
          , startQueuedActions = []
