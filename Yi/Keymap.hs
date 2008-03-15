@@ -78,7 +78,7 @@ data Yi = Yi {yiEditor :: IORef Editor,
               defaultKeymap :: IORef Keymap, -- TODO: remove this in favour of using the yiConfig one.
               bufferMode    :: IORef (M.Map BufferRef Mode), -- FIXME: mode should be stored in the Buffer, but this would create a circular dependency.
               bufferProcesses :: IORef (M.Map BufferRef KeymapProcess), -- FIXME: should be an MVar (can be accessed both by worker and input thread)
-              yiSubprocessIdSource :: IORef SubprocessId, -- TODO: rename to yiSubprocessIdSupply
+              yiSubprocessIdSupply :: IORef SubprocessId,
               yiSubprocesses :: IORef (M.Map SubprocessId SubprocessInfo),
               yiConfig :: Config
 #ifdef SHIM

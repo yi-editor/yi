@@ -119,7 +119,6 @@ startEditor cfg st = do
     outCh :: Chan Action <- newChan
     ui <- uiStart (configUI cfg) inCh outCh initEditor makeAction
     startKm <- newIORef (defaultKm cfg)
-    startModules <- newIORef ["Yi.Yi"] -- this module re-exports all useful stuff, so we want it loaded at all times.
     startThreads <- newIORef []
     startSubprocessId <- newIORef 1
     startSubprocesses <- newIORef M.empty
@@ -324,7 +323,7 @@ startSubprocess cmd args = do
   let buffer_name = "output from " ++ cmd
   bufref <- withEditor $ newBufferE buffer_name ""
 
-  procid <- modifiesThenReadsRef yiSubprocessIdSource $ (+1)
+  procid <- modifiesThenReadsRef yiSubprocessIdSupply (+1)
   procinfo <- liftIO $ createSubprocess cmd args bufref
 
   yi <- ask

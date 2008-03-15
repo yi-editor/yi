@@ -76,6 +76,7 @@ jumpToDefinition = do
 
 -- NOTE: source argument to Hsinfo functions can be used to provide
 -- source text, apparently.
+mode :: Mode
 mode = haskellMode
    {
     modeKeymap = rebind [

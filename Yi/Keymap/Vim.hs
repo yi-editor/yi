@@ -16,7 +16,6 @@ import Prelude       hiding ( any, error )
 import Data.Char
 import Data.Maybe           ( fromMaybe )
 import Data.Dynamic
-import qualified Data.Map as M
 
 import Control.Exception    ( ioErrors, try, evaluate )
 import Control.Monad.State

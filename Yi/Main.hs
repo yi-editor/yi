@@ -19,7 +19,8 @@
 
 module Yi.Main (main, defaultConfig) where
 
-import Prelude hiding (error)
+import Prelude ()
+import Yi.Prelude
 
 import qualified Yi.Keymap.Emacs  as Emacs
 import qualified Yi.Keymap.Vim  as Vim

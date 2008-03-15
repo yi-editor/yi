@@ -8,15 +8,11 @@ module Yi.Eval (
 ) where
 
 import Control.Monad
-import Control.Monad.Trans
 import Data.Array
 import Data.List
 import Prelude hiding (error)
-import System.Directory
 import Text.Regex.Posix
 import Yi.Core
-import Yi.Debug
-import Yi.Editor
 import Yi.Keymap
 import Yi.Interact hiding (write)
 import Yi.Event
