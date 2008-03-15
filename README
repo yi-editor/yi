@@ -79,7 +79,7 @@ QUICK START with cabal-make:
   2 - runhaskell MkConfig.hs --help
       this will show you the options available re-run with the
       appropriate options, you probably at least want:
-      runhaskells MkConfig.hs --prefix <path-to-prefix> --user username
+      runhaskell MkConfig.hs --prefix <path-to-prefix> --user username
       This will produce a config.test copy this across to config.mk
 
 * make all
@@ -102,7 +102,7 @@ $ ./dist/build/yi/yi
 Though obviously the configure command should also include your usual
 cabal flags which may well include "--user" and "--prefix".
 
-This is the recommanded mode of operation if you're tracking the
+This is the recommended mode of operation if you're tracking the
 development repository.
 
 CONFIGURATION
