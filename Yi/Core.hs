@@ -126,7 +126,7 @@ startEditor cfg st = do
     keymaps <- newIORef M.empty
     modes <- newIORef M.empty
 #ifdef SHIM
-    let ghc = "/home/jp/usr/bin/ghc"
+    let ghc = "/home/jp/usr/bin/ghc" -- FIXME
     session <- ghcInit ghc
     shim <- newIORef ShimState
                { ghcProgram = ghc,
@@ -134,7 +134,7 @@ startEditor cfg st = do
                  sessionMap = M.empty,
                  compBuffer = M.empty }
 #endif
-    let yi = Yi newSt ui startThreads inCh outCh startKm modes keymaps startModules startSubprocessId startSubprocesses cfg 
+    let yi = Yi newSt ui startThreads inCh outCh startKm modes keymaps startSubprocessId startSubprocesses cfg 
 #ifdef SHIM
              shim
 #endif
