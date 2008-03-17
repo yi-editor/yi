@@ -54,7 +54,9 @@ yankE = do (text:_) <- getsA killringA krContents
 
 -- | M-w
 killRingSaveE :: YiM ()
-killRingSaveE = do text <- withBuffer (readRegionB =<< getSelectRegionB)
+killRingSaveE = do text <- withBuffer $ do
+                            setA highlightSelectionA False
+                            readRegionB =<< getSelectRegionB
                    killringPut text
 -- | M-y
 
