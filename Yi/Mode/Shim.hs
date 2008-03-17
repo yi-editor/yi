@@ -24,6 +24,7 @@ import Yi.Accessor
 import Data.Typeable
 import Yi.Prelude
 import Prelude ()
+import Data.Char
 
 modeTable :: ReaderT String Maybe Mode
 modeTable = ReaderT $ \fname -> case () of 
@@ -78,6 +79,17 @@ annotType = do
      moveToSol
      insertN $ t ++ "\n"
 
+-- | Update a line of the form "-- expr = value" with the new value of expr
+annotValue :: YiM ()
+annotValue = do
+  lnReg <- withBuffer $ regionOfB Line
+  Just sourcefile <- withBuffer $ gets file
+  ln <- withBuffer $ readRegionB lnReg
+  let lhs = takeWhile (/= '=') $ dropWhile (== '-') $ dropWhile isSpace $ ln
+  newVal <- withShim $ do
+               ses <- getSessionFor sourcefile
+               evaluate ses lhs
+  withBuffer $ replaceRegionB lnReg ("--" ++ lhs ++ "= " ++ newVal)
 
 jumpToDefinition :: YiM ()
 jumpToDefinition = do
@@ -93,6 +105,7 @@ mode = haskellMode
     modeKeymap = rebind [
               ("C-c C-t", write typeAtPos),
               ("C-c ! t", write annotType),
+              ("C-c ! =", write annotValue),
               ("C-c C-d", write jumpToDefinition),
               ("C-c C-l", write $ do
                  msgEditor "Loading..."

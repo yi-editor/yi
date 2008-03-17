@@ -55,6 +55,7 @@ import Distribution.PackageDescription
 
 import Distribution.Simple.LocalBuildInfo ( packageDeps )
 import Distribution.Version ( Dependency (..) )
+import GHC.Exts (unsafeCoerce#)
 
 --------------------------------------------------------------
 -- GHC-API helpers
@@ -376,6 +377,13 @@ findTypeOfName ses n = do
          unqual <- io $ GHC.getPrintUnqual ses
          return $ showSDocForUser unqual doc
  
+evaluate :: Session -> String -> SHM String
+evaluate ses n = do
+  maybe_hvalue <- io $ GHC.compileExpr ses ("show (" ++ n ++ ")")
+  -- prints errors to stderr?
+  return $ maybe "" unsafeCoerce# maybe_hvalue
+
+
 getModuleExports :: FilePath -> String -> String -> SHM IdData
 getModuleExports sourcefile0 modname pref = do
   ses <- getSessionFor sourcefile0
