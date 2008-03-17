@@ -26,7 +26,6 @@ import qualified Yi.Keymap.Emacs  as Emacs
 import qualified Yi.Keymap.Vim  as Vim
 import qualified Yi.Keymap.Users.Ertai
 import Yi.UI.Common (UIBoot, UIConfig(..))
-import Yi.Debug
 import Yi.Yi hiding (file, yiConfig)
 import Yi.Modes (defaultModeMap, defaultFundamentalMode)
 import Yi.Interact hiding (write)
