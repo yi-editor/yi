@@ -59,14 +59,25 @@ jumpToNextNote = do
     Nothing -> msgEditor "No note!"
     Just n -> jumpToSrcLoc $ srcSpanStart $ srcSpan $ n
 
+-- | Position of the cursor
 cursorPos :: BufferM (Maybe String, Int, Int)
 cursorPos = (,,) <$> gets file <*> curLn <*> offsetFromSol
 
+-- | Type of the symbol at current position
 typeAtPos :: YiM String
 typeAtPos = do
   (Just filename,line,col) <- withBuffer cursorPos
   withShim $ do
-              Hsinfo.findTypeOfPos filename line col Nothing
+      Hsinfo.findTypeOfPos filename line col Nothing
+
+-- | Annotate the current function with its type
+annotType :: YiM ()
+annotType = do
+  t <- typeAtPos
+  withBuffer $ do
+     moveToSol
+     insertN $ t ++ "\n"
+
 
 jumpToDefinition :: YiM ()
 jumpToDefinition = do
@@ -81,6 +92,7 @@ mode = haskellMode
    {
     modeKeymap = rebind [
               ("C-c C-t", write typeAtPos),
+              ("C-c ! t", write annotType),
               ("C-c C-d", write jumpToDefinition),
               ("C-c C-l", write $ do
                  msgEditor "Loading..."
