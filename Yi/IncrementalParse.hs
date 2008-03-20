@@ -32,6 +32,7 @@ evalL :: Steps s a r -> Steps s a r
 evalL (Val x r) = Val x (evalL r)
 evalL (App f) = case evalL f of
                   (Val a (Val b r)) -> Val (a b) r
+                  (Val f1 (App (Val f2 r))) -> App (Val (f1 . f2) r)
                   r -> App r
 evalL x = x
 
