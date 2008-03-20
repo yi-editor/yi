@@ -4,8 +4,8 @@ module Yi.IncrementalParse (IResult, Process, Result(..), Void,
                             P, InputState(..)) where
 
 import Control.Applicative
-import Yi.Debug
-import Prelude hiding (error)
+import Yi.Prelude
+import Prelude ()
 
 data Void
 
