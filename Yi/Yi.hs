@@ -68,6 +68,12 @@ defaultPublishedActions = M.fromList $
     , ("unLineCommentSelectionB", box unLineCommentSelectionB)
     , ("insertB"                , box insertB)
     , ("revertE"                , box revertE)
+    , ("numberOfB"              , box numberOfB)
+    , ("Character"              , box Character)
+    , ("Line"                   , box Line)
+    , ("Word"                   , box Word)
+    , ("Paragraph"              , box Paragraph)
+    , ("Document"               , box Document)
     ]
 
   where box x = [toDyn x]

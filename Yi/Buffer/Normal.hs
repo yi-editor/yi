@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveDataTypeable #-}
 --
 -- Copyright (C) 2008 JP Bernardy
 --
@@ -24,6 +25,7 @@ import Yi.Buffer.Region
 import Data.Char
 import Control.Applicative
 import Control.Monad
+import Data.Typeable
 
 -- | Designate a given "unit" of text.
 data TextUnit = Character
@@ -36,6 +38,7 @@ data TextUnit = Character
               | GenUnit {genEnclosingUnit :: TextUnit,
                          genUnitBoundary :: Direction -> BufferM Bool}
    -- (haddock, stay away) | Page | Searched
+                deriving Typeable
 
 isWordChar :: Char -> Bool
 isWordChar x = isAlphaNum x || x == '_'
