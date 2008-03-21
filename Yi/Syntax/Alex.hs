@@ -14,14 +14,14 @@ import Yi.Debug
 takeLB :: Int64 -> LB.ByteString -> LB.ByteString
 takeLB = LB.take
 
-type RestartOffset = Int -- ^ if offsets before this is dirtied, must restart from that state.
+type LookedOffset = Int -- ^ if offsets before this is dirtied, must restart from that state.
 type AlexInput  = LB.ByteString
 type Action hlState token = AlexInput -> hlState -> (hlState, token)
 type State hlState = (hlState, [Stroke]) -- ^ Lexer state; (reversed) list of tokens so far.
 type AlexState hlState = (Int,       -- Start offset
                           AlexInput, -- Input data
                           hlState,   -- (user defined) lexer state
-                          RestartOffset -- Last offset looked at
+                          LookedOffset -- Last offset looked at
                          ) 
 type Result = ([Stroke], [Stroke])
 alexGetChar :: AlexInput -> Maybe (Char, AlexInput)
@@ -37,7 +37,7 @@ actionConst token _str state = (state, token)
 actionAndModify :: (lexState -> lexState) -> token -> Action lexState token
 actionAndModify modifier token _str state = (modifier state, token)
 
-type Partial s = (Int,State s,RestartOffset) -- ^ list of cached intermediate state its offset; and looked up offset.
+type Partial s = (Int,State s,LookedOffset) -- ^ list of cached intermediate state its offset; and looked up offset.
 
 data Cache s = Cache [Partial s] Result
 
