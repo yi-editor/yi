@@ -1,8 +1,8 @@
 {-# OPTIONS -fglasgow-exts #-}
 module Yi.IncrementalParse (IResult, Process, Result(..), Void, 
                             upd, symbol, eof, runPolish, run, getValue, 
-                            P, InputState(..)) where
-
+                            P, AlexState (..)) where
+import Yi.Syntax.Alex (AlexState (..))
 import Control.Applicative
 import Yi.Prelude
 import Prelude ()
@@ -72,7 +72,7 @@ instance Alternative (P s) where
 
 -- | Get the process' value (online).  Returns value, continuation and
 --   remaining input.
-evalSteps :: Steps s a (Steps s b r) -> [(InputState lexState,s)] -> (a, Steps s b r, [(InputState lexState,s)])
+evalSteps :: Steps s a (Steps s b r) -> [(AlexState lexState,s)] -> (a, Steps s b r, [(AlexState lexState,s)])
 evalSteps (Val a s) xs = (a, s, xs)
 evalSteps (Shift v) xs = let (s, xs') = front xs
                          in evalSteps (v $ fmap snd s) xs'
@@ -85,17 +85,12 @@ evalSteps (App s)   xs = let (f,s',  xs')  = evalSteps s  xs
 front [] = (Nothing, [])
 front (x:xs) = (Just x, xs)
 
-data InputState lexState = InputState {
-    inputStateLex :: lexState,
-    inputStateOffset :: !Int,
-    inputStateLookedOffset :: !Int
-}
 
 data Result lexState s a r where
-    Leaf :: a -> !(InputState lexState) -> Steps s a r -> Result lexState s a r
-    Una  :: !(InputState lexState) -> Steps s a r -> Result lexState s a r -> Result lexState s a r
+    Leaf :: a -> !(AlexState lexState) -> Steps s a r -> Result lexState s a r
+    Una  :: !(AlexState lexState) -> Steps s a r -> Result lexState s a r -> Result lexState s a r
     Bin  :: a 
-              -> !(InputState lexState)
+              -> !(AlexState lexState)
               -> (Result lexState s (b->a) (Steps s b r)) -- left partial result
               -> Result lexState s b r                    -- right partial result
               -> Result lexState s a r
@@ -104,7 +99,7 @@ getValue (Leaf a _ _) = a
 getValue (Bin a _ _ _) = a
 getValue (Una _ _ r) = getValue r
 
-getOfs = inputStateLookedOffset . getInp
+getOfs = lookedOffset . getInp
 
 getInp (Leaf _ o _) = o
 getInp (Bin _ o _ _) = o
@@ -120,18 +115,18 @@ bin l r = Bin ((getValue l) (getValue r)) (getInp l) l r
 
 upd :: forall lexState s a b r. 
        lexState ->
-       (InputState lexState -> [(InputState lexState, s)]) -> 
+       (AlexState lexState -> [(AlexState lexState, s)]) -> 
        Int -> 
        Result lexState s a (Steps s b r) ->
-      (Result lexState s a (Steps s b r), Steps s b r, [(InputState lexState,s)])
+      (Result lexState s a (Steps s b r), Steps s b r, [(AlexState lexState,s)])
 upd initState source dirty p 
     | getOfs p < dirty = trace ("Update: dirty = " ++ show dirty) $ 
                          update p
-    | otherwise        = evalResult (getSteps p) (source $ InputState initState 0 0)
+    | otherwise        = evalResult (getSteps p) (source $ AlexState 0 initState 0 1 0)
     where 
       -- Invariant:  getOfs p < dirty (otherwise evalResult is used)
       update :: forall a b r. Result lexState s a (Steps s b r) 
-             -> (Result lexState s a (Steps s b r), Steps s b r, [(InputState lexState,s)])
+             -> (Result lexState s a (Steps s b r), Steps s b r, [(AlexState lexState,s)])
       update (Leaf _ o p) = trace "Update: leaf" $ evalResult p (source o)
       update (Una o p r) 
           | getOfs r < dirty = let (r', s', xs') = update r
@@ -149,20 +144,20 @@ upd initState source dirty p
           where ro = getOfs r
 
       evalResult :: forall a b r. Steps s a (Steps s b r) -> 
-                    [(InputState lexState,s)] ->
-                    (Result lexState s a (Steps s b r), Steps s b r, [(InputState lexState,s)])
+                    [(AlexState lexState,s)] ->
+                    (Result lexState s a (Steps s b r), Steps s b r, [(AlexState lexState,s)])
       evalResult (App s) xs = let (f, s', xs' ) = evalResult s  xs
                                   (a, s'', xs'') = evalResult s' xs'
                               in (bin f a, s'', xs'')
-      evalResult (Shift c) xs = let sym :: Maybe (InputState lexState, s)
+      evalResult (Shift c) xs = let sym :: Maybe (AlexState lexState, s)
                                     (sym, xs') = front xs
                                     (a, s'', xs'') = evalResult (c $ fmap snd $ sym) xs'
                                 in (Una (inpState xs) (Shift c) a, s'', xs'')
       evalResult steps xs = let (a, s', xs') = evalSteps steps xs 
                             in (Leaf a (inpState xs) steps, s', xs')
 
-      inpState :: [(InputState lexState,s)] -> InputState lexState
-      inpState [] = InputState initState maxBound maxBound
+      inpState :: [(AlexState lexState,s)] -> AlexState lexState
+      inpState [] = AlexState maxBound initState maxBound (-1) (-1)
       inpState ((inputState,_):_) = inputState
 
 -- | Advance in the result steps, pushing results in the continuation.

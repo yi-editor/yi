@@ -2,12 +2,10 @@
 module Yi.Syntax.Fractal (mkHighlighter) where
 
 import Yi.Syntax
-import Yi.Syntax.Alex (AlexState, AlexInput)
+import Yi.Syntax.Alex (AlexState(..), AlexInput)
 import qualified Yi.IncrementalParse as P
-import Data.Maybe
 import qualified Data.Tree as S
 import Control.Applicative
-import Data.List
 import Yi.Prelude
 
 data Tree a = Node a (Tree a) (Tree a)
@@ -48,11 +46,11 @@ type T token = (Int,token,Int)
 type Cache lexState token = P.IResult lexState (T token) (Tree (T token))
 
 mkHighlighter :: forall lexState token. lexState
-              -> (AlexState lexState -> Maybe (T token, AlexState lexState))
+              -> ((AlexState lexState, AlexInput) -> Maybe (T token, (AlexState lexState, AlexInput)))
               -> (T token -> Stroke)
               -> Highlighter (Cache lexState token)
 mkHighlighter initState alexScanToken tokenToStroke = 
-  Yi.Syntax.SynHL { hlStartState   = P.Leaf Leaf (P.InputState initState 0 0) 
+  Yi.Syntax.SynHL { hlStartState   = P.Leaf Leaf (AlexState 0 initState 0 1 0) 
                                             (P.run (parse 1 1000000000))
                   -- FIXME: max int
                   , hlRun          = run
@@ -60,9 +58,9 @@ mkHighlighter initState alexScanToken tokenToStroke =
                   }
       where run source dirty cache = fst3 $ P.upd initState (tokenSource source) dirty cache
             getS begin end cache = fmap tokenToStroke $ getStrokes begin end (P.getValue cache) []
-            tokenSource :: (Int -> AlexInput) -> P.InputState lexState -> [(P.InputState lexState, T token)]
-            tokenSource source (P.InputState lexState ofs lookOfs)
-                = unfoldLexer alexScanToken (ofs,source ofs,lexState,ofs)
+            tokenSource :: (Int -> AlexInput) -> AlexState lexState -> [(AlexState lexState, T token)]
+            tokenSource source st
+                = unfoldLexer alexScanToken (st, source (startOffset st))
             fst3 (x,_,_) = x
 
             getStrokes :: Int -> Int -> Tree (T token) -> Endom [T token]
@@ -77,11 +75,11 @@ mkHighlighter initState alexScanToken tokenToStroke =
                 = (s :) . getStrokes begin end lc . getStrokes begin end rc
 
 
-unfoldLexer :: (AlexState lexState -> Maybe (token, AlexState lexState)) 
-             -> AlexState lexState -> [(P.InputState lexState, token)]
-unfoldLexer f b@(ofs,_,lexState,lookOfs) = case f b of
+unfoldLexer :: ((AlexState lexState, input) -> Maybe (token, (AlexState lexState, input)))
+             -> (AlexState lexState, input) -> [(AlexState lexState, token)]
+unfoldLexer f b = case f b of
              Nothing -> []
-             Just (t, b') -> (P.InputState lexState ofs lookOfs, t) : unfoldLexer f b'
+             Just (t, b') -> (fst b, t) : unfoldLexer f b'
 
 
 

@@ -5,16 +5,17 @@
 -- so it must be included.  Doubleplusyuck.
 
 -- | Scan one token. Return (maybe) a token and a new state.
-alexScanToken :: AlexState HlState -> Maybe ((Int,Token,Int), AlexState HlState)
-alexScanToken (idx,inp,state,restartOfs) = let (scn,lookahead) = alexScan' inp (stateToInit state) 
-                                               restartOfs' = max restartOfs (idx + lookahead) in
+alexScanToken :: (AlexState HlState, AlexInput) -> Maybe ((Int,Token,Int), (AlexState HlState, AlexInput))
+alexScanToken (AlexState idx state restartOfs ln col, inp) = 
+    let (scn,lookahead) = alexScan' inp (stateToInit state) 
+        restartOfs' = max restartOfs (idx + lookahead) in
     case scn of
 		AlexEOF -> Nothing
 		AlexError _ -> error "lexical error"
-		AlexSkip  inp' len  -> alexScanToken (idx+len,inp',state,restartOfs')
+		AlexSkip  inp' len  -> alexScanToken (AlexState (idx+len) state restartOfs' ln col, inp')
 		AlexToken inp' len act -> 
                     let (state', style) = act (takeLB (fromIntegral len) inp) state 
-                    in Just ((idx,style,idx+len), (idx + len,inp',state',restartOfs'))
+                    in Just ((idx,style,idx+len), (AlexState (idx + len) state' restartOfs' ln col, inp'))
 
 alexScan' input (I# (sc))
   = alexScanUser' undefined input (I# (sc))
