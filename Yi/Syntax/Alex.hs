@@ -1,7 +1,7 @@
 {-# OPTIONS -fglasgow-exts #-}
 
 module Yi.Syntax.Alex (mkHighlighter, 
-                       alexGetChar, alexInputPrevChar,
+                       alexGetChar, alexInputPrevChar, unfoldLexer,
                        AlexState(..), AlexInput, Stroke,
                        takeLB, actionConst, actionAndModify,
                        Posn(..), startPosn, moveStr) where
@@ -112,3 +112,11 @@ other n m l = case l of
                     case m of
                       0 -> h:other n n     t
                       _ ->   other n (m-1) t
+
+-- | unfold lexer function into a function that returns a stream of (state x token)
+unfoldLexer :: ((AlexState lexState, input) -> Maybe (token, (AlexState lexState, input)))
+             -> (AlexState lexState, input) -> [(AlexState lexState, token)]
+unfoldLexer f b = case f b of
+             Nothing -> []
+             Just (t, b') -> (fst b, t) : unfoldLexer f b'
+

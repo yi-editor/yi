@@ -2,7 +2,7 @@
 module Yi.Syntax.Fractal (mkHighlighter) where
 
 import Yi.Syntax
-import Yi.Syntax.Alex (AlexState(..), startPosn, AlexInput)
+import Yi.Syntax.Alex (AlexState(..), startPosn, AlexInput, unfoldLexer)
 import qualified Yi.IncrementalParse as P
 import qualified Data.Tree as S
 import Control.Applicative
@@ -75,11 +75,6 @@ mkHighlighter initState alexScanToken tokenToStroke =
                 = (s :) . getStrokes begin end lc . getStrokes begin end rc
 
 
-unfoldLexer :: ((AlexState lexState, input) -> Maybe (token, (AlexState lexState, input)))
-             -> (AlexState lexState, input) -> [(AlexState lexState, token)]
-unfoldLexer f b = case f b of
-             Nothing -> []
-             Just (t, b') -> (fst b, t) : unfoldLexer f b'
 
 
 
