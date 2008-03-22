@@ -2,7 +2,7 @@
 module Yi.IncrementalParse (IResult, Process, Result(..), Void, 
                             upd, symbol, eof, runPolish, run, getValue, 
                             P, AlexState (..)) where
-import Yi.Syntax.Alex (AlexState (..))
+import Yi.Syntax.Alex (AlexState (..), Posn(..), startPosn)
 import Control.Applicative
 import Yi.Prelude
 import Prelude ()
@@ -122,7 +122,7 @@ upd :: forall lexState s a b r.
 upd initState source dirty p 
     | getOfs p < dirty = trace ("Update: dirty = " ++ show dirty) $ 
                          update p
-    | otherwise        = evalResult (getSteps p) (source $ AlexState 0 initState 0 1 0)
+    | otherwise        = evalResult (getSteps p) (source $ AlexState 0 initState 0 startPosn)
     where 
       -- Invariant:  getOfs p < dirty (otherwise evalResult is used)
       update :: forall a b r. Result lexState s a (Steps s b r) 
@@ -157,7 +157,7 @@ upd initState source dirty p
                             in (Leaf a (inpState xs) steps, s', xs')
 
       inpState :: [(AlexState lexState,s)] -> AlexState lexState
-      inpState [] = AlexState maxBound initState maxBound (-1) (-1)
+      inpState [] = AlexState maxBound initState maxBound (Posn (-1) (-1))
       inpState ((inputState,_):_) = inputState
 
 -- | Advance in the result steps, pushing results in the continuation.

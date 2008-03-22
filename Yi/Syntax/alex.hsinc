@@ -6,16 +6,19 @@
 
 -- | Scan one token. Return (maybe) a token and a new state.
 alexScanToken :: (AlexState HlState, AlexInput) -> Maybe ((Int,Token,Int), (AlexState HlState, AlexInput))
-alexScanToken (AlexState idx state restartOfs ln col, inp) = 
+alexScanToken (AlexState idx state restartOfs pos, inp) = 
     let (scn,lookahead) = alexScan' inp (stateToInit state) 
         restartOfs' = max restartOfs (idx + lookahead) in
     case scn of
 		AlexEOF -> Nothing
 		AlexError _ -> error "lexical error"
-		AlexSkip  inp' len  -> alexScanToken (AlexState (idx+len) state restartOfs' ln col, inp')
+		AlexSkip  inp' len  -> 
+                    let chunk = takeLB (fromIntegral len) inp
+                    in alexScanToken (AlexState (idx+len) state restartOfs' (moveStr pos chunk), inp')
 		AlexToken inp' len act -> 
-                    let (state', style) = act (takeLB (fromIntegral len) inp) state 
-                    in Just ((idx,style,idx+len), (AlexState (idx + len) state' restartOfs' ln col, inp'))
+                    let (state', style) = act chunk state 
+                        chunk = takeLB (fromIntegral len) inp
+                    in Just ((idx,style,idx+len), (AlexState (idx + len) state' restartOfs' (moveStr pos chunk), inp'))
 
 alexScan' input (I# (sc))
   = alexScanUser' undefined input (I# (sc))

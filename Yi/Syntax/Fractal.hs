@@ -2,7 +2,7 @@
 module Yi.Syntax.Fractal (mkHighlighter) where
 
 import Yi.Syntax
-import Yi.Syntax.Alex (AlexState(..), AlexInput)
+import Yi.Syntax.Alex (AlexState(..), startPosn, AlexInput)
 import qualified Yi.IncrementalParse as P
 import qualified Data.Tree as S
 import Control.Applicative
@@ -50,7 +50,7 @@ mkHighlighter :: forall lexState token. lexState
               -> (T token -> Stroke)
               -> Highlighter (Cache lexState token)
 mkHighlighter initState alexScanToken tokenToStroke = 
-  Yi.Syntax.SynHL { hlStartState   = P.Leaf Leaf (AlexState 0 initState 0 1 0) 
+  Yi.Syntax.SynHL { hlStartState   = P.Leaf Leaf (AlexState 0 initState 0 startPosn) 
                                             (P.run (parse 1 1000000000))
                   -- FIXME: max int
                   , hlRun          = run

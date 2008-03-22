@@ -3,7 +3,8 @@
 module Yi.Syntax.Alex (mkHighlighter, 
                        alexGetChar, alexInputPrevChar,
                        AlexState(..), AlexInput, Stroke,
-                       takeLB, actionConst, actionAndModify) where
+                       takeLB, actionConst, actionAndModify,
+                       Posn(..), startPosn, moveStr) where
 
 import Data.List hiding (map)
 import qualified Data.ByteString.Lazy.Char8 as LB
@@ -19,14 +20,28 @@ type AlexInput  = LB.ByteString
 type Action hlState token = AlexInput -> hlState -> (hlState, token)
 type State hlState = (AlexState hlState, [Stroke]) -- ^ Lexer state; (reversed) list of tokens so far.
 data AlexState hlState = AlexState { 
-      startOffset :: Int,       -- Start offset
+      startOffset :: !Int,       -- Start offset
       hlState :: hlState,   -- (user defined) lexer state
-      lookedOffset :: LookedOffset, -- Last offset looked at
-      curLine :: Int,
-      curCol :: Int
+      lookedOffset :: !LookedOffset, -- Last offset looked at
+      curPosn :: !Posn
     }
 
 type Result = ([Stroke], [Stroke])
+
+data Posn = Posn {posnLn :: !Int, posnCol :: !Int}
+
+startPosn :: Posn
+startPosn = Posn 1 0
+
+moveStr :: Posn -> LB.ByteString -> Posn
+moveStr posn str = foldl' moveCh posn (LB.unpack str)
+
+moveCh :: Posn -> Char -> Posn
+moveCh (Posn l c) '\t' = Posn  l     (((c+8) `div` 8)*8)
+moveCh (Posn l _) '\n' = Posn (l+1)   1
+moveCh (Posn l c) _    = Posn  l     (c+1)
+
+
 alexGetChar :: AlexInput -> Maybe (Char, AlexInput)
 alexGetChar bs | LB.null bs = Nothing
                | otherwise  = Just (LB.head bs, LB.tail bs)
@@ -63,7 +78,7 @@ mkHighlighter initState alexScanToken =
                   , hlGetStrokes   = getStrokes
                   }
       where 
-        startState = (AlexState 0 initState 0 1 0, [])
+        startState = (AlexState 0 initState 0 startPosn, [])
         getStrokes begin end (Cache _ (leftHL, rightHL)) = reverse (usefulsL leftHL) ++ usefulsR rightHL
             where
               usefulsR = dropWhile (\(_l,_s,r) -> r <= begin) .
