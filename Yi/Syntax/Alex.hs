@@ -1,10 +1,12 @@
 {-# OPTIONS -fglasgow-exts #-}
 
-module Yi.Syntax.Alex (mkHighlighter, 
-                       alexGetChar, alexInputPrevChar, unfoldLexer,
+module Yi.Syntax.Alex (
+                       Source(..),
+                       mkHighlighter, 
+                       alexGetChar, alexInputPrevChar, unfoldLexer, lexerSource,
                        AlexState(..), AlexInput, Stroke,
-                       takeLB, actionConst, actionAndModify,
-                       Posn(..), startPosn, moveStr) where
+                       takeLB, headLB, actionConst, actionAndModify,
+                       Tok(..), Posn(..), startPosn, moveStr, runSource) where
 
 import Data.List hiding (map)
 import qualified Data.ByteString.Lazy.Char8 as LB
@@ -15,31 +17,47 @@ import Prelude ()
 takeLB :: Int64 -> LB.ByteString -> LB.ByteString
 takeLB = LB.take
 
+headLB :: LB.ByteString -> Char
+headLB = LB.head
+
+
 type LookedOffset = Int -- ^ if offsets before this is dirtied, must restart from that state.
 type AlexInput  = LB.ByteString
 type Action hlState token = AlexInput -> hlState -> (hlState, token)
 type State hlState = (AlexState hlState, [Stroke]) -- ^ Lexer state; (reversed) list of tokens so far.
-data AlexState hlState = AlexState { 
-      startOffset :: !Int,       -- Start offset
-      hlState :: hlState,   -- (user defined) lexer state
+data AlexState lexerState = AlexState { 
+      stLexer  :: lexerState,   -- (user defined) lexer state
       lookedOffset :: !LookedOffset, -- Last offset looked at
-      curPosn :: !Posn
+      stPosn :: !Posn
     }
+
+data Tok t = Tok
+    {
+     tokT :: t,
+     tokLen  :: Int,
+     tokPosn :: Posn
+    }
+
+instance Show t => Show (Tok t) where
+    show tok = show (tokPosn tok) ++ ": " ++ show (tokT tok)              
 
 type Result = ([Stroke], [Stroke])
 
-data Posn = Posn {posnLn :: !Int, posnCol :: !Int}
+data Posn = Posn {posnOfs :: !Int, posnLine :: !Int, posnCol :: !Int}
+
+instance Show Posn where
+    show (Posn _ l c) = "L" ++ show l ++ " " ++ "C" ++ show c
 
 startPosn :: Posn
-startPosn = Posn 1 0
+startPosn = Posn 0 1 0
 
 moveStr :: Posn -> LB.ByteString -> Posn
 moveStr posn str = foldl' moveCh posn (LB.unpack str)
 
 moveCh :: Posn -> Char -> Posn
-moveCh (Posn l c) '\t' = Posn  l     (((c+8) `div` 8)*8)
-moveCh (Posn l _) '\n' = Posn (l+1)   1
-moveCh (Posn l c) _    = Posn  l     (c+1)
+moveCh (Posn o l c) '\t' = Posn (o+1)  l     (((c+8) `div` 8)*8)
+moveCh (Posn o l _) '\n' = Posn (o+1) (l+1)   0
+moveCh (Posn o l c) _    = Posn (o+1) l     (c+1) 
 
 
 alexGetChar :: AlexInput -> Maybe (Char, AlexInput)
@@ -78,7 +96,7 @@ mkHighlighter initState alexScanToken =
                   , hlGetStrokes   = getStrokes
                   }
       where 
-        startState = (AlexState 0 initState 0 startPosn, [])
+        startState = (AlexState initState 0 startPosn, [])
         getStrokes begin end (Cache _ (leftHL, rightHL)) = reverse (usefulsL leftHL) ++ usefulsR rightHL
             where
               usefulsR = dropWhile (\(_l,_s,r) -> r <= begin) .
@@ -89,7 +107,7 @@ mkHighlighter initState alexScanToken =
 
         run getInput dirtyOffset (Cache cachedStates _) = -- trace (show $ map trd3 $ newCachedStates) $
             Cache newCachedStates result
-            where resumeIndex = startOffset $ fst $ resumeState
+            where resumeIndex = posnOfs $ stPosn $ fst $ resumeState
                   reused = takeWhile ((< dirtyOffset) . lookedOffset . fst) cachedStates
                   resumeState = if null reused then startState else last reused
                   newCachedStates = reused ++ other 20 0 (drop 1 recomputed)

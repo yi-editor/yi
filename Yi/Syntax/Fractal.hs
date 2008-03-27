@@ -2,7 +2,7 @@
 module Yi.Syntax.Fractal (mkHighlighter) where
 
 import Yi.Syntax
-import Yi.Syntax.Alex (AlexState(..), startPosn, AlexInput, unfoldLexer)
+import Yi.Syntax.Alex (AlexState(..), startPosn, AlexInput, unfoldLexer, Posn(..))
 import qualified Yi.IncrementalParse as P
 import qualified Data.Tree as S
 import Control.Applicative
@@ -50,7 +50,7 @@ mkHighlighter :: forall lexState token. lexState
               -> (T token -> Stroke)
               -> Highlighter (Cache lexState token)
 mkHighlighter initState alexScanToken tokenToStroke = 
-  Yi.Syntax.SynHL { hlStartState   = P.Leaf Leaf (AlexState 0 initState 0 startPosn) 
+  Yi.Syntax.SynHL { hlStartState   = P.Leaf Leaf (AlexState initState 0 startPosn) 
                                             (P.run (parse 1 1000000000))
                   -- FIXME: max int
                   , hlRun          = run
@@ -60,7 +60,7 @@ mkHighlighter initState alexScanToken tokenToStroke =
             getS begin end cache = fmap tokenToStroke $ getStrokes begin end (P.getValue cache) []
             tokenSource :: (Int -> AlexInput) -> AlexState lexState -> [(AlexState lexState, T token)]
             tokenSource source st
-                = unfoldLexer alexScanToken (st, source (startOffset st))
+                = unfoldLexer alexScanToken (st, source (posnOfs $ stPosn st))
             fst3 (x,_,_) = x
 
             getStrokes :: Int -> Int -> Tree (T token) -> Endom [T token]
