@@ -8,7 +8,7 @@
 
 {
 {-# OPTIONS -w  #-}
-module Yi.Syntax.Haskell ( initState, alexScanToken, tokenToStyle ) where
+module Yi.Syntax.Haskell ( initState, alexScanToken, tokenToStyle, Token(..) ) where
 import Yi.Syntax.Alex
 import Yi.Style
 }
@@ -37,10 +37,13 @@ $symchar   = [$symbol \:]
 $nl        = [\n\r]
 
 @reservedid = 
-        as|case|class|data|default|deriving|do|else|hiding|if|
-        import|in|infix|infixl|infixr|instance|let|module|newtype|
-        of|qualified|then|type|where|forall|mdo|foreign|export|dynamic|
+        as|case|class|data|default|deriving|else|hiding|if|
+        import|in|infix|infixl|infixr|instance|module|newtype|
+        qualified|then|type|forall|foreign|export|dynamic|
         safe|threadsafe|unsafe|stdcall|ccall|dotnet
+
+@indentReservedId =
+    of|where|let|do|mdo
 
 @reservedop =
         ".." | ":" | "::" | "=" | \\ | "|" | "<-" | "->" | "@" | "~" | "=>"
@@ -95,9 +98,10 @@ haskell :-
 
  "{-"                                           { m (subtract 1) Comment }
 
- $special                                       { c Special }
+ $special                                       { \str st -> (st, Special (headLB str)) }
 
  @reservedid                                    { c Reserved }
+ @indentReservedId                              { c IndentReserved }
  @varid                                         { c VarIdent }
  @conid                                         { c ConsIdent }
 
@@ -122,9 +126,10 @@ haskell :-
 type HlState = Int
 
 data Token = Number | CharTok | StringTok | VarIdent | ConsIdent
-           | Reserved | ReservedOp | Special
+           | IndentReserved | Reserved | ReservedOp | Special Char
            | ConsOperator | Operator
            | Comment 
+             deriving (Eq, Show)
 
 tokenToStyle :: Token -> Style 
 tokenToStyle tok = case tok of
@@ -135,7 +140,8 @@ tokenToStyle tok = case tok of
   ConsIdent    -> upperIdStyle
   ReservedOp   -> operatorStyle
   Reserved     -> keywordStyle
-  Special      -> defaultStyle
+  IndentReserved -> keywordStyle
+  Special _    -> defaultStyle
   ConsOperator -> upperIdStyle
   Operator     -> operatorStyle
   Comment      -> commentStyle
