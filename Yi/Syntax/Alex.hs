@@ -131,6 +131,19 @@ other n m l = case l of
                       0 -> h:other n n     t
                       _ ->   other n (m-1) t
 
+data Source st a = Source {scanInit   :: st,
+                           source :: st -> [(st,a)]}
+
+runSource :: forall t t1. Source t t1 -> [(t, t1)]
+runSource (Source initSt f) = f initSt
+
+type LexerSource lState token = Source (AlexState lState) token
+
+lexerSource l st0 src = Source 
+                 { scanInit = AlexState st0 0 startPosn,
+                   source = \st -> unfoldLexer l (st, src $ posnOfs $ stPosn st)
+                 }
+
 -- | unfold lexer function into a function that returns a stream of (state x token)
 unfoldLexer :: ((AlexState lexState, input) -> Maybe (token, (AlexState lexState, input)))
              -> (AlexState lexState, input) -> [(AlexState lexState, token)]
