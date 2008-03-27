@@ -191,9 +191,6 @@ type Process s a = Steps s a (Steps s Void Void)
 
 type IResult lexState s a = Result lexState s a (Steps s Void Void)
 
-fst3 (x,_,_) = x
-
-
 runPolish p = fst3 . evalSteps (run p)
 
 symbol f = P $ \fut -> Shift $ \input -> 
