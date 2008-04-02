@@ -2,7 +2,7 @@
 
 module Yi.Syntax.Alex (
                        Source(..),
-                       mkHighlighter, 
+                       mkHighlighter,
                        alexGetChar, alexInputPrevChar, unfoldLexer, lexerSource,
                        AlexState(..), AlexInput, Stroke,
                        takeLB, headLB, actionConst, actionAndModify,
@@ -21,11 +21,14 @@ headLB :: LB.ByteString -> Char
 headLB = LB.head
 
 
-type LookedOffset = Int -- ^ if offsets before this is dirtied, must restart from that state.
+-- | if offsets before this is dirtied, must restart from that state.
+type LookedOffset = Int
+
 type AlexInput  = LB.ByteString
 type Action hlState token = AlexInput -> hlState -> (hlState, token)
-type State hlState = (AlexState hlState, [Stroke]) -- ^ Lexer state; (reversed) list of tokens so far.
-data AlexState lexerState = AlexState { 
+-- | Lexer state; (reversed) list of tokens so far.
+type State hlState = (AlexState hlState, [Stroke])
+data AlexState lexerState = AlexState {
       stLexer  :: lexerState,   -- (user defined) lexer state
       lookedOffset :: !LookedOffset, -- Last offset looked at
       stPosn :: !Posn
@@ -39,7 +42,7 @@ data Tok t = Tok
     }
 
 instance Show t => Show (Tok t) where
-    show tok = show (tokPosn tok) ++ ": " ++ show (tokT tok)              
+    show tok = show (tokPosn tok) ++ ": " ++ show (tokT tok)
 
 type Result = ([Stroke], [Stroke])
 
@@ -57,7 +60,7 @@ moveStr posn str = foldl' moveCh posn (LB.unpack str)
 moveCh :: Posn -> Char -> Posn
 moveCh (Posn o l c) '\t' = Posn (o+1)  l     (((c+8) `div` 8)*8)
 moveCh (Posn o l _) '\n' = Posn (o+1) (l+1)   0
-moveCh (Posn o l c) _    = Posn (o+1) l     (c+1) 
+moveCh (Posn o l c) _    = Posn (o+1) l     (c+1)
 
 
 alexGetChar :: AlexInput -> Maybe (Char, AlexInput)
@@ -76,32 +79,32 @@ actionAndModify modifier token _str state = (modifier state, token)
 data Cache s = Cache [State s] Result
 
 -- Unfold, scanl and foldr at the same time :)
-origami :: (b -> Maybe (a, b)) -> b -> (a -> c -> c) -> (c -> a -> c) 
+origami :: (b -> Maybe (a, b)) -> b -> (a -> c -> c) -> (c -> a -> c)
         -> c -> c -> ([(b, c)], c)
 origami gen seed (<+) (+>) l_c r_c = case gen seed of
       Nothing -> ([], r_c)
-      Just (a, new_seed) -> 
+      Just (a, new_seed) ->
           let ~(partials,c) = origami gen new_seed (<+) (+>) (l_c +> a) r_c
           in ((seed,l_c):partials,l_c `seq` a <+ c)
 
 type ASI s = (AlexState s, AlexInput)
 
--- | Highlighter based on an Alex lexer 
+-- | Highlighter based on an Alex lexer
 mkHighlighter :: forall s. s
               -> (ASI s -> Maybe (Stroke, ASI s))
               -> Yi.Syntax.Highlighter (Cache s)
-mkHighlighter initState alexScanToken = 
+mkHighlighter initState alexScanToken =
   Yi.Syntax.SynHL { hlStartState   = Cache [] ([],[])
                   , hlRun          = run
                   , hlGetStrokes   = getStrokes
                   }
-      where 
+      where
         startState = (AlexState initState 0 startPosn, [])
         getStrokes begin end (Cache _ (leftHL, rightHL)) = reverse (usefulsL leftHL) ++ usefulsR rightHL
             where
               usefulsR = dropWhile (\(_l,_s,r) -> r <= begin) .
                         takeWhile (\(l,_s,_r) -> l <= end)
-                        
+
               usefulsL = dropWhile (\(l,_s,_r) -> l >= end) .
                          takeWhile (\(_l,_s,r) -> r >= begin)
 
@@ -116,7 +119,7 @@ mkHighlighter initState alexScanToken =
 
 
         updateState :: AlexInput -> State s -> ([State s], Result)
-        updateState input (restartState, startPartial) = 
+        updateState input (restartState, startPartial) =
             (map f partials, (startPartial, result))
                 where result :: [Stroke]
                       (partials,result) = origami alexScanToken (restartState, input) (:) (flip (:)) startPartial []
@@ -139,7 +142,7 @@ runSource (Source initSt f) = f initSt
 
 type LexerSource lState token = Source (AlexState lState) token
 
-lexerSource l st0 src = Source 
+lexerSource l st0 src = Source
                  { scanInit = AlexState st0 0 startPosn,
                    source = \st -> unfoldLexer l (st, src $ posnOfs $ stPosn st)
                  }

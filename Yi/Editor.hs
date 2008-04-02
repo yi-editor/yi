@@ -301,9 +301,9 @@ prevBufW = prevBuffer >>= switchToBufferE
 -- Switch the current window to this buffer. Doesn't associate any file
 -- with the buffer (unlike fnewE) and so is good for popup internal
 -- buffers (like scratch)
-newBufferE :: String -> -- ^ buffer name
-              String -> -- ^ buffer contents
-                  EditorM BufferRef
+newBufferE :: String   -- ^ buffer name
+              -> String -- ^ buffer contents
+              -> EditorM BufferRef
 newBufferE f s = do
     b <- stringToNewBuffer f s
     switchToBufferE b
