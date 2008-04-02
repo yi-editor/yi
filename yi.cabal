@@ -18,6 +18,7 @@ data-files:
   examples/YiConfig.hs
   art/yi+lambda-fat.pdf
   -- FIXME: Install Cocoa icon only when Cocoa configured
+extra-source-files: Yi/Syntax/alex.hsinc
 
 flag shim
   Description: Bake in shim support
@@ -44,9 +45,6 @@ flag hacking
 
 flag testing
   Description: bake-in the self-checks
-
-
-
 
 library
   if flag(hacking)
@@ -86,13 +84,16 @@ library
       build-depends: Cabal==1.2.3.0
       build-depends: Crypto==4.1.0
       build-depends: haskell98
+
       cpp-options: -DSHIM
+
+      other-modules: Shim.SHM, Shim.Utils, Shim.SessionMonad, Shim.Hsinfo, Shim.GhcCompat, Shim.ExprSearch
 
     other-modules:
         Yi.Syntax.Cplusplus, Yi.Syntax.Haskell, Yi.Syntax.LiterateHaskell,
         Yi.Syntax.Latex, Yi.Syntax.Srmc, Yi.Syntax.Cabal
 
-        Yi.Accessor
+        Yi.Accessor, Yi.Interpreter,
         Yi.Buffer.HighLevel, Yi.Buffer.Implementation,
         Yi.Buffer.Normal, Yi.Buffer.Region, Yi.Char, Yi.Completion, Yi.Core,
         Yi.Debug, Yi.Dired, Yi.Dynamic, Yi.Editor, Yi.Eval, Yi.Event, Yi.FingerString, Yi.History,
@@ -116,7 +117,7 @@ library
 -- --                Yi.Keymap.Mg,
 -- --                Yi.Keymap.Nano,
 -- --                Yi.Keymap.Vi,
---        Yi.Syntax.Fractal
+        Yi.Syntax.Fractal
 
 --
 --  extensions:   CPP, DeriveDataTypeable, FlexibleContexts, FlexibleInstances,
