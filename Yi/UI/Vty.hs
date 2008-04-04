@@ -45,6 +45,8 @@ import qualified Yi.UI.Common as Common
 import Yi.Window
 import Yi.Style as Style
 import Graphics.Vty as Vty
+import Codec.Binary.UTF8.String as UTF8
+
 ------------------------------------------------------------------------
 
 data Rendered = 
@@ -192,7 +194,8 @@ refresh ui e = do
   Vty.update (vty $ ui) 
       pic {pImage = vertcat (toList wImages) <-> withStyle (window $ uistyle e) (take xss $ cmd ++ repeat ' '),
            pCursor = case cursor (snd $ WS.current zzz) of
-                       Just (y,x) -> Cursor x (y + WS.current startXs)
+                       Just (y,x) -> Cursor x (y + WS.current startXs) 
+                       -- Add the position of the window to the position of the cursor
                        Nothing -> NoCursor
                        -- This can happen if the user resizes the window. 
                        -- Not really nice, but upon the next refresh the cursor will show.
@@ -286,7 +289,10 @@ drawText h w topPoint point selreg selsty wsty bufData
     | otherwise        = (rendered_lines, bottomPoint, pntpos)
   where 
   -- | Remember the point of each char
-  annotateWithPoint text = zipWith (\(c,a) p -> (c,(a,p))) text [topPoint..]  
+  annotateWithPoint = annotateWithPoint' topPoint
+  annotateWithPoint' p []          = []
+  annotateWithPoint' p ((c,a):cs)  = (c, (a,p)) : annotateWithPoint' (p + length (UTF8.encode [c])) cs
+
 
   lns0 = take h $ concatMap (wrapLine w) $ map (concatMap expandGraphic) $ lines' $ annotateWithPoint $ bufData
 
@@ -332,8 +338,8 @@ drawText h w topPoint point selreg selsty wsty bufData
                                       
   expandGraphic (c,p) 
     | ord c < 32 = [('^',p),(chr (ord c + 64),p)]
-    | ord c < 128 = [(c,p)]
-    | otherwise = zip ('\\':show (ord c)) (repeat p)
+    | otherwise = [(c,p)]
+
                                             
 
 

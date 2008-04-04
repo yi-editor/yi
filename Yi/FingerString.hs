@@ -7,22 +7,24 @@
 module Yi.FingerString (
   FingerString,
   fromString, fromByteString, fromLazyByteString,
-  toString, toByteString, toLazyByteString,
+  toString, toReverseString,
+  toByteString, toLazyByteString,
   rebalance,
-  null, head, tail, empty, take, drop, append, splitAt, count, length,
+  null, empty, take, drop, append, splitAt, count, length,
   elemIndices, findSubstring, findSubstrings, elemIndexEnd, elemIndicesEnd
 ) where
 
 import Prelude hiding (null, head, tail, length, take, drop, splitAt, head, tail, foldl, reverse)
 import qualified Data.List as L
 
-import qualified Data.ByteString.Char8 as B
+import qualified Data.ByteString as B
 import Data.ByteString (ByteString)
-import qualified Data.ByteString.Lazy.Char8 as LB
+import qualified Data.ByteString.Lazy as LB
 
 import qualified Data.FingerTree as T
 import Data.FingerTree hiding (null, empty)
 
+import Data.Word
 import Data.Monoid
 import Data.Foldable (toList)
 import Data.Maybe (listToMaybe)
@@ -55,8 +57,11 @@ toLazyByteString = LB.fromChunks . toList . unFingerString
 toByteString :: FingerString -> ByteString
 toByteString = B.concat . toList . unFingerString
 
-toString :: FingerString -> String
+toString :: FingerString -> [Word8]
 toString = LB.unpack . toLazyByteString
+
+toReverseString :: FingerString -> [Word8]
+toReverseString = LB.unpack . LB.fromChunks . map B.reverse . toList . T.reverse . unFingerString
 
 fromLazyByteString :: LB.ByteString -> FingerString
 fromLazyByteString = FingerString . toTree
@@ -71,7 +76,7 @@ fromByteString = FingerString . toTree
     toTree b | B.null b = T.empty
     toTree b = let (h,t) = B.splitAt chunkSize b in h <| toTree t
 
-fromString :: String -> FingerString
+fromString :: [Word8] -> FingerString
 fromString = FingerString . toTree
   where
     toTree [] = T.empty
@@ -84,7 +89,7 @@ rebalance = fromLazyByteString . toLazyByteString
 null :: FingerString -> Bool
 null (FingerString a) = T.null a
 
-head :: FingerString -> Char
+head :: FingerString -> Word8
 head (FingerString a) = case T.viewl a of
   EmptyL -> error "FingerString.head: empty string"
   x :< _ -> B.head x
@@ -128,16 +133,16 @@ splitAt n (FingerString t) =
     n' = n - unSize (measure l)
 
 -- | Count the number of occurrences of the specified character.
-count :: Char -> FingerString -> Int
+count :: Word8 -> FingerString -> Int
 count x = fromIntegral . LB.count x . toLazyByteString
 
 -- | Get the last index of the specified character
-elemIndexEnd :: Char -> FingerString -> Maybe Int
+elemIndexEnd :: Word8 -> FingerString -> Maybe Int
 elemIndexEnd x = listToMaybe . elemIndicesEnd x
 
 -- | Get all indices of the specified character, in reverse order.
 -- This function has good lazy behaviour: taking the head of the resulting list is O(1)
-elemIndicesEnd :: Char -> FingerString -> [Int]
+elemIndicesEnd :: Word8 -> FingerString -> [Int]
 elemIndicesEnd x = treeEIE . unFingerString
   where
     treeEIE :: FingerTree Size ByteString -> [Int]
@@ -147,7 +152,7 @@ elemIndicesEnd x = treeEIE . unFingerString
 
 -- | Get all indices of the specified character
 -- This function has good lazy behaviour: taking the head of the resulting list is O(1)
-elemIndices :: Char -> FingerString -> [Int]
+elemIndices :: Word8 -> FingerString -> [Int]
 elemIndices x = map fromIntegral . LB.elemIndices x . toLazyByteString
 
 -- | Determine the first index of the ByteString in the buffer.

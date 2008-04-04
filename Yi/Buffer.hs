@@ -28,7 +28,7 @@ module Yi.Buffer
   , offsetFromSol
   , leftB
   , rightB
-  , moveN
+--  , moveN
   , leftN
   , rightN
   , insertN
@@ -416,9 +416,12 @@ pointSelectionPointDiffB =
 
 
 -- | Move point by the given offset.
--- A negative offset moves left a positive one right.
+-- A negative offset moves backwards a positive one forward.
 moveN :: Int -> BufferM ()
-moveN n = pointB >>= \p -> moveTo (p + n)
+moveN n = do
+  p <- pointB
+  nextPoint <- queryBuffer (findNextChar n p)
+  moveTo nextPoint
 
 -- | Move point -1
 leftB :: BufferM ()
@@ -505,6 +508,10 @@ deleteN n = pointB >>= deleteNAt n
 -- | Offset from start of line
 offsetFromSol :: BufferM Int
 offsetFromSol = queryBuffer offsetFromSolBI
+
+-- charsFromSol :: BufferM [String]
+-- charsFromSol = do
+  
 
 -- | Go to line indexed from current point
 -- Returns the actual moved difference which of course

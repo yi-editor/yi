@@ -73,7 +73,6 @@ import Data.Foldable ( sequence_, mapM_,all )
 
 import System.IO ( Handle, hWaitForInput )
 import System.FilePath
-import System.Directory ( findExecutable )
 import System.Process ( getProcessExitCode, ProcessHandle )
 
 import Control.Monad (when,forever)
@@ -84,6 +83,7 @@ import Control.Exception
 import Control.Concurrent
 import Control.Concurrent.Chan
 #ifdef SHIM
+import System.Directory ( findExecutable )
 import Shim.Hsinfo
 import Shim.SHM
 #endif

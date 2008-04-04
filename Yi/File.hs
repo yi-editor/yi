@@ -18,6 +18,7 @@ import Yi.Buffer
 import Yi.Core
 import Yi.Debug
 import Yi.Keymap
+import System.IO.UTF8 as UTF8
 
 
 -- | Revert to the contents of the file on disk
@@ -26,7 +27,7 @@ revertE = do
             mfp <- withBuffer getfileB
             case mfp of
                      Just fp -> do
-                             s <- liftIO $ readFile fp
+                             s <- liftIO $ UTF8.readFile fp
                              withBuffer $ do
                                   end <- sizeB
                                   p <- pointB
@@ -46,7 +47,7 @@ fwriteE = do contents <- withBuffer elemsB
              fname <- withBuffer (gets file)
              withBuffer clearUndosB
              case fname of
-               Just n -> liftIO $ writeFile n contents
+               Just n -> liftIO $ UTF8.writeFile n contents
                Nothing -> msgEditor "Buffer not associated with a file."
 
 -- | Write current buffer to disk as @f@. If this buffer doesn't

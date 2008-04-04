@@ -58,6 +58,8 @@ import Yi.Style
 import Yi.Syntax ( ExtHL(..), noHighlighter )
 import Yi.Modes (defaultFundamentalMode)
 
+import System.IO.UTF8 as UTF8
+
 -- | associate buffer with file
 setFileName :: BufferRef -> FilePath -> YiM ()
 setFileName b filename = do
@@ -124,7 +126,7 @@ fnewE f = do
     -- The first argument is the buffer name
     fileToNewBuffer :: String -> FilePath -> YiM BufferRef
     fileToNewBuffer bufferName path = do
-      contents <- liftIO $ readFile path
+      contents <- liftIO $ UTF8.readFile path
       withEditor $ stringToNewBuffer bufferName contents
 
     -- Given the desired buffer name, plus a list of current buffer

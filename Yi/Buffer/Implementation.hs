@@ -34,6 +34,7 @@ module Yi.Buffer.Implementation
   , setSyntaxBI
   , addOverlayBI
   , inBounds
+  , findNextChar
 )
 where
 
@@ -51,9 +52,12 @@ import Text.Regex.Posix
 import qualified Yi.FingerString as F
 import Yi.FingerString (FingerString)
 import qualified Data.ByteString.Char8 as B
+import Codec.Binary.UTF8.String as UTF8
 
 import Data.Array
+import Data.Char
 import Data.Maybe
+import Data.Word
 import qualified Data.Set as Set
 import Yi.Debug
 import Data.Typeable
@@ -119,12 +123,12 @@ data Update = Insert {updatePoint :: !Point, insertUpdateString :: !String} -- F
 
 -- | New FBuffer filled from string.
 newBI :: String -> FBufferData
-newBI s = FBufferData (F.fromString s) mks M.empty (HLState noHighlighter (hlStartState noHighlighter)) Set.empty
+newBI s = FBufferData (F.fromString $ UTF8.encode s) mks M.empty (HLState noHighlighter (hlStartState noHighlighter)) Set.empty
     where mks = M.fromList [(pointMark, MarkValue 0 pointLeftBound)]
 
 -- | read @n@ chars from buffer @b@, starting at @i@
-readChars :: FingerString -> Int -> Int -> FingerString
-readChars p n i = F.take n $ F.drop i $ p
+readChars :: FingerString -> Int -> Point -> String
+readChars p n i = take n $ UTF8.decode $ F.toString $ F.drop i $ p
 {-# INLINE readChars #-}
 
 -- | Write string into buffer.
@@ -179,8 +183,7 @@ nelemsBI :: Int -> Int -> BufferImpl -> String
 nelemsBI n i fb =
         let b = mem fb
             i' = inBounds i (F.length b)
-            n' = min (F.length b - i') n
-        in F.toString $ readChars b n' i'
+        in readChars b n i'
 
 
 -- | Add a style "overlay" between the given points.
@@ -240,6 +243,24 @@ moveToI i fb = fb {marks = M.insert pointMark (MarkValue (inBounds i end) pointL
     where end = F.length (mem fb)
 {-# INLINE moveToI #-}
 
+findNextChar :: Int -> Int -> BufferImpl -> Int
+findNextChar m i fb 
+    | m == 0 = i
+    | m < 0 = let s = F.toReverseString $ F.take i $ mem fb
+                  result = countChars s (-m) 0
+              in (i - result)
+    | m > 0 = let s = F.toString $ F.drop (i+1) $ mem fb
+                  result = countChars s  m 0
+              in (i + result)
+                   
+                       
+
+countChars [] _ n = n
+countChars _  0 n = n
+countChars (x:xs) m n 
+    | x < 128 || x > 192  = countChars xs (m-1) (n+1)
+    | otherwise           = countChars xs  m    (n+1)
+
 -- | Checks if an Update is valid
 isValidUpdate :: Update -> BufferImpl -> Bool
 isValidUpdate u b = case u of
@@ -256,7 +277,7 @@ applyUpdateI u fb = updateHl (updatePoint u) $
                                    -- FIXME: this is inefficient; find a way to use mapMonotonic
                                    -- (problem is that marks can have different gravities)
     where (p', amount) = case u of
-                           Insert pnt cs  -> (insertChars p (F.fromString cs) pnt, length cs)
+                           Insert pnt cs  -> (insertChars p (F.fromString $ UTF8.encode cs) pnt, length cs)
                            Delete pnt len -> (deleteChars p pnt len, negate len)
           shift = shiftMarkValue (updatePoint u) amount
           p = mem fb
@@ -275,8 +296,14 @@ reverseUpdateI (Insert p cs) _ = Delete p (length cs)
 ------------------------------------------------------------------------
 -- Line based editing
 
+ord' :: Char -> Word8
+ord' = fromIntegral . ord
+
+newLine :: Word8
+newLine = ord' '\n'
+
 curLnI :: BufferImpl -> Int
-curLnI fb = 1 + F.count '\n' (F.take (pointBI fb) (mem fb))
+curLnI fb = 1 + F.count newLine (F.take (pointBI fb) (mem fb))
 
 
 -- | Go to line number @n@, relatively from this line. @0@ will go to
@@ -301,7 +328,7 @@ gotoLnRelI n fb =
     | otherwise = findDownLine 1 n downLineStarts
 
   -- The offsets of all line beginnings above the current point.
-  upLineStarts = map (+1) ((F.elemIndicesEnd '\n') (F.take point s)) ++ [0]
+  upLineStarts = map (+1) ((F.elemIndicesEnd newLine) (F.take point s)) ++ [0]
 
   -- Go up to find the line we wish for the returned value is a pair
   -- consisting of the point of the start of the line to which we move
@@ -317,7 +344,7 @@ gotoLnRelI n fb =
   -- The offsets of all the line beginnings below the current point
   -- so we drop everything before the point, find all the indices of
   -- the newlines from there and add the point (plus 1) to them.
-  downLineStarts = map (+(1 + point)) ((F.elemIndices '\n') (F.drop point s))
+  downLineStarts = map (+(1 + point)) ((F.elemIndices newLine) (F.drop point s))
 
   -- Go down to find the line we wish for, the returned value is a pair
   -- consisting of the point of the start of the line to which we move
@@ -344,7 +371,7 @@ searchBI dir s fb = case dir of
           ptr = mem fb
 
 offsetFromSolBI :: BufferImpl -> Int
-offsetFromSolBI fb = pnt - maybe 0 (1 +) (F.elemIndexEnd '\n' (F.take pnt ptr))
+offsetFromSolBI fb = pnt - maybe 0 (1 +) (F.elemIndexEnd newLine (F.take pnt ptr))
     where pnt = pointBI fb
           ptr = mem fb
 
