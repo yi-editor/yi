@@ -254,7 +254,7 @@ findNextChar m i fb
               in (i + result)
                    
                        
-
+countChars :: [Word8] -> Int -> Int -> Int
 countChars [] _ n = n
 countChars _  0 n = n
 countChars (x:xs) m n 
@@ -418,9 +418,8 @@ setSyntaxBI (ExtHL e) fb = updateHl 0 $ fb {hlCache = HLState e (hlStartState e)
 
 updateHl :: Point -> BufferImpl -> BufferImpl
 updateHl touchedIndex fb@FBufferData {hlCache = HLState hl cache} 
-    = fb {hlCache = HLState hl (hlRun hl getText' touchedIndex cache)}
-    where getText idx = F.toLazyByteString (F.drop idx (mem fb))
-          getText' = Scanner 0 (\idx -> zip [idx..] (UTF8.decode $ F.toString (F.drop idx (mem fb))))                             
+    = fb {hlCache = HLState hl (hlRun hl getText touchedIndex cache)}
+    where getText = Scanner 0 (\idx -> zip [idx..] (UTF8.decode $ F.toString (F.drop idx (mem fb))))                             
 
 pointLeftBound, markLeftBound :: Bool
 pointLeftBound = False
