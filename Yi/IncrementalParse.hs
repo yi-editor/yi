@@ -1,6 +1,6 @@
 {-# OPTIONS -fglasgow-exts #-}
 module Yi.IncrementalParse (Process, Void, 
-                            symbol, eof, runPolish,
+                            recoverWith, symbol, eof, runPolish,
                             P, AlexState (..), mkHighlighter) where
 import Yi.Syntax.Alex (AlexState (..))
 import Control.Applicative
@@ -24,14 +24,14 @@ data Steps s a r where
     Suspend :: (Maybe [s] -> Steps s a r) -> Steps s a r
 
 instance Show (Steps s a r) where
-    show (Val x p) = "v" ++ show p
+    show (Val _ p) = "v" ++ show p
     show (App p) = "*" ++ show p
     show (Stop) = "1"
     show (Shift p) = ">" ++ show p
     show (Done p) = "!" ++ show p
     show (Dislike p) = "?" ++ show p
     show (Fails) = "0"
-    show (Suspend p) = "..."
+    show (Suspend _) = "..."
 
 -- data F a b where
 --     Snoc :: F a b -> (b -> c) -> F a c
@@ -73,14 +73,17 @@ evalL x = x
 push :: Maybe [s] -> Steps s a r -> Steps s a r
 push ss p = case p of
                   (Suspend f) -> f ss
-                  (Dislike p) -> Dislike (push ss p)
-                  (Shift p) -> Shift (push ss p)
+                  (Dislike p') -> Dislike (push ss p')
+                  (Shift p') -> Shift (push ss p')
                   (Val x p') -> Val x (push ss p')
                   (App p') -> App (push ss p')
                   Stop -> Stop
                   Fails -> Fails
 
+pushSyms :: [s] -> Steps s a r -> Steps s a r
 pushSyms x = push (Just x)
+
+pushEof :: Steps s a r -> Steps s a r
 pushEof = push Nothing
 
 newtype P s a = P (forall b r. Steps s b r -> Steps s a (Steps s b r))
@@ -107,7 +110,7 @@ getProgress f (App s)   = getProgress (f . App) s
 getProgress f (Done p)  = Done (f p)
 getProgress f (Shift p) = Shift (f p)
 getProgress f (Dislike p) = Dislike (f p)
-getProgress f (Fails) = Fails
+getProgress t (Fails) = Fails
 getProgress f (Suspend p) = Suspend (\input -> f (p input))
 
 
@@ -124,8 +127,8 @@ a `best` Dislike b = bestD b a
 
 Done a  `best` Done _  = Done a -- error "ambiguous grammar"
                                 -- There are sometimes many ways to fix an error. Pick the 1st one.
-Done a  `best` q       = Done a
-p       `best` Done a  = Done a
+Done a  `best` _       = Done a
+_       `best` Done a  = Done a
 
 Shift v `best` Shift w = Shift (v `best` w)
 
@@ -141,11 +144,11 @@ Fails   `bestD` p       = p
 p `bestD` Fails         = Dislike p
 
 a `bestD` Dislike b = Dislike (best a b)  -- back to equilibrium (prefer to do this, hence 1st case)
-Dislike a `bestD` b = b -- disliked twice: forget it.
+Dislike _ `bestD` b = b -- disliked twice: forget it.
 
 Done _  `bestD` Done a  = Done a -- we prefer rhs in this case
-Done a  `bestD` q       = Dislike (Done a)
-p       `bestD` Done a  = Done a
+Done a  `bestD` _       = Dislike (Done a)
+_       `bestD` Done a  = Done a
 
 Shift v `bestD` Shift w = Shift (v `bestD` w)
 _       `bestD` Shift w = Shift w -- prefer shifting than keeping a disliked possibility forever
@@ -155,9 +158,11 @@ p       `bestD` q       = getProgress id p `bestD` getProgress id q
 
 
 
-
+runP :: forall t t1.
+                                    P t t1 -> Steps t t1 (Steps t Void Void)
 runP (P p) = p (Done Stop)
 
+runPolish :: forall s a. P s a -> [s] -> a
 runPolish p input = fst $ evalR $ pushEof $ pushSyms input $ runP p
 
 symbol :: (s -> Bool) -> P s s
@@ -176,9 +181,9 @@ eof = P (\fut -> Suspend (symHelper fut))
               case input of
                 Nothing -> Val () fut
                 Just [] ->  Suspend (symHelper fut) -- end of the chunk: to be continued
-                Just (s:ss) -> Fails
+                Just (_:_) -> Fails
 
-
+recoverWith :: forall s a. P s a -> P s a
 recoverWith (P p) = P (Dislike . p)
 
 
@@ -187,7 +192,7 @@ recoverWith (P p) = P (Dislike . p)
 type States st token result = [(st, Process token result)]
 data Cache st token result = Cache result (States st token result)
 
-splitBy n [] = []
+splitBy _ [] = []
 splitBy n l = let (x,y) = splitAt n l in x : splitBy n y
 
 
