@@ -92,6 +92,9 @@ stringStyle = darkcyanA
 numberStyle :: Style
 numberStyle = darkredA
 
+errorStyle :: Style -> Style
+errorStyle (Style fg _) = Style fg red
+
 
 blackA , greyA, darkredA, redA, darkgreenA, greenA, brownA :: Style
 yellowA, darkblueA, blueA, purpleA, magentaA, darkcyanA    :: Style
