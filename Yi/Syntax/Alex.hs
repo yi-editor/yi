@@ -5,8 +5,9 @@ module Yi.Syntax.Alex (
                        alexGetChar, alexInputPrevChar, unfoldLexer, lexScanner,
                        AlexState(..), AlexInput, Stroke,
                        takeLB, headLB, actionConst, actionAndModify,
-                       Tok(..), tokBegin, tokEnd,
-                       Posn(..), startPosn, moveStr, runSource) where
+                       Tok(..), tokBegin, tokEnd,                       
+                       Posn(..), startPosn, moveStr, runSource
+                      ) where
 
 import Data.List hiding (map)
 import qualified Data.ByteString.Lazy.Char8 as LB
@@ -32,7 +33,9 @@ data AlexState lexerState = AlexState {
       stLexer  :: lexerState,   -- (user defined) lexer state
       lookedOffset :: !LookedOffset, -- Last offset looked at
       stPosn :: !Posn
-    }
+    } deriving Show
+
+
 
 data Tok t = Tok
     {
@@ -41,7 +44,10 @@ data Tok t = Tok
      tokPosn :: Posn
     }
 
+tokBegin :: forall t. Tok t -> Int
 tokBegin = posnOfs . tokPosn
+
+tokEnd :: forall t. Tok t -> Int
 tokEnd t = tokBegin t + tokLen t
 
 instance Show t => Show (Tok t) where
@@ -58,7 +64,7 @@ startPosn :: Posn
 startPosn = Posn 0 1 0
 
 moveStr :: Posn -> AlexInput -> Posn
-moveStr posn str = foldl' moveCh posn (map snd str)
+moveStr posn str = foldl' moveCh posn (fmap snd str)
 
 moveCh :: Posn -> Char -> Posn
 moveCh (Posn o l c) '\t' = Posn (o+1)  l     (((c+8) `div` 8)*8)
@@ -124,7 +130,7 @@ mkHighlighter initState alexScanToken =
 
         updateState :: AlexInput -> State s -> ([State s], Result)
         updateState input (restartState, startPartial) =
-            (map f partials, (startPartial, result))
+            (fmap f partials, (startPartial, result))
                 where result :: [Stroke]
                       (partials,result) = origami alexScanToken (restartState, input) (:) (flip (:)) startPartial []
                       f :: ((AlexState s, AlexInput), [Stroke]) -> State s
@@ -142,8 +148,12 @@ other n m l = case l of
 runSource :: forall t t1. Scanner t t1 -> [(t, t1)]
 runSource (Scanner initSt f) = f initSt
 
-type LexerSource lState token = Scanner (AlexState lState) token
-
+lexScanner :: forall lexerState token a.
+                                          ((AlexState lexerState, [(Int, a)])
+                                           -> Maybe (token, (AlexState lexerState, [(Int, a)])))
+                                          -> lexerState
+                                          -> Scanner Int a
+                                          -> Scanner (AlexState lexerState) token
 lexScanner l st0 src = Scanner
                  {
                   --stStart = posnOfs . stPosn,
@@ -158,4 +168,3 @@ unfoldLexer :: ((AlexState lexState, input) -> Maybe (token, (AlexState lexState
 unfoldLexer f b = case f b of
              Nothing -> []
              Just (t, b') -> (fst b, t) : unfoldLexer f b'
-

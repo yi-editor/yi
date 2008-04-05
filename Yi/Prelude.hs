@@ -19,7 +19,6 @@ Ord(..),
 Read(..),
 ReaderT(..),
 String,
-Yi.Prelude.map,
 concat,
 elem,
 fromIntegral,
@@ -59,9 +58,6 @@ import Control.Monad.Reader
 import Data.Traversable 
     
 type Endom a = a -> a
-
-map :: Functor f => (a -> b) -> f a -> f b
-map = fmap
 
 fst3 :: (a,b,c) -> a
 fst3 (x,_,_) = x

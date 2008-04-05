@@ -33,23 +33,19 @@ shape :: Show a => Tree a -> [S.Tree String]
 shape Leaf = [] -- [S.Node "o"[]]
 shape (Node x l r) = [S.Node (show x) (shape l ++ shape r)]
 
-parse = parse' 1 maxBound
-    where parse' :: Int -> Int -> P.P a (Tree a)
+parse = parse' initSize maxBound
+    where initSize = 1
+          parse' :: Int -> Int -> P.P (Tok a) (Tree (Tok a))
           parse' leftSize maxSize
              | maxSize <= 0 = pure Leaf
              | otherwise 
                =  (Node <$> P.symbol (const True)
-                        <*> parse' factor              (min leftSize (maxSize - 1))
+                        <*> parse' (initSize * factor) (min leftSize (maxSize - 1))
                         <*> parse' (leftSize * factor) (maxSize - leftSize - 1))
                <|> (P.eof *> pure Leaf) 
               -- NOTE: eof here is important for performance (otherwise the
               -- parser would have to keep this case until the very end of input
               -- is reached.
-
-         
-type T token = (Int,token,Int)
-type Cache lexState token = P.IResult lexState (T token) (Tree (T token))
-
 
 getStrokes begin end t = getStrokes' begin end t []
     where getStrokes' :: Int -> Int -> Tree (Tok token) -> Endom [Tok token]

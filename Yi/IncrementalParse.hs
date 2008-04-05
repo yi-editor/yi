@@ -1,8 +1,8 @@
 {-# OPTIONS -fglasgow-exts #-}
-module Yi.IncrementalParse (IResult, Process, Result(..), Void, 
-                            upd, symbol, eof, runPolish, run, getValue, 
+module Yi.IncrementalParse (Process, Void, 
+                            symbol, eof, runPolish, run, 
                             P, AlexState (..), mkHighlighter) where
-import Yi.Syntax.Alex (AlexInput, AlexState (..), Posn(..), startPosn)
+import Yi.Syntax.Alex (AlexState (..))
 import Control.Applicative
 import Yi.Prelude
 import Prelude ()
@@ -53,6 +53,8 @@ pushSyms ss p = case p of
                   (Shift f) -> case ss of 
                           (s:ss') -> pushSyms ss' (f $ Just s)
                           [] -> p
+                  (Done p') -> Done (pushSyms ss p')
+                  Fails -> error "pushSyms: parser fails!"
                   (Val x p') -> Val x (pushSyms ss p')
                   (App p') -> App (pushSyms ss p')
                   Stop -> Stop
@@ -84,7 +86,7 @@ instance Alternative (P s) where
 
 -- | Get the process' value (online).  Returns value, continuation and
 --   remaining input.
-evalSteps :: Steps s a (Steps s b r) -> [(AlexState lexState,s)] -> (a, Steps s b r, [(AlexState lexState,s)])
+evalSteps :: Steps s a (Steps s b r) -> [(st,s)] -> (a, Steps s b r, [(st,s)])
 evalSteps (Val a s) xs = (a, s, xs)
 evalSteps (Shift v) xs = let (s, xs') = front xs
                          in evalSteps (v $ fmap snd s) xs'
@@ -98,79 +100,6 @@ front [] = (Nothing, [])
 front (x:xs) = (Just x, xs)
 
 
-data Result lexState s a r where
-    Leaf :: a -> !(AlexState lexState) -> Steps s a r -> Result lexState s a r
-    Una  :: !(AlexState lexState) -> Steps s a r -> Result lexState s a r -> Result lexState s a r
-    Bin  :: a 
-              -> !(AlexState lexState)
-              -> (Result lexState s (b->a) (Steps s b r)) -- left partial result
-              -> Result lexState s b r                    -- right partial result
-              -> Result lexState s a r
-
-getValue (Leaf a _ _) = a
-getValue (Bin a _ _ _) = a
-getValue (Una _ _ r) = getValue r
-
-getOfs = lookedOffset . getInp
-
-getInp (Leaf _ o _) = o
-getInp (Bin _ o _ _) = o
-getInp (Una o _ _) = o
-
-
-getSteps :: Result lexState s a r -> Steps s a r
-getSteps (Leaf _ _ p) = p
-getSteps (Una _ p _) = p
-getSteps (Bin _ _ l r) = App (getSteps l)
-
-bin l r = Bin ((getValue l) (getValue r)) (getInp l) l r
-
-upd :: forall lexState s a b r. 
-       lexState ->
-       (AlexState lexState -> [(AlexState lexState, s)]) -> 
-       Int -> 
-       Result lexState s a (Steps s b r) ->
-      (Result lexState s a (Steps s b r), Steps s b r, [(AlexState lexState,s)])
-upd initState source dirty p 
-    | getOfs p < dirty = trace ("Update: dirty = " ++ show dirty) $ 
-                         update p
-    | otherwise        = evalResult (getSteps p) (source $ AlexState initState 0 startPosn)
-    where 
-      -- Invariant:  getOfs p < dirty (otherwise evalResult is used)
-      update :: forall a b r. Result lexState s a (Steps s b r) 
-             -> (Result lexState s a (Steps s b r), Steps s b r, [(AlexState lexState,s)])
-      update (Leaf _ o p) = trace "Update: leaf" $ evalResult p (source o)
-      update (Una o p r) 
-          | getOfs r < dirty = let (r', s', xs') = update r
-                               in (Una o p r', s', xs')
-          | otherwise = evalResult p (source o)
-      update (Bin a _ l r)
-             | getOfs r < dirty =
-                 let (r',s'',xs'') = update r
-                 in trace ("Update: r-branch" ++ (show (getOfs r))) $
-                        (bin l r', s'', xs'')
-             | otherwise  = let (l',s',xs') = update l
-                                (r',s'',xs'') = evalResult s' xs'
-                            in trace ("Update: l-branch" ++ show (getOfs r)) $ 
-                                   (bin l' r', s'', xs'') 
-          where ro = getOfs r
-
-      evalResult :: forall a b r. Steps s a (Steps s b r) -> 
-                    [(AlexState lexState,s)] ->
-                    (Result lexState s a (Steps s b r), Steps s b r, [(AlexState lexState,s)])
-      evalResult (App s) xs = let (f, s', xs' ) = evalResult s  xs
-                                  (a, s'', xs'') = evalResult s' xs'
-                              in (bin f a, s'', xs'')
-      evalResult (Shift c) xs = let sym :: Maybe (AlexState lexState, s)
-                                    (sym, xs') = front xs
-                                    (a, s'', xs'') = evalResult (c $ fmap snd $ sym) xs'
-                                in (Una (inpState xs) (Shift c) a, s'', xs'')
-      evalResult steps xs = let (a, s', xs') = evalSteps steps xs 
-                            in (Leaf a (inpState xs) steps, s', xs')
-
-      inpState :: [(AlexState lexState,s)] -> AlexState lexState
-      inpState [] = AlexState initState maxBound (Posn maxBound (-1) (-1))
-      inpState ((inputState,_):_) = inputState
 
 -- | Advance in the result steps, pushing results in the continuation.
 -- (Must return one of: Done, Shift, Fail)
@@ -200,8 +129,6 @@ shift = P $ \fut -> Shift (\s -> Val s fut)
 run (P p) = p (Done Stop)
 
 type Process s a = Steps s a (Steps s Void Void)
-
-type IResult lexState s a = Result lexState s a (Steps s Void Void)
 
 runPolish p = fst3 . evalSteps (run p)
 
@@ -252,19 +179,25 @@ mkHighlighter parser getStrokes getAlexState =
                      -> Cache st token result
         updateCache scanner dirtyOffset (Cache _ cachedStates) = Cache newResult newCachedStates
 
-            where resumeIndex = posnOfs $ stPosn $ getAlexState $ fst $ resumeState
-                  reused = takeWhile ((< dirtyOffset) . lookedOffset . getAlexState . fst) cachedStates
+            where reused = takeWhile ((< dirtyOffset) . lookedOffset . getAlexState . fst) cachedStates
                   resumeState = if null reused then startState else last reused
                   newCachedStates = reused ++ recomputed
-                  recomputed = updateState (snd resumeState) $ splitBy 20 $ text
+                  recomputed = updateState0 (snd resumeState) $ {-splitBy 20 -} text
                   text = scanRun scanner (fst resumeState)
-                  newResult = fst $ evalR $ pushEof $ pushSyms (map snd text) $ snd $ resumeState
+                  newResult = -- trace ("restart: " ++ show (getAlexState (fst resumeState))) $ 
+                      fst $ evalR $ pushEof $ pushSyms (fmap snd text) $ snd $ resumeState
 
                   startState :: (st, Process token result)
-                  startState = (scanInit scanner, run parser)  
+                  startState = (scanInit scanner, run parser)
+
+        updateState0 :: Process token result -> [(st,token)] -> States st token result
+        updateState0 _        [] = []
+        updateState0 curState (toks:rest) = (fst $ toks, curState) : updateState0 nextState rest
+            where nextState = evalL $ pushSyms [snd toks] $ curState
+
 
         -- FIXME: looked offset is wrong here. (due to splitBy)
         updateState :: Process token result -> [[(st,token)]] -> States st token result
-        updateState curState [] = []
+        updateState _        [] = []
         updateState curState (toks:rest) = (fst $ head $ toks, curState) : updateState nextState rest
-            where nextState = evalL $ pushSyms (map snd toks) $ curState
+            where nextState = evalL $ pushSyms (fmap snd toks) $ curState

@@ -71,7 +71,7 @@ frontends =
    []
 
 frontendNames :: [String]
-frontendNames = map fst' frontends
+frontendNames = fmap fst' frontends
   where fst' :: (a,UIBoot) -> a
         fst' (x,_) = x
 
@@ -110,7 +110,7 @@ options = [
     Option ['l']  ["line"]        (ReqArg LineNo "[num]") "Start on line number",
     Option []     ["as"]          (ReqArg EditorNm "[editor]")
         ("Start with editor keymap, where editor is one of:\n" ++
-                (concat . intersperse ", " . map fst) editors)
+                (concat . intersperse ", " . fmap fst) editors)
     ]
 
 -- | usage string.
@@ -176,7 +176,7 @@ getConfig cfg opt =
       Version       -> throwError $ Err versinfo ExitSuccess
       LineNo l      -> appendAction (withBuffer (gotoLn (read l)))
       File file     -> appendAction (fnewE file)
-      EditorNm emul -> case lookup (map toLower emul) editors of
+      EditorNm emul -> case lookup (fmap toLower emul) editors of
              Just km -> return cfg { defaultKm = km }
              Nothing -> fail $ "Unknown emulation: " ++ show emul
       _ -> return cfg

@@ -30,7 +30,7 @@ fundamental = Mode
   }
 
 
-mkHighlighter' init scan = Alex.mkHighlighter init (fmap (first tokenToStroke) . scan)
+mkHighlighter' initSt scan = Alex.mkHighlighter initSt (fmap (first tokenToStroke) . scan)
     where tokenToStroke (Tok t len posn) = (posnOfs posn, t, posnOfs posn + len)
 
 
