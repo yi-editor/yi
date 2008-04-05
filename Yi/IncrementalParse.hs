@@ -1,6 +1,6 @@
 {-# OPTIONS -fglasgow-exts #-}
 module Yi.IncrementalParse (Process, Void, 
-                            symbol, eof, runPolish, run, 
+                            symbol, eof, runPolish,
                             P, AlexState (..), mkHighlighter) where
 import Yi.Syntax.Alex (AlexState (..))
 import Control.Applicative
@@ -11,13 +11,27 @@ import Data.List hiding (map)
 
 data Void
 
+type Process s a = Steps s a (Steps s Void Void)
+
 data Steps s a r where
     Val   :: a -> Steps s b r               -> Steps s a (Steps s b r)
     App   :: Steps s (b -> a) (Steps s b r) -> Steps s a r
     Stop  ::                                   Steps s Void Void
-    Shift :: (Maybe s -> Steps s a r)       -> Steps s a r -- TODO: add default sym.
+    Shift ::             Steps s a r        -> Steps s a r
     Done  ::             Steps s a r        -> Steps s a r
     Fails ::                                   Steps s a r
+    Dislike :: Steps s a r ->                                   Steps s a r
+    Suspend :: (Maybe [s] -> Steps s a r) -> Steps s a r
+
+instance Show (Steps s a r) where
+    show (Val x p) = "v" ++ show p
+    show (App p) = "*" ++ show p
+    show (Stop) = "1"
+    show (Shift p) = ">" ++ show p
+    show (Done p) = "!" ++ show p
+    show (Dislike p) = "?" ++ show p
+    show (Fails) = "0"
+    show (Suspend p) = "..."
 
 -- data F a b where
 --     Snoc :: F a b -> (b -> c) -> F a c
@@ -27,18 +41,26 @@ data Steps s a r where
 --     S :: F a b -> Steps s a r -> S s a r
 
 
--- | Right-eval a fully defined process (ie. one that has no Shift/Done/Fails)
+-- | Right-eval a fully defined process (ie. one that has no Suspend)
+-- Returns value and continuation.
 evalR :: Steps s a r -> (a, r)
 evalR (Val a r) = (a,r)
 evalR (App s) = let (f, s') = evalR s
                     (x, s'') = evalR s'
                 in (f x, s'')
 evalR Stop = error "Can't create values of type Void"
-
+evalR (Shift v) = evalR v
+evalR (Done v)  = evalR v
+evalR (Dislike v) = -- trace "Yuck!" $ 
+                    evalR v
+evalR (Fails) = error "No parse!"
+evalR (Suspend _) = error "Not fully evaluated!"
 
 
 -- | Pre-compute a left-prefix of some steps (as far as possible)
 evalL :: Steps s a r -> Steps s a r
+evalL (Shift p) = evalL p
+evalL (Dislike p) = evalL p
 evalL (Val x r) = Val x (evalL r)
 evalL (App f) = case evalL f of
                   (Val a (Val b r)) -> Val (a b) r
@@ -47,28 +69,19 @@ evalL (App f) = case evalL f of
 evalL x = x
 
 
--- | Push a some symbols in the process
-pushSyms :: [s] -> Steps s a r -> Steps s a r
-pushSyms ss p = case p of
-                  (Shift f) -> case ss of 
-                          (s:ss') -> pushSyms ss' (f $ Just s)
-                          [] -> p
-                  (Done p') -> Done (pushSyms ss p')
-                  Fails -> error "pushSyms: parser fails!"
-                  (Val x p') -> Val x (pushSyms ss p')
-                  (App p') -> App (pushSyms ss p')
+-- | Push some symbols in the process
+push :: Maybe [s] -> Steps s a r -> Steps s a r
+push ss p = case p of
+                  (Suspend f) -> f ss
+                  (Dislike p) -> Dislike (push ss p)
+                  (Shift p) -> Shift (push ss p)
+                  (Val x p') -> Val x (push ss p')
+                  (App p') -> App (push ss p')
                   Stop -> Stop
+                  Fails -> Fails
 
--- | Get rid of all input-related constructors by pushing the EOF through the whole process
-pushEof :: Steps s a r -> Steps s a r
-pushEof p = case p of
-                  (Val x p') -> Val x (pushEof p')
-                  (App p') -> App (pushEof p')
-                  Stop -> Stop
-                  (Shift f) -> pushEof (f Nothing)
-                  Done p' -> pushEof p'
-                  Fails -> error "pushEof: parser fails!"
-
+pushSyms x = push (Just x)
+pushEof = push Nothing
 
 newtype P s a = P (forall b r. Steps s b r -> Steps s a (Steps s b r))
 
@@ -84,22 +97,6 @@ instance Alternative (P s) where
     P a <|> P b = P $ \fut -> best (a fut) (b fut)
 
 
--- | Get the process' value (online).  Returns value, continuation and
---   remaining input.
-evalSteps :: Steps s a (Steps s b r) -> [(st,s)] -> (a, Steps s b r, [(st,s)])
-evalSteps (Val a s) xs = (a, s, xs)
-evalSteps (Shift v) xs = let (s, xs') = front xs
-                         in evalSteps (v $ fmap snd s) xs'
-evalSteps (Done v)  xs = evalSteps v xs
-evalSteps (Fails)   xs = (error "evalSteps: no parse", Fails, xs)
-evalSteps (App s)   xs = let (f,s',  xs')  = evalSteps s  xs
-                             (a,s'', xs'') = evalSteps s' xs'
-                         in (f a, s'', xs'')
-
-front [] = (Nothing, [])
-front (x:xs) = (Just x, xs)
-
-
 
 -- | Advance in the result steps, pushing results in the continuation.
 -- (Must return one of: Done, Shift, Fail)
@@ -108,44 +105,82 @@ getProgress f (Val a s) = getProgress (f . Val a) s
 getProgress f (App s)   = getProgress (f . App) s
 -- getProgress f Stop   = f Stop
 getProgress f (Done p)  = Done (f p)
-getProgress f (Shift s) = Shift (\input -> f (s input))
-getProgress f Fails    = Fails
+getProgress f (Shift p) = Shift (f p)
+getProgress f (Dislike p) = Dislike (f p)
+getProgress f (Fails) = Fails
+getProgress f (Suspend p) = Suspend (\input -> f (p input))
+
+
 
 best :: Steps x a s -> Steps x a s ->  Steps x a s
 --l `best` r | trace ("best: "++show (l,r)) False = undefined
-Fails   `best` Fails   = Fails
+Suspend f `best` Suspend g = Suspend (\input -> f input `best` g input)
+
 Fails   `best` p       = p
-q       `best` Fails   = q
-Done _  `best` Done _  = error "ambiguous grammar"
+p `best` Fails         = p
+
+Dislike a `best` b = bestD a b
+a `best` Dislike b = bestD b a
+
+Done a  `best` Done _  = Done a -- error "ambiguous grammar"
+                                -- There are sometimes many ways to fix an error. Pick the 1st one.
 Done a  `best` q       = Done a
 p       `best` Done a  = Done a
-Shift v `best` Shift w = Shift (\input -> v input `best` w input)
+
+Shift v `best` Shift w = Shift (v `best` w)
+
 p       `best` q       = getProgress id p `best` getProgress id q
 
 
-shift :: P s (Maybe s)
-shift = P $ \fut -> Shift (\s -> Val s fut)
+-- as best, but lhs is disliked.
+bestD :: Steps x a s -> Steps x a s ->  Steps x a s
 
-run (P p) = p (Done Stop)
+Suspend f `bestD` Suspend g = Suspend (\input -> f input `bestD` g input)
 
-type Process s a = Steps s a (Steps s Void Void)
+Fails   `bestD` p       = p
+p `bestD` Fails         = Dislike p
 
-runPolish p = fst3 . evalSteps (run p)
+a `bestD` Dislike b = Dislike (best a b)  -- back to equilibrium (prefer to do this, hence 1st case)
+Dislike a `bestD` b = b -- disliked twice: forget it.
 
-symbol f = P $ \fut -> Shift $ \input -> 
-                                    case input of
-                                      Just s -> if f s
-                                                  then Val s fut
-                                                  else Fails
-                                      Nothing -> Fails
+Done _  `bestD` Done a  = Done a -- we prefer rhs in this case
+Done a  `bestD` q       = Dislike (Done a)
+p       `bestD` Done a  = Done a
 
-eof = P $ \fut -> Shift $ \input -> 
-                                    case input of
-                                      Just _ -> Fails
-                                      Nothing -> Val () fut
+Shift v `bestD` Shift w = Shift (v `bestD` w)
+_       `bestD` Shift w = Shift w -- prefer shifting than keeping a disliked possibility forever
 
 
-check f p = p <*> (\x -> if f x then pure x else empty)
+p       `bestD` q       = getProgress id p `bestD` getProgress id q
+
+
+
+
+runP (P p) = p (Done Stop)
+
+runPolish p input = fst $ evalR $ pushEof $ pushSyms input $ runP p
+
+symbol :: (s -> Bool) -> P s s
+symbol f = P (\fut -> Suspend (symHelper fut))
+    where symHelper fut input = 
+              case input of
+                Nothing -> Fails -- This is the eof!
+                Just [] ->  Suspend (symHelper fut) -- end of the chunk: to be continued
+                Just (s:ss) -> if f s then push (Just ss) (Shift (Val s (fut)))
+                               else Fails
+
+
+eof :: P s ()
+eof = P (\fut -> Suspend (symHelper fut))
+    where symHelper fut input = 
+              case input of
+                Nothing -> Val () fut
+                Just [] ->  Suspend (symHelper fut) -- end of the chunk: to be continued
+                Just (s:ss) -> Fails
+
+
+recoverWith (P p) = P (Dislike . p)
+
 
 ----------------------------------------------------
 
@@ -168,7 +203,7 @@ mkHighlighter parser getStrokes getAlexState =
                   }
       where
         emptyResult :: result
-        emptyResult = fst $ evalR $ pushEof $ run parser
+        emptyResult = fst $ evalR $ pushEof $ runP parser
 
         getStrokes' :: Int -> Int -> Cache st token result -> [Stroke]
         getStrokes' start end (Cache r _) = getStrokes start end r
@@ -188,7 +223,7 @@ mkHighlighter parser getStrokes getAlexState =
                       fst $ evalR $ pushEof $ pushSyms (fmap snd text) $ snd $ resumeState
 
                   startState :: (st, Process token result)
-                  startState = (scanInit scanner, run parser)
+                  startState = (scanInit scanner, runP parser)
 
         updateState0 :: Process token result -> [(st,token)] -> States st token result
         updateState0 _        [] = []
