@@ -98,7 +98,7 @@ haskell :-
 
  "{-"                                           { m (subtract 1) Comment }
 
- $special                                       { \str st -> (st, Special (headLB str)) }
+ $special                                       { \str st -> (st, Special (snd $ head str)) }
 
  @reservedid                                    { c Reserved }
  @indentReservedId                              { c IndentReserved }

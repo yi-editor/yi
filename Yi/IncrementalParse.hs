@@ -1,11 +1,13 @@
 {-# OPTIONS -fglasgow-exts #-}
 module Yi.IncrementalParse (IResult, Process, Result(..), Void, 
                             upd, symbol, eof, runPolish, run, getValue, 
-                            P, AlexState (..)) where
-import Yi.Syntax.Alex (AlexState (..), Posn(..), startPosn)
+                            P, AlexState (..), mkHighlighter) where
+import Yi.Syntax.Alex (AlexInput, AlexState (..), Posn(..), startPosn)
 import Control.Applicative
 import Yi.Prelude
 import Prelude ()
+import Yi.Syntax
+import Data.List hiding (map)
 
 data Void
 
@@ -16,6 +18,14 @@ data Steps s a r where
     Shift :: (Maybe s -> Steps s a r)       -> Steps s a r -- TODO: add default sym.
     Done  ::             Steps s a r        -> Steps s a r
     Fails ::                                   Steps s a r
+
+-- data F a b where
+--     Snoc :: F a b -> (b -> c) -> F a c
+--     Nil  :: F a b
+-- 
+-- data S s a r where
+--     S :: F a b -> Steps s a r -> S s a r
+
 
 -- | Right-eval a fully defined process (ie. one that has no Shift/Done/Fails)
 evalR :: Steps s a r -> (a, r)
@@ -47,13 +57,15 @@ pushSyms ss p = case p of
                   (App p') -> App (pushSyms ss p')
                   Stop -> Stop
 
--- | Get rid of all shifts by pushing the EOF through the whole process
+-- | Get rid of all input-related constructors by pushing the EOF through the whole process
 pushEof :: Steps s a r -> Steps s a r
 pushEof p = case p of
-                  (Shift f) -> pushEof (f Nothing)
                   (Val x p') -> Val x (pushEof p')
                   (App p') -> App (pushEof p')
                   Stop -> Stop
+                  (Shift f) -> pushEof (f Nothing)
+                  Done p' -> pushEof p'
+                  Fails -> error "pushEof: parser fails!"
 
 
 newtype P s a = P (forall b r. Steps s b r -> Steps s a (Steps s b r))
@@ -66,7 +78,7 @@ instance Applicative (P s) where
     pure x = P (Val x)
 
 instance Alternative (P s) where
-    empty = P $ \fut -> Fails
+    empty = P $ \_fut -> Fails
     P a <|> P b = P $ \fut -> best (a fut) (b fut)
 
 
@@ -207,3 +219,52 @@ eof = P $ \fut -> Shift $ \input ->
 
 
 check f p = p <*> (\x -> if f x then pure x else empty)
+
+----------------------------------------------------
+
+type States st token result = [(st, Process token result)]
+data Cache st token result = Cache result (States st token result)
+
+splitBy n [] = []
+splitBy n l = let (x,y) = splitAt n l in x : splitBy n y
+
+
+mkHighlighter :: forall lexState token result st.
+                 P token result
+              -> (Int -> Int -> result -> [Stroke])
+              -> (st -> AlexState lexState)
+              -> Highlighter st token (Cache st token result)
+mkHighlighter parser getStrokes getAlexState = 
+  Yi.Syntax.SynHL { hlStartState   = Cache emptyResult []
+                  , hlRun          = updateCache
+                  , hlGetStrokes   = getStrokes'
+                  }
+      where
+        emptyResult :: result
+        emptyResult = fst $ evalR $ pushEof $ run parser
+
+        getStrokes' :: Int -> Int -> Cache st token result -> [Stroke]
+        getStrokes' start end (Cache r _) = getStrokes start end r
+
+        updateCache :: Scanner st token
+                     -> Int
+                     -> Cache st token result
+                     -> Cache st token result
+        updateCache scanner dirtyOffset (Cache _ cachedStates) = Cache newResult newCachedStates
+
+            where resumeIndex = posnOfs $ stPosn $ getAlexState $ fst $ resumeState
+                  reused = takeWhile ((< dirtyOffset) . lookedOffset . getAlexState . fst) cachedStates
+                  resumeState = if null reused then startState else last reused
+                  newCachedStates = reused ++ recomputed
+                  recomputed = updateState (snd resumeState) $ splitBy 20 $ text
+                  text = scanRun scanner (fst resumeState)
+                  newResult = fst $ evalR $ pushEof $ pushSyms (map snd text) $ snd $ resumeState
+
+                  startState :: (st, Process token result)
+                  startState = (scanInit scanner, run parser)  
+
+        -- FIXME: looked offset is wrong here. (due to splitBy)
+        updateState :: Process token result -> [[(st,token)]] -> States st token result
+        updateState curState [] = []
+        updateState curState (toks:rest) = (fst $ head $ toks, curState) : updateState nextState rest
+            where nextState = evalL $ pushSyms (map snd toks) $ curState

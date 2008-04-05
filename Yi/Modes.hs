@@ -17,6 +17,7 @@ import Yi.Indent
 import Control.Arrow (first)
 import Yi.Prelude
 import Prelude ()
+import qualified Yi.IncrementalParse as IncrParser
 
 fundamental, defaultFundamentalMode,
  latexMode, cppMode, haskellMode, literateHaskellMode, cabalMode, srmcMode :: Mode
@@ -40,12 +41,15 @@ cppMode = fundamental
 
 haskellMode = fundamental 
    {
-    modeHL = 
-    ExtHL (Alex.mkHighlighter Haskell.initState (fmap (first tokenToStroke) . Haskell.alexScanToken))
-    -- ExtHL (Fractal.mkHighlighter Haskell.initState Haskell.alexScanToken tokenToStroke)
+    modeHL = ExtHL $
+    Alex.mkHighlighter Haskell.initState (fmap (first tokenToStroke) . Haskell.alexScanToken)
+    -- lexer `withScanner` IncrParser.mkHighlighter Fractal.parse 
+    --  (\begin end -> fmap tokenToStroke . Fractal.getStrokes begin end) id
    , modeIndent = autoIndentHaskellB
    }
     where tokenToStroke (Tok t len posn) = (posnOfs posn, Haskell.tokenToStyle t, posnOfs posn + len)
+
+          lexer = Alex.lexScanner Haskell.alexScanToken Haskell.initState 
 
 literateHaskellMode = haskellMode 
   {

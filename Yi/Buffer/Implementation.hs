@@ -82,7 +82,7 @@ type BufferImpl = FBufferData
 hlChunkSize :: Int
 hlChunkSize = 1024
 
-data HLState = forall a. HLState !(Highlighter a) a
+data HLState = forall a. HLState !(Highlighter' a) a
 
 -- ---------------------------------------------------------------------
 --
@@ -418,8 +418,9 @@ setSyntaxBI (ExtHL e) fb = updateHl 0 $ fb {hlCache = HLState e (hlStartState e)
 
 updateHl :: Point -> BufferImpl -> BufferImpl
 updateHl touchedIndex fb@FBufferData {hlCache = HLState hl cache} 
-    = fb {hlCache = HLState hl (hlRun hl getText touchedIndex cache)}
+    = fb {hlCache = HLState hl (hlRun hl getText' touchedIndex cache)}
     where getText idx = F.toLazyByteString (F.drop idx (mem fb))
+          getText' = Scanner 0 (\idx -> zip [idx..] (UTF8.decode $ F.toString (F.drop idx (mem fb))))                             
 
 pointLeftBound, markLeftBound :: Bool
 pointLeftBound = False

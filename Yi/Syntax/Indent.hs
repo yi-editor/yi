@@ -1,6 +1,7 @@
 {-# OPTIONS -fglasgow-exts #-}
 module Yi.Syntax.Indent where
 
+import Yi.Syntax
 import Yi.Syntax.Alex
 import Yi.Prelude
 import Prelude ()
@@ -13,11 +14,11 @@ type State lexState = (IState, AlexState lexState)
 -- type Tok hlState token = (AlexState hlState, token)
 
 indenter :: forall t lexState. (t -> Bool) -> [t] -> 
-            Source (AlexState lexState) (Tok t) -> Source (State lexState) (Tok t)
-indenter isSpecial [openT, closeT, nextT] lexSource = Source 
+            Scanner (AlexState lexState) (Tok t) -> Scanner (State lexState) (Tok t)
+indenter isSpecial [openT, closeT, nextT] lexSource = Scanner 
   {
    scanInit = (IState [(-1)] False (-1), scanInit lexSource),
-   source = \st -> parse st (source lexSource (snd st))
+   scanRun  = \st -> parse st (scanRun lexSource (snd st))
   }
     where tt tok = Tok tok 0 startPosn
           parse :: State lexState -> [(AlexState lexState, Tok t)] -> [(State lexState, Tok t)]
@@ -50,6 +51,7 @@ indenter isSpecial [openT, closeT, nextT] lexSource = Source
               
 
 
+  
 
 
       

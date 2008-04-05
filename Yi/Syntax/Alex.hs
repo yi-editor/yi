@@ -1,12 +1,12 @@
 {-# OPTIONS -fglasgow-exts #-}
 
 module Yi.Syntax.Alex (
-                       Source(..),
                        mkHighlighter,
-                       alexGetChar, alexInputPrevChar, unfoldLexer, lexerSource,
+                       alexGetChar, alexInputPrevChar, unfoldLexer, lexScanner,
                        AlexState(..), AlexInput, Stroke,
                        takeLB, headLB, actionConst, actionAndModify,
-                       Tok(..), Posn(..), startPosn, moveStr, runSource) where
+                       Tok(..), tokBegin, tokEnd,
+                       Posn(..), startPosn, moveStr, runSource) where
 
 import Data.List hiding (map)
 import qualified Data.ByteString.Lazy.Char8 as LB
@@ -24,7 +24,7 @@ headLB = LB.head
 -- | if offsets before this is dirtied, must restart from that state.
 type LookedOffset = Int
 
-type AlexInput  = LB.ByteString
+type AlexInput = [(Int, Char)]
 type Action hlState token = AlexInput -> hlState -> (hlState, token)
 -- | Lexer state; (reversed) list of tokens so far.
 type State hlState = (AlexState hlState, [Stroke])
@@ -41,6 +41,9 @@ data Tok t = Tok
      tokPosn :: Posn
     }
 
+tokBegin = posnOfs . tokPosn
+tokEnd t = tokBegin t + tokLen t
+
 instance Show t => Show (Tok t) where
     show tok = show (tokPosn tok) ++ ": " ++ show (tokT tok)
 
@@ -54,8 +57,8 @@ instance Show Posn where
 startPosn :: Posn
 startPosn = Posn 0 1 0
 
-moveStr :: Posn -> LB.ByteString -> Posn
-moveStr posn str = foldl' moveCh posn (LB.unpack str)
+moveStr :: Posn -> AlexInput -> Posn
+moveStr posn str = foldl' moveCh posn (map snd str)
 
 moveCh :: Posn -> Char -> Posn
 moveCh (Posn o l c) '\t' = Posn (o+1)  l     (((c+8) `div` 8)*8)
@@ -64,11 +67,11 @@ moveCh (Posn o l c) _    = Posn (o+1) l     (c+1)
 
 
 alexGetChar :: AlexInput -> Maybe (Char, AlexInput)
-alexGetChar bs | LB.null bs = Nothing
-               | otherwise  = Just (LB.head bs, LB.tail bs)
+alexGetChar bs | null bs = Nothing
+               | otherwise  = Just (snd $ head bs, tail bs)
 
 alexInputPrevChar :: AlexInput -> Char
-alexInputPrevChar = undefined
+alexInputPrevChar = error "alexInputPrevChar undefined"
 
 actionConst :: token -> Action lexState token
 actionConst token _str state = (state, token)
@@ -89,10 +92,11 @@ origami gen seed (<+) (+>) l_c r_c = case gen seed of
 
 type ASI s = (AlexState s, AlexInput)
 
--- | Highlighter based on an Alex lexer
+-- FIXME: this should take a generic Source and + Token -> Stroke function. 
+-- | Highlighter based on an Alex lexer 
 mkHighlighter :: forall s. s
               -> (ASI s -> Maybe (Stroke, ASI s))
-              -> Yi.Syntax.Highlighter (Cache s)
+              -> Yi.Syntax.Highlighter' (Cache s)
 mkHighlighter initState alexScanToken =
   Yi.Syntax.SynHL { hlStartState   = Cache [] ([],[])
                   , hlRun          = run
@@ -103,19 +107,19 @@ mkHighlighter initState alexScanToken =
         getStrokes begin end (Cache _ (leftHL, rightHL)) = reverse (usefulsL leftHL) ++ usefulsR rightHL
             where
               usefulsR = dropWhile (\(_l,_s,r) -> r <= begin) .
-                        takeWhile (\(l,_s,_r) -> l <= end)
+                         takeWhile (\(l,_s,_r) -> l <= end)
 
               usefulsL = dropWhile (\(l,_s,_r) -> l >= end) .
                          takeWhile (\(_l,_s,r) -> r >= begin)
 
-        run getInput dirtyOffset (Cache cachedStates _) = -- trace (show $ map trd3 $ newCachedStates) $
+        run scanner dirtyOffset (Cache cachedStates _) = -- trace (show $ map trd3 $ newCachedStates) $
             Cache newCachedStates result
             where resumeIndex = posnOfs $ stPosn $ fst $ resumeState
                   reused = takeWhile ((< dirtyOffset) . lookedOffset . fst) cachedStates
                   resumeState = if null reused then startState else last reused
                   newCachedStates = reused ++ other 20 0 (drop 1 recomputed)
                   (recomputed, result) = updateState text resumeState
-                  text = getInput resumeIndex
+                  text = scanRun scanner resumeIndex
 
 
         updateState :: AlexInput -> State s -> ([State s], Result)
@@ -134,17 +138,18 @@ other n m l = case l of
                       0 -> h:other n n     t
                       _ ->   other n (m-1) t
 
-data Source st a = Source {scanInit   :: st,
-                           source :: st -> [(st,a)]}
 
-runSource :: forall t t1. Source t t1 -> [(t, t1)]
-runSource (Source initSt f) = f initSt
+runSource :: forall t t1. Scanner t t1 -> [(t, t1)]
+runSource (Scanner initSt f) = f initSt
 
-type LexerSource lState token = Source (AlexState lState) token
+type LexerSource lState token = Scanner (AlexState lState) token
 
-lexerSource l st0 src = Source
-                 { scanInit = AlexState st0 0 startPosn,
-                   source = \st -> unfoldLexer l (st, src $ posnOfs $ stPosn st)
+lexScanner l st0 src = Scanner
+                 {
+                  --stStart = posnOfs . stPosn,
+                  --stLooked = lookedOffset,
+                  scanInit = AlexState st0 0 startPosn,
+                  scanRun = \st -> unfoldLexer l (st, scanRun src $ posnOfs $ stPosn st)
                  }
 
 -- | unfold lexer function into a function that returns a stream of (state x token)

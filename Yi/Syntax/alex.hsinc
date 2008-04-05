@@ -13,11 +13,11 @@ alexScanToken (AlexState state lookedOfs pos, inp) =
 		AlexEOF -> Nothing
 		AlexError _ -> error "lexical error"
 		AlexSkip  inp' len  -> 
-                    let chunk = takeLB (fromIntegral len) inp
+                    let chunk = take (fromIntegral len) inp
                     in alexScanToken (AlexState state lookedOfs' (moveStr pos chunk), inp')
 		AlexToken inp' len act -> 
                     let (state', style) = act chunk state 
-                        chunk = takeLB (fromIntegral len) inp
+                        chunk = take (fromIntegral len) inp
                     in Just (Tok style len pos, (AlexState state' lookedOfs' (moveStr pos chunk), inp'))
 
 alexScan' input (I# (sc))

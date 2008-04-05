@@ -1,12 +1,15 @@
 {-# OPTIONS -fglasgow-exts #-}
-module Yi.Syntax.Fractal (mkHighlighter) where
+module Yi.Syntax.Fractal (parse, getStrokes) where
 
 import Yi.Syntax
-import Yi.Syntax.Alex (AlexState(..), startPosn, AlexInput, unfoldLexer, Posn(..))
+import Yi.Syntax.Alex (Tok(..), tokBegin, tokEnd,
+                       AlexState(..), startPosn, AlexInput, unfoldLexer, Posn(..))
 import qualified Yi.IncrementalParse as P
 import qualified Data.Tree as S
 import Control.Applicative
-import Yi.Prelude
+import Yi.Prelude 
+import Prelude ()
+import Data.List (splitAt)
 
 data Tree a = Node a (Tree a) (Tree a)
             | Leaf
@@ -30,51 +33,32 @@ shape :: Show a => Tree a -> [S.Tree String]
 shape Leaf = [] -- [S.Node "o"[]]
 shape (Node x l r) = [S.Node (show x) (shape l ++ shape r)]
 
-parse :: Int -> Int -> P.P a (Tree a)
-parse leftSize maxSize
-   | maxSize <= 0 = pure Leaf
-   | otherwise 
-     =  (Node <$> P.symbol (const True)
-              <*> parse factor              (min leftSize (maxSize - 1))
-              <*> parse (leftSize * factor) (maxSize - leftSize - 1))
-     <|> (P.eof *> pure Leaf) 
-    -- NOTE: eof here is important for performance (otherwise the
-    -- parser would have to keep this case until the very end of input
-    -- is reached.
+parse = parse' 1 maxBound
+    where parse' :: Int -> Int -> P.P a (Tree a)
+          parse' leftSize maxSize
+             | maxSize <= 0 = pure Leaf
+             | otherwise 
+               =  (Node <$> P.symbol (const True)
+                        <*> parse' factor              (min leftSize (maxSize - 1))
+                        <*> parse' (leftSize * factor) (maxSize - leftSize - 1))
+               <|> (P.eof *> pure Leaf) 
+              -- NOTE: eof here is important for performance (otherwise the
+              -- parser would have to keep this case until the very end of input
+              -- is reached.
+
          
 type T token = (Int,token,Int)
 type Cache lexState token = P.IResult lexState (T token) (Tree (T token))
 
-mkHighlighter :: forall lexState token. lexState
-              -> ((AlexState lexState, AlexInput) -> Maybe (T token, (AlexState lexState, AlexInput)))
-              -> (T token -> Stroke)
-              -> Highlighter (Cache lexState token)
-mkHighlighter initState alexScanToken tokenToStroke = 
-  Yi.Syntax.SynHL { hlStartState   = P.Leaf Leaf (AlexState initState 0 startPosn) 
-                                            (P.run (parse 1 1000000000))
-                  -- FIXME: max int
-                  , hlRun          = run
-                  , hlGetStrokes   = getS
-                  }
-      where run source dirty cache = fst3 $ P.upd initState (tokenSource source) dirty cache
-            getS begin end cache = fmap tokenToStroke $ getStrokes begin end (P.getValue cache) []
-            tokenSource :: (Int -> AlexInput) -> AlexState lexState -> [(AlexState lexState, T token)]
-            tokenSource source st
-                = unfoldLexer alexScanToken (st, source (posnOfs $ stPosn st))
-            fst3 (x,_,_) = x
 
-            getStrokes :: Int -> Int -> Tree (T token) -> Endom [T token]
-            getStrokes _ _ Leaf = id
-            getStrokes _     end (Node (i,_,_) _ _) 
-                | end < i = id
-            getStrokes begin end (Node s lc Leaf) 
-                = (s :) . getStrokes begin end lc
-            getStrokes begin end (Node s _ rc@(Node (i,_,_) _ _))
-                | i < begin = (s :) . getStrokes begin end rc
-            getStrokes begin end (Node s lc rc)
-                = (s :) . getStrokes begin end lc . getStrokes begin end rc
-
-
-
-
-
+getStrokes begin end t = getStrokes' begin end t []
+    where getStrokes' :: Int -> Int -> Tree (Tok token) -> Endom [Tok token]
+          getStrokes' _ _ Leaf = id
+          getStrokes' _     end (Node t _ _) 
+              | end < tokBegin t = id
+          getStrokes' begin end (Node s lc Leaf) 
+              = (s :) . getStrokes' begin end lc
+          getStrokes' begin end (Node s _ rc@(Node t _ _))
+              | tokBegin t < begin = (s :) . getStrokes' begin end rc
+          getStrokes' begin end (Node s lc rc)
+              = (s :) . getStrokes' begin end lc . getStrokes' begin end rc
