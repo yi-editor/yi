@@ -48,13 +48,13 @@ evalR (Val a r) = (a,r)
 evalR (App s) = let (f, s') = evalR s
                     (x, s'') = evalR s'
                 in (f x, s'')
-evalR Stop = error "Can't create values of type Void"
+evalR Stop = error "evalR: Can't create values of type Void"
 evalR (Shift v) = evalR v
 evalR (Done v)  = evalR v
 evalR (Dislike v) = -- trace "Yuck!" $ 
                     evalR v
-evalR (Fails) = error "No parse!"
-evalR (Suspend _) = error "Not fully evaluated!"
+evalR (Fails) = error "evalR: No parse!"
+evalR (Suspend _) = error "evalR: Not fully evaluated!"
 
 
 -- | Pre-compute a left-prefix of some steps (as far as possible)
