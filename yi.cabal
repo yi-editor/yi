@@ -90,8 +90,8 @@ library
       other-modules: Shim.SHM, Shim.Utils, Shim.SessionMonad, Shim.Hsinfo, Shim.GhcCompat, Shim.ExprSearch
 
     other-modules:
-        Yi.Syntax.Cplusplus, Yi.Syntax.Haskell, Yi.Syntax.LiterateHaskell,
-        Yi.Syntax.Latex, Yi.Syntax.Srmc, Yi.Syntax.Cabal
+        Yi.Syntax.Cplusplus, Yi.Syntax.Haskell, Yi.Syntax.Indent, Yi.Syntax.LiterateHaskell,
+        Yi.Syntax.Latex, Yi.Syntax.Paren, Yi.Syntax.Srmc, Yi.Syntax.Cabal, Yi.Syntax.Fractal
 
         Yi.Accessor, Yi.Interpreter,
         Yi.Buffer.HighLevel, Yi.Buffer.Implementation,
@@ -109,17 +109,17 @@ library
         Yi.IncrementalParse
         Yi.Prelude
         HConf
+        -- Should probably be split out to another package.
+        Data.Digest.SHA1
 
--- --         Broken:
--- --                Yi.Keymap.Ee,
--- --                Yi.Keymap.Gwern,
--- --                Yi.Keymap.Joe,
--- --                Yi.Keymap.Mg,
--- --                Yi.Keymap.Nano,
--- --                Yi.Keymap.Vi,
-        Yi.Syntax.Fractal
+--         Broken:
+--                Yi.Keymap.Ee,
+--                Yi.Keymap.Gwern,
+--                Yi.Keymap.Joe,
+--                Yi.Keymap.Mg,
+--                Yi.Keymap.Nano,
+--                Yi.Keymap.Vi,
 
---
 --  extensions:   CPP, DeriveDataTypeable, FlexibleContexts, FlexibleInstances,
 --                ForeignFunctionInterface, FunctionalDependencies, GADTs,
 --                GeneralizedNewtypeDeriving, MagicHash, MultiParamTypeClasses,
@@ -183,4 +183,5 @@ executable yi
         if flag(testing)
             cpp-options:    -DTESTING
             hs-source-dirs: . tests/
+            other-modules:  Driver, TestSuite
             build-depends:  QuickCheck < 2
