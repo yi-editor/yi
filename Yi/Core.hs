@@ -222,7 +222,7 @@ quitEditor = withUI UI.end
 -- | Redraw
 refreshEditor :: YiM ()
 refreshEditor = do e0 <- with yiEditor readRef
-                   let e1 = modifier buffersA (fmap clearHighlight) e0
+                   let e1 = modifier buffersA (fmap (clearSyntax . clearHighlight)) e0
                        e2 = modifier buffersA (fmap clearUpdates)   e1
                    withUI $ flip UI.refresh e1
                    with yiEditor (flip writeRef e2)

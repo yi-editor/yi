@@ -35,6 +35,7 @@ module Yi.Buffer.Implementation
   , addOverlayBI
   , inBounds
   , findNextChar
+  , updateSyntax
 )
 where
 
@@ -79,9 +80,6 @@ type Marks = M.Map Mark MarkValue
 
 type BufferImpl = FBufferData
 
-hlChunkSize :: Int
-hlChunkSize = 1024
-
 data HLState = forall a. HLState !(Highlighter' a) a
 
 -- ---------------------------------------------------------------------
@@ -103,6 +101,7 @@ data FBufferData =
                     , hlCache    :: !HLState       -- ^ syntax highlighting state
                     -- ^ syn hl result. Actual result is (reverse fst ++ snd)
                     , overlays   :: !(Set.Set Overlay) -- ^ set of (non overlapping) visual overlay regions
+                    , dirtyOffset :: !Int -- ^ Lowest modified offset since last recomputation of syntax 
                     }
         deriving Typeable
 
@@ -123,7 +122,7 @@ data Update = Insert {updatePoint :: !Point, insertUpdateString :: !String} -- F
 
 -- | New FBuffer filled from string.
 newBI :: String -> FBufferData
-newBI s = FBufferData (F.fromString $ UTF8.encode s) mks M.empty (HLState noHighlighter (hlStartState noHighlighter)) Set.empty
+newBI s = FBufferData (F.fromString $ UTF8.encode s) mks M.empty (HLState noHighlighter (hlStartState noHighlighter)) Set.empty 0
     where mks = M.fromList [(pointMark, MarkValue 0 pointLeftBound)]
 
 -- | read @n@ chars from buffer @b@, starting at @i@
@@ -271,7 +270,7 @@ isValidUpdate u b = case u of
 
 -- | Apply a /valid/ update
 applyUpdateI :: Update -> BufferImpl -> BufferImpl
-applyUpdateI u fb = updateHl (updatePoint u) $ 
+applyUpdateI u fb = touchSyntax (updatePoint u) $ 
                     fb {mem = p', marks = M.map shift (marks fb),
                                    overlays = Set.map (mapOvlMarks shift) (overlays fb)}
                                    -- FIXME: this is inefficient; find a way to use mapMonotonic
@@ -414,11 +413,18 @@ unsetMarkBI fb = fb { marks = (M.delete markMark (marks fb)) }
 -- highlighters implementation speed up compilation a lot when working on a
 -- syntax highlighter.
 setSyntaxBI :: ExtHL -> BufferImpl -> BufferImpl
-setSyntaxBI (ExtHL e) fb = updateHl 0 $ fb {hlCache = HLState e (hlStartState e)}
+setSyntaxBI (ExtHL e) fb = touchSyntax 0 $ fb {hlCache = HLState e (hlStartState e)}
 
-updateHl :: Point -> BufferImpl -> BufferImpl
-updateHl touchedIndex fb@FBufferData {hlCache = HLState hl cache} 
-    = fb {hlCache = HLState hl (hlRun hl getText touchedIndex cache)}
+touchSyntax ::  Point -> BufferImpl -> BufferImpl
+touchSyntax touchedIndex fb = fb { dirtyOffset = min touchedIndex (dirtyOffset fb)}
+
+updateSyntax :: BufferImpl -> BufferImpl
+updateSyntax fb@FBufferData {dirtyOffset = touchedIndex, hlCache = HLState hl cache} 
+    | touchedIndex == maxBound = fb
+    | otherwise
+    = fb {dirtyOffset = maxBound,
+          hlCache = HLState hl (hlRun hl getText touchedIndex cache)
+         }
     where getText = Scanner 0 (\idx -> zip [idx..] (UTF8.decode $ F.toString (F.drop idx (mem fb))))                             
 
 pointLeftBound, markLeftBound :: Bool

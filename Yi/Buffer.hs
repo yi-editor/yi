@@ -73,6 +73,7 @@ module Yi.Buffer
   , highlightSelectionA
   , revertPendingUpdatesB
   , askWindow
+  , clearSyntax
   )
 where
 
@@ -127,6 +128,8 @@ data FBuffer =
                 }
         deriving Typeable
 
+
+clearSyntax = modifier rawbufA updateSyntax
 
 
 rawbufA :: Accessor (FBuffer) (BufferImpl)
