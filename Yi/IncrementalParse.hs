@@ -111,7 +111,7 @@ getProgress f (App s)   = getProgress (f . App) s
 getProgress f (Done p)  = Done (f p)
 getProgress f (Shift p) = Shift (f p)
 getProgress f (Dislike p) = Dislike (f p)
-getProgress t (Fails) = Fails
+getProgress _ (Fails) = Fails
 getProgress f (Suspend p) = Suspend (\input -> f (p input))
 
 
@@ -192,9 +192,6 @@ recoverWith (P p) = P (Dislike . p)
 
 type States st token result = [(st, Process token result)]
 data Cache st token result = Cache result (States st token result)
-
-splitBy _ [] = []
-splitBy n l = let (x,y) = splitAt n l in x : splitBy n y
 
 
 mkHighlighter :: forall lexState token result st.

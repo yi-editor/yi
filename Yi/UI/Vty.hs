@@ -80,7 +80,7 @@ mkUI ui = Common.UI
 start :: Common.UIConfig -> Chan Yi.Event.Event -> Chan action ->
          Editor -> (EditorM () -> action) -> 
          IO Common.UI
-start cfg ch _outCh editor _runEd = do
+start _cfg ch _outCh editor _runEd = do
   liftIO $ do 
           v <- mkVty
           (x0,y0) <- Vty.getSize v
@@ -290,7 +290,7 @@ drawText h w topPoint point selreg selsty wsty bufData
   where 
   -- | Remember the point of each char
   annotateWithPoint = annotateWithPoint' topPoint
-  annotateWithPoint' p []          = []
+  annotateWithPoint' _ []          = []
   annotateWithPoint' p ((c,a):cs)  = (c, (a,p)) : annotateWithPoint' (p + length (UTF8.encode [c])) cs
 
 

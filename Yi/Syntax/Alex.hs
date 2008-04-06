@@ -5,7 +5,7 @@ module Yi.Syntax.Alex (
                        alexGetChar, alexInputPrevChar, unfoldLexer, lexScanner,
                        AlexState(..), AlexInput, Stroke,
                        takeLB, headLB, actionConst, actionAndModify,
-                       Tok(..), tokBegin, tokEnd,                       
+                       Tok(..), tokBegin, tokEnd, tokFromT,          
                        Posn(..), startPosn, moveStr, runSource
                       ) where
 
@@ -43,6 +43,9 @@ data Tok t = Tok
      tokLen  :: Int,
      tokPosn :: Posn
     }
+
+tokFromT :: forall t. t -> Tok t
+tokFromT t = Tok t 0 startPosn
 
 tokBegin :: forall t. Tok t -> Int
 tokBegin = posnOfs . tokPosn

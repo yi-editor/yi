@@ -22,7 +22,6 @@ module Yi.Syntax
 where
 
 import Yi.Style
-import qualified Data.ByteString.Lazy.Char8 as LB
 
 type Point = Int
 type Size = Int
@@ -33,6 +32,7 @@ type Stroke = (Point,Style,Point)
 -- the required functions, and is parametrized on the type of the internal
 -- state.
 
+-- FIXME: this actually does more than just HL, so the names are silly.
 -- FIXME: "State" is actually CacheState
 
 type Highlighter' = Highlighter Int Char

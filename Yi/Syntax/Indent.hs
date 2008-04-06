@@ -20,8 +20,7 @@ indenter isSpecial [openT, closeT, nextT] lexSource = Scanner
    scanInit = (IState [(-1)] False (-1), scanInit lexSource),
    scanRun  = \st -> parse (fst st) (scanRun lexSource (snd st))
   }
-    where tt tok = Tok tok 0 startPosn
-
+    where tt = tokFromT
           dummyAlexState = AlexState 
               {
                stLexer = error "dummyAlexState: should not be reused for restart!",
@@ -53,7 +52,7 @@ indenter isSpecial [openT, closeT, nextT] lexSource = Scanner
             | otherwise     
                 = (st, tok) : parse (IState levels doOpen line) tokss
                   where st = (iSt, aSt)
-          parse iSt@(IState levels@(_:lev:levs) doOpen posn) [] 
+          parse iSt@(IState (_:lev:levs) doOpen posn) [] 
               = ((iSt,dummyAlexState), tt closeT) : parse (IState (lev:levs) doOpen posn) []
           parse (IState [_] _ _) [] = []
 

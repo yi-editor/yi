@@ -50,7 +50,7 @@ haskellMode = fundamental
    }
     where tokenToStroke (Tok t len posn) = (posnOfs posn, Haskell.tokenToStyle t, posnOfs posn + len)
 
-
+cleverHaskellMode :: Mode
 cleverHaskellMode = haskellMode {
     modeHL = ExtHL $
 {--    lexer `withScanner` IncrParser.mkHighlighter Fractal.parse

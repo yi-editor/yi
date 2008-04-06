@@ -128,7 +128,7 @@ data FBuffer =
                 }
         deriving Typeable
 
-
+clearSyntax :: FBuffer -> FBuffer
 clearSyntax = modifier rawbufA updateSyntax
 
 

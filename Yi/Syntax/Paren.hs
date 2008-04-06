@@ -6,7 +6,7 @@ import Yi.IncrementalParse
 import Yi.Syntax.Alex
 import Yi.Syntax.Haskell
 import Control.Applicative
-import Yi.Style (errorStyle)
+import Yi.Style (errorStyle, Style)
 import Yi.Syntax.Indent
 import Yi.Syntax
 import Yi.Prelude 
@@ -43,16 +43,14 @@ instance Functor Tree where
     fmap f (Stmt s) = Stmt ((fmap (fmap (fmap f))) s)
                           
     
+parse :: P (Tok Token) (Expr (Tok Token))
+parse = parse' tokT tokFromT
 
-tToTok t = Tok t 0 startPosn
-
-parse = parse' tokT tToTok
-
-parse' toTok fromTok = pExpr <* eof
+parse' toTok fromT = pExpr <* eof
     where 
       sym c = symbol (isSpecial [c] . toTok)
 
-      newT c = fromTok (Special c)
+      newT c = fromT (Special c)
 
       pleaseSym c = (recoverWith (pure $ newT '!')) <|> sym c
 
@@ -73,22 +71,28 @@ parse' toTok fromTok = pExpr <* eof
       -- note that, by construction, '<' and '>' will always be matched, so
       -- we don't try to recover errors with them.
 
--- TODO: make sure we take in account the begin, so we don't return useless strokes
-getStrokes begin end t = result 
+-- TODO: (optimization) make sure we take in account the begin, so we don't return useless strokes
+getStrokes :: Int -> Int -> Expr (Tok Token) -> [(Int, Style, Int)]
+getStrokes begin end t0 = result 
     where getStrokes' (Atom t) = (ts t :)
           getStrokes' (Error t) = (modStroke errorStyle (ts t) :) -- paint in red
           getStrokes' (Stmt s) = list (fmap getStrokesL s)
           getStrokes' (Group l g r)
               | isSpecial "!" $ tokT r = (modStroke errorStyle (ts l) :) . getStrokesL g
-              -- left paren wasn't matched. 
+              -- left paren wasn't matched: paint it in red.
+
+              -- note that testing this on the "Group" node actually forces the parsing of the
+              -- right paren, undermining online behaviour.
               | otherwise  = (ts l :) . getStrokesL g . (ts r :)
           getStrokesL g = list (fmap getStrokes' g)
           ts = tokenToStroke
           list = foldr (.) id
-          result = getStrokesL t []
+          result = getStrokesL t0 []
 
+modStroke :: (t1 -> t3) -> (Int, t1, Int) -> (Int, t3, Int)
 modStroke f (l,s,r) = (l,f s,r) 
 
+tokenToStroke :: Tok Token -> (Int, Style, Int)
 tokenToStroke (Tok t len posn) = (posnOfs posn, tokenToStyle t, posnOfs posn + len)
 
 
