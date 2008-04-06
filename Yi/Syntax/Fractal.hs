@@ -1,9 +1,8 @@
 {-# OPTIONS -fglasgow-exts #-}
 module Yi.Syntax.Fractal (parse, getStrokes) where
 
-import Yi.Syntax
-import Yi.Syntax.Alex (Tok(..), tokBegin, tokEnd,
-                       AlexState(..), startPosn, AlexInput, unfoldLexer, Posn(..))
+import Yi.Syntax.Alex (Tok(..), tokBegin,
+                       AlexState(..), AlexInput, Posn(..))
 import qualified Yi.IncrementalParse as P
 import qualified Data.Tree as S
 import Control.Applicative
