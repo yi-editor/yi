@@ -21,6 +21,7 @@ import Yi.Keymap.Emacs.KillRing
 import Yi.Keymap.Emacs.UnivArgument
 import Yi.Keymap.Emacs.Utils
   ( KList
+  , askQuitEditor
   , completeFileName
   , evalRegionE
   , executeExtendedCommandE
@@ -106,7 +107,7 @@ keys =
   , ( "C-x 0",    write $ closeWindow)
   , ( "C-x 1",    write $ closeOtherE)
   , ( "C-x 2",    write $ splitE)
-  , ( "C-x C-c",  write $ quitEditor)
+  , ( "C-x C-c",  write $ askQuitEditor)
   , ( "C-x C-f",  write $ findFile)
   , ( "C-x C-s",  write $ fwriteE)
   , ( "C-x C-w",  write $ withMinibuffer "Write file: "

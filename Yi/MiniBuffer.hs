@@ -18,6 +18,9 @@ import qualified Yi.WindowSet as WS
 import Control.Monad.Reader
 
 -- | Open a minibuffer window with the given prompt and keymap
+-- The third argument is an action to perform after the minibuffer
+-- is opened such as move to the first occurence of a searched for
+-- string. If you don't need this just supply @return ()@
 spawnMinibufferE :: String -> KeymapEndo -> YiM () -> YiM ()
 spawnMinibufferE prompt kmMod initialAction =
     do b <- withEditor $ stringToNewBuffer prompt []

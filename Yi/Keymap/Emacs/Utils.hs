@@ -12,6 +12,9 @@ module Yi.Keymap.Emacs.Utils
   ( KList
   , makeKeymap
   , makePartialKeymap
+
+  , askQuitEditor
+  , modifiedQuitEditor
   , changeBufferNameE
   , rebind
   , withMinibuffer
@@ -44,6 +47,7 @@ import Data.Char
   )
 import Data.List
   ( isPrefixOf
+  , isSuffixOf
   , (\\)
   )
 import Data.Maybe
@@ -84,6 +88,88 @@ import Yi.Templates
   )
 
 {- End of Module Imports -}
+
+----------------------------
+-- | Quits the editor if there are no unmodified buffers
+-- if there are unmodified buffers then we ask individually for
+-- each modified buffer whether or not the user wishes to save
+-- it or not. If we get to the end of this list and there are still
+-- some modified buffers then we ask again if the user wishes to
+-- quit, but this is then a simple yes or no.
+askQuitEditor :: YiM ()
+askQuitEditor =
+  do allBuffers          <- withEditor getBuffers
+     let modifiedBuffers =  filter modifiedBufferTest allBuffers
+     -- We could actually just call 'askIndividualQuit modifiedBuffers'
+     -- here.
+     if null modifiedBuffers
+        then quitEditor
+        else askIndividualQuit modifiedBuffers
+
+
+-- This tests whether or not a buffer should be counted as
+-- modified. Essentially it checks whether it has been saved since
+-- last modified, however this causes the checks to be a little
+-- aggressive and in particular for 'askQuitEditor' the user
+-- is asked about the *messages* buffer which they almost certainly
+-- don't wish to be asked about. So as a trial we discount any
+-- modified buffer whose name starts and ends with a '*'.
+modifiedBufferTest :: FBuffer -> Bool
+modifiedBufferTest fbuffer
+  | isUnchangedBuffer fbuffer = False
+  | isPrefixOf "*" bname &&
+    isSuffixOf "*" bname      = False
+  | otherwise                 = True
+  where
+  bname = name fbuffer
+
+--------------------------------------------------
+-- Takes in a list of buffers which have been identified
+-- as modified since their last save.
+askIndividualQuit :: [ FBuffer ] -> YiM ()
+askIndividualQuit [] = modifiedQuitEditor
+askIndividualQuit (firstBuffer : others) =
+  spawnMinibufferE saveMessage askKeymap $ return ()
+  where
+  askKeymap   = const $ makeKeymap askBindings
+  saveMessage = concat [ "do you want to save the buffer: "
+                       , bufferName
+                       , "? (y/n/q/c)"
+                       ]
+  bufferName  = name firstBuffer
+
+  askBindings = [ ( "n", write $ noAction)
+                , ( "y", write yesAction )
+                , ( "c", write closeBufferAndWindowE )
+                , ( "q", write quitEditor )
+                ]
+  yesAction   = do fwriteBufferE firstBuffer
+                   withEditor closeBufferAndWindowE
+                   askIndividualQuit others
+
+  noAction    = do withEditor closeBufferAndWindowE
+                   askIndividualQuit others
+
+---------------------------
+-- | Quits the editor if there are no unmodified buffers
+-- if there are then simply confirms with the user that they
+-- with to quit.
+modifiedQuitEditor :: YiM ()
+modifiedQuitEditor =
+  do allBuffers          <- withEditor getBuffers
+     if any isUnchangedBuffer allBuffers
+        then spawnMinibufferE modifiedMessage askKeymap $ return ()
+        else quitEditor
+  where
+  modifiedMessage = "Modified buffers exist really quit? (y/n)"
+
+  askKeymap       = const $ makeKeymap askBindings
+  askBindings     = [ ("n", write noAction)
+                    , ("y", write $ quitEditor)
+                    ]
+
+  noAction        = closeBufferAndWindowE
+
 
 
 ---------------------------

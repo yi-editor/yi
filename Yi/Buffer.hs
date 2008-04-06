@@ -53,6 +53,7 @@ module Yi.Buffer
   , setMarkPointB
   , setVisibleSelection
   , isUnchangedB
+  , isUnchangedBuffer
   , setSyntaxB
   , regexB
   , searchB
@@ -246,7 +247,10 @@ keyB :: FBuffer -> BufferRef
 keyB (FBuffer { bkey = u }) = u
 
 isUnchangedB :: BufferM Bool
-isUnchangedB = gets (isAtSavedFilePointU . undos)
+isUnchangedB = gets isUnchangedBuffer
+
+isUnchangedBuffer :: FBuffer -> Bool
+isUnchangedBuffer = isAtSavedFilePointU . undos
 
 
 undoRedo :: ( URList -> BufferImpl -> (BufferImpl, (URList, [Update])) ) -> BufferM ()
