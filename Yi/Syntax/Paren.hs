@@ -1,3 +1,5 @@
+-- Copyright (c) JP Bernardy 2008
+
 module Yi.Syntax.Paren where
 
 import Yi.IncrementalParse
@@ -5,26 +7,31 @@ import Yi.Syntax.Alex
 import Yi.Syntax.Haskell
 import Control.Applicative
 import Yi.Style (errorStyle)
+import Yi.Syntax.Indent
+import Yi.Syntax
+import Yi.Prelude 
+import Prelude ()
+
+indentScanner :: Scanner (AlexState lexState) (Tok Token)
+              -> Scanner (Yi.Syntax.Indent.State lexState) (Tok Token)
+indentScanner = indenter (== IndentReserved)
+                         (fmap Special ['<', '>', '.']) 
+-- HACK: We insert the Special '<', '>', '.', that don't occur in normal haskell parsing.
+
 
 isSpecial :: [Char] -> Token -> Bool
 isSpecial cs (Special c) = c `elem` cs
 isSpecial _  _ = False
 
-sym :: Char -> P (Tok Token) (Tok Token)
-sym c = symbol (isSpecial [c] . tokT)
-
-errT :: Char -> Tok Token
-errT c = Tok (Special c) 0 startPosn
-
-pleaseSym :: Char -> P (Tok Token) (Tok Token)
-pleaseSym c = (recoverWith (pure $ errT '!')) <|> sym c
-
 isNoise :: Token -> Bool
 isNoise (Special c) = c `elem` ";,`"
 isNoise _ = True
 
+type Expr t = [Tree t]
+
 data Tree t
-    = Group t [Tree t] t 
+    = Group t (Expr t) t 
+    | Stmt [Expr t]
     | Atom t
     | Error t
       deriving Show
@@ -33,30 +40,63 @@ instance Functor Tree where
     fmap f (Atom t) = Atom (f t)
     fmap f (Error t) = Error (f t)
     fmap f (Group l g r) = Group (f l) (fmap (fmap f) g) (f r)
+    fmap f (Stmt s) = Stmt ((fmap (fmap (fmap f))) s)
+                          
+    
 
-pExpr :: P (Tok Token) [Tree (Tok Token)]
-pExpr = many pTree
+tToTok t = Tok t 0 startPosn
 
-pTree :: P (Tok Token) (Tree (Tok Token))
-pTree = (Group  <$> sym '(' <*> pExpr <*> pleaseSym ')')
-    <|> (Group  <$> sym '[' <*> pExpr <*> pleaseSym ']')
-    <|> (Group  <$> sym '{' <*> pExpr <*> pleaseSym '}')
-    <|> (Atom <$> symbol (isNoise . tokT))
-    <|> (Error <$> recoverWith (symbol (isSpecial "})]" . tokT)))
+parse = parse' tokT tToTok
 
-parse :: P (Tok Token) [Tree (Tok Token)]
-parse = pExpr <* eof
+parse' toTok fromTok = pExpr <* eof
+    where 
+      sym c = symbol (isSpecial [c] . toTok)
 
-getStrokes begin end t = getStrokesL t []
+      newT c = fromTok (Special c)
+
+      pleaseSym c = (recoverWith (pure $ newT '!')) <|> sym c
+
+      pExpr = many pTree
+
+      pStmts = pExpr `sepBy` sym '.' -- see HACK above
+
+      pTree :: P (Tok Token) (Tree (Tok Token))
+      pTree = (Group  <$>  sym '(' <*> pExpr  <*> pleaseSym ')')
+          <|> (Group  <$>  sym '[' <*> pExpr  <*> pleaseSym ']')
+          <|> (Group  <$>  sym '{' <*> pExpr  <*> pleaseSym '}')
+
+          <|> (Stmt <$> (sym '<' *> pStmts <* sym '>')) -- see HACK above
+
+          <|> (Atom <$> symbol (isNoise . toTok))
+          <|> (Error <$> recoverWith (symbol (isSpecial "})]" . toTok)))
+
+      -- note that, by construction, '<' and '>' will always be matched, so
+      -- we don't try to recover errors with them.
+
+-- TODO: make sure we take in account the begin, so we don't return useless strokes
+getStrokes begin end t = result 
     where getStrokes' (Atom t) = (ts t :)
           getStrokes' (Error t) = (modStroke errorStyle (ts t) :) -- paint in red
+          getStrokes' (Stmt s) = list (fmap getStrokesL s)
           getStrokes' (Group l g r)
-              | isSpecial "!" $ tokT r = (modStroke errorStyle (ts l) :) . getStrokesL g . (ts r :)
-                                    -- left paren wasn't matched.
+              | isSpecial "!" $ tokT r = (modStroke errorStyle (ts l) :) . getStrokesL g
+              -- left paren wasn't matched. 
               | otherwise  = (ts l :) . getStrokesL g . (ts r :)
-          getStrokesL g = foldr (.) id (fmap getStrokes' g)
+          getStrokesL g = list (fmap getStrokes' g)
           ts = tokenToStroke
+          list = foldr (.) id
+          result = getStrokesL t []
 
 modStroke f (l,s,r) = (l,f s,r) 
 
 tokenToStroke (Tok t len posn) = (posnOfs posn, tokenToStyle t, posnOfs posn + len)
+
+
+----------------------
+-- Should be in lib
+
+sepBy :: (Alternative f) => f a -> f v -> f [a]
+sepBy p s   = sepBy1 p s <|> pure []
+
+sepBy1     :: (Alternative f) => f a -> f v -> f [a]
+sepBy1 p s  = (:) <$> p <*> many (s *> p)
