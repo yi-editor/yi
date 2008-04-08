@@ -105,6 +105,7 @@ haskell :-
   | @decimal @exponent                          { c defaultStyle }
 
  .                                              { c defaultStyle }
+ \" @string* \"                                 { c keywordStyle }
 }
 
 {
