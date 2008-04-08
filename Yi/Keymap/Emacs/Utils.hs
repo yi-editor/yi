@@ -202,11 +202,13 @@ selfSearchKeymap = do
 
 searchKeymap :: Keymap
 searchKeymap = selfSearchKeymap <|> makeKeymap
-               [--("C-g", isearchDelE), -- Only if string is not empty.
-                ("C-r", write isearchPrevE),
-                ("C-s", write isearchNextE),
-                ("C-w", write isearchWordE),
-                ("BACKSP", write $ isearchDelE)]
+               [ -- ("C-g", isearchDelE) -- Only if string is not empty.
+                 ("C-r", write isearchPrevE)
+               , ("C-s", write isearchNextE)
+               , ("C-w", write isearchWordE)
+               , ("C-n", write $ isearchAddE "\n")
+               , ("BACKSP", write $ isearchDelE)
+               ]
 
 isearchKeymap :: Direction -> Keymap
 isearchKeymap direction = 
