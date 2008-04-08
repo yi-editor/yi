@@ -69,7 +69,6 @@ data Yi = Yi {yiEditor :: IORef Editor,
               input         :: Chan Event,                 -- ^ input stream
               output        :: Chan Action,                -- ^ output stream
               defaultKeymap :: IORef Keymap, -- TODO: remove this in favour of using the yiConfig one.
-              bufferMode    :: IORef (M.Map BufferRef Mode), -- FIXME: mode should be stored in the Buffer, but this would create a circular dependency.
               bufferProcesses :: IORef (M.Map BufferRef KeymapProcess), -- FIXME: should be an MVar (can be accessed both by worker and input thread)
               yiSubprocessIdSupply :: IORef SubprocessId,
               yiSubprocesses :: IORef (M.Map SubprocessId SubprocessInfo),
@@ -97,11 +96,10 @@ write x = I.write (makeAction x)
 -- Keymap thread handling
 
 
--- FIXME: we never cleanup buffer mode/processes
+-- FIXME: we never cleanup buffer processes
 setBufferMode :: BufferRef -> Mode -> YiM ()
 setBufferMode b m = do
-  modifiesRef bufferMode (M.insert b m)
-  withGivenBuffer b $ setSyntaxB (modeHL m)
+  withGivenBuffer b $ setMode m
   restartBufferThread b
 
 restartBufferThread :: BufferRef -> YiM ()
@@ -109,11 +107,7 @@ restartBufferThread b = do
   modifiesRef bufferProcesses (M.insert b I.End)
 
 getBufferMode :: BufferRef -> YiM Mode
-getBufferMode b = do
-  kms <- readsRef bufferMode
-  case M.lookup b kms of
-    Just bkm -> return bkm
-    Nothing -> asks (fundamentalMode . yiConfig)
+getBufferMode b = withGivenBuffer b $ gets bmode
 
 getBufferProcess :: BufferRef -> YiM KeymapProcess
 getBufferProcess b = do

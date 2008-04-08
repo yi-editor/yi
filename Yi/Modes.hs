@@ -18,20 +18,17 @@ import Yi.Keymap
 import Yi.Indent
 import Control.Arrow (first)
 import Yi.Prelude
-import Yi.Buffer (Mode(..))
+import Yi.Buffer (Mode(..), emptyMode)
 import Prelude ()
 import qualified Yi.IncrementalParse as IncrParser
 
 fundamental, defaultFundamentalMode,
  latexMode, cppMode, haskellMode, literateHaskellMode, cabalMode, srmcMode :: Mode
 
-fundamental = Mode 
+fundamental = emptyMode
   { 
-   modeHL = ExtHL noHighlighter,
-   modeKeymap = id,
    modeIndent = autoIndentB
   }
-
 
 mkHighlighter' initSt scan = Alex.mkHighlighter initSt (fmap (first tokenToStroke) . scan)
     where tokenToStroke (Tok t len posn) = (posnOfs posn, t, posnOfs posn + len)

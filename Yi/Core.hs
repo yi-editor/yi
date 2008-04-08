@@ -124,7 +124,6 @@ startEditor cfg st = do
     startSubprocessId <- newIORef 1
     startSubprocesses <- newIORef M.empty
     keymaps <- newIORef M.empty
-    modes <- newIORef M.empty
 #ifdef SHIM
     ghc <- findExecutable "ghc" -- FIXME: Add version constraint
            >>= maybe (error "Could not find ghc executable in path.") return
@@ -135,7 +134,7 @@ startEditor cfg st = do
                  sessionMap = M.empty,
                  compBuffer = M.empty }
 #endif
-    let yi = Yi newSt ui startThreads inCh outCh startKm modes keymaps startSubprocessId startSubprocesses cfg 
+    let yi = Yi newSt ui startThreads inCh outCh startKm keymaps startSubprocessId startSubprocesses cfg 
 #ifdef SHIM
              shim
 #endif

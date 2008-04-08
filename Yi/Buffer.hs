@@ -22,7 +22,6 @@ module Yi.Buffer
   , newB
   , Point
   , Mark
-  , BufferMode    ( .. )
   , gotoLn
   , gotoLnFrom
   , offsetFromSol
@@ -54,7 +53,7 @@ module Yi.Buffer
   , setVisibleSelection
   , isUnchangedB
   , isUnchangedBuffer
-  , setSyntaxB
+  , setMode
   , regexB
   , searchB
   , readAtB
@@ -76,6 +75,7 @@ module Yi.Buffer
   , askWindow
   , clearSyntax
   , Mode (..)
+  , emptyMode
   )
 where
 
@@ -115,7 +115,7 @@ instance Arbitrary FBuffer where
 -- In addition to Buffer's text, this manages (among others):
 --  * Log of updates mades
 --  * Undo
-data BufferMode = ReadOnly | ReadWrite
+
 
 data FBuffer =
         FBuffer { name   :: !String               -- ^ immutable buffer name
@@ -123,7 +123,8 @@ data FBuffer =
                 , file   :: !(Maybe FilePath)     -- ^ maybe a filename associated with this buffer. Filename is canonicalized.
                 , undos  :: !URList               -- ^ undo/redo list
                 , rawbuf :: !BufferImpl
-                , bmode  :: !BufferMode           -- ^ a read-only bit
+                , bmode  :: Mode           -- Alternatively, don't store the mode, but compute it every time needed.
+                , readOnly :: Bool -- ^ a read-only bit
                 , bufferDynamic :: !DynamicValues -- ^ dynamic components
                 , preferCol :: !(Maybe Int)       -- ^ prefered column to arrive at when we do a lineDown / lineUp
                 ,pendingUpdates :: [Update]       -- ^ updates that haven't been synched in the UI yet
@@ -134,6 +135,8 @@ data FBuffer =
 clearSyntax :: FBuffer -> FBuffer
 clearSyntax = modifier rawbufA updateSyntax
 
+modeA :: Accessor (FBuffer) (Mode)
+modeA = Accessor bmode (\f e -> e {bmode = f (bmode e)})
 
 rawbufA :: Accessor (FBuffer) (BufferImpl)
 rawbufA = Accessor rawbuf (\f e -> e {rawbuf = f (rawbuf e)})
@@ -277,6 +280,14 @@ undoB = undoRedo undoU
 redoB :: BufferM ()
 redoB = undoRedo redoU
 
+
+emptyMode = Mode 
+  { 
+   modeHL = ExtHL noHighlighter,
+   modeKeymap = id,
+   modeIndent = return ()
+  }
+
 -- | Create buffer named @nm@ with contents @s@
 newB :: BufferRef -> String -> [Char] -> FBuffer
 newB unique nm s =
@@ -285,7 +296,8 @@ newB unique nm s =
             , file   = Nothing          -- has name, not connected to a file
             , undos  = emptyU
             , rawbuf = newBI s
-            , bmode  = ReadWrite
+            , readOnly = False
+            , bmode  = emptyMode
             , preferCol = Nothing
             , bufferDynamic = emptyDV
             , pendingUpdates = []
@@ -388,9 +400,12 @@ gotoLn x = do moveTo 0
 searchB :: Direction -> [Char] -> BufferM (Maybe Int)
 searchB dir = queryBuffer . searchBI dir
 
--- | Set the syntax highlighting mode
-setSyntaxB :: ExtHL -> BufferM ()
-setSyntaxB = modifyBuffer . setSyntaxBI
+-- | Set the mode
+setMode :: Mode -> BufferM ()
+setMode m = do
+  setA modeA m
+  modifyBuffer $ setSyntaxBI (modeHL m)
+
 
 -- | Return indices of next string in buffer matched by regex
 regexB :: Regex -> BufferM (Maybe (Int,Int))

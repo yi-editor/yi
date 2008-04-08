@@ -230,6 +230,7 @@ diredDirBuffer dir = do
 
 diredMode :: Mode
 diredMode = defaultFundamentalMode {modeKeymap = diredKeymap}
+    -- Colours for Dired come from overlays not syntax highlighting
 
 diredRefresh :: YiM ()
 diredRefresh = do
@@ -316,7 +317,6 @@ linesToDisplay = do
 -- | Write the contents of the supplied directory into the current buffer in dired format
 diredLoadNewDir :: FilePath -> YiM ()
 diredLoadNewDir _dir = do
-    withBuffer $ setSyntaxB (ExtHL noHighlighter) -- Colours for Dired come from overlays not syntax highlighting
     diredRefresh
 
 -- | Return dired entries for the contents of the supplied directory
