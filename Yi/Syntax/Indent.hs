@@ -24,7 +24,7 @@ indenter isSpecial [openT, closeT, nextT] lexSource = Scanner
           dummyAlexState = AlexState 
               {
                stLexer = error "dummyAlexState: should not be reused for restart!",
-               lookedOffset = -1, -- setting this to -1 ensures nobody ever uses it.
+               lookedOffset = maxBound, -- setting this to maxBound ensures nobody ever uses it.
                stPosn = startPosn
               }
 
