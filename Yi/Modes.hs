@@ -18,6 +18,7 @@ import Yi.Keymap
 import Yi.Indent
 import Control.Arrow (first)
 import Yi.Prelude
+import Yi.Buffer (Mode(..))
 import Prelude ()
 import qualified Yi.IncrementalParse as IncrParser
 

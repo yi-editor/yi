@@ -62,13 +62,6 @@ data Config = Config {startFrontEnd :: UI.UIBoot,
                       fundamentalMode :: Mode,
                       publishedActions :: M.Map String [Dynamic]}
 
-data Mode = Mode 
-    {
-     -- modeName = "fundamental", -- ^ so this could be serialized, debugged.
-     modeHL :: ExtHL,
-     modeKeymap :: KeymapEndo, -- ^ Buffer's local keymap modification
-     modeIndent :: BufferM ()
-    }
 
 data Yi = Yi {yiEditor :: IORef Editor,
               yiUi          :: UI,

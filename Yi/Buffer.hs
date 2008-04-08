@@ -75,6 +75,7 @@ module Yi.Buffer
   , revertPendingUpdatesB
   , askWindow
   , clearSyntax
+  , Mode (..)
   )
 where
 
@@ -92,6 +93,7 @@ import Control.Applicative
 import Control.Monad.RWS.Strict
 import Data.List (elemIndex)
 import Data.Typeable
+import {-# source #-} Yi.Keymap
 
 #ifdef TESTING
 import Test.QuickCheck
@@ -153,6 +155,15 @@ pendingUpdatesA = Accessor pendingUpdates (\f e -> e {pendingUpdates = f (pendin
 
 highlightSelectionA :: Accessor FBuffer Bool
 highlightSelectionA = Accessor highlightSelection (\f e -> e {highlightSelection = f (highlightSelection e)})
+
+data Mode = Mode 
+    {
+     -- modeName = "fundamental", -- ^ so this could be serialized, debugged.
+     modeHL :: ExtHL,
+     modeKeymap :: KeymapEndo, -- ^ Buffer's local keymap modification
+     modeIndent :: BufferM ()
+    }
+
 
 -- | The BufferM monad writes the updates performed.
 newtype BufferM a = BufferM { fromBufferM :: RWS Window [Update] FBuffer a }
