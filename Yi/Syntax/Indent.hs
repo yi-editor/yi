@@ -30,7 +30,7 @@ indenter isSpecial [openT, closeT, nextT] lexSource = Scanner
 
           parse :: IState -> [(AlexState lexState, Tok t)] -> [(State lexState, Tok t)]
           parse iSt@(IState levels@(lev:levs) doOpen lastLine)
-                toks@((aSt, tok @ Tok {tokPosn = Posn _ line col}) : tokss) 
+                toks@((aSt, tok @ Tok {tokPosn = Posn nextOfs line col}) : tokss) 
 
             -- start a compound
             | doOpen
@@ -38,20 +38,24 @@ indenter isSpecial [openT, closeT, nextT] lexSource = Scanner
 
             -- pop one level
             | col < lev
-              = (st, tt closeT) : parse (IState levs doOpen lastLine) toks
+              = (st', tt closeT) : parse (IState levs doOpen lastLine) toks
 
             -- next item
             | line > lastLine &&
               col == lev 
-                = (st, tt nextT) : parse (IState levels doOpen line) toks
+                = (st', tt nextT) : parse (IState levels doOpen line) toks
 
             -- prepare to open a compound
             | isSpecial (tokT tok) 
-                = (st, tok) : parse (IState levels True   line) tokss
+                = (st', tok) : parse (IState levels True   line) tokss
 
             | otherwise     
-                = (st, tok) : parse (IState levels doOpen line) tokss
+                = (st', tok) : parse (IState levels doOpen line) tokss
                   where st = (iSt, aSt)
+                        st' = (iSt, aSt {lookedOffset = nextOfs})
+                        -- This function checks the position of the
+                        -- next token.  We peeked further, and so must
+                        -- update the lookedOffset accordingly.
           parse iSt@(IState (_:lev:levs) doOpen posn) [] 
               = ((iSt,dummyAlexState), tt closeT) : parse (IState (lev:levs) doOpen posn) []
           parse (IState [_] _ _) [] = []
