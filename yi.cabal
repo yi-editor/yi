@@ -54,6 +54,7 @@ library
   else
     exposed-modules:
            Yi
+           Yi.Prelude
            Yi.Yi
            Yi.Keymap.Emacs
            Yi.Keymap.Vim
@@ -107,7 +108,6 @@ library
         Yi.KillRing
         Yi.Syntax.Alex
         Yi.IncrementalParse
-        Yi.Prelude
         HConf
         -- Should probably be split out to another package.
         Data.Digest.SHA1
