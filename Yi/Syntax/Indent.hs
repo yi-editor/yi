@@ -17,7 +17,7 @@ indenter :: forall t lexState. (t -> Bool) -> [t] ->
             Scanner (AlexState lexState) (Tok t) -> Scanner (State lexState) (Tok t)
 indenter isSpecial [openT, closeT, nextT] lexSource = Scanner 
   {
-   scanInit = (IState [(-1)] False (-1), scanInit lexSource),
+   scanInit = (IState [(-1)] True (-1), scanInit lexSource),
    scanRun  = \st -> parse (fst st) (scanRun lexSource (snd st))
   }
     where tt = tokFromT
