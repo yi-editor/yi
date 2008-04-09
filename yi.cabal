@@ -130,8 +130,7 @@ library
 
 executable yi
         build-depends: array,  base,  containers,  directory,  filepath>=1.0,
-                       mtl, process, old-locale, old-time, unix, random
--- unix dependency should be eventually removed
+                       mtl, process, old-locale, old-time, random
 
         build-tools:   alex >= 2.0.1 && < 3
         -- haddock >= 2.0,
@@ -149,6 +148,9 @@ executable yi
         ghc-options:   -Wall -optl-Wl,-s
 -- ghc-options later on get appended to the original
         ghc-prof-options:   -prof -auto-all
+
+        if !os(mingw32)
+           build-depends: unix
 
         if flag (vty)
            build-depends: vty>=3.0.0

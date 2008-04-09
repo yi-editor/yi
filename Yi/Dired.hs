@@ -35,12 +35,17 @@ import Data.Typeable
 import System.Directory
 import System.FilePath
 import System.Locale
+#ifndef mingw32_HOST_OS
 import System.Posix.Files
 import System.Posix.Types
-import Control.Monad.Reader
 import System.Posix.User
 -- currently used to lookup the usernames for file owners. Any
 -- suggestions on how to drop the dependency welcome.
+#else
+import System.IO
+import Control.Exception(bracket, handle)
+#endif
+import Control.Monad.Reader
 
 import System.Time
 import Text.Printf
@@ -328,6 +333,7 @@ diredScanDir dir = do
     where
     lineForFile :: String -> M.Map FilePath DiredEntry -> String -> IO (M.Map FilePath DiredEntry)
     lineForFile d m f = do
+#ifndef mingw32_HOST_OS
                         let fp = (d </> f)
                         fileStatus <- getSymbolicLinkStatus fp
                         dfi <- lineForFilePath fp fileStatus
@@ -364,10 +370,6 @@ diredScanDir dir = do
                                                , sizeInBytes = sz
                                                , modificationTimeString = modTimeStr}
 
-    shortCalendarTimeToString :: CalendarTime -> String
-    shortCalendarTimeToString = formatCalendarTime defaultTimeLocale "%b %d %H:%M"
-
-
 
 -- | Needed on Mac OS X 10.4
 scanForUid :: UserID -> [UserEntry] -> UserEntry
@@ -390,6 +392,48 @@ modeString fm = ""
                 ++ strIfSet "x" otherExecuteMode
     where
     strIfSet s mode = if fm == (fm `unionFileModes` mode) then s else "-"
+#else
+                       do
+                        let fp = (d </> f)
+                        dfi <- lineForFilePath fp
+                        isfile <- doesFileExist fp
+                        isdir  <- doesDirectoryExist fp
+                        let de = if isfile then DiredFile dfi else
+                                   if isdir then DiredDir dfi else
+                                     DiredNoInfo
+                        return (M.insert f de m)
+
+    lineForFilePath :: FilePath -> IO DiredFileInfo
+    lineForFilePath fp = do
+                        fileMode <- getPermissions fp
+                        time <- getModificationTime fp >>= toCalendarTime                        
+                        let fmodeStr = modeString fileMode
+                            modTimeStr = shortCalendarTimeToString time
+                        sz <- handle (\_ -> return 0) (bracket (openBinaryFile fp ReadMode) hClose hFileSize)
+                        return $ DiredFileInfo { permString = fmodeStr
+                                               , numLinks = 0
+                                               , owner = ""
+                                               , grp = ""
+                                               , sizeInBytes = sz
+                                               , modificationTimeString = modTimeStr}      
+
+modeString :: Permissions -> String
+modeString fm = ""
+                ++ strIfSet "r" readable
+                ++ strIfSet "w" writable
+                ++ strIfSet "x" executable
+                ++ strIfSet "r" readable
+                ++ strIfSet "w" writable
+                ++ strIfSet "x" executable
+                ++ strIfSet "r" readable
+                ++ strIfSet "w" writable
+                ++ strIfSet "x" executable
+    where
+    strIfSet s mode = if mode fm then s else "-"
+#endif
+
+shortCalendarTimeToString :: CalendarTime -> String
+shortCalendarTimeToString = formatCalendarTime defaultTimeLocale "%b %d %H:%M"
 
 -- Default Filter: omit files ending in '~' or '#' and also '.' and '..'.
 diredOmitFile :: String -> Bool
@@ -466,4 +510,3 @@ diredCreateDir = do
     msgEditor $ "Creating "++newdir++"..."
     liftIO $ createDirectoryIfMissing True newdir
     diredRefresh
-

@@ -7,7 +7,9 @@ import Control.Monad.State
 import Control.Monad.Reader
 import System.IO
 import System.Info
+#ifndef mingw32_HOST_OS
 import System.Posix.Process (executeFile, forkProcess, getProcessStatus, createSession)
+#endif
 import System.Process
 import System.Directory
 import System.Exit
@@ -23,6 +25,7 @@ io = liftIO
 
 -- | Double fork and execute an IO action (usually one of the exec family of
 -- functions)
+{-
 doubleFork :: MonadIO m => IO () -> m ()
 doubleFork m = io $ do
     pid <- forkProcess $ do
@@ -30,6 +33,7 @@ doubleFork m = io $ do
         exitWith ExitSuccess
     getProcessStatus True False pid
     return ()
+-}
 
 -- | Return the path to @~\/.Project@.
 getProjectDir :: MonadIO m => String -> m String
@@ -40,13 +44,14 @@ getProjectDir projectName = io $ getAppUserDataDirectory projectName
 -- @name@.  If @resume@ is 'True', restart with the current window state.
 -- When executing another window manager, @resume@ should be 'False'.
 --
+{-
 restart :: String -> IO String -> IO ()
 restart projectName saveState = do
   s <- saveState
   let args = ["--resume", s]
   executeFile projectName True args Nothing -- TODO: catch exceptions
   -- run the master, who will take care of recompiling.
-
+-}
 
 
 -- | 'recompile force', recompile ~\/.Project\/Project.hs when any of the
@@ -129,8 +134,12 @@ mainSlave recoverState initState realMain = do
 --
 -- buildLaunch ::  IO ()
 buildLaunch projectName = do
+#ifndef mingw32_HOST_OS
     recompile projectName False
     dir  <- getProjectDir projectName
     args <- getArgs
     executeFile (dir </> projectName ++ "-"++arch++"-"++os) False args Nothing
     return ()
+#else
+    return ()
+#endif
