@@ -62,6 +62,7 @@ library
            Yi.Keymap.Users.JP
            Yi.Modes
            Yi.Buffer
+           Yi.UI.Common
     extensions:     CPP
     include-dirs:   Yi/Syntax
     if flag (vty)
@@ -102,7 +103,7 @@ library
         Yi.Keymap.Emacs.Keys, Yi.Keymap.Emacs.KillRing, Yi.Keymap.Emacs.UnivArgument,
         Yi.Keymap.Emacs.Utils, Yi.Main, Yi.MkTemp, Yi.Monad, Yi.Process,
         Yi.Search, Yi.String, Yi.Style, Yi.Syntax, Yi.Templates, Yi.TextCompletion,
-        Yi.UI.Common, Yi.Undo, Yi.Window, Yi.WindowSet
+        Yi.Undo, Yi.Window, Yi.WindowSet
         Yi.MiniBuffer
         Yi.File
         Yi.KillRing
