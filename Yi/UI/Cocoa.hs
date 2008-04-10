@@ -158,7 +158,7 @@ handleKeyEvent event ch = do
                 [c]      -> (Just $ KASCII c, False)
                 _        -> (Nothing, True)
   case (k,ch) of
-    (Just k, Just ch) -> writeChan ch (Event k (modifiers shift mask))
+    (Just k, Just ch) -> ch (Event k (modifiers shift mask))
     _                 -> return ()
 
 modifierTable :: Bool -> [(CUInt, Modifier)]
@@ -324,9 +324,7 @@ addSubviewWithTextLine view parent = do
   return (text, container)
 
 -- | Initialise the ui
-start :: Common.UIConfig -> Chan Yi.Event.Event -> Chan action ->
-         Editor -> (EditorM () -> action) ->
-         IO Common.UI
+start :: Common.UIBoot
 start cfg ch outCh _ed runEd = do
 
   -- Ensure that our command line application is also treated as a gui application
@@ -384,7 +382,7 @@ start cfg ch outCh _ed runEd = do
   bufs <- newIORef M.empty
   wc <- newIORef []
 
-  return (mkUI $ UI win winContainer cmd bufs wc (writeChan outCh . runEd) lock)
+  return (mkUI $ UI win winContainer cmd bufs wc (outCh . runEd) lock)
 
 
 

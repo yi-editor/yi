@@ -77,9 +77,7 @@ mkUI ui = Common.UI
 
 
 -- | Initialise the ui
-start :: Common.UIConfig -> Chan Yi.Event.Event -> Chan action ->
-         Editor -> (EditorM () -> action) -> 
-         IO Common.UI
+start :: Common.UIBoot
 start _cfg ch _outCh editor _runEd = do
   liftIO $ do 
           v <- mkVty
@@ -92,7 +90,7 @@ start _cfg ch _outCh editor _runEd = do
           editorRef <- newIORef editor
           let result = UI v sz t tuiRefresh editorRef
               -- | Action to read characters into a channel
-              getcLoop = forever $ getKey >>= writeChan ch
+              getcLoop = forever $ getKey >>= ch
 
               -- | Read a key. UIs need to define a method for getting events.
               getKey = do 
