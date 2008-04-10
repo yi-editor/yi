@@ -208,7 +208,8 @@ getModeLine = do
            ++ nm ++
            replicate 5 ' ' ++
            "L" ++ show ln ++ "  " ++ "C" ++ show col ++
-           replicate 2 ' ' ++ pct
+           "  " ++ pct ++
+           "  " ++ show p
 
 --
 -- | Give a point, and the file size, gives us a percent string
