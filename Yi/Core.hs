@@ -1,4 +1,4 @@
-{-# LANGUAGE PatternSignatures, RecursiveDo #-}
+{-# LANGUAGE PatternSignatures, RecursiveDo, Rank2Types #-}
 
 -- Copyright (c) Tuomo Valkonen 2004.
 -- Copyright (c) Don Stewart 2004-5. http://www.cse.unsw.edu.au/~dons
@@ -164,10 +164,10 @@ dispatch :: Event -> YiM ()
 dispatch ev =
     do yi <- ask
        b <- withEditor getBuffer
-       mode <- getBufferMode b
+       keymap <- withBufferMode b modeKeymap
        p0 <- getBufferProcess b
        defKm <- readRef (defaultKeymap yi)
-       let freshP = I.mkAutomaton $ modeKeymap mode $ defKm
+       let freshP = I.mkAutomaton $ keymap $ defKm
            p = case p0 of
                  I.End  -> freshP
                  I.Fail -> freshP
@@ -210,8 +210,8 @@ refreshEditor = do e0 <- with yiEditor readRef
                    withUI $ flip UI.refresh e1
                    with yiEditor (flip writeRef e2)
     where clearHighlight fb@FBuffer {pendingUpdates = us, highlightSelection = h} 
-              = fb {highlightSelection = h && null us}
-          clearUpdates fb = fb {pendingUpdates = []}
+              = modifier highlightSelectionA (const (h && null us)) fb
+          clearUpdates fb = modifier pendingUpdatesA (const []) fb
           
 
 -- | Suspend the program
@@ -346,8 +346,9 @@ waitForExit ph =
                      else threadDelay (500*1000) >> waitForExit ph
 
 
-withMode :: (Show x, YiAction a x) => (Mode -> a) -> YiM ()
+withMode :: (Show x, YiAction a x) => (forall syntax. Mode syntax -> a) -> YiM ()
 withMode f = do
             b <- withEditor Editor.getBuffer
-            mode <- getBufferMode b
-            runAction $ makeAction $ f mode
+            act <- withBufferMode b f
+            runAction $ makeAction $ act
+

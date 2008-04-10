@@ -198,11 +198,12 @@ mkHighlighter :: forall lexState token result st.
                  P token result
               -> (Int -> Int -> result -> [Stroke])
               -> (st -> AlexState lexState)
-              -> Highlighter st token (Cache st token result)
+              -> Highlighter st token (Cache st token result) result
 mkHighlighter parser getStrokes getAlexState = 
   Yi.Syntax.SynHL { hlStartState   = Cache emptyResult []
                   , hlRun          = updateCache
                   , hlGetStrokes   = getStrokes'
+                  , hlGetTree      = \(Cache result _) -> result
                   }
       where
         emptyResult :: result

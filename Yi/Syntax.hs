@@ -37,10 +37,11 @@ type Stroke = (Point,Style,Point)
 
 type Highlighter' = Highlighter Int Char
 
-data Highlighter st tok a = 
-  SynHL { hlStartState :: a -- ^ The start state for the highlighter.
-        , hlRun :: Scanner st tok -> Int -> a -> a
-        , hlGetStrokes :: Int -> Int -> a -> [Stroke]
+data Highlighter st tok cache syntax = 
+  SynHL { hlStartState :: cache -- ^ The start state for the highlighter.
+        , hlRun :: Scanner st tok -> Int -> cache -> cache
+        , hlGetStrokes :: Int -> Int -> cache -> [Stroke]
+        , hlGetTree :: cache -> syntax
         }
 
 data Scanner st a = Scanner {
@@ -50,12 +51,14 @@ data Scanner st a = Scanner {
                              scanRun  :: st -> [(st,a)]}
 
 
-withScanner :: (Scanner s1 t1 -> Scanner s2 t2) -> Highlighter s2 t2 a -> Highlighter s1 t1 a
-withScanner f (SynHL a r gs) = SynHL a (\scanner i a -> r (f scanner) i a) gs
+withScanner :: (Scanner s1 t1 -> Scanner s2 t2) -> Highlighter s2 t2 a syntax -> Highlighter s1 t1 a syntax
+withScanner f (SynHL a r gs gt) = SynHL a (\scanner i a -> r (f scanner) i a) gs gt
 
-noHighlighter :: Highlighter' ()
+noHighlighter :: Highlighter' () syntax
 noHighlighter = SynHL {hlStartState = (), 
                        hlRun = \_ _ a -> a,
-                       hlGetStrokes = \_ _ _ -> []}
+                       hlGetStrokes = \_ _ _ -> [],
+                       hlGetTree = \_ -> error "noHighlighter: tried to fetch syntax"
+                      }
 
-data ExtHL = forall a. ExtHL (Highlighter' a)
+data ExtHL syntax = forall a. ExtHL (Highlighter' a syntax) 

@@ -1,4 +1,4 @@
-{-# LANGUAGE PatternGuards, ExistentialQuantification, DeriveDataTypeable #-}
+{-# LANGUAGE PatternGuards, ExistentialQuantification, DeriveDataTypeable, Rank2Types #-}
 
 -- Copyright (c) 2004-5, 7-8 Don Stewart - http://www.cse.unsw.edu.au/~dons
 
@@ -36,11 +36,12 @@ module Yi.Buffer.Implementation
   , inBounds
   , findNextChar
   , updateSyntax
+  , getAst
 )
 where
 
 import Prelude hiding (error)
-import Yi.Syntax
+import Yi.Syntax 
 
 import qualified Data.Map as M
 import Yi.Style
@@ -80,7 +81,7 @@ type Marks = M.Map Mark MarkValue
 
 type BufferImpl = FBufferData
 
-data HLState = forall a. HLState !(Highlighter' a) a
+data HLState syntax = forall cache. HLState !(Highlighter' cache syntax) cache
 
 -- ---------------------------------------------------------------------
 --
@@ -94,11 +95,11 @@ data HLState = forall a. HLState !(Highlighter' a) a
 data Overlay = Overlay MarkValue MarkValue Style
                deriving (Ord, Eq)
 
-data FBufferData =
+data FBufferData syntax =
         FBufferData { mem        :: !FingerString          -- ^ buffer text
                     , marks      :: !Marks                 -- ^ Marks for this buffer
                     , markNames  :: !(M.Map String Mark)
-                    , hlCache    :: !HLState       -- ^ syntax highlighting state
+                    , hlCache    :: !(HLState syntax)       -- ^ syntax highlighting state
                     -- ^ syn hl result. Actual result is (reverse fst ++ snd)
                     , overlays   :: !(Set.Set Overlay) -- ^ set of (non overlapping) visual overlay regions
                     , dirtyOffset :: !Int -- ^ Lowest modified offset since last recomputation of syntax 
@@ -121,7 +122,7 @@ data Update = Insert {updatePoint :: !Point, insertUpdateString :: !String} -- F
 -- Low-level primitives.
 
 -- | New FBuffer filled from string.
-newBI :: String -> FBufferData
+newBI :: String -> FBufferData ()
 newBI s = FBufferData (F.fromString $ UTF8.encode s) mks M.empty (HLState noHighlighter (hlStartState noHighlighter)) Set.empty 0
     where mks = M.fromList [(pointMark, MarkValue 0 pointLeftBound)]
 
@@ -169,16 +170,16 @@ mapOvlMarks f (Overlay s e v) = Overlay (f s) (f e) v
 -- * "high-level" (exported) operations
 
 -- | Number of characters in the buffer
-sizeBI :: BufferImpl -> Int
+sizeBI :: BufferImpl syntax -> Int
 sizeBI fb = F.length $ mem fb
 
 -- | Extract the current point
-pointBI :: BufferImpl -> Int
+pointBI :: BufferImpl syntax -> Int
 pointBI fb = markPosition ((marks fb) M.! pointMark)
 {-# INLINE pointBI #-}
 
 -- | Return @n@ elems starting at @i@ of the buffer as a list
-nelemsBI :: Int -> Int -> BufferImpl -> String
+nelemsBI :: Int -> Int -> BufferImpl syntax -> String
 nelemsBI n i fb =
         let b = mem fb
             i' = inBounds i (F.length b)
@@ -186,7 +187,7 @@ nelemsBI n i fb =
 
 
 -- | Add a style "overlay" between the given points.
-addOverlayBI :: Point -> Point -> Style -> BufferImpl -> BufferImpl
+addOverlayBI :: Point -> Point -> Style -> BufferImpl syntax -> BufferImpl syntax
 addOverlayBI s e sty fb =
     let sm = MarkValue s True
         em = MarkValue e False
@@ -194,7 +195,7 @@ addOverlayBI s e sty fb =
 
 -- | Return @n@ elems starting at @i@ of the buffer as a list.
 -- This routine also does syntax highlighting and applies overlays.
-nelemsBIH :: Int -> Int -> BufferImpl -> [(Char,Style)]
+nelemsBIH :: Int -> Int -> BufferImpl syntax -> [(Char,Style)]
 nelemsBIH n i fb = helper i defaultStyle (styleRangesBI n i fb) (nelemsBI n i fb)
   where
     helper _   sty [] cs = setSty sty cs
@@ -220,7 +221,7 @@ paintStrokes s0 ls@((l,s,r):ts) lp@((p,s'):tp)
 --   The returned list contains tuples (@p@,@s@) where every tuple is to
 --   be interpreted as apply the style @s@ from position @p@ in the buffer.
 --   In the final element @p@ = @n@ + @i@.
-styleRangesBI :: Int -> Int -> BufferImpl -> [(Int, Style)]
+styleRangesBI :: Int -> Int -> BufferImpl syntax -> [(Int, Style)]
 styleRangesBI n i fb@FBufferData {hlCache = HLState hl cache} = result
   where
     result = takeWhile ((n+i >=) . fst) $ dropWhile ((i >) . fst) picture
@@ -237,12 +238,12 @@ styleRangesBI n i fb@FBufferData {hlCache = HLState hl cache} = result
 -- Point based editing
 
 -- | Move point in buffer to the given index
-moveToI :: Int -> BufferImpl -> BufferImpl
+moveToI :: Int -> BufferImpl syntax -> BufferImpl syntax
 moveToI i fb = fb {marks = M.insert pointMark (MarkValue (inBounds i end) pointLeftBound) $ marks fb}
     where end = F.length (mem fb)
 {-# INLINE moveToI #-}
 
-findNextChar :: Int -> Int -> BufferImpl -> Int
+findNextChar :: Int -> Int -> BufferImpl syntax -> Int
 findNextChar m i fb 
     | m == 0 = i
     | m < 0 = let s = F.toReverseString $ F.take i $ mem fb
@@ -261,7 +262,7 @@ countChars (x:xs) m n
     | otherwise           = countChars xs  m    (n+1)
 
 -- | Checks if an Update is valid
-isValidUpdate :: Update -> BufferImpl -> Bool
+isValidUpdate :: Update -> BufferImpl syntax -> Bool
 isValidUpdate u b = case u of
                     (Delete p n)   -> check p && check (p + n)
                     (Insert p _)   -> check p
@@ -269,7 +270,7 @@ isValidUpdate u b = case u of
 
 
 -- | Apply a /valid/ update
-applyUpdateI :: Update -> BufferImpl -> BufferImpl
+applyUpdateI :: Update -> BufferImpl syntax -> BufferImpl syntax
 applyUpdateI u fb = touchSyntax (updatePoint u) $ 
                     fb {mem = p', marks = M.map shift (marks fb),
                                    overlays = Set.map (mapOvlMarks shift) (overlays fb)}
@@ -283,11 +284,11 @@ applyUpdateI u fb = touchSyntax (updatePoint u) $
           -- FIXME: remove collapsed overlays
    
 -- | Apply a /valid/ update and also move point in buffer to update position
-applyUpdateWithMoveI :: Update -> BufferImpl -> BufferImpl
+applyUpdateWithMoveI :: Update -> BufferImpl syntax -> BufferImpl syntax
 applyUpdateWithMoveI u b = applyUpdateI u (moveToI (updatePoint u) b)
 
 -- | Reverse the given update
-reverseUpdateI :: Update -> BufferImpl -> Update
+reverseUpdateI :: Update -> BufferImpl syntax -> Update
 reverseUpdateI (Delete p n)  b = Insert p (nelemsBI n p b)
 reverseUpdateI (Insert p cs) _ = Delete p (length cs)
 
@@ -301,7 +302,7 @@ ord' = fromIntegral . ord
 newLine :: Word8
 newLine = ord' '\n'
 
-curLnI :: BufferImpl -> Int
+curLnI :: BufferImpl syntax -> Int
 curLnI fb = 1 + F.count newLine (F.take (pointBI fb) (mem fb))
 
 
@@ -312,7 +313,7 @@ curLnI fb = 1 + F.count newLine (F.take (pointBI fb) (mem fb))
 -- going backwards to previous lines (that is if @n@ was negative).
 -- Also note: it's legal to do a @gotoLnRelI 0@ this will move to
 -- the start of the current line, which maybe what was required.
-gotoLnRelI :: Int -> BufferImpl -> (BufferImpl, Int)
+gotoLnRelI :: Int -> BufferImpl syntax -> (BufferImpl syntax, Int)
 gotoLnRelI n fb = 
   (moveToI newPoint fb, difference)
   where
@@ -362,21 +363,21 @@ gotoLnRelI n fb =
 -- lineOffsets fb = 0 : map (+ 1) (F.elemIndices '\n') (mem fb)
 
 -- | Return index of next string in buffer that matches argument
-searchBI :: Direction -> String -> BufferImpl -> Maybe Int
+searchBI :: Direction -> String -> BufferImpl syntax -> Maybe Int
 searchBI dir s fb = case dir of
       Forward -> fmap (+ pnt) $ F.findSubstring (B.pack s) $ F.drop pnt ptr
       Backward -> listToMaybe $ reverse $ F.findSubstrings (B.pack s) $ F.take (pnt + length s) ptr
     where pnt = pointBI fb -- pnt == current point
           ptr = mem fb
 
-offsetFromSolBI :: BufferImpl -> Int
+offsetFromSolBI :: BufferImpl syntax -> Int
 offsetFromSolBI fb = pnt - maybe 0 (1 +) (F.elemIndexEnd newLine (F.take pnt ptr))
     where pnt = pointBI fb
           ptr = mem fb
 
 
 -- | Return indices of next string in buffer matched by regex
-regexBI :: Regex -> BufferImpl -> Maybe (Int,Int)
+regexBI :: Regex -> forall syntax. BufferImpl syntax -> Maybe (Int,Int)
 regexBI re fb = 
     let p = pointBI fb
         ptr = mem fb
@@ -385,40 +386,40 @@ regexBI re fb =
          Just arr | ((off,len):_) <- elems arr -> Just (p+off,p+off+len)
          _ -> Nothing
 
-getSelectionMarkBI :: BufferImpl -> Mark
+getSelectionMarkBI :: BufferImpl syntax -> Mark
 getSelectionMarkBI _ = markMark -- FIXME: simplify this.
 
 -- | Returns ths position of the 'point' mark if the requested mark is unknown (or unset)
-getMarkPointBI :: Mark -> BufferImpl -> Point
+getMarkPointBI :: Mark -> forall syntax. BufferImpl syntax -> Point
 getMarkPointBI m fb = markPosition (getMark fb m)
 
-getMark :: BufferImpl -> Mark -> MarkValue
+getMark :: BufferImpl syntax -> Mark -> MarkValue
 getMark (FBufferData { marks = marksMap } ) m = M.findWithDefault (marksMap M.! pointMark) m marksMap
                  -- We look up mark m in the marks, the default value to return
                  -- if mark m is not set, is the pointMark
 
 -- | Set a mark point
-setMarkPointBI :: Mark -> Point -> BufferImpl -> BufferImpl
+setMarkPointBI :: Mark -> Point -> (forall syntax. BufferImpl syntax -> BufferImpl syntax)
 setMarkPointBI m pos fb = fb {marks = M.insert m (MarkValue pos (if m == markMark then markLeftBound else False)) (marks fb)}
 
 {-
   We must allow the unsetting of this mark, this will have the property
   that the point will always be returned as the mark.
 -}
-unsetMarkBI :: BufferImpl -> BufferImpl
+unsetMarkBI :: BufferImpl syntax -> BufferImpl syntax
 unsetMarkBI fb = fb { marks = (M.delete markMark (marks fb)) }
 
 -- Formerly the highlighters table was directly used
 -- 'Yi.Syntax.Table.highlighters'. However avoiding to depends on all
--- highlighters implementation speed up compilation a lot when working on a
+-- highlighters implementation speeds up compilation a lot when working on a
 -- syntax highlighter.
-setSyntaxBI :: ExtHL -> BufferImpl -> BufferImpl
+setSyntaxBI :: ExtHL syntax -> BufferImpl oldSyntax -> BufferImpl syntax
 setSyntaxBI (ExtHL e) fb = touchSyntax 0 $ fb {hlCache = HLState e (hlStartState e)}
 
-touchSyntax ::  Point -> BufferImpl -> BufferImpl
+touchSyntax ::  Point -> BufferImpl syntax -> BufferImpl syntax
 touchSyntax touchedIndex fb = fb { dirtyOffset = min touchedIndex (dirtyOffset fb)}
 
-updateSyntax :: BufferImpl -> BufferImpl
+updateSyntax :: BufferImpl syntax -> BufferImpl syntax
 updateSyntax fb@FBufferData {dirtyOffset = touchedIndex, hlCache = HLState hl cache} 
     | touchedIndex == maxBound = fb
     | otherwise
@@ -434,11 +435,11 @@ markLeftBound = True
 ------------------------------------------------------------------------
 
 -- | Returns the requested mark, creating a new mark with that name (at point) if needed
-getMarkBI :: Maybe String -> BufferImpl -> (BufferImpl, Mark)
+getMarkBI :: Maybe String -> BufferImpl syntax -> (BufferImpl syntax, Mark)
 getMarkBI name b = getMarkDefaultPosBI name (pointBI b) b
 
 -- | Returns the requested mark, creating a new mark with that name (at the supplied position) if needed
-getMarkDefaultPosBI :: Maybe String -> Int -> BufferImpl -> (BufferImpl, Mark)
+getMarkDefaultPosBI :: Maybe String -> Int -> BufferImpl syntax -> (BufferImpl syntax, Mark)
 getMarkDefaultPosBI name defaultPos fb@FBufferData {marks = mks, markNames = nms} =
   case flip M.lookup nms =<< name of
     Just m' -> (fb, m')
@@ -451,3 +452,5 @@ getMarkDefaultPosBI name defaultPos fb@FBufferData {marks = mks, markNames = nms
            in (fb {marks = mks', markNames = nms'}, newMark)
 
 
+getAst :: BufferImpl syntax -> syntax
+getAst FBufferData {hlCache = HLState (SynHL {hlGetTree = gt}) cache} = gt cache

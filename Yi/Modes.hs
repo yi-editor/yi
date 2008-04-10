@@ -18,12 +18,12 @@ import Yi.Keymap
 import Yi.Indent
 import Control.Arrow (first)
 import Yi.Prelude
-import Yi.Buffer (Mode(..), emptyMode)
+import Yi.Buffer (AnyMode(..), Mode(..), emptyMode)
 import Prelude ()
 import qualified Yi.IncrementalParse as IncrParser
 
-fundamental, defaultFundamentalMode,
- latexMode, cppMode, haskellMode, literateHaskellMode, cabalMode, srmcMode :: Mode
+fundamental, defaultFundamentalMode :: Mode syntax
+latexMode, cppMode, haskellMode, literateHaskellMode, cabalMode, srmcMode :: Mode Alex.Result
 
 fundamental = emptyMode
   { 
@@ -48,8 +48,9 @@ haskellMode = fundamental
    }
     where tokenToStroke (Tok t len posn) = (posnOfs posn, Haskell.tokenToStyle t, posnOfs posn + len)
 
-cleverHaskellMode :: Mode
-cleverHaskellMode = haskellMode {
+cleverHaskellMode :: Mode (Paren.Expr (Tok Haskell.Token))
+cleverHaskellMode = fundamental {
+    modeIndent = autoIndentHaskellB,
     modeHL = ExtHL $
 {--    lexer `withScanner` IncrParser.mkHighlighter Fractal.parse
       (\begin end -> fmap tokenToStroke . Fractal.getStrokes begin end) id -}
@@ -90,7 +91,7 @@ srmcMode = fundamental
 
 defaultFundamentalMode = fundamental
 
-defaultModeMap :: ReaderT FilePath Maybe Mode
+defaultModeMap :: ReaderT FilePath Maybe AnyMode
 defaultModeMap = ReaderT (modeFromExtension . takeExtension)
 
 
@@ -105,22 +106,22 @@ defaultModeMap = ReaderT (modeFromExtension . takeExtension)
   For now though this is probably okay given the users of
   'yi' are mostly haskell hackers, as of yet.
 -}
-modeFromExtension :: String -> Maybe Mode
-modeFromExtension ".hs"    = Just haskellMode
-modeFromExtension ".x"     = Just haskellMode
-modeFromExtension ".lhs"   = Just literateHaskellMode
-modeFromExtension ".hsinc" = Just haskellMode -- haskell include files such as Yi/Syntax/alex.hsinc
-modeFromExtension ".cabal" = Just cabalMode
-modeFromExtension ".tex"   = Just latexMode
-modeFromExtension ".sty"   = Just latexMode
-modeFromExtension ".ltx"   = Just latexMode
-modeFromExtension ".cxx"   = Just cppMode
-modeFromExtension ".cpp"   = Just cppMode
-modeFromExtension ".C"     = Just cppMode
-modeFromExtension ".hxx"   = Just cppMode
-modeFromExtension ".H"     = Just cppMode
-modeFromExtension ".h"     = Just cppMode
-modeFromExtension ".c"     = Just cppMode -- I treat c file as cpp files, most users are smart enough to allow for that.
-modeFromExtension ".pepa"  = Just srmcMode -- pepa is a subset of srmc    
-modeFromExtension ".srmc"  = Just srmcMode
+modeFromExtension :: String -> Maybe AnyMode
+modeFromExtension ".hs"    = Just $ AnyMode haskellMode
+modeFromExtension ".x"     = Just $ AnyMode haskellMode
+modeFromExtension ".lhs"   = Just $ AnyMode literateHaskellMode
+modeFromExtension ".hsinc" = Just $ AnyMode haskellMode -- haskell include files such as Yi/Syntax/alex.hsinc
+modeFromExtension ".cabal" = Just $ AnyMode cabalMode
+modeFromExtension ".tex"   = Just $ AnyMode latexMode
+modeFromExtension ".sty"   = Just $ AnyMode latexMode
+modeFromExtension ".ltx"   = Just $ AnyMode latexMode
+modeFromExtension ".cxx"   = Just $ AnyMode cppMode
+modeFromExtension ".cpp"   = Just $ AnyMode cppMode
+modeFromExtension ".C"     = Just $ AnyMode cppMode
+modeFromExtension ".hxx"   = Just $ AnyMode cppMode
+modeFromExtension ".H"     = Just $ AnyMode cppMode
+modeFromExtension ".h"     = Just $ AnyMode cppMode
+modeFromExtension ".c"     = Just $ AnyMode cppMode -- I treat c file as cpp files, most users are smart enough to allow for that.
+modeFromExtension ".pepa"  = Just $ AnyMode srmcMode -- pepa is a subset of srmc    
+modeFromExtension ".srmc"  = Just $ AnyMode srmcMode
 modeFromExtension _        = Nothing

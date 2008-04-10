@@ -63,7 +63,7 @@ library
            Yi.Modes
            Yi.Buffer
            Yi.UI.Common
-    extensions:     CPP
+    extensions:     CPP, Rank2Types
     include-dirs:   Yi/Syntax
     if flag (vty)
        build-depends: vty>=3.0.0

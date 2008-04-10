@@ -1,4 +1,4 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving, DeriveDataTypeable, StandaloneDeriving #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, DeriveDataTypeable, StandaloneDeriving, ExistentialQuantification, Rank2Types #-}
 
 -- Copyright (C) 2004, 2008 Don Stewart - http://www.cse.unsw.edu.au/~dons
 
@@ -75,11 +75,15 @@ module Yi.Buffer
   , askWindow
   , clearSyntax
   , Mode (..)
+  , AnyMode(..)
   , emptyMode
+  , withModeB
+  , withSyntaxB
   )
 where
 
 import Prelude hiding (error)
+import Yi.Debug
 import System.FilePath
 import Text.Regex.Posix.Wrap    (Regex)
 import Yi.Accessor
@@ -94,6 +98,7 @@ import Control.Monad.RWS.Strict
 import Data.List (elemIndex)
 import Data.Typeable
 import {-# source #-} Yi.Keymap
+import Yi.Monad
 
 #ifdef TESTING
 import Test.QuickCheck
@@ -117,55 +122,82 @@ instance Arbitrary FBuffer where
 --  * Undo
 
 
-data FBuffer =
+data FBuffer = forall syntax.
         FBuffer { name   :: !String               -- ^ immutable buffer name
                 , bkey   :: !BufferRef            -- ^ immutable unique key
                 , file   :: !(Maybe FilePath)     -- ^ maybe a filename associated with this buffer. Filename is canonicalized.
                 , undos  :: !URList               -- ^ undo/redo list
-                , rawbuf :: !BufferImpl
-                , bmode  :: Mode           -- Alternatively, don't store the mode, but compute it every time needed.
+                , rawbuf :: !(BufferImpl syntax)
+                , bmode  :: !(Mode syntax)
                 , readOnly :: Bool -- ^ a read-only bit
                 , bufferDynamic :: !DynamicValues -- ^ dynamic components
                 , preferCol :: !(Maybe Int)       -- ^ prefered column to arrive at when we do a lineDown / lineUp
-                ,pendingUpdates :: [Update]       -- ^ updates that haven't been synched in the UI yet
-                ,highlightSelection :: !Bool
+                , pendingUpdates :: [Update]       -- ^ updates that haven't been synched in the UI yet
+                , highlightSelection :: !Bool
                 }
         deriving Typeable
 
 clearSyntax :: FBuffer -> FBuffer
-clearSyntax = modifier rawbufA updateSyntax
+clearSyntax = modifyRawbuf updateSyntax
 
-modeA :: Accessor (FBuffer) (Mode)
-modeA = Accessor bmode (\f e -> e {bmode = f (bmode e)})
 
-rawbufA :: Accessor (FBuffer) (BufferImpl)
-rawbufA = Accessor rawbuf (\f e -> e {rawbuf = f (rawbuf e)})
+modifyRawbuf :: (forall syntax. BufferImpl syntax -> BufferImpl syntax) -> FBuffer -> FBuffer
+modifyRawbuf f (FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11) = 
+    (FBuffer f1 f2 f3 f4 (f f5) f6 f7 f8 f9 f10 f11)
+
+queryAndModifyRawbuf :: (forall syntax. BufferImpl syntax -> (BufferImpl syntax,x)) ->
+                     FBuffer -> (FBuffer, x)
+queryAndModifyRawbuf f (FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11) = 
+    let (f5', x) = f f5
+    in (FBuffer f1 f2 f3 f4 f5' f6 f7 f8 f9 f10 f11, x)
 
 undosA :: Accessor (FBuffer) (URList)
-undosA = Accessor undos (\f e -> e {undos = f (undos e)})
+undosA = Accessor undos (\f e -> case e of 
+                                   FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 -> 
+                                    FBuffer f1 f2 f3 (f f4) f5 f6 f7 f8 f9 f10 f11)
 
 fileA :: Accessor (FBuffer) (Maybe FilePath)
-fileA = Accessor file (\f e -> e {file = f (file e)})
+fileA = Accessor file (\f e -> case e of 
+                                   FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 -> 
+                                    FBuffer f1 f2 (f f3) f4 f5 f6 f7 f8 f9 f10 f11)
 
 preferColA :: Accessor (FBuffer) (Maybe Int)
-preferColA = Accessor preferCol (\f e -> e {preferCol = f (preferCol e)})
+preferColA = Accessor preferCol (\f e -> case e of 
+                                   FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 -> 
+                                    FBuffer f1 f2 f3 f4 f5 f6 f7 f8 (f f9) f10 f11)
 
 bufferDynamicA :: Accessor (FBuffer) (DynamicValues)
-bufferDynamicA = Accessor bufferDynamic (\f e -> e {bufferDynamic = f (bufferDynamic e)})
+bufferDynamicA = Accessor bufferDynamic (\f e -> case e of 
+                                   FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 -> 
+                                    FBuffer f1 f2 f3 f4 f5 f6 f7 (f f8) f9 f10 f11)
 
 pendingUpdatesA :: Accessor (FBuffer) ([Update])
-pendingUpdatesA = Accessor pendingUpdates (\f e -> e {pendingUpdates = f (pendingUpdates e)})
+pendingUpdatesA = Accessor pendingUpdates (\f e -> case e of 
+                                   FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 -> 
+                                    FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 (f f10) f11)
 
 highlightSelectionA :: Accessor FBuffer Bool
-highlightSelectionA = Accessor highlightSelection (\f e -> e {highlightSelection = f (highlightSelection e)})
+highlightSelectionA = Accessor highlightSelection (\f e -> case e of 
+                                   FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 -> 
+                                    FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 (f f11))
 
-data Mode = Mode 
+nameA :: Accessor FBuffer String
+nameA = Accessor name (\f e -> case e of 
+                                   FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 -> 
+                                    FBuffer (f f1) f2 f3 f4 f5 f6 f7 f8 f9 f10 f11)
+
+
+data AnyMode = forall syntax. AnyMode (Mode syntax)
+
+data Mode syntax = Mode
     {
      -- modeName = "fundamental", -- ^ so this could be serialized, debugged.
-     modeHL :: ExtHL,
+     modeHL :: ExtHL syntax,
      modeKeymap :: KeymapEndo, -- ^ Buffer's local keymap modification
-     modeIndent :: BufferM ()
+     modeIndent :: BufferM (),
+     modeTestUseAst :: syntax -> BufferM ()
     }
+
 
 
 -- | The BufferM monad writes the updates performed.
@@ -218,14 +250,14 @@ getPercent :: Int -> Int -> String
 getPercent a b = show p ++ "%"
     where p = ceiling ((fromIntegral a) / (fromIntegral b) * 100 :: Double) :: Int
 
-queryBuffer :: (BufferImpl -> x) -> (BufferM x)
-queryBuffer = getsA rawbufA
+queryBuffer :: (forall syntax. BufferImpl syntax -> x) -> (BufferM x)
+queryBuffer f = gets (\(FBuffer _ _ _ _ fb _ _ _ _ _ _) -> f fb)
 
-modifyBuffer :: (BufferImpl -> BufferImpl) -> BufferM ()
-modifyBuffer = modifyA rawbufA
+modifyBuffer :: (forall syntax. BufferImpl syntax -> BufferImpl syntax) -> BufferM ()
+modifyBuffer f = modify (modifyRawbuf f)
 
-queryAndModify :: (BufferImpl -> (BufferImpl,x)) -> BufferM x
-queryAndModify = getsAndModifyA rawbufA
+queryAndModify :: (forall syntax. BufferImpl syntax -> (BufferImpl syntax,x)) -> BufferM x
+queryAndModify f = getsAndModify (queryAndModifyRawbuf f)
 
 -- | @addOverlayB s e sty@ overlays the style @sty@ between points @s@ and @e@
 addOverlayB :: Point -> Point -> Style -> BufferM ()
@@ -256,7 +288,7 @@ setfileB :: FilePath -> BufferM ()
 setfileB f = setA fileA (Just f)
 
 setnameB :: String -> BufferM ()
-setnameB s = modify (\fbuff -> fbuff { name = s })
+setnameB = setA nameA
 
 keyB :: FBuffer -> BufferRef
 keyB (FBuffer { bkey = u }) = u
@@ -268,7 +300,7 @@ isUnchangedBuffer :: FBuffer -> Bool
 isUnchangedBuffer = isAtSavedFilePointU . undos
 
 
-undoRedo :: ( URList -> BufferImpl -> (BufferImpl, (URList, [Update])) ) -> BufferM ()
+undoRedo :: (forall syntax. URList -> BufferImpl syntax -> (BufferImpl syntax, (URList, [Update])) ) -> BufferM ()
 undoRedo f = do
   ur <- gets undos
   (ur', updates) <- queryAndModify (f ur)
@@ -281,8 +313,8 @@ undoB = undoRedo undoU
 redoB :: BufferM ()
 redoB = undoRedo redoU
 
-
-emptyMode = Mode 
+emptyMode :: Mode syntax
+emptyMode = Mode
   { 
    modeHL = ExtHL noHighlighter,
    modeKeymap = id,
@@ -399,14 +431,31 @@ gotoLn x = do moveTo 0
 
 -- | Return index of next (or previous) string in buffer that matches argument
 searchB :: Direction -> [Char] -> BufferM (Maybe Int)
-searchB dir = queryBuffer . searchBI dir
+searchB dir s = queryBuffer (searchBI dir s)
+
+setMode0 :: forall syntax. Mode syntax -> FBuffer -> FBuffer
+setMode0 m (FBuffer f1 f2 f3 f4 rb f6 f7 f8 f9 f10 f11) =
+    (FBuffer f1 f2 f3 f4 (setSyntaxBI (modeHL m) rb) m f7 f8 f9 f10 f11)
 
 -- | Set the mode
-setMode :: Mode -> BufferM ()
+setMode :: Mode syntax -> BufferM ()
 setMode m = do
-  setA modeA m
-  modifyBuffer $ setSyntaxBI (modeHL m)
+  modify (setMode0 m)
 
+withMode0 :: (forall syntax. Mode syntax -> a) -> FBuffer -> a
+withMode0 f (FBuffer f1 f2 f3 f4 rb m f7 f8 f9 f10 f11) =
+    f m 
+
+
+withModeB :: (forall syntax. Mode syntax -> a) -> BufferM a
+withModeB f = gets (withMode0 f)
+           
+withSyntaxB :: (forall syntax. Mode syntax -> syntax -> a) -> FBuffer -> a
+withSyntaxB f (FBuffer f1 f2 f3 f4 rb m f7 f8 f9 f10 f11) =
+    f m (getAst rb)
+           
+       
+       
 
 -- | Return indices of next string in buffer matched by regex
 regexB :: Regex -> BufferM (Maybe (Int,Int))
@@ -428,7 +477,7 @@ setVisibleSelection :: Bool -> BufferM ()
 setVisibleSelection = setA highlightSelectionA
 
 getMarkB :: Maybe String -> BufferM Mark
-getMarkB = queryAndModify . getMarkBI
+getMarkB m = queryAndModify (getMarkBI m)
 
 getSelectionMarkB :: BufferM Mark
 getSelectionMarkB = queryBuffer getSelectionMarkBI

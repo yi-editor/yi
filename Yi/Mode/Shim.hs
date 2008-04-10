@@ -26,9 +26,9 @@ import Yi.Prelude
 import Prelude ()
 import Data.Char
 
-modeTable :: ReaderT String Maybe Mode
+modeTable :: ReaderT String Maybe AnyMode
 modeTable = ReaderT $ \fname -> case () of 
-                        _ | ".hs" `isSuffixOf` fname -> Just mode
+                        _ | ".hs" `isSuffixOf` fname -> Just (AnyMode mode)
                         _ ->  Nothing
 
 jumpToSrcLoc :: SrcLoc -> YiM ()
@@ -99,7 +99,6 @@ jumpToDefinition = do
 
 -- NOTE: source argument to Hsinfo functions can be used to provide
 -- source text, apparently.
-mode :: Mode
 mode = haskellMode
    {
     modeKeymap = rebind [

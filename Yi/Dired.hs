@@ -98,10 +98,10 @@ fnewE f = do
              (h:_)  -> return (bkey h)
     setFileName b f
     tbl <- asks (modeTable . yiConfig)
-    curmode <- getBufferMode b 
+    AnyMode newMode <- withBufferMode b $ \curmode -> fromMaybe (AnyMode curmode) (runReaderT tbl f)
     -- by default stick with the current mode (eg. stick with dired if
     -- set as such)
-    setBufferMode b (fromMaybe curmode (runReaderT tbl f))
+    setBufferMode b newMode
     withEditor $ switchToBufferE b
     where
     -- Determines whether or not a given buffer is associated with
@@ -233,7 +233,7 @@ diredDirBuffer dir = do
                 setBufferMode b diredMode
                 return b
 
-diredMode :: Mode
+diredMode :: Mode ()
 diredMode = defaultFundamentalMode {modeKeymap = diredKeymap}
     -- Colours for Dired come from overlays not syntax highlighting
 

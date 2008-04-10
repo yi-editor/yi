@@ -99,11 +99,11 @@ setSavedFilePointU (URList undos redos) =
   isNotSavedFilePoint _              = True
 
 -- | This undoes one interaction step.
-undoU :: URList -> BufferImpl -> (BufferImpl, (URList, [Update]))
+undoU :: URList -> BufferImpl syntax -> (BufferImpl syntax, (URList, [Update]))
 undoU ur b = undoUntilInteractive [] (undoInteractive ur) b
 
 -- | This redoes one iteraction step.
-redoU :: URList -> BufferImpl -> (BufferImpl, (URList, [Update]))
+redoU :: URList -> BufferImpl syntax -> (BufferImpl syntax, (URList, [Update]))
 redoU = asRedo undoU
 
 -- | Prepare undo by moving one interaction point from undoes to redoes.
@@ -122,7 +122,7 @@ addIP xs = InteractivePoint:xs
     
 -- | Repeatedly undo actions, storing away the inverse operations in the
 --   redo list.
-undoUntilInteractive :: [Update] -> URList -> BufferImpl -> (BufferImpl, (URList, [Update]))
+undoUntilInteractive :: [Update] -> URList -> BufferImpl syntax -> (BufferImpl syntax, (URList, [Update]))
 undoUntilInteractive xs ur@(URList cs rs) b = case cs of
   []                   -> (b, (ur, xs))
   [SavedFilePoint]     -> (b, (ur, xs)) -- Why this special case?

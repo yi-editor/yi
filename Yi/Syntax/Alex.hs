@@ -6,7 +6,8 @@ module Yi.Syntax.Alex (
                        AlexState(..), AlexInput, Stroke,
                        takeLB, headLB, actionConst, actionAndModify,
                        Tok(..), tokBegin, tokEnd, tokFromT,          
-                       Posn(..), startPosn, moveStr, runSource
+                       Posn(..), startPosn, moveStr, runSource,
+                       Result,
                       ) where
 
 import Data.List hiding (map)
@@ -105,11 +106,12 @@ type ASI s = (AlexState s, AlexInput)
 -- | Highlighter based on an Alex lexer 
 mkHighlighter :: forall s. s
               -> (ASI s -> Maybe (Stroke, ASI s))
-              -> Yi.Syntax.Highlighter' (Cache s)
+              -> Yi.Syntax.Highlighter' (Cache s) Result
 mkHighlighter initState alexScanToken =
   Yi.Syntax.SynHL { hlStartState   = Cache [] ([],[])
                   , hlRun          = run
                   , hlGetStrokes   = getStrokes
+                  , hlGetTree      = \(Cache _ result) -> result
                   }
       where
         startState = (AlexState initState 0 startPosn, [])

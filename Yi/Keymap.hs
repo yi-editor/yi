@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, FlexibleInstances, TypeSynonymInstances, ExistentialQuantification, MultiParamTypeClasses, FunctionalDependencies, DeriveDataTypeable, StandaloneDeriving, GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE FlexibleContexts, FlexibleInstances, TypeSynonymInstances, ExistentialQuantification, MultiParamTypeClasses, FunctionalDependencies, DeriveDataTypeable, StandaloneDeriving, GeneralizedNewtypeDeriving, Rank2Types #-}
 
 -- Copyright (c) Jean-Philippe Bernardy 2007.
 
@@ -58,8 +58,8 @@ data Config = Config {startFrontEnd :: UI.UIBoot,
                       startAction :: YiM (),
                       startQueuedActions :: [Action], -- ^ for performance testing
                       defaultKm :: Keymap,                      
-                      modeTable :: ReaderT String Maybe Mode,
-                      fundamentalMode :: Mode,
+                      modeTable :: ReaderT String Maybe AnyMode,
+                      fundamentalMode :: Mode (),
                       publishedActions :: M.Map String [Dynamic]}
 
 
@@ -97,7 +97,7 @@ write x = I.write (makeAction x)
 
 
 -- FIXME: we never cleanup buffer processes
-setBufferMode :: BufferRef -> Mode -> YiM ()
+setBufferMode :: BufferRef -> Mode syntax -> YiM ()
 setBufferMode b m = do
   withGivenBuffer b $ setMode m
   restartBufferThread b
@@ -106,8 +106,8 @@ restartBufferThread :: BufferRef -> YiM ()
 restartBufferThread b = do
   modifiesRef bufferProcesses (M.insert b I.End)
 
-getBufferMode :: BufferRef -> YiM Mode
-getBufferMode b = withGivenBuffer b $ gets bmode
+withBufferMode :: BufferRef -> (forall syntax. Mode syntax -> a) -> YiM a
+withBufferMode b f = withGivenBuffer b $ withModeB f
 
 getBufferProcess :: BufferRef -> YiM KeymapProcess
 getBufferProcess b = do
