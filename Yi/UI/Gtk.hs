@@ -49,7 +49,7 @@ data UI = forall action. UI {
              , uiBuffers :: IORef (M.Map BufferRef TextBuffer)
              , tagTable :: TextTagTable
              , windowCache :: IORef [WinInfo]
-             , uiActionCh :: Chan action
+             , uiActionCh :: action -> IO ()
              , uiRunEd :: EditorM () -> action
              , uiConfig :: Common.UIConfig
              }
@@ -91,9 +91,7 @@ mkFontDesc cfg = do
   return f
 
 -- | Initialise the ui
-start :: Common.UIConfig -> Chan Yi.Event.Event -> Chan action ->
-         Editor -> (EditorM () -> action) ->
-         IO Common.UI
+start :: Common.UIBoot
 start cfg ch outCh _ed runEd = do
   initGUI
 
@@ -149,13 +147,13 @@ instance Show Gtk.Modifier where
     show Apple = "Apple"
     show Compose = "Compose"
 
-processEvent :: Chan Event -> Gtk.Event -> IO Bool
+processEvent :: (Event -> IO ()) -> Gtk.Event -> IO Bool
 processEvent ch ev = do
   -- logPutStrLn $ "Gtk.Event: " ++ show ev
   -- logPutStrLn $ "Event: " ++ show (gtkToYiEvent ev)
   case gtkToYiEvent ev of
     Nothing -> logPutStrLn $ "Event not translatable: " ++ show ev
-    Just e -> writeChan ch e
+    Just e -> ch e
   return True
 
 gtkToYiEvent :: Gtk.Event -> Maybe Event
@@ -270,7 +268,7 @@ handleClick ui w event = do
           _ -> return ()
 
   case ui of
-    UI {uiActionCh = ch, uiRunEd = run} -> writeChan ch (run editorAction)
+    UI {uiActionCh = ch, uiRunEd = run} -> ch (run editorAction)
   return True
 
 

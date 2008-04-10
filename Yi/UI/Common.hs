@@ -19,4 +19,4 @@ data UI = UI
      prepareAction         :: IO (EditorM ())  -- ^ Ran before an action is executed
     }
 
-type UIBoot = forall action. (UIConfig -> Chan Event -> Chan action ->  Editor -> (EditorM () -> action) -> IO UI)
+type UIBoot = forall action. (UIConfig -> (Event -> IO ()) -> (action -> IO ()) ->  Editor -> (EditorM () -> action) -> IO UI)

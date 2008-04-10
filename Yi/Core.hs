@@ -1,4 +1,4 @@
-{-# LANGUAGE PatternSignatures #-}
+{-# LANGUAGE PatternSignatures, RecursiveDo #-}
 
 -- Copyright (c) Tuomo Valkonen 2004.
 -- Copyright (c) Don Stewart 2004-5. http://www.cse.unsw.edu.au/~dons
@@ -116,9 +116,6 @@ startEditor cfg st = do
     let initEditor = maybe emptyEditor id st
     newSt <- newIORef initEditor
     -- Setting up the 1st window is a bit tricky because most functions assume there exists a "current window"
-    inCh <- newChan
-    outCh :: Chan Action <- newChan
-    ui <- uiStart (configUI cfg) inCh outCh initEditor makeAction
     startKm <- newIORef (defaultKm cfg)
     startThreads <- newIORef []
     startSubprocessId <- newIORef 1
@@ -134,12 +131,18 @@ startEditor cfg st = do
                  sessionMap = M.empty,
                  compBuffer = M.empty }
 #endif
-    let yi = Yi newSt ui startThreads inCh outCh startKm keymaps startSubprocessId startSubprocesses cfg 
-#ifdef SHIM
-             shim
-#endif
-        runYi f = runReaderT (runYiM f) yi
 
+    (ui, runYi) <- (mdo let handler e = runYi $ errorEditor (show e)
+                            inF  ev  = handle handler (runYi (dispatch ev))
+                            outF act = handle handler (runYi (interactive act))
+                        ui <- uiStart (configUI cfg) inF outF initEditor makeAction
+                        let yi = Yi newSt ui startThreads inF outF startKm keymaps startSubprocessId startSubprocesses cfg 
+#ifdef SHIM 
+                                    shim
+#endif
+                            runYi f = runReaderT (runYiM f) yi
+                        return (ui, runYi))
+  
     runYi $ do
 
       withEditor $ newBufferE "*messages*" "" >> return ()
@@ -147,32 +150,13 @@ startEditor cfg st = do
       when (isNothing st) $ do -- process options if booting for the first time
         startAction cfg
         postActions $ startQueuedActions cfg
-    logPutStrLn "Starting event handler"
-    let
-        handler e = runYi $ errorEditor (show e)
-        -- | The editor's input main loop.
-        -- Read key strokes from the ui and dispatches them to the buffer with focus.
-        eventLoop :: IO ()
-        eventLoop = do
-            let run = mapM_ (\ev -> runYi (dispatch ev)) =<< getChanContents inCh
-            forever $ (handle handler run >> logPutStrLn "Dispatching loop ended")
 
-
-        -- | The editor's output main loop.
-        execLoop :: IO ()
-        execLoop = do
-            runYi refreshEditor
-            let loop = sequence_ . map runYi . map interactive =<< getChanContents outCh
-            forever $ (handle handler loop >> logPutStrLn "Execing loop ended")
-
-    t1 <- forkIO eventLoop
-    t2 <- forkIO execLoop
-    runYi $ modifiesRef threads (\ts -> t1 : t2 : ts)
+    runYi refreshEditor
 
     UI.main ui -- transfer control to UI: GTK must run in the main thread, or else it's not happy.
 
 postActions :: [Action] -> YiM ()
-postActions actions = do yi <- ask; liftIO $ writeList2Chan (output yi) actions
+postActions actions = do yi <- ask; liftIO $ mapM_ (output yi) actions
 
 -- | Process an event by advancing the current keymap automaton an
 -- execing the generated actions
@@ -335,14 +319,14 @@ startSubprocess cmd args = do
   modifiesRef yiSubprocesses $ M.insert procid procinfo
   msgEditor ("Launched process: " ++ cmd )
 
-startSubprocessWatchers :: Chan Action -> SubprocessId -> SubprocessInfo -> YiM ()
+startSubprocessWatchers :: (Action -> IO ()) -> SubprocessId -> SubprocessInfo -> YiM ()
 startSubprocessWatchers chan procid procinfo = do
   mapM_ (liftIO . forkIO) [ pipeToBuffer (hOut procinfo) append,
                           pipeToBuffer (hErr procinfo) append,
                           waitForExit (procHandle procinfo) >>= reportExit ]
   where append s = send $ appendToBuffer (bufRef procinfo) s
         reportExit s = append s >> (send $ removeSubprocess procid)
-        send a = writeChan chan $ makeAction a
+        send a = chan $ makeAction a
 
 removeSubprocess :: SubprocessId -> YiM ()
 removeSubprocess procid = modifiesRef yiSubprocesses $ M.delete procid

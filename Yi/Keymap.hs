@@ -66,8 +66,8 @@ data Config = Config {startFrontEnd :: UI.UIBoot,
 data Yi = Yi {yiEditor :: IORef Editor,
               yiUi          :: UI,
               threads       :: IORef [ThreadId],           -- ^ all our threads
-              input         :: Chan Event,                 -- ^ input stream
-              output        :: Chan Action,                -- ^ output stream
+              input         :: Event -> IO (),             -- ^ input stream
+              output        :: Action -> IO (),            -- ^ output stream
               defaultKeymap :: IORef Keymap, -- TODO: remove this in favour of using the yiConfig one.
               bufferProcesses :: IORef (M.Map BufferRef KeymapProcess), -- FIXME: should be an MVar (can be accessed both by worker and input thread)
               yiSubprocessIdSupply :: IORef SubprocessId,
