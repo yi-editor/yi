@@ -16,7 +16,6 @@ module Yi.UI.Vty (start) where
 import Prelude hiding (error, concatMap, sum, mapM, sequence)
 
 import Control.Concurrent
-import Control.Concurrent.Chan
 import Control.Exception
 import Control.Monad (forever)
 import Control.Monad.State (runState, State, gets, modify, get, put)

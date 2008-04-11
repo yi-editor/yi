@@ -4,7 +4,6 @@ module Yi.UI.Common where
 
 import Yi.Editor
 import Yi.Event
-import Control.Concurrent.Chan
 
 data UIConfig = UIConfig {
    configFontSize :: Maybe Int
