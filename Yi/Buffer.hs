@@ -78,7 +78,7 @@ module Yi.Buffer
   , AnyMode(..)
   , emptyMode
   , withModeB
-  , withSyntaxB
+  , withSyntax0
   )
 where
 
@@ -450,12 +450,10 @@ withMode0 f (FBuffer f1 f2 f3 f4 rb m f7 f8 f9 f10 f11) =
 withModeB :: (forall syntax. Mode syntax -> a) -> BufferM a
 withModeB f = gets (withMode0 f)
            
-withSyntaxB :: (forall syntax. Mode syntax -> syntax -> a) -> FBuffer -> a
-withSyntaxB f (FBuffer f1 f2 f3 f4 rb m f7 f8 f9 f10 f11) =
+withSyntax0 :: (forall syntax. Mode syntax -> syntax -> a) -> FBuffer -> a
+withSyntax0 f (FBuffer f1 f2 f3 f4 rb m f7 f8 f9 f10 f11) =
     f m (getAst rb)
            
-       
-       
 
 -- | Return indices of next string in buffer matched by regex
 regexB :: Regex -> BufferM (Maybe (Int,Int))

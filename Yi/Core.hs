@@ -79,6 +79,7 @@ import Control.Monad (when,forever)
 import Control.Monad.Reader (runReaderT, ask, asks)
 import Control.Monad.Trans
 import Control.Monad.Error ()
+import Control.Monad.State (gets)
 import Control.Exception
 import Control.Concurrent
 import Control.Concurrent.Chan
@@ -352,3 +353,8 @@ withMode f = do
             act <- withBufferMode b f
             runAction $ makeAction $ act
 
+withSyntax :: (Show x, YiAction a x) => (forall syntax. Mode syntax -> syntax -> a) -> YiM ()
+withSyntax f = do
+            b <- withEditor Editor.getBuffer
+            act <- withGivenBuffer b $ gets (withSyntax0 f)
+            runAction $ makeAction $ act
