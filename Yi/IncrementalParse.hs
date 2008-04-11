@@ -196,7 +196,7 @@ data Cache st token result = Cache result (States st token result)
 
 mkHighlighter :: forall lexState token result st.
                  P token result
-              -> (Int -> Int -> result -> [Stroke])
+              -> (Int -> Int -> Int -> result -> [Stroke])
               -> (st -> AlexState lexState)
               -> Highlighter st token (Cache st token result) result
 mkHighlighter parser getStrokes getAlexState = 
@@ -209,8 +209,8 @@ mkHighlighter parser getStrokes getAlexState =
         emptyResult :: result
         emptyResult = fst $ evalR $ pushEof $ runP parser
 
-        getStrokes' :: Int -> Int -> Cache st token result -> [Stroke]
-        getStrokes' start end (Cache r _) = getStrokes start end r
+        getStrokes' :: Int -> Int -> Int -> Cache st token result -> [Stroke]
+        getStrokes' point start end (Cache r _) = getStrokes point start end r
 
         updateCache :: Scanner st token
                      -> Int

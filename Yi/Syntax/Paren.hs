@@ -6,7 +6,7 @@ import Yi.IncrementalParse
 import Yi.Syntax.Alex
 import Yi.Syntax.Haskell
 import Control.Applicative
-import Yi.Style (errorStyle, Style)
+import Yi.Style (hintStyle, errorStyle, Style)
 import Yi.Syntax.Indent
 import Yi.Syntax
 import Yi.Prelude 
@@ -72,17 +72,18 @@ parse' toTok fromT = pExpr <* eof
       -- we don't try to recover errors with them.
 
 -- TODO: (optimization) make sure we take in account the begin, so we don't return useless strokes
-getStrokes :: Int -> Int -> Expr (Tok Token) -> [(Int, Style, Int)]
-getStrokes begin end t0 = result 
+getStrokes :: Int -> Int -> Int -> Expr (Tok Token) -> [(Int, Style, Int)]
+getStrokes point begin end t0 = result 
     where getStrokes' (Atom t) = (ts t :)
           getStrokes' (Error t) = (modStroke errorStyle (ts t) :) -- paint in red
           getStrokes' (Stmt s) = list (fmap getStrokesL s)
           getStrokes' (Group l g r)
               | isSpecial "!" $ tokT r = (modStroke errorStyle (ts l) :) . getStrokesL g
               -- left paren wasn't matched: paint it in red.
-
               -- note that testing this on the "Group" node actually forces the parsing of the
               -- right paren, undermining online behaviour.
+              | (posnOfs $ tokPosn $ l) == point = (ts l :) . getStrokesL g . (modStroke hintStyle (ts r) :)
+              | (posnOfs $ tokPosn $ r) == point = (modStroke hintStyle (ts l) :) . getStrokesL g . (ts r :)
               | otherwise  = (ts l :) . getStrokesL g . (ts r :)
           getStrokesL g = list (fmap getStrokes' g)
           ts = tokenToStroke

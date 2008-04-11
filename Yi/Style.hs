@@ -95,6 +95,8 @@ numberStyle = darkredA
 errorStyle :: Style -> Style
 errorStyle (Style _fg bg) = Style red bg
 
+hintStyle :: Style -> Style
+hintStyle (Style fg _bg) = Style fg cyan
 
 blackA , greyA, darkredA, redA, darkgreenA, greenA, brownA :: Style
 yellowA, darkblueA, blueA, purpleA, magentaA, darkcyanA    :: Style

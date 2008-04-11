@@ -63,7 +63,7 @@ cleverHaskellMode = fundamental {
 
 --
     (Paren.indentScanner . lexer) `withScanner` IncrParser.mkHighlighter Paren.parse
-      (\begin end t -> Paren.getStrokes begin end t) snd
+      (\point begin end t -> Paren.getStrokes point begin end t) snd
 --}                                 
 }
     where lexer = Alex.lexScanner Haskell.alexScanToken Haskell.initState 

@@ -40,7 +40,7 @@ type Highlighter' = Highlighter Int Char
 data Highlighter st tok cache syntax = 
   SynHL { hlStartState :: cache -- ^ The start state for the highlighter.
         , hlRun :: Scanner st tok -> Int -> cache -> cache
-        , hlGetStrokes :: Int -> Int -> cache -> [Stroke]
+        , hlGetStrokes :: Int -> Int -> Int -> cache -> [Stroke]
         , hlGetTree :: cache -> syntax
         }
 
@@ -57,7 +57,7 @@ withScanner f (SynHL cache0 r gs gt) = SynHL cache0 (\scanner i cache -> r (f sc
 noHighlighter :: Highlighter' () syntax
 noHighlighter = SynHL {hlStartState = (), 
                        hlRun = \_ _ a -> a,
-                       hlGetStrokes = \_ _ _ -> [],
+                       hlGetStrokes = \_ _ _ _ -> [],
                        hlGetTree = \_ -> error "noHighlighter: tried to fetch syntax"
                       }
 

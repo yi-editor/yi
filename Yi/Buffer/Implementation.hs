@@ -228,11 +228,11 @@ styleRangesBI n i fb@FBufferData {hlCache = HLState hl cache} = result
     usefuls = dropWhile (\(_l,_s,r) -> r <= i)
 
     layer0 = [(i,defaultStyle,n+i)] -- this layer ensures that there are bounds exactly at i and n+i
-    layer1 = hlGetStrokes hl i (n+i) cache
+    layer1 = hlGetStrokes hl point i (n+i) cache
     layer2 = map overlayStroke $ Set.toList $ overlays fb
     picture = foldr (paintStrokes defaultStyle) [] $ [usefuls layer2, layer1, layer0]
     overlayStroke (Overlay sm  em a) = (markPosition sm, a, markPosition em)
-
+    point = pointBI fb
 
 ------------------------------------------------------------------------
 -- Point based editing
