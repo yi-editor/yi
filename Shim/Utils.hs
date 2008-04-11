@@ -5,7 +5,7 @@
 
 module Shim.Utils
   (
-    commandGetContents
+    processGetContents
   , splitBy
   , excToMaybe
   , unSplit
@@ -46,10 +46,9 @@ import Control.Concurrent.MVar
 import Yi.Debug
 import Prelude hiding (error)
 
--- ToDo: Quoting, use rawSystem equivalent
-commandGetContents :: String -> IO String
-commandGetContents cmd = do
-  (_,out,_,pid) <- runInteractiveCommand cmd
+processGetContents :: FilePath -> [String] -> IO String
+processGetContents cmd args = do
+  (_,out,_,pid) <- runInteractiveProcess cmd args Nothing Nothing
   s <- hGetContents out
   waitForProcess pid
   return s

@@ -81,7 +81,7 @@ ghcInit ghc = do
   return ses
 
 getLibdir :: String -> IO String
-getLibdir ghc = chomp `liftM` commandGetContents (ghc ++ " --print-libdir")
+getLibdir ghc = chomp `liftM` processGetContents ghc ["--print-libdir"]
 
 guessCabalFile :: String -> IO (Maybe FilePath)
 guessCabalFile sourcefile = do
