@@ -15,16 +15,7 @@
 -- long-running Objective-C loop causes Haskell code not to be
 -- executed at all. Upon receiving an event we must also make
 -- sure to dispatch to other Haskell threads in order to make
--- progress. Since the Cocoa run-loop installs and frees an
--- NSAutoreleasePool for every iteration of the loop, we must
--- make sure that we don't allocate an object in one iteration,
--- and then try to use it in the next.
---
--- We therefore use a lock to ensure that only one thread
--- executes Cocoa calls at a time. This means that if a thread
--- claims the lock, it can perform allocation and use Cocoa
--- resources knowing that either the whole operation is performed
--- in one iteration, or it is never even started.
+-- progress.
 
 module Yi.UI.Cocoa (start) where
 
@@ -109,19 +100,14 @@ $(declareSelector "doTick" [t| IO () |])
 $(declareSelector "setAppleMenu:" [t| forall t. NSMenu t -> IO () |] )
 instance Has_setAppleMenu (NSApplication a)
 $(exportClass "YiApplication" "ya_" [
-    InstanceVariable "eventChannel" [t| Maybe (Chan Yi.Event.Event) |] [| Nothing |]
-  , InstanceVariable "lock" [t| Maybe (MVar ()) |] [| Nothing |]
+    InstanceVariable "eventChannel" [t| Maybe (Yi.Event.Event -> IO ()) |] [| Nothing |]
   , InstanceMethod 'run -- '
   , InstanceMethod 'doTick -- '
   , InstanceMethod 'sendEvent -- '
   ])
 
 ya_doTick :: YiApplication () -> IO ()
-ya_doTick self = do
-  Just lock <- self  #. _lock
-  putMVar lock ()
-  replicateM_ 4 yield
-  takeMVar lock
+ya_doTick self = replicateM_ 4 yield
 
 ya_run :: YiApplication () -> IO ()
 ya_run self = do
@@ -139,10 +125,11 @@ ya_sendEvent event self = logNSException "sendEvent" $ do
     then self #. _eventChannel >>= handleKeyEvent event
     else super self # sendEvent event
 
-handleKeyEvent :: forall t. NSEvent t -> Maybe (Chan Yi.Event.Event) -> IO ()
+handleKeyEvent :: forall t. NSEvent t -> Maybe (Yi.Event.Event -> IO ()) -> IO ()
 handleKeyEvent event ch = do
   mask <- event # modifierFlags
   str <- event # charactersIgnoringModifiers >>= haskellString
+  logPutStrLn $ "Key " ++ str
   let (k,shift) = case str of
                 "\r"     -> (Just KEnter, True)
                 "\DEL"   -> (Just KBS, True)
@@ -219,7 +206,6 @@ data UI = forall action. UI {
              ,uiBuffers :: IORef (M.Map BufferRef (NSTextStorage ()))
              ,windowCache :: IORef [WinInfo]
              ,uiRunEditor :: EditorM () -> IO ()
-             ,uiLock :: MVar ()
              }
 
 data WinInfo = WinInfo
@@ -341,9 +327,6 @@ start cfg ch outCh _ed runEd = do
   app <- _YiApplication # sharedApplication >>= return . toYiApplication
   app # setIVar _eventChannel (Just ch)
 
-  lock <- newMVar ()
-  app # setIVar _lock (Just lock)
-
   icon <- getDataFileName "art/yi+lambda-fat.pdf"
   _NSImage # alloc >>=
     initWithContentsOfFile (toNSString icon) >>=
@@ -382,14 +365,13 @@ start cfg ch outCh _ed runEd = do
   bufs <- newIORef M.empty
   wc <- newIORef []
 
-  return (mkUI $ UI win winContainer cmd bufs wc (outCh . runEd) lock)
+  return $ mkUI $ UI win winContainer cmd bufs wc (outCh . runEd)
 
 
 
 -- | Run the main loop
 main :: UI -> IO ()
 main ui = do
-  takeMVar (uiLock ui)
   logPutStrLn "Cocoa main loop running"
   _YiApplication # sharedApplication >>= run
 
@@ -493,7 +475,7 @@ insertWindow e i win = do
   liftIO $ newWindow i (Window.isMini win) buf
 
 refresh :: UI -> Editor -> IO ()
-refresh ui e = withMVar (uiLock ui) $ \_ -> logNSException "refresh" $ do
+refresh ui e = logNSException "refresh" $ do
     let ws = Editor.windows e
     let takeEllipsis s = if length s > 132 then take 129 s ++ "..." else s
     (uiCmdLine ui) # setStringValue (toNSString (takeEllipsis (statusLine e)))
