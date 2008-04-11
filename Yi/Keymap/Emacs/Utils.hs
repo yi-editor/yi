@@ -98,31 +98,20 @@ import Yi.Templates
 -- quit, but this is then a simple yes or no.
 askQuitEditor :: YiM ()
 askQuitEditor =
-  do allBuffers          <- withEditor getBuffers
-     let modifiedBuffers =  filter modifiedBufferTest allBuffers
+  do allBuffers      <- withEditor getBuffers
+     modifiedBuffers <- filterM isFileBufferTest $ filter (not . isUnchangedBuffer) allBuffers
      -- We could actually just call 'askIndividualQuit modifiedBuffers'
      -- here.
      if null modifiedBuffers
         then quitEditor
         else askIndividualQuit modifiedBuffers
 
-
--- This tests whether or not a buffer should be counted as
--- modified. Essentially it checks whether it has been saved since
--- last modified, however this causes the checks to be a little
--- aggressive and in particular for 'askQuitEditor' the user
--- is asked about the *messages* buffer which they almost certainly
--- don't wish to be asked about. So as a trial we discount any
--- modified buffer whose name starts and ends with a '*'.
-modifiedBufferTest :: FBuffer -> Bool
-modifiedBufferTest fbuffer
-  | isUnchangedBuffer fbuffer = False
-  | isPrefixOf "*" bname &&
-    isSuffixOf "*" bname      = False
-  | otherwise                 = True
-  where
-  bname = name fbuffer
-
+-- | Is there a proper file associated with the buffer?
+-- In other words, does it make sense to offer to save it?
+isFileBufferTest b = case file b of
+                       Nothing -> return False
+                       Just fn -> not <$> liftIO (doesDirectoryExist fn)
+                     
 --------------------------------------------------
 -- Takes in a list of buffers which have been identified
 -- as modified since their last save.
@@ -138,7 +127,7 @@ askIndividualQuit (firstBuffer : others) =
                        ]
   bufferName  = name firstBuffer
 
-  askBindings = [ ( "n", write $ noAction)
+  askBindings = [ ("n", write noAction)
                 , ( "y", write yesAction )
                 , ( "c", write closeBufferAndWindowE )
                 , ( "q", write quitEditor )

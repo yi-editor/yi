@@ -80,7 +80,7 @@ data Yi = Yi {yiEditor :: IORef Editor,
 
 -- | The type of user-bindable functions
 newtype YiM a = YiM {runYiM :: ReaderT Yi IO a}
-    deriving (Monad, MonadReader Yi, MonadIO, Typeable)
+    deriving (Monad, MonadReader Yi, MonadIO, Typeable, Functor)
 
 
 -----------------------
