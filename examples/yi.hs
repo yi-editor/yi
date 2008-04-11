@@ -7,15 +7,14 @@ import Data.List (isSuffixOf)
 import Yi.Prelude
 import Prelude ()
 
-bestHaskellMode :: Mode
 bestHaskellMode = cleverHaskellMode 
  {
   modeKeymap = modeKeymap Shim.mode
  }
 
-myModetable :: ReaderT String Maybe Mode
+myModetable :: ReaderT String Maybe AnyMode
 myModetable = ReaderT $ \fname -> case () of 
-                        _ | ".hs" `isSuffixOf` fname -> Just bestHaskellMode
+                        _ | ".hs" `isSuffixOf` fname -> Just $ AnyMode bestHaskellMode
                         _ ->  Nothing
 
 
