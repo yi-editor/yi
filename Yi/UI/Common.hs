@@ -6,8 +6,12 @@ import Yi.Editor
 import Yi.Event
 
 data UIConfig = UIConfig {
-   configFontSize :: Maybe Int
-}
+   configFontSize :: Maybe Int,
+   configLeftSideScrollBar :: Bool,
+   configAutoHideScrollBar :: Bool,
+   configLineWrap :: Bool
+  }
+
 
 data UI = UI
     {

@@ -141,7 +141,11 @@ defaultConfig :: Config
 defaultConfig = 
   Config { startFrontEnd    = snd (head frontends)
          , configUI         =  UIConfig 
-           { configFontSize = Nothing }
+           { configFontSize = Nothing
+           , configLineWrap = True
+           , configLeftSideScrollBar = True
+           , configAutoHideScrollBar = False
+           }
          , defaultKm        = nilKeymap
          , startAction      = openScratchBuffer -- emacs-style behaviour
          , startQueuedActions = []

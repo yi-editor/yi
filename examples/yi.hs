@@ -21,6 +21,6 @@ myModetable = ReaderT $ \fname -> case () of
 main :: IO ()
 main = yi $ defaultConfig {
                            modeTable = myModetable <|> modeTable defaultConfig,
-                           configUI = UIConfig { configFontSize = Just 10 },
+                           configUI = (configUI defaultConfig) { configFontSize = Just 10 },
                            defaultKm = keymap
                           }

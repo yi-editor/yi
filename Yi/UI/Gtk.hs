@@ -301,8 +301,8 @@ newWindow ui mini b = do
       return (castToBox hb)
      else do
       scroll <- scrolledWindowNew Nothing Nothing
-      set scroll [scrolledWindowPlacement := CornerTopRight,
-                  scrolledWindowVscrollbarPolicy := PolicyAlways,
+      set scroll [scrolledWindowPlacement := if configLeftSideScrollBar then CornerTopRight else CornerTopLeft,
+                  scrolledWindowVscrollbarPolicy := if configAutoHideScrollBar then PolicyAlways else PolicyAutomatic,
                   scrolledWindowHscrollbarPolicy := PolicyAutomatic,
                   containerChild := v]
 
@@ -341,6 +341,7 @@ insertWindow e i win = do
                              boxChildPacking (widget w) := if isMini w then PackNatural else PackGrow]
               textview w `onButtonRelease` handleClick i w
               textview w `onButtonPress` handleClick i w
+              set (textview w) [textViewWrapMode := if configLineWrap then WrapChar else WrapNone]
               widgetShowAll (widget w)
               return w
 
