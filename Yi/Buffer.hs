@@ -434,7 +434,7 @@ searchB :: Direction -> [Char] -> BufferM (Maybe Int)
 searchB dir s = queryBuffer (searchBI dir s)
 
 setMode0 :: forall syntax. Mode syntax -> FBuffer -> FBuffer
-setMode0 m (FBuffer f1 f2 f3 f4 rb f6 f7 f8 f9 f10 f11) =
+setMode0 m (FBuffer f1 f2 f3 f4 rb _ f7 f8 f9 f10 f11) =
     (FBuffer f1 f2 f3 f4 (setSyntaxBI (modeHL m) rb) m f7 f8 f9 f10 f11)
 
 -- | Set the mode
@@ -443,16 +443,14 @@ setMode m = do
   modify (setMode0 m)
 
 withMode0 :: (forall syntax. Mode syntax -> a) -> FBuffer -> a
-withMode0 f (FBuffer f1 f2 f3 f4 rb m f7 f8 f9 f10 f11) =
-    f m 
+withMode0 f FBuffer {bmode = m} = f m 
 
 
 withModeB :: (forall syntax. Mode syntax -> a) -> BufferM a
 withModeB f = gets (withMode0 f)
            
 withSyntax0 :: (forall syntax. Mode syntax -> syntax -> a) -> FBuffer -> a
-withSyntax0 f (FBuffer f1 f2 f3 f4 rb m f7 f8 f9 f10 f11) =
-    f m (getAst rb)
+withSyntax0 f FBuffer {bmode = m, rawbuf = rb} = f m (getAst rb)
            
 
 -- | Return indices of next string in buffer matched by regex

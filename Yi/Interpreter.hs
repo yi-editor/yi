@@ -6,7 +6,6 @@ module Yi.Interpreter (
                        UExpr(..),
                        parse, rename, interpret, toMono) where
 
-import Data.Typeable
 import Data.Dynamic
 import Control.Monad.Error ()
 import Control.Monad (ap)
@@ -36,6 +35,7 @@ data Atom = AVar String
           | AInt Int
 
 instance Show Atom where
+    show (AInt i) = show i
     show (AVar s) = s
     show (AString s) = show s
     show (AChar s) = show s
@@ -43,13 +43,16 @@ instance Show Atom where
 type Env = M.Map String [Dynamic]
 
 -- TODO: parens
+patom :: Parsec.CharParser st Atom
 patom = lexeme haskell (    AVar    <$> identifier     haskell
                         <|> AString <$> stringLiteral  haskell
                         <|> AChar   <$> charLiteral    haskell
                         <|> (AInt . fromIntegral) <$> integer        haskell)
 
+pexpr :: Parsec.CharParser st (UExpr Atom)
 pexpr = chainl1 (UVal <$> patom) (pure UApp)
 
+parse ::  (Monad m) => [Char] -> m (UExpr Atom)
 parse s = case Parsec.parse pexpr "interactive" s of
             Left err -> fail (show err)
             Right x -> return x
@@ -70,7 +73,7 @@ instance Traversable UExpr where
     traverse f (UApp l r) = UApp <$> traverse f l <*> traverse f r
 
 instance Show a => Show (UExpr a) where
-    showsPrec p (UVal a) = shows a
+    showsPrec _ (UVal a) = shows a
     showsPrec p (UApp f a) = showParen (p > 0) 
                              (showsPrec 0 f . showChar ' ' . showsPrec 1 a)
 

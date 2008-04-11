@@ -52,7 +52,7 @@ data Scanner st a = Scanner {
 
 
 withScanner :: (Scanner s1 t1 -> Scanner s2 t2) -> Highlighter s2 t2 a syntax -> Highlighter s1 t1 a syntax
-withScanner f (SynHL a r gs gt) = SynHL a (\scanner i a -> r (f scanner) i a) gs gt
+withScanner f (SynHL cache0 r gs gt) = SynHL cache0 (\scanner i cache -> r (f scanner) i cache) gs gt
 
 noHighlighter :: Highlighter' () syntax
 noHighlighter = SynHL {hlStartState = (), 

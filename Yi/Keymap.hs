@@ -19,7 +19,6 @@ import qualified Yi.Interact as I
 import Yi.Monad
 import Control.Monad.State
 import Yi.Event
-import Yi.Syntax
 import Yi.Process ( SubprocessInfo, SubprocessId )
 import qualified Yi.UI.Common as UI
 import Data.Dynamic

@@ -41,6 +41,7 @@ module Yi.Core
   , changeKeymap
   , runAction
   , withMode
+  , withSyntax
   ) 
 where
 
@@ -69,7 +70,7 @@ import Data.Maybe
 import qualified Data.Map as M
 import Data.Dynamic
 import Data.IORef
-import Data.Foldable ( sequence_, mapM_,all )
+import Data.Foldable (mapM_, all)
 
 import System.IO ( Handle, hWaitForInput )
 import System.FilePath
@@ -82,7 +83,6 @@ import Control.Monad.Error ()
 import Control.Monad.State (gets)
 import Control.Exception
 import Control.Concurrent
-import Control.Concurrent.Chan
 #ifdef SHIM
 import System.Directory ( findExecutable )
 import Shim.Hsinfo

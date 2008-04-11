@@ -93,7 +93,7 @@ numberStyle :: Style
 numberStyle = darkredA
 
 errorStyle :: Style -> Style
-errorStyle (Style fg bg) = Style red bg
+errorStyle (Style _fg bg) = Style red bg
 
 
 blackA , greyA, darkredA, redA, darkgreenA, greenA, brownA :: Style
