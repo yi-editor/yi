@@ -19,12 +19,12 @@ import Yi.Event
 import Yi.Debug
 import Yi.Monad
 import qualified Yi.UI.Common as Common
+import Yi.UI.Common (UIConfig (..))
 import Yi.Style hiding (modeline)
 import qualified Yi.WindowSet as WS
 
 import Control.Applicative
 import Control.Concurrent ( yield )
-import Control.Concurrent.Chan
 import Control.Monad (ap)
 import Control.Monad.Reader (liftIO, when, MonadIO)
 import Control.Monad.State (runState, State, gets, modify)
@@ -301,8 +301,8 @@ newWindow ui mini b = do
       return (castToBox hb)
      else do
       scroll <- scrolledWindowNew Nothing Nothing
-      set scroll [scrolledWindowPlacement := if configLeftSideScrollBar then CornerTopRight else CornerTopLeft,
-                  scrolledWindowVscrollbarPolicy := if configAutoHideScrollBar then PolicyAlways else PolicyAutomatic,
+      set scroll [scrolledWindowPlacement := if configLeftSideScrollBar $ uiConfig $ ui then CornerTopRight else CornerTopLeft,
+                  scrolledWindowVscrollbarPolicy := if configAutoHideScrollBar $ uiConfig $ ui then PolicyAlways else PolicyAutomatic,
                   scrolledWindowHscrollbarPolicy := PolicyAutomatic,
                   containerChild := v]
 
@@ -341,7 +341,7 @@ insertWindow e i win = do
                              boxChildPacking (widget w) := if isMini w then PackNatural else PackGrow]
               textview w `onButtonRelease` handleClick i w
               textview w `onButtonPress` handleClick i w
-              set (textview w) [textViewWrapMode := if configLineWrap then WrapChar else WrapNone]
+              set (textview w) [textViewWrapMode := if configLineWrap $ uiConfig $ i then WrapChar else WrapNone]
               widgetShowAll (widget w)
               return w
 
