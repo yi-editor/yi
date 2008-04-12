@@ -60,7 +60,6 @@ import Yi.Core
 import Yi.Editor
 import Yi.Buffer.Region
 import Yi.Style
-import Yi.Syntax ( ExtHL(..), noHighlighter )
 import Yi.Modes (defaultFundamentalMode)
 
 import System.IO.UTF8 as UTF8

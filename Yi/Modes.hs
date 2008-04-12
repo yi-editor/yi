@@ -14,7 +14,6 @@ import qualified Yi.Syntax.Paren as Paren
 import qualified Yi.Syntax.Alex as Alex
 import Yi.Syntax.Alex (Tok(..), Posn(..))
 import Yi.Syntax
-import Yi.Keymap
 import Yi.Indent
 import Control.Arrow (first)
 import Yi.Prelude
