@@ -31,6 +31,7 @@ import Yi.Debug
 import Yi.Buffer.Implementation
 import Yi.Monad
 import Yi.Style hiding (modeline)
+import Yi.UI.Common (UIConfig(..))
 import qualified Yi.UI.Common as Common
 import qualified Yi.WindowSet as WS
 import qualified Yi.Window as Window
@@ -55,8 +56,9 @@ import Foundation hiding (length, name, new, parent, error, self, null)
 import Foundation.NSObject (init)
 
 import AppKit hiding (windows, start, rect, width, content, prompt, dictionary, icon)
-import AppKit.NSWindow (contentView)
+import qualified AppKit.NSWindow (contentView)
 import AppKit.NSText (selectedRange)
+import qualified AppKit.NSScrollView (contentView)
 import qualified AppKit.NSView as NSView
 
 import HOC
@@ -198,6 +200,29 @@ ytv_mouseDown event self = do
         then setSelectionMarkPointB p2 >> moveTo p1
         else setSelectionMarkPointB p1 >> moveTo p2
 
+-- This declares our special text-view class. The textview interpretes
+-- mouse events so that mouse-selection in Yi should function as in any
+-- Cocoa application
+$(declareClass "YiScrollView" "NSScrollView")
+$(exportClass "YiScrollView" "ysv_" [
+    InstanceVariable "leftScroller" [t| Bool |] [| False |]
+  , InstanceMethod 'tile -- '
+  ])
+  
+ysv_tile self = do
+  super self # tile
+  moveScroller <- self #. _leftScroller
+  if not moveScroller
+    then return ()
+    else do
+      -- Copied from NostalgicScrollView (found on /.)
+      c <- self # AppKit.NSScrollView.contentView
+      s <- self # verticalScroller
+      sf <- s # frame
+      s # setFrameOrigin (NSPoint 0.0 (nsMinY sf))
+      c # frame >>= (flip setFrameOrigin c) . (NSPoint (nsWidth sf)) . nsMinY
+
+
 ------------------------------------------------------------------------
 
 data UI = forall action. UI {
@@ -207,6 +232,7 @@ data UI = forall action. UI {
              ,uiBuffers :: IORef (M.Map BufferRef (NSTextStorage ()))
              ,windowCache :: IORef [WinInfo]
              ,uiRunEditor :: EditorM () -> IO ()
+             ,uiConfig :: Common.UIConfig
              }
 
 data WinInfo = WinInfo
@@ -267,6 +293,9 @@ width, height :: NSRect -> Float
 width (NSRect _ (NSSize w _)) = w
 height (NSRect _ (NSSize _ h)) = h
 
+translate :: Float -> Float -> NSRect -> NSRect
+translate dx dy (NSRect (NSPoint x y) s) = NSRect (NSPoint (x + dx) (y + dy)) s
+
 toNSView :: forall t. ID () -> NSView t
 toNSView = castObject
 
@@ -275,31 +304,32 @@ toYiApplication = castObject
 toYiController :: forall t1 t2. NSObject t1 -> YiController t2
 toYiController = castObject
 
-setMonospaceFont :: Has_setFont v => v -> IO ()
-setMonospaceFont view = do
-  f <- _NSFont # userFixedPitchFontOfSize 0.0
+setMonospaceFont :: Has_setFont v => UIConfig -> v -> IO ()
+setMonospaceFont cfg view = do
+  let size = maybe 0.0 fromIntegral (configFontSize cfg)
+  f <- _NSFont # userFixedPitchFontOfSize size
   setFont f view
 
-newTextLine :: IO (NSTextField ())
-newTextLine = do
+newTextLine :: UIConfig -> IO (NSTextField ())
+newTextLine cfg = do
   tl <- new _NSTextField
   tl # setAlignment nsLeftTextAlignment
   tl # setAutoresizingMask (nsViewWidthSizable .|. nsViewMaxYMargin)
-  tl # setMonospaceFont
+  tl # setMonospaceFont cfg
   tl # setSelectable True
   tl # setEditable False
   tl # sizeToFit
   return tl
 
-addSubviewWithTextLine :: forall t1 t2. NSView t1 -> NSView t2 -> IO (NSTextField (), NSView ())
-addSubviewWithTextLine view parent = do
+addSubviewWithTextLine :: forall t1 t2. UIConfig -> NSView t1 -> NSView t2 -> IO (NSTextField (), NSView ())
+addSubviewWithTextLine cfg view parent = do
   container <- new _NSView
   parent # bounds >>= flip setFrame container
   container # setAutoresizingMask allSizable
   view # setAutoresizingMask allSizable
   container # addSubview view
 
-  text <- newTextLine
+  text <- newTextLine cfg
   container # addSubview text
   parent # addSubview container
   -- Adjust frame sizes, as superb cocoa cannot do this itself...
@@ -324,6 +354,7 @@ start cfg ch outCh _ed runEd = do
   initializeClass_YiApplication
   initializeClass_YiController
   initializeClass_YiTextView
+  initializeClass_YiScrollView
 
   app <- _YiApplication # sharedApplication >>= return . toYiApplication
   app # setIVar _eventChannel (Just ch)
@@ -349,12 +380,12 @@ start cfg ch outCh _ed runEd = do
   -- Create main cocoa window...
   win <- _NSWindow # alloc >>= initWithContentRect (rect 0 0 480 340)
   win # setTitle (toNSString "Yi")
-  content <- win # contentView >>= return . toNSView
+  content <- win # AppKit.NSWindow.contentView >>= return . toNSView
   content # setAutoresizingMask allSizable
 
   -- Create yi window container
   winContainer <- new _NSSplitView
-  (cmd,_) <- content # addSubviewWithTextLine winContainer
+  (cmd,_) <- content # addSubviewWithTextLine cfg winContainer
 
 
   -- Activate application window
@@ -366,7 +397,7 @@ start cfg ch outCh _ed runEd = do
   bufs <- newIORef M.empty
   wc <- newIORef []
 
-  return $ mkUI $ UI win winContainer cmd bufs wc (outCh . runEd)
+  return $ mkUI $ UI win winContainer cmd bufs wc (outCh . runEd) cfg
 
 
 
@@ -413,7 +444,7 @@ newWindow ui mini b = do
    then do
     v # setHorizontallyResizable False
     v # setVerticallyResizable False
-    prompt <- newTextLine
+    prompt <- newTextLine (uiConfig ui)
     prompt # setStringValue (toNSString (name b))
     prompt # sizeToFit
     prompt # setAutoresizingMask nsViewNotSizable
@@ -438,16 +469,22 @@ newWindow ui mini b = do
    else do
     v # setHorizontallyResizable True
     v # setVerticallyResizable True
+    
+    when (not $ configLineWrap $ uiConfig ui) $ do
+      tc <- v # textContainer
+      NSSize _ h <- tc # containerSize
+      tc # setContainerSize (NSSize 1.0e7 h)
+      tc # setWidthTracksTextView False
 
-    scroll <- new _NSScrollView
+    scroll <- new _YiScrollView
     scroll # setDocumentView v
     scroll # setAutoresizingMask allSizable
 
     scroll # setHasVerticalScroller True
     scroll # setHasHorizontalScroller False
-    scroll # setAutohidesScrollers False
-
-    addSubviewWithTextLine scroll (uiBox ui)
+    scroll # setAutohidesScrollers (configAutoHideScrollBar $ uiConfig ui)
+    scroll # setIVar _leftScroller (configLeftSideScrollBar $ uiConfig ui)
+    addSubviewWithTextLine (uiConfig ui) scroll (uiBox ui)
 
   storage <- getTextStorage ui b
   layoutManager v >>= replaceTextStorage storage
@@ -488,7 +525,7 @@ refresh ui e = logNSException "refresh" $ do
       forM_ ([u | TextUpdate u <- pendingUpdates buf]) $ applyUpdate storage
       storage # endEditing
       contents <- storage # string >>= haskellString
-      storage # setMonospaceFont -- FIXME: Why is this needed for mini buffers?
+      storage # setMonospaceFont (uiConfig ui) -- FIXME: Why is this needed for mini buffers?
       -- TODO: Merge overlapping regions...
       let ((size,p),_) = runBufferDummyWindow buf ((,) <$> sizeB <*> pointB)
       forM_ ([(s,s+l) | StyleUpdate s l <- pendingUpdates buf]) $ \(s,e) -> replaceTagsIn (inBounds s size) (inBounds e size) buf storage
@@ -586,11 +623,11 @@ getTextStorage ui b = do
     return storage
 
 newTextStorage :: UI -> FBuffer -> IO (NSTextStorage ())
-newTextStorage _ui b = do
+newTextStorage ui b = do
   buf <- new _NSTextStorage
   let (txt, _) = runBufferDummyWindow b (revertPendingUpdatesB >> elemsB)
   buf # mutableString >>= setString (toNSString txt)
-  buf # setMonospaceFont
+  buf # setMonospaceFont (uiConfig ui)
   replaceTagsIn 0 (length txt) b buf
   return buf
 
