@@ -9,16 +9,17 @@ import Yi.Core (Config (..))
 import Yi.Main (defaultConfig)
 import Yi.Debug
 
-main0 :: Config -> IO ()
-main0 cfg = do
-  initDebug ".yi.dbg"
-  Yi.main cfg
+-- "real" main
+--main0 :: Config -> IO ()
 
 recoverState :: String -> IO ()
 recoverState _stateName = return ()
 
 realMain :: Config -> yiState -> IO ()
 realMain cfg _state = main0 cfg
+  where main0 cfg = do
+          initDebug ".yi.dbg"
+          Yi.main cfg
 
 projectName :: String
 projectName = "yi"
@@ -29,5 +30,7 @@ initState = ()
 driver :: IO ()
 driver = mainMaster projectName initState (realMain defaultConfig)
 
+
+-- | Intended to be called from configuration.
 yi :: Config -> IO ()
 yi cfg = mainSlave recoverState () (realMain cfg)
