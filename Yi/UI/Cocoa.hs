@@ -21,6 +21,7 @@ module Yi.UI.Cocoa (start) where
 
 import Prelude hiding (init, error, sequence_, elem, mapM_, mapM, concatMap)
 
+import Yi.Accessor
 import Yi.Buffer
 import Yi.Buffer.HighLevel
 import Yi.Editor (Editor, EditorM, withGivenBuffer0, findBufferWith, statusLine, buffers)
@@ -189,9 +190,9 @@ ytv_mouseDown event self = do
       p2 = p1 + fromEnum l
   runbuf <- self #. _runBuffer
   runbuf $ do
+    setVisibleSelection (p1 /= p2)
     if p1 == p2
       then do
-        setVisibleSelection False
         moveTo p1
       else if abs (startIndex - p2) < min (abs (startIndex - p1)) 2
         then setSelectionMarkPointB p2 >> moveTo p1
@@ -504,7 +505,9 @@ refresh ui e = logNSException "refresh" $ do
         do let buf = findBufferWith (bufkey w) e
            let (p0, _) = runBufferDummyWindow buf pointB
            let (p1, _) = runBufferDummyWindow buf (getSelectionMarkB >>= getMarkPointB)
-           (textview w) # setSelectedRange (NSRange (toEnum $ min p0 p1) (toEnum $ abs $ p1-p0))
+           let (showSel, _) = runBufferDummyWindow buf (getA highlightSelectionA)
+           let (p,l) = if showSel then (min p0 p1, abs $ p1-p0) else (p0,0)
+           (textview w) # setSelectedRange (NSRange (toEnum p) (toEnum l))
            (textview w) # scrollRangeToVisible (NSRange (toEnum p0) 0)
            let (txt, _) = runBufferDummyWindow buf getModeLine
            (modeline w) # setStringValue (toNSString txt)
