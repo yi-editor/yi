@@ -40,14 +40,12 @@ where
 {- Standard Library Module Imports -}
 import Control.Monad
   ()
-import Control.Monad.Trans (liftIO)
 import Data.Char
   ( ord
   , isDigit
   )
 import Data.List
   ( isPrefixOf
-  , isSuffixOf
   , (\\)
   )
 import Data.Maybe
@@ -71,6 +69,7 @@ import System.Directory
   , getCurrentDirectory
   , getDirectoryContents
   )
+import Control.Monad.Trans (MonadIO (..))
 
 {- External Library Module Imports -}
 {- Local (yi) module imports -}
@@ -99,7 +98,7 @@ import Yi.Templates
 askQuitEditor :: YiM ()
 askQuitEditor =
   do allBuffers      <- withEditor getBuffers
-     modifiedBuffers <- filterM isFileBufferTest $ filter (not . isUnchangedBuffer) allBuffers
+     modifiedBuffers <- filterM isFileBuffer $ filter (not . isUnchangedBuffer) allBuffers
      -- We could actually just call 'askIndividualQuit modifiedBuffers'
      -- here.
      if null modifiedBuffers
@@ -108,9 +107,10 @@ askQuitEditor =
 
 -- | Is there a proper file associated with the buffer?
 -- In other words, does it make sense to offer to save it?
-isFileBufferTest b = case file b of
-                       Nothing -> return False
-                       Just fn -> not <$> liftIO (doesDirectoryExist fn)
+isFileBuffer :: (Functor m, MonadIO m) => FBuffer -> m Bool
+isFileBuffer b = case file b of
+                   Nothing -> return False
+                   Just fn -> not <$> liftIO (doesDirectoryExist fn)
                      
 --------------------------------------------------
 -- Takes in a list of buffers which have been identified
