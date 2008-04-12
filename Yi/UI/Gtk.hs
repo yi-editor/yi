@@ -8,7 +8,7 @@ module Yi.UI.Gtk (start) where
 
 import Prelude hiding (error, sequence_, elem, mapM_, mapM, concatMap)
 import Yi.Accessor
-import Yi.Buffer.Implementation (inBounds, Update(..))
+import Yi.Buffer.Implementation (inBounds, Update(..), UIUpdate(..))
 import Yi.Buffer
 import Yi.Buffer.HighLevel (setSelectionMarkPointB)
 import qualified Yi.Editor as Editor
@@ -354,10 +354,10 @@ refresh ui e = do
     cache <- readRef $ windowCache ui
     forM_ (buffers e) $ \buf -> when (not $ null $ pendingUpdates $ buf) $ do
       gtkBuf <- getGtkBuffer ui buf
-      forM_ (pendingUpdates buf) $ applyUpdate gtkBuf
+      forM_ ([u | TextUpdate u <- pendingUpdates buf]) $ applyUpdate gtkBuf
       let ((size,p),_) = runBufferDummyWindow buf ((,) <$> sizeB <*> pointB)
       replaceTagsIn ui (inBounds (p-100) size) (inBounds (p+100) size) buf gtkBuf
-
+      forM_ ([(s,s+l) | StyleUpdate s l <- pendingUpdates buf]) $ \(s,e') -> replaceTagsIn ui (inBounds s size) (inBounds e' size) buf gtkBuf
     logPutStrLn $ "syncing: " ++ show ws
     logPutStrLn $ "with: " ++ show cache
     cache' <- syncWindows e ui (toList $ WS.withFocus $ ws) cache
