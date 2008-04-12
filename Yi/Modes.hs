@@ -1,5 +1,4 @@
-module Yi.Modes (defaultFundamentalMode,
-                 cleverHaskellMode,
+module Yi.Modes (defaultFundamentalMode, fundamental,
  latexMode, cppMode, haskellMode, literateHaskellMode, cabalMode, srmcMode, defaultModeMap) where
 
 import System.FilePath
@@ -46,26 +45,6 @@ haskellMode = fundamental
 
    }
     where tokenToStroke (Tok t len posn) = (posnOfs posn, Haskell.tokenToStyle t, posnOfs posn + len)
-
-cleverHaskellMode :: Mode (Paren.Expr (Tok Haskell.Token))
-cleverHaskellMode = fundamental {
-    modeIndent = autoIndentHaskellB,
-    modeHL = ExtHL $
-{--    lexer `withScanner` IncrParser.mkHighlighter Fractal.parse
-      (\begin end -> fmap tokenToStroke . Fractal.getStrokes begin end) id -}
---}
-
-{--
-    lexer `withScanner` IncrParser.mkHighlighter Paren.parse
-      (\begin end t -> Paren.getStrokes begin end t) id
---}
-
---
-    (Paren.indentScanner . lexer) `withScanner` IncrParser.mkHighlighter Paren.parse
-      (\point begin end t -> Paren.getStrokes point begin end t) snd
---}                                 
-}
-    where lexer = Alex.lexScanner Haskell.alexScanToken Haskell.initState 
 
 
 literateHaskellMode = haskellMode 

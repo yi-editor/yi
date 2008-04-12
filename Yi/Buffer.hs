@@ -198,7 +198,7 @@ data Mode syntax = Mode
      modeHL :: ExtHL syntax,
      modeKeymap :: KeymapEndo, -- ^ Buffer's local keymap modification
      modeIndent :: BufferM (),
-     modeTestUseAst :: syntax -> BufferM ()
+     modeAdjustBlock :: syntax -> Int -> BufferM ()
     }
 
 
@@ -329,7 +329,8 @@ emptyMode = Mode
   { 
    modeHL = ExtHL noHighlighter,
    modeKeymap = id,
-   modeIndent = return ()
+   modeIndent = return (),
+   modeAdjustBlock = \_ _ -> return ()
   }
 
 -- | Create buffer named @nm@ with contents @s@

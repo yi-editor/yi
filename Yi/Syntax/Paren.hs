@@ -11,6 +11,9 @@ import Yi.Syntax.Indent
 import Yi.Syntax
 import Yi.Prelude 
 import Prelude ()
+import Data.Monoid
+import Data.Maybe
+import Data.List (filter)
 
 indentScanner :: Scanner (AlexState lexState) (Tok Token)
               -> Scanner (Yi.Syntax.Indent.State lexState) (Tok Token)
@@ -41,8 +44,56 @@ instance Functor Tree where
     fmap f (Error t) = Error (f t)
     fmap f (Group l g r) = Group (f l) (fmap (fmap f) g) (f r)
     fmap f (Stmt s) = Stmt ((fmap (fmap (fmap f))) s)
-                          
+
+-- | Return the 1st token of a subtree.
+getFirstToken :: Tree t -> Maybe t
+getFirstToken tree = getFirst $ foldMap (\x -> First (Just x)) tree
+
+getLastToken :: Tree t -> Maybe t
+getLastToken tree = getLast $ foldMap (\x -> Last (Just x)) tree
+
+-- Return all subtrees in a subtree.
+getAllSubTrees :: Tree t -> [Tree t]
+getAllSubTrees t = t : concatMap getAllSubTrees (subtrees t)
+    where subtrees (Group l g r) = g
+          subtrees (Stmt s) = concat s
+          subtrees _ = []
+
+
+type TT = Tok Token
+
+getIndentingSubtree :: [Tree TT] -> Int -> Int -> Maybe (Tree TT)
+getIndentingSubtree roots offset line
+    = listToMaybe [t' | root <- roots, t'@(Stmt ((t:_):_)) <- getAllSubTrees root, let Just tok = getFirstToken t, let posn = tokPosn tok,
+       posnOfs posn > offset, posnLine posn == line]
+
+getSubtreeSpan :: Tree TT -> (Int, Int)
+getSubtreeSpan tree = (posnOfs $ first, lastLine - firstLine)
+    where bounds@[first, last] = fmap (tokPosn . assertJust) [getFirstToken tree, getLastToken tree]
+          [firstLine, lastLine] = fmap posnLine bounds
+          assertJust (Just x) = x
+
     
+
+instance Foldable Tree where
+    foldMap = foldMapDefault
+
+instance Traversable Tree where
+    traverse f (Atom t) = Atom <$> f t
+    traverse f (Error t) = Error <$> f t
+    traverse f (Group l g r) = Group <$> f l <*> traverse (traverse f) g <*> f r
+    traverse f (Stmt s) = Stmt <$> traverse (traverse (traverse f)) s
+
+-- dropWhile' f = foldMap (\x -> if f x then mempty else Endo (x :))
+-- 
+-- isBefore l (Atom t) = isBefore' l t
+-- isBefore l (Error t) = isBefore l t
+-- isBefore l (Group l g r) = isBefore l r
+-- isBefore l (Stmt s) = False
+-- 
+-- isBefore' l (Tok {tokPosn = Posn {posnLn = l'}}) = 
+
+
 parse :: P (Tok Token) (Expr (Tok Token))
 parse = parse' tokT tokFromT
 
@@ -54,9 +105,11 @@ parse' toTok fromT = pExpr <* eof
 
       pleaseSym c = (recoverWith (pure $ newT '!')) <|> sym c
 
+      pExpr :: P TT (Expr TT)
       pExpr = many pTree
 
-      pStmts = pExpr `sepBy` sym '.' -- see HACK above
+      pStmts = filter (not . null) <$> pExpr `sepBy` sym '.' -- see HACK above
+      -- also, we discard the empty statements
 
       pTree :: P (Tok Token) (Tree (Tok Token))
       pTree = (Group  <$>  sym '(' <*> pExpr  <*> pleaseSym ')')
