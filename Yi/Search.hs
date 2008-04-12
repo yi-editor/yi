@@ -55,6 +55,7 @@ import Data.Typeable
 import Control.Monad.State
 
 import Yi.Core
+import Yi.Style
 
 -- ---------------------------------------------------------------------
 -- Searching and substitutions with regular expressions
@@ -219,7 +220,7 @@ searchAndRepLocal re str = do
 -- Incremental search
 
 
-newtype Isearch = Isearch [(String, Int, Direction)] deriving Typeable
+newtype Isearch = Isearch [(String, Int, Direction, Maybe Overlay)] deriving Typeable
 -- Maybe this should not be saved in a Dynamic component!
 -- it could be embedded in the Keymap state.
 
@@ -229,61 +230,88 @@ instance Initializable Isearch where
 isearchInitE :: Direction -> EditorM ()
 isearchInitE dir = do
   p <- withBuffer0 pointB
-  setDynamic (Isearch [("",p,dir)])
+  setDynamic (Isearch [("",p,dir,Nothing)])
   printMsg "I-search: "
 
 isearchIsEmpty :: EditorM Bool
 isearchIsEmpty = do
   Isearch s <- getDynamic
-  return $ not $ null $ fst3 $ head $ s
-      where fst3 (x,_,_) = x
+  return $ not $ null $ fst4 $ head $ s
+      where fst4 (x,_,_,_) = x
 
 isearchAddE :: String -> EditorM ()
 isearchAddE increment = do
   Isearch s <- getDynamic
-  let (previous,p0,direction) = head s
+  let (previous,p0,direction,prevOverlay) = head s
   let current = previous ++ increment
   printMsg $ "I-search: " ++ current
   prevPoint <- withBuffer0 pointB
-  withBuffer0 $ moveTo p0
+  withBuffer0 $ do
+    maybeDelOverlayB prevOverlay
+    moveTo p0
   mp <- withBuffer0 $ searchB direction current
   case mp of
     Nothing -> do withBuffer0 $ moveTo prevPoint -- go back to where we were
-                  setDynamic $ Isearch ((current,p0,direction):s)
+                  setDynamic $ Isearch ((current,p0,direction,Nothing):s)
                   printMsg $ "Failing I-search: " ++ current
-    Just p -> do setDynamic $ Isearch ((current,p,direction):s)
-                 withBuffer0 $ moveTo (p+length current)
+    Just p -> do  let p2 = p + length current
+                      ov = mkOverlay p p2 (hintStyle defaultStyle)
+                  withBuffer0 $ do
+                    moveTo p2
+                    addOverlayB ov
+                  setDynamic $ Isearch ((current,p,direction,Just ov):s)
+                 
+
+maybeDelOverlayB :: Maybe Overlay -> BufferM ()
+maybeDelOverlayB = maybe (return ()) delOverlayB
 
 isearchDelE :: EditorM ()
 isearchDelE = do
   Isearch s <- getDynamic
   case s of
-    (_:(text,p,dir):rest) -> do
-      withBuffer0 $ moveTo (p+length text)
-      setDynamic $ Isearch ((text,p,dir):rest)
+    ((_,_,_,nextOverlay):(text,p,dir,_):rest) -> do
+      let p2 = p + length text
+          ov = mkOverlay p p2 (hintStyle defaultStyle)
+      withBuffer0 $ do
+        moveTo p2
+        maybeDelOverlayB nextOverlay
+        addOverlayB ov
+      setDynamic $ Isearch ((text,p,dir,Just ov):rest)
       printMsg $ "I-search: " ++ text
     _ -> return () -- if the searched string is empty, don't try to remove chars from it.
 
 -- TODO: merge isearchPrevE and isearchNextE
 isearchPrevE :: EditorM ()
 isearchPrevE = do
-  Isearch ((current,p0,_dir):rest) <- getDynamic
+  Isearch ((current,p0,_dir,prevOverlay):rest) <- getDynamic
   withBuffer0 $ moveTo (p0 - 1)
-  mp <- withBuffer0 $ searchB Backward current
+  mp <- withBuffer0 $ do
+    searchB Backward current
   case mp of
-    Nothing -> return ()
-    Just p -> do setDynamic $ Isearch ((current,p,Backward):rest)
-                 withBuffer0 $ moveTo (p+length current)
+    Nothing -> withBuffer0 $ moveTo (p0 + length current) -- revert offset above
+    Just p -> do  let p2 = p+length current
+                      ov = mkOverlay p p2 (hintStyle defaultStyle)
+                  withBuffer0 $ do
+                    moveTo p2
+                    maybeDelOverlayB prevOverlay    
+                    addOverlayB ov
+                  setDynamic $ Isearch ((current,p,Backward,Just ov):rest)
 
 isearchNextE :: EditorM ()
 isearchNextE = do
-  Isearch ((current,p0,_dir):rest) <- getDynamic
+  Isearch ((current,p0,_dir,prevOverlay):rest) <- getDynamic
   withBuffer0 $ moveTo (p0 + 1)
-  mp <- withBuffer0 $ searchB Forward current
+  mp <- withBuffer0 $ do
+    searchB Forward current
   case mp of
-    Nothing -> return ()
-    Just p -> do setDynamic $ Isearch ((current,p,Forward):rest)
-                 withBuffer0 $ moveTo (p+length current)
+    Nothing -> withBuffer0 $ moveTo (p0 + length current) -- revert offset above
+    Just p -> do  let p2 = p + length current
+                      ov = mkOverlay p p2 (hintStyle defaultStyle)
+                  withBuffer0 $ do
+                    moveTo p2
+                    maybeDelOverlayB prevOverlay
+                    addOverlayB ov
+                  setDynamic $ Isearch ((current,p,Forward,Just ov):rest)
 
 isearchWordE :: EditorM ()
 isearchWordE = do
@@ -295,15 +323,21 @@ isearchWordE = do
 isearchFinishE :: EditorM ()
 isearchFinishE = do
   Isearch s <- getDynamic
-  let (_,p0,_) = last s
-  withBuffer0 $ setSelectionMarkPointB p0
+  let (_,_,_,ov) = head s
+  let (_,p0,_,_) = last s
+  withBuffer0 $ do
+    maybeDelOverlayB ov
+    setSelectionMarkPointB p0
   printMsg "mark saved where search started"
 
 isearchCancelE :: EditorM ()
 isearchCancelE = do
   Isearch s <- getDynamic
-  let (_,p0,_) = last s
-  withBuffer0 $ moveTo p0
+  let (_,_,_,ov) = head s
+  let (_,p0,_,_) = last s
+  withBuffer0 $ do
+    maybeDelOverlayB ov
+    moveTo p0
   printMsg "Quit"
 
 

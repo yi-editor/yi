@@ -22,6 +22,8 @@ module Yi.Buffer
   , newB
   , Point
   , Mark
+  , Overlay
+  , mkOverlay
   , gotoLn
   , gotoLnFrom
   , offsetFromSol
@@ -62,6 +64,7 @@ module Yi.Buffer
   , forgetPreferCol
   , clearUndosB
   , addOverlayB
+  , delOverlayB
   , getDynamicB
   , setDynamicB
   , nelemsBH
@@ -132,7 +135,7 @@ data FBuffer = forall syntax.
                 , readOnly :: Bool -- ^ a read-only bit
                 , bufferDynamic :: !DynamicValues -- ^ dynamic components
                 , preferCol :: !(Maybe Int)       -- ^ prefered column to arrive at when we do a lineDown / lineUp
-                , pendingUpdates :: [Update]       -- ^ updates that haven't been synched in the UI yet
+                , pendingUpdates :: [UIUpdate]    -- ^ updates that haven't been synched in the UI yet
                 , highlightSelection :: !Bool
                 }
         deriving Typeable
@@ -171,7 +174,7 @@ bufferDynamicA = Accessor bufferDynamic (\f e -> case e of
                                    FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 -> 
                                     FBuffer f1 f2 f3 f4 f5 f6 f7 (f f8) f9 f10 f11)
 
-pendingUpdatesA :: Accessor (FBuffer) ([Update])
+pendingUpdatesA :: Accessor (FBuffer) ([UIUpdate])
 pendingUpdatesA = Accessor pendingUpdates (\f e -> case e of 
                                    FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 -> 
                                     FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 (f f10) f11)
@@ -259,15 +262,23 @@ modifyBuffer f = modify (modifyRawbuf f)
 queryAndModify :: (forall syntax. BufferImpl syntax -> (BufferImpl syntax,x)) -> BufferM x
 queryAndModify f = getsAndModify (queryAndModifyRawbuf f)
 
--- | @addOverlayB s e sty@ overlays the style @sty@ between points @s@ and @e@
-addOverlayB :: Point -> Point -> Style -> BufferM ()
-addOverlayB s e sty = modifyBuffer $ addOverlayBI s e sty
+-- | Adds an "overlay" to the buffer
+addOverlayB :: Overlay -> BufferM ()
+addOverlayB ov = do
+  modifyA pendingUpdatesA (++ [overlayUpdate ov])
+  modifyBuffer $ addOverlayBI ov
+
+-- | Remove an existing "overlay"
+delOverlayB :: Overlay -> BufferM ()
+delOverlayB ov = do
+  modifyA pendingUpdatesA (++ [overlayUpdate ov])
+  modifyBuffer $ delOverlayBI ov
 
 -- | Execute a @BufferM@ value on a given buffer and window.  The new state of
 -- the buffer is returned alongside the result of the computation.
 runBuffer :: Window -> FBuffer -> BufferM a -> (a, FBuffer)
 runBuffer w b f = let (a, b0, updates) = runRWS (fromBufferM f) w b
-                in (a, modifier pendingUpdatesA (++ updates) b0)
+                in (a, modifier pendingUpdatesA (++ fmap TextUpdate updates) b0)
 
 -- | Execute a @BufferM@ value on a given buffer, using a dummy window.  The new state of
 -- the buffer is returned alongside the result of the computation.
@@ -382,7 +393,7 @@ applyUpdate update = do
 revertPendingUpdatesB :: BufferM ()
 revertPendingUpdatesB = do
   updates <- getA pendingUpdatesA
-  modifyBuffer (flip (foldr (\u bi -> applyUpdateI (reverseUpdateI u bi) bi)) updates)
+  modifyBuffer (flip (foldr (\u bi -> applyUpdateI (reverseUpdateI u bi) bi)) [u | TextUpdate u <- updates])
 
 -- | Write an element into the buffer at the current point.
 writeB :: Char -> BufferM ()

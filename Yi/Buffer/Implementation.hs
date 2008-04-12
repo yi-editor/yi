@@ -4,12 +4,16 @@
 
 -- | 'Buffer' implementation, wrapping ByteString.
 module Yi.Buffer.Implementation
-  ( Update     ( .. )
+  ( UIUpdate (..)
+  , Update (..)
   , Point
   , Mark
   , Size
   , Direction (..)
   , BufferImpl
+  , Overlay
+  , mkOverlay
+  , overlayUpdate
   , moveToI
   , applyUpdateI
   , isValidUpdate
@@ -33,6 +37,7 @@ module Yi.Buffer.Implementation
   , styleRangesBI
   , setSyntaxBI
   , addOverlayBI
+  , delOverlayBI
   , inBounds
   , findNextChar
   , updateSyntax
@@ -117,6 +122,8 @@ data Update = Insert {updatePoint :: !Point, insertUpdateString :: !String} -- F
             | Delete {updatePoint :: !Point, deleteUpdateSize :: !Size}
               deriving (Show, Typeable)
 
+data UIUpdate = TextUpdate Update
+              | StyleUpdate !Point !Size
 
 --------------------------------------------------
 -- Low-level primitives.
@@ -185,13 +192,21 @@ nelemsBI n i fb =
             i' = inBounds i (F.length b)
         in readChars b n i'
 
+-- | Create an "overlay" for the style @sty@ between points @s@ and @e@
+mkOverlay :: Point -> Point -> Style -> Overlay
+mkOverlay s e = Overlay (MarkValue s True) (MarkValue e False)
+
+-- | Obtain a style-update for a specific overlay
+overlayUpdate :: Overlay -> UIUpdate
+overlayUpdate (Overlay (MarkValue s _) (MarkValue e _) _) = StyleUpdate s (e-s)
 
 -- | Add a style "overlay" between the given points.
-addOverlayBI :: Point -> Point -> Style -> BufferImpl syntax -> BufferImpl syntax
-addOverlayBI s e sty fb =
-    let sm = MarkValue s True
-        em = MarkValue e False
-    in fb{overlays = Set.insert (Overlay sm em sty) (overlays fb)}
+addOverlayBI :: Overlay -> BufferImpl syntax -> BufferImpl syntax
+addOverlayBI ov fb = fb{overlays = Set.insert ov (overlays fb)}
+
+-- | Remove a previously added "overlay"
+delOverlayBI :: Overlay -> BufferImpl syntax -> BufferImpl syntax
+delOverlayBI ov fb = fb{overlays = Set.delete ov (overlays fb)}
 
 -- | Return @n@ elems starting at @i@ of the buffer as a list.
 -- This routine also does syntax highlighting and applies overlays.

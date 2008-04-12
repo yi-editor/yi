@@ -245,7 +245,7 @@ diredRefresh = do
     Just dir <- withBuffer getfileB
     withBuffer $ insertN $ dir ++ ":\n"
     p <- withBuffer pointB
-    withBuffer $ (addOverlayB 0 (p-2) headStyle)
+    withBuffer $ addOverlayB $ mkOverlay 0 (p-2) headStyle
     -- Scan directory
     di <- liftIO $ diredScanDir dir
     let ds = DiredState { diredPath        = dir
@@ -285,7 +285,7 @@ insertDiredLine (fields, sty, filenm) = do
     p <- withBuffer pointB
     let p1 = p - length (last fields) - 1
         p2 = p - 1
-    when (sty /= defaultStyle) $ withBuffer (addOverlayB p1 p2 sty)
+    when (sty /= defaultStyle) $ withBuffer (addOverlayB (mkOverlay p1 p2 sty) >> return ())
     return (p1, p2, filenm)
 
 data DRStrings = DRPerms {undrs :: String}

@@ -485,11 +485,13 @@ refresh ui e = logNSException "refresh" $ do
     forM_ (buffers e) $ \buf -> when (not $ null $ pendingUpdates $ buf) $ do
       storage <- getTextStorage ui buf
       storage # beginEditing
-      forM_ (pendingUpdates buf) $ applyUpdate storage
+      forM_ ([u | TextUpdate u <- pendingUpdates buf]) $ applyUpdate storage
       storage # endEditing
       contents <- storage # string >>= haskellString
       storage # setMonospaceFont -- FIXME: Why is this needed for mini buffers?
+      -- TODO: Merge overlapping regions...
       let ((size,p),_) = runBufferDummyWindow buf ((,) <$> sizeB <*> pointB)
+      forM_ ([(s,s+l) | StyleUpdate s l <- pendingUpdates buf]) $ \(s,e) -> replaceTagsIn (inBounds s size) (inBounds e size) buf storage
       replaceTagsIn (inBounds (p-100) size) (inBounds (p+100) size) buf storage
 
     (uiWindow ui) # setAutodisplay False -- avoid redrawing while window syncing
