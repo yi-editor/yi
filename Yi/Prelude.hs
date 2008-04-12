@@ -19,9 +19,6 @@ Ord(..),
 Read(..),
 ReaderT(..),
 String,
-concat,
-elem,
-foldr,
 fromIntegral,
 fst,
 fst3,
@@ -29,8 +26,8 @@ head,
 init,
 last,
 lookup,
-mapM_,
 module Data.Bool,
+module Data.Foldable,
 module Data.Function,
 module Data.Int,
 module Data.Traversable,
@@ -53,6 +50,7 @@ unlines,
 import Yi.Debug
 import Text.Show
 import Data.Bool
+import Data.Foldable
 import Data.Function
 import Data.Int
 import Control.Monad.Reader

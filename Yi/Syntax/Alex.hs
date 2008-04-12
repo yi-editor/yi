@@ -10,7 +10,7 @@ module Yi.Syntax.Alex (
                        Result,
                       ) where
 
-import Data.List hiding (map)
+import Data.List hiding (map, foldl')
 import qualified Data.ByteString.Lazy.Char8 as LB
 import Yi.Syntax
 import Yi.Prelude
