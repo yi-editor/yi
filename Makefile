@@ -59,4 +59,9 @@ test-gtk:
 test-vty:
 	$(test_prefix)/bin/yi -fgtk
 
+TAGSSRCDIRS = Yi Shim Data
+TAGSTOPLEVELFILES = Yi.hs Main.hs
+tags TAGS: Yi/* Shim/* Data/* $(TAGSTOPLEVELFILES)
+	find $(TAGSSRCDIRS) -name \*.\*hs | xargs hasktags
+	hasktags -a $(TAGSTOPLEVELFILES)
 
