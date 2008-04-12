@@ -82,8 +82,8 @@ getStrokes point begin end t0 = result
               -- left paren wasn't matched: paint it in red.
               -- note that testing this on the "Group" node actually forces the parsing of the
               -- right paren, undermining online behaviour.
-              | (posnOfs $ tokPosn $ l) == point = (ts l :) . getStrokesL g . (modStroke hintStyle (ts r) :)
-              | (posnOfs $ tokPosn $ r) == point = (modStroke hintStyle (ts l) :) . getStrokesL g . (ts r :)
+              | (posnOfs $ tokPosn $ l) == point || (posnOfs $ tokPosn $ r) == point - 1
+               = (modStroke hintStyle (ts l) :) . getStrokesL g . (modStroke hintStyle (ts r) :)
               | otherwise  = (ts l :) . getStrokesL g . (ts r :)
           getStrokesL g = list (fmap getStrokes' g)
           ts = tokenToStroke
