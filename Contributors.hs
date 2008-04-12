@@ -43,6 +43,7 @@ nickToName x = case BS.map toLower x of
             "grddev"                -> "Gustav Munkby"
             "gwern0"                -> "Gwern Branwen"
             "jeanphilippe.bernardy" -> "Jean-Philippe Bernardy"
+            "kr.angelov"            -> "Krasimr Angelov"
             "m.gubinelli"           -> "Massimiliano Gubinelli"
             "mlang"                 -> "Mario Lang"
             "mwotton"               -> "Mark Wotton"
