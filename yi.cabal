@@ -15,7 +15,6 @@ cabal-Version:  >= 1.2
 tested-with:    GHC==6.8.2
 build-type:     Simple
 data-files:
-  examples/YiConfig.hs
   art/yi+lambda-fat.pdf
   -- FIXME: Install Cocoa icon only when Cocoa configured
 extra-source-files: Yi/Syntax/alex.hsinc
