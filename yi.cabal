@@ -60,6 +60,7 @@ library
            Yi.Keymap.Users.Ertai
            Yi.Keymap.Users.JP
            Yi.Modes
+           Yi.Mode.Haskell
            Yi.Buffer
            Yi.UI.Common
     extensions:     CPP, Rank2Types
