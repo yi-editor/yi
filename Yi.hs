@@ -26,8 +26,11 @@ projectName = "yi"
 initState :: () -- TODO: Should be Editor
 initState = ()
 
-HConf driver yi = getHConf projectName () recoverState defaultConfig showErrorsInConf realMain
+driver :: IO ()
+yi :: Config -> IO ()
+HConf driver yi = getHConf projectName initState recoverState defaultConfig showErrorsInConf realMain
 
+showErrorsInConf :: String -> Config -> Config
 showErrorsInConf errs conf 
     = conf {startAction = withEditor $ newBufferE "*errors*" errs >> return ()}
 

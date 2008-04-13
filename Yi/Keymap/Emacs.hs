@@ -48,6 +48,7 @@ import Data.Maybe
 import Control.Monad
 import Control.Applicative
 
+adjBlock :: Int -> YiM ()
 adjBlock x = withSyntax (\m s -> modeAdjustBlock m s x)
 
 selfInsertKeymap :: Keymap
@@ -65,6 +66,7 @@ placeMark = do
   setA highlightSelectionA True
   pointB >>= setSelectionMarkPointB
 
+deleteB' :: YiM ()
 deleteB' = do
   (adjBlock (-1) >> withBuffer (deleteN 1))
 

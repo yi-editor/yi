@@ -8,8 +8,6 @@ import qualified Yi.Syntax.Latex               as Latex
 import qualified Yi.Syntax.Srmc                as Srmc
 import qualified Yi.Syntax.Cabal               as Cabal
 import qualified Yi.Syntax.Cplusplus           as Cplusplus
-import qualified Yi.Syntax.Fractal as Fractal
-import qualified Yi.Syntax.Paren as Paren
 import qualified Yi.Syntax.Alex as Alex
 import Yi.Syntax.Alex (Tok(..), Posn(..))
 import Yi.Syntax
@@ -18,7 +16,6 @@ import Control.Arrow (first)
 import Yi.Prelude
 import Yi.Buffer (AnyMode(..), Mode(..), emptyMode)
 import Prelude ()
-import qualified Yi.IncrementalParse as IncrParser
 
 fundamental, defaultFundamentalMode :: Mode syntax
 latexMode, cppMode, haskellMode, literateHaskellMode, cabalMode, srmcMode :: Mode Alex.Result
