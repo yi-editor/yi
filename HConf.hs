@@ -16,7 +16,7 @@ import System.Exit
 import System.Environment
 import Data.Typeable
 import Data.Monoid
-import System.FilePath
+import System.FilePath ((</>))
 
 
 {-
@@ -99,8 +99,10 @@ io = liftIO
 getProjectDir :: MonadIO m => String -> m String
 getProjectDir projectName = io $ getAppUserDataDirectory projectName
 
-
-getErrorsFile projectName = (++ ".errors") <$> getProjectDir projectName
+-- | Return the full path to the errors file
+getErrorsFile :: (MonadIO m, Functor m) => String -> m String
+getErrorsFile projectName = do dir <- getProjectDir projectName
+                               return $ dir </> projectName ++ ".errors"
  
 -- | @restart name resume@. Attempt to restart Project by executing the program
 -- @name@.  If @resume@ is 'True', restart with the current window state.
