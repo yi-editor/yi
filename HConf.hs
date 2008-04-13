@@ -69,8 +69,7 @@ getHConf projectName initialState recoverState defaultConfiguration showErrorsIn
     -- for Project, and if it doesn't find one, just launches the default.
     mainMaster = do
      args <- getArgs
-     let launch = do maybeErrors <- handle (\err -> hPrint stderr err >> return Nothing) 
-                                           (buildLaunch projectName)
+     let launch = do maybeErrors <- buildLaunch projectName
                      case maybeErrors of 
                        Nothing ->     realMain defaultConfiguration initialState
                        Just errors -> realMain (showErrorsInConf errors defaultConfiguration) initialState
@@ -154,7 +153,6 @@ recompile projectName force = io $ do
             let msg = unlines $
                     ["Error detected while loading " ++ projectName ++ " configuration file: " ++ src]
                     ++ lines ghcErr ++ ["","Please check the file for errors."]
-            putStrLn $ "asdfsad f: " ++ show msg
             return $ Just msg
           else return Nothing
         else return Nothing
@@ -186,8 +184,9 @@ buildLaunch projectName = do
                Nothing -> return args
                Just msg -> do errFile <- getErrorsFile projectName
                               return (args ++ [errFile])
-    executeFile (dir </> projectName ++ "-"++arch++"-"++os) False args' Nothing
-    return errMsg
+    handle (\err -> return ()) 
+       (executeFile (dir </> projectName ++ "-"++arch++"-"++os) False args' Nothing)
+    return (Just "Custom yi could not be launched!\n" `mappend` errMsg)
 #else
     return Nothing
 #endif
