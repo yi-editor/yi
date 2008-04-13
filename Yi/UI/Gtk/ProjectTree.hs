@@ -7,10 +7,9 @@ import qualified Data.Tree as Tree
 import qualified Graphics.UI.Gtk.ModelView as MView
 import qualified Graphics.UI.Gtk as Gtk
 import Graphics.UI.Gtk hiding ( Window, Event, Point, Style )
-import System.FilePath
-import Paths_yi
 import Yi.Keymap
 import Yi.Dired
+import Yi.UI.Gtk.Utils
 
 projectTreeNew post = do
   projectStore <- MView.treeStoreNew []
@@ -31,7 +30,6 @@ projectTreeNew post = do
   icoDependencies <- loadIcon "dependencies.png"
   icoPlainFolder  <- loadIcon "plain-folder.png"
   icoHsSourceFolder<-loadIcon "hs-source-folder.png"
-  icoFile         <- loadIcon "hsfile.png"
   icoExposedModule<- loadIcon "exposed-module.png"
   icoHiddenModule <- loadIcon "hidden-module.png"
   icoCSource      <- loadIcon "c-source.png"
@@ -70,11 +68,6 @@ projectTreeNew post = do
 loadProjectTree projectStore tree = do
   MView.treeStoreClear projectStore
   MView.treeStoreInsertTree projectStore [] 0 tree
-
-loadIcon fpath = do
-  datadir <- getDataDir
-  icoProject <- pixbufNewFromFile (datadir </> "icons" </> fpath)
-  pixbufAddAlpha icoProject (Just (0,255,0))
 
 
 data Icons

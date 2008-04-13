@@ -42,6 +42,7 @@ import Graphics.UI.Gtk hiding ( Window, Event, Action, Point, Style )
 import qualified Graphics.UI.Gtk as Gtk
 import qualified Graphics.UI.Gtk.ModelView as MView
 import Yi.UI.Gtk.ProjectTree
+import Yi.UI.Gtk.Utils
 import Shim.ProjectContent
 
 ------------------------------------------------------------------------
@@ -103,6 +104,8 @@ start cfg ch outCh _ed = do
   win <- windowNew
   windowSetDefaultSize win 500 700
   --windowFullscreen win
+  ico <- loadIcon "yi+lambda-fat.32.png"
+  windowSetIcon win ico
 
   onKeyPress win (processEvent ch)
 

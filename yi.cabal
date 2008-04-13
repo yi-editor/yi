@@ -16,19 +16,20 @@ tested-with:    GHC==6.8.2
 build-type:     Simple
 data-files:
   art/yi+lambda-fat.pdf
-  icons/dependencies.png
-  icons/plain-folder.png
-  icons/hs-source-folder.png
-  icons/exposed-module.png
-  icons/hidden-module.png
-  icons/package.png
-  icons/project.png
-  icons/c-source.png
-  icons/h-source.png
-  icons/text-file.png
-  icons/license-file.png
-  icons/setup-script.png
-  -- FIXME: Install Cocoa icon only when Cocoa configured
+  art/yi+lambda-fat.32.png
+  art/dependencies.png
+  art/plain-folder.png
+  art/hs-source-folder.png
+  art/exposed-module.png
+  art/hidden-module.png
+  art/package.png
+  art/project.png
+  art/c-source.png
+  art/h-source.png
+  art/text-file.png
+  art/license-file.png
+  art/setup-script.png
+  art/setup-script.png
 extra-source-files: Yi/Syntax/alex.hsinc
 
 flag shim
@@ -89,6 +90,7 @@ library
       cpp-options: -DFRONTEND_GTK
       exposed-modules: Yi.UI.Gtk
       other-modules: Yi.UI.Gtk.ProjectTree
+                     Yi.UI.Gtk.Utils
 
     if flag (cocoa)
       build-depends: HOC, HOC-AppKit, HOC-Foundation
