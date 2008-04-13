@@ -1,3 +1,9 @@
+--
+-- Copyright (c) Krasimir Angelov 2008.
+--
+-- Generic zipper implementation for Data.Tree
+--
+
 module Data.Tree.Zipper
          ( TreeLoc(..), TreeCxt(..)
 

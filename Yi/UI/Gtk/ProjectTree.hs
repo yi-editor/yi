@@ -1,3 +1,11 @@
+--
+-- Copyright (c) Krasimir Angelov 2008.
+--
+-- GTK implementation for "Project View".
+-- It uses the Shim.ProjectContent extraction
+-- algorithm.
+--
+
 module Yi.UI.Gtk.ProjectTree
          ( projectTreeNew
          , loadProjectTree

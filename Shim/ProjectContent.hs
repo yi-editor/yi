@@ -1,3 +1,10 @@
+--
+-- Copyright (c) Krasimir Angelov 2008.
+--
+-- Extraction of the "Project View" from
+-- already configure Cabal package.
+--
+
 module Shim.ProjectContent
          ( loadFile
          , ProjectItem(..)

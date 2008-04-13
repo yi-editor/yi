@@ -1,3 +1,9 @@
+--
+-- Copyright (c) Krasimir Angelov 2008.
+--
+-- Random GTK utils
+--
+
 module Yi.UI.Gtk.Utils where
 
 import Paths_yi
