@@ -16,8 +16,7 @@ recoverState :: String -> IO ()
 recoverState _stateName = return ()
 
 realMain :: Config -> yiState -> IO ()
-realMain cfg _state = main0 cfg
-  where main0 cfg = do
+realMain cfg _state = do
           initDebug ".yi.dbg"
           Yi.main cfg
 
