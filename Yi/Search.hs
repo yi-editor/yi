@@ -313,25 +313,23 @@ isearchWordE = do
   isearchAddE (prefix ++ word)
 
 isearchFinishE :: EditorM ()
-isearchFinishE = do
-  Isearch s <- getDynamic
-  let (_,_,_,ov) = head s
-  let (_,p0,_,_) = last s
-  withBuffer0 $ do
-    maybeDelOverlayB ov
-    setSelectionMarkPointB p0
-  printMsg "mark saved where search started"
+isearchFinishE = isearchEnd True
 
 isearchCancelE :: EditorM ()
-isearchCancelE = do
+isearchCancelE = isearchEnd False
+
+isearchEnd :: Bool -> EditorM ()
+isearchEnd accept = do
   Isearch s <- getDynamic
   let (_,_,_,ov) = head s
   let (_,p0,_,_) = last s
-  withBuffer0 $ do
-    maybeDelOverlayB ov
-    moveTo p0
-  printMsg "Quit"
-
+  withBuffer0 $ maybeDelOverlayB ov
+  if accept 
+     then do withBuffer0 $ setSelectionMarkPointB p0 
+             printMsg "Quit"
+     else withBuffer0 $ moveTo p0
+  
+  
 
 -----------------
 -- Query-Replace
