@@ -1,4 +1,7 @@
-module Yi.UI.Gtk.ProjectTree where
+module Yi.UI.Gtk.ProjectTree
+         ( projectTreeNew
+         , loadProjectTree
+         ) where
 
 import Distribution.Version
 import Distribution.Package
