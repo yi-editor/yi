@@ -102,7 +102,7 @@ library
       cpp-options: -DSHIM
 
       exposed-modules:  Yi.Mode.Shim
-      other-modules: Shim.SHM, Shim.Utils, Shim.SessionMonad, Shim.Hsinfo, Shim.GhcCompat, Shim.ExprSearch
+      other-modules: Shim.SHM, Shim.Utils, Shim.SessionMonad, Shim.Hsinfo, Shim.GhcCompat, Shim.ExprSearch, Shim.ProjectContent
 
     other-modules:
         Paths_yi,
