@@ -77,7 +77,7 @@ mkUI ui = Common.UI
 
 -- | Initialise the ui
 start :: Common.UIBoot
-start _cfg ch _outCh editor _runEd = do
+start _cfg ch _outCh editor = do
   liftIO $ do 
           v <- mkVty
           (x0,y0) <- Vty.getSize v

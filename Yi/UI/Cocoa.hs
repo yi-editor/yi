@@ -225,13 +225,12 @@ ysv_tile self = do
 
 ------------------------------------------------------------------------
 
-data UI = forall action. UI {
-              uiWindow :: NSWindow ()
+data UI = UI {uiWindow :: NSWindow ()
              ,uiBox :: NSSplitView ()
              ,uiCmdLine :: NSTextField ()
              ,uiBuffers :: IORef (M.Map BufferRef (NSTextStorage ()))
              ,windowCache :: IORef [WinInfo]
-             ,uiRunEditor :: EditorM () -> IO ()
+             ,uiActionCh :: Action -> IO ()
              ,uiConfig :: Common.UIConfig
              }
 
@@ -342,7 +341,7 @@ addSubviewWithTextLine cfg view parent = do
 
 -- | Initialise the ui
 start :: Common.UIBoot
-start cfg ch outCh _ed runEd = do
+start cfg ch outCh _ed = do
 
   -- Ensure that our command line application is also treated as a gui application
   fptr <- mallocForeignPtrBytes 32 -- way to many bytes, but hey...
@@ -438,7 +437,7 @@ newWindow ui mini b = do
   v # setSelectable True
   v # setAlignment nsLeftTextAlignment
   v # sizeToFit
-  v # setIVar _runBuffer ((uiRunEditor ui) . withGivenBuffer0 (keyB b))
+  v # setIVar _runBuffer (uiActionCh ui . makeAction . withGivenBuffer0 (keyB b))
 
   (ml, view) <- if mini
    then do

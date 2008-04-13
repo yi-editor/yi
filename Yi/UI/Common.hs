@@ -4,6 +4,7 @@ module Yi.UI.Common where
 
 import Yi.Editor
 import Yi.Event
+import {-# SOURCE #-} Yi.Keymap
 
 data UIConfig = UIConfig {
    configFontSize :: Maybe Int,
@@ -22,4 +23,4 @@ data UI = UI
      prepareAction         :: IO (EditorM ())  -- ^ Ran before an action is executed
     }
 
-type UIBoot = forall action. (UIConfig -> (Event -> IO ()) -> (action -> IO ()) ->  Editor -> (EditorM () -> action) -> IO UI)
+type UIBoot = UIConfig -> (Event -> IO ()) -> (Action -> IO ()) ->  Editor -> IO UI

@@ -136,7 +136,7 @@ startEditor cfg st = do
     (ui, runYi) <- (mdo let handler e = runYi $ errorEditor (show e)
                             inF  ev  = handle handler (runYi (dispatch ev))
                             outF act = handle handler (runYi (interactive act))
-                        ui <- uiStart (configUI cfg) inF outF initEditor makeAction
+                        ui <- uiStart (configUI cfg) inF outF initEditor
                         let yi = Yi newSt ui startThreads inF outF startKm keymaps startSubprocessId startSubprocesses cfg 
 #ifdef SHIM 
                                     shim

@@ -16,6 +16,7 @@ import Yi.Editor hiding (windows)
 import qualified Yi.Window as Window
 import Yi.Window (Window)
 import Yi.Event
+import Yi.Keymap
 import Yi.Debug
 import Yi.Monad
 import qualified Yi.UI.Common as Common
@@ -37,20 +38,18 @@ import Data.Traversable
 import Data.Unique
 import qualified Data.Map as M
 
-import Graphics.UI.Gtk hiding ( Window, Event, Point, Style )
+import Graphics.UI.Gtk hiding ( Window, Event, Action, Point, Style )
 import qualified Graphics.UI.Gtk as Gtk
 
 ------------------------------------------------------------------------
 
-data UI = forall action. UI {
-              uiWindow :: Gtk.Window
+data UI = UI { uiWindow :: Gtk.Window
              , uiBox :: VBox
              , uiCmdLine :: Label
              , uiBuffers :: IORef (M.Map BufferRef TextBuffer)
              , tagTable :: TextTagTable
              , windowCache :: IORef [WinInfo]
-             , uiActionCh :: action -> IO ()
-             , uiRunEd :: EditorM () -> action
+             , uiActionCh :: Action -> IO ()
              , uiConfig :: Common.UIConfig
              }
 
@@ -92,7 +91,7 @@ mkFontDesc cfg = do
 
 -- | Initialise the ui
 start :: Common.UIBoot
-start cfg ch outCh _ed runEd = do
+start cfg ch outCh _ed = do
   initGUI
 
   -- rest.
@@ -125,7 +124,7 @@ start cfg ch outCh _ed runEd = do
   wc <- newIORef []
   tt <- textTagTableNew
 
-  let ui = UI win vb' cmd bufs tt wc outCh runEd cfg
+  let ui = UI win vb' cmd bufs tt wc outCh cfg
 
   return (mkUI ui)
 
@@ -267,8 +266,7 @@ handleClick ui w event = do
 
           _ -> return ()
 
-  case ui of
-    UI {uiActionCh = ch, uiRunEd = run} -> ch (run editorAction)
+  uiActionCh ui (makeAction editorAction)
   return True
 
 
