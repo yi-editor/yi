@@ -6,6 +6,7 @@ import Yi.Modes
 import Data.List (isSuffixOf)
 import Yi.Prelude
 import Prelude ()
+import Yi.Mode.Haskell
 
 bestHaskellMode = cleverHaskellMode 
  {
