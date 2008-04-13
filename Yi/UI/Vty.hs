@@ -71,7 +71,7 @@ mkUI ui = Common.UI
    Common.end            = end ui,
    Common.suspend        = raiseSignal sigTSTP,
    Common.refresh        = scheduleRefresh ui,
-   Common.prepareAction  = prepareAction ui
+   Common.prepareAction  = prepareAction ui,
    Common.reloadProject  = \_ -> return ()
   }
 
