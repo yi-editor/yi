@@ -39,8 +39,7 @@ import qualified Yi.Window as Window
 import Yi.Window (Window)
 import Paths_yi (getDataFileName)
 
-import Control.Concurrent (yield, threadDelay)
-import Control.Concurrent.Chan
+import Control.Concurrent (yield)
 import Control.Concurrent.MVar
 import Control.Monad.Reader (liftIO, when, MonadIO)
 import Control.Monad (ap, replicateM_)
@@ -111,7 +110,7 @@ $(exportClass "YiApplication" "ya_" [
   ])
 
 ya_doTick :: YiApplication () -> IO ()
-ya_doTick self = replicateM_ 4 yield
+ya_doTick _ = replicateM_ 4 yield
 
 ya_run :: YiApplication () -> IO ()
 ya_run self = do
@@ -134,7 +133,7 @@ handleKeyEvent event ch = do
   mask <- event # modifierFlags
   str <- event # charactersIgnoringModifiers >>= haskellString
   logPutStrLn $ "Key " ++ str
-  let (k,shift) = case str of
+  let (k,shift') = case str of
                 "\r"     -> (Just KEnter, True)
                 "\DEL"   -> (Just KBS, True)
                 "\ESC"   -> (Just KEsc, True)
@@ -149,7 +148,7 @@ handleKeyEvent event ch = do
                 [c]      -> (Just $ KASCII c, False)
                 _        -> (Nothing, True)
   case (k,ch) of
-    (Just k, Just ch) -> ch (Event k (modifiers shift mask))
+    (Just k, Just ch) -> ch (Event k (modifiers shift' mask))
     _                 -> return ()
 
 modifierTable :: Bool -> [(CUInt, Modifier)]
@@ -157,7 +156,7 @@ modifierTable False = [(bit 18,MCtrl), (bit 19,MMeta)]
 modifierTable True  = (bit 17,MShift) : modifierTable False
 
 modifiers :: Bool -> CUInt -> [Modifier]
-modifiers shift mask = [yi | (cocoa, yi) <- modifierTable shift, (cocoa .&. mask) /= 0]
+modifiers shift' mask = [yi | (cocoa, yi) <- modifierTable shift', (cocoa .&. mask) /= 0]
 
 ------------------------------------------------------------------------
 
@@ -294,8 +293,11 @@ width, height :: NSRect -> Float
 width (NSRect _ (NSSize w _)) = w
 height (NSRect _ (NSSize _ h)) = h
 
+{-
+-- UNUSED:
 translate :: Float -> Float -> NSRect -> NSRect
 translate dx dy (NSRect (NSPoint x y) s) = NSRect (NSPoint (x + dx) (y + dy)) s
+-}
 
 toNSView :: forall t. ID () -> NSView t
 toNSView = castObject
@@ -307,8 +309,8 @@ toYiController = castObject
 
 setMonospaceFont :: Has_setFont v => UIConfig -> v -> IO ()
 setMonospaceFont cfg view = do
-  let size = maybe 0.0 fromIntegral (configFontSize cfg)
-  f <- _NSFont # userFixedPitchFontOfSize size
+  let size' = maybe 0.0 fromIntegral (configFontSize cfg)
+  f <- _NSFont # userFixedPitchFontOfSize size'
   setFont f view
 
 newTextLine :: UIConfig -> IO (NSTextField ())
@@ -404,7 +406,7 @@ start cfg ch outCh _ed = do
 
 -- | Run the main loop
 main :: UI -> IO ()
-main ui = do
+main _ = do
   logPutStrLn "Cocoa main loop running"
   _YiApplication # sharedApplication >>= run
 
@@ -525,12 +527,12 @@ refresh ui e = logNSException "refresh" $ do
       storage # beginEditing
       forM_ ([u | TextUpdate u <- pendingUpdates buf]) $ applyUpdate storage
       storage # endEditing
-      contents <- storage # string >>= haskellString
+      -- UNUSED: contents <- storage # string >>= haskellString
       storage # setMonospaceFont (uiConfig ui) -- FIXME: Why is this needed for mini buffers?
       -- TODO: Merge overlapping regions...
-      let ((size,p),_) = runBufferDummyWindow buf ((,) <$> sizeB <*> pointB)
-      forM_ ([(s,s+l) | StyleUpdate s l <- pendingUpdates buf]) $ \(s,e) -> replaceTagsIn (inBounds s size) (inBounds e size) buf storage
-      replaceTagsIn (inBounds (p-100) size) (inBounds (p+100) size) buf storage
+      let ((size',p),_) = runBufferDummyWindow buf ((,) <$> sizeB <*> pointB)
+      forM_ ([(s,s+l) | StyleUpdate s l <- pendingUpdates buf]) $ \(s,e') -> replaceTagsIn (inBounds s size') (inBounds e' size') buf storage
+      replaceTagsIn (inBounds (p-100) size') (inBounds (p+100) size') buf storage
 
     (uiWindow ui) # setAutodisplay False -- avoid redrawing while window syncing
     WS.debug "syncing" ws
@@ -558,15 +560,15 @@ replaceTagsIn from to buf storage = do
   let (styleSpans, _) = runBufferDummyWindow buf (styleRangesB (to - from) from)
   forM_ (zip styleSpans (drop 1 styleSpans)) $ \((l,Style fg bg),(r,_)) -> do
     logPutStrLn $ "Setting style " ++ show fg ++ show bg ++ " on " ++ show l ++ " - " ++ show r
-    fg' <- color True fg
-    bg' <- color False bg
+    fg' <- color' True fg
+    bg' <- color' False bg
     let range = NSRange (toEnum l) (toEnum $ r-l)
     storage # addAttributeValueRange nsForegroundColorAttributeName fg' range
     storage # addAttributeValueRange nsBackgroundColorAttributeName bg' range
   where
-    color fg Default = if fg then _NSColor # blackColor else _NSColor # whiteColor
-    color fg Reverse = if fg then _NSColor # whiteColor else _NSColor # blackColor
-    color _g (RGB r g b) = _NSColor # colorWithDeviceRedGreenBlueAlpha ((fromIntegral r)/255) ((fromIntegral g)/255) ((fromIntegral b)/255) 1.0
+    color' fg Default = if fg then _NSColor # blackColor else _NSColor # whiteColor
+    color' fg Reverse = if fg then _NSColor # whiteColor else _NSColor # blackColor
+    color' _g (RGB r g b) = _NSColor # colorWithDeviceRedGreenBlueAlpha ((fromIntegral r)/255) ((fromIntegral g)/255) ((fromIntegral b)/255) 1.0
 
 applyUpdate :: NSTextStorage () -> Update -> IO ()
 applyUpdate buf (Insert p s) =
