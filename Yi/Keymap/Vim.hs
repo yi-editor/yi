@@ -3,7 +3,6 @@
 --
 -- Copyright (c) 2004-5 Don Stewart - http://www.cse.unsw.edu.au/~dons
 --
---
 
 
 -- | Vim keymap for Yi. Emulates vim :set nocompatible

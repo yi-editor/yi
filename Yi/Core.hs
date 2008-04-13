@@ -132,17 +132,16 @@ startEditor cfg st = do
                  sessionMap = M.empty,
                  compBuffer = M.empty }
 #endif
-
-    (ui, runYi) <- (mdo let handler e = runYi $ errorEditor (show e)
-                            inF  ev  = handle handler (runYi (dispatch ev))
-                            outF act = handle handler (runYi (interactive act))
-                        ui <- uiStart (configUI cfg) inF outF initEditor
-                        let yi = Yi newSt ui startThreads inF outF startKm keymaps startSubprocessId startSubprocesses cfg 
+    (ui, runYi) <- mdo let handler e = runYi $ errorEditor (show e)
+                           inF  ev  = handle handler (runYi (dispatch ev))
+                           outF act = handle handler (runYi (interactive act))
+                       ui <- uiStart (configUI cfg) inF outF initEditor
+                       let yi = Yi newSt ui startThreads inF outF startKm keymaps startSubprocessId startSubprocesses cfg 
 #ifdef SHIM 
-                                    shim
+                                   shim
 #endif
-                            runYi f = runReaderT (runYiM f) yi
-                        return (ui, runYi))
+                           runYi f = runReaderT (runYiM f) yi
+                       return (ui, runYi)
   
     runYi $ do
 
