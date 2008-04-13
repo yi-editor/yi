@@ -38,8 +38,6 @@ module Data.Tree.Zipper
          ) where
 
 import Control.Monad.State
-import Control.Arrow ((&&&), (>>>))
-import Data.List hiding (delete)
 import Data.Tree
 
 data TreeCxt a = Top
@@ -62,20 +60,17 @@ data TreeLoc a = Loc { tree :: Tree a,
 -- | move down to the nth child
 down :: Int -> State (TreeLoc a) a
 down n = modify down' >> getLabel where
-    down' (Loc (Node v []) _) = error "Cannot go down from an empty branch"
-    down' (Loc (Node v cs) c) | n >= length cs = 
-                                  error $ "There aren't that many branches"
-                              | otherwise      = 
-                                  let c' = Child { label  = v,
-                                                   parent = c,
-                                                   lefts  = take n cs,
-                                                   rights = drop (n+1) cs }
-                                  in Loc { tree = (cs !! n), cxt = c' }
+    down' (Loc (Node v cs) c) = let (t:ls,rs) = splitChildren [] cs (n+1)
+                                    c' = Child { label  = v,
+                                                 parent = c,
+                                                 lefts  = ls,
+                                                 rights = rs }
+                                in Loc { tree = t, cxt = c' }
 
 -- | move down to the first child
 firstChild :: State (TreeLoc a) a
 firstChild = modify down' >> getLabel where
-    down' (Loc (Node v []    ) _) = error "Cannot go down from an empty branch"
+    down' (Loc (Node _ []    ) _) = error "Cannot go down from an empty branch"
     down' (Loc (Node v (t:ts)) c) = let c' = Child { label  = v,
                                                      parent = c,
                                                      lefts  = [],
@@ -85,42 +80,47 @@ firstChild = modify down' >> getLabel where
 -- | move down to the last child
 lastChild :: State (TreeLoc a) a
 lastChild = modify down' >> getLabel where
-    down' (Loc (Node v []) _) = error "Cannot go down from an empty branch"
-    down' (Loc (Node v ts) c) = let c' = Child { label  = v,
-                                                 parent = c,
-                                                 lefts  = init ts,
-                                                 rights = [] }
-                                in Loc { tree = last ts, cxt = c' }
+    down' (Loc (Node v ts) c) =
+      case reverse ts of
+        []     -> error "Cannot go down from an empty branch"
+        (t:ts) -> let c' = Child { label  = v,
+                                   parent = c,
+                                   lefts  = ts,
+                                   rights = [] }
+                  in Loc { tree = t, cxt = c' }
 
 -- | move up
 up :: State (TreeLoc a) a
 up = modify up' >> getLabel where
     up' (Loc _ Top              ) = error "Cannot go up from the top node"
-    up' (Loc t (Child v c ls rs)) = Loc { tree = Node v (ls ++ [t] ++ rs), cxt = c }
+    up' (Loc t (Child v c ls rs)) = Loc { tree = Node v (combChildren ls t rs), cxt = c }
+
 
 -- | move left a sibling
 left :: State (TreeLoc a) a
 left = modify left' >> getLabel where
-    left' l@(Loc t (Child v c ls rs)) | isFirst l = 
-                                          error $ "Cannot move left from the first node"
-                                      | otherwise = 
-                                          let c' = Child { label  = v,
-                                                           parent = c,
-                                                           lefts  = init ls,
-                                                           rights = t : rs }
-                                          in Loc { tree = last ls, cxt = c' }
+    left' (Loc t Top              ) = error $ "Cannot move left in the root node"
+    left' (Loc t (Child v c ls rs)) =
+      case ls of
+        []     -> error $ "Cannot move left from the first node"
+        (l:ls) -> let c' = Child { label  = v,
+                                   parent = c,
+                                   lefts  = ls,
+                                   rights = t : rs }
+                  in Loc { tree = l, cxt = c' }
 
 -- | move right a sibling
 right :: State (TreeLoc a) a
 right = modify right' >> getLabel where
-    right' l@(Loc t (Child v c ls rs)) | isLast l  = 
-                                           error $ "Cannot move right from the last node"
-                                       | otherwise = 
-                                           let c' = Child { label  = v,
-                                                            parent = c,
-                                                            lefts  = ls ++ [t],
-                                                            rights = tail rs }
-                                           in Loc { tree = head rs, cxt = c' }
+    right' (Loc t Top              ) = error $ "Cannot move right in the root node"
+    right' (Loc t (Child v c ls rs)) =
+      case rs of
+        []     -> error $ "Cannot move right from the last node"
+        (r:rs) -> let c' = Child { label  = v,
+                                   parent = c,
+                                   lefts  = t:ls,
+                                   rights = rs }
+                  in Loc { tree = r, cxt = c' }
 
 -- | move to the top node
 top :: State (TreeLoc a) a
@@ -185,7 +185,7 @@ insertRight v' = modify insertRight' where
     insertRight' (Loc t c  ) = let c' = Child { label  = label c,
                                                 parent = parent c,
                                                 rights = rights c,
-                                                lefts  = lefts c ++ [t] }
+                                                lefts  = t:lefts c }
                                in Loc { tree = Node v' [], cxt = c' }
 
 -- | insert a subtree as the last child of the current node
@@ -194,16 +194,17 @@ insertDown v' = modify insertDown' where
     insertDown' (Loc (Node v cs) c) = let c' = Child { label  = v,
                                                        parent = c,
                                                        rights = [],
-                                                       lefts  = cs }
+                                                       lefts  = reverse cs }
                                       in Loc { tree = Node v' [], cxt = c' }
 
 -- | insert a subtree as the nth child of the current node
 insertDownAt :: a -> Int -> State (TreeLoc a) ()
 insertDownAt v' n = modify insertDA' where
-    insertDA' (Loc (Node v cs) c) = let c' = Child { label  = v,
+    insertDA' (Loc (Node v cs) c) = let (ls,rs) = splitChildren [] cs n
+                                        c' = Child { label  = v,
                                                      parent = c,
-                                                     lefts  = take (n+1) cs,
-                                                     rights = drop (n+1) cs }
+                                                     lefts  = ls,
+                                                     rights = rs }
                                     in Loc { tree = Node v' [], cxt = c' }
 
 -- | delete the current subtree. move right if possible, otherwise left if 
@@ -222,9 +223,9 @@ delete = modify del' >> getLabel where
                      | isLast l  = 
                        let c' = Child { label  = label  c,
                                         parent = parent c,
-                                        lefts  = init $ lefts c,
+                                        lefts  = tail $ lefts c,
                                         rights = rights c }
-                       in Loc { tree = last $ lefts c, cxt = c' }
+                       in Loc { tree = head $ lefts c, cxt = c' }
                      -- otherwise, just move right
                      | otherwise = 
                        let c' = Child { label  = label  c,
@@ -250,3 +251,13 @@ putLabel v = modify setStruct where
 -- | get the current label
 getLabel :: State (TreeLoc a) a
 getLabel = gets (rootLabel . tree)
+
+
+-- Utils
+--
+
+splitChildren acc xs     0 = (acc,xs)
+splitChildren acc (x:xs) n = splitChildren (x:acc) xs $! n-1
+splitChildren acc []     n = error "There aren't that many branches"
+
+combChildren ls t rs = foldl (flip (:)) (t:rs) ls
