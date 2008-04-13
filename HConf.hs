@@ -1,20 +1,18 @@
 module HConf where
 
 import Prelude hiding ( catch )
-import Control.Exception (handle, catch, bracket, throw, Exception(ExitException))
+import Control.Exception (handle, catch, bracket)
 import Control.Applicative
-import Control.Monad.State
 import Control.Monad.Reader
 import System.IO
 import System.Info
 #ifndef mingw32_HOST_OS
-import System.Posix.Process (executeFile, forkProcess, getProcessStatus, createSession)
+import System.Posix.Process (executeFile)
 #endif
 import System.Process
 import System.Directory
 import System.Exit
 import System.Environment
-import Data.Typeable
 import Data.Monoid
 import System.FilePath ((</>))
 
@@ -184,9 +182,9 @@ buildLaunch projectName = do
     args <- getArgs
     args' <- case errMsg of
                Nothing -> return args
-               Just msg -> do errFile <- getErrorsFile projectName
-                              return (args ++ [errFile])
-    handle (\err -> return ()) 
+               Just _ -> do errFile <- getErrorsFile projectName
+                            return (args ++ [errFile])
+    handle (\_exception -> return ())
        (executeFile (dir </> projectName ++ "-"++arch++"-"++os) False args' Nothing)
     return (Just "Custom yi could not be launched!\n" `mappend` errMsg)
 #else
