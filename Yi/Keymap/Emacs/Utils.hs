@@ -21,6 +21,7 @@ module Yi.Keymap.Emacs.Utils
   , queryReplaceE
   , isearchKeymap
   , shellCommandE
+  , cabalConfigureE
   , executeExtendedCommandE
   , evalRegionE
   , readArgC
@@ -66,8 +67,9 @@ import System.FilePath
 import System.Directory
   ( doesDirectoryExist
   , getHomeDirectory
-  , getCurrentDirectory
   , getDirectoryContents
+  , getCurrentDirectory
+  , setCurrentDirectory
   )
 import Control.Monad.Trans (MonadIO (..))
 
@@ -85,6 +87,7 @@ import Yi.Templates
   ( addTemplate
   , templateNames
   )
+import Yi.UI.Common 
 
 {- End of Module Imports -}
 
@@ -180,6 +183,19 @@ shellCommandE = do
       (cmdOut,cmdErr,exitCode) <- liftIO $ runShellCommand cmd
       case exitCode of
         ExitSuccess -> withEditor $ newBufferE "*Shell Command Output*" cmdOut >> return ()
+        ExitFailure _ -> msgEditor cmdErr
+
+----------------------------
+-- cabal-configure
+cabalConfigureE :: YiM ()
+cabalConfigureE =
+    withMinibuffer "Project directory:" (completeFileName Nothing) $ \fpath ->
+    withMinibuffer "Configure args:" return $ \cmd -> do
+      liftIO $ setCurrentDirectory fpath
+      (cmdOut,cmdErr,exitCode) <- liftIO $ popen "runghc" ("Setup.hs":"configure":words cmd) Nothing
+      case exitCode of
+        ExitSuccess   -> do withUI $ \ui -> reloadProject ui "."
+                            withEditor $ withOtherWindow $ newBufferE "*Shell Command Output*" cmdOut >> return ()
         ExitFailure _ -> msgEditor cmdErr
 
 -----------------------------

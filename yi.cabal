@@ -16,6 +16,18 @@ tested-with:    GHC==6.8.2
 build-type:     Simple
 data-files:
   art/yi+lambda-fat.pdf
+  icons/dependencies.png
+  icons/plain-folder.png
+  icons/hs-source-folder.png
+  icons/exposed-module.png
+  icons/hidden-module.png
+  icons/package.png
+  icons/project.png
+  icons/c-source.png
+  icons/h-source.png
+  icons/text-file.png
+  icons/license-file.png
+  icons/setup-script.png
   -- FIXME: Install Cocoa icon only when Cocoa configured
 extra-source-files: Yi/Syntax/alex.hsinc
 
@@ -114,6 +126,7 @@ library
         HConf
         -- Should probably be split out to another package.
         Data.Digest.SHA1
+        Data.Tree.Zipper
 
 --         Broken:
 --                Yi.Keymap.Ee,

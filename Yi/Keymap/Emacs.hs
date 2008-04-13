@@ -36,6 +36,7 @@ import Yi.Keymap.Emacs.Utils
   , scrollDownE
   , scrollUpE
   , shellCommandE
+  , cabalConfigureE
   , switchBufferE
   , withMinibuffer
   )
@@ -128,6 +129,7 @@ keys =
   , ( "C-x v",    write $ repeatingArg shrinkWinE)
   , ( "C-y",      write $ yankE)
   , ( "M-!",      write $ shellCommandE)
+  , ( "M-p",      write $ cabalConfigureE)
   , ( "M-/",      write $ wordCompleteB)
   , ( "M-<",      write $ repeatingArg topB)
   , ( "M->",      write $ repeatingArg botB)

@@ -262,6 +262,7 @@ mkUI ui = Common.UI
    Common.suspend               = uiWindow ui # performMiniaturize nil,
    Common.refresh               = refresh       ui,
    Common.prepareAction         = prepareAction         ui
+   Common.reloadProject         = \_ -> return ()
   }
 
 rect :: Float -> Float -> Float -> Float -> NSRect

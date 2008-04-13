@@ -40,6 +40,9 @@ import qualified Data.Map as M
 
 import Graphics.UI.Gtk hiding ( Window, Event, Action, Point, Style )
 import qualified Graphics.UI.Gtk as Gtk
+import qualified Graphics.UI.Gtk.ModelView as MView
+import Yi.UI.Gtk.ProjectTree
+import Shim.ProjectContent
 
 ------------------------------------------------------------------------
 
@@ -51,6 +54,7 @@ data UI = UI { uiWindow :: Gtk.Window
              , windowCache :: IORef [WinInfo]
              , uiActionCh :: Action -> IO ()
              , uiConfig :: Common.UIConfig
+             , uiProjectStore :: MView.TreeStore ProjectItem
              }
 
 data WinInfo = WinInfo
@@ -76,8 +80,9 @@ mkUI ui = Common.UI
    Common.main                  = main                  ui,
    Common.end                   = end,
    Common.suspend               = windowIconify (uiWindow ui),
-   Common.refresh               = refresh       ui,
-   Common.prepareAction         = prepareAction         ui
+   Common.refresh               = refresh               ui,
+   Common.prepareAction         = prepareAction         ui,
+   Common.reloadProject         = reloadProject         ui
   }
 
 mkFontDesc :: Common.UIConfig -> IO FontDescription
@@ -101,8 +106,29 @@ start cfg ch outCh _ed = do
 
   onKeyPress win (processEvent ch)
 
+  paned <- hPanedNew
+
   vb <- vBoxNew False 1  -- Top-level vbox
+
+  (projectTree, projectStore) <- projectTreeNew outCh  
+  modulesTree <- treeViewNew
+
+  tabs <- notebookNew
+  set tabs [notebookTabPos := PosBottom]
+  panedAdd1 paned tabs
+
+  scrlProject <- scrolledWindowNew Nothing Nothing
+  scrolledWindowAddWithViewport scrlProject projectTree
+  scrolledWindowSetPolicy scrlProject PolicyAutomatic PolicyAutomatic
+  notebookAppendPage tabs scrlProject "Project"
+
+  scrlModules <- scrolledWindowNew Nothing Nothing
+  scrolledWindowAddWithViewport scrlModules modulesTree
+  scrolledWindowSetPolicy scrlModules PolicyAutomatic PolicyAutomatic
+  notebookAppendPage tabs scrlModules "Modules"
+
   vb' <- vBoxNew False 1
+  panedAdd2 paned vb'
 
   set win [ containerChild := vb ]
   onDestroy win mainQuit
@@ -111,9 +137,9 @@ start cfg ch outCh _ed = do
   set cmd [ miscXalign := 0.01 ]
   widgetModifyFont cmd =<< Just <$> mkFontDesc cfg
 
-  set vb [ containerChild := vb',
+  set vb [ containerChild := paned,
            containerChild := cmd,
-           boxChildPacking cmd := PackNatural]
+           boxChildPacking cmd  := PackNatural ]
 
   -- use our magic threads thingy (http://haskell.org/gtk2hs/archives/2005/07/24/writing-multi-threaded-guis/)
   timeoutAddFull (yield >> return True) priorityDefaultIdle 50
@@ -124,7 +150,7 @@ start cfg ch outCh _ed = do
   wc <- newIORef []
   tt <- textTagTableNew
 
-  let ui = UI win vb' cmd bufs tt wc outCh cfg
+  let ui = UI win vb' cmd bufs tt wc outCh cfg projectStore
 
   return (mkUI ui)
 
@@ -430,6 +456,10 @@ prepareAction ui = do
                      return (l1 - l0)
     -- updates the heights of the windows
     return $ modifyWindows (\ws -> fst $ runState (mapM distribute ws) heights)
+
+reloadProject ui fpath = do
+  tree <- loadFile fpath
+  loadProjectTree (uiProjectStore ui) tree
 
 distribute :: Window -> State [Int] Window
 distribute win = do
