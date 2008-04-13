@@ -11,7 +11,7 @@ author:         AUTHORS
 maintainer:     yi-devel@googlegroups.com
 homepage:       http://haskell.org/haskellwiki/Yi
 
-cabal-Version:  >= 1.3.10
+cabal-Version:  >= 1.2.3.0
 tested-with:    GHC==6.8.2
 build-type:     Simple
 data-files:
@@ -81,6 +81,8 @@ library
        build-depends: vty>=3.0.0
        cpp-options: -DFRONTEND_VTY
        exposed-modules: Yi.UI.Vty
+       
+    hs-source-dirs: . dist/build/autogen
 
     if flag (gtk)
       build-depends: gtk>=0.9.12 && < 0.9.12.2
