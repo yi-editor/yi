@@ -48,28 +48,32 @@ import Data.Maybe
 import Control.Monad
 import Control.Applicative
 
+adjBlock x = withSyntax (\m s -> modeAdjustBlock m s x)
+
 selfInsertKeymap :: Keymap
 selfInsertKeymap = do
   Event (KASCII c) [] <- satisfy isPrintableEvent
-  write (insertSelf c)
+  write (adjBlock 1 >> insertSelf c)
       where isPrintableEvent (Event (KASCII c) []) = c >= ' '
             isPrintableEvent _ = False
 
 keymap :: Keymap
-keymap =
-  selfInsertKeymap <|> makeKeymap keys
+keymap = selfInsertKeymap <|> makeKeymap keys
 
 placeMark :: BufferM ()
 placeMark = do
   setA highlightSelectionA True
   pointB >>= setSelectionMarkPointB
 
+deleteB' = do
+  (adjBlock (-1) >> withBuffer (deleteN 1))
+
 keys :: KList
 keys =
   [ ( "TAB",      write $ withMode $ modeIndent)
   , ( "RET",      write $ repeatingArg $ insertB '\n')
-  , ( "DEL",      write $ repeatingArg $ deleteN 1)
-  , ( "BACKSP",   write $ repeatingArg bdeleteB)
+  , ( "DEL",      write $ repeatingArg deleteB')
+  , ( "BACKSP",   write $ repeatingArg (adjBlock (-1) >> withBuffer bdeleteB))
   , ( "C-M-w",    write $ appendNextKillE)
   , ( "C-/",      write $ repeatingArg undoB)
   , ( "C-_",      write $ repeatingArg undoB)
@@ -81,7 +85,7 @@ keys =
   , ( "C-SPC",    write $ placeMark)
   , ( "C-a",      write $ repeatingArg (maybeMoveB Line Backward))
   , ( "C-b",      write $ repeatingArg leftB)
-  , ( "C-d",      write $ repeatingArg $ deleteN 1)
+  , ( "C-d",      write $ repeatingArg deleteB')
   , ( "C-e",      write $ repeatingArg (maybeMoveB Line Forward))
   , ( "C-f",      write $ repeatingArg rightB)
   , ( "C-g",      write $ setVisibleSelection False)
