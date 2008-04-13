@@ -280,29 +280,18 @@ isearchDelE = do
       printMsg $ "I-search: " ++ text
     _ -> return () -- if the searched string is empty, don't try to remove chars from it.
 
--- TODO: merge isearchPrevE and isearchNextE
 isearchPrevE :: EditorM ()
-isearchPrevE = do
-  Isearch ((current,p0,_dir,prevOverlay):rest) <- getDynamic
-  withBuffer0 $ moveTo (p0 - 1)
-  mp <- withBuffer0 $ do
-    searchB Backward current
-  case mp of
-    Nothing -> withBuffer0 $ moveTo (p0 + length current) -- revert offset above
-    Just p -> do  let p2 = p+length current
-                      ov = mkOverlay p p2 (hintStyle defaultStyle)
-                  withBuffer0 $ do
-                    moveTo p2
-                    maybeDelOverlayB prevOverlay    
-                    addOverlayB ov
-                  setDynamic $ Isearch ((current,p,Backward,Just ov):rest)
+isearchPrevE = isearchNext Backward
 
 isearchNextE :: EditorM ()
-isearchNextE = do
+isearchNextE = isearchNext Forward
+
+isearchNext :: Direction -> EditorM ()
+isearchNext direction = do
   Isearch ((current,p0,_dir,prevOverlay):rest) <- getDynamic
-  withBuffer0 $ moveTo (p0 + 1)
+  withBuffer0 $ moveTo (p0 + startOfs)
   mp <- withBuffer0 $ do
-    searchB Forward current
+    searchB direction current
   case mp of
     Nothing -> withBuffer0 $ moveTo (p0 + length current) -- revert offset above
     Just p -> do  let p2 = p + length current
@@ -311,7 +300,10 @@ isearchNextE = do
                     moveTo p2
                     maybeDelOverlayB prevOverlay
                     addOverlayB ov
-                  setDynamic $ Isearch ((current,p,Forward,Just ov):rest)
+                  setDynamic $ Isearch ((current,p,direction,Just ov):rest)
+ where startOfs = case direction of
+                      Forward  ->  1
+                      Backward -> -1
 
 isearchWordE :: EditorM ()
 isearchWordE = do
