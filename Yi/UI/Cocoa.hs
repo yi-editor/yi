@@ -261,7 +261,7 @@ mkUI ui = Common.UI
    Common.end                   = end ,
    Common.suspend               = uiWindow ui # performMiniaturize nil,
    Common.refresh               = refresh       ui,
-   Common.prepareAction         = prepareAction         ui
+   Common.prepareAction         = prepareAction         ui,
    Common.reloadProject         = \_ -> return ()
   }
 
