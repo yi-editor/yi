@@ -18,28 +18,91 @@ import Data.Typeable
 import Data.Monoid
 import System.FilePath
 
+
+{-
+
+This module provides functions to manage Xmonad style configuration.
+
+It takes as "parameters":
+  * project name
+
+  * Main function of the program. This is will take a configuration, and a state as
+    parameter.
+
+  * Default configuration
+
+  * A way to change the configuration to make user aware of slave-compilation errors.
+
+
+This will provide:
+
+  * master main:
+    This is the "driver" program, that just attemps to compile ~/.project/project.hs, and exec. it.
+    If that fails, the default main is called.
+
+  * slave main:
+    Function that has to be called in the ~/.project/project.hs (provides a configurable entry point)
+
+  * restart function:
+    (TBD) save the state; recompile and execute the new version with the saved state.
+
+Standard scenario:
+
+* 
+
+-}
+
+data HConf state configuration = HConf {
+      mainMaster :: IO (),
+      mainSlave :: configuration -> IO ()
+}
+
+
+getHConf :: String -> state -> (String -> IO state) ->
+            configuration -> (String -> configuration -> configuration) ->
+            (configuration -> state -> IO ()) -> 
+            HConf state configuration
+
+getHConf projectName initialState recoverState defaultConfiguration showErrorsInConf realMain = HConf
+ {
+    -- | The entry point into Project. Attempts to compile any custom main
+    -- for Project, and if it doesn't find one, just launches the default.
+    mainMaster = do
+     args <- getArgs
+     let launch = do maybeErrors <- handle (\err -> hPrint stderr err >> return Nothing) 
+                                           (buildLaunch projectName)
+                     case maybeErrors of 
+                       Nothing ->     realMain defaultConfiguration initialState
+                       Just errors -> realMain (showErrorsInConf errors defaultConfiguration) initialState
+     case args of
+        ["--resume", _]       -> launch
+        ["--recompile"]       -> recompile projectName False >> return ()
+        ["--recompile-force"] -> recompile projectName True >> return ()
+        _                     -> launch,
+
+    -- | The entry point into Project. Attempts to compile any custom main
+    -- for Project, and if it doesn't find one, just launches the default.
+    -- mainSlave :: IO ()
+    mainSlave = \userConfig -> do
+        args <- getArgs
+        state <- case args of
+            ["--resume", s]   -> recoverState s
+            _                 -> return initialState
+        realMain userConfig state
+
+ }
+
 -- Lift an IO action
 io :: MonadIO m => IO a -> m a
 io = liftIO
-
-
--- | Double fork and execute an IO action (usually one of the exec family of
--- functions)
-{-
-doubleFork :: MonadIO m => IO () -> m ()
-doubleFork m = io $ do
-    pid <- forkProcess $ do
-        forkProcess (createSession >> m)
-        exitWith ExitSuccess
-    getProcessStatus True False pid
-    return ()
--}
 
 -- | Return the path to @~\/.Project@.
 getProjectDir :: MonadIO m => String -> m String
 getProjectDir projectName = io $ getAppUserDataDirectory projectName
 
 
+getErrorsFile projectName = (++ ".errors") <$> getProjectDir projectName
+ 
 -- | @restart name resume@. Attempt to restart Project by executing the program
 -- @name@.  If @resume@ is 'True', restart with the current window state.
 -- When executing another window manager, @resume@ should be 'False'.
@@ -54,7 +117,7 @@ restart projectName saveState = do
 -}
 
 
--- | 'recompile force', recompile ~\/.Project\/Project.hs when any of the
+-- | 'recompile projectName force' recompiles ~\/.Project\/Project.hs when any of the
 -- following apply:
 --      * force is True
 --      * the Project executable does not exist
@@ -66,7 +129,7 @@ restart projectName saveState = do
 -- GHC indicates failure with a non-zero exit code, an xmessage displaying
 -- that file is spawned.
 --
--- False is returned if there is compilation errors.
+-- Returns the errors if there were any; otherwise Nothing
 --
 recompile :: MonadIO m => String -> Bool -> m (Maybe String)
 recompile projectName force = io $ do
@@ -85,39 +148,20 @@ recompile projectName force = io $ do
                                     Nothing Nothing Nothing (Just h)
 
         -- now, if it fails, run xmessage to let the user know:
-        if status == ExitSuccess
+        if status /= ExitSuccess
           then do
             ghcErr <- readFile err
             let msg = unlines $
                     ["Error detected while loading " ++ projectName ++ " configuration file: " ++ src]
                     ++ lines ghcErr ++ ["","Please check the file for errors."]
+            putStrLn $ "asdfsad f: " ++ show msg
             return $ Just msg
           else return Nothing
         else return Nothing
  where getModTime f = catch (Just <$> getModificationTime f) (const $ return Nothing)
 
 
--- | The entry point into Project. Attempts to compile any custom main
--- for Project, and if it doesn't find one, just launches the default.
-mainMaster :: String -> t -> (t -> IO ()) -> IO ()
-mainMaster projectName initState realMain = do
-    args <- getArgs
-    let launch = handle (hPrint stderr) (buildLaunch projectName) >> realMain initState
-    case args of
-        ["--resume", _]       -> launch
-        ["--recompile"]       -> recompile projectName False >> return ()
-        ["--recompile-force"] -> recompile projectName True >> return ()
-        _                     -> launch
 
--- | The entry point into Project. Attempts to compile any custom main
--- for Project, and if it doesn't find one, just launches the default.
--- mainSlave :: IO ()
-mainSlave recoverState initState realMain = do
-    args <- getArgs
-    state <- case args of
-        ["--resume", s]   -> recoverState s
-        _                 -> return initState
-    realMain state
 
 
 
@@ -132,14 +176,18 @@ mainSlave recoverState initState realMain = do
 --      ** type error, syntax error, ..
 --   * Missing Project dependency packages
 --
--- buildLaunch ::  IO ()
+buildLaunch ::  String -> IO (Maybe String)
 buildLaunch projectName = do
 #ifndef mingw32_HOST_OS
-    recompile projectName False
+    errMsg <- recompile projectName False
     dir  <- getProjectDir projectName
     args <- getArgs
-    executeFile (dir </> projectName ++ "-"++arch++"-"++os) False args Nothing
-    return ()
+    args' <- case errMsg of
+               Nothing -> return args
+               Just msg -> do errFile <- getErrorsFile projectName
+                              return (args ++ [errFile])
+    executeFile (dir </> projectName ++ "-"++arch++"-"++os) False args' Nothing
+    return errMsg
 #else
-    return ()
+    return Nothing
 #endif

@@ -26,10 +26,8 @@ projectName = "yi"
 initState :: () -- TODO: Should be Editor
 initState = ()
 
-driver :: IO ()
-driver = mainMaster projectName initState (realMain defaultConfig)
+HConf driver yi = getHConf projectName () recoverState defaultConfig showErrorsInConf realMain
 
+showErrorsInConf errs conf 
+    = conf {startAction = withEditor $ newBufferE "*errors*" errs >> return ()}
 
--- | Intended to be called from configuration.
-yi :: Config -> IO ()
-yi cfg = mainSlave recoverState () (realMain cfg)
