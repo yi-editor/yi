@@ -28,6 +28,7 @@ import Yi.Editor (Editor, EditorM, withGivenBuffer0, findBufferWith, statusLine,
 import qualified Yi.Editor as Editor
 import Yi.Event
 import Yi.Debug
+import Yi.Keymap
 import Yi.Buffer.Implementation
 import Yi.Monad
 import Yi.Style hiding (modeline)
@@ -396,7 +397,7 @@ start cfg ch outCh _ed = do
   bufs <- newIORef M.empty
   wc <- newIORef []
 
-  return $ mkUI $ UI win winContainer cmd bufs wc (outCh . runEd) cfg
+  return $ mkUI $ UI win winContainer cmd bufs wc outCh cfg
 
 
 
