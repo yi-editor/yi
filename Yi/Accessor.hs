@@ -8,6 +8,7 @@ module Yi.Accessor where
 import Control.Monad.State
 import Data.Traversable as Traversable
 import Data.Foldable
+import qualified Data.Map as M
 
 -- | A way to access and modify a part of a complex structure.
 -- Categorically, an arrow from @whole@ to @part@.
@@ -64,6 +65,9 @@ allA (Accessor g m) = Accessor (fmap g) modifier'
             h' <- gets head
             modify tail
             return (m (const h') whole)
+
+keyA :: Ord k => k -> Accessor (M.Map k v) v
+keyA k = Accessor (M.! k) (\f -> M.adjust f k)
 
 -- (#=) :: MonadState s m => Accessor s p -> p -> m ()
 -- (#=) = setA
