@@ -150,7 +150,7 @@ startEditor cfg st = do
 
     runYi refreshEditor
 
-    UI.main ui -- transfer control to UI: GTK must run in the main thread, or else it's not happy.
+    UI.main ui -- transfer control to UI
 
 postActions :: [Action] -> YiM ()
 postActions actions = do yi <- ask; liftIO $ mapM_ (output yi) actions

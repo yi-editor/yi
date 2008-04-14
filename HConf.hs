@@ -64,7 +64,7 @@ getHConf :: String -> state -> (String -> IO state) -> (state -> IO String) ->
 
 getHConf projectName initialState recoverState saveState defaultConfiguration showErrorsInConf realMain = HConf
  {
-    -- | The entry point into Project. Attempts to compile any custom main
+    -- The entry point into Project. Attempts to compile any custom main
     -- for Project, and if it doesn't find one, just launches the default.
     mainMaster = do
      args <- getArgs
@@ -88,9 +88,7 @@ getHConf projectName initialState recoverState saveState defaultConfiguration sh
         executeFile projectName True args Nothing -- TODO: catch exceptions
         -- run the master, who will take care of recompiling; getting the new state, etc.
 
-    -- | The entry point into Project. Attempts to compile any custom main
-    -- for Project, and if it doesn't find one, just launches the default.
-    -- mainSlave :: IO ()
+    -- The configurable main, callable from ~/.project/project.hs
     , mainSlave = \userConfig -> do
         args <- getArgs
         state <- case args of
