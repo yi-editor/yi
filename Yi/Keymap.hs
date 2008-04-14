@@ -5,6 +5,7 @@
 module Yi.Keymap where
 
 import Prelude hiding (error)
+import Yi.Accessor
 import Yi.UI.Common
 import qualified Yi.Editor as Editor
 import Yi.Editor (EditorM, Editor, runEditor)
@@ -67,7 +68,6 @@ data Yi = Yi {yiEditor :: IORef Editor,
               threads       :: IORef [ThreadId],           -- ^ all our threads
               input         :: Event -> IO (),             -- ^ input stream
               output        :: Action -> IO (),            -- ^ output stream
-              bufferProcesses :: IORef (M.Map BufferRef KeymapProcess), -- FIXME: should be an MVar (can be accessed both by worker and input thread)
               yiSubprocessIdSupply :: IORef SubprocessId,
               yiSubprocesses :: IORef (M.Map SubprocessId SubprocessInfo),
               yiConfig :: Config
@@ -102,17 +102,14 @@ setBufferMode b m = do
 
 restartBufferThread :: BufferRef -> YiM ()
 restartBufferThread b = do
-  modifiesRef bufferProcesses (M.insert b I.End)
+  withGivenBuffer b $ setA keymapProcessA I.End
 
 withBufferMode :: BufferRef -> (forall syntax. Mode syntax -> a) -> YiM a
 withBufferMode b f = withGivenBuffer b $ withModeB f
 
 getBufferProcess :: BufferRef -> YiM KeymapProcess
 getBufferProcess b = do
-  kms <- readsRef bufferProcesses
-  return $ case M.lookup b kms of
-    Just bkm -> bkm
-    Nothing -> I.End
+  withGivenBuffer b $ getA keymapProcessA 
 
 
 --------------------------------

@@ -15,3 +15,4 @@ type Keymap = KeymapM ()
 
 type KeymapEndo = Keymap -> Keymap
 
+type KeymapProcess = I.P Event Action

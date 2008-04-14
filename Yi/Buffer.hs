@@ -82,6 +82,7 @@ module Yi.Buffer
   , emptyMode
   , withModeB
   , withSyntax0
+  , keymapProcessA
   )
 where
 
@@ -102,6 +103,7 @@ import Data.List (elemIndex)
 import Data.Typeable
 import {-# source #-} Yi.Keymap
 import Yi.Monad
+import Yi.Interact as I
 
 #ifdef TESTING
 import Test.QuickCheck
@@ -137,6 +139,7 @@ data FBuffer = forall syntax.
                 , preferCol :: !(Maybe Int)       -- ^ prefered column to arrive at when we do a lineDown / lineUp
                 , pendingUpdates :: [UIUpdate]    -- ^ updates that haven't been synched in the UI yet
                 , highlightSelection :: !Bool
+                , process :: KeymapProcess
                 }
         deriving Typeable
 
@@ -145,49 +148,54 @@ clearSyntax = modifyRawbuf updateSyntax
 
 
 modifyRawbuf :: (forall syntax. BufferImpl syntax -> BufferImpl syntax) -> FBuffer -> FBuffer
-modifyRawbuf f (FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11) = 
-    (FBuffer f1 f2 f3 f4 (f f5) f6 f7 f8 f9 f10 f11)
+modifyRawbuf f (FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12) = 
+    (FBuffer f1 f2 f3 f4 (f f5) f6 f7 f8 f9 f10 f11 f12)
 
 queryAndModifyRawbuf :: (forall syntax. BufferImpl syntax -> (BufferImpl syntax,x)) ->
                      FBuffer -> (FBuffer, x)
-queryAndModifyRawbuf f (FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11) = 
+queryAndModifyRawbuf f (FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12) = 
     let (f5', x) = f f5
-    in (FBuffer f1 f2 f3 f4 f5' f6 f7 f8 f9 f10 f11, x)
+    in (FBuffer f1 f2 f3 f4 f5' f6 f7 f8 f9 f10 f11 f12, x)
 
 undosA :: Accessor (FBuffer) (URList)
 undosA = Accessor undos (\f e -> case e of 
-                                   FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 -> 
-                                    FBuffer f1 f2 f3 (f f4) f5 f6 f7 f8 f9 f10 f11)
+                                   FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 -> 
+                                    FBuffer f1 f2 f3 (f f4) f5 f6 f7 f8 f9 f10 f11 f12)
 
 fileA :: Accessor (FBuffer) (Maybe FilePath)
 fileA = Accessor file (\f e -> case e of 
-                                   FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 -> 
-                                    FBuffer f1 f2 (f f3) f4 f5 f6 f7 f8 f9 f10 f11)
+                                   FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 -> 
+                                    FBuffer f1 f2 (f f3) f4 f5 f6 f7 f8 f9 f10 f11 f12)
 
 preferColA :: Accessor (FBuffer) (Maybe Int)
 preferColA = Accessor preferCol (\f e -> case e of 
-                                   FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 -> 
-                                    FBuffer f1 f2 f3 f4 f5 f6 f7 f8 (f f9) f10 f11)
+                                   FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 -> 
+                                    FBuffer f1 f2 f3 f4 f5 f6 f7 f8 (f f9) f10 f11 f12)
 
 bufferDynamicA :: Accessor (FBuffer) (DynamicValues)
 bufferDynamicA = Accessor bufferDynamic (\f e -> case e of 
-                                   FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 -> 
-                                    FBuffer f1 f2 f3 f4 f5 f6 f7 (f f8) f9 f10 f11)
+                                   FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 -> 
+                                    FBuffer f1 f2 f3 f4 f5 f6 f7 (f f8) f9 f10 f11 f12)
 
 pendingUpdatesA :: Accessor (FBuffer) ([UIUpdate])
 pendingUpdatesA = Accessor pendingUpdates (\f e -> case e of 
-                                   FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 -> 
-                                    FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 (f f10) f11)
+                                   FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 -> 
+                                    FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 (f f10) f11 f12)
 
 highlightSelectionA :: Accessor FBuffer Bool
 highlightSelectionA = Accessor highlightSelection (\f e -> case e of 
-                                   FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 -> 
-                                    FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 (f f11))
+                                   FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 -> 
+                                    FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 (f f11) f12)
 
 nameA :: Accessor FBuffer String
 nameA = Accessor name (\f e -> case e of 
-                                   FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 -> 
-                                    FBuffer (f f1) f2 f3 f4 f5 f6 f7 f8 f9 f10 f11)
+                                   FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 -> 
+                                    FBuffer (f f1) f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12)
+
+keymapProcessA :: Accessor FBuffer KeymapProcess
+keymapProcessA = Accessor process (\f e -> case e of 
+                                   FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 -> 
+                                    FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 (f f12))
 
 
 data AnyMode = forall syntax. AnyMode (Mode syntax)
@@ -254,7 +262,7 @@ getPercent a b = show p ++ "%"
     where p = ceiling ((fromIntegral a) / (fromIntegral b) * 100 :: Double) :: Int
 
 queryBuffer :: (forall syntax. BufferImpl syntax -> x) -> (BufferM x)
-queryBuffer f = gets (\(FBuffer _ _ _ _ fb _ _ _ _ _ _) -> f fb)
+queryBuffer f = gets (\(FBuffer _ _ _ _ fb _ _ _ _ _ _ _) -> f fb)
 
 modifyBuffer :: (forall syntax. BufferImpl syntax -> BufferImpl syntax) -> BufferM ()
 modifyBuffer f = modify (modifyRawbuf f)
@@ -347,6 +355,7 @@ newB unique nm s =
             , bufferDynamic = emptyDV
             , pendingUpdates = []
             , highlightSelection = False
+            , process = I.End
             }
 
 -- | Number of characters in the buffer
@@ -446,8 +455,8 @@ searchB :: Direction -> [Char] -> BufferM (Maybe Int)
 searchB dir s = queryBuffer (searchBI dir s)
 
 setMode0 :: forall syntax. Mode syntax -> FBuffer -> FBuffer
-setMode0 m (FBuffer f1 f2 f3 f4 rb _ f7 f8 f9 f10 f11) =
-    (FBuffer f1 f2 f3 f4 (setSyntaxBI (modeHL m) rb) m f7 f8 f9 f10 f11)
+setMode0 m (FBuffer f1 f2 f3 f4 rb _ f7 f8 f9 f10 f11 f12) =
+    (FBuffer f1 f2 f3 f4 (setSyntaxBI (modeHL m) rb) m f7 f8 f9 f10 f11 f12)
 
 -- | Set the mode
 setMode :: Mode syntax -> BufferM ()

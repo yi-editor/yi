@@ -116,11 +116,9 @@ startEditor cfg st = do
     let initEditor = maybe emptyEditor id st
     newSt <- newIORef initEditor
     -- Setting up the 1st window is a bit tricky because most functions assume there exists a "current window"
-    startKm <- newIORef (defaultKm cfg)
     startThreads <- newIORef []
     startSubprocessId <- newIORef 1
     startSubprocesses <- newIORef M.empty
-    keymaps <- newIORef M.empty
 #ifdef SHIM
     ghc <- findExecutable "ghc" -- FIXME: Add version constraint
            >>= maybe (error "Could not find ghc executable in path.") return
@@ -135,7 +133,7 @@ startEditor cfg st = do
                            inF  ev  = handle handler (runYi (dispatch ev))
                            outF act = handle handler (runYi (interactive act))
                        ui <- uiStart (configUI cfg) inF outF initEditor
-                       let yi = Yi newSt ui startThreads inF outF keymaps startSubprocessId startSubprocesses cfg 
+                       let yi = Yi newSt ui startThreads inF outF startSubprocessId startSubprocesses cfg 
 #ifdef SHIM 
                                    shim
 #endif
@@ -162,29 +160,32 @@ postActions actions = do yi <- ask; liftIO $ mapM_ (output yi) actions
 dispatch :: Event -> YiM ()
 dispatch ev =
     do yi <- ask
-       b <- withEditor getBuffer
-       keymap <- withBufferMode b modeKeymap
-       p0 <- getBufferProcess b
-       let defKm = defaultKm $ yiConfig $ yi
-       let freshP = I.mkAutomaton $ keymap $ defKm
-           p = case p0 of
-                 I.End  -> freshP
-                 I.Fail -> freshP
-                 _      -> p0
-           (actions, p') = I.processOneEvent p ev
-           possibilities = I.possibleActions p'
-           ambiguous = not (null possibilities) && all isJust possibilities
-       logPutStrLn $ "Processing: " ++ show ev
-       logPutStrLn $ "Actions posted:" ++ show actions
-       logPutStrLn $ "New automation: " ++ show p'
-       -- TODO: if no action is posted, accumulate the input and give feedback to the user.
+       actions <- withBuffer $ do
+         keymap <- withModeB modeKeymap
+         p0 <- getA keymapProcessA
+         let defKm = defaultKm $ yiConfig $ yi
+         let freshP = I.mkAutomaton $ keymap $ defKm
+             p = case p0 of
+                   I.End  -> freshP
+                   I.Fail -> freshP
+                   _      -> p0
+             (actions, p') = I.processOneEvent p ev
+             possibilities = I.possibleActions p'
+             ambiguous = not (null possibilities) && all isJust possibilities
+         setA keymapProcessA (if ambiguous then freshP else p')
+         let actions0 = case p' of 
+                          I.Fail -> [makeAction $ msgEditor "Unrecognized input"]
+                          _ -> actions
+             actions1 = if ambiguous 
+                          then [makeAction $ msgEditor "Keymap was in an ambiguous state! Resetting it."]
+                          else []
+         return (actions0 ++ actions1)
+       -- logPutStrLn $ "Processing: " ++ show ev
+       -- logPutStrLn $ "Actions posted:" ++ show actions
+       -- logPutStrLn $ "New automation: " ++ show p'
 
-       postActions $ case p' of 
-                       I.Fail -> [makeAction $ msgEditor "Unrecognized input"]
-                       _ -> actions
-       when ambiguous $
-            postActions [makeAction $ msgEditor "Keymap was in an ambiguous state! Resetting it."]
-       modifiesRef bufferProcesses (M.insert b (if ambiguous then freshP else p'))
+       -- TODO: if no action is posted, accumulate the input and give feedback to the user.
+       postActions actions
 
 -- ---------------------------------------------------------------------
 -- Meta operations
