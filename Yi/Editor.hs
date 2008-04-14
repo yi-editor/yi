@@ -7,31 +7,6 @@
 
 module Yi.Editor
 
-{-
-        -- * Buffer only stuff
-        newBufferE,     -- :: String -> String -> YiM ()
-        listBuffersE,   -- :: YiM ()
-        closeBufferE,   -- :: String -> YiM ()
-
-        -- * Buffer/Window
-        closeBufferAndWindowE,
-        switchToBufferE,
-        switchToBufferOtherWindowE,
-        switchToBufferWithNameE,
-        nextBufW,       -- :: YiM ()
-        prevBufW,       -- :: YiM ()
-
-        -- * Basic registers
-        setRegE,        -- :: String -> YiM ()
-        getRegE,        -- :: EditorM String
-
-        -- * Dynamically extensible state
-        getDynamic,
-        setDynamic,
-
-        setWindowStyleE,-- :: UIStyle -> EditorM ()
--}
-
 where
 
 import Yi.Buffer                ( BufferRef, FBuffer (..), BufferM, newB, runBuffer, insertN )
