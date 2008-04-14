@@ -35,6 +35,7 @@ extra-source-files: Yi/Syntax/alex.hsinc
 flag shim
   Description: Bake in shim support
   -- Can be useful to disable; ghc package is usually not available for profiling.
+  -- TODO: rename this to "GHC API"
 
 flag vty
   Description: Provide Vty UI
@@ -100,8 +101,6 @@ library
     if flag (shim)
       build-depends: ghc
       build-depends: parallel
-      build-depends: Cabal==1.2.3.0
-      build-depends: Crypto==4.1.0
       build-depends: haskell98
 
       cpp-options: -DSHIM
@@ -148,6 +147,7 @@ library
 --                ScopedTypeVariables TypeSynonymInstances, UndecidableInstances
 
 executable yi
+        build-depends: Cabal==1.2.3.0
         build-depends: array,  base,  containers,  directory,  filepath>=1.0,
                        mtl, process, old-locale, old-time, random
 
@@ -159,6 +159,7 @@ executable yi
         build-depends: fingertree
         build-depends: utf8-string
 
+        build-depends: Crypto==4.1.0
         build-depends: regex-base ==0.72.0.1
         build-depends: regex-compat ==0.71.0.1
         build-depends: regex-posix ==0.72.0.2
@@ -186,8 +187,6 @@ executable yi
         if flag (shim)
           build-depends: ghc
           build-depends: parallel
-          build-depends: Cabal==1.2.3.0
-          build-depends: Crypto==4.1.0
           build-depends: haskell98
           cpp-options: -DSHIM
 
