@@ -38,7 +38,6 @@ module Yi.Core
   , startSubprocess                 -- :: FilePath -> [String] -> YiM ()
 
   -- * Misc
-  , changeKeymap
   , runAction
   , withMode
   , withSyntax
@@ -136,7 +135,7 @@ startEditor cfg st = do
                            inF  ev  = handle handler (runYi (dispatch ev))
                            outF act = handle handler (runYi (interactive act))
                        ui <- uiStart (configUI cfg) inF outF initEditor
-                       let yi = Yi newSt ui startThreads inF outF startKm keymaps startSubprocessId startSubprocesses cfg 
+                       let yi = Yi newSt ui startThreads inF outF keymaps startSubprocessId startSubprocesses cfg 
 #ifdef SHIM 
                                    shim
 #endif
@@ -166,7 +165,7 @@ dispatch ev =
        b <- withEditor getBuffer
        keymap <- withBufferMode b modeKeymap
        p0 <- getBufferProcess b
-       defKm <- readRef (defaultKeymap yi)
+       let defKm = defaultKm $ yiConfig $ yi
        let freshP = I.mkAutomaton $ keymap $ defKm
            p = case p0 of
                  I.End  -> freshP
@@ -186,14 +185,6 @@ dispatch ev =
        when ambiguous $
             postActions [makeAction $ msgEditor "Keymap was in an ambiguous state! Resetting it."]
        modifiesRef bufferProcesses (M.insert b (if ambiguous then freshP else p'))
-
-
-changeKeymap :: Keymap -> YiM ()
-changeKeymap km = do
-  modifiesRef defaultKeymap (const km)
-  bs <- withEditor getBuffers
-  mapM_ (restartBufferThread . bkey) bs
-  return ()
 
 -- ---------------------------------------------------------------------
 -- Meta operations

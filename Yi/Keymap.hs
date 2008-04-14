@@ -67,7 +67,6 @@ data Yi = Yi {yiEditor :: IORef Editor,
               threads       :: IORef [ThreadId],           -- ^ all our threads
               input         :: Event -> IO (),             -- ^ input stream
               output        :: Action -> IO (),            -- ^ output stream
-              defaultKeymap :: IORef Keymap, -- TODO: remove this in favour of using the yiConfig one.
               bufferProcesses :: IORef (M.Map BufferRef KeymapProcess), -- FIXME: should be an MVar (can be accessed both by worker and input thread)
               yiSubprocessIdSupply :: IORef SubprocessId,
               yiSubprocesses :: IORef (M.Map SubprocessId SubprocessInfo),
