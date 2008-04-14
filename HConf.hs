@@ -52,16 +52,17 @@ Standard scenario:
 
 data HConf state configuration = HConf {
       mainMaster :: IO (),
-      mainSlave :: configuration -> IO ()
-}
+      mainSlave :: configuration -> IO (),
+      restart :: state -> IO ()
+ }
 
 
-getHConf :: String -> state -> (String -> IO state) ->
+getHConf :: String -> state -> (String -> IO state) -> (state -> IO String) ->
             configuration -> (String -> configuration -> configuration) ->
             (configuration -> state -> IO ()) -> 
             HConf state configuration
 
-getHConf projectName initialState recoverState defaultConfiguration showErrorsInConf realMain = HConf
+getHConf projectName initialState recoverState saveState defaultConfiguration showErrorsInConf realMain = HConf
  {
     -- | The entry point into Project. Attempts to compile any custom main
     -- for Project, and if it doesn't find one, just launches the default.
@@ -69,18 +70,28 @@ getHConf projectName initialState recoverState defaultConfiguration showErrorsIn
      args <- getArgs
      let launch = do maybeErrors <- buildLaunch projectName
                      case maybeErrors of 
-                       Nothing ->     realMain defaultConfiguration initialState
+                       Nothing     -> realMain defaultConfiguration initialState
                        Just errors -> realMain (showErrorsInConf errors defaultConfiguration) initialState
      case args of
         ["--resume", _]       -> launch
         ["--recompile"]       -> recompile projectName False >> return ()
         ["--recompile-force"] -> recompile projectName True >> return ()
-        _                     -> launch,
+        _                     -> launch
+
+     -- @restart name resume@. Attempt to restart Project by executing the program
+     -- @name@.  If @resume@ is 'True', restart with the current window state.
+     -- When executing another window manager, @resume@ should be 'False'.
+     -- this function will never return.
+    , restart = \state -> do
+        s <- saveState state
+        let args = ["--resume", s]
+        executeFile projectName True args Nothing -- TODO: catch exceptions
+        -- run the master, who will take care of recompiling; getting the new state, etc.
 
     -- | The entry point into Project. Attempts to compile any custom main
     -- for Project, and if it doesn't find one, just launches the default.
     -- mainSlave :: IO ()
-    mainSlave = \userConfig -> do
+    , mainSlave = \userConfig -> do
         args <- getArgs
         state <- case args of
             ["--resume", s]   -> recoverState s
@@ -102,20 +113,6 @@ getErrorsFile :: (MonadIO m, Functor m) => String -> m String
 getErrorsFile projectName = do dir <- getProjectDir projectName
                                return $ dir </> projectName ++ ".errors"
  
--- | @restart name resume@. Attempt to restart Project by executing the program
--- @name@.  If @resume@ is 'True', restart with the current window state.
--- When executing another window manager, @resume@ should be 'False'.
---
-{-
-restart :: String -> IO String -> IO ()
-restart projectName saveState = do
-  s <- saveState
-  let args = ["--resume", s]
-  executeFile projectName True args Nothing -- TODO: catch exceptions
-  -- run the master, who will take care of recompiling.
--}
-
-
 -- | 'recompile projectName force' recompiles ~\/.Project\/Project.hs when any of the
 -- following apply:
 --      * force is True
@@ -174,7 +171,7 @@ recompile projectName force = io $ do
 --      ** type error, syntax error, ..
 --   * Missing Project dependency packages
 --
-buildLaunch ::  String -> IO (Maybe String)
+buildLaunch :: String -> IO (Maybe String)
 buildLaunch projectName = do
 #ifndef mingw32_HOST_OS
     errMsg <- recompile projectName False

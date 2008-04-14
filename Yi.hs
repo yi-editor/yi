@@ -15,6 +15,9 @@ import Yi.Debug
 recoverState :: String -> IO ()
 recoverState _stateName = return ()
 
+saveState :: () -> IO String
+saveState _ = return ""
+
 realMain :: Config -> yiState -> IO ()
 realMain cfg _state = do
           initDebug ".yi.dbg"
@@ -28,7 +31,7 @@ initState = ()
 
 driver :: IO ()
 yi :: Config -> IO ()
-HConf driver yi = getHConf projectName initState recoverState defaultConfig showErrorsInConf realMain
+HConf driver yi _ = getHConf projectName initState recoverState saveState defaultConfig showErrorsInConf realMain
 
 showErrorsInConf :: String -> Config -> Config
 showErrorsInConf errs conf 
