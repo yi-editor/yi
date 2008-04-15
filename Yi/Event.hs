@@ -1,6 +1,6 @@
 module Yi.Event 
     (
-     Event(..),
+     Event(..), prettyEvent,
      Key(..), Modifier(..),
 
      -- * Key codes
@@ -34,6 +34,15 @@ data Key = KEsc | KFun Int | KPrtScr | KPause | KASCII Char | KBS | KIns
 
 data Event = Event Key [Modifier] deriving (Show,Eq,Ord)
 
+
+prettyEvent :: Event -> [Char]
+prettyEvent (Event k mods) =
+           concatMap ((++ "-") . prettyModifier) mods ++ prettyKey k
+  where prettyKey (KFun i) = 'F' : show i
+        prettyKey (KASCII c) = [c]
+        prettyKey key = tail $ show key
+        prettyModifier m = [show m !! 1]
+      
 
 
 -- | Map an Event to a Char. This should be gotten rid of, eventually.

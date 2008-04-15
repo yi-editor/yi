@@ -22,10 +22,12 @@ import Yi.KillRing
 import Yi.Window
 import Yi.WindowSet (WindowSet)
 import qualified Yi.WindowSet as WS
+import Yi.Event (Event)
 
 import Prelude hiding (error)
 
 import Data.List                ( nub )
+import qualified Data.DelayList as DelayList
 import qualified Data.Map as M
 import Data.Typeable
 
@@ -48,11 +50,19 @@ data Editor = Editor {
        ,windowfill    :: !Char                      -- ^ char to fill empty window space with
        ,tabwidth      :: !Int                       -- ^ width of tabs
 
-       ,statusLine    :: !String
+       ,statusLines   :: !(DelayList.DelayList String)
        ,killring      :: !Killring
        ,regex         :: !(Maybe (String,Regex))    -- ^ most recent regex
+       ,pendingEvents :: ![Event]                    -- ^ Processed events that didn't yield any action yet.
     }
     deriving Typeable
+
+pendingEventsA :: Accessor Editor [Event]
+pendingEventsA = Accessor pendingEvents (\f e -> e {pendingEvents = f (pendingEvents e)})
+
+statusLinesA :: Accessor Editor (DelayList.DelayList String)
+statusLinesA = Accessor statusLines (\f e -> e {statusLines = f (statusLines e)})
+
 
 bufferRefSupplyA :: Accessor Editor BufferRef
 bufferRefSupplyA = Accessor bufferRefSupply (\f e -> e {bufferRefSupply = f (bufferRefSupply e)})
@@ -84,8 +94,9 @@ emptyEditor = Editor {
        ,regex        = Nothing
        ,uistyle      = Yi.Style.uiStyle
        ,dynamic      = M.empty
-       ,statusLine   = ""
+       ,statusLines  = DelayList.insert (maxBound, "") []
        ,killring     = krEmpty
+       ,pendingEvents = []
        }
         where buf = newB 0 "*console*" ""
 
@@ -210,16 +221,30 @@ deriving instance Typeable2 State
 
 --------------
 
--- | Set the cmd buffer, and draw message at bottom of screen
+-- | Display a transient message
 printMsg :: String -> EditorM ()
-printMsg s = do
-  modify $ \e -> e { statusLine = takeWhile (/= '\n') s }
+printMsg = setTmpStatus 1
+
+-- | Set the "background" status line 
+setStatus :: String -> EditorM ()
+setStatus = setTmpStatus maxBound
+
+-- | Clear the status line
+msgClr :: EditorM ()
+msgClr = setStatus ""
+
+statusLine = snd . head . statusLines
+
+setTmpStatus :: Int -> String -> EditorM ()
+setTmpStatus delay s = do
+  modifyA statusLinesA $ DelayList.insert (delay, 
+                                           takeWhile (/= '\n') s)
   -- also show in the messages buffer, so we don't loose any message
   bs <- gets $ findBufferWithName "*messages*"
   b <- case bs of
          (b':_) -> return b'
          [] -> newBufferE "*messages*" ""
-  withGivenBuffer0 b $ do botB; insertN (s ++ "\n")
+  withGivenBuffer0 b $ do botB; insertN (l ++ "\n")
 
 
 -- ---------------------------------------------------------------------

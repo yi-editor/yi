@@ -83,25 +83,25 @@ leave = event '\ESC' >> adjustPriority (-1) (write msgClr)
 
 -- | Insert mode is either insertion actions, or the meta (\ESC) action
 ins_mode :: VimMode
-ins_mode = write (msgEditor "-- INSERT --") >> many (ins_char <|> kwd_mode) >> leave
+ins_mode = write (setStatus "-- INSERT --") >> many (ins_char <|> kwd_mode) >> leave
 
 -- | Replace mode is like insert, except it performs writes, not inserts
 rep_mode :: VimMode
-rep_mode = write (msgEditor "-- REPLACE --") >> many rep_char >> leave
+rep_mode = write (setStatus "-- REPLACE --") >> many rep_char >> leave
 
 -- | Visual mode, similar to command mode
 vis_mode :: RegionStyle -> VimMode
 vis_mode regionStyle = do
   write (withBuffer (pointB >>= setSelectionMarkPointB))
   core_vis_mode regionStyle
-  write (msgClr >> withBuffer (setVisibleSelection False) >> withBuffer (setDynamicB $ SelectionStyle Character))
+  write (msgClr >> withBuffer0 (setVisibleSelection False) >> withBuffer0 (setDynamicB $ SelectionStyle Character))
 
 core_vis_mode :: RegionStyle -> VimMode
 core_vis_mode regionStyle = do
   write $ withEditor $ do setA regionStyleA regionStyle
                           withBuffer0 $ setDynamicB $ SelectionStyle $
                             case regionStyle of { LineWise -> fullLine; CharWise -> Character }
-                          printMsg $ msg regionStyle
+                          setStatus $ msg regionStyle
   many (eval cmd_move)
   (vis_single regionStyle <|| vis_multi)
   where msg CharWise = "-- VISUAL --"
@@ -617,7 +617,7 @@ ex_eval cmd = do
       bdelete  = whenUnchanged (withBuffer isUnchangedB) . withEditor . closeBufferE
       bdeleteNoW = withEditor . closeBufferE
 
-      fn ""           = msgClr
+      fn ""           = withEditor msgClr
 
       fn s@(c:_) | isDigit c = do
         e <- liftIO $ try $ evaluate $ read s
@@ -771,7 +771,7 @@ viSub cs = do
 
     where do_single p r = do
                 s <- searchAndRepLocal p r
-                if not s then errorEditor ("Pattern not found: "++p) else msgClr
+                if not s then errorEditor ("Pattern not found: "++p) else withEditor msgClr
 
 -- | Is a delete sequence
 isDel :: Char -> Bool

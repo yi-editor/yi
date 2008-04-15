@@ -27,7 +27,6 @@ module Yi.Core
   -- * Global editor actions
   , msgEditor           -- :: String -> YiM ()
   , errorEditor         -- :: String -> YiM ()
-  , msgClr        -- :: YiM ()
 
   -- * Window manipulation
   , closeWindow         -- :: YiM ()
@@ -44,7 +43,8 @@ module Yi.Core
   ) 
 where
 
-import Prelude hiding (error, sequence_, mapM_, elem, concat, all)
+import Prelude ()
+import Yi.Prelude
 
 import Yi.Debug
 import Yi.Undo
@@ -53,7 +53,7 @@ import Yi.Dynamic
 import Yi.String
 import Yi.Process ( popen, createSubprocess, readAvailable, SubprocessId, SubprocessInfo(..) )
 import Yi.Editor
-import Yi.Event (Event)
+import Yi.Event (Event, prettyEvent)
 import Yi.Keymap
 import Yi.KillRing (krEndCmd)
 import qualified Yi.Interact as I
@@ -64,7 +64,9 @@ import qualified Yi.Editor as Editor
 import qualified Yi.UI.Common as UI
 import Yi.UI.Common as UI (UI)
 import Yi.Interpreter
+import qualified Data.DelayList as DelayList
 
+import Data.List (intersperse)
 import Data.Maybe
 import qualified Data.Map as M
 import Data.Dynamic
@@ -185,7 +187,13 @@ dispatch ev =
        -- logPutStrLn $ "New automation: " ++ show p'
 
        -- TODO: if no action is posted, accumulate the input and give feedback to the user.
-       postActions actions
+       withEditor $ modifyA statusLinesA (DelayList.decrease 1)
+       if (null actions) 
+         then do evs <- withEditor $ getsAndModifyA pendingEventsA $
+                           \evs -> (evs, evs ++ [ev])
+                 msgEditor $ concat $ intersperse " " $ fmap prettyEvent evs
+                 refreshEditor
+         else postActions actions 
 
 -- ---------------------------------------------------------------------
 -- Meta operations
@@ -251,10 +259,6 @@ msgEditor = withEditor . printMsg
 errorEditor :: String -> YiM ()
 errorEditor s = do msgEditor ("error: " ++ s)
                    logPutStrLn $ "errorEditor: " ++ s
-
--- | Clear the message line at bottom of screen
-msgClr :: YiM ()
-msgClr = msgEditor ""
 
 -- | Close the current window.
 -- If this is the last window open, quit the program.
