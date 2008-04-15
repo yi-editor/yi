@@ -72,17 +72,29 @@ import System.Directory
   , setCurrentDirectory
   )
 import Control.Monad.Trans (MonadIO (..))
-
+import Control.Monad
 {- External Library Module Imports -}
 {- Local (yi) module imports -}
-import Yi.Yi
-import Yi.Keymap.Emacs.UnivArgument
-import Yi.Keymap.Emacs.Keys
+
+
+import Control.Applicative
+import Control.Monad
 import Yi.Buffer
-import Yi.Process
-import Yi.Editor
+import Yi.Buffer.HighLevel
+import Yi.Buffer.Region
 import Yi.Completion
+import Yi.Core
+import Yi.Debug
+import Yi.Dired
+import Yi.Editor
+import Yi.Event
+import Yi.File
+import Yi.Interact hiding (write)
+import Yi.Keymap.Emacs.Keys
+import Yi.Keymap.Emacs.UnivArgument
 import Yi.MiniBuffer
+import Yi.Process
+import Yi.Search
 import Yi.Templates
   ( addTemplate
   , templateNames

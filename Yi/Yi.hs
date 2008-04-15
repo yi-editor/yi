@@ -51,7 +51,7 @@ import Yi.Search
 import Yi.Style
 import Data.Map as M
 import Data.Dynamic
-
+import Yi.Keymap.Emacs.Utils
 
 
 -- | List of published Actions
@@ -74,6 +74,7 @@ defaultPublishedActions = M.fromList $
     , ("Word"                   , box Word)
     , ("Paragraph"              , box Paragraph)
     , ("Document"               , box Document)
+    , ("cabalConfigureE"        , box cabalConfigureE)
     ]
 
   where box x = [toDyn x]
