@@ -244,7 +244,7 @@ setTmpStatus delay s = do
   b <- case bs of
          (b':_) -> return b'
          [] -> newBufferE "*messages*" ""
-  withGivenBuffer0 b $ do botB; insertN (l ++ "\n")
+  withGivenBuffer0 b $ do botB; insertN (s ++ "\n")
 
 
 -- ---------------------------------------------------------------------
