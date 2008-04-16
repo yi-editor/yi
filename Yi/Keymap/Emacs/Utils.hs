@@ -67,6 +67,7 @@ import System.FilePath
   )
 import System.Directory
   ( doesDirectoryExist
+  , doesFileExist
   , getHomeDirectory
   , getDirectoryContents
   , getCurrentDirectory
@@ -199,24 +200,40 @@ shellCommandE = do
         ExitFailure _ -> msgEditor cmdErr
 
 ----------------------------
+-- find the first file in the list which exists in the current directory
+chooseExistingFile :: [String] -> YiM String
+chooseExistingFile []     = return ""
+chooseExistingFile (x:xs) = do
+  haveFile <- liftIO $ doesFileExist x
+  if haveFile then return x else chooseExistingFile xs
+
+cabalSetupFiles :: [String]
+cabalSetupFiles = ["Setup.lhs", "Setup.hs"]
+
+----------------------------
 -- cabal-configure
 cabalConfigureE :: YiM ()
 cabalConfigureE =
     withMinibuffer "Project directory:" (completeFileName Nothing) $ \fpath ->
     withMinibuffer "Configure args:" return $ \cmd -> do
       liftIO $ setCurrentDirectory fpath
-      (cmdOut,cmdErr,exitCode) <- liftIO $ popen "runghc" ("Setup.hs":"configure":words cmd) Nothing
-      case exitCode of
-        ExitSuccess   -> do withUI $ \ui -> reloadProject ui "."
-                            withEditor $ withOtherWindow $ newBufferE "*Shell Command Output*" cmdOut >> return ()
-        ExitFailure _ -> msgEditor cmdErr
+      setupFile <- chooseExistingFile cabalSetupFiles
+      if setupFile == "" then msgEditor "could not locate Setup.lhs or Setup.hs"
+       else do
+         (cmdOut,cmdErr,exitCode) <- liftIO $ popen "runhaskell" (setupFile:"configure":words cmd) Nothing
+         case exitCode of
+           ExitSuccess   -> do withUI $ \ui -> reloadProject ui "."
+                               withEditor $ withOtherWindow $ newBufferE "*Shell Command Output*" cmdOut >> return ()
+           ExitFailure _ -> msgEditor cmdErr
 
 ----------------------------
 -- cabal-build
 cabalBuildE :: YiM ()
 cabalBuildE =
     withMinibuffer "Build args:" return $ \cmd -> do
-      startSubprocess "runghc" ("Setup.hs":"build":words cmd)
+      setupFile <- chooseExistingFile cabalSetupFiles
+      if setupFile == "" then msgEditor "could not locate Setup.lhs or Setup.hs"
+        else startSubprocess "runhaskell" (setupFile:"build":words cmd)
 
 -----------------------------
 -- isearch
