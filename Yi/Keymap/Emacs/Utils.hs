@@ -22,6 +22,7 @@ module Yi.Keymap.Emacs.Utils
   , isearchKeymap
   , shellCommandE
   , cabalConfigureE
+  , cabalBuildE
   , executeExtendedCommandE
   , evalRegionE
   , readArgC
@@ -209,6 +210,13 @@ cabalConfigureE =
         ExitSuccess   -> do withUI $ \ui -> reloadProject ui "."
                             withEditor $ withOtherWindow $ newBufferE "*Shell Command Output*" cmdOut >> return ()
         ExitFailure _ -> msgEditor cmdErr
+
+----------------------------
+-- cabal-build
+cabalBuildE :: YiM ()
+cabalBuildE =
+    withMinibuffer "Build args:" return $ \cmd -> do
+      startSubprocess "runghc" ("Setup.hs":"build":words cmd)
 
 -----------------------------
 -- isearch

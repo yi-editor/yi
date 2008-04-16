@@ -75,6 +75,7 @@ defaultPublishedActions = M.fromList $
     , ("Paragraph"              , box Paragraph)
     , ("Document"               , box Document)
     , ("cabalConfigureE"        , box cabalConfigureE)
+    , ("cabalBuildE"            , box cabalBuildE)
     ]
 
   where box x = [toDyn x]
