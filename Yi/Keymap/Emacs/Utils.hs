@@ -23,6 +23,7 @@ module Yi.Keymap.Emacs.Utils
   , shellCommandE
   , cabalConfigureE
   , cabalBuildE
+  , reloadProjectE
   , executeExtendedCommandE
   , evalRegionE
   , readArgC
@@ -89,6 +90,7 @@ import Yi.Core
 import Yi.Debug
 import Yi.Dired
 import Yi.Editor
+import Yi.Eval
 import Yi.Event
 import Yi.File
 import Yi.Interact hiding (write)
@@ -225,6 +227,9 @@ cabalConfigureE =
            ExitSuccess   -> do withUI $ \ui -> reloadProject ui "."
                                withEditor $ withOtherWindow $ newBufferE "*Shell Command Output*" cmdOut >> return ()
            ExitFailure _ -> msgEditor cmdErr
+
+reloadProjectE :: String -> YiM ()
+reloadProjectE s = withUI $ \ui -> reloadProject ui s
 
 ----------------------------
 -- cabal-build
