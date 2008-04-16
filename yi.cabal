@@ -109,6 +109,7 @@ library
       other-modules: Shim.SHM, Shim.Utils, Shim.SessionMonad, Shim.Hsinfo, Shim.GhcCompat, Shim.ExprSearch, Shim.ProjectContent
 
     other-modules:
+        Data.DelayList
         Paths_yi,
         Yi.Syntax.Cplusplus, Yi.Syntax.Haskell, Yi.Syntax.Indent, Yi.Syntax.LiterateHaskell,
         Yi.Syntax.Latex, Yi.Syntax.Paren, Yi.Syntax.Srmc, Yi.Syntax.Cabal, Yi.Syntax.Fractal
