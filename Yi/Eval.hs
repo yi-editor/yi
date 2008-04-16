@@ -5,6 +5,7 @@ module Yi.Eval (
         jumpToErrorE,
         jumpToE,
         consoleKeymap,
+        execEditorAction
 ) where
 
 import Control.Monad
@@ -19,6 +20,11 @@ import Yi.Event
 import Yi.Buffer
 import Yi.Buffer.HighLevel
 import Yi.Dired
+import Yi.Interpreter
+import Data.Dynamic
+import Control.Monad.Reader (asks)
+import Yi.Editor
+import Yi.MiniBuffer () -- instances
 
 jumpToE :: String -> Int -> Int -> YiM ()
 jumpToE filename line column = do
@@ -67,3 +73,19 @@ consoleKeymap = do event (Event KEnter [])
                                                 bm <- getBookmarkB "errorInsert"
                                                 setMarkPointB bm pt
                                               execEditorAction $ takeCommand x
+
+execEditorAction :: String -> YiM ()
+execEditorAction s = do 
+  env <- asks (publishedActions . yiConfig)
+  case toMono =<< interpret =<< addMakeAction =<< rename env =<< parse s of
+    Left err -> errorEditor err
+    Right a -> runAction a
+  where addMakeAction expr = return $ UApp (UVal mkAct) expr
+        mkAct = [
+                 toDyn (makeAction :: BufferM () -> Action),
+                 toDyn (makeAction :: BufferM Int -> Action),
+                 toDyn (makeAction :: EditorM () -> Action),
+                 toDyn (makeAction :: YiM () -> Action),
+                 toDyn (makeAction :: (String -> YiM ()) -> Action)
+                ]
+            
