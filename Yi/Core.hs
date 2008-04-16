@@ -131,7 +131,7 @@ startEditor cfg st = do
                  sessionMap = M.empty,
                  compBuffer = M.empty }
 #endif
-    (ui, runYi) <- mdo let handler e = runYi $ errorEditor (show e)
+    (ui, runYi) <- mdo let handler e = runYi $ (errorEditor (show e) >> refreshEditor)
                            inF  ev  = handle handler (runYi (dispatch ev))
                            outF act = handle handler (runYi (interactive act))
                        ui <- uiStart (configUI cfg) inF outF initEditor
