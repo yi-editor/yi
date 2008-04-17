@@ -55,7 +55,7 @@ data UI = UI { uiWindow :: Gtk.Window
              , windowCache :: IORef [WinInfo]
              , uiActionCh :: Action -> IO ()
              , uiConfig :: Common.UIConfig
-             , uiProjectStore :: MView.TreeStore ProjectItem
+             , uiFilesStore :: MView.TreeStore ProjectItem
              }
 
 data WinInfo = WinInfo
@@ -113,7 +113,7 @@ start cfg ch outCh _ed = do
 
   vb <- vBoxNew False 1  -- Top-level vbox
 
-  (projectTree, projectStore) <- projectTreeNew outCh  
+  (filesTree,   filesStore) <- projectTreeNew outCh  
   modulesTree <- treeViewNew
 
   tabs <- notebookNew
@@ -121,9 +121,9 @@ start cfg ch outCh _ed = do
   panedAdd1 paned tabs
 
   scrlProject <- scrolledWindowNew Nothing Nothing
-  scrolledWindowAddWithViewport scrlProject projectTree
+  scrolledWindowAddWithViewport scrlProject filesTree
   scrolledWindowSetPolicy scrlProject PolicyAutomatic PolicyAutomatic
-  notebookAppendPage tabs scrlProject "Project"
+  notebookAppendPage tabs scrlProject "Files"
 
   scrlModules <- scrolledWindowNew Nothing Nothing
   scrolledWindowAddWithViewport scrlModules modulesTree
@@ -153,7 +153,7 @@ start cfg ch outCh _ed = do
   wc <- newIORef []
   tt <- textTagTableNew
 
-  let ui = UI win vb' cmd bufs tt wc outCh cfg projectStore
+  let ui = UI win vb' cmd bufs tt wc outCh cfg filesStore
 
   return (mkUI ui)
 
@@ -462,8 +462,8 @@ prepareAction ui = do
 
 reloadProject :: UI -> FilePath -> IO ()
 reloadProject ui fpath = do
-  tree <- loadProject fpath
-  loadProjectTree (uiProjectStore ui) tree
+  files <- loadProject fpath
+  loadProjectTree (uiFilesStore   ui) files
 
 distribute :: Window -> State [Int] Window
 distribute win = do
