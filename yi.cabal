@@ -22,6 +22,8 @@ data-files:
   art/hs-source-folder.png
   art/exposed-module.png
   art/hidden-module.png
+  art/exposed-file-module.png
+  art/hidden-file-module.png
   art/package.png
   art/project.png
   art/c-source.png

@@ -9,12 +9,15 @@ module Shim.ProjectContent
          ( loadProject
          , ProjectItem(..)
          , FileKind(..)
+         , FolderKind(..)
+         , ModuleKind(..)
          ) where
 
 import Control.Monad
 import Control.Monad.State
 import Data.Tree
 import Data.Tree.Zipper
+import qualified Data.Set as Set
 import Data.List (partition, nub)
 import Distribution.Version
 import Distribution.Package
@@ -28,51 +31,62 @@ import System.Directory
 
 data ProjectItem
   = ProjectItem
-      { itemName   :: !String
-      , itemFKind  :: !FileKind
-      , itemVersion:: !Version
+      { itemName   :: String
+      , itemVersion:: Version
       }
   | DependenciesItem 
-      { itemName   :: !String
+      { itemName   :: String
       }
   | FolderItem 
-      { itemName   :: !String
-      , itemFKind  :: !FileKind
+      { itemName   :: String
+      , folderKind :: FolderKind
       }
   | FileItem
-      { itemName   :: !String
-      , itemFKind  :: !FileKind
+      { itemName   :: String
       , itemFPath  :: FilePath
+      , fileKind   :: FileKind
       }
   | PackageItem
-      { itemName   :: !String
-      , itemVersion:: !Version
+      { itemName   :: String
+      , itemVersion:: Version
+      }
+  | ModuleItem
+      { itemName   :: String
+      , itemFPath  :: FilePath
+      , moduleKind :: ModuleKind
       }
   deriving (Eq, Ord, Show)
 
 data FileKind
-  = ExposedModule
-  | HiddenModule
+  = HsSource ModuleKind
   | CSource
   | HSource
   | TextFile
   | SetupScript
   | LicenseText
-  | HsSourceFolder
+  deriving (Eq, Ord, Show)
+
+data FolderKind
+  = HsSourceFolder
   | PlainFolder
   deriving (Eq, Ord, Show)
 
-loadProject :: FilePath -> IO (Tree ProjectItem)
+data ModuleKind
+  = ExposedModule
+  | HiddenModule
+  deriving (Eq, Ord, Show)
+
+loadProject :: FilePath -> IO (Tree ProjectItem, Tree ProjectItem)
 loadProject projPath = do
   lbi <- fmap read $ readFile (projPath </> localBuildInfoFile)
   let pkgDescr = localPkgDescr lbi
 
-      root  = Node (ProjectItem (pkgName (package pkgDescr)) PlainFolder (pkgVersion (package pkgDescr))) []
-      tloc1 = execState (addDependenciesTree (packageDeps lbi)) (getTop root)
-  tloc2 <- case library pkgDescr of
-             Just lib -> addLibraryTree projPath tloc1 lib
-             Nothing  -> return tloc1
-  tloc2 <- foldM (addExecutableTree projPath) tloc2 (executables pkgDescr)
+      root  = ProjectItem (pkgName (package pkgDescr)) (pkgVersion (package pkgDescr))
+      tloc1 = execState (addDependenciesTree (packageDeps lbi)) (getTop (Node root []))
+  (mod_items,tloc2) <- case library pkgDescr of
+             Just lib -> addLibraryTree projPath (Set.empty,tloc1) lib
+             Nothing  -> return (Set.empty,tloc1)
+  (mod_items,tloc2) <- foldM (addExecutableTree projPath) (mod_items,tloc2) (executables pkgDescr)
   tloc3 <- checkAndAddFile projPath "Setup.hs"  SetupScript tloc2
   tloc4 <- checkAndAddFile projPath "Setup.lhs" SetupScript tloc3
   let (hsources,extra_sources) = partition (\fpath -> takeExtension fpath == ".h") (extraSrcFiles pkgDescr)
@@ -80,20 +94,22 @@ loadProject projPath = do
                             mapM_ (addFilePath TextFile projPath) extra_sources
                             mapM_ (addFilePath TextFile projPath) (dataFiles pkgDescr)
                             addFilePath LicenseText projPath (licenseFile pkgDescr)) tloc4
-  return (tree tloc5)
+      tloc6 = execState (mapM_ (\item -> insertDown item >> up) (Set.toList mod_items)) tloc1
+  return (tree tloc5, tree tloc6)
+                            
 
-addLibraryTree projPath tloc (Library {libBuildInfo=binfo, exposedModules=exp_mods}) = do
-  (exp_mods,hid_mods,tloc1) <- foldM (\st dir -> addSourceDir projPath dir st)
-                                     (exp_mods,otherModules binfo,tloc)
-                                     (hsSourceDirs binfo)
-  return $ execState (mapM_ (addFilePath CSource projPath) (cSources binfo)) tloc1
+addLibraryTree projPath (mod_items,tloc) (Library {libBuildInfo=binfo, exposedModules=exp_mods}) = do
+  (exp_mods,hid_mods,mod_items1,tloc1) <- foldM (\st dir -> addSourceDir projPath dir st)
+                                                (exp_mods,otherModules binfo,mod_items,tloc)
+                                                (hsSourceDirs binfo)
+  return $ (mod_items1,execState (mapM_ (addFilePath CSource projPath) (cSources binfo)) tloc1)
   
-addExecutableTree projPath tloc (Executable {modulePath=mainIs, buildInfo=binfo}) = do
-  let tloc1 = execState (addFilePath ExposedModule projPath mainIs) tloc
-  (exp_mods,hid_mods,tloc2) <- foldM (\st dir -> addSourceDir projPath dir st)
-                                     ([],otherModules binfo,tloc1)
-                                     (hsSourceDirs binfo)
-  return $ execState (mapM_ (addFilePath CSource projPath) (cSources binfo)) tloc2
+addExecutableTree projPath (mod_items,tloc) (Executable {modulePath=mainIs, buildInfo=binfo}) = do
+  let tloc1 = execState (addFilePath (HsSource ExposedModule) projPath mainIs) tloc
+  (exp_mods,hid_mods,mod_items2,tloc2) <- foldM (\st dir -> addSourceDir projPath dir st)
+                                                ([],otherModules binfo,mod_items,tloc1)
+                                                (hsSourceDirs binfo)
+  return $ (mod_items2,execState (mapM_ (addFilePath CSource projPath) (cSources binfo)) tloc2)
 
 addDependenciesTree deps = do
   insertDown (DependenciesItem "Dependencies")
@@ -105,20 +121,22 @@ addDependenciesTree deps = do
 
 addSourceDir :: FilePath -- ^ project location
              -> FilePath -- ^ source sub-directory
-             ->    ([String],[String],TreeLoc ProjectItem)
-             -> IO ([String],[String],TreeLoc ProjectItem)
-addSourceDir projPath srcDir (exp_mods,hid_mods,tloc) = do
+             ->    ([String],[String],Set.Set ProjectItem,TreeLoc ProjectItem)
+             -> IO ([String],[String],Set.Set ProjectItem,TreeLoc ProjectItem)
+addSourceDir projPath srcDir (exp_mods,hid_mods,mod_items,tloc) = do
   let dir = projPath </> srcDir
   (exp_paths,exp_mods) <- findModules dir exp_mods
   (hid_paths,hid_mods) <- findModules dir hid_mods
   let tloc1 = execState (addFilePath' (\c -> FolderItem c HsSourceFolder) (splitPath' srcDir)
-                            (mapM_ (addFilePath ExposedModule dir) exp_paths >>
-                             mapM_ (addFilePath HiddenModule  dir) hid_paths))
+                            (mapM_ (\(mod,loc) -> addFilePath (HsSource ExposedModule) dir loc) exp_paths >>
+                             mapM_ (\(mod,loc) -> addFilePath (HsSource HiddenModule)  dir loc) hid_paths))
                         tloc
-  return (exp_mods,hid_mods,tloc1)
+      mod_items1 = foldr (\(mod,loc) -> Set.insert (ModuleItem mod (dir </> loc) ExposedModule)) mod_items  exp_paths
+      mod_items2 = foldr (\(mod,loc) -> Set.insert (ModuleItem mod (dir </> loc) HiddenModule )) mod_items1 hid_paths
+  return (exp_mods,hid_mods,mod_items2,tloc1)
 
 addFilePath :: FileKind -> FilePath -> FilePath -> State (TreeLoc ProjectItem) ()
-addFilePath kind root fpath = addFilePath' (\c -> FileItem c kind (root </> fpath)) (splitPath' fpath) (return ())
+addFilePath kind root fpath = addFilePath' (\c -> FileItem c (root </> fpath) kind) (splitPath' fpath) (return ())
 
 addFilePath' :: (String -> ProjectItem) -> [String] 
              -> State (TreeLoc ProjectItem) ()
@@ -164,15 +182,15 @@ checkAndAddFile projPath fpath kind tloc = do
 -- Module Finder
 -------------------------------------------------------------------------
 
-findModules :: FilePath                  -- ^project location
-            -> [String]                  -- ^module names
-            -> IO ([FilePath],[String])  -- ^locations and unknown modules
+findModules :: FilePath                           -- ^source directory location
+            -> [String]                           -- ^module names
+            -> IO ([(String,FilePath)],[String])  -- ^found modules and unknown modules
 findModules location []         = return ([],[])
 findModules location (mod:mods) = do
   mb_paths <- findFileWithExtension' (map fst knownSuffixHandlers ++ ["hs", "lhs"]) [location] (dotToSep mod)
   (locs,unks) <- findModules location mods
   case mb_paths of
-    Just (_,loc) -> return (loc:locs,unks)
+    Just (_,loc) -> return ((mod,loc) : locs,unks)
     Nothing      -> return (locs,mod:unks)
 
 

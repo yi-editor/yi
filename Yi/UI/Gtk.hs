@@ -55,7 +55,8 @@ data UI = UI { uiWindow :: Gtk.Window
              , windowCache :: IORef [WinInfo]
              , uiActionCh :: Action -> IO ()
              , uiConfig :: Common.UIConfig
-             , uiFilesStore :: MView.TreeStore ProjectItem
+             , uiFilesStore   :: MView.TreeStore ProjectItem
+             , uiModulesStore :: MView.TreeStore ProjectItem
              }
 
 data WinInfo = WinInfo
@@ -114,7 +115,7 @@ start cfg ch outCh _ed = do
   vb <- vBoxNew False 1  -- Top-level vbox
 
   (filesTree,   filesStore) <- projectTreeNew outCh  
-  modulesTree <- treeViewNew
+  (modulesTree, modulesStore) <- projectTreeNew outCh  
 
   tabs <- notebookNew
   set tabs [notebookTabPos := PosBottom]
@@ -153,7 +154,7 @@ start cfg ch outCh _ed = do
   wc <- newIORef []
   tt <- textTagTableNew
 
-  let ui = UI win vb' cmd bufs tt wc outCh cfg filesStore
+  let ui = UI win vb' cmd bufs tt wc outCh cfg filesStore modulesStore
 
   return (mkUI ui)
 
@@ -462,8 +463,9 @@ prepareAction ui = do
 
 reloadProject :: UI -> FilePath -> IO ()
 reloadProject ui fpath = do
-  files <- loadProject fpath
+  (files,mods) <- loadProject fpath
   loadProjectTree (uiFilesStore   ui) files
+  loadProjectTree (uiModulesStore ui) mods
 
 distribute :: Window -> State [Int] Window
 distribute win = do

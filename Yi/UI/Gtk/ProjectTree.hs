@@ -37,24 +37,28 @@ projectTreeNew post = do
   MView.cellLayoutPackStart col1 renderer1 True 
   MView.cellLayoutPackStart col2 renderer2 True
 
-  icoProject      <- loadIcon "project.png"
-  icoDependencies <- loadIcon "dependencies.png"
-  icoPlainFolder  <- loadIcon "plain-folder.png"
-  icoHsSourceFolder<-loadIcon "hs-source-folder.png"
-  icoExposedModule<- loadIcon "exposed-module.png"
-  icoHiddenModule <- loadIcon "hidden-module.png"
-  icoCSource      <- loadIcon "c-source.png"
-  icoHSource      <- loadIcon "h-source.png"
-  icoTextFile     <- loadIcon "text-file.png"
-  icoLicenseFile  <- loadIcon "license-file.png"
-  icoPackage      <- loadIcon "package.png"
-  icoSetupScript  <- loadIcon "setup-script.png"
+  icoProject          <- loadIcon "project.png"
+  icoDependencies     <- loadIcon "dependencies.png"
+  icoPlainFolder      <- loadIcon "plain-folder.png"
+  icoHsSourceFolder   <- loadIcon "hs-source-folder.png"
+  icoExposedModule    <- loadIcon "exposed-module.png"
+  icoHiddenModule     <- loadIcon "hidden-module.png"
+  icoExposedFileModule<- loadIcon "exposed-file-module.png"
+  icoHiddenFileModule <- loadIcon "hidden-file-module.png"
+  icoCSource          <- loadIcon "c-source.png"
+  icoHSource          <- loadIcon "h-source.png"
+  icoTextFile         <- loadIcon "text-file.png"
+  icoLicenseFile      <- loadIcon "license-file.png"
+  icoPackage          <- loadIcon "package.png"
+  icoSetupScript      <- loadIcon "setup-script.png"
   let icos = Icons icoProject
                    icoDependencies
                    icoPlainFolder
                    icoHsSourceFolder
                    icoExposedModule
                    icoHiddenModule
+                   icoExposedFileModule
+                   icoHiddenFileModule
                    icoCSource
                    icoHSource
                    icoTextFile
@@ -71,8 +75,9 @@ projectTreeNew post = do
   onRowActivated projectTree $ \path col -> do
     item <- MView.treeStoreGetValue projectStore path
     case item of
-      FileItem{itemFPath=path} -> post (makeAction (fnewE path))
-      _                        -> return ()
+      FileItem  {itemFPath=path} -> post (makeAction (fnewE path))
+      ModuleItem{itemFPath=path} -> post (makeAction (fnewE path))
+      _                          -> return ()
 
   return (projectTree, projectStore)
 
@@ -83,35 +88,41 @@ loadProjectTree projectStore tree = do
 
 data Icons
   = Icons
-      { icoProject      :: Pixbuf
-      , icoDependencies :: Pixbuf
-      , icoPlainFolder  :: Pixbuf
-      , icoHsSourceFolder::Pixbuf
-      , icoExposedModule:: Pixbuf
-      , icoHiddenModule :: Pixbuf
-      , icoCSource      :: Pixbuf
-      , icoHSource      :: Pixbuf
-      , icoTextFile     :: Pixbuf
-      , icoLicenseFile  :: Pixbuf
-      , icoPackage      :: Pixbuf
-      , icoSetupScript  :: Pixbuf
+      { icoProject          :: Pixbuf
+      , icoDependencies     :: Pixbuf
+      , icoPlainFolder      :: Pixbuf
+      , icoHsSourceFolder   :: Pixbuf
+      , icoExposedModule    :: Pixbuf
+      , icoHiddenModule     :: Pixbuf
+      , icoExposedFileModule:: Pixbuf
+      , icoHiddenFileModule :: Pixbuf
+      , icoCSource          :: Pixbuf
+      , icoHSource          :: Pixbuf
+      , icoTextFile         :: Pixbuf
+      , icoLicenseFile      :: Pixbuf
+      , icoPackage          :: Pixbuf
+      , icoSetupScript      :: Pixbuf
       }
 
 itemIcon icos (ProjectItem{})              = icoProject      icos
 itemIcon icos (DependenciesItem{})         = icoDependencies icos
-itemIcon icos (FolderItem{itemFKind=kind}) = kindIcon        icos kind
-itemIcon icos (FileItem{itemFKind=kind})   = kindIcon        icos kind
+itemIcon icos (FolderItem{folderKind=kind})= folderIcon      icos kind
+itemIcon icos (FileItem{fileKind=kind})    = fileIcon        icos kind
+itemIcon icos (ModuleItem{moduleKind=kind})= moduleIcon      icos kind icoExposedModule icoHiddenModule
 itemIcon icos (PackageItem{})              = icoPackage      icos
 
-kindIcon icos ExposedModule = icoExposedModule  icos
-kindIcon icos HiddenModule  = icoHiddenModule   icos
-kindIcon icos CSource       = icoCSource        icos
-kindIcon icos HSource       = icoHSource        icos
-kindIcon icos TextFile      = icoTextFile       icos
-kindIcon icos SetupScript   = icoSetupScript    icos
-kindIcon icos LicenseText   = icoLicenseFile    icos
-kindIcon icos HsSourceFolder= icoHsSourceFolder icos
-kindIcon icos PlainFolder   = icoPlainFolder    icos
+fileIcon icos (HsSource kind) = moduleIcon        icos kind icoExposedFileModule icoHiddenFileModule
+fileIcon icos CSource         = icoCSource        icos
+fileIcon icos HSource         = icoHSource        icos
+fileIcon icos TextFile        = icoTextFile       icos
+fileIcon icos SetupScript     = icoSetupScript    icos
+fileIcon icos LicenseText     = icoLicenseFile    icos
+
+folderIcon icos HsSourceFolder  = icoHsSourceFolder icos
+folderIcon icos PlainFolder     = icoPlainFolder    icos
+
+moduleIcon icos ExposedModule icoE _    = icoE icos
+moduleIcon icos HiddenModule  _    icoH = icoH icos
 
 itemDisplayName item =
   let pkg_id = PackageIdentifier (itemName item) (itemVersion item)
