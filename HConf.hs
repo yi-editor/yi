@@ -83,10 +83,14 @@ getHConf projectName initialState recoverState saveState defaultConfiguration sh
      -- When executing another window manager, @resume@ should be 'False'.
      -- this function will never return.
     , restart = \state -> do
+#ifndef mingw32_HOST_OS
         s <- saveState state
         let args = ["--resume", s]
         executeFile projectName True args Nothing -- TODO: catch exceptions
         -- run the master, who will take care of recompiling; getting the new state, etc.
+#else
+        return ()
+#endif
 
     -- The configurable main, callable from ~/.project/project.hs
     , mainSlave = \userConfig -> do
