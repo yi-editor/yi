@@ -462,7 +462,7 @@ prepareAction ui = do
 
 reloadProject :: UI -> FilePath -> IO ()
 reloadProject ui fpath = do
-  tree <- loadFile fpath
+  tree <- loadProject fpath
   loadProjectTree (uiProjectStore ui) tree
 
 distribute :: Window -> State [Int] Window

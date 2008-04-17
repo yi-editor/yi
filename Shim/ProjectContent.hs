@@ -6,7 +6,7 @@
 --
 
 module Shim.ProjectContent
-         ( loadFile
+         ( loadProject
          , ProjectItem(..)
          , FileKind(..)
          ) where
@@ -62,8 +62,8 @@ data FileKind
   | PlainFolder
   deriving (Eq, Ord, Show)
 
-loadFile :: FilePath -> IO (Tree ProjectItem)
-loadFile projPath = do
+loadProject :: FilePath -> IO (Tree ProjectItem)
+loadProject projPath = do
   lbi <- fmap read $ readFile (projPath </> localBuildInfoFile)
   let pkgDescr = localPkgDescr lbi
 
