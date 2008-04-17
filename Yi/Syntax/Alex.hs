@@ -115,7 +115,7 @@ mkHighlighter initState alexScanToken =
                   }
       where
         startState = (AlexState initState 0 startPosn, [])
-        getStrokes point begin end (Cache _ (leftHL, rightHL)) = reverse (usefulsL leftHL) ++ usefulsR rightHL
+        getStrokes _point begin end (Cache _ (leftHL, rightHL)) = reverse (usefulsL leftHL) ++ usefulsR rightHL
             where
               usefulsR = dropWhile (\(_l,_s,r) -> r <= begin) .
                          takeWhile (\(l,_s,_r) -> l <= end)

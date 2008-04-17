@@ -55,7 +55,7 @@ getLastToken tree = getLast $ foldMap (\x -> Last (Just x)) tree
 -- Return all subtrees in a subtree.
 getAllSubTrees :: Tree t -> [Tree t]
 getAllSubTrees t = t : concatMap getAllSubTrees (subtrees t)
-    where subtrees (Group l g r) = g
+    where subtrees (Group _ g _) = g
           subtrees (Stmt s) = concat s
           subtrees _ = []
 
@@ -69,7 +69,7 @@ getIndentingSubtree roots offset line
 
 getSubtreeSpan :: Tree TT -> (Int, Int)
 getSubtreeSpan tree = (posnOfs $ first, lastLine - firstLine)
-    where bounds@[first, last] = fmap (tokPosn . assertJust) [getFirstToken tree, getLastToken tree]
+    where bounds@[first, _last] = fmap (tokPosn . assertJust) [getFirstToken tree, getLastToken tree]
           [firstLine, lastLine] = fmap posnLine bounds
           assertJust (Just x) = x
 
