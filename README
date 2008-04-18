@@ -48,14 +48,10 @@ DEPENDENCIES
 QUICK START:
 
 * configure, compile and install yi as you would do for any other Cabal package.
-  NOTE: you need to use Cabal version 1.2.3. To make sure you use it, use:
-
-    ghc -package Cabal-1.2.3.0 --make Setup.hs
-    ./Setup configure ...
 
   NOTE: if you get 
 
-    Setup.hs: Package yi-0.3 can't be built on this system.
+    Setup.hs: Package yi-0.4 can't be built on this system.
 
   it means that you have no UI package available. See DEPENDENCIES.
 
@@ -85,6 +81,35 @@ QUICK START with cabal-make:
 * make all
   will configure, build, document and install.
 
+
+CONFIGURATION
+
+All configuration (bindings, colours) is done with ~/.yi/yi.hs
+See examples directory for files that you can use as ~/.yi/yi.hs
+
+
+
+COMPATIBILITY
+
+        |  Vty     Gtk   Cocoa
+--------+----------------------
+Linux   |   X       X
+OSX     |   X       X      X
+Windows |           X
+
+
+
+Notes:
+
+  * Vty library has small problems with various terminals. Some keys
+    might not be well recognized. 
+
+  * Reconfiguration does not work on windows. You'll have to compile your
+    customized Yi yourself.
+
+  * Cocoa frontend is still experimental.
+  
+
 HACKER'S GUIDE: 
 
 You can run yi in place without installing with the usual
@@ -105,22 +130,11 @@ cabal flags which may well include "--user" and "--prefix".
 This is the recommended mode of operation if you're tracking the
 development repository.
 
-CONFIGURATION
-
-All configuration (bindings, colours) is done with ~/.yi/yi.hs
-See examples directory for files that you can use as ~/.yi/yi.hs
+NOTE: You must still install Yi once so that the icons can be found!
 
 
 PORTABILITY
 
-Yi is developed on Linux.
-FreeBSD and OpenBSD: should be ok.
-OS X: Vty Ok, Gtk should work; you can also help us debug the Cocoa frontend.
-MS Windows: Yi could be ported to MS Windows, using the Gtk frontend.
-
-
 A porting checklist:
-        * you have a working GHCi
+        * you have latest GHC release
         * you have either gtk or vty support
-
-
