@@ -37,20 +37,6 @@ jumpToSrcLoc locn =
        then jumpToE (unpackFS $ srcLocFile locn) (srcLocLine locn) (srcLocCol locn)
        else msgEditor $ show (ppr locn defaultUserStyle)
 
-
-type T = (Maybe (Robin.WindowSet CompileNote))
-newtype ShimNotes = ShimNotes { fromShimNotes :: T }
-    deriving Typeable
-instance Initializable ShimNotes where
-    initial = ShimNotes Nothing
-
-
-
-notesA :: Accessor Editor T
-notesA =  (Accessor fromShimNotes (\f (ShimNotes x) -> ShimNotes (f x))) 
-          .> dynamicValueA .> dynamicA 
-
-
 jumpToNextNote :: YiM ()
 jumpToNextNote = do
   note <- withEditor $ do
@@ -107,15 +93,13 @@ mode = haskellMode
               ("C-c ! =", write annotValue),
               ("C-c C-d", write jumpToDefinition),
               ("C-c C-l", write $ do
-                 msgEditor "Loading..."
-                 Just filename <- withBuffer $ gets file
-                 (res,_) <- withShim $ Hsinfo.load filename True Nothing
-                 msgEditor "Result:"
-                 msgEditor (show res)
                  withEditor $ do
-                   setA notesA (Robin.fromList $ compResultNotes res)
                    withOtherWindow $ do
                      switchToBufferWithNameE "*messages*"
+                 msgEditor "Loading..."
+                 Just filename <- withBuffer $ gets file
+                 runShimThread (Hsinfo.load filename True Nothing >> return ())
+                 return ()
               ),
               ("C-x `", write jumpToNextNote)
              ]

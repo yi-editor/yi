@@ -85,6 +85,7 @@ import Control.Concurrent
 import System.Directory ( findExecutable )
 import Shim.Hsinfo
 import Shim.SHM
+import ErrUtils
 #endif
 
 -- | Make an action suitable for an interactive run.
@@ -122,21 +123,30 @@ startEditor cfg st = do
     ghc <- findExecutable "ghc" -- FIXME: Add version constraint
            >>= maybe (error "Could not find ghc executable in path.") return
     session <- ghcInit ghc
-    shim <- newIORef ShimState
-               { ghcProgram = ghc,
-                 tempSession = session,
-                 sessionMap = M.empty,
-                 compBuffer = M.empty }
 #endif
     (ui, runYi) <- mdo let handler e = runYi $ (errorEditor (show e) >> refreshEditor)
                            inF  ev  = handle handler (runYi (dispatch ev))
                            outF act = handle handler (runYi (interactive act))
                        ui <- uiStart (configUI cfg) inF outF initEditor
-                       let yi = Yi newSt ui startThreads inF outF startSubprocessId startSubprocesses cfg 
+                       let runYi f = runReaderT (runYiM f) yi
+                           yi = Yi newSt ui startThreads inF outF startSubprocessId startSubprocesses cfg 
 #ifdef SHIM 
                                    shim
+                                   
+                           logMsg severity srcSpan style msg = runYi $ do
+                             withEditor $ do                             
+                               let note = CompileNote severity srcSpan style msg
+                               modifyA notesA (Just . maybe (WS.new note) (WS.add note))
+                             msgEditor ('\n':show ((mkLocMessage srcSpan msg) style))
+                             refreshEditor
+
+                       shim <- newMVar ShimState
+                                  { ghcProgram = ghc,
+                                    tempSession = session,
+                                    sessionMap = M.empty,
+                                    compBuffer = M.empty,
+                                    compLogAction = logMsg }
 #endif
-                           runYi f = runReaderT (runYiM f) yi
                        return (ui, runYi)
   
     runYi $ do

@@ -72,7 +72,7 @@ data Yi = Yi {yiEditor :: IORef Editor,
               yiSubprocesses :: IORef (M.Map SubprocessId SubprocessInfo),
               yiConfig :: Config
 #ifdef SHIM
-              ,yiShim :: IORef ShimState
+              ,yiShim :: MVar ShimState
 #endif
              }
              deriving Typeable
@@ -141,9 +141,18 @@ withBuffer f = withEditor (Editor.withBuffer0 f)
 withShim :: SHM a -> YiM a
 withShim f = do
   r <- asks yiShim
-  liftIO $ do e <- readRef r
+  liftIO $ do e <- takeMVar r
               (a,e') <- runStateT f e
-              writeRef r e'
+              putMVar r e'
+              return a
+
+runShimThread :: SHM () -> YiM ThreadId
+runShimThread f = do
+  r <- asks yiShim
+  (liftIO . forkOS) $
+           do e <- takeMVar r
+              (a,e') <- runStateT f e
+              putMVar r e'
               return a
 #endif
 

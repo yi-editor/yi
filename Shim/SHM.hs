@@ -16,35 +16,19 @@ import Shim.Utils
 --------------------------------------------------------------
 -- SHM Monad
 --------------------------------------------------------------
-
-data CompileNote = CompileNote {severity :: Severity,
-                                srcSpan :: SrcSpan,
-                                pprStyle :: PprStyle,
-                                message :: Message,
-                                projectdir :: FilePath}
-
-
-instance Show CompileNote where
-    show n = show $
-               (hang (ppr (srcSpan n) <> colon) 4  (message n)) (pprStyle n)
                      
 
 data CompilationResult
-  = FileCompiled [CompileNote]
-  | ImportsOnly [CompileNote]
-  | PreludeOnly [CompileNote]
-  | NothingCompiled String [CompileNote]
+  = FileCompiled
+  | ImportsOnly
+  | PreludeOnly
+  | NothingCompiled String
     deriving Show
 
-compResultNotes (FileCompiled ns) = ns
-compResultNotes (ImportsOnly ns) = ns
-compResultNotes (PreludeOnly ns) = ns
-compResultNotes (NothingCompiled _ ns) = ns
-
 replaceWith :: CompilationResult -> CompilationResult -> Bool
-replaceWith _ (FileCompiled _ ) = True
-replaceWith (FileCompiled _ ) _ = False
-replaceWith _ (ImportsOnly _ ) = True
+replaceWith _ FileCompiled = True
+replaceWith FileCompiled _ = False
+replaceWith _ ImportsOnly = True
 replaceWith _ _ = False
 
 type IdData = [(String, String)]
@@ -59,7 +43,8 @@ data ShimState = ShimState
   { ghcProgram :: String,
     tempSession :: Session,
     sessionMap :: SessionMap,
-    compBuffer :: CompBuffer }
+    compBuffer :: CompBuffer,
+    compLogAction :: Severity -> SrcSpan -> PprStyle -> Message -> IO () }
 
 type SHM = StateT ShimState IO
 
@@ -95,12 +80,16 @@ addCompBuffer sourcefile id_data compilation_result checked_mod =
 io :: IO a -> SHM a
 io = lift
 
-runSHM :: Session -> String -> SHM a -> IO a
-runSHM ses ghc m = liftM fst $ runStateT m
+runSHM :: Session -> FilePath -> (Severity -> SrcSpan -> PprStyle -> Message -> IO ()) -> SHM a -> IO a
+runSHM ses ghc compLogAction m = liftM fst $ runStateT m
                              $ ShimState {ghcProgram=ghc,
                                           tempSession=ses,
                                           sessionMap=M.empty,
-                                          compBuffer=M.empty}
+                                          compBuffer=M.empty,
+                                          compLogAction=compLogAction}
 
 logInfo :: String -> SHM ()
 logInfo = io . logS
+
+getCompLogAction :: SHM (Severity -> SrcSpan -> PprStyle -> Message -> IO ())
+getCompLogAction = gets compLogAction

@@ -15,7 +15,6 @@ import Shim.GhcCompat
 import Control.Applicative
 import qualified Control.Exception as CE
 import qualified Data.Map as M
-import qualified Control.Concurrent.MVar as MVar
 import List ( isPrefixOf, find, nubBy,
               sort, (\\), nub )
 import Directory
@@ -37,7 +36,6 @@ import Name
 import HscTypes
 import SrcLoc
 import PprTyThing
-import ErrUtils ( mkLocMessage )
 import StringBuffer ( stringToStringBuffer, StringBuffer )
 import HeaderInfo ( getOptions )
 import DriverPhases ( Phase(..), startPhase )
@@ -208,29 +206,29 @@ bufferNeedsPreprocessing sourcefile source = do
 
 load :: FilePath -> Bool -> Maybe String -> SHM (CompilationResult,Session)
 load sourcefile store source = do
-  (load_succ,cnotes,ses) <- load' sourcefile source
+  (load_succ,ses) <- load' sourcefile source
   case load_succ of
     Succeeded -> do
-      let cres = FileCompiled cnotes
+      let cres = FileCompiled
       logInfo "typecheck successful, storing environment"
       storeIfNeeded cres ses
       return (cres,ses)
     Failed ->
       shmHandle
         (\e -> do logInfo (showException e)
-                  return (NothingCompiled (showException e) cnotes,ses)) $
+                  return (NothingCompiled (showException e),ses)) $
         do logInfo "first parse failed"
            source' <- readSourceIfNeeded sourcefile source
            let importsOnly = dropExports . dropDefinitions $ source'
-           (load_succ',_,_) <- load' sourcefile $ Just importsOnly
+           (load_succ',_) <- load' sourcefile (Just importsOnly)
            case load_succ' of
              Succeeded -> do
-               let cres = ImportsOnly cnotes
+               let cres = ImportsOnly
                storeIfNeeded cres ses
                return (cres,ses)
              Failed -> do
                logInfo "parse without exports failed too, using prelude only"
-               let cres = PreludeOnly cnotes
+               let cres = PreludeOnly
                storeIfNeeded cres ses
                return (cres,ses)
  where storeIfNeeded cres ses = do
@@ -249,32 +247,24 @@ load sourcefile store source = do
               let cm = do {c <- cm0; return (h, c)}
               storeFileInfo sourcefile cres cm id_data
 
-load' :: FilePath -> Maybe String -> SHM (SuccessFlag,[CompileNote],Session)
+load' :: FilePath -> Maybe String -> SHM (SuccessFlag,Session) 
 load' sourcefile source = do
   source' <- addTime source
   ses <- getSessionFor sourcefile
   dflags0 <- io $ GHC.getSessionDynFlags ses
-  ref <- io $ MVar.newMVar []
-  let dflags1 = dflags0{ log_action = logMsg ref, flags = Opt_ForceRecomp : flags dflags0 }
+  logAction <- getCompLogAction
+  let dflags1 = dflags0{ log_action = logAction, flags = Opt_ForceRecomp : flags dflags0 }
   io $ GHC.setSessionDynFlags ses dflags1
   io $ GHC.setTargets ses [Target (TargetFile sourcefile Nothing) source']
   loadResult <- io $ GHC.load ses LoadAllTargets
-  cnotes <- io $ reverse `liftM` MVar.readMVar ref
   case loadResult of
        Succeeded -> do -- GHC takes care of setting the right context
          modq <- io $ findModuleInFile ses sourcefile
          io $ GHC.setContext ses [modq] []
-         return (Succeeded,cnotes,ses)
+         return (Succeeded,ses)
        Failed    -> do   -- We take care of getting at least the Prelude
-         io(GHC.setContext ses [] =<< atomM (getPrelude ses))
-         return (Failed,cnotes,ses)
-  where atomM = liftM (:[])
-        logMsg ref severity' srcSpan' style' msg' = do
-          dir <- getCurrentDirectory
-          logS ('\n':show ((mkLocMessage srcSpan' msg') style'))
-          MVar.modifyMVar_ ref
-            (\l -> return $ (CompileNote severity' srcSpan'
-                                         style' msg' dir):l)
+         io(GHC.setContext ses [] =<< liftM (:[]) (getPrelude ses))
+         return (Failed,ses)
 
 addTime :: Maybe String -> SHM (Maybe (StringBuffer, ClockTime))
 addTime (Just s) = do now <- io $ getClockTime
@@ -483,7 +473,7 @@ dropExports s = imports_only ++ "\nmain = undefined" -- ToDo: don't use ad-hoc p
 runTest :: FilePath -> String -> SHM a -> IO a
 runTest sourcefile source m = do
   writeFile sourcefile source
-  (ghcInit "ghc") >>= (\ses -> runSHM ses "ghc" m)
+  (ghcInit "ghc") >>= (\ses -> runSHM ses "ghc" (\_ _ _ _ -> return ()) m)
 
 
 testSource :: String
