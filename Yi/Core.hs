@@ -310,9 +310,9 @@ startSubprocess cmd args = do
 
 startSubprocessWatchers :: (Action -> IO ()) -> SubprocessId -> SubprocessInfo -> YiM ()
 startSubprocessWatchers chan procid procinfo = do
-  mapM_ (liftIO . forkIO) [ pipeToBuffer (hOut procinfo) append,
-                          pipeToBuffer (hErr procinfo) append,
-                          waitForExit (procHandle procinfo) >>= reportExit ]
+  mapM_ (liftIO . forkOS) [ pipeToBuffer (hOut procinfo) append,
+                            pipeToBuffer (hErr procinfo) append,
+                            waitForExit (procHandle procinfo) >>= reportExit ]
   where append s = send $ appendToBuffer (bufRef procinfo) s
         reportExit s = append s >> (send $ removeSubprocess procid)
         send a = chan $ makeAction a
