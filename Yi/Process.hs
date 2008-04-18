@@ -83,6 +83,9 @@ data SubprocessInfo = SubprocessInfo {
 createSubprocess :: FilePath -> [String] -> BufferRef -> IO SubprocessInfo
 createSubprocess cmd args bufref = do
     (inp,out,err,handle) <- runInteractiveProcess cmd args Nothing Nothing
+    hSetBuffering inp NoBuffering
+    hSetBuffering out NoBuffering
+    hSetBuffering err NoBuffering
     return $ SubprocessInfo { procCmd=cmd, procArgs=args, procHandle=handle, hIn=inp, hOut=out, hErr=err, bufRef=bufref }
 
 -- Read as much as possible from handle without blocking
