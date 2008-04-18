@@ -79,12 +79,12 @@ winkey w = (isMini w, bufkey w)
 mkUI :: UI -> Common.UI
 mkUI ui = Common.UI
   {
-   Common.main                  = main                  ui,
-   Common.end                   = end,
-   Common.suspend               = windowIconify (uiWindow ui),
-   Common.refresh               = refresh               ui,
-   Common.prepareAction         = prepareAction         ui,
-   Common.reloadProject         = reloadProject         ui
+   Common.main                  = main ui,
+   Common.end                   = postGUIAsync $ end,
+   Common.suspend               = postGUIAsync $ windowIconify (uiWindow ui),
+   Common.refresh               = postGUIAsync . refresh                 ui,
+   Common.prepareAction         =                prepareAction           ui,
+   Common.reloadProject         = postGUIAsync . reloadProject           ui
   }
 
 mkFontDesc :: Common.UIConfig -> IO FontDescription
@@ -99,7 +99,7 @@ mkFontDesc cfg = do
 -- | Initialise the ui
 start :: Common.UIBoot
 start cfg ch outCh _ed = do
-  initGUI
+  unsafeInitGUIForThreadedRTS
 
   -- rest.
   win <- windowNew

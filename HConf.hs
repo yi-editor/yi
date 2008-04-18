@@ -142,7 +142,7 @@ recompile projectName force = io $ do
     if (force || srcT > binT)
       then do
         status <- bracket (openFile err WriteMode) hClose $ \h -> do
-            waitForProcess =<< runProcess "ghc" ["--make", projectName ++ ".hs", "-i", "-no-recomp", "-v0", "-o",binn] (Just dir)
+            waitForProcess =<< runProcess "ghc" ["--make", projectName ++ ".hs", "-i", "-no-recomp", "-v0", "-o",binn,"-threaded"] (Just dir)
                                     Nothing Nothing Nothing (Just h)
 
         -- now, if it fails, run xmessage to let the user know:
