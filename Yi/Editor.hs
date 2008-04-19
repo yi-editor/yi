@@ -40,7 +40,7 @@ data Editor = Editor {
         bufferStack   :: ![BufferRef]               -- ^ Stack of all the buffers. Never empty;
                                                     -- first buffer is the current one.
        ,buffers       :: M.Map BufferRef FBuffer
-       ,bufferRefSupply :: BufferRef
+       ,bufferRefSupply :: BufferRef  -- Supply for buffer and window ids. TODO: Rename
 
        ,windows       :: WindowSet Window
 
@@ -86,9 +86,9 @@ dynA = dynamicValueA .> dynamicA
 emptyEditor :: Editor
 emptyEditor = Editor {
         buffers      = M.singleton (bkey buf) buf
-       ,windows      = WS.new (dummyWindow $ bkey buf)
+       ,windows      = WS.new win
        ,bufferStack  = [bkey buf]
-       ,bufferRefSupply = 1
+       ,bufferRefSupply = 2
        ,windowfill   = ' '
        ,tabwidth     = 8
        ,regex        = Nothing
@@ -99,6 +99,7 @@ emptyEditor = Editor {
        ,pendingEvents = []
        }
         where buf = newB 0 "*console*" ""
+              win = (dummyWindow (bkey buf)) {wkey = 1, isMini = False}
 
 -- ---------------------------------------------------------------------
 
@@ -108,8 +109,8 @@ runEditor = runState . fromEditorM
 -- ---------------------------------------------------------------------
 -- Buffer operations
 
-newBufferRef :: EditorM BufferRef
-newBufferRef = do
+newRef :: EditorM BufferRef
+newRef = do
   modifyA bufferRefSupplyA (+ 1)
   getA bufferRefSupplyA
 
@@ -118,7 +119,7 @@ stringToNewBuffer :: String -- ^ The buffer name (*not* the associated file)
                   -> String -- ^ The contents with which to populate the buffer
                   -> EditorM BufferRef
 stringToNewBuffer nm cs = do
-    u <- newBufferRef
+    u <- newRef
     insertBuffer (newB u nm cs)
 
 insertBuffer :: FBuffer -> EditorM BufferRef
@@ -310,6 +311,11 @@ newBufferE f s = do
     switchToBufferE b
     return b
 
+newWindowE :: Bool -> BufferRef -> EditorM Window
+newWindowE mini bk = do
+  k <- newRef
+  return $ Window mini bk 0 0 0 k
+
 -- | Attach the specified buffer to the current window
 switchToBufferE :: BufferRef -> EditorM ()
 switchToBufferE b = modifyWindows (modifier WS.currentA (\w -> w {bufkey = b}))
@@ -373,7 +379,8 @@ withWindow f = getsA (WS.currentA .> windowsA) f
 splitE :: EditorM ()
 splitE = do
   b <- getBuffer
-  modifyWindows (WS.add $ dummyWindow b)
+  w <- newWindowE False b
+  modifyWindows (WS.add w)
 
 
 -- | Enlarge the current window

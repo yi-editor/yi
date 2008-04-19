@@ -12,7 +12,6 @@ import Yi.Editor
 import Yi.History
 import Yi.Keymap
 import Yi.Keymap.Emacs.Keys
-import Yi.Window
 import qualified Yi.Editor as Editor
 import qualified Yi.WindowSet as WS
 import Control.Monad.Reader
@@ -26,7 +25,9 @@ spawnMinibufferE prompt kmMod initialAction =
     do b <- withEditor $ stringToNewBuffer prompt []
        fundamental <- asks (fundamentalMode . yiConfig)
        setBufferMode b fundamental {modeKeymap = kmMod}
-       withEditor $ modifyWindows (WS.add $ Window True b 0 0 0)
+       withEditor $ do
+         w <- newWindowE True b
+         modifyWindows (WS.add w)
        initialAction
 
 -- | @withMinibuffer prompt completer act@: open a minibuffer with @prompt@. Once a string @s@ is obtained, run @act s@. @completer@ can be used to complete functions.

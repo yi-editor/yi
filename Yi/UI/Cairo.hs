@@ -12,8 +12,7 @@ import Yi.Buffer
 import Yi.Buffer.HighLevel (setSelectionMarkPointB)
 import qualified Yi.Editor as Editor
 import Yi.Editor hiding (windows)
-import qualified Yi.Window as Window
-import Yi.Window (Window)
+import Yi.Window
 import Yi.Event
 import Yi.Keymap
 import Yi.Debug
@@ -30,12 +29,12 @@ import Control.Monad.Reader (liftIO, when, MonadIO)
 import Control.Monad.State (runState, State, gets, modify)
 import qualified Graphics.Rendering.Cairo as C 
 
+import Data.Function
 import Data.Foldable
 import Data.IORef
 import Data.List ( nub, findIndex, sort )
 import Data.Maybe
 import Data.Traversable
-import Data.Unique
 import qualified Data.Map as M
 
 import Graphics.UI.Gtk hiding ( Window, Event, Action, Point, Style )
@@ -55,22 +54,15 @@ data UI = UI { uiWindow :: Gtk.Window
 
 data WinInfo = WinInfo
     {
-      bufkey      :: !BufferRef         -- ^ the buffer this window opens to
-    , wkey        :: !Unique
-      
+      coreWin     :: Window
     , renderer    :: IORef (ConnectId DrawingArea)
     , textview    :: DrawingArea
     , modeline    :: Label
     , widget      :: Box            -- ^ Top-level widget for this window.
-    , isMini      :: Bool
     }
 
 instance Show WinInfo where
-    show w = "W" ++ show (hashUnique $ wkey w) ++ " on " ++ show (bufkey w)
-
--- | Get the identification of a window.
-winkey :: WinInfo -> (Bool, BufferRef)
-winkey w = (isMini w, bufkey w)
+    show w = show (coreWin w)
 
 mkUI :: UI -> Common.UI
 mkUI ui = Common.UI
@@ -219,9 +211,9 @@ end = mainQuit
 syncWindows :: Editor -> UI -> [(Window, Bool)] -- ^ windows paired with their "isFocused" state.
             -> [WinInfo] -> IO [WinInfo]
 syncWindows e ui (wfocused@(w,focused):ws) (c:cs)
-    | Window.winkey w == winkey c = do when focused (setFocus c)
-                                       return (c:) `ap` syncWindows e ui ws cs
-    | Window.winkey w `elem` map winkey cs = removeWindow ui c >> syncWindows e ui (wfocused:ws) cs
+    | winkey w == winkey (coreWin c) = do when focused (setFocus c)
+                                          return (c {coreWin = w}:) `ap` syncWindows e ui ws cs
+    | winkey w `elem` map (winkey . coreWin) cs = removeWindow ui c >> syncWindows e ui (wfocused:ws) cs
     | otherwise = do c' <- insertWindowBefore e ui w c
                      when focused (setFocus c')
                      return (c':) `ap` syncWindows e ui ws (c:cs)
@@ -258,12 +250,11 @@ handleClick ui w event = do
   -- maybe focus the window
   logPutStrLn $ "Clicked inside window: " ++ show w
   wCache <- readIORef (windowCache ui)
-  let Just idx = findIndex ((wkey w ==) . wkey) wCache
+  let Just idx = findIndex (((==) `on` (winkey . coreWin)) w) wCache
       focusWindow = modifyWindows (WS.focusIndex idx)
-  logPutStrLn $ "Will focus to index: " ++ show (findIndex ((wkey w ==) . wkey) wCache)
 
   let editorAction = do
-        b <- gets $ (bkey . findBufferWith (bufkey w))
+        b <- gets $ (bkey . findBufferWith (bufkey $ coreWin w))
         case (eventClick event, eventButton event) of
           (SingleClick, LeftButton) -> do
               focusWindow
@@ -293,19 +284,18 @@ handleClick ui w event = do
 
 
 -- | Make A new window
-newWindow :: UI -> Bool -> FBuffer -> IO WinInfo
-newWindow ui mini b = mdo
+newWindow :: UI -> Window -> FBuffer -> IO WinInfo
+newWindow ui w b = mdo
     f <- mkFontDesc (uiConfig ui)
 
     ml <- labelNew Nothing
     widgetModifyFont ml (Just f)
     set ml [ miscXalign := 0.01 ] -- so the text is left-justified.
 
-
     v <- drawingAreaNew
     widgetModifyFont v (Just f)
 
-    box <- if mini
+    box <- if isMini w
      then do
       widgetSetSizeRequest v (-1) 1
 
@@ -327,14 +317,11 @@ newWindow ui mini b = mdo
       return (castToBox vb)
 
     sig <- newIORef =<< (v `onExpose` render ui b win)
-    k <- newUnique
     let win = WinInfo {
-                     bufkey    = (keyB b)
-                   , wkey      = k
+                     coreWin   = w
                    , textview  = v
                    , modeline  = ml
                    , widget    = box
-                   , isMini    = mini
                    , renderer  = sig
               }
     return win
@@ -347,10 +334,10 @@ insertWindowAtEnd e i w = insertWindow e i w
 
 insertWindow :: Editor -> UI -> Window -> IO WinInfo
 insertWindow e i win = do
-  let buf = findBufferWith (Window.bufkey win) e
-  liftIO $ do w <- newWindow i (Window.isMini win) buf
+  let buf = findBufferWith (bufkey win) e
+  liftIO $ do w <- newWindow i win buf
               set (uiBox i) [containerChild := widget w,
-                             boxChildPacking (widget w) := if isMini w then PackNatural else PackGrow]
+                             boxChildPacking (widget w) := if isMini (coreWin w) then PackNatural else PackGrow]
               textview w `onButtonRelease` handleClick i w
               textview w `onButtonPress` handleClick i w
               widgetShowAll (widget w)
@@ -369,23 +356,16 @@ refresh ui e = do
     logPutStrLn $ "Gives: " ++ show cache'
     writeRef (windowCache ui) cache'
     forM_ cache' $ \w -> do
-        let b = findBufferWith (bufkey w) e
+        let b = findBufferWith (bufkey (coreWin w)) e
         --when (not $ null $ pendingUpdates b) $ 
         do 
-           drawWindow <- widgetGetDrawWindow $ textview w
            sig <- readIORef (renderer w)
            signalDisconnect sig
            writeRef (renderer w) =<< (textview w `onExpose` render ui b w)
            widgetQueueDraw (textview w)
-        -- (width, height) <- widgetGetSize $ textview w
-        -- renderWithDrawable drawWindow $ render width height b
 
 
-showLine h str = do
-    (x, y) <- C.getCurrentPoint
-    C.showText str
-    C.moveTo x (y + h)
-
+render :: UI -> FBuffer -> WinInfo -> t -> IO Bool
 render ui b w _ev = do
   f <- mkFontDesc (uiConfig ui)
   drawWindow <- widgetGetDrawWindow $ textview w
@@ -413,37 +393,6 @@ render ui b w _ev = do
      C.stroke
   return True
 
-display :: Int -> Int -> FBuffer -> C.Render ()
-display width height b = do
-    C.selectFontFace "monospace" C.FontSlantNormal C.FontWeightNormal
-    C.setFontSize 12 
-
-    let (text,_) = runBufferDummyWindow b (nelemsB maxBound 0) 
-
-    font_extents <- C.fontExtents
-    let font_height  = C.fontExtentsHeight   font_extents * 1.25
-        font_ascent  = C.fontExtentsAscent   font_extents
-        font_descent = C.fontExtentsDescent  font_extents
-        font_advance = C.fontExtentsMaxXadvance font_extents
-    
-    C.translate 0 font_ascent
-    C.setSourceRGBA 1 1 1 1
-    C.fill
-    C.paint
-     
-    let
-        start_line = 0
-        line_count = ceiling (fromIntegral height / font_height)
-    
-    -- C.translate 20.5 (font_ascent - top + 0.5)
-
-    let ls = take 5 $ lines $ text
-    
-    C.setSourceRGBA 0 0 0 1
-    C.moveTo 0 (fromIntegral start_line * font_height)
-    mapM_ (showLine font_height) $ ls
-    
-
 prepareAction :: UI -> IO (EditorM ())
 prepareAction ui = do
     -- compute the heights of all windows (in number of lines)
@@ -459,6 +408,6 @@ distribute :: Window -> State [Int] Window
 distribute win = do
   h <- gets head
   modify tail
-  return win {Window.height = h}
+  return win {height = h}
 
 
