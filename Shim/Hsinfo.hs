@@ -41,7 +41,7 @@ import PprTyThing
 import StringBuffer ( stringToStringBuffer, StringBuffer )
 import HeaderInfo ( getOptions )
 import DriverPhases ( Phase(..), startPhase )
-
+import Yi.Debug (logPutStrLn)
 import Distribution.Simple.Utils(dotToSep)
 import Distribution.Text 
 import Distribution.Simple ( pkgName )
@@ -59,6 +59,7 @@ import Distribution.PackageDescription
     buildable, exeName)
 
 import qualified Distribution.PackageDescription as Library (Library(..))
+import qualified Distribution.PackageDescription as BuildInfo (BuildInfo(..))
 
 
 import Distribution.Simple.LocalBuildInfo ( packageDeps, buildDir, localPkgDescr )
@@ -115,15 +116,23 @@ getCabalOpts sourcefile = do
       Right lbi <- io $ tryGetConfigStateFile (projPath </> localBuildInfoFile)
       let pkg = localPkgDescr lbi
       (exe, bi) <- io $ guessCabalStanza projPath sourcefile pkg
+      logInfo $ show (allBuildInfo pkg)
       logInfo $ show bi
       logInfo $ show exe
+              
+      let pref = buildDir lbi
+
       return $ case exe of
-        Just name -> let pref = buildDir lbi
-                         targetDir = pref </> name
+        Just name -> let targetDir = pref </> name
                          oDir = targetDir </> (name ++ "-tmp")
                          opts = ghcOptions lbi bi oDir
                      in Just (opts, cabalfile)
+        Nothing -> let targetDir = pref
+                       oDir = targetDir
+                       opts = ghcOptions lbi bi oDir
+                   in Just (opts, cabalfile)
 
+-- | Guess what lib/exe the sourcefile belongs to.
 guessCabalStanza :: FilePath -> FilePath -> PackageDescription -> IO (Maybe String, BuildInfo)
 guessCabalStanza projpath sourcefile pkg_descr = do
   matchingStanzas <- filterM matchingStanza allStanzas'
