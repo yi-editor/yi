@@ -122,6 +122,7 @@ library
 
     other-modules:
         Paths_yi,
+        Yi.GHC
         Yi.Syntax.Cplusplus, Yi.Syntax.Haskell, Yi.Syntax.Indent, Yi.Syntax.LiterateHaskell,
         Yi.Syntax.Latex, Yi.Syntax.Paren, Yi.Syntax.Srmc, Yi.Syntax.Cabal, Yi.Syntax.Fractal
 
@@ -233,6 +234,31 @@ executable yi
 
            Yi.Syntax.Cplusplus, Yi.Syntax.Haskell, Yi.Syntax.LiterateHaskell,
            Yi.Syntax.Latex, Yi.Syntax.Srmc, Yi.Syntax.Cabal
+           Paths_yi,
+           Yi.GHC
+           Yi.Syntax.Cplusplus, Yi.Syntax.Haskell, Yi.Syntax.Indent, Yi.Syntax.LiterateHaskell,
+           Yi.Syntax.Latex, Yi.Syntax.Paren, Yi.Syntax.Srmc, Yi.Syntax.Cabal, Yi.Syntax.Fractal
+
+           Yi.Accessor, Yi.Interpreter,
+           Yi.Buffer.HighLevel, Yi.Buffer.Implementation,
+           Yi.Buffer.Normal, Yi.Buffer.Region, Yi.Char, Yi.Completion, Yi.Core,
+           Yi.Debug, Yi.Dired, Yi.Dynamic, Yi.Editor, Yi.Eval, Yi.Event, Yi.FingerString, Yi.History,
+           Yi.Indent, Yi.Interact, Yi.Keymap, Yi.Keymap.Completion,
+           Yi.Keymap.Emacs.Keys, Yi.Keymap.Emacs.KillRing, Yi.Keymap.Emacs.UnivArgument,
+           Yi.Keymap.Emacs.Utils, Yi.Main, Yi.MkTemp, Yi.Monad, Yi.Process,
+           Yi.Search, Yi.String, Yi.Style, Yi.Syntax, Yi.Templates, Yi.TextCompletion,
+           Yi.Undo, Yi.Window, Yi.WindowSet
+           Yi.MiniBuffer
+           Yi.File
+           Yi.KillRing
+           Yi.Syntax.Alex
+           Yi.IncrementalParse
+           HConf
+           -- Should probably be split out to another package.
+           Data.Digest.SHA1
+           Data.Tree.Zipper
+           Data.DelayList
+
         include-dirs:   Yi/Syntax
         extensions:     CPP
 
