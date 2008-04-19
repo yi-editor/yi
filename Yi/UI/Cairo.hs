@@ -460,9 +460,8 @@ prepareAction ui = do
     -- updates the heights of the windows
     return $ modifyWindows (\ws -> fst $ runState (mapM distribute ws) heights)
 
-reloadProject ui fpath = do
-  tree <- loadFile fpath
-  loadProjectTree (uiProjectStore ui) tree
+reloadProject :: UI -> FilePath -> IO ()
+reloadProject ui fpath = return ()
 
 distribute :: Window -> State [Int] Window
 distribute win = do
