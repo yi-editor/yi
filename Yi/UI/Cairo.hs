@@ -7,8 +7,7 @@
 module Yi.UI.Cairo (start) where
 
 import Prelude hiding (error, sequence_, elem, mapM_, mapM, concatMap)
-import Yi.Accessor
-import Yi.Buffer.Implementation (inBounds, Update(..), UIUpdate(..))
+import Yi.Buffer.Implementation (Update(..))
 import Yi.Buffer
 import Yi.Buffer.HighLevel (setSelectionMarkPointB)
 import qualified Yi.Editor as Editor
@@ -41,21 +40,17 @@ import qualified Data.Map as M
 
 import Graphics.UI.Gtk hiding ( Window, Event, Action, Point, Style )
 import qualified Graphics.UI.Gtk as Gtk
-import qualified Graphics.UI.Gtk.ModelView as MView
 import Yi.UI.Gtk.ProjectTree
 import Yi.UI.Gtk.Utils
-import Shim.ProjectContent
 
 ------------------------------------------------------------------------
 
 data UI = UI { uiWindow :: Gtk.Window
              , uiBox :: VBox
              , uiCmdLine :: Label
-             , tagTable :: TextTagTable
              , windowCache :: IORef [WinInfo]
              , uiActionCh :: Action -> IO ()
              , uiConfig :: Common.UIConfig
-             , uiProjectStore :: MView.TreeStore ProjectItem
              }
 
 data WinInfo = WinInfo
@@ -115,7 +110,7 @@ start cfg ch outCh _ed = do
 
   vb <- vBoxNew False 1  -- Top-level vbox
 
-  (projectTree, projectStore) <- projectTreeNew outCh  
+  (projectTree, _projectStore) <- projectTreeNew outCh  
   modulesTree <- treeViewNew
 
   tabs <- notebookNew
@@ -151,11 +146,8 @@ start cfg ch outCh _ed = do
 
   widgetShowAll win
 
-  bufs <- newIORef M.empty
   wc <- newIORef []
-  tt <- textTagTableNew
-
-  let ui = UI win vb' cmd tt wc outCh cfg projectStore
+  let ui = UI win vb' cmd wc outCh cfg 
 
   return (mkUI ui)
 
@@ -417,20 +409,6 @@ display width height b = do
     C.moveTo 0 (fromIntegral start_line * font_height)
     mapM_ (showLine font_height) $ ls
     
-
-
-replaceTagsIn :: UI -> Point -> Point -> FBuffer -> TextBuffer -> IO ()
-replaceTagsIn ui from to buf gtkBuf = do
-  i <- textBufferGetIterAtOffset gtkBuf from
-  i' <- textBufferGetIterAtOffset gtkBuf to
-  let (styleSpans, _) = runBufferDummyWindow buf (styleRangesB (to - from) from)
-  textBufferRemoveAllTags gtkBuf i i'
-  forM_ (zip styleSpans (drop 1 styleSpans)) $ \((l,style),(r,_)) -> do
-    f <- textBufferGetIterAtOffset gtkBuf l
-    t <- textBufferGetIterAtOffset gtkBuf r
-    tag <- styleToTag ui style
-    textBufferApplyTag gtkBuf tag f t
-
 applyUpdate :: TextBuffer -> Update -> IO ()
 applyUpdate buf (Insert p s) = do
   i <- textBufferGetIterAtOffset buf p
@@ -440,17 +418,6 @@ applyUpdate buf (Delete p s) = do
   i0 <- textBufferGetIterAtOffset buf p
   i1 <- textBufferGetIterAtOffset buf (p + s)
   textBufferDelete buf i0 i1
-
-styleToTag :: UI -> Style -> IO TextTag
-styleToTag ui (Style fg _bg) = do
-  let fgText = colorToText fg
-  mtag <- textTagTableLookup (tagTable ui) fgText
-  case mtag of
-    Just x -> return x
-    Nothing -> do x <- textTagNew (Just fgText)
-                  set x [textTagForeground := fgText]
-                  textTagTableAdd (tagTable ui) x
-                  return x
 
 prepareAction :: UI -> IO (EditorM ())
 prepareAction ui = do
