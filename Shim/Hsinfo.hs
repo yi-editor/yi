@@ -136,7 +136,7 @@ getCabalOpts sourcefile = do
 guessCabalStanza :: FilePath -> FilePath -> PackageDescription -> IO (Maybe String, BuildInfo)
 guessCabalStanza projpath sourcefile pkg_descr = do
   matchingStanzas <- filterM matchingStanza allStanzas'
-  let (name, _, bi) = (head $ matchingStanzas ++ allStanzas')
+  let ((name, _, bi):_) = matchingStanzas ++ allStanzas'
   return (name, bi)
   where allStanzas = 
             [ (Nothing, concatMap moduleFiles (Library.exposedModules lib) , libBuildInfo lib) 
@@ -144,7 +144,7 @@ guessCabalStanza projpath sourcefile pkg_descr = do
          ++ [ (Just (exeName exe), [modulePath exe], buildInfo exe) 
              | exe <- executables pkg_descr ]
         moduleFiles mod = [dotToSep mod <.> ext | ext <- ["hs", "lhs"] ]
-        allStanzas' = [(name, [projpath </> dir </> file | dir <- hsSourceDirs bi, file <- files], bi)
+        allStanzas' = [(name, [projpath </> dir </> file | dir <- hsSourceDirs bi, file <- files ++ concatMap moduleFiles (BuildInfo.otherModules bi)], bi)
                        | (name, files, bi) <- allStanzas, buildable bi]
         eqPath p1 p2 = equalFilePath <$> canonicalizePath p1 <*> canonicalizePath p2
         matchingStanza (_,files,_) = or <$> mapM (eqPath sourcefile) files

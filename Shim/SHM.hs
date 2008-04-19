@@ -1,6 +1,7 @@
 {-# OPTIONS -fglasgow-exts #-}
 module Shim.SHM where
 
+import Data.Typeable
 import GHC hiding ( load, newSession )
 import qualified GHC
 import Outputable
@@ -45,6 +46,8 @@ data ShimState = ShimState
     sessionMap :: SessionMap,
     compBuffer :: CompBuffer,
     compLogAction :: Severity -> SrcSpan -> PprStyle -> Message -> IO () }
+  deriving Typeable
+
 
 type SHM = StateT ShimState IO
 
