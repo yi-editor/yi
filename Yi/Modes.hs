@@ -9,13 +9,14 @@ import qualified Yi.Syntax.Srmc                as Srmc
 import qualified Yi.Syntax.Cabal               as Cabal
 import qualified Yi.Syntax.Cplusplus           as Cplusplus
 import qualified Yi.Syntax.Alex as Alex
-import Yi.Syntax.Alex (Tok(..), Posn(..))
+import Yi.Syntax.Alex (Tok(..), Posn(..), ASI, Cache)
 import Yi.Syntax
 import Yi.Indent
 import Control.Arrow (first)
 import Yi.Prelude
 import Yi.Buffer (AnyMode(..), Mode(..), emptyMode)
 import Prelude ()
+import Yi.Style
 
 fundamental, defaultFundamentalMode :: Mode syntax
 latexMode, cppMode, haskellMode, literateHaskellMode, cabalMode, srmcMode :: Mode Alex.Result
@@ -25,6 +26,8 @@ fundamental = emptyMode
    modeIndent = autoIndentB
   }
 
+mkHighlighter' :: s -> (Yi.Syntax.Alex.ASI s -> Maybe (Tok Yi.Style.Style, Yi.Syntax.Alex.ASI s))
+                  -> Highlighter' (Yi.Syntax.Alex.Cache s) Alex.Result
 mkHighlighter' initSt scan = Alex.mkHighlighter initSt (fmap (first tokenToStroke) . scan)
     where tokenToStroke (Tok t len posn) = (posnOfs posn, t, posnOfs posn + len)
 

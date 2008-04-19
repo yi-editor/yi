@@ -13,7 +13,6 @@ module Shim.ProjectContent
          , ModuleKind(..)
          ) where
 
-import Control.Monad
 import Control.Monad.State
 import Data.Tree
 import Data.Tree.Zipper

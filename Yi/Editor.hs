@@ -233,6 +233,7 @@ setStatus = setTmpStatus maxBound
 msgClr :: EditorM ()
 msgClr = setStatus ""
 
+statusLine :: Editor -> String
 statusLine = snd . head . statusLines
 
 setTmpStatus :: Int -> String -> EditorM ()

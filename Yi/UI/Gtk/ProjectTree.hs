@@ -14,7 +14,6 @@ module Yi.UI.Gtk.ProjectTree
 import Distribution.Text 
 import Distribution.Package
 import Shim.ProjectContent
-import qualified Data.Tree as Tree
 import qualified Graphics.UI.Gtk.ModelView as MView
 import qualified Graphics.UI.Gtk as Gtk
 import Graphics.UI.Gtk hiding ( Window, Event, Point, Style )

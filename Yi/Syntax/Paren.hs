@@ -72,7 +72,7 @@ getSubtreeSpan tree = (posnOfs $ first, lastLine - firstLine)
     where bounds@[first, _last] = fmap (tokPosn . assertJust) [getFirstToken tree, getLastToken tree]
           [firstLine, lastLine] = fmap posnLine bounds
           assertJust (Just x) = x
-
+          assertJust _ = error "assertJust: Just expected"
     
 
 instance Foldable Tree where
@@ -97,6 +97,7 @@ instance Traversable Tree where
 parse :: P (Tok Token) (Expr (Tok Token))
 parse = parse' tokT tokFromT
 
+parse' :: (Tok Token -> Token) -> (Token -> Tok Token) -> P TT (Expr TT)
 parse' toTok fromT = pExpr <* eof
     where 
       sym c = symbol (isSpecial [c] . toTok)
@@ -126,7 +127,7 @@ parse' toTok fromT = pExpr <* eof
 
 -- TODO: (optimization) make sure we take in account the begin, so we don't return useless strokes
 getStrokes :: Int -> Int -> Int -> Expr (Tok Token) -> [(Int, Style, Int)]
-getStrokes point begin end t0 = result 
+getStrokes point _begin _end t0 = result 
     where getStrokes' (Atom t) = (ts t :)
           getStrokes' (Error t) = (modStroke errorStyle (ts t) :) -- paint in red
           getStrokes' (Stmt s) = list (fmap getStrokesL s)

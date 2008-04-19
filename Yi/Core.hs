@@ -81,12 +81,6 @@ import Control.Monad.Error ()
 import Control.Monad.State (gets)
 import Control.Exception
 import Control.Concurrent
-#ifdef SHIM
-import System.Directory ( findExecutable )
-import Shim.Hsinfo
-import Shim.SHM
-import ErrUtils
-#endif
 
 -- | Make an action suitable for an interactive run.
 -- UI will be refreshed.

@@ -165,6 +165,7 @@ push ss p = case p of
                   (Suspend f) -> f ss
                   (Dislike p') -> Dislike (push ss p')
                   (Shift p') -> Shift (push ss p')
+                  (Done p') -> Done (push ss p')
                   (Val x p') -> Val x (push ss p')
                   (App p') -> App (push ss p')
                   Stop -> Stop
@@ -204,6 +205,7 @@ getProgress f (Done p)  = Done (f p)
 getProgress f (Shift p) = Shift (f p)
 getProgress f (Dislike p) = Dislike (f p)
 getProgress _ (Fails) = Fails
+getProgress _ Stop = error "getProgress: try to enter void"
 getProgress f (Suspend p) = Suspend (\input -> f (p input))
 
 

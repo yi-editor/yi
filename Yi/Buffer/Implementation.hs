@@ -264,7 +264,8 @@ findNextChar m i fb
     | m < 0 = let s = F.toReverseString $ F.take i $ mem fb
                   result = countChars s (-m) 0
               in (i - result)
-    | m > 0 = let s = F.toString $ F.drop (i+1) $ mem fb
+    | otherwise =
+    {-m > 0-} let s = F.toString $ F.drop (i+1) $ mem fb
                   result = countChars s  m 0
               in (i + result)
                    

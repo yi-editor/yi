@@ -11,21 +11,19 @@ import Yi.Modes
 import Control.Monad.State
 
 import qualified Shim.Hsinfo as Hsinfo
-import Shim.SHM
 
 import SrcLoc
-import ErrUtils ( Severity(..) )
 import FastString
 
 import Control.Monad.State
 import Yi.WindowSet as Robin
 import Outputable
 import Yi.Accessor
-import Data.Typeable
 import Yi.Prelude
 import Prelude ()
 import Data.Char
 import Yi.GHC
+import qualified Yi.Syntax.Alex
 
 modeTable :: ReaderT String Maybe AnyMode
 modeTable = ReaderT $ \fname -> case () of 
@@ -86,6 +84,7 @@ jumpToDefinition = do
 
 -- NOTE: source argument to Hsinfo functions can be used to provide
 -- source text, apparently.
+mode :: Mode Yi.Syntax.Alex.Result
 mode = haskellMode
    {
     modeKeymap = rebind [
