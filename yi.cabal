@@ -45,8 +45,9 @@ flag vty
 flag gtk
   Description: Provide GTK UI
 
--- Cocoa UI is experimental (and at the moment probably even broken)
--- It seems that it suffers from bugs in HOC
+flag cairo
+  Description: Provide Cairo UI
+
 flag cocoa
   Description: Provide experimental Cocoa UI
 
@@ -94,6 +95,15 @@ library
       exposed-modules: Yi.UI.Gtk
       other-modules: Yi.UI.Gtk.ProjectTree
                      Yi.UI.Gtk.Utils
+
+    if flag (cairo)
+      build-depends: gtk>=0.9.12 && < 0.9.12.2
+      build-depends: cairo>=0.9.12 && < 0.9.12.2
+      cpp-options: -DFRONTEND_CAIRO
+      exposed-modules: Yi.UI.Cairo
+      other-modules: Yi.UI.Gtk.ProjectTree
+                     Yi.UI.Gtk.Utils
+
 
     if flag (cocoa)
       build-depends: HOC, HOC-AppKit, HOC-Foundation
@@ -182,6 +192,13 @@ executable yi
         if flag (gtk)
           build-depends: gtk>=0.9.12 && < 0.9.12.2
           cpp-options: -DFRONTEND_GTK
+
+        if flag (cairo)
+          build-depends: gtk>=0.9.12 && < 0.9.12.2
+          build-depends: cairo>=0.9.12 && < 0.9.12.2
+          cpp-options: -DFRONTEND_CAIRO
+          other-modules: Yi.UI.Gtk.ProjectTree
+                         Yi.UI.Gtk.Utils
 
         if flag (cocoa)
           build-depends: HOC, HOC-AppKit, HOC-Foundation

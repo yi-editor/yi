@@ -45,6 +45,9 @@ import qualified Yi.UI.Gtk
 #ifdef FRONTEND_VTY
 import qualified Yi.UI.Vty
 #endif
+#ifdef FRONTEND_CAIRO
+import qualified Yi.UI.Cairo
+#endif
 
 import Data.Char
 import Data.List                ( intersperse )
@@ -67,6 +70,9 @@ frontends =
 #endif
 #ifdef FRONTEND_VTY
    ("vty", Yi.UI.Vty.start) :
+#endif
+#ifdef FRONTEND_CAIRO
+   ("cairo", Yi.UI.Cairo.start) :
 #endif
    []
 
