@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns, ExistentialQuantification #-}
+{-# LANGUAGE BangPatterns, ExistentialQuantification, RecursiveDo #-}
 
 -- Copyright (c) 2007, 2008 Jean-Philippe Bernardy
 
@@ -58,7 +58,7 @@ data WinInfo = WinInfo
       bufkey      :: !BufferRef         -- ^ the buffer this window opens to
     , wkey        :: !Unique
       
-
+    , renderer    :: IORef (ConnectId DrawingArea)
     , textview    :: DrawingArea
     , modeline    :: Label
     , widget      :: Box            -- ^ Top-level widget for this window.
@@ -95,7 +95,7 @@ mkFontDesc cfg = do
 -- | Initialise the ui
 start :: Common.UIBoot
 start cfg ch outCh _ed = do
-  initGUI
+  unsafeInitGUIForThreadedRTS
 
   -- rest.
   win <- windowNew
@@ -294,7 +294,7 @@ handleClick ui w event = do
 
 -- | Make A new window
 newWindow :: UI -> Bool -> FBuffer -> IO WinInfo
-newWindow ui mini b = do
+newWindow ui mini b = mdo
     f <- mkFontDesc (uiConfig ui)
 
     ml <- labelNew Nothing
@@ -326,7 +326,7 @@ newWindow ui mini b = do
                boxChildPacking ml := PackNatural]
       return (castToBox vb)
 
-
+    sig <- newIORef =<< (v `onExpose` render ui b win)
     k <- newUnique
     let win = WinInfo {
                      bufkey    = (keyB b)
@@ -335,6 +335,7 @@ newWindow ui mini b = do
                    , modeline  = ml
                    , widget    = box
                    , isMini    = mini
+                   , renderer  = sig
               }
     return win
 
@@ -369,16 +370,49 @@ refresh ui e = do
     writeRef (windowCache ui) cache'
     forM_ cache' $ \w -> do
         let b = findBufferWith (bufkey w) e
-        drawWindow <- widgetGetDrawWindow $ textview w
-        (width, height) <- widgetGetSize $ textview w
-        renderWithDrawable drawWindow $ display width height b
+        --when (not $ null $ pendingUpdates b) $ 
+        do 
+           drawWindow <- widgetGetDrawWindow $ textview w
+           sig <- readIORef (renderer w)
+           signalDisconnect sig
+           writeRef (renderer w) =<< (textview w `onExpose` render ui b w)
+           widgetQueueDraw (textview w)
+        -- (width, height) <- widgetGetSize $ textview w
+        -- renderWithDrawable drawWindow $ render width height b
 
 
 showLine h str = do
     (x, y) <- C.getCurrentPoint
     C.showText str
     C.moveTo x (y + h)
-          
+
+render ui b w _ev = do
+  f <- mkFontDesc (uiConfig ui)
+  drawWindow <- widgetGetDrawWindow $ textview w
+  (width, height) <- widgetGetSize $ textview w
+  context <- cairoCreateContext Nothing
+  let ((point, text),_) = runBufferDummyWindow b $ (,) <$>
+                      pointB <*>
+                      nelemsB maxBound 0
+  layout <- layoutText context text
+  layoutSetWidth layout (Just $ fromIntegral width)
+  layoutSetFontDescription layout (Just f)
+  (PangoRectangle curx cury curw curh, _) <- layoutGetCursorPos layout point
+  renderWithDrawable drawWindow $ do 
+     -- clear the surface with white
+     C.setSourceRGBA 1 1 1 1
+     C.paint
+     -- paint the text
+     C.setSourceRGBA 0 0 0 1
+     C.moveTo 0 0
+     showLayout layout
+     C.stroke
+     -- paint the cursor
+     C.moveTo curx cury
+     C.relLineTo curw curh
+     C.stroke
+  return True
+
 display :: Int -> Int -> FBuffer -> C.Render ()
 display width height b = do
     C.selectFontFace "monospace" C.FontSlantNormal C.FontWeightNormal
@@ -409,26 +443,17 @@ display width height b = do
     C.moveTo 0 (fromIntegral start_line * font_height)
     mapM_ (showLine font_height) $ ls
     
-applyUpdate :: TextBuffer -> Update -> IO ()
-applyUpdate buf (Insert p s) = do
-  i <- textBufferGetIterAtOffset buf p
-  textBufferInsert buf i s
-
-applyUpdate buf (Delete p s) = do
-  i0 <- textBufferGetIterAtOffset buf p
-  i1 <- textBufferGetIterAtOffset buf (p + s)
-  textBufferDelete buf i0 i1
 
 prepareAction :: UI -> IO (EditorM ())
 prepareAction ui = do
     -- compute the heights of all windows (in number of lines)
     gtkWins <- readRef (windowCache ui)
-    heights <- forM gtkWins $ \w -> return 0
+    heights <- forM gtkWins $ \_w -> return 0
     -- updates the heights of the windows
     return $ modifyWindows (\ws -> fst $ runState (mapM distribute ws) heights)
 
 reloadProject :: UI -> FilePath -> IO ()
-reloadProject ui fpath = return ()
+reloadProject _ _ = return ()
 
 distribute :: Window -> State [Int] Window
 distribute win = do
