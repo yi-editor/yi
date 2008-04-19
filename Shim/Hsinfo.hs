@@ -4,7 +4,8 @@
 --               2007 Pepe Iborra
 -- see LICENSE.BSD3 for license
 
-module Shim.Hsinfo where
+module Shim.Hsinfo (ghcInit, findTypeOfPos, getSessionFor,
+                    evaluate, findDefinition, load) where
 
 import Shim.SHM
 import Shim.Utils
@@ -19,14 +20,15 @@ import List ( isPrefixOf, find, nubBy,
               sort, (\\), nub )
 import Directory
 import Time ( getClockTime, ClockTime )
-import System.FilePath ( takeDirectory, (</>) , dropFileName, takeExtension )
+import System.FilePath ( takeDirectory, (</>), (<.>), dropFileName, takeExtension, equalFilePath )
+import System.Directory (canonicalizePath)
 import Control.Monad.State
 import Data.Maybe
 import qualified Data.ByteString.Char8 as BC
 import qualified Data.Digest.SHA1 as SHA1
 
 import qualified GHC
-import GHC hiding ( load, newSession )
+import GHC hiding ( load, newSession, (<.>) )
 import Outputable
 import Panic
 import UniqFM ( eltsUFM )
@@ -40,19 +42,27 @@ import StringBuffer ( stringToStringBuffer, StringBuffer )
 import HeaderInfo ( getOptions )
 import DriverPhases ( Phase(..), startPhase )
 
-import Distribution.Simple ( showPackageId )
+import Distribution.Simple.Utils(dotToSep)
+import Distribution.Text 
+import Distribution.Simple ( pkgName )
 import Distribution.Compiler ( CompilerFlavor (..) )
 import Distribution.Simple.Compiler ( extensionsToFlags )
+import Distribution.Simple.GHC
 import Distribution.Simple.Program ( defaultProgramConfiguration )
 import Distribution.Simple.Configure
 import Distribution.Verbosity
+import Distribution.PackageDescription.Configuration (flattenPackageDescription)
 import Distribution.PackageDescription 
-  ( buildDepends, PackageDescription, flattenPackageDescription, BuildInfo,
+  ( buildDepends, PackageDescription, BuildInfo,
     library, executables, hsSourceDirs, extensions, includeDirs, extraLibs,
-    libBuildInfo, buildInfo, options, hcOptions, modulePath)
+    libBuildInfo, buildInfo, options, hcOptions, modulePath, allBuildInfo,
+    buildable, exeName)
 
-import Distribution.Simple.LocalBuildInfo ( packageDeps )
-import Distribution.Version ( Dependency (..) )
+import qualified Distribution.PackageDescription as Library (Library(..))
+
+
+import Distribution.Simple.LocalBuildInfo ( packageDeps, buildDir, localPkgDescr )
+import Distribution.Package ( Dependency (..) )
 import GHC.Exts (unsafeCoerce#)
 
 --------------------------------------------------------------
@@ -92,6 +102,8 @@ guessCabalFile sourcefile = do
            Right f -> return . Just $ dir </> f
            Left _ -> return Nothing
 
+
+
 getCabalOpts :: FilePath -> SHM (Maybe ([String], FilePath))
 getCabalOpts sourcefile = do
   cf <- io $ guessCabalFile sourcefile
@@ -99,56 +111,35 @@ getCabalOpts sourcefile = do
   case cf of
     Nothing -> return Nothing
     Just cabalfile -> do
-      pkg <- flattenPackageDescription <$> 
-               (io $ readPackageDescription cabalfile)
-      lbi0 <- io $ maybeGetPersistBuildConfig
-      let bi = guessCabalStanza sourcefile pkg
-          pdeps = case lbi0 of
-                    Just lbi -> map showPackageId $ packageDeps lbi
-                    Nothing -> map (\x -> case x of
-                                            Dependency s _ -> s)
-                                   (buildDepends pkg)
-      opts <- createOptsFromBuildInfo pdeps bi
-      return $ Just (opts, cabalfile)
+      let projPath = takeDirectory cabalfile
+      Right lbi <- io $ tryGetConfigStateFile (projPath </> localBuildInfoFile)
+      let pkg = localPkgDescr lbi
+      (exe, bi) <- io $ guessCabalStanza projPath sourcefile pkg
+      logInfo $ show bi
+      logInfo $ show exe
+      return $ case exe of
+        Just name -> let pref = buildDir lbi
+                         targetDir = pref </> name
+                         oDir = targetDir </> (name ++ "-tmp")
+                         opts = ghcOptions lbi bi oDir
+                     in Just (opts, cabalfile)
 
-guessCabalStanza :: FilePath -> PackageDescription -> BuildInfo
-guessCabalStanza _sourcefile pkg =
-  case library pkg of
-    Nothing ->
-      case executables pkg of
-        [] -> error "guessCabalStanza: there is no lib or exe in here"
-        exes@(first:_) ->
-          case find (("Main" `isPrefixOf`) . modulePath) exes of
-            Just exe -> buildInfo exe
-            Nothing -> buildInfo first
-    Just lib ->
-      libBuildInfo lib
+guessCabalStanza :: FilePath -> FilePath -> PackageDescription -> IO (Maybe String, BuildInfo)
+guessCabalStanza projpath sourcefile pkg_descr = do
+  matchingStanzas <- filterM matchingStanza allStanzas'
+  let (name, _, bi) = (head $ matchingStanzas ++ allStanzas')
+  return (name, bi)
+  where allStanzas = 
+            [ (Nothing, concatMap moduleFiles (Library.exposedModules lib) , libBuildInfo lib) 
+             | Just lib <- [library pkg_descr] ]
+         ++ [ (Just (exeName exe), [modulePath exe], buildInfo exe) 
+             | exe <- executables pkg_descr ]
+        moduleFiles mod = [dotToSep mod <.> ext | ext <- ["hs", "lhs"] ]
+        allStanzas' = [(name, [projpath </> dir </> file | dir <- hsSourceDirs bi, file <- files], bi)
+                       | (name, files, bi) <- allStanzas, buildable bi]
+        eqPath p1 p2 = equalFilePath <$> canonicalizePath p1 <*> canonicalizePath p2
+        matchingStanza (_,files,_) = or <$> mapM (eqPath sourcefile) files
 
-createOptsFromBuildInfo :: [String] -> BuildInfo -> SHM [String]
-createOptsFromBuildInfo pdeps bi = do
-  (comp,_pc) <- io$ configCompiler (Just GHC) Nothing Nothing defaultProgramConfiguration silent
-  return (extensionsToFlags comp (extensions bi)
-    ++ (filterOptions $ hcOptions GHC (options bi))
---  ++ ["-hide-all-packages"]
---  ++ ["-i"]
-    ++ ["-l" ++lib | lib <- extraLibs bi]
-    ++ ["-i" ++ l | l <- nub (hsSourceDirs bi)]
-    ++ ["-I" ++ dir | dir <- includeDirs bi]
---  ++ [ "-#include \"" ++ inc ++ "\"" | inc <- includes bi ]
-    ++ (concat [ ["-package", pkg] | pkg <- pdeps]))
-
--- ghc options that can be used with JustTypecheck
-filterOptions :: [String] -> [String]
-filterOptions [] = []
-filterOptions (o:a:os)
-  | o `elem` allowedWithArg = o:a:(filterOptions os)
-  where allowedWithArg = ["-pgmF"]
-filterOptions (o:os)
-  | o `elem` allowedArgs = o:(filterOptions os)
-  | any (`isPrefixOf` o) allowedPrefixes = o:(filterOptions os)
-  | otherwise = filterOptions os
-  where allowedArgs = ["-fglasgow-exts", "-Wall", "-Werror","-F", "-fth"]
-        allowedPrefixes = ["-fno-warn-","-i","-I","-M"]
 
 ghcSetDir :: FilePath -> SHM ()
 ghcSetDir projectroot = do
@@ -342,7 +333,7 @@ findModulesPrefix sourcefile pref = do
 
 allExposedModules :: DynFlags -> [ModuleName]
 allExposedModules dflags =
-  map GHC.mkModuleName (concatMap exposedModules
+  map GHC.mkModuleName (concatMap Packages.exposedModules
                        (filter exposed (eltsUFM pkg_db)))
  where pkg_db = pkgIdMap (pkgState dflags)
 

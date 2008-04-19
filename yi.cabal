@@ -11,7 +11,7 @@ author:         AUTHORS
 maintainer:     yi-devel@googlegroups.com
 homepage:       http://haskell.org/haskellwiki/Yi
 
-cabal-Version:  >= 1.2.3.0
+cabal-Version:  >= 1.5.1
 tested-with:    GHC==6.8.2
 build-type:     Simple
 data-files:
@@ -150,7 +150,7 @@ library
 --                ScopedTypeVariables TypeSynonymInstances, UndecidableInstances
 
 executable yi
-        build-depends: Cabal==1.2.3.0
+        build-depends: Cabal >= 1.5.1
         build-depends: array,  base,  containers,  directory,  filepath>=1.0,
                        mtl, process, old-locale, old-time, random
 

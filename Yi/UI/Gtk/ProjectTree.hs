@@ -11,7 +11,7 @@ module Yi.UI.Gtk.ProjectTree
          , loadProjectTree
          ) where
 
-import Distribution.Version
+import Distribution.Text 
 import Distribution.Package
 import Shim.ProjectContent
 import qualified Data.Tree as Tree
@@ -128,7 +128,7 @@ itemDisplayName item =
   let pkg_id = PackageIdentifier (itemName item) (itemVersion item)
 
       disp_name = case item of
-                    ProjectItem{} -> showPackageId pkg_id
-                    PackageItem{} -> showPackageId pkg_id
+                    ProjectItem{} -> display pkg_id
+                    PackageItem{} -> display pkg_id
                     item          -> itemName item
   in disp_name

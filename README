@@ -11,6 +11,9 @@ report bugs at: http://code.google.com/p/yi-editor/issues/list
 
 DEPENDENCIES
 
+* Cabal, latest darcs repo version.
+        http://darcs.haskell.org/cabal
+
 * ghc 6.8.2
 
 * Alex (the haskell lexer generator) 

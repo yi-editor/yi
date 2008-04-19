@@ -2,7 +2,7 @@
 -- Copyright (c) Krasimir Angelov 2008.
 --
 -- Extraction of the "Project View" from
--- already configure Cabal package.
+-- already configured Cabal package.
 --
 
 module Shim.ProjectContent
@@ -78,7 +78,7 @@ data ModuleKind
 
 loadProject :: FilePath -> IO (Tree ProjectItem, Tree ProjectItem)
 loadProject projPath = do
-  lbi <- fmap read $ readFile (projPath </> localBuildInfoFile)
+  Right lbi <- tryGetConfigStateFile (projPath </> localBuildInfoFile)
   let pkgDescr = localPkgDescr lbi
 
       root  = ProjectItem (pkgName (package pkgDescr)) (pkgVersion (package pkgDescr))
