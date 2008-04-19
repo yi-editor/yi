@@ -25,6 +25,7 @@ import Data.Typeable
 import Yi.Prelude
 import Prelude ()
 import Data.Char
+import Yi.GHC
 
 modeTable :: ReaderT String Maybe AnyMode
 modeTable = ReaderT $ \fname -> case () of 

@@ -18,6 +18,9 @@ class Typeable a => Initializable a where
 type DynamicValues = M.Map String Dynamic
 
 
+instance Typeable a => Initializable (Maybe a) where
+    initial = Nothing
+
 -- | Accessor a dynamic component
 dynamicValueA :: Initializable a => Accessor DynamicValues a
 dynamicValueA = Accessor getDynamicValue modifyDynamicValue

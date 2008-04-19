@@ -24,9 +24,6 @@ import Yi.Process ( SubprocessInfo, SubprocessId )
 import qualified Yi.UI.Common as UI
 import Data.Dynamic
 import Data.Typeable
-#ifdef SHIM
-import Shim.SHM
-#endif
 
 data Action = forall a. Show a => YiA (YiM a)
             | forall a. Show a => EditorA (EditorM a)
@@ -71,9 +68,6 @@ data Yi = Yi {yiEditor :: IORef Editor,
               yiSubprocessIdSupply :: IORef SubprocessId,
               yiSubprocesses :: IORef (M.Map SubprocessId SubprocessInfo),
               yiConfig :: Config
-#ifdef SHIM
-              ,yiShim :: MVar ShimState
-#endif
              }
              deriving Typeable
 
@@ -121,6 +115,10 @@ withUI = with yiUi
 withEditor :: EditorM a -> YiM a
 withEditor f = do
   r <- asks yiEditor
+  liftIO $ unsafeWithEditor r f
+
+unsafeWithEditor :: IORef Editor -> EditorM a -> IO a
+unsafeWithEditor r f = do
   e <- readRef r
   let (a,e') = runEditor f e
   -- Make sure that the result of runEditor is evaluated before
@@ -131,30 +129,16 @@ withEditor f = do
   e' `seq` a `seq` writeRef r e'
   return a
 
+
+
+
+
 withGivenBuffer :: BufferRef -> BufferM a -> YiM a
 withGivenBuffer b f = withEditor (Editor.withGivenBuffer0 b f)
 
 withBuffer :: BufferM a -> YiM a
 withBuffer f = withEditor (Editor.withBuffer0 f)
 
-#ifdef SHIM
-withShim :: SHM a -> YiM a
-withShim f = do
-  r <- asks yiShim
-  liftIO $ do e <- takeMVar r
-              (a,e') <- runStateT f e
-              putMVar r e'
-              return a
-
-runShimThread :: SHM () -> YiM ThreadId
-runShimThread f = do
-  r <- asks yiShim
-  (liftIO . forkOS) $
-           do e <- takeMVar r
-              (a,e') <- runStateT f e
-              putMVar r e'
-              return a
-#endif
 
 readEditor :: (Editor -> a) -> YiM a
 readEditor f = withEditor (gets f)

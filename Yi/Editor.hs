@@ -34,13 +34,6 @@ import Data.Typeable
 import Control.Monad.State
 import Control.Monad.Writer
 
-#ifdef SHIM
-import GHC
-import Outputable
-import ErrUtils
-import qualified Yi.WindowSet as Robin
-#endif
-
 
 -- | The Editor state
 data Editor = Editor {
@@ -407,36 +400,3 @@ shiftOtherWindow = do
   nextWinE
 
 
--- ---------------------------------------------------------------------
--- CompileNote
-
--- TODO: Perhaps this CompileNote should be replaced with something
--- more general not necessary GHC specific.
---
--- It is moved here from Yi.Mode.Shim because it has to be accessible
--- from Yi.Core. The CompileNote type itself comes from SHIM
-
-#ifdef SHIM
-data CompileNote = CompileNote {severity :: Severity,
-                                srcSpan :: SrcSpan,
-                                pprStyle :: PprStyle,
-                                message :: Message}
-
-
-instance Show CompileNote where
-    show n = show $
-               (hang (ppr (srcSpan n) <> colon) 4  (message n)) (pprStyle n)
-
-
-type T = (Maybe (Robin.WindowSet CompileNote))
-newtype ShimNotes = ShimNotes { fromShimNotes :: T }
-    deriving Typeable
-instance Initializable ShimNotes where
-    initial = ShimNotes Nothing
-
-
-
-notesA :: Accessor Editor T
-notesA =  (Accessor fromShimNotes (\f (ShimNotes x) -> ShimNotes (f x))) 
-          .> dynamicValueA .> dynamicA 
-#endif

@@ -24,6 +24,7 @@ fst,
 fst3,
 head,
 init,
+io,
 last,
 lookup,
 module Data.Bool,
@@ -57,6 +58,9 @@ import Control.Monad.Reader
 import Data.Traversable 
     
 type Endom a = a -> a
+
+io :: MonadIO m => IO a -> m a
+io = liftIO
 
 fst3 :: (a,b,c) -> a
 fst3 (x,_,_) = x
