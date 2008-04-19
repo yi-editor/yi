@@ -121,7 +121,6 @@ library
       other-modules: Shim.SHM, Shim.Utils, Shim.SessionMonad, Shim.Hsinfo, Shim.GhcCompat, Shim.ExprSearch, Shim.ProjectContent
 
     other-modules:
-        Data.DelayList
         Paths_yi,
         Yi.Syntax.Cplusplus, Yi.Syntax.Haskell, Yi.Syntax.Indent, Yi.Syntax.LiterateHaskell,
         Yi.Syntax.Latex, Yi.Syntax.Paren, Yi.Syntax.Srmc, Yi.Syntax.Cabal, Yi.Syntax.Fractal
@@ -144,6 +143,7 @@ library
         -- Should probably be split out to another package.
         Data.Digest.SHA1
         Data.Tree.Zipper
+        Data.DelayList
 
 --         Broken:
 --                Yi.Keymap.Ee,
@@ -217,8 +217,22 @@ executable yi
           main-is:        HackerMain.hs
         else
           main-is:        Main.hs
-        other-modules:  Yi.Syntax.Cplusplus, Yi.Syntax.Haskell, Yi.Syntax.LiterateHaskell,
-                        Yi.Syntax.Latex, Yi.Syntax.Srmc, Yi.Syntax.Cabal
+
+        other-modules:
+           Yi
+           Yi.Prelude
+           Yi.Yi
+           Yi.Keymap.Emacs
+           Yi.Keymap.Vim
+           Yi.Keymap.Users.Ertai
+           Yi.Keymap.Users.JP
+           Yi.Modes
+           Yi.Mode.Haskell
+           Yi.Buffer
+           Yi.UI.Common
+
+           Yi.Syntax.Cplusplus, Yi.Syntax.Haskell, Yi.Syntax.LiterateHaskell,
+           Yi.Syntax.Latex, Yi.Syntax.Srmc, Yi.Syntax.Cabal
         include-dirs:   Yi/Syntax
         extensions:     CPP
 
