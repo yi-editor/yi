@@ -169,7 +169,7 @@ prepareAction ui = do
     e <- get
     modifyWindows $ \ws0 ->      
       let ws1 = computeHeights yss ws0
-          zzz = fmap (scrollAndRenderWindow e (configStyle $ uiConfig $ ui) xss) (WS.withFocus ws1)
+          zzz = fmap (scrollAndRenderWindow (uiConfig ui) e (configStyle $ uiConfig $ ui) xss) (WS.withFocus ws1)
           -- note that the rendering won't actually be performed because of laziness.
       in  (fmap fst zzz)
 
@@ -185,7 +185,7 @@ refresh ui e = do
   (yss,xss) <- readRef (scrsize ui)
   let ws1 = computeHeights yss ws0
       cmd = statusLine e
-      zzz = fmap (scrollAndRenderWindow e (configStyle $ uiConfig $ ui) xss) (WS.withFocus ws1)
+      zzz = fmap (scrollAndRenderWindow (uiConfig ui) e (configStyle $ uiConfig $ ui) xss) (WS.withFocus ws1)
 
   let startXs = scanrT (+) 0 (fmap height ws1)
       wImages = fmap picture $ fmap snd $ zzz
@@ -213,21 +213,20 @@ scanrT (+*+) k t = fst $ runState (mapM f t) k
            
 
 -- | Scrolls the window to show the point if needed
-scrollAndRenderWindow :: Editor -> UIStyle -> Int -> (Window, Bool) -> (Window, Rendered)
-scrollAndRenderWindow e sty width (win,hasFocus) = (win' {bospnt = bos}, rendered)
+scrollAndRenderWindow :: UIConfig -> Editor -> UIStyle -> Int -> (Window, Bool) -> (Window, Rendered)
+scrollAndRenderWindow cfg e sty width (win,hasFocus) = (win' {bospnt = bos}, rendered)
     where b = findBufferWith (bufkey win) e
           (point, _) = runBufferDummyWindow b pointB
           win' = if not hasFocus || pointInWindow point win then win else showPoint b win
-          (rendered, bos) = drawWindow e sty hasFocus width win'
+          (rendered, bos) = drawWindow cfg b sty hasFocus width win'
 
 
 -- | Draw a window
 -- TODO: horizontal scrolling.
-drawWindow :: Editor -> UIStyle -> Bool -> Int -> Window -> (Rendered, Int)
-drawWindow e sty focused w win = (Rendered { picture = pict,cursor = cur}, bos)
+drawWindow :: UIConfig -> FBuffer -> UIStyle -> Bool -> Int -> Window -> (Rendered, Int)
+drawWindow cfg b sty focused w win = (Rendered { picture = pict,cursor = cur}, bos)
             
     where
-        b = findBufferWith (bufkey win) e
         m = not (isMini win)
         off = if m then 1 else 0
         h' = height win - off
@@ -251,7 +250,7 @@ drawWindow e sty focused w win = (Rendered { picture = pict,cursor = cur}, bos)
         modeLine = if m then Just modeLine0 else Nothing
         modeLines = map (withStyle (modeStyle sty) . take w . (++ repeat ' ')) $ maybeToList $ modeLine
         modeStyle = if focused then modeline_focused else modeline        
-        filler = take w (windowfill e : repeat ' ')
+        filler = take w (configWindowFill cfg : repeat ' ')
     
         pict = vertcat (take h' (rendered ++ repeat (withStyle eofsty filler)) ++ modeLines)
   

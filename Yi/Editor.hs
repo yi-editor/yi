@@ -45,7 +45,6 @@ data Editor = Editor {
 
        ,dynamic       :: DynamicValues              -- ^ dynamic components
 
-       ,windowfill    :: !Char                      -- ^ char to fill empty window space with
        ,tabwidth      :: !Int                       -- ^ width of tabs
 
        ,statusLines   :: !(DelayList.DelayList String)
@@ -87,7 +86,6 @@ emptyEditor = Editor {
        ,windows      = WS.new win
        ,bufferStack  = [bkey buf]
        ,bufferRefSupply = 2
-       ,windowfill   = ' '
        ,tabwidth     = 8
        ,regex        = Nothing
        ,dynamic      = M.empty
@@ -276,11 +274,6 @@ getDynamic = getA (dynamicValueA .> dynamicA)
 -- | Insert a value into the extensible state, keyed by its type
 setDynamic :: Initializable a => a -> EditorM ()
 setDynamic x = setA (dynamicValueA .> dynamicA) x
-
--- | A character to fill blank lines in windows with. Usually '~' for
--- vi-like editors, ' ' for everything else
-setWindowFillE :: Char -> EditorM ()
-setWindowFillE c = modify $ \e -> e { windowfill = c }
 
 -- | Attach the next buffer in the buffer list
 -- to the current window.

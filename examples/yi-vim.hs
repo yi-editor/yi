@@ -34,8 +34,9 @@ defaultVimUiStyle = defSyle { selected = Style.modeline_focused Style.uiStyle}
 main :: IO ()
 main = yi $ defaultConfig {
                            modeTable = myModetable <|> modeTable defaultConfig,
-                           configUI = defConfigUI { configFontSize = Just 10
-                                                    configSyle = defaultVimUiStyle
+                           configUI = defConfigUI { configFontSize = Just 10,
+                                                    configSyle = defaultVimUiStyle,
+                                                    configWindowFill = '~'
                                                   },
                            defaultKm = keymap
                           }

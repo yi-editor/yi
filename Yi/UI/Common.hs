@@ -12,6 +12,9 @@ data UIConfig = UIConfig {
    configLeftSideScrollBar :: Bool,
    configAutoHideScrollBar :: Bool,
    configLineWrap :: Bool,
+   configWindowFill :: !Char,       
+   -- ^ char to fill empty window space with.  Usually '~' for vi-like
+   -- editors, ' ' for everything else
    configStyle :: UIStyle                        -- ^ ui colours
 
   }

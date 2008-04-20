@@ -9,7 +9,6 @@
 module Yi.Keymap.Vim ( keymap, VimMode, viWrite ) where
 
 import Yi.Yi
-import Yi.Style as Style
 import Prelude       hiding ( any, error )
 
 import Data.Char
@@ -46,8 +45,7 @@ type VimProc a = (Interact Char) a
 
 -- | Top level
 keymap :: Keymap
-keymap = do write $ do setWindowFillE '~'
-            runVim cmd_mode
+keymap = runVim cmd_mode
 
 runVim :: VimMode -> Keymap
 runVim = comap eventToChar

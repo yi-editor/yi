@@ -151,6 +151,7 @@ defaultConfig =
            , configLineWrap = True
            , configLeftSideScrollBar = True
            , configAutoHideScrollBar = False
+           , configWindowFill = ' '
            , configStyle = UIStyle 
              { window             = Style defaultfg    defaultbg
              , modeline           = Style black        darkcyan
