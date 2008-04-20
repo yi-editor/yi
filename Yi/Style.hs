@@ -12,9 +12,7 @@ module Yi.Style where
 import Data.Word                (Word8)
 import Data.Char (chr, ord)
 
---
 -- | The UI type
---
 data UIStyle =
     UIStyle {
          window           :: !Style    -- ^ window fg and bg (ignore for now)
@@ -26,39 +24,24 @@ data UIStyle =
     deriving (Eq, Show, Ord)
 
 data Color
-    = RGB {-# UNPACK #-} !Word8 !Word8 !Word8
+    = RGB {-# UNPACK #-} !Word8 {-# UNPACK #-} !Word8 {-# UNPACK #-} !Word8
     | Default
     | Reverse
     deriving (Eq,Ord,Show)
 
+
 -- | Convert a color to its text specification, as to be accepted by XParseColor
-
-showHex1 :: Word8 -> Char
-showHex1 x | x < 10 = chr (ord '0' + fromIntegral x)
-           | otherwise = chr (ord 'A' + fromIntegral x - 10)
-
-showsHex :: Word8 -> (String -> String)
-showsHex x s =
-    showHex1 (x `div` 16) : showHex1 (x `mod` 16) : s
-
 colorToText :: Color -> String
-colorToText Default = "black"
-colorToText Reverse = "white"
+colorToText Default = "default"
+colorToText Reverse = "reverse"
 colorToText (RGB r g b) = ('#':) . showsHex r . showsHex g . showsHex b $ []
+    where showsHex x s = showHex1 (x `div` 16) : showHex1 (x `mod` 16) : s
+          showHex1 x | x < 10 = chr (ord '0' + fromIntegral x)
+                     | otherwise = chr (ord 'A' + fromIntegral x - 10)
 
 
---
+
 -- | Default settings
---
-{-
-  Notice that the selected field is initially set to the default, which
-  essentially means that selected text will not be highlighted. The reason
-  for this is that if the mode does not remember to UnSet the mark after,
-  for example, cutting, then there will always be a highlighted region, that
-  is essentially the default for now which has worked up until now because the
-  selected text wasn't highlighted, now that it is, we need the modes to unset
-  the mark when nothing should be hightlighted.
--}
 uiStyle :: UIStyle
 uiStyle = UIStyle {
          window             = Style defaultfg    defaultbg
