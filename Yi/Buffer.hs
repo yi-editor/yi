@@ -1,6 +1,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving, DeriveDataTypeable, StandaloneDeriving, ExistentialQuantification, Rank2Types #-}
 
--- Copyright (C) 2004, 2008 Don Stewart - http://www.cse.unsw.edu.au/~dons
+-- Copyright (C) 2004, 2007 Don Stewart - http://www.cse.unsw.edu.au/~dons
+-- Copyright (C) 2007, 2008 JP Bernardy
 
 -- | The 'Buffer' module defines monadic editing operations over one-dimensional
 -- buffers, which maintain a current /point/.

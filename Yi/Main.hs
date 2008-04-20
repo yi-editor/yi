@@ -151,6 +151,13 @@ defaultConfig =
            , configLineWrap = True
            , configLeftSideScrollBar = True
            , configAutoHideScrollBar = False
+           , configStyle = UIStyle 
+             { window             = Style defaultfg    defaultbg
+             , modeline           = Style black        darkcyan
+             , modeline_focused   = Style brightwhite  darkcyan
+             , selected           = Style reversefg    reversebg
+             , eof                = Style blue         defaultbg
+             }
            }
          , defaultKm        = nilKeymap
          , startAction      = openScratchBuffer -- emacs-style behaviour

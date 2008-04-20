@@ -37,14 +37,6 @@ import Yi.TextCompletion
 --   movement parameterised \> \<
 --
 
-{-
-  For now we just make the selected style the same as the
-  modeline_focused style... Just because i'm not good with
-  styles yet - Jim
--}
-defaultVimUiStyle :: Style.UIStyle
-defaultVimUiStyle = Style.uiStyle { selected = Style.modeline_focused Style.uiStyle}
-
 -- ---------------------------------------------------------------------
 
 type VimMode = VimProc ()
@@ -55,7 +47,6 @@ type VimProc a = (Interact Char) a
 -- | Top level
 keymap :: Keymap
 keymap = do write $ do setWindowFillE '~'
-                       setWindowStyleE defaultVimUiStyle
             runVim cmd_mode
 
 runVim :: VimMode -> Keymap

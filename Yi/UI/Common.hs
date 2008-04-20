@@ -5,12 +5,15 @@ module Yi.UI.Common where
 import Yi.Editor
 import Yi.Event
 import {-# SOURCE #-} Yi.Keymap
+import Yi.Style
 
 data UIConfig = UIConfig {
    configFontSize :: Maybe Int,
    configLeftSideScrollBar :: Bool,
    configAutoHideScrollBar :: Bool,
-   configLineWrap :: Bool
+   configLineWrap :: Bool,
+   configStyle :: UIStyle                        -- ^ ui colours
+
   }
 
 

@@ -12,7 +12,6 @@ where
 import Yi.Buffer                ( BufferRef, FBuffer (..), BufferM, newB, runBuffer, insertN )
 import Yi.Buffer.HighLevel (botB)
 import Text.Regex.Posix.Wrap    ( Regex )
-import Yi.Style                 ( uiStyle, UIStyle )
 
 import Yi.Debug
 import Yi.Monad
@@ -44,7 +43,6 @@ data Editor = Editor {
 
        ,windows       :: WindowSet Window
 
-       ,uistyle       :: !UIStyle                   -- ^ ui colours
        ,dynamic       :: DynamicValues              -- ^ dynamic components
 
        ,windowfill    :: !Char                      -- ^ char to fill empty window space with
@@ -92,7 +90,6 @@ emptyEditor = Editor {
        ,windowfill   = ' '
        ,tabwidth     = 8
        ,regex        = Nothing
-       ,uistyle      = Yi.Style.uiStyle
        ,dynamic      = M.empty
        ,statusLines  = DelayList.insert (maxBound, "") []
        ,killring     = krEmpty
@@ -284,11 +281,6 @@ setDynamic x = setA (dynamicValueA .> dynamicA) x
 -- vi-like editors, ' ' for everything else
 setWindowFillE :: Char -> EditorM ()
 setWindowFillE c = modify $ \e -> e { windowfill = c }
-
--- | Sets the window style.
-setWindowStyleE :: UIStyle -> EditorM ()
-setWindowStyleE sty = modify $ \e -> e { uistyle = sty }
-
 
 -- | Attach the next buffer in the buffer list
 -- to the current window.

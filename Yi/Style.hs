@@ -40,17 +40,6 @@ colorToText (RGB r g b) = ('#':) . showsHex r . showsHex g . showsHex b $ []
                      | otherwise = chr (ord 'A' + fromIntegral x - 10)
 
 
-
--- | Default settings
-uiStyle :: UIStyle
-uiStyle = UIStyle {
-         window             = Style defaultfg    defaultbg
-        ,modeline           = Style black        darkcyan
-        ,modeline_focused   = Style brightwhite  darkcyan
-        ,selected           = Style reversefg    reversebg
-        ,eof                = Style blue         defaultbg
-     }
-
 defaultStyle :: Style
 defaultStyle = Style defaultfg defaultbg
 

@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleContexts, FlexibleInstances, TypeSynonymInstances, ExistentialQuantification, MultiParamTypeClasses, FunctionalDependencies, DeriveDataTypeable, StandaloneDeriving, GeneralizedNewtypeDeriving, Rank2Types #-}
 
--- Copyright (c) Jean-Philippe Bernardy 2007.
+-- Copyright (c) Jean-Philippe Bernardy 2007,8.
 
 module Yi.Keymap where
 

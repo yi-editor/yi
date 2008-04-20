@@ -41,6 +41,7 @@ import Yi.Style
 import Yi.WindowSet as WS
 import qualified Data.ByteString.Char8 as B
 import qualified Yi.UI.Common as Common
+import Yi.UI.Common (UIConfig(..))
 import Yi.Window
 import Yi.Style as Style
 import Graphics.Vty as Vty
@@ -64,6 +65,7 @@ data UI = UI {
              ,uiThread  :: ThreadId
              ,uiRefresh :: MVar ()
              ,uiEditor  :: IORef Editor
+             ,uiConfig  :: UIConfig
              }
 mkUI :: UI -> Common.UI
 mkUI ui = Common.UI 
@@ -79,7 +81,7 @@ mkUI ui = Common.UI
 
 -- | Initialise the ui
 start :: Common.UIBoot
-start _cfg ch _outCh editor = do
+start cfg ch _outCh editor = do
   liftIO $ do 
           v <- mkVty
           (x0,y0) <- Vty.getSize v
@@ -89,7 +91,7 @@ start _cfg ch _outCh editor = do
           t <- myThreadId
           tuiRefresh <- newEmptyMVar
           editorRef <- newIORef editor
-          let result = UI v sz t tuiRefresh editorRef
+          let result = UI v sz t tuiRefresh editorRef cfg
               -- | Action to read characters into a channel
               getcLoop = forever $ getKey >>= ch
 
@@ -167,7 +169,7 @@ prepareAction ui = do
     e <- get
     modifyWindows $ \ws0 ->      
       let ws1 = computeHeights yss ws0
-          zzz = fmap (scrollAndRenderWindow e (uistyle e) xss) (WS.withFocus ws1)
+          zzz = fmap (scrollAndRenderWindow e (configStyle $ uiConfig $ ui) xss) (WS.withFocus ws1)
           -- note that the rendering won't actually be performed because of laziness.
       in  (fmap fst zzz)
 
@@ -183,7 +185,7 @@ refresh ui e = do
   (yss,xss) <- readRef (scrsize ui)
   let ws1 = computeHeights yss ws0
       cmd = statusLine e
-      zzz = fmap (scrollAndRenderWindow e (uistyle e) xss) (WS.withFocus ws1)
+      zzz = fmap (scrollAndRenderWindow e (configStyle $ uiConfig $ ui) xss) (WS.withFocus ws1)
 
   let startXs = scanrT (+) 0 (fmap height ws1)
       wImages = fmap picture $ fmap snd $ zzz
@@ -191,7 +193,7 @@ refresh ui e = do
   WS.debug "Drawing: " ws1
   logPutStrLn $ "startXs: " ++ show startXs
   Vty.update (vty $ ui) 
-      pic {pImage = vertcat (toList wImages) <-> withStyle (window $ uistyle e) (take xss $ cmd ++ repeat ' '),
+      pic {pImage = vertcat (toList wImages) <-> withStyle (window $ configStyle $ uiConfig $ ui) (take xss $ cmd ++ repeat ' '),
            pCursor = case cursor (snd $ WS.current zzz) of
                        Just (y,x) -> Cursor x (y + WS.current startXs) 
                        -- Add the position of the window to the position of the cursor
