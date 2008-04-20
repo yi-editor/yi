@@ -7,7 +7,6 @@
 module Yi.UI.Cairo (start) where
 
 import Prelude hiding (error, sequence_, elem, mapM_, mapM, concatMap)
-import Yi.Buffer.Implementation (Update(..))
 import Yi.Buffer
 import Yi.Buffer.HighLevel (setSelectionMarkPointB)
 import qualified Yi.Editor as Editor
@@ -41,6 +40,7 @@ import Graphics.UI.Gtk hiding ( Window, Event, Action, Point, Style )
 import qualified Graphics.UI.Gtk as Gtk
 import Yi.UI.Gtk.ProjectTree
 import Yi.UI.Gtk.Utils
+import Yi.UI.Utils
 
 ------------------------------------------------------------------------
 
@@ -54,7 +54,9 @@ data UI = UI { uiWindow :: Gtk.Window
 
 data WinInfo = WinInfo
     {
+     
       coreWin     :: Window
+    , changedWin  :: IORef (Window)
     , renderer    :: IORef (ConnectId DrawingArea)
     , textview    :: DrawingArea
     , modeline    :: Label
@@ -212,13 +214,19 @@ syncWindows :: Editor -> UI -> [(Window, Bool)] -- ^ windows paired with their "
             -> [WinInfo] -> IO [WinInfo]
 syncWindows e ui (wfocused@(w,focused):ws) (c:cs)
     | winkey w == winkey (coreWin c) = do when focused (setFocus c)
-                                          return (c {coreWin = w}:) `ap` syncWindows e ui ws cs
+                                          (:) <$> syncWin w c <*> syncWindows e ui ws cs
     | winkey w `elem` map (winkey . coreWin) cs = removeWindow ui c >> syncWindows e ui (wfocused:ws) cs
     | otherwise = do c' <- insertWindowBefore e ui w c
                      when focused (setFocus c')
                      return (c':) `ap` syncWindows e ui ws (c:cs)
 syncWindows e ui ws [] = mapM (insertWindowAtEnd e ui) (map fst ws)
 syncWindows _e ui [] cs = mapM_ (removeWindow ui) cs >> return []
+
+syncWin :: Window -> WinInfo -> IO WinInfo
+syncWin w wi = do
+  logPutStrLn $ "Updated one: " ++ show w
+  writeRef (changedWin wi) w
+  return (wi {coreWin = w})
 
 setFocus :: WinInfo -> IO ()
 setFocus w = do
@@ -315,14 +323,16 @@ newWindow ui w b = mdo
                containerChild := ml,
                boxChildPacking ml := PackNatural]
       return (castToBox vb)
-
+     
     sig <- newIORef =<< (v `onExpose` render ui b win)
+    wRef <- newIORef w
     let win = WinInfo {
                      coreWin   = w
                    , textview  = v
                    , modeline  = ml
                    , widget    = box
                    , renderer  = sig
+                   , changedWin = wRef
               }
     return win
 
@@ -368,16 +378,43 @@ refresh ui e = do
 render :: UI -> FBuffer -> WinInfo -> t -> IO Bool
 render ui b w _ev = do
   f <- mkFontDesc (uiConfig ui)
+  win <- readRef (changedWin w)
   drawWindow <- widgetGetDrawWindow $ textview w
   (width, height) <- widgetGetSize $ textview w
+  let [width', height'] = map fromIntegral [width, height]
   context <- cairoCreateContext Nothing
+  language <- contextGetLanguage context
+  metrics <- contextGetMetrics context f language
+
   let ((point, text),_) = runBufferDummyWindow b $ (,) <$>
                       pointB <*>
-                      nelemsB maxBound 0
+                      nelemsB maxBound (tospnt win) -- FIXME: read only enough chars.
   layout <- layoutText context text
-  layoutSetWidth layout (Just $ fromIntegral width)
+  layoutSetWidth layout (Just width')
   layoutSetFontDescription layout (Just f)
-  (PangoRectangle curx cury curw curh, _) <- layoutGetCursorPos layout point
+
+  (_,bos,_) <- layoutXYToIndex layout width' height' 
+  let win' = win { bospnt = bos + tospnt win,
+                   height = round (height' / (ascent metrics + descent metrics))
+                 } 
+
+  logPutStrLn $ "prewin: " ++ show win'
+  logPutStrLn $ "point: " ++ show point
+  win''' <- if pointInWindow point win'
+    then return win'
+    else do
+      logPutStrLn $ "out!"
+      let win'' = showPoint b win'
+          (text', _) = runBufferDummyWindow b $ nelemsB maxBound (tospnt win'')
+      layoutSetText layout text'
+      (_,bos',_) <- layoutXYToIndex layout width' height'
+      logPutStrLn $ "bos = " ++ show bos' ++ " + " ++ show (tospnt win'')
+      return win'' { bospnt = bos' + tospnt win''} 
+
+  writeRef (changedWin w) win'''
+  logPutStrLn $ "updated: " ++ show win'''
+
+  (PangoRectangle curx cury curw curh, _) <- layoutGetCursorPos layout (point - tospnt win''')
   renderWithDrawable drawWindow $ do 
      -- clear the surface with white
      C.setSourceRGBA 1 1 1 1
@@ -395,19 +432,17 @@ render ui b w _ev = do
 
 prepareAction :: UI -> IO (EditorM ())
 prepareAction ui = do
-    -- compute the heights of all windows (in number of lines)
-    gtkWins <- readRef (windowCache ui)
-    heights <- forM gtkWins $ \_w -> return 0
-    -- updates the heights of the windows
-    return $ modifyWindows (\ws -> fst $ runState (mapM distribute ws) heights)
+    wins <- mapM (readRef . changedWin) =<< readRef (windowCache ui)
+    logPutStrLn $ "new wins: " ++ show wins
+    return $ modifyWindows (\ws -> fst $ runState (mapM distribute ws) wins)
 
 reloadProject :: UI -> FilePath -> IO ()
 reloadProject _ _ = return ()
 
-distribute :: Window -> State [Int] Window
-distribute win = do
+distribute :: Window -> State [Window] Window
+distribute _ = do
   h <- gets head
   modify tail
-  return win {height = h}
+  return h
 
 

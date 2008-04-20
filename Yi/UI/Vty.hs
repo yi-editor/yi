@@ -45,6 +45,7 @@ import Yi.Window
 import Yi.Style as Style
 import Graphics.Vty as Vty
 import Codec.Binary.UTF8.String as UTF8
+import Yi.UI.Utils
 
 ------------------------------------------------------------------------
 
@@ -214,23 +215,9 @@ scrollAndRenderWindow :: Editor -> UIStyle -> Int -> (Window, Bool) -> (Window, 
 scrollAndRenderWindow e sty width (win,hasFocus) = (win' {bospnt = bos}, rendered)
     where b = findBufferWith (bufkey win) e
           (point, _) = runBufferDummyWindow b pointB
-          win' = if not hasFocus || pointInWindow point win then win else showPoint e win
+          win' = if not hasFocus || pointInWindow point win then win else showPoint b win
           (rendered, bos) = drawWindow e sty hasFocus width win'
 
--- | return index of Sol on line @n@ above current line
-indexOfSolAbove :: Int -> BufferM Int
-indexOfSolAbove n = savingPointB $ do
-    gotoLnFrom (negate n)
-    pointB
-
-showPoint :: Editor -> Window -> Window 
-showPoint e w = result
-  where b = findBufferWith (bufkey w) e
-        (result, _) = runBufferDummyWindow b $ 
-            do ln <- curLn
-               let gap = min (ln-1) (height w `div` 2)
-               i <- indexOfSolAbove gap
-               return w {tospnt = i}
 
 -- | Draw a window
 -- TODO: horizontal scrolling.

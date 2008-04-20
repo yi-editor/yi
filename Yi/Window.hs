@@ -27,8 +27,11 @@ winkey :: Window -> (Bool, BufferRef)
 winkey w = (isMini w, bufkey w)
 
 instance Show Window where
-    show w = "Window to " ++ show (bufkey w) ++ "{" ++ show (winkey w) ++ "}"
+    show w = "Window to " ++ show (bufkey w) 
+             ++ "{" ++ show (tospnt w) ++ "-->" ++ show (bospnt w) ++ "}" 
+             ++ "(" ++ show (height w) ++ ")"
 
+-- | Is a given point within tospnt / bospnt?
 pointInWindow :: Point -> Window -> Bool
 pointInWindow point win = tospnt win <= point && point <= bospnt win
 
