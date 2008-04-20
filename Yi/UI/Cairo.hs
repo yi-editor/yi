@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns, ExistentialQuantification, RecursiveDo #-}
+{-# LANGUAGE BangPatterns, ExistentialQuantification, RecursiveDo, ParallelListComp #-}
 
 -- Copyright (c) 2007, 2008 Jean-Philippe Bernardy
 
@@ -388,8 +388,8 @@ render ui b w _ev = do
   let winh = round (height' / (ascent metrics + descent metrics))
       winw = round (width' / approximateCharWidth metrics)
       maxNumberOfChars = winh * winw
-      -- The number of chars in a gross approximation.
-  let ((point, text),_) = runBufferDummyWindow b $ (,) <$>
+      -- The number of chars is a gross approximation.
+  let ((point, text),_) = runBuffer win b $ (,) <$>
                       pointB <*>
                       nelemsB maxNumberOfChars (tospnt win) 
                       -- FIXME: unicode. 
@@ -409,7 +409,7 @@ render ui b w _ev = do
     else do
       logPutStrLn $ "out!"
       let win'' = showPoint b win'
-          (text', _) = runBufferDummyWindow b $ nelemsB maxNumberOfChars (tospnt win'')
+          (text', _) = runBuffer win'' b $ nelemsB maxNumberOfChars (tospnt win'')
       layoutSetText layout text'
       (_,bos',_) <- layoutXYToIndex layout width' height'
       logPutStrLn $ "bos = " ++ show bos' ++ " + " ++ show (tospnt win'')
@@ -417,6 +417,14 @@ render ui b w _ev = do
 
   writeRef (changedWin w) win'''
   logPutStrLn $ "updated: " ++ show win'''
+
+  -- add color attributes.
+  let len = (bospnt win''' - tospnt win''')
+      (styles, _) = runBuffer win''' b $ 
+                       styleRangesB len (tospnt win''')
+      allAttrs = [AttrForeground (s - tospnt win''') (e - tospnt win''') (styToCol sty) 
+                  | (s,sty) <- styles | e <- tail (map fst styles ++ [len])]
+  layoutSetAttributes layout allAttrs
 
   (PangoRectangle curx cury curw curh, _) <- layoutGetCursorPos layout (point - tospnt win''')
   renderWithDrawable drawWindow $ do 
@@ -449,4 +457,12 @@ distribute _ = do
   modify tail
   return h
 
+styToCol :: Style -> Gtk.Color
+styToCol (Style fg _bg) = colToCol fg
 
+colToCol :: Yi.Style.Color -> Gtk.Color
+colToCol Default = Color 0 0 0
+colToCol Reverse = Color maxBound maxBound maxBound
+colToCol (RGB x y z) = Color (fromIntegral x * 256)
+                             (fromIntegral y * 256)
+                             (fromIntegral z * 256)
