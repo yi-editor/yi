@@ -385,18 +385,22 @@ render ui b w _ev = do
   context <- cairoCreateContext Nothing
   language <- contextGetLanguage context
   metrics <- contextGetMetrics context f language
-
+  let winh = round (height' / (ascent metrics + descent metrics))
+      winw = round (width' / approximateCharWidth metrics)
+      maxNumberOfChars = winh * winw
+      -- The number of chars in a gross approximation.
   let ((point, text),_) = runBufferDummyWindow b $ (,) <$>
                       pointB <*>
-                      nelemsB maxBound (tospnt win) -- FIXME: read only enough chars.
+                      nelemsB maxNumberOfChars (tospnt win) 
+                      -- FIXME: unicode. 
   layout <- layoutText context text
   layoutSetWidth layout (Just width')
   layoutSetFontDescription layout (Just f)
 
   (_,bos,_) <- layoutXYToIndex layout width' height' 
   let win' = win { bospnt = bos + tospnt win,
-                   height = round (height' / (ascent metrics + descent metrics))
-                 } 
+                   height = winh
+                 }
 
   logPutStrLn $ "prewin: " ++ show win'
   logPutStrLn $ "point: " ++ show point
@@ -405,7 +409,7 @@ render ui b w _ev = do
     else do
       logPutStrLn $ "out!"
       let win'' = showPoint b win'
-          (text', _) = runBufferDummyWindow b $ nelemsB maxBound (tospnt win'')
+          (text', _) = runBufferDummyWindow b $ nelemsB maxNumberOfChars (tospnt win'')
       layoutSetText layout text'
       (_,bos',_) <- layoutXYToIndex layout width' height'
       logPutStrLn $ "bos = " ++ show bos' ++ " + " ++ show (tospnt win'')
