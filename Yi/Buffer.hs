@@ -80,6 +80,7 @@ module Yi.Buffer
   , clearSyntax
   , Mode (..)
   , AnyMode(..)
+  , IndentBehaviour ( .. )
   , emptyMode
   , withModeB
   , withSyntax0
@@ -206,10 +207,25 @@ data Mode syntax = Mode
      -- modeName = "fundamental", -- ^ so this could be serialized, debugged.
      modeHL :: ExtHL syntax,
      modeKeymap :: KeymapEndo, -- ^ Buffer's local keymap modification
-     modeIndent :: BufferM (),
+     modeIndent :: IndentBehaviour -> BufferM (),
      modeAdjustBlock :: syntax -> Int -> BufferM ()
     }
 
+
+{-
+  Is used to specify the behaviour of the automatic indent command.
+-}
+data IndentBehaviour = 
+    IncreaseCycle -- ^ Increase the indentation to the next higher indentation
+                  --   hint. If we are currently at the highest level of
+                  --   indentation then cycle back to the lowest.
+  | DecreaseCycle -- ^ Decrease the indentation to the next smaller indentation
+                  --   hint. If we are currently at the smallest level then
+                  --   cycle back to the largest
+  | IncreaseOnly  -- ^ Increase the indentation to the next higher hint
+                  --   if no such hint exists do nothing.
+  | DecreaseOnly  -- ^ Decrease the indentation to the next smaller indentation
+                  --   hint, if no such hint exists do nothing.
 
 
 -- | The BufferM monad writes the updates performed.
@@ -338,7 +354,7 @@ emptyMode = Mode
   { 
    modeHL = ExtHL noHighlighter,
    modeKeymap = id,
-   modeIndent = return (),
+   modeIndent = \_ -> return (),
    modeAdjustBlock = \_ _ -> return ()
   }
 

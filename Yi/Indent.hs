@@ -61,9 +61,9 @@ indentSettingsB = getDynamicB
   This is the most basic and the user is encouraged to
   specialise 'autoIndentHelperB' on their own.
 -}
-autoIndentB :: BufferM ()
-autoIndentB =
-  autoIndentHelperB fetchPreviousIndentsB indentsOfString
+autoIndentB :: IndentBehaviour -> BufferM ()
+autoIndentB indentBehave =
+  autoIndentHelperB fetchPreviousIndentsB indentsOfString indentBehave
   where
   -- Returns the indentation hints considering the given
   -- string as the line above the current one.
@@ -98,13 +98,18 @@ autoIndentHelperB :: BufferM [ Int ]
                   -- ^ Action to fetch hints from previous lines
                  -> (String -> BufferM [ Int ])
                  -- ^ Action to calculate hints from previous line
+                 -> IndentBehaviour
+                 -- ^ Sets the indent behaviour, 
+                 ---  see 'Yi.Buffer.IndentBehaviour' for a description
                  -> BufferM ()
-autoIndentHelperB getUpwards getPrevious = 
+autoIndentHelperB getUpwards getPrevious indentBehave =
   do upwardHints   <- savingExcursionB getUpwards
      previousLine  <- getPreviousLineB
      previousHints <- getPrevious previousLine
      let allHints = sort $ nub (upwardHints ++ previousHints)
-     cycleIndentsB allHints
+     if null allHints
+        then return ()
+        else cycleIndentsB allHints
   where
   -- Cycles through the indentation hints. It does this without
   -- requiring to set/get any state. We just look at the current
@@ -115,13 +120,58 @@ autoIndentHelperB getUpwards getPrevious =
   cycleIndentsB indents =
     do currentLine   <- readLnB
        currentIndent <- indentOfB currentLine
-       let (below, above) = span (< currentIndent) indents
-       -- msgEditor $ show (below, above)
-       -- So in particular if 'below' is null then we will
-       -- go to the largest indentation, if below is not null
-       -- we go to the largest indentation which is *not* higher
-       -- than the current one.
-       indentToB $ last (above ++ below)
+       indentToB $ chooseIndent currentIndent indents
+
+  -- Is the function to choose the indent from the given current
+  -- indent to the given list of indentation hints.
+  chooseIndent :: Int -> [ Int ] -> Int
+  chooseIndent =
+    case indentBehave of
+      IncreaseCycle -> chooseIncreaseCycle
+      DecreaseCycle -> chooseDecreaseCycle
+      IncreaseOnly  -> chooseIncreaseOnly
+      DecreaseOnly  -> chooseDecreaseOnly
+
+  
+
+  -- Choose the indentation hint which is one more than the current
+  -- indentation hint unless the current is the largest or larger than
+  -- all the indentation hints in which case choose the smallest
+  -- (which will often be zero)
+  chooseIncreaseCycle :: Int -> [ Int ] -> Int
+  chooseIncreaseCycle currentIndent hints =
+    -- Similarly to 'chooseDecreasing' if 'above' is null then
+    -- we will go to the first of below which will be the smallest
+    -- indentation hint, if above is not null then we are moving to
+    -- the indentation hint which is one above the current.
+    head $ (above ++ below)
+    where
+    (below, above) = span (<= currentIndent) hints
+
+  -- Note that these functions which follow generally assume that
+  -- the list of hints which have been given is already sorted
+  -- and that the list is non-empty
+
+  -- Choose the indentation hint one less than the current indentation
+  -- unless the current indentation is the smallest (usually zero)
+  -- in which case choose the largest indentation hint.
+  chooseDecreaseCycle :: Int -> [ Int ] -> Int
+  chooseDecreaseCycle currentIndent hints =
+    -- So in particular if 'below' is null then we will
+    -- go to the largest indentation, if below is not null
+    -- we go to the largest indentation which is *not* higher
+    -- than the current one.
+    last $ (above ++ below)
+    where
+    (below, above) = span (< currentIndent) hints
+
+  chooseIncreaseOnly :: Int -> [ Int ] -> Int
+  chooseIncreaseOnly currentIndent hints =
+    head $ (filter (> currentIndent) hints) ++ [ currentIndent ]
+
+  chooseDecreaseOnly :: Int -> [ Int ] -> Int
+  chooseDecreaseOnly currentIndent hints =
+    last $ currentIndent : (filter (< currentIndent) hints)
 
 {-|
   A function generally useful as the first argument to
@@ -159,9 +209,12 @@ fetchPreviousIndentsB =
     default ('autoIndentB') which is to use any non-closed
     opening brackets as hints.
 -}
-autoIndentWithKeywordsB :: [ String ] -> [ String ] -> BufferM ()
+autoIndentWithKeywordsB :: [ String ]   -- ^ Keywords to act as hints
+                        -> [ String ]   -- ^ Keywords to act as offset hints
+                        -> IndentBehaviour
+                        -> BufferM ()
 autoIndentWithKeywordsB firstKeywords secondKeywords =
-  autoIndentHelperB fetchPreviousIndentsB getPreviousLineHints
+  autoIndentHelperB fetchPreviousIndentsB getPreviousLineHints 
   where
   getPreviousLineHints :: String -> BufferM [ Int ]
   getPreviousLineHints input =
@@ -177,7 +230,7 @@ autoIndentWithKeywordsB firstKeywords secondKeywords =
 {-| For haskell these are reasonable settings but you might be able
     to come up with something better in your own ~/yi.hs file.
 -}
-autoIndentHaskellB :: BufferM ()
+autoIndentHaskellB :: IndentBehaviour -> BufferM ()
 autoIndentHaskellB =
   autoIndentWithKeywordsB [ "if"
                           , "then"

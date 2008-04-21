@@ -15,6 +15,7 @@ module Yi.Keymap.Emacs.Utils
 
   , askQuitEditor
   , modifiedQuitEditor
+  , adjIndent
   , changeBufferNameE
   , rebind
   , withMinibuffer
@@ -178,6 +179,11 @@ modifiedQuitEditor =
 
   noAction        = closeBufferAndWindowE
 
+-- | A simple wrapper to adjust the current indentation using
+-- the mode specific indentation function but according to the
+-- given indent behaviour.
+adjIndent :: IndentBehaviour -> YiM ()
+adjIndent ib = withMode (\m -> modeIndent m ib)
 
 
 ---------------------------

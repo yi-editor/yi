@@ -23,6 +23,7 @@ import Yi.Keymap.Emacs.Utils
   ( KList
   , askQuitEditor
   , completeFileName
+  , adjIndent
   , evalRegionE
   , executeExtendedCommandE
   , findFile
@@ -72,7 +73,7 @@ deleteB' = do
 
 keys :: KList
 keys =
-  [ ( "TAB",      write $ withMode $ modeIndent)
+  [ ( "TAB",      write $ adjIndent IncreaseOnly)
   , ( "RET",      write $ repeatingArg $ insertB '\n')
   , ( "DEL",      write $ repeatingArg deleteB')
   , ( "BACKSP",   write $ repeatingArg (adjBlock (-1) >> withBuffer bdeleteB))
@@ -93,7 +94,7 @@ keys =
   , ( "C-g",      write $ setVisibleSelection False)
   -- , ( "C-g",   write $ keyboardQuitE)
   -- C-g should be a more general quit that also unsets the mark.
-  , ( "C-i",      write $ withMode $ modeIndent)
+  , ( "C-i",      write $ adjIndent IncreaseOnly)
   , ( "C-j",      write $ repeatingArg $ insertB '\n')
   , ( "C-k",      write $ killLineE)
   , ( "C-m",      write $ repeatingArg $ insertB '\n')
