@@ -13,14 +13,13 @@
 
 module Yi.UI.Vty (start) where
 
-import Prelude hiding (error, concatMap, sum, mapM, sequence)
-
+import Yi.Prelude
+import Prelude (map, take, zip, repeat, length, break, splitAt)
 import Control.Concurrent
 import Control.Exception
 import Control.Monad (forever)
 import Control.Monad.State (runState, State, gets, modify, get, put)
 import Control.Monad.Trans (liftIO, MonadIO)
-import Control.Arrow (second)
 import Data.Char (ord,chr)
 import Data.Foldable
 import Data.IORef
@@ -230,23 +229,25 @@ drawWindow cfg b sty focused w win = (Rendered { picture = pict,cursor = cur}, b
         m = not (isMini win)
         off = if m then 1 else 0
         h' = height win - off
-        wsty = styleToAttr (window sty)
-        selsty = styleToAttr (selected sty)
+        wsty = styleToAttr (window sty) attr
+        selsty = styleToAttr (selected sty) attr
         eofsty = eof sty
-        (selreg, _) = runBufferDummyWindow b getSelectRegionB
-        (point, _) = runBufferDummyWindow b pointB
-        (bufData, _) = runBufferDummyWindow b (nelemsBH (w*h') (tospnt win)) -- read enough chars from the buffer.
-        (showSel, _) = runBufferDummyWindow b (gets highlightSelection)
+        (selreg, _) = runBuffer win b getSelectRegionB
+        (point, _) = runBuffer win b pointB
+        (text, _) = runBuffer win b (nelemsB         (w*h') (tospnt win)) -- read enough chars from the buffer.
+        (strokes, _) = runBuffer win b (strokesRangesB  (w*h') (tospnt win)) -- corresponding strokes
+        bufData = paintChars (tospnt win) attr (paintStrokes attr (map toVtyStroke strokes) []) text
+        (showSel, _) = runBuffer win b (gets highlightSelection)
         prompt = if isMini win then name b else ""
 
         (rendered,bos,cur) = drawText h' w
                                 (tospnt win - length prompt) 
                                 point (if showSel then selreg else emptyRegion)
                                 selsty wsty 
-                                (zip prompt (repeat wsty) ++ map (second styleToAttr) bufData ++ [(' ',attr)])
+                                (zip prompt (repeat wsty) ++ bufData ++ [(' ',attr)])
                              -- we always add one character which can be used to position the cursor at the end of file
                                                                                                  
-        (modeLine0, _) = runBufferDummyWindow b getModeLine
+        (modeLine0, _) = runBuffer win b getModeLine
         modeLine = if m then Just modeLine0 else Nothing
         modeLines = map (withStyle (modeStyle sty) . take w . (++ repeat ' ')) $ maybeToList $ modeLine
         modeStyle = if focused then modeline_focused else modeline        
@@ -263,12 +264,12 @@ drawText :: Int    -- ^ The height of the part of the window we are in
          -> Point  -- ^ The position of the first character to draw
          -> Point  -- ^ The position of the cursor
          -> Region -- ^ The selected region
-         -> Attr   -- ^ The attribute with which to draw selected text
-         -> Attr   -- ^ The attribute with which to draw the background
+         -> Vty.Attr   -- ^ The attribute with which to draw selected text
+         -> Vty.Attr   -- ^ The attribute with which to draw the background
                    -- this is not used for drawing but only to compare
                    -- it against the selection attribute to avoid making
                    -- the selection invisible.
-         -> [(Char,Attr)]  -- ^ The data to draw.
+         -> [(Char,Vty.Attr)]  -- ^ The data to draw.
          -> ([Image], Point, Maybe (Int,Int))
 drawText h w topPoint point selreg selsty wsty bufData
     | h == 0 || w == 0 = ([], topPoint, Nothing)
@@ -292,14 +293,14 @@ drawText h w topPoint point selreg selsty wsty bufData
   rendered_lines = map fillColorLine lns0
   colorChar (c, (a, x)) = renderChar (pointStyle x a) c
 
-  pointStyle :: Point -> Attr -> Attr
+  pointStyle :: Point -> Vty.Attr -> Vty.Attr
   pointStyle x a 
     | x == point          = a
     | x `inRegion` selreg 
       && selsty /= wsty   = selsty
     | otherwise           = a
 
-  fillColorLine :: [(Char, (Attr, Point))] -> Image
+  fillColorLine :: [(Char, (Vty.Attr, Point))] -> Image
   fillColorLine [] = renderHFill attr ' ' w
   fillColorLine l = horzcat (map colorChar l) 
                     <|>
@@ -332,7 +333,7 @@ drawText h w topPoint point selreg selsty wsty bufData
 -- TODO: The above will actually require a bit of work, in order to handle tabs.
 
 withStyle :: Style -> String -> Image
-withStyle sty str = renderBS (styleToAttr sty) (B.pack str)
+withStyle sty str = renderBS (styleToAttr sty attr) (B.pack str)
 
 
 ------------------------------------------------------------------------
@@ -384,63 +385,79 @@ nullA       = id
 
 ------------------------------------------------------------------------
 
-newtype CColor = CColor (Vty.Attr -> Vty.Attr, Vty.Color)
---
--- | Map Style rgb rgb colours to ncurses pairs
--- TODO a generic way to turn an rgb into the nearest curses color
---
-style2curses :: Style -> (CColor, CColor)
-style2curses (Style fg bg) = (fgCursCol fg, bgCursCol bg)
-{-# INLINE style2curses #-}
+-- | Convert a Yi Attr into a Vty attribute change.
+attrToAttr :: Style.Attr -> (Vty.Attr -> Vty.Attr)
+attrToAttr (Foreground c) = 
+  case c of 
+    RGB 0 0 0         -> nullA    . setFG Vty.black
+    RGB 128 128 128   -> boldA    . setFG Vty.black
+    RGB 139 0 0       -> nullA    . setFG Vty.red
+    RGB 255 0 0       -> boldA    . setFG Vty.red
+    RGB 0 100 0       -> nullA    . setFG Vty.green
+    RGB 0 128 0       -> boldA    . setFG Vty.green
+    RGB 165 42 42     -> nullA    . setFG Vty.yellow
+    RGB 255 255 0     -> boldA    . setFG Vty.yellow
+    RGB 0 0 139       -> nullA    . setFG Vty.blue
+    RGB 0 0 255       -> boldA    . setFG Vty.blue
+    RGB 128 0 128     -> nullA    . setFG Vty.magenta
+    RGB 255 0 255     -> boldA    . setFG Vty.magenta
+    RGB 0 139 139     -> nullA    . setFG Vty.cyan
+    RGB 0 255 255     -> boldA    . setFG Vty.cyan
+    RGB 165 165 165   -> nullA    . setFG Vty.white
+    RGB 255 255 255   -> boldA    . setFG Vty.white
+    Default           -> nullA    . setFG Vty.def
+    Reverse           -> reverseA . setFG Vty.def
+    _                 -> nullA    . setFG Vty.black -- NB
+attrToAttr (Background c) = 
+  case c of 
+    RGB 0 0 0         -> nullA    . setBG Vty.black
+    RGB 128 128 128   -> nullA    . setBG Vty.black
+    RGB 139 0 0       -> nullA    . setBG Vty.red
+    RGB 255 0 0       -> nullA    . setBG Vty.red
+    RGB 0 100 0       -> nullA    . setBG Vty.green
+    RGB 0 128 0       -> nullA    . setBG Vty.green
+    RGB 165 42 42     -> nullA    . setBG Vty.yellow
+    RGB 255 255 0     -> nullA    . setBG Vty.yellow
+    RGB 0 0 139       -> nullA    . setBG Vty.blue
+    RGB 0 0 255       -> nullA    . setBG Vty.blue
+    RGB 128 0 128     -> nullA    . setBG Vty.magenta
+    RGB 255 0 255     -> nullA    . setBG Vty.magenta
+    RGB 0 139 139     -> nullA    . setBG Vty.cyan
+    RGB 0 255 255     -> nullA    . setBG Vty.cyan
+    RGB 165 165 165   -> nullA    . setBG Vty.white
+    RGB 255 255 255   -> nullA    . setBG Vty.white
+    Default           -> nullA    . setBG Vty.def
+    Reverse           -> reverseA . setBG Vty.def
+    _                 -> nullA    . setBG Vty.white    -- NB
 
-fgCursCol :: Style.Color -> CColor
-fgCursCol c = case c of
-    RGB 0 0 0         -> CColor (nullA,    Vty.black)
-    RGB 128 128 128   -> CColor (boldA,    Vty.black)
-    RGB 139 0 0       -> CColor (nullA,    Vty.red)
-    RGB 255 0 0       -> CColor (boldA,    Vty.red)
-    RGB 0 100 0       -> CColor (nullA,    Vty.green)
-    RGB 0 128 0       -> CColor (boldA,    Vty.green)
-    RGB 165 42 42     -> CColor (nullA,    Vty.yellow)
-    RGB 255 255 0     -> CColor (boldA,    Vty.yellow)
-    RGB 0 0 139       -> CColor (nullA,    Vty.blue)
-    RGB 0 0 255       -> CColor (boldA,    Vty.blue)
-    RGB 128 0 128     -> CColor (nullA,    Vty.magenta)
-    RGB 255 0 255     -> CColor (boldA,    Vty.magenta)
-    RGB 0 139 139     -> CColor (nullA,    Vty.cyan)
-    RGB 0 255 255     -> CColor (boldA,    Vty.cyan)
-    RGB 165 165 165   -> CColor (nullA,    Vty.white)
-    RGB 255 255 255   -> CColor (boldA,    Vty.white)
-    Default           -> CColor (nullA,    Vty.def)
-    Reverse           -> CColor (reverseA, Vty.def)
-    _                 -> CColor (nullA,    Vty.black) -- NB
+styleToAttr :: Style -> (Vty.Attr -> Vty.Attr)
+styleToAttr = foldr (.) id . map attrToAttr
 
-bgCursCol :: Style.Color -> CColor
-bgCursCol c = case c of
-    RGB 0 0 0         -> CColor (nullA,    Vty.black)
-    RGB 128 128 128   -> CColor (nullA,    Vty.black)
-    RGB 139 0 0       -> CColor (nullA,    Vty.red)
-    RGB 255 0 0       -> CColor (nullA,    Vty.red)
-    RGB 0 100 0       -> CColor (nullA,    Vty.green)
-    RGB 0 128 0       -> CColor (nullA,    Vty.green)
-    RGB 165 42 42     -> CColor (nullA,    Vty.yellow)
-    RGB 255 255 0     -> CColor (nullA,    Vty.yellow)
-    RGB 0 0 139       -> CColor (nullA,    Vty.blue)
-    RGB 0 0 255       -> CColor (nullA,    Vty.blue)
-    RGB 128 0 128     -> CColor (nullA,    Vty.magenta)
-    RGB 255 0 255     -> CColor (nullA,    Vty.magenta)
-    RGB 0 139 139     -> CColor (nullA,    Vty.cyan)
-    RGB 0 255 255     -> CColor (nullA,    Vty.cyan)
-    RGB 165 165 165   -> CColor (nullA,    Vty.white)
-    RGB 255 255 255   -> CColor (nullA,    Vty.white)
-    Default           -> CColor (nullA,    Vty.def)
-    Reverse           -> CColor (reverseA, Vty.def)
-    _                 -> CColor (nullA,    Vty.white)    -- NB
 
-defaultSty :: Style
-defaultSty = Style Default Default
 
-styleToAttr :: Style -> Vty.Attr
-styleToAttr = ccolorToAttr . style2curses
-    where ccolorToAttr ((CColor (fmod, fcolor)), (CColor (bmod, bcol))) = 
-              fmod . bmod . setFG fcolor . setBG bcol $ attr
+---------------------------------
+
+
+-- | Return @n@ elems starting at @i@ of the buffer as a list.
+-- This routine also does syntax highlighting and applies overlays.
+paintChars :: Int -> a -> [(Int,a)] -> [Char] -> [(Char, a)]
+paintChars _   sty [] cs = setSty sty cs
+paintChars pos sty ((endPos,sty'):xs) cs = setSty sty left ++ paintChars endPos sty' xs right
+        where (left, right) = splitAt (endPos - pos) cs
+
+setSty :: a -> [Char] -> [(Char, a)]
+setSty sty cs = [(c,sty) | c <- cs]
+
+
+-- | @paintStrokes colorToTheRight strokes picture@: paint the strokes over a given picture.
+paintStrokes :: a -> [(Int,(a -> a),Int)] -> [(Int,a)] -> [(Int,a)]
+paintStrokes _  []     rest = rest
+paintStrokes s0 ss     [] = concat [[(l,s s0),(r,s0)] | (l,s,r) <- ss]
+paintStrokes s0 ls@((l,s,r):ts) lp@((p,s'):tp) 
+             | p < l  = (p,s') : paintStrokes s' ls tp
+             | p <= r =          paintStrokes s' ls tp
+             | r == p = (l,s s0) : (p,s') : paintStrokes s' ts tp 
+             | otherwise {-r < p-}  = (l,s s0) : (r,s0) : paintStrokes s' ts lp
+
+toVtyStroke :: (Int, Style, Int) -> (Int, Vty.Attr -> Vty.Attr, Int)
+toVtyStroke (l,s,r) = (l,styleToAttr s,r)

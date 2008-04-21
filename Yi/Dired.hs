@@ -263,7 +263,7 @@ diredRefresh = do
                     moveTo p
     return ()
     where
-    headStyle = Style grey defaultbg
+    headStyle = [Foreground grey]
     doPadding :: [DRStrings] -> [String]
     doPadding drs = map (pad ((maximum . map drlength) drs)) drs
 
@@ -303,12 +303,12 @@ linesToDisplay = do
     return $ map (uncurry lineToDisplay) (M.assocs $ diredEntries dState)
     where
     lineToDisplay k (DiredFile v)      = (l " -" v ++ [DRFiles k], defaultStyle, k)
-    lineToDisplay k (DiredDir v)       = (l " d" v ++ [DRFiles k], Style blue defaultbg, k)
-    lineToDisplay k (DiredSymLink v s) = (l " l" v ++ [DRFiles $ k ++ " -> " ++ s], Style cyan defaultbg, k)
-    lineToDisplay k (DiredSocket v) = (l " s" v ++ [DRFiles $ k], Style magenta defaultbg, k)
-    lineToDisplay k (DiredCharacterDevice v) = (l " c" v ++ [DRFiles $ k], Style yellow defaultbg, k)
-    lineToDisplay k (DiredBlockDevice v) = (l " b" v ++ [DRFiles $ k], Style yellow defaultbg, k)
-    lineToDisplay k (DiredNamedPipe v) = (l " p" v ++ [DRFiles $ k], Style brown defaultbg, k)
+    lineToDisplay k (DiredDir v)       = (l " d" v ++ [DRFiles k], [Foreground blue], k)
+    lineToDisplay k (DiredSymLink v s) = (l " l" v ++ [DRFiles $ k ++ " -> " ++ s], [Foreground cyan], k)
+    lineToDisplay k (DiredSocket v) = (l " s" v ++ [DRFiles $ k], [Foreground magenta], k)
+    lineToDisplay k (DiredCharacterDevice v) = (l " c" v ++ [DRFiles $ k], [Foreground yellow], k)
+    lineToDisplay k (DiredBlockDevice v) = (l " b" v ++ [DRFiles $ k], [Foreground yellow], k)
+    lineToDisplay k (DiredNamedPipe v) = (l " p" v ++ [DRFiles $ k], [Foreground brown], k)
     lineToDisplay k DiredNoInfo        = ([DRFiles $ k ++ " : Not a file/dir/symlink"], defaultStyle, k)
 
     l pre v = [DRPerms $ pre ++ permString v,

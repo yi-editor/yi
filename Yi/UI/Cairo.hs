@@ -420,10 +420,15 @@ render ui b w _ev = do
 
   -- add color attributes.
   let len = (bospnt win''' - tospnt win''')
-      (styles, _) = runBuffer win''' b $ 
-                       styleRangesB len (tospnt win''')
-      allAttrs = [AttrForeground (s - tospnt win''') (e - tospnt win''') (styToCol sty) 
-                  | (s,sty) <- styles | e <- tail (map fst styles ++ [len])]
+      (strokes, _) = runBuffer win''' b $ 
+                       strokesRangesB len (tospnt win''')
+      styleToAttrs (l,attrs,r) = [mkAttr l r a | a <- attrs]
+      mkAttr l r (Foreground col) = AttrForeground (l - tospnt win''') (r - tospnt win''') (mkCol col)
+      mkAttr l r (Background col) = AttrBackground (l - tospnt win''') (r - tospnt win''') (mkCol col)
+      allAttrs = concatMap styleToAttrs strokes
+
+
+
   layoutSetAttributes layout allAttrs
 
   (PangoRectangle curx cury curw curh, _) <- layoutGetCursorPos layout (point - tospnt win''')
@@ -457,12 +462,10 @@ distribute _ = do
   modify tail
   return h
 
-styToCol :: Style -> Gtk.Color
-styToCol (Style fg _bg) = colToCol fg
 
-colToCol :: Yi.Style.Color -> Gtk.Color
-colToCol Default = Color 0 0 0
-colToCol Reverse = Color maxBound maxBound maxBound
-colToCol (RGB x y z) = Color (fromIntegral x * 256)
-                             (fromIntegral y * 256)
-                             (fromIntegral z * 256)
+mkCol :: Yi.Style.Color -> Gtk.Color
+mkCol Default = Color 0 0 0
+mkCol Reverse = Color maxBound maxBound maxBound
+mkCol (RGB x y z) = Color (fromIntegral x * 256)
+                          (fromIntegral y * 256)
+                          (fromIntegral z * 256)

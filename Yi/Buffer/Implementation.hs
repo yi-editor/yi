@@ -33,8 +33,6 @@ module Yi.Buffer.Implementation
   , setMarkPointBI
   , unsetMarkBI
   , getSelectionMarkBI
-  , nelemsBIH
-  , styleRangesBI
   , setSyntaxBI
   , addOverlayBI
   , delOverlayBI
@@ -42,6 +40,7 @@ module Yi.Buffer.Implementation
   , findNextChar
   , updateSyntax
   , getAst
+  , strokesRangesBI
 )
 where
 
@@ -208,46 +207,24 @@ addOverlayBI ov fb = fb{overlays = Set.insert ov (overlays fb)}
 delOverlayBI :: Overlay -> BufferImpl syntax -> BufferImpl syntax
 delOverlayBI ov fb = fb{overlays = Set.delete ov (overlays fb)}
 
--- | Return @n@ elems starting at @i@ of the buffer as a list.
--- This routine also does syntax highlighting and applies overlays.
-nelemsBIH :: Int -> Int -> BufferImpl syntax -> [(Char,Style)]
-nelemsBIH n i fb = helper i defaultStyle (styleRangesBI n i fb) (nelemsBI n i fb)
+
+--- | Return style information for the range of @n@ characters starting
+---   at @i@. Style information is derived from syntax highlighting and
+---   active overlays.
+---   The returned list contains tuples @(l,s,r)@ where every tuple is to
+---   be interpreted as apply the style @s@ from position @l@ to @r@ in the buffer.
+strokesRangesBI :: Int -> Int -> BufferImpl syntax -> [Stroke]
+strokesRangesBI n i fb@FBufferData {hlCache = HLState hl cache} =  result
   where
-    helper _   sty [] cs = setSty sty cs
-    helper pos sty ((end,sty'):xs) cs = setSty sty left ++ helper end sty' xs right
-        where (left, right) = splitAt (end - pos) cs
-    setSty sty cs = [(c,sty) | c <- cs]
+    dropBefore = dropWhile (\(_l,_s,r) -> r <= i)
+    takeIn  = takeWhile (\(l,_s,_r) -> l <= i+n)
 
-
--- | @paintStrokes colorToTheRight strokes picture@: paint the strokes over a given picture.
-paintStrokes :: a -> [(Int,a,Int)] -> [(Int,a)] -> [(Int,a)]
-paintStrokes _  []     pic = pic
-paintStrokes s0 ss     [] = concat [[(l,s),(r,s0)] | (l,s,r) <- ss]
-paintStrokes s0 ls@((l,s,r):ts) lp@((p,s'):tp) 
-             | p < l  = (p,s') : paintStrokes s' ls tp
-             | p <= r =          paintStrokes s' ls tp
-             | r == p = (l,s) : (p,s') : paintStrokes s' ts tp 
-             | otherwise {-r < p-}  = (l,s) : (r,s0) : paintStrokes s' ts lp
-
-
--- | Return style information for the range of @n@ characters starting
---   at @i@. Style information is derived from syntax highlighting and
---   active overlays.
---   The returned list contains tuples (@p@,@s@) where every tuple is to
---   be interpreted as apply the style @s@ from position @p@ in the buffer.
---   In the final element @p@ = @n@ + @i@.
-styleRangesBI :: Int -> Int -> BufferImpl syntax -> [(Int, Style)]
-styleRangesBI n i fb@FBufferData {hlCache = HLState hl cache} = result
-  where
-    result = takeWhile ((n+i >=) . fst) $ dropWhile ((i >) . fst) picture
-    usefuls = dropWhile (\(_l,_s,r) -> r <= i)
-
-    layer0 = [(i,defaultStyle,n+i)] -- this layer ensures that there are bounds exactly at i and n+i
     layer1 = hlGetStrokes hl point i (n+i) cache
     layer2 = map overlayStroke $ Set.toList $ overlays fb
-    picture = foldr (paintStrokes defaultStyle) [] $ [usefuls layer2, layer1, layer0]
+    result = map clampStroke $ concat $ map (takeIn . dropBefore) [layer2, layer1]
     overlayStroke (Overlay sm  em a) = (markPosition sm, a, markPosition em)
     point = pointBI fb
+    clampStroke (l,x,r) = (max i l, x, min (i+n) r)
 
 ------------------------------------------------------------------------
 -- Point based editing

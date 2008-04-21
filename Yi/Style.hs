@@ -29,6 +29,11 @@ data Color
     | Reverse
     deriving (Eq,Ord,Show)
 
+data Attr = Foreground !Color 
+          | Background !Color
+    deriving (Eq, Show, Ord)
+
+type Style = [Attr]
 
 -- | Convert a color to its text specification, as to be accepted by XParseColor
 colorToText :: Color -> String
@@ -41,63 +46,43 @@ colorToText (RGB r g b) = ('#':) . showsHex r . showsHex g . showsHex b $ []
 
 
 defaultStyle :: Style
-defaultStyle = Style defaultfg defaultbg
+defaultStyle = []
+
+reverseStyle :: Style
+reverseStyle = [Foreground Reverse, Background Reverse]
+
 
 commentStyle :: Style
 commentStyle = lineCommentStyle
 
 lineCommentStyle :: Style
-lineCommentStyle = purpleA
+lineCommentStyle = [Foreground purple]
 
 keywordStyle :: Style
-keywordStyle = darkblueA
+keywordStyle = [Foreground darkblue]
 
 operatorStyle :: Style
-operatorStyle = brownA
+operatorStyle = [Foreground brown]
 
 upperIdStyle :: Style
-upperIdStyle = darkgreenA
+upperIdStyle = [Foreground darkgreen]
 
 stringStyle :: Style
-stringStyle = darkcyanA
+stringStyle = [Foreground darkcyan]
 
 numberStyle :: Style
-numberStyle = darkredA
+numberStyle = [Foreground darkred]
 
-errorStyle :: Style -> Style
-errorStyle (Style _fg bg) = Style red bg
+errorStyle :: Style
+errorStyle = [Background red]
 
-hintStyle :: Style -> Style
-hintStyle (Style fg _bg) = Style fg cyan
+hintStyle :: Style
+hintStyle = [Background cyan]
 
-blackA , greyA, darkredA, redA, darkgreenA, greenA, brownA :: Style
-yellowA, darkblueA, blueA, purpleA, magentaA, darkcyanA    :: Style
-cyanA, whiteA, brightwhiteA                                :: Style
-blackA       = Style black defaultbg
-greyA        = Style grey defaultbg
-darkredA     = Style darkred defaultbg
-redA         = Style red defaultbg
-darkgreenA   = Style darkgreen defaultbg
-greenA       = Style green defaultbg
-brownA       = Style brown defaultbg
-yellowA      = Style yellow defaultbg
-darkblueA    = Style darkblue defaultbg
-blueA        = Style blue defaultbg
-purpleA      = Style purple defaultbg
-magentaA     = Style magenta defaultbg
-darkcyanA    = Style darkcyan defaultbg
-cyanA        = Style cyan defaultbg
-whiteA       = Style white defaultbg
-brightwhiteA = Style brightwhite defaultbg
 
 ------------------------------------------------------------------------
 
--- | Foreground and background color pairs
-data Style = Style {-# UNPACK #-} !Color !Color deriving (Eq,Ord,Show)
-
-------------------------------------------------------------------------
-
--- | Some simple colours (derivied from proxima/src/common/CommonTypes.hs)
+-- | Some simple colours
 
 black, grey, darkred, red, darkgreen, green, brown, yellow          :: Color
 darkblue, blue, purple, magenta, darkcyan, cyan, white, brightwhite :: Color
@@ -118,9 +103,4 @@ cyan        = RGB 0 255 255
 white       = RGB 165 165 165
 brightwhite = RGB 255 255 255
 
-defaultfg, defaultbg, reversefg, reversebg :: Color
-defaultfg   = Default
-defaultbg   = Default
-reversefg   = Reverse
-reversebg   = Reverse
 

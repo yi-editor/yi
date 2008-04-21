@@ -144,8 +144,7 @@ getStrokes point _begin _end t0 = result
           list = foldr (.) id
           result = getStrokesL t0 []
 
-modStroke :: (t1 -> t3) -> (Int, t1, Int) -> (Int, t3, Int)
-modStroke f (l,s,r) = (l,f s,r) 
+modStroke f (l,s,r) = (l,f ++ s,r) 
 
 tokenToStroke :: Tok Token -> (Int, Style, Int)
 tokenToStroke (Tok t len posn) = (posnOfs posn, tokenToStyle t, posnOfs posn + len)

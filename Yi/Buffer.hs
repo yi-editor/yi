@@ -68,8 +68,6 @@ module Yi.Buffer
   , delOverlayB
   , getDynamicB
   , setDynamicB
-  , nelemsBH
-  , styleRangesB
   , Direction        ( .. )
   , savingExcursionB
   , savingPointB
@@ -85,6 +83,7 @@ module Yi.Buffer
   , withModeB
   , withSyntax0
   , keymapProcessA
+  , strokesRangesB
   )
 where
 
@@ -387,12 +386,8 @@ pointB = queryBuffer pointBI
 nelemsB :: Int -> Int -> BufferM [Char]
 nelemsB n i = queryBuffer $ nelemsBI n i
 
--- | Return @n@ elems starting at @i@ of the buffer as a list
-nelemsBH :: Int -> Int -> BufferM [(Char,Style)]
-nelemsBH n i = queryBuffer $ nelemsBIH n i
 
-styleRangesB :: Int -> Int -> BufferM [(Int,Style)]
-styleRangesB n i = queryBuffer $ styleRangesBI n i
+strokesRangesB n i = queryBuffer $ strokesRangesBI n i
 
 ------------------------------------------------------------------------
 -- Point based operations

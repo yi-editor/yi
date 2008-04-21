@@ -255,7 +255,7 @@ isearchAddE increment = do
                   setDynamic $ Isearch ((current,p0,direction,Nothing):s)
                   printMsg $ "Failing I-search: " ++ current
     Just p -> do  let p2 = p + length current
-                      ov = mkOverlay p p2 (hintStyle defaultStyle)
+                      ov = mkOverlay p p2 (hintStyle)
                   withBuffer0 $ do
                     moveTo p2
                     addOverlayB ov
@@ -271,7 +271,7 @@ isearchDelE = do
   case s of
     ((_,_,_,nextOverlay):(text,p,dir,_):rest) -> do
       let p2 = p + length text
-          ov = mkOverlay p p2 (hintStyle defaultStyle)
+          ov = mkOverlay p p2 (hintStyle)
       withBuffer0 $ do
         moveTo p2
         maybeDelOverlayB nextOverlay
@@ -295,7 +295,7 @@ isearchNext direction = do
   case mp of
     Nothing -> withBuffer0 $ moveTo (p0 + length current) -- revert offset above
     Just p -> do  let p2 = p + length current
-                      ov = mkOverlay p p2 (hintStyle defaultStyle)
+                      ov = mkOverlay p p2 hintStyle
                   withBuffer0 $ do
                     moveTo p2
                     maybeDelOverlayB prevOverlay

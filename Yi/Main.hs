@@ -153,11 +153,11 @@ defaultConfig =
            , configAutoHideScrollBar = False
            , configWindowFill = ' '
            , configStyle = UIStyle 
-             { window             = Style defaultfg    defaultbg
-             , modeline           = Style black        darkcyan
-             , modeline_focused   = Style brightwhite  darkcyan
-             , selected           = Style reversefg    reversebg
-             , eof                = Style blue         defaultbg
+             { window             = []
+             , modeline           = [Foreground black,       Background darkcyan]
+             , modeline_focused   = [Foreground brightwhite, Background darkcyan]
+             , selected           = [Foreground Reverse,     Background Reverse]
+             , eof                = [Foreground blue]
              }
            }
          , defaultKm        = nilKeymap

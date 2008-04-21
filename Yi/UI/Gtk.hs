@@ -414,13 +414,14 @@ replaceTagsIn :: UI -> Point -> Point -> FBuffer -> TextBuffer -> IO ()
 replaceTagsIn ui from to buf gtkBuf = do
   i <- textBufferGetIterAtOffset gtkBuf from
   i' <- textBufferGetIterAtOffset gtkBuf to
-  let (styleSpans, _) = runBufferDummyWindow buf (styleRangesB (to - from) from)
+  let (styleSpans, _) = runBufferDummyWindow buf (strokesRangesB (to - from) from)
   textBufferRemoveAllTags gtkBuf i i'
-  forM_ (zip styleSpans (drop 1 styleSpans)) $ \((l,style),(r,_)) -> do
+  forM_ styleSpans $ \(l,s,r) -> do
     f <- textBufferGetIterAtOffset gtkBuf l
     t <- textBufferGetIterAtOffset gtkBuf r
-    tag <- styleToTag ui style
-    textBufferApplyTag gtkBuf tag f t
+    forM s $ \a -> do 
+      tag <- styleToTag ui a
+      textBufferApplyTag gtkBuf tag f t
 
 applyUpdate :: TextBuffer -> Update -> IO ()
 applyUpdate buf (Insert p s) = do
@@ -432,16 +433,19 @@ applyUpdate buf (Delete p s) = do
   i1 <- textBufferGetIterAtOffset buf (p + s)
   textBufferDelete buf i0 i1
 
-styleToTag :: UI -> Style -> IO TextTag
-styleToTag ui (Style fg _bg) = do
-  let fgText = colorToText fg
-  mtag <- textTagTableLookup (tagTable ui) fgText
-  case mtag of
-    Just x -> return x
-    Nothing -> do x <- textTagNew (Just fgText)
-                  set x [textTagForeground := fgText]
-                  textTagTableAdd (tagTable ui) x
-                  return x
+styleToTag :: UI -> Yi.Style.Attr -> IO TextTag
+styleToTag ui a = case a of
+                 (Foreground col) -> tagOf textTagForeground col
+                 (Background col) -> tagOf textTagBackground col
+ where tagOf attr col = do
+         let fgText = colorToText col
+         mtag <- textTagTableLookup (tagTable ui) fgText
+         case mtag of
+           Just x -> return x
+           Nothing -> do x <- textTagNew (Just fgText)
+                         set x [attr := fgText]
+                         textTagTableAdd (tagTable ui) x
+                         return x
 
 prepareAction :: UI -> IO (EditorM ())
 prepareAction ui = do
