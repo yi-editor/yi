@@ -6,7 +6,8 @@
 
 module Yi.UI.Cairo (start) where
 
-import Prelude hiding (error, sequence_, elem, mapM_, mapM, concatMap)
+import Prelude (filter, map, round, length, take, FilePath, (/))
+import Yi.Prelude 
 import Yi.Buffer
 import Yi.Buffer.HighLevel (setSelectionMarkPointB)
 import qualified Yi.Editor as Editor
@@ -425,7 +426,7 @@ render ui b w _ev = do
       styleToAttrs (l,attrs,r) = [mkAttr l r a | a <- attrs]
       mkAttr l r (Foreground col) = AttrForeground (l - tospnt win''') (r - tospnt win''') (mkCol col)
       mkAttr l r (Background col) = AttrBackground (l - tospnt win''') (r - tospnt win''') (mkCol col)
-      allAttrs = concatMap styleToAttrs strokes
+      allAttrs = concatMap styleToAttrs (concat strokes)
 
 
 

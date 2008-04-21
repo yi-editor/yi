@@ -213,7 +213,9 @@ delOverlayBI ov fb = fb{overlays = Set.delete ov (overlays fb)}
 ---   active overlays.
 ---   The returned list contains tuples @(l,s,r)@ where every tuple is to
 ---   be interpreted as apply the style @s@ from position @l@ to @r@ in the buffer.
-strokesRangesBI :: Int -> Int -> BufferImpl syntax -> [Stroke]
+-- In each list, the strokes are guaranteed to be ordered and non-overlapping.
+-- The lists of strokes are ordered by increasing priority.
+strokesRangesBI :: Int -> Int -> BufferImpl syntax -> [[Stroke]]
 strokesRangesBI n i fb@FBufferData {hlCache = HLState hl cache} =  result
   where
     dropBefore = dropWhile (\(_l,_s,r) -> r <= i)
@@ -221,7 +223,8 @@ strokesRangesBI n i fb@FBufferData {hlCache = HLState hl cache} =  result
 
     layer1 = hlGetStrokes hl point i (n+i) cache
     layer2 = map overlayStroke $ Set.toList $ overlays fb
-    result = map clampStroke $ concat $ map (takeIn . dropBefore) [layer2, layer1]
+
+    result = map (map clampStroke . takeIn . dropBefore) [layer2, layer1]
     overlayStroke (Overlay sm  em a) = (markPosition sm, a, markPosition em)
     point = pointBI fb
     clampStroke (l,x,r) = (max i l, x, min (i+n) r)

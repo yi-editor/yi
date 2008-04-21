@@ -6,7 +6,8 @@
 
 module Yi.UI.Gtk (start) where
 
-import Prelude hiding (error, sequence_, elem, mapM_, mapM, concatMap)
+import Prelude (filter, map, round, length, take, FilePath)
+import Yi.Prelude 
 import Yi.Accessor
 import Yi.Buffer.Implementation (inBounds, Update(..), UIUpdate(..))
 import Yi.Buffer
@@ -416,7 +417,7 @@ replaceTagsIn ui from to buf gtkBuf = do
   i' <- textBufferGetIterAtOffset gtkBuf to
   let (styleSpans, _) = runBufferDummyWindow buf (strokesRangesB (to - from) from)
   textBufferRemoveAllTags gtkBuf i i'
-  forM_ styleSpans $ \(l,s,r) -> do
+  forM_ (concat styleSpans) $ \(l,s,r) -> do
     f <- textBufferGetIterAtOffset gtkBuf l
     t <- textBufferGetIterAtOffset gtkBuf r
     forM s $ \a -> do 

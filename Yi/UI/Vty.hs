@@ -236,7 +236,7 @@ drawWindow cfg b sty focused w win = (Rendered { picture = pict,cursor = cur}, b
         (point, _) = runBuffer win b pointB
         (text, _) = runBuffer win b (nelemsB         (w*h') (tospnt win)) -- read enough chars from the buffer.
         (strokes, _) = runBuffer win b (strokesRangesB  (w*h') (tospnt win)) -- corresponding strokes
-        bufData = paintChars (tospnt win) attr (paintStrokes attr (map toVtyStroke strokes) []) text
+        bufData = paintChars (tospnt win) attr (paintPicture attr (map (map toVtyStroke) strokes)) text
         (showSel, _) = runBuffer win b (gets highlightSelection)
         prompt = if isMini win then name b else ""
 
@@ -458,6 +458,9 @@ paintStrokes s0 ls@((l,s,r):ts) lp@((p,s'):tp)
              | p <= r =          paintStrokes s' ls tp
              | r == p = (l,s s0) : (p,s') : paintStrokes s' ts tp 
              | otherwise {-r < p-}  = (l,s s0) : (r,s0) : paintStrokes s' ts lp
+
+paintPicture :: a -> [[(Int,(a -> a),Int)]] -> [(Int,a)]
+paintPicture a = foldr (paintStrokes a) []
 
 toVtyStroke :: (Int, Style, Int) -> (Int, Vty.Attr -> Vty.Attr, Int)
 toVtyStroke (l,s,r) = (l,styleToAttr s,r)
