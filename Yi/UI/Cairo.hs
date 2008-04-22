@@ -59,6 +59,7 @@ data WinInfo = WinInfo
     , changedWin  :: IORef (Window)
     , renderer    :: IORef (ConnectId DrawingArea)
     , winLayout   :: PangoLayout
+    , winMetrics  :: FontMetrics
     , textview    :: DrawingArea
     , modeline    :: Label
     , widget      :: Box            -- ^ Top-level widget for this window.
@@ -319,9 +320,16 @@ newWindow ui w b = mdo
      
     sig <- newIORef =<< (v `onExpose` render ui b win)
     wRef <- newIORef w
-    -- l <- layoutEmpty
+    context <- widgetCreatePangoContext v
+    layout <- layoutEmpty context
+    layoutSetWrap layout WrapAnywhere
+    language <- contextGetLanguage context
+    metrics <- contextGetMetrics context f language
+    layoutSetFontDescription layout (Just f)
     let win = WinInfo {
                      coreWin   = w
+                   , winLayout = layout
+                   , winMetrics = metrics
                    , textview  = v
                    , modeline  = ml
                    , widget    = box
@@ -376,10 +384,9 @@ render ui b w _ev = do
   drawWindow <- widgetGetDrawWindow $ textview w
   (width, height) <- widgetGetSize $ textview w
   let [width', height'] = map fromIntegral [width, height]
-  context <- widgetCreatePangoContext (textview w)
-  language <- contextGetLanguage context
-  metrics <- contextGetMetrics context f language
-  let winh = round (height' / (ascent metrics + descent metrics))
+  let metrics = winMetrics w
+      layout = winLayout w
+      winh = round (height' / (ascent metrics + descent metrics))
       winw = round (width' / approximateCharWidth metrics)
       maxNumberOfChars = winh * winw
       -- The number of chars is a gross approximation.
@@ -387,10 +394,7 @@ render ui b w _ev = do
                       pointB <*>
                       nelemsB maxNumberOfChars (tospnt win) 
                       -- FIXME: unicode. 
-  layout <- layoutEmpty context
-  layoutSetWrap layout WrapAnywhere
   layoutSetWidth layout (Just width')
-  layoutSetFontDescription layout (Just f)
   layoutSetText layout text
 
   (_,bos,_) <- layoutXYToIndex layout width' height' 
