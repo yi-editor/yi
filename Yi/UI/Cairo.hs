@@ -394,9 +394,11 @@ render ui b w _ev = do
                       pointB <*>
                       nelemsB maxNumberOfChars (tospnt win) 
                       -- FIXME: unicode. 
-  layout <- layoutText context text
+  layout <- layoutEmpty context
+  layoutSetWrap layout WrapAnywhere
   layoutSetWidth layout (Just width')
   layoutSetFontDescription layout (Just f)
+  layoutSetText layout text
 
   (_,bos,_) <- layoutXYToIndex layout width' height' 
   let win' = win { bospnt = bos + tospnt win,
