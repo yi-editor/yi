@@ -27,7 +27,6 @@ import Control.Concurrent ( yield )
 import Control.Monad (ap)
 import Control.Monad.Reader (liftIO, when, MonadIO)
 import Control.Monad.State (runState, State, gets, modify)
-import qualified Graphics.Rendering.Cairo as C 
 
 import Data.Function
 import Data.Foldable
@@ -59,6 +58,7 @@ data WinInfo = WinInfo
       coreWin     :: Window
     , changedWin  :: IORef (Window)
     , renderer    :: IORef (ConnectId DrawingArea)
+    , winLayout   :: PangoLayout
     , textview    :: DrawingArea
     , modeline    :: Label
     , widget      :: Box            -- ^ Top-level widget for this window.
@@ -157,13 +157,6 @@ instance Show Gtk.Event where
         = show eventModifier' ++ " " ++ show eventKeyName' ++ " " ++ show eventKeyChar'
     show _ = "Not a key event"
 
-instance Show Gtk.Modifier where
-    show Control = "Ctrl"
-    show Alt = "Alt"
-    show Shift = "Shift"
-    show Apple = "Apple"
-    show Compose = "Compose"
-
 processEvent :: (Event -> IO ()) -> Gtk.Event -> IO Bool
 processEvent ch ev = do
   -- logPutStrLn $ "Gtk.Event: " ++ show ev
@@ -183,8 +176,7 @@ gtkToYiEvent (Key {eventKeyName = keyName, eventModifier = evModifier, eventKeyC
             modif Control = [MCtrl]
             modif Alt = [MMeta]
             modif Shift = [MShift]
-            modif Apple = []
-            modif Compose = []
+            modif _ = []
 gtkToYiEvent _ = Nothing
 
 -- | Map GTK long names to Keys
@@ -327,6 +319,7 @@ newWindow ui w b = mdo
      
     sig <- newIORef =<< (v `onExpose` render ui b win)
     wRef <- newIORef w
+    -- l <- layoutEmpty
     let win = WinInfo {
                      coreWin   = w
                    , textview  = v
@@ -383,7 +376,7 @@ render ui b w _ev = do
   drawWindow <- widgetGetDrawWindow $ textview w
   (width, height) <- widgetGetSize $ textview w
   let [width', height'] = map fromIntegral [width, height]
-  context <- cairoCreateContext Nothing
+  context <- widgetCreatePangoContext (textview w)
   language <- contextGetLanguage context
   metrics <- contextGetMetrics context f language
   let winh = round (height' / (ascent metrics + descent metrics))
@@ -434,20 +427,13 @@ render ui b w _ev = do
 
   layoutSetAttributes layout allAttrs
 
+
   (PangoRectangle curx cury curw curh, _) <- layoutGetCursorPos layout (point - tospnt win''')
-  renderWithDrawable drawWindow $ do 
-     -- clear the surface with white
-     C.setSourceRGBA 1 1 1 1
-     C.paint
-     -- paint the text
-     C.setSourceRGBA 0 0 0 1
-     C.moveTo 0 0
-     showLayout layout
-     C.stroke
-     -- paint the cursor
-     C.moveTo curx cury
-     C.relLineTo curw curh
-     C.stroke
+
+  gc <- gcNew drawWindow
+  drawLayout drawWindow gc 0 0 layout
+  -- paint the cursor   
+  drawLine drawWindow gc (round curx, round cury) (round $ curx + curw, round $ cury + curh) 
   return True
 
 prepareAction :: UI -> IO (EditorM ())
