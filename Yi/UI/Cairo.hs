@@ -243,11 +243,8 @@ handleClick ui w event = do
   -- logPutStrLn $ "Click: " ++ show (eventX e, eventY e, eventClick e)
 
   -- retrieve the clicked offset.
-  let tv = textview w
-  let wx = round (eventX event)
-  let wy = round (eventY event)
-  let (bx, by) = (0, 0)
-  let p1 = 0
+  (_,layoutIndex,_) <- layoutXYToIndex (winLayout w) (eventX event) (eventY event)
+  let p1 = tospnt (coreWin w) + layoutIndex
 
   -- maybe focus the window
   logPutStrLn $ "Clicked inside window: " ++ show w
@@ -379,7 +376,6 @@ refresh ui e = do
 
 render :: UI -> FBuffer -> WinInfo -> t -> IO Bool
 render ui b w _ev = do
-  f <- mkFontDesc (uiConfig ui)
   win <- readRef (changedWin w)
   drawWindow <- widgetGetDrawWindow $ textview w
   (width, height) <- widgetGetSize $ textview w
