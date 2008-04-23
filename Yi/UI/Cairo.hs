@@ -155,7 +155,7 @@ main _ui =
 instance Show Gtk.Event where
     show (Key _eventRelease _eventSent _eventTime eventModifier' _eventWithCapsLock _eventWithNumLock
                   _eventWithScrollLock _eventKeyVal eventKeyName' eventKeyChar')
-        = show eventModifier' ++ " " ++ show eventKeyName' ++ " " ++ show eventKeyChar'
+        = "<modifier>" ++ " " ++ show eventKeyName' ++ " " ++ show eventKeyChar'
     show _ = "Not a key event"
 
 processEvent :: (Event -> IO ()) -> Gtk.Event -> IO Bool

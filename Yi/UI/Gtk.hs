@@ -167,15 +167,9 @@ main _ui =
 instance Show Gtk.Event where
     show (Key _eventRelease _eventSent _eventTime eventModifier' _eventWithCapsLock _eventWithNumLock
                   _eventWithScrollLock _eventKeyVal eventKeyName' eventKeyChar')
-        = show eventModifier' ++ " " ++ show eventKeyName' ++ " " ++ show eventKeyChar'
+        = "<modifier>" ++ " " ++ show eventKeyName' ++ " " ++ show eventKeyChar'
     show _ = "Not a key event"
 
-instance Show Gtk.Modifier where
-    show Control = "Ctrl"
-    show Alt = "Alt"
-    show Shift = "Shift"
-    show Apple = "Apple"
-    show Compose = "Compose"
 
 processEvent :: (Event -> IO ()) -> Gtk.Event -> IO Bool
 processEvent ch ev = do
@@ -196,8 +190,7 @@ gtkToYiEvent (Key {eventKeyName = keyName, eventModifier = evModifier, eventKeyC
             modif Control = [MCtrl]
             modif Alt = [MMeta]
             modif Shift = [MShift]
-            modif Apple = []
-            modif Compose = []
+            modif _ = [] -- Use underscore so we don't depend on the differences between gtk2hs versions
 gtkToYiEvent _ = Nothing
 
 -- | Map GTK long names to Keys
