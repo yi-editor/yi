@@ -242,20 +242,37 @@ findNextChar :: Int -> Int -> BufferImpl syntax -> Int
 findNextChar m i fb 
     | m == 0 = i
     | m < 0 = let s = F.toReverseString $ F.take i $ mem fb
-                  result = countChars s (-m) 0
+                  result = countBytes s (-m)
               in (i - result)
     | otherwise =
-    {-m > 0-} let s = F.toString $ F.drop (i+1) $ mem fb
-                  result = countChars s  m 0
+    {-m > 0-} let s = F.toString $ F.drop i $ mem fb
+                  result = countBytes0 s  m
               in (i + result)
                    
-                       
-countChars :: [Word8] -> Int -> Int -> Int
-countChars [] _ n = n
-countChars _  0 n = n
-countChars (x:xs) m n 
-    | x < 128 || x > 192  = countChars xs (m-1) (n+1)
-    | otherwise           = countChars xs  m    (n+1)
+
+-- Count the number of bytes to skip @n@ UTF8 codepoints, forward
+countBytes0 :: [Word8] -> Int -> Int
+countBytes0 [] _ = 0
+countBytes0 _  0 = 0
+countBytes0 (x:xs) m 
+    | x < 128   = 1 + countBytes0 xs (m-1) -- one-byte codepoint
+    | x > 192   = 1 + countBytes1 xs  m    -- long code point; find the end of it.
+    | otherwise = 1 + countBytes0 xs  m    -- continuation; should not happen. skip.
+
+countBytes1 :: [Word8] -> Int -> Int
+countBytes1 [] _ = 0
+countBytes1 (x:xs) m 
+    | x < 128 || x > 192  = countBytes0 (x:xs) (m-1) -- beginning, long codepoint has ended.
+    | otherwise = 1 + countBytes1 xs  m              -- continuation
+
+
+-- Count the number of bytes to skip @n@ UTF8 codepoints, backwards.
+countBytes :: [Word8] -> Int -> Int
+countBytes [] _ = 0
+countBytes _  0 = 0
+countBytes (x:xs) m 
+    | x < 128 || x > 192  = 1 + countBytes xs (m-1) -- beginning of char, count one.
+    | otherwise           = 1 + countBytes xs  m    -- continuation, just skip.
 
 -- | Checks if an Update is valid
 isValidUpdate :: Update -> BufferImpl syntax -> Bool
