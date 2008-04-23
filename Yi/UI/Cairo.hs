@@ -6,10 +6,12 @@
 
 module Yi.UI.Cairo (start) where
 
-import Prelude (filter, map, round, length, take, FilePath, (/))
+import Prelude (filter, map, round, length, take, FilePath, (/), subtract)
 import Yi.Prelude 
+import Yi.Accessor
 import Yi.Buffer
-import Yi.Buffer.HighLevel (setSelectionMarkPointB)
+import Yi.Buffer.HighLevel (setSelectionMarkPointB, getSelectRegionB)
+import Yi.Buffer.Region
 import qualified Yi.Editor as Editor
 import Yi.Editor hiding (windows)
 import Yi.Window
@@ -153,7 +155,7 @@ main _ui =
        mainGUI
 
 instance Show Gtk.Event where
-    show (Key _eventRelease _eventSent _eventTime eventModifier' _eventWithCapsLock _eventWithNumLock
+    show (Key _eventRelease _eventSent _eventTime _eventModifier' _eventWithCapsLock _eventWithNumLock
                   _eventWithScrollLock _eventKeyVal eventKeyName' eventKeyChar')
         = "<modifier>" ++ " " ++ show eventKeyName' ++ " " ++ show eventKeyChar'
     show _ = "Not a key event"
@@ -417,14 +419,20 @@ render ui b w _ev = do
 
   -- add color attributes.
   let len = (bospnt win''' - tospnt win''')
-      (strokes, _) = runBuffer win''' b $ 
-                       strokesRangesB len (tospnt win''')
+      ((strokes,selectReg,selVisible), _) = runBuffer win''' b $ (,,)
+                       <$> strokesRangesB len (tospnt win''')
+                       <*> getSelectRegionB
+                       <*> getA highlightSelectionA
+                         
+      regInWin = fmapRegion (subtract (tospnt win''')) (intersectRegion selectReg (winRegion win'''))
       styleToAttrs (l,attrs,r) = [mkAttr l r a | a <- attrs]
       mkAttr l r (Foreground col) = AttrForeground (l - tospnt win''') (r - tospnt win''') (mkCol col)
       mkAttr l r (Background col) = AttrBackground (l - tospnt win''') (r - tospnt win''') (mkCol col)
-      allAttrs = concatMap styleToAttrs (concat strokes)
-
-
+      allAttrs = (if selVisible 
+                   then (AttrBackground (regionStart regInWin) (regionEnd regInWin - 1) 
+                           (Color 50000 50000 maxBound) :)
+                   else id)
+                  (concatMap styleToAttrs (concat strokes))
 
   layoutSetAttributes layout allAttrs
 

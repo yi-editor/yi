@@ -14,9 +14,13 @@ module Yi.Buffer.Region
   , mapRegionB
   , inRegion
   , modifyRegionB
+  , winRegion
+  , fmapRegion
+  , intersectRegion
   )
 where
 
+import Yi.Window
 import Yi.Buffer
 import Control.Applicative
 
@@ -25,11 +29,21 @@ import Control.Applicative
 -- Invariant : regionStart r <= regionEnd r
 data Region = Region {regionStart, regionEnd :: !Point} 
 
+fmapRegion :: (Point -> Point) -> Region -> Region
+fmapRegion f (Region x y) = Region (f x) (f y)
+
+intersectRegion :: Region -> Region -> Region
+intersectRegion (Region x1 y1) (Region x2 y2) = ordRegion (max x1 x2) (min y1 y2)
+
+winRegion :: Window -> Region
+winRegion w = mkRegion (tospnt w) (bospnt w)
+
 -- | Construct a region from its bounds, vim style:
 -- the right bound in included.
 mkVimRegion :: Point -> Point -> Region
 mkVimRegion x y = if x < y then Region x (y+1) else Region y (x+1)
 
+ordRegion x y = if x < y then Region x y else emptyRegion
 
 -- | Construct a region from its bounds, emacs style:
 -- the right bound is excluded
