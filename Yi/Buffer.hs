@@ -88,19 +88,18 @@ module Yi.Buffer
   )
 where
 
-import Prelude hiding (error)
-import Yi.Debug
+import Prelude (ceiling, maybe)
+import Yi.Prelude
 import System.FilePath
 import Text.Regex.Posix.Wrap    (Regex)
 import Yi.Accessor
 import Yi.Buffer.Implementation
 import Yi.Syntax
 import Yi.Undo
-import Yi.Style
 import Yi.Dynamic
 import Yi.Window
 import Control.Applicative
-import Control.Monad.RWS.Strict
+import Control.Monad.RWS.Strict hiding (mapM_)
 import Data.List (elemIndex)
 import Data.Typeable
 import {-# source #-} Yi.Keymap
@@ -387,7 +386,7 @@ pointB = queryBuffer pointBI
 nelemsB :: Int -> Int -> BufferM [Char]
 nelemsB n i = queryBuffer $ nelemsBI n i
 
-
+strokesRangesB :: Int -> Int -> BufferM [[Stroke]]
 strokesRangesB n i = queryBuffer $ strokesRangesBI n i
 
 ------------------------------------------------------------------------

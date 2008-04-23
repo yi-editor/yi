@@ -1,6 +1,5 @@
 module Yi.Mode.Haskell where
 
-import Data.List (replicate)
 import Prelude ()
 import Yi.Buffer
 import Yi.Indent
