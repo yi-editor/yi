@@ -160,7 +160,7 @@ untilB_ cond f = untilB cond f >> return () -- maybe do an optimized version?
 data BoundarySide = InsideBound | OutsideBound
 
 -- | Generic move operation
--- Warning: moving To the (OutsideBound, Backward) bound of Document  is impossible (offset -1!)
+-- Warning: moving To the (OutsideBound, Backward) bound of Document is impossible (offset -1!)
 -- @genMoveB u b d@: move in direction d until encountering boundary b or unit u. See 'genAtBoundaryB' for boundary explanation.
 genMoveB :: TextUnit -> (Direction, BoundarySide) -> Direction -> BufferM ()
 genMoveB Character _ Forward  = rightB

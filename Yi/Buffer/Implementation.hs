@@ -71,7 +71,7 @@ import Data.Typeable
 -- | Direction of movement inside a buffer
 data Direction = Backward
                | Forward
-                 deriving Eq
+                 deriving (Eq, Typeable)
 
 newtype Mark = Mark {markId::Int} deriving (Eq, Ord, Show)
 pointMark, markMark :: Mark
@@ -86,15 +86,6 @@ type Marks = M.Map Mark MarkValue
 type BufferImpl = FBufferData
 
 data HLState syntax = forall cache. HLState !(Highlighter' cache syntax) cache
-
--- ---------------------------------------------------------------------
---
--- | The buffer text itself is stored as ByteString.
---
--- Problems with this implementation:
--- * Does not support unicode
--- * Is not optimized (O(n) operations)
---
 
 data Overlay = Overlay MarkValue MarkValue Style
                deriving (Ord, Eq)
