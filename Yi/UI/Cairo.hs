@@ -244,7 +244,8 @@ handleClick ui w event = do
 
   -- retrieve the clicked offset.
   (_,layoutIndex,_) <- layoutXYToIndex (winLayout w) (eventX event) (eventY event)
-  let p1 = tospnt (coreWin w) + layoutIndex
+  win <- readRef (changedWin w)
+  let p1 = tospnt win + layoutIndex
 
   -- maybe focus the window
   logPutStrLn $ "Clicked inside window: " ++ show w
