@@ -308,7 +308,14 @@ isearchNext direction = do
   mp <- withBuffer0 $ do
     searchB direction current
   case mp of
-    Nothing -> withBuffer0 $ moveTo (p0 + length current) -- revert offset above
+    Nothing -> do endPoint <- withBuffer0 $ do 
+                          moveTo (p0 + length current) -- revert to offset we were before.
+                          sizeB   
+                  printMsg $ "isearch: end of document reached"
+                  let wrappedOfs = case direction of
+                                     Forward -> 0
+                                     Backward -> endPoint
+                  setDynamic $ Isearch ((current,wrappedOfs,_dir,prevOverlay):rest) -- prepare to wrap around.
     Just p -> do  let p2 = p + length current
                       ov = mkOverlay p p2 hintStyle
                   withBuffer0 $ do
