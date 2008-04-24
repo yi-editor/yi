@@ -254,7 +254,7 @@ setTmpStatus delay s = do
 
 -- | Put string into yank register
 setRegE :: String -> EditorM ()
-setRegE s = modifyA killringA $ krPut s
+setRegE s = modifyA killringA $ krSet s
 
 -- | Return the contents of the yank register
 getRegE :: EditorM String
