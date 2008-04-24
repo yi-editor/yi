@@ -148,20 +148,17 @@ findBufferWith k e =
         Nothing -> error "Editor.findBufferWith: no buffer has this key"
 
 
--- | Find buffers whose name satisfies the given predicate
-findBufferWithName :: (String -> Bool) -> Editor -> [BufferRef]
-findBufferWithName f e = 
-  map bkey $ filter (\b -> f (name b)) (M.elems $ buffers e)
+-- | Find buffer with this name
+findBufferWithName :: String -> Editor -> [BufferRef]
+findBufferWithName n e = map bkey $ filter (\b -> name b == n) (M.elems $ buffers e)
 
--- | Find the first buffer whose name satisfies the given predicate
---   and fail if none are found.
--- The first string given is the error to report.
-getBufferWithName :: String -> (String -> Bool) -> EditorM BufferRef
-getBufferWithName errorString bufPred = 
-  do bs <- gets $ findBufferWithName bufPred
-     case bs of
-       []    -> fail ("Buffer not found: " ++ errorString)
-       (b:_) -> return b
+-- | Find buffer with given name. Fail if not found.
+getBufferWithName :: String -> EditorM BufferRef
+getBufferWithName bufName = do
+  bs <- gets $ findBufferWithName bufName
+  case bs of
+    [] -> fail ("Buffer not found: " ++ bufName)
+    (b:_) -> return b
 
 ------------------------------------------------------------------------
 
@@ -240,7 +237,7 @@ setTmpStatus delay s = do
   modifyA statusLinesA $ DelayList.insert (delay, 
                                            takeWhile (/= '\n') s)
   -- also show in the messages buffer, so we don't loose any message
-  bs <- gets $ findBufferWithName (== "*messages*")
+  bs <- gets $ findBufferWithName "*messages*"
   b <- case bs of
          (b':_) -> return b'
          [] -> newBufferE "*messages*" ""
@@ -312,22 +309,10 @@ switchToBufferE b = modifyWindows (modifier WS.currentA (\w -> w {bufkey = b}))
 switchToBufferOtherWindowE :: BufferRef -> EditorM ()
 switchToBufferOtherWindowE b = shiftOtherWindow >> switchToBufferE b
 
-
--- | Switch to the first buffer whose name satisfies the given predicate
---   The first argument string is the error message to report if no such
---   buffer exists.
---   NOTE: If you provide a predicate for which the empty string succeeds
---   then the next buffer is chosen. For example you can give (isInfixOf string)
---   and this will switch to the first buffer for which 'string' is a substring
---   of the name.
---   If 'string' is the empty string then, the empty string will satisfy this
---   predicate (because isInfix "" "" = True) and the next buffer will be chosen.
---   Note though if you give something like (== "*messages*) then the empty
---   string will not satisfy this predicate.
-switchToBufferWithNameE :: String -> (String -> Bool) -> EditorM ()
-switchToBufferWithNameE errorString pred
-  | pred ""   = nextBufW
-  | otherwise = switchToBufferE =<< (getBufferWithName errorString pred)
+-- | Switch to the buffer specified as parameter. If the buffer name is empty, switch to the next buffer.
+switchToBufferWithNameE :: String -> EditorM ()
+switchToBufferWithNameE "" = nextBufW
+switchToBufferWithNameE bufName = switchToBufferE =<< getBufferWithName bufName
 
 -- | Return a list of all buffers, and their indicies
 listBuffersE :: EditorM [(String,Int)]
@@ -341,7 +326,7 @@ closeBufferE :: String -> EditorM ()
 closeBufferE bufName = do
   nextB <- nextBuffer
   b <- getBuffer
-  b' <- if null bufName then return b else getBufferWithName bufName (== bufName)
+  b' <- if null bufName then return b else getBufferWithName bufName
   switchToBufferE nextB
   deleteBuffer b'
 

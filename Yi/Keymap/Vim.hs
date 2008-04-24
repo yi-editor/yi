@@ -12,7 +12,6 @@ import Yi.Yi
 import Prelude       hiding ( any, error )
 
 import Data.Char
-import Data.List            ( isInfixOf )
 import Data.Maybe           ( fromMaybe )
 import Data.Dynamic
 
@@ -654,10 +653,8 @@ ex_eval cmd = do
       fn ('n':'e':'w':' ':f) = withEditor splitE >> fnewE f
       fn ('s':'/':cs) = viSub cs
 
-      fn ('b':' ':"m") = withEditor $ 
-                         switchToBufferWithNameE "*messages*" (== "*messages*")
-      fn ('b':' ':f)   = withEditor $ 
-                         switchToBufferWithNameE f (isInfixOf f)
+      fn ('b':' ':"m") = withEditor $ switchToBufferWithNameE "*messages*"
+      fn ('b':' ':f)   = withEditor $ switchToBufferWithNameE f
       fn "bd"                                    = bdelete ""
       fn "bdelete"                               = bdelete ""
       fn ('b':'d':' ':f)                         = bdelete f

@@ -95,7 +95,7 @@ mode = haskellMode
               ("C-c C-l", write $ do
                  withEditor $ do
                    withOtherWindow $ do
-                     switchToBufferWithNameE "*messages*" (== "*messages*")
+                     switchToBufferWithNameE "*messages*"
                  msgEditor "Loading..."
                  Just filename <- withBuffer $ gets file
                  runShimThread (Hsinfo.load filename True Nothing >> return ())

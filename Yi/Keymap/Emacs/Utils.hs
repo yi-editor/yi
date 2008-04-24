@@ -51,7 +51,6 @@ import Data.Char
 import Data.List
   ( isPrefixOf
   , (\\)
-  , isInfixOf
   )
 import Data.Maybe
   ( fromMaybe )
@@ -401,10 +400,7 @@ scrollUpE = withUnivArg $ \a -> withBuffer $
                  Just n -> replicateM_ n lineUp
 
 switchBufferE :: YiM ()
-switchBufferE = 
-  withMinibuffer "switch to buffer:" completeBufferName $ withEditor . switchFun
-  where
-  switchFun s = switchToBufferWithNameE s $ isInfixOf s
+switchBufferE = withMinibuffer "switch to buffer:" completeBufferName $ withEditor . switchToBufferWithNameE
 
 killBufferE :: YiM ()
 killBufferE = withMinibuffer "kill buffer:" completeBufferName $ withEditor . closeBufferE
