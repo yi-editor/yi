@@ -1,7 +1,7 @@
 {-# LANGUAGE ScopedTypeVariables, FlexibleInstances, MultiParamTypeClasses, UndecidableInstances, TypeSynonymInstances #-}
 
  module Yi.MiniBuffer (
-        spawnMinibufferE, withMinibuffer
+        spawnMinibufferE, withMinibuffer, withMinibufferGen
 ) where
 
 import Data.Typeable

@@ -57,15 +57,13 @@ import Data.Maybe
   ( fromMaybe )
 import System.Exit
   ( ExitCode( ExitSuccess,ExitFailure ) )
+import System.FriendlyPath
 import System.FilePath
   ( takeDirectory
   , isAbsolute
   , pathSeparator
   , (</>)
   , addTrailingPathSeparator
-  , splitDirectories
-  , joinPath
-  , normalise
   , hasTrailingPathSeparator
   )
 import System.Directory
@@ -75,6 +73,7 @@ import System.Directory
   , getDirectoryContents
   , getCurrentDirectory
   , setCurrentDirectory
+  , canonicalizePath
   )
 import Control.Monad.Trans (MonadIO (..))
 import Control.Monad
@@ -188,7 +187,7 @@ adjIndent ib = withMode (\m -> modeIndent m ib)
 
 
 ---------------------------
--- Changing the buffer name quite useful if you have
+-- | Changing the buffer name quite useful if you have
 -- several the same.
 
 changeBufferNameE :: YiM ()
@@ -199,7 +198,7 @@ changeBufferNameE =
   strFun = withBuffer . setnameB
 
 ----------------------------
--- shell-command
+-- | shell-command
 shellCommandE :: YiM ()
 shellCommandE = do
     withMinibuffer "Shell command:" return $ \cmd -> do
@@ -209,7 +208,7 @@ shellCommandE = do
         ExitFailure _ -> msgEditor cmdErr
 
 ----------------------------
--- find the first file in the list which exists in the current directory
+-- | find the first file in the list which exists in the current directory
 chooseExistingFile :: [String] -> YiM String
 chooseExistingFile []     = return ""
 chooseExistingFile (x:xs) = do
@@ -340,31 +339,11 @@ readArg' acc = do
 
 findFile :: YiM ()
 findFile = do maybePath <- withBuffer getfileB
-              startPath <- liftIO $ getFolder maybePath
-              withMinibuffer "find file:" (completeFileName (Just startPath)) $ \filename -> do {
-               let filename' = fixFilePath startPath filename
-             ; msgEditor $ "loading " ++ filename'
-             ; fnewE filename'
-                                                                                                  }
+              startPath <- liftIO $ canonicalizePath' =<< getFolder maybePath
+              withMinibufferGen startPath "find file:" (completeFileName (Just startPath)) $ \filename -> do
+                msgEditor $ "loading " ++ filename
+                fnewE filename
 
-
--- | Fix entered file path by prepending the start folder if necessary,
--- | removing .. bits, and normalising.
-fixFilePath :: String -> String -> String
-fixFilePath start path =
-    let path' = if isAbsolute path then path else start </> path
-    in (normalise . joinPath . dropDotDot . splitDirectories) path'
-
--- | turn a/b/../c into a/c etc
-dropDotDot :: [String] -> [String]
-dropDotDot pathElems = case ddd pathElems of
-                         (False, result) -> result
-                         (True, result)  -> dropDotDot result
-    where ddd [] = (False, [])
-          ddd ("/":"..":xs) = (True, "/":xs)
-          ddd (_:"..":xs) = (True, xs)
-          ddd (x:xs) = let (changed, rest) = ddd xs
-                       in (changed, x:rest)
 
 -- | Given a path, trim the file name bit if it exists.  If no path given,
 -- | return current directory
@@ -386,21 +365,20 @@ completeBufferName s = withEditor $ do
   completeInList s (isPrefixOf s) (map name bs)
 
 completeFileName :: Maybe String -> String -> YiM String
-completeFileName start s0 = do
+completeFileName start s = do
   curDir <- case start of
             Nothing -> do bufferPath <- withBuffer getfileB
                           liftIO $ getFolder bufferPath
             (Just path) -> return path
-  homeDir <- liftIO $ getHomeDirectory
-  let s = if (['~',pathSeparator] `isPrefixOf` s0) then addTrailingPathSeparator homeDir ++ drop 2 s0 else s0
-      sDir = if hasTrailingPathSeparator s then s else takeDirectory s
+  let sDir = if hasTrailingPathSeparator s then s else takeDirectory s
       searchDir = if null sDir then curDir
-                  else if isAbsolute sDir then sDir
+                  else if isAbsolute' sDir then sDir
                   else curDir </> sDir
-      fixTrailingPathSeparator f = do
-                       isDir <- doesDirectoryExist (searchDir </> f)
+  searchDir' <- liftIO $ expandTilda searchDir
+  let fixTrailingPathSeparator f = do
+                       isDir <- doesDirectoryExist (searchDir' </> f)
                        return $ if isDir then addTrailingPathSeparator f else f
-  files <- liftIO $ getDirectoryContents searchDir
+  files <- liftIO $ getDirectoryContents searchDir'
   let files' = files \\ [".", ".."]
   fs <- liftIO $ mapM fixTrailingPathSeparator files'
   withEditor $ completeInList s (isPrefixOf s) $ map (sDir </>) fs

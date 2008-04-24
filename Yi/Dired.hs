@@ -63,6 +63,7 @@ import Yi.Style
 import Yi.Modes (defaultFundamentalMode)
 
 import System.IO.UTF8 as UTF8
+import System.FriendlyPath
 
 -- | associate buffer with file
 setFileName :: BufferRef -> FilePath -> YiM ()
@@ -81,7 +82,9 @@ setFileName b filename = do
 -- windows to buffers.
 --
 fnewE  :: FilePath -> YiM ()
-fnewE f = do
+fnewE f = fnewCanonicalized =<< liftIO (expandTilda f)
+
+fnewCanonicalized f = do
     bufs                 <- withEditor getBuffers
         -- The file names associated with the list of current buffers
     bufsWithThisFilename <- liftIO $ filterM assocWithSameFile bufs
