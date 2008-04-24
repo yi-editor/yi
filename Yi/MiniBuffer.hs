@@ -1,4 +1,4 @@
-{-# LANGUAGE ScopedTypeVariables, FlexibleInstances, MultiParamTypeClasses, UndecidableInstances #-}
+{-# LANGUAGE ScopedTypeVariables, FlexibleInstances, MultiParamTypeClasses, UndecidableInstances, TypeSynonymInstances #-}
 
  module Yi.MiniBuffer (
         spawnMinibufferE, withMinibuffer
@@ -70,8 +70,19 @@ completionFunction f = do
                   deleteN p
                   insertN compl
 
+class Promptable a where
+    getPromptedValue :: String -> a
+    getPrompt :: a -> String           -- Parameter can be "undefined"
+
+instance Promptable String where
+    getPromptedValue = id
+    getPrompt _ = "String"
+
+instance Promptable Int where
+    getPromptedValue = read
+    getPrompt _ = "Integer"
 
 -- TODO: be a bit more clever than 'Read r'
-instance (YiAction a x, Read r, Typeable r) => YiAction (r -> a) x where
-    makeAction f = YiA $ withMinibuffer (show $ typeOf (undefined::r)) return $
-                   \string ->  runAction $ makeAction $ f $ read string
+instance (YiAction a x, Promptable r, Typeable r) => YiAction (r -> a) x where
+    makeAction f = YiA $ withMinibuffer (getPrompt (undefined::r)) return $
+                    \string ->  runAction $ makeAction $ f $ getPromptedValue string
