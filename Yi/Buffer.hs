@@ -84,6 +84,7 @@ module Yi.Buffer
   , withSyntax0
   , keymapProcessA
   , strokesRangesB
+  , replaceBufferContent
   )
 where
 
@@ -663,3 +664,11 @@ savingPointB f = savingPrefCol $ do
 
 askWindow :: (Window -> a) -> BufferM a
 askWindow = asks
+
+
+replaceBufferContent :: String -> BufferM ()
+replaceBufferContent newvalue = do
+              sz <- sizeB
+              moveTo 0
+              deleteN sz
+              insertN newvalue

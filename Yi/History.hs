@@ -70,15 +70,7 @@ debugHist = return ()
   
 
 historyMove :: Int -> EditorM ()
-historyMove delta = replaceBufferContent =<< historyMoveGen miniBuffer delta (withBuffer0 elemsB) 
-
-replaceBufferContent :: String -> EditorM ()
-replaceBufferContent newvalue = withBuffer0 $ do
-              sz <- sizeB
-              moveTo 0
-              deleteN sz
-              insertN newvalue
-
+historyMove delta = (withBuffer0 . replaceBufferContent) =<< historyMoveGen miniBuffer delta (withBuffer0 elemsB) 
 
 historyMoveGen :: String -> Int -> EditorM String -> EditorM String
 historyMoveGen ident delta getCurValue = do

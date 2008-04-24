@@ -20,19 +20,21 @@ import Control.Monad.Reader
 -- The third argument is an action to perform after the minibuffer
 -- is opened such as move to the first occurence of a searched for
 -- string. If you don't need this just supply @return ()@
-spawnMinibufferE :: String -> KeymapEndo -> YiM () -> YiM ()
-spawnMinibufferE prompt kmMod initialAction =
+spawnMinibufferE :: String -> KeymapEndo -> YiM BufferRef
+spawnMinibufferE prompt kmMod =
     do b <- withEditor $ stringToNewBuffer prompt []
        fundamental <- asks (fundamentalMode . yiConfig)
        setBufferMode b fundamental {modeKeymap = kmMod}
        withEditor $ do
          w <- newWindowE True b
          modifyWindows (WS.add w)
-       initialAction
+       return b
 
 -- | @withMinibuffer prompt completer act@: open a minibuffer with @prompt@. Once a string @s@ is obtained, run @act s@. @completer@ can be used to complete functions.
 withMinibuffer :: String -> (String -> YiM String) -> (String -> YiM ()) -> YiM ()
-withMinibuffer prompt completer act = do
+withMinibuffer = withMinibufferGen ""
+
+withMinibufferGen init prompt completer act = do
   initialBuffer <- withEditor getBuffer
   let innerAction :: YiM ()
       -- ^ Read contents of current buffer (which should be the minibuffer), and
@@ -57,7 +59,8 @@ withMinibuffer prompt completer act = do
                     ("TAB", write (completionFunction completer)),
                     ("C-g", write closeMinibuffer)]
   withEditor $ historyStart
-  spawnMinibufferE (prompt ++ " ") (rebind rebindings) (return ())
+  b <- spawnMinibufferE (prompt ++ " ") (rebind rebindings)
+  withGivenBuffer b $ replaceBufferContent init
 
 completionFunction :: (String -> YiM String) -> YiM ()
 completionFunction f = do

@@ -557,7 +557,8 @@ spawn_ex_buffer prompt = do
       ex_complete _ = return ""
 
   withEditor $ historyStart
-  spawnMinibufferE prompt (const $ runVim $ ex_process) (return ())
+  spawnMinibufferE prompt (const $ runVim $ ex_process) 
+  return ()
 
 
 ex_mode :: String -> VimMode
