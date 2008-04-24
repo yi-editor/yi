@@ -56,6 +56,7 @@ import Control.Monad.State
 
 import Yi.Core
 import Yi.Style
+import Yi.History
 
 -- ---------------------------------------------------------------------
 -- Searching and substitutions with regular expressions
@@ -221,8 +222,11 @@ searchAndRepLocal re str = do
 
 
 newtype Isearch = Isearch [(String, Int, Direction, Maybe Overlay)] deriving Typeable
+-- This contains: (string currently searched, position where we
+-- searched it, direction, overlay for highlighting searched text)
+
 -- Maybe this should not be saved in a Dynamic component!
--- it could be embedded in the Keymap state.
+-- it could also be embedded in the Keymap state.
 
 instance Initializable Isearch where
     initial = (Isearch [])
@@ -281,10 +285,21 @@ isearchDelE = do
     _ -> return () -- if the searched string is empty, don't try to remove chars from it.
 
 isearchPrevE :: EditorM ()
-isearchPrevE = isearchNext Backward
+isearchPrevE = isearchNext0 Backward
 
 isearchNextE :: EditorM ()
-isearchNextE = isearchNext Forward
+isearchNextE = isearchNext0 Forward
+
+isearchNext0 :: Direction -> EditorM ()
+isearchNext0 newDir = do
+  Isearch ((current,p0,_dir,prevOverlay):rest) <- getDynamic
+  if null current
+    then do prev <- historyGetGen iSearch
+            printMsg $ "Prev: " ++ show prev
+            setDynamic $ Isearch ((current,p0,newDir,prevOverlay):rest)
+            isearchAddE prev
+    else isearchNext newDir
+     
 
 isearchNext :: Direction -> EditorM ()
 isearchNext direction = do
@@ -318,12 +333,15 @@ isearchFinishE = isearchEnd True
 isearchCancelE :: EditorM ()
 isearchCancelE = isearchEnd False
 
+iSearch = "isearch"
+
 isearchEnd :: Bool -> EditorM ()
 isearchEnd accept = do
   Isearch s <- getDynamic
-  let (_,_,_,ov) = head s
+  let (lastSearched,_,_,ov) = head s
   let (_,p0,_,_) = last s
   withBuffer0 $ maybeDelOverlayB ov
+  historyFinishGen iSearch (return lastSearched)
   if accept 
      then do withBuffer0 $ setSelectionMarkPointB p0 
              printMsg "Quit"

@@ -50,12 +50,19 @@ historyStartGen ident = do
   debugHist
 
 historyFinish :: EditorM ()
-historyFinish = historyFinishGen miniBuffer
+historyFinish = historyFinishGen miniBuffer (withBuffer0 elemsB)
 
-historyFinishGen ident = do
+historyFinishGen ident getCurValue = do
   (History _cur cont) <- getA (dynKeyA ident .> dynA)
-  curValue <- withBuffer0 elemsB
+  curValue <- getCurValue
   setA (dynKeyA ident .> dynA) $ History (-1) (nub $ dropWhile null $ (curValue:cont))
+
+historyGetGen ident = do
+  (History cur cont) <- getA (dynKeyA ident .> dynA)
+  return $ case cont of
+    [] -> ""
+    (x:_) -> x
+  
 
 -- TODO: scrap
 debugHist :: EditorM ()
