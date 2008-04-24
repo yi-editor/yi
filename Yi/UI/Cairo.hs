@@ -33,7 +33,7 @@ import Control.Monad.State (runState, State, gets, modify)
 import Data.Function
 import Data.Foldable
 import Data.IORef
-import Data.List ( nub, findIndex, sort )
+import Data.List (nub, findIndex)
 import Data.Maybe
 import Data.Traversable
 import qualified Data.Map as M
@@ -56,10 +56,10 @@ data UI = UI { uiWindow :: Gtk.Window
 
 data WinInfo = WinInfo
     {
-     
       coreWin     :: Window
     , changedWin  :: IORef (Window)
     , renderer    :: IORef (ConnectId DrawingArea)
+    , winMotionSignal :: IORef (Maybe (ConnectId DrawingArea))
     , winLayout   :: PangoLayout
     , winMetrics  :: FontMetrics
     , textview    :: DrawingArea
@@ -255,23 +255,22 @@ handleClick ui w event = do
   let Just idx = findIndex (((==) `on` (winkey . coreWin)) w) wCache
       focusWindow = modifyWindows (WS.focusIndex idx)
 
+  case (eventClick event, eventButton event) of
+     (SingleClick, LeftButton) -> do
+       writeRef (winMotionSignal w) =<< Just <$> onMotionNotify (textview w) False (handleMove ui w p1)
+
+     _ -> do maybe (return ()) signalDisconnect =<< readRef (winMotionSignal w)
+             writeRef (winMotionSignal w) Nothing
+             
+
+
   let editorAction = do
         b <- gets $ (bkey . findBufferWith (bufkey $ coreWin w))
         case (eventClick event, eventButton event) of
           (SingleClick, LeftButton) -> do
               focusWindow
-              withGivenBuffer0 b $ do moveTo p1 -- as a side effect we forget the prefered column
-                                      setVisibleSelection True
+              withGivenBuffer0 b $ moveTo p1
           (SingleClick, _) -> focusWindow
-          (ReleaseClick, LeftButton) -> do
-            p0 <- withGivenBuffer0 b $ pointB
-            if p1 == p0
-              then withGivenBuffer0 b $ setVisibleSelection False
-              else do txt <- withGivenBuffer0 b $ do m <- getSelectionMarkB
-                                                     setMarkPointB m p1
-                                                     let [i,j] = sort [p1,p0]
-                                                     nelemsB (j-i) i
-                      setRegE txt
           (ReleaseClick, MiddleButton) -> do
             txt <- getRegE
             withGivenBuffer0 b $ do
@@ -283,6 +282,33 @@ handleClick ui w event = do
 
   uiActionCh ui (makeAction editorAction)
   return True
+
+handleMove :: UI -> WinInfo -> Point -> Gtk.Event -> IO Bool
+handleMove ui w p0 event = do
+  logPutStrLn $ "Motion: " ++ show (eventX event, eventY event)
+
+  -- retrieve the clicked offset.
+  (_,layoutIndex,_) <- layoutXYToIndex (winLayout w) (eventX event) (eventY event)
+  win <- readRef (changedWin w)
+  let p1 = tospnt win + layoutIndex
+
+
+  let editorAction = do
+        txt <- withBuffer0 $ do
+           if p0 /= p1 
+            then Just <$> do
+              m <- getSelectionMarkB
+              setMarkPointB m p0
+              moveTo p1
+              setVisibleSelection True
+              readRegionB =<< getSelectRegionB
+            else return Nothing
+        maybe (return ()) setRegE txt
+
+  uiActionCh ui (makeAction editorAction)
+  -- drawWindowGetPointer (textview w) -- be ready for next message.
+  return True
+
 
 
 -- | Make A new window
@@ -296,6 +322,7 @@ newWindow ui w b = mdo
 
     v <- drawingAreaNew
     widgetModifyFont v (Just f)
+    widgetAddEvents v [Button1MotionMask]
 
     box <- if isMini w
      then do
@@ -326,10 +353,12 @@ newWindow ui w b = mdo
     language <- contextGetLanguage context
     metrics <- contextGetMetrics context f language
     layoutSetFontDescription layout (Just f)
+    motionSig <- newIORef Nothing
     let win = WinInfo {
                      coreWin   = w
                    , winLayout = layout
                    , winMetrics = metrics
+                   , winMotionSignal = motionSig
                    , textview  = v
                    , modeline  = ml
                    , widget    = box
@@ -389,9 +418,9 @@ render ui b w _ev = do
       winw = round (width' / approximateCharWidth metrics)
       maxNumberOfChars = winh * winw
       -- The number of chars is a gross approximation.
-  let ((point, text),_) = runBuffer win b $ (,) <$>
-                      pointB <*>
-                      nelemsB maxNumberOfChars (tospnt win) 
+  let ((point, text),_) = runBuffer win b $ (,) 
+                      <$> pointB
+                      <*> nelemsB maxNumberOfChars (tospnt win) 
                       -- FIXME: unicode. 
   layoutSetWidth layout (Just width')
   layoutSetText layout text
