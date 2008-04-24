@@ -19,7 +19,7 @@
 
 module Yi.UI.Cocoa (start) where
 
-import Prelude hiding (init, error, sequence_, elem, mapM_, mapM, concatMap)
+import Prelude hiding (init, error, sequence_, elem, mapM_, mapM, concat, concatMap)
 
 import Yi.Accessor
 import Yi.Buffer
@@ -55,7 +55,7 @@ import qualified Data.Map as M
 import Foundation hiding (length, name, new, parent, error, self, null)
 import Foundation.NSObject (init)
 
-import AppKit hiding (windows, start, rect, width, content, prompt, dictionary, icon)
+import AppKit hiding (windows, start, rect, width, content, prompt, dictionary, icon, concat)
 import qualified AppKit.NSWindow (contentView)
 import AppKit.NSText (selectedRange)
 import qualified AppKit.NSScrollView (contentView)
@@ -557,15 +557,14 @@ refresh ui e = logNSException "refresh" $ do
 
 replaceTagsIn :: forall t. Point -> Point -> FBuffer -> NSTextStorage t -> IO ()
 replaceTagsIn from to buf storage = do
-  let (styleSpans, _) = runBufferDummyWindow buf (styleRangesB (to - from) from)
-  forM_ (zip styleSpans (drop 1 styleSpans)) $ \((l,Style fg bg),(r,_)) -> do
-    logPutStrLn $ "Setting style " ++ show fg ++ show bg ++ " on " ++ show l ++ " - " ++ show r
-    fg' <- color' True fg
-    bg' <- color' False bg
+  let (styleSpans, _) = runBufferDummyWindow buf (strokesRangesB (to - from) from)
+  forM_ (concat styleSpans) $ \(l,ss,r) -> do
     let range = NSRange (toEnum l) (toEnum $ r-l)
-    storage # addAttributeValueRange nsForegroundColorAttributeName fg' range
-    storage # addAttributeValueRange nsBackgroundColorAttributeName bg' range
+    forM_ ss (\s -> mkStyle s >>= addStyle range)
   where
+    addStyle r (k,v) = storage # addAttributeValueRange k v r
+    mkStyle (Foreground c) = (\x -> (nsForegroundColorAttributeName, x)) <$> color' True c
+    mkStyle (Background c) = (\x -> (nsBackgroundColorAttributeName, x)) <$> color' False c
     color' fg Default = if fg then _NSColor # blackColor else _NSColor # whiteColor
     color' fg Reverse = if fg then _NSColor # whiteColor else _NSColor # blackColor
     color' _g (RGB r g b) = _NSColor # colorWithDeviceRedGreenBlueAlpha ((fromIntegral r)/255) ((fromIntegral g)/255) ((fromIntegral b)/255) 1.0
