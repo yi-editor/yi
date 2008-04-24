@@ -1,6 +1,8 @@
-{-# LANGUAGE CPP #-}
-
 -- Copyright (c) 2005, 2008 Jean-Philippe Bernardy
+
+-- This is an attempt at mimicing emacs names for keys. This is
+-- deprecated in favour of proper key-construction combinators.  They
+-- are currently being developped as part of the CUA keybindings.
 
 module Yi.Keymap.Emacs.Keys 
   ( readKey
@@ -52,6 +54,10 @@ printableChars = map chr [32..127]
 x_ :: [Modifier] -> Event -> Event
 x_ mods' (Event k mods) = Event k (nub (mods'++mods))
 
+parseShift :: ReadP Event
+parseShift = do string "S-"
+                k <- parseRegular
+                return $ x_ [MShift] k
 
 parseCtrl :: ReadP Event
 parseCtrl = do string "C-"
@@ -91,7 +97,7 @@ parseRegular = choice [string s >> return (Event c []) | (c,s) <- keyNames]
                       return (Event (KASCII c) [])
 
 parseKey :: ReadP [Event]
-parseKey = sepBy1 (choice [parseCtrlMeta, parseCtrl, parseMeta, parseRegular])
+parseKey = sepBy1 (choice [parseCtrlMeta, parseCtrl, parseMeta, parseShift, parseRegular])
                   (munch1 isSpace)
 
 readKey :: String -> [Event]
