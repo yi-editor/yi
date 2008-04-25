@@ -211,7 +211,7 @@ setBuffer k = do
 -- ---------------------------------------------------------------------
 
 newtype EditorM a = EditorM {fromEditorM :: State Editor a}
-    deriving (Monad, MonadState Editor,Typeable1)
+    deriving (Monad, MonadState Editor,Typeable1, Functor)
 
 deriving instance Typeable2 State
 

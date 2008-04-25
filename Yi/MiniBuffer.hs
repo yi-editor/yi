@@ -1,9 +1,10 @@
 {-# LANGUAGE ScopedTypeVariables, FlexibleInstances, MultiParamTypeClasses, UndecidableInstances, TypeSynonymInstances #-}
 
  module Yi.MiniBuffer (
-        spawnMinibufferE, withMinibuffer, withMinibufferGen
+        spawnMinibufferE, withMinibuffer, withMinibufferGen, withMinibufferFin, noHint
 ) where
 
+import Data.List (isInfixOf)
 import Data.Typeable
 import Yi.Buffer
 import Yi.Buffer.Region
@@ -32,14 +33,18 @@ spawnMinibufferE prompt kmMod =
 
 -- | @withMinibuffer prompt completer act@: open a minibuffer with @prompt@. Once a string @s@ is obtained, run @act s@. @completer@ can be used to complete functions.
 withMinibuffer :: String -> (String -> YiM String) -> (String -> YiM ()) -> YiM ()
-withMinibuffer = withMinibufferGen ""
+withMinibuffer = withMinibufferGen "" noHint
 
-withMinibufferGen init prompt completer act = do
+noHint :: String -> YiM String
+noHint = const $ return ""
+
+withMinibufferGen init getHint prompt completer act = do
   initialBuffer <- withEditor getBuffer
   let innerAction :: YiM ()
       -- ^ Read contents of current buffer (which should be the minibuffer), and
       -- apply it to the desired action
       closeMinibuffer = closeBufferAndWindowE
+      showMatchings = msgEditor =<< getHint =<< withBuffer elemsB
       innerAction = do
         lineString <- withEditor $ do historyFinish
                                       lineString <- withBuffer0 elemsB
@@ -58,9 +63,22 @@ withMinibufferGen init prompt completer act = do
                     ("C-i", write (completionFunction completer)),
                     ("TAB", write (completionFunction completer)),
                     ("C-g", write closeMinibuffer)]
-  withEditor $ historyStart
-  b <- spawnMinibufferE (prompt ++ " ") (rebind rebindings)
+  withEditor historyStart
+  msgEditor =<< getHint ""
+  b <- spawnMinibufferE (prompt ++ " ") (\bindings -> rebind rebindings (bindings >> write showMatchings))
   withGivenBuffer b $ replaceBufferContent init
+
+
+-- | Open a minibuffer, give a finite number of suggestions.
+withMinibufferFin :: String -> [String] -> (String -> YiM ()) -> YiM ()
+withMinibufferFin prompt possbilities act 
+    = withMinibufferGen "" (\s -> return $ show $ match s) prompt return (act . best)
+      where 
+        match s = filter (s `isInfixOf`) possbilities
+        best s = let ms = match s in
+                 case ms of
+                   [] -> s
+                   (x:_) -> x
 
 completionFunction :: (String -> YiM String) -> YiM ()
 completionFunction f = do

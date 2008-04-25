@@ -59,8 +59,6 @@ import System.Exit
 import System.FriendlyPath
 import System.FilePath
   ( takeDirectory
-  , isAbsolute
-  , pathSeparator
   , (</>)
   , addTrailingPathSeparator
   , hasTrailingPathSeparator
@@ -68,11 +66,9 @@ import System.FilePath
 import System.Directory
   ( doesDirectoryExist
   , doesFileExist
-  , getHomeDirectory
   , getDirectoryContents
   , getCurrentDirectory
   , setCurrentDirectory
-  , canonicalizePath
   )
 import Control.Monad.Trans (MonadIO (..))
 import Control.Monad
@@ -339,7 +335,7 @@ readArg' acc = do
 findFile :: YiM ()
 findFile = do maybePath <- withBuffer getfileB
               startPath <- liftIO $ canonicalizePath' =<< getFolder maybePath
-              withMinibufferGen startPath "find file:" (completeFileName (Just startPath)) $ \filename -> do
+              withMinibufferGen startPath noHint "find file:" (completeFileName (Just startPath)) $ \filename -> do
                 msgEditor $ "loading " ++ filename
                 fnewE filename
 
@@ -400,7 +396,10 @@ scrollUpE = withUnivArg $ \a -> withBuffer $
                  Just n -> replicateM_ n lineUp
 
 switchBufferE :: YiM ()
-switchBufferE = withMinibuffer "switch to buffer:" completeBufferName $ withEditor . switchToBufferWithNameE
+switchBufferE = do
+  bs <- withEditor (map name <$> getBuffers)
+  withMinibufferFin  "switch to buffer:" bs (withEditor . switchToBufferWithNameE)
+
 
 killBufferE :: YiM ()
 killBufferE = withMinibuffer "kill buffer:" completeBufferName $ withEditor . closeBufferE
