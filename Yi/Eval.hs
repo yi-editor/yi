@@ -35,8 +35,13 @@ jumpToE filename line column = do
 
 parseErrorMessage :: String -> Maybe (String, Int, Int)
 parseErrorMessage ln = do
+#if OLDREGEX
   result :: (Array Int String) <- ln =~~ "^(.+):([0-9]+):([0-9]+):.*$"
   return (result!1, read (result!2), read (result!3))
+#else
+  (AllTextSubmatches result) :: AllTextSubmatches (Array Int) String <- ln =~~ "^(.+):([0-9]+):([0-9]+):.*$"
+  return (result!1, read (result!2), read (result!3))  
+#endif
 
 parseErrorMessageB :: BufferM (String, Int, Int)
 parseErrorMessageB = do

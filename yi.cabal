@@ -62,6 +62,10 @@ flag hacking
 flag testing
   Description: bake-in the self-checks
 
+flag oldregex
+  Default: False
+
+
 library
   if flag(hacking)
     exposed-modules:
@@ -174,9 +178,16 @@ executable yi
         build-depends: utf8-string
 
         build-depends: Crypto==4.1.0
-        build-depends: regex-base ==0.72.0.1
-        build-depends: regex-compat ==0.71.0.1
-        build-depends: regex-posix ==0.72.0.2
+        if flag(oldregex)
+          build-depends: regex-base ==0.72.0.1
+          build-depends: regex-compat ==0.71.0.1
+          build-depends: regex-posix ==0.72.0.2
+          cpp-options: -DOLDREGEX
+        else
+          build-depends: regex-base ==0.93.1
+          build-depends: regex-compat ==0.91
+          build-depends: regex-posix ==0.93.1
+        
         build-depends: parsec==2.1.0.0
 
         ghc-options:   -Wall -optl-Wl,-s -threaded
