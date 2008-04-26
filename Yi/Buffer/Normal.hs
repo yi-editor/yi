@@ -163,6 +163,9 @@ data BoundarySide = InsideBound | OutsideBound
 -- Warning: moving To the (OutsideBound, Backward) bound of Document is impossible (offset -1!)
 -- @genMoveB u b d@: move in direction d until encountering boundary b or unit u. See 'genAtBoundaryB' for boundary explanation.
 genMoveB :: TextUnit -> (Direction, BoundarySide) -> Direction -> BufferM ()
+genMoveB Document (Forward,InsideBound) Forward = moveTo =<< (subtract 1) <$> sizeB
+genMoveB Document _                     Forward = moveTo =<< sizeB
+genMoveB Document _ Backward = moveTo 0 -- impossible to go outside beginning of doc.
 genMoveB Character _ Forward  = rightB
 genMoveB Character _ Backward = leftB
 genMoveB VLine     _ Forward  = 
@@ -175,6 +178,8 @@ genMoveB unit (boundDir, boundSide) moveDir =
 -- | Generic maybe move operation.
 -- As genMoveB, but don't move if we are at boundary already.
 genMaybeMoveB :: TextUnit -> (Direction, BoundarySide) -> Direction -> BufferM ()
+genMaybeMoveB Document boundSpec moveDir = genMoveB Document boundSpec moveDir 
+   -- optimized casex for Document
 genMaybeMoveB unit (boundDir, boundSide) moveDir =
   untilB_ (genAtBoundaryB unit boundDir boundSide) (moveB Character moveDir)
 
