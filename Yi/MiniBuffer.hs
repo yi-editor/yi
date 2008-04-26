@@ -38,7 +38,9 @@ withMinibuffer = withMinibufferGen "" noHint
 noHint :: String -> YiM String
 noHint = const $ return ""
 
-withMinibufferGen init getHint prompt completer act = do
+withMinibufferGen :: String -> (String -> YiM String) -> 
+                     String -> (String -> YiM String) -> (String -> YiM ()) -> YiM ()
+withMinibufferGen proposal getHint prompt completer act = do
   initialBuffer <- withEditor getBuffer
   let innerAction :: YiM ()
       -- ^ Read contents of current buffer (which should be the minibuffer), and
@@ -66,7 +68,7 @@ withMinibufferGen init getHint prompt completer act = do
   withEditor historyStart
   msgEditor =<< getHint ""
   b <- spawnMinibufferE (prompt ++ " ") (\bindings -> rebind rebindings (bindings >> write showMatchings))
-  withGivenBuffer b $ replaceBufferContent init
+  withGivenBuffer b $ replaceBufferContent proposal
 
 
 -- | Open a minibuffer, give a finite number of suggestions.

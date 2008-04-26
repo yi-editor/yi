@@ -2,6 +2,7 @@
 
 -- Copyright (c) Tuomo Valkonen 2004.
 -- Copyright (c) Don Stewart 2004-5. http://www.cse.unsw.edu.au/~dons
+-- Copyright (c) Jean-Philippe Bernardy 2007-8 
 
 --
 -- | The core actions of yi. This module is the link between the editor
@@ -14,7 +15,7 @@ module Yi.Core
   , module Yi.Keymap
 
   -- * Construction and destruction
-  , startEditor         -- :: StartConfig -> Kernel -> Maybe Editor -> [YiM ()] -> IO ()
+  , startEditor         
   , quitEditor          -- :: YiM ()
 
   , reloadEditor        -- :: YiM ()
