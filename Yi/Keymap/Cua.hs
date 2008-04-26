@@ -5,6 +5,7 @@ module Yi.Keymap.Cua  (keymap)
 where
 
 import Yi.Yi
+import Yi.Keymap.Emacs.Keys
 import Yi.Keymap.Emacs.KillRing
 import Yi.Keymap.Emacs.Utils
 import Yi.Accessor
@@ -36,33 +37,17 @@ setMark = do
 
 -- withBuffer (readRegionB =<< getSelectRegionB)
 
-(?>) :: (MonadInteract m Action Event, YiAction a x, Show x) => Event -> a -> m ()
-ev ?> act = event ev >> write act
-
-infixr 0 ?>
 
 keys :: [Keymap]
 keys = [
-        fun_ KEsc   ?> quitEditor,
-        fun_ KRight ?> rightB,
-        fun_ KLeft  ?> leftB,
-        fun_ KUp    ?> moveB VLine Backward,
-        fun_ KDown  ?> moveB VLine Forward,
-        shi_ (fun_ KRight) ?> setMark >> rightB,
-        ctr_ (key_ 'x') ?> killRegionE
+        spec KEsc   ?> quitEditor,
+        spec KRight ?> rightB,
+        spec KLeft  ?> leftB,
+        spec KUp    ?> moveB VLine Backward,
+        spec KDown  ?> moveB VLine Forward,
+        shift (spec KRight) ?> setMark >> rightB,
+        ctrl  (char 'x')    ?> killRegionE
        ]
 
 
 
-shi_,ctr_ :: Event -> Event
-shi_ (Event (KASCII c) ms) | isAlpha c = Event (KASCII (toUpper c)) ms
-                           | otherwise = error "shi_: unhandled event"
-shi_ (Event k ms) = Event k (MShift:ms)
-
-ctr_ (Event k ms) = Event k (MCtrl:ms)
-
-key_ :: Char -> Event
-key_ c = Event (KASCII c) []
-
-fun_ :: Key -> Event
-fun_ k = Event k []
