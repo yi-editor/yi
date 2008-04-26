@@ -255,6 +255,8 @@ searchKeymap = selfSearchKeymap <|> makeKeymap
                , ("C-s", write isearchNextE)
                , ("C-w", write isearchWordE)
                , ("C-n", write $ isearchAddE "\n")
+               , ("M-p", write $ isearchHistory 1)
+               , ("M-n", write $ isearchHistory (-1))
                , ("BACKSP", write $ isearchDelE)
                ]
 

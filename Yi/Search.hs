@@ -30,6 +30,7 @@ module Yi.Search (
         isearchPrevE,
         isearchNextE,
         isearchWordE,
+        isearchHistory,
         isearchDelE,
         isearchCancelE,
         isearchFinishE,
@@ -245,10 +246,13 @@ isearchIsEmpty = do
       where fst4 (x,_,_,_) = x
 
 isearchAddE :: String -> EditorM ()
-isearchAddE increment = do
+isearchAddE increment = isearchFunE (++ increment)
+
+isearchFunE :: (String -> String) -> EditorM ()
+isearchFunE fun = do
   Isearch s <- getDynamic
   let (previous,p0,direction,prevOverlay) = head s
-  let current = previous ++ increment
+  let current = fun previous
   printMsg $ "I-search: " ++ current
   prevPoint <- withBuffer0 pointB
   withBuffer0 $ do
@@ -285,6 +289,12 @@ isearchDelE = do
       printMsg $ "I-search: " ++ text
     _ -> return () -- if the searched string is empty, don't try to remove chars from it.
 
+isearchHistory :: Int -> EditorM ()
+isearchHistory delta = do
+  Isearch ((current,_p0,_dir,_ovl):_) <- getDynamic
+  h <- historyMoveGen iSearch delta (return current)
+  isearchFunE (const h)
+
 isearchPrevE :: EditorM ()
 isearchPrevE = isearchNext0 Backward
 
@@ -293,11 +303,9 @@ isearchNextE = isearchNext0 Forward
 
 isearchNext0 :: Direction -> EditorM ()
 isearchNext0 newDir = do
-  Isearch ((current,p0,_dir,prevOverlay):rest) <- getDynamic
+  Isearch ((current,_p0,_dir,_ovl):_rest) <- getDynamic
   if null current
-    then do prev <- historyMoveGen iSearch 1 (return current)
-            setDynamic $ Isearch ((current,p0,newDir,prevOverlay):rest)
-            isearchAddE prev
+    then isearchHistory 1
     else isearchNext newDir
      
 
