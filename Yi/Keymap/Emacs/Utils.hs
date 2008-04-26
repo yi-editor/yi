@@ -111,14 +111,10 @@ import Yi.UI.Common
 -- some modified buffers then we ask again if the user wishes to
 -- quit, but this is then a simple yes or no.
 askQuitEditor :: YiM ()
-askQuitEditor =
-  do allBuffers      <- withEditor getBuffers
-     modifiedBuffers <- filterM isFileBuffer $ filter (not . isUnchangedBuffer) allBuffers
-     -- We could actually just call 'askIndividualQuit modifiedBuffers'
-     -- here.
-     if null modifiedBuffers
-        then quitEditor
-        else askIndividualQuit modifiedBuffers
+askQuitEditor = askIndividualQuit =<< getModifiedBuffers
+
+getModifiedBuffers :: YiM [FBuffer]
+getModifiedBuffers = filterM isFileBuffer =<< filter (not . isUnchangedBuffer) <$> withEditor getBuffers
 
 -- | Is there a proper file associated with the buffer?
 -- In other words, does it make sense to offer to save it?
@@ -130,7 +126,7 @@ isFileBuffer b = case file b of
 --------------------------------------------------
 -- Takes in a list of buffers which have been identified
 -- as modified since their last save.
-askIndividualQuit :: [ FBuffer ] -> YiM ()
+askIndividualQuit :: [FBuffer] -> YiM ()
 askIndividualQuit [] = modifiedQuitEditor
 askIndividualQuit (firstBuffer : others) =
   spawnMinibufferE saveMessage askKeymap >> return ()
@@ -160,10 +156,10 @@ askIndividualQuit (firstBuffer : others) =
 -- with to quit.
 modifiedQuitEditor :: YiM ()
 modifiedQuitEditor =
-  do allBuffers          <- withEditor getBuffers
-     if any isUnchangedBuffer allBuffers
-        then spawnMinibufferE modifiedMessage askKeymap >> return ()
-        else quitEditor
+  do modifiedBuffers <- getModifiedBuffers
+     if null modifiedBuffers
+        then quitEditor
+        else spawnMinibufferE modifiedMessage askKeymap >> return ()
   where
   modifiedMessage = "Modified buffers exist really quit? (y/n)"
 
