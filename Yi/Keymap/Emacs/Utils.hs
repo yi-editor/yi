@@ -332,7 +332,7 @@ readArg' acc = do
 
 findFile :: YiM ()
 findFile = do maybePath <- withBuffer getfileB
-              startPath <- liftIO $ canonicalizePath' =<< getFolder maybePath
+              startPath <- addTrailingPathSeparator <$> (liftIO $ canonicalizePath' =<< getFolder maybePath)
               withMinibufferGen startPath noHint "find file:" (completeFileName (Just startPath)) $ \filename -> do
                 msgEditor $ "loading " ++ filename
                 fnewE filename
@@ -395,7 +395,7 @@ scrollUpE = withUnivArg $ \a -> withBuffer $
 
 switchBufferE :: YiM ()
 switchBufferE = do
-  bs <- withEditor (map name <$> getBuffers)
+  bs <- withEditor (map name . tail <$> getBufferStack)
   withMinibufferFin  "switch to buffer:" bs (withEditor . switchToBufferWithNameE)
 
 

@@ -135,6 +135,10 @@ deleteBuffer k = do
 getBuffers :: EditorM [FBuffer]
 getBuffers = gets (M.elems . buffers)
 
+getBufferStack :: EditorM [FBuffer]
+getBufferStack = do
+  bufMap <- gets buffers
+  gets (fmap (bufMap M.!) . bufferStack)
 
 -- | Check that the buffer has not been deleted
 bufferExists :: BufferRef -> EditorM Bool

@@ -12,7 +12,7 @@ module Yi.FingerString (
   rebalance,
   null, empty, take, drop, append, splitAt, count, length,
   elemIndices, findSubstring, findSubstrings, elemIndexEnd, elemIndicesEnd
-) where
+ ) where
 
 import Prelude hiding (null, head, tail, length, take, drop, splitAt, head, tail, foldl, reverse)
 import qualified Data.List as L

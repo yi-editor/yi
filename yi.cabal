@@ -210,6 +210,7 @@ executable yi
           cpp-options: -DFRONTEND_CAIRO
           other-modules: Yi.UI.Gtk.ProjectTree
                          Yi.UI.Gtk.Utils
+                         Yi.UI.Cairo
 
         if flag (cocoa)
           build-depends: HOC, HOC-AppKit, HOC-Foundation
