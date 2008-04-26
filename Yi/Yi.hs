@@ -78,6 +78,9 @@ defaultPublishedActions = M.fromList $
     , ("cabalBuildE"            , box cabalBuildE)
     , ("reloadProjectE"         , box reloadProjectE)
     , ("atBoundaryB"            , box atBoundaryB)
+    , ("regionOfPartB"          , box regionOfPartB)
+    , ("Forward"                , box Forward)
+    , ("Backward"               , box Backward)
     ]
 
   where box x = [toDyn x]

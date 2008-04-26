@@ -1,4 +1,7 @@
--- This module defines the Region ADT
+{-# LANGUAGE DeriveDataTypeable #-}
+-- Copyright (C) 2008 JP Bernardy
+
+-- * This module defines the Region ADT
 
 module Yi.Buffer.Region 
   ( Region
@@ -19,7 +22,7 @@ module Yi.Buffer.Region
   , intersectRegion
   )
 where
-
+import Data.Typeable
 import Yi.Window
 import Yi.Buffer
 import Control.Applicative
@@ -28,7 +31,7 @@ import Control.Applicative
 --The region is semi open: it includes the start but not the end bound. This allows simpler region-manipulation algorithms.
 -- Invariant : regionStart r <= regionEnd r
 data Region = Region {regionStart, regionEnd :: !Point} 
-
+                 deriving Typeable
 fmapRegion :: (Point -> Point) -> Region -> Region
 fmapRegion f (Region x y) = Region (f x) (f y)
 
@@ -43,6 +46,9 @@ winRegion w = mkRegion (tospnt w) (bospnt w)
 mkVimRegion :: Point -> Point -> Region
 mkVimRegion x y = if x < y then Region x (y+1) else Region y (x+1)
 
+-- | Create a region from ordered bounds. If 2nd argument is greater than
+-- 1st, then the region will be empty.
+ordRegion :: Point -> Point -> Region
 ordRegion x y = if x < y then Region x y else emptyRegion
 
 -- | Construct a region from its bounds, emacs style:
