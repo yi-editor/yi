@@ -17,6 +17,7 @@ where
 
 import Yi.Yi
 import Yi.TextCompletion
+import Yi.Keymap.Keys
 import Yi.Keymap.Emacs.KillRing
 import Yi.Keymap.Emacs.UnivArgument
 import Yi.Keymap.Emacs.Utils
@@ -60,7 +61,14 @@ selfInsertKeymap = do
             isPrintableEvent _ = False
 
 keymap :: Keymap
-keymap = selfInsertKeymap <|> makeKeymap keys
+keymap = selfInsertKeymap <|> makeKeymap keys <|> completionKm
+
+completionKm :: Keymap
+completionKm = do some (adjustPriority (-1) (meta (char '/') ?> wordCompleteB))
+                  write resetCompleteB 
+           -- 'adjustPriority' is there to lift the ambiguity between "continuing" completion
+           -- and resetting it (restarting at the 1st completion).
+
 
 placeMark :: BufferM ()
 placeMark = do
@@ -138,7 +146,6 @@ keys =
   , ( "C-y",      write $ yankE)
   , ( "M-!",      write $ shellCommandE)
   , ( "M-p",      write $ cabalConfigureE)
-  , ( "M-/",      write $ wordCompleteB)
   , ( "M-<",      write $ repeatingArg topB)
   , ( "M->",      write $ repeatingArg botB)
   , ( "M-%",      write $ queryReplaceE)

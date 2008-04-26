@@ -11,14 +11,10 @@ module Yi.TextCompletion (
 
 import Yi.Completion
 import Yi.Buffer
-import Text.Regex
 import Data.Char
 import Data.Typeable
 import Data.List
-import qualified Data.Map as M
 
-import Control.Applicative
-import Control.Exception    ( assert )
 import Yi.Buffer.Normal
 import Yi.Buffer.Region
 import Yi.Editor
@@ -30,91 +26,40 @@ import Yi.Core
 -- when doing keyword completion, we need to keep track of the word
 -- we're trying to complete.
 
--- remember the word, if any, we're trying to complete, previous matches
--- we've seen, and the point in the search we are up to.
-newtype Completion = Completion (Maybe (String,M.Map String (),Int)) deriving Typeable
+
+newtype Completion = Completion 
+      [String] -- the list of all possible things we can complete to.
+               -- (this seems very inefficient; but we use lazyness to our advantage)
+    deriving Typeable
 
 instance Initializable Completion where
-    initial = Completion Nothing
---
+    initial = Completion []
+
 -- | Switch out of completion mode.
---
 resetCompleteB :: BufferM ()
-resetCompleteB = setDynamicB (Completion Nothing)
+resetCompleteB = setDynamicB (Completion [])
 
---
 -- The word-completion BufferM (), down the buffer
---
 wordCompleteB :: BufferM ()
-wordCompleteB = getDynamicB >>= loop >>= setDynamicB
+wordCompleteB = do
+  Completion list <- getDynamicB
+  case list of 
+    (x:xs) -> do -- more alternatives, use them.
+       reg <- regionOfPartB Word Backward       
+       replaceRegionB reg x
+       setDynamicB (Completion xs)
+    [] -> do -- no alternatives, build them.
+      w <- readRegionB =<< regionOfPartB Word Backward
+      ws <- wordsForCompletion
+      setDynamicB (Completion $ (nub $ filter (matches w) ws) ++ [w])
+      -- We put 'w' back at the end so we go back to it after seeing
+      -- all possibilities. 
+      -- NOTE: 'nub' can make searching big lists
+      -- quite inefficient. A more clever nub, but still lazy, might
+      -- be a good idea.
+      wordCompleteB -- to pick the 1st possibility.
 
-  where
-    --
-    -- work out where to start our next search
-    --
-    loop :: Completion -> BufferM Completion
-    loop (Completion (Just (w,fm,n))) = do
-            p  <- pointB
-            moveTo (n+1)        -- start where we left off
-            doloop p (w,fm)
-    loop (Completion Nothing) = do
-            p  <- pointB
-            w <- readRegionB =<< regionOfPartB Word Backward
-            rightB  -- start past point
-            doloop p (w,M.singleton w ())
-
-    --
-    -- actually do the search, and analyse the result
-    --
-    doloop :: Int -> (String,M.Map String ())
-           -> BufferM Completion
-
-    doloop p (w,fm) = do
-            m' <- nextWordMatch w
-            moveTo p
-            j <-regionStart <$> regionOfB Word
-            case m' of
-                Just (s,i)
-                    | j == i                -- seen entire file
-                    -> do replaceLeftWith w
-                          return (Completion Nothing)
-
-                    | s `M.member` fm         -- already seen
-                    -> loop (Completion (Just (w,fm,i)))
-
-                    | otherwise             -- new
-                    -> do replaceLeftWith s
-                          return (Completion (Just (w,M.insert s () fm,i)))
-
-                Nothing -> loop (Completion (Just (w,fm,(-1)))) -- goto start of file
-
-    --
-    -- replace word under cursor with @s@
-    --
-    replaceLeftWith :: String -> BufferM ()
-    replaceLeftWith s = do
-        r <- regionOfPartB Word Backward     -- back at start
-        replaceRegionB r s
-        moveTo (regionStart r + length s)
-
-    --
-    -- Return next match, and index of that match (to be used for later searches)
-    -- Leaves the cursor at the next word.
-    --
-    nextWordMatch :: String -> BufferM (Maybe (String,Int))
-    nextWordMatch w = do
-        let re = ("( |\t|\n|\r|^)"++w)
-        let re_c = mkRegex re
-        mi   <- regexB re_c
-        case mi of
-            Nothing -> return Nothing
-            Just (i,j) -> do
-                c <- readAtB i
-                let i' = if i == 0 && isAlphaNum c then 0 else i+1 -- for the space
-                moveTo i'
-                s <- readUnitB Word
-                assert (s /= [] && i /= j) $ return $ Just (s,i')
-
+  where matches x y = x `isPrefixOf` y && x /= y
 
 ----------------------------
 -- Alternative Word Completion
@@ -165,13 +110,18 @@ veryQuickCompleteWord =
         then printMsg "No word to complete"
         else withBuffer0 $ insertN $ drop (length curWord) preText
 
-wordsAndCurrentWord :: BufferM (String, [ String ])
+wordsAndCurrentWord :: BufferM (String, [String])
 wordsAndCurrentWord =
-  do curSize          <- sizeB
-     curText          <- readRegionB $ mkRegion 0 curSize
+  do curText          <- readRegionB =<< regionOfB Document
      curWord          <- readRegionB =<< regionOfPartB Word Backward
-     let curWords     = words curText
-     return (curWord, curWords)
+     return (curWord, words curText)
+
+wordsForCompletion :: BufferM [String]
+wordsForCompletion = do
+  above <- readRegionB =<< regionOfPartB Document Backward
+  below <- readRegionB =<< regionOfPartB Document Forward
+  return (reverse (words above) ++ words below)
+
 
 {-
   Finally obviously we wish to have a much more sophisticated completeword.
