@@ -8,7 +8,6 @@ import StaticFlags
 import Panic
 import qualified Distribution.PackageDescription as DP
 import qualified Distribution.PackageDescription.Parse as DPP
-import qualified Distribution.Simple.Utils as DSU
 import Distribution.Verbosity
 import Control.Concurrent.MVar ( tryTakeMVar, modifyMVar_, newMVar,
                                  readMVar, putMVar )
@@ -56,5 +55,5 @@ newSession fp = initGhc `seq` GHC.newSession fp
 #endif
 
 readPackageDescription = DPP.readPackageDescription silent
-findPackageDesc = DSU.findPackageDesc
+
 
