@@ -59,10 +59,7 @@ historyFinishGen ident getCurValue = do
 
 historyGetGen ident = do
   (History cur cont) <- getA (dynKeyA ident .> dynA)
-  return $ case cont of
-    [] -> ""
-    (x:_) -> x
-  
+  return $ cont !! cur
 
 -- TODO: scrap
 debugHist :: EditorM ()
@@ -75,6 +72,7 @@ historyMove delta = (withBuffer0 . replaceBufferContent) =<< historyMoveGen mini
 historyMoveGen :: String -> Int -> EditorM String -> EditorM String
 historyMoveGen ident delta getCurValue = do
   (History cur cont) <- getA (dynKeyA ident .> dynA) 
+  
   curValue <- getCurValue
   let len = length cont
       next = cur + delta

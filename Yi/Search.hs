@@ -233,6 +233,7 @@ instance Initializable Isearch where
 
 isearchInitE :: Direction -> EditorM ()
 isearchInitE dir = do
+  historyStartGen iSearch
   p <- withBuffer0 pointB
   setDynamic (Isearch [("",p,dir,Nothing)])
   printMsg "I-search: "
@@ -294,8 +295,7 @@ isearchNext0 :: Direction -> EditorM ()
 isearchNext0 newDir = do
   Isearch ((current,p0,_dir,prevOverlay):rest) <- getDynamic
   if null current
-    then do prev <- historyGetGen iSearch
-            printMsg $ "Prev: " ++ show prev
+    then do prev <- historyMoveGen iSearch 1 (return current)
             setDynamic $ Isearch ((current,p0,newDir,prevOverlay):rest)
             isearchAddE prev
     else isearchNext newDir
@@ -340,6 +340,7 @@ isearchFinishE = isearchEnd True
 isearchCancelE :: EditorM ()
 isearchCancelE = isearchEnd False
 
+iSearch :: String
 iSearch = "isearch"
 
 isearchEnd :: Bool -> EditorM ()
