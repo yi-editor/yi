@@ -41,6 +41,8 @@ module Yi.Search (
 
                  ) where
 
+import Prelude ()
+import Yi.Prelude
 import Yi.Buffer
 import Yi.Buffer.HighLevel
 import Text.Regex.Posix.String  ( Regex, compExtended, compIgnoreCase, compNewline, compile, execBlank )
@@ -50,7 +52,7 @@ import qualified Yi.Editor as Editor
 import Data.Bits ( (.|.) )
 import Data.Char
 import Data.Maybe
-import Data.List
+import Data.List hiding (elem)
 import Data.Typeable
 
 import Control.Monad.State
@@ -98,7 +100,7 @@ data SearchF = Basic        -- ^ Use non-modern (i.e. basic) regexes
              | NoNewLine    -- ^ Compile for newline-insensitive matching
     deriving Eq
 
-type SearchMatch = (Int, Int)
+type SearchMatch = (Point, Point) -- ^ beginning and end point of the match. FIXME: use region.
 type SearchResult = Maybe (Either SearchMatch SearchMatch)
 type SearchExp = (String, Regex)
 
@@ -211,7 +213,7 @@ searchAndRepLocal re str = do
                     then return False
                     else do         -- do the replacement
                 moveTo i
-                deleteN (j - i)
+                deleteNBytes (j ~- i) =<< pointB
                 insertN str
                 moveTo p          -- and back to where we were!
                 return True -- signal success
@@ -222,7 +224,7 @@ searchAndRepLocal re str = do
 -- Incremental search
 
 
-newtype Isearch = Isearch [(String, Int, Direction, Maybe Overlay)] deriving Typeable
+newtype Isearch = Isearch [(String, Point, Direction, Maybe Overlay)] deriving Typeable
 -- This contains: (string currently searched, position where we
 -- searched it, direction, overlay for highlighting searched text)
 
@@ -263,7 +265,7 @@ isearchFunE fun = do
     Nothing -> do withBuffer0 $ moveTo prevPoint -- go back to where we were
                   setDynamic $ Isearch ((current,p0,direction,Nothing):s)
                   printMsg $ "Failing I-search: " ++ current
-    Just p -> do  let p2 = p + length current
+    Just p -> do  let p2 = p +~ utf8Size current
                       ov = mkOverlay p p2 (hintStyle)
                   withBuffer0 $ do
                     moveTo p2
@@ -279,7 +281,7 @@ isearchDelE = do
   Isearch s <- getDynamic
   case s of
     ((_,_,_,nextOverlay):(text,p,dir,_):rest) -> do
-      let p2 = p + length text
+      let p2 = p +~ utf8Size text
           ov = mkOverlay p p2 (hintStyle)
       withBuffer0 $ do
         moveTo p2
@@ -317,14 +319,14 @@ isearchNext direction = do
     searchB direction current
   case mp of
     Nothing -> do endPoint <- withBuffer0 $ do 
-                          moveTo (p0 + length current) -- revert to offset we were before.
+                          moveTo (p0 +~ utf8Size current) -- revert to offset we were before.
                           sizeB   
                   printMsg $ "isearch: end of document reached"
                   let wrappedOfs = case direction of
                                      Forward -> 0
                                      Backward -> endPoint
                   setDynamic $ Isearch ((current,wrappedOfs,_dir,prevOverlay):rest) -- prepare to wrap around.
-    Just p -> do  let p2 = p + length current
+    Just p -> do  let p2 = p +~ utf8Size current
                       ov = mkOverlay p p2 hintStyle
                   withBuffer0 $ do
                     moveTo p2
@@ -378,7 +380,7 @@ qrNext b what = do
     Just p -> withGivenBuffer b $ do
                    moveTo p
                    m <- getSelectionMarkB
-                   setMarkPointB m (p+length what)
+                   setMarkPointB m (p +~ utf8Size what)
 
 
 qrReplaceOne :: BufferRef -> String -> String -> YiM ()

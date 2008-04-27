@@ -429,7 +429,7 @@ indentToB level =
      -- Grab the current line
   do line          <- readLnB
      -- grab the current offset (in characters) from the start of the line
-     currentOffset <- offsetFromSol
+     currentOffset <- curCol
      -- move to the start of the line
      moveToSol
      -- delete the whole of the line.

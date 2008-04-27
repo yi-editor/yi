@@ -14,6 +14,7 @@ module Yi.Buffer
   , runBufferDummyWindow
   , keyB
   , curLn
+  , curCol
   , sizeB
   , pointB
   , moveTo
@@ -21,16 +22,15 @@ module Yi.Buffer
   , lineUp
   , lineDown
   , newB
-  , Point
   , Mark
   , Overlay
   , mkOverlay
   , gotoLn
   , gotoLnFrom
-  , offsetFromSol
+--  , offsetFromSol
   , leftB
   , rightB
---  , moveN
+  , moveN
   , leftN
   , rightN
   , insertN
@@ -38,11 +38,13 @@ module Yi.Buffer
   , insertB
   , deleteN
   , nelemsB
+  , nelemsB'
   , writeB
   , getfileB
   , setfileB
   , setnameB
   , deleteNAt
+  , deleteNBytes
   , readB
   , elemsB
   , undosA
@@ -50,7 +52,6 @@ module Yi.Buffer
   , redoB
   , getMarkB
   , getSelectionMarkB
-  , pointSelectionPointDiffB
   , getMarkPointB
   , setMarkPointB
   , setVisibleSelection
@@ -84,11 +85,11 @@ module Yi.Buffer
   , withSyntax0
   , keymapProcessA
   , strokesRangesB
-  , replaceBufferContent
+  , module Yi.Buffer.Basic
   )
 where
 
-import Prelude (ceiling, maybe)
+import Prelude (ceiling)
 import Yi.Prelude
 import System.FilePath
 import Text.Regex.Posix.Wrap    (Regex)
@@ -100,11 +101,14 @@ import Yi.Dynamic
 import Yi.Window
 import Control.Applicative
 import Control.Monad.RWS.Strict hiding (mapM_)
-import Data.List (elemIndex)
+import Data.List (scanl, takeWhile, zip, length)
 import Data.Typeable
 import {-# source #-} Yi.Keymap
 import Yi.Monad
 import Yi.Interact as I
+import qualified Data.ByteString.UTF8 as UTF8
+import qualified Data.ByteString as B
+import Yi.Buffer.Basic
 
 #ifdef TESTING
 import Test.QuickCheck
@@ -113,7 +117,7 @@ import Driver ()
 instance Arbitrary FBuffer where
     arbitrary = do b0 <- return (newB 0 "*buffername*") `ap` arbitrary
                    p0 <- arbitrary
-                   return $ snd $ runBufferDummyWindow b0 (moveTo p0)
+                   return $ snd $ runBufferDummyWindow b0 (moveTo $ Point p0)
 
 -- TODO: make this compile.
 -- prop_replace_point b = snd $ runBufferDummyWindow b $ do
@@ -253,7 +257,7 @@ instance Show FBuffer where
 --
 getModeLine :: BufferM String
 getModeLine = do
-    col <- offsetFromSol
+    col <- curCol
     pos <- pointB
     ln <- curLn
     p <- pointB
@@ -270,10 +274,8 @@ getModeLine = do
            "  " ++ pct ++
            "  " ++ show p
 
---
--- | Give a point, and the file size, gives us a percent string
---
-getPercent :: Int -> Int -> String
+-- | Given a point, and the file size, gives us a percent string
+getPercent :: Point -> Point -> String
 getPercent a b = show p ++ "%"
     where p = ceiling ((fromIntegral a) / (fromIntegral b) * 100 :: Double) :: Int
 
@@ -374,26 +376,31 @@ newB unique nm s =
             , process = I.End
             }
 
--- | Number of characters in the buffer
-sizeB :: BufferM Int
+-- | Point of eof
+sizeB :: BufferM Point
 sizeB = queryBuffer sizeBI
 
 -- | Extract the current point
-pointB :: BufferM Int
+pointB :: BufferM Point
 pointB = queryBuffer pointBI
 
 -- | Return @n@ elems starting at @i@ of the buffer as a list
-nelemsB :: Int -> Int -> BufferM [Char]
+nelemsB :: Int -> Point -> BufferM [Char]
 nelemsB n i = queryBuffer $ nelemsBI n i
 
-strokesRangesB :: Int -> Int -> BufferM [[Stroke]]
-strokesRangesB n i = queryBuffer $ strokesRangesBI n i
+-- | Return @n@ bytes starting at @i@ of the buffer as a list, and convert it to a string.
+nelemsB' :: Size -> Point -> BufferM [Char]
+nelemsB' n i = queryBuffer $ nelemsBI' n i
+
+
+strokesRangesB :: Point -> Point -> BufferM [[Stroke]]
+strokesRangesB i j = queryBuffer $ strokesRangesBI i j
 
 ------------------------------------------------------------------------
 -- Point based operations
 
 -- | Move point in buffer to the given index
-moveTo :: Int -> BufferM ()
+moveTo :: Point -> BufferM ()
 moveTo x = do
   forgetPreferCol
   modifyBuffer $ moveToI x
@@ -421,20 +428,17 @@ revertPendingUpdatesB = do
 writeB :: Char -> BufferM ()
 writeB c = do
   off <- pointB
-  mapM_ applyUpdate [Delete off 1, Insert off [c]]
+  mapM_ applyUpdate [Delete off 1, Insert off (UTF8.fromString [c])]
 
 ------------------------------------------------------------------------
 
 -- | Insert the list at specified point, extending size of buffer
-insertNAt :: [Char] -> Int -> BufferM ()
-insertNAt cs pnt = applyUpdate (Insert pnt cs)
-
+insertNAt :: [Char] -> Point -> BufferM ()
+insertNAt cs pnt = applyUpdate (Insert pnt $ UTF8.fromString cs)
 
 -- | Insert the list at current point, extending size of buffer
 insertN :: [Char] -> BufferM ()
-insertN cs = do
-  pnt <- pointB
-  applyUpdate (Insert pnt cs)
+insertN cs = insertNAt cs =<< pointB
 
 -- | Insert the char at current point, extending size of buffer
 insertB :: Char -> BufferM ()
@@ -443,8 +447,15 @@ insertB = insertN . return
 ------------------------------------------------------------------------
 
 -- | @deleteNAt n p@ deletes @n@ characters forwards from position @p@
-deleteNAt :: Int -> Int -> BufferM ()
-deleteNAt n pos = applyUpdate (Delete pos n)
+deleteNAt :: Int -> Point -> BufferM ()
+deleteNAt n pos = do
+  els <- nelemsB n pos
+  applyUpdate (Delete pos $ Size $ B.length $ UTF8.fromString els)
+
+-- | @deleteNBytes n p@ deletes @n@ byes forwards from position @p@
+deleteNBytes :: Size -> Point -> BufferM ()
+deleteNBytes n pos = applyUpdate (Delete pos n)
+
 
 ------------------------------------------------------------------------
 -- Line based editing
@@ -463,7 +474,7 @@ gotoLn x = do moveTo 0
 ---------------------------------------------------------------------
 
 -- | Return index of next (or previous) string in buffer that matches argument
-searchB :: Direction -> [Char] -> BufferM (Maybe Int)
+searchB :: Direction -> [Char] -> BufferM (Maybe Point)
 searchB dir s = queryBuffer (searchBI dir s)
 
 setMode0 :: forall syntax. Mode syntax -> FBuffer -> FBuffer
@@ -487,16 +498,16 @@ withSyntax0 f FBuffer {bmode = m, rawbuf = rb} = f m (getAst rb)
            
 
 -- | Return indices of next string in buffer matched by regex
-regexB :: Regex -> BufferM (Maybe (Int,Int))
+regexB :: Regex -> BufferM (Maybe (Point,Point))
 regexB = queryBuffer . regexBI
 
 ---------------------------------------------------------------------
 
 -- | Set a mark in this buffer
-setMarkPointB :: Mark -> Int -> BufferM ()
+setMarkPointB :: Mark -> Point -> BufferM ()
 setMarkPointB m pos = modifyBuffer $ setMarkPointBI m pos
 
-getMarkPointB :: Mark -> BufferM Int
+getMarkPointB :: Mark -> BufferM Point
 getMarkPointB = queryBuffer . getMarkPointBI
 
 unsetMarkB :: BufferM ()
@@ -511,23 +522,8 @@ getMarkB m = queryAndModify (getMarkBI m)
 getSelectionMarkB :: BufferM Mark
 getSelectionMarkB = queryBuffer getSelectionMarkBI
 
--- | Returns the current difference in the selection point
--- and the current point. This will be negative if the point
--- ABOVE the selection point.
--- This can be therefore used to test which is above or below.
--- eg (do offset <- pointSelectionPointDiffB
---        if offset < 0
---           then point is above selection mark
---           else point is at below the selection mark.
-pointSelectionPointDiffB :: BufferM Int
-pointSelectionPointDiffB =
-  do m <- getMarkPointB =<< getSelectionMarkB
-     p <- pointB
-     return (p - m)
 
-
-
--- | Move point by the given offset.
+-- | Move point by the given number of characters.
 -- A negative offset moves backwards a positive one forward.
 moveN :: Int -> BufferM ()
 moveN n = do
@@ -564,14 +560,15 @@ lineMoveRel :: Int -> BufferM Int
 lineMoveRel n = do
   prefCol <- getA preferColA
   targetCol <- case prefCol of
-    Nothing -> offsetFromSol
+    Nothing -> curCol
     Just x -> return x
   ofs <- gotoLnFrom n
   gotoLnFrom 0 -- make sure we are at the start of line.
   solPnt <- pointB
-  chrs <- nelemsB targetCol solPnt
-  moveTo $ solPnt + maybe targetCol id (elemIndex '\n' chrs)
-  --logPutStrLn $ "lineMoveRel: targetCol = " ++ show targetCol
+  chrs <- nelemsB maxBound solPnt -- get all chars in the buffer, lazily.
+  let cols = scanl colMove 0 chrs    -- columns corresponding to the char
+  let toSkip = takeWhile (\(char,col) -> char /= '\n' && col < targetCol) (zip chrs cols)
+  moveN (length toSkip)
   setPrefCol (Just targetCol)
   return ofs
 
@@ -595,8 +592,7 @@ lineDown = lineMoveRel 1 >> return ()
 
 -- | Return the contents of the buffer as a list
 elemsB :: BufferM [Char]
-elemsB = do n <- sizeB
-            nelemsB n 0
+elemsB = nelemsB maxBound 0
 
 -- | Read the character at the current point
 readB :: BufferM Char
@@ -604,7 +600,7 @@ readB = pointB >>= readAtB
 
 -- | Read the character at the given index
 -- This is an unsafe operation: character NUL is returned when out of bounds
-readAtB :: Int -> BufferM Char
+readAtB :: Point -> BufferM Char
 readAtB i = do
     s <- nelemsB 1 i
     return $ case s of
@@ -618,12 +614,22 @@ deleteN n = pointB >>= deleteNAt n
 ------------------------------------------------------------------------
 
 -- | Offset from start of line
-offsetFromSol :: BufferM Int
-offsetFromSol = queryBuffer offsetFromSolBI
+-- offsetFromSol :: BufferM Int
+-- offsetFromSol = queryBuffer offsetFromSolBI
 
--- charsFromSol :: BufferM [String]
--- charsFromSol = do
-  
+-- | Current column
+-- Note that this is different from offset or number of chars from sol.
+-- (This takes into account tabs, unicode chars, etc.)
+curCol :: BufferM Int
+curCol = do 
+  chars <- queryBuffer charsFromSolBI
+  return (foldl colMove 0 chars)
+
+colMove :: Int -> Char -> Int
+colMove col '\t' = (col + 7) `mod` 8
+colMove col _    = col + 1
+        
+
 
 -- | Go to line indexed from current point
 -- Returns the actual moved difference which of course
@@ -665,9 +671,3 @@ askWindow :: (Window -> a) -> BufferM a
 askWindow = asks
 
 
-replaceBufferContent :: String -> BufferM ()
-replaceBufferContent newvalue = do
-              sz <- sizeB
-              moveTo 0
-              deleteN sz
-              insertN newvalue

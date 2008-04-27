@@ -62,12 +62,14 @@ getAllSubTrees t = t : concatMap getAllSubTrees (subtrees t)
 
 type TT = Tok Token
 
-getIndentingSubtree :: [Tree TT] -> Int -> Int -> Maybe (Tree TT)
+-- | Look after the given point on the given line.
+getIndentingSubtree :: [Tree TT] -> Point -> Int -> Maybe (Tree TT)
 getIndentingSubtree roots offset line
     = listToMaybe [t' | root <- roots, t'@(Stmt ((t:_):_)) <- getAllSubTrees root, let Just tok = getFirstToken t, let posn = tokPosn tok,
        posnOfs posn > offset, posnLine posn == line]
 
-getSubtreeSpan :: Tree TT -> (Int, Int)
+-- | returns: First offset; number of lines.
+getSubtreeSpan :: Tree TT -> (Point, Int)
 getSubtreeSpan tree = (posnOfs $ first, lastLine - firstLine)
     where bounds@[first, _last] = fmap (tokPosn . assertJust) [getFirstToken tree, getLastToken tree]
           [firstLine, lastLine] = fmap posnLine bounds
@@ -126,7 +128,7 @@ parse' toTok fromT = pExpr <* eof
       -- we don't try to recover errors with them.
 
 -- TODO: (optimization) make sure we take in account the begin, so we don't return useless strokes
-getStrokes :: Int -> Int -> Int -> Expr (Tok Token) -> [(Int, Style, Int)]
+getStrokes :: Point -> Point -> Point -> Expr (Tok Token) -> [Stroke]
 getStrokes point _begin _end t0 = result 
     where getStrokes' (Atom t) = (ts t :)
           getStrokes' (Error t) = (modStroke errorStyle (ts t) :) -- paint in red
@@ -146,8 +148,8 @@ getStrokes point _begin _end t0 = result
 
 modStroke f (l,s,r) = (l,f ++ s,r) 
 
-tokenToStroke :: Tok Token -> (Int, Style, Int)
-tokenToStroke (Tok t len posn) = (posnOfs posn, tokenToStyle t, posnOfs posn + len)
+tokenToStroke :: Tok Token -> Stroke
+tokenToStroke (Tok t len posn) = (posnOfs posn, tokenToStyle t, posnOfs posn +~ len)
 
 
 ----------------------

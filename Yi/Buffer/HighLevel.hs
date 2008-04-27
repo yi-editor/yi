@@ -115,10 +115,7 @@ atEof = atBoundaryB Document Forward
 
 -- | Get the current line and column number
 getLineAndCol :: BufferM (Int, Int)
-getLineAndCol = do
-  lineNo <- curLn
-  colNo  <- offsetFromSol
-  return (lineNo, colNo)
+getLineAndCol = (,) <$> curLn <*> curCol
 
 -- | Read the line the point is on
 readLnB :: BufferM String
@@ -184,11 +181,11 @@ swapB = do eol <- atEol
 -- | Marks
 
 -- | Set the current buffer mark
-setSelectionMarkPointB :: Int -> BufferM ()
+setSelectionMarkPointB :: Point -> BufferM ()
 setSelectionMarkPointB pos = do m <- getSelectionMarkB; setMarkPointB m pos
 
 -- | Get the current buffer mark
-getSelectionMarkPointB :: BufferM Int
+getSelectionMarkPointB :: BufferM Point
 getSelectionMarkPointB = do m <- getSelectionMarkB; getMarkPointB m
 
 -- | Exchange point & mark.
@@ -210,7 +207,7 @@ data BufferFileInfo =
                    , bufInfoSize     :: Int
                    , bufInfoLineNo   :: Int
                    , bufInfoColNo    :: Int
-                   , bufInfoCharNo   :: Int
+                   , bufInfoCharNo   :: Point
                    , bufInfoPercent  :: String
                    , bufInfoModified :: Bool
                    }
@@ -222,10 +219,10 @@ bufInfoB = do
     p <- pointB
     m <- isUnchangedB
     l <- curLn
-    c <- offsetFromSol
+    c <- curCol
     nm <- gets name -- FIXME: should be gets file
     let bufInfo = BufferFileInfo { bufInfoFileName = nm
-                                 , bufInfoSize     = s
+                                 , bufInfoSize     = fromIntegral s
                                  , bufInfoLineNo   = l
                                  , bufInfoColNo    = c
                                  , bufInfoCharNo   = p
@@ -609,3 +606,9 @@ justifySelectionWithTopB =
                       justifyLine :: String -> String
                       justifyLine "" = ""
                       justifyLine l  = topIndent ++ (dropWhile isSpace l)
+
+
+replaceBufferContent :: String -> BufferM ()
+replaceBufferContent newvalue = do
+  r <- regionOfB Document
+  replaceRegionB r newvalue

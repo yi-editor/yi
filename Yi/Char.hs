@@ -83,3 +83,15 @@ metaBit :: Int
 metaBit = 7
 
 
+
+utf8Length :: Char -> Int
+utf8Length c = let i = ord c in
+                 if i < 0x80 then
+                     1
+                 else if i < 0x800 then
+                     2
+                 else if i < 0x10000 then
+                     3
+                 else 
+                     4
+

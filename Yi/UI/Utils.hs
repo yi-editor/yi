@@ -7,7 +7,7 @@ import Yi.Buffer
 import Yi.Window
 
 -- | return index of Sol on line @n@ above current line
-indexOfSolAbove :: Int -> BufferM Int
+indexOfSolAbove :: Int -> BufferM Point
 indexOfSolAbove n = savingPointB $ do
     gotoLnFrom (negate n)
     pointB

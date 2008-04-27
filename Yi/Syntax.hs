@@ -1,4 +1,4 @@
-{-# LANGUAGE ScopedTypeVariables, ExistentialQuantification #-}
+{-# LANGUAGE ScopedTypeVariables, ExistentialQuantification, GeneralizedNewtypeDeriving, MultiParamTypeClasses #-}
 --
 -- Copyright (C) 2007 Don Stewart - http://www.cse.unsw.edu.au/~dons
 --
@@ -17,14 +17,17 @@ module Yi.Syntax
   , Scanner (..)
   , ExtHL        ( .. )
   , noHighlighter
-  , Point, Size, Stroke
+  , Point(..), Size(..), Length, Stroke
   ) 
 where
 
 import Yi.Style
+import Yi.Prelude
+import Prelude ()
+import Yi.Buffer.Basic
 
-type Point = Int
-type Size = Int
+type Length = Int                   -- size in #codepoints
+
 type Stroke = (Point,Style,Point)
 
 
@@ -35,12 +38,12 @@ type Stroke = (Point,Style,Point)
 -- FIXME: this actually does more than just HL, so the names are silly.
 -- FIXME: "State" is actually CacheState
 
-type Highlighter' = Highlighter Int Char
+type Highlighter' = Highlighter Point Char
 
 data Highlighter st tok cache syntax = 
   SynHL { hlStartState :: cache -- ^ The start state for the highlighter.
-        , hlRun :: Scanner st tok -> Int -> cache -> cache
-        , hlGetStrokes :: Int -> Int -> Int -> cache -> [Stroke]
+        , hlRun :: Scanner st tok -> Point -> cache -> cache
+        , hlGetStrokes :: Point -> Point -> Point -> cache -> [Stroke]
         , hlGetTree :: cache -> syntax
         }
 

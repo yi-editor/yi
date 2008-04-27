@@ -55,9 +55,9 @@ checks (p:ps) (x:xs) = p x && checks ps xs
 
 -- | read some characters in the specified direction, for boundary testing purposes
 peekB :: Direction -> Int -> Int -> BufferM String
-peekB dir siz ofs =
-  do p <- pointB
-     rev dir <$> nelemsB siz (p + dirOfs)
+peekB dir siz ofs = savingPointB $
+  do moveN dirOfs
+     rev dir <$> (nelemsB siz =<< pointB)
   where
   dirOfs = case dir of
              Forward  -> ofs

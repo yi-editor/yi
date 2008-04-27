@@ -26,6 +26,8 @@ import Data.Typeable
 import Yi.Window
 import Yi.Buffer
 import Control.Applicative
+import Yi.Prelude
+import Prelude ()
 
 -- | The region data type. 
 --The region is semi open: it includes the start but not the end bound. This allows simpler region-manipulation algorithms.
@@ -62,11 +64,11 @@ emptyRegion = Region 0 0
 
 -- | Delete an arbitrary part of the buffer
 deleteRegionB :: Region -> BufferM ()
-deleteRegionB r = deleteNAt (regionEnd r - regionStart r) (regionStart r)
+deleteRegionB r = deleteNBytes (regionEnd r ~- regionStart r) (regionStart r)
 
 -- | Read an arbitrary part of the buffer
 readRegionB :: Region -> BufferM String
-readRegionB r = nelemsB (regionEnd r - i) i
+readRegionB r = nelemsB' (regionEnd r ~- i) i
     where i = regionStart r
 
 replaceRegionB :: Region -> String -> BufferM ()
@@ -77,7 +79,7 @@ replaceRegionB r s = do
 mapRegionB :: Region -> (Char -> Char) -> BufferM ()
 mapRegionB r f = do
   text <- readRegionB r
-  replaceRegionB r (map f text)
+  replaceRegionB r (fmap f text)
 
 -- | Swap the content of two Regions
 swapRegionsB :: Region -> Region -> BufferM ()  

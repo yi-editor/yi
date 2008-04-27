@@ -47,7 +47,7 @@ jumpToNextNote = do
 
 -- | Position of the cursor
 cursorPos :: BufferM (Maybe String, Int, Int)
-cursorPos = (,,) <$> gets file <*> curLn <*> offsetFromSol
+cursorPos = (,,) <$> gets file <*> curLn <*> curCol
 
 -- | Type of the symbol at current position
 typeAtPos :: YiM String

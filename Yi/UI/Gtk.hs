@@ -255,7 +255,7 @@ handleClick ui w event = do
   let wy = round (eventY event)
   (bx, by) <- textViewWindowToBufferCoords tv TextWindowText (wx,wy)
   iter <- textViewGetIterAtLocation tv bx by
-  p1 <- get iter textIterOffset
+  p1 <- Point <$> get iter textIterOffset
 
   -- maybe focus the window
   logPutStrLn $ "Clicked inside window: " ++ show w
@@ -279,7 +279,7 @@ handleClick ui w event = do
               else do txt <- withGivenBuffer0 b $ do m <- getSelectionMarkB
                                                      setMarkPointB m p1
                                                      let [i,j] = sort [p1,p0]
-                                                     nelemsB (j-i) i
+                                                     nelemsB' (j~-i) i
                       setRegE txt
           (ReleaseClick, MiddleButton) -> do
             txt <- getRegE
@@ -379,7 +379,7 @@ refresh ui e = do
       forM_ ([u | TextUpdate u <- pendingUpdates buf]) $ applyUpdate gtkBuf
       let ((size,p),_) = runBufferDummyWindow buf ((,) <$> sizeB <*> pointB)
       replaceTagsIn ui (inBounds (p-100) size) (inBounds (p+100) size) buf gtkBuf
-      forM_ ([(s,s+l) | StyleUpdate s l <- pendingUpdates buf]) $ \(s,e') -> replaceTagsIn ui (inBounds s size) (inBounds e' size) buf gtkBuf
+      forM_ ([(s,s+~l) | StyleUpdate s l <- pendingUpdates buf]) $ \(s,e') -> replaceTagsIn ui (inBounds s size) (inBounds e' size) buf gtkBuf
     logPutStrLn $ "syncing: " ++ show ws
     logPutStrLn $ "with: " ++ show cache
     cache' <- syncWindows e ui (toList $ WS.withFocus $ ws) cache
@@ -389,8 +389,8 @@ refresh ui e = do
         do let buf = findBufferWith (bufkey w) e
            gtkBuf <- getGtkBuffer ui buf
 
-           let (p0, _) = runBufferDummyWindow buf pointB
-           let (p1, _) = runBufferDummyWindow buf (getSelectionMarkB >>= getMarkPointB)
+           let (Point p0, _) = runBufferDummyWindow buf pointB
+           let (Point p1, _) = runBufferDummyWindow buf (getSelectionMarkB >>= getMarkPointB)
            let (showSel, _) = runBufferDummyWindow buf (getA highlightSelectionA)
            i <- textBufferGetIterAtOffset gtkBuf p0
            if showSel 
@@ -406,25 +406,25 @@ refresh ui e = do
 
 replaceTagsIn :: UI -> Point -> Point -> FBuffer -> TextBuffer -> IO ()
 replaceTagsIn ui from to buf gtkBuf = do
-  i <- textBufferGetIterAtOffset gtkBuf from
-  i' <- textBufferGetIterAtOffset gtkBuf to
-  let (styleSpans, _) = runBufferDummyWindow buf (strokesRangesB (to - from) from)
+  i <- textBufferGetIterAtOffset gtkBuf (fromPoint from)
+  i' <- textBufferGetIterAtOffset gtkBuf (fromPoint to)
+  let (styleSpans, _) = runBufferDummyWindow buf (strokesRangesB from to)
   textBufferRemoveAllTags gtkBuf i i'
   forM_ (concat styleSpans) $ \(l,s,r) -> do
-    f <- textBufferGetIterAtOffset gtkBuf l
-    t <- textBufferGetIterAtOffset gtkBuf r
+    f <- textBufferGetIterAtOffset gtkBuf (fromPoint l)
+    t <- textBufferGetIterAtOffset gtkBuf (fromPoint r)
     forM s $ \a -> do 
       tag <- styleToTag ui a
       textBufferApplyTag gtkBuf tag f t
 
 applyUpdate :: TextBuffer -> Update -> IO ()
-applyUpdate buf (Insert p s) = do
+applyUpdate buf (Insert (Point p) s) = do
   i <- textBufferGetIterAtOffset buf p
-  textBufferInsert buf i s
+  textBufferInsert buf i (fromUTF8ByteString s)
 
 applyUpdate buf (Delete p s) = do
-  i0 <- textBufferGetIterAtOffset buf p
-  i1 <- textBufferGetIterAtOffset buf (p + s)
+  i0 <- textBufferGetIterAtOffset buf (fromPoint p)
+  i1 <- textBufferGetIterAtOffset buf (fromPoint (p +~ s))
   textBufferDelete buf i0 i1
 
 styleToTag :: UI -> Yi.Style.Attr -> IO TextTag
@@ -485,7 +485,9 @@ getGtkBuffer ui b = do
 newGtkBuffer :: UI -> FBuffer -> IO TextBuffer
 newGtkBuffer ui b = do
   buf <- textBufferNew (Just (tagTable ui))
-  let (txt, _) = runBufferDummyWindow b (revertPendingUpdatesB >> elemsB)
+  let ((txt,sz), _) = runBufferDummyWindow b $ do
+                      revertPendingUpdatesB
+                      (,) <$> elemsB <*> sizeB
   textBufferSetText buf txt
-  replaceTagsIn ui 0 (length txt) b buf
+  replaceTagsIn ui 0 sz b buf
   return buf

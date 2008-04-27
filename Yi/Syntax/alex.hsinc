@@ -8,7 +8,7 @@
 alexScanToken :: (AlexState HlState, AlexInput) -> Maybe (Tok Token, (AlexState HlState, AlexInput))
 alexScanToken (AlexState state lookedOfs pos, inp) = 
     let (scn,lookahead) = alexScan' inp (stateToInit state) 
-        lookedOfs' = max lookedOfs (posnOfs pos + lookahead) in
+        lookedOfs' = max lookedOfs (posnOfs pos +~ Size lookahead) in
     case scn of
 		AlexEOF -> Nothing
 		AlexError _ -> error "lexical error"
@@ -18,10 +18,22 @@ alexScanToken (AlexState state lookedOfs pos, inp) =
 		AlexToken inp' len act -> 
                     let (state', style) = act chunk state 
                         chunk = take (fromIntegral len) inp
-                    in Just (Tok style len pos, (AlexState state' lookedOfs' (moveStr pos chunk), inp'))
+                    in Just (Tok style (Size len) pos, (AlexState state' lookedOfs' (moveStr pos chunk), inp'))
 
 alexScan' input (I# (sc))
   = alexScanUser' undefined input (I# (sc))
+
+utf8Length :: Char -> Int#
+utf8Length c = let i = ord c in
+                 if i < 0x80 then
+                     1#
+                 else if i < 0x800 then
+                     2#
+                 else if i < 0x10000 then
+                     3#
+                 else 
+                     4#
+
 
 alexScanUser' user input (I# (sc))
   = case alex_scan_tkn' user input 0# input sc AlexNone of
@@ -55,12 +67,13 @@ alex_scan_tkn' user orig_input len input s last_acc =
 		new_s = if (offset >=# 0#) && (check ==# ord_c)
 			  then alexIndexInt16OffAddr alex_table offset
 			  else alexIndexInt16OffAddr alex_deflt s
-                new_len = len +# 1#
+                new_len = len +# utf8Length c
 	in
 	case new_s of 
 	    -1# -> (new_acc, input, I# new_len)
 		-- on an error, we want to keep the input *before* the
 		-- character that failed, not after.
+                -- (but still, we looked after)
     	    _ -> alex_scan_tkn' user orig_input new_len
 			new_input new_s new_acc
 

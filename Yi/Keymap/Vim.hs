@@ -9,14 +9,15 @@
 module Yi.Keymap.Vim ( keymap, VimMode, viWrite ) where
 
 import Yi.Yi
-import Prelude       hiding ( any, error )
+import Yi.Prelude
+import Prelude (maybe, length, filter, map, drop, takeWhile, dropWhile, break)
 
 import Data.Char
 import Data.Maybe           ( fromMaybe )
 import Data.Dynamic
 
 import Control.Exception    ( ioErrors, try, evaluate )
-import Control.Monad.State
+import Control.Monad.State hiding (mapM_, mapM)
 
 import Yi.Editor
 import Yi.Accessor
@@ -257,13 +258,12 @@ singleCmdFM =
     ,('X',      \i -> withBuffer $ do p <- pointB
                                       moveXorSol i
                                       q <- pointB
-                                      when (p-q > 0) $ deleteN (p-q) )
+                                      deleteNBytes (p~-q) q)
 
     ,('x',      \i -> withBuffer $ do p <- pointB -- not handling eol properly
                                       moveXorEol i
                                       q <- pointB
-                                      moveTo p
-                                      when (q-p > 0) $ deleteN (q-p))
+                                      deleteNBytes (q~-p) p)
 
     ,('p',      withEditor . flip replicateM_ pasteAfter)
 

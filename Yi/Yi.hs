@@ -33,7 +33,7 @@ module Yi.Yi (
         module Yi.Style,
         defaultPublishedActions
    ) where
-import Control.Monad
+import Control.Monad hiding (mapM_, mapM)
 import Control.Applicative
 import Yi.Buffer
 import Yi.Buffer.HighLevel

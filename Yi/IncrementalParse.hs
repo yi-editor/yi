@@ -295,7 +295,7 @@ data Cache st token result = Cache result (States st token result)
 -- | Turn a parser into an highlighter. (This needs some helper functions)
 mkHighlighter :: forall lexState token result st.
                  P token result
-              -> (Int -> Int -> Int -> result -> [Stroke])
+              -> (Point -> Point -> Point -> result -> [Stroke])
               -> (st -> AlexState lexState)
               -> Highlighter st token (Cache st token result) result
 mkHighlighter parser getStrokes getAlexState = 
@@ -308,11 +308,11 @@ mkHighlighter parser getStrokes getAlexState =
         emptyResult :: result
         emptyResult = fst $ evalR $ pushEof $ runP parser
 
-        getStrokes' :: Int -> Int -> Int -> Cache st token result -> [Stroke]
+        getStrokes' :: Point -> Point -> Point -> Cache st token result -> [Stroke]
         getStrokes' point start end (Cache r _) = getStrokes point start end r
 
         updateCache :: Scanner st token
-                     -> Int
+                     -> Point
                      -> Cache st token result
                      -> Cache st token result
         updateCache scanner dirtyOffset (Cache _ cachedStates) = Cache newResult newCachedStates

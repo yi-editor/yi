@@ -7,6 +7,7 @@
 module Yi.History where
 
 import Yi.Buffer
+import Yi.Buffer.HighLevel (replaceBufferContent)
 import Data.Char
 import Data.List
 import Data.Dynamic

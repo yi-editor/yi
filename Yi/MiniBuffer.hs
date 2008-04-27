@@ -8,6 +8,7 @@ import Data.List (isInfixOf)
 import Data.Typeable
 import Yi.Buffer
 import Yi.Buffer.Region
+import Yi.Buffer.HighLevel
 import Yi.Core
 import Yi.Editor
 import Yi.History
@@ -85,13 +86,12 @@ withMinibufferFin prompt possbilities act
 completionFunction :: (String -> YiM String) -> YiM ()
 completionFunction f = do
   p <- withBuffer pointB
-  text <- withBuffer $ readRegionB $ mkRegion 0 p
+  let r = mkRegion 0 p
+  text <- withBuffer $ readRegionB r
   compl <- f text
   -- it's important to do this before removing the text,
   -- so if the completion function raises an exception, we don't delete the buffer contents.
-  withBuffer $ do moveTo 0
-                  deleteN p
-                  insertN compl
+  withBuffer $ replaceRegionB r compl
 
 class Promptable a where
     getPromptedValue :: String -> a

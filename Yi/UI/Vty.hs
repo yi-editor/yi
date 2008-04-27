@@ -44,9 +44,9 @@ import Yi.UI.Common (UIConfig(..))
 import Yi.Window
 import Yi.Style as Style
 import Graphics.Vty as Vty
-import Codec.Binary.UTF8.String as UTF8
-import Yi.UI.Utils
 
+import Yi.UI.Utils
+import Yi.Syntax (Stroke)
 ------------------------------------------------------------------------
 
 data Rendered = 
@@ -222,7 +222,7 @@ scrollAndRenderWindow cfg e sty width (win,hasFocus) = (win' {bospnt = bos}, ren
 
 -- | Draw a window
 -- TODO: horizontal scrolling.
-drawWindow :: UIConfig -> FBuffer -> UIStyle -> Bool -> Int -> Window -> (Rendered, Int)
+drawWindow :: UIConfig -> FBuffer -> UIStyle -> Bool -> Int -> Window -> (Rendered, Point)
 drawWindow cfg b sty focused w win = (Rendered { picture = pict,cursor = cur}, bos)
             
     where
@@ -234,14 +234,15 @@ drawWindow cfg b sty focused w win = (Rendered { picture = pict,cursor = cur}, b
         eofsty = eof sty
         (selreg, _) = runBuffer win b getSelectRegionB
         (point, _) = runBuffer win b pointB
-        (text, _) = runBuffer win b (nelemsB         (w*h') (tospnt win)) -- read enough chars from the buffer.
-        (strokes, _) = runBuffer win b (strokesRangesB  (w*h') (tospnt win)) -- corresponding strokes
+        sz = Size (w*h')
+        (text, _)    = runBuffer win b (nelemsB         maxBound (tospnt win)) -- read enough chars from the buffer.
+        (strokes, _) = runBuffer win b (strokesRangesB  (tospnt win) (tospnt win +~ sz)) -- corresponding strokes
         bufData = paintChars (tospnt win) attr (paintPicture attr (map (map toVtyStroke) strokes)) text
         (showSel, _) = runBuffer win b (gets highlightSelection)
         prompt = if isMini win then name b else ""
 
         (rendered,bos,cur) = drawText h' w
-                                (tospnt win - length prompt) 
+                                (tospnt win) 
                                 point (if showSel then selreg else emptyRegion)
                                 selsty wsty 
                                 (zip prompt (repeat wsty) ++ bufData ++ [(' ',attr)])
@@ -278,7 +279,7 @@ drawText h w topPoint point selreg selsty wsty bufData
   -- | Remember the point of each char
   annotateWithPoint = annotateWithPoint' topPoint
   annotateWithPoint' _ []          = []
-  annotateWithPoint' p ((c,a):cs)  = (c, (a,p)) : annotateWithPoint' (p + length (UTF8.encode [c])) cs
+  annotateWithPoint' p ((c,a):cs)  = (c, (a,p)) : annotateWithPoint' (p +~ utf8Size [c]) cs
 
 
   lns0 = take h $ concatMap (wrapLine w) $ map (concatMap expandGraphic) $ lines' $ annotateWithPoint $ bufData
@@ -440,17 +441,18 @@ styleToAttr = foldr (.) id . map attrToAttr
 
 -- | Return @n@ elems starting at @i@ of the buffer as a list.
 -- This routine also does syntax highlighting and applies overlays.
-paintChars :: Int -> a -> [(Int,a)] -> [Char] -> [(Char, a)]
+paintChars :: Point -> a -> [(Point,a)] -> [Char] -> [(Char, a)]
 paintChars _   sty [] cs = setSty sty cs
 paintChars pos sty ((endPos,sty'):xs) cs = setSty sty left ++ paintChars endPos sty' xs right
-        where (left, right) = splitAt (endPos - pos) cs
+        where (left, right) = splitAt (fromIntegral (endPos - pos)) cs 
+   -- BUG: we should count how many chars yield this endPos
 
 setSty :: a -> [Char] -> [(Char, a)]
 setSty sty cs = [(c,sty) | c <- cs]
 
 
 -- | @paintStrokes colorToTheRight strokes picture@: paint the strokes over a given picture.
-paintStrokes :: a -> [(Int,(a -> a),Int)] -> [(Int,a)] -> [(Int,a)]
+paintStrokes :: a -> [(Point,(a -> a),Point)] -> [(Point,a)] -> [(Point,a)]
 paintStrokes _  []     rest = rest
 paintStrokes s0 ss     [] = concat [[(l,s s0),(r,s0)] | (l,s,r) <- ss]
 paintStrokes s0 ls@((l,s,r):ts) lp@((p,s'):tp) 
@@ -459,8 +461,8 @@ paintStrokes s0 ls@((l,s,r):ts) lp@((p,s'):tp)
              | r == p = (l,s s0) : (p,s') : paintStrokes s' ts tp 
              | otherwise {-r < p-}  = (l,s s0) : (r,s0) : paintStrokes s' ts lp
 
-paintPicture :: a -> [[(Int,(a -> a),Int)]] -> [(Int,a)]
+paintPicture :: a -> [[(Point,(a -> a),Point)]] -> [(Point,a)]
 paintPicture a = foldr (paintStrokes a) []
 
-toVtyStroke :: (Int, Style, Int) -> (Int, Vty.Attr -> Vty.Attr, Int)
+toVtyStroke :: Stroke -> (Point, Vty.Attr -> Vty.Attr, Point)
 toVtyStroke (l,s,r) = (l,styleToAttr s,r)

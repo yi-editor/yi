@@ -283,12 +283,13 @@ diredRefresh = do
 -- | Returns a tuple containing the textual region (the end of) which is used for 'click' detection
 --   and the FilePath of the file represented by that textual region
 insertDiredLine :: ([String], Style, String) -> YiM (Point, Point, FilePath)
-insertDiredLine (fields, sty, filenm) = do
-    withBuffer $ insertN $ (concat $ intersperse " " fields) ++ "\n"
-    p <- withBuffer pointB
-    let p1 = p - length (last fields) - 1
-        p2 = p - 1
-    when (sty /= defaultStyle) $ withBuffer (addOverlayB (mkOverlay p1 p2 sty) >> return ())
+insertDiredLine (fields, sty, filenm) = withBuffer $ do
+    insertN $ (concat $ intersperse " " (init fields))
+    p1 <- pointB
+    insertN (" " ++ last fields)
+    p2 <- pointB
+    insertN "\n"
+    when (sty /= defaultStyle) $ (addOverlayB (mkOverlay p1 p2 sty) >> return ())
     return (p1, p2, filenm)
 
 data DRStrings = DRPerms {undrs :: String}

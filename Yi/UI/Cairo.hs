@@ -247,7 +247,7 @@ handleClick ui w event = do
   -- retrieve the clicked offset.
   (_,layoutIndex,_) <- layoutXYToIndex (winLayout w) (eventX event) (eventY event)
   win <- readRef (changedWin w)
-  let p1 = tospnt win + layoutIndex
+  let p1 = tospnt win + fromIntegral layoutIndex
 
   -- maybe focus the window
   logPutStrLn $ "Clicked inside window: " ++ show w
@@ -290,7 +290,7 @@ handleMove ui w p0 event = do
   -- retrieve the clicked offset.
   (_,layoutIndex,_) <- layoutXYToIndex (winLayout w) (eventX event) (eventY event)
   win <- readRef (changedWin w)
-  let p1 = tospnt win + layoutIndex
+  let p1 = tospnt win + fromIntegral layoutIndex
 
 
   let editorAction = do
@@ -426,7 +426,7 @@ render ui b w _ev = do
   layoutSetText layout text
 
   (_,bos,_) <- layoutXYToIndex layout width' height' 
-  let win' = win { bospnt = bos + tospnt win,
+  let win' = win { bospnt = fromIntegral bos + tospnt win,
                    height = winh
                  }
 
@@ -441,7 +441,7 @@ render ui b w _ev = do
       layoutSetText layout text'
       (_,bos',_) <- layoutXYToIndex layout width' height'
       logPutStrLn $ "bos = " ++ show bos' ++ " + " ++ show (tospnt win'')
-      return win'' { bospnt = bos' + tospnt win''} 
+      return win'' { bospnt = fromIntegral bos' + tospnt win''} 
 
   writeRef (changedWin w) win'''
   logPutStrLn $ "updated: " ++ show win'''
@@ -449,16 +449,16 @@ render ui b w _ev = do
   -- add color attributes.
   let len = (bospnt win''' - tospnt win''')
       ((strokes,selectReg,selVisible), _) = runBuffer win''' b $ (,,)
-                       <$> strokesRangesB len (tospnt win''')
+                       <$> strokesRangesB (tospnt win''') (bospnt win''')
                        <*> getSelectRegionB
                        <*> getA highlightSelectionA
                          
       regInWin = fmapRegion (subtract (tospnt win''')) (intersectRegion selectReg (winRegion win'''))
       styleToAttrs (l,attrs,r) = [mkAttr l r a | a <- attrs]
-      mkAttr l r (Foreground col) = AttrForeground (l - tospnt win''') (r - tospnt win''') (mkCol col)
-      mkAttr l r (Background col) = AttrBackground (l - tospnt win''') (r - tospnt win''') (mkCol col)
+      mkAttr l r (Foreground col) = AttrForeground (fromPoint (l - tospnt win''')) (fromPoint (r - tospnt win''')) (mkCol col)
+      mkAttr l r (Background col) = AttrBackground (fromPoint (l - tospnt win''')) (fromPoint (r - tospnt win''')) (mkCol col)
       allAttrs = (if selVisible 
-                   then (AttrBackground (regionStart regInWin) (regionEnd regInWin - 1) 
+                   then (AttrBackground (fromPoint (regionStart regInWin)) (fromPoint (regionEnd regInWin - 1))
                            (Color 50000 50000 maxBound) :)
                    else id)
                   (concatMap styleToAttrs (concat strokes))
@@ -466,7 +466,7 @@ render ui b w _ev = do
   layoutSetAttributes layout allAttrs
 
 
-  (PangoRectangle curx cury curw curh, _) <- layoutGetCursorPos layout (point - tospnt win''')
+  (PangoRectangle curx cury curw curh, _) <- layoutGetCursorPos layout (fromPoint (point - tospnt win'''))
 
   gc <- gcNew drawWindow
   drawLayout drawWindow gc 0 0 layout

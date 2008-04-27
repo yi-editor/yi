@@ -7,13 +7,15 @@ module Yi.Syntax.Alex (
                        takeLB, headLB, actionConst, actionAndModify,
                        Tok(..), tokBegin, tokEnd, tokFromT,          
                        Posn(..), startPosn, moveStr, runSource,
-                       Result, ASI, Cache
+                       Result, ASI, Cache,
+                       (+~), Size(..)
                       ) where
 
 import Data.List hiding (map, foldl')
 import qualified Data.ByteString.Lazy.Char8 as LB
 import Yi.Syntax
 import Yi.Prelude
+import Yi.Style
 import Prelude ()
 
 takeLB :: Int64 -> LB.ByteString -> LB.ByteString
@@ -24,9 +26,9 @@ headLB = LB.head
 
 
 -- | if offsets before this is dirtied, must restart from that state.
-type LookedOffset = Int
+type LookedOffset = Point
 
-type AlexInput = [(Int, Char)]
+type AlexInput = [(Point, Char)]
 type Action hlState token = AlexInput -> hlState -> (hlState, token)
 -- | Lexer state; (reversed) list of tokens so far.
 type State hlState = (AlexState hlState, [Stroke])
@@ -41,25 +43,25 @@ data AlexState lexerState = AlexState {
 data Tok t = Tok
     {
      tokT :: t,
-     tokLen  :: Int,
+     tokLen  :: Size,
      tokPosn :: Posn
     }
 
 tokFromT :: forall t. t -> Tok t
 tokFromT t = Tok t 0 startPosn
 
-tokBegin :: forall t. Tok t -> Int
+tokBegin :: forall t. Tok t -> Point
 tokBegin = posnOfs . tokPosn
 
-tokEnd :: forall t. Tok t -> Int
-tokEnd t = tokBegin t + tokLen t
+tokEnd :: forall t. Tok t -> Point
+tokEnd t = tokBegin t +~ tokLen t
 
 instance Show t => Show (Tok t) where
     show tok = show (tokPosn tok) ++ ": " ++ show (tokT tok)
 
 type Result = ([Stroke], [Stroke])
 
-data Posn = Posn {posnOfs :: !Int, posnLine :: !Int, posnCol :: !Int}
+data Posn = Posn {posnOfs :: !Point, posnLine :: !Int, posnCol :: !Int}
 
 instance Show Posn where
     show (Posn _ l c) = "L" ++ show l ++ " " ++ "C" ++ show c
@@ -115,6 +117,7 @@ mkHighlighter initState alexScanToken =
                   }
       where
         startState = (AlexState initState 0 startPosn, [])
+        getStrokes :: Point -> Point -> Point -> Cache s -> [(Point, Style, Point)]
         getStrokes _point begin end (Cache _ (leftHL, rightHL)) = reverse (usefulsL leftHL) ++ usefulsR rightHL
             where
               usefulsR = dropWhile (\(_l,_s,r) -> r <= begin) .
@@ -153,11 +156,11 @@ other n m l = case l of
 runSource :: forall t t1. Scanner t t1 -> [(t, t1)]
 runSource (Scanner initSt f) = f initSt
 
-lexScanner :: forall lexerState token a.
-                                          ((AlexState lexerState, [(Int, a)])
-                                           -> Maybe (token, (AlexState lexerState, [(Int, a)])))
+lexScanner :: forall lexerState token.
+                                          ((AlexState lexerState, [(Point, Char)])
+                                           -> Maybe (token, (AlexState lexerState, [(Point, Char)])))
                                           -> lexerState
-                                          -> Scanner Int a
+                                          -> Scanner Point Char
                                           -> Scanner (AlexState lexerState) token
 lexScanner l st0 src = Scanner
                  {

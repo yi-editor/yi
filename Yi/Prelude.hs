@@ -1,3 +1,5 @@
+{-# LANGUAGE MultiParamTypeClasses #-}
+
 module Yi.Prelude 
     (
 
@@ -14,12 +16,15 @@ IO,
 Integer,
 Integral(..),
 Bounded(..),
+Enum(..),
 Maybe(..),
 Monad(..),
 Num(..),
 Ord(..),
 Read(..),
+Real(..),
 ReaderT(..),
+SemiNum(..),
 String,
 fromIntegral,
 fst,
@@ -73,3 +78,8 @@ snd3 (_,x,_) = x
 
 trd3 :: (a,b,c) -> c
 trd3 (_,_,x) = x
+
+class SemiNum absolute relative where
+    (+~) :: absolute -> relative -> absolute
+    (-~) :: absolute -> relative -> absolute
+    (~-) :: absolute -> absolute -> relative

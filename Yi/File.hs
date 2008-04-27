@@ -16,6 +16,7 @@ import Control.Monad.Trans
 import Prelude hiding (error)
 import System.FilePath
 import Yi.Buffer
+import Yi.Buffer.HighLevel
 import Yi.Editor
   ( getBuffers )
 import Yi.Core
@@ -32,12 +33,7 @@ revertE = do
                      Just fp -> do
                              s <- liftIO $ UTF8.readFile fp
                              withBuffer $ do
-                                  end <- sizeB
-                                  p <- pointB
-                                  moveTo 0
-                                  deleteN end
-                                  insertN s
-                                  moveTo p
+                                  savingPointB $ replaceBufferContent s 
                                   clearUndosB
                              msgEditor ("Reverted from " ++ show fp)
                      Nothing -> do
