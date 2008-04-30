@@ -17,6 +17,7 @@ canonicalizePath' f = recoverTilda =<< canonicalizePath f
 
 -- | Turn a user-friendly path into a computer-friendly path by expanding the leading tilda.
 expandTilda :: String -> IO FilePath
+expandTilda "~" = getHomeDirectory
 expandTilda s0 = do
   home <- getHomeDirectory
   return $ if (['~',pathSeparator] `isPrefixOf` s0) then home </> drop 2 s0 else s0

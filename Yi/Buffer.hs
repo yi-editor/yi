@@ -272,7 +272,7 @@ getModeLine = do
            replicate 5 ' ' ++
            "L" ++ show ln ++ "  " ++ "C" ++ show col ++
            "  " ++ pct ++
-           "  " ++ show p
+           "  " ++ show (fromPoint p)
 
 -- | Given a point, and the file size, gives us a percent string
 getPercent :: Point -> Point -> String
