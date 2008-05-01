@@ -377,8 +377,6 @@ gotoLnRelI n fb =
   findDownLine acc 1 (x:_)  = (acc, x)
   findDownLine acc l (_:xs) = findDownLine (acc + 1) (l - 1) xs
 
--- lineOffsets fb = 0 : map (+ 1) (F.elemIndices '\n') (mem fb)
-
 -- | Return index of next string in buffer that matches argument
 searchBI :: Direction -> String -> BufferImpl syntax -> Maybe Point
 searchBI dir s fb = fmap Point $ case dir of

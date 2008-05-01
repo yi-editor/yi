@@ -33,7 +33,7 @@ dynKeyA k = Accessor (maybe initial id . M.lookup k) (\f -> M.alter (upd f) k)
     where upd f Nothing = Just (f initial)
           upd f (Just x) = Just (f x)
 
-
+miniBuffer :: String
 miniBuffer = "minibuffer"
 
 historyUp :: EditorM ()

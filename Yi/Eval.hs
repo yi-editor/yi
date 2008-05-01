@@ -35,7 +35,7 @@ jumpToE filename line column = do
 
 parseErrorMessage :: String -> Maybe (String, Int, Int)
 parseErrorMessage ln = do
-#if OLDREGEX
+#ifdef OLDREGEX
   result :: (Array Int String) <- ln =~~ "^(.+):([0-9]+):([0-9]+):.*$"
   return (result!1, read (result!2), read (result!3))
 #else

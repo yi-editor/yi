@@ -7,6 +7,7 @@ import qualified Data.Tree as S
 import Control.Applicative
 import Yi.Prelude 
 import Prelude ()
+import Yi.Buffer.Basic
 import Data.List (splitAt)
 
 data Tree a = Node a (Tree a) (Tree a)
@@ -46,7 +47,7 @@ parse = parse' initSize maxBound
               -- is reached.
 
 getStrokes begin end t = getStrokes' begin end t []
-    where getStrokes' :: Int -> Int -> Tree (Tok token) -> Endom [Tok token]
+    where getStrokes' :: Point -> Point -> Tree (Tok token) -> Endom [Tok token]
           getStrokes' _ _ Leaf = id
           getStrokes' _     end (Node t _ _) 
               | end < tokBegin t = id
