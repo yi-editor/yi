@@ -25,6 +25,7 @@ import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Configure
 import Distribution.Simple.Utils(dotToSep)
 import Distribution.Simple.PreProcess(knownSuffixHandlers)
+import Distribution.Simple.Setup (defaultDistPref)
 import System.FilePath
 import System.Directory
 
@@ -77,7 +78,7 @@ data ModuleKind
 
 loadProject :: FilePath -> IO (Tree ProjectItem, Tree ProjectItem)
 loadProject projPath = do
-  Right lbi <- tryGetConfigStateFile (projPath </> localBuildInfoFile)
+  Right lbi <- tryGetConfigStateFile (projPath </> localBuildInfoFile defaultDistPref)
   let pkgDescr = localPkgDescr lbi
 
       root  = ProjectItem (pkgName (package pkgDescr)) (pkgVersion (package pkgDescr))

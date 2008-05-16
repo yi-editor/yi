@@ -58,7 +58,7 @@ import Distribution.PackageDescription
     library, executables, hsSourceDirs, extensions, includeDirs, extraLibs,
     libBuildInfo, buildInfo, options, hcOptions, modulePath, allBuildInfo,
     buildable, exeName)
-
+import Distribution.Simple.Setup (defaultDistPref)
 import Distribution.Simple.LocalBuildInfo ( packageDeps, buildDir, localPkgDescr )
 import Distribution.Package ( Dependency (..) )
 import GHC.Exts (unsafeCoerce#)
@@ -97,7 +97,7 @@ getCabalOpts sourcefile = do
     Nothing -> return Nothing
     Just cabalfile -> do
       let projPath = takeDirectory cabalfile
-      Right lbi <- io $ tryGetConfigStateFile (projPath </> localBuildInfoFile)
+      Right lbi <- io $ tryGetConfigStateFile (projPath </> localBuildInfoFile defaultDistPref)
       let pkg = localPkgDescr lbi
       (exe, bi) <- io $ guessCabalStanza projPath sourcefile pkg
       logInfo $ show (allBuildInfo pkg)
