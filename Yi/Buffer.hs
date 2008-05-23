@@ -148,9 +148,9 @@ data FBuffer = forall syntax.
                 }
         deriving Typeable
 
+-- | udpate the syntax information (clear the dirty "flag")
 clearSyntax :: FBuffer -> FBuffer
 clearSyntax = modifyRawbuf updateSyntax
-
 
 modifyRawbuf :: (forall syntax. BufferImpl syntax -> BufferImpl syntax) -> FBuffer -> FBuffer
 modifyRawbuf f (FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12) = 

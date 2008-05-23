@@ -186,11 +186,12 @@ quitEditor = withUI UI.end
 refreshEditor :: YiM ()
 refreshEditor = do e0 <- with yiEditor readRef
                    let e1 = modifier buffersA (fmap (clearSyntax . clearHighlight)) e0
-                       e2 = modifier buffersA (fmap clearUpdates)   e1
+                       e2 = modifier buffersA (fmap clearUpdates)  e1
                    withUI $ flip UI.refresh e1
                    with yiEditor (flip writeRef e2)
     where clearHighlight fb@FBuffer {pendingUpdates = us, highlightSelection = h} 
               = modifier highlightSelectionA (const (h && null us)) fb
+          -- if there were updates, then hide the selection.
           clearUpdates fb = modifier pendingUpdatesA (const []) fb
           
 
@@ -230,7 +231,6 @@ runAction (EditorA act) = do
 runAction (BufferA act) = do
   withBuffer act >>= msgEditor' . show
   return ()
-
 
 msgEditor :: String -> YiM ()
 msgEditor = withEditor . printMsg
