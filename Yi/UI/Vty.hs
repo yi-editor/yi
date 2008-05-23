@@ -223,7 +223,7 @@ scrollAndRenderWindow cfg e sty width (win,hasFocus) = (win' {bospnt = bos}, ren
 -- | Draw a window
 -- TODO: horizontal scrolling.
 drawWindow :: UIConfig -> FBuffer -> UIStyle -> Bool -> Int -> Window -> (Rendered, Point)
-drawWindow cfg b sty focused w win = (Rendered { picture = pict,cursor = cur}, bos)
+drawWindow cfg b sty focused w win = (Rendered { picture = pict,cursor = fmap adjCur cur}, bos)
             
     where
         m = not (isMini win)
@@ -255,6 +255,7 @@ drawWindow cfg b sty focused w win = (Rendered { picture = pict,cursor = cur}, b
         filler = take w (configWindowFill cfg : repeat ' ')
     
         pict = vertcat (take h' (rendered ++ repeat (withStyle eofsty filler)) ++ modeLines)
+        adjCur (curx, cury) = (curx, cury + length prompt)
   
 -- | Renders text in a rectangle.
 -- This also returns 
