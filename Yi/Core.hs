@@ -146,9 +146,14 @@ dispatch ev =
          keymap <- withModeB modeKeymap
          p0 <- getA keymapProcessA
          let defKm = defaultKm $ yiConfig $ yi
-         let freshP = I.mkAutomaton $ keymap $ defKm
+         let freshP = I.mkAutomaton $ forever $ keymap $ defKm
+             -- Note the use of "forever": this has quite subtle implications, as it means that
+             -- failures in one iteration can yield to jump to the next iteration seamlessly.
+             -- eg. in emacs keybinding, failures in incremental search, like <left>, will "exit"
+             -- incremental search and immediately move to the left.
              p = case p0 of
                    I.End  -> freshP
+
                    I.Fail -> freshP
                    _      -> p0
              (actions, p') = I.processOneEvent p ev
