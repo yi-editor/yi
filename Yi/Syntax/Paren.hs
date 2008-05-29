@@ -17,10 +17,13 @@ import Data.List (filter)
 
 indentScanner :: Scanner (AlexState lexState) (Tok Token)
               -> Scanner (Yi.Syntax.Indent.State lexState) (Tok Token)
-indentScanner = indenter (== IndentReserved)
+indentScanner = indenter (== IndentReserved) ignoredToken
                          (fmap Special ['<', '>', '.']) 
 -- HACK: We insert the Special '<', '>', '.', that don't occur in normal haskell parsing.
 
+
+ignoredToken (Tok t _ (Posn _ _ col)) = col == 0 && t == Comment
+    
 
 isSpecial :: [Char] -> Token -> Bool
 isSpecial cs (Special c) = c `elem` cs

@@ -13,9 +13,11 @@ data IState = IState [Int]  -- nested levels, as columns
 type State lexState = (IState, AlexState lexState) 
 
 -- | isSpecial denotes a token that starts a compound, like "where", "do", ...
-indenter :: forall t lexState. (t -> Bool) -> [t] -> 
+indenter :: forall t lexState. (t -> Bool) -> 
+            (Tok t -> Bool) -> 
+            [t] -> 
             Scanner (AlexState lexState) (Tok t) -> Scanner (State lexState) (Tok t)
-indenter isSpecial [openT, closeT, nextT] lexSource = Scanner 
+indenter isSpecial isIgnored [openT, closeT, nextT] lexSource = Scanner 
   {
    scanInit = (IState [(-1)] True (-1), scanInit lexSource),
    scanRun  = \st -> parse (fst st) (scanRun lexSource (snd st))
@@ -30,11 +32,15 @@ indenter isSpecial [openT, closeT, nextT] lexSource = Scanner
 
           parse :: IState -> [(AlexState lexState, Tok t)] -> [(State lexState, Tok t)]
           parse iSt@(IState levels@(lev:levs) doOpen lastLine)
-                toks@((aSt, tok @ Tok {tokPosn = Posn nextOfs line col}) : tokss) 
+                toks@((aSt, tok @ Tok {tokLen = nextLen, tokPosn = Posn nextOfs line col}) : tokss) 
+
+            -- ignore this token
+            | isIgnored tok
+              = (st, tok) : parse (IState levels doOpen line) tokss
 
             -- start a compound
             | doOpen
-              = (st, tt openT) : parse (IState (col:levels) (False) lastLine) toks
+              = (st', tt openT) : parse (IState (col:levels) (False) lastLine) toks
 
             -- pop one level
             | col < lev
@@ -52,8 +58,11 @@ indenter isSpecial [openT, closeT, nextT] lexSource = Scanner
             | otherwise     
                 = (st', tok) : parse (IState levels doOpen line) tokss
                   where st = (iSt, aSt)
-                        st' = (iSt, aSt {lookedOffset = max nextOfs (lookedOffset aSt)})
-                        -- This function checked the position of the
+                        st' = (iSt, aSt {lookedOffset = max peeked (lookedOffset aSt)})
+                        peeked = case tokss of 
+                                   [] -> maxBound
+                                   (AlexState {lookedOffset = p},_):_ -> p
+                        -- This function checked the position and kind of the
                         -- next token.  We peeked further, and so must
                         -- update the lookedOffset accordingly.
           parse iSt@(IState (_:lev:levs) doOpen posn) [] 
