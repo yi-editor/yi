@@ -52,8 +52,8 @@ indenter isSpecial [openT, closeT, nextT] lexSource = Scanner
             | otherwise     
                 = (st', tok) : parse (IState levels doOpen line) tokss
                   where st = (iSt, aSt)
-                        st' = (iSt, aSt {lookedOffset = nextOfs})
-                        -- This function checks the position of the
+                        st' = (iSt, aSt {lookedOffset = max nextOfs (lookedOffset aSt)})
+                        -- This function checked the position of the
                         -- next token.  We peeked further, and so must
                         -- update the lookedOffset accordingly.
           parse iSt@(IState (_:lev:levs) doOpen posn) [] 
