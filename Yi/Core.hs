@@ -4,7 +4,6 @@
 -- Copyright (c) Don Stewart 2004-5. http://www.cse.unsw.edu.au/~dons
 -- Copyright (c) Jean-Philippe Bernardy 2007-8 
 
---
 -- | The core actions of yi. This module is the link between the editor
 -- and the UI. Key bindings, and libraries should manipulate Yi through
 -- the interface defined here.

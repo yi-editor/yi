@@ -1,8 +1,8 @@
 {-# LANGUAGE ScopedTypeVariables, FlexibleInstances, MultiParamTypeClasses, UndecidableInstances, TypeSynonymInstances #-}
 
- module Yi.MiniBuffer (
+module Yi.MiniBuffer (
         spawnMinibufferE, withMinibuffer, withMinibufferGen, withMinibufferFin, noHint
-) where
+    ) where
 
 import Data.List (isInfixOf)
 import Data.Typeable
@@ -39,6 +39,7 @@ withMinibuffer = withMinibufferGen "" noHint
 noHint :: String -> YiM String
 noHint = const $ return ""
 
+-- | @withMinibuffer proposal getHint prompt completer act@: open a minibuffer with @prompt@, and initial content @proposal@. Once a string @s@ is obtained, run @act s@. @completer@ can be used to complete inputs, and getHint can give an immediate feedback to the user on the current input.
 withMinibufferGen :: String -> (String -> YiM String) -> 
                      String -> (String -> YiM String) -> (String -> YiM ()) -> YiM ()
 withMinibufferGen proposal getHint prompt completer act = do
@@ -72,7 +73,7 @@ withMinibufferGen proposal getHint prompt completer act = do
   withGivenBuffer b $ replaceBufferContent proposal
 
 
--- | Open a minibuffer, give a finite number of suggestions.
+-- | Open a minibuffer, given a finite number of suggestions.
 withMinibufferFin :: String -> [String] -> (String -> YiM ()) -> YiM ()
 withMinibufferFin prompt posibilities act 
     = withMinibufferGen "" hinter prompt completer (act . best)
