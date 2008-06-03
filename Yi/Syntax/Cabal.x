@@ -69,8 +69,8 @@ $nl        = [\n\r]
   |[Ll]icense\-file
   |[Aa]uthor
   |[Mm]aintainer
-  |[Bb]uild\-Depends
-  |[Bb]uild\-depends
+  |[Bb]uild\-[Dd]epends
+  |[Bb]uild\-[Tt]ype
   |[Ee]xecutable
   |[Mm]ain\-Is
   |[Mm]ain\-is
