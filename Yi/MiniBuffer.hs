@@ -63,8 +63,8 @@ withMinibufferGen proposal getHint prompt completer act = do
                     ("M-n", write historyDown),
                     ("<up>", write historyUp),
                     ("<down>", write historyDown),
-                    ("C-i", write (completionFunction completer)),
-                    ("TAB", write (completionFunction completer)),
+                    ("C-i", write (completionFunction completer) >> write showMatchings),
+                    ("TAB", write (completionFunction completer) >> write showMatchings),
                     ("C-g", write closeMinibuffer)]
   withEditor historyStart
   msgEditor =<< getHint ""
@@ -74,14 +74,35 @@ withMinibufferGen proposal getHint prompt completer act = do
 
 -- | Open a minibuffer, give a finite number of suggestions.
 withMinibufferFin :: String -> [String] -> (String -> YiM ()) -> YiM ()
-withMinibufferFin prompt possbilities act 
-    = withMinibufferGen "" (\s -> return $ show $ match s) prompt return (act . best)
+withMinibufferFin prompt posibilities act 
+    = withMinibufferGen "" hinter prompt completer (act . best)
       where 
-        match s = filter (s `isInfixOf`) possbilities
+        -- The function for returning the hints provided to the user underneath
+        -- the input, basically all those that currently match.
+        hinter  = (\s -> return $ show $ match s)
+        -- All those which currently match.
+        match s = filter (s `isInfixOf`) posibilities
+        -- The best match from the list of matches.
         best s = let ms = match s in
                  case ms of
                    [] -> s
                    (x:_) -> x
+        -- We still want "TAB" to complete even though the user could just press
+        -- return with an incomplete possibility. The reason is we may have for
+        -- example two possibilities which share a long prefix and hence we wish
+        -- to press tab to complete up to the point at which they differ.
+        completer s = return . commonPrefix $ filter (isInfixOf s) posibilities
+        -- Utility function for finding the longest common prefix, this may be
+        -- better placed elsewhere.
+        commonPrefix :: Eq a => [[a]] -> [a]
+        commonPrefix lists
+          | any null lists              = []
+          | any (not . equalHead) lists = []
+          | otherwise                   = firstEntry : remainder
+          where
+          firstEntry  = head $ head lists
+          equalHead l = (head l) == firstEntry
+          remainder   = commonPrefix $ map tail lists
 
 completionFunction :: (String -> YiM String) -> YiM ()
 completionFunction f = do
