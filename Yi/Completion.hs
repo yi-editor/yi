@@ -1,7 +1,11 @@
 -- Copyright (C) 2008 JP Bernardy
 
 
-module Yi.Completion (completeInList) where
+module Yi.Completion 
+  ( completeInList
+  , commonPrefix
+  )
+where
 
 import Yi.Editor
 import Data.List
@@ -19,8 +23,6 @@ commonPrefix strings
           (heads, tailz) = unzip [(h,t) | (h:t) <- strings]
           prefix = head heads
 -- for an alternative implementation see GHC's InteractiveUI module.
-
-
 
 completeInList :: String -> (String -> Bool) -> [ String ] -> EditorM String
 completeInList s condition l

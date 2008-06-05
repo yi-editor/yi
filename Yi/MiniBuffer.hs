@@ -12,6 +12,7 @@ import Yi.Buffer.HighLevel
 import Yi.Core
 import Yi.Editor
 import Yi.History
+import Yi.Completion ( commonPrefix )
 import Yi.Keymap
 import Yi.Keymap.Emacs.Keys
 import qualified Yi.Editor as Editor
@@ -93,17 +94,6 @@ withMinibufferFin prompt posibilities act
         -- example two possibilities which share a long prefix and hence we wish
         -- to press tab to complete up to the point at which they differ.
         completer s = return . commonPrefix $ filter (isInfixOf s) posibilities
-        -- Utility function for finding the longest common prefix, this may be
-        -- better placed elsewhere.
-        commonPrefix :: Eq a => [[a]] -> [a]
-        commonPrefix lists
-          | any null lists              = []
-          | any (not . equalHead) lists = []
-          | otherwise                   = firstEntry : remainder
-          where
-          firstEntry  = head $ head lists
-          equalHead l = (head l) == firstEntry
-          remainder   = commonPrefix $ map tail lists
 
 completionFunction :: (String -> YiM String) -> YiM ()
 completionFunction f = do
