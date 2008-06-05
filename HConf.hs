@@ -7,7 +7,11 @@ import Control.Monad.Reader
 import System.IO
 import System.Info
 #ifndef mingw32_HOST_OS
-import System.Posix.Process (executeFile)
+import System.Posix.Process 
+            (executeFile, 
+             getProcessStatus, 
+             forkProcess,
+             exitImmediately)
 #endif
 import System.Process
 import System.Directory
@@ -183,9 +187,30 @@ buildLaunch projectName = do
                Nothing -> return args
                Just _ -> do errFile <- getErrorsFile projectName
                             return (args ++ [errFile])
+    let executable_file = projectName ++ "-" ++ arch ++ "-" ++ os
+        executable_path = dir </> executable_file
+    putStrLn $ "Launching custom yi: " ++ show executable_path
+#ifndef darwin_HOST_OS
     handle (\_exception -> return ())
-       (executeFile (dir </> projectName ++ "-"++arch++"-"++os) False args' Nothing)
-    return (Just "Custom yi could not be launched!\n" `mappend` errMsg)
-#else
+       (executeFile executable_path False args' Nothing)
+    return $ Just ("Custom yi (" ++ show executable_path ++ ") could not be launched!\n") `mappend` errMsg
+#else -- darwin_HOST_OS
+    -- Darwin is odd or broken; Take your pick. According to:
+    --      http://uninformed.org/index.cgi?v=1&a=1&p=16
+    -- and
+    --      http://www.cherrypy.org/ticket/581
+    -- In order to get around a "Operation not supported" error on execv[e] it's
+    -- required to fork THEN execv[e]. - coconnor
+    child_pid <- forkProcess $ executeFile executable_path False args' Nothing
+    child_status <- getProcessStatus True False child_pid
+    case child_status of
+        Nothing -> return $ Just 
+            ("Custom yi (" ++ show executable_path ++ ") could not be launched!\n") `mappend` errMsg
+        Just _ -> do 
+            exitImmediately ExitSuccess
+            return Nothing
+#endif -- darwin_HOST_OS
+#else -- mingw32_HOST_OS
     return Nothing
-#endif
+#endif -- mingw32_HOST_OS
+
