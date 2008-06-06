@@ -7,11 +7,15 @@ import Control.Monad.Reader
 import System.IO
 import System.Info
 #ifndef mingw32_HOST_OS
+#ifdef darwin_HOST_OS
 import System.Posix.Process 
             (executeFile, 
              getProcessStatus, 
              forkProcess,
              exitImmediately)
+#else
+import System.Posix.Process (executeFile)
+#endif
 #endif
 import System.Process
 import System.Directory
@@ -194,7 +198,7 @@ buildLaunch projectName = do
     handle (\_exception -> return ())
        (executeFile executable_path False args' Nothing)
     return $ Just ("Custom yi (" ++ show executable_path ++ ") could not be launched!\n") `mappend` errMsg
-#else -- darwin_HOST_OS
+#else
     -- Darwin is odd or broken; Take your pick. According to:
     --      http://uninformed.org/index.cgi?v=1&a=1&p=16
     -- and
@@ -209,8 +213,8 @@ buildLaunch projectName = do
         Just _ -> do 
             exitImmediately ExitSuccess
             return Nothing
-#endif -- darwin_HOST_OS
-#else -- mingw32_HOST_OS
+#endif
+#else
     return Nothing
-#endif -- mingw32_HOST_OS
+#endif
 
