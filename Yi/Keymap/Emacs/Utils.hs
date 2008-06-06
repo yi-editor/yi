@@ -62,6 +62,7 @@ import System.FilePath
   , (</>)
   , addTrailingPathSeparator
   , hasTrailingPathSeparator
+  , takeFileName
   )
 import System.Directory
   ( doesDirectoryExist
@@ -330,16 +331,63 @@ readArg' acc = do
       _ -> write $ setDynamic $ UniversalArg $ Just $ fromMaybe 4 acc
 
 
+-- | Open a file using the minibuffer. We have to set up some stuff to allow hints
+--   and auto-completion.
 findFile :: YiM ()
 findFile = do maybePath <- withBuffer getfileB
               startPath <- addTrailingPathSeparator <$> (liftIO $ canonicalizePath' =<< getFolder maybePath)
-              withMinibufferGen startPath noHint "find file:" (completeFileName (Just startPath)) $ \filename -> do
+              withMinibufferGen startPath (findFileHint startPath) "find file:" (completeFileName (Just startPath)) $ \filename -> do
                 msgEditor $ "loading " ++ filename
                 fnewE filename
 
+-- | For use as the hint when opening a file using the minibuffer.
+-- We essentially return all the files in the given directory which
+-- have the given prefix.
+findFileHint :: String -> String -> YiM String
+findFileHint startPath s = 
+  liftM (show . snd) $ getAppropriateFiles (Just startPath) s
 
--- | Given a path, trim the file name bit if it exists.  If no path given,
--- | return current directory
+-- | Given a possible starting path (which if not given defaults to
+--   the current directory) and a fragment of a path we find all
+--   files within the given (or current) directory which can complete
+--   the given path fragment.
+--   We return a pair of both directory plus the filenames on their own
+--   that is without their directories. The reason for this is that if
+--   we return all of the filenames then we get a 'hint' which is way too
+--   long to be particularly useful.
+getAppropriateFiles :: Maybe String -> String -> YiM (String, [ String ])
+getAppropriateFiles start s = do
+  curDir <- case start of
+            Nothing -> do bufferPath <- withBuffer getfileB
+                          liftIO $ getFolder bufferPath
+            (Just path) -> return path
+  let sDir = if hasTrailingPathSeparator s then s else takeDirectory s
+      searchDir = if null sDir then curDir
+                  else if isAbsolute' sDir then sDir
+                  else curDir </> sDir
+  searchDir' <- liftIO $ expandTilda searchDir
+  let fixTrailingPathSeparator f = do
+                       isDir <- doesDirectoryExist (searchDir' </> f)
+                       return $ if isDir then addTrailingPathSeparator f else f
+  files <- liftIO $ getDirectoryContents searchDir'
+  -- Remove the two standard current-dir and parent-dir as we do not
+  -- need to complete or hint about these as they are known by users.
+  let files' = files \\ [ ".", ".." ]
+  fs <- liftIO $ mapM fixTrailingPathSeparator files
+  let matching = filter (isPrefixOf $ takeFileName s) fs
+  return (sDir, matching)
+
+
+-- | Given a possible path and a prefix complete as much of the file name
+--   as can be worked out from teh path and the prefix. 
+completeFileName :: Maybe String -> String -> YiM String
+completeFileName start s = do
+  (sDir, files) <- getAppropriateFiles start s
+  withEditor $ completeInList s (isPrefixOf s) $ map (sDir </>) files
+
+ 
+ -- | Given a path, trim the file name bit if it exists.  If no path given,
+ -- | return current directory
 getFolder :: Maybe String -> IO String
 getFolder Nothing     = getCurrentDirectory
 getFolder (Just path) = do
@@ -357,24 +405,6 @@ completeBufferName s = withEditor $ do
   bs <- getBuffers
   completeInList s (isPrefixOf s) (map name bs)
 
-completeFileName :: Maybe String -> String -> YiM String
-completeFileName start s = do
-  curDir <- case start of
-            Nothing -> do bufferPath <- withBuffer getfileB
-                          liftIO $ getFolder bufferPath
-            (Just path) -> return path
-  let sDir = if hasTrailingPathSeparator s then s else takeDirectory s
-      searchDir = if null sDir then curDir
-                  else if isAbsolute' sDir then sDir
-                  else curDir </> sDir
-  searchDir' <- liftIO $ expandTilda searchDir
-  let fixTrailingPathSeparator f = do
-                       isDir <- doesDirectoryExist (searchDir' </> f)
-                       return $ if isDir then addTrailingPathSeparator f else f
-  files <- liftIO $ getDirectoryContents searchDir'
-  let files' = files \\ [".", ".."]
-  fs <- liftIO $ mapM fixTrailingPathSeparator files'
-  withEditor $ completeInList s (isPrefixOf s) $ map (sDir </>) fs
 
 completeFunctionName :: String -> YiM String
 completeFunctionName s = do

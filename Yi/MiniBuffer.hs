@@ -81,7 +81,7 @@ withMinibufferFin prompt posibilities act
       where 
         -- The function for returning the hints provided to the user underneath
         -- the input, basically all those that currently match.
-        hinter  = (\s -> return $ show $ match s)
+        hinter s = return $ show $ match s
         -- All those which currently match.
         match s = filter (s `isInfixOf`) posibilities
         -- The best match from the list of matches.
