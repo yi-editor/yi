@@ -77,6 +77,9 @@ mkUI ui = Common.UI
    Common.reloadProject  = \_ -> return ()
   }
 
+-- make me more configurable
+tabWidth :: Int
+tabWidth = 2
 
 -- | Initialise the ui
 start :: Common.UIBoot
@@ -325,6 +328,7 @@ drawText h w topPoint point selreg selsty wsty bufData
   wrapLine _ [] = []
   wrapLine n l = let (x,rest) = splitAt n l in x : wrapLine n rest
                                       
+  expandGraphic ('\t', p) = replicate tabWidth (' ', p)
   expandGraphic (c,p) 
     | ord c < 32 = [('^',p),(chr (ord c + 64),p)]
     | otherwise = [(c,p)]
