@@ -50,7 +50,7 @@ insertTabB = do
     else ['\t']
 
 {-|
-  Retrieve the current indentation settings.
+  Retrieve the current indentation settings for the buffer.
 -}
 indentSettingsB :: BufferM IndentSettings
 indentSettingsB = getDynamicB

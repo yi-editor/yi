@@ -47,6 +47,8 @@ import Graphics.Vty as Vty
 
 import Yi.UI.Utils
 import Yi.Syntax (Stroke)
+import Yi.Indent (indentSettingsB, IndentSettings(..))
+
 ------------------------------------------------------------------------
 
 data Rendered = 
@@ -76,10 +78,6 @@ mkUI ui = Common.UI
    Common.prepareAction  = prepareAction ui,
    Common.reloadProject  = \_ -> return ()
   }
-
--- make me more configurable
-tabWidth :: Int
-tabWidth = 2
 
 -- | Initialise the ui
 start :: Common.UIBoot
@@ -242,11 +240,15 @@ drawWindow cfg b sty focused w win = (Rendered { picture = pict,cursor = fmap ad
         (strokes, _) = runBuffer win b (strokesRangesB  (tospnt win) (tospnt win +~ sz)) -- corresponding strokes
         bufData = paintChars (tospnt win) attr (paintPicture attr (map (map toVtyStroke) strokes)) text
         (showSel, _) = runBuffer win b (gets highlightSelection)
+        -- TODO: This resolves issue #123 but not very cleanly IMO - coconnor
+        tabWidth = tabSize . fst $ runBuffer win b indentSettingsB
         prompt = if isMini win then name b else ""
 
         (rendered,bos,cur) = drawText h' w
                                 (tospnt win) 
-                                point (if showSel then selreg else emptyRegion)
+                                point 
+                                tabWidth
+                                (if showSel then selreg else emptyRegion)
                                 selsty wsty 
                                 (zip prompt (repeat wsty) ++ bufData ++ [(' ',attr)])
                              -- we always add one character which can be used to position the cursor at the end of file
@@ -268,6 +270,7 @@ drawText :: Int    -- ^ The height of the part of the window we are in
          -> Int    -- ^ The width of the part of the window we are in
          -> Point  -- ^ The position of the first character to draw
          -> Point  -- ^ The position of the cursor
+         -> Int    -- ^ The number of spaces to represent a tab character with.
          -> Region -- ^ The selected region
          -> Vty.Attr   -- ^ The attribute with which to draw selected text
          -> Vty.Attr   -- ^ The attribute with which to draw the background
@@ -276,7 +279,7 @@ drawText :: Int    -- ^ The height of the part of the window we are in
                    -- the selection invisible.
          -> [(Char,Vty.Attr)]  -- ^ The data to draw.
          -> ([Image], Point, Maybe (Int,Int))
-drawText h w topPoint point selreg selsty wsty bufData
+drawText h w topPoint point tabWidth selreg selsty wsty bufData
     | h == 0 || w == 0 = ([], topPoint, Nothing)
     | otherwise        = (rendered_lines, bottomPoint, pntpos)
   where 
