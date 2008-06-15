@@ -460,6 +460,7 @@ setSty sty cs = [(c,sty) | c <- cs]
 
 
 -- | @paintStrokes colorToTheRight strokes picture@: paint the strokes over a given picture.
+-- Precondition: input list is sorted and strokes do not overlap.
 paintStrokes :: a -> [(Point,(a -> a),Point)] -> [(Point,a)] -> [(Point,a)]
 paintStrokes _  []     rest = rest
 paintStrokes s0 ss     [] = concat [[(l,s s0),(r,s0)] | (l,s,r) <- ss]

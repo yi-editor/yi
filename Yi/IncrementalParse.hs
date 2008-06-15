@@ -159,7 +159,7 @@ evalL (App f) = case evalL f of
 evalL x = x
 
 
--- | Push a chunk of symbols or eof in the process. This force some suspensions.
+-- | Push a chunk of symbols or eof in the process. This forces some suspensions.
 push :: Maybe [s] -> Steps s a r -> Steps s a r
 push ss p = case p of
                   (Suspend f) -> f ss
@@ -179,7 +179,7 @@ pushSyms x = push (Just x)
 pushEof :: Steps s a r -> Steps s a r
 pushEof = push Nothing
 
--- | An parser. (This is actually a parsing process segment)
+-- | A parser. (This is actually a parsing process segment)
 newtype P s a = P (forall b r. Steps s b r -> Steps s a (Steps s b r))
 
 instance Functor (P s) where
