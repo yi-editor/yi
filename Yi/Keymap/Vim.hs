@@ -13,7 +13,7 @@ import Yi.Prelude
 import Prelude (maybe, length, filter, map, drop, takeWhile, dropWhile, break)
 
 import Data.Char
-import Data.Maybe           ( fromMaybe )
+import Data.Maybe (fromMaybe)
 import Data.Dynamic
 
 import Control.Exception    ( ioErrors, try, evaluate )
@@ -592,14 +592,15 @@ ex_eval cmd = do
           [] -> return ()
 
     where
+      isWorthlessB = gets (\b -> isUnchangedBuffer b || file b == Nothing)
       whenUnchanged mu f = do u <- mu
                               if u then f
                                    else errorEditor "No write since last change (add ! to override)"
-      quitB = whenUnchanged (withBuffer isUnchangedB) closeWindow
+      quitB = whenUnchanged (withBuffer isWorthlessB) closeWindow
 
       quitNoW = do bufs <- withEditor $ do closeBufferE ""
                                            bufs <- gets bufferStack
-                                           mapM (\x -> withGivenBuffer0 x isUnchangedB) bufs
+                                           mapM (\x -> withGivenBuffer0 x isWorthlessB) bufs
                    whenUnchanged (return $ all id bufs) quitEditor
 
       quitall  = withAllBuffers quitB
