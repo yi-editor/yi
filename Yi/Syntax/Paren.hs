@@ -13,7 +13,7 @@ import Yi.Prelude
 import Prelude ()
 import Data.Monoid
 import Data.Maybe
-import Data.List (filter)
+import Data.List (filter, takeWhile)
 
 indentScanner :: Scanner (AlexState lexState) (Tok Token)
               -> Scanner (Yi.Syntax.Indent.State lexState) (Tok Token)
@@ -21,7 +21,7 @@ indentScanner = indenter (== IndentReserved) ignoredToken
                          (fmap Special ['<', '>', '.']) 
 -- HACK: We insert the Special '<', '>', '.', that don't occur in normal haskell parsing.
 
-
+ignoredToken :: Tok Token -> Bool
 ignoredToken (Tok t _ (Posn _ _ col)) = col == 0 && t == Comment
     
 
@@ -65,12 +65,17 @@ getAllSubTrees t = t : concatMap getAllSubTrees (subtrees t)
 
 type TT = Tok Token
 
--- | Look after the given point on the given line.
+-- | look after the given point on the given line.
 getIndentingSubtree :: [Tree TT] -> Point -> Int -> Maybe (Tree TT)
-getIndentingSubtree roots offset line
-    = listToMaybe [t' | root <- roots, t'@(Stmt ((t:_):_)) <- getAllSubTrees root, 
-                   let Just tok = getFirstToken t, let posn = tokPosn tok,
+getIndentingSubtree roots offset line =
+    listToMaybe $ [t | (t,posn) <- takeWhile ((<= line) . posnLine . snd) $ allSubTreesPosn,
+                   -- it's very important that we do a linear search
+                   -- here (takeWhile), so that the tree is evaluated
+                   -- lazily and therefore parsing it can be lazy.
                    posnOfs posn > offset, posnLine posn == line]
+    where allSubTreesPosn = [(t',posn) | root <- roots, t'@(Stmt ((t:_):_)) <- getAllSubTrees root, 
+                               let Just tok = getFirstToken t, let posn = tokPosn tok]
+
 
 -- | returns: First offset; number of lines.
 getSubtreeSpan :: Tree TT -> (Point, Int)
@@ -150,6 +155,7 @@ getStrokes point _begin _end t0 = result
           list = foldr (.) id
           result = getStrokesL t0 []
 
+modStroke :: Style -> Stroke -> Stroke
 modStroke f (l,s,r) = (l,f ++ s,r) 
 
 tokenToStroke :: Tok Token -> Stroke
