@@ -312,9 +312,7 @@ runBufferDummyWindow :: FBuffer -> BufferM a -> (a, FBuffer)
 runBufferDummyWindow b = runBuffer (dummyWindow $ bkey b) b
 
 
--- Clear the undo list, so the changed "flag" is reset.
--- This has now been updated so that instead of clearing the undo list we
--- mark the point at which the file was saved.
+-- | Mark the current point in the undo list as a saved state.
 clearUndosB :: BufferM ()
 clearUndosB = modifyA undosA setSavedFilePointU
 

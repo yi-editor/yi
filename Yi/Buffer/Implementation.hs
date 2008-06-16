@@ -302,7 +302,7 @@ applyUpdateI u fb = touchSyntax (updatePoint u) $
    
 -- | Apply a /valid/ update and also move point in buffer to update position
 applyUpdateWithMoveI :: Update -> BufferImpl syntax -> BufferImpl syntax
-applyUpdateWithMoveI u b = applyUpdateI u (moveToI (updatePoint u) b)
+applyUpdateWithMoveI u = applyUpdateI u . moveToI (updatePoint u)
 
 -- | Reverse the given update
 reverseUpdateI :: Update -> BufferImpl syntax -> Update

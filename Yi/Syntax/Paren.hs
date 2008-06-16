@@ -55,7 +55,7 @@ getFirstToken tree = getFirst $ foldMap (\x -> First (Just x)) tree
 getLastToken :: Tree t -> Maybe t
 getLastToken tree = getLast $ foldMap (\x -> Last (Just x)) tree
 
--- Return all subtrees in a subtree.
+-- | Return all subtrees in a subtree.
 getAllSubTrees :: Tree t -> [Tree t]
 getAllSubTrees t = t : concatMap getAllSubTrees (subtrees t)
     where subtrees (Group _ g _) = g
@@ -68,8 +68,9 @@ type TT = Tok Token
 -- | Look after the given point on the given line.
 getIndentingSubtree :: [Tree TT] -> Point -> Int -> Maybe (Tree TT)
 getIndentingSubtree roots offset line
-    = listToMaybe [t' | root <- roots, t'@(Stmt ((t:_):_)) <- getAllSubTrees root, let Just tok = getFirstToken t, let posn = tokPosn tok,
-       posnOfs posn > offset, posnLine posn == line]
+    = listToMaybe [t' | root <- roots, t'@(Stmt ((t:_):_)) <- getAllSubTrees root, 
+                   let Just tok = getFirstToken t, let posn = tokPosn tok,
+                   posnOfs posn > offset, posnLine posn == line]
 
 -- | returns: First offset; number of lines.
 getSubtreeSpan :: Tree TT -> (Point, Int)
