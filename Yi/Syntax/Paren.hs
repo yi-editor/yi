@@ -52,10 +52,16 @@ instance Functor Tree where
 getFirstToken :: Tree t -> Maybe t
 getFirstToken tree = getFirst $ foldMap (\x -> First (Just x)) tree
 
+-- | Return the last token of a subtree.
 getLastToken :: Tree t -> Maybe t
 getLastToken tree = getLast $ foldMap (\x -> Last (Just x)) tree
 
--- | Return all subtrees in a subtree.
+getLastOffset :: Tree TT -> Point
+getLastOffset tree = case getLastToken tree of
+                    Nothing -> 0
+                    Just tok -> posnOfs (tokPosn tok) +~ tokLen tok
+
+-- | Return all subtrees in a tree.
 getAllSubTrees :: Tree t -> [Tree t]
 getAllSubTrees t = t : concatMap getAllSubTrees (subtrees t)
     where subtrees (Group _ g _) = g
@@ -65,7 +71,10 @@ getAllSubTrees t = t : concatMap getAllSubTrees (subtrees t)
 
 type TT = Tok Token
 
--- | look after the given point on the given line.
+-- | Search the given list, and return the 1st tree after the given
+-- point on the given line.  This is the tree that matters for the
+-- indentation of the given point. Precondition: point is in the given
+-- line.
 getIndentingSubtree :: [Tree TT] -> Point -> Int -> Maybe (Tree TT)
 getIndentingSubtree roots offset line =
     listToMaybe $ [t | (t,posn) <- takeWhile ((<= line) . posnLine . snd) $ allSubTreesPosn,
@@ -77,7 +86,7 @@ getIndentingSubtree roots offset line =
                                let Just tok = getFirstToken t, let posn = tokPosn tok]
 
 
--- | returns: First offset; number of lines.
+-- | given a tree, return (first offset, number of lines).
 getSubtreeSpan :: Tree TT -> (Point, Int)
 getSubtreeSpan tree = (posnOfs $ first, lastLine - firstLine)
     where bounds@[first, _last] = fmap (tokPosn . assertJust) [getFirstToken tree, getLastToken tree]
