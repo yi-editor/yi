@@ -144,7 +144,7 @@ askIndividualQuit (firstBuffer : others) =
                 , ( "c", write closeBufferAndWindowE )
                 , ( "q", write quitEditor )
                 ]
-  yesAction   = do fwriteBufferE firstBuffer
+  yesAction   = do fwriteBufferE (bkey firstBuffer)
                    withEditor closeBufferAndWindowE
                    askIndividualQuit others
 

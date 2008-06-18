@@ -64,7 +64,7 @@ module Yi.Buffer
   , getModeLine
   , getPercent
   , forgetPreferCol
-  , clearUndosB
+  , markSavedB
   , addOverlayB
   , delOverlayB
   , getDynamicB
@@ -314,8 +314,8 @@ runBufferDummyWindow b = runBuffer (dummyWindow $ bkey b) b
 
 
 -- | Mark the current point in the undo list as a saved state.
-clearUndosB :: BufferM ()
-clearUndosB = modifyA undosA setSavedFilePointU
+markSavedB :: BufferM ()
+markSavedB = modifyA undosA setSavedFilePointU
 
 getfileB :: BufferM (Maybe FilePath)
 getfileB = gets file

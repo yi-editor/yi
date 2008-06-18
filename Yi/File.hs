@@ -18,7 +18,7 @@ import System.FilePath
 import Yi.Buffer
 import Yi.Buffer.HighLevel
 import Yi.Editor
-  ( getBuffers )
+  ( getBuffers, getBuffer )
 import Yi.Core
 import Yi.Debug
 import Yi.Keymap
@@ -34,7 +34,7 @@ revertE = do
                              s <- liftIO $ UTF8.readFile fp
                              withBuffer $ do
                                   savingPointB $ replaceBufferContent s 
-                                  clearUndosB
+                                  markSavedB
                              msgEditor ("Reverted from " ++ show fp)
                      Nothing -> do
                                 msgEditor "Can't revert, no file associated with buffer."
@@ -42,23 +42,17 @@ revertE = do
 
 -- | Write current buffer to disk, if this buffer is associated with a file
 fwriteE :: YiM ()
-fwriteE = do contents <- withBuffer elemsB
-             fname    <- withBuffer (gets file)
-             withBuffer clearUndosB
-             case fname of
-               Just n -> liftIO $ UTF8.writeFile n contents
-               Nothing -> msgEditor "Buffer not associated with a file."
+fwriteE = fwriteBufferE =<< withEditor getBuffer
 
 -- | Write a given buffer to a disk if it is associated with a file.
-fwriteBufferE :: FBuffer -> YiM ()
-fwriteBufferE fBuffer = 
+fwriteBufferE :: BufferRef -> YiM ()
+fwriteBufferE bufferKey = 
   do nameContents <- withGivenBuffer bufferKey getNameAndContents
      case nameContents of
-       (Just f, contents) -> do withGivenBuffer bufferKey clearUndosB
+       (Just f, contents) -> do withGivenBuffer bufferKey markSavedB
                                 liftIO $ UTF8.writeFile f contents
        (Nothing, _c)      -> msgEditor "Buffer not associated with a file"
   where
-  bufferKey = bkey fBuffer 
 
   getNameAndContents :: BufferM (Maybe FilePath, String)
   getNameAndContents =
@@ -77,7 +71,7 @@ fwriteAllE :: YiM ()
 fwriteAllE = 
   do buffers     <- withEditor getBuffers
      let modifiedBuffers = filter (not . isUnchangedBuffer) buffers
-     mapM_ fwriteBufferE modifiedBuffers
+     mapM_ fwriteBufferE (map bkey modifiedBuffers)
 
 -- | Make a backup copy of file
 backupE :: FilePath -> YiM ()

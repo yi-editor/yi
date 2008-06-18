@@ -129,16 +129,11 @@ unsafeWithEditor r f = do
   e' `seq` a `seq` writeRef r e'
   return a
 
-
-
-
-
 withGivenBuffer :: BufferRef -> BufferM a -> YiM a
 withGivenBuffer b f = withEditor (Editor.withGivenBuffer0 b f)
 
 withBuffer :: BufferM a -> YiM a
 withBuffer f = withEditor (Editor.withBuffer0 f)
-
 
 readEditor :: (Editor -> a) -> YiM a
 readEditor f = withEditor (gets f)
