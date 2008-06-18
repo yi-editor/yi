@@ -174,7 +174,7 @@ library
 
 
 executable yi
-        build-depends: Cabal >= 1.5.1
+        build-depends: Cabal >= 1.4 && < 1.5
         build-depends: array,  base,  containers,  directory,  filepath>=1.0,
                        mtl, process, old-locale, old-time, random
 
