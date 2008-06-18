@@ -13,8 +13,8 @@
 
 module Yi.UI.Vty (start) where
 
-import Yi.Prelude
-import Prelude (map, take, zip, repeat, length, break, splitAt)
+import Yi.Prelude 
+import Prelude (map, take, zip, repeat, length, break, splitAt, unlines)
 import Control.Concurrent
 import Control.Exception
 import Control.Monad (forever)
@@ -224,7 +224,7 @@ scrollAndRenderWindow cfg e sty width (win,hasFocus) = (win' {bospnt = bos}, ren
 -- | Draw a window
 -- TODO: horizontal scrolling.
 drawWindow :: UIConfig -> FBuffer -> UIStyle -> Bool -> Int -> Window -> (Rendered, Point)
-drawWindow cfg b sty focused w win = (Rendered { picture = pict,cursor = fmap adjCur cur}, bos)
+drawWindow cfg b sty focused w win = (Rendered { picture = pict,cursor = cur}, bos)
             
     where
         m = not (isMini win)
@@ -235,10 +235,13 @@ drawWindow cfg b sty focused w win = (Rendered { picture = pict,cursor = fmap ad
         eofsty = eof sty
         (selreg, _) = runBuffer win b getSelectRegionB
         (point, _) = runBuffer win b pointB
+        (eofPoint, _) = runBuffer win b sizeB
         sz = Size (w*h')
-        (text, _)    = runBuffer win b (nelemsB         maxBound (tospnt win)) -- read enough chars from the buffer.
+        (text, _)    = runBuffer win b (streamB (tospnt win)) -- read enough chars from the buffer.
         (strokes, _) = runBuffer win b (strokesRangesB  (tospnt win) (tospnt win +~ sz)) -- corresponding strokes
-        bufData = paintChars (tospnt win) attr (paintPicture attr (map (map toVtyStroke) strokes)) text
+        colors = paintPicture attr (map (map toVtyStroke) strokes)
+        bufData = -- trace (unlines (map show text) ++ unlines (map show $ concat strokes)) $ 
+                  paintChars attr colors text
         (showSel, _) = runBuffer win b (gets highlightSelection)
         -- TODO: This resolves issue #123 but not very cleanly IMO - coconnor
         tabWidth = tabSize . fst $ runBuffer win b indentSettingsB
@@ -250,7 +253,7 @@ drawWindow cfg b sty focused w win = (Rendered { picture = pict,cursor = fmap ad
                                 tabWidth
                                 (if showSel then selreg else emptyRegion)
                                 selsty wsty 
-                                (zip prompt (repeat wsty) ++ bufData ++ [(' ',attr)])
+                                ([(c,(wsty, 0)) | c <- prompt] ++ bufData ++ [(' ',(attr, eofPoint))])
                              -- we always add one character which can be used to position the cursor at the end of file
                                                                                                  
         (modeLine0, _) = runBuffer win b getModeLine
@@ -260,7 +263,6 @@ drawWindow cfg b sty focused w win = (Rendered { picture = pict,cursor = fmap ad
         filler = take w (configWindowFill cfg : repeat ' ')
     
         pict = vertcat (take h' (rendered ++ repeat (withStyle eofsty filler)) ++ modeLines)
-        adjCur (curx, cury) = (curx, cury + length prompt)
   
 -- | Renders text in a rectangle.
 -- This also returns 
@@ -277,19 +279,14 @@ drawText :: Int    -- ^ The height of the part of the window we are in
                    -- this is not used for drawing but only to compare
                    -- it against the selection attribute to avoid making
                    -- the selection invisible.
-         -> [(Char,Vty.Attr)]  -- ^ The data to draw.
+         -> [(Char,(Vty.Attr,Point))]  -- ^ The data to draw.
          -> ([Image], Point, Maybe (Int,Int))
 drawText h w topPoint point tabWidth selreg selsty wsty bufData
     | h == 0 || w == 0 = ([], topPoint, Nothing)
     | otherwise        = (rendered_lines, bottomPoint, pntpos)
   where 
-  -- | Remember the point of each char
-  annotateWithPoint = annotateWithPoint' topPoint
-  annotateWithPoint' _ []          = []
-  annotateWithPoint' p ((c,a):cs)  = (c, (a,p)) : annotateWithPoint' (p +~ utf8Size [c]) cs
 
-
-  lns0 = take h $ concatMap (wrapLine w) $ map (concatMap expandGraphic) $ lines' $ annotateWithPoint $ bufData
+  lns0 = take h $ concatMap (wrapLine w) $ map (concatMap expandGraphic) $ take h $ lines' $ bufData
 
   bottomPoint = case lns0 of 
                  [] -> topPoint 
@@ -449,14 +446,13 @@ styleToAttr = foldr (.) id . map attrToAttr
 
 -- | Return @n@ elems starting at @i@ of the buffer as a list.
 -- This routine also does syntax highlighting and applies overlays.
-paintChars :: Point -> a -> [(Point,a)] -> [Char] -> [(Char, a)]
-paintChars _   sty [] cs = setSty sty cs
-paintChars pos sty ((endPos,sty'):xs) cs = setSty sty left ++ paintChars endPos sty' xs right
-        where (left, right) = splitAt (fromIntegral (endPos - pos)) cs 
-   -- BUG: we should count how many chars yield this endPos
+paintChars :: a -> [(Point,a)] -> [(Point,Char)] -> [(Char, (a,Point))]
+paintChars sty [] cs = setSty sty cs
+paintChars sty ((endPos,sty'):xs) cs = setSty sty left ++ paintChars sty' xs right
+        where (left, right) = break ((endPos <=) . fst) cs
 
-setSty :: a -> [Char] -> [(Char, a)]
-setSty sty cs = [(c,sty) | c <- cs]
+setSty :: a -> [(Point,Char)] -> [(Char, (a,Point))]
+setSty sty cs = [(c,(sty,p)) | (p,c) <- cs]
 
 
 -- | @paintStrokes colorToTheRight strokes picture@: paint the strokes over a given picture.

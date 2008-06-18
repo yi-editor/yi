@@ -23,18 +23,6 @@ alexScanToken (AlexState state lookedOfs pos, inp) =
 alexScan' input (I# (sc))
   = alexScanUser' undefined input (I# (sc))
 
-utf8Length :: Char -> Int#
-utf8Length c = let i = ord c in
-                 if i < 0x80 then
-                     1#
-                 else if i < 0x800 then
-                     2#
-                 else if i < 0x10000 then
-                     3#
-                 else 
-                     4#
-
-
 alexScanUser' user input (I# (sc))
   = case alex_scan_tkn' user input 0# input sc AlexNone of
 	(AlexNone, input', lookahead) ->
@@ -67,7 +55,7 @@ alex_scan_tkn' user orig_input len input s last_acc =
 		new_s = if (offset >=# 0#) && (check ==# ord_c)
 			  then alexIndexInt16OffAddr alex_table offset
 			  else alexIndexInt16OffAddr alex_deflt s
-                new_len = len +# utf8Length c
+                new_len = len +# 1#
 	in
 	case new_s of 
 	    -1# -> (new_acc, input, I# new_len)

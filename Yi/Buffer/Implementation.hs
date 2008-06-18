@@ -43,6 +43,8 @@ module Yi.Buffer.Implementation
   , updateSyntax
   , getAst
   , strokesRangesBI
+  , toIndexedString
+  , getStream
 )
 where
 
@@ -61,6 +63,7 @@ import Text.Regex.Posix
 import qualified Yi.FingerString as F
 import Yi.FingerString (FingerString)
 import qualified Data.ByteString as B
+import qualified Data.ByteString.Lazy as LazyB
 import Codec.Binary.UTF8.String as UTF8Codec
 import qualified Data.ByteString.UTF8 as UTF8
 import qualified Data.ByteString.Lazy.UTF8 as LazyUTF8
@@ -194,6 +197,9 @@ nelemsBI n i fb = readChars (mem fb) n i
 
 nelemsBI' :: Size -> Point -> BufferImpl syntax -> String
 nelemsBI' n i fb = LazyUTF8.toString $ F.toLazyByteString $ readChunk (mem fb) n i
+
+getStream :: Point -> BufferImpl syntax -> LazyUTF8.ByteString
+getStream (Point i) fb = F.toLazyByteString $ F.drop i $ mem $ fb
 
 -- | Create an "overlay" for the style @sty@ between points @s@ and @e@
 mkOverlay :: Point -> Point -> Style -> Overlay
@@ -454,8 +460,15 @@ updateSyntax fb@FBufferData {dirtyOffset = touchedIndex, hlCache = HLState hl ca
     = fb {dirtyOffset = maxBound,
           hlCache = HLState hl (hlRun hl getText touchedIndex cache)
          }
-    where getText = Scanner 0 (\idx -> zip [idx..] (UTF8Codec.decode $ F.toString (F.drop (fromPoint idx) (mem fb))))
-                                -- FIXME: UTF8: the indices are completely wrong!
+    where getText = Scanner 0 (\idx -> toIndexedString idx (F.toLazyByteString (F.drop (fromPoint idx) (mem fb))))
+
+toIndexedString :: Point -> LazyB.ByteString -> [(Point, Char)]
+toIndexedString curIdx bs = 
+    case LazyUTF8.decode bs of
+      Nothing -> []
+      Just (c,n) -> let newIndex = curIdx + (fromIntegral n) in
+                    (curIdx,c) : (newIndex `seq` (toIndexedString newIndex (LazyB.drop n bs)))
+                          
 
 pointLeftBound, markLeftBound :: Bool
 pointLeftBound = False

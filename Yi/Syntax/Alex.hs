@@ -17,6 +17,7 @@ import Yi.Syntax
 import Yi.Prelude
 import Yi.Style
 import Prelude ()
+import Data.Char (ord)
 
 takeLB :: Int64 -> LB.ByteString -> LB.ByteString
 takeLB = LB.take
@@ -72,10 +73,21 @@ startPosn = Posn 0 1 0
 moveStr :: Posn -> AlexInput -> Posn
 moveStr posn str = foldl' moveCh posn (fmap snd str)
 
+utf8Length :: Char -> Size
+utf8Length c = let i = ord c in
+                 if i < 0x80 then
+                     1
+                 else if i < 0x800 then
+                     2
+                 else if i < 0x10000 then
+                     3
+                 else 
+                     4
+
 moveCh :: Posn -> Char -> Posn
 moveCh (Posn o l c) '\t' = Posn (o+1)  l     (((c+8) `div` 8)*8)
 moveCh (Posn o l _) '\n' = Posn (o+1) (l+1)   0
-moveCh (Posn o l c) _    = Posn (o+1) l     (c+1)
+moveCh (Posn o l c) chr  = Posn (o+~utf8Length chr) l     (c+1)
 
 
 alexGetChar :: AlexInput -> Maybe (Char, AlexInput)

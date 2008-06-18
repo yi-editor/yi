@@ -85,6 +85,7 @@ module Yi.Buffer
   , withSyntax0
   , keymapProcessA
   , strokesRangesB
+  , streamB
   , module Yi.Buffer.Basic
   )
 where
@@ -390,6 +391,8 @@ nelemsB n i = queryBuffer $ nelemsBI n i
 nelemsB' :: Size -> Point -> BufferM [Char]
 nelemsB' n i = queryBuffer $ nelemsBI' n i
 
+streamB :: Point -> BufferM [(Point, Char)]
+streamB i = queryBuffer (toIndexedString i . getStream i)
 
 strokesRangesB :: Point -> Point -> BufferM [[Stroke]]
 strokesRangesB i j = queryBuffer $ strokesRangesBI i j
