@@ -8,7 +8,7 @@ module Yi.Syntax.Alex (
                        Tok(..), tokBegin, tokEnd, tokFromT,          
                        Posn(..), startPosn, moveStr, runSource,
                        Result, ASI, Cache,
-                       (+~), Size(..)
+                       (+~), (~-), Size(..)
                       ) where
 
 import Data.List hiding (map, foldl')

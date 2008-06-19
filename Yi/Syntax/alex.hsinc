@@ -18,7 +18,8 @@ alexScanToken (AlexState state lookedOfs pos, inp) =
 		AlexToken inp' len act -> 
                     let (state', style) = act chunk state 
                         chunk = take (fromIntegral len) inp
-                    in Just (Tok style (Size len) pos, (AlexState state' lookedOfs' (moveStr pos chunk), inp'))
+                        newPos = moveStr pos chunk
+                    in Just (Tok style (posnOfs newPos ~- posnOfs pos) pos, (AlexState state' lookedOfs' newPos, inp'))
 
 alexScan' input (I# (sc))
   = alexScanUser' undefined input (I# (sc))
