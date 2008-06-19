@@ -88,6 +88,7 @@ execEditorAction s = do
   where addMakeAction expr = return $ UApp (UVal mkAct) expr
         mkAct = [
                  toDyn (makeAction :: BufferM () -> Action),
+                 toDyn (makeAction :: BufferM Bool -> Action),
                  toDyn (makeAction :: BufferM Int -> Action),
                  toDyn (makeAction :: EditorM () -> Action),
                  toDyn (makeAction :: YiM () -> Action),

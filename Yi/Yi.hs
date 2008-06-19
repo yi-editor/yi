@@ -64,6 +64,7 @@ import Yi.Keymap.Emacs.Utils
 defaultPublishedActions :: M.Map String [Dynamic]
 defaultPublishedActions = M.fromList $ 
     [ ("leftB"                  , box leftB) 
+    , ("pointB"                 , box (fromPoint <$> pointB)) 
     , ("lineCommentSelectionB"  , box lineCommentSelectionB)
     , ("unLineCommentSelectionB", box unLineCommentSelectionB)
     , ("insertB"                , box insertB)

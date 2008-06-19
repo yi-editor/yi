@@ -33,7 +33,7 @@ import Prelude ()
 --The region is semi open: it includes the start but not the end bound. This allows simpler region-manipulation algorithms.
 -- Invariant : regionStart r <= regionEnd r
 data Region = Region {regionStart, regionEnd :: !Point} 
-                 deriving Typeable
+                 deriving (Typeable, Show)
 fmapRegion :: (Point -> Point) -> Region -> Region
 fmapRegion f (Region x y) = Region (f x) (f y)
 
@@ -45,6 +45,7 @@ winRegion w = mkRegion (tospnt w) (bospnt w)
 
 -- | Construct a region from its bounds, vim style:
 -- the right bound in included.
+-- FIXME: this does not handle UTF8 correctly.
 mkVimRegion :: Point -> Point -> Region
 mkVimRegion x y = if x < y then Region x (y+1) else Region y (x+1)
 
