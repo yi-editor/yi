@@ -32,6 +32,8 @@ import Data.Typeable
 
 import Control.Monad.State
 import Control.Monad.Writer
+import qualified Data.ByteString.Lazy as LB
+import qualified Data.ByteString.Lazy.UTF8 as LazyUTF8
 
 
 -- | The Editor state
@@ -93,7 +95,7 @@ emptyEditor = Editor {
        ,killring     = krEmpty
        ,pendingEvents = []
        }
-        where buf = newB 0 "*console*" ""
+        where buf = newB 0 "*console*" (LazyUTF8.fromString "")
               win = (dummyWindow (bkey buf)) {wkey = 1, isMini = False}
 
 -- ---------------------------------------------------------------------
@@ -115,7 +117,8 @@ stringToNewBuffer :: String -- ^ The buffer name (*not* the associated file)
                   -> EditorM BufferRef
 stringToNewBuffer nm cs = do
     u <- newRef
-    insertBuffer (newB u nm cs)
+    insertBuffer (newB u nm (LazyUTF8.fromString cs))
+
 
 insertBuffer :: FBuffer -> EditorM BufferRef
 insertBuffer b = getsAndModify $

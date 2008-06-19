@@ -241,7 +241,7 @@ drawWindow cfg b sty focused w win = (Rendered { picture = pict,cursor = cur}, b
         (strokes, _) = runBuffer win b (strokesRangesB  (tospnt win) (tospnt win +~ sz)) -- corresponding strokes
         colors = paintPicture attr (map (map toVtyStroke) strokes)
         bufData = -- trace (unlines (map show text) ++ unlines (map show $ concat strokes)) $ 
-                  paintChars attr colors text
+                  paintChars attr colors $ toIndexedString (tospnt win) text
         (showSel, _) = runBuffer win b (gets highlightSelection)
         -- TODO: This resolves issue #123 but not very cleanly IMO - coconnor
         tabWidth = tabSize . fst $ runBuffer win b indentSettingsB

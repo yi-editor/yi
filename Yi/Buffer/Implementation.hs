@@ -127,8 +127,8 @@ data UIUpdate = TextUpdate Update
 -- Low-level primitives.
 
 -- | New FBuffer filled from string.
-newBI :: String -> FBufferData ()
-newBI s = FBufferData (F.fromString $ UTF8Codec.encode s) mks M.empty (HLState noHighlighter (hlStartState noHighlighter)) Set.empty 0
+newBI :: LazyB.ByteString -> FBufferData ()
+newBI s = FBufferData (F.fromLazyByteString s) mks M.empty (HLState noHighlighter (hlStartState noHighlighter)) Set.empty 0
     where mks = M.fromList [(pointMark, MarkValue 0 pointLeftBound)]
 
 -- | read @n@ chars from buffer @b@, starting at @i@

@@ -108,7 +108,9 @@ import {-# source #-} Yi.Keymap
 import Yi.Monad
 import Yi.Interact as I
 import qualified Data.ByteString.UTF8 as UTF8
+import qualified Data.ByteString.Lazy.UTF8 as LazyUTF8
 import qualified Data.ByteString as B
+import qualified Data.ByteString.Lazy as LB
 import Yi.Buffer.Basic
 
 #ifdef TESTING
@@ -116,7 +118,7 @@ import Test.QuickCheck
 import Driver ()
 
 instance Arbitrary FBuffer where
-    arbitrary = do b0 <- return (newB 0 "*buffername*") `ap` arbitrary
+    arbitrary = do b0 <- return (newB 0 "*buffername*") `ap` (LazyUTF8.fromString `liftM` arbitrary)
                    p0 <- arbitrary
                    return $ snd $ runBufferDummyWindow b0 (moveTo $ Point p0)
 
@@ -359,7 +361,7 @@ emptyMode = Mode
   }
 
 -- | Create buffer named @nm@ with contents @s@
-newB :: BufferRef -> String -> [Char] -> FBuffer
+newB :: BufferRef -> String -> LB.ByteString -> FBuffer
 newB unique nm s =
     FBuffer { name   = nm
             , bkey   = unique
@@ -391,8 +393,9 @@ nelemsB n i = queryBuffer $ nelemsBI n i
 nelemsB' :: Size -> Point -> BufferM [Char]
 nelemsB' n i = queryBuffer $ nelemsBI' n i
 
-streamB :: Point -> BufferM [(Point, Char)]
-streamB i = queryBuffer (toIndexedString i . getStream i)
+streamB :: Point -> BufferM LazyUTF8.ByteString
+streamB i = queryBuffer (getStream i)
+
 
 strokesRangesB :: Point -> Point -> BufferM [[Stroke]]
 strokesRangesB i j = queryBuffer $ strokesRangesBI i j
