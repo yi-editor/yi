@@ -286,7 +286,7 @@ extendRegionToBoundaries unit bs1 bs2 region = savingPointB $ do
   genMaybeMoveB unit (Backward, bs1) Backward
   start <- pointB
   moveTo $ regionEnd region
-  genMoveB unit (Forward, bs2) Forward
+  genMaybeMoveB unit (Forward, bs2) Forward
   stop <- pointB
   return $ mkRegion start stop
 
