@@ -21,7 +21,7 @@ module Yi.Main (main, defaultConfig) where
 
 import Prelude ()
 import Yi.Prelude
-
+import Data.String
 import qualified Yi.Keymap.Emacs  as Emacs
 import qualified Yi.Keymap.Vim  as Vim
 import qualified Yi.Keymap.Users.Ertai
@@ -135,7 +135,7 @@ nilKeymap = do c <- anyEvent
                          'r' -> write $ reloadEditor
                          'h' -> write $ configHelp
                          _   -> write $ errorEditor $ "Keymap not defined, 'q' to quit, 'h' for help."
-    where configHelp = withEditor $ newBufferE "*configuration help*" $ unlines $
+    where configHelp = withEditor $ newBufferE "*configuration help*" $ fromString $ unlines $
                          ["To get a standard reasonable keymap, you can run yi with either --as=vim or --as=emacs.",
                           "you can type 'e' or 'v' now to get a temporary emacs or vim keymap.",
                           "You should however create your own ~/.yi/yi.hs file: ",
@@ -170,7 +170,7 @@ defaultConfig =
 
 openScratchBuffer :: YiM ()
 openScratchBuffer = withEditor $ do     -- emacs-like behaviour
-      newBufferE "*scratch*"
+      newBufferE "*scratch*" $ fromString
                    ("-- This buffer is for notes you don't want to save, and for haskell evaluation\n" ++
                     "-- If you want to create a file, open that file,\n" ++
                     "-- then enter the text in that file's own buffer.\n\n")

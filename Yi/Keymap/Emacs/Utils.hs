@@ -42,6 +42,7 @@ module Yi.Keymap.Emacs.Utils
 where
 
 {- Standard Library Module Imports -}
+import Data.String
 import Control.Monad
   ()
 import Data.Char
@@ -76,7 +77,6 @@ import Control.Monad
 {- External Library Module Imports -}
 {- Local (yi) module imports -}
 
-
 import Control.Applicative
 import Control.Monad
 import Yi.Buffer
@@ -101,6 +101,7 @@ import Yi.Templates
   , templateNames
   )
 import Yi.UI.Common 
+import qualified Data.ByteString.Lazy.UTF8 as LazyUTF8
 
 {- End of Module Imports -}
 
@@ -196,7 +197,8 @@ shellCommandE = do
     withMinibuffer "Shell command:" return $ \cmd -> do
       (cmdOut,cmdErr,exitCode) <- liftIO $ runShellCommand cmd
       case exitCode of
-        ExitSuccess -> withEditor $ newBufferE "*Shell Command Output*" cmdOut >> return ()
+        ExitSuccess -> withEditor $ newBufferE "*Shell Command Output*" (LazyUTF8.fromString cmdOut) >> return ()
+        -- FIXME: here we get a string and convert it back to utf8; this indicates a possible bug.
         ExitFailure _ -> msgEditor cmdErr
 
 ----------------------------
@@ -223,7 +225,8 @@ cabalConfigureE =
          (cmdOut,cmdErr,exitCode) <- liftIO $ popen "runhaskell" (setupFile:"configure":words cmd) Nothing
          case exitCode of
            ExitSuccess   -> do withUI $ \ui -> reloadProject ui "."
-                               withEditor $ withOtherWindow $ newBufferE "*Shell Command Output*" cmdOut >> return ()
+                               withEditor $ withOtherWindow $ newBufferE "*Shell Command Output*" (fromString cmdOut) >> return ()
+                               -- FIXME: here we get a string and convert it back to utf8; this indicates a possible bug.
            ExitFailure _ -> msgEditor cmdErr
 
 reloadProjectE :: String -> YiM ()

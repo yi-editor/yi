@@ -69,6 +69,7 @@ import Data.Maybe
 import qualified Data.Map as M
 import Data.IORef
 import Data.Foldable (mapM_, all)
+import Data.String
 
 import System.IO ( Handle, hWaitForInput )
 import System.FilePath
@@ -123,7 +124,7 @@ startEditor cfg st = do
   
     runYi $ do
 
-      withEditor $ newBufferE "*messages*" "" >> return ()
+      withEditor $ newBufferE "*messages*" (fromString "") >> return ()
 
       when (isNothing st) $ do -- process options if booting for the first time
         startAction cfg
@@ -273,7 +274,7 @@ getAllNamesInScope = do
 startSubprocess :: FilePath -> [String] -> YiM ()
 startSubprocess cmd args = do
   let buffer_name = "output from " ++ cmd
-  bufref <- withEditor $ newBufferE buffer_name ""
+  bufref <- withEditor $ newBufferE buffer_name (fromString "")
 
   procid <- modifiesThenReadsRef yiSubprocessIdSupply (+1)
   procinfo <- liftIO $ createSubprocess cmd args bufref

@@ -29,7 +29,7 @@ import Data.List                ( nub )
 import qualified Data.DelayList as DelayList
 import qualified Data.Map as M
 import Data.Typeable
-
+import Data.String
 import Control.Monad.State
 import Control.Monad.Writer
 import qualified Data.ByteString.Lazy as LB
@@ -113,11 +113,11 @@ newRef = do
 
 -- | Create and fill a new buffer, using contents of string.
 stringToNewBuffer :: String -- ^ The buffer name (*not* the associated file)
-                  -> String -- ^ The contents with which to populate the buffer
+                  -> LazyUTF8.ByteString -- ^ The contents with which to populate the buffer
                   -> EditorM BufferRef
 stringToNewBuffer nm cs = do
     u <- newRef
-    insertBuffer (newB u nm (LazyUTF8.fromString cs))
+    insertBuffer (newB u nm cs)
 
 
 insertBuffer :: FBuffer -> EditorM BufferRef
@@ -247,7 +247,7 @@ setTmpStatus delay s = do
   bs <- gets $ findBufferWithName "*messages*"
   b <- case bs of
          (b':_) -> return b'
-         [] -> newBufferE "*messages*" ""
+         [] -> newBufferE "*messages*" (fromString "")
   withGivenBuffer0 b $ do botB; insertN (s ++ "\n")
 
 
@@ -296,7 +296,7 @@ prevBufW = prevBuffer >>= switchToBufferE
 -- with the buffer (unlike fnewE) and so is good for popup internal
 -- buffers (like scratch)
 newBufferE :: String   -- ^ buffer name
-              -> String -- ^ buffer contents
+              -> LazyUTF8.ByteString -- ^ buffer contents
               -> EditorM BufferRef
 newBufferE f s = do
     b <- stringToNewBuffer f s

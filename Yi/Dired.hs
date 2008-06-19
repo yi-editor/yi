@@ -28,6 +28,7 @@ module Yi.Dired (
        ,fnewE
     ) where
 
+import qualified Data.ByteString.Lazy as LazyB
 import Data.List
 import Data.Maybe
 import qualified Data.Map as M
@@ -46,6 +47,7 @@ import System.IO
 import Control.Exception(bracket, handle)
 #endif
 import Control.Monad.Reader
+import Data.String
 
 import System.Time
 import Text.Printf
@@ -127,13 +129,13 @@ fnewCanonicalized f = do
       fileToNewBuffer bufferName f -- Load the file into a new buffer
     newBufferForPath _bufferName False True  = diredDirBuffer f
     newBufferForPath bufferName False False  =
-      withEditor $ stringToNewBuffer bufferName []  -- Create new empty buffer
+      withEditor $ stringToNewBuffer bufferName (fromString "")  -- Create new empty buffer
 
 
     -- The first argument is the buffer name
     fileToNewBuffer :: String -> FilePath -> YiM BufferRef
     fileToNewBuffer bufferName path = do
-      contents <- liftIO $ UTF8.readFile path
+      contents <- liftIO $ LazyB.readFile path
       withEditor $ stringToNewBuffer bufferName contents
 
     -- Given the desired buffer name, plus a list of current buffer
@@ -228,7 +230,7 @@ diredDir dir = diredDirBuffer dir >> return ()
 
 diredDirBuffer :: FilePath -> YiM BufferRef
 diredDirBuffer dir = do
-                b <- withEditor $ stringToNewBuffer ("dired-"++dir) ""
+                b <- withEditor $ stringToNewBuffer ("dired-"++dir) (fromString "")
                 setFileName b dir -- associate the buffer with the dir
                 withEditor $ switchToBufferE b
                 diredLoadNewDir dir

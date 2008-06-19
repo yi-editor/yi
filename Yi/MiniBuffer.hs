@@ -18,6 +18,7 @@ import Yi.Keymap.Emacs.Keys
 import qualified Yi.Editor as Editor
 import qualified Yi.WindowSet as WS
 import Control.Monad.Reader
+import Data.String
 
 -- | Open a minibuffer window with the given prompt and keymap
 -- The third argument is an action to perform after the minibuffer
@@ -25,7 +26,7 @@ import Control.Monad.Reader
 -- string. If you don't need this just supply @return ()@
 spawnMinibufferE :: String -> KeymapEndo -> YiM BufferRef
 spawnMinibufferE prompt kmMod =
-    do b <- withEditor $ stringToNewBuffer prompt []
+    do b <- withEditor $ stringToNewBuffer prompt (fromString "")
        fundamental <- asks (fundamentalMode . yiConfig)
        setBufferMode b fundamental {modeKeymap = kmMod}
        withEditor $ do
