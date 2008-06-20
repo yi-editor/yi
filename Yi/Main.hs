@@ -30,6 +30,7 @@ import Yi.Yi hiding (file, yiConfig)
 import Yi.Modes (defaultModeMap, defaultFundamentalMode)
 import Yi.Interact hiding (write)
 import qualified Yi.Interact as I
+import Yi.Keymap.Keys
 
 #ifdef TESTING
 import qualified TestSuite
@@ -127,14 +128,14 @@ versinfo = "yi 0.4.0"
 -- TODO: pull this out of the cabal configuration
 
 nilKeymap :: Keymap
-nilKeymap = do c <- anyEvent
-               case eventToChar c of
-                         'e' -> forever Emacs.keymap
-                         'v' -> forever Vim.keymap
-                         'q' -> write $ quitEditor
-                         'r' -> write $ reloadEditor
-                         'h' -> write $ configHelp
-                         _   -> write $ errorEditor $ "Keymap not defined, 'q' to quit, 'h' for help."
+nilKeymap = choice [
+             char 'e' ?>>  forever Emacs.keymap,
+             char 'v' ?>>  forever Vim.keymap,
+             char 'q' ?>>! quitEditor,
+             char 'r' ?>>! reloadEditor,
+             char 'h' ?>>! configHelp
+            ] 
+            <|| (anyEvent >>! errorEditor "Keymap not defined, 'q' to quit, 'h' for help.")
     where configHelp = withEditor $ newBufferE "*configuration help*" $ fromString $ unlines $
                          ["To get a standard reasonable keymap, you can run yi with either --as=vim or --as=emacs.",
                           "you can type 'e' or 'v' now to get a temporary emacs or vim keymap.",
