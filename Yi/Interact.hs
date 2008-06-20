@@ -1,4 +1,4 @@
-{-# LANGUAGE UndecidableInstances, GADTs, MultiParamTypeClasses, FunctionalDependencies, FlexibleInstances #-}
+{-# LANGUAGE UndecidableInstances, GADTs, MultiParamTypeClasses, FunctionalDependencies, FlexibleInstances, FlexibleContexts, ScopedTypeVariables #-}
 
 -- Copyright (c) Jean-Philippe Bernardy 2007-8
 
@@ -47,10 +47,11 @@ module Yi.Interact
      possibleActions,
      event,
      events,
-     satisfy,
      choice,
      mkAutomaton,
-     runWrite
+     runWrite,
+     anyEvent,
+     eventBetween,
     ) where
 
 import Control.Applicative
@@ -68,9 +69,9 @@ class PEq a where
 class (PEq w, Monad m, Alternative m, Applicative m, MonadPlus m) => MonadInteract m w e | m -> w e where
     write :: w -> m ()
     -- ^ Outputs a result.
-    anyEvent :: m e
+    eventBounds :: Ord e => Maybe e -> Maybe e -> m e
     -- ^ Consumes and returns the next character.
-    --   Fails if there is no input left.
+    --   Fails if there is no input left, or outside the given bounds.
     adjustPriority :: Int -> m a -> m a
 
 
@@ -80,7 +81,7 @@ class (PEq w, Monad m, Alternative m, Applicative m, MonadPlus m) => MonadIntera
 -- Needs -fallow-undecidable-instances
 instance MonadInteract m w e => MonadInteract (StateT s m) w e where
     write = lift . write
-    anyEvent = lift anyEvent
+    eventBounds l h = lift (eventBounds l h)
     adjustPriority p (StateT f) = StateT (\s -> adjustPriority p (f s))
 
 instance (MonadInteract m w e) => Alternative (StateT s m) where
@@ -91,30 +92,31 @@ instance MonadInteract m w e => Applicative (StateT s m) where
     pure = return
     a <*> b = do f <- a; x <- b; return (f x)
 
-
 ---------------------------------------------------------------------------
 -- | Interactive process description
 data I ev w a where
     Returns :: a -> I ev w a
     Binds :: I ev w a -> (a -> I ev w b) -> I ev w b
-    Gets :: I ev w ev
+    Gets :: Ord ev => Maybe ev -> Maybe ev -> I ev w ev
+    -- ^ Accept any character between given bounds. Bound is ignored if 'Nothing'.
     Fails :: I ev w a
     Writes :: Int -> w -> I ev w ()
     Plus :: I ev w a -> I ev w a -> I ev w a
 
 
 
--- | Cofunctor on the the event parameter. This can be used to convert
+-- | Functor on the the event parameter. This can be used to convert
 -- from a specific event type to a general one. (e.g. from
 -- full-fleged events to chars)
 
-comap :: (ev1 -> ev2) -> I ev2 m a -> I ev1 m a
-comap _f (Returns a) = Returns a
-comap f Gets = fmap f Gets
-comap f (Binds a b) = Binds (comap f a) (comap f . b)
-comap _f Fails = Fails
-comap _f (Writes p w) = Writes p w
-comap f (Plus a b) = Plus (comap f a) (comap f b)
+comap :: Ord ev1 => (ev2 -> ev1) -> (ev1 -> ev2) -> I ev2 m a -> I ev1 m a
+comap _f' _f (Returns a) = Returns a
+comap  f'  f (Gets l h) = fmap f (Gets (fmap f' l) (fmap f' h))
+comap  f'  f (Binds a b) = Binds (comap f' f a) (comap f' f . b)
+comap _f' _f Fails = Fails
+comap _f' _f (Writes p w) = Writes p w
+comap  f'  f (Plus a b) = Plus (comap f' f a) (comap f' f b)
+
 
 instance Functor (I event w) where
   fmap f i = pure f <*> i
@@ -138,11 +140,11 @@ instance PEq w => MonadPlus (I event w) where
 
 instance PEq w => MonadInteract (I event w) w event where
     write = Writes 0
-    anyEvent = Gets
+    eventBounds = Gets
     adjustPriority dp i = case i of
       Returns x -> Returns x
       Binds x f -> Binds (adjustPriority dp x) (\y -> adjustPriority dp (f y))
-      Gets -> Gets
+      Gets l h -> Gets l h
       Fails -> Fails
       Writes p w -> Writes (p + dp) w
       Plus a b -> Plus (adjustPriority dp a) (adjustPriority dp b)
@@ -165,7 +167,7 @@ mkProcess :: PEq w => I ev w a -> ((a -> P ev w) -> P ev w)
 mkProcess (Returns x) = \fut -> fut x
 mkProcess Fails = (\_fut -> Fail)
 mkProcess (m `Binds` f) = \fut -> (mkProcess m) (\a -> mkProcess (f a) fut)
-mkProcess Gets = Get
+mkProcess (Gets l h) = Get l h
 mkProcess (Writes prior w) = \fut -> Write prior w (fut ())
 mkProcess (Plus a b) = \fut -> Best (mkProcess a fut) (mkProcess b fut)
 
@@ -175,7 +177,7 @@ mkProcess (Plus a b) = \fut -> Best (mkProcess a fut) (mkProcess b fut)
 
 -- | Operational representation of a process
 data P event w
-    = Get (event -> P event w)
+    = Ord event => Get (Maybe event) (Maybe event) (event -> P event w)
     | Fail
     | Write Int w (P event w)  -- low numbers indicate high priority
     | Best (P event w) (P event w)
@@ -197,7 +199,9 @@ pushEvent :: P ev w -> ev -> P ev w
 
 pushEvent (Best c d) e = Best (pushEvent c e) (pushEvent d e)
 pushEvent (Write p w c) e = Write p w (pushEvent c e)
-pushEvent (Get f) e = f e
+pushEvent (Get l h f) e = if test (e >=) l && test (e <=) h then f e else Fail
+    where test f Nothing = True
+          test f (Just x) = f x
 pushEvent Fail _ = Fail
 pushEvent End _ = End
 
@@ -237,7 +241,7 @@ pullWrites p = ([], p)
 -- 'Nothing' indicates a read.
 possibleActions :: P event w -> [Maybe w]
 possibleActions = nubBy equiv' . helper
-    where helper (Get _) = [Nothing]
+    where helper (Get _ _ _) = [Nothing]
           helper (Write _ w _) = [Just w]
           helper (Best p q) = helper p ++ helper q
           helper _ = []
@@ -245,7 +249,9 @@ possibleActions = nubBy equiv' . helper
           equiv' _ _ = False
 
 instance (Show w, Show ev) => Show (P ev w) where
-    show (Get _) = "?"
+    show (Get Nothing Nothing p) = "?"
+    show (Get (Just l) (Just h) p) | l == h = show l -- ++ " " ++ show (p l)
+    show (Get l h p) = maybe "" show l ++ ".." ++ maybe "" show h
     show (Write prior w p) = "!" ++ show prior ++ ":" ++ show w ++ "->" ++ show p
     show (End) = "."
     show (Fail) = "*"
@@ -253,19 +259,25 @@ instance (Show w, Show ev) => Show (P ev w) where
 
 -- ---------------------------------------------------------------------------
 -- Derived operations
-oneOf :: (Eq event, MonadInteract m w event) => [event] -> m event
+oneOf :: (Ord event, Bounded event, MonadInteract m w event) => [event] -> m event
 oneOf s = satisfy (`elem` s)
 
-satisfy :: MonadInteract m w event => (event -> Bool) -> m event
+anyEvent :: (Ord event, MonadInteract m w event) => m event
+anyEvent = eventBounds Nothing Nothing
+
+satisfy :: (Ord event, Bounded event, MonadInteract m w event) => 
+           (event -> Bool) -> m event
 -- ^ Consumes and returns the next character, if it satisfies the
 --   specified predicate.
 satisfy p = do c <- anyEvent; if p c then return c else fail "not satisfy'ed"
 
-event :: (Eq event, MonadInteract m w event) => event -> m event
--- ^ Parses and returns the specified character.
-event c = satisfy (c ==)
+eventBetween l h = eventBounds (Just l) (Just h)
 
-events :: (Eq event, MonadInteract m w event) => [event] -> m [event]
+event :: (Ord event, MonadInteract m w event) => event -> m event
+-- ^ Parses and returns the specified character.
+event e = eventBetween e e
+
+events :: (Ord event, MonadInteract m w event) => [event] -> m [event]
 -- ^ Parses and returns the specified list of events (lazily).
 events = mapM event
 

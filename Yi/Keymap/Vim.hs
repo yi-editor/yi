@@ -49,7 +49,7 @@ keymap :: Keymap
 keymap = runVim cmd_mode
 
 runVim :: VimMode -> Keymap
-runVim = comap eventToChar
+runVim = comap charToEvent eventToChar
 
 ------------------------------------------------------------------------
 
@@ -106,11 +106,9 @@ change_vis_mode _   dst              = core_vis_mode dst
 -- typically what is needed for integer repetition arguments to commands
 count :: VimProc (Maybe Int)
 count = option Nothing $ do
-    c <- satisfy isDigitNon0
-    cs <- many (satisfy isDigit)
+    c <- eventBetween '1' '9'
+    cs <- many $ eventBetween '0' '9'
     return $ Just $ read (c:cs)
-  where isDigitNon0 '0' = False
-        isDigitNon0 x   = isDigit x
 
 data RegionStyle = LineWise
                  | CharWise
@@ -223,7 +221,7 @@ cmd_eval = do
    choice
     ([event c >> write (a i) | (c,a) <- singleCmdFM ] ++
      [events evs >> write (action i) | (evs, action) <- multiCmdFM ] ++
-     [do event 'r'; c <- anyButEscOrDel; write (writeB c)])
+     [do event 'r'; c <- replacementChar; write (writeB c)])
 
 -- TODO: escape the current word
 --       at word bounds: search for \<word\>
@@ -232,8 +230,12 @@ searchCurrentWord = do
   w <- withBuffer $ readRegionB =<< regionOfB ViWord
   doSearch (Just w) [] Forward
 
-anyButEscOrDel :: VimProc Char
-anyButEscOrDel = satisfy (not . (`elem` ('\ESC':delete')))
+-- | Parse any character that can be used to for replacement, by the 'r' command.
+replacementChar :: VimProc Char
+replacementChar = do
+  c <- anyEvent
+  when (c `elem` ('\ESC':delete')) $ fail "ESC or Del unexpected"
+  return c
 
 continueSearching :: Direction -> YiM ()
 continueSearching direction = do
@@ -428,7 +430,7 @@ vis_multi = do
    choice ([events "ZZ" >> write (viWrite >> quitEditor),
             event '>' >> write (shiftIndentOfSelection i),
             event '<' >> write (shiftIndentOfSelection (-i)),
-            do event 'r'; x <- anyEvent; write $ do
+            do event 'r'; x <- replacementChar; write $ do
                                    mrk <- getSelectionMarkPointB
                                    pt <- pointB
                                    text <- readRegionB (mkVimRegion mrk pt)
