@@ -25,7 +25,16 @@ char c = Event (KASCII c) []
 spec :: Key -> Event
 spec k = Event k []
 
-(?>) :: (MonadInteract m Action Event, YiAction a x, Show x) => Event -> a -> m ()
-ev ?> act = event ev >> write act
 
-infixr 0 ?>
+(>>!) :: (MonadInteract m Action Event, YiAction a x, Show x) => m b -> a -> m ()
+p >>! act = p >> write act
+
+(?>>) :: (MonadInteract m action Event) => Event -> m a -> m a
+ev ?>> proc = event ev >> proc
+
+(?>>!) :: (MonadInteract m Action Event, YiAction a x, Show x) => Event -> a -> m ()
+ev ?>>! act = event ev >> write act
+
+infixl 1 >>!
+infix  0 ?>>!
+infixr 0 ?>>

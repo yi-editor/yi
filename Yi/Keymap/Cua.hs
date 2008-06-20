@@ -40,13 +40,13 @@ setMark = do
 
 keys :: [Keymap]
 keys = [
-        spec KEsc   ?> quitEditor,
-        spec KRight ?> rightB,
-        spec KLeft  ?> leftB,
-        spec KUp    ?> moveB VLine Backward,
-        spec KDown  ?> moveB VLine Forward,
-        shift (spec KRight) ?> setMark >> rightB,
-        ctrl  (char 'x')    ?> killRegionE
+        spec KEsc           ?>>! quitEditor,
+        spec KRight         ?>>! rightB,
+        spec KLeft          ?>>! leftB,
+        spec KUp            ?>>! moveB VLine Backward,
+        spec KDown          ?>>! moveB VLine Forward,
+        shift (spec KRight) ?>>! setMark >> rightB,
+        ctrl  (char 'x')    ?>>! killRegionE
        ]
 
 

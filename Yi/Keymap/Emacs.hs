@@ -64,7 +64,7 @@ keymap :: Keymap
 keymap = selfInsertKeymap <|> makeKeymap keys <|> completionKm
 
 completionKm :: Keymap
-completionKm = do some (adjustPriority (-1) (meta (char '/') ?> wordCompleteB))
+completionKm = do some (adjustPriority (-1) (meta (char '/') ?>>! wordCompleteB))
                   write resetCompleteB 
            -- 'adjustPriority' is there to lift the ambiguity between "continuing" completion
            -- and resetting it (restarting at the 1st completion).
