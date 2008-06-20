@@ -138,7 +138,7 @@ library
         Shim.CabalInfo
         System.FriendlyPath
         Yi.Buffer.HighLevel, Yi.Buffer.Implementation,
-        Yi.Buffer.Normal, Yi.Buffer.Region, Yi.Char, Yi.Completion, Yi.Core,
+        Yi.Buffer.Normal, Yi.Buffer.Region, Yi.Completion, Yi.Core,
         Yi.Debug, Yi.Dired, Yi.Dynamic, Yi.Editor, Yi.Eval, Yi.Event, Yi.FingerString, Yi.History,
         Yi.Indent, Yi.Interact, Yi.Keymap, Yi.Keymap.Completion,
         Yi.Keymap.Emacs.Keys, Yi.Keymap.Emacs.KillRing, Yi.Keymap.Emacs.UnivArgument,
@@ -265,7 +265,7 @@ executable yi
 
            Yi.Accessor, Yi.Interpreter,
            Yi.Buffer.HighLevel, Yi.Buffer.Implementation,
-           Yi.Buffer.Normal, Yi.Buffer.Region, Yi.Char, Yi.Completion, Yi.Core,
+           Yi.Buffer.Normal, Yi.Buffer.Region, Yi.Completion, Yi.Core,
            Yi.Debug, Yi.Dired, Yi.Dynamic, Yi.Editor, Yi.Eval, Yi.Event, Yi.FingerString, Yi.History,
            Yi.Indent, Yi.Interact, Yi.Keymap, Yi.Keymap.Completion,
            Yi.Keymap.Emacs.Keys, Yi.Keymap.Emacs.KillRing, Yi.Keymap.Emacs.UnivArgument,

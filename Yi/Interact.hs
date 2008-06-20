@@ -40,7 +40,6 @@ module Yi.Interact
      PEq (..),
      deprioritize,
      (<||),
-     comap,
      option,
      oneOf,
      processOneEvent,
@@ -102,20 +101,6 @@ data I ev w a where
     Fails :: I ev w a
     Writes :: Int -> w -> I ev w ()
     Plus :: I ev w a -> I ev w a -> I ev w a
-
-
-
--- | Functor on the the event parameter. This can be used to convert
--- from a specific event type to a general one. (e.g. from
--- full-fleged events to chars)
-
-comap :: Ord ev1 => (ev2 -> ev1) -> (ev1 -> ev2) -> I ev2 m a -> I ev1 m a
-comap _f' _f (Returns a) = Returns a
-comap  f'  f (Gets l h) = fmap f (Gets (fmap f' l) (fmap f' h))
-comap  f'  f (Binds a b) = Binds (comap f' f a) (comap f' f . b)
-comap _f' _f Fails = Fails
-comap _f' _f (Writes p w) = Writes p w
-comap  f'  f (Plus a b) = Plus (comap f' f a) (comap f' f b)
 
 
 instance Functor (I event w) where
