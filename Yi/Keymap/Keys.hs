@@ -9,6 +9,11 @@ import Data.Char
 import Prelude hiding (error)
 
 
+charOf :: (MonadInteract m w Event) => (Event -> Event) -> Char -> Char -> m Char
+charOf modifier l h = 
+    do Event (KASCII c) [] <- eventBetween (modifier $ char l) (modifier $ char h)
+       return c
+
 shift,ctrl,meta :: Event -> Event
 shift (Event (KASCII c) ms) | isAlpha c = Event (KASCII (toUpper c)) ms
                            | otherwise = error "shift: unhandled event"

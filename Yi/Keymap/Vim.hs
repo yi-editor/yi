@@ -30,6 +30,8 @@ import Yi.Indent
 import Yi.Keymap.Emacs.Utils (completeFileName,completeBufferName)
 import Yi.MiniBuffer
 import Yi.TextCompletion
+import Yi.Keymap.Keys
+
 --
 -- What's missing?
 --   fancier :s//
@@ -41,19 +43,17 @@ import Yi.TextCompletion
 
 type VimMode = VimProc ()
 
-type VimProc a = (Interact Char) a
+type VimProc a = KeymapM a
 
 
 -- | Top level
 keymap :: Keymap
-keymap = runVim cmd_mode
+keymap = cmd_mode
 
-runVim :: VimMode -> Keymap
-runVim = comap charToEvent eventToChar
 
 ------------------------------------------------------------------------
 
--- The Vim VimProc is divided into several parts, roughly corresponding
+-- The Vim keymap is divided into several parts, roughly corresponding
 -- to the different modes of vi. Each mode is in turn broken up into
 -- separate VimProcs for each phase of key input in that mode.
 
@@ -69,7 +69,7 @@ eval p = do (_, a) <- p; write a
 
 -- | Leave a mode. This always has priority over catch-all actions inside the mode.
 leave :: VimMode
-leave = event '\ESC' >> adjustPriority (-1) (write msgClr)
+leave = spec KEsc ?>> adjustPriority (-1) (write msgClr)
 
 -- | Insert mode is either insertion actions, or the meta (\ESC) action
 ins_mode :: VimMode
@@ -102,12 +102,13 @@ change_vis_mode :: RegionStyle -> RegionStyle -> VimMode
 change_vis_mode src dst | src == dst = return ()
 change_vis_mode _   dst              = core_vis_mode dst
 
+
 -- | A VimProc to accumulate digits.
 -- typically what is needed for integer repetition arguments to commands
 count :: VimProc (Maybe Int)
 count = option Nothing $ do
-    c <- eventBetween '1' '9'
-    cs <- many $ eventBetween '0' '9'
+    c <- charOf id '1' '9'
+    cs <- many $ charOf id '0' '9'
     return $ Just $ read (c:cs)
 
 data RegionStyle = LineWise
@@ -133,52 +134,53 @@ regionStyleA = dynamicValueA .> dynamicA
 -- /operator/ commands (like d).
 --
 
+pString :: String -> VimProc [Event] 
+pString = events . map char
+
 cmd_move :: VimProc (RegionStyle, BufferM ())
 cmd_move = do
   cnt <- count
   let x = maybe 1 id cnt
-  choice ([event c >> return (CharWise, a x) | (c,a) <- moveCmdFM, (c /= '0' || Nothing == cnt) ] ++
+  choice ([event c >> return (CharWise, a x) | (c,a) <- moveCmdFM, (c /= char '0' || Nothing == cnt) ] ++
           [event c >> return (LineWise, a x) | (c,a) <- moveUpDownCmdFM] ++
-          [do event c; c' <- anyEvent; return (CharWise, a x c') | (c,a) <- move2CmdFM] ++
-          [do event 'G'; return (LineWise, case cnt of
-                                       Nothing -> botB >> moveToSol
-                                       Just n  -> gotoLn n >> return ())
-          ,do events "gg"; return (LineWise, gotoLn 0 >> return ())
-          ,do events "ge"; return (CharWise, replicateM_ x $ genMoveB ViWord (Forward, InsideBound) Backward)])
+          [do event c; c' <- textChar; return (CharWise, a x c') | (c,a) <- move2CmdFM] ++
+          [char 'G' ?>> return (LineWise, case cnt of
+                                            Nothing -> botB >> moveToSol
+                                            Just n  -> gotoLn n >> return ())
+          ,do pString "gg"; return (LineWise, gotoLn 0 >> return ())
+          ,do pString "ge"; return (CharWise, replicateM_ x $ genMoveB ViWord (Forward, InsideBound) Backward)])
 
 -- | movement commands
-moveCmdFM :: [(Char, Int -> BufferM ())]
+moveCmdFM :: [(Event, Int -> BufferM ())]
 moveCmdFM =
 -- left/right
-    [('h',          left)
-    ,('\^H',        left)
-    ,(keyBackspace, left)
-    ,('\BS',        left)
-    ,('\127',       left)
-    ,(keyLeft,      left)
-    ,(keyRight,     right)
-    ,('l',          right)
-    ,(' ',          right)
-    ,(keyHome,      sol)
-    ,('0',          sol)
-    ,('^',          const firstNonSpaceB)
-    ,('$',          eol)
-    ,(keyEnd,       eol)
-    ,('|',          \i -> moveToSol >> moveXorEol (i-1))
+    [(char 'h',        left)
+    ,(ctrl $ char 'h', left)
+    ,(spec KBS,        left)
+    ,(spec KLeft,      left)
+    ,(spec KRight,     right)
+    ,(char 'l',        right)
+    ,(char ' ',        right)
+    ,(spec KHome,      sol)
+    ,(char '0',        sol)
+    ,(char '^',        const firstNonSpaceB)
+    ,(char '$',        eol)
+    ,(spec KEnd,       eol)
+    ,(char '|',        \i -> moveToSol >> moveXorEol (i-1))
 
 -- words
-    ,('w',          \i -> replicateM_ i $ genMoveB ViWord (Backward,InsideBound) Forward)
-    ,('b',          \i -> replicateM_ i $ genMoveB ViWord (Backward,InsideBound) Backward)
-    ,('e',          \i -> replicateM_ i $ genMoveB ViWord (Forward, InsideBound) Forward)
+    ,(char 'w',        \i -> replicateM_ i $ genMoveB ViWord (Backward,InsideBound) Forward)
+    ,(char 'b',        \i -> replicateM_ i $ genMoveB ViWord (Backward,InsideBound) Backward)
+    ,(char 'e',        \i -> replicateM_ i $ genMoveB ViWord (Forward, InsideBound) Forward)
 
 -- text
-    ,('{',          prevNParagraphs)
-    ,('}',          nextNParagraphs)
+    ,(char '{',        prevNParagraphs)
+    ,(char '}',        nextNParagraphs)
 
 -- misc
-    ,('H',          \i -> downFromTosB (i - 1))
-    ,('M',          const middleB)
-    ,('L',          \i -> upFromBosB (i - 1))
+    ,(char 'H',        \i -> downFromTosB (i - 1))
+    ,(char 'M',        const middleB)
+    ,(char 'L',        \i -> upFromBosB (i - 1))
     ]
     where
         left  = moveXorSol
@@ -188,16 +190,16 @@ moveCmdFM =
 
 -- | up/down movement commands. these one are separated from moveCmdFM
 -- because they behave differently when yanking/cuting (line mode).
-moveUpDownCmdFM :: [(Char, Int -> BufferM ())]
+moveUpDownCmdFM :: [(Event, Int -> BufferM ())]
 moveUpDownCmdFM =
-    [('k',          up)
-    ,(keyUp,        up)
-    ,('\^P',        up)
-    ,('j',          down)
-    ,(keyDown,      down)
-    ,('\^J',        down)
-    ,('\^N',        down)
-    ,('\r',         down)
+    [(char 'k',        up)
+    ,(spec KUp,        up)
+    ,(ctrl $ char 'p', up)
+    ,(char 'j',        down)
+    ,(spec KDown,      down)
+    ,(ctrl $ char 'j', down)
+    ,(ctrl $ char 'n', down)
+    ,(spec KEnter,     down)
     ]
     where
         up   i = lineMoveRel (-i) >> return ()
@@ -205,12 +207,12 @@ moveUpDownCmdFM =
 
 --  | more movement commands. these ones are paramaterised by a character
 -- to find in the buffer.
-move2CmdFM :: [(Char, Int -> Char -> BufferM ())]
+move2CmdFM :: [(Event, Int -> Char -> BufferM ())]
 move2CmdFM =
-    [('f',  \i c -> replicateM_ i $ nextCInc c)
-    ,('F',  \i c -> replicateM_ i $ prevCInc c)
-    ,('t',  \i c -> replicateM_ i $ nextCExc c)
-    ,('T',  \i c -> replicateM_ i $ prevCExc c)
+    [(char 'f',  \i c -> replicateM_ i $ nextCInc c)
+    ,(char 'F',  \i c -> replicateM_ i $ prevCInc c)
+    ,(char 't',  \i c -> replicateM_ i $ nextCExc c)
+    ,(char 'T',  \i c -> replicateM_ i $ prevCExc c)
     ]
 
 -- | Other command mode functions
@@ -221,7 +223,7 @@ cmd_eval = do
    choice
     ([event c >> write (a i) | (c,a) <- singleCmdFM ] ++
      [events evs >> write (action i) | (evs, action) <- multiCmdFM ] ++
-     [do event 'r'; c <- replacementChar; write (writeB c)])
+     [char 'r' ?>> do c <- textChar; write (writeB c)])
 
 -- TODO: escape the current word
 --       at word bounds: search for \<word\>
@@ -230,11 +232,10 @@ searchCurrentWord = do
   w <- withBuffer $ readRegionB =<< regionOfB ViWord
   doSearch (Just w) [] Forward
 
--- | Parse any character that can be used to for replacement, by the 'r' command.
-replacementChar :: VimProc Char
-replacementChar = do
-  c <- anyEvent
-  when (c `elem` ('\ESC':delete')) $ fail "ESC or Del unexpected"
+-- | Parse any character that can be inserted in the text.
+textChar :: VimProc Char
+textChar = do
+  Event (KASCII c) [] <- anyEvent
   return c
 
 continueSearching :: Direction -> YiM ()
@@ -243,38 +244,40 @@ continueSearching direction = do
   doSearch Nothing [] direction
 
 -- | cmd mode commands
-singleCmdFM :: [(Char, Int -> YiM ())]
+singleCmdFM :: [(Event, Int -> YiM ())]
 singleCmdFM =
-    [('\^B',    withBuffer . upScreensB)             -- vim does (firstNonSpaceB;moveXorSol)
-    ,('\^F',    withBuffer . downScreensB)
-    ,('\^G',    const viFileInfo)        -- hmm. not working. duh. we clear
-    ,('\^L',    const refreshEditor)
-    ,('\^R',    withBuffer . flip replicateM_ redoB)
-    ,('\^Z',    const suspendEditor)
-    ,('D',      const (withEditor $ withBuffer0 readRestOfLnB >>= setRegE >> withBuffer0 deleteToEol))
-    ,('J',      const (withBuffer (moveToEol >> deleteN 1)))    -- the "\n"
-    ,('U',      withBuffer . flip replicateM_ undoB)    -- NB not correct
-    ,('n',      const $ continueSearching Forward)
-    ,('u',      withBuffer . flip replicateM_ undoB)
+    [(ctrl $ char 'b',    withBuffer . upScreensB)             -- vim does (firstNonSpaceB;moveXorSol)
+    ,(ctrl $ char 'f',    withBuffer . downScreensB)
+    ,(ctrl $ char 'g',    const viFileInfo)        -- hmm. not working. duh. we clear
+    ,(ctrl $ char 'l',    const refreshEditor)
+    ,(ctrl $ char 'r',    withBuffer . flip replicateM_ redoB)
+    ,(ctrl $ char 'z',    const suspendEditor)
+    ,(char 'D',      const (withEditor $ withBuffer0 readRestOfLnB >>= setRegE >> withBuffer0 deleteToEol))
+    ,(char 'J',      const (withBuffer (moveToEol >> deleteN 1)))    -- the "\n"
+    ,(char 'U',      withBuffer . flip replicateM_ undoB)    -- NB not correct
+    ,(char 'n',      const $ continueSearching Forward)
+    ,(char 'u',      withBuffer . flip replicateM_ undoB)
 
-    ,('X',      \i -> withBuffer $ do p <- pointB
-                                      moveXorSol i
-                                      q <- pointB
-                                      deleteNBytes (p~-q) q)
+    ,(char 'X',      \i -> withBuffer $ do 
+                             p <- pointB
+                             moveXorSol i
+                             q <- pointB
+                             deleteNBytes (p ~- q) q)
 
-    ,('x',      \i -> withBuffer $ do p <- pointB -- not handling eol properly
-                                      moveXorEol i
-                                      q <- pointB
-                                      deleteNBytes (q~-p) p)
+    ,(char 'x',      \i -> withBuffer $ do 
+                             p <- pointB -- not handling eol properly
+                             moveXorEol i
+                             q <- pointB
+                             deleteNBytes (q ~- p) p)
 
-    ,('p',      withEditor . flip replicateM_ pasteAfter)
+    ,(char 'p',      withEditor . flip replicateM_ pasteAfter)
 
-    ,('P',      withEditor . flip replicateM_ pasteBefore)
+    ,(char 'P',      withEditor . flip replicateM_ pasteBefore)
 
-    ,(keyPPage, withBuffer . upScreensB)
-    ,(keyNPage, withBuffer . downScreensB)
-    ,('*',      const $ searchCurrentWord)
-    ,('~',      \i -> withBuffer $ do
+    ,(spec KPageUp, withBuffer . upScreensB)
+    ,(spec KPageDown, withBuffer . downScreensB)
+    ,(char '*',      const $ searchCurrentWord)
+    ,(char '~',      \i -> withBuffer $ do
                          p <- pointB
                          moveXorEol i
                          q <- pointB
@@ -284,31 +287,31 @@ singleCmdFM =
                          moveTo q)
     ]
 
-multiCmdFM :: [(String, Int -> YiM ())]
+ctrlW :: Event
+ctrlW = ctrl $ char 'w'
+
+multiCmdFM :: [([Event], Int -> YiM ())]
 multiCmdFM =
-    [("\^Wc", const $ withEditor tryCloseE)
-    ,("\^Wo", const $ withEditor closeOtherE)
-    ,("\^Ws", const $ withEditor splitE)
-    ,("\^Ww", const $ withEditor nextWinE)
-    ,("\^WW", const $ withEditor prevWinE)
-    ,("\^Wp", const $ withEditor prevWinE)
+    [([ctrlW, char 'c'], const $ withEditor tryCloseE)
+    ,([ctrlW, char 'o'], const $ withEditor closeOtherE)
+    ,([ctrlW, char 's'], const $ withEditor splitE)
+    ,([ctrlW, char 'w'], const $ withEditor nextWinE)
+    ,([ctrlW, char 'W'], const $ withEditor prevWinE)
+    ,([ctrlW, char 'p'], const $ withEditor prevWinE)
 
     -- since we don't have vertical splitting,
     -- these moving can be done using next/prev.
-    ,(['\^W',keyDown], const $ withEditor nextWinE)
-    ,(['\^W',keyUp], const $ withEditor prevWinE)
-    ,(['\^W',keyRight], const $ withEditor nextWinE)
-    ,(['\^W',keyLeft], const $ withEditor prevWinE)
-
-    ,("\^Wk",   const $ withEditor prevWinE)
-    ,("\^Wj",   const $ withEditor nextWinE)
-    -- Same as the above pair, when you're a bit slow to release ctl.
-    ,("\^W\^K", const $ withEditor prevWinE)
-    ,("\^W\^J", const $ withEditor nextWinE)
-
-    ,(">>", withBuffer . shiftIndentOfLine)
-    ,("<<", withBuffer . shiftIndentOfLine . negate)
-    ,("ZZ", const $ viWrite >> quitEditor)
+    ,([ctrlW,spec KDown], const $ withEditor nextWinE)
+    ,([ctrlW,spec KUp], const $ withEditor prevWinE)
+    ,([ctrlW,spec KRight], const $ withEditor nextWinE)
+    ,([ctrlW,spec KLeft], const $ withEditor prevWinE)
+    ,([ctrlW,char 'k'],   const $ withEditor prevWinE)
+    ,([ctrlW,char 'j'],   const $ withEditor nextWinE)    -- Same as the above pair, when you're a bit slow to release ctl.
+    ,([ctrlW, ctrl $ char 'k'], const $ withEditor prevWinE)
+    ,([ctrlW, ctrl $ char 'j'], const $ withEditor nextWinE)
+    ,(map char ">>", withBuffer . shiftIndentOfLine)
+    ,(map char "<<", withBuffer . shiftIndentOfLine . negate)
+    ,(map char "ZZ", const $ viWrite >> quitEditor)
     ]
 
 -- | So-called 'operators', which take movement actions as arguments.
@@ -322,9 +325,9 @@ cmd_op :: VimMode
 cmd_op = do
   cnt <- count
   let i = maybe 1 id cnt
-  choice $ [events "dd" >> write (cut  pointB (lineMoveRel (i-1) >> return ()) LineWise),
-            events "yy" >> write (yank pointB (lineMoveRel (i-1) >> return ()) LineWise)] ++
-           [do event c
+  choice $ [pString "dd" >> write (cut  pointB (lineMoveRel (i-1) >> return ()) LineWise),
+            pString "yy" >> write (yank pointB (lineMoveRel (i-1) >> return ()) LineWise)] ++
+           [do event (char c)
                (regionStyle, m) <- cmd_move
                write $ a (replicateM_ i m) regionStyle
            | (c,a) <- opCmdFM]
@@ -409,15 +412,15 @@ vis_single :: RegionStyle -> VimMode
 vis_single regionStyle =
         let beginIns a = do write (a >> withBuffer0 (setVisibleSelection False)) >> ins_mode
         in choice [
-            event '\ESC' >> return (),
-            event 'V'    >> change_vis_mode regionStyle LineWise,
-            event 'v'    >> change_vis_mode regionStyle CharWise,
-            event ':'    >> ex_mode ":'<,'>",
-            event 'y'    >> write yankSelection,
-            event 'x'    >> write cutSelection,
-            event 'd'    >> write cutSelection,
-            event 'p'    >> write pasteOverSelection,
-            event 'c'    >> beginIns cutSelection]
+            spec KEsc ?>> return (),
+            char 'V'  ?>> change_vis_mode regionStyle LineWise,
+            char 'v'  ?>> change_vis_mode regionStyle CharWise,
+            char ':'  ?>> ex_mode ":'<,'>",
+            char 'y'  ?>> write yankSelection,
+            char 'x'  ?>> write cutSelection,
+            char 'd'  ?>> write cutSelection,
+            char 'p'  ?>> write pasteOverSelection,
+            char 'c'  ?>> beginIns cutSelection]
 
 
 -- | These also switch mode, as all visual commands do, but these are
@@ -427,10 +430,11 @@ vis_multi :: VimMode
 vis_multi = do
    cnt <- count
    let i = maybe 1 id cnt
-   choice ([events "ZZ" >> write (viWrite >> quitEditor),
-            event '>' >> write (shiftIndentOfSelection i),
-            event '<' >> write (shiftIndentOfSelection (-i)),
-            do event 'r'; x <- replacementChar; write $ do
+   choice ([pString "ZZ" >> write (viWrite >> quitEditor),
+            char '>' ?>> write (shiftIndentOfSelection i),
+            char '<' ?>> write (shiftIndentOfSelection (-i)),
+            char 'r' ?>> do x <- textChar
+                            write $ do
                                    mrk <- getSelectionMarkPointB
                                    pt <- pointB
                                    text <- readRegionB (mkVimRegion mrk pt)
@@ -451,36 +455,36 @@ cmd2other :: VimMode
 cmd2other = let beginIns a = write a >> ins_mode
                 beginIns :: EditorM () -> VimMode
         in choice [
-            do event ':'     ; ex_mode ":",
-            do event 'v'     ; vis_mode CharWise,
-            do event 'V'     ; vis_mode LineWise,
-            do event 'R'     ; rep_mode,
-            do event 'i'     ; ins_mode,
-            do event 'I'     ; beginIns (withBuffer0 moveToSol),
-            do event 'a'     ; beginIns $ withBuffer0 $ moveXorEol 1,
-            do event 'A'     ; beginIns (withBuffer0 moveToEol),
-            do event 'o'     ; beginIns $ withBuffer0 $ moveToEol >> insertB '\n',
-            do event 'O'     ; beginIns $ withBuffer0 $ moveToSol >> insertB '\n' >> lineUp,
-            do event 'c'     ; (regionStyle, m) <- cmd_move ; beginIns $ cut pointB m regionStyle,
-            do events "cc"   ; beginIns $ cut (moveToSol >> pointB) moveToEol CharWise,
-            do event 'C'     ; beginIns $ cut pointB moveToEol CharWise, -- alias of "c$"
-            do event 'S'     ; beginIns $ cut (moveToSol >> pointB) moveToEol CharWise, -- alias of "cc"
-            do event 's'     ; beginIns $ cut pointB (moveXorEol 1) CharWise, -- alias of "cl"
-            do event '/'     ; ex_mode "/",
-            do event '?'     ; write $ not_implemented '?',
+            do char ':'     ?>> ex_mode ":",
+            do char 'v'     ?>> vis_mode CharWise,
+            do char 'V'     ?>> vis_mode LineWise,
+            do char 'R'     ?>> rep_mode,
+            do char 'i'     ?>> ins_mode,
+            do char 'I'     ?>> beginIns (withBuffer0 moveToSol),
+            do char 'a'     ?>> beginIns $ withBuffer0 $ moveXorEol 1,
+            do char 'A'     ?>> beginIns (withBuffer0 moveToEol),
+            do char 'o'     ?>> beginIns $ withBuffer0 $ moveToEol >> insertB '\n',
+            do char 'O'     ?>> beginIns $ withBuffer0 $ moveToSol >> insertB '\n' >> lineUp,
+            do char 'c'     ?>> do (regionStyle, m) <- cmd_move ; beginIns $ cut pointB m regionStyle,
+            do pString "cc"  ; beginIns $ cut (moveToSol >> pointB) moveToEol CharWise,
+            do char 'C'     ?>> beginIns $ cut pointB moveToEol CharWise, -- alias of "c$"
+            do char 'S'     ?>> beginIns $ cut (moveToSol >> pointB) moveToEol CharWise, -- alias of "cc"
+            do char 's'     ?>> beginIns $ cut pointB (moveXorEol 1) CharWise, -- alias of "cl"
+            do char '/'     ?>> ex_mode "/",
+            do char '?'     ?>> write $ not_implemented '?',
             leave,
-            do event keyIC   ; ins_mode]
+            do spec KIns    ?>> ins_mode]
 
 
 ins_mov_char :: VimMode
-ins_mov_char = choice [event keyPPage >> write upScreenB,
-                       event keyNPage >> write downScreenB,
-                       event keyUp    >> write lineUp,
-                       event keyDown  >> write lineDown,
-                       event keyLeft  >> write (moveXorSol 1),
-                       event keyRight >> write (moveXorEol 1),
-                       event keyEnd   >> write moveToEol,
-                       event keyHome  >> write moveToSol]
+ins_mov_char = choice [spec KPageUp   ?>> write upScreenB,
+                       spec KPageDown ?>> write downScreenB,
+                       spec KUp       ?>> write lineUp,
+                       spec KDown     ?>> write lineDown,
+                       spec KLeft     ?>> write (moveXorSol 1),
+                       spec KRight    ?>> write (moveXorEol 1),
+                       spec KEnd      ?>> write moveToEol,
+                       spec KHome     ?>> write moveToSol]
 
 
 -- ---------------------------------------------------------------------
@@ -495,16 +499,16 @@ ins_mov_char = choice [event keyPPage >> write upScreenB,
 -- with delete.
 --
 ins_char :: VimMode
-ins_char = choice [delete      >> write (deleteB Character Backward),
-                   event keyDC >> write (deleteB Character Forward),
-                   event '\t'  >> write insertTabB]
+ins_char = choice [delete     >> write (deleteB Character Backward),
+                   spec KBS  ?>> write (deleteB Character Forward),
+                   char '\t' ?>> write insertTabB]
            <|> ins_mov_char
-           <|| do c <- anyEvent; write (insertB c)
+           <|| do c <- textChar; write (insertB c)
 
 -- --------------------
 -- | Keyword
 kwd_mode :: VimMode
-kwd_mode = some (event '\^N' >> adjustPriority (-1) (write wordCompleteB)) >> (write resetCompleteB)
+kwd_mode = some (event (ctrl $ char 'n') >> adjustPriority (-1) (write wordCompleteB)) >> (write resetCompleteB)
            -- 'adjustPriority' is there to lift the ambiguity between "continuing" completion
            -- and resetting it (restarting at the 1st completion).
 
@@ -518,11 +522,11 @@ kwd_mode = some (event '\^N' >> adjustPriority (-1) (write wordCompleteB)) >> (w
 --  characters in a line stays the same until you get to the end of the line.
 --  If a <NL> is typed, a line break is inserted and no character is deleted.
 rep_char :: VimMode
-rep_char = choice [delete     >> write leftB, -- should undo unless pointer has been moved
-                   event '\t' >> write (insertN "    "),
-                   event '\r' >> write (insertB '\n')]
+rep_char = choice [delete       >> write leftB, -- should undo unless pointer has been moved
+                   char '\t'   ?>> write (insertN "    "),
+                   spec KEnter ?>> write (insertB '\n')]
            <|> ins_mov_char
-           <|| do c <- anyEvent; write (do e <- atEol; if e then insertB c else writeB c)
+           <|| do c <- textChar; write (do e <- atEol; if e then insertB c else writeB c)
 
 -- ---------------------------------------------------------------------
 -- Ex mode. We also process regex searching mode here.
@@ -537,15 +541,15 @@ spawn_ex_buffer prompt = do
         ex_eval (head prompt : lineString)
       ex_process :: VimMode
       ex_process =
-          choice [enter         >> write ex_buffer_finish,
-                  event '\t'    >> write completeMinibuffer,
-                  event '\ESC'  >> write closeBufferAndWindowE,
-                  delete        >> write bdeleteB,
-                  event keyUp   >> write historyUp,
-                  event keyDown >> write historyDown,
-                  event keyLeft  >> write (moveXorSol 1),
-                  event keyRight >> write (moveXorEol 1)]
-             <|| (do c <- anyEvent; write $ insertB c)
+          choice [spec KEnter ?>> write ex_buffer_finish,
+                  char '\t'   ?>> write completeMinibuffer,
+                  spec KEsc   ?>> write closeBufferAndWindowE,
+                  spec KDel   ?>> write bdeleteB,
+                  spec KUp    ?>> write historyUp,
+                  spec KDown  ?>> write historyDown,
+                  spec KLeft  ?>> write (moveXorSol 1),
+                  spec KRight ?>> write (moveXorEol 1)]
+             <|| (do c <- textChar; write $ insertB c)
       completeMinibuffer = withBuffer elemsB >>= ex_complete >>= withBuffer . insertN
       b_complete f = completeBufferName f >>= return . drop (length f)
       ex_complete ('e':' ':f) = completeFileName Nothing f >>= return . drop (length f)
@@ -558,7 +562,7 @@ spawn_ex_buffer prompt = do
       ex_complete _ = return ""
 
   withEditor $ historyStart
-  spawnMinibufferE prompt (const $ runVim $ ex_process) 
+  spawnMinibufferE prompt (const $ ex_process) 
   return ()
 
 
@@ -725,6 +729,7 @@ viFileInfo =
          ]
 
 
+-- TODO: refactor!
 -- | Try to write a file in the manner of vi\/vim
 -- Need to catch any exception to avoid losing bindings
 viWrite :: YiM ()
@@ -767,9 +772,6 @@ viSub cs = do
                 if not s then errorEditor ("Pattern not found: "++p) else withEditor msgClr
 
 -- | Character ranges
-delete, enter :: VimProc Char
-enter   = oneOf ['\n', '\r']
-delete  = oneOf delete'
+delete :: VimProc Event
+delete  = event $ spec $ KDel
 
-delete' :: [Char]
-delete' =  ['\BS', '\127', keyBackspace ]
