@@ -245,7 +245,7 @@ cabalBuildE =
 -- isearch
 selfSearchKeymap :: Keymap
 selfSearchKeymap = do
-  Event (KASCII c) [] <- satisfy (const True)
+  Event (KASCII c) [] <- anyEvent
   write (isearchAddE [c])
 
 searchKeymap :: Keymap
@@ -306,7 +306,7 @@ insertSelf :: Char -> YiM ()
 insertSelf = repeatingArg . insertB
 
 insertNextC :: KeymapM ()
-insertNextC = do c <- satisfy (const True)
+insertNextC = do c <- anyEvent
                  write $ repeatingArg $ insertB (eventToChar c)
 
 
@@ -325,10 +325,11 @@ readArgC = do readArg' Nothing
                          logPutStrLn (show u)
                          msgEditor ""
 
+-- TODO: This is crappy code: rewrite!
 readArg' :: Maybe Int -> KeymapM ()
 readArg' acc = do
     write $ msgEditor $ "Argument: " ++ show acc
-    c <- satisfy (const True) -- FIXME: the C-u will read one character that should be part of the next command!
+    c <- anyEvent -- FIXME: the C-u will read one character that should be part of the next command!
     case c of
       Event (KASCII d) [] | isDigit d -> readArg' $ Just $ 10 * (fromMaybe 0 acc) + (ord d - ord '0')
       _ -> write $ setDynamic $ UniversalArg $ Just $ fromMaybe 4 acc

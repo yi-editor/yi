@@ -46,6 +46,7 @@ import Yi.Accessor
 import Yi.Buffer
 import Yi.Buffer.Normal
 import Data.Maybe
+import Data.Char
 
 import Control.Monad
 import Control.Applicative
@@ -55,10 +56,10 @@ adjBlock x = withSyntax (\m s -> modeAdjustBlock m s x)
 
 selfInsertKeymap :: Keymap
 selfInsertKeymap = do
-  Event (KASCII c) [] <- satisfy isPrintableEvent
+  Event (KASCII c) [] <- anyEvent
+  when (not $ isPrint c) $ 
+       fail "unprintable character"
   write (adjBlock 1 >> insertSelf c)
-      where isPrintableEvent (Event (KASCII c) []) = c >= ' '
-            isPrintableEvent _ = False
 
 keymap :: Keymap
 keymap = selfInsertKeymap <|> makeKeymap keys <|> completionKm
