@@ -11,7 +11,6 @@ module Yi.File (
 ) where
 
 import Control.Applicative
-import Control.Monad.State (gets)
 import Control.Monad.Trans
 import Prelude hiding (error)
 import System.FilePath

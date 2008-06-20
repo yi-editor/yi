@@ -64,7 +64,6 @@ import Yi.Buffer.Region
 import Yi.Style
 import Yi.Modes (defaultFundamentalMode)
 
-import System.IO.UTF8 as UTF8
 import System.FriendlyPath
 
 -- | associate buffer with file

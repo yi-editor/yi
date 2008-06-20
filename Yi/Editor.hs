@@ -32,7 +32,6 @@ import Data.Typeable
 import Data.String
 import Control.Monad.State
 import Control.Monad.Writer
-import qualified Data.ByteString.Lazy as LB
 import qualified Data.ByteString.Lazy.UTF8 as LazyUTF8
 
 
