@@ -24,7 +24,6 @@ import Yi.Prelude
 import Data.String
 import qualified Yi.Keymap.Emacs  as Emacs
 import qualified Yi.Keymap.Vim  as Vim
-import qualified Yi.Keymap.Users.Ertai
 import Yi.UI.Common (UIBoot, UIConfig(..))
 import Yi.Yi hiding (file, yiConfig)
 import Yi.Modes (defaultModeMap, defaultFundamentalMode)
@@ -102,8 +101,7 @@ data Opts = Help
 -- | List of editors for which we provide an emulation.
 editors :: [(String,Keymap)]
 editors = [("emacs", Emacs.keymap),
-           ("vim", Vim.keymap),
-           ("users/ertai", Yi.Keymap.Users.Ertai.keymap)]
+           ("vim", Vim.keymap)]
 
 options :: [OptDescr Opts]
 options = [
