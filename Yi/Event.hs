@@ -32,10 +32,12 @@ data Key = KEsc | KFun Int | KPrtScr | KPause | KASCII Char | KBS | KIns
          | KHome | KPageUp | KDel | KEnd | KPageDown | KNP5 | KUp | KMenu
          | KLeft | KDown | KRight | KEnter deriving (Eq,Show,Ord)
 
-data Event = Event Key [Modifier] deriving (Show,Eq,Ord)
+data Event = Event Key [Modifier] deriving (Eq,Ord)
 
+instance Show Event where
+    show = prettyEvent
 
-prettyEvent :: Event -> [Char]
+prettyEvent :: Event -> String
 prettyEvent (Event k mods) =
            concatMap ((++ "-") . prettyModifier) mods ++ prettyKey k
   where prettyKey (KFun i) = 'F' : show i
