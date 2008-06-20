@@ -493,9 +493,9 @@ ins_mov_char = choice [event keyPPage >> write upScreenB,
 -- with delete.
 --
 ins_char :: VimMode
-ins_char = choice [satisfy isDel  >> write (deleteB Character Backward),
-                   event keyDC    >> write (deleteB Character Forward),
-                   event '\t'     >> write insertTabB]
+ins_char = choice [delete      >> write (deleteB Character Backward),
+                   event keyDC >> write (deleteB Character Forward),
+                   event '\t'  >> write insertTabB]
            <|> ins_mov_char
            <|| do c <- anyEvent; write (insertB c)
 
@@ -516,9 +516,9 @@ kwd_mode = some (event '\^N' >> adjustPriority (-1) (write wordCompleteB)) >> (w
 --  characters in a line stays the same until you get to the end of the line.
 --  If a <NL> is typed, a line break is inserted and no character is deleted.
 rep_char :: VimMode
-rep_char = choice [satisfy isDel  >> write leftB, -- should undo unless pointer has been moved
-                   event '\t'     >> write (insertN "    "),
-                   event '\r'     >> write (insertB '\n')]
+rep_char = choice [delete     >> write leftB, -- should undo unless pointer has been moved
+                   event '\t' >> write (insertN "    "),
+                   event '\r' >> write (insertB '\n')]
            <|> ins_mov_char
            <|| do c <- anyEvent; write (do e <- atEol; if e then insertB c else writeB c)
 
@@ -764,16 +764,7 @@ viSub cs = do
                 s <- searchAndRepLocal p r
                 if not s then errorEditor ("Pattern not found: "++p) else withEditor msgClr
 
--- | Is a delete sequence
-isDel :: Char -> Bool
-isDel '\BS'        = True
-isDel '\127'       = True
-isDel c | c == keyBackspace = True
-isDel _            = False
-
--- ---------------------------------------------------------------------
 -- | Character ranges
---
 delete, enter :: VimProc Char
 enter   = oneOf ['\n', '\r']
 delete  = oneOf delete'
