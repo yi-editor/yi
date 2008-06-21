@@ -150,7 +150,7 @@ cmd_move = do
           ,pString "gg" >> return (LineWise, gotoLn 0 >> return ())
           ,pString "ge" >> return (CharWise, replicateM_ x $ genMoveB ViWord (Forward, InsideBound) Backward)])
 -- | movement commands
-oveCmdFM :: [(Event, Int -> BufferM ())]
+moveCmdFM :: [(Event, Int -> BufferM ())]
 moveCmdFM =
 -- left/right
     [(char 'h',        left)
@@ -465,7 +465,7 @@ cmd2other = let beginIns a = write a >> ins_mode
             char 'o'     ?>> beginIns $ withBuffer0 $ moveToEol >> insertB '\n',
             char 'O'     ?>> beginIns $ withBuffer0 $ moveToSol >> insertB '\n' >> lineUp,
             char 'c'     ?>> do (regionStyle, m) <- cmd_move ; beginIns $ cut pointB m regionStyle,
-            pString "cc"  >> beginIns $ cut (moveToSol >> pointB) moveToEol CharWise,
+            pString "cc"  >> beginIns (cut (moveToSol >> pointB) moveToEol CharWise),
             char 'C'     ?>> beginIns $ cut pointB moveToEol CharWise, -- alias of "c$"
             char 'S'     ?>> beginIns $ cut (moveToSol >> pointB) moveToEol CharWise, -- alias of "cc"
             char 's'     ?>> beginIns $ cut pointB (moveXorEol 1) CharWise, -- alias of "cl"
