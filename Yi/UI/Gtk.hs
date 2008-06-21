@@ -165,7 +165,7 @@ main _ui =
        mainGUI
 
 instance Show Gtk.Event where
-    show (Key _eventRelease _eventSent _eventTime eventModifier' _eventWithCapsLock _eventWithNumLock
+    show (Key _eventRelease _eventSent _eventTime _eventModifier' _eventWithCapsLock _eventWithNumLock
                   _eventWithScrollLock _eventKeyVal eventKeyName' eventKeyChar')
         = "<modifier>" ++ " " ++ show eventKeyName' ++ " " ++ show eventKeyChar'
     show _ = "Not a key event"

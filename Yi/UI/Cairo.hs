@@ -405,6 +405,12 @@ refresh ui e = do
            writeRef (renderer w) =<< (textview w `onExpose` render ui b w)
            widgetQueueDraw (textview w)
 
+winEls = savingPointB $ do
+             w <- askWindow id
+             moveTo (tospnt w)
+             gotoLnFrom (height w)
+             p <- pointB
+             return (p ~- tospnt w)
 
 render :: UI -> FBuffer -> WinInfo -> t -> IO Bool
 render ui b w _ev = do
@@ -418,10 +424,11 @@ render ui b w _ev = do
       winw = round (width' / approximateCharWidth metrics)
       maxNumberOfChars = winh * winw
       -- The number of chars is a gross approximation.
-  let ((point, text),_) = runBuffer win b $ (,) 
-                      <$> pointB
-                      <*> nelemsB maxNumberOfChars (tospnt win) 
-                      -- FIXME: unicode. 
+  let ((point, text),_) = runBuffer win {height = winh} b $ do
+                      numChars <- winEls      
+                      (,) 
+                       <$> pointB
+                       <*> nelemsB' numChars (tospnt win) 
   layoutSetWidth layout (Just width')
   layoutSetText layout text
 
@@ -437,7 +444,9 @@ render ui b w _ev = do
     else do
       logPutStrLn $ "out!"
       let win'' = showPoint b win'
-          (text', _) = runBuffer win'' b $ nelemsB maxNumberOfChars (tospnt win'')
+          (text', _) = runBuffer win'' b $ do
+                         numChars <- winEls
+                         nelemsB' numChars (tospnt win'')
       layoutSetText layout text'
       (_,bos',_) <- layoutXYToIndex layout width' height'
       logPutStrLn $ "bos = " ++ show bos' ++ " + " ++ show (tospnt win'')
