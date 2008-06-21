@@ -36,8 +36,8 @@ isNoise _ = True
 type Expr t = [Tree t]
 
 data Tree t
-    = Group t (Expr t) t 
-    | Stmt [Expr t]
+    = Group t (Expr t) t -- A parenthesized expression (maybe with [ ] ...)
+    | Stmt [Expr t]      -- A list of things (as in do; etc.)
     | Atom t
     | Error t
       deriving Show
@@ -64,17 +64,39 @@ getLastOffset tree = case getLastToken tree of
 -- | Return all subtrees in a tree.
 getAllSubTrees :: Tree t -> [Tree t]
 getAllSubTrees t = t : concatMap getAllSubTrees (subtrees t)
-    where subtrees (Group _ g _) = g
-          subtrees (Stmt s) = concat s
-          subtrees _ = []
+
+-- | Direct subtrees of a tree
+subtrees :: Tree t -> [Tree t]
+subtrees (Group _ g _) = g
+subtrees (Stmt s) = concat s
+subtrees _ = []
+
+-- | Return all subtrees in a tree; each element of the return list
+-- contains a node and the path to the root.
+getAllPaths :: Tree t -> [[Tree t]]
+getAllPaths t = fmap (++[t]) ([] : concatMap getAllPaths (subtrees t))
 
 
 type TT = Tok Token
 
+-- | Search the given list, and return the last tree before the given
+-- point; with path to the root.
+getLastPath :: [Tree (Tok t)] -> Point -> Maybe [Tree (Tok t)]
+getLastPath roots offset =
+    case takeWhile ((< offset) . posnOfs . snd) allSubPathPosn of
+      [] -> Nothing
+      list -> Just $ fst $ last list
+    where allSubPathPosn = [(p,posn) | root <- roots, p@(t':_) <- getAllPaths root, 
+                            let Just tok = getFirstToken t', let posn = tokPosn tok]
+
+
 -- | Search the given list, and return the 1st tree after the given
--- point on the given line.  This is the tree that matters for the
--- indentation of the given point. Precondition: point is in the given
--- line.
+-- point on the given line.  This is the tree that will be moved if
+-- something is inserted at the point.  Precondition: point is in the
+-- given line.  
+
+-- TODO: this should be optimized by just giving the point of the end
+-- of the line
 getIndentingSubtree :: [Tree TT] -> Point -> Int -> Maybe (Tree TT)
 getIndentingSubtree roots offset line =
     listToMaybe $ [t | (t,posn) <- takeWhile ((<= line) . posnLine . snd) $ allSubTreesPosn,

@@ -1,11 +1,13 @@
 module Yi.Mode.Haskell (haskellMode, cleverHaskellMode)  where
 
 import Prelude ()
+import Data.Maybe (maybe)
 import Yi.Buffer
+import Yi.Buffer.HighLevel
 import Yi.Indent
 import Yi.Prelude
 import Yi.Syntax
-import Yi.Syntax.Alex (Tok(..))
+import Yi.Syntax.Alex (Tok(..),Posn(..))
 import Yi.Syntax.Haskell (Token)
 import Yi.Syntax.Paren
 import qualified Yi.IncrementalParse as IncrParser
@@ -19,13 +21,13 @@ haskellMode = emptyMode
    {
     modeHL = ExtHL $
     Alex.mkHighlighter Haskell.initState (fmap (first tokenToStroke) . Haskell.alexScanToken)
-   , modeIndent = autoIndentHaskellB
+   , modeIndent = \_ast -> autoIndentHaskellB
 
    }
 
 cleverHaskellMode :: Mode (Expr (Tok Haskell.Token))
 cleverHaskellMode = haskellMode {
-    modeIndent = autoIndentHaskellB,
+    modeIndent = cleverAutoIndentHaskellB,
     modeHL = ExtHL $
 {--    lexer `withScanner` IncrParser.mkHighlighter Fractal.parse
       (\begin end -> fmap tokenToStroke . Fractal.getStrokes begin end) id -}
@@ -64,6 +66,22 @@ adjustBlock e len = do
                                  else do
                                     deleteN 1
 
+
+
+cleverAutoIndentHaskellB :: Expr (Tok Token) -> IndentBehaviour -> BufferM ()
+cleverAutoIndentHaskellB e behaviour = do
+  previousLine   <- getPreviousNonBlankLineB
+  previousIndent <- indentOfB previousLine
+  solPnt <- savingPointB (moveToSol >> pointB)
+  let stopOf (Group open _ _) = 1 + (posnCol . tokPosn $ open)
+      stopOf (Atom (Tok {tokT = Haskell.IndentReserved})) = previousIndent + 4
+      stopOf t = maybe 0 (posnCol . tokPosn) (getFirstToken t)
+  case getLastPath e solPnt of
+    Nothing -> return ()
+    Just path -> let stops = fmap stopOf path
+                 in trace ("Stops = " ++ show stops) $      
+                    cycleIndentsB behaviour stops
+         
 
 -- | Keyword-based auto-indenter for haskell.
 autoIndentHaskellB :: IndentBehaviour -> BufferM ()

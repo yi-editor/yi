@@ -23,7 +23,7 @@ latexMode, cppMode, literateHaskellMode, cabalMode, srmcMode :: Mode Alex.Result
 
 fundamental = emptyMode
   { 
-   modeIndent = autoIndentB
+   modeIndent = \_ast -> autoIndentB
   }
 
 mkHighlighter' :: s -> (Yi.Syntax.Alex.ASI s -> Maybe (Tok Yi.Style.Style, Yi.Syntax.Alex.ASI s))

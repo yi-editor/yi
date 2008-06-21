@@ -106,22 +106,20 @@ autoIndentHelperB getUpwards getPrevious indentBehave =
   do upwardHints   <- savingExcursionB getUpwards
      previousLine  <- getPreviousLineB
      previousHints <- getPrevious previousLine
-     let allHints = sort $ nub (upwardHints ++ previousHints)
-     if null allHints
-        then return ()
-        else cycleIndentsB allHints
-  where
-  -- Cycles through the indentation hints. It does this without
-  -- requiring to set/get any state. We just look at the current
-  -- indentation of the current line and moving to the largest
-  -- indent that is 
-  cycleIndentsB :: [ Int ] -> BufferM ()
-  cycleIndentsB []      = return ()
-  cycleIndentsB indents =
+     let allHints = (upwardHints ++ previousHints)
+     cycleIndentsB indentBehave allHints
+
+-- | Cycles through the indentation hints. It does this without
+-- requiring to set/get any state. We just look at the current
+-- indentation of the current line and moving to the largest
+-- indent that is 
+cycleIndentsB :: IndentBehaviour -> [Int] -> BufferM ()
+cycleIndentsB _ [] = return ()
+cycleIndentsB indentBehave indents =
     do currentLine   <- readLnB
        currentIndent <- indentOfB currentLine
-       indentToB $ chooseIndent currentIndent indents
-
+       indentToB $ chooseIndent currentIndent (sort $ nub $ indents)
+  where
   -- Is the function to choose the indent from the given current
   -- indent to the given list of indentation hints.
   chooseIndent :: Int -> [ Int ] -> Int

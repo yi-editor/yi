@@ -176,7 +176,7 @@ modifiedQuitEditor =
 -- the mode specific indentation function but according to the
 -- given indent behaviour.
 adjIndent :: IndentBehaviour -> YiM ()
-adjIndent ib = withMode (\m -> modeIndent m ib)
+adjIndent ib = withSyntax (\m s -> modeIndent m s ib)
 
 
 ---------------------------
