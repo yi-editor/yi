@@ -18,7 +18,7 @@ myModetable = ReaderT $ \fname -> case () of
                             }
 
 Config {
-        configUI = defUI@UIConfig { configSyle = defStyle }
+        configUI = defUI@UIConfig { configStyle = defStyle }
        } = defaultConfig
 
 {-
@@ -27,7 +27,7 @@ Config {
   styles yet - Jim
 -}
 defaultVimUiStyle :: Style.UIStyle
-defaultVimUiStyle = defSyle { selected = Style.modeline_focused Style.uiStyle}
+defaultVimUiStyle = defStyle { selected = Style.modeline_focused Style.uiStyle}
 
 
 
@@ -35,7 +35,7 @@ main :: IO ()
 main = yi $ defaultConfig {
                            modeTable = myModetable <|> modeTable defaultConfig,
                            configUI = defConfigUI { configFontSize = Just 10,
-                                                    configSyle = defaultVimUiStyle,
+                                                    configStyle = defaultVimUiStyle,
                                                     configWindowFill = '~'
                                                   },
                            defaultKm = keymap
