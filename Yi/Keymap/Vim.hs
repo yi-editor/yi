@@ -147,11 +147,10 @@ cmd_move = do
           [char 'G' ?>> return (LineWise, case cnt of
                                             Nothing -> botB >> moveToSol
                                             Just n  -> gotoLn n >> return ())
-          ,do pString "gg"; return (LineWise, gotoLn 0 >> return ())
-          ,do pString "ge"; return (CharWise, replicateM_ x $ genMoveB ViWord (Forward, InsideBound) Backward)])
-
+          ,pString "gg" >> return (LineWise, gotoLn 0 >> return ())
+          ,pString "ge" >> return (CharWise, replicateM_ x $ genMoveB ViWord (Forward, InsideBound) Backward)])
 -- | movement commands
-moveCmdFM :: [(Event, Int -> BufferM ())]
+oveCmdFM :: [(Event, Int -> BufferM ())]
 moveCmdFM =
 -- left/right
     [(char 'h',        left)
@@ -455,25 +454,25 @@ cmd2other :: VimMode
 cmd2other = let beginIns a = write a >> ins_mode
                 beginIns :: EditorM () -> VimMode
         in choice [
-            do char ':'     ?>> ex_mode ":",
-            do char 'v'     ?>> vis_mode CharWise,
-            do char 'V'     ?>> vis_mode LineWise,
-            do char 'R'     ?>> rep_mode,
-            do char 'i'     ?>> ins_mode,
-            do char 'I'     ?>> beginIns (withBuffer0 moveToSol),
-            do char 'a'     ?>> beginIns $ withBuffer0 $ moveXorEol 1,
-            do char 'A'     ?>> beginIns (withBuffer0 moveToEol),
-            do char 'o'     ?>> beginIns $ withBuffer0 $ moveToEol >> insertB '\n',
-            do char 'O'     ?>> beginIns $ withBuffer0 $ moveToSol >> insertB '\n' >> lineUp,
-            do char 'c'     ?>> do (regionStyle, m) <- cmd_move ; beginIns $ cut pointB m regionStyle,
-            do pString "cc"  ; beginIns $ cut (moveToSol >> pointB) moveToEol CharWise,
-            do char 'C'     ?>> beginIns $ cut pointB moveToEol CharWise, -- alias of "c$"
-            do char 'S'     ?>> beginIns $ cut (moveToSol >> pointB) moveToEol CharWise, -- alias of "cc"
-            do char 's'     ?>> beginIns $ cut pointB (moveXorEol 1) CharWise, -- alias of "cl"
-            do char '/'     ?>> ex_mode "/",
-            do char '?'     ?>> write $ not_implemented '?',
+            char ':'     ?>> ex_mode ":",
+            char 'v'     ?>> vis_mode CharWise,
+            char 'V'     ?>> vis_mode LineWise,
+            char 'R'     ?>> rep_mode,
+            char 'i'     ?>> ins_mode,
+            char 'I'     ?>> beginIns (withBuffer0 moveToSol),
+            char 'a'     ?>> beginIns $ withBuffer0 $ moveXorEol 1,
+            char 'A'     ?>> beginIns (withBuffer0 moveToEol),
+            char 'o'     ?>> beginIns $ withBuffer0 $ moveToEol >> insertB '\n',
+            char 'O'     ?>> beginIns $ withBuffer0 $ moveToSol >> insertB '\n' >> lineUp,
+            char 'c'     ?>> do (regionStyle, m) <- cmd_move ; beginIns $ cut pointB m regionStyle,
+            pString "cc"  >> beginIns $ cut (moveToSol >> pointB) moveToEol CharWise,
+            char 'C'     ?>> beginIns $ cut pointB moveToEol CharWise, -- alias of "c$"
+            char 'S'     ?>> beginIns $ cut (moveToSol >> pointB) moveToEol CharWise, -- alias of "cc"
+            char 's'     ?>> beginIns $ cut pointB (moveXorEol 1) CharWise, -- alias of "cl"
+            char '/'     ?>> ex_mode "/",
+            char '?'     ?>> write $ not_implemented '?',
             leave,
-            do spec KIns    ?>> ins_mode]
+            spec KIns    ?>> ins_mode]
 
 
 ins_mov_char :: VimMode
