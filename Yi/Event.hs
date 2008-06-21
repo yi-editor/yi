@@ -17,7 +17,7 @@ data Modifier = MShift | MCtrl | MMeta
 
 data Key = KEsc | KFun Int | KPrtScr | KPause | KASCII Char | KBS | KIns
          | KHome | KPageUp | KDel | KEnd | KPageDown | KNP5 | KUp | KMenu
-         | KLeft | KDown | KRight | KEnter deriving (Eq,Show,Ord)
+         | KLeft | KDown | KRight | KEnter | KTab deriving (Eq,Show,Ord)
 
 data Event = Event Key [Modifier] deriving (Eq,Ord)
 

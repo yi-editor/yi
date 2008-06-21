@@ -24,6 +24,7 @@ ctrl (Event k ms) = Event k (MCtrl:ms)
 meta (Event k ms) = Event k (MMeta:ms)
 
 char :: Char -> Event
+char '\t' = Event KTab []
 char c = Event (KASCII c) []
 
 -- | Convert a special key into an event

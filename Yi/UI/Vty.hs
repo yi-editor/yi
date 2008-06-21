@@ -14,7 +14,7 @@
 module Yi.UI.Vty (start) where
 
 import Yi.Prelude 
-import Prelude (map, take, zip, repeat, length, break, splitAt, unlines)
+import Prelude (map, take, zip, repeat, length, break, splitAt)
 import Control.Concurrent
 import Control.Exception
 import Control.Monad (forever)
@@ -140,6 +140,7 @@ fromVtyKey (Vty.KEsc     ) = Yi.Event.KEsc
 fromVtyKey (Vty.KFun x   ) = Yi.Event.KFun x    
 fromVtyKey (Vty.KPrtScr  ) = Yi.Event.KPrtScr   
 fromVtyKey (Vty.KPause   ) = Yi.Event.KPause    
+fromVtyKey (Vty.KASCII '\t') = Yi.Event.KTab
 fromVtyKey (Vty.KASCII c ) = Yi.Event.KASCII c  
 fromVtyKey (Vty.KBS      ) = Yi.Event.KBS       
 fromVtyKey (Vty.KIns     ) = Yi.Event.KIns      

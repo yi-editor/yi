@@ -77,7 +77,7 @@ parseCtrlMeta = do string "C-M-"
 
 keyNames :: [(Key, String)]
 keyNames = [(KASCII ' ', "SPC"),
-	    (KASCII '\t', "TAB"),
+	    (KTab, "TAB"),
             (KLeft, "<left>"),
             (KRight, "<right>"),
             (KDown, "<down>"),
