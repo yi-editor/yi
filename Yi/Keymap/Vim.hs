@@ -621,7 +621,7 @@ ex_eval cmd = do
                   Right lineNum -> withBuffer (gotoLn lineNum) >> return ()
 
       fn "w"          = viWrite
-      fn ('w':' ':f)  = viWriteTo f
+      fn ('w':' ':f)  = viWriteTo $ strip f
       fn "qa"         = quitall
       fn "qal"        = quitall
       fn "qall"       = quitall
@@ -728,7 +728,6 @@ viFileInfo =
          ]
 
 
--- TODO: refactor!
 -- | Try to write a file in the manner of vi\/vim
 -- Need to catch any exception to avoid losing bindings
 viWrite :: YiM ()
@@ -736,21 +735,18 @@ viWrite = do
     mf <- withBuffer getfileB
     case mf of
         Nothing -> errorEditor "no file name associate with buffer"
-        Just f  -> do
-            bufInfo <- withBuffer bufInfoB
-            let s   = bufInfoFileName bufInfo
-            let msg = msgEditor $ show f ++" "++show s ++ "C written"
-            catchJustE ioErrors (fwriteToE f >> msg) (msgEditor . show)
-
+        Just f  -> viWriteTo f
 
 -- | Try to write to a named file in the manner of vi\/vim
 viWriteTo :: String -> YiM ()
 viWriteTo f = do
-    let f' = (takeWhile (/= ' ') . dropWhile (== ' ')) f
     bufInfo <- withBuffer bufInfoB
     let s   = bufInfoFileName bufInfo
-    let msg = msgEditor $ show f'++" "++show s ++ "C written"
-    catchJustE ioErrors (fwriteToE f' >> msg) (msgEditor . show)
+    let msg = msgEditor $ show f++" "++show s ++ " written"
+    catchJustE ioErrors (fwriteToE f >> msg) (msgEditor . show)
+
+strip :: String -> String
+strip = takeWhile (/= ' ') . dropWhile (== ' ')
 
 -- | Try to do a substitution
 viSub :: [Char] -> YiM ()
