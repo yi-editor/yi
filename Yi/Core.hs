@@ -142,7 +142,7 @@ postActions actions = do yi <- ask; liftIO $ mapM_ (output yi) actions
 dispatch :: Event -> YiM ()
 dispatch ev =
     do yi <- ask
-       actions <- withBuffer $ do
+       (actions,_p') <- withBuffer $ do
          keymap <- withModeB modeKeymap
          p0 <- getA keymapProcessA
          let defKm = defaultKm $ yiConfig $ yi
@@ -166,12 +166,11 @@ dispatch ev =
              actions1 = if ambiguous 
                           then [makeAction $ msgEditor "Keymap was in an ambiguous state! Resetting it."]
                           else []
-         return (actions0 ++ actions1)
-       -- logPutStrLn $ "Processing: " ++ show ev
-       -- logPutStrLn $ "Actions posted:" ++ show actions
-       -- logPutStrLn $ "New automation: " ++ show p'
+         return (actions0 ++ actions1,p')
+       --logPutStrLn $ "Processing: " ++ show ev
+       --logPutStrLn $ "Actions posted:" ++ show actions
+       --logPutStrLn $ "New automation: " ++ show p'
 
-       -- TODO: if no action is posted, accumulate the input and give feedback to the user.
        withEditor $ modifyA statusLinesA (DelayList.decrease 1)
        if (null actions) 
          then do evs <- withEditor $ getsAndModifyA pendingEventsA $
