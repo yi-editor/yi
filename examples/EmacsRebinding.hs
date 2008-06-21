@@ -114,7 +114,7 @@ myKeys =
 
     -- First up comment the selection using haskell line comments.
   , ("C-x h",    write haskellCommentSelectionB)
-  , ("C-x i",    write funnyModifySelecitonB) 
+  , ("C-x i",    write funnyModifySelectionB) 
     -- , ("C-x i",   write indentAsFirstSelectionB)
   ]
 
@@ -146,8 +146,8 @@ myActions =
 {-
   Helper functions
 -}
-funnyModifySelecitonB :: BufferM ()
-funnyModifySelecitonB = modifySelectionB (\_ -> "hello")
+funnyModifySelectionB :: BufferM ()
+funnyModifySelectionB = modifySelectionB (\_ -> "hello")
 
 -- | Goto a line specified in the mini buffer.
 gotoLineE :: YiM ()
