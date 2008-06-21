@@ -410,6 +410,9 @@ isBlankLineB =
   do li <- readLnB
      return $ all isSpace li
 
+-- TODO: cleanup this big imperative mess. Use lazy evaluation! Get
+-- all lines and then filter. Failing that, refactor, 
+
 {-
   Get the previous line of text. This returns simply 'Nothing' if there
   is no previous line of text.

@@ -406,6 +406,7 @@ refresh ui e = do
            writeRef (renderer w) =<< (textview w `onExpose` render ui b w)
            widgetQueueDraw (textview w)
 
+winEls :: BufferM Yi.Buffer.Size
 winEls = savingPointB $ do
              w <- askWindow id
              moveTo (tospnt w)
@@ -414,7 +415,7 @@ winEls = savingPointB $ do
              return (p ~- tospnt w)
 
 render :: UI -> FBuffer -> WinInfo -> t -> IO Bool
-render ui b w _ev = do
+render _ui b w _ev = do
   win <- readRef (changedWin w)
   drawWindow <- widgetGetDrawWindow $ textview w
   (width, height) <- widgetGetSize $ textview w
@@ -423,8 +424,7 @@ render ui b w _ev = do
       layout = winLayout w
       winh = round (height' / (ascent metrics + descent metrics))
       winw = round (width' / approximateCharWidth metrics)
-      maxNumberOfChars = winh * winw
-      -- The number of chars is a gross approximation.
+
   let ((point, text),_) = runBuffer win {height = winh} b $ do
                       numChars <- winEls      
                       (,) 
@@ -438,6 +438,7 @@ render ui b w _ev = do
                    height = winh
                  }
 
+  -- Scroll the window when the cursor goes out of it:
   logPutStrLn $ "prewin: " ++ show win'
   logPutStrLn $ "point: " ++ show point
   win''' <- if pointInWindow point win'
@@ -457,8 +458,7 @@ render ui b w _ev = do
   logPutStrLn $ "updated: " ++ show win'''
 
   -- add color attributes.
-  let len = (bospnt win''' - tospnt win''')
-      ((strokes,selectReg,selVisible), _) = runBuffer win''' b $ (,,)
+  let ((strokes,selectReg,selVisible), _) = runBuffer win''' b $ (,,)
                        <$> strokesRangesB (tospnt win''') (bospnt win''')
                        <*> getSelectRegionB
                        <*> getA highlightSelectionA
@@ -480,6 +480,7 @@ render ui b w _ev = do
 
   gc <- gcNew drawWindow
   drawLayout drawWindow gc 0 0 layout
+
   -- paint the cursor   
   drawLine drawWindow gc (round curx, round cury) (round $ curx + curw, round $ cury + curh) 
   return True

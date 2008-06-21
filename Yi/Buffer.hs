@@ -27,7 +27,6 @@ module Yi.Buffer
   , mkOverlay
   , gotoLn
   , gotoLnFrom
---  , offsetFromSol
   , leftB
   , rightB
   , moveN
@@ -617,9 +616,6 @@ deleteN n = pointB >>= deleteNAt n
 
 ------------------------------------------------------------------------
 
--- | Offset from start of line
--- offsetFromSol :: BufferM Int
--- offsetFromSol = queryBuffer offsetFromSolBI
 
 -- | Current column
 -- Note that this is different from offset or number of chars from sol.

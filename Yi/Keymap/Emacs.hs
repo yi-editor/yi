@@ -102,7 +102,6 @@ keys =
   , ( "C-e",      write $ repeatingArg (maybeMoveB Line Forward))
   , ( "C-f",      write $ repeatingArg rightB)
   , ( "C-g",      write $ setVisibleSelection False)
-  -- , ( "C-g",   write $ keyboardQuitE)
   -- C-g should be a more general quit that also unsets the mark.
   , ( "C-i",      write $ adjIndent IncreaseOnly)
   , ( "C-j",      write $ repeatingArg $ insertB '\n')
