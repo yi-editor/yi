@@ -496,8 +496,8 @@ ins_mov_char = choice [spec KPageUp   ?>> write upScreenB,
 -- with delete.
 --
 ins_char :: VimMode
-ins_char = choice [delete     >> write (deleteB Character Backward),
-                   spec KBS  ?>> write (deleteB Character Forward),
+ins_char = choice [spec KBS  ?>> write (deleteB Character Backward),
+                   spec KDel ?>> write (deleteB Character Forward),
                    char '\t' ?>> write insertTabB]
            <|> ins_mov_char
            <|| do c <- textChar; write (insertB c)
@@ -519,7 +519,7 @@ kwd_mode = some (event (ctrl $ char 'n') >> adjustPriority (-1) (write wordCompl
 --  characters in a line stays the same until you get to the end of the line.
 --  If a <NL> is typed, a line break is inserted and no character is deleted.
 rep_char :: VimMode
-rep_char = choice [delete       >> write leftB, -- should undo unless pointer has been moved
+rep_char = choice [spec KBS    ?>> write leftB, -- should undo unless pointer has been moved
                    char '\t'   ?>> write (insertN "    "),
                    spec KEnter ?>> write (insertB '\n')]
            <|> ins_mov_char
@@ -541,7 +541,8 @@ spawn_ex_buffer prompt = do
           choice [spec KEnter ?>> write ex_buffer_finish,
                   char '\t'   ?>> write completeMinibuffer,
                   spec KEsc   ?>> write closeBufferAndWindowE,
-                  spec KDel   ?>> write bdeleteB,
+                  spec KBS    ?>> write $ deleteB Character Backward,
+                  spec KDel   ?>> write $ deleteB Character Forward,
                   spec KUp    ?>> write historyUp,
                   spec KDown  ?>> write historyDown,
                   spec KLeft  ?>> write (moveXorSol 1),
@@ -763,8 +764,4 @@ viSub cs = do
     where do_single p r = do
                 s <- searchAndRepLocal p r
                 if not s then errorEditor ("Pattern not found: "++p) else withEditor msgClr
-
--- | Character ranges
-delete :: KeymapM Event
-delete  = event $ spec $ KDel
 
