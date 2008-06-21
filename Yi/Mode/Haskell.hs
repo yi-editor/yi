@@ -90,3 +90,7 @@ autoIndentHaskellB =
                           , "--"
                           ]
 
+
+-- | uncomments a region of haskell line commented code
+haskellUnCommentSelectionB :: BufferM ()
+haskellUnCommentSelectionB = unLineCommentSelectionB "-- "

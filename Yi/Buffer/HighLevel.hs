@@ -554,10 +554,6 @@ unLineCommentSelectionB s =
     | isPrefixOf s line = drop (length s) line
     | otherwise         = line
 
--- | uncomments a region of haskell line commented code
-haskellUnCommentSelectionB :: BufferM ()
-haskellUnCommentSelectionB = unLineCommentSelectionB "-- "
-
 -- | uncomments a region of latex line commented code
 latexUnCommentSelectionB :: BufferM ()
 latexUnCommentSelectionB = unLineCommentSelectionB "% "
