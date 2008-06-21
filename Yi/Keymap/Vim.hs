@@ -41,9 +41,7 @@ import Yi.Keymap.Keys
 
 -- ---------------------------------------------------------------------
 
-type VimMode = VimProc ()
-
-type VimProc a = KeymapM a
+type VimMode = KeymapM ()
 
 
 -- | Top level
@@ -64,7 +62,7 @@ cmd_mode :: VimMode
 cmd_mode = choice [cmd_eval,eval cmd_move,cmd2other,cmd_op]
 
 -- | Take a VimMode that returns an action; "run" it and write the returned action.
-eval :: YiAction a () => VimProc (b, a) -> VimMode
+eval :: YiAction a () => KeymapM (b, a) -> VimMode
 eval p = do (_, a) <- p; write a
 
 -- | Leave a mode. This always has priority over catch-all actions inside the mode.
@@ -103,9 +101,9 @@ change_vis_mode src dst | src == dst = return ()
 change_vis_mode _   dst              = core_vis_mode dst
 
 
--- | A VimProc to accumulate digits.
+-- | A KeymapM to accumulate digits.
 -- typically what is needed for integer repetition arguments to commands
-count :: VimProc (Maybe Int)
+count :: KeymapM (Maybe Int)
 count = option Nothing $ do
     c <- charOf id '1' '9'
     cs <- many $ charOf id '0' '9'
@@ -128,16 +126,16 @@ regionStyleA :: Accessor Editor RegionStyle
 regionStyleA = dynamicValueA .> dynamicA
 
 -- ---------------------------------------------------------------------
--- | VimProc for movement commands
+-- | KeymapM for movement commands
 --
 -- The may be invoked directly, or sometimes as arguments to other
 -- /operator/ commands (like d).
 --
 
-pString :: String -> VimProc [Event] 
+pString :: String -> KeymapM [Event] 
 pString = events . map char
 
-cmd_move :: VimProc (RegionStyle, BufferM ())
+cmd_move :: KeymapM (RegionStyle, BufferM ())
 cmd_move = do
   cnt <- count
   let x = maybe 1 id cnt
@@ -232,7 +230,7 @@ searchCurrentWord = do
   doSearch (Just w) [] Forward
 
 -- | Parse any character that can be inserted in the text.
-textChar :: VimProc Char
+textChar :: KeymapM Char
 textChar = do
   Event (KASCII c) [] <- anyEvent
   return c
@@ -405,7 +403,7 @@ pasteBefore = do
 -- | Switching to another mode from visual mode.
 --
 -- All visual commands are meta actions, as they transfer control to another
--- VimProc. In this way vis_single is analogous to cmd2other
+-- KeymapM. In this way vis_single is analogous to cmd2other
 --
 vis_single :: RegionStyle -> VimMode
 vis_single regionStyle =
@@ -448,7 +446,7 @@ vis_multi = do
 -- | Switch to another vim mode from command mode.
 --
 -- These commands are meta actions, as they transfer control to another
--- VimProc. Some of these commands also perform an action before switching.
+-- KeymapM. Some of these commands also perform an action before switching.
 --
 cmd2other :: VimMode
 cmd2other = let beginIns a = write a >> ins_mode
@@ -767,6 +765,6 @@ viSub cs = do
                 if not s then errorEditor ("Pattern not found: "++p) else withEditor msgClr
 
 -- | Character ranges
-delete :: VimProc Event
+delete :: KeymapM Event
 delete  = event $ spec $ KDel
 
