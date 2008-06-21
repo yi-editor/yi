@@ -2,7 +2,6 @@ module Yi.Modes (defaultFundamentalMode, fundamental,
  latexMode, cppMode, haskellMode, literateHaskellMode, cabalMode, srmcMode, defaultModeMap) where
 
 import System.FilePath
-import qualified Yi.Syntax.Haskell             as Haskell
 import qualified Yi.Syntax.LiterateHaskell     as LiterateHaskell
 import qualified Yi.Syntax.Latex               as Latex
 import qualified Yi.Syntax.Srmc                as Srmc
@@ -17,9 +16,10 @@ import Yi.Prelude
 import Yi.Buffer (AnyMode(..), Mode(..), emptyMode)
 import Prelude ()
 import Yi.Style
+import Yi.Mode.Haskell
 
 fundamental, defaultFundamentalMode :: Mode syntax
-latexMode, cppMode, haskellMode, literateHaskellMode, cabalMode, srmcMode :: Mode Alex.Result
+latexMode, cppMode, literateHaskellMode, cabalMode, srmcMode :: Mode Alex.Result
 
 fundamental = emptyMode
   { 
@@ -37,17 +37,7 @@ cppMode = fundamental
    modeHL = ExtHL (mkHighlighter' Cplusplus.initState Cplusplus.alexScanToken)
   }
 
-haskellMode = fundamental 
-   {
-    modeHL = ExtHL $
-    Alex.mkHighlighter Haskell.initState (fmap (first tokenToStroke) . Haskell.alexScanToken)
-   , modeIndent = autoIndentHaskellB
-
-   }
-    where tokenToStroke (Tok t len posn) = (posnOfs posn, Haskell.tokenToStyle t, posnOfs posn +~ len)
-
-
-literateHaskellMode = haskellMode 
+literateHaskellMode = fundamental
   {
    modeHL = ExtHL (mkHighlighter' LiterateHaskell.initState LiterateHaskell.alexScanToken)
   }

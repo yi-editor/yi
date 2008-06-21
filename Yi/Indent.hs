@@ -226,36 +226,6 @@ autoIndentWithKeywordsB firstKeywords secondKeywords =
                                           keyHintsOne  ++
                                           keyHintsTwo )
 
-
-{-| For haskell these are reasonable settings but you might be able
-    to come up with something better in your own ~/yi.hs file.
--}
-autoIndentHaskellB :: IndentBehaviour -> BufferM ()
-autoIndentHaskellB =
-  autoIndentWithKeywordsB [ "if"
-                          , "then"
-                          , "else"
-                          , "|"
-                          , "->"
-                          , "case" -- hmm
-                          , "in"
-                          -- Note tempted by having '=' in here that would
-                          -- potentially work well for 'data' declarations
-                          -- but I think '=' is so common in other places
-                          -- that it would introduce many spurious/annoying
-                          -- hints.
-                          ]
-                          [ "where"
-                          , "let"
-                          , "do"
-                          , "mdo"
-                          , "{-"
-                          , "{-|"
-                          , "--"
-                          ]
-
-
-
 -- | Returns the position of the last opening bracket on the
 -- line which is not closed on the same line.
 -- Note that if we have unmatched parentheses such as "( ]"

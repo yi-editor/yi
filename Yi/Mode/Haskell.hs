@@ -1,9 +1,8 @@
-module Yi.Mode.Haskell where
+module Yi.Mode.Haskell (haskellMode, cleverHaskellMode)  where
 
 import Prelude ()
 import Yi.Buffer
 import Yi.Indent
-import Yi.Modes
 import Yi.Prelude
 import Yi.Syntax
 import Yi.Syntax.Alex (Tok(..))
@@ -13,9 +12,19 @@ import qualified Yi.IncrementalParse as IncrParser
 import qualified Yi.Syntax.Alex as Alex
 import qualified Yi.Syntax.Haskell             as Haskell
 import qualified Yi.Syntax.Paren as Paren
+import Control.Arrow (first)
+
+haskellMode :: Mode Alex.Result
+haskellMode = emptyMode 
+   {
+    modeHL = ExtHL $
+    Alex.mkHighlighter Haskell.initState (fmap (first tokenToStroke) . Haskell.alexScanToken)
+   , modeIndent = autoIndentHaskellB
+
+   }
 
 cleverHaskellMode :: Mode (Expr (Tok Haskell.Token))
-cleverHaskellMode = fundamental {
+cleverHaskellMode = haskellMode {
     modeIndent = autoIndentHaskellB,
     modeHL = ExtHL $
 {--    lexer `withScanner` IncrParser.mkHighlighter Fractal.parse
@@ -56,5 +65,28 @@ adjustBlock e len = do
                                     deleteN 1
 
 
-
+-- | Keyword-based auto-indenter for haskell.
+autoIndentHaskellB :: IndentBehaviour -> BufferM ()
+autoIndentHaskellB =
+  autoIndentWithKeywordsB [ "if"
+                          , "then"
+                          , "else"
+                          , "|"
+                          , "->"
+                          , "case" -- hmm
+                          , "in"
+                          -- Note tempted by having '=' in here that would
+                          -- potentially work well for 'data' declarations
+                          -- but I think '=' is so common in other places
+                          -- that it would introduce many spurious/annoying
+                          -- hints.
+                          ]
+                          [ "where"
+                          , "let"
+                          , "do"
+                          , "mdo"
+                          , "{-"
+                          , "{-|"
+                          , "--"
+                          ]
 
