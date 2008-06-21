@@ -90,7 +90,7 @@ core_vis_mode :: RegionStyle -> VimMode
 core_vis_mode regionStyle = do
   write $ withEditor $ do setA regionStyleA regionStyle
                           withBuffer0 $ setDynamicB $ SelectionStyle $
-                            case regionStyle of { LineWise -> fullLine; CharWise -> Character }
+                            case regionStyle of { LineWise -> Line; CharWise -> Character }
                           setStatus $ msg regionStyle
   many (eval cmd_move)
   (vis_single regionStyle <|| vis_multi)
