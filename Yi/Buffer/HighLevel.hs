@@ -323,46 +323,14 @@ getSelectRegionB = do
 
 deleteBlankLinesB :: BufferM ()
 deleteBlankLinesB =
-  do isBlank <- isBlankLineB
-     when isBlank $
-        moveUpToLastBlankB >> deleteLines
-  where
-  deleteLines :: BufferM ()
-  deleteLines =
-    do b1 <- isBlankLineB 
-       b2 <- atEof
-       if b1 && (not b2)
-         then do deleteLineForward 
-                 deleteLines
-         else return ()
-
-  moveUpToLastBlankB :: BufferM ()
-  moveUpToLastBlankB = moveUpToLastLineWhichB $ all isSpace
-                           
-
--- TODO: generalize on direction.
-{-
-  | Moves us up to the last line which satisfies the given condition.
-  Note that we do not move beyond that last line, so after calling
-  this function the point will be on a line which currently satisfies
-  the condition. For the other behaviour, that is moving up until
-  the current line does not satisfy the condition use 'moveUpUntil'
--}
-moveUpToLastLineWhichB :: (String -> Bool) -> BufferM ()
-moveUpToLastLineWhichB cond =
-  do mLine <- getMaybePreviousLineB
-     case mLine of
-       Just s  -> if cond s
-                     then lineUp >> (moveUpToLastLineWhichB cond)
-                     else return ()
-       Nothing -> return ()
-
-
-{-
-  Returns true if the current line is a blank line.
--}
-isBlankLineB :: BufferM Bool
-isBlankLineB = isBlank <$> readLnB
+  do isThisBlank <- isBlank <$> readLnB
+     when isThisBlank $ do
+       p <- pointB
+       -- go up to the 1st blank line in the group
+       whileB (isBlank <$> getPreviousLineB) lineUp
+       q <- pointB
+       -- delete the whole blank region.
+       deleteRegionB $ mkRegion p q
 
 -- | Get a (lazy) stream of lines in the buffer, starting at the /next/ line
 -- in the given direction.

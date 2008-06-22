@@ -13,7 +13,7 @@ module Yi.Buffer.Normal (TextUnit(..),
                          moveB, maybeMoveB,
                          transformB, transposeB,
                          peekB, regionOfB, regionOfPartB, readUnitB,
-                         untilB, doUntilB_, untilB_,
+                         untilB, doUntilB_, untilB_, whileB,
                          atBoundaryB,
                          numberOfB,
                          deleteB, genMaybeMoveB,
@@ -128,6 +128,8 @@ numberOfB unit containingUnit = savingPointB $ do
                    end <- pointB
                    moveTo start
                    length <$> untilB ((>= end) <$> pointB) (moveB unit Forward)
+
+whileB cond f = untilB (not <$> cond) f
 
 -- | Repeat an action until the condition is fulfilled or the cursor stops moving.
 -- The Action may be performed zero times.
