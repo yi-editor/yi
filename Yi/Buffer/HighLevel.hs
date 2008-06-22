@@ -12,14 +12,17 @@ import Data.List
   )
 
 import Data.Maybe
-  ( fromMaybe )
+  ( fromMaybe, listToMaybe )
 
 import Yi.Buffer
+import Yi.Buffer.Implementation (newLine)
 import Yi.Buffer.Normal
 import Yi.Buffer.Region
 import Yi.String
 import Yi.Window
 import Yi.Dynamic
+import qualified Data.ByteString.Lazy as LB
+import qualified Data.ByteString.Lazy.UTF8 as LazyUTF8
 
 -- ---------------------------------------------------------------------
 -- Movement operations
@@ -277,6 +280,9 @@ middleB = do
   moveTo (tospnt w)
   replicateM_ (height w `div` 2) lineDown
 
+-----------------------------
+-- Region-related operations
+
 -- | Extend the given region to boundaries of the text unit.
 -- For instance one can extend the selection to to complete lines, or
 -- paragraphs.
@@ -318,9 +324,8 @@ getSelectRegionB = do
 deleteBlankLinesB :: BufferM ()
 deleteBlankLinesB =
   do isBlank <- isBlankLineB
-     if isBlank
-        then moveUpToLastBlankB >> deleteLines
-        else return ()
+     when isBlank $
+        moveUpToLastBlankB >> deleteLines
   where
   deleteLines :: BufferM ()
   deleteLines =
@@ -335,19 +340,9 @@ deleteBlankLinesB =
   moveUpToLastBlankB = moveUpToLastLineWhichB $ all isSpace
                            
 
+-- TODO: generalize on direction.
 {-
-  TODO: Needs a little more thought this one:
-  I think it would be best done by defining a
-    getLineAt :: Int -> BufferM (Maybe String)
-    and/or
-    getLineRelAt :: Int -> BufferM (Maybe String)
-moveRelToLastLineWhichB :: Int -> (String -> Bool) -> BufferM ()
-moveRelToLastLineWhichB n 
--}
-
-
-{-
-  Moves us up to the last which satisfies the given condition.
+  | Moves us up to the last line which satisfies the given condition.
   Note that we do not move beyond that last line, so after calling
   this function the point will be on a line which currently satisfies
   the condition. For the other behaviour, that is moving up until
@@ -367,67 +362,45 @@ moveUpToLastLineWhichB cond =
   Returns true if the current line is a blank line.
 -}
 isBlankLineB :: BufferM Bool
-isBlankLineB =
-  do li <- readLnB
-     return $ all isSpace li
+isBlankLineB = isBlank <$> readLnB
 
--- TODO: cleanup this big imperative mess. Use lazy evaluation! Get
--- all lines and then filter. Failing that, refactor, 
+-- | Get a (lazy) stream of lines in the buffer, starting at the /next/ line
+-- in the given direction.
+lineStreamB :: Direction -> BufferM [String]
+lineStreamB dir = map (LazyUTF8.toString . rev) . drop 1 . LB.split newLine <$> (streamB dir =<< pointB)
+    where rev = case dir of 
+                  Forward -> id
+                  Backward -> LB.reverse
 
 {-
-  Get the previous line of text. This returns simply 'Nothing' if there
+  | Get the previous line of text. This returns simply 'Nothing' if there
   is no previous line of text.
 -}
 getMaybePreviousLineB :: BufferM (Maybe String)
-getMaybePreviousLineB =
-  savingExcursionB $ do ofs <- lineMoveRel (-1)
-                        if ofs /= (-1)
-                           then return Nothing
-                           else liftM Just readLnB
+getMaybePreviousLineB = listToMaybe <$> lineStreamB Backward
 
 {-
-  The same as 'getMaybePreviousLineB' but avoids the use of the 'Maybe'
+  | The same as 'getMaybePreviousLineB' but avoids the use of the 'Maybe'
   type in the return by returning the empty string if there is no previous line.
 -}
 getPreviousLineB :: BufferM String
-getPreviousLineB = liftM (fromMaybe "") getMaybePreviousLineB
-
+getPreviousLineB = fromMaybe "" <$> getMaybePreviousLineB
 
 {-
-  Get closest line above the current line (not including the current line
+  | Get closest line above the current line (not including the current line
   which satisfies the given condition. Returns 'Nothing' if there is
   no line above the current one which satisfies the condition.
 -}
 getPreviousLineWhichB :: (String -> Bool) -> BufferM (Maybe String)
-getPreviousLineWhichB cond =
-  do savingExcursionB getPLine
-  where
-  -- Recusively get the previous line of text which statisfies 'cond'
-  getPLine :: BufferM (Maybe String)
-  getPLine = do ofs <- lineMoveRel (-1)
-                li  <- readLnB
-                -- if we didn't move then we are on the top line
-                -- and hence there is no line above the current line
-                -- which satisfies the given condition.
-                if (ofs == 0)
-                  then return Nothing
-                          -- If we did move up one line and the given
-                          -- line satisfies the condition then we of
-                          -- course return that, otherwise we recursively
-                          -- attempt to find one.
-                  else if cond li
-                         then return $ Just li
-                         else getPLine 
+getPreviousLineWhichB cond = listToMaybe . filter cond <$> lineStreamB Backward
 
 {-
-  Returns the closest line above the current line which is non-blank.
+  | Returns the closest line above the current line which is non-blank.
   Returns the empty string if there is no such line (for example if
   we are on the top line already).
 -}
 getPreviousNonBlankLineB :: BufferM String
-getPreviousNonBlankLineB =
-  liftM (fromMaybe "") 
-        (getPreviousLineWhichB $ any (not . isSpace))
+getPreviousNonBlankLineB = fromMaybe "" <$> getPreviousLineWhichB (not . isBlank)
 
 
 ------------------------------------------------

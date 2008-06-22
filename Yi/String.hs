@@ -6,11 +6,12 @@
 -- | String manipulation utilities
 --
 
-module Yi.String (chomp,
+module Yi.String (isBlank,
+                  chomp,
                   split,
                   capitalize,
                   capitalizeFirst,
-                  dropSpace      -- :: String -> String
+                  dropSpace
 ) where
 
 import Data.List    (isSuffixOf,isPrefixOf)
@@ -75,3 +76,7 @@ breakOnGlue glue rest@(x:xs)
 -- | Trim spaces at beginning /and/ end
 dropSpace :: [Char] -> [Char]
 dropSpace = let f = reverse . dropWhile isSpace in f . f
+
+
+isBlank :: String -> Bool
+isBlank = all isSpace
