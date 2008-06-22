@@ -363,45 +363,6 @@ moveUpToLastLineWhichB cond =
        Nothing -> return ()
 
 
-{-|
-  Moves the given amount (which may be negative to go upwards)
-  of lines until the target of the move satisfies the given
-  condition.
-  If the move is not possible, for example we are moving -10
-  but are on the 3rd line, then we will move to the top line
-  and return 'False'.
-  In general returning 'False' indicates that no line was found
-  to satisfy the condition, of course if the magnaitude of the
-  move is greater than one then we may have skipped over a line
-  which satisfies the condition.
--}
-moveRelUntil :: Int -> (String -> Bool) -> BufferM Bool
-moveRelUntil n cond =
-  do li <- readLnB
-     if cond li
-        then return True
-        else do ofs <- lineMoveRel n
-                if ofs /= n
-                   then return False
-                   else lineUp >> (moveUpUntil cond)
-
-
-{-|
-  Moves up until the given condition is true. After this action is returned
-  the current line *will* satisfy the condition, unless all the lines above
-  the original point do not satisfy the condition in which case the point 
-  will be on the top line. We return a bool, this is true if the condition 
-  stopped the upwards movement rather than the top of the file.
--}
-moveUpUntil :: (String -> Bool) -> BufferM Bool
-moveUpUntil = moveRelUntil (-1)
-
-{-|
-  The same as 'moveUpUntil' only we move downwards.
--}
-moveDownUntil :: (String -> Bool) -> BufferM Bool
-moveDownUntil = moveRelUntil 1
-
 {-
   Returns true if the current line is a blank line.
 -}
