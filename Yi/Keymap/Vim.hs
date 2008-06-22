@@ -473,15 +473,18 @@ cmd2other = let beginIns a = write a >> ins_mode
             spec KIns    ?>> ins_mode]
 
 
-ins_mov_char :: VimMode
-ins_mov_char = choice [spec KPageUp   ?>> write upScreenB,
+ins_rep_char :: VimMode
+ins_rep_char = choice [spec KPageUp   ?>> write upScreenB,
                        spec KPageDown ?>> write downScreenB,
                        spec KUp       ?>> write lineUp,
                        spec KDown     ?>> write lineDown,
                        spec KLeft     ?>> write (moveXorSol 1),
                        spec KRight    ?>> write (moveXorEol 1),
                        spec KEnd      ?>> write moveToEol,
-                       spec KHome     ?>> write moveToSol]
+                       spec KHome     ?>> write moveToSol,
+                       spec KDel      ?>> write (deleteB Character Forward),
+                       spec KEnter    ?>> write (insertB '\n'),
+                       spec KTab      ?>> write insertTabB]
 
 
 -- ---------------------------------------------------------------------
@@ -496,10 +499,8 @@ ins_mov_char = choice [spec KPageUp   ?>> write upScreenB,
 -- with delete.
 --
 ins_char :: VimMode
-ins_char = choice [spec KBS  ?>> write (deleteB Character Backward),
-                   spec KDel ?>> write (deleteB Character Forward),
-                   char '\t' ?>> write insertTabB]
-           <|> ins_mov_char
+ins_char = (spec KBS ?>> write (deleteB Character Backward))
+           <|> ins_rep_char
            <|| do c <- textChar; write (insertB c)
 
 -- --------------------
@@ -519,10 +520,8 @@ kwd_mode = some (event (ctrl $ char 'n') >> adjustPriority (-1) (write wordCompl
 --  characters in a line stays the same until you get to the end of the line.
 --  If a <NL> is typed, a line break is inserted and no character is deleted.
 rep_char :: VimMode
-rep_char = choice [spec KBS    ?>> write leftB, -- should undo unless pointer has been moved
-                   char '\t'   ?>> write (insertN "    "),
-                   spec KEnter ?>> write (insertB '\n')]
-           <|> ins_mov_char
+rep_char = (spec KBS ?>> write leftB) -- should undo unless pointer has been moved
+           <|> ins_rep_char
            <|| do c <- textChar; write (do e <- atEol; if e then insertB c else writeB c)
 
 -- ---------------------------------------------------------------------
@@ -539,7 +538,7 @@ spawn_ex_buffer prompt = do
       ex_process :: VimMode
       ex_process =
           choice [spec KEnter ?>> write ex_buffer_finish,
-                  char '\t'   ?>> write completeMinibuffer,
+                  spec KTab   ?>> write completeMinibuffer,
                   spec KEsc   ?>> write closeBufferAndWindowE,
                   spec KBS    ?>> write $ deleteB Character Backward,
                   spec KDel   ?>> write $ deleteB Character Forward,
