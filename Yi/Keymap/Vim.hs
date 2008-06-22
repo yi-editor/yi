@@ -730,7 +730,7 @@ ex_eval cmd = do
 
       fn "u"          = withBuffer undoB
       fn "undo"       = withBuffer undoB
-      fn "r"          = withBuffer redoB
+      fn "red"        = withBuffer redoB
       fn "redo"       = withBuffer redoB
 
       fn "sus"        = suspendEditor
