@@ -435,10 +435,6 @@ lineCommentSelectionB ::
 lineCommentSelectionB s =
   modifySelectionB $ modifyLines (s ++)
 
--- | Comments the region using haskell line comments
-haskellCommentSelectionB :: BufferM ()
-haskellCommentSelectionB = lineCommentSelectionB "-- "
-
 -- | Comments the region using latex line comments
 latexCommentSelectionB :: BufferM ()
 latexCommentSelectionB = lineCommentSelectionB "% "

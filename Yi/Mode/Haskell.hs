@@ -1,4 +1,5 @@
-module Yi.Mode.Haskell (haskellMode, cleverHaskellMode, haskellUnCommentSelectionB)  where
+module Yi.Mode.Haskell (haskellMode, cleverHaskellMode, 
+                        haskellUnCommentSelectionB, haskellCommentSelectionB)  where
 
 import Prelude ()
 import Data.Maybe (maybe)
@@ -109,6 +110,11 @@ autoIndentHaskellB =
                           ]
 
 
+-- | Comments the region using haskell line comments
+haskellCommentSelectionB :: BufferM ()
+haskellCommentSelectionB = lineCommentSelectionB "-- "
+
 -- | uncomments a region of haskell line commented code
 haskellUnCommentSelectionB :: BufferM ()
 haskellUnCommentSelectionB = unLineCommentSelectionB "-- "
+
