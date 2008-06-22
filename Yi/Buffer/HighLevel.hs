@@ -327,7 +327,7 @@ deleteBlankLinesB =
      when isThisBlank $ do
        p <- pointB
        -- go up to the 1st blank line in the group
-       whileB (isBlank <$> getPreviousLineB) lineUp
+       whileB (isBlank <$> getNextLineB Backward) lineUp
        q <- pointB
        -- delete the whole blank region.
        deleteRegionB $ mkRegion p q
@@ -341,34 +341,34 @@ lineStreamB dir = map (LazyUTF8.toString . rev) . drop 1 . LB.split newLine <$> 
                   Backward -> LB.reverse
 
 {-
-  | Get the previous line of text. This returns simply 'Nothing' if there
-  is no previous line of text.
+  | Get the next line of text in the given direction. This returns simply 'Nothing' if there
+  is no such line.
 -}
-getMaybePreviousLineB :: BufferM (Maybe String)
-getMaybePreviousLineB = listToMaybe <$> lineStreamB Backward
+getMaybeNextLineB :: Direction -> BufferM (Maybe String)
+getMaybeNextLineB dir = listToMaybe <$> lineStreamB dir
 
 {-
-  | The same as 'getMaybePreviousLineB' but avoids the use of the 'Maybe'
-  type in the return by returning the empty string if there is no previous line.
+  | The same as 'getMaybeNextLineB' but avoids the use of the 'Maybe'
+  type in the return by returning the empty string if there is no next line.
 -}
-getPreviousLineB :: BufferM String
-getPreviousLineB = fromMaybe "" <$> getMaybePreviousLineB
+getNextLineB :: Direction -> BufferM String
+getNextLineB dir = fromMaybe "" <$> getMaybeNextLineB dir
 
 {-
-  | Get closest line above the current line (not including the current line
+  | Get closest line to the current line (not including the current line) in the given direction
   which satisfies the given condition. Returns 'Nothing' if there is
-  no line above the current one which satisfies the condition.
+  no line which satisfies the condition.
 -}
-getPreviousLineWhichB :: (String -> Bool) -> BufferM (Maybe String)
-getPreviousLineWhichB cond = listToMaybe . filter cond <$> lineStreamB Backward
+getNextLineWhichB :: Direction -> (String -> Bool) -> BufferM (Maybe String)
+getNextLineWhichB dir cond = listToMaybe . filter cond <$> lineStreamB dir
 
 {-
-  | Returns the closest line above the current line which is non-blank.
+  | Returns the closest line to the current line which is non-blank, in the given direction.
   Returns the empty string if there is no such line (for example if
   we are on the top line already).
 -}
-getPreviousNonBlankLineB :: BufferM String
-getPreviousNonBlankLineB = fromMaybe "" <$> getPreviousLineWhichB (not . isBlank)
+getNextNonBlankLineB :: Direction -> BufferM String
+getNextNonBlankLineB dir = fromMaybe "" <$> getNextLineWhichB dir (not . isBlank)
 
 
 ------------------------------------------------

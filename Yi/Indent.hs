@@ -104,7 +104,7 @@ autoIndentHelperB :: BufferM [ Int ]
                  -> BufferM ()
 autoIndentHelperB getUpwards getPrevious indentBehave =
   do upwardHints   <- savingExcursionB getUpwards
-     previousLine  <- getPreviousLineB
+     previousLine  <- getNextLineB Backward
      previousHints <- getPrevious previousLine
      let allHints = (upwardHints ++ previousHints)
      cycleIndentsB indentBehave allHints
@@ -424,7 +424,7 @@ indentToB level =
 -- | Indent as much as the previous line
 indentAsPreviousB :: BufferM ()
 indentAsPreviousB =
-  do previousLine   <- getPreviousNonBlankLineB
+  do previousLine   <- getNextNonBlankLineB Backward
      previousIndent <- indentOfB previousLine
      indentToB previousIndent
 

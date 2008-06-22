@@ -70,7 +70,7 @@ adjustBlock e len = do
 
 cleverAutoIndentHaskellB :: Expr (Tok Token) -> IndentBehaviour -> BufferM ()
 cleverAutoIndentHaskellB e behaviour = do
-  previousLine   <- getPreviousNonBlankLineB
+  previousLine   <- getNextNonBlankLineB Backward
   previousIndent <- indentOfB previousLine
   solPnt <- savingPointB (moveToSol >> pointB)
   let stopOf (Group open _ _) = 1 + (posnCol . tokPosn $ open)
