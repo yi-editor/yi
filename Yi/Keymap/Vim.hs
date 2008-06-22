@@ -14,13 +14,13 @@ import Prelude (maybe, length, filter, map, drop, takeWhile, dropWhile, break)
 
 import Data.Char
 import Data.Maybe (fromMaybe)
+import Data.List (sort)
 import Data.Dynamic
 
 import Control.Exception    ( ioErrors, try, evaluate )
 import Control.Monad.State hiding (mapM_, mapM)
 
 import Yi.Editor
-import Yi.Accessor
 import Yi.History
 import Yi.Buffer
 import Yi.Debug
@@ -59,11 +59,8 @@ keymap = cmd_mode
 -- the replace cmd, which consumes one char of input, and commands
 -- that switch modes.
 cmd_mode :: VimMode
-cmd_mode = choice [cmd_eval,eval cmd_move,cmd2other,cmd_op]
+cmd_mode = choice [cmd_eval,cmd_move,cmd2other,cmd_op]
 
--- | Take a VimMode that returns an action; "run" it and write the returned action.
-eval :: YiAction a () => KeymapM (b, a) -> VimMode
-eval p = do (_, a) <- p; write a
 
 -- | Leave a mode. This always has priority over catch-all actions inside the mode.
 leave :: VimMode
@@ -78,27 +75,26 @@ rep_mode :: VimMode
 rep_mode = write (setStatus "-- REPLACE --") >> many rep_char >> leave
 
 -- | Visual mode, similar to command mode
-vis_mode :: RegionStyle -> VimMode
-vis_mode regionStyle = do
+vis_mode :: SelectionStyle -> VimMode
+vis_mode selectionStyle = do
   write (withBuffer (setVisibleSelection True >> pointB >>= setSelectionMarkPointB))
-  core_vis_mode regionStyle
+  core_vis_mode selectionStyle
   write (msgClr >> withBuffer0 (setVisibleSelection False) >> withBuffer0 (setDynamicB $ SelectionStyle Character))
 
-core_vis_mode :: RegionStyle -> VimMode
-core_vis_mode regionStyle = do
-  write $ withEditor $ do setA regionStyleA regionStyle
-                          withBuffer0 $ setDynamicB $ SelectionStyle $
-                            case regionStyle of { LineWise -> Line; CharWise -> Character }
-                          setStatus $ msg regionStyle
-  many (eval cmd_move)
-  (vis_single regionStyle <|| vis_multi)
-  where msg CharWise = "-- VISUAL --"
-        msg LineWise = "-- VISUAL LINE --"
+core_vis_mode :: SelectionStyle -> VimMode
+core_vis_mode selectionStyle = do
+  write $ withEditor $ do withBuffer0 $ setDynamicB $ selectionStyle
+                          setStatus $ msg selectionStyle
+  many cmd_move
+  (vis_single selectionStyle <|| vis_multi)
+  where msg (SelectionStyle Line) = "-- VISUAL LINE --"
+        msg (SelectionStyle _)    = "-- VISUAL --"
 
 -- | Change visual mode
-change_vis_mode :: RegionStyle -> RegionStyle -> VimMode
-change_vis_mode src dst | src == dst = return ()
-change_vis_mode _   dst              = core_vis_mode dst
+change_vis_mode :: SelectionStyle -> SelectionStyle -> VimMode
+change_vis_mode (SelectionStyle Character) (SelectionStyle Character) = return ()
+change_vis_mode (SelectionStyle Line)      (SelectionStyle Line)      = return ()
+change_vis_mode _                          dst                        = core_vis_mode dst
 
 
 -- | A KeymapM to accumulate digits.
@@ -110,20 +106,35 @@ count = option Nothing $ do
     return $ Just $ read (c:cs)
 
 data RegionStyle = LineWise
-                 | CharWise
+                 | Inclusive
+                 | Exclusive
   deriving (Eq, Typeable, Show)
 
-instance Initializable RegionStyle where
-  initial = CharWise
+data ViMove = Move TextUnit Direction
+            | MaybeMove TextUnit Direction
+            | GenMove TextUnit (Direction, BoundarySide) Direction
+            | CharMove Direction
+            | ArbMove (BufferM ())
+            | Replicate ViMove Int
+            | SeqMove ViMove ViMove
+            | NoMove
+
+viMoveToEol :: ViMove
+viMoveToEol = MaybeMove Line Forward
+
+viMoveToSol :: ViMove
+viMoveToSol = MaybeMove Line Backward
+
+selection2regionStyle :: SelectionStyle -> RegionStyle
+selection2regionStyle (SelectionStyle Line)      = LineWise
+selection2regionStyle (SelectionStyle Character) = Inclusive
+selection2regionStyle _                          = error "selection2regionStyle"
 
 fullLine :: TextUnit
 fullLine = GenUnit {genEnclosingUnit=Document, genUnitBoundary=bound}
   where bound d = withOffset d $ atBoundaryB Line d
         withOffset Backward f = f
         withOffset Forward  f = savingPointB (leftB >> f)
-
-regionStyleA :: Accessor Editor RegionStyle
-regionStyleA = dynamicValueA .> dynamicA
 
 -- ---------------------------------------------------------------------
 -- | KeymapM for movement commands
@@ -135,21 +146,27 @@ regionStyleA = dynamicValueA .> dynamicA
 pString :: String -> KeymapM [Event] 
 pString = events . map char
 
-cmd_move :: KeymapM (RegionStyle, BufferM ())
-cmd_move = do
+cmd_move :: VimMode
+cmd_move = gen_cmd_move >>= write . viMove . snd
+
+-- the returned RegionStyle is used when the movement is combined with a 'cut' or 'yank'.
+gen_cmd_move :: KeymapM (RegionStyle, ViMove)
+gen_cmd_move = do
   cnt <- count
   let x = maybe 1 id cnt
-  choice ([event c >> return (CharWise, a x) | (c,a) <- moveCmdFM, (c /= char '0' || Nothing == cnt) ] ++
-          [event c >> return (LineWise, a x) | (c,a) <- moveUpDownCmdFM] ++
-          [do event c; c' <- textChar; return (CharWise, a x c') | (c,a) <- move2CmdFM] ++
-          [char 'G' ?>> return (LineWise, case cnt of
-                                            Nothing -> botB >> moveToSol
-                                            Just n  -> gotoLn n >> return ())
-          ,pString "gg" >> return (LineWise, gotoLn 0 >> return ())
-          ,pString "ge" >> return (CharWise, replicateM_ x $ genMoveB ViWord (Forward, InsideBound) Backward)])
--- | movement commands
-moveCmdFM :: [(Event, Int -> BufferM ())]
-moveCmdFM =
+  choice ([c ?>> return (Inclusive, a x) | (c,a) <- moveCmdFM_inclusive, (c /= char '0' || Nothing == cnt) ] ++
+          [c ?>> return (Exclusive, a x) | (c,a) <- moveCmdFM_exclusive ] ++
+          [c ?>> return (LineWise, a x) | (c,a) <- moveUpDownCmdFM] ++
+          [do event c; c' <- textChar; return (r, a c' x) | (c,r,a) <- move2CmdFM] ++
+          [char 'G' ?>> return (LineWise, ArbMove (case cnt of
+                                                     Nothing -> botB >> moveToSol
+                                                     Just n  -> gotoLn n >> return ()))
+          ,pString "gg" >> return (LineWise, ArbMove (gotoLn 0 >> return ()))
+          ,pString "ge" >> return (Inclusive, Replicate (GenMove ViWord (Forward, InsideBound) Backward) x)])
+
+-- | movement commands (with exclusive cut/yank semantics)
+moveCmdFM_exclusive :: [(Event, (Int -> ViMove))]
+moveCmdFM_exclusive =
 -- left/right
     [(char 'h',        left)
     ,(ctrl $ char 'h', left)
@@ -160,34 +177,55 @@ moveCmdFM =
     ,(char ' ',        right)
     ,(spec KHome,      sol)
     ,(char '0',        sol)
-    ,(char '^',        const firstNonSpaceB)
-    ,(char '$',        eol)
-    ,(spec KEnd,       eol)
-    ,(char '|',        \i -> moveToSol >> moveXorEol (i-1))
+    ,(char '^',        const $ ArbMove firstNonSpaceB)
+    ,(char '|',        \i -> SeqMove viMoveToSol (Replicate (CharMove Forward) (i-1)))
 
 -- words
-    ,(char 'w',        \i -> replicateM_ i $ genMoveB ViWord (Backward,InsideBound) Forward)
-    ,(char 'b',        \i -> replicateM_ i $ genMoveB ViWord (Backward,InsideBound) Backward)
-    ,(char 'e',        \i -> replicateM_ i $ genMoveB ViWord (Forward, InsideBound) Forward)
-
+    ,(char 'w',       Replicate $ GenMove ViWord (Backward,InsideBound) Forward)
+    ,(char 'b',       Replicate $ GenMove ViWord (Backward,InsideBound) Backward)
 -- text
-    ,(char '{',        prevNParagraphs)
-    ,(char '}',        nextNParagraphs)
-
--- misc
-    ,(char 'H',        \i -> downFromTosB (i - 1))
-    ,(char 'M',        const middleB)
-    ,(char 'L',        \i -> upFromBosB (i - 1))
+    ,(char '{',       Replicate $ Move Paragraph Backward)
+    ,(char '}',       Replicate $ Move Paragraph Forward)
     ]
     where
-        left  = moveXorSol
-        right = moveXorEol
-        sol   _ = moveToSol
-        eol   _ = moveToEol
+        left  = Replicate $ CharMove Backward
+        right = Replicate $ CharMove Forward
+        sol   = Replicate $ viMoveToSol
 
--- | up/down movement commands. these one are separated from moveCmdFM
+-- | movement commands (with inclusive cut/yank semantics)
+moveCmdFM_inclusive :: [(Event, (Int -> ViMove))]
+moveCmdFM_inclusive =
+-- left/right
+    [(char '$',  eol)
+    ,(spec KEnd, eol)
+-- words
+    ,(char 'e',  Replicate $ GenMove ViWord (Forward, InsideBound) Forward)]
+    where
+        eol   = Replicate $ viMoveToEol
+
+
+viMove :: ViMove -> BufferM ()
+viMove NoMove                              = return ()
+viMove (GenMove   unit boundary direction) = genMoveB unit boundary direction
+viMove (MaybeMove unit          direction) = maybeMoveB unit direction
+viMove (Move      unit          direction) = moveB unit direction
+viMove (CharMove Forward)                  = moveXorEol 1
+viMove (CharMove Backward)                 = moveXorSol 1
+viMove (ArbMove       move)                = move
+viMove (SeqMove move1 move2)               = viMove move1 >> viMove move2
+viMove (Replicate     move i)              = viReplicateMove move i
+
+viReplicateMove :: ViMove -> Int -> BufferM ()
+viReplicateMove (Move VLine Forward)  i = lineMoveRel i >> return ()
+viReplicateMove (Move VLine Backward) i = lineMoveRel (-i) >> return ()
+viReplicateMove (CharMove Forward)    i = moveXorEol i
+viReplicateMove (CharMove Backward)   i = moveXorSol i
+viReplicateMove move                  i = replicateM_ i $ viMove move
+
+
+-- | up/down movement commands. these one are separated from moveCmdFM_{inclusive,exclusive}
 -- because they behave differently when yanking/cuting (line mode).
-moveUpDownCmdFM :: [(Event, Int -> BufferM ())]
+moveUpDownCmdFM :: [(Event, Int -> ViMove)]
 moveUpDownCmdFM =
     [(char 'k',        up)
     ,(spec KUp,        up)
@@ -197,19 +235,25 @@ moveUpDownCmdFM =
     ,(ctrl $ char 'j', down)
     ,(ctrl $ char 'n', down)
     ,(spec KEnter,     down)
+-- misc
+    ,(char 'H',        \i -> ArbMove (downFromTosB (i - 1)))
+    ,(char 'M',        const $ ArbMove middleB)
+    ,(char 'L',        \i -> ArbMove (upFromBosB (i - 1)))
     ]
     where
-        up   i = lineMoveRel (-i) >> return ()
-        down i = lineMoveRel i    >> return ()
+        up   = Replicate (Move VLine Backward)
+        down = Replicate (Move VLine Forward)
 
 --  | more movement commands. these ones are paramaterised by a character
 -- to find in the buffer.
-move2CmdFM :: [(Event, Int -> Char -> BufferM ())]
+move2CmdFM :: [(Event, RegionStyle, Char -> Int -> ViMove)]
 move2CmdFM =
-    [(char 'f',  \i c -> replicateM_ i $ nextCInc c)
-    ,(char 'F',  \i c -> replicateM_ i $ prevCInc c)
-    ,(char 't',  \i c -> replicateM_ i $ nextCExc c)
-    ,(char 'T',  \i c -> replicateM_ i $ prevCExc c)
+    -- these Inc/Exc in {next,prev}C{Inc,Exc} are not quite the same
+    -- than Exclusive/Inclusive, look at the vim manual for more details.
+    [(char 'f', Inclusive, Replicate . ArbMove . nextCInc)
+    ,(char 'F', Exclusive, Replicate . ArbMove . prevCInc)
+    ,(char 't', Inclusive, Replicate . ArbMove . nextCExc)
+    ,(char 'T', Exclusive, Replicate . ArbMove . prevCExc)
     ]
 
 -- | Other command mode functions
@@ -322,64 +366,61 @@ cmd_op :: VimMode
 cmd_op = do
   cnt <- count
   let i = maybe 1 id cnt
-  choice $ [pString "dd" >> write (cut  pointB (lineMoveRel (i-1) >> return ()) LineWise),
-            pString "yy" >> write (yank pointB (lineMoveRel (i-1) >> return ()) LineWise)] ++
+  choice $ [pString "dd" >> write (cut  pointB (Replicate (Move VLine Forward) (i-1)) LineWise),
+            pString "yy" >> write (yank pointB (Replicate (Move VLine Forward) (i-1)) LineWise)] ++
            [do event (char c)
-               (regionStyle, m) <- cmd_move
-               write $ a (replicateM_ i m) regionStyle
+               (regionStyle, m) <- gen_cmd_move
+               write $ a (Replicate m i) regionStyle
            | (c,a) <- opCmdFM]
     where
         -- | operator (i.e. movement-parameterised) actions
-        opCmdFM :: [(Char, BufferM () -> RegionStyle -> EditorM ())]
-        opCmdFM =
-            [('d', cut  pointB),
-             ('y', yank pointB)]
+        opCmdFM :: [(Char, ViMove -> RegionStyle -> EditorM ())]
+        opCmdFM =  [('d', cut  pointB), ('y', yank pointB)]
 
-regionFromTo :: BufferM Point -> BufferM () -> RegionStyle -> BufferM Region
+regionFromTo :: BufferM Point -> ViMove -> RegionStyle -> BufferM Region
 regionFromTo mstart move regionStyle = do
-  start <- mstart
-  move
-  stop <- pointB
-  let region = mkRegion start stop
+  start' <- mstart
+  viMove move
+  stop' <- pointB
+  let [start, stop] = sort [start', stop']
   case regionStyle of
-    LineWise -> unitWiseRegion fullLine region
-    -- not equivalent to unitWiseRegion Char region, since one don't want to move at all
-    CharWise -> return region
+    LineWise -> unitWiseRegion fullLine $ mkRegion start stop
+    Inclusive -> return $ mkRegion start (stop + 1)
+    Exclusive -> return $ mkRegion start stop
 
-yank :: BufferM Point -> BufferM () -> RegionStyle -> EditorM ()
+yank :: BufferM Point -> ViMove -> RegionStyle -> EditorM ()
 yank mstart move regionStyle = do
   txt <- withBuffer0 $ do
     p <- pointB
     region <- regionFromTo mstart move regionStyle
     moveTo p
     readRegionB region
-  setRegE $ if (regionStyle /= CharWise) then '\n':txt else txt
+  setRegE $ if (regionStyle == LineWise) then '\n':txt else txt
   let rowsYanked = length (filter (== '\n') txt)
   when (rowsYanked > 2) $ printMsg $ (show rowsYanked) ++ " lines yanked"
 
-cut :: BufferM Point -> BufferM () -> RegionStyle -> EditorM ()
+cut :: BufferM Point -> ViMove -> RegionStyle -> EditorM ()
 cut mstart move regionStyle = do
   txt <- withBuffer0 $ do
     region <- regionFromTo mstart move regionStyle
     txt <- readRegionB region
     deleteRegionB region
     return txt
-  setRegE $ if (regionStyle /= CharWise) then '\n':txt else txt
+  setRegE $ if (regionStyle == LineWise) then '\n':txt else txt
   let rowsCut = length (filter (== '\n') txt)
   when (rowsCut > 2) $ printMsg ( (show rowsCut) ++ " fewer lines")
 
-cutSelection :: EditorM ()
-cutSelection = cut getSelectionMarkPointB (return ()) =<< getA regionStyleA
-
-yankSelection :: EditorM ()
-yankSelection = yank getSelectionMarkPointB (return ()) =<< getA regionStyleA
+onSelection :: (BufferM Point -> ViMove -> RegionStyle -> EditorM ()) -> EditorM ()
+onSelection op = do
+  selectionStyle <- withBuffer0 getDynamicB
+  op getSelectionMarkPointB NoMove $ selection2regionStyle $ selectionStyle
 
 pasteOverSelection :: EditorM ()
 pasteOverSelection = do
   txt <- getRegE
-  regionStyle <- getA regionStyleA
   withBuffer0 $ do
-    region <- regionFromTo getSelectionMarkPointB (return ()) regionStyle
+    selectionStyle <- getDynamicB
+    region <- regionFromTo getSelectionMarkPointB NoMove $ selection2regionStyle $ selectionStyle
     moveTo $ regionStart region
     deleteRegionB region
     insertN txt
@@ -405,19 +446,19 @@ pasteBefore = do
 -- All visual commands are meta actions, as they transfer control to another
 -- KeymapM. In this way vis_single is analogous to cmd2other
 --
-vis_single :: RegionStyle -> VimMode
-vis_single regionStyle =
+vis_single :: SelectionStyle -> VimMode
+vis_single selectionStyle =
         let beginIns a = do write (a >> withBuffer0 (setVisibleSelection False)) >> ins_mode
         in choice [
             spec KEsc ?>> return (),
-            char 'V'  ?>> change_vis_mode regionStyle LineWise,
-            char 'v'  ?>> change_vis_mode regionStyle CharWise,
+            char 'V'  ?>> change_vis_mode selectionStyle (SelectionStyle Line),
+            char 'v'  ?>> change_vis_mode selectionStyle (SelectionStyle Character),
             char ':'  ?>> ex_mode ":'<,'>",
-            char 'y'  ?>> write yankSelection,
-            char 'x'  ?>> write cutSelection,
-            char 'd'  ?>> write cutSelection,
+            char 'y'  ?>> write $ onSelection yank,
+            char 'x'  ?>> write $ onSelection cut,
+            char 'd'  ?>> write $ onSelection cut,
             char 'p'  ?>> write pasteOverSelection,
-            char 'c'  ?>> beginIns cutSelection]
+            char 'c'  ?>> beginIns $ onSelection cut]
 
 
 -- | These also switch mode, as all visual commands do, but these are
@@ -453,8 +494,8 @@ cmd2other = let beginIns a = write a >> ins_mode
                 beginIns :: EditorM () -> VimMode
         in choice [
             char ':'     ?>> ex_mode ":",
-            char 'v'     ?>> vis_mode CharWise,
-            char 'V'     ?>> vis_mode LineWise,
+            char 'v'     ?>> vis_mode (SelectionStyle Character),
+            char 'V'     ?>> vis_mode (SelectionStyle Line),
             char 'R'     ?>> rep_mode,
             char 'i'     ?>> ins_mode,
             char 'I'     ?>> beginIns (withBuffer0 moveToSol),
@@ -462,11 +503,11 @@ cmd2other = let beginIns a = write a >> ins_mode
             char 'A'     ?>> beginIns (withBuffer0 moveToEol),
             char 'o'     ?>> beginIns $ withBuffer0 $ moveToEol >> insertB '\n',
             char 'O'     ?>> beginIns $ withBuffer0 $ moveToSol >> insertB '\n' >> lineUp,
-            char 'c'     ?>> do (regionStyle, m) <- cmd_move ; beginIns $ cut pointB m regionStyle,
-            pString "cc"  >> beginIns (cut (moveToSol >> pointB) moveToEol CharWise),
-            char 'C'     ?>> beginIns $ cut pointB moveToEol CharWise, -- alias of "c$"
-            char 'S'     ?>> beginIns $ cut (moveToSol >> pointB) moveToEol CharWise, -- alias of "cc"
-            char 's'     ?>> beginIns $ cut pointB (moveXorEol 1) CharWise, -- alias of "cl"
+            char 'c'     ?>> do (regionStyle, m) <- gen_cmd_move ; beginIns $ cut pointB m regionStyle,
+            pString "cc"  >> beginIns (cut (moveToSol >> pointB) viMoveToEol LineWise),
+            char 'C'     ?>> beginIns $ cut pointB viMoveToEol Exclusive, -- alias of "c$"
+            char 'S'     ?>> beginIns $ cut (moveToSol >> pointB) viMoveToEol Exclusive, -- alias of "cc"
+            char 's'     ?>> beginIns $ cut pointB (CharMove Forward) Exclusive, -- alias of "cl"
             char '/'     ?>> ex_mode "/",
             char '?'     ?>> write $ not_implemented '?',
             leave,
