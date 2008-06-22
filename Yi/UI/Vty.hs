@@ -238,7 +238,7 @@ drawWindow cfg b sty focused w win = (Rendered { picture = pict,cursor = cur}, b
         (point, _) = runBuffer win b pointB
         (eofPoint, _) = runBuffer win b sizeB
         sz = Size (w*h')
-        (text, _)    = runBuffer win b (streamB (tospnt win)) -- read enough chars from the buffer.
+        (text, _)    = runBuffer win b (streamB Forward (tospnt win)) -- read enough chars from the buffer.
         (strokes, _) = runBuffer win b (strokesRangesB  (tospnt win) (tospnt win +~ sz)) -- corresponding strokes
         colors = paintPicture attr (map (map toVtyStroke) strokes)
         bufData = -- trace (unlines (map show text) ++ unlines (map show $ concat strokes)) $ 

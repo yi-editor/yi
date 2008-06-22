@@ -47,7 +47,7 @@ fwriteE = fwriteBufferE =<< withEditor getBuffer
 -- | Write a given buffer to a disk if it is associated with a file.
 fwriteBufferE :: BufferRef -> YiM ()
 fwriteBufferE bufferKey = 
-  do nameContents <- withGivenBuffer bufferKey ((,) <$> getfileB <*> streamB 0)
+  do nameContents <- withGivenBuffer bufferKey ((,) <$> getfileB <*> streamB Forward 0)
      case nameContents of
        (Just f, contents) -> do withGivenBuffer bufferKey markSavedB
                                 liftIO $ LB.writeFile f contents 

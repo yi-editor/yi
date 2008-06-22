@@ -392,8 +392,8 @@ nelemsB n i = queryBuffer $ nelemsBI n i
 nelemsB' :: Size -> Point -> BufferM [Char]
 nelemsB' n i = queryBuffer $ nelemsBI' n i
 
-streamB :: Point -> BufferM LazyUTF8.ByteString
-streamB i = queryBuffer (getStream i)
+streamB :: Direction -> Point -> BufferM LazyUTF8.ByteString
+streamB dir i = queryBuffer (getStream dir i)
 
 
 strokesRangesB :: Point -> Point -> BufferM [[Stroke]]

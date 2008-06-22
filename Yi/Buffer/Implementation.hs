@@ -45,11 +45,12 @@ module Yi.Buffer.Implementation
   , strokesRangesBI
   , toIndexedString
   , getStream
+  , newLine
 )
 where
 
 import Yi.Prelude
-import Prelude (take, takeWhile, dropWhile, map, length, reverse, zip)
+import Prelude (take, takeWhile, dropWhile, map, length, reverse)
 import Yi.Syntax 
 
 import qualified Data.Map as M
@@ -64,7 +65,6 @@ import qualified Yi.FingerString as F
 import Yi.FingerString (FingerString)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as LazyB
-import Codec.Binary.UTF8.String as UTF8Codec
 import qualified Data.ByteString.UTF8 as UTF8
 import qualified Data.ByteString.Lazy.UTF8 as LazyUTF8
 
@@ -191,15 +191,16 @@ pointBI :: BufferImpl syntax -> Point
 pointBI fb = markPosition ((marks fb) M.! pointMark)
 {-# INLINE pointBI #-}
 
--- | Return @n@ elems starting at @i@ of the buffer as a list
+-- | Return @n@ Chars starting at @i@ of the buffer as a list
 nelemsBI :: Int -> Point -> BufferImpl syntax -> String
 nelemsBI n i fb = readChars (mem fb) n i
 
 nelemsBI' :: Size -> Point -> BufferImpl syntax -> String
 nelemsBI' n i fb = LazyUTF8.toString $ F.toLazyByteString $ readChunk (mem fb) n i
 
-getStream :: Point -> BufferImpl syntax -> LazyUTF8.ByteString
-getStream (Point i) fb = F.toLazyByteString $ F.drop i $ mem $ fb
+getStream :: Direction -> Point -> BufferImpl syntax -> LazyUTF8.ByteString
+getStream Forward  (Point i) fb = F.toLazyByteString        $ F.drop i $ mem $ fb
+getStream Backward (Point i) fb = F.toReverseLazyByteString $ F.take i $ mem $ fb
 
 -- | Create an "overlay" for the style @sty@ between points @s@ and @e@
 mkOverlay :: Point -> Point -> Style -> Overlay

@@ -8,7 +8,8 @@ module Yi.FingerString (
   FingerString,
   fromString, fromByteString, fromLazyByteString,
   toString, toReverseString,
-  toByteString, toLazyByteString,
+  toByteString, 
+  toLazyByteString, toReverseLazyByteString,
   rebalance,
   null, empty, take, drop, append, splitAt, count, length,
   elemIndices, findSubstring, findSubstrings, elemIndexEnd, elemIndicesEnd
@@ -54,6 +55,10 @@ instance Measured Size ByteString where
 toLazyByteString :: FingerString -> LB.ByteString
 toLazyByteString = LB.fromChunks . toList . unFingerString
 
+toReverseLazyByteString :: FingerString -> LB.ByteString
+toReverseLazyByteString = LB.fromChunks . map B.reverse . toList . T.reverse . unFingerString
+
+
 toByteString :: FingerString -> ByteString
 toByteString = B.concat . toList . unFingerString
 
@@ -61,7 +66,7 @@ toString :: FingerString -> [Word8]
 toString = LB.unpack . toLazyByteString
 
 toReverseString :: FingerString -> [Word8]
-toReverseString = LB.unpack . LB.fromChunks . map B.reverse . toList . T.reverse . unFingerString
+toReverseString = LB.unpack . toReverseLazyByteString
 
 fromLazyByteString :: LB.ByteString -> FingerString
 fromLazyByteString = FingerString . toTree
