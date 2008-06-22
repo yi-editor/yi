@@ -423,7 +423,6 @@ render _ui b w _ev = do
   let metrics = winMetrics w
       layout = winLayout w
       winh = round (height' / (ascent metrics + descent metrics))
-      winw = round (width' / approximateCharWidth metrics)
 
   let ((point, text),_) = runBuffer win {height = winh} b $ do
                       numChars <- winEls      

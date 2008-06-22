@@ -1,4 +1,4 @@
-module Yi.Mode.Haskell (haskellMode, cleverHaskellMode)  where
+module Yi.Mode.Haskell (haskellMode, cleverHaskellMode, haskellUnCommentSelectionB)  where
 
 import Prelude ()
 import Data.Maybe (maybe)
