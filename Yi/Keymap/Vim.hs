@@ -366,8 +366,8 @@ cmd_op :: VimMode
 cmd_op = do
   cnt <- count
   let i = maybe 1 id cnt
-  choice $ [pString "dd" >>! cut  pointB (Replicate (Move VLine Forward) (i-1)) LineWise,
-            pString "yy" >>! yank pointB (Replicate (Move VLine Forward) (i-1)) LineWise] ++
+  choice $ [pString "dd" >>! cut  (Replicate (Move VLine Forward) (i-1)) LineWise,
+            pString "yy" >>! yank (Replicate (Move VLine Forward) (i-1)) LineWise] ++
            [do event (char c)
                (regionStyle, m) <- gen_cmd_move
                write $ a (Replicate m i) regionStyle
@@ -375,34 +375,44 @@ cmd_op = do
     where
         -- | operator (i.e. movement-parameterised) actions
         opCmdFM :: [(Char, ViMove -> RegionStyle -> EditorM ())]
-        opCmdFM =  [('d', cut  pointB), ('y', yank pointB)]
+        opCmdFM =  [('d', cut), ('y', yank)]
 
-regionFromTo :: BufferM Point -> ViMove -> RegionStyle -> BufferM Region
-regionFromTo mstart move regionStyle = do
-  start' <- mstart
-  viMove move
-  stop' <- pointB
+regionFromTo :: Point -> ViMove -> RegionStyle -> BufferM Region
+regionFromTo start' move regionStyle = do
+  stop' <- savingPointB (viMove move >> pointB)
   let [start, stop] = sort [start', stop']
   case regionStyle of
     LineWise -> unitWiseRegion fullLine $ mkRegion start stop
     Inclusive -> return $ mkRegion start (stop + 1)
     Exclusive -> return $ mkRegion start stop
 
-yank :: BufferM Point -> ViMove -> RegionStyle -> EditorM ()
-yank mstart move regionStyle = do
+onSelection :: (Point -> ViMove -> RegionStyle -> EditorM ()) -> EditorM ()
+onSelection op = do
+  start <- withBuffer0 getSelectionMarkPointB
+  op start NoMove . selection2regionStyle =<< withBuffer0 getDynamicB
+
+yankFrom :: Point -> ViMove -> RegionStyle -> EditorM ()
+yankFrom start move regionStyle = do
   txt <- withBuffer0 $ do
     p <- pointB
-    region <- regionFromTo mstart move regionStyle
+    region <- regionFromTo start move regionStyle
     moveTo p
     readRegionB region
   setRegE $ if (regionStyle == LineWise) then '\n':txt else txt
   let rowsYanked = length (filter (== '\n') txt)
   when (rowsYanked > 2) $ printMsg $ (show rowsYanked) ++ " lines yanked"
 
-cut :: BufferM Point -> ViMove -> RegionStyle -> EditorM ()
-cut mstart move regionStyle = do
+yank :: ViMove -> RegionStyle -> EditorM ()
+yank move regionStyle = do start <- withBuffer0 pointB
+                           yankFrom start move regionStyle
+
+yankSelection :: EditorM ()
+yankSelection = onSelection yankFrom
+
+cutFrom :: Point -> ViMove -> RegionStyle -> EditorM ()
+cutFrom start move regionStyle = do
   txt <- withBuffer0 $ do
-    region <- regionFromTo mstart move regionStyle
+    region <- regionFromTo start move regionStyle
     txt <- readRegionB region
     deleteRegionB region
     return txt
@@ -410,17 +420,20 @@ cut mstart move regionStyle = do
   let rowsCut = length (filter (== '\n') txt)
   when (rowsCut > 2) $ printMsg ( (show rowsCut) ++ " fewer lines")
 
-onSelection :: (BufferM Point -> ViMove -> RegionStyle -> EditorM ()) -> EditorM ()
-onSelection op = do
-  selectionStyle <- withBuffer0 getDynamicB
-  op getSelectionMarkPointB NoMove $ selection2regionStyle $ selectionStyle
+cut :: ViMove -> RegionStyle -> EditorM ()
+cut move regionStyle = do start <- withBuffer0 pointB
+                          cutFrom start move regionStyle
+
+cutSelection :: EditorM ()
+cutSelection = onSelection cutFrom
 
 pasteOverSelection :: EditorM ()
 pasteOverSelection = do
   txt <- getRegE
   withBuffer0 $ do
     selectionStyle <- getDynamicB
-    region <- regionFromTo getSelectionMarkPointB NoMove $ selection2regionStyle $ selectionStyle
+    start <- getSelectionMarkPointB
+    region <- regionFromTo start NoMove $ selection2regionStyle $ selectionStyle
     moveTo $ regionStart region
     deleteRegionB region
     insertN txt
@@ -454,11 +467,11 @@ vis_single selectionStyle =
             char 'V'  ?>> change_vis_mode selectionStyle (SelectionStyle Line),
             char 'v'  ?>> change_vis_mode selectionStyle (SelectionStyle Character),
             char ':'  ?>> ex_mode ":'<,'>",
-            char 'y'  ?>>! onSelection yank,
-            char 'x'  ?>>! onSelection cut,
-            char 'd'  ?>>! onSelection cut,
+            char 'y'  ?>>! yankSelection,
+            char 'x'  ?>>! cutSelection,
+            char 'd'  ?>>! cutSelection,
             char 'p'  ?>>! pasteOverSelection,
-            char 'c'  ?>> beginIns $ onSelection cut]
+            char 'c'  ?>> beginIns cutSelection]
 
 
 -- | These also switch mode, as all visual commands do, but these are
@@ -503,11 +516,11 @@ cmd2other = let beginIns a = write a >> ins_mode
             char 'A'     ?>> beginIns (withBuffer0 moveToEol),
             char 'o'     ?>> beginIns $ withBuffer0 $ moveToEol >> insertB '\n',
             char 'O'     ?>> beginIns $ withBuffer0 $ moveToSol >> insertB '\n' >> lineUp,
-            char 'c'     ?>> do (regionStyle, m) <- gen_cmd_move ; beginIns $ cut pointB m regionStyle,
-            pString "cc"  >> beginIns (cut (moveToSol >> pointB) viMoveToEol LineWise),
-            char 'C'     ?>> beginIns $ cut pointB viMoveToEol Exclusive, -- alias of "c$"
-            char 'S'     ?>> beginIns $ cut (moveToSol >> pointB) viMoveToEol Exclusive, -- alias of "cc"
-            char 's'     ?>> beginIns $ cut pointB (CharMove Forward) Exclusive, -- alias of "cl"
+            char 'c'     ?>> do (regionStyle, m) <- gen_cmd_move ; beginIns $ cut m regionStyle,
+            pString "cc"  >> beginIns (withBuffer0 moveToSol >> cut viMoveToEol LineWise),
+            char 'C'     ?>> beginIns $ cut viMoveToEol Exclusive, -- alias of "c$"
+            char 'S'     ?>> beginIns $ withBuffer0 moveToSol >> cut viMoveToEol Exclusive, -- non-linewise alias of "cc"
+            char 's'     ?>> beginIns $ cut (CharMove Forward) Exclusive, -- non-linewise alias of "cl"
             char '/'     ?>> ex_mode "/",
             char '?'     ?>>! not_implemented '?',
             leave,
