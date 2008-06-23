@@ -262,9 +262,9 @@ cmd_eval = do
    cnt <- count
    let i = maybe 1 id cnt
    choice
-    ([event c >> write (a i) | (c,a) <- singleCmdFM ] ++
-     [events evs >> write (action i) | (evs, action) <- multiCmdFM ] ++
-     [char 'r' ?>> do c <- textChar; write (writeB c)])
+    ([c ?>>! action i | (c,action) <- singleCmdFM ] ++
+     [events evs >>! action i | (evs, action) <- multiCmdFM ] ++
+     [char 'r' ?>> textChar >>= write . writeB])
 
 -- TODO: escape the current word
 --       at word bounds: search for \<word\>
@@ -366,8 +366,8 @@ cmd_op :: VimMode
 cmd_op = do
   cnt <- count
   let i = maybe 1 id cnt
-  choice $ [pString "dd" >> write (cut  pointB (Replicate (Move VLine Forward) (i-1)) LineWise),
-            pString "yy" >> write (yank pointB (Replicate (Move VLine Forward) (i-1)) LineWise)] ++
+  choice $ [pString "dd" >>! cut  pointB (Replicate (Move VLine Forward) (i-1)) LineWise,
+            pString "yy" >>! yank pointB (Replicate (Move VLine Forward) (i-1)) LineWise] ++
            [do event (char c)
                (regionStyle, m) <- gen_cmd_move
                write $ a (Replicate m i) regionStyle
@@ -448,16 +448,16 @@ pasteBefore = do
 --
 vis_single :: SelectionStyle -> VimMode
 vis_single selectionStyle =
-        let beginIns a = do write (a >> withBuffer0 (setVisibleSelection False)) >> ins_mode
+        let beginIns a = write (a >> withBuffer0 (setVisibleSelection False)) >> ins_mode
         in choice [
             spec KEsc ?>> return (),
             char 'V'  ?>> change_vis_mode selectionStyle (SelectionStyle Line),
             char 'v'  ?>> change_vis_mode selectionStyle (SelectionStyle Character),
             char ':'  ?>> ex_mode ":'<,'>",
-            char 'y'  ?>> write $ onSelection yank,
-            char 'x'  ?>> write $ onSelection cut,
-            char 'd'  ?>> write $ onSelection cut,
-            char 'p'  ?>> write pasteOverSelection,
+            char 'y'  ?>>! onSelection yank,
+            char 'x'  ?>>! onSelection cut,
+            char 'd'  ?>>! onSelection cut,
+            char 'p'  ?>>! pasteOverSelection,
             char 'c'  ?>> beginIns $ onSelection cut]
 
 
@@ -468,9 +468,9 @@ vis_multi :: VimMode
 vis_multi = do
    cnt <- count
    let i = maybe 1 id cnt
-   choice ([pString "ZZ" >> write (viWrite >> quitEditor),
-            char '>' ?>> write (shiftIndentOfSelection i),
-            char '<' ?>> write (shiftIndentOfSelection (-i)),
+   choice ([pString "ZZ" >>! (viWrite >> quitEditor),
+            char '>' ?>>! shiftIndentOfSelection i,
+            char '<' ?>>! shiftIndentOfSelection (-i),
             char 'r' ?>> do x <- textChar
                             write $ do
                                    mrk <- getSelectionMarkPointB
@@ -481,7 +481,7 @@ vis_multi = do
                                    let convert '\n' = '\n'
                                        convert  _   = x
                                    insertN $ map convert $ text] ++
-           [event c >> write (a i) | (c,a) <- singleCmdFM ])
+           [c ?>>! action i | (c,action) <- singleCmdFM ])
 
 
 -- | Switch to another vim mode from command mode.
@@ -509,23 +509,23 @@ cmd2other = let beginIns a = write a >> ins_mode
             char 'S'     ?>> beginIns $ cut (moveToSol >> pointB) viMoveToEol Exclusive, -- alias of "cc"
             char 's'     ?>> beginIns $ cut pointB (CharMove Forward) Exclusive, -- alias of "cl"
             char '/'     ?>> ex_mode "/",
-            char '?'     ?>> write $ not_implemented '?',
+            char '?'     ?>>! not_implemented '?',
             leave,
             spec KIns    ?>> ins_mode]
 
 
 ins_rep_char :: VimMode
-ins_rep_char = choice [spec KPageUp   ?>> write upScreenB,
-                       spec KPageDown ?>> write downScreenB,
-                       spec KUp       ?>> write lineUp,
-                       spec KDown     ?>> write lineDown,
-                       spec KLeft     ?>> write (moveXorSol 1),
-                       spec KRight    ?>> write (moveXorEol 1),
-                       spec KEnd      ?>> write moveToEol,
-                       spec KHome     ?>> write moveToSol,
-                       spec KDel      ?>> write (deleteB Character Forward),
-                       spec KEnter    ?>> write (insertB '\n'),
-                       spec KTab      ?>> write insertTabB]
+ins_rep_char = choice [spec KPageUp   ?>>! upScreenB,
+                       spec KPageDown ?>>! downScreenB,
+                       spec KUp       ?>>! lineUp,
+                       spec KDown     ?>>! lineDown,
+                       spec KLeft     ?>>! moveXorSol 1,
+                       spec KRight    ?>>! moveXorEol 1,
+                       spec KEnd      ?>>! moveToEol,
+                       spec KHome     ?>>! moveToSol,
+                       spec KDel      ?>>! deleteB Character Forward,
+                       spec KEnter    ?>>! insertB '\n',
+                       spec KTab      ?>>! insertTabB]
 
 
 -- ---------------------------------------------------------------------
@@ -540,14 +540,14 @@ ins_rep_char = choice [spec KPageUp   ?>> write upScreenB,
 -- with delete.
 --
 ins_char :: VimMode
-ins_char = (spec KBS ?>> write (deleteB Character Backward))
+ins_char = (spec KBS ?>>! deleteB Character Backward)
            <|> ins_rep_char
-           <|| do c <- textChar; write (insertB c)
+           <|| (textChar >>= write . insertB)
 
 -- --------------------
 -- | Keyword
 kwd_mode :: VimMode
-kwd_mode = some (event (ctrl $ char 'n') >> adjustPriority (-1) (write wordCompleteB)) >> (write resetCompleteB)
+kwd_mode = some ((ctrl $ char 'n') ?>> adjustPriority (-1) (write wordCompleteB)) >> (write resetCompleteB)
            -- 'adjustPriority' is there to lift the ambiguity between "continuing" completion
            -- and resetting it (restarting at the 1st completion).
 
@@ -561,7 +561,7 @@ kwd_mode = some (event (ctrl $ char 'n') >> adjustPriority (-1) (write wordCompl
 --  characters in a line stays the same until you get to the end of the line.
 --  If a <NL> is typed, a line break is inserted and no character is deleted.
 rep_char :: VimMode
-rep_char = (spec KBS ?>> write leftB) -- should undo unless pointer has been moved
+rep_char = (spec KBS ?>>! leftB) -- should undo unless pointer has been moved
            <|> ins_rep_char
            <|| do c <- textChar; write (do e <- atEol; if e then insertB c else writeB c)
 
@@ -578,16 +578,16 @@ spawn_ex_buffer prompt = do
         ex_eval (head prompt : lineString)
       ex_process :: VimMode
       ex_process =
-          choice [spec KEnter ?>> write ex_buffer_finish,
-                  spec KTab   ?>> write completeMinibuffer,
-                  spec KEsc   ?>> write closeBufferAndWindowE,
-                  spec KBS    ?>> write $ deleteB Character Backward,
-                  spec KDel   ?>> write $ deleteB Character Forward,
-                  spec KUp    ?>> write historyUp,
-                  spec KDown  ?>> write historyDown,
-                  spec KLeft  ?>> write (moveXorSol 1),
-                  spec KRight ?>> write (moveXorEol 1)]
-             <|| (do c <- textChar; write $ insertB c)
+          choice [spec KEnter ?>>! ex_buffer_finish,
+                  spec KTab   ?>>! completeMinibuffer,
+                  spec KEsc   ?>>! closeBufferAndWindowE,
+                  spec KBS    ?>>! deleteB Character Backward,
+                  spec KDel   ?>>! deleteB Character Forward,
+                  spec KUp    ?>>! historyUp,
+                  spec KDown  ?>>! historyDown,
+                  spec KLeft  ?>>! moveXorSol 1,
+                  spec KRight ?>>! moveXorEol 1]
+             <|| (textChar >>= write . insertB)
       completeMinibuffer = withBuffer elemsB >>= ex_complete >>= withBuffer . insertN
       b_complete f = completeBufferName f >>= return . drop (length f)
       ex_complete ('e':' ':f) = completeFileName Nothing f >>= return . drop (length f)
