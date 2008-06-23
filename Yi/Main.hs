@@ -97,6 +97,7 @@ data Opts = Help
           | Frontend String
           | ConfigFile String
           | SelfCheck
+          | Debug
 
 -- | List of editors for which we provide an emulation.
 editors :: [(String,Keymap)]
@@ -112,6 +113,7 @@ options = [
     Option ['y']  ["config-file"] (ReqArg ConfigFile  "path") "Specify a configuration file",
     Option ['V']  ["version"]     (NoArg Version) "Show version information",
     Option ['h']  ["help"]        (NoArg Help)    "Show this help",
+    Option []     ["debug"]       (NoArg Debug)   "Write debug information in a log file",
     Option ['l']  ["line"]        (ReqArg LineNo "[num]") "Start on line number",
     Option []     ["as"]          (ReqArg EditorNm "[editor]")
         ("Start with editor keymap, where editor is one of:\n" ++
@@ -165,6 +167,7 @@ defaultConfig =
          , publishedActions = Yi.Yi.defaultPublishedActions
          , modeTable = defaultModeMap
          , fundamentalMode = defaultFundamentalMode
+         , debugMode = False
          }
 
 openScratchBuffer :: YiM ()
@@ -191,6 +194,7 @@ getConfig cfg opt =
                       Nothing       -> fail "Panic: frontend not found"
       Help          -> throwError $ Err usage ExitSuccess
       Version       -> throwError $ Err versinfo ExitSuccess
+      Debug         -> return cfg { debugMode = True }
       LineNo l      -> appendAction (withBuffer (gotoLn (read l)))
       File file     -> appendAction (fnewE file)
       EditorNm emul -> case lookup (fmap toLower emul) editors of

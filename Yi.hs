@@ -21,7 +21,7 @@ saveState _ = return ""
 
 realMain :: Config -> yiState -> IO ()
 realMain cfg _state = do
-          initDebug ".yi.dbg"
+          when (debugMode cfg) $ initDebug ".yi.dbg"
           Yi.main cfg
 
 projectName :: String

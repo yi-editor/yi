@@ -16,8 +16,9 @@ import System.IO
 import System.IO.Unsafe ( unsafePerformIO )
 import System.Time
 
-dbgHandle :: IORef Handle
-dbgHandle = unsafePerformIO $ newIORef stderr
+dbgHandle :: IORef (Maybe Handle)
+dbgHandle = unsafePerformIO $ newIORef Nothing
+{-# NOINLINE dbgHandle #-}
 
 -- Set the file to which debugging output should be written. Though this
 -- is called /init/Debug. This function should be called at most once.
@@ -25,7 +26,7 @@ dbgHandle = unsafePerformIO $ newIORef stderr
 -- is never called.
 initDebug :: FilePath -> IO ()
 initDebug f = do
-  openFile f WriteMode >>= writeIORef dbgHandle
+  openFile f WriteMode >>= writeIORef dbgHandle . Just
   logPutStrLn "Logging initialized."
 
 -- Outputs the given string before returning the second argument.
@@ -41,11 +42,14 @@ error s = unsafePerformIO $ do logPutStrLn s
 
 logPutStrLn :: (MonadIO m) => [Char] -> m ()
 logPutStrLn s = liftIO $ do
-                   time <- toCalendarTime =<< getClockTime
-                   tId <- myThreadId
-                   h <- readIORef dbgHandle
-                   hPutStrLn h $ calendarTimeToString time ++ " " ++ show tId ++ " " ++ s
-                   hFlush h
+                   mh <- readIORef dbgHandle
+                   case mh of
+                     Nothing -> return ()
+                     Just h -> do
+                       time <- toCalendarTime =<< getClockTime
+                       tId <- myThreadId
+                       hPutStrLn h $ calendarTimeToString time ++ " " ++ show tId ++ " " ++ s
+                       hFlush h
 
 logError :: (MonadIO m) => String -> m ()
 logError s = logPutStrLn $ "error: " ++ s

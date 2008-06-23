@@ -57,7 +57,8 @@ data Config = Config {startFrontEnd :: UI.UIBoot,
                       defaultKm :: Keymap,                      
                       modeTable :: ReaderT String Maybe AnyMode,
                       fundamentalMode :: Mode (),
-                      publishedActions :: M.Map String [Dynamic]}
+                      publishedActions :: M.Map String [Dynamic],
+                      debugMode :: Bool}
 
 
 data Yi = Yi {yiEditor :: IORef Editor,
