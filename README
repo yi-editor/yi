@@ -19,9 +19,8 @@ DEPENDENCIES
 * Alex (the haskell lexer generator) 
 	http://www.haskell.org/alex/
 
-* for vty frontend
-  * latest darcs repo version. 
-        http://members.cox.net/stefanor/vty
+* for vty frontend, vty 3.0.2
+  * http://hackage.haskell.org/cgi-bin/hackage-scripts/package/vty
 
 * for gtk frontend, gtk2hs 0.9.12.
         http://haskell.org/gtk2hs/download/

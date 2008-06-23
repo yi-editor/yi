@@ -5,7 +5,6 @@ module Yi.Event
 
      -- * Key codes
      eventToChar
-    --, charToEvent,
     ) where
 
 import Data.Bits
@@ -35,7 +34,6 @@ prettyEvent (Event k mods) =
 
 
 -- | Map an Event to a Char. This should be gotten rid of, eventually.
--- (the vim keymap should handle event directly)
 eventToChar :: Event -> Char
 eventToChar (Event KEnter _) = '\n'
 eventToChar (Event KEsc _) = '\ESC'
@@ -44,7 +42,7 @@ eventToChar (Event (KASCII c) mods) = (if MMeta `elem` mods then setMeta else id
                                       (if MCtrl `elem` mods then ctrlLowcase else id) $
                                       c
 
-eventToChar ev = trace ("Got event " ++ show ev) '\0'
+eventToChar ev = trace ("eventToChar: got event " ++ show ev) '\0'
 
 
 

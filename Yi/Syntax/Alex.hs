@@ -4,7 +4,7 @@ module Yi.Syntax.Alex (
                        mkHighlighter,
                        alexGetChar, alexInputPrevChar, unfoldLexer, lexScanner,
                        AlexState(..), AlexInput, Stroke,
-                       takeLB, headLB, actionConst, actionAndModify,
+                       actionConst, actionAndModify,
                        Tok(..), tokBegin, tokEnd, tokFromT,          
                        Posn(..), startPosn, moveStr, runSource,
                        Result, ASI, Cache,
@@ -12,18 +12,11 @@ module Yi.Syntax.Alex (
                       ) where
 
 import Data.List hiding (map, foldl')
-import qualified Data.ByteString.Lazy.Char8 as LB
 import Yi.Syntax
 import Yi.Prelude
 import Yi.Style
 import Prelude ()
 import Data.Char (ord)
-
-takeLB :: Int64 -> LB.ByteString -> LB.ByteString
-takeLB = LB.take
-
-headLB :: LB.ByteString -> Char
-headLB = LB.head
 
 
 -- | if offsets before this is dirtied, must restart from that state.
