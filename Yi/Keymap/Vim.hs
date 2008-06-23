@@ -533,18 +533,18 @@ cmd2other = let beginIns a = write a >> ins_mode
 
 
 ins_rep_char :: VimMode
-ins_rep_char = choice [spec KPageUp   ?>>! upScreenB,
-                       spec KPageDown ?>>! downScreenB,
-                       spec KUp       ?>>! lineUp,
-                       spec KDown     ?>>! lineDown,
-                       spec KLeft     ?>>! moveXorSol 1,
-                       spec KRight    ?>>! moveXorEol 1,
-                       spec KEnd      ?>>! moveToEol,
-                       spec KHome     ?>>! moveToSol,
-                       spec KDel      ?>>! deleteB Character Forward,
-                       spec KEnter    ?>>! insertB '\n',
-                       spec KTab      ?>>! insertTabB,
-                       (ctrl $ char 'w') ?>>! cut (GenMove ViWord (Backward,InsideBound) Backward) Exclusive]
+ins_rep_char = choice [spec KPageUp       ?>>! upScreenB,
+                       spec KPageDown     ?>>! downScreenB,
+                       spec KUp           ?>>! lineUp,
+                       spec KDown         ?>>! lineDown,
+                       spec KLeft         ?>>! moveXorSol 1,
+                       spec KRight        ?>>! moveXorEol 1,
+                       spec KEnd          ?>>! moveToEol,
+                       spec KHome         ?>>! moveToSol,
+                       spec KDel          ?>>! deleteB Character Forward,
+                       spec KEnter        ?>>! insertB '\n',
+                       spec KTab          ?>>! insertTabB,
+                       (ctrl $ char 'w')  ?>>! cut (GenMove ViWord (Backward,InsideBound) Backward) Exclusive]
 
 
 -- ---------------------------------------------------------------------
