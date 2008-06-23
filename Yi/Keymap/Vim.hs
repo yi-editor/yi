@@ -361,7 +361,8 @@ cmd_op = do
   cnt <- count
   let i = maybe 1 id cnt
   choice $ [pString "dd" >>! cut  (Replicate (Move VLine Forward) (i-1)) LineWise,
-            pString "yy" >>! yank (Replicate (Move VLine Forward) (i-1)) LineWise] ++
+            pString "yy" >>! yank (Replicate (Move VLine Forward) (i-1)) LineWise,
+            char 'Y' ?>>! yank (Replicate (Move VLine Forward) (i-1)) LineWise] ++
            [do event (char c)
                (regionStyle, m) <- gen_cmd_move
                write $ a (Replicate m i) regionStyle
