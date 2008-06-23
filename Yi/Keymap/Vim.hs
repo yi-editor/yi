@@ -543,7 +543,8 @@ ins_rep_char = choice [spec KPageUp   ?>>! upScreenB,
                        spec KHome     ?>>! moveToSol,
                        spec KDel      ?>>! deleteB Character Forward,
                        spec KEnter    ?>>! insertB '\n',
-                       spec KTab      ?>>! insertTabB]
+                       spec KTab      ?>>! insertTabB,
+                       (ctrl $ char 'w') ?>>! cut (GenMove ViWord (Backward,InsideBound) Backward) Exclusive]
 
 
 -- ---------------------------------------------------------------------
