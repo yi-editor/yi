@@ -100,7 +100,7 @@ atBoundaryB u d = (||) <$> atBoundary u d <*> atBoundaryB (enclosingUnit u) d
 
 
 
--- | @genUnitBoundary u d s@ returns whether the point is at a given boundary @(d,s)@ .
+-- | @genAtBoundaryB u d s@ returns whether the point is at a given boundary @(d,s)@ .
 -- Boundary @(d,s)@ , taking Word as example, means:
 --      Word 
 --     ^^  ^^
@@ -109,6 +109,10 @@ atBoundaryB u d = (||) <$> atBoundary u d <*> atBoundaryB (enclosingUnit u) d
 -- 2: (Backward,Inside)
 -- 3: (Forward,Inside)
 -- 4: (Forward,Outside)
+--
+-- rules:
+-- genAtBoundaryB u Backward InsideBound  = atBoundaryB u Backward
+-- genAtBoundaryB u Forward  OutsideBound = atBoundaryB u Forward
 genAtBoundaryB :: TextUnit -> Direction -> BoundarySide -> BufferM Bool
 genAtBoundaryB u d s = withOffset (off u d s) $ atBoundaryB u d
     where withOffset 0 f = f

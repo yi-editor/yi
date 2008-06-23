@@ -284,7 +284,7 @@ middleB = do
 -- Region-related operations
 
 -- | Extend the given region to boundaries of the text unit.
--- For instance one can extend the selection to to complete lines, or
+-- For instance one can extend the selection to complete lines, or
 -- paragraphs.
 extendRegionToBoundaries :: TextUnit -> BoundarySide -> BoundarySide -> Region -> BufferM Region
 extendRegionToBoundaries unit bs1 bs2 region = savingPointB $ do
