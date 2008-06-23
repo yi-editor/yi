@@ -20,16 +20,23 @@ dbgHandle :: IORef (Maybe Handle)
 dbgHandle = unsafePerformIO $ newIORef Nothing
 {-# NOINLINE dbgHandle #-}
 
--- Set the file to which debugging output should be written. Though this
--- is called /init/Debug. This function should be called at most once.
--- Debugging output is sent to stderr by default (i.e., if this function
--- is never called.
+-- | Set the file to which debugging output should be written. Though this
+-- is called /init/Debug. 
+-- Debugging output is not created by default (i.e., if this function
+-- is never called.)
+-- The target file can not be changed, nor debugging disabled.
 initDebug :: FilePath -> IO ()
 initDebug f = do
-  openFile f WriteMode >>= writeIORef dbgHandle . Just
-  logPutStrLn "Logging initialized."
+  hndl <- readIORef dbgHandle
+  case hndl of
+    Nothing -> do openFile f WriteMode >>= writeIORef dbgHandle . Just
+                  logPutStrLn "Logging initialized."
+    Just _ -> do logPutStrLn "Attempt to re-initialize the logging system."
+                     
+              
+               
 
--- Outputs the given string before returning the second argument.
+-- | Outputs the given string before returning the second argument.
 trace :: String -> a -> a
 trace s e = unsafePerformIO $ do logPutStrLn s
                                  return e

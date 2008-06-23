@@ -221,4 +221,5 @@ main cfg = do
          case do_args cfg args of
               Left (Err err code) -> do putStrLn err
                                         exitWith code
-              Right finalCfg -> startEditor finalCfg Nothing
+              Right finalCfg -> do when (debugMode finalCfg) $ initDebug ".yi.dbg" 
+                                   startEditor finalCfg Nothing

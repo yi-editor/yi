@@ -2,7 +2,7 @@ module Yi (driver, yi, defaultConfig, module Yi.Yi) where
 
 import Yi.Yi
 
-import qualified Yi.Main as Yi
+import qualified Yi.Main
 import HConf
 
 import Yi.Core (Config (..))
@@ -20,9 +20,11 @@ saveState :: () -> IO String
 saveState _ = return ""
 
 realMain :: Config -> yiState -> IO ()
-realMain cfg _state = do
-          when (debugMode cfg) $ initDebug ".yi.dbg"
-          Yi.main cfg
+realMain staticConfig _state = do
+          when (debugMode staticConfig) $ initDebug ".yi.dbg" 
+          -- initialize here so we can see debug messages early, if
+          -- the flag is set in the static configuration.
+          Yi.Main.main staticConfig
 
 projectName :: String
 projectName = "yi"
