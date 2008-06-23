@@ -130,12 +130,6 @@ selection2regionStyle (SelectionStyle Line)      = LineWise
 selection2regionStyle (SelectionStyle Character) = Inclusive
 selection2regionStyle _                          = error "selection2regionStyle"
 
-fullLine :: TextUnit
-fullLine = GenUnit {genEnclosingUnit=Document, genUnitBoundary=bound}
-  where bound d = withOffset d $ atBoundaryB Line d
-        withOffset Backward f = f
-        withOffset Forward  f = savingPointB (leftB >> f)
-
 -- ---------------------------------------------------------------------
 -- | KeymapM for movement commands
 --
@@ -377,12 +371,22 @@ cmd_op = do
         opCmdFM :: [(Char, ViMove -> RegionStyle -> EditorM ())]
         opCmdFM =  [('d', cut), ('y', yank)]
 
+lineWiseRegion :: Point -> Point -> BufferM Region
+lineWiseRegion start' stop' = savingPointB $ do
+  moveTo start'
+  maybeMoveB Line Backward
+  start <- pointB
+  moveTo stop'
+  maybeMoveB Line Forward
+  stop <- pointB
+  return $ mkVimRegion start stop
+
 regionFromTo :: Point -> ViMove -> RegionStyle -> BufferM Region
 regionFromTo start' move regionStyle = do
   stop' <- savingPointB (viMove move >> pointB)
   let [start, stop] = sort [start', stop']
   case regionStyle of
-    LineWise -> unitWiseRegion fullLine $ mkRegion start stop
+    LineWise -> lineWiseRegion start stop
     Inclusive -> return $ mkRegion start (stop + 1)
     Exclusive -> return $ mkRegion start stop
 
