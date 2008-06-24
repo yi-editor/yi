@@ -146,6 +146,9 @@ recompile projectName force = io $ do
     binT <- getModTime bin
     if (force || srcT > binT)
       then do
+        if force
+            then putStrLn $ "Forcing recompile of custom " ++ projectName
+            else putStrLn $ "Recompiling custom " ++ projectName
         status <- bracket (openFile err WriteMode) hClose $ \h -> do
             waitForProcess =<< runProcess "ghc" ["--make", projectName ++ ".hs", "-i", "-no-recomp", "-v0", "-o",binn,"-threaded"] (Just dir)
                                     Nothing Nothing Nothing (Just h)
