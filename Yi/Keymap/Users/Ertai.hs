@@ -2,8 +2,9 @@
 
 module Yi.Keymap.Users.Ertai (keymap) where
 
-import Yi.Yi (Keymap, (<|>), event, charToEvent, write)
+import Yi.Yi (Keymap, (<|>))
+import Yi.Keymap.Keys (char, (?>>!))
 import qualified Yi.Keymap.Vim as Vim
 
 keymap :: Keymap
-keymap = Vim.keymap <|> (event (charToEvent ',') >> write Vim.viWrite)
+keymap = Vim.keymap <|> (char ',' ?>>! Vim.viWrite)
