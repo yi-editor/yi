@@ -367,16 +367,14 @@ cmd_op :: VimMode
 cmd_op = do
   cnt <- count
   let i = maybe 1 id cnt
-  choice $ [pString "dd" >>! cut  (Replicate (Move VLine Forward) (i-1)) LineWise,
-            pString "yy" >>! yank (Replicate (Move VLine Forward) (i-1)) LineWise,
-            char 'Y' ?>>! yank (Replicate (Move VLine Forward) (i-1)) LineWise] ++
+  choice $ [pString "dd" >>! cut  LineWise (Replicate (Move VLine Forward) (i-1)),
+            pString "yy" >>! yank LineWise (Replicate (Move VLine Forward) (i-1))] ++
            [do event (char c)
                (regionStyle, m) <- gen_cmd_move
-               write $ a (Replicate m i) regionStyle
+               write $ a regionStyle (Replicate m i)
            | (c,a) <- opCmdFM]
     where
         -- | operator (i.e. movement-parameterised) actions
-        opCmdFM :: [(Char, ViMove -> RegionStyle -> EditorM ())]
         opCmdFM =  [('d', cut), ('y', yank)]
 
 lineWiseRegion :: Point -> Point -> BufferM Region
@@ -414,8 +412,8 @@ yankFrom start move regionStyle = do
   let rowsYanked = length (filter (== '\n') txt)
   when (rowsYanked > 2) $ printMsg $ (show rowsYanked) ++ " lines yanked"
 
-yank :: ViMove -> RegionStyle -> EditorM ()
-yank move regionStyle = do start <- withBuffer0 pointB
+yank :: RegionStyle -> ViMove -> EditorM ()
+yank regionStyle move = do start <- withBuffer0 pointB
                            yankFrom start move regionStyle
 
 yankSelection :: EditorM ()
@@ -432,8 +430,8 @@ cutFrom start move regionStyle = do
   let rowsCut = length (filter (== '\n') txt)
   when (rowsCut > 2) $ printMsg ( (show rowsCut) ++ " fewer lines")
 
-cut :: ViMove -> RegionStyle -> EditorM ()
-cut move regionStyle = do start <- withBuffer0 pointB
+cut :: RegionStyle -> ViMove -> EditorM ()
+cut regionStyle move = do start <- withBuffer0 pointB
                           cutFrom start move regionStyle
 
 cutSelection :: EditorM ()
@@ -528,11 +526,11 @@ cmd2other = let beginIns a = write a >> ins_mode
             char 'A'     ?>> beginIns (withBuffer0 moveToEol),
             char 'o'     ?>> beginIns $ withBuffer0 $ moveToEol >> insertB '\n',
             char 'O'     ?>> beginIns $ withBuffer0 $ moveToSol >> insertB '\n' >> lineUp,
-            char 'c'     ?>> do (regionStyle, m) <- gen_cmd_move ; beginIns $ cut m regionStyle,
-            pString "cc"  >> beginIns (withBuffer0 moveToSol >> cut viMoveToEol LineWise),
-            char 'C'     ?>> beginIns $ cut viMoveToEol Exclusive, -- alias of "c$"
-            char 'S'     ?>> beginIns $ withBuffer0 moveToSol >> cut viMoveToEol Exclusive, -- non-linewise alias of "cc"
-            char 's'     ?>> beginIns $ cut (CharMove Forward) Exclusive, -- non-linewise alias of "cl"
+            char 'c'     ?>> do (regionStyle, m) <- gen_cmd_move ; beginIns $ cut regionStyle m,
+            pString "cc"  >> beginIns (withBuffer0 moveToSol >> cut LineWise viMoveToEol),
+            char 'C'     ?>> beginIns $ cut Exclusive viMoveToEol, -- alias of "c$"
+            char 'S'     ?>> beginIns $ withBuffer0 moveToSol >> cut Exclusive viMoveToEol, -- non-linewise alias of "cc"
+            char 's'     ?>> beginIns $ cut Exclusive (CharMove Forward), -- non-linewise alias of "cl"
             char '/'     ?>> ex_mode "/",
             char '?'     ?>>! not_implemented '?',
             leave,
@@ -551,7 +549,7 @@ ins_rep_char = choice [spec KPageUp       ?>>! upScreenB,
                        spec KDel          ?>>! deleteB Character Forward,
                        spec KEnter        ?>>! insertB '\n',
                        spec KTab          ?>>! insertTabB,
-                       (ctrl $ char 'w')  ?>>! cut (GenMove ViWord (Backward,InsideBound) Backward) Exclusive]
+                       (ctrl $ char 'w')  ?>>! cut Exclusive (GenMove ViWord (Backward,InsideBound) Backward)]
 
 
 -- ---------------------------------------------------------------------
