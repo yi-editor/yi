@@ -378,55 +378,58 @@ lineWiseRegion start' stop' = savingPointB $ do
   stop <- pointB
   return $ mkVimRegion start stop
 
-regionFromTo :: Point -> ViMove -> RegionStyle -> BufferM Region
-regionFromTo start' move regionStyle = do
-  stop' <- savingPointB (viMove move >> pointB)
-  let [start, stop] = sort [start', stop']
+regionFromTo :: Point -> Point -> RegionStyle -> BufferM Region
+regionFromTo start' stop' regionStyle =
+  let [start, stop] = sort [start', stop'] in
   case regionStyle of
     LineWise -> lineWiseRegion start stop
     Inclusive -> return $ mkRegion start (stop + 1)
     Exclusive -> return $ mkRegion start stop
 
-onSelection :: (Point -> ViMove -> RegionStyle -> EditorM ()) -> EditorM ()
+onSelection :: (RegionStyle -> Region -> EditorM ()) -> EditorM ()
 onSelection op = do
-  start <- withBuffer0 getSelectionMarkPointB
-  op start NoMove . selection2regionStyle =<< withBuffer0 getDynamicB
+  regionStyle <- withBuffer0 $ selection2regionStyle <$> getDynamicB
+  op regionStyle =<< (withBuffer0 $ join $ regionFromTo <$>
+                                   getSelectionMarkPointB <*>
+                                   pointB <*>
+                                   pure regionStyle)
 
-yankFrom :: Point -> ViMove -> RegionStyle -> EditorM ()
-yankFrom start move regionStyle = do
-  txt <- withBuffer0 $ do
-    p <- pointB
-    region <- regionFromTo start move regionStyle
-    moveTo p
-    readRegionB region
+yankRegion :: RegionStyle -> Region -> EditorM ()
+yankRegion regionStyle region = do
+  txt <- withBuffer0 $ readRegionB region
   setRegE $ if (regionStyle == LineWise) then '\n':txt else txt
   let rowsYanked = length (filter (== '\n') txt)
-  when (rowsYanked > 2) $ printMsg $ (show rowsYanked) ++ " lines yanked"
+  when (rowsYanked > 2) $ printMsg $ show rowsYanked ++ " lines yanked"
 
 yank :: RegionStyle -> ViMove -> EditorM ()
-yank regionStyle move = do start <- withBuffer0 pointB
-                           yankFrom start move regionStyle
+yank regionStyle move =
+  yankRegion regionStyle =<< (withBuffer0 $ join $ regionFromTo <$>
+                                          pointB <*>
+                                          savingPointB (viMove move >> pointB) <*>
+                                          pure regionStyle)
 
 yankSelection :: EditorM ()
-yankSelection = onSelection yankFrom
+yankSelection = onSelection yankRegion
 
-cutFrom :: Point -> ViMove -> RegionStyle -> EditorM ()
-cutFrom start move regionStyle = do
+cutRegion :: RegionStyle -> Region -> EditorM ()
+cutRegion regionStyle region = do
   txt <- withBuffer0 $ do
-    region <- regionFromTo start move regionStyle
     txt <- readRegionB region
     deleteRegionB region
     return txt
   setRegE $ if (regionStyle == LineWise) then '\n':txt else txt
   let rowsCut = length (filter (== '\n') txt)
-  when (rowsCut > 2) $ printMsg ( (show rowsCut) ++ " fewer lines")
+  when (rowsCut > 2) $ printMsg $ show rowsCut ++ " fewer lines"
 
 cut :: RegionStyle -> ViMove -> EditorM ()
-cut regionStyle move = do start <- withBuffer0 pointB
-                          cutFrom start move regionStyle
+cut regionStyle move =
+  cutRegion regionStyle =<< (withBuffer0 $ join $ regionFromTo <$>
+                                          pointB <*>
+                                          savingPointB (viMove move >> pointB) <*>
+                                          pure regionStyle)
 
 cutSelection :: EditorM ()
-cutSelection = onSelection cutFrom
+cutSelection = onSelection cutRegion
 
 pasteOverSelection :: EditorM ()
 pasteOverSelection = do
@@ -434,7 +437,8 @@ pasteOverSelection = do
   withBuffer0 $ do
     selectionStyle <- getDynamicB
     start <- getSelectionMarkPointB
-    region <- regionFromTo start NoMove $ selection2regionStyle $ selectionStyle
+    stop <- pointB
+    region <- regionFromTo start stop $ selection2regionStyle $ selectionStyle
     moveTo $ regionStart region
     deleteRegionB region
     insertN txt
