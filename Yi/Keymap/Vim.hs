@@ -300,17 +300,8 @@ singleCmdFM =
     ,(char 'n',      const $ continueSearching Forward)
     ,(char 'u',      withBuffer . flip replicateM_ undoB)
 
-    ,(char 'X',      \i -> withBuffer $ do 
-                             p <- pointB
-                             moveXorSol i
-                             q <- pointB
-                             deleteNBytes (p ~- q) q)
-
-    ,(char 'x',      \i -> withBuffer $ do 
-                             p <- pointB -- not handling eol properly
-                             moveXorEol i
-                             q <- pointB
-                             deleteNBytes (q ~- p) p)
+    ,(char 'X',      withEditor . cut Exclusive . (Replicate $ Move Character Backward))
+    ,(char 'x',      withEditor . cut Exclusive . (Replicate $ Move Character Forward))
 
     ,(char 'p',      withEditor . flip replicateM_ pasteAfter)
 
