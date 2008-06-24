@@ -76,16 +76,13 @@ getHConf projectName initialState recoverState saveState defaultConfiguration sh
     -- for Project, and if it doesn't find one, just launches the default.
     mainMaster = do
      args <- getArgs
-     let launch = do maybeErrors <- buildLaunch projectName
-                     case maybeErrors of 
-                       Nothing     -> realMain defaultConfiguration initialState
-                       Just errors -> realMain (showErrorsInConf errors defaultConfiguration) initialState
      case args of
-        ["--resume", _]       -> launch
-        ["--recompile"]       -> recompile projectName False >> return ()
-        ["--recompile-force"] -> recompile projectName True >> return ()
-        _                     -> launch
-
+       ["--force-recompile"] -> recompile projectName True >> return ()
+       _ -> return ()
+     maybeErrors <- buildLaunch projectName
+     case maybeErrors of 
+        Nothing     -> realMain defaultConfiguration initialState
+        Just errors -> realMain (showErrorsInConf errors defaultConfiguration) initialState
      -- @restart name resume@. Attempt to restart Project by executing the program
      -- @name@.  If @resume@ is 'True', restart with the current window state.
      -- When executing another window manager, @resume@ should be 'False'.

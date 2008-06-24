@@ -98,6 +98,7 @@ data Opts = Help
           | ConfigFile String
           | SelfCheck
           | Debug
+          | HConfOption
 
 -- | List of editors for which we provide an emulation.
 editors :: [(String,Keymap)]
@@ -117,7 +118,8 @@ options = [
     Option ['l']  ["line"]        (ReqArg LineNo "[num]") "Start on line number",
     Option []     ["as"]          (ReqArg EditorNm "[editor]")
         ("Start with editor keymap, where editor is one of:\n" ++
-                (concat . intersperse ", " . fmap fst) editors)
+                (concat . intersperse ", " . fmap fst) editors),
+    Option []     ["force-recompile"] (NoArg HConfOption) "Forces recompile of custom yi"
     ]
 
 -- | usage string.
