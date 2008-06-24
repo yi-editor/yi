@@ -31,6 +31,7 @@ import Data.Typeable
 data TextUnit = Character
               | Word
               | ViWord -- ^ a word as in use in Vim
+              | ViWORD -- ^ a WORD as in use in Vim
               | Line  -- ^ a line of text (between newlines)
               | VLine -- ^ a "vertical" line of text (area of text between to characters at the same column number)
               | Paragraph
@@ -79,6 +80,8 @@ atBoundary Character _ = return True
 atBoundary VLine _ = return True -- a fallacy; this needs a little refactoring.
 atBoundary Word direction =
     checkPeekB (-1) [isWordChar, not . isWordChar] direction
+atBoundary ViWORD direction =
+    checkPeekB (-1) [not . isSpace, isSpace] direction
 atBoundary ViWord direction = do
     ~cs@[c1,c2] <- peekB direction 2 (-1)
     return (length cs /= 2 || (not (isSpace c1) && (charType c1 /= charType c2)))

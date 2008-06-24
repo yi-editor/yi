@@ -149,14 +149,14 @@ gen_cmd_move = do
   cnt <- count
   let x = maybe 1 id cnt
   choice ([c ?>> return (Inclusive, a x) | (c,a) <- moveCmdFM_inclusive, (c /= char '0' || Nothing == cnt) ] ++
+          [pString s >> return (Inclusive, a x) | (s,a) <- moveCmdS_inclusive ] ++
           [c ?>> return (Exclusive, a x) | (c,a) <- moveCmdFM_exclusive ] ++
           [c ?>> return (LineWise, a x) | (c,a) <- moveUpDownCmdFM] ++
           [do event c; c' <- textChar; return (r, a c' x) | (c,r,a) <- move2CmdFM] ++
           [char 'G' ?>> return (LineWise, ArbMove (case cnt of
                                                      Nothing -> botB >> moveToSol
                                                      Just n  -> gotoLn n >> return ()))
-          ,pString "gg" >> return (LineWise, ArbMove (gotoLn 0 >> return ()))
-          ,pString "ge" >> return (Inclusive, Replicate (GenMove ViWord (Forward, InsideBound) Backward) x)])
+          ,pString "gg" >> return (LineWise, ArbMove (gotoLn 0 >> return ()))])
 
 -- | movement commands (with exclusive cut/yank semantics)
 moveCmdFM_exclusive :: [(Event, (Int -> ViMove))]
@@ -176,7 +176,9 @@ moveCmdFM_exclusive =
 
 -- words
     ,(char 'w',       Replicate $ GenMove ViWord (Backward,InsideBound) Forward)
-    ,(char 'b',       Replicate $ GenMove ViWord (Backward,InsideBound) Backward)
+    ,(char 'W',       Replicate $ GenMove ViWORD (Backward,InsideBound) Forward)
+    ,(char 'b',       Replicate $ Move ViWord Backward)
+    ,(char 'B',       Replicate $ Move ViWORD Backward)
 -- text
     ,(char '{',       Replicate $ Move Paragraph Backward)
     ,(char '}',       Replicate $ Move Paragraph Forward)
@@ -193,10 +195,15 @@ moveCmdFM_inclusive =
     [(char '$',  eol)
     ,(spec KEnd, eol)
 -- words
-    ,(char 'e',  Replicate $ GenMove ViWord (Forward, InsideBound) Forward)]
+    ,(char 'e',     Replicate $ GenMove ViWord (Forward, InsideBound) Forward)
+    ,(char 'E',     Replicate $ GenMove ViWORD (Forward, InsideBound) Forward)]
     where
         eol   = Replicate $ viMoveToEol
 
+moveCmdS_inclusive :: [(String, (Int -> ViMove))]
+moveCmdS_inclusive =
+    [("ge", Replicate $ GenMove ViWord (Forward, InsideBound) Backward)
+    ,("gE", Replicate $ GenMove ViWORD (Forward, InsideBound) Backward)]
 
 viMove :: ViMove -> BufferM ()
 viMove NoMove                              = return ()
