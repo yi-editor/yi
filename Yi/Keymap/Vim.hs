@@ -294,7 +294,7 @@ singleCmdFM =
     ,(ctrl $ char 'l',    const refreshEditor)
     ,(ctrl $ char 'r',    withBuffer . flip replicateM_ redoB)
     ,(ctrl $ char 'z',    const suspendEditor)
-    ,(char 'D',      const (withEditor $ withBuffer0 readRestOfLnB >>= setRegE >> withBuffer0 deleteToEol))
+    ,(char 'D',      withEditor . cut Exclusive . (Replicate $ Move Line Forward))
     ,(char 'J',      const (withBuffer (moveToEol >> deleteN 1)))    -- the "\n"
     ,(char 'U',      withBuffer . flip replicateM_ undoB)    -- NB not correct
     ,(char 'n',      const $ continueSearching Forward)
