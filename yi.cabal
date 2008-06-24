@@ -79,7 +79,7 @@ library
            Yi.Keymap.Emacs
            Yi.Keymap.Vim
            Yi.Keymap.Users.Ertai
-           Yi.Keymap.Users.JP
+           -- Yi.Keymap.Users.JP
            Yi.Modes
            Yi.Mode.Haskell
            Yi.Buffer
