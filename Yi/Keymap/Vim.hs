@@ -359,7 +359,9 @@ cmd_op = do
   cnt <- count
   let i = maybe 1 id cnt
   choice $ [pString "dd" >>! cut  LineWise (Replicate (Move VLine Forward) (i-1)),
-            pString "yy" >>! yank LineWise (Replicate (Move VLine Forward) (i-1))] ++
+            pString "yy" >>! yank LineWise (Replicate (Move VLine Forward) (i-1)),
+            char 'd' ?>> select_any_unit (cutRegion Exclusive)
+           ] ++
            [do event (char c)
                (regionStyle, m) <- gen_cmd_move
                write $ a regionStyle (Replicate m i)
@@ -367,6 +369,35 @@ cmd_op = do
     where
         -- | operator (i.e. movement-parameterised) actions
         opCmdFM =  [('d', cut), ('y', yank)]
+
+char2unit :: [(Char, TextUnit)]
+char2unit =
+  [('w', ViWord)
+  ,('W', ViWORD)
+  ,('p', Paragraph)
+-- TODO
+--,('s', Sentence)
+--,('b', ParenBlock)
+--,('B', CurlyBraceBlock)
+  ]
+
+-- NOTE,TODO: Form some units (like words) one should
+-- not select more than the current line
+select_a_unit :: TextUnit -> BufferM Region
+select_a_unit unit = savingPointB $ do
+    start <- genMoveB unit (Backward,InsideBound) Backward >> pointB
+    stop  <- genMoveB unit (Backward,InsideBound) Forward >> pointB
+    return $ mkRegion start stop
+
+select_inner_unit :: TextUnit -> BufferM Region
+select_inner_unit = regionOfB
+
+select_any_unit :: (MonadInteract m Action Event) => (Region -> EditorM ()) -> m ()
+select_any_unit f =
+  choice [ x
+         | (c, unit) <- char2unit,
+           x <- [ char 'i' ?>> (char c ?>> write (f =<< withBuffer0 (select_inner_unit unit))),
+                  char 'a' ?>> (char c ?>> write (f =<< withBuffer0 (select_a_unit unit))) ] ]
 
 lineWiseRegion :: Point -> Point -> BufferM Region
 lineWiseRegion start' stop' = savingPointB $ do
