@@ -224,11 +224,14 @@ buildLaunch projectName = do
                             return (args ++ [errFile])
     let executable_file = projectName ++ "-" ++ arch ++ "-" ++ os
         executable_path = dir </> executable_file
-    putStrLn $ "Launching custom yi: " ++ show executable_path
+    putStrLn $ "Launching custom " ++ projectName ++ ": " ++ show executable_path
 #ifndef darwin_HOST_OS
     handle (\_exception -> return ())
        (executeFile executable_path False args' Nothing)
-    return $ Just ("Custom yi (" ++ show executable_path ++ ") could not be launched!\n") `mappend` errMsg
+    return $ Just 
+        ("Custom " ++ projectName 
+         ++ " (" ++ show executable_path ++ ") "
+         ++ "could not be launched!\n") `mappend` errMsg
 #else
     -- Darwin is odd or broken; Take your pick. According to:
     --      http://uninformed.org/index.cgi?v=1&a=1&p=16
@@ -240,7 +243,9 @@ buildLaunch projectName = do
     child_status <- getProcessStatus True False child_pid
     case child_status of
         Nothing -> return $ Just 
-            ("Custom yi (" ++ show executable_path ++ ") could not be launched!\n") `mappend` errMsg
+            ("Custom " ++ projectName 
+             ++ " (" ++ show executable_path ++ ") "
+             ++ "could not be launched!\n") `mappend` errMsg
         Just _ -> do 
             exitImmediately ExitSuccess
             return Nothing
