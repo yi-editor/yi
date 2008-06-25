@@ -377,7 +377,7 @@ getAppropriateFiles start s = do
   -- Remove the two standard current-dir and parent-dir as we do not
   -- need to complete or hint about these as they are known by users.
   let files' = files \\ [ ".", ".." ]
-  fs <- liftIO $ mapM fixTrailingPathSeparator files
+  fs <- liftIO $ mapM fixTrailingPathSeparator files'
   let matching = filter (isPrefixOf $ takeFileName s) fs
   return (sDir, matching)
 

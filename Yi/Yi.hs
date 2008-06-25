@@ -82,6 +82,7 @@ defaultPublishedActions = M.fromList $
     , ("regionOfPartB"          , box regionOfPartB)
     , ("Forward"                , box Forward)
     , ("Backward"               , box Backward)
+    , ("deleteBlankLinesB"      , box deleteBlankLinesB)
     ]
 
   where box x = [toDyn x]

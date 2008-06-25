@@ -1,0 +1,52 @@
+
+DISCLAIMER:
+
+We don't need endless discussions, or worse a flamewar, regarding
+coding guidelines, but we want (some) consistency in the
+codebase. Hence, I come up with these guidelines that I define
+dictatorially. If you disagree with something here, you can comment in
+private e-mail but it's very likely that your comment will be ignored.
+
+For obvious reasons, don't change this file.
+
+-- JP
+
+
+STYLE GUIDELINES:
+
+* Please stick to the following guidelines when you write new code.
+
+* Don't change code for purely stylistic reasons!
+
+* Haddock.
+
+Comment all top-level functions
+Use no line with just '--' before or after the comment text.
+Don't put a blank line between the haddock comment and the commented entity.
+
+Example
+
+    -- | Description, description, description
+    -- ... continued on other line.
+    f :: Type
+    f = definition
+
+
+
+* Parentheses, brackets, etc.
+
+Space outside; no space inside.
+
+Example
+
+x :: [Int]
+x = (a + 1) * 2
+
+
+* Case
+
+Use camelCase
+
+example:
+
+oneTwoThree

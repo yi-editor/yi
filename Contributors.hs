@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings, PatternSignatures, PatternGuards  #-}
-{-# OPTIONS -package bytestring-0.9.0.4 -package regex-posix-0.93.1 #-}
 import Data.Array (elems, Array)
 import Data.ByteString.Char8 (pack, ByteString)
 import Data.Char
