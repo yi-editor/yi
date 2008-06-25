@@ -21,8 +21,10 @@ import System.Process
 import System.Directory
 import System.Exit
 import System.Environment
+import System.Console.GetOpt 
 import Data.Monoid
 import System.FilePath ((</>))
+import Data.Maybe (mapMaybe)
 
 
 {-
@@ -64,6 +66,25 @@ data HConf state configuration = HConf {
       restart :: state -> IO ()
  }
 
+hconfOptions :: String -> [(String, String, IO () -> IO ())]
+hconfOptions projectName = 
+    [
+        ("recompile-force", 
+         "Force recompile of custom " ++ projectName ++ " before starting.", 
+         \_ -> recompile projectName True >> return ()
+        ),
+        ("resume",
+         "Resume execution of " ++ projectName ++ " from previous state (Broken?)",
+         id
+        ),
+        ("recompile",
+         "Recompile custom " ++ projectName ++ " if required then exit.",
+         \_ -> do
+            putStrLn $ "Checking if custom " ++ projectName ++ " needs to be recompiled."
+            recompile projectName False
+            exitWith ExitSuccess
+        )
+    ]
 
 getHConf :: String -> state -> (String -> IO state) -> (state -> IO String) ->
             configuration -> (String -> configuration -> configuration) ->
@@ -75,14 +96,19 @@ getHConf projectName initialState recoverState saveState defaultConfiguration sh
     -- The entry point into Project. Attempts to compile any custom main
     -- for Project, and if it doesn't find one, just launches the default.
     mainMaster = do
-     args <- getArgs
-     case args of
-       ["--force-recompile"] -> recompile projectName True >> return ()
-       _ -> return ()
-     maybeErrors <- buildLaunch projectName
-     case maybeErrors of 
-        Nothing     -> realMain defaultConfiguration initialState
-        Just errors -> realMain (showErrorsInConf errors defaultConfiguration) initialState
+        let launch = do
+                maybeErrors <- buildLaunch projectName
+                case maybeErrors of 
+                    Nothing     -> realMain defaultConfiguration initialState
+                    Just errors -> realMain (showErrorsInConf errors defaultConfiguration) initialState
+        let optDescriptions = 
+                (flip map) (hconfOptions projectName) $ \(name,desc,f) -> 
+                    let apply_f_descr = NoArg (f launch)
+                    in Option [] [name] apply_f_descr desc
+        args <- getArgs
+        let (opt_actions, _, _) = getOpt Permute optDescriptions args 
+        sequence_  opt_actions
+        launch
      -- @restart name resume@. Attempt to restart Project by executing the program
      -- @name@.  If @resume@ is 'True', restart with the current window state.
      -- When executing another window manager, @resume@ should be 'False'.

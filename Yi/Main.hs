@@ -17,7 +17,7 @@
 -- jumping into an event loop.
 --
 
-module Yi.Main (main, defaultConfig) where
+module Yi.Main (main, defaultConfig, projectName) where
 
 import Prelude ()
 import Yi.Prelude
@@ -30,6 +30,7 @@ import Yi.Modes (defaultModeMap, defaultFundamentalMode)
 import Yi.Interact hiding (write)
 import qualified Yi.Interact as I
 import Yi.Keymap.Keys
+import HConf (hconfOptions)
 
 #ifdef TESTING
 import qualified TestSuite
@@ -50,7 +51,7 @@ import qualified Yi.UI.Cairo
 #endif
 
 import Data.Char
-import Data.List                ( intersperse )
+import Data.List                ( intersperse, map )
 
 import Control.Monad.Error
 import System.Console.GetOpt
@@ -118,13 +119,17 @@ options = [
     Option ['l']  ["line"]        (ReqArg LineNo "[num]") "Start on line number",
     Option []     ["as"]          (ReqArg EditorNm "[editor]")
         ("Start with editor keymap, where editor is one of:\n" ++
-                (concat . intersperse ", " . fmap fst) editors),
-    Option []     ["force-recompile"] (NoArg HConfOption) "Forces recompile of custom yi"
-    ]
+                (concat . intersperse ", " . fmap fst) editors)
+    ] ++ (map (\(opt_name,desc,_) -> Option [] [opt_name] (NoArg HConfOption) desc) 
+              (hconfOptions projectName)
+         )
 
 -- | usage string.
 usage, versinfo :: String
 usage    = usageInfo "Usage: yi [option...] [file]" options
+
+projectName :: String
+projectName = "yi"
 
 versinfo = "yi 0.4.0"
 -- TODO: pull this out of the cabal configuration

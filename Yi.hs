@@ -26,15 +26,12 @@ realMain staticConfig _state = do
           -- the flag is set in the static configuration.
           Yi.Main.main staticConfig
 
-projectName :: String
-projectName = "yi"
-
 initState :: () -- TODO: Should be Editor
 initState = ()
 
 driver :: IO ()
 yi :: Config -> IO ()
-HConf driver yi _ = getHConf projectName initState recoverState saveState defaultConfig showErrorsInConf realMain
+HConf driver yi _ = getHConf Yi.Main.projectName initState recoverState saveState defaultConfig showErrorsInConf realMain
 
 showErrorsInConf :: String -> Config -> Config
 showErrorsInConf errs conf 
