@@ -24,8 +24,6 @@ import System.Environment
 import System.Console.GetOpt 
 import Data.Monoid
 import System.FilePath ((</>))
-import Data.Maybe (mapMaybe)
-
 
 {-
 
@@ -52,11 +50,11 @@ This will provide:
     Function that has to be called in the ~/.project/project.hs (provides a configurable entry point)
 
   * restart function:
-    (TBD) save the state; recompile and execute the new version with the saved state.
+    (TBD) save the state; then call master to recompile and execute the new version with the saved state.
 
 Standard scenario:
 
-* 
+TDB
 
 -}
 
@@ -74,13 +72,12 @@ hconfOptions projectName =
          \_ -> recompile projectName True >> return ()
         ),
         ("resume",
-         "Resume execution of " ++ projectName ++ " from previous state (Broken?)",
-         id
+         "Resume execution of " ++ projectName ++ " from previous state",
+         id -- this option is actually handled by the Slave.
         ),
         ("recompile",
          "Recompile custom " ++ projectName ++ " if required then exit.",
          \_ -> do
-            putStrLn $ "Checking if custom " ++ projectName ++ " needs to be recompiled."
             recompile projectName False
             exitWith ExitSuccess
         )
@@ -102,23 +99,23 @@ getHConf projectName initialState recoverState saveState defaultConfiguration sh
                     Nothing     -> realMain defaultConfiguration initialState
                     Just errors -> realMain (showErrorsInConf errors defaultConfiguration) initialState
         let optDescriptions = 
-                (flip map) (hconfOptions projectName) $ \(name,desc,f) -> 
+                (flip fmap) (hconfOptions projectName) $ \(name,desc,f) -> 
                     let apply_f_descr = NoArg (f launch)
                     in Option [] [name] apply_f_descr desc
         args <- getArgs
         let (opt_actions, _, _) = getOpt Permute optDescriptions args 
         sequence_  opt_actions
         launch
-     -- @restart name resume@. Attempt to restart Project by executing the program
-     -- @name@.  If @resume@ is 'True', restart with the current window state.
-     -- When executing another window manager, @resume@ should be 'False'.
-     -- this function will never return.
+
+     -- @restart state@. Attempt to restart Project by executing the
+     -- program @projectName@.
+     -- This function will never return.
     , restart = \state -> do
 #ifndef mingw32_HOST_OS
         s <- saveState state
         let args = ["--resume", s]
         executeFile projectName True args Nothing -- TODO: catch exceptions
-        -- run the master, who will take care of recompiling; getting the new state, etc.
+        -- run the master, who will take care of recompiling; handle errors, etc.
 #else
         return ()
 #endif
@@ -154,11 +151,20 @@ getErrorsFile projectName = do dir <- getProjectDir projectName
 --
 -- The -i flag is used to restrict recompilation to the Project.hs file only.
 --
--- Compilation errors (if any) are logged to ~\/.Project\/Project.errors.  If
--- GHC indicates failure with a non-zero exit code, an xmessage displaying
--- that file is spawned.
+-- Compilation errors (if any) are logged to
+-- ~\/.Project\/Project.errors.  If GHC indicates failure with a
+-- non-zero exit code; we read the errors and return them.
 --
 -- Returns the errors if there were any; otherwise Nothing
+--
+-- Errors can be returned in any of
+-- these cases:
+--   * ghc missing
+--   * ~\/.Project\/Project.hs missing
+--   * Project.hs fails to compile
+--      ** wrong ghc in path (fails to compile)
+--      ** type error, syntax error, ..
+--   * Missing Project dependency packages
 --
 recompile :: MonadIO m => String -> Bool -> m (Maybe String)
 recompile projectName force = io $ do
@@ -197,16 +203,15 @@ recompile projectName force = io $ do
 
 
 
--- | Build "~\/.Project\/Project.hs" with ghc, then execute it.  If there are no
--- errors, this function does not return.  An exception is raised in any of
--- these cases:
---   * ghc missing
---   * ~\/.Project\/Project.hs missing
---   * Project.hs fails to compile
---      ** wrong ghc in path (fails to compile)
---      ** type error, syntax error, ..
---   * Missing Project dependency packages
---
+-- | Launch the custom (slave) program.
+
+-- Call @recompile False@
+
+-- If there is a slave to run, this function does not return. 
+
+-- If there are errors and the function returns, they are returned in a string;
+-- If there are errors and the slave is run, we pass the error file as an argument to it. 
+
 buildLaunch :: String -> IO (Maybe String)
 buildLaunch projectName = do
 #ifndef mingw32_HOST_OS
