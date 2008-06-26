@@ -595,7 +595,8 @@ changeCmds =
     ((char 'w' ?>> change NoMove Exclusive (GenMove ViWord (Forward, OutsideBound) Forward)) <|>
      (char 'W' ?>> change NoMove Exclusive (GenMove ViWORD (Forward, OutsideBound) Forward))) <|>
   (char 'c' ?>> change viMoveToSol LineWise viMoveToEol) <|>
-  (uncurry (change NoMove) =<< gen_cmd_move)
+  (uncurry (change NoMove) =<< gen_cmd_move) <|>
+  (select_any_unit (cutRegion Exclusive) >> ins_mode) -- this correct while the RegionStyle is not LineWise
 
 change :: ViMove -> RegionStyle -> ViMove -> I Event Action ()
 change preMove regionStyle move = do
