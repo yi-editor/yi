@@ -452,9 +452,11 @@ yankRegion regionStyle region = do
   let rowsYanked = length (filter (== '\n') txt)
   when (rowsYanked > 2) $ printMsg $ show rowsYanked ++ " lines yanked"
 
+{-
 yank :: RegionStyle -> ViMove -> EditorM ()
 yank regionStyle move =
   yankRegion regionStyle =<< (withBuffer0 $ regionOfViMove move regionStyle)
+-}
 
 yankSelection :: EditorM ()
 yankSelection = uncurry yankRegion =<< withBuffer0 regionOfSelection
