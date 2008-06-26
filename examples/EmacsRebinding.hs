@@ -49,13 +49,8 @@ import Yi.Indent
 import Yi.Buffer.HighLevel
 {- End of Module Imports -}
 
--- This is the main function which is called to complete
--- user configuration, it simply resets the key map and
--- and prints a message to say that it was successful.
--- yiMain :: YiM ()
--- yiMain = 
---   do changeKeymap myKeyMap
---     msgEditor "User configuration successful."
+-- This is the main function, which binds
+-- user configuration.
 
 main :: IO ()
 main = yi $ defaultConfig { startFrontEnd    = Vty.start
