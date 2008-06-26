@@ -15,7 +15,7 @@ import Prelude (maybe, length, filter, map, drop, takeWhile, dropWhile,
 
 import Data.Char
 import Data.Maybe (fromMaybe)
-import Data.List (sort)
+import Data.List (sort, nub)
 import Data.Dynamic
 
 import Control.Exception    ( ioErrors, try, evaluate )
@@ -325,8 +325,7 @@ singleCmdFM =
                          moveXorEol i
                          q <- pointB
                          moveTo p
-                         mapRegionB (mkRegion p q) $ \c ->
-                             if isUpper c then toLower c else toUpper c
+                         mapRegionB (mkRegion p q) switchCaseChar
                          moveTo q)
     ]
 
@@ -368,17 +367,28 @@ cmd_op :: VimMode
 cmd_op = do
   cnt <- count
   let i = maybe 1 id cnt
-  choice $ [pString "dd" >>! cut  LineWise (Replicate (Move VLine Forward) (i-1)),
-            pString "yy" >>! yank LineWise (Replicate (Move VLine Forward) (i-1)),
-            char 'd' ?>> select_any_unit (cutRegion Exclusive)
-           ] ++
-           [do event (char c)
-               (regionStyle, m) <- gen_cmd_move
-               write $ a regionStyle (Replicate m i)
-           | (c,a) <- opCmdFM]
+  choice $ [let onMove regionStyle move =
+                   onRegion regionStyle =<< withBuffer0 (regionOfViMove move regionStyle)
+                s1 = prefix [c]
+                ss = nub [[c], s1]
+            in
+            pString s1 >>
+               choice ([ gen_cmd_move >>= (\(regionStyle, m) -> write $ onMove regionStyle (Replicate m i))
+                       , select_any_unit (onRegion Exclusive)] ++
+                       [ pString s >>! onMove LineWise (Replicate (Move VLine Forward) (i-1))
+                       | s <- ss ])
+
+           | (prefix,c,onRegion) <- opCmdFM
+           ]
     where
         -- | operator (i.e. movement-parameterised) actions
-        opCmdFM =  [('d', cut), ('y', yank)]
+        opCmdFM =  [ (id,     'd', cutRegion)
+                   , (id,     'y', yankRegion)
+                   , (('g':), '~', viMapRegion switchCaseChar)
+                   , (('g':), 'u', viMapRegion toLower)
+                   , (('g':), 'U', viMapRegion toUpper)
+                   , (('g':), '?', viMapRegion rot13Char)
+                   ]
 
 char2unit :: [(Char, TextUnit)]
 char2unit =
@@ -493,6 +503,22 @@ pasteBefore = do
     case txt' of
       '\n':txt -> moveToSol >> insertN txt >> leftN (length txt)
       _      -> insertN txt' >> leftB
+
+switchCaseChar :: Char -> Char
+switchCaseChar c = if isUpper c then toLower c else toUpper c
+
+onCharLetterCode :: (Int -> Int) -> Char -> Char
+onCharLetterCode f c | isUpper c || isLower c = chr (f (ord c - a) `mod` 26 + a)
+                     | otherwise              = c
+                    where a | isUpper c = ord 'A'
+                            | isLower c = ord 'a'
+                            | otherwise = undefined
+
+rot13Char :: Char -> Char
+rot13Char = onCharLetterCode (+13)
+
+viMapRegion :: (Char -> Char) -> RegionStyle -> Region -> EditorM ()
+viMapRegion f _ region = withBuffer0 $ mapRegionB region f
 
 -- | Switching to another mode from visual mode.
 --
