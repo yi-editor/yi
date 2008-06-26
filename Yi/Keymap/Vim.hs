@@ -70,6 +70,9 @@ leave = spec KEsc ?>> adjustPriority (-1) (write msgClr)
 ins_mode :: VimMode
 ins_mode = write (setStatus "-- INSERT --") >> many (ins_char <|> kwd_mode) >> leave
 
+beginIns :: (Show x, YiAction a x) => a -> I Event Action ()
+beginIns a = write a >> ins_mode
+
 -- | Replace mode is like insert, except it performs writes, not inserts
 rep_mode :: VimMode
 rep_mode = write (setStatus "-- REPLACE --") >> many rep_char >> leave
@@ -497,9 +500,7 @@ pasteBefore = do
 --
 vis_single :: SelectionStyle -> VimMode
 vis_single selectionStyle =
-        let beginIns a = write (a >> withBuffer0 (setVisibleSelection False)) >> ins_mode
-        in choice [
-            spec KEsc ?>> return (),
+    choice [spec KEsc ?>> return (),
             char 'V'  ?>> change_vis_mode selectionStyle (SelectionStyle Line),
             char 'v'  ?>> change_vis_mode selectionStyle (SelectionStyle Character),
             char ':'  ?>> ex_mode ":'<,'>",
@@ -507,7 +508,7 @@ vis_single selectionStyle =
             char 'x'  ?>>! cutSelection,
             char 'd'  ?>>! cutSelection,
             char 'p'  ?>>! pasteOverSelection,
-            char 'c'  ?>> beginIns cutSelection]
+            char 'c'  ?>> beginIns (cutSelection >> withBuffer0 (setVisibleSelection False))]
 
 
 -- | These also switch mode, as all visual commands do, but these are
@@ -539,19 +540,17 @@ vis_multi = do
 -- KeymapM. Some of these commands also perform an action before switching.
 --
 cmd2other :: VimMode
-cmd2other = let beginIns a = write a >> ins_mode
-                beginIns :: EditorM () -> VimMode
-        in choice [
-            char ':'     ?>> ex_mode ":",
+cmd2other =
+    choice [char ':'     ?>> ex_mode ":",
             char 'v'     ?>> vis_mode (SelectionStyle Character),
             char 'V'     ?>> vis_mode (SelectionStyle Line),
             char 'R'     ?>> rep_mode,
             char 'i'     ?>> ins_mode,
-            char 'I'     ?>> beginIns (withBuffer0 moveToSol),
-            char 'a'     ?>> beginIns $ withBuffer0 $ moveXorEol 1,
-            char 'A'     ?>> beginIns (withBuffer0 moveToEol),
-            char 'o'     ?>> beginIns $ withBuffer0 $ moveToEol >> insertB '\n',
-            char 'O'     ?>> beginIns $ withBuffer0 $ moveToSol >> insertB '\n' >> lineUp,
+            char 'I'     ?>> beginIns moveToSol,
+            char 'a'     ?>> beginIns $ moveXorEol 1,
+            char 'A'     ?>> beginIns moveToEol,
+            char 'o'     ?>> beginIns $ moveToEol >> insertB '\n',
+            char 'O'     ?>> beginIns $ moveToSol >> insertB '\n' >> lineUp,
             char 'c'     ?>> do (regionStyle, m) <- gen_cmd_move ; beginIns $ cut regionStyle m,
             pString "cc"  >> beginIns (withBuffer0 moveToSol >> cut LineWise viMoveToEol),
             char 'C'     ?>> beginIns $ cut Exclusive viMoveToEol, -- alias of "c$"
