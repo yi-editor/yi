@@ -580,8 +580,7 @@ cmd2other =
             char 'A'     ?>> beginIns moveToEol,
             char 'o'     ?>> beginIns $ moveToEol >> insertB '\n',
             char 'O'     ?>> beginIns $ moveToSol >> insertB '\n' >> lineUp,
-            char 'c'     ?>> do (regionStyle, m) <- gen_cmd_move ; beginIns $ cut regionStyle m,
-            pString "cc"  >> beginIns (withBuffer0 moveToSol >> cut LineWise viMoveToEol),
+            char 'c'     ?>> changeCmds,
             char 'C'     ?>> beginIns $ cut Exclusive viMoveToEol, -- alias of "c$"
             char 'S'     ?>> beginIns $ withBuffer0 moveToSol >> cut Exclusive viMoveToEol, -- non-linewise alias of "cc"
             char 's'     ?>> beginIns $ cut Exclusive (CharMove Forward), -- non-linewise alias of "cl"
@@ -590,6 +589,21 @@ cmd2other =
             leave,
             spec KIns    ?>> ins_mode]
 
+changeCmds :: I Event Action ()
+changeCmds =
+  adjustPriority (-1)
+    ((char 'w' ?>> change NoMove Exclusive (GenMove ViWord (Forward, OutsideBound) Forward)) <|>
+     (char 'W' ?>> change NoMove Exclusive (GenMove ViWORD (Forward, OutsideBound) Forward))) <|>
+  (char 'c' ?>> change viMoveToSol LineWise viMoveToEol) <|>
+  (uncurry (change NoMove) =<< gen_cmd_move)
+
+change :: ViMove -> RegionStyle -> ViMove -> I Event Action ()
+change preMove regionStyle move = do
+  write $ do
+    withBuffer0 $ viMove preMove
+    cut regionStyle move
+    when (regionStyle == LineWise) $ withBuffer0 (insertB '\n' >> leftB)
+  ins_mode
 
 ins_rep_char :: VimMode
 ins_rep_char = choice [spec KPageUp       ?>>! upScreenB,
