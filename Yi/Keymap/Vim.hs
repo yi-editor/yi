@@ -10,7 +10,8 @@ module Yi.Keymap.Vim ( keymap, VimMode, viWrite ) where
 
 import Yi.Yi
 import Yi.Prelude
-import Prelude (maybe, length, filter, map, drop, takeWhile, dropWhile, break)
+import Prelude (maybe, length, filter, map, drop, takeWhile, dropWhile,
+                break, uncurry)
 
 import Data.Char
 import Data.Maybe (fromMaybe)
@@ -207,6 +208,12 @@ moveCmdS_inclusive :: [(String, (Int -> ViMove))]
 moveCmdS_inclusive =
     [("ge", Replicate $ GenMove ViWord (Forward, InsideBound) Backward)
     ,("gE", Replicate $ GenMove ViWORD (Forward, InsideBound) Backward)]
+
+regionOfViMove :: ViMove -> RegionStyle -> BufferM Region
+regionOfViMove move regionStyle =
+  join $ regionFromTo <$> pointB
+                      <*> (savingPointB (viMove move >> pointB))
+                      <*> pure regionStyle
 
 viMove :: ViMove -> BufferM ()
 viMove NoMove                              = return ()
@@ -420,13 +427,13 @@ regionFromTo start' stop' regionStyle =
     Inclusive -> return $ mkRegion start (stop + 1)
     Exclusive -> return $ mkRegion start stop
 
-onSelection :: (RegionStyle -> Region -> EditorM ()) -> EditorM ()
-onSelection op = do
-  regionStyle <- withBuffer0 $ selection2regionStyle <$> getDynamicB
-  op regionStyle =<< (withBuffer0 $ join $ regionFromTo <$>
-                                   getSelectionMarkPointB <*>
-                                   pointB <*>
-                                   pure regionStyle)
+regionOfSelection :: BufferM (RegionStyle, Region)
+regionOfSelection = do
+  regionStyle <- selection2regionStyle <$> getDynamicB
+  region <- join $ regionFromTo <$> getSelectionMarkPointB
+                                <*> pointB
+                                <*> pure regionStyle
+  return (regionStyle, region)
 
 yankRegion :: RegionStyle -> Region -> EditorM ()
 yankRegion regionStyle region = do
@@ -437,13 +444,10 @@ yankRegion regionStyle region = do
 
 yank :: RegionStyle -> ViMove -> EditorM ()
 yank regionStyle move =
-  yankRegion regionStyle =<< (withBuffer0 $ join $ regionFromTo <$>
-                                          pointB <*>
-                                          savingPointB (viMove move >> pointB) <*>
-                                          pure regionStyle)
+  yankRegion regionStyle =<< (withBuffer0 $ regionOfViMove move regionStyle)
 
 yankSelection :: EditorM ()
-yankSelection = onSelection yankRegion
+yankSelection = uncurry yankRegion =<< withBuffer0 regionOfSelection
 
 cutRegion :: RegionStyle -> Region -> EditorM ()
 cutRegion regionStyle region = do
@@ -457,13 +461,10 @@ cutRegion regionStyle region = do
 
 cut :: RegionStyle -> ViMove -> EditorM ()
 cut regionStyle move =
-  cutRegion regionStyle =<< (withBuffer0 $ join $ regionFromTo <$>
-                                          pointB <*>
-                                          savingPointB (viMove move >> pointB) <*>
-                                          pure regionStyle)
+  cutRegion regionStyle =<< (withBuffer0 $ regionOfViMove move regionStyle)
 
 cutSelection :: EditorM ()
-cutSelection = onSelection cutRegion
+cutSelection = uncurry cutRegion =<< withBuffer0 regionOfSelection
 
 pasteOverSelection :: EditorM ()
 pasteOverSelection = do
