@@ -385,7 +385,7 @@ char2unit =
 -- not select more than the current line
 select_a_unit :: TextUnit -> BufferM Region
 select_a_unit unit = savingPointB $ do
-    start <- genMoveB unit (Backward,InsideBound) Backward >> pointB
+    start <- genMaybeMoveB unit (Backward,InsideBound) Backward >> pointB
     stop  <- genMoveB unit (Backward,InsideBound) Forward >> pointB
     return $ mkRegion start stop
 
