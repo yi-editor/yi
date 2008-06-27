@@ -20,6 +20,7 @@ module Yi.Buffer.Region
   , winRegion
   , fmapRegion
   , intersectRegion
+  , unionRegion
   )
 where
 import Data.Typeable
@@ -37,8 +38,13 @@ data Region = Region {regionStart, regionEnd :: !Point}
 fmapRegion :: (Point -> Point) -> Region -> Region
 fmapRegion f (Region x y) = Region (f x) (f y)
 
+-- | Take the intersection of two regions
 intersectRegion :: Region -> Region -> Region
 intersectRegion (Region x1 y1) (Region x2 y2) = ordRegion (max x1 x2) (min y1 y2)
+
+-- | Take the union of two regions (including what is between them)
+unionRegion :: Region -> Region -> Region
+unionRegion (Region x1 y1) (Region x2 y2) = mkRegion (min x1 x2) (max y1 y2)
 
 winRegion :: Window -> Region
 winRegion w = mkRegion (tospnt w) (bospnt w)
