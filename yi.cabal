@@ -196,7 +196,7 @@ executable yi
           build-depends: regex-compat ==0.91
           build-depends: regex-posix ==0.93.1
         
-        build-depends: parsec==2.1.0.0
+        build-depends: parsec >=2.1
 
         ghc-options:   -Wall -optl-Wl,-s -threaded
 -- ghc-options later on get appended to the original
