@@ -136,6 +136,7 @@ numberOfB unit containingUnit = savingPointB $ do
                    moveTo start
                    length <$> untilB ((>= end) <$> pointB) (moveB unit Forward)
 
+whileB :: BufferM Bool -> BufferM a -> BufferM [a]
 whileB cond f = untilB (not <$> cond) f
 
 -- | Repeat an action until the condition is fulfilled or the cursor stops moving.
