@@ -124,18 +124,18 @@ library
       cpp-options: -DSHIM
 
       exposed-modules:  Yi.Mode.Shim
-      other-modules: Shim.SHM, Shim.Utils, Shim.SessionMonad, Shim.Hsinfo, Shim.GhcCompat, Shim.ExprSearch, Shim.ProjectContent
+      other-modules:
+        Shim.SHM, Shim.Utils, Shim.SessionMonad, Shim.Hsinfo, Shim.GhcCompat,
+        Shim.ExprSearch, Shim.ProjectContent, Yi.GHC, Shim.CabalInfo
 
     other-modules:
         Paths_yi,
-        Yi.GHC
         Yi.Syntax.Cplusplus, Yi.Syntax.Haskell, Yi.Syntax.Indent, Yi.Syntax.LiterateHaskell,
         Yi.Syntax.Latex, Yi.Syntax.Paren, Yi.Syntax.Srmc, Yi.Syntax.Cabal, Yi.Syntax.Fractal
 
         Yi.Accessor, Yi.Interpreter,
         Yi.Buffer.Basic
         Yi.Keymap.Keys
-        Shim.CabalInfo
         System.FriendlyPath
         Yi.Buffer.HighLevel, Yi.Buffer.Implementation,
         Yi.Buffer.Normal, Yi.Buffer.Region, Yi.Completion, Yi.Core,
