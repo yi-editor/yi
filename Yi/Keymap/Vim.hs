@@ -85,14 +85,14 @@ resetSelectStyle = setDynamicB $ SelectionStyle Character
 -- | Visual mode, similar to command mode
 vis_mode :: SelectionStyle -> VimMode
 vis_mode selectionStyle = do
-  write (withBuffer (setVisibleSelection True >> pointB >>= setSelectionMarkPointB))
+  write (setVisibleSelection True >> pointB >>= setSelectionMarkPointB)
   core_vis_mode selectionStyle
   write (msgClr >> withBuffer0 (setVisibleSelection False) >> withBuffer0 resetSelectStyle)
 
 core_vis_mode :: SelectionStyle -> VimMode
 core_vis_mode selectionStyle = do
-  write $ withEditor $ do withBuffer0 $ setDynamicB $ selectionStyle
-                          setStatus $ msg selectionStyle
+  write $ do withBuffer0 $ setDynamicB $ selectionStyle
+             setStatus $ msg selectionStyle
   many (cmd_move <|>
         select_any_unit (withBuffer0 . (\r -> resetSelectStyle >> extendSelectRegionB r >> leftB)))
   (vis_single selectionStyle <|| vis_multi)
