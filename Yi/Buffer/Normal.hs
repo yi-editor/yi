@@ -35,7 +35,9 @@ data TextUnit = Character
               | ViWORD -- ^ a WORD as in use in Vim
               | Line  -- ^ a line of text (between newlines)
               | VLine -- ^ a "vertical" line of text (area of text between to characters at the same column number)
+              | Sentence -- ^ ends at a '.', '!', or '?' followed by a blank
               | Paragraph
+              | Delimited Char Char
               | Document
               | GenUnit {genEnclosingUnit :: TextUnit,
                          genUnitBoundary :: Direction -> BufferM Bool}
@@ -48,6 +50,9 @@ isWordChar x = isAlphaNum x || x == '_'
 isNl :: Char -> Bool
 isNl = (== '\n')
 
+-- | Tells if a char can ends a sentence ('.', '!', '?').
+isEndOfSentence :: Char -> Bool
+isEndOfSentence = (`elem` ".!?")
 
 -- | Verifies that the list matches all the predicates, pairwise.
 checks :: [a -> Bool] -> [a] -> Bool
@@ -90,8 +95,13 @@ atBoundary ViWord direction = do
                          | isWordChar c = 2
                          | otherwise    = 3
 atBoundary Line direction = checkPeekB 0 [isNl] direction
+atBoundary Sentence dir =
+    (||) <$> checkPeekB (if dir == Forward then -1 else 0) (rev dir [isEndOfSentence, isSpace]) dir
+         <*> atBoundary Paragraph dir
 atBoundary Paragraph direction =
     checkPeekB (-2) [not . isNl, isNl, isNl] direction
+atBoundary (Delimited c _) Backward = checkPeekB 0 [(== c)] Backward
+atBoundary (Delimited _ c) Forward  = (== c) <$> readB
 atBoundary (GenUnit _ atBound) dir = atBound dir
 
 enclosingUnit :: TextUnit -> TextUnit
