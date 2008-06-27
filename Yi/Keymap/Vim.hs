@@ -78,18 +78,23 @@ beginIns a = write a >> ins_mode
 rep_mode :: VimMode
 rep_mode = write (setStatus "-- REPLACE --") >> many rep_char >> leave
 
+-- | Reset the selection style to a character-wise mode 'SelectionStyle Character'.
+resetSelectStyle :: BufferM ()
+resetSelectStyle = setDynamicB $ SelectionStyle Character
+
 -- | Visual mode, similar to command mode
 vis_mode :: SelectionStyle -> VimMode
 vis_mode selectionStyle = do
   write (withBuffer (setVisibleSelection True >> pointB >>= setSelectionMarkPointB))
   core_vis_mode selectionStyle
-  write (msgClr >> withBuffer0 (setVisibleSelection False) >> withBuffer0 (setDynamicB $ SelectionStyle Character))
+  write (msgClr >> withBuffer0 (setVisibleSelection False) >> withBuffer0 resetSelectStyle)
 
 core_vis_mode :: SelectionStyle -> VimMode
 core_vis_mode selectionStyle = do
   write $ withEditor $ do withBuffer0 $ setDynamicB $ selectionStyle
                           setStatus $ msg selectionStyle
-  many cmd_move
+  many (cmd_move <|>
+        select_any_unit (withBuffer0 . (\r -> resetSelectStyle >> extendSelectRegionB r >> leftB)))
   (vis_single selectionStyle <|| vis_multi)
   where msg (SelectionStyle Line) = "-- VISUAL LINE --"
         msg (SelectionStyle _)    = "-- VISUAL --"
