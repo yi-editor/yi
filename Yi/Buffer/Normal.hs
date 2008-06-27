@@ -17,7 +17,8 @@ module Yi.Buffer.Normal (TextUnit(..),
                          atBoundaryB,
                          numberOfB,
                          deleteB, genMaybeMoveB,
-                         genMoveB, BoundarySide(..), genAtBoundaryB
+                         genMoveB, BoundarySide(..), genAtBoundaryB,
+                         checkPeekB
                          ) where
 
 import Yi.Buffer
