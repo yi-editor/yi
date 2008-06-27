@@ -191,6 +191,8 @@ moveCmdFM_exclusive =
 -- text
     ,(char '{',       Replicate $ Move Paragraph Backward)
     ,(char '}',       Replicate $ Move Paragraph Forward)
+    ,(char '(',       Replicate $ Move Sentence  Backward)
+    ,(char ')',       Replicate $ Move Sentence  Forward)
     ]
     where
         left  = Replicate $ CharMove Backward
