@@ -317,6 +317,17 @@ getSelectRegionB = do
   SelectionStyle unit <- getDynamicB
   unitWiseRegion unit region
 
+-- | Select the given region: set the selection mark at the 'regionStart'
+-- and the current point at the 'regionEnd'.
+setSelectRegionB :: Region -> BufferM ()
+setSelectRegionB region = do
+  m <- getSelectionMarkB
+  setMarkPointB m $ regionStart region
+  moveTo $ regionEnd region
+
+-- | Extend the selection mark using the given region.
+extendSelectRegionB :: Region -> BufferM ()
+extendSelectRegionB region = (setSelectRegionB . unionRegion region) =<< getSelectRegionB
 
 ------------------------------------------
 -- Some line related movements/operations
