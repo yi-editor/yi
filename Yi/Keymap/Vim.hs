@@ -403,15 +403,28 @@ char2unit =
   [('w', ViWord)
   ,('W', ViWORD)
   ,('p', Paragraph)
--- TODO
---,('s', Sentence)
---,('b', ParenBlock)
---,('B', CurlyBraceBlock)
+  ,('s', Sentence)
+  ,('"',  Delimited '"' '"')
+  ,('`',  Delimited '`' '`')
+  ,('\'', Delimited '\'' '\'')
+  ,('(',  Delimited '(' ')')
+  ,(')',  Delimited '(' ')')
+  ,('b',  Delimited '(' ')')
+  ,('{',  Delimited '{' '}')
+  ,('}',  Delimited '{' '}')
+  ,('B',  Delimited '{' '}')
+  ,('<',  Delimited '<' '>')
+  ,('>',  Delimited '<' '>')
   ]
 
 -- NOTE,TODO: Form some units (like words) one should
 -- not select more than the current line
 select_a_unit :: TextUnit -> BufferM Region
+select_a_unit (Delimited cStart cStop) = savingPointB $ do
+    start <- untilB ((==cStart) <$> readB) leftB >> pointB
+    rightB
+    stop  <- untilB ((==cStop) <$> readB) rightB >> rightB >> pointB
+    return $ mkRegion start stop
 select_a_unit unit = savingPointB $ do
     start <- genMaybeMoveB unit (Backward,InsideBound) Backward >> pointB
     stop  <- genMoveB unit (Backward,InsideBound) Forward >> pointB
