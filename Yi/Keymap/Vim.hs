@@ -231,6 +231,7 @@ viReplicateMove (Move VLine Forward)  i = lineMoveRel i >> return ()
 viReplicateMove (Move VLine Backward) i = lineMoveRel (-i) >> return ()
 viReplicateMove (CharMove Forward)    i = moveXorEol i
 viReplicateMove (CharMove Backward)   i = moveXorSol i
+viReplicateMove (Replicate move j)    i = viReplicateMove move (i * j)
 viReplicateMove move                  i = replicateM_ i $ viMove move
 
 
