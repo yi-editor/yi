@@ -382,16 +382,16 @@ getAppropriateFiles start s = do
   return (sDir, matching)
 
 
--- | Given a possible path and a prefix complete as much of the file name
---   as can be worked out from teh path and the prefix. 
+-- | Given a possible path and a prefix complete as much of the file
+--   name as can be worked out from the path and the prefix.
 completeFileName :: Maybe String -> String -> YiM String
 completeFileName start s = do
   (sDir, files) <- getAppropriateFiles start s
   withEditor $ completeInList s (isPrefixOf s) $ map (sDir </>) files
 
  
- -- | Given a path, trim the file name bit if it exists.  If no path given,
- -- | return current directory
+ -- | Given a path, trim the file name bit if it exists.  If no path
+ --   given, return current directory.
 getFolder :: Maybe String -> IO String
 getFolder Nothing     = getCurrentDirectory
 getFolder (Just path) = do
