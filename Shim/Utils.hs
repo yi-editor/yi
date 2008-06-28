@@ -7,7 +7,6 @@ module Shim.Utils
   (
     processGetContents
   , splitBy
-  , excToMaybe
   , unSplit
   , splitElem
   , chomp
@@ -41,7 +40,6 @@ import System.FilePath ( takeDirectory )
 import Data.List ( elem )
 import qualified Control.Exception as CE
 import System.IO.Unsafe ( unsafePerformIO )
-import Control.Parallel.Strategies ( rnf, NFData )
 import Control.Concurrent.MVar
 import Yi.Debug
 import Prelude hiding (error)
@@ -173,9 +171,9 @@ whenM cond m = do
 unlessM :: (Monad m) => m Bool -> m () -> m ()
 unlessM cond = whenM (liftM not cond)
 
-excToMaybe :: (NFData a) => a -> Maybe a
-excToMaybe x = unsafePerformIO $
-  CE.catch (rnf x `seq` return $ Just x) (\_ -> return $  Nothing)
+-- excToMaybe :: (NFData a) => a -> Maybe a
+-- excToMaybe x = unsafePerformIO $
+--   CE.catch (rnf x `seq` return $ Just x) (\_ -> return $  Nothing)
 
 shorten :: Int -> String -> String
 shorten n s = if length s > n then take (n-4) s ++ "..." else s
