@@ -34,10 +34,12 @@ data-files:
   art/setup-script.png
 extra-source-files: Yi/Syntax/alex.hsinc
 
-flag shim
-  Description: Bake in shim support
-  -- Can be useful to disable; ghc package is usually not available for profiling.
-  -- TODO: rename this to "GHC API"
+flag ghcAPI
+  Description: Enable linking with GHC API for advanced features.
+  -- Can be useful to disable; ghc package is difficult to rebuild;
+  --  * normally not available for profiling.      
+  --  * links against old/new version of bytestring
+  -- ...
 
 flag vty
   Description: Provide Vty UI
@@ -65,6 +67,7 @@ flag testing
 flag oldregex
   Default: False
   Description: Support for regex packages in the 0.7 series.
+  -- remove this soon.
 
 library
   if flag(hacking)
@@ -116,7 +119,7 @@ library
     if flag(oldregex)
        cpp-options: -DOLDREGEX
 
-    if flag (shim)
+    if flag (ghcAPI)
       build-depends: ghc
       build-depends: parallel
       build-depends: haskell98
@@ -125,8 +128,8 @@ library
 
       exposed-modules:  Yi.Mode.Shim
       other-modules:
-        Shim.SHM, Shim.Utils, Shim.SessionMonad, Shim.Hsinfo, Shim.GhcCompat,
-        Shim.ExprSearch, Shim.ProjectContent, Yi.GHC, Shim.CabalInfo
+        Shim.SHM, Shim.SessionMonad, Shim.Hsinfo, Shim.GhcCompat,
+        Shim.ExprSearch, Shim.ProjectContent, Yi.GHC
 
     other-modules:
         Paths_yi,
@@ -156,6 +159,8 @@ library
         Data.Digest.SHA1
         Data.Tree.Zipper
         Data.DelayList
+        Shim.CabalInfo
+        Shim.Utils
 
 --         Broken:
 --                Yi.Keymap.Ee,
@@ -224,7 +229,7 @@ executable yi
           build-depends: HOC, HOC-AppKit, HOC-Foundation
           cpp-options: -DFRONTEND_COCOA
 
-        if flag (shim)
+        if flag (ghcAPI)
           build-depends: ghc
           build-depends: parallel
           build-depends: haskell98
@@ -252,6 +257,7 @@ executable yi
            Yi.Buffer.Basic
            Yi.Keymap.Keys
            Shim.CabalInfo
+           Shim.Utils
            System.FriendlyPath
            Yi.UI.Common
 
