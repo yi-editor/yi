@@ -9,7 +9,10 @@
 --  * the textual units they work on
 --  * the direction towards which they operate (if applicable)
 
-module Yi.Buffer.Normal (TextUnit(..), 
+module Yi.Buffer.Normal (TextUnit(Character, Word, Line, ViWord, ViWORD, VLine,
+                                  Sentence, Paragraph, Delimited, Document),
+                         -- TextUnit is exported abstract intentionally:
+                         -- we'd like to move more units to the GenUnit format.
                          moveB, maybeMoveB,
                          transformB, transposeB,
                          peekB, regionOfB, regionOfPartB, readUnitB,
@@ -135,7 +138,6 @@ genAtBoundaryB u d s = withOffset (off u d s) $ atBoundaryB u d
           off _    Backward OutsideBound = 1
           off _    Forward   InsideBound = 1
           off _    Forward  OutsideBound = 0
-
 
 
 numberOfB :: TextUnit -> TextUnit -> BufferM Int
