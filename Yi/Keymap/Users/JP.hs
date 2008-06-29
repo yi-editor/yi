@@ -32,6 +32,18 @@ rightHand = ["yuiop", "hjkl;", "nm,./"]
 -- data Mark = Paste | SetMark | Cut | Copy | SwitchMark
 -- data Special = Complete | Undo | Indent | Search
 
+-- Special shift for events that understands qwerty layout.
+shi_ (Event (KASCII c) ms) | isAlpha c = Event (KASCII (toUpper c)) ms
+shi_ (Event (KASCII ',') ms)  = Event (KASCII '<') ms
+shi_ (Event (KASCII '.') ms)  = Event (KASCII '>') ms
+shi_ (Event (KASCII '/') ms)  = Event (KASCII '?') ms
+shi_ (Event (KASCII ';') ms)  = Event (KASCII ':') ms
+shi_ (Event (KASCII '\'') ms)  = Event (KASCII '"') ms
+shi_ (Event (KASCII '[') ms)  = Event (KASCII '{') ms
+shi_ (Event (KASCII ']') ms)  = Event (KASCII '}') ms
+shi_ _ = error "shi_: unhandled event"                          
+
+
 selfInsertKeymap :: KM ()
 selfInsertKeymap = do
   c <- printableChar
@@ -56,7 +68,7 @@ quitInsert = oneOf [ctrl $ spec KEnter, spec KEsc]
 
 quickCmdKeymap :: KM ()
 quickCmdKeymap =     mkCmdKeymap (return Character)  ctrl
-                 <|> mkCmdKeymap (return Word)      (ctrl . shift)
+                 <|> mkCmdKeymap (return Word)      (ctrl . shi_)
 
 quitKeymap :: KM ()
 quitKeymap = do
