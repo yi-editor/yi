@@ -22,7 +22,7 @@ import Yi.KillRing
 killRegionE :: YiM ()
 killRegionE = do r <- withBuffer getSelectRegionB
                  text <- withBuffer $ readRegionB r
-                 killringPut text
+                 killringPut (regionDirection r) text
                  withBuffer $ deleteRegionB r
 
 -- | C-k
@@ -31,19 +31,19 @@ killLineE = withUnivArg $ \a -> case a of
                Nothing -> killRestOfLineE
                Just n -> replicateM_ (2*n) killRestOfLineE
 
-killringPut :: String -> YiM ()
-killringPut s = withEditor $ modifyA killringA $ krPut s
+killringPut :: Direction -> String -> YiM ()
+killringPut dir s = withEditor $ modifyA killringA $ krPut dir s
 
 -- | Kill the rest of line
 killRestOfLineE :: YiM ()
 killRestOfLineE =
     do eol <- withBuffer atEol
        l <- withBuffer readRestOfLnB
-       killringPut l
+       killringPut Forward l
        withBuffer deleteToEol
        when eol $
             do c <- withBuffer readB
-               killringPut [c]
+               killringPut Forward [c]
                withBuffer (deleteN 1)
 
 -- | C-y
@@ -54,10 +54,12 @@ yankE = do (text:_) <- getsA killringA krContents
 
 -- | M-w
 killRingSaveE :: YiM ()
-killRingSaveE = do text <- withBuffer $ do
+killRingSaveE = do (r, text) <- withBuffer $ do
                             setA highlightSelectionA False
-                            readRegionB =<< getSelectRegionB
-                   killringPut text
+                            r <- getSelectRegionB
+                            text <- readRegionB r
+                            return (r,text)
+                   killringPut (regionDirection r) text
 -- | M-y
 
 -- TODO: Handle argument, verify last command was a yank

@@ -9,6 +9,7 @@ module Yi.KillRing (Killring
                    ) 
     where
 
+import Yi.Buffer.Implementation (Direction(..))
 
 data Killring = Killring { krKilled :: Bool
                          , krAccumulate :: Bool
@@ -34,12 +35,14 @@ krEndCmd kr@Killring {krKilled = killed} = kr {krKilled = False, krAccumulate = 
 
 -- | Put some text in the killring.
 -- It's accumulated if the last command was a kill too
-krPut :: String -> Killring -> Killring
-krPut s kr@Killring {krContents = r@(x:xs), krAccumulate=acc}
+krPut :: Direction -> String -> Killring -> Killring
+krPut dir s kr@Killring {krContents = r@(x:xs), krAccumulate=acc}
     = kr {krKilled = True,
-          krContents = if acc then (x++s):xs
+          krContents = if acc then (case dir of 
+                                      Forward  -> x++s
+                                      Backward -> s++x):xs
                               else s:take maxDepth r }
-krPut _ _ = error "killring invariant violated"
+krPut _ _ _ = error "killring invariant violated"
 
 -- | Set the top of the killring. Never accumulate the previous content.
 krSet :: String -> Killring -> Killring
