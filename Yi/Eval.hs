@@ -18,6 +18,7 @@ import Yi.Keymap
 import Yi.Interact hiding (write)
 import Yi.Event
 import Yi.Buffer
+import Yi.Buffer.Region
 import Yi.Buffer.HighLevel
 import Yi.Dired
 import Yi.Interpreter
@@ -91,6 +92,7 @@ execEditorAction s = do
                  toDyn (makeAction :: BufferM Bool -> Action),
                  toDyn (makeAction :: BufferM Int -> Action),
                  toDyn (makeAction :: BufferM String -> Action),
+                 toDyn (makeAction :: BufferM Region -> Action),
 
                  toDyn (makeAction :: EditorM () -> Action),
 

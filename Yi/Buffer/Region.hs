@@ -6,10 +6,11 @@
 module Yi.Buffer.Region 
   ( Region
   , emptyRegion
-  , mkRegion
+  , mkRegion, mkRegion'
   , mkVimRegion
   , regionStart
   , regionEnd
+  , regionDirection
   , swapRegionsB
   , deleteRegionB
   , replaceRegionB
@@ -68,6 +69,9 @@ ordRegion x y = if x < y then Region Forward x y else emptyRegion
 -- the right bound is excluded
 mkRegion :: Point -> Point -> Region
 mkRegion x y = if x <= y then Region Forward x y else Region Backward y x
+
+mkRegion' :: Direction -> Point -> Point -> Region
+mkRegion' d x y = if x <= y then Region d x y else Region d y x
 
 -- | The empty region
 emptyRegion :: Region

@@ -294,7 +294,7 @@ extendRegionToBoundaries unit bs1 bs2 region = savingPointB $ do
   moveTo $ regionEnd region
   genMaybeMoveB unit (Forward, bs2) Forward
   stop <- pointB
-  return $ mkRegion start stop
+  return $ mkRegion' (regionDirection region) start stop
 
 unitWiseRegion :: TextUnit -> Region -> BufferM Region
 unitWiseRegion unit = extendRegionToBoundaries unit InsideBound OutsideBound
@@ -313,7 +313,7 @@ getSelectRegionB :: BufferM Region
 getSelectRegionB = do
   m <- getMarkPointB =<< getSelectionMarkB
   p <- pointB
-  let region = mkRegion m p
+  let region = mkRegion p m
   SelectionStyle unit <- getDynamicB
   unitWiseRegion unit region
 
