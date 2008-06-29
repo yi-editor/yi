@@ -431,13 +431,14 @@ revertPendingUpdatesB = do
 writeB :: Char -> BufferM ()
 writeB c = do
   off <- pointB
-  mapM_ applyUpdate [Delete off 1, Insert off (UTF8.fromString [c])]
+  deleteNAt Forward 1 off
+  insertB c
 
 ------------------------------------------------------------------------
 
 -- | Insert the list at specified point, extending size of buffer
 insertNAt :: [Char] -> Point -> BufferM ()
-insertNAt cs pnt = applyUpdate (Insert pnt $ UTF8.fromString cs)
+insertNAt cs pnt = applyUpdate (Insert pnt Forward $ UTF8.fromString cs)
 
 -- | Insert the list at current point, extending size of buffer
 insertN :: [Char] -> BufferM ()
@@ -450,14 +451,14 @@ insertB = insertN . return
 ------------------------------------------------------------------------
 
 -- | @deleteNAt n p@ deletes @n@ characters forwards from position @p@
-deleteNAt :: Int -> Point -> BufferM ()
-deleteNAt n pos = do
+deleteNAt :: Direction -> Int -> Point -> BufferM ()
+deleteNAt dir n pos = do
   els <- nelemsB n pos
-  applyUpdate (Delete pos $ Size $ B.length $ UTF8.fromString els)
+  applyUpdate (Delete pos dir $ Size $ B.length $ UTF8.fromString els)
 
 -- | @deleteNBytes n p@ deletes @n@ byes forwards from position @p@
-deleteNBytes :: Size -> Point -> BufferM ()
-deleteNBytes n pos = applyUpdate (Delete pos n)
+deleteNBytes :: Direction -> Size -> Point -> BufferM ()
+deleteNBytes dir n pos = applyUpdate (Delete pos dir n)
 
 
 ------------------------------------------------------------------------
@@ -612,7 +613,7 @@ readAtB i = do
 
 -- | Delete @n@ characters forward from the current point
 deleteN :: Int -> BufferM ()
-deleteN n = pointB >>= deleteNAt n
+deleteN n = pointB >>= deleteNAt Forward n
 
 ------------------------------------------------------------------------
 

@@ -79,7 +79,10 @@ import Data.Typeable
 -- | Direction of movement inside a buffer
 data Direction = Backward
                | Forward
-                 deriving (Eq, Typeable)
+                 deriving (Eq, Typeable,Show)
+
+reverseDir Forward = Backward
+reverseDir Backward = Forward
 
 newtype Mark = Mark {markId::Int} deriving (Eq, Ord, Show)
 pointMark, markMark :: Mark
@@ -109,15 +112,16 @@ data FBufferData syntax =
                     }
         deriving Typeable
 
+-- | Mutation actions (also used the undo or redo list)
 --
--- | Mutation actions (from the undo or redo list)
---
--- We use the /partial checkpoint/ (Berlage, pg16) strategy to store
+-- For the undo/redo, we use the /partial checkpoint/ (Berlage, pg16) strategy to store
 -- just the components of the state that change.
 --
-
-data Update = Insert {updatePoint :: !Point, insertUpdateString :: !B.ByteString} 
-            | Delete {updatePoint :: !Point, deleteUpdateSize :: !Size}
+-- Note that the update direction is only a hint for moving the cursor
+-- (mainly for undo purposes); the insertions and deletions are always
+-- applied Forward.
+data Update = Insert {updatePoint :: !Point, updateDirection :: !Direction, insertUpdateString :: !B.ByteString} 
+            | Delete {updatePoint :: !Point, updateDirection :: !Direction, deleteUpdateSize :: !Size}
               deriving (Show, Typeable)
 
 data UIUpdate = TextUpdate Update
@@ -169,6 +173,8 @@ inBounds i end | i <= 0    = 0
 ------------------------------------------------------------------------
 -- Mid-level insert/delete
 
+-- | Shift a mark position, supposing an update at a given point, by a given amount.
+-- Negative amount represent deletions.
 shiftMarkValue :: Point -> Size -> MarkValue -> MarkValue
 shiftMarkValue from by (MarkValue p leftBound) = MarkValue shifted leftBound
     where shifted | p < from  = p
@@ -288,8 +294,8 @@ countBytes (x:xs) m
 -- | Checks if an Update is valid
 isValidUpdate :: Update -> BufferImpl syntax -> Bool
 isValidUpdate u b = case u of
-                    (Delete p n)   -> check p && check (p +~ n)
-                    (Insert p _)   -> check p
+                    (Delete p _ n)   -> check p && check (p +~ n)
+                    (Insert p _ _)   -> check p
     where check (Point x) = x >= 0 && x <= F.length (mem b)
 
 
@@ -301,20 +307,24 @@ applyUpdateI u fb = touchSyntax (updatePoint u) $
                                    -- FIXME: this is inefficient; find a way to use mapMonotonic
                                    -- (problem is that marks can have different gravities)
     where (p', amount) = case u of
-                           Insert pnt cs  -> (insertChars p (F.fromByteString cs) pnt, Size (B.length cs))
-                           Delete pnt len -> (deleteChars p pnt len, negate len)
+                           Insert pnt _ cs  -> (insertChars p (F.fromByteString cs) pnt, Size (B.length cs))
+                           Delete pnt _ len -> (deleteChars p pnt len, negate len)
           shift = shiftMarkValue (updatePoint u) amount
           p = mem fb
           -- FIXME: remove collapsed overlays
    
 -- | Apply a /valid/ update and also move point in buffer to update position
 applyUpdateWithMoveI :: Update -> BufferImpl syntax -> BufferImpl syntax
-applyUpdateWithMoveI u = applyUpdateI u . moveToI (updatePoint u)
+applyUpdateWithMoveI u = case updateDirection u of
+                           Forward ->  apply . move
+                           Backward -> move . apply
+    where move = moveToI (updatePoint u)
+          apply = applyUpdateI u
 
 -- | Reverse the given update
 reverseUpdateI :: Update -> BufferImpl syntax -> Update
-reverseUpdateI (Delete p n)  b = Insert p (readBytes (mem b) n p)
-reverseUpdateI (Insert p cs) _ = Delete p (Size $ B.length cs)
+reverseUpdateI (Delete p dir n)  b = Insert p (reverseDir dir) (readBytes (mem b) n p)
+reverseUpdateI (Insert p dir cs) _ = Delete p (reverseDir dir) (Size $ B.length cs)
 
 
 ------------------------------------------------------------------------

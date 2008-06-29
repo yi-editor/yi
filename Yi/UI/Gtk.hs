@@ -419,11 +419,11 @@ replaceTagsIn ui from to buf gtkBuf = do
       textBufferApplyTag gtkBuf tag f t
 
 applyUpdate :: TextBuffer -> Update -> IO ()
-applyUpdate buf (Insert (Point p) s) = do
+applyUpdate buf (Insert (Point p) _ s) = do
   i <- textBufferGetIterAtOffset buf p
   textBufferInsert buf i (fromUTF8ByteString s)
 
-applyUpdate buf (Delete p s) = do
+applyUpdate buf (Delete p _ s) = do
   i0 <- textBufferGetIterAtOffset buf (fromPoint p)
   i1 <- textBufferGetIterAtOffset buf (fromPoint (p +~ s))
   textBufferDelete buf i0 i1

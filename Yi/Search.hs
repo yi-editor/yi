@@ -213,7 +213,7 @@ searchAndRepLocal re str = do
                     then return False
                     else do         -- do the replacement
                 moveTo i
-                deleteNBytes (j ~- i) =<< pointB
+                deleteNBytes Forward (j ~- i) =<< pointB
                 insertN str
                 moveTo p          -- and back to where we were!
                 return True -- signal success
