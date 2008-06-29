@@ -161,7 +161,7 @@ dispatch ev =
              ambiguous = not (null possibilities) && all isJust possibilities
          setA keymapProcessA (if ambiguous then freshP else p')
          let actions0 = case p' of 
-                          I.Fail -> [makeAction $ msgEditor "Unrecognized input"]
+                          I.Fail -> [makeAction $ msgEditor $ "Unrecognized input (on = "++ show ev ++")"]
                           _ -> actions
              actions1 = if ambiguous 
                           then [makeAction $ msgEditor "Keymap was in an ambiguous state! Resetting it."]

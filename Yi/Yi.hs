@@ -83,6 +83,7 @@ defaultPublishedActions = M.fromList $
     , ("Forward"                , box Forward)
     , ("Backward"               , box Backward)
     , ("deleteBlankLinesB"      , box deleteBlankLinesB)
+    , ("writeB"                 , box writeB)
     ]
 
   where box x = [toDyn x]
