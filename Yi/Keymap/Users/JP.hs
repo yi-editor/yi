@@ -7,6 +7,7 @@ module Yi.Keymap.Users.JP where
 import Prelude hiding (error)
 import Control.Monad.State
 import Data.Char
+import Yi.Keymap.Keys
 import Yi.Keymap.Emacs.Utils (insertSelf)
 import Yi.Yi
 import qualified Yi.Interact as I (choice, I())
@@ -28,30 +29,13 @@ leftHand, rightHand :: [String]
 leftHand = ["qwert", "asdfg", "zxcvb"]
 rightHand = ["yuiop", "hjkl;", "nm,./"]
 
--- * Some event transformers.
-
-shi_,ctr_ :: Event -> Event
-shi_ (Event (KASCII c) ms) | isAlpha c = Event (KASCII (toUpper c)) ms
-shi_ (Event (KASCII ',') ms)  = Event (KASCII '<') ms
-shi_ (Event (KASCII '.') ms)  = Event (KASCII '>') ms
-shi_ (Event (KASCII '/') ms)  = Event (KASCII '?') ms
-shi_ (Event (KASCII ';') ms)  = Event (KASCII ':') ms
-shi_ _ = error "shi_: unhandled event"                          
-ctr_ (Event k ms) = Event k (MCtrl:ms)
-
-key_ :: Char -> Event
-key_ c = Event (KASCII c) []
-
-
 -- data Mark = Paste | SetMark | Cut | Copy | SwitchMark
 -- data Special = Complete | Undo | Indent | Search
 
 selfInsertKeymap :: KM ()
 selfInsertKeymap = do
-  Event (KASCII c) [] <- satisfy isPrintableEvent
+  c <- printableChar
   write (insertSelf c)
-      where isPrintableEvent (Event (KASCII c) []) = c >= ' '
-            isPrintableEvent _ = False
 
 retKeymap :: KM ()
 retKeymap = do
@@ -60,18 +44,19 @@ retKeymap = do
 
 insertKeymap :: KM ()
 insertKeymap = do
-  event $ key_ 'g'
+  event $ char 'g'
   write $ msgEditor "-- INSERT --"
   many $ do
     write $ msgEditor "-- INSERT --"
     (selfInsertKeymap <|> retKeymap <|> quickCmdKeymap) <|| unrecognized
-  satisfy (`elem` [Event KEnter [MCtrl], Event KEsc []])
+  quitInsert
   return ()
 
+quitInsert = oneOf [ctrl $ spec KEnter, spec KEsc]
 
 quickCmdKeymap :: KM ()
-quickCmdKeymap =     mkCmdKeymap (return Character)  ctr_
-                 <|> mkCmdKeymap (return Word)      (ctr_ . shi_)
+quickCmdKeymap =     mkCmdKeymap (return Character)  ctrl
+                 <|> mkCmdKeymap (return Word)      (ctrl . shift)
 
 quitKeymap :: KM ()
 quitKeymap = do
@@ -92,13 +77,13 @@ commandsKeymap = do
       cmds = mkCmdKeymap (fst <$> get) id
       unts = zipWith (zipWith mkUnt) units leftHand
       mkUnt unt ch = do
-        event $ key_ ch
+        event $ char ch
         put unt
 
 mkCmdKeymap :: KM TextUnit -> (Event -> Event) -> KM ()
 mkCmdKeymap getUnit mods = I.choice $ concat $ zipWith (zipWith mkCmd) commands rightHand
     where mkCmd cmd ch = do
-            event $ mods $ key_ ch
+            event $ mods $ char ch
             unt <- getUnit
             write (cmd unt)
 

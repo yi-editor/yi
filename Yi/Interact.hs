@@ -244,8 +244,8 @@ instance (Show w, Show ev) => Show (P ev w) where
 
 -- ---------------------------------------------------------------------------
 -- Derived operations
-oneOf :: (Ord event, Bounded event, MonadInteract m w event) => [event] -> m event
-oneOf s = satisfy (`elem` s)
+oneOf :: (Ord event, MonadInteract m w event) => [event] -> m event
+oneOf s = choice $ map event s
 
 anyEvent :: (Ord event, MonadInteract m w event) => m event
 anyEvent = eventBounds Nothing Nothing

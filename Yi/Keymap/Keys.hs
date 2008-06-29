@@ -8,6 +8,13 @@ import Yi.Yi
 import Data.Char
 import Prelude hiding (error)
 
+printableChar :: (MonadInteract m w Event) => m Char
+printableChar = do
+  Event (KASCII c) [] <- anyEvent
+  when (not $ isPrint c) $ 
+       fail "unprintable character"
+  return c
+
 
 charOf :: (MonadInteract m w Event) => (Event -> Event) -> Char -> Char -> m Char
 charOf modifier l h = 
