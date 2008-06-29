@@ -114,7 +114,7 @@ keys =
   , ( "C-u",      readArgC)
   , ( "C-v",      write $ scrollDownE)
   , ( "M-v",      write $ scrollUpE)
-  , ( "C-w",      write $ killRegionE)
+  , ( "C-w",      write $ killRegion)
   , ( "C-z",      write $ suspendEditor)
   , ( "C-x C-o",  write deleteBlankLinesB)
   , ( "C-x ^",    write $ repeatingArg enlargeWinE)

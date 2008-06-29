@@ -11,7 +11,7 @@ import Yi.Buffer
 import Yi.Buffer.HighLevel
 import Yi.Accessor
 import Yi.Editor
-import Control.Monad ( when, replicateM_ )
+import Control.Monad ( replicateM_ )
 import Yi.KillRing
 
 
@@ -19,32 +19,23 @@ import Yi.KillRing
 
 
 -- | C-w
-killRegionE :: YiM ()
-killRegionE = do r <- withBuffer getSelectRegionB
-                 text <- withBuffer $ readRegionB r
-                 killringPut (regionDirection r) text
-                 withBuffer $ deleteRegionB r
+killRegion :: BufferM ()
+killRegion = deleteRegionB =<< getSelectRegionB
 
 -- | C-k
 killLineE :: YiM ()
-killLineE = withUnivArg $ \a -> case a of
-               Nothing -> killRestOfLineE
-               Just n -> replicateM_ (2*n) killRestOfLineE
+killLineE = withUnivArg $ \a -> withBuffer $ case a of
+               Nothing -> killRestOfLine
+               Just n -> replicateM_ (2*n) killRestOfLine
 
-killringPut :: Direction -> String -> YiM ()
-killringPut dir s = withEditor $ modifyA killringA $ krPut dir s
+killringPut :: Direction -> String -> EditorM ()
+killringPut dir s = modifyA killringA $ krPut dir s
 
 -- | Kill the rest of line
-killRestOfLineE :: YiM ()
-killRestOfLineE =
-    do eol <- withBuffer atEol
-       l <- withBuffer readRestOfLnB
-       killringPut Forward l
-       withBuffer deleteToEol
-       when eol $
-            do c <- withBuffer readB
-               killringPut Forward [c]
-               withBuffer (deleteN 1)
+killRestOfLine :: BufferM ()
+killRestOfLine =
+    do eol <- atEol
+       if eol then deleteN 1 else deleteToEol
 
 -- | C-y
 yankE :: EditorM ()
@@ -53,8 +44,8 @@ yankE = do (text:_) <- getsA killringA krContents
                             insertN text
 
 -- | M-w
-killRingSaveE :: YiM ()
-killRingSaveE = do (r, text) <- withBuffer $ do
+killRingSaveE :: EditorM ()
+killRingSaveE = do (r, text) <- withBuffer0 $ do
                             setA highlightSelectionA False
                             r <- getSelectRegionB
                             text <- readRegionB r
@@ -64,11 +55,12 @@ killRingSaveE = do (r, text) <- withBuffer $ do
 
 -- TODO: Handle argument, verify last command was a yank
 yankPopE :: EditorM ()
-yankPopE = do withBuffer0 (deleteRegionB =<< getSelectRegionB)
-              modifyA killringA $ \kr ->
-                  let ring = krContents kr
-                  in kr {krContents = tail ring ++ [head ring]}
-              yankE
+yankPopE = do 
+  kr <- getA killringA
+  withBuffer0 (deleteRegionB =<< getSelectRegionB)
+  setA killringA $ let ring = krContents kr
+                   in kr {krContents = tail ring ++ [head ring]}
+  yankE
 
 -- | C-M-w
 appendNextKillE :: YiM ()
