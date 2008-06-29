@@ -49,7 +49,7 @@ type KeymapEndo = Keymap -> Keymap
 
 type KeymapProcess = I.P Event Action
 
-
+-- | Configuration record. All Yi hooks can be set here.
 data Config = Config {startFrontEnd :: UI.UIBoot,
                       configUI :: UIConfig,
                       startAction :: YiM (),
@@ -58,7 +58,10 @@ data Config = Config {startFrontEnd :: UI.UIBoot,
                       modeTable :: ReaderT String Maybe AnyMode,
                       fundamentalMode :: Mode (),
                       publishedActions :: M.Map String [Dynamic],
-                      debugMode :: Bool}
+                      debugMode :: Bool,
+                      configKillringAccumulate :: !Bool 
+                      -- ^ accumulate cuts automatically in killring
+                     }
 
 
 data Yi = Yi {yiEditor :: IORef Editor,

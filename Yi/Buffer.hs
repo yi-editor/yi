@@ -11,6 +11,7 @@ module Yi.Buffer
   , FBuffer       ( .. )
   , BufferM       ( .. )
   , runBuffer
+  , runBufferFull
   , runBufferDummyWindow
   , keyB
   , curLn
@@ -305,8 +306,10 @@ delOverlayB ov = do
 -- | Execute a @BufferM@ value on a given buffer and window.  The new state of
 -- the buffer is returned alongside the result of the computation.
 runBuffer :: Window -> FBuffer -> BufferM a -> (a, FBuffer)
-runBuffer w b f = let (a, b0, updates) = runRWS (fromBufferM f) w b
-                in (a, modifier pendingUpdatesA (++ fmap TextUpdate updates) b0)
+runBuffer w b f = let (a, _, b') = runBufferFull w b f in (a,b')
+
+runBufferFull w b f = let (a, b0, updates) = runRWS (fromBufferM f) w b
+                  in (a, updates, modifier pendingUpdatesA (++ fmap TextUpdate updates) b0)
 
 -- | Execute a @BufferM@ value on a given buffer, using a dummy window.  The new state of
 -- the buffer is returned alongside the result of the computation.

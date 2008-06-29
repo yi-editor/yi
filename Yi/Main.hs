@@ -102,9 +102,9 @@ data Opts = Help
           | HConfOption
 
 -- | List of editors for which we provide an emulation.
-editors :: [(String,Keymap)]
-editors = [("emacs", Emacs.keymap),
-           ("vim", Vim.keymap)]
+editors :: [(String,Config -> Config)]
+editors = [("emacs", \cfg -> cfg {defaultKm = Emacs.keymap, configKillringAccumulate = True}),
+           ("vim",   \cfg -> cfg {defaultKm = Vim.keymap})]
 
 options :: [OptDescr Opts]
 options = [
@@ -175,6 +175,7 @@ defaultConfig =
          , modeTable = defaultModeMap
          , fundamentalMode = defaultFundamentalMode
          , debugMode = False
+         , configKillringAccumulate = False
          }
 
 openScratchBuffer :: YiM ()
@@ -205,7 +206,7 @@ getConfig cfg opt =
       LineNo l      -> appendAction (withBuffer (gotoLn (read l)))
       File file     -> appendAction (fnewE file)
       EditorNm emul -> case lookup (fmap toLower emul) editors of
-             Just km -> return cfg { defaultKm = km }
+             Just modifyCfg -> return $ modifyCfg cfg
              Nothing -> fail $ "Unknown emulation: " ++ show emul
       _ -> return cfg
   where appendAction a = return $ cfg { startAction = startAction cfg >> a >> return ()}
