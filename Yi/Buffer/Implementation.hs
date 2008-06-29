@@ -81,6 +81,7 @@ data Direction = Backward
                | Forward
                  deriving (Eq, Typeable,Show)
 
+reverseDir :: Direction -> Direction
 reverseDir Forward = Backward
 reverseDir Backward = Forward
 
@@ -120,9 +121,20 @@ data FBufferData syntax =
 -- Note that the update direction is only a hint for moving the cursor
 -- (mainly for undo purposes); the insertions and deletions are always
 -- applied Forward.
-data Update = Insert {updatePoint :: !Point, updateDirection :: !Direction, insertUpdateString :: !B.ByteString} 
-            | Delete {updatePoint :: !Point, updateDirection :: !Direction, deleteUpdateSize :: !Size}
+data Update = Insert {updatePoint :: !Point, updateDirection :: !Direction, insertUpdateString :: !LazyB.ByteString} 
+            | Delete {updatePoint :: !Point, updateDirection :: !Direction, deleteUpdateString :: !LazyB.ByteString}
+              -- Note that keeping the text does not cost much: we keep the updates in the undo list;
+              -- if it's a "Delete" it means we have just inserted the text in the buffer, so the update shares
+              -- the data with the buffer. If it's an "Insert" we have to keep the data any way.
+
               deriving (Show, Typeable)
+
+updateString :: Update -> LazyUTF8.ByteString
+updateString (Insert _ _ s) = s
+updateString (Delete _ _ s) = s
+
+updateSize :: Update -> Size
+updateSize = Size . fromIntegral . LazyB.length . updateString
 
 data UIUpdate = TextUpdate Update
               | StyleUpdate !Point !Size
@@ -294,7 +306,7 @@ countBytes (x:xs) m
 -- | Checks if an Update is valid
 isValidUpdate :: Update -> BufferImpl syntax -> Bool
 isValidUpdate u b = case u of
-                    (Delete p _ n)   -> check p && check (p +~ n)
+                    (Delete p _ _)   -> check p && check (p +~ updateSize u)
                     (Insert p _ _)   -> check p
     where check (Point x) = x >= 0 && x <= F.length (mem b)
 
@@ -307,8 +319,9 @@ applyUpdateI u fb = touchSyntax (updatePoint u) $
                                    -- FIXME: this is inefficient; find a way to use mapMonotonic
                                    -- (problem is that marks can have different gravities)
     where (p', amount) = case u of
-                           Insert pnt _ cs  -> (insertChars p (F.fromByteString cs) pnt, Size (B.length cs))
-                           Delete pnt _ len -> (deleteChars p pnt len, negate len)
+                           Insert pnt _ cs -> (insertChars p (F.fromLazyByteString cs) pnt, sz)
+                           Delete pnt _ _  -> (deleteChars p pnt sz, negate sz)
+          sz = updateSize u
           shift = shiftMarkValue (updatePoint u) amount
           p = mem fb
           -- FIXME: remove collapsed overlays
@@ -322,9 +335,9 @@ applyUpdateWithMoveI u = case updateDirection u of
           apply = applyUpdateI u
 
 -- | Reverse the given update
-reverseUpdateI :: Update -> BufferImpl syntax -> Update
-reverseUpdateI (Delete p dir n)  b = Insert p (reverseDir dir) (readBytes (mem b) n p)
-reverseUpdateI (Insert p dir cs) _ = Delete p (reverseDir dir) (Size $ B.length cs)
+reverseUpdateI :: Update -> Update
+reverseUpdateI (Delete p dir cs) = Insert p (reverseDir dir) cs
+reverseUpdateI (Insert p dir cs) = Delete p (reverseDir dir) cs
 
 
 ------------------------------------------------------------------------

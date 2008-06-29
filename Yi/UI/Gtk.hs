@@ -45,6 +45,7 @@ import qualified Graphics.UI.Gtk.ModelView as MView
 import Yi.UI.Gtk.ProjectTree
 import Yi.UI.Gtk.Utils
 import Shim.ProjectContent
+import qualified Data.ByteString.Lazy.UTF8 as LazyUTF8
 
 ------------------------------------------------------------------------
 
@@ -421,11 +422,11 @@ replaceTagsIn ui from to buf gtkBuf = do
 applyUpdate :: TextBuffer -> Update -> IO ()
 applyUpdate buf (Insert (Point p) _ s) = do
   i <- textBufferGetIterAtOffset buf p
-  textBufferInsert buf i (fromUTF8ByteString s)
+  textBufferInsert buf i (LazyUTF8.toString s)
 
 applyUpdate buf (Delete p _ s) = do
   i0 <- textBufferGetIterAtOffset buf (fromPoint p)
-  i1 <- textBufferGetIterAtOffset buf (fromPoint (p +~ s))
+  i1 <- textBufferGetIterAtOffset buf (fromPoint p + length (LazyUTF8.toString s))
   textBufferDelete buf i0 i1
 
 styleToTag :: UI -> Yi.Style.Attr -> IO TextTag

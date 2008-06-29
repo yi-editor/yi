@@ -415,7 +415,7 @@ applyUpdate update = do
   valid <- queryBuffer (isValidUpdate update)
   when valid $ do
        forgetPreferCol
-       reversed <- queryBuffer (reverseUpdateI update)
+       let reversed = reverseUpdateI update
        modifyBuffer (applyUpdateI update)
        modifyA undosA $ addChangeU $ AtomicChange $ reversed
        tell [update]
@@ -425,7 +425,7 @@ applyUpdate update = do
 revertPendingUpdatesB :: BufferM ()
 revertPendingUpdatesB = do
   updates <- getA pendingUpdatesA
-  modifyBuffer (flip (foldr (\u bi -> applyUpdateI (reverseUpdateI u bi) bi)) [u | TextUpdate u <- updates])
+  modifyBuffer (flip (foldr (\u bi -> applyUpdateI (reverseUpdateI u) bi)) [u | TextUpdate u <- updates])
 
 -- | Write an element into the buffer at the current point.
 writeB :: Char -> BufferM ()
@@ -438,7 +438,7 @@ writeB c = do
 
 -- | Insert the list at specified point, extending size of buffer
 insertNAt :: [Char] -> Point -> BufferM ()
-insertNAt cs pnt = applyUpdate (Insert pnt Forward $ UTF8.fromString cs)
+insertNAt cs pnt = applyUpdate (Insert pnt Forward $ LazyUTF8.fromString cs)
 
 -- | Insert the list at current point, extending size of buffer
 insertN :: [Char] -> BufferM ()
@@ -454,11 +454,13 @@ insertB = insertN . return
 deleteNAt :: Direction -> Int -> Point -> BufferM ()
 deleteNAt dir n pos = do
   els <- nelemsB n pos
-  applyUpdate (Delete pos dir $ Size $ B.length $ UTF8.fromString els)
+  applyUpdate (Delete pos dir $ LazyUTF8.fromString els)
 
 -- | @deleteNBytes n p@ deletes @n@ byes forwards from position @p@
 deleteNBytes :: Direction -> Size -> Point -> BufferM ()
-deleteNBytes dir n pos = applyUpdate (Delete pos dir n)
+deleteNBytes dir n pos = do
+  els <- LazyUTF8.take (fromIntegral n) <$> streamB Forward pos
+  applyUpdate (Delete pos dir els)
 
 
 ------------------------------------------------------------------------
@@ -671,4 +673,8 @@ savingPointB f = savingPrefCol $ do
 askWindow :: (Window -> a) -> BufferM a
 askWindow = asks
 
-
+----------------
+-- Killring
+-- getKillRingInfo = do
+--   us <- getA pendingUpdatesA
+--   let dels =

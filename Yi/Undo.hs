@@ -130,7 +130,7 @@ undoUntilInteractive xs ur@(URList cs rs) b = case cs of
   (SavedFilePoint:cs') ->
     undoUntilInteractive xs (URList cs' (SavedFilePoint:rs)) b
   (AtomicChange u:cs') -> 
-    let ur' = (URList cs' (AtomicChange (reverseUpdateI u b):rs))
+    let ur' = (URList cs' (AtomicChange (reverseUpdateI u):rs))
         b' = (applyUpdateWithMoveI u b)
         (b'', (ur'', xs'')) = undoUntilInteractive xs ur' b'
     in (b'', (ur'', u:xs''))
