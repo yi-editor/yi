@@ -6,20 +6,25 @@ import Yi.Syntax.Alex
 import Yi.Prelude
 import Prelude ()
 
-data IState = IState [Int]  -- nested levels, as columns
+data BlockOpen t = Indent Int -- block opened because of indentation; parameter is the column of it.
+                 | Paren t      -- block opened because of parentheses
+                 deriving Show
+
+data IState t = IState [BlockOpen t]  -- current block nesting
                      Bool   -- should we open a compound now ?
                      Int    -- last line number
   deriving Show
-type State lexState = (IState, AlexState lexState) 
+type State t lexState = (IState t, AlexState lexState) 
 
 -- | isSpecial denotes a token that starts a compound, like "where", "do", ...
-indenter :: forall t lexState. (t -> Bool) -> 
+indenter :: forall t lexState. Eq t => (t -> Bool) -> [(t,t)] ->
             (Tok t -> Bool) -> 
+                
             [t] -> 
-            Scanner (AlexState lexState) (Tok t) -> Scanner (State lexState) (Tok t)
-indenter isSpecial isIgnored [openT, closeT, nextT] lexSource = Scanner 
+            Scanner (AlexState lexState) (Tok t) -> Scanner (State t lexState) (Tok t)
+indenter isSpecial parens isIgnored [openT, closeT, nextT] lexSource = Scanner 
   {
-   scanInit = (IState [(-1)] True (-1), scanInit lexSource),
+   scanInit = (IState [] True (-1), scanInit lexSource),
    scanRun  = \st -> parse (fst st) (scanRun lexSource (snd st))
   }
     where tt = tokFromT
@@ -30,8 +35,19 @@ indenter isSpecial isIgnored [openT, closeT, nextT] lexSource = Scanner
                stPosn = startPosn
               }
 
-          parse :: IState -> [(AlexState lexState, Tok t)] -> [(State lexState, Tok t)]
-          parse iSt@(IState levels@(lev:levs) doOpen lastLine)
+          deepestIndent [] = (-1)
+          deepestIndent (Indent i:_) = i
+          deepestIndent (_:levs) = deepestIndent levs
+                                   
+          deepestParen [] = Nothing
+
+          findParen f t = find ((== t) . f) parens
+
+          closeIndent (Indent _) = tt closeT
+          closeIndent (Paren t) = let Just (_,closeParen) = findParen fst t in tt closeParen
+
+          parse :: IState t -> [(AlexState lexState, Tok t)] -> [(State t lexState, Tok t)]
+          parse iSt@(IState levels doOpen lastLine)
                 toks@((aSt, tok @ Tok {tokLen = nextLen, tokPosn = Posn nextOfs line col}) : tokss) 
 
             -- ignore this token
@@ -40,15 +56,15 @@ indenter isSpecial isIgnored [openT, closeT, nextT] lexSource = Scanner
 
             -- start a compound
             | doOpen
-              = (st', tt openT) : parse (IState (col:levels) (False) lastLine) toks
+              = (st', tt openT) : parse (IState (Indent col:levels) (False) lastLine) toks
 
-            -- pop one level
-            | col < lev
-              = (st', tt closeT) : parse (IState levs doOpen lastLine) toks
+            -- pop an indent block
+            | col < deepestIndent levels
+              = let (lev:levs) = levels in (st', closeIndent lev) : parse (IState levs doOpen lastLine) toks
 
             -- next item
             | line > lastLine &&
-              col == lev 
+              col == deepestIndent levels -- FIXME: also pop all parens.
                 = (st', tt nextT) : parse (IState levels doOpen line) toks
 
             -- prepare to open a compound
