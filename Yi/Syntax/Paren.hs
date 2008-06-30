@@ -16,8 +16,8 @@ import Data.Maybe
 import Data.List (filter, takeWhile)
 
 indentScanner :: Scanner (AlexState lexState) (Tok Token)
-              -> Scanner (Yi.Syntax.Indent.State lexState) (Tok Token)
-indentScanner = indenter (== IndentReserved) ignoredToken
+              -> Scanner (Yi.Syntax.Indent.State Token lexState) (Tok Token)
+indentScanner = indenter (== IndentReserved) [(Special '(', Special ')'), (Special '[', Special ']')] ignoredToken
                          (fmap Special ['<', '>', '.']) 
 -- HACK: We insert the Special '<', '>', '.', that don't occur in normal haskell parsing.
 
