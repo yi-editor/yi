@@ -63,5 +63,5 @@ yankPopE = do
   yankE
 
 -- | C-M-w
-appendNextKillE :: YiM ()
-appendNextKillE = withEditor $ modifyA killringA (\kr -> kr {krKilled=True})
+appendNextKillE :: EditorM ()
+appendNextKillE = modifyA killringA (\kr -> kr {krKilled=True})
