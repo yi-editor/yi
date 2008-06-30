@@ -20,6 +20,7 @@ myModetable = ReaderT $ \fname -> case () of
 
 main :: IO ()
 main = yi $ defaultConfig {
+                           configKillringAccumulate = True,
                            modeTable = myModetable <|> modeTable defaultConfig,
                            configUI = (configUI defaultConfig) { configFontSize = Just 10 },
                            defaultKm = keymap

@@ -10,7 +10,7 @@ module Yi.Editor
 where
 
 import Yi.Buffer                ( BufferRef, FBuffer (..), BufferM, newB, runBufferFull, insertN )
-import Yi.Buffer.Implementation (Update(..))
+import Yi.Buffer.Implementation (Update(..), updateIsDelete)
 import Yi.Buffer.HighLevel (botB)
 import Text.Regex.Posix.Wrap    ( Regex )
 
@@ -41,7 +41,7 @@ data Editor = Editor {
         bufferStack   :: ![BufferRef]               -- ^ Stack of all the buffers. Never empty;
                                                     -- first buffer is the current one.
        ,buffers       :: M.Map BufferRef FBuffer
-       ,bufferRefSupply :: BufferRef  -- Supply for buffer and window ids. TODO: Rename
+       ,bufferRefSupply :: BufferRef  -- ^ Supply for buffer and window ids. TODO: Rename
 
        ,windows       :: WindowSet Window
 
@@ -201,7 +201,7 @@ withGivenBufferAndWindow0 w k f = getsAndModify $ \e ->
                             (v, us, b') = runBufferFull w b f
                             
                         in (e {buffers = M.adjust (const b') k (buffers e),
-                               killring = (if killringAccumulate e 
+                               killring = (if killringAccumulate e && all updateIsDelete us
                                            then foldl (.) id 
                                                 (reverse [krPut dir (LazyUTF8.toString s) | Delete _ dir s <- us])
                                            else id) 
@@ -409,5 +409,3 @@ shiftOtherWindow = do
   when (len == 1) splitE
   nextWinE
 
-
-  

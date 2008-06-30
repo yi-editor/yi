@@ -6,6 +6,7 @@
 module Yi.Buffer.Implementation
   ( UIUpdate (..)
   , Update (..)
+  , updateIsDelete
   , Point
   , Mark
   , Size
@@ -128,6 +129,10 @@ data Update = Insert {updatePoint :: !Point, updateDirection :: !Direction, inse
               -- the data with the buffer. If it's an "Insert" we have to keep the data any way.
 
               deriving (Show, Typeable)
+
+updateIsDelete :: Update -> Bool
+updateIsDelete Delete {} = True
+updateIsDelete Insert {} = False
 
 updateString :: Update -> LazyUTF8.ByteString
 updateString (Insert _ _ s) = s

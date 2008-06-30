@@ -58,6 +58,7 @@ isEndOfSentence :: Char -> Bool
 isEndOfSentence = (`elem` ".!?")
 
 -- | Verifies that the list matches all the predicates, pairwise.
+-- If the list is "too small", then return 'False'.
 checks :: [a -> Bool] -> [a] -> Bool
 checks [] _ = True
 checks _ [] = False
