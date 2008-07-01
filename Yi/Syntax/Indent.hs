@@ -54,9 +54,6 @@ indenter isSpecial parens isIgnored [openT, closeT, nextT] lexSource = Scanner
 
           findParen f t = find ((== t) . f) parens
 
-          closeIndent (Indent _) = tt closeT
-          closeIndent (Paren t) = let Just (_,closeParen) = findParen fst t in tt closeParen
-
           parse :: IState t -> [(AlexState lexState, Tok t)] -> [(State t lexState, Tok t)]
           parse iSt@(IState levels doOpen lastLine)
                 toks@((aSt, tok @ Tok {tokLen = nextLen, tokPosn = Posn nextOfs line col}) : tokss) 
@@ -104,9 +101,13 @@ indenter isSpecial parens isIgnored [openT, closeT, nextT] lexSource = Scanner
                         -- This function checked the position and kind of the
                         -- next token.  We peeked further, and so must
                         -- update the lookedOffset accordingly.
-          parse iSt@(IState (_:lev:levs) doOpen posn) [] 
-              = ((iSt,dummyAlexState), tt closeT) : parse (IState (lev:levs) doOpen posn) []
-          parse (IState [_] _ _) [] = []
+
+          -- finish by closing all the indent states.
+          parse iSt@(IState (Indent _:levs) doOpen posn) [] 
+              = ((iSt,dummyAlexState), tt closeT) : parse (IState levs doOpen posn) []
+          parse iSt@(IState (Paren _:levs) doOpen posn) [] 
+              = parse (IState levs doOpen posn) []
+          parse (IState [] _ _) [] = []
           parse st _ = error $ "Parse: " ++ show st
               
 
