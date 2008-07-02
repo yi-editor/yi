@@ -109,8 +109,7 @@ startEditor cfg st = do
     logPutStrLn "Starting Core"
 
     -- restore the old state
-    let initEditor = (maybe emptyEditor id st) {killringAccumulate = configKillringAccumulate cfg}
-        -- FIXME: don't copy fields like this; but pass config directly to EditorM
+    let initEditor = maybe emptyEditor id st
     newSt <- newIORef initEditor
     -- Setting up the 1st window is a bit tricky because most functions assume there exists a "current window"
     startThreads <- newIORef []

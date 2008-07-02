@@ -50,8 +50,6 @@ data Editor = Editor {
 
        ,statusLines   :: !(DelayList.DelayList String)
        ,killring      :: !Killring
-       ,killringAccumulate :: !Bool                 -- ^ accumulate cuts automatically in killring.
-                              -- FIXME: don't copy this there but read it from config directly.
        ,regex         :: !(Maybe (String,Regex))    -- ^ most recent regex
        ,pendingEvents :: ![Event]                   -- ^ Processed events that didn't yield any action yet.
     }
@@ -94,7 +92,6 @@ emptyEditor = Editor {
        ,dynamic      = M.empty
        ,statusLines  = DelayList.insert (maxBound, "") []
        ,killring     = krEmpty
-       ,killringAccumulate = False
        ,pendingEvents = []
        }
         where buf = newB 0 "*console*" (LazyUTF8.fromString "")
@@ -195,12 +192,14 @@ withGivenBuffer0 k f = withGivenBufferAndWindow0 (dummyWindow k) k f
 
 -- | Perform action with any given buffer
 withGivenBufferAndWindow0 :: Window -> BufferRef -> BufferM a -> EditorM a
-withGivenBufferAndWindow0 w k f = getsAndModify $ \e ->
+withGivenBufferAndWindow0 w k f = do
+  accum <- asks configKillringAccumulate
+  getsAndModify $ \e ->
                         let b = findBufferWith k e
                             (v, us, b') = runBufferFull w b f
                             
                         in (e {buffers = M.adjust (const b') k (buffers e),
-                               killring = (if killringAccumulate e && all updateIsDelete us
+                               killring = (if accum && all updateIsDelete us
                                            then foldl (.) id 
                                                 (reverse [krPut dir (LazyUTF8.toString s) | Delete _ dir s <- us])
                                            else id) 
