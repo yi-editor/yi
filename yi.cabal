@@ -124,7 +124,7 @@ library
       build-depends: parallel
       build-depends: haskell98
 
-      cpp-options: -DSHIM
+      cpp-options: -DGHC_API
 
       exposed-modules:  Yi.Mode.Shim
       other-modules:
@@ -233,7 +233,7 @@ executable yi
           build-depends: ghc
           build-depends: parallel
           build-depends: haskell98
-          cpp-options: -DSHIM
+          cpp-options: -DGHC_API
 
         if !(flag(vty) || flag (gtk) || flag(cocoa))
          buildable: False
