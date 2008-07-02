@@ -79,8 +79,8 @@ deleteB' = do
 
 keys :: KList
 keys =
-  [ ( "TAB",      write $ adjIndent IncreaseOnly)
-  , ( "S-TAB",    write $ adjIndent DecreaseOnly)
+  [ ( "TAB",      write $ adjIndent DecreaseCycle)
+  , ( "S-TAB",    write $ adjIndent IncreaseCycle)
   , ( "RET",      write $ repeatingArg $ insertB '\n')
   , ( "DEL",      write $ repeatingArg deleteB')
   , ( "BACKSP",   write $ repeatingArg (adjBlock (-1) >> withBuffer bdeleteB))
