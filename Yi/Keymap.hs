@@ -23,7 +23,6 @@ import Control.Monad.State
 import Yi.Event
 import Yi.Process ( SubprocessInfo, SubprocessId )
 import qualified Yi.UI.Common as UI
-import Data.Dynamic
 import Data.Typeable
 
 data Action = forall a. Show a => YiA (YiM a)
@@ -105,12 +104,14 @@ withUI = with yiUi
 withEditor :: EditorM a -> YiM a
 withEditor f = do
   r <- asks yiEditor
-  liftIO $ unsafeWithEditor r f
+  cfg <- asks yiConfig
+  liftIO $ unsafeWithEditor cfg r f
 
-unsafeWithEditor :: IORef Editor -> EditorM a -> IO a
-unsafeWithEditor r f = do
+unsafeWithEditor :: Config -> IORef Editor -> EditorM a -> IO a
+unsafeWithEditor cfg r f = do
   e <- readRef r
-  let (a,e') = runEditor f e
+  let (a,e') = runEditor cfg f e
+  -- TODO: this is probably very wrong comment; try to remove this.
   -- Make sure that the result of runEditor is evaluated before
   -- replacing the editor state. Otherwise, we might replace e
   -- with an exception-producing thunk, which makes it impossible

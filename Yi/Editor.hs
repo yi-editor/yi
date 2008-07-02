@@ -32,8 +32,7 @@ import qualified Data.DelayList as DelayList
 import qualified Data.Map as M
 import Data.Typeable
 import Data.String
-import Control.Monad.State
-import Control.Monad.Writer
+import Control.Monad.RWS
 import qualified Data.ByteString.Lazy.UTF8 as LazyUTF8
 
 -- | The Editor state
@@ -103,8 +102,8 @@ emptyEditor = Editor {
 
 -- ---------------------------------------------------------------------
 
-runEditor :: EditorM a -> Editor -> (a, Editor)
-runEditor = runState . fromEditorM
+runEditor :: Config -> EditorM a -> Editor -> (a, Editor)
+runEditor cfg f e = let (a, e',()) = runRWS (fromEditorM f) cfg e in (a,e')
 
 -- ---------------------------------------------------------------------
 -- Buffer operations
@@ -227,10 +226,10 @@ setBuffer k = do
 
 -- ---------------------------------------------------------------------
 
-newtype EditorM a = EditorM {fromEditorM :: State Editor a}
-    deriving (Monad, MonadState Editor,Typeable1, Functor)
+newtype EditorM a = EditorM {fromEditorM :: RWS Config () Editor a}
+    deriving (Monad, MonadState Editor, MonadReader Config, Functor)
 
-deriving instance Typeable2 State
+deriving instance Typeable1 EditorM
 
 --------------
 
