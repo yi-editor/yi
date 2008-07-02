@@ -11,8 +11,7 @@ report bugs at: http://code.google.com/p/yi-editor/issues/list
 
 DEPENDENCIES
 
-* Cabal, latest darcs repo version.
-        http://darcs.haskell.org/cabal
+* Cabal 1.4
 
 * ghc 6.8.2
 
@@ -69,20 +68,6 @@ run
 
 for a list of options.
 
-QUICK START with cabal-make:
-
-* To use the Makefile you need a working config.mk file you can
-  obtain this in one of two ways:
-  1 - copy config.sample to config.mk and edit as required
-  2 - runhaskell MkConfig.hs --help
-      this will show you the options available re-run with the
-      appropriate options, you probably at least want:
-      runhaskell MkConfig.hs --prefix <path-to-prefix> --user username
-      This will produce a config.test copy this across to config.mk
-
-* make all
-  will configure, build, document and install.
-
 
 CONFIGURATION
 
@@ -114,15 +99,19 @@ Notes:
 
 HACKER'S GUIDE: 
 
-You can run yi in place without installing with the usual
-./dist/build/yi/yi
-but this will not work with your ~/.yi/yi.hs file.
+To quickly check your changes to the yi tree,
+you can run yi in place without installing with the usual
 
-To use your own yi.hs file in place copy it across to yi/HackerMain.hs and
+$ ./dist/build/yi/yi
+
+but if you have a customized yi, the above will only launch it, 
+and therefore it will still use the installed yi library code.
+
+To use your own yi.hs file in place, copy it across to yi/HackerMain.hs and
 then configure yi to run in hacker mode. So assuming you are in the yi top level
 directory (ie ls shows yi.cabal):
 $ cp ~/.yi/yi.hs HackerMain.hs
-$ runhaskell Setup.hs configure -f hacking
+$ runhaskell Setup.hs configure -fhacking
 $ runhaskell Setup.hs build
 $ ./dist/build/yi/yi
 
