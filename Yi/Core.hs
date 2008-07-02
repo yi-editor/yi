@@ -45,6 +45,7 @@ where
 import Prelude ()
 import Yi.Prelude
 
+import Yi.Config
 import Yi.Debug
 import Yi.Undo
 import Yi.Buffer
@@ -128,8 +129,7 @@ startEditor cfg st = do
       withEditor $ newBufferE "*messages*" (fromString "") >> return ()
 
       when (isNothing st) $ do -- process options if booting for the first time
-        startAction cfg
-        postActions $ startQueuedActions cfg
+        postActions $ startActions cfg
 
     runYi refreshEditor
 

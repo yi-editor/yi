@@ -5,7 +5,7 @@ import Yi.Yi
 import qualified Yi.Main
 import HConf
 
-import Yi.Core (Config (..))
+import Yi.Config
 import Yi.Main (defaultConfig)
 import Yi.Debug
 import Data.String
@@ -35,5 +35,5 @@ HConf driver yi _ = getHConf Yi.Main.projectName initState recoverState saveStat
 
 showErrorsInConf :: String -> Config -> Config
 showErrorsInConf errs conf 
-    = conf {startAction = withEditor $ newBufferE "*errors*" (fromString errs) >> return ()}
+    = conf {startActions = [makeAction $ newBufferE "*errors*" (fromString errs)]}
 

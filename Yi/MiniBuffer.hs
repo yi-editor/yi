@@ -9,6 +9,7 @@ import Data.Typeable
 import Yi.Buffer
 import Yi.Buffer.Region
 import Yi.Buffer.HighLevel
+import Yi.Config
 import Yi.Core
 import Yi.Editor
 import Yi.History

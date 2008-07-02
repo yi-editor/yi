@@ -20,6 +20,7 @@ module Yi.Yi (
         module Yi.Buffer,
         module Yi.Buffer.HighLevel,
         module Yi.Buffer.Normal,
+        module Yi.Config,
         module Yi.Core,
         module Yi.Debug,
         module Yi.Dired,
@@ -38,6 +39,7 @@ import Control.Applicative
 import Yi.Buffer
 import Yi.Buffer.HighLevel
 import Yi.Buffer.Normal
+import Yi.Config
 import Yi.Core
 import Yi.Debug
 import Yi.Dired

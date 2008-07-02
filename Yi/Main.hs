@@ -169,8 +169,7 @@ defaultConfig =
              }
            }
          , defaultKm        = nilKeymap
-         , startAction      = openScratchBuffer -- emacs-style behaviour
-         , startQueuedActions = []
+         , startActions     = [makeAction openScratchBuffer] -- emacs-style behaviour
          , publishedActions = Yi.Yi.defaultPublishedActions
          , modeTable = defaultModeMap
          , fundamentalMode = defaultFundamentalMode
@@ -209,7 +208,8 @@ getConfig cfg opt =
              Just modifyCfg -> return $ modifyCfg cfg
              Nothing -> fail $ "Unknown emulation: " ++ show emul
       _ -> return cfg
-  where appendAction a = return $ cfg { startAction = startAction cfg >> a >> return ()}
+  where 
+    appendAction a = return $ cfg { startActions = startActions cfg ++ [makeAction a]}
 
 -- ---------------------------------------------------------------------
 -- | Static main. This is the front end to the statically linked

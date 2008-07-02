@@ -16,6 +16,7 @@ import Data.IORef
 import Control.Exception
 import Control.Concurrent
 import Yi.Buffer
+import Yi.Config
 import qualified Yi.Interact as I
 import Yi.Monad
 import Control.Monad.State
@@ -48,21 +49,6 @@ type Keymap = KeymapM ()
 type KeymapEndo = Keymap -> Keymap
 
 type KeymapProcess = I.P Event Action
-
--- | Configuration record. All Yi hooks can be set here.
-data Config = Config {startFrontEnd :: UI.UIBoot,
-                      configUI :: UIConfig,
-                      startAction :: YiM (),
-                      startQueuedActions :: [Action], -- ^ for performance testing
-                      defaultKm :: Keymap,                      
-                      modeTable :: ReaderT String Maybe AnyMode,
-                      fundamentalMode :: Mode (),
-                      publishedActions :: M.Map String [Dynamic],
-                      debugMode :: Bool,
-                      configKillringAccumulate :: !Bool 
-                      -- ^ accumulate cuts automatically in killring
-                     }
-
 
 data Yi = Yi {yiEditor :: IORef Editor,
               yiUi          :: UI,

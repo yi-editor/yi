@@ -58,6 +58,7 @@ import Yi.MiniBuffer (withMinibuffer)
 import Control.Monad
 import Yi.Buffer
 import Yi.Buffer.HighLevel
+import Yi.Config
 import Yi.Core
 import Yi.Editor
 import Yi.Buffer.Region

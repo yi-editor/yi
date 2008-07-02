@@ -13,6 +13,7 @@ import Data.Array
 import Data.List
 import Prelude hiding (error)
 import Text.Regex.Posix
+import Yi.Config
 import Yi.Core
 import Yi.Keymap
 import Yi.Interact hiding (write)
