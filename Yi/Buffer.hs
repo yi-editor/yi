@@ -398,7 +398,7 @@ nelemsB' n i = queryBuffer $ nelemsBI' n i
 streamB :: Direction -> Point -> BufferM LazyUTF8.ByteString
 streamB dir i = queryBuffer (getStream dir i)
 
-
+-- TODO: we should pass a Region here.
 strokesRangesB :: Point -> Point -> BufferM [[Stroke]]
 strokesRangesB i j = queryBuffer $ strokesRangesBI i j
 

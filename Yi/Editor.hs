@@ -54,7 +54,7 @@ data Editor = Editor {
        ,killringAccumulate :: !Bool                 -- ^ accumulate cuts automatically in killring.
                               -- FIXME: don't copy this there but read it from config directly.
        ,regex         :: !(Maybe (String,Regex))    -- ^ most recent regex
-       ,pendingEvents :: ![Event]                    -- ^ Processed events that didn't yield any action yet.
+       ,pendingEvents :: ![Event]                   -- ^ Processed events that didn't yield any action yet.
     }
     deriving Typeable
 
