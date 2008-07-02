@@ -21,7 +21,7 @@ import Yi.Keymap
 import Yi.Debug
 import Yi.Monad
 import qualified Yi.UI.Common as Common
-import Yi.UI.Common (UIConfig (..))
+import Yi.Config
 import Yi.Style hiding (modeline)
 import qualified Yi.WindowSet as WS
 
@@ -56,7 +56,7 @@ data UI = UI { uiWindow :: Gtk.Window
              , tagTable :: TextTagTable
              , windowCache :: IORef [WinInfo]
              , uiActionCh :: Action -> IO ()
-             , uiConfig :: Common.UIConfig
+             , uiConfig :: UIConfig
              , uiFilesStore   :: MView.TreeStore ProjectItem
              , uiModulesStore :: MView.TreeStore ProjectItem
              }
@@ -89,17 +89,17 @@ mkUI ui = Common.UI
    Common.reloadProject         = postGUIAsync . reloadProject           ui
   }
 
-mkFontDesc :: Common.UIConfig -> IO FontDescription
+mkFontDesc :: UIConfig -> IO FontDescription
 mkFontDesc cfg = do
   f <- fontDescriptionNew
   fontDescriptionSetFamily f "Monospace"
-  case  Common.configFontSize cfg of
+  case  configFontSize cfg of
     Just x -> fontDescriptionSetSize f (fromIntegral x)
     Nothing -> return ()
   return f
 
 -- | Initialise the ui
-start :: Common.UIBoot
+start :: UIBoot
 start cfg ch outCh _ed = do
   unsafeInitGUIForThreadedRTS
 

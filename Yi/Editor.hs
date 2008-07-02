@@ -14,6 +14,7 @@ import Yi.Buffer.Implementation (Update(..), updateIsDelete)
 import Yi.Buffer.HighLevel (botB)
 import Text.Regex.Posix.Wrap    ( Regex )
 
+import Yi.Config
 import Yi.Debug
 import Yi.Monad
 import Yi.Accessor
@@ -34,7 +35,6 @@ import Data.String
 import Control.Monad.State
 import Control.Monad.Writer
 import qualified Data.ByteString.Lazy.UTF8 as LazyUTF8
-
 
 -- | The Editor state
 data Editor = Editor {

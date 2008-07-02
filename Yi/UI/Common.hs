@@ -7,18 +7,6 @@ import Yi.Event
 import {-# SOURCE #-} Yi.Keymap
 import Yi.Style
 
-data UIConfig = UIConfig {
-   configFontSize :: Maybe Int,
-   configLeftSideScrollBar :: Bool,
-   configAutoHideScrollBar :: Bool,
-   configLineWrap :: Bool,
-   configWindowFill :: !Char,       
-   -- ^ char to fill empty window space with.  Usually '~' for vi-like
-   -- editors, ' ' for everything else
-   configStyle :: UIStyle                        -- ^ ui colours
-
-  }
-
 
 data UI = UI
     {
@@ -30,4 +18,4 @@ data UI = UI
      reloadProject         :: FilePath -> IO ()  -- ^ Reload cabal project views
     }
 
-type UIBoot = UIConfig -> (Event -> IO ()) -> (Action -> IO ()) ->  Editor -> IO UI
+

@@ -40,7 +40,7 @@ import Yi.Style
 import Yi.WindowSet as WS
 import qualified Data.ByteString.Char8 as B
 import qualified Yi.UI.Common as Common
-import Yi.UI.Common (UIConfig(..))
+import Yi.Config
 import Yi.Window
 import Yi.Style as Style
 import Graphics.Vty as Vty
@@ -80,7 +80,7 @@ mkUI ui = Common.UI
   }
 
 -- | Initialise the ui
-start :: Common.UIBoot
+start :: UIBoot
 start cfg ch _outCh editor = do
   liftIO $ do 
           v <- mkVty

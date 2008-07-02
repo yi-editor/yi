@@ -4,9 +4,6 @@ module Yi.Keymap where
 
 import qualified Yi.Interact as I
 import Yi.Event
-import Control.Monad.Reader
-import Yi.Monad
-import Data.Typeable
 
 data Action
 
