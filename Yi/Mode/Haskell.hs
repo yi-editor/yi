@@ -69,17 +69,23 @@ adjustBlock e len = do
 
 
 
-cleverAutoIndentHaskellB :: Expr (Tok Token) -> IndentBehaviour -> BufferM ()
+cleverAutoIndentHaskellB :: Expr TT -> IndentBehaviour -> BufferM ()
 cleverAutoIndentHaskellB e behaviour = do
   previousLine   <- getNextNonBlankLineB Backward
   previousIndent <- indentOfB previousLine
   solPnt <- savingPointB (moveToSol >> pointB)
-  let stopOf (Group open _ _) = 1 + (posnCol . tokPosn $ open)
-      stopOf (Atom (Tok {tokT = Haskell.IndentReserved})) = previousIndent + 4
-      stopOf t = maybe 0 (posnCol . tokPosn) (getFirstToken t)
+  let stopsOf (g@(Group open _ close):ts) 
+          | isErrorTok (tokT close) || getLastOffset g >= solPnt
+              = [1 + (posnCol . tokPosn $ open)]  -- stop here: we want to be "inside" that group.
+          | otherwise = stopsOf ts -- this one is closed on before this line; just skip it.
+      stopsOf ((Atom (Tok {tokT = Haskell.IndentReserved})):ts) = [previousIndent + 2]
+      stopsOf ((Atom _):ts) = stopsOf ts
+         -- of; where; etc. we want to start the block here.
+      stopsOf (t:ts) = maybe 0 (posnCol . tokPosn) (getFirstToken t) : stopsOf ts
+      stopsOf [] = []
   case getLastPath e solPnt of
     Nothing -> return ()
-    Just path -> let stops = fmap stopOf path
+    Just path -> let stops = stopsOf path
                  in trace ("Stops = " ++ show stops) $      
                     cycleIndentsB behaviour stops
          

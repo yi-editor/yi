@@ -29,6 +29,8 @@ isSpecial :: [Char] -> Token -> Bool
 isSpecial cs (Special c) = c `elem` cs
 isSpecial _  _ = False
 
+isErrorTok = isSpecial "!"
+
 isNoise :: Token -> Bool
 isNoise (Special c) = c `elem` ";,`"
 isNoise _ = True
@@ -57,9 +59,10 @@ getLastToken :: Tree t -> Maybe t
 getLastToken tree = getLast $ foldMap (\x -> Last (Just x)) tree
 
 getLastOffset :: Tree TT -> Point
-getLastOffset tree = case getLastToken tree of
-                    Nothing -> 0
-                    Just tok -> posnOfs (tokPosn tok) +~ tokLen tok
+getLastOffset = maybe 0 tokenLastOffset . getLastToken
+
+tokenLastOffset :: TT -> Point
+tokenLastOffset tok = posnOfs (tokPosn tok) +~ tokLen tok
 
 -- | Return all subtrees in a tree.
 getAllSubTrees :: Tree t -> [Tree t]
@@ -72,7 +75,7 @@ subtrees (Stmt s) = concat s
 subtrees _ = []
 
 -- | Return all subtrees in a tree; each element of the return list
--- contains a node and the path to the root.
+-- contains paths to nodes. (Root is at the start of each path)
 getAllPaths :: Tree t -> [[Tree t]]
 getAllPaths t = fmap (++[t]) ([] : concatMap getAllPaths (subtrees t))
 
@@ -80,7 +83,7 @@ getAllPaths t = fmap (++[t]) ([] : concatMap getAllPaths (subtrees t))
 type TT = Tok Token
 
 -- | Search the given list, and return the last tree before the given
--- point; with path to the root.
+-- point; with path to the root. (Root is at the start of the path)
 getLastPath :: [Tree (Tok t)] -> Point -> Maybe [Tree (Tok t)]
 getLastPath roots offset =
     case takeWhile ((< offset) . posnOfs . snd) allSubPathPosn of
@@ -174,7 +177,7 @@ getStrokes point _begin _end t0 = result
           getStrokes' (Error t) = (modStroke errorStyle (ts t) :) -- paint in red
           getStrokes' (Stmt s) = list (fmap getStrokesL s)
           getStrokes' (Group l g r)
-              | isSpecial "!" $ tokT r = (modStroke errorStyle (ts l) :) . getStrokesL g
+              | isErrorTok $ tokT r = (modStroke errorStyle (ts l) :) . getStrokesL g
               -- left paren wasn't matched: paint it in red.
               -- note that testing this on the "Group" node actually forces the parsing of the
               -- right paren, undermining online behaviour.
