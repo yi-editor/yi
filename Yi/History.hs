@@ -37,14 +37,15 @@ miniBuffer :: String
 miniBuffer = "minibuffer"
 
 historyUp :: EditorM ()
-historyUp = historyMove 1
+historyUp = historyMove miniBuffer 1
 
 historyDown :: EditorM ()
-historyDown = historyMove (-1)
+historyDown = historyMove miniBuffer (-1)
 
 historyStart :: EditorM ()
 historyStart = historyStartGen miniBuffer
 
+historyStartGen :: String -> EditorM ()
 historyStartGen ident = do
   (History _cur cont) <- getA (dynKeyA ident .> dynA)
   setA (dynKeyA ident .> dynA) (History 0 (nub ("":cont)))
@@ -67,8 +68,8 @@ debugHist :: EditorM ()
 debugHist = return ()
   
 
-historyMove :: Int -> EditorM ()
-historyMove delta = (withBuffer0 . replaceBufferContent) =<< historyMoveGen miniBuffer delta (withBuffer0 elemsB) 
+historyMove :: String -> Int -> EditorM ()
+historyMove ident delta = (withBuffer0 . replaceBufferContent) =<< historyMoveGen ident delta (withBuffer0 elemsB) 
 
 historyMoveGen :: String -> Int -> EditorM String -> EditorM String
 historyMoveGen ident delta getCurValue = do

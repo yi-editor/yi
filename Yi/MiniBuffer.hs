@@ -52,7 +52,7 @@ withMinibufferGen proposal getHint prompt completer act = do
       closeMinibuffer = closeBufferAndWindowE
       showMatchings = msgEditor =<< getHint =<< withBuffer elemsB
       innerAction = do
-        lineString <- withEditor $ do historyFinish
+        lineString <- withEditor $ do historyFinishGen prompt (withBuffer0 elemsB)
                                       lineString <- withBuffer0 elemsB
                                       closeMinibuffer
                                       switchToBufferE initialBuffer
@@ -60,16 +60,19 @@ withMinibufferGen proposal getHint prompt completer act = do
                                       -- that originated the minibuffer.
                                       return lineString
         act lineString
+      up   = historyMove prompt 1
+      down = historyMove prompt (-1)
+
       rebindings = [("RET", write innerAction),
                     ("C-m", write innerAction),
-                    ("M-p", write historyUp),
-                    ("M-n", write historyDown),
-                    ("<up>", write historyUp),
-                    ("<down>", write historyDown),
+                    ("M-p", write up),
+                    ("M-n", write down),
+                    ("<up>", write up),
+                    ("<down>", write down),
                     ("C-i", write (completionFunction completer) >> write showMatchings),
                     ("TAB", write (completionFunction completer) >> write showMatchings),
                     ("C-g", write closeMinibuffer)]
-  withEditor historyStart
+  withEditor $ historyStartGen prompt
   msgEditor =<< getHint ""
   b <- withEditor $ spawnMinibufferE (prompt ++ " ") (\bindings -> rebind rebindings (bindings >> write showMatchings))
   withGivenBuffer b $ replaceBufferContent proposal
