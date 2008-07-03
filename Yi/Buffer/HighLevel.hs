@@ -390,7 +390,11 @@ getNextNonBlankLineB dir = fromMaybe "" <$> getNextLineWhichB dir (not . isBlank
 -- we could instead work out where the new positions should be
 -- and move the mark and point accordingly.
 modifySelectionB :: (String -> String) -> BufferM ()
-modifySelectionB transform = modifyRegionB transform =<< getSelectRegionB
+modifySelectionB = modifyExtendedSelectionB Character
+
+
+modifyExtendedSelectionB unit transform 
+    = modifyRegionB transform =<< unitWiseRegion unit =<< getSelectRegionB
 
 
 -- | Search and Replace all within the current region.
@@ -427,7 +431,7 @@ linePrefixSelectionB ::
                       -> BufferM ()
                          -- The returned buffer action
 linePrefixSelectionB s =
-  modifySelectionB $ modifyLines (s ++)
+  modifyExtendedSelectionB Line $ modifyLines (s ++)
 
 -- | Comments the region using latex line comments
 latexCommentSelectionB :: BufferM ()
@@ -439,7 +443,7 @@ latexCommentSelectionB = linePrefixSelectionB "% "
 unLineCommentSelectionB :: String -- ^ The string which begins a line comment
                         -> BufferM ()
 unLineCommentSelectionB s =
-  modifySelectionB $ modifyLines unCommentLine
+  modifyExtendedSelectionB Line $ modifyLines unCommentLine
   where
   unCommentLine :: String -> String
   unCommentLine line
