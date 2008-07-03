@@ -393,22 +393,6 @@ getNextNonBlankLineB dir = fromMaybe "" <$> getNextLineWhichB dir (not . isBlank
 modifySelectionB :: (String -> String) -> BufferM ()
 modifySelectionB transform = modifyRegionB transform =<< getSelectRegionB
 
--- | A helper function for creating functions suitable for
--- 'modifySelectionB' and 'modifyRegionB'.
--- To be used when the desired function should map across
--- the lines of a region.
-modifyLines :: (String -> String) -> String -> String
-modifyLines transform input
-  -- Note the simple definition "unlines (map transform $ lines input)"
-  -- only works if there is a newline character at the end of the input
-  -- Because 'lines' eats up the newline character but 'unlines' adds
-  -- one.
-  | last input == '\n' = unlines newLines
-  -- For other inputs if we use 'unlines' then a new line is inserted
-  -- at the end, so instead of 'unlines' we use 'intercalate.
-  | otherwise          = intercalate "\n" newLines
-  where
-  newLines = map transform $ lines input
 
 -- | Search and Replace all within the current region.
 -- Note the region is the final argument since we might perform
@@ -523,9 +507,4 @@ replaceBufferContent newvalue = do
 
 
 fillParagraph :: BufferM ()
-fillParagraph = modifyRegionB (unlines . map (unwords . reverse) . fill 0 [] . words) =<< regionOfB Paragraph
-   where fill _ acc [] = [acc]
-         fill n acc (w:ws) 
-           | n + length w >= 80 = acc : fill (length w) [w] ws
-           | otherwise = fill (n + 1 + length w) (w:acc) ws
-         
+fillParagraph = modifyRegionB (unlines . fillText 80) =<< regionOfB Paragraph

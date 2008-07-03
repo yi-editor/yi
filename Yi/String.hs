@@ -11,10 +11,12 @@ module Yi.String (isBlank,
                   split,
                   capitalize,
                   capitalizeFirst,
-                  dropSpace
-) where
+                  dropSpace,
+                  fillText,
+                  modifyLines
+                 ) where
 
-import Data.List    (isSuffixOf,isPrefixOf)
+import Data.List (isSuffixOf, isPrefixOf, intercalate)
 import Data.Char (toUpper, toLower, isSpace, isAlphaNum)
 
 capitalize :: String -> String
@@ -80,3 +82,28 @@ dropSpace = let f = reverse . dropWhile isSpace in f . f
 
 isBlank :: String -> Bool
 isBlank = all isSpace
+
+fillText margin = map (unwords . reverse) . fill margin [] . words
+   where fill _ acc [] = [acc]
+         fill n acc (w:ws) 
+           | n + length w >= 80 = acc : fill (length w) [w] ws
+           | otherwise = fill (n + 1 + length w) (w:acc) ws
+         
+
+
+-- | A helper function for creating functions suitable for
+-- 'modifySelectionB' and 'modifyRegionB'.
+-- To be used when the desired function should map across
+-- the lines of a region.
+modifyLines :: (String -> String) -> String -> String
+modifyLines transform input
+  -- Note the simple definition "unlines (map transform $ lines input)"
+  -- only works if there is a newline character at the end of the input
+  -- Because 'lines' eats up the newline character but 'unlines' adds
+  -- one.
+  | last input == '\n' = unlines newLines
+  -- For other inputs if we use 'unlines' then a new line is inserted
+  -- at the end, so instead of 'unlines' we use 'intercalate.
+  | otherwise          = intercalate "\n" newLines
+  where
+  newLines = map transform $ lines input
