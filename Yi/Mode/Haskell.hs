@@ -44,7 +44,8 @@ cleverHaskellMode = haskellMode {
       (\point begin end t -> getStrokes point begin end t) snd
 --}                              
   , modeAdjustBlock = adjustBlock
-}
+  , modePrettify = \_ast -> return ()                                  
+ }
     where lexer = Alex.lexScanner Haskell.alexScanToken Haskell.initState 
 
 

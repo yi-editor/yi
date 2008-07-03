@@ -17,13 +17,15 @@ import Yi.Buffer (AnyMode(..), Mode(..), emptyMode)
 import Prelude ()
 import Yi.Style
 import Yi.Mode.Haskell
+import Yi.Buffer.HighLevel (fillParagraph)
 
 fundamental, defaultFundamentalMode :: Mode syntax
 latexMode, cppMode, literateHaskellMode, cabalMode, srmcMode :: Mode Alex.Result
 
 fundamental = emptyMode
   { 
-   modeIndent = \_ast -> autoIndentB
+   modeIndent = \_ast -> autoIndentB,
+   modePrettify = \_ -> fillParagraph
   }
 
 mkHighlighter' :: s -> (Yi.Syntax.Alex.ASI s -> Maybe (Tok Yi.Style.Style, Yi.Syntax.Alex.ASI s))

@@ -520,3 +520,12 @@ replaceBufferContent :: String -> BufferM ()
 replaceBufferContent newvalue = do
   r <- regionOfB Document
   replaceRegionB r newvalue
+
+
+fillParagraph :: BufferM ()
+fillParagraph = modifyRegionB (unlines . map (unwords . reverse) . fill 0 [] . words) =<< regionOfB Paragraph
+   where fill _ acc [] = [acc]
+         fill n acc (w:ws) 
+           | n + length w >= 80 = acc : fill (length w) [w] ws
+           | otherwise = fill (n + 1 + length w) (w:acc) ws
+         

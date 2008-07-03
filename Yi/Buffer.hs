@@ -213,6 +213,7 @@ data Mode syntax = Mode
     {
      -- modeName = "fundamental", -- ^ so this could be serialized, debugged.
      modeHL :: ExtHL syntax,
+     modePrettify :: syntax -> BufferM (),
      modeKeymap :: KeymapEndo, -- ^ Buffer's local keymap modification
      modeIndent :: syntax -> IndentBehaviour -> BufferM (),
      modeAdjustBlock :: syntax -> Int -> BufferM ()
@@ -358,6 +359,7 @@ emptyMode :: Mode syntax
 emptyMode = Mode
   { 
    modeHL = ExtHL noHighlighter,
+   modePrettify = \_ -> return (),
    modeKeymap = id,
    modeIndent = \_ _ -> return (),
    modeAdjustBlock = \_ _ -> return ()
