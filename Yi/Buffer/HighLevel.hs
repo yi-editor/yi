@@ -8,7 +8,6 @@ import Data.Char
 import Data.Dynamic
 import Data.List
   ( isPrefixOf
-  , intercalate
   )
 
 import Data.Maybe
@@ -421,18 +420,18 @@ searchReplaceSelectionB from to =
   modifySelectionB $ substituteInList from to
 
 
--- | Comments the selection using line comments that begin
--- with the given string.
-lineCommentSelectionB :: 
+-- | Prefix each line in the selection using
+-- the given string.
+linePrefixSelectionB :: 
                          String -- ^ The string that starts a line comment
                       -> BufferM ()
                          -- The returned buffer action
-lineCommentSelectionB s =
+linePrefixSelectionB s =
   modifySelectionB $ modifyLines (s ++)
 
 -- | Comments the region using latex line comments
 latexCommentSelectionB :: BufferM ()
-latexCommentSelectionB = lineCommentSelectionB "% "
+latexCommentSelectionB = linePrefixSelectionB "% "
 
 -- | Uncomments the selection using the given line comment
 -- starting string. This only works for the comments which
@@ -463,8 +462,7 @@ substituteInList from to list@(h : rest)
 
 -- | Increases the indentation on the region by the given amount
 increaseIndentSelectionB :: Int -> BufferM ()
-increaseIndentSelectionB i =
-  lineCommentSelectionB $ replicate i ' '
+increaseIndentSelectionB i = linePrefixSelectionB $ replicate i ' '
 
 -- | Decreases the indentation on the region by the given amount
 decreaseIndentSelectionB :: Int -> BufferM ()

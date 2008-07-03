@@ -119,7 +119,7 @@ autoIndentHaskellB =
 
 -- | Comments the region using haskell line comments
 haskellCommentSelectionB :: BufferM ()
-haskellCommentSelectionB = lineCommentSelectionB "-- "
+haskellCommentSelectionB = linePrefixSelectionB "-- "
 
 -- | uncomments a region of haskell line commented code
 haskellUnCommentSelectionB :: BufferM ()

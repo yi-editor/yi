@@ -67,7 +67,7 @@ defaultPublishedActions :: M.Map String [Dynamic]
 defaultPublishedActions = M.fromList $ 
     [ ("leftB"                  , box leftB) 
     , ("pointB"                 , box (fromPoint <$> pointB)) 
-    , ("lineCommentSelectionB"  , box lineCommentSelectionB)
+    , ("linePrefixSelectionB"  , box linePrefixSelectionB)
     , ("unLineCommentSelectionB", box unLineCommentSelectionB)
     , ("insertB"                , box insertB)
     , ("revertE"                , box revertE)
