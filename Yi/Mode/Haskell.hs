@@ -1,10 +1,12 @@
 module Yi.Mode.Haskell (haskellMode, cleverHaskellMode, 
-                        haskellUnCommentSelectionB, haskellCommentSelectionB)  where
+                        haskellUnCommentSelectionB, haskellCommentSelectionB, haskellToggleCommentSelectionB)  where
 
 import Prelude ()
 import Data.Maybe (maybe)
+import Data.List (isPrefixOf)
 import Yi.Buffer
 import Yi.Buffer.HighLevel
+import Yi.Buffer.Normal
 import Yi.Indent
 import Yi.Prelude
 import Yi.Syntax
@@ -23,7 +25,6 @@ haskellMode = emptyMode
     modeHL = ExtHL $
     Alex.mkHighlighter Haskell.initState (fmap (first tokenToStroke) . Haskell.alexScanToken)
    , modeIndent = \_ast -> autoIndentHaskellB
-
    }
 
 cleverHaskellMode :: Mode (Expr (Tok Haskell.Token))
@@ -124,4 +125,10 @@ haskellCommentSelectionB = linePrefixSelectionB "-- "
 -- | uncomments a region of haskell line commented code
 haskellUnCommentSelectionB :: BufferM ()
 haskellUnCommentSelectionB = unLineCommentSelectionB "-- "
+
+haskellToggleCommentSelectionB = do
+  l <- readUnitB Line
+  if ("--" `isPrefixOf` l)
+    then haskellUnCommentSelectionB
+    else haskellCommentSelectionB
 
