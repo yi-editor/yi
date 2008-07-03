@@ -9,7 +9,7 @@ module Yi.Editor
 
 where
 
-import Yi.Buffer                ( BufferRef, FBuffer (..), BufferM, newB, runBufferFull, insertN )
+import Yi.Buffer                ( BufferRef, FBuffer (..), BufferM, newB, runBufferFull, insertN, Mode, setMode, keymapProcessA )
 import Yi.Buffer.Implementation (Update(..), updateIsDelete)
 import Yi.Buffer.HighLevel (botB)
 import Text.Regex.Posix.Wrap    ( Regex )
@@ -17,8 +17,10 @@ import Text.Regex.Posix.Wrap    ( Regex )
 import Yi.Config
 import Yi.Debug
 import Yi.Monad
+import Yi.Modes
 import Yi.Accessor
 import Yi.Dynamic
+import qualified Yi.Interact as I
 import Yi.KillRing
 import Yi.Window
 import Yi.WindowSet (WindowSet)
@@ -116,7 +118,10 @@ stringToNewBuffer :: String -- ^ The buffer name (*not* the associated file)
                   -> EditorM BufferRef
 stringToNewBuffer nm cs = do
     u <- newRef
-    insertBuffer (newB u nm cs)
+    b <- insertBuffer (newB u nm cs)
+    fundamental <- asks fundamentalMode
+    setBufferMode b fundamental
+    return b
 
 
 insertBuffer :: FBuffer -> EditorM BufferRef
@@ -407,3 +412,15 @@ shiftOtherWindow = do
   when (len == 1) splitE
   nextWinE
 
+
+-----------------------
+-- Keymap thread handling
+
+setBufferMode :: BufferRef -> Mode syntax -> EditorM ()
+setBufferMode b m = do
+  withGivenBuffer0 b $ setMode m
+  restartBufferThread b
+
+restartBufferThread :: BufferRef -> EditorM ()
+restartBufferThread b = do
+  withGivenBuffer0 b $ setA keymapProcessA I.End

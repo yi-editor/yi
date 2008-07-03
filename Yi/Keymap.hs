@@ -72,28 +72,8 @@ newtype YiM a = YiM {runYiM :: ReaderT Yi IO a}
 write :: (I.MonadInteract m Action ev, YiAction a x, Show x) => a -> m ()
 write x = I.write (makeAction x)
 
-
------------------------
--- Keymap thread handling
-
-
--- FIXME: we never cleanup buffer processes
-setBufferMode :: BufferRef -> Mode syntax -> EditorM ()
-setBufferMode b m = do
-  Editor.withGivenBuffer0 b $ setMode m
-  restartBufferThread b
-
-restartBufferThread :: BufferRef -> EditorM ()
-restartBufferThread b = do
-  Editor.withGivenBuffer0 b $ setA keymapProcessA I.End
-
 withBufferMode :: BufferRef -> (forall syntax. Mode syntax -> a) -> YiM a
 withBufferMode b f = withGivenBuffer b $ withModeB f
-
-getBufferProcess :: BufferRef -> YiM KeymapProcess
-getBufferProcess b = do
-  withGivenBuffer b $ getA keymapProcessA 
-
 
 --------------------------------
 -- Uninteresting glue code
