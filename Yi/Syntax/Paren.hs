@@ -45,10 +45,7 @@ data Tree t
       deriving Show
 
 instance Functor Tree where
-    fmap f (Atom t) = Atom (f t)
-    fmap f (Error t) = Error (f t)
-    fmap f (Group l g r) = Group (f l) (fmap (fmap f) g) (f r)
-    fmap f (Stmt s) = Stmt ((fmap (fmap (fmap f))) s)
+  fmap = fmapDefault
 
 -- | Return the 1st token of a subtree.
 getFirstToken :: Tree t -> Maybe t

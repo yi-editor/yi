@@ -10,9 +10,6 @@ import Yi.Main (defaultConfig)
 import Yi.Debug
 import Data.String
 
--- "real" main
---main0 :: Config -> IO ()
-
 recoverState :: String -> IO ()
 recoverState _stateName = return ()
 

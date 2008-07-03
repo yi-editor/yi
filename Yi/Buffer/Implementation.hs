@@ -363,8 +363,6 @@ curLnI fb = 1 + F.count newLine (F.take (fromPoint $ pointBI fb) (mem fb))
 -- to (which may be not be the requested one, if it was out of range)
 -- Note that the line-difference returned will be negative if we are
 -- going backwards to previous lines (that is if @n@ was negative).
--- Also note: it's legal to do a @gotoLnRelI 0@ this will move to
--- the start of the current line, which maybe what was required.
 gotoLnRelI :: Int -> BufferImpl syntax -> (BufferImpl syntax, Int)
 gotoLnRelI n fb = 
   (moveToI (Point newPoint) fb, difference)
