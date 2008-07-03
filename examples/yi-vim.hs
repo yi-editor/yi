@@ -1,12 +1,11 @@
 import Yi
 import Yi.Keymap.Vim (keymap)
 import qualified Yi.Mode.Shim as Shim
-import Yi.UI.Common (UIConfig(..))
 import Yi.Mode.Haskell
 import Data.List (isSuffixOf)
 import Yi.Prelude
 import Prelude ()
-
+import Yi.Keymap.Keys
 
 myModetable :: ReaderT String Maybe AnyMode
 myModetable = ReaderT $ \fname -> case () of 

@@ -49,5 +49,5 @@ ev ?>> proc = event ev >> proc
 ev ?>>! act = event ev >> write act
 
 infixl 1 >>!
-infix  0 ?>>!
+infixr 0 ?>>!
 infixr 0 ?>>
