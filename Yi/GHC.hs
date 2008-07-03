@@ -34,9 +34,9 @@ newShim = do
     session <- io $ ghcInit ghc
 
     r <- asks yiEditor
-
+    cfg <- asks yiConfig
     let logMsg msgSeverity msgSrcSpan style msg = 
-           unsafeWithEditor r $ do                             
+           unsafeWithEditor cfg r $ do                             
              let note = CompileNote msgSeverity msgSrcSpan style msg
              modifyA notesA (Just . maybe (WS.new note) (WS.add note))
              printMsg ('\n':show ((mkLocMessage msgSrcSpan msg) style))

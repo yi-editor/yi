@@ -231,8 +231,7 @@ executable yi
           cpp-options: -DFRONTEND_COCOA
 
         if flag (ghcAPI)
-          build-depends: ghc
-          build-depends: parallel
+          build-depends: ghc==6.8.3
           build-depends: haskell98
           cpp-options: -DGHC_API
 
