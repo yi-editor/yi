@@ -96,6 +96,7 @@ import System.FilePath
 import Text.Regex.Posix.Wrap    (Regex)
 import Yi.Accessor
 import Yi.Buffer.Implementation
+import Yi.Region
 import Yi.Syntax
 import Yi.Undo
 import Yi.Dynamic
@@ -530,7 +531,6 @@ getMarkB m = queryAndModify (getMarkBI m)
 
 getSelectionMarkB :: BufferM Mark
 getSelectionMarkB = queryBuffer getSelectionMarkBI
-
 
 -- | Move point by the given number of characters.
 -- A negative offset moves backwards a positive one forward.
