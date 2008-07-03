@@ -54,7 +54,7 @@ findExprInCheckedModule line col (CheckedModule {
     doSearch f ret (Just x) = runSearch line col ret (f x)
     doSearch f ret Nothing  = NotFound
 #if __GLASGOW_HASKELL__ > 606
-    doSearchModule (L span (HsModule _ _ decls _ _ _ _ _)) =
+    doSearchModule (L span (HsModule _ _ decls _ _ _ _)) =
       runSearch line col undefined (searchList searchLImportDecl decls)
 
 searchRenamedSource (group, _, _, _, _) = searchGroup group
