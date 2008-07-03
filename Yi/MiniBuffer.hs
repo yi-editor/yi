@@ -25,14 +25,13 @@ import Data.String
 -- The third argument is an action to perform after the minibuffer
 -- is opened such as move to the first occurence of a searched for
 -- string. If you don't need this just supply @return ()@
-spawnMinibufferE :: String -> KeymapEndo -> YiM BufferRef
+spawnMinibufferE :: String -> KeymapEndo -> EditorM BufferRef
 spawnMinibufferE prompt kmMod =
-    do b <- withEditor $ stringToNewBuffer prompt (fromString "")
-       fundamental <- asks (fundamentalMode . yiConfig)
+    do b <- stringToNewBuffer prompt (fromString "")
+       fundamental <- asks fundamentalMode
        setBufferMode b fundamental {modeKeymap = kmMod}
-       withEditor $ do
-         w <- newWindowE True b
-         modifyWindows (WS.add w)
+       w <- newWindowE True b
+       modifyWindows (WS.add w)
        return b
 
 -- | @withMinibuffer prompt completer act@: open a minibuffer with @prompt@. Once a string @s@ is obtained, run @act s@. @completer@ can be used to complete functions.
@@ -72,7 +71,7 @@ withMinibufferGen proposal getHint prompt completer act = do
                     ("C-g", write closeMinibuffer)]
   withEditor historyStart
   msgEditor =<< getHint ""
-  b <- spawnMinibufferE (prompt ++ " ") (\bindings -> rebind rebindings (bindings >> write showMatchings))
+  b <- withEditor $ spawnMinibufferE (prompt ++ " ") (\bindings -> rebind rebindings (bindings >> write showMatchings))
   withGivenBuffer b $ replaceBufferContent proposal
 
 

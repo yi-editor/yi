@@ -714,7 +714,7 @@ spawn_ex_buffer prompt = do
       ex_complete _ = return ""
 
   withEditor $ historyStart
-  spawnMinibufferE prompt (const $ ex_process) 
+  withEditor $ spawnMinibufferE prompt (const $ ex_process) 
   return ()
 
 

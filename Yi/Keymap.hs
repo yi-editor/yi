@@ -78,14 +78,14 @@ write x = I.write (makeAction x)
 
 
 -- FIXME: we never cleanup buffer processes
-setBufferMode :: BufferRef -> Mode syntax -> YiM ()
+setBufferMode :: BufferRef -> Mode syntax -> EditorM ()
 setBufferMode b m = do
-  withGivenBuffer b $ setMode m
+  Editor.withGivenBuffer0 b $ setMode m
   restartBufferThread b
 
-restartBufferThread :: BufferRef -> YiM ()
+restartBufferThread :: BufferRef -> EditorM ()
 restartBufferThread b = do
-  withGivenBuffer b $ setA keymapProcessA I.End
+  Editor.withGivenBuffer0 b $ setA keymapProcessA I.End
 
 withBufferMode :: BufferRef -> (forall syntax. Mode syntax -> a) -> YiM a
 withBufferMode b f = withGivenBuffer b $ withModeB f

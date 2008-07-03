@@ -105,7 +105,7 @@ fnewCanonicalized f = do
     AnyMode newMode <- withBufferMode b $ \curmode -> fromMaybe (AnyMode curmode) (runReaderT tbl f)
     -- by default stick with the current mode (eg. stick with dired if
     -- set as such)
-    setBufferMode b newMode
+    withEditor $ setBufferMode b newMode
     withEditor $ switchToBufferE b
     where
     -- Determines whether or not a given buffer is associated with
@@ -234,7 +234,7 @@ diredDirBuffer dir = do
                 setFileName b dir -- associate the buffer with the dir
                 withEditor $ switchToBufferE b
                 diredLoadNewDir dir
-                setBufferMode b diredMode
+                withEditor $ setBufferMode b diredMode
                 return b
 
 diredMode :: Mode ()

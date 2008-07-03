@@ -131,7 +131,7 @@ isFileBuffer b = case file b of
 askIndividualQuit :: [FBuffer] -> YiM ()
 askIndividualQuit [] = modifiedQuitEditor
 askIndividualQuit (firstBuffer : others) =
-  spawnMinibufferE saveMessage askKeymap >> return ()
+  withEditor (spawnMinibufferE saveMessage askKeymap) >> return ()
   where
   askKeymap   = const $ makeKeymap askBindings
   saveMessage = concat [ "do you want to save the buffer: "
@@ -161,7 +161,7 @@ modifiedQuitEditor =
   do modifiedBuffers <- getModifiedBuffers
      if null modifiedBuffers
         then quitEditor
-        else spawnMinibufferE modifiedMessage askKeymap >> return ()
+        else withEditor $ spawnMinibufferE modifiedMessage askKeymap >> return ()
   where
   modifiedMessage = "Modified buffers exist really quit? (y/n)"
 
@@ -282,7 +282,7 @@ queryReplaceE = do
                            ("q", write $ closeBufferAndWindowE),
                            ("C-g", write $ closeBufferAndWindowE)
                            ]
-    spawnMinibufferE
+    withEditor $ spawnMinibufferE
             ("Replacing " ++ replaceWhat ++ "with " ++ replaceWith ++ " (y,n,q):")
             (const (makeKeymap replaceBindings))
     qrNext b replaceWhat
