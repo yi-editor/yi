@@ -5,7 +5,7 @@ module Yi.Keymap.Cua  (keymap)
 where
 
 import Yi.Yi
-import Yi.Keymap.Emacs.Keys
+import Yi.Keymap.Keys
 import Yi.Keymap.Emacs.KillRing
 import Yi.Keymap.Emacs.Utils
 import Yi.Accessor
@@ -19,14 +19,11 @@ import Control.Applicative
 
 selfInsertKeymap :: Keymap
 selfInsertKeymap = do
-  Event (KASCII c) [] <- satisfy isPrintableEvent
+  c <- printableChar
   write (insertSelf c)
-      where isPrintableEvent (Event (KASCII c) []) = c >= ' '
-            isPrintableEvent _ = False
 
 keymap :: Keymap
-keymap =
-  selfInsertKeymap <|> choice keys
+keymap = selfInsertKeymap <|> choice keys
 
 setMark :: BufferM ()
 setMark = do
@@ -46,7 +43,9 @@ keys = [
         spec KUp            ?>>! moveB VLine Backward,
         spec KDown          ?>>! moveB VLine Forward,
         shift (spec KRight) ?>>! setMark >> rightB,
-        ctrl  (char 'x')    ?>>! killRegionE
+        ctrl  (char 'x')    ?>>! killRegion,
+        ctrl  (char 'c')    ?>>! killRingSaveE,
+        ctrl  (char 'v')    ?>>! yankE
        ]
 
 
