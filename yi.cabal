@@ -64,11 +64,6 @@ flag hacking
 flag testing
   Description: bake-in the self-checks
 
-flag oldregex
-  Default: False
-  Description: Support for regex packages in the 0.7 series.
-  -- remove this soon.
-
 library
   if flag(hacking)
     exposed-modules:
@@ -190,7 +185,6 @@ executable yi
 
         build-depends: Crypto==4.1.0
         build-depends: regex-base ==0.93.1
-        build-depends: regex-compat ==0.91
         build-depends: regex-posix ==0.93.1
         
         build-depends: parsec >=2.1

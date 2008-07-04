@@ -60,8 +60,7 @@ import Yi.Style
 
 import Control.Monad
 
-import Text.Regex.Base
-import Text.Regex.Posix
+import Yi.Regex
 
 import qualified Yi.FingerString as F
 import Yi.FingerString (FingerString)

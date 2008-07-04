@@ -12,7 +12,7 @@ where
 import Yi.Buffer                ( BufferRef, FBuffer (..), BufferM, newB, runBufferFull, insertN, Mode, setMode, keymapProcessA )
 import Yi.Buffer.Implementation (Update(..), updateIsDelete)
 import Yi.Buffer.HighLevel (botB)
-import Text.Regex.Posix.Wrap    ( Regex )
+import Yi.Regex (Regex)
 
 import Yi.Config
 import Yi.Debug

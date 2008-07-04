@@ -287,9 +287,9 @@ cmd_eval = do
 
 -- TODO: escape the current word
 --       at word bounds: search for \<word\>
-searchCurrentWord :: YiM ()
+searchCurrentWord :: EditorM ()
 searchCurrentWord = do
-  w <- withBuffer $ readRegionB =<< regionOfB ViWord
+  w <- withBuffer0 $ readRegionB =<< regionOfB ViWord
   doSearch (Just w) [] Forward
 
 -- | Parse any character that can be inserted in the text.
@@ -298,9 +298,9 @@ textChar = do
   Event (KASCII c) [] <- anyEvent
   return c
 
-continueSearching :: Direction -> YiM ()
+continueSearching :: Direction -> EditorM ()
 continueSearching direction = do
-  withEditor $ getRegexE >>= printMsg . ("/" ++) . fst . fromMaybe ([],undefined)
+  getRegexE >>= printMsg . ("/" ++) . fst . fromMaybe ([],undefined)
   doSearch Nothing [] direction
 
 -- | cmd mode commands
@@ -315,7 +315,7 @@ singleCmdFM =
     ,(char 'D',      withEditor . cut Exclusive . (Replicate $ Move Line Forward))
     ,(char 'J',      const (withBuffer (moveToEol >> deleteN 1)))    -- the "\n"
     ,(char 'U',      withBuffer . flip replicateM_ undoB)    -- NB not correct
-    ,(char 'n',      const $ continueSearching Forward)
+    ,(char 'n',      const $ withEditor $ continueSearching Forward)
     ,(char 'u',      withBuffer . flip replicateM_ undoB)
 
     ,(char 'X',      withEditor . cut Exclusive . (Replicate $ Move Character Backward))
@@ -327,7 +327,7 @@ singleCmdFM =
 
     ,(spec KPageUp, withBuffer . upScreensB)
     ,(spec KPageDown, withBuffer . downScreensB)
-    ,(char '*',      const $ searchCurrentWord)
+    ,(char '*',      const $ withEditor searchCurrentWord)
     ,(char '~',      \i -> withBuffer $ do
                          p <- pointB
                          moveXorEol i
@@ -726,7 +726,7 @@ ex_eval :: String -> YiM ()
 ex_eval cmd = do
   case cmd of
         -- regex searching
-          ('/':pat) -> doSearch (Just pat) [] Forward
+          ('/':pat) -> withEditor $ doSearch (Just pat) [] Forward
 
         -- TODO: We give up on re-mapping till there exists a generic Yi mechanism to do so.
 
@@ -810,7 +810,7 @@ ex_eval cmd = do
       fn ('e':' ':f)  = fnewE f
       -- fn ('s':'e':'t':' ':'f':'t':'=':ft)  = withBuffer $ setSyntaxB $ highlighters M.! ft
       fn ('n':'e':'w':' ':f) = withEditor splitE >> fnewE f
-      fn ('s':'/':cs) = viSub cs
+      fn ('s':'/':cs) = withEditor $ viSub cs
 
       fn ('b':' ':"m") = withEditor $ switchToBufferWithNameE "*messages*"
       fn ('b':' ':f)   = withEditor $ switchToBufferWithNameE f
@@ -902,7 +902,7 @@ strip :: String -> String
 strip = takeWhile (/= ' ') . dropWhile (== ' ')
 
 -- | Try to do a substitution
-viSub :: [Char] -> YiM ()
+viSub :: [Char] -> EditorM ()
 viSub cs = do
     let (pat,rep') = break (== '/')  cs
         (rep,opts) = case rep' of
@@ -917,5 +917,5 @@ viSub cs = do
 
     where do_single p r = do
                 s <- searchAndRepLocal p r
-                if not s then errorEditor ("Pattern not found: "++p) else withEditor msgClr
+                if not s then fail ("Pattern not found: "++p) else msgClr
 

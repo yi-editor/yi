@@ -51,7 +51,7 @@ import Data.String
 
 import System.Time
 import Text.Printf
-import Text.Regex.Posix
+import Yi.Regex
 
 import Yi.Keymap.Emacs.Keys (rebind)
 import Yi.MiniBuffer (withMinibuffer)

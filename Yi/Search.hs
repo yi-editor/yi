@@ -45,7 +45,7 @@ import Prelude ()
 import Yi.Prelude
 import Yi.Buffer
 import Yi.Buffer.HighLevel
-import Text.Regex.Posix.String  ( Regex, compExtended, compIgnoreCase, compNewline, compile, execBlank )
+import Yi.Regex  ( Regex, compExtended, compIgnoreCase, compNewline, makeRegexOptsM, execBlank )
 import Yi.Editor
 import qualified Yi.Editor as Editor
 
@@ -109,40 +109,39 @@ doSearch :: (Maybe String)       -- ^ @Nothing@ means used previous
                                 -- Use getRegexE to check for previous patterns
         -> [SearchF]            -- ^ Flags to modify the compiled regex
         -> Direction            -- ^ @Backward@ or @Forward@
-        -> YiM ()
+        -> EditorM ()
 
 doSearch s fs d =
      case s of
         Just re -> searchInit re fs >>= (flip continueSearch) d >>= f
         Nothing -> do
-            mre <- withEditor getRegexE
+            mre <- getRegexE
             case mre of
-                Nothing -> errorEditor "No previous search pattern" -- NB
+                Nothing -> fail "No previous search pattern" -- NB
                 Just r -> continueSearch r d >>= f
     where
         f mp = case mp of
             Just (Right _) -> return ()
-            Just (Left  _) -> msgEditor "Search wrapped"
-            Nothing        -> errorEditor "Pattern not found"
+            Just (Left  _) -> printMsg "Search wrapped"
+            Nothing        -> fail "Pattern not found"
 
 
 continueSearch :: SearchExp
           -> Direction
-          -> YiM SearchResult
+          -> EditorM SearchResult
 
 continueSearch _ Backward = do
-        errorEditor "Backward searching is unimplemented"
-        return Nothing
-continueSearch (s, re) _ = searchF s re
+        fail "Backward searching is unimplemented"
+continueSearch (s, re) _ = withBuffer0 $ searchF s re
 
 --
 -- Set up a search.
 --
-searchInit :: String -> [SearchF] -> YiM SearchExp
+searchInit :: String -> [SearchF] -> EditorM SearchExp
 searchInit re fs = do
-    Right c_re <- liftIO $ compile (extended .|. igcase .|. newline) execBlank re
-    let p = (re,c_re)
-    withEditor $ setRegexE p
+    let Just c_re = makeRegexOptsM (extended .|. igcase .|. newline) execBlank re
+        p = (re,c_re)
+    setRegexE p
     return p
 
     where
@@ -162,8 +161,8 @@ searchInit re fs = do
 -- Keymaps may implement their own regex language. How do we provide for this?
 -- Also, what's happening with ^ not matching sol?
 --
-searchF :: String -> Regex -> YiM SearchResult
-searchF _ c_re = withBuffer $ do
+searchF :: String -> Regex -> BufferM SearchResult
+searchF _ c_re = do
     mp <- do
             p   <- pointB
             rightB               -- start immed. after cursor
@@ -191,17 +190,17 @@ searchF _ c_re = withBuffer $ do
 --
 -- TODO too complex.
 --
-searchAndRepLocal :: String -> String -> YiM Bool
+searchAndRepLocal :: String -> String -> EditorM Bool
 searchAndRepLocal [] _ = return False   -- hmm...
 searchAndRepLocal re str = do
-    Right c_re <- liftIO $ compile compExtended execBlank re
-    withEditor $ setRegexE (re,c_re)     -- store away for later use
+    let Just c_re = makeRegexOptsM compExtended execBlank re
+    setRegexE (re,c_re)     -- store away for later use
 
-    mp <- withBuffer $ do   -- find the regex
+    mp <- withBuffer0 $ do   -- find the regex
             mp <- regexB c_re
             return mp
     case mp of
-        Just (i,j) -> withBuffer $ do
+        Just (i,j) -> withBuffer0 $ do
                 p  <- pointB      -- all buffer-level atm
                 moveToEol
                 ep <- pointB      -- eol point of current line

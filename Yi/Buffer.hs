@@ -94,7 +94,7 @@ where
 import Prelude (ceiling)
 import Yi.Prelude
 import System.FilePath
-import Text.Regex.Posix.Wrap    (Regex)
+import Yi.Regex (Regex)
 import Yi.Accessor
 import Yi.Buffer.Implementation
 import Yi.Region
