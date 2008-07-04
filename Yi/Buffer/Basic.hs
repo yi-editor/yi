@@ -9,6 +9,16 @@ import qualified Data.ByteString.Lazy.UTF8 as LazyUTF8
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as LB
 import Data.String
+import Data.Typeable
+
+-- | Direction of movement inside a buffer
+data Direction = Backward
+               | Forward
+                 deriving (Eq, Typeable,Show)
+
+reverseDir :: Direction -> Direction
+reverseDir Forward = Backward
+reverseDir Backward = Forward
     
 newtype Point = Point {fromPoint :: Int}           -- offset in the buffer (#bytes, NOT codepoints)
     deriving (Show, Eq, Ord, Num, Enum, Real, Integral, Bounded)

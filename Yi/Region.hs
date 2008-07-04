@@ -18,7 +18,7 @@ module Yi.Region
   , unionRegion
   )
 where
-import Yi.Buffer.Implementation
+import Yi.Buffer.Basic
 import Data.Typeable
 import Yi.Window
 import Control.Applicative

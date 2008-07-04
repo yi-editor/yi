@@ -68,7 +68,7 @@ import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as LazyB
 import qualified Data.ByteString.UTF8 as UTF8
 import qualified Data.ByteString.Lazy.UTF8 as LazyUTF8
-
+import Yi.Buffer.Basic
 import Data.Array
 import Data.Char
 import Data.Maybe
@@ -78,14 +78,6 @@ import qualified Data.Set as Set
 import Yi.Debug
 import Data.Typeable
 
--- | Direction of movement inside a buffer
-data Direction = Backward
-               | Forward
-                 deriving (Eq, Typeable,Show)
-
-reverseDir :: Direction -> Direction
-reverseDir Forward = Backward
-reverseDir Backward = Forward
 
 newtype Mark = Mark {markId::Int} deriving (Eq, Ord, Show)
 pointMark, markMark :: Mark
@@ -101,7 +93,7 @@ type BufferImpl = FBufferData
 
 data HLState syntax = forall cache. HLState !(Highlighter' cache syntax) cache
 
-data OvlLayer = HintLayer | UserLayer
+data OvlLayer = UserLayer | HintLayer
   deriving (Ord, Eq)
 data Overlay = Overlay {
                         overlayLayer :: OvlLayer,
@@ -260,19 +252,22 @@ delOverlayLayer layer fb = fb{overlays = Set.filter ((/= layer) . overlayLayer) 
 --   the buffer.  In each list, the strokes are guaranteed to be
 --   ordered and non-overlapping.  The lists of strokes are ordered by
 --   increasing priority.
-strokesRangesBI :: Point -> Point -> BufferImpl syntax -> [[Stroke]]
-strokesRangesBI i j fb@FBufferData {hlCache = HLState hl cache} =  result
+strokesRangesBI :: Maybe Regex -> Point -> Point -> BufferImpl syntax -> [[Stroke]]
+strokesRangesBI regex i j fb@FBufferData {hlCache = HLState hl cache} =  result
   where
     dropBefore = dropWhile (\(_l,_s,r) -> r <= i)
     takeIn  = takeWhile (\(l,_s,_r) -> l <= j)
 
     layer1 = hlGetStrokes hl point i j cache
     layers2 = map (map overlayStroke) $ groupBy ((==) `on` overlayLayer) $  Set.toList $ overlays fb
-
-    result = map (map clampStroke . takeIn . dropBefore) (layers2 ++ [layer1])
+    layer3 = case regex of 
+               Just re -> takeIn $ map hintStroke $ regexBI re i fb
+               Nothing -> []
+    result = map (map clampStroke . takeIn . dropBefore) (layer1 : layers2 ++ [layer3])
     overlayStroke (Overlay _ sm  em a) = (markPosition sm, a, markPosition em)
     point = pointBI fb
     clampStroke (l,x,r) = (max i l, x, min j r)
+    hintStroke (l,r) = (l,if l <= point && point <= r then strongHintStyle else hintStyle,r)
 
 ------------------------------------------------------------------------
 -- Point based editing
@@ -449,10 +444,9 @@ charsFromSolBI fb = UTF8.toString $ readBytes ptr (Size (pnt - sol)) (Point sol)
 
 
 -- | Return indices of all strings in buffer matching regex
-regexBI :: Regex -> forall syntax. BufferImpl syntax -> [(Point,Point)]
-regexBI re fb = fmap matchedRegion mmatch
-   where Point p = pointBI fb
-         ptr = mem fb
+regexBI :: Regex -> Point -> forall syntax. BufferImpl syntax -> [(Point,Point)]
+regexBI re (Point p) fb = fmap matchedRegion mmatch
+   where ptr = mem fb
          mmatch = matchAll re (F.toByteString $ F.drop p ptr)
          matchedRegion arr = let (off,len) = arr!0 in (Point (p+off),Point (p+off+len)) 
 

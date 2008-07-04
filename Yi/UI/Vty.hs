@@ -36,6 +36,7 @@ import Yi.Debug
 import Yi.Editor
 import Yi.Event
 import Yi.Monad
+import Yi.Regex (Regex)
 import Yi.Style
 import Yi.WindowSet as WS
 import qualified Data.ByteString.Char8 as B
@@ -219,13 +220,13 @@ scrollAndRenderWindow cfg e sty width (win,hasFocus) = (win' {bospnt = bos}, ren
     where b = findBufferWith (bufkey win) e
           (point, _) = runBufferDummyWindow b pointB
           win' = if not hasFocus || pointInWindow point win then win else showPoint b win
-          (rendered, bos) = drawWindow cfg b sty hasFocus width win'
+          (rendered, bos) = drawWindow cfg (fmap snd $ regex e) b sty hasFocus width win'
 
 
 -- | Draw a window
 -- TODO: horizontal scrolling.
-drawWindow :: UIConfig -> FBuffer -> UIStyle -> Bool -> Int -> Window -> (Rendered, Point)
-drawWindow cfg b sty focused w win = (Rendered { picture = pict,cursor = cur}, bos)
+drawWindow :: UIConfig -> Maybe Regex -> FBuffer -> UIStyle -> Bool -> Int -> Window -> (Rendered, Point)
+drawWindow cfg mre b sty focused w win = (Rendered { picture = pict,cursor = cur}, bos)
             
     where
         m = not (isMini win)
@@ -239,7 +240,7 @@ drawWindow cfg b sty focused w win = (Rendered { picture = pict,cursor = cur}, b
         (eofPoint, _) = runBuffer win b sizeB
         sz = Size (w*h')
         (text, _)    = runBuffer win b (streamB Forward (tospnt win)) -- read enough chars from the buffer.
-        (strokes, _) = runBuffer win b (strokesRangesB  (tospnt win) (tospnt win +~ sz)) -- corresponding strokes
+        (strokes, _) = runBuffer win b (strokesRangesB mre (tospnt win) (tospnt win +~ sz)) -- corresponding strokes
         colors = paintPicture attr (map (map toVtyStroke) strokes)
         bufData = -- trace (unlines (map show text) ++ unlines (map show $ concat strokes)) $ 
                   paintChars attr colors $ toIndexedString (tospnt win) text
