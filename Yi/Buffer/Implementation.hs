@@ -443,12 +443,11 @@ charsFromSolBI fb = UTF8.toString $ readBytes ptr (Size (pnt - sol)) (Point sol)
         ptr = mem fb
 
 
--- | Return indices of all strings in buffer matching regex
+-- | Return indices of all strings in buffer matching regex, starting from given point
 regexBI :: Regex -> Point -> forall syntax. BufferImpl syntax -> [(Point,Point)]
-regexBI re (Point p) fb = fmap matchedRegion mmatch
-   where ptr = mem fb
-         mmatch = matchAll re (F.toByteString $ F.drop p ptr)
-         matchedRegion arr = let (off,len) = arr!0 in (Point (p+off),Point (p+off+len)) 
+regexBI re (Point p) fb = fmap matchedRegion $ matchAll re $ F.toLazyByteString $ F.drop p $ mem fb
+   where matchedRegion arr = let (off,len) = arr!0 in (Point (p+off),Point (p+off+len)) 
+
 
 getSelectionMarkBI :: BufferImpl syntax -> Mark
 getSelectionMarkBI _ = markMark -- FIXME: simplify this.

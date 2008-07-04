@@ -95,6 +95,7 @@ import Yi.Keymap.Emacs.Keys
 import Yi.Keymap.Emacs.UnivArgument
 import Yi.MiniBuffer
 import Yi.Process
+import Yi.Regex
 import Yi.Search
 import Yi.Templates
   ( addTemplate
@@ -277,15 +278,17 @@ queryReplaceE = do
     withMinibuffer "Replace:" return $ \replaceWhat -> do
     withMinibuffer "With:" return $ \replaceWith -> do
     b <- withEditor $ getBuffer
-    let replaceBindings = [("n", write $ qrNext b replaceWhat),
-                           ("y", write $ qrReplaceOne b replaceWhat replaceWith),
+    let replaceBindings = [("n", write $ qrNext b re),
+                           ("y", write $ qrReplaceOne b re replaceWith),
                            ("q", write $ closeBufferAndWindowE),
                            ("C-g", write $ closeBufferAndWindowE)
                            ]
-    withEditor $ spawnMinibufferE
+        re = makeRegex replaceWhat
+    withEditor $ do
+       spawnMinibufferE
             ("Replacing " ++ replaceWhat ++ "with " ++ replaceWith ++ " (y,n,q):")
             (const (makeKeymap replaceBindings))
-    qrNext b replaceWhat
+       qrNext b re
 
 executeExtendedCommandE :: YiM ()
 executeExtendedCommandE = do

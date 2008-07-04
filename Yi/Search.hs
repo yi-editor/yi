@@ -324,23 +324,19 @@ isearchEnd accept = do
 -----------------
 -- Query-Replace
 
-qrNext :: BufferRef -> String -> YiM ()
+qrNext :: BufferRef -> Regex -> EditorM ()
 qrNext b what = do
-  mp <- withGivenBuffer b $ searchB Forward what
+  mp <- withGivenBuffer0 b $ regexB what
   case mp of
-    Nothing -> do
-            withEditor $ printMsg "String to search not found"
-            closeWindow
-    Just p -> withGivenBuffer b $ do
-                   m <- getSelectionMarkB
-                   moveTo (p +~ utf8Size what)
-                   setMarkPointB m p
+    [] -> do
+      printMsg "String to search not found"
+      tryCloseE -- the minibuffer.
+    (r:_) -> withGivenBuffer0 b $ setSelectRegionB r
 
-
-qrReplaceOne :: BufferRef -> String -> String -> YiM ()
-qrReplaceOne b what replacement = do
-  withGivenBuffer b $ do
-    deleteN (length what)
-    insertN replacement
-  qrNext b what
+qrReplaceOne :: BufferRef -> Regex -> String -> EditorM ()
+qrReplaceOne b regex replacement = do
+  withGivenBuffer0 b $ do
+    r <- getRawSelectRegionB
+    replaceRegionB r replacement
+  qrNext b regex
 

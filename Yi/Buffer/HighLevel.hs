@@ -307,14 +307,17 @@ newtype SelectionStyle = SelectionStyle TextUnit
 instance Initializable SelectionStyle where
   initial = SelectionStyle Character
 
+getRawSelectRegionB :: BufferM Region
+getRawSelectRegionB = do
+  m <- getMarkPointB =<< getSelectionMarkB
+  p <- pointB
+  return $ mkRegion p m
+
 -- | Get the current region boundaries
 getSelectRegionB :: BufferM Region
 getSelectRegionB = do
-  m <- getMarkPointB =<< getSelectionMarkB
-  p <- pointB
-  let region = mkRegion p m
   SelectionStyle unit <- getDynamicB
-  unitWiseRegion unit region
+  unitWiseRegion unit =<< getRawSelectRegionB
 
 -- | Select the given region: set the selection mark at the 'regionStart'
 -- and the current point at the 'regionEnd'.
