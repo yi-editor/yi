@@ -1,9 +1,7 @@
 module Yi.Regex 
   (
---   module Text.Regex.TDFA
-   module Text.Regex.Posix
+   module Text.Regex.TDFA,
    )
 where
 
--- import Text.Regex.TDFA
-import Text.Regex.Posix
+import Text.Regex.TDFA

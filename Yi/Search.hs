@@ -45,14 +45,13 @@ import Prelude ()
 import Yi.Prelude
 import Yi.Buffer
 import Yi.Buffer.HighLevel
-import Yi.Regex  ( Regex, compExtended, compIgnoreCase, compNewline, makeRegexOptsM, execBlank )
+import Yi.Regex
 import Yi.Editor
 import qualified Yi.Editor as Editor
 
-import Data.Bits ( (.|.) )
 import Data.Char
 import Data.Maybe
-import Data.List hiding (elem)
+import Data.List hiding (elem, foldr)
 import Data.Typeable
 
 import Control.Monad.State
@@ -95,8 +94,7 @@ getRegexE = gets regex
 -- under regex(3).
 --
 
-data SearchF = Basic        -- ^ Use non-modern (i.e. basic) regexes
-             | IgnoreCase   -- ^ Compile for matching that ignores char case
+data SearchF = IgnoreCase   -- ^ Compile for matching that ignores char case
              | NoNewLine    -- ^ Compile for newline-insensitive matching
     deriving Eq
 
@@ -139,18 +137,14 @@ continueSearch (s, re) _ = withBuffer0 $ searchF s re
 --
 searchInit :: String -> [SearchF] -> EditorM SearchExp
 searchInit re fs = do
-    let Just c_re = makeRegexOptsM (extended .|. igcase .|. newline) execBlank re
+    let Just c_re = makeRegexOptsM (foldr (.) id (map opt fs) defaultCompOpt) defaultExecOpt re
         p = (re,c_re)
     setRegexE p
     return p
 
     where
-        extended | Basic      `elem` fs = 0
-                 | otherwise            = compExtended   -- extended regex dflt
-        igcase   | IgnoreCase `elem` fs = compIgnoreCase
-                 | otherwise            = 0              -- case insensitive dflt
-        newline  | NoNewLine  `elem` fs = 0
-                 | otherwise            = compNewline    -- newline is special
+        opt IgnoreCase = \o->o{caseSensitive = False}
+        opt NoNewLine = \o->o{multiline = False}
 
 
 -- ---------------------------------------------------------------------
@@ -193,7 +187,7 @@ searchF _ c_re = do
 searchAndRepLocal :: String -> String -> EditorM Bool
 searchAndRepLocal [] _ = return False   -- hmm...
 searchAndRepLocal re str = do
-    let Just c_re = makeRegexOptsM compExtended execBlank re
+    let Just c_re = makeRegexOptsM defaultCompOpt defaultExecOpt re
     setRegexE (re,c_re)     -- store away for later use
 
     mp <- withBuffer0 $ do   -- find the regex

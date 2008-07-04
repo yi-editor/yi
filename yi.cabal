@@ -185,7 +185,7 @@ executable yi
 
         build-depends: Crypto==4.1.0
         build-depends: regex-base ==0.93.1
-        build-depends: regex-posix ==0.93.1
+        build-depends: regex-tdfa ==0.94
         
         build-depends: parsec >=2.1
 
