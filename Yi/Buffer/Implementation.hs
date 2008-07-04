@@ -251,7 +251,7 @@ delOverlayLayer layer fb = fb{overlays = Set.filter ((/= layer) . overlayLayer) 
 --   be interpreted as apply the style @s@ from position @l@ to @r@ in
 --   the buffer.  In each list, the strokes are guaranteed to be
 --   ordered and non-overlapping.  The lists of strokes are ordered by
---   increasing priority.
+--   decreasing priority: the 1st layer should be "painted" on top.
 strokesRangesBI :: Maybe Regex -> Point -> Point -> BufferImpl syntax -> [[Stroke]]
 strokesRangesBI regex i j fb@FBufferData {hlCache = HLState hl cache} =  result
   where
@@ -263,7 +263,7 @@ strokesRangesBI regex i j fb@FBufferData {hlCache = HLState hl cache} =  result
     layer3 = case regex of 
                Just re -> takeIn $ map hintStroke $ regexBI re i fb
                Nothing -> []
-    result = map (map clampStroke . takeIn . dropBefore) (layer1 : layers2 ++ [layer3])
+    result = map (map clampStroke . takeIn . dropBefore) (layer3 : layers2 ++ [layer1])
     overlayStroke (Overlay _ sm  em a) = (markPosition sm, a, markPosition em)
     point = pointBI fb
     clampStroke (l,x,r) = (max i l, x, min j r)
