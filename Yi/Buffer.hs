@@ -516,7 +516,7 @@ withSyntax0 f FBuffer {bmode = m, rawbuf = rb} = f m (getAst rb)
            
 
 -- | Return indices of next string in buffer matched by regex
-regexB :: Regex -> BufferM (Maybe Region)
+regexB :: Regex -> BufferM [Region]
 regexB rx = fmap (uncurry mkRegion) <$> queryBuffer (regexBI rx)
 
 ---------------------------------------------------------------------

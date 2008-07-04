@@ -138,18 +138,14 @@ searchInit re fs = do
 -- TODO: simplify!
 searchF :: String -> Regex -> BufferM SearchResult
 searchF _ c_re = do
-    mp <- do 
-      p <- pointB
+  mp <- savingPointB $ do
       rightB               -- start immed. after cursor
-      mp  <- regexB c_re
-      case fmap Right mp of
-          x@(Just _) -> return x
-          _ -> do moveTo 0
-                  np <- regexB c_re
-                  moveTo p
-                  return (fmap Left np)
-    maybe (return ()) (moveTo . regionStart . either id id) mp
-    return mp
+      rs <- regexB c_re
+      moveTo 0
+      ls <- regexB c_re
+      return $ listToMaybe $ fmap Right rs ++ fmap Left ls
+  maybe (return ()) (moveTo . regionStart . either id id) mp
+  return mp
 
 ------------------------------------------------------------------------
 -- Global search and replace
@@ -168,7 +164,7 @@ searchAndRepLocal re str = do
 
     mp <- withBuffer0 $ regexB c_re   -- find the regex
     case mp of
-        Just r -> withBuffer0 $ savingPointB $ do
+        (r:_) -> withBuffer0 $ savingPointB $ do
                 moveToEol
                 ep <- pointB      -- eol point of current line
                 moveTo $ regionStart r
@@ -179,7 +175,7 @@ searchAndRepLocal re str = do
                     else do         -- do the replacement
                 replaceRegionB r str
                 return True -- signal success
-        Nothing -> return False
+        [] -> return False
 
 
 --------------------------
