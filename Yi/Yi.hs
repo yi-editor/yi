@@ -4,7 +4,7 @@
 --
 
 --
--- Front end to the library, for use by external scripts. Just reexports
+-- Front end to the library, for use by confguration file. Just re-exports
 -- a bunch of modules.
 --
 -- You should therefore:
@@ -12,27 +12,28 @@
 -- in your ~/.yi/ scripts
 --
 
-module Yi.Yi (
-              -- all things re-exported here are made available to keymaps definitions.
-
-        module Control.Monad, -- since all actions are monadic, this is very useful to combine them.
-        module Control.Applicative, -- same reasoning
-        module Yi.Buffer,
-        module Yi.Buffer.HighLevel,
-        module Yi.Buffer.Normal,
-        module Yi.Config,
-        module Yi.Core,
-        module Yi.Debug,
-        module Yi.Dired,
-        module Yi.Editor,
-        module Yi.Eval,
-        module Yi.Event, -- hack, for key defns
-        module Yi.File,
-        module Yi.Interact,
-        module Yi.Buffer.Region,
-        module Yi.Search,
-        module Yi.Style,
-        defaultPublishedActions
+module Yi.Yi 
+  (
+    -- all things re-exported here are made available to keymaps definitions.
+    module Control.Monad, -- since all actions are monadic, this is very useful to combine them.
+    module Control.Applicative, -- same reasoning
+    module Yi.Buffer,
+    module Yi.Buffer.HighLevel,
+    module Yi.Buffer.Normal,
+    module Yi.Config,
+    module Yi.Core,
+    module Yi.Debug,
+    module Yi.Dired,
+    module Yi.Editor,
+    module Yi.Eval,
+    module Yi.Event,
+    module Yi.File,
+    module Yi.Interact,
+    module Yi.Buffer.Region,
+    module Yi.Search,
+    module Yi.Style,
+    module Yi.Keymap.Keys,
+    defaultPublishedActions
    ) where
 import Control.Monad hiding (mapM_, mapM)
 import Control.Applicative
@@ -45,7 +46,8 @@ import Yi.Debug
 import Yi.Dired
 import Yi.Editor
 import Yi.Eval
-import Yi.Event -- so we can see key defns
+import Yi.Event
+import Yi.Keymap.Keys
 import Yi.File
 import Yi.Interact hiding (write)
 import Yi.Buffer.Region

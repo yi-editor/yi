@@ -4,9 +4,13 @@
 module Yi.Keymap.Keys where
 -- * Combinators for building keymaps.
 
-import Yi.Yi
+import Yi.Event
+import Yi.Keymap
 import Data.Char
 import Prelude hiding (error)
+import Yi.Interact hiding (write)
+import Control.Monad (when)
+import Yi.Debug
 
 printableChar :: (MonadInteract m w Event) => m Char
 printableChar = do
