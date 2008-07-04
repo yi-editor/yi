@@ -24,7 +24,7 @@ module Yi.Buffer
   , lineDown
   , newB
   , Mark
-  , Overlay
+  , Overlay, OvlLayer(..)
   , mkOverlay
   , gotoLn
   , gotoLnFrom
@@ -67,6 +67,7 @@ module Yi.Buffer
   , markSavedB
   , addOverlayB
   , delOverlayB
+  , delOverlayLayerB
   , getDynamicB
   , setDynamicB
   , Direction        ( .. )
@@ -304,6 +305,10 @@ delOverlayB :: Overlay -> BufferM ()
 delOverlayB ov = do
   modifyA pendingUpdatesA (++ [overlayUpdate ov])
   modifyBuffer $ delOverlayBI ov
+
+delOverlayLayerB :: OvlLayer -> BufferM ()
+delOverlayLayerB l = do
+  modifyBuffer $ delOverlayLayer l
 
 -- | Execute a @BufferM@ value on a given buffer and window.  The new state of
 -- the buffer is returned alongside the result of the computation.

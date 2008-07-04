@@ -12,7 +12,7 @@ module Yi.Buffer.Implementation
   , Size
   , Direction (..)
   , BufferImpl
-  , Overlay
+  , Overlay, OvlLayer (..)
   , mkOverlay
   , overlayUpdate
   , moveToI
@@ -39,6 +39,7 @@ module Yi.Buffer.Implementation
   , setSyntaxBI
   , addOverlayBI
   , delOverlayBI
+  , delOverlayLayer
   , inBounds
   , findNextChar
   , updateSyntax
@@ -72,6 +73,7 @@ import qualified Data.ByteString.Lazy.UTF8 as LazyUTF8
 import Data.Array
 import Data.Char
 import Data.Maybe
+import Data.List (groupBy)
 import Data.Word
 import qualified Data.Set as Set
 import Yi.Debug
@@ -100,7 +102,14 @@ type BufferImpl = FBufferData
 
 data HLState syntax = forall cache. HLState !(Highlighter' cache syntax) cache
 
-data Overlay = Overlay MarkValue MarkValue Style
+data OvlLayer = HintLayer | UserLayer
+  deriving (Ord, Eq)
+data Overlay = Overlay {
+                        overlayLayer :: OvlLayer,
+                        overlayBegin :: MarkValue,
+                        overlayEnd :: MarkValue,
+                        overlayStyle :: Style
+                       }
                deriving (Ord, Eq)
 
 data FBufferData syntax =
@@ -200,7 +209,7 @@ shiftMarkValue from by (MarkValue p leftBound) = MarkValue shifted leftBound
               where p' = max from (p +~ by)
 
 mapOvlMarks :: (MarkValue -> MarkValue) -> Overlay -> Overlay
-mapOvlMarks f (Overlay s e v) = Overlay (f s) (f e) v
+mapOvlMarks f (Overlay l s e v) = Overlay l (f s) (f e) v
 
 -------------------------------------
 -- * "high-level" (exported) operations
@@ -226,12 +235,12 @@ getStream Forward  (Point i) fb = F.toLazyByteString        $ F.drop i $ mem $ f
 getStream Backward (Point i) fb = F.toReverseLazyByteString $ F.take i $ mem $ fb
 
 -- | Create an "overlay" for the style @sty@ between points @s@ and @e@
-mkOverlay :: Point -> Point -> Style -> Overlay
-mkOverlay s e = Overlay (MarkValue s True) (MarkValue e False)
+mkOverlay :: OvlLayer -> Point -> Point -> Style -> Overlay
+mkOverlay l s e = Overlay l (MarkValue s True) (MarkValue e False)
 
 -- | Obtain a style-update for a specific overlay
 overlayUpdate :: Overlay -> UIUpdate
-overlayUpdate (Overlay (MarkValue s _) (MarkValue e _) _) = StyleUpdate s (e ~- s)
+overlayUpdate (Overlay _l (MarkValue s _) (MarkValue e _) _) = StyleUpdate s (e ~- s)
 
 -- | Add a style "overlay" between the given points.
 addOverlayBI :: Overlay -> BufferImpl syntax -> BufferImpl syntax
@@ -241,6 +250,9 @@ addOverlayBI ov fb = fb{overlays = Set.insert ov (overlays fb)}
 delOverlayBI :: Overlay -> BufferImpl syntax -> BufferImpl syntax
 delOverlayBI ov fb = fb{overlays = Set.delete ov (overlays fb)}
 
+delOverlayLayer :: OvlLayer -> BufferImpl syntax -> BufferImpl syntax
+delOverlayLayer layer fb = fb{overlays = Set.filter ((/= layer) . overlayLayer) (overlays fb)}
+-- FIXME: this can be really inefficient.
 
 -- | Return style information for the range @(i,j)@ Style information
 --   is derived from syntax highlighting and active overlays.  The
@@ -256,10 +268,10 @@ strokesRangesBI i j fb@FBufferData {hlCache = HLState hl cache} =  result
     takeIn  = takeWhile (\(l,_s,_r) -> l <= j)
 
     layer1 = hlGetStrokes hl point i j cache
-    layer2 = map overlayStroke $ Set.toList $ overlays fb
+    layers2 = map (map overlayStroke) $ groupBy ((==) `on` overlayLayer) $  Set.toList $ overlays fb
 
-    result = map (map clampStroke . takeIn . dropBefore) [layer2, layer1]
-    overlayStroke (Overlay sm  em a) = (markPosition sm, a, markPosition em)
+    result = map (map clampStroke . takeIn . dropBefore) (layers2 ++ [layer1])
+    overlayStroke (Overlay _ sm  em a) = (markPosition sm, a, markPosition em)
     point = pointBI fb
     clampStroke (l,x,r) = (max i l, x, min j r)
 
