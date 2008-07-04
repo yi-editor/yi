@@ -46,11 +46,13 @@ import Yi.Prelude
 import Yi.Buffer
 import Yi.Buffer.HighLevel
 import Yi.Regex
+import Yi.Buffer.Region
 import Yi.Editor
 import qualified Yi.Editor as Editor
 
 import Data.Char
 import Data.Maybe
+import Data.Either
 import Data.List hiding (elem, foldr)
 import Data.Typeable
 
@@ -87,18 +89,7 @@ getRegexE = gets regex
 -- as well.
 --
 
---
--- What would be interesting would be to implement our own general
--- mechanism to allow users to supply a regex function of any kind, and
--- search with that. This removes the restriction on strings be valid
--- under regex(3).
---
-
-data SearchF = IgnoreCase   -- ^ Compile for matching that ignores char case
-             | NoNewLine    -- ^ Compile for newline-insensitive matching
-    deriving Eq
-
-type SearchMatch = (Point, Point) -- ^ beginning and end point of the match. FIXME: use region.
+type SearchMatch = Region
 type SearchResult = Maybe (Either SearchMatch SearchMatch)
 type SearchExp = (String, Regex)
 
@@ -127,50 +118,37 @@ doSearch s fs d =
 continueSearch :: SearchExp
           -> Direction
           -> EditorM SearchResult
-
-continueSearch _ Backward = do
-        fail "Backward searching is unimplemented"
+continueSearch _ Backward = fail "Backward searching is unimplemented"
 continueSearch (s, re) _ = withBuffer0 $ searchF s re
 
---
--- Set up a search.
---
+-- | Set up a search.
 searchInit :: String -> [SearchF] -> EditorM SearchExp
 searchInit re fs = do
-    let Just c_re = makeRegexOptsM (foldr (.) id (map opt fs) defaultCompOpt) defaultExecOpt re
+    let Just c_re = makeRegexOptsM (searchOpts fs defaultCompOpt) defaultExecOpt re
         p = (re,c_re)
     setRegexE p
     return p
 
-    where
-        opt IgnoreCase = \o->o{caseSensitive = False}
-        opt NoNewLine = \o->o{multiline = False}
-
-
 -- ---------------------------------------------------------------------
 -- Internal
 
---
 -- | Do a forward search, placing cursor at first char of pattern, if found.
 -- Keymaps may implement their own regex language. How do we provide for this?
 -- Also, what's happening with ^ not matching sol?
---
+-- TODO: simplify!
 searchF :: String -> Regex -> BufferM SearchResult
 searchF _ c_re = do
-    mp <- do
-            p   <- pointB
-            rightB               -- start immed. after cursor
-            mp  <- regexB c_re
-            case fmap Right mp of
-                x@(Just _) -> return x
-                _ -> do moveTo 0
-                        np <- regexB c_re
-                        moveTo p
-                        return (fmap Left np)
-    case mp of
-        Just (Right (p,_)) -> moveTo p
-        Just (Left  (p,_)) -> moveTo p
-        _                  -> return ()
+    mp <- do 
+      p <- pointB
+      rightB               -- start immed. after cursor
+      mp  <- regexB c_re
+      case fmap Right mp of
+          x@(Just _) -> return x
+          _ -> do moveTo 0
+                  np <- regexB c_re
+                  moveTo p
+                  return (fmap Left np)
+    maybe (return ()) (moveTo . regionStart . either id id) mp
     return mp
 
 ------------------------------------------------------------------------
@@ -181,34 +159,25 @@ searchF _ c_re = do
 ------------------------------------------------------------------------
 -- | Search and replace /on current line/. Returns Bool indicating
 -- success or failure
---
--- TODO too complex.
---
+-- TODO: simplify
 searchAndRepLocal :: String -> String -> EditorM Bool
 searchAndRepLocal [] _ = return False   -- hmm...
 searchAndRepLocal re str = do
     let Just c_re = makeRegexOptsM defaultCompOpt defaultExecOpt re
     setRegexE (re,c_re)     -- store away for later use
 
-    mp <- withBuffer0 $ do   -- find the regex
-            mp <- regexB c_re
-            return mp
+    mp <- withBuffer0 $ regexB c_re   -- find the regex
     case mp of
-        Just (i,j) -> withBuffer0 $ do
-                p  <- pointB      -- all buffer-level atm
+        Just r -> withBuffer0 $ savingPointB $ do
                 moveToEol
                 ep <- pointB      -- eol point of current line
-                moveTo i
+                moveTo $ regionStart r
                 moveToEol
                 eq <- pointB      -- eol of matched line
-                moveTo p          -- go home. sub doesn't move
                 if (ep /= eq)       -- then match isn't on current line
                     then return False
                     else do         -- do the replacement
-                moveTo i
-                deleteNBytes Forward (j ~- i) =<< pointB
-                insertN str
-                moveTo p          -- and back to where we were!
+                replaceRegionB r str
                 return True -- signal success
         Nothing -> return False
 

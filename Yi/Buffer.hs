@@ -91,8 +91,9 @@ module Yi.Buffer
   )
 where
 
-import Prelude (ceiling)
+import Prelude (ceiling, uncurry)
 import Yi.Prelude
+import Yi.Region
 import System.FilePath
 import Yi.Regex (Regex)
 import Yi.Accessor
@@ -515,8 +516,8 @@ withSyntax0 f FBuffer {bmode = m, rawbuf = rb} = f m (getAst rb)
            
 
 -- | Return indices of next string in buffer matched by regex
-regexB :: Regex -> BufferM (Maybe (Point,Point))
-regexB = queryBuffer . regexBI
+regexB :: Regex -> BufferM (Maybe Region)
+regexB rx = fmap (uncurry mkRegion) <$> queryBuffer (regexBI rx)
 
 ---------------------------------------------------------------------
 
