@@ -285,6 +285,7 @@ queryReplaceE = do
                            ]
         re = makeRegex replaceWhat
     withEditor $ do
+       setRegexE (replaceWhat, re)
        spawnMinibufferE
             ("Replacing " ++ replaceWhat ++ "with " ++ replaceWith ++ " (y,n,q):")
             (const (makeKeymap replaceBindings))
