@@ -83,7 +83,8 @@ library
            Yi.Mode.Haskell
            Yi.Buffer
            Yi.UI.Common
-    extensions:     CPP, Rank2Types
+    extensions: CPP, DeriveDataTypeable, FlexibleContexts, FlexibleInstances,
+                GADTs, GeneralizedNewtypeDeriving, Rank2Types, TypeSynonymInstances
     include-dirs:   Yi/Syntax
     if flag (vty)
        build-depends: vty>=3.0.0
@@ -275,7 +276,8 @@ executable yi
            Data.DelayList
 
         include-dirs:   Yi/Syntax
-        extensions:     CPP
+        extensions: CPP, DeriveDataTypeable, FlexibleContexts, FlexibleInstances,
+                    GADTs, GeneralizedNewtypeDeriving, Rank2Types, TypeSynonymInstances
 
         if flag(testing)
             cpp-options:    -DTESTING
