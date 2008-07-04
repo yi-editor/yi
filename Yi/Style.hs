@@ -77,10 +77,10 @@ errorStyle :: Style
 errorStyle = [Background red]
 
 hintStyle :: Style
-hintStyle = [Background white]
+hintStyle = [Background cyan]
 
 strongHintStyle :: Style
-strongHintStyle = [Background cyan]
+strongHintStyle = [Background magenta]
 
 
 ------------------------------------------------------------------------
