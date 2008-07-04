@@ -197,7 +197,7 @@ executable yi
            build-depends: unix
 
         if flag (vty)
-           build-depends: vty>=3.0.0
+           build-depends: vty>=3.0.2
            cpp-options: -DFRONTEND_VTY
 
         if flag (gtk)
