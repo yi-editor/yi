@@ -374,9 +374,9 @@ qrNext b what = do
             withEditor $ printMsg "String to search not found"
             closeWindow
     Just p -> withGivenBuffer b $ do
-                   moveTo p
                    m <- getSelectionMarkB
-                   setMarkPointB m (p +~ utf8Size what)
+                   moveTo (p +~ utf8Size what)
+                   setMarkPointB m p
 
 
 qrReplaceOne :: BufferRef -> String -> String -> YiM ()
@@ -385,3 +385,4 @@ qrReplaceOne b what replacement = do
     deleteN (length what)
     insertN replacement
   qrNext b what
+
