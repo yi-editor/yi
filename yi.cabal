@@ -117,9 +117,6 @@ library
       cpp-options: -DFRONTEND_COCOA
       exposed-modules: Yi.UI.Cocoa
 
-    if flag(oldregex)
-       cpp-options: -DOLDREGEX
-
     if flag (ghcAPI)
       build-depends: ghc
       build-depends: parallel
@@ -192,15 +189,9 @@ executable yi
         build-depends: utf8-string >= 0.3.1
 
         build-depends: Crypto==4.1.0
-        if flag(oldregex)
-          build-depends: regex-base ==0.72.0.1
-          build-depends: regex-compat ==0.71.0.1
-          build-depends: regex-posix ==0.72.0.2
-          cpp-options: -DOLDREGEX
-        else
-          build-depends: regex-base ==0.93.1
-          build-depends: regex-compat ==0.91
-          build-depends: regex-posix ==0.93.1
+        build-depends: regex-base ==0.93.1
+        build-depends: regex-compat ==0.91
+        build-depends: regex-posix ==0.93.1
         
         build-depends: parsec >=2.1
 

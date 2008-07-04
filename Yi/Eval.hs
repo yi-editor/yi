@@ -34,16 +34,14 @@ jumpToE filename line column = do
   withBuffer $ do gotoLn line
                   moveXorEol column
 
+errorRegex :: Regex
+errorRegex = makeRegex "^(.+):([0-9]+):([0-9]+):.*$"
 
 parseErrorMessage :: String -> Maybe (String, Int, Int)
 parseErrorMessage ln = do
-#ifdef OLDREGEX
-  result :: (Array Int String) <- ln =~~ "^(.+):([0-9]+):([0-9]+):.*$"
-  return (result!1, read (result!2), read (result!3))
-#else
-  (AllTextSubmatches result) :: AllTextSubmatches (Array Int) String <- ln =~~ "^(.+):([0-9]+):([0-9]+):.*$"
-  return (result!1, read (result!2), read (result!3))  
-#endif
+  (_,result,_) <- matchOnceText errorRegex ln
+  let [_,file,line,col] = take 3 $ map fst $ elems result
+  return (file, read line, read col)
 
 parseErrorMessageB :: BufferM (String, Int, Int)
 parseErrorMessageB = do
