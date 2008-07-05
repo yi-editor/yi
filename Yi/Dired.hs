@@ -86,6 +86,7 @@ setFileName b filename = do
 fnewE  :: FilePath -> YiM ()
 fnewE f = fnewCanonicalized =<< liftIO (expandTilda f)
 
+fnewCanonicalized :: FilePath -> YiM ()
 fnewCanonicalized f = do
     bufs                 <- withEditor getBuffers
         -- The file names associated with the list of current buffers

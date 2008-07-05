@@ -5,7 +5,6 @@
 module Yi.Keymap where
 
 import Prelude hiding (error)
-import Yi.Accessor
 import Yi.UI.Common
 import qualified Yi.Editor as Editor
 import Yi.Editor (EditorM, Editor, runEditor)

@@ -3,10 +3,6 @@
 module Yi.UI.Common where
 
 import Yi.Editor
-import Yi.Event
-import {-# SOURCE #-} Yi.Keymap
-import Yi.Style
-
 
 data UI = UI
     {

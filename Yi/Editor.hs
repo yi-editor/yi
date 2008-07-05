@@ -19,14 +19,13 @@ import Yi.Buffer                ( BufferRef
                                 , setMode
                                 , keymapProcessA
                                 , newWindowB )
-import Yi.Buffer.Implementation (Mark(..), Update(..), updateIsDelete)
+import Yi.Buffer.Implementation (Update(..), updateIsDelete)
 import Yi.Buffer.HighLevel (botB)
 import Yi.Regex (Regex)
 
 import Yi.Config
 import Yi.Debug
 import Yi.Monad
-import Yi.Modes
 import Yi.Accessor
 import Yi.Dynamic
 import qualified Yi.Interact as I
@@ -128,8 +127,7 @@ stringToNewBuffer :: String -- ^ The buffer name (*not* the associated file)
 stringToNewBuffer nm cs = do
     u <- newRef
     b <- insertBuffer (newB u nm cs)
-    fundamental <- asks fundamentalMode
-    setBufferMode b fundamental
+    setBufferMode b =<< asks fundamentalMode
     return b
 
 

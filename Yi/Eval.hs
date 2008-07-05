@@ -40,8 +40,8 @@ errorRegex = makeRegex "^(.+):([0-9]+):([0-9]+):.*$"
 parseErrorMessage :: String -> Maybe (String, Int, Int)
 parseErrorMessage ln = do
   (_,result,_) <- matchOnceText errorRegex ln
-  let [_,file,line,col] = take 3 $ map fst $ elems result
-  return (file, read line, read col)
+  let [_,filename,line,col] = take 3 $ map fst $ elems result
+  return (filename, read line, read col)
 
 parseErrorMessageB :: BufferM (String, Int, Int)
 parseErrorMessageB = do
