@@ -8,11 +8,12 @@ module Yi.Buffer.Implementation
   , Update (..)
   , updateIsDelete
   , Point
-  , Mark, MarkValue
+  , Mark, MarkValue(..)
   , dummyInsMark
   , dummyFromMark
   , dummyToMark
   , staticInsMark
+  , staticSelMark
   , Size
   , Direction (..)
   , BufferImpl
@@ -36,13 +37,9 @@ module Yi.Buffer.Implementation
   , searchBI
   , regexBI
   , getMarkBI
-  , getMark
-  , getMarkPointBI
+  , getMarkValueBI
   , setMarkPointBI
-  , updateWinMark
   , newMarkBI
-  , unsetMarkBI
-  , getSelectionMarkBI
   , setSyntaxBI
   , addOverlayBI
   , delOverlayBI
@@ -89,15 +86,15 @@ import Data.Typeable
 
 newtype Mark = Mark {markId::Int} deriving (Eq, Ord, Show)
 staticInsMark, staticSelMark :: Mark
-staticInsMark = Mark (-1)
-staticSelMark = Mark (-2) -- 'mark' - the selection mark
+staticInsMark = Mark (-1) -- the insertion mark
+staticSelMark = Mark (-2) -- the selection mark
 
 dummyInsMark, dummyFromMark, dummyToMark :: Mark
 dummyInsMark = Mark 0
 dummyFromMark = Mark 1
 dummyToMark = Mark 2
 
-data MarkValue = MarkValue {markPosition::Point, _markIsLeftBound::Bool}
+data MarkValue = MarkValue {markPoint :: Point, markGravity :: Direction}
                deriving (Ord, Eq, Show)
 
 type Marks = M.Map Mark MarkValue
@@ -163,10 +160,10 @@ data UIUpdate = TextUpdate Update
 -- | New FBuffer filled from string.
 newBI :: LazyB.ByteString -> FBufferData ()
 newBI s = FBufferData (F.fromLazyByteString s) mks M.empty (HLState noHighlighter (hlStartState noHighlighter)) Set.empty 0
-    where mks = M.fromList [ (staticInsMark, MarkValue 0 False)
-                           , (dummyInsMark, MarkValue 0 False)
-                           , (dummyFromMark, MarkValue 0 True)
-                           , (dummyToMark, MarkValue 0 False)
+    where mks = M.fromList [ (staticInsMark, MarkValue 0 insertGravity)
+                           , (dummyInsMark, MarkValue 0 Forward)
+                           , (dummyFromMark, MarkValue 0 Backward)
+                           , (dummyToMark, MarkValue 0 Forward)
                            ]
 
 -- | read @n@ chars from buffer @b@, starting at @i@
@@ -210,9 +207,11 @@ inBounds i end | i <= 0    = 0
 -- | Shift a mark position, supposing an update at a given point, by a given amount.
 -- Negative amount represent deletions.
 shiftMarkValue :: Point -> Size -> MarkValue -> MarkValue
-shiftMarkValue from by (MarkValue p leftBound) = MarkValue shifted leftBound
+shiftMarkValue from by (MarkValue p gravity) = MarkValue shifted gravity
     where shifted | p < from  = p
-                  | p == from = if leftBound then p else p'
+                  | p == from = case gravity of
+                                  Backward -> p
+                                  Forward -> p'
                   | otherwise {- p > from -} = p'
               where p' = max from (p +~ by)
 
@@ -228,7 +227,7 @@ sizeBI fb = Point $ F.length $ mem fb
 
 -- | Extract the current point
 pointBI :: BufferImpl syntax -> Point
-pointBI fb = markPosition ((marks fb) M.! staticInsMark)
+pointBI fb = markPoint ((marks fb) M.! staticInsMark)
 {-# INLINE pointBI #-}
 
 -- | Return @n@ Chars starting at @i@ of the buffer as a list
@@ -244,7 +243,7 @@ getStream Backward (Point i) fb = F.toReverseLazyByteString $ F.take i $ mem $ f
 
 -- | Create an "overlay" for the style @sty@ between points @s@ and @e@
 mkOverlay :: OvlLayer -> Point -> Point -> Style -> Overlay
-mkOverlay l s e = Overlay l (MarkValue s True) (MarkValue e False)
+mkOverlay l s e = Overlay l (MarkValue s Backward) (MarkValue e Forward)
 
 -- | Obtain a style-update for a specific overlay
 overlayUpdate :: Overlay -> UIUpdate
@@ -281,7 +280,7 @@ strokesRangesBI regex i j fb@FBufferData {hlCache = HLState hl cache} =  result
                Just re -> takeIn $ map hintStroke $ regexBI re i fb
                Nothing -> []
     result = map (map clampStroke . takeIn . dropBefore) (layer3 : layers2 ++ [layer1])
-    overlayStroke (Overlay _ sm  em a) = (markPosition sm, a, markPosition em)
+    overlayStroke (Overlay _ sm  em a) = (markPoint sm, a, markPoint em)
     point = pointBI fb
     clampStroke (l,x,r) = (max i l, x, min j r)
     hintStroke (l,r) = (l,if l <= point && point <= r then strongHintStyle else hintStyle,r)
@@ -291,7 +290,7 @@ strokesRangesBI regex i j fb@FBufferData {hlCache = HLState hl cache} =  result
 
 -- | Move point in buffer to the given index
 moveToI :: Point -> BufferImpl syntax -> BufferImpl syntax
-moveToI i fb = fb {marks = M.insert staticInsMark (MarkValue (inBounds i (Point end)) pointLeftBound) $ marks fb}
+moveToI i fb = fb {marks = M.insert staticInsMark (MarkValue (inBounds i (Point end)) insertGravity) $ marks fb}
     where end = F.length (mem fb)
 {-# INLINE moveToI #-}
 
@@ -465,14 +464,6 @@ regexBI :: Regex -> Point -> forall syntax. BufferImpl syntax -> [(Point,Point)]
 regexBI re (Point p) fb = fmap matchedRegion $ matchAll re $ F.toLazyByteString $ F.drop p $ mem fb
    where matchedRegion arr = let (off,len) = arr!0 in (Point (p+off),Point (p+off+len)) 
 
-
-getSelectionMarkBI :: BufferImpl syntax -> Mark
-getSelectionMarkBI _ = staticSelMark -- FIXME: simplify this.
-
--- | Returns ths position of the 'point' mark if the requested mark is unknown (or unset)
-getMarkPointBI :: Mark -> forall syntax. BufferImpl syntax -> Point
-getMarkPointBI m fb = markPosition (getMark m fb)
-
 newMarkBI :: MarkValue -> BufferImpl syntax -> (BufferImpl syntax, Mark)
 newMarkBI initialValue fb =
     let (Mark maxId, _) = M.findMax (marks fb)
@@ -480,32 +471,20 @@ newMarkBI initialValue fb =
         fb' = fb { marks = M.insert newMark initialValue (marks fb)}
     in (fb', newMark)
 
-getMark :: Mark -> BufferImpl syntax -> MarkValue
-getMark m (FBufferData { marks = marksMap } ) = M.findWithDefault (marksMap M.! staticInsMark) m marksMap
+-- TODO: This should be an accessor maybe?
+getMarkValueBI :: Mark -> BufferImpl syntax -> MarkValue
+getMarkValueBI m (FBufferData { marks = marksMap } ) = M.findWithDefault (marksMap M.! staticInsMark) m marksMap
                  -- We look up mark m in the marks, the default value to return
                  -- if mark m is not set, is the staticInsMark
 
--- | Set a mark point
--- The binding of the mark is not changed if the mark already exists. Otherwise the binding is
--- set to left bound.
+-- | Set a mark point The binding of the mark is not changed if the
+-- mark already exists. Otherwise the gravity is Forward.
 setMarkPointBI :: Mark -> Point -> (forall syntax. BufferImpl syntax -> BufferImpl syntax)
 setMarkPointBI m pos fb = fb {marks = M.insert m (MarkValue pos binding) (marks fb)}
     where binding = case (M.lookup m (marks fb)) of
-                        Nothing -> False
-                        Just (MarkValue {_markIsLeftBound = b}) -> b
+                        Nothing -> Forward
+                        Just (MarkValue {markGravity = g}) -> g
         
-updateWinMark :: forall syntax. Mark -> BufferImpl syntax -> BufferImpl syntax
-updateWinMark mark fb = 
-    let v = (marks fb) M.! staticInsMark
-    in fb { marks = M.insert mark v (marks fb)}
-
-{-
-  We must allow the unsetting of this mark, this will have the property
-  that the point will always be returned as the mark.
--}
-unsetMarkBI :: BufferImpl syntax -> BufferImpl syntax
-unsetMarkBI fb = fb { marks = (M.delete staticSelMark (marks fb)) }
-
 -- Formerly the highlighters table was directly used
 -- 'Yi.Syntax.Table.highlighters'. However avoiding to depends on all
 -- highlighters implementation speeds up compilation a lot when working on a
@@ -533,9 +512,9 @@ toIndexedString curIdx bs =
                     (curIdx,c) : (newIndex `seq` (toIndexedString newIndex (LazyB.drop n bs)))
                           
 
-pointLeftBound, markLeftBound :: Bool
-pointLeftBound = False
-markLeftBound = True
+insertGravity, selectionGravity :: Direction
+insertGravity = Forward
+selectionGravity = Backward
 
 ------------------------------------------------------------------------
 
@@ -553,7 +532,7 @@ getMarkDefaultPosBI name defaultPos fb@FBufferData {marks = mks, markNames = nms
                nms' = case name of
                         Nothing -> nms
                         Just nm -> M.insert nm newMark nms
-               mks' = M.insert newMark (MarkValue defaultPos False) mks
+               mks' = M.insert newMark (MarkValue defaultPos Forward) mks
            in (fb {marks = mks', markNames = nms'}, newMark)
 
 

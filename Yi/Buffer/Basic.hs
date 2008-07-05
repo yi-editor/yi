@@ -14,7 +14,7 @@ import Data.Typeable
 -- | Direction of movement inside a buffer
 data Direction = Backward
                | Forward
-                 deriving (Eq, Typeable,Show)
+                 deriving (Eq,Ord,Typeable,Show)
 
 reverseDir :: Direction -> Direction
 reverseDir Forward = Backward

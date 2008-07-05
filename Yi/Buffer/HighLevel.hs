@@ -184,16 +184,15 @@ swapB = do eol <- atEol
 -- ----------------------------------------------------
 -- | Marks
 
--- | Set the current buffer mark
+-- | Set the current buffer selection mark
 setSelectionMarkPointB :: Point -> BufferM ()
-setSelectionMarkPointB pos = do m <- getSelectionMarkB; setMarkPointB m pos
+setSelectionMarkPointB = setMarkPointB staticSelMark
 
--- | Get the current buffer mark
+-- | Get the current buffer selection mark
 getSelectionMarkPointB :: BufferM Point
-getSelectionMarkPointB = do m <- getSelectionMarkB; getMarkPointB m
+getSelectionMarkPointB = getMarkPointB staticSelMark
 
 -- | Exchange point & mark.
--- Maybe this is better put in Emacs\/Mg common file
 exchangePointAndMarkB :: BufferM ()
 exchangePointAndMarkB = do m <- getSelectionMarkPointB
                            p <- pointB
@@ -319,7 +318,7 @@ instance Initializable SelectionStyle where
 
 getRawSelectRegionB :: BufferM Region
 getRawSelectRegionB = do
-  m <- getMarkPointB =<< getSelectionMarkB
+  m <- getMarkPointB staticSelMark
   p <- pointB
   return $ mkRegion p m
 
@@ -333,8 +332,7 @@ getSelectRegionB = do
 -- and the current point at the 'regionEnd'.
 setSelectRegionB :: Region -> BufferM ()
 setSelectRegionB region = do
-  m <- getSelectionMarkB
-  setMarkPointB m $ regionStart region
+  setMarkPointB staticSelMark $ regionStart region
   moveTo $ regionEnd region
 
 -- | Extend the selection mark using the given region.

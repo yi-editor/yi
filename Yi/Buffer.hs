@@ -23,7 +23,7 @@ module Yi.Buffer
   , lineUp
   , lineDown
   , newB
-  , Mark
+  , Mark, MarkValue(..)
   , Overlay, OvlLayer(..)
   , mkOverlay
   , gotoLn
@@ -51,8 +51,7 @@ module Yi.Buffer
   , undoB
   , redoB
   , getMarkB
-  , getSelectionMarkB
-  , getMarkPointB
+  , getMarkValueB
   , setMarkPointB
   , newWindowB
   , setVisibleSelection
@@ -88,6 +87,8 @@ module Yi.Buffer
   , keymapProcessA
   , strokesRangesB
   , streamB
+  , staticSelMark
+  , getMarkPointB
   , module Yi.Buffer.Basic
   )
 where
@@ -326,8 +327,8 @@ runBufferFull w b f =
     in (a, updates, modifier pendingUpdatesA (++ fmap TextUpdate updates) b')
 
 copyMark src dst = trace ("copying: " ++ show src ++ " -> " ++ show dst) $ do
-  p <- getMarkPointB src
-  setMarkPointB dst p
+  p <- getMarkValueB src
+  setMarkPointB dst (markPoint p)
 
 -- | Create a new window onto this buffer.
 newWindowB wkey mini = do
@@ -338,7 +339,7 @@ newWindowB wkey mini = do
   return $ Window mini bk newFrom newTo 0 wkey newIns
 
 getMarkValueB :: Mark -> BufferM MarkValue
-getMarkValueB m = queryBuffer (getMark m)
+getMarkValueB m = queryBuffer (getMarkValueBI m)
 
 newMarkB :: MarkValue -> BufferM Mark
 newMarkB v = queryAndModify $ newMarkBI v
@@ -550,20 +551,11 @@ regexB rx = do
 setMarkPointB :: Mark -> Point -> BufferM ()
 setMarkPointB m pos = modifyBuffer $ setMarkPointBI m pos
 
-getMarkPointB :: Mark -> BufferM Point
-getMarkPointB = queryBuffer . getMarkPointBI
-
-unsetMarkB :: BufferM ()
-unsetMarkB = modifyBuffer unsetMarkBI
-
 setVisibleSelection :: Bool -> BufferM ()
 setVisibleSelection = setA highlightSelectionA
 
 getMarkB :: Maybe String -> BufferM Mark
 getMarkB m = queryAndModify (getMarkBI m)
-
-getSelectionMarkB :: BufferM Mark
-getSelectionMarkB = queryBuffer getSelectionMarkBI
 
 -- | Move point by the given number of characters.
 -- A negative offset moves backwards a positive one forward.
@@ -694,6 +686,8 @@ savingExcursionB f = do
     res <- f
     moveTo =<< getMarkPointB m
     return res
+
+getMarkPointB m = markPoint <$> getMarkValueB m
 
 -- | perform an @BufferM a@, and return to the current point
 savingPointB :: BufferM a -> BufferM a
