@@ -222,7 +222,7 @@ scrollAndRenderWindow cfg sty width (win,hasFocus) = do
     let b = findBufferWith (bufkey win) e
         (point, _) = runBuffer win b pointB
         (inWindow, _) = runBuffer win b $ pointInWindowB point
-        b' = if not hasFocus || inWindow then b else showPoint b win
+        b' = if inWindow then b else showPoint b win
         (rendered, b'') = drawWindow cfg (fmap snd $ regex e) b' sty hasFocus width win
     put e { buffers = M.insert (bufkey win) b'' (buffers e) }
     return rendered
