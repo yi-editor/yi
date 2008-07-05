@@ -233,8 +233,9 @@ scrollAndRenderWindow cfg sty width (win,hasFocus) = do
 drawWindow :: UIConfig -> Maybe Regex -> FBuffer -> UIStyle -> Bool -> Int -> Window -> (Rendered, FBuffer)
 drawWindow cfg mre b sty focused w win = (Rendered { picture = pict,cursor = cur}, b')
     where
-        m = not (isMini win)
-        off = if m then 1 else 0
+        notMini = not (isMini win)
+        -- off reserves space for the mode line. The mini window does not have a mode line.
+        off = if notMini then 1 else 0
         h' = height win - off
         wsty = styleToAttr (window sty) attr
         selsty = styleToAttr (selected sty) attr
@@ -243,7 +244,11 @@ drawWindow cfg mre b sty focused w win = (Rendered { picture = pict,cursor = cur
         (point, _) = runBuffer win b pointB
         (eofPoint, _) = runBuffer win b sizeB
         sz = Size (w*h')
-        (fromMarkPoint, _) = runBuffer win b (getMarkPointB (fromMark win))
+        -- Work around a problem with the mini window never displaying it's contents due to a
+        -- fromMark that is always equal to the end of the buffer contents.
+        fromMarkPoint = if notMini 
+                            then fst $ runBuffer win b (getMarkPointB (fromMark win))
+                            else Point 0
         (text, _)    = runBuffer win b (streamB Forward fromMarkPoint) -- read enough chars from the buffer.
         (strokes, _) = runBuffer win b (strokesRangesB  mre fromMarkPoint (fromMarkPoint +~ sz)) -- corresponding strokes
         colors = paintPicture attr (map (map toVtyStroke) strokes)
@@ -264,7 +269,7 @@ drawWindow cfg mre b sty focused w win = (Rendered { picture = pict,cursor = cur
                              -- we always add one character which can be used to position the cursor at the end of file
         (_, b') = runBuffer win b (setMarkPointB (toMark win) toMarkPoint')
         (modeLine0, _) = runBuffer win b getModeLine
-        modeLine = if m then Just modeLine0 else Nothing
+        modeLine = if notMini then Just modeLine0 else Nothing
         modeLines = map (withStyle (modeStyle sty) . take w . (++ repeat ' ')) $ maybeToList $ modeLine
         modeStyle = if focused then modeline_focused else modeline        
         filler = take w (configWindowFill cfg : repeat ' ')
