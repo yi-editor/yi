@@ -11,9 +11,8 @@ module Yi.Buffer.Region
   , replaceRegionB
   , readRegionB
   , mapRegionB
-  , inRegion
   , modifyRegionB
-  , winRegion
+  , winRegionB
   )
 where
 import Yi.Region
@@ -23,8 +22,14 @@ import Control.Applicative
 import Yi.Prelude
 import Prelude ()
 
-winRegion :: Window -> Region
-winRegion w = mkRegion (tospnt w) (bospnt w)
+import Control.Monad.RWS.Strict (ask)
+
+winRegionB :: BufferM Region
+winRegionB = do
+    w <- ask
+    tospnt <- getMarkPointB (fromMark w)
+    bospnt <- getMarkPointB (toMark w)
+    return $ mkRegion tospnt bospnt
 
 -- | Delete an arbitrary part of the buffer
 deleteRegionB :: Region -> BufferM ()

@@ -118,7 +118,7 @@ startEditor cfg st = do
     (ui, runYi) <- mdo let handler e = runYi $ (errorEditor (show e) >> refreshEditor)
                            inF  ev  = handle handler (runYi (dispatch ev))
                            outF act = handle handler (runYi (interactive act))
-                       ui <- uiStart (configUI cfg) inF outF initEditor
+                       ui <- uiStart cfg inF outF initEditor
                        let runYi f = runReaderT (runYiM f) yi
                            yi = Yi newSt ui startThreads inF outF startSubprocessId startSubprocesses cfg 
                        return (ui, runYi)

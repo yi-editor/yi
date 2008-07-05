@@ -24,6 +24,7 @@ import Data.Char (ord,chr)
 import Data.Foldable
 import Data.IORef
 import Data.List (partition)
+import qualified Data.Map as M
 import Data.Maybe
 import Data.Traversable
 import System.Exit
@@ -67,7 +68,7 @@ data UI = UI {
              ,uiThread  :: ThreadId
              ,uiRefresh :: MVar ()
              ,uiEditor  :: IORef Editor
-             ,uiConfig  :: UIConfig
+             ,config  :: Config
              }
 mkUI :: UI -> Common.UI
 mkUI ui = Common.UI 
@@ -168,35 +169,35 @@ prepareAction :: UI -> IO (EditorM ())
 prepareAction ui = do
   (yss,xss) <- readRef (scrsize ui)
   return $ do
+    modifyWindows (computeHeights yss)
     e <- get
-    modifyWindows $ \ws0 ->      
-      let ws1 = computeHeights yss ws0
-          zzz = fmap (scrollAndRenderWindow (uiConfig ui) e (configStyle $ uiConfig $ ui) xss) (WS.withFocus ws1)
-          -- note that the rendering won't actually be performed because of laziness.
-      in  (fmap fst zzz)
+    let ws = windows e
+        renderSeq = fmap (scrollAndRenderWindow (configUI $ config ui) (configStyle $ configUI $ config $ ui) xss) (WS.withFocus ws)
+    sequence_ renderSeq
 
 
 -- | Redraw the entire terminal from the UI.
 -- Among others, this re-computes the heights and widths of all the windows.
 
 -- Two points remain: horizontal scrolling, and tab handling.
-refresh :: UI -> Editor -> IO (WS.WindowSet Window)
+refresh :: UI -> Editor -> IO Editor
 refresh ui e = do
-  let ws0 = windows e
+  let ws = windows e
   logPutStrLn "refreshing screen."
   (yss,xss) <- readRef (scrsize ui)
-  let ws1 = computeHeights yss ws0
+  let ws' = computeHeights yss ws
       cmd = statusLine e
-      zzz = fmap (scrollAndRenderWindow (uiConfig ui) e (configStyle $ uiConfig $ ui) xss) (WS.withFocus ws1)
+      renderSeq = fmap (scrollAndRenderWindow (configUI $ config ui) (configStyle $ configUI $ config $ ui) xss) (WS.withFocus ws')
+      (renders, e') = runEditor (config ui) (sequence renderSeq) e
 
-  let startXs = scanrT (+) 0 (fmap height ws1)
-      wImages = fmap picture $ fmap snd $ zzz
+  let startXs = scanrT (+) 0 (fmap height ws')
+      wImages = fmap picture renders
      
-  WS.debug "Drawing: " ws1
+  WS.debug "Drawing: " ws'
   logPutStrLn $ "startXs: " ++ show startXs
   Vty.update (vty $ ui) 
-      pic {pImage = vertcat (toList wImages) <-> withStyle (window $ configStyle $ uiConfig $ ui) (take xss $ cmd ++ repeat ' '),
-           pCursor = case cursor (snd $ WS.current zzz) of
+      pic {pImage = vertcat (toList wImages) <-> withStyle (window $ configStyle $ configUI $ config $ ui) (take xss $ cmd ++ repeat ' '),
+           pCursor = case cursor (WS.current renders) of
                        Just (y,x) -> Cursor x (y + WS.current startXs) 
                        -- Add the position of the window to the position of the cursor
                        Nothing -> NoCursor
@@ -204,7 +205,7 @@ refresh ui e = do
                        -- Not really nice, but upon the next refresh the cursor will show.
                        }
 
-  return (fmap fst zzz)
+  return e'
 
 scanrT :: (Int -> Int -> Int) -> Int -> WindowSet Int -> WindowSet Int
 scanrT (+*+) k t = fst $ runState (mapM f t) k
@@ -215,19 +216,22 @@ scanrT (+*+) k t = fst $ runState (mapM f t) k
            
 
 -- | Scrolls the window to show the point if needed
-scrollAndRenderWindow :: UIConfig -> Editor -> UIStyle -> Int -> (Window, Bool) -> (Window, Rendered)
-scrollAndRenderWindow cfg e sty width (win,hasFocus) = (win' {bospnt = bos}, rendered)
-    where b = findBufferWith (bufkey win) e
-          (point, _) = runBufferDummyWindow b pointB
-          win' = if not hasFocus || pointInWindow point win then win else showPoint b win
-          (rendered, bos) = drawWindow cfg (fmap snd $ regex e) b sty hasFocus width win'
+scrollAndRenderWindow :: UIConfig -> UIStyle -> Int -> (Window, Bool) -> EditorM Rendered
+scrollAndRenderWindow cfg sty width (win,hasFocus) = do 
+    e <- get
+    let b = findBufferWith (bufkey win) e
+        (point, _) = runBuffer win b pointB
+        (inWindow, _) = runBuffer win b $ pointInWindowB point
+        b' = if not hasFocus || inWindow then b else showPoint b win
+        (rendered, b'') = drawWindow cfg (fmap snd $ regex e) b' sty hasFocus width win
+    put e { buffers = M.insert (bufkey win) b'' (buffers e) }
+    return rendered
 
 
 -- | Draw a window
 -- TODO: horizontal scrolling.
-drawWindow :: UIConfig -> Maybe Regex -> FBuffer -> UIStyle -> Bool -> Int -> Window -> (Rendered, Point)
-drawWindow cfg mre b sty focused w win = (Rendered { picture = pict,cursor = cur}, bos)
-            
+drawWindow :: UIConfig -> Maybe Regex -> FBuffer -> UIStyle -> Bool -> Int -> Window -> (Rendered, FBuffer)
+drawWindow cfg mre b sty focused w win = (Rendered { picture = pict,cursor = cur}, b')
     where
         m = not (isMini win)
         off = if m then 1 else 0
@@ -239,25 +243,26 @@ drawWindow cfg mre b sty focused w win = (Rendered { picture = pict,cursor = cur
         (point, _) = runBuffer win b pointB
         (eofPoint, _) = runBuffer win b sizeB
         sz = Size (w*h')
-        (text, _)    = runBuffer win b (streamB Forward (tospnt win)) -- read enough chars from the buffer.
-        (strokes, _) = runBuffer win b (strokesRangesB mre (tospnt win) (tospnt win +~ sz)) -- corresponding strokes
+        (fromMarkPoint, _) = runBuffer win b (getMarkPointB (fromMark win))
+        (text, _)    = runBuffer win b (streamB Forward fromMarkPoint) -- read enough chars from the buffer.
+        (strokes, _) = runBuffer win b (strokesRangesB  mre fromMarkPoint (fromMarkPoint +~ sz)) -- corresponding strokes
         colors = paintPicture attr (map (map toVtyStroke) strokes)
         bufData = -- trace (unlines (map show text) ++ unlines (map show $ concat strokes)) $ 
-                  paintChars attr colors $ toIndexedString (tospnt win) text
+                  paintChars attr colors $ toIndexedString fromMarkPoint text
         (showSel, _) = runBuffer win b (gets highlightSelection)
         -- TODO: This resolves issue #123 but not very cleanly IMO - coconnor
         tabWidth = tabSize . fst $ runBuffer win b indentSettingsB
         prompt = if isMini win then name b else ""
 
-        (rendered,bos,cur) = drawText h' w
-                                (tospnt win) 
+        (rendered,toMarkPoint',cur) = drawText h' w
+                                fromMarkPoint
                                 point 
                                 tabWidth
                                 (if showSel then selreg else emptyRegion)
                                 selsty wsty 
                                 ([(c,(wsty, 0)) | c <- prompt] ++ bufData ++ [(' ',(attr, eofPoint))])
                              -- we always add one character which can be used to position the cursor at the end of file
-                                                                                                 
+        (_, b') = runBuffer win b (setMarkPointB (toMark win) toMarkPoint')
         (modeLine0, _) = runBuffer win b getModeLine
         modeLine = if m then Just modeLine0 else Nothing
         modeLines = map (withStyle (modeStyle sty) . take w . (++ repeat ' ')) $ maybeToList $ modeLine
@@ -334,11 +339,6 @@ drawText h w topPoint point tabWidth selreg selsty wsty bufData
   expandGraphic (c,p) 
     | ord c < 32 = [('^',p),(chr (ord c + 64),p)]
     | otherwise = [(c,p)]
-
-                                            
-
-
--- TODO: The above will actually require a bit of work, in order to handle tabs.
 
 withStyle :: Style -> String -> Image
 withStyle sty str = renderBS (styleToAttr sty attr) (B.pack str)

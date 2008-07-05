@@ -8,7 +8,11 @@ module Yi.Buffer.Implementation
   , Update (..)
   , updateIsDelete
   , Point
-  , Mark
+  , Mark, MarkValue
+  , dummyInsMark
+  , dummyFromMark
+  , dummyToMark
+  , staticInsMark
   , Size
   , Direction (..)
   , BufferImpl
@@ -32,8 +36,11 @@ module Yi.Buffer.Implementation
   , searchBI
   , regexBI
   , getMarkBI
+  , getMark
   , getMarkPointBI
   , setMarkPointBI
+  , updateWinMark
+  , newMarkBI
   , unsetMarkBI
   , getSelectionMarkBI
   , setSyntaxBI
@@ -56,6 +63,7 @@ import Prelude (take, takeWhile, dropWhile, map, length, reverse)
 import Yi.Syntax 
 
 import qualified Data.Map as M
+import Data.Maybe 
 import Yi.Style
 
 import Control.Monad
@@ -80,9 +88,14 @@ import Data.Typeable
 
 
 newtype Mark = Mark {markId::Int} deriving (Eq, Ord, Show)
-pointMark, markMark :: Mark
-pointMark = Mark 0 -- 'point' - the insertion point mark
-markMark = Mark 1 -- 'mark' - the selection mark
+staticInsMark, staticSelMark :: Mark
+staticInsMark = Mark (-1)
+staticSelMark = Mark (-2) -- 'mark' - the selection mark
+
+dummyInsMark, dummyFromMark, dummyToMark :: Mark
+dummyInsMark = Mark 0
+dummyFromMark = Mark 1
+dummyToMark = Mark 2
 
 data MarkValue = MarkValue {markPosition::Point, _markIsLeftBound::Bool}
                deriving (Ord, Eq, Show)
@@ -150,7 +163,11 @@ data UIUpdate = TextUpdate Update
 -- | New FBuffer filled from string.
 newBI :: LazyB.ByteString -> FBufferData ()
 newBI s = FBufferData (F.fromLazyByteString s) mks M.empty (HLState noHighlighter (hlStartState noHighlighter)) Set.empty 0
-    where mks = M.fromList [(pointMark, MarkValue 0 pointLeftBound)]
+    where mks = M.fromList [ (staticInsMark, MarkValue 0 False)
+                           , (dummyInsMark, MarkValue 0 False)
+                           , (dummyFromMark, MarkValue 0 True)
+                           , (dummyToMark, MarkValue 0 False)
+                           ]
 
 -- | read @n@ chars from buffer @b@, starting at @i@
 readChars :: FingerString -> Int -> Point -> String
@@ -211,7 +228,7 @@ sizeBI fb = Point $ F.length $ mem fb
 
 -- | Extract the current point
 pointBI :: BufferImpl syntax -> Point
-pointBI fb = markPosition ((marks fb) M.! pointMark)
+pointBI fb = markPosition ((marks fb) M.! staticInsMark)
 {-# INLINE pointBI #-}
 
 -- | Return @n@ Chars starting at @i@ of the buffer as a list
@@ -274,7 +291,7 @@ strokesRangesBI regex i j fb@FBufferData {hlCache = HLState hl cache} =  result
 
 -- | Move point in buffer to the given index
 moveToI :: Point -> BufferImpl syntax -> BufferImpl syntax
-moveToI i fb = fb {marks = M.insert pointMark (MarkValue (inBounds i (Point end)) pointLeftBound) $ marks fb}
+moveToI i fb = fb {marks = M.insert staticInsMark (MarkValue (inBounds i (Point end)) pointLeftBound) $ marks fb}
     where end = F.length (mem fb)
 {-# INLINE moveToI #-}
 
@@ -450,27 +467,44 @@ regexBI re (Point p) fb = fmap matchedRegion $ matchAll re $ F.toLazyByteString 
 
 
 getSelectionMarkBI :: BufferImpl syntax -> Mark
-getSelectionMarkBI _ = markMark -- FIXME: simplify this.
+getSelectionMarkBI _ = staticSelMark -- FIXME: simplify this.
 
 -- | Returns ths position of the 'point' mark if the requested mark is unknown (or unset)
 getMarkPointBI :: Mark -> forall syntax. BufferImpl syntax -> Point
-getMarkPointBI m fb = markPosition (getMark fb m)
+getMarkPointBI m fb = markPosition (getMark m fb)
 
-getMark :: BufferImpl syntax -> Mark -> MarkValue
-getMark (FBufferData { marks = marksMap } ) m = M.findWithDefault (marksMap M.! pointMark) m marksMap
+newMarkBI :: MarkValue -> BufferImpl syntax -> (BufferImpl syntax, Mark)
+newMarkBI initialValue fb =
+    let (Mark maxId, _) = M.findMax (marks fb)
+        newMark = Mark $ maxId + 1
+        fb' = fb { marks = M.insert newMark initialValue (marks fb)}
+    in (fb', newMark)
+
+getMark :: Mark -> BufferImpl syntax -> MarkValue
+getMark m (FBufferData { marks = marksMap } ) = M.findWithDefault (marksMap M.! staticInsMark) m marksMap
                  -- We look up mark m in the marks, the default value to return
-                 -- if mark m is not set, is the pointMark
+                 -- if mark m is not set, is the staticInsMark
 
 -- | Set a mark point
+-- The binding of the mark is not changed if the mark already exists. Otherwise the binding is
+-- set to left bound.
 setMarkPointBI :: Mark -> Point -> (forall syntax. BufferImpl syntax -> BufferImpl syntax)
-setMarkPointBI m pos fb = fb {marks = M.insert m (MarkValue pos (if m == markMark then markLeftBound else False)) (marks fb)}
+setMarkPointBI m pos fb = fb {marks = M.insert m (MarkValue pos binding) (marks fb)}
+    where binding = case (M.lookup m (marks fb)) of
+                        Nothing -> False
+                        Just (MarkValue {_markIsLeftBound = b}) -> b
+        
+updateWinMark :: forall syntax. Mark -> BufferImpl syntax -> BufferImpl syntax
+updateWinMark mark fb = 
+    let v = (marks fb) M.! staticInsMark
+    in fb { marks = M.insert mark v (marks fb)}
 
 {-
   We must allow the unsetting of this mark, this will have the property
   that the point will always be returned as the mark.
 -}
 unsetMarkBI :: BufferImpl syntax -> BufferImpl syntax
-unsetMarkBI fb = fb { marks = (M.delete markMark (marks fb)) }
+unsetMarkBI fb = fb { marks = (M.delete staticSelMark (marks fb)) }
 
 -- Formerly the highlighters table was directly used
 -- 'Yi.Syntax.Table.highlighters'. However avoiding to depends on all

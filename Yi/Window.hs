@@ -7,19 +7,24 @@
 
 module Yi.Window where
 import Data.Typeable
-import Yi.Buffer.Implementation (Point)
+import Yi.Buffer.Implementation (Point
+                                ,Mark(..)
+                                ,dummyInsMark
+                                ,dummyFromMark
+                                ,dummyToMark)
 type BufferRef = Int
 
 ------------------------------------------------------------------------
 -- | A window onto a buffer.
 
 data Window = Window {
-                      isMini :: !Bool   -- ^ regular or mini window?
-                     ,bufkey :: !BufferRef -- ^ the buffer this window opens to
-                     ,tospnt :: !Point    -- ^ the buffer point of the top of screen
-                     ,bospnt :: !Point    -- ^ the buffer point of the bottom of screen
-                     ,height :: !Int    -- ^ height of the window (in number of lines displayed)
-                     ,wkey   :: !Int    -- ^ identifier for the window (for UI sync)
+                      isMini    :: !Bool   -- ^ regular or mini window?
+                     ,bufkey    :: !BufferRef -- ^ the buffer this window opens to
+                     ,fromMark  :: !Mark    -- ^ the buffer point of the top of screen
+                     ,toMark    :: !Mark    -- ^ the buffer point of the bottom of screen
+                     ,height    :: !Int    -- ^ height of the window (in number of lines displayed)
+                     ,wkey      :: !Int    -- ^ identifier for the window (for UI sync)
+                     ,insMark   :: !Mark -- ^ Insertion mark for this window.
                      }
         deriving Typeable
 -- | Get the identification of a window.
@@ -28,13 +33,16 @@ winkey w = (isMini w, bufkey w)
 
 instance Show Window where
     show w = "Window to " ++ show (bufkey w) 
-             ++ "{" ++ show (tospnt w) ++ "->" ++ show (bospnt w) ++ "}" 
+             -- ++ "{" ++ show (tospnt w) ++ "->" ++ show (bospnt w) ++ "}" 
              ++ "(" ++ show (height w) ++ ")"
 
+{-
 -- | Is a given point within tospnt / bospnt?
 pointInWindow :: Point -> Window -> Bool
 pointInWindow point win = tospnt win <= point && point <= bospnt win
+-}
 
 -- | Return a "fake" window onto a buffer.
 dummyWindow :: BufferRef -> Window
-dummyWindow b = Window False b 0 0 0 (-1)
+dummyWindow b = Window False b dummyFromMark dummyToMark 0 (-1) dummyInsMark
+

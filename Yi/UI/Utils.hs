@@ -13,10 +13,12 @@ indexOfSolAbove n = savingPointB $ do
     pointB
 
 -- | Transform (scroll) the window so that the point is visible.
-showPoint :: FBuffer -> Window -> Window 
+showPoint :: FBuffer -> Window -> FBuffer
 showPoint b w = result
-  where (result, _) = runBufferDummyWindow b $ 
+  where (_, result) = runBuffer w b $ 
             do ln <- curLn
                let gap = min (ln-1) (height w `div` 2)
                i <- indexOfSolAbove gap
-               return w {tospnt = i}
+               setMarkPointB (fromMark w) i
+               return()
+

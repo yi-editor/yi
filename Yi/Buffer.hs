@@ -54,6 +54,7 @@ module Yi.Buffer
   , getSelectionMarkB
   , getMarkPointB
   , setMarkPointB
+  , newWindowB
   , setVisibleSelection
   , isUnchangedB
   , isUnchangedBuffer
@@ -104,8 +105,9 @@ import Yi.Undo
 import Yi.Dynamic
 import Yi.Window
 import Control.Applicative
-import Control.Monad.RWS.Strict hiding (mapM_)
+import Control.Monad.RWS.Strict hiding (mapM_, mapM)
 import Data.List (scanl, takeWhile, zip, length)
+import Data.Maybe (fromJust)
 import Data.Typeable
 import {-# source #-} Yi.Keymap
 import Yi.Monad
@@ -123,7 +125,7 @@ import Driver ()
 instance Arbitrary FBuffer where
     arbitrary = do b0 <- return (newB 0 "*buffername*") `ap` (LazyUTF8.fromString `liftM` arbitrary)
                    p0 <- arbitrary
-                   return $ snd $ runBufferDummyWindow b0 (moveTo $ Point p0)
+                   return $ snd $ runBuffer (dummyWindow $ bkey b0) b0 (moveTo $ Point p0)
 
 -- TODO: make this compile.
 -- prop_replace_point b = snd $ runBufferDummyWindow b $ do
@@ -314,15 +316,37 @@ delOverlayLayerB l = do
 -- | Execute a @BufferM@ value on a given buffer and window.  The new state of
 -- the buffer is returned alongside the result of the computation.
 runBuffer :: Window -> FBuffer -> BufferM a -> (a, FBuffer)
-runBuffer w b f = let (a, _, b') = runBufferFull w b f in (a,b')
+runBuffer w b f = 
+    let (a, _, b') = runBufferFull w b f 
+    in (a, b')
 
-runBufferFull w b f = let (a, b0, updates) = runRWS (fromBufferM f) w b
-                  in (a, updates, modifier pendingUpdatesA (++ fmap TextUpdate updates) b0)
+runBufferFull w b f = 
+    let (a, b', updates) = runRWS (fromBufferM f') w b
+        f' = copyMark (insMark w) staticInsMark *> f <* copyMark staticInsMark (insMark w) 
+    in (a, updates, modifier pendingUpdatesA (++ fmap TextUpdate updates) b')
+
+copyMark src dst = trace ("copying: " ++ show src ++ " -> " ++ show dst) $ do
+  p <- getMarkPointB src
+  setMarkPointB dst p
+
+-- | Create a new window onto this buffer.
+newWindowB wkey mini = do
+  w <- ask
+  markValues <- mapM getMarkValueB [staticInsMark, fromMark w, toMark w]
+  [newIns, newFrom, newTo] <- mapM newMarkB markValues
+  bk <- gets bkey
+  return $ Window mini bk newFrom newTo 0 wkey newIns
+
+getMarkValueB :: Mark -> BufferM MarkValue
+getMarkValueB m = queryBuffer (getMark m)
+
+newMarkB :: MarkValue -> BufferM Mark
+newMarkB v = queryAndModify $ newMarkBI v
 
 -- | Execute a @BufferM@ value on a given buffer, using a dummy window.  The new state of
--- the buffer is returned alongside the result of the computation.
-runBufferDummyWindow :: FBuffer -> BufferM a -> (a, FBuffer)
-runBufferDummyWindow b = runBuffer (dummyWindow $ bkey b) b
+-- the buffer is discarded.
+runBufferDummyWindow :: FBuffer -> BufferM a -> a 
+runBufferDummyWindow b = fst . runBuffer (dummyWindow $ bkey b) b
 
 
 -- | Mark the current point in the undo list as a saved state.

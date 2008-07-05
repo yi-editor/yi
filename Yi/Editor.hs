@@ -9,8 +9,17 @@ module Yi.Editor
 
 where
 
-import Yi.Buffer                ( BufferRef, FBuffer (..), BufferM, newB, runBufferFull, insertN, Mode, setMode, keymapProcessA )
-import Yi.Buffer.Implementation (Update(..), updateIsDelete)
+import Yi.Buffer                ( BufferRef
+                                , FBuffer (..)
+                                , BufferM
+                                , newB
+                                , runBufferFull
+                                , insertN
+                                , Mode
+                                , setMode
+                                , keymapProcessA
+                                , newWindowB )
+import Yi.Buffer.Implementation (Mark(..), Update(..), updateIsDelete)
 import Yi.Buffer.HighLevel (botB)
 import Yi.Regex (Regex)
 
@@ -319,7 +328,14 @@ newBufferE f s = do
 newWindowE :: Bool -> BufferRef -> EditorM Window
 newWindowE mini bk = do
   k <- newRef
-  return $ Window mini bk 0 0 0 k
+  w <- getA (WS.currentA .> windowsA)
+  editor <- get
+  let buffer = findBufferWith bk editor
+      (window, _us, buffer') = runBufferFull w buffer $ newWindowB k mini
+      -- Creates a new insertion mark into this buffer for the window.
+      editor' = editor { buffers = M.insert bk buffer' (buffers editor) }
+  put editor'
+  return window
 
 -- | Attach the specified buffer to the current window
 switchToBufferE :: BufferRef -> EditorM ()

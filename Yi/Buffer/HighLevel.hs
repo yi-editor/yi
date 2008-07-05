@@ -3,6 +3,7 @@
 module Yi.Buffer.HighLevel where
 
 import Control.Applicative
+import Control.Monad.RWS.Strict (ask)
 import Control.Monad.State
 import Data.Char
 import Data.Dynamic
@@ -17,6 +18,7 @@ import Yi.Buffer
 import Yi.Buffer.Implementation (newLine)
 import Yi.Buffer.Normal
 import Yi.Buffer.Region
+import Yi.Debug (trace)
 import Yi.String
 import Yi.Window
 import Yi.Dynamic
@@ -201,6 +203,7 @@ exchangePointAndMarkB = do m <- getSelectionMarkPointB
 getBookmarkB :: String -> BufferM Mark
 getBookmarkB nm = getMarkB (Just nm)
 
+
 -- ---------------------------------------------------------------------
 -- Buffer operations
 
@@ -262,22 +265,29 @@ moveScreenB dir n = do h <- askWindow height
 -- | Move to @n@ lines down from top of screen
 downFromTosB :: Int -> BufferM ()
 downFromTosB n = do
-  moveTo =<< askWindow tospnt
+  moveTo =<< getMarkPointB =<< askWindow fromMark
   replicateM_ n lineDown
 
 -- | Move to @n@ lines up from the bottom of the screen
 upFromBosB :: Int -> BufferM ()
 upFromBosB n = do
-  moveTo =<< askWindow bospnt
+  moveTo =<< getMarkPointB =<< askWindow toMark
   moveToSol
   replicateM_ n lineUp
 
 -- | Move to middle line in screen
 middleB :: BufferM ()
 middleB = do
-  w <- askWindow id
-  moveTo (tospnt w)
+  w <- ask
+  moveTo =<< getMarkPointB (fromMark w)
   replicateM_ (height w `div` 2) lineDown
+
+pointInWindowB :: Point -> BufferM Bool
+pointInWindowB p = do
+    w <- ask
+    fromPoint <- getMarkPointB (fromMark w)
+    toPoint <- getMarkPointB (toMark w)
+    trace ("pointInWindowB " ++ show fromPoint ++ " " ++ show toPoint ++ " " ++ show p) $ (return $ fromPoint <= p && p <= toPoint)
 
 -----------------------------
 -- Region-related operations

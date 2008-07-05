@@ -22,8 +22,6 @@ data UIConfig = UIConfig {
 
   }
 
-type UIBoot = UIConfig -> (Event -> IO ()) -> (Action -> IO ()) ->  Editor -> IO UI
-
 -- | Configuration record. All Yi hooks can be set here.
 data Config = Config {startFrontEnd :: UIBoot,
                       configUI :: UIConfig,
@@ -36,3 +34,6 @@ data Config = Config {startFrontEnd :: UIBoot,
                       configKillringAccumulate :: !Bool 
                       -- ^ accumulate cuts automatically in killring
                      }
+
+type UIBoot = Config -> (Event -> IO ()) -> (Action -> IO ()) ->  Editor -> IO UI
+
