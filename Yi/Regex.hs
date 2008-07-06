@@ -3,7 +3,7 @@ module Yi.Regex
    searchOpt,
    searchOpts,
    SearchF(..), makeSearchOptsM,
-   SearchExp, searchString, searchForward,
+   SearchExp, searchString, searchRegex, emptySearch,
    emptyRegex,
    module Text.Regex.TDFA,
    )
@@ -15,7 +15,7 @@ type SearchExp = (String, Regex)
 
 
 searchString = fst
-searchForward = snd
+searchRegex = snd
 
 --
 -- What would be interesting would be to implement our own general
@@ -36,7 +36,8 @@ searchOpts =  foldr (.) id . map searchOpt
 
 makeSearchOptsM opts re = fmap (\r->(re,r)) $ makeRegexOptsM (searchOpts opts defaultCompOpt) defaultExecOpt re
 
+emptySearch = ("", emptyRegex)
 emptyRegex :: Regex
-Just emptyRegex = makeRegexOptsM defaultCompOpt defaultExecOpt "[]"
+Just emptyRegex = makeRegexOptsM defaultCompOpt defaultExecOpt "()"
 
 
