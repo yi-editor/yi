@@ -161,6 +161,7 @@ gen_cmd_move = do
   choice ([c ?>> return (Inclusive, a x) | (c,a) <- moveCmdFM_inclusive, (c /= char '0' || Nothing == cnt) ] ++
           [pString s >> return (Inclusive, a x) | (s,a) <- moveCmdS_inclusive ] ++
           [c ?>> return (Exclusive, a x) | (c,a) <- moveCmdFM_exclusive ] ++
+          [pString s >> return (Exclusive, a x) | (s,a) <- moveCmdS_exclusive ] ++
           [c ?>> return (LineWise, a x) | (c,a) <- moveUpDownCmdFM] ++
           [do event c; c' <- textChar; return (r, a c' x) | (c,r,a) <- move2CmdFM] ++
           [char 'G' ?>> return (LineWise, ArbMove (case cnt of
@@ -200,6 +201,15 @@ moveCmdFM_exclusive =
         right = Replicate $ CharMove Forward
         sol   = Replicate $ viMoveToSol
 
+-- | movement *multi-chars* commands (with exclusive cut/yank semantics)
+moveCmdS_exclusive :: [(String, (Int -> ViMove))]
+moveCmdS_exclusive =
+    [("[(", Replicate $ ArbMove (goUnmatchedB Backward '(' ')'))
+    ,("[{", Replicate $ ArbMove (goUnmatchedB Backward '{' '}'))
+    ,("])", Replicate $ ArbMove (goUnmatchedB Forward  '(' ')'))
+    ,("]}", Replicate $ ArbMove (goUnmatchedB Forward  '{' '}'))
+    ]
+
 -- | movement commands (with inclusive cut/yank semantics)
 moveCmdFM_inclusive :: [(Event, (Int -> ViMove))]
 moveCmdFM_inclusive =
@@ -212,6 +222,7 @@ moveCmdFM_inclusive =
     where
         eol   = Replicate $ viMoveToEol
 
+-- | movement *multi-chars* commands (with inclusive cut/yank semantics)
 moveCmdS_inclusive :: [(String, (Int -> ViMove))]
 moveCmdS_inclusive =
     [("ge", Replicate $ GenMove ViWord (Forward, InsideBound) Backward)
