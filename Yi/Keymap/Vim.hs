@@ -215,7 +215,8 @@ moveCmdFM_inclusive =
 moveCmdS_inclusive :: [(String, (Int -> ViMove))]
 moveCmdS_inclusive =
     [("ge", Replicate $ GenMove ViWord (Forward, InsideBound) Backward)
-    ,("gE", Replicate $ GenMove ViWORD (Forward, InsideBound) Backward)]
+    ,("gE", Replicate $ GenMove ViWORD (Forward, InsideBound) Backward)
+    ,("g_", const $ ArbMove lastNonSpaceB)]
 
 regionOfViMove :: ViMove -> RegionStyle -> BufferM Region
 regionOfViMove move regionStyle =
