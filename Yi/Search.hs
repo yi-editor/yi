@@ -52,7 +52,7 @@ import qualified Yi.Editor as Editor
 import Data.Char
 import Data.Maybe
 import Data.Either
-import Data.List hiding (elem, foldr)
+import Data.List (span, takeWhile)
 import Data.Typeable
 
 import Control.Monad.State
@@ -207,9 +207,10 @@ isearchAddE :: String -> EditorM ()
 isearchAddE increment = isearchFunE (++ increment)
 
 makeISearch :: String -> (String, Regex)
-makeISearch s = case makeSearchOptsM [] s of
+makeISearch s = case makeSearchOptsM opts s of
                   Nothing -> (s, emptyRegex)
                   Just search -> search
+   where opts = if any isUpper s then [] else [IgnoreCase]
 
 isearchFunE :: (String -> String) -> EditorM ()
 isearchFunE fun = do
