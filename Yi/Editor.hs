@@ -21,8 +21,8 @@ import Yi.Buffer                ( BufferRef
                                 , newWindowB )
 import Yi.Buffer.Implementation (Update(..), updateIsDelete)
 import Yi.Buffer.HighLevel (botB)
-import Yi.Buffer.Basic (Direction)
-import Yi.Regex (Regex)
+import Yi.Buffer.Basic (Direction(..))
+import Yi.Regex (Regex, SearchExp)
 
 import Yi.Config
 import Yi.Debug
@@ -61,7 +61,8 @@ data Editor = Editor {
 
        ,statusLines   :: !(DelayList.DelayList String)
        ,killring      :: !Killring
-       ,regex         :: !(Maybe ((String,Regex),Direction)) -- ^ most recent regex
+       ,regex         :: !(Maybe SearchExp) -- ^ most recent regex
+       ,searchDirection :: !Direction
        ,pendingEvents :: ![Event]                   -- ^ Processed events that didn't yield any action yet.
     }
     deriving Typeable
@@ -91,6 +92,10 @@ killringA = Accessor killring (\f e -> e {killring = f (killring e)})
 dynA :: Initializable a => Accessor Editor a
 dynA = dynamicValueA .> dynamicA
 
+regexA = Accessor regex (\f e -> e{regex = f (regex e)})
+searchDirectionA = Accessor searchDirection (\f e -> e{searchDirection = f (searchDirection e)})
+
+
 -- | The initial state
 emptyEditor :: Editor
 emptyEditor = Editor {
@@ -100,6 +105,7 @@ emptyEditor = Editor {
        ,bufferRefSupply = 2
        ,tabwidth     = 8
        ,regex        = Nothing
+       ,searchDirection = Forward
        ,dynamic      = M.empty
        ,statusLines  = DelayList.insert (maxBound, "") []
        ,killring     = krEmpty

@@ -38,7 +38,7 @@ import Yi.Debug
 import Yi.Editor
 import Yi.Event
 import Yi.Monad
-import Yi.Regex (Regex)
+import Yi.Regex (SearchExp)
 import Yi.Style
 import Yi.WindowSet as WS
 import qualified Data.ByteString.Char8 as B
@@ -224,14 +224,14 @@ scrollAndRenderWindow cfg sty width (win,hasFocus) = do
         (point, _) = runBuffer win b pointB
         (inWindow, _) = runBuffer win b $ pointInWindowB point
         b' = if inWindow then b else showPoint b win
-        (rendered, b'') = drawWindow cfg (snd <$> fst <$> regex e) b' sty hasFocus width win
+        (rendered, b'') = drawWindow cfg (regex e) b' sty hasFocus width win
     put e { buffers = M.insert (bufkey win) b'' (buffers e) }
     return rendered
 
 
 -- | Draw a window
 -- TODO: horizontal scrolling.
-drawWindow :: UIConfig -> Maybe Regex -> FBuffer -> UIStyle -> Bool -> Int -> Window -> (Rendered, FBuffer)
+drawWindow :: UIConfig -> Maybe SearchExp -> FBuffer -> UIStyle -> Bool -> Int -> Window -> (Rendered, FBuffer)
 drawWindow cfg mre b sty focused w win = (Rendered { picture = pict,cursor = cur}, b')
     where
         notMini = not (isMini win)

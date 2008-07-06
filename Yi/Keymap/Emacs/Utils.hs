@@ -283,9 +283,9 @@ queryReplaceE = do
                            ("q", write $ closeBufferAndWindowE),
                            ("C-g", write $ closeBufferAndWindowE)
                            ]
-        re = makeRegex replaceWhat
+        Just re = makeSearchOptsM [] replaceWhat
     withEditor $ do
-       setRegexE ((replaceWhat, re), Forward)
+       setRegexE re
        spawnMinibufferE
             ("Replacing " ++ replaceWhat ++ "with " ++ replaceWith ++ " (y,n,q):")
             (const (makeKeymap replaceBindings))

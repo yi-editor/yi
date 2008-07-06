@@ -29,6 +29,7 @@ import Yi.Buffer.Basic
 type Length = Int                   -- size in #codepoints
 
 type Stroke = (Point,Style,Point)
+-- TODO: use Region datatype.
 
 
 -- | The main type of syntax highlighters.  This record type combines all

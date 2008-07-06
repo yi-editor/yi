@@ -97,7 +97,7 @@ import Prelude (ceiling, uncurry)
 import Yi.Prelude
 import Yi.Region
 import System.FilePath
-import Yi.Regex (Regex)
+import Yi.Regex (SearchExp)
 import Yi.Accessor
 import Yi.Buffer.Implementation
 import Yi.Region
@@ -432,7 +432,7 @@ nelemsB' n i = queryBuffer $ nelemsBI' n i
 streamB :: Direction -> Point -> BufferM LazyUTF8.ByteString
 streamB dir i = queryBuffer (getStream dir i)
 
-strokesRangesB :: Maybe Regex -> Point -> Point -> BufferM [[Stroke]]
+strokesRangesB :: Maybe SearchExp -> Point -> Point -> BufferM [[Stroke]]
 strokesRangesB regex i j = queryBuffer $ strokesRangesBI regex i j
 
 ------------------------------------------------------------------------
@@ -539,11 +539,12 @@ withSyntax0 :: (forall syntax. Mode syntax -> syntax -> a) -> FBuffer -> a
 withSyntax0 f FBuffer {bmode = m, rawbuf = rb} = f m (getAst rb)
            
 
--- | Return regions of strings in buffer matched by regex in the given direction
-regexB :: Direction -> Regex -> BufferM [Region]
+-- | Return indices of next string in buffer matched by regex in the
+-- given direction
+regexB :: Direction -> SearchExp -> BufferM [Region]
 regexB dir rx = do
   p <- pointB
-  fmap (uncurry mkRegion) <$> queryBuffer (regexBI dir rx p)
+  queryBuffer (regexBI dir rx p)
 
 ---------------------------------------------------------------------
 

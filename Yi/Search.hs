@@ -10,7 +10,6 @@ module Yi.Search (
         setRegexE,      -- :: SearchExp -> EditorM ()
         getRegexE,      -- :: EditorM (Maybe SearchExp)
         SearchMatch,
-        SearchExp,
         SearchF(..),
         searchAndRepLocal,  -- :: String -> String -> IO Bool
         doSearch,            -- :: (Maybe String) -> [SearchF]
@@ -41,6 +40,7 @@ module Yi.Search (
                  ) where
 
 import Prelude ()
+import Yi.Accessor
 import Yi.Prelude
 import Yi.Buffer
 import Yi.Buffer.HighLevel
@@ -71,11 +71,11 @@ import Yi.History
 
 -- | Put regex into regex 'register'
 setRegexE :: SearchExp -> EditorM ()
-setRegexE re = modify $ \e -> e { regex = Just re }
+setRegexE re = setA regexA (Just re)
 
--- Return contents of regex register
+-- | Return contents of regex register
 getRegexE :: EditorM (Maybe SearchExp)
-getRegexE = gets regex
+getRegexE = getA regexA
 
 
 -- ---------------------------------------------------------------------
@@ -90,7 +90,7 @@ getRegexE = gets regex
 
 type SearchMatch = Region
 type SearchResult = Maybe (Either SearchMatch SearchMatch)
-type SearchExp = ((String, Regex), Direction)
+type SearchCtx = ((String, Regex), Direction)
 
 doSearch :: (Maybe String)       -- ^ @Nothing@ means used previous
                                 -- pattern, if any. Complain otherwise.
@@ -106,7 +106,7 @@ doSearch s fs d =
             mre <- getRegexE
             case mre of
                 Nothing -> fail "No previous search pattern" -- NB
-                Just (r,_) -> withBuffer0 (continueSearch (r, d)) >>= f
+                Just r -> withBuffer0 (continueSearch (r,d)) >>= f
     where
         f mp = case mp of
             Just (Right _) -> return ()
@@ -115,19 +115,19 @@ doSearch s fs d =
 
 
 -- | Set up a search.
-searchInit :: String -> Direction -> [SearchF] -> EditorM SearchExp
+searchInit :: String -> Direction -> [SearchF] -> EditorM (SearchExp, Direction)
 searchInit re d fs = do
-    let Just c_re = makeRegexOptsM (searchOpts fs defaultCompOpt) defaultExecOpt re
-        p = ((re,c_re),d)
-    setRegexE p
-    return p
+    let Just c_re = makeSearchOptsM [] re
+    setRegexE c_re
+    setA searchDirectionA d
+    return (c_re,d)
 
 -- | Do a forward search, placing cursor at first char of pattern, if found.
 -- Keymaps may implement their own regex language. How do we provide for this?
 -- Also, what's happening with ^ not matching sol?
 -- TODO: simplify!
-continueSearch :: SearchExp -> BufferM SearchResult
-continueSearch ((_, c_re), dir) = do
+continueSearch :: (SearchExp, Direction) -> BufferM SearchResult
+continueSearch (c_re, dir) = do
   mp <- savingPointB $ do
       (rs,ls) <- case dir of
         Forward -> do
@@ -159,9 +159,9 @@ continueSearch ((_, c_re), dir) = do
 searchAndRepLocal :: String -> String -> EditorM Bool
 searchAndRepLocal [] _ = return False   -- hmm...
 searchAndRepLocal re str = do
-    let Just c_re = makeRegexOptsM defaultCompOpt defaultExecOpt re
-    setRegexE ((re,c_re), Forward)     -- store away for later use
-
+    let Just c_re = makeSearchOptsM [] re
+    setRegexE c_re     -- store away for later use
+    setA searchDirectionA Forward
     mp <- withBuffer0 $ regexB Forward c_re   -- find the regex
     case mp of
         (r:_) -> withBuffer0 $ savingPointB $ do
@@ -182,7 +182,7 @@ searchAndRepLocal re str = do
 -- Incremental search
 
 
-newtype Isearch = Isearch [(String, Point, Direction)] deriving Typeable
+newtype Isearch = Isearch [(String, Region, Direction)] deriving Typeable
 -- This contains: (string currently searched, position where we
 -- searched it, direction, overlay for highlighting searched text)
 
@@ -196,17 +196,20 @@ isearchInitE :: Direction -> EditorM ()
 isearchInitE dir = do
   historyStartGen iSearch
   p <- withBuffer0 pointB
-  setDynamic (Isearch [("",p,dir)])
+  setDynamic (Isearch [("",mkRegion p p,dir)])
   printMsg "I-search: "
 
 isearchIsEmpty :: EditorM Bool
 isearchIsEmpty = do
   Isearch s <- getDynamic
-  return $ not $ null $ fst4 $ head $ s
-      where fst4 (x,_,_) = x
+  return $ not $ null $ fst3 $ head $ s
 
 isearchAddE :: String -> EditorM ()
 isearchAddE increment = isearchFunE (++ increment)
+
+makeISearch s = case makeSearchOptsM [] s of
+                  Nothing -> (s, emptyRegex)
+                  Just search -> search
 
 isearchFunE :: (String -> String) -> EditorM ()
 isearchFunE fun = do
@@ -217,17 +220,16 @@ isearchFunE fun = do
   prevPoint <- withBuffer0 pointB
   withBuffer0 $ do
     delOverlayLayerB HintLayer
-    moveTo p0
-  mp <- withBuffer0 $ searchB direction current
+    moveTo $ regionStart p0
+  mp <- withBuffer0 $ regexB direction $ makeISearch current
   case mp of
-    Nothing -> do withBuffer0 $ moveTo prevPoint -- go back to where we were
-                  setDynamic $ Isearch ((current,p0,direction):s)
-                  printMsg $ "Failing I-search: " ++ current
-    Just p -> do  let p2 = p +~ utf8Size current
-                      ov = mkOverlay HintLayer p p2 (hintStyle)
+    [] -> do withBuffer0 $ moveTo prevPoint -- go back to where we were
+             setDynamic $ Isearch ((current,p0,direction):s)
+             printMsg $ "Failing I-search: " ++ current
+    (p:_) -> do
                   withBuffer0 $ do
-                    moveTo p2
-                    addOverlayB ov
+                    moveTo (regionEnd p)
+                    addOverlayB $ mkOverlay HintLayer p (hintStyle)
                   setDynamic $ Isearch ((current,p,direction):s)
                  
 isearchDelE :: EditorM ()
@@ -235,10 +237,9 @@ isearchDelE = do
   Isearch s <- getDynamic
   case s of
     ((_,_,_):(text,p,dir):rest) -> do
-      let p2 = p +~ utf8Size text
-          ov = mkOverlay HintLayer p p2 (hintStyle)
+      let ov = mkOverlay HintLayer p (hintStyle)
       withBuffer0 $ do
-        moveTo p2
+        moveTo $ regionEnd p
         delOverlayLayerB HintLayer
         addOverlayB ov
       setDynamic $ Isearch ((text,p,dir):rest)
@@ -268,22 +269,23 @@ isearchNext0 newDir = do
 isearchNext :: Direction -> EditorM ()
 isearchNext direction = do
   Isearch ((current,p0,_dir):rest) <- getDynamic
-  withBuffer0 $ moveTo (p0 + startOfs)
+  withBuffer0 $ moveTo (regionStart p0 + startOfs)
   mp <- withBuffer0 $ do
-    searchB direction current
+    regexB direction (makeISearch current)
   case mp of
-    Nothing -> do endPoint <- withBuffer0 $ do 
-                          moveTo (p0 +~ utf8Size current) -- revert to offset we were before.
+    [] -> do 
+                  endPoint <- withBuffer0 $ do 
+                          moveTo (regionEnd p0) -- revert to offset we were before.
                           sizeB   
                   printMsg $ "isearch: end of document reached"
                   let wrappedOfs = case direction of
-                                     Forward -> 0
-                                     Backward -> endPoint
+                                     Forward -> mkRegion 0 0
+                                     Backward -> mkRegion endPoint endPoint
                   setDynamic $ Isearch ((current,wrappedOfs,direction):rest) -- prepare to wrap around.
-    Just p -> do  let p2 = p +~ utf8Size current
-                      ov = mkOverlay HintLayer p p2 hintStyle
+    (p:_) -> do   
+                  let ov = mkOverlay HintLayer p hintStyle
                   withBuffer0 $ do
-                    moveTo p2
+                    moveTo (regionEnd p)
                     delOverlayLayerB HintLayer
                     addOverlayB ov
                   setDynamic $ Isearch ((current,p,direction):rest)
@@ -315,16 +317,16 @@ isearchEnd accept = do
   withBuffer0 $ delOverlayLayerB HintLayer
   historyFinishGen iSearch (return lastSearched)
   if accept 
-     then do withBuffer0 $ setSelectionMarkPointB p0 
+     then do withBuffer0 $ setSelectionMarkPointB $ regionStart p0 
              printMsg "Quit"
-     else withBuffer0 $ moveTo p0
+     else withBuffer0 $ moveTo $ regionStart p0
   
   
 
 -----------------
 -- Query-Replace
 
-qrNext :: BufferRef -> Regex -> EditorM ()
+qrNext :: BufferRef -> SearchExp -> EditorM ()
 qrNext b what = do
   mp <- withGivenBuffer0 b $ regexB Forward what
   case mp of
@@ -333,7 +335,7 @@ qrNext b what = do
       tryCloseE -- the minibuffer.
     (r:_) -> withGivenBuffer0 b $ setSelectRegionB r
 
-qrReplaceOne :: BufferRef -> Regex -> String -> EditorM ()
+qrReplaceOne :: BufferRef -> SearchExp -> String -> EditorM ()
 qrReplaceOne b reg replacement = do
   withGivenBuffer0 b $ do
     r <- getRawSelectRegionB

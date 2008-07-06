@@ -2,12 +2,20 @@ module Yi.Regex
   (
    searchOpt,
    searchOpts,
-   SearchF(..),
+   SearchF(..), makeSearchOptsM,
+   SearchExp, searchString, searchForward,
+   emptyRegex,
    module Text.Regex.TDFA,
    )
 where
 
 import Text.Regex.TDFA
+
+type SearchExp = (String, Regex)
+
+
+searchString = fst
+searchForward = snd
 
 --
 -- What would be interesting would be to implement our own general
@@ -25,3 +33,10 @@ searchOpt NoNewLine = \o->o{multiline = False}
 
 
 searchOpts =  foldr (.) id . map searchOpt
+
+makeSearchOptsM opts re = fmap (\r->(re,r)) $ makeRegexOptsM (searchOpts opts defaultCompOpt) defaultExecOpt re
+
+emptyRegex :: Regex
+Just emptyRegex = makeRegexOptsM defaultCompOpt defaultExecOpt ""
+
+

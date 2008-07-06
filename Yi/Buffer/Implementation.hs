@@ -235,8 +235,8 @@ getStream Forward  (Point i) fb = F.toLazyByteString        $ F.drop i $ mem $ f
 getStream Backward (Point i) fb = F.toReverseLazyByteString $ F.take i $ mem $ fb
 
 -- | Create an "overlay" for the style @sty@ between points @s@ and @e@
-mkOverlay :: OvlLayer -> Point -> Point -> Style -> Overlay
-mkOverlay l s e = Overlay l (MarkValue s Backward) (MarkValue e Forward)
+mkOverlay :: OvlLayer -> Region -> Style -> Overlay
+mkOverlay l r s = Overlay l (MarkValue (regionStart r) Backward) (MarkValue (regionEnd r) Forward) s
 
 -- | Obtain a style-update for a specific overlay
 overlayUpdate :: Overlay -> UIUpdate
@@ -255,13 +255,13 @@ delOverlayLayer layer fb = fb{overlays = Set.filter ((/= layer) . overlayLayer) 
 -- FIXME: this can be really inefficient.
 
 -- | Return style information for the range @(i,j)@ Style information
---   is derived from syntax highlighting and active overlays.  The
+--   is derived from syntax highlighting, active overlays and current regexp.  The
 --   returned list contains tuples @(l,s,r)@ where every tuple is to
 --   be interpreted as apply the style @s@ from position @l@ to @r@ in
 --   the buffer.  In each list, the strokes are guaranteed to be
 --   ordered and non-overlapping.  The lists of strokes are ordered by
 --   decreasing priority: the 1st layer should be "painted" on top.
-strokesRangesBI :: Maybe Regex -> Point -> Point -> BufferImpl syntax -> [[Stroke]]
+strokesRangesBI :: Maybe SearchExp -> Point -> Point -> BufferImpl syntax -> [[Stroke]]
 strokesRangesBI regex i j fb@FBufferData {hlCache = HLState hl cache} =  result
   where
     dropBefore = dropWhile (\(_l,_s,r) -> r <= i)
@@ -276,7 +276,7 @@ strokesRangesBI regex i j fb@FBufferData {hlCache = HLState hl cache} =  result
     overlayStroke (Overlay _ sm  em a) = (markPoint sm, a, markPoint em)
     point = pointBI fb
     clampStroke (l,x,r) = (max i l, x, min j r)
-    hintStroke (l,r) = (l,if l <= point && point <= r then strongHintStyle else hintStyle,r)
+    hintStroke r = (regionStart r,if point `inRegion` r then strongHintStyle else hintStyle,regionEnd r)
 
 ------------------------------------------------------------------------
 -- Point based editing
@@ -430,6 +430,7 @@ searchBI :: Direction -> String -> BufferImpl syntax -> Maybe Point
 searchBI dir s fb = fmap Point $ case dir of
       Forward -> fmap (pnt +) $ F.findSubstring (UTF8.fromString s) $ F.drop pnt ptr
       Backward -> listToMaybe $ reverse $ F.findSubstrings (UTF8.fromString s) $ F.take (pnt + length s) ptr
+    -- FIXME: backward search is inefficient.
     where Point pnt = pointBI fb -- pnt == current point
           ptr = mem fb
 
@@ -452,16 +453,14 @@ charsFromSolBI fb = UTF8.toString $ readBytes ptr (Size (pnt - sol)) (Point sol)
         ptr = mem fb
 
 
--- | Return indices of all strings in buffer matching regex, starting from
--- given point in the given direction
-regexBI :: Direction -> Regex -> Point -> forall syntax. BufferImpl syntax -> [(Point,Point)]
-regexBI direction re (Point p) fb = fmap matchedRegion $ case direction of
-      Forward -> matchAll re $ F.toLazyByteString $ F.drop p $ mem fb
-      Backward -> reverse $ matchAll re $ F.toLazyByteString $ F.take p $ mem fb
-   where matchedRegion  = (Point *** Point) . shift direction . f . (!0)
-         f (off,len)    = (off, off+len)
-         shift Forward  = (p+) *** (p+)
-         shift Backward = id
+-- | Return indices of all strings in buffer matching regex, starting from given point
+regexBI :: Direction -> SearchExp -> Point -> forall syntax. BufferImpl syntax -> [Region]
+regexBI dir (_,re) (Point p) fb = case dir of 
+   Forward -> fmap (fmapRegion addPoint . matchedRegion) $ matchAll re $ F.toLazyByteString $ F.drop p $ mem fb
+   Backward -> reverse $ fmap matchedRegion $ matchAll re $ F.toLazyByteString $ F.take p $ mem fb
+    -- FIXME: backward search is very inefficient.
+   where matchedRegion arr = let (off,len) = arr!0 in mkRegion (Point off) (Point (off+len))
+         addPoint (Point x) = Point (p + x)
 
 newMarkBI :: MarkValue -> BufferImpl syntax -> (BufferImpl syntax, Mark)
 newMarkBI initialValue fb =

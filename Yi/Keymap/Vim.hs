@@ -8,6 +8,7 @@
 -- | Vim keymap for Yi. Emulates vim :set nocompatible
 module Yi.Keymap.Vim ( keymap, VimMode, viWrite ) where
 
+import Yi.Accessor
 import Yi.Yi
 import Yi.Prelude
 import Prelude (maybe, length, filter, map, drop, takeWhile, dropWhile,
@@ -301,9 +302,10 @@ textChar = do
 continueSearching :: (Direction -> Direction) -> EditorM ()
 continueSearching fdir = do
   m <- getRegexE
-  let (s,dir) = case m of
-                  Nothing -> ("", Forward)
-                  Just ((s',_),dir') -> (s', fdir dir')
+  dir <- fdir <$> getA searchDirectionA 
+  let s = case m of
+                  Nothing -> ""
+                  Just (s',_) -> s'
   printMsg $ case dir of { Forward -> '/':s ; Backward -> '?':s }
   doSearch Nothing [] dir
 
