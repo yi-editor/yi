@@ -100,6 +100,19 @@ nextNParagraphs n = replicateM_ n $ moveB Paragraph Forward
 prevNParagraphs :: Int -> BufferM ()
 prevNParagraphs n = replicateM_ n $ moveB Paragraph Backward
 
+-- ! Examples:
+-- @goUnmatchedB Backward '(' ')'@
+-- Move to the previous unmatched '('
+-- @goUnmatchedB Forward '{' '}'@
+-- Move to the next unmatched '}'
+goUnmatchedB :: Direction -> Char -> Char -> BufferM ()
+goUnmatchedB dir cStart' cStop' = stepB >> readB >>= go 0
+  where go opened c | c == cStop && opened == 0 = return ()
+                    | c == cStop                = stepB >> readB >>= go (opened-1)
+                    | c == cStart               = stepB >> readB >>= go (opened+1)
+                    | otherwise                 = stepB >> readB >>= go opened
+        (stepB, cStart, cStop) | dir == Forward = (rightB, cStart', cStop')
+                               | otherwise      = (leftB, cStop', cStart')
 
 -----------------------------------------------------------------------
 -- Queries
