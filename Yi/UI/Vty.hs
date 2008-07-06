@@ -20,6 +20,7 @@ import Control.Exception
 import Control.Monad (forever)
 import Control.Monad.State (runState, State, gets, modify, get, put)
 import Control.Monad.Trans (liftIO, MonadIO)
+import Control.Applicative ((<$>))
 import Data.Char (ord,chr)
 import Data.Foldable
 import Data.IORef
@@ -223,7 +224,7 @@ scrollAndRenderWindow cfg sty width (win,hasFocus) = do
         (point, _) = runBuffer win b pointB
         (inWindow, _) = runBuffer win b $ pointInWindowB point
         b' = if inWindow then b else showPoint b win
-        (rendered, b'') = drawWindow cfg (fmap snd $ regex e) b' sty hasFocus width win
+        (rendered, b'') = drawWindow cfg (snd <$> fst <$> regex e) b' sty hasFocus width win
     put e { buffers = M.insert (bufkey win) b'' (buffers e) }
     return rendered
 

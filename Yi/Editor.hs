@@ -21,6 +21,7 @@ import Yi.Buffer                ( BufferRef
                                 , newWindowB )
 import Yi.Buffer.Implementation (Update(..), updateIsDelete)
 import Yi.Buffer.HighLevel (botB)
+import Yi.Buffer.Basic (Direction)
 import Yi.Regex (Regex)
 
 import Yi.Config
@@ -60,7 +61,7 @@ data Editor = Editor {
 
        ,statusLines   :: !(DelayList.DelayList String)
        ,killring      :: !Killring
-       ,regex         :: !(Maybe (String,Regex))    -- ^ most recent regex
+       ,regex         :: !(Maybe ((String,Regex),Direction)) -- ^ most recent regex
        ,pendingEvents :: ![Event]                   -- ^ Processed events that didn't yield any action yet.
     }
     deriving Typeable

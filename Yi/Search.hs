@@ -19,7 +19,6 @@ module Yi.Search (
                             -- -> [SearchF]
                             -- -> IO SearchExp
         continueSearch,          -- :: SearchExp
-                            -- -> Direction
                             -- -> IO SearchResult
 
         -- * Incremental Search
@@ -91,7 +90,7 @@ getRegexE = gets regex
 
 type SearchMatch = Region
 type SearchResult = Maybe (Either SearchMatch SearchMatch)
-type SearchExp = (String, Regex)
+type SearchExp = ((String, Regex), Direction)
 
 doSearch :: (Maybe String)       -- ^ @Nothing@ means used previous
                                 -- pattern, if any. Complain otherwise.
@@ -102,12 +101,12 @@ doSearch :: (Maybe String)       -- ^ @Nothing@ means used previous
 
 doSearch s fs d =
      case s of
-        Just re -> searchInit re fs >>= (flip continueSearch) d >>= f
+        Just re -> searchInit re d fs >>= withBuffer0 . continueSearch >>= f
         Nothing -> do
             mre <- getRegexE
             case mre of
                 Nothing -> fail "No previous search pattern" -- NB
-                Just r -> continueSearch r d >>= f
+                Just (r,_) -> withBuffer0 (continueSearch (r, d)) >>= f
     where
         f mp = case mp of
             Just (Right _) -> return ()
@@ -115,34 +114,35 @@ doSearch s fs d =
             Nothing        -> fail "Pattern not found"
 
 
-continueSearch :: SearchExp
-          -> Direction
-          -> EditorM SearchResult
-continueSearch _ Backward = fail "Backward searching is unimplemented"
-continueSearch (s, re) _ = withBuffer0 $ searchF s re
-
 -- | Set up a search.
-searchInit :: String -> [SearchF] -> EditorM SearchExp
-searchInit re fs = do
+searchInit :: String -> Direction -> [SearchF] -> EditorM SearchExp
+searchInit re d fs = do
     let Just c_re = makeRegexOptsM (searchOpts fs defaultCompOpt) defaultExecOpt re
-        p = (re,c_re)
+        p = ((re,c_re),d)
     setRegexE p
     return p
-
--- ---------------------------------------------------------------------
--- Internal
 
 -- | Do a forward search, placing cursor at first char of pattern, if found.
 -- Keymaps may implement their own regex language. How do we provide for this?
 -- Also, what's happening with ^ not matching sol?
 -- TODO: simplify!
-searchF :: String -> Regex -> BufferM SearchResult
-searchF _ c_re = do
+continueSearch :: SearchExp -> BufferM SearchResult
+continueSearch ((_, c_re), dir) = do
   mp <- savingPointB $ do
-      rightB               -- start immed. after cursor
-      rs <- regexB c_re
-      moveTo 0
-      ls <- regexB c_re
+      (rs,ls) <- case dir of
+        Forward -> do
+          rightB               -- start immed. after cursor
+          rs <- regexB dir c_re
+          moveTo 0
+          ls <- regexB dir c_re
+          return (rs,ls)
+        Backward -> do
+          leftB                -- start immed. before cursor
+          rs <- regexB dir c_re
+          siz <- sizeB
+          moveTo siz
+          ls <- regexB dir c_re
+          return (rs,ls)
       return $ listToMaybe $ fmap Right rs ++ fmap Left ls
   maybe (return ()) (moveTo . regionStart . either id id) mp
   return mp
@@ -160,9 +160,9 @@ searchAndRepLocal :: String -> String -> EditorM Bool
 searchAndRepLocal [] _ = return False   -- hmm...
 searchAndRepLocal re str = do
     let Just c_re = makeRegexOptsM defaultCompOpt defaultExecOpt re
-    setRegexE (re,c_re)     -- store away for later use
+    setRegexE ((re,c_re), Forward)     -- store away for later use
 
-    mp <- withBuffer0 $ regexB c_re   -- find the regex
+    mp <- withBuffer0 $ regexB Forward c_re   -- find the regex
     case mp of
         (r:_) -> withBuffer0 $ savingPointB $ do
                 moveToEol
@@ -326,7 +326,7 @@ isearchEnd accept = do
 
 qrNext :: BufferRef -> Regex -> EditorM ()
 qrNext b what = do
-  mp <- withGivenBuffer0 b $ regexB what
+  mp <- withGivenBuffer0 b $ regexB Forward what
   case mp of
     [] -> do
       printMsg "String to search not found"

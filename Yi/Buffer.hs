@@ -539,11 +539,11 @@ withSyntax0 :: (forall syntax. Mode syntax -> syntax -> a) -> FBuffer -> a
 withSyntax0 f FBuffer {bmode = m, rawbuf = rb} = f m (getAst rb)
            
 
--- | Return indices of next string in buffer matched by regex
-regexB :: Regex -> BufferM [Region]
-regexB rx = do
+-- | Return regions of strings in buffer matched by regex in the given direction
+regexB :: Direction -> Regex -> BufferM [Region]
+regexB dir rx = do
   p <- pointB
-  fmap (uncurry mkRegion) <$> queryBuffer (regexBI rx p)
+  fmap (uncurry mkRegion) <$> queryBuffer (regexBI dir rx p)
 
 ---------------------------------------------------------------------
 

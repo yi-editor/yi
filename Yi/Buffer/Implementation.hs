@@ -64,6 +64,8 @@ import Data.Maybe
 import Yi.Style
 
 import Control.Monad
+import Control.Arrow ((***))
+import Control.Applicative ((<$>))
 
 import Yi.Regex
 
@@ -277,7 +279,7 @@ strokesRangesBI regex i j fb@FBufferData {hlCache = HLState hl cache} =  result
     layer1 = hlGetStrokes hl point i j cache
     layers2 = map (map overlayStroke) $ groupBy ((==) `on` overlayLayer) $  Set.toList $ overlays fb
     layer3 = case regex of 
-               Just re -> takeIn $ map hintStroke $ regexBI re i fb
+               Just re -> takeIn $ map hintStroke $ regexBI Forward re i fb
                Nothing -> []
     result = map (map clampStroke . takeIn . dropBefore) (layer3 : layers2 ++ [layer1])
     overlayStroke (Overlay _ sm  em a) = (markPoint sm, a, markPoint em)
@@ -459,10 +461,16 @@ charsFromSolBI fb = UTF8.toString $ readBytes ptr (Size (pnt - sol)) (Point sol)
         ptr = mem fb
 
 
--- | Return indices of all strings in buffer matching regex, starting from given point
-regexBI :: Regex -> Point -> forall syntax. BufferImpl syntax -> [(Point,Point)]
-regexBI re (Point p) fb = fmap matchedRegion $ matchAll re $ F.toLazyByteString $ F.drop p $ mem fb
-   where matchedRegion arr = let (off,len) = arr!0 in (Point (p+off),Point (p+off+len)) 
+-- | Return indices of all strings in buffer matching regex, starting from
+-- given point in the given direction
+regexBI :: Direction -> Regex -> Point -> forall syntax. BufferImpl syntax -> [(Point,Point)]
+regexBI direction re (Point p) fb = fmap matchedRegion $ case direction of
+      Forward -> matchAll re $ F.toLazyByteString $ F.drop p $ mem fb
+      Backward -> reverse $ matchAll re $ F.toLazyByteString $ F.take p $ mem fb
+   where matchedRegion  = (Point *** Point) . shift direction . f . (!0)
+         f (off,len)    = (off, off+len)
+         shift Forward  = (p+) *** (p+)
+         shift Backward = id
 
 newMarkBI :: MarkValue -> BufferImpl syntax -> (BufferImpl syntax, Mark)
 newMarkBI initialValue fb =
