@@ -224,13 +224,13 @@ maybeMoveB u d = genMaybeMoveB u (d, case d of Forward -> OutsideBound; Backward
 
 transposeB :: TextUnit -> Direction -> BufferM ()
 transposeB unit direction = do
-  moveB unit (opposite direction)
+  moveB unit (reverseDir direction)
   w0 <- pointB
   moveB unit direction
   w0' <- pointB
   moveB unit direction
   w1' <- pointB
-  moveB unit (opposite direction)
+  moveB unit (reverseDir direction)
   w1 <- pointB
   swapRegionsB (mkRegion w0 w0') (mkRegion w1 w1')
   moveTo w1'
@@ -277,10 +277,6 @@ regionOfPartNonEmptyB unit dir = savingPointB $ do
 
 
 readUnitB :: TextUnit -> BufferM String
-readUnitB unit = readRegionB =<< regionOfB unit
-
-opposite :: Direction -> Direction
-opposite Backward = Forward
-opposite Forward = Backward
+readUnitB = readRegionB <=< regionOfB
 
 
