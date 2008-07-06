@@ -15,6 +15,7 @@ import System.Posix.Process
              exitImmediately)
 #else
 import System.Posix.Process (executeFile)
+import Control.Exception (handle)
 #endif
 #endif
 import System.Process
