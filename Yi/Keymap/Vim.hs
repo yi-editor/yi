@@ -14,7 +14,6 @@ import Prelude (maybe, length, filter, map, drop, takeWhile, dropWhile,
                 break, uncurry)
 
 import Data.Char
-import Data.Maybe (fromMaybe)
 import Data.List (sort, nub)
 import Data.Dynamic
 
@@ -288,10 +287,10 @@ cmd_eval = do
 
 -- TODO: escape the current word
 --       at word bounds: search for \<word\>
-searchCurrentWord :: EditorM ()
-searchCurrentWord = do
+searchCurrentWord :: Direction -> EditorM ()
+searchCurrentWord dir = do
   w <- withBuffer0 $ readRegionB =<< regionOfB ViWord
-  doSearch (Just w) [] Forward
+  doSearch (Just w) [] dir
 
 -- | Parse any character that can be inserted in the text.
 textChar :: KeymapM Char
@@ -299,10 +298,14 @@ textChar = do
   Event (KASCII c) [] <- anyEvent
   return c
 
-continueSearching :: Direction -> EditorM ()
-continueSearching direction = do
-  getRegexE >>= printMsg . ("/" ++) . fst . fromMaybe ([],undefined)
-  doSearch Nothing [] direction
+continueSearching :: (Direction -> Direction) -> EditorM ()
+continueSearching fdir = do
+  m <- getRegexE
+  let (s,dir) = case m of
+                  Nothing -> ("", Forward)
+                  Just ((s',_),dir') -> (s', fdir dir')
+  printMsg $ case dir of { Forward -> '/':s ; Backward -> '?':s }
+  doSearch Nothing [] dir
 
 -- | cmd mode commands
 singleCmdFM :: [(Event, Int -> YiM ())]
@@ -316,7 +319,8 @@ singleCmdFM =
     ,(char 'D',      withEditor . cut Exclusive . (Replicate $ Move Line Forward))
     ,(char 'J',      const (withBuffer (moveToEol >> deleteN 1)))    -- the "\n"
     ,(char 'U',      withBuffer . flip replicateM_ undoB)    -- NB not correct
-    ,(char 'n',      const $ withEditor $ continueSearching Forward)
+    ,(char 'n',      const $ withEditor $ continueSearching id)
+    ,(char 'N',      const $ withEditor $ continueSearching reverseDir)
     ,(char 'u',      withBuffer . flip replicateM_ undoB)
 
     ,(char 'X',      withEditor . cut Exclusive . (Replicate $ Move Character Backward))
@@ -328,7 +332,8 @@ singleCmdFM =
 
     ,(spec KPageUp, withBuffer . upScreensB)
     ,(spec KPageDown, withBuffer . downScreensB)
-    ,(char '*',      const $ withEditor searchCurrentWord)
+    ,(char '*',      const $ withEditor $ searchCurrentWord Forward)
+    ,(char '#',      const $ withEditor $ searchCurrentWord Backward)
     ,(char '~',      \i -> withBuffer $ do
                          p <- pointB
                          moveXorEol i
@@ -559,7 +564,7 @@ vis_single selectionStyle =
     choice [spec KEsc ?>> return (),
             char 'V'  ?>> change_vis_mode selectionStyle (SelectionStyle Line),
             char 'v'  ?>> change_vis_mode selectionStyle (SelectionStyle Character),
-            char ':'  ?>> ex_mode ":'<,'>",
+            char ':'  ?>>! ex_mode ":'<,'>",
             char 'y'  ?>>! yankSelection,
             char 'x'  ?>>! cutSelection,
             char 'd'  ?>>! cutSelection,
@@ -599,7 +604,7 @@ vis_multi = do
 --
 cmd2other :: VimMode
 cmd2other =
-    choice [char ':'     ?>> ex_mode ":",
+    choice [char ':'     ?>>! ex_mode ":",
             char 'v'     ?>> vis_mode (SelectionStyle Character),
             char 'V'     ?>> vis_mode (SelectionStyle Line),
             char 'R'     ?>> rep_mode,
@@ -613,8 +618,8 @@ cmd2other =
             char 'C'     ?>> beginIns $ cut Exclusive viMoveToEol, -- alias of "c$"
             char 'S'     ?>> beginIns $ withBuffer0 moveToSol >> cut Exclusive viMoveToEol, -- non-linewise alias of "cc"
             char 's'     ?>> beginIns $ cut Exclusive (CharMove Forward), -- non-linewise alias of "cl"
-            char '/'     ?>> ex_mode "/",
-            char '?'     ?>>! not_implemented '?',
+            char '/'     ?>>! ex_mode "/",
+            char '?'     ?>>! ex_mode "?",
             leave,
             spec KIns    ?>> ins_mode]
 
@@ -690,8 +695,8 @@ rep_char = (spec KBS ?>>! leftB) -- should undo unless pointer has been moved
 -- ---------------------------------------------------------------------
 -- Ex mode. We also process regex searching mode here.
 
-spawn_ex_buffer :: String -> YiM ()
-spawn_ex_buffer prompt = do
+ex_mode :: String -> EditorM ()
+ex_mode prompt = do
   -- The above ensures that the action is performed on the buffer that originated the minibuffer.
   let ex_buffer_finish = do
         withEditor $ historyFinish
@@ -721,13 +726,9 @@ spawn_ex_buffer prompt = do
       ex_complete ('b':'d':'e':'l':'e':'t':'e':'!':' ':f) = b_complete f
       ex_complete _ = return ""
 
-  withEditor $ historyStart
-  withEditor $ spawnMinibufferE prompt (const $ ex_process) 
+  historyStart
+  spawnMinibufferE prompt (const $ ex_process)
   return ()
-
-
-ex_mode :: String -> VimMode
-ex_mode = write . spawn_ex_buffer
 
 -- | eval an ex command to an YiM (), also appends to the ex history
 ex_eval :: String -> YiM ()
@@ -735,6 +736,7 @@ ex_eval cmd = do
   case cmd of
         -- regex searching
           ('/':pat) -> withEditor $ doSearch (Just pat) [] Forward
+          ('?':pat) -> withEditor $ doSearch (Just pat) [] Backward
 
         -- TODO: We give up on re-mapping till there exists a generic Yi mechanism to do so.
 
@@ -865,8 +867,8 @@ ex_eval cmd = do
 
 ------------------------------------------------------------------------
 
-not_implemented :: Char -> YiM ()
-not_implemented c = errorEditor $ "Not implemented: " ++ show c
+--not_implemented :: Char -> YiM ()
+--not_implemented c = errorEditor $ "Not implemented: " ++ show c
 
 -- ---------------------------------------------------------------------
 -- Misc functions
