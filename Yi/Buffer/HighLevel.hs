@@ -83,7 +83,10 @@ firstNonSpaceB :: BufferM ()
 firstNonSpaceB = do moveToSol
                     untilB_ ((||) <$> atEol <*> ((not . isSpace) <$> readB)) rightB
 
-
+-- | Move to the last non-space character in this line
+lastNonSpaceB :: BufferM ()
+lastNonSpaceB = do moveToEol
+                   untilB_ ((||) <$> atSol <*> ((not . isSpace) <$> readB)) leftB
 
 
 
