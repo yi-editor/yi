@@ -1,7 +1,7 @@
 module HConf where
 
 import Prelude hiding ( catch )
-import Control.Exception (handle, catch, bracket)
+import Control.Exception (catch, bracket)
 import Control.Applicative
 import Control.Monad.Reader
 import System.IO
@@ -182,7 +182,9 @@ recompile projectName force = io $ do
             then putStrLn $ "Forcing recompile of custom " ++ projectName
             else putStrLn $ "Recompiling custom " ++ projectName
         status <- bracket (openFile err WriteMode) hClose $ \h -> do
-            waitForProcess =<< runProcess "ghc" ["--make", projectName ++ ".hs", "-i", "-no-recomp", "-v0", "-o",binn,"-threaded"] (Just dir)
+            -- note that since we checked for recompilation ourselves,
+            -- we disable ghc recompilaton checks.
+            waitForProcess =<< runProcess "ghc" ["--make", projectName ++ ".hs", "-i", "-fforce-recomp", "-v0", "-o",binn,"-threaded"] (Just dir)
                                     Nothing Nothing Nothing (Just h)
 
         -- now, if it fails, run xmessage to let the user know:
