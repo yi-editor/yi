@@ -75,6 +75,7 @@ library
            Yi.Prelude
            Yi.Yi
            Yi.Config
+           Yi.Keymap.Keys
            Yi.Keymap.Emacs
            Yi.Keymap.Vim
            Yi.Keymap.Cua
@@ -133,7 +134,6 @@ library
 
         Yi.Accessor, Yi.Interpreter,
         Yi.Buffer.Basic
-        Yi.Keymap.Keys
         System.FriendlyPath
         Yi.Region
         Yi.Regex
