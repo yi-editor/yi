@@ -7,11 +7,11 @@
 
 module Yi.Window where
 import Data.Typeable
-import Yi.Buffer.Implementation (Point
-                                ,Mark(..)
-                                ,dummyInsMark
-                                ,dummyFromMark
-                                ,dummyToMark)
+import Yi.Buffer.Basic (Point
+                       ,Mark
+                       ,dummyInsMark
+                       ,dummyFromMark
+                       ,dummyToMark)
 type BufferRef = Int
 
 ------------------------------------------------------------------------

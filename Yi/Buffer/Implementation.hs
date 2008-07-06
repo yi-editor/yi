@@ -84,17 +84,8 @@ import Data.Word
 import qualified Data.Set as Set
 import Yi.Debug
 import Data.Typeable
+import Yi.Region
 
-
-newtype Mark = Mark {markId::Int} deriving (Eq, Ord, Show)
-staticInsMark, staticSelMark :: Mark
-staticInsMark = Mark (-1) -- the insertion mark
-staticSelMark = Mark (-2) -- the selection mark
-
-dummyInsMark, dummyFromMark, dummyToMark :: Mark
-dummyInsMark = Mark 0
-dummyFromMark = Mark 1
-dummyToMark = Mark 2
 
 data MarkValue = MarkValue {markPoint :: Point, markGravity :: Direction}
                deriving (Ord, Eq, Show)
