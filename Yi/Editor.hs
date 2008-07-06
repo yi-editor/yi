@@ -13,13 +13,16 @@ import Yi.Buffer                ( BufferRef
                                 , FBuffer (..)
                                 , BufferM
                                 , newB
+                                , runBuffer
                                 , runBufferFull
                                 , insertN
                                 , Mode
                                 , setMode
                                 , keymapProcessA
-                                , newWindowB )
-import Yi.Buffer.Implementation (Update(..), updateIsDelete)
+                                , newWindowB
+                                , getMarkValueB
+                                , newMarkB)
+import Yi.Buffer.Implementation (Update(..), updateIsDelete, staticInsMark)
 import Yi.Buffer.HighLevel (botB)
 import Yi.Buffer.Basic (Direction(..))
 import Yi.Regex (Regex, SearchExp)
@@ -344,7 +347,19 @@ newWindowE mini bk = do
 
 -- | Attach the specified buffer to the current window
 switchToBufferE :: BufferRef -> EditorM ()
-switchToBufferE b = modifyWindows (modifier WS.currentA (\w -> w {bufkey = b}))
+switchToBufferE bk = do
+    w <- getA (WS.currentA .> windowsA)
+    editor <- get
+    let buffer = findBufferWith bk editor
+        ([newIns, newFrom, newTo], buffer') = runBuffer w buffer $ do
+            markValues <- mapM getMarkValueB [staticInsMark, fromMark w, toMark w]
+            mapM newMarkB markValues
+    modifyWindows (modifier WS.currentA (\w -> w { bufkey = bk
+                                                 , insMark = newIns
+                                                 , fromMark = newFrom
+                                                 , toMark = newTo
+                                                 }))
+    modify (\e -> e {buffers = M.insert bk buffer' (buffers editor) })
 
 -- | Attach the specified buffer to some other window than the current one
 switchToBufferOtherWindowE :: BufferRef -> EditorM ()

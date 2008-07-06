@@ -54,6 +54,7 @@ module Yi.Buffer
   , getMarkValueB
   , setMarkPointB
   , newWindowB
+  , newMarkB
   , setVisibleSelection
   , isUnchangedB
   , isUnchangedBuffer
