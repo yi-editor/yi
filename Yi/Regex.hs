@@ -37,6 +37,6 @@ searchOpts =  foldr (.) id . map searchOpt
 makeSearchOptsM opts re = fmap (\r->(re,r)) $ makeRegexOptsM (searchOpts opts defaultCompOpt) defaultExecOpt re
 
 emptyRegex :: Regex
-Just emptyRegex = makeRegexOptsM defaultCompOpt defaultExecOpt ""
+Just emptyRegex = makeRegexOptsM defaultCompOpt defaultExecOpt "[]"
 
 

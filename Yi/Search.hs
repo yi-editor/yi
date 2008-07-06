@@ -58,7 +58,6 @@ import Data.Typeable
 import Control.Monad.State
 
 import Yi.Core
-import Yi.Style
 import Yi.History
 
 -- ---------------------------------------------------------------------
@@ -90,7 +89,6 @@ getRegexE = getA regexA
 
 type SearchMatch = Region
 type SearchResult = Maybe (Either SearchMatch SearchMatch)
-type SearchCtx = ((String, Regex), Direction)
 
 doSearch :: (Maybe String)       -- ^ @Nothing@ means used previous
                                 -- pattern, if any. Complain otherwise.
@@ -117,7 +115,7 @@ doSearch s fs d =
 -- | Set up a search.
 searchInit :: String -> Direction -> [SearchF] -> EditorM (SearchExp, Direction)
 searchInit re d fs = do
-    let Just c_re = makeSearchOptsM [] re
+    let Just c_re = makeSearchOptsM fs re
     setRegexE c_re
     setA searchDirectionA d
     return (c_re,d)
@@ -207,6 +205,7 @@ isearchIsEmpty = do
 isearchAddE :: String -> EditorM ()
 isearchAddE increment = isearchFunE (++ increment)
 
+makeISearch :: String -> (String, Regex)
 makeISearch s = case makeSearchOptsM [] s of
                   Nothing -> (s, emptyRegex)
                   Just search -> search
@@ -219,9 +218,10 @@ isearchFunE fun = do
   printMsg $ "I-search: " ++ current
   prevPoint <- withBuffer0 pointB
   withBuffer0 $ do
-    delOverlayLayerB HintLayer
     moveTo $ regionStart p0
-  mp <- withBuffer0 $ regexB direction $ makeISearch current
+  let srch = makeISearch current
+  setRegexE srch
+  mp <- withBuffer0 $ regexB direction srch
   case mp of
     [] -> do withBuffer0 $ moveTo prevPoint -- go back to where we were
              setDynamic $ Isearch ((current,p0,direction):s)
@@ -229,20 +229,17 @@ isearchFunE fun = do
     (p:_) -> do
                   withBuffer0 $ do
                     moveTo (regionEnd p)
-                    addOverlayB $ mkOverlay HintLayer p (hintStyle)
                   setDynamic $ Isearch ((current,p,direction):s)
                  
 isearchDelE :: EditorM ()
 isearchDelE = do
   Isearch s <- getDynamic
   case s of
-    ((_,_,_):(text,p,dir):rest) -> do
-      let ov = mkOverlay HintLayer p (hintStyle)
+    (_:(text,p,dir):rest) -> do
       withBuffer0 $ do
         moveTo $ regionEnd p
-        delOverlayLayerB HintLayer
-        addOverlayB ov
       setDynamic $ Isearch ((text,p,dir):rest)
+      setRegexE $ makeISearch $ text
       printMsg $ "I-search: " ++ text
     _ -> return () -- if the searched string is empty, don't try to remove chars from it.
 
@@ -283,11 +280,8 @@ isearchNext direction = do
                                      Backward -> mkRegion endPoint endPoint
                   setDynamic $ Isearch ((current,wrappedOfs,direction):rest) -- prepare to wrap around.
     (p:_) -> do   
-                  let ov = mkOverlay HintLayer p hintStyle
                   withBuffer0 $ do
                     moveTo (regionEnd p)
-                    delOverlayLayerB HintLayer
-                    addOverlayB ov
                   setDynamic $ Isearch ((current,p,direction):rest)
  where startOfs = case direction of
                       Forward  ->  1
@@ -314,7 +308,6 @@ isearchEnd accept = do
   Isearch s <- getDynamic
   let (lastSearched,_,_) = head s
   let (_,p0,_) = last s
-  withBuffer0 $ delOverlayLayerB HintLayer
   historyFinishGen iSearch (return lastSearched)
   if accept 
      then do withBuffer0 $ setSelectionMarkPointB $ regionStart p0 

@@ -11,7 +11,7 @@ module Yi.Region
   , regionStart
   , regionEnd
   , regionDirection
-  , inRegion
+  , inRegion, nearRegion
   , fmapRegion
   , intersectRegion
   , unionRegion
@@ -66,6 +66,9 @@ emptyRegion = Region Forward 0 0
 inRegion :: Point -> Region -> Bool
 p `inRegion` (Region _ start stop) = start <= p && p < stop
 
+-- | True if the given point is inside the given region or at the end of it.
+nearRegion :: Point -> Region -> Bool
+p `nearRegion` (Region _ start stop) = start <= p && p <= stop
 
 
 

@@ -276,7 +276,7 @@ strokesRangesBI regex i j fb@FBufferData {hlCache = HLState hl cache} =  result
     overlayStroke (Overlay _ sm  em a) = (markPoint sm, a, markPoint em)
     point = pointBI fb
     clampStroke (l,x,r) = (max i l, x, min j r)
-    hintStroke r = (regionStart r,if point `inRegion` r then strongHintStyle else hintStyle,regionEnd r)
+    hintStroke r = (regionStart r,if point `nearRegion` r then strongHintStyle else hintStyle,regionEnd r)
 
 ------------------------------------------------------------------------
 -- Point based editing
