@@ -8,7 +8,6 @@ module Yi.Region
    Region
   , emptyRegion
   , mkRegion, mkRegion'
-  , mkVimRegion
   , regionStart
   , regionEnd
   , regionDirection
@@ -45,11 +44,6 @@ intersectRegion (Region _ x1 y1) (Region _ x2 y2) = ordRegion (max x1 x2) (min y
 unionRegion :: Region -> Region -> Region
 unionRegion (Region _ x1 y1) (Region _ x2 y2) = mkRegion (min x1 x2) (max y1 y2)
 
--- | Construct a region from its bounds, vim style:
--- the right bound in included.
--- FIXME: this does not handle UTF8 correctly.
-mkVimRegion :: Point -> Point -> Region
-mkVimRegion x y = if x <= y then Region Forward x (y+1) else Region Backward y (x+1)
 
 -- | Create a region from ordered bounds. If 2nd argument is greater than
 -- 1st, then the region will be empty.

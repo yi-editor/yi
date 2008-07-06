@@ -443,6 +443,9 @@ select_any_unit f =
            x <- [ char 'i' ?>> (char c ?>> write (f =<< withBuffer0 (select_inner_unit unit))),
                   char 'a' ?>> (char c ?>> write (f =<< withBuffer0 (select_a_unit unit))) ] ]
 
+
+-- TODO: Why could not this be written in terms of unitWiseRegion?
+-- refactor?
 lineWiseRegion :: Point -> Point -> BufferM Region
 lineWiseRegion start' stop' = savingPointB $ do
   moveTo start'
@@ -451,7 +454,7 @@ lineWiseRegion start' stop' = savingPointB $ do
   moveTo stop'
   maybeMoveB Line Forward
   stop <- pointB
-  return $ mkVimRegion start stop
+  mkVimRegion start stop
 
 regionFromTo :: Point -> Point -> RegionStyle -> BufferM Region
 regionFromTo start' stop' regionStyle =
@@ -575,12 +578,14 @@ vis_multi = do
             char '>' ?>>! shiftIndentOfSelection i,
             char '<' ?>>! shiftIndentOfSelection (-i),
             char 'r' ?>> do x <- textChar
+                            -- TODO: rewrite in functional style. (modifyRegionB?)
                             write $ do
                                    mrk <- getSelectionMarkPointB
                                    pt <- pointB
-                                   text <- readRegionB (mkVimRegion mrk pt)
+                                   r <- mkVimRegion mrk pt
+                                   text <- readRegionB r
                                    moveTo mrk
-                                   deleteRegionB (mkVimRegion mrk pt)
+                                   deleteRegionB r
                                    let convert '\n' = '\n'
                                        convert  _   = x
                                    insertN $ map convert $ text] ++

@@ -429,26 +429,26 @@ indentAsPreviousB =
      indentToB previousIndent
 
 
--- | shiftIndent num
--- |  shifts right (or left if num is negative) num times, filling in tabs if
--- |  expandTabs is set in the buffers IndentSettings
--- TODO: This uses mkVimRegion
+-- | @shiftIndentOfLine num@
+-- shifts right (or left if num is negative) num times, filling in tabs if
+-- expandTabs is set in the buffers IndentSettings
+-- TODO: rewrite in a functional style; using @modifyExtendedSelectionB Line $ modifyLines f@
 shiftIndentOfLine :: Int -> BufferM ()
 shiftIndentOfLine numOfShifts = do
   moveToSol
   sol <- pointB
   firstNonSpaceB
-  -- ptOfNonSpace <- pointB
   isAtSol <- atSol
   when (not isAtSol) leftB
+  rightB
   ptOfLastSpace <- pointB
   -- msgEditor ("ptOfLastSpace= " ++ (show ptOfLastSpace) ++ "-" ++ (show sol) ++ "=" ++ (show (ptOfLastSpace - sol)))
   indentSettings <- indentSettingsB
   let countSpace '\t' = tabSize indentSettings
       countSpace _ = 1 -- we'll assume nothing but tabs and spaces
   cnt <- if isAtSol then return 0
-                    else readRegionB (mkVimRegion sol ptOfLastSpace) >>= return . sum . map countSpace
-  if not isAtSol then deleteRegionB (mkVimRegion sol ptOfLastSpace)
+                    else readRegionB (mkRegion sol ptOfLastSpace) >>= return . sum . map countSpace
+  if not isAtSol then deleteRegionB (mkRegion sol ptOfLastSpace)
                  else return ()
 
   let newcount = cnt + ((shiftWidth indentSettings) * numOfShifts)
