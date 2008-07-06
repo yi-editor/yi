@@ -83,6 +83,7 @@ dropSpace = let f = reverse . dropWhile isSpace in f . f
 isBlank :: String -> Bool
 isBlank = all isSpace
 
+fillText :: Int -> String -> [String]
 fillText margin = map (unwords . reverse) . fill margin [] . words
    where fill _ acc [] = [acc]
          fill n acc (w:ws) 

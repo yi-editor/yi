@@ -334,9 +334,9 @@ qrNext b what = do
     (r:_) -> withGivenBuffer0 b $ setSelectRegionB r
 
 qrReplaceOne :: BufferRef -> Regex -> String -> EditorM ()
-qrReplaceOne b regex replacement = do
+qrReplaceOne b reg replacement = do
   withGivenBuffer0 b $ do
     r <- getRawSelectRegionB
     replaceRegionB r replacement
-  qrNext b regex
+  qrNext b reg
 
