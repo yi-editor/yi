@@ -154,6 +154,7 @@ data UIUpdate = TextUpdate Update
 newBI :: LazyB.ByteString -> FBufferData ()
 newBI s = FBufferData (F.fromLazyByteString s) mks M.empty (HLState noHighlighter (hlStartState noHighlighter)) Set.empty 0
     where mks = M.fromList [ (staticInsMark, MarkValue 0 insertGravity)
+                           , (staticSelMark, MarkValue 0 selectionGravity)
                            , (dummyInsMark, MarkValue 0 Forward)
                            , (dummyFromMark, MarkValue 0 Backward)
                            , (dummyToMark, MarkValue 0 Forward)
