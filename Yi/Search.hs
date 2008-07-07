@@ -43,6 +43,7 @@ import Prelude ()
 import Yi.Accessor
 import Yi.Prelude
 import Yi.Buffer
+import Yi.Buffer.Normal
 import Yi.Buffer.HighLevel
 import Yi.Regex
 import Yi.Buffer.Region
@@ -123,25 +124,14 @@ searchInit re d fs = do
 -- | Do a forward search, placing cursor at first char of pattern, if found.
 -- Keymaps may implement their own regex language. How do we provide for this?
 -- Also, what's happening with ^ not matching sol?
--- TODO: simplify!
 continueSearch :: (SearchExp, Direction) -> BufferM SearchResult
 continueSearch (c_re, dir) = do
   mp <- savingPointB $ do
-      (rs,ls) <- case dir of
-        Forward -> do
-          rightB               -- start immed. after cursor
-          rs <- regexB dir c_re
-          moveTo 0
-          ls <- regexB dir c_re
-          return (rs,ls)
-        Backward -> do
-          leftB                -- start immed. before cursor
-          rs <- regexB dir c_re
-          siz <- sizeB
-          moveTo siz
-          ls <- regexB dir c_re
-          return (rs,ls)
-      return $ listToMaybe $ fmap Right rs ++ fmap Left ls
+    moveB Character dir  -- start immed. after cursor
+    rs <- regexB dir c_re
+    moveB Document (reverseDir dir) -- wrap around 
+    ls <- regexB dir c_re
+    return $ listToMaybe $ fmap Right rs ++ fmap Left ls
   maybe (return ()) (moveTo . regionStart . either id id) mp
   return mp
 
