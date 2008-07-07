@@ -536,4 +536,4 @@ replaceBufferContent newvalue = do
 
 
 fillParagraph :: BufferM ()
-fillParagraph = modifyRegionB (unlines . fillText 80) =<< regionOfB Paragraph
+fillParagraph = modifyRegionB (unlines' . fillText 80) =<< regionOfB Paragraph

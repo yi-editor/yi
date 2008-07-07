@@ -133,7 +133,7 @@ cleverPrettify e = do
     Nothing -> return ()
     Just g -> do let region = mkRegion (tokBegin . head $ g) (tokEnd . last $ g)
                  text <- unwords . fmap (drop 2) <$> mapM tokText g
-                 modifyRegionB (const $ unlines $ fmap ("-- " ++) $ fillText 80 $ text) region
+                 modifyRegionB (const $ unlines' $ fmap ("-- " ++) $ fillText 80 $ text) region
                  
   
 tokTyp (Comment t) = Just t

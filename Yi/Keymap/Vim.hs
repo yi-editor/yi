@@ -25,7 +25,7 @@ import Yi.Editor
 import Yi.History
 import Yi.Buffer
 import Yi.Debug
-import Yi.String (fillText)
+import Yi.String (fillText, unlines')
 
 import Yi.Indent
 
@@ -416,8 +416,8 @@ cmd_op = do
                    , (('g':), 'u', viMapRegion toLower)
                    , (('g':), 'U', viMapRegion toUpper)
                    , (('g':), '?', viMapRegion rot13Char)
-                   , (('g':), 'q', const $ withBuffer0 . modifyRegionB (unlines . fillText 80))
-                   , (('g':), 'w', const $ withBuffer0 . savingPointB . modifyRegionB (unlines . fillText 80))
+                   , (('g':), 'q', const $ withBuffer0 . modifyRegionB (unlines' . fillText 80))
+                   , (('g':), 'w', const $ withBuffer0 . savingPointB . modifyRegionB (unlines' . fillText 80))
                    ]
 
 char2unit :: [(Char, TextUnit)]
