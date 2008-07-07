@@ -30,7 +30,8 @@ import Yi.Interact hiding (write)
 import qualified Yi.Interact as I
 import Yi.Keymap.Keys
 import HConf (hconfOptions)
-
+import Paths_yi
+import Distribution.Text (display)
 #ifdef TESTING
 import qualified TestSuite
 #endif
@@ -125,13 +126,12 @@ options = [
 
 -- | usage string.
 usage, versinfo :: String
-usage    = usageInfo "Usage: yi [option...] [file]" options
+usage    = usageInfo ("Usage: " ++ projectName ++ " [option...] [file]") options
 
 projectName :: String
 projectName = "yi"
 
-versinfo = "yi 0.4.0"
--- TODO: pull this out of the cabal configuration
+versinfo = projectName ++ ' ' : display version
 
 nilKeymap :: Keymap
 nilKeymap = choice [
