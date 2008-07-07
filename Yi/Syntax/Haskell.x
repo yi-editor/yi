@@ -8,7 +8,7 @@
 
 {
 {-# OPTIONS -w  #-}
-module Yi.Syntax.Haskell ( initState, alexScanToken, tokenToStyle, Token(..) ) where
+module Yi.Syntax.Haskell ( initState, alexScanToken, tokenToStyle, startsLayout, Token(..) ) where
 import Yi.Syntax.Alex
 import Yi.Style
 }
@@ -42,8 +42,9 @@ $nl        = [\n\r]
         qualified|then|type|forall|foreign|export|dynamic|
         safe|threadsafe|unsafe|stdcall|ccall|dotnet
 
-@indentReservedId =
-    of|where|let|do|mdo
+@layoutReservedId =
+    of|let|do|mdo
+
 
 @reservedop =
         ".." | ":" | "::" | "=" | \\ | "|" | "<-" | "->" | "@" | "~" | "=>"
@@ -101,7 +102,8 @@ haskell :-
  $special                                       { \str st -> (st, Special (snd $ head str)) }
 
  @reservedid                                    { c Reserved }
- @indentReservedId                              { c IndentReserved }
+ "where"                                        { c Where }
+ @layoutReservedId                              { c LayoutReserved }
  @varid                                         { c VarIdent }
  @conid                                         { c ConsIdent }
 
@@ -126,9 +128,9 @@ haskell :-
 type HlState = Int
 
 data Token = Number | CharTok | StringTok | VarIdent | ConsIdent
-           | IndentReserved | Reserved | ReservedOp | Special Char
+           | LayoutReserved | Reserved | ReservedOp | Special Char
            | ConsOperator | Operator
-           | Comment 
+           | Comment | Where
              deriving (Eq, Show)
 
 tokenToStyle :: Token -> Style 
@@ -140,12 +142,16 @@ tokenToStyle tok = case tok of
   ConsIdent    -> upperIdStyle
   ReservedOp   -> operatorStyle
   Reserved     -> keywordStyle
-  IndentReserved -> keywordStyle
+  LayoutReserved -> keywordStyle
+  Where        -> keywordStyle
   Special _    -> defaultStyle
   ConsOperator -> upperIdStyle
   Operator     -> operatorStyle
   Comment      -> commentStyle
 
+startsLayout LayoutReserved = True
+startsLayout Where = True
+startsLayout _ = False
 
 stateToInit x | x < 0     = nestcomm
               | otherwise = 0

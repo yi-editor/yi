@@ -2,22 +2,24 @@ module Yi.Mode.Haskell (haskellMode, cleverHaskellMode,
                         haskellUnCommentSelectionB, haskellCommentSelectionB, haskellToggleCommentSelectionB)  where
 
 import Prelude ()
-import Data.Maybe (maybe)
-import Data.List (isPrefixOf)
+import Yi.Prelude
+import Data.Maybe (maybe, listToMaybe)
+import Data.List (isPrefixOf, dropWhile, takeWhile, filter)
 import Yi.Buffer
 import Yi.Buffer.HighLevel
 import Yi.Buffer.Normal
 import Yi.Indent
 import Yi.Prelude
 import Yi.Syntax
-import Yi.Syntax.Alex (Tok(..),Posn(..))
-import Yi.Syntax.Haskell (Token)
+import Yi.Syntax.Alex (Tok(..),Posn(..),tokBegin)
+import Yi.Syntax.Haskell (Token(..), startsLayout)
 import Yi.Syntax.Paren
 import qualified Yi.IncrementalParse as IncrParser
 import qualified Yi.Syntax.Alex as Alex
 import qualified Yi.Syntax.Haskell             as Haskell
 import qualified Yi.Syntax.Paren as Paren
 import Control.Arrow (first)
+import Control.Applicative
 
 haskellMode :: Mode Alex.Result
 haskellMode = emptyMode 
@@ -69,26 +71,45 @@ adjustBlock e len = do
                                  else do
                                     deleteN 1
 
+indentLevel = 4
 
+insideGroup (Special c) = not $ c `elem` "',;})" 
+insideGroup _ = True
 
 cleverAutoIndentHaskellB :: Expr TT -> IndentBehaviour -> BufferM ()
 cleverAutoIndentHaskellB e behaviour = do
   previousLine   <- getNextNonBlankLineB Backward
   previousIndent <- indentOfB previousLine
-  solPnt <- savingPointB (moveToSol >> pointB)
+  solPnt <- pointAt moveToSol
+  eolPnt <- pointAt moveToEol
   let stopsOf (g@(Group open _ close):ts) 
           | isErrorTok (tokT close) || getLastOffset g >= solPnt
-              = [1 + (posnCol . tokPosn $ open)]  -- stop here: we want to be "inside" that group.
+              = [shiftGroup + (posnCol . tokPosn $ open)]  -- stop here: we want to be "inside" that group.
           | otherwise = stopsOf ts -- this one is closed on before this line; just skip it.
-      stopsOf ((Atom (Tok {tokT = Haskell.IndentReserved})):ts) = [previousIndent + 2]
+      stopsOf ((Atom (Tok {tokT = t})):ts) | startsLayout t = [previousIndent + indentLevel]
       stopsOf ((Atom _):ts) = stopsOf ts
          -- of; where; etc. we want to start the block here.
+      stopsOf (t@(Stmt _):ts) = shiftBlock + maybe 0 (posnCol . tokPosn) (getFirstToken t) : stopsOf ts
+      stopsOf (Error _:ts) = stopsOf ts
       stopsOf (t:ts) = maybe 0 (posnCol . tokPosn) (getFirstToken t) : stopsOf ts
       stopsOf [] = []
+      firstTokOnLine = fmap tokT $ listToMaybe $ 
+          dropWhile ((solPnt >) . tokBegin) $ 
+          takeWhile ((eolPnt >) . tokBegin) $
+          filter (not . isErrorTok . tokT) $ concatMap toList e
+      shiftBlock = case firstTokOnLine of
+        Just Where -> 4
+        _ -> 0
+      deepInGroup = maybe True insideGroup firstTokOnLine
+      shiftGroup = if deepInGroup then 1 else 0
+                     
+
+        
   case getLastPath e solPnt of
     Nothing -> return ()
     Just path -> let stops = stopsOf path
                  in trace ("Stops = " ++ show stops) $      
+                    trace ("firstTokOnLine = " ++ show firstTokOnLine) $      
                     cycleIndentsB behaviour stops
          
 

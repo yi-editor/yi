@@ -91,6 +91,7 @@ module Yi.Buffer
   , staticSelMark
   , getMarkPointB
   , module Yi.Buffer.Basic
+  , pointAt
   )
 where
 
@@ -327,7 +328,7 @@ runBufferFull w b f =
         f' = copyMark (insMark w) staticInsMark *> f <* copyMark staticInsMark (insMark w) 
     in (a, updates, modifier pendingUpdatesA (++ fmap TextUpdate updates) b')
 
-copyMark src dst = trace ("copying: " ++ show src ++ " -> " ++ show dst) $ do
+copyMark src dst = do
   p <- getMarkValueB src
   setMarkPointB dst (markPoint p)
 
@@ -699,14 +700,11 @@ savingPointB f = savingPrefCol $ do
   moveTo p
   return res
 
+pointAt f = savingPointB (f *> pointB)
+
 -------------
 -- Window
 
 askWindow :: (Window -> a) -> BufferM a
 askWindow = asks
 
-----------------
--- Killring
--- getKillRingInfo = do
---   us <- getA pendingUpdatesA
---   let dels =
