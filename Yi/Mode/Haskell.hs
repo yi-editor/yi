@@ -73,9 +73,10 @@ adjustBlock e len = do
                                          leftN len
                                  else do
                                     deleteN 1
-
+indentLevel :: Int
 indentLevel = 4
 
+insideGroup :: Token -> Bool
 insideGroup (Special c) = not $ c `elem` "',;})" 
 insideGroup _ = True
 
@@ -89,12 +90,11 @@ cleverAutoIndentHaskellB e behaviour = do
           | isErrorTok (tokT close) || getLastOffset g >= solPnt
               = [shiftGroup + (posnCol . tokPosn $ open)]  -- stop here: we want to be "inside" that group.
           | otherwise = stopsOf ts -- this one is closed on before this line; just skip it.
-      stopsOf ((Atom (Tok {tokT = t})):ts) | startsLayout t = [previousIndent + indentLevel]
+      stopsOf ((Atom (Tok {tokT = t})):_) | startsLayout t = [previousIndent + indentLevel]
       stopsOf ((Atom _):ts) = stopsOf ts
          -- of; where; etc. we want to start the block here.
       stopsOf (t@(Stmt _):ts) = shiftBlock + maybe 0 (posnCol . tokPosn) (getFirstToken t) : stopsOf ts
       stopsOf (Error _:ts) = stopsOf ts
-      stopsOf (t:ts) = maybe 0 (posnCol . tokPosn) (getFirstToken t) : stopsOf ts
       stopsOf [] = []
       firstTokOnLine = fmap tokT $ listToMaybe $ 
           dropWhile ((solPnt >) . tokBegin) $ 
@@ -115,10 +115,14 @@ cleverAutoIndentHaskellB e behaviour = do
                     trace ("firstTokOnLine = " ++ show firstTokOnLine) $      
                     cycleIndentsB behaviour stops
          
+allToks :: Expr TT -> [TT]
 allToks = concatMap toList
 
+-- TODO: move to Alex module
+tokRegion :: Tok t -> Region
 tokRegion t = mkRegion (tokBegin t) (tokEnd t)
 
+tokText :: Tok t -> BufferM String
 tokText = readRegionB . tokRegion
 
 cleverPrettify :: Expr TT -> BufferM ()
@@ -135,7 +139,7 @@ cleverPrettify e = do
                  text <- unwords . fmap (drop 2) <$> mapM tokText g
                  modifyRegionB (const $ unlines' $ fmap ("-- " ++) $ fillText 80 $ text) region
                  
-  
+tokTyp :: Token -> Maybe Haskell.CommentType 
 tokTyp (Comment t) = Just t
 tokTyp _ = Nothing
 
@@ -173,6 +177,7 @@ haskellCommentSelectionB = linePrefixSelectionB "-- "
 haskellUnCommentSelectionB :: BufferM ()
 haskellUnCommentSelectionB = unLineCommentSelectionB "-- "
 
+haskellToggleCommentSelectionB :: BufferM ()
 haskellToggleCommentSelectionB = do
   l <- readUnitB Line
   if ("--" `isPrefixOf` l)

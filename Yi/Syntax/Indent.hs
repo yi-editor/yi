@@ -6,7 +6,7 @@ import Yi.Syntax.Alex
 import Yi.Prelude
 import Prelude ()
 import Data.Maybe (isJust)
-import Data.List (drop, dropWhile, span)
+import Data.List (dropWhile, span)
 
 data BlockOpen t = Indent Int -- block opened because of indentation; parameter is the column of it.
                  | Paren t      -- block opened because of parentheses

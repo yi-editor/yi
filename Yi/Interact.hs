@@ -185,8 +185,7 @@ pushEvent :: P ev w -> ev -> P ev w
 pushEvent (Best c d) e = Best (pushEvent c e) (pushEvent d e)
 pushEvent (Write p w c) e = Write p w (pushEvent c e)
 pushEvent (Get l h f) e = if test (e >=) l && test (e <=) h then f e else Fail
-    where test f Nothing = True
-          test f (Just x) = f x
+    where test = maybe True
 pushEvent Fail _ = Fail
 pushEvent End _ = End
 
@@ -235,8 +234,8 @@ possibleActions = nubBy equiv' . helper
 
 instance (Show w, Show ev) => Show (P ev w) where
     show (Get Nothing Nothing p) = "?"
-    show (Get (Just l) (Just h) p) | l == h = show l -- ++ " " ++ show (p l)
-    show (Get l h p) = maybe "" show l ++ ".." ++ maybe "" show h
+    show (Get (Just l) (Just h) _p) | l == h = show l -- ++ " " ++ show (p l)
+    show (Get l h _) = maybe "" show l ++ ".." ++ maybe "" show h
     show (Write prior w p) = "!" ++ show prior ++ ":" ++ show w ++ "->" ++ show p
     show (End) = "."
     show (Fail) = "*"
@@ -250,12 +249,7 @@ oneOf s = choice $ map event s
 anyEvent :: (Ord event, MonadInteract m w event) => m event
 anyEvent = eventBounds Nothing Nothing
 
-satisfy :: (Ord event, Bounded event, MonadInteract m w event) => 
-           (event -> Bool) -> m event
--- ^ Consumes and returns the next character, if it satisfies the
---   specified predicate.
-satisfy p = do c <- anyEvent; if p c then return c else fail "not satisfy'ed"
-
+eventBetween :: (Ord e, MonadInteract m w e) => e -> e -> m e
 eventBetween l h = eventBounds (Just l) (Just h)
 
 event :: (Ord event, MonadInteract m w event) => event -> m event

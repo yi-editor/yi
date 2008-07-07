@@ -1,7 +1,5 @@
 module Yi.Regex 
   (
-   searchOpt,
-   searchOpts,
    SearchF(..), makeSearchOptsM,
    SearchExp, searchString, searchRegex, emptySearch,
    emptyRegex,
@@ -10,11 +8,14 @@ module Yi.Regex
 where
 
 import Text.Regex.TDFA
+import Control.Monad
 
 type SearchExp = (String, Regex)
 
-
+searchString :: SearchExp -> String
 searchString = fst
+
+searchRegex :: SearchExp -> Regex
 searchRegex = snd
 
 --
@@ -32,11 +33,13 @@ searchOpt IgnoreCase = \o->o{caseSensitive = False}
 searchOpt NoNewLine = \o->o{multiline = False}
 
 
-searchOpts =  foldr (.) id . map searchOpt
+makeSearchOptsM :: (Monad m, RegexMaker Regex CompOption ExecOption source) => [SearchF] -> source -> m (source, Regex)
+makeSearchOptsM opts re = liftM (\r->(re,r)) $ makeRegexOptsM (searchOpts opts defaultCompOpt) defaultExecOpt re
+    where searchOpts =  foldr (.) id . map searchOpt
 
-makeSearchOptsM opts re = fmap (\r->(re,r)) $ makeRegexOptsM (searchOpts opts defaultCompOpt) defaultExecOpt re
-
+emptySearch :: SearchExp
 emptySearch = ("", emptyRegex)
+
 emptyRegex :: Regex
 Just emptyRegex = makeRegexOptsM defaultCompOpt defaultExecOpt "()"
 

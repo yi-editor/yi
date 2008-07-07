@@ -25,7 +25,7 @@ import Yi.Buffer                ( BufferRef
 import Yi.Buffer.Implementation (Update(..), updateIsDelete, staticInsMark)
 import Yi.Buffer.HighLevel (botB)
 import Yi.Buffer.Basic (Direction(..))
-import Yi.Regex (Regex, SearchExp)
+import Yi.Regex (SearchExp)
 
 import Yi.Config
 import Yi.Debug
@@ -95,7 +95,10 @@ killringA = Accessor killring (\f e -> e {killring = f (killring e)})
 dynA :: Initializable a => Accessor Editor a
 dynA = dynamicValueA .> dynamicA
 
+regexA :: Accessor Editor (Maybe SearchExp)
 regexA = Accessor regex (\f e -> e{regex = f (regex e)})
+
+searchDirectionA :: Accessor Editor Direction
 searchDirectionA = Accessor searchDirection (\f e -> e{searchDirection = f (searchDirection e)})
 
 

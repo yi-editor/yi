@@ -45,6 +45,7 @@ historyDown = historyMove miniBuffer (-1)
 historyStart :: EditorM ()
 historyStart = historyStartGen miniBuffer
 
+-- | Start an input session with History
 historyStartGen :: String -> EditorM ()
 historyStartGen ident = do
   (History _cur cont) <- getA (dynKeyA ident .> dynA)
@@ -54,14 +55,17 @@ historyStartGen ident = do
 historyFinish :: EditorM ()
 historyFinish = historyFinishGen miniBuffer (withBuffer0 elemsB)
 
+-- | Finish the current input session with history.
+historyFinishGen :: String -> EditorM String -> EditorM ()
 historyFinishGen ident getCurValue = do
   (History _cur cont) <- getA (dynKeyA ident .> dynA)
   curValue <- getCurValue
   setA (dynKeyA ident .> dynA) $ History (-1) (nub $ dropWhile null $ (curValue:cont))
 
-historyGetGen ident = do
-  (History cur cont) <- getA (dynKeyA ident .> dynA)
-  return $ cont !! cur
+-- historyGetGen :: String -> EditorM String
+-- historyGetGen ident = do
+--   (History cur cont) <- getA (dynKeyA ident .> dynA)
+--   return $ cont !! cur
 
 -- TODO: scrap
 debugHist :: EditorM ()

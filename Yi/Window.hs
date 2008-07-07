@@ -7,8 +7,7 @@
 
 module Yi.Window where
 import Data.Typeable
-import Yi.Buffer.Basic (Point
-                       ,Mark
+import Yi.Buffer.Basic (Mark
                        ,dummyInsMark
                        ,dummyFromMark
                        ,dummyToMark)

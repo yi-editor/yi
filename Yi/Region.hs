@@ -19,8 +19,6 @@ module Yi.Region
 where
 import Yi.Buffer.Basic
 import Data.Typeable
-import Yi.Window
-import Control.Applicative
 import Yi.Prelude
 import Prelude ()
 

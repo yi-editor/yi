@@ -20,7 +20,6 @@ import Control.Exception
 import Control.Monad (forever)
 import Control.Monad.State (runState, State, gets, modify, get, put)
 import Control.Monad.Trans (liftIO, MonadIO)
-import Control.Applicative ((<$>))
 import Data.Char (ord,chr)
 import Data.Foldable
 import Data.IORef

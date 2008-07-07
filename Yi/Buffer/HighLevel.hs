@@ -106,7 +106,7 @@ prevNParagraphs n = replicateM_ n $ moveB Paragraph Backward
 -- @goUnmatchedB Forward '{' '}'@
 -- Move to the next unmatched '}'
 goUnmatchedB :: Direction -> Char -> Char -> BufferM ()
-goUnmatchedB dir cStart' cStop' = stepB >> readB >>= go 0
+goUnmatchedB dir cStart' cStop' = stepB >> readB >>= go (0::Int)
   where go opened c | c == cStop && opened == 0 = return ()
                     | c == cStop                = stepB >> readB >>= go (opened-1)
                     | c == cStart               = stepB >> readB >>= go (opened+1)
@@ -300,9 +300,9 @@ middleB = do
 pointInWindowB :: Point -> BufferM Bool
 pointInWindowB p = do
     w <- ask
-    fromPoint <- getMarkPointB (fromMark w)
-    toPoint <- getMarkPointB (toMark w)
-    trace ("pointInWindowB " ++ show fromPoint ++ " " ++ show toPoint ++ " " ++ show p) $ (return $ fromPoint <= p && p <= toPoint)
+    fromP <- getMarkPointB (fromMark w)
+    toP <- getMarkPointB (toMark w)
+    trace ("pointInWindowB " ++ show fromP ++ " " ++ show toP ++ " " ++ show p) $ (return $ fromP <= p && p <= toP)
 
 -----------------------------
 -- Region-related operations
@@ -420,6 +420,7 @@ modifySelectionB :: (String -> String) -> BufferM ()
 modifySelectionB = modifyExtendedSelectionB Character
 
 
+modifyExtendedSelectionB :: TextUnit -> (String -> String) -> BufferM ()
 modifyExtendedSelectionB unit transform 
     = modifyRegionB transform =<< unitWiseRegion unit =<< getSelectRegionB
 
