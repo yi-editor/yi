@@ -13,7 +13,7 @@ module Yi.Buffer.Region
   , mapRegionB
   , modifyRegionB
   , winRegionB
-  , mkVimRegion
+  , inclusiveRegionB
   )
 where
 import Yi.Region
@@ -70,14 +70,12 @@ modifyRegionB :: (String -> String)
 modifyRegionB transform region = replaceRegionB region =<< transform <$> readRegionB region
 
 
--- | Construct a region from its bounds, vim style:
--- the right bound in included.
--- FIXME: this does not handle UTF8 correctly.
-mkVimRegion :: Point -> Point -> BufferM Region
-mkVimRegion x y = 
-          if x <= y 
-              then mkRegion x <$> pointAfter y 
-              else mkRegion <$> pointAfter x <*> pure y
+-- | Extend the right bound of a region to include it.
+inclusiveRegionB :: Region -> BufferM Region
+inclusiveRegionB r =
+          if regionStart r <= regionEnd r
+              then mkRegion (regionStart r) <$> pointAfter (regionEnd r)
+              else mkRegion <$> pointAfter (regionStart r) <*> pure (regionEnd r)
     where pointAfter p = savingPointB $ do 
                            moveTo p
                            rightB
