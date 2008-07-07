@@ -12,7 +12,7 @@ import Yi.Indent
 import Yi.Prelude
 import Yi.Syntax
 import Yi.Syntax.Alex (Tok(..),Posn(..),tokBegin)
-import Yi.Syntax.Haskell (Token(..), startsLayout)
+import Yi.Syntax.Haskell (Token(..), ReservedType(..), startsLayout)
 import Yi.Syntax.Paren
 import qualified Yi.IncrementalParse as IncrParser
 import qualified Yi.Syntax.Alex as Alex
@@ -98,7 +98,7 @@ cleverAutoIndentHaskellB e behaviour = do
           takeWhile ((eolPnt >) . tokBegin) $
           filter (not . isErrorTok . tokT) $ concatMap toList e
       shiftBlock = case firstTokOnLine of
-        Just Where -> 4
+        Just (Reserved t) | t `elem` [Where, Deriving] -> 4
         _ -> 0
       deepInGroup = maybe True insideGroup firstTokOnLine
       shiftGroup = if deepInGroup then 1 else 0

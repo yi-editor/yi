@@ -8,7 +8,8 @@
 
 {
 {-# OPTIONS -w  #-}
-module Yi.Syntax.Haskell ( initState, alexScanToken, tokenToStyle, startsLayout, Token(..) ) where
+module Yi.Syntax.Haskell ( initState, alexScanToken, tokenToStyle, 
+                           startsLayout, isComment, Token(..), CommentType(..), ReservedType(..) ) where
 import Yi.Syntax.Alex
 import Yi.Style
 }
@@ -37,7 +38,7 @@ $symchar   = [$symbol \:]
 $nl        = [\n\r]
 
 @reservedid = 
-        as|case|class|data|default|deriving|else|hiding|if|
+        as|case|class|data|default|else|hiding|if|
         import|in|infix|infixl|infixr|instance|module|newtype|
         qualified|then|type|forall|foreign|export|dynamic|
         safe|threadsafe|unsafe|stdcall|ccall|dotnet
@@ -74,10 +75,11 @@ haskell :-
 <0> $white+                                     ;
 
 <nestcomm> {
-  "{-"                                          { m (subtract 1) Comment }
-  "-}"                                          { m (+1) Comment }
+  "{-"                                          { m (subtract 1) (Comment Open) }
+  "-}"                                          { m (+1) (Comment Close) }
   $white+                                       ; -- whitespace
-  .                                             { c Comment }
+-- .*                                           { c Comment Text }
+  .                                             { c (Comment Text) }
 }
 
 <0> {
@@ -90,20 +92,21 @@ haskell :-
 -- The next rule allows for the start of a comment basically
 -- it is -- followed by anything which isn't a symbol character
 -- (OR more '-'s). So for example "-----:" is still the start of a comment.
-  "--"~[$symbol # \-][^$nl]*                    { c Comment }
+  "--"~[$symbol # \-][^$nl]*                    { c $ Comment Line }
 -- Finally because the above rule had to add in a non symbol character 
 -- it's also possible that we have just finishing a line,
 -- people sometimes do this for example  when breaking up paragraphs
 -- in a long comment.
-  "--"$nl                                       { c Comment }
+  "--"$nl                                       { c $ Comment Line }
 
- "{-"                                           { m (subtract 1) Comment }
+ "{-"                                           { m (subtract 1) $ Comment Open }
 
  $special                                       { \str st -> (st, Special (snd $ head str)) }
 
- @reservedid                                    { c Reserved }
- "where"                                        { c Where }
- @layoutReservedId                              { c LayoutReserved }
+ "deriving"                                     { c (Reserved Deriving) }
+ @reservedid                                    { c (Reserved Other) }
+ "where"                                        { c (Reserved Where) }
+ @layoutReservedId                              { c (Reserved OtherLayout) }
  @varid                                         { c VarIdent }
  @conid                                         { c ConsIdent }
 
@@ -127,10 +130,16 @@ haskell :-
 
 type HlState = Int
 
+data CommentType = Open | Close | Text | Line
+    deriving (Eq, Show)
+
+data ReservedType = Where | OtherLayout | Deriving | Other
+    deriving (Eq, Show)
+
 data Token = Number | CharTok | StringTok | VarIdent | ConsIdent
-           | LayoutReserved | Reserved | ReservedOp | Special Char
+           | Reserved !ReservedType | ReservedOp | Special Char
            | ConsOperator | Operator
-           | Comment | Where
+           | Comment !CommentType
              deriving (Eq, Show)
 
 tokenToStyle :: Token -> Style 
@@ -141,17 +150,18 @@ tokenToStyle tok = case tok of
   VarIdent     -> defaultStyle
   ConsIdent    -> upperIdStyle
   ReservedOp   -> operatorStyle
-  Reserved     -> keywordStyle
-  LayoutReserved -> keywordStyle
-  Where        -> keywordStyle
+  Reserved _   -> keywordStyle
   Special _    -> defaultStyle
   ConsOperator -> upperIdStyle
   Operator     -> operatorStyle
-  Comment      -> commentStyle
+  Comment _    -> commentStyle
 
-startsLayout LayoutReserved = True
-startsLayout Where = True
+startsLayout (Reserved OtherLayout) = True
+startsLayout (Reserved Where) = True
 startsLayout _ = False
+
+isComment (Comment _) = True
+isComment _ = False
 
 stateToInit x | x < 0     = nestcomm
               | otherwise = 0
