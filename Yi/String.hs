@@ -13,7 +13,9 @@ module Yi.String (isBlank,
                   capitalizeFirst,
                   dropSpace,
                   fillText,
-                  modifyLines
+                  modifyLines,
+                  lines',
+                  unlines',
                  ) where
 
 import Data.List (isSuffixOf, isPrefixOf, intercalate)
@@ -89,8 +91,18 @@ fillText margin = map (unwords . reverse) . fill 0 [] . words
          fill n acc (w:ws) 
            | n + length w >= margin = acc : fill (length w) [w] ws
            | otherwise = fill (n + 1 + length w) (w:acc) ws
-         
 
+-- | Inverse of 'lines''. In contrast to 'Prelude.unlines', this does
+-- not add an empty line at the end.
+unlines' :: [String] -> String
+unlines' = intercalate "\n"
+
+-- | Split a String in lines. Unlike 'Prelude.lines', this does not
+-- remove any empty line at the end.
+lines' :: String -> [String]
+lines' [] = []
+lines' ('\n':cs) = "" : lines' cs
+lines' cs = let (l,r) = span (/= '\n') cs in l:lines' r
 
 -- | A helper function for creating functions suitable for
 -- 'modifySelectionB' and 'modifyRegionB'.
