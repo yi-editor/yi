@@ -84,10 +84,10 @@ isBlank :: String -> Bool
 isBlank = all isSpace
 
 fillText :: Int -> String -> [String]
-fillText margin = map (unwords . reverse) . fill margin [] . words
+fillText margin = map (unwords . reverse) . fill 0 [] . words
    where fill _ acc [] = [acc]
          fill n acc (w:ws) 
-           | n + length w >= 80 = acc : fill (length w) [w] ws
+           | n + length w >= margin = acc : fill (length w) [w] ws
            | otherwise = fill (n + 1 + length w) (w:acc) ws
          
 
