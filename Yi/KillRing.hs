@@ -41,8 +41,14 @@ krPut dir s kr@Killring {krContents = r@(x:xs), krAccumulate=acc}
           krContents = if acc then (case dir of 
                                       Forward  -> x++s
                                       Backward -> s++x):xs
-                              else s:take maxDepth r }
+                              else push s r}
 krPut _ _ _ = error "killring invariant violated"
+
+-- | Push a string in the killring.
+push :: String -> [String] -> [String]
+push s [] = [s]
+push s r@(h:t) = s : if length h <= 1 then t else take maxDepth r 
+-- Don't save very small cutted text portions.
 
 -- | Set the top of the killring. Never accumulate the previous content.
 krSet :: String -> Killring -> Killring
