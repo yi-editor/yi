@@ -97,14 +97,4 @@ fillText margin = map (unwords . reverse) . fill 0 [] . words
 -- To be used when the desired function should map across
 -- the lines of a region.
 modifyLines :: (String -> String) -> String -> String
-modifyLines transform input
-  -- Note the simple definition "unlines (map transform $ lines input)"
-  -- only works if there is a newline character at the end of the input
-  -- Because 'lines' eats up the newline character but 'unlines' adds
-  -- one.
-  | last input == '\n' = unlines newLines
-  -- For other inputs if we use 'unlines' then a new line is inserted
-  -- at the end, so instead of 'unlines' we use 'intercalate.
-  | otherwise          = intercalate "\n" newLines
-  where
-  newLines = map transform $ lines input
+modifyLines transform = unlines' . fmap transform . lines'
