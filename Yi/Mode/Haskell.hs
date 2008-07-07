@@ -1,17 +1,20 @@
 module Yi.Mode.Haskell (haskellMode, cleverHaskellMode, 
                         haskellUnCommentSelectionB, haskellCommentSelectionB, haskellToggleCommentSelectionB)  where
 
-import Prelude ()
+import Prelude (unwords)
 import Yi.Prelude
 import Data.Maybe (maybe, listToMaybe)
-import Data.List (isPrefixOf, dropWhile, takeWhile, filter)
+import Data.List (isPrefixOf, dropWhile, takeWhile, filter, groupBy, drop)
 import Yi.Buffer
 import Yi.Buffer.HighLevel
 import Yi.Buffer.Normal
+import Yi.Buffer.Region
 import Yi.Indent
 import Yi.Prelude
 import Yi.Syntax
-import Yi.Syntax.Alex (Tok(..),Posn(..),tokBegin)
+import Yi.String
+import Yi.Region
+import Yi.Syntax.Alex (Tok(..),Posn(..),tokBegin,tokEnd)
 import Yi.Syntax.Haskell (Token(..), ReservedType(..), startsLayout)
 import Yi.Syntax.Paren
 import qualified Yi.IncrementalParse as IncrParser
@@ -47,7 +50,7 @@ cleverHaskellMode = haskellMode {
       (\point begin end t -> getStrokes point begin end t) snd
 --}                              
   , modeAdjustBlock = adjustBlock
-  , modePrettify = \_ast -> return ()                                  
+  , modePrettify = cleverPrettify
  }
     where lexer = Alex.lexScanner Haskell.alexScanToken Haskell.initState 
 
@@ -95,8 +98,8 @@ cleverAutoIndentHaskellB e behaviour = do
       stopsOf [] = []
       firstTokOnLine = fmap tokT $ listToMaybe $ 
           dropWhile ((solPnt >) . tokBegin) $ 
-          takeWhile ((eolPnt >) . tokBegin) $
-          filter (not . isErrorTok . tokT) $ concatMap toList e
+          takeWhile ((eolPnt >) . tokBegin) $ -- for laziness.
+          filter (not . isErrorTok . tokT) $ allToks e
       shiftBlock = case firstTokOnLine of
         Just (Reserved t) | t `elem` [Where, Deriving] -> 4
         _ -> 0
@@ -112,6 +115,29 @@ cleverAutoIndentHaskellB e behaviour = do
                     trace ("firstTokOnLine = " ++ show firstTokOnLine) $      
                     cycleIndentsB behaviour stops
          
+allToks = concatMap toList
+
+tokRegion t = mkRegion (tokBegin t) (tokEnd t)
+
+tokText = readRegionB . tokRegion
+
+cleverPrettify :: Expr TT -> BufferM ()
+cleverPrettify e = do
+  pnt <- pointB
+  let toks = allToks e
+      groups = groupBy ((==) `on` (tokTyp . tokT)) toks
+      isCommentGroup g = (tokTyp $ tokT $ head $ g) `elem` fmap Just [Haskell.Line] --  Haskell.Text]
+      thisCommentGroup = listToMaybe $ dropWhile ((pnt >) . tokEnd . last) $ filter isCommentGroup $ groups
+                         -- FIXME: laziness
+  case thisCommentGroup of
+    Nothing -> return ()
+    Just g -> do let region = mkRegion (tokBegin . head $ g) (tokEnd . last $ g)
+                 text <- unwords . fmap (drop 2) <$> mapM tokText g
+                 modifyRegionB (const $ unlines $ fmap ("-- " ++) $ fillText 80 $ text) region
+                 
+  
+tokTyp (Comment t) = Just t
+tokTyp _ = Nothing
 
 -- | Keyword-based auto-indenter for haskell.
 autoIndentHaskellB :: IndentBehaviour -> BufferM ()
@@ -152,4 +178,6 @@ haskellToggleCommentSelectionB = do
   if ("--" `isPrefixOf` l)
     then haskellUnCommentSelectionB
     else haskellCommentSelectionB
+
+
 
