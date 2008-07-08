@@ -1,10 +1,11 @@
---
+-- Copyright (c) 2007,8 JP Bernardy
 -- Copyright (c) 2004 Don Stewart - http://www.cse.unsw.edu.au/~dons
---
---
 
---
--- Front end to the library, for use by confguration file. Just re-exports
+
+-- TODO: rename to Yi.
+
+-- |
+-- Facade of the Yi library, for use by confguration file. Just re-exports
 -- a bunch of modules.
 --
 -- You should therefore:

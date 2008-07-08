@@ -285,9 +285,7 @@ setTmpStatus delay s = do
 
 
 -- ---------------------------------------------------------------------
--- registers (TODO these may be redundant now that it is easy to thread
--- state in key bindings, or maybe not.
---
+-- Register interface to killring.
 
 -- | Put string into yank register
 setRegE :: String -> EditorM ()

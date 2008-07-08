@@ -1,3 +1,5 @@
+-- | Boot process of Yi, as an instanciation of HConf
+-- TODO: rename to Yi.Boot
 module Yi (driver, yi, defaultConfig, module Yi.Yi) where
 
 import Yi.Yi

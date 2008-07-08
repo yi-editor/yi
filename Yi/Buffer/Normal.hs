@@ -244,7 +244,6 @@ transformB f unit direction = do
   replaceRegionB r =<< f <$> readRegionB r
 
 -- | delete between point and next unit boundary, return the deleted region
--- TODO: save in the kill ring. (?)
 deleteB :: TextUnit -> Direction -> BufferM ()
 deleteB unit dir = deleteRegionB =<< regionOfPartNonEmptyB unit dir
 

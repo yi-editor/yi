@@ -1,15 +1,9 @@
---
+-- Copyright (C) 2007-8 JP Bernardy
 -- Copyright (C) 2004-5 Don Stewart - http://www.cse.unsw.edu.au/~dons
---
---
--- Derived from: riot/UI.hs
---
---      Copyright (c) Tuomo Valkonen 2004.
---
--- Released under the same license.
---
+-- Originally derived from: riot/UI.hs Copyright (c) Tuomo Valkonen 2004.
 
--- | This module defines a user interface implemented using ncurses.
+
+-- | This module defines a user interface implemented using vty.
 
 module Yi.UI.Vty (start) where
 

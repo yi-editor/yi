@@ -1,4 +1,5 @@
--- Copyright (C) 2004, 2008 Don Stewart - http://www.cse.unsw.edu.au/~dons
+-- Copyright (C) 2008 JP Bernardy
+-- Copyright (C) 2004 Don Stewart - http://www.cse.unsw.edu.au/~dons
 
 --
 -- | Frontend to the static binary. We have a separte frontend (rather

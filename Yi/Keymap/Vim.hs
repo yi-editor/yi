@@ -740,7 +740,8 @@ ex_eval cmd = do
           ('/':pat) -> withEditor $ doSearch (Just pat) [] Forward
           ('?':pat) -> withEditor $ doSearch (Just pat) [] Backward
 
-        -- TODO: We give up on re-mapping till there exists a generic Yi mechanism to do so.
+        -- TODO: Remapping could be done using the <|| operator somehow. 
+        -- The remapped stuff could be saved in a keymap-local state, (using StateT monad transformer).
 
         -- add mapping to command mode
           (_:'m':'a':'p':' ':_cs) -> error "Not yet implemented."
