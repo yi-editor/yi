@@ -254,6 +254,14 @@ bufInfoB = do
 -----------------------------
 -- Window-related operations
 
+-- | Scroll by one screen in the specicied direction.
+scrollScreenDownB = do
+    p <- pointAt $ do moveTo =<< getMarkPointB =<< askWindow toMark
+                      gotoLnFrom (-1) -- move back a little so we have some overlap
+    t <- askWindow fromMark
+    setMarkPointB t p
+    moveTo p
+
 -- | Scroll up 1 screen
 upScreenB :: BufferM ()
 upScreenB = upScreensB 1
