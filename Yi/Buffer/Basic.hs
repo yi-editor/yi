@@ -25,7 +25,8 @@ newtype Mark = Mark {markId::Int} deriving (Eq, Ord, Show)
 staticInsMark, staticSelMark :: Mark
 staticInsMark = Mark (-1) -- the insertion mark
 staticSelMark = Mark (-2) -- the selection mark
-
+staticFromMark = Mark (-3) -- remember window positions in those marks
+staticToMark = Mark (-4)
 dummyInsMark, dummyFromMark, dummyToMark :: Mark
 dummyInsMark = Mark 0
 dummyFromMark = Mark 1
