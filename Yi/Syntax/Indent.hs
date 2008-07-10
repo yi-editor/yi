@@ -6,16 +6,13 @@ import Yi.Syntax.Alex
 import Yi.Prelude
 import Prelude ()
 import Data.Maybe (isJust)
-import Data.List (dropWhile, span)
+import Data.List (dropWhile)
 
 data BlockOpen t = Indent Int -- block opened because of indentation; parameter is the column of it.
                  | Paren t      -- block opened because of parentheses
                  deriving Show
 
-isIndent :: BlockOpen t -> Bool
-isIndent (Indent _) = True
-isIndent _ = False
-
+isParen :: BlockOpen t -> Bool
 isParen (Paren _) = True
 isParen _ = False
 
@@ -34,7 +31,7 @@ indenter :: forall t lexState. (Show t, Eq t) => (t -> Bool) -> [(t,t)] ->
 indenter isSpecial parens isIgnored [openT, closeT, nextT] lexSource = Scanner 
   {
    scanInit = (IState [] True (-1), scanInit lexSource),
-   scanRun  = \st -> parse (fst st) (scanRun lexSource (snd st))
+   scanRun  = \st -> let result = parse (fst st) (scanRun lexSource (snd st)) in trace ("toks = " ++ show (fmap snd result)) $ result
   }
     where tt = tokFromT
           dummyAlexState = AlexState 
@@ -56,7 +53,7 @@ indenter isSpecial parens isIgnored [openT, closeT, nextT] lexSource = Scanner
 
           parse :: IState t -> [(AlexState lexState, Tok t)] -> [(State t lexState, Tok t)]
           parse iSt@(IState levels doOpen lastLine)
-                toks@((aSt, tok @ Tok {tokLen = nextLen, tokPosn = Posn nextOfs line col}) : tokss) 
+                toks@((aSt, tok @ Tok {tokPosn = Posn _nextOfs line col}) : tokss) 
 
             -- ignore this token
             | isIgnored tok
@@ -68,24 +65,27 @@ indenter isSpecial parens isIgnored [openT, closeT, nextT] lexSource = Scanner
 
             -- pop an indent block
             | col < deepestIndent levels
-              = let (lev:levs) = dropWhile isParen levels
+              = let (_lev:levs) = dropWhile isParen levels
                 in (st', tt closeT) : parse (IState levs doOpen lastLine) toks
+                  -- drop all paren levels inside the indent
            
             -- next item
             | line > lastLine &&
               col == deepestIndent levels 
                 = (st', tt nextT) : parse (IState (dropWhile isParen levels) doOpen line) toks
-                  -- close all paren levels inside the indent
+                  -- drop all paren levels inside the indent
 
             -- open a paren block
             | isJust $ findParen fst $ (tokT tok)
               = (st', tok) : parse (IState (Paren (tokT tok):levels) False  line) tokss
 
-            -- close a paren block
-            | isJust $ findParen id $ (deepestParen levels, tokT tok)
-              = let (indentLevs, lev:levs) = span isIndent levels 
-                in fmap (const $ (st',tt closeT)) indentLevs ++ -- close all indent levels inside the paren block
-                   (st', tok) : parse (IState levs False line) tokss
+            -- prepare to close a paren block
+            | isJust $ findParen id $ (deepestParen levels, tokT tok) -- check that the most nested paren matches.
+              = case levels of
+                      Indent _:levs -> (st',tt closeT) : parse (IState levs False lastLine) toks 
+                      -- close an indent level inside the paren block
+                      Paren _ :levs -> (st', tok)      : parse (IState levs False line)     tokss
+                      -- same as the otherwise case below.
 
             -- prepare to open a compound
             | isSpecial (tokT tok) 
@@ -105,7 +105,7 @@ indenter isSpecial parens isIgnored [openT, closeT, nextT] lexSource = Scanner
           -- finish by closing all the indent states.
           parse iSt@(IState (Indent _:levs) doOpen posn) [] 
               = ((iSt,dummyAlexState), tt closeT) : parse (IState levs doOpen posn) []
-          parse iSt@(IState (Paren _:levs) doOpen posn) [] 
+          parse (IState (Paren _:levs) doOpen posn) [] 
               = parse (IState levs doOpen posn) []
           parse (IState [] _ _) [] = []
           parse st _ = error $ "Parse: " ++ show st
