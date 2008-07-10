@@ -24,9 +24,22 @@ import Yi.Prelude
 import Data.String
 import qualified Yi.Keymap.Emacs  as Emacs
 import qualified Yi.Keymap.Vim  as Vim
-import Yi.Yi hiding (file, yiConfig)
 import Yi.Modes (defaultModeMap, defaultFundamentalMode)
 import Yi.Interact hiding (write)
+import Yi.Buffer hiding (file)
+import Yi.Buffer.HighLevel
+import Yi.Buffer.Normal
+import Yi.Config
+import Yi.Core
+import Yi.Debug
+import Yi.Dired
+import Yi.Editor
+import Yi.Keymap.Keys
+import Yi.File
+import Yi.Interact hiding (write)
+import Yi.Style
+import Data.Dynamic
+import Yi.Keymap.Emacs.Utils
 import qualified Yi.Interact as I
 import Yi.Keymap.Keys
 import HConf (hconfOptions)
@@ -52,8 +65,9 @@ import qualified Yi.UI.Cairo
 
 import Data.Char
 import Data.List                ( intersperse, map )
-
+import qualified Data.Map as M
 import Control.Monad.Error
+import Control.Applicative
 import System.Console.GetOpt
 import System.Environment       ( getArgs )
 import System.Exit
@@ -169,12 +183,48 @@ defaultConfig =
            }
          , defaultKm        = nilKeymap
          , startActions     = [makeAction openScratchBuffer] -- emacs-style behaviour
-         , publishedActions = Yi.Yi.defaultPublishedActions
+         , publishedActions = defaultPublishedActions
          , modeTable = defaultModeMap
          , fundamentalMode = defaultFundamentalMode
          , debugMode = False
          , configKillringAccumulate = False
          }
+
+-- | List of published Actions
+
+-- THIS MUST BE OF THE FORM:
+-- ("symbol", box symbol")
+-- ... so we can hope getting rid of this someday.
+-- Failing to conform to this rule exposes the code to instant deletion.
+
+defaultPublishedActions :: M.Map String [Dynamic]
+defaultPublishedActions = M.fromList $ 
+    [ ("leftB"                  , box leftB) 
+    , ("pointB"                 , box (fromPoint <$> pointB)) 
+    , ("linePrefixSelectionB"  , box linePrefixSelectionB)
+    , ("unLineCommentSelectionB", box unLineCommentSelectionB)
+    , ("insertB"                , box insertB)
+    , ("revertE"                , box revertE)
+    , ("numberOfB"              , box numberOfB)
+    , ("Character"              , box Character)
+    , ("Line"                   , box Line)
+    , ("Word"                   , box Word)
+    , ("Paragraph"              , box Paragraph)
+    , ("Document"               , box Document)
+    , ("cabalConfigureE"        , box cabalConfigureE)
+    , ("cabalBuildE"            , box cabalBuildE)
+    , ("reloadProjectE"         , box reloadProjectE)
+    , ("atBoundaryB"            , box atBoundaryB)
+    , ("regionOfPartB"          , box regionOfPartB)
+    , ("Forward"                , box Forward)
+    , ("Backward"               , box Backward)
+    , ("deleteBlankLinesB"      , box deleteBlankLinesB)
+    , ("writeB"                 , box writeB)
+    , ("getSelectRegionB"       , box getSelectRegionB)
+    ]
+
+  where box x = [toDyn x]
+
 
 openScratchBuffer :: YiM ()
 openScratchBuffer = withEditor $ do     -- emacs-like behaviour

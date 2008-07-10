@@ -4,7 +4,7 @@ module Yi.Mode.Shim where
     
 import Data.List
 import Yi.Keymap.Emacs.Keys
-import Yi.Yi
+import Yi
 import Shim.Hsinfo as Hsinfo
 import Yi.Buffer
 import Yi.Modes

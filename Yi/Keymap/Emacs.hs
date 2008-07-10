@@ -14,8 +14,17 @@ module Yi.Keymap.Emacs
   , makeKeymap
   )
 where
+import Control.Applicative
+import Yi.Buffer
+import Yi.Buffer.HighLevel
+import Yi.Buffer.Normal
+import Yi.Core
+import Yi.Dired
+import Yi.Editor
+import Yi.Keymap.Keys
+import Yi.File
+import Yi.Interact hiding (write)
 
-import Yi.Yi
 import Yi.TextCompletion
 import Yi.Keymap.Keys
 import Yi.Keymap.Emacs.KillRing

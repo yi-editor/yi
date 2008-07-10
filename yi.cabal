@@ -73,7 +73,7 @@ library
     exposed-modules:
            Yi
            Yi.Prelude
-           Yi.Yi
+           Yi.Boot
            Yi.Config
            Yi.Keymap.Keys
            Yi.Keymap.Emacs
@@ -235,7 +235,7 @@ executable yi
         other-modules:
            Yi
            Yi.Prelude
-           Yi.Yi
+           Yi.Boot
            Yi.Keymap.Emacs
            Yi.Keymap.Vim
            Yi.Keymap.Users.Ertai

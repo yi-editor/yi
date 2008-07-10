@@ -9,7 +9,6 @@
 module Yi.Keymap.Vim ( keymap, VimMode, viWrite ) where
 
 import Yi.Accessor
-import Yi.Yi
 import Yi.Prelude
 import Prelude (maybe, length, filter, map, drop, takeWhile, dropWhile,
                 break, uncurry)
@@ -20,19 +19,26 @@ import Data.Dynamic
 
 import Control.Exception    ( ioErrors, try, evaluate )
 import Control.Monad.State hiding (mapM_, mapM)
+import Control.Applicative
 
-import Yi.Editor
-import Yi.History
 import Yi.Buffer
-import Yi.Debug
-import Yi.String (fillText, unlines')
-
+import Yi.Buffer.HighLevel
+import Yi.Buffer.Normal
+import Yi.Buffer.Region
+import Yi.Core
+import Yi.Dired
+import Yi.Editor
+import Yi.Event
+import Yi.File
+import Yi.History
 import Yi.Indent
-
+import Yi.Interact hiding (write)
 import Yi.Keymap.Emacs.Utils (completeFileName,completeBufferName)
-import Yi.MiniBuffer
-import Yi.TextCompletion
 import Yi.Keymap.Keys
+import Yi.MiniBuffer
+import Yi.Search
+import Yi.String (fillText, unlines')
+import Yi.TextCompletion
 
 --
 -- What's missing?
