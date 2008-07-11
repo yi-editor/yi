@@ -7,7 +7,7 @@ import Yi.Syntax.Alex
 import Yi.Syntax.Haskell
 import Control.Applicative
 import Yi.Style (hintStyle, errorStyle, Style)
-import Yi.Syntax.Indent
+import Yi.Syntax.Layout
 import Yi.Syntax
 import Yi.Prelude 
 import Prelude ()
@@ -16,10 +16,10 @@ import Data.Maybe
 import Data.List (filter, takeWhile)
 
 indentScanner :: Scanner (AlexState lexState) (Tok Token)
-              -> Scanner (Yi.Syntax.Indent.State Token lexState) (Tok Token)
-indentScanner = indenter startsLayout [(Special '(', Special ')'),
-                                       (Special '[', Special ']'),
-                                       (Special '{', Special '}')] ignoredToken
+              -> Scanner (Yi.Syntax.Layout.State Token lexState) (Tok Token)
+indentScanner = layoutHandler startsLayout [(Special '(', Special ')'),
+                                            (Special '[', Special ']'),
+                                            (Special '{', Special '}')] ignoredToken
                          (fmap Special ['<', '>', '.'])
 -- HACK: We insert the Special '<', '>', '.', that don't occur in normal haskell parsing.
 

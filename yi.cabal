@@ -129,7 +129,9 @@ library
 
     other-modules:
         Paths_yi,
-        Yi.Syntax.Cplusplus, Yi.Syntax.Haskell, Yi.Syntax.Indent, Yi.Syntax.LiterateHaskell,
+        Yi.Syntax.Cplusplus, Yi.Syntax.Haskell, 
+        Yi.Syntax.Layout,
+        Yi.Syntax.LiterateHaskell,
         Yi.Syntax.Latex, Yi.Syntax.Paren, Yi.Syntax.Srmc, Yi.Syntax.Cabal, Yi.Syntax.Fractal
 
         Yi.Accessor, Yi.Interpreter,
@@ -254,7 +256,9 @@ executable yi
            Yi.Syntax.Latex, Yi.Syntax.Srmc, Yi.Syntax.Cabal
            Paths_yi,
            Yi.GHC
-           Yi.Syntax.Cplusplus, Yi.Syntax.Haskell, Yi.Syntax.Indent, Yi.Syntax.LiterateHaskell,
+           Yi.Syntax.Cplusplus, Yi.Syntax.Haskell,
+           Yi.Syntax.Layout, 
+           Yi.Syntax.LiterateHaskell,
            Yi.Syntax.Latex, Yi.Syntax.Paren, Yi.Syntax.Srmc, Yi.Syntax.Cabal, Yi.Syntax.Fractal
 
            Yi.Accessor, Yi.Interpreter,

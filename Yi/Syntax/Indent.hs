@@ -1,5 +1,5 @@
 {-# OPTIONS -fglasgow-exts #-}
-module Yi.Syntax.Indent where
+module Yi.Syntax.Layout where
 
 import Yi.Syntax
 import Yi.Syntax.Alex
@@ -22,13 +22,25 @@ data IState t = IState [BlockOpen t]  -- current block nesting
   deriving Show
 type State t lexState = (IState t, AlexState lexState) 
 
--- | isSpecial denotes a token that starts a compound, like "where", "do", ...
-indenter :: forall t lexState. (Show t, Eq t) => (t -> Bool) -> [(t,t)] ->
-            (Tok t -> Bool) -> 
-                
+
+-- | Transform a scanner into a scanner that also adds opening,
+-- closing and "next" tokens to indicate layout.  
+
+-- @isSpecial@ predicate indicates a token that starts a compound,
+-- like "where", "do", ...
+
+-- @isIgnore@ predicate indicates a token that is to be ignored for
+-- layout. (eg. pre-processor directive...)
+
+-- @parens@ is a list of couple of matching parenthesis-like tokens
+-- "()[]{}...".
+
+
+layoutHandler :: forall t lexState. (Show t, Eq t) => (t -> Bool) -> [(t,t)] ->
+            (Tok t -> Bool) ->                 
             [t] -> 
             Scanner (AlexState lexState) (Tok t) -> Scanner (State t lexState) (Tok t)
-indenter isSpecial parens isIgnored [openT, closeT, nextT] lexSource = Scanner 
+layoutHandler isSpecial parens isIgnored [openT, closeT, nextT] lexSource = Scanner 
   {
    scanInit = (IState [] True (-1), scanInit lexSource),
    scanRun  = \st -> let result = parse (fst st) (scanRun lexSource (snd st)) in trace ("toks = " ++ show (fmap snd result)) $ result
