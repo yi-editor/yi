@@ -4,7 +4,7 @@
 module Yi.Keymap.Cua  (keymap)
 where
 
-import Yi.Yi
+import Yi
 import Yi.Keymap.Keys
 import Yi.Keymap.Emacs.KillRing
 import Yi.Keymap.Emacs.Utils

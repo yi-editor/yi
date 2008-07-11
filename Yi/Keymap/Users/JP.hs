@@ -9,7 +9,7 @@ import Control.Monad.State
 import Data.Char
 import Yi.Keymap.Keys
 import Yi.Keymap.Emacs.Utils (insertSelf)
-import Yi.Yi
+import Yi
 import qualified Yi.Interact as I (choice, I())
 
 -- | Enhanced keymap type, where the current unit is remembered using a StateT
