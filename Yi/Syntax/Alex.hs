@@ -5,7 +5,7 @@ module Yi.Syntax.Alex (
                        alexGetChar, alexInputPrevChar, unfoldLexer, lexScanner,
                        AlexState(..), AlexInput, Stroke,
                        actionConst, actionAndModify,
-                       Tok(..), tokBegin, tokEnd, tokFromT,          
+                       Tok(..), tokBegin, tokEnd, tokFromT, tokRegion,
                        Posn(..), startPosn, moveStr, runSource,
                        Result, ASI, Cache,
                        (+~), (~-), Size(..)
@@ -17,7 +17,7 @@ import Yi.Prelude
 import Yi.Style
 import Prelude ()
 import Data.Char (ord)
-
+import Yi.Region
 
 -- | if offsets before this is dirtied, must restart from that state.
 type LookedOffset = Point
@@ -49,6 +49,10 @@ tokBegin = posnOfs . tokPosn
 
 tokEnd :: forall t. Tok t -> Point
 tokEnd t = tokBegin t +~ tokLen t
+
+tokRegion :: Tok t -> Region
+tokRegion t = mkRegion (tokBegin t) (tokEnd t)
+
 
 instance Show t => Show (Tok t) where
     show tok = show (tokPosn tok) ++ ": " ++ show (tokT tok)

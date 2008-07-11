@@ -14,7 +14,7 @@ import Yi.Prelude
 import Yi.Syntax
 import Yi.String
 import Yi.Region
-import Yi.Syntax.Alex (Tok(..),Posn(..),tokBegin,tokEnd)
+import Yi.Syntax.Alex (Tok(..),Posn(..),tokBegin,tokEnd,tokRegion)
 import Yi.Syntax.Haskell (Token(..), ReservedType(..), startsLayout)
 import Yi.Syntax.Paren
 import qualified Yi.IncrementalParse as IncrParser
@@ -117,10 +117,6 @@ cleverAutoIndentHaskellB e behaviour = do
          
 allToks :: Expr TT -> [TT]
 allToks = concatMap toList
-
--- TODO: move to Alex module
-tokRegion :: Tok t -> Region
-tokRegion t = mkRegion (tokBegin t) (tokEnd t)
 
 tokText :: Tok t -> BufferM String
 tokText = readRegionB . tokRegion
