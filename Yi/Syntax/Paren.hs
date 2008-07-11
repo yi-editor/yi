@@ -64,7 +64,7 @@ getLastOffset = maybe 0 tokenLastOffset . getLastToken
 tokenLastOffset :: TT -> Point
 tokenLastOffset tok = posnOfs (tokPosn tok) +~ tokLen tok
 
--- | Return all subtrees in a tree.
+-- | Return all subtrees in a tree, in preorder.
 getAllSubTrees :: Tree t -> [Tree t]
 getAllSubTrees t = t : concatMap getAllSubTrees (subtrees t)
 

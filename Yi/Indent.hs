@@ -23,6 +23,7 @@ import Data.List
 {- Currently duplicates some of Vim's indent settings. Allowing a buffer to
  - specify settings that are more dynamic, perhaps via closures, could be
  - useful.
+ - TODO: Should this be moved to config?
  -}
 data IndentSettings = IndentSettings {  expandTabs :: Bool
                                       , tabSize :: Int
