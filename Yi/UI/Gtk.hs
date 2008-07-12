@@ -141,7 +141,7 @@ start cfg ch outCh _ed = do
 
   cmd <- labelNew Nothing
   set cmd [ miscXalign := 0.01 ]
-  widgetModifyFont cmd =<< Just <$> mkFontDesc cfg
+  widgetModifyFont cmd =<< Just <$> mkFontDesc (configUI cfg)
 
   set vb [ containerChild := paned,
            containerChild := cmd,
@@ -156,7 +156,7 @@ start cfg ch outCh _ed = do
   wc <- newIORef []
   tt <- textTagTableNew
 
-  let ui = UI win vb' cmd bufs tt wc outCh cfg filesStore modulesStore
+  let ui = UI win vb' cmd bufs tt wc outCh (configUI cfg) filesStore modulesStore
 
   return (mkUI ui)
 
@@ -278,8 +278,7 @@ handleClick ui w event = do
             p0 <- withGivenBuffer0 b $ pointB
             if p1 == p0
               then withGivenBuffer0 b $ setVisibleSelection False
-              else do txt <- withGivenBuffer0 b $ do m <- getSelectionMarkB
-                                                     setMarkPointB m p1
+              else do txt <- withGivenBuffer0 b $ do setMarkPointB staticSelMark p1
                                                      let [i,j] = sort [p1,p0]
                                                      nelemsB' (j~-i) i
                       setRegE txt
@@ -379,7 +378,7 @@ refresh ui e = do
     forM_ (buffers e) $ \buf -> when (not $ null $ pendingUpdates $ buf) $ do
       gtkBuf <- getGtkBuffer ui buf
       forM_ ([u | TextUpdate u <- pendingUpdates buf]) $ applyUpdate gtkBuf
-      let ((size,p),_) = runBufferDummyWindow buf ((,) <$> sizeB <*> pointB)
+      let (size,p) = runBufferDummyWindow buf ((,) <$> sizeB <*> pointB)
       replaceTagsIn ui (inBounds (p-100) size) (inBounds (p+100) size) buf gtkBuf
       forM_ ([(s,s+~l) | StyleUpdate s l <- pendingUpdates buf]) $ \(s,e') -> replaceTagsIn ui (inBounds s size) (inBounds e' size) buf gtkBuf
     logPutStrLn $ "syncing: " ++ show ws
@@ -391,9 +390,9 @@ refresh ui e = do
         do let buf = findBufferWith (bufkey w) e
            gtkBuf <- getGtkBuffer ui buf
 
-           let (Point p0, _) = runBufferDummyWindow buf pointB
-           let (Point p1, _) = runBufferDummyWindow buf (getSelectionMarkB >>= getMarkPointB)
-           let (showSel, _) = runBufferDummyWindow buf (getA highlightSelectionA)
+           let (Point p0) = runBufferDummyWindow buf pointB
+           let (Point p1) = runBufferDummyWindow buf (getMarkPointB staticSelMark)
+           let (showSel) = runBufferDummyWindow buf (getA highlightSelectionA)
            i <- textBufferGetIterAtOffset gtkBuf p0
            if showSel 
               then do
@@ -403,14 +402,14 @@ refresh ui e = do
                  textBufferPlaceCursor gtkBuf i
            insertMark <- textBufferGetInsert gtkBuf
            textViewScrollMarkOnscreen (textview w) insertMark
-           let (txt, _) = runBufferDummyWindow buf getModeLine
+           let txt = runBufferDummyWindow buf getModeLine
            set (modeline w) [labelText := txt]
 
 replaceTagsIn :: UI -> Point -> Point -> FBuffer -> TextBuffer -> IO ()
 replaceTagsIn ui from to buf gtkBuf = do
   i <- textBufferGetIterAtOffset gtkBuf (fromPoint from)
   i' <- textBufferGetIterAtOffset gtkBuf (fromPoint to)
-  let (styleSpans, _) = runBufferDummyWindow buf (strokesRangesB from to)
+  let styleSpans = runBufferDummyWindow buf (strokesRangesB Nothing from to)
   textBufferRemoveAllTags gtkBuf i i'
   forM_ (concat styleSpans) $ \(l,s,r) -> do
     f <- textBufferGetIterAtOffset gtkBuf (fromPoint l)
@@ -459,7 +458,10 @@ prepareAction ui = do
                      l1 <- get i1 textIterLine
                      return (l1 - l0)
     -- updates the heights of the windows
-    return $ modifyWindows (\ws -> fst $ runState (mapM distribute ws) heights)
+    return $ 
+      modifyWindows (\ws -> if WS.size ws == length heights 
+                              then fst $ runState (mapM distribute ws) heights
+                              else trace ("INFO: updates the heights of the windows: unmatching lengths") ws)
 
 reloadProject :: UI -> FilePath -> IO ()
 reloadProject ui fpath = do
@@ -469,9 +471,11 @@ reloadProject ui fpath = do
 
 distribute :: Window -> State [Int] Window
 distribute win = do
-  h <- gets head
+  h <- gets hd
   modify tail
   return win {Window.height = h}
+      where hd (h:_) = h
+            hd [] = error "distribute: non-matching list lengths"
 
 getGtkBuffer :: UI -> FBuffer -> IO TextBuffer
 getGtkBuffer ui b = do
@@ -487,7 +491,7 @@ getGtkBuffer ui b = do
 newGtkBuffer :: UI -> FBuffer -> IO TextBuffer
 newGtkBuffer ui b = do
   buf <- textBufferNew (Just (tagTable ui))
-  let ((txt,sz), _) = runBufferDummyWindow b $ do
+  let (txt,sz) = runBufferDummyWindow b $ do
                       revertPendingUpdatesB
                       (,) <$> elemsB <*> sizeB
   textBufferSetText buf txt
