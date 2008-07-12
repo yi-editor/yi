@@ -25,7 +25,7 @@ import Yi.Buffer                ( BufferRef
                                 , switchWindow)
 import Yi.Buffer.Implementation (Update(..), updateIsDelete, staticInsMark)
 import Yi.Buffer.HighLevel (botB)
-import Yi.Buffer.Basic (Direction(..))
+import Yi.Buffer.Basic
 import Yi.Regex (SearchExp)
 
 import Yi.Config
@@ -46,7 +46,6 @@ import Data.List                ( nub )
 import qualified Data.DelayList as DelayList
 import qualified Data.Map as M
 import Data.Typeable
-import Data.String
 import Control.Monad.RWS
 import qualified Data.ByteString.Lazy.UTF8 as LazyUTF8
 

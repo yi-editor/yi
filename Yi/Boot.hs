@@ -2,8 +2,8 @@
 module Yi.Boot (driver, yi) where
 
 import Control.Monad
-import Data.String
 import HConf
+import Yi.Buffer.Basic
 import Yi.Config
 import Yi.Debug
 import Yi.Editor (newBufferE)
