@@ -42,7 +42,6 @@ module Yi.Keymap.Emacs.Utils
 where
 
 {- Standard Library Module Imports -}
-import Data.String
 import Control.Monad
   ()
 import Data.Char

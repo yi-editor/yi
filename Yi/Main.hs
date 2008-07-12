@@ -21,7 +21,6 @@ module Yi.Main (main, defaultConfig, projectName) where
 
 import Prelude ()
 import Yi.Prelude
-import Data.String
 import qualified Yi.Keymap.Emacs  as Emacs
 import qualified Yi.Keymap.Vim  as Vim
 import Yi.Modes (defaultModeMap, defaultFundamentalMode)

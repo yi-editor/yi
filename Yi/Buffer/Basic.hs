@@ -49,8 +49,9 @@ instance SemiNum Point Size where
 utf8Size :: String -> Size
 utf8Size s = Size $ B.length $ UTF8.fromString s
 
-fromUTF8ByteString :: B.ByteString -> String
-fromUTF8ByteString = UTF8.toString
+-- fromUTF8ByteString :: B.ByteString -> String
+-- fromUTF8ByteString = UTF8.toString
 
-instance IsString LazyUTF8.ByteString where
-    fromString = LazyUTF8.fromString
+fromString :: String -> LB.ByteString
+fromString = LazyUTF8.fromString
+

@@ -70,7 +70,6 @@ import Data.Maybe
 import qualified Data.Map as M
 import Data.IORef
 import Data.Foldable (mapM_, all)
-import Data.String
 
 import System.IO ( Handle, hWaitForInput )
 import System.FilePath

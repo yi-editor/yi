@@ -47,7 +47,6 @@ import System.IO
 import Control.Exception(bracket, handle)
 #endif
 import Control.Monad.Reader
-import Data.String
 
 import System.Time
 import Text.Printf
