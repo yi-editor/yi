@@ -25,8 +25,6 @@ newtype Mark = Mark {markId::Int} deriving (Eq, Ord, Show)
 staticInsMark, staticSelMark :: Mark
 staticInsMark = Mark (-1) -- the insertion mark
 staticSelMark = Mark (-2) -- the selection mark
-staticFromMark = Mark (-3) -- remember window positions in those marks
-staticToMark = Mark (-4)
 dummyInsMark, dummyFromMark, dummyToMark :: Mark
 dummyInsMark = Mark 0
 dummyFromMark = Mark 1
@@ -35,7 +33,10 @@ dummyToMark = Mark 2
 
 -- | A point in a buffer
 newtype Point = Point {fromPoint :: Int}           -- offset in the buffer (#bytes, NOT codepoints)
-    deriving (Show, Eq, Ord, Num, Enum, Real, Integral, Bounded)
+    deriving (Eq, Ord, Num, Enum, Real, Integral, Bounded)
+
+instance Show Point where
+    show (Point p) = show p
 
 -- | Size of a buffer region
 newtype Size = Size {fromSize :: Int}             -- size in bytes (#bytes, NOT codepoints)

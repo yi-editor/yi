@@ -64,14 +64,11 @@ import Data.Maybe
 import Yi.Style
 
 import Control.Monad
-import Control.Arrow ((***))
-import Control.Applicative ((<$>))
 
 import Yi.Regex
 
 import qualified Yi.FingerString as F
 import Yi.FingerString (FingerString)
-import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as LazyB
 import qualified Data.ByteString.UTF8 as UTF8
 import qualified Data.ByteString.Lazy.UTF8 as LazyUTF8
@@ -155,8 +152,6 @@ newBI :: LazyB.ByteString -> FBufferData ()
 newBI s = FBufferData (F.fromLazyByteString s) mks M.empty (HLState noHighlighter (hlStartState noHighlighter)) Set.empty 0
     where mks = M.fromList [ (staticInsMark, MarkValue 0 insertGravity)
                            , (staticSelMark, MarkValue 0 selectionGravity)
-                           , (staticFromMark, MarkValue 0 Backward)
-                           , (staticToMark, MarkValue 0 Forward)
                            , (dummyInsMark, MarkValue 0 Forward)
                            , (dummyFromMark, MarkValue 0 Backward)
                            , (dummyToMark, MarkValue 0 Forward)
@@ -170,10 +165,6 @@ readChars p n (Point i) = take n $ LazyUTF8.toString $ F.toLazyByteString $ F.dr
 -- | read @n@ bytes from buffer @b@, starting at @i@
 readChunk :: FingerString -> Size -> Point -> FingerString
 readChunk p (Size n) (Point i) = F.take n $ F.drop i $ p
-
--- | read @n@ bytes from buffer @b@, starting at @i@
-readBytes :: FingerString -> Size -> Point -> B.ByteString
-readBytes p n i = F.toByteString $ readChunk p n i
 
 -- | Write string into buffer.
 insertChars :: FingerString -> FingerString -> Point -> FingerString
@@ -450,7 +441,7 @@ offsetFromSolBI fb = Size (pnt - maybe 0 (1 +) (F.elemIndexEnd newLine (F.take p
           ptr = mem fb
 
 charsFromSolBI :: BufferImpl syntax -> String
-charsFromSolBI fb = UTF8.toString $ readBytes ptr (Size (pnt - sol)) (Point sol)
+charsFromSolBI fb = LazyUTF8.toString $ F.toLazyByteString $ readChunk ptr (Size (pnt - sol)) (Point sol)
   where sol = maybe 0 (1 +) (F.elemIndexEnd newLine (F.take pnt ptr))
         Point pnt = pointBI fb
         ptr = mem fb

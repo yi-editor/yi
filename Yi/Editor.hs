@@ -13,17 +13,14 @@ import Yi.Buffer                ( BufferRef
                                 , FBuffer (..)
                                 , BufferM
                                 , newB
-                                , runBuffer
                                 , runBufferFull
                                 , insertN
                                 , Mode
                                 , setMode
                                 , keymapProcessA
                                 , newWindowB
-                                , getMarkValueB
-                                , newMarkB
                                 , switchWindow)
-import Yi.Buffer.Implementation (Update(..), updateIsDelete, staticInsMark)
+import Yi.Buffer.Implementation (Update(..), updateIsDelete)
 import Yi.Buffer.HighLevel (botB)
 import Yi.Buffer.Basic
 import Yi.Regex (SearchExp)

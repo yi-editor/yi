@@ -327,8 +327,6 @@ runBuffer w b f =
 switchWindow :: Window -> FBuffer -> FBuffer
 switchWindow w b = let (w', b', _updates) = runRWS (fromBufferM f) w b in b'
     where f = do copyMark (insMark w) staticInsMark
-                 copyMark (fromMark w) (staticFromMark)
-                 copyMark (toMark w) (staticToMark)
 
 runBufferFull w b f = 
     let (a, b', updates) = runRWS (fromBufferM f') w b

@@ -27,7 +27,16 @@ import Prelude ()
 -- Invariant : regionStart r <= regionEnd r
 data Region = Region {regionDirection :: !Direction,
                       regionStart, regionEnd :: !Point} 
-                 deriving (Typeable, Show)
+                 deriving (Typeable)
+
+instance Show Region where
+    show r = show (regionStart r) ++ 
+             (case regionDirection r of
+               Forward -> " -> " 
+               Backward -> " <- " 
+             ) ++ 
+             show (regionEnd r)
+
 fmapRegion :: (Point -> Point) -> Region -> Region
 fmapRegion f (Region d x y) = Region d (f x) (f y)
 
