@@ -20,5 +20,7 @@ showPoint b w = result
                let gap = min (ln-1) (height w `div` 2)
                i <- indexOfSolAbove gap
                setMarkPointB (fromMark w) i
-               return()
+               return ()
+
+
 

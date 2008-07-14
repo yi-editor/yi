@@ -6,7 +6,7 @@
 
 module Yi.UI.Cairo (start) where
 
-import Prelude (filter, map, round, length, take, FilePath, (/), subtract)
+import Prelude (filter, map, round, length, take, FilePath, (/), subtract, zipWith)
 import Yi.Prelude 
 import Yi.Accessor
 import Yi.Buffer
@@ -20,7 +20,7 @@ import Yi.Keymap
 import Yi.Debug
 import Yi.Monad
 import qualified Yi.UI.Common as Common
-import Yi.UI.Common (UIConfig (..))
+import Yi.Config
 import Yi.Style hiding (modeline)
 import qualified Yi.WindowSet as WS
 
@@ -28,7 +28,7 @@ import Control.Applicative
 import Control.Concurrent ( yield )
 import Control.Monad (ap)
 import Control.Monad.Reader (liftIO, when, MonadIO)
-import Control.Monad.State (runState, State, gets, modify)
+import Control.Monad.State (gets)
 
 import Data.Function
 import Data.Foldable
@@ -38,7 +38,7 @@ import Data.Maybe
 import Data.Traversable
 import qualified Data.Map as M
 
-import Graphics.UI.Gtk hiding ( Window, Event, Action, Point, Style )
+import Graphics.UI.Gtk hiding (Region, Window, Event, Action, Point, Style)
 import qualified Graphics.UI.Gtk as Gtk
 import Yi.UI.Gtk.ProjectTree
 import Yi.UI.Gtk.Utils
@@ -51,13 +51,13 @@ data UI = UI { uiWindow :: Gtk.Window
              , uiCmdLine :: Label
              , windowCache :: IORef [WinInfo]
              , uiActionCh :: Action -> IO ()
-             , uiConfig :: Common.UIConfig
+             , uiConfig :: UIConfig
              }
 
 data WinInfo = WinInfo
     {
       coreWin     :: Window
-    , changedWin  :: IORef (Window)
+    , shownRegion :: IORef Region
     , renderer    :: IORef (ConnectId DrawingArea)
     , winMotionSignal :: IORef (Maybe (ConnectId DrawingArea))
     , winLayout   :: PangoLayout
@@ -81,17 +81,17 @@ mkUI ui = Common.UI
    Common.reloadProject         = reloadProject         ui
   }
 
-mkFontDesc :: Common.UIConfig -> IO FontDescription
+mkFontDesc :: UIConfig -> IO FontDescription
 mkFontDesc cfg = do
   f <- fontDescriptionNew
   fontDescriptionSetFamily f "Monospace"
-  case  Common.configFontSize cfg of
+  case  configFontSize cfg of
     Just x -> fontDescriptionSetSize f (fromIntegral x)
     Nothing -> return ()
   return f
 
 -- | Initialise the ui
-start :: Common.UIBoot
+start :: UIBoot
 start cfg ch outCh _ed = do
   unsafeInitGUIForThreadedRTS
 
@@ -133,7 +133,7 @@ start cfg ch outCh _ed = do
 
   cmd <- labelNew Nothing
   set cmd [ miscXalign := 0.01 ]
-  widgetModifyFont cmd =<< Just <$> mkFontDesc cfg
+  widgetModifyFont cmd =<< Just <$> mkFontDesc (configUI cfg)
 
   set vb [ containerChild := paned,
            containerChild := cmd,
@@ -145,7 +145,7 @@ start cfg ch outCh _ed = do
   widgetShowAll win
 
   wc <- newIORef []
-  let ui = UI win vb' cmd wc outCh cfg 
+  let ui = UI win vb' cmd wc outCh (configUI cfg)
 
   return (mkUI ui)
 
@@ -211,7 +211,7 @@ syncWindows :: Editor -> UI -> [(Window, Bool)] -- ^ windows paired with their "
             -> [WinInfo] -> IO [WinInfo]
 syncWindows e ui (wfocused@(w,focused):ws) (c:cs)
     | winkey w == winkey (coreWin c) = do when focused (setFocus c)
-                                          (:) <$> syncWin w c <*> syncWindows e ui ws cs
+                                          (:) <$> syncWin e w c <*> syncWindows e ui ws cs
     | winkey w `elem` map (winkey . coreWin) cs = removeWindow ui c >> syncWindows e ui (wfocused:ws) cs
     | otherwise = do c' <- insertWindowBefore e ui w c
                      when focused (setFocus c')
@@ -219,10 +219,11 @@ syncWindows e ui (wfocused@(w,focused):ws) (c:cs)
 syncWindows e ui ws [] = mapM (insertWindowAtEnd e ui) (map fst ws)
 syncWindows _e ui [] cs = mapM_ (removeWindow ui) cs >> return []
 
-syncWin :: Window -> WinInfo -> IO WinInfo
-syncWin w wi = do
+syncWin :: Editor -> Window -> WinInfo -> IO WinInfo
+syncWin e w wi = do
   logPutStrLn $ "Updated one: " ++ show w
-  writeRef (changedWin wi) w
+  let b = findBufferWith (bufkey w) e
+  writeRef (shownRegion wi) (runBufferDummyWindow b winRegionB)
   return (wi {coreWin = w})
 
 setFocus :: WinInfo -> IO ()
@@ -247,8 +248,8 @@ handleClick ui w event = do
 
   -- retrieve the clicked offset.
   (_,layoutIndex,_) <- layoutXYToIndex (winLayout w) (eventX event) (eventY event)
-  win <- readRef (changedWin w)
-  let p1 = tospnt win + fromIntegral layoutIndex
+  r <- readRef (shownRegion w)
+  let p1 = regionStart r + fromIntegral layoutIndex
 
   -- maybe focus the window
   logPutStrLn $ "Clicked inside window: " ++ show w
@@ -290,16 +291,15 @@ handleMove ui w p0 event = do
 
   -- retrieve the clicked offset.
   (_,layoutIndex,_) <- layoutXYToIndex (winLayout w) (eventX event) (eventY event)
-  win <- readRef (changedWin w)
-  let p1 = tospnt win + fromIntegral layoutIndex
+  r <- readRef (shownRegion w)
+  let p1 = regionStart r + fromIntegral layoutIndex
 
 
   let editorAction = do
         txt <- withBuffer0 $ do
            if p0 /= p1 
             then Just <$> do
-              m <- getSelectionMarkB
-              setMarkPointB m p0
+              setMarkPointB staticSelMark p0
               moveTo p1
               setVisibleSelection True
               readRegionB =<< getSelectRegionB
@@ -313,8 +313,8 @@ handleMove ui w p0 event = do
 
 
 -- | Make A new window
-newWindow :: UI -> Window -> FBuffer -> IO WinInfo
-newWindow ui w b = mdo
+newWindow :: Editor -> UI -> Window -> FBuffer -> IO WinInfo
+newWindow e ui w b = mdo
     f <- mkFontDesc (uiConfig ui)
 
     ml <- labelNew Nothing
@@ -346,8 +346,8 @@ newWindow ui w b = mdo
                boxChildPacking ml := PackNatural]
       return (castToBox vb)
      
-    sig <- newIORef =<< (v `onExpose` render ui b win)
-    wRef <- newIORef w
+    sig <- newIORef =<< (v `onExpose` render e ui b win)
+    rRef <- newIORef (runBufferDummyWindow b winRegionB)
     context <- widgetCreatePangoContext v
     layout <- layoutEmpty context
     layoutSetWrap layout WrapAnywhere
@@ -364,7 +364,7 @@ newWindow ui w b = mdo
                    , modeline  = ml
                    , widget    = box
                    , renderer  = sig
-                   , changedWin = wRef
+                   , shownRegion = rRef
               }
     return win
 
@@ -377,7 +377,7 @@ insertWindowAtEnd e i w = insertWindow e i w
 insertWindow :: Editor -> UI -> Window -> IO WinInfo
 insertWindow e i win = do
   let buf = findBufferWith (bufkey win) e
-  liftIO $ do w <- newWindow i win buf
+  liftIO $ do w <- newWindow e i win buf
               set (uiBox i) [containerChild := widget w,
                              boxChildPacking (widget w) := if isMini (coreWin w) then PackNatural else PackGrow]
               textview w `onButtonRelease` handleClick i w
@@ -403,20 +403,19 @@ refresh ui e = do
         do 
            sig <- readIORef (renderer w)
            signalDisconnect sig
-           writeRef (renderer w) =<< (textview w `onExpose` render ui b w)
+           writeRef (renderer w) =<< (textview w `onExpose` render e ui b w)
            widgetQueueDraw (textview w)
 
-winEls :: BufferM Yi.Buffer.Size
-winEls = savingPointB $ do
-             w <- askWindow id
-             moveTo (tospnt w)
-             gotoLnFrom (height w)
+winEls :: Point -> Int -> BufferM Yi.Buffer.Size
+winEls tospnt h = savingPointB $ do
+             moveTo tospnt
+             gotoLnFrom h
              p <- pointB
-             return (p ~- tospnt w)
+             return (p ~- tospnt)
 
-render :: UI -> FBuffer -> WinInfo -> t -> IO Bool
-render _ui b w _ev = do
-  win <- readRef (changedWin w)
+render :: Editor -> UI -> FBuffer -> WinInfo -> t -> IO Bool
+render e _ui b w _ev = do
+  reg <- readRef (shownRegion w)
   drawWindow <- widgetGetDrawWindow $ textview w
   (width, height) <- widgetGetSize $ textview w
   let [width', height'] = map fromIntegral [width, height]
@@ -424,48 +423,48 @@ render _ui b w _ev = do
       layout = winLayout w
       winh = round (height' / (ascent metrics + descent metrics))
 
-  let ((point, text),_) = runBuffer win {height = winh} b $ do
-                      numChars <- winEls      
+  let (point, text) = runBufferDummyWindow b $ do
+                      numChars <- winEls (regionStart reg) winh
                       (,) 
                        <$> pointB
-                       <*> nelemsB' numChars (tospnt win) 
+                       <*> nelemsB' numChars (regionStart reg)
   layoutSetWidth layout (Just width')
   layoutSetText layout text
 
   (_,bos,_) <- layoutXYToIndex layout width' height' 
-  let win' = win { bospnt = fromIntegral bos + tospnt win,
-                   height = winh
-                 }
+  let r' = mkRegion (regionStart reg) (fromIntegral bos + regionStart reg)
+
 
   -- Scroll the window when the cursor goes out of it:
-  logPutStrLn $ "prewin: " ++ show win'
+  logPutStrLn $ "prewin: " ++ show r'
   logPutStrLn $ "point: " ++ show point
-  win''' <- if pointInWindow point win'
-    then return win'
+  r'' <- if inRegion point r'
+    then return r'
     else do
       logPutStrLn $ "out!"
-      let win'' = showPoint b win'
-          (text', _) = runBuffer win'' b $ do
-                         numChars <- winEls
-                         nelemsB' numChars (tospnt win'')
+      let newTos = runBufferDummyWindow b $ do
+                         indexOfSolAbove (winh `div` 2)
+          text' = runBufferDummyWindow b $ do
+                         numChars <- winEls newTos winh
+                         nelemsB' numChars newTos
       layoutSetText layout text'
       (_,bos',_) <- layoutXYToIndex layout width' height'
-      logPutStrLn $ "bos = " ++ show bos' ++ " + " ++ show (tospnt win'')
-      return win'' { bospnt = fromIntegral bos' + tospnt win''} 
+      logPutStrLn $ "bos = " ++ show bos' ++ " + " ++ show newTos
+      return $ mkRegion newTos (newTos +~ Size bos')  -- FIXME: Unicode
 
-  writeRef (changedWin w) win'''
-  logPutStrLn $ "updated: " ++ show win'''
+  writeRef (shownRegion w) r''
+  logPutStrLn $ "updated: " ++ show r''
 
   -- add color attributes.
-  let ((strokes,selectReg,selVisible), _) = runBuffer win''' b $ (,,)
-                       <$> strokesRangesB (tospnt win''') (bospnt win''')
+  let (strokes,selectReg,selVisible) = runBufferDummyWindow b $ (,,)
+                       <$> strokesRangesB (regex e) (regionStart r'') (regionEnd r'')
                        <*> getSelectRegionB
                        <*> getA highlightSelectionA
                          
-      regInWin = fmapRegion (subtract (tospnt win''')) (intersectRegion selectReg (winRegion win'''))
+      regInWin = fmapRegion (subtract (regionStart r'')) (intersectRegion selectReg r'')
       styleToAttrs (l,attrs,r) = [mkAttr l r a | a <- attrs]
-      mkAttr l r (Foreground col) = AttrForeground (fromPoint (l - tospnt win''')) (fromPoint (r - tospnt win''')) (mkCol col)
-      mkAttr l r (Background col) = AttrBackground (fromPoint (l - tospnt win''')) (fromPoint (r - tospnt win''')) (mkCol col)
+      mkAttr l r (Foreground col) = AttrForeground (fromPoint (l - regionStart r'')) (fromPoint (r - regionStart r'')) (mkCol col)
+      mkAttr l r (Background col) = AttrBackground (fromPoint (l - regionStart r'')) (fromPoint (r - regionStart r'')) (mkCol col)
       allAttrs = (if selVisible 
                    then (AttrBackground (fromPoint (regionStart regInWin)) (fromPoint (regionEnd regInWin - 1))
                            (Color 50000 50000 maxBound) :)
@@ -475,7 +474,7 @@ render _ui b w _ev = do
   layoutSetAttributes layout allAttrs
 
 
-  (PangoRectangle curx cury curw curh, _) <- layoutGetCursorPos layout (fromPoint (point - tospnt win'''))
+  (PangoRectangle curx cury curw curh, _) <- layoutGetCursorPos layout (fromPoint (point - regionStart r''))
 
   gc <- gcNew drawWindow
   drawLayout drawWindow gc 0 0 layout
@@ -486,19 +485,20 @@ render _ui b w _ev = do
 
 prepareAction :: UI -> IO (EditorM ())
 prepareAction ui = do
-    wins <- mapM (readRef . changedWin) =<< readRef (windowCache ui)
+    wins <- readRef (windowCache ui)
     logPutStrLn $ "new wins: " ++ show wins
-    return $ modifyWindows (\ws -> fst $ runState (mapM distribute ws) wins)
+    let ws = fmap coreWin wins
+    rs <- mapM (readRef . shownRegion) wins
+    return $ do
+      let updWin w r = do
+             withGivenBufferAndWindow0 w (bufkey w) $ do
+                 setMarkPointB staticFromMark (regionStart r)
+      -- TODO: also update height and bos.
+      sequence_ $ zipWith updWin ws rs
+
 
 reloadProject :: UI -> FilePath -> IO ()
 reloadProject _ _ = return ()
-
-distribute :: Window -> State [Window] Window
-distribute _ = do
-  h <- gets head
-  modify tail
-  return h
-
 
 mkCol :: Yi.Style.Color -> Gtk.Color
 mkCol Default = Color 0 0 0
