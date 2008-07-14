@@ -221,9 +221,10 @@ syncWindows _e ui [] cs = mapM_ (removeWindow ui) cs >> return []
 
 syncWin :: Editor -> Window -> WinInfo -> IO WinInfo
 syncWin e w wi = do
-  logPutStrLn $ "Updated one: " ++ show w
   let b = findBufferWith (bufkey w) e
-  writeRef (shownRegion wi) (runBufferDummyWindow b winRegionB)
+      reg = runBufferDummyWindow b winRegionB
+  logPutStrLn $ "Updated one: " ++ show w ++ " to " ++ show reg
+  writeRef (shownRegion wi) reg
   return (wi {coreWin = w})
 
 setFocus :: WinInfo -> IO ()
@@ -486,13 +487,15 @@ render e _ui b w _ev = do
 prepareAction :: UI -> IO (EditorM ())
 prepareAction ui = do
     wins <- readRef (windowCache ui)
-    logPutStrLn $ "new wins: " ++ show wins
     let ws = fmap coreWin wins
     rs <- mapM (readRef . shownRegion) wins
+    logPutStrLn $ "new wins: " ++ show wins
+    logPutStrLn $ "new regs: " ++ show rs
     return $ do
       let updWin w r = do
              withGivenBufferAndWindow0 w (bufkey w) $ do
-                 setMarkPointB staticFromMark (regionStart r)
+                 setMarkPointB (fromMark w) (regionStart r)
+                 setMarkPointB (toMark   w) (regionEnd   r)
       -- TODO: also update height and bos.
       sequence_ $ zipWith updWin ws rs
 
