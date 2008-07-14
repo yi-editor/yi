@@ -21,6 +21,7 @@ module Yi.UI.Cocoa (start) where
 
 import Prelude hiding (init, error, sequence_, elem, mapM_, mapM, concat, concatMap)
 
+import Yi.Prelude hiding (init)
 import Yi.Accessor
 import Yi.Buffer
 import Yi.Buffer.HighLevel
@@ -32,7 +33,7 @@ import Yi.Keymap
 import Yi.Buffer.Implementation
 import Yi.Monad
 import Yi.Style hiding (modeline)
-import Yi.UI.Common (UIConfig(..))
+import Yi.Config
 import qualified Yi.UI.Common as Common
 import qualified Yi.WindowSet as WS
 import qualified Yi.Window as Window
@@ -45,12 +46,15 @@ import Control.Monad.Reader (liftIO, when, MonadIO)
 import Control.Monad (ap, replicateM_)
 import Control.Applicative ((<*>), (<$>))
 
+import Data.List (genericLength)
 import Data.IORef
 import Data.Maybe
 import Data.Unique
 import Data.Foldable
 import Data.Traversable
 import qualified Data.Map as M
+import qualified Data.ByteString.Lazy as LB
+import qualified Data.ByteString.Lazy.UTF8 as LazyUTF8
 
 import Foundation hiding (length, name, new, parent, error, self, null)
 import Foundation.NSObject (init)
@@ -181,21 +185,22 @@ ytv_mouseDown event self = do
   index <- layout # glyphIndexForPointInTextContainer mouse container >>= return . fromEnum
   NSRect (NSPoint cx _) (NSSize cw _) <-
     layout # boundingRectForGlyphRangeInTextContainer (NSRange (toEnum index) 1) container
-  let startIndex = if mx - cx < cx + cw - mx then index else index + 1
+  -- TODO: Is this ok? Is startIndex a utf8 index or a point?
+  let startIndex = if mx - cx < cx + cw - mx then (Point index) else (Point index + 1)
 
   -- The super-class deals Cocoa-ishly with mouse events
   super self # mouseDown event
 
   -- Update our selection marker and position to reflect what Cocoa wants
   NSRange p l <- selectedRange self
-  let p1 = fromEnum p
-      p2 = p1 + fromEnum l
+  let p1 = fromIntegral p
+      p2 = p1 + fromIntegral l
   runbuf <- self #. _runBuffer
   runbuf $ do
     setVisibleSelection (p1 /= p2)
     if p1 == p2
       then do
-        moveTo p1
+        moveTo p1 
       else if abs (startIndex - p2) < min (abs (startIndex - p1)) 2
         then setSelectionMarkPointB p2 >> moveTo p1
         else setSelectionMarkPointB p1 >> moveTo p2
@@ -231,7 +236,7 @@ data UI = UI {uiWindow :: NSWindow ()
              ,uiBuffers :: IORef (M.Map BufferRef (NSTextStorage ()))
              ,windowCache :: IORef [WinInfo]
              ,uiActionCh :: Action -> IO ()
-             ,uiConfig :: Common.UIConfig
+             ,uiConfig :: UIConfig
              }
 
 data WinInfo = WinInfo
@@ -344,7 +349,7 @@ addSubviewWithTextLine cfg view parent = do
   return (text, container)
 
 -- | Initialise the ui
-start :: Common.UIBoot
+start :: UIBoot
 start cfg ch outCh _ed = do
 
   -- Ensure that our command line application is also treated as a gui application
@@ -388,7 +393,7 @@ start cfg ch outCh _ed = do
 
   -- Create yi window container
   winContainer <- new _NSSplitView
-  (cmd,_) <- content # addSubviewWithTextLine cfg winContainer
+  (cmd,_) <- content # addSubviewWithTextLine (configUI cfg) winContainer
 
 
   -- Activate application window
@@ -400,7 +405,7 @@ start cfg ch outCh _ed = do
   bufs <- newIORef M.empty
   wc <- newIORef []
 
-  return $ mkUI $ UI win winContainer cmd bufs wc outCh cfg
+  return $ mkUI $ UI win winContainer cmd bufs wc outCh (configUI cfg)
 
 
 
@@ -530,8 +535,8 @@ refresh ui e = logNSException "refresh" $ do
       -- UNUSED: contents <- storage # string >>= haskellString
       storage # setMonospaceFont (uiConfig ui) -- FIXME: Why is this needed for mini buffers?
       -- TODO: Merge overlapping regions...
-      let ((size',p),_) = runBufferDummyWindow buf ((,) <$> sizeB <*> pointB)
-      forM_ ([(s,s+l) | StyleUpdate s l <- pendingUpdates buf]) $ \(s,e') -> replaceTagsIn (inBounds s size') (inBounds e' size') buf storage
+      let (size',p) = runBufferDummyWindow buf ((,) <$> sizeB <*> pointB)
+      forM_ ([(s,s+~l) | StyleUpdate s l <- pendingUpdates buf]) $ \(s,e') -> replaceTagsIn (inBounds s size') (inBounds e' size') buf storage
       replaceTagsIn (inBounds (p-100) size') (inBounds (p+100) size') buf storage
 
     (uiWindow ui) # setAutodisplay False -- avoid redrawing while window syncing
@@ -545,21 +550,21 @@ refresh ui e = logNSException "refresh" $ do
 
     forM_ cache' $ \w ->
         do let buf = findBufferWith (bufkey w) e
-           let (p0, _) = runBufferDummyWindow buf pointB
-           let (p1, _) = runBufferDummyWindow buf (getSelectionMarkB >>= getMarkPointB)
-           let (showSel, _) = runBufferDummyWindow buf (getA highlightSelectionA)
-           let (p,l) = if showSel then (min p0 p1, abs $ p1-p0) else (p0,0)
-           (textview w) # setSelectedRange (NSRange (toEnum p) (toEnum l))
-           (textview w) # scrollRangeToVisible (NSRange (toEnum p0) 0)
-           let (txt, _) = runBufferDummyWindow buf getModeLine
+           let p0 = runBufferDummyWindow buf pointB
+           let p1 = runBufferDummyWindow buf (getMarkPointB staticSelMark)
+           let showSel = runBufferDummyWindow buf (getA highlightSelectionA)
+           let (p,l) = if showSel then (min p0 p1, abs $ p1~-p0) else (p0,0)
+           (textview w) # setSelectedRange (NSRange (fromIntegral p) (fromIntegral l))
+           (textview w) # scrollRangeToVisible (NSRange (fromIntegral p0) 0)
+           let txt = runBufferDummyWindow buf getModeLine
            (modeline w) # setStringValue (toNSString txt)
 
 
 replaceTagsIn :: forall t. Point -> Point -> FBuffer -> NSTextStorage t -> IO ()
 replaceTagsIn from to buf storage = do
-  let (styleSpans, _) = runBufferDummyWindow buf (strokesRangesB (to - from) from)
+  let styleSpans = runBufferDummyWindow buf (strokesRangesB Nothing (to - from) from)
   forM_ (concat styleSpans) $ \(l,ss,r) -> do
-    let range = NSRange (toEnum l) (toEnum $ r-l)
+    let range = NSRange (fromIntegral l) (fromIntegral $ r~-l)
     forM_ ss (\s -> mkStyle s >>= addStyle range)
   where
     addStyle r (k,v) = storage # addAttributeValueRange k v r
@@ -570,11 +575,12 @@ replaceTagsIn from to buf storage = do
     color' _g (RGB r g b) = _NSColor # colorWithDeviceRedGreenBlueAlpha ((fromIntegral r)/255) ((fromIntegral g)/255) ((fromIntegral b)/255) 1.0
 
 applyUpdate :: NSTextStorage () -> Update -> IO ()
-applyUpdate buf (Insert p s) =
-  buf # mutableString >>= insertStringAtIndex (toNSString s) (toEnum p)
+applyUpdate buf (Insert p _ s) =
+  -- TODO: Do not convert back and forth...
+  buf # mutableString >>= insertStringAtIndex (toNSString $ LazyUTF8.toString s) (fromIntegral p)
 
-applyUpdate buf (Delete p s) =
-  buf # mutableString >>= deleteCharactersInRange (NSRange (toEnum p) (toEnum s))
+applyUpdate buf (Delete p _ s) =
+  buf # mutableString >>= deleteCharactersInRange (NSRange (fromIntegral p) (fromIntegral (LB.length s)))
 
 prepareAction :: UI -> IO (EditorM ())
 prepareAction _ui = return (return ())
@@ -627,10 +633,10 @@ getTextStorage ui b = do
 newTextStorage :: UI -> FBuffer -> IO (NSTextStorage ())
 newTextStorage ui b = do
   buf <- new _NSTextStorage
-  let (txt, _) = runBufferDummyWindow b (revertPendingUpdatesB >> elemsB)
+  let txt = runBufferDummyWindow b (revertPendingUpdatesB >> elemsB)
   buf # mutableString >>= setString (toNSString txt)
   buf # setMonospaceFont (uiConfig ui)
-  replaceTagsIn 0 (length txt) b buf
+  replaceTagsIn 0 (genericLength txt) b buf
   return buf
 
 -- Debugging helpers
