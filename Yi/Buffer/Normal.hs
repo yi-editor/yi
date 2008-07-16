@@ -68,7 +68,7 @@ checks (p:ps) (x:xs) = p x && checks ps xs
 peekB :: Direction -> Int -> Int -> BufferM String
 peekB dir siz ofs = savingPointB $
   do moveN dirOfs
-     rev dir <$> (nelemsB siz =<< pointB)
+     mayReverse dir <$> (nelemsB siz =<< pointB)
   where
   dirOfs = case dir of
              Forward  -> ofs
@@ -76,11 +76,6 @@ peekB dir siz ofs = savingPointB $
 
 checkPeekB :: Int -> [Char -> Bool] -> Direction -> BufferM Bool
 checkPeekB offset conds dir = checks conds <$> peekB dir (length conds) offset
-
--- | reverse if Backward
-rev :: Direction -> [a] -> [a]
-rev Forward = id
-rev Backward = reverse
 
 -- | Is the point at a @Unit@ boundary in the specified @Direction@?
 atBoundary :: TextUnit -> Direction -> BufferM Bool
@@ -100,7 +95,7 @@ atBoundary ViWord direction = do
                          | otherwise    = 3
 atBoundary Line direction = checkPeekB 0 [isNl] direction
 atBoundary Sentence dir =
-    (||) <$> checkPeekB (if dir == Forward then -1 else 0) (rev dir [isEndOfSentence, isSpace]) dir
+    (||) <$> checkPeekB (if dir == Forward then -1 else 0) (mayReverse dir [isEndOfSentence, isSpace]) dir
          <*> atBoundary Paragraph dir
 atBoundary Paragraph direction =
     checkPeekB (-2) [not . isNl, isNl, isNl] direction

@@ -551,7 +551,8 @@ withSyntax0 f FBuffer {bmode = m, rawbuf = rb} = f m (getAst rb)
 regexB :: Direction -> SearchExp -> BufferM [Region]
 regexB dir rx = do
   p <- pointB
-  queryBuffer (regexBI dir rx p)
+  s <- sizeB
+  queryBuffer (regexBI rx (mkRegion p (case dir of Forward -> s; Backward -> 0)))
 
 ---------------------------------------------------------------------
 

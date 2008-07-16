@@ -264,7 +264,7 @@ strokesRangesBI regex i j fb@FBufferData {hlCache = HLState hl cache} =  result
     layer1 = hlGetStrokes hl point i j cache
     layers2 = map (map overlayStroke) $ groupBy ((==) `on` overlayLayer) $  Set.toList $ overlays fb
     layer3 = case regex of 
-               Just re -> takeIn $ map hintStroke $ regexBI Forward re i fb
+               Just re -> takeIn $ map hintStroke $ regexBI re (mkRegion i j) fb
                Nothing -> []
     result = map (map clampStroke . takeIn . dropBefore) (layer3 : layers2 ++ [layer1])
     overlayStroke (Overlay _ sm  em a) = (markPoint sm, a, markPoint em)
@@ -447,14 +447,15 @@ charsFromSolBI fb = LazyUTF8.toString $ F.toLazyByteString $ readChunk ptr (Size
         ptr = mem fb
 
 
--- | Return indices of all strings in buffer matching regex, starting from given point
-regexBI :: Direction -> SearchExp -> Point -> forall syntax. BufferImpl syntax -> [Region]
-regexBI dir (_,re) (Point p) fb = case dir of 
-   Forward -> fmap (fmapRegion addPoint . matchedRegion) $ matchAll re $ F.toLazyByteString $ F.drop p $ mem fb
-   Backward -> reverse $ fmap matchedRegion $ matchAll re $ F.toLazyByteString $ F.take p $ mem fb
-    -- FIXME: backward search is very inefficient.
+-- | Return indices of all strings in buffer matching regex, inside the given region.
+regexBI :: SearchExp -> Region -> forall syntax. BufferImpl syntax -> [Region]
+regexBI (_,re) r fb = mayReverse (regionDirection r) $ 
+  fmap (fmapRegion addPoint . matchedRegion) $ matchAll re $ F.toLazyByteString $ F.take s $ F.drop p $ mem fb
+    -- FIXME: lazy backward search is very inefficient with large regions.
    where matchedRegion arr = let (off,len) = arr!0 in mkRegion (Point off) (Point (off+len))
          addPoint (Point x) = Point (p + x)
+         Point p = regionStart r
+         Size s = regionSize r
 
 newMarkBI :: MarkValue -> BufferImpl syntax -> (BufferImpl syntax, Mark)
 newMarkBI initialValue fb =

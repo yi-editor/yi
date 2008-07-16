@@ -10,6 +10,7 @@ module Yi.Region
   , mkRegion, mkRegion'
   , regionStart
   , regionEnd
+  , regionSize
   , regionDirection
   , inRegion, nearRegion
   , fmapRegion
@@ -40,6 +41,10 @@ instance Show Region where
 fmapRegion :: (Point -> Point) -> Region -> Region
 fmapRegion f (Region d x y) = Region d (f x) (f y)
 
+regionSize :: Region -> Size
+regionSize r = regionEnd r ~- regionStart r
+
+mixDirections :: Direction -> Direction -> Direction
 mixDirections Backward Backward = Backward
 mixDirections _ _ = Forward
 

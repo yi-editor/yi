@@ -8,7 +8,6 @@ import qualified Data.ByteString.UTF8 as UTF8
 import qualified Data.ByteString.Lazy.UTF8 as LazyUTF8
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as LB
-import Data.String
 import Data.Typeable
 
 -- | Direction of movement inside a buffer
@@ -19,6 +18,12 @@ data Direction = Backward
 reverseDir :: Direction -> Direction
 reverseDir Forward = Backward
 reverseDir Backward = Forward
+
+
+-- | reverse if Backward
+mayReverse :: Direction -> [a] -> [a]
+mayReverse Forward = id
+mayReverse Backward = reverse
 
 -- | A mark in a buffer
 newtype Mark = Mark {markId::Int} deriving (Eq, Ord, Show)
