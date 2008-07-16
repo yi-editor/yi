@@ -10,7 +10,8 @@
 --  * the direction towards which they operate (if applicable)
 
 module Yi.Buffer.Normal (TextUnit(Character, Word, Line, ViWord, ViWORD, VLine,
-                                  Sentence, Paragraph, Delimited, Document),
+                                  Delimited, Document),
+                         unitSentence, unitEmacsParagraph, unitParagraph,
                          -- TextUnit is exported abstract intentionally:
                          -- we'd like to move more units to the GenUnit format.
                          moveB, maybeMoveB,
@@ -39,7 +40,6 @@ data TextUnit = Character
               | Line  -- ^ a line of text (between newlines)
               | VLine -- ^ a "vertical" line of text (area of text between to characters at the same column number)
               | Sentence -- ^ ends at a '.', '!', or '?' followed by a blank
-              | Paragraph
               | Delimited Char Char
               | Document
               | GenUnit {genEnclosingUnit :: TextUnit,
@@ -94,11 +94,6 @@ atBoundary ViWord direction = do
                          | isWordChar c = 2
                          | otherwise    = 3
 atBoundary Line direction = checkPeekB 0 [isNl] direction
-atBoundary Sentence dir =
-    (||) <$> checkPeekB (if dir == Forward then -1 else 0) (mayReverse dir [isEndOfSentence, isSpace]) dir
-         <*> atBoundary Paragraph dir
-atBoundary Paragraph direction =
-    checkPeekB (-2) [not . isNl, isNl, isNl] direction
 atBoundary (Delimited c _) Backward = checkPeekB 0 [(== c)] Backward
 atBoundary (Delimited _ c) Forward  = (== c) <$> readB
 atBoundary (GenUnit _ atBound) dir = atBound dir
@@ -111,7 +106,13 @@ atBoundaryB :: TextUnit -> Direction -> BufferM Bool
 atBoundaryB Document d = atBoundary Document d
 atBoundaryB u d = (||) <$> atBoundary u d <*> atBoundaryB (enclosingUnit u) d
 
+-- | Paragraph to implement emacs-like forward-paragraph/backward-paragraph
+unitEmacsParagraph = GenUnit Document $ checkPeekB (-2) [not . isNl, isNl, isNl]
 
+-- | Paragraph that begins and ends in the paragraph, not the empty lines surrounding it.
+unitParagraph = GenUnit Document $ checkPeekB (-1) [not . isNl, isNl, isNl]
+
+unitSentence = GenUnit unitEmacsParagraph $ \dir -> checkPeekB (if dir == Forward then -1 else 0) (mayReverse dir [isEndOfSentence, isSpace]) dir
 
 -- | @genAtBoundaryB u d s@ returns whether the point is at a given boundary @(d,s)@ .
 -- Boundary @(d,s)@ , taking Word as example, means:

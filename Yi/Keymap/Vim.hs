@@ -197,10 +197,10 @@ moveCmdFM_exclusive =
     ,(char 'b',       Replicate $ Move ViWord Backward)
     ,(char 'B',       Replicate $ Move ViWORD Backward)
 -- text
-    ,(char '{',       Replicate $ Move Paragraph Backward)
-    ,(char '}',       Replicate $ Move Paragraph Forward)
-    ,(char '(',       Replicate $ Move Sentence  Backward)
-    ,(char ')',       Replicate $ Move Sentence  Forward)
+    ,(char '{',       Replicate $ Move unitEmacsParagraph Backward)
+    ,(char '}',       Replicate $ Move unitEmacsParagraph Forward)
+    ,(char '(',       Replicate $ Move unitSentence  Backward)
+    ,(char ')',       Replicate $ Move unitSentence  Forward)
     ]
     where
         left  = Replicate $ CharMove Backward
@@ -430,8 +430,8 @@ char2unit :: [(Char, TextUnit)]
 char2unit =
   [('w', ViWord)
   ,('W', ViWORD)
-  ,('p', Paragraph)
-  ,('s', Sentence)
+  ,('p', unitEmacsParagraph)
+  ,('s', unitSentence)
   ,('"',  Delimited '"' '"')
   ,('`',  Delimited '`' '`')
   ,('\'', Delimited '\'' '\'')

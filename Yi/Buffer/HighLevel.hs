@@ -94,11 +94,11 @@ lastNonSpaceB = do moveToEol
 
 -- | Move down next @n@ paragraphs
 nextNParagraphs :: Int -> BufferM ()
-nextNParagraphs n = replicateM_ n $ moveB Paragraph Forward
+nextNParagraphs n = replicateM_ n $ moveB unitEmacsParagraph Forward
 
 -- | Move up prev @n@ paragraphs
 prevNParagraphs :: Int -> BufferM ()
-prevNParagraphs n = replicateM_ n $ moveB Paragraph Backward
+prevNParagraphs n = replicateM_ n $ moveB unitEmacsParagraph Backward
 
 -- ! Examples:
 -- @goUnmatchedB Backward '(' ')'@
@@ -545,4 +545,4 @@ replaceBufferContent newvalue = do
 
 
 fillParagraph :: BufferM ()
-fillParagraph = modifyRegionB (unlines' . fillText 80) =<< regionOfB Paragraph
+fillParagraph = modifyRegionB (unlines' . fillText 80) =<< regionOfB unitParagraph
