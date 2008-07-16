@@ -6,6 +6,7 @@ module Yi.MiniBuffer (
 
 import Data.List (isInfixOf)
 import Data.Typeable
+import Data.Maybe
 import Yi.Buffer
 import Yi.Buffer.Region
 import Yi.Buffer.HighLevel
@@ -13,7 +14,7 @@ import Yi.Config
 import Yi.Core
 import Yi.Editor
 import Yi.History
-import Yi.Completion ( commonPrefix )
+import Yi.Completion (commonPrefix, infixMatch)
 import Yi.Keymap
 import Yi.Keymap.Emacs.Keys
 import qualified Yi.Editor as Editor
@@ -96,7 +97,7 @@ withMinibufferFin prompt posibilities act
         -- return with an incomplete possibility. The reason is we may have for
         -- example two possibilities which share a long prefix and hence we wish
         -- to press tab to complete up to the point at which they differ.
-        completer s = return . commonPrefix $ filter (isInfixOf s) posibilities
+        completer s = return . commonPrefix $ catMaybes $ fmap (infixMatch s) posibilities
 
 completionFunction :: (String -> YiM String) -> YiM ()
 completionFunction f = do

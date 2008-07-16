@@ -319,7 +319,7 @@ insertTemplate =
   withMinibuffer "template-name:" completeTemplateName $ withEditor . addTemplate
   where
   completeTemplateName :: String -> YiM String
-  completeTemplateName s = withEditor $ completeInList s (isPrefixOf s) templateNames
+  completeTemplateName s = withEditor $ completeInList s (prefixMatch s) templateNames
 
 -- | C-u stuff
 readArgC :: KeymapM ()
@@ -390,7 +390,7 @@ getAppropriateFiles start s = do
 completeFileName :: Maybe String -> String -> YiM String
 completeFileName start s = do
   (sDir, files) <- getAppropriateFiles start s
-  withEditor $ completeInList s (isPrefixOf s) $ map (sDir </>) files
+  withEditor $ completeInList s (prefixMatch s) $ map (sDir </>) files
 
  
  -- | Given a path, trim the file name bit if it exists.  If no path
@@ -410,13 +410,13 @@ getFolder (Just path) = do
 completeBufferName :: String -> YiM String
 completeBufferName s = withEditor $ do
   bs <- getBuffers
-  completeInList s (isPrefixOf s) (map name bs)
+  completeInList s (prefixMatch s) (map name bs)
 
 
 completeFunctionName :: String -> YiM String
 completeFunctionName s = do
   names <- getAllNamesInScope
-  withEditor $ completeInList s (isPrefixOf s) names
+  withEditor $ completeInList s (prefixMatch s) names
 
 scrollDownE :: YiM ()
 scrollDownE = withUnivArg $ \a -> withBuffer $

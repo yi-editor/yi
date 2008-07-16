@@ -4,11 +4,13 @@
 module Yi.Completion 
   ( completeInList
   , commonPrefix
+  , prefixMatch, infixMatch
   )
 where
 
 import Yi.Editor
 import Data.List
+import Data.Maybe
 
 -------------------------------------------
 -- General completion
@@ -24,8 +26,20 @@ commonPrefix strings
           prefix = head heads
 -- for an alternative implementation see GHC's InteractiveUI module.
 
-completeInList :: String -> (String -> Bool) -> [ String ] -> EditorM String
-completeInList s condition l
+-- | Prefix matching function, for use with 'completeInList'
+prefixMatch :: String -> String -> Maybe String
+prefixMatch prefix s = if prefix `isPrefixOf` s then Just s else Nothing
+
+-- | Infix matching function, for use with 'completeInList'
+infixMatch :: String -> String -> Maybe String
+infixMatch needle haystack = fmap (\n -> drop n haystack) $ findIndex (needle `isPrefixOf`) (tails haystack)
+
+
+-- | Complete a string given a user input string, a matching function
+-- and a list of possibilites.  Matching function should return the
+-- part of the string that matches the user string.
+completeInList :: String -> (String -> Maybe String) -> [String] -> EditorM String
+completeInList s match l
     | null filtered = printMsg "No match" >> return s
     | prefix /= s = return prefix
     | isSingleton filtered = printMsg "Sole completion" >> return s
@@ -33,10 +47,10 @@ completeInList s condition l
     | otherwise = printMsg ("Matches: " ++ show filtered) >> return s
     where
     prefix   = commonPrefix filtered
-    filtered = nub $ filter condition l
+    filtered = nub $ catMaybes $ fmap match l
 
     -- Not really necessary but a bit faster than @(length l) == 1@
-    isSingleton :: [ a ] -> Bool
+    isSingleton :: [a] -> Bool
     isSingleton [_] = True
     isSingleton _   = False
 

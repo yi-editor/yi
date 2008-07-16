@@ -63,6 +63,7 @@ wordCompleteB = do
 
 ----------------------------
 -- Alternative Word Completion
+-- TODO: This is obsoleted by the above; deprecate.
 
 {-
   'completeWordB' is an alternative to 'wordCompleteB'.
@@ -102,10 +103,10 @@ completeWordB = veryQuickCompleteWord
 veryQuickCompleteWord :: EditorM ()
 veryQuickCompleteWord =
   do (curWord, curWords) <- withBuffer0 wordsAndCurrentWord
-     let condition :: String -> Bool
-         condition x   = (isPrefixOf curWord x) && (x /= curWord)
+     let match :: String -> Maybe String
+         match x = if (isPrefixOf curWord x) && (x /= curWord) then Just x else Nothing
 
-     preText             <- completeInList curWord condition curWords
+     preText             <- completeInList curWord match curWords
      if curWord == ""
         then printMsg "No word to complete"
         else withBuffer0 $ insertN $ drop (length curWord) preText
