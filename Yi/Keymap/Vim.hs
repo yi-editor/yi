@@ -37,7 +37,6 @@ import Yi.Keymap.Emacs.Utils (completeFileName,completeBufferName)
 import Yi.Keymap.Keys
 import Yi.MiniBuffer
 import Yi.Search
-import Yi.String (fillText, unlines')
 import Yi.TextCompletion
 
 --
@@ -422,8 +421,8 @@ cmd_op = do
                    , (('g':), 'u', viMapRegion toLower)
                    , (('g':), 'U', viMapRegion toUpper)
                    , (('g':), '?', viMapRegion rot13Char)
-                   , (('g':), 'q', const $ withBuffer0 . modifyRegionB (unlines' . fillText 80))
-                   , (('g':), 'w', const $ withBuffer0 . savingPointB . modifyRegionB (unlines' . fillText 80))
+                   , (('g':), 'q', const $ withBuffer0 . fillRegion)
+                   , (('g':), 'w', const $ withBuffer0 . savingPointB . fillRegion)
                    ]
 
 char2unit :: [(Char, TextUnit)]

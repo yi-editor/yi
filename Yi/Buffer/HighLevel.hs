@@ -544,5 +544,8 @@ replaceBufferContent newvalue = do
   replaceRegionB r newvalue
 
 
+fillRegion :: Region -> BufferM ()
+fillRegion = modifyRegionB (unlines' . fillText 80)
+
 fillParagraph :: BufferM ()
-fillParagraph = modifyRegionB (unlines' . fillText 80) =<< regionOfB unitParagraph
+fillParagraph = fillRegion =<< regionOfB unitParagraph
