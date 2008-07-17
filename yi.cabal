@@ -155,7 +155,6 @@ library
         Yi.UI.Utils
         HConf
         -- Should probably be split out to another package.
-        Data.Digest.SHA1
         Data.Tree.Zipper
         Data.DelayList
         Shim.CabalInfo
@@ -188,8 +187,7 @@ executable yi
         build-depends: bytestring >=0.9.0.1 && <0.9.2
         build-depends: fingertree
         build-depends: utf8-string >= 0.3.1
-
-        build-depends: Crypto==4.1.0
+        build-depends: pureMD5 >= 0.2.3
         build-depends: regex-base ==0.93.1
         build-depends: regex-tdfa ==0.94
         
@@ -278,7 +276,6 @@ executable yi
            Yi.UI.Utils
            HConf
            -- Should probably be split out to another package.
-           Data.Digest.SHA1
            Data.Tree.Zipper
            Data.DelayList
 

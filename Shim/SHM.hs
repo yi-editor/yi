@@ -12,6 +12,8 @@ import Control.Monad.State
 import qualified Data.ByteString.Char8 as BC
 import qualified Data.Map as M
 
+import qualified Data.Digest.Pure.MD5 as MD5
+
 import Shim.SessionMonad
 import Shim.Utils
 --------------------------------------------------------------
@@ -34,7 +36,9 @@ replaceWith _ _ = False
 
 type IdData = [(String, String)]
 
-type Hash = BC.ByteString
+type Hash = MD5.MD5Digest
+
+
 type CachedMod = (Hash,CheckedModule)
 type CompBuffer = M.Map FilePath (CompilationResult, IdData, Maybe CachedMod)
 

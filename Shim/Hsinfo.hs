@@ -25,8 +25,8 @@ import System.FilePath ( takeDirectory, (</>), (<.>), dropFileName, takeExtensio
 import System.Directory (canonicalizePath)
 import Control.Monad.State
 import Data.Maybe
-import qualified Data.ByteString.Char8 as BC
-import qualified Data.Digest.SHA1 as SHA1
+import qualified Data.ByteString.Lazy.Char8 as BC
+import qualified Data.Digest.Pure.MD5 as MD5
 
 import qualified GHC
 import GHC hiding ( load, newSession, (<.>) )
@@ -145,9 +145,9 @@ getPrelude ses = GHC.findModule ses prel_name Nothing
 pprIdent :: Id -> String
 pprIdent ident = showSDocUnqual $ pprTyThing False (AnId ident)
 
-hashSource :: FilePath -> Maybe String -> IO BC.ByteString
-hashSource _ (Just source) = return . SHA1.hash' $ BC.pack source
-hashSource sourcefile Nothing = SHA1.fileHash sourcefile
+hashSource :: FilePath -> Maybe String -> IO Hash
+hashSource _ (Just source) = return $ MD5.md5 $ BC.pack source -- FIXME: encoding
+hashSource sourcefile Nothing = MD5.md5 <$> BC.readFile sourcefile
 
 
 
