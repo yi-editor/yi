@@ -56,7 +56,7 @@ modifyAllA a a' f = modifyA a (fmap $ modifier a' f)
 setA :: MonadState s m => Accessor s p -> p -> m ()
 setA a p = modifyA a (const p)
 
-
+-- | Lift an accessor to a traversable structure
 allA :: Traversable t => Accessor whole part -> Accessor (t whole) (t part)
 allA (Accessor g m) = Accessor (fmap g) modifier'
     where modifier' mapParts wholes = distribute wholes (toList $ mapParts $ fmap g wholes)

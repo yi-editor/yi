@@ -49,6 +49,7 @@ flag gtk
 
 flag cairo
   Description: Provide Cairo UI
+  -- TODO: rename to Pango
 
 flag cocoa
   Description: Provide experimental Cocoa UI

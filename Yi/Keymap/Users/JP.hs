@@ -162,7 +162,7 @@ column = Character
 units :: [[(TextUnit, String)]]
 units = [
          [(document, "DOC"), (page, "PAGE"), (column, "COL"), (VLine, "↕")],
-         [(Paragraph, "§"), (Line, "Line"), (Word, "Word"), (Character, "Char")]
+         [(unitParagraph, "§"), (Line, "Line"), (Word, "Word"), (Character, "Char")]
         ]
 
 runKM :: KM () -> Keymap
