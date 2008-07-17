@@ -35,8 +35,8 @@ module Yi.Search (
 
         -- * Replace
         qrNext,
-        qrReplaceOne
-
+        qrReplaceOne,
+        qrFinish,
                  ) where
 
 import Prelude ()
@@ -318,8 +318,14 @@ qrNext b what = do
   case mp of
     [] -> do
       printMsg "String to search not found"
-      tryCloseE -- the minibuffer.
+      qrFinish
     (r:_) -> withGivenBuffer0 b $ setSelectRegionB r
+
+qrFinish :: EditorM ()
+qrFinish = do
+  setA regexA Nothing
+  closeBufferAndWindowE  -- the minibuffer.
+  
 
 qrReplaceOne :: BufferRef -> SearchExp -> String -> EditorM ()
 qrReplaceOne b reg replacement = do

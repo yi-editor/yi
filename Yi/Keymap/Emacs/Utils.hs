@@ -279,8 +279,8 @@ queryReplaceE = do
     b <- withEditor $ getBuffer
     let replaceBindings = [("n", write $ qrNext b re),
                            ("y", write $ qrReplaceOne b re replaceWith),
-                           ("q", write $ closeBufferAndWindowE),
-                           ("C-g", write $ closeBufferAndWindowE)
+                           ("q", write $ qrFinish),
+                           ("C-g", write $ qrFinish)
                            ]
         Just re = makeSearchOptsM [] replaceWhat
     withEditor $ do
