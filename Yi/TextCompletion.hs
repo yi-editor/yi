@@ -9,11 +9,14 @@ module Yi.TextCompletion (
         completeWordB,
 ) where
 
+import Prelude ()
+import Yi.Prelude hiding (elem)
 import Yi.Completion
 import Yi.Buffer
 import Data.Char
 import Data.Typeable
 import Data.List
+import Data.Maybe
 
 import Yi.Buffer.Normal
 import Yi.Buffer.Region
@@ -28,6 +31,7 @@ import Yi.Core
 
 
 newtype Completion = Completion 
+--       Point    -- beginning of the thing we try to complete
       [String] -- the list of all possible things we can complete to.
                -- (this seems very inefficient; but we use lazyness to our advantage)
     deriving Typeable
@@ -121,8 +125,15 @@ wordsForCompletion :: BufferM [String]
 wordsForCompletion = do
   above <- readRegionB =<< regionOfPartB Document Backward
   below <- readRegionB =<< regionOfPartB Document Forward
-  return (reverse (words above) ++ words below)
+  return (reverse (words' above) ++ words' below)
+      where words' = filter (not . isNothing . charClass . head) . groupBy ((==) `on` charClass)
 
+charClass :: Char -> Maybe Int
+charClass c = findIndex (generalCategory c `elem`)
+                [[UppercaseLetter, LowercaseLetter, TitlecaseLetter, ModifierLetter, OtherLetter, 
+                  NonSpacingMark, SpacingCombiningMark, EnclosingMark, DecimalNumber, LetterNumber, OtherNumber],
+                 [MathSymbol, CurrencySymbol, ModifierSymbol, OtherSymbol]
+                ]
 
 {-
   Finally obviously we wish to have a much more sophisticated completeword.
