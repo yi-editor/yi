@@ -97,14 +97,14 @@ library
     hs-source-dirs: . dist/build/autogen
 
     if flag (gtk)
-      build-depends: gtk>=0.9.12
+      build-depends: gtk>=0.9.13
       cpp-options: -DFRONTEND_GTK
       exposed-modules: Yi.UI.Gtk
       other-modules: Yi.UI.Gtk.ProjectTree
                      Yi.UI.Gtk.Utils
 
     if flag (cairo)
-      build-depends: gtk>=0.9.12 
+      build-depends: gtk>=0.9.13
       cpp-options: -DFRONTEND_CAIRO
       exposed-modules: Yi.UI.Cairo
       other-modules: Yi.UI.Gtk.ProjectTree
@@ -206,11 +206,11 @@ executable yi
            cpp-options: -DFRONTEND_VTY
 
         if flag (gtk)
-          build-depends: gtk>=0.9.12
+          build-depends: gtk>=0.9.13
           cpp-options: -DFRONTEND_GTK
 
         if flag (cairo)
-          build-depends: gtk>=0.9.12
+          build-depends: gtk>=0.9.13
           cpp-options: -DFRONTEND_CAIRO
           other-modules: Yi.UI.Gtk.ProjectTree
                          Yi.UI.Gtk.Utils
