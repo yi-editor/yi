@@ -1,9 +1,13 @@
 {-# LANGUAGE ScopedTypeVariables, FlexibleInstances, MultiParamTypeClasses, UndecidableInstances, TypeSynonymInstances #-}
 
-module Yi.MiniBuffer (
-        spawnMinibufferE, withMinibuffer, withMinibufferGen, withMinibufferFin, noHint
-    ) where
+module Yi.MiniBuffer 
+ (
+  spawnMinibufferE,
+  withMinibufferFree, withMinibuffer, withMinibufferGen, withMinibufferFin, 
+  noHint, noPossbilities, simpleComplete
+ ) where
 
+import Control.Applicative
 import Data.List (isInfixOf)
 import Data.Typeable
 import Data.Maybe
@@ -14,7 +18,7 @@ import Yi.Config
 import Yi.Core
 import Yi.Editor
 import Yi.History
-import Yi.Completion (commonPrefix, infixMatch)
+import Yi.Completion (commonPrefix, infixMatch, prefixMatch, completeInList)
 import Yi.Keymap
 import Yi.Keymap.Emacs.Keys
 import qualified Yi.Editor as Editor
@@ -34,14 +38,32 @@ spawnMinibufferE prompt kmMod =
        modifyWindows (WS.add w)
        return b
 
--- | @withMinibuffer prompt completer act@: open a minibuffer with @prompt@. Once a string @s@ is obtained, run @act s@. @completer@ can be used to complete functions.
-withMinibuffer :: String -> (String -> YiM String) -> (String -> YiM ()) -> YiM ()
-withMinibuffer = withMinibufferGen "" noHint
+-- | @withMinibuffer prompt completer act@: open a minibuffer with @prompt@. Once
+-- a string @s@ is obtained, run @act s@. @completer@ can be used to complete
+-- functions: it returns a list of possible matches.
+withMinibuffer :: String -> (String -> YiM [String]) -> (String -> YiM ()) -> YiM ()
+withMinibuffer prompt getPossibilities act = 
+  withMinibufferGen "" giveHint prompt completer act
+    where giveHint s = show . catMaybes . fmap (prefixMatch s) <$> getPossibilities s
+          completer = simpleComplete getPossibilities
+
+simpleComplete getPossibilities s = do
+              possibles <- getPossibilities s
+              withEditor $ completeInList s (prefixMatch s) possibles
 
 noHint :: String -> YiM String
 noHint = const $ return ""
 
--- | @withMinibuffer proposal getHint prompt completer act@: open a minibuffer with @prompt@, and initial content @proposal@. Once a string @s@ is obtained, run @act s@. @completer@ can be used to complete inputs, and getHint can give an immediate feedback to the user on the current input.
+noPossbilities :: String -> YiM String
+noPossbilities s = return []
+
+withMinibufferFree prompt = withMinibufferGen "" noHint prompt return
+
+-- | @withMinibuffer proposal getHint prompt completer act@: open a minibuffer
+-- with @prompt@, and initial content @proposal@. Once a string @s@ is obtained,
+-- run @act s@. @completer@ can be used to complete inputs by returning an
+-- incrementally better match, and getHint can give an immediate feedback to the
+-- user on the current input.
 withMinibufferGen :: String -> (String -> YiM String) -> 
                      String -> (String -> YiM String) -> (String -> YiM ()) -> YiM ()
 withMinibufferGen proposal getHint prompt completer act = do
@@ -97,7 +119,9 @@ withMinibufferFin prompt posibilities act
         -- return with an incomplete possibility. The reason is we may have for
         -- example two possibilities which share a long prefix and hence we wish
         -- to press tab to complete up to the point at which they differ.
-        completer s = return . commonPrefix $ catMaybes $ fmap (infixMatch s) posibilities
+        completer s = return $ case commonPrefix $ catMaybes $ fmap (infixMatch s) posibilities of
+            "" -> s
+            p -> p
 
 completionFunction :: (String -> YiM String) -> YiM ()
 completionFunction f = do
@@ -123,5 +147,5 @@ instance Promptable Int where
 
 -- TODO: be a bit more clever than 'Read r'
 instance (YiAction a x, Promptable r, Typeable r) => YiAction (r -> a) x where
-    makeAction f = YiA $ withMinibuffer (getPrompt (undefined::r)) return $
+    makeAction f = YiA $ withMinibufferGen "" noHint (getPrompt (undefined::r)) return $
                     \string ->  runAction $ makeAction $ f $ getPromptedValue string

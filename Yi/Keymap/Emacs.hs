@@ -32,7 +32,7 @@ import Yi.Keymap.Emacs.UnivArgument
 import Yi.Keymap.Emacs.Utils
   ( KList
   , askQuitEditor
-  , completeFileName
+  , matchingFileNames
   , adjIndent
   , evalRegionE
   , executeExtendedCommandE
@@ -134,7 +134,7 @@ keys =
   , ( "C-x C-f",  write $ findFile)
   , ( "C-x C-s",  write $ fwriteE)
   , ( "C-x C-w",  write $ withMinibuffer "Write file: "
-                                          (completeFileName Nothing)
+                                          (matchingFileNames Nothing)
                                           fwriteToE
     )
   , ( "C-x C-x",  write $ (exchangePointAndMarkB >> setA highlightSelectionA True))

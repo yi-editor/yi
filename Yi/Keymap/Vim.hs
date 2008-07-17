@@ -33,7 +33,7 @@ import Yi.File
 import Yi.History
 import Yi.Indent
 import Yi.Interact hiding (write)
-import Yi.Keymap.Emacs.Utils (completeFileName,completeBufferName)
+import Yi.Keymap.Emacs.Utils (matchingBufferNames, matchingFileNames)
 import Yi.Keymap.Keys
 import Yi.MiniBuffer
 import Yi.Search
@@ -723,8 +723,8 @@ ex_mode prompt = do
                   spec KRight ?>>! moveXorEol 1]
              <|| (textChar >>= write . insertB)
       completeMinibuffer = withBuffer elemsB >>= ex_complete >>= withBuffer . insertN
-      b_complete f = completeBufferName f >>= return . drop (length f)
-      ex_complete ('e':' ':f) = completeFileName Nothing f >>= return . drop (length f)
+      b_complete f = simpleComplete matchingBufferNames f >>= return . drop (length f)
+      ex_complete ('e':' ':f) = simpleComplete (matchingFileNames Nothing) f >>= return . drop (length f)
       ex_complete ('b':' ':f)                             = b_complete f
       ex_complete ('b':'u':'f':'f':'e':'r':' ':f)         = b_complete f
       ex_complete ('b':'d':' ':f)                         = b_complete f

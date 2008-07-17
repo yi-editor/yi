@@ -36,8 +36,8 @@ module Yi.Keymap.Emacs.Utils
   , insertNextC
   , insertTemplate
   , findFile
-  , completeFileName
-  , completeBufferName
+  , matchingFileNames
+  , matchingBufferNames
   )
 where
 
@@ -185,7 +185,7 @@ adjIndent ib = withSyntax (\m s -> modeIndent m s ib)
 
 changeBufferNameE :: YiM ()
 changeBufferNameE =
-  withMinibuffer "New buffer name:" return strFun
+  withMinibufferGen "" noHint "New buffer name:" return strFun
   where
   strFun :: String -> YiM ()
   strFun = withBuffer . setnameB
@@ -194,7 +194,7 @@ changeBufferNameE =
 -- | shell-command
 shellCommandE :: YiM ()
 shellCommandE = do
-    withMinibuffer "Shell command:" return $ \cmd -> do
+    withMinibufferGen "" noHint "Shell command:" return $ \cmd -> do
       (cmdOut,cmdErr,exitCode) <- liftIO $ runShellCommand cmd
       case exitCode of
         ExitSuccess -> withEditor $ newBufferE "*Shell Command Output*" (LazyUTF8.fromString cmdOut) >> return ()
@@ -216,8 +216,8 @@ cabalSetupFiles = ["Setup.lhs", "Setup.hs"]
 -- cabal-configure
 cabalConfigureE :: YiM ()
 cabalConfigureE =
-    withMinibuffer "Project directory:" (completeFileName Nothing) $ \fpath ->
-    withMinibuffer "Configure args:" return $ \cmd -> do
+    withMinibuffer "Project directory:" (matchingFileNames Nothing) $ \fpath ->
+    withMinibufferFree "Configure args:" $ \cmd -> do
       liftIO $ setCurrentDirectory fpath
       setupFile <- chooseExistingFile cabalSetupFiles
       if setupFile == "" then msgEditor "could not locate Setup.lhs or Setup.hs"
@@ -236,7 +236,7 @@ reloadProjectE s = withUI $ \ui -> reloadProject ui s
 -- cabal-build
 cabalBuildE :: YiM ()
 cabalBuildE =
-    withMinibuffer "Build args:" return $ \cmd -> do
+    withMinibufferFree "Build args:" $ \cmd -> do
       setupFile <- chooseExistingFile cabalSetupFiles
       if setupFile == "" then msgEditor "could not locate Setup.lhs or Setup.hs"
         else startSubprocess "runhaskell" (setupFile:"build":words cmd)
@@ -274,8 +274,8 @@ isearchKeymap direction =
 -- query-replace
 queryReplaceE :: YiM ()
 queryReplaceE = do
-    withMinibuffer "Replace:" return $ \replaceWhat -> do
-    withMinibuffer "With:" return $ \replaceWith -> do
+    withMinibufferFree "Replace:" $ \replaceWhat -> do
+    withMinibufferFree "With:" $ \replaceWith -> do
     b <- withEditor $ getBuffer
     let replaceBindings = [("n", write $ qrNext b re),
                            ("y", write $ qrReplaceOne b re replaceWith),
@@ -292,7 +292,7 @@ queryReplaceE = do
 
 executeExtendedCommandE :: YiM ()
 executeExtendedCommandE = do
-  withMinibuffer "M-x" completeFunctionName execEditorAction
+  withMinibuffer "M-x" (\_ -> getAllNamesInScope) execEditorAction
 
 evalRegionE :: YiM ()
 evalRegionE = do
@@ -316,10 +316,7 @@ insertNextC = do c <- anyEvent
 -- Inserting a template from the templates defined in Yi.Templates.hs
 insertTemplate :: YiM ()
 insertTemplate =
-  withMinibuffer "template-name:" completeTemplateName $ withEditor . addTemplate
-  where
-  completeTemplateName :: String -> YiM String
-  completeTemplateName s = withEditor $ completeInList s (prefixMatch s) templateNames
+  withMinibuffer "template-name:" (\_ -> return templateNames) $ withEditor . addTemplate
 
 -- | C-u stuff
 readArgC :: KeymapM ()
@@ -343,7 +340,8 @@ readArg' acc = do
 findFile :: YiM ()
 findFile = do maybePath <- withBuffer getfileB
               startPath <- addTrailingPathSeparator <$> (liftIO $ canonicalizePath' =<< getFolder maybePath)
-              withMinibufferGen startPath (findFileHint startPath) "find file:" (completeFileName (Just startPath)) $ \filename -> do
+              -- TODO: Just call withMinibuffer
+              withMinibufferGen startPath (findFileHint startPath) "find file:" (simpleComplete $ matchingFileNames (Just startPath)) $ \filename -> do
                 msgEditor $ "loading " ++ filename
                 fnewE filename
 
@@ -385,12 +383,11 @@ getAppropriateFiles start s = do
   return (sDir, matching)
 
 
--- | Given a possible path and a prefix complete as much of the file
---   name as can be worked out from the path and the prefix.
-completeFileName :: Maybe String -> String -> YiM String
-completeFileName start s = do
+-- | Given a possible path and a prefix, return matching file names.
+matchingFileNames :: Maybe String -> String -> YiM [String]
+matchingFileNames start s = do
   (sDir, files) <- getAppropriateFiles start s
-  withEditor $ completeInList s (prefixMatch s) $ map (sDir </>) files
+  return $ map (sDir </>) files
 
  
  -- | Given a path, trim the file name bit if it exists.  If no path
@@ -407,16 +404,10 @@ getFolder (Just path) = do
 -- debug :: String -> Keymap
 -- debug = write . logPutStrLn
 
-completeBufferName :: String -> YiM String
-completeBufferName s = withEditor $ do
+matchingBufferNames :: String -> YiM [String]
+matchingBufferNames s = withEditor $ do
   bs <- getBuffers
-  completeInList s (prefixMatch s) (map name bs)
-
-
-completeFunctionName :: String -> YiM String
-completeFunctionName s = do
-  names <- getAllNamesInScope
-  withEditor $ completeInList s (prefixMatch s) names
+  return (map name bs)
 
 scrollDownE :: YiM ()
 scrollDownE = withUnivArg $ \a -> withBuffer $
@@ -437,4 +428,4 @@ switchBufferE = do
 
 
 killBufferE :: YiM ()
-killBufferE = withMinibuffer "kill buffer:" completeBufferName $ withEditor . closeBufferE
+killBufferE = withMinibuffer "kill buffer:" matchingBufferNames $ withEditor . closeBufferE

@@ -53,7 +53,7 @@ import Text.Printf
 import Yi.Regex
 
 import Yi.Keymap.Emacs.Keys (rebind)
-import Yi.MiniBuffer (withMinibuffer)
+import Yi.MiniBuffer (withMinibufferGen, noHint)
 import Control.Monad
 import Yi.Buffer
 import Yi.Buffer.HighLevel
@@ -509,7 +509,7 @@ diredUpDir = do
 
 diredCreateDir :: YiM ()
 diredCreateDir = do
-    withMinibuffer "Create Dir:" return $ \nm -> do
+    withMinibufferGen "" noHint "Create Dir:" return $ \nm -> do
     (Just dir) <- withBuffer getfileB
     let newdir = dir </> nm
     msgEditor $ "Creating "++newdir++"..."
