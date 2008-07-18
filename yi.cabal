@@ -82,6 +82,7 @@ library
            Yi.Keymap.Cua
            Yi.Keymap.Users.Ertai
            Yi.Keymap.Users.JP
+           Yi.Misc
            Yi.Modes
            Yi.Mode.Haskell
            Yi.Buffer
@@ -241,6 +242,7 @@ executable yi
            Yi.Keymap.Vim
            Yi.Keymap.Users.Ertai
            Yi.Keymap.Users.JP
+           Yi.Misc
            Yi.Modes
            Yi.Mode.Haskell
            Yi.Buffer

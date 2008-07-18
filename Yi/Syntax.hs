@@ -63,7 +63,7 @@ scanRunInit s = scanRun s $ scanInit s
 
 data Cache state result = Cache [(state,result)] result
 
-emptyFileScan = Scanner { scanInit = 0, scanRun = const [], scanLooked = id }
+emptyFileScan = Scanner { scanInit = 0, scanRun = const [], scanLooked = id, scanEmpty = error "emptyFileScan: no scanEmpty" }
 
 -- | This takes as input a scanner that returns the "full" result at
 -- each element in the list; perhaps in a different form for the

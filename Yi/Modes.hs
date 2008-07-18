@@ -15,7 +15,6 @@ import Control.Arrow (first)
 import Yi.Prelude
 import Yi.Buffer (AnyMode(..), Mode(..), emptyMode)
 import Prelude ()
-import Yi.Style
 import Yi.Mode.Haskell
 import Yi.Buffer.HighLevel (fillParagraph)
 

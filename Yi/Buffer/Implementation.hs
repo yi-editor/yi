@@ -108,7 +108,6 @@ data FBufferData syntax =
                     , marks      :: !Marks                 -- ^ Marks for this buffer
                     , markNames  :: !(M.Map String Mark)
                     , hlCache    :: !(HLState syntax)       -- ^ syntax highlighting state
-                    -- ^ syn hl result. Actual result is (reverse fst ++ snd)
                     , overlays   :: !(Set.Set Overlay) -- ^ set of (non overlapping) visual overlay regions
                     , dirtyOffset :: !Point -- ^ Lowest modified offset since last recomputation of syntax 
                     }

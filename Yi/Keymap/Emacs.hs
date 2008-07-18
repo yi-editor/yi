@@ -24,6 +24,7 @@ import Yi.Editor
 import Yi.Keymap.Keys
 import Yi.File
 import Yi.Interact hiding (write)
+import Yi.Misc
 
 import Yi.TextCompletion
 import Yi.Keymap.Keys
@@ -32,7 +33,6 @@ import Yi.Keymap.Emacs.UnivArgument
 import Yi.Keymap.Emacs.Utils
   ( KList
   , askQuitEditor
-  , matchingFileNames
   , adjIndent
   , evalRegionE
   , executeExtendedCommandE
@@ -46,7 +46,6 @@ import Yi.Keymap.Emacs.Utils
   , readArgC
   , scrollDownE
   , scrollUpE
-  , shellCommandE
   , cabalConfigureE
   , switchBufferE
   , withMinibuffer

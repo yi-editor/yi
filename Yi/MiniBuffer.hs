@@ -47,6 +47,7 @@ withMinibuffer prompt getPossibilities act =
     where giveHint s = show . catMaybes . fmap (prefixMatch s) <$> getPossibilities s
           completer = simpleComplete getPossibilities
 
+simpleComplete :: (String -> YiM [String]) -> String -> YiM String
 simpleComplete getPossibilities s = do
               possibles <- getPossibilities s
               withEditor $ completeInList s (prefixMatch s) possibles
@@ -147,6 +148,7 @@ instance Promptable String where
 instance Promptable Int where
     getPromptedValue = read
     getPrompt _ = "Integer"
+
 
 -- TODO: be a bit more clever than 'Read r'
 instance (YiAction a x, Promptable r, Typeable r) => YiAction (r -> a) x where

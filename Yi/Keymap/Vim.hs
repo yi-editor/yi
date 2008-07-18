@@ -33,7 +33,7 @@ import Yi.File
 import Yi.History
 import Yi.Indent
 import Yi.Interact hiding (write)
-import Yi.Keymap.Emacs.Utils (matchingBufferNames, matchingFileNames)
+import Yi.Misc (matchingBufferNames, matchingFileNames)
 import Yi.Keymap.Keys
 import Yi.MiniBuffer
 import Yi.Search
