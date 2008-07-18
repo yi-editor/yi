@@ -16,6 +16,7 @@ module Yi.Syntax
   , Scanner (..)
   , ExtHL        ( .. )
   , noHighlighter, mkHighlighter
+  , linearGetStrokes, linearIncrScanner, LinearResult
   , Point(..), Size(..), Length, Stroke
   ) 
 where
@@ -24,7 +25,7 @@ import Control.Arrow
 import Yi.Style
 import Yi.Prelude
 import Prelude ()
-import Data.List (takeWhile)
+import Data.List (takeWhile, dropWhile, reverse)
 import Yi.Buffer.Basic
 
 type Length = Int                   -- size in #codepoints
@@ -42,7 +43,7 @@ type Stroke = (Point,Style,Point)
 data Highlighter cache syntax = 
   SynHL { hlStartState :: cache -- ^ The start state for the highlighter.
         , hlRun :: Scanner Point Char -> Point -> cache -> cache
-        , hlGetStrokes :: Point -> Point -> Point -> cache -> [Stroke]
+        , hlGetStrokes :: Point -> Point -> Point -> syntax -> [Stroke]
         , hlGetTree :: cache -> syntax
         }
 
@@ -75,7 +76,7 @@ mkHighlighter scanner getStrokes =
   Yi.Syntax.SynHL 
         { hlStartState   = Cache [] emptyResult
         , hlRun          = updateCache
-        , hlGetStrokes   = \begin end pos (Cache _ result) -> getStrokes begin end pos result
+        , hlGetStrokes   = getStrokes
         , hlGetTree      = \(Cache _ result) -> result
         }
     where startState :: state
@@ -99,5 +100,37 @@ noHighlighter = SynHL {hlStartState = (),
                        hlGetStrokes = \_ _ _ _ -> [],
                        hlGetTree = \_ -> error "noHighlighter: tried to fetch syntax"
                       }
+
+data LinearResult tok = LinearResult [tok] [tok]
+
+instance Functor LinearResult where
+    fmap f (LinearResult a b) = LinearResult (fmap f a) (fmap f b)
+
+-- | linear scanner
+linearIncrScanner :: forall st tok. Scanner st tok -> Scanner (st, [tok]) (LinearResult tok)
+linearIncrScanner input = Scanner 
+    {
+      scanInit = (scanInit input, []),
+      scanLooked = scanLooked input . fst,
+      scanRun = run,
+      scanEmpty = LinearResult [] []
+    }
+    where
+        run (st,partial) = updateState partial $ scanRun input st
+
+        updateState _        [] = []
+        updateState curState toks@((st,tok):rest) = ((st, curState), result) : updateState nextState rest
+            where nextState = tok : curState
+                  result    = LinearResult curState (fmap snd toks)
+
+linearGetStrokes :: Point -> Point -> Point -> LinearResult Stroke -> [Stroke]
+linearGetStrokes _point begin end (LinearResult leftHL rightHL) = reverse (usefulsL leftHL) ++ usefulsR rightHL
+    where
+      usefulsR = dropWhile (\(_l,_s,r) -> r <= begin) .
+                 takeWhile (\(l,_s,_r) -> l <= end)
+
+      usefulsL = dropWhile (\(l,_s,_r) -> l >= end) .
+                 takeWhile (\(_l,_s,r) -> r >= begin)
+
 
 data ExtHL syntax = forall a. ExtHL (Highlighter a syntax) 

@@ -8,7 +8,7 @@ import qualified Yi.Syntax.Srmc                as Srmc
 import qualified Yi.Syntax.Cabal               as Cabal
 import qualified Yi.Syntax.Cplusplus           as Cplusplus
 import qualified Yi.Syntax.Alex as Alex
-import Yi.Syntax.Alex (Tok(..), Posn(..), ASI, Cache)
+import Yi.Syntax.Alex (Tok(..), Posn(..))
 import Yi.Syntax
 import Yi.Indent
 import Control.Arrow (first)
@@ -20,7 +20,7 @@ import Yi.Mode.Haskell
 import Yi.Buffer.HighLevel (fillParagraph)
 
 fundamental, defaultFundamentalMode :: Mode syntax
-latexMode, cppMode, literateHaskellMode, cabalMode, srmcMode :: Mode (Alex.Result Stroke)
+latexMode, cppMode, literateHaskellMode, cabalMode, srmcMode :: Mode (LinearResult Stroke)
 
 fundamental = emptyMode
   { 
@@ -28,8 +28,8 @@ fundamental = emptyMode
    modePrettify = \_ -> fillParagraph
   }
 
--- mkHighlighter' :: s -> (Yi.Syntax.Alex.ASI s -> Maybe (Tok Yi.Style.Style, Yi.Syntax.Alex.ASI s)) -> Highlighter (Yi.Syntax.Cache s) Alex.Result
-mkHighlighter' initSt scan = mkHighlighter (Alex.scanner . Alex.lexScanner (fmap (first tokenToStroke) . scan) initSt) Alex.getStrokes
+-- mkHighlighter' :: s -> (Yi.Syntax.Alex.ASI s -> Maybe (Tok Yi.Style.Style, Yi.Syntax.Alex.ASI s)) -> Highlighter (Yi.Syntax.Cache s) LinearResult
+mkHighlighter' initSt scan = mkHighlighter (linearIncrScanner . Alex.lexScanner (fmap (first tokenToStroke) . scan) initSt) linearGetStrokes
     where tokenToStroke (Tok t len posn) = (posnOfs posn, t, posnOfs posn +~ len)
 
 

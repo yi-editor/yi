@@ -23,11 +23,11 @@ import qualified Yi.Syntax.Haskell             as Haskell
 import qualified Yi.Syntax.Paren as Paren
 import Control.Applicative
 
-haskellMode :: Mode (Alex.Result Stroke)
+haskellMode :: Mode (LinearResult (Tok Token))
 haskellMode = emptyMode 
    {
     modeHL = ExtHL $
-    mkHighlighter (Alex.scanner . fmap tokenToStroke . haskellLexer) (Alex.getStrokes)
+    mkHighlighter (linearIncrScanner . haskellLexer) (\begin end pos -> linearGetStrokes begin end pos . fmap tokenToStroke)
    , modeIndent = \_ast -> autoIndentHaskellB
    }
 
