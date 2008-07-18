@@ -10,8 +10,8 @@ import Data.Typeable
 import Yi.Buffer.Basic (Mark
                        ,dummyInsMark
                        ,dummyFromMark
-                       ,dummyToMark)
-type BufferRef = Int
+                       ,dummyToMark
+                       ,BufferRef)
 
 ------------------------------------------------------------------------
 -- | A window onto a buffer.

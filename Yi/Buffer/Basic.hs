@@ -34,7 +34,13 @@ dummyInsMark, dummyFromMark, dummyToMark :: Mark
 dummyInsMark = Mark 0
 dummyFromMark = Mark 1
 dummyToMark = Mark 2
-    
+
+-- | Reference to a buffer.
+newtype BufferRef = BufferRef Int
+    deriving (Num, Eq, Ord)
+
+instance Show BufferRef where
+    show (BufferRef r) = "B#" ++ show r
 
 -- | A point in a buffer
 newtype Point = Point {fromPoint :: Int}           -- offset in the buffer (#bytes, NOT codepoints)

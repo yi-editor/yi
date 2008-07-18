@@ -24,7 +24,7 @@ import Yi.Buffer.Implementation (Update(..), updateIsDelete)
 import Yi.Buffer.HighLevel (botB)
 import Yi.Buffer.Basic
 import Yi.Regex (SearchExp)
-
+import Control.Applicative
 import Yi.Config
 import Yi.Debug
 import Yi.Monad
@@ -51,7 +51,7 @@ data Editor = Editor {
         bufferStack   :: ![BufferRef]               -- ^ Stack of all the buffers. Never empty;
                                                     -- first buffer is the current one.
        ,buffers       :: M.Map BufferRef FBuffer
-       ,bufferRefSupply :: BufferRef  -- ^ Supply for buffer and window ids. TODO: Rename
+       ,refSupply :: Int  -- ^ Supply for buffer and window ids. TODO: Rename
 
        ,windows       :: WindowSet Window
 
@@ -74,8 +74,8 @@ statusLinesA :: Accessor Editor (DelayList.DelayList String)
 statusLinesA = Accessor statusLines (\f e -> e {statusLines = f (statusLines e)})
 
 
-bufferRefSupplyA :: Accessor Editor BufferRef
-bufferRefSupplyA = Accessor bufferRefSupply (\f e -> e {bufferRefSupply = f (bufferRefSupply e)})
+refSupplyA :: Accessor Editor Int
+refSupplyA = Accessor refSupply (\f e -> e {refSupply = f (refSupply e)})
 
 buffersA :: Accessor Editor (M.Map BufferRef FBuffer)
 buffersA = Accessor buffers (\f e -> e {buffers = f (buffers e)})
@@ -105,7 +105,7 @@ emptyEditor = Editor {
         buffers      = M.singleton (bkey buf) buf
        ,windows      = WS.new win
        ,bufferStack  = [bkey buf]
-       ,bufferRefSupply = 2
+       ,refSupply = 2
        ,tabwidth     = 8
        ,regex        = Nothing
        ,searchDirection = Forward
@@ -125,17 +125,20 @@ runEditor cfg f e = let (a, e',()) = runRWS (fromEditorM f) cfg e in (a,e')
 -- ---------------------------------------------------------------------
 -- Buffer operations
 
-newRef :: EditorM BufferRef
+newRef :: EditorM Int
 newRef = do
-  modifyA bufferRefSupplyA (+ 1)
-  getA bufferRefSupplyA
+  modifyA refSupplyA (+ 1)
+  getA refSupplyA
+
+newBufRef :: EditorM BufferRef
+newBufRef = BufferRef <$> newRef
 
 -- | Create and fill a new buffer, using contents of string.
 stringToNewBuffer :: String -- ^ The buffer name (*not* the associated file)
                   -> LazyUTF8.ByteString -- ^ The contents with which to populate the buffer
                   -> EditorM BufferRef
 stringToNewBuffer nm cs = do
-    u <- newRef
+    u <- newBufRef
     b <- insertBuffer (newB u nm cs)
     setBufferMode b =<< asks fundamentalMode
     return b
