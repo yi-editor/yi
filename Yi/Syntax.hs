@@ -20,6 +20,7 @@ module Yi.Syntax
   ) 
 where
 
+import Control.Arrow
 import Yi.Style
 import Yi.Prelude
 import Prelude ()
@@ -51,7 +52,11 @@ data Scanner st a = Scanner {
                              scanLooked :: st -> Point,
                              scanEmpty :: a,      --  hack :/
                              scanRun  :: st -> [(st,a)]  -- ^ Running function returns a list of returns and intermediate states.
-                                         }
+                            }
+
+instance Functor (Scanner st) where
+    fmap f (Scanner i l e r) = Scanner i l (f e) (\st -> fmap (second f) (r st))
+
 scanRunInit :: Scanner st a -> [(st, a)]
 scanRunInit s = scanRun s $ scanInit s
 

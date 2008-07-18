@@ -20,7 +20,7 @@ import Yi.Mode.Haskell
 import Yi.Buffer.HighLevel (fillParagraph)
 
 fundamental, defaultFundamentalMode :: Mode syntax
-latexMode, cppMode, literateHaskellMode, cabalMode, srmcMode :: Mode Alex.Result
+latexMode, cppMode, literateHaskellMode, cabalMode, srmcMode :: Mode (Alex.Result Stroke)
 
 fundamental = emptyMode
   { 
@@ -28,9 +28,8 @@ fundamental = emptyMode
    modePrettify = \_ -> fillParagraph
   }
 
-mkHighlighter' :: s -> (Yi.Syntax.Alex.ASI s -> Maybe (Tok Yi.Style.Style, Yi.Syntax.Alex.ASI s))
-                  -> Highlighter (Yi.Syntax.Alex.Cache s) Alex.Result
-mkHighlighter' initSt scan = Alex.mkHighlighter initSt (fmap (first tokenToStroke) . scan)
+-- mkHighlighter' :: s -> (Yi.Syntax.Alex.ASI s -> Maybe (Tok Yi.Style.Style, Yi.Syntax.Alex.ASI s)) -> Highlighter (Yi.Syntax.Cache s) Alex.Result
+mkHighlighter' initSt scan = mkHighlighter (Alex.scanner . Alex.lexScanner (fmap (first tokenToStroke) . scan) initSt) Alex.getStrokes
     where tokenToStroke (Tok t len posn) = (posnOfs posn, t, posnOfs posn +~ len)
 
 

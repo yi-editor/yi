@@ -14,7 +14,6 @@ import Yi.Prelude
 import Yi.Syntax
 import Yi.String
 import Yi.Region
-import Yi.Syntax (mkHighlighter)
 import Yi.Syntax.Alex (Tok(..),Posn(..),tokBegin,tokEnd,tokRegion)
 import Yi.Syntax.Haskell (Token(..), ReservedType(..), startsLayout)
 import Yi.Syntax.Paren
@@ -22,14 +21,13 @@ import qualified Yi.IncrementalParse as IncrParser
 import qualified Yi.Syntax.Alex as Alex
 import qualified Yi.Syntax.Haskell             as Haskell
 import qualified Yi.Syntax.Paren as Paren
-import Control.Arrow (first)
 import Control.Applicative
 
-haskellMode :: Mode Alex.Result
+haskellMode :: Mode (Alex.Result Stroke)
 haskellMode = emptyMode 
    {
     modeHL = ExtHL $
-    Alex.mkHighlighter Haskell.initState (fmap (first tokenToStroke) . Haskell.alexScanToken)
+    mkHighlighter (Alex.scanner . fmap tokenToStroke . haskellLexer) (Alex.getStrokes)
    , modeIndent = \_ast -> autoIndentHaskellB
    }
 
@@ -47,15 +45,14 @@ cleverHaskellMode = haskellMode {
 --}
 
 --
-    mkHighlighter (IncrParser.scanner parse . indentScanner . lexer)
+    mkHighlighter (IncrParser.scanner parse . indentScanner . haskellLexer)
       (\point begin end t -> getStrokes point begin end t)
 --}                              
   , modeAdjustBlock = adjustBlock
   , modePrettify = cleverPrettify
  }
-    where lexer = Alex.lexScanner Haskell.alexScanToken Haskell.initState 
-
-
+ 
+haskellLexer = Alex.lexScanner Haskell.alexScanToken Haskell.initState 
 
 adjustBlock :: Expr (Tok Token) -> Int -> BufferM ()
 adjustBlock e len = do

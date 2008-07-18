@@ -1,11 +1,11 @@
 {-# OPTIONS -fglasgow-exts #-}
 
 module Yi.Syntax.Alex (
-                       mkHighlighter,
+                       scanner, getStrokes,
                        alexGetChar, alexInputPrevChar, unfoldLexer, lexScanner,
                        AlexState(..), AlexInput, Stroke,
                        actionConst, actionAndModify,
-                       Tok(..), tokBegin, tokEnd, tokFromT, tokRegion,
+                       Tok(..), tokBegin, tokEnd, tokFromT, tokRegion, 
                        Posn(..), startPosn, moveStr, 
                        Result, ASI, Cache,
                        (+~), (~-), Size(..)
@@ -57,7 +57,7 @@ tokRegion t = mkRegion (tokBegin t) (tokEnd t)
 instance Show t => Show (Tok t) where
     show tok = show (tokPosn tok) ++ ": " ++ show (tokT tok)
 
-type Result = ([Stroke], [Stroke])
+type Result tok = ([tok], [tok])
 
 data Posn = Posn {posnOfs :: !Point, posnLine :: !Int, posnCol :: !Int}
 
@@ -100,66 +100,35 @@ actionConst token _str state = (state, token)
 actionAndModify :: (lexState -> lexState) -> token -> Action lexState token
 actionAndModify modifier token _str state = (modifier state, token)
 
-data Cache s = Cache [State s] Result
-
--- Unfold, scanl and foldr at the same time :)
-origami :: (b -> Maybe (a, b)) -> b -> (a -> c -> c) -> (c -> a -> c)
-        -> c -> c -> ([(b, c)], c)
-origami gen seed (<+) (+>) l_c r_c = case gen seed of
-      Nothing -> ([], r_c)
-      Just (a, new_seed) ->
-          let ~(partials,c) = origami gen new_seed (<+) (+>) (l_c +> a) r_c
-          in ((seed,l_c):partials,l_c `seq` a <+ c)
+data Cache s tok = Cache [State s] (Result tok)
 
 type ASI s = (AlexState s, AlexInput)
 
--- FIXME: this should take a generic Source and + Token -> Stroke function. 
--- | Highlighter based on an Alex lexer 
-mkHighlighter :: forall s. s
-              -> (ASI s -> Maybe (Stroke, ASI s))
-              -> Yi.Syntax.Highlighter (Cache s) Result
-mkHighlighter initState alexScanToken =
-  Yi.Syntax.SynHL { hlStartState   = Cache [] ([],[])
-                  , hlRun          = run
-                  , hlGetStrokes   = getStrokes
-                  , hlGetTree      = \(Cache _ result) -> result
-                  }
-      where
-        startState = (AlexState initState 0 startPosn, [])
-        getStrokes :: Point -> Point -> Point -> Cache s -> [(Point, Style, Point)]
-        getStrokes _point begin end (Cache _ (leftHL, rightHL)) = reverse (usefulsL leftHL) ++ usefulsR rightHL
-            where
-              usefulsR = dropWhile (\(_l,_s,r) -> r <= begin) .
-                         takeWhile (\(l,_s,_r) -> l <= end)
+-- | linear scanner
+scanner :: forall st tok. Scanner st tok -> Scanner (st, [tok]) (Result tok)
+scanner input = Scanner 
+    {
+      scanInit = (scanInit input, []),
+      scanLooked = scanLooked input . fst,
+      scanRun = run,
+      scanEmpty = ([], [])
+    }
+    where
+        run (st,partial) = updateState partial $ scanRun input st
 
-              usefulsL = dropWhile (\(l,_s,_r) -> l >= end) .
-                         takeWhile (\(_l,_s,r) -> r >= begin)
+        updateState _        [] = []
+        updateState curState toks@((st,tok):rest) = ((st, curState), result) : updateState nextState rest
+            where nextState = tok : curState
+                  result    = (curState, fmap snd toks)
 
-        run scanner dirtyOffset (Cache cachedStates _) = -- trace (show $ map trd3 $ newCachedStates) $
-            Cache newCachedStates result
-            where resumeIndex = posnOfs $ stPosn $ fst $ resumeState
-                  reused = takeWhile ((< dirtyOffset) . lookedOffset . fst) cachedStates
-                  resumeState = if null reused then startState else last reused
-                  newCachedStates = reused ++ other 20 0 (drop 1 recomputed)
-                  (recomputed, result) = updateState text resumeState
-                  text = scanRun scanner resumeIndex
+getStrokes :: Point -> Point -> Point -> Result Stroke -> [Stroke]
+getStrokes _point begin end (leftHL, rightHL) = reverse (usefulsL leftHL) ++ usefulsR rightHL
+    where
+      usefulsR = dropWhile (\(_l,_s,r) -> r <= begin) .
+                 takeWhile (\(l,_s,_r) -> l <= end)
 
-
-        updateState :: AlexInput -> State s -> ([State s], Result)
-        updateState input (restartState, startPartial) =
-            (fmap f partials, (startPartial, result))
-                where result :: [Stroke]
-                      (partials,result) = origami alexScanToken (restartState, input) (:) (flip (:)) startPartial []
-                      f :: ((AlexState s, AlexInput), [Stroke]) -> State s
-                      f ((s, _), partial) = (s, partial)
-
-other :: Int -> Int -> [a] -> [a]
-other n m l = case l of
-                [] -> []
-                (h:t) ->
-                    case m of
-                      0 -> h:other n n     t
-                      _ ->   other n (m-1) t
+      usefulsL = dropWhile (\(l,_s,_r) -> l >= end) .
+                 takeWhile (\(_l,_s,r) -> r >= begin)
 
 
 lexScanner :: forall lexerState token.
