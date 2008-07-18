@@ -91,7 +91,7 @@ type Marks = M.Map Mark MarkValue
 
 type BufferImpl = FBufferData
 
-data HLState syntax = forall cache. HLState !(Highlighter' cache syntax) cache
+data HLState syntax = forall cache. HLState !(Highlighter cache syntax) cache
 
 data OvlLayer = UserLayer | HintLayer
   deriving (Ord, Eq)
@@ -495,7 +495,8 @@ updateSyntax fb@FBufferData {dirtyOffset = touchedIndex, hlCache = HLState hl ca
     = fb {dirtyOffset = maxBound,
           hlCache = HLState hl (hlRun hl getText touchedIndex cache)
          }
-    where getText = Scanner 0 (\idx -> toIndexedString idx (F.toLazyByteString (F.drop (fromPoint idx) (mem fb))))
+    where getText = Scanner 0 id (error "getText: no character beyond eof")
+                     (\idx -> toIndexedString idx (F.toLazyByteString (F.drop (fromPoint idx) (mem fb))))
 
 toIndexedString :: Point -> LazyB.ByteString -> [(Point, Char)]
 toIndexedString curIdx bs = 

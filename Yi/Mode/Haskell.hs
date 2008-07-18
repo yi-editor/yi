@@ -14,6 +14,7 @@ import Yi.Prelude
 import Yi.Syntax
 import Yi.String
 import Yi.Region
+import Yi.Syntax (mkHighlighter)
 import Yi.Syntax.Alex (Tok(..),Posn(..),tokBegin,tokEnd,tokRegion)
 import Yi.Syntax.Haskell (Token(..), ReservedType(..), startsLayout)
 import Yi.Syntax.Paren
@@ -46,8 +47,8 @@ cleverHaskellMode = haskellMode {
 --}
 
 --
-    (indentScanner . lexer) `withScanner` IncrParser.mkHighlighter parse
-      (\point begin end t -> getStrokes point begin end t) snd
+    mkHighlighter (IncrParser.scanner parse . indentScanner . lexer)
+      (\point begin end t -> getStrokes point begin end t)
 --}                              
   , modeAdjustBlock = adjustBlock
   , modePrettify = cleverPrettify

@@ -29,7 +29,7 @@ fundamental = emptyMode
   }
 
 mkHighlighter' :: s -> (Yi.Syntax.Alex.ASI s -> Maybe (Tok Yi.Style.Style, Yi.Syntax.Alex.ASI s))
-                  -> Highlighter' (Yi.Syntax.Alex.Cache s) Alex.Result
+                  -> Highlighter (Yi.Syntax.Alex.Cache s) Alex.Result
 mkHighlighter' initSt scan = Alex.mkHighlighter initSt (fmap (first tokenToStroke) . scan)
     where tokenToStroke (Tok t len posn) = (posnOfs posn, t, posnOfs posn +~ len)
 

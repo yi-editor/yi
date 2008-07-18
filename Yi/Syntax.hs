@@ -13,10 +13,9 @@
 
 module Yi.Syntax 
   ( Highlighter  ( .. )
-  , Highlighter', withScanner
   , Scanner (..)
   , ExtHL        ( .. )
-  , noHighlighter
+  , noHighlighter, mkHighlighter
   , Point(..), Size(..), Length, Stroke
   ) 
 where
@@ -24,6 +23,7 @@ where
 import Yi.Style
 import Yi.Prelude
 import Prelude ()
+import Data.List (takeWhile)
 import Yi.Buffer.Basic
 
 type Length = Int                   -- size in #codepoints
@@ -37,32 +37,62 @@ type Stroke = (Point,Style,Point)
 -- state.
 
 -- FIXME: this actually does more than just HL, so the names are silly.
--- FIXME: "State" is actually CacheState
 
-type Highlighter' = Highlighter Point Char
-
-data Highlighter st tok cache syntax = 
+data Highlighter cache syntax = 
   SynHL { hlStartState :: cache -- ^ The start state for the highlighter.
-        , hlRun :: Scanner st tok -> Point -> cache -> cache
+        , hlRun :: Scanner Point Char -> Point -> cache -> cache
         , hlGetStrokes :: Point -> Point -> Point -> cache -> [Stroke]
         , hlGetTree :: cache -> syntax
         }
 
 data Scanner st a = Scanner {
---                             stStart :: st -> Int,
---                             stLooked :: st -> Int,
-                             scanInit :: st,
-                             scanRun  :: st -> [(st,a)]}
+--                             scanStart :: st -> Int,
+                             scanInit :: st, -- ^ Initial state
+                             scanLooked :: st -> Point,
+                             scanEmpty :: a,      --  hack :/
+                             scanRun  :: st -> [(st,a)]  -- ^ Running function returns a list of returns and intermediate states.
+                                         }
+scanRunInit :: Scanner st a -> [(st, a)]
+scanRunInit s = scanRun s $ scanInit s
 
+data Cache state result = Cache [(state,result)] result
 
-withScanner :: (Scanner s1 t1 -> Scanner s2 t2) -> Highlighter s2 t2 a syntax -> Highlighter s1 t1 a syntax
-withScanner f (SynHL cache0 r gs gt) = SynHL cache0 (\scanner i cache -> r (f scanner) i cache) gs gt
+emptyFileScan = Scanner { scanInit = 0, scanRun = const [], scanLooked = id }
 
-noHighlighter :: Highlighter' () syntax
+-- | This takes as input a scanner that returns the "full" result at
+-- each element in the list; perhaps in a different form for the
+-- purpose of incremental-lazy eval.
+mkHighlighter :: forall state result. 
+                 (Scanner Point Char -> Scanner state result) -> 
+                 (Point -> Point -> Point -> result -> [Stroke]) -> 
+                     Highlighter (Cache state result) result
+mkHighlighter scanner getStrokes =
+  Yi.Syntax.SynHL 
+        { hlStartState   = Cache [] emptyResult
+        , hlRun          = updateCache
+        , hlGetStrokes   = \begin end pos (Cache _ result) -> getStrokes begin end pos result
+        , hlGetTree      = \(Cache _ result) -> result
+        }
+    where startState :: state
+          startState = scanInit    (scanner emptyFileScan)
+          emptyResult = scanEmpty (scanner emptyFileScan)
+          updateCache :: Scanner Point Char -> Point -> Cache state result -> Cache state result
+          updateCache newFileScan dirtyOffset (Cache cachedStates _) = Cache newCachedStates newResult
+            where newScan = scanner newFileScan
+                  reused :: [(state,result)]
+                  reused = takeWhile ((< dirtyOffset) . scanLooked (scanner newFileScan) . fst) cachedStates
+                  resumeState :: (state,result)
+                  resumeState = if null reused then (startState, emptyResult) else last reused
+                  newCachedStates = reused ++ recomputed
+                  recomputed = scanRun newScan (fst resumeState)
+                  newResult :: result
+                  newResult = snd $ head (recomputed ++ [resumeState])
+
+noHighlighter :: Highlighter () syntax
 noHighlighter = SynHL {hlStartState = (), 
                        hlRun = \_ _ a -> a,
                        hlGetStrokes = \_ _ _ _ -> [],
                        hlGetTree = \_ -> error "noHighlighter: tried to fetch syntax"
                       }
 
-data ExtHL syntax = forall a. ExtHL (Highlighter' a syntax) 
+data ExtHL syntax = forall a. ExtHL (Highlighter a syntax) 

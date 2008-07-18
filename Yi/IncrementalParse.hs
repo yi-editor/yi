@@ -2,7 +2,7 @@
 {-# OPTIONS -fglasgow-exts #-}
 module Yi.IncrementalParse (Process, Void, 
                             recoverWith, symbol, eof, runPolish,
-                            P, AlexState (..), mkHighlighter) where
+                            P, AlexState (..), scanner) where
 import Yi.Syntax.Alex (AlexState (..))
 import Control.Applicative
 import Yi.Prelude
@@ -289,53 +289,24 @@ recoverWith (P p) = P (Dislike . p)
 
 ----------------------------------------------------
 
-type States st token result = [(st, Process token result)]
-data Cache st token result = Cache result (States st token result)
+type State st token result = (st, Process token result)
 
--- | Turn a parser into an highlighter. (This needs some helper functions)
-mkHighlighter :: forall lexState token result st.
-                 P token result
-              -> (Point -> Point -> Point -> result -> [Stroke])
-              -> (st -> AlexState lexState)
-              -> Highlighter st token (Cache st token result) result
-mkHighlighter parser getStrokes getAlexState = 
-  Yi.Syntax.SynHL { hlStartState   = Cache emptyResult []
-                  , hlRun          = updateCache
-                  , hlGetStrokes   = getStrokes'
-                  , hlGetTree      = \(Cache result _) -> result
-                  }
-      where
-        emptyResult :: result
-        emptyResult = fst $ evalR $ pushEof $ runP parser
+scanner :: forall st token result. P token result -> Scanner st token -> Scanner (State st token result) result
+scanner parser input = Scanner 
+    {
+      scanInit = (scanInit input, runP parser),
+      scanLooked = scanLooked input . fst,
+      scanRun = run,
+      scanEmpty = fst $ evalR $ pushEof $ runP parser
+    }
+    where
+        run :: State st token result -> [(State st token result, result)]
+        run (st,process) = updateState0 process $ scanRun input st
 
-        getStrokes' :: Point -> Point -> Point -> Cache st token result -> [Stroke]
-        getStrokes' point start end (Cache r _) = getStrokes point start end r
-
-        updateCache :: Scanner st token
-                     -> Point
-                     -> Cache st token result
-                     -> Cache st token result
-        updateCache scanner dirtyOffset (Cache _ cachedStates) = Cache newResult newCachedStates
-
-            where reused = takeWhile ((< dirtyOffset) . lookedOffset . getAlexState . fst) cachedStates
-                  resumeState = if null reused then startState else last reused
-                  newCachedStates = reused ++ recomputed
-                  recomputed = updateState0 (snd resumeState) $ {-splitBy 20 -} text
-                  text = scanRun scanner (fst resumeState)
-                  newResult = -- trace ("restart: " ++ show (getAlexState (fst resumeState))) $ 
-                      fst $ evalR $ pushEof $ pushSyms (fmap snd text) $ snd $ resumeState
-
-                  startState :: (st, Process token result)
-                  startState = (scanInit scanner, runP parser)
-
-        updateState0 :: Process token result -> [(st,token)] -> States st token result
+        updateState0 :: Process token result -> [(st,token)] -> [(State st token result, result)]
         updateState0 _        [] = []
-        updateState0 curState (toks:rest) = (fst $ toks, curState) : updateState0 nextState rest
-            where nextState = evalL $ pushSyms [snd toks] $ curState
+        updateState0 curState toks@((st,tok):rest) = ((st, curState), result) : updateState0 nextState rest
+            where nextState =       evalL $           pushSyms [tok]           $ curState
+                  result    = fst $ evalR $ pushEof $ pushSyms (fmap snd toks) $ curState
 
 
-        -- FIXME: looked offset is wrong here. (due to splitBy)
-        updateState :: Process token result -> [[(st,token)]] -> States st token result
-        updateState _        [] = []
-        updateState curState (toks:rest) = (fst $ head $ toks, curState) : updateState nextState rest
-            where nextState = evalL $ pushSyms (fmap snd toks) $ curState

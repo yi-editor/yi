@@ -42,6 +42,8 @@ layoutHandler :: forall t lexState. (Show t, Eq t) => (t -> Bool) -> [(t,t)] ->
             Scanner (AlexState lexState) (Tok t) -> Scanner (State t lexState) (Tok t)
 layoutHandler isSpecial parens isIgnored [openT, closeT, nextT] lexSource = Scanner 
   {
+   scanLooked = scanLooked lexSource . snd,
+   scanEmpty = error "layoutHandler: scanEmpty",
    scanInit = (IState [] True (-1), scanInit lexSource),
    scanRun  = \st -> let result = parse (fst st) (scanRun lexSource (snd st)) 
                      in --trace ("toks = " ++ show (fmap snd result)) $ 

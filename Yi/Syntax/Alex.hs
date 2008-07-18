@@ -6,13 +6,13 @@ module Yi.Syntax.Alex (
                        AlexState(..), AlexInput, Stroke,
                        actionConst, actionAndModify,
                        Tok(..), tokBegin, tokEnd, tokFromT, tokRegion,
-                       Posn(..), startPosn, moveStr, runSource,
+                       Posn(..), startPosn, moveStr, 
                        Result, ASI, Cache,
                        (+~), (~-), Size(..)
                       ) where
 
 import Data.List hiding (map, foldl')
-import Yi.Syntax
+import Yi.Syntax hiding (mkHighlighter)
 import Yi.Prelude
 import Yi.Style
 import Prelude ()
@@ -117,7 +117,7 @@ type ASI s = (AlexState s, AlexInput)
 -- | Highlighter based on an Alex lexer 
 mkHighlighter :: forall s. s
               -> (ASI s -> Maybe (Stroke, ASI s))
-              -> Yi.Syntax.Highlighter' (Cache s) Result
+              -> Yi.Syntax.Highlighter (Cache s) Result
 mkHighlighter initState alexScanToken =
   Yi.Syntax.SynHL { hlStartState   = Cache [] ([],[])
                   , hlRun          = run
@@ -162,9 +162,6 @@ other n m l = case l of
                       _ ->   other n (m-1) t
 
 
-runSource :: forall t t1. Scanner t t1 -> [(t, t1)]
-runSource (Scanner initSt f) = f initSt
-
 lexScanner :: forall lexerState token.
                                           ((AlexState lexerState, [(Point, Char)])
                                            -> Maybe (token, (AlexState lexerState, [(Point, Char)])))
@@ -174,7 +171,7 @@ lexScanner :: forall lexerState token.
 lexScanner l st0 src = Scanner
                  {
                   --stStart = posnOfs . stPosn,
-                  --stLooked = lookedOffset,
+                  scanLooked = lookedOffset,
                   scanInit = AlexState st0 0 startPosn,
                   scanRun = \st -> unfoldLexer l (st, scanRun src $ posnOfs $ stPosn st)
                  }
