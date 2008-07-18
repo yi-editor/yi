@@ -24,6 +24,8 @@ import Prelude ()
 import Data.Char
 import Yi.GHC
 import qualified Yi.Syntax.Alex
+import Yi.Syntax
+import Yi.Syntax.Haskell
 
 modeTable :: ReaderT String Maybe AnyMode
 modeTable = ReaderT $ \fname -> case () of 
@@ -67,7 +69,7 @@ annotType = do
 -- | Update a line of the form "-- expr = value" with the new value of expr
 annotValue :: YiM ()
 annotValue = do
-  lnReg <- withBuffer $ regionOfB Line
+  lnReg <- withBuffer $ regionOfB Yi.Line
   Just sourcefile <- withBuffer $ gets file
   ln <- withBuffer $ readRegionB lnReg
   let lhs = takeWhile (/= '=') $ dropWhile (== '-') $ dropWhile isSpace $ ln
@@ -84,7 +86,7 @@ jumpToDefinition = do
 
 -- NOTE: source argument to Hsinfo functions can be used to provide
 -- source text, apparently.
-mode :: Mode Yi.Syntax.Alex.Result
+mode :: Mode (LinearResult (Yi.Syntax.Alex.Tok Token))
 mode = haskellMode
    {
     modeKeymap = rebind [
