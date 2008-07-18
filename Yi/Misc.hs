@@ -73,7 +73,7 @@ setupScript :: String
 setupScript = "Setup"
 
 ----------------------------
--- cabal-configure
+-- | cabal-configure
 cabalConfigureE :: YiM ()
 cabalConfigureE =
     withMinibuffer "Project directory:" (matchingFileNames Nothing) $ \fpath ->
@@ -90,13 +90,13 @@ reloadProjectE :: String -> YiM ()
 reloadProjectE s = withUI $ \ui -> reloadProject ui s
 
 ----------------------------
--- cabal-build
+-- | cabal-build
 cabalBuildE :: YiM ()
 cabalBuildE =
     withMinibufferFree "Build args:" $ \cmd -> do
         startSubprocess "runhaskell" (setupScript:"build":words cmd)
 
--- Inserting a template from the templates defined in Yi.Templates.hs
+-- | Inserting a template from the templates defined in Yi.Templates
 insertTemplate :: YiM ()
 insertTemplate =
   withMinibuffer "template-name:" (\_ -> return templateNames) $ withEditor . addTemplate
