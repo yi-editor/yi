@@ -66,7 +66,6 @@ import System.FilePath
   )
 import System.Directory
   ( doesDirectoryExist
-  , doesFileExist
   , getDirectoryContents
   , getCurrentDirectory
   , setCurrentDirectory
@@ -81,7 +80,6 @@ import Control.Monad
 import Yi.Buffer
 import Yi.Buffer.HighLevel
 import Yi.Buffer.Region
-import Yi.Completion
 import Yi.Core
 import Yi.Debug
 import Yi.Dired
@@ -202,15 +200,9 @@ shellCommandE = do
         ExitFailure _ -> msgEditor cmdErr
 
 ----------------------------
--- | find the first file in the list which exists in the current directory
-chooseExistingFile :: [String] -> YiM String
-chooseExistingFile []     = return ""
-chooseExistingFile (x:xs) = do
-  haveFile <- liftIO $ doesFileExist x
-  if haveFile then return x else chooseExistingFile xs
 
-cabalSetupFiles :: [String]
-cabalSetupFiles = ["Setup.lhs", "Setup.hs"]
+setupScript :: String
+setupScript = "Setup"
 
 ----------------------------
 -- cabal-configure
@@ -219,15 +211,12 @@ cabalConfigureE =
     withMinibuffer "Project directory:" (matchingFileNames Nothing) $ \fpath ->
     withMinibufferFree "Configure args:" $ \cmd -> do
       liftIO $ setCurrentDirectory fpath
-      setupFile <- chooseExistingFile cabalSetupFiles
-      if setupFile == "" then msgEditor "could not locate Setup.lhs or Setup.hs"
-       else do
-         (cmdOut,cmdErr,exitCode) <- liftIO $ popen "runhaskell" (setupFile:"configure":words cmd) Nothing
-         case exitCode of
-           ExitSuccess   -> do withUI $ \ui -> reloadProject ui "."
-                               withEditor $ withOtherWindow $ newBufferE "*Shell Command Output*" (fromString cmdOut) >> return ()
-                               -- FIXME: here we get a string and convert it back to utf8; this indicates a possible bug.
-           ExitFailure _ -> msgEditor cmdErr
+      (cmdOut,cmdErr,exitCode) <- liftIO $ popen "runhaskell" (setupScript:"configure":words cmd) Nothing
+      case exitCode of
+        ExitSuccess   -> do withUI $ \ui -> reloadProject ui "."
+                            withEditor $ withOtherWindow $ newBufferE "*Shell Command Output*" (fromString cmdOut) >> return ()
+                            -- FIXME: here we get a string and convert it back to utf8; this indicates a possible bug.
+        ExitFailure _ -> msgEditor cmdErr
 
 reloadProjectE :: String -> YiM ()
 reloadProjectE s = withUI $ \ui -> reloadProject ui s
@@ -237,9 +226,7 @@ reloadProjectE s = withUI $ \ui -> reloadProject ui s
 cabalBuildE :: YiM ()
 cabalBuildE =
     withMinibufferFree "Build args:" $ \cmd -> do
-      setupFile <- chooseExistingFile cabalSetupFiles
-      if setupFile == "" then msgEditor "could not locate Setup.lhs or Setup.hs"
-        else startSubprocess "runhaskell" (setupFile:"build":words cmd)
+        startSubprocess "runhaskell" (setupScript:"build":words cmd)
 
 -----------------------------
 -- isearch
@@ -404,8 +391,9 @@ getFolder (Just path) = do
 -- debug :: String -> Keymap
 -- debug = write . logPutStrLn
 
+-- | Returns all the buffer names.
 matchingBufferNames :: String -> YiM [String]
-matchingBufferNames s = withEditor $ do
+matchingBufferNames _s = withEditor $ do
   bs <- getBuffers
   return (map name bs)
 
@@ -424,7 +412,7 @@ scrollUpE = withUnivArg $ \a -> withBuffer $
 switchBufferE :: YiM ()
 switchBufferE = do
   bs <- withEditor (map name . tail <$> getBufferStack)
-  withMinibufferFin  "switch to buffer:" bs (withEditor . switchToBufferWithNameE)
+  withMinibufferFin "switch to buffer:" bs (withEditor . switchToBufferWithNameE)
 
 
 killBufferE :: YiM ()
