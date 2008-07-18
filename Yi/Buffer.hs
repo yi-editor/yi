@@ -24,7 +24,7 @@ module Yi.Buffer
   , lineUp
   , lineDown
   , newB
-  , Mark, MarkValue(..)
+  , MarkValue(..)
   , Overlay, OvlLayer(..)
   , mkOverlay
   , gotoLn
@@ -72,7 +72,6 @@ module Yi.Buffer
   , delOverlayLayerB
   , getDynamicB
   , setDynamicB
-  , Direction        ( .. )
   , savingExcursionB
   , savingPointB
   , pendingUpdatesA
@@ -89,14 +88,13 @@ module Yi.Buffer
   , keymapProcessA
   , strokesRangesB
   , streamB
-  , staticSelMark
   , getMarkPointB
   , module Yi.Buffer.Basic
   , pointAt
   )
 where
 
-import Prelude (ceiling, uncurry)
+import Prelude (ceiling)
 import Yi.Prelude
 import Yi.Region
 import System.FilePath
@@ -111,7 +109,6 @@ import Yi.Window
 import Control.Applicative
 import Control.Monad.RWS.Strict hiding (mapM_, mapM)
 import Data.List (scanl, takeWhile, zip, length)
-import Data.Maybe (fromJust)
 import Data.Typeable
 import {-# source #-} Yi.Keymap
 import Yi.Monad
@@ -333,11 +330,13 @@ runBufferFull w b f =
         f' = copyMark (insMark w) staticInsMark *> f <* copyMark staticInsMark (insMark w) 
     in (a, updates, modifier pendingUpdatesA (++ fmap TextUpdate updates) b')
 
+copyMark :: Mark -> Mark -> BufferM ()
 copyMark src dst = do
   p <- getMarkValueB src
   setMarkPointB dst (markPoint p)
 
 -- | Create a new window onto this buffer.
+newWindowB :: Int -> Bool -> BufferM Window
 newWindowB wkey mini = do
   w <- ask
   markValues <- mapM getMarkValueB [staticInsMark, fromMark w, toMark w]
@@ -706,6 +705,7 @@ savingPointB f = savingPrefCol $ do
   moveTo p
   return res
 
+pointAt :: forall a. BufferM a -> BufferM Point
 pointAt f = savingPointB (f *> pointB)
 
 -------------

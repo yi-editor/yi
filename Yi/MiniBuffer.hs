@@ -55,8 +55,11 @@ noHint :: String -> YiM String
 noHint = const $ return ""
 
 noPossbilities :: String -> YiM String
-noPossbilities s = return []
+noPossbilities _s = return []
 
+withMinibufferFree :: String
+                                                  -> (String -> YiM ())
+                                                  -> YiM ()
 withMinibufferFree prompt = withMinibufferGen "" noHint prompt return
 
 -- | @withMinibuffer proposal getHint prompt completer act@: open a minibuffer

@@ -39,7 +39,6 @@ data TextUnit = Character
               | ViWORD -- ^ a WORD as in use in Vim
               | Line  -- ^ a line of text (between newlines)
               | VLine -- ^ a "vertical" line of text (area of text between to characters at the same column number)
-              | Sentence -- ^ ends at a '.', '!', or '?' followed by a blank
               | Delimited Char Char
               | Document
               | GenUnit {genEnclosingUnit :: TextUnit,
@@ -107,11 +106,14 @@ atBoundaryB Document d = atBoundary Document d
 atBoundaryB u d = (||) <$> atBoundary u d <*> atBoundaryB (enclosingUnit u) d
 
 -- | Paragraph to implement emacs-like forward-paragraph/backward-paragraph
+unitEmacsParagraph :: TextUnit
 unitEmacsParagraph = GenUnit Document $ checkPeekB (-2) [not . isNl, isNl, isNl]
 
 -- | Paragraph that begins and ends in the paragraph, not the empty lines surrounding it.
+unitParagraph :: TextUnit
 unitParagraph = GenUnit Document $ checkPeekB (-1) [not . isNl, isNl, isNl]
 
+unitSentence :: TextUnit
 unitSentence = GenUnit unitEmacsParagraph $ \dir -> checkPeekB (if dir == Forward then -1 else 0) (mayReverse dir [isEndOfSentence, isSpace]) dir
 
 -- | @genAtBoundaryB u d s@ returns whether the point is at a given boundary @(d,s)@ .
