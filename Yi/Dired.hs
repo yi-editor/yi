@@ -52,7 +52,6 @@ import System.Time
 import Text.Printf
 import Yi.Regex
 
-import Yi.Keymap.Emacs.Keys (rebind)
 import Yi.MiniBuffer (withMinibufferGen, noHint)
 import Control.Monad
 import Yi.Buffer
@@ -63,7 +62,7 @@ import Yi.Editor
 import Yi.Buffer.Region
 import Yi.Style
 import Yi.Modes (defaultFundamentalMode)
-
+import Yi.Keymap.Keys
 import System.FriendlyPath
 
 -- | associate buffer with file
@@ -203,21 +202,19 @@ instance Initializable DiredState where
 
 diredKeymap :: Keymap -> Keymap
 diredKeymap = do
-    (rebind [
-             ("p", write $ lineUp),
-             ("n", write $ lineDown),
-             ("b", write $ leftB),
-             ("f", write $ rightB),
-             ("m", write $ diredMark),
-             ("d", write $ diredMarkDel),
-             ("g", write $ diredRefresh),
-             ("^", write $ diredUpDir),
-             ("+", write $ diredCreateDir),
-             ("RET", write $ diredLoad),
-             ("C-m", write $ diredLoad),
-             ("SPC", write $ lineDown),
-             ("BACKSP", write $ diredUnmark)
-                       ])
+    (choice [
+             char 'p'                   ?>>! lineUp,
+             oneOf [char 'n', char ' ']  >>! lineDown,
+             char 'b'                   ?>>! leftB,
+             char 'f'                   ?>>! rightB,
+             char 'm'                   ?>>! diredMark,
+             char 'd'                   ?>>! diredMarkDel,
+             char 'g'                   ?>>! diredRefresh,
+             char '^'                   ?>>! diredUpDir,
+             char '+'                   ?>>! diredCreateDir,     
+             oneOf [ctrl $ char 'm', spec KEnter] >>! diredLoad,
+             spec KBS                   ?>>! diredUnmark]
+     <|| )
 
 dired :: YiM ()
 dired = do

@@ -1,7 +1,12 @@
 -- Copyright (c) 2008 Jean-Philippe Bernardy
 {-# LANGUAGE FlexibleContexts #-}
 
-module Yi.Keymap.Keys where
+module Yi.Keymap.Keys 
+    (
+     module Yi.Event,
+     module Yi.Interact,
+     printableChar, charOf, shift, meta, ctrl, spec, char, (>>!), (?>>), (?>>!)
+    ) where
 -- * Combinators for building keymaps.
 
 import Yi.Event
@@ -11,6 +16,7 @@ import Prelude hiding (error)
 import Yi.Interact hiding (write)
 import Control.Monad (when)
 import Yi.Debug
+import Data.List (sort, nub)
 
 printableChar :: (MonadInteract m w Event) => m Char
 printableChar = do
@@ -28,11 +34,11 @@ charOf modifier l h =
 shift,ctrl,meta :: Event -> Event
 shift (Event (KASCII c) ms) | isAlpha c = Event (KASCII (toUpper c)) ms
                            | otherwise = error "shift: unhandled event"
-shift (Event k ms) = Event k (MShift:ms)
+shift (Event k ms) = Event k $ nub $ sort (MShift:ms)
 
-ctrl (Event k ms) = Event k (MCtrl:ms)
+ctrl (Event k ms) = Event k $ nub $ sort (MCtrl:ms)
 
-meta (Event k ms) = Event k (MMeta:ms)
+meta (Event k ms) = Event k $ nub $ sort (MMeta:ms)
 
 char :: Char -> Event
 char '\t' = Event KTab []

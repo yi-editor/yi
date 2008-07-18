@@ -10,8 +10,8 @@ module Yi.Keymap.Emacs.Keys
   , printableChars
   , KList
   , makeKeymap
-  , makePartialKeymap
-  , rebind
+--   , makePartialKeymap
+--   , rebind
   ) 
 where
     
@@ -33,17 +33,6 @@ type KList = [(String, Keymap)]
 -- | Create a binding processor from 'kmap'.
 makeKeymap :: KList -> KeymapM ()
 makeKeymap kmap = I.choice [I.events (readKey k) >> a | (k,a) <- kmap]
-
-
--- | Creates a binding in the same way as 'makeKeymap' however the
--- second argument is what to map all unrecognised events to.
-makePartialKeymap :: KList -> Keymap -> KeymapM ()
-makePartialKeymap kmap emptymap =
-  (makeKeymap kmap) I.<|| emptymap
-
-rebind :: KList -> KeymapEndo
-rebind keys = (makeKeymap keys I.<||)
-
 
 printableChars :: [Char]
 printableChars = map chr [32..127]
@@ -109,7 +98,6 @@ readKey' :: String -> [[Event]]
 readKey' s = map fst $ nub $ filter (null . snd) $ readP_to_S parseKey $ s
 
 -- * Key printer
--- FIXME: C- and M- should be swapped when they are both there.
 showKey :: [Event] -> String
 showKey = concat . intersperse " " . map showEv
     where

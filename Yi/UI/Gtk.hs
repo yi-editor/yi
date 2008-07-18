@@ -183,7 +183,7 @@ processEvent ch ev = do
 
 gtkToYiEvent :: Gtk.Event -> Maybe Event
 gtkToYiEvent (Key {eventKeyName = keyName, eventModifier = evModifier, eventKeyChar = char})
-    = fmap (\k -> Event k $ (nub $ (if isShift then filter (/= MShift) else id) $ concatMap modif evModifier)) key'
+    = fmap (\k -> Event k $ (nub $ sort $ (if isShift then filter (/= MShift) else id) $ concatMap modif evModifier)) key'
       where (key',isShift) =
                 case char of
                   Just c -> (Just $ KASCII c, True)

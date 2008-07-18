@@ -21,7 +21,7 @@ import Yi.Editor
 import Yi.History
 import Yi.Completion (commonPrefix, infixMatch, prefixMatch, completeInList)
 import Yi.Keymap
-import Yi.Keymap.Emacs.Keys
+import Yi.Keymap.Keys
 import qualified Yi.Editor as Editor
 import qualified Yi.WindowSet as WS
 import Control.Monad.Reader
@@ -90,18 +90,14 @@ withMinibufferGen proposal getHint prompt completer act = do
       up   = historyMove prompt 1
       down = historyMove prompt (-1)
 
-      rebindings = [("RET", write innerAction),
-                    ("C-m", write innerAction),
-                    ("M-p", write up),
-                    ("M-n", write down),
-                    ("<up>", write up),
-                    ("<down>", write down),
-                    ("C-i", write (completionFunction completer) >> write showMatchings),
-                    ("TAB", write (completionFunction completer) >> write showMatchings),
-                    ("C-g", write closeMinibuffer)]
+      rebindings = choice [oneOf [spec KEnter, ctrl $ char 'm'] >>! innerAction,
+                           oneOf [spec KUp,    meta $ char 'p'] >>! up,
+                           oneOf [spec KDown,  meta $ char 'n'] >>! down,
+                           oneOf [spec KTab,   ctrl $ char 'i'] >>! completionFunction completer >>! showMatchings,
+                           ctrl (char 'g')                     ?>>! closeMinibuffer]
   withEditor $ historyStartGen prompt
   msgEditor =<< getHint ""
-  b <- withEditor $ spawnMinibufferE (prompt ++ " ") (\bindings -> rebind rebindings (bindings >> write showMatchings))
+  b <- withEditor $ spawnMinibufferE (prompt ++ " ") (\bindings -> rebindings <|| (bindings >> write showMatchings))
   withGivenBuffer b $ replaceBufferContent proposal
 
 

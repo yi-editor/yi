@@ -28,11 +28,9 @@ import Yi.Buffer.Region
 import Yi.Core
 import Yi.Dired
 import Yi.Editor
-import Yi.Event
 import Yi.File
 import Yi.History
 import Yi.Indent
-import Yi.Interact hiding (write)
 import Yi.Misc (matchingFileNames)
 import Yi.Keymap.Keys
 import Yi.MiniBuffer

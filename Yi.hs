@@ -25,9 +25,7 @@ module Yi
     module Yi.Dired,
     module Yi.Editor,
     module Yi.Eval,
-    module Yi.Event,
     module Yi.File,
-    module Yi.Interact,
     module Yi.Main,
     module Yi.Buffer.Region,
     module Yi.Search,
@@ -48,9 +46,7 @@ import Yi.Debug
 import Yi.Dired
 import Yi.Editor
 import Yi.Eval
-import Yi.Event
 import Yi.File
-import Yi.Interact hiding (write)
 import Yi.Keymap.Keys
 import Yi.Main (defaultConfig)
 import Yi.Search

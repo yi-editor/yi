@@ -9,14 +9,9 @@
 -}
 
 module Yi.Keymap.Emacs.Utils
-  ( KList
-  , makeKeymap
-  , makePartialKeymap
-
-  , askQuitEditor
+  ( askQuitEditor
   , modifiedQuitEditor
   , adjIndent
-  , rebind
   , withMinibuffer
   , queryReplaceE
   , isearchKeymap
@@ -65,10 +60,8 @@ import Yi.Debug
 import Yi.Dired
 import Yi.Editor
 import Yi.Eval
-import Yi.Event
 import Yi.File
-import Yi.Interact hiding (write)
-import Yi.Keymap.Emacs.Keys
+import Yi.Keymap.Keys
 import Yi.Keymap.Emacs.UnivArgument
 import Yi.MiniBuffer
 import Yi.Misc
@@ -103,20 +96,19 @@ isFileBuffer b = case file b of
 askIndividualQuit :: [FBuffer] -> YiM ()
 askIndividualQuit [] = modifiedQuitEditor
 askIndividualQuit (firstBuffer : others) =
-  withEditor (spawnMinibufferE saveMessage askKeymap) >> return ()
+  withEditor (spawnMinibufferE saveMessage (const askKeymap)) >> return ()
   where
-  askKeymap   = const $ makeKeymap askBindings
   saveMessage = concat [ "do you want to save the buffer: "
                        , bufferName
                        , "? (y/n/q/c)"
                        ]
   bufferName  = name firstBuffer
 
-  askBindings = [ ("n", write noAction)
-                , ( "y", write yesAction )
-                , ( "c", write closeBufferAndWindowE )
-                , ( "q", write quitEditor )
-                ]
+  askKeymap = choice [ char 'n' ?>>! noAction
+                     , char 'y' ?>>! yesAction 
+                     , char 'c' ?>>! closeBufferAndWindowE 
+                     , char 'q' ?>>! quitEditor 
+                     ]
   yesAction   = do fwriteBufferE (bkey firstBuffer)
                    withEditor closeBufferAndWindowE
                    askIndividualQuit others
@@ -133,14 +125,13 @@ modifiedQuitEditor =
   do modifiedBuffers <- getModifiedBuffers
      if null modifiedBuffers
         then quitEditor
-        else withEditor $ spawnMinibufferE modifiedMessage askKeymap >> return ()
+        else withEditor $ spawnMinibufferE modifiedMessage (const askKeymap) >> return ()
   where
   modifiedMessage = "Modified buffers exist really quit? (y/n)"
 
-  askKeymap       = const $ makeKeymap askBindings
-  askBindings     = [ ("n", write noAction)
-                    , ("y", write $ quitEditor)
-                    ]
+  askKeymap = choice [ char 'n' ?>>! noAction
+                     , char 'y' ?>>! quitEditor 
+                     ]
 
   noAction        = closeBufferAndWindowE
 
@@ -158,26 +149,24 @@ selfSearchKeymap = do
   write (isearchAddE [c])
 
 searchKeymap :: Keymap
-searchKeymap = selfSearchKeymap <|> makeKeymap
+searchKeymap = selfSearchKeymap <|> choice
                [ -- ("C-g", isearchDelE) -- Only if string is not empty.
-                 ("C-r", write isearchPrevE)
-               , ("C-s", write isearchNextE)
-               , ("C-w", write isearchWordE)
-               , ("C-m", write $ isearchAddE "\n") -- I'm not sure this is the correct behaviour.
-               , ("M-p", write $ isearchHistory 1)
-               , ("M-n", write $ isearchHistory (-1))
-               , ("BACKSP", write $ isearchDelE)
+                 ctrl (char 'r') ?>>! isearchPrevE
+               , ctrl (char 's') ?>>! isearchNextE
+               , ctrl (char 'w') ?>>! isearchWordE
+               , meta (char 'p') ?>>! isearchHistory 1
+               , meta (char 'n') ?>>! isearchHistory (-1)
+               , spec KBS        ?>>! isearchDelE
                ]
 
 isearchKeymap :: Direction -> Keymap
 isearchKeymap direction = 
   do write $ isearchInitE direction
      many searchKeymap
-     makePartialKeymap [ ("C-g", write isearchCancelE)
-                       , ("C-m", write isearchFinishE)
-                       , ("RET", write isearchFinishE)
-                       ]
-                       (write isearchFinishE)
+     choice [ ctrl (char 'g') ?>>! isearchCancelE
+            , oneOf [ctrl (char 'm'), spec KEnter] >>! isearchFinishE
+            ] 
+       <|| write isearchFinishE
 
 ----------------------------
 -- query-replace
@@ -186,17 +175,16 @@ queryReplaceE = do
     withMinibufferFree "Replace:" $ \replaceWhat -> do
     withMinibufferFree "With:" $ \replaceWith -> do
     b <- withEditor $ getBuffer
-    let replaceBindings = [("n", write $ qrNext b re),
-                           ("y", write $ qrReplaceOne b re replaceWith),
-                           ("q", write $ qrFinish),
-                           ("C-g", write $ qrFinish)
+    let replaceKm = choice [char 'n' ?>>! qrNext b re,
+                            char 'y' ?>>! qrReplaceOne b re replaceWith,
+                            oneOf [char 'q', ctrl (char 'g')] >>! qrFinish
                            ]
         Just re = makeSearchOptsM [] replaceWhat
     withEditor $ do
        setRegexE re
        spawnMinibufferE
             ("Replacing " ++ replaceWhat ++ "with " ++ replaceWith ++ " (y,n,q):")
-            (const (makeKeymap replaceBindings))
+            (const replaceKm)
        qrNext b re
 
 executeExtendedCommandE :: YiM ()

@@ -17,7 +17,7 @@ import Control.Monad.Trans (liftIO, MonadIO)
 import Data.Char (ord,chr)
 import Data.Foldable
 import Data.IORef
-import Data.List (partition)
+import Data.List (partition, sort)
 import qualified Data.Map as M
 import Data.Maybe
 import Data.Traversable
@@ -127,7 +127,7 @@ end i = do
   throwTo (uiThread i) (ExitException ExitSuccess)
 
 fromVtyEvent :: Vty.Event -> Yi.Event.Event
-fromVtyEvent (EvKey k mods) = Event (fromVtyKey k) (map fromVtyMod mods)
+fromVtyEvent (EvKey k mods) = Event (fromVtyKey k) (sort $ map fromVtyMod mods)
 fromVtyEvent _ = error "fromVtyEvent: unsupported event encountered."
 
 

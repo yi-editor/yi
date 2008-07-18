@@ -24,7 +24,6 @@ import Yi.Prelude
 import qualified Yi.Keymap.Emacs  as Emacs
 import qualified Yi.Keymap.Vim  as Vim
 import Yi.Modes (defaultModeMap, defaultFundamentalMode)
-import Yi.Interact hiding (write)
 import Yi.Buffer hiding (file)
 import Yi.Buffer.HighLevel
 import Yi.Buffer.Normal
@@ -35,11 +34,9 @@ import Yi.Dired
 import Yi.Editor
 import Yi.Keymap.Keys
 import Yi.File
-import Yi.Interact hiding (write)
 import Yi.Style
 import Data.Dynamic
 import Yi.Keymap.Emacs.Utils
-import qualified Yi.Interact as I
 import Yi.Keymap.Keys
 import HConf (hconfOptions)
 import Paths_yi
