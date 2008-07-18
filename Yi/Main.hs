@@ -221,6 +221,7 @@ defaultPublishedActions = M.fromList $
     , ("deleteBlankLinesB"      , box deleteBlankLinesB)
     , ("writeB"                 , box writeB)
     , ("getSelectRegionB"       , box getSelectRegionB)
+    , ("closeBufferE"           , box closeBufferE)
     ]
 
   where box x = [toDyn x]

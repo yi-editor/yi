@@ -98,6 +98,10 @@ execEditorAction s = do
                  toDyn (makeAction :: EditorM () -> Action),
 
                  toDyn (makeAction :: YiM () -> Action),
-                 toDyn (makeAction :: (String -> YiM ()) -> Action)
+
+                 toDyn (makeAction :: (String -> YiM ()) -> Action),
+
+                 toDyn (makeAction :: (BufferRef -> EditorM ()) -> Action)
+
                 ]
             

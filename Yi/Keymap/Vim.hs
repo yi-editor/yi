@@ -33,7 +33,7 @@ import Yi.File
 import Yi.History
 import Yi.Indent
 import Yi.Interact hiding (write)
-import Yi.Misc (matchingBufferNames, matchingFileNames)
+import Yi.Misc (matchingFileNames)
 import Yi.Keymap.Keys
 import Yi.MiniBuffer
 import Yi.Search
@@ -774,15 +774,16 @@ ex_eval cmd = do
                                    else errorEditor "No write since last change (add ! to override)"
       quitB = whenUnchanged (withBuffer isWorthlessB) closeWindow
 
-      quitNoW = do bufs <- withEditor $ do closeBufferE ""
+
+      quitNoW = do bufs <- withEditor $ do closeBufferE' ""
                                            bufs <- gets bufferStack
                                            mapM (\x -> withGivenBuffer0 x isWorthlessB) bufs
                    whenUnchanged (return $ all id bufs) quitEditor
 
       quitall  = withAllBuffers quitB
       wquitall = withAllBuffers viWrite >> quitEditor
-      bdelete  = whenUnchanged (withBuffer isUnchangedB) . withEditor . closeBufferE
-      bdeleteNoW = withEditor . closeBufferE
+      bdelete  = whenUnchanged (withBuffer isUnchangedB) . withEditor . closeBufferE'
+      bdeleteNoW = withEditor . closeBufferE'
 
       fn ""           = withEditor msgClr
 

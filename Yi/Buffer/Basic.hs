@@ -37,7 +37,7 @@ dummyToMark = Mark 2
 
 -- | Reference to a buffer.
 newtype BufferRef = BufferRef Int
-    deriving (Num, Eq, Ord)
+    deriving (Num, Eq, Ord, Typeable)
 
 instance Show BufferRef where
     show (BufferRef r) = "B#" ++ show r

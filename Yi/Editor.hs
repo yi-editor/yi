@@ -372,14 +372,18 @@ listBuffersE = do
         return $ zip (map name bs) [0..]
 
 -- | Release resources associated with buffer
--- Note: close the current buffer if the empty string is given
-closeBufferE :: String -> EditorM ()
-closeBufferE bufName = do
+closeBufferE :: BufferRef -> EditorM ()
+closeBufferE b = do
   nextB <- nextBuffer
-  b <- getBuffer
-  b' <- if null bufName then return b else getBufferWithName bufName
   switchToBufferE nextB
-  deleteBuffer b'
+  deleteBuffer b
+
+-- Note: close the current buffer if the empty string is given
+closeBufferE' :: String -> EditorM ()
+closeBufferE' nm = do
+    b' <- if null nm then getBuffer else getBufferWithName nm
+    closeBufferE b'
+
 
 ------------------------------------------------------------------------
 

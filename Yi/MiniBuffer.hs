@@ -4,7 +4,8 @@ module Yi.MiniBuffer
  (
   spawnMinibufferE,
   withMinibufferFree, withMinibuffer, withMinibufferGen, withMinibufferFin, 
-  noHint, noPossbilities, simpleComplete
+  noHint, noPossbilities, simpleComplete,
+  matchingBufferNames
  ) where
 
 import Control.Applicative
@@ -138,19 +139,37 @@ completionFunction f = do
   withBuffer $ replaceRegionB r compl
 
 class Promptable a where
-    getPromptedValue :: String -> a
+    getPromptedValue :: String -> YiM a
     getPrompt :: a -> String           -- Parameter can be "undefined"
+    doPrompt :: (a -> YiM ()) -> YiM ()
+    doPrompt act = withMinibufferFree (getPrompt (undefined::a) ++ ": ") $ 
+                     \string -> act =<< getPromptedValue string
 
 instance Promptable String where
-    getPromptedValue = id
+    getPromptedValue = return
     getPrompt _ = "String"
 
 instance Promptable Int where
-    getPromptedValue = read
+    getPromptedValue = return . read
     getPrompt _ = "Integer"
+
+instance Promptable BufferRef where
+    getPromptedValue n = withEditor $ getBufferWithName n
+    getPrompt _ = "Buffer"
+    doPrompt act = do 
+      bufs <- matchingBufferNames ""
+      withMinibufferFin "Buffer" bufs $ \n -> 
+          do b <- withEditor $ getBufferWithName n
+             act b
+
+-- | Returns all the buffer names.
+matchingBufferNames :: String -> YiM [String]
+matchingBufferNames _s = withEditor $ do
+  bs <- getBuffers
+  return (map name bs)
 
 
 -- TODO: be a bit more clever than 'Read r'
 instance (YiAction a x, Promptable r, Typeable r) => YiAction (r -> a) x where
-    makeAction f = YiA $ withMinibufferGen "" noHint (getPrompt (undefined::r)) return $
-                    \string ->  runAction $ makeAction $ f $ getPromptedValue string
+    makeAction f = YiA $ doPrompt (runAction . makeAction . f)
+                   

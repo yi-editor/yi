@@ -51,7 +51,7 @@ import qualified Data.ByteString.Lazy.UTF8 as LazyUTF8
 
 changeBufferNameE :: YiM ()
 changeBufferNameE =
-  withMinibufferGen "" noHint "New buffer name:" return strFun
+  withMinibufferFree "New buffer name:" strFun
   where
   strFun :: String -> YiM ()
   strFun = withBuffer . setnameB
@@ -60,7 +60,7 @@ changeBufferNameE =
 -- | shell-command
 shellCommandE :: YiM ()
 shellCommandE = do
-    withMinibufferGen "" noHint "Shell command:" return $ \cmd -> do
+    withMinibufferFree "Shell command:" $ \cmd -> do
       (cmdOut,cmdErr,exitCode) <- liftIO $ runShellCommand cmd
       case exitCode of
         ExitSuccess -> withEditor $ newBufferE "*Shell Command Output*" (LazyUTF8.fromString cmdOut) >> return ()
@@ -146,12 +146,6 @@ matchingFileNames :: Maybe String -> String -> YiM [String]
 matchingFileNames start s = do
   (sDir, files) <- getAppropriateFiles start s
   return $ map (sDir </>) files
-
--- | Returns all the buffer names.
-matchingBufferNames :: String -> YiM [String]
-matchingBufferNames _s = withEditor $ do
-  bs <- getBuffers
-  return (map name bs)
 
 
 
