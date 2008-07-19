@@ -4,7 +4,7 @@ module Yi.MiniBuffer
  (
   spawnMinibufferE,
   withMinibufferFree, withMinibuffer, withMinibufferGen, withMinibufferFin, 
-  noHint, noPossbilities, simpleComplete,
+  noHint, noPossibilities, simpleComplete,
   matchingBufferNames
  ) where
 
@@ -56,8 +56,8 @@ simpleComplete getPossibilities s = do
 noHint :: String -> YiM String
 noHint = const $ return ""
 
-noPossbilities :: String -> YiM String
-noPossbilities _s = return []
+noPossibilities :: String -> YiM [ String ]
+noPossibilities _s = return []
 
 withMinibufferFree :: String
                                                   -> (String -> YiM ())
