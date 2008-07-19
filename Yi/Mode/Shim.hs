@@ -17,7 +17,7 @@ import FastString
 
 import Control.Monad.State
 import Yi.WindowSet as Robin
-import Outputable
+import Outputable hiding (char)
 import Yi.Accessor
 import Yi.Prelude
 import Prelude ()
@@ -89,21 +89,21 @@ jumpToDefinition = do
 mode :: Mode (LinearResult (Yi.Syntax.Alex.Tok Token))
 mode = haskellMode
    {
-    modeKeymap = rebind [
-              ("C-c C-t", write typeAtPos),
-              ("C-c ! t", write annotType),
-              ("C-c ! =", write annotValue),
-              ("C-c C-d", write jumpToDefinition),
-              ("C-c C-l", write $ do
-                 withEditor $ do
-                   withOtherWindow $ do
+    modeKeymap = (<||) 
+      (((ctrl $ char 'c') ?>> choice
+        [ctrl (char 't') ?>>! typeAtPos,
+         char '!' ?>> char 't' ?>>! annotType,
+         char '!' ?>> char '=' ?>>! annotType,
+         ctrl (char 'd') ?>>! jumpToDefinition,
+         ctrl (char 'l') ?>>! do
+             withEditor $ do
+                 withOtherWindow $ do
                      switchToBufferWithNameE "*messages*"
-                 msgEditor "Loading..."
-                 Just filename <- withBuffer $ gets file
-                 runShimThread (Hsinfo.load filename True Nothing >> return ())
-                 return ()
-              ),
-              ("C-x `", write jumpToNextNote)
-             ]
+             msgEditor "Loading..."
+             Just filename <- withBuffer $ gets file
+             runShimThread (Hsinfo.load filename True Nothing >> return ())
+             return ()
+         ]
+       ) <|> (ctrl (char 'x') ?>> char '`' ?>>! jumpToNextNote))
    }
 
