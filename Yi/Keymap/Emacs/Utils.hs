@@ -262,4 +262,4 @@ switchBufferE = do
 
 
 killBufferE :: YiM ()
-killBufferE = withMinibuffer "kill buffer:" matchingBufferNames $ withEditor . closeBufferE'
+killBufferE = withMinibuffer "kill buffer:" matchingBufferNames $ withEditor . closeBufferE

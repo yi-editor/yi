@@ -773,15 +773,15 @@ ex_eval cmd = do
       quitB = whenUnchanged (withBuffer isWorthlessB) closeWindow
 
 
-      quitNoW = do bufs <- withEditor $ do closeBufferE' ""
+      quitNoW = do bufs <- withEditor $ do closeBufferE ""
                                            bufs <- gets bufferStack
                                            mapM (\x -> withGivenBuffer0 x isWorthlessB) bufs
                    whenUnchanged (return $ all id bufs) quitEditor
 
       quitall  = withAllBuffers quitB
       wquitall = withAllBuffers viWrite >> quitEditor
-      bdelete  = whenUnchanged (withBuffer isUnchangedB) . withEditor . closeBufferE'
-      bdeleteNoW = withEditor . closeBufferE'
+      bdelete  = whenUnchanged (withBuffer isUnchangedB) . withEditor . closeBufferE
+      bdeleteNoW = withEditor . closeBufferE
 
       fn ""           = withEditor msgClr
 

@@ -5,9 +5,7 @@
 
 -- | The top level editor state, and operations on it.
 
-module Yi.Editor
-
-where
+module Yi.Editor where
 
 import Yi.Buffer                ( BufferRef
                                 , FBuffer (..)
@@ -39,7 +37,7 @@ import Yi.Event (Event)
 
 import Prelude hiding (error)
 
-import Data.List                ( nub )
+import Data.List (nub, delete)
 import qualified Data.DelayList as DelayList
 import qualified Data.Map as M
 import Data.Typeable
@@ -157,21 +155,31 @@ stringToNewBuffer nm cs = do
     setBufferMode b =<< asks fundamentalMode
     return b
 
-
 insertBuffer :: FBuffer -> EditorM BufferRef
 insertBuffer b = getsAndModify $
                  \e -> (e { bufferStack = nub (bkey b : bufferStack e),
                             buffers = M.insert (bkey b) b (buffers e)
                           }, bkey b)
 
+-- | Delete a buffer (and release resources associated with it).
 deleteBuffer :: BufferRef -> EditorM ()
 deleteBuffer k = do
   bs <- gets bufferStack
-  when (length bs > 1) $ do -- never delete the last buffer.
-    modify $ \e -> e { bufferStack = filter (k /=) $ bufferStack e,
-                       buffers = M.delete k (buffers e)
-                       -- FIXME: all windows open on that buffer must switch to another buffer.
-                     }
+  case bs of
+      (b0:nextB:_) -> do
+          let pickOther = \w -> if bufkey w == k then w {bufkey = other} else w
+              other = head (delete k bs)
+          when (b0 == k) $ do
+              -- we delete the currently selected buffer: the next buffer will become active in
+              -- the main window, therefore it must be assigned a new window.
+              switchToBufferE nextB
+          modify $ \e -> e {
+                            bufferStack = filter (k /=) $ bufferStack e,
+                            buffers = M.delete k (buffers e),
+                            windows = fmap pickOther (windows e)
+                            -- all windows open on that buffer must switch to another buffer.
+                           }
+      otherwise -> return () -- Don't delete the last buffer.
 
 -- | Return the buffers we have
 getBuffers :: EditorM [FBuffer]
@@ -367,7 +375,7 @@ switchToBufferE bk = do
     w <- getA (WS.currentA .> windowsA)
     editor <- get
     let buffer = findBufferWith bk editor
-        buffer' = switchWindow w buffer 
+        buffer' = switchWindow w buffer
     modifyWindows (modifier WS.currentA (\w -> w { bufkey = bk }))
     modify (\e -> e {buffers = M.insert bk buffer' (buffers editor) })
 
@@ -386,20 +394,12 @@ listBuffersE = do
         bs  <- getBuffers
         return $ zip (map name bs) [0..]
 
--- | Close a buffer (release resources associated with it),
--- Current window switches to next buffer 
--- FXIME: this should be just deleteBuffer
-closeBufferE :: BufferRef -> EditorM ()
-closeBufferE b = do
-  nextB <- nextBuffer
-  switchToBufferE nextB
-  deleteBuffer b
-
+-- | Close a buffer.
 -- Note: close the current buffer if the empty string is given
-closeBufferE' :: String -> EditorM ()
-closeBufferE' nm = do
+closeBufferE :: String -> EditorM ()
+closeBufferE nm = do
     b' <- if null nm then getBuffer else getBufferWithName nm
-    closeBufferE b'
+    deleteBuffer b'
 
 
 ------------------------------------------------------------------------
