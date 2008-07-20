@@ -67,6 +67,18 @@ data Editor = Editor {
     }
     deriving Typeable
 
+class (Monad m, MonadState Editor m) => MonadEditor m
+    where askCfg :: m Config
+
+instance MonadEditor EditorM where
+    askCfg = ask
+
+liftEditor :: MonadEditor m => EditorM a -> m a
+liftEditor f = do
+    cfg <- askCfg
+    getsAndModify (runEditor cfg f) 
+    
+
 pendingEventsA :: Accessor Editor [Event]
 pendingEventsA = Accessor pendingEvents (\f e -> e {pendingEvents = f (pendingEvents e)})
 
@@ -119,8 +131,8 @@ emptyEditor = Editor {
 
 -- ---------------------------------------------------------------------
 
-runEditor :: Config -> EditorM a -> Editor -> (a, Editor)
-runEditor cfg f e = let (a, e',()) = runRWS (fromEditorM f) cfg e in (a,e')
+runEditor :: Config -> EditorM a -> Editor -> (Editor, a)
+runEditor cfg f e = let (a, e',()) = runRWS (fromEditorM f) cfg e in (e',a)
 
 -- ---------------------------------------------------------------------
 -- Buffer operations
@@ -371,7 +383,8 @@ listBuffersE = do
         bs  <- getBuffers
         return $ zip (map name bs) [0..]
 
--- | Release resources associated with buffer
+-- | Close a buffer (release resources associated with it),
+-- current window switches to next buffer
 closeBufferE :: BufferRef -> EditorM ()
 closeBufferE b = do
   nextB <- nextBuffer

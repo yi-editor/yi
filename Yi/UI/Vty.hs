@@ -182,7 +182,7 @@ refresh ui e = do
   let ws' = computeHeights yss ws
       cmd = statusLine e
       renderSeq = fmap (scrollAndRenderWindow (configUI $ config ui) (configStyle $ configUI $ config $ ui) xss) (WS.withFocus ws')
-      (renders, e') = runEditor (config ui) (sequence renderSeq) e
+      (e', renders) = runEditor (config ui) (sequence renderSeq) e
 
   let startXs = scanrT (+) 0 (fmap height ws')
       wImages = fmap picture renders

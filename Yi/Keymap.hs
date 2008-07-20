@@ -7,7 +7,7 @@ module Yi.Keymap where
 import Prelude hiding (error)
 import Yi.UI.Common
 import qualified Yi.Editor as Editor
-import Yi.Editor (EditorM, Editor, runEditor)
+import Yi.Editor (EditorM, Editor, runEditor, MonadEditor(..))
 import qualified Data.Map as M
 import Control.Monad.Reader
 import Data.Typeable
@@ -23,6 +23,7 @@ import Yi.Event
 import Yi.Process ( SubprocessInfo, SubprocessId )
 import qualified Yi.UI.Common as UI
 import Data.Typeable
+import Control.Applicative 
 
 data Action = forall a. Show a => YiA (YiM a)
             | forall a. Show a => EditorA (EditorM a)
@@ -63,6 +64,12 @@ data Yi = Yi {yiEditor :: IORef Editor,
 newtype YiM a = YiM {runYiM :: ReaderT Yi IO a}
     deriving (Monad, MonadReader Yi, MonadIO, Typeable, Functor)
 
+instance MonadState Editor YiM where
+    get = readRef =<< yiEditor <$> ask
+    put v = flip writeRef v =<< yiEditor <$> ask
+
+instance MonadEditor YiM where
+    askCfg = yiConfig <$> ask
 
 -----------------------
 -- Keymap basics
@@ -89,7 +96,7 @@ withEditor f = do
 unsafeWithEditor :: Config -> IORef Editor -> EditorM a -> IO a
 unsafeWithEditor cfg r f = do
   e <- readRef r
-  let (a,e') = runEditor cfg f e
+  let (e',a) = runEditor cfg f e
   -- TODO: this is probably very wrong comment; try to remove this.
   -- Make sure that the result of runEditor is evaluated before
   -- replacing the editor state. Otherwise, we might replace e
