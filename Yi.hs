@@ -6,13 +6,12 @@
 -- a bunch of modules.
 --
 -- You should therefore:
---      import Yi.Yi
+--      import Yi
 -- in your ~/.yi/ scripts
 --
 
 module Yi
   (
-    -- all things re-exported here are made available to keymaps definitions.
     module Control.Monad, -- since all actions are monadic, this is very useful to combine them.
     module Control.Applicative, -- same reasoning
     module Yi.Boot,
@@ -31,7 +30,7 @@ module Yi
     module Yi.Search,
     module Yi.Style,
     module Yi.Keymap.Keys,
-   ) where
+  ) where
 
 import Control.Applicative
 import Control.Monad hiding (mapM_, mapM)

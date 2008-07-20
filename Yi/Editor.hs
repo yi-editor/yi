@@ -51,7 +51,7 @@ data Editor = Editor {
         bufferStack   :: ![BufferRef]               -- ^ Stack of all the buffers. Never empty;
                                                     -- first buffer is the current one.
        ,buffers       :: M.Map BufferRef FBuffer
-       ,refSupply :: Int  -- ^ Supply for buffer and window ids. TODO: Rename
+       ,refSupply     :: Int  -- ^ Supply for buffer and window ids.
 
        ,windows       :: WindowSet Window
 
@@ -170,6 +170,7 @@ deleteBuffer k = do
   when (length bs > 1) $ do -- never delete the last buffer.
     modify $ \e -> e { bufferStack = filter (k /=) $ bufferStack e,
                        buffers = M.delete k (buffers e)
+                       -- FIXME: all windows open on that buffer must switch to another buffer.
                      }
 
 -- | Return the buffers we have
@@ -386,7 +387,8 @@ listBuffersE = do
         return $ zip (map name bs) [0..]
 
 -- | Close a buffer (release resources associated with it),
--- current window switches to next buffer
+-- Current window switches to next buffer 
+-- FXIME: this should be just deleteBuffer
 closeBufferE :: BufferRef -> EditorM ()
 closeBufferE b = do
   nextB <- nextBuffer
