@@ -152,7 +152,7 @@ nilKeymap = choice [
              char 'h' ?>>! configHelp
             ] 
             <|| (anyEvent >>! errorEditor "Keymap not defined, 'q' to quit, 'h' for help.")
-    where configHelp = withEditor $ newBufferE "*configuration help*" $ fromString $ unlines $
+    where configHelp = newBufferE "*configuration help*" $ fromString $ unlines $
                          ["To get a standard reasonable keymap, you can run yi with either --as=vim or --as=emacs.",
                           "you can type 'e' or 'v' now to get a temporary emacs or vim keymap.",
                           "You should however create your own ~/.yi/yi.hs file: ",

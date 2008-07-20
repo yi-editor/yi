@@ -70,10 +70,14 @@ instance MonadState Editor YiM where
 
 instance MonadEditor YiM where
     askCfg = yiConfig <$> ask
-
+    withEditor f = do
+      r <- asks yiEditor
+      cfg <- asks yiConfig
+      liftIO $ unsafeWithEditor cfg r f
+ 
 -----------------------
 -- Keymap basics
-
+ 
 -- | @write a@ returns a keymap that just outputs the action @a@.
 write :: (I.MonadInteract m Action ev, YiAction a x, Show x) => a -> m ()
 write x = I.write (makeAction x)
@@ -87,17 +91,10 @@ withBufferMode b f = withGivenBuffer b $ withModeB f
 withUI :: (UI -> IO a) -> YiM a
 withUI = with yiUi
 
-withEditor :: EditorM a -> YiM a
-withEditor f = do
-  r <- asks yiEditor
-  cfg <- asks yiConfig
-  liftIO $ unsafeWithEditor cfg r f
-
 unsafeWithEditor :: Config -> IORef Editor -> EditorM a -> IO a
 unsafeWithEditor cfg r f = do
   e <- readRef r
   let (e',a) = runEditor cfg f e
-  -- TODO: this is probably very wrong comment; try to remove this.
   -- Make sure that the result of runEditor is evaluated before
   -- replacing the editor state. Otherwise, we might replace e
   -- with an exception-producing thunk, which makes it impossible

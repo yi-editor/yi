@@ -1,4 +1,5 @@
-module Yi.File (
+module Yi.File 
+ (
         -- * File-based actions
         fwriteE,        -- :: YiM ()
         fwriteBufferE,  -- :: BufferM ()
@@ -8,7 +9,7 @@ module Yi.File (
 
         -- * Buffer editing
         revertE,        -- :: YiM ()
-) where
+ ) where
 
 import Control.Applicative
 import Control.Monad.Trans
@@ -17,7 +18,7 @@ import System.FilePath
 import Yi.Buffer
 import Yi.Buffer.HighLevel
 import Yi.Editor
-  ( getBuffers, getBuffer )
+  ( getBuffers, getBuffer, withEditor )
 import Yi.Core
 import Yi.Debug
 import Yi.Keymap

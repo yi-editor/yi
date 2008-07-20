@@ -69,15 +69,17 @@ data Editor = Editor {
 
 class (Monad m, MonadState Editor m) => MonadEditor m
     where askCfg :: m Config
+          withEditor :: EditorM a -> m a
+          withEditor f = do
+              cfg <- askCfg
+              getsAndModify (runEditor cfg f) 
+    
+liftEditor :: MonadEditor m => EditorM a -> m a
+liftEditor = withEditor
 
 instance MonadEditor EditorM where
     askCfg = ask
-
-liftEditor :: MonadEditor m => EditorM a -> m a
-liftEditor f = do
-    cfg <- askCfg
-    getsAndModify (runEditor cfg f) 
-    
+    withEditor = id
 
 pendingEventsA :: Accessor Editor [Event]
 pendingEventsA = Accessor pendingEvents (\f e -> e {pendingEvents = f (pendingEvents e)})
