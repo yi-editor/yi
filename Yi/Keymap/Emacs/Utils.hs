@@ -176,7 +176,7 @@ queryReplaceE = do
     withMinibufferFree "With:" $ \replaceWith -> do
     b <- withEditor $ getBuffer
     let replaceKm = choice [char 'n' ?>>! qrNext b re,
-                            char 'y' ?>>! qrReplaceOne b re replaceWith,
+                            oneOf [char 'y', char ' '] >>! qrReplaceOne b re replaceWith,
                             oneOf [char 'q', ctrl (char 'g')] >>! qrFinish
                            ]
         Just re = makeSearchOptsM [] replaceWhat
