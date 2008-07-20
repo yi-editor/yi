@@ -4,18 +4,18 @@
 
 module Yi.TextCompletion (
         -- * Word completion
-        wordCompleteB,
-        resetCompleteB,
+        wordComplete,
+        resetComplete,
         completeWordB,
 ) where
 
 import Prelude ()
-import Yi.Prelude hiding (elem)
+import Yi.Prelude
 import Yi.Completion
 import Yi.Buffer
 import Data.Char
 import Data.Typeable
-import Data.List
+import Data.List (nub, filter, drop, isPrefixOf, reverse, findIndex, length, groupBy)
 import Data.Maybe
 
 import Yi.Buffer.Normal
@@ -40,28 +40,29 @@ instance Initializable Completion where
     initial = Completion []
 
 -- | Switch out of completion mode.
-resetCompleteB :: BufferM ()
-resetCompleteB = setDynamicB (Completion [])
+resetComplete :: EditorM ()
+resetComplete = setDynamic (Completion [])
 
--- The word-completion BufferM (), down the buffer
-wordCompleteB :: BufferM ()
-wordCompleteB = do
-  Completion list <- getDynamicB
+-- | Try to complete the current word with occurences found elsewhere in the
+-- editor. Further calls try other options. 
+wordComplete :: EditorM ()
+wordComplete = do
+  Completion list <- getDynamic
   case list of 
     (x:xs) -> do -- more alternatives, use them.
-       reg <- regionOfPartB Word Backward       
-       replaceRegionB reg x
-       setDynamicB (Completion xs)
+       withBuffer0 $ do reg <- regionOfPartB Word Backward       
+                        replaceRegionB reg x
+       setDynamic (Completion xs)
     [] -> do -- no alternatives, build them.
-      w <- readRegionB =<< regionOfPartB Word Backward
+      w <- withBuffer0 $ do readRegionB =<< regionOfPartB Word Backward
       ws <- wordsForCompletion
-      setDynamicB (Completion $ (nub $ filter (matches w) ws) ++ [w])
+      setDynamic (Completion $ (nub $ filter (matches w) ws) ++ [w])
       -- We put 'w' back at the end so we go back to it after seeing
       -- all possibilities. 
       -- NOTE: 'nub' can make searching big lists
       -- quite inefficient. A more clever nub, but still lazy, might
       -- be a good idea.
-      wordCompleteB -- to pick the 1st possibility.
+      wordComplete -- to pick the 1st possibility.
 
   where matches x y = x `isPrefixOf` y && x /= y
 
@@ -119,14 +120,23 @@ wordsAndCurrentWord :: BufferM (String, [String])
 wordsAndCurrentWord =
   do curText          <- readRegionB =<< regionOfB Document
      curWord          <- readRegionB =<< regionOfPartB Word Backward
-     return (curWord, words curText)
+     return (curWord, words' curText)
 
-wordsForCompletion :: BufferM [String]
-wordsForCompletion = do
+wordsForCompletionInBuffer :: BufferM [String]
+wordsForCompletionInBuffer = do
   above <- readRegionB =<< regionOfPartB Document Backward
   below <- readRegionB =<< regionOfPartB Document Forward
   return (reverse (words' above) ++ words' below)
-      where words' = filter (not . isNothing . charClass . head) . groupBy ((==) `on` charClass)
+
+wordsForCompletion :: EditorM [String]
+wordsForCompletion = do
+    (_b:bs) <- fmap bkey <$> getBufferStack
+    w0 <- withBuffer0 $ wordsForCompletionInBuffer
+    contents <- forM bs $ \b->withGivenBuffer0 b elemsB
+    return $ w0 ++ concatMap words' contents
+
+words' :: String -> [String]
+words' = filter (not . isNothing . charClass . head) . groupBy ((==) `on` charClass)
 
 charClass :: Char -> Maybe Int
 charClass c = findIndex (generalCategory c `elem`)

@@ -679,7 +679,7 @@ ins_char = (spec KBS ?>>! deleteB Character Backward)
 -- --------------------
 -- | Keyword
 kwd_mode :: VimMode
-kwd_mode = some ((ctrl $ char 'n') ?>> adjustPriority (-1) (write wordCompleteB)) >> (write resetCompleteB)
+kwd_mode = some ((ctrl $ char 'n') ?>> adjustPriority (-1) (write wordComplete)) >> (write resetComplete)
            -- 'adjustPriority' is there to lift the ambiguity between "continuing" completion
            -- and resetting it (restarting at the 1st completion).
 
