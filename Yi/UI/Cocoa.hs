@@ -312,18 +312,16 @@ toYiApplication = castObject
 toYiController :: forall t1 t2. NSObject t1 -> YiController t2
 toYiController = castObject
 
-setMonospaceFont :: Has_setFont v => UIConfig -> v -> IO ()
-setMonospaceFont cfg view = do
-  let size' = maybe 0.0 fromIntegral (configFontSize cfg)
-  f <- _NSFont # userFixedPitchFontOfSize size'
-  setFont f view
+setMonospaceFont :: Has_setFont v => v -> IO ()
+setMonospaceFont view = do
+  userFixedPitchFontOfSize 0 _NSFont >>= flip setFont view
 
 newTextLine :: UIConfig -> IO (NSTextField ())
 newTextLine cfg = do
   tl <- new _NSTextField
   tl # setAlignment nsLeftTextAlignment
   tl # setAutoresizingMask (nsViewWidthSizable .|. nsViewMaxYMargin)
-  tl # setMonospaceFont cfg
+  tl # setMonospaceFont
   tl # setSelectable True
   tl # setEditable False
   tl # sizeToFit
@@ -401,6 +399,14 @@ start cfg ch outCh _ed = do
   win # setFrameAutosaveName (toNSString "main")
   win # makeKeyAndOrderFront nil
   app # activateIgnoringOtherApps False
+
+  -- Update the font configuration if desired...
+  case configFontSize $ configUI cfg of
+    Just fontSize ->
+      userFixedPitchFontOfSize (fromIntegral fontSize) _NSFont >>=
+          flip setUserFixedPitchFont _NSFont
+    Nothing ->
+      return ()
 
   bufs <- newIORef M.empty
   wc <- newIORef []
@@ -533,7 +539,7 @@ refresh ui e = logNSException "refresh" $ do
       forM_ ([u | TextUpdate u <- pendingUpdates buf]) $ applyUpdate storage
       storage # endEditing
       -- UNUSED: contents <- storage # string >>= haskellString
-      storage # setMonospaceFont (uiConfig ui) -- FIXME: Why is this needed for mini buffers?
+      storage # setMonospaceFont -- FIXME: Why is this needed for mini buffers?
       -- TODO: Merge overlapping regions...
       let (size',p) = runBufferDummyWindow buf ((,) <$> sizeB <*> pointB)
       forM_ ([(s,s+~l) | StyleUpdate s l <- pendingUpdates buf]) $ \(s,e') -> replaceTagsIn (inBounds s size') (inBounds e' size') buf storage
@@ -635,7 +641,7 @@ newTextStorage ui b = do
   buf <- new _NSTextStorage
   let txt = runBufferDummyWindow b (revertPendingUpdatesB >> elemsB)
   buf # mutableString >>= setString (toNSString txt)
-  buf # setMonospaceFont (uiConfig ui)
+  buf # setMonospaceFont
   replaceTagsIn 0 (genericLength txt) b buf
   return buf
 
