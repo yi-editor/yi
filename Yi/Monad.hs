@@ -61,6 +61,10 @@ with f g = do
 whenM :: Monad m => m Bool -> m () -> m ()
 whenM mtest ma = mtest >>= flip when ma  
 
+maybeM :: Monad m => (x -> m ()) -> Maybe x -> m ()
+maybeM _ Nothing = return ()
+maybeM f (Just x) = f x 
+
 -- | Rerun the monad until the boolean result is false, collecting list of results.
 repeatUntilM :: Monad m => m (Bool,a) -> m [a]
 repeatUntilM m = do

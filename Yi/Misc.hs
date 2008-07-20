@@ -4,11 +4,10 @@ module Yi.Misc
 where
 
 {- Standard Library Module Imports -}
-import Control.Monad
-  ()
 import Data.List
   ( isPrefixOf
   , (\\)
+  , filter
   )
 import System.Exit
   ( ExitCode( ExitSuccess,ExitFailure ) )
@@ -27,11 +26,13 @@ import System.Directory
   , setCurrentDirectory
   )
 import Control.Monad.Trans (MonadIO (..))
-import Control.Monad
 {- External Library Module Imports -}
 {- Local (yi) module imports -}
 
-import Control.Monad
+import Data.Typeable
+import Prelude (words)
+import Yi.Prelude
+import Yi.Monad
 import Yi.Buffer
 import Yi.Core
 import Yi.Editor
@@ -89,12 +90,18 @@ cabalConfigureE =
 reloadProjectE :: String -> YiM ()
 reloadProjectE s = withUI $ \ui -> reloadProject ui s
 
+newtype CabalBuffer = CabalBuffer {cabalBuffer :: Maybe BufferRef}
+    deriving (Initializable, Typeable)
+
 ----------------------------
 -- | cabal-build
 cabalBuildE :: YiM ()
 cabalBuildE =
     withMinibufferFree "Build args:" $ \cmd -> withOtherWindow $ do
-        startSubprocess "runhaskell" (setupScript:"build":words cmd)
+        b <- startSubprocess "runhaskell" (setupScript:"build":words cmd)
+        withEditor $ do
+            maybeM deleteBuffer =<< cabalBuffer <$> getDynamic
+            setDynamic $ CabalBuffer $ Just b
         return ()
         
 
@@ -147,7 +154,7 @@ getFolder (Just path) = do
 matchingFileNames :: Maybe String -> String -> YiM [String]
 matchingFileNames start s = do
   (sDir, files) <- getAppropriateFiles start s
-  return $ map (sDir </>) files
+  return $ fmap (sDir </>) files
 
 
 
