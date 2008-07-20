@@ -139,6 +139,7 @@ handleKeyEvent event ch = do
   logPutStrLn $ "Key " ++ str
   let (k,shift') = case str of
                 "\r"     -> (Just KEnter, True)
+                "\t"     -> (Just KTab, True)
                 "\DEL"   -> (Just KBS, True)
                 "\ESC"   -> (Just KEsc, True)
                 "\63232" -> (Just KUp, True)
