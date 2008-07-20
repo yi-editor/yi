@@ -19,7 +19,7 @@
 
 module Yi.UI.Cocoa (start) where
 
-import Prelude hiding (init, error, sequence_, elem, mapM_, mapM, concat, concatMap)
+import Prelude hiding (init, length, error, sequence_, elem, mapM_, mapM, concat, concatMap)
 
 import Yi.Prelude hiding (init)
 import Yi.Accessor
@@ -32,21 +32,22 @@ import Yi.Debug
 import Yi.Keymap
 import Yi.Buffer.Implementation
 import Yi.Monad
+import Yi.Syntax (Stroke)
 import Yi.Style hiding (modeline)
 import Yi.Config
 import qualified Yi.UI.Common as Common
 import qualified Yi.WindowSet as WS
 import qualified Yi.Window as Window
-import Yi.Window (Window)
+import Yi.Window (Window, dummyWindow)
 import Paths_yi (getDataFileName)
 
 import Control.Concurrent (yield)
 import Control.Concurrent.MVar
 import Control.Monad.Reader (liftIO, when, MonadIO)
 import Control.Monad (ap, replicateM_)
-import Control.Applicative ((<*>), (<$>))
+import Control.Applicative ((<*>), (<$>), pure)
 
-import Data.List (genericLength)
+import qualified Data.List as L
 import Data.IORef
 import Data.Maybe
 import Data.Unique
@@ -56,7 +57,7 @@ import qualified Data.Map as M
 import qualified Data.ByteString.Lazy as LB
 import qualified Data.ByteString.Lazy.UTF8 as LazyUTF8
 
-import Foundation hiding (length, name, new, parent, error, self, null)
+import Foundation hiding (name, new, parent, error, self, null)
 import Foundation.NSObject (init)
 
 import AppKit hiding (windows, start, rect, width, content, prompt, dictionary, icon, concat)
@@ -229,12 +230,237 @@ ysv_tile self = do
       c # frame >>= (flip setFrameOrigin c) . (NSPoint (nsWidth sf)) . nsMinY
 
 
+-- Unfortunately, my version of hoc does not handle typedefs correctly,
+-- and thus misses every selector that uses the "unichar" type, even
+-- though it has introduced a type alias for it...
+$(declareRenamedSelector "characterAtIndex:" "characterAtIndex" [t| CUInt -> IO Unichar |])
+instance Has_characterAtIndex (NSString a)
+$(declareRenamedSelector "getCharacters:range:" "getCharactersRange" [t| Ptr Unichar -> NSRange -> IO () |])
+instance Has_getCharactersRange (NSString a)
+
+-- Introduce a NSString subclass that has a lazy bytestring internally
+-- A NSString subclass needs to implement length and characterAtIndex,
+-- and for performance reasons getCharactersRange
+-- The implementation here is a quick hack and I have no idea how it
+-- works with anything except ASCII characters. Cocoa uses UTF16 to
+-- store characters, and Yi uses UTF8, so supposedly some recoding
+-- has to take place. For UTF8 is converted to Char's that are then
+-- just dealt with as if they were in UTF16...
+
+$(declareClass "YiLBString" "NSString")
+$(exportClass "YiLBString" "yls_" [
+    InstanceVariable "string" [t| LB.ByteString |] [| LB.empty |]
+  , InstanceMethod 'length -- '
+  , InstanceMethod 'characterAtIndex -- '
+  , InstanceMethod 'getCharactersRange -- '
+  ])
+
+yls_length :: YiLBString () -> IO CUInt
+yls_length self = do
+  -- logPutStrLn $ "Calling yls_length (gah...)"
+  self #. _string >>= return . fromIntegral . LB.length
+
+-- TODO: The result type should be UTF16...
+yls_characterAtIndex :: CUInt -> YiLBString () -> IO Unichar
+yls_characterAtIndex i self = do
+  -- logPutStrLn $ "Calling yls_characterAtIndex " ++ show i
+  self #. _string >>= return . fromIntegral . flip LB.index (fromIntegral i)
+
+-- TODO: Should get an array of characters in UTF16...
+yls_getCharactersRange :: Ptr Unichar -> NSRange -> YiLBString () -> IO ()
+yls_getCharactersRange p r@(NSRange i l) self = do
+  -- logPutStrLn $ "Calling yls_getCharactersRange " ++ show r
+  self #. _string >>=
+    pokeArray p .
+    take (fromIntegral l) . -- TODO: Is l given in bytes or characters?
+    map fromIntegral . -- TODO: UTF16 recode
+    LB.unpack .
+    LB.drop (fromIntegral i)
+
+
+-- An implementation of NSTextStorage that uses Yi's FBuffer as
+-- the backing store. An implementation must at least implement
+-- a O(1) string method and attributesAtIndexEffectiveRange.
+-- For performance reasons, attributeAtIndexEffectiveRange is
+-- implemented to deal with specific properties such as font.
+
+-- Judging by usage logs, the environment using the text storage
+-- seem to rely on strings O(1) behavior and thus caching the
+-- result seems like a good idea. In addition attributes are
+-- queried for the same location multiple times, and thus caching
+-- them as well also seems fruitful.
+
+-- Unfortunately HOC does not export Instance Variables, and thus
+-- we cannot provide a type signature for withCache
+-- withCache :: (InstanceVariables st iv) => st -> IVar iv (Maybe vt) -> (vt -> Bool) -> IO vt -> IO vt
+
+-- | Obtain the result of the action and cache that as the
+--   instance variable ivar in self. Use existing cache if
+--   a result is stored, and cond says it is still valid.
+withCache self ivar cond action = do
+  cache <- self #. ivar
+  case cache of
+    Just val | cond val -> return val
+    otherwise -> do
+      val <- action
+      self # setIVar ivar (Just val)
+      return val
+
+-- | Use this as the base length of computed stroke ranges
+strokeRangeExtent :: Point
+strokeRangeExtent = 100
+
+-- TODO: Investigate whether it is a good idea to cache
+--       NSDictionary objects also in some fashion
+
+$(declareClass "YiTextStorage" "NSTextStorage")
+$(exportClass "YiTextStorage" "yts_" [
+    InstanceVariable "buffer" [t| Maybe FBuffer |] [| Nothing |]
+  , InstanceVariable "attributesCache" [t| Maybe (NSRange, NSDictionary ()) |] [| Nothing |]
+  , InstanceVariable "stringCache" [t| Maybe (NSString ()) |] [| Nothing |]
+  , InstanceMethod 'string -- '
+  , InstanceMethod 'attributeAtIndexEffectiveRange -- '
+  , InstanceMethod 'attributesAtIndexEffectiveRange -- '
+  , InstanceMethod 'replaceCharactersInRangeWithString -- '
+  , InstanceMethod 'setAttributesRange -- '
+  , InstanceMethod 'length -- '
+  ])
+
+yts_length :: YiTextStorage () -> IO CUInt
+yts_length self = do
+  -- logPutStrLn "Calling yts_length "
+  (fromIntegral . flip runBufferDummyWindow sizeB . fromJust) <$> self #. _buffer
+
+yts_string :: YiTextStorage () -> IO (NSString ())
+yts_string self = do
+  withCache self _stringCache (const True) $ do
+    s <- autonew _YiLBString
+    Just b <- self #. _buffer
+    s # setIVar _string (runBufferDummyWindow b (streamB Forward 0))
+    castObject <$> return s
+
+yts_attributesAtIndexEffectiveRange :: CUInt -> NSRangePointer -> YiTextStorage () -> IO (NSDictionary ())
+yts_attributesAtIndexEffectiveRange i er self = do
+  (r,dict) <- withCache self _attributesCache (nsLocationInRange i . fst) $ do
+    strokes <- self # runStrokesAround i
+    let (e,s) = minimalStyle (fromIntegral i + strokeRangeExtent) strokes
+    let r = NSRange i (fromIntegral e - i)
+    -- logPutStrLn $ "Calling yts_attributesAtIndexEffectiveRange " ++ show r
+    (,) <$> pure r <*> convertStyle s
+  safePoke er r
+  return dict
+
+yts_attributeAtIndexEffectiveRange :: forall t. NSString t -> CUInt -> NSRangePointer -> YiTextStorage () -> IO (ID ())
+yts_attributeAtIndexEffectiveRange attr i er self = do
+  attr' <- haskellString attr
+  case attr' of
+    "NSFont" -> do
+      safePokeFullRange >> castObject <$> userFixedPitchFontOfSize 0 _NSFont
+    "NSGlyphInfo" -> do
+      safePokeFullRange >> return nil
+    "NSAttachment" -> do
+      safePokeFullRange >> return nil
+    "NSCursor" -> do
+      safePokeFullRange >> castObject <$> ibeamCursor _NSCursor
+    "NSToolTip" -> do
+      safePokeFullRange >> return nil
+    "NSLanguage" -> do
+      safePokeFullRange >> return nil
+    "NSParagraphStyle" -> do
+      -- TODO: Adjust line break property...
+      safePokeFullRange >> castObject <$> defaultParagraphStyle _NSParagraphStyle
+    "NSBackgroundColor" -> do
+      bg <- minimalAttr background <$> self # runStrokesAround i
+      let (s, Background c) = fromMaybe (fromIntegral i + strokeRangeExtent, Background Default) bg
+      safePoke er (NSRange i (fromIntegral s - i))
+      castObject <$> getColor False c
+    _ -> do
+      -- TODO: Optimize the other queries as well (if needed)
+      logPutStrLn $ "Unoptimized yts_attributeAtIndexEffectiveRange " ++ attr' ++ " at " ++ show i
+      super self # attributeAtIndexEffectiveRange attr i er
+  where
+    safePokeFullRange = do
+      Just b <- self #. _buffer
+      safePoke er (NSRange 0 (fromIntegral $ runBufferDummyWindow b sizeB))
+
+-- These methods are used to modify the contents of the NSTextStorage.
+-- We do not allow direct updates of the contents this way, though.
+yts_replaceCharactersInRangeWithString :: forall t. NSRange -> NSString t -> YiTextStorage () -> IO ()
+yts_replaceCharactersInRangeWithString _ _ _ = return ()
+yts_setAttributesRange :: forall t. NSDictionary t -> NSRange -> YiTextStorage () -> IO ()
+yts_setAttributesRange _ _ _ = return ()
+
+
+
+-- | Obtain the maximal range with a consistent style.
+--   This negatively assumes that any two adjacent strokes
+--   have different styles, and positively assumes that
+--   the start of all strokes are the same.
+minimalStyle :: Point -> [[Stroke]] -> (Point,Style)
+minimalStyle q xs =
+  (\ (es, ss) -> (L.minimum (q:es), concat ss)) $ unzip [ (e,s) | (_, s, e):_ <- xs ]
+
+-- | Obtain the maximal range for a particular attribute.
+minimalAttr :: (Style -> Maybe Attr) -> [[Stroke]] -> Maybe (Point, Attr)
+minimalAttr f xs =
+  listToMaybe $ catMaybes [ (,) <$> pure b <*> f s | (_, s, b):_ <- xs ]
+
+-- | Use this with minimalAttr to get background information
+background :: Style -> Maybe Attr
+background s = listToMaybe [x | x@(Background _) <- s]
+
+
+-- TODO: Integrate defaults into below, and cache(?)
+-- | Convert style information into Cocoa compatible format
+convertStyle :: Style -> IO (NSDictionary ())
+convertStyle s = do
+  d <- castObject <$> dictionary _NSMutableDictionary
+  ft <- userFixedPitchFontOfSize 0 _NSFont
+  setValueForKey ft nsFontAttributeName d
+  fillStyleDict d s
+  castObject <$> return d
+
+-- | Fill and return the filled dictionary with the style information
+fillStyleDict :: NSMutableDictionary t -> Style -> IO ()
+fillStyleDict _ [] = return ()
+fillStyleDict d (x:xs) = do
+  fillStyleDict d xs
+  getDictStyle x >>= flip (uncurry setValueForKey) d
+
+-- | Return a (value, key) pair for insertion into the style dictionary
+getDictStyle :: Attr -> IO (NSColor (), NSString ())
+getDictStyle (Foreground c) = (,) <$> getColor True c  <*> pure nsForegroundColorAttributeName
+getDictStyle (Background c) = (,) <$> getColor False c <*> pure nsBackgroundColorAttributeName
+
+-- | Convert a Yi color into a Cocoa color
+getColor :: Bool -> Color -> IO (NSColor ())
+getColor fg Default = if fg then _NSColor # blackColor else _NSColor # whiteColor
+getColor fg Reverse = if fg then _NSColor # whiteColor else _NSColor # blackColor
+getColor _g (RGB r g b) =
+  let conv = (/255) . fromIntegral in
+  _NSColor # colorWithDeviceRedGreenBlueAlpha (conv r) (conv g) (conv b) 1.0
+
+-- | A version of poke that does nothing if p is null.
+safePoke :: (Storable a) => Ptr a -> a -> IO ()
+safePoke p x = if p == nullPtr then return () else poke p x
+
+-- | Execute strokeRangesB on the buffer, and update the buffer
+--   so that we keep around cached syntax information...
+runStrokesAround :: CUInt -> YiTextStorage () -> IO [[Stroke]]
+runStrokesAround i self = do
+  Just b <- self #. _buffer
+  let p = fromIntegral i
+  let (strokes,b') = runBuffer (dummyWindow $ bkey b) b (strokesRangesB Nothing p (p + strokeRangeExtent))
+  self # setIVar _buffer (Just b')
+  return strokes
+
+
 ------------------------------------------------------------------------
 
 data UI = UI {uiWindow :: NSWindow ()
              ,uiBox :: NSSplitView ()
              ,uiCmdLine :: NSTextField ()
-             ,uiBuffers :: IORef (M.Map BufferRef (NSTextStorage ()))
+             ,uiBuffers :: IORef (M.Map BufferRef (YiTextStorage ()))
              ,windowCache :: IORef [WinInfo]
              ,uiActionCh :: Action -> IO ()
              ,uiConfig :: UIConfig
@@ -317,8 +543,8 @@ setMonospaceFont :: Has_setFont v => v -> IO ()
 setMonospaceFont view = do
   userFixedPitchFontOfSize 0 _NSFont >>= flip setFont view
 
-newTextLine :: UIConfig -> IO (NSTextField ())
-newTextLine cfg = do
+newTextLine :: IO (NSTextField ())
+newTextLine = do
   tl <- new _NSTextField
   tl # setAlignment nsLeftTextAlignment
   tl # setAutoresizingMask (nsViewWidthSizable .|. nsViewMaxYMargin)
@@ -328,15 +554,15 @@ newTextLine cfg = do
   tl # sizeToFit
   return tl
 
-addSubviewWithTextLine :: forall t1 t2. UIConfig -> NSView t1 -> NSView t2 -> IO (NSTextField (), NSView ())
-addSubviewWithTextLine cfg view parent = do
+addSubviewWithTextLine :: forall t1 t2. NSView t1 -> NSView t2 -> IO (NSTextField (), NSView ())
+addSubviewWithTextLine view parent = do
   container <- new _NSView
   parent # bounds >>= flip setFrame container
   container # setAutoresizingMask allSizable
   view # setAutoresizingMask allSizable
   container # addSubview view
 
-  text <- newTextLine cfg
+  text <- newTextLine
   container # addSubview text
   parent # addSubview container
   -- Adjust frame sizes, as superb cocoa cannot do this itself...
@@ -361,6 +587,8 @@ start cfg ch outCh _ed = do
   initializeClass_YiApplication
   initializeClass_YiController
   initializeClass_YiTextView
+  initializeClass_YiLBString
+  initializeClass_YiTextStorage
   initializeClass_YiScrollView
 
   app <- _YiApplication # sharedApplication >>= return . toYiApplication
@@ -392,7 +620,7 @@ start cfg ch outCh _ed = do
 
   -- Create yi window container
   winContainer <- new _NSSplitView
-  (cmd,_) <- content # addSubviewWithTextLine (configUI cfg) winContainer
+  (cmd,_) <- content # addSubviewWithTextLine winContainer
 
 
   -- Activate application window
@@ -459,7 +687,7 @@ newWindow ui mini b = do
    then do
     v # setHorizontallyResizable False
     v # setVerticallyResizable False
-    prompt <- newTextLine (uiConfig ui)
+    prompt <- newTextLine
     prompt # setStringValue (toNSString (name b))
     prompt # sizeToFit
     prompt # setAutoresizingMask nsViewNotSizable
@@ -499,7 +727,7 @@ newWindow ui mini b = do
     scroll # setHasHorizontalScroller False
     scroll # setAutohidesScrollers (configAutoHideScrollBar $ uiConfig ui)
     scroll # setIVar _leftScroller (configLeftSideScrollBar $ uiConfig ui)
-    addSubviewWithTextLine (uiConfig ui) scroll (uiBox ui)
+    addSubviewWithTextLine scroll (uiBox ui)
 
   storage <- getTextStorage ui b
   layoutManager v >>= replaceTextStorage storage
@@ -530,21 +758,22 @@ insertWindow e i win = do
 refresh :: UI -> Editor -> IO ()
 refresh ui e = logNSException "refresh" $ do
     let ws = Editor.windows e
-    let takeEllipsis s = if length s > 132 then take 129 s ++ "..." else s
+    let takeEllipsis s = if L.length s > 132 then take 129 s ++ "..." else s
     (uiCmdLine ui) # setStringValue (toNSString (takeEllipsis (statusLine e)))
 
     cache <- readRef $ windowCache ui
     forM_ (buffers e) $ \buf -> when (not $ null $ pendingUpdates $ buf) $ do
       storage <- getTextStorage ui buf
-      storage # beginEditing
-      forM_ ([u | TextUpdate u <- pendingUpdates buf]) $ applyUpdate storage
-      storage # endEditing
-      -- UNUSED: contents <- storage # string >>= haskellString
       storage # setMonospaceFont -- FIXME: Why is this needed for mini buffers?
-      -- TODO: Merge overlapping regions...
-      let (size',p) = runBufferDummyWindow buf ((,) <$> sizeB <*> pointB)
-      forM_ ([(s,s+~l) | StyleUpdate s l <- pendingUpdates buf]) $ \(s,e') -> replaceTagsIn (inBounds s size') (inBounds e' size') buf storage
-      replaceTagsIn (inBounds (p-100) size') (inBounds (p+100) size') buf storage
+      if null (pendingUpdates buf)
+        then return ()
+        else do
+          storage # beginEditing
+          forM_ ([u | TextUpdate u <- pendingUpdates buf]) $ applyUpdate storage
+          storage # setIVar _buffer (Just buf)
+          storage # setIVar _stringCache Nothing
+          storage # setIVar _attributesCache Nothing
+          storage # endEditing
 
     (uiWindow ui) # setAutodisplay False -- avoid redrawing while window syncing
     WS.debug "syncing" ws
@@ -566,28 +795,15 @@ refresh ui e = logNSException "refresh" $ do
            let txt = runBufferDummyWindow buf getModeLine
            (modeline w) # setStringValue (toNSString txt)
 
-
-replaceTagsIn :: forall t. Point -> Point -> FBuffer -> NSTextStorage t -> IO ()
-replaceTagsIn from to buf storage = do
-  let styleSpans = runBufferDummyWindow buf (strokesRangesB Nothing (to - from) from)
-  forM_ (concat styleSpans) $ \(l,ss,r) -> do
-    let range = NSRange (fromIntegral l) (fromIntegral $ r~-l)
-    forM_ ss (\s -> mkStyle s >>= addStyle range)
-  where
-    addStyle r (k,v) = storage # addAttributeValueRange k v r
-    mkStyle (Foreground c) = (\x -> (nsForegroundColorAttributeName, x)) <$> color' True c
-    mkStyle (Background c) = (\x -> (nsBackgroundColorAttributeName, x)) <$> color' False c
-    color' fg Default = if fg then _NSColor # blackColor else _NSColor # whiteColor
-    color' fg Reverse = if fg then _NSColor # whiteColor else _NSColor # blackColor
-    color' _g (RGB r g b) = _NSColor # colorWithDeviceRedGreenBlueAlpha ((fromIntegral r)/255) ((fromIntegral g)/255) ((fromIntegral b)/255) 1.0
-
-applyUpdate :: NSTextStorage () -> Update -> IO ()
+applyUpdate :: YiTextStorage () -> Update -> IO ()
 applyUpdate buf (Insert p _ s) =
-  -- TODO: Do not convert back and forth...
-  buf # mutableString >>= insertStringAtIndex (toNSString $ LazyUTF8.toString s) (fromIntegral p)
+  buf # editedRangeChangeInLength nsTextStorageEditedCharacters
+          (NSRange (fromIntegral p) 0) (fromIntegral $ LB.length s)
 
 applyUpdate buf (Delete p _ s) =
-  buf # mutableString >>= deleteCharactersInRange (NSRange (fromIntegral p) (fromIntegral (LB.length s)))
+  let len = LB.length s in
+  buf # editedRangeChangeInLength nsTextStorageEditedCharacters
+          (NSRange (fromIntegral p) (fromIntegral len)) (fromIntegral (negate len))
 
 prepareAction :: UI -> IO (EditorM ())
 prepareAction _ui = return (return ())
@@ -627,23 +843,21 @@ prepareAction _ui = return (return ())
 --  modify tail
 --  return win {Window.height = h}
 
-getTextStorage :: UI -> FBuffer -> IO (NSTextStorage ())
+getTextStorage :: UI -> FBuffer -> IO (YiTextStorage ())
 getTextStorage ui b = do
     let bufsRef = uiBuffers ui
     bufs <- readRef bufsRef
     storage <- case M.lookup (bkey b) bufs of
       Just storage -> return storage
-      Nothing -> newTextStorage ui b
+      Nothing -> newTextStorage b
     modifyRef bufsRef (M.insert (bkey b) storage)
     return storage
 
-newTextStorage :: UI -> FBuffer -> IO (NSTextStorage ())
-newTextStorage ui b = do
-  buf <- new _NSTextStorage
-  let txt = runBufferDummyWindow b (revertPendingUpdatesB >> elemsB)
-  buf # mutableString >>= setString (toNSString txt)
+newTextStorage :: FBuffer -> IO (YiTextStorage ())
+newTextStorage b = do
+  buf <- new _YiTextStorage
+  buf # setIVar _buffer (Just b)
   buf # setMonospaceFont
-  replaceTagsIn 0 (genericLength txt) b buf
   return buf
 
 -- Debugging helpers
