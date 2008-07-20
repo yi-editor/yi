@@ -34,6 +34,7 @@ init,
 io,
 last,
 lookup,
+module Control.Applicative,
 module Data.Bool,
 module Data.Foldable,
 module Data.Function,
@@ -63,6 +64,7 @@ import Data.Foldable
 import Data.Function
 import Data.Int
 import Control.Monad.Reader
+import Control.Applicative
 import Data.Traversable 
     
 type Endom a = a -> a

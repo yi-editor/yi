@@ -7,7 +7,7 @@
 
 module Yi.UI.Vty (start) where
 
-import Yi.Prelude 
+import Yi.Prelude hiding ((<|>))
 import Prelude (map, take, zip, repeat, length, break, splitAt)
 import Control.Concurrent
 import Control.Exception
