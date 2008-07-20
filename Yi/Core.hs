@@ -253,11 +253,11 @@ closeWindow = do
 
 -- | Execute the argument in the context of an other window. Create
 -- one if necessary.
-withOtherWindow :: EditorM () -> EditorM ()
+withOtherWindow :: MonadEditor m => m () -> m ()
 withOtherWindow f = do
-  shiftOtherWindow
+  liftEditor shiftOtherWindow
   f
-  prevWinE
+  liftEditor prevWinE
 
 reloadEditor :: YiM ()
 reloadEditor = msgEditor "reloadEditor: Not supported"
@@ -269,9 +269,9 @@ getAllNamesInScope = do
   return (M.keys acts)
 
 -- | Start a subprocess with the given command and arguments.
-startSubprocess :: FilePath -> [String] -> YiM ()
+startSubprocess :: FilePath -> [String] -> YiM BufferRef
 startSubprocess cmd args = do
-  let buffer_name = "output from " ++ cmd
+  let buffer_name = "output from " ++ cmd ++ " " ++ show args
   bufref <- withEditor $ newBufferE buffer_name (fromString "")
 
   procid <- modifiesThenReadsRef yiSubprocessIdSupply (+1)
@@ -282,7 +282,8 @@ startSubprocess cmd args = do
   startSubprocessWatchers (output yi) procid procinfo
 
   modifiesRef yiSubprocesses $ M.insert procid procinfo
-  msgEditor ("Launched process: " ++ cmd )
+  msgEditor ("Launched process: " ++ cmd)
+  return bufref
 
 startSubprocessWatchers :: (Action -> IO ()) -> SubprocessId -> SubprocessInfo -> YiM ()
 startSubprocessWatchers chan procid procinfo = do

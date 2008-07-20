@@ -93,8 +93,10 @@ reloadProjectE s = withUI $ \ui -> reloadProject ui s
 -- | cabal-build
 cabalBuildE :: YiM ()
 cabalBuildE =
-    withMinibufferFree "Build args:" $ \cmd -> do
+    withMinibufferFree "Build args:" $ \cmd -> withOtherWindow $ do
         startSubprocess "runhaskell" (setupScript:"build":words cmd)
+        return ()
+        
 
 -- | Inserting a template from the templates defined in Yi.Templates
 insertTemplate :: YiM ()
