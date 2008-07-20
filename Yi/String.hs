@@ -100,9 +100,7 @@ unlines' = intercalate "\n"
 -- | Split a String in lines. Unlike 'Prelude.lines', this does not
 -- remove any empty line at the end.
 lines' :: String -> [String]
-lines' [] = []
-lines' ('\n':cs) = "" : lines' cs
-lines' cs = let (l,r) = span (/= '\n') cs in l:lines' r
+lines' = stratify "\n" 
 
 -- | A helper function for creating functions suitable for
 -- 'modifySelectionB' and 'modifyRegionB'.
@@ -110,3 +108,13 @@ lines' cs = let (l,r) = span (/= '\n') cs in l:lines' r
 -- the lines of a region.
 modifyLines :: (String -> String) -> String -> String
 modifyLines transform = unlines' . fmap transform . lines'
+
+-- | Right inverse of intercalate.
+
+-- (courtesy Bart Massey)
+stratify :: (Eq a) => [a] -> [a] -> [[a]]
+stratify [] l = map (:[]) l
+stratify _ [] = [[]]
+stratify sep l | isPrefixOf sep l = [] : stratify sep (drop (length sep) l)
+stratify sep (e  : es) = (e : l') : ls' where
+    (l' : ls') = stratify sep es
