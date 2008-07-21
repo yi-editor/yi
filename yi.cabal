@@ -49,8 +49,8 @@ flag vty
 flag gtk
   Description: Provide GTK UI
 
-flag cairo
-  Description: Provide Cairo UI
+flag pango
+  Description: Provide Pango UI
   -- TODO: rename to Pango
 
 flag cocoa
@@ -106,10 +106,10 @@ library
       other-modules: Yi.UI.Gtk.ProjectTree
                      Yi.UI.Gtk.Utils
 
-    if flag (cairo)
+    if flag (pango)
       build-depends: gtk>=0.9.13
-      cpp-options: -DFRONTEND_CAIRO
-      exposed-modules: Yi.UI.Cairo
+      cpp-options: -DFRONTEND_PANGO
+      exposed-modules: Yi.UI.Pango
       other-modules: Yi.UI.Gtk.ProjectTree
                      Yi.UI.Gtk.Utils
 
@@ -212,12 +212,12 @@ executable yi
           build-depends: gtk>=0.9.13
           cpp-options: -DFRONTEND_GTK
 
-        if flag (cairo)
+        if flag (pango)
           build-depends: gtk>=0.9.13
-          cpp-options: -DFRONTEND_CAIRO
+          cpp-options: -DFRONTEND_PANGO
           other-modules: Yi.UI.Gtk.ProjectTree
                          Yi.UI.Gtk.Utils
-                         Yi.UI.Cairo
+                         Yi.UI.Pango
 
         if flag (cocoa)
           build-depends: HOC, HOC-AppKit, HOC-Foundation

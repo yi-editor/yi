@@ -55,8 +55,8 @@ import qualified Yi.UI.Gtk
 #ifdef FRONTEND_VTY
 import qualified Yi.UI.Vty
 #endif
-#ifdef FRONTEND_CAIRO
-import qualified Yi.UI.Cairo
+#ifdef FRONTEND_PANGO
+import qualified Yi.UI.Pango
 #endif
 
 import Data.Char
@@ -82,8 +82,8 @@ frontends =
 #ifdef FRONTEND_VTY
    ("vty", Yi.UI.Vty.start) :
 #endif
-#ifdef FRONTEND_CAIRO
-   ("cairo", Yi.UI.Cairo.start) :
+#ifdef FRONTEND_PANGO
+   ("pango", Yi.UI.Pango.start) :
 #endif
    []
 
