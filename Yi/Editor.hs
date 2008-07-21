@@ -179,7 +179,7 @@ deleteBuffer k = do
                             windows = fmap pickOther (windows e)
                             -- all windows open on that buffer must switch to another buffer.
                            }
-      otherwise -> return () -- Don't delete the last buffer.
+      _ -> return () -- Don't delete the last buffer.
 
 -- | Return the buffers we have
 getBuffers :: EditorM [FBuffer]

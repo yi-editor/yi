@@ -7,8 +7,7 @@
 -- buffers, which maintain a current /point/.
 
 module Yi.Buffer
-  ( BufferRef
-  , FBuffer       ( .. )
+  ( FBuffer       ( .. )
   , BufferM       ( .. )
   , runBuffer
   , runBufferFull
@@ -115,7 +114,6 @@ import Yi.Monad
 import Yi.Interact as I
 import qualified Data.ByteString.UTF8 as UTF8
 import qualified Data.ByteString.Lazy.UTF8 as LazyUTF8
-import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as LB
 import Yi.Buffer.Basic
 
@@ -325,6 +323,7 @@ switchWindow :: Window -> FBuffer -> FBuffer
 switchWindow w b = let (w', b', _updates) = runRWS (fromBufferM f) w b in b'
     where f = do copyMark (insMark w) staticInsMark
 
+runBufferFull :: Window -> FBuffer -> BufferM a -> (a, [Update], FBuffer)
 runBufferFull w b f = 
     let (a, b', updates) = runRWS (fromBufferM f') w b
         f' = copyMark (insMark w) staticInsMark *> f <* copyMark staticInsMark (insMark w) 
@@ -337,12 +336,12 @@ copyMark src dst = do
 
 -- | Create a new window onto this buffer.
 newWindowB :: Int -> Bool -> BufferM Window
-newWindowB wkey mini = do
+newWindowB wk mini = do
   w <- ask
   markValues <- mapM getMarkValueB [staticInsMark, fromMark w, toMark w]
   [newIns, newFrom, newTo] <- mapM newMarkB markValues
   bk <- gets bkey
-  return $ Window mini bk newFrom newTo 0 wkey newIns
+  return $ Window mini bk newFrom newTo 0 wk newIns
 
 getMarkValueB :: Mark -> BufferM MarkValue
 getMarkValueB m = queryBuffer (getMarkValueBI m)
@@ -695,6 +694,7 @@ savingExcursionB f = do
     moveTo =<< getMarkPointB m
     return res
 
+getMarkPointB :: Mark -> BufferM Point
 getMarkPointB m = markPoint <$> getMarkValueB m
 
 -- | perform an @BufferM a@, and return to the current point

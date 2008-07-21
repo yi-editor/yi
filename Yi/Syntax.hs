@@ -58,11 +58,9 @@ data Scanner st a = Scanner {
 instance Functor (Scanner st) where
     fmap f (Scanner i l e r) = Scanner i l (f e) (\st -> fmap (second f) (r st))
 
-scanRunInit :: Scanner st a -> [(st, a)]
-scanRunInit s = scanRun s $ scanInit s
-
 data Cache state result = Cache [(state,result)] result
 
+emptyFileScan :: Scanner Point Char
 emptyFileScan = Scanner { scanInit = 0, scanRun = const [], scanLooked = id, scanEmpty = error "emptyFileScan: no scanEmpty" }
 
 -- | This takes as input a scanner that returns the "full" result at

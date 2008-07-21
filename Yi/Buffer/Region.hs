@@ -19,7 +19,6 @@ where
 import Yi.Region
 import Yi.Window
 import Yi.Buffer
-import Control.Applicative
 import Yi.Prelude
 import Prelude ()
 

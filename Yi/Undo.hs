@@ -1,7 +1,5 @@
---
 -- Copyright (c) 2004 Don Stewart - http://www.cse.unsw.edu.au/~dons
---
---
+-- Copyright (c) 2008 JP Bernardy
 
 --
 -- | An implementation of restricted, linear undo, as described in:
