@@ -36,9 +36,11 @@ extra-source-files: Yi/Syntax/alex.hsinc
 
 flag ghcAPI
   Description: Enable linking with GHC API for advanced features.
+  Default: False
   -- Can be useful to disable; ghc package is difficult to rebuild;
   --  * normally not available for profiling.      
   --  * links against old/new version of bytestring
+  --  * links against old version of Cabal
   -- ...
 
 flag vty
