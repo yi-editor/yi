@@ -3,8 +3,8 @@
 module Yi.Syntax.Paren where
 
 import Yi.IncrementalParse
-import Yi.Syntax.Alex
-import Yi.Syntax.Haskell
+import Yi.Lexer.Alex
+import Yi.Lexer.Haskell
 import Control.Applicative
 import Yi.Style (hintStyle, errorStyle, Style)
 import Yi.Syntax.Layout

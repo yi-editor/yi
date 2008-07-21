@@ -2,7 +2,7 @@
 module Yi.Syntax.Layout where
 
 import Yi.Syntax
-import Yi.Syntax.Alex
+import Yi.Lexer.Alex
 import Yi.Prelude
 import Prelude ()
 import Data.Maybe (isJust)

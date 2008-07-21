@@ -14,12 +14,12 @@ import Yi.Prelude
 import Yi.Syntax
 import Yi.String
 import Yi.Region
-import Yi.Syntax.Alex (Tok(..),Posn(..),tokBegin,tokEnd,tokRegion)
-import Yi.Syntax.Haskell (Token(..), ReservedType(..), startsLayout)
+import Yi.Lexer.Alex (Tok(..),Posn(..),tokBegin,tokEnd,tokRegion)
+import Yi.Lexer.Haskell (Token(..), ReservedType(..), startsLayout)
 import Yi.Syntax.Paren
 import qualified Yi.IncrementalParse as IncrParser
-import qualified Yi.Syntax.Alex as Alex
-import qualified Yi.Syntax.Haskell             as Haskell
+import qualified Yi.Lexer.Alex as Alex
+import qualified Yi.Lexer.Haskell as Haskell
 import qualified Yi.Syntax.Paren as Paren
 import Control.Applicative
 

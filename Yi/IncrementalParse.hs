@@ -3,7 +3,7 @@
 module Yi.IncrementalParse (Process, Void, 
                             recoverWith, symbol, eof, runPolish,
                             P, AlexState (..), scanner) where
-import Yi.Syntax.Alex (AlexState (..))
+import Yi.Lexer.Alex (AlexState (..))
 import Control.Applicative
 import Yi.Prelude
 import Prelude ()

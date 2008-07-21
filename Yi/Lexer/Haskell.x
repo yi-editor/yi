@@ -8,9 +8,9 @@
 
 {
 {-# OPTIONS -w  #-}
-module Yi.Syntax.Haskell ( initState, alexScanToken, tokenToStyle, 
+module Yi.Lexer.Haskell ( initState, alexScanToken, tokenToStyle, 
                            startsLayout, isComment, Token(..), CommentType(..), ReservedType(..) ) where
-import Yi.Syntax.Alex
+import Yi.Lexer.Alex
 import Yi.Style
 }
 

@@ -32,7 +32,7 @@ data-files:
   art/license-file.png
   art/setup-script.png
   art/setup-script.png
-extra-source-files: Yi/Syntax/alex.hsinc
+extra-source-files: Yi/Lexer/alex.hsinc
 
 flag ghcAPI
   Description: Enable linking with GHC API for advanced features.
@@ -91,7 +91,7 @@ library
            Yi.UI.Common
     extensions: CPP, DeriveDataTypeable, FlexibleContexts, FlexibleInstances,
                 GADTs, GeneralizedNewtypeDeriving, Rank2Types, TypeSynonymInstances
-    include-dirs:   Yi/Syntax
+    include-dirs:   Yi/Lexer
     if flag (vty)
        build-depends: vty>=3.0.0
        cpp-options: -DFRONTEND_VTY
@@ -100,14 +100,12 @@ library
     hs-source-dirs: . dist/build/autogen
 
     if flag (gtk)
-      build-depends: gtk>=0.9.13
       cpp-options: -DFRONTEND_GTK
       exposed-modules: Yi.UI.Gtk
       other-modules: Yi.UI.Gtk.ProjectTree
                      Yi.UI.Gtk.Utils
 
     if flag (pango)
-      build-depends: gtk>=0.9.13
       cpp-options: -DFRONTEND_PANGO
       exposed-modules: Yi.UI.Pango
       other-modules: Yi.UI.Gtk.ProjectTree
@@ -115,15 +113,10 @@ library
 
 
     if flag (cocoa)
-      build-depends: HOC, HOC-AppKit, HOC-Foundation
       cpp-options: -DFRONTEND_COCOA
       exposed-modules: Yi.UI.Cocoa
 
     if flag (ghcAPI)
-      build-depends: ghc
-      build-depends: parallel
-      build-depends: haskell98
-
       cpp-options: -DGHC_API
 
       exposed-modules:  Yi.Mode.Shim
@@ -133,12 +126,21 @@ library
 
     other-modules:
         Paths_yi,
-        Yi.Syntax.Cplusplus, Yi.Syntax.Haskell, 
-        Yi.Syntax.Layout,
-        Yi.Syntax.LiterateHaskell,
-        Yi.Syntax.Latex, Yi.Syntax.Paren, Yi.Syntax.Srmc, Yi.Syntax.Cabal, Yi.Syntax.Fractal
+        Yi.Lexer.Alex
+        Yi.Lexer.Cplusplus
+        Yi.Lexer.Haskell
+        Yi.Lexer.LiterateHaskell
+        Yi.Lexer.Latex 
+        Yi.Lexer.Srmc
+        Yi.Lexer.Cabal
 
-        Yi.Accessor, Yi.Interpreter,
+        Yi.Syntax
+        Yi.Syntax.Layout
+        Yi.Syntax.Paren
+        Yi.Syntax.Fractal
+
+        Yi.Accessor
+        Yi.Interpreter
         Yi.Buffer.Basic
         System.FriendlyPath
         Yi.Region
@@ -149,12 +151,11 @@ library
         Yi.Indent, Yi.Interact, Yi.Keymap, Yi.Keymap.Completion,
         Yi.Keymap.Emacs.Keys, Yi.Keymap.Emacs.KillRing, Yi.Keymap.Emacs.UnivArgument,
         Yi.Keymap.Emacs.Utils, Yi.Main, Yi.MkTemp, Yi.Monad, Yi.Process,
-        Yi.Search, Yi.String, Yi.Style, Yi.Syntax, Yi.Templates, Yi.TextCompletion,
+        Yi.Search, Yi.String, Yi.Style, Yi.Templates, Yi.TextCompletion,
         Yi.Undo, Yi.Window, Yi.WindowSet
         Yi.MiniBuffer
         Yi.File
         Yi.KillRing
-        Yi.Syntax.Alex
         Yi.IncrementalParse
         Yi.UI.Utils
         HConf
@@ -255,14 +256,21 @@ executable yi
            System.FriendlyPath
            Yi.UI.Common
 
-           Yi.Syntax.Cplusplus, Yi.Syntax.Haskell, Yi.Syntax.LiterateHaskell,
-           Yi.Syntax.Latex, Yi.Syntax.Srmc, Yi.Syntax.Cabal
            Paths_yi,
            Yi.GHC
-           Yi.Syntax.Cplusplus, Yi.Syntax.Haskell,
-           Yi.Syntax.Layout, 
-           Yi.Syntax.LiterateHaskell,
-           Yi.Syntax.Latex, Yi.Syntax.Paren, Yi.Syntax.Srmc, Yi.Syntax.Cabal, Yi.Syntax.Fractal
+
+           Yi.Lexer.Alex
+           Yi.Lexer.Cplusplus
+           Yi.Lexer.Haskell
+           Yi.Lexer.LiterateHaskell
+           Yi.Lexer.Latex 
+           Yi.Lexer.Srmc
+           Yi.Lexer.Cabal
+
+           Yi.Syntax
+           Yi.Syntax.Layout
+           Yi.Syntax.Paren
+           Yi.Syntax.Fractal
 
            Yi.Accessor, Yi.Interpreter,
            Yi.Buffer.HighLevel, Yi.Buffer.Implementation,
@@ -271,12 +279,11 @@ executable yi
            Yi.Indent, Yi.Interact, Yi.Keymap, Yi.Keymap.Completion,
            Yi.Keymap.Emacs.Keys, Yi.Keymap.Emacs.KillRing, Yi.Keymap.Emacs.UnivArgument,
            Yi.Keymap.Emacs.Utils, Yi.Main, Yi.MkTemp, Yi.Monad, Yi.Process,
-           Yi.Search, Yi.String, Yi.Style, Yi.Syntax, Yi.Templates, Yi.TextCompletion,
+           Yi.Search, Yi.String, Yi.Style, Yi.Templates, Yi.TextCompletion,
            Yi.Undo, Yi.Window, Yi.WindowSet
            Yi.MiniBuffer
            Yi.File
            Yi.KillRing
-           Yi.Syntax.Alex
            Yi.IncrementalParse
            Yi.UI.Utils
            HConf
@@ -284,7 +291,7 @@ executable yi
            Data.Tree.Zipper
            Data.DelayList
 
-        include-dirs:   Yi/Syntax
+        include-dirs:   Yi/Lexer
         extensions: CPP, DeriveDataTypeable, FlexibleContexts, FlexibleInstances,
                     GADTs, GeneralizedNewtypeDeriving, Rank2Types, TypeSynonymInstances
 

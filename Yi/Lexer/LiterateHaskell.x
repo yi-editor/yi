@@ -10,8 +10,8 @@
 
 {
 {-# OPTIONS -w  #-}
-module Yi.Syntax.LiterateHaskell ( initState, alexScanToken ) where
-import Yi.Syntax.Alex
+module Yi.Lexer.LiterateHaskell ( initState, alexScanToken ) where
+import Yi.Lexer.Alex
 import Yi.Style
 }
 

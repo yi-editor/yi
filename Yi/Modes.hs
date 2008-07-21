@@ -2,13 +2,13 @@ module Yi.Modes (defaultFundamentalMode, fundamental,
  latexMode, cppMode, haskellMode, literateHaskellMode, cabalMode, srmcMode, defaultModeMap) where
 
 import System.FilePath
-import qualified Yi.Syntax.LiterateHaskell     as LiterateHaskell
-import qualified Yi.Syntax.Latex               as Latex
-import qualified Yi.Syntax.Srmc                as Srmc
-import qualified Yi.Syntax.Cabal               as Cabal
-import qualified Yi.Syntax.Cplusplus           as Cplusplus
-import qualified Yi.Syntax.Alex as Alex
-import Yi.Syntax.Alex (Tok(..), Posn(..))
+import qualified Yi.Lexer.LiterateHaskell     as LiterateHaskell
+import qualified Yi.Lexer.Latex               as Latex
+import qualified Yi.Lexer.Srmc                as Srmc
+import qualified Yi.Lexer.Cabal               as Cabal
+import qualified Yi.Lexer.Cplusplus           as Cplusplus
+import qualified Yi.Lexer.Alex as Alex
+import Yi.Lexer.Alex (Tok(..), Posn(..))
 import Yi.Syntax
 import Yi.Indent
 import Control.Arrow (first)
