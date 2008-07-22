@@ -28,34 +28,33 @@ fundamental = emptyMode
   }
 
 -- mkHighlighter' :: s -> (Yi.Syntax.Alex.ASI s -> Maybe (Tok Yi.Style.Style, Yi.Syntax.Alex.ASI s)) -> Highlighter (Yi.Syntax.Cache s) LinearResult
-mkHighlighter' initSt scan = mkHighlighter (linearIncrScanner . Alex.lexScanner (fmap (first tokenToStroke) . scan) initSt) linearGetStrokes
-    where tokenToStroke (Tok t len posn) = (posnOfs posn, t, posnOfs posn +~ len)
+mkHighlighter' initSt scan tokenToStyle = mkHighlighter (linearIncrScanner . Alex.lexScanner (fmap (first tokenToStroke) . scan) initSt) linearGetStrokes
+    where tokenToStroke (Tok t len posn) = (posnOfs posn, tokenToStyle t, posnOfs posn +~ len)
 
-
-cppMode = fundamental 
+cppMode = fundamental
   {
-   modeHL = ExtHL (mkHighlighter' Cplusplus.initState Cplusplus.alexScanToken)
+    modeHL = ExtHL $ mkHighlighter' Cplusplus.initState Cplusplus.alexScanToken id
   }
 
 literateHaskellMode = fundamental
   {
-   modeHL = ExtHL (mkHighlighter' LiterateHaskell.initState LiterateHaskell.alexScanToken)
+    modeHL = ExtHL $ mkHighlighter' LiterateHaskell.initState LiterateHaskell.alexScanToken id
   }
 
-cabalMode = fundamental 
+cabalMode = fundamental
   {
-    modeHL = ExtHL (mkHighlighter' Cabal.initState Cabal.alexScanToken)
+    modeHL = ExtHL $ mkHighlighter' Cabal.initState Cabal.alexScanToken id
   }
 
-latexMode = fundamental 
+latexMode = fundamental
   {
-   modeHL = ExtHL (mkHighlighter' Latex.initState Latex.alexScanToken)
+    modeHL = ExtHL $ mkHighlighter' Latex.initState Latex.alexScanToken id
   }
 
-srmcMode = fundamental 
-   {
-    modeHL = ExtHL (mkHighlighter' Srmc.initState Srmc.alexScanToken)
-   }
+srmcMode = fundamental
+  {
+    modeHL = ExtHL $ mkHighlighter' Srmc.initState Srmc.alexScanToken id
+  }
 
 defaultFundamentalMode = fundamental
 
