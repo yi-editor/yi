@@ -77,6 +77,7 @@ modeFromExtension :: String -> Maybe AnyMode
 modeFromExtension ".hs"    = Just $ AnyMode haskellMode
 modeFromExtension ".x"     = Just $ AnyMode haskellMode
 modeFromExtension ".lhs"   = Just $ AnyMode literateHaskellMode
+modeFromExtension ".hsc"   = Just $ AnyMode haskellMode
 modeFromExtension ".hsinc" = Just $ AnyMode haskellMode -- haskell include files such as Yi/Syntax/alex.hsinc
 modeFromExtension ".cabal" = Just $ AnyMode cabalMode
 modeFromExtension ".tex"   = Just $ AnyMode latexMode
