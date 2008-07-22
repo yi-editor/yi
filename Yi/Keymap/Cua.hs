@@ -4,13 +4,17 @@
 module Yi.Keymap.Cua  (keymap)
 where
 
-import Yi
+import Yi.Prelude
+import Yi.Core
+import Yi.Event
+import Yi.Interact hiding (write)
 import Yi.Keymap.Keys
 import Yi.Keymap.Emacs.KillRing
 import Yi.Keymap.Emacs.Utils
 import Yi.Accessor
 import Yi.Buffer
 import Yi.Buffer.Normal
+import Yi.Buffer.HighLevel
 import Data.Char
 import Prelude hiding (error)
 

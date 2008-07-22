@@ -23,6 +23,7 @@ import Prelude ()
 import Yi.Prelude
 import qualified Yi.Keymap.Emacs  as Emacs
 import qualified Yi.Keymap.Vim  as Vim
+import qualified Yi.Keymap.Cua  as Cua
 import Yi.Modes (defaultModeMap, defaultFundamentalMode)
 import Yi.Buffer hiding (file)
 import Yi.Buffer.HighLevel
@@ -114,7 +115,8 @@ data Opts = Help
 -- | List of editors for which we provide an emulation.
 editors :: [(String,Config -> Config)]
 editors = [("emacs", \cfg -> cfg {defaultKm = Emacs.keymap, configKillringAccumulate = True}),
-           ("vim",   \cfg -> cfg {defaultKm = Vim.keymap})]
+           ("vim",   \cfg -> cfg {defaultKm = Vim.keymap}),
+           ("cua",   \cfg -> cfg {defaultKm = Cua.keymap})]
 
 options :: [OptDescr Opts]
 options = [
