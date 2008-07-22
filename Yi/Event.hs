@@ -27,7 +27,7 @@ prettyEvent :: Event -> String
 prettyEvent (Event k mods) =
            concatMap ((++ "-") . prettyModifier) mods ++ prettyKey k
   where prettyKey (KFun i) = 'F' : show i
-        prettyKey (KASCII c) = [c]
+        prettyKey (KASCII c) = show c
         prettyKey key = tail $ show key
         prettyModifier m = [show m !! 1]
       
