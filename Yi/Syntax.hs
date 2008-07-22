@@ -13,6 +13,7 @@
 
 module Yi.Syntax 
   ( Highlighter  ( .. )
+  , Cache
   , Scanner (..)
   , ExtHL        ( .. )
   , noHighlighter, mkHighlighter

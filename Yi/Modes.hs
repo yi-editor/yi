@@ -16,6 +16,7 @@ import Control.Arrow (first)
 import Yi.Prelude
 import Yi.Buffer (AnyMode(..), Mode(..), emptyMode)
 import Prelude ()
+import Yi.Style
 import Yi.Mode.Haskell
 import Yi.Buffer.HighLevel (fillParagraph)
 
@@ -28,7 +29,17 @@ fundamental = emptyMode
    modePrettify = \_ -> fillParagraph
   }
 
--- mkHighlighter' :: s -> (Yi.Syntax.Alex.ASI s -> Maybe (Tok Yi.Style.Style, Yi.Syntax.Alex.ASI s)) -> Highlighter (Yi.Syntax.Cache s) LinearResult
+mkHighlighter' :: forall token lexerState.
+                    lexerState
+                    -> (Alex.ASI lexerState
+                        -> Maybe (Tok token, Alex.ASI lexerState))
+                    -> (token -> Style)
+                    -> Highlighter
+                         (Yi.Syntax.Cache
+                            (Alex.AlexState lexerState,
+                             [(Point, Style, Point)])
+                            (LinearResult (Point, Style, Point)))
+                         (LinearResult (Point, Style, Point))
 mkHighlighter' initSt scan tokenToStyle = mkHighlighter (linearIncrScanner . Alex.lexScanner (fmap (first tokenToStroke) . scan) initSt) linearGetStrokes
     where tokenToStroke (Tok t len posn) = (posnOfs posn, tokenToStyle t, posnOfs posn +~ len)
 
