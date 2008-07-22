@@ -1,12 +1,11 @@
 {-# LANGUAGE FlexibleContexts, DeriveDataTypeable #-}
 
---
 -- Copyright (c) 2004-5 Don Stewart - http://www.cse.unsw.edu.au/~dons
---
+-- Copyright (c) 2008 Nicolas Pouillard
 
 
 -- | Vim keymap for Yi. Emulates vim :set nocompatible
-module Yi.Keymap.Vim ( keymap, VimMode, viWrite ) where
+module Yi.Keymap.Vim ( keymap, viWrite ) where
 
 import Yi.Accessor
 import Yi.Prelude
@@ -46,26 +45,17 @@ import Yi.TextCompletion
 
 -- ---------------------------------------------------------------------
 
-type VimMode = KeymapM ()
-
-
--- | Top level
-keymap :: Keymap
-keymap = cmd_mode
-
-
-------------------------------------------------------------------------
+type VimMode = Keymap
 
 -- The Vim keymap is divided into several parts, roughly corresponding
 -- to the different modes of vi. Each mode is in turn broken up into
 -- separate VimProcs for each phase of key input in that mode.
 
--- | Command mode consists of simple commands that take a count arg,
+-- | Top level mode consists of simple commands that take a count arg,
 -- the replace cmd, which consumes one char of input, and commands
 -- that switch modes.
-cmd_mode :: VimMode
-cmd_mode = choice [cmd_eval,cmd_move,cmd2other,cmd_op]
-
+keymap :: VimMode
+keymap = choice [cmd_eval,cmd_move,cmd2other,cmd_op]
 
 -- | Leave a mode. This always has priority over catch-all actions inside the mode.
 leave :: VimMode
