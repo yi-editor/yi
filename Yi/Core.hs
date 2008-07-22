@@ -26,10 +26,7 @@ module Yi.Core
   -- * Global editor actions
   , msgEditor           -- :: String -> YiM ()
   , errorEditor         -- :: String -> YiM ()
-
-  -- * Window manipulation
   , closeWindow         -- :: YiM ()
-  , withOtherWindow
 
   -- * Interacting with external commands
   , runProcessWithInput          -- :: String -> String -> YiM String
@@ -245,19 +242,12 @@ errorEditor s = do msgEditor ("error: " ++ s)
 
 -- | Close the current window.
 -- If this is the last window open, quit the program.
+-- FIXME: call quitEditor when there are no other window in the interactive command.
 closeWindow :: YiM ()
 closeWindow = do
     n <- withEditor $ withWindows WS.size
     when (n == 1) quitEditor
     withEditor $ tryCloseE
-
--- | Execute the argument in the context of an other window. Create
--- one if necessary.
-withOtherWindow :: MonadEditor m => m () -> m ()
-withOtherWindow f = do
-  liftEditor shiftOtherWindow
-  f
-  liftEditor prevWinE
 
 reloadEditor :: YiM ()
 reloadEditor = msgEditor "reloadEditor: Not supported"

@@ -464,6 +464,14 @@ shiftOtherWindow = do
   when (len == 1) splitE
   nextWinE
 
+-- | Execute the argument in the context of an other window. Create
+-- one if necessary.
+withOtherWindow :: MonadEditor m => m () -> m ()
+withOtherWindow f = do
+  liftEditor shiftOtherWindow
+  f
+  liftEditor prevWinE
+
 
 -----------------------
 -- Keymap thread handling
