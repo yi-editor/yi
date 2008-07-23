@@ -1,0 +1,149 @@
+\documentclass[9pt,indentedstyle,preprint]{sigplanconf}
+\usepackage[english]{babel}
+\usepackage[sort&compress,numbers]{natbib}
+
+
+\begin{document}
+
+\conferenceinfo{Haskell'08}{080925, Victoria, BC, Canada.} 
+\copyrightyear{2008} 
+\copyrightdata{[to be supplied]} 
+
+\titlebanner{Draft}        % These are ignored unless
+\preprintfooter{Hask08}   % 'preprint' option specified.
+
+\title{Yi}
+\subtitle{An Editor in Haskell for Haskell}
+
+\authorinfo{Jean-Philippe Bernardy}
+           {Computer Science and Engineering, 
+            Chalmers University of Technology
+            % and University of Gothenburg
+          }
+           {bernardy@chalmers.se}
+
+\maketitle
+
+\begin{abstract}
+  Yi is a text editor written and extensible in Haskell. We take
+  advantage of Haskell expressive power to define embedded DSLs that form the
+  foundation of the editor. In turn, these DSLs provide a flexible
+  mechanism to describe extended versions of the editor. Yi also
+  provide a limited form of support for edition of Haskell code.
+\end{abstract}
+
+\category{D.2.3}{Coding Tools and Techniques}{Program editors}
+
+\terms
+Design, Languages
+
+\keywords
+Editor, Haskell, Functional Programming
+
+\section{Motivation}
+
+Everyone wants to customize their editor. We spend so much time
+working with them that we want them to behave exactly as we wish.
+Extensibility in Haskell is tempting, because the language is both
+general purpose and high-level. This means that configuration files be
+concise, and still have unlimited access to external resources, for
+example by using available Haskell libraries. Additionally, the well
+known safety features of Haskell are doubly important for
+configuration: user are less likely to master all the inner workings
+of the editor and more prone to shoot themselves in the foot.
+
+\section{Overview}
+
+Yi a text editor implemented, and more importantly extensible in
+Haskell. Yi is structured around four monadic embedded DSLs:
+\begin{description}
+\item[BufferM] A DSL for all buffer-local operations, like insertion
+  and deletion of text and annotation of buffer contents. This is
+  basically a monad that encapsulates the state of one buffer.
+\item[EditorM] A DSL for editor-level operations, opening and closing
+  windows and buffers. Operations involving more than one buffer are
+  handled at this level too.
+\item[YiM] A monad for IO operations. There, one can operate on files,
+  processes, etc.  This is the only level where IO can be done.
+\item[KeymapM] Key binding descriptions. This is a parser-like monad,
+  that maps a stream of input events to a stream of actions in any of
+  the above DSLs.
+\end{description}
+Yi also contains user-interface code (UI) for rendering the editor
+state, and getting the stream of input events from the user.  Finally,
+there is some glue code to tie the knot between all these
+components. This is the only part that accesses the UI code.
+
+This structure is very flexible: there is very low coupling between
+layers. One can easily swap out a component for another in the same
+category. For example, the user can choose between various UI
+components (vty, gtk, cocoa) and key bindings (emacs, vim).
+
+The various DSLs have composability properties, and this is what
+allows us to use them for configuration. Typically, a user would
+define a new BufferM action, using the library of functions available
+in Yi, and other Haskell libraries. Then, he would create a new
+key binding for it. Using the disjunction operator, this binding can
+then be merged with e.g. the default emacs bindings.
+
+We see that Yi is not so much an editor than a rich library that
+allows to build editors. Indeed, in this is exactly how users create
+extended versions of Yi: they create a program {\em from the ground
+  up} by combining the higher-order functions and (lazy) data
+structures offered in the Yi library. This is an approach to
+configuration that was pioneered by \citet{Stewart2007XMonad}.
+
+\section{Edition of Haskell code}
+
+Being implemented and extensible in Haskell, it would be natural that
+Yi had extensive support for \emph{editing} programs, and in
+particular Haskell code.  At the time of writing, we have implemented
+this partially. There is a parsing combinator library to describe
+syntax of programs; the contents of buffers is parsed incrementally
+and the result is made available to the rest of the code.
+
+We take advantage of this infrastructure to provide support for
+Haskell: among other things, feedback on parenthesis matching is
+given, and there is simple support for auto-indentation.
+
+\section{Limitations and Further work}
+
+The parsing mechanism is not perfect yet: we don't have a very precise
+syntax for Haskell, and the error-correction scheme is lacking
+generality.  The next step will be to bind to Haskell compilers, and
+in particular GHC, to provide full-fledged IDE capabilities, in the
+fashion of Visual Haskell \cite{Angelov2005VH}.
+
+Yi is also lacking dynamic capabilities: while the configuration
+mechanism is flexible, making a new configuration active requires {\em
+  restarting} the editor.  We plan to solve this problem by saving the
+editor state before restart and reloading it afterwards. This is
+feasible because the state of the editor is a purely functional data
+structure.
+
+The interested reader should consult the Yi homepage \cite{YiHome} for
+further information, or download and install Yi from Hackage
+\cite{Hackage}.
+
+\acks 
+
+The Yi project was started in 2004 by Don Stewart
+\cite{Stewart2005Dynamic}. Yi has had more than forty contributors
+since then, and therefore are too numerous to cite individually, but
+they shall all be thanked for sharing the load in pushing Yi
+forward. I'd like to mention a few though: early adopters Allan Clark
+and Corey O'Connor, and Nicolas Pouillard, current maintainer of the
+Vim key bindings. I'm also grateful to my colleagues Gustav Munkby and
+Krasimir Angelov, for the local support they provided, in addition to
+their contributions.
+
+Yi builds up on an excellent Haskell programming platform: the Glasgow
+Haskell Compiler and numerous Haskell libraries available on Hackage
+\cite{Hackage}. Therefore, the Haskell community as a whole helped
+enormously in making Yi a reality.
+
+\bibliographystyle{abbrvnat}
+\bibliography{hask08}
+
+\end{document}
+
