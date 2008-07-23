@@ -5,11 +5,6 @@
 --
 
 -- | This module defines a common interface for syntax highlighters.
---
--- Yi syntax highlighters are expressed as explicit lazy computations
--- of type 'Highlighter a' below; this type is effectively isomorphic
--- to [Char] -> [Style], but are explicitly lazy to admit safe fast uses.
---
 
 module Yi.Syntax 
   ( Highlighter  ( .. )

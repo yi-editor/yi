@@ -432,6 +432,7 @@ withWindow :: (Window -> a) -> EditorM a
 withWindow f = getsA (WS.currentA .> windowsA) f
 
 -- | Split the current window, opening a second window onto current buffer.
+-- TODO: unfold newWindowE here?
 splitE :: EditorM ()
 splitE = do
   b <- getBuffer
