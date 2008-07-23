@@ -16,18 +16,18 @@ import Yi.String
 import Yi.Region
 import Yi.Lexer.Alex (Tok(..),Posn(..),tokBegin,tokEnd,tokRegion)
 import Yi.Lexer.Haskell (Token(..), ReservedType(..), startsLayout)
-import Yi.Syntax.Paren
+import qualified Yi.Syntax.Linear as Linear
 import qualified Yi.IncrementalParse as IncrParser
 import qualified Yi.Lexer.Alex as Alex
 import qualified Yi.Lexer.Haskell as Haskell
-import qualified Yi.Syntax.Paren as Paren
+import Yi.Syntax.Paren as Paren
 import Control.Applicative
 
-haskellMode :: Mode (LinearResult (Tok Token))
+haskellMode :: Mode (Linear.Result (Tok Token))
 haskellMode = emptyMode 
    {
     modeHL = ExtHL $
-    mkHighlighter (linearIncrScanner . haskellLexer) (\begin end pos -> linearGetStrokes begin end pos . fmap tokenToStroke)
+    mkHighlighter (Linear.incrScanner . haskellLexer) (\begin end pos -> Linear.getStrokes begin end pos . fmap tokenToStroke)
    , modeIndent = \_ast -> autoIndentHaskellB
    }
 

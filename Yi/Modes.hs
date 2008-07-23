@@ -2,29 +2,31 @@ module Yi.Modes (defaultFundamentalMode, fundamental,
                  compilationMode,
  latexMode, cppMode, haskellMode, literateHaskellMode, cabalMode, srmcMode, ocamlMode, defaultModeMap) where
 
-import System.FilePath
-import qualified Yi.Lexer.LiterateHaskell     as LiterateHaskell
-import qualified Yi.Lexer.Latex               as Latex
-import qualified Yi.Lexer.Srmc                as Srmc
-import qualified Yi.Lexer.Cabal               as Cabal
-import qualified Yi.Lexer.Cplusplus           as Cplusplus
-import qualified Yi.Lexer.Compilation         as Compilation
-import qualified Yi.Lexer.OCaml               as OCaml
-import qualified Yi.Lexer.Alex as Alex
-import Yi.Lexer.Alex (Tok(..), Posn(..))
-import Yi.Syntax
-import Yi.Indent
 import Control.Arrow (first)
-import Yi.Prelude
-import Yi.Buffer (AnyMode(..), Mode(..), emptyMode)
 import Prelude ()
-import Yi.Style
-import Yi.Mode.Haskell
+import System.FilePath
+import Yi.Buffer (AnyMode(..), Mode(..), emptyMode)
 import Yi.Buffer.HighLevel (fillParagraph)
+import Yi.Indent
+import Yi.Lexer.Alex (Tok(..), Posn(..))
+import Yi.Mode.Haskell
+import Yi.Prelude
+import Yi.Style
+import Yi.Syntax
+import qualified Yi.Lexer.Alex as Alex
+import qualified Yi.Lexer.Cabal               as Cabal
+import qualified Yi.Lexer.Compilation         as Compilation
+import qualified Yi.Lexer.Cplusplus           as Cplusplus
+import qualified Yi.Lexer.Latex               as Latex
+import qualified Yi.Lexer.LiterateHaskell     as LiterateHaskell
+import qualified Yi.Lexer.OCaml               as OCaml
+import qualified Yi.Lexer.Srmc                as Srmc
+import qualified Yi.Syntax.Linear as Linear
+
 
 fundamental, defaultFundamentalMode :: Mode syntax
-compilationMode :: Mode (LinearResult (Tok Compilation.Token))
-latexMode, cppMode, literateHaskellMode, cabalMode, srmcMode, ocamlMode :: Mode (LinearResult Stroke)
+compilationMode :: Mode (Linear.Result (Tok Compilation.Token))
+latexMode, cppMode, literateHaskellMode, cabalMode, srmcMode, ocamlMode :: Mode (Linear.Result Stroke)
 
 fundamental = emptyMode
   { 
@@ -41,9 +43,9 @@ mkHighlighter' :: forall token lexerState.
                          (Yi.Syntax.Cache
                             (Alex.AlexState lexerState,
                              [(Point, Style, Point)])
-                            (LinearResult (Point, Style, Point)))
-                         (LinearResult (Point, Style, Point))
-mkHighlighter' initSt scan tokenToStyle = mkHighlighter (linearIncrScanner . Alex.lexScanner (fmap (first tokenToStroke) . scan) initSt) linearGetStrokes
+                            (Linear.Result (Point, Style, Point)))
+                         (Linear.Result (Point, Style, Point))
+mkHighlighter' initSt scan tokenToStyle = mkHighlighter (Linear.incrScanner . Alex.lexScanner (fmap (first tokenToStroke) . scan) initSt) Linear.getStrokes
     where tokenToStroke (Tok t len posn) = (posnOfs posn, tokenToStyle t, posnOfs posn +~ len)
 
 cppMode = fundamental
@@ -53,8 +55,8 @@ cppMode = fundamental
 
 compilationMode = emptyMode
   {
-   modeHL = ExtHL $ mkHighlighter (linearIncrScanner . Alex.lexScanner Compilation.alexScanToken Compilation.initState) 
-                                  (\begin end pos -> linearGetStrokes begin end pos . fmap tokenToStroke)
+   modeHL = ExtHL $ mkHighlighter (Linear.incrScanner . Alex.lexScanner Compilation.alexScanToken Compilation.initState) 
+                                  (\begin end pos -> Linear.getStrokes begin end pos . fmap tokenToStroke)
   }
     where tokenToStroke (Tok t len posn) = (posnOfs posn, tokenToStyle t, posnOfs posn +~ len)
           tokenToStyle _ = commentStyle

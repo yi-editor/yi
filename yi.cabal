@@ -140,6 +140,7 @@ library
         Yi.Syntax.Layout
         Yi.Syntax.Paren
         Yi.Syntax.Fractal
+        Yi.Syntax.Linear
 
         Yi.Accessor
         Yi.Interpreter
@@ -275,6 +276,7 @@ executable yi
            Yi.Syntax.Layout
            Yi.Syntax.Paren
            Yi.Syntax.Fractal
+           Yi.Syntax.Linear
 
            Yi.Accessor, Yi.Interpreter,
            Yi.Buffer.HighLevel, Yi.Buffer.Implementation,

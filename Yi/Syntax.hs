@@ -17,7 +17,6 @@ module Yi.Syntax
   , Scanner (..)
   , ExtHL        ( .. )
   , noHighlighter, mkHighlighter
-  , linearGetStrokes, linearIncrScanner, LinearResult
   , Point(..), Size(..), Length, Stroke
   ) 
 where
@@ -99,37 +98,5 @@ noHighlighter = SynHL {hlStartState = (),
                        hlGetStrokes = \_ _ _ _ -> [],
                        hlGetTree = \_ -> error "noHighlighter: tried to fetch syntax"
                       }
-
-data LinearResult tok = LinearResult [tok] [tok]
-
-instance Functor LinearResult where
-    fmap f (LinearResult a b) = LinearResult (fmap f a) (fmap f b)
-
--- | linear scanner
-linearIncrScanner :: forall st tok. Scanner st tok -> Scanner (st, [tok]) (LinearResult tok)
-linearIncrScanner input = Scanner 
-    {
-      scanInit = (scanInit input, []),
-      scanLooked = scanLooked input . fst,
-      scanRun = run,
-      scanEmpty = LinearResult [] []
-    }
-    where
-        run (st,partial) = updateState partial $ scanRun input st
-
-        updateState _        [] = []
-        updateState curState toks@((st,tok):rest) = ((st, curState), result) : updateState nextState rest
-            where nextState = tok : curState
-                  result    = LinearResult curState (fmap snd toks)
-
-linearGetStrokes :: Point -> Point -> Point -> LinearResult Stroke -> [Stroke]
-linearGetStrokes _point begin end (LinearResult leftHL rightHL) = reverse (usefulsL leftHL) ++ usefulsR rightHL
-    where
-      usefulsR = dropWhile (\(_l,_s,r) -> r <= begin) .
-                 takeWhile (\(l,_s,_r) -> l <= end)
-
-      usefulsL = dropWhile (\(l,_s,_r) -> l >= end) .
-                 takeWhile (\(_l,_s,r) -> r >= begin)
-
 
 data ExtHL syntax = forall a. ExtHL (Highlighter a syntax) 
