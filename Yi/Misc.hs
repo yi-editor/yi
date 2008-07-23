@@ -37,6 +37,7 @@ import Yi.Buffer
 import Yi.Core
 import Yi.Editor
 import Yi.MiniBuffer
+import Yi.Modes (compilationMode)
 import Yi.Process
 import Yi.Templates
   ( addTemplate
@@ -102,6 +103,7 @@ cabalBuildE =
         withEditor $ do
             maybeM deleteBuffer =<< cabalBuffer <$> getDynamic
             setDynamic $ CabalBuffer $ Just b
+            withBuffer0 $ setMode compilationMode
         return ()
         
 

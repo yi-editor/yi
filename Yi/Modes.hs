@@ -1,4 +1,5 @@
 module Yi.Modes (defaultFundamentalMode, fundamental,
+                 compilationMode,
  latexMode, cppMode, haskellMode, literateHaskellMode, cabalMode, srmcMode, ocamlMode, defaultModeMap) where
 
 import System.FilePath

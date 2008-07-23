@@ -17,10 +17,10 @@ $any    = [.\n]
 @number    = $digit+
 
 tokens :-
- ^.+":" @number ":" @number ":" .*$  { \str st -> let Just (_before, arr, _after) = matchOnceText re $ map snd str
+ .+":" @number ":" @number ":" .*\n  { \str st -> let Just (_before, arr, _after) = matchOnceText re $ map snd str
                                              in (st, Report (fst $ arr!1) (read $ fst $ arr!2) (read $ fst $ arr!3) (fst $ arr!4)) }
- ^[.]+$                              ; -- text
- \n                                  ; -- just ignore newlines.
+ .*\n                               ; -- line of text
+ .+                                 ; -- last line
 
 {
 re :: Regex
