@@ -127,6 +127,7 @@ library
     other-modules:
         Paths_yi,
         Yi.Lexer.Alex
+        Yi.Lexer.Compilation
         Yi.Lexer.Cplusplus
         Yi.Lexer.Haskell
         Yi.Lexer.LiterateHaskell
@@ -261,6 +262,7 @@ executable yi
            Yi.GHC
 
            Yi.Lexer.Alex
+           Yi.Lexer.Compilation
            Yi.Lexer.Cplusplus
            Yi.Lexer.Haskell
            Yi.Lexer.LiterateHaskell
