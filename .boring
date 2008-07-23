@@ -1,6 +1,6 @@
 # Boring file regexps:
 ^\.yi.*.dbg$
-^Yi/Syntax/.*\.hs$
+^Yi/Lexer/.*\.hs$
 ^config.mk$
 ^setup$
 
