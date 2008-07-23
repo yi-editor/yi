@@ -37,9 +37,11 @@ $nl        = [\n\r]
         value|declare
 
 @reservedid =
-        and|as|assert|class|constraint|else|exception|external|fun|function|
-        if|in|inherit|initializer|land|lazy|let|match|method|mutable|module|
-        new|of|parser|private|raise|rec|try|type|val|virtual|when|while|with|
+        and|as|asr|assert|begin|class|constraint|do|done|downto|else|end|
+        exception|external|as|assert|false|for|fun|function|if|in|include|
+        inherit|initializer|land|lor|lxor|lsl|lsr|lazy|let|match|method|mod|
+        module|mutable|new|object|of|open|or|parser|private|raise|rec|sig|
+        struct|then|to|true|try|type|val|virtual|when|while|with|
         @revisedReservedId
 
 @reservedop =
