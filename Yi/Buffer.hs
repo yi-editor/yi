@@ -532,6 +532,8 @@ setMode0 m (FBuffer f1 f2 f3 f4 rb _ f7 f8 f9 f10 f11 f12) =
 setMode :: Mode syntax -> BufferM ()
 setMode m = do
   modify (setMode0 m)
+  -- reset the keymap process so we use the one of the new mode.
+  setA keymapProcessA I.End 
 
 withMode0 :: (forall syntax. Mode syntax -> a) -> FBuffer -> a
 withMode0 f FBuffer {bmode = m} = f m 

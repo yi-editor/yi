@@ -34,7 +34,7 @@ spawnMinibufferE :: String -> KeymapEndo -> EditorM BufferRef
 spawnMinibufferE prompt kmMod =
     do b <- stringToNewBuffer prompt (fromString "")
        fundamental <- asks fundamentalMode
-       setBufferMode b fundamental {modeKeymap = kmMod}
+       withGivenBuffer0 b $ setMode fundamental {modeKeymap = kmMod}
        w <- newWindowE True b
        modifyWindows (WS.add w)
        return b

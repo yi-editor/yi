@@ -104,8 +104,8 @@ fnewCanonicalized f = do
     AnyMode newMode <- withBufferMode b $ \curmode -> fromMaybe (AnyMode curmode) (runReaderT tbl f)
     -- by default stick with the current mode (eg. stick with dired if
     -- set as such)
-    withEditor $ setBufferMode b newMode
     withEditor $ switchToBufferE b
+    withBuffer $ setMode newMode
     where
     -- Determines whether or not a given buffer is associated with
     -- the given file. 
@@ -231,7 +231,7 @@ diredDirBuffer dir = do
                 setFileName b dir -- associate the buffer with the dir
                 withEditor $ switchToBufferE b
                 diredLoadNewDir dir
-                withEditor $ setBufferMode b diredMode
+                withBuffer $ setMode diredMode
                 return b
 
 diredMode :: Mode ()
@@ -322,6 +322,7 @@ linesToDisplay = do
                DRDates $ modificationTimeString v]
 
 -- | Write the contents of the supplied directory into the current buffer in dired format
+-- TODO: trash this.
 diredLoadNewDir :: FilePath -> YiM ()
 diredLoadNewDir _dir = do
     diredRefresh

@@ -13,9 +13,7 @@ import Yi.Buffer                ( BufferRef
                                 , newB
                                 , runBufferFull
                                 , insertN
-                                , Mode
                                 , setMode
-                                , keymapProcessA
                                 , newWindowB
                                 , switchWindow)
 import Yi.Buffer.Implementation (Update(..), updateIsDelete)
@@ -28,7 +26,6 @@ import Yi.Debug
 import Yi.Monad
 import Yi.Accessor
 import Yi.Dynamic
-import qualified Yi.Interact as I
 import Yi.KillRing
 import Yi.Window
 import Yi.WindowSet (WindowSet)
@@ -152,7 +149,8 @@ stringToNewBuffer :: String -- ^ The buffer name (*not* the associated file)
 stringToNewBuffer nm cs = do
     u <- newBufRef
     b <- insertBuffer (newB u nm cs)
-    setBufferMode b =<< asks fundamentalMode
+    m <- asks fundamentalMode
+    withGivenBuffer0 b $ setMode m
     return b
 
 insertBuffer :: FBuffer -> EditorM BufferRef
@@ -357,6 +355,7 @@ newBufferE f s = do
     switchToBufferE b
     return b
 
+-- | Create a new window onto the current buffer.
 newWindowE :: Bool -> BufferRef -> EditorM Window
 newWindowE mini bk = do
   k <- newRef
@@ -473,14 +472,3 @@ withOtherWindow f = do
   liftEditor prevWinE
 
 
------------------------
--- Keymap thread handling
-
-setBufferMode :: BufferRef -> Mode syntax -> EditorM ()
-setBufferMode b m = do
-  withGivenBuffer0 b $ setMode m
-  restartBufferThread b
-
-restartBufferThread :: BufferRef -> EditorM ()
-restartBufferThread b = do
-  withGivenBuffer0 b $ setA keymapProcessA I.End
