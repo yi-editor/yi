@@ -27,6 +27,7 @@ import Yi.Buffer.Region
 import Yi.Core
 import Yi.Dired
 import Yi.Editor
+import Yi.Eval (execEditorAction)
 import Yi.File
 import Yi.History
 import Yi.Indent
@@ -711,15 +712,17 @@ ex_mode prompt = do
                   spec KRight ?>>! moveXorEol 1]
              <|| (textChar >>= write . insertB)
       completeMinibuffer = withBuffer elemsB >>= ex_complete >>= withBuffer . insertN
-      b_complete f = simpleComplete matchingBufferNames f >>= return . drop (length f)
-      ex_complete ('e':' ':f) = simpleComplete (matchingFileNames Nothing) f >>= return . drop (length f)
+      exSimpleComplete get s = drop (length s) <$> simpleComplete get s
+      b_complete = exSimpleComplete matchingBufferNames
+      ex_complete ('e':' ':f)                             = exSimpleComplete (matchingFileNames Nothing) f
       ex_complete ('b':' ':f)                             = b_complete f
       ex_complete ('b':'u':'f':'f':'e':'r':' ':f)         = b_complete f
       ex_complete ('b':'d':' ':f)                         = b_complete f
       ex_complete ('b':'d':'!':' ':f)                     = b_complete f
       ex_complete ('b':'d':'e':'l':'e':'t':'e':' ':f)     = b_complete f
       ex_complete ('b':'d':'e':'l':'e':'t':'e':'!':' ':f) = b_complete f
-      ex_complete _ = return ""
+      ex_complete ('y':'i':' ':s)                         = exSimpleComplete (\_->getAllNamesInScope) s
+      ex_complete _                                       = return ""
 
   historyStart
   spawnMinibufferE prompt (const $ ex_process)
@@ -859,6 +862,7 @@ ex_eval cmd = do
       fn "st"         = suspendEditor
       fn "stop"       = suspendEditor
 
+      fn ('y':'i':' ':s) = execEditorAction s
       fn s            = errorEditor $ "The "++show s++ " command is unknown."
 
 
