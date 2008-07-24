@@ -51,7 +51,6 @@ flag gtk
 
 flag pango
   Description: Provide Pango UI
-  -- TODO: rename to Pango
 
 flag cocoa
   Description: Provide experimental Cocoa UI
@@ -86,6 +85,7 @@ library
            Yi.Keymap.Users.JP
            Yi.Misc
            Yi.Modes
+           Yi.Mode.Compilation
            Yi.Mode.Haskell
            Yi.Buffer
            Yi.UI.Common
@@ -250,6 +250,7 @@ executable yi
            Yi.Keymap.Users.JP
            Yi.Misc
            Yi.Modes
+           Yi.Mode.Compilation
            Yi.Mode.Haskell
            Yi.Buffer
            Yi.Buffer.Basic

@@ -1,7 +1,7 @@
 -- Copyright (C) 2008 JP Bernardy
 
 module Yi.Syntax.Linear
-  ( getStrokes, incrScanner, Result ) 
+  (tokBefore, getStrokes, incrScanner, Result) 
 where
 
 import Control.Arrow
@@ -11,7 +11,9 @@ import Prelude ()
 import Data.List (takeWhile, dropWhile, reverse)
 import Yi.Buffer.Basic
 import Yi.Syntax
-
+import Yi.Region
+import Yi.Lexer.Alex
+import Data.Maybe (listToMaybe)
 
 data Result tok = Result [tok] [tok]
 
@@ -34,6 +36,18 @@ incrScanner input = Scanner
         updateState curState toks@((st,tok):rest) = ((st, curState), result) : updateState nextState rest
             where nextState = tok : curState
                   result    = Result curState (fmap snd toks)
+
+tokBefore p res = listToMaybe $ toksInRegion (mkRegion 0 p) res
+
+toksInRegion :: Region -> Result (Tok a) -> [Tok a]
+toksInRegion reg (Result left right) = reverse (usefulsL left) ++ usefulsR right
+    where
+      usefulsR = dropWhile (\t -> tokEnd t   <= regionStart reg) .
+                 takeWhile (\t -> tokBegin t <= regionEnd   reg)
+
+      usefulsL = dropWhile (\t -> tokBegin t >= regionStart reg) .
+                 takeWhile (\t -> tokEnd t   >= regionEnd   reg)
+
 
 getStrokes :: Point -> Point -> Point -> Result Stroke -> [Stroke]
 getStrokes _point begin end (Result leftHL rightHL) = reverse (usefulsL leftHL) ++ usefulsR rightHL

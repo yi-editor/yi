@@ -31,6 +31,10 @@ data Action = forall a. Show a => YiA (YiM a)
 --            | InsertA String
 --             | TextA Direction Unit Operation
         deriving Typeable
+
+emptyAction :: Action
+emptyAction = BufferA (return ())
+
 instance I.PEq Action where
     equiv _ _ = False
 
@@ -144,3 +148,6 @@ instance YiAction (EditorM x) x where
 
 instance YiAction (BufferM x) x where
     makeAction = BufferA
+
+instance YiAction Action () where
+    makeAction = id

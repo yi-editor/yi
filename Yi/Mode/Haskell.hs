@@ -32,7 +32,7 @@ haskellMode = emptyMode
    }
 
 cleverHaskellMode :: Mode (Expr (Tok Haskell.Token))
-cleverHaskellMode = haskellMode {
+cleverHaskellMode = emptyMode {
     modeIndent = cleverAutoIndentHaskellB,
     modeHL = ExtHL $
 {--    lexer `withScanner` IncrParser.mkHighlighter Fractal.parse
@@ -46,7 +46,7 @@ cleverHaskellMode = haskellMode {
 
 --
     mkHighlighter (IncrParser.scanner parse . indentScanner . haskellLexer)
-      (\point begin end t -> getStrokes point begin end t)
+      (\point begin end t -> Paren.getStrokes point begin end t)
 --}                              
   , modeAdjustBlock = adjustBlock
   , modePrettify = cleverPrettify

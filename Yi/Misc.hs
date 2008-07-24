@@ -37,7 +37,7 @@ import Yi.Buffer
 import Yi.Core
 import Yi.Editor
 import Yi.MiniBuffer
-import Yi.Modes (compilationMode)
+import Yi.Mode.Compilation (compilationMode)
 import Yi.Process
 import Yi.Templates
   ( addTemplate

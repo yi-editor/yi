@@ -219,7 +219,8 @@ data Mode syntax = Mode
      modePrettify :: syntax -> BufferM (),
      modeKeymap :: KeymapEndo, -- ^ Buffer's local keymap modification
      modeIndent :: syntax -> IndentBehaviour -> BufferM (),
-     modeAdjustBlock :: syntax -> Int -> BufferM ()
+     modeAdjustBlock :: syntax -> Int -> BufferM (),
+     modeFollow :: syntax -> Action
     }
 
 
@@ -398,7 +399,8 @@ emptyMode = Mode
    modePrettify = \_ -> return (),
    modeKeymap = id,
    modeIndent = \_ _ -> return (),
-   modeAdjustBlock = \_ _ -> return ()
+   modeAdjustBlock = \_ _ -> return (),
+   modeFollow = \_ -> emptyAction
   }
 
 -- | Create buffer named @nm@ with contents @s@

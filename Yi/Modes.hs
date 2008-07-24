@@ -1,5 +1,4 @@
 module Yi.Modes (defaultFundamentalMode, fundamental,
-                 compilationMode,
  latexMode, cppMode, haskellMode, literateHaskellMode, cabalMode, srmcMode, ocamlMode, defaultModeMap) where
 
 import Control.Arrow (first)
@@ -15,7 +14,6 @@ import Yi.Style
 import Yi.Syntax
 import qualified Yi.Lexer.Alex as Alex
 import qualified Yi.Lexer.Cabal               as Cabal
-import qualified Yi.Lexer.Compilation         as Compilation
 import qualified Yi.Lexer.Cplusplus           as Cplusplus
 import qualified Yi.Lexer.Latex               as Latex
 import qualified Yi.Lexer.LiterateHaskell     as LiterateHaskell
@@ -25,7 +23,6 @@ import qualified Yi.Syntax.Linear as Linear
 
 
 fundamental, defaultFundamentalMode :: Mode syntax
-compilationMode :: Mode (Linear.Result (Tok Compilation.Token))
 latexMode, cppMode, literateHaskellMode, cabalMode, srmcMode, ocamlMode :: Mode (Linear.Result Stroke)
 
 fundamental = emptyMode
@@ -52,15 +49,6 @@ cppMode = fundamental
   {
     modeHL = ExtHL $ mkHighlighter' Cplusplus.initState Cplusplus.alexScanToken id
   }
-
-compilationMode = emptyMode
-  {
-   modeHL = ExtHL $ mkHighlighter (Linear.incrScanner . Alex.lexScanner Compilation.alexScanToken Compilation.initState) 
-                                  (\begin end pos -> Linear.getStrokes begin end pos . fmap tokenToStroke)
-  }
-    where tokenToStroke (Tok t len posn) = (posnOfs posn, tokenToStyle t, posnOfs posn +~ len)
-          tokenToStyle _ = commentStyle
-
 
 literateHaskellMode = fundamental
   {
