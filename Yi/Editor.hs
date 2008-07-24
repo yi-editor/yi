@@ -461,11 +461,13 @@ closeOtherE = modifyWindows WS.deleteOthers
 shiftOtherWindow :: EditorM ()
 shiftOtherWindow = do
   len <- withWindows WS.size
-  when (len == 1) splitE
-  nextWinE
+  if (len == 1) 
+    then splitE
+    else nextWinE
 
 -- | Execute the argument in the context of an other window. Create
--- one if necessary.
+-- one if necessary. The current window is re-focused after the
+-- argument has completed.
 withOtherWindow :: MonadEditor m => m () -> m ()
 withOtherWindow f = do
   liftEditor shiftOtherWindow
