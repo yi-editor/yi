@@ -24,6 +24,7 @@ import Data.Char
 import Yi.GHC
 import qualified Yi.Lexer.Alex
 import Yi.Syntax
+import Yi.Syntax.Linear as Linear
 import Yi.Lexer.Haskell
 
 modeTable :: ReaderT String Maybe AnyMode
@@ -85,7 +86,7 @@ jumpToDefinition = do
 
 -- NOTE: source argument to Hsinfo functions can be used to provide
 -- source text, apparently.
-mode :: Mode (LinearResult (Yi.Lexer.Alex.Tok Token))
+mode :: Mode (Linear.Result (Yi.Lexer.Alex.Tok Token))
 mode = haskellMode
    {
     modeKeymap = (<||) 
