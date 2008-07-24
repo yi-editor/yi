@@ -444,8 +444,8 @@ closeOtherE :: EditorM ()
 closeOtherE = modifyWindows WS.deleteOthers
 
 -- | Switch focus to some other window. If none is available, create one.
-shiftOtherWindow :: EditorM ()
-shiftOtherWindow = do
+shiftOtherWindow :: MonadEditor m => m ()
+shiftOtherWindow = liftEditor $ do
   len <- withWindows WS.size
   if (len == 1) 
     then splitE
@@ -456,7 +456,7 @@ shiftOtherWindow = do
 -- argument has completed.
 withOtherWindow :: MonadEditor m => m () -> m ()
 withOtherWindow f = do
-  liftEditor shiftOtherWindow
+  shiftOtherWindow
   f
   liftEditor prevWinE
 

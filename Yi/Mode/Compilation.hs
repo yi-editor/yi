@@ -13,6 +13,7 @@ import Yi.Prelude
 import Yi.Style
 import Yi.Syntax
 import Yi.Dired
+import Yi.Editor
 import Yi.Keymap
 import qualified Yi.Lexer.Alex as Alex
 import qualified Yi.Lexer.Compilation         as Compilation
@@ -35,6 +36,7 @@ compilationMode = emptyMode
               case Linear.tokBefore point errs of
                  Nothing -> return ()
                  Just (Tok {tokT = Compilation.Report file line col _message}) -> do
+                     shiftOtherWindow
                      fnewE file
                      withBuffer $ do 
                          gotoLn line
