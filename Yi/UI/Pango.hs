@@ -495,8 +495,9 @@ prepareAction ui = do
     return $ do
       let updWin w r = do
              withGivenBufferAndWindow0 w (bufkey w) $ do
-                 setMarkPointB (fromMark w) (regionStart r)
-                 setMarkPointB (toMark   w) (regionEnd   r)
+                 Just (WinMarks f _ t) <- getMarks w
+                 setMarkPointB f (regionStart r)
+                 setMarkPointB t (regionEnd   r)
       -- TODO: also update height and bos.
       sequence_ $ zipWith updWin ws rs
 

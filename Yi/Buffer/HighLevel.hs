@@ -257,9 +257,9 @@ bufInfoB = do
 -- | Scroll by one screen in the specicied direction.
 scrollScreenDownB :: BufferM ()
 scrollScreenDownB = do
-    p <- pointAt $ do moveTo =<< getMarkPointB =<< askWindow toMark
+    p <- pointAt $ do moveTo =<< getMarkPointB =<< toMark <$> askMarks
                       gotoLnFrom (-1) -- move back a little so we have some overlap
-    t <- askWindow fromMark
+    t <- fromMark <$> askMarks
     setMarkPointB t p
     moveTo p
 
@@ -289,28 +289,34 @@ moveScreenB dir n = do h <- askWindow height
 -- | Move to @n@ lines down from top of screen
 downFromTosB :: Int -> BufferM ()
 downFromTosB n = do
-  moveTo =<< getMarkPointB =<< askWindow fromMark
+  moveTo =<< getMarkPointB =<< fromMark <$> askMarks
   replicateM_ n lineDown
 
 -- | Move to @n@ lines up from the bottom of the screen
 upFromBosB :: Int -> BufferM ()
 upFromBosB n = do
-  moveTo =<< getMarkPointB =<< askWindow toMark
+  moveTo =<< getMarkPointB =<< toMark <$> askMarks
   moveToSol
   replicateM_ n lineUp
+
+askMarks = do
+    Just ms <- getMarks =<< ask
+    return ms
 
 -- | Move to middle line in screen
 middleB :: BufferM ()
 middleB = do
   w <- ask
-  moveTo =<< getMarkPointB (fromMark w)
+  Just (WinMarks f _ _) <- getMarks w
+  moveTo =<< getMarkPointB f
   replicateM_ (height w `div` 2) lineDown
 
 pointInWindowB :: Point -> BufferM Bool
 pointInWindowB p = do
     w <- ask
-    fromP <- getMarkPointB (fromMark w)
-    toP <- getMarkPointB (toMark w)
+    Just (WinMarks f _ t) <- getMarks w
+    fromP <- getMarkPointB f
+    toP <- getMarkPointB t
     trace ("pointInWindowB " ++ show fromP ++ " " ++ show toP ++ " " ++ show p) $ (return $ fromP <= p && p <= toP)
 
 -----------------------------

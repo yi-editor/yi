@@ -13,9 +13,7 @@ import Yi.Buffer                ( BufferRef
                                 , newB
                                 , runBufferFull
                                 , insertN
-                                , setMode
-                                , newWindowB
-                                , switchWindow)
+                                , setMode)
 import Yi.Buffer.Implementation (Update(..), updateIsDelete)
 import Yi.Buffer.HighLevel (botB)
 import Yi.Buffer.Basic
@@ -359,24 +357,12 @@ newBufferE f s = do
 newWindowE :: Bool -> BufferRef -> EditorM Window
 newWindowE mini bk = do
   k <- newRef
-  w <- getA (WS.currentA .> windowsA)
-  editor <- get
-  let buffer = findBufferWith bk editor
-      (window, _us, buffer') = runBufferFull w buffer $ newWindowB k mini
-      -- Creates a new insertion mark into this buffer for the window.
-      editor' = editor { buffers = M.insert bk buffer' (buffers editor) }
-  put editor'
-  return window
+  return $ Window mini bk 0 k
 
 -- | Attach the specified buffer to the current window
 switchToBufferE :: BufferRef -> EditorM ()
 switchToBufferE bk = do
-    w <- getA (WS.currentA .> windowsA)
-    editor <- get
-    let buffer = findBufferWith bk editor
-        buffer' = switchWindow w buffer
     modifyWindows (modifier WS.currentA (\w -> w { bufkey = bk }))
-    modify (\e -> e {buffers = M.insert bk buffer' (buffers editor) })
 
 -- | Attach the specified buffer to some other window than the current one
 switchToBufferOtherWindowE :: BufferRef -> EditorM ()

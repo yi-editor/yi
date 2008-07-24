@@ -4,6 +4,9 @@ module Yi.UI.Utils where
 -- Utilities shared by various UIs
 
 import Yi.Buffer
+import Yi.Buffer.HighLevel
+import Yi.Prelude
+import Prelude ()
 import Yi.Window
 
 -- | return index of Sol on line @n@ above current line
@@ -19,7 +22,8 @@ showPoint b w = result
             do ln <- curLn
                let gap = min (ln-1) (height w `div` 2)
                i <- indexOfSolAbove gap
-               setMarkPointB (fromMark w) i
+               f <- fromMark <$> askMarks
+               setMarkPointB f i
                return ()
 
 

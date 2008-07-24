@@ -7,11 +7,7 @@
 
 module Yi.Window where
 import Data.Typeable
-import Yi.Buffer.Basic (Mark
-                       ,dummyInsMark
-                       ,dummyFromMark
-                       ,dummyToMark
-                       ,BufferRef)
+import Yi.Buffer.Basic (BufferRef)
 
 ------------------------------------------------------------------------
 -- | A window onto a buffer.
@@ -19,11 +15,8 @@ import Yi.Buffer.Basic (Mark
 data Window = Window {
                       isMini    :: !Bool   -- ^ regular or mini window?
                      ,bufkey    :: !BufferRef -- ^ the buffer this window opens to
-                     ,fromMark  :: !Mark    -- ^ the buffer point of the top of screen
-                     ,toMark    :: !Mark    -- ^ the buffer point of the bottom of screen
                      ,height    :: !Int    -- ^ height of the window (in number of lines displayed)
                      ,wkey      :: !Int    -- ^ identifier for the window (for UI sync)
-                     ,insMark   :: !Mark -- ^ Insertion mark for this window.
                      }
         deriving Typeable
 -- | Get the identification of a window.
@@ -41,7 +34,10 @@ pointInWindow :: Point -> Window -> Bool
 pointInWindow point win = tospnt win <= point && point <= bospnt win
 -}
 
+dummyWindowKey :: Int
+dummyWindowKey = (-1)
+
 -- | Return a "fake" window onto a buffer.
 dummyWindow :: BufferRef -> Window
-dummyWindow b = Window False b dummyFromMark dummyToMark 0 (-1) dummyInsMark
+dummyWindow b = Window False b 0 dummyWindowKey
 

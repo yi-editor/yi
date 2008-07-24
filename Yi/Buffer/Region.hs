@@ -27,8 +27,9 @@ import Control.Monad.RWS.Strict (ask)
 winRegionB :: BufferM Region
 winRegionB = do
     w <- ask
-    tospnt <- getMarkPointB (fromMark w)
-    bospnt <- getMarkPointB (toMark w)
+    Just (WinMarks f _ t) <- getMarks w
+    tospnt <- getMarkPointB f
+    bospnt <- getMarkPointB t
     return $ mkRegion tospnt bospnt
 
 -- | Delete an arbitrary part of the buffer

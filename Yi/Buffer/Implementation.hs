@@ -89,7 +89,7 @@ data MarkValue = MarkValue {markPoint :: Point, markGravity :: Direction}
 
 type Marks = M.Map Mark MarkValue
 
-type BufferImpl = FBufferData
+type BufferImpl = FBufferData -- TODO: kill this.
 
 data HLState syntax = forall cache. HLState !(Highlighter cache syntax) cache
 

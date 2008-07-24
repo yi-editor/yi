@@ -240,8 +240,9 @@ drawWindow cfg mre b sty focused w win = (Rendered { picture = pict,cursor = cur
         sz = Size (w*h')
         -- Work around a problem with the mini window never displaying it's contents due to a
         -- fromMark that is always equal to the end of the buffer contents.
-        fromMarkPoint = if notMini 
-                            then fst $ runBuffer win b (getMarkPointB (fromMark win))
+        (Just (WinMarks fromM _ toM), _) = runBuffer win b (getMarks win)
+        fromMarkPoint = if notMini
+                            then fst $ runBuffer win b (getMarkPointB fromM)
                             else Point 0
         (text, _)    = runBuffer win b (streamB Forward fromMarkPoint) -- read enough chars from the buffer.
         (strokes, _) = runBuffer win b (strokesRangesB  mre fromMarkPoint (fromMarkPoint +~ sz)) -- corresponding strokes
@@ -261,7 +262,7 @@ drawWindow cfg mre b sty focused w win = (Rendered { picture = pict,cursor = cur
                                 selsty wsty 
                                 ([(c,(wsty, 0)) | c <- prompt] ++ bufData ++ [(' ',(attr, eofPoint))])
                              -- we always add one character which can be used to position the cursor at the end of file
-        (_, b') = runBuffer win b (setMarkPointB (toMark win) toMarkPoint')
+        (_, b') = runBuffer win b (setMarkPointB toM toMarkPoint')
         (modeLine0, _) = runBuffer win b getModeLine
         modeLine = if notMini then Just modeLine0 else Nothing
         modeLines = map (withStyle (modeStyle sty) . take w . (++ repeat ' ')) $ maybeToList $ modeLine
