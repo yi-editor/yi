@@ -51,8 +51,9 @@ cleverHaskellMode = emptyMode {
   , modeAdjustBlock = adjustBlock
   , modePrettify = cleverPrettify
  }
- 
+
 haskellLexer = Alex.lexScanner Haskell.alexScanToken Haskell.initState 
+
 
 adjustBlock :: Expr (Tok Token) -> Int -> BufferM ()
 adjustBlock e len = do

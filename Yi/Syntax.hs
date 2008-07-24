@@ -20,7 +20,7 @@ import Control.Arrow
 import Yi.Style
 import Yi.Prelude
 import Prelude ()
-import Data.List (takeWhile, dropWhile, reverse)
+import Data.List (takeWhile)
 import Yi.Buffer.Basic
 
 type Length = Int                   -- size in #codepoints

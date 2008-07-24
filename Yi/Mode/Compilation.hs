@@ -1,14 +1,9 @@
 module Yi.Mode.Compilation where
 
-import Control.Arrow (first)
 import Prelude ()
-import System.FilePath
 import Yi.Buffer
-import Yi.Buffer.HighLevel (fillParagraph)
 import Yi.Core
-import Yi.Indent
 import Yi.Lexer.Alex (Tok(..), Posn(..))
-import Yi.Mode.Haskell
 import Yi.Prelude
 import Yi.Style
 import Yi.Syntax
@@ -34,11 +29,11 @@ compilationMode = emptyMode
           follow errs = do 
               point <- withBuffer pointB
               case Linear.tokBefore point errs of
-                 Nothing -> return ()
-                 Just (Tok {tokT = Compilation.Report file line col _message}) -> do
+                 Just (Tok {tokT = Compilation.Report filename line col _message}) -> do
                      shiftOtherWindow
-                     fnewE file
+                     fnewE filename
                      withBuffer $ do 
                          gotoLn line
                          rightN col
+                 _ -> return ()
 

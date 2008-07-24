@@ -329,6 +329,7 @@ runBuffer w b f =
     let (a, _, b') = runBufferFull w b f 
     in (a, b')
 
+getMarks :: Window -> BufferM (Maybe WinMarks)
 getMarks w = do
     getsA winMarksA (M.lookup $ wkey w) 
     
