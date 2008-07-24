@@ -4,12 +4,9 @@ module Yi.Syntax.Linear
   (tokBefore, getStrokes, incrScanner, Result) 
 where
 
-import Control.Arrow
-import Yi.Style
 import Yi.Prelude
 import Prelude ()
 import Data.List (takeWhile, dropWhile, reverse)
-import Yi.Buffer.Basic
 import Yi.Syntax
 import Yi.Region
 import Yi.Lexer.Alex
@@ -37,16 +34,17 @@ incrScanner input = Scanner
             where nextState = tok : curState
                   result    = Result curState (fmap snd toks)
 
-tokBefore p res = listToMaybe $ toksInRegion (mkRegion 0 p) res
+tokBefore :: Point -> Result (Tok a) -> Maybe (Tok a)
+tokBefore p res = listToMaybe $ reverse $ toksInRegion (mkRegion 0 p) res
 
 toksInRegion :: Region -> Result (Tok a) -> [Tok a]
-toksInRegion reg (Result left right) = reverse (usefulsL left) ++ usefulsR right
+toksInRegion reg (Result lefts rights) = reverse (usefulsL lefts) ++ usefulsR rights
     where
       usefulsR = dropWhile (\t -> tokEnd t   <= regionStart reg) .
                  takeWhile (\t -> tokBegin t <= regionEnd   reg)
 
-      usefulsL = dropWhile (\t -> tokBegin t >= regionStart reg) .
-                 takeWhile (\t -> tokEnd t   >= regionEnd   reg)
+      usefulsL = dropWhile (\t -> tokBegin t >= regionEnd   reg) .
+                 takeWhile (\t -> tokEnd t   >= regionStart reg)
 
 
 getStrokes :: Point -> Point -> Point -> Result Stroke -> [Stroke]
@@ -59,7 +57,7 @@ getStrokes _point begin end (Result leftHL rightHL) = reverse (usefulsL leftHL) 
                  takeWhile (\(_l,_s,r) -> r >= begin)
 
 
-data ExtHL syntax = forall a. ExtHL (Highlighter a syntax) 
+
 
 
 
