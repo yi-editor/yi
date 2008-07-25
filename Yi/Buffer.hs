@@ -155,7 +155,7 @@ data FBuffer = forall syntax.
                 , pendingUpdates :: [UIUpdate]    -- ^ updates that haven't been synched in the UI yet
                 , highlightSelection :: !Bool
                 , process :: KeymapProcess
-                , winMarks :: !(M.Map Int WinMarks)
+                , winMarks :: !(M.Map WindowRef WinMarks)
                 }
         deriving Typeable
 
@@ -431,7 +431,7 @@ newB unique nm s =
             , pendingUpdates = []
             , highlightSelection = False
             , process = I.End
-            , winMarks = M.singleton dummyWindowKey (WinMarks dummyFromMark dummyInsMark dummyToMark)
+            , winMarks = M.singleton dummyWindowKey (WinMarks dummyFromMark staticInsMark dummyToMark)
             }
 
 -- | Point of eof

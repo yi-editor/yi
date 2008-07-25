@@ -12,11 +12,13 @@ import Yi.Buffer.Basic (BufferRef)
 ------------------------------------------------------------------------
 -- | A window onto a buffer.
 
+type WindowRef = Int
+
 data Window = Window {
                       isMini    :: !Bool   -- ^ regular or mini window?
                      ,bufkey    :: !BufferRef -- ^ the buffer this window opens to
                      ,height    :: !Int    -- ^ height of the window (in number of lines displayed)
-                     ,wkey      :: !Int    -- ^ identifier for the window (for UI sync)
+                     ,wkey      :: !WindowRef -- ^ identifier for the window (for UI sync)
                      }
         deriving Typeable
 -- | Get the identification of a window.

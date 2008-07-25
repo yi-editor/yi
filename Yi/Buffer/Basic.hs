@@ -30,8 +30,7 @@ newtype Mark = Mark {markId::Int} deriving (Eq, Ord, Show)
 staticInsMark, staticSelMark :: Mark
 staticInsMark = Mark (-1) -- the insertion mark
 staticSelMark = Mark (-2) -- the selection mark
-dummyInsMark, dummyFromMark, dummyToMark :: Mark
-dummyInsMark = Mark 0
+dummyFromMark, dummyToMark :: Mark
 dummyFromMark = Mark 1
 dummyToMark = Mark 2
 
