@@ -41,9 +41,6 @@ module Yi.Buffer
   , nelemsB
   , nelemsB'
   , writeB
-  , getfileB
-  , setfileB
-  , setnameB
   , deleteNAt
   , deleteNBytes
   , readB
@@ -90,6 +87,8 @@ module Yi.Buffer
   , getMarkPointB
   , module Yi.Buffer.Basic
   , pointAt
+  , fileA
+  , nameA
   )
 where
 

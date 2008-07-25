@@ -896,7 +896,7 @@ viFileInfo =
 -- Need to catch any exception to avoid losing bindings
 viWrite :: YiM ()
 viWrite = do
-    mf <- withBuffer getfileB
+    mf <- withBuffer $ getA fileA
     case mf of
         Nothing -> errorEditor "no file name associate with buffer"
         Just f  -> viWriteTo f

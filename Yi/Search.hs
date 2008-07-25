@@ -40,7 +40,6 @@ module Yi.Search (
                  ) where
 
 import Prelude ()
-import Yi.Accessor
 import Yi.Prelude
 import Yi.Buffer
 import Yi.Buffer.Normal

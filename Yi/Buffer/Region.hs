@@ -17,7 +17,6 @@ module Yi.Buffer.Region
   )
 where
 import Yi.Region
-import Yi.Window
 import Yi.Buffer
 import Yi.Prelude
 import Prelude ()

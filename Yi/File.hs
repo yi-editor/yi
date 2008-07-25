@@ -15,6 +15,7 @@ import Control.Applicative
 import Control.Monad.Trans
 import Prelude hiding (error)
 import System.FilePath
+import Yi.Accessor
 import Yi.Buffer
 import Yi.Buffer.HighLevel
 import Yi.Editor
@@ -29,7 +30,7 @@ import qualified Data.ByteString.Lazy as LB
 -- | Revert to the contents of the file on disk
 revertE :: YiM ()
 revertE = do
-            mfp <- withBuffer getfileB
+            mfp <- withBuffer $ getA fileA
             case mfp of
                      Just fp -> do
                              s <- liftIO $ UTF8.readFile fp
@@ -48,7 +49,7 @@ fwriteE = fwriteBufferE =<< withEditor getBuffer
 -- | Write a given buffer to a disk if it is associated with a file.
 fwriteBufferE :: BufferRef -> YiM ()
 fwriteBufferE bufferKey = 
-  do nameContents <- withGivenBuffer bufferKey ((,) <$> getfileB <*> streamB Forward 0)
+  do nameContents <- withGivenBuffer bufferKey ((,) <$> getA fileA <*> streamB Forward 0)
      case nameContents of
        (Just f, contents) -> do withGivenBuffer bufferKey markSavedB
                                 liftIO $ LB.writeFile f contents 
@@ -57,7 +58,7 @@ fwriteBufferE bufferKey =
 -- | Write current buffer to disk as @f@. If this buffer doesn't
 -- currently have a file associated with it, the file is set to @f@
 fwriteToE :: String -> YiM ()
-fwriteToE f = do withBuffer $ setfileB f
+fwriteToE f = do withBuffer $ setA fileA $ Just f
                  fwriteE
 
 -- | Write all open buffers

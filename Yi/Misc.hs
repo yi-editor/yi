@@ -31,6 +31,7 @@ import Control.Monad.Trans (MonadIO (..))
 
 import Data.Typeable
 import Prelude (words)
+import Yi.Accessor
 import Yi.Prelude
 import Yi.Monad
 import Yi.Buffer
@@ -56,7 +57,7 @@ changeBufferNameE =
   withMinibufferFree "New buffer name:" strFun
   where
   strFun :: String -> YiM ()
-  strFun = withBuffer . setnameB
+  strFun = withBuffer . setA nameA
 
 ----------------------------
 -- | shell-command
@@ -123,7 +124,7 @@ insertTemplate =
 getAppropriateFiles :: Maybe String -> String -> YiM (String, [ String ])
 getAppropriateFiles start s = do
   curDir <- case start of
-            Nothing -> do bufferPath <- withBuffer getfileB
+            Nothing -> do bufferPath <- withBuffer $ getA fileA
                           liftIO $ getFolder bufferPath
             (Just path) -> return path
   let sDir = if hasTrailingPathSeparator s then s else takeDirectory s

@@ -67,6 +67,7 @@ import Yi.MiniBuffer
 import Yi.Misc
 import Yi.Regex
 import Yi.Search
+import Yi.Accessor
 
 {- End of Module Imports -}
 
@@ -229,7 +230,7 @@ readArg' acc = do
 -- | Open a file using the minibuffer. We have to set up some stuff to allow hints
 --   and auto-completion.
 findFile :: YiM ()
-findFile = do maybePath <- withBuffer getfileB
+findFile = do maybePath <- withBuffer $ getA fileA
               startPath <- addTrailingPathSeparator <$> (liftIO $ canonicalizePath' =<< getFolder maybePath)
               -- TODO: Just call withMinibuffer
               withMinibufferGen startPath (findFileHint startPath) "find file:" (simpleComplete $ matchingFileNames (Just startPath)) $ \filename -> do

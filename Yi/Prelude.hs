@@ -41,6 +41,7 @@ module Data.Function,
 module Data.Int,
 module Data.Traversable,
 module Text.Show,
+module Yi.Accessor,
 module Yi.Debug,
 null,
 print,
@@ -59,6 +60,7 @@ when,
     ) where
 
 import Yi.Debug
+import Yi.Accessor
 import Text.Show
 import Data.Bool
 import Data.Foldable

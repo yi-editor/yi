@@ -64,12 +64,13 @@ import Yi.Style
 import Yi.Modes (defaultFundamentalMode)
 import Yi.Keymap.Keys
 import System.FriendlyPath
+import Yi.Accessor
 
 -- | associate buffer with file
 setFileName :: BufferRef -> FilePath -> YiM ()
 setFileName b filename = do
   cfn <- liftIO $ canonicalizePath filename
-  withGivenBuffer b $ setfileB cfn
+  withGivenBuffer b $ setA fileA $ Just cfn
 
 ------------------------------------------------
 -- | If file exists, read contents of file into a new buffer, otherwise
@@ -244,7 +245,7 @@ diredRefresh = do
     withBuffer $ do end <- sizeB
                     deleteRegionB (mkRegion 0 end)
     -- Write Header
-    Just dir <- withBuffer getfileB
+    Just dir <- withBuffer $ getA fileA
     withBuffer $ insertN $ dir ++ ":\n"
     p <- withBuffer pointB
     withBuffer $ addOverlayB $ mkOverlay UserLayer (mkRegion 0 (p-2)) headStyle
@@ -460,7 +461,7 @@ diredUnmark = diredMarkWithChar ' ' lineUp
 
 diredLoad :: YiM ()
 diredLoad = do
-    (Just dir) <- withBuffer getfileB
+    (Just dir) <- withBuffer $ getA fileA
     (fn, de) <- fileFromPoint
     let sel = dir </> fn
     case de of
@@ -502,13 +503,13 @@ fileFromPoint = do
 
 diredUpDir :: YiM ()
 diredUpDir = do
-    (Just dir) <- withBuffer getfileB
+    (Just dir) <- withBuffer $ getA fileA
     diredDir $ takeDirectory dir
 
 diredCreateDir :: YiM ()
 diredCreateDir = do
     withMinibufferGen "" noHint "Create Dir:" return $ \nm -> do
-    (Just dir) <- withBuffer getfileB
+    (Just dir) <- withBuffer $ getA fileA
     let newdir = dir </> nm
     msgEditor $ "Creating "++newdir++"..."
     liftIO $ createDirectoryIfMissing True newdir
