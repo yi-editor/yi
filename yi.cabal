@@ -98,8 +98,6 @@ library
        cpp-options: -DFRONTEND_VTY
        exposed-modules: Yi.UI.Vty
        
-    hs-source-dirs: . dist/build/autogen
-
     if flag (gtk)
       cpp-options: -DFRONTEND_GTK
       exposed-modules: Yi.UI.Gtk
