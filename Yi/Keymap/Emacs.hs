@@ -56,16 +56,13 @@ import Data.Maybe
 import Control.Monad
 import Control.Applicative
 
-adjBlock :: Int -> YiM ()
-adjBlock x = withSyntax (\m s -> modeAdjustBlock m s x)
+keymap :: Keymap
+keymap = selfInsertKeymap <|> makeKeymap keys <|> completionKm
 
 selfInsertKeymap :: Keymap
 selfInsertKeymap = do
   c <- printableChar
   write (adjBlock 1 >> insertSelf c)
-
-keymap :: Keymap
-keymap = selfInsertKeymap <|> makeKeymap keys <|> completionKm
 
 completionKm :: Keymap
 completionKm = do some (adjustPriority (-1) (meta (char '/') ?>>! wordComplete))

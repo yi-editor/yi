@@ -147,6 +147,7 @@ versinfo = projectName ++ ' ' : display version
 
 nilKeymap :: Keymap
 nilKeymap = choice [
+             char 'c' ?>>  forever Cua.keymap,
              char 'e' ?>>  forever Emacs.keymap,
              char 'v' ?>>  forever Vim.keymap,
              char 'q' ?>>! quitEditor,
@@ -156,7 +157,7 @@ nilKeymap = choice [
             <|| (anyEvent >>! errorEditor "Keymap not defined, 'q' to quit, 'h' for help.")
     where configHelp = newBufferE "*configuration help*" $ fromString $ unlines $
                          ["To get a standard reasonable keymap, you can run yi with either --as=vim or --as=emacs.",
-                          "you can type 'e' or 'v' now to get a temporary emacs or vim keymap.",
+                          "you can type 'c', 'e' or 'v' now to get a temporary cua, emacs or vim keymap.",
                           "You should however create your own ~/.yi/yi.hs file: ",
                           "start by copying it from the examples directory and edit it."]
                          -- TODO: create the default file and open it in the editor.

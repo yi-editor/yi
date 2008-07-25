@@ -158,6 +158,9 @@ matchingFileNames start s = do
   (sDir, files) <- getAppropriateFiles start s
   return $ fmap (sDir </>) files
 
+adjBlock :: Int -> YiM ()
+adjBlock x = withSyntax (\m s -> modeAdjustBlock m s x)
+
 
 
 
