@@ -67,7 +67,7 @@ other = choice [
        then withEditor del
        else adjBlock (-1) >> withBuffer (deleteN 1),
  spec KEnter      ?>>! insertB '\n',
- spec KEsc        ?>>! quitEditor,
+ ctrl (char 'q')  ?>>! askQuitEditor,
  ctrl (char 'f')  ?>>  isearchKeymap Forward,
  ctrl (char 'x')  ?>>! cut,
  ctrl (char 'c')  ?>>! copy,
