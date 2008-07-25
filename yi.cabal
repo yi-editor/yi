@@ -122,7 +122,7 @@ library
       exposed-modules:  Yi.Mode.Shim
       other-modules:
         Shim.SHM, Shim.SessionMonad, Shim.Hsinfo, Shim.GhcCompat,
-        Shim.ExprSearch, Shim.ProjectContent, Yi.GHC
+        Shim.ExprSearch, Yi.GHC
 
     other-modules:
         Paths_yi,
@@ -166,8 +166,8 @@ library
         Data.Tree.Zipper
         Data.DelayList
         Shim.CabalInfo
-        Shim.Utils
-
+        Shim.Utils 
+        Shim.ProjectContent
 --         Broken:
 --                Yi.Keymap.Ee,
 --                Yi.Keymap.Gwern,
@@ -257,6 +257,7 @@ executable yi
            Yi.Keymap.Keys
            Shim.CabalInfo
            Shim.Utils
+           Shim.ProjectContent
            System.FriendlyPath
            Yi.UI.Common
 
