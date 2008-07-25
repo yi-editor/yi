@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 -- Copyright (C) 2008 JP Bernardy
 
--- * This module defines the Region ADT
+-- | This module defines the Region ADT
 
 module Yi.Region
   (

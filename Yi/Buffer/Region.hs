@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 -- Copyright (C) 2008 JP Bernardy
 
--- * This module defines buffer operation on regions
+-- | This module defines buffer operation on regions
 
 module Yi.Buffer.Region 
   (

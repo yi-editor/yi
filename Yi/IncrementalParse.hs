@@ -86,13 +86,14 @@ type Process s a = Steps s a (Steps s Void Void)
 -- Haskell.  [XXX: example; develop solution step by step; continuations]
 --
 -- The parameter @r@ represents the type of the remainder of our expression.
+
+-- TODO: Replace 'Doc:' by ^ when haddock supports GADTs
 data Steps s a r where
     -- These constructors describe the tree of values, as above
     Val   :: a -> Steps s b r               -> Steps s a (Steps s b r)
-    -- ^ The process that returns the value of type @a@ which is followed by a
-    -- parser returning a value of type @b@.
+    -- Doc: The process that returns the value of type @a@ which is followed by a parser returning a value of type @b@.
     App   :: Steps s (b -> a) (Steps s b r) -> Steps s a r
-    -- ^ Takes a process that returns a function @f@ of type @b -> a@ and is
+    -- Doc: Takes a process that returns a function @f@ of type @b -> a@ and is
     -- followed by a process returning a value @x@ of type @b@.  The resulting
     -- process will return the result of applying the function @f@ to @x@.
     Stop  ::                                   Steps s Void Void
@@ -100,13 +101,13 @@ data Steps s a r where
     -- These constructors describe the parser state
     Shift ::             Steps s a r        -> Steps s a r
     Done  ::             Steps s a r        -> Steps s a r
-    -- ^ The parser that signals success.  The argument is the continuation.
+    -- Doc: The parser that signals success.  The argument is the continuation.
     Fails ::                                   Steps s a r
-    -- ^ The parser that signals failure.
+    -- Doc: The parser that signals failure.
     Dislike :: Steps s a r ->                                   Steps s a r
 
     Suspend :: (Maybe [s] -> Steps s a r) -> Steps s a r
-    -- ^ A suspension of the parser (this is the part borrowed from
+    -- Doc: A suspension of the parser (this is the part borrowed from
     -- Parallel Parsing Processes) The parameter to suspend's
     -- continuation is a whole chunk of text; Nothing represents the
     -- end of the input

@@ -93,11 +93,13 @@ instance MonadInteract m w e => Applicative (StateT s m) where
 
 ---------------------------------------------------------------------------
 -- | Interactive process description
+
+-- TODO: Replace 'Doc:' by ^ when haddock supports GADTs
 data I ev w a where
     Returns :: a -> I ev w a
     Binds :: I ev w a -> (a -> I ev w b) -> I ev w b
     Gets :: Ord ev => Maybe ev -> Maybe ev -> I ev w ev
-    -- ^ Accept any character between given bounds. Bound is ignored if 'Nothing'.
+    -- Doc: Accept any character between given bounds. Bound is ignored if 'Nothing'.
     Fails :: I ev w a
     Writes :: Int -> w -> I ev w ()
     Plus :: I ev w a -> I ev w a -> I ev w a

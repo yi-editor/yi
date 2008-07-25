@@ -142,8 +142,8 @@ getAppropriateFiles start s = do
   let matching = filter (isPrefixOf $ takeFileName s) fs
   return (sDir, matching)
 
- -- | Given a path, trim the file name bit if it exists.  If no path
- --   given, return current directory.
+-- | Given a path, trim the file name bit if it exists.  If no path
+--   given, return current directory.
 getFolder :: Maybe String -> IO String
 getFolder Nothing     = getCurrentDirectory
 getFolder (Just path) = do

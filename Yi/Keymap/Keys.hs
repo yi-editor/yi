@@ -1,5 +1,6 @@
 -- Copyright (c) 2008 Jean-Philippe Bernardy
-{-# LANGUAGE FlexibleContexts #-}
+
+-- | Combinators for building keymaps.
 
 module Yi.Keymap.Keys 
     (
@@ -7,7 +8,6 @@ module Yi.Keymap.Keys
      module Yi.Interact,
      printableChar, charOf, shift, meta, ctrl, spec, char, (>>!), (?>>), (?>>!)
     ) where
--- * Combinators for building keymaps.
 
 import Yi.Event
 import Yi.Keymap
