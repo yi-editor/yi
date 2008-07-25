@@ -66,9 +66,11 @@ import qualified Data.Map as M
 import Control.Monad.Error
 import Control.Applicative
 import System.Console.GetOpt
+import System.Directory
 import System.Environment       ( getArgs )
 import System.Exit
-
+import System.FilePath
+import System.IO (readFile)
 #include "ghcconfig.h"
 
 
@@ -147,21 +149,34 @@ versinfo = projectName ++ ' ' : display version
 
 nilKeymap :: Keymap
 nilKeymap = choice [
-             char 'c' ?>>  forever Cua.keymap,
-             char 'e' ?>>  forever Emacs.keymap,
-             char 'v' ?>>  forever Vim.keymap,
+             char 'c' ?>>  openCfg Cua.keymap,
+             char 'e' ?>>  openCfg Emacs.keymap,
+             char 'v' ?>>  openCfg Vim.keymap,
              char 'q' ?>>! quitEditor,
              char 'r' ?>>! reloadEditor,
              char 'h' ?>>! configHelp
             ] 
             <|| (anyEvent >>! errorEditor "Keymap not defined, 'q' to quit, 'h' for help.")
     where configHelp = newBufferE "*configuration help*" $ fromString $ unlines $
-                         ["To get a standard reasonable keymap, you can run yi with either --as=vim or --as=emacs.",
-                          "you can type 'c', 'e' or 'v' now to get a temporary cua, emacs or vim keymap.",
+                         ["This instance of Yi is not configured.",
+                          "To get a standard reasonable keymap, you can run yi with either --as=cua, --as=vim or --as=emacs.",
                           "You should however create your own ~/.yi/yi.hs file: ",
-                          "start by copying it from the examples directory and edit it."]
-                         -- TODO: create the default file and open it in the editor.
-
+                          "You can type 'c', 'e' or 'v' now to create and edit it using a temporary cua, emacs or vim keymap."]
+          openCfg km = write $ do
+            dataDir <- io $ getDataDir
+            let exampleCfg = dataDir </> "examples" </> "yi.hs"
+            homeDir <- io $ getHomeDirectory
+            let cfgDir = homeDir </> ".yi"
+                cfgFile = cfgDir </> "yi.hs"
+            cfgExists <- io $ doesFileExist cfgFile
+            fnewE cfgFile -- load config file
+            -- locally override the keymap to the user choice
+            withBuffer $ modifyMode (\m -> m {modeKeymap = const km})
+            when (not cfgExists) $ do
+                 -- file did not exist, load a reasonable default
+                 io $ createDirectoryIfMissing True cfgDir -- so that the file can be saved.
+                 defCfg <- io $ readFile exampleCfg
+                 withBuffer $ insertN defCfg
 
 defaultConfig :: Config
 defaultConfig = 

@@ -32,6 +32,7 @@ data-files:
   art/license-file.png
   art/setup-script.png
   art/setup-script.png
+  examples/yi.hs
 extra-source-files: Yi/Lexer/alex.hsinc
 
 flag ghcAPI

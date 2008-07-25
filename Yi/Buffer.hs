@@ -56,6 +56,7 @@ module Yi.Buffer
   , isUnchangedB
   , isUnchangedBuffer
   , setMode
+  , modifyMode
   , regexB
   , searchB
   , readAtB
@@ -148,7 +149,7 @@ data FBuffer = forall syntax.
                 , undos  :: !URList               -- ^ undo/redo list
                 , rawbuf :: !(BufferImpl syntax)
                 , bmode  :: !(Mode syntax)
-                , readOnly :: Bool -- ^ a read-only bit
+                , readOnly :: Bool                -- ^ a read-only bit (TODO)
                 , bufferDynamic :: !DynamicValues -- ^ dynamic components
                 , preferCol :: !(Maybe Int)       -- ^ prefered column to arrive at when we do a lineDown / lineUp
                 , pendingUpdates :: [UIUpdate]    -- ^ updates that haven't been synched in the UI yet
@@ -372,15 +373,6 @@ runBufferDummyWindow b = fst . runBuffer (dummyWindow $ bkey b) b
 markSavedB :: BufferM ()
 markSavedB = modifyA undosA setSavedFilePointU
 
-getfileB :: BufferM (Maybe FilePath)
-getfileB = gets file
-
-setfileB :: FilePath -> BufferM ()
-setfileB f = setA fileA (Just f)
-
-setnameB :: String -> BufferM ()
-setnameB = setA nameA
-
 keyB :: FBuffer -> BufferRef
 keyB (FBuffer { bkey = u }) = u
 
@@ -543,12 +535,26 @@ setMode0 :: forall syntax. Mode syntax -> FBuffer -> FBuffer
 setMode0 m (FBuffer f1 f2 f3 f4 rb _ f7 f8 f9 f10 f11 f12 f13) =
     (FBuffer f1 f2 f3 f4 (setSyntaxBI (modeHL m) rb) m f7 f8 f9 f10 f11 f12 f13)
 
+modifyMode0 :: (forall syntax. Mode syntax -> Mode syntax) -> FBuffer -> FBuffer
+modifyMode0 f (FBuffer f1 f2 f3 f4 rb m f7 f8 f9 f10 f11 f12 f13) =
+    let m' = f m
+    in (FBuffer f1 f2 f3 f4 (setSyntaxBI (modeHL m') rb) m' f7 f8 f9 f10 f11 f12 f13)
+
+
 -- | Set the mode
 setMode :: Mode syntax -> BufferM ()
 setMode m = do
   modify (setMode0 m)
   -- reset the keymap process so we use the one of the new mode.
   setA keymapProcessA I.End 
+
+-- | Modify the mode
+modifyMode :: (forall syntax. Mode syntax -> Mode syntax) -> BufferM ()
+modifyMode f = do
+  modify (modifyMode0 f)
+  -- reset the keymap process so we use the one of the new mode.
+  setA keymapProcessA I.End 
+
 
 withMode0 :: (forall syntax. Mode syntax -> a) -> FBuffer -> a
 withMode0 f FBuffer {bmode = m} = f m 
