@@ -44,12 +44,9 @@ test-dist: sdist
 	cd hackage &&\
 	tar zxvf yi-$(version).tar.gz &&\
 	cd yi-$(version) &&\
-	ghc --make -package Cabal-$(cabal-version) Setup.hs &&\
-	./Setup configure --user --prefix=$(test_prefix) &&\
-	./Setup build &&\
-	./Setup haddock &&\
-	./Setup install &&\
-	cd ..;\
+	# cabal haddock &&\
+	cabal install &&\
+ 	cd ..;\
 
 
 test-gtk:
