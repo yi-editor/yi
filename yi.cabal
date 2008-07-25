@@ -200,7 +200,7 @@ executable yi
         build-depends: regex-base ==0.93.1
         build-depends: regex-tdfa ==0.94
         
-        build-depends: parsec >=2.1
+        build-depends: parsec >=2.1 && <2.2
 
         ghc-options:   -Wall -optl-Wl,-s -threaded
 -- ghc-options later on get appended to the original
