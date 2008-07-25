@@ -65,13 +65,18 @@ adjustBlock e len = do
     Just it -> 
            savingExcursionB $ do
                    let (_startOfs, height) = getSubtreeSpan it
+                   col <- curCol
                    forM_ [1..height] $ \_ -> do
                                lineDown
-                               if len >= 0 
+                               indent <- indentOfB =<< readLnB
+                               -- it might be that we have 1st column comments in the block,
+                               -- which should not be changed.
+                               when (indent >= col) $
+                                if len >= 0
                                  then do insertN (replicate len ' ') 
                                          leftN len
                                  else do
-                                    deleteN 1
+                                    deleteN (negate len)
 indentLevel :: Int
 indentLevel = 4
 

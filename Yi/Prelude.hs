@@ -54,6 +54,7 @@ tail,
 trd3,
 undefined,
 unlines,
+when,
 
     ) where
 
@@ -66,6 +67,7 @@ import Data.Int
 import Control.Monad.Reader
 import Control.Applicative
 import Data.Traversable 
+import Control.Monad
     
 type Endom a = a -> a
 
