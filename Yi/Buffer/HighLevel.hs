@@ -299,6 +299,7 @@ upFromBosB n = do
   moveToSol
   replicateM_ n lineUp
 
+askMarks :: BufferM WinMarks
 askMarks = do
     Just ms <- getMarks =<< ask
     return ms

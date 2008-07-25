@@ -69,12 +69,16 @@ run
 for a list of options.
 
 
+FAQ
+
+The FAQ is maintained on the Haskell wiki:
+
+ http://haskell.org/haskellwiki/Yi/FAQ
+
 CONFIGURATION
 
 All configuration (bindings, colours) is done with ~/.yi/yi.hs
 See examples directory for files that you can use as ~/.yi/yi.hs
-
-
 
 COMPATIBILITY
 

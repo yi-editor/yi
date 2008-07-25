@@ -11,7 +11,7 @@ author:         AUTHORS
 maintainer:     yi-devel@googlegroups.com
 homepage:       http://haskell.org/haskellwiki/Yi
 
-cabal-Version:  >= 1.4
+Cabal-Version:  >= 1.4
 tested-with:    GHC==6.8.3
 build-type:     Simple
 data-files:

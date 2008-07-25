@@ -7,7 +7,6 @@
 -- | Vim keymap for Yi. Emulates vim :set nocompatible
 module Yi.Keymap.Vim ( keymap, viWrite ) where
 
-import Yi.Accessor
 import Yi.Prelude
 import Prelude (maybe, length, filter, map, drop, takeWhile, dropWhile,
                 break, uncurry)

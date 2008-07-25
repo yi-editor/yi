@@ -31,7 +31,6 @@ import Control.Monad.Trans (MonadIO (..))
 
 import Data.Typeable
 import Prelude (words)
-import Yi.Accessor
 import Yi.Prelude
 import Yi.Monad
 import Yi.Buffer
