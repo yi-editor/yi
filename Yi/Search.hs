@@ -10,6 +10,7 @@ module Yi.Search (
         setRegexE,      -- :: SearchExp -> EditorM ()
         getRegexE,      -- :: EditorM (Maybe SearchExp)
         SearchMatch,
+        SearchResult(..),
         SearchF(..),
         searchAndRepLocal,  -- :: String -> String -> IO Bool
         doSearch,            -- :: (Maybe String) -> [SearchF]
@@ -88,29 +89,23 @@ getRegexE = getA regexA
 --
 
 type SearchMatch = Region
-type SearchResult = Maybe (Either SearchMatch SearchMatch)
+data SearchResult = PatternFound
+                  | PatternNotFound
+                  | SearchWrapped
 
 doSearch :: (Maybe String)       -- ^ @Nothing@ means used previous
                                 -- pattern, if any. Complain otherwise.
                                 -- Use getRegexE to check for previous patterns
         -> [SearchF]            -- ^ Flags to modify the compiled regex
         -> Direction            -- ^ @Backward@ or @Forward@
-        -> EditorM ()
+        -> EditorM SearchResult
 
-doSearch s fs d =
-     case s of
-        Just re -> searchInit re d fs >>= withBuffer0 . continueSearch >>= f
-        Nothing -> do
-            mre <- getRegexE
-            case mre of
-                Nothing -> fail "No previous search pattern" -- NB
-                Just r -> withBuffer0 (continueSearch (r,d)) >>= f
-    where
-        f mp = case mp of
-            Just (Right _) -> return ()
-            Just (Left  _) -> printMsg "Search wrapped"
-            Nothing        -> fail "Pattern not found"
-
+doSearch (Just re) fs d = searchInit re d fs >>= withBuffer0 . continueSearch
+doSearch Nothing   _  d = do
+  mre <- getRegexE
+  case mre of
+    Nothing -> fail "No previous search pattern" -- NB
+    Just r  -> withBuffer0 (continueSearch (r,d))
 
 -- | Set up a search.
 searchInit :: String -> Direction -> [SearchF] -> EditorM (SearchExp, Direction)
@@ -132,7 +127,11 @@ continueSearch (c_re, dir) = do
     ls <- regexB dir c_re
     return $ listToMaybe $ fmap Right rs ++ fmap Left ls
   maybe (return ()) (moveTo . regionStart . either id id) mp
-  return mp
+  return $ f mp
+    where
+        f (Just (Right _)) = PatternFound
+        f (Just (Left  _)) = SearchWrapped
+        f Nothing          = PatternNotFound
 
 ------------------------------------------------------------------------
 -- Global search and replace
