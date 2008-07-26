@@ -57,7 +57,7 @@ import Control.Monad
 import Control.Applicative
 
 keymap :: Keymap
-keymap = selfInsertKeymap <|> makeKeymap keys <|> completionKm
+keymap = selfInsertKeymap <|> emacsKeys  <|> completionKm
 
 selfInsertKeymap :: Keymap
 selfInsertKeymap = do
@@ -80,100 +80,126 @@ deleteB' :: YiM ()
 deleteB' = do
   (adjBlock (-1) >> withBuffer (deleteN 1))
 
-keys :: KList
-keys = 
-   [ ( "TAB",      write $ adjIndent DecreaseCycle)
-   , ( "S-TAB",    write $ adjIndent IncreaseCycle)
-   , ( "RET",      write $ repeatingArg $ insertB '\n')
-   , ( "DEL",      write $ repeatingArg deleteB')
-   , ( "BACKSP",   write $ repeatingArg (adjBlock (-1) >> withBuffer bdeleteB))
-   , ( "C-M-w",    write $ appendNextKillE)
-   , ( "C-/",      write $ repeatingArg undoB)
-   , ( "C-_",      write $ repeatingArg undoB)
-   , ( "C-<left>", write $ repeatingArg prevWordB)
-   , ( "C-<right>",write $ repeatingArg nextWordB)
-   , ( "C-<home>", write $ repeatingArg topB)
-   , ( "C-<end>",  write $ repeatingArg botB)
-   , ( "C-@",      write $ placeMark)
-   , ( "C-SPC",    write $ placeMark)
-   , ( "C-a",      write $ repeatingArg (maybeMoveB Line Backward))
-   , ( "C-b",      write $ repeatingArg leftB)
-   , ( "C-d",      write $ repeatingArg deleteB')
-   , ( "C-e",      write $ repeatingArg (maybeMoveB Line Forward))
-   , ( "C-f",      write $ repeatingArg rightB)
-   , ( "C-g",      write $ setVisibleSelection False)               
-   , ( "C-i",      write $ adjIndent IncreaseOnly)
-   , ( "C-j",      write $ repeatingArg $ insertB '\n')
-   , ( "C-k",      write $ killLineE)
-   , ( "C-m",      write $ repeatingArg $ insertB '\n')
-   , ( "C-n",      write $ repeatingArg $ moveB VLine Forward)
-   , ( "C-o",      write $ repeatingArg (insertB '\n' >> leftB))
-   , ( "C-p",      write $ repeatingArg $ moveB VLine Backward)
-   , ( "C-q",              insertNextC)
-   , ( "C-r",      isearchKeymap Backward)
-   , ( "C-s",      isearchKeymap Forward)
-   , ( "C-t",      write $ repeatingArg $ swapB)
-   , ( "C-u",      readArgC)
-   , ( "C-v",      write $ scrollDownE)
-   , ( "M-v",      write $ scrollUpE)
-   , ( "C-w",      write $ killRegion)
-   , ( "C-z",      write $ suspendEditor)
-   , ( "C-x C-o",  write deleteBlankLinesB)
-   , ( "C-x ^",    write $ repeatingArg enlargeWinE)
-   , ( "C-x 0",    write $ closeWindow)
-   , ( "C-x 1",    write $ closeOtherE)
-   , ( "C-x 2",    write $ splitE)
-   , ( "C-x C-c",  write $ askQuitEditor)
-   , ( "C-x C-f",  write $ findFile)
-   , ( "C-x C-s",  write $ fwriteE)
-   , ( "C-x C-w",  write $ withMinibuffer "Write file: "
+emacsKeys :: Keymap
+emacsKeys =
+  choice [ -- First all the special key bindings
+           spec KTab            ?>>! (adjIndent DecreaseCycle)
+         , (shift $ spec KTab)  ?>>! (adjIndent IncreaseCycle)
+         , spec KEnter          ?>>! (repeatingArg $ insertB '\n')
+         , spec KDel            ?>>! (repeatingArg deleteB')
+         , spec KBS             ?>>! (repeatingArg (adjBlock (-1) >> 
+                                                   withBuffer bdeleteB))
+         , spec KHome           ?>>! (repeatingArg moveToSol)
+         , spec KEnd            ?>>! (repeatingArg moveToEol)
+         , spec KLeft           ?>>! (repeatingArg leftB)
+         , spec KRight          ?>>! (repeatingArg rightB)
+         , spec KUp             ?>>! (repeatingArg $ moveB VLine Backward)
+         , spec KDown           ?>>! (repeatingArg $ moveB VLine Forward)
+         , spec KPageDown       ?>>! (repeatingArg downScreenB)
+         , spec KPageUp         ?>>! (repeatingArg upScreenB)
+
+         -- All the keybindings of the form 'Ctrl + special key'
+         , (ctrl $ spec KLeft)  ?>>! (repeatingArg prevWordB)
+         , (ctrl $ spec KRight) ?>>! (repeatingArg nextWordB)
+         , (ctrl $ spec KHome)  ?>>! (repeatingArg topB)
+         , (ctrl $ spec KEnd)   ?>>! (repeatingArg botB)
+         , (ctrl $ spec KUp)    ?>>! (repeatingArg $ prevNParagraphs 1)
+         , (ctrl $ spec KDown)  ?>>! (repeatingArg $ nextNParagraphs 1)
+
+         -- All the keybindings of the form "C-c" where 'c' is some character
+         , ctrlCh '@'           ?>>! placeMark
+         , ctrlCh ' '           ?>>! placeMark
+         , ctrlCh '/'           ?>>! repeatingArg undoB
+         , ctrlCh '_'           ?>>! repeatingArg undoB
+         , ctrlCh 'a'           ?>>! (repeatingArg (maybeMoveB Line Backward))
+         , ctrlCh 'b'           ?>>! (repeatingArg leftB)
+         , ctrlCh 'd'           ?>>! (repeatingArg deleteB')
+         , ctrlCh 'e'           ?>>! (repeatingArg (maybeMoveB Line Forward))
+         , ctrlCh 'f'           ?>>! (repeatingArg rightB)
+         , ctrlCh 'g'           ?>>! (setVisibleSelection False)               
+         , ctrlCh 'i'           ?>>! (adjIndent IncreaseOnly)
+         , ctrlCh 'j'           ?>>! (repeatingArg $ insertB '\n')
+         , ctrlCh 'k'           ?>>!  killLineE
+         , ctrlCh 'm'           ?>>! (repeatingArg $ insertB '\n')
+         , ctrlCh 'n'           ?>>! (repeatingArg $ moveB VLine Forward)
+         , ctrlCh 'o'           ?>>! (repeatingArg (insertB '\n' >> leftB))
+         , ctrlCh 'p'           ?>>! (repeatingArg $ moveB VLine Backward)
+         , ctrlCh 'q'           ?>>  insertNextC
+         , ctrlCh 'r'           ?>>  (isearchKeymap Backward)
+         , ctrlCh 's'           ?>>  (isearchKeymap Forward)
+         , ctrlCh 't'           ?>>! (repeatingArg $ swapB)
+         , ctrlCh 'u'           ?>>  readArgC
+         , ctrlCh 'v'           ?>>! scrollDownE
+         , ctrlCh 'w'           ?>>! killRegion
+         , ctrlCh 'y'           ?>>! yankE
+         , ctrlCh 'z'           ?>>! suspendEditor
+
+         -- All the keybindings of the form "C-M-c" where 'c' is some character
+         , ( ctrl $ metaCh 'w') ?>>! appendNextKillE
+
+         -- All the key-bindings which are preceded by a 'C-x'
+         , ctrlCh 'x' ?>>      ctrlX
+          
+         -- All The key-bindings of the form M-c where 'c' is some character.
+         , metaCh 'v'           ?>>! scrollUpE
+         , metaCh '!'           ?>>! shellCommandE
+         , metaCh 'p'           ?>>! cabalConfigureE
+         , metaCh '<'           ?>>! (repeatingArg topB)
+         , metaCh '>'           ?>>! (repeatingArg botB)
+         , metaCh '%'           ?>>! queryReplaceE
+         -- metaCh 'a'          ?>>! (repeatingArg backwardSentenceE)
+         , metaCh 'b'           ?>>! (repeatingArg prevWordB)
+         , metaCh 'c'           ?>>! (repeatingArg capitaliseWordB)
+         , metaCh 'd'           ?>>! (repeatingArg killWordB)
+         -- , metaCh 'e'        ?>>! (repeatingArg forwardSentenceE)
+         , metaCh 'f'           ?>>! (repeatingArg nextWordB)
+         -- , metaCh 'h'        ?>>! (repeatingArg markParagraphE)
+         -- , metaCh 'k'        ?>>! (repeatingArg killSentenceE)
+         , metaCh 'l'           ?>>! (repeatingArg lowercaseWordB)
+         , metaCh 'q'           ?>>! (withSyntax modePrettify)
+         , metaCh 'u'           ?>>! (repeatingArg uppercaseWordB)
+         , metaCh 't'           ?>>! (repeatingArg $ transposeB Word Forward)
+         , metaCh 'w'           ?>>! killRingSaveE
+         , metaCh 'x'           ?>>! executeExtendedCommandE
+         , metaCh 'y'           ?>>! yankPopE
+
+         -- Other meta key-bindings
+         , meta (spec KBS)      ?>>! (repeatingArg bkillWordB)
+         , metaCh 'g' ?>> 
+             char 'g'           ?>>! gotoLn
+         ]
+  where
+  -- These keybindings are all preceded by a 'C-x' so for example to
+  -- quit the editor we do a 'C-x C-c'
+  ctrlX = choice [ ctrlCh 'o'    ?>>! deleteBlankLinesB
+                 , char '^'      ?>>! (repeatingArg enlargeWinE)
+                 , char '0'      ?>>! closeWindow
+                 , char '1'      ?>>! closeOtherE
+                 , char '2'      ?>>! splitE
+                 , ctrlCh 'c'    ?>>! askQuitEditor
+                 , ctrlCh 'f'    ?>>! findFile
+                 , ctrlCh 's'    ?>>! fwriteE
+                 , ctrlCh 'w'    ?>>! (withMinibuffer "Write file: "
                                            (matchingFileNames Nothing)
                                            fwriteToE
-     )
-   , ( "C-x C-x",  write $ (exchangePointAndMarkB >> setA highlightSelectionA True))
-   , ( "C-x b",    write $ switchBufferE)
-   , ( "C-x d",    write $ dired)
-   , ( "C-x e e",  write $ evalRegionE)
-   , ( "C-x o",    write $ nextWinE)
-   , ( "C-x k",    write $ killBufferE)
--- , ( "C-x r k",  write $ killRectE)
--- , ( "C-x r o",  write $ openRectE)
--- , ( "C-x r t",  write $ stringRectE)
--- , ( "C-x r y",  write $ yankRectE)
-   , ( "C-x u",    write $ repeatingArg undoB)
-   , ( "C-x v",    write $ repeatingArg shrinkWinE)
-   , ( "C-y",      write $ yankE)
-   , ( "M-!",      write $ shellCommandE)
-   , ( "M-p",      write $ cabalConfigureE)
-   , ( "M-<",      write $ repeatingArg topB)
-   , ( "M->",      write $ repeatingArg botB)
-   , ( "M-%",      write $ queryReplaceE)
-   , ( "M-BACKSP", write $ repeatingArg bkillWordB)
--- , ( "M-a",      write $ repeatingArg backwardSentenceE)
-   , ( "M-b",      write $ repeatingArg prevWordB)
-   , ( "M-c",      write $ repeatingArg capitaliseWordB)
-   , ( "M-d",      write $ repeatingArg killWordB)
--- , ( "M-e",      write $ repeatingArg forwardSentenceE)
-   , ( "M-f",      write $ repeatingArg nextWordB)
-   , ( "M-g g",    write $ gotoLn)
--- , ( "M-h",      write $ repeatingArg markParagraphE)
--- , ( "M-k",      write $ repeatingArg killSentenceE)
-   , ( "M-l",      write $ repeatingArg lowercaseWordB)
-   , ( "M-q",      write $ withSyntax modePrettify)
-   , ( "M-u",      write $ repeatingArg uppercaseWordB)
-   , ( "M-t",      write $ repeatingArg $ transposeB Word Forward)
-   , ( "M-w",      write $ killRingSaveE)
-   , ( "M-x",      write $ executeExtendedCommandE)
-   , ( "M-y",      write $ yankPopE)
-   , ( "<home>",   write $ repeatingArg moveToSol)
-   , ( "<end>",    write $ repeatingArg moveToEol)
-   , ( "<left>",   write $ repeatingArg leftB)
-   , ( "<right>",  write $ repeatingArg rightB)
-   , ( "<up>",     write $ repeatingArg (moveB VLine Backward))
-   , ( "<down>",   write $ repeatingArg (moveB VLine Forward))
-   , ( "C-<up>",   write $ repeatingArg $ prevNParagraphs 1)
-   , ( "C-<down>", write $ repeatingArg $ nextNParagraphs 1)
-   , ( "<next>",   write $ repeatingArg downScreenB)
-   , ( "<prior>",  write $ repeatingArg upScreenB)
-  ]
+                                      )
+                 , ctrlCh 'x'    ?>>! (exchangePointAndMarkB >> 
+                                       setA highlightSelectionA True)
+                 , char 'b'      ?>>! switchBufferE
+                 , char 'd'      ?>>! dired
+                 , char 'e' ?>> 
+                   char 'e'      ?>>! evalRegionE
+                 , char 'o'      ?>>! nextWinE
+                 , char 'k'      ?>>! killBufferE
+                 -- , char 'r' ?>>
+                 --   char 'k'   ?>>! killRectE
+                 -- , char 'r' ?>>
+                 --   char 'o'   ?>>! openRectE
+                 -- , char 'r' ?>>
+                 --   char 't'   ?>>! stringRectE
+                 -- , char 'r' ?>>
+                 --   char 'y'   ?>>! yankRectE
+                 , char 'u'      ?>>! (repeatingArg undoB)
+                 , char 'v'      ?>>! (repeatingArg shrinkWinE)
+                 ]
 
