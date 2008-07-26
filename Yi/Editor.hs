@@ -60,6 +60,11 @@ data Editor = Editor {
     }
     deriving Typeable
 
+newtype EditorM a = EditorM {fromEditorM :: RWS Config () Editor a}
+    deriving (Monad, MonadState Editor, MonadReader Config, Functor)
+
+deriving instance Typeable1 EditorM
+
 class (Monad m, MonadState Editor m) => MonadEditor m
     where askCfg :: m Config
           withEditor :: EditorM a -> m a
@@ -270,13 +275,6 @@ setBuffer :: BufferRef -> EditorM BufferRef
 setBuffer k = do
   b <- gets $ findBufferWith k
   insertBuffer b -- a bit of a hack.
-
--- ---------------------------------------------------------------------
-
-newtype EditorM a = EditorM {fromEditorM :: RWS Config () Editor a}
-    deriving (Monad, MonadState Editor, MonadReader Config, Functor)
-
-deriving instance Typeable1 EditorM
 
 --------------
 
