@@ -6,7 +6,8 @@ module Yi.Keymap.Keys
     (
      module Yi.Event,
      module Yi.Interact,
-     printableChar, charOf, shift, meta, ctrl, spec, char, (>>!), (?>>), (?>>!)
+     printableChar, charOf, shift, meta, ctrl, spec, char, (>>!), (?>>), (?>>!),
+     ctrlCh, metaCh
     ) where
 
 import Yi.Event
@@ -43,6 +44,13 @@ meta (Event k ms) = Event k $ nub $ sort (MMeta:ms)
 char :: Char -> Event
 char '\t' = Event KTab []
 char c = Event (KASCII c) []
+
+ctrlCh :: Char -> Event
+ctrlCh = ctrl . char
+
+metaCh :: Char -> Event
+metaCh = meta . char
+
 
 -- | Convert a special key into an event
 spec :: Key -> Event
