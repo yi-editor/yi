@@ -41,6 +41,7 @@ module Yi.Buffer
   , nelemsB
   , nelemsB'
   , writeB
+  , writeN
   , deleteNAt
   , deleteNBytes
   , readB
@@ -482,6 +483,13 @@ writeB c = do
   off <- pointB
   deleteNAt Forward 1 off
   insertB c
+
+-- | Write the list into the buffer at current point.
+writeN :: String -> BufferM ()
+writeN cs = do
+  off <- pointB
+  deleteNAt Forward (length cs) off
+  insertNAt cs off
 
 ------------------------------------------------------------------------
 
