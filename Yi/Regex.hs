@@ -40,7 +40,8 @@ makeSearchOptsM opts re = liftM (\r->(re,r)) $ makeRegexOptsM (searchOpts opts d
 emptySearch :: SearchExp
 emptySearch = ("", emptyRegex)
 
+-- | The regular expression that matches nothing.
 emptyRegex :: Regex
-Just emptyRegex = makeRegexOptsM defaultCompOpt defaultExecOpt "()"
+Just emptyRegex = makeRegexOptsM defaultCompOpt defaultExecOpt "[[:empty:]]"
 
 
