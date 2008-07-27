@@ -14,11 +14,13 @@ import Yi.Buffer.HighLevel
 -- import Yi.Debug
 import Yi.Dynamic
 
+import Yi.Buffer.Normal
 import Yi.Buffer.Region
 
 import Data.Char
 import Data.Typeable
 import Data.List
+import Yi.String
 
 {- Currently duplicates some of Vim's indent settings. Allowing a buffer to
  - specify settings that are more dynamic, perhaps via closures, could be
@@ -430,53 +432,34 @@ indentAsPreviousB =
      indentToB previousIndent
 
 
--- | @shiftIndentOfLine num@
+-- | 
 -- shifts right (or left if num is negative) num times, filling in tabs if
 -- expandTabs is set in the buffers IndentSettings
--- TODO: rewrite in a functional style; using @modifyExtendedSelectionB Line $ modifyLines f@
-shiftIndentOfLine :: Int -> BufferM ()
-shiftIndentOfLine numOfShifts = do
-  moveToSol
-  sol <- pointB
-  firstNonSpaceB
-  isAtSol <- atSol
-  when (not isAtSol) leftB
-  rightB
-  ptOfLastSpace <- pointB
-  -- msgEditor ("ptOfLastSpace= " ++ (show ptOfLastSpace) ++ "-" ++ (show sol) ++ "=" ++ (show (ptOfLastSpace - sol)))
-  indentSettings <- indentSettingsB
-  let countSpace '\t' = tabSize indentSettings
-      countSpace _ = 1 -- we'll assume nothing but tabs and spaces
-  cnt <- if isAtSol then return 0
-                    else readRegionB (mkRegion sol ptOfLastSpace) >>= return . sum . map countSpace
-  if not isAtSol then deleteRegionB (mkRegion sol ptOfLastSpace)
-                 else return ()
-
-  let newcount = cnt + ((shiftWidth indentSettings) * numOfShifts)
-  if (newcount <= 0)
-     then return ()
-     else do
-       let tabs   = replicate (newcount `div` (tabSize indentSettings)) '\t'
-           spaces = replicate (newcount `mod` (tabSize indentSettings)) ' '
-       moveToSol
-       insertN $ if expandTabs indentSettings then replicate newcount ' '
-                               else tabs ++ spaces
-
-       firstNonSpaceB
+indentString :: IndentSettings -> Int -> String -> String
+indentString indentSettings numOfShifts input 
+    | newCount <= 0 = rest
+    | expandTabs indentSettings = replicate newCount ' ' ++ rest
+    | otherwise = tabs ++ spaces ++ rest
+    where (indents,rest) = span isSpace input
+          countSpace '\t' = tabSize indentSettings
+          countSpace _ = 1 -- we'll assume nothing but tabs and spaces
+          newCount = sum (map countSpace indents) + ((shiftWidth indentSettings) * numOfShifts)
+          tabs   = replicate (newCount `div` (tabSize indentSettings)) '\t'
+          spaces = replicate (newCount `mod` (tabSize indentSettings)) ' '
+         
 
 shiftIndentOfSelection :: Int -> BufferM ()
 shiftIndentOfSelection shiftCount = do
-  mark <- getSelectionMarkPointB
-  (row2,_) <- getLineAndCol
-  moveTo mark
-  (row1,_) <- getLineAndCol
-  let step = if (row2 > row1)
-             then lineDown
-             else lineUp
-      numOfLines = 1 + (abs (row2 - row1))
-  replicateM_ numOfLines (shiftIndentOfLine shiftCount >> step)
+    indentSettings <- indentSettingsB
+    modifyExtendedSelectionB Line $ modifyLines (indentString indentSettings shiftCount)
+    firstNonSpaceB
 
-
+shiftIndentOfLine :: Int -> BufferM ()
+shiftIndentOfLine shiftCount = do
+    indentSettings <- indentSettingsB
+    reg <- regionOfB Line
+    modifyRegionB (indentString indentSettings shiftCount) reg
+    firstNonSpaceB
 
 
 -- | Increases the indentation on the region by the given amount
