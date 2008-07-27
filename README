@@ -13,7 +13,7 @@ DEPENDENCIES
 
 * Cabal 1.4
 
-* ghc 6.8.2
+* ghc 6.8.3
 
 * Alex (the haskell lexer generator) 
 	http://www.haskell.org/alex/
@@ -21,7 +21,7 @@ DEPENDENCIES
 * for vty frontend, vty 3.0.2
   * http://hackage.haskell.org/cgi-bin/hackage-scripts/package/vty
 
-* for gtk frontend, gtk2hs 0.9.12.
+* for gtk frontend, gtk2hs 0.9.13.
         http://haskell.org/gtk2hs/download/
 
 * for cocoa frontend
@@ -41,6 +41,7 @@ DEPENDENCIES
         sudo runhaskell Setup install
         cd Bindings
         sudo bash make-bindings-macos.sh --prefix=/usr/local
+        # maybe you want to add --user arg here
 
 * many packages shipped with GHC or found on hackage.
   see the cabal file for complete list.
@@ -52,7 +53,7 @@ QUICK START:
 
   NOTE: if you get 
 
-    Setup.hs: Package yi-0.4 can't be built on this system.
+    Setup.hs: Package yi-<version> can't be built on this system.
 
   it means that you have no UI package available. See DEPENDENCIES.
 
