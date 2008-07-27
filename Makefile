@@ -6,6 +6,9 @@ include $(cabal-make)/cabal-make.inc
 
 test: build # should also run the test suite.
 
+%.ps: %.hp
+	hp2ps -c $<
+
 runtime-config:
 	mkdir -p $(HOME)/.yi
 	cp examples/*.hs $(HOME)/.yi
@@ -33,7 +36,7 @@ haddock.upload:
 	rsync -r dist/doc/html/yi/ $(user)@community.haskell.org:/srv/code/yi/doc
 
 dist/yi-$(version).tar.gz::
-	make sdist # does not work atm 
+	cabal sdist # does not work atm 
 
 test_prefix := $(shell pwd)/hackage
 
