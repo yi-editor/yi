@@ -5,7 +5,7 @@
 --  * Tab-expansion
 --  * Shifting of the indentation for a region of text
 
-module Yi.Indent where
+module Yi.Buffer.Indent where
 
 import Control.Monad
 
@@ -476,3 +476,14 @@ shiftIndentOfSelection shiftCount = do
       numOfLines = 1 + (abs (row2 - row1))
   replicateM_ numOfLines (shiftIndentOfLine shiftCount >> step)
 
+
+
+
+-- | Increases the indentation on the region by the given amount
+increaseIndentSelectionB :: Int -> BufferM ()
+increaseIndentSelectionB i = linePrefixSelectionB $ replicate i ' '
+
+-- | Decreases the indentation on the region by the given amount
+decreaseIndentSelectionB :: Int -> BufferM ()
+decreaseIndentSelectionB i =
+  unLineCommentSelectionB $ replicate i ' '

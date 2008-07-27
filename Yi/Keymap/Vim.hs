@@ -23,13 +23,13 @@ import Yi.Buffer
 import Yi.Buffer.HighLevel
 import Yi.Buffer.Normal
 import Yi.Buffer.Region
+import Yi.Buffer.Indent
 import Yi.Core
 import Yi.Dired
 import Yi.Editor
 import Yi.Eval (execEditorAction)
 import Yi.File
 import Yi.History
-import Yi.Indent
 import Yi.Misc (matchingFileNames)
 import Yi.Keymap.Keys
 import Yi.MiniBuffer

@@ -6,7 +6,7 @@ import Prelude ()
 import System.FilePath
 import Yi.Buffer (AnyMode(..), Mode(..), emptyMode)
 import Yi.Buffer.HighLevel (fillParagraph)
-import Yi.Indent
+import Yi.Buffer.Indent
 import Yi.Lexer.Alex (Tok(..), Posn(..))
 import Yi.Mode.Haskell
 import Yi.Prelude

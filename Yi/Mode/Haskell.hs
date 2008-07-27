@@ -9,7 +9,7 @@ import Yi.Buffer
 import Yi.Buffer.HighLevel
 import Yi.Buffer.Normal
 import Yi.Buffer.Region
-import Yi.Indent
+import Yi.Buffer.Indent
 import Yi.Prelude
 import Yi.Syntax
 import Yi.String

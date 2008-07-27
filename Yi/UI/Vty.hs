@@ -43,7 +43,7 @@ import Graphics.Vty as Vty
 
 import Yi.UI.Utils
 import Yi.Syntax (Stroke)
-import Yi.Indent (indentSettingsB, IndentSettings(..))
+import Yi.Buffer.Indent (indentSettingsB, IndentSettings(..))
 
 ------------------------------------------------------------------------
 

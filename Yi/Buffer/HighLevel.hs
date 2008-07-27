@@ -508,16 +508,6 @@ substituteInList from to list@(h : rest)
   | otherwise            =
     h : (substituteInList from to rest)
 
--- | Increases the indentation on the region by the given amount
-increaseIndentSelectionB :: Int -> BufferM ()
-increaseIndentSelectionB i = linePrefixSelectionB $ replicate i ' '
-
--- | Decreases the indentation on the region by the given amount
-decreaseIndentSelectionB :: Int -> BufferM ()
-decreaseIndentSelectionB i =
-  unLineCommentSelectionB $ replicate i ' '
-
-
 -- | Justifies all the lines of the selection to be the same as
 -- the top line.
 -- NOTE: if the selection begins part way along a line, the other

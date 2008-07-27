@@ -147,10 +147,11 @@ library
         System.FriendlyPath
         Yi.Region
         Yi.Regex
+        Yi.Buffer.Indent
         Yi.Buffer.HighLevel, Yi.Buffer.Implementation,
         Yi.Buffer.Normal, Yi.Buffer.Region, Yi.Completion, Yi.Core,
         Yi.Debug, Yi.Dired, Yi.Dynamic, Yi.Editor, Yi.Eval, Yi.Event, Yi.FingerString, Yi.History,
-        Yi.Indent, Yi.Interact, Yi.Keymap, Yi.Keymap.Completion,
+        Yi.Interact, Yi.Keymap, Yi.Keymap.Completion,
         Yi.Keymap.Emacs.KillRing, Yi.Keymap.Emacs.UnivArgument,
         Yi.Keymap.Emacs.Utils, Yi.Main, Yi.MkTemp, Yi.Monad, Yi.Process,
         Yi.Search, Yi.String, Yi.Style, Yi.Templates, Yi.TextCompletion,
@@ -280,10 +281,11 @@ executable yi
            Yi.Syntax.Linear
 
            Yi.Accessor, Yi.Interpreter,
+           Yi.Buffer.Indent
            Yi.Buffer.HighLevel, Yi.Buffer.Implementation,
            Yi.Buffer.Normal, Yi.Buffer.Region, Yi.Completion, Yi.Core,
            Yi.Debug, Yi.Dired, Yi.Dynamic, Yi.Editor, Yi.Eval, Yi.Event, Yi.FingerString, Yi.History,
-           Yi.Indent, Yi.Interact, Yi.Keymap, Yi.Keymap.Completion,
+           Yi.Interact, Yi.Keymap, Yi.Keymap.Completion,
            Yi.Keymap.Emacs.KillRing, Yi.Keymap.Emacs.UnivArgument,
            Yi.Keymap.Emacs.Utils, Yi.Main, Yi.MkTemp, Yi.Monad, Yi.Process,
            Yi.Search, Yi.String, Yi.Style, Yi.Templates, Yi.TextCompletion,
