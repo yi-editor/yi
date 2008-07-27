@@ -27,7 +27,7 @@ import Yi.Buffer
 import Yi.Buffer.Implementation
 import Yi.Buffer.Region
 import Yi.Buffer.HighLevel
-import Yi.Debug
+import Yi.Config
 import Yi.Editor
 import Yi.Event
 import Yi.Monad
@@ -43,7 +43,7 @@ import Graphics.Vty as Vty
 
 import Yi.UI.Utils
 import Yi.Syntax (Stroke)
-import Yi.Buffer.Indent (indentSettingsB, IndentSettings(..))
+import Yi.Buffer.Indent (indentSettingsB)
 
 ------------------------------------------------------------------------
 

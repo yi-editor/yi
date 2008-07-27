@@ -105,7 +105,7 @@ startEditor cfg st = do
     logPutStrLn "Starting Core"
 
     -- restore the old state
-    let initEditor = maybe emptyEditor id st
+    let initEditor = maybe (emptyEditor cfg) id st
     newSt <- newIORef initEditor
     -- Setting up the 1st window is a bit tricky because most functions assume there exists a "current window"
     startThreads <- newIORef []

@@ -12,33 +12,14 @@ import Control.Monad
 import Yi.Buffer
 import Yi.Buffer.HighLevel
 -- import Yi.Debug
-import Yi.Dynamic
-
+import Yi.Config
 import Yi.Buffer.Normal
 import Yi.Buffer.Region
 
 import Data.Char
-import Data.Typeable
 import Data.List
 import Yi.String
 
-{- Currently duplicates some of Vim's indent settings. Allowing a buffer to
- - specify settings that are more dynamic, perhaps via closures, could be
- - useful.
- - TODO: Should this be moved to config?
- -}
-data IndentSettings = IndentSettings {  expandTabs :: Bool
-                                      , tabSize :: Int
-                                      , shiftWidth :: Int
-                                     }
-                      deriving (Eq, Show, Typeable)
-
-{- 
-  The default indent settings should likely be initializable
-  from a global preference.
- -}
-instance Initializable IndentSettings where
-    initial = IndentSettings True 2 2
 
 {- |
   Inserts either a \t or the number of spaces specified by tabSize in the

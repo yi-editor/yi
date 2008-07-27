@@ -100,6 +100,7 @@ import System.FilePath
 import Yi.Regex (SearchExp)
 import Yi.Accessor
 import Yi.Buffer.Implementation
+import Yi.Config
 import Yi.Region
 import Yi.Syntax
 import Yi.Undo
@@ -118,15 +119,16 @@ import qualified Data.ByteString.Lazy as LB
 import Yi.Buffer.Basic
 
 #ifdef TESTING
-import Test.QuickCheck
+import Test.QuickCheck hiding (Config)
 import Driver ()
 
-instance Arbitrary FBuffer where
-    arbitrary = do b0 <- return (newB 0 "*buffername*") `ap` (LazyUTF8.fromString `liftM` arbitrary)
-                   p0 <- arbitrary
-                   return $ snd $ runBuffer (dummyWindow $ bkey b0) b0 (moveTo $ Point p0)
-
 -- TODO: make this compile.
+
+-- instance Arbitrary FBuffer where
+--     arbitrary = do b0 <- return (newB 0 "*buffername*") `ap` (LazyUTF8.fromString `liftM` arbitrary)
+--                    p0 <- arbitrary
+--                    return $ snd $ runBuffer (dummyWindow $ bkey b0) b0 (moveTo $ Point p0)
+
 -- prop_replace_point b = snd $ runBufferDummyWindow b $ do
 --   p0 <- pointB
 --   replaceRegionB r
@@ -406,8 +408,8 @@ emptyMode = Mode
   }
 
 -- | Create buffer named @nm@ with contents @s@
-newB :: BufferRef -> String -> LB.ByteString -> FBuffer
-newB unique nm s =
+newB :: Config -> BufferRef -> String -> LB.ByteString -> FBuffer
+newB cfg unique nm s =
     FBuffer { name   = nm
             , bkey   = unique
             , file   = Nothing          -- has name, not connected to a file
@@ -416,7 +418,7 @@ newB unique nm s =
             , readOnly = False
             , bmode  = emptyMode
             , preferCol = Nothing
-            , bufferDynamic = emptyDV
+            , bufferDynamic = modifier dynamicValueA (const $ configIndentSettings cfg) emptyDV 
             , pendingUpdates = []
             , highlightSelection = False
             , process = I.End
