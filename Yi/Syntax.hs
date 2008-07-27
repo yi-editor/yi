@@ -39,6 +39,7 @@ data Highlighter cache syntax =
   SynHL { hlStartState :: cache -- ^ The start state for the highlighter.
         , hlRun :: Scanner Point Char -> Point -> cache -> cache
         , hlGetStrokes :: Point -> Point -> Point -> syntax -> [Stroke]
+         -- TODO: move hlGetStrokes out of this into the Buffer
         , hlGetTree :: cache -> syntax
         }
 
@@ -53,7 +54,7 @@ data Scanner st a = Scanner {
 instance Functor (Scanner st) where
     fmap f (Scanner i l e r) = Scanner i l (f e) (\st -> fmap (second f) (r st))
 
-data Cache state result = Cache [(state,result)] result
+data Cache state result = Cache [state] result
 
 emptyFileScan :: Scanner Point Char
 emptyFileScan = Scanner { scanInit = 0, scanRun = const [], scanLooked = id, scanEmpty = error "emptyFileScan: no scanEmpty" }
@@ -76,16 +77,16 @@ mkHighlighter scanner getStrokes =
           startState = scanInit    (scanner emptyFileScan)
           emptyResult = scanEmpty (scanner emptyFileScan)
           updateCache :: Scanner Point Char -> Point -> Cache state result -> Cache state result
-          updateCache newFileScan dirtyOffset (Cache cachedStates _) = Cache newCachedStates newResult
+          updateCache newFileScan dirtyOffset (Cache cachedStates oldResult) = Cache newCachedStates newResult
             where newScan = scanner newFileScan
-                  reused :: [(state,result)]
-                  reused = takeWhile ((< dirtyOffset) . scanLooked (scanner newFileScan) . fst) cachedStates
-                  resumeState :: (state,result)
-                  resumeState = if null reused then (startState, emptyResult) else last reused
-                  newCachedStates = reused ++ recomputed
-                  recomputed = scanRun newScan (fst resumeState)
+                  reused :: [state]
+                  reused = takeWhile ((< dirtyOffset) . scanLooked (scanner newFileScan)) cachedStates
+                  resumeState :: state
+                  resumeState = if null reused then startState else last reused
+                  newCachedStates = reused ++ fmap fst recomputed
+                  recomputed = scanRun newScan resumeState
                   newResult :: result
-                  newResult = snd $ head (recomputed ++ [resumeState])
+                  newResult = if null recomputed then oldResult else snd $ head $ recomputed
 
 noHighlighter :: Highlighter () syntax
 noHighlighter = SynHL {hlStartState = (), 
