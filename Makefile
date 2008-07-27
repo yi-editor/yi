@@ -9,9 +9,8 @@ test: build # should also run the test suite.
 %.ps: %.hp
 	hp2ps -c $<
 
-runtime-config:
-	mkdir -p $(HOME)/.yi
-	cp examples/*.hs $(HOME)/.yi
+prof-config::
+	cabal configure -fhacking -f-gtk -f-pango --enable-executable-profiling --ghc-options=-auto-all
 
 run-inplace: build
 	dist/build/yi/yi -f$(frontend)
