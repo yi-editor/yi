@@ -68,22 +68,15 @@ wordComplete = do
 
 ----------------------------
 -- Alternative Word Completion
--- TODO: This is obsoleted by the above; deprecate.
 
 {-
   'completeWordB' is an alternative to 'wordCompleteB'.
-  Currently the main reason for this extra function is that the
-  aforementioned is rather buggy, two problems I currently have with
-  it is that it occasionally remembers the previous word it was completing
-  before and completes that rather than the current one. More seriously
-  it occasionally crashes yi by going into an infinite loop.
 
-  In the longer term assuming that 'Yi.CharMove.wordCompleteB' is fixed
-  (which I would love) then 'completeWordB' offers a slightly different
-  interface. The user completes the word using the mini-buffer in the
-  same way a user completes a buffer or file name when switching buffers
-  or opening a file. This means that it never guesses and completes
-  only as much as it can without guessing.
+  'completeWordB' offers a slightly different interface. The user
+  completes the word using the mini-buffer in the same way a user
+  completes a buffer or file name when switching buffers or opening a
+  file. This means that it never guesses and completes only as much as
+  it can without guessing.
 
   I think there is room for both approaches. The 'wordCompleteB' approach
   which just guesses the completion from a list of possible completion
