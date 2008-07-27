@@ -105,7 +105,6 @@ import Yi.Syntax
 import Yi.Undo
 import Yi.Dynamic
 import Yi.Window
-import Control.Applicative
 import Control.Monad.RWS.Strict hiding (mapM_, mapM)
 import Data.List (scanl, takeWhile, zip, length)
 import qualified Data.Map as M
@@ -139,7 +138,6 @@ instance Arbitrary FBuffer where
 --  * Log of updates mades
 --  * Undo
 
-
 data WinMarks = WinMarks { fromMark, insMark, toMark :: !Mark }
 
 data FBuffer = forall syntax.
@@ -149,12 +147,12 @@ data FBuffer = forall syntax.
                 , undos  :: !URList               -- ^ undo/redo list
                 , rawbuf :: !(BufferImpl syntax)
                 , bmode  :: !(Mode syntax)
-                , readOnly :: Bool                -- ^ a read-only bit (TODO)
+                , readOnly :: !Bool                -- ^ a read-only bit (TODO)
                 , bufferDynamic :: !DynamicValues -- ^ dynamic components
                 , preferCol :: !(Maybe Int)       -- ^ prefered column to arrive at when we do a lineDown / lineUp
-                , pendingUpdates :: [UIUpdate]    -- ^ updates that haven't been synched in the UI yet
+                , pendingUpdates :: ![UIUpdate]    -- ^ updates that haven't been synched in the UI yet
                 , highlightSelection :: !Bool
-                , process :: KeymapProcess
+                , process :: !KeymapProcess
                 , winMarks :: !(M.Map WindowRef WinMarks)
                 }
         deriving Typeable
