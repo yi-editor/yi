@@ -76,7 +76,7 @@ getsAndModifyA :: MonadState s m => Accessor s p -> (p -> (p,a)) -> m a
 getsAndModifyA a f = do
   b <- getA a
   let (b',x) = f b
-  modifyA a (const b')
+  setA a b'
   return x
 
 

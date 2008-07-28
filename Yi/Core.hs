@@ -62,7 +62,7 @@ import qualified Yi.UI.Common as UI
 import Yi.UI.Common as UI (UI)
 import qualified Data.DelayList as DelayList
 
-import Data.List (intersperse)
+import Data.List (intercalate)
 import Data.Maybe
 import qualified Data.Map as M
 import Data.IORef
@@ -76,7 +76,7 @@ import Control.Monad (when,forever)
 import Control.Monad.Reader (runReaderT, ask, asks)
 import Control.Monad.Trans
 import Control.Monad.Error ()
-import Control.Monad.State (gets)
+import Control.Monad.State (gets, get)
 import Control.Exception
 import Control.Concurrent
 
@@ -84,7 +84,8 @@ import Control.Concurrent
 -- UI will be refreshed.
 interactive :: Action -> YiM ()
 interactive action = do
-  logPutStrLn ">>> interactively"
+  evs <- withEditor $ getA pendingEventsA
+  logPutStrLn $ ">>> interactively" ++ showEvs evs
   prepAction <- withUI UI.prepareAction
   withEditor $ do prepAction
                   modifyAllA buffersA undosA (addChangeU InteractivePoint)
@@ -111,7 +112,7 @@ startEditor cfg st = do
     startThreads <- newIORef []
     startSubprocessId <- newIORef 1
     startSubprocesses <- newIORef M.empty
-    (ui, runYi) <- mdo let handler e = runYi $ (errorEditor (show e) >> refreshEditor)
+    (ui, runYi) <- mdo let handler exception = runYi $ (errorEditor (show exception) >> refreshEditor)
                            inF  ev  = handle handler (runYi (dispatch ev))
                            outF act = handle handler (runYi (interactive act))
                        ui <- uiStart cfg inF outF initEditor
@@ -138,7 +139,9 @@ postActions actions = do yi <- ask; liftIO $ mapM_ (output yi) actions
 dispatch :: Event -> YiM ()
 dispatch ev =
     do yi <- ask
-       (actions,_p') <- withBuffer $ do
+       entryEvs <- withEditor $ getA pendingEventsA
+       logPutStrLn $ "pending events: " ++ showEvs entryEvs
+       (userActions,_p') <- withBuffer $ do
          keymap <- withModeB modeKeymap
          p0 <- getA keymapProcessA
          let defKm = defaultKm $ yiConfig $ yi
@@ -157,23 +160,27 @@ dispatch ev =
              ambiguous = not (null possibilities) && all isJust possibilities
          setA keymapProcessA (if ambiguous then freshP else p')
          let actions0 = case p' of 
-                          I.Fail -> [makeAction $ msgEditor $ "Unrecognized input (on = "++ show ev ++")"]
+                          I.Fail -> [makeAction $ do
+                                         evs <- getA pendingEventsA
+                                         printMsg ("Unrecognized input: " ++ showEvs (evs ++ [ev]))]
                           _ -> actions
              actions1 = if ambiguous 
-                          then [makeAction $ msgEditor "Keymap was in an ambiguous state! Resetting it."]
+                          then [makeAction $ printMsg "Keymap was in an ambiguous state! Resetting it."]
                           else []
          return (actions0 ++ actions1,p')
        --logPutStrLn $ "Processing: " ++ show ev
        --logPutStrLn $ "Actions posted:" ++ show actions
        --logPutStrLn $ "New automation: " ++ show p'
+       let decay, pendingFeedback :: EditorM ()
+           decay = modifyA statusLinesA (DelayList.decrease 1)
+           pendingFeedback = do modifyA pendingEventsA (++ [ev])
+                                if null userActions
+                                    then printMsg . showEvs =<< getA pendingEventsA
+                                    else setA pendingEventsA []
+       postActions $ [makeAction decay] ++ userActions ++ [makeAction pendingFeedback]
 
-       withEditor $ modifyA statusLinesA (DelayList.decrease 1)
-       if (null actions) 
-         then do evs <- withEditor $ getsAndModifyA pendingEventsA $
-                           \evs -> (evs, evs ++ [ev])
-                 msgEditor $ concat $ intersperse " " $ fmap prettyEvent evs
-                 refreshEditor
-         else postActions actions 
+showEvs = intercalate " " . fmap prettyEvent
+showEvs :: [Event] -> String
 
 -- ---------------------------------------------------------------------
 -- Meta operations
