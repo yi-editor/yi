@@ -1,8 +1,9 @@
 {-# LANGUAGE PatternGuards, ExistentialQuantification, DeriveDataTypeable, Rank2Types #-}
 
--- Copyright (c) 2004-5, 7-8 Don Stewart - http://www.cse.unsw.edu.au/~dons
+-- Copyright (c) 2004-5 Don Stewart - http://www.cse.unsw.edu.au/~dons
+-- Copyright (c) 2007-8 JP Bernardy
 
--- | 'Buffer' implementation, wrapping ByteString.
+-- | 'Buffer' implementation, wrapping ByteRope
 module Yi.Buffer.Implementation
   ( UIUpdate (..)
   , Update (..)
