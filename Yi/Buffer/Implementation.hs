@@ -66,8 +66,8 @@ import Control.Monad
 
 import Yi.Regex
 
-import qualified Yi.FingerString as F
-import Yi.FingerString (FingerString)
+import qualified Data.ByteRope as F
+import Data.ByteRope (ByteRope)
 import qualified Data.ByteString.Lazy as LazyB
 import qualified Data.ByteString.UTF8 as UTF8
 import qualified Data.ByteString.Lazy.UTF8 as LazyUTF8
@@ -103,7 +103,7 @@ data Overlay = Overlay {
                deriving (Ord, Eq)
 
 data FBufferData syntax =
-        FBufferData { mem        :: !FingerString          -- ^ buffer text
+        FBufferData { mem        :: !ByteRope          -- ^ buffer text
                     , marks      :: !Marks                 -- ^ Marks for this buffer
                     , markNames  :: !(M.Map String Mark)
                     , hlCache    :: !(HLState syntax)       -- ^ syntax highlighting state
@@ -155,23 +155,23 @@ newBI s = FBufferData (F.fromLazyByteString s) mks M.empty (HLState noHighlighte
                            ]
 
 -- | read @n@ chars from buffer @b@, starting at @i@
-readChars :: FingerString -> Int -> Point -> String
+readChars :: ByteRope -> Int -> Point -> String
 readChars p n (Point i) = take n $ LazyUTF8.toString $ F.toLazyByteString $ F.drop i $ p
 {-# INLINE readChars #-}
 
 -- | read @n@ bytes from buffer @b@, starting at @i@
-readChunk :: FingerString -> Size -> Point -> FingerString
+readChunk :: ByteRope -> Size -> Point -> ByteRope
 readChunk p (Size n) (Point i) = F.take n $ F.drop i $ p
 
 -- | Write string into buffer.
-insertChars :: FingerString -> FingerString -> Point -> FingerString
+insertChars :: ByteRope -> ByteRope -> Point -> ByteRope
 insertChars p cs (Point i) = left `F.append` cs `F.append` right
     where (left,right) = F.splitAt i p
 {-# INLINE insertChars #-}
 
 
 -- | Write string into buffer.
-deleteChars :: FingerString -> Point -> Size -> FingerString
+deleteChars :: ByteRope -> Point -> Size -> ByteRope
 deleteChars p (Point i) (Size n) = left `F.append` right
     where (left,rest) = F.splitAt i p
           right = F.drop n rest

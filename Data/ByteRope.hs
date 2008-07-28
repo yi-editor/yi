@@ -2,16 +2,24 @@
 -- Consider splitting off as a separate package
 -- Copyright (c) 2008 Gustav Munkby
 
--- | This module defines a string representation in terms of
--- | ByteStrings stored in a finger tree.
-module Yi.FingerString (
-  FingerString,
+-- | This module defines a Rope representation in terms of
+-- ByteStrings stored in a finger tree.
+module Data.ByteRope (
+  ByteRope,
+
+  -- * Conversions to ByteRope
   fromString, fromByteString, fromLazyByteString,
+
+  -- * Conversions from ByteRope
   toString, toReverseString,
-  toByteString, 
   toLazyByteString, toReverseLazyByteString,
-  rebalance,
+  toByteString, 
+
+  -- rebalance, -- should not be needed.
+  -- List-like functions
   null, empty, take, drop, append, splitAt, count, length,
+
+  -- * searching
   elemIndices, findSubstring, findSubstrings, elemIndexEnd, elemIndicesEnd
  ) where
 
@@ -33,8 +41,8 @@ import Data.Maybe (listToMaybe)
 chunkSize :: Int
 chunkSize = 128
 
-newtype Size = Size { unSize :: Int }
-newtype FingerString = FingerString { unFingerString :: FingerTree Size ByteString }
+newtype Size = Size { fromSize :: Int }
+newtype ByteRope = ByteRope { fromByteRope :: FingerTree Size ByteString }
   deriving (Eq, Show)
 
 (-|) :: ByteString -> FingerTree Size ByteString -> FingerTree Size ByteString
@@ -52,68 +60,68 @@ instance Monoid Size where
 instance Measured Size ByteString where
   measure = Size . B.length
 
-toLazyByteString :: FingerString -> LB.ByteString
-toLazyByteString = LB.fromChunks . toList . unFingerString
+toLazyByteString :: ByteRope -> LB.ByteString
+toLazyByteString = LB.fromChunks . toList . fromByteRope
 
-toReverseLazyByteString :: FingerString -> LB.ByteString
-toReverseLazyByteString = LB.fromChunks . map B.reverse . toList . T.reverse . unFingerString
+toReverseLazyByteString :: ByteRope -> LB.ByteString
+toReverseLazyByteString = LB.fromChunks . map B.reverse . toList . T.reverse . fromByteRope
 
 
-toByteString :: FingerString -> ByteString
-toByteString = B.concat . toList . unFingerString
+toByteString :: ByteRope -> ByteString
+toByteString = B.concat . toList . fromByteRope
 
-toString :: FingerString -> [Word8]
+toString :: ByteRope -> [Word8]
 toString = LB.unpack . toLazyByteString
 
-toReverseString :: FingerString -> [Word8]
+toReverseString :: ByteRope -> [Word8]
 toReverseString = LB.unpack . toReverseLazyByteString
 
-fromLazyByteString :: LB.ByteString -> FingerString
-fromLazyByteString = FingerString . toTree
+fromLazyByteString :: LB.ByteString -> ByteRope
+fromLazyByteString = ByteRope . toTree
   where
     toTree b | LB.null b = T.empty
     toTree b = let (h,t) = LB.splitAt (fromIntegral chunkSize) b in
                (B.concat $ LB.toChunks h) <| toTree t
 
-fromByteString :: ByteString -> FingerString
-fromByteString = FingerString . toTree
+fromByteString :: ByteString -> ByteRope
+fromByteString = ByteRope . toTree
   where
     toTree b | B.null b = T.empty
     toTree b = let (h,t) = B.splitAt chunkSize b in h <| toTree t
 
-fromString :: [Word8] -> FingerString
-fromString = FingerString . toTree
+fromString :: [Word8] -> ByteRope
+fromString = ByteRope . toTree
   where
     toTree [] = T.empty
     toTree b = let (h,t) = L.splitAt chunkSize b in B.pack h <| toTree t
 
 -- | Optimize the tree, to contain equally sized substrings
-rebalance :: FingerString -> FingerString
+rebalance :: ByteRope -> ByteRope
 rebalance = fromLazyByteString . toLazyByteString
 
-null :: FingerString -> Bool
-null (FingerString a) = T.null a
+null :: ByteRope -> Bool
+null (ByteRope a) = T.null a
 
-head :: FingerString -> Word8
-head (FingerString a) = case T.viewl a of
-  EmptyL -> error "FingerString.head: empty string"
+head :: ByteRope -> Word8
+head (ByteRope a) = case T.viewl a of
+  EmptyL -> error "ByteRope.head: empty string"
   x :< _ -> B.head x
 
-tail :: FingerString -> FingerString
-tail (FingerString a) = case T.viewl a of
-  EmptyL -> error "FingerString.tail: empty string"
-  x :< r -> FingerString $ (B.tail x) -| r
+tail :: ByteRope -> ByteRope
+tail (ByteRope a) = case T.viewl a of
+  EmptyL -> error "ByteRope.tail: empty string"
+  x :< r -> ByteRope $ (B.tail x) -| r
 
-empty :: FingerString
-empty = FingerString T.empty
+empty :: ByteRope
+empty = ByteRope T.empty
 
 -- | Get the length of the standard string.
-length :: FingerString -> Int
-length = unSize . measure . unFingerString
+length :: ByteRope -> Int
+length = fromSize . measure . fromByteRope
 
 -- | Append two strings by merging the two finger trees.
-append :: FingerString -> FingerString -> FingerString
-append (FingerString a) (FingerString b) = FingerString $
+append :: ByteRope -> ByteRope -> ByteRope
+append (ByteRope a) (ByteRope b) = ByteRope $
     case T.viewr a of
       EmptyR -> b
       l :> x -> case T.viewl b of
@@ -122,52 +130,52 @@ append (FingerString a) (FingerString b) = FingerString $
                                then l >< singleton (x `B.append` x') >< r
                                else a >< b
 
-take, drop :: Int -> FingerString -> FingerString
+take, drop :: Int -> ByteRope -> ByteRope
 take n = fst . splitAt n
 drop n = snd . splitAt n
 
 -- | Split the string at the specified position.
-splitAt :: Int -> FingerString -> (FingerString, FingerString)
-splitAt n (FingerString t) =
+splitAt :: Int -> ByteRope -> (ByteRope, ByteRope)
+splitAt n (ByteRope t) =
   case T.viewl c of
     x :< r | n' /= 0 ->
-      let (lx, rx) = B.splitAt n' x in (FingerString $ l |- lx, FingerString $ rx -| r)
-    _ -> (FingerString l, FingerString c)
+      let (lx, rx) = B.splitAt n' x in (ByteRope $ l |- lx, ByteRope $ rx -| r)
+    _ -> (ByteRope l, ByteRope c)
   where
-    (l, c) = T.split ((> n) . unSize) t
-    n' = n - unSize (measure l)
+    (l, c) = T.split ((> n) . fromSize) t
+    n' = n - fromSize (measure l)
 
 -- | Count the number of occurrences of the specified character.
-count :: Word8 -> FingerString -> Int
+count :: Word8 -> ByteRope -> Int
 count x = fromIntegral . LB.count x . toLazyByteString
 
 -- | Get the last index of the specified character
-elemIndexEnd :: Word8 -> FingerString -> Maybe Int
+elemIndexEnd :: Word8 -> ByteRope -> Maybe Int
 elemIndexEnd x = listToMaybe . elemIndicesEnd x
 
 -- | Get all indices of the specified character, in reverse order.
 -- This function has good lazy behaviour: taking the head of the resulting list is O(1)
-elemIndicesEnd :: Word8 -> FingerString -> [Int]
-elemIndicesEnd x = treeEIE . unFingerString
+elemIndicesEnd :: Word8 -> ByteRope -> [Int]
+elemIndicesEnd x = treeEIE . fromByteRope
   where
     treeEIE :: FingerTree Size ByteString -> [Int]
     treeEIE t = case T.viewr t of
-      l :> s -> fmap (+ unSize (measure l)) (L.reverse (B.elemIndices x s)) ++ treeEIE l
+      l :> s -> fmap (+ fromSize (measure l)) (L.reverse (B.elemIndices x s)) ++ treeEIE l
       EmptyR -> []
 
 -- | Get all indices of the specified character
 -- This function has good lazy behaviour: taking the head of the resulting list is O(1)
-elemIndices :: Word8 -> FingerString -> [Int]
+elemIndices :: Word8 -> ByteRope -> [Int]
 elemIndices x = map fromIntegral . LB.elemIndices x . toLazyByteString
 
 -- | Determine the first index of the ByteString in the buffer.
-findSubstring :: ByteString -> FingerString -> Maybe Int
+findSubstring :: ByteString -> ByteRope -> Maybe Int
 findSubstring x = listToMaybe . findSubstrings x
 
 -- | Determine the indices of the given ByteString in the buffer.
-findSubstrings :: ByteString -> FingerString -> [Int]
+findSubstrings :: ByteString -> ByteRope -> [Int]
 findSubstrings x m = [i | i <- elemIndices (B.head x) m, x `isPrefixOf` drop i m]
 
 -- | Determine whether the ByteString is a prefix of the buffer.
-isPrefixOf :: ByteString -> FingerString -> Bool
+isPrefixOf :: ByteString -> ByteRope -> Bool
 isPrefixOf x = LB.isPrefixOf (LB.fromChunks [x]) . toLazyByteString
