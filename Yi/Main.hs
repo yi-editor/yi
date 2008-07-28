@@ -35,6 +35,7 @@ import Yi.Dired
 import Yi.Editor
 import Yi.Keymap.Keys
 import Yi.File
+import Yi.Misc
 import Yi.Style
 import Data.Dynamic
 import Yi.Keymap.Emacs.Utils
@@ -242,6 +243,7 @@ defaultPublishedActions = M.fromList $
     , ("writeB"                 , box writeB)
     , ("getSelectRegionB"       , box getSelectRegionB)
     , ("closeBufferE"           , box closeBufferE)
+    , ("grepFind"               , box grepFind)
     ]
 
   where box x = [toDyn x]

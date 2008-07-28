@@ -107,6 +107,12 @@ cabalBuildE =
         return ()
         
 
+grepFind :: String -> YiM ()
+grepFind searched = withOtherWindow $ do
+    startSubprocess "find" [".", "-name", "*.hs", "-exec", "grep", "-Hnie", searched, "{}", ";"]
+    withBuffer $ setMode compilationMode
+    return ()
+     
 -- | Inserting a template from the templates defined in Yi.Templates
 insertTemplate :: YiM ()
 insertTemplate =
@@ -160,7 +166,4 @@ matchingFileNames start s = do
 
 adjBlock :: Int -> YiM ()
 adjBlock x = withSyntax (\m s -> modeAdjustBlock m s x)
-
-
-
 

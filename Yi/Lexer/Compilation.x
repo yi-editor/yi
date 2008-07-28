@@ -14,14 +14,21 @@ $any    = [.\n]
 @number    = $digit+
 
 tokens :-
- .+":" @number ":" @number ":" .*\n  { \str st -> let Just (_before, arr, _after) = matchOnceText re $ map snd str
-                                             in (st, Report (fst $ arr!1) (read $ fst $ arr!2) (read $ fst $ arr!3) (fst $ arr!4)) }
+ .+":" @number ":" @number ":" .*\n  { \str st -> 
+     let Just (_before, arr, _after) = matchOnceText re $ map snd str
+         re :: Regex
+         re = makeRegex "^(.+):([0-9]+):([0-9]+):(.*)$"
+     in (st, Report (fst $ arr!1) (read $ fst $ arr!2) (read $ fst $ arr!3) (fst $ arr!4)) }
+ -- without a column number
+ .+":" @number ":" .*\n  { \str st -> 
+     let Just (_before, arr, _after) = matchOnceText re $ map snd str
+         re :: Regex
+         re = makeRegex "^(.+):([0-9]+):(.*)$"
+     in (st, Report (fst $ arr!1) (read $ fst $ arr!2) 0 (fst $ arr!3)) }
  .*\n                               ; -- line of text
  .+                                 ; -- last line
 
 {
-re :: Regex
-re = makeRegex "^(.+):([0-9]+):([0-9]+):(.*)$"
 
 type HlState = ()
 data Token 
