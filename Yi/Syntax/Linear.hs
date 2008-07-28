@@ -1,7 +1,7 @@
 -- Copyright (C) 2008 JP Bernardy
 
 module Yi.Syntax.Linear
-  (tokBefore, getStrokes, incrScanner, Result) 
+  (tokAtOrBefore, getStrokes, incrScanner, Result) 
 where
 
 import Yi.Prelude
@@ -34,8 +34,8 @@ incrScanner input = Scanner
             where nextState = tok : curState
                   result    = Result curState (fmap snd toks)
 
-tokBefore :: Point -> Result (Tok a) -> Maybe (Tok a)
-tokBefore p res = listToMaybe $ reverse $ toksInRegion (mkRegion 0 p) res
+tokAtOrBefore :: Point -> Result (Tok a) -> Maybe (Tok a)
+tokAtOrBefore p res = listToMaybe $ reverse $ toksInRegion (mkRegion 0 (p+1)) res
 
 toksInRegion :: Region -> Result (Tok a) -> [Tok a]
 toksInRegion reg (Result lefts rights) = reverse (usefulsL lefts) ++ usefulsR rights

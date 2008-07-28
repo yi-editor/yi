@@ -28,7 +28,7 @@ compilationMode = emptyMode
           follow :: Linear.Result (Tok Compilation.Token) -> YiM ()
           follow errs = do 
               point <- withBuffer pointB
-              case Linear.tokBefore point errs of
+              case Linear.tokAtOrBefore point errs of
                  Just (Tok {tokT = Compilation.Report filename line col _message}) -> do
                      shiftOtherWindow
                      fnewE filename
