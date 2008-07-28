@@ -255,8 +255,10 @@ withGivenBufferAndWindow0 w k f = do
 -- | Perform action with current window's buffer
 withBuffer0 :: BufferM a -> EditorM a
 withBuffer0 f = do
-  w <- getA (WS.currentA .> windowsA)
+  w <- getA currentWindowA
   withGivenBufferAndWindow0 w (bufkey w) f
+
+currentWindowA = WS.currentA .> windowsA
 
 -- | Return the current buffer
 getBuffer :: EditorM BufferRef

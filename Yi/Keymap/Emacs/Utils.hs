@@ -176,8 +176,9 @@ queryReplaceE = do
     withMinibufferFree "Replace:" $ \replaceWhat -> do
     withMinibufferFree "With:" $ \replaceWith -> do
     b <- withEditor $ getBuffer
-    let replaceKm = choice [char 'n' ?>>! qrNext b re,
-                            oneOf [char 'y', char ' '] >>! qrReplaceOne b re replaceWith,
+    win <- getA currentWindowA
+    let replaceKm = choice [char 'n' ?>>! qrNext win b re,
+                            oneOf [char 'y', char ' '] >>! qrReplaceOne win b re replaceWith,
                             oneOf [char 'q', ctrl (char 'g')] >>! qrFinish
                            ]
         Just re = makeSearchOptsM [] replaceWhat
@@ -186,7 +187,7 @@ queryReplaceE = do
        spawnMinibufferE
             ("Replacing " ++ replaceWhat ++ "with " ++ replaceWith ++ " (y,n,q):")
             (const replaceKm)
-       qrNext b re
+       qrNext win b re
 
 executeExtendedCommandE :: YiM ()
 executeExtendedCommandE = do

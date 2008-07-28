@@ -48,7 +48,7 @@ import Yi.Regex
 import Yi.Buffer.Region
 import Yi.Editor
 import qualified Yi.Editor as Editor
-
+import Yi.Window
 import Data.Char
 import Data.Maybe
 import Data.Either
@@ -311,14 +311,14 @@ isearchEnd accept = do
 -----------------
 -- Query-Replace
 
-qrNext :: BufferRef -> SearchExp -> EditorM ()
-qrNext b what = do
-  mp <- withGivenBuffer0 b $ regexB Forward what
+qrNext :: Window -> BufferRef -> SearchExp -> EditorM ()
+qrNext win b what = do
+  mp <- withGivenBufferAndWindow0 win b $ regexB Forward what
   case mp of
     [] -> do
       printMsg "String to search not found"
       qrFinish
-    (r:_) -> withGivenBuffer0 b $ setSelectRegionB r
+    (r:_) -> withGivenBufferAndWindow0 win b $ setSelectRegionB r
 
 qrFinish :: EditorM ()
 qrFinish = do
@@ -326,10 +326,10 @@ qrFinish = do
   closeBufferAndWindowE  -- the minibuffer.
   
 
-qrReplaceOne :: BufferRef -> SearchExp -> String -> EditorM ()
-qrReplaceOne b reg replacement = do
-  withGivenBuffer0 b $ do
+qrReplaceOne :: Window -> BufferRef -> SearchExp -> String -> EditorM ()
+qrReplaceOne win b reg replacement = do
+  withGivenBufferAndWindow0 win b $ do
     r <- getRawSelectRegionB
     replaceRegionB r replacement
-  qrNext b reg
+  qrNext win b reg
 
