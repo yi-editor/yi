@@ -107,6 +107,7 @@ haskell :-
  @reservedid                                    { c (Reserved Other) }
  "where"                                        { c (Reserved Where) }
  @layoutReservedId                              { c (Reserved OtherLayout) }
+ `@varid`                                       { c Operator }
  @varid                                         { c VarIdent }
  @conid                                         { c ConsIdent }
 
