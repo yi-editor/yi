@@ -78,8 +78,8 @@ haskell :-
   "{-"                                          { m (subtract 1) (Comment Open) }
   "-}"                                          { m (+1) (Comment Close) }
   $white+                                       ; -- whitespace
--- .*                                           { c Comment Text }
-  .                                             { c (Comment Text) }
+  [^\-\{]+                                      { c $ Comment Text } -- rule to generate comments larger than 1 char
+  .                                             { c $ Comment Text }
 }
 
 <0> {
