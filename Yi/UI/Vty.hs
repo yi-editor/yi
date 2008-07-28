@@ -260,7 +260,7 @@ drawWindow cfg mre b sty focused w win = (Rendered { picture = pict,cursor = cur
                                 tabWidth
                                 (if showSel then selreg else emptyRegion)
                                 selsty wsty 
-                                ([(c,(wsty, 0)) | c <- prompt] ++ bufData ++ [(' ',(attr, eofPoint))])
+                                ([(c,(wsty, (-1))) | c <- prompt] ++ bufData ++ [(' ',(attr, eofPoint))])
                              -- we always add one character which can be used to position the cursor at the end of file
         (_, b') = runBuffer win b (setMarkPointB toM toMarkPoint')
         (modeLine0, _) = runBuffer win b getModeLine
