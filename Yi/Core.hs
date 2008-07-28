@@ -76,20 +76,20 @@ import Control.Monad (when,forever)
 import Control.Monad.Reader (runReaderT, ask, asks)
 import Control.Monad.Trans
 import Control.Monad.Error ()
-import Control.Monad.State (gets, get)
+import Control.Monad.State (gets)
 import Control.Exception
 import Control.Concurrent
 
 -- | Make an action suitable for an interactive run.
 -- UI will be refreshed.
-interactive :: Action -> YiM ()
+interactive :: [Action] -> YiM ()
 interactive action = do
   evs <- withEditor $ getA pendingEventsA
   logPutStrLn $ ">>> interactively" ++ showEvs evs
   prepAction <- withUI UI.prepareAction
   withEditor $ do prepAction
                   modifyAllA buffersA undosA (addChangeU InteractivePoint)
-  runAction action
+  mapM_ runAction action
   withEditor $ modifyA killringA krEndCmd
   refreshEditor
   logPutStrLn "<<<"
@@ -114,7 +114,7 @@ startEditor cfg st = do
     startSubprocesses <- newIORef M.empty
     (ui, runYi) <- mdo let handler exception = runYi $ (errorEditor (show exception) >> refreshEditor)
                            inF  ev  = handle handler (runYi (dispatch ev))
-                           outF act = handle handler (runYi (interactive act))
+                           outF acts = handle handler (runYi (interactive acts))
                        ui <- uiStart cfg inF outF initEditor
                        let runYi f = runReaderT (runYiM f) yi
                            yi = Yi newSt ui startThreads inF outF startSubprocessId startSubprocesses cfg 
@@ -132,7 +132,7 @@ startEditor cfg st = do
     UI.main ui -- transfer control to UI
 
 postActions :: [Action] -> YiM ()
-postActions actions = do yi <- ask; liftIO $ mapM_ (output yi) actions
+postActions actions = do yi <- ask; liftIO $ output yi actions
 
 -- | Process an event by advancing the current keymap automaton an
 -- execing the generated actions
@@ -282,14 +282,14 @@ startSubprocess cmd args = do
   msgEditor ("Launched process: " ++ cmd)
   return bufref
 
-startSubprocessWatchers :: (Action -> IO ()) -> SubprocessId -> SubprocessInfo -> YiM ()
+startSubprocessWatchers :: ([Action] -> IO ()) -> SubprocessId -> SubprocessInfo -> YiM ()
 startSubprocessWatchers chan procid procinfo = do
   mapM_ (liftIO . forkOS) [ pipeToBuffer (hOut procinfo) append,
                             pipeToBuffer (hErr procinfo) append,
                             waitForExit (procHandle procinfo) >>= reportExit ]
   where append s = send $ appendToBuffer (bufRef procinfo) s
         reportExit s = append s >> (send $ removeSubprocess procid)
-        send a = chan $ makeAction a
+        send a = chan [makeAction a]
 
 removeSubprocess :: SubprocessId -> YiM ()
 removeSubprocess procid = modifiesRef yiSubprocesses $ M.delete procid

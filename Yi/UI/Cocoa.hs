@@ -640,7 +640,7 @@ start cfg ch outCh _ed = do
   bufs <- newIORef M.empty
   wc <- newIORef []
 
-  return $ mkUI $ UI win winContainer cmd bufs wc outCh (configUI cfg)
+  return $ mkUI $ UI win winContainer cmd bufs wc (outCh . singleton) (configUI cfg)
 
 
 

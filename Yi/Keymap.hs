@@ -57,7 +57,7 @@ data Yi = Yi {yiEditor :: IORef Editor,
               yiUi          :: UI,
               threads       :: IORef [ThreadId],           -- ^ all our threads
               input         :: Event -> IO (),             -- ^ input stream
-              output        :: Action -> IO (),            -- ^ output stream
+              output        :: [Action] -> IO (),            -- ^ output stream
               yiSubprocessIdSupply :: IORef SubprocessId,
               yiSubprocesses :: IORef (M.Map SubprocessId SubprocessInfo),
               yiConfig :: Config

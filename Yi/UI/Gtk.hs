@@ -116,8 +116,8 @@ start cfg ch outCh _ed = do
 
   vb <- vBoxNew False 1  -- Top-level vbox
 
-  (filesTree,   filesStore) <- projectTreeNew outCh  
-  (modulesTree, modulesStore) <- projectTreeNew outCh  
+  (filesTree,   filesStore) <- projectTreeNew (outCh . singleton)
+  (modulesTree, modulesStore) <- projectTreeNew (outCh . singleton)
 
   tabs <- notebookNew
   set tabs [notebookTabPos := PosBottom]
@@ -156,7 +156,7 @@ start cfg ch outCh _ed = do
   wc <- newIORef []
   tt <- textTagTableNew
 
-  let ui = UI win vb' cmd bufs tt wc outCh (configUI cfg) filesStore modulesStore
+  let ui = UI win vb' cmd bufs tt wc (outCh . singleton) (configUI cfg) filesStore modulesStore
 
   return (mkUI ui)
 

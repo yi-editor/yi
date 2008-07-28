@@ -56,5 +56,5 @@ data Config = Config {startFrontEnd :: UIBoot,
                       -- IndentSettings should perhaps be in Mode?
                      }
 
-type UIBoot = Config -> (Event -> IO ()) -> (Action -> IO ()) ->  Editor -> IO UI
+type UIBoot = Config -> (Event -> IO ()) -> ([Action] -> IO ()) ->  Editor -> IO UI
 

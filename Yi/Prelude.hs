@@ -49,6 +49,7 @@ putStrLn,
 replicate,
 read,
 seq,
+singleton,
 snd,
 snd3,
 tail,
@@ -89,3 +90,6 @@ class SemiNum absolute relative | absolute -> relative where
     (+~) :: absolute -> relative -> absolute
     (-~) :: absolute -> relative -> absolute
     (~-) :: absolute -> absolute -> relative
+
+singleton :: a -> [a]
+singleton x = [x]

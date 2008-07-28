@@ -109,7 +109,7 @@ start cfg ch outCh _ed = do
 
   vb <- vBoxNew False 1  -- Top-level vbox
 
-  (projectTree, _projectStore) <- projectTreeNew outCh  
+  (projectTree, _projectStore) <- projectTreeNew (outCh . singleton)
   modulesTree <- treeViewNew
 
   tabs <- notebookNew
@@ -146,7 +146,7 @@ start cfg ch outCh _ed = do
   widgetShowAll win
 
   wc <- newIORef []
-  let ui = UI win vb' cmd wc outCh (configUI cfg)
+  let ui = UI win vb' cmd wc (outCh . singleton) (configUI cfg)
 
   return (mkUI ui)
 
