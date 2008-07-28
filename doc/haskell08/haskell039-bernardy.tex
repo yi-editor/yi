@@ -1,20 +1,20 @@
-\documentclass[9pt,indentedstyle,preprint]{sigplanconf}
+\documentclass[9pt,indentedstyle]{sigplanconf}
 \usepackage[english]{babel}
 \usepackage[sort&compress,numbers]{natbib}
-\usepackage[pdftex]{graphicx}
+\usepackage{graphicx}
 
 \begin{document}
 
-\conferenceinfo{Haskell'08}{080925, Victoria, BC, Canada.} 
-\copyrightyear{2008} 
-\copyrightdata{[to be supplied]} 
+\authorpermission
+\conferenceinfo{Haskell'08,} {September 25, 2008, Victoria, BC, Canada.}
+\CopyrightYear{2008}
+\copyrightdata{978-1-60558-064-7/08/09}
 
 \titlebanner{Draft}        % These are ignored unless
 \preprintfooter{Hask08}   % 'preprint' option specified.
 
 \title{Yi}
 \subtitle{An Editor in Haskell for Haskell}
-
 \authorinfo{Jean-Philippe Bernardy}
            {Computer Science and Engineering, 
             Chalmers University of Technology
@@ -147,7 +147,7 @@ Haskell: among other things, feedback on parenthesis matching is given
 for auto-indentation.
 
 \begin{figure}
-\includegraphics[width=\columnwidth]{screenshot.png}
+\includegraphics[width=\columnwidth]{screenshot}
 \caption{Screenshot. The configuration file is being edited, and Yi
   gives feedback on matching parenthesis by changing the background
   color. The braces do not match because of the layout rule: the
@@ -163,7 +163,7 @@ syntax for Haskell, and the error-correction scheme is lacking
 generality.  A further step will be to bind to Haskell compilers, and
 in particular GHC, to provide full-fledged IDE capabilities, in the
 fashion of Visual Haskell \cite{Angelov2005VH}.
-
+\vfill\eject
 Yi is also lacking dynamic capabilities: while the configuration
 mechanism is flexible, activating a new configuration requires {\em
   restarting} the editor.  We plan to solve this problem by saving the
@@ -193,7 +193,7 @@ libraries available on Hackage \cite{Hackage} form an excellent
 platform for the development of Yi.
 
 \bibliographystyle{abbrvnat}
-\bibliography{hask08}
+\bibliography{haskell039-bernardy}
 
 \end{document}
 

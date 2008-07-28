@@ -6,6 +6,15 @@ default: hask08.pdf
 %.print: %.ps
 	lpr $<
 
+%.ps: %.dvi
+	dvips $< 
+
+%.dvi: %.tex %.bib
+	latex $<
+	bibtex $*
+	latex $<
+	latex $<
+
 %.pdf: %.tex %.bib
 	pdflatex $<
 	bibtex $*
