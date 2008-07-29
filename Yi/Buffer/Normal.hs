@@ -52,6 +52,11 @@ isWordChar x = isAlphaNum x || x == '_'
 isNl :: Char -> Bool
 isNl = (== '\n')
 
+-- A visible space is one that actually takes up space on screen. In other 
+-- words: everything but the newline. 
+isVisSpace :: Char -> Bool
+isVisSpace c = (not $ isNl c) && (isSpace c)
+
 -- | Tells if a char can ends a sentence ('.', '!', '?').
 isEndOfSentence :: Char -> Bool
 isEndOfSentence = (`elem` ".!?")
@@ -85,13 +90,17 @@ atBoundary VLine _ = return True -- a fallacy; this needs a little refactoring.
 atBoundary Word direction =
     checkPeekB (-1) [isWordChar, not . isWordChar] direction
 atBoundary ViWORD direction =
-    checkPeekB (-1) [not . isSpace, isSpace] direction
+    checkPeekB (-1) [not . isVisSpace, isVisSpace] direction
 atBoundary ViWord direction = do
-    ~cs@[c1,c2] <- peekB direction 2 (-1)
-    return (length cs /= 2 || (not (isSpace c1) && (charType c1 /= charType c2)))
-        where charType c | isSpace    c = 1::Int
-                         | isWordChar c = 2
-                         | otherwise    = 3
+    cs <- peekB direction 2 (-1)
+    if length cs /= 2
+        then return True
+        else do
+            let [c1,c2] = cs
+            return (length cs /= 2 || (not (isVisSpace c1) && (charType c1 /= charType c2)))
+                where charType c | isVisSpace    c = 1::Int
+                                 | isWordChar c = 2
+                                 | otherwise    = 3
 atBoundary Line direction = checkPeekB 0 [isNl] direction
 atBoundary (Delimited c _) Backward = checkPeekB 0 [(== c)] Backward
 atBoundary (Delimited _ c) Forward  = (== c) <$> readB

@@ -669,7 +669,8 @@ defKeymap self = ModeMap {
                             spec KDel          ?>>! deleteB Character Forward,
                             spec KEnter        ?>>! insertB '\n',
                             spec KTab          ?>>! insertTabB,
-                            (ctrl $ char 'w')  ?>>! cut Exclusive (GenMove ViWord (Backward,InsideBound) Backward)]
+                            (ctrl $ char 'w')  
+                                ?>>! cut Exclusive (GenMove ViWord (Forward,OutsideBound) Backward)]
 
      --
      -- Some ideas for a better insert mode are contained in:
