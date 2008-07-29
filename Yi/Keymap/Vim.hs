@@ -98,7 +98,7 @@ defKeymap self = ModeMap {
 
      -- | Leave a mode. This always has priority over catch-all actions inside the mode.
      leave :: VimMode
-     leave = oneOf [escKey, ctrl $ char 'c'] >> adjustPriority (-1) (write msgClr)
+     leave = oneOf [spec KEsc, ctrl $ char 'c'] >> adjustPriority (-1) (write msgClr)
 
      -- | Insert mode is either insertion actions, or the meta (\ESC) action
      ins_mode :: VimMode
