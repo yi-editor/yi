@@ -58,8 +58,9 @@ test-gtk:
 test-vty:
 	$(test_prefix)/bin/yi -fgtk
 
-HS := $(shell find Yi Shim Data -type f -name '[^.]*.hs')
+HS := $(shell find Yi Shim Data -type f -name '[^.]*.hs') Yi.hs Main.hs
 tags: $(HS)
 	@ echo [tags]
 	@ echo '!_TAG_FILE_SORTED	0	~' > tags
-	@ hasktags -a -c $(HS) $(LHS)
+	@ hasktags -a -c $(HS)
+	@ hasktags -e $(HS)
