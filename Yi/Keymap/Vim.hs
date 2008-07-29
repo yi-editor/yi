@@ -98,7 +98,7 @@ defKeymap self = ModeMap {
 
      -- | Leave a mode. This always has priority over catch-all actions inside the mode.
      leave :: VimMode
-     leave = choice [escKey ?>> adjustPriority (-1) (write msgClr) | escKey <- [spec KEsc, ctrlCh 'c'] ]
+     leave = oneOf [escKey, ctrl $ char 'c'] >> adjustPriority (-1) (write msgClr)
 
      -- | Insert mode is either insertion actions, or the meta (\ESC) action
      ins_mode :: VimMode
@@ -200,12 +200,12 @@ defKeymap self = ModeMap {
          ,(char '^',        const $ ArbMove firstNonSpaceB)
          ,(char '|',        \i -> SeqMove viMoveToSol (Replicate (CharMove Forward) (i-1)))
 
-     -- words
+          -- words
          ,(char 'w',       Replicate $ GenMove ViWord (Backward,InsideBound) Forward)
          ,(char 'W',       Replicate $ GenMove ViWORD (Backward,InsideBound) Forward)
          ,(char 'b',       Replicate $ Move ViWord Backward)
          ,(char 'B',       Replicate $ Move ViWORD Backward)
-     -- text
+          -- text
          ,(char '{',       Replicate $ Move unitEmacsParagraph Backward)
          ,(char '}',       Replicate $ Move unitEmacsParagraph Forward)
          ,(char '(',       Replicate $ Move unitSentence  Backward)
