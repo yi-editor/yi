@@ -138,7 +138,7 @@ class Promptable a where
     getPromptedValue :: String -> YiM a
     getPrompt :: a -> String           -- Parameter can be "undefined"
     doPrompt :: (a -> YiM ()) -> YiM ()
-    doPrompt act = withMinibufferFree (getPrompt (undefined::a) ++ ": ") $ 
+    doPrompt act = withMinibufferFree (getPrompt (undefined::a) ++ ":") $ 
                      \string -> act =<< getPromptedValue string
 
 instance Promptable String where
