@@ -65,13 +65,7 @@ import Yi.Modes (defaultFundamentalMode)
 import Yi.Keymap.Keys
 import System.FriendlyPath
 import Yi.Accessor
-
--- | associate buffer with file
-setFileName :: BufferRef -> FilePath -> YiM ()
-setFileName b filename = do
-  cfn <- liftIO $ canonicalizePath filename
-  withGivenBuffer b $ setA fileA $ Just cfn
-
+import Yi.File
 ------------------------------------------------
 -- | If file exists, read contents of file into a new buffer, otherwise
 -- creating a new empty buffer. Replace the current window with a new

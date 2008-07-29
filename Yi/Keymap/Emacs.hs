@@ -172,7 +172,7 @@ emacsKeys =
                  , ctrlCh 'c'    ?>>! askQuitEditor
                  , ctrlCh 'f'    ?>>! findFile
                  , ctrlCh 's'    ?>>! fwriteE
-                 , ctrlCh 'w'    ?>>! (withMinibuffer "Write file: "
+                 , ctrlCh 'w'    ?>>! (withMinibuffer "Write file:"
                                            (matchingFileNames Nothing)
                                            fwriteToE
                                       )

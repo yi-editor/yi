@@ -1,31 +1,32 @@
 module Yi.File 
  (
-        -- * File-based actions
-        fwriteE,        -- :: YiM ()
-        fwriteBufferE,  -- :: BufferM ()
-        fwriteAllE,     -- :: YiM ()
-        fwriteToE,      -- :: String -> YiM ()
-        backupE,        -- :: FilePath -> YiM ()
+  -- * File-based actions
+  fwriteE,        -- :: YiM ()
+  fwriteBufferE,  -- :: BufferM ()
+  fwriteAllE,     -- :: YiM ()
+  fwriteToE,      -- :: String -> YiM ()
+  backupE,        -- :: FilePath -> YiM ()
+  revertE,        -- :: YiM ()
 
-        -- * Buffer editing
-        revertE,        -- :: YiM ()
+  -- * Helper functions
+  setFileName,
  ) where
 
 import Control.Applicative
 import Control.Monad.Trans
 import Prelude hiding (error)
-import System.FilePath
 import Yi.Accessor
 import Yi.Buffer
 import Yi.Buffer.HighLevel
-import Yi.Editor
-  ( getBuffers, getBuffer, withEditor )
+import Yi.Editor (getBuffers, getBuffer, withEditor)
 import Yi.Core
 import Yi.Debug
 import Yi.Keymap
+import System.Directory
 import System.IO.UTF8 as UTF8
+import System.FilePath
+import System.FriendlyPath
 import qualified Data.ByteString.Lazy as LB
-
 
 -- | Revert to the contents of the file on disk
 revertE :: YiM ()
@@ -58,8 +59,10 @@ fwriteBufferE bufferKey =
 -- | Write current buffer to disk as @f@. If this buffer doesn't
 -- currently have a file associated with it, the file is set to @f@
 fwriteToE :: String -> YiM ()
-fwriteToE f = do withBuffer $ setA fileA $ Just f
-                 fwriteE
+fwriteToE f = do 
+    b <- withEditor getBuffer
+    setFileName b f
+    fwriteBufferE b
 
 -- | Write all open buffers
 fwriteAllE :: YiM ()
@@ -71,3 +74,10 @@ fwriteAllE =
 -- | Make a backup copy of file
 backupE :: FilePath -> YiM ()
 backupE = error "backupE not implemented"
+
+
+-- | Associate buffer with file; canonicalize the given path name.
+setFileName :: BufferRef -> FilePath -> YiM ()
+setFileName b filename = do
+  cfn <- liftIO $ canonicalizePath =<< expandTilda filename
+  withGivenBuffer b $ setA fileA $ Just cfn
