@@ -213,9 +213,10 @@ diredKeymap = do
              char 'g'                   ?>>! diredRefresh,
              char '^'                   ?>>! diredUpDir,
              char '+'                   ?>>! diredCreateDir,     
+             char 'q'                   ?>>! (deleteBuffer =<< getBuffer),
              oneOf [ctrl $ char 'm', spec KEnter] >>! diredLoad,
              spec KBS                   ?>>! diredUnmark]
-     <|| )
+     <||)
 
 dired :: YiM ()
 dired = do
