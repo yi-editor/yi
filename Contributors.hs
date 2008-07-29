@@ -26,6 +26,7 @@ mkName firstname lastname = BS.concat . intersperse " " . map capitalize $ [firs
 
 name :: ByteString -> ByteString
 name tag
+     | tag == "tora@zonetora.co.uk" = "Tristan Allwood"
      | tag == "andy@nobugs.org" = "Andrew Birkett"
      | AllTextSubmatches [_,name] <- tag =~ pack "^\"?(.+)<.*>\"?$" = name
      | AllTextSubmatches [_,firstname,lastname] <- tag =~ pack "^<?(.*)@(.*)\\.name>?$"
