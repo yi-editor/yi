@@ -89,6 +89,7 @@ library
            Yi.Mode.Compilation
            Yi.Mode.Haskell
            Yi.Buffer
+           Yi.Buffer.Indent
            Yi.UI.Common
     extensions: CPP, DeriveDataTypeable, FlexibleContexts, FlexibleInstances,
                 GADTs, GeneralizedNewtypeDeriving, Rank2Types, TypeSynonymInstances
@@ -147,7 +148,6 @@ library
         System.FriendlyPath
         Yi.Region
         Yi.Regex
-        Yi.Buffer.Indent
         Yi.Buffer.HighLevel, Yi.Buffer.Implementation,
         Yi.Buffer.Normal, Yi.Buffer.Region, Yi.Completion, Yi.Core,
         Yi.Debug, Yi.Dired, Yi.Dynamic, Yi.Editor, Yi.Eval, Yi.Event, Data.ByteRope, Yi.History,

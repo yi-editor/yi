@@ -5,8 +5,12 @@
 
 
 -- | Vim keymap for Yi. Emulates vim :set nocompatible
-module Yi.Keymap.Vim (keymap, viWrite, 
-                      defKeymap, mkKeymap) where
+module Yi.Keymap.Vim (keymap, 
+                      viWrite, 
+                      defKeymap, 
+                      ModeMap(..),
+                      mkKeymap,
+                      pString) where
 
 import Yi.Prelude
 import Prelude (maybe, length, filter, map, drop, takeWhile, dropWhile,
@@ -160,9 +164,6 @@ defKeymap self = ModeMap {
      -- The may be invoked directly, or sometimes as arguments to other
      -- /operator/ commands (like d).
      --
-
-     pString :: String -> KeymapM [Event] 
-     pString = events . map char
 
      cmd_move :: VimMode
      cmd_move = gen_cmd_move >>= write . viMove . snd
@@ -947,4 +948,7 @@ viSub cs = do
     where do_single p r = do
                 s <- searchAndRepLocal p r
                 if not s then fail ("Pattern not found: "++p) else msgClr
+
+pString :: String -> KeymapM [Event] 
+pString = events . map char
 
