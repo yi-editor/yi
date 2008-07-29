@@ -244,6 +244,7 @@ defaultPublishedActions = M.fromList $
     , ("getSelectRegionB"       , box getSelectRegionB)
     , ("closeBufferE"           , box closeBufferE)
     , ("grepFind"               , box grepFind)
+    , ("sortLines"              , box sortLines)
     ]
 
   where box x = [toDyn x]

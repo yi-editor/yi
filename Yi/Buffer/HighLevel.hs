@@ -7,10 +7,7 @@ import Control.Monad.RWS.Strict (ask)
 import Control.Monad.State
 import Data.Char
 import Data.Dynamic
-import Data.List
-  ( isPrefixOf
-  )
-
+import Data.List (isPrefixOf, sort)
 import Data.Maybe
   ( fromMaybe, listToMaybe )
 
@@ -547,3 +544,6 @@ fillRegion = modifyRegionB (unlines' . fillText 80)
 
 fillParagraph :: BufferM ()
 fillParagraph = fillRegion =<< regionOfB unitParagraph
+
+sortLines :: BufferM ()
+sortLines = modifyRegionB (unlines' . sort . lines') =<< unitWiseRegion Line =<< getSelectRegionB
