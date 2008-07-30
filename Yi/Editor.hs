@@ -258,6 +258,7 @@ withBuffer0 f = do
   w <- getA currentWindowA
   withGivenBufferAndWindow0 w (bufkey w) f
 
+currentWindowA :: Accessor Editor Window
 currentWindowA = WS.currentA .> windowsA
 
 -- | Return the current buffer

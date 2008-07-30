@@ -43,6 +43,8 @@ data Highlighter cache syntax =
         , hlGetTree :: cache -> syntax
         }
 
+data ExtHL syntax = forall a. ExtHL (Highlighter a syntax) 
+
 data Scanner st a = Scanner {
 --                             scanStart :: st -> Int,
                              scanInit :: st, -- ^ Initial state
@@ -95,4 +97,4 @@ noHighlighter = SynHL {hlStartState = (),
                        hlGetTree = \_ -> error "noHighlighter: tried to fetch syntax"
                       }
 
-data ExtHL syntax = forall a. ExtHL (Highlighter a syntax) 
+
