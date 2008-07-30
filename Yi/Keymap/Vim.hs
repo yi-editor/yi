@@ -456,10 +456,10 @@ defKeymap self = ModeMap {
 
      char2unit :: [(Char, TextUnit)]
      char2unit =
-       [('w', ViWord)
-       ,('W', ViWORD)
-       ,('p', unitEmacsParagraph)
-       ,('s', unitSentence)
+       [('w',  ViWord)
+       ,('W',  ViWORD)
+       ,('p',  unitEmacsParagraph)
+       ,('s',  unitSentence)
        ,('"',  Delimited '"' '"')
        ,('`',  Delimited '`' '`')
        ,('\'', Delimited '\'' '\'')
@@ -949,7 +949,7 @@ viWriteTo f = do
     catchJustE ioErrors (fwriteToE f >> msg) (msgEditor . show)
 
 -- | Try to do a substitution
-viSub :: [Char] -> EditorM ()
+viSub :: String -> EditorM ()
 viSub cs = do
     let (pat,rep') = break (== '/')  cs
         (rep,opts) = case rep' of
