@@ -317,7 +317,7 @@ defKeymap self = ModeMap {
      searchCurrentWord :: Direction -> EditorM ()
      searchCurrentWord dir = do
        w <- withBuffer0 $ readRegionB =<< regionOfB ViWord
-       doSearch (Just w) [] dir
+       viSearch (Just w) [] dir
 
      -- | Parse any character that can be inserted in the text.
      textChar :: KeymapM Char
@@ -333,7 +333,7 @@ defKeymap self = ModeMap {
                        Nothing -> ""
                        Just (s',_) -> s'
        printMsg $ case dir of { Forward -> '/':s ; Backward -> '?':s }
-       doSearch Nothing [] dir
+       viSearch Nothing [] dir
 
      -- | cmd mode commands
      -- An event specified paired with an action that may take an integer argument.
@@ -772,8 +772,8 @@ defKeymap self = ModeMap {
      ex_eval cmd = do
        case cmd of
              -- regex searching
-               ('/':pat) -> withEditor $ doSearch (Just pat) [] Forward
-               ('?':pat) -> withEditor $ doSearch (Just pat) [] Backward
+               ('/':pat) -> withEditor $ viSearch (Just pat) [] Forward
+               ('?':pat) -> withEditor $ viSearch (Just pat) [] Backward
 
              -- TODO: Remapping could be done using the <|| operator somehow. 
              -- The remapped stuff could be saved in a keymap-local state, (using StateT monad transformer).
@@ -930,6 +930,14 @@ defKeymap self = ModeMap {
               , "]"
               ]
 
+-- | viSearch is a doSearch wrapper that print the search outcome.
+viSearch :: Maybe String -> [SearchF] -> Direction -> EditorM ()
+viSearch x y z = do
+  r <- doSearch x y z
+  case r of
+    PatternFound    -> return ()
+    PatternNotFound -> printMsg "Pattern not found"
+    SearchWrapped   -> printMsg "Search wrapped"
 
 -- | Try to write a file in the manner of vi\/vim
 -- Need to catch any exception to avoid losing bindings
