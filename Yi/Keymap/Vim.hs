@@ -9,8 +9,7 @@ module Yi.Keymap.Vim (keymap,
                       viWrite, 
                       defKeymap, 
                       ModeMap(..),
-                      mkKeymap,
-                      pString) where
+                      mkKeymap) where
 
 import Yi.Prelude
 import Prelude (maybe, length, filter, map, drop, takeWhile, dropWhile,
@@ -969,7 +968,4 @@ viSub cs = do
     where do_single p r = do
                 s <- searchAndRepLocal p r
                 if not s then fail ("Pattern not found: "++p) else msgClr
-
-pString :: String -> KeymapM [Event] 
-pString = events . map char
 
