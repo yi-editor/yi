@@ -342,7 +342,7 @@ defKeymap self = ModeMap {
      singleCmdFM =
          [(ctrl $ char 'b',    withBuffer . upScreensB)             -- vim does (firstNonSpaceB;moveXorSol)
          ,(ctrl $ char 'f',    withBuffer . downScreensB)
-         ,(ctrl $ char 'g',    const viFileInfo)        -- hmm. not working. duh. we clear
+         ,(ctrl $ char 'g',    const viFileInfo)
          ,(ctrl $ char 'l',    const refreshEditor)
          ,(ctrl $ char 'r',    withBuffer . flip replicateM_ redoB)
          ,(ctrl $ char 'z',    const suspendEditor)
