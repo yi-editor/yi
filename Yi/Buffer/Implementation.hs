@@ -37,8 +37,8 @@ module Yi.Buffer.Implementation
   , searchBI
   , regexBI
   , getMarkBI
+  , modifyMarkBI
   , getMarkValueBI
-  , setMarkPointBI
   , newMarkBI
   , setSyntaxBI
   , addOverlayBI
@@ -462,20 +462,16 @@ newMarkBI initialValue fb =
         fb' = fb { marks = M.insert newMark initialValue (marks fb)}
     in (fb', newMark)
 
--- TODO: This should be an accessor maybe?
 getMarkValueBI :: Mark -> BufferImpl syntax -> MarkValue
 getMarkValueBI m (FBufferData { marks = marksMap } ) = M.findWithDefault (marksMap M.! staticInsMark) m marksMap
                  -- We look up mark m in the marks, the default value to return
                  -- if mark m is not set, is the staticInsMark
 
--- | Set a mark point The binding of the mark is not changed if the
+-- | Modify a mark's value point The binding of the mark is not changed if the
 -- mark already exists. Otherwise the gravity is Forward.
-setMarkPointBI :: Mark -> Point -> (forall syntax. BufferImpl syntax -> BufferImpl syntax)
-setMarkPointBI m pos fb = fb {marks = M.insert m (MarkValue pos binding) (marks fb)}
-    where binding = case (M.lookup m (marks fb)) of
-                        Nothing -> Forward
-                        Just (MarkValue {markGravity = g}) -> g
-        
+modifyMarkBI :: Mark -> (MarkValue -> MarkValue) -> (forall syntax. BufferImpl syntax -> BufferImpl syntax)
+modifyMarkBI m f fb = fb {marks = M.adjust f m (marks fb)}
+
 -- Formerly the highlighters table was directly used
 -- 'Yi.Syntax.Table.highlighters'. However avoiding to depends on all
 -- highlighters implementation speeds up compilation a lot when working on a

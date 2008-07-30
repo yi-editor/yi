@@ -51,6 +51,7 @@ module Yi.Buffer
   , getMarkB
   , getMarkValueB
   , setMarkPointB
+  , modifyMarkB
   , newMarkB
   , setVisibleSelection
   , isUnchangedB
@@ -577,9 +578,13 @@ regexB dir rx = do
 
 ---------------------------------------------------------------------
 
--- | Set a mark in this buffer
+-- | Set the given mark point.
 setMarkPointB :: Mark -> Point -> BufferM ()
-setMarkPointB m pos = modifyBuffer $ setMarkPointBI m pos
+setMarkPointB m pos = modifyMarkB m (\m -> m {markPoint = pos})
+
+modifyMarkB :: Mark -> (MarkValue -> MarkValue) -> BufferM ()
+modifyMarkB m f = modifyBuffer $ modifyMarkBI m f
+
 
 setVisibleSelection :: Bool -> BufferM ()
 setVisibleSelection = setA highlightSelectionA
