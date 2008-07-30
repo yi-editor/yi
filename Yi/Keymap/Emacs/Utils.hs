@@ -107,7 +107,8 @@ askIndividualQuit (firstBuffer : others) =
 
   askKeymap = choice [ char 'n' ?>>! noAction
                      , char 'y' ?>>! yesAction 
-                     , char 'c' ?>>! closeBufferAndWindowE 
+                     , oneOf [char 'c', ctrl $ char 'g'] >>! closeBufferAndWindowE 
+                      -- cancel
                      , char 'q' ?>>! quitEditor 
                      ]
   yesAction   = do fwriteBufferE (bkey firstBuffer)
