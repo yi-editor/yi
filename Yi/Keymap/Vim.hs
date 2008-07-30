@@ -12,8 +12,7 @@ module Yi.Keymap.Vim (keymap,
                       mkKeymap) where
 
 import Yi.Prelude
-import Prelude (maybe, length, filter, map, drop, takeWhile, dropWhile,
-                break, uncurry)
+import Prelude (maybe, length, filter, map, drop, break, uncurry)
 
 import Data.Char
 import Data.List (sort, nub)
@@ -35,6 +34,7 @@ import Yi.Eval (execEditorAction)
 import Yi.File
 import Yi.History
 import Yi.Misc (matchingFileNames)
+import Yi.String (dropSpace)
 import Yi.Keymap.Keys
 import Yi.MiniBuffer
 import Yi.Search
@@ -823,7 +823,7 @@ defKeymap self = ModeMap {
                        Right lineNum -> withBuffer (gotoLn lineNum) >> return ()
 
            fn "w"          = viWrite
-           fn ('w':' ':f)  = viWriteTo $ strip f
+           fn ('w':' ':f)  = viWriteTo $ dropSpace f
            fn "qa"         = quitall
            fn "qal"        = quitall
            fn "qall"       = quitall
@@ -947,9 +947,6 @@ viWriteTo f = do
     let s   = bufInfoFileName bufInfo
     let msg = msgEditor $ show f++" "++show s ++ " written"
     catchJustE ioErrors (fwriteToE f >> msg) (msgEditor . show)
-
-strip :: String -> String
-strip = takeWhile (/= ' ') . dropWhile (== ' ')
 
 -- | Try to do a substitution
 viSub :: [Char] -> EditorM ()
