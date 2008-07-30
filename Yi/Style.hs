@@ -51,6 +51,8 @@ defaultStyle = []
 reverseStyle :: Style
 reverseStyle = [Foreground Reverse, Background Reverse]
 
+cppStyle :: Style
+cppStyle = [Foreground red]
 
 commentStyle :: Style
 commentStyle = lineCommentStyle

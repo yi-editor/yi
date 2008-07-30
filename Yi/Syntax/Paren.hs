@@ -23,7 +23,7 @@ indentScanner = layoutHandler startsLayout [(Special '(', Special ')'),
 -- HACK: We insert the Special '<', '>', '.', that don't occur in normal haskell parsing.
 
 ignoredToken :: Tok Token -> Bool
-ignoredToken (Tok t _ (Posn _ _ col)) = col == 0 && isComment t
+ignoredToken (Tok t _ (Posn _ _ col)) = col == 0 && isComment t || t == CppDirective
     
 
 isSpecial :: [Char] -> Token -> Bool

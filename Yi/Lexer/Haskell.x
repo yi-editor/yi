@@ -97,12 +97,12 @@ haskell :-
 -- it's also possible that we have just finishing a line,
 -- people sometimes do this for example  when breaking up paragraphs
 -- in a long comment.
-  "--"$nl                                       { c $ Comment Line }
+ "--"$nl                                       { c $ Comment Line }
 
  "{-"                                           { m (subtract 1) $ Comment Open }
 
- $special                                       { \str st -> (st, Special (snd $ head str)) }
-
+ ^"#".*                                         { c $ CppDirective }
+ $special                                       { cs $ \(c:_) -> Special c }
  "deriving"                                     { c (Reserved Deriving) }
  @reservedid                                    { c (Reserved Other) }
  "where"                                        { c (Reserved Where) }
@@ -141,10 +141,12 @@ data Token = Number | CharTok | StringTok | VarIdent | ConsIdent
            | Reserved !ReservedType | ReservedOp | Special Char
            | ConsOperator | Operator
            | Comment !CommentType
+           | CppDirective
              deriving (Eq, Show)
 
 tokenToStyle :: Token -> Style 
 tokenToStyle tok = case tok of
+  CppDirective -> cppStyle
   Number       -> defaultStyle
   CharTok      -> stringStyle
   StringTok    -> stringStyle
