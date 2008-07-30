@@ -6,18 +6,18 @@
 
 -- | Scan one token. Return (maybe) a token and a new state.
 alexScanToken :: (AlexState HlState, AlexInput) -> Maybe (Tok Token, (AlexState HlState, AlexInput))
-alexScanToken (AlexState state lookedOfs pos, inp) = 
+alexScanToken (AlexState state lookedOfs pos, inp@(_prevCh,str)) = 
     let (scn,lookahead) = alexScan' inp (stateToInit state) 
         lookedOfs' = max lookedOfs (posnOfs pos +~ Size lookahead) in
     case scn of
 		AlexEOF -> Nothing
 		AlexError _ -> error "lexical error"
 		AlexSkip  inp' len  -> 
-                    let chunk = take (fromIntegral len) inp
+                    let chunk = take (fromIntegral len) str
                     in alexScanToken (AlexState state lookedOfs' (moveStr pos chunk), inp')
 		AlexToken inp' len act -> 
                     let (state', style) = act chunk state 
-                        chunk = take (fromIntegral len) inp
+                        chunk = take (fromIntegral len) str
                         newPos = moveStr pos chunk
                     in Just (Tok style (posnOfs newPos ~- posnOfs pos) pos, (AlexState state' lookedOfs' newPos, inp'))
 
@@ -80,4 +80,5 @@ alex_scan_tkn' user orig_input len input s last_acc =
 
 c = actionConst
 m = actionAndModify
+cs = actionStringConst
 

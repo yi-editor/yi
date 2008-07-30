@@ -3,7 +3,7 @@
 module Yi.Lexer.Alex (
                        alexGetChar, alexInputPrevChar, unfoldLexer, lexScanner,
                        AlexState(..), AlexInput, Stroke,
-                       actionConst, actionAndModify,
+                       actionConst, actionAndModify, actionStringConst,
                        Tok(..), tokBegin, tokEnd, tokFromT, tokRegion, 
                        Posn(..), startPosn, moveStr, 
                        ASI,
@@ -16,19 +16,16 @@ import Prelude ()
 import Data.Char (ord)
 import Yi.Region
 
--- | if offsets before this is dirtied, must restart from that state.
-type LookedOffset = Point
+type IndexedStr = [(Point, Char)]
+type AlexInput = (Char, IndexedStr)
+type Action hlState token = IndexedStr -> hlState -> (hlState, token)
 
-type AlexInput = [(Point, Char)]
-type Action hlState token = AlexInput -> hlState -> (hlState, token)
--- | Lexer state; (reversed) list of tokens so far.
+-- | Lexer state
 data AlexState lexerState = AlexState {
       stLexer  :: lexerState,   -- (user defined) lexer state
-      lookedOffset :: !LookedOffset, -- Last offset looked at
+      lookedOffset :: !Point, -- Last offset looked at
       stPosn :: !Posn
     } deriving Show
-
-
 
 data Tok t = Tok
     {
@@ -61,7 +58,7 @@ instance Show Posn where
 startPosn :: Posn
 startPosn = Posn 0 1 0
 
-moveStr :: Posn -> AlexInput -> Posn
+moveStr :: Posn -> IndexedStr -> Posn
 moveStr posn str = foldl' moveCh posn (fmap snd str)
 
 utf8Length :: Char -> Size
@@ -82,11 +79,11 @@ moveCh (Posn o l c) chr  = Posn (o+~utf8Length chr) l     (c+1)
 
 
 alexGetChar :: AlexInput -> Maybe (Char, AlexInput)
-alexGetChar bs | null bs = Nothing
-               | otherwise  = Just (snd $ head bs, tail bs)
+alexGetChar (_,[]) = Nothing
+alexGetChar (_,(_,c):rest) = Just (c, (c,rest))
 
 alexInputPrevChar :: AlexInput -> Char
-alexInputPrevChar = error "alexInputPrevChar undefined"
+alexInputPrevChar (prevChar,_) = prevChar
 
 actionConst :: token -> Action lexState token
 actionConst token _str state = (state, token)
@@ -94,12 +91,14 @@ actionConst token _str state = (state, token)
 actionAndModify :: (lexState -> lexState) -> token -> Action lexState token
 actionAndModify modifier token _str state = (modifier state, token)
 
+actionStringConst :: (String -> token) -> Action lexState token
+actionStringConst f indexedStr state = (state, f $ fmap snd indexedStr)
 
 type ASI s = (AlexState s, AlexInput)
 
 lexScanner :: forall lexerState token.
-                                          ((AlexState lexerState, [(Point, Char)])
-                                           -> Maybe (token, (AlexState lexerState, [(Point, Char)])))
+                                          ((AlexState lexerState, AlexInput)
+                                           -> Maybe (token, (AlexState lexerState, AlexInput)))
                                           -> lexerState
                                           -> Scanner Point Char
                                           -> Scanner (AlexState lexerState) token
@@ -108,7 +107,7 @@ lexScanner l st0 src = Scanner
                   --stStart = posnOfs . stPosn,
                   scanLooked = lookedOffset,
                   scanInit = AlexState st0 0 startPosn,
-                  scanRun = \st -> unfoldLexer l (st, scanRun src $ posnOfs $ stPosn st)
+                  scanRun = \st -> unfoldLexer l (st, ('\n', scanRun src $ posnOfs $ stPosn st))
                  }
 
 -- | unfold lexer function into a function that returns a stream of (state x token)
