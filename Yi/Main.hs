@@ -245,6 +245,7 @@ defaultPublishedActions = M.fromList $
     , ("closeBufferE"           , box closeBufferE)
     , ("grepFind"               , box grepFind)
     , ("sortLines"              , box sortLines)
+    , ("ghci"                   , box ghci)
     ]
 
   where box x = [toDyn x]

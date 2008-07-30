@@ -105,7 +105,14 @@ cabalBuildE =
             setDynamic $ CabalBuffer $ Just b
             withBuffer0 $ setMode Compilation.mode
         return ()
-        
+
+ghci :: YiM ()
+ghci = do
+    startSubprocess "ghci" []
+    withBuffer $ do m <- getMarkB (Just "Prompt")
+                    modifyMarkB m (\v -> v {markGravity = Backward})
+                    setMode Interactive.mode
+    return ()
 
 grepFind :: String -> YiM ()
 grepFind searched = withOtherWindow $ do
