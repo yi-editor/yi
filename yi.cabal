@@ -142,6 +142,8 @@ library
         Yi.Syntax.Fractal
         Yi.Syntax.Linear
 
+        Yi.Mode.Interactive
+
         Yi.Accessor
         Yi.Interpreter
         Yi.Buffer.Basic
@@ -279,6 +281,8 @@ executable yi
            Yi.Syntax.Paren
            Yi.Syntax.Fractal
            Yi.Syntax.Linear
+
+           Yi.Mode.Interactive
 
            Yi.Accessor, Yi.Interpreter,
            Yi.Buffer.Indent
