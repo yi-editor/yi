@@ -310,7 +310,7 @@ defKeymap self = ModeMap {
         choice
          ([c ?>>! action i | (c,action) <- singleCmdFM ] ++
           [events evs >>! action i | (evs, action) <- multiCmdFM ] ++
-          [char 'r' ?>> textChar >>= write . writeB])
+          [char 'r' ?>> textChar >>= write . writeN . replicate i])
 
      -- TODO: escape the current word
      --       at word bounds: search for \<word\>
