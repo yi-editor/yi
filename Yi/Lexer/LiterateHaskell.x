@@ -79,8 +79,8 @@ haskell :-
 }
 
 <0> {
-  "\begin{code}"                                { m (const CodeBlock) keywordStyle }
-  ">"                                           { m (const CodeLine) operatorStyle }
+  ^ "\begin{code}"                              { m (const CodeBlock) keywordStyle }
+  ^ ">"                                         { m (const CodeLine) operatorStyle }
   $white+                                       { c defaultStyle } -- whitespace
   .                                             { c latexStyle }
 }
