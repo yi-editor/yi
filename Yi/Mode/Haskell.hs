@@ -106,6 +106,7 @@ cleverAutoIndentHaskellB e behaviour = do
           filter (not . isErrorTok . tokT) $ allToks e
       shiftBlock = case firstTokOnLine of
         Just (Reserved t) | t `elem` [Where, Deriving] -> 4
+        Just (ReservedOp Haskell.Pipe) -> 4 -- TODO: use the indentSettings
         _ -> 0
       deepInGroup = maybe True insideGroup firstTokOnLine
       shiftGroup = if deepInGroup then 1 else 0
