@@ -24,11 +24,19 @@ myModetable = ReaderT $ \fname -> case () of
                               -- . modeKeymap Shim.mode
                             }
 
+greek = [("alpha", "α"),
+         ("beta", "β"),
+         ("gamma", "γ"),
+         ("delta", "δ")
+        ]
+
+extraInput :: Keymap
+extraInput = choice [pString ('\\':i) >>! insertN o | (i,o) <- greek]
 
 main :: IO ()
 main = yi $ defaultConfig {
                            configKillringAccumulate = True,
                            modeTable = myModetable <|> modeTable defaultConfig,
                            configUI = (configUI defaultConfig) { configFontSize = Just 10 },
-                           defaultKm = keymap
+                           defaultKm = extraInput <|| keymap
                           }

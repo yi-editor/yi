@@ -7,7 +7,8 @@ module Yi.Keymap.Keys
      module Yi.Event,
      module Yi.Interact,
      printableChar, charOf, shift, meta, ctrl, spec, char, (>>!), (?>>), (?>>!),
-     ctrlCh, metaCh
+     ctrlCh, metaCh,
+     pString
     ) where
 
 import Yi.Event
@@ -26,6 +27,8 @@ printableChar = do
        fail "unprintable character"
   return c
 
+pString :: (MonadInteract m w Event) => String -> m [Event] 
+pString = events . map char
 
 charOf :: (MonadInteract m w Event) => (Event -> Event) -> Char -> Char -> m Char
 charOf modifier l h = 

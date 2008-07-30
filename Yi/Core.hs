@@ -168,9 +168,9 @@ dispatch ev =
                           then [makeAction $ printMsg "Keymap was in an ambiguous state! Resetting it."]
                           else []
          return (actions0 ++ actions1,p')
-       --logPutStrLn $ "Processing: " ++ show ev
-       --logPutStrLn $ "Actions posted:" ++ show actions
-       --logPutStrLn $ "New automation: " ++ show p'
+       -- logPutStrLn $ "Processing: " ++ show ev
+       -- logPutStrLn $ "Actions posted:" ++ show userActions
+       -- logPutStrLn $ "New automation: " ++ show _p'
        let decay, pendingFeedback :: EditorM ()
            decay = modifyA statusLinesA (DelayList.decrease 1)
            pendingFeedback = do modifyA pendingEventsA (++ [ev])
