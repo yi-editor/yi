@@ -347,6 +347,11 @@ defKeymap self = ModeMap {
          ,(ctrl $ char 'z',    const suspendEditor)
          ,(char 'D',      withEditor . cut Exclusive . (Replicate $ Move Line Forward))
          ,(char 'J',      const (withBuffer (moveToEol >> deleteN 1)))    -- the "\n"
+         ,(char 'Y',      \n -> withEditor $ do
+            let move = (Replicate $ Move Line Forward) n
+            region <- withBuffer0 $ regionOfViMove move Inclusive
+            yankRegion LineWise region
+          )
          ,(char 'U',      withBuffer . flip replicateM_ undoB)    -- NB not correct
          ,(char 'n',      const $ withEditor $ continueSearching id)
          ,(char 'N',      const $ withEditor $ continueSearching reverseDir)
