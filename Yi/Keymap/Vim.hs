@@ -751,7 +751,7 @@ defKeymap self = ModeMap {
                        spec KRight ?>>! moveXorEol 1]
                   <|| (textChar >>= write . insertB)
            completeMinibuffer = withBuffer elemsB >>= ex_complete >>= withBuffer . insertN
-           exSimpleComplete get s = drop (length s) <$> simpleComplete get s
+           exSimpleComplete compl s = drop (length s) <$> simpleComplete compl s
            b_complete = exSimpleComplete matchingBufferNames
            ex_complete ('e':' ':f)                             = exSimpleComplete (matchingFileNames Nothing) f
            ex_complete ('b':' ':f)                             = b_complete f
