@@ -377,6 +377,19 @@ defKeymap self = ModeMap {
                               moveTo p
                               mapRegionB (mkRegion p q) switchCaseChar
                               moveTo q)
+         -- The count value , in this case, is interpretted as a percentage instead of a repeat
+         -- count.
+         ,(char '%',      \i -> withBuffer $ do
+                              let f :: Double
+                                  f  = case (fromIntegral i / 100.0) of
+                                          x | x > 1.0 -> 1.0
+                                            | x < 0.0 -> 0.0 -- Impossible?
+                                            | otherwise -> x
+                              Point max_p <- sizeB 
+                              let p = floor (fromIntegral max_p * f)
+                              moveTo $ Point p
+                              moveToSol
+          )
          ]
 
      ctrlW :: Event
