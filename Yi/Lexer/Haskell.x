@@ -9,7 +9,7 @@
 {
 {-# OPTIONS -w  #-}
 module Yi.Lexer.Haskell ( initState, alexScanToken, tokenToStyle, 
-                           startsLayout, isComment, Token(..), CommentType(..), ReservedType(..) ) where
+                           startsLayout, isComment, Token(..), CommentType(..), ReservedType(..), OpType(..) ) where
 import Yi.Lexer.Alex
 import Yi.Style
 }
@@ -111,7 +111,9 @@ haskell :-
  @varid                                         { c VarIdent }
  @conid                                         { c ConsIdent }
 
- @reservedop                                    { c Operator }
+ "|"                                            { c (ReservedOp Pipe) }
+ "="                                            { c (ReservedOp Equal) }
+ @reservedop                                    { c (ReservedOp OtherOp) }
  @varsym                                        { c Operator }
  @consym                                        { c ConsOperator }
 
@@ -137,8 +139,11 @@ data CommentType = Open | Close | Text | Line
 data ReservedType = Where | OtherLayout | Deriving | Other
     deriving (Eq, Show)
 
+data OpType = Pipe | Equal | OtherOp
+    deriving (Eq, Show)
+
 data Token = Number | CharTok | StringTok | VarIdent | ConsIdent
-           | Reserved !ReservedType | ReservedOp | Special Char
+           | Reserved !ReservedType | ReservedOp !OpType | Special Char
            | ConsOperator | Operator
            | Comment !CommentType
            | CppDirective
@@ -152,7 +157,7 @@ tokenToStyle tok = case tok of
   StringTok    -> stringStyle
   VarIdent     -> defaultStyle
   ConsIdent    -> upperIdStyle
-  ReservedOp   -> operatorStyle
+  ReservedOp _ -> operatorStyle
   Reserved _   -> keywordStyle
   Special _    -> defaultStyle
   ConsOperator -> upperIdStyle
