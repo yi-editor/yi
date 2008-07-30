@@ -31,6 +31,7 @@ module Yi.Core
   -- * Interacting with external commands
   , runProcessWithInput          -- :: String -> String -> YiM String
   , startSubprocess                 -- :: FilePath -> [String] -> YiM ()
+  , sendToProcess
 
   -- * Misc
   , runAction
@@ -68,7 +69,7 @@ import qualified Data.Map as M
 import Data.IORef
 import Data.Foldable (mapM_, all)
 
-import System.IO ( Handle, hWaitForInput )
+import System.IO (Handle, hWaitForInput, hPutStr)
 import System.FilePath
 import System.Process ( getProcessExitCode, ProcessHandle )
 
@@ -274,32 +275,42 @@ startSubprocess cmd args = do
   procid <- modifiesThenReadsRef yiSubprocessIdSupply (+1)
   procinfo <- liftIO $ createSubprocess cmd args bufref
 
-  yi <- ask
-
-  startSubprocessWatchers (output yi) procid procinfo
+  startSubprocessWatchers procid procinfo
 
   modifiesRef yiSubprocesses $ M.insert procid procinfo
   msgEditor ("Launched process: " ++ cmd)
   return bufref
 
-startSubprocessWatchers :: ([Action] -> IO ()) -> SubprocessId -> SubprocessInfo -> YiM ()
-startSubprocessWatchers chan procid procinfo = do
+startSubprocessWatchers :: SubprocessId -> SubprocessInfo -> YiM ()
+startSubprocessWatchers procid procinfo = do
+  yi <- ask
+  let send a = output yi [makeAction a]
+      append s = send $ appendToBuffer (bufRef procinfo) s
+      reportExit s = append s >> (send $ removeSubprocess procid)
   mapM_ (liftIO . forkOS) [ pipeToBuffer (hOut procinfo) append,
                             pipeToBuffer (hErr procinfo) append,
                             waitForExit (procHandle procinfo) >>= reportExit ]
-  where append s = send $ appendToBuffer (bufRef procinfo) s
-        reportExit s = append s >> (send $ removeSubprocess procid)
-        send a = chan [makeAction a]
 
 removeSubprocess :: SubprocessId -> YiM ()
 removeSubprocess procid = modifiesRef yiSubprocesses $ M.delete procid
 
-appendToBuffer :: BufferRef -> String -> YiM ()
-appendToBuffer bufref s = withGivenBuffer bufref $ savingExcursionB $ (sizeB >>= insertNAt s)
+appendToBuffer :: BufferRef -> String -> EditorM ()
+appendToBuffer bufref s = withGivenBuffer0 bufref $ do
+    m <- getMarkB (Just "Prompt")
+    modifyMarkB m (\v -> v {markGravity = Forward})
+    insertNAt s =<< getMarkPointB m 
+    modifyMarkB m (\v -> v {markGravity = Backward})
+
+sendToProcess :: BufferRef -> String -> YiM ()
+sendToProcess bufref s = do
+    yi <- ask
+    Just subProcessInfo <- find ((== bufref) . bufRef) <$> readRef (yiSubprocesses yi)
+    io $ hPutStr (hIn subProcessInfo) s
 
 pipeToBuffer :: Handle -> (String -> IO ()) -> IO ()
 pipeToBuffer h append = 
   handle (\_ -> return ()) $ forever $ (hWaitForInput h (-1) >> readAvailable h >>= append)
+
 
 waitForExit :: ProcessHandle -> IO String
 waitForExit ph = 

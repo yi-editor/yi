@@ -37,7 +37,7 @@ import Yi.Buffer
 import Yi.Core
 import Yi.Editor
 import Yi.MiniBuffer
-import Yi.Mode.Compilation (compilationMode)
+import qualified Yi.Mode.Compilation as Compilation
 import Yi.Process
 import Yi.Templates
   ( addTemplate
@@ -45,7 +45,7 @@ import Yi.Templates
   )
 import Yi.UI.Common 
 import qualified Data.ByteString.Lazy.UTF8 as LazyUTF8
-
+import qualified Yi.Mode.Interactive as Interactive
 
 ---------------------------
 -- | Changing the buffer name quite useful if you have
@@ -103,14 +103,14 @@ cabalBuildE =
         withEditor $ do
             maybeM deleteBuffer =<< cabalBuffer <$> getDynamic
             setDynamic $ CabalBuffer $ Just b
-            withBuffer0 $ setMode compilationMode
+            withBuffer0 $ setMode Compilation.mode
         return ()
         
 
 grepFind :: String -> YiM ()
 grepFind searched = withOtherWindow $ do
     startSubprocess "find" [".", "-name", "*.hs", "-exec", "grep", "-Hnie", searched, "{}", ";"]
-    withBuffer $ setMode compilationMode
+    withBuffer $ setMode Compilation.mode
     return ()
      
 -- | Inserting a template from the templates defined in Yi.Templates

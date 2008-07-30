@@ -15,8 +15,8 @@ import qualified Yi.Lexer.Compilation         as Compilation
 import qualified Yi.Syntax.Linear as Linear
 import Yi.Keymap.Keys
 
-compilationMode :: Mode (Linear.Result (Tok Compilation.Token))
-compilationMode = emptyMode
+mode :: Mode (Linear.Result (Tok Compilation.Token))
+mode = emptyMode
   { 
    modeKeymap = (<||) (spec KEnter ?>>! withSyntax modeFollow),
    modeFollow = \synTree -> YiA (follow synTree),
