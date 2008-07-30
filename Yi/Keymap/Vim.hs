@@ -337,6 +337,8 @@ defKeymap self = ModeMap {
        doSearch Nothing [] dir
 
      -- | cmd mode commands
+     -- An event specified paired with an action that may take an integer argument.
+     -- Usually the integer argument is the number of times an action should be repeated.
      singleCmdFM :: [(Event, Int -> YiM ())]
      singleCmdFM =
          [(ctrl $ char 'b',    withBuffer . upScreensB)             -- vim does (firstNonSpaceB;moveXorSol)
@@ -348,9 +350,9 @@ defKeymap self = ModeMap {
          ,(char 'D',      withEditor . cut Exclusive . (Replicate $ Move Line Forward))
          ,(char 'J',      const (withBuffer (moveToEol >> deleteN 1)))    -- the "\n"
          ,(char 'Y',      \n -> withEditor $ do
-            let move = (Replicate $ Move Line Forward) n
-            region <- withBuffer0 $ regionOfViMove move Inclusive
-            yankRegion LineWise region
+                                    let move = (Replicate $ Move Line Forward) n
+                                    region <- withBuffer0 $ regionOfViMove move Inclusive
+                                    yankRegion LineWise region
           )
          ,(char 'U',      withBuffer . flip replicateM_ undoB)    -- NB not correct
          ,(char 'n',      const $ withEditor $ continueSearching id)
