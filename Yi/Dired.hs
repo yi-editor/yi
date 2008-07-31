@@ -87,7 +87,7 @@ fnewCanonicalized f = do
         -- The names of the existing buffers
     let currentBufferNames   = map name bufs
         -- The new name for the buffer
-        bufferName           = bestNewName currentBufferNames
+        bufferName           = bestNewName desiredBufferName currentBufferNames
     b <- case bufsWithThisFilename of
              [] -> do
                    fe  <- liftIO $ doesFileExist f
@@ -131,31 +131,7 @@ fnewCanonicalized f = do
     fileToNewBuffer bufferName path = do
       contents <- liftIO $ LazyB.readFile path
       withEditor $ stringToNewBuffer bufferName contents
-
-    -- Given the desired buffer name, plus a list of current buffer
-    -- names returns the best name for the new buffer. This will
-    -- be the desired one in the case that it doesn't currently exist.
-    -- Otherwise we will suffix it with <n> where n is one more than the
-    -- current number of suffixed similar names.
-    -- IOW if we want "file.hs" but one already exists then we'll create
-    -- "file.hs<1>" but if that already exists then we'll create "file.hs<2>"
-    -- and so on.
     desiredBufferName  = takeFileName f
-    bestNewName :: [ String ] -> String
-    bestNewName currentBufferNames
-      | elem desiredBufferName currentBufferNames = addSuffixBName 1
-      | otherwise                                 = desiredBufferName
-      where
-      addSuffixBName :: Int -> String
-      addSuffixBName i
-        | elem possibleName currentBufferNames = addSuffixBName (i + 1)
-        | otherwise                            = possibleName
-        where
-        possibleName = concat [ desiredBufferName
-                              , "<"
-                              , show i
-                              , ">"
-                              ]
 
 ------------------------------------------------
 
