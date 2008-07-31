@@ -64,14 +64,17 @@ $nl        = [\n\r]
     | undef
     | exists
     | die
+    | shift
 
 @seperator = $whitechar+ | $special
 @interpVarSeperator = [^$idchar] | $nl
 
 @reservedop = 
   "->" | "*" | "+" | "-" | "%" | \\ | "||" | "&&" | "?" | ":" | "=>" 
-  | "or" | "and" | "ne" | "eq"
+  | "or" | "xor" | "and" | "ne" | "eq"
   | "=~" | "!~"
+
+@preMatchRegexOp = @reservedop | "(" | "{"
 
 -- Standard variables
 -- TODO: Handle casts of the form @varTypeOp{@varid}
@@ -87,9 +90,12 @@ $nl        = [\n\r]
 @specialVarToken = 
     "_" | ARG
     | "." | INPUT_LINE_NUMBER | NR
-    | "/" | INPUT_RECORD_SEPARATOR | RS
     | "?" | CHILD_ERROR
     | ENV
+
+-- TODO: The specialVarToken should have an entry like the following:
+-- | "/" | INPUT_RECORD_SEPARATOR | RS
+-- but that messes up the hacked together regex support.
 
 @specialVarId = @varTypeOp @specialVarToken
 
@@ -105,7 +111,14 @@ $cntrl   = [$large \@\[\\\]\^\_]
          | BEL | BS | HT | LF | VT | FF | CR | SO | SI | DLE
          | DC1 | DC2 | DC3 | DC4 | NAK | SYN | ETB | CAN | EM
          | SUB | ESC | FS | GS | RS | US | SP | DEL
-$charesc = [abfnrtv\\\"\'\&\`]
+
+-- The charesc set contains more than it really should.
+-- It currently tries to be the superset of all characters that are possible 
+-- to escape in the various quoting modes. Problem is, the actual set of 
+-- Characters that should be escapable in any quoting mode depends on the 
+-- delimiter of the quoting mode and I haven't implemented such fanciness
+-- yet.
+$charesc = [abfnrtv\\\"\'\&\`\/]
 @escape  = \\ ($charesc | @ascii | @decimal | o @octal | x @hexadecimal)
 @gap     = \\ $whitechar+ \\
 
@@ -150,6 +163,33 @@ perlHighlighterRules :-
     {
         m (\_ -> HlInInterpString "`" ) operatorStyle
     }
+
+    -- Matching regex quote-like operators are also kinda like interpolating strings.
+    "?"
+        {
+            m (\_ -> HlInInterpString "?" ) operatorStyle
+        }
+
+    -- In order to prevent this from being confused with division this 
+    -- only matches in the case the / is preeceded with the usual context I use it.
+    ^($whitechar+ "/")
+        {
+            m (\_ -> HlInInterpString "/" ) operatorStyle
+        }
+    (@preMatchRegexOp $whitechar* "/")
+        {
+            m (\_ -> HlInInterpString "/" ) operatorStyle
+        }
+
+    "m/"
+        {
+            \str _ -> (HlInInterpString "/", operatorStyle)
+        }
+
+    "s/"
+        {
+            \str _ -> (HlInSubstRegex "/", operatorStyle)
+        }
 
     -- Heredocs are kinda like interpolating strings...
     "<<" @heredocId
@@ -198,6 +238,18 @@ perlHighlighterRules :-
         }
         {
             m (\_ -> HlInCode) operatorStyle
+        }
+    ./
+        {
+            \state preInput _ _ ->
+                case state of
+                    HlInSubstRegex end_tag ->
+                        let inputText = take (length end_tag) $ alexCollectChar preInput
+                        in if (inputText == end_tag) then True else False
+                    _ -> False
+        }
+        {
+            m (\(HlInSubstRegex end_tag) -> HlInInterpString end_tag) operatorStyle
         }
     .   { c stringStyle }
 }
@@ -256,6 +308,7 @@ data HlState =
     | HlInString
     | HlInHeredoc String
     | HlInPerldoc
+    | HlInSubstRegex String
 
 type Token = Style
 
@@ -264,6 +317,7 @@ stateToInit (HlInInterpString _) = interpString
 stateToInit HlInString = string
 stateToInit (HlInHeredoc _) = heredoc
 stateToInit HlInPerldoc = perldoc
+stateToInit (HlInSubstRegex _) = interpString
 
 initState :: HlState
 initState = HlInCode
