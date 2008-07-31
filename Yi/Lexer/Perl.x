@@ -58,6 +58,9 @@ $nl        = [\n\r]
     | require
     | our
     | my
+    | defined
+    | undef
+    | exists
 
 @seperator = $whitechar+ | $special
 @interpVarSeperator = [^$idchar] | $nl
@@ -65,6 +68,8 @@ $nl        = [\n\r]
 @reservedop = 
   "->" | "*" | "+" | "-" | "%" | \\ | "||" | "&&" | "?" | ":" | "=>" | "or" | "and"
 
+-- Standard variables
+-- TODO: Handle casts of the form @varTypeOp{@varid}
 @varTypeOp =
     "@"
     | "$"
@@ -73,6 +78,7 @@ $nl        = [\n\r]
 @varPackageSpec = $idchar+ "::" 
 @varid  = @varTypeOp+ @varPackageSpec* $idchar+
 
+-- TODO: A lot! There is a whole list of special global variables.
 @specialVarToken = 
     "_" | ARG
     | "." | INPUT_LINE_NUMBER | NR
@@ -82,11 +88,13 @@ $nl        = [\n\r]
 
 @specialVarId = @varTypeOp @specialVarToken
 
+-- Standard classes
 @decimal     = $digit+
 @octal       = $octit+
 @hexadecimal = $hexit+
 @exponent    = [eE] [\-\+] @decimal
 
+-- string components
 $cntrl   = [$large \@\[\\\]\^\_]
 @ascii   = \^ $cntrl | NUL | SOH | STX | ETX | EOT | ENQ | ACK
          | BEL | BS | HT | LF | VT | FF | CR | SO | SI | DLE
@@ -96,7 +104,7 @@ $charesc = [abfnrtv\\\"\'\&]
 @escape  = \\ ($charesc | @ascii | @decimal | o @octal | x @hexadecimal)
 @gap     = \\ $whitechar+ \\
 
-@nonInterpolatingString  = $graphic | " " 
+@nonInterpolatingString  = $graphic # [\'] | " " 
 @interpolatingString  = $graphic # [\"\\] | " " | @escape | @gap
 
 @heredocId = [$large '_']+
@@ -142,7 +150,8 @@ perlHighlighterRules :-
 
 <interpString>
 {
-    [^\\]^\"
+    @escape { c defaultStyle }
+    \"
         {
             m (\_ -> HlInCode) operatorStyle
         }
