@@ -47,6 +47,8 @@ $nl        = [\n\r]
     | redo
     | continue
     | goto
+    | redo
+    | for
     | foreach
     | unless
     | until
@@ -61,12 +63,15 @@ $nl        = [\n\r]
     | defined
     | undef
     | exists
+    | die
 
 @seperator = $whitechar+ | $special
 @interpVarSeperator = [^$idchar] | $nl
 
 @reservedop = 
-  "->" | "*" | "+" | "-" | "%" | \\ | "||" | "&&" | "?" | ":" | "=>" | "or" | "and"
+  "->" | "*" | "+" | "-" | "%" | \\ | "||" | "&&" | "?" | ":" | "=>" 
+  | "or" | "and" | "ne" | "eq"
+  | "=~" | "!~"
 
 -- Standard variables
 -- TODO: Handle casts of the form @varTypeOp{@varid}
@@ -105,9 +110,14 @@ $charesc = [abfnrtv\\\"\'\&\`]
 @gap     = \\ $whitechar+ \\
 
 @nonInterpolatingString  = $graphic # [\'] | " " 
-@interpolatingString  = $graphic # [\"\\] | " " | @escape | @gap
 
+-- Heredoc
 @heredocId = [$large '_']+
+
+-- Perldoc
+-- perldoc starts at a "line that begins with an equal sign and a word"
+-- (man perlsyn)
+@perlDocStartWord = "=" [^$whitechar]+
 
 perlHighlighterRules :-
 
@@ -153,6 +163,15 @@ perlHighlighterRules :-
         m (\_ -> HlInString) operatorStyle 
     }
     "qw(" @nonInterpolatingString* ")"             { c stringStyle }
+
+    -- perldoc starts at a "line that begins with an equal sign and a word"
+    -- (man perlsyn)
+    ^ @perlDocStartWord
+        {
+            m (\_ -> HlInPerldoc) commentStyle
+        }
+
+    -- Everything else is unstyled.
     .                                              { c defaultStyle }
 }
 
@@ -209,6 +228,16 @@ perlHighlighterRules :-
     .   { c stringStyle }
 }
 
+<perldoc>
+{
+    ^ "=cut" $ 
+        { 
+            m (\_ -> HlInCode) commentStyle 
+        }
+    $white+ { c defaultStyle }
+    . { c commentStyle }
+}
+
 <string>
 {
     \'
@@ -226,6 +255,7 @@ data HlState =
     | HlInInterpString String
     | HlInString
     | HlInHeredoc String
+    | HlInPerldoc
 
 type Token = Style
 
@@ -233,6 +263,7 @@ stateToInit HlInCode = 0
 stateToInit (HlInInterpString _) = interpString
 stateToInit HlInString = string
 stateToInit (HlInHeredoc _) = heredoc
+stateToInit HlInPerldoc = perldoc
 
 initState :: HlState
 initState = HlInCode
