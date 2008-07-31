@@ -106,17 +106,30 @@ cabalBuildE =
             withBuffer0 $ setMode Compilation.mode
         return ()
 
-ghci :: YiM ()
-ghci = do
-    startSubprocess "ghci" []
+interactive :: String -> [String] -> YiM ()
+interactive cmd args = do
+    startSubprocess cmd args
     withBuffer $ do m <- getMarkB (Just "Prompt")
                     modifyMarkB m (\v -> v {markGravity = Backward})
                     setMode Interactive.mode
     return ()
 
+-- | Start GHCi in a buffer
+ghci :: YiM ()
+ghci = interactive "ghci" []
+
+shell :: YiM ()
+shell = do
+    sh <- io shellFileName
+    interactive sh ["-i"]
+    -- use the -i option for interactive mode (assuming bash)
+
+-- | Search the haskell files in the project.
 grepFind :: String -> YiM ()
 grepFind searched = withOtherWindow $ do
-    startSubprocess "find" [".", "-name", "*.hs", "-exec", "grep", "-Hnie", searched, "{}", ";"]
+    startSubprocess "find" [".", 
+                            "-name", "_darcs", "-prune", "-o", 
+                            "-name", "*.hs", "-exec", "grep", "-Hnie", searched, "{}", ";"]
     withBuffer $ setMode Compilation.mode
     return ()
      

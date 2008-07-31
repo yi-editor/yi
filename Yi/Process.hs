@@ -7,7 +7,8 @@
 -- | A Posix.popen compatibility mapping.
 -- Based on PosixCompat, originally written by Derek Elkins for lambdabot
 --
-module Yi.Process (popen, runShellCommand, createSubprocess, readAvailable, SubprocessInfo(..), SubprocessId) where
+module Yi.Process (popen, runShellCommand, shellFileName,
+                   createSubprocess, readAvailable, SubprocessInfo(..), SubprocessId) where
 import System.IO
 import System.Process
 import System.Exit ( ExitCode )

@@ -141,7 +141,7 @@ options = [
 
 -- | usage string.
 usage, versinfo :: String
-usage    = usageInfo ("Usage: " ++ projectName ++ " [option...] [file]") options
+usage = usageInfo ("Usage: " ++ projectName ++ " [option...] [file]") options
 
 projectName :: String
 projectName = "yi"
@@ -258,6 +258,8 @@ defaultPublishedActions = M.fromList $
     , ("grepFind"               , box grepFind)
     , ("sortLines"              , box sortLines)
     , ("ghci"                   , box ghci)
+    , ("shell"                  , box shell)
+    , ("interactive"            , box interactive)
     ]
 
   where box x = [toDyn x]
