@@ -93,14 +93,12 @@ atBoundary ViWORD direction =
     checkPeekB (-1) [not . isVisSpace, isVisSpace] direction
 atBoundary ViWord direction = do
     cs <- peekB direction 2 (-1)
-    if length cs /= 2
-        then return True
-        else do
-            let [c1,c2] = cs
-            return (length cs /= 2 || (not (isVisSpace c1) && (charType c1 /= charType c2)))
-                where charType c | isVisSpace    c = 1::Int
-                                 | isWordChar c = 2
-                                 | otherwise    = 3
+    return $ case cs of
+      [c1,c2] -> not (isVisSpace c1) && (charType c1 /= charType c2)
+        where charType c | isVisSpace c = 1::Int
+                         | isWordChar c = 2
+                         | otherwise    = 3
+      _ -> True
 atBoundary Line direction = checkPeekB 0 [isNl] direction
 atBoundary (Delimited c _) Backward = checkPeekB 0 [(== c)] Backward
 atBoundary (Delimited _ c) Forward  = (== c) <$> readB
