@@ -7,11 +7,13 @@
 -- | Scan one token. Return (maybe) a token and a new state.
 alexScanToken :: (AlexState HlState, AlexInput) -> Maybe (Tok Token, (AlexState HlState, AlexInput))
 alexScanToken (AlexState state lookedOfs pos, inp@(_prevCh,str)) = 
-    let (scn,lookahead) = alexScan' inp (stateToInit state) 
+    let (scn,lookahead) = alexScanUser' state inp (stateToInit state) 
         lookedOfs' = max lookedOfs (posnOfs pos +~ Size lookahead) in
     case scn of
 		AlexEOF -> Nothing
-		AlexError _ -> error "lexical error"
+		AlexError inp' -> 
+                    let errorHint = take 10 $ alexCollectChar inp'
+                    in error $ "lexical error around " ++ errorHint
 		AlexSkip  inp' len  -> 
                     let chunk = take (fromIntegral len) str
                     in alexScanToken (AlexState state lookedOfs' (moveStr pos chunk), inp')

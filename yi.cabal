@@ -135,6 +135,7 @@ library
         Yi.Lexer.Srmc
         Yi.Lexer.Cabal
         Yi.Lexer.OCaml
+        Yi.Lexer.Perl
 
         Yi.Syntax
         Yi.Syntax.Layout
@@ -275,6 +276,7 @@ executable yi
            Yi.Lexer.Srmc
            Yi.Lexer.Cabal
            Yi.Lexer.OCaml
+           Yi.Lexer.Perl
 
            Yi.Syntax
            Yi.Syntax.Layout

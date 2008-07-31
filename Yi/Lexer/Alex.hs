@@ -2,6 +2,7 @@
 
 module Yi.Lexer.Alex (
                        alexGetChar, alexInputPrevChar, unfoldLexer, lexScanner,
+                       alexCollectChar,
                        AlexState(..), AlexInput, Stroke,
                        actionConst, actionAndModify, actionStringConst,
                        Tok(..), tokBegin, tokEnd, tokFromT, tokRegion, 
@@ -77,10 +78,13 @@ moveCh (Posn o l c) '\t' = Posn (o+1)  l     (((c+8) `div` 8)*8)
 moveCh (Posn o l _) '\n' = Posn (o+1) (l+1)   0
 moveCh (Posn o l c) chr  = Posn (o+~utf8Length chr) l     (c+1)
 
-
 alexGetChar :: AlexInput -> Maybe (Char, AlexInput)
 alexGetChar (_,[]) = Nothing
 alexGetChar (_,(_,c):rest) = Just (c, (c,rest))
+
+alexCollectChar :: AlexInput -> [Char]
+alexCollectChar (_, []) = []
+alexCollectChar (_, (_,c):rest) = c : (alexCollectChar (c,rest))
 
 alexInputPrevChar :: AlexInput -> Char
 alexInputPrevChar (prevChar,_) = prevChar

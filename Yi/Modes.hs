@@ -18,12 +18,13 @@ import qualified Yi.Lexer.Cplusplus           as Cplusplus
 import qualified Yi.Lexer.Latex               as Latex
 import qualified Yi.Lexer.LiterateHaskell     as LiterateHaskell
 import qualified Yi.Lexer.OCaml               as OCaml
+import qualified Yi.Lexer.Perl                as Perl
 import qualified Yi.Lexer.Srmc                as Srmc
 import qualified Yi.Syntax.Linear as Linear
 
 
 fundamental, defaultFundamentalMode :: Mode syntax
-latexMode, cppMode, literateHaskellMode, cabalMode, srmcMode, ocamlMode :: Mode (Linear.Result Stroke)
+latexMode, cppMode, literateHaskellMode, cabalMode, srmcMode, ocamlMode, perlMode :: Mode (Linear.Result Stroke)
 
 fundamental = emptyMode
   { 
@@ -75,6 +76,11 @@ ocamlMode = fundamental
     modeHL = ExtHL $ mkHighlighter' OCaml.initState OCaml.alexScanToken OCaml.tokenToStyle
   }
 
+perlMode = fundamental
+  {
+    modeHL = ExtHL $ mkHighlighter' Perl.initState Perl.alexScanToken id
+  }
+
 defaultFundamentalMode = fundamental
 
 defaultModeMap :: ReaderT FilePath Maybe AnyMode
@@ -110,6 +116,9 @@ modeFromExtension ".H"     = Just $ AnyMode cppMode
 modeFromExtension ".h"     = Just $ AnyMode cppMode
 modeFromExtension ".c"     = Just $ AnyMode cppMode -- I treat c file as cpp files, most users are smart enough to allow for that.
 modeFromExtension ".pepa"  = Just $ AnyMode srmcMode -- pepa is a subset of srmc    
+modeFromExtension ".pl"    = Just $ AnyMode perlMode
+modeFromExtension ".pm"    = Just $ AnyMode perlMode
+modeFromExtension ".t"     = Just $ AnyMode perlMode
 modeFromExtension ".srmc"  = Just $ AnyMode srmcMode
 modeFromExtension ".ml"    = Just $ AnyMode ocamlMode
 modeFromExtension ".mli"   = Just $ AnyMode ocamlMode
