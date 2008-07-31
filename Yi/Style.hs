@@ -11,17 +11,34 @@ module Yi.Style where
 
 import Data.Word                (Word8)
 import Data.Char (chr, ord)
+import Data.Monoid
+import Yi.Prelude
+import Prelude ()
 
 -- | The UI type
 data UIStyle =
     UIStyle {
          window           :: !Style    -- ^ window fg and bg (ignore for now)
        , modeline         :: !Style    -- ^ out of focus modeline colours
-       , modeline_focused :: !Style    -- ^ in focus modeline
+       , modelineFocused :: !Style    -- ^ in focus modeline
        , selected         :: !Style    -- ^ the selected portion
        , eof              :: !Style    -- ^ empty file marker colours
+       , defaultStyle :: !Style
+       , reverseStyle :: !Style
+       , cppStyle :: !Style
+       , commentStyle :: !Style
+       , keywordStyle :: !Style
+       , operatorStyle :: !Style
+       , upperIdStyle :: !Style
+       , stringStyle :: !Style
+       , numberStyle :: !Style
+       , errorStyle :: !Style
+       , hintStyle :: !Style
+       , strongHintStyle :: !Style
      } 
     deriving (Eq, Show, Ord)
+
+type StyleName = UIStyle -> Style
 
 data Color
     = RGB {-# UNPACK #-} !Word8 {-# UNPACK #-} !Word8 {-# UNPACK #-} !Word8
@@ -43,47 +60,6 @@ colorToText (RGB r g b) = ('#':) . showsHex r . showsHex g . showsHex b $ []
     where showsHex x s = showHex1 (x `div` 16) : showHex1 (x `mod` 16) : s
           showHex1 x | x < 10 = chr (ord '0' + fromIntegral x)
                      | otherwise = chr (ord 'A' + fromIntegral x - 10)
-
-
-defaultStyle :: Style
-defaultStyle = []
-
-reverseStyle :: Style
-reverseStyle = [Foreground Reverse, Background Reverse]
-
-cppStyle :: Style
-cppStyle = [Foreground red]
-
-commentStyle :: Style
-commentStyle = lineCommentStyle
-
-lineCommentStyle :: Style
-lineCommentStyle = [Foreground purple]
-
-keywordStyle :: Style
-keywordStyle = [Foreground darkblue]
-
-operatorStyle :: Style
-operatorStyle = [Foreground brown]
-
-upperIdStyle :: Style
-upperIdStyle = [Foreground darkgreen]
-
-stringStyle :: Style
-stringStyle = [Foreground darkcyan]
-
-numberStyle :: Style
-numberStyle = [Foreground darkred]
-
-errorStyle :: Style
-errorStyle = [Background red]
-
-hintStyle :: Style
-hintStyle = [Background cyan]
-
-strongHintStyle :: Style
-strongHintStyle = [Background magenta]
-
 
 ------------------------------------------------------------------------
 

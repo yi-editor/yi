@@ -5,7 +5,7 @@ module Yi.Syntax.Paren where
 import Yi.IncrementalParse
 import Yi.Lexer.Alex
 import Yi.Lexer.Haskell
-import Yi.Style (hintStyle, errorStyle, Style)
+import Yi.Style (hintStyle, errorStyle, Style, StyleName)
 import Yi.Syntax.Layout
 import Yi.Syntax
 import Yi.Prelude 
@@ -188,8 +188,8 @@ getStrokes point _begin _end t0 = result
           list = foldr (.) id
           result = getStrokesL t0 []
 
-modStroke :: Style -> Stroke -> Stroke
-modStroke f (l,s,r) = (l,f ++ s,r) 
+modStroke :: StyleName -> Stroke -> Stroke
+modStroke f (l,s,r) = (l,f `mappend` s,r) 
 
 tokenToStroke :: Tok Token -> Stroke
 tokenToStroke (Tok t len posn) = (posnOfs posn, tokenToStyle t, posnOfs posn +~ len)

@@ -61,6 +61,7 @@ import Yi.Syntax
 
 import qualified Data.Map as M
 import Data.Maybe 
+import Data.Monoid
 import Yi.Style
 
 import Control.Monad
@@ -99,9 +100,15 @@ data Overlay = Overlay {
                         overlayLayer :: OvlLayer,
                         overlayBegin :: MarkValue,
                         overlayEnd :: MarkValue,
-                        overlayStyle :: Style
+                        overlayStyle :: StyleName
                        }
-               deriving (Ord, Eq)
+instance Eq Overlay where
+    Overlay a b c _ == Overlay a' b' c' _ = a == a' && b == b' && c == c'
+
+instance Ord Overlay where
+    compare (Overlay a b c _) (Overlay a' b' c' _) 
+        = compare a a' `mappend` compare b b' `mappend` compare c c'
+
 
 data FBufferData syntax =
         FBufferData { mem        :: !ByteRope          -- ^ buffer text
@@ -227,7 +234,7 @@ getStream Forward  (Point i) fb = F.toLazyByteString        $ F.drop i $ mem $ f
 getStream Backward (Point i) fb = F.toReverseLazyByteString $ F.take i $ mem $ fb
 
 -- | Create an "overlay" for the style @sty@ between points @s@ and @e@
-mkOverlay :: OvlLayer -> Region -> Style -> Overlay
+mkOverlay :: OvlLayer -> Region -> StyleName -> Overlay
 mkOverlay l r s = Overlay l (MarkValue (regionStart r) Backward) (MarkValue (regionEnd r) Forward) s
 
 -- | Obtain a style-update for a specific overlay

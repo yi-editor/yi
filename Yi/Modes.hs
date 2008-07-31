@@ -36,13 +36,13 @@ mkHighlighter' :: forall token lexerState.
                     lexerState
                     -> (Alex.ASI lexerState
                         -> Maybe (Tok token, Alex.ASI lexerState))
-                    -> (token -> Style)
+                    -> (token -> StyleName)
                     -> Highlighter
                          (Yi.Syntax.Cache
                             (Alex.AlexState lexerState,
-                             [(Point, Style, Point)])
-                            (Linear.Result (Point, Style, Point)))
-                         (Linear.Result (Point, Style, Point))
+                             [Stroke])
+                            (Linear.Result Stroke))
+                         (Linear.Result Stroke)
 mkHighlighter' initSt scan tokenToStyle = mkHighlighter (Linear.incrScanner . Alex.lexScanner (fmap (first tokenToStroke) . scan) initSt) Linear.getStrokes
     where tokenToStroke (Tok t len posn) = (posnOfs posn, tokenToStyle t, posnOfs posn +~ len)
 

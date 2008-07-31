@@ -149,7 +149,7 @@ data Token = Number | CharTok | StringTok | VarIdent | ConsIdent
            | CppDirective
              deriving (Eq, Show)
 
-tokenToStyle :: Token -> Style 
+tokenToStyle :: Token -> StyleName
 tokenToStyle tok = case tok of
   CppDirective -> cppStyle
   Number       -> defaultStyle

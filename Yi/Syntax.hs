@@ -25,7 +25,7 @@ import Yi.Buffer.Basic
 
 type Length = Int                   -- size in #codepoints
 
-type Stroke = (Point,Style,Point)
+type Stroke = (Point,StyleName,Point)
 -- TODO: use Region datatype.
 
 

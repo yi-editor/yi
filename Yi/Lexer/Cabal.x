@@ -14,9 +14,9 @@ where
 import Yi.Lexer.Alex
 import Yi.Style
   ( Style             ( .. )
+  , StyleName
   , defaultStyle
   , commentStyle
-  , lineCommentStyle
   , keywordStyle
   , operatorStyle
   , upperIdStyle
@@ -164,7 +164,7 @@ haskell :-
 
 {
 type HlState = Int
-type Token = Style
+type Token = StyleName
 
 stateToInit x | x < 0     = nestcomm
               | otherwise = 0

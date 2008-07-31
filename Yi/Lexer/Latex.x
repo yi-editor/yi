@@ -103,7 +103,7 @@ stateToInit x = 0
 initState :: HlState
 initState = 0
 
-type Token = Style
+type Token = StyleName
 
 #include "alex.hsinc"
 }

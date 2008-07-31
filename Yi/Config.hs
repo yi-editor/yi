@@ -19,8 +19,7 @@ data UIConfig = UIConfig {
    configWindowFill :: !Char,       
    -- ^ char to fill empty window space with.  Usually '~' for vi-like
    -- editors, ' ' for everything else
-   configStyle :: UIStyle                        -- ^ ui colours
-
+   configStyle :: UIStyle -- ^ ui colours
   }
 
 {- | Currently duplicates some of Vim's indent settings. Allowing a buffer to

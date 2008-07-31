@@ -246,7 +246,7 @@ drawWindow cfg mre b sty focused w win = (Rendered { picture = pict,cursor = cur
                             else Point 0
         (text, _)    = runBuffer win b (streamB Forward fromMarkPoint) -- read enough chars from the buffer.
         (strokes, _) = runBuffer win b (strokesRangesB  mre fromMarkPoint (fromMarkPoint +~ sz)) -- corresponding strokes
-        colors = paintPicture attr (map (map toVtyStroke) strokes)
+        colors = paintPicture attr (map (map (toVtyStroke sty)) strokes)
         bufData = -- trace (unlines (map show text) ++ unlines (map show $ concat strokes)) $ 
                   paintChars attr colors $ toIndexedString fromMarkPoint text
         (showSel, _) = runBuffer win b (gets highlightSelection)
@@ -266,7 +266,7 @@ drawWindow cfg mre b sty focused w win = (Rendered { picture = pict,cursor = cur
         (modeLine0, _) = runBuffer win b getModeLine
         modeLine = if notMini then Just modeLine0 else Nothing
         modeLines = map (withStyle (modeStyle sty) . take w . (++ repeat ' ')) $ maybeToList $ modeLine
-        modeStyle = if focused then modeline_focused else modeline        
+        modeStyle = if focused then modelineFocused else modeline        
         filler = take w (configWindowFill cfg : repeat ' ')
     
         pict = vertcat (take h' (rendered ++ repeat (withStyle eofsty filler)) ++ modeLines)
@@ -471,5 +471,5 @@ paintStrokes s0 ls@((l,s,r):ts) lp@((p,s'):tp)
 paintPicture :: a -> [[(Point,(a -> a),Point)]] -> [(Point,a)]
 paintPicture a = foldr (paintStrokes a) []
 
-toVtyStroke :: Stroke -> (Point, Vty.Attr -> Vty.Attr, Point)
-toVtyStroke (l,s,r) = (l,styleToAttr s,r)
+toVtyStroke :: UIStyle -> Stroke -> (Point, Vty.Attr -> Vty.Attr, Point)
+toVtyStroke sty (l,s,r) = (l,styleToAttr (s sty),r)

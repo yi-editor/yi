@@ -416,7 +416,7 @@ winEls tospnt h = savingPointB $ do
              return (p ~- tospnt)
 
 render :: Editor -> UI -> FBuffer -> WinInfo -> t -> IO Bool
-render e _ui b w _ev = do
+render e ui b w _ev = do
   reg <- readRef (shownRegion w)
   drawWindow <- widgetGetDrawWindow $ textview w
   (width, height) <- widgetGetSize $ textview w
@@ -464,7 +464,7 @@ render e _ui b w _ev = do
                        <*> getA highlightSelectionA
                          
       regInWin = fmapRegion (subtract (regionStart r'')) (intersectRegion selectReg r'')
-      styleToAttrs (l,attrs,r) = [mkAttr l r a | a <- attrs]
+      styleToAttrs (l,attrs,r) = [mkAttr l r a | a <- attrs (configStyle $ uiConfig $ ui)]
       mkAttr l r (Foreground col) = AttrForeground (fromPoint (l - regionStart r'')) (fromPoint (r - regionStart r'')) (mkCol col)
       mkAttr l r (Background col) = AttrBackground (fromPoint (l - regionStart r'')) (fromPoint (r - regionStart r'')) (mkCol col)
       allAttrs = (if selVisible 

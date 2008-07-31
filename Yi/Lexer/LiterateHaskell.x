@@ -165,7 +165,7 @@ haskell :-
 }
 
 {
-type Token = Style
+type Token = StyleName
 data HlState = CodeBlock
              | CodeLine
              | Comment { unComment :: HlState }

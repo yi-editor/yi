@@ -17,12 +17,12 @@ import Yi.Style
   ( Style             ( .. )
   , defaultStyle
   , commentStyle
-  , lineCommentStyle
   , keywordStyle
   , operatorStyle
   , upperIdStyle
   , stringStyle
   , numberStyle
+  , StyleName
   )
 {- End of Module Imports -}
 
@@ -111,7 +111,7 @@ haskell :-
 {
 
 type HlState = Int
-type Token = Style
+type Token = StyleName
 
 {- 
   See Haskell.x which uses this to say whether we are in a

@@ -10,16 +10,7 @@ import Yi.Lexer.Alex
 {- Local Modules Imported -}
 import qualified Yi.Syntax
 import Yi.Style
-  ( Style             ( .. )
-  , defaultStyle
-  , commentStyle
-  , lineCommentStyle
-  , keywordStyle
-  , operatorStyle
-  , upperIdStyle
-  , stringStyle
-  , numberStyle
-  )
+
 {- End of Module Imports -}
 
 }
@@ -210,7 +201,7 @@ haskell :-
 {
 
 type HlState = Int
-type Token = Style
+type Token = StyleName
 
 stateToInit x | x < 0     = nestcomm
               | otherwise = 0

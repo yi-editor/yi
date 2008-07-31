@@ -191,9 +191,21 @@ defaultConfig =
            , configStyle = UIStyle 
              { window             = []
              , modeline           = [Foreground black,       Background darkcyan]
-             , modeline_focused   = [Foreground brightwhite, Background darkcyan]
+             , modelineFocused    = [Foreground brightwhite, Background darkcyan]
              , selected           = [Foreground Reverse,     Background Reverse]
              , eof                = [Foreground blue]
+             , defaultStyle = []
+             , reverseStyle = [Foreground Reverse, Background Reverse]
+             , cppStyle = [Foreground red]
+             , commentStyle = [Foreground purple]
+             , keywordStyle = [Foreground darkblue]
+             , operatorStyle = [Foreground brown]
+             , upperIdStyle = [Foreground darkgreen]
+             , stringStyle = [Foreground darkcyan]
+             , numberStyle = [Foreground darkred]
+             , errorStyle = [Background red]
+             , hintStyle = [Background cyan]
+             , strongHintStyle = [Background magenta]
              }
            }
          , defaultKm        = nilKeymap

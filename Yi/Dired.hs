@@ -237,7 +237,7 @@ diredRefresh = do
                     moveTo p
     return ()
     where
-    headStyle = [Foreground grey]
+    headStyle = const [Foreground grey]
     doPadding :: [DRStrings] -> [String]
     doPadding drs = map (pad ((maximum . map drlength) drs)) drs
 
@@ -253,14 +253,14 @@ diredRefresh = do
 
 -- | Returns a tuple containing the textual region (the end of) which is used for 'click' detection
 --   and the FilePath of the file represented by that textual region
-insertDiredLine :: ([String], Style, String) -> YiM (Point, Point, FilePath)
+insertDiredLine :: ([String], StyleName, String) -> YiM (Point, Point, FilePath)
 insertDiredLine (fields, sty, filenm) = withBuffer $ do
     insertN $ (concat $ intersperse " " (init fields))
     p1 <- pointB
     insertN (" " ++ last fields)
     p2 <- pointB
     insertN "\n"
-    when (sty /= defaultStyle) $ (addOverlayB (mkOverlay UserLayer (mkRegion p1 p2) sty) >> return ())
+    addOverlayB (mkOverlay UserLayer (mkRegion p1 p2) sty) >> return ()
     return (p1, p2, filenm)
 
 data DRStrings = DRPerms {undrs :: String}
@@ -272,18 +272,18 @@ data DRStrings = DRPerms {undrs :: String}
                | DRFiles {undrs :: String}
 
 -- | Return a List of (prefix, fullDisplayNameIncludingSourceAndDestOfLink, style, filename)
-linesToDisplay :: YiM ([([DRStrings], Style, String)])
+linesToDisplay :: YiM ([([DRStrings], StyleName, String)])
 linesToDisplay = do
     dState <- withBuffer getDynamicB
     return $ map (uncurry lineToDisplay) (M.assocs $ diredEntries dState)
     where
     lineToDisplay k (DiredFile v)      = (l " -" v ++ [DRFiles k], defaultStyle, k)
-    lineToDisplay k (DiredDir v)       = (l " d" v ++ [DRFiles k], [Foreground blue], k)
-    lineToDisplay k (DiredSymLink v s) = (l " l" v ++ [DRFiles $ k ++ " -> " ++ s], [Foreground cyan], k)
-    lineToDisplay k (DiredSocket v) = (l " s" v ++ [DRFiles $ k], [Foreground magenta], k)
-    lineToDisplay k (DiredCharacterDevice v) = (l " c" v ++ [DRFiles $ k], [Foreground yellow], k)
-    lineToDisplay k (DiredBlockDevice v) = (l " b" v ++ [DRFiles $ k], [Foreground yellow], k)
-    lineToDisplay k (DiredNamedPipe v) = (l " p" v ++ [DRFiles $ k], [Foreground brown], k)
+    lineToDisplay k (DiredDir v)       = (l " d" v ++ [DRFiles k], const [Foreground blue], k)
+    lineToDisplay k (DiredSymLink v s) = (l " l" v ++ [DRFiles $ k ++ " -> " ++ s], const [Foreground cyan], k)
+    lineToDisplay k (DiredSocket v) = (l " s" v ++ [DRFiles $ k], const [Foreground magenta], k)
+    lineToDisplay k (DiredCharacterDevice v) = (l " c" v ++ [DRFiles $ k], const [Foreground yellow], k)
+    lineToDisplay k (DiredBlockDevice v) = (l " b" v ++ [DRFiles $ k], const [Foreground yellow], k)
+    lineToDisplay k (DiredNamedPipe v) = (l " p" v ++ [DRFiles $ k], const [Foreground brown], k)
     lineToDisplay k DiredNoInfo        = ([DRFiles $ k ++ " : Not a file/dir/symlink"], defaultStyle, k)
 
     l pre v = [DRPerms $ pre ++ permString v,

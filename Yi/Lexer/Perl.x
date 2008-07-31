@@ -142,8 +142,8 @@ perlHighlighterRules :-
 
     @seperator @reservedId / @seperator            { c keywordStyle }
     ^ @reservedId / @seperator                     { c keywordStyle }
-    @varid / @seperator                            { c [Foreground purple] }
-    @specialVarId / @seperator                     { c [Foreground cyan] }
+    @varid / @seperator                            { c (const [Foreground purple]) }
+    @specialVarId / @seperator                     { c (const [Foreground cyan]) }
 
     @reservedop                                    { c operatorStyle }
 
@@ -221,11 +221,11 @@ perlHighlighterRules :-
     $white+ { c defaultStyle }
     @varid / @interpVarSeperator
         { 
-            c [Foreground purple] 
+            c (const [Foreground purple])
         }
     @specialVarId / @interpVarSeperator                     
         { 
-            c [Foreground cyan] 
+            c (const [Foreground cyan])
         }
     ./
         {
@@ -271,11 +271,11 @@ perlHighlighterRules :-
     $white+ { c defaultStyle }
     @varid / @interpVarSeperator
         { 
-            c [Foreground purple] 
+            c (const [Foreground purple])
         }
     @specialVarId / @interpVarSeperator                     
         { 
-            c [Foreground cyan] 
+            c (const [Foreground cyan])
         }
     .   { c stringStyle }
 }
@@ -310,7 +310,7 @@ data HlState =
     | HlInPerldoc
     | HlInSubstRegex String
 
-type Token = Style
+type Token = StyleName
 
 stateToInit HlInCode = 0
 stateToInit (HlInInterpString _) = interpString

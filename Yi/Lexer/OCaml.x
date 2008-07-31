@@ -119,7 +119,7 @@ data Token = Number | CharTok | StringTok | VarIdent | ConsIdent
            | Comment
              deriving (Eq, Show)
 
-tokenToStyle :: Token -> Style
+tokenToStyle :: Token -> StyleName
 tokenToStyle tok = case tok of
   Number       -> defaultStyle
   CharTok      -> stringStyle

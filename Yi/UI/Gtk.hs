@@ -414,7 +414,7 @@ replaceTagsIn ui from to buf gtkBuf = do
   forM_ (concat styleSpans) $ \(l,s,r) -> do
     f <- textBufferGetIterAtOffset gtkBuf (fromPoint l)
     t <- textBufferGetIterAtOffset gtkBuf (fromPoint r)
-    forM s $ \a -> do 
+    forM (s (configStyle $ uiConfig $ ui)) $ \a  -> do 
       tag <- styleToTag ui a
       textBufferApplyTag gtkBuf tag f t
 
