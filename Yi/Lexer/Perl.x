@@ -100,7 +100,7 @@ $cntrl   = [$large \@\[\\\]\^\_]
          | BEL | BS | HT | LF | VT | FF | CR | SO | SI | DLE
          | DC1 | DC2 | DC3 | DC4 | NAK | SYN | ETB | CAN | EM
          | SUB | ESC | FS | GS | RS | US | SP | DEL
-$charesc = [abfnrtv\\\"\'\&]
+$charesc = [abfnrtv\\\"\'\&\`]
 @escape  = \\ ($charesc | @ascii | @decimal | o @octal | x @hexadecimal)
 @gap     = \\ $whitechar+ \\
 
@@ -131,15 +131,23 @@ perlHighlighterRules :-
     @decimal \. @decimal @exponent?
     | @decimal @exponent                           { c defaultStyle }
 
+    -- Chunks that are handled as interpolating strings.
     \"
     { 
-        m (\_ -> HlInInterpString) operatorStyle 
+        m (\_ -> HlInInterpString "\"" ) operatorStyle 
     }
+    "`" 
+    {
+        m (\_ -> HlInInterpString "`" ) operatorStyle
+    }
+
+    -- Heredocs are kinda like interpolating strings...
     "<<" @heredocId
     { 
         \str _ -> (HlInHeredoc (drop 2 $ fmap snd str), operatorStyle)
     }
-    "`" @interpolatingString* "`"                  { c stringStyle }
+
+    -- Chunks that are handles as non-interpolating strings.
     \' 
     { 
         m (\_ -> HlInString) operatorStyle 
@@ -151,10 +159,6 @@ perlHighlighterRules :-
 <interpString>
 {
     @escape { c defaultStyle }
-    \"
-        {
-            m (\_ -> HlInCode) operatorStyle
-        }
     $white+ { c defaultStyle }
     @varid / @interpVarSeperator
         { 
@@ -163,6 +167,18 @@ perlHighlighterRules :-
     @specialVarId / @interpVarSeperator                     
         { 
             c [Foreground cyan] 
+        }
+    ./
+        {
+            \state preInput _ _ ->
+                case state of
+                    HlInInterpString end_tag ->
+                        let inputText = take (length end_tag) $ alexCollectChar preInput
+                        in if (inputText == end_tag) then True else False
+                    _ -> False
+        }
+        {
+            m (\_ -> HlInCode) operatorStyle
         }
     .   { c stringStyle }
 }
@@ -207,14 +223,14 @@ perlHighlighterRules :-
 
 data HlState = 
     HlInCode
-    | HlInInterpString
+    | HlInInterpString String
     | HlInString
     | HlInHeredoc String
 
 type Token = Style
 
 stateToInit HlInCode = 0
-stateToInit HlInInterpString = interpString
+stateToInit (HlInInterpString _) = interpString
 stateToInit HlInString = string
 stateToInit (HlInHeredoc _) = heredoc
 
