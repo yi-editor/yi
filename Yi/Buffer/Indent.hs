@@ -432,7 +432,7 @@ indentString indentSettings numOfShifts input
 shiftIndentOfSelection :: Int -> BufferM ()
 shiftIndentOfSelection shiftCount = do
     indentSettings <- indentSettingsB
-    modifyExtendedSelectionB Line $ modifyLines (indentString indentSettings shiftCount)
+    modifyExtendedSelectionB Line $ mapLines (indentString indentSettings shiftCount)
     firstNonSpaceB
 
 shiftIndentOfLine :: Int -> BufferM ()

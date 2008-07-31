@@ -472,7 +472,7 @@ linePrefixSelectionB ::
                       -> BufferM ()
                          -- The returned buffer action
 linePrefixSelectionB s =
-  modifyExtendedSelectionB Line $ modifyLines (s ++)
+  modifyExtendedSelectionB Line $ mapLines (s ++)
 
 -- | Comments the region using latex line comments
 latexCommentSelectionB :: BufferM ()
@@ -484,7 +484,7 @@ latexCommentSelectionB = linePrefixSelectionB "% "
 unLineCommentSelectionB :: String -- ^ The string which begins a line comment
                         -> BufferM ()
 unLineCommentSelectionB s =
-  modifyExtendedSelectionB Line $ modifyLines unCommentLine
+  modifyExtendedSelectionB Line $ mapLines unCommentLine
   where
   unCommentLine :: String -> String
   unCommentLine line
@@ -519,7 +519,7 @@ justifySelectionWithTopB =
     case lines input of
       []           -> ""
       [ one ]      -> one
-      (top : _)    -> modifyLines justifyLine input
+      (top : _)    -> mapLines justifyLine input
                       where
                       -- The indentation of the top line.
                       topIndent = takeWhile isSpace top
@@ -546,4 +546,4 @@ fillParagraph :: BufferM ()
 fillParagraph = fillRegion =<< regionOfB unitParagraph
 
 sortLines :: BufferM ()
-sortLines = modifyRegionB (unlines' . sort . lines') =<< unitWiseRegion Line =<< getSelectRegionB
+sortLines = modifyRegionB (onLines sort) =<< unitWiseRegion Line =<< getSelectRegionB

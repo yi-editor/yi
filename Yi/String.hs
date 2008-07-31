@@ -4,7 +4,6 @@
 --
 
 -- | String manipulation utilities
---
 
 module Yi.String (isBlank,
                   chomp,
@@ -13,7 +12,8 @@ module Yi.String (isBlank,
                   capitalizeFirst,
                   dropSpace,
                   fillText,
-                  modifyLines,
+                  onLines,
+                  mapLines,
                   lines',
                   unlines',
                  ) where
@@ -106,8 +106,13 @@ lines' = stratify "\n"
 -- 'modifySelectionB' and 'modifyRegionB'.
 -- To be used when the desired function should map across
 -- the lines of a region.
-modifyLines :: (String -> String) -> String -> String
-modifyLines transform = unlines' . fmap transform . lines'
+mapLines :: (String -> String) -> String -> String
+mapLines transform = onLines (fmap transform)
+
+onLines :: ([String] -> [String]) -> String -> String
+onLines transform = unlines' . transform . lines'
+
+
 
 -- | Right inverse of intercalate.
 
