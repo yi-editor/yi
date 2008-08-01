@@ -65,10 +65,11 @@ colorToText (RGB r g b) = ('#':) . showsHex r . showsHex g . showsHex b $ []
 
 -- | Some simple colours
 
-black, grey, darkred, red, darkgreen, green, brown, yellow          :: Color
-darkblue, blue, purple, magenta, darkcyan, cyan, white, brightwhite :: Color
+black, grey, lightGrey, darkred, red, darkgreen, green, brown, yellow :: Color
+darkblue, blue, purple, magenta, darkcyan, cyan, white, brightwhite   :: Color
 black       = RGB 0 0 0
 grey        = RGB 128 128 128
+lightGrey   = RGB 100 100 100
 darkred     = RGB 139 0 0
 red         = RGB 255 0 0
 darkgreen   = RGB 0 100 0
@@ -84,4 +85,13 @@ cyan        = RGB 0 255 255
 white       = RGB 165 165 165
 brightwhite = RGB 255 255 255
 
+
+overloadForeground :: (UIStyle -> Style) -> Color -> UIStyle -> Style
+overloadForeground styleSelctor color uiStyle =
+    let style = styleSelctor uiStyle
+    in overloadForeground' style
+    where 
+        overloadForeground' [] = [Foreground color]
+        overloadForeground' (Foreground _ : attrs) = (Foreground color) : attrs
+        overloadForeground' (a : attrs) = a : (overloadForeground' attrs)
 
