@@ -316,6 +316,7 @@ strokeRangeExtent = 100
 $(declareClass "YiTextStorage" "NSTextStorage")
 $(exportClass "YiTextStorage" "yts_" [
     InstanceVariable "buffer" [t| Maybe FBuffer |] [| Nothing |]
+  , InstanceVariable "uiStyle" [t| Maybe UIStyle |] [| Nothing |]
   , InstanceVariable "attributesCache" [t| Maybe (NSRange, NSDictionary ()) |] [| Nothing |]
   , InstanceVariable "stringCache" [t| Maybe (NSString ()) |] [| Nothing |]
   , InstanceMethod 'string -- '
@@ -342,8 +343,9 @@ yts_string self = do
 yts_attributesAtIndexEffectiveRange :: CUInt -> NSRangePointer -> YiTextStorage () -> IO (NSDictionary ())
 yts_attributesAtIndexEffectiveRange i er self = do
   (r,dict) <- withCache self _attributesCache (nsLocationInRange i . fst) $ do
+    Just sty <- self #. _uiStyle
     strokes <- self # runStrokesAround i
-    let (e,s) = minimalStyle (fromIntegral i + strokeRangeExtent) strokes
+    let (e,s) = minimalStyle sty (fromIntegral i + strokeRangeExtent) strokes
     let r = NSRange i (fromIntegral e - i)
     -- logPutStrLn $ "Calling yts_attributesAtIndexEffectiveRange " ++ show r
     (,) <$> pure r <*> convertStyle s
@@ -370,7 +372,8 @@ yts_attributeAtIndexEffectiveRange attr i er self = do
       -- TODO: Adjust line break property...
       safePokeFullRange >> castObject <$> defaultParagraphStyle _NSParagraphStyle
     "NSBackgroundColor" -> do
-      bg <- minimalAttr background <$> self # runStrokesAround i
+      Just sty <- self #. _uiStyle
+      bg <- minimalAttr sty background <$> self # runStrokesAround i
       let (s, Background c) = fromMaybe (fromIntegral i + strokeRangeExtent, Background Default) bg
       safePoke er (NSRange i (fromIntegral s - i))
       castObject <$> getColor False c
@@ -396,14 +399,14 @@ yts_setAttributesRange _ _ _ = return ()
 --   This negatively assumes that any two adjacent strokes
 --   have different styles, and positively assumes that
 --   the start of all strokes are the same.
-minimalStyle :: Point -> [[Stroke]] -> (Point,Style)
-minimalStyle q xs =
-  (\ (es, ss) -> (L.minimum (q:es), concat ss)) $ unzip [ (e,s) | (_, s, e):_ <- xs ]
+minimalStyle :: UIStyle -> Point -> [[Stroke]] -> (Point,Style)
+minimalStyle sty q xs =
+  (\ (es, ss) -> (L.minimum (q:es), concat ss)) $ unzip [ (e,s sty) | (_, s, e):_ <- xs ]
 
 -- | Obtain the maximal range for a particular attribute.
-minimalAttr :: (Style -> Maybe Attr) -> [[Stroke]] -> Maybe (Point, Attr)
-minimalAttr f xs =
-  listToMaybe $ catMaybes [ (,) <$> pure b <*> f s | (_, s, b):_ <- xs ]
+minimalAttr :: UIStyle -> (Style -> Maybe Attr) -> [[Stroke]] -> Maybe (Point, Attr)
+minimalAttr sty f xs =
+  listToMaybe $ catMaybes [ (,) <$> pure b <*> f (s sty) | (_, s, b):_ <- xs ]
 
 -- | Use this with minimalAttr to get background information
 background :: Style -> Maybe Attr
@@ -849,14 +852,15 @@ getTextStorage ui b = do
     bufs <- readRef bufsRef
     storage <- case M.lookup (bkey b) bufs of
       Just storage -> return storage
-      Nothing -> newTextStorage b
+      Nothing -> newTextStorage (configStyle $ uiConfig ui) b
     modifyRef bufsRef (M.insert (bkey b) storage)
     return storage
 
-newTextStorage :: FBuffer -> IO (YiTextStorage ())
-newTextStorage b = do
+newTextStorage :: UIStyle -> FBuffer -> IO (YiTextStorage ())
+newTextStorage sty b = do
   buf <- new _YiTextStorage
   buf # setIVar _buffer (Just b)
+  buf # setIVar _uiStyle (Just sty)
   buf # setMonospaceFont
   return buf
 
