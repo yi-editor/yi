@@ -102,19 +102,25 @@ insideGroup _ = True
 
 cleverAutoIndentHaskellB :: Expr TT -> IndentBehaviour -> BufferM ()
 cleverAutoIndentHaskellB e behaviour = do
-  previousLine   <- getNextNonBlankLineB Backward
-  previousIndent <- indentOfB previousLine
+  previousIndent <- indentOfB =<< getNextNonBlankLineB Backward
+  nextIndent     <- indentOfB =<< getNextNonBlankLineB Forward
   solPnt <- pointAt moveToSol
   eolPnt <- pointAt moveToEol
   let onThisLine ofs = ofs >= solPnt && ofs <= eolPnt
+      firstTokNotOnLine = listToMaybe .
+                              filter (not . onThisLine . posnOfs . tokPosn) .
+                              filter (not . isErrorTok . tokT) . allToks 
   let stopsOf :: [Tree TT] -> [Int]
       stopsOf (g@(Group open ctnt close):ts) 
           | isErrorTok (tokT close) || getLastOffset g >= solPnt
               = [groupIndent open ctnt]  -- stop here: we want to be "inside" that group.
           | otherwise = stopsOf ts -- this group is closed before this line; just skip it.
-      stopsOf ((Atom (Tok {tokT = t})):_) | startsLayout t = [previousIndent + indentLevel]
+      stopsOf ((Atom (Tok {tokT = t})):_) | startsLayout t = [nextIndent, previousIndent + indentLevel]
+        -- of; where; etc. we want to start the block here.
+        -- Also use the next line's indent:
+        -- maybe we are putting a new 1st statement in the block here.
       stopsOf ((Atom _):ts) = stopsOf ts
-         -- of; where; etc. we want to start the block here.
+         -- any random part of expression, we ignore it.
       stopsOf (t@(Stmt _):ts) = shiftBlock + maybe 0 (posnCol . tokPosn) (getFirstToken t) : stopsOf ts
       stopsOf (Error _:ts) = stopsOf ts
       stopsOf [] = []
@@ -129,7 +135,7 @@ cleverAutoIndentHaskellB e behaviour = do
         _ -> 0
       deepInGroup = maybe True insideGroup firstTokOnLine
       groupIndent (Tok {tokT = Special openChar, tokPosn = Posn _ _ openCol}) ctnt
-          | deepInGroup = case listToMaybe $ filter (not . onThisLine . posnOfs . tokPosn) $ allToks $ ctnt of
+          | deepInGroup = case firstTokNotOnLine ctnt of
               -- examine the first token of the group (but not on the line we are indenting!)
               Nothing -> openCol + nominalIndent openChar -- no such token: indent normally.
               Just t -> posnCol . tokPosn $ t -- indent along that other token
