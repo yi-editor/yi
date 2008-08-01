@@ -1,0 +1,60 @@
+\documentclass[utf8x]{beamer}
+\usepackage[utf8x]{inputenc}
+% \DeclareUnicodeCharacter{981}{\phi}
+\usepackage{beamerthemesplit}
+%\usepackage{aop-text}
+%\usepackage{aop-math}
+
+\title{Yi}
+\subtitle{An Editor in Haskell for Haskell}
+\author{Jean-Philippe Bernardy}
+% \email           {bernardy@chalmers.se}
+\institute {Chalmers University of Technology
+            % and University of Gothenburg
+          }
+\date {
+      Haskell Symposium 2008
+      \\Thursday, 25th September
+      }
+
+\begin{document}
+
+\frame{\titlepage}
+
+\frame{\tableofcontents}
+
+\section{Capabilities}
+\frame{
+  \frametitle{Capabilities}
+      \begin{itemize}
+        \item Purely functional core + IO shell
+        \item Keymap as parsers: vim, emacs, cua, ...
+        \item Frontends: vty, gtk, cocoa, ...
+        \item Syntax-aware
+      \end{itemize}
+}
+
+\frame{
+  \frametitle{Haskell Support}
+      \begin{itemize}
+        \item Paren matching
+        \item Layout rule
+        \item Cabal build
+      \end{itemize}
+}
+
+\frame{
+  \frametitle{Demo}
+}
+
+\section{Configuration}
+
+\frame{
+  \itemize{
+    \item Yi is a library (as XMonad)
+    \item Users "configure" Yi by combining the building blocks.
+    \item Example!
+  }
+}
+
+\end{document}

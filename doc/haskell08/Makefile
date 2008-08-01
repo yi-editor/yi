@@ -9,13 +9,13 @@ default: hask08.pdf
 %.ps: %.dvi
 	dvips $< 
 
-%.dvi: %.tex %.bib
+%.dvi: %.tex *.bib
 	latex $<
 	bibtex $*
 	latex $<
 	latex $<
 
-%.pdf: %.tex %.bib
+%.pdf: %.tex *.bib
 	pdflatex $<
 	bibtex $*
 	pdflatex $<
