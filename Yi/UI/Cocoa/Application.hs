@@ -44,6 +44,8 @@ import HOC ()
 import Foundation hiding (name, new, parent, error, self, null)
 import AppKit hiding (windows, start, rect, width, content, prompt, dictionary, icon, concat)
 
+foreign import ccall "RtsAPI.h shutdownHaskellAndExit" shutdownHaskellAndExit :: CInt -> IO ()
+
 -- The selector is used since NSEvent#type treats the c enum
 -- in a type-safe way, but Cocoa receives values which are not
 -- defined in the c enum, which results in a pattern mismatch...
@@ -55,10 +57,33 @@ instance Has_rawType (NSEvent a)
 $(declareClass "YiController" "NSObject")
 $(exportClass "YiController" "yc_" [
     InstanceMethod 'applicationShouldTerminateAfterLastWindowClosed -- '
+  , InstanceMethod 'applicationWillTerminate -- '
   ])
 
 yc_applicationShouldTerminateAfterLastWindowClosed :: forall t. NSApplication t -> YiController () -> IO Bool
 yc_applicationShouldTerminateAfterLastWindowClosed _app _self = return True
+
+-- Since cocoa application termination is "optimized" by directly
+-- calling exit, instead of falling out of the run-loop and returning
+-- to haskell, we need to capture the termination and make sure that
+-- we can run the haskell termination procedures.
+-- Without this, profiling cannot be used with the cocoa frontend.
+-- Unfortunately, graceful termination would require that haskell
+-- and cocoa was first disconnected so that haskell code can be
+-- properly terminated using hs_exit/shutdownHaskell. Once this is
+-- done control can be left to cocoa to perform the final cocoa
+-- cleanup. This solution can almost certainly not be implemented
+-- from within haskell.
+-- For the time being we try to gracefully terminate the haskell
+-- portions and terminate the cocoa parts more forcefully. Any
+-- "necessary" cocoa termination activities have to be replicated
+-- below...
+yc_applicationWillTerminate :: forall t. NSNotification t -> YiController () -> IO ()
+yc_applicationWillTerminate _note _self = do
+  -- Partially replicate cocoa termination procedure
+  _NSUserDefaults # standardUserDefaults >>= synchronize
+  -- Interrupt cocoa and run haskell termination
+  shutdownHaskellAndExit 0
 
 ------------------------------------------------------------------------
 
