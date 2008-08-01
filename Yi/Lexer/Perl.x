@@ -138,7 +138,8 @@ perlHighlighterRules :-
 {
     $white+                                        { c defaultStyle } -- whitespace
 
-    "#"[^\n]*                                      { c commentStyle }
+    [^smqrty]^"#"[^\n]*                            { c commentStyle }
+    ^"#"[^\n]*                                     { c commentStyle }
 
     @seperator @reservedId / @seperator            { c keywordStyle }
     ^ @reservedId / @seperator                     { c keywordStyle }
@@ -189,6 +190,16 @@ perlHighlighterRules :-
     "s/"
         {
             \str _ -> (HlInSubstRegex "/", operatorStyle)
+        }
+
+    "m#"
+        {
+            \str _ -> (HlInInterpString "#", operatorStyle)
+        }
+
+    "s#"
+        {
+            \str _ -> (HlInSubstRegex "#", operatorStyle)
         }
 
     -- Heredocs are kinda like interpolating strings...
