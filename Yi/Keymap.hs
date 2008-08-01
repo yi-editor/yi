@@ -60,10 +60,10 @@ data Yi = Yi {yiUi          :: UI,
              }
              deriving Typeable
 
-data YiVar = YiVar {yiEditor             :: Editor,
-                    threads              :: [ThreadId],           -- ^ all our threads
-                    yiSubprocessIdSupply :: SubprocessId,
-                    yiSubprocesses       :: (M.Map SubprocessId SubprocessInfo)
+data YiVar = YiVar {yiEditor             :: !Editor,
+                    threads              :: ![ThreadId],           -- ^ all our threads
+                    yiSubprocessIdSupply :: !SubprocessId,
+                    yiSubprocesses       :: !(M.Map SubprocessId SubprocessInfo)
                    }
 
 -- | The type of user-bindable functions
