@@ -54,6 +54,7 @@ import Yi.Regex
 
 import Yi.MiniBuffer (withMinibufferGen, noHint)
 import Control.Monad
+import Control.Applicative
 import Yi.Buffer
 import Yi.Buffer.HighLevel
 import Yi.Config
@@ -61,7 +62,6 @@ import Yi.Core
 import Yi.Editor
 import Yi.Buffer.Region
 import Yi.Style
-import Yi.Modes (defaultFundamentalMode)
 import Yi.Keymap.Keys
 import System.FriendlyPath
 import Yi.Accessor
@@ -203,12 +203,10 @@ diredDirBuffer dir = do
                 setFileName b dir -- associate the buffer with the dir
                 withEditor $ switchToBufferE b
                 diredLoadNewDir dir
-                withBuffer $ setMode diredMode
+                mode <- (fundamentalMode . yiConfig) <$> ask
+                withBuffer $ setMode mode {modeKeymap = diredKeymap}
+                -- Colours for Dired come from overlays not syntax highlighting
                 return b
-
-diredMode :: Mode ()
-diredMode = defaultFundamentalMode {modeKeymap = diredKeymap}
-    -- Colours for Dired come from overlays not syntax highlighting
 
 diredRefresh :: YiM ()
 diredRefresh = do
