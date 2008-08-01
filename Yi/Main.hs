@@ -267,10 +267,10 @@ defaultPublishedActions = M.fromList $
 
 openScratchBuffer :: YiM ()
 openScratchBuffer = withEditor $ do     -- emacs-like behaviour
-      newBufferE "*scratch*" $ fromString
-                   ("-- This buffer is for notes you don't want to save, and for haskell evaluation\n" ++
-                    "-- If you want to create a file, open that file,\n" ++
-                    "-- then enter the text in that file's own buffer.\n\n")
+      newBufferE "*scratch*" $ fromString $ unlines
+                   ["This buffer is for notes you don't want to save.", --, and for haskell evaluation" -- maybe someday?
+                    "If you want to create a file, open that file,",
+                    "then enter the text in that file's own buffer."]
       return ()
 
 -- | Transform the config with options
