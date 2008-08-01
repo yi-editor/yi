@@ -115,6 +115,10 @@ library
     if flag (cocoa)
       cpp-options: -DFRONTEND_COCOA
       exposed-modules: Yi.UI.Cocoa
+      other-modules: Yi.UI.Cocoa.Application
+                     Yi.UI.Cocoa.TextStorage
+                     Yi.UI.Cocoa.TextView
+                     Yi.UI.Cocoa.Utils
 
     if flag (ghcAPI)
       cpp-options: -DGHC_API
