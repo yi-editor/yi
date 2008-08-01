@@ -5,7 +5,7 @@ import Yi.Keymap.Emacs (keymap)
 
 -- If configured with ghcAPI, Shim Mode can be enabled:
 -- import qualified Yi.Mode.Shim as Shim
-import Yi.Mode.Haskell
+import Yi.Mode.Haskell as Haskell
 import Data.List (isSuffixOf, drop)
 import Yi.Prelude
 import Prelude ()
@@ -22,7 +22,7 @@ myModetable :: ReaderT String Maybe AnyMode
 myModetable = ReaderT $ \fname -> case () of 
                         _ | ".hs" `isSuffixOf` fname -> Just $ AnyMode bestHaskellMode
                         _ ->  Nothing
-    where bestHaskellMode = cleverHaskellMode 
+    where bestHaskellMode = Haskell.cleverMode 
                             {
                              -- example of Mode-local rebinding
                              modeKeymap = ((ctrl (char 'c') ?>> ctrl(char 'c') ?>>! haskellToggleCommentSelectionB)

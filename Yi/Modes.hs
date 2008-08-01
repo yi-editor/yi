@@ -1,5 +1,5 @@
 module Yi.Modes (defaultFundamentalMode, fundamental,
- latexMode, cppMode, haskellMode, literateHaskellMode, cabalMode, srmcMode, ocamlMode, defaultModeMap) where
+ latexMode, cppMode, literateHaskellMode, cabalMode, srmcMode, ocamlMode, defaultModeMap) where
 
 import Control.Arrow (first)
 import Prelude ()
@@ -8,7 +8,6 @@ import Yi.Buffer (AnyMode(..), Mode(..), emptyMode)
 import Yi.Buffer.HighLevel (fillParagraph)
 import Yi.Buffer.Indent
 import Yi.Lexer.Alex (Tok(..), Posn(..))
-import Yi.Mode.Haskell
 import Yi.Prelude
 import Yi.Style
 import Yi.Syntax
@@ -21,6 +20,7 @@ import qualified Yi.Lexer.OCaml               as OCaml
 import qualified Yi.Lexer.Perl                as Perl
 import qualified Yi.Lexer.Srmc                as Srmc
 import qualified Yi.Syntax.Linear as Linear
+import qualified Yi.Mode.Haskell as Haskell
 
 
 fundamental, defaultFundamentalMode :: Mode syntax
@@ -99,11 +99,11 @@ defaultModeMap = ReaderT (modeFromExtension . takeExtension)
   'yi' are mostly haskell hackers, as of yet.
 -}
 modeFromExtension :: String -> Maybe AnyMode
-modeFromExtension ".hs"    = Just $ AnyMode haskellMode
-modeFromExtension ".x"     = Just $ AnyMode haskellMode
+modeFromExtension ".hs"    = Just $ AnyMode Haskell.plainMode
+modeFromExtension ".x"     = Just $ AnyMode Haskell.plainMode
 modeFromExtension ".lhs"   = Just $ AnyMode literateHaskellMode
-modeFromExtension ".hsc"   = Just $ AnyMode haskellMode
-modeFromExtension ".hsinc" = Just $ AnyMode haskellMode -- haskell include files such as Yi/Syntax/alex.hsinc
+modeFromExtension ".hsc"   = Just $ AnyMode Haskell.plainMode
+modeFromExtension ".hsinc" = Just $ AnyMode Haskell.plainMode -- haskell include files such as Yi/Lexer/alex.hsinc
 modeFromExtension ".cabal" = Just $ AnyMode cabalMode
 modeFromExtension ".tex"   = Just $ AnyMode latexMode
 modeFromExtension ".sty"   = Just $ AnyMode latexMode

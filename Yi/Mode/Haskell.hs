@@ -1,38 +1,52 @@
-module Yi.Mode.Haskell (haskellMode, cleverHaskellMode, 
-                        haskellUnCommentSelectionB, haskellCommentSelectionB, haskellToggleCommentSelectionB)  where
+-- Copyright (c) 2008 Jean-Philippe Bernardy
+-- | Haskell-specific modes and commands.
+module Yi.Mode.Haskell 
+  (
+   -- * Modes
+   plainMode,
+   cleverMode, 
+   
+   -- * Buffer-level operations
+   haskellUnCommentSelectionB,
+   haskellCommentSelectionB,
+   haskellToggleCommentSelectionB
 
-import Prelude (unwords)
-import Yi.Prelude
-import Data.Maybe (maybe, listToMaybe)
+   -- * IO-level operations
+  ) where
+
 import Data.List (isPrefixOf, dropWhile, takeWhile, filter, groupBy, drop)
+import Data.Maybe (maybe, listToMaybe)
+import Prelude (unwords)
 import Yi.Buffer
 import Yi.Buffer.HighLevel
+import Yi.Buffer.Indent
 import Yi.Buffer.Normal
 import Yi.Buffer.Region
-import Yi.Buffer.Indent
-import Yi.Prelude
-import Yi.Syntax
-import Yi.String
-import Yi.Region
 import Yi.Lexer.Alex (Tok(..),Posn(..),tokBegin,tokEnd,tokRegion)
 import Yi.Lexer.Haskell (Token(..), ReservedType(..), startsLayout)
-import qualified Yi.Syntax.Linear as Linear
+import Yi.Prelude
+import Yi.Prelude
+import Yi.Region
+import Yi.String
+import Yi.Syntax
+import Yi.Syntax.Paren as Paren
 import qualified Yi.IncrementalParse as IncrParser
 import qualified Yi.Lexer.Alex as Alex
 import qualified Yi.Lexer.Haskell as Haskell
-import Yi.Syntax.Paren as Paren
-import Control.Applicative
+import qualified Yi.Syntax.Linear as Linear
 
-haskellMode :: Mode (Linear.Result (Tok Token))
-haskellMode = emptyMode 
+-- | Plain haskell mode, providing only list of stuff.
+plainMode :: Mode (Linear.Result (Tok Token))
+plainMode = emptyMode 
    {
     modeHL = ExtHL $
     mkHighlighter (Linear.incrScanner . haskellLexer) (\begin end pos -> Linear.getStrokes begin end pos . fmap tokenToStroke)
    , modeIndent = \_ast -> autoIndentHaskellB
    }
 
-cleverHaskellMode :: Mode (Expr (Tok Haskell.Token))
-cleverHaskellMode = emptyMode {
+-- | "Clever" hasell mode, using the 
+cleverMode :: Mode (Expr (Tok Haskell.Token))
+cleverMode = emptyMode {
     modeIndent = cleverAutoIndentHaskellB,
     modeHL = ExtHL $
 {--    lexer `withScanner` IncrParser.mkHighlighter Fractal.parse
