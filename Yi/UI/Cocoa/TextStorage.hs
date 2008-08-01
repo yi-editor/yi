@@ -111,19 +111,21 @@ withCache self ivar cond action = do
       return val
 
 -- | Use this as the base length of computed stroke ranges
-strokeRangeExtent :: Point
-strokeRangeExtent = 100
+strokeRangeExtent :: Num t => t
+strokeRangeExtent = 2000
 
--- TODO: Investigate whether it is a good idea to cache
---       NSDictionary objects also in some fashion
+type Picture = [(Point, Style)]
 
 $(declareClass "YiTextStorage" "NSTextStorage")
 $(exportClass "YiTextStorage" "yts_" [
     InstanceVariable "buffer" [t| Maybe FBuffer |] [| Nothing |]
   , InstanceVariable "uiStyle" [t| Maybe UIStyle |] [| Nothing |]
-  , InstanceVariable "attributesCache" [t| Maybe (NSRange, NSDictionary ()) |] [| Nothing |]
+  , InstanceVariable "dictionaryCache" [t| M.Map Style (NSDictionary ()) |] [| M.empty |]
+  , InstanceVariable "pictureCacheStart" [t| Point |] [| 0 |]
+  , InstanceVariable "pictureCache" [t| Picture |] [| [] |]
   , InstanceVariable "stringCache" [t| Maybe (NSString ()) |] [| Nothing |]
   , InstanceMethod 'string -- '
+  , InstanceMethod 'fixesAttributesLazily -- '
   , InstanceMethod 'attributeAtIndexEffectiveRange -- '
   , InstanceMethod 'attributesAtIndexEffectiveRange -- '
   , InstanceMethod 'replaceCharactersInRangeWithString -- '
@@ -139,22 +141,40 @@ yts_length self = do
 yts_string :: YiTextStorage () -> IO (NSString ())
 yts_string self = do
   withCache self _stringCache (const True) $ do
-    s <- autonew _YiLBString
+    s <- new _YiLBString
     Just b <- self #. _buffer
     s # setIVar _string (runBufferDummyWindow b (streamB Forward 0))
     castObject <$> return s
 
+yts_fixesAttributesLazily :: YiTextStorage () -> IO Bool
+yts_fixesAttributesLazily _ = return True
+
 yts_attributesAtIndexEffectiveRange :: CUInt -> NSRangePointer -> YiTextStorage () -> IO (NSDictionary ())
 yts_attributesAtIndexEffectiveRange i er self = do
-  (r,dict) <- withCache self _attributesCache (nsLocationInRange i . fst) $ do
-    Just sty <- self #. _uiStyle
-    strokes <- self # runStrokesAround i
-    let (e,s) = minimalStyle sty (fromIntegral i + strokeRangeExtent) strokes
-    let r = NSRange i (fromIntegral e - i)
-    -- logPutStrLn $ "Calling yts_attributesAtIndexEffectiveRange " ++ show r
-    (,) <$> pure r <*> convertStyle s
-  safePoke er r
-  return dict
+  Just sty <- self #. _uiStyle
+  picStart <- self #. _pictureCacheStart
+  pic <- dropJunk <$> self #. _pictureCache
+  case pic of
+    (q,_):_ | pos >= picStart && pos < q -> returnRange 0 pic
+    _ -> returnRange (strokeRangeExtent - picStart) =<< 
+      filterEmpty <$> dropJunk <$> paintCocoaPicture sty <$> self # runStrokesAround i
+  where
+    dropJunk = dropWhile ((pos >=) . fst)
+    pos = fromIntegral i
+    returnRange picEnd pic = do
+      self # setIVar _pictureCacheStart pos
+      self # setIVar _pictureCache pic
+      safePoke er (NSRange i (fromIntegral $ (maybe picEnd fst (listToMaybe pic)) - pos))
+      dicts <- self #. _dictionaryCache
+      let style = maybe [] (flattenStyle . snd) (listToMaybe pic)
+      -- Keep a cache of seen styles... usually, there should not be to many
+      -- TODO: Have one centralized cache instead of one per text storage...
+      case M.lookup style dicts of
+        Just dict -> return dict
+        _ -> do
+          dict <- convertStyle style
+          self # setIVar _dictionaryCache (M.insert style dict dicts)
+          return dict
 
 yts_attributeAtIndexEffectiveRange :: forall t. NSString t -> CUInt -> NSRangePointer -> YiTextStorage () -> IO (ID ())
 yts_attributeAtIndexEffectiveRange attr i er self = do
@@ -177,8 +197,9 @@ yts_attributeAtIndexEffectiveRange attr i er self = do
       safePokeFullRange >> castObject <$> defaultParagraphStyle _NSParagraphStyle
     "NSBackgroundColor" -> do
       Just sty <- self #. _uiStyle
-      bg <- minimalAttr sty background <$> self # runStrokesAround i
-      let (s, Background c) = fromMaybe (fromIntegral i + strokeRangeExtent, Background Default) bg
+      stroke <- onlyBg <$> paintCocoaPicture sty <$>  self # runStrokesAround i
+      let (s, bg) = fromMaybe (fromIntegral i + strokeRangeExtent, []) (listToMaybe stroke)
+      let Background c = fromMaybe (Background Default) (listToMaybe bg)
       safePoke er (NSRange i (fromIntegral s - i))
       castObject <$> getColor False c
     _ -> do
@@ -197,27 +218,38 @@ yts_replaceCharactersInRangeWithString _ _ _ = return ()
 yts_setAttributesRange :: forall t. NSDictionary t -> NSRange -> YiTextStorage () -> IO ()
 yts_setAttributesRange _ _ _ = return ()
 
+flattenStyle :: Style -> Style
+flattenStyle xs = catMaybes
+  [ listToMaybe [fg | fg@(Foreground _) <- xs]
+  , listToMaybe [bg | bg@(Background _) <- xs]
+  ]
 
+-- | Remove element x_i if f(x_i,x_(i+1)) is true
+filter2 :: (a -> a -> Bool) -> [a] -> [a]
+filter2 _f [] = []
+filter2 _f [x] = [x]
+filter2 f (x1:x2:xs) =
+  (if f x1 x2 then id else (x1:)) $ filter2 f (x2:xs)
 
--- | Obtain the maximal range with a consistent style.
---   This negatively assumes that any two adjacent strokes
---   have different styles, and positively assumes that
---   the start of all strokes are the same.
-minimalStyle :: UIStyle -> Point -> [[Stroke]] -> (Point,Style)
-minimalStyle sty q xs =
-  (\ (es, ss) -> (minimum (q:es), concat ss)) $ unzip [ (e,s sty) | (_, s, e):_ <- xs ]
+-- | Remove empty style-spans
+filterEmpty :: Picture -> Picture
+filterEmpty = filter2 ((==) `on` fst)
 
--- | Obtain the maximal range for a particular attribute.
-minimalAttr :: UIStyle -> (Style -> Maybe Attr) -> [[Stroke]] -> Maybe (Point, Attr)
-minimalAttr sty f xs =
-  listToMaybe $ catMaybes [ (,) <$> pure b <*> f (s sty) | (_, s, b):_ <- xs ]
+-- | Merge needless style-span breaks
+filterSame :: Picture -> Picture
+filterSame = filter2 ((==) `on` snd)
 
--- | Use this with minimalAttr to get background information
-background :: Style -> Maybe Attr
-background s = listToMaybe [x | x@(Background _) <- s]
+-- | Keep only the background information
+onlyBg :: Picture -> Picture
+onlyBg xs = filterSame [(p,[s | s@(Background _) <- ss]) | (p,ss) <- xs ]
 
+paintCocoaPicture :: UIStyle -> [[Stroke]] -> Picture
+paintCocoaPicture sty = stylesift [] . paintPicture [] . fmap (fmap constStroke)
+  where
+    stylesift s [] = []
+    stylesift s ((p,t):xs) = (p,s):(stylesift t xs)
+    constStroke (l,s,r) = (l,const (s sty),r)
 
--- TODO: Integrate defaults into below, and cache(?)
 -- | Convert style information into Cocoa compatible format
 convertStyle :: Style -> IO (NSDictionary ())
 convertStyle s = do
@@ -257,10 +289,8 @@ runStrokesAround :: CUInt -> YiTextStorage () -> IO [[Stroke]]
 runStrokesAround i self = do
   Just b <- self #. _buffer
   let p = fromIntegral i
-  let (strokes,b') = runBuffer (dummyWindow $ bkey b) b (strokesRangesB Nothing p (p + strokeRangeExtent))
-  self # setIVar _buffer (Just b')
-  return strokes
-
+  logPutStrLn $ "runStrokesAround " ++ show p
+  return $ runBufferDummyWindow b (strokesRangesB Nothing p (p + strokeRangeExtent))
 
 type TextStorage = YiTextStorage ()
 initializeClass_TextStorage :: IO ()
@@ -289,12 +319,10 @@ newTextStorage sty b = do
 setTextStorageBuffer :: FBuffer -> TextStorage -> IO ()
 setTextStorageBuffer buf storage = do
   logPutStrLn $ "setTextStorageBuffer! " ++ show [u | TextUpdate u <- pendingUpdates buf]
-  if null (pendingUpdates buf)
-    then return ()
-    else do
+  when (not $ null $ pendingUpdates buf) $ do
       storage # beginEditing
       mapM_ (applyUpdate storage) ([u | TextUpdate u <- pendingUpdates buf])
       storage # setIVar _buffer (Just buf)
       storage # setIVar _stringCache Nothing
-      storage # setIVar _attributesCache Nothing
+      storage # setIVar _pictureCache []
       storage # endEditing
