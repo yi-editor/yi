@@ -32,12 +32,14 @@ module Yi.Keymap.Emacs.Utils
 where
 
 {- Standard Library Module Imports -}
-import Control.Monad
-  ()
+
+import Prelude ()
+import Yi.Prelude
 import Data.Char
   ( ord
   , isDigit
   )
+import Data.List (filter, (\\))
 import Data.Maybe
   ( fromMaybe )
 import System.FriendlyPath
@@ -46,12 +48,12 @@ import System.Directory
   ( doesDirectoryExist
   )
 import Control.Monad.Trans (MonadIO (..))
-import Control.Monad
 {- External Library Module Imports -}
 {- Local (yi) module imports -}
 
 import Control.Applicative
-import Control.Monad
+import Control.Monad (filterM, replicateM_)
+import Control.Monad.State (gets)
 import Yi.Buffer
 import Yi.Buffer.HighLevel
 import Yi.Buffer.Region
@@ -68,7 +70,7 @@ import Yi.Misc
 import Yi.Regex
 import Yi.Search
 import Yi.Accessor
-
+import Yi.Window
 {- End of Module Imports -}
 
 ----------------------------
@@ -243,8 +245,7 @@ findFile = do maybePath <- withBuffer $ getA fileA
 -- We essentially return all the files in the given directory which
 -- have the given prefix.
 findFileHint :: String -> String -> YiM String
-findFileHint startPath s = 
-  liftM (show . snd) $ getAppropriateFiles (Just startPath) s
+findFileHint startPath s = show . snd <$> getAppropriateFiles (Just startPath) s
 
 scrollDownE :: YiM ()
 scrollDownE = withUnivArg $ \a -> withBuffer $
@@ -260,8 +261,11 @@ scrollUpE = withUnivArg $ \a -> withBuffer $
 
 switchBufferE :: YiM ()
 switchBufferE = do
-  bs <- withEditor (map name . tail <$> getBufferStack)
-  withMinibufferFin "switch to buffer:" bs (withEditor . switchToBufferWithNameE)
+    openBufs <- fmap bufkey . toList <$> getA windowsA
+    bs <- withEditor (fmap bkey <$> getBufferStack)
+    let choices = (bs \\ openBufs) ++ openBufs -- put the open buffers at the end.
+    names <- forM choices $ \k -> gets $ (name . findBufferWith k)
+    withMinibufferFin "switch to buffer:" names (withEditor . switchToBufferWithNameE)
 
 
 killBufferE :: YiM ()
