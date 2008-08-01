@@ -194,7 +194,7 @@ refreshEditor = do
         let e0 = yiEditor var 
             e1 = modifier buffersA (fmap (clearSyntax . clearHighlight)) e0
             e2 = modifier buffersA (fmap clearUpdates)  e1
-        UI.refresh (yiUi yi) e2
+        UI.refresh (yiUi yi) e1
         return var {yiEditor = e2}
     where clearHighlight fb@FBuffer {pendingUpdates = us, highlightSelection = h} 
               = modifier highlightSelectionA (const (h && null us)) fb
