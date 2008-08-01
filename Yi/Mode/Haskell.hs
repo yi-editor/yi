@@ -68,7 +68,6 @@ cleverMode = emptyMode {
 
 haskellLexer = Alex.lexScanner Haskell.alexScanToken Haskell.initState 
 
-
 adjustBlock :: Expr (Tok Token) -> Int -> BufferM ()
 adjustBlock e len = do
   p <- pointB
@@ -91,9 +90,12 @@ adjustBlock e len = do
                                          leftN len
                                  else do
                                     deleteN (negate len)
+
+-- TODO: use the indentSettings
 indentLevel :: Int
 indentLevel = 4
 
+-- | Returns true if the token should be indented to look as "inside" the group.
 insideGroup :: Token -> Bool
 insideGroup (Special c) = not $ c `elem` "',;})" 
 insideGroup _ = True
@@ -104,10 +106,12 @@ cleverAutoIndentHaskellB e behaviour = do
   previousIndent <- indentOfB previousLine
   solPnt <- pointAt moveToSol
   eolPnt <- pointAt moveToEol
-  let stopsOf (g@(Group open _ close):ts) 
+  let onThisLine ofs = ofs >= solPnt && ofs <= eolPnt
+  let stopsOf :: [Tree TT] -> [Int]
+      stopsOf (g@(Group open ctnt close):ts) 
           | isErrorTok (tokT close) || getLastOffset g >= solPnt
-              = [shiftGroup + (posnCol . tokPosn $ open)]  -- stop here: we want to be "inside" that group.
-          | otherwise = stopsOf ts -- this one is closed on before this line; just skip it.
+              = [groupIndent open ctnt]  -- stop here: we want to be "inside" that group.
+          | otherwise = stopsOf ts -- this group is closed before this line; just skip it.
       stopsOf ((Atom (Tok {tokT = t})):_) | startsLayout t = [previousIndent + indentLevel]
       stopsOf ((Atom _):ts) = stopsOf ts
          -- of; where; etc. we want to start the block here.
@@ -119,23 +123,29 @@ cleverAutoIndentHaskellB e behaviour = do
           takeWhile ((eolPnt >) . tokBegin) $ -- for laziness.
           filter (not . isErrorTok . tokT) $ allToks e
       shiftBlock = case firstTokOnLine of
-        -- TODO: use the indentSettings
-        Just (Reserved t) | t `elem` [Where, Deriving] -> 4
-        Just (ReservedOp Haskell.Pipe) -> 4
-        Just (ReservedOp Haskell.Equal) -> 4
+        Just (Reserved t) | t `elem` [Where, Deriving] -> indentLevel
+        Just (ReservedOp Haskell.Pipe) -> indentLevel
+        Just (ReservedOp Haskell.Equal) -> indentLevel
         _ -> 0
       deepInGroup = maybe True insideGroup firstTokOnLine
-      shiftGroup = if deepInGroup then 1 else 0
-                     
-
-        
+      groupIndent (Tok {tokT = Special openChar, tokPosn = Posn _ _ openCol}) ctnt
+          | deepInGroup = case listToMaybe $ filter (not . onThisLine . posnOfs . tokPosn) $ allToks $ ctnt of
+              -- examine the first token of the group (but not on the line we are indenting!)
+              Nothing -> openCol + nominalIndent openChar -- no such token: indent normally.
+              Just t -> posnCol . tokPosn $ t -- indent along that other token
+          | otherwise = openCol
   case getLastPath e solPnt of
     Nothing -> return ()
     Just path -> let stops = stopsOf path
                  in trace ("Stops = " ++ show stops) $      
                     trace ("firstTokOnLine = " ++ show firstTokOnLine) $      
                     cycleIndentsB behaviour stops
-         
+
+nominalIndent :: Char -> Int
+nominalIndent '{' = 2
+nominalIndent _ = 1
+
+
 allToks :: Expr TT -> [TT]
 allToks = concatMap toList
 
