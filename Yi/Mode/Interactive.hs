@@ -6,20 +6,17 @@ import Yi.Buffer.HighLevel
 import Yi.Buffer.Region
 import Yi.Core
 import Yi.Core
-import Yi.Dired
 import Yi.Editor
 import Yi.Keymap
 import Yi.Keymap.Keys
-import Yi.Lexer.Alex (Tok(..), Posn(..))
 import Yi.Prelude
 import Yi.Region
-import Yi.Style
-import Yi.Syntax
-import qualified Yi.Lexer.Alex as Alex
+import Yi.Lexer.Alex (Tok(..))
 import qualified Yi.Lexer.Compilation         as Compilation
 import qualified Yi.Mode.Compilation         as Compilation
 import qualified Yi.Syntax.Linear as Linear
 
+atLastLine :: BufferM Bool
 atLastLine = savingPointB $ do
     moveToEol
     (==) <$> sizeB <*> pointB
@@ -28,12 +25,14 @@ mode :: Mode (Linear.Result (Tok Compilation.Token))
 mode = Compilation.mode
   { 
    modeKeymap = (<||) (spec KEnter ?>>! do
-       atEof <- withBuffer $ atLastLine
-       if atEof
+       eof <- withBuffer $ atLastLine
+       if eof
          then feedCommand
          else withSyntax modeFollow)
   }
 
+-- | Send the type command to the process
+feedCommand :: YiM ()
 feedCommand = do
     b <- withEditor $ getBuffer
     cmd <- withBuffer $ do 

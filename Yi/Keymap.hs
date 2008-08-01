@@ -11,7 +11,6 @@ import Yi.Editor (EditorM, Editor, runEditor, MonadEditor(..))
 import qualified Data.Map as M
 import Control.Monad.Reader
 import Data.Typeable
-import Data.IORef
 import Control.Exception
 import Control.Concurrent
 import Yi.Buffer
@@ -53,29 +52,32 @@ type KeymapEndo = Keymap -> Keymap
 
 type KeymapProcess = I.P Event Action
 
-data Yi = Yi {yiEditor :: IORef Editor,
-              yiUi          :: UI,
-              threads       :: IORef [ThreadId],           -- ^ all our threads
-              input         :: Event -> IO (),             -- ^ input stream
-              output        :: [Action] -> IO (),            -- ^ output stream
-              yiSubprocessIdSupply :: IORef SubprocessId,
-              yiSubprocesses :: IORef (M.Map SubprocessId SubprocessInfo),
-              yiConfig :: Config
+data Yi = Yi {yiUi          :: UI,
+              input         :: Event -> IO (),      -- ^ input stream
+              output        :: [Action] -> IO (),   -- ^ output stream
+              yiConfig      :: Config,
+              yiVar         :: MVar YiVar           -- ^ The only mutable state in the program
              }
              deriving Typeable
+
+data YiVar = YiVar {yiEditor             :: Editor,
+                    threads              :: [ThreadId],           -- ^ all our threads
+                    yiSubprocessIdSupply :: SubprocessId,
+                    yiSubprocesses       :: (M.Map SubprocessId SubprocessInfo)
+                   }
 
 -- | The type of user-bindable functions
 newtype YiM a = YiM {runYiM :: ReaderT Yi IO a}
     deriving (Monad, MonadReader Yi, MonadIO, Typeable, Functor)
 
 instance MonadState Editor YiM where
-    get = readRef =<< yiEditor <$> ask
-    put v = flip writeRef v =<< yiEditor <$> ask
+    get = yiEditor <$> (readRef =<< yiVar <$> ask)
+    put v = flip modifyRef (\x -> x {yiEditor = v}) =<< yiVar <$> ask
 
 instance MonadEditor YiM where
     askCfg = yiConfig <$> ask
     withEditor f = do
-      r <- asks yiEditor
+      r <- asks yiVar
       cfg <- asks yiConfig
       liftIO $ unsafeWithEditor cfg r f
  
@@ -95,17 +97,17 @@ withBufferMode b f = withGivenBuffer b $ withModeB f
 withUI :: (UI -> IO a) -> YiM a
 withUI = with yiUi
 
-unsafeWithEditor :: Config -> IORef Editor -> EditorM a -> IO a
-unsafeWithEditor cfg r f = do
-  e <- readRef r
+unsafeWithEditor :: Config -> MVar YiVar -> EditorM a -> IO a
+unsafeWithEditor cfg r f = modifyMVar r $ \var -> do
+  let e = yiEditor var
   let (e',a) = runEditor cfg f e
   -- Make sure that the result of runEditor is evaluated before
   -- replacing the editor state. Otherwise, we might replace e
   -- with an exception-producing thunk, which makes it impossible
   -- to look at or update the editor state.
   -- Maybe this could also be fixed by -fno-state-hack flag?
-  e' `seq` a `seq` writeRef r e'
-  return a
+  -- TODO: can we simplify this?
+  e' `seq` a `seq` return (var {yiEditor = e'}, a)
 
 withGivenBuffer :: BufferRef -> BufferM a -> YiM a
 withGivenBuffer b f = withEditor (Editor.withGivenBuffer0 b f)
@@ -131,7 +133,7 @@ handleJustE p h c = catchJustE p c h
 
 -- | Shut down all of our threads. Should free buffers etc.
 shutdown :: YiM ()
-shutdown = do ts <- readsRef threads
+shutdown = do ts <- threads <$> readsRef yiVar
               liftIO $ mapM_ killThread ts
 
 -- -------------------------------------------

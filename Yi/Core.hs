@@ -66,7 +66,6 @@ import qualified Data.DelayList as DelayList
 import Data.List (intercalate)
 import Data.Maybe
 import qualified Data.Map as M
-import Data.IORef
 import Data.Foldable (mapM_, all)
 
 import System.IO (Handle, hWaitForInput, hPutStr)
@@ -77,7 +76,7 @@ import Control.Monad (when,forever)
 import Control.Monad.Reader (runReaderT, ask, asks)
 import Control.Monad.Trans
 import Control.Monad.Error ()
-import Control.Monad.State (gets)
+import Control.Monad.State (gets, get, put)
 import Control.Exception
 import Control.Concurrent
 
@@ -108,17 +107,14 @@ startEditor cfg st = do
 
     -- restore the old state
     let initEditor = maybe (emptyEditor cfg) id st
-    newSt <- newIORef initEditor
     -- Setting up the 1st window is a bit tricky because most functions assume there exists a "current window"
-    startThreads <- newIORef []
-    startSubprocessId <- newIORef 1
-    startSubprocesses <- newIORef M.empty
+    newSt <- newMVar $ YiVar initEditor [] 1 M.empty
     (ui, runYi) <- mdo let handler exception = runYi $ (errorEditor (show exception) >> refreshEditor)
                            inF  ev  = handle handler (runYi (dispatch ev))
                            outF acts = handle handler (runYi (interactive acts))
                        ui <- uiStart cfg inF outF initEditor
                        let runYi f = runReaderT (runYiM f) yi
-                           yi = Yi newSt ui startThreads inF outF startSubprocessId startSubprocesses cfg 
+                           yi = Yi ui inF outF cfg newSt 
                        return (ui, runYi)
   
     runYi $ do
@@ -192,11 +188,14 @@ quitEditor = withUI UI.end
 
 -- | Redraw
 refreshEditor :: YiM ()
-refreshEditor = do e0 <- with yiEditor readRef
-                   let e1 = modifier buffersA (fmap (clearSyntax . clearHighlight)) e0
-                       e2 = modifier buffersA (fmap clearUpdates)  e1
-                   withUI $ flip UI.refresh e1
-                   with yiEditor (flip writeRef e2)
+refreshEditor = do 
+    yi <- ask
+    io $ modifyMVar_ (yiVar yi) $ \var -> do
+        let e0 = yiEditor var 
+            e1 = modifier buffersA (fmap (clearSyntax . clearHighlight)) e0
+            e2 = modifier buffersA (fmap clearUpdates)  e1
+        UI.refresh (yiUi yi) e2
+        return var {yiEditor = e2}
     where clearHighlight fb@FBuffer {pendingUpdates = us, highlightSelection = h} 
               = modifier highlightSelectionA (const (h && null us)) fb
           -- if there were updates, then hide the selection.
@@ -269,30 +268,32 @@ getAllNamesInScope = do
 -- | Start a subprocess with the given command and arguments.
 startSubprocess :: FilePath -> [String] -> YiM BufferRef
 startSubprocess cmd args = do
-  let buffer_name = "output from " ++ cmd ++ " " ++ show args
-  bufref <- withEditor $ newBufferE buffer_name (fromString "")
+    yi <- ask
+    io $ modifyMVar (yiVar yi) $ \var -> do        
+        let (e', bufref) = runEditor 
+                              (yiConfig yi) 
+                              (printMsg ("Launched process: " ++ cmd) >> newBufferE bufferName (fromString ""))
+                              (yiEditor var)
+            procid = yiSubprocessIdSupply var + 1
+        procinfo <- createSubprocess cmd args bufref
+        startSubprocessWatchers procid procinfo yi
+        return (var {yiEditor = e', 
+                     yiSubprocessIdSupply = procid,
+                     yiSubprocesses = M.insert procid procinfo (yiSubprocesses var)
+                    }, bufref)
+  where bufferName = "output from " ++ cmd ++ " " ++ show args
 
-  procid <- modifiesThenReadsRef yiSubprocessIdSupply (+1)
-  procinfo <- liftIO $ createSubprocess cmd args bufref
-
-  startSubprocessWatchers procid procinfo
-
-  modifiesRef yiSubprocesses $ M.insert procid procinfo
-  msgEditor ("Launched process: " ++ cmd)
-  return bufref
-
-startSubprocessWatchers :: SubprocessId -> SubprocessInfo -> YiM ()
-startSubprocessWatchers procid procinfo = do
-  yi <- ask
+startSubprocessWatchers :: SubprocessId -> SubprocessInfo -> Yi -> IO ()
+startSubprocessWatchers procid procinfo yi = do
   let send a = output yi [makeAction a]
       append s = send $ appendToBuffer (bufRef procinfo) s
       reportExit s = append s >> (send $ removeSubprocess procid)
-  mapM_ (liftIO . forkOS) [ pipeToBuffer (hOut procinfo) append,
-                            pipeToBuffer (hErr procinfo) append,
-                            waitForExit (procHandle procinfo) >>= reportExit ]
+  mapM_ forkOS [pipeToBuffer (hOut procinfo) append,
+                pipeToBuffer (hErr procinfo) append,
+                waitForExit (procHandle procinfo) >>= reportExit]
 
 removeSubprocess :: SubprocessId -> YiM ()
-removeSubprocess procid = modifiesRef yiSubprocesses $ M.delete procid
+removeSubprocess procid = modifiesRef yiVar (\v -> v {yiSubprocesses = M.delete procid $ yiSubprocesses v})
 
 appendToBuffer :: BufferRef -> String -> EditorM ()
 appendToBuffer bufref s = withGivenBuffer0 bufref $ do
@@ -304,7 +305,7 @@ appendToBuffer bufref s = withGivenBuffer0 bufref $ do
 sendToProcess :: BufferRef -> String -> YiM ()
 sendToProcess bufref s = do
     yi <- ask
-    Just subProcessInfo <- find ((== bufref) . bufRef) <$> readRef (yiSubprocesses yi)
+    Just subProcessInfo <- find ((== bufref) . bufRef) . yiSubprocesses <$> readRef (yiVar yi)
     io $ hPutStr (hIn subProcessInfo) s
 
 pipeToBuffer :: Handle -> (String -> IO ()) -> IO ()

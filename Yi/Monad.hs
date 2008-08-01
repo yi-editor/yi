@@ -5,6 +5,7 @@ import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Trans
 import Control.Applicative
+import Control.Concurrent.MVar
 
 instance (Monad f, Applicative f) => Applicative (ReaderT r f) where
     pure x = ReaderT $ \_ -> pure x
@@ -23,22 +24,28 @@ getsAndModify f = do
   put e'
   return result
 
-readRef :: (MonadIO m) => IORef a -> m a
-readRef r = liftIO $ readIORef r
+class Ref ref where
+    readRef :: (MonadIO m) => ref a -> m a
+    writeRef :: (MonadIO m) => ref a -> a -> m ()
+    modifyRef :: (MonadIO m) => ref a -> (a -> a) -> m ()
+    
 
-writeRef :: (MonadIO m) => IORef a -> a -> m ()
-writeRef r x = liftIO $ writeIORef r x
+instance Ref IORef where
+    readRef r = liftIO $ readIORef r
+    writeRef r x = liftIO $ writeIORef r x
+    modifyRef r f = liftIO $ modifyIORef r f
 
-modifyRef :: (MonadIO m) => IORef a -> (a -> a) -> m ()
-modifyRef r f = liftIO $ modifyIORef r f
+instance Ref MVar where
+    readRef r = liftIO $ readMVar r
+    writeRef r x = liftIO $ putMVar r x
+    modifyRef r f = liftIO $ modifyMVar_ r (\x -> return (f x))
 
-
-modifiesRef :: (MonadReader r m, MonadIO m) => (r -> IORef a) -> (a -> a) -> m ()
+modifiesRef :: (Ref ref, MonadReader r m, MonadIO m) => (r -> ref a) -> (a -> a) -> m ()
 modifiesRef f g = do
   b <- asks f
   modifyRef b g
 
-readsRef :: (MonadReader r m, MonadIO m) => (r -> IORef a) -> m a
+readsRef :: (Ref ref, MonadReader r m, MonadIO m) => (r -> ref a) -> m a
 readsRef f = do
   r <- asks f
   readRef r

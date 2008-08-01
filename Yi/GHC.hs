@@ -33,7 +33,7 @@ newShim = do
                 >>= maybe (error "Could not find ghc executable in path.") return
     session <- io $ ghcInit ghc
 
-    r <- asks yiEditor
+    r <- asks yiVar
     cfg <- asks yiConfig
     let logMsg msgSeverity msgSrcSpan style msg = 
            unsafeWithEditor cfg r $ do                             
