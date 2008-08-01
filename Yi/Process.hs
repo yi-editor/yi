@@ -29,9 +29,10 @@ popen file args minput =
     Control.Exception.handle (\e -> return ([],show e,error (show e))) $ do
 
     (inp,out,err,pid) <- runInteractiveProcess file args Nothing Nothing
-
+    hSetBuffering out LineBuffering
+    hSetBuffering err LineBuffering
     case minput of
-        Just input -> hPutStr inp input >> hClose inp -- importante!
+        Just input -> hPutStr inp input >> hClose inp -- important!
         Nothing    -> return ()
 
     -- Now, grab the input
