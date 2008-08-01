@@ -9,8 +9,11 @@ test: build # should also run the test suite.
 %.ps: %.hp
 	hp2ps -c $<
 
+%.pdf: %.ps
+	ps2pdf $<
+
 prof-config::
-	cabal configure -fhacking -f-gtk -f-pango --enable-executable-profiling --ghc-options=-auto-all
+	cabal configure -fhacking -f-cocoa -f-gtk -f-pango --enable-executable-profiling --ghc-options=-auto-all
 
 run-inplace: build
 	dist/build/yi/yi -f$(frontend)
