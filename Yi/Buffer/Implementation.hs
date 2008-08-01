@@ -267,11 +267,18 @@ strokesRangesBI regex i j fb@FBufferData {hlCache = HLState hl cache} =  result
     takeIn  = takeWhile (\(l,_s,_r) -> l <= j)
 
     layer1 = hlGetStrokes hl point i j $ hlGetTree hl cache
+    layer1' = fillInGapsWithDefault layer1 i
+    fillInGapsWithDefault [] u = if u <= j then [(u, defaultStyle, j)] else []
+    fillInGapsWithDefault [(x, s, y)] u = (if x > u then [(u, defaultStyle, x)] else []) ++ [(x, s, y)] ++ (if y < j then [(y, defaultStyle, j)] else [])
+    fillInGapsWithDefault ((x, s, y) : r) u = 
+                            (if x > u then [(u, defaultStyle, x)] else []) 
+                            ++ [(x, s, y)] 
+                            ++ (fillInGapsWithDefault r y)
     layers2 = map (map overlayStroke) $ groupBy ((==) `on` overlayLayer) $  Set.toList $ overlays fb
     layer3 = case regex of 
                Just re -> takeIn $ map hintStroke $ regexBI re (mkRegion i j) fb
                Nothing -> []
-    result = map (map clampStroke . takeIn . dropBefore) (layer3 : layers2 ++ [layer1])
+    result = map (map clampStroke . takeIn . dropBefore) (layer3 : layers2 ++ [layer1'])
     overlayStroke (Overlay _ sm  em a) = (markPoint sm, a, markPoint em)
     point = pointBI fb
     clampStroke (l,x,r) = (max i l, x, min j r)
