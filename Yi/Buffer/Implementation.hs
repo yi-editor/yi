@@ -496,20 +496,10 @@ updateSyntax fb@FBufferData {dirtyOffset = touchedIndex, hlCache = HLState hl ca
     | touchedIndex == maxBound = fb
     | otherwise
     = fb {dirtyOffset = maxBound,
-          hlCache = HLState hl (hlRun hl getText solForTouchedIndex cache)
+          hlCache = HLState hl (hlRun hl getText touchedIndex cache)
          }
-    where 
-        getText = Scanner 0 id (error "getText: no character beyond eof")
-                          (\idx -> toIndexedString idx (F.toLazyByteString (F.drop (fromPoint idx) (mem fb))))
-        -- Some alex rules for highlighters depend on the left context being able to correctly match
-        -- against the start of a line and the start of the buffer. If the highlighter is run from
-        -- the touchedIndex alex will consider the start of the line to the be point of the
-        -- touchedIndex which is incorrect. EG: Adding "=foo" to a line containing "$bar " using the
-        -- Perl lexer would cause the "=foo" to be recognized as a perldoc which is incorrect.
-        -- So, we re-run the highlighter at the index of the start of the line containing the
-        -- touched index.
-        solForTouchedIndex = Point $ maybe 0 (1 +) (F.elemIndexEnd newLine (F.take (fromPoint touchedIndex) $ mem fb))
-
+    where getText = Scanner 0 id (error "getText: no character beyond eof")
+                     (\idx -> toIndexedString idx (F.toLazyByteString (F.drop (fromPoint idx) (mem fb))))
 
 toIndexedString :: Point -> LazyB.ByteString -> [(Point, Char)]
 toIndexedString curIdx bs = 
