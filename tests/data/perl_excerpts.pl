@@ -28,6 +28,10 @@ s#asdf$#asdf#;
 m#${$1}#;
 s#alskdjf#${$1}#;
 
+# ${} style variables can use any BLOCK expression for the identifier.
+m#${$foo->[1 + 2]}#;
+s#${$foo->[1 + 2 + rand]}#bacon#;
+
 $foo{bar}->{${$baz}->{zip}};
 
 my $bar = <<ffff;
