@@ -48,6 +48,7 @@ symbols =
 
  -- operators
  ,("<|","◃") 	   
+ -- ,("<|","◁") alternative
  ,("|>","▹")
  ,("v","∨")
  ,("u","∪")
@@ -93,8 +94,6 @@ symbols =
  ]
 
 
--- Alternatives
---         ,("<|","◁")
 
 
 -- More:
@@ -111,14 +110,17 @@ symbols =
 
 extraInput :: Keymap
 extraInput 
-    = choice [pString ('\\':i) >>! insertN o | (i,o) <- greek] <|>
+    = choice [pString ('\\':i) >>! insertN o | (i,o) <- greek] <|> -- greek letters, LaTeX-style
       choice [pString ('`':i) >>! insertN o | (i,o) <- symbols] 
 
 main :: IO ()
 main = yi $ defaultConfig {
                            configKillringAccumulate = True,
                            modeTable = myModetable <|> modeTable defaultConfig,
-                           configUI = (configUI defaultConfig) { configFontSize = Just 10 },
+                           configUI = (configUI defaultConfig) 
+                             { configFontSize = Just 10 
+                             -- , configStyle = darkBlueTheme
+                             },
                            defaultKm = extraInput <|| keymap
                               <|> (ctrl (char '>') ?>>! increaseIndent)
                               <|> (ctrl (char '<') ?>>! decreaseIndent)
