@@ -4,7 +4,19 @@ include config.mk
 
 include $(cabal-make)/cabal-make.inc
 
-test: build # should also run the test suite.
+test::
+	cabal configure -f-cocoa -ftesting --disable-library-profiling
+	cabal build
+	cabal copy
+# for this test rule to be complete, we need to also:
+#	check that examples/yi.hs can be recompiled;
+# and finally 
+#	justcompiledyi/yi --self-check
+# must pass.
+#	
+# annoyingly, it's also difficult to find the correct set of options
+# for configuration.
+# maybe we need "dummy" UI for testing purposes only.
 
 %.ps: %.hp
 	hp2ps -c $<
