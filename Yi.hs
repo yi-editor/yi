@@ -29,6 +29,7 @@ module Yi
     module Yi.Buffer.Region,
     module Yi.Search,
     module Yi.Style,
+    module Yi.Style.Library,
     module Yi.Keymap.Keys,
   ) where
 
@@ -50,3 +51,4 @@ import Yi.Keymap.Keys
 import Yi.Main (defaultConfig)
 import Yi.Search
 import Yi.Style
+import Yi.Style.Library
