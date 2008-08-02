@@ -1,4 +1,6 @@
-# Extracted from the perldata, perlop and perlsyn man pages.
+# Extracted from the perldata, perlop and perlsyn man pages plus some random bits.
+# This variable identifier should not cause an error.
+$};
 
 $days;               # the simple scalar value "days"
 $days[28];           # the 29th element of array @days

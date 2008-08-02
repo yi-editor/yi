@@ -344,11 +344,11 @@ fromQuoteState (HlInSubstRegex s) = HlInInterpString True s
 fromQuoteState _ = HlInCode
 
 increaseVarCastDepth (HlInVariable n s) = HlInVariable (n + 1) s
-increaseVarCastDepth state = error "Cannot increate variable cast depth"
+increaseVarCastDepth state = error "increaseVarCastDepth applied to non HlInVariable state"
 
-decreaseVarCastDepth (HlInVariable 0 s) = s
-decreaseVarCastDepth (HlInVariable n s) = HlInVariable (n - 1) s
-decreaseVarCastDepth state = error "Cannot increate variable cast depth"
+decreaseVarCastDepth (HlInVariable n s) | n <= 0    = s
+                                        | otherwise = HlInVariable (n - 1) s
+decreaseVarCastDepth state = error "decreaseVarCastDepth applied to non HlInVariable state"
 
 exitVarIfZeroDepth (HlInVariable 0 s) = s
 exitVarIfZeroDepth s = s
