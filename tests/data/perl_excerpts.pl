@@ -23,6 +23,11 @@ s/asdf$/asdf/;
     s#asdf$#asdf#;
 s#asdf$#asdf#;
 
+# The ${$1} should be recognized as a variable. The end of the regex quote 
+# should be recognized.
+m#${$1}#;
+s#alskdjf#${$1}#;
+
 $foo{bar}->{${$baz}->{zip}};
 
 my $bar = <<ffff;

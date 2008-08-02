@@ -348,7 +348,7 @@ fromQuoteState _ = HlInCode
 increaseVarCastDepth (HlInVariable n s) = HlInVariable (n + 1) s
 increaseVarCastDepth state = error "increaseVarCastDepth applied to non HlInVariable state"
 
-decreaseVarCastDepth (HlInVariable n s) | n <= 0    = s
+decreaseVarCastDepth (HlInVariable n s) | n <= 1    = s
                                         | otherwise = HlInVariable (n - 1) s
 decreaseVarCastDepth state = error "decreaseVarCastDepth applied to non HlInVariable state"
 
