@@ -33,6 +33,7 @@ data-files:
   art/setup-script.png
   art/setup-script.png
   examples/yi.hs
+  examples/yi-extended-vim.hs
 extra-source-files: Yi/Lexer/alex.hsinc
 
 flag ghcAPI
