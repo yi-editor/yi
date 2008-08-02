@@ -130,7 +130,8 @@ library
         Yi.Modes
         Yi.Monad
         Yi.Prelude
-        Yi.Process,
+        Yi.Process
+        Yi.Rectangle
         Yi.Regex
         Yi.Region
         Yi.Search

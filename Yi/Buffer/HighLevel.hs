@@ -538,12 +538,17 @@ replaceBufferContent newvalue = do
   r <- regionOfB Document
   replaceRegionB r newvalue
 
-
+-- | Fill the text in the region so it fits nicely 80 columns.
 fillRegion :: Region -> BufferM ()
 fillRegion = modifyRegionB (unlines' . fillText 80)
 
 fillParagraph :: BufferM ()
 fillParagraph = fillRegion =<< regionOfB unitParagraph
 
+-- | Sort the lines of the region.
 sortLines :: BufferM ()
 sortLines = modifyRegionB (onLines sort) =<< unitWiseRegion Line =<< getSelectRegionB
+
+colOf :: Point -> BufferM Int
+colOf p = savingPointB (moveTo p >> curCol)
+

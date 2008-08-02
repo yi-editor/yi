@@ -18,7 +18,7 @@ import Yi.Editor
 import Yi.Keymap.Keys
 import Yi.File
 import Yi.Misc
-
+import Yi.Rectangle
 import Yi.TextCompletion
 import Yi.Keymap.Keys
 import Yi.Keymap.Emacs.KillRing
@@ -162,6 +162,11 @@ emacsKeys =
              char 'g'           ?>>! gotoLn
          ]
   where
+  rectangleFuntions = choice [char 'o' ?>>! openRectangle,
+                              char 't' ?>>! stringRectangle,
+                              char 'k' ?>>! killRectangle,
+                              char 'y' ?>>! yankRectangle
+                              ]
   -- These keybindings are all preceded by a 'C-x' so for example to
   -- quit the editor we do a 'C-x C-c'
   ctrlX = choice [ ctrlCh 'o'    ?>>! deleteBlankLinesB
@@ -184,15 +189,8 @@ emacsKeys =
                    char 'e'      ?>>! evalRegionE
                  , char 'o'      ?>>! nextWinE
                  , char 'k'      ?>>! killBufferE
-                 -- , char 'r' ?>>
-                 --   char 'k'   ?>>! killRectE
-                 -- , char 'r' ?>>
-                 --   char 'o'   ?>>! openRectE
-                 -- , char 'r' ?>>
-                 --   char 't'   ?>>! stringRectE
-                 -- , char 'r' ?>>
-                 --   char 'y'   ?>>! yankRectE
+                 , char 'r'      ?>> rectangleFuntions
                  , char 'u'      ?>>! (repeatingArg undoB)
                  , char 'v'      ?>>! (repeatingArg shrinkWinE)
                  ]
-
+  
