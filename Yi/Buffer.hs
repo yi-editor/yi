@@ -346,8 +346,8 @@ runBufferFull w b f =
                    return i
                Nothing -> do
                    -- copy marks from random window.
-                   (_, WinMarks f i t) <- M.findMax <$> getA winMarksA
-                   markValues <- mapM getMarkValueB [f, i, t]
+                   (_, WinMarks fr i t) <- M.findMax <$> getA winMarksA
+                   markValues <- mapM getMarkValueB [fr, i, t]
                    [newFrom, newIns, newTo] <- mapM newMarkB markValues
                    modifyA winMarksA (M.insert (wkey w) (WinMarks newFrom newIns newTo))
                    return i
@@ -588,7 +588,7 @@ regexB dir rx = do
 
 -- | Set the given mark point.
 setMarkPointB :: Mark -> Point -> BufferM ()
-setMarkPointB m pos = modifyMarkB m (\m -> m {markPoint = pos})
+setMarkPointB m pos = modifyMarkB m (\v -> v {markPoint = pos})
 
 modifyMarkB :: Mark -> (MarkValue -> MarkValue) -> BufferM ()
 modifyMarkB m f = modifyBuffer $ modifyMarkBI m f

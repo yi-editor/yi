@@ -250,7 +250,6 @@ drawWindow cfg mre b sty focused w win = (Rendered { picture = pict,cursor = cur
         bufData = -- trace (unlines (map show text) ++ unlines (map show $ concat strokes)) $ 
                   paintChars attr colors $ toIndexedString fromMarkPoint text
         (showSel, _) = runBuffer win b (gets highlightSelection)
-        -- TODO: This resolves issue #123 but not very cleanly IMO - coconnor
         tabWidth = tabSize . fst $ runBuffer win b indentSettingsB
         prompt = if isMini win then name b else ""
 
