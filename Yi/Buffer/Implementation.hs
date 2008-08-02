@@ -266,23 +266,35 @@ strokesRangesBI regex i j fb@FBufferData {hlCache = HLState hl cache} =  result
     dropBefore = dropWhile (\(_l,_s,r) -> r <= i)
     takeIn  = takeWhile (\(l,_s,_r) -> l <= j)
 
-    layer1 = hlGetStrokes hl point i j $ hlGetTree hl cache
-    layer1' = fillInGapsWithDefault layer1 i
-    fillInGapsWithDefault [] u = if u <= j then [(u, defaultStyle, j)] else []
-    fillInGapsWithDefault [(x, s, y)] u = (if x > u then [(u, defaultStyle, x)] else []) ++ [(x, s, y)] ++ (if y < j then [(y, defaultStyle, j)] else [])
-    fillInGapsWithDefault ((x, s, y) : r) u = 
-                            (if x > u then [(u, defaultStyle, x)] else []) 
-                            ++ [(x, s, y)] 
-                            ++ (fillInGapsWithDefault r y)
+    syntaxHlLayer = hlGetStrokes hl point i j $ hlGetTree hl cache
+
+    -- Any gap in the syntax highlighters strokes should be filled in with a 
+    -- default style stroke
+    -- TODO: This seams more heavy handed that should be required. Seems like
+    -- a layer consisting of just [(i, defaultStyle, j)] should work, but in
+    -- my testing that failed.
+    fullSyntaxHlLayer = fillInGapsWithDefault syntaxHlLayer i
     layers2 = map (map overlayStroke) $ groupBy ((==) `on` overlayLayer) $  Set.toList $ overlays fb
     layer3 = case regex of 
                Just re -> takeIn $ map hintStroke $ regexBI re (mkRegion i j) fb
                Nothing -> []
-    result = map (map clampStroke . takeIn . dropBefore) (layer3 : layers2 ++ [layer1'])
+    result = map (map clampStroke . takeIn . dropBefore) (layer3 : layers2 ++ [fullSyntaxHlLayer])
     overlayStroke (Overlay _ sm  em a) = (markPoint sm, a, markPoint em)
     point = pointBI fb
     clampStroke (l,x,r) = (max i l, x, min j r)
     hintStroke r = (regionStart r,if point `nearRegion` r then strongHintStyle else hintStyle,regionEnd r)
+
+    -- If the last point the syntax highlighter defined a stroke for is before the end 
+    -- of the range requested add a stroke for the rest.
+    fillInGapsWithDefault [] u = if u <= j 
+                                    then [(u, defaultStyle, j)] 
+                                    else []
+    -- Otherwise add a default styled gap up to the first defined stroke, then the 
+    -- defined stroke, then whatever follows.
+    fillInGapsWithDefault ((x, s, y) : r) u = 
+                            (if x > u then [(u, defaultStyle, x)] else []) 
+                            ++ [(x, s, y)] 
+                            ++ (fillInGapsWithDefault r y)
 
 ------------------------------------------------------------------------
 -- Point based editing
