@@ -291,7 +291,9 @@ perlHighlighterRules :-
 
 <variable>
 {
-    @varTypeOp
+    -- Support highlighting uses of the # to determine subscript of the last element.
+    -- This isn't entirely correct as it'll accept $########foo.
+    (@varTypeOp | "#")
         { c $ defaultStyle `withFg` darkcyan }
     "{"
         { m increaseVarCastDepth $ defaultStyle `withFg` darkcyan}
