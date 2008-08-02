@@ -91,6 +91,7 @@ library
            Yi.Buffer
            Yi.Buffer.Indent
            Yi.UI.Common
+           Yi.Style.Library
     extensions: CPP, DeriveDataTypeable, FlexibleContexts, FlexibleInstances,
                 GADTs, GeneralizedNewtypeDeriving, Rank2Types, TypeSynonymInstances
     include-dirs:   Yi/Lexer
