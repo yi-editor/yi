@@ -2,30 +2,27 @@
 
 module Yi.Mode.Shim where
     
-import Data.List
-import Yi
-import Shim.Hsinfo as Hsinfo
-import Yi.Buffer
-import Yi.Modes
 import Control.Monad.State
-
-import qualified Shim.Hsinfo as Hsinfo
-
-import SrcLoc
-import FastString
-
-import Control.Monad.State
-import Yi.WindowSet as Robin
-import Outputable hiding (char)
-import Yi.Accessor
-import Yi.Prelude
-import Prelude ()
 import Data.Char
+import Data.List
+import FastString
+import Outputable hiding (char)
+import Prelude ()
+import Shim.Hsinfo as Hsinfo
+import SrcLoc
+import Yi
+import Yi.Accessor
+import Yi.Buffer
 import Yi.GHC
-import qualified Yi.Lexer.Alex
+import Yi.Lexer.Haskell
+import Yi.Modes
+import Yi.Prelude
 import Yi.Syntax
 import Yi.Syntax.Linear as Linear
-import Yi.Lexer.Haskell
+import Yi.WindowSet as Robin
+import qualified Shim.Hsinfo as Hsinfo
+import qualified Yi.Lexer.Alex
+import qualified Yi.Mode.Haskell
 
 modeTable :: ReaderT String Maybe AnyMode
 modeTable = ReaderT $ \fname -> case () of 
@@ -87,7 +84,7 @@ jumpToDefinition = do
 -- NOTE: source argument to Hsinfo functions can be used to provide
 -- source text, apparently.
 mode :: Mode (Linear.Result (Yi.Lexer.Alex.Tok Token))
-mode = haskellMode
+mode = Yi.Mode.Haskell.plainMode
    {
     modeKeymap = (<||) 
       (((ctrl $ char 'c') ?>> choice
