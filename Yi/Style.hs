@@ -86,12 +86,19 @@ white       = RGB 165 165 165
 brightwhite = RGB 255 255 255
 
 
-overloadForeground :: (UIStyle -> Style) -> Color -> UIStyle -> Style
-overloadForeground styleSelctor color uiStyle =
-    let style = styleSelctor uiStyle
-    in overloadForeground' style
+-- TODO: These are so close in syntax I must imagine there is a way to simplify
+-- them - Corey O'C.
+withFg :: StyleName -> Color -> UIStyle -> Style
+withFg baseStyleName color = addOrChangeFg . baseStyleName
     where 
-        overloadForeground' [] = [Foreground color]
-        overloadForeground' (Foreground _ : attrs) = (Foreground color) : attrs
-        overloadForeground' (a : attrs) = a : (overloadForeground' attrs)
+        addOrChangeFg [] = [Foreground color]
+        addOrChangeFg (Foreground _ : attrs) = (Foreground color) : attrs
+        addOrChangeFg (a : attrs) = a : (addOrChangeFg attrs)
+
+withBg :: StyleName -> Color -> UIStyle -> Style
+withBg baseStyleName color = addOrChangeBg . baseStyleName
+    where 
+        addOrChangeBg [] = [Background color]
+        addOrChangeBg (Background _ : attrs) = (Background color) : attrs
+        addOrChangeBg (a : attrs) = a : (addOrChangeBg attrs)
 

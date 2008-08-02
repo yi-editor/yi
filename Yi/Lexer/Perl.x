@@ -143,8 +143,8 @@ perlHighlighterRules :-
 
     @seperator @reservedId / @seperator            { c keywordStyle }
     ^ @reservedId / @seperator                     { c keywordStyle }
-    @varid / @seperator                            { c (overloadForeground defaultStyle darkcyan) }
-    @specialVarId / @seperator                     { c (overloadForeground defaultStyle cyan) }
+    @varid / @seperator                            { c (defaultStyle `withFg` darkcyan) }
+    @specialVarId / @seperator                     { c (defaultStyle `withFg` cyan) }
 
     @reservedop                                    { c operatorStyle }
 
@@ -232,11 +232,11 @@ perlHighlighterRules :-
     $white+ { c defaultStyle }
     @varid / @interpVarSeperator
         { 
-            c (overloadForeground stringStyle darkcyan)
+            c (stringStyle `withFg` darkcyan)
         }
     @specialVarId / @interpVarSeperator                     
         { 
-            c (overloadForeground stringStyle cyan)
+            c (stringStyle `withFg` cyan)
         }
     ./
         {
@@ -282,11 +282,11 @@ perlHighlighterRules :-
     $white+ { c defaultStyle }
     @varid / @interpVarSeperator
         { 
-            c (overloadForeground stringStyle darkcyan)
+            c (stringStyle `withFg` darkcyan)
         }
     @specialVarId / @interpVarSeperator                     
         { 
-            c (overloadForeground stringStyle cyan)
+            c (stringStyle `withFg` cyan)
         }
     .   { c stringStyle }
 }
