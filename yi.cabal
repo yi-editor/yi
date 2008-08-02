@@ -75,24 +75,81 @@ library
            -- the most insignificant module (with no dep) I can find.
   else
     exposed-modules:
-           Yi
-           Yi.Prelude
-           Yi.Boot
-           Yi.Config
-           Yi.Keymap.Keys
-           Yi.Keymap.Emacs
-           Yi.Keymap.Vim
-           Yi.Keymap.Cua
-           Yi.Keymap.Users.Ertai
-           Yi.Keymap.Users.JP
-           Yi.Misc
-           Yi.Modes
-           Yi.Mode.Compilation
-           Yi.Mode.Haskell
-           Yi.Buffer
-           Yi.Buffer.Indent
-           Yi.UI.Common
-           Yi.Style.Library
+        Yi
+        Yi.Accessor
+        Yi.Boot
+        Yi.Buffer
+        Yi.Buffer.Basic
+        Yi.Buffer.HighLevel
+        Yi.Buffer.Indent
+        Yi.Buffer.Normal
+        Yi.Buffer.Region
+        Yi.Completion
+        Yi.Config
+        Yi.Core
+        Yi.Debug
+        Yi.Dired
+        Yi.Dynamic
+        Yi.Editor 
+        Yi.Eval
+        Yi.Event
+        Yi.File
+        Yi.History
+        Yi.IncrementalParse
+        Yi.Interact
+        Yi.Interpreter
+        Yi.Keymap
+        Yi.Keymap.Completion,
+        Yi.Keymap.Cua
+        Yi.Keymap.Emacs
+        Yi.Keymap.Emacs.KillRing
+        Yi.Keymap.Emacs.UnivArgument,
+        Yi.Keymap.Emacs.Utils
+        Yi.Keymap.Keys
+        Yi.Keymap.Users.Ertai
+        Yi.Keymap.Users.JP
+        Yi.Keymap.Vim
+        Yi.KillRing
+        Yi.Lexer.Alex
+        Yi.Lexer.Cabal
+        Yi.Lexer.Compilation
+        Yi.Lexer.Cplusplus
+        Yi.Lexer.Haskell
+        Yi.Lexer.Latex 
+        Yi.Lexer.LiterateHaskell
+        Yi.Lexer.OCaml
+        Yi.Lexer.Perl
+        Yi.Lexer.Srmc
+        Yi.Main
+        Yi.MiniBuffer
+        Yi.Misc
+        Yi.MkTemp
+        Yi.Mode.Compilation
+        Yi.Mode.Haskell
+        Yi.Mode.Interactive
+        Yi.Modes
+        Yi.Monad
+        Yi.Prelude
+        Yi.Process,
+        Yi.Regex
+        Yi.Region
+        Yi.Search
+        Yi.String
+        Yi.Style
+        Yi.Style.Library
+        Yi.Syntax
+        Yi.Syntax.Fractal
+        Yi.Syntax.Layout
+        Yi.Syntax.Linear
+        Yi.Syntax.Paren
+        Yi.Templates
+        Yi.TextCompletion,
+        Yi.UI.Common
+        Yi.UI.Utils
+        Yi.Undo
+        Yi.Window
+        Yi.WindowSet
+
     extensions: CPP, DeriveDataTypeable, FlexibleContexts, FlexibleInstances,
                 GADTs, GeneralizedNewtypeDeriving, Rank2Types, TypeSynonymInstances
     include-dirs:   Yi/Lexer
@@ -132,52 +189,21 @@ library
 
     other-modules:
         Paths_yi,
-        Yi.Lexer.Alex
-        Yi.Lexer.Compilation
-        Yi.Lexer.Cplusplus
-        Yi.Lexer.Haskell
-        Yi.Lexer.LiterateHaskell
-        Yi.Lexer.Latex 
-        Yi.Lexer.Srmc
-        Yi.Lexer.Cabal
-        Yi.Lexer.OCaml
-        Yi.Lexer.Perl
-
-        Yi.Syntax
-        Yi.Syntax.Layout
-        Yi.Syntax.Paren
-        Yi.Syntax.Fractal
-        Yi.Syntax.Linear
-
-        Yi.Mode.Interactive
-
-        Yi.Accessor
-        Yi.Interpreter
-        Yi.Buffer.Basic
-        System.FriendlyPath
-        Yi.Region
-        Yi.Regex
-        Yi.Buffer.HighLevel, Yi.Buffer.Implementation,
-        Yi.Buffer.Normal, Yi.Buffer.Region, Yi.Completion, Yi.Core,
-        Yi.Debug, Yi.Dired, Yi.Dynamic, Yi.Editor, Yi.Eval, Yi.Event, Data.ByteRope, Yi.History,
-        Yi.Interact, Yi.Keymap, Yi.Keymap.Completion,
-        Yi.Keymap.Emacs.KillRing, Yi.Keymap.Emacs.UnivArgument,
-        Yi.Keymap.Emacs.Utils, Yi.Main, Yi.MkTemp, Yi.Monad, Yi.Process,
-        Yi.Search, Yi.String, Yi.Style, Yi.Templates, Yi.TextCompletion,
-        Yi.Undo, Yi.Window, Yi.WindowSet
-        Yi.MiniBuffer
-        Yi.File
-        Yi.KillRing
-        Yi.IncrementalParse
-        Yi.UI.Utils
+        
+        -- "Internal" modules that the user better not see.
         HConf
+        Yi.Buffer.Implementation
+
         -- Should probably be split out to another package.
+        Data.ByteRope
         Data.Tree.Zipper
         Data.DelayList
         Shim.CabalInfo
         Shim.Utils 
         Shim.ProjectContent
---         Broken:
+        System.FriendlyPath
+
+        -- Broken.
 --                Yi.Keymap.Ee,
 --                Yi.Keymap.Gwern,
 --                Yi.Keymap.Joe,
