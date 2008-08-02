@@ -74,7 +74,7 @@ $nl        = [\n\r]
   | "or" | "xor" | "and" | "ne" | "eq"
   | "=~" | "!~"
 
-@preMatchRegexOp = @reservedop | "(" | "{"
+@preMatchRegexOp = @reservedop | "(" | "{" | ","
 
 -- Standard variables
 -- TODO: Handle casts of the form @varTypeOp{@varid}
@@ -84,10 +84,10 @@ $nl        = [\n\r]
     | "%"
 
 @varPackageSpec = $idchar+ "::" 
-@varid  = @varTypeOp+ @varPackageSpec* $idchar+
+@varIdentifier  = @varPackageSpec* $idchar+
 
 -- TODO: A lot! There is a whole list of special global variables.
-@specialVarToken = 
+@specialVarIdentifier = 
     "_" | ARG
     | "." | INPUT_LINE_NUMBER | NR
     | "?" | CHILD_ERROR
@@ -96,8 +96,6 @@ $nl        = [\n\r]
 -- TODO: The specialVarToken should have an entry like the following:
 -- | "/" | INPUT_RECORD_SEPARATOR | RS
 -- but that messes up the hacked together regex support.
-
-@specialVarId = @varTypeOp @specialVarToken
 
 -- Standard classes
 @decimal     = $digit+
@@ -125,7 +123,7 @@ $charesc = [abfnrtv\\\"\'\&\`\/]
 @nonInterpolatingString  = $graphic # [\'] | " " 
 
 -- Heredoc
-@heredocId = [$large '_']+
+@heredocId = $idchar+
 
 -- Perldoc
 -- perldoc starts at a "line that begins with an equal sign and a word"
@@ -136,55 +134,54 @@ perlHighlighterRules :-
 
 <0> 
 {
-    $white+                                        { c defaultStyle } -- whitespace
-
+    -- Conditionalize on not being prefixed with a character that could 
+    -- indicate a regex-style quote.
     [^smqrty]^"#"[^\n]*                            { c commentStyle }
     ^"#"[^\n]*                                     { c commentStyle }
 
     @seperator @reservedId / @seperator            { c keywordStyle }
     ^ @reservedId / @seperator                     { c keywordStyle }
-    @varid / @seperator                            { c (defaultStyle `withFg` darkcyan) }
-    @specialVarId / @seperator                     { c (defaultStyle `withFg` cyan) }
+
+    @varTypeOp
+        { m (\s -> HlInVariable 0 s) (defaultStyle `withFg` darkcyan) }
 
     @reservedop                                    { c operatorStyle }
 
     @decimal 
     | 0[oO] @octal
-    | 0[xX] @hexadecimal                           { c defaultStyle }
+    | 0[xX] @hexadecimal                           { c numberStyle }
 
     @decimal \. @decimal @exponent?
-    | @decimal @exponent                           { c defaultStyle }
+    | @decimal @exponent                           { c numberStyle }
 
     -- Chunks that are handled as interpolating strings.
     \"
     { 
-        m (\_ -> HlInInterpString "\"" ) operatorStyle 
+        m (\_ -> HlInInterpString False "\"" ) operatorStyle 
     }
     "`" 
     {
-        m (\_ -> HlInInterpString "`" ) operatorStyle
+        m (\_ -> HlInInterpString False "`" ) operatorStyle
     }
 
     -- Matching regex quote-like operators are also kinda like interpolating strings.
-    "?"
-        {
-            m (\_ -> HlInInterpString "?" ) operatorStyle
-        }
-
-    -- In order to prevent this from being confused with division this 
-    -- only matches in the case the / is preeceded with the usual context I use it.
-    ^($whitechar+ "/")
-        {
-            m (\_ -> HlInInterpString "/" ) operatorStyle
-        }
+    -- In order to prevent a / delimited regex quote from being confused with 
+    -- division this only matches in the case the / is preeceded with the usual 
+    -- context I use it.
+    ^($white*)"/"
+        { m (\_ -> HlInInterpString True "/" ) operatorStyle }
     (@preMatchRegexOp $whitechar* "/")
         {
-            m (\_ -> HlInInterpString "/" ) operatorStyle
+            m (\_ -> HlInInterpString True "/" ) operatorStyle
         }
+    -- "?"
+    --     {
+    --         m (\_ -> HlInInterpString True "?" ) operatorStyle
+    --     }
 
     "m/"
         {
-            \str _ -> (HlInInterpString "/", operatorStyle)
+            \str _ -> (HlInInterpString True "/", operatorStyle)
         }
 
     "s/"
@@ -194,7 +191,7 @@ perlHighlighterRules :-
 
     "m#"
         {
-            \str _ -> (HlInInterpString "#", operatorStyle)
+            \str _ -> (HlInInterpString True "#", operatorStyle)
         }
 
     "s#"
@@ -222,7 +219,9 @@ perlHighlighterRules :-
             m (\_ -> HlInPerldoc) commentStyle
         }
 
+
     -- Everything else is unstyled.
+    $white                                         { c defaultStyle }
     .                                              { c defaultStyle }
 }
 
@@ -230,37 +229,42 @@ perlHighlighterRules :-
 {
     @escape { c defaultStyle }
     $white+ { c defaultStyle }
-    @varid / @interpVarSeperator
-        { 
-            c (stringStyle `withFg` darkcyan)
-        }
-    @specialVarId / @interpVarSeperator                     
-        { 
-            c (stringStyle `withFg` cyan)
-        }
-    ./
+
+    -- Prevent $ at the end of a regex quote from being recognized as a 
+    -- variable.
+    "$"/
         {
-            \state preInput _ _ ->
+            \state _ _ postInput ->
                 case state of
-                    HlInInterpString end_tag ->
-                        let inputText = take (length end_tag) $ alexCollectChar preInput
-                        in if (inputText == end_tag) then True else False
+                    HlInInterpString True end_tag ->
+                        let postText = take (length end_tag) $ alexCollectChar postInput
+                        in if (postText == end_tag) then True else False
+                    HlInSubstRegex end_tag ->
+                        let postText = take (length end_tag) $ alexCollectChar postInput
+                        in if (postText == end_tag) then True else False
                     _ -> False
         }
         {
-            m (\_ -> HlInCode) operatorStyle
+            c stringStyle
         }
+
+    @varTypeOp
+        { m (\s -> HlInVariable 0 s) (defaultStyle `withFg` darkcyan) }
+
     ./
         {
             \state preInput _ _ ->
                 case state of
+                    HlInInterpString _ end_tag ->
+                        let inputText = take (length end_tag) $ alexCollectChar preInput
+                        in if (inputText == end_tag) then True else False
                     HlInSubstRegex end_tag ->
                         let inputText = take (length end_tag) $ alexCollectChar preInput
                         in if (inputText == end_tag) then True else False
                     _ -> False
         }
         {
-            m (\(HlInSubstRegex end_tag) -> HlInInterpString end_tag) operatorStyle
+            m fromQuoteState operatorStyle
         }
     .   { c stringStyle }
 }
@@ -277,25 +281,37 @@ perlHighlighterRules :-
                     _ -> False
         }
         {
-            m (\_ -> HlInCode) operatorStyle
+            m fromQuoteState operatorStyle
         }
     $white+ { c defaultStyle }
-    @varid / @interpVarSeperator
-        { 
-            c (stringStyle `withFg` darkcyan)
-        }
-    @specialVarId / @interpVarSeperator                     
-        { 
-            c (stringStyle `withFg` cyan)
-        }
+    @varTypeOp
+        { m (\s -> HlInVariable 0 s) (defaultStyle `withFg` darkcyan) }
     .   { c stringStyle }
+}
+
+<variable>
+{
+    @varTypeOp
+        { c $ defaultStyle `withFg` darkcyan }
+    "{"
+        { m increaseVarCastDepth $ defaultStyle `withFg` darkcyan}
+    "}"
+        { m decreaseVarCastDepth $ defaultStyle `withFg` darkcyan}
+    @specialVarIdentifier
+        { m exitVarIfZeroDepth $ defaultStyle `withFg` cyan }
+    @varIdentifier
+        { m exitVarIfZeroDepth $ defaultStyle `withFg` darkcyan }
+    $white 
+        { m (\(HlInVariable _ s) -> s) defaultStyle }
+    .
+        { m (\(HlInVariable _ s) -> s) defaultStyle }
 }
 
 <perldoc>
 {
-    ^ "=cut" $ 
+    ^ "=cut"
         { 
-            m (\_ -> HlInCode) commentStyle 
+            m fromQuoteState commentStyle 
         }
     $white+ { c defaultStyle }
     . { c commentStyle }
@@ -305,7 +321,7 @@ perlHighlighterRules :-
 {
     \'
         {
-            m (\_ -> HlInCode) operatorStyle
+            m fromQuoteState operatorStyle
         }
     $white+ { c defaultStyle }
     .   { c stringStyle }
@@ -315,20 +331,37 @@ perlHighlighterRules :-
 
 data HlState = 
     HlInCode
-    | HlInInterpString String
+    -- Boolean indicating if the interpolated quote is a regex and deliminator of quote.
+    | HlInInterpString Bool String
     | HlInString
     | HlInHeredoc String
     | HlInPerldoc
     | HlInSubstRegex String
+    -- Count of nested {} and the state to transition to once variable is done.
+    | HlInVariable Int HlState
+
+fromQuoteState (HlInSubstRegex s) = HlInInterpString True s
+fromQuoteState _ = HlInCode
+
+increaseVarCastDepth (HlInVariable n s) = HlInVariable (n + 1) s
+increaseVarCastDepth state = error "Cannot increate variable cast depth"
+
+decreaseVarCastDepth (HlInVariable 0 s) = s
+decreaseVarCastDepth (HlInVariable n s) = HlInVariable (n - 1) s
+decreaseVarCastDepth state = error "Cannot increate variable cast depth"
+
+exitVarIfZeroDepth (HlInVariable 0 s) = s
+exitVarIfZeroDepth s = s
 
 type Token = StyleName
 
 stateToInit HlInCode = 0
-stateToInit (HlInInterpString _) = interpString
+stateToInit (HlInInterpString _ _) = interpString
 stateToInit HlInString = string
 stateToInit (HlInHeredoc _) = heredoc
 stateToInit HlInPerldoc = perldoc
 stateToInit (HlInSubstRegex _) = interpString
+stateToInit (HlInVariable _ _) = variable
 
 initState :: HlState
 initState = HlInCode
