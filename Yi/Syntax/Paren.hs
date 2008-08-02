@@ -89,7 +89,7 @@ getLastPath roots offset =
       [] -> Nothing
       list -> Just $ fst $ last list
     where allSubPathPosn = [(p,posn) | root <- roots, p@(t':_) <- getAllPaths root, 
-                            let Just tok = getFirstToken t', let posn = tokPosn tok]
+                            Just tok <- [getFirstToken t'], let posn = tokPosn tok]
 
 
 -- | Search the given list, and return the 1st tree after the given
