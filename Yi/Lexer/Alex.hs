@@ -111,7 +111,14 @@ lexScanner l st0 src = Scanner
                   --stStart = posnOfs . stPosn,
                   scanLooked = lookedOffset,
                   scanInit = AlexState st0 0 startPosn,
-                  scanRun = \st -> unfoldLexer l (st, ('\n', scanRun src $ posnOfs $ stPosn st))
+                  scanRun = \st -> 
+                     case posnOfs $ stPosn st of
+                         0 -> unfoldLexer l (st, ('\n', scanRun src 0))
+                         ofs -> case scanRun src (ofs - 1) of 
+                             -- FIXME: if this is a non-ascii char the ofs. will be wrong.
+                             -- However, since the only thing that matters (for now) is 'is the previous char a new line', we don't really care.
+                             [] -> []
+                             ((_,ch):rest) -> unfoldLexer l (st, (ch, rest))
                  }
 
 -- | unfold lexer function into a function that returns a stream of (state x token)
