@@ -16,32 +16,40 @@ import Yi.Style
 }
 
 $whitechar = [\ \t\n\r\f\v]
-$special   = [\(\)\,\;\[\]\`\{\}]
+$special   = [\(\)\,\;\[\]\`\{\}\:]
 
-$ascdigit  = 0-9
-$unidigit  = [] -- TODO
-$digit     = [$ascdigit $unidigit]
+$ascdigit     = 0-9
+$unidigit     = [] -- TODO
+$digit        = [$ascdigit $unidigit]
 
-$ascsymbol = [\!\#\$\%\&\*\+\.\/\<\=\>\?\@\\\^\|\-\~]
-$unisymbol = [] -- TODO
-$symbol    = [$ascsymbol $unisymbol] # [$special \_\:\"\']
+$ascsymbol    = [\!\#\$\%\&\*\+\.\/\<\=\>\?\@\\\^\|\-\~]
+$unisymbol    = [] -- TODO
+$symbol       = [$ascsymbol $unisymbol] # [$special \_]
 
-$large     = [A-Z \xc0-\xd6 \xd8-\xde]
-$small     = [a-z \xdf-\xf6 \xf8-\xff \_]
-$alpha     = [$small $large]
+$large        = [A-Z \xc0-\xd6 \xd8-\xde]
+$small        = [a-z \xdf-\xf6 \xf8-\xff \_]
+$alpha        = [$small $large]
 
-$graphic   = [$small $large $symbol $digit $special \:\"\']
+$graphic      = [$small $large $symbol $digit $special \"\']
 
-$octit     = 0-7
-$hexit     = [0-9 A-F a-f]
-$idchar    = [$alpha $digit \']
-$symchar   = [$symbol \:]
-$nl        = [\n\r]
+$nonzerodigit = 1-9
+$octit        = 0-7
+$hexit        = [0-9 A-F a-f]
+$idchar       = [$alpha $digit]
+$symchar      = [$symbol]
+$nl           = [\n\r]
 
-$strprefix = [urUR]
+$strprefix         = [urUR]
+$longintegersuffix = [lL]
+
+@builtins =
+    False
+  | None
+  | True
 
 @reservedid = 
-    and
+    @builtins
+  | and
   | as
   | assert
   | break
@@ -73,18 +81,31 @@ $strprefix = [urUR]
   | with
   | yield
 
+@compop =
+  "<=" | ">=" | "==" | "<" | ">" | "<>"
+
+@infarithop =
+  "+" | "-" | "*" | "/" | "//" | "%" | "&" | "|" | "^" | ">>" | "<<" | "**"
+
+-- This is separated so the infix operators above can be used with the augmented assignment form"
+@prefarithop = "~"
+
+@assignop = @infarithop? "="
+
 @reservedop = 
-  "!=" | "==" | "<<" | ">>" | "-" | "~" | "+" | "/" | "*" | "%" | "=" | "<" | ">" | "&" | "^" | "|" | "."
+  @compop | @prefarithop | @assignop
 
-@varid  = $small $idchar*
-@conid  = $large $idchar*
+@varid  = $alpha $idchar*
 @varsym = $symbol+
-@consym = \: $symchar*
 
-@decimal     = $digit+
-@octal       = $octit+
-@hexadecimal = $hexit+
-@exponent    = [eE] [\-\+] @decimal
+@digits = $nonzerodigit $digit*
+@octits = "0"  $octit
+@hexits = "0x" $hexit
+
+@integer     = @digits | @octits | @hexits
+@longinteger = @integer $longintegersuffix
+@exponent    = [eE] [\-\+] @integer
+@number      = @integer | @longinteger
 
 $cntrl   = [$large \@\[\\\]\^\_]
 @ascii   = \^ $cntrl | NUL | SOH | STX | ETX | EOT | ENQ | ACK
@@ -92,9 +113,11 @@ $cntrl   = [$large \@\[\\\]\^\_]
          | DC1 | DC2 | DC3 | DC4 | NAK | SYN | ETB | CAN | EM
          | SUB | ESC | FS | GS | RS | US | SP | DEL
 $charesc = [abfnrtv\\\"\'\&]
-@escape  = \\ ($charesc | @ascii | @decimal | o @octal | x @hexadecimal)
+@escape  = \\ ($charesc | @ascii | @number)
 @gap     = \\ $whitechar+ \\
-@string  = $graphic # [\"\\] | " " | @escape | @gap
+
+@shortstring = $graphic # [\"\\] | " " | @escape | @gap
+@longstring  = @shortstring | $nl
 
 haskell :-
 
@@ -107,25 +130,19 @@ haskell :-
 
  @reservedid                                    { c keywordStyle }
  @varid                                         { c defaultStyle }
- @conid                                         { c upperIdStyle }
 
  @reservedop                                    { c operatorStyle }
- @varsym                                        { c operatorStyle }
+-- @varsym                                        { c operatorStyle }
 
- @decimal 
-  | 0 @octal
-  | 0[xX] @hexadecimal                          { c defaultStyle }
+ @number @exponent?
+   | @number \. @number? @exponent?             { c numberStyle }
 
- @decimal \. @decimal @exponent?
-  | @decimal @exponent                          { c defaultStyle }
-
- $strprefix* \" @string* \"
-   | $strprefix* \' @string* \'
-   | $strprefix* \" \" \" @string* \" \" \"
-   | $strprefix* \' \' \' @string* \' \' \'     { c stringStyle }
+ $strprefix* \" @shortstring* \"
+   | $strprefix* \' @shortstring* \'
+   | $strprefix* \" \" \" @longstring* \" \" \"
+   | $strprefix* \' \' \' @longstring* \' \' \' { c stringStyle }
  .                                              { c operatorStyle }
 }
-
 
 {
 
