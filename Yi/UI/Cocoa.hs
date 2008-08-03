@@ -137,6 +137,9 @@ newTextLine = do
   tl # setSelectable True
   tl # setEditable False
   tl # sizeToFit
+  cl <- castObject <$> tl # cell :: IO (NSCell ())
+  cl # setWraps False
+  cl # setLineBreakMode nsLineBreakByTruncatingMiddle
   return tl
 
 addSubviewWithTextLine :: forall t1 t2. NSView t1 -> NSView t2 -> IO (NSTextField (), NSView ())
@@ -329,8 +332,7 @@ insertWindow e i win = do
 refresh :: UI -> Editor -> IO ()
 refresh ui e = logNSException "refresh" $ do
     let ws = Editor.windows e
-    let takeEllipsis s = if L.length s > 132 then take 129 s ++ "..." else s
-    (uiCmdLine ui) # setStringValue (toNSString (takeEllipsis (statusLine e)))
+    (uiCmdLine ui) # setStringValue (toNSString $ statusLine e)
 
     cache <- readRef $ windowCache ui
     forM_ (buffers e) $ \buf -> do
