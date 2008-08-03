@@ -119,6 +119,7 @@ library
         Yi.Lexer.LiterateHaskell
         Yi.Lexer.OCaml
         Yi.Lexer.Perl
+        Yi.Lexer.Python
         Yi.Lexer.Srmc
         Yi.Main
         Yi.MiniBuffer
@@ -310,6 +311,7 @@ executable yi
            Yi.Lexer.Cabal
            Yi.Lexer.OCaml
            Yi.Lexer.Perl
+           Yi.Lexer.Python
 
            Yi.Syntax
            Yi.Syntax.Layout

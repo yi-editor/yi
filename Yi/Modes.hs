@@ -18,13 +18,14 @@ import qualified Yi.Lexer.Latex               as Latex
 import qualified Yi.Lexer.LiterateHaskell     as LiterateHaskell
 import qualified Yi.Lexer.OCaml               as OCaml
 import qualified Yi.Lexer.Perl                as Perl
+import qualified Yi.Lexer.Python              as Python
 import qualified Yi.Lexer.Srmc                as Srmc
 import qualified Yi.Syntax.Linear as Linear
 import qualified Yi.Mode.Haskell as Haskell
 
 
 fundamental, defaultFundamentalMode :: Mode syntax
-latexMode, cppMode, literateHaskellMode, cabalMode, srmcMode, ocamlMode, perlMode :: Mode (Linear.Result Stroke)
+latexMode, cppMode, literateHaskellMode, cabalMode, srmcMode, ocamlMode, perlMode, pythonMode :: Mode (Linear.Result Stroke)
 
 fundamental = emptyMode
   { 
@@ -81,6 +82,11 @@ perlMode = fundamental
     modeHL = ExtHL $ mkHighlighter' Perl.initState Perl.alexScanToken id
   }
 
+pythonMode = fundamental
+  {
+    modeHL = ExtHL $ mkHighlighter' Python.initState Python.alexScanToken id
+  }
+
 defaultFundamentalMode = fundamental
 
 defaultModeMap :: ReaderT FilePath Maybe AnyMode
@@ -119,6 +125,7 @@ modeFromExtension ".pepa"  = Just $ AnyMode srmcMode -- pepa is a subset of srmc
 modeFromExtension ".pl"    = Just $ AnyMode perlMode
 modeFromExtension ".pm"    = Just $ AnyMode perlMode
 modeFromExtension ".t"     = Just $ AnyMode perlMode
+modeFromExtension ".py"    = Just $ AnyMode pythonMode
 modeFromExtension ".srmc"  = Just $ AnyMode srmcMode
 modeFromExtension ".ml"    = Just $ AnyMode ocamlMode
 modeFromExtension ".mli"   = Just $ AnyMode ocamlMode
