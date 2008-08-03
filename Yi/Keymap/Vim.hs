@@ -169,19 +169,22 @@ defKeymap self = ModeMap {
 
      -- the returned RegionStyle is used when the movement is combined with a 'cut' or 'yank'.
      gen_cmd_move :: KeymapM (RegionStyle, ViMove)
-     gen_cmd_move = do
-       cnt <- count
-       let x = maybe 1 id cnt
-       choice ([c ?>> return (Inclusive, a x) | (c,a) <- moveCmdFM_inclusive, (c /= char '0' || Nothing == cnt) ] ++
-               [pString s >> return (Inclusive, a x) | (s,a) <- moveCmdS_inclusive ] ++
-               [c ?>> return (Exclusive, a x) | (c,a) <- moveCmdFM_exclusive ] ++
-               [pString s >> return (Exclusive, a x) | (s,a) <- moveCmdS_exclusive ] ++
-               [c ?>> return (LineWise, a x) | (c,a) <- moveUpDownCmdFM] ++
-               [do event c; c' <- textChar; return (r, a c' x) | (c,r,a) <- move2CmdFM] ++
-               [char 'G' ?>> return (LineWise, ArbMove (case cnt of
-                                                          Nothing -> botB >> moveToSol
-                                                          Just n  -> gotoLn n >> return ()))
-               ,pString "gg" >> return (LineWise, ArbMove (gotoLn 0 >> return ()))])
+     gen_cmd_move = choice
+        [ char '0' ?>> return (Exclusive, viMoveToSol) 
+        , do 
+          cnt <- count
+          let x = maybe 1 id cnt
+          choice ([c ?>> return (Inclusive, a x) | (c,a) <- moveCmdFM_inclusive, (c /= char '0' || Nothing == cnt) ] ++
+                  [pString s >> return (Inclusive, a x) | (s,a) <- moveCmdS_inclusive ] ++
+                  [c ?>> return (Exclusive, a x) | (c,a) <- moveCmdFM_exclusive ] ++
+                  [pString s >> return (Exclusive, a x) | (s,a) <- moveCmdS_exclusive ] ++
+                  [c ?>> return (LineWise, a x) | (c,a) <- moveUpDownCmdFM] ++
+                  [do event c; c' <- textChar; return (r, a c' x) | (c,r,a) <- move2CmdFM] ++
+                  [char 'G' ?>> return (LineWise, ArbMove (case cnt of
+                                                             Nothing -> botB >> moveToSol
+                                                             Just n  -> gotoLn n >> return ()))
+                  ,pString "gg" >> return (LineWise, ArbMove (gotoLn 0 >> return ()))])
+        ]
 
      -- | movement commands (with exclusive cut/yank semantics)
      moveCmdFM_exclusive :: [(Event, (Int -> ViMove))]
@@ -195,7 +198,6 @@ defKeymap self = ModeMap {
          ,(char 'l',        right)
          ,(char ' ',        right)
          ,(spec KHome,      sol)
-         ,(char '0',        sol)
          ,(char '^',        const $ ArbMove firstNonSpaceB)
          ,(char '|',        \i -> SeqMove viMoveToSol (Replicate (CharMove Forward) (i-1)))
 
