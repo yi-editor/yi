@@ -170,11 +170,11 @@ defKeymap self = ModeMap {
      -- the returned RegionStyle is used when the movement is combined with a 'cut' or 'yank'.
      gen_cmd_move :: KeymapM (RegionStyle, ViMove)
      gen_cmd_move = choice
-        [ char '0' ?>> return (Exclusive, viMoveToSol) 
+        [ char '0' ?>> return (Exclusive, viMoveToSol)
         , do 
           cnt <- count
           let x = maybe 1 id cnt
-          choice ([c ?>> return (Inclusive, a x) | (c,a) <- moveCmdFM_inclusive, (c /= char '0' || Nothing == cnt) ] ++
+          choice ([c ?>> return (Inclusive, a x) | (c,a) <- moveCmdFM_inclusive ] ++
                   [pString s >> return (Inclusive, a x) | (s,a) <- moveCmdS_inclusive ] ++
                   [c ?>> return (Exclusive, a x) | (c,a) <- moveCmdFM_exclusive ] ++
                   [pString s >> return (Exclusive, a x) | (s,a) <- moveCmdS_exclusive ] ++
@@ -351,7 +351,7 @@ defKeymap self = ModeMap {
          ,(char 'D',      withEditor . cut Exclusive . (Replicate $ Move Line Forward))
          ,(char 'J',      const (withBuffer (moveToEol >> deleteN 1)))    -- the "\n"
          ,(char 'Y',      \n -> withEditor $ do
-                                    let move = (Replicate $ Move Line Forward) n
+                                    let move = Replicate (Move Line Forward) n
                                     region <- withBuffer0 $ regionOfViMove move Inclusive
                                     yankRegion LineWise region
           )
