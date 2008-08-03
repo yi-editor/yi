@@ -65,7 +65,6 @@ import Data.Char
 import Data.List                ( intersperse, map )
 import qualified Data.Map as M
 import Control.Monad.Error
-import Control.Applicative
 import System.Console.GetOpt
 import System.Directory
 import System.Environment       ( getArgs )
@@ -232,8 +231,8 @@ defaultConfig =
 defaultPublishedActions :: M.Map String [Dynamic]
 defaultPublishedActions = M.fromList $ 
     [ ("leftB"                  , box leftB) 
-    , ("pointB"                 , box (fromPoint <$> pointB)) 
-    , ("linePrefixSelectionB"  , box linePrefixSelectionB)
+    , ("pointB"                 , box pointB) 
+    , ("linePrefixSelectionB"   , box linePrefixSelectionB)
     , ("unLineCommentSelectionB", box unLineCommentSelectionB)
     , ("insertB"                , box insertB)
     , ("revertE"                , box revertE)

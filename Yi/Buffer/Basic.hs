@@ -43,7 +43,7 @@ instance Show BufferRef where
 
 -- | A point in a buffer
 newtype Point = Point {fromPoint :: Int}           -- offset in the buffer (#bytes, NOT codepoints)
-    deriving (Eq, Ord, Num, Enum, Real, Integral, Bounded)
+    deriving (Eq, Ord, Num, Enum, Real, Integral, Bounded, Typeable)
 
 instance Show Point where
     show (Point p) = show p
