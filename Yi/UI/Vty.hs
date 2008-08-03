@@ -61,7 +61,7 @@ data UI = UI {
              ,scrsize   :: IORef (Int,Int)  -- ^ screen size
              ,uiThread  :: ThreadId
              ,uiRefresh :: MVar ()
-             ,uiEditor  :: IORef Editor
+             ,uiEditor  :: IORef Editor     -- ^ Copy of the editor state, local to the UI
              ,config  :: Config
              }
 mkUI :: UI -> Common.UI
@@ -209,18 +209,26 @@ scanrT (+*+) k t = fst $ runState (mapM f t) k
                    return s
            
 
--- | Scrolls the window to show the point if needed
+-- | Scrolls the window to show the point if needed, and return a rendered wiew of the window.
 scrollAndRenderWindow :: UIConfig -> UIStyle -> Int -> (Window, Bool) -> EditorM Rendered
 scrollAndRenderWindow cfg sty width (win,hasFocus) = do 
     e <- get
     let b = findBufferWith (bufkey win) e
-        (point, _) = runBuffer win b pointB
-        (inWindow, _) = runBuffer win b $ pointInWindowB point
-        b' = if inWindow then b else showPoint b win
+        
+        ((pointDriven, inWindow), _) = runBuffer win b $ do point <- pointB
+                                                            (,) <$> getA pointDriveA <*> pointInWindowB point
+        b' = if inWindow then b else 
+                if pointDriven then moveWinTosShowPoint b win else showPoint b
         (rendered, b'') = drawWindow cfg (regex e) b' sty hasFocus width win
+        showPoint buf = snd $ runBuffer win buf' $ do r <- winRegionB
+                                                      p <- pointB
+                                                      moveTo $ max (regionStart r) $ min (regionEnd r - 1) $ p
+                                                      setA pointDriveA True -- revert to a point-driven behaviour
+                      where (_,buf') = drawWindow cfg (regex e) buf sty hasFocus width win
+                             -- this is merely to recompute the bos point.
+
     put e { buffers = M.insert (bufkey win) b'' (buffers e) }
     return rendered
-
 
 -- | Draw a window
 -- TODO: horizontal scrolling.

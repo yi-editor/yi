@@ -2,12 +2,14 @@
 -- Copyright (C) 2008 JP Bernardy
 module Yi.Buffer.HighLevel where
 
+import Prelude (FilePath)
+import Yi.Prelude 
 import Control.Applicative
 import Control.Monad.RWS.Strict (ask)
 import Control.Monad.State
 import Data.Char
 import Data.Dynamic
-import Data.List (isPrefixOf, sort)
+import Data.List (isPrefixOf, sort, lines, drop, filter, length, takeWhile, dropWhile)
 import Data.Maybe
   ( fromMaybe, listToMaybe )
 
@@ -15,7 +17,6 @@ import Yi.Buffer
 import Yi.Buffer.Implementation (newLine)
 import Yi.Buffer.Normal
 import Yi.Buffer.Region
-import Yi.Debug (trace)
 import Yi.String
 import Yi.Window
 import Yi.Dynamic
@@ -165,11 +166,11 @@ bkillWordB = deleteB Word Backward
 
 -- | capitalise the word under the cursor
 uppercaseWordB :: BufferM ()
-uppercaseWordB = transformB (map toUpper) Word Forward
+uppercaseWordB = transformB (fmap toUpper) Word Forward
 
 -- | lowerise word under the cursor
 lowercaseWordB :: BufferM ()
-lowercaseWordB = transformB (map toLower) Word Forward
+lowercaseWordB = transformB (fmap toLower) Word Forward
 
 -- | capitalise the first letter of this word
 capitaliseWordB :: BufferM ()
@@ -251,7 +252,7 @@ bufInfoB = do
 -----------------------------
 -- Window-related operations
 
--- | Scroll by one screen in the specicied direction.
+-- | Scroll down by one screen.
 scrollScreenDownB :: BufferM ()
 scrollScreenDownB = do
     p <- pointAt $ do moveTo =<< getMarkPointB =<< toMark <$> askMarks
@@ -260,28 +261,32 @@ scrollScreenDownB = do
     setMarkPointB t p
     moveTo p
 
+upScreensB = scrollScreensB . negate
+
+downScreensB = scrollScreensB
+
 -- | Scroll up 1 screen
 upScreenB :: BufferM ()
-upScreenB = upScreensB 1
+upScreenB = scrollScreensB (-1)
 
--- | Scroll down 1 screen
+-- | Scroll up 1 screen
 downScreenB :: BufferM ()
-downScreenB = downScreensB 1
+downScreenB = scrollScreensB 1
 
--- | Scroll up n screens
-upScreensB :: Int -> BufferM ()
-upScreensB = moveScreenB Forward
+-- | Scroll by n screens (negative for up)
+scrollScreensB :: Int -> BufferM ()
+scrollScreensB n = do
+    h <- askWindow height
+    scrollB $ n * (h - 1)
 
--- | Scroll down n screens
-downScreensB :: Int -> BufferM ()
-downScreensB = moveScreenB Backward
-
-moveScreenB :: Direction -> Int -> BufferM ()
-moveScreenB dir n = do h <- askWindow height
-                       case dir of
-                         Forward -> gotoLnFrom (- (n * (h - 1)))
-                         Backward -> gotoLnFrom $ n * (h - 1)
-                       moveToSol
+-- | Scroll by n lines.
+scrollB :: Int -> BufferM ()
+scrollB n = do setA pointDriveA False
+               WinMarks fr _ _ <- askMarks
+               savingPointB $ do
+                   moveTo =<< getMarkPointB fr
+                   gotoLnFrom n
+                   setMarkPointB fr =<< pointB
 
 -- | Move to @n@ lines down from top of screen
 downFromTosB :: Int -> BufferM ()
@@ -310,12 +315,8 @@ middleB = do
   replicateM_ (height w `div` 2) lineDown
 
 pointInWindowB :: Point -> BufferM Bool
-pointInWindowB p = do
-    w <- ask
-    Just (WinMarks f _ t) <- getMarks w
-    fromP <- getMarkPointB f
-    toP <- getMarkPointB t
-    trace ("pointInWindowB " ++ show fromP ++ " " ++ show toP ++ " " ++ show p) $ (return $ fromP <= p && p <= toP)
+pointInWindowB p = nearRegion p <$> winRegionB
+ --    trace ("pointInWindowB " ++ show fromP ++ " " ++ show toP ++ " " ++ show p) $ (return $ fromP <= p && p <= toP)
 
 -----------------------------
 -- Region-related operations
@@ -385,7 +386,7 @@ deleteBlankLinesB =
 -- | Get a (lazy) stream of lines in the buffer, starting at the /next/ line
 -- in the given direction.
 lineStreamB :: Direction -> BufferM [String]
-lineStreamB dir = map (LazyUTF8.toString . rev) . drop 1 . LB.split newLine <$> (streamB dir =<< pointB)
+lineStreamB dir = fmap (LazyUTF8.toString . rev) . drop 1 . LB.split newLine <$> (streamB dir =<< pointB)
     where rev = case dir of 
                   Forward -> id
                   Backward -> LB.reverse

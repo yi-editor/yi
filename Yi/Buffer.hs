@@ -92,6 +92,7 @@ module Yi.Buffer
   , pointAt
   , fileA
   , nameA
+  , pointDriveA
   )
 where
 
@@ -151,7 +152,8 @@ data FBuffer = forall syntax.
                 , undos  :: !URList               -- ^ undo/redo list
                 , rawbuf :: !(BufferImpl syntax)
                 , bmode  :: !(Mode syntax)
-                , readOnly :: !Bool                -- ^ a read-only bit (TODO)
+                -- , readOnly :: !Bool                -- ^ a read-only bit (TODO)
+                , pointDrive :: !Bool
                 , bufferDynamic :: !DynamicValues -- ^ dynamic components
                 , preferCol :: !(Maybe Int)       -- ^ prefered column to arrive at when we do a lineDown / lineUp
                 , pendingUpdates :: ![UIUpdate]    -- ^ updates that haven't been synched in the UI yet
@@ -174,6 +176,12 @@ queryAndModifyRawbuf :: (forall syntax. BufferImpl syntax -> (BufferImpl syntax,
 queryAndModifyRawbuf f (FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 f13) = 
     let (f5', x) = f f5
     in (FBuffer f1 f2 f3 f4 f5' f6 f7 f8 f9 f10 f11 f12 f13, x)
+
+pointDriveA :: Accessor FBuffer Bool
+pointDriveA = Accessor pointDrive (\f e -> case e of 
+                                   FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 f13 -> 
+                                    FBuffer f1 f2 f3 f4 f5 f6 (f f7) f8 f9 f10 f11 f12 f13)
+
 
 undosA :: Accessor (FBuffer) (URList)
 undosA = Accessor undos (\f e -> case e of 
@@ -417,7 +425,8 @@ newB cfg unique nm s =
             , file   = Nothing          -- has name, not connected to a file
             , undos  = emptyU
             , rawbuf = newBI s
-            , readOnly = False
+            -- , readOnly = False
+            , pointDrive = True
             , bmode  = emptyMode
             , preferCol = Nothing
             , bufferDynamic = modifier dynamicValueA (const $ configIndentSettings cfg) emptyDV 
