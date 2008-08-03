@@ -13,13 +13,12 @@ module Yi.UI.Cocoa.TextStorage
   , setTextStorageBuffer
   ) where
 
-import Prelude (take, unzip, uncurry, dropWhile)
+import Prelude (take, uncurry, dropWhile)
 import Yi.Prelude
 import Yi.Buffer
 import Yi.Buffer.Implementation
 import Yi.Style
 import Yi.Syntax
-import Yi.Window
 import Yi.UI.Cocoa.Utils
 import Yi.UI.Utils
 
@@ -31,7 +30,7 @@ import Foreign.C
 
 import qualified Data.ByteString.Lazy as LB
 
-import Foundation hiding (minimum, new, init, null)
+import Foundation hiding (minimum, new, init, null, error)
 import AppKit hiding (concat, dictionary)
 
 -- Unfortunately, my version of hoc does not handle typedefs correctly,
@@ -53,28 +52,28 @@ instance Has_getCharactersRange (NSString a)
 
 $(declareClass "YiLBString" "NSString")
 $(exportClass "YiLBString" "yls_" [
-    InstanceVariable "string" [t| LB.ByteString |] [| LB.empty |]
+    InstanceVariable "str" [t| LB.ByteString |] [| LB.empty |]
   , InstanceMethod 'length -- '
   , InstanceMethod 'characterAtIndex -- '
   , InstanceMethod 'getCharactersRange -- '
   ])
 
 yls_length :: YiLBString () -> IO CUInt
-yls_length self = do
+yls_length slf = do
   -- logPutStrLn $ "Calling yls_length (gah...)"
-  self #. _string >>= return . fromIntegral . LB.length
+  slf #. _str >>= return . fromIntegral . LB.length
 
 -- TODO: The result type should be UTF16...
 yls_characterAtIndex :: CUInt -> YiLBString () -> IO Unichar
-yls_characterAtIndex i self = do
+yls_characterAtIndex i slf = do
   -- logPutStrLn $ "Calling yls_characterAtIndex " ++ show i
-  self #. _string >>= return . fromIntegral . flip LB.index (fromIntegral i)
+  slf #. _str >>= return . fromIntegral . flip LB.index (fromIntegral i)
 
 -- TODO: Should get an array of characters in UTF16...
 yls_getCharactersRange :: Ptr Unichar -> NSRange -> YiLBString () -> IO ()
-yls_getCharactersRange p r@(NSRange i l) self = do
+yls_getCharactersRange p _r@(NSRange i l) slf = do
   -- logPutStrLn $ "Calling yls_getCharactersRange " ++ show r
-  self #. _string >>=
+  slf #. _str >>=
     pokeArray p .
     take (fromIntegral l) . -- TODO: Is l given in bytes or characters?
     fmap fromIntegral . -- TODO: UTF16 recode
@@ -101,13 +100,13 @@ yls_getCharactersRange p r@(NSRange i l) self = do
 -- | Obtain the result of the action and cache that as the
 --   instance variable ivar in self. Use existing cache if
 --   a result is stored, and cond says it is still valid.
-withCache self ivar cond action = do
-  cache <- self #. ivar
+withCache slf ivar cond act = do
+  cache <- slf #. ivar
   case cache of
     Just val | cond val -> return val
-    otherwise -> do
-      val <- action
-      self # setIVar ivar (Just val)
+    _ -> do
+      val <- act
+      slf # setIVar ivar (Just val)
       return val
 
 -- | Use this as the base length of computed stroke ranges
@@ -134,50 +133,50 @@ $(exportClass "YiTextStorage" "yts_" [
   ])
 
 yts_length :: YiTextStorage () -> IO CUInt
-yts_length self = do
+yts_length slf = do
   -- logPutStrLn "Calling yts_length "
-  (fromIntegral . flip runBufferDummyWindow sizeB . fromJust) <$> self #. _buffer
+  (fromIntegral . flip runBufferDummyWindow sizeB . fromJust) <$> slf #. _buffer
 
 yts_string :: YiTextStorage () -> IO (NSString ())
-yts_string self = do
-  withCache self _stringCache (const True) $ do
+yts_string slf = do
+  withCache slf _stringCache (const True) $ do
     s <- new _YiLBString
-    Just b <- self #. _buffer
-    s # setIVar _string (runBufferDummyWindow b (streamB Forward 0))
+    Just b <- slf #. _buffer
+    s # setIVar _str (runBufferDummyWindow b (streamB Forward 0))
     castObject <$> return s
 
 yts_fixesAttributesLazily :: YiTextStorage () -> IO Bool
 yts_fixesAttributesLazily _ = return True
 
 yts_attributesAtIndexEffectiveRange :: CUInt -> NSRangePointer -> YiTextStorage () -> IO (NSDictionary ())
-yts_attributesAtIndexEffectiveRange i er self = do
-  Just sty <- self #. _uiStyle
-  picStart <- self #. _pictureCacheStart
-  pic <- dropJunk <$> self #. _pictureCache
+yts_attributesAtIndexEffectiveRange i er slf = do
+  picStart <- slf #. _pictureCacheStart
+  pic <- dropJunk <$> slf #. _pictureCache
   case pic of
-    (q,_):_ | pos >= picStart && pos < q -> returnRange 0 pic
-    _ -> returnRange (strokeRangeExtent - picStart) =<< 
-      filterEmpty <$> dropJunk <$> paintCocoaPicture sty <$> self # runStrokesAround i
+    (q,_):_ | pos >= picStart && pos < q -> returnRange pic
+    _ -> returnRange =<< filterEmpty <$> dropJunk <$> slf # storagePicture i
   where
     dropJunk = dropWhile ((pos >=) . fst)
     pos = fromIntegral i
-    returnRange picEnd pic = do
-      self # setIVar _pictureCacheStart pos
-      self # setIVar _pictureCache pic
-      safePoke er (NSRange i (fromIntegral $ (maybe picEnd fst (listToMaybe pic)) - pos))
-      dicts <- self #. _dictionaryCache
-      let style = maybe [] (flattenStyle . snd) (listToMaybe pic)
+    returnRange [] = error "Empty picture?"
+    returnRange pic@((end,s):_) = do
+      slf # setIVar _pictureCacheStart pos
+      slf # setIVar _pictureCache pic
+      logPutStrLn $ "yts_attributesAtIndexEffectiveRange " ++ show i ++ " => " ++ show (NSRange i (fromIntegral end)) ++ " " ++ show (take 1 pic)
+      safePoke er (NSRange i (fromIntegral end - i))
+      dicts <- slf #. _dictionaryCache
+      let s' = flattenStyle s
       -- Keep a cache of seen styles... usually, there should not be to many
       -- TODO: Have one centralized cache instead of one per text storage...
-      case M.lookup style dicts of
+      case M.lookup s' dicts of
         Just dict -> return dict
         _ -> do
-          dict <- convertStyle style
-          self # setIVar _dictionaryCache (M.insert style dict dicts)
+          dict <- convertStyle s'
+          slf # setIVar _dictionaryCache (M.insert s' dict dicts)
           return dict
 
 yts_attributeAtIndexEffectiveRange :: forall t. NSString t -> CUInt -> NSRangePointer -> YiTextStorage () -> IO (ID ())
-yts_attributeAtIndexEffectiveRange attr i er self = do
+yts_attributeAtIndexEffectiveRange attr i er slf = do
   attr' <- haskellString attr
   case attr' of
     "NSFont" -> do
@@ -196,19 +195,17 @@ yts_attributeAtIndexEffectiveRange attr i er self = do
       -- TODO: Adjust line break property...
       safePokeFullRange >> castObject <$> defaultParagraphStyle _NSParagraphStyle
     "NSBackgroundColor" -> do
-      Just sty <- self #. _uiStyle
-      stroke <- onlyBg <$> paintCocoaPicture sty <$>  self # runStrokesAround i
-      let (s, bg) = fromMaybe (fromIntegral i + strokeRangeExtent, []) (listToMaybe stroke)
+      (s,bg):_ <- onlyBg <$> slf # storagePicture i
       let Background c = fromMaybe (Background Default) (listToMaybe bg)
       safePoke er (NSRange i (fromIntegral s - i))
       castObject <$> getColor False c
     _ -> do
       -- TODO: Optimize the other queries as well (if needed)
       logPutStrLn $ "Unoptimized yts_attributeAtIndexEffectiveRange " ++ attr' ++ " at " ++ show i
-      super self # attributeAtIndexEffectiveRange attr i er
+      super slf # attributeAtIndexEffectiveRange attr i er
   where
     safePokeFullRange = do
-      Just b <- self #. _buffer
+      Just b <- slf #. _buffer
       safePoke er (NSRange 0 (fromIntegral $ runBufferDummyWindow b sizeB))
 
 -- These methods are used to modify the contents of the NSTextStorage.
@@ -243,10 +240,10 @@ filterSame = filter2 ((==) `on` snd)
 onlyBg :: Picture -> Picture
 onlyBg xs = filterSame [(p,[s | s@(Background _) <- ss]) | (p,ss) <- xs ]
 
-paintCocoaPicture :: UIStyle -> [[Stroke]] -> Picture
-paintCocoaPicture sty = stylesift [] . paintPicture [] . fmap (fmap constStroke)
+paintCocoaPicture :: UIStyle -> Point -> [[Stroke]] -> Picture
+paintCocoaPicture sty end = stylesift [] . paintPicture [] . fmap (fmap constStroke)
   where
-    stylesift s [] = []
+    stylesift s [] = [(end,s)]
     stylesift s ((p,t):xs) = (p,s):(stylesift t xs)
     constStroke (l,s,r) = (l,const (s sty),r)
 
@@ -285,12 +282,18 @@ safePoke p x = if p == nullPtr then return () else poke p x
 
 -- | Execute strokeRangesB on the buffer, and update the buffer
 --   so that we keep around cached syntax information...
-runStrokesAround :: CUInt -> YiTextStorage () -> IO [[Stroke]]
-runStrokesAround i self = do
-  Just b <- self #. _buffer
-  let p = fromIntegral i
-  logPutStrLn $ "runStrokesAround " ++ show p
-  return $ runBufferDummyWindow b (strokesRangesB Nothing p (p + strokeRangeExtent))
+storagePicture :: CUInt -> YiTextStorage () -> IO Picture
+storagePicture i slf = do
+  Just sty <- slf #. _uiStyle
+  Just buf <- slf #. _buffer
+  logPutStrLn $ "storagePicture " ++ show i
+  return $ bufferPicture sty buf (fromIntegral i)
+
+bufferPicture :: UIStyle -> FBuffer -> Point -> Picture
+bufferPicture sty buf p =
+  let q = (p + strokeRangeExtent) in
+  paintCocoaPicture sty q $
+    runBufferDummyWindow buf (strokesRangesB Nothing p q)
 
 type TextStorage = YiTextStorage ()
 initializeClass_TextStorage :: IO ()
