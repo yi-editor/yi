@@ -18,7 +18,7 @@ import Yi.UI.Cocoa.Utils
 import Yi.Prelude hiding (init)
 import Yi.Accessor
 import Yi.Buffer
-import Yi.Editor (Editor, withGivenBuffer0, findBufferWith, statusLine, buffers)
+import Yi.Editor
 import qualified Yi.Editor as Editor
 import Yi.Debug
 import Yi.Keymap
@@ -77,6 +77,7 @@ data WinInfo = WinInfo
     ,modeline    :: NSTextField ()
     ,widget      :: NSView ()          -- ^ Top-level widget for this window.
     ,isMini      :: Bool
+    ,window      :: Window
     }
 
 instance Show WinInfo where
@@ -239,12 +240,12 @@ end = _YiApplication # sharedApplication >>= terminate_ nil
 syncWindows :: Editor -> UI -> [(Window, Bool)] -> [WinInfo] -> IO [WinInfo]
 syncWindows e ui (wfocused@(w,focused):ws) (c:cs)
     | Window.winkey w == winkey c = do when focused (setFocus c)
-                                       return (c:) `ap` syncWindows e ui ws cs
+                                       (c{window = w}:) <$> syncWindows e ui ws cs
     | Window.winkey w `elem` map winkey cs = do (widget c) # removeFromSuperview
                                                 syncWindows e ui (wfocused:ws) cs
     | otherwise = do c' <- insertWindow e ui w
                      when focused (setFocus c')
-                     return (c':) `ap` syncWindows e ui ws (c:cs)
+                     (c':) <$> syncWindows e ui ws (c:cs)
 syncWindows e ui ws [] = mapM (insertWindow e ui) (map fst ws)
 syncWindows _e _ui [] cs = mapM_ (removeFromSuperview . widget) cs >> return []
 
@@ -254,15 +255,15 @@ setFocus w = do
   (textview w) # NSView.window >>= makeFirstResponder (textview w) >> return ()
 
 -- | Make A new window
-newWindow :: UI -> Bool -> FBuffer -> IO WinInfo
-newWindow ui mini b = do
+newWindow :: UI -> Window -> FBuffer -> IO WinInfo
+newWindow ui win b = do
   v <- alloc _YiTextView >>= initWithFrame (rect 0 0 100 100)
   v # setRichText False
   v # setSelectable True
   v # setAlignment nsLeftTextAlignment
   v # sizeToFit
-  v # setIVar _runBuffer (uiActionCh ui . makeAction . withGivenBuffer0 (keyB b))
 
+  let mini = Window.isMini win
   (ml, view) <- if mini
    then do
     v # setHorizontallyResizable False
@@ -313,21 +314,26 @@ newWindow ui mini b = do
   layoutManager v >>= replaceTextStorage storage
 
   k <- newUnique
-  let win = WinInfo {
+  let winfo = WinInfo {
                   bufkey    = (keyB b)
                  ,wkey      = k
                  ,textview  = v
                  ,modeline  = ml
                  ,widget    = view
                  ,isMini    = mini
+                 ,window    = win
             }
+  flip (setIVar _runBuffer) v $ \act -> do
+    wCache <- readIORef (windowCache ui)
+    uiActionCh ui $ makeAction $ do
+      modifyWindows $ WS.focusIndex $ fromJust $ L.findIndex ((k ==) . wkey) wCache
+      withGivenBufferAndWindow0 win (keyB b) act
 
-  return win
+  return winfo
 
 insertWindow :: Editor -> UI -> Window -> IO WinInfo
 insertWindow e i win = do
-  let buf = findBufferWith (Window.bufkey win) e
-  liftIO $ newWindow i (Window.isMini win) buf
+  liftIO $ newWindow i win (findBufferWith (Window.bufkey win) e)
 
 refresh :: UI -> Editor -> IO ()
 refresh ui e = logNSException "refresh" $ do
@@ -348,13 +354,13 @@ refresh ui e = logNSException "refresh" $ do
 
     forM_ cache' $ \w ->
         do let buf = findBufferWith (bufkey w) e
-           let p0 = runBufferDummyWindow buf pointB
-           let p1 = runBufferDummyWindow buf (getMarkPointB staticSelMark)
+           let (p0,_) = runBuffer (window w) buf pointB
+           let (p1,_) = runBuffer (window w) buf (getMarkPointB staticSelMark)
            let showSel = runBufferDummyWindow buf (getA highlightSelectionA)
            let (p,l) = if showSel then (min p0 p1, abs $ p1~-p0) else (p0,0)
            (textview w) # setSelectedRange (NSRange (fromIntegral p) (fromIntegral l))
            (textview w) # scrollRangeToVisible (NSRange (fromIntegral p0) 0)
-           let txt = runBufferDummyWindow buf getModeLine
+           let (txt,_) = runBuffer (window w) buf getModeLine
            (modeline w) # setStringValue (toNSString txt)
 
 getTextStorage :: UI -> FBuffer -> IO TextStorage
