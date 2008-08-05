@@ -16,38 +16,29 @@ import Yi.UI.Cocoa.TextView
 import Yi.UI.Cocoa.Utils
 
 import Yi.Prelude hiding (init)
-import Yi.Accessor
 import Yi.Buffer
 import Yi.Editor
-import Yi.Debug
 import Yi.Keymap
-import Yi.Buffer.Implementation
 import Yi.Monad
 import Yi.Config
 import qualified Yi.UI.Common as Common
 import qualified Yi.WindowSet as WS
-import qualified Yi.Window as Window
-import Yi.Window (Window)
+import Yi.Window
 import Paths_yi (getDataFileName)
 
-import Control.Monad.Reader (liftIO, when, MonadIO)
+import Control.Monad.Reader (when)
 
 import qualified Data.List as L
 import Data.IORef
 import Data.Maybe
 import Data.Unique
-import Data.Foldable
-import Data.Traversable
 import qualified Data.Map as M
 
 import Foundation hiding (name, new, parent, error, self, null)
-import Foundation.NSObject (init)
 
-import AppKit hiding (windows, start, rect, width, content, prompt, dictionary, icon, concat)
-import qualified AppKit.NSWindow (contentView)
-import qualified AppKit.NSView as NSView
-
-import HOC
+import AppKit hiding (windows, start, rect, width, content, prompt, dictionary, icon, concat, remove, insert, update)
+import qualified AppKit.NSWindow
+import qualified AppKit.NSView
 
 import Foreign.C
 import Foreign hiding (new)
@@ -68,24 +59,12 @@ data UI = UI {uiWindow :: NSWindow ()
              }
 
 data WinInfo = WinInfo
-    {
-     bufkey      :: !BufferRef         -- ^ the buffer this window opens to
-    ,wkey        :: !Unique
-    ,textview    :: YiTextView ()
-    ,modeline    :: NSTextField ()
-    ,widget      :: NSView ()          -- ^ Top-level widget for this window.
-    ,isMini      :: Bool
-    ,window      :: Window
-    }
-
-instance Show WinInfo where
-    show w = "W" ++ show (hashUnique $ wkey w) ++ " on " ++ show (bufkey w)
-
-
--- | Get the identification of a window.
-winkey :: WinInfo -> (Bool, BufferRef)
-winkey w = (isMini w, bufkey w)
-
+  { wikey    :: !Unique        -- ^ Uniquely identify each window
+  , window   :: Window         -- ^ The editor window that we reflect
+  , textview :: YiTextView ()
+  , modeline :: NSTextField ()
+  , widget   :: NSView ()      -- ^ Top-level widget for this window.
+  }
 
 mkUI :: UI -> Common.UI
 mkUI ui = Common.UI
@@ -109,9 +88,6 @@ normalWindowMask =
 initWithContentRect :: NSRect -> NewlyAllocated (NSWindow ()) -> IO (NSWindow ())
 initWithContentRect r =
   initWithContentRectStyleMaskBackingDefer r normalWindowMask nsBackingStoreBuffered True
-width, height :: NSRect -> Float
-width (NSRect _ (NSSize w _)) = w
-height (NSRect _ (NSSize _ h)) = h
 
 toNSView :: forall t. ID () -> NSView t
 toNSView = castObject
@@ -149,8 +125,8 @@ addSubviewWithTextLine view parent = do
   -- Adjust frame sizes, as superb cocoa cannot do this itself...
   txtbox <- text # frame
   winbox <- container # bounds
-  view # setFrame (rect 0 (height txtbox) (width winbox) (height winbox - height txtbox))
-  text # setFrame (rect 0 0 (width winbox) (height txtbox))
+  view # setFrame (rect 0 (nsHeight txtbox) (nsWidth winbox) (nsHeight winbox - nsHeight txtbox))
+  text # setFrame (rect 0 0 (nsWidth winbox) (nsHeight txtbox))
 
   return (text, container)
 
@@ -230,21 +206,25 @@ end :: IO ()
 end = _YiApplication # sharedApplication >>= terminate_ nil
 
 syncWindows :: Editor -> UI -> [(Window, Bool)] -> [WinInfo] -> IO [WinInfo]
-syncWindows e ui (wfocused@(w,focused):ws) (c:cs)
-    | Window.winkey w == winkey c = do when focused (setFocus c)
-                                       (c{window = w}:) <$> syncWindows e ui ws cs
-    | Window.winkey w `elem` map winkey cs = do (widget c) # removeFromSuperview
-                                                syncWindows e ui (wfocused:ws) cs
-    | otherwise = do c' <- insertWindow e ui w
-                     when focused (setFocus c')
-                     (c':) <$> syncWindows e ui ws (c:cs)
-syncWindows e ui ws [] = mapM (insertWindow e ui) (map fst ws)
-syncWindows _e _ui [] cs = mapM_ (removeFromSuperview . widget) cs >> return []
+syncWindows e ui = sync
+  where 
+    sync ws [] = mapM insert ws
+    sync [] cs = mapM_ remove cs >> return []
+    sync (w:ws) (c:cs)
+      | match w c          = (:) <$> update w c <*> sync ws cs
+      | L.any (match w) cs = remove c >> sync (w:ws) cs
+      | otherwise          = (:) <$> insert w <*> sync ws (c:cs)
 
-setFocus :: WinInfo -> IO ()
-setFocus w = do
-  logPutStrLn $ "Cocoa focusing " ++ show w
-  (textview w) # NSView.window >>= makeFirstResponder (textview w) >> return ()
+    match w c = winkey (fst w) == winkey (window c)
+
+    winbuf = flip findBufferWith e . bufkey
+
+    remove = removeFromSuperview . widget
+    insert (w,f) = update (w,f) =<< newWindow ui w (winbuf w)
+    update (w, False) i = return (i{window = w})
+    update (w, True) i = do
+      (textview i) # AppKit.NSView.window >>= makeFirstResponder (textview i)
+      return (i{window = w})
 
 -- | Make A new window
 newWindow :: UI -> Window -> FBuffer -> IO WinInfo
@@ -255,8 +235,7 @@ newWindow ui win b = do
   v # setAlignment nsLeftTextAlignment
   v # sizeToFit
 
-  let mini = Window.isMini win
-  (ml, view) <- if mini
+  (ml, view) <- if (isMini win)
    then do
     v # setHorizontallyResizable False
     v # setVerticallyResizable False
@@ -269,15 +248,15 @@ newWindow ui win b = do
     prect <- prompt # frame
     vrect <- v # frame
 
-    hb <- _NSView # alloc >>= initWithFrame (rect 0 0 (width prect + width vrect) (height prect))
-    v # setFrame (rect (width prect) 0 (width vrect) (height prect))
+    hb <- _NSView # alloc >>= initWithFrame (rect 0 0 (nsWidth prect + nsWidth vrect) (nsHeight prect))
+    v # setFrame (rect (nsWidth prect) 0 (nsWidth vrect) (nsHeight prect))
     v # setAutoresizingMask nsViewWidthSizable
     hb # addSubview prompt
     hb # addSubview v
     hb # setAutoresizingMask nsViewWidthSizable
 
     brect <- (uiBox ui) # bounds
-    hb # setFrame (rect 0 0 (width brect) (height prect))
+    hb # setFrame (rect 0 0 (nsWidth brect) (nsHeight prect))
 
     (uiBox ui) # addSubview hb
     dummy <- _NSTextField # alloc >>= init
@@ -307,26 +286,19 @@ newWindow ui win b = do
   layoutManager v >>= replaceTextStorage storage
 
   k <- newUnique
-  let winfo = WinInfo {
-                  bufkey    = (keyB b)
-                 ,wkey      = k
-                 ,textview  = v
-                 ,modeline  = ml
-                 ,widget    = view
-                 ,isMini    = mini
-                 ,window    = win
-            }
   flip (setIVar _runBuffer) v $ \act -> do
     wCache <- readIORef (windowCache ui)
     uiActionCh ui $ makeAction $ do
-      modifyWindows $ WS.focusIndex $ fromJust $ L.findIndex ((k ==) . wkey) wCache
+      modifyWindows $ WS.focusIndex $ fromJust $ L.findIndex ((k ==) . wikey) wCache
       withGivenBufferAndWindow0 win (keyB b) act
 
-  return winfo
-
-insertWindow :: Editor -> UI -> Window -> IO WinInfo
-insertWindow e i win = do
-  liftIO $ newWindow i win (findBufferWith (Window.bufkey win) e)
+  return $ WinInfo 
+    { wikey    = k
+    , window   = win
+    , textview = v
+    , modeline = ml
+    , widget   = view
+    }
 
 refresh :: UI -> Editor -> IO ()
 refresh ui e = logNSException "refresh" $ do
@@ -345,7 +317,7 @@ refresh ui e = logNSException "refresh" $ do
     (uiWindow ui) # setAutodisplay True -- reenable automatic redrawing
 
     forM_ cache' $ \w ->
-        do let buf = findBufferWith (bufkey w) e
+        do let buf = findBufferWith (bufkey (window w)) e
            let ((p0,p1,showSel,txt),_) = runBuffer (window w) buf $
                  (,,,) <$> pointB <*> getMarkPointB staticSelMark <*>
                            getA highlightSelectionA <*> getModeLine
