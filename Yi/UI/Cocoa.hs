@@ -19,7 +19,6 @@ import Yi.Prelude hiding (init)
 import Yi.Accessor
 import Yi.Buffer
 import Yi.Editor
-import qualified Yi.Editor as Editor
 import Yi.Debug
 import Yi.Keymap
 import Yi.Buffer.Implementation
@@ -32,7 +31,6 @@ import Yi.Window (Window)
 import Paths_yi (getDataFileName)
 
 import Control.Monad.Reader (liftIO, when, MonadIO)
-import Control.Monad (ap)
 
 import qualified Data.List as L
 import Data.IORef
@@ -114,12 +112,6 @@ initWithContentRect r =
 width, height :: NSRect -> Float
 width (NSRect _ (NSSize w _)) = w
 height (NSRect _ (NSSize _ h)) = h
-
-{-
--- UNUSED:
-translate :: Float -> Float -> NSRect -> NSRect
-translate dx dy (NSRect (NSPoint x y) s) = NSRect (NSPoint (x + dx) (y + dy)) s
--}
 
 toNSView :: forall t. ID () -> NSView t
 toNSView = castObject
@@ -272,6 +264,7 @@ newWindow ui win b = do
     prompt # setStringValue (toNSString (name b))
     prompt # sizeToFit
     prompt # setAutoresizingMask nsViewNotSizable
+    prompt # setBordered False
 
     prect <- prompt # frame
     vrect <- v # frame
@@ -337,7 +330,6 @@ insertWindow e i win = do
 
 refresh :: UI -> Editor -> IO ()
 refresh ui e = logNSException "refresh" $ do
-    let ws = Editor.windows e
     (uiCmdLine ui) # setStringValue (toNSString $ statusLine e)
 
     cache <- readRef $ windowCache ui
@@ -347,20 +339,19 @@ refresh ui e = logNSException "refresh" $ do
       storage # setTextStorageBuffer buf
 
     (uiWindow ui) # setAutodisplay False -- avoid redrawing while window syncing
-    cache' <- syncWindows e ui (toList $ WS.withFocus $ ws) cache
+    cache' <- syncWindows e ui (toList $ WS.withFocus $ windows e) cache
     writeRef (windowCache ui) cache'
     (uiBox ui) # adjustSubviews -- FIX: maybe it is not needed
     (uiWindow ui) # setAutodisplay True -- reenable automatic redrawing
 
     forM_ cache' $ \w ->
         do let buf = findBufferWith (bufkey w) e
-           let (p0,_) = runBuffer (window w) buf pointB
-           let (p1,_) = runBuffer (window w) buf (getMarkPointB staticSelMark)
-           let showSel = runBufferDummyWindow buf (getA highlightSelectionA)
+           let ((p0,p1,showSel,txt),_) = runBuffer (window w) buf $
+                 (,,,) <$> pointB <*> getMarkPointB staticSelMark <*>
+                           getA highlightSelectionA <*> getModeLine
            let (p,l) = if showSel then (min p0 p1, abs $ p1~-p0) else (p0,0)
            (textview w) # setSelectedRange (NSRange (fromIntegral p) (fromIntegral l))
            (textview w) # scrollRangeToVisible (NSRange (fromIntegral p0) 0)
-           let (txt,_) = runBuffer (window w) buf getModeLine
            (modeline w) # setStringValue (toNSString txt)
 
 getTextStorage :: UI -> FBuffer -> IO TextStorage
