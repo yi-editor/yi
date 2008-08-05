@@ -358,7 +358,7 @@ runBufferFull w b f =
                    markValues <- mapM getMarkValueB [fr, i, t]
                    [newFrom, newIns, newTo] <- mapM newMarkB markValues
                    modifyA winMarksA (M.insert (wkey w) (WinMarks newFrom newIns newTo))
-                   return i
+                   return newIns
             f <* copyMark staticInsMark i
     in (a, updates, modifier pendingUpdatesA (++ fmap TextUpdate updates) b')
 
