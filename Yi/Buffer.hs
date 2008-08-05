@@ -143,7 +143,7 @@ import Driver ()
 --  * Log of updates mades
 --  * Undo
 
-data WinMarks = WinMarks { fromMark, insMark, toMark :: !Mark }
+data WinMarks = WinMarks { fromMark, insMark, selMark, toMark :: !Mark }
 
 data FBuffer = forall syntax.
         FBuffer { name   :: !String               -- ^ immutable buffer name
@@ -348,18 +348,19 @@ runBufferFull w b f =
     let (a, b', updates) = runRWS (fromBufferM f') w b
         f' = do
             ms <- getMarks w
-            i <- case ms of 
-               Just (WinMarks _ i _) -> do 
+            (i,s) <- case ms of
+               Just (WinMarks _ i s _) -> do
                    copyMark i staticInsMark
-                   return i
+                   copyMark s staticSelMark
+                   return (i,s)
                Nothing -> do
                    -- copy marks from random window.
-                   (_, WinMarks fr i t) <- M.findMax <$> getA winMarksA
-                   markValues <- mapM getMarkValueB [fr, i, t]
-                   [newFrom, newIns, newTo] <- mapM newMarkB markValues
-                   modifyA winMarksA (M.insert (wkey w) (WinMarks newFrom newIns newTo))
-                   return newIns
-            f <* copyMark staticInsMark i
+                   (_, WinMarks fr i s t) <- M.findMax <$> getA winMarksA
+                   markValues <- mapM getMarkValueB [fr, i, s, t]
+                   [newFrom, newIns, newSel, newTo] <- mapM newMarkB markValues
+                   modifyA winMarksA (M.insert (wkey w) (WinMarks newFrom newIns newSel newTo))
+                   return (newIns,newSel)
+            f <* copyMark staticInsMark i <* copyMark staticSelMark s
     in (a, updates, modifier pendingUpdatesA (++ fmap TextUpdate updates) b')
 
 copyMark :: Mark -> Mark -> BufferM ()
@@ -433,7 +434,7 @@ newB cfg unique nm s =
             , pendingUpdates = []
             , highlightSelection = False
             , process = I.End
-            , winMarks = M.singleton dummyWindowKey (WinMarks dummyFromMark staticInsMark dummyToMark)
+            , winMarks = M.singleton dummyWindowKey (WinMarks dummyFromMark staticInsMark staticSelMark dummyToMark)
             }
 
 -- | Point of eof

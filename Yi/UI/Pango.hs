@@ -495,7 +495,7 @@ prepareAction ui = do
     return $ do
       let updWin w r = do
              withGivenBufferAndWindow0 w (bufkey w) $ do
-                 Just (WinMarks f _ t) <- getMarks w
+                 Just (WinMarks f _ _ t) <- getMarks w
                  setMarkPointB f (regionStart r)
                  setMarkPointB t (regionEnd   r)
       -- TODO: also update height and bos.

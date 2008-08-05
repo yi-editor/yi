@@ -26,7 +26,7 @@ import Control.Monad.RWS.Strict (ask)
 winRegionB :: BufferM Region
 winRegionB = do
     w <- ask
-    Just (WinMarks f _ t) <- getMarks w
+    Just (WinMarks f _ _ t) <- getMarks w
     tospnt <- getMarkPointB f
     bospnt <- getMarkPointB t
     return $ mkRegion tospnt bospnt

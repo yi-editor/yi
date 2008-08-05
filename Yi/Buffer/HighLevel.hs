@@ -310,7 +310,7 @@ askMarks = do
 middleB :: BufferM ()
 middleB = do
   w <- ask
-  Just (WinMarks f _ _) <- getMarks w
+  Just (WinMarks f _ _ _) <- getMarks w
   moveTo =<< getMarkPointB f
   replicateM_ (height w `div` 2) lineDown
 
