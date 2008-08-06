@@ -166,7 +166,7 @@ prepareAction ui = do
     modifyWindows (computeHeights yss)
     e <- get
     let ws = windows e
-        renderSeq = fmap (scrollAndRenderWindow (configUI $ config ui) (configStyle $ configUI $ config $ ui) xss) (WS.withFocus ws)
+        renderSeq = fmap (scrollAndRenderWindow (configUI $ config ui) xss) (WS.withFocus ws)
     sequence_ renderSeq
 
 
@@ -181,7 +181,7 @@ refresh ui e = do
   (yss,xss) <- readRef (scrsize ui)
   let ws' = computeHeights yss ws
       cmd = statusLine e
-      renderSeq = fmap (scrollAndRenderWindow (configUI $ config ui) (configStyle $ configUI $ config $ ui) xss) (WS.withFocus ws')
+      renderSeq = fmap (scrollAndRenderWindow (configUI $ config ui) xss) (WS.withFocus ws')
       (e', renders) = runEditor (config ui) (sequence renderSeq) e
 
   let startXs = scanrT (+) 0 (fmap height ws')
@@ -210,10 +210,11 @@ scanrT (+*+) k t = fst $ runState (mapM f t) k
            
 
 -- | Scrolls the window to show the point if needed, and return a rendered wiew of the window.
-scrollAndRenderWindow :: UIConfig -> UIStyle -> Int -> (Window, Bool) -> EditorM Rendered
-scrollAndRenderWindow cfg sty width (win,hasFocus) = do 
+scrollAndRenderWindow :: UIConfig -> Int -> (Window, Bool) -> EditorM Rendered
+scrollAndRenderWindow cfg width (win,hasFocus) = do 
     e <- get
-    let b = findBufferWith (bufkey win) e
+    let sty = configStyle cfg
+        b = findBufferWith (bufkey win) e
         
         ((pointDriven, inWindow), _) = runBuffer win b $ do point <- pointB
                                                             (,) <$> getA pointDriveA <*> pointInWindowB point
