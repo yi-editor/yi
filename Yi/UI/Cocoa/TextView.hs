@@ -26,43 +26,37 @@ import AppKit
 
 import qualified AppKit.NSScrollView (contentView)
 
+import Foreign.C
+
 $(declareClass "YiTextView" "NSTextView")
 $(exportClass "YiTextView" "ytv_" [
     InstanceVariable "runBuffer" [t| BufferM () -> IO () |] [| \_ -> return () |]
-  , InstanceMethod 'mouseDown -- '
+  , InstanceVariable "selectingPosition" [t| Maybe CUInt |] [| Nothing |]
+  , InstanceMethod 'setSelectedRangeAffinityStillSelecting -- '
   ])
 
-ytv_mouseDown :: forall t. NSEvent t -> YiTextView () -> IO ()
-ytv_mouseDown event self = do
-  -- Determine the starting location before tracking mouse
-  layout <- self # layoutManager
-  container <- self # textContainer
-  mousewin <- event # locationInWindow
-  NSPoint ex ey <- self # convertPointFromView mousewin nil
-  NSPoint ox oy <- self # textContainerOrigin
-  let mouse@(NSPoint mx _) = NSPoint (ex - ox) (ey - oy)
-  index <- layout # glyphIndexForPointInTextContainer mouse container >>= return . fromEnum
-  NSRect (NSPoint cx _) (NSSize cw _) <-
-    layout # boundingRectForGlyphRangeInTextContainer (NSRange (toEnum index) 1) container
-  -- TODO: Is this ok? Is startIndex a utf8 index or a point?
-  let startIndex = if mx - cx < cx + cw - mx then (Point index) else (Point index + 1)
+-- | Intercept mouse selection so that we can update Yi's selection
+--   according to how Cocoa wants it.
+ytv_setSelectedRangeAffinityStillSelecting :: NSRange -> NSSelectionAffinity -> Bool -> YiTextView () -> IO ()
+ytv_setSelectedRangeAffinityStillSelecting r@(NSRange p1 l) a b v = do
+  p <- v #. _selectingPosition
+  case (b, p) of
+    (True, Nothing) -> do
+      -- Assume that the initial indication gives starting position
+      v # setIVar _selectingPosition (Just p1)
+    (False, Just p0) -> do
+      v # setIVar _selectingPosition Nothing
+      runbuf <- v #. _runBuffer
+      runbuf $ do
+        setVisibleSelection (l /= 0)
+        setSelectionMarkPointB (fromIntegral p0)
+        moveTo (fromIntegral $ if p1 == p0 then p1 + l else p1)
+    _ -> do
+      -- Ignore intermediate updates (Cocoa buffers events until selection finishes)
+      -- Ignore direct updates (to avoid having to detect "our" updates)
+      return ()
 
-  -- The super-class deals Cocoa-ishly with mouse events
-  super self # mouseDown event
-
-  -- Update our selection marker and position to reflect what Cocoa wants
-  NSRange p l <- selectedRange self
-  let p1 = fromIntegral p
-      p2 = p1 + fromIntegral l
-  runbuf <- self #. _runBuffer
-  runbuf $ do
-    setVisibleSelection (p1 /= p2)
-    if p1 == p2
-      then do
-        moveTo p1 
-      else if abs (startIndex - p2) < min (abs (startIndex - p1)) 2
-        then setSelectionMarkPointB p2 >> moveTo p1
-        else setSelectionMarkPointB p1 >> moveTo p2
+  super v # setSelectedRangeAffinityStillSelecting r a b
 
 $(declareClass "YiScrollView" "NSScrollView")
 $(exportClass "YiScrollView" "ysv_" [
