@@ -543,7 +543,7 @@ replaceBufferContent newvalue = do
 
 -- | Fill the text in the region so it fits nicely 80 columns.
 fillRegion :: Region -> BufferM ()
-fillRegion = modifyRegionB (unlines' . fillText 80)
+fillRegion = modifyRegionClever (unlines' . fillText 80)
 
 fillParagraph :: BufferM ()
 fillParagraph = fillRegion =<< regionOfB unitParagraph
