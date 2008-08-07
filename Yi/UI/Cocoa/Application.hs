@@ -1,4 +1,4 @@
-{-# LANGUAGE TemplateHaskell, MultiParamTypeClasses, ForeignFunctionInterface #-}
+{-# LANGUAGE TemplateHaskell, EmptyDataDecls, MultiParamTypeClasses, ForeignFunctionInterface #-}
 
 --
 -- Copyright (c) 2008 Gustav Munkby
@@ -26,6 +26,7 @@ module Yi.UI.Cocoa.Application
   , initializeClass_Application
   , _eventChannel
   , setAppleMenu
+  , ImpType_setAppleMenu
   ) where
 
 import Control.Concurrent
@@ -114,17 +115,17 @@ ya_run self = do
 
 ya_sendEvent :: forall t. NSEvent t -> YiApplication () -> IO ()
 ya_sendEvent event self = logNSException "sendEvent" $ do
-  t <- event # rawType
+  t <- event # (rawType :: ImpType_rawType (NSEvent t) inst)
   if t == fromCEnum nsKeyDown
     then self #. _eventChannel >>= handleKeyEvent event
     else super self # sendEvent event
 
 handleKeyEvent :: forall t. NSEvent t -> Maybe (Yi.Event.Event -> IO ()) -> IO ()
-handleKeyEvent event ch = do
+handleKeyEvent event mch = do
   mask <- event # modifierFlags
   str <- event # charactersIgnoringModifiers >>= haskellString
   logPutStrLn $ "Key " ++ str
-  let (k,shift') = case str of
+  let (mk,shift') = case str of
                 "\r"     -> (Just KEnter, True)
                 "\t"     -> (Just KTab, True)
                 "\DEL"   -> (Just KBS, True)
@@ -139,7 +140,7 @@ handleKeyEvent event ch = do
                 "\63277" -> (Just KPageDown, True)
                 [c]      -> (Just $ KASCII c, False)
                 _        -> (Nothing, True)
-  case (k,ch) of
+  case (mk,mch) of
     (Just k, Just ch) -> ch (Event k (modifiers shift' mask))
     _                 -> return ()
 

@@ -1,4 +1,4 @@
-{-# LANGUAGE TemplateHaskell, MultiParamTypeClasses #-}
+{-# LANGUAGE TemplateHaskell, EmptyDataDecls, MultiParamTypeClasses #-}
 --
 -- Copyright (c) 2008 Gustav Munkby
 --

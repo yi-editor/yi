@@ -1,4 +1,4 @@
-{-# LANGUAGE TemplateHaskell, MultiParamTypeClasses #-}
+{-# LANGUAGE TemplateHaskell, EmptyDataDecls, MultiParamTypeClasses #-}
 --
 -- Copyright (c) 2008 Gustav Munkby
 --
@@ -18,7 +18,7 @@ module Yi.UI.Cocoa.TextView
   , _leftScroller
   )where
 
-import Yi.Buffer
+import Yi.Buffer hiding (runBuffer)
 import Yi.Buffer.HighLevel
 
 import Foundation
@@ -64,15 +64,16 @@ $(exportClass "YiScrollView" "ysv_" [
   , InstanceMethod 'tile -- '
   ])
   
-ysv_tile self = do
-  super self # tile
-  moveScroller <- self #. _leftScroller
+ysv_tile :: YiScrollView () -> IO ()
+ysv_tile slf = do
+  super slf # tile
+  moveScroller <- slf #. _leftScroller
   if not moveScroller
     then return ()
     else do
       -- Copied from NostalgicScrollView (found on /.)
-      c <- self # AppKit.NSScrollView.contentView
-      s <- self # verticalScroller
+      c <- slf # AppKit.NSScrollView.contentView
+      s <- slf # verticalScroller
       sf <- s # frame
       s # setFrameOrigin (NSPoint 0.0 (nsMinY sf))
       c # frame >>= (flip setFrameOrigin c) . (NSPoint (nsWidth sf)) . nsMinY
