@@ -261,8 +261,10 @@ scrollScreenDownB = do
     setMarkPointB t p
     moveTo p
 
+upScreensB :: Int -> BufferM ()
 upScreensB = scrollScreensB . negate
 
+downScreensB :: Int -> BufferM ()
 downScreensB = scrollScreensB
 
 -- | Scroll up 1 screen
