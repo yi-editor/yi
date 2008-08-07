@@ -18,7 +18,7 @@ import Prelude ()
 -- | The UI type
 data UIStyle =
     UIStyle {
-         window           :: !Style    -- ^ window fg and bg (ignore for now)
+         window           :: !Style    -- ^ window fg and bg
        , modeline         :: !Style    -- ^ out of focus modeline colours
        , modelineFocused :: !Style    -- ^ in focus modeline
        , selected         :: !Style    -- ^ the selected portion

@@ -308,6 +308,24 @@ newWindow ui mini b = do
     textViewSetWrapMode v WrapChar
     widgetModifyFont v (Just f)
 
+    -- Apply the window style attributes to the text view.
+    forM_ (window $ configStyle $ uiConfig ui) $ \styAttr ->
+        case styAttr of
+            Background c -> do
+                let toColor Default = Color 0xffff 0xffff 0xffff
+                    toColor Reverse = Color 0 0 0
+                    toColor (RGB r g b) = Color (fromIntegral r * 0xff) (fromIntegral g * 0xff) (fromIntegral b * 0xff)
+                widgetModifyBase v StateNormal $ toColor c
+            otherwise -> return ()
+            {- Should be something like below. However, widgetModifyCursor is not in my version of
+             - gtk2hs! -CROC
+            Foreground c -> do
+                let toColor Default = Color 0 0 0
+                    toColor Reverse = Color 0xffff 0xffff 0xffff
+                    toColor (RGB r g b) = Color (fromIntegral r * 0xff) (fromIntegral g * 0xff) (fromIntegral b * 0xff)
+                widgetModifyCursor v StateNormal $ toColor c
+            -}
+
     box <- if mini
      then do
       widgetSetSizeRequest v (-1) 1
