@@ -46,7 +46,7 @@ data Editor = Editor {
        ,buffers       :: M.Map BufferRef FBuffer
        ,refSupply     :: Int  -- ^ Supply for buffer and window ids.
 
-       ,windows       :: WindowSet Window
+       ,tabs          :: WindowSet (WindowSet Window)
 
        ,dynamic       :: DynamicValues              -- ^ dynamic components
 
@@ -59,6 +59,10 @@ data Editor = Editor {
        ,pendingEvents :: ![Event]                   -- ^ Processed events that didn't yield any action yet.
     }
     deriving Typeable
+
+windows :: Editor -> WindowSet Window
+windows editor =
+    WS.current $ tabs editor
 
 newtype EditorM a = EditorM {fromEditorM :: RWS Config () Editor a}
     deriving (Monad, MonadState Editor, MonadReader Config, Functor)
@@ -96,7 +100,12 @@ dynamicA :: Accessor Editor DynamicValues
 dynamicA = Accessor dynamic (\f e -> e {dynamic = f (dynamic e)})
 
 windowsA :: Accessor Editor (WindowSet Window)
-windowsA = Accessor windows (\f e -> e {windows = f (windows e)})
+windowsA = Accessor windows modifyWindows 
+    where modifyWindows f e =
+            let ws = WS.current (tabs e)
+                ws' = f ws
+                tabs' = (tabs e) { WS.current = ws' }
+            in e {tabs = tabs' }
 
 killringA :: Accessor Editor Killring
 killringA = Accessor killring (\f e -> e {killring = f (killring e)})
@@ -115,7 +124,7 @@ searchDirectionA = Accessor searchDirection (\f e -> e{searchDirection = f (sear
 emptyEditor :: Config -> Editor
 emptyEditor cfg = Editor {
         buffers      = M.singleton (bkey buf) buf
-       ,windows      = WS.new win
+       ,tabs         = WS.new (WS.new win)
        ,bufferStack  = [bkey buf]
        ,refSupply = 2
        ,tabwidth     = 8
@@ -178,7 +187,7 @@ deleteBuffer k = do
           modify $ \e -> e {
                             bufferStack = filter (k /=) $ bufferStack e,
                             buffers = M.delete k (buffers e),
-                            windows = fmap pickOther (windows e)
+                            tabs = fmap (fmap pickOther) (tabs e)
                             -- all windows open on that buffer must switch to another buffer.
                            }
       _ -> return () -- Don't delete the last buffer.
@@ -436,6 +445,23 @@ enlargeWinE = error "enlargeWinE: not implemented"
 shrinkWinE :: EditorM ()
 shrinkWinE = error "shrinkWinE: not implemented"
 
+-- | Creates a new tab containing a window that views the current buffer.
+newTabE :: EditorM ()
+newTabE = do
+    bk <- getBuffer
+    k <- newRef
+    let win = Window False bk 0 k
+    modify $ \e -> e { tabs = WS.add (WS.new win) (tabs e) }
+
+-- | Moves to the next tab in the round robin set of tabs
+nextTabE :: EditorM ()
+nextTabE = do
+    modify $ \e -> e { tabs = WS.forward (tabs e) }
+
+-- | Moves to the previous tab in the round robin set of tabs
+previousTabE :: EditorM ()
+previousTabE = do
+    modify $ \e -> e { tabs = WS.backward (tabs e) }
 
 -- | Close the current window, unless it is the last window open.
 tryCloseE :: EditorM ()

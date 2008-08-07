@@ -309,10 +309,13 @@ defKeymap self = ModeMap {
      cmd_eval = do
         cnt <- count
         let i = maybe 1 id cnt
-        choice
-         ([c ?>>! action i | (c,action) <- singleCmdFM ] ++
+        choice $
+          [c ?>>! action i | (c,action) <- singleCmdFM ] ++
           [events evs >>! action i | (evs, action) <- multiCmdFM ] ++
-          [char 'r' ?>> textChar >>= write . writeN . replicate i])
+          [char 'r' ?>> textChar >>= write . writeN . replicate i
+          ,pString "gt" >>! nextTabE
+          ,pString "gT" >>! previousTabE]
+
 
      -- TODO: escape the current word
      --       at word bounds: search for \<word\>
@@ -903,6 +906,7 @@ defKeymap self = ModeMap {
            fn "stop"       = suspendEditor
 
            fn ('y':'i':' ':s) = execEditorAction s
+           fn "tabnew"     = withEditor newTabE
            fn s            = errorEditor $ "The "++show s++ " command is unknown."
 
 
