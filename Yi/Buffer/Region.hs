@@ -12,14 +12,17 @@ module Yi.Buffer.Region
   , readRegionB
   , mapRegionB
   , modifyRegionB
+  , modifyRegionClever
   , winRegionB
   , inclusiveRegionB
   )
 where
+import Data.List.Diff
 import Yi.Region
 import Yi.Buffer
 import Yi.Prelude
 import Prelude ()
+import Data.List (length)
 
 import Control.Monad.RWS.Strict (ask)
 
@@ -68,6 +71,19 @@ modifyRegionB :: (String -> String)
               -> BufferM ()
 modifyRegionB transform region = replaceRegionB region =<< transform <$> readRegionB region
 
+-- | As 'modifyRegionB', but do a minimal edition instead of deleting the whole
+-- region and inserting it back.
+modifyRegionClever :: (String -> [Char]) -> Region -> BufferM ()
+modifyRegionClever transform region = savingExcursionB $ do
+    text <- readRegionB region
+    let text' = transform text
+        diffs = diff text text'
+    moveTo (regionStart region)
+    forM_ diffs $ \d -> do
+        case d of
+            Choice L str -> deleteN $ length str
+            Choice B str -> rightN $ length str
+            Choice R str -> insertN str
 
 -- | Extend the right bound of a region to include it.
 inclusiveRegionB :: Region -> BufferM Region

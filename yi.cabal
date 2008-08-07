@@ -201,6 +201,7 @@ library
         Data.ByteRope
         Data.Tree.Zipper
         Data.DelayList
+        Data.List.Diff
         Shim.CabalInfo
         Shim.Utils 
         Shim.ProjectContent
