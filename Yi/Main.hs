@@ -256,7 +256,6 @@ defaultPublishedActions = M.fromList $
     , ("closeBufferE"           , box closeBufferE)
     , ("grepFind"               , box grepFind)
     , ("sortLines"              , box sortLines)
-    , ("ghci"                   , box ghci)
     , ("shell"                  , box shell)
     , ("interactive"            , box interactive)
     ]

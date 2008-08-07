@@ -25,7 +25,10 @@ myModetable = ReaderT $ \fname -> case () of
     where bestHaskellMode = Haskell.cleverMode 
                             {
                              -- example of Mode-local rebinding
-                             modeKeymap = ((ctrl (char 'c') ?>> ctrl(char 'c') ?>>! haskellToggleCommentSelectionB)
+                             modeKeymap = (choice [ctrl (char 'c') ?>> ctrl(char 'c') ?>>! haskellToggleCommentSelectionB,
+                                                   ctrlCh 'c' ?>> char 'l' ?>>! ghciLoadBuffer,
+                                                   ctrlCh 'c' ?>> ctrl (char 'z') ?>>! ghci
+                                                  ]
                                            <||)  
                               -- uncomment this for Shim (dot is important!)
                               -- . modeKeymap Shim.mode

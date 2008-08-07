@@ -9,22 +9,30 @@ module Yi.Mode.Haskell
    -- * Buffer-level operations
    haskellUnCommentSelectionB,
    haskellCommentSelectionB,
-   haskellToggleCommentSelectionB
+   haskellToggleCommentSelectionB,
 
    -- * IO-level operations
+   ghci,
+   ghciGet,
+   ghciLoadBuffer
   ) where
 
 import Data.List (isPrefixOf, dropWhile, takeWhile, filter, groupBy, drop)
-import Data.Maybe (maybe, listToMaybe)
+import Data.Maybe (maybe, listToMaybe, isJust)
+import Data.Typeable
 import Prelude (unwords)
 import Yi.Buffer
 import Yi.Buffer.HighLevel
 import Yi.Buffer.Indent
 import Yi.Buffer.Normal
 import Yi.Buffer.Region
+import Yi.Core
+import Yi.Dynamic
+import Yi.Editor
+import Yi.Keymap
 import Yi.Lexer.Alex (Tok(..),Posn(..),tokBegin,tokEnd,tokRegion)
 import Yi.Lexer.Haskell (Token(..), ReservedType(..), startsLayout)
-import Yi.Prelude
+import Yi.Misc
 import Yi.Prelude
 import Yi.Region
 import Yi.String
@@ -46,7 +54,8 @@ plainMode = emptyMode
 
 -- | "Clever" hasell mode, using the 
 cleverMode :: Mode (Expr (Tok Haskell.Token))
-cleverMode = emptyMode {
+cleverMode = emptyMode 
+  {
     modeIndent = cleverAutoIndentHaskellB,
     modeHL = ExtHL $
 {--    lexer `withScanner` IncrParser.mkHighlighter Fractal.parse
@@ -218,4 +227,43 @@ haskellToggleCommentSelectionB = do
     else haskellCommentSelectionB
 
 
+
+---------------------------
+-- * Interaction with GHCi
+
+
+newtype GhciBuffer = GhciBuffer {ghciBuffer :: Maybe BufferRef}
+    deriving (Initializable, Typeable)
+
+-- | Start GHCi in a buffer
+ghci :: YiM BufferRef
+ghci = do 
+    b <- interactive "ghci" []
+    withEditor $ setDynamic $ GhciBuffer $ Just b
+    return b
+
+-- | Return GHCi's buffer; create it if necessary
+ghciGet :: YiM BufferRef
+ghciGet = do
+    GhciBuffer mb <- withEditor $ getDynamic
+    case mb of
+        Nothing -> ghci
+        Just b -> do
+            stillExists <- withEditor $ isJust <$> findBuffer b
+            if stillExists 
+                then ghci
+                else return b
+    
+-- | Send a command to GHCi
+ghciSend :: String -> YiM ()
+ghciSend cmd = do
+    b <- ghciGet
+    sendToProcess b (cmd ++ "\n")
+    
+-- | Load current buffer in GHCi
+ghciLoadBuffer :: YiM ()
+ghciLoadBuffer = do
+    -- TODO: save file
+    Just filename <- withBuffer $ getA fileA
+    ghciSend $ ":load " ++ filename
 

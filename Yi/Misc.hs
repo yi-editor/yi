@@ -106,19 +106,15 @@ cabalBuildE =
             withBuffer0 $ setMode Compilation.mode
         return ()
 
-interactive :: String -> [String] -> YiM ()
+interactive :: String -> [String] -> YiM BufferRef
 interactive cmd args = do
-    startSubprocess cmd args
+    b <- startSubprocess cmd args
     withBuffer $ do m <- getMarkB (Just "Prompt")
                     modifyMarkB m (\v -> v {markGravity = Backward})
                     setMode Interactive.mode
-    return ()
+    return b
 
--- | Start GHCi in a buffer
-ghci :: YiM ()
-ghci = interactive "ghci" []
-
-shell :: YiM ()
+shell :: YiM BufferRef
 shell = do
     sh <- io shellFileName
     interactive sh ["-i"]
