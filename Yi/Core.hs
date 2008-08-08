@@ -252,8 +252,9 @@ errorEditor s = do msgEditor ("error: " ++ s)
 -- FIXME: call quitEditor when there are no other window in the interactive command.
 closeWindow :: YiM ()
 closeWindow = do
-    n <- withEditor $ withWindows WS.size
-    when (n == 1) quitEditor
+    winCount <- withEditor $ getsA windowsA WS.size
+    tabCount <- withEditor $ getsA tabsA WS.size
+    when (winCount == 1 && tabCount == 1) quitEditor
     withEditor $ tryCloseE
 
 reloadEditor :: YiM ()

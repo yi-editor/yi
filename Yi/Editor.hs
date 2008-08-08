@@ -466,9 +466,14 @@ previousTabE :: EditorM ()
 previousTabE = do
     modify $ \e -> e { tabs = WS.backward (tabs e) }
 
--- | Close the current window, unless it is the last window open.
+-- | Close the current window. If there is only one tab open and the tab 
+-- contains only one window then do nothing.
 tryCloseE :: EditorM ()
-tryCloseE = modifyWindows WS.delete
+tryCloseE = do
+    n <- getsA windowsA WS.size
+    if n == 1
+        then modifyA tabsA WS.delete
+        else modifyA windowsA WS.delete
 
 -- | Make the current window the only window on the screen
 closeOtherE :: EditorM ()
