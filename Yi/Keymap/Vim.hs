@@ -951,7 +951,11 @@ viWrite = do
     mf <- withBuffer $ getA fileA
     case mf of
         Nothing -> errorEditor "no file name associate with buffer"
-        Just f  -> viWriteTo f
+        Just f  -> do
+            bufInfo <- withBuffer bufInfoB
+            let s   = bufInfoFileName bufInfo
+            let msg = msgEditor $ show f ++ " " ++ show s ++ " written"
+            catchJustE ioErrors (fwriteE >> msg) (msgEditor . show)
 
 -- | Try to write to a named file in the manner of vi\/vim
 viWriteTo :: String -> YiM ()
