@@ -107,6 +107,9 @@ windowsA = Accessor windows modifyWindows
                 tabs' = (tabs e) { WS.current = ws' }
             in e {tabs = tabs' }
 
+tabsA :: Accessor Editor (WindowSet (WindowSet Window))
+tabsA = Accessor tabs (\f e -> e {tabs = f (tabs e)})
+
 killringA :: Accessor Editor Killring
 killringA = Accessor killring (\f e -> e {killring = f (killring e)})
 

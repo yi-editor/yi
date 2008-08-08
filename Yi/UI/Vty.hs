@@ -163,7 +163,10 @@ prepareAction :: UI -> IO (EditorM ())
 prepareAction ui = do
   (yss,xss) <- readRef (scrsize ui)
   return $ do
-    modifyWindows (computeHeights yss)
+    ts <- getA tabsA
+    let hasTabBar = WS.size ts > 1
+        tabBarHeight = if hasTabBar then 1 else 0
+    modifyWindows (computeHeights (yss - tabBarHeight))
     e <- get
     let ws = windows e
         renderSeq = fmap (scrollAndRenderWindow (configUI $ config ui) xss) (WS.withFocus ws)
@@ -177,20 +180,28 @@ prepareAction ui = do
 refresh :: UI -> Editor -> IO Editor
 refresh ui e = do
   let ws = windows e
+      hasTabBar = WS.size (tabs e) > 1
+      tabBarHeight = if hasTabBar then 1 else 0
+      windowStartY = if hasTabBar then 1 else 0
   logPutStrLn "refreshing screen."
   (yss,xss) <- readRef (scrsize ui)
-  let ws' = computeHeights yss ws
+  let ws' = computeHeights (yss - tabBarHeight) ws
       cmd = statusLine e
       renderSeq = fmap (scrollAndRenderWindow (configUI $ config ui) xss) (WS.withFocus ws')
       (e', renders) = runEditor (config ui) (sequence renderSeq) e
 
-  let startXs = scanrT (+) 0 (fmap height ws')
+  let startXs = scanrT (+) windowStartY (fmap height ws')
       wImages = fmap picture renders
-     
+      statusBarStyle = window $ configStyle $ configUI $ config $ ui
+      tabBarImages = renderTabBar e' ui xss
   WS.debug "Drawing: " ws'
   logPutStrLn $ "startXs: " ++ show startXs
   Vty.update (vty $ ui) 
-      pic {pImage = vertcat (toList wImages) <-> withStyle (window $ configStyle $ configUI $ config $ ui) (take xss $ cmd ++ repeat ' '),
+      pic {pImage = vertcat tabBarImages 
+                    <->
+                    vertcat (toList wImages) 
+                    <-> 
+                    withStyle statusBarStyle (take xss $ cmd ++ repeat ' '),
            pCursor = case cursor (WS.current renders) of
                        Just (y,x) -> Cursor x (y + WS.current startXs) 
                        -- Add the position of the window to the position of the cursor
@@ -200,6 +211,41 @@ refresh ui e = do
                        }
 
   return e'
+
+{- Produces a possible empty list of images that represent the tab bar.
+ - The current tab bar image is basic: A single horizontal line divided into a number of segments
+ - equal to the number of tabs. Plus maybe a bit extra to make up for a screen width that is not a
+ - multiple of the number of tabs.
+ - The tab current in focus is indicated by a segment of spaces. 
+ - While the out of focus tabs are all segments filled with # characters.
+ - 
+ - TODO: Provide a hint as to what the tabs contain.
+ - TODO: If there are too many tabs to be contained on a single line spill over onto the next line.
+ -}
+renderTabBar :: Editor -> UI -> Int -> [Image]
+renderTabBar e ui xss = 
+    let ts = tabs e
+        hasTabBar = WS.size ts > 1
+        oofTabStyle = modeline $ configStyle $ configUI $ config $ ui
+        ifTabStyle = modelineFocused $ configStyle $ configUI $ config $ ui
+    in if hasTabBar
+        then 
+            let tabWidth = xss `div` (WS.size ts) - 1
+                outOfFocusTab = replicate tabWidth '#' ++ "|"
+                inFocusTab = replicate tabWidth ' ' ++ "|"
+                preTabs = map (withStyle oofTabStyle) $ replicate (length $ WS.before ts) outOfFocusTab
+                focusTab = [withStyle ifTabStyle inFocusTab]
+                postTabs = map (withStyle oofTabStyle) $ replicate (length $ WS.after ts) outOfFocusTab
+                tabImage = horzcat $ preTabs ++ focusTab ++ postTabs
+                -- If the screen width is not a multiple of the tab width then characters have to be
+                -- added to make them the same. Otherwise Vty will error out when trying to
+                -- vertically concat two images with different widths.
+                extraCount = xss - (imgWidth tabImage) 
+                finalImage = if extraCount /= 0
+                    then tabImage <|> (withStyle oofTabStyle $ replicate extraCount '#')
+                    else tabImage
+            in [finalImage]
+        else []
 
 scanrT :: (Int -> Int -> Int) -> Int -> WindowSet Int -> WindowSet Int
 scanrT (+*+) k t = fst $ runState (mapM f t) k
