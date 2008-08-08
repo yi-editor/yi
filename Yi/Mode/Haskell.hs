@@ -120,7 +120,7 @@ cleverAutoIndentHaskellB e behaviour = do
                               filter (not . onThisLine . posnOfs . tokPosn) .
                               filter (not . isErrorTok . tokT) . allToks 
   let stopsOf :: [Tree TT] -> [Int]
-      stopsOf (g@(Group open ctnt close):ts) 
+      stopsOf (g@(Paren open ctnt close):ts) 
           | isErrorTok (tokT close) || getLastOffset g >= solPnt
               = [groupIndent open ctnt]  -- stop here: we want to be "inside" that group.
           | otherwise = stopsOf ts -- this group is closed before this line; just skip it.
@@ -130,7 +130,7 @@ cleverAutoIndentHaskellB e behaviour = do
         -- maybe we are putting a new 1st statement in the block here.
       stopsOf ((Atom _):ts) = stopsOf ts
          -- any random part of expression, we ignore it.
-      stopsOf (t@(Stmt _):ts) = shiftBlock + maybe 0 (posnCol . tokPosn) (getFirstToken t) : stopsOf ts
+      stopsOf (t@(Block _):ts) = shiftBlock + maybe 0 (posnCol . tokPosn) (getFirstToken t) : stopsOf ts
       stopsOf (Error _:ts) = stopsOf ts
       stopsOf [] = []
       firstTokOnLine = fmap tokT $ listToMaybe $ 
@@ -232,7 +232,7 @@ haskellToggleCommentSelectionB = do
 -- * Interaction with GHCi
 
 
-newtype GhciBuffer = GhciBuffer {ghciBuffer :: Maybe BufferRef}
+newtype GhciBuffer = GhciBuffer {_ghciBuffer :: Maybe BufferRef}
     deriving (Initializable, Typeable)
 
 -- | Start GHCi in a buffer

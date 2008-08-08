@@ -1,5 +1,5 @@
 {-# OPTIONS -fglasgow-exts #-}
-module Yi.Syntax.Layout where
+module Yi.Syntax.Layout (layoutHandler, State) where
 
 import Yi.Syntax
 import Yi.Lexer.Alex

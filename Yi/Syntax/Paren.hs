@@ -5,7 +5,7 @@ module Yi.Syntax.Paren where
 import Yi.IncrementalParse
 import Yi.Lexer.Alex
 import Yi.Lexer.Haskell
-import Yi.Style (hintStyle, errorStyle, Style, StyleName)
+import Yi.Style (hintStyle, errorStyle, StyleName)
 import Yi.Syntax.Layout
 import Yi.Syntax
 import Yi.Prelude 
@@ -20,7 +20,9 @@ indentScanner = layoutHandler startsLayout [(Special '(', Special ')'),
                                             (Special '[', Special ']'),
                                             (Special '{', Special '}')] ignoredToken
                          (fmap Special ['<', '>', '.'])
--- HACK: We insert the Special '<', '>', '.', that don't occur in normal haskell parsing.
+
+-- HACK: We insert the Special '<', '>', '.', that don't occur in normal haskell
+-- parsing.
 
 ignoredToken :: Tok Token -> Bool
 ignoredToken (Tok t _ (Posn _ _ col)) = col == 0 && isComment t || t == CppDirective
@@ -40,8 +42,8 @@ isNoise _ = True
 type Expr t = [Tree t]
 
 data Tree t
-    = Group t (Expr t) t -- A parenthesized expression (maybe with [ ] ...)
-    | Stmt [Expr t]      -- A list of things (as in do; etc.)
+    = Paren t (Expr t) t -- A parenthesized expression (maybe with [ ] ...)
+    | Block [Expr t]      -- A list of things (as in do; etc.)
     | Atom t
     | Error t
       deriving Show
@@ -69,8 +71,8 @@ getAllSubTrees t = t : concatMap getAllSubTrees (subtrees t)
 
 -- | Direct subtrees of a tree
 subtrees :: Tree t -> [Tree t]
-subtrees (Group _ g _) = g
-subtrees (Stmt s) = concat s
+subtrees (Paren _ g _) = g
+subtrees (Block s) = concat s
 subtrees _ = []
 
 -- | Return all subtrees in a tree; each element of the return list
@@ -106,7 +108,7 @@ getIndentingSubtree roots offset line =
                    -- here (takeWhile), so that the tree is evaluated
                    -- lazily and therefore parsing it can be lazy.
                    posnOfs posn > offset, posnLine posn == line]
-    where allSubTreesPosn = [(t',posn) | root <- roots, t'@(Stmt ((t:_):_)) <- getAllSubTrees root, 
+    where allSubTreesPosn = [(t',posn) | root <- roots, t'@(Block ((t:_):_)) <- getAllSubTrees root, 
                                let Just tok = getFirstToken t, let posn = tokPosn tok]
 
 
@@ -125,15 +127,15 @@ instance Foldable Tree where
 instance Traversable Tree where
     traverse f (Atom t) = Atom <$> f t
     traverse f (Error t) = Error <$> f t
-    traverse f (Group l g r) = Group <$> f l <*> traverse (traverse f) g <*> f r
-    traverse f (Stmt s) = Stmt <$> traverse (traverse (traverse f)) s
+    traverse f (Paren l g r) = Paren <$> f l <*> traverse (traverse f) g <*> f r
+    traverse f (Block s) = Block <$> traverse (traverse (traverse f)) s
 
 -- dropWhile' f = foldMap (\x -> if f x then mempty else Endo (x :))
 -- 
 -- isBefore l (Atom t) = isBefore' l t
 -- isBefore l (Error t) = isBefore l t
--- isBefore l (Group l g r) = isBefore l r
--- isBefore l (Stmt s) = False
+-- isBefore l (Paren l g r) = isBefore l r
+-- isBefore l (Block s) = False
 -- 
 -- isBefore' l (Tok {tokPosn = Posn {posnLn = l'}}) = 
 
@@ -144,8 +146,10 @@ parse = parse' tokT tokFromT
 parse' :: (Tok Token -> Token) -> (Token -> Tok Token) -> P TT (Expr TT)
 parse' toTok fromT = pExpr <* eof
     where 
+      -- | parse a special symbol
       sym c = symbol (isSpecial [c] . toTok)
 
+      -- | Create a special character symbol
       newT c = fromT (Special c)
 
       pleaseSym c = (recoverWith (pure $ newT '!')) <|> sym c
@@ -153,15 +157,15 @@ parse' toTok fromT = pExpr <* eof
       pExpr :: P TT (Expr TT)
       pExpr = many pTree
 
-      pStmts = filter (not . null) <$> pExpr `sepBy` sym '.' -- see HACK above
+      pBlocks = filter (not . null) <$> pExpr `sepBy` sym '.' -- see HACK above
       -- also, we discard the empty statements
 
       pTree :: P (Tok Token) (Tree (Tok Token))
-      pTree = (Group  <$>  sym '(' <*> pExpr  <*> pleaseSym ')')
-          <|> (Group  <$>  sym '[' <*> pExpr  <*> pleaseSym ']')
-          <|> (Group  <$>  sym '{' <*> pExpr  <*> pleaseSym '}')
+      pTree = (Paren  <$>  sym '(' <*> pExpr  <*> pleaseSym ')')
+          <|> (Paren  <$>  sym '[' <*> pExpr  <*> pleaseSym ']')
+          <|> (Paren  <$>  sym '{' <*> pExpr  <*> pleaseSym '}')
 
-          <|> (Stmt <$> (sym '<' *> pStmts <* sym '>')) -- see HACK above
+          <|> (Block <$> (sym '<' *> pBlocks <* sym '>')) -- see HACK above
 
           <|> (Atom <$> symbol (isNoise . toTok))
           <|> (Error <$> recoverWith (symbol (isSpecial "})]" . toTok)))
@@ -174,11 +178,11 @@ getStrokes :: Point -> Point -> Point -> Expr (Tok Token) -> [Stroke]
 getStrokes point _begin _end t0 = result 
     where getStrokes' (Atom t) = (ts t :)
           getStrokes' (Error t) = (modStroke errorStyle (ts t) :) -- paint in red
-          getStrokes' (Stmt s) = list (fmap getStrokesL s)
-          getStrokes' (Group l g r)
+          getStrokes' (Block s) = list (fmap getStrokesL s)
+          getStrokes' (Paren l g r)
               | isErrorTok $ tokT r = (modStroke errorStyle (ts l) :) . getStrokesL g
               -- left paren wasn't matched: paint it in red.
-              -- note that testing this on the "Group" node actually forces the parsing of the
+              -- note that testing this on the "Paren" node actually forces the parsing of the
               -- right paren, undermining online behaviour.
               | (posnOfs $ tokPosn $ l) == point || (posnOfs $ tokPosn $ r) == point - 1
                = (modStroke hintStyle (ts l) :) . getStrokesL g . (modStroke hintStyle (ts r) :)
