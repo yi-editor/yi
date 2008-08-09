@@ -38,9 +38,10 @@ import Yi.Region
 import Yi.String
 import Yi.Syntax
 import Yi.Syntax.Paren as Paren
+import Yi.Syntax.Tree
 import qualified Yi.IncrementalParse as IncrParser
 import qualified Yi.Lexer.Alex as Alex
-import qualified Yi.Lexer.Haskell as Haskell
+import Yi.Lexer.Haskell as Haskell
 import qualified Yi.Syntax.Linear as Linear
 
 -- | Plain haskell mode, providing only list of stuff.
@@ -221,7 +222,7 @@ haskellUnCommentSelectionB = unLineCommentSelectionB "-- "
 
 haskellToggleCommentSelectionB :: BufferM ()
 haskellToggleCommentSelectionB = do
-  l <- readUnitB Line
+  l <- readUnitB Yi.Buffer.Normal.Line
   if ("--" `isPrefixOf` l)
     then haskellUnCommentSelectionB
     else haskellCommentSelectionB

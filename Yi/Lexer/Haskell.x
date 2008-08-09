@@ -9,7 +9,8 @@
 {
 {-# OPTIONS -w  #-}
 module Yi.Lexer.Haskell ( initState, alexScanToken, tokenToStyle, 
-                           startsLayout, isComment, Token(..), CommentType(..), ReservedType(..), OpType(..) ) where
+                          TT, isErrorTok, isSpecial,
+                          startsLayout, isComment, Token(..), CommentType(..), ReservedType(..), OpType(..) ) where
 import Yi.Lexer.Alex
 import Yi.Style
 }
@@ -176,6 +177,16 @@ stateToInit x | x < 0     = nestcomm
 
 initState :: HlState
 initState = 0
+
+type TT = Tok Token
+
+isSpecial :: [Char] -> Token -> Bool
+isSpecial cs (Special c) = c `elem` cs
+isSpecial _  _ = False
+
+isErrorTok :: Token -> Bool
+isErrorTok = isSpecial "!"
+
 
 #include "alex.hsinc"
 }
