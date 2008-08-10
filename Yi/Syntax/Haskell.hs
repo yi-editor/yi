@@ -42,8 +42,9 @@ data Tree t
     | Error t
     | Bind (Tree t) t (Tree t)
     | Expr [Tree t]
-    | KW t (Tree t) (Tree t) -- opening kw, head, body
+    | KW t (Tree t) -- opening kw, body
     | Cmnt [t] (Tree t) -- comments before the stuff
+    | Bin (Tree t) (Tree t)
     | Empty
       deriving Show
 
@@ -55,7 +56,7 @@ instance IsTree Tree where
     subtrees (Block s) = s
     subtrees (Expr a) = a
     subtrees (Bind l _ r) = [l,r]
-    subtrees (KW _ h b) = [h,b]
+    subtrees (KW _ b) = [b]
     subtrees (Cmnt _ t) = [t]
     subtrees _ = []
 
@@ -81,7 +82,7 @@ instance XTrav Tree where
     help (Error t) = Error <$> f t
     help (Paren l g r) = Paren <$> f l <*> rec g <*> f r
     help (Bind l eq r) = Bind <$> rec l <*> f eq <*> rec r
-    help (KW k h b) = KW <$> f k <*> rec h <*> rec b
+    help (KW k b) = KW <$> f k <*> rec b
     help Empty = pure Empty
     help (Block s) = Block <$> traverse rec s
     help (Cmnt cmts t) = Cmnt <$> traverse f cmts <*> rec t
@@ -127,6 +128,7 @@ parse' toTok fromT = pBlockOf pDecl <* eof
       -- | parse a special symbol
       sym f = symbol (f . toTok)
       exact s = sym (== s)
+      spec '|' = exact (ReservedOp Pipe)
       spec '=' = exact (ReservedOp Equal)
       spec c = sym (isSpecial [c])
 
@@ -136,19 +138,23 @@ parse' toTok fromT = pBlockOf pDecl <* eof
       pleaseSym c = (recoverWith (pure $ newT '!')) <|> spec c
 
 
-      pBind = Bind <$> pExpr' <*> spec '=' <*> pExpr'
-      pModule = KW <$> sym (`elem` fmap Reserved [Module]) <*> pTuple <*> pWhereCl
+      pFun = Bin <$> pExpr' <*> ((Block <$> some pGuard) <|> pRhs)
+      pGuard = KW <$> spec '|' <*> (Bin <$> pExpr <*> (pRhs <|> pEmpty))
+      
+      pRhs, pEmpty :: P TT (Tree TT)
+      pRhs = KW <$> spec '=' <*> pExpr 
+      pModule = KW <$> sym (`elem` fmap Reserved [Module]) <*> pExpr
       pComment p = p <|> (Cmnt <$> some (sym isComment) <*> p)
 
 
       pTuple = Paren  <$>  spec '(' <*> pExpr  <*> pleaseSym ')'
       pBlockOf p = Block <$> (spec '<' *> (filter (not . isEmpty) <$> (p `sepBy` spec '.')) <* spec '>')  -- see HACK above 
       pBlock = pBlockOf pExpr
-      pWhereCl = KW <$> sym (== Reserved Where) <*> pure Empty <*> pBlock
+      pWhereCl = KW <$> sym (== Reserved Where) <*> pBlock
 
       pDecls = many pDecl
       pEmpty = pure Empty
-      pDecl = pBind <|> pEmpty -- pComment (pBind <|> pModule)
+      pDecl = pModule <|> pFun <|> pExpr' <|> pEmpty -- pComment (pBind <|> pModule)
 
       pExpr' = Expr <$> some pElem
       pExpr = pExpr' <|> pEmpty
@@ -187,8 +193,12 @@ getStrokes point _begin _end t0 = result
               | otherwise  = tk l . getStrokes' g . tk r
           getStrokes' (Expr g) = getStrokesL g
           getStrokes' (Bind l eq r) = getStrokes' l . tk eq . getStrokes' r
+          getStrokes' (Bin l r) = getStrokes' l . getStrokes' r
+          getStrokes' (KW k b) = tk k . getStrokes' b
+          getStrokes' Empty = id
           getStrokesL g = list (fmap getStrokes' g)
-          tk t = (ts t :)
+          tk t | isErrorTok $ tokT t = id
+               | otherwise = (ts t :)
           err t = (modStroke errorStyle (ts t) :)
           ts = tokenToStroke
           list = foldr (.) id
