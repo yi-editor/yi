@@ -5,6 +5,7 @@ module Yi.Mode.Haskell
    -- * Modes
    plainMode,
    cleverMode, 
+   preciseMode,
    
    -- * Buffer-level operations
    haskellUnCommentSelectionB,
@@ -37,6 +38,7 @@ import Yi.Prelude
 import Yi.Region
 import Yi.String
 import Yi.Syntax
+import Yi.Syntax.Haskell as Hask
 import Yi.Syntax.Paren as Paren
 import Yi.Syntax.Tree
 import qualified Yi.IncrementalParse as IncrParser
@@ -49,7 +51,7 @@ plainMode :: Mode (Linear.Result (Tok Token))
 plainMode = emptyMode 
    {
     modeHL = ExtHL $
-    mkHighlighter (Linear.incrScanner . haskellLexer) (\begin end pos -> Linear.getStrokes begin end pos . fmap tokenToStroke)
+    mkHighlighter (Linear.incrScanner . haskellLexer) (\begin end pos -> Linear.getStrokes begin end pos . fmap Paren.tokenToStroke)
    , modeIndent = \_ast -> autoIndentHaskellB
    }
 
@@ -69,12 +71,26 @@ cleverMode = emptyMode
 --}
 
 --
-    mkHighlighter (IncrParser.scanner parse . indentScanner . haskellLexer)
+    mkHighlighter (IncrParser.scanner Paren.parse . Paren.indentScanner . haskellLexer)
       (\point begin end t -> Paren.getStrokes point begin end t)
 --}                              
   , modeAdjustBlock = adjustBlock
   , modePrettify = cleverPrettify
  }
+
+-- | "Clever" hasell mode, using the 
+-- preciseMode :: Mode [Hask.Tree TT]
+preciseMode = emptyMode 
+  {
+    --    modeIndent = cleverAutoIndentHaskellB,
+    modeHL = ExtHL $
+      mkHighlighter (IncrParser.scanner Hask.parse . Hask.indentScanner . haskellLexer)
+        (\point begin end t -> Hask.getStrokes point begin end t)
+    --}                              
+    -- ,  modeAdjustBlock = adjustBlock
+  -- , modePrettify = cleverPrettify
+ }
+
 
 haskellLexer = Alex.lexScanner Haskell.alexScanToken Haskell.initState 
 
@@ -82,12 +98,12 @@ adjustBlock :: Expr (Tok Token) -> Int -> BufferM ()
 adjustBlock e len = do
   p <- pointB
   l <- curLn
-  let t = getIndentingSubtree e p l
+  let t = Paren.getIndentingSubtree e p l
   case t of
     Nothing -> return ()
     Just it -> 
            savingExcursionB $ do
-                   let (_startOfs, height) = getSubtreeSpan it
+                   let (_startOfs, height) = Paren.getSubtreeSpan it
                    col <- curCol
                    forM_ [1..height] $ \_ -> do
                                lineDown
@@ -120,19 +136,19 @@ cleverAutoIndentHaskellB e behaviour = do
       firstTokNotOnLine = listToMaybe .
                               filter (not . onThisLine . posnOfs . tokPosn) .
                               filter (not . isErrorTok . tokT) . allToks 
-  let stopsOf :: [Tree TT] -> [Int]
-      stopsOf (g@(Paren open ctnt close):ts) 
+  let stopsOf :: [Paren.Tree TT] -> [Int]
+      stopsOf (g@(Paren.Paren open ctnt close):ts) 
           | isErrorTok (tokT close) || getLastOffset g >= solPnt
               = [groupIndent open ctnt]  -- stop here: we want to be "inside" that group.
           | otherwise = stopsOf ts -- this group is closed before this line; just skip it.
-      stopsOf ((Atom (Tok {tokT = t})):_) | startsLayout t = [nextIndent, previousIndent + indentLevel]
+      stopsOf ((Paren.Atom (Tok {tokT = t})):_) | startsLayout t = [nextIndent, previousIndent + indentLevel]
         -- of; where; etc. we want to start the block here.
         -- Also use the next line's indent:
         -- maybe we are putting a new 1st statement in the block here.
-      stopsOf ((Atom _):ts) = stopsOf ts
+      stopsOf ((Paren.Atom _):ts) = stopsOf ts
          -- any random part of expression, we ignore it.
-      stopsOf (t@(Block _):ts) = shiftBlock + maybe 0 (posnCol . tokPosn) (getFirstToken t) : stopsOf ts
-      stopsOf (Error _:ts) = stopsOf ts
+      stopsOf (t@(Paren.Block _):ts) = shiftBlock + maybe 0 (posnCol . tokPosn) (getFirstElement t) : stopsOf ts
+      stopsOf (Paren.Error _:ts) = stopsOf ts
       stopsOf [] = []
       firstTokOnLine = fmap tokT $ listToMaybe $ 
           dropWhile ((solPnt >) . tokBegin) $ 
