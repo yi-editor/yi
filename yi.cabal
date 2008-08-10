@@ -148,6 +148,7 @@ library
         Yi.TextCompletion,
         Yi.UI.Common
         Yi.UI.Utils
+        Yi.UI.TabBar
         Yi.Undo
         Yi.Window
         Yi.WindowSet

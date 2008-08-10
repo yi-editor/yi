@@ -42,6 +42,7 @@ import Yi.Style as Style
 import Graphics.Vty as Vty
 
 import Yi.UI.Utils
+import Yi.UI.TabBar
 import Yi.Syntax (Stroke)
 import Yi.Buffer.Indent (indentSettingsB)
 
@@ -226,24 +227,20 @@ renderTabBar :: Editor -> UI -> Int -> [Image]
 renderTabBar e ui xss = 
     let ts = tabs e
         hasTabBar = WS.size ts > 1
-        oofTabStyle = modeline $ configStyle $ configUI $ config $ ui
-        ifTabStyle = modelineFocused $ configStyle $ configUI $ config $ ui
     in if hasTabBar
         then 
-            let tabWidth = xss `div` (WS.size ts) - 1
-                outOfFocusTab = replicate tabWidth '#' ++ "|"
-                inFocusTab = replicate tabWidth ' ' ++ "|"
-                preTabs = map (withStyle oofTabStyle) $ replicate (length $ WS.before ts) outOfFocusTab
-                focusTab = [withStyle ifTabStyle inFocusTab]
-                postTabs = map (withStyle oofTabStyle) $ replicate (length $ WS.after ts) outOfFocusTab
-                tabImage = horzcat $ preTabs ++ focusTab ++ postTabs
+            let tabWidth = xss `div` (WS.size ts)
+                descr = tabBarDescr ts (tabWidth - 1) (configStyle $ configUI $ config $ ui)
+                tabImages = fmap (\(txt,sty) -> withStyle sty txt) descr
                 -- If the screen width is not a multiple of the tab width then characters have to be
                 -- added to make them the same. Otherwise Vty will error out when trying to
                 -- vertically concat two images with different widths.
-                extraCount = xss - (imgWidth tabImage) 
+                extraCount = xss - (tabWidth * WS.size tabImages)
+                extraStyle = modeline $ configStyle $ configUI $ config $ ui
+                extraImage = withStyle extraStyle $ replicate extraCount '#'
                 finalImage = if extraCount /= 0
-                    then tabImage <|> (withStyle oofTabStyle $ replicate extraCount '#')
-                    else tabImage
+                    then foldr (<|>) extraImage tabImages
+                    else foldr1 (<|>) tabImages
             in [finalImage]
         else []
 
