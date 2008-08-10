@@ -40,7 +40,7 @@ $nl        = [\n\r]
 
 @reservedid = 
         as|case|class|data|default|else|hiding|if|
-        import|in|infix|infixl|infixr|instance|module|newtype|
+        import|in|infix|infixl|infixr|instance|newtype|
         qualified|then|type|forall|foreign|export|dynamic|
         safe|threadsafe|unsafe|stdcall|ccall|dotnet
 
@@ -106,6 +106,7 @@ haskell :-
  $special                                       { cs $ \(c:_) -> Special c }
  "deriving"                                     { c (Reserved Deriving) }
  @reservedid                                    { c (Reserved Other) }
+ "module"                                       { c (Reserved Module) }
  "where"                                        { c (Reserved Where) }
  @layoutReservedId                              { c (Reserved OtherLayout) }
  `@varid`                                       { c Operator }
@@ -137,7 +138,7 @@ type HlState = Int
 data CommentType = Open | Close | Text | Line
     deriving (Eq, Show)
 
-data ReservedType = Where | OtherLayout | Deriving | Other
+data ReservedType = Where | Let | OtherLayout | Deriving | Module | Other
     deriving (Eq, Show)
 
 data OpType = Pipe | Equal | OtherOp
@@ -167,6 +168,7 @@ tokenToStyle tok = case tok of
 
 startsLayout (Reserved OtherLayout) = True
 startsLayout (Reserved Where) = True
+startsLayout (Reserved Let) = True
 startsLayout _ = False
 
 isComment (Comment _) = True
