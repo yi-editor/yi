@@ -48,8 +48,6 @@ getLastOffset :: (Foldable t) => t (Tok tok) -> Point
 getLastOffset = maybe 0 tokEnd . getLastElement
 
 
-
-
 -- | Given a tree, return (first offset, number of lines).
 getSubtreeSpan :: (Foldable tree) => tree (Tok t) -> (Point, Int)
 getSubtreeSpan tree = (posnOfs $ first, lastLine - firstLine)
@@ -57,3 +55,13 @@ getSubtreeSpan tree = (posnOfs $ first, lastLine - firstLine)
           [firstLine, lastLine] = fmap posnLine bounds
           assertJust (Just x) = x
           assertJust _ = error "assertJust: Just expected"
+
+
+-------------------------------------
+-- Should be in Control.Applicative.?
+
+sepBy :: (Alternative f) => f a -> f v -> f [a]
+sepBy p s   = sepBy1 p s <|> pure []
+
+sepBy1     :: (Alternative f) => f a -> f v -> f [a]
+sepBy1 p s  = (:) <$> p <*> many (s *> p)

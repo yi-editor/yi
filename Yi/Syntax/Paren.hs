@@ -154,12 +154,3 @@ modStroke f (l,s,r) = (l,f `mappend` s,r)
 tokenToStroke :: TT -> Stroke
 tokenToStroke (Tok t len posn) = (posnOfs posn, tokenToStyle t, posnOfs posn +~ len)
 
-
-----------------------
--- Should be in lib
-
-sepBy :: (Alternative f) => f a -> f v -> f [a]
-sepBy p s   = sepBy1 p s <|> pure []
-
-sepBy1     :: (Alternative f) => f a -> f v -> f [a]
-sepBy1 p s  = (:) <$> p <*> many (s *> p)
