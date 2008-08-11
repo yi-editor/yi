@@ -225,12 +225,11 @@ refresh ui e = do
  -}
 renderTabBar :: Editor -> UI -> Int -> [Image]
 renderTabBar e ui xss = 
-    let ts = tabs e
-        hasTabBar = WS.size ts > 1
-    in if hasTabBar
+    let tabCount = WS.size $ tabs e
+    in if tabCount > 1
         then 
-            let tabWidth = xss `div` (WS.size ts)
-                descr = tabBarDescr ts (tabWidth - 1) (configStyle $ configUI $ config $ ui)
+            let tabWidth = xss `div` tabCount
+                descr = tabBarDescr e (tabWidth - 1) (configStyle $ configUI $ config $ ui)
                 tabImages = fmap (\(txt,sty) -> withStyle sty txt) descr
                 -- If the screen width is not a multiple of the tab width then characters have to be
                 -- added to make them the same. Otherwise Vty will error out when trying to
