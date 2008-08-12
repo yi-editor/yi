@@ -229,8 +229,8 @@ renderTabBar e ui xss =
     in if tabCount > 1
         then 
             let tabWidth = xss `div` tabCount
-                descr = tabBarDescr e (tabWidth - 1) (configStyle $ configUI $ config $ ui)
-                tabImages = fmap (\(txt,sty) -> withStyle sty txt) descr
+                descr = tabBarDescr e (tabWidth - 5) (configStyle $ configUI $ config $ ui)
+                tabImages = fmap (tabToVtyImage tabWidth) descr
                 -- If the screen width is not a multiple of the tab width then characters have to be
                 -- added to make them the same. Otherwise Vty will error out when trying to
                 -- vertically concat two images with different widths.
@@ -242,6 +242,12 @@ renderTabBar e ui xss =
                     else foldr1 (<|>) tabImages
             in [finalImage]
         else []
+    where 
+        -- From an abstract description of a tab to a VTY image of the tab.
+        tabToVtyImage width (TabDescr txt sty inFocus) = 
+            let pad = replicate (width - length txt - 5) ' '
+                spacers = if inFocus then (">>", "<<") else ("  ", "  ")
+            in withStyle sty $ (fst spacers) ++ txt ++ (snd spacers) ++ pad ++ "|"
 
 scanrT :: (Int -> Int -> Int) -> Int -> WindowSet Int -> WindowSet Int
 scanrT (+*+) k t = fst $ runState (mapM f t) k

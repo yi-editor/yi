@@ -8,22 +8,28 @@ import Yi.Style
 
 import qualified Data.Map as Map
 
-type TabBarDescr = WindowSet (String,Style)
+data TabDescr = TabDescr
+    {
+        tabText :: String,
+        tabStyle :: Style,
+        tabInFocus :: Bool
+    }
+
+type TabBarDescr = WindowSet TabDescr
 
 tabBarDescr :: Editor -> Int -> UIStyle -> TabBarDescr
 tabBarDescr editor maxWidth uiStyle = 
+    -- TODO: Use different styles for oofTabStyle and ifTabStyle. 
+    -- I tried using modeline and modelineFocused but this had an undesired 
+    -- effect on the mode line. - CROC
     let oofTabStyle = modeline uiStyle
-        ifTabStyle = modelineFocused uiStyle
-        outOfFocusTab hint = 
-            hint ++ replicate (maxWidth - length hint) '#' ++ "|"
-        inFocusTab hint = 
-            hint ++ replicate (maxWidth - length hint) ' ' ++ "|"
+        ifTabStyle = modeline uiStyle
         hintForTab tab = hint
             where currentBufferName = name $ findBufferWith (bufkey $ current tab) editor
                   hint = if length currentBufferName > maxWidth
                             then take (maxWidth - 3) currentBufferName ++ "..."
                             else currentBufferName
-        tabDescr (tab,True) = (inFocusTab $ hintForTab tab, oofTabStyle)
-        tabDescr (tab,False) = (outOfFocusTab $ hintForTab tab, oofTabStyle)
-    in fmap tabDescr (withFocus $ tabs editor) 
+        tabDescr (tab,True) = TabDescr (hintForTab tab) ifTabStyle True
+        tabDescr (tab,False) = TabDescr (hintForTab tab) oofTabStyle False
+    in fmap tabDescr (withFocus $ tabs editor)
     
