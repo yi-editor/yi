@@ -122,6 +122,8 @@ $charesc = [abfnrtv\\\"\'\&\`\/]
 
 @nonInterpolatingString  = $graphic # [\'] | " " 
 
+@quoteLikeDelimiter = $special | $ascsymbol | \" | \'
+
 -- Heredoc
 @heredocId = $idchar+
 
@@ -208,9 +210,20 @@ perlHighlighterRules :-
     -- Chunks that are handles as non-interpolating strings.
     \' 
     { 
-        m (\_ -> HlInString) operatorStyle 
+        m (\_ -> HlInString '\'') operatorStyle 
     }
-    "qw(" @nonInterpolatingString* ")"             { c stringStyle }
+
+    "qw" @quoteLikeDelimiter
+    {
+        \str _ -> 
+            let startChar = head $ drop 2 $ fmap snd str
+                closeChar '(' = ')'
+                closeChar '{' = '}'
+                closeChar '<' = '>'
+                closeChar '[' = ']'
+                closeChar c   = c
+            in (HlInString (closeChar startChar), operatorStyle)
+    }
 
     -- perldoc starts at a "line that begins with an equal sign and a word"
     -- (man perlsyn)
@@ -321,11 +334,19 @@ perlHighlighterRules :-
 
 <string>
 {
-    \'
+    $white+ { c defaultStyle }
+    ./
+        {
+            \state preInput _ _ ->
+                case state of
+                    HlInString endDelimiter ->
+                        let currentChar = head $ alexCollectChar preInput
+                        in if (currentChar == endDelimiter) then True else False
+                    _ -> False
+        }
         {
             m fromQuoteState operatorStyle
         }
-    $white+ { c defaultStyle }
     .   { c stringStyle }
 }
 
@@ -335,7 +356,7 @@ data HlState =
     HlInCode
     -- Boolean indicating if the interpolated quote is a regex and deliminator of quote.
     | HlInInterpString Bool String
-    | HlInString
+    | HlInString Char
     | HlInHeredoc String
     | HlInPerldoc
     | HlInSubstRegex String
@@ -359,7 +380,7 @@ type Token = StyleName
 
 stateToInit HlInCode = 0
 stateToInit (HlInInterpString _ _) = interpString
-stateToInit HlInString = string
+stateToInit (HlInString _) = string
 stateToInit (HlInHeredoc _) = heredoc
 stateToInit HlInPerldoc = perldoc
 stateToInit (HlInSubstRegex _) = interpString
