@@ -23,6 +23,7 @@ myModetable = ReaderT $ \fname -> case () of
                         _ | ".hs" `isSuffixOf` fname -> Just $ AnyMode bestHaskellMode
                         _ ->  Nothing
     where bestHaskellMode = Haskell.cleverMode 
+                            -- Haskell.preciseMode
                             {
                              -- example of Mode-local rebinding
                              modeKeymap = (choice [ctrl (char 'c') ?>> ctrl(char 'c') ?>>! haskellToggleCommentSelectionB,
