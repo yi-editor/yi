@@ -141,6 +141,7 @@ library
         Yi.Style.Library
         Yi.Syntax
         Yi.Syntax.Fractal
+        Yi.Syntax.Latex
         Yi.Syntax.Layout
         Yi.Syntax.Linear
         Yi.Syntax.Tree
@@ -319,6 +320,7 @@ executable yi
            Yi.Syntax.Layout
            Yi.Syntax.Paren
            Yi.Syntax.Fractal
+           Yi.Syntax.Latex
            Yi.Syntax.Linear
            Yi.Syntax.Tree
 

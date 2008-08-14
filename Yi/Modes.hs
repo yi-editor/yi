@@ -11,6 +11,7 @@ import Yi.Lexer.Alex (Tok(..), Posn(..))
 import Yi.Prelude
 import Yi.Style
 import Yi.Syntax
+import qualified Yi.IncrementalParse as IncrParser
 import qualified Yi.Lexer.Alex as Alex
 import qualified Yi.Lexer.Cabal               as Cabal
 import qualified Yi.Lexer.Cplusplus           as Cplusplus
@@ -21,6 +22,7 @@ import qualified Yi.Lexer.Perl                as Perl
 import qualified Yi.Lexer.Python              as Python
 import qualified Yi.Lexer.Srmc                as Srmc
 import qualified Yi.Syntax.Linear as Linear
+import qualified Yi.Syntax.Latex as Latex
 import qualified Yi.Mode.Haskell as Haskell
 
 
@@ -62,9 +64,19 @@ cabalMode = fundamental
     modeHL = ExtHL $ mkHighlighter' Cabal.initState Cabal.alexScanToken id
   }
 
+latexLexer = Alex.lexScanner Latex.alexScanToken Latex.initState
+
 latexMode = fundamental
   {
-    modeHL = ExtHL $ mkHighlighter' Latex.initState Latex.alexScanToken id
+    modeHL = ExtHL $ mkHighlighter' Latex.initState Latex.alexScanToken (Latex.tokenToStyle)
+  }
+
+latexMode2 = fundamental 
+  {
+    modeHL = ExtHL $ 
+       mkHighlighter (IncrParser.scanner Latex.parse . latexLexer)
+      (\point begin end t -> Latex.getStrokes point begin end t)
+
   }
 
 srmcMode = fundamental

@@ -9,89 +9,35 @@
 
 {
 {-# OPTIONS -w  #-}
-module Yi.Lexer.Latex ( initState, alexScanToken ) where
+module Yi.Lexer.Latex ( initState, alexScanToken, Token(..) ) where
 import Yi.Lexer.Alex
 import Yi.Style
 }
 
 $whitechar = [\ \t\n\r\f\v]
-$special   = [\(\)\,\;\[\]\`\{\}]
+$special   = [\[\]\{\}\$\\]
+$idchar = [^ $special $whitechar]
 
-$ascdigit  = 0-9
-$unidigit  = [] -- TODO
-$digit     = [$ascdigit $unidigit]
-
-$ascsymbol = [\!\#\$\%\&\*\+\.\/\<\=\>\?\@\\\^\|\-\~]
-$unisymbol = [] -- TODO
-$symbol    = [$ascsymbol $unisymbol] # [$special \_\:\"\']
-
-$large     = [A-Z \xc0-\xd6 \xd8-\xde]
-$small     = [a-z \xdf-\xf6 \xf8-\xff \_]
-$alpha     = [$small $large]
-
-$graphic   = [$small $large $symbol $digit $special \:\"\']
-
-$octit     = 0-7
-$hexit     = [0-9 A-F a-f]
-$idchar    = [$alpha $digit \']
-$symchar   = [$symbol \:]
-$nl        = [\n\r]
-
-@reservedid = \\newcommand|\\begin|\\end
-
-@reservedop =
-        ".." | ":" | "::" | "=" | \\ | "|" | "<-" | "->" | "@" | "~" | "=>"
-
-@varid  = $small $idchar*
-@conid  = $large $idchar*
-@varsym = $symbol $symchar*
-@consym = \: $symchar*
-
-@decimal     = $digit+
-@octal       = $octit+
-@hexadecimal = $hexit+
-@exponent    = [eE] [\-\+] @decimal
-
-$cntrl   = [$large \@\[\\\]\^\_]
-@ascii   = \^ $cntrl | NUL | SOH | STX | ETX | EOT | ENQ | ACK
-         | BEL | BS | HT | LF | VT | FF | CR | SO | SI | DLE
-         | DC1 | DC2 | DC3 | DC4 | NAK | SYN | ETB | CAN | EM
-         | SUB | ESC | FS | GS | RS | US | SP | DEL
-$charesc = [abfnrtv\\\"\'\&]
-@escape  = \\ ($charesc | @ascii | @decimal | o @octal | x @hexadecimal)
-@gap     = \\ $whitechar+ \\
-@string  = $graphic # [\"\\] | " " | @escape | @gap
+@reservedid 
+        = begin|end|newcommand
 
 haskell :-
 
-<0> $white+                                     { c defaultStyle } -- whitespace
+ "%"\-*[^\n]*                                { c $ Comment }
+ $special                                    { cs $ \(c:_) -> Special c }
+ \\begin                                     { c $ Begin }
+ \\$special                                  { cs $ \(_:cs) -> Command cs }
+ \\end                                       { c $ End }
+ \\newcommand                                { c $ NewCommand }
+ \\$idchar+                                  { cs $ \(_:cs) -> Command cs }
+ [^\\ $special]+                             { c $ Text }
+ $white+                                     ; 
 
-
-<0> {
-  "%"\-*[^\n]*                                  { c commentStyle }
-
- $special                                       { c defaultStyle }
-
- @reservedid                                    { c keywordStyle }
-
- \\ @varid                                      { c upperIdStyle }
-
- @reservedop                                    { c operatorStyle }
- @varsym                                        { c operatorStyle }
- @consym                                        { c upperIdStyle }
-
- @decimal 
-  | 0[oO] @octal
-  | 0[xX] @hexadecimal                          { c operatorStyle }
-
- @decimal \. @decimal @exponent?
-  | @decimal @exponent                          { c defaultStyle }
-
- .                                              { c defaultStyle }
-}
 
 {
 
+data Token = Comment | Text | Special !Char | Command !String | Begin | End | NewCommand  
+  deriving (Eq, Show, Ord)
 
 type HlState = Int
 
@@ -103,7 +49,6 @@ stateToInit x = 0
 initState :: HlState
 initState = 0
 
-type Token = StyleName
 
 #include "alex.hsinc"
 }
