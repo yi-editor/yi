@@ -61,19 +61,9 @@ cleverMode = emptyMode
   {
     modeIndent = cleverAutoIndentHaskellB,
     modeHL = ExtHL $
-{--    lexer `withScanner` IncrParser.mkHighlighter Fractal.parse
-      (\begin end -> fmap tokenToStroke . Fractal.getStrokes begin end) id -}
---}
-
-{--
-    lexer `withScanner` IncrParser.mkHighlighter Paren.parse
-      (\begin end t -> Paren.getStrokes begin end t) id
---}
-
---
     mkHighlighter (IncrParser.scanner Paren.parse . Paren.indentScanner . haskellLexer)
       (\point begin end t -> Paren.getStrokes point begin end t)
---}                              
+
   , modeAdjustBlock = adjustBlock
   , modePrettify = cleverPrettify
  }
