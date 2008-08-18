@@ -4,7 +4,7 @@
 -- Copyright (C) 2007, 2008 JP Bernardy
 
 -- | The 'Buffer' module defines monadic editing operations over one-dimensional
--- buffers, which maintain a current /point/.
+-- buffers, maintaining a current /point/.
 
 module Yi.Buffer
   ( FBuffer (..)
@@ -701,7 +701,7 @@ deleteN n = pointB >>= deleteNAt Forward n
 ------------------------------------------------------------------------
 
 
--- | Current column
+-- | Current column.
 -- Note that this is different from offset or number of chars from sol.
 -- (This takes into account tabs, unicode chars, etc.)
 curCol :: BufferM Int

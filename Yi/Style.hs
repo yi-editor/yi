@@ -63,7 +63,7 @@ colorToText (RGB r g b) = ('#':) . showsHex r . showsHex g . showsHex b $ []
 
 ------------------------------------------------------------------------
 
--- | Some simple colours
+-- Some simple colours
 
 black, grey, lightGrey, darkred, red, darkgreen, green, brown, yellow :: Color
 darkblue, blue, purple, magenta, darkcyan, cyan, white, brightwhite   :: Color

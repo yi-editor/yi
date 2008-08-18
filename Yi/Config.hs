@@ -13,13 +13,13 @@ import {-# source #-} Yi.UI.Common
 
 data UIConfig = UIConfig {
    configFontSize :: Maybe Int,
-   configLeftSideScrollBar :: Bool,
-   configAutoHideScrollBar :: Bool,
+   configLeftSideScrollBar :: Bool, -- ^ Should the scrollbar be shown on the left side?
+   configAutoHideScrollBar :: Bool, -- ^ Hide scrollbar automatically if text fits on one page.
    configLineWrap :: Bool,
    configWindowFill :: !Char,       
    -- ^ char to fill empty window space with.  Usually '~' for vi-like
-   -- editors, ' ' for everything else
-   configStyle :: UIStyle -- ^ ui colours
+   -- editors, ' ' for everything else.
+   configStyle :: UIStyle -- ^ UI colours
   }
 
 {- | Currently duplicates some of Vim's indent settings. Allowing a buffer to
@@ -32,25 +32,28 @@ data IndentSettings = IndentSettings { expandTabs :: Bool -- ^ Insert spaces ins
                                      }
                       deriving (Eq, Show, Typeable)
 
-{- 
-  The default indent settings should likely be initializable
-  from a global preference.
- -}
 instance Initializable IndentSettings where
     initial = error "IndentSettings should be initialized from Config."
 
 
 -- | Configuration record. All Yi hooks can be set here.
 data Config = Config {startFrontEnd :: UIBoot,
+                      -- ^ UI to use.
                       configUI :: UIConfig,
+                      -- ^ UI-specific configuration.
                       startActions :: [Action],
-                      defaultKm :: Keymap,                      
+                      -- ^ Actions to run when the editor is started.
+                      defaultKm :: Keymap,
                       modeTable :: ReaderT String Maybe AnyMode,
+                      -- ^ Map filenames to the mode to use for them.
                       fundamentalMode :: Mode (),
                       publishedActions :: M.Map String [Dynamic],
+                      -- ^ Actions available in the "interpreter" (akin to M-x in emacs)
                       debugMode :: Bool,
+                      -- ^ Produce a .yi.dbg file with a lot of debug information.
                       configKillringAccumulate :: !Bool,
-                      -- ^ accumulate cuts automatically in killring
+                      -- ^ Set to 'True' for an emacs-like behaviour, where 
+                      -- all deleted text is accumulated in a killring.
                       configIndentSettings :: IndentSettings
                       -- IndentSettings should perhaps be in Mode?
                      }
