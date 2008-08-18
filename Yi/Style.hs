@@ -11,7 +11,6 @@ module Yi.Style where
 
 import Data.Word                (Word8)
 import Data.Char (chr, ord)
-import Data.Monoid
 import Yi.Prelude
 import Prelude ()
 

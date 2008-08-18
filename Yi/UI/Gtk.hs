@@ -316,7 +316,7 @@ newWindow ui mini b = do
                     toColor Reverse = Color 0 0 0
                     toColor (RGB r g b) = Color (fromIntegral r * 0xff) (fromIntegral g * 0xff) (fromIntegral b * 0xff)
                 widgetModifyBase v StateNormal $ toColor c
-            otherwise -> return ()
+            _ -> return ()
             {- Should be something like below. However, widgetModifyCursor is not in my version of
              - gtk2hs! -CROC
             Foreground c -> do
