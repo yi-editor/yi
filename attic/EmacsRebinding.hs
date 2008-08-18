@@ -5,12 +5,6 @@
   It should be fairly easy to add your own from here.
 -}
 
-{-
-module YiConfig 
-  (main)
-where
--}
-
 {- Standard Library Modules Imported -}
 import Data.Char
   ( isDigit

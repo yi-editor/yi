@@ -33,7 +33,7 @@ data-files:
   art/setup-script.png
   art/setup-script.png
   examples/yi.hs
-  examples/yi-extended-vim.hs
+  examples/yi-simple.hs
 extra-source-files: Yi/Lexer/alex.hsinc
 
 flag ghcAPI
@@ -106,8 +106,6 @@ library
         Yi.Keymap.Emacs.UnivArgument,
         Yi.Keymap.Emacs.Utils
         Yi.Keymap.Keys
-        Yi.Keymap.Users.Ertai
-        Yi.Keymap.Users.JP
         Yi.Keymap.Vim
         Yi.KillRing
         Yi.Lexer.Alex
@@ -286,8 +284,6 @@ executable yi
            Yi.Boot
            Yi.Keymap.Emacs
            Yi.Keymap.Vim
-           Yi.Keymap.Users.Ertai
-           Yi.Keymap.Users.JP
            Yi.Misc
            Yi.Modes
            Yi.Mode.Compilation
