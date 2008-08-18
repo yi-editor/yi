@@ -43,14 +43,7 @@ CONTRIBUTORS: Contributors _darcs/inventory
 activity.png: _darcs/inventory
 	darcs-graph . -y20 --name=yi -o $@
 
-haddock.view: haddock
-	firefox dist/doc/html/yi/index.html
-
-haddock.upload:
-	rsync -r dist/doc/html/yi/ $(user)@community.haskell.org:/srv/code/yi/doc
-
-dist/yi-$(version).tar.gz::
-	cabal sdist # does not work atm 
+dist/yi-$(version).tar.gz:: sdist
 
 test_prefix := $(shell pwd)/hackage
 
@@ -61,9 +54,9 @@ test-dist: sdist
 	cd hackage &&\
 	tar zxvf yi-$(version).tar.gz &&\
 	cd yi-$(version) &&\
-	# cabal haddock &&\
+	cabal haddock &&\
 	cabal install &&\
- 	cd ..;\
+	cd ..;\
 
 
 test-gtk:

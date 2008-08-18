@@ -17,6 +17,7 @@ all:
 
 #### Default settings.  To override, define before including this file.
 
+
 cabal_config=dist/setup-config
 
 ghc ?= $(shell which ghc)
@@ -76,6 +77,7 @@ modules = $(strip $(shell egrep '^[ \t]+[A-Z][0-9A-Za-z.]+[^.][ \t]*$$' *.cabal)
 show-modules:
 	@echo $(modules)
 
+paths_file=Paths_$(package).hs
 
 # For seeing generated docs and setting up comment watch.
 BROWSER ?= firefox
@@ -154,50 +156,23 @@ doc-clean:
 	rm -rf dist/doc
 
 # Generate Haddock docs.  See variables source-args, comments, and comment-args
-haddock: $(cabal_config)
+haddock:: $(cabal_config) $(paths_file)
 	./setup haddock
 
-# Make a new repo (requires account)
-darcs-repo:
-	darcs put $(user)@darcs.haskell.org:/home/darcs/packages/$(package)
+haddock.view:: haddock
+	$(BROWSER) dist/doc/html/yi/index.html
+
+haddock.upload::
+	rsync -r dist/doc/html/yi/ $(user)@community.haskell.org:/srv/code/yi/doc
+
+haddock.upload.view::
+	$(BROWSER) http://code.haskell.org/$(package)/doc/html
+
 
 # Tag with current version
 darcs-tag:
 	darcs tag $(version)
 
-# Make a tarball and copy to server.
-darcs-dist:
-	darcs dist -d $(package)-$(version)
-	ssh $(user)@darcs.haskell.org "mkdir -p /home/darcs/packages/$(package)/dist"
-	scp $(package)-$(version).tar.gz $(user)@darcs.haskell.org:/home/darcs/packages/$(package)/dist/
-	mkdir -p tarballs
-	mv $(package)-$(version).tar.gz tarballs
-
-# After "darcs record" and "darcs push", see if everything works
-test-get-build:
-	cd $(tmp-dir); \
-	rm -rf $(package); \
-	darcs get http://darcs.haskell.org/packages/$(package); \
-	cd $(package); \
-	$(ghc) --make Setup.*hs; \
-	./setup configure; \
-	./setup build
-
-# After "make doc", copy to the server.  Remove old docs first, in case
-# some modules have been renamed or deleted.
-web-doc:
-	ssh $(user)@darcs.haskell.org "rm -rf /home/darcs/packages/$(package)/dist/doc"
-	scp -r dist/doc $(user)@$(package-home)
-
-# Check out local or remote docs
-see-doc:
-	$(BROWSER) dist/doc/html/index.html; echo
-see-web-doc:
-	$(BROWSER) http://darcs.haskell.org/packages/$(package)/doc/html
-
-# Make & see docs
-doc-see: doc see-doc
-web-doc-see: web-doc see-web-doc
 
 # Automatically add yourself to the watch list of all project talk pages.
 # There's one talk page for the project and one for each module.
@@ -209,9 +184,11 @@ watch-comments:
 	echo Now watching all talk pages for $(package)
 
 
-sdist: $(cabal_config)
+sdist: $(cabal_config) $(paths_file)
 	./setup sdist
 
+$(paths_file): dist/build/autogen/$(paths_file)
+	cp $< $@
 
 
 
