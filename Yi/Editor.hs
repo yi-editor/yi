@@ -100,12 +100,7 @@ dynamicA :: Accessor Editor DynamicValues
 dynamicA = Accessor dynamic (\f e -> e {dynamic = f (dynamic e)})
 
 windowsA :: Accessor Editor (WindowSet Window)
-windowsA = Accessor windows modifyWindows 
-    where modifyWindows f e =
-            let ws = WS.current (tabs e)
-                ws' = f ws
-                tabs' = (tabs e) { WS.current = ws' }
-            in e {tabs = tabs' }
+windowsA = WS.currentA .> tabsA
 
 tabsA :: Accessor Editor (WindowSet (WindowSet Window))
 tabsA = Accessor tabs (\f e -> e {tabs = f (tabs e)})
@@ -458,17 +453,15 @@ newTabE = do
     bk <- getBuffer
     k <- newRef
     let win = Window False bk 0 k
-    modify $ \e -> e { tabs = WS.add (WS.new win) (tabs e) }
+    modifyA tabsA (WS.add (WS.new win))
 
 -- | Moves to the next tab in the round robin set of tabs
 nextTabE :: EditorM ()
-nextTabE = do
-    modify $ \e -> e { tabs = WS.forward (tabs e) }
+nextTabE = modifyA tabsA WS.forward
 
 -- | Moves to the previous tab in the round robin set of tabs
 previousTabE :: EditorM ()
-previousTabE = do
-    modify $ \e -> e { tabs = WS.backward (tabs e) }
+previousTabE = modifyA tabsA WS.backward
 
 -- | Close the current window. If there is only one tab open and the tab 
 -- contains only one window then do nothing.
