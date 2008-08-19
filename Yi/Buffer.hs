@@ -116,7 +116,6 @@ import Data.Typeable
 import {-# source #-} Yi.Keymap
 import Yi.Monad
 import Yi.Interact as I
-import qualified Data.ByteString.UTF8 as UTF8
 import qualified Data.ByteString.Lazy.UTF8 as LazyUTF8
 import qualified Data.ByteString.Lazy as LB
 import Yi.Buffer.Basic
@@ -523,10 +522,10 @@ deleteNAt dir n pos = do
   els <- nelemsB n pos
   applyUpdate (Delete pos dir $ LazyUTF8.fromString els)
 
--- | @deleteNBytes n p@ deletes @n@ byes forwards from position @p@
+-- | @deleteNBytes n p@ deletes @n@ bytes forwards from position @p@
 deleteNBytes :: Direction -> Size -> Point -> BufferM ()
 deleteNBytes dir n pos = do
-  els <- LazyUTF8.take (fromIntegral n) <$> streamB Forward pos
+  els <- LB.take (fromIntegral n) <$> streamB Forward pos
   applyUpdate (Delete pos dir els)
 
 
@@ -713,7 +712,6 @@ colMove :: Int -> Char -> Int
 colMove col '\t' = (col + 7) `mod` 8
 colMove col _    = col + 1
         
-
 
 -- | Go to line indexed from current point
 -- Returns the actual moved difference which of course
