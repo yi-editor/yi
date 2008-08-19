@@ -91,7 +91,7 @@ inclusiveRegionB r =
           if regionStart r <= regionEnd r
               then mkRegion (regionStart r) <$> pointAfter (regionEnd r)
               else mkRegion <$> pointAfter (regionStart r) <*> pure (regionEnd r)
-    where pointAfter p = savingPointB $ do 
+    where pointAfter p = pointAt $ do 
                            moveTo p
                            rightB
-                           pointB
+

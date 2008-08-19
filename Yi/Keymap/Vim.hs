@@ -890,7 +890,6 @@ defKeymap self = ModeMap {
      --    fn ('!':f) = runProcessWithInput f []
 
            fn "reload"     = reloadEditor >> return ()    -- not in vim
-           -- fn "eval"       = withBuffer (regionOfB Document >>= readRegionB) >>= evalE -- not in vim
 
            fn "redr"       = refreshEditor
            fn "redraw"     = refreshEditor

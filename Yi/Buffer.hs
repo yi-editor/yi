@@ -266,10 +266,7 @@ deriving instance Typeable4 RWS
 
 instance Applicative BufferM where
     pure = return
-    af <*> ax = do
-      f <- af
-      x <- ax
-      return (f x)
+    (<*>) = ap
 
 instance Eq FBuffer where
    FBuffer { bkey = u } == FBuffer { bkey = v } = u == v

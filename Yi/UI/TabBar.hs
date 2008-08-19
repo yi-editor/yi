@@ -6,8 +6,6 @@ import Yi.Editor (Editor(..)
                  ,findBufferWith)
 import Yi.Style
 
-import qualified Data.Map as Map
-
 data TabDescr = TabDescr
     {
         tabText :: String,
