@@ -6,7 +6,7 @@ module Yi.UI.Utils where
 import Yi.Buffer
 import Yi.Buffer.HighLevel
 import Yi.Prelude
-import Prelude ()
+import Prelude (Ordering(..))
 import Yi.Window
 
 -- | return index of Sol on line @n@ above current line
@@ -26,17 +26,29 @@ moveWinTosShowPoint b w = result
                setMarkPointB f i
                return ()
 
--- | @paintStrokes colorToTheRight strokes picture@: paint the strokes over a given picture.
--- Precondition: input list is sorted and strokes do not overlap.
--- Semantics of [(Point, a)] == from given on, point use the given color.
-paintStrokes :: a -> [(Point,(a -> a),Point)] -> [(Point,a)] -> [(Point,a)]
-paintStrokes _  []     rest = rest
-paintStrokes s0 ss     [] = concat [[(l,s s0),(r,s0)] | (l,s,r) <- ss]
-paintStrokes s0 ls@((l,s,r):ts) lp@((p,s'):tp) 
-            | p < l  = (p,s') : paintStrokes s' ls tp
-            | p <= r =          paintStrokes s' ls tp
-            | r == p = (l,s s0) : (p,s') : paintStrokes s' ts tp 
-            | otherwise {-r < p-}  = (l,s s0) : (r,s0) : paintStrokes s0 ts lp
+-- | Turn a sequence of (from,style,to) strokes into a sequence
+--   of picture points (from,style), taking special care to
+--   ensure that the points are strictly increasing and introducing
+--   padding segments where neccessary.
+--   Precondition: Strokes are ordered and not overlapping.
+strokePicture :: [(Point,(a -> a),Point)] -> [(Point,(a -> a))]
+strokePicture = foldr pointCons []
+  where
+    pointCons (l,f,r) xs = case xs of
+      ((n,_):_) | n == r -> (l,f)          : xs
+      _                  -> (l,f) : (r,id) : xs
+
+
+-- | Paint the given stroke-picture on top of an existing picture
+paintStrokes :: a -> [(Point,(a -> a))] -> [(Point,a)] -> [(Point,a)]
+paintStrokes  _ [] ps = ps
+paintStrokes s0 ss [] = [(p, f s0) | (p, f) <- ss]
+paintStrokes s0 ls@((ps,f):ts) lp@((pp,s1):tp) =
+  case ps `compare` pp of
+    LT -> (ps, f s0):paintStrokes s0 ts lp
+    EQ -> (ps, f s1):paintStrokes s1 ts tp
+    GT -> (pp,   s1):paintStrokes s1 ls tp
 
 paintPicture :: a -> [[(Point,(a -> a),Point)]] -> [(Point,a)]
-paintPicture a = foldr (paintStrokes a) []
+paintPicture a = foldr (paintStrokes a . strokePicture) []
+
