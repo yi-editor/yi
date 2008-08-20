@@ -11,6 +11,7 @@ module Yi.UI.Cocoa.TextStorage
   , initializeClass_TextStorage
   , newTextStorage
   , setTextStorageBuffer
+  , visibleRangeChanged
   ) where
 
 import Prelude (take, uncurry, dropWhile)
@@ -296,11 +297,15 @@ newTextStorage sty b = do
 
 setTextStorageBuffer :: FBuffer -> TextStorage -> IO ()
 setTextStorageBuffer buf storage = do
-  logPutStrLn $ "setTextStorageBuffer! " ++ show [u | TextUpdate u <- pendingUpdates buf]
+  storage # beginEditing
   when (not $ null $ pendingUpdates buf) $ do
-      storage # beginEditing
-      mapM_ (applyUpdate storage) ([u | TextUpdate u <- pendingUpdates buf])
-      storage # setIVar _buffer (Just buf)
-      storage # setIVar _stringCache Nothing
-      storage # setIVar _pictureCache []
-      storage # endEditing
+    mapM_ (applyUpdate storage) [u | TextUpdate u <- pendingUpdates buf]
+    storage # setIVar _pictureCache []
+  storage # setIVar _buffer (Just buf)
+  storage # setIVar _stringCache Nothing
+  storage # endEditing
+
+visibleRangeChanged :: NSRange -> TextStorage -> IO ()
+visibleRangeChanged range storage = do
+  storage # editedRangeChangeInLength nsTextStorageEditedAttributes range 0
+  storage # setIVar _pictureCache []

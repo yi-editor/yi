@@ -347,6 +347,10 @@ refresh ui e = logNSException "refresh" $ do
            let (p,l) = if showSel then (min p0 p1, abs $ p1~-p0) else (p0,0)
            (textview w) # setSelectedRange (NSRange (fromIntegral p) (fromIntegral l))
            (textview w) # scrollRangeToVisible (NSRange (fromIntegral p0) 0)
+           -- Signal to Cocoa that we need to update attributes in the visible range...
+           storage <- castObject <$> (textview w) # textStorage
+           visRange <- (textview w) # visibleRange
+           storage # visibleRangeChanged visRange
            (modeline w) # setStringValue (toNSString txt)
 
 getTextStorage :: UI -> FBuffer -> IO TextStorage

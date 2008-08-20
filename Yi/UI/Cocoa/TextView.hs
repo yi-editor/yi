@@ -16,6 +16,7 @@ module Yi.UI.Cocoa.TextView
   , _YiScrollView
   , initializeClass_YiScrollView
   , _leftScroller
+  , visibleRange
   )where
 
 import Yi.Buffer hiding (runBuffer)
@@ -26,6 +27,7 @@ import AppKit
 
 import qualified AppKit.NSScrollView (contentView)
 
+import Foreign
 import Foreign.C
 
 $(declareClass "YiTextView" "NSTextView")
@@ -57,6 +59,17 @@ ytv_setSelectedRangeAffinityStillSelecting r@(NSRange p1 l) a b v = do
       return ()
 
   super v # setSelectedRangeAffinityStillSelecting r a b
+
+-- | Compute the currently visible text range in the view
+visibleRange :: YiTextView () -> IO NSRange
+visibleRange v = do
+  -- Force redraw of the whole container to capture interactive style changes...
+  NSPoint x y <- v # textContainerOrigin
+  r <- v # visibleRect >>= \r -> nsOffsetRect r x y
+  lm <- v # layoutManager
+  tc <- v # textContainer
+  gr <- lm # glyphRangeForBoundingRectInTextContainer r tc
+  lm # characterRangeForGlyphRangeActualGlyphRange gr nullPtr
 
 $(declareClass "YiScrollView" "NSScrollView")
 $(exportClass "YiScrollView" "ysv_" [
