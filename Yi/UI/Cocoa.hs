@@ -149,6 +149,12 @@ start cfg ch outCh _ed = do
   app <- _YiApplication # sharedApplication >>= return . toYiApplication
   app # setIVar _eventChannel (Just ch)
 
+  -- Multithreading in Cocoa is initialized by spawning a new thread
+  -- This spawns a thread that immediately exits, but that's okay
+  _NSThread # detachNewThreadSelectorToTargetWithObject
+     (getSelectorForName "sharedApplication") _YiApplication nil
+
+  -- Set the application icon accordingly
   icon <- getDataFileName "art/yi+lambda-fat.pdf"
   _NSImage # alloc >>=
     initWithContentsOfFile (toNSString icon) >>=
