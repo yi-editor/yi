@@ -139,9 +139,11 @@ library
         Yi.Style.Library
         Yi.Syntax
         Yi.Syntax.Fractal
+        Yi.Syntax.Haskell
         Yi.Syntax.Latex
         Yi.Syntax.Layout
         Yi.Syntax.Linear
+        Yi.Syntax.Paren
         Yi.Syntax.Tree
         Yi.Templates
         Yi.TextCompletion,
