@@ -11,6 +11,7 @@ module Yi.Style where
 
 import Data.Word                (Word8)
 import Data.Char (chr, ord)
+import Data.Maybe
 import Yi.Prelude
 import Prelude ()
 
@@ -50,6 +51,12 @@ data Attr = Foreground !Color
     deriving (Eq, Show, Ord)
 
 type Style = [Attr]
+
+background :: Style -> Color
+background s = fromMaybe Default $ listToMaybe [c | Background c <- s]
+
+foreground :: Style -> Color
+foreground s = fromMaybe Default $ listToMaybe [c | Foreground c <- s]
 
 -- | Convert a color to its text specification, as to be accepted by XParseColor
 colorToText :: Color -> String

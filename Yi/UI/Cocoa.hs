@@ -23,6 +23,7 @@ import Yi.Monad
 import Yi.Config
 import qualified Yi.UI.Common as Common
 import qualified Yi.WindowSet as WS
+import qualified Yi.Style as Style
 import Yi.Window
 import Paths_yi (getDataFileName)
 
@@ -105,6 +106,7 @@ newTextLine = do
   tl # setMonospaceFont
   tl # setSelectable True
   tl # setEditable False
+  tl # setBezeled False
   tl # sizeToFit
   cl <- castObject <$> tl # cell :: IO (NSCell ())
   cl # setWraps False
@@ -183,7 +185,6 @@ start cfg ch outCh _ed = do
   winContainer <- new _NSSplitView
   (cmd,_) <- content # addSubviewWithTextLine winContainer
 
-
   -- Activate application window
   win # center
   win # setFrameAutosaveName (toNSString "main")
@@ -201,7 +202,11 @@ start cfg ch outCh _ed = do
   bufs <- newIORef M.empty
   wc <- newIORef []
 
-  return $ mkUI $ UI win winContainer cmd bufs wc (outCh . singleton) (configUI cfg)
+  let ui = UI win winContainer cmd bufs wc (outCh . singleton) (configUI cfg)
+
+  cmd # setColors ui Style.window
+
+  return (mkUI ui)
 
 -- | Run the main loop
 main :: IO ()
@@ -232,6 +237,12 @@ syncWindows e ui = sync
       (textview i) # AppKit.NSView.window >>= makeFirstResponder (textview i)
       return (i{window = w})
 
+setColors :: (Has_setBackgroundColor t, Has_setTextColor t) => UI -> Style.StyleName -> t -> IO ()
+setColors ui styleName slf = do
+  let s = styleName $ configStyle $ uiConfig ui
+  getColor True  (Style.foreground s) >>= flip setTextColor slf
+  getColor False (Style.background s) >>= flip setBackgroundColor slf
+
 -- | Make A new window
 newWindow :: UI -> Window -> FBuffer -> IO WinInfo
 newWindow ui win b = do
@@ -240,6 +251,10 @@ newWindow ui win b = do
   v # setSelectable True
   v # setAlignment nsLeftTextAlignment
   v # sizeToFit
+  attrs <- convertStyle $ Style.selected $ configStyle $ uiConfig ui
+  v # setSelectedTextAttributes attrs
+  v # setColors ui Style.window
+  v # textColor >>= flip setInsertionPointColor v
 
   (ml, view) <- if (isMini win)
    then do
@@ -250,6 +265,7 @@ newWindow ui win b = do
     prompt # sizeToFit
     prompt # setAutoresizingMask nsViewNotSizable
     prompt # setBordered False
+    prompt # setColors ui Style.window
 
     prect <- prompt # frame
     vrect <- v # frame
@@ -288,6 +304,7 @@ newWindow ui win b = do
     scroll # setIVar _leftScroller (configLeftSideScrollBar $ uiConfig ui)
     addSubviewWithTextLine scroll (uiBox ui)
 
+  ml # setColors ui Style.modeline
   storage <- getTextStorage ui b
   layoutManager v >>= replaceTextStorage storage
 
