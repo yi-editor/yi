@@ -111,11 +111,15 @@ withMinibufferFin prompt posibilities act
         hinter s = return $ show $ match s
         -- All those which currently match.
         match s = filter (s `isInfixOf`) posibilities
-        -- The best match from the list of matches.
-        best s = let ms = match s in
-                 case ms of
-                   [] -> s
-                   (x:_) -> x
+
+        -- The best match from the list of matches
+        -- If the string matches completely then we take that
+        -- otherwise we just take the first match.
+        best s
+          | any (== s) matches = s
+          | null matches       = s
+          | otherwise          = head matches
+          where matches = match s
         -- We still want "TAB" to complete even though the user could just press
         -- return with an incomplete possibility. The reason is we may have for
         -- example two possibilities which share a long prefix and hence we wish
