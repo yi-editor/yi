@@ -154,7 +154,7 @@ yts_attributesAtIndexEffectiveRange i er slf = do
   pic <- dropJunk <$> slf #. _pictureCache
   case pic of
     (q,_):_ | pos >= picStart && pos < q -> returnRange pic
-    _ -> returnRange =<< filterEmpty <$> dropJunk <$> slf # storagePicture i
+    _ -> returnRange =<< filterSame <$> slf # storagePicture i
   where
     dropJunk = dropWhile ((pos >=) . fst)
     pos = fromIntegral i
@@ -195,7 +195,7 @@ yts_attributeAtIndexEffectiveRange attr i er slf = do
       -- TODO: Adjust line break property...
       safePokeFullRange >> castObject <$> defaultParagraphStyle _NSParagraphStyle
     "NSBackgroundColor" -> do
-      (s,bg):_ <- onlyBg <$> slf # storagePicture i
+      ~((s,bg):_) <- onlyBg <$> slf # storagePicture i
       let Background c = fromMaybe (Background Default) (listToMaybe bg)
       safePoke er (NSRange i (fromIntegral s - i))
       castObject <$> getColor False c
@@ -240,12 +240,16 @@ filterSame = filter2 ((==) `on` snd)
 onlyBg :: Picture -> Picture
 onlyBg xs = filterSame [(p,[s | s@(Background _) <- ss]) | (p,ss) <- xs ]
 
+-- | Get a picture where each component (p,style) means apply the style
+--   up until the given point p.
 paintCocoaPicture :: UIStyle -> Point -> [[Stroke]] -> Picture
-paintCocoaPicture sty end = stylesift [] . paintPicture [] . fmap (fmap constStroke)
+paintCocoaPicture sty end =
+  tail . stylesift [] . paintPicture [] . fmap (fmap styleStroke)
   where
+    -- Turn a picture of use style from p into a picture of use style until p
     stylesift s [] = [(end,s)]
     stylesift s ((p,t):xs) = (p,s):(stylesift t xs)
-    constStroke (l,s,r) = (l,const (s sty),r)
+    styleStroke (l,s,r) = (l,flattenStyle . (s sty ++),r)
 
 -- | Convert style information into Cocoa compatible format
 convertStyle :: Style -> IO (NSDictionary ())
