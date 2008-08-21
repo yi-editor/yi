@@ -183,6 +183,7 @@ defaultConfig =
   Config { startFrontEnd    = snd (head frontends)
          , configUI         =  UIConfig 
            { configFontSize = Nothing
+           , configFontName = Nothing
            , configLineWrap = True
            , configLeftSideScrollBar = True
            , configAutoHideScrollBar = False

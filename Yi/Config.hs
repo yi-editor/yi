@@ -12,6 +12,7 @@ import Yi.Style
 import {-# source #-} Yi.UI.Common
 
 data UIConfig = UIConfig {
+   configFontName :: Maybe String, -- ^ Font name, for the UI that support it.
    configFontSize :: Maybe Int,
    configLeftSideScrollBar :: Bool, -- ^ Should the scrollbar be shown on the left side?
    configAutoHideScrollBar :: Bool, -- ^ Hide scrollbar automatically if text fits on one page.
