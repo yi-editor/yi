@@ -181,6 +181,11 @@ start cfg ch outCh _ed = do
   content <- win # AppKit.NSWindow.contentView >>= return . toNSView
   content # setAutoresizingMask allSizable
 
+  -- Update the font configuration
+  let fontSize = maybe 0 fromIntegral (configFontSize (configUI cfg))
+  let fontGetter = maybe userFixedPitchFontOfSize (fontWithNameSize . toNSString) (configFontName (configUI cfg))
+  _NSFont # fontGetter fontSize >>= flip setUserFixedPitchFont _NSFont
+
   -- Create yi window container
   winContainer <- new _NSSplitView
   (cmd,_) <- content # addSubviewWithTextLine winContainer
@@ -190,14 +195,6 @@ start cfg ch outCh _ed = do
   win # setFrameAutosaveName (toNSString "main")
   win # makeKeyAndOrderFront nil
   app # activateIgnoringOtherApps False
-
-  -- Update the font configuration if desired...
-  case configFontSize $ configUI cfg of
-    Just fontSize ->
-      userFixedPitchFontOfSize (fromIntegral fontSize) _NSFont >>=
-          flip setUserFixedPitchFont _NSFont
-    Nothing ->
-      return ()
 
   bufs <- newIORef M.empty
   wc <- newIORef []
