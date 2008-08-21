@@ -232,7 +232,7 @@ defKeymap self = ModeMap {
      -- left/right
          [(char '$',  eol)
          ,(spec KEnd, eol)
-     -- words
+          -- words
          ,(char 'e',     Replicate $ GenMove ViWord (Forward, InsideBound) Forward)
          ,(char 'E',     Replicate $ GenMove ViWORD (Forward, InsideBound) Forward)]
          where
@@ -283,7 +283,7 @@ defKeymap self = ModeMap {
          ,(ctrl $ char 'j', down)
          ,(ctrl $ char 'n', down)
          ,(spec KEnter,     down)
-     -- misc
+          -- misc
          ,(char 'H',        \i -> ArbMove (downFromTosB (i - 1)))
          ,(char 'M',        const $ ArbMove middleB)
          ,(char 'L',        \i -> ArbMove (upFromBosB (i - 1)))
