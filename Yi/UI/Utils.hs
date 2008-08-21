@@ -32,12 +32,13 @@ moveWinTosShowPoint b w = result
 --   padding segments where neccessary.
 --   Precondition: Strokes are ordered and not overlapping.
 strokePicture :: [(Point,(a -> a),Point)] -> [(Point,(a -> a))]
-strokePicture = foldr pointCons []
-  where
-    pointCons (l,f,r) xs = case xs of
-      ((n,_):_) | n == r -> (l,f)          : xs
-      _                  -> (l,f) : (r,id) : xs
-
+strokePicture [] = []
+strokePicture wholeList@((leftMost,_,_):_) = helper leftMost wholeList
+    where helper :: Point -> [(Point,(a -> a),Point)] -> [(Point,(a -> a))]
+          helper prev [] = [(prev,id)]
+          helper prev ((l,f,r):xs) 
+              | prev < l  = (prev, id) : (l,f) : helper r xs
+              | otherwise = (l,f) : helper r xs
 
 -- | Paint the given stroke-picture on top of an existing picture
 paintStrokes :: a -> [(Point,(a -> a))] -> [(Point,a)] -> [(Point,a)]
