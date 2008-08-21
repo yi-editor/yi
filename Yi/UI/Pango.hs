@@ -85,7 +85,7 @@ mkUI ui = Common.UI
 mkFontDesc :: UIConfig -> IO FontDescription
 mkFontDesc cfg = do
   f <- fontDescriptionNew
-  fontDescriptionSetFamily f "Monospace"
+  fontDescriptionSetFamily f (maybe "Monospace" id (configFontName cfg))
   case  configFontSize cfg of
     Just x -> fontDescriptionSetSize f (fromIntegral x)
     Nothing -> return ()
