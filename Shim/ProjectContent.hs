@@ -97,6 +97,18 @@ loadProject projPath = do
       tloc6 = execState (mapM_ (\item -> insertDown item >> up) (Set.toList mod_items)) tloc1
   return (tree tloc5, tree tloc6)
                             
+getTop :: Tree a -> TreeLoc a
+getTop = fromTree
+
+insertDown :: forall a. a -> State (TreeLoc a) ()
+insertDown label = modify (insertDownLast $ Node label [])
+
+up :: State (TreeLoc a) ()
+up = modify' parent
+
+modify' :: (a -> Maybe a) -> State a ()
+modify' f = modify (\x -> maybe (error "impossible movement!") id (f x))
+
 
 addLibraryTree projPath (mod_items,tloc) (Library {libBuildInfo=binfo, exposedModules=exp_mods}) = do
   (exp_mods,hid_mods,mod_items1,tloc1) <- foldM (\st dir -> addSourceDir projPath dir st)
@@ -117,7 +129,8 @@ addDependenciesTree deps = do
   up
   where
     addDependency dep = do
-      insertDown (PackageItem (pkgName dep) (pkgVersion dep)) >> up
+      insertDown (PackageItem (pkgName dep) (pkgVersion dep))
+      up
 
 addSourceDir :: FilePath -- ^ project location
              -> FilePath -- ^ source sub-directory
@@ -148,21 +161,23 @@ addFilePath' mkItem (c:cs) cont
                             | otherwise = FolderItem c PlainFolder
                    children <- gets hasChildren
                    if children
-                     then firstChild >> insertItem c item
+                     then modify' firstChild >> insertItem c item
                      else insertDown item
                    addFilePath' mkItem cs cont
                    up >> return ()
   where
+    insertItem :: Ord a => x -> a -> State (TreeLoc a) ()
     insertItem c item = do
-      item' <- getLabel
+      item' <- gets getLabel
       case compare item item' of
-        LT -> insertLeft item
+        LT -> modify $ insertLeft $ simpleNode item
         EQ -> return ()
         GT -> do last <- gets isLast
                  if last
-                   then insertRight item
-                   else right >> insertItem c item
+                   then modify $ insertRight $ simpleNode item
+                   else modify' right >> insertItem c item
 
+simpleNode item = Node item []
 
 splitPath' fpath = [removeSlash c | c <- splitPath fpath]
   where
