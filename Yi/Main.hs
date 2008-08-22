@@ -28,6 +28,7 @@ import Yi.Modes (defaultModeMap, defaultFundamentalMode)
 import Yi.Buffer hiding (file)
 import Yi.Buffer.HighLevel
 import Yi.Buffer.Normal
+import Yi.Buffer.Region
 import Yi.Config
 import Yi.Core
 import Yi.Debug
@@ -231,34 +232,39 @@ defaultConfig =
 
 defaultPublishedActions :: M.Map String [Dynamic]
 defaultPublishedActions = M.fromList $ 
-    [ ("leftB"                  , box leftB) 
-    , ("pointB"                 , box pointB) 
-    , ("linePrefixSelectionB"   , box linePrefixSelectionB)
-    , ("unLineCommentSelectionB", box unLineCommentSelectionB)
-    , ("insertB"                , box insertB)
-    , ("revertE"                , box revertE)
-    , ("numberOfB"              , box numberOfB)
+    [ ("Backward"               , box Backward)
     , ("Character"              , box Character)
+    , ("Document"               , box Document)
+    , ("Forward"                , box Forward)
     , ("Line"                   , box Line)
     , ("Word"                   , box Word)
-    , ("unitParagraph"          , box unitParagraph)
-    , ("Document"               , box Document)
-    , ("cabalConfigureE"        , box cabalConfigureE)
-    , ("cabalBuildE"            , box cabalBuildE)
-    , ("reloadProjectE"         , box reloadProjectE)
+    , ("Point"                  , box Point)
     , ("atBoundaryB"            , box atBoundaryB)
+    , ("cabalBuildE"            , box cabalBuildE)
+    , ("cabalConfigureE"        , box cabalConfigureE)
+    , ("closeBufferE"           , box closeBufferE)
+    , ("deleteB"                , box deleteB)
+    , ("deleteBlankLinesB"      , box deleteBlankLinesB)
+    , ("getSelectRegionB"       , box getSelectRegionB)
+    , ("grepFind"               , box grepFind)
+    , ("insertB"                , box insertB)
+    , ("interactive"            , box interactive)
+    , ("leftB"                  , box leftB) 
+    , ("linePrefixSelectionB"   , box linePrefixSelectionB)
+    , ("mkRegion"               , box mkRegion)
+    , ("moveB"                  , box moveB)
+    , ("numberOfB"              , box numberOfB)
+    , ("pointB"                 , box pointB) 
     , ("regionOfB"              , box regionOfB)
     , ("regionOfPartB"          , box regionOfPartB)
-    , ("Forward"                , box Forward)
-    , ("Backward"               , box Backward)
-    , ("deleteBlankLinesB"      , box deleteBlankLinesB)
-    , ("writeB"                 , box writeB)
-    , ("getSelectRegionB"       , box getSelectRegionB)
-    , ("closeBufferE"           , box closeBufferE)
-    , ("grepFind"               , box grepFind)
-    , ("sortLines"              , box sortLines)
+    , ("regionOfPartNonEmptyB"  , box regionOfPartNonEmptyB)
+    , ("reloadProjectE"         , box reloadProjectE)
+    , ("revertE"                , box revertE)
     , ("shell"                  , box shell)
-    , ("interactive"            , box interactive)
+    , ("sortLines"              , box sortLines)
+    , ("unLineCommentSelectionB", box unLineCommentSelectionB)
+    , ("unitParagraph"          , box unitParagraph)
+    , ("writeB"                 , box writeB)
     ]
 
   where box x = [toDyn x]
