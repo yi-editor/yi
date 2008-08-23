@@ -248,7 +248,6 @@ defaultPublishedActions = M.fromList $
     , ("getSelectRegionB"       , box getSelectRegionB)
     , ("grepFind"               , box grepFind)
     , ("insertB"                , box insertB)
-    , ("interactive"            , box interactive)
     , ("leftB"                  , box leftB) 
     , ("linePrefixSelectionB"   , box linePrefixSelectionB)
     , ("mkRegion"               , box mkRegion)

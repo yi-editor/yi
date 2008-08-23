@@ -31,6 +31,17 @@ mode = Compilation.mode
          else withSyntax modeFollow)
   }
 
+-- | Open a new buffer for interaction with a process.
+interactive :: String -> [String] -> YiM BufferRef
+interactive cmd args = do
+    b <- startSubprocess cmd args (\_ -> return ())
+    withBuffer $ do m1 <- getMarkB (Just "StdERR")
+                    m2 <- getMarkB (Just "StdOUT")
+                    modifyMarkB m1 (\v -> v {markGravity = Backward})
+                    modifyMarkB m2 (\v -> v {markGravity = Backward})
+                    setMode mode
+    return b
+
 -- | Send the type command to the process
 feedCommand :: YiM ()
 feedCommand = do
@@ -38,11 +49,13 @@ feedCommand = do
     cmd <- withBuffer $ do 
         botB
         insertN "\n"
-        m <- getMarkB (Just "Prompt")
+        me <- getMarkB (Just "StdERR")
+        mo <- getMarkB (Just "StdOUT")
         p <- pointB
-        q <- getMarkPointB m
+        q <- getMarkPointB mo
         cmd <- readRegionB $ mkRegion p q
-        setMarkPointB m p
-        return cmd
+        setMarkPointB me p
+        setMarkPointB mo p
+        return $ cmd 
     sendToProcess b cmd
 

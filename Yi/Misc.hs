@@ -23,8 +23,8 @@ import System.Directory
   ( doesDirectoryExist
   , getDirectoryContents
   , getCurrentDirectory
-  , setCurrentDirectory
   )
+import Control.Exception
 import Control.Monad.Trans (MonadIO (..))
 {- External Library Module Imports -}
 {- Local (yi) module imports -}
@@ -70,54 +70,47 @@ shellCommandE = do
         ExitFailure _ -> msgEditor cmdErr
 
 ----------------------------
+-- Cabal-related commands
 
 setupScript :: String
 setupScript = "Setup"
 
+newtype CabalBuffer = CabalBuffer {cabalBuffer :: Maybe BufferRef}
+    deriving (Initializable, Typeable)
+
+
 ----------------------------
 -- | cabal-configure
 cabalConfigureE :: YiM ()
-cabalConfigureE =
-    withMinibuffer "Project directory:" (matchingFileNames Nothing) $ \fpath ->
-    withMinibufferFree "Configure args:" $ \cmd -> do
-      liftIO $ setCurrentDirectory fpath
-      (cmdOut,cmdErr,exitCode) <- liftIO $ popen "runhaskell" (setupScript:"configure":words cmd) Nothing
-      case exitCode of
-        ExitSuccess   -> do withUI $ \ui -> reloadProject ui "."
-                            withEditor $ withOtherWindow $ newBufferE "*Shell Command Output*" (fromString cmdOut) >> return ()
-                            -- FIXME: here we get a string and convert it back to utf8; this indicates a possible bug.
-        ExitFailure _ -> msgEditor cmdErr
+cabalConfigureE = withMinibufferFree "Configure args:" $ cabalRun "configure" configureExit
+
+configureExit :: Either Exception ExitCode -> YiM ()
+configureExit (Right ExitSuccess) = reloadProjectE "."
+configureExit _ = return ()
+
 
 reloadProjectE :: String -> YiM ()
 reloadProjectE s = withUI $ \ui -> reloadProject ui s
 
-newtype CabalBuffer = CabalBuffer {cabalBuffer :: Maybe BufferRef}
-    deriving (Initializable, Typeable)
+cabalRun :: String -> (Either Exception ExitCode -> YiM x) -> String -> YiM ()
+cabalRun cmd onExit args = withOtherWindow $ do
+   b <- startSubprocess "runhaskell" (setupScript:cmd:words args) onExit
+   withEditor $ do
+       maybeM deleteBuffer =<< cabalBuffer <$> getDynamic
+       setDynamic $ CabalBuffer $ Just b
+       withBuffer0 $ setMode Compilation.mode
+   return ()
 
-----------------------------
+-----------------------
 -- | cabal-build
 cabalBuildE :: YiM ()
-cabalBuildE =
-    withMinibufferFree "Build args:" $ \cmd -> withOtherWindow $ do
-        b <- startSubprocess "runhaskell" (setupScript:"build":words cmd)
-        withEditor $ do
-            maybeM deleteBuffer =<< cabalBuffer <$> getDynamic
-            setDynamic $ CabalBuffer $ Just b
-            withBuffer0 $ setMode Compilation.mode
-        return ()
+cabalBuildE = withMinibufferFree "Build args:" $ cabalRun "build" (\_ -> return ())
 
-interactive :: String -> [String] -> YiM BufferRef
-interactive cmd args = do
-    b <- startSubprocess cmd args
-    withBuffer $ do m <- getMarkB (Just "Prompt")
-                    modifyMarkB m (\v -> v {markGravity = Backward})
-                    setMode Interactive.mode
-    return b
 
 shell :: YiM BufferRef
 shell = do
     sh <- io shellFileName
-    interactive sh ["-i"]
+    Interactive.interactive sh ["-i"]
     -- use the -i option for interactive mode (assuming bash)
 
 -- | Search the haskell files in the project.
@@ -125,7 +118,7 @@ grepFind :: String -> YiM ()
 grepFind searched = withOtherWindow $ do
     startSubprocess "find" [".", 
                             "-name", "_darcs", "-prune", "-o", 
-                            "-name", "*.hs", "-exec", "grep", "-Hnie", searched, "{}", ";"]
+                            "-name", "*.hs", "-exec", "grep", "-Hnie", searched, "{}", ";"] (\_ -> return ())
     withBuffer $ setMode Compilation.mode
     return ()
      

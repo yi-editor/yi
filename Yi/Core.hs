@@ -69,6 +69,7 @@ import qualified Data.Map as M
 import Data.Foldable (mapM_, all)
 
 import System.IO (Handle, hWaitForInput, hPutStr)
+import System.Exit
 import System.FilePath
 import System.Process ( getProcessExitCode, ProcessHandle )
 
@@ -267,8 +268,8 @@ getAllNamesInScope = do
   return (M.keys acts)
 
 -- | Start a subprocess with the given command and arguments.
-startSubprocess :: FilePath -> [String] -> YiM BufferRef
-startSubprocess cmd args = do
+startSubprocess :: FilePath -> [String] -> (Either Exception ExitCode -> YiM x) -> YiM BufferRef
+startSubprocess cmd args onExit = do
     yi <- ask
     io $ modifyMVar (yiVar yi) $ \var -> do        
         let (e', bufref) = runEditor 
@@ -277,31 +278,40 @@ startSubprocess cmd args = do
                               (yiEditor var)
             procid = yiSubprocessIdSupply var + 1
         procinfo <- createSubprocess cmd args bufref
-        startSubprocessWatchers procid procinfo yi
+        startSubprocessWatchers procid procinfo yi onExit
         return (var {yiEditor = e', 
                      yiSubprocessIdSupply = procid,
                      yiSubprocesses = M.insert procid procinfo (yiSubprocesses var)
                     }, bufref)
   where bufferName = "output from " ++ cmd ++ " " ++ show args
 
-startSubprocessWatchers :: SubprocessId -> SubprocessInfo -> Yi -> IO ()
-startSubprocessWatchers procid procinfo yi = do
-  let send a = output yi [makeAction a]
-      append s = send $ appendToBuffer (bufRef procinfo) s
-      reportExit s = append s >> (send $ removeSubprocess procid)
-  mapM_ forkOS [pipeToBuffer (hOut procinfo) append,
-                pipeToBuffer (hErr procinfo) append,
-                waitForExit (procHandle procinfo) >>= reportExit]
+startSubprocessWatchers :: SubprocessId -> SubprocessInfo -> Yi -> (Either Exception ExitCode -> YiM x) -> IO ()
+startSubprocessWatchers procid procinfo yi onExit = do
+    mapM_ forkOS [pipeToBuffer (hOut procinfo) (send . append False),
+                  pipeToBuffer (hErr procinfo) (send . append True),
+                  waitForExit (procHandle procinfo) >>= reportExit]
+  where send a = output yi [makeAction a]
+        append :: Bool -> String -> YiM ()
+        append atMark s = withEditor $ appendToBuffer atMark (bufRef procinfo) s
+        reportExit ec = send $ do append True ("Process exited with " ++ show ec)
+                                  removeSubprocess procid
+                                  onExit ec
+                                  return ()
 
 removeSubprocess :: SubprocessId -> YiM ()
 removeSubprocess procid = modifiesRef yiVar (\v -> v {yiSubprocesses = M.delete procid $ yiSubprocesses v})
 
-appendToBuffer :: BufferRef -> String -> EditorM ()
-appendToBuffer bufref s = withGivenBuffer0 bufref $ do
-    m <- getMarkB (Just "Prompt")
-    modifyMarkB m (\v -> v {markGravity = Forward})
-    insertNAt s =<< getMarkPointB m 
-    modifyMarkB m (\v -> v {markGravity = Backward})
+appendToBuffer :: Bool -> BufferRef -> String -> EditorM ()
+appendToBuffer atErr bufref s = withGivenBuffer0 bufref $ do
+    -- We make sure stdout is always after stderr. This ensures that the output of the
+    -- two pipe do not get interleaved. More importantly, GHCi prompt should always
+    -- come after the error messages.
+    me <- getMarkB (Just "StdERR")
+    mo <- getMarkB (Just "StdOUT")
+    let mms = if atErr then [mo,me] else [mo]
+    forM_ mms (flip modifyMarkB (\v -> v {markGravity = Forward}))
+    insertNAt s =<< getMarkPointB (if atErr then me else mo)
+    forM_ mms (flip modifyMarkB (\v -> v {markGravity = Backward}))
 
 sendToProcess :: BufferRef -> String -> YiM ()
 sendToProcess bufref s = do
@@ -314,13 +324,13 @@ pipeToBuffer h append =
   handle (\_ -> return ()) $ forever $ (hWaitForInput h (-1) >> readAvailable h >>= append)
 
 
-waitForExit :: ProcessHandle -> IO String
+waitForExit :: ProcessHandle -> IO (Either Exception ExitCode)
 waitForExit ph = 
-    handle (\_ -> return "Process killed") $ do 
-      ec <- getProcessExitCode ph
-      if (isJust ec) then return "Process exited"
-                     else threadDelay (500*1000) >> waitForExit ph
-
+    handle (\e -> return (Left e)) $ do 
+      mec <- getProcessExitCode ph
+      case mec of
+          Nothing -> threadDelay (500*1000) >> waitForExit ph
+          Just ec -> return (Right ec)
 
 withMode :: (Show x, YiAction a x) => (forall syntax. Mode syntax -> a) -> YiM ()
 withMode f = do

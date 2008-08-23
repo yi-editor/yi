@@ -45,6 +45,7 @@ import qualified Yi.IncrementalParse as IncrParser
 import qualified Yi.Lexer.Alex as Alex
 import Yi.Lexer.Haskell as Haskell
 import qualified Yi.Syntax.Linear as Linear
+import qualified Yi.Mode.Interactive as Interactive
 
 -- | Plain haskell mode, providing only list of stuff.
 plainMode :: Mode (Linear.Result (Tok Token))
@@ -245,7 +246,7 @@ newtype GhciBuffer = GhciBuffer {_ghciBuffer :: Maybe BufferRef}
 -- | Start GHCi in a buffer
 ghci :: YiM BufferRef
 ghci = do 
-    b <- interactive "ghci" []
+    b <- Interactive.interactive "ghci" []
     withEditor $ setDynamic $ GhciBuffer $ Just b
     return b
 
