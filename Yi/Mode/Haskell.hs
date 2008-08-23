@@ -33,7 +33,6 @@ import Yi.Editor
 import Yi.Keymap
 import Yi.Lexer.Alex (Tok(..),Posn(..),tokBegin,tokEnd,tokRegion)
 import Yi.Lexer.Haskell (Token(..), ReservedType(..), startsLayout)
-import Yi.Misc
 import Yi.Prelude
 import Yi.Region
 import Yi.String
