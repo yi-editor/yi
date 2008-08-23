@@ -17,7 +17,7 @@ module Yi.Buffer.Region
   , inclusiveRegionB
   )
 where
-import Data.List.Diff
+import Data.Algorithm.Diff
 import Yi.Region
 import Yi.Buffer
 import Yi.Prelude
@@ -77,13 +77,13 @@ modifyRegionClever :: (String -> [Char]) -> Region -> BufferM ()
 modifyRegionClever transform region = savingExcursionB $ do
     text <- readRegionB region
     let text' = transform text
-        diffs = diff text text'
+        diffs = getGroupedDiff text text'
     moveTo (regionStart region)
-    forM_ diffs $ \d -> do
+    forM_ diffs $ \(d,str) -> do
         case d of
-            Choice L str -> deleteN $ length str
-            Choice B str -> rightN $ length str
-            Choice R str -> insertN str
+            F -> deleteN $ length str
+            B -> rightN $ length str
+            S -> insertN str
 
 -- | Extend the right bound of a region to include it.
 inclusiveRegionB :: Region -> BufferM Region
