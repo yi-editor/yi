@@ -1,6 +1,6 @@
 name:           yi
 version:        0.4.4
-category:       Editor
+category:       Development, Editor
 synopsis:       The Haskell-Scriptable Editor
 description:
   Yi is a text editor written in Haskell and extensible in Haskell. The goal of the Yi project is
