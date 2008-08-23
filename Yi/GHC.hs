@@ -29,9 +29,7 @@ import qualified Yi.WindowSet as WS
 
 newShim :: YiM (MVar ShimState)
 newShim = do
-    ghc <- io $ findExecutable "ghc" -- FIXME: Add version constraint
-                >>= maybe (error "Could not find ghc executable in path.") return
-    session <- io $ ghcInit ghc
+    session <- io $ ghcInit
 
     r <- asks yiVar
     cfg <- asks yiConfig
@@ -43,8 +41,7 @@ newShim = do
 
 
     io $ newMVar ShimState
-               { ghcProgram = ghc,
-                 tempSession = session,
+               { tempSession = session,
                  sessionMap = M.empty,
                  compBuffer = M.empty,
                  compLogAction = logMsg }

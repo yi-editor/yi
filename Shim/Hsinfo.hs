@@ -62,14 +62,14 @@ import Distribution.Simple.Setup (defaultDistPref)
 import Distribution.Simple.LocalBuildInfo ( packageDeps, buildDir, localPkgDescr )
 import Distribution.Package ( Dependency (..) )
 import GHC.Exts (unsafeCoerce#)
+import qualified GHC.Paths
 
 --------------------------------------------------------------
 -- GHC-API helpers
 --------------------------------------------------------------
 
-ghcInit :: String -> IO Session
-ghcInit ghc = do
-  ghclibdir <- getLibdir ghc
+ghcInit :: IO Session
+ghcInit = do
 #if __GLASGOW_HASKELL__ == 606
   ses <- newSession JustTypecheck (Just ghclibdir)
 #else
@@ -86,8 +86,7 @@ ghcInit ghc = do
   GHC.setSessionDynFlags ses dflags1
   return ses
 
-getLibdir :: String -> IO String
-getLibdir ghc = chomp `liftM` processGetContents ghc ["--print-libdir"]
+ghclibdir = GHC.Paths.libdir
 
 getCabalOpts :: FilePath -> SHM (Maybe ([String], FilePath))
 getCabalOpts sourcefile = do
@@ -271,10 +270,9 @@ checkModuleCached sourcefile source = do
 getCabalSession :: [String] -> String -> SHM Session
 getCabalSession opts cabalfile = do
   mses <- lookupSession cabalfile
-  ghc <- gets ghcProgram
   ses <- case mses of
            Just ses -> return ses
-           Nothing  -> do ses <- io $ ghcInit ghc
+           Nothing  -> do ses <- io $ ghcInit
                           addSession cabalfile ses
                           return ses
   logInfo $ concat ["Using options ", unSplit ',' opts,
@@ -440,7 +438,7 @@ dropExports s = imports_only ++ "\nmain = undefined" -- ToDo: don't use ad-hoc p
 runTest :: FilePath -> String -> SHM a -> IO a
 runTest sourcefile source m = do
   writeFile sourcefile source
-  (ghcInit "ghc") >>= (\ses -> runSHM ses "ghc" (\_ _ _ _ -> return ()) m)
+  ghcInit >>= (\ses -> runSHM ses "ghc" (\_ _ _ _ -> return ()) m)
 
 
 testSource :: String

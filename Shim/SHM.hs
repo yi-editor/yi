@@ -45,8 +45,7 @@ type CompBuffer = M.Map FilePath (CompilationResult, IdData, Maybe CachedMod)
 type SessionMap = M.Map FilePath Session
 
 data ShimState = ShimState
-  { ghcProgram :: String,
-    tempSession :: Session,
+  { tempSession :: Session,
     sessionMap :: SessionMap,
     compBuffer :: CompBuffer,
     compLogAction :: Severity -> SrcSpan -> PprStyle -> Message -> IO () }
@@ -89,8 +88,7 @@ io = lift
 
 runSHM :: Session -> FilePath -> (Severity -> SrcSpan -> PprStyle -> Message -> IO ()) -> SHM a -> IO a
 runSHM ses ghc compLogAction m = liftM fst $ runStateT m
-                             $ ShimState {ghcProgram=ghc,
-                                          tempSession=ses,
+                             $ ShimState {tempSession=ses,
                                           sessionMap=M.empty,
                                           compBuffer=M.empty,
                                           compLogAction=compLogAction}

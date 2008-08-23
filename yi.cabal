@@ -270,6 +270,7 @@ executable yi
         if flag (ghcAPI)
           build-depends: ghc==6.8.3
           build-depends: haskell98
+          build-depends: ghc-paths >=0.1.0.5 && < 0.1.2
           cpp-options: -DGHC_API
 
         if !(flag(vty) || flag (gtk) || flag(cocoa))
