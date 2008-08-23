@@ -100,7 +100,7 @@ adjustBlock e len = do
                                indent <- indentOfB =<< readLnB
                                -- it might be that we have 1st column comments in the block,
                                -- which should not be changed.
-                               when (indent >= col) $
+                               when (indent > col) $
                                 if len >= 0
                                  then do insertN (replicate len ' ') 
                                          leftN len
