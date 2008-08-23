@@ -2,6 +2,28 @@
 module Yi.Style.Library where
 import Yi.Style
 
+-- | The default UIStyle
+defaultLightTheme :: UIStyle
+defaultLightTheme = UIStyle
+    { window             = []
+    , modeline           = [Foreground black,       Background darkcyan]
+    , modelineFocused    = [Foreground brightwhite, Background darkcyan]
+    , selected           = [Foreground Reverse,     Background Reverse]
+    , eof                = [Foreground blue]
+    , defaultStyle       = []
+    , reverseStyle       = [Foreground Reverse, Background Reverse]
+    , cppStyle           = [Foreground red]
+    , commentStyle       = [Foreground purple]
+    , keywordStyle       = [Foreground darkblue]
+    , operatorStyle      = [Foreground brown]
+    , upperIdStyle       = [Foreground darkgreen]
+    , stringStyle        = [Foreground darkcyan]
+    , numberStyle        = [Foreground darkred]
+    , errorStyle         = [Background red]
+    , hintStyle          = [Background cyan]
+    , strongHintStyle    = [Background magenta]
+    }
+
 -- | A UIStyle inspired by the darkblue colorscheme of Vim.
 darkBlueTheme :: UIStyle
 darkBlueTheme = UIStyle 

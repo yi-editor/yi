@@ -38,6 +38,7 @@ import Yi.Keymap.Keys
 import Yi.File
 import Yi.Misc
 import Yi.Style
+import Yi.Style.Library
 import Data.Dynamic
 import Yi.Keymap.Emacs.Utils
 import Yi.Keymap.Keys
@@ -189,25 +190,7 @@ defaultConfig =
            , configLeftSideScrollBar = True
            , configAutoHideScrollBar = False
            , configWindowFill = ' '
-           , configStyle = UIStyle 
-             { window             = []
-             , modeline           = [Foreground black,       Background darkcyan]
-             , modelineFocused    = [Foreground brightwhite, Background darkcyan]
-             , selected           = [Foreground Reverse,     Background Reverse]
-             , eof                = [Foreground blue]
-             , defaultStyle = []
-             , reverseStyle = [Foreground Reverse, Background Reverse]
-             , cppStyle = [Foreground red]
-             , commentStyle = [Foreground purple]
-             , keywordStyle = [Foreground darkblue]
-             , operatorStyle = [Foreground brown]
-             , upperIdStyle = [Foreground darkgreen]
-             , stringStyle = [Foreground darkcyan]
-             , numberStyle = [Foreground darkred]
-             , errorStyle = [Background red]
-             , hintStyle = [Background cyan]
-             , strongHintStyle = [Background magenta]
-             }
+           , configStyle = defaultLightTheme
            }
          , defaultKm        = nilKeymap
          , startActions     = [makeAction openScratchBuffer] -- emacs-style behaviour
