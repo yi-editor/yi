@@ -86,7 +86,7 @@ import Yi.Region
 
 
 data MarkValue = MarkValue {markPoint :: Point, markGravity :: Direction}
-               deriving (Ord, Eq, Show)
+               deriving (Ord, Eq, Show, Typeable)
 
 type Marks = M.Map Mark MarkValue
 

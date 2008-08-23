@@ -26,7 +26,7 @@ mayReverse Forward = id
 mayReverse Backward = reverse
 
 -- | A mark in a buffer
-newtype Mark = Mark {markId::Int} deriving (Eq, Ord, Show)
+newtype Mark = Mark {markId::Int} deriving (Eq, Ord, Show, Typeable)
 staticInsMark, staticSelMark :: Mark
 staticInsMark = Mark (-1) -- the insertion mark
 staticSelMark = Mark (-2) -- the selection mark
