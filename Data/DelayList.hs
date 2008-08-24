@@ -1,3 +1,4 @@
+-- maybe use package event-list instead.
 module Data.DelayList where
 
 type DelayList a = [(Int, a)]

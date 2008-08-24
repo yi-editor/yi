@@ -44,10 +44,6 @@ fmapRegion f (Region d x y) = Region d (f x) (f y)
 regionSize :: Region -> Size
 regionSize r = regionEnd r ~- regionStart r
 
-mixDirections :: Direction -> Direction -> Direction
-mixDirections Backward Backward = Backward
-mixDirections _ _ = Forward
-
 -- | Take the intersection of two regions
 intersectRegion :: Region -> Region -> Region
 intersectRegion (Region _ x1 y1) (Region _ x2 y2) = ordRegion (max x1 x2) (min y1 y2)

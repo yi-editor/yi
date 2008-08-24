@@ -90,8 +90,6 @@ data MarkValue = MarkValue {markPoint :: Point, markGravity :: Direction}
 
 type Marks = M.Map Mark MarkValue
 
-type BufferImpl = FBufferData -- TODO: kill this.
-
 data HLState syntax = forall cache. HLState !(Highlighter cache syntax) cache
 
 data OvlLayer = UserLayer | HintLayer
@@ -110,7 +108,7 @@ instance Ord Overlay where
         = compare a a' `mappend` compare b b' `mappend` compare c c'
 
 
-data FBufferData syntax =
+data BufferImpl syntax =
         FBufferData { mem        :: !ByteRope          -- ^ buffer text
                     , marks      :: !Marks                 -- ^ Marks for this buffer
                     , markNames  :: !(M.Map String Mark)
@@ -154,7 +152,7 @@ data UIUpdate = TextUpdate Update
 -- Low-level primitives.
 
 -- | New FBuffer filled from string.
-newBI :: LazyB.ByteString -> FBufferData ()
+newBI :: LazyB.ByteString -> BufferImpl ()
 newBI s = FBufferData (F.fromLazyByteString s) mks M.empty (HLState noHighlighter (hlStartState noHighlighter)) Set.empty 0
     where mks = M.fromList [ (staticInsMark, MarkValue 0 insertGravity)
                            , (staticSelMark, MarkValue 0 selectionGravity)

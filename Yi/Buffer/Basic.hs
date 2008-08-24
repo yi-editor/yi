@@ -1,6 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables, ExistentialQuantification, GeneralizedNewtypeDeriving, MultiParamTypeClasses #-}
-
--- Basic types useful everywhere we play with buffer.
+-- Copyright 2008 JP Bernardy
+-- | Basic types useful everywhere we play with buffers.
 module Yi.Buffer.Basic where
     
 import Yi.Prelude
