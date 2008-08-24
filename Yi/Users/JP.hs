@@ -28,7 +28,7 @@ myModetable = ReaderT $ \fname -> case () of
                              -- example of Mode-local rebinding
                              modeKeymap = (choice [ctrl (char 'c') ?>> ctrl(char 'c') ?>>! haskellToggleCommentSelectionB,
                                                    ctrlCh 'c' ?>> char 'l' ?>>! ghciLoadBuffer,
-                                                   ctrlCh 'c' ?>> ctrl (char 'z') ?>>! ghci
+                                                   ctrlCh 'c' ?>> ctrl (char 'z') ?>>! ghciGet
                                                   ]
                                            <||)  
                               -- uncomment this for Shim (dot is important!)

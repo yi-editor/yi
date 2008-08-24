@@ -13,7 +13,6 @@ module Yi.Mode.Haskell
    haskellToggleCommentSelectionB,
 
    -- * IO-level operations
-   ghci,
    ghciGet,
    ghciLoadBuffer
   ) where
@@ -30,6 +29,7 @@ import Yi.Buffer.Region
 import Yi.Core
 import Yi.Dynamic
 import Yi.Editor
+import Yi.File
 import Yi.Keymap
 import Yi.Lexer.Alex (Tok(..),Posn(..),tokBegin,tokEnd,tokRegion)
 import Yi.Lexer.Haskell (Token(..), ReservedType(..), startsLayout)
@@ -258,8 +258,8 @@ ghciGet = do
         Just b -> do
             stillExists <- withEditor $ isJust <$> findBuffer b
             if stillExists 
-                then ghci
-                else return b
+                then return b
+                else ghci
     
 -- | Send a command to GHCi
 ghciSend :: String -> YiM ()
@@ -270,7 +270,7 @@ ghciSend cmd = do
 -- | Load current buffer in GHCi
 ghciLoadBuffer :: YiM ()
 ghciLoadBuffer = do
-    -- TODO: save file
+    fwriteE
     Just filename <- withBuffer $ getA fileA
     ghciSend $ ":load " ++ filename
 
