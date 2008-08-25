@@ -106,10 +106,10 @@ data Steps s a r where
     -- Doc: The parser that signals failure.
     Dislike :: Steps s a r ->                                   Steps s a r
 
-    Suspend :: (Maybe [s] -> Steps s a r) -> Steps s a r
+    Suspend :: ([s] -> Steps s a r) -> Steps s a r
     -- Doc: A suspension of the parser (this is the part borrowed from
     -- Parallel Parsing Processes) The parameter to suspend's
-    -- continuation is a whole chunk of text; Nothing represents the
+    -- continuation is a whole chunk of text; [] represents the
     -- end of the input
    
 
@@ -161,8 +161,11 @@ evalL x = x
 
 -- | Push a chunk of symbols or eof in the process. This forces some suspensions.
 push :: Maybe [s] -> Steps s a r -> Steps s a r
+push (Just []) p = p  -- nothing more left to push
 push ss p = case p of
-                  (Suspend f) -> f ss
+                  (Suspend f) -> case ss of
+                      Nothing -> f []
+                      Just ss' -> f ss'
                   (Dislike p') -> Dislike (push ss p')
                   (Shift p') -> Shift (push ss p')
                   (Done p') -> Done (push ss p')
@@ -263,22 +266,18 @@ runPolish p input = fst $ evalR $ pushEof $ pushSyms input $ runP p
 
 -- | Parse a symbol
 symbol :: (s -> Bool) -> P s s
-symbol f = P (\fut -> Suspend (symHelper fut))
-    where symHelper fut input = 
+symbol f = P $ \fut -> Suspend $ \input ->
               case input of
-                Nothing -> Fails -- This is the eof!
-                Just [] ->  Suspend (symHelper fut) -- end of the chunk: to be continued
-                Just (s:ss) -> if f s then push (Just ss) (Shift (Val s (fut)))
-                               else Fails
+                [] -> Fails -- This is the eof!
+                (s:ss) -> if f s then push (Just ss) (Shift (Val s (fut)))
+                                 else Fails
 
 -- | Parse the eof
 eof :: P s ()
-eof = P (\fut -> Suspend (symHelper fut))
-    where symHelper fut input = 
+eof = P $ \fut -> Suspend $ \input ->
               case input of
-                Nothing -> Val () fut
-                Just [] ->  Suspend (symHelper fut) -- end of the chunk: to be continued
-                Just (_:_) -> Fails
+                [] -> Val () fut
+                _ -> Fails
 
 -- | Parse the same thing as the argument, but will be used only as
 -- backup. ie, it will be used only if disjuncted with a failing
