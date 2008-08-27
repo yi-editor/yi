@@ -76,7 +76,6 @@ latexMode2 = fundamental
     modeHL = ExtHL $ 
        mkHighlighter (IncrParser.scanner Latex.parse . latexLexer)
       (\point begin end t -> Latex.getStrokes point begin end t)
-
   }
 
 srmcMode = fundamental
@@ -117,15 +116,15 @@ defaultModeMap = ReaderT (modeFromExtension . takeExtension)
   'yi' are mostly haskell hackers, as of yet.
 -}
 modeFromExtension :: String -> Maybe AnyMode
-modeFromExtension ".hs"    = Just $ AnyMode Haskell.plainMode
-modeFromExtension ".x"     = Just $ AnyMode Haskell.plainMode
+modeFromExtension ".hs"    = Just $ AnyMode Haskell.cleverMode
+modeFromExtension ".x"     = Just $ AnyMode Haskell.cleverMode
 modeFromExtension ".lhs"   = Just $ AnyMode literateHaskellMode
-modeFromExtension ".hsc"   = Just $ AnyMode Haskell.plainMode
-modeFromExtension ".hsinc" = Just $ AnyMode Haskell.plainMode -- haskell include files such as Yi/Lexer/alex.hsinc
+modeFromExtension ".hsc"   = Just $ AnyMode Haskell.cleverMode
+modeFromExtension ".hsinc" = Just $ AnyMode Haskell.cleverMode -- haskell include files such as Yi/Lexer/alex.hsinc
 modeFromExtension ".cabal" = Just $ AnyMode cabalMode
-modeFromExtension ".tex"   = Just $ AnyMode latexMode
-modeFromExtension ".sty"   = Just $ AnyMode latexMode
-modeFromExtension ".ltx"   = Just $ AnyMode latexMode
+modeFromExtension ".tex"   = Just $ AnyMode latexMode2
+modeFromExtension ".sty"   = Just $ AnyMode latexMode2
+modeFromExtension ".ltx"   = Just $ AnyMode latexMode2
 modeFromExtension ".cxx"   = Just $ AnyMode cppMode
 modeFromExtension ".cpp"   = Just $ AnyMode cppMode
 modeFromExtension ".C"     = Just $ AnyMode cppMode
