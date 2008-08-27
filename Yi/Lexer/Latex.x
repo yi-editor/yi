@@ -15,7 +15,7 @@ import Yi.Style
 }
 
 $whitechar = [\ \t\n\r\f\v]
-$special   = [\[\]\{\}\$\\]
+$special   = [\[\]\{\}\$\\\%]
 $idchar = [^ $special $whitechar]
 
 @reservedid 
@@ -30,7 +30,7 @@ haskell :-
  \\end                                       { c $ End }
  \\newcommand                                { c $ NewCommand }
  \\$idchar+                                  { cs $ \(_:cs) -> Command cs }
- [^\\ $special]+                             { c $ Text }
+ $idchar+                                    { c $ Text }
  $white+                                     ; 
 
 

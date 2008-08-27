@@ -18,7 +18,8 @@ isNoise Comment = True
 isNoise (Command _) = True
 isNoise NewCommand = True
 isNoise (Special _) = False
-isNoise _ = False
+isNoise Begin = True
+isNoise End = True
 
 type Expr t = [Tree t]
 
