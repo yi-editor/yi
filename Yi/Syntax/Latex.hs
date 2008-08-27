@@ -18,8 +18,8 @@ isNoise Comment = True
 isNoise (Command _) = True
 isNoise NewCommand = True
 isNoise (Special _) = False
-isNoise Begin = True
-isNoise End = True
+isNoise Begin = False
+isNoise End = False
 
 type Expr t = [Tree t]
 
@@ -64,7 +64,7 @@ parse' toTok fromT = pExpr True <* eof
       -- pExpr :: P TT (Expr TT)
       pExpr = many . pTree
 
-      parens = -- (Begin, End) : -- uses a lot of CPU because of \begin{document} is matched only at the end.
+      parens = (Begin, End) : -- uses a lot of CPU because of \begin{document} is matched only at the end.
                -- why exactly? it should be investigated.
                [(Special x, Special y) | (x,y) <- zip "({[" ")}]"]
       openParens = fmap fst parens
@@ -72,7 +72,7 @@ parse' toTok fromT = pExpr True <* eof
       pTree :: Bool -> P TT (Tree TT)
       pTree acceptDollar = 
           (if acceptDollar then (Paren <$> sym (Special '$') <*> pExpr False <*> pleaseSym (Special '$')) else empty)
-          <|> foldr1 (<|>) [(Paren <$> sym l <*> pExpr True <*> pleaseSym r) | (l,r) <- parens]
+          <|> foldr1 (<|>) [(Paren <$> sym l <*> pExpr acceptDollar <*> pleaseSym r) | (l,r) <- parens]
           <|> (Atom <$> sym' isNoise)
           <|> (Error <$> recoverWith (sym' (not . ((||) <$> isNoise <*> (`elem` openParens)))))
 
@@ -82,14 +82,16 @@ getStrokes point _begin _end t0 = result
     where getStrokes' (Atom t) = (ts t :)
           getStrokes' (Error t) = (modStroke errorStyle (ts t) :) -- paint in red
           getStrokes' (Paren l g r)
-              | Begin /= tokT r && isErrorTok (tokT r) = (modStroke errorStyle (ts l) :) . getStrokesL g
+              | Begin == tokT l = if (posnOfs $ tokPosn $ l) == point then hintPaint else normalPaint
+              | isErrorTok (tokT r) = (modStroke errorStyle (ts l) :) . getStrokesL g
               -- left paren wasn't matched: paint it in red.
               -- note that testing this on the "Paren" node actually forces the parsing of the
               -- right paren, undermining online behaviour.
               | (posnOfs $ tokPosn $ l) == point || (posnOfs $ tokPosn $ r) == point - 1
-
-               = (modStroke hintStyle (ts l) :) . getStrokesL g . (modStroke hintStyle (ts r) :)
-              | otherwise  = (ts l :) . getStrokesL g . (ts r :)
+               = hintPaint
+              | otherwise = normalPaint
+              where normalPaint = (ts l :) . getStrokesL g . (ts r :)
+                    hintPaint = (modStroke hintStyle (ts l) :) . getStrokesL g . (modStroke hintStyle (ts r) :)
           getStrokesL g = list (fmap getStrokes' g)
           ts = tokenToStroke
           list = foldr (.) id
