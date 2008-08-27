@@ -158,7 +158,6 @@ library
                 GADTs, GeneralizedNewtypeDeriving, Rank2Types, TypeSynonymInstances
     include-dirs:   Yi/Lexer
     if flag (vty)
-       build-depends: vty>=3.0.0
        cpp-options: -DFRONTEND_VTY
        exposed-modules: Yi.UI.Vty
        
@@ -250,7 +249,7 @@ executable yi
            build-depends: unix
 
         if flag (vty)
-           build-depends: vty>=3.0.2
+           build-depends: vty>=3.0.4 && < 4
            cpp-options: -DFRONTEND_VTY
 
         if flag (gtk)
