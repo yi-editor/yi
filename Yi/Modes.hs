@@ -71,6 +71,7 @@ latexMode = fundamental
     modeHL = ExtHL $ mkHighlighter' Latex.initState Latex.alexScanToken (Latex.tokenToStyle)
   }
 
+latexMode2 :: Mode [Latex.Tree Latex.TT]
 latexMode2 = fundamental 
   {
     modeHL = ExtHL $ 

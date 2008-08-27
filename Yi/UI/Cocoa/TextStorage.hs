@@ -14,7 +14,7 @@ module Yi.UI.Cocoa.TextStorage
   , visibleRangeChanged
   ) where
 
-import Prelude (take, uncurry, dropWhile)
+import Prelude (take, dropWhile)
 import Yi.Prelude
 import Yi.Buffer
 import Yi.Buffer.Implementation
