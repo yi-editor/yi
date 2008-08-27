@@ -53,6 +53,7 @@ $nl        = [\n\r]
 
 @varid  = $small $idchar*
 @conid  = $large $idchar*
+@qual   = (@conid ".")*
 @varsym = $symbol $symchar*
 @consym = \: $symchar*
 
@@ -109,15 +110,16 @@ haskell :-
  "module"                                       { c (Reserved Module) }
  "where"                                        { c (Reserved Where) }
  @layoutReservedId                              { c (Reserved OtherLayout) }
- `@varid`                                       { c Operator }
- @varid                                         { c VarIdent }
- @conid                                         { c ConsIdent }
+ `@qual @varid`                                       { c Operator }
+ `@qual @conid`                                       { c ConsOperator }
+ @qual @varid                                         { c VarIdent }
+ @qual @conid                                         { c ConsIdent }
 
  "|"                                            { c (ReservedOp Pipe) }
  "="                                            { c (ReservedOp Equal) }
  @reservedop                                    { c (ReservedOp OtherOp) }
- @varsym                                        { c Operator }
- @consym                                        { c ConsOperator }
+ @qual @varsym                                        { c Operator }
+ @qual @consym                                        { c ConsOperator }
 
  @decimal 
   | 0[oO] @octal
