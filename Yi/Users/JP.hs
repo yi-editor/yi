@@ -73,6 +73,8 @@ symbols =
  ,("==>","⟹")
  ,("=>","⇒")
  ,("<=","⇐")
+ ,("~>","↝"),
+ ,("<~","↜"),
 
  --- relations
  ,("c=","⊆") 
@@ -101,7 +103,7 @@ symbols =
 
 
 -- More:
--- arrows: ↢ ↣ ↝ ↜  ↔ ⇤ ⇥ ⇸ ⇆
+-- arrows: ↢ ↣   ↔ ⇤ ⇥ ⇸ ⇆
 
 -- set: ∅ ∉ ∈ ⊇ ⊃
 -- relations: ≝ ≤ ≥
@@ -115,7 +117,7 @@ symbols =
 extraInput :: Keymap
 extraInput 
     = choice [pString ('\\':i) >>! insertN o | (i,o) <- greek] <|> -- greek letters, LaTeX-style
-      choice [pString ('`':i) >>! insertN o | (i,o) <- symbols] 
+      choice [spec KEsc ?>> pString i >>! insertN o | (i,o) <- symbols] 
 
 main :: IO ()
 main = yi $ defaultConfig {

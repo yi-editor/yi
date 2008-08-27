@@ -37,7 +37,6 @@ import Yi.Editor
 import Yi.Keymap.Keys
 import Yi.File
 import Yi.Misc
-import Yi.Style
 import Yi.Style.Library
 import Data.Dynamic
 import Yi.Keymap.Emacs.Utils
