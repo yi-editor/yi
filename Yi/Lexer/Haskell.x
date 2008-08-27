@@ -164,7 +164,7 @@ tokenToStyle tok = case tok of
   ReservedOp _ -> operatorStyle
   Reserved _   -> keywordStyle
   Special _    -> defaultStyle
-  ConsOperator -> upperIdStyle
+  ConsOperator -> operatorStyle
   Operator     -> operatorStyle
   Comment _    -> commentStyle
 

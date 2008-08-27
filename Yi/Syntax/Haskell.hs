@@ -13,7 +13,7 @@ import Yi.Prelude
 import Prelude ()
 import Data.Monoid
 import Data.Maybe
-import Data.List (filter, takeWhile, map)
+import Data.List (filter, takeWhile)
 
 indentScanner :: Scanner (AlexState lexState) (TT)
               -> Scanner (Yi.Syntax.Layout.State Token lexState) (TT)

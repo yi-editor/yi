@@ -72,6 +72,7 @@ import Control.Monad.Reader
 import Control.Applicative
 import Data.Traversable 
 import Control.Monad
+import qualified Data.Set as Set
     
 type Endom a = a -> a
 
@@ -94,3 +95,8 @@ class SemiNum absolute relative | absolute -> relative where
 
 singleton :: a -> [a]
 singleton x = [x]
+
+-- | As 'Prelude.nub', but with O(n*log(n)) behaviour.
+nubSet xs = f Set.empty xs where
+       f _ [] = []
+       f s (x:xs) = if x `Set.member` s then f s xs else x : f (Set.insert x s) xs
