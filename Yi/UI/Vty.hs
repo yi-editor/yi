@@ -128,6 +128,7 @@ end i = do
   throwTo (uiThread i) (ExitException ExitSuccess)
 
 fromVtyEvent :: Vty.Event -> Yi.Event.Event
+fromVtyEvent (EvKey Vty.KBackTab mods) = Event Yi.Event.KTab (sort $ nub $ Yi.Event.MShift : map fromVtyMod mods)
 fromVtyEvent (EvKey k mods) = Event (fromVtyKey k) (sort $ map fromVtyMod mods)
 fromVtyEvent _ = error "fromVtyEvent: unsupported event encountered."
 
