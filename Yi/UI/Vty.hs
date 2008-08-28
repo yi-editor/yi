@@ -17,7 +17,7 @@ import Control.Monad.Trans (liftIO, MonadIO)
 import Data.Char (ord,chr)
 import Data.Foldable
 import Data.IORef
-import Data.List (partition, sort)
+import Data.List (partition, sort, nub)
 import qualified Data.Map as M
 import Data.Maybe
 import Data.Traversable
