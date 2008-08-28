@@ -18,8 +18,8 @@ isNoise Comment = True
 isNoise (Command _) = True
 isNoise NewCommand = True
 isNoise (Special _) = False
-isNoise Begin = False
-isNoise End = False
+isNoise (Begin _) = False
+isNoise (End _) = False
 
 type Expr t = [Tree t]
 
@@ -41,59 +41,73 @@ instance Traversable Tree where
     traverse f (Atom t) = Atom <$> f t
     traverse f (Error t) = Error <$> f t
     traverse f (Paren l g r) = Paren <$> f l <*> traverse (traverse f) g <*> f r
+--    traverse f (Block b n g e m) = Block <$> f b <*> traverse f n <*> traverse (traverse f) g <*> f e <*> traverse f m
 
 instance IsTree Tree where
     subtrees (Paren _ g _) = g
     subtrees _ = []
 
 parse :: P TT [Tree TT]
-parse = parse' tokT tokFromT
-
-parse' :: (TT -> Token) -> (Token -> TT) -> P TT [Tree TT]
-parse' toTok fromT = pExpr True <* eof
+parse = pExpr True <* eof
     where 
+      -- | Create a special character symbol
+      newT c = tokFromT (Special c)
+      errT = newT '!'
+
       -- | parse a special symbol
-      sym' p = symbol (p . toTok)
+      sym' p = symbol (p . tokT)
       sym t = sym' (== t)
 
-      -- | Create a special character symbol
-      newT c = fromT (Special c)
+      pleaseSym c = recoverWith (pure $ errT) <|> sym c
+      pleaseSym' c = recoverWith (pure $ errT) <|> sym' c
 
-      pleaseSym c = recoverWith (pure $ newT '!') <|> sym c
-
-      -- pExpr :: P TT (Expr TT)
+      -- pExpr :: P TT [Expr TT]
       pExpr = many . pTree
 
-      parens = (Begin, End) : -- uses a lot of CPU because of \begin{document} is matched only at the end.
-               -- why exactly? it should be investigated.
-               [(Special x, Special y) | (x,y) <- zip "({[" ")}]"]
+      parens = [(Special x, Special y) | (x,y) <- zip "({[" ")}]"]
       openParens = fmap fst parens
 
+      pBlock = Paren <$> sym' isBegin <*> pExpr True <*> pleaseSym' isEnd
+
       pTree :: Bool -> P TT (Tree TT)
-      pTree acceptDollar = 
-          (if acceptDollar then (Paren <$> sym (Special '$') <*> pExpr False <*> pleaseSym (Special '$')) else empty)
-          <|> foldr1 (<|>) [(Paren <$> sym l <*> pExpr acceptDollar <*> pleaseSym r) | (l,r) <- parens]
+      pTree outsideMath = 
+          (if outsideMath then pBlock <|> (Paren <$> sym (Special '$') <*> pExpr False <*> pleaseSym (Special '$')) 
+                           else empty)
+          <|> foldr1 (<|>) [(Paren <$> sym l <*> pExpr outsideMath <*> pleaseSym r) | (l,r) <- parens]
           <|> (Atom <$> sym' isNoise)
           <|> (Error <$> recoverWith (sym' (not . ((||) <$> isNoise <*> (`elem` openParens)))))
 
 -- TODO: (optimization) make sure we take in account the begin, so we don't return useless strokes
 getStrokes :: Point -> Point -> Point -> [Tree TT] -> [Stroke]
 getStrokes point _begin _end t0 = result 
-    where getStrokes' (Atom t) = (ts t :)
-          getStrokes' (Error t) = (modStroke errorStyle (ts t) :) -- paint in red
+    where getStrokes' (Atom t) = ts id t
+          getStrokes' (Error t) = ts (modStroke errorStyle) t -- paint in red
           getStrokes' (Paren l g r)
-              | Begin == tokT l = if (posnOfs $ tokPosn $ l) == point then hintPaint else normalPaint
-              | isErrorTok (tokT r) = (modStroke errorStyle (ts l) :) . getStrokesL g
+              -- we have special treatment for (Begin, End) because these blocks are typically very large.
+              -- we don't force the "end" part to prevent parsing the whole file.
+              | isBegin (tokT l) = if (posnOfs $ tokPosn $ l) /= point 
+                  then normalPaint
+                  else case (tokT l, tokT r) of
+                         (Begin b, End e) | b == e -> hintPaint
+                         _ -> errPaint 
+              | isErrorTok (tokT r) = errPaint
               -- left paren wasn't matched: paint it in red.
               -- note that testing this on the "Paren" node actually forces the parsing of the
               -- right paren, undermining online behaviour.
               | (posnOfs $ tokPosn $ l) == point || (posnOfs $ tokPosn $ r) == point - 1
                = hintPaint
               | otherwise = normalPaint
-              where normalPaint = (ts l :) . getStrokesL g . (ts r :)
-                    hintPaint = (modStroke hintStyle (ts l) :) . getStrokesL g . (modStroke hintStyle (ts r) :)
+              where normalPaint = ts id l . getStrokesL g . tsEnd id l r
+                    hintPaint = ts (modStroke hintStyle) l . getStrokesL g . tsEnd (modStroke hintStyle) l r
+                    errPaint = ts (modStroke errorStyle) l . getStrokesL g
+
+          tsEnd _ (Tok{tokT = Begin b}) t@(Tok{tokT = End e}) 
+              | b /= e = ts (modStroke errorStyle) t
+          tsEnd f _ t = ts f t
           getStrokesL g = list (fmap getStrokes' g)
-          ts = tokenToStroke
+          ts f t 
+              | isErrorTok (tokT t) = id
+              | otherwise = (f (tokenToStroke t) :)
           list = foldr (.) id
           result = getStrokesL t0 []
 
@@ -110,13 +124,19 @@ tokenToStyle t =
     Text -> defaultStyle
     Special _ -> operatorStyle
     Command _ -> upperIdStyle
-    Begin -> keywordStyle
-    End -> keywordStyle
+    Begin _ -> keywordStyle
+    End _ -> keywordStyle
     NewCommand -> keywordStyle
 
 isSpecial :: [Char] -> Token -> Bool
 isSpecial cs (Special c) = c `elem` cs
 isSpecial _  _ = False
+
+isBegin, isEnd :: Token -> Bool
+isBegin (Begin _) = True
+isBegin _ = False
+isEnd (End _) = True
+isEnd _ = False
 
 isErrorTok :: Token -> Bool
 isErrorTok = isSpecial "!"

@@ -18,25 +18,25 @@ $whitechar = [\ \t\n\r\f\v]
 $special   = [\[\]\{\}\$\\\%]
 $idchar = [^ $special $whitechar]
 
-@reservedid 
-        = begin|end|newcommand
+@reservedid = begin|end|newcommand
+@ident = $idchar+
 
 haskell :-
 
  "%"\-*[^\n]*                                { c $ Comment }
  $special                                    { cs $ \(c:_) -> Special c }
- \\begin                                     { c $ Begin }
+ \\"begin{"@ident"}"                         { cs $ \s -> Begin (drop 6 s) }
+ \\"end{"@ident"}"                           { cs $ \s -> End (drop 4 s) }
  \\$special                                  { cs $ \(_:cs) -> Command cs }
- \\end                                       { c $ End }
  \\newcommand                                { c $ NewCommand }
- \\$idchar+                                  { cs $ \(_:cs) -> Command cs }
- $idchar+                                    { c $ Text }
+ \\@ident                                    { cs $ \(_:cs) -> Command cs }
+ @ident                                      { c $ Text }
  $white+                                     ; 
 
 
 {
 
-data Token = Comment | Text | Special !Char | Command !String | Begin | End | NewCommand  
+data Token = Comment | Text | Special !Char | Command !String | Begin !String | End !String | NewCommand  
   deriving (Eq, Show, Ord)
 
 type HlState = Int
