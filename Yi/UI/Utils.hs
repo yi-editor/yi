@@ -8,6 +8,7 @@ import Yi.Buffer.HighLevel
 import Yi.Prelude
 import Prelude (Ordering(..))
 import Yi.Window
+import Control.Arrow (second)
 
 -- | return index of Sol on line @n@ above current line
 indexOfSolAbove :: Int -> BufferM Point
@@ -41,15 +42,17 @@ strokePicture wholeList@((leftMost,_,_):_) = helper leftMost wholeList
               | otherwise = (l,f) : helper r xs
 
 -- | Paint the given stroke-picture on top of an existing picture
-paintStrokes :: a -> [(Point,(a -> a))] -> [(Point,a)] -> [(Point,a)]
-paintStrokes  _ [] ps = ps
-paintStrokes s0 ss [] = [(p, f s0) | (p, f) <- ss]
-paintStrokes s0 ls@((ps,f):ts) lp@((pp,s1):tp) =
-  case ps `compare` pp of
-    LT -> (ps, f s0):paintStrokes s0 ts lp
-    EQ -> (ps, f s1):paintStrokes s1 ts tp
-    GT -> (pp,   s1):paintStrokes s1 ls tp
+paintStrokes :: (a -> a) -> a -> [(Point,(a -> a))] -> [(Point,a)] -> [(Point,a)]
+paintStrokes f0 _  [] lx = fmap (second f0)     lx
+paintStrokes _  x0 lf [] = fmap (second ($ x0)) lf
+paintStrokes f0 x0 lf@((pf,f):tf) lx@((px,x):tx) =
+  case pf `compare` px of
+    LT -> (pf, f  x0):paintStrokes f  x0 tf lx
+    EQ -> (pf, f  x ):paintStrokes f  x  tf tx
+    GT -> (px, f0 x ):paintStrokes f0 x  lf tx
+
+    
 
 paintPicture :: a -> [[(Point,(a -> a),Point)]] -> [(Point,a)]
-paintPicture a = foldr (paintStrokes a . strokePicture) []
+paintPicture a = foldr (paintStrokes id a . strokePicture) []
 
