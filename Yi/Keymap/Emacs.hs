@@ -76,8 +76,8 @@ deleteB' = do
 emacsKeys :: Keymap
 emacsKeys =
   choice [ -- First all the special key bindings
-           spec KTab            ?>>! (adjIndent DecreaseCycle)
-         , (shift $ spec KTab)  ?>>! (adjIndent IncreaseCycle)
+           spec KTab            ?>>! (adjIndent IncreaseCycle)
+         , (shift $ spec KTab)  ?>>! (adjIndent DecreaseCycle)
          , spec KEnter          ?>>! (repeatingArg $ insertB '\n')
          , spec KDel            ?>>! (repeatingArg deleteB')
          , spec KBS             ?>>! (repeatingArg (adjBlock (-1) >> 
