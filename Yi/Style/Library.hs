@@ -27,9 +27,10 @@ defaultTheme = Proto $ \self -> UIStyle
 
     , stringStyle        = defaultStyle self `changeFg` darkcyan
     , numberStyle        = defaultStyle self `changeFg` darkred
-    , errorStyle         = defaultStyle self `changeFg` red
-    , hintStyle          = defaultStyle self `changeFg` cyan
-    , strongHintStyle    = defaultStyle self `changeFg` magenta
+
+    , errorStyle         = defaultStyle self `changeBg` red
+    , hintStyle          = defaultStyle self `changeBg` cyan
+    , strongHintStyle    = defaultStyle self `changeBg` magenta
     }
 
 
