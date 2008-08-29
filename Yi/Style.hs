@@ -1,12 +1,6 @@
---
 -- Copyright (c) 2004-5 Don Stewart - http://www.cse.unsw.edu.au/~dons
---
---
 
---
 -- | Colors and friends.
---
-
 module Yi.Style where
 
 import Data.Word                (Word8)
@@ -18,23 +12,28 @@ import Prelude ()
 -- | The UI type
 data UIStyle =
     UIStyle {
-         window           :: !Style    -- ^ window fg and bg
-       , modeline         :: !Style    -- ^ out of focus modeline colours
-       , modelineFocused :: !Style    -- ^ in focus modeline
-       , selected         :: !Style    -- ^ the selected portion
-       , eof              :: !Style    -- ^ empty file marker colours
-       , defaultStyle :: !Style
-       , reverseStyle :: !Style
-       , cppStyle :: !Style
-       , commentStyle :: !Style
-       , keywordStyle :: !Style
-       , operatorStyle :: !Style
-       , upperIdStyle :: !Style
-       , stringStyle :: !Style
-       , numberStyle :: !Style
-       , errorStyle :: !Style
-       , hintStyle :: !Style
-       , strongHintStyle :: !Style
+         window           :: Style    -- ^ window fg and bg
+       , modeline         :: Style    -- ^ out of focus modeline colours
+       , modelineFocused :: Style    -- ^ in focus modeline
+       , selected         :: Style    -- ^ the selected portion
+       , eof              :: Style    -- ^ empty file marker colours
+       , defaultStyle :: Style
+       , reverseStyle :: Style
+       , cppStyle :: Style
+       , commentStyle :: Style
+       , keywordStyle :: Style
+
+       , operatorStyle :: Style
+       , consOperatorStyle :: Style
+
+       , idStyle :: Style
+       , upperIdStyle :: Style
+
+       , stringStyle :: Style
+       , numberStyle :: Style
+       , errorStyle :: Style
+       , hintStyle :: Style
+       , strongHintStyle :: Style
      } 
     deriving (Eq, Show, Ord)
 
@@ -95,16 +94,19 @@ brightwhite = RGB 255 255 255
 -- TODO: These are so close in syntax I must imagine there is a way to simplify
 -- them - Corey O'C.
 withFg :: StyleName -> Color -> UIStyle -> Style
-withFg baseStyleName color = addOrChangeFg . baseStyleName
-    where 
-        addOrChangeFg [] = [Foreground color]
-        addOrChangeFg (Foreground _ : attrs) = (Foreground color) : attrs
-        addOrChangeFg (a : attrs) = a : (addOrChangeFg attrs)
+withFg baseStyleName color = addOrChangeFg color . baseStyleName
+
+addOrChangeFg color [] = [Foreground color]
+addOrChangeFg color (Foreground _ : attrs) = (Foreground color) : attrs
+addOrChangeFg color (a : attrs) = a : (addOrChangeFg color attrs)
 
 withBg :: StyleName -> Color -> UIStyle -> Style
-withBg baseStyleName color = addOrChangeBg . baseStyleName
-    where 
-        addOrChangeBg [] = [Background color]
-        addOrChangeBg (Background _ : attrs) = (Background color) : attrs
-        addOrChangeBg (a : attrs) = a : (addOrChangeBg attrs)
+withBg baseStyleName color = addOrChangeBg color . baseStyleName
 
+addOrChangeBg color [] = [Background color]
+addOrChangeBg color (Background _ : attrs) = (Background color) : attrs
+addOrChangeBg color (a : attrs) = a : (addOrChangeBg color attrs)
+
+
+changeFg = flip addOrChangeFg
+changeBg = flip addOrChangeBg

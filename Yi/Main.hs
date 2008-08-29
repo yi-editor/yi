@@ -39,6 +39,7 @@ import Yi.File
 import Yi.Misc
 import Yi.Style.Library
 import Data.Dynamic
+import Data.Prototype
 import Yi.Keymap.Emacs.Utils
 import Yi.Keymap.Keys
 import HConf (hconfOptions)
@@ -189,7 +190,7 @@ defaultConfig =
            , configLeftSideScrollBar = True
            , configAutoHideScrollBar = False
            , configWindowFill = ' '
-           , configStyle = defaultLightTheme
+           , configStyle = extractValue defaultLightTheme
            }
          , defaultKm        = nilKeymap
          , startActions     = [makeAction openScratchBuffer] -- emacs-style behaviour
