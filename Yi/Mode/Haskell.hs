@@ -45,13 +45,23 @@ import qualified Yi.Lexer.Alex as Alex
 import Yi.Lexer.Haskell as Haskell
 import qualified Yi.Syntax.Linear as Linear
 import qualified Yi.Mode.Interactive as Interactive
+import Yi.Modes (anyExtension)
 
 -- | Plain haskell mode, providing only list of stuff.
 plainMode :: Mode (Linear.Result (Tok Token))
 plainMode = emptyMode 
    {
-    modeHL = ExtHL $
-    mkHighlighter (Linear.incrScanner . haskellLexer) (\begin end pos -> Linear.getStrokes begin end pos . fmap Paren.tokenToStroke)
+     {-    
+     Some of these are a little questionably haskell
+     related. For example ".x" is an alex lexer specification
+     I dare say that there are other file types that use ".x"
+     as the file extension.
+     For now though this is probably okay given the users of
+     'yi' are mostly haskell hackers, as of yet. -}
+     modeApplies = anyExtension ["hs", "x", "hsc", "hsinc"],
+     modeName = "plain haskell",
+     modeHL = ExtHL $
+     mkHighlighter (Linear.incrScanner . haskellLexer) (\begin end pos -> Linear.getStrokes begin end pos . fmap Paren.tokenToStroke)
    , modeIndent = \_ast -> autoIndentHaskellB
    }
 
@@ -59,6 +69,8 @@ plainMode = emptyMode
 cleverMode :: Mode (Expr (Tok Haskell.Token))
 cleverMode = emptyMode 
   {
+    modeName = "haskell",
+    modeApplies = modeApplies plainMode,
     modeIndent = cleverAutoIndentHaskellB,
     modeHL = ExtHL $
     mkHighlighter (IncrParser.scanner Paren.parse . Paren.indentScanner . haskellLexer)
@@ -72,6 +84,8 @@ cleverMode = emptyMode
 -- preciseMode :: Mode [Hask.Tree TT]
 preciseMode = emptyMode 
   {
+    modeName = "precise haskell",
+    modeApplies = modeApplies plainMode,
     --    modeIndent = cleverAutoIndentHaskellB,
     modeHL = ExtHL $
       mkHighlighter (IncrParser.scanner Hask.parse . Hask.indentScanner . haskellLexer)

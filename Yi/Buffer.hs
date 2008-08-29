@@ -232,10 +232,11 @@ data AnyMode = forall syntax. AnyMode (Mode syntax)
 
 data Mode syntax = Mode
     {
-     -- modeName = "fundamental", -- ^ so this could be serialized, debugged.
+     modeName :: String, -- ^ so this could be serialized, debugged.
+     modeApplies :: FilePath -> Bool, -- ^ What type of files does this mode apply to?
      modeHL :: ExtHL syntax,
      modePrettify :: syntax -> BufferM (),
-     modeKeymap :: KeymapEndo, -- ^ Buffer's local keymap modification
+     modeKeymap :: KeymapEndo, -- ^ Buffer-local keymap modification
      modeIndent :: syntax -> IndentBehaviour -> BufferM (),
      modeAdjustBlock :: syntax -> Int -> BufferM (),
      modeFollow :: syntax -> Action
@@ -286,6 +287,7 @@ getModeLine = do
     ln <- curLn
     p <- pointB
     s <- sizeB
+    modeNm <- withModeB modeName
     unchanged <- isUnchangedB
     let pct = if pos == 1 then "Top" else getPercent p s
         chg = if unchanged then "-" else "*"
@@ -296,6 +298,7 @@ getModeLine = do
            replicate 5 ' ' ++
            "L" ++ show ln ++ "  " ++ "C" ++ show col ++
            "  " ++ pct ++
+           "  " ++ modeNm ++
            "  " ++ show (fromPoint p)
 
 -- | Given a point, and the file size, gives us a percent string
@@ -406,6 +409,8 @@ redoB = undoRedo redoU
 emptyMode :: Mode syntax
 emptyMode = Mode
   { 
+   modeName = "empty",
+   modeApplies = const False,
    modeHL = ExtHL noHighlighter,
    modePrettify = \_ -> return (),
    modeKeymap = id,

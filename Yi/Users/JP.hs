@@ -6,7 +6,7 @@ import Yi.Keymap.Emacs (keymap)
 -- If configured with ghcAPI, Shim Mode can be enabled:
 -- import qualified Yi.Mode.Shim as Shim
 import Yi.Mode.Haskell as Haskell
-import Data.List (isSuffixOf, drop)
+import Data.List (drop)
 import Yi.Prelude
 import Prelude ()
 import Yi.Keymap.Keys
@@ -18,22 +18,18 @@ increaseIndent = modifyExtendedSelectionB Line $ mapLines (' ':)
 decreaseIndent :: BufferM ()
 decreaseIndent = modifyExtendedSelectionB Line $ mapLines (drop 1)
 
-myModetable :: ReaderT String Maybe AnyMode
-myModetable = ReaderT $ \fname -> case () of 
-                        _ | ".hs" `isSuffixOf` fname -> Just $ AnyMode bestHaskellMode
-                        _ ->  Nothing
-    where bestHaskellMode = Haskell.cleverMode 
-                            -- Haskell.preciseMode
-                            {
-                             -- example of Mode-local rebinding
-                             modeKeymap = (choice [ctrl (char 'c') ?>> ctrl(char 'c') ?>>! haskellToggleCommentSelectionB,
-                                                   ctrlCh 'c' ?>> char 'l' ?>>! ghciLoadBuffer,
-                                                   ctrlCh 'c' ?>> ctrl (char 'z') ?>>! ghciGet
-                                                  ]
-                                           <||)  
-                              -- uncomment this for Shim (dot is important!)
-                              -- . modeKeymap Shim.mode
-                            }
+bestHaskellMode = Haskell.cleverMode 
+                       -- Haskell.preciseMode
+                       {
+                        -- example of Mode-local rebinding
+                        modeKeymap = (choice [ctrl (char 'c') ?>> ctrl(char 'c') ?>>! haskellToggleCommentSelectionB,
+                                              ctrlCh 'c' ?>> char 'l' ?>>! ghciLoadBuffer,
+                                              ctrlCh 'c' ?>> ctrl (char 'z') ?>>! ghciGet
+                                             ]
+                                      <||)  
+                         -- uncomment this for Shim (dot is important!)
+                         -- . modeKeymap Shim.mode
+                       }
 greek :: [(String, String)]
 greek = [("alpha", "α"),
          ("beta", "β"),
@@ -122,7 +118,7 @@ extraInput
 main :: IO ()
 main = yi $ defaultConfig {
                            configKillringAccumulate = True,
-                           modeTable = myModetable <|> modeTable defaultConfig,
+                           modeTable = AnyMode bestHaskellMode : modeTable defaultConfig,
                            configUI = (configUI defaultConfig) 
                              { configFontSize = Just 10 
                              -- , configStyle = darkBlueTheme

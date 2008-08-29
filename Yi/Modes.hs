@@ -1,10 +1,13 @@
-module Yi.Modes (defaultFundamentalMode, fundamental,
- latexMode, cppMode, literateHaskellMode, cabalMode, srmcMode, ocamlMode, defaultModeMap) where
+module Yi.Modes (fundamental,
+                 latexMode, cppMode, literateHaskellMode, cabalMode, srmcMode, ocamlMode,
+                 perlMode, pythonMode, latexMode2,
+                 anyExtension
+                ) where
 
 import Control.Arrow (first)
 import Prelude ()
 import System.FilePath
-import Yi.Buffer (AnyMode(..), Mode(..), emptyMode)
+import Yi.Buffer (Mode(..), emptyMode)
 import Yi.Buffer.HighLevel (fillParagraph)
 import Yi.Buffer.Indent
 import Yi.Lexer.Alex (Tok(..), Posn(..))
@@ -23,14 +26,15 @@ import qualified Yi.Lexer.Python              as Python
 import qualified Yi.Lexer.Srmc                as Srmc
 import qualified Yi.Syntax.Linear as Linear
 import qualified Yi.Syntax.Latex as Latex
-import qualified Yi.Mode.Haskell as Haskell
 
 
-fundamental, defaultFundamentalMode :: Mode syntax
+fundamental :: Mode syntax
 latexMode, cppMode, literateHaskellMode, cabalMode, srmcMode, ocamlMode, perlMode, pythonMode :: Mode (Linear.Result Stroke)
 
 fundamental = emptyMode
   { 
+   modeName = "fundamental",
+   modeApplies = const True,
    modeIndent = \_ast -> autoIndentB,
    modePrettify = \_ -> fillParagraph
   }
@@ -51,16 +55,23 @@ mkHighlighter' initSt scan tokenToStyle = mkHighlighter (Linear.incrScanner . Al
 
 cppMode = fundamental
   {
+    modeApplies = anyExtension ["cxx", "cpp", "C", "hxx", "H", "h", "c"], 
+    -- Treat c file as cpp files, most users will allow for that.
+    modeName = "c++",
     modeHL = ExtHL $ mkHighlighter' Cplusplus.initState Cplusplus.alexScanToken id
   }
 
 literateHaskellMode = fundamental
   {
+    modeName = "literate haskell",
+    modeApplies = anyExtension ["lhs"],
     modeHL = ExtHL $ mkHighlighter' LiterateHaskell.initState LiterateHaskell.alexScanToken id
   }
 
 cabalMode = fundamental
   {
+    modeName = "cabal",
+    modeApplies = anyExtension ["cabal"],
     modeHL = ExtHL $ mkHighlighter' Cabal.initState Cabal.alexScanToken id
   }
 
@@ -68,12 +79,16 @@ latexLexer = Alex.lexScanner Latex.alexScanToken Latex.initState
 
 latexMode = fundamental
   {
+    modeName = "plain latex",
+    modeApplies = anyExtension ["tex", "sty", "ltx"],
     modeHL = ExtHL $ mkHighlighter' Latex.initState Latex.alexScanToken (Latex.tokenToStyle)
   }
 
 latexMode2 :: Mode [Latex.Tree Latex.TT]
-latexMode2 = fundamental 
+latexMode2 = fundamental
   {
+    modeApplies = modeApplies latexMode,
+    modeName = "latex",
     modeHL = ExtHL $ 
        mkHighlighter (IncrParser.scanner Latex.parse . latexLexer)
       (\point begin end t -> Latex.getStrokes point begin end t)
@@ -81,68 +96,31 @@ latexMode2 = fundamental
 
 srmcMode = fundamental
   {
+    modeName = "srmc",
+    modeApplies = anyExtension ["pepa", -- pepa is a subset of srmc    
+                                "srmc"],
     modeHL = ExtHL $ mkHighlighter' Srmc.initState Srmc.alexScanToken id
   }
 
 ocamlMode = fundamental
   {
+    modeName = "ocaml",
+    modeApplies = anyExtension ["ml", "mli", "mly", "mll", "ml4", "mlp4"],
     modeHL = ExtHL $ mkHighlighter' OCaml.initState OCaml.alexScanToken OCaml.tokenToStyle
   }
 
 perlMode = fundamental
   {
+    modeName = "perl",
+    modeApplies = anyExtension ["pl", "pm"],
     modeHL = ExtHL $ mkHighlighter' Perl.initState Perl.alexScanToken id
   }
 
 pythonMode = fundamental
   {
+    modeName = "python",
+    modeApplies = anyExtension ["t", "py"], 
     modeHL = ExtHL $ mkHighlighter' Python.initState Python.alexScanToken id
   }
 
-defaultFundamentalMode = fundamental
-
-defaultModeMap :: ReaderT FilePath Maybe AnyMode
-defaultModeMap = ReaderT (modeFromExtension . takeExtension)
-
-
-
-
-{-
-  Working out the mode from the extension of
-  the file. Some of these are a little questionably haskell
-  related. For example ".x" is an alex lexer specification
-  I dare say that there are other file types that use ".x"
-  as the file extension.
-  For now though this is probably okay given the users of
-  'yi' are mostly haskell hackers, as of yet.
--}
-modeFromExtension :: String -> Maybe AnyMode
-modeFromExtension ".hs"    = Just $ AnyMode Haskell.cleverMode
-modeFromExtension ".x"     = Just $ AnyMode Haskell.cleverMode
-modeFromExtension ".lhs"   = Just $ AnyMode literateHaskellMode
-modeFromExtension ".hsc"   = Just $ AnyMode Haskell.cleverMode
-modeFromExtension ".hsinc" = Just $ AnyMode Haskell.cleverMode -- haskell include files such as Yi/Lexer/alex.hsinc
-modeFromExtension ".cabal" = Just $ AnyMode cabalMode
-modeFromExtension ".tex"   = Just $ AnyMode latexMode2
-modeFromExtension ".sty"   = Just $ AnyMode latexMode2
-modeFromExtension ".ltx"   = Just $ AnyMode latexMode2
-modeFromExtension ".cxx"   = Just $ AnyMode cppMode
-modeFromExtension ".cpp"   = Just $ AnyMode cppMode
-modeFromExtension ".C"     = Just $ AnyMode cppMode
-modeFromExtension ".hxx"   = Just $ AnyMode cppMode
-modeFromExtension ".H"     = Just $ AnyMode cppMode
-modeFromExtension ".h"     = Just $ AnyMode cppMode
-modeFromExtension ".c"     = Just $ AnyMode cppMode -- I treat c file as cpp files, most users are smart enough to allow for that.
-modeFromExtension ".pepa"  = Just $ AnyMode srmcMode -- pepa is a subset of srmc    
-modeFromExtension ".pl"    = Just $ AnyMode perlMode
-modeFromExtension ".pm"    = Just $ AnyMode perlMode
-modeFromExtension ".t"     = Just $ AnyMode perlMode
-modeFromExtension ".py"    = Just $ AnyMode pythonMode
-modeFromExtension ".srmc"  = Just $ AnyMode srmcMode
-modeFromExtension ".ml"    = Just $ AnyMode ocamlMode
-modeFromExtension ".mli"   = Just $ AnyMode ocamlMode
-modeFromExtension ".mly"   = Just $ AnyMode ocamlMode
-modeFromExtension ".mll"   = Just $ AnyMode ocamlMode
-modeFromExtension ".ml4"   = Just $ AnyMode ocamlMode
-modeFromExtension ".mlp4"  = Just $ AnyMode ocamlMode
-modeFromExtension _        = Nothing
+anyExtension list fileName = or [takeExtension fileName == ('.' : ext) | ext <- list] 

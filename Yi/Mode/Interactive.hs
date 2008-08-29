@@ -25,6 +25,8 @@ atLastLine = savingPointB $ do
 mode :: Mode (Linear.Result (Tok Compilation.Token))
 mode = Compilation.mode
   { 
+       modeApplies = const False,
+       modeName = "interactive",
        modeKeymap = (<||) 
         (choice 
          [spec KEnter ?>>! do

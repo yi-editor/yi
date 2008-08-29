@@ -24,7 +24,8 @@ import Yi.Prelude
 import qualified Yi.Keymap.Emacs  as Emacs
 import qualified Yi.Keymap.Vim  as Vim
 import qualified Yi.Keymap.Cua  as Cua
-import Yi.Modes (defaultModeMap, defaultFundamentalMode)
+import Yi.Modes
+import qualified Yi.Mode.Haskell as Haskell
 import Yi.Buffer hiding (file)
 import Yi.Buffer.HighLevel
 import Yi.Buffer.Normal
@@ -195,8 +196,16 @@ defaultConfig =
          , defaultKm        = nilKeymap
          , startActions     = [makeAction openScratchBuffer] -- emacs-style behaviour
          , publishedActions = defaultPublishedActions
-         , modeTable = defaultModeMap
-         , fundamentalMode = defaultFundamentalMode
+         , modeTable = [AnyMode Haskell.cleverMode,
+                        AnyMode latexMode2,
+                        AnyMode cppMode,
+                        AnyMode literateHaskellMode,
+                        AnyMode cabalMode,
+                        AnyMode srmcMode,
+                        AnyMode ocamlMode,
+                        AnyMode perlMode,
+                        AnyMode pythonMode]
+         , fundamentalMode = fundamental
          , debugMode = False
          , configKillringAccumulate = False
          , configIndentSettings = IndentSettings 

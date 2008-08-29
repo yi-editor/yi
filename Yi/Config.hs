@@ -45,8 +45,9 @@ data Config = Config {startFrontEnd :: UIBoot,
                       startActions :: [Action],
                       -- ^ Actions to run when the editor is started.
                       defaultKm :: Keymap,
-                      modeTable :: ReaderT String Maybe AnyMode,
-                      -- ^ Map filenames to the mode to use for them.
+                      -- ^ Default keymap to use.
+                      modeTable :: [AnyMode],
+                      -- ^ List modes by order of preference.
                       fundamentalMode :: Mode (),
                       publishedActions :: M.Map String [Dynamic],
                       -- ^ Actions available in the "interpreter" (akin to M-x in emacs)

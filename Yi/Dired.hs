@@ -96,7 +96,7 @@ fnewCanonicalized f = do
              (h:_)  -> return (bkey h)
     setFileName b f
     tbl <- asks (modeTable . yiConfig)
-    AnyMode newMode <- withBufferMode b $ \curmode -> fromMaybe (AnyMode curmode) (runReaderT tbl f)
+    AnyMode newMode <- withBufferMode b $ \curmode -> fromMaybe (AnyMode curmode) (find (\(AnyMode m)->modeApplies m f) tbl)
     -- by default stick with the current mode (eg. stick with dired if
     -- set as such)
     withEditor $ switchToBufferE b
