@@ -234,7 +234,7 @@ executable yi
         -- build-depends: derive >=0.1 && <0.2
         build-depends: filepath>=1.1 && <1.2
         build-depends: fingertree >= 0 && <0.1
-        build-depends: parsec >=2.1 && <2.2
+        build-depends: parsec >= 3 && <= 3.0.2
         build-depends: pureMD5 >= 0.2.3
         build-depends: regex-base ==0.93.1
         build-depends: regex-tdfa ==0.94        
