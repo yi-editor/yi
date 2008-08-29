@@ -20,15 +20,6 @@ import Data.Traversable
 import Prelude hiding (mapM)
 import Data.Foldable
 
-instance Alternative (GenParser tok st) where
-    (<|>) = (Parsec.<|>)
-    empty = fail "no choice"
-
-instance Applicative (GenParser tok st) where
-    (<*>) = ap
-    pure = return
-
-
 data Atom = AVar String
           | AString String
           | AChar Char
