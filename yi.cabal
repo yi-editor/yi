@@ -196,6 +196,7 @@ library
         -- "Internal" modules that the user better not see.
         HConf
         Yi.Buffer.Implementation
+        Data.Prototype
 
         -- Should probably be split out to another package.
         Data.ByteRope
