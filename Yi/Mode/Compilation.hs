@@ -18,6 +18,8 @@ import Yi.Keymap.Keys
 mode :: Mode (Linear.Result (Tok Compilation.Token))
 mode = emptyMode
   { 
+   modeApplies = const False,
+   modeName = "compilation",
    modeKeymap = (<||) (spec KEnter ?>>! withSyntax modeFollow),
    modeFollow = \synTree -> YiA (follow synTree),
    modeHL = ExtHL $ mkHighlighter (Linear.incrScanner . Alex.lexScanner Compilation.alexScanToken Compilation.initState) 

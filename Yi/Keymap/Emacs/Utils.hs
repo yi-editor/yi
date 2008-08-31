@@ -210,6 +210,7 @@ evalRegionE = do
 insertSelf :: Char -> YiM ()
 insertSelf = repeatingArg . insertB
 
+-- | Insert next character, "raw"
 insertNextC :: KeymapM ()
 insertNextC = do c <- anyEvent
                  write $ repeatingArg $ insertB (eventToChar c)
