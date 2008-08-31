@@ -15,7 +15,7 @@ import Yi.Completion
 import Yi.Buffer
 import Data.Char
 import Data.Typeable
-import Data.List (nub, filter, drop, isPrefixOf, reverse, findIndex, length, groupBy)
+import Data.List (filter, drop, isPrefixOf, reverse, findIndex, length, groupBy)
 import Data.Maybe
 
 import Yi.Buffer.Normal
@@ -56,12 +56,9 @@ wordComplete = do
     [] -> do -- no alternatives, build them.
       w <- withBuffer0 $ do readRegionB =<< regionOfPartB Word Backward
       ws <- wordsForCompletion
-      setDynamic (Completion $ (nub $ filter (matches w) ws) ++ [w])
+      setDynamic (Completion $ (nubSet $ filter (matches w) ws) ++ [w])
       -- We put 'w' back at the end so we go back to it after seeing
       -- all possibilities. 
-      -- NOTE: 'nub' can make searching big lists
-      -- quite inefficient. A more clever nub, but still lazy, might
-      -- be a good idea.
       wordComplete -- to pick the 1st possibility.
 
   where matches x y = x `isPrefixOf` y && x /= y
