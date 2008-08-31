@@ -475,14 +475,9 @@ getMarkValueBI m (FBufferData { marks = marksMap } ) = M.findWithDefault (marksM
 
 -- | Modify a mark value.
 modifyMarkBI :: Mark -> (MarkValue -> MarkValue) -> (forall syntax. BufferImpl syntax -> BufferImpl syntax)
-modifyMarkBI m f fb = fb {marks = adjust' f m (marks fb)}
+modifyMarkBI m f fb = fb {marks = mapAdjust' f m (marks fb)}
 -- NOTE: we must insert the value strictly otherwise we can hold to whatever structure the value of the mark depends on.
 -- (often a whole buffer)
-
--- A strict version of M.adjust
-adjust' f m = M.alter f' m where
-    f' Nothing = Nothing
-    f' (Just x) = let x' = f x in x' `seq` Just x'
 
 setSyntaxBI :: ExtHL syntax -> BufferImpl oldSyntax -> BufferImpl syntax
 setSyntaxBI (ExtHL e) fb = touchSyntax 0 $ fb {hlCache = HLState e (hlStartState e)}
