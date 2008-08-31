@@ -10,6 +10,7 @@
 
 module Yi.Keymap.Emacs.Utils
   ( askQuitEditor
+  , askSaveEditor
   , modifiedQuitEditor
   , adjIndent
   , withMinibuffer
@@ -80,8 +81,10 @@ import Yi.Window
 -- it or not. If we get to the end of this list and there are still
 -- some modified buffers then we ask again if the user wishes to
 -- quit, but this is then a simple yes or no.
-askQuitEditor :: YiM ()
-askQuitEditor = askIndividualQuit =<< getModifiedBuffers
+askQuitEditor, askSaveEditor :: YiM ()
+askQuitEditor = askIndividualSave True =<< getModifiedBuffers
+
+askSaveEditor = askIndividualSave False =<< getModifiedBuffers
 
 getModifiedBuffers :: YiM [FBuffer]
 getModifiedBuffers = filterM isFileBuffer =<< filter (not . isUnchangedBuffer) <$> withEditor getBuffers
@@ -96,29 +99,38 @@ isFileBuffer b = case file b of
 --------------------------------------------------
 -- Takes in a list of buffers which have been identified
 -- as modified since their last save.
-askIndividualQuit :: [FBuffer] -> YiM ()
-askIndividualQuit [] = modifiedQuitEditor
-askIndividualQuit (firstBuffer : others) =
+
+askIndividualSave :: Bool -> [FBuffer] -> YiM ()
+askIndividualSave True [] = modifiedQuitEditor
+askIndividualSave False [] = return ()
+askIndividualSave hasQuit allBuffers@(firstBuffer : others) =
   withEditor (spawnMinibufferE saveMessage (const askKeymap)) >> return ()
   where
   saveMessage = concat [ "do you want to save the buffer: "
                        , bufferName
-                       , "? (y/n/q/c)"
+                       , "? (y/n"++ (if hasQuit then "q/" else "") ++"/c/!)"
                        ]
   bufferName  = name firstBuffer
 
-  askKeymap = choice [ char 'n' ?>>! noAction
-                     , char 'y' ?>>! yesAction 
-                     , oneOf [char 'c', ctrl $ char 'g'] >>! closeBufferAndWindowE 
-                      -- cancel
-                     , char 'q' ?>>! quitEditor 
-                     ]
-  yesAction   = do fwriteBufferE (bkey firstBuffer)
-                   withEditor closeBufferAndWindowE
-                   askIndividualQuit others
+  askKeymap = choice ([ char 'n' ?>>! noAction
+                      , char 'y' ?>>! yesAction 
+                      , char '!' ?>>! yesAction 
+                      , oneOf [char 'c', ctrl $ char 'g'] >>! closeBufferAndWindowE 
+                        -- cancel
+                      ] ++ [char 'q' ?>>! quitEditor | hasQuit])
+  yesAction = do fwriteBufferE (bkey firstBuffer)
+                 withEditor closeBufferAndWindowE
+                 continue
 
-  noAction    = do withEditor closeBufferAndWindowE
-                   askIndividualQuit others
+  noAction = do withEditor closeBufferAndWindowE
+                continue
+
+  allAction = do mapM_ fwriteBufferE $ fmap bkey allBuffers
+                 askIndividualSave hasQuit []
+  
+  continue = askIndividualSave hasQuit others
+
+---------------------------
 
 ---------------------------
 -- | Quits the editor if there are no unmodified buffers

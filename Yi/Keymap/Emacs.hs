@@ -40,6 +40,7 @@ import Yi.Keymap.Emacs.Utils
   , cabalConfigureE
   , switchBufferE
   , withMinibuffer
+  , askSaveEditor
   )
 import Yi.Accessor
 import Yi.Buffer
@@ -174,6 +175,7 @@ emacsKeys =
                  , char '0'      ?>>! closeWindow
                  , char '1'      ?>>! closeOtherE
                  , char '2'      ?>>! splitE
+                 , char 's'      ?>>! askSaveEditor
                  , ctrlCh 'c'    ?>>! askQuitEditor
                  , ctrlCh 'f'    ?>>! findFile
                  , ctrlCh 's'    ?>>! fwriteE
