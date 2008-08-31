@@ -84,13 +84,12 @@ import Yi.Debug
 import Data.Typeable
 import Yi.Region
 
-
-data MarkValue = MarkValue {markPoint :: Point, markGravity :: Direction}
+data MarkValue = MarkValue {markPoint :: !Point, markGravity :: !Direction}
                deriving (Ord, Eq, Show, Typeable)
 
 type Marks = M.Map Mark MarkValue
 
-data HLState syntax = forall cache. HLState !(Highlighter cache syntax) cache
+data HLState syntax = forall cache. HLState !(Highlighter cache syntax) !cache
 
 data OvlLayer = UserLayer | HintLayer
   deriving (Ord, Eq)
@@ -474,15 +473,17 @@ getMarkValueBI m (FBufferData { marks = marksMap } ) = M.findWithDefault (marksM
                  -- We look up mark m in the marks, the default value to return
                  -- if mark m is not set, is the staticInsMark
 
--- | Modify a mark's value point The binding of the mark is not changed if the
--- mark already exists. Otherwise the gravity is Forward.
+-- | Modify a mark value.
 modifyMarkBI :: Mark -> (MarkValue -> MarkValue) -> (forall syntax. BufferImpl syntax -> BufferImpl syntax)
-modifyMarkBI m f fb = fb {marks = M.adjust f m (marks fb)}
+modifyMarkBI m f fb = fb {marks = adjust' f m (marks fb)}
+-- NOTE: we must insert the value strictly otherwise we can hold to whatever structure the value of the mark depends on.
+-- (often a whole buffer)
 
--- Formerly the highlighters table was directly used
--- 'Yi.Syntax.Table.highlighters'. However avoiding to depends on all
--- highlighters implementation speeds up compilation a lot when working on a
--- syntax highlighter.
+-- A strict version of M.adjust
+adjust' f m = M.alter f' m where
+    f' Nothing = Nothing
+    f' (Just x) = let x' = f x in x' `seq` Just x'
+
 setSyntaxBI :: ExtHL syntax -> BufferImpl oldSyntax -> BufferImpl syntax
 setSyntaxBI (ExtHL e) fb = touchSyntax 0 $ fb {hlCache = HLState e (hlStartState e)}
 

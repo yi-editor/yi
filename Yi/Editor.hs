@@ -43,12 +43,12 @@ import qualified Data.ByteString.Lazy.UTF8 as LazyUTF8
 data Editor = Editor {
         bufferStack   :: ![BufferRef]               -- ^ Stack of all the buffers. Never empty;
                                                     -- first buffer is the current one.
-       ,buffers       :: M.Map BufferRef FBuffer
-       ,refSupply     :: Int  -- ^ Supply for buffer and window ids.
+       ,buffers       :: !(M.Map BufferRef FBuffer)
+       ,refSupply     :: !Int  -- ^ Supply for buffer and window ids.
 
-       ,tabs          :: WindowSet (WindowSet Window)
+       ,tabs          :: !(WindowSet (WindowSet Window))
 
-       ,dynamic       :: DynamicValues              -- ^ dynamic components
+       ,dynamic       :: !(DynamicValues)              -- ^ dynamic components
 
        ,tabwidth      :: !Int                       -- ^ width of tabs
 
