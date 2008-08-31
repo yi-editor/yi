@@ -287,9 +287,9 @@ startSubprocess cmd args onExit = do
 
 startSubprocessWatchers :: SubprocessId -> SubprocessInfo -> Yi -> (Either Exception ExitCode -> YiM x) -> IO ()
 startSubprocessWatchers procid procinfo yi onExit = do
-    mapM_ forkOS [pipeToBuffer (hOut procinfo) (send . append False),
-                  pipeToBuffer (hErr procinfo) (send . append True),
-                  waitForExit (procHandle procinfo) >>= reportExit]
+    mapM_ forkOS ([pipeToBuffer (hErr procinfo) (send . append True) | separateStdErr procinfo] ++
+                 [pipeToBuffer (hOut procinfo) (send . append False),
+                  waitForExit (procHandle procinfo) >>= reportExit])
   where send a = output yi [makeAction a]
         append :: Bool -> String -> YiM ()
         append atMark s = withEditor $ appendToBuffer atMark (bufRef procinfo) s

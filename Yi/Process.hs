@@ -1,12 +1,4 @@
---
 -- Copyright (c) 2005 Don Stewart - http://www.cse.unsw.edu.au/~dons
---
---
-
---
--- | A Posix.popen compatibility mapping.
--- Based on PosixCompat, originally written by Derek Elkins for lambdabot
---
 module Yi.Process (popen, runShellCommand, shellFileName,
                    createSubprocess, readAvailable, SubprocessInfo(..), SubprocessId) where
 import System.IO
@@ -24,6 +16,14 @@ import Foreign.C.String
 import Yi.Buffer (BufferRef)
 import Yi.Monad(repeatUntilM)
 
+#ifndef mingw32_HOST_OS
+import System.Posix.IO
+#endif
+
+
+-- | A Posix.popen compatibility mapping.
+-- Based on PosixCompat, originally written by Derek Elkins for lambdabot
+-- TODO: this will probably be called readProcess in the new process package (2.0)
 popen :: FilePath -> [String] -> Maybe String -> IO (String,String,ExitCode)
 popen file args minput =
     Control.Exception.handle (\e -> return ([],show e,error (show e))) $ do
@@ -79,16 +79,43 @@ data SubprocessInfo = SubprocessInfo {
       hIn  :: Handle,
       hOut :: Handle,
       hErr :: Handle,
-      bufRef :: BufferRef
+      bufRef :: BufferRef,
+      separateStdErr :: Bool
       }
 
+{-
+Simon Marlow said this:
+
+ It turns out to be dead easy to bind stderr and stdout to the same pipe. After a couple of minor tweaks the following now works:
+
+ createProcess (proc cmd args){ std_out = CreatePipe,
+                                std_err = UseHandle stdout }
+
+Therefore it should be possible to simplifiy the following greatly with the new process package.
+
+-}
 createSubprocess :: FilePath -> [String] -> BufferRef -> IO SubprocessInfo
 createSubprocess cmd args bufref = do
+
+#ifdef mingw32_HOST_OS
     (inp,out,err,handle) <- runInteractiveProcess cmd args Nothing Nothing
+    let separate = True
+#else
+    (inpReadFd,inpWriteFd) <- createPipe
+    (outReadFd,outWriteFd) <- createPipe
+    [inpRead,inpWrite,outRead,outWrite] <- mapM fdToHandle [inpReadFd,inpWriteFd,outReadFd,outWriteFd]
+
+    handle <- runProcess cmd args Nothing Nothing (Just inpRead) (Just outWrite) (Just outWrite)
+    let inp = inpWrite
+        out = outRead
+        err = outRead
+        separate = False
+#endif
     hSetBuffering inp NoBuffering
     hSetBuffering out NoBuffering
     hSetBuffering err NoBuffering
-    return $ SubprocessInfo { procCmd=cmd, procArgs=args, procHandle=handle, hIn=inp, hOut=out, hErr=err, bufRef=bufref }
+    return $ SubprocessInfo { procCmd=cmd, procArgs=args, procHandle=handle, hIn=inp, hOut=out, hErr=err, bufRef=bufref, separateStdErr=separate }
+
 
 -- Read as much as possible from handle without blocking
 readAvailable :: Handle -> IO String
