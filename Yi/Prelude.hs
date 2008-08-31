@@ -2,7 +2,6 @@
 
 module Yi.Prelude 
     (
-
 (++),
 (=<<),
 Double,
@@ -35,6 +34,8 @@ init,
 io,
 last,
 lookup,
+mapAdjust',
+mapAlter',
 module Control.Applicative,
 module Data.Bool,
 module Data.Foldable,
@@ -44,6 +45,7 @@ module Data.Traversable,
 module Text.Show,
 module Yi.Accessor,
 module Yi.Debug,
+nubSet,
 null,
 print,
 putStrLn,
@@ -73,6 +75,7 @@ import Control.Applicative
 import Data.Traversable 
 import Control.Monad
 import qualified Data.Set as Set
+import qualified Data.Map as Map
     
 type Endom a = a -> a
 
@@ -96,7 +99,24 @@ class SemiNum absolute relative | absolute -> relative where
 singleton :: a -> [a]
 singleton x = [x]
 
+-- TODO: move somewhere else.
 -- | As 'Prelude.nub', but with O(n*log(n)) behaviour.
-nubSet xs = f Set.empty xs where
+nubSet xss = f Set.empty xss where
        f _ [] = []
        f s (x:xs) = if x `Set.member` s then f s xs else x : f (Set.insert x s) xs
+
+-- As Map.adjust, but the combining function is applied strictly.
+mapAdjust' f = Map.alter f' where
+    f' Nothing = Nothing
+    f' (Just x) = let x' = f x in x' `seq` Just x'
+    -- This works because Map is structure-strict, and alter needs to force f' to compute
+    -- the structure.
+
+
+-- As Map.alter, but the newly inserted element is forced with the map.
+mapAlter' f = Map.alter f' where
+    f' arg = case f arg of 
+        Nothing -> Nothing
+        Just x -> x `seq` Just x
+    -- This works because Map is structure-strict, and alter needs to force f' to compute
+    -- the structure.
