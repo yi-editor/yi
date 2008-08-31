@@ -101,20 +101,20 @@ isFileBuffer b = case file b of
 -- as modified since their last save.
 
 askIndividualSave :: Bool -> [FBuffer] -> YiM ()
-askIndividualSave True [] = modifiedQuitEditor
+askIndividualSave True []  = modifiedQuitEditor
 askIndividualSave False [] = return ()
 askIndividualSave hasQuit allBuffers@(firstBuffer : others) =
   withEditor (spawnMinibufferE saveMessage (const askKeymap)) >> return ()
   where
   saveMessage = concat [ "do you want to save the buffer: "
                        , bufferName
-                       , "? (y/n"++ (if hasQuit then "q/" else "") ++"/c/!)"
+                       , "? (y/n/"++ (if hasQuit then "q/" else "") ++"c/!)"
                        ]
   bufferName  = name firstBuffer
 
   askKeymap = choice ([ char 'n' ?>>! noAction
                       , char 'y' ?>>! yesAction 
-                      , char '!' ?>>! yesAction 
+                      , char '!' ?>>! allAction 
                       , oneOf [char 'c', ctrl $ char 'g'] >>! closeBufferAndWindowE 
                         -- cancel
                       ] ++ [char 'q' ?>>! quitEditor | hasQuit])
@@ -126,6 +126,7 @@ askIndividualSave hasQuit allBuffers@(firstBuffer : others) =
                 continue
 
   allAction = do mapM_ fwriteBufferE $ fmap bkey allBuffers
+                 withEditor closeBufferAndWindowE
                  askIndividualSave hasQuit []
   
   continue = askIndividualSave hasQuit others
