@@ -17,9 +17,10 @@ import Yi.Style
   , StyleName
   , defaultStyle
   , commentStyle
+  , blockCommentStyle
   , keywordStyle
   , operatorStyle
-  , upperIdStyle
+  , typeStyle
   , stringStyle
   , numberStyle
   )
@@ -126,17 +127,17 @@ haskell :-
 -- in the future cabal will allow this too so ... Also I don't think it
 -- does significant harm at the moment
 <nestcomm> {
-  "{-"                                          { m (subtract 1) commentStyle }
-  "-}"                                          { m (+1) commentStyle }
+  "{-"                                          { m (subtract 1) blockCommentStyle }
+  "-}"                                          { m (+1) blockCommentStyle }
   $white+                                       { c defaultStyle } -- whitespace
-  .                                             { c commentStyle }
+  .                                             { c blockCommentStyle }
 }
 
 <0> {
   "--"\-* $symbol $symchar*                     { c defaultStyle }
   "--"\-*[^\n]*                                 { c commentStyle }
 
- "{-"                                           { m (subtract 1) commentStyle }
+ "{-"                                           { m (subtract 1) blockCommentStyle }
 
  $special                                       { c defaultStyle }
 
@@ -144,7 +145,7 @@ haskell :-
  @varid                                         { c defaultStyle }
  @conid                                         { c defaultStyle }
 
- @fieldid ":"                                   { c upperIdStyle }
+ @fieldid ":"                                   { c typeStyle }
 
  @reservedop                                    { c operatorStyle }
  @varsym                                        { c operatorStyle }

@@ -123,7 +123,7 @@ tokenToStyle t =
     Comment -> commentStyle
     Text -> defaultStyle
     Special _ -> operatorStyle
-    Command _ -> upperIdStyle
+    Command _ -> typeStyle
     Begin _ -> keywordStyle
     End _ -> keywordStyle
     NewCommand -> keywordStyle

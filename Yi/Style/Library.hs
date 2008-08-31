@@ -15,17 +15,18 @@ defaultTheme = Proto $ \self -> UIStyle
     , eof                = [Foreground blue]
     , defaultStyle       = error "defaultStyle must be redefined!"
     , reverseStyle       = [Foreground Reverse, Background Reverse]
-    , cppStyle           = defaultStyle self `changeFg` red
+    , preprocessorStyle  = defaultStyle self `changeFg` red
     , commentStyle       = defaultStyle self `changeFg` purple
+    , blockCommentStyle  = commentStyle self
     , keywordStyle       = defaultStyle self `changeFg` darkblue
 
     , operatorStyle      = defaultStyle self `changeFg` brown
-    , consOperatorStyle  = operatorStyle self
 
-    , idStyle            = defaultStyle self
-    , upperIdStyle       = idStyle self `changeFg` darkgreen
+    , variableStyle      = defaultStyle self
+    , typeStyle          = variableStyle self `changeFg` darkgreen
 
     , stringStyle        = defaultStyle self `changeFg` darkcyan
+    , longStringStyle    = stringStyle self
     , numberStyle        = defaultStyle self `changeFg` darkred
 
     , errorStyle         = defaultStyle self `changeBg` red
@@ -53,11 +54,11 @@ darkBlueTheme = defaultTheme `override` \super _ -> super
     , defaultStyle      = [Background black, Foreground white]
 
     , reverseStyle      = [Foreground green]
-    , cppStyle          = [Foreground red]
+    , preprocessorStyle = [Foreground red]
     , commentStyle      = [Foreground darkred]
     , keywordStyle      = [Foreground brown]
     , operatorStyle     = [Foreground white]
-    , upperIdStyle      = [Foreground darkgreen]
+    , typeStyle         = [Foreground darkgreen]
     , stringStyle       = [Foreground purple]
     , numberStyle       = [Foreground darkred]
     , errorStyle        = [Foreground green]

@@ -106,17 +106,17 @@ haskell :-
 -- in a long comment.
   "--"$nl                                       { c commentStyle }
 
-  "{-"                                          { m Comment commentStyle }
+  "{-"                                          { m Comment blockCommentStyle }
 
   $special                                      { c defaultStyle }
 
   @reservedid                                   { c keywordStyle }
   @varid                                        { c defaultStyle }
-  @conid                                        { c upperIdStyle }
+  @conid                                        { c typeStyle }
 
   @reservedop                                   { c operatorStyle }
   @varsym                                       { c operatorStyle }
-  @consym                                       { c upperIdStyle }
+  @consym                                       { c typeStyle }
 
   @decimal
    | 0[oO] @octal
@@ -140,17 +140,17 @@ haskell :-
   "--"~[$symbol # \-][^$nl]*                    { c commentStyle }
   "--"$nl                                       { c commentStyle }
 
-  "{-"                                          { m Comment commentStyle }
+  "{-"                                          { m Comment blockCommentStyle }
 
   $special                                      { c defaultStyle }
 
   @reservedid                                   { c keywordStyle }
   @varid                                        { c defaultStyle }
-  @conid                                        { c upperIdStyle }
+  @conid                                        { c typeStyle }
 
   @reservedop                                   { c operatorStyle }
   @varsym                                       { c operatorStyle }
-  @consym                                       { c upperIdStyle }
+  @consym                                       { c typeStyle }
 
   @decimal
    | 0[oO] @octal

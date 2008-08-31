@@ -12,28 +12,30 @@ import Prelude ()
 -- | The UI type
 data UIStyle =
     UIStyle {
-         window           :: Style    -- ^ window fg and bg
-       , modeline         :: Style    -- ^ out of focus modeline colours
-       , modelineFocused :: Style    -- ^ in focus modeline
-       , selected         :: Style    -- ^ the selected portion
-       , eof              :: Style    -- ^ empty file marker colours
-       , defaultStyle :: Style
-       , reverseStyle :: Style
-       , cppStyle :: Style
-       , commentStyle :: Style
-       , keywordStyle :: Style
+         window            :: Style -- ^ window fg and bg
+       , modeline          :: Style -- ^ out of focus modeline colours
+       , modelineFocused   :: Style -- ^ in focus modeline
+       , selected          :: Style -- ^ the selected portion
+       , eof               :: Style -- ^ empty file marker colours
+       , defaultStyle      :: Style
+       , reverseStyle      :: Style
+       , preprocessorStyle :: Style -- ^ preprocessor directive (often in Haskell or C)
+       , commentStyle      :: Style
+       , blockCommentStyle :: Style
+       , keywordStyle      :: Style
 
-       , operatorStyle :: Style
-       , consOperatorStyle :: Style
+       , operatorStyle     :: Style
 
-       , idStyle :: Style
-       , upperIdStyle :: Style
+       , variableStyle     :: Style -- ^ any standard variable (identifier)
+       , typeStyle         :: Style -- ^ class (in an OO language) or a Haskell type
 
-       , stringStyle :: Style
-       , numberStyle :: Style
-       , errorStyle :: Style
-       , hintStyle :: Style
-       , strongHintStyle :: Style
+       , stringStyle       :: Style
+       , longStringStyle   :: Style
+       , numberStyle       :: Style
+
+       , errorStyle        :: Style
+       , hintStyle         :: Style
+       , strongHintStyle   :: Style
      } 
     deriving (Eq, Show, Ord)
 

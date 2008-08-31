@@ -17,9 +17,10 @@ import Yi.Style
   ( Style             ( .. )
   , defaultStyle
   , commentStyle
+  , blockCommentStyle
   , keywordStyle
   , operatorStyle
-  , upperIdStyle
+  , typeStyle
   , stringStyle
   , numberStyle
   , StyleName
@@ -91,7 +92,7 @@ haskell :-
  @reservedid                                    { c keywordStyle }
 
  @varid                                         { c stringStyle }
- @conid                                         { c upperIdStyle }
+ @conid                                         { c typeStyle }
 
  @reservedop                                    { c operatorStyle }
  @varsym                                        { c operatorStyle }

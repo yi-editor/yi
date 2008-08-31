@@ -164,26 +164,26 @@ haskell :-
 
 <nestcomm> {
   -- We could do nested comments like this
-  -- "/*"                                       { m (subtract 1) commentStyle }
-  "*/"                                          { m (+1) commentStyle }
+  -- "/*"                                       { m (subtract 1) blockCommentStyle }
+  "*/"                                          { m (+1) blockCommentStyle }
   $white+                                       { c defaultStyle } -- whitespace
-  .                                             { c commentStyle }
+  .                                             { c blockCommentStyle }
 }
 
 <0> {
   "//"[^\n]*                                    { c commentStyle }
 
- "/*"                                           { m (subtract 1) commentStyle }
+ "/*"                                           { m (subtract 1) blockCommentStyle }
 
  $special                                       { c defaultStyle }
 
  @reservedid                                    { c keywordStyle }
  @varid                                         { c defaultStyle }
- @conid                                         { c upperIdStyle }
+ @conid                                         { c typeStyle }
 
  @reservedop                                    { c operatorStyle }
  @varsym                                        { c operatorStyle }
- @consym                                        { c upperIdStyle }
+ @consym                                        { c typeStyle }
 
  @decimal 
   | 0[oO] @octal

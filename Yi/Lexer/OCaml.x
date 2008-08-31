@@ -125,12 +125,12 @@ tokenToStyle tok = case tok of
   CharTok      -> stringStyle
   StringTok    -> stringStyle
   VarIdent     -> defaultStyle
-  ConsIdent    -> upperIdStyle
+  ConsIdent    -> typeStyle
   ReservedOp   -> operatorStyle
   Reserved     -> keywordStyle
   IndentReserved -> keywordStyle
   Special _    -> defaultStyle
-  ConsOperator -> upperIdStyle
+  ConsOperator -> typeStyle
   Operator     -> operatorStyle
   Comment      -> commentStyle
 
