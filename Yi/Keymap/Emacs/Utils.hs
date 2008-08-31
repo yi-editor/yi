@@ -193,6 +193,7 @@ queryReplaceE = do
     b <- withEditor $ getBuffer
     win <- getA currentWindowA
     let replaceKm = choice [char 'n' ?>>! qrNext win b re,
+                            char '!' ?>>! qrReplaceAll win b re replaceWith,
                             oneOf [char 'y', char ' '] >>! qrReplaceOne win b re replaceWith,
                             oneOf [char 'q', ctrl (char 'g')] >>! qrFinish
                            ]
@@ -200,7 +201,7 @@ queryReplaceE = do
     withEditor $ do
        setRegexE re
        spawnMinibufferE
-            ("Replacing " ++ replaceWhat ++ "with " ++ replaceWith ++ " (y,n,q):")
+            ("Replacing " ++ replaceWhat ++ "with " ++ replaceWith ++ " (y,n,q,!):")
             (const replaceKm)
        qrNext win b re
 

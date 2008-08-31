@@ -36,6 +36,7 @@ module Yi.Search (
 
         -- * Replace
         qrNext,
+        qrReplaceAll,
         qrReplaceOne,
         qrFinish,
                  ) where
@@ -310,6 +311,9 @@ isearchEnd accept = do
 -----------------
 -- Query-Replace
 
+{-
+  Find the next match and highlight it.
+-}
 qrNext :: Window -> BufferRef -> SearchExp -> EditorM ()
 qrNext win b what = do
   mp <- withGivenBufferAndWindow0 win b $ regexB Forward what
@@ -319,16 +323,49 @@ qrNext win b what = do
       qrFinish
     (r:_) -> withGivenBufferAndWindow0 win b $ setSelectRegionB r
 
+{- Replace all the remaining occurrences.
+   We might think that since 'regexB' returns all the remaining
+   matches that we could replace them all without re-searching.
+   However this would work only if the replacement was the same
+   length as the pattern being replaced.
+-}
+qrReplaceAll :: Window -> BufferRef -> SearchExp -> String -> EditorM ()
+qrReplaceAll win b what replacement =
+  do -- We must first replace the current match
+     qrReplaceCurrent win b replacement
+     qrAllRemaining 
+  where
+  qrAllRemaining =
+    do mp <- withGivenBufferAndWindow0 win b $ regexB Forward what
+       case mp of
+         []    -> do printMsg "Replaced all occurrences"
+                     qrFinish
+         (r:_) -> do replaceAction r
+                     qrAllRemaining
+  replaceAction r = withGivenBufferAndWindow0 win b $ 
+                    replaceRegionB r replacement
+
+{-
+  Exit from query/replace.
+-}
 qrFinish :: EditorM ()
 qrFinish = do
   setA regexA Nothing
   closeBufferAndWindowE  -- the minibuffer.
   
-
+{-
+  We replace the currently selected match and then move to the next
+  match.
+-}
 qrReplaceOne :: Window -> BufferRef -> SearchExp -> String -> EditorM ()
-qrReplaceOne win b reg replacement = do
-  withGivenBufferAndWindow0 win b $ do
-    r <- getRawSelectRegionB
-    replaceRegionB r replacement
-  qrNext win b reg
+qrReplaceOne win b reg replacement =
+  do qrReplaceCurrent win b replacement
+     qrNext win b reg
 
+{- This may actually be a bit more general it replaces the current
+   selection with the given replacement string in the given
+   window and buffer. 
+-}
+qrReplaceCurrent :: Window -> BufferRef -> String -> EditorM ()
+qrReplaceCurrent win b replacement = 
+  withGivenBufferAndWindow0 win b $ modifySelectionB (const replacement)
