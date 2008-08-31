@@ -15,7 +15,8 @@ import Yi.Dynamic
 import Yi.Editor
 import Yi.Accessor
 import qualified Data.Map as M
-
+import Yi.Prelude 
+import Prelude (maybe)
 type Histories = M.Map String History
 
 instance (Typeable k, Typeable v) => Initializable (M.Map k v) where
@@ -29,7 +30,7 @@ instance Initializable History where
     initial = (History (-1) [])
 
 dynKeyA :: (Initializable v, Ord k) => k -> Accessor (M.Map k v) v
-dynKeyA k = Accessor (maybe initial id . M.lookup k) (\f -> M.alter (upd f) k)
+dynKeyA k = Accessor (maybe initial id . M.lookup k) (\f -> mapAlter' (upd f) k)
     where upd f Nothing = Just (f initial)
           upd f (Just x) = Just (f x)
 
@@ -60,7 +61,8 @@ historyFinishGen :: String -> EditorM String -> EditorM ()
 historyFinishGen ident getCurValue = do
   (History _cur cont) <- getA (dynKeyA ident .> dynA)
   curValue <- getCurValue
-  setA (dynKeyA ident .> dynA) $ History (-1) (nub $ dropWhile null $ (curValue:cont))
+  length curValue `seq` -- force this, otherwise we'll hold on to the buffer from which it's computed
+    setA (dynKeyA ident .> dynA) $ History (-1) (nub $ dropWhile null $ (curValue:cont))
 
 -- historyGetGen :: String -> EditorM String
 -- historyGetGen ident = do

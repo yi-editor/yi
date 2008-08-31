@@ -30,7 +30,9 @@ import Yi.WindowSet (WindowSet)
 import qualified Yi.WindowSet as WS
 import Yi.Event (Event)
 
-import Prelude hiding (error)
+
+import Prelude (map, filter, (!!), takeWhile, length, reverse, zip)
+import Yi.Prelude
 
 import Data.List (nub, delete)
 import qualified Data.DelayList as DelayList
@@ -259,7 +261,7 @@ withGivenBufferAndWindow0 w k f = do
                         let b = findBufferWith k e
                             (v, us, b') = runBufferFull w b f
                             
-                        in (e {buffers = M.adjust (const b') k (buffers e),
+                        in (e {buffers = mapAdjust' (const b') k (buffers e),
                                killring = (if accum && all updateIsDelete us
                                            then foldl (.) id 
                                                 (reverse [krPut dir (LazyUTF8.toString s) | Delete _ dir s <- us])
