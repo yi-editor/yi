@@ -201,11 +201,6 @@ getBufferStack = do
   bufMap <- gets buffers
   gets (fmap (bufMap M.!) . bufferStack)
 
--- DEPRECATED bufferExists, "use findBuffer instead"
--- | Check that the buffer has not been deleted
-bufferExists :: BufferRef -> EditorM Bool
-bufferExists k = gets ((M.member k) . buffers)
-
 findBuffer :: BufferRef -> EditorM (Maybe FBuffer)
 findBuffer k = gets (M.lookup k . buffers)
 
