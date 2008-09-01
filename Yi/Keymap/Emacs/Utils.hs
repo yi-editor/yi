@@ -87,7 +87,12 @@ askQuitEditor = askIndividualSave True =<< getModifiedBuffers
 askSaveEditor = askIndividualSave False =<< getModifiedBuffers
 
 getModifiedBuffers :: YiM [FBuffer]
-getModifiedBuffers = filterM isFileBuffer =<< filter (not . isUnchangedBuffer) <$> withEditor getBuffers
+getModifiedBuffers = filterM deservesSave =<< withEditor getBuffers
+
+deservesSave :: FBuffer -> YiM Bool
+deservesSave b
+   | isUnchangedBuffer b = return False
+   | otherwise = isFileBuffer b
 
 -- | Is there a proper file associated with the buffer?
 -- In other words, does it make sense to offer to save it?
@@ -282,6 +287,17 @@ switchBufferE = do
     names <- forM choices $ \k -> gets $ (name . findBufferWith k)
     withMinibufferFin "switch to buffer:" names (withEditor . switchToBufferWithNameE)
 
+askCloseBuffer nm = do
+    Just b <- withEditor $ findBuffer =<< getBufferWithNameOrCurrent nm
+    ch <- deservesSave b
+    let askKeymap = choice [ char 'n' ?>>! closeBufferAndWindowE
+                           , char 'y' ?>>! delBuf >> closeBufferAndWindowE
+                           , ctrlCh 'g' ?>>! closeBufferAndWindowE
+                           ]
+        delBuf = deleteBuffer $ bkey b
+    withEditor $ 
+       if ch then (spawnMinibufferE ("Buffer " ++ name b ++ " changed, close anyway? (y/n)") (const askKeymap)) >> return () 
+             else delBuf
 
 killBufferE :: YiM ()
-killBufferE = withMinibuffer "kill buffer:" matchingBufferNames $ withEditor . closeBufferE
+killBufferE = withMinibuffer "kill buffer:" matchingBufferNames $ askCloseBuffer

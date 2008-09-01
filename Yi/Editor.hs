@@ -392,9 +392,10 @@ listBuffersE = do
 -- | Close a buffer.
 -- Note: close the current buffer if the empty string is given
 closeBufferE :: String -> EditorM ()
-closeBufferE nm = do
-    b' <- if null nm then getBuffer else getBufferWithName nm
-    deleteBuffer b'
+closeBufferE nm = deleteBuffer =<< getBufferWithNameOrCurrent nm
+
+getBufferWithNameOrCurrent :: String -> EditorM BufferRef
+getBufferWithNameOrCurrent nm = if null nm then getBuffer else getBufferWithName nm
 
 
 ------------------------------------------------------------------------
