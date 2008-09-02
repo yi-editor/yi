@@ -3,12 +3,15 @@ module Yi.Config where
 import Control.Monad.Reader
 import Data.Dynamic
 import qualified Data.Map as M
+import Data.Prototype
+
 import {-# source #-} Yi.Buffer
 import {-# source #-} Yi.Keymap
 import {-# source #-} Yi.Editor
 import Yi.Dynamic
 import Yi.Event
 import Yi.Style
+import Yi.Style.Library
 import {-# source #-} Yi.UI.Common
 
 data UIConfig = UIConfig {
@@ -20,8 +23,11 @@ data UIConfig = UIConfig {
    configWindowFill :: !Char,       
    -- ^ char to fill empty window space with.  Usually '~' for vi-like
    -- editors, ' ' for everything else.
-   configStyle :: UIStyle -- ^ UI colours
+   configTheme :: Theme -- ^ UI colours
   }
+
+configStyle :: UIConfig -> UIStyle
+configStyle = extractValue . configTheme
 
 {- | Currently duplicates some of Vim's indent settings. Allowing a buffer to
  - specify settings that are more dynamic, perhaps via closures, could be

@@ -191,7 +191,7 @@ defaultConfig =
            , configLeftSideScrollBar = True
            , configAutoHideScrollBar = False
            , configWindowFill = ' '
-           , configStyle = extractValue defaultLightTheme
+           , configTheme = defaultLightTheme
            }
          , defaultKm        = nilKeymap
          , startActions     = [makeAction openScratchBuffer] -- emacs-style behaviour
