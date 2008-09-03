@@ -40,7 +40,7 @@ data TextUnit = Character
               | ViWord -- ^ a word as in use in Vim
               | ViWORD -- ^ a WORD as in use in Vim
               | Line  -- ^ a line of text (between newlines)
-              | VLine -- ^ a "vertical" line of text (area of text between to characters at the same column number)
+              | VLine -- ^ a "vertical" line of text (area of text between two characters at the same column number)
               | Delimited Char Char
               | Document
               | GenUnit {genEnclosingUnit :: TextUnit,
