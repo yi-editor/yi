@@ -59,7 +59,7 @@ isNl = (== '\n')
 isVisSpace :: Char -> Bool
 isVisSpace c = (not $ isNl c) && (isSpace c)
 
--- | Tells if a char can ends a sentence ('.', '!', '?').
+-- | Tells if a char can end a sentence ('.', '!', '?').
 isEndOfSentence :: Char -> Bool
 isEndOfSentence = (`elem` ".!?")
 
