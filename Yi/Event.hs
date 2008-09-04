@@ -9,6 +9,7 @@ module Yi.Event
 
 import Data.Bits
 import Data.Char (chr,ord)
+import Data.Monoid
 import Yi.Debug
 
 data Modifier = MShift | MCtrl | MMeta
@@ -18,7 +19,11 @@ data Key = KEsc | KFun Int | KPrtScr | KPause | KASCII Char | KBS | KIns
          | KHome | KPageUp | KDel | KEnd | KPageDown | KNP5 | KUp | KMenu
          | KLeft | KDown | KRight | KEnter | KTab deriving (Eq,Show,Ord)
 
-data Event = Event Key [Modifier] deriving (Eq,Ord)
+data Event = Event Key [Modifier] deriving (Eq)
+
+instance Ord Event where
+    compare (Event k1 m1) (Event k2 m2) = compare m1 m2 `mappend` compare k1 k2
+    -- so, all Ctrl+char, meta+char, etc. all form a continuous range
 
 instance Show Event where
     show = prettyEvent

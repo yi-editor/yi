@@ -36,13 +36,7 @@ where
 
 import Prelude ()
 import Yi.Prelude
-import Data.Char
-  ( ord
-  , isDigit
-  )
-import Data.List (filter, (\\))
-import Data.Maybe
-  ( fromMaybe )
+import Data.List ((\\))
 import System.FriendlyPath
 import System.FilePath (addTrailingPathSeparator)
 import System.Directory
@@ -52,14 +46,12 @@ import Control.Monad.Trans (MonadIO (..))
 {- External Library Module Imports -}
 {- Local (yi) module imports -}
 
-import Control.Applicative
 import Control.Monad (filterM, replicateM_)
 import Control.Monad.State (gets)
 import Yi.Buffer
 import Yi.Buffer.HighLevel
 import Yi.Buffer.Region
 import Yi.Core
-import Yi.Debug
 import Yi.Dired
 import Yi.Editor
 import Yi.Eval
@@ -70,8 +62,8 @@ import Yi.MiniBuffer
 import Yi.Misc
 import Yi.Regex
 import Yi.Search
-import Yi.Accessor
 import Yi.Window
+import Yi.Prelude
 {- End of Module Imports -}
 
 ----------------------------
@@ -236,20 +228,25 @@ insertNextC = do c <- anyEvent
 
 -- | C-u stuff
 readArgC :: KeymapM ()
-readArgC = do readArg' Nothing
-              write $ do UniversalArg u <- withEditor getDynamic
-                         logPutStrLn (show u)
-                         msgEditor ""
+readArgC = pure () <|> do
+    u <- readArg'
+    write $ do setDynamic (UniversalArg (Just u))
+               printMsg $ "arg = " ++ show u
 
--- TODO: This is crappy code: rewrite!
-readArg' :: Maybe Int -> KeymapM ()
-readArg' acc = do
-    write $ msgEditor $ "Argument: " ++ show acc
-    c <- anyEvent -- FIXME: the C-u will read one character that should be part of the next command!
-    case c of
-      Event (KASCII d) [] | isDigit d -> readArg' $ Just $ 10 * (fromMaybe 0 acc) + (ord d - ord '0')
-      _ -> write $ setDynamic $ UniversalArg $ Just $ fromMaybe 4 acc
+digit :: (Event -> Event) -> KeymapM Char
+digit f = charOf f '0' '9'
 
+-- TODO: replace tt by digit meta 
+tt :: KeymapM Char
+tt = do
+  Event (KASCII c) _ <- foldr1 (<|>) $ fmap (event . metaCh ) ['0'..'9']
+  return c
+
+
+readArg' :: KeymapM Int
+readArg' = (ctrlCh 'u' ?>> (read <$> some (digit id) <|> pure 4))
+           <|> (read <$> (some tt))
+           
 
 -- | Open a file using the minibuffer. We have to set up some stuff to allow hints
 --   and auto-completion.
@@ -287,6 +284,7 @@ switchBufferE = do
     names <- forM choices $ \k -> gets $ (name . findBufferWith k)
     withMinibufferFin "switch to buffer:" names (withEditor . switchToBufferWithNameE)
 
+askCloseBuffer :: String -> YiM ()
 askCloseBuffer nm = do
     Just b <- withEditor $ findBuffer =<< getBufferWithNameOrCurrent nm
     ch <- deservesSave b

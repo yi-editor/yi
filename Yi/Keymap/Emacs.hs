@@ -46,17 +46,21 @@ import Yi.Accessor
 import Yi.Buffer
 import Yi.Buffer.Normal
 import Data.Maybe
+import Data.Char
 
 import Control.Monad
 import Control.Applicative
 
 keymap :: Keymap
-keymap = selfInsertKeymap <|> emacsKeys  <|> completionKm
+keymap = selfInsertKeymap isDigit <|> (readArgC >> (selfInsertKeymap (not . isDigit) <|> emacsKeys  <|> completionKm))
 
-selfInsertKeymap :: Keymap
-selfInsertKeymap = do
+
+selfInsertKeymap :: (Char -> Bool) -> Keymap
+selfInsertKeymap except = do
   c <- printableChar
+  when (not . except $ c) empty -- 
   write (adjBlock 1 >> insertSelf c)
+
 
 completionKm :: Keymap
 completionKm = do some (adjustPriority (-1) (meta (char '/') ?>>! wordComplete))
@@ -75,7 +79,7 @@ deleteB' = do
   (adjBlock (-1) >> withBuffer (deleteN 1))
 
 emacsKeys :: Keymap
-emacsKeys =
+emacsKeys = 
   choice [ -- First all the special key bindings
            spec KTab            ?>>! (adjIndent IncreaseCycle)
          , (shift $ spec KTab)  ?>>! (adjIndent DecreaseCycle)
@@ -122,7 +126,6 @@ emacsKeys =
          , ctrlCh 'r'           ?>>  (isearchKeymap Backward)
          , ctrlCh 's'           ?>>  (isearchKeymap Forward)
          , ctrlCh 't'           ?>>! (repeatingArg $ swapB)
-         , ctrlCh 'u'           ?>>  readArgC
          , ctrlCh 'v'           ?>>! scrollDownE
          , ctrlCh 'w'           ?>>! killRegion
          , ctrlCh 'y'           ?>>! yankE
