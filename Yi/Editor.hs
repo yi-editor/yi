@@ -18,11 +18,8 @@ import Yi.Buffer.Implementation (Update(..), updateIsDelete)
 import Yi.Buffer.HighLevel (botB)
 import Yi.Buffer.Basic
 import Yi.Regex (SearchExp)
-import Control.Applicative
 import Yi.Config
-import Yi.Debug
 import Yi.Monad
-import Yi.Accessor
 import Yi.Dynamic
 import Yi.KillRing
 import Yi.Window

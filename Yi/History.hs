@@ -13,7 +13,6 @@ import Data.List
 import Data.Dynamic
 import Yi.Dynamic
 import Yi.Editor
-import Yi.Accessor
 import qualified Data.Map as M
 import Yi.Prelude 
 import Prelude (maybe)
