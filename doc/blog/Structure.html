@@ -1,0 +1,53 @@
+This is a first post in a series where I will explain the basics of
+Yi. In this post I'll give a very high-level view of Yi's structure.
+
+The code can be categorized into four parts:
+
+<ul>
+
+  <li> Actions: these are operation that have some effect on
+  the editor state.  This can be opening a new file, or moving the
+  cursor in the current buffer.
+
+  <li> Keymaps: this code governs how the user input maps to
+   actions. Yi comes with keymaps for emacs and vi emulation.
+
+  <li> UI: the code for rendering the editor state, and getting the
+  stream of input events from the user. Yi comes with console, gtk and
+  cocoa UI.
+  
+  <li> Glue: ties the knot between Keymaps and UI.
+
+</ul>
+
+The structure described above is very flexible: there is very low
+coupling between layers. Indeed, one can easily swap out a component
+for another in the same category. For example, the user can choose
+between various UI components and key-bindings. The various DSLs have
+composability properties, and this makes convenient to extend and
+configure the editor.
+
+The "actions" part makes up the most of the editor code. This part is
+structured around a stack of three monadic, embedded DSLs.
+
+<ul>
+
+  <li>BufferM: A DSL for all buffer-local operations, like insertion
+  and deletion of text, and annotation of buffer contents. It can be
+  understood as a monad that encapsulates the state of one
+  buffer.
+  
+  <li>EditorM: A DSL for editor-level operations, e.g., opening and
+  closing windows and buffers. Operations involving more than one
+  buffer are handled at this level too.
+
+  <li>YiM: A DSL for IO-level operations. There, one can operate on
+  files, processes, etc.  This is the only level where IO can be
+  done.
+
+</ul>
+
+In the next post we'll use this knowledge and learn how to configure
+Yi.
+
+
