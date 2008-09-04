@@ -10,6 +10,7 @@ data UI = UI
      end                   :: IO (),             -- ^ Clean up
      suspend               :: IO (),             -- ^ Suspend (or minimize) the program
      refresh               :: Editor -> IO (),   -- ^ Refresh the UI with the given state
+     userForceRefresh      :: IO (),             -- ^ User force-refresh (in case the screen has been messed up from outside)
      prepareAction         :: IO (EditorM ()),   -- ^ Ran before an action is executed
      reloadProject         :: FilePath -> IO ()  -- ^ Reload cabal project views
     }

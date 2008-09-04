@@ -39,7 +39,8 @@ import qualified Yi.UI.Common as Common
 import Yi.Config
 import Yi.Window
 import Yi.Style as Style
-import Graphics.Vty as Vty
+import Graphics.Vty as Vty hiding (refresh)
+import qualified Graphics.Vty as Vty
 
 import Yi.UI.Utils
 import Yi.UI.TabBar
@@ -65,6 +66,7 @@ data UI = UI {
              ,uiEditor  :: IORef Editor     -- ^ Copy of the editor state, local to the UI
              ,config  :: Config
              }
+
 mkUI :: UI -> Common.UI
 mkUI ui = Common.UI 
   {
@@ -73,6 +75,7 @@ mkUI ui = Common.UI
    Common.suspend        = raiseSignal sigTSTP,
    Common.refresh        = scheduleRefresh ui,
    Common.prepareAction  = prepareAction ui,
+   Common.userForceRefresh = userForceRefresh ui,
    Common.reloadProject  = \_ -> return ()
   }
 
@@ -97,7 +100,7 @@ start cfg ch _outCh editor = do
                 event <- getEvent v
                 case event of 
                   (EvResize x y) -> do logPutStrLn $ "UI: EvResize: " ++ show (x,y)
-                                       writeIORef sz (y,x) >> readRef (uiEditor result) >>= refresh result >> getKey
+                                       writeIORef sz (y,x) >> readRef (uiEditor result) >>= Yi.UI.Vty.refresh result >> getKey
                   _ -> return (fromVtyEvent event)
           forkIO $ getcLoop
           return (mkUI result)
@@ -208,7 +211,7 @@ refresh ui e = do
                        Just (y,x) -> Cursor x (y + WS.current startXs) 
                        -- Add the position of the window to the position of the cursor
                        Nothing -> NoCursor
-                       -- This can happen if the user resizes the window. 
+                       -- This case can occur if the user resizes the window. 
                        -- Not really nice, but upon the next refresh the cursor will show.
                        }
 
@@ -403,6 +406,8 @@ withStyle sty str = renderBS (styleToAttr sty attr) (B.pack str)
 
 ------------------------------------------------------------------------
 
+userForceRefresh :: UI -> IO ()
+userForceRefresh = Vty.refresh . vty
 
 -- | Schedule a refresh of the UI.
 scheduleRefresh :: UI -> Editor -> IO ()

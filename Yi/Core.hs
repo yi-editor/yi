@@ -22,6 +22,7 @@ module Yi.Core
 
   , refreshEditor       -- :: YiM ()
   , suspendEditor       -- :: YiM ()
+  , userForceRefresh  
 
   -- * Global editor actions
   , msgEditor           -- :: String -> YiM ()
@@ -343,3 +344,6 @@ withSyntax f = do
             b <- withEditor Editor.getBuffer
             act <- withGivenBuffer b $ gets (withSyntax0 f)
             runAction $ makeAction $ act
+
+userForceRefresh :: YiM ()
+userForceRefresh = withUI UI.userForceRefresh

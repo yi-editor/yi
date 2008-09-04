@@ -125,6 +125,7 @@ emacsKeys univArg =
          , ctrlCh 'i'           ?>>! (adjIndent IncreaseOnly)
          , ctrlCh 'j'           ?>>! (repeatingArg $ insertB '\n')
          , ctrlCh 'k'           ?>>!  killLineE
+         , ctrlCh 'l'           ?>>! userForceRefresh
          , ctrlCh 'm'           ?>>! (repeatingArg $ insertB '\n')
          , ctrlCh 'n'           ?>>! (repeatingArg $ moveB VLine Forward)
          , ctrlCh 'o'           ?>>! (repeatingArg (insertB '\n' >> leftB))
