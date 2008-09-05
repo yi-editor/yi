@@ -100,6 +100,9 @@ emacsKeys univArg =
          , spec KPageDown       ?>>! (repeatingArg downScreenB)
          , spec KPageUp         ?>>! (repeatingArg upScreenB)
 
+         , shift (spec KUp)     ?>>! (repeatingArg (scrollB (-1)))
+         , shift (spec KDown)   ?>>! (repeatingArg (scrollB 1))
+
          -- All the keybindings of the form 'Ctrl + special key'
          , (ctrl $ spec KLeft)  ?>>! (repeatingArg prevWordB)
          , (ctrl $ spec KRight) ?>>! (repeatingArg nextWordB)
