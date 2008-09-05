@@ -82,7 +82,7 @@ cleverMode = emptyMode
  }
 
 -- | "Clever" hasell mode, using the 
--- preciseMode :: Mode [Hask.Tree TT]
+preciseMode :: Mode (Hask.Tree TT)
 preciseMode = emptyMode 
   {
     modeName = "precise haskell",
