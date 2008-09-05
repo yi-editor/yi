@@ -1,0 +1,40 @@
+
+
+* The need for incremental parsing
+
+Incremental
+Real-time feedback in editor
+Performance should not depend on size of file
+Combinators
+Users build their own grammars
+Grammars as libraries
+
+* Approach
+
+Online parsers exist
+No need to parse everything to look at the beginning of the tree
+Solves half of the problem
+Improve to solve the 2nd half
+Save intermediate parsing states, resume.
+
+
+* Caching results
+
+pre-compute intermediate results at every “page” – lazily
+incremental update:
+reuse the pre-computed results that don't depend on the input
+recompute the invalidated ones
+tree provided to the user is computed “online”, from the most relevant intermediate result
+
+* Left-eval and Right-eval
+
+* Conclusion
+
+No update of parse tree!
+and still incremental
+No startup cost
+Cool usage of lazy evaluation
+User code must use the parse tree lazily
+No safeguard against carelessness
+
+* References
