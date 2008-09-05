@@ -21,7 +21,7 @@ keymap = selfInsertKeymap <|> move <|> select <|> other
 selfInsertKeymap :: Keymap
 selfInsertKeymap = do
   c <- printableChar
-  write (adjBlock 1 >> insertSelf c)
+  write (adjBlock 1 >> withBuffer (insertB c))
 
 setMark :: BufferM ()
 setMark = do

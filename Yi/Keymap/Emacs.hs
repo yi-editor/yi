@@ -22,7 +22,6 @@ import Yi.Rectangle
 import Yi.TextCompletion
 import Yi.Keymap.Keys
 import Yi.Keymap.Emacs.KillRing
-import Yi.Keymap.Emacs.UnivArgument
 import Yi.Keymap.Emacs.Utils
   ( askQuitEditor
   , adjIndent
@@ -30,11 +29,10 @@ import Yi.Keymap.Emacs.Utils
   , executeExtendedCommandE
   , findFile
   , insertNextC
-  , insertSelf
   , isearchKeymap
   , killBufferE
   , queryReplaceE
-  , readArgC
+  , readUniversalArg
   , scrollDownE
   , scrollUpE
   , cabalConfigureE
@@ -51,15 +49,21 @@ import Data.Char
 import Control.Monad
 import Control.Applicative
 
+argToInt Nothing = 1
+argToInt (Just x) = x
+
 keymap :: Keymap
-keymap = selfInsertKeymap isDigit <|> (readArgC >> (selfInsertKeymap (not . isDigit) <|> emacsKeys  <|> completionKm))
+keymap = selfInsertKeymap Nothing isDigit <|> completionKm <|>
+     do univArg <- readUniversalArg
+        selfInsertKeymap univArg (not . isDigit) <|> emacsKeys univArg
 
 
-selfInsertKeymap :: (Char -> Bool) -> Keymap
-selfInsertKeymap except = do
+selfInsertKeymap :: Maybe Int -> (Char -> Bool) -> Keymap
+selfInsertKeymap univArg except = do
   c <- printableChar
-  when (not . except $ c) empty -- 
-  write (adjBlock 1 >> insertSelf c)
+  when (not . except $ c) empty
+  let n = argToInt univArg
+  write (adjBlock n >> withBuffer (replicateM_ n (insertB c)))
 
 
 completionKm :: Keymap
@@ -78,8 +82,8 @@ deleteB' :: YiM ()
 deleteB' = do
   (adjBlock (-1) >> withBuffer (deleteN 1))
 
-emacsKeys :: Keymap
-emacsKeys = 
+emacsKeys :: Maybe Int -> Keymap
+emacsKeys univArg = 
   choice [ -- First all the special key bindings
            spec KTab            ?>>! (adjIndent IncreaseCycle)
          , (shift $ spec KTab)  ?>>! (adjIndent DecreaseCycle)
@@ -166,6 +170,17 @@ emacsKeys =
              char 'g'           ?>>! gotoLn
          ]
   where
+  withUnivArg :: YiAction (m ()) () => (Maybe Int -> m ()) -> YiM ()
+  withUnivArg cmd = do runAction $ makeAction (cmd univArg)
+
+  repeatingArg :: (Monad m, YiAction (m ()) ()) => m () -> YiM ()
+  repeatingArg f = withIntArg $ \n -> replicateM_ n f
+
+  withIntArg :: YiAction (m ()) () => (Int -> m ()) -> YiM ()
+  withIntArg cmd = withUnivArg $ \arg -> cmd (fromMaybe 1 arg)
+
+
+
   rectangleFuntions = choice [char 'o' ?>>! openRectangle,
                               char 't' ?>>! stringRectangle,
                               char 'k' ?>>! killRectangle,

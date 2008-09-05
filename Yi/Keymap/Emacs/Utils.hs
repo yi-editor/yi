@@ -21,12 +21,11 @@ module Yi.Keymap.Emacs.Utils
   , reloadProjectE
   , executeExtendedCommandE
   , evalRegionE
-  , readArgC
+  , readUniversalArg
   , scrollDownE
   , scrollUpE
   , switchBufferE
   , killBufferE
-  , insertSelf
   , insertNextC
   , findFile
   )
@@ -217,21 +216,11 @@ evalRegionE = do
 -- without a prefix, so M-x ... would be easily implemented
 -- by looking up that module's contents
 
-
-insertSelf :: Char -> YiM ()
-insertSelf = repeatingArg . insertB
-
 -- | Insert next character, "raw"
 insertNextC :: KeymapM ()
 insertNextC = do c <- anyEvent
                  write $ repeatingArg $ insertB (eventToChar c)
 
--- | C-u stuff
-readArgC :: KeymapM ()
-readArgC = pure () <|> do
-    u <- readArg'
-    write $ do setDynamic (UniversalArg (Just u))
-               printMsg $ "arg = " ++ show u
 
 digit :: (Event -> Event) -> KeymapM Char
 digit f = charOf f '0' '9'
@@ -243,9 +232,14 @@ tt = do
   return c
 
 
-readArg' :: KeymapM Int
-readArg' = (ctrlCh 'u' ?>> (read <$> some (digit id) <|> pure 4))
-           <|> (read <$> (some tt))
+-- doing the argument precisely is kind of tedious.
+-- read: http://www.gnu.org/software/emacs/manual/html_node/Arguments.html
+-- and: http://www.gnu.org/software/emacs/elisp-manual/html_node/elisp_318.html
+readUniversalArg :: KeymapM (Maybe Int)
+readUniversalArg = 
+           Just <$> ((ctrlCh 'u' ?>> (read <$> some (digit id) <|> pure 4))
+           <|> (read <$> (some tt)))
+           <|> pure Nothing
            
 
 -- | Open a file using the minibuffer. We have to set up some stuff to allow hints
