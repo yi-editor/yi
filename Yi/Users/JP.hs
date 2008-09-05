@@ -4,13 +4,14 @@ import Yi.Keymap.Emacs (keymap)
 -- import  Yi.Keymap.Cua (keymap)
 
 -- If configured with ghcAPI, Shim Mode can be enabled:
--- import qualified Yi.Mode.Shim as Shim
+import qualified Yi.Mode.Shim as Shim
 import Yi.Mode.Haskell as Haskell
 import Data.List (drop)
 import Yi.Prelude
 import Prelude ()
 import Yi.Keymap.Keys
 import Yi.String
+import Data.Char
 
 increaseIndent :: BufferM ()
 increaseIndent = modifyExtendedSelectionB Line $ mapLines (' ':)
@@ -115,6 +116,20 @@ extraInput
     = choice [pString ('\\':i) >>! insertN o | (i,o) <- greek] <|> -- greek letters, LaTeX-style
       choice [spec KEsc ?>> pString i >>! insertN o | (i,o) <- symbols] 
 
+parensInput :: Keymap
+parensInput
+    = choice [char open ?>>! parenIns open close | (open,close) <- 
+              [('(',')'),
+               ('[',']'),
+               ('{','}')               
+              ]
+             ]
+
+parenIns :: Char -> Char -> BufferM ()
+parenIns open close = do
+    x <- readB
+    if isSpace x then insertN [open,close] >> leftB else insertN [open]
+
 main :: IO ()
 main = yi $ defaultConfig {
                            configKillringAccumulate = True,
@@ -123,7 +138,7 @@ main = yi $ defaultConfig {
                              { configFontSize = Just 10 
                              -- , configStyle = darkBlueTheme
                              },
-                           defaultKm = extraInput <|| keymap
+                           defaultKm = choice [extraInput, parensInput] <|| keymap
                               <|> (ctrl (char '>') ?>>! increaseIndent)
                               <|> (ctrl (char '<') ?>>! decreaseIndent)
                           }
