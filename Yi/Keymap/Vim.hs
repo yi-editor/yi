@@ -17,6 +17,7 @@ import Prelude (maybe, length, filter, map, drop, break, uncurry)
 import Data.Char
 import Data.List (sort, nub)
 import Data.Dynamic
+import Data.Prototype
 
 import Control.Exception    ( ioErrors, try, evaluate )
 import Control.Monad.State hiding (mapM_, mapM)
@@ -66,8 +67,8 @@ data ViMove = Move TextUnit Direction
             | NoMove
 
 
-mkKeymap :: (ModeMap -> ModeMap) -> VimMode
-mkKeymap = v_top_level . fix
+mkKeymap :: (Proto ModeMap) -> VimMode
+mkKeymap = v_top_level . extractValue
 
 keymap :: VimMode
 keymap = mkKeymap defKeymap
@@ -84,8 +85,10 @@ data ModeMap = ModeMap {
       v_ins_char :: VimMode
     }
 
-defKeymap :: ModeMap -> ModeMap
-defKeymap self = ModeMap {
+defKeymap :: Proto ModeMap
+defKeymap = Proto template
+  where 
+    template self = ModeMap {
                    v_top_level = def_top_level,
                    v_ins_char = def_ins_char
                  }

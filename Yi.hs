@@ -14,6 +14,7 @@ module Yi
   (
     module Control.Monad, -- since all actions are monadic, this is very useful to combine them.
     module Control.Applicative, -- same reasoning
+    module Data.Prototype, -- prototypes are mainly there for config; makes sense to export them.
     module Yi.Boot,
     module Yi.Buffer,
     module Yi.Buffer.HighLevel,
@@ -35,6 +36,7 @@ module Yi
 
 import Control.Applicative
 import Control.Monad hiding (mapM_, mapM)
+import Data.Prototype
 import Yi.Boot
 import Yi.Buffer
 import Yi.Buffer.HighLevel

@@ -33,11 +33,11 @@ main = yi $ defaultConfig
             },
         configUI = (configUI defaultConfig)
             {
-                configStyle = darkBlueTheme
+                configTheme = darkBlueTheme
             }
     }
 
-extendedVimKeymap self = super
+extendedVimKeymap = defKeymap `override` \super _ -> super
     {
         v_ins_char = 
             (deprioritize $ v_ins_char super) 
@@ -76,5 +76,5 @@ extendedVimKeymap self = super
                     ]
                 ]
     }
-    where super = defKeymap self
+
 
