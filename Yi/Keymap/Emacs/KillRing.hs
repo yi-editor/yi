@@ -4,7 +4,6 @@
 
 module Yi.Keymap.Emacs.KillRing where
 
-import Yi.Keymap.Emacs.UnivArgument
 import Yi.Buffer.Region
 import Yi.Keymap
 import Yi.Buffer
@@ -23,8 +22,8 @@ killRegion :: BufferM ()
 killRegion = deleteRegionB =<< getSelectRegionB
 
 -- | C-k
-killLineE :: YiM ()
-killLineE = withUnivArg $ \a -> withBuffer $ case a of
+killLineE :: Maybe Int -> YiM ()
+killLineE a = withBuffer $ case a of
                Nothing -> killRestOfLine
                Just n -> replicateM_ (2*n) killRestOfLine
 

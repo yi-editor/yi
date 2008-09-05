@@ -332,7 +332,7 @@ executable yi
            Yi.Buffer.Normal, Yi.Buffer.Region, Yi.Completion, Yi.Core,
            Yi.Debug, Yi.Dired, Yi.Dynamic, Yi.Editor, Yi.Eval, Yi.Event, Data.ByteRope, Yi.History,
            Yi.Interact, Yi.Keymap, Yi.Keymap.Completion,
-           Yi.Keymap.Emacs.KillRing, Yi.Keymap.Emacs.UnivArgument,
+           Yi.Keymap.Emacs.KillRing, 
            Yi.Keymap.Emacs.Utils, Yi.Main, Yi.MkTemp, Yi.Monad, Yi.Process,
            Yi.Search, Yi.String, Yi.Style, Yi.Templates, Yi.TextCompletion,
            Yi.Undo, Yi.Window, Yi.WindowSet

@@ -3,7 +3,6 @@
 -- Copyright (c) 2004-5 Don Stewart - http://www.cse.unsw.edu.au/~dons
 -- Copyright (c) 2008 Nicolas Pouillard
 
-
 -- | Vim keymap for Yi. Emulates vim :set nocompatible
 module Yi.Keymap.Vim (keymap, 
                       viWrite, 

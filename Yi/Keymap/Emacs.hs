@@ -39,6 +39,7 @@ import Yi.Keymap.Emacs.Utils
   , switchBufferE
   , withMinibuffer
   , askSaveEditor
+  , argToInt
   )
 import Yi.Accessor
 import Yi.Buffer
@@ -48,9 +49,6 @@ import Data.Char
 
 import Control.Monad
 import Control.Applicative
-
-argToInt Nothing = 1
-argToInt (Just x) = x
 
 keymap :: Keymap
 keymap = selfInsertKeymap Nothing isDigit <|> completionKm <|>
@@ -124,17 +122,17 @@ emacsKeys univArg =
          , ctrlCh 'g'           ?>>! (setVisibleSelection False)               
          , ctrlCh 'i'           ?>>! (adjIndent IncreaseOnly)
          , ctrlCh 'j'           ?>>! (repeatingArg $ insertB '\n')
-         , ctrlCh 'k'           ?>>!  killLineE
+         , ctrlCh 'k'           ?>>! killLineE univArg
          , ctrlCh 'l'           ?>>! userForceRefresh
          , ctrlCh 'm'           ?>>! (repeatingArg $ insertB '\n')
          , ctrlCh 'n'           ?>>! (repeatingArg $ moveB VLine Forward)
          , ctrlCh 'o'           ?>>! (repeatingArg (insertB '\n' >> leftB))
          , ctrlCh 'p'           ?>>! (repeatingArg $ moveB VLine Backward)
-         , ctrlCh 'q'           ?>>  insertNextC
+         , ctrlCh 'q'           ?>>  insertNextC univArg
          , ctrlCh 'r'           ?>>  (isearchKeymap Backward)
          , ctrlCh 's'           ?>>  (isearchKeymap Forward)
          , ctrlCh 't'           ?>>! (repeatingArg $ swapB)
-         , ctrlCh 'v'           ?>>! scrollDownE
+         , ctrlCh 'v'           ?>>! scrollDownE univArg
          , ctrlCh 'w'           ?>>! killRegion
          , ctrlCh 'y'           ?>>! yankE
          , ctrlCh 'z'           ?>>! suspendEditor
@@ -146,7 +144,7 @@ emacsKeys univArg =
          , ctrlCh 'x' ?>>      ctrlX
           
          -- All The key-bindings of the form M-c where 'c' is some character.
-         , metaCh 'v'           ?>>! scrollUpE
+         , metaCh 'v'           ?>>! scrollUpE univArg
          , metaCh '!'           ?>>! shellCommandE
          , metaCh 'p'           ?>>! cabalConfigureE
          , metaCh '<'           ?>>! (repeatingArg topB)

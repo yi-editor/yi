@@ -9,7 +9,9 @@
 -}
 
 module Yi.Keymap.Emacs.Utils
-  ( askQuitEditor
+  ( UnivArgument
+  , argToInt
+  , askQuitEditor
   , askSaveEditor
   , modifiedQuitEditor
   , adjIndent
@@ -56,7 +58,6 @@ import Yi.Editor
 import Yi.Eval
 import Yi.File
 import Yi.Keymap.Keys
-import Yi.Keymap.Emacs.UnivArgument
 import Yi.MiniBuffer
 import Yi.Misc
 import Yi.Regex
@@ -64,6 +65,8 @@ import Yi.Search
 import Yi.Window
 import Yi.Prelude
 {- End of Module Imports -}
+
+type UnivArgument = Maybe Int
 
 ----------------------------
 -- | Quits the editor if there are no unmodified buffers
@@ -217,9 +220,15 @@ evalRegionE = do
 -- by looking up that module's contents
 
 -- | Insert next character, "raw"
-insertNextC :: KeymapM ()
-insertNextC = do c <- anyEvent
-                 write $ repeatingArg $ insertB (eventToChar c)
+insertNextC :: UnivArgument -> KeymapM ()
+insertNextC a = do c <- anyEvent
+                   write $ replicateM_ (argToInt a) $ insertB (eventToChar c)
+
+-- | Convert the universal argument to a number of repetitions
+argToInt :: UnivArgument -> Int
+argToInt a = case a of
+    Nothing -> 1
+    Just x -> x
 
 
 digit :: (Event -> Event) -> KeymapM Char
@@ -258,15 +267,13 @@ findFile = do maybePath <- withBuffer $ getA fileA
 findFileHint :: String -> String -> YiM String
 findFileHint startPath s = show . snd <$> getAppropriateFiles (Just startPath) s
 
-scrollDownE :: YiM ()
-scrollDownE = withUnivArg $ \a -> withBuffer $
-              case a of
+scrollDownE :: UnivArgument -> BufferM ()
+scrollDownE a = case a of
                  Nothing -> downScreenB
                  Just n -> replicateM_ n lineDown
 
-scrollUpE :: YiM ()
-scrollUpE = withUnivArg $ \a -> withBuffer $
-              case a of
+scrollUpE :: UnivArgument -> BufferM ()
+scrollUpE a = case a of
                  Nothing -> upScreenB
                  Just n -> replicateM_ n lineUp
 
