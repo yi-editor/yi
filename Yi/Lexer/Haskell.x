@@ -130,7 +130,7 @@ haskell :-
 
  \' ($graphic # [\'\\] | " " | @escape) \'      { c CharTok }
  \" @string* \"                                 { c StringTok }
- .                                              { c Operator }
+ .                                              { c Unrecognized }
 }
 
 {
@@ -150,7 +150,7 @@ data Token = Number | CharTok | StringTok | VarIdent | ConsIdent
            | Reserved !ReservedType | ReservedOp !OpType | Special Char
            | ConsOperator | Operator
            | Comment !CommentType
-           | CppDirective
+           | CppDirective | Unrecognized
              deriving (Eq, Show)
 
 tokenToStyle :: Token -> StyleName
@@ -167,6 +167,7 @@ tokenToStyle tok = case tok of
   ConsOperator -> operatorStyle
   Operator     -> operatorStyle
   Comment _    -> commentStyle
+  Unrecognized -> errorStyle
 
 startsLayout (Reserved OtherLayout) = True
 startsLayout (Reserved Where) = True
