@@ -173,6 +173,15 @@ defKeymap = Proto template
      gen_cmd_move :: KeymapM (RegionStyle, ViMove)
      gen_cmd_move = choice
         [ char '0' ?>> return (Exclusive, viMoveToSol)
+        , char '%' ?>> return (Exclusive, ArbMove (do
+                           c <- readB
+                           case c of '(' -> goUnmatchedB Forward  '(' ')'
+                                     ')' -> goUnmatchedB Backward '(' ')'
+                                     '{' -> goUnmatchedB Forward  '{' '}'
+                                     '}' -> goUnmatchedB Backward '{' '}'
+                                     '[' -> goUnmatchedB Forward  '[' ']'
+                                     ']' -> goUnmatchedB Backward '[' ']'
+                                     _   -> fail $ "Not matchable character: " ++ [c]))
         , do 
           cnt <- count
           let x = maybe 1 id cnt
