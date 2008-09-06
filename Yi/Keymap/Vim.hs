@@ -758,8 +758,10 @@ defKeymap = Proto template
                   <|| (textChar >>= write . insertB)
            completeMinibuffer = withBuffer elemsB >>= ex_complete >>= withBuffer . insertN
            exSimpleComplete compl s = drop (length s) <$> simpleComplete compl s
+           f_complete = exSimpleComplete (matchingFileNames Nothing)
            b_complete = exSimpleComplete matchingBufferNames
-           ex_complete ('e':' ':f)                             = exSimpleComplete (matchingFileNames Nothing) f
+           ex_complete ('e':' ':f)                             = f_complete f
+           ex_complete ('t':'a':'b':'e':' ':f)                 = f_complete f
            ex_complete ('b':' ':f)                             = b_complete f
            ex_complete ('b':'u':'f':'f':'e':'r':' ':f)         = b_complete f
            ex_complete ('b':'d':' ':f)                         = b_complete f
@@ -908,6 +910,8 @@ defKeymap = Proto template
 
            fn ('y':'i':' ':s) = execEditorAction s
            fn "tabnew"     = withEditor newTabE
+           fn ('t':'a':'b':'e':' ':f) = do withEditor newTabE
+                                           fnewE f
            fn s            = errorEditor $ "The "++show s++ " command is unknown."
 
 
