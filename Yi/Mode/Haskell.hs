@@ -17,7 +17,7 @@ module Yi.Mode.Haskell
    ghciLoadBuffer
   ) where
 
-import Data.List (isPrefixOf, dropWhile, takeWhile, filter, groupBy, drop)
+import Data.List (isPrefixOf, dropWhile, takeWhile, filter, drop)
 import Data.Maybe (maybe, listToMaybe, isJust)
 import Data.Typeable
 import Prelude (unwords)
@@ -188,12 +188,19 @@ allToks = concatMap toList
 tokText :: Tok t -> BufferM String
 tokText = readRegionB . tokRegion
 
+isLineComment = (Just Haskell.Line ==) . tokTyp . tokT
+
+contiguous a b = lb - la <= 1
+    where [la,lb] = fmap (posnLine . tokPosn) [a,b]
+
+coalesce a b = isLineComment a && isLineComment b && contiguous a b
+
 cleverPrettify :: Expr TT -> BufferM ()
 cleverPrettify e = do
   pnt <- pointB
   let toks = allToks e
-      groups = groupBy ((==) `on` (tokTyp . tokT)) toks
-      isCommentGroup g = (tokTyp $ tokT $ head $ g) `elem` fmap Just [Haskell.Line] --  Haskell.Text]
+      groups = groupBy' coalesce toks
+      isCommentGroup g = (tokTyp $ tokT $ head $ g) `elem` fmap Just [Haskell.Line] 
       thisCommentGroup = listToMaybe $ dropWhile ((pnt >) . tokEnd . last) $ filter isCommentGroup $ groups
                          -- FIXME: laziness
   case thisCommentGroup of
