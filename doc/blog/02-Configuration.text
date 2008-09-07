@@ -1,29 +1,42 @@
-<pre>
-import Yi
-import Yi.Keymap.Emacs as Emacs
-import Yi.String (modifyLines)
 
-increaseIndent :: BufferM ()
-increaseIndent = do
-  r <- getSelectRegionB 
-  r' <- unitWiseRegion Line r 
-     -- extend the region to full lines
-  modifyRegionB (modifyLines (' ':)) r'
-     -- prepend each line with a space
-                                     
-main :: IO ()
-main = yi $ defaultConfig {
-  defaultKm = 
-     -- take the default Emacs keymap...
-     Emacs.keymap <|> 
-     -- ... and bind the function to 'Ctrl->'
-      (ctrl (char '>') ?>>! increaseIndent)
- }
-</pre>
+In this post I'll give a walkthrough to a simple Yi configuration.
 
-In the above example, the user has defined a new <span style="font-style: italic;">BufferM</span> action, <span style="font-style: italic;">increaseIndent</span>, using the library of functions available in Yi. Then, he has created a new key-binding for it. Using the disjunction operator, this binding has been merged with the emacs emulation key-map. A more typical example would involve many more functions, and could call various Haskell packages to make their capabilities available within the editor, but the structure would remain essentially the same.
 
-Yi is not so much an editor than a rich library for building editors. Indeed, this is exactly how users create extended versions of Yi: they create a program from the ground up by combining the higher-order functions and (lazy) data structures offered in the Yi library. This configuration model is not unique to Yi: has already been used with success in the XMonad window manager.
+    import Yi
+    import Yi.Keymap.Emacs as Emacs
+    import Yi.String (modifyLines)
+    
+    increaseIndent :: BufferM ()
+    increaseIndent = do
+      r <- getSelectRegionB 
+      r' <- unitWiseRegion Line r 
+         -- extend the region to full lines
+      modifyRegionB (modifyLines (' ':)) r'
+         -- prepend each line with a space
+                                         
+    main :: IO ()
+    main = yi $ defaultConfig {
+      defaultKm = 
+         -- take the default Emacs keymap...
+         Emacs.keymap <|> 
+         -- ... and bind the function to 'Ctrl->'
+          (ctrl (char '>') ?>>! increaseIndent)
+     }
+
+
+In the above example, the user has defined a new _BufferM_ action,
+_increaseIndent_, using the library of functions available in Yi. Then, he
+has created a new key-binding for it. Using the disjunction operator, this
+binding has been merged with the emacs emulation key-map. A more typical example
+would involve many more functions, and could call various Haskell packages to
+make their capabilities available within the editor, but the structure would
+remain essentially the same.
+
+Yi is not so much an editor than a rich library for building editors. Indeed,
+this is exactly how users create extended versions of Yi: they create a program
+from the ground up by combining the higher-order functions and (lazy) data
+structures offered in the Yi library. This configuration model is not unique to
+Yi: has already been used with success in the XMonad window manager.
 
 
 

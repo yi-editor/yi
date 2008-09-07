@@ -1,12 +1,61 @@
 
-Prototypes: Encoding Object Oriented inheritance in Haskell
+% Prototypes: Encoding Object Oriented inheritance in Haskell
 
-* Reminder of inheritance.
+In this post I will sketch an encoding of OO-style inheritance in Haskell, and
+how this can be used to our advantage to write code that can be customized.
 
-* Encoding prototypes
+This can serve as an introduction to the concepts defined in the module
+Data.Prototype.
 
-** Features:
-  lazy eval
+# Inheritance: a reminder
 
-* Conclusion
+Inheritance can create structures which are difficult to understand. Since a
+given method call can call dispatch to a number of methods at runtime, tracking
+what's going on might be tricky.
+
+Sometimes however, this is exactly the construct we need.
+
+Imagine you have the following piece of code
+
+x = f a b c 
+  where a = ... b ...
+        b = ... a ...
+        c = ... a ...
+
+that is, 'a' is defined in terms of 'c', and 'c' is buried deep down into 
+a where clause.  
+
+You realise that you'd like users to be able to change the value of either a, b
+or c. Worse, the new value should be defined in term of the the old one.
+
+This situation seems to cry for inheritance... What can we do if the management
+has made the decision that all development would be done with a with a purely
+functional language like haskell?
+
+# Encoding prototypes
+
+All is not lost! TAPL (paragraph 18.10) tells us that 
+inheritance can be encoded as _open recursion_. The trick is to make the
+reference to the "self" object explicit.
+
+x self = f (a self) (b self) (c self)
+  where a = ... (b self) ...
+        a = ... (b self) ...
+        a = ... (c self) ...
+
+
+we can retrieve our "old" x by taking the fixpoint of the new x.
+Of course, this works only because Haskell is lazy. Indeed, if the fields
+of the record are marked strict, this ceases to work.
+
+And we can customize the value as follows:
+
+
+
+# Conclusion
+
+Despite haskell lacking inheritance, we see that the basic concepts of lambda expression
+and lazy evaluation allow to provide a very light encoding for it.
+
+
 

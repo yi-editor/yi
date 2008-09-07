@@ -1,40 +1,73 @@
+ 
 
+# Why another parsing library?
 
-* The need for incremental parsing
+Why bothering developing another parsing framework while there exist plenty
+already?
 
-Incremental
-Real-time feedback in editor
-Performance should not depend on size of file
-Combinators
-Users build their own grammars
-Grammars as libraries
+First, since we want to parse many languages, in many flavours, we want to be
+able to reuse pieces of grammars. Since we are using Haskell, the easiest way to
+achieve this is to through a parser-combinator library.
 
-* Approach
+Second, we want to give timely feedback to users. Therefore, the parser has to
+be efficient. In particular, responsivity should not depend on the length of
+file. On the other hand, the input file will change incrementally (as the user
+edits it), and the parser should take advantage of this. It should reuse
+previous results to speed up the parse.
 
-Online parsers exist
-No need to parse everything to look at the beginning of the tree
-Solves half of the problem
-Improve to solve the 2nd half
-Save intermediate parsing states, resume.
+Third, the parser must gracefully handle errors in the input: while files are
+being edited, they will inevitably contain syntactically incorrect programs at
+several moments.
 
+No parsing framework combining these characteristics exists.
 
-* Caching results
+# Approach
 
-pre-compute intermediate results at every “page” – lazily
-incremental update:
-reuse the pre-computed results that don't depend on the input
-recompute the invalidated ones
-tree provided to the user is computed “online”, from the most relevant intermediate result
+Hughes and Swierstra have shown how [online parsers][1] can be constructed.
+An _online_ parser takes advantage of lazy evaluation: the input is analysed
+only as far as needed to produce the part of the result that is forced.
 
-* Left-eval and Right-eval
+Effectively, this solves part of the incremental parsing problem: since the
+user can see only a page of text at a time, the editor will only force so much
+of the result tree, and only the corresponding part of the input will be
+analysed, making the parser response time independent of the lenght of the
+input.
 
-* Conclusion
+This does not completely solve the problem. If the user views the end of the
+file, the whole input will have to be analysed. Indeed, forcing the rightmost
+tip of the result tree will force the root as well.
 
-No update of parse tree!
-and still incremental
-No startup cost
-Cool usage of lazy evaluation
-User code must use the parse tree lazily
-No safeguard against carelessness
+# Caching results
 
-* References
+The proposed solution is to cache intermediate parsing results.
+For given positions in the input (say every page), we will store a partially
+evaluated state of the parsing automaton. Whenever the input is modified,
+the new parsing result will be computed by using the most relevant cached state,
+and applying the new input to it. The cached states that became invalidated will
+also be recomputed on the basis of the most relevant state. 
+
+Of course, the cached states will only be computed lazily, so that no cost is 
+paid for cached states that will be discarded.
+
+# Conclusion
+
+The parsing algorithm sketched above has sevaral advantages:
+
+* The design is relatively straightforward, and adds only a couple hundred
+lines of code compared to the polish parsers of Hughes and Swierstra.
+
+* There is no startup cost that a non-online incremental parser would have.
+
+* The caching strategy is independent of the underlying parsing
+  automaton. We only require it to be appliable partially to the input.
+
+Its notable that design has a strong functional flavour:
+
+* We never update a parse tree (no zipper) and still achieve incremental parsing.
+* We take advantage of lazy evaluation in a non trivial way.
+
+The main drawback of that solution is that the user code must use the parse
+tree lazily, and there is no way to enforce this in any current implementation
+of Haskell.
+
+[1]: http://www.cs.uu.nl/groups/ST/Software/UU_Parsing/p224-swierstra.pdf 
