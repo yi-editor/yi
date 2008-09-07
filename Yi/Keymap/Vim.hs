@@ -99,7 +99,7 @@ defKeymap = Proto template
 
      -- | Leave a mode. This always has priority over catch-all actions inside the mode.
      leave :: VimMode
-     leave = oneOf [spec KEsc, ctrl $ char 'c'] >> adjustPriority (-1) (write msgClr)
+     leave = oneOf [spec KEsc, ctrl $ char 'c'] >> adjustPriority (-1) >> (write msgClr)
 
      -- | Insert mode is either insertion actions, or the meta (\ESC) action
      ins_mode :: VimMode
@@ -677,7 +677,7 @@ defKeymap = Proto template
 
      changeCmds :: I Event Action ()
      changeCmds =
-       adjustPriority (-1)
+       adjustPriority (-1) >>
          ((char 'w' ?>> change NoMove Exclusive (GenMove ViWord (Forward, OutsideBound) Forward)) <|>
           (char 'W' ?>> change NoMove Exclusive (GenMove ViWORD (Forward, OutsideBound) Forward))) <|>
        (char 'c' ?>> change viMoveToSol LineWise viMoveToEol) <|>
@@ -724,7 +724,7 @@ defKeymap = Proto template
      -- --------------------
      -- | Keyword
      kwd_mode :: VimMode
-     kwd_mode = some ((ctrl $ char 'n') ?>> adjustPriority (-1) (write wordComplete)) >> (write resetComplete)
+     kwd_mode = some ((ctrl $ char 'n') ?>> (write wordComplete)) >> deprioritize >> (write resetComplete)
                 -- 'adjustPriority' is there to lift the ambiguity between "continuing" completion
                 -- and resetting it (restarting at the 1st completion).
 

@@ -67,7 +67,7 @@ import qualified Data.DelayList as DelayList
 import Data.List (intercalate)
 import Data.Maybe
 import qualified Data.Map as M
-import Data.Foldable (mapM_, all)
+import Data.Foldable (mapM_)
 
 import System.IO (Handle, hWaitForInput, hPutStr)
 import System.Exit
@@ -149,14 +149,14 @@ dispatch ev =
              -- failures in one iteration can yield to jump to the next iteration seamlessly.
              -- eg. in emacs keybinding, failures in incremental search, like <left>, will "exit"
              -- incremental search and immediately move to the left.
-             p = case p0 of
-                   I.End  -> freshP
-
-                   I.Fail -> freshP
+             p = case I.computeState p0 of
+                   I.Dead  -> freshP
                    _      -> p0
              (actions, p') = I.processOneEvent p ev
-             possibilities = I.possibleActions p'
-             ambiguous = not (null possibilities) && all isJust possibilities
+             state = I.computeState p'
+             ambiguous = case state of 
+                 I.Ambiguous _ -> True
+                 _ -> False
          setA keymapProcessA (if ambiguous then freshP else p')
          let actions0 = case p' of 
                           I.Fail -> [makeAction $ do

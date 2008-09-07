@@ -65,7 +65,8 @@ selfInsertKeymap univArg except = do
 
 
 completionKm :: Keymap
-completionKm = do some (adjustPriority (-1) (meta (char '/') ?>>! wordComplete))
+completionKm = do some ((meta (char '/') ?>>! wordComplete))
+                  deprioritize
                   write resetComplete
            -- 'adjustPriority' is there to lift the ambiguity between "continuing" completion
            -- and resetting it (restarting at the 1st completion).

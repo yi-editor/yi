@@ -36,6 +36,7 @@ input (prefix), but produce conflicting output?
 module Yi.Interact
     (
      I, P (Fail, End),
+     InteractState (..),
      MonadInteract (..),
      PEq (..),
      deprioritize,
@@ -43,7 +44,7 @@ module Yi.Interact
      option,
      oneOf,
      processOneEvent,
-     possibleActions,
+     computeState,
      event,
      events,
      choice,
@@ -53,11 +54,13 @@ module Yi.Interact
      eventBetween,
     ) where
 
-import Control.Applicative
 import Control.Arrow (first)
-import Control.Monad.State hiding ( get )
-import Data.List (nubBy)
-
+import Control.Monad.State hiding ( get, mapM )
+import Data.Monoid
+import Yi.Prelude
+import Prelude ()
+import Data.Maybe
+import Data.List (filter, map, groupBy)
 ------------------------------------------------
 -- Classes
 
@@ -71,17 +74,18 @@ class (PEq w, Monad m, Alternative m, Applicative m, MonadPlus m) => MonadIntera
     eventBounds :: Ord e => Maybe e -> Maybe e -> m e
     -- ^ Consumes and returns the next character.
     --   Fails if there is no input left, or outside the given bounds.
-    adjustPriority :: Int -> m a -> m a
+    adjustPriority :: Int -> m ()
 
 
 -------------------------------------------------
 -- State transformation
 
 -- Needs -fallow-undecidable-instances
+-- TODO: abstract over MonadTransformer
 instance MonadInteract m w e => MonadInteract (StateT s m) w e where
     write = lift . write
     eventBounds l h = lift (eventBounds l h)
-    adjustPriority p (StateT f) = StateT (\s -> adjustPriority p (f s))
+    adjustPriority p = lift (adjustPriority p)
 
 instance (MonadInteract m w e) => Alternative (StateT s m) where
     empty = mzero
@@ -101,7 +105,8 @@ data I ev w a where
     Gets :: Ord ev => Maybe ev -> Maybe ev -> I ev w ev
     -- Doc: Accept any character between given bounds. Bound is ignored if 'Nothing'.
     Fails :: I ev w a
-    Writes :: Int -> w -> I ev w ()
+    Writes :: w -> I ev w ()
+    Priority :: Int -> I ev w ()
     Plus :: I ev w a -> I ev w a -> I ev w a
 
 
@@ -126,26 +131,18 @@ instance PEq w => MonadPlus (I event w) where
   mplus = Plus
 
 instance PEq w => MonadInteract (I event w) w event where
-    write = Writes 0
+    write = Writes
     eventBounds = Gets
-    adjustPriority dp i = case i of
-      Returns x -> Returns x
-      Binds x f -> Binds (adjustPriority dp x) (\y -> adjustPriority dp (f y))
-      Gets l h -> Gets l h
-      Fails -> Fails
-      Writes p w -> Writes (p + dp) w
-      Plus a b -> Plus (adjustPriority dp a) (adjustPriority dp b)
-
-
+    adjustPriority dp = Priority dp
 
 
 infixl 3 <||
 
-deprioritize :: (MonadInteract f w e) => f a -> f a
+deprioritize :: (MonadInteract f w e) => f ()
 deprioritize = adjustPriority 1
 
 (<||) :: (MonadInteract f w e) => f a -> f a -> f a
-a <|| b = a <|> (adjustPriority 1 b)
+a <|| b = a <|> ((adjustPriority 1) >> b)
 
 
 
@@ -155,7 +152,8 @@ mkProcess (Returns x) = \fut -> fut x
 mkProcess Fails = (\_fut -> Fail)
 mkProcess (m `Binds` f) = \fut -> (mkProcess m) (\a -> mkProcess (f a) fut)
 mkProcess (Gets l h) = Get l h
-mkProcess (Writes prior w) = \fut -> Write prior w (fut ())
+mkProcess (Writes w) = \fut -> Write w (fut ())
+mkProcess (Priority p) = \fut -> Prior p (fut ())
 mkProcess (Plus a b) = \fut -> Best (mkProcess a fut) (mkProcess b fut)
 
 
@@ -166,7 +164,8 @@ mkProcess (Plus a b) = \fut -> Best (mkProcess a fut) (mkProcess b fut)
 data P event w
     = Ord event => Get (Maybe event) (Maybe event) (event -> P event w)
     | Fail
-    | Write Int w (P event w)  -- low numbers indicate high priority
+    | Write w (P event w)
+    | Prior Int (P event w) -- low numbers indicate high priority
     | Best (P event w) (P event w)
     | End
 
@@ -175,70 +174,72 @@ data P event w
 
 runWrite :: PEq w => P event w -> [event] -> [w]
 runWrite _ [] = []
-runWrite Fail _ = []
-runWrite End _ = []
 runWrite p (c:cs) = let (ws, p') = processOneEvent p c in ws ++ runWrite p' cs
 
 processOneEvent :: PEq w => P event w -> event -> ([w], P event w)
-processOneEvent p e = pullWrites $ simplify $ pushEvent p e
+processOneEvent p e = pullWrites $ pushEvent p e
 
+-- | Push an event in the automaton
 pushEvent :: P ev w -> ev -> P ev w
-
 pushEvent (Best c d) e = Best (pushEvent c e) (pushEvent d e)
-pushEvent (Write p w c) e = Write p w (pushEvent c e)
+pushEvent (Write w c) e = Write w (pushEvent c e)
+pushEvent (Prior p c) e = Prior p (pushEvent c e)
 pushEvent (Get l h f) e = if test (e >=) l && test (e <=) h then f e else Fail
     where test = maybe True
 pushEvent Fail _ = Fail
 pushEvent End _ = End
 
--- | Remove failing cases; fuse writes;
-simplify :: PEq w => P ev w -> P ev w
-simplify (Best c d) = best' c d
-simplify (Write p w c) = case simplify c of
-      Fail -> Fail
-      c' -> Write p w c'
-simplify p = p
+-- | Abstraction of the automaton state.
+data InteractState event w =  Ambiguous [(Int,w,P event w)] | Waiting | Dead | Running w (P event w)
 
-best' :: PEq w => P ev w -> P ev w -> P ev w
-best' c d = best (simplify c) (simplify d)
+instance Monoid (InteractState event w) where
+    -- not used at the moment:
+    mappend (Running w c) _ = Running w c
+    mappend _ (Running w c) = Running w c
+    -- don't die if that can be avoided
+    mappend Dead p = p
+    mappend p Dead = p
+    -- If a branch is not determined, wait for it.
+    mappend Waiting _ = Waiting
+    mappend _ Waiting = Waiting
+    -- ambiguity remains
+    mappend (Ambiguous a) (Ambiguous b) = Ambiguous (a ++ b)
+    mempty = Ambiguous []
+    
 
--- | Pull the most writes from two parallel processes; both are guaranteed not to contain any "Best"
-best :: PEq w => P ev w -> P ev w -> P ev w
-Write p w c  `best` Write q x d
--- Prioritized write:
-    | p < q = Write p w c
-    | p > q = Write q x d
--- Agreeing writes:
-    | equiv w x = Write p w (best' c d)
--- (Disagreeing writes will be delayed)
+-- | find all the writes that are accessible.
+findWrites :: Int -> P event w -> InteractState event w
+findWrites p (Best c d) = findWrites p c `mappend` findWrites p d
+findWrites p (Write w c) = Ambiguous [(p,w,c)]
+findWrites p (Prior dp c) = findWrites (p+dp) c
+findWrites _ Fail = Dead
+findWrites _ End = Dead
+findWrites _ (Get _ _ _) = Waiting
 
--- fail disappears
-Fail       `best` p          = p
-p          `best` Fail       = p
 
--- impossible to pull anything; leave Best constructor
-p          `best` q = Best p q
+computeState :: PEq w => P event w -> InteractState event  w
+computeState a = case findWrites 0 a of
+    Ambiguous actions -> let prior = minimum $ map fst3 $ actions
+                             bests = groupBy (equiv `on` snd3) $ filter ((prior ==) . fst3) actions
+                         in case bests of
+                              [((_,w,c):_)] -> Running w c
+                              _ -> Ambiguous $ map head bests
+    s -> s
+                           
+                           
 
-pullWrites :: P event w -> ([w], P event w)
-pullWrites (Write _ w p) = first (w:) (pullWrites p)
-pullWrites p = ([], p)
+pullWrites :: PEq w => P event w -> ([w], P event w)
+pullWrites a = case computeState a of
+    Running w c -> first (w:) (pullWrites c)
+    _ -> ([], a)
 
--- | Return the list of possible actions to write.
--- 'Nothing' indicates a read.
-possibleActions :: P event w -> [Maybe w]
-possibleActions = nubBy equiv' . helper
-    where helper (Get _ _ _) = [Nothing]
-          helper (Write _ w _) = [Just w]
-          helper (Best p q) = helper p ++ helper q
-          helper _ = []
-          equiv' Nothing Nothing = True
-          equiv' _ _ = False
 
 instance (Show w, Show ev) => Show (P ev w) where
-    show (Get Nothing Nothing p) = "?"
+    show (Get Nothing Nothing _) = "?"
     show (Get (Just l) (Just h) _p) | l == h = show l -- ++ " " ++ show (p l)
     show (Get l h _) = maybe "" show l ++ ".." ++ maybe "" show h
-    show (Write prior w p) = "!" ++ show prior ++ ":" ++ show w ++ "->" ++ show p
+    show (Prior p c) = ":" ++ show p ++ show c
+    show (Write w c) = "!" ++ show w ++ "->" ++ show c
     show (End) = "."
     show (Fail) = "*"
     show (Best p q) = "{" ++ show p ++ "|" ++ show q ++ "}"
