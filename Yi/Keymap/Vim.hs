@@ -15,6 +15,7 @@ import Prelude (maybe, length, filter, map, drop, break, uncurry)
 import Data.Char
 import Data.List (sort, nub)
 import Data.Prototype
+import System.IO (readFile)
 
 import Control.Exception    ( ioErrors, try, evaluate )
 import Control.Monad.State hiding (mapM_, mapM)
@@ -762,6 +763,9 @@ defKeymap = Proto template
            f_complete = exSimpleComplete (matchingFileNames Nothing)
            b_complete = exSimpleComplete matchingBufferNames
            ex_complete ('e':' ':f)                             = f_complete f
+           ex_complete ('e':'d':'i':'t':' ':f)                 = f_complete f
+           ex_complete ('r':' ':f)                             = f_complete f
+           ex_complete ('r':'e':'a':'d':' ':f)                 = f_complete f
            ex_complete ('t':'a':'b':'e':' ':f)                 = f_complete f
            ex_complete ('b':' ':f)                             = b_complete f
            ex_complete ('b':'u':'f':'f':'e':'r':' ':f)         = b_complete f
@@ -865,7 +869,11 @@ defKeymap = Proto template
            fn "prev"       = withEditor prevBufW
            fn ('s':'p':_)  = withEditor splitE
            fn "e"          = revertE
+           fn "edit"       = revertE
            fn ('e':' ':f)  = fnewE f
+           fn ('e':'d':'i':'t':' ':f) = fnewE f
+           fn ('r':' ':f)  = withBuffer . insertN =<< io (readFile f)
+           fn ('r':'e':'a':'d':' ':f) = withBuffer . insertN =<< io (readFile f)
            -- fn ('s':'e':'t':' ':'f':'t':'=':ft)  = withBuffer $ setSyntaxB $ highlighters M.! ft
            fn ('n':'e':'w':' ':f) = withEditor splitE >> fnewE f
            fn ('s':'/':cs) = withEditor $ viSub cs
