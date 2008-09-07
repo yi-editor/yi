@@ -15,9 +15,6 @@ capitalize s = BS.cons (toUpper $ BS.head s) (BS.tail s)
 
 tx :: String = "Thu Oct 14 05:40:06 CEST 2004 "
 
-instance IsString ByteString where
-    fromString = pack
-
 unquote x
     | BS.head x == '\'' && BS.last x == '\'' = unquote (BS.init $ BS.tail $ x)
     | otherwise = x
