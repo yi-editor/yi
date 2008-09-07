@@ -190,9 +190,11 @@ tokText = readRegionB . tokRegion
 
 isLineComment = (Just Haskell.Line ==) . tokTyp . tokT
 
+contiguous :: forall t. Tok t -> Tok t -> Bool
 contiguous a b = lb - la <= 1
     where [la,lb] = fmap (posnLine . tokPosn) [a,b]
 
+coalesce :: Tok Token -> Tok Token -> Bool
 coalesce a b = isLineComment a && isLineComment b && contiguous a b
 
 cleverPrettify :: Expr TT -> BufferM ()

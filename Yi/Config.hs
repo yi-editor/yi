@@ -1,6 +1,5 @@
 module Yi.Config where
 
-import Control.Monad.Reader
 import Data.Dynamic
 import qualified Data.Map as M
 import Data.Prototype

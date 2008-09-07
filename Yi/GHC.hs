@@ -15,8 +15,6 @@ import Outputable
 import Prelude ()
 import Shim.Hsinfo
 import Shim.SHM hiding (io)
-import System.Directory ( findExecutable )
-import Yi.Accessor
 import Yi.Dynamic
 import Yi.Editor
 import Yi.Keymap
