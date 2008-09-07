@@ -19,7 +19,7 @@ increaseIndent = modifyExtendedSelectionB Line $ mapLines (' ':)
 decreaseIndent :: BufferM ()
 decreaseIndent = modifyExtendedSelectionB Line $ mapLines (drop 1)
 
-bestHaskellMode = Haskell.cleverMode 
+bestHaskellMode = Shim.minorMode $ Haskell.cleverMode 
                        -- Haskell.preciseMode
                        {
                         -- example of Mode-local rebinding
@@ -37,6 +37,9 @@ greek = [("alpha", "α"),
          ("gamma", "γ"),
          ("delta", "δ")
         ]
+
+quotes = "“”"
+
 
 symbols :: [(String, String)]
 symbols = 
