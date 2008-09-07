@@ -143,7 +143,7 @@ defKeymap = Proto template
      -- | A KeymapM to accumulate digits.
      -- typically what is needed for integer repetition arguments to commands
      count :: KeymapM (Maybe Int)
-     count = option Nothing $ do
+     count = (deprioritize >> pure Nothing) <|> do
          c <- charOf id '1' '9'
          cs <- many $ charOf id '0' '9'
          return $ Just $ read (c:cs)
