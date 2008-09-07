@@ -132,9 +132,13 @@ mapAlter' f = Map.alter f' where
 
 
 -- | Alternative to groupBy.
+--
 -- > groupBy' (\a b -> abs (a - b) <= 1) [1,2,3] = [[1,2,3]]
+--
 -- whereas
+--
 -- > groupBy (\a b -> abs (a - b) <= 1) [1,2,3] = [[1,2],[3]]
+--
 -- TODO: Check in ghc 6.12 release if groupBy == groupBy'.
 groupBy' :: (a -> a -> Bool) -> [a] -> [[a]]
 groupBy' _ [] = []

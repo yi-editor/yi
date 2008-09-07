@@ -6,7 +6,9 @@ import Data.Function (fix)
 -- | A prototype. Typically the parameter will be a record type.
 -- Fields can be defined in terms of others fields, with the
 -- idea that some of these definitons can be overridden.
+--
 -- Example:
+--
 -- > data O = O {f1, f2, f3 :: Int}
 -- >     deriving Show
 -- > o1 = Proto $ \self -> O
@@ -22,7 +24,9 @@ newtype Proto a = Proto {fromProto :: a -> a}
 extractValue (Proto o) = fix o
 
 -- | Override a prototype. Fields can be defined in terms of their definition in the base prototype.
+--
 -- Example:
+--
 -- > o2 = o1 `override` \super self -> super 
 -- >    {
 -- >    f1 = f1 super + 10,

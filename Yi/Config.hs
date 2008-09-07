@@ -15,15 +15,15 @@ import Yi.Style.Library
 import {-# source #-} Yi.UI.Common
 
 data UIConfig = UIConfig {
-   configFontName :: Maybe String, -- ^ Font name, for the UI that support it.
-   configFontSize :: Maybe Int,
+   configFontName :: Maybe String,  -- ^ Font name, for the UI that support it.
+   configFontSize :: Maybe Int,     -- ^ Font size, for the UI that support it.
    configLeftSideScrollBar :: Bool, -- ^ Should the scrollbar be shown on the left side?
    configAutoHideScrollBar :: Bool, -- ^ Hide scrollbar automatically if text fits on one page.
-   configLineWrap :: Bool,
-   configWindowFill :: !Char,       
-   -- ^ char to fill empty window space with.  Usually '~' for vi-like
+   configLineWrap :: Bool,          -- ^ Wrap lines at the edge of the window if too long to display.
+   configWindowFill :: !Char,
+   -- ^ The char with which to fill empty window space.  Usually '~' for vi-like
    -- editors, ' ' for everything else.
-   configTheme :: Theme -- ^ UI colours
+   configTheme :: Theme             -- ^ UI colours
   }
 
 configStyle :: UIConfig -> UIStyle
