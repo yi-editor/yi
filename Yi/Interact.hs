@@ -35,7 +35,7 @@ input (prefix), but produce conflicting output?
 
 module Yi.Interact
     (
-     I, P (Fail, End),
+     I, P (End),
      InteractState (..),
      MonadInteract (..),
      PEq (..),

@@ -158,8 +158,8 @@ dispatch ev =
                  I.Ambiguous _ -> True
                  _ -> False
          setA keymapProcessA (if ambiguous then freshP else p')
-         let actions0 = case p' of 
-                          I.Fail -> [makeAction $ do
+         let actions0 = case state of 
+                          I.Dead -> [makeAction $ do
                                          evs <- getA pendingEventsA
                                          printMsg ("Unrecognized input: " ++ showEvs (evs ++ [ev]))]
                           _ -> actions
