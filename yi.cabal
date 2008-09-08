@@ -250,7 +250,7 @@ executable yi
            build-depends: unix
 
         if flag (vty)
-           build-depends: vty>=3.0.4 && < 4
+           build-depends: vty>=3.1.0 && < 4
            cpp-options: -DFRONTEND_VTY
 
         if flag (gtk)
