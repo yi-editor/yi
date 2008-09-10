@@ -61,7 +61,7 @@ trd3,
 undefined,
 unlines,
 when,
-
+writeFile -- because Data.Derive uses it.
     ) where
 
 import Yi.Debug
@@ -102,15 +102,13 @@ singleton x = [x]
 
 -- TODO: move somewhere else.
 -- | As 'Prelude.nub', but with O(n*log(n)) behaviour.
-nubSet :: forall a. (Ord a) => [a] -> [a]
+nubSet :: (Ord a) => [a] -> [a]
 nubSet xss = f Set.empty xss where
        f _ [] = []
        f s (x:xs) = if x `Set.member` s then f s xs else x : f (Set.insert x s) xs
 
 -- As Map.adjust, but the combining function is applied strictly.
-mapAdjust' :: forall a k.
-                                          (Ord k) =>
-                                          (a -> a) -> k -> Map.Map k a -> Map.Map k a
+mapAdjust' :: (Ord k) => (a -> a) -> k -> Map.Map k a -> Map.Map k a
 mapAdjust' f = Map.alter f' where
     f' Nothing = Nothing
     f' (Just x) = let x' = f x in x' `seq` Just x'
@@ -119,9 +117,7 @@ mapAdjust' f = Map.alter f' where
 
 
 -- As Map.alter, but the newly inserted element is forced with the map.
-mapAlter' :: forall a k.
-                                         (Ord k) =>
-                                         (Maybe a -> Maybe a) -> k -> Map.Map k a -> Map.Map k a
+mapAlter' :: Ord k => (Maybe a -> Maybe a) -> k -> Map.Map k a -> Map.Map k a
 mapAlter' f = Map.alter f' where
     f' arg = case f arg of 
         Nothing -> Nothing

@@ -1,8 +1,9 @@
-{-# LANGUAGE ScopedTypeVariables, ExistentialQuantification, GeneralizedNewtypeDeriving, MultiParamTypeClasses #-}
+{-# LANGUAGE StandaloneDeriving, DeriveDataTypeable, ScopedTypeVariables, ExistentialQuantification, GeneralizedNewtypeDeriving, MultiParamTypeClasses #-}
 -- Copyright 2008 JP Bernardy
 -- | Basic types useful everywhere we play with buffers.
 module Yi.Buffer.Basic where
-    
+
+import Data.Binary    
 import Yi.Prelude
 import qualified Data.ByteString.UTF8 as UTF8
 import qualified Data.ByteString.Lazy.UTF8 as LazyUTF8
@@ -13,7 +14,7 @@ import Data.Typeable
 -- | Direction of movement inside a buffer
 data Direction = Backward
                | Forward
-                 deriving (Eq,Ord,Typeable,Show)
+                 deriving (Eq,Ord,Typeable,Show {-! Binary !-})
 
 reverseDir :: Direction -> Direction
 reverseDir Forward = Backward
@@ -26,7 +27,7 @@ mayReverse Forward = id
 mayReverse Backward = reverse
 
 -- | A mark in a buffer
-newtype Mark = Mark {markId::Int} deriving (Eq, Ord, Show, Typeable)
+newtype Mark = Mark {markId::Int} deriving (Eq, Ord, Show, Typeable, Binary)
 staticInsMark, staticSelMark :: Mark
 staticInsMark = Mark (-1) -- the insertion mark
 staticSelMark = Mark (-2) -- the selection mark
@@ -36,21 +37,25 @@ dummyToMark = Mark 2
 
 -- | Reference to a buffer.
 newtype BufferRef = BufferRef Int
-    deriving (Num, Eq, Ord, Typeable)
+    deriving (Eq, Ord, Typeable, Binary)
+deriving instance Num BufferRef
 
 instance Show BufferRef where
     show (BufferRef r) = "B#" ++ show r
 
 -- | A point in a buffer
 newtype Point = Point {fromPoint :: Int}           -- offset in the buffer (#bytes, NOT codepoints)
-    deriving (Eq, Ord, Num, Enum, Real, Integral, Bounded, Typeable)
+    deriving (Eq, Ord, Enum, Bounded, Typeable, Binary)
 
+deriving instance Num Point
+deriving instance Real Point
+deriving instance Integral Point
 instance Show Point where
     show (Point p) = show p
 
 -- | Size of a buffer region
 newtype Size = Size {fromSize :: Int}             -- size in bytes (#bytes, NOT codepoints)
-    deriving (Show, Eq, Ord, Num, Enum, Real, Integral)
+    deriving (Show, Eq, Ord, Num, Enum, Real, Integral, Binary)
 
 instance SemiNum Point Size where
     Point p +~ Size s = Point (p + s)
@@ -66,3 +71,16 @@ utf8Size s = Size $ B.length $ UTF8.fromString s
 fromString :: String -> LB.ByteString
 fromString = LazyUTF8.fromString
 
+
+
+--------------------------------------------------------
+-- DERIVES GENERATED CODE
+-- DO NOT MODIFY BELOW THIS LINE
+-- CHECKSUM: 286904097
+
+instance Binary Direction
+    where put (Backward) = putWord8 0
+          put (Forward) = putWord8 1
+          get = getWord8 >>= (\tag_ -> case tag_ of
+                                           0 -> return Backward
+                                           1 -> return Forward)

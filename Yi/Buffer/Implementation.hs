@@ -60,6 +60,7 @@ import Prelude (take, takeWhile, dropWhile, map, length, reverse)
 import Yi.Syntax 
 
 import qualified Data.Map as M
+import Data.Binary
 import Data.Maybe 
 import Data.Monoid
 import Yi.Style
@@ -85,20 +86,21 @@ import Data.Typeable
 import Yi.Region
 
 data MarkValue = MarkValue {markPoint :: !Point, markGravity :: !Direction}
-               deriving (Ord, Eq, Show, Typeable)
+               deriving (Ord, Eq, Show, Typeable {-! Binary !-})
 
 type Marks = M.Map Mark MarkValue
 
 data HLState syntax = forall cache. HLState !(Highlighter cache syntax) !cache
 
 data OvlLayer = UserLayer | HintLayer
-  deriving (Ord, Eq)
+  deriving (Ord, Eq {-! Binary !-})
 data Overlay = Overlay {
                         overlayLayer :: OvlLayer,
                         overlayBegin :: MarkValue,
                         overlayEnd :: MarkValue,
                         overlayStyle :: StyleName
                        }
+    deriving ({-! Binary !-})
 instance Eq Overlay where
     Overlay a b c _ == Overlay a' b' c' _ = a == a' && b == b' && c == c'
 
@@ -116,6 +118,12 @@ data BufferImpl syntax =
                     , dirtyOffset :: !Point -- ^ Lowest modified offset since last recomputation of syntax 
                     }
         deriving Typeable
+
+instance Binary (BufferImpl ()) where
+    put b =                    put (mem b) >> put (marks b) >> put (marks b) >> put (markNames b) >> put (overlays b)
+    get = pure FBufferData <*> get <*> get <*> get <*> pure dummyHlState <*> get <*> pure 0
+    
+    
 
 -- | Mutation actions (also used the undo or redo list)
 --
@@ -150,9 +158,11 @@ data UIUpdate = TextUpdate Update
 --------------------------------------------------
 -- Low-level primitives.
 
+dummyHlState = (HLState noHighlighter (hlStartState noHighlighter))
+
 -- | New FBuffer filled from string.
 newBI :: LazyB.ByteString -> BufferImpl ()
-newBI s = FBufferData (F.fromLazyByteString s) mks M.empty (HLState noHighlighter (hlStartState noHighlighter)) Set.empty 0
+newBI s = FBufferData (F.fromLazyByteString s) mks M.empty dummyHlState Set.empty 0
     where mks = M.fromList [ (staticInsMark, MarkValue 0 insertGravity)
                            , (staticSelMark, MarkValue 0 selectionGravity)
                            , (dummyFromMark, MarkValue 0 Backward)
@@ -529,3 +539,30 @@ getMarkDefaultPosBI name defaultPos fb@FBufferData {marks = mks, markNames = nms
 
 getAst :: BufferImpl syntax -> syntax
 getAst FBufferData {hlCache = HLState (SynHL {hlGetTree = gt}) cache} = gt cache
+
+
+
+--------------------------------------------------------
+-- DERIVES GENERATED CODE
+-- DO NOT MODIFY BELOW THIS LINE
+-- CHECKSUM: 1477916576
+
+instance Binary MarkValue
+    where put (MarkValue x1 x2) = return () >> (put x1 >> put x2)
+          get = case 0 of
+                    0 -> ap (ap (return MarkValue) get) get
+
+instance Binary OvlLayer
+    where put (UserLayer) = putWord8 0
+          put (HintLayer) = putWord8 1
+          get = getWord8 >>= (\tag_ -> case tag_ of
+                                           0 -> return UserLayer
+                                           1 -> return HintLayer)
+
+instance Binary Overlay
+    where put (Overlay x1
+                       x2
+                       x3
+                       x4) = return () >> (put x1 >> (put x2 >> (put x3 >> put x4)))
+          get = case 0 of
+                    0 -> ap (ap (ap (ap (return Overlay) get) get) get) get

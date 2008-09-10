@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleContexts #-}
+-- Copyright (c) Jean-Philippe Bernardy 2008
 module Yi.Regex 
   (
    SearchF(..), makeSearchOptsM,
@@ -29,6 +31,7 @@ data SearchF = IgnoreCase   -- ^ Compile for matching that ignores char case
              | NoNewLine    -- ^ Compile for newline-insensitive matching
     deriving Eq
 
+searchOpt :: SearchF -> CompOption -> CompOption
 searchOpt IgnoreCase = \o->o{caseSensitive = False}
 searchOpt NoNewLine = \o->o{multiline = False}
 

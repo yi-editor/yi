@@ -33,6 +33,7 @@ import qualified Data.ByteString.Lazy as LB
 import qualified Data.FingerTree as T
 import Data.FingerTree hiding (null, empty)
 
+import Data.Binary
 import Data.Word
 import Data.Monoid
 import Data.Foldable (toList)
@@ -179,3 +180,7 @@ findSubstrings x m = [i | i <- elemIndices (B.head x) m, x `isPrefixOf` drop i m
 -- | Determine whether the ByteString is a prefix of the buffer.
 isPrefixOf :: ByteString -> ByteRope -> Bool
 isPrefixOf x = LB.isPrefixOf (LB.fromChunks [x]) . toLazyByteString
+
+instance Binary ByteRope where
+    put = put . toLazyByteString
+    get = fromLazyByteString `fmap` get
