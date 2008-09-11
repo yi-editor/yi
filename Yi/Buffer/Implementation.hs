@@ -93,14 +93,13 @@ type Marks = M.Map Mark MarkValue
 data HLState syntax = forall cache. HLState !(Highlighter cache syntax) !cache
 
 data OvlLayer = UserLayer | HintLayer
-  deriving (Ord, Eq {-! Binary !-})
+  deriving (Ord, Eq)
 data Overlay = Overlay {
                         overlayLayer :: OvlLayer,
                         overlayBegin :: MarkValue,
                         overlayEnd :: MarkValue,
                         overlayStyle :: StyleName
                        }
-    deriving ({-! Binary !-})
 instance Eq Overlay where
     Overlay a b c _ == Overlay a' b' c' _ = a == a' && b == b' && c == c'
 
@@ -119,9 +118,11 @@ data BufferImpl syntax =
                     }
         deriving Typeable
 
+-- Atm we can't store overlays because stylenames are functions (can't be serialized)
+-- TODO: ideally I'd like to get rid of overlays entirely; although we could imagine them storing mere styles.
 instance Binary (BufferImpl ()) where
-    put b =                    put (mem b) >> put (marks b) >> put (marks b) >> put (markNames b) >> put (overlays b)
-    get = pure FBufferData <*> get <*> get <*> get <*> pure dummyHlState <*> get <*> pure 0
+    put b = put (mem b) >> put (marks b) >> put (markNames b)
+    get = pure FBufferData <*> get <*> get <*> get <*> pure dummyHlState <*> pure Set.empty <*> pure 0
     
     
 
@@ -559,10 +560,3 @@ instance Binary OvlLayer
                                            0 -> return UserLayer
                                            1 -> return HintLayer)
 
-instance Binary Overlay
-    where put (Overlay x1
-                       x2
-                       x3
-                       x4) = return () >> (put x1 >> (put x2 >> (put x3 >> put x4)))
-          get = case 0 of
-                    0 -> ap (ap (ap (ap (return Overlay) get) get) get) get
