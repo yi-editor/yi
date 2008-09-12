@@ -57,6 +57,7 @@ module Yi.Buffer
   , setVisibleSelection
   , isUnchangedB
   , isUnchangedBuffer
+  , setAnyMode
   , setMode
   , modifyMode
   , regexB
@@ -229,6 +230,7 @@ winMarksA = Accessor winMarks (\f e -> case e of
 
 
 data AnyMode = forall syntax. AnyMode (Mode syntax)
+  deriving Typeable
 
 data Mode syntax = Mode
     {
@@ -562,6 +564,9 @@ modifyMode0 f (FBuffer f1 f2 f3 f4 rb m f7 f8 f9 f10 f11 f12 f13) =
 
 
 -- | Set the mode
+setAnyMode :: AnyMode -> BufferM ()
+setAnyMode (AnyMode m) = setMode m
+
 setMode :: Mode syntax -> BufferM ()
 setMode m = do
   modify (setMode0 m)

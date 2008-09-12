@@ -252,6 +252,7 @@ defaultPublishedActions = M.fromList $
     , ("reloadProjectE"         , box reloadProjectE)
     , ("revertE"                , box revertE)
     , ("shell"                  , box shell)
+    , ("setAnyMode"             , box setAnyMode)
     , ("sortLines"              , box sortLines)
     , ("unLineCommentSelectionB", box unLineCommentSelectionB)
     , ("unitParagraph"          , box unitParagraph)

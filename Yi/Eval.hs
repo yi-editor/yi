@@ -96,6 +96,7 @@ execEditorAction s = do
                  toDyn (makeAction :: BufferM MarkValue -> Action),
 
                  toDyn (makeAction :: (String -> BufferM ()) -> Action),
+                 toDyn (makeAction :: (AnyMode -> BufferM ()) -> Action),
 
                  toDyn (makeAction :: EditorM () -> Action),
 

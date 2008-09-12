@@ -9,7 +9,7 @@ module Yi.MiniBuffer
  ) where
 
 import Control.Applicative
-import Data.List (isInfixOf)
+import Data.List (isInfixOf, find)
 import Data.Typeable
 import Data.Maybe
 import Yi.Buffer
@@ -34,7 +34,7 @@ spawnMinibufferE :: String -> KeymapEndo -> EditorM BufferRef
 spawnMinibufferE prompt kmMod =
     do b <- stringToNewBuffer prompt (fromString "")
        fundamental <- asks fundamentalMode
-       withGivenBuffer0 b $ setMode fundamental {modeKeymap = kmMod}
+       withGivenBuffer0 b $ setMode (fundamental {modeKeymap = kmMod})
        w <- newWindowE True b
        modifyWindows (WS.add w)
        return b
@@ -140,7 +140,9 @@ completionFunction f = do
 
 class Promptable a where
     getPromptedValue :: String -> YiM a
+    getPromptedValue _ = error "Promptable: getPromptedValue missing"
     getPrompt :: a -> String           -- Parameter can be "undefined"
+    getPrompt _ = "Promptable: prompt missing"
     doPrompt :: (a -> YiM ()) -> YiM ()
     doPrompt act = withMinibufferFree (getPrompt (undefined::a) ++ ":") $ 
                      \string -> act =<< getPromptedValue string
@@ -153,9 +155,17 @@ instance Promptable Int where
     getPromptedValue = return . read
     getPrompt _ = "Integer"
 
+anyModeName :: AnyMode -> String
+anyModeName (AnyMode m) = modeName m
+
+instance Promptable AnyMode where
+    doPrompt act = do
+      names <- fmap (anyModeName) . modeTable <$> askCfg
+      withMinibufferFin "Mode" names $ \n -> 
+          do Just m <- find ((n == ). anyModeName) . modeTable <$> askCfg
+             act m
+
 instance Promptable BufferRef where
-    getPromptedValue n = withEditor $ getBufferWithName n
-    getPrompt _ = "Buffer"
     doPrompt act = do 
       bufs <- matchingBufferNames ""
       withMinibufferFin "Buffer" bufs $ \n -> 
