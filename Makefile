@@ -4,6 +4,10 @@ include config.mk
 
 include $(cabal-make)/cabal-make.inc
 
+derive:
+	derive -a Yi/Undo.hs
+	derive -a Yi/Buffer/Implementation.hs
+
 test::
 	cabal configure -f-cocoa -ftesting --disable-library-profiling
 	cabal build

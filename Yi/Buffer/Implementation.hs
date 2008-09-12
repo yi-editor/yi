@@ -1,4 +1,4 @@
-{-# LANGUAGE PatternGuards, ExistentialQuantification, DeriveDataTypeable, Rank2Types #-}
+{-# LANGUAGE PatternGuards, ExistentialQuantification, DeriveDataTypeable, Rank2Types, FlexibleContexts, FlexibleInstances #-}
 
 -- Copyright (c) 2004-5 Don Stewart - http://www.cse.unsw.edu.au/~dons
 -- Copyright (c) 2007-8 JP Bernardy
@@ -140,7 +140,7 @@ data Update = Insert {updatePoint :: !Point, updateDirection :: !Direction, inse
               -- if it's a "Delete" it means we have just inserted the text in the buffer, so the update shares
               -- the data with the buffer. If it's an "Insert" we have to keep the data any way.
 
-              deriving (Show, Typeable)
+              deriving (Show, Typeable {-! Binary !-})
 
 updateIsDelete :: Update -> Bool
 updateIsDelete Delete {} = True
@@ -546,17 +546,20 @@ getAst FBufferData {hlCache = HLState (SynHL {hlGetTree = gt}) cache} = gt cache
 --------------------------------------------------------
 -- DERIVES GENERATED CODE
 -- DO NOT MODIFY BELOW THIS LINE
--- CHECKSUM: 1477916576
+-- CHECKSUM: 75413710
 
 instance Binary MarkValue
     where put (MarkValue x1 x2) = return () >> (put x1 >> put x2)
           get = case 0 of
                     0 -> ap (ap (return MarkValue) get) get
 
-instance Binary OvlLayer
-    where put (UserLayer) = putWord8 0
-          put (HintLayer) = putWord8 1
+instance Binary Update
+    where put (Insert x1
+                      x2
+                      x3) = putWord8 0 >> (put x1 >> (put x2 >> put x3))
+          put (Delete x1
+                      x2
+                      x3) = putWord8 1 >> (put x1 >> (put x2 >> put x3))
           get = getWord8 >>= (\tag_ -> case tag_ of
-                                           0 -> return UserLayer
-                                           1 -> return HintLayer)
-
+                                           0 -> ap (ap (ap (return Insert) get) get) get
+                                           1 -> ap (ap (ap (return Delete) get) get) get)
