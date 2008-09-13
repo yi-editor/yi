@@ -8,16 +8,17 @@
 module Yi.Buffer.Indent where
 
 import Control.Monad
+import Control.Monad.State (get)
 
 import Yi.Buffer
 import Yi.Buffer.HighLevel
--- import Yi.Debug
+import Yi.Prelude
 import Yi.Config
 import Yi.Buffer.Normal
 import Yi.Buffer.Region
-
+import Prelude ()
 import Data.Char
-import Data.List
+import Data.List (span, length, sort, nub, break, reverse, filter, takeWhile)
 import Yi.String
 
 
@@ -37,7 +38,7 @@ insertTabB = do
   Retrieve the current indentation settings for the buffer.
 -}
 indentSettingsB :: BufferM IndentSettings
-indentSettingsB = getDynamicB
+indentSettingsB = withModeB (\Mode {modeIndentSettings = x} -> x)
 
 
 {-|
@@ -366,7 +367,7 @@ spacingOfB text =
      let spacingOfChar :: Char -> Int
          spacingOfChar '\t' = tabSize indentSettings
          spacingOfChar _    = 1
-     return (sum $ map spacingOfChar text)
+     return (sum $ fmap spacingOfChar text)
 
 {-| Indents the current line to the given indentation level.
     In addition moves the point according to where it was on the
@@ -424,7 +425,7 @@ indentString indentSettings numOfShifts input
     where (indents,rest) = span isSpace input
           countSpace '\t' = tabSize indentSettings
           countSpace _ = 1 -- we'll assume nothing but tabs and spaces
-          newCount = sum (map countSpace indents) + ((shiftWidth indentSettings) * numOfShifts)
+          newCount = sum (fmap countSpace indents) + ((shiftWidth indentSettings) * numOfShifts)
           tabs   = replicate (newCount `div` (tabSize indentSettings)) '\t'
           spaces = replicate (newCount `mod` (tabSize indentSettings)) ' '
          

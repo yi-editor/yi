@@ -29,25 +29,6 @@ data UIConfig = UIConfig {
 configStyle :: UIConfig -> UIStyle
 configStyle = extractValue . configTheme
 
-{- | Currently duplicates some of Vim's indent settings. Allowing a buffer to
- - specify settings that are more dynamic, perhaps via closures, could be
- - useful.
- -}
-data IndentSettings = IndentSettings { expandTabs :: Bool -- ^ Insert spaces instead of tabs as possible
-                                     , tabSize    :: Int  -- ^ Size of a Tab
-                                     , shiftWidth :: Int  -- ^ Indent by so many columns 
-                                     }
-                      deriving (Eq, Show, Typeable {-! Binary !-})
-
-
-
-
-instance Initializable IndentSettings where
-    initial = error "IndentSettings should be initialized from Config."
-
-instance Binary IndentSettings
-
-
 
 -- | Configuration record. All Yi hooks can be set here.
 data Config = Config {startFrontEnd :: UIBoot,
@@ -64,11 +45,9 @@ data Config = Config {startFrontEnd :: UIBoot,
                       -- ^ Actions available in the "interpreter" (akin to M-x in emacs)
                       debugMode :: Bool,
                       -- ^ Produce a .yi.dbg file with a lot of debug information.
-                      configKillringAccumulate :: !Bool,
+                      configKillringAccumulate :: !Bool
                       -- ^ Set to 'True' for an emacs-like behaviour, where 
                       -- all deleted text is accumulated in a killring.
-                      configIndentSettings :: IndentSettings
-                      -- IndentSettings should perhaps be in Mode?
                      }
 
 configFundamentalMode :: Config -> AnyMode

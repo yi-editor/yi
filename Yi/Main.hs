@@ -208,11 +208,6 @@ defaultConfig =
                         AnyMode fundamentalMode]
          , debugMode = False
          , configKillringAccumulate = False
-         , configIndentSettings = IndentSettings 
-          {expandTabs = True
-          ,tabSize = 8
-          ,shiftWidth = 4
-          }
          }
 
 -- | List of published Actions

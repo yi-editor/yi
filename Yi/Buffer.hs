@@ -81,10 +81,12 @@ module Yi.Buffer
   , askWindow
   , clearSyntax
   , Mode (..)
-  , AnyMode(..)
-  , IndentBehaviour ( .. )
+  , AnyMode (..)
+  , IndentBehaviour (..)
+  , IndentSettings (..)
   , emptyMode
   , withModeB
+  , onMode
   , withSyntax0
   , keymapProcessA
   , strokesRangesB
@@ -233,6 +235,19 @@ winMarksA = Accessor winMarks (\f e -> case e of
                                     FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 (f f13))
 
 
+
+{- | Currently duplicates some of Vim's indent settings. Allowing a buffer to
+ - specify settings that are more dynamic, perhaps via closures, could be
+ - useful.
+ -}
+data IndentSettings = IndentSettings { expandTabs :: Bool -- ^ Insert spaces instead of tabs as possible
+                                     , tabSize    :: Int  -- ^ Size of a Tab
+                                     , shiftWidth :: Int  -- ^ Indent by so many columns 
+                                     }
+                      deriving (Eq, Show, Typeable {-! Binary !-})
+
+
+
 data AnyMode = forall syntax. AnyMode (Mode syntax)
   deriving Typeable
 
@@ -245,7 +260,8 @@ data Mode syntax = Mode
      modeKeymap :: KeymapEndo, -- ^ Buffer-local keymap modification
      modeIndent :: syntax -> IndentBehaviour -> BufferM (),
      modeAdjustBlock :: syntax -> Int -> BufferM (),
-     modeFollow :: syntax -> Action
+     modeFollow :: syntax -> Action,
+     modeIndentSettings :: IndentSettings
     }
 
 instance Binary (Mode syntax) where
@@ -426,7 +442,12 @@ emptyMode = Mode
    modeKeymap = id,
    modeIndent = \_ _ -> return (),
    modeAdjustBlock = \_ _ -> return (),
-   modeFollow = \_ -> emptyAction
+   modeFollow = \_ -> emptyAction,
+   modeIndentSettings = IndentSettings 
+   { expandTabs = True
+   , tabSize = 8
+   , shiftWidth = 4
+   }
   }
 
 -- | Create buffer named @nm@ with contents @s@
@@ -441,7 +462,7 @@ newB cfg unique nm s =
             , pointDrive = True
             , bmode  = emptyMode
             , preferCol = Nothing
-            , bufferDynamic = modifier dynamicValueA (const $ configIndentSettings cfg) emptyDV 
+            , bufferDynamic = emptyDV 
             , pendingUpdates = []
             , highlightSelection = False
             , process = I.End
@@ -581,6 +602,7 @@ setMode m = do
   -- reset the keymap process so we use the one of the new mode.
   setA keymapProcessA I.End 
 
+
 -- | Modify the mode
 modifyMode :: (forall syntax. Mode syntax -> Mode syntax) -> BufferM ()
 modifyMode f = do
@@ -588,6 +610,8 @@ modifyMode f = do
   -- reset the keymap process so we use the one of the new mode.
   setA keymapProcessA I.End 
 
+onMode :: (forall syntax. Mode syntax -> Mode syntax) -> AnyMode -> AnyMode
+onMode f (AnyMode m) = AnyMode (f m)
 
 withMode0 :: (forall syntax. Mode syntax -> a) -> FBuffer -> a
 withMode0 f FBuffer {bmode = m} = f m 

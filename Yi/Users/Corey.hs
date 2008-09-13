@@ -18,19 +18,24 @@ import Yi.Style.Library (darkBlueTheme)
 
 import Data.List (isPrefixOf, reverse)
 
+-- Set soft tabs of 4 spaces in width.
+prefIndent :: Mode s -> Mode s
+prefIndent m = m {
+        modeIndentSettings = IndentSettings
+            {
+                expandTabs = True,
+                shiftWidth = 4,
+                tabSize = 4
+            }}
+
+
 main :: IO ()
 main = yi $ defaultConfig 
     {
         -- Use VTY as the default UI.
         startFrontEnd = Yi.UI.Vty.start,
         defaultKm = mkKeymap extendedVimKeymap,
-        -- Soft tabs of 4 spaces in width.
-        configIndentSettings = IndentSettings
-            {
-                expandTabs = True,
-                shiftWidth = 4,
-                tabSize = 4
-            },
+        modeTable = fmap (onMode prefIndent) (modeTable defaultConfig),
         configUI = (configUI defaultConfig)
             {
                 configTheme = darkBlueTheme
@@ -40,13 +45,14 @@ main = yi $ defaultConfig
 extendedVimKeymap = defKeymap `override` \super _ -> super
     {
         v_ins_char = 
-            (deprioritize $ v_ins_char super) 
+            (deprioritize >> v_ins_char super) 
             -- On enter I always want to use the indent of previous line
             -- TODO: If the line where the newline is to be inserted is inside a
             -- block comment then the block comment should be "continued"
             <|> ( spec KEnter ?>>! do
                     insertB '\n'
                     indentAsPreviousB
+                    return ()
                 )
             -- I want softtabs to be deleted as if they are tabs. So if the 
             -- current col is a multiple of 4 and the previous 4 characters
