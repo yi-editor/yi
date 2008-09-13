@@ -17,6 +17,7 @@ module Yi.Mode.Haskell
    ghciLoadBuffer
   ) where
 
+import Data.Binary
 import Data.List (isPrefixOf, dropWhile, takeWhile, filter, drop)
 import Data.Maybe (maybe, listToMaybe, isJust)
 import Data.Typeable
@@ -263,7 +264,7 @@ haskellToggleCommentSelectionB = do
 
 
 newtype GhciBuffer = GhciBuffer {_ghciBuffer :: Maybe BufferRef}
-    deriving (Initializable, Typeable)
+    deriving (Initializable, Typeable, Binary)
 
 -- | Start GHCi in a buffer
 ghci :: YiM BufferRef

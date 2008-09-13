@@ -7,6 +7,7 @@ import Yi.Prelude
 import Control.Applicative
 import Control.Monad.RWS.Strict (ask)
 import Control.Monad.State
+import Data.Binary
 import Data.Char
 import Data.Dynamic
 import Data.List (isPrefixOf, sort, lines, drop, filter, length, takeWhile, dropWhile)
@@ -347,6 +348,8 @@ newtype SelectionStyle = SelectionStyle TextUnit
 
 instance Initializable SelectionStyle where
   initial = SelectionStyle Character
+
+instance Binary SelectionStyle
 
 getRawSelectRegionB :: BufferM Region
 getRawSelectRegionB = do

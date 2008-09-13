@@ -1,3 +1,4 @@
+{-# OPTIONS -cpp #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving, DeriveDataTypeable, StandaloneDeriving, ExistentialQuantification, Rank2Types #-}
 
 -- Copyright (C) 2004, 2007 Don Stewart - http://www.cse.unsw.edu.au/~dons
@@ -110,7 +111,8 @@ import Yi.Syntax
 import Yi.Undo
 import Yi.Dynamic
 import Yi.Window
-import Control.Monad.RWS.Strict hiding (mapM_, mapM)
+import Control.Monad.RWS.Strict hiding (mapM_, mapM, get, put)
+import Data.Binary
 import Data.List (scanl, takeWhile, zip, length)
 import qualified Data.Map as M
 import Data.Typeable
@@ -162,6 +164,8 @@ data FBuffer = forall syntax.
                 , winMarks :: !(M.Map WindowRef WinMarks)
                 }
         deriving Typeable
+
+
 
 -- | udpate the syntax information (clear the dirty "flag")
 clearSyntax :: FBuffer -> FBuffer
@@ -244,6 +248,10 @@ data Mode syntax = Mode
      modeFollow :: syntax -> Action
     }
 
+instance Binary (Mode syntax) where
+    put = put . modeName -- we just store the modename.
+    get = do n <- get
+             return (emptyMode {modeName = n})
 
 {-
   Is used to specify the behaviour of the automatic indent command.

@@ -1,24 +1,38 @@
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ScopedTypeVariables, MagicHash, ExistentialQuantification #-}
 -- Copyright (c) Jean-Philippe Bernardy 2005-2007.
 
-module Yi.Dynamic where
+module Yi.Dynamic 
+ (
+  Initializable(..),
+  toDyn, fromDynamic, dynamicValueA, emptyDV,
+  Typeable, Dynamic, DynamicValues
+ )
+  where
 
-import Data.Dynamic
+import GHC.Exts
 import Data.Maybe
-
+import Data.Typeable
+import Data.Binary
 import Yi.Accessor
 import Data.Map as M
 -- ---------------------------------------------------------------------
 -- | Class of values that can go in the extensible state component
 --
-class Typeable a => Initializable a where
+class (Typeable a, Binary a) => Initializable a where
     initial :: a
+
+data Dynamic = forall a. Initializable a => Dynamic a
 
 -- | An extensible record, indexed by type
 type DynamicValues = M.Map String Dynamic
 
+toDyn :: Initializable a => a -> Dynamic
+toDyn = Dynamic
 
-instance Typeable a => Initializable (Maybe a) where
+fromDynamic :: forall a. Typeable a => Dynamic -> Maybe a
+fromDynamic (Dynamic b) = if typeOf (undefined :: a) == typeOf b then Just (unsafeCoerce# b) else Nothing
+
+instance (Binary a, Typeable a) => Initializable (Maybe a) where
     initial = Nothing
 
 -- | Accessor a dynamic component

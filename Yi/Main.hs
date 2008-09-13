@@ -222,7 +222,7 @@ defaultConfig =
 -- ... so we can hope getting rid of this someday.
 -- Failing to conform to this rule exposes the code to instant deletion.
 
-defaultPublishedActions :: M.Map String [Dynamic]
+defaultPublishedActions :: M.Map String [Data.Dynamic.Dynamic]
 defaultPublishedActions = M.fromList $ 
     [ ("Backward"               , box Backward)
     , ("Character"              , box Character)
@@ -259,7 +259,7 @@ defaultPublishedActions = M.fromList $
     , ("writeB"                 , box writeB)
     ]
 
-  where box x = [toDyn x]
+  where box x = [Data.Dynamic.toDyn x]
 
 
 openScratchBuffer :: YiM ()

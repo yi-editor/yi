@@ -14,7 +14,7 @@ import Data.List
 import Prelude hiding (error)
 import Yi.Regex
 import Yi.Config
-import Yi.Core
+import Yi.Core  hiding (toDyn)
 import Yi.Keymap
 import Yi.Interact hiding (write)
 import Yi.Event

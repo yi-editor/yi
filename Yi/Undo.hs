@@ -44,6 +44,7 @@
 -- Also some discussion of this in: /The Text Editor Sam/, Rob Pike, pg 19.
 --
 
+-- TODO: rename to Yi.Buffer.Undo
 module Yi.Undo (
     emptyU
   , addChangeU
@@ -55,6 +56,8 @@ module Yi.Undo (
   , Change(AtomicChange, InteractivePoint)
    ) where
 
+import Control.Monad (ap)
+import Data.Binary
 import Yi.Buffer.Implementation            
 
 data Change = SavedFilePoint

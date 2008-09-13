@@ -1,6 +1,5 @@
 module Yi.Config where
 
-import Data.Dynamic
 import qualified Data.Map as M
 import Data.Prototype
 
@@ -8,10 +7,12 @@ import {-# source #-} Yi.Buffer
 import {-# source #-} Yi.Keymap
 import {-# source #-} Yi.Editor
 import Yi.Dynamic
+import Data.Dynamic
 import Yi.Event
 import Yi.Style
 import Yi.Style.Library
 import {-# source #-} Yi.UI.Common
+import Data.Binary
 
 data UIConfig = UIConfig {
    configFontName :: Maybe String,  -- ^ Font name, for the UI that support it.
@@ -36,10 +37,16 @@ data IndentSettings = IndentSettings { expandTabs :: Bool -- ^ Insert spaces ins
                                      , tabSize    :: Int  -- ^ Size of a Tab
                                      , shiftWidth :: Int  -- ^ Indent by so many columns 
                                      }
-                      deriving (Eq, Show, Typeable)
+                      deriving (Eq, Show, Typeable {-! Binary !-})
+
+
+
 
 instance Initializable IndentSettings where
     initial = error "IndentSettings should be initialized from Config."
+
+instance Binary IndentSettings
+
 
 
 -- | Configuration record. All Yi hooks can be set here.
@@ -53,8 +60,8 @@ data Config = Config {startFrontEnd :: UIBoot,
                       -- ^ Default keymap to use.
                       modeTable :: [AnyMode],
                       -- ^ List modes by order of preference.
-                      fundamentalMode :: Mode (),
-                      publishedActions :: M.Map String [Dynamic],
+                      fundamentalMode :: (forall syntax. Mode syntax),
+                      publishedActions :: M.Map String [Data.Dynamic.Dynamic],
                       -- ^ Actions available in the "interpreter" (akin to M-x in emacs)
                       debugMode :: Bool,
                       -- ^ Produce a .yi.dbg file with a lot of debug information.

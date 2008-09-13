@@ -13,6 +13,7 @@ import Prelude ()
 import Yi.Prelude
 import Yi.Completion
 import Yi.Buffer
+import Data.Binary
 import Data.Char
 import Data.Typeable
 import Data.List (filter, drop, isPrefixOf, reverse, findIndex, length, groupBy)
@@ -36,6 +37,7 @@ newtype Completion = Completion
                -- (this seems very inefficient; but we use lazyness to our advantage)
     deriving Typeable
 
+instance Binary Completion
 instance Initializable Completion where
     initial = Completion []
 

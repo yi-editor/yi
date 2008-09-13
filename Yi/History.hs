@@ -8,7 +8,7 @@ module Yi.History where
 
 import Yi.Buffer
 import Yi.Buffer.HighLevel (replaceBufferContent)
-import Data.Char
+import Data.Binary
 import Data.List
 import Data.Dynamic
 import Yi.Dynamic
@@ -18,7 +18,7 @@ import Yi.Prelude
 import Prelude (maybe)
 type Histories = M.Map String History
 
-instance (Typeable k, Typeable v) => Initializable (M.Map k v) where
+instance (Binary k, Binary v, Ord k, Typeable k, Typeable v) => Initializable (M.Map k v) where
     initial = M.empty
 
 data History = History {_historyCurrent :: Int,
@@ -27,6 +27,7 @@ data History = History {_historyCurrent :: Int,
     deriving (Show, Typeable)
 instance Initializable History where
     initial = (History (-1) [])
+instance Binary History
 
 dynKeyA :: (Initializable v, Ord k) => k -> Accessor (M.Map k v) v
 dynKeyA k = Accessor (maybe initial id . M.lookup k) (\f -> mapAlter' (upd f) k)

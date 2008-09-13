@@ -41,6 +41,7 @@ module Yi.Search (
         qrFinish,
                  ) where
 
+import Data.Binary
 import Prelude ()
 import Yi.Prelude
 import Yi.Buffer
@@ -173,9 +174,9 @@ newtype Isearch = Isearch [(String, Region, Direction)] deriving Typeable
 -- This contains: (string currently searched, position where we
 -- searched it, direction, overlay for highlighting searched text)
 
--- Maybe this should not be saved in a Dynamic component!
+-- TODO: Maybe this should not be saved in a Dynamic component!
 -- it could also be embedded in the Keymap state.
-
+instance Binary Isearch
 instance Initializable Isearch where
     initial = (Isearch [])
 

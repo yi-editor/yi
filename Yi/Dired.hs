@@ -29,6 +29,7 @@ module Yi.Dired (
     ) where
 
 import qualified Data.ByteString.Lazy as LazyB
+import Data.Binary
 import Data.List
 import Data.Maybe
 import qualified Data.Map as M
@@ -157,6 +158,7 @@ data DiredState = DiredState
   }
   deriving (Show, Eq, Typeable)
 
+instance Binary DiredState
 instance Initializable DiredState where
     initial = DiredState { diredPath        = ""
                          , diredMarks      = M.empty

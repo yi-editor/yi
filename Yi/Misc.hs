@@ -4,6 +4,7 @@ module Yi.Misc
 where
 
 {- Standard Library Module Imports -}
+import Data.Binary
 import Data.List
   ( isPrefixOf
   , (\\)
@@ -76,7 +77,7 @@ setupScript :: String
 setupScript = "Setup"
 
 newtype CabalBuffer = CabalBuffer {cabalBuffer :: Maybe BufferRef}
-    deriving (Initializable, Typeable)
+    deriving (Initializable, Typeable, Binary)
 
 
 ----------------------------
