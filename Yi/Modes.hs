@@ -1,4 +1,4 @@
-module Yi.Modes (fundamental,
+module Yi.Modes (fundamentalMode,
                  latexMode, cppMode, literateHaskellMode, cabalMode, srmcMode, ocamlMode,
                  perlMode, pythonMode, latexMode2,
                  anyExtension
@@ -28,10 +28,10 @@ import qualified Yi.Syntax.Linear as Linear
 import qualified Yi.Syntax.Latex as Latex
 
 
-fundamental :: Mode syntax
+fundamentalMode :: Mode syntax
 latexMode, cppMode, literateHaskellMode, cabalMode, srmcMode, ocamlMode, perlMode, pythonMode :: Mode (Linear.Result Stroke)
 
-fundamental = emptyMode
+fundamentalMode = emptyMode
   { 
    modeName = "fundamental",
    modeApplies = const True,
@@ -53,7 +53,7 @@ mkHighlighter' :: forall token lexerState.
 mkHighlighter' initSt scan tokenToStyle = mkHighlighter (Linear.incrScanner . Alex.lexScanner (fmap (first tokenToStroke) . scan) initSt) Linear.getStrokes
     where tokenToStroke (Tok t len posn) = (posnOfs posn, tokenToStyle t, posnOfs posn +~ len)
 
-cppMode = fundamental
+cppMode = fundamentalMode
   {
     modeApplies = anyExtension ["cxx", "cpp", "C", "hxx", "H", "h", "c"], 
     -- Treat c file as cpp files, most users will allow for that.
@@ -61,14 +61,14 @@ cppMode = fundamental
     modeHL = ExtHL $ mkHighlighter' Cplusplus.initState Cplusplus.alexScanToken id
   }
 
-literateHaskellMode = fundamental
+literateHaskellMode = fundamentalMode
   {
     modeName = "literate haskell",
     modeApplies = anyExtension ["lhs"],
     modeHL = ExtHL $ mkHighlighter' LiterateHaskell.initState LiterateHaskell.alexScanToken id
   }
 
-cabalMode = fundamental
+cabalMode = fundamentalMode
   {
     modeName = "cabal",
     modeApplies = anyExtension ["cabal"],
@@ -77,7 +77,7 @@ cabalMode = fundamental
 
 latexLexer = Alex.lexScanner Latex.alexScanToken Latex.initState
 
-latexMode = fundamental
+latexMode = fundamentalMode
   {
     modeName = "plain latex",
     modeApplies = anyExtension ["tex", "sty", "ltx"],
@@ -85,7 +85,7 @@ latexMode = fundamental
   }
 
 latexMode2 :: Mode [Latex.Tree Latex.TT]
-latexMode2 = fundamental
+latexMode2 = fundamentalMode
   {
     modeApplies = modeApplies latexMode,
     modeName = "latex",
@@ -94,7 +94,7 @@ latexMode2 = fundamental
       (\point begin end t -> Latex.getStrokes point begin end t)
   }
 
-srmcMode = fundamental
+srmcMode = fundamentalMode
   {
     modeName = "srmc",
     modeApplies = anyExtension ["pepa", -- pepa is a subset of srmc    
@@ -102,21 +102,21 @@ srmcMode = fundamental
     modeHL = ExtHL $ mkHighlighter' Srmc.initState Srmc.alexScanToken id
   }
 
-ocamlMode = fundamental
+ocamlMode = fundamentalMode
   {
     modeName = "ocaml",
     modeApplies = anyExtension ["ml", "mli", "mly", "mll", "ml4", "mlp4"],
     modeHL = ExtHL $ mkHighlighter' OCaml.initState OCaml.alexScanToken OCaml.tokenToStyle
   }
 
-perlMode = fundamental
+perlMode = fundamentalMode
   {
     modeName = "perl",
     modeApplies = anyExtension ["pl", "pm"],
     modeHL = ExtHL $ mkHighlighter' Perl.initState Perl.alexScanToken id
   }
 
-pythonMode = fundamental
+pythonMode = fundamentalMode
   {
     modeName = "python",
     modeApplies = anyExtension ["t", "py"], 

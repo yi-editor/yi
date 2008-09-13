@@ -13,7 +13,7 @@ import Yi.Buffer                ( BufferRef
                                 , newB
                                 , runBufferFull
                                 , insertN
-                                , setMode)
+                                , setAnyMode)
 import Yi.Buffer.Implementation (Update(..), updateIsDelete)
 import Yi.Buffer.HighLevel (botB)
 import Yi.Buffer.Basic
@@ -159,8 +159,8 @@ stringToNewBuffer nm cs = do
     cfg <- ask
     u <- newBufRef
     b <- insertBuffer (newB cfg u nm cs)
-    m <- asks fundamentalMode
-    withGivenBuffer0 b $ setMode m
+    m <- asks configFundamentalMode
+    withGivenBuffer0 b $ setAnyMode m
     return b
 
 insertBuffer :: FBuffer -> EditorM BufferRef

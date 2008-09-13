@@ -198,8 +198,7 @@ diredDirBuffer dir = do
                 setFileName b dir -- associate the buffer with the dir
                 withEditor $ switchToBufferE b
                 diredLoadNewDir dir
-                mode <- (fundamentalMode . yiConfig) <$> ask
-                withBuffer $ setMode mode {modeKeymap = diredKeymap}
+                withBuffer $ modifyMode $ \m -> m {modeKeymap = diredKeymap}
                 -- Colours for Dired come from overlays not syntax highlighting
                 return b
 

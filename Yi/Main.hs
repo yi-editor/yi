@@ -204,8 +204,8 @@ defaultConfig =
                         AnyMode srmcMode,
                         AnyMode ocamlMode,
                         AnyMode perlMode,
-                        AnyMode pythonMode]
-         , fundamentalMode = fundamental
+                        AnyMode pythonMode,
+                        AnyMode fundamentalMode]
          , debugMode = False
          , configKillringAccumulate = False
          , configIndentSettings = IndentSettings 

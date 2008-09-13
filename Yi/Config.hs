@@ -60,7 +60,6 @@ data Config = Config {startFrontEnd :: UIBoot,
                       -- ^ Default keymap to use.
                       modeTable :: [AnyMode],
                       -- ^ List modes by order of preference.
-                      fundamentalMode :: (forall syntax. Mode syntax),
                       publishedActions :: M.Map String [Data.Dynamic.Dynamic],
                       -- ^ Actions available in the "interpreter" (akin to M-x in emacs)
                       debugMode :: Bool,
@@ -71,6 +70,9 @@ data Config = Config {startFrontEnd :: UIBoot,
                       configIndentSettings :: IndentSettings
                       -- IndentSettings should perhaps be in Mode?
                      }
+
+configFundamentalMode :: Config -> AnyMode
+configFundamentalMode = last . modeTable
 
 type UIBoot = Config -> (Event -> IO ()) -> ([Action] -> IO ()) ->  Editor -> IO UI
 

@@ -33,8 +33,7 @@ import Control.Monad.Reader
 spawnMinibufferE :: String -> KeymapEndo -> EditorM BufferRef
 spawnMinibufferE prompt kmMod =
     do b <- stringToNewBuffer prompt (fromString "")
-       fundamental <- asks fundamentalMode
-       withGivenBuffer0 b $ setMode (fundamental {modeKeymap = kmMod})
+       withGivenBuffer0 b $ modifyMode (\m -> m {modeKeymap = kmMod})
        w <- newWindowE True b
        modifyWindows (WS.add w)
        return b
