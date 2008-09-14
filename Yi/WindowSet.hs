@@ -12,6 +12,7 @@ import Prelude hiding (elem, error)
 
 import Yi.Debug
 import Control.Monad.Trans
+import Data.Binary
 import Data.Foldable
 import Data.Traversable
 import Data.Monoid
@@ -28,7 +29,7 @@ instance Arbitrary a => Arbitrary (WindowSet a) where
 #endif
 
 data WindowSet a = WindowSet { before::[a], current::a, after :: [a] }
-    deriving (Show, Eq)
+    deriving (Show, Eq {-! Binary !-})
 
 instance Foldable WindowSet where
     foldMap f (WindowSet b c a) = getDual (foldMap (Dual . f) b) `mappend` (f c) `mappend` foldMap f a
@@ -100,3 +101,15 @@ debug :: (Show a, MonadIO m) => String -> WindowSet a -> m ()
 debug msg (WindowSet b c a) = logPutStrLn $ msg ++ ": " ++ show b ++ show c ++ show a
 
 
+
+--------------------------------------------------------
+-- DERIVES GENERATED CODE
+-- DO NOT MODIFY BELOW THIS LINE
+-- CHECKSUM: 1932088040
+
+instance Binary t1 => Binary (WindowSet t1)
+    where put (WindowSet x1
+                         x2
+                         x3) = return () >> (put x1 >> (put x2 >> put x3))
+          get = case 0 of
+                    0 -> ap (ap (ap (return WindowSet) get) get) get

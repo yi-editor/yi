@@ -9,6 +9,8 @@ module Yi.KillRing (Killring
                    ) 
     where
 
+import Control.Monad (ap)
+import Data.Binary
 import Yi.Buffer.Implementation (Direction(..))
 
 data Killring = Killring { krKilled :: Bool
@@ -16,7 +18,7 @@ data Killring = Killring { krKilled :: Bool
                          , krContents :: [String]
                          , krLastYank :: Bool
                          }
-    deriving (Show)
+    deriving (Show {-! Binary !-})
 
 maxDepth :: Int
 maxDepth = 10
@@ -58,3 +60,18 @@ krSet _ _ = error "killring invariant violated"
 -- | Get the top of the killring.
 krGet :: Killring -> String
 krGet = head . krContents
+
+
+
+--------------------------------------------------------
+-- DERIVES GENERATED CODE
+-- DO NOT MODIFY BELOW THIS LINE
+-- CHECKSUM: 1998721949
+
+instance Binary Killring
+    where put (Killring x1
+                        x2
+                        x3
+                        x4) = return () >> (put x1 >> (put x2 >> (put x3 >> put x4)))
+          get = case 0 of
+                    0 -> ap (ap (ap (ap (return Killring) get) get) get) get

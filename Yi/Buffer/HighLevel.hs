@@ -349,8 +349,6 @@ newtype SelectionStyle = SelectionStyle TextUnit
 instance Initializable SelectionStyle where
   initial = SelectionStyle Character
 
-instance Binary SelectionStyle
-
 getRawSelectRegionB :: BufferM Region
 getRawSelectRegionB = do
   m <- getMarkPointB staticSelMark

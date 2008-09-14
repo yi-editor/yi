@@ -37,7 +37,7 @@ newtype Completion = Completion
                -- (this seems very inefficient; but we use lazyness to our advantage)
     deriving Typeable
 
-instance Binary Completion
+-- TODO: put this in keymap state instead
 instance Initializable Completion where
     initial = Completion []
 

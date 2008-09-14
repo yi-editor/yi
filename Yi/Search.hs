@@ -176,7 +176,7 @@ newtype Isearch = Isearch [(String, Region, Direction)] deriving Typeable
 
 -- TODO: Maybe this should not be saved in a Dynamic component!
 -- it could also be embedded in the Keymap state.
-instance Binary Isearch
+
 instance Initializable Isearch where
     initial = (Isearch [])
 

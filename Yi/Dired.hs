@@ -158,7 +158,6 @@ data DiredState = DiredState
   }
   deriving (Show, Eq, Typeable)
 
-instance Binary DiredState
 instance Initializable DiredState where
     initial = DiredState { diredPath        = ""
                          , diredMarks      = M.empty

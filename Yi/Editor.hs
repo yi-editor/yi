@@ -31,11 +31,12 @@ import Yi.Event (Event)
 import Prelude (map, filter, (!!), takeWhile, length, reverse, zip)
 import Yi.Prelude
 
+import Data.Binary
 import Data.List (nub, delete)
 import qualified Data.DelayList as DelayList
 import qualified Data.Map as M
 import Data.Typeable
-import Control.Monad.RWS
+import Control.Monad.RWS hiding (get, put)
 import qualified Data.ByteString.Lazy.UTF8 as LazyUTF8
 
 -- | The Editor state
@@ -58,6 +59,10 @@ data Editor = Editor {
        ,pendingEvents :: ![Event]                   -- ^ Processed events that didn't yield any action yet.
     }
     deriving Typeable
+
+instance Binary Editor where
+    put (Editor bss bs supply ts _dv sl kr _re _dir _ev) = put bss >> put bs >> put supply >> put ts >> put sl >> put kr 
+    get = Editor <$> get <*> get <*> get <*> get <*> pure emptyDV <*> get <*> get <*> pure Nothing <*> pure Forward <*> pure []
 
 windows :: Editor -> WindowSet Window
 windows editor =

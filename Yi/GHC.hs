@@ -72,7 +72,6 @@ runShimThread f = do
               putMVar r e'
               return a
 
-instance Binary (MVar ShimState)
 maybeShimA  :: Accessor Editor (Maybe (MVar ShimState))
 maybeShimA = dynamicValueA .> dynamicA
 
@@ -99,7 +98,7 @@ instance Show CompileNote where
 type T = (Maybe (Robin.WindowSet CompileNote))
 newtype ShimNotes = ShimNotes { fromShimNotes :: T }
     deriving Typeable
-instance Binary ShimNotes
+
 instance Initializable ShimNotes where
     initial = ShimNotes Nothing
 

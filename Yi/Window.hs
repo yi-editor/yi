@@ -6,6 +6,8 @@
 --
 
 module Yi.Window where
+import Control.Monad (ap)
+import Data.Binary
 import Data.Typeable
 import Yi.Buffer.Basic (BufferRef)
 
@@ -20,7 +22,7 @@ data Window = Window {
                      ,height    :: !Int    -- ^ height of the window (in number of lines displayed)
                      ,wkey      :: !WindowRef -- ^ identifier for the window (for UI sync)
                      }
-        deriving Typeable
+        deriving (Typeable {-! Binary !-})
 -- | Get the identification of a window.
 winkey :: Window -> (Bool, BufferRef)
 winkey w = (isMini w, bufkey w)
@@ -43,3 +45,17 @@ dummyWindowKey = (-1)
 dummyWindow :: BufferRef -> Window
 dummyWindow b = Window False b 0 dummyWindowKey
 
+
+
+--------------------------------------------------------
+-- DERIVES GENERATED CODE
+-- DO NOT MODIFY BELOW THIS LINE
+-- CHECKSUM: 1547716863
+
+instance Binary Window
+    where put (Window x1
+                      x2
+                      x3
+                      x4) = return () >> (put x1 >> (put x2 >> (put x3 >> put x4)))
+          get = case 0 of
+                    0 -> ap (ap (ap (ap (return Window) get) get) get) get

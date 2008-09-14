@@ -12,7 +12,6 @@ module Yi.Dynamic
 import GHC.Exts
 import Data.Maybe
 import Data.Typeable
-import Data.Binary
 import Yi.Accessor
 import Data.Map as M
 -- ---------------------------------------------------------------------
@@ -20,7 +19,7 @@ import Data.Map as M
 --
 
 
-class (Typeable a, Binary a) => Initializable a where
+class (Typeable a) => Initializable a where
     initial :: a
 
 -- Unfortunately, this is not serializable: there is no way to recover a type from a TypeRep.
@@ -35,7 +34,7 @@ toDyn = Dynamic
 fromDynamic :: forall a. Typeable a => Dynamic -> Maybe a
 fromDynamic (Dynamic b) = if typeOf (undefined :: a) == typeOf b then Just (unsafeCoerce# b) else Nothing
 
-instance (Binary a, Typeable a) => Initializable (Maybe a) where
+instance (Typeable a) => Initializable (Maybe a) where
     initial = Nothing
 
 -- | Accessor for a dynamic component
