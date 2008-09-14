@@ -18,9 +18,12 @@ import Data.Map as M
 -- ---------------------------------------------------------------------
 -- | Class of values that can go in the extensible state component
 --
+
+
 class (Typeable a, Binary a) => Initializable a where
     initial :: a
 
+-- Unfortunately, this is not serializable: there is no way to recover a type from a TypeRep.
 data Dynamic = forall a. Initializable a => Dynamic a
 
 -- | An extensible record, indexed by type
@@ -35,7 +38,7 @@ fromDynamic (Dynamic b) = if typeOf (undefined :: a) == typeOf b then Just (unsa
 instance (Binary a, Typeable a) => Initializable (Maybe a) where
     initial = Nothing
 
--- | Accessor a dynamic component
+-- | Accessor for a dynamic component
 dynamicValueA :: Initializable a => Accessor DynamicValues a
 dynamicValueA = Accessor getDynamicValue modifyDynamicValue
     where

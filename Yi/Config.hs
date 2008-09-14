@@ -12,7 +12,6 @@ import Yi.Event
 import Yi.Style
 import Yi.Style.Library
 import {-# source #-} Yi.UI.Common
-import Data.Binary
 
 data UIConfig = UIConfig {
    configFontName :: Maybe String,  -- ^ Font name, for the UI that support it.

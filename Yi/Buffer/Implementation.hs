@@ -155,6 +155,7 @@ updateSize = Size . fromIntegral . LazyB.length . updateString
 
 data UIUpdate = TextUpdate Update
               | StyleUpdate !Point !Size
+ deriving ({-! Binary !-})
 
 --------------------------------------------------
 -- Low-level primitives.
@@ -546,7 +547,7 @@ getAst FBufferData {hlCache = HLState (SynHL {hlGetTree = gt}) cache} = gt cache
 --------------------------------------------------------
 -- DERIVES GENERATED CODE
 -- DO NOT MODIFY BELOW THIS LINE
--- CHECKSUM: 75413710
+-- CHECKSUM: 1150468583
 
 instance Binary MarkValue
     where put (MarkValue x1 x2) = return () >> (put x1 >> put x2)
@@ -563,3 +564,10 @@ instance Binary Update
           get = getWord8 >>= (\tag_ -> case tag_ of
                                            0 -> ap (ap (ap (return Insert) get) get) get
                                            1 -> ap (ap (ap (return Delete) get) get) get)
+
+instance Binary UIUpdate
+    where put (TextUpdate x1) = putWord8 0 >> put x1
+          put (StyleUpdate x1 x2) = putWord8 1 >> (put x1 >> put x2)
+          get = getWord8 >>= (\tag_ -> case tag_ of
+                                           0 -> ap (return TextUpdate) get
+                                           1 -> ap (ap (return StyleUpdate) get) get)

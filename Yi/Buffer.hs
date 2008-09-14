@@ -149,6 +149,10 @@ import Driver ()
 
 data WinMarks = WinMarks { fromMark, insMark, selMark, toMark :: !Mark }
 
+instance Binary WinMarks where
+    put (WinMarks f i s t) = put f >> put i >> put s >> put t
+    get = WinMarks <$> get <*> get <*> get <*> get
+
 data FBuffer = forall syntax.
         FBuffer { name   :: !String               -- ^ immutable buffer name
                 , bkey   :: !BufferRef            -- ^ immutable unique key
@@ -167,7 +171,16 @@ data FBuffer = forall syntax.
                 }
         deriving Typeable
 
-
+-- unfortunately the dynamic stuff can't be read.
+instance Binary FBuffer where
+    put (FBuffer n b f u r bmode pd _bd pc pu hs _proc wm)  =
+      let strippedRaw :: BufferImpl ()
+          strippedRaw = (setSyntaxBI (modeHL emptyMode) r) 
+      in put n >> put b >> put f >> put u >> put strippedRaw >> put pd >> put pc >> put pu >> put hs >> put wm
+    
+    get = FBuffer <$> get <*> get <*> get <*> get <*> getStripped <*> get <*> get <*> pure emptyDV <*> get <*> get <*> get <*> pure I.End <*> get
+        where getStripped :: Get (BufferImpl ())
+              getStripped = get
 
 -- | udpate the syntax information (clear the dirty "flag")
 clearSyntax :: FBuffer -> FBuffer
@@ -244,7 +257,7 @@ data IndentSettings = IndentSettings { expandTabs :: Bool -- ^ Insert spaces ins
                                      , tabSize    :: Int  -- ^ Size of a Tab
                                      , shiftWidth :: Int  -- ^ Indent by so many columns 
                                      }
-                      deriving (Eq, Show, Typeable {-! Binary !-})
+                      deriving (Eq, Show, Typeable)
 
 
 
