@@ -50,8 +50,6 @@ data Editor = Editor {
 
        ,dynamic       :: !(DynamicValues)              -- ^ dynamic components
 
-       ,tabwidth      :: !Int                       -- ^ width of tabs
-
        ,statusLines   :: !(DelayList.DelayList String)
        ,killring      :: !Killring
        ,regex         :: !(Maybe SearchExp) -- ^ most recent regex
@@ -129,7 +127,6 @@ emptyEditor cfg = Editor {
        ,tabs         = WS.new (WS.new win)
        ,bufferStack  = [bkey buf]
        ,refSupply = 2
-       ,tabwidth     = 8
        ,regex        = Nothing
        ,searchDirection = Forward
        ,dynamic      = M.empty
