@@ -153,7 +153,7 @@ updateString (Delete _ _ s) = s
 updateSize :: Update -> Size
 updateSize = Size . fromIntegral . LazyB.length . updateString
 
-data UIUpdate = TextUpdate Update
+data UIUpdate = TextUpdate !Update
               | StyleUpdate !Point !Size
  deriving ({-! Binary !-})
 
