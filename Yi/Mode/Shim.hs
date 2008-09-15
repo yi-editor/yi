@@ -75,7 +75,7 @@ minorMode :: Mode syntax -> Mode syntax
 minorMode m = m
    {
     modeName = modeName m ++ "+shim",
-    modeKeymap = (<||) 
+    modeKeymap = modeKeymap m . ((<||) 
       (((ctrl $ char 'c') ?>> choice
         [ctrl (char 't') ?>>! typeAtPos,
          char '!' ?>> char 't' ?>>! annotType,
@@ -90,6 +90,6 @@ minorMode m = m
              runShimThread (Hsinfo.load filename True Nothing >> return ())
              return ()
          ]
-       ) <|> (ctrl (char 'x') ?>> char '`' ?>>! jumpToNextNote))
+       ) <|> (ctrl (char 'x') ?>> char '`' ?>>! jumpToNextNote)))
    }
 
