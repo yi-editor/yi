@@ -43,7 +43,7 @@ main = yi $ defaultConfig
      { 
        configFontSize = Nothing,
                         -- 'Just 10' for specifying the size.
-       configStyle = configStyle defaultUIConfig,
+       configTheme = configTheme defaultUIConfig,
                      -- darkBlueTheme  -- Change the color scheme here.
        
        configWindowFill = ' ' 
