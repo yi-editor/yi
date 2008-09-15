@@ -8,12 +8,10 @@
 module Yi.Buffer.Indent where
 
 import Control.Monad
-import Control.Monad.State (get)
 
 import Yi.Buffer
 import Yi.Buffer.HighLevel
 import Yi.Prelude
-import Yi.Config
 import Yi.Buffer.Normal
 import Yi.Buffer.Region
 import Prelude ()
