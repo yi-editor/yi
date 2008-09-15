@@ -4,9 +4,9 @@ import Yi.String (mapLines)
 
 increaseIndent :: BufferM ()
 increaseIndent = do
-  r <- getSelectRegionB
-  r' <- unitWiseRegion Line r -- extend the region to full lines.
-  modifyRegionB (mapLines (' ':)) r'
+   r <- getSelectRegionB
+   r' <- unitWiseRegion Line r -- extend the region to full lines.
+   modifyRegionB (mapLines (' ':)) r'
 
 
 main :: IO ()

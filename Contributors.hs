@@ -66,7 +66,8 @@ main = do
   let ls = BS.lines f
       ps = filter (not . isSpace . BS.head) $ filter (not . BS.null) $ ls
       contrs = M.fromListWith (+) $ flip zip (repeat 1) $ map (trim . name . unquote . BS.dropWhile isSpace . BS.drop (length tx)) $ ps
-  print (length ps)
+  putStrLn $ show (length ps) ++ " patches"
+  putStrLn $ show (M.size contrs) ++ " contributors"
   mapM print $ sortBy (compare `on` snd) $ M.toList $ contrs
   mapM BS.putStrLn $ M.keys contrs
   return ()

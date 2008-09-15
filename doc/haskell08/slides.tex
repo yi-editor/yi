@@ -24,16 +24,34 @@
 \frame{\titlepage}
 
 \frame{
+  \frametitle{The Project}
+  \begin{itemize}
+    \item Haskell for text editor
+    \item Text editor for Haskell
+    \item Started in 2004
+    \item $>$ 2500 patches
+    \item 47 contributors
+    \item about 15kloc
+  \end{itemize}
+}
+
+
+\frame{
   \frametitle{Features}
       \begin{itemize}
-        \item Usable editor (more than a toy)
+        \item Usable editor
+        \begin{itemize}
+          \item Buffers, Copy/Paste, Search/Replace, Undo, ...
+          \item Windows, Tabs, Syntax highlighting, ...
+        \end{itemize}
         \item Keymaps: vim, emacs, (cua), ...
-        \item Frontends: vty, gtk, (cocoa), ...
-        \item Modes: haskell, latex, perl, python, ...
-        \item Static config
+        \item Frontends: {\textbf vty}, gtk, (cocoa), ...
+        \item Modes: Haskell, \LaTeX, perl, python, ...
+        \item Configurable in Haskell
         \itemize{
           \item Yi is a library (as XMonad)
-          \item Users "configure" Yi by combining the building blocks.
+          \item Users ``configure'' Yi by combining building blocks 
+          \item no patching (emacs)
         }
       \end{itemize}
 }
@@ -42,13 +60,24 @@
   \frametitle{Architecture}
     \begin{itemize}
       \item Haskell + Hackage
-      \item Purely functional core
-      \item IO shell 
       \item Abstracted UIs
-      \item Buffer/Editor/IO levels separated
-      \item Keymaps = parsers (combinators) of input
-      \item Alex-based modes
-      \item Parser-based modes
+      \item Stack of monads
+      \begin{itemize}
+         \item IO
+         \item Editor
+         \item Buffer
+      \end{itemize}
+      \item Keymap = Input $\leadsto$ Action 
+      \begin{itemize}
+        \item parsers (combinators) of input
+      \end{itemize}
+      \item Language support
+      \begin{itemize}
+        \item Lexical analysis
+        \item Syntax analysis (special parser combinators)
+        \item AST-based highlighting
+        \item AST available in mode-dependent functions
+      \end{itemize}
     \end{itemize}
 }
 
@@ -57,8 +86,11 @@
   \frametitle{Haskell Support}
       \begin{itemize}
         \item Paren matching
-        \item Layout rule
+        \begin{itemize}
+          \item Layout aware
+        \end{itemize}
         \item Auto indent
+        \item Layout-preservation
         \item Ghci
         \item Cabal build
         \item (GHC API)
@@ -72,7 +104,6 @@
         \item Configuration
         \item Latex
       \end{itemize}
-  
 }
 
 
