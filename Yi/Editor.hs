@@ -33,6 +33,7 @@ import Yi.Prelude
 
 import Data.Binary
 import Data.List (nub, delete)
+import Data.Foldable (concatMap)
 import qualified Data.DelayList as DelayList
 import qualified Data.Map as M
 import Data.Typeable
@@ -427,6 +428,10 @@ withWindows = getsA windowsA
 withWindow :: (Window -> a) -> EditorM a
 withWindow f = getsA (WS.currentA .> windowsA) f
 
+findWindowWith :: WindowRef -> Editor -> Window
+findWindowWith k e =
+    head $ concatMap (\win -> if (wkey win == k) then [win] else []) $ windows e
+
 -- | Split the current window, opening a second window onto current buffer.
 -- TODO: unfold newWindowE here?
 splitE :: EditorM ()
@@ -489,5 +494,4 @@ withOtherWindow f = do
   shiftOtherWindow
   f
   liftEditor prevWinE
-
 

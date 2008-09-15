@@ -63,7 +63,7 @@ data UI = UI { uiWindow :: Gtk.Window
 
 data WinInfo = WinInfo
     {
-      bufkey      :: !BufferRef         -- ^ the buffer this window opens to
+      winref      :: !Window.WindowRef     -- ^ The reference of the Yi window this GTK window represents.
     , wkey        :: !Unique
     , textview    :: TextView
     , modeline    :: Label
@@ -72,11 +72,10 @@ data WinInfo = WinInfo
     }
 
 instance Show WinInfo where
-    show w = "W" ++ show (hashUnique $ wkey w) ++ " on " ++ show (bufkey w)
+    show w = "W" ++ show (hashUnique $ wkey w) ++ " on " ++ show (winref w)
 
--- | Get the identification of a window.
-winkey :: WinInfo -> (Bool, BufferRef)
-winkey w = (isMini w, bufkey w)
+bufkey :: Editor -> WinInfo -> BufferRef
+bufkey e w = Window.bufkey $ findWindowWith (winref w) e
 
 mkUI :: UI -> Common.UI
 mkUI ui = Common.UI
@@ -222,9 +221,9 @@ end = mainQuit
 syncWindows :: Editor -> UI -> [(Window, Bool)] -- ^ windows paired with their "isFocused" state.
             -> [WinInfo] -> IO [WinInfo]
 syncWindows e ui (wfocused@(w,focused):ws) (c:cs)
-    | Window.winkey w == winkey c = do when focused (setFocus c)
-                                       return (c:) `ap` syncWindows e ui ws cs
-    | Window.winkey w `elem` map winkey cs = removeWindow ui c >> syncWindows e ui (wfocused:ws) cs
+    | Window.wkey w == winref c = do when focused (setFocus c)
+                                     return (c:) `ap` syncWindows e ui ws cs
+    | Window.wkey w `elem` map winref cs = removeWindow ui c >> syncWindows e ui (wfocused:ws) cs
     | otherwise = do c' <- insertWindowBefore e ui w c
                      when focused (setFocus c')
                      return (c':) `ap` syncWindows e ui ws (c:cs)
@@ -267,7 +266,7 @@ handleClick ui w event = do
   logPutStrLn $ "Will focus to index: " ++ show (findIndex ((wkey w ==) . wkey) wCache)
 
   let editorAction = do
-        b <- gets $ (bkey . findBufferWith (bufkey w))
+        b <- gets $ \editor -> bkey $ findBufferWith (bufkey editor w) editor
         case (eventClick event, eventButton event) of
           (SingleClick, LeftButton) -> do
               focusWindow
@@ -296,8 +295,9 @@ handleClick ui w event = do
 
 
 -- | Make A new window
-newWindow :: UI -> Bool -> FBuffer -> IO WinInfo
-newWindow ui mini b = do
+newWindow :: Editor -> UI -> Bool -> Window -> IO WinInfo
+newWindow editor ui mini win = do
+    let buf = findBufferWith (Window.bufkey win) editor
     f <- mkFontDesc (uiConfig ui)
 
     ml <- labelNew Nothing
@@ -330,7 +330,7 @@ newWindow ui mini b = do
      then do
       widgetSetSizeRequest v (-1) 1
 
-      prompt <- labelNew (Just $ name b)
+      prompt <- labelNew (Just $ name buf)
       widgetModifyFont prompt (Just f)
 
       hb <- hBoxNew False 1
@@ -353,20 +353,20 @@ newWindow ui mini b = do
                boxChildPacking ml := PackNatural]
       return (castToBox vb)
 
-    gtkBuf <- getGtkBuffer ui b
+    gtkBuf <- getGtkBuffer ui buf
 
     textViewSetBuffer v gtkBuf
 
     k <- newUnique
-    let win = WinInfo {
-                     bufkey    = (keyB b)
+    let gtkWin = WinInfo {
+                     winref    = Window.wkey win
                    , wkey      = k
                    , textview  = v
                    , modeline  = ml
                    , widget    = box
                    , isMini    = mini
               }
-    return win
+    return gtkWin
 
 insertWindowBefore :: Editor -> UI -> Window -> WinInfo -> IO WinInfo
 insertWindowBefore e i w _c = insertWindow e i w
@@ -376,8 +376,7 @@ insertWindowAtEnd e i w = insertWindow e i w
 
 insertWindow :: Editor -> UI -> Window -> IO WinInfo
 insertWindow e i win = do
-  let buf = findBufferWith (Window.bufkey win) e
-  liftIO $ do w <- newWindow i (Window.isMini win) buf
+  liftIO $ do w <- newWindow e i (Window.isMini win) win
               set (uiBox i) [containerChild := widget w,
                              boxChildPacking (widget w) := if isMini w then PackNatural else PackGrow]
               textview w `onButtonRelease` handleClick i w
@@ -391,26 +390,35 @@ refresh ui e = do
     let ws = Editor.windows e
     let takeEllipsis s = if length s > 132 then take 129 s ++ "..." else s
     set (uiCmdLine ui) [labelText := takeEllipsis (statusLine e)]
-
     cache <- readRef $ windowCache ui
+
+    -- Update the GTK text buffers for all the updates that have occured in the backing Yi buffers
+    -- since the last refresh.
+    -- Iterate over all the buffers in the editor 
     forM_ (buffers e) $ \buf -> when (not $ null $ pendingUpdates $ buf) $ do
+      -- Apply all pending updates.
       gtkBuf <- getGtkBuffer ui buf
       forM_ ([u | TextUpdate u <- pendingUpdates buf]) $ applyUpdate gtkBuf
-      let (size,p) = runBufferDummyWindow buf ((,) <$> sizeB <*> pointB)
-      replaceTagsIn ui (inBounds (p-100) size) (inBounds (p+100) size) buf gtkBuf
+      let size = runBufferDummyWindow buf sizeB
       forM_ ([(s,s+~l) | StyleUpdate s l <- pendingUpdates buf]) $ \(s,e') -> replaceTagsIn ui (inBounds s size) (inBounds e' size) buf gtkBuf
+      -- Update all the tags in each region that is currently displayed.
+      -- As multiple windows can be displaying the same buffer this is done for each window.
+      forM_ ws $ \w -> when (Window.bufkey w == bkey buf) $ do  
+          let p = fst $ runBuffer w buf pointB
+          replaceTagsIn ui (inBounds (p-100) size) (inBounds (p+100) size) buf gtkBuf
     logPutStrLn $ "syncing: " ++ show ws
     logPutStrLn $ "with: " ++ show cache
     cache' <- syncWindows e ui (toList $ WS.withFocus $ ws) cache
     logPutStrLn $ "Gives: " ++ show cache'
     writeRef (windowCache ui) cache'
     forM_ cache' $ \w ->
-        do let buf = findBufferWith (bufkey w) e
+        do let buf = findBufferWith (bufkey e w) e
+               win = findWindowWith (winref w) e
            gtkBuf <- getGtkBuffer ui buf
 
-           let (Point p0) = runBufferDummyWindow buf pointB
-           let (Point p1) = runBufferDummyWindow buf (getMarkPointB staticSelMark)
-           let (showSel) = runBufferDummyWindow buf (getA highlightSelectionA)
+           let (Point p0) = fst $ runBuffer win buf pointB
+           let (Point p1) = fst $ runBuffer win buf (getMarkPointB staticSelMark)
+           let (showSel) = fst $ runBuffer win buf (getA highlightSelectionA)
            i <- textBufferGetIterAtOffset gtkBuf p0
            if showSel 
               then do
