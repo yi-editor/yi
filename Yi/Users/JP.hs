@@ -131,7 +131,7 @@ parensInput
 parenIns :: Char -> Char -> BufferM ()
 parenIns open close = do
     x <- readB
-    if isSpace x then insertN [open,close] >> leftB else insertN [open]
+    if x == '\0' || isSpace x then insertN [open,close] >> leftB else insertN [open]
 
 main :: IO ()
 main = yi $ defaultConfig {
