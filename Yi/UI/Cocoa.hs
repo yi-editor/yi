@@ -68,14 +68,11 @@ data WinInfo = WinInfo
   }
 
 mkUI :: UI -> Common.UI
-mkUI ui = Common.UI
-  {
-   Common.main                  = main,
-   Common.end                   = end,
-   Common.suspend               = uiWindow ui # performMiniaturize nil,
-   Common.refresh               = refresh ui,
-   Common.prepareAction         = return (return ()),
-   Common.reloadProject         = \_ -> return ()
+mkUI ui = Common.dummyUI
+  { Common.main    = main
+  , Common.end     = end
+  , Common.suspend = uiWindow ui # performMiniaturize nil
+  , Common.refresh = refresh ui
   }
 
 rect :: Float -> Float -> Float -> Float -> NSRect

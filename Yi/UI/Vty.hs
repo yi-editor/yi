@@ -68,15 +68,14 @@ data UI = UI {
              }
 
 mkUI :: UI -> Common.UI
-mkUI ui = Common.UI 
+mkUI ui = Common.dummyUI 
   {
    Common.main           = main ui,
    Common.end            = end ui,
    Common.suspend        = raiseSignal sigTSTP,
    Common.refresh        = scheduleRefresh ui,
    Common.prepareAction  = prepareAction ui,
-   Common.userForceRefresh = userForceRefresh ui,
-   Common.reloadProject  = \_ -> return ()
+   Common.userForceRefresh = userForceRefresh ui
   }
 
 -- | Initialise the ui

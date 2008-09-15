@@ -15,4 +15,14 @@ data UI = UI
      reloadProject         :: FilePath -> IO ()  -- ^ Reload cabal project views
     }
 
-
+dummyUI :: UI
+dummyUI = UI
+  {
+    main             = return (),
+    end              = return (),
+    suspend          = return (),
+    refresh          = const (return ()),
+    userForceRefresh = return (),
+    prepareAction    = return (return ()),
+    reloadProject    = const (return ())
+  }

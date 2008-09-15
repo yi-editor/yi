@@ -78,7 +78,7 @@ bufkey :: Editor -> WinInfo -> BufferRef
 bufkey e w = Window.bufkey $ findWindowWith (winref w) e
 
 mkUI :: UI -> Common.UI
-mkUI ui = Common.UI
+mkUI ui = Common.dummyUI
   {
    Common.main                  = main ui,
    Common.end                   = postGUIAsync $ end,

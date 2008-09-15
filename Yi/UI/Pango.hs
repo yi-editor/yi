@@ -72,7 +72,7 @@ instance Show WinInfo where
     show w = show (coreWin w)
 
 mkUI :: UI -> Common.UI
-mkUI ui = Common.UI
+mkUI ui = Common.dummyUI
   {
    Common.main                  = main                  ui,
    Common.end                   = end,
