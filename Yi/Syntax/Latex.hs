@@ -17,6 +17,7 @@ isNoise Text = True
 isNoise Comment = True
 isNoise (Command _) = True
 isNoise NewCommand = True
+isNoise (Special ',') = True
 isNoise (Special _) = False
 isNoise (Begin _) = False
 isNoise (End _) = False
@@ -122,7 +123,7 @@ tokenToStyle t =
   case t of
     Comment -> commentStyle
     Text -> defaultStyle
-    Special _ -> operatorStyle
+    Special _ -> defaultStyle
     Command _ -> typeStyle
     Begin _ -> keywordStyle
     End _ -> keywordStyle
