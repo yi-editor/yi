@@ -1,9 +1,11 @@
-\documentclass[utf8x]{beamer}
+\documentclass[utf8x,compress]{beamer}
 \usepackage[utf8x]{inputenc}
 % \DeclareUnicodeCharacter{981}{\phi}
-\usepackage{beamerthemesplit}
+% \usepackage{beamerthemesplit}
 %\usepackage{aop-text}
 %\usepackage{aop-math}
+
+\usetheme{Malmoe}
 
 \title{Yi}
 \subtitle{An Editor in Haskell for Haskell}
@@ -21,40 +23,58 @@
 
 \frame{\titlepage}
 
-\frame{\tableofcontents}
-
-\section{Capabilities}
 \frame{
-  \frametitle{Capabilities}
+  \frametitle{Features}
       \begin{itemize}
-        \item Purely functional core + IO shell
-        \item Keymap as parsers: vim, emacs, cua, ...
-        \item Frontends: vty, gtk, cocoa, ...
-        \item Syntax-aware
+        \item Usable editor (more than a toy)
+        \item Keymaps: vim, emacs, (cua), ...
+        \item Frontends: vty, gtk, (cocoa), ...
+        \item Modes: haskell, latex, perl, python, ...
+        \item Static config
+        \itemize{
+          \item Yi is a library (as XMonad)
+          \item Users "configure" Yi by combining the building blocks.
+        }
       \end{itemize}
 }
+
+\frame{
+  \frametitle{Architecture}
+    \begin{itemize}
+      \item Haskell + Hackage
+      \item Purely functional core
+      \item IO shell 
+      \item Abstracted UIs
+      \item Buffer/Editor/IO levels separated
+      \item Keymaps = parsers (combinators) of input
+      \item Alex-based modes
+      \item Parser-based modes
+    \end{itemize}
+}
+
 
 \frame{
   \frametitle{Haskell Support}
       \begin{itemize}
         \item Paren matching
         \item Layout rule
+        \item Auto indent
+        \item Ghci
         \item Cabal build
+        \item (GHC API)
       \end{itemize}
 }
 
 \frame{
   \frametitle{Demo}
+      \begin{itemize}
+        \item Haskell Support
+        \item Configuration
+        \item Latex
+      \end{itemize}
+  
 }
 
-\section{Configuration}
 
-\frame{
-  \itemize{
-    \item Yi is a library (as XMonad)
-    \item Users "configure" Yi by combining the building blocks.
-    \item Example!
-  }
-}
 
 \end{document}
