@@ -250,7 +250,7 @@ buildLaunch projectName = do
     child_pid <- forkProcess $ executeFile executable_path False args' Nothing
     child_status <- getProcessStatus True False child_pid
     case child_status of
-        Nothing -> lauchFailed
+        Nothing -> launchFailed
         Just _ -> do 
             exitImmediately ExitSuccess
             return Nothing
