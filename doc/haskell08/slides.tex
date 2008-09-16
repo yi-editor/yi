@@ -1,16 +1,14 @@
 \documentclass[utf8x,compress]{beamer}
+\usepackage{graphicx}
 \usepackage[utf8x]{inputenc}
-% \DeclareUnicodeCharacter{981}{\phi}
-% \usepackage{beamerthemesplit}
-%\usepackage{aop-text}
-%\usepackage{aop-math}
-
 \usetheme{Malmoe}
+
+\pgfdeclareimage[height=1cm]{yi-logo}{yi+lambda-fat}
+
 
 \title{Yi}
 \subtitle{An Editor in Haskell for Haskell}
 \author{Jean-Philippe Bernardy}
-% \email           {bernardy@chalmers.se}
 \institute {Chalmers University of Technology
             % and University of Gothenburg
           }
@@ -21,18 +19,22 @@
 
 \begin{document}
 
-\frame{\titlepage}
+\frame{\titlepage
+  \begin{center} \pgfuseimage{yi-logo} \end{center}
+}
 
 \frame{
   \frametitle{The Project}
   \begin{itemize}
-    \item Haskell for text editor
+    \item Text editor in  Haskell
     \item Text editor for Haskell
     \item Started in 2004
     \item $>$ 2500 patches
-    \item 47 contributors
-    \item about 15kloc
+    \item $>$ 40 contributors (open)
+    \item About 15kloc
   \end{itemize}
+
+  \includegraphics[width=\columnwidth]{activity}
 }
 
 
@@ -44,41 +46,37 @@
           \item Buffers, Copy/Paste, Search/Replace, Undo, ...
           \item Windows, Tabs, Syntax highlighting, ...
         \end{itemize}
-        \item Keymaps: vim, emacs, (cua), ...
-        \item Frontends: {\textbf vty}, gtk, (cocoa), ...
-        \item Modes: Haskell, \LaTeX, perl, python, ...
+        \item Keymaps: vim, emacs, (cua)
+        \item Frontends: {\bf terminal}, gtk, cocoa
+        \item Language support: Haskell, \LaTeX, perl, python, ...
         \item Configurable in Haskell
-        \itemize{
-          \item Yi is a library (as XMonad)
-          \item Users ``configure'' Yi by combining building blocks 
-          \item no patching (emacs)
-        }
       \end{itemize}
 }
 
 \frame{
   \frametitle{Architecture}
+  \begin{itemize}
+    \item Written in Haskell!
+    \item Keymap = Input $\leadsto$ [Action]
     \begin{itemize}
-      \item Haskell + Hackage
-      \item Abstracted UIs
-      \item Stack of monads
-      \begin{itemize}
-         \item IO
-         \item Editor
-         \item Buffer
-      \end{itemize}
-      \item Keymap = Input $\leadsto$ Action 
-      \begin{itemize}
-        \item parsers (combinators) of input
-      \end{itemize}
-      \item Language support
-      \begin{itemize}
-        \item Lexical analysis
-        \item Syntax analysis (special parser combinators)
-        \item AST-based highlighting
-        \item AST available in mode-dependent functions
-      \end{itemize}
+      \item parsers (combinators) of input
     \end{itemize}
+    \item Action $\in$ stack of monads
+    \begin{itemize}
+       \item IO
+       \item Editor
+       \item Buffer (functional)
+    \end{itemize}
+    \item Abstracted UIs
+    \item Language support
+    \begin{itemize}
+      \item Lexical analysis
+      \item Syntax analysis (special parser combinators)
+      \item AST-based highlighting
+      \item AST available in mode-dependent functions
+    \end{itemize}
+    \item Uses 30 packages from Hackage
+  \end{itemize}
 }
 
 
@@ -99,13 +97,51 @@
 
 \frame{
   \frametitle{Demo}
-      \begin{itemize}
+  \note{
+       \begin{itemize}
         \item Haskell Support
         \item Configuration
+        \itemize{
+          \item Yi is a library (as XMonad)
+          \item Users ``configure'' Yi by combining building blocks 
+          \item no patching (emacs)
+        }
         \item Latex
-      \end{itemize}
+       \end{itemize}
+  }
 }
 
+\frame{
+  \frametitle{Conclusion}
+  \begin{itemize}
+    \item Usable
+    \item Haskell support
+    \item Try it!
+    \item \texttt{http://haskell.org/haskellwiki/Yi}
+    \item \texttt{cabal install yi}
+  \end{itemize}
+}
+
+\frame[shrink=10]{
+  \frametitle{Credits}
+    \begin{tabular}{lll}
+Allan Clark & Alson Kemp & Andres Loeh \\
+Andrew Birkett & Andrii Zvorygin & Bastiaan Zapf \\
+Ben Moseley & Cale Gibbard & Corey O'Connor \\
+Daniel McAllansmith & Don Stewart & Duncan Coutts \\
+Evan Martin & Fraser Wilson & Gustav Munkby \\
+Gwern Branwen & Harald Korneliussen & Henning Guenther \\
+Jason Dagit & Jean-Philippe Bernardy & Jeff Wheeler \\
+Jens Petersen & Krasimr Angelov & Mario Lang \\
+Mark Wotton & Massimiliano Gubinelli & Michael Maloney \\
+Nicolas Pouillard & Paulo Tanimoto & Samuel Bronson \\
+Scott Williams & Sean Leather & Shae Erisson \\
+Simon Winwood & Spencer Janssen & Stefan O'Rear \\
+Suleiman Souhlal & Taral & Thomas Schilling \\
+Tim Newsham & Tristan Allwood & Tuomo Valkonen \\
+Vivian McPhail & Yang Zhang
+   \end{tabular}
+}
 
 
 \end{document}

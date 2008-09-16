@@ -25,7 +25,9 @@ name :: ByteString -> ByteString
 name tag
      | tag == "tora@zonetora.co.uk" = "Tristan Allwood"
      | tag == "andy@nobugs.org" = "Andrew Birkett"
+     | tag == "jeff@nokrev.com" = "Jeff Wheeler"
      | AllTextSubmatches [_,name] <- tag =~ pack "^\"?(.+)<.*>\"?$" = name
+     | AllTextSubmatches [_,name] <- tag =~ pack "^?(.+)<.*>?$" = name
      | AllTextSubmatches [_,firstname,lastname] <- tag =~ pack "^<?(.*)@(.*)\\.name>?$"
                                                 = mkName firstname lastname
      | AllTextSubmatches [_,user] <- tag =~ pack "^<?(.*)@.*>?$" = nickToName user

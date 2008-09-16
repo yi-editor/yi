@@ -1,5 +1,6 @@
 default: hask08.pdf
 
+
 %.view: %.pdf  
 	evince $<
 
