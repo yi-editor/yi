@@ -108,7 +108,6 @@ import System.FilePath
 import Yi.Regex (SearchExp)
 import Yi.Accessor
 import Yi.Buffer.Implementation
-import Yi.Config
 import Yi.Region
 import Yi.Syntax
 import Yi.Undo
@@ -174,7 +173,7 @@ data FBuffer = forall syntax.
 
 -- unfortunately the dynamic stuff can't be read.
 instance Binary FBuffer where
-    put (FBuffer n b f u r bmode pd _bd pc pu hs _proc wm)  =
+    put (FBuffer n b f u r _bmode pd _bd pc pu hs _proc wm)  =
       let strippedRaw :: BufferImpl ()
           strippedRaw = (setSyntaxBI (modeHL emptyMode) r) 
       in put n >> put b >> put f >> put u >> put strippedRaw >> put pd >> put pc >> put pu >> put hs >> put wm
@@ -465,8 +464,8 @@ emptyMode = Mode
   }
 
 -- | Create buffer named @nm@ with contents @s@
-newB :: Config -> BufferRef -> String -> LB.ByteString -> FBuffer
-newB cfg unique nm s =
+newB :: BufferRef -> String -> LB.ByteString -> FBuffer
+newB unique nm s =
     FBuffer { name   = nm
             , bkey   = unique
             , file   = Nothing          -- has name, not connected to a file

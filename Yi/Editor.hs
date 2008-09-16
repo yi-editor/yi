@@ -122,8 +122,8 @@ searchDirectionA = Accessor searchDirection (\f e -> e{searchDirection = f (sear
 
 
 -- | The initial state
-emptyEditor :: Config -> Editor
-emptyEditor cfg = Editor {
+emptyEditor :: Editor
+emptyEditor = Editor {
         buffers      = M.singleton (bkey buf) buf
        ,tabs         = WS.new (WS.new win)
        ,bufferStack  = [bkey buf]
@@ -135,7 +135,7 @@ emptyEditor cfg = Editor {
        ,killring     = krEmpty
        ,pendingEvents = []
        }
-        where buf = newB cfg 0 "*console*" (LazyUTF8.fromString "")
+        where buf = newB 0 "*console*" (LazyUTF8.fromString "")
               win = (dummyWindow (bkey buf)) {wkey = 1, isMini = False}
 
 -- ---------------------------------------------------------------------
@@ -159,9 +159,8 @@ stringToNewBuffer :: String -- ^ The buffer name (*not* the associated file)
                   -> LazyUTF8.ByteString -- ^ The contents with which to populate the buffer
                   -> EditorM BufferRef
 stringToNewBuffer nm cs = do
-    cfg <- ask
     u <- newBufRef
-    b <- insertBuffer (newB cfg u nm cs)
+    b <- insertBuffer (newB u nm cs)
     m <- asks configFundamentalMode
     withGivenBuffer0 b $ setAnyMode m
     return b

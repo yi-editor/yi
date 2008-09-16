@@ -108,7 +108,7 @@ startEditor cfg st = do
     logPutStrLn "Starting Core"
 
     -- restore the old state
-    let initEditor = maybe (emptyEditor cfg) id st
+    let initEditor = maybe emptyEditor id st
     -- Setting up the 1st window is a bit tricky because most functions assume there exists a "current window"
     newSt <- newMVar $ YiVar initEditor [] 1 M.empty
     (ui, runYi) <- mdo let handler exception = runYi $ (errorEditor (show exception) >> refreshEditor)
