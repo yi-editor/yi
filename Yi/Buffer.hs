@@ -88,6 +88,7 @@ module Yi.Buffer
   , withModeB
   , onMode
   , withSyntax0
+  , withSyntaxB
   , keymapProcessA
   , strokesRangesB
   , streamB
@@ -635,6 +636,11 @@ withModeB f = gets (withMode0 f)
            
 withSyntax0 :: (forall syntax. Mode syntax -> syntax -> a) -> FBuffer -> a
 withSyntax0 f FBuffer {bmode = m, rawbuf = rb} = f m (getAst rb)
+
+withSyntaxB :: (forall syntax. Mode syntax -> syntax -> BufferM x) -> BufferM x
+withSyntaxB f = do
+    act <- gets (withSyntax0 f)
+    act
            
 
 -- | Return indices of next string in buffer matched by regex in the

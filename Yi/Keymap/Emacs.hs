@@ -61,7 +61,7 @@ selfInsertKeymap univArg except = do
   c <- printableChar
   when (not . except $ c) empty
   let n = argToInt univArg
-  write (adjBlock n >> withBuffer (replicateM_ n (insertB c)))
+  write (adjBlock n >> replicateM_ n (insertB c))
 
 
 completionKm :: Keymap
@@ -77,9 +77,8 @@ placeMark = do
   setA highlightSelectionA True
   pointB >>= setSelectionMarkPointB
 
-deleteB' :: YiM ()
-deleteB' = do
-  (adjBlock (-1) >> withBuffer (deleteN 1))
+deleteB' :: BufferM ()
+deleteB' = adjBlock (-1) >> deleteN 1
 
 emacsKeys :: Maybe Int -> Keymap
 emacsKeys univArg = 
@@ -89,7 +88,7 @@ emacsKeys univArg =
          , spec KEnter          ?>>! (repeatingArg $ insertB '\n')
          , spec KDel            ?>>! (repeatingArg deleteB')
          , spec KBS             ?>>! (repeatingArg (adjBlock (-1) >> 
-                                                   withBuffer bdeleteB))
+                                                    bdeleteB))
          , spec KHome           ?>>! (repeatingArg moveToSol)
          , spec KEnd            ?>>! (repeatingArg moveToEol)
          , spec KLeft           ?>>! (repeatingArg leftB)
