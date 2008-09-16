@@ -189,6 +189,7 @@ allToks = concatMap toList
 tokText :: Tok t -> BufferM String
 tokText = readRegionB . tokRegion
 
+isLineComment :: TT -> Bool
 isLineComment = (Just Haskell.Line ==) . tokTyp . tokT
 
 contiguous :: forall t. Tok t -> Tok t -> Bool

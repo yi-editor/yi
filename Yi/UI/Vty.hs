@@ -45,7 +45,6 @@ import qualified Graphics.Vty as Vty
 
 import Yi.UI.Utils
 import Yi.UI.TabBar
-import Yi.Syntax (Stroke)
 import Yi.Buffer.Indent (indentSettingsB)
 
 ------------------------------------------------------------------------

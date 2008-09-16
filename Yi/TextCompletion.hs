@@ -13,9 +13,7 @@ import Prelude ()
 import Yi.Prelude
 import Yi.Completion
 import Yi.Buffer
-import Data.Binary
 import Data.Char
-import Data.Typeable
 import Data.List (filter, drop, isPrefixOf, reverse, findIndex, length, groupBy)
 import Data.Maybe
 

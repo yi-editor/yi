@@ -29,11 +29,9 @@ module Yi.Dired (
     ) where
 
 import qualified Data.ByteString.Lazy as LazyB
-import Data.Binary
 import Data.List
 import Data.Maybe
 import qualified Data.Map as M
-import Data.Typeable
 import System.Directory
 import System.FilePath
 import System.Locale
@@ -48,7 +46,6 @@ import Yi.Regex
 
 import Yi.MiniBuffer (withMinibufferGen, noHint)
 import Control.Monad
-import Control.Applicative
 import Yi.Buffer
 import Yi.Buffer.HighLevel
 import Yi.Config

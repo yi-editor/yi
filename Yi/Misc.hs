@@ -30,7 +30,6 @@ import Control.Monad.Trans (MonadIO (..))
 {- External Library Module Imports -}
 {- Local (yi) module imports -}
 
-import Data.Typeable
 import Prelude (words)
 import Yi.Prelude
 import Yi.Monad

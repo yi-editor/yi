@@ -10,7 +10,6 @@ module Yi.MiniBuffer
 
 import Control.Applicative
 import Data.List (isInfixOf, find)
-import Data.Typeable
 import Data.Maybe
 import Yi.Buffer
 import Yi.Buffer.Region

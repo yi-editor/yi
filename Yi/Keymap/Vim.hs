@@ -15,7 +15,6 @@ import Prelude (maybe, length, filter, map, drop, break, uncurry)
 
 import Data.Char
 import Data.List (sort, nub)
-import Data.Dynamic
 import Data.Prototype
 
 import Control.Exception    ( ioErrors, try, evaluate )

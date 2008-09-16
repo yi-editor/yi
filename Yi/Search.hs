@@ -41,7 +41,6 @@ module Yi.Search (
         qrFinish,
                  ) where
 
-import Data.Binary
 import Prelude ()
 import Yi.Prelude
 import Yi.Buffer
@@ -56,7 +55,6 @@ import Data.Char
 import Data.Maybe
 import Data.Either
 import Data.List (span, takeWhile)
-import Data.Typeable
 
 import Control.Monad.State
 

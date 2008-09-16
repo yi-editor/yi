@@ -93,7 +93,7 @@ actionConst :: token -> Action lexState token
 actionConst token _str state = (state, token)
 
 actionAndModify :: (lexState -> lexState) -> token -> Action lexState token
-actionAndModify modifier token _str state = (modifier state, token)
+actionAndModify modifierFct token _str state = (modifierFct state, token)
 
 actionStringConst :: (String -> token) -> Action lexState token
 actionStringConst f indexedStr state = (state, f $ fmap snd indexedStr)

@@ -123,4 +123,5 @@ pythonMode = fundamentalMode
     modeHL = ExtHL $ mkHighlighter' Python.initState Python.alexScanToken id
   }
 
+anyExtension :: [String] -> FilePath -> Bool
 anyExtension list fileName = or [takeExtension fileName == ('.' : ext) | ext <- list] 
