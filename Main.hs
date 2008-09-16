@@ -2,7 +2,7 @@
 -- Copyright (C) 2004 Don Stewart - http://www.cse.unsw.edu.au/~dons
 
 -- | "Real" Frontend to the static binary. This is merely calling the driver (see
--- HConf)
+-- Yi.Boot ~> HConf)
 
 module Main ( main ) where
 

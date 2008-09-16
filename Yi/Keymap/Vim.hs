@@ -21,6 +21,7 @@ import Control.Exception    ( ioErrors, try, evaluate )
 import Control.Monad.State hiding (mapM_, mapM)
 import Control.Applicative
 
+import {-# source #-} Yi.Boot
 import Yi.Buffer
 import Yi.Buffer.HighLevel
 import Yi.Buffer.Normal
@@ -38,6 +39,7 @@ import Yi.Keymap.Keys
 import Yi.MiniBuffer
 import Yi.Search
 import Yi.TextCompletion
+
 
 --
 -- What's missing?

@@ -17,7 +17,6 @@ module Yi.Core
   , startEditor         
   , quitEditor          -- :: YiM ()
 
-  , reloadEditor        -- :: YiM ()
   , getAllNamesInScope
 
   , refreshEditor       -- :: YiM ()
@@ -78,7 +77,7 @@ import Control.Monad (when,forever)
 import Control.Monad.Reader (runReaderT, ask, asks)
 import Control.Monad.Trans
 import Control.Monad.Error ()
-import Control.Monad.State (gets)
+import Control.Monad.State (gets, get)
 import Control.Exception
 import Control.Concurrent
 
@@ -258,9 +257,6 @@ closeWindow = do
     tabCount <- withEditor $ getsA tabsA WS.size
     when (winCount == 1 && tabCount == 1) quitEditor
     withEditor $ tryCloseE
-
-reloadEditor :: YiM ()
-reloadEditor = msgEditor "reloadEditor: Not supported"
 
   
 getAllNamesInScope :: YiM [String]

@@ -1,21 +1,9 @@
-
 -- Copyright (c) Tuomo Valkonen 2004.
 -- Copyright (c) Don Stewart 2004-5.
 -- Copyright (c) Jean-Philippe Bernardy 2006,2007.
---
--- This program is free software; you can redistribute it and/or modify
--- it under the terms of the GNU General Public License as published by
--- the Free Software Foundation; either version 2 of the License, or
--- (at your option) any later version.
---
 
---
--- | This is the real main module of Yi, and is shared between
--- Main.hs (the static binary), and dynamically loaded by Boot.hs.
--- We take any config arguments from the boot loader (if that is how we
--- are being invoked) parse command line args, initialise the ui, before
--- jumping into an event loop.
---
+-- | This is the main module of Yi, called with configuration from the user.
+-- Here we mainly process command line arguments.
 
 module Yi.Main (main, defaultConfig, projectName) where
 
@@ -26,6 +14,7 @@ import qualified Yi.Keymap.Vim  as Vim
 import qualified Yi.Keymap.Cua  as Cua
 import Yi.Modes
 import qualified Yi.Mode.Haskell as Haskell
+import {-# source #-} Yi.Boot
 import Yi.Buffer hiding (file)
 import Yi.Buffer.HighLevel
 import Yi.Buffer.Normal
@@ -243,6 +232,7 @@ defaultPublishedActions = M.fromList $
     , ("regionOfB"              , box regionOfB)
     , ("regionOfPartB"          , box regionOfPartB)
     , ("regionOfPartNonEmptyB"  , box regionOfPartNonEmptyB)
+    , ("reloadEditor"           , box reloadEditor)
     , ("reloadProjectE"         , box reloadProjectE)
     , ("revertE"                , box revertE)
     , ("shell"                  , box shell)
@@ -295,8 +285,8 @@ getConfig cfg opt =
 -- application, and the real front end, in a sense. 'dynamic_main' calls
 -- this after setting preferences passed from the boot loader.
 --
-main :: Config -> IO ()
-main cfg = do
+main :: Config -> Maybe Editor -> IO ()
+main cfg state = do
 #ifdef FRONTEND_COCOA
        withAutoreleasePool $ do
 #endif
@@ -309,4 +299,4 @@ main cfg = do
               Left (Err err code) -> do putStrLn err
                                         exitWith code
               Right finalCfg -> do when (debugMode finalCfg) $ initDebug ".yi.dbg" 
-                                   startEditor finalCfg Nothing
+                                   startEditor finalCfg state

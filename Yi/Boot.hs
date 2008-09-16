@@ -1,34 +1,44 @@
 -- | Boot process of Yi, as an instanciation of HConf
-module Yi.Boot (driver, yi) where
+module Yi.Boot (driver, yi, reloadEditor) where
 
-import Control.Monad
+import Control.Monad.State
+import qualified Data.Binary
 import HConf
 import Yi.Buffer.Basic
 import Yi.Config
 import Yi.Debug
-import Yi.Editor (newBufferE)
-import Yi.Keymap (makeAction)
+import Yi.Editor (newBufferE, Editor, withEditor)
+import Yi.Keymap (makeAction, YiM)
 import qualified Yi.Main
 
-recoverState :: String -> IO ()
-recoverState _stateName = return ()
+recoverState :: FilePath -> IO (Maybe Editor)
+recoverState path = do
+    Data.Binary.decodeFile path
 
-saveState :: () -> IO String
-saveState _ = return ""
+saveState :: FilePath -> Maybe Editor -> IO ()
+saveState path ed = do
+    Data.Binary.encodeFile path ed
 
-realMain :: Config -> yiState -> IO ()
-realMain staticConfig _state = do
+realMain :: Config -> Maybe Editor -> IO ()
+realMain staticConfig state = do
           when (debugMode staticConfig) $ initDebug ".yi.dbg" 
           -- initialize here so we can see debug messages early, if
           -- the flag is set in the static configuration.
-          Yi.Main.main staticConfig
+          Yi.Main.main staticConfig state
 
-initState :: () -- TODO: Should be Editor
-initState = ()
+initState :: Maybe Editor
+initState = Nothing
+
+reloadEditor :: YiM ()
+reloadEditor = do
+    editor <- withEditor get
+    liftIO $ restart (Just editor)
+
 
 driver :: IO ()
 yi :: Config -> IO ()
-HConf driver yi _ = getHConf Yi.Main.projectName initState recoverState saveState Yi.Main.defaultConfig showErrorsInConf realMain
+restart :: Maybe Editor -> IO ()
+HConf driver yi restart = getHConf Yi.Main.projectName initState recoverState saveState Yi.Main.defaultConfig showErrorsInConf realMain
 
 showErrorsInConf :: String -> Config -> Config
 showErrorsInConf errs conf 

@@ -1,4 +1,4 @@
-module HConf where
+module HConf (getHConf, HConf(HConf), hconfOptions) where
 
 import Prelude hiding ( catch )
 import Control.Exception (catch, bracket)
@@ -23,7 +23,6 @@ import System.Directory
 import System.Exit
 import System.Environment
 import System.Console.GetOpt 
-import Data.Monoid
 import System.FilePath ((</>))
 
 {-
@@ -84,7 +83,7 @@ hconfOptions projectName =
         )
     ]
 
-getHConf :: String -> state -> (String -> IO state) -> (state -> IO String) ->
+getHConf :: String -> state -> (FilePath -> IO state) -> (FilePath -> state -> IO ()) ->
             configuration -> (String -> configuration -> configuration) ->
             (configuration -> state -> IO ()) -> 
             HConf state configuration
@@ -113,8 +112,9 @@ getHConf projectName initialState recoverState saveState defaultConfiguration sh
      -- This function will never return.
     , restart = \state -> do
 #ifndef mingw32_HOST_OS
-        s <- saveState state
-        let args = ["--resume", s]
+        f <- getStateFile
+        saveState f state
+        let args = ["--resume"]
         executeFile projectName True args Nothing -- TODO: catch exceptions
         -- run the master, who will take care of recompiling; handle errors, etc.
 #else
@@ -125,11 +125,12 @@ getHConf projectName initialState recoverState saveState defaultConfiguration sh
     , mainSlave = \userConfig -> do
         args <- getArgs
         state <- case args of
-            ["--resume", s]   -> recoverState s
-            _                 -> return initialState
+            ["--resume"]   -> recoverState =<< getStateFile
+            _              -> return initialState
         realMain userConfig state
 
- }
+ } where
+     getStateFile = (</> "status") <$> getProjectDir projectName
 
 -- Lift an IO action
 io :: MonadIO m => IO a -> m a
