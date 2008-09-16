@@ -5,7 +5,7 @@ module Yi.Style where
 
 import Data.Word                (Word8)
 import Data.Char (chr, ord)
-import Data.Maybe
+import Data.Monoid
 import Yi.Prelude
 import Prelude ()
 
@@ -17,8 +17,6 @@ data UIStyle =
        , modelineFocused   :: Style -- ^ in focus modeline
        , selected          :: Style -- ^ the selected portion
        , eof               :: Style -- ^ empty file marker colours
-       , defaultStyle      :: Style
-       , reverseStyle      :: Style
        , preprocessorStyle :: Style -- ^ preprocessor directive (often in Haskell or C)
        , commentStyle      :: Style
        , blockCommentStyle :: Style
@@ -37,27 +35,45 @@ data UIStyle =
        , hintStyle         :: Style
        , strongHintStyle   :: Style
      } 
-    deriving (Eq, Show, Ord)
+--    deriving (Eq, Show)
 
 type StyleName = UIStyle -> Style
+
+-- | A style transforms some of the visual text attributes.
+type Style = Endo Attributes
+
+-- | Visual text attributes to be applied during layout.
+data Attributes = Attributes
+  { foreground :: !Color
+  , background :: !Color
+  } deriving (Eq, Ord, Show)
+
+withFg, withBg :: Color -> Style
+-- | A style that sets the foreground.
+withFg c = Endo $ \s -> s { foreground = c }
+-- | A style that sets the background.
+withBg c = Endo $ \s -> s { background = c }
+
+-- | The identity transform.
+defaultStyle :: StyleName
+defaultStyle = mempty
+
+-- | Apply the styles to the default attributes.
+appStyle :: Style -> Attributes
+appStyle = flip appEndo defaultAttributes
+
+defaultAttributes :: Attributes
+defaultAttributes = Attributes
+  { foreground = Default
+  , background = Default
+  }
+
 
 data Color
     = RGB {-# UNPACK #-} !Word8 {-# UNPACK #-} !Word8 {-# UNPACK #-} !Word8
     | Default
     | Reverse
     deriving (Eq,Ord,Show)
-
-data Attr = Foreground !Color 
-          | Background !Color
-    deriving (Eq, Show, Ord)
-
-type Style = [Attr]
-
-background :: Style -> Color
-background s = fromMaybe Default $ listToMaybe [c | Background c <- s]
-
-foreground :: Style -> Color
-foreground s = fromMaybe Default $ listToMaybe [c | Foreground c <- s]
 
 -- | Convert a color to its text specification, as to be accepted by XParseColor
 colorToText :: Color -> String
@@ -92,23 +108,3 @@ cyan        = RGB 0 255 255
 white       = RGB 165 165 165
 brightwhite = RGB 255 255 255
 
-
--- TODO: These are so close in syntax I must imagine there is a way to simplify
--- them - Corey O'C.
-withFg :: StyleName -> Color -> UIStyle -> Style
-withFg baseStyleName color = addOrChangeFg color . baseStyleName
-
-addOrChangeFg color [] = [Foreground color]
-addOrChangeFg color (Foreground _ : attrs) = (Foreground color) : attrs
-addOrChangeFg color (a : attrs) = a : (addOrChangeFg color attrs)
-
-withBg :: StyleName -> Color -> UIStyle -> Style
-withBg baseStyleName color = addOrChangeBg color . baseStyleName
-
-addOrChangeBg color [] = [Background color]
-addOrChangeBg color (Background _ : attrs) = (Background color) : attrs
-addOrChangeBg color (a : attrs) = a : (addOrChangeBg color attrs)
-
-
-changeFg = flip addOrChangeFg
-changeBg = flip addOrChangeBg

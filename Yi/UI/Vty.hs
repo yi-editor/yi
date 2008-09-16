@@ -9,6 +9,7 @@ module Yi.UI.Vty (start) where
 
 import Yi.Prelude hiding ((<|>))
 import Prelude (map, take, zip, repeat, length, break, splitAt)
+import Control.Arrow
 import Control.Concurrent
 import Control.Exception
 import Control.Monad (forever)
@@ -291,8 +292,8 @@ drawWindow cfg mre b sty focused w win = (Rendered { picture = pict,cursor = cur
         -- off reserves space for the mode line. The mini window does not have a mode line.
         off = if notMini then 1 else 0
         h' = height win - off
-        wsty = styleToAttr (window sty) attr
-        selsty = styleToAttr (selected sty) attr
+        wsty = attributesToAttr (appStyle (window sty)) attr
+        selsty = attributesToAttr (appStyle (window sty)) attr
         eofsty = eof sty
         (selreg, _) = runBuffer win b getSelectRegionB
         (point, _) = runBuffer win b pointB
@@ -306,7 +307,7 @@ drawWindow cfg mre b sty focused w win = (Rendered { picture = pict,cursor = cur
                             else Point 0
         (text, _)    = runBuffer win b (streamB Forward fromMarkPoint) -- read enough chars from the buffer.
         (strokes, _) = runBuffer win b (strokesRangesB  mre fromMarkPoint (fromMarkPoint +~ sz)) -- corresponding strokes
-        colors = paintPicture attr (map (map (toVtyStroke sty)) strokes)
+        colors = map (second (($ attr) . attributesToAttr)) (paintPicture defaultAttributes (map (map (toVtyStroke sty)) strokes))
         bufData = -- trace (unlines (map show text) ++ unlines (map show $ concat strokes)) $ 
                   paintChars attr colors $ toIndexedString fromMarkPoint text
         (showSel, _) = runBuffer win b (gets highlightSelection)
@@ -400,7 +401,7 @@ drawText h w topPoint point tabWidth selreg selsty wsty bufData
     | otherwise = [(c,p)]
 
 withStyle :: Style -> String -> Image
-withStyle sty str = renderBS (styleToAttr sty attr) (B.pack str)
+withStyle sty str = renderBS (attributesToAttr (appStyle sty) attr) (B.pack str)
 
 
 ------------------------------------------------------------------------
@@ -455,53 +456,33 @@ nullA       = id
 ------------------------------------------------------------------------
 
 -- | Convert a Yi Attr into a Vty attribute change.
-attrToAttr :: Style.Attr -> (Vty.Attr -> Vty.Attr)
-attrToAttr (Foreground c) = 
+colorToAttr :: (Vty.Attr -> Vty.Attr) -> (Vty.Color -> Vty.Attr -> Vty.Attr) -> Vty.Color -> Style.Color -> (Vty.Attr -> Vty.Attr)
+colorToAttr bold set unknown c =
   case c of 
-    RGB 0 0 0         -> nullA    . setFG Vty.black
-    RGB 128 128 128   -> boldA    . setFG Vty.black
-    RGB 139 0 0       -> nullA    . setFG Vty.red
-    RGB 255 0 0       -> boldA    . setFG Vty.red
-    RGB 0 100 0       -> nullA    . setFG Vty.green
-    RGB 0 128 0       -> boldA    . setFG Vty.green
-    RGB 165 42 42     -> nullA    . setFG Vty.yellow
-    RGB 255 255 0     -> boldA    . setFG Vty.yellow
-    RGB 0 0 139       -> nullA    . setFG Vty.blue
-    RGB 0 0 255       -> boldA    . setFG Vty.blue
-    RGB 128 0 128     -> nullA    . setFG Vty.magenta
-    RGB 255 0 255     -> boldA    . setFG Vty.magenta
-    RGB 0 139 139     -> nullA    . setFG Vty.cyan
-    RGB 0 255 255     -> boldA    . setFG Vty.cyan
-    RGB 165 165 165   -> nullA    . setFG Vty.white
-    RGB 255 255 255   -> boldA    . setFG Vty.white
-    Default           -> nullA    . setFG Vty.def
-    Reverse           -> reverseA . setFG Vty.def
-    _                 -> nullA    . setFG Vty.black -- NB
-attrToAttr (Background c) = 
-  case c of 
-    RGB 0 0 0         -> nullA    . setBG Vty.black
-    RGB 128 128 128   -> nullA    . setBG Vty.black
-    RGB 139 0 0       -> nullA    . setBG Vty.red
-    RGB 255 0 0       -> nullA    . setBG Vty.red
-    RGB 0 100 0       -> nullA    . setBG Vty.green
-    RGB 0 128 0       -> nullA    . setBG Vty.green
-    RGB 165 42 42     -> nullA    . setBG Vty.yellow
-    RGB 255 255 0     -> nullA    . setBG Vty.yellow
-    RGB 0 0 139       -> nullA    . setBG Vty.blue
-    RGB 0 0 255       -> nullA    . setBG Vty.blue
-    RGB 128 0 128     -> nullA    . setBG Vty.magenta
-    RGB 255 0 255     -> nullA    . setBG Vty.magenta
-    RGB 0 139 139     -> nullA    . setBG Vty.cyan
-    RGB 0 255 255     -> nullA    . setBG Vty.cyan
-    RGB 165 165 165   -> nullA    . setBG Vty.white
-    RGB 255 255 255   -> nullA    . setBG Vty.white
-    Default           -> nullA    . setBG Vty.def
-    Reverse           -> reverseA . setBG Vty.def
-    _                 -> nullA    . setBG Vty.white    -- NB
+    RGB 0 0 0         -> nullA    . set Vty.black
+    RGB 128 128 128   -> bold     . set Vty.black
+    RGB 139 0 0       -> nullA    . set Vty.red
+    RGB 255 0 0       -> bold     . set Vty.red
+    RGB 0 100 0       -> nullA    . set Vty.green
+    RGB 0 128 0       -> bold     . set Vty.green
+    RGB 165 42 42     -> nullA    . set Vty.yellow
+    RGB 255 255 0     -> bold     . set Vty.yellow
+    RGB 0 0 139       -> nullA    . set Vty.blue
+    RGB 0 0 255       -> bold     . set Vty.blue
+    RGB 128 0 128     -> nullA    . set Vty.magenta
+    RGB 255 0 255     -> bold     . set Vty.magenta
+    RGB 0 139 139     -> nullA    . set Vty.cyan
+    RGB 0 255 255     -> bold     . set Vty.cyan
+    RGB 165 165 165   -> nullA    . set Vty.white
+    RGB 255 255 255   -> bold     . set Vty.white
+    Default           -> nullA    . set Vty.def
+    Reverse           -> reverseA . set Vty.def
+    _                 -> nullA    . set unknown -- NB
 
-styleToAttr :: Style -> (Vty.Attr -> Vty.Attr)
-styleToAttr = foldr (.) id . map attrToAttr
-
+attributesToAttr :: Attributes -> (Vty.Attr -> Vty.Attr)
+attributesToAttr (Attributes fg bg) =
+  colorToAttr boldA setFG Vty.black fg .
+  colorToAttr nullA setBG Vty.white bg
 
 
 ---------------------------------
@@ -517,6 +498,6 @@ paintChars sty ((endPos,sty'):xs) cs = setSty sty left ++ paintChars sty' xs rig
 setSty :: a -> [(Point,Char)] -> [(Char, (a,Point))]
 setSty sty cs = [(c,(sty,p)) | (p,c) <- cs]
 
-toVtyStroke :: UIStyle -> Stroke -> (Point, Vty.Attr -> Vty.Attr, Point)
-toVtyStroke sty (l,s,r) = (l,styleToAttr (s sty),r)
+toVtyStroke :: UIStyle -> Stroke -> (Point, Style, Point)
+toVtyStroke sty (l,s,r) = (l,s sty,r)
 

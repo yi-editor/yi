@@ -145,7 +145,7 @@ perlHighlighterRules :-
     ^ @reservedId / @seperator                     { c keywordStyle }
 
     @varTypeOp
-        { m (\s -> HlInVariable 0 s) (defaultStyle `withFg` darkcyan) }
+        { m (\s -> HlInVariable 0 s) (const $ withFg darkcyan) }
 
     @reservedop                                    { c operatorStyle }
 
@@ -262,7 +262,7 @@ perlHighlighterRules :-
         }
 
     @varTypeOp
-        { m (\s -> HlInVariable 0 s) (defaultStyle `withFg` darkcyan) }
+        { m (\s -> HlInVariable 0 s) (const $ withFg darkcyan) }
 
     ./
         {
@@ -298,7 +298,7 @@ perlHighlighterRules :-
         }
     $white+ { c defaultStyle }
     @varTypeOp
-        { m (\s -> HlInVariable 0 s) (defaultStyle `withFg` darkcyan) }
+        { m (\s -> HlInVariable 0 s) (const $ withFg darkcyan) }
     .   { c stringStyle }
 }
 
@@ -307,15 +307,15 @@ perlHighlighterRules :-
     -- Support highlighting uses of the # to determine subscript of the last element.
     -- This isn't entirely correct as it'll accept $########foo.
     (@varTypeOp | "#")
-        { c $ defaultStyle `withFg` darkcyan }
+        { c $ const (withFg darkcyan) }
     "{"
-        { m increaseVarCastDepth $ defaultStyle `withFg` darkcyan}
+        { m increaseVarCastDepth $ const (withFg darkcyan) }
     "}"
-        { m decreaseVarCastDepth $ defaultStyle `withFg` darkcyan}
+        { m decreaseVarCastDepth $ const (withFg darkcyan) }
     @specialVarIdentifier
-        { m exitVarIfZeroDepth $ defaultStyle `withFg` cyan }
+        { m exitVarIfZeroDepth $ const (withFg cyan) }
     @varIdentifier
-        { m exitVarIfZeroDepth $ defaultStyle `withFg` darkcyan }
+        { m exitVarIfZeroDepth $ const (withFg darkcyan) }
     $white 
         { m (\(HlInVariable _ s) -> s) defaultStyle }
     .

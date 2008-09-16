@@ -2,68 +2,65 @@
 module Yi.Style.Library where
 import Yi.Style
 import Data.Prototype
+import Data.Monoid
 
 type Theme = Proto UIStyle
 
 -- | Abstract theme that provides useful defaults.
 defaultTheme :: Theme
 defaultTheme = Proto $ \self -> UIStyle
-    { window             = defaultStyle self
-    , modeline           = error "modeline must be redefined!"
-    , modelineFocused    = modeline self `changeFg` brightwhite
-    , selected           = reverseStyle self
-    , eof                = [Foreground blue]
-    , defaultStyle       = error "defaultStyle must be redefined!"
-    , reverseStyle       = [Foreground Reverse, Background Reverse]
-    , preprocessorStyle  = defaultStyle self `changeFg` red
-    , commentStyle       = defaultStyle self `changeFg` purple
-    , blockCommentStyle  = commentStyle self
-    , keywordStyle       = defaultStyle self `changeFg` darkblue
+    { window            = error "window must be redefined!"
+    , modeline          = error "modeline must be redefined!"
+    , modelineFocused   = withFg brightwhite `mappend` modeline self
+    , selected          = withFg Reverse   `mappend` withBg Reverse
+    , eof               = withFg blue      `mappend` window self
 
-    , operatorStyle      = defaultStyle self `changeFg` brown
+    , preprocessorStyle = withFg red       `mappend` window self
+    , commentStyle      = withFg purple    `mappend` window self
+    , blockCommentStyle = commentStyle self
+    , keywordStyle      = withFg darkblue  `mappend` window self
 
-    , variableStyle      = defaultStyle self
-    , typeStyle          = variableStyle self `changeFg` darkgreen
+    , operatorStyle     = withFg brown     `mappend` window self
 
-    , stringStyle        = defaultStyle self `changeFg` darkcyan
-    , longStringStyle    = stringStyle self
-    , numberStyle        = defaultStyle self `changeFg` darkred
+    , variableStyle     =                            window self
+    , typeStyle         = withFg darkgreen `mappend` window self
 
-    , errorStyle         = defaultStyle self `changeBg` red
-    , hintStyle          = defaultStyle self `changeBg` cyan
-    , strongHintStyle    = defaultStyle self `changeBg` magenta
+    , stringStyle       = withFg darkcyan  `mappend` window self
+    , longStringStyle   = stringStyle self
+    , numberStyle       = withFg darkred   `mappend` window self
+
+    , errorStyle        = withBg red
+    , hintStyle         = withBg cyan
+    , strongHintStyle   = withBg magenta
     }
 
 
 -- | The default UIStyle
 defaultLightTheme :: Theme
 defaultLightTheme = defaultTheme `override` \super _ -> super
-    { modeline           = [Foreground black,       Background darkcyan]
-    , defaultStyle       = []
+    { window            = mempty
+    , modeline          = withFg black `mappend` withBg darkcyan
     }
 
 -- | A UIStyle inspired by the darkblue colorscheme of Vim.
 darkBlueTheme :: Theme
 darkBlueTheme = defaultTheme `override` \super _ -> super
-    {
-      window            = [Background black, Foreground white]
-    , modeline          = [Background white, Foreground darkblue]
-    , modelineFocused   = [Background white, Foreground darkblue]
-    , selected          = [Background blue,  Foreground white]
-    , eof               = [Background black, Foreground red]
-    , defaultStyle      = [Background black, Foreground white]
+    { window            = withFg white    `mappend` withBg black
+    , modeline          = withFg darkblue `mappend` withBg white
+    , modelineFocused   = withFg darkblue `mappend` withBg white
+    , selected          = withFg white    `mappend` withBg blue
+    , eof               = withFg red      `mappend` withBg black
 
-    , reverseStyle      = [Foreground green]
-    , preprocessorStyle = [Foreground red]
-    , commentStyle      = [Foreground darkred]
-    , keywordStyle      = [Foreground brown]
-    , operatorStyle     = [Foreground white]
-    , typeStyle         = [Foreground darkgreen]
-    , stringStyle       = [Foreground purple]
-    , numberStyle       = [Foreground darkred]
-    , errorStyle        = [Foreground green]
+    , preprocessorStyle = withFg red
+    , commentStyle      = withFg darkred
+    , keywordStyle      = withFg brown
+    , operatorStyle     = withFg white
+    , typeStyle         = withFg darkgreen
+    , stringStyle       = withFg purple
+    , numberStyle       = withFg darkred
+    , errorStyle        = withFg green
 
-    , hintStyle         = [Background darkblue]
-    , strongHintStyle   = [Background blue]
+    , hintStyle         = withBg darkblue
+    , strongHintStyle   = withBg blue
     }
 

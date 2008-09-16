@@ -40,25 +40,20 @@ setMonospaceFont view = do
   userFixedPitchFontOfSize 0 _NSFont >>= flip setFont view
 
 -- | Convert style information into Cocoa compatible format
-convertStyle :: Style -> IO (NSDictionary ())
-convertStyle s = do
+convertAttributes :: Attributes -> IO (NSDictionary ())
+convertAttributes s = do
   d <- castObject <$> dictionary _NSMutableDictionary
   ft <- userFixedPitchFontOfSize 0 _NSFont
   setValueForKey ft nsFontAttributeName d
-  fillStyleDict d s
+  fillAttributeDict d s
   castObject <$> return d
 
 -- | Fill and return the filled dictionary with the style information
-fillStyleDict :: NSMutableDictionary t -> Style -> IO ()
-fillStyleDict _ [] = return ()
-fillStyleDict d (x:xs) = do
-  fillStyleDict d xs
-  getDictStyle x >>= flip (uncurry setValueForKey) d
-
--- | Return a (value, key) pair for insertion into the style dictionary
-getDictStyle :: Attr -> IO (NSColor (), NSString ())
-getDictStyle (Foreground c) = (,) <$> getColor True c  <*> pure nsForegroundColorAttributeName
-getDictStyle (Background c) = (,) <$> getColor False c <*> pure nsBackgroundColorAttributeName
+fillAttributeDict :: NSMutableDictionary t -> Attributes -> IO ()
+fillAttributeDict d a = do
+  getColor True  (foreground a) >>= setForKey nsForegroundColorAttributeName
+  getColor False (background a) >>= setForKey nsBackgroundColorAttributeName
+  where setForKey k = \v -> setValueForKey v k d
 
 -- | Convert a Yi color into a Cocoa color
 getColor :: Bool -> Color -> IO (NSColor ())

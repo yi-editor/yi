@@ -37,7 +37,7 @@ import qualified Data.Map as M
 
 import Foundation hiding (name, new, parent, error, self, null)
 
-import AppKit hiding (windows, start, rect, width, content, prompt, dictionary, icon, concat, remove, insert, update)
+import AppKit hiding (windows, start, rect, width, content, prompt, dictionary, icon, concat, remove, insert, update, convertAttributes)
 import qualified AppKit.NSWindow
 import qualified AppKit.NSView
 
@@ -233,7 +233,7 @@ syncWindows e ui = sync
 
 setColors :: (Has_setBackgroundColor t, Has_setTextColor t) => UI -> Style.StyleName -> t -> IO ()
 setColors ui styleName slf = do
-  let s = styleName $ configStyle $ uiConfig ui
+  let s = Style.appStyle $ styleName $ configStyle $ uiConfig ui
   getColor True  (Style.foreground s) >>= flip setTextColor slf
   getColor False (Style.background s) >>= flip setBackgroundColor slf
 
@@ -245,7 +245,7 @@ newWindow ui win b = do
   v # setSelectable True
   v # setAlignment nsLeftTextAlignment
   v # sizeToFit
-  attrs <- convertStyle $ Style.selected $ configStyle $ uiConfig ui
+  attrs <- convertAttributes $ Style.appStyle $ Style.selected $ configStyle $ uiConfig ui
   v # setSelectedTextAttributes attrs
   v # setColors ui Style.window
   v # textColor >>= flip setInsertionPointColor v

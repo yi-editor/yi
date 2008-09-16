@@ -9,6 +9,7 @@ import Yi.Prelude
 import Prelude (Ordering(..))
 import Yi.Window
 import Control.Arrow (second)
+import Data.Monoid
 
 -- | return index of Sol on line @n@ above current line
 indexOfSolAbove :: Int -> BufferM Point
@@ -32,14 +33,14 @@ moveWinTosShowPoint b w = result
 --   ensure that the points are strictly increasing and introducing
 --   padding segments where neccessary.
 --   Precondition: Strokes are ordered and not overlapping.
-strokePicture :: [(Point,(a -> a),Point)] -> [(Point,(a -> a))]
+strokePicture :: [(Point,Endo a,Point)] -> [(Point,(a -> a))]
 strokePicture [] = []
 strokePicture wholeList@((leftMost,_,_):_) = helper leftMost wholeList
-    where helper :: Point -> [(Point,(a -> a),Point)] -> [(Point,(a -> a))]
+    where helper :: Point -> [(Point,Endo a,Point)] -> [(Point,(a -> a))]
           helper prev [] = [(prev,id)]
           helper prev ((l,f,r):xs) 
-              | prev < l  = (prev, id) : (l,f) : helper r xs
-              | otherwise = (l,f) : helper r xs
+              | prev < l  = (prev, id) : (l,appEndo f) : helper r xs
+              | otherwise = (l,appEndo f) : helper r xs
 
 -- | Paint the given stroke-picture on top of an existing picture
 paintStrokes :: (a -> a) -> a -> [(Point,(a -> a))] -> [(Point,a)] -> [(Point,a)]
@@ -53,6 +54,6 @@ paintStrokes f0 x0 lf@((pf,f):tf) lx@((px,x):tx) =
 
     
 
-paintPicture :: a -> [[(Point,(a -> a),Point)]] -> [(Point,a)]
+paintPicture :: a -> [[(Point,Endo a,Point)]] -> [(Point,a)]
 paintPicture a = foldr (paintStrokes id a . strokePicture) []
 

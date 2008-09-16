@@ -32,7 +32,7 @@ import Foreign.C
 import qualified Data.ByteString.Lazy as LB
 
 import Foundation hiding (minimum, new, init, null, error)
-import AppKit hiding (concat, dictionary)
+import AppKit hiding (concat, dictionary, convertAttributes)
 
 -- Unfortunately, my version of hoc does not handle typedefs correctly,
 -- and thus misses every selector that uses the "unichar" type, even
@@ -114,13 +114,13 @@ withCache slf ivar cond act = do
 strokeRangeExtent :: Num t => t
 strokeRangeExtent = 2000
 
-type Picture = [(Point, Style)]
+type Picture = [(Point, Attributes)]
 
 $(declareClass "YiTextStorage" "NSTextStorage")
 $(exportClass "YiTextStorage" "yts_" [
     InstanceVariable "buffer" [t| Maybe FBuffer |] [| Nothing |]
   , InstanceVariable "uiStyle" [t| Maybe UIStyle |] [| Nothing |]
-  , InstanceVariable "dictionaryCache" [t| M.Map Style (NSDictionary ()) |] [| M.empty |]
+  , InstanceVariable "dictionaryCache" [t| M.Map Attributes (NSDictionary ()) |] [| M.empty |]
   , InstanceVariable "pictureCacheStart" [t| Point |] [| 0 |]
   , InstanceVariable "pictureCache" [t| Picture |] [| [] |]
   , InstanceVariable "stringCache" [t| Maybe (NSString ()) |] [| Nothing |]
@@ -166,14 +166,13 @@ yts_attributesAtIndexEffectiveRange i er slf = do
       logPutStrLn $ "yts_attributesAtIndexEffectiveRange " ++ show i ++ " => " ++ show (NSRange i (fromIntegral end)) ++ " " ++ show (take 1 pic)
       safePoke er (NSRange i (fromIntegral end - i))
       dicts <- slf #. _dictionaryCache
-      let s' = flattenStyle s
       -- Keep a cache of seen styles... usually, there should not be to many
       -- TODO: Have one centralized cache instead of one per text storage...
-      case M.lookup s' dicts of
+      case M.lookup s dicts of
         Just dict -> return dict
         _ -> do
-          dict <- convertStyle s'
-          slf # setIVar _dictionaryCache (M.insert s' dict dicts)
+          dict <- convertAttributes s
+          slf # setIVar _dictionaryCache (M.insert s dict dicts)
           return dict
 
 yts_attributeAtIndexEffectiveRange :: forall t. NSString t -> CUInt -> NSRangePointer -> YiTextStorage () -> IO (ID ())
@@ -196,10 +195,9 @@ yts_attributeAtIndexEffectiveRange attr i er slf = do
       -- TODO: Adjust line break property...
       safePokeFullRange >> castObject <$> defaultParagraphStyle _NSParagraphStyle
     "NSBackgroundColor" -> do
-      ~((s,bg):_) <- onlyBg <$> slf # storagePicture i
-      let Background c = fromMaybe (Background Default) (listToMaybe bg)
+      ~((s,a):_) <- onlyBg <$> slf # storagePicture i
       safePoke er (NSRange i (fromIntegral s - i))
-      castObject <$> getColor False c
+      castObject <$> getColor False (background a)
     _ -> do
       -- TODO: Optimize the other queries as well (if needed)
       logPutStrLn $ "Unoptimized yts_attributeAtIndexEffectiveRange " ++ attr' ++ " at " ++ show i
@@ -216,12 +214,6 @@ yts_replaceCharactersInRangeWithString _ _ _ = return ()
 yts_setAttributesRange :: forall t. NSDictionary t -> NSRange -> YiTextStorage () -> IO ()
 yts_setAttributesRange _ _ _ = return ()
 
-flattenStyle :: Style -> Style
-flattenStyle xs = catMaybes
-  [ listToMaybe [fg | fg@(Foreground _) <- xs]
-  , listToMaybe [bg | bg@(Background _) <- xs]
-  ]
-
 -- | Remove element x_i if f(x_i,x_(i+1)) is true
 filter2 :: (a -> a -> Bool) -> [a] -> [a]
 filter2 _f [] = []
@@ -229,28 +221,24 @@ filter2 _f [x] = [x]
 filter2 f (x1:x2:xs) =
   (if f x1 x2 then id else (x1:)) $ filter2 f (x2:xs)
 
--- | Remove empty style-spans
-filterEmpty :: Picture -> Picture
-filterEmpty = filter2 ((==) `on` fst)
-
 -- | Merge needless style-span breaks
 filterSame :: Picture -> Picture
 filterSame = filter2 ((==) `on` snd)
 
 -- | Keep only the background information
 onlyBg :: Picture -> Picture
-onlyBg xs = filterSame [(p,[s | s@(Background _) <- ss]) | (p,ss) <- xs ]
+onlyBg = filter2 ((==) `on` (background . snd))
 
 -- | Get a picture where each component (p,style) means apply the style
 --   up until the given point p.
 paintCocoaPicture :: UIStyle -> Point -> [[Stroke]] -> Picture
 paintCocoaPicture sty end =
-  tail . stylesift [] . paintPicture [] . fmap (fmap styleStroke)
+  tail . stylesift defaultAttributes . paintPicture defaultAttributes . fmap (fmap styleStroke)
   where
     -- Turn a picture of use style from p into a picture of use style until p
     stylesift s [] = [(end,s)]
     stylesift s ((p,t):xs) = (p,s):(stylesift t xs)
-    styleStroke (l,s,r) = (l,flattenStyle . (s sty ++),r)
+    styleStroke (l,s,r) = (l,(s sty),r)
 
 -- | A version of poke that does nothing if p is null.
 safePoke :: (Storable a) => Ptr a -> a -> IO ()
