@@ -10,7 +10,8 @@ import Prelude (Ordering(..))
 import Yi.Window
 import Control.Arrow (second)
 import Data.Monoid
-
+import Yi.Style
+import Yi.Syntax (Stroke)
 -- | return index of Sol on line @n@ above current line
 indexOfSolAbove :: Int -> BufferM Point
 indexOfSolAbove n = savingPointB $ do
@@ -56,4 +57,9 @@ paintStrokes f0 x0 lf@((pf,f):tf) lx@((px,x):tx) =
 
 paintPicture :: a -> [[(Point,Endo a,Point)]] -> [(Point,a)]
 paintPicture a = foldr (paintStrokes id a . strokePicture) []
+
+
+
+toActualStroke :: UIStyle -> Stroke -> (Point, Style, Point)
+toActualStroke sty (l,s,r) = (l,s sty,r)
 

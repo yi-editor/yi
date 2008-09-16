@@ -24,7 +24,7 @@ import qualified Yi.UI.Common as Common
 import Yi.Config
 import Yi.Style hiding (modeline)
 import qualified Yi.WindowSet as WS
-
+import Control.Arrow (second)
 import Control.Applicative
 import Control.Concurrent ( yield )
 import Control.Monad (ap)
@@ -33,8 +33,9 @@ import Control.Monad.State (runState, State, gets, modify)
 
 import Data.Foldable
 import Data.IORef
-import Data.List ( nub, findIndex, sort )
+import Data.List (drop, nub, findIndex, sort, zip)
 import Data.Maybe
+import Data.Monoid
 import Data.Traversable
 import Data.Unique
 import qualified Data.Map as M
@@ -44,6 +45,7 @@ import qualified Graphics.UI.Gtk as Gtk
 import qualified Graphics.UI.Gtk.ModelView as MView
 import Yi.UI.Gtk.ProjectTree
 import Yi.UI.Gtk.Utils
+import Yi.UI.Utils
 import Shim.ProjectContent
 import qualified Data.ByteString.Lazy.UTF8 as LazyUTF8
 
@@ -309,9 +311,9 @@ newWindow editor ui mini win = do
     widgetModifyFont v (Just f)
 
     -- Apply the window style attributes to the text view.
-    forM_ (window $ configStyle $ uiConfig ui) $ \styAttr ->
-        case styAttr of
-            Background c -> do
+    let styAttr = window $ configStyle $ uiConfig ui
+    case appEndo styAttr defaultAttributes of
+            (Attributes _ c) -> do
                 let toColor Default = Color 0xffff 0xffff 0xffff
                     toColor Reverse = Color 0 0 0
                     toColor (RGB r g b) = Color (fromIntegral r * 0xff) (fromIntegral g * 0xff) (fromIntegral b * 0xff)
@@ -435,14 +437,21 @@ replaceTagsIn :: UI -> Point -> Point -> FBuffer -> TextBuffer -> IO ()
 replaceTagsIn ui from to buf gtkBuf = do
   i <- textBufferGetIterAtOffset gtkBuf (fromPoint from)
   i' <- textBufferGetIterAtOffset gtkBuf (fromPoint to)
-  let styleSpans = runBufferDummyWindow buf (strokesRangesB Nothing from to)
+  let (sizeBuf, styleSpans) = 
+         runBufferDummyWindow buf $ (,) <$> sizeB <*> (strokesRangesB Nothing from to)
+      actualStrokes :: [[(Point,Style,Point)]]
+      actualStrokes = (map (map (toActualStroke (configStyle $ uiConfig ui))) styleSpans)
+      picture :: [(Point, Attributes)]
+      picture = paintPicture defaultAttributes actualStrokes
+      styleRanges :: [(Point, Attributes)]
+--      styleRanges = map (second appStyle) picture
+      styleRanges = picture
   textBufferRemoveAllTags gtkBuf i i'
-  forM_ (concat styleSpans) $ \(l,s,r) -> do
+  forM_ (zip styleRanges (map fst (drop 1 styleRanges) ++ [sizeBuf]) ) $ \((l,s),r) -> do
     f <- textBufferGetIterAtOffset gtkBuf (fromPoint l)
     t <- textBufferGetIterAtOffset gtkBuf (fromPoint r)
-    forM (s (configStyle $ uiConfig $ ui)) $ \a  -> do 
-      tag <- styleToTag ui a
-      textBufferApplyTag gtkBuf tag f t
+    tags <- styleToTag ui s
+    forM tags $ \tag -> textBufferApplyTag gtkBuf tag f t
 
 applyUpdate :: TextBuffer -> Update -> IO ()
 applyUpdate buf (Insert (Point p) _ s) = do
@@ -454,10 +463,10 @@ applyUpdate buf (Delete p _ s) = do
   i1 <- textBufferGetIterAtOffset buf (fromPoint p + length (LazyUTF8.toString s))
   textBufferDelete buf i0 i1
 
-styleToTag :: UI -> Yi.Style.Attr -> IO TextTag
+styleToTag :: UI -> Attributes -> IO [TextTag]
 styleToTag ui a = case a of
-                 (Foreground col) -> tagOf textTagForeground col
-                 (Background col) -> tagOf textTagBackground col
+    (Attributes f b) -> sequence [tagOf textTagForeground f, tagOf textTagBackground b]
+
  where tagOf attr col = do
          let fgText = colorToText col
          mtag <- textTagTableLookup (tagTable ui) fgText
@@ -523,3 +532,4 @@ newGtkBuffer ui b = do
   textBufferSetText buf txt
   replaceTagsIn ui 0 sz b buf
   return buf
+

@@ -307,7 +307,7 @@ drawWindow cfg mre b sty focused w win = (Rendered { picture = pict,cursor = cur
                             else Point 0
         (text, _)    = runBuffer win b (streamB Forward fromMarkPoint) -- read enough chars from the buffer.
         (strokes, _) = runBuffer win b (strokesRangesB  mre fromMarkPoint (fromMarkPoint +~ sz)) -- corresponding strokes
-        colors = map (second (($ attr) . attributesToAttr)) (paintPicture defaultAttributes (map (map (toVtyStroke sty)) strokes))
+        colors = map (second (($ attr) . attributesToAttr)) (paintPicture defaultAttributes (map (map (toActualStroke sty)) strokes))
         bufData = -- trace (unlines (map show text) ++ unlines (map show $ concat strokes)) $ 
                   paintChars attr colors $ toIndexedString fromMarkPoint text
         (showSel, _) = runBuffer win b (gets highlightSelection)
@@ -497,7 +497,3 @@ paintChars sty ((endPos,sty'):xs) cs = setSty sty left ++ paintChars sty' xs rig
 
 setSty :: a -> [(Point,Char)] -> [(Char, (a,Point))]
 setSty sty cs = [(c,(sty,p)) | (p,c) <- cs]
-
-toVtyStroke :: UIStyle -> Stroke -> (Point, Style, Point)
-toVtyStroke sty (l,s,r) = (l,s sty,r)
-

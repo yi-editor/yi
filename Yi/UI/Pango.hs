@@ -464,14 +464,10 @@ render e ui b w _ev = do
                        <*> getA highlightSelectionA
                          
       regInWin = fmapRegion (subtract (regionStart r'')) (intersectRegion selectReg r'')
-      styleToAttrs (l,attrs,r) = [mkAttr l r a | a <- attrs (configStyle $ uiConfig $ ui)]
-      mkAttr l r (Foreground col) = AttrForeground (fromPoint (l - regionStart r'')) (fromPoint (r - regionStart r'')) (mkCol col)
-      mkAttr l r (Background col) = AttrBackground (fromPoint (l - regionStart r'')) (fromPoint (r - regionStart r'')) (mkCol col)
       allAttrs = (if selVisible 
                    then (AttrBackground (fromPoint (regionStart regInWin)) (fromPoint (regionEnd regInWin - 1))
                            (Color 50000 50000 maxBound) :)
-                   else id)
-                  (concatMap styleToAttrs (concat strokes))
+                   else id) []
 
   layoutSetAttributes layout allAttrs
 
