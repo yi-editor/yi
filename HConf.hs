@@ -201,8 +201,10 @@ recompile projectName force = io $ do
  where getModTime f = catch (Just <$> getModificationTime f) (const $ return Nothing)
 
 
-
-
+(+++) :: Maybe [a] -> Maybe [a] -> Maybe [a]
+Nothing +++ x = x
+x +++ Nothing = x
+(Just x) +++ (Just y) = Just (x ++ y)
 
 
 
@@ -228,14 +230,17 @@ buildLaunch projectName = do
     let executable_file = projectName ++ "-" ++ arch ++ "-" ++ os
         executable_path = dir </> executable_file
     putStrLn $ "Launching custom " ++ projectName ++ ": " ++ show executable_path
-#ifndef darwin_HOST_OS
+    let launchFailed = return $ Just 
+         ("Custom " ++ projectName 
+          ++ " (" ++ show executable_path ++ ") "
+          ++ "could not be launched!\n") +++ errMsg
+
+# ifndef darwin_HOST_OS
     handle (\_exception -> return ())
        (executeFile executable_path False args' Nothing)
-    return $ Just 
-        ("Custom " ++ projectName 
-         ++ " (" ++ show executable_path ++ ") "
-         ++ "could not be launched!\n") `mappend` errMsg
-#else
+    -- if we reach this point then exec failed.
+    launchFailed
+# else
     -- Darwin is odd or broken; Take your pick. According to:
     --      http://uninformed.org/index.cgi?v=1&a=1&p=16
     -- and
@@ -245,14 +250,11 @@ buildLaunch projectName = do
     child_pid <- forkProcess $ executeFile executable_path False args' Nothing
     child_status <- getProcessStatus True False child_pid
     case child_status of
-        Nothing -> return $ Just 
-            ("Custom " ++ projectName 
-             ++ " (" ++ show executable_path ++ ") "
-             ++ "could not be launched!\n") `mappend` errMsg
+        Nothing -> lauchFailed
         Just _ -> do 
             exitImmediately ExitSuccess
             return Nothing
-#endif
+# endif
 #else
     return Nothing
 #endif
