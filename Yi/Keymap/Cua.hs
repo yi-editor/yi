@@ -21,7 +21,7 @@ keymap = selfInsertKeymap <|> move <|> select <|> other
 selfInsertKeymap :: Keymap
 selfInsertKeymap = do
   c <- printableChar
-  write (adjBlock 1 >> withBuffer (insertB c))
+  write (withBuffer0 $ replaceSel [c])
 
 setMark :: BufferM ()
 setMark = do
@@ -33,11 +33,20 @@ setMark = do
 unsetMark :: BufferM ()
 unsetMark = setA highlightSelectionA False
 
+replaceSel :: String -> BufferM ()
+replaceSel s = do
+  hasSel <- getA highlightSelectionA
+  if hasSel
+    then getSelectRegionB >>= flip replaceRegionB s
+    else do
+      when (length s == 1) (adjBlock 1)
+      insertN s
+
 cut, del, copy, paste :: EditorM ()
 cut = copy >> del
 del = withBuffer0 (deleteRegionB =<< getSelectRegionB)
 copy = setRegE =<< withBuffer0 (readRegionB =<< getSelectRegionB)
-paste = withBuffer0 . insertN =<< getRegE
+paste = withBuffer0 . replaceSel =<< getRegE
 
 moveKeys :: [(Event, BufferM ())]
 moveKeys = [
@@ -59,12 +68,12 @@ move, select, other :: Keymap
 move   = choice [      k ?>>! unsetMark >> a | (k,a) <- moveKeys]
 select = choice [shift k ?>>!   setMark >> a | (k,a) <- moveKeys]
 other = choice [
- spec KBS         ?>>! adjBlock (-1) >> withBuffer bdeleteB,
+ spec KBS         ?>>! adjBlock (-1) >> bdeleteB,
  spec KDel        ?>>! do
    haveSelection <- withBuffer $ getA highlightSelectionA
    if haveSelection
        then withEditor del
-       else adjBlock (-1) >> withBuffer (deleteN 1),
+       else withBuffer (adjBlock (-1) >> deleteN 1),
  spec KEnter      ?>>! insertB '\n',
  ctrl (char 'q')  ?>>! askQuitEditor,
  ctrl (char 'f')  ?>>  isearchKeymap Forward,
