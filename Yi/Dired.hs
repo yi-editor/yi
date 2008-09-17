@@ -47,11 +47,9 @@ import Yi.Regex
 import Yi.MiniBuffer (withMinibufferGen, noHint)
 import Control.Monad
 import Yi.Buffer
-import Yi.Buffer.HighLevel
 import Yi.Config
 import Yi.Core
 import Yi.Editor
-import Yi.Buffer.Region
 import Yi.Style
 import Yi.Keymap.Keys
 import System.FriendlyPath

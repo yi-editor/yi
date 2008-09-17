@@ -16,9 +16,6 @@ import Yi.Modes
 import qualified Yi.Mode.Haskell as Haskell
 import {-# source #-} Yi.Boot
 import Yi.Buffer hiding (file)
-import Yi.Buffer.HighLevel
-import Yi.Buffer.Normal
-import Yi.Buffer.Region
 import Yi.Config
 import Yi.Core
 import Yi.Debug

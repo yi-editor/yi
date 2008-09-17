@@ -3,10 +3,9 @@ module Yi.Config where
 import qualified Data.Map as M
 import Data.Prototype
 
-import {-# source #-} Yi.Buffer
+import Yi.Buffer
 import {-# source #-} Yi.Keymap
 import {-# source #-} Yi.Editor
-import Yi.Dynamic
 import Data.Dynamic
 import Yi.Event
 import Yi.Style

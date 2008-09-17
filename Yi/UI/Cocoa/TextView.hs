@@ -20,7 +20,6 @@ module Yi.UI.Cocoa.TextView
   )where
 
 import Yi.Buffer hiding (runBuffer)
-import Yi.Buffer.HighLevel
 
 import Foundation
 import AppKit

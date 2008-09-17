@@ -7,16 +7,7 @@
 
 module Yi.Editor where
 
-import Yi.Buffer                ( BufferRef
-                                , FBuffer (..)
-                                , BufferM
-                                , newB
-                                , runBufferFull
-                                , insertN
-                                , setAnyMode)
-import Yi.Buffer.Implementation (Update(..), updateIsDelete)
-import Yi.Buffer.HighLevel (botB)
-import Yi.Buffer.Basic
+import Yi.Buffer
 import Yi.Regex (SearchExp)
 import Yi.Config
 import Yi.Monad

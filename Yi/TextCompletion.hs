@@ -17,8 +17,6 @@ import Data.Char
 import Data.List (filter, drop, isPrefixOf, reverse, findIndex, length, groupBy)
 import Data.Maybe
 
-import Yi.Buffer.Normal
-import Yi.Buffer.Region
 import Yi.Editor
 import Yi.Core
 

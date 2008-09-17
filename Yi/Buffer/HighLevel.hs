@@ -12,7 +12,8 @@ import Data.List (isPrefixOf, sort, lines, drop, filter, length, takeWhile, drop
 import Data.Maybe
   ( fromMaybe, listToMaybe )
 
-import Yi.Buffer
+import Yi.Buffer.Basic
+import Yi.Buffer.Misc
 import Yi.Buffer.Implementation (newLine)
 import Yi.Buffer.Normal
 import Yi.Buffer.Region

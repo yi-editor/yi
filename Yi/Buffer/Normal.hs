@@ -27,7 +27,8 @@ module Yi.Buffer.Normal (TextUnit(Character, Word, Line, ViWord, ViWORD, VLine,
                          checkPeekB
                          ) where
 
-import Yi.Buffer
+import Yi.Buffer.Basic
+import Yi.Buffer.Misc
 import Yi.Buffer.Region
 import Data.Char
 import Control.Applicative

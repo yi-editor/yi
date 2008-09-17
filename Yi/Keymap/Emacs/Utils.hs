@@ -50,8 +50,6 @@ import Control.Monad.Trans (MonadIO (..))
 import Control.Monad (filterM, replicateM_)
 import Control.Monad.State (gets)
 import Yi.Buffer
-import Yi.Buffer.HighLevel
-import Yi.Buffer.Region
 import Yi.Core
 import Yi.Dired
 import Yi.Editor

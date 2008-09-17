@@ -17,7 +17,6 @@ module Yi.UI.Cocoa.TextStorage
 import Prelude (take, dropWhile)
 import Yi.Prelude
 import Yi.Buffer
-import Yi.Buffer.Implementation
 import Yi.Style
 import Yi.Syntax
 import Yi.UI.Cocoa.Utils

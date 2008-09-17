@@ -44,10 +44,7 @@ module Yi.Search (
 import Prelude ()
 import Yi.Prelude
 import Yi.Buffer
-import Yi.Buffer.Normal
-import Yi.Buffer.HighLevel
 import Yi.Regex
-import Yi.Buffer.Region
 import Yi.Editor
 import qualified Yi.Editor as Editor
 import Yi.Window

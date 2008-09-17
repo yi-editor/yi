@@ -83,7 +83,9 @@ library
         Yi.Buffer.HighLevel
         Yi.Buffer.Indent
         Yi.Buffer.Normal
+        Yi.Buffer.Misc
         Yi.Buffer.Region
+        Yi.Buffer.Undo
         Yi.Completion
         Yi.Config
         Yi.Core
@@ -149,7 +151,6 @@ library
         Yi.UI.Common
         Yi.UI.Utils
         Yi.UI.TabBar
-        Yi.Undo
         Yi.Window
         Yi.WindowSet
 
@@ -337,7 +338,7 @@ executable yi
            Yi.Keymap.Emacs.KillRing, 
            Yi.Keymap.Emacs.Utils, Yi.Main, Yi.MkTemp, Yi.Monad, Yi.Process,
            Yi.Search, Yi.String, Yi.Style, Yi.Templates, Yi.TextCompletion,
-           Yi.Undo, Yi.Window, Yi.WindowSet
+           Yi.Buffer.Undo, Yi.Window, Yi.WindowSet
            Yi.MiniBuffer
            Yi.File
            Yi.KillRing

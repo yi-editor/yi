@@ -4,9 +4,6 @@ module Yi.Keymap.Cua (keymap) where
 
 import Prelude hiding (error)
 import Yi.Buffer
-import Yi.Buffer.HighLevel
-import Yi.Buffer.Normal
-import Yi.Buffer.Region
 import Yi.Core
 import Yi.Editor
 import Yi.File

@@ -9,9 +9,6 @@ import Data.Char
 import Data.List (sort)
 
 import Yi.Buffer
-import Yi.Buffer.HighLevel
-import Yi.Buffer.Normal
-import Yi.Buffer.Region
 import Yi.Editor
 import Yi.String
 

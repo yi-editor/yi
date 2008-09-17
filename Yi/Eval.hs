@@ -19,8 +19,6 @@ import Yi.Keymap
 import Yi.Interact hiding (write)
 import Yi.Event
 import Yi.Buffer
-import Yi.Buffer.Region
-import Yi.Buffer.HighLevel
 import Yi.Dired
 import Yi.Interpreter
 import Data.Dynamic

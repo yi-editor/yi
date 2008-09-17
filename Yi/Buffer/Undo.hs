@@ -44,8 +44,7 @@
 -- Also some discussion of this in: /The Text Editor Sam/, Rob Pike, pg 19.
 --
 
--- TODO: rename to Yi.Buffer.Undo
-module Yi.Undo (
+module Yi.Buffer.Undo (
     emptyU
   , addChangeU
   , setSavedFilePointU

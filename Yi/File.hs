@@ -18,7 +18,6 @@ import Control.Monad.Trans
 import Prelude hiding (error)
 import Yi.Accessor
 import Yi.Buffer
-import Yi.Buffer.HighLevel
 import Yi.Editor (getBuffers, getBuffer, withEditor, withBuffer0)
 import Yi.Core
 import Yi.Debug

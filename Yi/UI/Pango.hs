@@ -9,16 +9,12 @@ module Yi.UI.Pango (start) where
 
 import Prelude (filter, map, round, length, take, FilePath, (/), subtract, zipWith)
 import Yi.Prelude 
-import Yi.Accessor
 import Yi.Buffer
-import Yi.Buffer.HighLevel (setSelectionMarkPointB, getSelectRegionB)
-import Yi.Buffer.Region
 import qualified Yi.Editor as Editor
 import Yi.Editor hiding (windows)
 import Yi.Window
 import Yi.Event
 import Yi.Keymap
-import Yi.Debug
 import Yi.Monad
 import qualified Yi.UI.Common as Common
 import Yi.Config

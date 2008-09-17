@@ -9,7 +9,8 @@ module Yi.Buffer.Indent where
 
 import Control.Monad
 
-import Yi.Buffer
+import Yi.Buffer.Basic
+import Yi.Buffer.Misc
 import Yi.Buffer.HighLevel
 import Yi.Prelude
 import Yi.Buffer.Normal

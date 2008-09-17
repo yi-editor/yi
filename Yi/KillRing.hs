@@ -11,7 +11,7 @@ module Yi.KillRing (Killring
 
 import Control.Monad (ap)
 import Data.Binary
-import Yi.Buffer.Implementation (Direction(..))
+import Yi.Buffer.Basic
 
 data Killring = Killring { krKilled :: Bool
                          , krAccumulate :: Bool

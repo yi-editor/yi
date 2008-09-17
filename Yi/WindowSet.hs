@@ -8,17 +8,17 @@ module Yi.WindowSet where
 -- FIXME: export abstractly
 -- TODO: rename to RoundRobin or somesuch.
 
-import Prelude hiding (elem, error)
+import Prelude ()
+import Yi.Prelude
 
-import Yi.Debug
 import Control.Monad.Trans
 import Data.Binary
 import Data.Foldable
 import Data.Traversable
 import Data.Monoid
+import Data.List hiding (elem)
 import Control.Applicative
 import Control.Monad
-import Yi.Accessor
 #ifdef TESTING
 import Test.QuickCheck
 

@@ -44,8 +44,6 @@ import Prelude ()
 import Yi.Prelude
 
 import Yi.Config
-import Yi.Debug
-import Yi.Undo
 import Yi.Buffer
 import Yi.Dynamic
 import Yi.String
@@ -56,7 +54,6 @@ import Yi.Keymap
 import Yi.KillRing (krEndCmd)
 import qualified Yi.Interact as I
 import Yi.Monad
-import Yi.Accessor
 import qualified Yi.WindowSet as WS
 import qualified Yi.Editor as Editor
 import qualified Yi.UI.Common as UI

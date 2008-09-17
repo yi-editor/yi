@@ -23,10 +23,6 @@ import Control.Applicative
 
 import {-# source #-} Yi.Boot
 import Yi.Buffer
-import Yi.Buffer.HighLevel
-import Yi.Buffer.Normal
-import Yi.Buffer.Region
-import Yi.Buffer.Indent
 import Yi.Core
 import Yi.Dired
 import Yi.Editor

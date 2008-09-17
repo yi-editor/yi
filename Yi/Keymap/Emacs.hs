@@ -10,8 +10,6 @@ module Yi.Keymap.Emacs (keymap)
 where
 import Control.Applicative
 import Yi.Buffer
-import Yi.Buffer.HighLevel
-import Yi.Buffer.Normal
 import Yi.Core
 import Yi.Dired
 import Yi.Editor
@@ -42,8 +40,6 @@ import Yi.Keymap.Emacs.Utils
   , argToInt
   )
 import Yi.Accessor
-import Yi.Buffer
-import Yi.Buffer.Normal
 import Data.Maybe
 import Data.Char
 

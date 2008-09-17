@@ -4,7 +4,6 @@ module Yi.UI.Utils where
 -- Utilities shared by various UIs
 
 import Yi.Buffer
-import Yi.Buffer.HighLevel
 import Yi.Prelude
 import Prelude (Ordering(..))
 import Yi.Window

@@ -8,17 +8,13 @@ module Yi.UI.Gtk (start) where
 
 import Prelude (filter, map, round, length, take, FilePath)
 import Yi.Prelude 
-import Yi.Accessor
-import Yi.Buffer.Implementation (inBounds, Update(..), UIUpdate(..))
 import Yi.Buffer
-import Yi.Buffer.HighLevel (setSelectionMarkPointB)
 import qualified Yi.Editor as Editor
 import Yi.Editor hiding (windows)
 import qualified Yi.Window as Window
 import Yi.Window (Window)
 import Yi.Event
 import Yi.Keymap
-import Yi.Debug
 import Yi.Monad
 import qualified Yi.UI.Common as Common
 import Yi.Config

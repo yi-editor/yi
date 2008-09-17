@@ -25,9 +25,6 @@ import Data.Traversable
 import System.Exit
 import System.Posix.Signals         ( raiseSignal, sigTSTP )
 import Yi.Buffer
-import Yi.Buffer.Implementation
-import Yi.Buffer.Region
-import Yi.Buffer.HighLevel
 import Yi.Config
 import Yi.Editor
 import Yi.Event
@@ -45,7 +42,6 @@ import qualified Graphics.Vty as Vty
 
 import Yi.UI.Utils
 import Yi.UI.TabBar
-import Yi.Buffer.Indent (indentSettingsB)
 
 ------------------------------------------------------------------------
 

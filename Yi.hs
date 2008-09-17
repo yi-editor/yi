@@ -17,8 +17,6 @@ module Yi
     module Data.Prototype, -- prototypes are mainly there for config; makes sense to export them.
     module Yi.Boot,
     module Yi.Buffer,
-    module Yi.Buffer.HighLevel,
-    module Yi.Buffer.Normal,
     module Yi.Config,
     module Yi.Core,
     module Yi.Debug,
@@ -27,7 +25,6 @@ module Yi
     module Yi.Eval,
     module Yi.File,
     module Yi.Main,
-    module Yi.Buffer.Region,
     module Yi.Search,
     module Yi.Style,
     module Yi.Style.Library,
@@ -39,9 +36,6 @@ import Control.Monad hiding (mapM_, mapM)
 import Data.Prototype
 import Yi.Boot
 import Yi.Buffer
-import Yi.Buffer.HighLevel
-import Yi.Buffer.Normal
-import Yi.Buffer.Region
 import Yi.Config
 import Yi.Core
 import Yi.Debug

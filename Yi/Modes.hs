@@ -7,9 +7,7 @@ module Yi.Modes (fundamentalMode,
 import Control.Arrow (first)
 import Prelude ()
 import System.FilePath
-import Yi.Buffer (Mode(..), emptyMode)
-import Yi.Buffer.HighLevel (fillParagraph)
-import Yi.Buffer.Indent
+import Yi.Buffer
 import Yi.Lexer.Alex (Tok(..), Posn(..))
 import Yi.Prelude
 import Yi.Style

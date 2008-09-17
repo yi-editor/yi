@@ -12,8 +12,6 @@ import Control.Applicative
 import Data.List (isInfixOf, find)
 import Data.Maybe
 import Yi.Buffer
-import Yi.Buffer.Region
-import Yi.Buffer.HighLevel
 import Yi.Config
 import Yi.Core
 import Yi.Editor
