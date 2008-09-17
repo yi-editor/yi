@@ -292,7 +292,7 @@ drawWindow cfg mre b sty focused w win = (Rendered { picture = pict,cursor = cur
         off = if notMini then 1 else 0
         h' = height win - off
         wsty = attributesToAttr (appStyle (window sty)) attr
-        selsty = attributesToAttr (appStyle (window sty)) attr
+        selsty = attributesToAttr (appStyle (selected sty)) attr
         eofsty = eof sty
         (selreg, _) = runBuffer win b getSelectRegionB
         (point, _) = runBuffer win b pointB
