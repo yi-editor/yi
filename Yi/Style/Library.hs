@@ -12,22 +12,22 @@ defaultTheme = Proto $ \self -> UIStyle
     { window            = error "window must be redefined!"
     , modeline          = error "modeline must be redefined!"
     , modelineFocused   = withFg brightwhite `mappend` modeline self
-    , selected          = withFg Reverse   `mappend` withBg Reverse
-    , eof               = withFg blue      `mappend` window self
+    , selected          = withFg Reverse     `mappend` withBg Reverse
+    , eof               = withFg blue        `mappend` window self
 
-    , preprocessorStyle = withFg red       `mappend` window self
-    , commentStyle      = withFg purple    `mappend` window self
+    , preprocessorStyle = withFg red   
+    , commentStyle      = withFg purple
     , blockCommentStyle = commentStyle self
-    , keywordStyle      = withFg darkblue  `mappend` window self
+    , keywordStyle      = withFg darkblue
 
-    , operatorStyle     = withFg brown     `mappend` window self
+    , operatorStyle     = withFg brown
 
-    , variableStyle     =                            window self
-    , typeStyle         = withFg darkgreen `mappend` window self
+    , variableStyle     = mempty
+    , typeStyle         = withFg darkgreen 
 
-    , stringStyle       = withFg darkcyan  `mappend` window self
+    , stringStyle       = withFg darkcyan  
     , longStringStyle   = stringStyle self
-    , numberStyle       = withFg darkred   `mappend` window self
+    , numberStyle       = withFg darkred   
 
     , errorStyle        = withBg red
     , hintStyle         = withBg cyan
