@@ -169,8 +169,8 @@ newtype Isearch = Isearch [(String, Region, Direction)] deriving Typeable
 -- This contains: (string currently searched, position where we
 -- searched it, direction, overlay for highlighting searched text)
 
--- TODO: Maybe this should not be saved in a Dynamic component!
--- it could also be embedded in the Keymap state.
+-- Note that this info cannot be embedded in the Keymap state: the state
+-- modification can depend on the state of the editor.
 
 instance Initializable Isearch where
     initial = (Isearch [])
