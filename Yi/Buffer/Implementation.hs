@@ -269,7 +269,7 @@ delOverlayLayer layer fb = fb{overlays = Set.filter ((/= layer) . overlayLayer) 
 --   the buffer.  In each list, the strokes are guaranteed to be
 --   ordered and non-overlapping.  The lists of strokes are ordered by
 --   decreasing priority: the 1st layer should be "painted" on top.
--- TODO: pass a region.
+-- TODO: pass a region instead of begin,end
 strokesRangesBI :: Maybe SearchExp -> Point -> Point -> BufferImpl syntax -> [[Stroke]]
 strokesRangesBI regex i j fb@FBufferData {hlCache = HLState hl cache} =  result
   where

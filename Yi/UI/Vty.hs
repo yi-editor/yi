@@ -288,9 +288,8 @@ drawWindow cfg mre b sty focused w win = (Rendered { picture = pict,cursor = cur
         off = if notMini then 1 else 0
         h' = height win - off
         wsty = attributesToAttr (appStyle (window sty)) attr
-        selsty = attributesToAttr (appStyle (selected sty)) attr
         eofsty = eof sty
-        (selreg, _) = runBuffer win b getSelectRegionB
+        (selReg, _) = runBuffer win b getSelectRegionB
         (point, _) = runBuffer win b pointB
         (eofPoint, _) = runBuffer win b sizeB
         sz = Size (w*h')
@@ -301,11 +300,13 @@ drawWindow cfg mre b sty focused w win = (Rendered { picture = pict,cursor = cur
                             then fst $ runBuffer win b (getMarkPointB fromM)
                             else Point 0
         (text, _)    = runBuffer win b (streamB Forward fromMarkPoint) -- read enough chars from the buffer.
-        (strokes, _) = runBuffer win b (strokesRangesB  mre fromMarkPoint (fromMarkPoint +~ sz)) -- corresponding strokes
+        (strokes0, _) = runBuffer win b (strokesRangesB  mre fromMarkPoint (fromMarkPoint +~ sz)) -- corresponding strokes
+        (showSel, _) = runBuffer win b (gets highlightSelection)
+        selLayer = [(regionStart selReg, selected, regionEnd selReg)]
+        strokes = if showSel then selLayer : strokes0 else strokes0
         colors = map (second (($ attr) . attributesToAttr)) (paintPicture defaultAttributes (map (map (toActualStroke sty)) strokes))
         bufData = -- trace (unlines (map show text) ++ unlines (map show $ concat strokes)) $ 
                   paintChars attr colors $ toIndexedString fromMarkPoint text
-        (showSel, _) = runBuffer win b (gets highlightSelection)
         tabWidth = tabSize . fst $ runBuffer win b indentSettingsB
         prompt = if isMini win then name b else ""
 
@@ -313,8 +314,6 @@ drawWindow cfg mre b sty focused w win = (Rendered { picture = pict,cursor = cur
                                 fromMarkPoint
                                 point 
                                 tabWidth
-                                (if showSel then selreg else emptyRegion)
-                                selsty wsty 
                                 ([(c,(wsty, (-1))) | c <- prompt] ++ bufData ++ [(' ',(wsty, eofPoint))])
                              -- we always add one character which can be used to position the cursor at the end of file
         (_, b') = runBuffer win b (setMarkPointB toM toMarkPoint')
@@ -335,15 +334,9 @@ drawText :: Int    -- ^ The height of the part of the window we are in
          -> Point  -- ^ The position of the first character to draw
          -> Point  -- ^ The position of the cursor
          -> Int    -- ^ The number of spaces to represent a tab character with.
-         -> Region -- ^ The selected region
-         -> Vty.Attr   -- ^ The attribute with which to draw selected text
-         -> Vty.Attr   -- ^ The attribute with which to draw the background
-                   -- this is not used for drawing but only to compare
-                   -- it against the selection attribute to avoid making
-                   -- the selection invisible.
          -> [(Char,(Vty.Attr,Point))]  -- ^ The data to draw.
          -> ([Image], Point, Maybe (Int,Int))
-drawText h w topPoint point tabWidth selreg selsty wsty bufData
+drawText h w topPoint point tabWidth bufData
     | h == 0 || w == 0 = ([], topPoint, Nothing)
     | otherwise        = (rendered_lines, bottomPoint, pntpos)
   where 
@@ -358,20 +351,13 @@ drawText h w topPoint point tabWidth selreg selsty wsty bufData
 
   -- fill lines with blanks, so the selection looks ok.
   rendered_lines = map fillColorLine lns0
-  colorChar (c, (a, x)) = renderChar (pointStyle x a) c
-
-  pointStyle :: Point -> Vty.Attr -> Vty.Attr
-  pointStyle x a 
-    | x == point          = a
-    | x `inRegion` selreg 
-      && selsty /= wsty   = selsty
-    | otherwise           = a
+  colorChar (c, (a, aPoint)) = renderChar a c
 
   fillColorLine :: [(Char, (Vty.Attr, Point))] -> Image
   fillColorLine [] = renderHFill attr ' ' w
   fillColorLine l = horzcat (map colorChar l) 
                     <|>
-                    renderHFill (pointStyle x a) ' ' (w - length l)
+                    renderHFill a ' ' (w - length l)
                     where (_,(a,x)) = last l
 
   -- | Cut a string in lines separated by a '\n' char. Note

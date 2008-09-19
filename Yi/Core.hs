@@ -74,7 +74,7 @@ import Control.Monad (when,forever)
 import Control.Monad.Reader (runReaderT, ask, asks)
 import Control.Monad.Trans
 import Control.Monad.Error ()
-import Control.Monad.State (gets, get)
+import Control.Monad.State (gets)
 import Control.Exception
 import Control.Concurrent
 
