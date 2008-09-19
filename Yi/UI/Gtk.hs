@@ -9,6 +9,7 @@ module Yi.UI.Gtk (start) where
 import Prelude (filter, map, round, length, take, FilePath)
 import Yi.Prelude 
 import Yi.Buffer
+import Yi.Buffer.Implementation (inBounds)
 import qualified Yi.Editor as Editor
 import Yi.Editor hiding (windows)
 import qualified Yi.Window as Window
