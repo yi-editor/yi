@@ -132,7 +132,7 @@ addSubviewWithTextLine view parent = do
 
 -- | Initialise the ui
 start :: UIBoot
-start cfg ch outCh _ed = do
+start cfg ch outCh ed = do
 
   -- Ensure that our command line application is also treated as a gui application
   fptr <- mallocForeignPtrBytes 32 -- way to many bytes, but hey...
@@ -193,6 +193,8 @@ start cfg ch outCh _ed = do
   win # setFrameAutosaveName (toNSString "main")
   win # makeKeyAndOrderFront nil
   app # activateIgnoringOtherApps False
+  app # setIVar _runAction (Just $ outCh . singleton . makeAction)
+  app # setIVar _queryEditor (Just $ \q -> snd $ runEditor cfg q ed)
 
   bufs <- newIORef M.empty
   wc <- newIORef []

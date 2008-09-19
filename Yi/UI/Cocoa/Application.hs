@@ -25,16 +25,21 @@ module Yi.UI.Cocoa.Application
   , _YiController
   , initializeClass_Application
   , _eventChannel
+  , _runAction
+  , _queryEditor
   , setAppleMenu
   , ImpType_setAppleMenu
   ) where
+
+import Prelude ()
+import Yi.Prelude
 
 import Control.Concurrent
 import Control.Monad
 
 import Data.Bits
 
-import Yi.Debug
+import Yi.Editor
 import Yi.Event
 import Yi.UI.Cocoa.Utils
 
@@ -96,13 +101,41 @@ $(declareSelector "setAppleMenu:" [t| forall t. NSMenu t -> IO () |] )
 instance Has_setAppleMenu (NSApplication a)
 $(exportClass "YiApplication" "ya_" [
     InstanceVariable "eventChannel" [t| Maybe (Yi.Event.Event -> IO ()) |] [| Nothing |]
+  , InstanceVariable "queryEditor" [t| Maybe (EditorM String -> String) |] [| Nothing |]
+  , InstanceVariable "runAction" [t| Maybe (EditorM () -> IO ()) |] [| Nothing |]
+  , InstanceVariable "oldKillring" [t| String |] [| [] |]
+  , InstanceVariable "oldChangeCount" [t| CInt |] [| 0 |]
   , InstanceMethod 'run -- '
   , InstanceMethod 'doTick -- '
   , InstanceMethod 'sendEvent -- '
   ])
 
 ya_doTick :: YiApplication () -> IO ()
-ya_doTick _ = replicateM_ 4 yield
+ya_doTick slf = do
+  pb <- _NSPasteboard # generalPasteboard
+  cc <- pb # changeCount
+  ar <- castObject <$> _NSArray # arrayWithObject nsStringPboardType
+  oc <- slf #. _oldChangeCount
+  ok <- slf #. _oldKillring
+  Just ra <- slf #. _runAction
+  Just qe <- slf #. _queryEditor
+  let nk = qe getRegE
+  
+  if ok /= nk
+    then do
+      slf # setIVar _oldKillring nk
+      pb # declareTypesOwner ar slf
+      pb # setStringForType nsStringPboardType (toNSString nk)
+      return ()
+    else 
+      when (cc /= oc) $ do
+        slf # setIVar _oldChangeCount cc
+        ty <- pb # availableTypeFromArray ar
+        st <- pb # stringForType ty
+        when (st /= nil) $ do
+          haskellString st >>= ra . setRegE
+    
+  replicateM_ 4 yield
 
 ya_run :: YiApplication () -> IO ()
 ya_run self = do
