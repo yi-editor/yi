@@ -230,14 +230,12 @@ onlyBg = filter2 ((==) `on` (background . snd))
 
 -- | Get a picture where each component (p,style) means apply the style
 --   up until the given point p.
-paintCocoaPicture :: UIStyle -> Point -> [[Stroke]] -> Picture
-paintCocoaPicture sty end =
-  tail . stylesift defaultAttributes . paintPicture defaultAttributes . fmap (fmap styleStroke)
+paintCocoaPicture :: UIStyle -> Point -> Picture -> Picture
+paintCocoaPicture sty end = tail . stylesift (baseAttributes sty)
   where
     -- Turn a picture of use style from p into a picture of use style until p
     stylesift s [] = [(end,s)]
     stylesift s ((p,t):xs) = (p,s):(stylesift t xs)
-    styleStroke (l,s,r) = (l,(s sty),r)
 
 -- | A version of poke that does nothing if p is null.
 safePoke :: (Storable a) => Ptr a -> a -> IO ()
@@ -256,7 +254,7 @@ bufferPicture :: UIStyle -> FBuffer -> Point -> Picture
 bufferPicture sty buf p =
   let r = mkSizeRegion p strokeRangeExtent in
   paintCocoaPicture sty (regionEnd r) $
-    runBufferDummyWindow buf (strokesRangesB Nothing r)
+    runBufferDummyWindow buf (attributesPictureB sty Nothing r [])
 
 type TextStorage = YiTextStorage ()
 initializeClass_TextStorage :: IO ()

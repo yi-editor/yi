@@ -19,9 +19,8 @@ import Yi.Keymap
 import Yi.Monad
 import qualified Yi.UI.Common as Common
 import Yi.Config
-import Yi.Style hiding (modeline)
+import Yi.Style as Style
 import qualified Yi.WindowSet as WS
-import Control.Arrow (second)
 import Control.Applicative
 import Control.Concurrent ( yield )
 import Control.Monad (ap)
@@ -308,22 +307,13 @@ newWindow editor ui mini win = do
     widgetModifyFont v (Just f)
 
     -- Apply the window style attributes to the text view.
-    let styAttr = window $ configStyle $ uiConfig ui
-    case appEndo styAttr defaultAttributes of
-            (Attributes _ c) -> do
-                let toColor Default = Color 0xffff 0xffff 0xffff
-                    toColor Reverse = Color 0 0 0
-                    toColor (RGB r g b) = Color (fromIntegral r * 0xff) (fromIntegral g * 0xff) (fromIntegral b * 0xff)
-                widgetModifyBase v StateNormal $ toColor c
-            _ -> return ()
-            {- Should be something like below. However, widgetModifyCursor is not in my version of
-             - gtk2hs! -CROC
-            Foreground c -> do
-                let toColor Default = Color 0 0 0
-                    toColor Reverse = Color 0xffff 0xffff 0xffff
-                    toColor (RGB r g b) = Color (fromIntegral r * 0xff) (fromIntegral g * 0xff) (fromIntegral b * 0xff)
-                widgetModifyCursor v StateNormal $ toColor c
-            -}
+    let styAttr = baseAttributes $ configStyle $ uiConfig ui
+    widgetModifyBase v StateNormal $ toColor True  $ Style.background styAttr
+    widgetModifyText v StateNormal $ toColor False $ Style.foreground styAttr
+    {- Should be something like below. However, widgetModifyCursor is not in my version of
+     - gtk2hs! -CROC
+    widgetModifyCursor v StateNormal $ toColor $ foreground styAttr
+     -}
 
     box <- if mini
      then do
@@ -434,15 +424,8 @@ replaceTagsIn :: UI -> Region -> FBuffer -> TextBuffer -> IO ()
 replaceTagsIn ui r buf gtkBuf = do
   i <- textBufferGetIterAtOffset gtkBuf (fromPoint $ regionStart r)
   i' <- textBufferGetIterAtOffset gtkBuf (fromPoint $ regionEnd r)
-  let (sizeBuf, styleSpans) = 
-         runBufferDummyWindow buf $ (,) <$> sizeB <*> (strokesRangesB Nothing r)
-      actualStrokes :: [[(Point,Style,Point)]]
-      actualStrokes = (map (map (toActualStroke (configStyle $ uiConfig ui))) styleSpans)
-      picture :: [(Point, Attributes)]
-      picture = paintPicture defaultAttributes actualStrokes
-      styleRanges :: [(Point, Attributes)]
---      styleRanges = map (second appStyle) picture
-      styleRanges = picture
+  let (sizeBuf, styleRanges) = 
+         runBufferDummyWindow buf $ (,) <$> sizeB <*> (attributesPictureB (configStyle $ uiConfig ui) Nothing r [])
   textBufferRemoveAllTags gtkBuf i i'
   forM_ (zip styleRanges (map fst (drop 1 styleRanges) ++ [sizeBuf]) ) $ \((l,s),r) -> do
     f <- textBufferGetIterAtOffset gtkBuf (fromPoint l)
@@ -530,3 +513,7 @@ newGtkBuffer ui b = do
   replaceTagsIn ui (mkRegion 0 sz) b buf
   return buf
 
+toColor :: Bool -> Style.Color -> Gtk.Color
+toColor fg Default = let c = if fg then 0xff else 0 in Color c c c
+toColor fg Reverse = let c = if fg then 0 else 0xff in Color c c c
+toColor _g (RGB r g b) = Color (fromIntegral r * 0xff) (fromIntegral g * 0xff) (fromIntegral b * 0xff)

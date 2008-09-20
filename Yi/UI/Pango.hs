@@ -18,7 +18,7 @@ import Yi.Keymap
 import Yi.Monad
 import qualified Yi.UI.Common as Common
 import Yi.Config
-import Yi.Style hiding (modeline)
+import Yi.Style
 import qualified Yi.WindowSet as WS
 
 import Control.Applicative

@@ -9,7 +9,7 @@ import Yi.Style
 data TabDescr = TabDescr
     {
         tabText :: String,
-        tabStyle :: Style,
+        tabAttributes :: Attributes,
         tabInFocus :: Bool
     }
 
@@ -20,8 +20,8 @@ tabBarDescr editor maxWidth uiStyle =
     -- TODO: Use different styles for oofTabStyle and ifTabStyle. 
     -- I tried using modeline and modelineFocused but this had an undesired 
     -- effect on the mode line. - CROC
-    let oofTabStyle = modeline uiStyle
-        ifTabStyle = modeline uiStyle
+    let oofTabStyle = modelineAttributes uiStyle
+        ifTabStyle = modelineAttributes uiStyle
         hintForTab tab = hint
             where currentBufferName = name $ findBufferWith (bufkey $ current tab) editor
                   hint = if length currentBufferName > maxWidth

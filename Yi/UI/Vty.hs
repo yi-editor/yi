@@ -21,6 +21,7 @@ import Data.IORef
 import Data.List (partition, sort, nub)
 import qualified Data.Map as M
 import Data.Maybe
+import Data.Monoid
 import Data.Traversable
 import System.Exit
 import System.Posix.Signals         ( raiseSignal, sigTSTP )
@@ -192,7 +193,7 @@ refresh ui e = do
 
   let startXs = scanrT (+) windowStartY (fmap height ws')
       wImages = fmap picture renders
-      statusBarStyle = window $ configStyle $ configUI $ config $ ui
+      statusBarStyle = baseAttributes $ configStyle $ configUI $ config $ ui
       tabBarImages = renderTabBar e' ui xss
   WS.debug "Drawing: " ws'
   logPutStrLn $ "startXs: " ++ show startXs
@@ -201,7 +202,7 @@ refresh ui e = do
                     <->
                     vertcat (toList wImages) 
                     <-> 
-                    withStyle statusBarStyle (take xss $ cmd ++ repeat ' '),
+                    withAttributes statusBarStyle (take xss $ cmd ++ repeat ' '),
            pCursor = case cursor (WS.current renders) of
                        Just (y,x) -> Cursor x (y + WS.current startXs) 
                        -- Add the position of the window to the position of the cursor
@@ -234,8 +235,8 @@ renderTabBar e ui xss =
                 -- added to make them the same. Otherwise Vty will error out when trying to
                 -- vertically concat two images with different widths.
                 extraCount = xss - (tabWidth * WS.size tabImages)
-                extraStyle = modeline $ configStyle $ configUI $ config $ ui
-                extraImage = withStyle extraStyle $ replicate extraCount '#'
+                extraStyle = modelineAttributes $ configStyle $ configUI $ config $ ui
+                extraImage = withAttributes extraStyle $ replicate extraCount '#'
                 finalImage = if extraCount /= 0
                     then foldr (<|>) extraImage tabImages
                     else foldr1 (<|>) tabImages
@@ -246,7 +247,7 @@ renderTabBar e ui xss =
         tabToVtyImage width (TabDescr txt sty inFocus) = 
             let pad = replicate (width - length txt - 5) ' '
                 spacers = if inFocus then (">>", "<<") else ("  ", "  ")
-            in withStyle sty $ (fst spacers) ++ txt ++ (snd spacers) ++ pad ++ "|"
+            in withAttributes sty $ (fst spacers) ++ txt ++ (snd spacers) ++ pad ++ "|"
 
 scanrT :: (Int -> Int -> Int) -> Int -> WindowSet Int -> WindowSet Int
 scanrT (+*+) k t = fst $ runState (mapM f t) k
@@ -287,8 +288,9 @@ drawWindow cfg mre b sty focused w win = (Rendered { picture = pict,cursor = cur
         -- off reserves space for the mode line. The mini window does not have a mode line.
         off = if notMini then 1 else 0
         h' = height win - off
-        wsty = attributesToAttr (appStyle (window sty)) attr
-        eofsty = eof sty
+        ground = baseAttributes sty
+        wsty = attributesToAttr ground attr
+        eofsty = appEndo (eofStyle sty) ground
         (selReg, _) = runBuffer win b getSelectRegionB
         (point, _) = runBuffer win b pointB
         (eofPoint, _) = runBuffer win b sizeB
@@ -300,8 +302,10 @@ drawWindow cfg mre b sty focused w win = (Rendered { picture = pict,cursor = cur
                             then fst $ runBuffer win b (getMarkPointB fromM)
                             else Point 0
         (text, _)    = runBuffer win b (streamB Forward fromMarkPoint) -- read enough chars from the buffer.
-        (strokes, _) = runBuffer win b (strokesRangesB  mre fromMarkPoint (fromMarkPoint +~ sz)) -- corresponding strokes
-        colors = map (second (($ attr) . attributesToAttr)) (paintPicture defaultAttributes (map (map (toActualStroke sty)) strokes))
+        (showSel, _) = runBuffer win b (gets highlightSelection)
+        extraLayers = if showSel then [[(regionStart selReg, selectedStyle, regionEnd selReg)]] else []
+        (picture, _) = runBuffer win b (attributesPictureB sty mre region extraLayers)
+        colors = map (second (($ attr) . attributesToAttr)) picture
         bufData = -- trace (unlines (map show text) ++ unlines (map show $ concat strokes)) $ 
                   paintChars attr colors $ toIndexedString fromMarkPoint text
         tabWidth = tabSize . fst $ runBuffer win b indentSettingsB
@@ -316,11 +320,11 @@ drawWindow cfg mre b sty focused w win = (Rendered { picture = pict,cursor = cur
         (_, b') = runBuffer win b (setMarkPointB toM toMarkPoint')
         (modeLine0, _) = runBuffer win b getModeLine
         modeLine = if notMini then Just modeLine0 else Nothing
-        modeLines = map (withStyle (modeStyle sty) . take w . (++ repeat ' ')) $ maybeToList $ modeLine
-        modeStyle = if focused then modelineFocused else modeline        
+        modeLines = map (withAttributes modeStyle . take w . (++ repeat ' ')) $ maybeToList $ modeLine
+        modeStyle = (if focused then appEndo (modelineFocusStyle sty) else id) (modelineAttributes sty)
         filler = take w (configWindowFill cfg : repeat ' ')
     
-        pict = vertcat (take h' (rendered ++ repeat (withStyle eofsty filler)) ++ modeLines)
+        pict = vertcat (take h' (rendered ++ repeat (withAttributes eofsty filler)) ++ modeLines)
   
 -- | Renders text in a rectangle.
 -- This also returns 
@@ -378,8 +382,8 @@ drawText h w topPoint point tabWidth bufData
     | ord c < 32 = [('^',p),(chr (ord c + 64),p)]
     | otherwise = [(c,p)]
 
-withStyle :: Style -> String -> Image
-withStyle sty str = renderBS (attributesToAttr (appStyle sty) attr) (B.pack str)
+withAttributes :: Attributes -> String -> Image
+withAttributes sty str = renderBS (attributesToAttr sty attr) (B.pack str)
 
 
 ------------------------------------------------------------------------

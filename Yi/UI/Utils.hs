@@ -57,8 +57,10 @@ paintStrokes f0 x0 lf@((pf,f):tf) lx@((px,x):tx) =
 paintPicture :: a -> [[(Point,Endo a,Point)]] -> [(Point,a)]
 paintPicture a = foldr (paintStrokes id a . strokePicture) []
 
-
-
-toActualStroke :: UIStyle -> Stroke -> (Point, Style, Point)
-toActualStroke sty (l,s,r) = (l,s sty,r)
+attributesPictureB :: UIStyle -> Maybe SearchExp -> Region -> [[(Point,StyleName,Point)]] -> BufferM [(Point,Attributes)]
+attributesPictureB sty mexp region extraLayers =
+  paintPicture (baseAttributes sty) <$>
+    fmap (fmap $ \(l,s,r) -> (l,s sty, r)) <$>
+    (extraLayers ++) <$>
+    strokesRangesB mexp region
 

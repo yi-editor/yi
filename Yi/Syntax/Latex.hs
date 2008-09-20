@@ -4,7 +4,7 @@ module Yi.Syntax.Latex where
 import Yi.IncrementalParse
 import Yi.Lexer.Alex
 import Yi.Lexer.Latex
-import Yi.Style hiding (eof)
+import Yi.Style
 import Yi.Syntax.Tree
 import Yi.Syntax
 import Yi.Prelude 

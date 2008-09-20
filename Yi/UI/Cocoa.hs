@@ -32,6 +32,7 @@ import Control.Monad.Reader (when)
 import qualified Data.List as L
 import Data.IORef
 import Data.Maybe
+import Data.Monoid
 import Data.Unique
 import qualified Data.Map as M
 
@@ -198,7 +199,7 @@ start cfg ch outCh _ed = do
 
   let ui = UI win winContainer cmd bufs wc (outCh . singleton) (configUI cfg)
 
-  cmd # setColors ui Style.window
+  cmd # setColors (Style.baseAttributes $ configStyle $ uiConfig ui)
 
   return (mkUI ui)
 
@@ -231,9 +232,8 @@ syncWindows e ui = sync
       (textview i) # AppKit.NSView.window >>= makeFirstResponder (textview i)
       return (i{window = w})
 
-setColors :: (Has_setBackgroundColor t, Has_setTextColor t) => UI -> Style.StyleName -> t -> IO ()
-setColors ui styleName slf = do
-  let s = Style.appStyle $ styleName $ configStyle $ uiConfig ui
+setColors :: (Has_setBackgroundColor t, Has_setTextColor t) => Style.Attributes -> t -> IO ()
+setColors s slf = do
   getColor True  (Style.foreground s) >>= flip setTextColor slf
   getColor False (Style.background s) >>= flip setBackgroundColor slf
 
@@ -245,9 +245,11 @@ newWindow ui win b = do
   v # setSelectable True
   v # setAlignment nsLeftTextAlignment
   v # sizeToFit
-  attrs <- convertAttributes $ Style.appStyle $ Style.selected $ configStyle $ uiConfig ui
+  let sty = configStyle $ uiConfig ui
+      ground = Style.baseAttributes sty
+  attrs <- convertAttributes $ appEndo (Style.selectedStyle sty) $ ground
   v # setSelectedTextAttributes attrs
-  v # setColors ui Style.window
+  v # setColors ground
   v # textColor >>= flip setInsertionPointColor v
 
   (ml, view) <- if (isMini win)
@@ -259,7 +261,7 @@ newWindow ui win b = do
     prompt # sizeToFit
     prompt # setAutoresizingMask nsViewNotSizable
     prompt # setBordered False
-    prompt # setColors ui Style.window
+    prompt # setColors ground
 
     prect <- prompt # frame
     vrect <- v # frame
@@ -298,7 +300,8 @@ newWindow ui win b = do
     scroll # setIVar _leftScroller (configLeftSideScrollBar $ uiConfig ui)
     addSubviewWithTextLine scroll (uiBox ui)
 
-  ml # setColors ui Style.modeline
+  -- TODO: Support focused modeline...
+  ml # setColors (Style.modelineAttributes sty)
   storage <- getTextStorage ui b
   layoutManager v >>= replaceTextStorage storage
 

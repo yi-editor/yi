@@ -156,10 +156,10 @@ data Token = Number | CharTok | StringTok | VarIdent | ConsIdent
 tokenToStyle :: Token -> StyleName
 tokenToStyle tok = case tok of
   CppDirective -> preprocessorStyle
-  Number       -> defaultStyle
+  Number       -> numberStyle
   CharTok      -> stringStyle
   StringTok    -> stringStyle
-  VarIdent     -> defaultStyle
+  VarIdent     -> variableStyle
   ConsIdent    -> typeStyle
   ReservedOp _ -> operatorStyle
   Reserved _   -> keywordStyle

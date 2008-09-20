@@ -277,7 +277,7 @@ strokesRangesBI regex rgn fb@(FBufferData {hlCache = HLState hl cache}) = result
     dropBefore = dropWhile (\(_l,_s,r) -> r <= i)
     takeIn  = takeWhile (\(l,_s,_r) -> l <= j)
 
-    groundLayer = [(i,window,j)]
+    groundLayer = [(i,mempty,j)]
     syntaxHlLayer = hlGetStrokes hl point i j $ hlGetTree hl cache
     layers2 = map (map overlayStroke) $ groupBy ((==) `on` overlayLayer) $  Set.toList $ overlays fb
     layer3 = case regex of 

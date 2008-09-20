@@ -9,44 +9,46 @@ import Data.Monoid
 import Yi.Prelude
 import Prelude ()
 
--- | The UI type
-data UIStyle =
-    UIStyle {
-         window            :: Style -- ^ window fg and bg
-       , modeline          :: Style -- ^ out of focus modeline colours
-       , modelineFocused   :: Style -- ^ in focus modeline
-       , selected          :: Style -- ^ the selected portion
-       , eof               :: Style -- ^ empty file marker colours
-       , preprocessorStyle :: Style -- ^ preprocessor directive (often in Haskell or C)
-       , commentStyle      :: Style
-       , blockCommentStyle :: Style
-       , keywordStyle      :: Style
-
-       , operatorStyle     :: Style
-
-       , variableStyle     :: Style -- ^ any standard variable (identifier)
-       , typeStyle         :: Style -- ^ class (in an OO language) or a Haskell type
-
-       , stringStyle       :: Style
-       , longStringStyle   :: Style
-       , numberStyle       :: Style
-
-       , errorStyle        :: Style
-       , hintStyle         :: Style
-       , strongHintStyle   :: Style
-     } 
---    deriving (Eq, Show)
-
-type StyleName = UIStyle -> Style
-
--- | A style transforms some of the visual text attributes.
-type Style = Endo Attributes
-
 -- | Visual text attributes to be applied during layout.
 data Attributes = Attributes
   { foreground :: !Color
   , background :: !Color
   } deriving (Eq, Ord, Show)
+
+-- | The style is used to transform attributes by modifying
+--   one or more of the visual text attributes.
+type Style = Endo Attributes
+
+-- | The UI type
+data UIStyle = UIStyle
+  { modelineAttributes :: Attributes -- ^ ground attributes for the modeline
+  , modelineFocusStyle :: Style      -- ^ transformation of modeline in focus
+
+  , baseAttributes     :: Attributes -- ^ ground attributes for the main text views
+
+  -- General styles applied to the ground attributes above
+  , selectedStyle      :: Style      -- ^ the selected portion
+  , eofStyle           :: Style      -- ^ empty file marker colours
+
+  , errorStyle         :: Style      -- ^ indicates errors in text
+  , hintStyle          :: Style      -- ^ search matches
+  , strongHintStyle    :: Style      -- ^ TODO: what is this?
+
+  -- Syntaxt highlighting styles
+  , commentStyle       :: Style      -- ^ all comments
+  , blockCommentStyle  :: Style      -- ^ additional only for block comments
+  , keywordStyle       :: Style      -- ^ applied to language keywords
+  , numberStyle        :: Style      -- ^ numbers
+  , preprocessorStyle  :: Style      -- ^ preprocessor directive (often in Haskell or C)
+  , stringStyle        :: Style      -- ^ constant strings
+  , longStringStyle    :: Style      -- ^ additional style for long strings
+  , typeStyle          :: Style      -- ^ type name (such as class in an OO language)
+  , variableStyle      :: Style      -- ^ any standard variable (identifier)
+  , operatorStyle      :: Style      -- ^ infix operators
+  }
+--    deriving (Eq, Show)
+
+type StyleName = UIStyle -> Style
 
 withFg, withBg :: Color -> Style
 -- | A style that sets the foreground.
@@ -57,17 +59,6 @@ withBg c = Endo $ \s -> s { background = c }
 -- | The identity transform.
 defaultStyle :: StyleName
 defaultStyle = mempty
-
--- | Apply the styles to the default attributes.
-appStyle :: Style -> Attributes
-appStyle = flip appEndo defaultAttributes
-
-defaultAttributes :: Attributes
-defaultAttributes = Attributes
-  { foreground = Default
-  , background = Default
-  }
-
 
 data Color
     = RGB {-# UNPACK #-} !Word8 {-# UNPACK #-} !Word8 {-# UNPACK #-} !Word8
