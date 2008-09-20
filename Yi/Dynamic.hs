@@ -9,10 +9,12 @@ module Yi.Dynamic
  )
   where
 
+import Prelude ()
+import Yi.Prelude
+
 import GHC.Exts
 import Data.Maybe
 import Data.Typeable
-import Yi.Accessor
 import Data.Map as M
 -- ---------------------------------------------------------------------
 -- | Class of values that can go in the extensible state component

@@ -3,14 +3,10 @@
 module Yi.Keymap.Cua (keymap) where
 
 import Prelude hiding (error)
-import Yi.Buffer
 import Yi.Core
-import Yi.Editor
 import Yi.File
 import Yi.Keymap.Emacs.Utils
-import Yi.Keymap.Keys
 import Yi.Misc
-import Yi.Prelude
 
 keymap :: Keymap
 keymap = selfInsertKeymap <|> move <|> select <|> other

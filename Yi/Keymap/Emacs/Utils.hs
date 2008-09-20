@@ -36,7 +36,6 @@ where
 {- Standard Library Module Imports -}
 
 import Prelude ()
-import Yi.Prelude
 import Data.List ((\\))
 import System.FriendlyPath
 import System.FilePath (addTrailingPathSeparator)
@@ -49,19 +48,15 @@ import Control.Monad.Trans (MonadIO (..))
 
 import Control.Monad (filterM, replicateM_)
 import Control.Monad.State (gets)
-import Yi.Buffer
 import Yi.Core
 import Yi.Dired
-import Yi.Editor
 import Yi.Eval
 import Yi.File
-import Yi.Keymap.Keys
 import Yi.MiniBuffer
 import Yi.Misc
 import Yi.Regex
 import Yi.Search
 import Yi.Window
-import Yi.Prelude
 {- End of Module Imports -}
 
 type UnivArgument = Maybe Int

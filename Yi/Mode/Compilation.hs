@@ -1,19 +1,14 @@
 module Yi.Mode.Compilation where
 
 import Prelude ()
-import Yi.Buffer
 import Yi.Core
 import Yi.Lexer.Alex (Tok(..), Posn(..))
-import Yi.Prelude
 import Yi.Style
 import Yi.Syntax
 import Yi.Dired
-import Yi.Editor
-import Yi.Keymap
 import qualified Yi.Lexer.Alex as Alex
 import qualified Yi.Lexer.Compilation         as Compilation
 import qualified Yi.Syntax.Linear as Linear
-import Yi.Keymap.Keys
 
 mode :: Mode (Linear.Result (Tok Compilation.Token))
 mode = emptyMode

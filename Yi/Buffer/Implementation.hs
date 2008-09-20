@@ -52,6 +52,7 @@ module Yi.Buffer.Implementation
   , toIndexedString
   , getStream
   , newLine
+  , SearchExp
 )
 where
 
@@ -81,7 +82,6 @@ import Data.Maybe
 import Data.List (groupBy)
 import Data.Word
 import qualified Data.Set as Set
-import Yi.Debug
 import Data.Typeable
 import Yi.Region
 

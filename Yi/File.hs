@@ -13,15 +13,9 @@ module Yi.File
   setFileName,
  ) where
 
-import Control.Applicative
 import Control.Monad.Trans
-import Prelude hiding (error)
-import Yi.Accessor
-import Yi.Buffer
-import Yi.Editor (getBuffers, getBuffer, withEditor, withBuffer0)
+import Prelude (filter)
 import Yi.Core
-import Yi.Debug
-import Yi.Keymap
 import System.Directory
 import System.IO.UTF8 as UTF8
 import System.FilePath
@@ -74,7 +68,7 @@ fwriteAllE :: YiM ()
 fwriteAllE = 
   do buffers <- withEditor getBuffers
      let modifiedBuffers = filter (not . isUnchangedBuffer) buffers
-     mapM_ fwriteBufferE (map bkey modifiedBuffers)
+     mapM_ fwriteBufferE (fmap bkey modifiedBuffers)
 
 -- | Make a backup copy of file
 backupE :: FilePath -> YiM ()

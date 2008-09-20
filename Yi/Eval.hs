@@ -8,22 +8,18 @@ module Yi.Eval (
         execEditorAction
 ) where
 
-import Control.Monad
 import Data.Array
 import Data.List
 import Prelude hiding (error)
 import Yi.Regex
 import Yi.Config
 import Yi.Core  hiding (toDyn)
-import Yi.Keymap
 import Yi.Interact hiding (write)
 import Yi.Event
-import Yi.Buffer
 import Yi.Dired
 import Yi.Interpreter
 import Data.Dynamic
 import Control.Monad.Reader (asks)
-import Yi.Editor
 import Yi.MiniBuffer () -- instances
 
 jumpToE :: String -> Int -> Int -> YiM ()

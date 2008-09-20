@@ -42,20 +42,15 @@ module Yi.Search (
                  ) where
 
 import Prelude ()
-import Yi.Prelude
-import Yi.Buffer
 import Yi.Regex
-import Yi.Editor
-import qualified Yi.Editor as Editor
 import Yi.Window
 import Data.Char
 import Data.Maybe
 import Data.Either
 import Data.List (span, takeWhile)
 
-import Control.Monad.State
-
 import Yi.Core
+import Yi.Core as Editor
 import Yi.History
 
 -- ---------------------------------------------------------------------

@@ -20,14 +20,9 @@ module Yi.Mode.Haskell
 import Data.Binary
 import Data.List (isPrefixOf, dropWhile, takeWhile, filter, drop)
 import Data.Maybe (maybe, listToMaybe, isJust)
-import Data.Typeable
 import Prelude (unwords)
-import Yi.Buffer
 import Yi.Core
-import Yi.Dynamic
-import Yi.Editor
 import Yi.File
-import Yi.Keymap
 import Yi.Lexer.Alex (Tok(..),Posn(..),tokBegin,tokEnd,tokRegion)
 import Yi.Lexer.Haskell (Token(..), ReservedType(..), startsLayout)
 import Yi.Prelude
@@ -249,7 +244,7 @@ haskellUnCommentSelectionB = unLineCommentSelectionB "-- "
 
 haskellToggleCommentSelectionB :: BufferM ()
 haskellToggleCommentSelectionB = do
-  l <- readUnitB Yi.Buffer.Line
+  l <- readUnitB Yi.Core.Line
   if ("--" `isPrefixOf` l)
     then haskellUnCommentSelectionB
     else haskellCommentSelectionB

@@ -28,8 +28,10 @@ module Yi.Dired (
        ,fnewE
     ) where
 
+import Prelude (uncurry, catch)
+
 import qualified Data.ByteString.Lazy as LazyB
-import Data.List
+import Data.List hiding (find, maximum, concat)
 import Data.Maybe
 import qualified Data.Map as M
 import System.Directory
@@ -38,22 +40,17 @@ import System.Locale
 import System.PosixCompat.Files
 import System.PosixCompat.Types
 import System.PosixCompat.User
-import Control.Monad.Reader
+import Control.Monad.Reader hiding (mapM)
 
 import System.Time
 import Text.Printf
 import Yi.Regex
 
 import Yi.MiniBuffer (withMinibufferGen, noHint)
-import Control.Monad
-import Yi.Buffer
 import Yi.Config
 import Yi.Core
-import Yi.Editor
 import Yi.Style
-import Yi.Keymap.Keys
 import System.FriendlyPath
-import Yi.Accessor
 import Yi.File
 ------------------------------------------------
 -- | If file exists, read contents of file into a new buffer, otherwise

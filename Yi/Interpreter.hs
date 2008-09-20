@@ -7,7 +7,6 @@ module Yi.Interpreter (
 
 import Data.Dynamic
 import Control.Monad.Error ()
-import Control.Monad (ap)
 import Data.Maybe
 import Text.ParserCombinators.Parsec.Language (haskell)
 import Control.Applicative

@@ -1,13 +1,7 @@
 module Yi.Mode.Interactive where
 
 import Prelude ()
-import Yi.Buffer
 import Yi.Core
-import Yi.Core
-import Yi.Editor
-import Yi.Keymap
-import Yi.Keymap.Keys
-import Yi.Prelude
 import Yi.Region
 import Yi.Lexer.Alex (Tok(..))
 import Yi.History

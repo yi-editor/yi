@@ -31,11 +31,8 @@ import Control.Monad.Trans (MonadIO (..))
 {- Local (yi) module imports -}
 
 import Prelude (words)
-import Yi.Prelude
 import Yi.Monad
-import Yi.Buffer
 import Yi.Core
-import Yi.Editor
 import Yi.MiniBuffer
 import qualified Yi.Mode.Compilation as Compilation
 import Yi.Process

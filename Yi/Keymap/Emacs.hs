@@ -8,17 +8,12 @@
 
 module Yi.Keymap.Emacs (keymap)
 where
-import Control.Applicative
-import Yi.Buffer
 import Yi.Core
 import Yi.Dired
-import Yi.Editor
-import Yi.Keymap.Keys
 import Yi.File
 import Yi.Misc
 import Yi.Rectangle
 import Yi.TextCompletion
-import Yi.Keymap.Keys
 import Yi.Keymap.Emacs.KillRing
 import Yi.Keymap.Emacs.Utils
   ( askQuitEditor
@@ -39,7 +34,6 @@ import Yi.Keymap.Emacs.Utils
   , askSaveEditor
   , argToInt
   )
-import Yi.Accessor
 import Data.Maybe
 import Data.Char
 

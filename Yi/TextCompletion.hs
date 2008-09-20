@@ -10,14 +10,11 @@ module Yi.TextCompletion (
 ) where
 
 import Prelude ()
-import Yi.Prelude
 import Yi.Completion
-import Yi.Buffer
 import Data.Char
 import Data.List (filter, drop, isPrefixOf, reverse, findIndex, length, groupBy)
 import Data.Maybe
 
-import Yi.Editor
 import Yi.Core
 
 -- ---------------------------------------------------------------------

@@ -8,18 +8,14 @@ module Yi.MiniBuffer
   matchingBufferNames
  ) where
 
-import Control.Applicative
-import Data.List (isInfixOf, find)
+import Prelude (filter)
+import Data.List (isInfixOf)
 import Data.Maybe
-import Yi.Buffer
 import Yi.Config
 import Yi.Core
-import Yi.Editor
 import Yi.History
 import Yi.Completion (commonPrefix, infixMatch, prefixMatch, completeInList)
-import Yi.Keymap
-import Yi.Keymap.Keys
-import qualified Yi.Editor as Editor
+import qualified Yi.Core as Editor
 import qualified Yi.WindowSet as WS
 import Control.Monad.Reader
 
@@ -172,7 +168,7 @@ instance Promptable BufferRef where
 matchingBufferNames :: String -> YiM [String]
 matchingBufferNames _s = withEditor $ do
   bs <- getBuffers
-  return (map name bs)
+  return (fmap name bs)
 
 
 -- TODO: be a bit more clever than 'Read r'

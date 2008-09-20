@@ -10,7 +10,6 @@ module Yi.Keymap.Vim (keymap,
                       ModeMap(..),
                       mkKeymap) where
 
-import Yi.Prelude
 import Prelude (maybe, length, filter, map, drop, break, uncurry)
 
 import Data.Char
@@ -19,19 +18,15 @@ import Data.Prototype
 
 import Control.Exception    ( ioErrors, try, evaluate )
 import Control.Monad.State hiding (mapM_, mapM)
-import Control.Applicative
 
 import {-# source #-} Yi.Boot
-import Yi.Buffer
 import Yi.Core
 import Yi.Dired
-import Yi.Editor
 import Yi.Eval (execEditorAction)
 import Yi.File
 import Yi.History
 import Yi.Misc (matchingFileNames)
 import Yi.String (dropSpace)
-import Yi.Keymap.Keys
 import Yi.MiniBuffer
 import Yi.Search
 import Yi.TextCompletion

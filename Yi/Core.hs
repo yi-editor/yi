@@ -13,6 +13,11 @@ module Yi.Core
     -- * Keymap
   , module Yi.Keymap
 
+  , module Yi.Prelude
+  , module Yi.Editor
+  , module Yi.Buffer
+  , module Yi.Keymap.Keys
+
   -- * Construction and destruction
   , startEditor         
   , quitEditor          -- :: YiM ()
@@ -49,8 +54,8 @@ import Yi.Dynamic
 import Yi.String
 import Yi.Process ( popen, createSubprocess, readAvailable, SubprocessId, SubprocessInfo(..) )
 import Yi.Editor
-import Yi.Event (Event, prettyEvent)
 import Yi.Keymap
+import Yi.Keymap.Keys
 import Yi.KillRing (krEndCmd)
 import qualified Yi.Interact as I
 import Yi.Monad

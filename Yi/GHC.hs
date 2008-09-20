@@ -18,7 +18,6 @@ import Yi.Dynamic
 import Yi.Editor
 import Yi.Keymap
 import Yi.Prelude
-import Yi.WindowSet (WindowSet)
 import qualified Data.Map as M
 import qualified Yi.Editor as Editor
 import qualified Yi.WindowSet as Robin

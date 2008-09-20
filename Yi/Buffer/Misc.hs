@@ -96,6 +96,7 @@ module Yi.Buffer.Misc
   , fileA
   , nameA
   , pointDriveA
+  , SearchExp
   )
 where
 
@@ -103,8 +104,6 @@ import Prelude (ceiling)
 import Yi.Prelude
 import Yi.Region
 import System.FilePath
-import Yi.Regex (SearchExp)
-import Yi.Accessor
 import Yi.Buffer.Implementation
 import Yi.Region
 import Yi.Syntax

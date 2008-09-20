@@ -8,26 +8,20 @@
 module Yi.Main (main, defaultConfig, projectName) where
 
 import Prelude ()
-import Yi.Prelude
 import qualified Yi.Keymap.Emacs  as Emacs
 import qualified Yi.Keymap.Vim  as Vim
 import qualified Yi.Keymap.Cua  as Cua
 import Yi.Modes
 import qualified Yi.Mode.Haskell as Haskell
 import {-# source #-} Yi.Boot
-import Yi.Buffer hiding (file)
 import Yi.Config
-import Yi.Core
-import Yi.Debug
+import Yi.Core hiding (file)
 import Yi.Dired
-import Yi.Editor
-import Yi.Keymap.Keys
 import Yi.File
 import Yi.Misc
 import Yi.Style.Library
 import Data.Dynamic
 import Yi.Keymap.Emacs.Utils
-import Yi.Keymap.Keys
 import HConf (hconfOptions)
 import Paths_yi
 import Distribution.Text (display)
