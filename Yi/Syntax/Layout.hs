@@ -1,4 +1,4 @@
-{-# OPTIONS -fglasgow-exts #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 module Yi.Syntax.Layout (layoutHandler, State) where
 
 import Yi.Syntax

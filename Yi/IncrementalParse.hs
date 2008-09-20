@@ -1,5 +1,5 @@
+{-# LANGUAGE EmptyDataDecls, ScopedTypeVariables #-}
 -- Copyright (c) JP Bernardy 2008
-{-# OPTIONS -fglasgow-exts #-}
 module Yi.IncrementalParse (Process, Void, 
                             recoverWith, symbol, eof, runPolish,
                             P, AlexState (..), scanner) where

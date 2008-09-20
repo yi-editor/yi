@@ -1,4 +1,4 @@
-{-# OPTIONS -cpp #-}
+{-# LANGUAGE CPP #-}
 --
 -- Copyright (c) 2007 Jean-Philippe Bernardy
 --

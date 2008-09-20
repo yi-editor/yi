@@ -1,4 +1,4 @@
-{-# OPTIONS -cpp #-}
+{-# LANGUAGE CPP #-}
 -- Copyright (c) 2005 Don Stewart - http://www.cse.unsw.edu.au/~dons
 module Yi.Process (popen, runShellCommand, shellFileName,
                    createSubprocess, readAvailable, SubprocessInfo(..), SubprocessId) where

@@ -1,4 +1,3 @@
-{-# OPTIONS -fglasgow-exts #-}
 module Yi.Syntax.Fractal (parse, getStrokes) where
 
 import Yi.Lexer.Alex (Tok(..), tokBegin)

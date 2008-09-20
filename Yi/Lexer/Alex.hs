@@ -1,4 +1,3 @@
-{-# OPTIONS -fglasgow-exts #-}
 
 module Yi.Lexer.Alex (
                        alexGetChar, alexInputPrevChar, unfoldLexer, lexScanner,

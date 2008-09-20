@@ -1,5 +1,4 @@
-{-# LANGUAGE GADTs #-}
-{-# OPTIONS -fglasgow-exts #-}
+{-# LANGUAGE GADTs, ScopedTypeVariables #-}
 {- A mockup haskell interpreter -}
 
 module Yi.Interpreter (
