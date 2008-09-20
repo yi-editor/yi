@@ -455,7 +455,7 @@ render e ui b w _ev = do
 
   -- add color attributes.
   let (strokes,selectReg,selVisible) = runBufferDummyWindow b $ (,,)
-                       <$> strokesRangesB (regex e) (regionStart r'') (regionEnd r'')
+                       <$> strokesRangesB (regex e) r''
                        <*> getSelectRegionB
                        <*> getA highlightSelectionA
                          

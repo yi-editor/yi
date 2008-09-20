@@ -7,7 +7,7 @@ module Yi.Region
   (
    Region
   , emptyRegion
-  , mkRegion, mkRegion'
+  , mkRegion, mkRegion', mkSizeRegion
   , regionStart
   , regionEnd
   , regionSize
@@ -65,6 +65,9 @@ mkRegion x y = if x <= y then Region Forward x y else Region Backward y x
 
 mkRegion' :: Direction -> Point -> Point -> Region
 mkRegion' d x y = if x <= y then Region d x y else Region d y x
+
+mkSizeRegion :: Point -> Size -> Region
+mkSizeRegion x s = mkRegion x (x +~ s)
 
 -- | The empty region
 emptyRegion :: Region

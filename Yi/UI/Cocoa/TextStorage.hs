@@ -254,9 +254,9 @@ storagePicture i slf = do
 
 bufferPicture :: UIStyle -> FBuffer -> Point -> Picture
 bufferPicture sty buf p =
-  let q = (p + strokeRangeExtent) in
-  paintCocoaPicture sty q $
-    runBufferDummyWindow buf (strokesRangesB Nothing p q)
+  let r = mkSizeRegion p strokeRangeExtent in
+  paintCocoaPicture sty (regionEnd r) $
+    runBufferDummyWindow buf (strokesRangesB Nothing r)
 
 type TextStorage = YiTextStorage ()
 initializeClass_TextStorage :: IO ()

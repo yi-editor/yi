@@ -292,7 +292,7 @@ drawWindow cfg mre b sty focused w win = (Rendered { picture = pict,cursor = cur
         (selReg, _) = runBuffer win b getSelectRegionB
         (point, _) = runBuffer win b pointB
         (eofPoint, _) = runBuffer win b sizeB
-        sz = Size (w*h')
+        region = mkSizeRegion fromMarkPoint (Size (w*h'))
         -- Work around a problem with the mini window never displaying it's contents due to a
         -- fromMark that is always equal to the end of the buffer contents.
         (Just (WinMarks fromM _ _ toM), _) = runBuffer win b (getMarks win)
@@ -300,10 +300,7 @@ drawWindow cfg mre b sty focused w win = (Rendered { picture = pict,cursor = cur
                             then fst $ runBuffer win b (getMarkPointB fromM)
                             else Point 0
         (text, _)    = runBuffer win b (streamB Forward fromMarkPoint) -- read enough chars from the buffer.
-        (strokes0, _) = runBuffer win b (strokesRangesB  mre fromMarkPoint (fromMarkPoint +~ sz)) -- corresponding strokes
-        (showSel, _) = runBuffer win b (gets highlightSelection)
-        selLayer = [(regionStart selReg, selected, regionEnd selReg)]
-        strokes = if showSel then selLayer : strokes0 else strokes0
+        (strokes, _) = runBuffer win b (strokesRangesB  mre fromMarkPoint (fromMarkPoint +~ sz)) -- corresponding strokes
         colors = map (second (($ attr) . attributesToAttr)) (paintPicture defaultAttributes (map (map (toActualStroke sty)) strokes))
         bufData = -- trace (unlines (map show text) ++ unlines (map show $ concat strokes)) $ 
                   paintChars attr colors $ toIndexedString fromMarkPoint text

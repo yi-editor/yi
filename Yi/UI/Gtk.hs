@@ -37,7 +37,7 @@ import Data.Traversable
 import Data.Unique
 import qualified Data.Map as M
 
-import Graphics.UI.Gtk hiding ( Window, Event, Action, Point, Style )
+import Graphics.UI.Gtk hiding ( Window, Event, Action, Point, Style, Region )
 import qualified Graphics.UI.Gtk as Gtk
 import qualified Graphics.UI.Gtk.ModelView as MView
 import Yi.UI.Gtk.ProjectTree
@@ -399,12 +399,12 @@ refresh ui e = do
       gtkBuf <- getGtkBuffer ui buf
       forM_ ([u | TextUpdate u <- pendingUpdates buf]) $ applyUpdate gtkBuf
       let size = runBufferDummyWindow buf sizeB
-      forM_ ([(s,s+~l) | StyleUpdate s l <- pendingUpdates buf]) $ \(s,e') -> replaceTagsIn ui (inBounds s size) (inBounds e' size) buf gtkBuf
+      forM_ ([mkSizeRegion s l | StyleUpdate s l <- pendingUpdates buf]) $ \r -> replaceTagsIn ui r buf gtkBuf
       -- Update all the tags in each region that is currently displayed.
       -- As multiple windows can be displaying the same buffer this is done for each window.
       forM_ ws $ \w -> when (Window.bufkey w == bkey buf) $ do  
           let p = fst $ runBuffer w buf pointB
-          replaceTagsIn ui (inBounds (p-100) size) (inBounds (p+100) size) buf gtkBuf
+          replaceTagsIn ui (mkRegion (max 0 (p-100)) (min (p+100) size)) buf gtkBuf
     logPutStrLn $ "syncing: " ++ show ws
     logPutStrLn $ "with: " ++ show cache
     cache' <- syncWindows e ui (toList $ WS.withFocus $ ws) cache
@@ -430,12 +430,12 @@ refresh ui e = do
            let txt = runBufferDummyWindow buf getModeLine
            set (modeline w) [labelText := txt]
 
-replaceTagsIn :: UI -> Point -> Point -> FBuffer -> TextBuffer -> IO ()
-replaceTagsIn ui from to buf gtkBuf = do
-  i <- textBufferGetIterAtOffset gtkBuf (fromPoint from)
-  i' <- textBufferGetIterAtOffset gtkBuf (fromPoint to)
+replaceTagsIn :: UI -> Region -> FBuffer -> TextBuffer -> IO ()
+replaceTagsIn ui r buf gtkBuf = do
+  i <- textBufferGetIterAtOffset gtkBuf (fromPoint $ regionStart r)
+  i' <- textBufferGetIterAtOffset gtkBuf (fromPoint $ regionEnd r)
   let (sizeBuf, styleSpans) = 
-         runBufferDummyWindow buf $ (,) <$> sizeB <*> (strokesRangesB Nothing from to)
+         runBufferDummyWindow buf $ (,) <$> sizeB <*> (strokesRangesB Nothing r)
       actualStrokes :: [[(Point,Style,Point)]]
       actualStrokes = (map (map (toActualStroke (configStyle $ uiConfig ui))) styleSpans)
       picture :: [(Point, Attributes)]
@@ -527,6 +527,6 @@ newGtkBuffer ui b = do
                       revertPendingUpdatesB
                       (,) <$> elemsB <*> sizeB
   textBufferSetText buf txt
-  replaceTagsIn ui 0 sz b buf
+  replaceTagsIn ui (mkRegion 0 sz) b buf
   return buf
 
