@@ -36,17 +36,18 @@ import Control.Monad
 import Data.Typeable
 
 -- | Designate a given "unit" of text.
-data TextUnit = Character
-              | Word
+data TextUnit = Character -- ^ a single character
+              | Word -- ^ a word as in use in Emacs (funamental mode)
               | ViWord -- ^ a word as in use in Vim
               | ViWORD -- ^ a WORD as in use in Vim
               | Line  -- ^ a line of text (between newlines)
               | VLine -- ^ a "vertical" line of text (area of text between two characters at the same column number)
-              | Delimited Char Char
-              | Document
+              | Delimited Char Char -- ^ delimited on the left and right by given characters
+              | Document -- ^ the whole document
               | GenUnit {genEnclosingUnit :: TextUnit,
                          genUnitBoundary :: Direction -> BufferM Bool}
-   -- (haddock, stay away) | Page | Searched
+      -- there could be more text units, like Page, Searched, etc. it's probably a good
+      -- idea to use GenUnit though.
                 deriving Typeable
 
 isWordChar :: Char -> Bool
@@ -55,7 +56,7 @@ isWordChar x = isAlphaNum x || x == '_'
 isNl :: Char -> Bool
 isNl = (== '\n')
 
--- A visible space is one that actually takes up space on screen. In other 
+-- | A visible space is one that actually takes up space on screen. In other 
 -- words: everything but the newline. 
 isVisSpace :: Char -> Bool
 isVisSpace c = (not $ isNl c) && (isSpace c)
