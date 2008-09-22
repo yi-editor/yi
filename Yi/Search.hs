@@ -266,6 +266,7 @@ isearchNext direction = do
     (p:_) -> do   
                   withBuffer0 $ do
                     moveTo (regionEnd p)
+                  printMsg $ "I-search: " ++ current
                   setDynamic $ Isearch ((current,p,direction):rest)
  where startOfs = case direction of
                       Forward  ->  1
