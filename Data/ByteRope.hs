@@ -42,7 +42,8 @@ import Data.Maybe (listToMaybe)
 chunkSize :: Int
 chunkSize = 128
 
-newtype Size = Size { fromSize :: Int }
+type Size = Sum Int -- use the additive monoid on Int
+
 newtype ByteRope = ByteRope { fromByteRope :: FingerTree Size ByteString }
   deriving (Eq, Show)
 
@@ -54,12 +55,8 @@ b -| t | B.null b  = t
 t |- b | B.null b  = t
        | otherwise = t |> b
 
-instance Monoid Size where
-  mempty = Size 0
-  (Size n) `mappend` (Size m) = Size $ n + m
-
 instance Measured Size ByteString where
-  measure = Size . B.length
+  measure = Sum . B.length
 
 toLazyByteString :: ByteRope -> LB.ByteString
 toLazyByteString = LB.fromChunks . toList . fromByteRope
@@ -118,7 +115,7 @@ empty = ByteRope T.empty
 
 -- | Get the length of the standard string.
 length :: ByteRope -> Int
-length = fromSize . measure . fromByteRope
+length = getSum . measure . fromByteRope
 
 -- | Append two strings by merging the two finger trees.
 append :: ByteRope -> ByteRope -> ByteRope
@@ -143,8 +140,8 @@ splitAt n (ByteRope t) =
       let (lx, rx) = B.splitAt n' x in (ByteRope $ l |- lx, ByteRope $ rx -| r)
     _ -> (ByteRope l, ByteRope c)
   where
-    (l, c) = T.split ((> n) . fromSize) t
-    n' = n - fromSize (measure l)
+    (l, c) = T.split ((> n) . getSum) t
+    n' = n - getSum (measure l)
 
 -- | Count the number of occurrences of the specified character.
 count :: Word8 -> ByteRope -> Int
@@ -161,7 +158,7 @@ elemIndicesEnd x = treeEIE . fromByteRope
   where
     treeEIE :: FingerTree Size ByteString -> [Int]
     treeEIE t = case T.viewr t of
-      l :> s -> fmap (+ fromSize (measure l)) (L.reverse (B.elemIndices x s)) ++ treeEIE l
+      l :> s -> fmap (+ getSum (measure l)) (L.reverse (B.elemIndices x s)) ++ treeEIE l
       EmptyR -> []
 
 -- | Get all indices of the specified character
