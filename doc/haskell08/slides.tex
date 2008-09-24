@@ -10,11 +10,11 @@
 \subtitle{An Editor in Haskell for Haskell}
 \author{Jean-Philippe Bernardy}
 \institute {Chalmers University of Technology
-            % and University of Gothenburg
-          }
+           % and University of Gothenburg
+           }
 \date {
       Haskell Symposium 2008
-      \\Thursday, 25th September
+      \\Thursday, September 25th
       }
 
 \begin{document}
@@ -28,7 +28,7 @@
   \begin{itemize}
     \item Text editor in  Haskell
     \item Text editor for Haskell
-    \item Started in 2004
+    \item Started in 2004 (Don Stewart)
     \item $>$ 2500 patches
     \item $>$ 40 contributors (open)
     \item About 15kloc
@@ -36,6 +36,87 @@
 
   \includegraphics[width=\columnwidth]{activity}
 }
+
+\frame{
+  \frametitle{Demo}
+  Haskell support
+}
+
+\frame{
+  \frametitle{Language support}
+  \begin{itemize}
+     \item Lexical analysis
+     \item Syntax analysis (special parser combinators)
+     \item AST-based highlighting
+     \item AST available in mode-dependent functions
+     \item Haskell: paren matching, layout, ...
+  \end{itemize}
+}
+
+\frame{
+  \frametitle{Config Demo}
+}
+
+\frame{
+  \frametitle{Configuration}
+  \itemize{
+          \item Yi is a library (cf. XMonad)
+          \item Users ``configure'' Yi by combining building blocks 
+          \item no patching (emacs)
+          \item Keymaps are (almost) parser combinators
+          \begin{itemize}
+            \item Parsing the input stream of event
+            \item Produces a stream of actions
+          \end{itemize}
+          \item Type-system to control effects, guide user.
+          \begin{itemize}
+            \item IO
+            \item Editor
+            \item Buffer
+            \item Pure functional
+          \end{itemize}
+        }
+}
+
+
+\frame{
+  \frametitle{Conclusion}
+  \begin{itemize}
+    \item Usable
+    \item Haskell support
+    \item Try it!
+    \item \texttt{http://haskell.org/haskellwiki/Yi}
+    \item \texttt{cabal install yi}
+    \itemize{
+      \item \texttt{http://code.haskell.org/yi/examples/yi.hs}
+    }
+  \end{itemize}
+}
+
+\frame[shrink=10]{
+  \frametitle{Credits}
+    \begin{tabular}{lll}
+Allan Clark & Alson Kemp & Andres Loeh \\
+Andrew Birkett & Andrii Zvorygin & Bastiaan Zapf \\
+Ben Moseley & Cale Gibbard & Corey O'Connor \\
+Daniel McAllansmith & Don Stewart & Duncan Coutts \\
+Evan Martin & Fraser Wilson & Gustav Munkby \\
+Gwern Branwen & Harald Korneliussen & Henning Guenther \\
+Jason Dagit & Jean-Philippe Bernardy & Jeff Wheeler \\
+Jens Petersen & Krasimir Angelov & Mario Lang \\
+Mark Wotton & Massimiliano Gubinelli & Michael Maloney \\
+Nicolas Pouillard & Paulo Tanimoto & Samuel Bronson \\
+Scott Williams & Sean Leather & Shae Erisson \\
+Simon Winwood & Spencer Janssen & Stefan O'Rear \\
+Suleiman Souhlal & Taral & Thomas Schilling \\
+Tim Newsham & Tristan Allwood & Tuomo Valkonen \\
+Vivian McPhail & Yang Zhang
+   \end{tabular}
+}
+
+\frame{\frametitle{Extra}}
+
+
 
 
 \frame{
@@ -54,10 +135,10 @@
 }
 
 \frame{
-  \frametitle{Architecture}
+  \frametitle{Architecture overview}
   \begin{itemize}
-    \item Written in Haskell!
     \item Keymap = Input $\leadsto$ [Action]
+    \item Written in Haskell!
     \begin{itemize}
       \item parsers (combinators) of input
     \end{itemize}
@@ -75,7 +156,7 @@
       \item AST-based highlighting
       \item AST available in mode-dependent functions
     \end{itemize}
-    \item Uses 30 packages from Hackage
+    \item Uses about 30 packages 
   \end{itemize}
 }
 
@@ -100,47 +181,9 @@
   \note{
        \begin{itemize}
         \item Haskell Support
-        \item Configuration
-        \itemize{
-          \item Yi is a library (as XMonad)
-          \item Users ``configure'' Yi by combining building blocks 
-          \item no patching (emacs)
-        }
         \item Latex
        \end{itemize}
   }
-}
-
-\frame{
-  \frametitle{Conclusion}
-  \begin{itemize}
-    \item Usable
-    \item Haskell support
-    \item Try it!
-    \item \texttt{http://haskell.org/haskellwiki/Yi}
-    \item \texttt{cabal install yi}
-  \end{itemize}
-}
-
-\frame[shrink=10]{
-  \frametitle{Credits}
-    \begin{tabular}{lll}
-Allan Clark & Alson Kemp & Andres Loeh \\
-Andrew Birkett & Andrii Zvorygin & Bastiaan Zapf \\
-Ben Moseley & Cale Gibbard & Corey O'Connor \\
-Daniel McAllansmith & Don Stewart & Duncan Coutts \\
-Evan Martin & Fraser Wilson & Gustav Munkby \\
-Gwern Branwen & Harald Korneliussen & Henning Guenther \\
-Jason Dagit & Jean-Philippe Bernardy & Jeff Wheeler \\
-Jens Petersen & Krasimir Angelov & Mario Lang \\
-Mark Wotton & Massimiliano Gubinelli & Michael Maloney \\
-Nicolas Pouillard & Paulo Tanimoto & Samuel Bronson \\
-Scott Williams & Sean Leather & Shae Erisson \\
-Simon Winwood & Spencer Janssen & Stefan O'Rear \\
-Suleiman Souhlal & Taral & Thomas Schilling \\
-Tim Newsham & Tristan Allwood & Tuomo Valkonen \\
-Vivian McPhail & Yang Zhang
-   \end{tabular}
 }
 
 
