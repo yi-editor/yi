@@ -13,6 +13,7 @@ module Yi.Region
   , regionSize
   , regionDirection
   , inRegion, nearRegion
+  , includedRegion
   , fmapRegion
   , intersectRegion
   , unionRegion
@@ -81,6 +82,7 @@ p `inRegion` (Region _ start stop) = start <= p && p < stop
 nearRegion :: Point -> Region -> Bool
 p `nearRegion` (Region _ start stop) = start <= p && p <= stop
 
-
+includedRegion :: Region -> Region -> Bool
+(Region _ start stop) `includedRegion` r = start `inRegion` r && stop `inRegion` r
 
 
