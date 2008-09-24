@@ -1,43 +1,41 @@
 \begin{hcarentry}[section]{yi}
 \label{yi}
 \report{Jean-Philippe Bernardy}
+\participants{Don Stewart}
 \status{active development}
 \makeheader
 
-Yi is a project to write a Haskell-extensible editor. Yi is structured
-around a purely functional editor core, such that most components of
-the editor can be overridden by the user, using configuration files
-written in Haskell.
+Yi is an editor written in Haskell and extensible in Haskell. We leverage the
+expressiveness of Haskell to provide an editor which is powerful and easy to
+extend.
 
-Yi has been converted to the Cabal build system, which makes it easier to
-build and experiment with.
+We have recently made Yi much more accessible. On unix systems, it can be
+deployed using a single \textbf{cabal install} command. We also polished the
+user interface and behaviour to facilitate the transition from emacs or vim.
 
 Yi features:
 \begin{compactitem}
 \item Keybindings for emacs and vim, written as extensible parsers;
-\item Vty and Gtk2Hs frontends;
+\item Vty, Gtk2Hs frontends;
 \item Syntax highlighting for haskell and other languages;
 \item XMonad-style static configuration;
 \item Support of Linux, MacOS and Windows platforms.
+\item Special support for haskell: layout-aware edition, paren-matching, GHCi interface, Cabal build interface, ...
 \end{compactitem}
-
 We are currently working on the following fronts:
 \begin{compactitem}
 \item Integration with Cabal and GHC API;
-\item Syntax-aware support of Haskell;
-\item Pango, cocoa frontends
+\item Pango and Cocoa frontends;
+\item CUA keybindings
 \end{compactitem}
 
 \FurtherReading
 \begin{compactitem}
-\item Documentation can be found at:
-
+\item More information can be found at:
  \url{http://haskell.org/haskellwiki/Yi}
 
 \item The source repository is available:
-
  \texttt{darcs get}
-
  \text{\url{http://code.haskell.org/yi/}}
 \end{compactitem}
 \end{hcarentry}
