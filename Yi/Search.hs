@@ -149,7 +149,7 @@ searchAndRepRegion re str globally region = do
     -- is to avoid replaceRegionB to mess up the next regions.
     -- So we start from the end.
     let mp' = mayReverse (reverseDir $ regionDirection region) mp
-    withBuffer0 $ mapM_ (`replaceRegionB` str) (trace (show mp') mp')
+    withBuffer0 $ mapM_ (`replaceRegionB` str) mp'
     return (not $ null mp)
 
 ------------------------------------------------------------------------
