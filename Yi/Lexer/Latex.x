@@ -15,7 +15,7 @@ import Yi.Style
 }
 
 $whitechar = [\ \t\n\r\f\v]
-$special   = [\[\]\{\}\$\\\%\,]
+$special   = [\[\]\{\}\$\\\%\,\']
 $idchar = [^ $special $whitechar]
 
 @reservedid = begin|end|newcommand
