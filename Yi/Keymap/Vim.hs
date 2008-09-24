@@ -13,7 +13,8 @@ module Yi.Keymap.Vim (keymap,
 import Prelude (maybe, length, filter, map, drop, break, uncurry)
 
 import Data.Char
-import Data.List (sort, nub)
+import Data.List (sort, nub, take)
+import Data.Dynamic
 import Data.Prototype
 import System.IO (readFile)
 
@@ -876,7 +877,8 @@ defKeymap = Proto template
            fn ('r':'e':'a':'d':' ':f) = withBuffer . insertN =<< io (readFile f)
            -- fn ('s':'e':'t':' ':'f':'t':'=':ft)  = withBuffer $ setSyntaxB $ highlighters M.! ft
            fn ('n':'e':'w':' ':f) = withEditor splitE >> fnewE f
-           fn ('s':'/':cs) = withEditor $ viSub cs
+           fn ('s':'/':cs) = withEditor $ viSub cs Line
+           fn ('%':'s':'/':cs) = withEditor $ viSub cs Document
 
            fn ('b':' ':"m") = withEditor $ switchToBufferWithNameE "*messages*"
            fn ('b':' ':f)   = withEditor $ switchToBufferWithNameE f
@@ -980,8 +982,8 @@ viWriteTo f = do
     catchJustE ioErrors (fwriteToE f >> msg) (msgEditor . show)
 
 -- | Try to do a substitution
-viSub :: String -> EditorM ()
-viSub cs = do
+viSub :: String -> TextUnit -> EditorM ()
+viSub cs unit = do
     let (pat,rep') = break (== '/')  cs
         (rep,opts) = case rep' of
                         []     -> ([],[])
@@ -989,11 +991,11 @@ viSub cs = do
                                     (rep'', [])    -> (rep'', [])
                                     (rep'', (_:fs)) -> (rep'',fs)
     case opts of
-        []    -> do_single pat rep
-        ['g'] -> do_single pat rep
-        _     -> do_single pat rep-- TODO
+        []    -> do_single pat rep False
+        ['g'] -> do_single pat rep True
+        _     -> fail ("Trailing characters " ++ show (take 10 opts)) -- TODO more options
 
-    where do_single p r = do
-                s <- searchAndRepLocal p r
+    where do_single p r g = do
+                s <- searchAndRepUnit p r g unit
                 if not s then fail ("Pattern not found: "++p) else msgClr
 
