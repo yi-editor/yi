@@ -12,7 +12,8 @@ module Yi.Search (
         SearchMatch,
         SearchResult(..),
         SearchF(..),
-        searchAndRepLocal,  -- :: String -> String -> IO Bool
+        searchAndRepRegion,  -- :: String -> String -> Bool -> Region -> EditorM Bool
+        searchAndRepUnit, -- :: String -> String -> Bool -> TextUnit -> EditorM Bool
         doSearch,            -- :: (Maybe String) -> [SearchF]
                             -- -> Direction -> YiM ()
         searchInit,        -- :: String
@@ -47,7 +48,7 @@ import Yi.Window
 import Data.Char
 import Data.Maybe
 import Data.Either
-import Data.List (span, takeWhile)
+import Data.List (span, takeWhile, take, filter)
 
 import Yi.Core
 import Yi.Core as Editor
@@ -131,30 +132,31 @@ continueSearch (c_re, dir) = do
 
 
 ------------------------------------------------------------------------
--- | Search and replace /on current line/. Returns Bool indicating
--- success or failure
--- TODO: simplify
-searchAndRepLocal :: String -> String -> EditorM Bool
-searchAndRepLocal [] _ = return False   -- hmm...
-searchAndRepLocal re str = do
+-- | Search and replace in the given region.
+-- If the input boolean is True, then the replace is done globally.
+-- Returns Bool indicating success or failure.
+searchAndRepRegion :: String -> String -> Bool -> Region -> EditorM Bool
+searchAndRepRegion [] _ _ _ = return False   -- hmm...
+searchAndRepRegion re str globally region = do
     let Just c_re = makeSearchOptsM [] re
     setRegexE c_re     -- store away for later use
     setA searchDirectionA Forward
-    mp <- withBuffer0 $ regexB Forward c_re   -- find the regex
-    case mp of
-        (r:_) -> withBuffer0 $ savingPointB $ do
-                moveToEol
-                ep <- pointB      -- eol point of current line
-                moveTo $ regionStart r
-                moveToEol
-                eq <- pointB      -- eol of matched line
-                if (ep /= eq)       -- then match isn't on current line
-                    then return False
-                    else do         -- do the replacement
-                replaceRegionB r str
-                return True -- signal success
-        [] -> return False
+    mp <- withBuffer0 $
+            (if globally then id else take 1) <$>
+               filter (`includedRegion` region) <$>
+                  regexRegionB c_re region  -- find the regex
+    -- mp' is a maybe not reversed version of mp, the goal
+    -- is to avoid replaceRegionB to mess up the next regions.
+    -- So we start from the end.
+    let mp' = mayReverse (reverseDir $ regionDirection region) mp
+    withBuffer0 $ mapM_ (`replaceRegionB` str) (trace (show mp') mp')
+    return (not $ null mp)
 
+------------------------------------------------------------------------
+-- | Search and replace in the region defined by the given unit.
+-- The rest is as in 'searchAndRepRegion'.
+searchAndRepUnit :: String -> String -> Bool -> TextUnit -> EditorM Bool
+searchAndRepUnit re str g unit = searchAndRepRegion re str g =<< (withBuffer0 $ regionOfB unit)
 
 --------------------------
 -- Incremental search
