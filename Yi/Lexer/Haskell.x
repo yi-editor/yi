@@ -41,7 +41,7 @@ $nl        = [\n\r]
 @reservedid = 
         as|case|class|data|default|else|hiding|if|
         import|in|infix|infixl|infixr|instance|newtype|
-        qualified|then|type|forall|foreign|export|dynamic|
+        qualified|then|type|family|forall|foreign|export|dynamic|
         safe|threadsafe|unsafe|stdcall|ccall|dotnet
 
 @layoutReservedId =
