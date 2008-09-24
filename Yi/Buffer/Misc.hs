@@ -60,6 +60,7 @@ module Yi.Buffer.Misc
   , setAnyMode
   , setMode
   , modifyMode
+  , regexRegionB
   , regexB
   , searchB
   , readAtB
@@ -638,6 +639,10 @@ withSyntaxB f = do
     act <- gets (withSyntax0 f)
     act
            
+-- | Return indices of next string in buffer matched by regex in the
+-- given region
+regexRegionB :: SearchExp -> Region -> BufferM [Region]
+regexRegionB regex region = queryBuffer $ regexRegionBI regex region
 
 -- | Return indices of next string in buffer matched by regex in the
 -- given direction
@@ -645,7 +650,7 @@ regexB :: Direction -> SearchExp -> BufferM [Region]
 regexB dir rx = do
   p <- pointB
   s <- sizeB
-  queryBuffer (regexBI rx (mkRegion p (case dir of Forward -> s; Backward -> 0)))
+  regexRegionB rx (mkRegion p (case dir of Forward -> s; Backward -> 0))
 
 ---------------------------------------------------------------------
 

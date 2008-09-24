@@ -35,7 +35,7 @@ module Yi.Buffer.Implementation
 --  , offsetFromSolBI
   , charsFromSolBI
   , searchBI
-  , regexBI
+  , regexRegionBI
   , getMarkBI
   , modifyMarkBI
   , getMarkValueBI
@@ -281,7 +281,7 @@ strokesRangesBI regex rgn fb@(FBufferData {hlCache = HLState hl cache}) = result
     syntaxHlLayer = hlGetStrokes hl point i j $ hlGetTree hl cache
     layers2 = map (map overlayStroke) $ groupBy ((==) `on` overlayLayer) $  Set.toList $ overlays fb
     layer3 = case regex of 
-               Just re -> takeIn $ map hintStroke $ regexBI re (mkRegion i j) fb
+               Just re -> takeIn $ map hintStroke $ regexRegionBI re (mkRegion i j) fb
                Nothing -> []
     result = map (map clampStroke . takeIn . dropBefore) (layer3 : layers2 ++ [syntaxHlLayer, groundLayer])
     overlayStroke (Overlay _ sm  em a) = (markPoint sm, a, markPoint em)
@@ -465,8 +465,8 @@ charsFromSolBI fb = LazyUTF8.toString $ F.toLazyByteString $ readChunk ptr (Size
 
 
 -- | Return indices of all strings in buffer matching regex, inside the given region.
-regexBI :: SearchExp -> Region -> forall syntax. BufferImpl syntax -> [Region]
-regexBI (_,re) r fb = mayReverse (regionDirection r) $ 
+regexRegionBI :: SearchExp -> Region -> forall syntax. BufferImpl syntax -> [Region]
+regexRegionBI (_,re) r fb = mayReverse (regionDirection r) $ 
   fmap (fmapRegion addPoint . matchedRegion) $ matchAll re $ F.toLazyByteString $ F.take s $ F.drop p $ mem fb
     -- FIXME: lazy backward search is very inefficient with large regions.
    where matchedRegion arr = let (off,len) = arr!0 in mkRegion (Point off) (Point (off+len))
