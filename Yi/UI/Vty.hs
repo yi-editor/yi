@@ -301,13 +301,13 @@ drawWindow cfg mre b sty focused w win = (Rendered { picture = pict,cursor = cur
         fromMarkPoint = if notMini
                             then fst $ runBuffer win b (getMarkPointB fromM)
                             else Point 0
-        (text, _)    = runBuffer win b (streamB Forward fromMarkPoint) -- read enough chars from the buffer.
+        (text, _)    = runBuffer win b (indexedStreamB Forward fromMarkPoint) -- read chars from the buffer, lazily
         (showSel, _) = runBuffer win b (gets highlightSelection)
         extraLayers = if showSel then [[(regionStart selReg, selectedStyle, regionEnd selReg)]] else []
         (picture, _) = runBuffer win b (attributesPictureB sty mre region extraLayers)
         colors = map (second (($ attr) . attributesToAttr)) picture
         bufData = -- trace (unlines (map show text) ++ unlines (map show $ concat strokes)) $ 
-                  paintChars attr colors $ toIndexedString fromMarkPoint text
+                  paintChars attr colors text
         tabWidth = tabSize . fst $ runBuffer win b indentSettingsB
         prompt = if isMini win then name b else ""
 

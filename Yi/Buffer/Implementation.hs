@@ -51,6 +51,7 @@ module Yi.Buffer.Implementation
   , strokesRangesBI
   , toIndexedString
   , getStream
+  , getIndexedStream
   , newLine
   , SearchExp
 )
@@ -75,11 +76,12 @@ import Data.ByteRope (ByteRope)
 import qualified Data.ByteString.Lazy as LazyB
 import qualified Data.ByteString.UTF8 as UTF8
 import qualified Data.ByteString.Lazy.UTF8 as LazyUTF8
+import qualified Codec.Binary.UTF8.Generic as UF8Codec
 import Yi.Buffer.Basic
 import Data.Array
 import Data.Char
 import Data.Maybe
-import Data.List (groupBy)
+import Data.List (groupBy, drop)
 import Data.Word
 import qualified Data.Set as Set
 import Data.Typeable
@@ -242,6 +244,11 @@ getStream :: Direction -> Point -> BufferImpl syntax -> LazyUTF8.ByteString
 getStream Forward  (Point i) fb = F.toLazyByteString        $ F.drop i $ mem $ fb
 getStream Backward (Point i) fb = F.toReverseLazyByteString $ F.take i $ mem $ fb
 
+getIndexedStream :: Direction -> Point -> BufferImpl syntax -> [(Point,Char)]
+getIndexedStream Forward  (Point i) fb = toIndexedString Forward  (Point i) $ F.toLazyByteString        $ F.drop i $ mem $ fb
+getIndexedStream Backward (Point i) fb = toIndexedString Backward (Point i) $ F.toReverseLazyByteString $ F.take i $ mem $ fb
+
+
 -- | Create an "overlay" for the style @sty@ between points @s@ and @e@
 mkOverlay :: OvlLayer -> Region -> StyleName -> Overlay
 mkOverlay l r s = Overlay l (MarkValue (regionStart r) Backward) (MarkValue (regionEnd r) Forward) s
@@ -299,40 +306,13 @@ moveToI i fb = fb {marks = M.insert staticInsMark (MarkValue (inBounds i (Point 
 {-# INLINE moveToI #-}
 
 findNextChar :: Int -> Point -> BufferImpl syntax -> Point
-findNextChar m (Point i) fb 
-    | m == 0 = Point i
-    | m < 0 = let s = F.toReverseString $ F.take i $ mem fb
-                  result = countBytes s (-m)
-              in Point (i - result)
-    | otherwise =
-    {-m > 0-} let s = F.toString $ F.drop i $ mem fb
-                  result = countBytes0 s  m
-              in Point (i + result)
-                   
-
--- Count the number of bytes to skip @n@ UTF8 codepoints, forward
-countBytes0 :: [Word8] -> Int -> Int
-countBytes0 [] _ = 0
-countBytes0 _  0 = 0
-countBytes0 (x:xs) m 
-    | x < 128   = 1 + countBytes0 xs (m-1) -- one-byte codepoint
-    | x > 192   = 1 + countBytes1 xs  m    -- long code point; find the end of it.
-    | otherwise = 1 + countBytes0 xs  m    -- continuation; should not happen. skip.
-
-countBytes1 :: [Word8] -> Int -> Int
-countBytes1 [] _ = 0
-countBytes1 (x:xs) m 
-    | x < 128 || x > 192  = countBytes0 (x:xs) (m-1) -- beginning, long codepoint has ended.
-    | otherwise = 1 + countBytes1 xs  m              -- continuation
-
-
--- Count the number of bytes to skip @n@ UTF8 codepoints, backwards.
-countBytes :: [Word8] -> Int -> Int
-countBytes [] _ = 0
-countBytes _  0 = 0
-countBytes (x:xs) m 
-    | x < 128 || x > 192  = 1 + countBytes xs (m-1) -- beginning of char, count one.
-    | otherwise           = 1 + countBytes xs  m    -- continuation, just skip.
+findNextChar m p fb 
+    | m < 0 = case drop (0 - 1 - m) (getIndexedStream Backward p fb) of
+        [] -> 0
+        (i,_):_ -> i
+    | otherwise = case drop m (getIndexedStream Forward p fb) of
+        [] -> sizeBI fb
+        (i,_):_ -> i
 
 -- | Checks if an Update is valid
 isValidUpdate :: Update -> BufferImpl syntax -> Bool
@@ -506,15 +486,33 @@ updateSyntax fb@FBufferData {dirtyOffset = touchedIndex, hlCache = HLState hl ca
           hlCache = HLState hl (hlRun hl getText touchedIndex cache)
          }
     where getText = Scanner 0 id (error "getText: no character beyond eof")
-                     (\idx -> toIndexedString idx (F.toLazyByteString (F.drop (fromPoint idx) (mem fb))))
+                     (\idx -> toIndexedString Forward idx (F.toLazyByteString (F.drop (fromPoint idx) (mem fb))))
 
-toIndexedString :: Point -> LazyB.ByteString -> [(Point, Char)]
-toIndexedString curIdx bs = 
-    case LazyUTF8.decode bs of
+toIndexedString :: Direction -> Point -> LazyB.ByteString -> [(Point, Char)]
+toIndexedString dir p = (case dir of
+    Forward -> toIndexedStringForward
+    Backward -> toIndexedStringBackward) p . LazyB.unpack
+
+toIndexedStringForward :: Point -> [Word8] -> [(Point, Char)]
+toIndexedStringForward curIdx bs = 
+    case UF8Codec.decode bs of
       Nothing -> []
       Just (c,n) -> let newIndex = curIdx + (fromIntegral n) in
-                    (curIdx,c) : (newIndex `seq` (toIndexedString newIndex (LazyB.drop n bs)))
-                          
+                    (curIdx,c) : (newIndex `seq` (toIndexedStringForward newIndex (drop n bs)))
+                  
+toIndexedStringBackward :: Point -> [Word8] -> [(Point,Char)]
+toIndexedStringBackward curIdx bs = case UF8Codec.decode (reverse $ decodeBack bs) of
+    Nothing -> []
+    Just (c,n) -> let newIndex = curIdx - (fromIntegral n) in
+                      (newIndex,c) : (newIndex `seq` (toIndexedStringBackward newIndex (drop n bs)))
+    
+
+decodeBack :: [Word8] -> [Word8]
+decodeBack [] = []
+decodeBack (x:xs)
+    | x < 128 || x > 192  = [x] -- beginning of char: take it and stop
+    | otherwise           = x : decodeBack xs    -- continue
+
 
 insertGravity, selectionGravity :: Direction
 insertGravity = Forward
