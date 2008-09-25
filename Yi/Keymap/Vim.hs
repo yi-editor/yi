@@ -325,7 +325,7 @@ defKeymap = Proto template
      --       at word bounds: search for \<word\>
      searchCurrentWord :: Direction -> EditorM ()
      searchCurrentWord dir = do
-       w <- withBuffer0 $ readRegionB =<< regionOfB ViWord
+       w <- withBuffer0 $ readRegionB =<< regionOfNonEmptyB ViWord
        viSearch w [] dir
 
      -- | Parse any character that can be inserted in the text.
@@ -492,14 +492,11 @@ defKeymap = Proto template
          stop  <- genMoveB unit (Backward,InsideBound) Forward >> pointB
          return $ mkRegion start stop
 
-     select_inner_unit :: TextUnit -> BufferM Region
-     select_inner_unit = regionOfB
-
      select_any_unit :: (MonadInteract m Action Event) => (Region -> EditorM ()) -> m ()
      select_any_unit f =
        choice [ x
               | (c, unit) <- char2unit,
-                x <- [ char 'i' ?>> (char c ?>> write (f =<< withBuffer0 (select_inner_unit unit))),
+                x <- [ char 'i' ?>> (char c ?>> write (f =<< withBuffer0 (regionOfNonEmptyB unit))), -- inner unit
                        char 'a' ?>> (char c ?>> write (f =<< withBuffer0 (select_a_unit unit))) ] ]
 
      regionFromTo :: Point -> Point -> RegionStyle -> BufferM Region
