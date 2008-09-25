@@ -17,7 +17,7 @@ module Yi.Buffer.Normal (TextUnit(Character, Word, Line, ViWord, ViWORD, VLine,
                          moveB, maybeMoveB,
                          transformB, transposeB,
                          peekB, 
-                         regionOfB, regionOfPartB, regionOfPartNonEmptyB,
+                         regionOfB, regionOfNonEmptyB, regionOfPartB, regionOfPartNonEmptyB,
                          readUnitB,
                          untilB, doUntilB_, untilB_, whileB,
                          atBoundaryB,
@@ -265,24 +265,20 @@ regionOfB unit = mkRegion
                  <$> indexAfterB (maybeMoveB unit Backward)
                  <*> indexAfterB (maybeMoveB unit Forward)
 
+-- | Non empty region of the whole textunit where the current point is.
+regionOfNonEmptyB :: TextUnit -> BufferM Region
+regionOfNonEmptyB unit = savingPointB $
+  mkRegion <$> (maybeMoveB unit Backward >> pointB) <*> (moveB unit Forward >> pointB)
+
 -- | Region between the point and the next boundary.
 -- The region is empty if the point is at the boundary.
 regionOfPartB :: TextUnit -> Direction -> BufferM Region
-regionOfPartB unit dir = savingPointB $ do
-         b <- pointB
-         maybeMoveB unit dir
-         e <- pointB
-         return $ mkRegion b e
+regionOfPartB unit dir = mkRegion <$> pointB <*> indexAfterB (maybeMoveB unit dir)
 
 -- | Non empty region between the point and the next boundary,
 -- In fact the region can be empty if we are at the end of file.
 regionOfPartNonEmptyB :: TextUnit -> Direction -> BufferM Region
-regionOfPartNonEmptyB unit dir = savingPointB $ do
-         b <- pointB
-         moveB unit dir
-         e <- pointB
-         return $ mkRegion b e
-
+regionOfPartNonEmptyB unit dir = mkRegion <$> pointB <*> indexAfterB (moveB unit dir)
 
 readUnitB :: TextUnit -> BufferM String
 readUnitB = readRegionB <=< regionOfB
