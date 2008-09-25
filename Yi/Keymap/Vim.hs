@@ -15,6 +15,7 @@ import Prelude (maybe, length, filter, map, drop, break, uncurry)
 import Data.Char
 import Data.List (sort, nub, take)
 import Data.Prototype
+import Numeric (showHex, showOct)
 import System.IO (readFile)
 
 import Control.Exception    ( ioErrors, try, evaluate )
@@ -422,6 +423,7 @@ defKeymap = Proto template
          ,(map char ">>", withBuffer . shiftIndentOfLine)
          ,(map char "<<", withBuffer . shiftIndentOfLine . negate)
          ,(map char "ZZ", const $ viWrite >> quitEditor)
+         ,(map char "ga", const $ viCharInfo)
          ]
 
      -- | So-called 'operators', which take movement actions as arguments.
@@ -853,6 +855,8 @@ defKeymap = Proto template
            fn "wqa"        = wquitall
            fn "wqal"       = wquitall
            fn "wqall"      = wquitall
+           fn "as"         = viCharInfo
+           fn "ascii"      = viCharInfo
            fn "x"          = do unchanged <- withBuffer isUnchangedB
                                 unless unchanged viWrite
                                 closeWindow
@@ -929,6 +933,15 @@ defKeymap = Proto template
 
      withAllBuffers :: YiM () -> YiM ()
      withAllBuffers m = mapM_ (\b -> withEditor (setBuffer b) >> m) =<< readEditor bufferStack
+
+     viCharInfo :: YiM ()
+     viCharInfo = do c <- withBuffer readB
+                     msgEditor $ showCharInfo c ""
+         where showCharInfo :: Char -> String -> String
+               showCharInfo c = shows c . showChar ' ' . shows d
+                              . showString ",  Hex " . showHex d
+                              . showString ",  Octal " . showOct d
+                 where d = ord c
 
      viFileInfo :: YiM ()
      viFileInfo =
