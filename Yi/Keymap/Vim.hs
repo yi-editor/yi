@@ -326,7 +326,7 @@ defKeymap = Proto template
      searchCurrentWord :: Direction -> EditorM ()
      searchCurrentWord dir = do
        w <- withBuffer0 $ readRegionB =<< regionOfB ViWord
-       viSearch (Just w) [] dir
+       viSearch w [] dir
 
      -- | Parse any character that can be inserted in the text.
      textChar :: KeymapM Char
@@ -338,11 +338,8 @@ defKeymap = Proto template
      continueSearching fdir = do
        m <- getRegexE
        dir <- fdir <$> getA searchDirectionA 
-       let s = case m of
-                       Nothing -> ""
-                       Just (s',_) -> s'
-       printMsg $ case dir of { Forward -> '/':s ; Backward -> '?':s }
-       viSearch Nothing [] dir
+       printMsg $ direction '?' '/' dir : maybe "" fst m
+       viSearch "" [] dir
 
      -- | cmd mode commands
      -- An event specified paired with an action that may take an integer argument.
@@ -785,8 +782,8 @@ defKeymap = Proto template
      ex_eval cmd = do
        case cmd of
              -- regex searching
-               ('/':pat) -> withEditor $ viSearch (Just pat) [] Forward
-               ('?':pat) -> withEditor $ viSearch (Just pat) [] Backward
+               ('/':pat) -> withEditor $ viSearch pat [] Forward
+               ('?':pat) -> withEditor $ viSearch pat [] Backward
 
              -- TODO: Remapping could be done using the <|| operator somehow. 
              -- The remapped stuff could be saved in a keymap-local state, (using StateT monad transformer).
@@ -951,9 +948,9 @@ defKeymap = Proto template
               ]
 
 -- | viSearch is a doSearch wrapper that print the search outcome.
-viSearch :: Maybe String -> [SearchF] -> Direction -> EditorM ()
+viSearch :: String -> [SearchF] -> Direction -> EditorM ()
 viSearch x y z = do
-  r <- doSearch x y z
+  r <- doSearch (if null x then Nothing else Just x) y z
   case r of
     PatternFound    -> return ()
     PatternNotFound -> printMsg "Pattern not found"
