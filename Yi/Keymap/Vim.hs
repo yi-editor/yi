@@ -14,7 +14,6 @@ import Prelude (maybe, length, filter, map, drop, break, uncurry)
 
 import Data.Char
 import Data.List (sort, nub, take)
-import Data.Dynamic
 import Data.Prototype
 import System.IO (readFile)
 
