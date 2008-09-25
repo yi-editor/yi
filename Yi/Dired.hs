@@ -74,12 +74,20 @@ fnewCanonicalized f = do
     let currentBufferNames   = map name bufs
         -- The new name for the buffer
         bufferName           = bestNewName desiredBufferName currentBufferNames
+        fDirectory           = takeDirectory f
     b <- case bufsWithThisFilename of
-             [] -> do
-                   fe  <- liftIO $ doesFileExist f
-                   de  <- liftIO $ doesDirectoryExist f
-                   newBufferForPath bufferName fe de
-             (h:_)  -> return (bkey h)
+          (h:_) -> return (bkey h)
+          [] -> do
+            fe <- liftIO $ doesFileExist f
+            if fe then fileToNewBuffer bufferName f else do -- Load the file into a new buffer
+              de <- liftIO $ doesDirectoryExist f
+              if de then diredDirBuffer f else do
+                dfe <- liftIO $ doesDirectoryExist fDirectory
+                when (not dfe) $ do
+                  userWantMkDir <- return True -- TODO
+                  when userWantMkDir $ liftIO $ createDirectory fDirectory
+                withEditor $ stringToNewBuffer bufferName (fromString "") -- Create new empty buffer
+
     setFileName b f
     tbl <- asks (modeTable . yiConfig)
     AnyMode newMode <- withBufferMode b $ \curmode -> fromMaybe (AnyMode curmode) (find (\(AnyMode m)->modeApplies m f) tbl)
@@ -101,15 +109,6 @@ fnewCanonicalized f = do
                       filename2 <- canonicalizePath f2
                       return $ equalFilePath filename1 filename2
 
-    -- The first argument is the buffer name the second argument is
-    -- whether or not the file currently exists and the third argument
-    -- is whether or not the file is a directory that exists.
-    newBufferForPath :: String -> Bool -> Bool -> YiM BufferRef
-    newBufferForPath bufferName True _       =
-      fileToNewBuffer bufferName f -- Load the file into a new buffer
-    newBufferForPath _bufferName False True  = diredDirBuffer f
-    newBufferForPath bufferName False False  =
-      withEditor $ stringToNewBuffer bufferName (fromString "")  -- Create new empty buffer
 
 
     -- The first argument is the buffer name
