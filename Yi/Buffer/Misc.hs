@@ -500,6 +500,7 @@ nelemsB' n i = queryBuffer $ nelemsBI' n i
 streamB :: Direction -> Point -> BufferM LazyUTF8.ByteString
 streamB dir i = queryBuffer (getStream dir i)
 
+indexedStreamB :: Direction -> Point -> BufferM [(Point,Char)]
 indexedStreamB dir i = queryBuffer (getIndexedStream dir i)
 
 strokesRangesB :: Maybe SearchExp -> Region -> BufferM [[Stroke]]
