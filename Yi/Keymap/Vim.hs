@@ -396,6 +396,7 @@ defKeymap = Proto template
                               moveTo $ Point p
                               moveToSol
           )
+         ,(char '=',      const $ withBuffer $ adjIndent IncreaseCycle)
          ]
 
      ctrlW :: Event
