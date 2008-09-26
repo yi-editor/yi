@@ -691,7 +691,7 @@ defKeymap = Proto template
                             spec KRight        ?>>! moveXorEol 1,
                             spec KEnd          ?>>! moveToEol,
                             spec KHome         ?>>! moveToSol,
-                            spec KDel          ?>>! deleteB Character Forward,
+                            spec KDel          ?>>! (adjBlock (-1) >> deleteB Character Forward),
                             spec KEnter        ?>>! insertB '\n',
                             spec KTab          ?>>! insertTabB,
                             (ctrl $ char 'w')  ?>>! cut Exclusive (GenMove ViWord (Backward,InsideBound) Backward)]
@@ -707,9 +707,9 @@ defKeymap = Proto template
      --
      ins_char :: VimMode
      ins_char = v_ins_char self
-     def_ins_char = (spec KBS ?>>! deleteB Character Backward)
+     def_ins_char = (spec KBS ?>>! adjBlock (-1) >> deleteB Character Backward)
                 <|> ins_rep_char
-                <|| (textChar >>= write . insertB)
+                <|| (textChar >>= write . (adjBlock 1 >>) . insertB)
 
      -- --------------------
      -- | Keyword
