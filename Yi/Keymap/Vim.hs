@@ -27,7 +27,7 @@ import Yi.Dired
 import Yi.Eval (execEditorAction)
 import Yi.File
 import Yi.History
-import Yi.Misc (matchingFileNames)
+import Yi.Misc (matchingFileNames,adjBlock,adjIndent)
 import Yi.String (dropSpace)
 import Yi.MiniBuffer
 import Yi.Search

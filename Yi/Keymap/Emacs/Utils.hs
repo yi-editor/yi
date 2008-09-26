@@ -14,7 +14,6 @@ module Yi.Keymap.Emacs.Utils
   , askQuitEditor
   , askSaveEditor
   , modifiedQuitEditor
-  , adjIndent
   , withMinibuffer
   , queryReplaceE
   , isearchKeymap
@@ -143,12 +142,6 @@ modifiedQuitEditor =
                      ]
 
   noAction        = closeBufferAndWindowE
-
--- | A simple wrapper to adjust the current indentation using
--- the mode specific indentation function but according to the
--- given indent behaviour.
-adjIndent :: IndentBehaviour -> YiM ()
-adjIndent ib = withSyntax (\m s -> modeIndent m s ib)
 
 -----------------------------
 -- isearch

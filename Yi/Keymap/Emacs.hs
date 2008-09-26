@@ -17,7 +17,6 @@ import Yi.TextCompletion
 import Yi.Keymap.Emacs.KillRing
 import Yi.Keymap.Emacs.Utils
   ( askQuitEditor
-  , adjIndent
   , evalRegionE
   , executeExtendedCommandE
   , findFile

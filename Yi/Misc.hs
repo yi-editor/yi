@@ -173,3 +173,9 @@ matchingFileNames start s = do
 adjBlock :: Int -> BufferM ()
 adjBlock x = withSyntaxB (\m s -> modeAdjustBlock m s x)
 
+-- | A simple wrapper to adjust the current indentation using
+-- the mode specific indentation function but according to the
+-- given indent behaviour.
+adjIndent :: IndentBehaviour -> BufferM ()
+adjIndent ib = withSyntaxB (\m s -> modeIndent m s ib)
+
