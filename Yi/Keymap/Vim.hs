@@ -257,15 +257,15 @@ defKeymap = Proto template
                            <*> pure regionStyle
 
      viMove :: ViMove -> BufferM ()
-     viMove NoMove                              = return ()
-     viMove (GenMove   unit boundary direction) = genMoveB unit boundary direction
-     viMove (MaybeMove unit          direction) = maybeMoveB unit direction
-     viMove (Move      unit          direction) = moveB unit direction
-     viMove (CharMove Forward)                  = moveXorEol 1
-     viMove (CharMove Backward)                 = moveXorSol 1
-     viMove (ArbMove       move)                = move
-     viMove (SeqMove move1 move2)               = viMove move1 >> viMove move2
-     viMove (Replicate     move i)              = viReplicateMove move i
+     viMove NoMove                        = return ()
+     viMove (GenMove   unit boundary dir) = genMoveB unit boundary dir
+     viMove (MaybeMove unit          dir) = maybeMoveB unit dir
+     viMove (Move      unit          dir) = moveB unit dir
+     viMove (CharMove Forward)            = moveXorEol 1
+     viMove (CharMove Backward)           = moveXorSol 1
+     viMove (ArbMove       move)          = move
+     viMove (SeqMove move1 move2)         = viMove move1 >> viMove move2
+     viMove (Replicate     move i)        = viReplicateMove move i
 
      viReplicateMove :: ViMove -> Int -> BufferM ()
      viReplicateMove (Move VLine Forward)  i = lineMoveRel i >> return ()
