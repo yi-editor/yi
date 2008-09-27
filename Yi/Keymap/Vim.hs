@@ -396,7 +396,6 @@ defKeymap = Proto template
                               moveTo $ Point p
                               moveToSol
           )
-         ,(char '=',      const $ withBuffer $ adjIndent IncreaseCycle)
          ]
 
      ctrlW :: Event
@@ -425,6 +424,7 @@ defKeymap = Proto template
          ,(map char "<<", withBuffer . shiftIndentOfLine . negate)
          ,(map char "ZZ", const $ viWrite >> quitEditor)
          ,(map char "ga", const $ viCharInfo)
+         ,(map char "==", const $ withBuffer $ adjIndent IncreaseCycle)
          ]
 
      -- | So-called 'operators', which take movement actions as arguments.
