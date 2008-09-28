@@ -75,26 +75,26 @@ fnewCanonicalized f = do
         -- The new name for the buffer
         bufferName           = bestNewName desiredBufferName currentBufferNames
         fDirectory           = takeDirectory f
+    de <- liftIO $ doesDirectoryExist f
+    fe <- liftIO $ doesFileExist f
+    dfe <- liftIO $ doesDirectoryExist fDirectory
     b <- case bufsWithThisFilename of
-          (h:_) -> return (bkey h)
-          [] -> do
-            fe <- liftIO $ doesFileExist f
-            if fe then fileToNewBuffer bufferName f else do -- Load the file into a new buffer
-              de <- liftIO $ doesDirectoryExist f
-              if de then diredDirBuffer f else do
-                dfe <- liftIO $ doesDirectoryExist fDirectory
+        (h:_) -> return (bkey h)
+        [] -> 
+          if de then diredDirBuffer f else do
+            b <- if fe then fileToNewBuffer bufferName f else do -- Load the file into a new buffer
                 when (not dfe) $ do
                   userWantMkDir <- return True -- TODO
                   when userWantMkDir $ liftIO $ createDirectory fDirectory
                 withEditor $ stringToNewBuffer bufferName (fromString "") -- Create new empty buffer
-
+            tbl <- asks (modeTable . yiConfig)
+            case fromMaybe (AnyMode emptyMode) (find (\(AnyMode m)->modeApplies m f) tbl) of
+                AnyMode newMode -> withGivenBuffer b $ setMode newMode
+            return b
     setFileName b f
-    tbl <- asks (modeTable . yiConfig)
-    AnyMode newMode <- withBufferMode b $ \curmode -> fromMaybe (AnyMode curmode) (find (\(AnyMode m)->modeApplies m f) tbl)
     -- by default stick with the current mode (eg. stick with dired if
     -- set as such)
     withEditor $ switchToBufferE b
-    withBuffer $ setMode newMode
     where
     -- Determines whether or not a given buffer is associated with
     -- the given file. 
@@ -188,7 +188,7 @@ diredDirBuffer dir = do
                 setFileName b dir -- associate the buffer with the dir
                 withEditor $ switchToBufferE b
                 diredLoadNewDir dir
-                withBuffer $ modifyMode $ \m -> m {modeKeymap = diredKeymap}
+                withBuffer $ modifyMode $ \m -> m {modeKeymap = diredKeymap, modeName = "dired"}
                 -- Colours for Dired come from overlays not syntax highlighting
                 return b
 
