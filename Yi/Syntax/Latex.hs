@@ -18,6 +18,7 @@ isNoise Comment = True
 isNoise (Command _) = True
 isNoise NewCommand = True
 isNoise (Special ',') = True
+isNoise (Special '\'') = True
 isNoise (Special _) = False
 isNoise (Begin _) = False
 isNoise (End _) = False
