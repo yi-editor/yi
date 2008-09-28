@@ -220,6 +220,10 @@ x +++ Nothing = x
 
 buildLaunch :: String -> IO (Maybe String)
 buildLaunch projectName = do
+    haveConfigFile <- doesFileExist =<< (</> (projectName ++ ".hs")) <$> getProjectDir projectName 
+    -- if there is no config file, then we return immediately /with no error/. This is 
+    -- a normal situation: the user has not produced a config file.
+    if not haveConfigFile then return Nothing else do
 #ifndef mingw32_HOST_OS
     errMsg <- recompile projectName False
     dir  <- getProjectDir projectName
