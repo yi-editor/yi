@@ -3,8 +3,8 @@ In this post I'll give a walkthrough to a simple Yi configuration.
 
 First, note that Yi has no special purpose configuration language.
 Yi provides building blocks, that the user can combine to create their
-own editor. This means that the configuration file is an Haskell script,
-defining a _main_ function, as in the following example.
+own editor. This means that the configuration file is a top-level Haskell script
+, defining a _main_ function.
 
     import Yi
     import Yi.Keymap.Emacs as Emacs
@@ -41,13 +41,13 @@ Haskell package and make its function available in the editor. This is an
 obvious advantage over the traditional approach, where only a special purpose
 language is available in the configuration file.
 
-This configuration style is purely declarative: the user defines the behaviour
-of the editor "from the ground up". This can be constrasted to emacs, where the
-configuration is a series of modifications of the editor _state_. 
+Another advantage to this configuration style is is purely declarative falvour.
+The user defines the behaviour of the editor "from the ground up". This can be
+constrasted to emacs (and lisp) style, where the configuration is a series of
+modifications of the _state_.
 
-
-This configuration model is not unique to Yi: it has already been used with
-success in the XMonad window manager.
+Finally, I shall say that this configuration model is not unique to Yi: it has
+already been used with success in the XMonad window manager.
 
 
 
