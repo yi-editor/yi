@@ -172,12 +172,18 @@ data FBuffer = forall syntax.
 
 -- unfortunately the dynamic stuff can't be read.
 instance Binary FBuffer where
-    put (FBuffer n b f u r _bmode pd _bd pc pu hs _proc wm)  =
+    put (FBuffer n b f u r bmode pd _bd pc pu hs _proc wm)  =
       let strippedRaw :: BufferImpl ()
           strippedRaw = (setSyntaxBI (modeHL emptyMode) r) 
-      in put n >> put b >> put f >> put u >> put strippedRaw >> put pd >> put pc >> put pu >> put hs >> put wm
+      in do
+          put (modeName bmode)
+          put n >> put b >> put f >> put u >> put strippedRaw
+          put pd >> put pc >> put pu >> put hs >> put wm
     
-    get = FBuffer <$> get <*> get <*> get <*> get <*> getStripped <*> get <*> get <*> pure emptyDV <*> get <*> get <*> get <*> pure I.End <*> get
+    get = do
+        mnm <- get
+        FBuffer <$> get <*> get <*> get <*> get <*> getStripped <*>
+          pure (emptyMode {modeName = mnm}) <*> get <*> pure emptyDV <*> get <*> get <*> get <*> pure I.End <*> get
         where getStripped :: Get (BufferImpl ())
               getStripped = get
 

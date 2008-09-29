@@ -115,7 +115,8 @@ getHConf projectName initialState recoverState saveState defaultConfiguration sh
         f <- getStateFile
         saveState f state
         let args = ["--resume"]
-        executeFile projectName True args Nothing -- TODO: catch exceptions
+        progName <- getProgName
+        executeFile progName True args Nothing -- TODO: catch exceptions
         -- run the master, who will take care of recompiling; handle errors, etc.
 #else
         return ()
