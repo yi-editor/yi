@@ -298,7 +298,7 @@ setTmpStatus delay s = do
   bs <- gets $ findBufferWithName "*messages*"
   b <- case bs of
          (b':_) -> return b'
-         [] -> newBufferE "*messages*" (fromString "")
+         [] -> stringToNewBuffer "*messages*" (fromString "")
   withGivenBuffer0 b $ do botB; insertN (s ++ "\n")
 
 

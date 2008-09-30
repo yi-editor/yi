@@ -122,8 +122,6 @@ startEditor cfg st = do
   
     runYi $ do
 
-      withEditor $ newBufferE "*messages*" (fromString "") >> return ()
-
       when (isNothing st) $ do -- process options if booting for the first time
         postActions $ startActions cfg
 
