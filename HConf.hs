@@ -23,7 +23,7 @@ import System.Directory
 import System.Exit
 import System.Environment
 import System.Console.GetOpt 
-import System.FilePath ((</>))
+import System.FilePath ((</>), takeDirectory)
 
 {-
 
@@ -113,6 +113,7 @@ getHConf projectName initialState recoverState saveState defaultConfiguration sh
     , restart = \state -> do
 #ifndef mingw32_HOST_OS
         f <- getStateFile
+        createDirectoryIfMissing True (takeDirectory f)
         saveState f state
         let args = ["--resume"]
         progName <- getProgName
