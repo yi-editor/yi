@@ -59,6 +59,7 @@ module Yi.Buffer.Misc
   , isUnchangedBuffer
   , setAnyMode
   , setMode
+  , setMode0
   , modifyMode
   , regexRegionB
   , regexB

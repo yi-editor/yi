@@ -124,10 +124,16 @@ startEditor cfg st = do
 
       when (isNothing st) $ do -- process options if booting for the first time
         postActions $ startActions cfg
+      withEditor $ modifyA buffersA (fmap (recoverMode (modeTable cfg)))
 
     runYi refreshEditor
 
     UI.main ui -- transfer control to UI
+
+recoverMode :: [AnyMode] -> FBuffer -> FBuffer
+recoverMode tbl buffer  = case fromMaybe (AnyMode emptyMode) (find (\(AnyMode m) -> modeName m == oldName) tbl) of
+    AnyMode m -> setMode0 m buffer
+  where oldName = case buffer of FBuffer {bmode = m} -> modeName m
 
 postActions :: [Action] -> YiM ()
 postActions actions = do yi <- ask; liftIO $ output yi actions
