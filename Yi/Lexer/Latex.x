@@ -14,12 +14,13 @@ import Yi.Lexer.Alex
 import Yi.Style
 }
 
-$whitechar = [\ \t\n\r\f\v]
-$special   = [\[\]\{\}\$\\\%\,\']
-$idchar = [^ $special $whitechar]
+$special   = [\[\]\{\}\$\\\%\(\)\ ]
+$textChar = [~$special $white]
+$idchar = [a-zA-Z 0-9_\-]
 
 @reservedid = begin|end|newcommand
 @ident = $idchar+
+@text = $textChar+
 
 haskell :-
 
@@ -30,8 +31,7 @@ haskell :-
  \\$special                                  { cs $ \(_:cs) -> Command cs }
  \\newcommand                                { c $ NewCommand }
  \\@ident                                    { cs $ \(_:cs) -> Command cs }
- @ident                                      { c $ Text }
- $white+                                     ; 
+ @text                                       { c $ Text }
 
 
 {
