@@ -417,7 +417,7 @@ refresh ui e = do
                  textBufferPlaceCursor gtkBuf i
            insertMark <- textBufferGetInsert gtkBuf
            textViewScrollMarkOnscreen (textview w) insertMark
-           let txt = runBufferDummyWindow buf getModeLine
+           let txt = fst $ runBuffer win buf getModeLine
            set (modeline w) [labelText := txt]
 
 replaceTagsIn :: UI -> Region -> FBuffer -> TextBuffer -> IO ()
