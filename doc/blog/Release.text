@@ -1,0 +1,57 @@
+# Yi 0.5.0 Release Notes
+
+## Yi
+Yi is a text editor written and extensible in Haskell. The
+long-term goal of the Yi project is to provide the editor of
+choice for Haskell programmers.
+
+Yi is not a finished product. This is a beta-quality release.
+However, Yi has become a lot more accessible than
+previously, so if you feel like testing it, now might be a good time
+to take a look.
+
+## Installation
+
+Using cabal install:
+
+  cabal install yi-0.5.0
+
+If you want unix console support, pass the -fvty option to cabal install.
+If you want gtk support, first install gtk2hs 0.9.13.
+
+## Features
+* A purely functional editor core
+* Key-bindings written as parsers of the input
+* Emacs, Vim and partial Cua emulations provided by default
+* Console front-end (Gtk2Hs and Cocoa front-ends are partially supported)
+* Static configuration (XMonad style) for fast load
+* Haskell support:
+    * Lexical highlighting
+    * Layout-aware parenthesis-matching 
+    * Auto-indentation
+    * Call cabal build within the editor
+
+## Links
+* [download](http://hackage.haskell.org/cgi-bin/hackage-scripts/package/yi)
+* [FAQ](http://haskell.org/haskellwiki/Yi/FAQ)
+* [homepage](http://haskell.org/haskellwiki/Yi)
+* [blog](http://yi-editor.blogspot.com/)
+* [check and report issues](http://code.google.com/p/yi-editor/issues/list)
+* [darcs repository](http://code.haskell.org/yi)
+* [get involved](mailto:yi-devel@googlegroups.com)
+
+## Credits
+
+This release is brought to you by:
+
+* Allan Clark
+* Corey O'Connor
+* Gustav Munkby
+* Gwern Branwen
+* Jean-Philippe Bernardy
+* Jeff Wheeler
+* Nicolas Pouillard
+* Thomas Schilling
+* Tristan Allwood
+
+and all the contributors to the previous versions.
