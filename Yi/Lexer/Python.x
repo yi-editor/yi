@@ -116,7 +116,7 @@ $charesc = [abfnrtv\\\"\'\&]
 @escape  = \\ ($charesc | @ascii | @number)
 @gap     = \\ $whitechar+ \\
 
-@shortstring = $graphic # [\"\\] | " " | @escape | @gap
+@shortstring = $graphic # [\"\'\\] | " " | @escape | @gap
 @longstring  = @shortstring | $nl
 
 haskell :-
