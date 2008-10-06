@@ -32,6 +32,7 @@ import Yi.Keymap.Emacs.Utils
   , withMinibuffer
   , askSaveEditor
   , argToInt
+  , promptTag
   )
 import Data.Maybe
 import Data.Char
@@ -154,6 +155,7 @@ emacsKeys univArg =
          , metaCh 'w'           ?>>! killRingSaveE
          , metaCh 'x'           ?>>! executeExtendedCommandE
          , metaCh 'y'           ?>>! yankPopE
+         , metaCh '.'           ?>>! promptTag
 
          -- Other meta key-bindings
          , meta (spec KBS)      ?>>! (repeatingArg bkillWordB)

@@ -146,6 +146,7 @@ library
         Yi.Syntax.Linear
         Yi.Syntax.Paren
         Yi.Syntax.Tree
+        Yi.Tag
         Yi.Templates
         Yi.TextCompletion,
         Yi.UI.Common
@@ -201,6 +202,7 @@ library
         -- Should probably be split out to another package.
         Data.ByteRope
         Data.DelayList
+        Data.Trie
         Shim.CabalInfo
         Shim.Utils 
         Shim.ProjectContent

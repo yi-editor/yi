@@ -29,15 +29,17 @@ module Yi.Keymap.Emacs.Utils
   , killBufferE
   , insertNextC
   , findFile
+  , promptTag
   )
 where
 
 {- Standard Library Module Imports -}
 
-import Prelude ()
+import Prelude (take)
 import Data.List ((\\))
+import Data.Maybe (maybe)
 import System.FriendlyPath
-import System.FilePath (addTrailingPathSeparator)
+import System.FilePath (addTrailingPathSeparator, takeDirectory, takeFileName, (</>))
 import System.Directory
   ( doesDirectoryExist
   )
@@ -54,6 +56,7 @@ import Yi.File
 import Yi.MiniBuffer
 import Yi.Misc
 import Yi.Regex
+import Yi.Tag
 import Yi.Search
 import Yi.Window
 {- End of Module Imports -}
@@ -235,15 +238,20 @@ readUniversalArg =
            Just <$> ((ctrlCh 'u' ?>> (read <$> some (digit id) <|> pure 4))
            <|> (read <$> (some tt)))
            <|> pure Nothing
-           
+
+-- | Generic emacs prompt file action. Takes a @prompt and a continuation @act
+--   and prompts the user with file hints
+promptFile :: String -> (String -> YiM ()) -> YiM ()
+promptFile prompt act = do maybePath <- withBuffer $ getA fileA
+                           startPath <- addTrailingPathSeparator <$> (liftIO $ canonicalizePath' =<< getFolder maybePath)
+                           -- TODO: Just call withMinibuffer
+                           withMinibufferGen startPath (findFileHint startPath) prompt (simpleComplete $ matchingFileNames (Just startPath)) act
+
 
 -- | Open a file using the minibuffer. We have to set up some stuff to allow hints
 --   and auto-completion.
 findFile :: YiM ()
-findFile = do maybePath <- withBuffer $ getA fileA
-              startPath <- addTrailingPathSeparator <$> (liftIO $ canonicalizePath' =<< getFolder maybePath)
-              -- TODO: Just call withMinibuffer
-              withMinibufferGen startPath (findFileHint startPath) "find file:" (simpleComplete $ matchingFileNames (Just startPath)) $ \filename -> do
+findFile = promptFile "find file:" $ \filename -> do
                 msgEditor $ "loading " ++ filename
                 fnewE filename
 
@@ -286,3 +294,59 @@ askCloseBuffer nm = do
 
 killBufferE :: YiM ()
 killBufferE = withMinibuffer "kill buffer:" matchingBufferNames $ askCloseBuffer
+
+-- | Shortcut to use a default list when a blank list is given.
+-- Used for default values to emacs queries
+maybeList :: [a] -> [a] -> [a]
+maybeList def [] = def
+maybeList _   ls = ls
+
+--------------------------------------------------
+-- TAGS - See Yi.Tag for more info
+
+-- | Prompt the user to give a tag and then jump to that tag
+promptTag :: YiM ()
+promptTag = do
+  -- default tag is where the buffer is on
+  defaultTag <- withBuffer $ readUnitB Word
+  -- if we have tags use them to generate hints
+  tagTable <- withEditor getTags
+  -- Hints are expensive - only lazily generate 10
+  let hinter =  return . show . take 10 . maybe fail hintTags tagTable
+  -- Completions are super-cheap. Go wild
+  let completer =  return . maybe id completeTag tagTable
+  withMinibufferGen "" hinter ("Find tag: (default " ++ defaultTag ++ ")") completer  $
+                 -- if the string is "" use the defaultTag
+                 gotoTag . maybeList defaultTag
+
+-- | Opens the file that contains @tag. Uses the global tag table and prompts
+-- the user to open one if it does not exist
+gotoTag :: Tag -> YiM ()
+gotoTag tag =
+    visitTagTable $ \tagTable ->
+        case lookupTag tag tagTable of
+          Nothing -> fail $ "No tags containing " ++ tag
+          Just (filename, line) -> do
+            fnewE $ filename
+            withBuffer $ gotoLn line
+            return ()
+
+-- | Call continuation @act with the TagTable. Uses the global table
+-- and prompts the user if it doesn't exist
+visitTagTable :: (TagTable -> YiM ()) -> YiM ()
+visitTagTable act = do
+    posTagTable <- withEditor getTags
+    -- does the tagtable exist?
+    case posTagTable of
+      Just tagTable -> act tagTable
+      Nothing ->
+          promptFile ("Visit tags table: (default tags) ") $ \path -> do
+                       -- default emacs behavior, append tags
+                       let filename = maybeList "tags" $ takeFileName path
+                       tagTable <- liftIO $ importTagTable $
+                                   takeDirectory path </> filename
+                       withEditor $ setTags tagTable
+                       act tagTable
+
+resetTagTable :: YiM()
+resetTagTable = withEditor resetTags

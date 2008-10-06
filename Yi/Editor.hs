@@ -12,6 +12,8 @@ import Yi.Config
 import Yi.Monad
 import Yi.Dynamic
 import Yi.KillRing
+import Yi.Tag
+import Yi.Window
 import Yi.Window
 import Yi.WindowSet (WindowSet)
 import qualified Yi.WindowSet as WS
@@ -44,14 +46,15 @@ data Editor = Editor {
        ,statusLines   :: !(DelayList.DelayList String)
        ,killring      :: !Killring
        ,regex         :: !(Maybe SearchExp) -- ^ most recent regex
+       ,tags          :: !(Maybe TagTable)  -- ^ table for ctags
        ,searchDirection :: !Direction
        ,pendingEvents :: ![Event]                   -- ^ Processed events that didn't yield any action yet.
     }
     deriving Typeable
 
 instance Binary Editor where
-    put (Editor bss bs supply ts _dv sl kr _re _dir _ev) = put bss >> put bs >> put supply >> put ts >> put sl >> put kr 
-    get = Editor <$> get <*> get <*> get <*> get <*> pure emptyDV <*> get <*> get <*> pure Nothing <*> pure Forward <*> pure []
+    put (Editor bss bs supply ts _dv sl kr _re _tt _dir _ev) = put bss >> put bs >> put supply >> put ts >> put sl >> put kr
+    get = Editor <$> get <*> get <*> get <*> get <*> pure emptyDV <*> get <*> get <*> pure Nothing <*> pure Nothing <*>pure Forward <*> pure []
 
 windows :: Editor -> WindowSet Window
 windows editor =
@@ -107,6 +110,9 @@ dynA = dynamicValueA .> dynamicA
 regexA :: Accessor Editor (Maybe SearchExp)
 regexA = Accessor regex (\f e -> e{regex = f (regex e)})
 
+tagsA :: Accessor Editor (Maybe TagTable)
+tagsA = Accessor tags (\f e -> e {tags = f (tags e)})
+
 searchDirectionA :: Accessor Editor Direction
 searchDirectionA = Accessor searchDirection (\f e -> e{searchDirection = f (searchDirection e)})
 
@@ -119,6 +125,7 @@ emptyEditor = Editor {
        ,bufferStack  = [bkey buf]
        ,refSupply = 2
        ,regex        = Nothing
+       ,tags     = Nothing
        ,searchDirection = Forward
        ,dynamic      = M.empty
        ,statusLines  = DelayList.insert (maxBound, "") []
@@ -312,6 +319,23 @@ setRegE s = modifyA killringA $ krSet s
 -- | Return the contents of the yank register
 getRegE :: EditorM String
 getRegE = getsA killringA krGet
+
+-- ---------------------------------------------------------------------
+-- Register interface to TagTable.
+
+-- | Set a new TagTable
+setTags :: TagTable -> EditorM ()
+setTags = setA tagsA . Just
+
+-- | Reset the TagTable
+resetTags :: EditorM ()
+resetTags = setA tagsA Nothing
+
+-- | Get the currently registered tag table
+getTags :: EditorM (Maybe TagTable)
+getTags = getA tagsA
+
+
 
 -- ---------------------------------------------------------------------
 -- | Dynamically-extensible state components.
