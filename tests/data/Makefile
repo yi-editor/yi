@@ -71,6 +71,9 @@ $(MAGIC)/foo.a
 DYNAMIC_LIBS_LINK_OPTS := $(addprefix -l,$(DYNAMIC_LIBS))
 
 # Start of rules.
+# The code in the rules is shell code and it's left up to the shell to how it should be processed. 
+# From the perspective of the Makefile I think the shell code should be treated as an interpolated
+# string.
 .PHONY : all
 all : $(DEPENDS_FILES) 
 	@MAKEFILES='$(DEPENDS_FILES)' $(MAKE) all-minus-depends
@@ -80,6 +83,7 @@ all-minus-depends : $(EXE_PATH)
 
 # Not a phony rule.
 $(EXE_PATH) : $(BIN_DIR) $(EXTERNALS) $(OBJECTS)
+	# Main compile rule.
 	g++ -o $@ $(LIB_DIR_FLAGS) $(OBJECTS) \
 		-lpthread \
         $(DYNAMIC_LIBS_LINK_OPTS) \
