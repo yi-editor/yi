@@ -1,5 +1,6 @@
 module Yi.Modes (fundamentalMode,
                  latexMode, cppMode, literateHaskellMode, cabalMode, srmcMode, ocamlMode,
+                 gnuMakeMode,
                  perlMode, pythonMode, latexMode2,
                  anyExtension
                 ) where
@@ -18,6 +19,7 @@ import qualified Yi.Lexer.Cabal               as Cabal
 import qualified Yi.Lexer.Cplusplus           as Cplusplus
 import qualified Yi.Lexer.Latex               as Latex
 import qualified Yi.Lexer.LiterateHaskell     as LiterateHaskell
+import qualified Yi.Lexer.GNUMake             as GNUMake
 import qualified Yi.Lexer.OCaml               as OCaml
 import qualified Yi.Lexer.Perl                as Perl
 import qualified Yi.Lexer.Python              as Python
@@ -27,7 +29,7 @@ import qualified Yi.Syntax.Latex as Latex
 
 
 fundamentalMode :: Mode syntax
-latexMode, cppMode, literateHaskellMode, cabalMode, srmcMode, ocamlMode, perlMode, pythonMode :: Mode (Linear.Result Stroke)
+latexMode, cppMode, literateHaskellMode, cabalMode, srmcMode, ocamlMode, gnuMakeMode, perlMode, pythonMode :: Mode (Linear.Result Stroke)
 
 fundamentalMode = emptyMode
   { 
@@ -121,5 +123,13 @@ pythonMode = fundamentalMode
     modeHL = ExtHL $ mkHighlighter' Python.initState Python.alexScanToken id
   }
 
+gnuMakeMode = fundamentalMode
+    {
+        modeName = "Makefile",
+        modeApplies = \filename -> filename == "Makefile",
+        modeHL = ExtHL $ mkHighlighter' GNUMake.initState GNUMake.alexScanToken id
+    }
+
 anyExtension :: [String] -> FilePath -> Bool
 anyExtension list fileName = or [takeExtension fileName == ('.' : ext) | ext <- list] 
+

@@ -180,6 +180,7 @@ defaultConfig =
                         AnyMode cppMode,
                         AnyMode literateHaskellMode,
                         AnyMode cabalMode,
+                        AnyMode gnuMakeMode,
                         AnyMode srmcMode,
                         AnyMode ocamlMode,
                         AnyMode perlMode,
