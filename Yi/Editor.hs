@@ -310,7 +310,7 @@ setTmpStatus delay s = do
 
 
 -- ---------------------------------------------------------------------
--- Register interface to killring.
+-- kill-register (vim-style) interface to killring.
 
 -- | Put string into yank register
 setRegE :: String -> EditorM ()
@@ -321,7 +321,7 @@ getRegE :: EditorM String
 getRegE = getsA killringA krGet
 
 -- ---------------------------------------------------------------------
--- Register interface to TagTable.
+-- Direct access interface to TagTable.
 
 -- | Set a new TagTable
 setTags :: TagTable -> EditorM ()

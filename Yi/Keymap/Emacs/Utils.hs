@@ -340,13 +340,13 @@ visitTagTable act = do
     case posTagTable of
       Just tagTable -> act tagTable
       Nothing ->
-          promptFile ("Visit tags table: (default tags) ") $ \path -> do
+          promptFile ("Visit tags table: (default tags)") $ \path -> do
                        -- default emacs behavior, append tags
                        let filename = maybeList "tags" $ takeFileName path
-                       tagTable <- liftIO $ importTagTable $
-                                   takeDirectory path </> filename
+                       tagTable <- io $ importTagTable $
+                                           takeDirectory path </> filename
                        withEditor $ setTags tagTable
                        act tagTable
 
-resetTagTable :: YiM()
+resetTagTable :: YiM ()
 resetTagTable = withEditor resetTags

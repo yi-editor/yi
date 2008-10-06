@@ -27,9 +27,9 @@ import qualified Data.Trie as Trie
 
 type Tag = String
 
-data TagTable = TagTable { tagFileName:: FilePath
+data TagTable = TagTable { tagFileName :: FilePath
                            -- ^ local name of the tag file
-                           -- TODO: reload if this file is change
+                           -- TODO: reload if this file is changed
                            , tagBaseDir :: FilePath
                            -- ^ path to the tag file directory
                            -- tags are relative to this path
