@@ -124,11 +124,15 @@ pythonMode = fundamentalMode
   }
 
 gnuMakeMode = fundamentalMode
-    {
-        modeName = "Makefile",
-        modeApplies = \filename -> filename == "Makefile",
-        modeHL = ExtHL $ mkHighlighter' GNUMake.initState GNUMake.alexScanToken id
-    }
+  {
+    modeName = "Makefile",
+    modeApplies = \filename -> filename == "Makefile",
+    modeHL = ExtHL $ mkHighlighter' GNUMake.initState GNUMake.alexScanToken id,
+    modeIndentSettings = (modeIndentSettings fundamentalMode)
+      {
+        expandTabs = False
+      }
+  }
 
 anyExtension :: [String] -> FilePath -> Bool
 anyExtension list fileName = or [takeExtension fileName == ('.' : ext) | ext <- list] 
