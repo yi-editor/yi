@@ -1,4 +1,8 @@
 -- -*- haskell -*- 
+-- Lexer for Makefiles with consideration of GNU extensions 
+-- This is based off the syntax as described in the GNU Make manual:
+-- http://www.gnu.org/software/make/manual/make.html
+--
 {
 {-# OPTIONS -w  #-}
 module Yi.Lexer.GNUMake
@@ -16,6 +20,13 @@ make :-
 
 <0>
 {
+    -- All lines that start with a \t are passed to the shell
+    -- For now these are all effectively unstyled.
+    -- This includes # characters that might be in the shell code! Those indicate comments *only* if
+    -- the shell interpretting the code would consider it a comment. Wack huh?
+    -- See 3.1
+    ^\t.*
+        { c Style.defaultStyle }
     \#
         { m (\_ -> InComment) Style.commentStyle }
     \n
@@ -27,31 +38,22 @@ make :-
 <comment>
 {
     -- Comments can be continued to the next line with a trailing slash.
-    \\
-        { m (\_ -> InCommentSlashEscape) Style.commentStyle }
+    -- See 3.1
+    \\[.\n]
+        { c Style.commentStyle }
     \n
         { m (\_ -> TopLevel) Style.defaultStyle }
     .
         { c Style.commentStyle }
 }
 
-<inCommentSlashEscape>
-{
-    \n
-        { m (\_ -> InComment) Style.commentStyle }
-    .
-        { m (\_ -> InComment) Style.commentStyle }
-}
-
 {
 data HlState = 
       TopLevel 
     | InComment
-    | InCommentSlashEscape
 
 stateToInit TopLevel = 0
 stateToInit InComment = comment
-stateToInit InCommentSlashEscape = inCommentSlashEscape
 
 initState :: HlState
 initState = TopLevel
