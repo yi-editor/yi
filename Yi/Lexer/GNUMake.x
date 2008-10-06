@@ -16,21 +16,45 @@ make :-
 
 <0>
 {
-    "#"[^\n]*
-        { c Style.commentStyle }
-    $white
+    \#
+        { m (\_ -> InComment) Style.commentStyle }
+    \n
         { c Style.defaultStyle }
     .
         { c Style.defaultStyle }
 }
 
+<comment>
 {
-data HlState
+    -- Comments can be continued to the next line with a trailing slash.
+    \\
+        { m (\_ -> InCommentSlashEscape) Style.commentStyle }
+    \n
+        { m (\_ -> TopLevel) Style.defaultStyle }
+    .
+        { c Style.commentStyle }
+}
 
-stateToInit _ = 0
+<inCommentSlashEscape>
+{
+    \n
+        { m (\_ -> InComment) Style.commentStyle }
+    .
+        { m (\_ -> InComment) Style.commentStyle }
+}
+
+{
+data HlState = 
+      TopLevel 
+    | InComment
+    | InCommentSlashEscape
+
+stateToInit TopLevel = 0
+stateToInit InComment = comment
+stateToInit InCommentSlashEscape = inCommentSlashEscape
 
 initState :: HlState
-initState = undefined
+initState = TopLevel
 
 type Token = StyleName
 #include "alex.hsinc"
