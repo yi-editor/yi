@@ -139,7 +139,7 @@ main = yi $ defaultConfig {
                            modeTable = AnyMode bestHaskellMode : modeTable defaultConfig,
                            configUI = (configUI defaultConfig) 
                              { configFontSize = Just 10 
-                             -- , configStyle = darkBlueTheme
+                             -- , configTheme = darkBlueTheme
                              },
                            defaultKm = choice [extraInput, parensInput] <|| keymap
                               <|> (ctrl (char '>') ?>>! increaseIndent)

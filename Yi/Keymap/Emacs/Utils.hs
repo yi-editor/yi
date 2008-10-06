@@ -165,8 +165,8 @@ searchKeymap = selfSearchKeymap <|> choice
                ]
 
 isearchKeymap :: Direction -> Keymap
-isearchKeymap direction = 
-  do write $ isearchInitE direction
+isearchKeymap dir = 
+  do write $ isearchInitE dir
      many searchKeymap
      choice [ ctrl (char 'g') ?>>! isearchCancelE
             , oneOf [ctrl (char 'm'), spec KEnter] >>! isearchFinishE
