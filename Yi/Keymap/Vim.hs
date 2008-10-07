@@ -352,7 +352,7 @@ defKeymap = Proto template
          ,(char 'J',      const (withBuffer (moveToEol >> deleteN 1)))    -- the "\n"
          ,(char 'Y',      \n -> withEditor $ do
                                     let move = Replicate (Move Line Forward) n
-                                    region <- withBuffer0 $ regionOfViMove move Inclusive
+                                    region <- withBuffer0 $ regionOfViMove move LineWise
                                     yankRegion LineWise region
           )
          ,(char 'U',      withBuffer . flip replicateM_ undoB)    -- NB not correct
