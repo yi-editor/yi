@@ -13,7 +13,7 @@ module Yi.Keymap.Vim (keymap,
 import Prelude (maybe, length, filter, map, drop, break, uncurry)
 
 import Data.Char
-import Data.List (sort, nub, take)
+import Data.List (nub, take)
 import Data.Prototype
 import Numeric (showHex, showOct)
 import System.IO (readFile)
@@ -44,11 +44,6 @@ import Yi.TextCompletion
 -- ---------------------------------------------------------------------
 
 type VimMode = Keymap
-
-data RegionStyle = LineWise
-                 | Inclusive
-                 | Exclusive
-  deriving (Eq, Typeable, Show)
 
 data ViMove = Move TextUnit Direction
             | MaybeMove TextUnit Direction
@@ -252,9 +247,9 @@ defKeymap = Proto template
 
      regionOfViMove :: ViMove -> RegionStyle -> BufferM Region
      regionOfViMove move regionStyle =
-       join $ regionFromTo <$> pointB
-                           <*> (savingPointB (viMove move >> pointB))
-                           <*> pure regionStyle
+       join $ mkRegionOfStyleB <$> pointB
+                               <*> (savingPointB (viMove move >> pointB))
+                               <*> pure regionStyle
 
      viMove :: ViMove -> BufferM ()
      viMove NoMove                        = return ()
@@ -502,21 +497,12 @@ defKeymap = Proto template
                 x <- [ char 'i' ?>> (char c ?>> write (f =<< withBuffer0 (regionOfNonEmptyB unit))), -- inner unit
                        char 'a' ?>> (char c ?>> write (f =<< withBuffer0 (select_a_unit unit))) ] ]
 
-     regionFromTo :: Point -> Point -> RegionStyle -> BufferM Region
-     regionFromTo start' stop' regionStyle =
-       let [start, stop] = sort [start', stop']
-           region = mkRegion start stop in
-       case regionStyle of
-         LineWise  -> inclusiveRegionB =<< unitWiseRegion Line region
-         Inclusive -> inclusiveRegionB region
-         Exclusive -> return region
-
      regionOfSelection :: BufferM (RegionStyle, Region)
      regionOfSelection = do
        regionStyle <- selection2regionStyle <$> getDynamicB
-       region <- join $ regionFromTo <$> getSelectionMarkPointB
-                                     <*> pointB
-                                     <*> pure regionStyle
+       region <- join $ mkRegionOfStyleB <$> getSelectionMarkPointB
+                                         <*> pointB
+                                         <*> pure regionStyle
        return (regionStyle, region)
 
      yankRegion :: RegionStyle -> Region -> EditorM ()
@@ -559,7 +545,7 @@ defKeymap = Proto template
          selectionStyle <- getDynamicB
          start <- getSelectionMarkPointB
          stop <- pointB
-         region <- regionFromTo start stop $ selection2regionStyle $ selectionStyle
+         region <- mkRegionOfStyleB start stop $ selection2regionStyle $ selectionStyle
          moveTo $ regionStart region
          deleteRegionB region
          insertN txt

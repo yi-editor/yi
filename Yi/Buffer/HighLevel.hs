@@ -323,23 +323,6 @@ pointInWindowB p = nearRegion p <$> winRegionB
 -----------------------------
 -- Region-related operations
 
--- | Extend the given region to boundaries of the text unit.
--- For instance one can extend the selection to complete lines, or
--- paragraphs.
-extendRegionToBoundaries :: TextUnit -> BoundarySide -> BoundarySide -> Region -> BufferM Region
-extendRegionToBoundaries unit bs1 bs2 region = savingPointB $ do
-  moveTo $ regionStart region
-  genMaybeMoveB unit (Backward, bs1) Backward
-  start <- pointB
-  moveTo $ regionEnd region
-  genMaybeMoveB unit (Forward, bs2) Forward
-  stop <- pointB
-  return $ mkRegion' (regionDirection region) start stop
-
-unitWiseRegion :: TextUnit -> Region -> BufferM Region
-unitWiseRegion unit = extendRegionToBoundaries unit InsideBound OutsideBound
-
-
 -- TODO: either decide this is evil and contain it to Vim, or embrace it and move it to the
 -- Buffer record.
 newtype SelectionStyle = SelectionStyle TextUnit

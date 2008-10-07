@@ -21,6 +21,7 @@ import Data.Algorithm.Diff
 import Yi.Region
 import Yi.Buffer.Misc
 import Yi.Prelude
+import Data.Typeable
 import Prelude ()
 import Data.List (length)
 
@@ -94,4 +95,3 @@ inclusiveRegionB r =
     where pointAfter p = pointAt $ do 
                            moveTo p
                            rightB
-
