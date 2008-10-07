@@ -137,10 +137,10 @@ unitSentence = GenUnit unitEmacsParagraph $ \dir -> checkPeekB (if dir == Forwar
 --      Word 
 --     ^^  ^^
 --     12  34
--- 1: (Backward,Outside)
--- 2: (Backward,Inside)
--- 3: (Forward,Inside)
--- 4: (Forward,Outside)
+-- 1: (Backward,OutsideBound)
+-- 2: (Backward,InsideBound)
+-- 3: (Forward,InsideBound)
+-- 4: (Forward,OutsideBound)
 --
 -- rules:
 -- genAtBoundaryB u Backward InsideBound  = atBoundaryB u Backward
