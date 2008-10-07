@@ -68,10 +68,6 @@ shellCommandE = do
 
 ----------------------------
 -- Cabal-related commands
-
-setupScript :: String
-setupScript = "Setup"
-
 newtype CabalBuffer = CabalBuffer {cabalBuffer :: Maybe BufferRef}
     deriving (Initializable, Typeable, Binary)
 
@@ -91,7 +87,7 @@ reloadProjectE s = withUI $ \ui -> reloadProject ui s
 
 cabalRun :: String -> (Either Exception ExitCode -> YiM x) -> String -> YiM ()
 cabalRun cmd onExit args = withOtherWindow $ do
-   b <- startSubprocess "runhaskell" (setupScript:cmd:words args) onExit
+   b <- startSubprocess "cabal" (cmd:words args) onExit
    withEditor $ do
        maybeM deleteBuffer =<< cabalBuffer <$> getDynamic
        setDynamic $ CabalBuffer $ Just b
