@@ -123,10 +123,16 @@ pythonMode = fundamentalMode
     modeHL = ExtHL $ mkHighlighter' Python.initState Python.alexScanToken id
   }
 
+-- TODO: .mk is fairly standard but are there others?
+isMakefile "Makefile"    = True
+isMakefile "makefile"    = True
+isMakefile "GNUmakefile" = True
+isMakefile filename      = anyExtension ["mk"] filename
+
 gnuMakeMode = fundamentalMode
   {
     modeName = "Makefile",
-    modeApplies = \filename -> filename == "Makefile",
+    modeApplies = isMakefile,
     modeHL = ExtHL $ mkHighlighter' GNUMake.initState GNUMake.alexScanToken id,
     modeIndentSettings = (modeIndentSettings fundamentalMode)
       {
