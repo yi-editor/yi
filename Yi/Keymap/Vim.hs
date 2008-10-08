@@ -32,6 +32,7 @@ import Yi.String (dropSpace)
 import Yi.MiniBuffer
 import Yi.Search
 import Yi.TextCompletion
+import Yi.Window (bufkey)
 
 
 --
@@ -794,6 +795,48 @@ defKeymap = Proto template
                [] -> return ()
 
          where
+           {- safeQuitWindow implements the commands in vim equivalent to :q.
+            - Closes the current window unless the current window is the last window on a 
+            - modified buffer that is not considered "worthless".
+            -}
+           safeQuitWindow = do
+               nw <- withBuffer needsAWindowB
+               ws <- withEditor $ getA currentWindowA >>= windowsOnBufferE . bufkey
+               if 1 == length ws && nw 
+                 then errorEditor "No write since last change (add ! to override)"
+                 else closeWindow
+           
+           needsAWindowB = do
+             isWorthless <- gets (\b -> file b == Nothing)
+             canClose <- isUnchangedB
+             if isWorthless || canClose then return False else return True
+           
+           {- quitWindow implements the commands in vim equivalent to :q!
+            - Closes the current window regardless of whether the window is on a modified
+            - buffer or not. 
+            - TODO: Does not quit the editor if there are modified hidden buffers.
+            - 
+            - Corey - Vim appears to abandon any changes to the current buffer if the window being 
+            - closed is the last window on the buffer. The, now unmodified, buffer is still around 
+            - and can be switched to using :b. I think this is odd and prefer the modified buffer
+            - sticking around. 
+            -}
+           quitWindow = closeWindow
+           
+           {- safeQuitAllWindows implements the commands in vim equivalent to :qa!
+            - Exits the editor unless there is a modified buffer that is not worthless.
+            -}
+           safeQuitAllWindows = do
+             bs <- mapM (\b -> withEditor (withGivenBuffer0 b needsAWindowB) >>= return . (,) b) =<< readEditor bufferStack
+             -- Vim only shows the first modified buffer in the error.
+             case find snd bs of
+               Nothing -> quitEditor
+               Just (b, _) -> do
+                 bufferName <- withEditor $ withGivenBuffer0 b $ gets name
+                 errorEditor $ "No write since last change for buffer " 
+                               ++ show bufferName
+                               ++ " (add ! to override)"
+           
            isWorthlessB = gets (\b -> isUnchangedBuffer b || file b == Nothing)
            whenUnchanged mu f = do u <- mu
                                    if u then f
@@ -811,6 +854,8 @@ defKeymap = Proto template
            bdelete  = whenUnchanged (withBuffer isUnchangedB) . withEditor . closeBufferE
            bdeleteNoW = withEditor . closeBufferE
 
+           -- fn maps from the text entered on the command line to a YiM () implementing the 
+           -- command.
            fn ""           = withEditor msgClr
 
            fn s@(c:_) | isDigit c = do
@@ -820,20 +865,20 @@ defKeymap = Proto template
 
            fn "w"          = viWrite
            fn ('w':' ':f)  = viWriteTo $ dropSpace f
-           fn "qa"         = quitall
-           fn "qal"        = quitall
-           fn "qall"       = quitall
-           fn "quita"      = quitall
-           fn "quital"     = quitall
-           fn "quitall"    = quitall
-           fn "q"          = quitB
-           fn "qu"         = quitB
-           fn "qui"        = quitB
-           fn "quit"       = quitB
-           fn "q!"         = quitNoW
-           fn "qu!"        = quitNoW
-           fn "qui!"       = quitNoW
-           fn "quit!"      = quitNoW
+           fn "qa"         = safeQuitAllWindows
+           fn "qal"        = safeQuitAllWindows
+           fn "qall"       = safeQuitAllWindows
+           fn "quita"      = safeQuitAllWindows
+           fn "quital"     = safeQuitAllWindows
+           fn "quitall"    = safeQuitAllWindows
+           fn "q"          = safeQuitWindow
+           fn "qu"         = safeQuitWindow
+           fn "qui"        = safeQuitWindow
+           fn "quit"       = safeQuitWindow
+           fn "q!"         = quitWindow
+           fn "qu!"        = quitWindow
+           fn "qui!"       = quitWindow
+           fn "quit!"      = quitWindow
            fn "qa!"        = quitEditor
            fn "quita!"     = quitEditor
            fn "quital!"    = quitEditor

@@ -445,6 +445,11 @@ findWindowWith :: WindowRef -> Editor -> Window
 findWindowWith k e =
     head $ concatMap (\win -> if (wkey win == k) then [win] else []) $ windows e
 
+windowsOnBufferE :: BufferRef -> EditorM [Window]
+windowsOnBufferE k = do
+  e <- gets id
+  return $ concatMap (concatMap (\win -> if (bufkey win == k) then [win] else [])) (tabs e)
+
 -- | Split the current window, opening a second window onto current buffer.
 -- TODO: unfold newWindowE here?
 splitE :: EditorM ()
