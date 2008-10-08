@@ -15,8 +15,8 @@ import Yi.Keymap.Keys
 import qualified Yi.UI.Vty
 
 import Yi.Style.Library (darkBlueTheme)
-
 import Data.List (isPrefixOf, reverse)
+import Control.Monad (replicateM_)
 
 -- Set soft tabs of 4 spaces in width.
 prefIndent :: Mode s -> Mode s
@@ -42,8 +42,19 @@ main = yi $ defaultConfig
             }
     }
 
-extendedVimKeymap = defKeymap `override` \super _ -> super
+extendedVimKeymap = defKeymap `override` \super self -> super
     {
+        v_top_level = 
+            (deprioritize >> v_top_level super)
+            -- On 'o' in normal mode I always want to use the indent of the previous line.
+            -- TODO: If the line where the newline is to be inserted is inside a
+            -- block comment then the block comment should be "continued"
+            <|> (char 'o' ?>> beginIns self $ do 
+                    moveToEol
+                    insertB '\n'
+                    indentAsPreviousB
+                    return ()
+                ),
         v_ins_char = 
             (deprioritize >> v_ins_char super) 
             -- On enter I always want to use the indent of previous line

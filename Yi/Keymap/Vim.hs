@@ -8,7 +8,8 @@ module Yi.Keymap.Vim (keymap,
                       viWrite, 
                       defKeymap, 
                       ModeMap(..),
-                      mkKeymap) where
+                      mkKeymap,
+                      beginIns) where
 
 import Prelude (maybe, length, filter, map, drop, break, uncurry)
 
@@ -86,17 +87,6 @@ defKeymap = Proto template
      -- the replace cmd, which consumes one char of input, and commands
      -- that switch modes.
      def_top_level = choice [cmd_eval,cmd_move,cmd2other,cmd_op]
-
-     -- | Leave a mode. This always has priority over catch-all actions inside the mode.
-     leave :: VimMode
-     leave = oneOf [spec KEsc, ctrl $ char 'c'] >> adjustPriority (-1) >> (write msgClr)
-
-     -- | Insert mode is either insertion actions, or the meta (\ESC) action
-     ins_mode :: VimMode
-     ins_mode = write (setStatus "-- INSERT --") >> many (ins_char <|> kwd_mode) >> leave
-
-     beginIns :: (Show x, YiAction a x) => a -> I Event Action ()
-     beginIns a = write a >> ins_mode
 
      -- | Replace mode is like insert, except it performs writes, not inserts
      rep_mode :: VimMode
@@ -598,7 +588,7 @@ defKeymap = Proto template
                  char 'x'  ?>>! cutSelection,
                  char 'd'  ?>>! cutSelection,
                  char 'p'  ?>>! pasteOverSelection,
-                 char 'c'  ?>> beginIns (cutSelection >> withBuffer0 (setVisibleSelection False))]
+                 char 'c'  ?>> beginIns self (cutSelection >> withBuffer0 (setVisibleSelection False))]
 
 
      -- | These also switch mode, as all visual commands do, but these are
@@ -637,20 +627,20 @@ defKeymap = Proto template
                  char 'v'     ?>> vis_mode (SelectionStyle Character),
                  char 'V'     ?>> vis_mode (SelectionStyle Line),
                  char 'R'     ?>> rep_mode,
-                 char 'i'     ?>> ins_mode,
-                 char 'I'     ?>> beginIns moveToSol,
-                 char 'a'     ?>> beginIns $ moveXorEol 1,
-                 char 'A'     ?>> beginIns moveToEol,
-                 char 'o'     ?>> beginIns $ moveToEol >> insertB '\n',
-                 char 'O'     ?>> beginIns $ moveToSol >> insertB '\n' >> lineUp,
+                 char 'i'     ?>> ins_mode self,
+                 char 'I'     ?>> beginIns self moveToSol,
+                 char 'a'     ?>> beginIns self $ moveXorEol 1,
+                 char 'A'     ?>> beginIns self moveToEol,
+                 char 'o'     ?>> beginIns self $ moveToEol >> insertB '\n',
+                 char 'O'     ?>> beginIns self $ moveToSol >> insertB '\n' >> lineUp,
                  char 'c'     ?>> changeCmds,
-                 char 'C'     ?>> beginIns $ cut Exclusive viMoveToEol, -- alias of "c$"
-                 char 'S'     ?>> beginIns $ withBuffer0 moveToSol >> cut Exclusive viMoveToEol, -- non-linewise alias of "cc"
-                 char 's'     ?>> beginIns $ cut Exclusive (CharMove Forward), -- non-linewise alias of "cl"
+                 char 'C'     ?>> beginIns self $ cut Exclusive viMoveToEol, -- alias of "c$"
+                 char 'S'     ?>> beginIns self $ withBuffer0 moveToSol >> cut Exclusive viMoveToEol, -- non-linewise alias of "cc"
+                 char 's'     ?>> beginIns self $ cut Exclusive (CharMove Forward), -- non-linewise alias of "cl"
                  char '/'     ?>>! ex_mode "/",
                  char '?'     ?>>! ex_mode "?",
                  leave,
-                 spec KIns    ?>> ins_mode]
+                 spec KIns    ?>> ins_mode self]
 
      changeCmds :: I Event Action ()
      changeCmds =
@@ -659,7 +649,7 @@ defKeymap = Proto template
           (char 'W' ?>> change NoMove Exclusive (GenMove ViWORD (Forward, OutsideBound) Forward))) <|>
        (char 'c' ?>> change viMoveToSol LineWise viMoveToEol) <|>
        (uncurry (change NoMove) =<< gen_cmd_move) <|>
-       (select_any_unit (cutRegion Exclusive) >> ins_mode) -- this correct while the RegionStyle is not LineWise
+       (select_any_unit (cutRegion Exclusive) >> ins_mode self) -- this correct while the RegionStyle is not LineWise
 
      change :: ViMove -> RegionStyle -> ViMove -> I Event Action ()
      change preMove regionStyle move = do
@@ -667,7 +657,7 @@ defKeymap = Proto template
          withBuffer0 $ viMove preMove
          cut regionStyle move
          when (regionStyle == LineWise) $ withBuffer0 (insertB '\n' >> leftB)
-       ins_mode
+       ins_mode self
 
      ins_rep_char :: VimMode
      ins_rep_char = choice [spec KPageUp       ?>>! upScreenB,
@@ -692,18 +682,9 @@ defKeymap = Proto template
      -- which suggest that movement commands be added to insert mode, along
      -- with delete.
      --
-     ins_char :: VimMode
-     ins_char = v_ins_char self
      def_ins_char = (spec KBS ?>>! adjBlock (-1) >> deleteB Character Backward)
-                <|> ins_rep_char
-                <|| (textChar >>= write . (adjBlock 1 >>) . insertB)
-
-     -- --------------------
-     -- | Keyword
-     kwd_mode :: VimMode
-     kwd_mode = some ((ctrl $ char 'n') ?>> (write wordComplete)) >> deprioritize >> (write resetComplete)
-                -- 'adjustPriority' is there to lift the ambiguity between "continuing" completion
-                -- and resetting it (restarting at the 1st completion).
+            <|> ins_rep_char
+            <|| (textChar >>= write . (adjBlock 1 >>) . insertB)
 
      -- ---------------------------------------------------------------------
      -- | vim replace mode
@@ -1036,4 +1017,23 @@ viSub cs unit = do
     where do_single p r g = do
                 s <- searchAndRepUnit p r g unit
                 if not s then fail ("Pattern not found: "++p) else msgClr
+
+-- | Leave a mode. This always has priority over catch-all actions inside the mode.
+leave :: VimMode
+leave = oneOf [spec KEsc, ctrl $ char 'c'] >> adjustPriority (-1) >> (write msgClr)
+
+-- | Insert mode is either insertion actions, or the meta (\ESC) action
+ins_mode :: ModeMap -> VimMode
+ins_mode self = write (setStatus "-- INSERT --") >> many (v_ins_char self <|> kwd_mode) >> leave
+
+beginIns :: (Show x, YiAction a x) => ModeMap -> a -> I Event Action ()
+beginIns self a = write a >> ins_mode self
+
+-- --------------------
+-- | Keyword
+kwd_mode :: VimMode
+kwd_mode = some ((ctrl $ char 'n') ?>> (write wordComplete)) >> deprioritize >> (write resetComplete)
+-- 'adjustPriority' is there to lift the ambiguity between "continuing" completion
+-- and resetting it (restarting at the 1st completion).
+
 
