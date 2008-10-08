@@ -28,7 +28,8 @@ If you want gtk support, first install gtk2hs 0.9.13.
     * Lexical highlighting
     * Layout-aware parenthesis-matching 
     * Auto-indentation
-    * Call cabal build within the editor
+    * cabal-build within the editor
+* Syntax highlighting for a number of other languages (latex, python, perl, ...)
 
 ## Links
 * [download](http://hackage.haskell.org/cgi-bin/hackage-scripts/package/yi)
