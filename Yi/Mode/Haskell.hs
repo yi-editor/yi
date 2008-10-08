@@ -6,6 +6,7 @@ module Yi.Mode.Haskell
    plainMode,
    cleverMode, 
    preciseMode,
+   testMode,
    
    -- * Buffer-level operations
    haskellUnCommentSelectionB,
@@ -32,6 +33,7 @@ import Yi.Syntax
 import Yi.Syntax.Haskell as Hask
 import Yi.Syntax.Paren as Paren
 import Yi.Syntax.Tree
+import Yi.Syntax.OnlineTree as OnlineTree
 import qualified Yi.IncrementalParse as IncrParser
 import qualified Yi.Lexer.Alex as Alex
 import Yi.Lexer.Haskell as Haskell
@@ -71,6 +73,18 @@ cleverMode = emptyMode
   , modeAdjustBlock = adjustBlock
   , modePrettify = cleverPrettify
  }
+
+testMode :: Mode (OnlineTree.Tree TT)
+testMode = emptyMode 
+  {
+    modeName = "haskell",
+    modeApplies = modeApplies plainMode,
+    modeHL = ExtHL $
+    mkHighlighter (IncrParser.scanner OnlineTree.parse . haskellLexer)
+      (\point begin end t -> fmap Hask.tokenToStroke $ dropToIndex begin t)
+
+ }
+
 
 -- | "Clever" hasell mode, using the 
 preciseMode :: Mode (Hask.Tree TT)

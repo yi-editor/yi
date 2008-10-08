@@ -1,7 +1,7 @@
 -- Copyright (c) JP Bernardy 2008
 {-# OPTIONS -fglasgow-exts #-}
 module Yi.IncrementalParse (Process, Void, 
-                            recoverWith, symbol, eof, runPolish, 
+                            recoverWith, symbol, eof, lookNext, runPolish, 
                             runP, profile, pushSyms, pushEof, evalR,
                             P, AlexState (..), scanner) where
 import Yi.Lexer.Alex (AlexState (..))
@@ -10,6 +10,7 @@ import Prelude (Ordering(..))
 import Yi.Syntax
 import Data.List hiding (map, minimumBy)
 import Data.Char
+import Data.Maybe (listToMaybe)
 
 {- ----------------------------------------
 
@@ -228,6 +229,10 @@ push ss p = case p of
                   Best _ _ p' q' -> iBest (push ss p') (push ss q')
                   -- TODO: it would be nice to be able to reuse the profile here.
 
+repush :: [s] -> Steps s a r -> Steps s a r
+repush [] = pushEof
+repush input = pushSyms input
+
 -- | Push some symbols.
 pushSyms :: [s] -> Steps s a r -> Steps s a r
 pushSyms x = push (Just x)
@@ -264,6 +269,12 @@ symbol f = P $ \fut -> Suspend $ \input ->
                 [] -> Fails -- This is the eof!
                 (s:ss) -> if f s then Shift (Val s (push (Just ss) (fut)))
                                  else Fails
+
+lookNext :: (Maybe s -> Bool) -> P s ()
+lookNext f = P $ \fut -> Suspend $ \input ->
+   if (f $ listToMaybe input) then Val () (repush input fut)
+                              else Fails
+        
 
 -- | Parse the eof
 eof :: P s ()

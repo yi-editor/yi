@@ -1,5 +1,5 @@
 -- Copyright (c) JP Bernardy 2008
-
+-- | Parser for haskell that takes in account only parenthesis and layout
 module Yi.Syntax.Paren where
 
 import Yi.IncrementalParse
