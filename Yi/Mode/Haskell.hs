@@ -41,10 +41,9 @@ import qualified Yi.Syntax.Linear as Linear
 import qualified Yi.Mode.Interactive as Interactive
 import Yi.Modes (anyExtension)
 
--- | Plain haskell mode, providing only list of stuff.
-plainMode :: Mode (Linear.Result (Tok Token))
-plainMode = emptyMode 
-   {
+haskellAbstract :: Mode syntax
+haskellAbstract = emptyMode 
+  {
      {-    
      Some of these are a little questionably haskell
      related. For example ".x" is an alex lexer specification
@@ -53,17 +52,25 @@ plainMode = emptyMode
      For now though this is probably okay given the users of
      'yi' are mostly haskell hackers, as of yet. -}
      modeApplies = anyExtension ["hs", "x", "hsc", "hsinc"],
+     modeName = "haskell",
+     modeToggleCommentSelection = haskellToggleCommentSelectionB
+  }
+
+-- | Plain haskell mode, providing only list of keywords.
+plainMode :: Mode (Linear.Result (Tok Token))
+plainMode = haskellAbstract
+   {
      modeName = "plain haskell",
      modeHL = ExtHL $
      mkHighlighter (Linear.incrScanner . haskellLexer) (\begin end pos -> Linear.getStrokes begin end pos . fmap Paren.tokenToStroke)
    , modeIndent = \_ast -> autoIndentHaskellB
+   , modeToggleCommentSelection = haskellToggleCommentSelectionB
    }
 
--- | "Clever" hasell mode, using the 
+-- | "Clever" haskell mode, using the paren-matching syntax.
 cleverMode :: Mode (Expr (Tok Haskell.Token))
-cleverMode = emptyMode 
+cleverMode = haskellAbstract
   {
-    modeName = "haskell",
     modeApplies = modeApplies plainMode,
     modeIndent = cleverAutoIndentHaskellB,
     modeHL = ExtHL $
@@ -75,9 +82,8 @@ cleverMode = emptyMode
  }
 
 testMode :: Mode (OnlineTree.Tree TT)
-testMode = emptyMode 
+testMode = haskellAbstract
   {
-    modeName = "haskell",
     modeApplies = modeApplies plainMode,
     modeHL = ExtHL $
     mkHighlighter (IncrParser.scanner OnlineTree.parse . haskellLexer)
@@ -88,7 +94,7 @@ testMode = emptyMode
 
 -- | "Clever" hasell mode, using the 
 preciseMode :: Mode (Hask.Tree TT)
-preciseMode = emptyMode 
+preciseMode = haskellAbstract
   {
     modeName = "precise haskell",
     modeApplies = modeApplies plainMode,

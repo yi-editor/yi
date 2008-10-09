@@ -87,6 +87,7 @@ module Yi.Buffer.Misc
   , IndentSettings (..)
   , emptyMode
   , withModeB
+  , withMode0
   , onMode
   , withSyntax0
   , withSyntaxB
@@ -272,15 +273,16 @@ data AnyMode = forall syntax. AnyMode (Mode syntax)
 
 data Mode syntax = Mode
     {
-     modeName :: String, -- ^ so this could be serialized, debugged.
+     modeName :: String,              -- ^ so this can be serialized, debugged.
      modeApplies :: FilePath -> Bool, -- ^ What type of files does this mode apply to?
-     modeHL :: ExtHL syntax,
-     modePrettify :: syntax -> BufferM (),
+     modeHL :: ExtHL syntax,          -- ^ Syntax highlighter
+     modePrettify :: syntax -> BufferM (), -- ^ Prettify current "paragraph"
      modeKeymap :: KeymapEndo, -- ^ Buffer-local keymap modification
-     modeIndent :: syntax -> IndentBehaviour -> BufferM (),
-     modeAdjustBlock :: syntax -> Int -> BufferM (),
-     modeFollow :: syntax -> Action,
-     modeIndentSettings :: IndentSettings
+     modeIndent :: syntax -> IndentBehaviour -> BufferM (), -- ^ emacs-style auto-indent line
+     modeAdjustBlock :: syntax -> Int -> BufferM (), -- ^ adjust the indentation after modification
+     modeFollow :: syntax -> Action, -- ^ Follow a "link" in the file. (eg. go to location of error message)
+     modeIndentSettings :: IndentSettings,
+     modeToggleCommentSelection :: BufferM ()
     }
 
 instance Binary (Mode syntax) where
@@ -332,7 +334,7 @@ getModeLine = do
     ln <- curLn
     p <- pointB
     s <- sizeB
-    modeNm <- withModeB modeName
+    modeNm <- gets (withMode0 modeName)
     unchanged <- isUnchangedB
     let pct = if pos == 1 then "Top" else getPercent p s
         chg = if unchanged then "-" else "*"
@@ -639,8 +641,10 @@ withMode0 :: (forall syntax. Mode syntax -> a) -> FBuffer -> a
 withMode0 f FBuffer {bmode = m} = f m 
 
 
-withModeB :: (forall syntax. Mode syntax -> a) -> BufferM a
-withModeB f = gets (withMode0 f)
+withModeB :: (forall syntax. Mode syntax -> BufferM a) -> BufferM a
+withModeB f = do
+    act <- gets (withMode0 f)
+    act
            
 withSyntax0 :: (forall syntax. Mode syntax -> syntax -> a) -> FBuffer -> a
 withSyntax0 f FBuffer {bmode = m, rawbuf = rb} = f m (getAst rb)

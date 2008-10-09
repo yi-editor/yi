@@ -40,7 +40,6 @@ module Yi.Core
 
   -- * Misc
   , runAction
-  , withMode
   , withSyntax
   ) 
 where
@@ -146,7 +145,7 @@ dispatch ev =
        entryEvs <- withEditor $ getA pendingEventsA
        logPutStrLn $ "pending events: " ++ showEvs entryEvs
        (userActions,_p') <- withBuffer $ do
-         keymap <- withModeB modeKeymap
+         keymap <- gets (withMode0 modeKeymap)
          p0 <- getA keymapProcessA
          let defKm = defaultKm $ yiConfig $ yi
          let freshP = I.mkAutomaton $ forever $ keymap $ defKm
@@ -334,12 +333,6 @@ waitForExit ph =
       case mec of
           Nothing -> threadDelay (500*1000) >> waitForExit ph
           Just ec -> return (Right ec)
-
-withMode :: (Show x, YiAction a x) => (forall syntax. Mode syntax -> a) -> YiM ()
-withMode f = do
-            b <- withEditor Editor.getBuffer
-            act <- withBufferMode b f
-            runAction $ makeAction $ act
 
 withSyntax :: (Show x, YiAction a x) => (forall syntax. Mode syntax -> syntax -> a) -> YiM ()
 withSyntax f = do

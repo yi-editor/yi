@@ -88,9 +88,6 @@ instance MonadEditor YiM where
 write :: (I.MonadInteract m Action ev, YiAction a x, Show x) => a -> m ()
 write x = I.write (makeAction x)
 
-withBufferMode :: BufferRef -> (forall syntax. Mode syntax -> a) -> YiM a
-withBufferMode b f = withGivenBuffer b $ withModeB f
-
 --------------------------------
 -- Uninteresting glue code
 

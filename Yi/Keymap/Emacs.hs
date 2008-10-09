@@ -132,6 +132,8 @@ emacsKeys univArg =
 
          -- All the key-bindings which are preceded by a 'C-x'
          , ctrlCh 'x' ?>>      ctrlX
+
+         , ctrlCh 'c' ?>>      ctrlC
           
          -- All The key-bindings of the form M-c where 'c' is some character.
          , metaCh 'v'           ?>>! scrollUpE univArg
@@ -172,6 +174,7 @@ emacsKeys univArg =
   withIntArg :: YiAction (m ()) () => (Int -> m ()) -> YiM ()
   withIntArg cmd = withUnivArg $ \arg -> cmd (fromMaybe 1 arg)
 
+  ctrlC = choice [ ctrlCh 'c' ?>>! withModeB modeToggleCommentSelection ]
 
 
   rectangleFuntions = choice [char 'o' ?>>! openRectangle,

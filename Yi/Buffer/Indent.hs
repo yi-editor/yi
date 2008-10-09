@@ -37,7 +37,7 @@ insertTabB = do
   Retrieve the current indentation settings for the buffer.
 -}
 indentSettingsB :: BufferM IndentSettings
-indentSettingsB = withModeB (\Mode {modeIndentSettings = x} -> x)
+indentSettingsB = withModeB (\Mode {modeIndentSettings = x} -> return x)
 
 
 {-|

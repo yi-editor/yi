@@ -23,8 +23,7 @@ bestHaskellMode = Shim.minorMode $ Haskell.cleverMode
                        -- Haskell.preciseMode
                        {
                         -- example of Mode-local rebinding
-                        modeKeymap = (choice [ctrl (char 'c') ?>> ctrl(char 'c') ?>>! haskellToggleCommentSelectionB,
-                                              ctrlCh 'c' ?>> char 'l' ?>>! ghciLoadBuffer,
+                        modeKeymap = (choice [ctrlCh 'c' ?>> char 'l' ?>>! ghciLoadBuffer,
                                               ctrlCh 'c' ?>> ctrl (char 'z') ?>>! ghciGet
                                              ]
                                       <||)  
