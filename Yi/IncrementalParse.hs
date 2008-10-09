@@ -9,7 +9,6 @@ import Yi.Prelude
 import Prelude (Ordering(..))
 import Yi.Syntax
 import Data.List hiding (map, minimumBy)
-import Data.Char
 import Data.Maybe (listToMaybe)
 
 {- ----------------------------------------
@@ -120,6 +119,7 @@ data Steps s a r where
 data Profile = PSusp | PFail | PRes Int | !Int :> Profile
     deriving Show
 
+mapSucc :: Profile -> Profile
 mapSucc PSusp = PSusp
 mapSucc PFail = PFail
 mapSucc (PRes x) = PRes (succ x) 
@@ -131,7 +131,7 @@ mapSucc (x :> xs) = succ x :> mapSucc xs
 -- finite lookahead.
 dislikeThreshold :: Int -> Int
 -- dislikeThreshold n | n < 2 = 1
-dislikeThreshold n = 0
+dislikeThreshold _n = 0
 
 -- | Compute the combination of two profiles, as well as which one is the best.
 better :: Int -> Profile -> Profile -> (Ordering, Profile)
@@ -150,6 +150,7 @@ better lk (x:>xs) (y:>ys)
     where threshold = dislikeThreshold lk
           rec = min x y +> better (lk + 1) xs ys
 
+(+>) :: Int -> (t, Profile) -> (t, Profile)
 x +> ~(ordering, xs) = (ordering, x :> xs)
 
 profile :: Steps s a r -> Profile
@@ -179,7 +180,7 @@ instance Show (Steps s a r) where
 -- | Right-eval a fully defined process (ie. one that has no Suspend)
 -- Returns value and continuation.
 evalR :: Steps s a r -> (a, r)
-evalR z@(Val a r) = (a,r)
+evalR (Val a r) = (a,r)
 evalR (App s) = let (f, s') = evalR s
                     (x, s'') = evalR s'
                 in (f x, s'')
@@ -210,6 +211,7 @@ evalL x@(Best choice _ p q) = case choice of
 evalL x = x
 
 -- | Intelligent, caching best.
+iBest :: Steps s a r -> Steps s a r -> Steps s a r
 iBest p q = let ~(choice, pr) = better 0 (profile p) (profile q) in Best choice pr p q
 
 -- | Push a chunk of symbols or eof in the process. This forces some suspensions.
@@ -311,23 +313,4 @@ scanner parser input = Scanner
         updateState0 curState toks@((st,tok):rest) = ((st, curState), result) : updateState0 nextState rest
             where nextState =       evalL $           pushSyms [tok]           $ curState
                   result    = fst $ evalR $ pushEof $ pushSyms (fmap snd toks) $ curState
-
-
-------------------
-
-data Expr = V Int | Add Expr Expr
-            deriving Show
-
-pExprParen = symbol (== '(') *> pExprTop <* symbol (== ')')
-
-pExprVal = V <$> toInt <$> symbol (isDigit)
-    where toInt c = ord c - ord '0'
-
-pExprAtom = pExprVal <|> pExprParen
-
-pExprAdd = pExprAtom <|> Add <$> pExprAtom <*> (symbol (== '+') *> pExprAdd) 
-
-pExprTop = pExprAdd
-
-pExpr = pExprTop <* eof
 
