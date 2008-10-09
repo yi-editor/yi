@@ -13,7 +13,7 @@ data Tree a = Node a (Tree a) (Tree a)
 
 instance Traversable Tree where
     traverse f (Node x l r) = Node <$> f x <*> traverse f l <*> traverse f r
-    traverse f Leaf = pure Leaf
+    traverse _ Leaf = pure Leaf
 
 instance Foldable Tree where
     foldMap = foldMapDefault

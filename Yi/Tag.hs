@@ -19,8 +19,6 @@ import Data.List (isPrefixOf)
 import System.FilePath (takeFileName, takeDirectory, FilePath, (</>))
 import System.FriendlyPath
 import Data.Map (Map, fromList, lookup, keys)
-import Control.Monad (liftM)
-
 
 import qualified Data.Trie as Trie
 
