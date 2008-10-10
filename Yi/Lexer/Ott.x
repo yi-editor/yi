@@ -1,4 +1,7 @@
 -- -*- haskell -*-
+
+{- The Ott website: http://www.cl.cam.ac.uk/~pes20/ott -}
+
 {
 {-# OPTIONS -w  #-}
 module Yi.Lexer.Ott
