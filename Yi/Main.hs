@@ -183,6 +183,7 @@ defaultConfig =
                         AnyMode gnuMakeMode,
                         AnyMode srmcMode,
                         AnyMode ocamlMode,
+                        AnyMode ottMode,
                         AnyMode perlMode,
                         AnyMode pythonMode,
                         AnyMode fundamentalMode]

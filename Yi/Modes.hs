@@ -1,6 +1,6 @@
 module Yi.Modes (fundamentalMode,
                  latexMode, cppMode, literateHaskellMode, cabalMode, srmcMode, ocamlMode,
-                 gnuMakeMode,
+                 ottMode, gnuMakeMode,
                  perlMode, pythonMode, latexMode2,
                  anyExtension
                 ) where
@@ -21,6 +21,7 @@ import qualified Yi.Lexer.Latex               as Latex
 import qualified Yi.Lexer.LiterateHaskell     as LiterateHaskell
 import qualified Yi.Lexer.GNUMake             as GNUMake
 import qualified Yi.Lexer.OCaml               as OCaml
+import qualified Yi.Lexer.Ott                 as Ott
 import qualified Yi.Lexer.Perl                as Perl
 import qualified Yi.Lexer.Python              as Python
 import qualified Yi.Lexer.Srmc                as Srmc
@@ -29,7 +30,7 @@ import qualified Yi.Syntax.Latex as Latex
 
 
 fundamentalMode :: Mode syntax
-latexMode, cppMode, literateHaskellMode, cabalMode, srmcMode, ocamlMode, gnuMakeMode, perlMode, pythonMode :: Mode (Linear.Result Stroke)
+latexMode, cppMode, literateHaskellMode, cabalMode, srmcMode, ocamlMode, ottMode, gnuMakeMode, perlMode, pythonMode :: Mode (Linear.Result Stroke)
 
 fundamentalMode = emptyMode
   { 
@@ -138,6 +139,13 @@ gnuMakeMode = fundamentalMode
       {
         expandTabs = False
       }
+  }
+
+ottMode = fundamentalMode
+  {
+    modeName = "ott",
+    modeApplies = anyExtension ["ott"],
+    modeHL = ExtHL $ mkHighlighter' Ott.initState Ott.alexScanToken id
   }
 
 anyExtension :: [String] -> FilePath -> Bool

@@ -1,0 +1,108 @@
+-- -*- haskell -*-
+{
+{-# OPTIONS -w  #-}
+module Yi.Lexer.Ott
+  ( initState, alexScanToken )
+where
+import Yi.Lexer.Alex
+import Yi.Style
+  ( Style             ( .. )
+  , StyleName
+  )
+import Yi.Style
+}
+
+@reservedid = metavar
+            | indexvar
+            | grammar
+            | embed
+            | subrules
+            | contextrules
+            | substitutions
+            | single
+            | multiple
+            | freevars
+            | defns
+            | defn
+            | by
+            | homs
+            | funs
+            | fun
+            | IN
+
+@reservedop = "::"
+            | "::="
+            | "_::"
+            | "<::"
+            | "/>"
+            | "//"
+            | "</"
+            | ".."
+            | "..."
+            | "...."
+            | "----" "-"*
+
+@homid = tex | com | coq | hol | isa | ocaml | icho | ich | "coq-equality"
+       | isasyn | isaprec | lex | texvar | isavar | holvar | ocamlvar
+
+main :-
+
+<0> $white+                                     ;
+
+<0>
+{
+    $white+                                        ; -- whitespace
+    "%"[^\n]*                                      { c commentStyle }
+    "<<"                                           { m (subtract 1) commentStyle }
+    @reservedid                                    { c keywordStyle }
+    @reservedop                                    { c operatorStyle }
+    "|" $white+                                    { c operatorStyle }
+    "(+"                                           { m (const bindspec) numberStyle  }
+    "{{"                                           { m (const beginHom) stringStyle }
+    .                                              { c defaultStyle }
+}
+
+<nestcomm> {                                                
+  "<<"                                          { m (subtract 1) commentStyle }
+  ">>"                                          { m (+1) commentStyle }
+  $white+                                       ; -- whitespace
+  .                                             { c commentStyle }
+}
+
+<bindspec> {
+  "bind" | "in" | "union" | "{" | "}"           { c numberStyle }
+  $white+                                       ; -- whitespace
+  "+)"                                          { m (const 0) numberStyle }
+  .                                             { c defaultStyle }
+}
+
+<beginHom> {
+  $white* @homid                                { m (const hom) typeStyle }
+}
+
+<hom> {
+  "[["                                          { m (const splice) stringStyle }
+  $white+                                       ; -- whitespace
+  "}}"                                          { m (const 0) stringStyle }
+  .                                             { c defaultStyle }
+}
+
+<splice> {
+  "]]"                                          { m (const hom) stringStyle }
+  $white+                                       ; -- whitespace
+  .                                             { c defaultStyle }
+}
+
+{
+type HlState = Int
+
+stateToInit x | x < 0     = nestcomm
+              | otherwise = x
+
+initState :: HlState
+initState = 0
+
+type Token = StyleName
+#include "alex.hsinc"
+}
+

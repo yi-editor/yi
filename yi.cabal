@@ -118,6 +118,7 @@ library
         Yi.Lexer.LiterateHaskell
         Yi.Lexer.GNUMake
         Yi.Lexer.OCaml
+        Yi.Lexer.Ott
         Yi.Lexer.Perl
         Yi.Lexer.Python
         Yi.Lexer.Srmc
@@ -321,6 +322,7 @@ executable yi
            Yi.Lexer.Cabal
            Yi.Lexer.GNUMake
            Yi.Lexer.OCaml
+           Yi.Lexer.Ott
            Yi.Lexer.Perl
            Yi.Lexer.Python
 
