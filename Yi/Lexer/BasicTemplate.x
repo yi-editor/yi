@@ -1,8 +1,8 @@
--- -*- haskell -*- 
+-- -*- haskell -*-
 {
 {-# OPTIONS -w  #-}
 module Yi.Lexer.BasicTemplate
-  ( initState, alexScanToken ) 
+  ( initState, alexScanToken )
 where
 import Yi.Lexer.Alex
 import Yi.Style
