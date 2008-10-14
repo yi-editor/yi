@@ -23,7 +23,7 @@ import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Configure
-import Distribution.Simple.Utils(dotToSep)
+import Distribution.Simple.Utils(findFileWithExtension')
 import Distribution.Simple.PreProcess(knownSuffixHandlers)
 import Distribution.Simple.Setup (defaultDistPref)
 import System.FilePath
@@ -31,27 +31,27 @@ import System.Directory
 
 data ProjectItem
   = ProjectItem
-      { itemName   :: String
-      , itemVersion:: Version
+      { projItemName :: String
+      , itemVersion :: Version
       }
   | DependenciesItem 
-      { itemName   :: String
+      { depItemName   :: String
       }
   | FolderItem 
-      { itemName   :: String
+      { folderItemName   :: String
       , folderKind :: FolderKind
       }
   | FileItem
-      { itemName   :: String
+      { fileItemName   :: String
       , itemFPath  :: FilePath
       , fileKind   :: FileKind
       }
   | PackageItem
-      { itemName   :: String
+      { pkgItemName   :: PackageName
       , itemVersion:: Version
       }
   | ModuleItem
-      { itemName   :: String
+      { modItemName   :: ModuleName
       , itemFPath  :: FilePath
       , moduleKind :: ModuleKind
       }
@@ -81,7 +81,7 @@ loadProject projPath = do
   Right lbi <- tryGetConfigStateFile (projPath </> localBuildInfoFile defaultDistPref)
   let pkgDescr = localPkgDescr lbi
 
-      root  = ProjectItem (pkgName (package pkgDescr)) (pkgVersion (package pkgDescr))
+      root  = PackageItem (pkgName (package pkgDescr)) (pkgVersion (package pkgDescr))
       tloc1 = execState (addDependenciesTree (packageDeps lbi)) (getTop (Node root []))
   (mod_items,tloc2) <- case library pkgDescr of
              Just lib -> addLibraryTree projPath (Set.empty,tloc1) lib
@@ -134,8 +134,8 @@ addDependenciesTree deps = do
 
 addSourceDir :: FilePath -- ^ project location
              -> FilePath -- ^ source sub-directory
-             ->    ([String],[String],Set.Set ProjectItem,TreeLoc ProjectItem)
-             -> IO ([String],[String],Set.Set ProjectItem,TreeLoc ProjectItem)
+             ->    ([ModuleName],[ModuleName],Set.Set ProjectItem,TreeLoc ProjectItem)
+             -> IO ([ModuleName],[ModuleName],Set.Set ProjectItem,TreeLoc ProjectItem)
 addSourceDir projPath srcDir (exp_mods,hid_mods,mod_items,tloc) = do
   let dir = projPath </> srcDir
   (exp_paths,exp_mods) <- findModules dir exp_mods
@@ -198,30 +198,15 @@ checkAndAddFile projPath fpath kind tloc = do
 -------------------------------------------------------------------------
 
 findModules :: FilePath                           -- ^source directory location
-            -> [String]                           -- ^module names
-            -> IO ([(String,FilePath)],[String])  -- ^found modules and unknown modules
+            -> [ModuleName]                           -- ^module names
+            -> IO ([(ModuleName,FilePath)],[ModuleName])  -- ^found modules and unknown modules
 findModules location []         = return ([],[])
 findModules location (mod:mods) = do
-  mb_paths <- findFileWithExtension' (map fst knownSuffixHandlers ++ ["hs", "lhs"]) [location] (dotToSep mod)
+  mb_paths <- findFileWithExtension' (map fst knownSuffixHandlers ++ ["hs", "lhs"]) [location] (toFilePath mod)
   (locs,unks) <- findModules location mods
   case mb_paths of
     Just (_,loc) -> return ((mod,loc) : locs,unks)
     Nothing      -> return (locs,mod:unks)
-
-
--- FIXME: The bellow two functions are copy+paste from the latest version of
--- Cabal. Unfortunatelly they aren't exported in the current version of Cabal.
--- Fix that after the next Cabal release.
-
-findFileWithExtension' :: [String]
-                       -> [FilePath]
-                       -> FilePath
-                       -> IO (Maybe (FilePath, FilePath))
-findFileWithExtension' extensions searchPath baseName =
-  findFirstFile (uncurry (</>))
-    [ (path, baseName <.> ext)
-    | path <- nub searchPath
-    , ext <- nub extensions ]
 
 findFirstFile :: (a -> FilePath) -> [a] -> IO (Maybe a)
 findFirstFile file = findFirst

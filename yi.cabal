@@ -11,7 +11,7 @@ author:         AUTHORS
 maintainer:     yi-devel@googlegroups.com
 homepage:       http://haskell.org/haskellwiki/Yi
 
-Cabal-Version:  >= 1.4
+Cabal-Version:  >= 1.6
 tested-with:    GHC==6.8.3
 build-type:     Simple
 data-files:
@@ -232,7 +232,7 @@ executable yi
         -- haddock >= 2.2,
         -- it seems harsh to require haddock 2.2 to even configure Yi
 
-        build-depends: Cabal >= 1.4 && < 1.5
+        build-depends: Cabal >= 1.6 && < 1.7
         build-depends: Diff >=0.1 && <0.2
         build-depends: array,  base,  containers,  directory, mtl, process, old-locale, old-time, random
         build-depends: binary >=0.4.2 && <0.5
