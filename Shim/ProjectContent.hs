@@ -18,6 +18,7 @@ import Data.Tree
 import Data.Tree.Zipper
 import qualified Data.Set as Set
 import Data.List (partition, nub)
+import Distribution.ModuleName
 import Distribution.Version
 import Distribution.Package
 import Distribution.PackageDescription
