@@ -56,6 +56,7 @@ import Yi.Editor
 import Yi.Keymap
 import Yi.Keymap.Keys
 import Yi.KillRing (krEndCmd)
+import Yi.Style (errorStyle)
 import qualified Yi.Interact as I
 import Yi.Monad
 import qualified Yi.WindowSet as WS
@@ -250,7 +251,7 @@ msgEditor = withEditor . printMsg
 
 -- | Show an error on the status line and log it.
 errorEditor :: String -> YiM ()
-errorEditor s = do msgEditor ("error: " ++ s)
+errorEditor s = do withEditor $ printStatus ("error: " ++ s, errorStyle)
                    logPutStrLn $ "errorEditor: " ++ s
 
 -- | Close the current window.

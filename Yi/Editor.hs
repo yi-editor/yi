@@ -18,7 +18,7 @@ import Yi.Window
 import Yi.WindowSet (WindowSet)
 import qualified Yi.WindowSet as WS
 import Yi.Event (Event)
-
+import Yi.Style (StyleName, defaultStyle)
 
 import Prelude (map, filter, (!!), takeWhile, length, reverse, zip)
 import Yi.Prelude
@@ -32,6 +32,9 @@ import Data.Typeable
 import Control.Monad.RWS hiding (get, put)
 import qualified Data.ByteString.Lazy.UTF8 as LazyUTF8
 
+type Status = (String,StyleName)
+type Statuses = DelayList.DelayList Status
+
 -- | The Editor state
 data Editor = Editor {
         bufferStack   :: ![BufferRef]               -- ^ Stack of all the buffers. Never empty;
@@ -43,7 +46,7 @@ data Editor = Editor {
 
        ,dynamic       :: !(DynamicValues)              -- ^ dynamic components
 
-       ,statusLines   :: !(DelayList.DelayList String)
+       ,statusLines   :: !Statuses
        ,killring      :: !Killring
        ,regex         :: !(Maybe SearchExp) -- ^ most recent regex
        ,tags          :: !(Maybe TagTable)  -- ^ table for ctags
@@ -53,8 +56,8 @@ data Editor = Editor {
     deriving Typeable
 
 instance Binary Editor where
-    put (Editor bss bs supply ts _dv sl kr _re _tt _dir _ev) = put bss >> put bs >> put supply >> put ts >> put sl >> put kr
-    get = Editor <$> get <*> get <*> get <*> get <*> pure emptyDV <*> get <*> get <*> pure Nothing <*> pure Nothing <*>pure Forward <*> pure []
+    put (Editor bss bs supply ts _dv _sl kr _re _tt _dir _ev) = put bss >> put bs >> put supply >> put ts >> put kr
+    get = Editor <$> get <*> get <*> get <*> get <*> pure emptyDV <*> pure [] <*> get <*> pure Nothing <*> pure Nothing <*>pure Forward <*> pure []
 
 windows :: Editor -> WindowSet Window
 windows editor =
@@ -82,7 +85,7 @@ instance MonadEditor EditorM where
 pendingEventsA :: Accessor Editor [Event]
 pendingEventsA = Accessor pendingEvents (\f e -> e {pendingEvents = f (pendingEvents e)})
 
-statusLinesA :: Accessor Editor (DelayList.DelayList String)
+statusLinesA :: Accessor Editor Statuses
 statusLinesA = Accessor statusLines (\f e -> e {statusLines = f (statusLines e)})
 
 
@@ -128,7 +131,7 @@ emptyEditor = Editor {
        ,tags     = Nothing
        ,searchDirection = Forward
        ,dynamic      = M.empty
-       ,statusLines  = DelayList.insert (maxBound, "") []
+       ,statusLines  = DelayList.insert (maxBound, ("", defaultStyle)) []
        ,killring     = krEmpty
        ,pendingEvents = []
        }
@@ -280,27 +283,35 @@ setBuffer k = do
   b <- gets $ findBufferWith k
   insertBuffer b -- a bit of a hack.
 
---------------
+-----------------------
+-- Handling of status
 
 -- | Display a transient message
 printMsg :: String -> EditorM ()
-printMsg = setTmpStatus 1
+printMsg s = printStatus (s, defaultStyle)
+
+printStatus :: Status -> EditorM ()
+printStatus = setTmpStatus 1
 
 -- | Set the "background" status line 
-setStatus :: String -> EditorM ()
+setStatus :: Status -> EditorM ()
 setStatus = setTmpStatus maxBound
 
 -- | Clear the status line
 msgClr :: EditorM ()
-msgClr = setStatus ""
+msgClr = setStatus ("", defaultStyle)
 
 statusLine :: Editor -> String
-statusLine = snd . head . statusLines
+statusLine = fst . statusLineInfo
 
-setTmpStatus :: Int -> String -> EditorM ()
-setTmpStatus delay s = do
+statusLineInfo :: Editor -> Status
+statusLineInfo = snd . head . statusLines
+
+
+setTmpStatus :: Int -> Status -> EditorM ()
+setTmpStatus delay (s,sty) = do
   modifyA statusLinesA $ DelayList.insert (delay, 
-                                           takeWhile (/= '\n') s)
+                                           (takeWhile (/= '\n') s,sty))
   -- also show in the messages buffer, so we don't loose any message
   bs <- gets $ findBufferWithName "*messages*"
   b <- case bs of

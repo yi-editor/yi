@@ -187,13 +187,13 @@ refresh ui e = do
   logPutStrLn "refreshing screen."
   (yss,xss) <- readRef (scrsize ui)
   let ws' = computeHeights (yss - tabBarHeight) ws
-      cmd = statusLine e
+      (cmd, cmdSty) = statusLineInfo e
       renderSeq = fmap (scrollAndRenderWindow (configUI $ config ui) xss) (WS.withFocus ws')
       (e', renders) = runEditor (config ui) (sequence renderSeq) e
 
   let startXs = scanrT (+) windowStartY (fmap height ws')
       wImages = fmap picture renders
-      statusBarStyle = baseAttributes $ configStyle $ configUI $ config $ ui
+      statusBarStyle = ((appEndo <$> cmdSty) <*> baseAttributes) $ configStyle $ configUI $ config $ ui
       tabBarImages = renderTabBar e' ui xss
   WS.debug "Drawing: " ws'
   logPutStrLn $ "startXs: " ++ show startXs
@@ -352,14 +352,14 @@ drawText h w topPoint point tabWidth bufData
 
   -- fill lines with blanks, so the selection looks ok.
   rendered_lines = map fillColorLine lns0
-  colorChar (c, (a, aPoint)) = renderChar a c
+  colorChar (c, (a, _aPoint)) = renderChar a c
 
   fillColorLine :: [(Char, (Vty.Attr, Point))] -> Image
   fillColorLine [] = renderHFill attr ' ' w
   fillColorLine l = horzcat (map colorChar l) 
                     <|>
                     renderHFill a ' ' (w - length l)
-                    where (_,(a,x)) = last l
+                    where (_,(a,_x)) = last l
 
   -- | Cut a string in lines separated by a '\n' char. Note
   -- that we add a blank character where the \n was, so the

@@ -19,7 +19,7 @@ import Data.Prototype
 import Numeric (showHex, showOct)
 import System.IO (readFile)
 
-import Control.Exception    ( ioErrors, try, evaluate )
+import Control.Exception    (try, evaluate)
 import Control.Monad.State hiding (mapM_, mapM)
 
 import {-# source #-} Yi.Boot
@@ -32,6 +32,7 @@ import Yi.Misc (matchingFileNames,adjBlock,adjIndent)
 import Yi.String (dropSpace)
 import Yi.MiniBuffer
 import Yi.Search
+import Yi.Style
 import Yi.TextCompletion
 import Yi.Window (bufkey)
 
@@ -90,7 +91,7 @@ defKeymap = Proto template
 
      -- | Replace mode is like insert, except it performs writes, not inserts
      rep_mode :: VimMode
-     rep_mode = write (setStatus "-- REPLACE --") >> many rep_char >> leave
+     rep_mode = write (setStatus ("-- REPLACE --", defaultStyle)) >> many rep_char >> leave
 
      -- | Reset the selection style to a character-wise mode 'SelectionStyle Character'.
      resetSelectStyle :: BufferM ()
@@ -106,7 +107,7 @@ defKeymap = Proto template
      core_vis_mode :: SelectionStyle -> VimMode
      core_vis_mode selectionStyle = do
        write $ do withBuffer0 $ setDynamicB $ selectionStyle
-                  setStatus $ msg selectionStyle
+                  setStatus $ (msg selectionStyle, defaultStyle)
        many (cmd_move <|>
              select_any_unit (withBuffer0 . (\r -> resetSelectStyle >> extendSelectRegionB r >> leftB)))
        (vis_single selectionStyle <|| vis_multi)
@@ -1024,7 +1025,7 @@ leave = oneOf [spec KEsc, ctrl $ char 'c'] >> adjustPriority (-1) >> (write msgC
 
 -- | Insert mode is either insertion actions, or the meta (\ESC) action
 ins_mode :: ModeMap -> VimMode
-ins_mode self = write (setStatus "-- INSERT --") >> many (v_ins_char self <|> kwd_mode) >> leave
+ins_mode self = write (setStatus ("-- INSERT --", defaultStyle)) >> many (v_ins_char self <|> kwd_mode) >> leave
 
 beginIns :: (Show x, YiAction a x) => ModeMap -> a -> I Event Action ()
 beginIns self a = write a >> ins_mode self
