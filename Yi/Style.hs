@@ -31,10 +31,10 @@ data UIStyle = UIStyle
   , eofStyle           :: Style      -- ^ empty file marker colours
 
   , errorStyle         :: Style      -- ^ indicates errors in text
-  , hintStyle          :: Style      -- ^ search matches
-  , strongHintStyle    :: Style      -- ^ TODO: what is this?
+  , hintStyle          :: Style      -- ^ search matches/paren matches/other hints
+  , strongHintStyle    :: Style      -- ^ current search match
 
-  -- Syntaxt highlighting styles
+  -- Syntax highlighting styles
   , commentStyle       :: Style      -- ^ all comments
   , blockCommentStyle  :: Style      -- ^ additional only for block comments
   , keywordStyle       :: Style      -- ^ applied to language keywords
@@ -46,7 +46,6 @@ data UIStyle = UIStyle
   , variableStyle      :: Style      -- ^ any standard variable (identifier)
   , operatorStyle      :: Style      -- ^ infix operators
   }
---    deriving (Eq, Show)
 
 type StyleName = UIStyle -> Style
 
