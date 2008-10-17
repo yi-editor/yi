@@ -7,6 +7,7 @@
 
 module Shim.ProjectContent
          ( loadProject
+         , itemName
          , ProjectItem(..)
          , FileKind(..)
          , FolderKind(..)
@@ -27,6 +28,7 @@ import Distribution.Simple.Configure
 import Distribution.Simple.Utils(findFileWithExtension')
 import Distribution.Simple.PreProcess(knownSuffixHandlers)
 import Distribution.Simple.Setup (defaultDistPref)
+import Distribution.Text
 import System.FilePath
 import System.Directory
 
@@ -58,6 +60,16 @@ data ProjectItem
       }
   deriving (Eq, Ord, Show)
 
+itemName :: ProjectItem -> String
+itemName ProjectItem {projItemName = n} = n
+itemName DependenciesItem {depItemName = n} = n
+itemName FolderItem {folderItemName = n} = n
+itemName FileItem {fileItemName = n} = n
+itemName PackageItem {pkgItemName = p} = display p
+itemName ModuleItem {modItemName = m} = display m
+
+
+
 data FileKind
   = HsSource ModuleKind
   | CSource
@@ -76,6 +88,7 @@ data ModuleKind
   = ExposedModule
   | HiddenModule
   deriving (Eq, Ord, Show)
+
 
 loadProject :: FilePath -> IO (Tree ProjectItem, Tree ProjectItem)
 loadProject projPath = do

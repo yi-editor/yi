@@ -66,7 +66,7 @@ projectTreeNew post = do
                    icoSetupScript
 
   MView.cellLayoutSetAttributes col1 renderer1 projectStore $ \row -> [MView.cellPixbuf := itemIcon icos row]
-  MView.cellLayoutSetAttributes col2 renderer2 projectStore $ \row -> [MView.cellText   := itemDisplayName row]
+  MView.cellLayoutSetAttributes col2 renderer2 projectStore $ \row -> [MView.cellText   := itemName row]
 
   MView.treeViewAppendColumn projectTree col1
   MView.treeViewAppendColumn projectTree col2
@@ -123,11 +123,3 @@ folderIcon icos PlainFolder     = icoPlainFolder    icos
 moduleIcon icos ExposedModule icoE _    = icoE icos
 moduleIcon icos HiddenModule  _    icoH = icoH icos
 
-itemDisplayName item =
-  let pkg_id = PackageIdentifier (itemName item) (itemVersion item)
-
-      disp_name = case item of
-                    ProjectItem{} -> display pkg_id
-                    PackageItem{} -> display pkg_id
-                    item          -> itemName item
-  in disp_name
