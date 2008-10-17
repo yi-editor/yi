@@ -980,26 +980,6 @@ viSearch x y z = do
     PatternNotFound -> printMsg "Pattern not found"
     SearchWrapped   -> printMsg "Search wrapped"
 
--- | Try to write a file in the manner of vi\/vim
--- Need to catch any exception to avoid losing bindings
-viWrite :: YiM ()
-viWrite = do
-    mf <- withBuffer $ getA fileA
-    case mf of
-        Nothing -> errorEditor "no file name associate with buffer"
-        Just f  -> do
-            bufInfo <- withBuffer bufInfoB
-            let s   = bufInfoFileName bufInfo
-            let msg = msgEditor $ show f ++ " " ++ show s ++ " written"
-            catchJustE ioErrors (fwriteE >> msg) (msgEditor . show)
-
--- | Try to write to a named file in the manner of vi\/vim
-viWriteTo :: String -> YiM ()
-viWriteTo f = do
-    bufInfo <- withBuffer bufInfoB
-    let s   = bufInfoFileName bufInfo
-    let msg = msgEditor $ show f++" "++show s ++ " written"
-    catchJustE ioErrors (fwriteToE f >> msg) (msgEditor . show)
 
 -- | Try to do a substitution
 viSub :: String -> TextUnit -> EditorM ()

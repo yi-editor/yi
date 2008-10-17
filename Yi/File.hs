@@ -1,6 +1,7 @@
 module Yi.File 
  (
   -- * File-based actions
+  viWrite, viWriteTo,
   fwriteE,        -- :: YiM ()
   fwriteBufferE,  -- :: BufferM ()
   fwriteAllE,     -- :: YiM ()
@@ -36,6 +37,27 @@ revertE = do
                      Nothing -> do
                                 msgEditor "Can't revert, no file associated with buffer."
                                 return ()
+
+-- | Try to write a file in the manner of vi\/vim
+-- Need to catch any exception to avoid losing bindings
+viWrite :: YiM ()
+viWrite = do
+    mf <- withBuffer $ getA fileA
+    case mf of
+        Nothing -> errorEditor "no file name associate with buffer"
+        Just f  -> do
+            bufInfo <- withBuffer bufInfoB
+            let s   = bufInfoFileName bufInfo
+            fwriteE
+            msgEditor $ show f ++ " " ++ show s ++ " written"
+
+-- | Try to write to a named file in the manner of vi\/vim
+viWriteTo :: String -> YiM ()
+viWriteTo f = do
+    bufInfo <- withBuffer bufInfoB
+    let s   = bufInfoFileName bufInfo
+    fwriteToE f
+    msgEditor $ show f++" "++show s ++ " written"
 
 -- | Write current buffer to disk, if this buffer is associated with a file
 fwriteE :: YiM ()
