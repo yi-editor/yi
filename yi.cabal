@@ -242,6 +242,7 @@ executable yi
         -- --> can't use.
         build-depends: filepath>=1.1 && <1.2
         build-depends: fingertree >= 0 && <0.1
+        build-depends: ghc-paths ==0.1.*
         build-depends: parsec >= 3 && <= 3.0.2
         build-depends: unix-compat >=0.1 && <0.2
         build-depends: pureMD5 >= 0.2.3
@@ -279,7 +280,6 @@ executable yi
         if flag (ghcAPI)
           build-depends: ghc==6.8.3
           build-depends: haskell98
-          build-depends: ghc-paths >=0.1.0.5 && < 0.1.2
           cpp-options: -DGHC_API
 
         if !(flag(vty) || flag (gtk) || flag(cocoa))

@@ -24,6 +24,7 @@ import System.Exit
 import System.Environment
 import System.Console.GetOpt 
 import System.FilePath ((</>), takeDirectory)
+import qualified GHC.Paths
 
 {-
 
@@ -188,8 +189,9 @@ recompile projectName force = io $ do
         status <- bracket (openFile err WriteMode) hClose $ \h -> do
             -- note that since we checked for recompilation ourselves,
             -- we disable ghc recompilaton checks.
-            waitForProcess =<< runProcess "ghc" ["--make", projectName ++ ".hs", "-i", "-fforce-recomp", "-v0", "-o",binn,"-threaded"] (Just dir)
+            waitForProcess =<< runProcess GHC.Paths.ghc ["--make", projectName ++ ".hs", "-i", "-fforce-recomp", "-v0", "-o",binn,"-threaded"] (Just dir)
                                     Nothing Nothing Nothing (Just h)
+            -- note that we use the ghc executable used to build Yi (through GHC.Paths).
 
         -- now, if it fails, run xmessage to let the user know:
         if status /= ExitSuccess
