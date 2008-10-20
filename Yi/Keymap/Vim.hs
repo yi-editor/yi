@@ -844,10 +844,8 @@ defKeymap = Proto template
            -- command.
            fn ""           = withEditor clrStatus
 
-           fn s@(c:_) | isDigit c = do
-             e <- liftIO $ try $ evaluate $ read s
-             case e of Left _ -> errorEditor $ "The " ++show s++ " command is unknown."
-                       Right lineNum -> withBuffer (gotoLn lineNum) >> return ()
+           fn s | all isDigit s = do let lineNum = read s
+                                     withBuffer (gotoLn lineNum) >> return ()
 
            fn "w"          = viWrite
            fn ('w':' ':f)  = viWriteTo $ dropSpace f
