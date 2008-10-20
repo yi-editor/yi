@@ -9,10 +9,10 @@ type Theme = Proto UIStyle
 -- | Abstract theme that provides useful defaults.
 defaultTheme :: Theme
 defaultTheme = Proto $ const $ UIStyle
-  { modelineAttributes = error "modeline must be redefined!"
+  { modelineAttributes = error "modeline attributes must be redefined!"
   , modelineFocusStyle = withFg brightwhite
 
-  , baseAttributes     = error "window must be redefined!"
+  , baseAttributes     = error "base attributes must be redefined!"
 
   , selectedStyle      = withFg Reverse `mappend` withBg Reverse
   , eofStyle           = withFg blue
