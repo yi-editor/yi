@@ -513,7 +513,9 @@ newGtkBuffer ui b = do
   replaceTagsIn ui (mkRegion 0 sz) b buf
   return buf
 
-toColor :: Bool -> Style.Color -> Gtk.Color
-toColor fg Default = let c = if fg then 0xff else 0 in Color c c c
-toColor fg Reverse = let c = if fg then 0 else 0xff in Color c c c
-toColor _g (RGB r g b) = Color (fromIntegral r * 0xff) (fromIntegral g * 0xff) (fromIntegral b * 0xff)
+-- | Convert a color to Gtk counterpart. 
+toColor :: Bool -> -- ^ is the color intended to be used as Foreground?
+           Style.Color -> Gtk.Color
+toColor fg Default = let c = if fg then 0xffff else 0 in Color c c c
+toColor fg Reverse = let c = if fg then 0 else 0xffff in Color c c c
+toColor _fg (RGB r g b) = Color (fromIntegral r * 0xff) (fromIntegral g * 0xff) (fromIntegral b * 0xff)
