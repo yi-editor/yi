@@ -33,9 +33,13 @@ toList (Trie b m) =
 
 -- | Takes a trie and a prefix and returns the sub-trie that
 -- of words with that prefix
-lookupPrefix :: (Monad m) => String -> Trie -> m Trie
+lookupPrefix :: (MonadPlus m) => String -> Trie -> m Trie
 lookupPrefix [] trie = return trie
-lookupPrefix (x:xs) (Trie _ m) = Map.lookup x m >>= lookupPrefix xs
+lookupPrefix (x:xs) (Trie _ m) = liftMaybe (Map.lookup x m) >>= lookupPrefix xs
+
+liftMaybe :: MonadPlus m => Maybe a -> m a
+liftMaybe Nothing = mzero
+liftMaybe (Just x) = return x
 
 -- | Finds the longest certain path down the trie starting at a the root
 -- Invariant Assumption: All paths have at least one 'true' node below them

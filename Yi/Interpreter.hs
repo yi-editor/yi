@@ -72,8 +72,9 @@ rename :: Env -> UExpr Atom -> Either Err (UExpr [Dynamic])
 rename env = mapM renameOne
     where
       renameOne (AVar v) = do
-        val <- M.lookup v env
-        return val
+        case M.lookup v env of
+          Just x -> Right x
+          Nothing -> Left $ v ++ " not found in the environment"
       renameOne (AChar x) = box x
       renameOne (AString x) = box x
       renameOne (AInt x) = box x

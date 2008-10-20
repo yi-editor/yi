@@ -4,7 +4,7 @@ import Yi.Keymap.Emacs (keymap)
 -- import  Yi.Keymap.Cua (keymap)
 
 -- If configured with ghcAPI, Shim Mode can be enabled:
-import qualified Yi.Mode.Shim as Shim
+-- import qualified Yi.Mode.Shim as Shim
 import Yi.Mode.Haskell as Haskell
 import Data.List (drop)
 import Yi.Prelude
@@ -19,7 +19,10 @@ increaseIndent = modifyExtendedSelectionB Line $ mapLines (' ':)
 decreaseIndent :: BufferM ()
 decreaseIndent = modifyExtendedSelectionB Line $ mapLines (drop 1)
 
-bestHaskellMode = Shim.minorMode $ Haskell.cleverMode 
+bestHaskellMode = 
+                  -- uncomment for shim:
+                  -- Shim.minorMode $ 
+                  Haskell.cleverMode 
                        -- Haskell.preciseMode
                        {
                         -- example of Mode-local rebinding
@@ -27,8 +30,6 @@ bestHaskellMode = Shim.minorMode $ Haskell.cleverMode
                                               ctrlCh 'c' ?>> ctrl (char 'z') ?>>! ghciGet
                                              ]
                                       <||)  
-                         -- uncomment this for Shim (dot is important!)
-                         -- . modeKeymap Shim.mode
                        }
 greek :: [(String, String)]
 greek = [("alpha", "α"),
