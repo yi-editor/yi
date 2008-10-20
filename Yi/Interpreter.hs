@@ -12,7 +12,7 @@ import Text.ParserCombinators.Parsec.Language (haskell)
 import Control.Applicative
 import Text.ParserCombinators.Parsec.Token
 import qualified Text.ParserCombinators.Parsec as Parsec
-import Text.ParserCombinators.Parsec (GenParser, chainl1)
+import Text.ParserCombinators.Parsec (chainl1)
 import qualified Data.Map as M
 import Data.Traversable
 import Prelude hiding (mapM)

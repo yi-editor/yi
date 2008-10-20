@@ -5,7 +5,7 @@ import Yi.WindowSet
 
 import Data.Traversable
 import Control.Monad.Identity
-import Text.Show.Functions
+import Text.Show.Functions ()
 
 main :: IO ()
 main = Driver.main tests
@@ -25,5 +25,4 @@ tests =
      ("WindowSet prop_traversable" , mytest (prop_traversable :: WindowSet Int -> (Int -> Int) -> Bool))
     ]
 
--- instance Show (a -> b) where
---    show f = "<func>"
+

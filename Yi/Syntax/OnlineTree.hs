@@ -1,11 +1,13 @@
-module Yi.Syntax.OnlineTree (Tree(..), parse, dropToIndex, dropBut) where
-import Prelude hiding (foldl)
+module Yi.Syntax.OnlineTree (Tree(..), parse, dropToIndex) where
+import Prelude ()
+import Yi.Prelude
 import Yi.IncrementalParse
 import Control.Applicative
 import Data.Traversable
 import Data.Foldable
 import Yi.Lexer.Alex
 import Yi.Buffer.Basic (Point)
+
 
 data Tree a = Node a (Tree a) (Tree a)
             | Leaf
@@ -21,27 +23,32 @@ instance Foldable Tree where
 instance Functor Tree where
     fmap = fmapDefault
 
+case_ :: (Maybe s -> Bool) -> P s a -> P s a -> P s a
 case_ f true false = ((lookNext f) *> true) <|> (lookNext (not . f) *> false)
 
 symbolBefore :: Point -> Maybe (Tok t) -> Bool
 symbolBefore _ Nothing = False
 symbolBefore p (Just x) = tokBegin x <= p
 
-factor = 2
-initialLeftSize = 2
+factor :: Int
+factor = 2  
+
+initialLeftSize :: Size
+initialLeftSize = 2 
 
 parse = parse' initialLeftSize 0 maxBound
 
 -- Invariant: all symbols are after the l
 -- | Parse all the symbols starting in the interval [lb, rb[
+parse' :: Size -> Point -> Point -> P (Tok t) (Tree (Tok t))
 parse' leftSize lB rB
    | rB <= lB = pure Leaf
    | otherwise = case_ (symbolBefore rB)
        (Node <$> symbol (const True)
-             <*> parse' factor               lB   midB
-             <*> parse' (leftSize * factor)  midB rB)
+             <*> parse' initialLeftSize      lB   midB
+             <*> parse' (leftSize * fromIntegral factor)  midB rB)
        (pure Leaf) 
-  where midB = min rB (lB + leftSize)
+  where midB = min rB (lB +~ leftSize)
     -- NOTE: eof here is important for performance (otherwise the
     -- parser would have to keep this case until the very end of input
     -- is reached.
@@ -49,31 +56,15 @@ parse' leftSize lB rB
 toEndo Leaf = id
 toEndo (Node x l r) = (x :) . toEndo l . toEndo r
 
-toReverseList = foldl (flip (:)) []
-
-type E a = a -> a
-
-dropBut amount t = drop' initialLeftSize id t amount []
-  where
-    -- drop' :: Int -> E [a] -> Tree a -> Int -> E [a]
-    drop' leftsize prec Leaf n = prec
-    drop' leftsize prec t@(Node x l r) index
-        | index <= 0 = prec . toEndo t
-        | index <  leftsize = drop' initialLeftSize     (x :)         l (index)            . toEndo r
-        | otherwise         = drop' (leftsize * factor) (last prec l) r (index - leftsize)
-    last :: E [a] -> Tree a -> [a] -> [a]
-    last prec t = case toReverseList t of
-        (x:xs) -> (x :)
-        _ -> prec
-
+dropToIndex :: Point -> Tree t -> [t]
 dropToIndex index t = dropHelp initialLeftSize t index []
 
--- dropHelp :: Int -> Tree a -> Int -> [a] -> [a]
-dropHelp leftsize Leaf n = id
-dropHelp leftsize t@(Node x l r) index
-    | index <  leftsize = (x :) . dropHelp initialLeftSize     l index . toEndo  r
+dropHelp :: Size -> Tree a -> Point -> [a] -> [a]
+dropHelp _leftsize Leaf _n = id
+dropHelp leftsize (Node x l r) index
+    | fromIntegral index <  leftsize = (x :) . dropHelp initialLeftSize     l index . toEndo  r
     -- the head is speculatively put in the result; but it does not matter, since we
     -- add only O(log n) elements this way.
-    | otherwise         = (x :) . dropHelp (leftsize * factor) r  (index - leftsize)
+    | otherwise         = (x :) . dropHelp (leftsize * fromIntegral factor) r  (index -~ leftsize)
 
 

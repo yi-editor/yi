@@ -19,7 +19,6 @@ import Data.Prototype
 import Numeric (showHex, showOct)
 import System.IO (readFile)
 
-import Control.Exception    (try, evaluate)
 import Control.Monad.State hiding (mapM_, mapM)
 
 import {-# source #-} Yi.Boot
@@ -330,7 +329,7 @@ defKeymap = Proto template
      continueSearching fdir = do
        m <- getRegexE
        dir <- fdir <$> getA searchDirectionA 
-       printMsg $ direction '?' '/' dir : maybe "" fst m
+       printMsg $ directionElim dir '?' '/' : maybe "" fst m
        viSearch "" [] dir
 
      -- | cmd mode commands

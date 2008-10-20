@@ -162,6 +162,7 @@ data UIUpdate = TextUpdate !Update
 --------------------------------------------------
 -- Low-level primitives.
 
+dummyHlState :: HLState syntax
 dummyHlState = (HLState noHighlighter (hlStartState noHighlighter))
 
 -- | New FBuffer filled from string.
@@ -424,13 +425,6 @@ searchBI dir s fb = fmap Point $ case dir of
     -- FIXME: backward search is inefficient.
     where Point pnt = pointBI fb -- pnt == current point
           ptr = mem fb
-
-offsetToEolBI fb = Size $ case (F.elemIndices newLine) (F.drop point s) of
-                     [] -> F.length s - point
-                     (x:_) -> x
-    where s = mem fb
-          Point point = pointBI fb
-                   
 
 offsetFromSolBI :: BufferImpl syntax -> Size
 offsetFromSolBI fb = Size (pnt - maybe 0 (1 +) (F.elemIndexEnd newLine (F.take pnt ptr)))

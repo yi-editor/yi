@@ -88,8 +88,8 @@ fwriteToE f = do
 -- | Write all open buffers
 fwriteAllE :: YiM ()
 fwriteAllE = 
-  do buffers <- withEditor getBuffers
-     let modifiedBuffers = filter (not . isUnchangedBuffer) buffers
+  do allBuffs <- withEditor getBuffers
+     let modifiedBuffers = filter (not . isUnchangedBuffer) allBuffs
      mapM_ fwriteBufferE (fmap bkey modifiedBuffers)
 
 -- | Make a backup copy of file

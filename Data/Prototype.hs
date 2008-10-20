@@ -21,6 +21,7 @@ newtype Proto a = Proto {fromProto :: a -> a}
 
 -- | Get the value of a prototype.
 -- This can return bottom in case some fields are recursively defined in terms of each other.
+extractValue :: Proto t -> t
 extractValue (Proto o) = fix o
 
 -- | Override a prototype. Fields can be defined in terms of their definition in the base prototype.
@@ -38,6 +39,7 @@ override (Proto base) extension = Proto (\self -> let super = base self
                                                   in extension super self)
 
 -- | Field access
+(.->) :: forall t a. Proto t -> (t -> a) -> a
 p .-> f = f (extractValue p)
 
 

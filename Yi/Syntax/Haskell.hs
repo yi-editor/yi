@@ -116,10 +116,11 @@ getIndentingSubtree roots offset line =
 -- 
 -- isBefore' l (Tok {tokPosn = Posn {posnLn = l'}}) = 
 
+isEmpty :: Tree t -> Bool
 isEmpty Empty = True
 isEmpty _ = False
 
--- parse :: P TT [Tree TT0
+parse :: P TT (Tree TT)
 parse = parse' tokT tokFromT
 
 parse' :: (TT -> Token) -> (Token -> TT) -> P TT (Tree TT)

@@ -29,9 +29,9 @@ mayReverse Backward = reverse
 -- | 'direction' is in the same style of 'maybe' or 'either' functions,
 -- It takes one argument per direction (backward, then forward) and a
 -- direction to select the output.
-direction :: a -> a -> Direction -> a
-direction b _ Backward = b
-direction _ f Forward  = f
+directionElim :: Direction -> a -> a -> a
+directionElim Backward b _ = b
+directionElim Forward  _ f = f
 
 -- | A mark in a buffer
 newtype Mark = Mark {markId::Int} deriving (Eq, Ord, Show, Typeable, Binary)
