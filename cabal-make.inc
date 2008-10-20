@@ -174,21 +174,4 @@ darcs-tag:
 	darcs tag $(version)
 
 
-# Automatically add yourself to the watch list of all project talk pages.
-# There's one talk page for the project and one for each module.
-watch-comments:
-	$(BROWSER) "$(comments)&action=watch" ;\
-	for file in $(slash-modules); do \
-	  $(BROWSER) "$(comments)/$$file&action=watch"; \
-	done; \
-	echo Now watching all talk pages for $(package)
-
-
-sdist: $(cabal_config) $(paths_file)
-	./setup sdist
-
-$(paths_file): dist/build/autogen/$(paths_file)
-	cp $< $@
-
-
 
