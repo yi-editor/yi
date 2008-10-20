@@ -468,7 +468,8 @@ emptyMode = Mode
    { expandTabs = True
    , tabSize = 8
    , shiftWidth = 4
-   }
+   },
+   modeToggleCommentSelection = fail "'comment selection' not defined for this mode"
   }
 
 -- | Create buffer named @nm@ with contents @s@
