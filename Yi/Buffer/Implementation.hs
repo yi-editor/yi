@@ -32,7 +32,6 @@ module Yi.Buffer.Implementation
   , curLnI
   , newBI
   , gotoLnRelI
---  , offsetFromSolBI
   , charsFromSolBI
   , searchBI
   , regexRegionBI
@@ -426,10 +425,6 @@ searchBI dir s fb = fmap Point $ case dir of
     where Point pnt = pointBI fb -- pnt == current point
           ptr = mem fb
 
-offsetFromSolBI :: BufferImpl syntax -> Size
-offsetFromSolBI fb = Size (pnt - maybe 0 (1 +) (F.elemIndexEnd newLine (F.take pnt ptr)))
-    where Point pnt = pointBI fb
-          ptr = mem fb
 
 charsFromSolBI :: BufferImpl syntax -> String
 charsFromSolBI fb = LazyUTF8.toString $ F.toLazyByteString $ readChunk ptr (Size (pnt - sol)) (Point sol)
