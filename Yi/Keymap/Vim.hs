@@ -87,7 +87,11 @@ defKeymap = Proto template
      -- | Top level consists of simple commands that take a count arg,
      -- the replace cmd, which consumes one char of input, and commands
      -- that switch modes.
-     def_top_level = choice [cmd_eval,cmd_move,cmd2other,cmd_op]
+     def_top_level = do write clrStatus
+                        -- if the keymap "crashed" we restart here
+                        -- so we clear the status line to indicate whatever mode we were in
+                        -- has been left
+                        choice [cmd_eval,cmd_move,cmd2other,cmd_op]
 
      -- | Replace mode is like insert, except it performs writes, not inserts
      rep_mode :: VimMode
@@ -102,7 +106,7 @@ defKeymap = Proto template
      vis_mode selectionStyle = do
        write (setVisibleSelection True >> pointB >>= setSelectionMarkPointB)
        core_vis_mode selectionStyle
-       write (msgClr >> withBuffer0 (setVisibleSelection False) >> withBuffer0 resetSelectStyle)
+       write (clrStatus >> withBuffer0 (setVisibleSelection False) >> withBuffer0 resetSelectStyle)
 
      core_vis_mode :: SelectionStyle -> VimMode
      core_vis_mode selectionStyle = do
@@ -838,7 +842,7 @@ defKeymap = Proto template
 
            -- fn maps from the text entered on the command line to a YiM () implementing the 
            -- command.
-           fn ""           = withEditor msgClr
+           fn ""           = withEditor clrStatus
 
            fn s@(c:_) | isDigit c = do
              e <- liftIO $ try $ evaluate $ read s
@@ -997,11 +1001,11 @@ viSub cs unit = do
 
     where do_single p r g = do
                 s <- searchAndRepUnit p r g unit
-                if not s then fail ("Pattern not found: "++p) else msgClr
+                if not s then fail ("Pattern not found: "++p) else clrStatus
 
 -- | Leave a mode. This always has priority over catch-all actions inside the mode.
 leave :: VimMode
-leave = oneOf [spec KEsc, ctrl $ char 'c'] >> adjustPriority (-1) >> (write msgClr)
+leave = oneOf [spec KEsc, ctrl $ char 'c'] >> adjustPriority (-1) >> (write clrStatus)
 
 -- | Insert mode is either insertion actions, or the meta (\ESC) action
 ins_mode :: ModeMap -> VimMode

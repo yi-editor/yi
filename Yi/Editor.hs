@@ -298,8 +298,8 @@ setStatus :: Status -> EditorM ()
 setStatus = setTmpStatus maxBound
 
 -- | Clear the status line
-msgClr :: EditorM ()
-msgClr = setStatus ("", defaultStyle)
+clrStatus :: EditorM ()
+clrStatus = setStatus ("", defaultStyle)
 
 statusLine :: Editor -> String
 statusLine = fst . statusLineInfo
