@@ -275,7 +275,8 @@ handleClick ui w event = do
             p0 <- withGivenBuffer0 b $ pointB
             if p1 == p0
               then withGivenBuffer0 b $ setVisibleSelection False
-              else do txt <- withGivenBuffer0 b $ do setMarkPointB staticSelMark p1
+              else do txt <- withGivenBuffer0 b $ do m <- selMark <$> askMarks
+                                                     setMarkPointB m p1
                                                      let [i,j] = sort [p1,p0]
                                                      nelemsB' (j~-i) i
                       setRegE txt
@@ -406,7 +407,7 @@ refresh ui e = do
            gtkBuf <- getGtkBuffer ui buf
 
            let (Point p0) = fst $ runBuffer win buf pointB
-           let (Point p1) = fst $ runBuffer win buf (getMarkPointB staticSelMark)
+           let (Point p1) = fst $ runBuffer win buf (getMarkPointB =<< selMark <$> askMarks)
            let (showSel) = fst $ runBuffer win buf (getA highlightSelectionA)
            i <- textBufferGetIterAtOffset gtkBuf p0
            if showSel 

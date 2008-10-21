@@ -297,7 +297,8 @@ handleMove ui w p0 event = do
         txt <- withBuffer0 $ do
            if p0 /= p1 
             then Just <$> do
-              setMarkPointB staticSelMark p0
+              m <- selMark <$> askMarks
+              setMarkPointB m p0
               moveTo p1
               setVisibleSelection True
               readRegionB =<< getSelectRegionB
@@ -487,7 +488,7 @@ prepareAction ui = do
     return $ do
       let updWin w r = do
              withGivenBufferAndWindow0 w (bufkey w) $ do
-                 Just (WinMarks f _ _ t) <- getMarks w
+                 Just (MarkSet f _ _ t) <- getMarks w
                  setMarkPointB f (regionStart r)
                  setMarkPointB t (regionEnd   r)
       -- TODO: also update height and bos.
