@@ -467,10 +467,6 @@ decodeBack (x:xs)
     | otherwise           = x : decodeBack xs    -- continue
 
 
-insertGravity, selectionGravity :: Direction
-insertGravity = Forward
-selectionGravity = Backward
-
 ------------------------------------------------------------------------
 
 -- | Returns the requested mark, creating a new mark with that name (at point 0) if needed

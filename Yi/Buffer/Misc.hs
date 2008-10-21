@@ -154,6 +154,13 @@ type WinMarks = MarkSet Mark
 
 data MarkSet a = MarkSet { fromMark, insMark, selMark, toMark :: !a }
 
+instance Traversable MarkSet where
+    traverse f (MarkSet a b c d) = MarkSet <$> f a <*> f b <*> f c <*> f d
+instance Foldable MarkSet where
+    foldMap = foldMapDefault
+instance Functor MarkSet where
+    fmap = fmapDefault
+
 instance Binary WinMarks where
     put (MarkSet f i s t) = put f >> put i >> put s >> put t
     get = MarkSet <$> get <*> get <*> get <*> get
@@ -410,15 +417,15 @@ runBufferFull w b f =
                 newMarkValues <- if lastActiveWindow b == dummyWindowKey
                     then return
                         -- no previous window, create some marks from scratch.
-                         [ MarkValue 0 Forward, -- ins
-                           MarkValue 0 Backward, -- sel
-                           MarkValue 0 Backward, -- from
-                           MarkValue 0 Forward ] -- to
+                         MarkSet { insMark = MarkValue 0 Forward,
+                                   selMark = MarkValue 0 Backward, -- sel
+                                   fromMark = MarkValue 0 Backward, -- from
+                                   toMark = MarkValue 0 Forward } -- to
                     else do
-                        Just (MarkSet ins sel fr to) <- getsA winMarksA (M.lookup $ lastActiveWindow b)
-                        forM [ins, sel, fr, to] $ getMarkValueB
-                [ins, sel, fr, to] <- forM newMarkValues newMarkB
-                modifyA winMarksA (M.insert (wkey w) (MarkSet ins sel fr to))
+                        Just mrks  <- getsA winMarksA (M.lookup $ lastActiveWindow b)
+                        forM mrks getMarkValueB
+                newMrks <- forM newMarkValues newMarkB
+                modifyA winMarksA (M.insert (wkey w) newMrks)
             setA lastActiveWindowA (wkey w)
             f
     in (a, updates, modifier pendingUpdatesA (++ fmap TextUpdate updates) b')
