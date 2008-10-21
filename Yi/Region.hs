@@ -17,6 +17,7 @@ module Yi.Region
   , fmapRegion
   , intersectRegion
   , unionRegion
+  , regionFirst, regionLast
   )
 where
 import Yi.Buffer.Basic
@@ -38,6 +39,15 @@ instance Show Region where
                Backward -> " <- " 
              ) ++ 
              show (regionEnd r)
+
+regionFirst :: Region -> Point
+regionFirst (Region Forward p _) = p
+regionFirst (Region Backward _ p) = p
+
+regionLast :: Region -> Point
+regionLast (Region Forward _ p) = p
+regionLast (Region Backward p _) = p
+
 
 fmapRegion :: (Point -> Point) -> Region -> Region
 fmapRegion f (Region d x y) = Region d (f x) (f y)

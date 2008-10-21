@@ -297,7 +297,7 @@ drawWindow cfg mre b sty focused w win = (Rendered { picture = pict,cursor = cur
         region = mkSizeRegion fromMarkPoint (Size (w*h'))
         -- Work around a problem with the mini window never displaying it's contents due to a
         -- fromMark that is always equal to the end of the buffer contents.
-        (Just (WinMarks fromM _ _ toM), _) = runBuffer win b (getMarks win)
+        (Just (MarkSet fromM _ _ toM), _) = runBuffer win b (getMarks win)
         fromMarkPoint = if notMini
                             then fst $ runBuffer win b (getMarkPointB fromM)
                             else Point 0

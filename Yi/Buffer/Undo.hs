@@ -99,12 +99,12 @@ setSavedFilePointU (URList undos redos) =
   isNotSavedFilePoint _              = True
 
 -- | This undoes one interaction step.
-undoU :: URList -> BufferImpl syntax -> (BufferImpl syntax, (URList, [Update]))
-undoU ur b = undoUntilInteractive [] (undoInteractive ur) b
+undoU :: Mark -> URList -> BufferImpl syntax -> (BufferImpl syntax, (URList, [Update]))
+undoU m ur b = undoUntilInteractive m [] (undoInteractive ur) b
 
 -- | This redoes one iteraction step.
-redoU :: URList -> BufferImpl syntax -> (BufferImpl syntax, (URList, [Update]))
-redoU = asRedo undoU
+redoU :: Mark -> URList -> BufferImpl syntax -> (BufferImpl syntax, (URList, [Update]))
+redoU m = asRedo (undoU m)
 
 -- | Prepare undo by moving one interaction point from undoes to redoes.
 undoInteractive :: URList -> URList
@@ -122,18 +122,26 @@ addIP xs = InteractivePoint:xs
     
 -- | Repeatedly undo actions, storing away the inverse operations in the
 --   redo list.
-undoUntilInteractive :: [Update] -> URList -> BufferImpl syntax -> (BufferImpl syntax, (URList, [Update]))
-undoUntilInteractive xs ur@(URList cs rs) b = case cs of
-  []                   -> (b, (ur, xs))
-  [SavedFilePoint]     -> (b, (ur, xs)) -- Why this special case?
-  (InteractivePoint:_) -> (b, (ur, xs))
-  (SavedFilePoint:cs') ->
-    undoUntilInteractive xs (URList cs' (SavedFilePoint:rs)) b
-  (AtomicChange u:cs') -> 
-    let ur' = (URList cs' (AtomicChange (reverseUpdateI u):rs))
-        b' = (applyUpdateWithMoveI u b)
-        (b'', (ur'', xs'')) = undoUntilInteractive xs ur' b'
-    in (b'', (ur'', u:xs''))
+undoUntilInteractive :: Mark -> [Update] -> URList -> BufferImpl syntax -> (BufferImpl syntax, (URList, [Update]))
+undoUntilInteractive pointMark xs ur@(URList cs rs) b = case cs of
+      []                   -> (b, (ur, xs))
+      [SavedFilePoint]     -> (b, (ur, xs)) -- Why this special case?
+      (InteractivePoint:_) -> (b, (ur, xs))
+      (SavedFilePoint:cs') ->
+        undoUntilInteractive pointMark xs (URList cs' (SavedFilePoint:rs)) b
+      (AtomicChange u:cs') -> 
+        let ur' = (URList cs' (AtomicChange (reverseUpdateI u):rs))
+            b' = (applyUpdateWithMoveI u b)
+            (b'', (ur'', xs'')) = undoUntilInteractive pointMark xs ur' b'
+        in (b'', (ur'', u:xs''))
+    where
+      -- | Apply a /valid/ update and also move point in buffer to update position
+      applyUpdateWithMoveI :: Update -> BufferImpl syntax -> BufferImpl syntax
+      applyUpdateWithMoveI u = case updateDirection u of
+                                 Forward ->  apply . move
+                                 Backward -> move . apply
+          where move = modifyMarkBI pointMark (\v -> v {markPoint = updatePoint u})
+                apply = applyUpdateI u
 
 -- | Run the undo-function @f@ on a swapped URList making it
 --   operate in a redo fashion instead of undo.

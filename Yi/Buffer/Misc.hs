@@ -9,7 +9,7 @@
 module Yi.Buffer.Misc
   ( FBuffer (..)
   , BufferM (..)
-  , WinMarks (..)
+  , WinMarks, MarkSet (..)
   , getMarks
   , runBuffer
   , runBufferFull
@@ -96,6 +96,7 @@ module Yi.Buffer.Misc
   , streamB
   , indexedStreamB
   , getMarkPointB
+  , askMarks
   , pointAt
   , fileA
   , nameA
@@ -114,10 +115,11 @@ import Yi.Syntax
 import Yi.Buffer.Undo
 import Yi.Dynamic
 import Yi.Window
-import Control.Monad.RWS.Strict hiding (mapM_, mapM, get, put)
+import Control.Monad.RWS.Strict hiding (mapM_, mapM, get, put, forM)
 import Data.Binary
 import Data.List (scanl, takeWhile, zip, length)
 import qualified Data.Map as M
+import Data.Maybe
 import Data.Typeable
 import {-# source #-} Yi.Keymap
 import Yi.Monad
@@ -148,11 +150,13 @@ import Driver ()
 --  * Log of updates mades
 --  * Undo
 
-data WinMarks = WinMarks { fromMark, insMark, selMark, toMark :: !Mark }
+type WinMarks = MarkSet Mark
+
+data MarkSet a = MarkSet { fromMark, insMark, selMark, toMark :: !a }
 
 instance Binary WinMarks where
-    put (WinMarks f i s t) = put f >> put i >> put s >> put t
-    get = WinMarks <$> get <*> get <*> get <*> get
+    put (MarkSet f i s t) = put f >> put i >> put s >> put t
+    get = MarkSet <$> get <*> get <*> get <*> get
 
 data FBuffer = forall syntax.
         FBuffer { name   :: !String               -- ^ immutable buffer name
@@ -169,23 +173,24 @@ data FBuffer = forall syntax.
                 , highlightSelection :: !Bool
                 , process :: !KeymapProcess
                 , winMarks :: !(M.Map WindowRef WinMarks)
+                , lastActiveWindow :: !WindowRef
                 }
         deriving Typeable
 
 -- unfortunately the dynamic stuff can't be read.
 instance Binary FBuffer where
-    put (FBuffer n b f u r bmode pd _bd pc pu hs _proc wm)  =
+    put (FBuffer n b f u r bmode pd _bd pc pu hs _proc wm law)  =
       let strippedRaw :: BufferImpl ()
           strippedRaw = (setSyntaxBI (modeHL emptyMode) r) 
       in do
           put (modeName bmode)
           put n >> put b >> put f >> put u >> put strippedRaw
           put pd >> put pc >> put pu >> put hs >> put wm
-    
+          put law
     get = do
         mnm <- get
         FBuffer <$> get <*> get <*> get <*> get <*> getStripped <*>
-          pure (emptyMode {modeName = mnm}) <*> get <*> pure emptyDV <*> get <*> get <*> get <*> pure I.End <*> get
+          pure (emptyMode {modeName = mnm}) <*> get <*> pure emptyDV <*> get <*> get <*> get <*> pure I.End <*> get <*> get
         where getStripped :: Get (BufferImpl ())
               getStripped = get
 
@@ -194,65 +199,70 @@ clearSyntax :: FBuffer -> FBuffer
 clearSyntax = modifyRawbuf updateSyntax
 
 modifyRawbuf :: (forall syntax. BufferImpl syntax -> BufferImpl syntax) -> FBuffer -> FBuffer
-modifyRawbuf f (FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 f13) = 
-    (FBuffer f1 f2 f3 f4 (f f5) f6 f7 f8 f9 f10 f11 f12 f13)
+modifyRawbuf f (FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 f13 f14) = 
+    (FBuffer f1 f2 f3 f4 (f f5) f6 f7 f8 f9 f10 f11 f12 f13 f14)
 
 queryAndModifyRawbuf :: (forall syntax. BufferImpl syntax -> (BufferImpl syntax,x)) ->
                      FBuffer -> (FBuffer, x)
-queryAndModifyRawbuf f (FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 f13) = 
+queryAndModifyRawbuf f (FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 f13 f14) = 
     let (f5', x) = f f5
-    in (FBuffer f1 f2 f3 f4 f5' f6 f7 f8 f9 f10 f11 f12 f13, x)
+    in (FBuffer f1 f2 f3 f4 f5' f6 f7 f8 f9 f10 f11 f12 f13 f14, x)
+
+lastActiveWindowA :: Accessor FBuffer WindowRef
+lastActiveWindowA = Accessor lastActiveWindow (\f e -> case e of 
+                                   FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 f13 f14 -> 
+                                    FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 f13 (f f14))
 
 pointDriveA :: Accessor FBuffer Bool
 pointDriveA = Accessor pointDrive (\f e -> case e of 
-                                   FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 f13 -> 
-                                    FBuffer f1 f2 f3 f4 f5 f6 (f f7) f8 f9 f10 f11 f12 f13)
+                                   FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 f13 f14 -> 
+                                    FBuffer f1 f2 f3 f4 f5 f6 (f f7) f8 f9 f10 f11 f12 f13 f14)
 
 
 undosA :: Accessor (FBuffer) (URList)
 undosA = Accessor undos (\f e -> case e of 
-                                   FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 f13 -> 
-                                    FBuffer f1 f2 f3 (f f4) f5 f6 f7 f8 f9 f10 f11 f12 f13)
+                                   FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 f13 f14 -> 
+                                    FBuffer f1 f2 f3 (f f4) f5 f6 f7 f8 f9 f10 f11 f12 f13 f14)
 
 fileA :: Accessor (FBuffer) (Maybe FilePath)
 fileA = Accessor file (\f e -> case e of 
-                                   FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 f13 -> 
-                                    FBuffer f1 f2 (f f3) f4 f5 f6 f7 f8 f9 f10 f11 f12 f13)
+                                   FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 f13 f14 -> 
+                                    FBuffer f1 f2 (f f3) f4 f5 f6 f7 f8 f9 f10 f11 f12 f13 f14)
 
 preferColA :: Accessor (FBuffer) (Maybe Int)
 preferColA = Accessor preferCol (\f e -> case e of 
-                                   FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 f13 -> 
-                                    FBuffer f1 f2 f3 f4 f5 f6 f7 f8 (f f9) f10 f11 f12 f13)
+                                   FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 f13 f14 -> 
+                                    FBuffer f1 f2 f3 f4 f5 f6 f7 f8 (f f9) f10 f11 f12 f13 f14)
 
 bufferDynamicA :: Accessor (FBuffer) (DynamicValues)
 bufferDynamicA = Accessor bufferDynamic (\f e -> case e of 
-                                   FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 f13 -> 
-                                    FBuffer f1 f2 f3 f4 f5 f6 f7 (f f8) f9 f10 f11 f12 f13)
+                                   FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 f13 f14 -> 
+                                    FBuffer f1 f2 f3 f4 f5 f6 f7 (f f8) f9 f10 f11 f12 f13 f14)
 
 pendingUpdatesA :: Accessor (FBuffer) ([UIUpdate])
 pendingUpdatesA = Accessor pendingUpdates (\f e -> case e of 
-                                   FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 f13 -> 
-                                    FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 (f f10) f11 f12 f13)
+                                   FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 f13 f14 -> 
+                                    FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 (f f10) f11 f12 f13 f14)
 
 highlightSelectionA :: Accessor FBuffer Bool
 highlightSelectionA = Accessor highlightSelection (\f e -> case e of 
-                                   FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 f13 -> 
-                                    FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 (f f11) f12 f13)
+                                   FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 f13 f14 -> 
+                                    FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 (f f11) f12 f13 f14)
 
 nameA :: Accessor FBuffer String
 nameA = Accessor name (\f e -> case e of 
-                                   FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 f13 -> 
-                                    FBuffer (f f1) f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 f13)
+                                   FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 f13 f14 -> 
+                                    FBuffer (f f1) f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 f13 f14)
 
 keymapProcessA :: Accessor FBuffer KeymapProcess
 keymapProcessA = Accessor process (\f e -> case e of 
-                                   FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 f13 -> 
-                                    FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 (f f12) f13)
+                                   FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 f13 f14 -> 
+                                    FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 (f f12) f13 f14)
 
 winMarksA :: Accessor FBuffer (M.Map Int WinMarks)
 winMarksA = Accessor winMarks (\f e -> case e of 
-                                   FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 f13 -> 
-                                    FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 (f f13))
+                                   FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 f13 f14 -> 
+                                    FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 (f f13) f14)
 
 
 
@@ -354,7 +364,7 @@ getPercent a b = show p ++ "%"
     where p = ceiling ((fromIntegral a) / (fromIntegral b) * 100 :: Double) :: Int
 
 queryBuffer :: (forall syntax. BufferImpl syntax -> x) -> (BufferM x)
-queryBuffer f = gets (\(FBuffer _ _ _ _ fb _ _ _ _ _ _ _ _) -> f fb)
+queryBuffer f = gets (\(FBuffer _ _ _ _ fb _ _ _ _ _ _ _ _ _) -> f fb)
 
 modifyBuffer :: (forall syntax. BufferImpl syntax -> BufferImpl syntax) -> BufferM ()
 modifyBuffer f = modify (modifyRawbuf f)
@@ -388,34 +398,33 @@ runBuffer w b f =
 getMarks :: Window -> BufferM (Maybe WinMarks)
 getMarks w = do
     getsA winMarksA (M.lookup $ wkey w) 
-    
+ 
+
 runBufferFull :: Window -> FBuffer -> BufferM a -> (a, [Update], FBuffer)
 runBufferFull w b f = 
     let (a, b', updates) = runRWS (fromBufferM f') w b
         f' = do
             ms <- getMarks w
-            (i,s) <- case ms of
-               Just (WinMarks _ i s _) -> do
-                   copyMark i staticInsMark
-                   copyMark s staticSelMark
-                   return (i,s)
-               Nothing -> do
-                   -- copy marks from random window.
-                   (_, WinMarks fr i s t) <- M.findMax <$> getA winMarksA
-                   markValues <- mapM getMarkValueB [fr, i, s, t]
-                   [newFrom, newIns, newSel, newTo] <- mapM newMarkB markValues
-                   modifyA winMarksA (M.insert (wkey w) (WinMarks newFrom newIns newSel newTo))
-                   return (newIns,newSel)
-            f <* copyMark staticInsMark i <* copyMark staticSelMark s
+            when (isNothing ms) $ do
+                -- this window has no marks for this buffer yet; have to create them.
+                newMarkValues <- if lastActiveWindow b == dummyWindowKey
+                    then return
+                        -- no previous window, create some marks from scratch.
+                         [ MarkValue 0 Forward, -- ins
+                           MarkValue 0 Backward, -- sel
+                           MarkValue 0 Backward, -- from
+                           MarkValue 0 Forward ] -- to
+                    else do
+                        Just (MarkSet ins sel fr to) <- getsA winMarksA (M.lookup $ lastActiveWindow b)
+                        forM [ins, sel, fr, to] $ getMarkValueB
+                [ins, sel, fr, to] <- forM newMarkValues newMarkB
+                modifyA winMarksA (M.insert (wkey w) (MarkSet ins sel fr to))
+            setA lastActiveWindowA (wkey w)
+            f
     in (a, updates, modifier pendingUpdatesA (++ fmap TextUpdate updates) b')
 
-copyMark :: Mark -> Mark -> BufferM ()
-copyMark src dst = do
-  p <- getMarkValueB src
-  setMarkPointB dst (markPoint p)
-
 getMarkValueB :: Mark -> BufferM MarkValue
-getMarkValueB m = queryBuffer (getMarkValueBI m)
+getMarkValueB m = maybe (MarkValue 0 Forward) id <$> queryBuffer (getMarkValueBI m)
 
 newMarkB :: MarkValue -> BufferM Mark
 newMarkB v = queryAndModify $ newMarkBI v
@@ -440,10 +449,11 @@ isUnchangedBuffer :: FBuffer -> Bool
 isUnchangedBuffer = isAtSavedFilePointU . undos
 
 
-undoRedo :: (forall syntax. URList -> BufferImpl syntax -> (BufferImpl syntax, (URList, [Update])) ) -> BufferM ()
+undoRedo :: (forall syntax. Mark -> URList -> BufferImpl syntax -> (BufferImpl syntax, (URList, [Update])) ) -> BufferM ()
 undoRedo f = do
+  m <- getInsMark
   ur <- gets undos
-  (ur', updates) <- queryAndModify (f ur)
+  (ur', updates) <- queryAndModify (f m ur)
   setA undosA ur'
   tell updates
 
@@ -488,7 +498,8 @@ newB unique nm s =
             , pendingUpdates = []
             , highlightSelection = False
             , process = I.End
-            , winMarks = M.singleton dummyWindowKey (WinMarks dummyFromMark staticInsMark staticSelMark dummyToMark)
+            , winMarks = M.empty
+            , lastActiveWindow = dummyWindowKey
             }
 
 -- | Point of eof
@@ -497,7 +508,8 @@ sizeB = queryBuffer sizeBI
 
 -- | Extract the current point
 pointB :: BufferM Point
-pointB = queryBuffer pointBI
+pointB = getMarkPointB =<< getInsMark
+
 
 -- | Return @n@ elems starting at @i@ of the buffer as a list
 nelemsB :: Int -> Point -> BufferM [Char]
@@ -514,7 +526,9 @@ indexedStreamB :: Direction -> Point -> BufferM [(Point,Char)]
 indexedStreamB dir i = queryBuffer (getIndexedStream dir i)
 
 strokesRangesB :: Maybe SearchExp -> Region -> BufferM [[Stroke]]
-strokesRangesB regex r = queryBuffer $ strokesRangesBI regex r
+strokesRangesB regex r = do
+    p <- pointB
+    queryBuffer $ strokesRangesBI regex r p
 
 ------------------------------------------------------------------------
 -- Point based operations
@@ -523,7 +537,7 @@ strokesRangesB regex r = queryBuffer $ strokesRangesBI regex r
 moveTo :: Point -> BufferM ()
 moveTo x = do
   forgetPreferCol
-  modifyBuffer $ moveToI x
+  flip setMarkPointB x =<< getInsMark
 
 ------------------------------------------------------------------------
 
@@ -592,7 +606,9 @@ deleteNBytes dir n pos = do
 
 -- | Return the current line number
 curLn :: BufferM Int
-curLn = queryBuffer curLnI
+curLn = do 
+    p <- pointB
+    queryBuffer (lineAt p)
 
 -- | Go to line number @n@. @n@ is indexed from 1. Returns the
 -- actual line we went to (which may be not be the requested line,
@@ -605,16 +621,19 @@ gotoLn x = do moveTo 0
 
 -- | Return index of next (or previous) string in buffer that matches argument
 searchB :: Direction -> [Char] -> BufferM (Maybe Point)
-searchB dir s = queryBuffer (searchBI dir s)
+searchB dir s = do
+    p <- pointB
+    q <- directionElim dir sizeB (return 0)
+    queryBuffer (searchBI (mkRegion p q) s)
 
 setMode0 :: forall syntax. Mode syntax -> FBuffer -> FBuffer
-setMode0 m (FBuffer f1 f2 f3 f4 rb _ f7 f8 f9 f10 f11 f12 f13) =
-    (FBuffer f1 f2 f3 f4 (setSyntaxBI (modeHL m) rb) m f7 f8 f9 f10 f11 f12 f13)
+setMode0 m (FBuffer f1 f2 f3 f4 rb _ f7 f8 f9 f10 f11 f12 f13 f14) =
+    (FBuffer f1 f2 f3 f4 (setSyntaxBI (modeHL m) rb) m f7 f8 f9 f10 f11 f12 f13 f14)
 
 modifyMode0 :: (forall syntax. Mode syntax -> Mode syntax) -> FBuffer -> FBuffer
-modifyMode0 f (FBuffer f1 f2 f3 f4 rb m f7 f8 f9 f10 f11 f12 f13) =
+modifyMode0 f (FBuffer f1 f2 f3 f4 rb m f7 f8 f9 f10 f11 f12 f13 f14) =
     let m' = f m
-    in (FBuffer f1 f2 f3 f4 (setSyntaxBI (modeHL m') rb) m' f7 f8 f9 f10 f11 f12 f13)
+    in (FBuffer f1 f2 f3 f4 (setSyntaxBI (modeHL m') rb) m' f7 f8 f9 f10 f11 f12 f13 f14)
 
 
 -- | Set the mode
@@ -681,8 +700,17 @@ modifyMarkB m f = modifyBuffer $ modifyMarkBI m f
 setVisibleSelection :: Bool -> BufferM ()
 setVisibleSelection = setA highlightSelectionA
 
+getInsMark :: BufferM Mark
+getInsMark = insMark <$> askMarks
+
+askMarks :: BufferM WinMarks
+askMarks = do
+    Just ms <- getMarks =<< ask
+    return ms
+
 getMarkB :: Maybe String -> BufferM Mark
-getMarkB m = queryAndModify (getMarkBI m)
+getMarkB m = queryAndModify (getMarkBI m) 
+-- FIXME: make sure this has meaningful content; not 0
 
 -- | Move point by the given number of characters.
 -- A negative offset moves backwards a positive one forward.
@@ -780,7 +808,8 @@ deleteN n = pointB >>= deleteNAt Forward n
 -- (This takes into account tabs, unicode chars, etc.)
 curCol :: BufferM Int
 curCol = do 
-  chars <- queryBuffer charsFromSolBI
+  p <- pointB
+  chars <- queryBuffer (charsFromSolBI p)
   return (foldl colMove 0 chars)
 
 colMove :: Int -> Char -> Int
@@ -792,7 +821,11 @@ colMove col _    = col + 1
 -- Returns the actual moved difference which of course
 -- may be negative if the requested difference was negative.
 gotoLnFrom :: Int -> BufferM Int
-gotoLnFrom x = queryAndModify $ gotoLnRelI x
+gotoLnFrom x = do
+    p <- pointB
+    (p',lineDiff) <- queryBuffer $ gotoLnRelI x p 
+    moveTo p'
+    return lineDiff
 
 bufferDynamicValueA :: Initializable a => Accessor FBuffer a
 bufferDynamicValueA = dynamicValueA .> bufferDynamicA
@@ -832,4 +865,6 @@ pointAt f = savingPointB (f *> pointB)
 
 askWindow :: (Window -> a) -> BufferM a
 askWindow = asks
+
+
 

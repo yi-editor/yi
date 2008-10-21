@@ -200,11 +200,11 @@ swapB = do eol <- atEol
 
 -- | Set the current buffer selection mark
 setSelectionMarkPointB :: Point -> BufferM ()
-setSelectionMarkPointB = setMarkPointB staticSelMark
+setSelectionMarkPointB p = flip setMarkPointB p =<< selMark <$> askMarks
 
 -- | Get the current buffer selection mark
 getSelectionMarkPointB :: BufferM Point
-getSelectionMarkPointB = getMarkPointB staticSelMark
+getSelectionMarkPointB = getMarkPointB =<< selMark <$> askMarks
 
 -- | Exchange point & mark.
 exchangePointAndMarkB :: BufferM ()
@@ -284,7 +284,7 @@ scrollScreensB n = do
 -- | Scroll by n lines.
 scrollB :: Int -> BufferM ()
 scrollB n = do setA pointDriveA False
-               WinMarks fr _ _ _ <- askMarks
+               MarkSet fr _ _ _ <- askMarks
                savingPointB $ do
                    moveTo =<< getMarkPointB fr
                    gotoLnFrom n
@@ -303,16 +303,11 @@ upFromBosB n = do
   moveToSol
   replicateM_ n lineUp
 
-askMarks :: BufferM WinMarks
-askMarks = do
-    Just ms <- getMarks =<< ask
-    return ms
-
 -- | Move to middle line in screen
 middleB :: BufferM ()
 middleB = do
   w <- ask
-  Just (WinMarks f _ _ _) <- getMarks w
+  f <- fromMark <$> askMarks
   moveTo =<< getMarkPointB f
   replicateM_ (height w `div` 2) lineDown
 
@@ -333,7 +328,7 @@ instance Initializable SelectionStyle where
 
 getRawSelectRegionB :: BufferM Region
 getRawSelectRegionB = do
-  m <- getMarkPointB staticSelMark
+  m <- getSelectionMarkPointB
   p <- pointB
   return $ mkRegion p m
 
@@ -347,7 +342,7 @@ getSelectRegionB = do
 -- and the current point at the 'regionEnd'.
 setSelectRegionB :: Region -> BufferM ()
 setSelectRegionB region = do
-  setMarkPointB staticSelMark $ regionStart region
+  setSelectionMarkPointB $ regionStart region
   moveTo $ regionEnd region
 
 -- | Extend the selection mark using the given region.

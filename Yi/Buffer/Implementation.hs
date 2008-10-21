@@ -10,26 +10,18 @@ module Yi.Buffer.Implementation
   , updateIsDelete
   , Point
   , Mark, MarkValue(..)
-  , dummyFromMark
-  , dummyToMark
-  , staticInsMark
-  , staticSelMark
   , Size
   , Direction (..)
   , BufferImpl
   , Overlay, OvlLayer (..)
   , mkOverlay
   , overlayUpdate
-  , moveToI
   , applyUpdateI
   , isValidUpdate
-  , applyUpdateWithMoveI
   , reverseUpdateI
-  , pointBI
   , nelemsBI
   , nelemsBI'
   , sizeBI
-  , curLnI
   , newBI
   , gotoLnRelI
   , charsFromSolBI
@@ -52,6 +44,7 @@ module Yi.Buffer.Implementation
   , getStream
   , getIndexedStream
   , newLine
+  , lineAt
   , SearchExp
 )
 where
@@ -166,12 +159,7 @@ dummyHlState = (HLState noHighlighter (hlStartState noHighlighter))
 
 -- | New FBuffer filled from string.
 newBI :: LazyB.ByteString -> BufferImpl ()
-newBI s = FBufferData (F.fromLazyByteString s) mks M.empty dummyHlState Set.empty 0
-    where mks = M.fromList [ (staticInsMark, MarkValue 0 insertGravity)
-                           , (staticSelMark, MarkValue 0 selectionGravity)
-                           , (dummyFromMark, MarkValue 0 Backward)
-                           , (dummyToMark, MarkValue 0 Forward)
-                           ]
+newBI s = FBufferData (F.fromLazyByteString s) M.empty M.empty dummyHlState Set.empty 0
 
 -- | read @n@ chars from buffer @b@, starting at @i@
 readChars :: ByteRope -> Int -> Point -> String
@@ -228,11 +216,6 @@ mapOvlMarks f (Overlay l s e v) = Overlay l (f s) (f e) v
 sizeBI :: BufferImpl syntax -> Point
 sizeBI fb = Point $ F.length $ mem fb
 
--- | Extract the current point
-pointBI :: BufferImpl syntax -> Point
-pointBI fb = markPoint ((marks fb) M.! staticInsMark)
-{-# INLINE pointBI #-}
-
 -- | Return @n@ Chars starting at @i@ of the buffer as a list
 nelemsBI :: Int -> Point -> BufferImpl syntax -> String
 nelemsBI n i fb = readChars (mem fb) n i
@@ -276,8 +259,8 @@ delOverlayLayer layer fb = fb{overlays = Set.filter ((/= layer) . overlayLayer) 
 --   the buffer.  In each list, the strokes are guaranteed to be
 --   ordered and non-overlapping.  The lists of strokes are ordered by
 --   decreasing priority: the 1st layer should be "painted" on top.
-strokesRangesBI :: Maybe SearchExp -> Region -> BufferImpl syntax -> [[Stroke]]
-strokesRangesBI regex rgn fb@(FBufferData {hlCache = HLState hl cache}) = result
+strokesRangesBI :: Maybe SearchExp -> Region -> Point -> BufferImpl syntax -> [[Stroke]]
+strokesRangesBI regex rgn  point fb@(FBufferData {hlCache = HLState hl cache}) = result
   where
     i = regionStart rgn
     j = regionEnd rgn
@@ -292,18 +275,11 @@ strokesRangesBI regex rgn fb@(FBufferData {hlCache = HLState hl cache}) = result
                Nothing -> []
     result = map (map clampStroke . takeIn . dropBefore) (layer3 : layers2 ++ [syntaxHlLayer, groundLayer])
     overlayStroke (Overlay _ sm  em a) = (markPoint sm, a, markPoint em)
-    point = pointBI fb
     clampStroke (l,x,r) = (max i l, x, min j r)
     hintStroke r = (regionStart r,if point `nearRegion` r then strongHintStyle else hintStyle,regionEnd r)
 
 ------------------------------------------------------------------------
 -- Point based editing
-
--- | Move point in buffer to the given index
-moveToI :: Point -> BufferImpl syntax -> BufferImpl syntax
-moveToI i fb = fb {marks = M.insert staticInsMark (MarkValue (inBounds i (Point end)) insertGravity) $ marks fb}
-    where end = F.length (mem fb)
-{-# INLINE moveToI #-}
 
 findNextChar :: Int -> Point -> BufferImpl syntax -> Point
 findNextChar m p fb 
@@ -337,14 +313,6 @@ applyUpdateI u fb = touchSyntax (updatePoint u) $
           p = mem fb
           -- FIXME: remove collapsed overlays
    
--- | Apply a /valid/ update and also move point in buffer to update position
-applyUpdateWithMoveI :: Update -> BufferImpl syntax -> BufferImpl syntax
-applyUpdateWithMoveI u = case updateDirection u of
-                           Forward ->  apply . move
-                           Backward -> move . apply
-    where move = moveToI (updatePoint u)
-          apply = applyUpdateI u
-
 -- | Reverse the given update
 reverseUpdateI :: Update -> Update
 reverseUpdateI (Delete p dir cs) = Insert p (reverseDir dir) cs
@@ -360,23 +328,21 @@ ord' = fromIntegral . ord
 newLine :: Word8
 newLine = ord' '\n'
 
-curLnI :: BufferImpl syntax -> Int
-curLnI fb = 1 + F.count newLine (F.take (fromPoint $ pointBI fb) (mem fb))
+lineAt :: Point -> BufferImpl syntax -> Int
+lineAt point fb = 1 + F.count newLine (F.take (fromPoint point) (mem fb))
 
 
--- | Go to line number @n@, relatively from this line. @0@ will go to
+-- | Get the point at line number @n@, relatively from @point@. @0@ will go to
 -- the start of this line. Returns the actual line difference we went
 -- to (which may be not be the requested one, if it was out of range)
 -- Note that the line-difference returned will be negative if we are
 -- going backwards to previous lines (that is if @n@ was negative).
-gotoLnRelI :: Int -> BufferImpl syntax -> (BufferImpl syntax, Int)
-gotoLnRelI n fb = 
-  (moveToI (Point newPoint) fb, difference)
+gotoLnRelI :: Int -> Point -> BufferImpl syntax -> (Point, Int)
+gotoLnRelI n (Point point) fb = (Point newPoint, difference)
   where
   -- The text of the buffer
   s     = mem fb
   -- The current point that we are at in the buffer.
-  Point point = pointBI fb
   (difference, newPoint)
     -- Important that we go up if it is 0 since findDownLine
     -- fails for zero.
@@ -416,20 +382,20 @@ gotoLnRelI n fb =
   findDownLine acc 1 (x:_)  = (acc, x)
   findDownLine acc l (_:xs) = findDownLine (acc + 1) (l - 1) xs
 
--- | Return index of next string in buffer that matches argument
-searchBI :: Direction -> String -> BufferImpl syntax -> Maybe Point
-searchBI dir s fb = fmap Point $ case dir of
+-- | Return index of next string in buffer that matches argument in given region.
+searchBI :: Region -> String -> BufferImpl syntax -> Maybe Point
+searchBI region s fb = fmap Point $ case dir of
       Forward -> fmap (pnt +) $ F.findSubstring (UTF8.fromString s) $ F.drop pnt ptr
       Backward -> listToMaybe $ reverse $ F.findSubstrings (UTF8.fromString s) $ F.take (pnt + length s) ptr
     -- FIXME: backward search is inefficient.
-    where Point pnt = pointBI fb -- pnt == current point
-          ptr = mem fb
+    where ptr = mem fb
+          dir = regionDirection region
+          Point pnt = regionFirst region
+          -- FIXME: take end of region in account!!!
 
-
-charsFromSolBI :: BufferImpl syntax -> String
-charsFromSolBI fb = LazyUTF8.toString $ F.toLazyByteString $ readChunk ptr (Size (pnt - sol)) (Point sol)
+charsFromSolBI :: Point -> BufferImpl syntax -> String
+charsFromSolBI (Point pnt) fb = LazyUTF8.toString $ F.toLazyByteString $ readChunk ptr (Size (pnt - sol)) (Point sol)
   where sol = maybe 0 (1 +) (F.elemIndexEnd newLine (F.take pnt ptr))
-        Point pnt = pointBI fb
         ptr = mem fb
 
 
@@ -445,15 +411,13 @@ regexRegionBI (_,re) r fb = mayReverse (regionDirection r) $
 
 newMarkBI :: MarkValue -> BufferImpl syntax -> (BufferImpl syntax, Mark)
 newMarkBI initialValue fb =
-    let (Mark maxId, _) = M.findMax (marks fb)
+    let maxId = maybe 0 id $ markId . fst . fst <$> M.maxViewWithKey (marks fb)
         newMark = Mark $ maxId + 1
         fb' = fb { marks = M.insert newMark initialValue (marks fb)}
     in (fb', newMark)
 
-getMarkValueBI :: Mark -> BufferImpl syntax -> MarkValue
-getMarkValueBI m (FBufferData { marks = marksMap } ) = M.findWithDefault (marksMap M.! staticInsMark) m marksMap
-                 -- We look up mark m in the marks, the default value to return
-                 -- if mark m is not set, is the staticInsMark
+getMarkValueBI :: Mark -> BufferImpl syntax -> Maybe MarkValue
+getMarkValueBI m (FBufferData { marks = marksMap } ) = M.lookup m marksMap
 
 -- | Modify a mark value.
 modifyMarkBI :: Mark -> (MarkValue -> MarkValue) -> (forall syntax. BufferImpl syntax -> BufferImpl syntax)
@@ -509,9 +473,9 @@ selectionGravity = Backward
 
 ------------------------------------------------------------------------
 
--- | Returns the requested mark, creating a new mark with that name (at point) if needed
+-- | Returns the requested mark, creating a new mark with that name (at point 0) if needed
 getMarkBI :: Maybe String -> BufferImpl syntax -> (BufferImpl syntax, Mark)
-getMarkBI name b = getMarkDefaultPosBI name (pointBI b) b
+getMarkBI name b = getMarkDefaultPosBI name 0 b
 
 -- | Returns the requested mark, creating a new mark with that name (at the supplied position) if needed
 getMarkDefaultPosBI :: Maybe String -> Point -> BufferImpl syntax -> (BufferImpl syntax, Mark)

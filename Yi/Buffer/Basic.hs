@@ -35,12 +35,6 @@ directionElim Forward  _ f = f
 
 -- | A mark in a buffer
 newtype Mark = Mark {markId::Int} deriving (Eq, Ord, Show, Typeable, Binary)
-staticInsMark, staticSelMark :: Mark
-staticInsMark = Mark (-1) -- the insertion mark
-staticSelMark = Mark (-2) -- the selection mark
-dummyFromMark, dummyToMark :: Mark
-dummyFromMark = Mark 1
-dummyToMark = Mark 2
 
 -- | Reference to a buffer.
 newtype BufferRef = BufferRef Int
