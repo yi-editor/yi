@@ -716,8 +716,11 @@ askMarks = do
     return ms
 
 getMarkB :: Maybe String -> BufferM Mark
-getMarkB m = queryAndModify (getMarkBI m) 
--- FIXME: make sure this has meaningful content; not 0
+getMarkB m = do
+  p <- pointB
+  queryAndModify (getMarkDefaultPosBI m p) 
+  
+
 
 -- | Move point by the given number of characters.
 -- A negative offset moves backwards a positive one forward.

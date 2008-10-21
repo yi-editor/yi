@@ -27,7 +27,7 @@ module Yi.Buffer.Implementation
   , charsFromSolBI
   , searchBI
   , regexRegionBI
-  , getMarkBI
+  , getMarkDefaultPosBI
   , modifyMarkBI
   , getMarkValueBI
   , newMarkBI
@@ -468,10 +468,6 @@ decodeBack (x:xs)
 
 
 ------------------------------------------------------------------------
-
--- | Returns the requested mark, creating a new mark with that name (at point 0) if needed
-getMarkBI :: Maybe String -> BufferImpl syntax -> (BufferImpl syntax, Mark)
-getMarkBI name b = getMarkDefaultPosBI name 0 b
 
 -- | Returns the requested mark, creating a new mark with that name (at the supplied position) if needed
 getMarkDefaultPosBI :: Maybe String -> Point -> BufferImpl syntax -> (BufferImpl syntax, Mark)
