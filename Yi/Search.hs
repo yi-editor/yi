@@ -48,7 +48,7 @@ import Yi.Window
 import Data.Char
 import Data.Maybe
 import Data.Either
-import Data.List (span, takeWhile, take, filter)
+import Data.List (span, takeWhile, take, filter, length)
 
 import Yi.Core
 import Yi.Core as Editor
@@ -198,14 +198,16 @@ isearchFunE :: (String -> String) -> EditorM ()
 isearchFunE fun = do
   Isearch s <- getDynamic
   let (previous,p0,direction) = head s
-  let current = fun previous
+      current = fun previous
+      srch = makeISearch current
   printMsg $ "I-search: " ++ current
-  prevPoint <- withBuffer0 pointB
-  withBuffer0 $ do
-    moveTo $ regionStart p0
-  let srch = makeISearch current
   setRegexE srch
-  mp <- withBuffer0 $ regexB direction srch
+  prevPoint <- withBuffer0 pointB
+  mp <- withBuffer0 $ do
+      moveTo $ regionStart p0
+      when (direction == Backward) $
+         moveN $ length current
+      regexB direction srch
   case mp of
     [] -> do withBuffer0 $ moveTo prevPoint -- go back to where we were
              setDynamic $ Isearch ((current,p0,direction):s)
