@@ -446,7 +446,7 @@ applyUpdate buf (Delete p _ s) = do
 
 styleToTag :: UI -> Attributes -> IO [TextTag]
 styleToTag ui a = case a of
-    (Attributes f b) -> sequence [tagOf textTagForeground f, tagOf textTagBackground b]
+    (Attributes f b _reverse) -> sequence [tagOf textTagForeground f, tagOf textTagBackground b]
 
  where tagOf attr col = do
          let fgText = colorToText col
@@ -518,5 +518,4 @@ newGtkBuffer ui b = do
 toColor :: Bool -> -- ^ is the color intended to be used as Foreground?
            Style.Color -> Gtk.Color
 toColor fg Default = let c = if fg then 0xffff else 0 in Color c c c
-toColor fg Reverse = let c = if fg then 0 else 0xffff in Color c c c
 toColor _fg (RGB r g b) = Color (fromIntegral r * 0xff) (fromIntegral g * 0xff) (fromIntegral b * 0xff)

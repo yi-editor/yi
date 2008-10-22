@@ -13,7 +13,13 @@ import Prelude ()
 data Attributes = Attributes
   { foreground :: !Color
   , background :: !Color
+  , reverseAttr :: !Bool 
+    -- ^ The text should be show as "active" or "selected".
+    -- This can be implemented by reverse video on the terminal.
   } deriving (Eq, Ord, Show)
+
+emptyAttributes :: Attributes
+emptyAttributes = Attributes { foreground = Default, background = Default, reverseAttr = False }
 
 -- | The style is used to transform attributes by modifying
 --   one or more of the visual text attributes.
@@ -61,14 +67,15 @@ defaultStyle = mempty
 
 data Color
     = RGB {-# UNPACK #-} !Word8 {-# UNPACK #-} !Word8 {-# UNPACK #-} !Word8
-    | Default
-    | Reverse
+    | Default 
+    -- ^ The system-default color of the engine used.
+    -- e.g. in Gtk this should pick whatever the user has chosen as default color 
+    -- (background or forground depending on usage) for the text.
     deriving (Eq,Ord,Show)
 
 -- | Convert a color to its text specification, as to be accepted by XParseColor
 colorToText :: Color -> String
 colorToText Default = "default"
-colorToText Reverse = "reverse"
 colorToText (RGB r g b) = ('#':) . showsHex r . showsHex g . showsHex b $ []
     where showsHex x s = showHex1 (x `div` 16) : showHex1 (x `mod` 16) : s
           showHex1 x | x < 10 = chr (ord '0' + fromIntegral x)

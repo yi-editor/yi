@@ -462,12 +462,12 @@ render e ui b w _ev = do
   let picture = askBuffer win b $ attributesPictureAndSelB sty (regex e) r''
       sty = extractValue $ configTheme (uiConfig ui)
       strokes = [(start,s,end) | ((start, s), end) <- zip picture (drop 1 (map fst picture) ++ [regionEnd r'']),
-                  s /= Attributes Default Default]
+                  s /= emptyAttributes]
       rel p = fromIntegral (p - regionStart r'')
       allAttrs = [gen (rel p1) (rel p2) (mkCol col) 
-                  | (p1,Attributes fg bg,p2) <- strokes, 
+                  | (p1,Attributes fg bg _rv,p2) <- strokes, 
                   (gen,col) <- zip [AttrForeground, AttrBackground] [fg,bg],
-                  col /= Default, col /= Reverse]
+                  col /= Default]
 
   layoutSetAttributes layout allAttrs
 
@@ -503,7 +503,6 @@ reloadProject _ _ = return ()
 
 mkCol :: Yi.Style.Color -> Gtk.Color
 mkCol Default = Color 0 0 0
-mkCol Reverse = Color maxBound maxBound maxBound
 mkCol (RGB x y z) = Color (fromIntegral x * 256)
                           (fromIntegral y * 256)
                           (fromIntegral z * 256)

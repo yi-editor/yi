@@ -425,44 +425,34 @@ getY screenHeight numberOfWindows = screenHeight `quotRem` numberOfWindows
 
 ------------------------------------------------------------------------
 
---
--- Combine attribute with another attribute
---
-boldA, reverseA, nullA :: Vty.Attr -> Vty.Attr
-boldA       = setBold
-reverseA    = setRV
-nullA       = id
-
-------------------------------------------------------------------------
-
 -- | Convert a Yi Attr into a Vty attribute change.
 colorToAttr :: (Vty.Attr -> Vty.Attr) -> (Vty.Color -> Vty.Attr -> Vty.Attr) -> Vty.Color -> Style.Color -> (Vty.Attr -> Vty.Attr)
 colorToAttr bold set unknown c =
   case c of 
-    RGB 0 0 0         -> nullA    . set Vty.black
+    RGB 0 0 0         -> id       . set Vty.black
     RGB 128 128 128   -> bold     . set Vty.black
-    RGB 139 0 0       -> nullA    . set Vty.red
+    RGB 139 0 0       -> id       . set Vty.red
     RGB 255 0 0       -> bold     . set Vty.red
-    RGB 0 100 0       -> nullA    . set Vty.green
+    RGB 0 100 0       -> id       . set Vty.green
     RGB 0 128 0       -> bold     . set Vty.green
-    RGB 165 42 42     -> nullA    . set Vty.yellow
+    RGB 165 42 42     -> id       . set Vty.yellow
     RGB 255 255 0     -> bold     . set Vty.yellow
-    RGB 0 0 139       -> nullA    . set Vty.blue
+    RGB 0 0 139       -> id       . set Vty.blue
     RGB 0 0 255       -> bold     . set Vty.blue
-    RGB 128 0 128     -> nullA    . set Vty.magenta
+    RGB 128 0 128     -> id       . set Vty.magenta
     RGB 255 0 255     -> bold     . set Vty.magenta
-    RGB 0 139 139     -> nullA    . set Vty.cyan
+    RGB 0 139 139     -> id       . set Vty.cyan
     RGB 0 255 255     -> bold     . set Vty.cyan
-    RGB 165 165 165   -> nullA    . set Vty.white
+    RGB 165 165 165   -> id       . set Vty.white
     RGB 255 255 255   -> bold     . set Vty.white
-    Default           -> nullA    . set Vty.def
-    Reverse           -> reverseA . set Vty.def
-    _                 -> nullA    . set unknown -- NB
+    Default           -> id       . set Vty.def
+    _                 -> id       . set unknown -- NB
 
 attributesToAttr :: Attributes -> (Vty.Attr -> Vty.Attr)
-attributesToAttr (Attributes fg bg) =
-  colorToAttr boldA setFG Vty.black fg .
-  colorToAttr nullA setBG Vty.white bg
+attributesToAttr (Attributes fg bg reverse) =
+  (if reverse then setRV else id) .
+  colorToAttr setBold setFG Vty.black fg .
+  colorToAttr id      setBG Vty.white bg
 
 
 ---------------------------------
