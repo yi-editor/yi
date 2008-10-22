@@ -291,7 +291,6 @@ drawWindow cfg mre b sty focused w win = (Rendered { picture = pict,cursor = cur
         ground = baseAttributes sty
         wsty = attributesToAttr ground attr
         eofsty = appEndo (eofStyle sty) ground
-        (selReg, _) = runBuffer win b getSelectRegionB
         (point, _) = runBuffer win b pointB
         (eofPoint, _) = runBuffer win b sizeB
         region = mkSizeRegion fromMarkPoint (Size (w*h'))
@@ -302,10 +301,9 @@ drawWindow cfg mre b sty focused w win = (Rendered { picture = pict,cursor = cur
                             then fst $ runBuffer win b (getMarkPointB fromM)
                             else Point 0
         (text, _)    = runBuffer win b (indexedStreamB Forward fromMarkPoint) -- read chars from the buffer, lazily
-        (showSel, _) = runBuffer win b (gets highlightSelection)
-        extraLayers = if showSel then [[(regionStart selReg, selectedStyle, regionEnd selReg)]] else []
-        (picture, _) = runBuffer win b (attributesPictureB sty mre region extraLayers)
-        colors = map (second (($ attr) . attributesToAttr)) picture
+        
+        (attributes, _) = runBuffer win b $ attributesPictureAndSelB sty mre region 
+        colors = map (second (($ attr) . attributesToAttr)) attributes
         bufData = -- trace (unlines (map show text) ++ unlines (map show $ concat strokes)) $ 
                   paintChars attr colors text
         tabWidth = tabSize . fst $ runBuffer win b indentSettingsB

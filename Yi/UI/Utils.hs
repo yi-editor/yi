@@ -10,7 +10,7 @@ import Yi.Window
 import Control.Arrow (second)
 import Data.Monoid
 import Yi.Style
-import Yi.Syntax (Stroke)
+import Control.Monad.State (gets)
 -- | return index of Sol on line @n@ above current line
 indexOfSolAbove :: Int -> BufferM Point
 indexOfSolAbove n = savingPointB $ do
@@ -64,3 +64,9 @@ attributesPictureB sty mexp region extraLayers =
     (extraLayers ++) <$>
     strokesRangesB mexp region
 
+attributesPictureAndSelB :: UIStyle -> Maybe SearchExp -> Region -> BufferM [(Point,Attributes)]
+attributesPictureAndSelB sty mexp region = do
+    selReg <- getSelectRegionB
+    showSel <- gets highlightSelection
+    let extraLayers = if showSel then [[(regionStart selReg, selectedStyle, regionEnd selReg)]] else []
+    attributesPictureB sty mexp region extraLayers
