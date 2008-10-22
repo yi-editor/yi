@@ -87,10 +87,11 @@ withMinibufferGen proposal getHint prompt completer act = do
                            oneOf [spec KDown,  meta $ char 'n'] >>! down,
                            oneOf [spec KTab,   ctrl $ char 'i'] >>! completionFunction completer >>! showMatchings,
                            ctrl (char 'g')                     ?>>! closeMinibuffer]
-  withEditor $ historyStartGen prompt
   msgEditor =<< getHint ""
-  b <- withEditor $ spawnMinibufferE (prompt ++ " ") (\bindings -> rebindings <|| (bindings >> write showMatchings))
-  withGivenBuffer b $ replaceBufferContent proposal
+  withEditor $ do 
+      historyStartGen prompt
+      spawnMinibufferE (prompt ++ " ") (\bindings -> rebindings <|| (bindings >> write showMatchings))
+      withBuffer0 $ replaceBufferContent proposal
 
 
 -- | Open a minibuffer, given a finite number of suggestions.
