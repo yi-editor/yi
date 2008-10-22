@@ -88,6 +88,8 @@ mkFontDesc cfg = do
     Nothing -> return ()
   return f
 
+askBuffer w b f = fst $ runBuffer w b f
+
 -- | Initialise the ui
 start :: UIBoot
 start cfg ch outCh _ed = do
@@ -220,7 +222,7 @@ syncWindows _e ui [] cs = mapM_ (removeWindow ui) cs >> return []
 syncWin :: Editor -> Window -> WinInfo -> IO WinInfo
 syncWin e w wi = do
   let b = findBufferWith (bufkey w) e
-      reg = runBufferDummyWindow b winRegionB
+      reg = askBuffer w b winRegionB
   logPutStrLn $ "Updated one: " ++ show w ++ " to " ++ show reg
   writeRef (shownRegion wi) reg
   return (wi {coreWin = w})
@@ -347,7 +349,7 @@ newWindow e ui w b = mdo
       return (castToBox vb)
      
     sig <- newIORef =<< (v `onExpose` render e ui b win)
-    rRef <- newIORef (runBufferDummyWindow b winRegionB)
+    rRef <- newIORef (askBuffer w b winRegionB)
     context <- widgetCreatePangoContext v
     layout <- layoutEmpty context
     layoutSetWrap layout WrapAnywhere
@@ -418,12 +420,13 @@ render e ui b w _ev = do
   reg <- readRef (shownRegion w)
   drawWindow <- widgetGetDrawWindow $ textview w
   (width, height) <- widgetGetSize $ textview w
+  let win = coreWin w
   let [width', height'] = map fromIntegral [width, height]
   let metrics = winMetrics w
       layout = winLayout w
       winh = round (height' / (ascent metrics + descent metrics))
 
-  let (point, text) = runBufferDummyWindow b $ do
+  let (point, text) = askBuffer win b $ do
                       numChars <- winEls (regionStart reg) winh
                       (,) 
                        <$> pointB
@@ -442,9 +445,9 @@ render e ui b w _ev = do
     then return r'
     else do
       logPutStrLn $ "out!"
-      let newTos = runBufferDummyWindow b $ do
+      let newTos = askBuffer win b $ do
                          indexOfSolAbove (winh `div` 2)
-          text' = runBufferDummyWindow b $ do
+          text' = askBuffer win b $ do
                          numChars <- winEls newTos winh
                          nelemsB' numChars newTos
       layoutSetText layout text'
@@ -456,7 +459,7 @@ render e ui b w _ev = do
   logPutStrLn $ "updated: " ++ show r''
 
   -- add color attributes.
-  let picture = runBufferDummyWindow b $ attributesPictureAndSelB sty (regex e) r''
+  let picture = askBuffer win b $ attributesPictureAndSelB sty (regex e) r''
       sty = extractValue $ configTheme (uiConfig ui)
       strokes = [(start,s,end) | ((start, s), end) <- zip picture (drop 1 (map fst picture) ++ [regionEnd r'']),
                   s /= Attributes Default Default]
