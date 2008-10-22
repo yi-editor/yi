@@ -7,7 +7,7 @@
 
 module Yi.UI.Pango (start) where
 
-import Prelude (filter, map, round, length, take, FilePath, (/), subtract, zipWith)
+import Prelude (filter, map, round, length, take, FilePath, (/), zipWith)
 import Yi.Prelude 
 import Yi.Buffer
 import qualified Yi.Editor as Editor
@@ -27,10 +27,11 @@ import Control.Monad (ap)
 import Control.Monad.Reader (liftIO, when, MonadIO)
 import Control.Monad.State (gets)
 
+import Data.Prototype
 import Data.Function
 import Data.Foldable
 import Data.IORef
-import Data.List (nub, findIndex)
+import Data.List (nub, findIndex, zip, drop)
 import Data.Maybe
 import Data.Traversable
 import qualified Data.Map as M
@@ -269,11 +270,11 @@ handleClick ui w event = do
         case (eventClick event, eventButton event) of
           (SingleClick, LeftButton) -> do
               focusWindow
-              withGivenBuffer0 b $ moveTo p1
+              withGivenBufferAndWindow0 (coreWin w) b $ moveTo p1
           (SingleClick, _) -> focusWindow
           (ReleaseClick, MiddleButton) -> do
             txt <- getRegE
-            withGivenBuffer0 b $ do
+            withGivenBufferAndWindow0 (coreWin w) b $ do
               pointB >>= setSelectionMarkPointB
               moveTo p1
               insertN txt
@@ -455,16 +456,15 @@ render e ui b w _ev = do
   logPutStrLn $ "updated: " ++ show r''
 
   -- add color attributes.
-  let (strokes,selectReg,selVisible) = runBufferDummyWindow b $ (,,)
-                       <$> strokesRangesB (regex e) r''
-                       <*> getSelectRegionB
-                       <*> getA highlightSelectionA
-                         
-      regInWin = fmapRegion (subtract (regionStart r'')) (intersectRegion selectReg r'')
-      allAttrs = (if selVisible 
-                   then (AttrBackground (fromPoint (regionStart regInWin)) (fromPoint (regionEnd regInWin - 1))
-                           (Color 50000 50000 maxBound) :)
-                   else id) []
+  let picture = runBufferDummyWindow b $ attributesPictureAndSelB sty (regex e) r''
+      sty = extractValue $ configTheme (uiConfig ui)
+      strokes = [(start,s,end) | ((start, s), end) <- zip picture (drop 1 (map fst picture) ++ [regionEnd r'']),
+                  s /= Attributes Default Default]
+      rel p = fromIntegral (p - regionStart r'')
+      allAttrs = [gen (rel p1) (rel p2) (mkCol col) 
+                  | (p1,Attributes fg bg,p2) <- strokes, 
+                  (gen,col) <- zip [AttrForeground, AttrForeground] [fg,bg],
+                  col /= Default, col /= Reverse]
 
   layoutSetAttributes layout allAttrs
 
