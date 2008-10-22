@@ -466,7 +466,7 @@ render e ui b w _ev = do
       rel p = fromIntegral (p - regionStart r'')
       allAttrs = [gen (rel p1) (rel p2) (mkCol col) 
                   | (p1,Attributes fg bg,p2) <- strokes, 
-                  (gen,col) <- zip [AttrForeground, AttrForeground] [fg,bg],
+                  (gen,col) <- zip [AttrForeground, AttrBackground] [fg,bg],
                   col /= Default, col /= Reverse]
 
   layoutSetAttributes layout allAttrs
