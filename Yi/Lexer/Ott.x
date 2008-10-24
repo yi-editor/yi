@@ -31,7 +31,6 @@ import Yi.Style
             | homs
             | funs
             | fun
-            | IN
 
 @reservedop = "::"
             | "::="
@@ -40,6 +39,7 @@ import Yi.Style
             | "/>"
             | "//"
             | "</"
+            | IN
             | ".."
             | "..."
             | "...."
@@ -56,7 +56,7 @@ main :-
 {
     $white+                                        ; -- whitespace
     "%"[^\n]*                                      { c commentStyle }
-    "<<"                                           { m (subtract 1) commentStyle }
+    ">>"                                           { m (subtract 1) commentStyle }
     @reservedid                                    { c keywordStyle }
     @reservedop                                    { c operatorStyle }
     "|" $white+                                    { c operatorStyle }
@@ -66,8 +66,8 @@ main :-
 }
 
 <nestcomm> {                                                
-  "<<"                                          { m (subtract 1) commentStyle }
-  ">>"                                          { m (+1) commentStyle }
+  ">>"                                          { m (subtract 1) commentStyle }
+  "<<"                                          { m (+1) commentStyle }
   $white+                                       ; -- whitespace
   .                                             { c commentStyle }
 }
