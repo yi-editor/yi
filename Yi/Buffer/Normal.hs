@@ -42,12 +42,12 @@ import Data.Typeable
 
 -- | Designate a given "unit" of text.
 data TextUnit = Character -- ^ a single character
-              | Word -- ^ a word as in use in Emacs (funamental mode)
+              | Word -- ^ a word as in use in Emacs (fundamental mode)
               | ViWord -- ^ a word as in use in Vim
               | ViWORD -- ^ a WORD as in use in Vim
               | Line  -- ^ a line of text (between newlines)
               | VLine -- ^ a "vertical" line of text (area of text between two characters at the same column number)
-              | Delimited Char Char -- ^ delimited on the left and right by given characters
+              | Delimited Char Char Bool -- ^ delimited on the left and right by given characters, boolean argument tells if whether those are included.
               | Document -- ^ the whole document
               | GenUnit {genEnclosingUnit :: TextUnit,
                          genUnitBoundary :: Direction -> BufferM Bool}
@@ -109,8 +109,10 @@ atBoundary ViWord direction = do
                          | otherwise    = 3
       _ -> True
 atBoundary Line direction = checkPeekB 0 [isNl] direction
-atBoundary (Delimited c _) Backward = checkPeekB 0 [(== c)] Backward
-atBoundary (Delimited _ c) Forward  = (== c) <$> readB
+atBoundary (Delimited c _ False) Backward = checkPeekB 0 [(== c)] Backward
+atBoundary (Delimited _ c False) Forward  = (== c) <$> readB
+atBoundary (Delimited c _ True) Backward = checkPeekB (-1) [(== c)] Backward
+atBoundary (Delimited _ c True) Forward  = checkPeekB (0) [(== c)] Backward
 atBoundary (GenUnit _ atBound) dir = atBound dir
 
 enclosingUnit :: TextUnit -> TextUnit
@@ -131,6 +133,10 @@ unitParagraph = GenUnit Document $ checkPeekB (-1) [not . isNl, isNl, isNl]
 
 unitSentence :: TextUnit
 unitSentence = GenUnit unitEmacsParagraph $ \dir -> checkPeekB (if dir == Forward then -1 else 0) (mayReverse dir [isEndOfSentence, isSpace]) dir
+
+-- | Unit that have its left and right boundaries at the left boundary of the argument unit.
+leftBoundaryUnit :: TextUnit -> TextUnit
+leftBoundaryUnit u = GenUnit Document $ (\_dir -> atBoundaryB u Backward)
 
 -- | @genAtBoundaryB u d s@ returns whether the point is at a given boundary @(d,s)@ .
 -- Boundary @(d,s)@ , taking Word as example, means:

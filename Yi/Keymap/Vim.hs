@@ -453,12 +453,16 @@ defKeymap = Proto template
                         , (('g':), 'w', const $ withBuffer0 . savingPointB . fillRegion)
                         ]
 
-     char2unit :: [(Char, TextUnit)]
+     -- Argument of the 2nd component is whether the unit is outer.
+     toOuter u True = leftBoundaryUnit u
+     toOuter u False = u
+
+     char2unit :: [(Char, Bool -> TextUnit)]
      char2unit =
-       [('w',  ViWord)
-       ,('W',  ViWORD)
-       ,('p',  unitEmacsParagraph)
-       ,('s',  unitSentence)
+       [('w',  toOuter ViWord)
+       ,('W',  toOuter ViWORD)
+       ,('p',  toOuter unitEmacsParagraph)
+       ,('s',  toOuter unitSentence)
        ,('"',  Delimited '"' '"')
        ,('`',  Delimited '`' '`')
        ,('\'', Delimited '\'' '\'')
@@ -472,25 +476,12 @@ defKeymap = Proto template
        ,('>',  Delimited '<' '>')
        ]
 
-     -- NOTE,TODO: Form some units (like words) one should
-     -- not select more than the current line
-     select_a_unit :: TextUnit -> BufferM Region
-     select_a_unit (Delimited cStart cStop) = savingPointB $ do
-         start <- untilB ((==cStart) <$> readB) leftB >> pointB
-         rightB
-         stop  <- untilB ((==cStop) <$> readB) rightB >> rightB >> pointB
-         return $ mkRegion start stop
-     select_a_unit unit = savingPointB $ do
-         start <- genMaybeMoveB unit (Backward,InsideBound) Backward >> pointB
-         stop  <- genMoveB unit (Backward,InsideBound) Forward >> pointB
-         return $ mkRegion start stop
-
      select_any_unit :: (MonadInteract m Action Event) => (Region -> EditorM ()) -> m ()
      select_any_unit f =
        choice [ x
               | (c, unit) <- char2unit,
-                x <- [ char 'i' ?>> (char c ?>> write (f =<< withBuffer0 (regionOfNonEmptyB unit))), -- inner unit
-                       char 'a' ?>> (char c ?>> write (f =<< withBuffer0 (select_a_unit unit))) ] ]
+                x <- [ char 'i' ?>> (char c ?>> write (f =<< withBuffer0 (regionOfNonEmptyB $ unit False))), -- inner unit
+                       char 'a' ?>> (char c ?>> write (f =<< withBuffer0 (regionOfNonEmptyB $ unit True))) ] ]
 
      regionOfSelection :: BufferM (RegionStyle, Region)
      regionOfSelection = do
