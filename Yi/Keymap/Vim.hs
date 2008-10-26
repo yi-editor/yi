@@ -197,10 +197,10 @@ defKeymap = Proto template
          ,(char '|',        \i -> SeqMove viMoveToSol (Replicate (CharMove Forward) (i-1)))
 
           -- words
-         ,(char 'w',       Replicate $ GenMove ViWord (Backward,InsideBound) Forward)
-         ,(char 'W',       Replicate $ GenMove ViWORD (Backward,InsideBound) Forward)
-         ,(char 'b',       Replicate $ Move ViWord Backward)
-         ,(char 'B',       Replicate $ Move ViWORD Backward)
+         ,(char 'w',       Replicate $ GenMove unitViWord (Backward,InsideBound) Forward)
+         ,(char 'W',       Replicate $ GenMove unitViWORD (Backward,InsideBound) Forward)
+         ,(char 'b',       Replicate $ Move unitViWord Backward)
+         ,(char 'B',       Replicate $ Move unitViWORD Backward)
           -- text
          ,(char '{',       Replicate $ Move unitEmacsParagraph Backward)
          ,(char '}',       Replicate $ Move unitEmacsParagraph Forward)
@@ -228,16 +228,16 @@ defKeymap = Proto template
          [(char '$',  eol)
          ,(spec KEnd, eol)
           -- words
-         ,(char 'e',     Replicate $ GenMove ViWord (Forward, InsideBound) Forward)
-         ,(char 'E',     Replicate $ GenMove ViWORD (Forward, InsideBound) Forward)]
+         ,(char 'e',     Replicate $ GenMove unitViWord (Forward, InsideBound) Forward)
+         ,(char 'E',     Replicate $ GenMove unitViWORD (Forward, InsideBound) Forward)]
          where
              eol   = Replicate $ viMoveToEol
 
      -- | movement *multi-chars* commands (with inclusive cut/yank semantics)
      moveCmdS_inclusive :: [(String, (Int -> ViMove))]
      moveCmdS_inclusive =
-         [("ge", Replicate $ GenMove ViWord (Forward, InsideBound) Backward)
-         ,("gE", Replicate $ GenMove ViWORD (Forward, InsideBound) Backward)
+         [("ge", Replicate $ GenMove unitViWord (Forward, InsideBound) Backward)
+         ,("gE", Replicate $ GenMove unitViWORD (Forward, InsideBound) Backward)
          ,("g_", const $ ArbMove lastNonSpaceB)]
 
      regionOfViMove :: ViMove -> RegionStyle -> BufferM Region
@@ -316,7 +316,7 @@ defKeymap = Proto template
      --       at word bounds: search for \<word\>
      searchCurrentWord :: Direction -> EditorM ()
      searchCurrentWord dir = do
-       w <- withBuffer0 $ readRegionB =<< regionOfNonEmptyB ViWord
+       w <- withBuffer0 $ readRegionB =<< regionOfNonEmptyB unitViWord
        viSearch w [] dir
 
      -- | Parse any character that can be inserted in the text.
@@ -459,8 +459,8 @@ defKeymap = Proto template
 
      char2unit :: [(Char, Bool -> TextUnit)]
      char2unit =
-       [('w',  toOuter ViWord)
-       ,('W',  toOuter ViWORD)
+       [('w',  toOuter unitViWord)
+       ,('W',  toOuter unitViWORD)
        ,('p',  toOuter unitEmacsParagraph)
        ,('s',  toOuter unitSentence)
        ,('"',  unitDelimited '"' '"')
@@ -640,8 +640,8 @@ defKeymap = Proto template
      changeCmds :: I Event Action ()
      changeCmds =
        adjustPriority (-1) >>
-         ((char 'w' ?>> change NoMove Exclusive (GenMove ViWord (Forward, OutsideBound) Forward)) <|>
-          (char 'W' ?>> change NoMove Exclusive (GenMove ViWORD (Forward, OutsideBound) Forward))) <|>
+         ((char 'w' ?>> change NoMove Exclusive (GenMove unitViWord (Forward, OutsideBound) Forward)) <|>
+          (char 'W' ?>> change NoMove Exclusive (GenMove unitViWORD (Forward, OutsideBound) Forward))) <|>
        (char 'c' ?>> change viMoveToSol LineWise viMoveToEol) <|>
        (uncurry (change NoMove) =<< gen_cmd_move) <|>
        (select_any_unit (cutRegion Exclusive) >> ins_mode self) -- this correct while the RegionStyle is not LineWise
@@ -666,7 +666,7 @@ defKeymap = Proto template
                             spec KDel          ?>>! (adjBlock (-1) >> deleteB Character Forward),
                             spec KEnter        ?>>! insertB '\n',
                             spec KTab          ?>>! insertTabB,
-                            (ctrl $ char 'w')  ?>>! cut Exclusive (GenMove ViWord (Backward,InsideBound) Backward)]
+                            (ctrl $ char 'w')  ?>>! cut Exclusive (GenMove unitViWord (Backward,InsideBound) Backward)]
 
      --
      -- Some ideas for a better insert mode are contained in:
