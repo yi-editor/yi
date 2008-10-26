@@ -153,7 +153,7 @@ emacsKeys univArg =
          , metaCh 'l'           ?>>! (repeatingArg lowercaseWordB)
          , metaCh 'q'           ?>>! (withSyntax modePrettify)
          , metaCh 'u'           ?>>! (repeatingArg uppercaseWordB)
-         , metaCh 't'           ?>>! (repeatingArg $ transposeB Word Forward)
+         , metaCh 't'           ?>>! (repeatingArg $ transposeB unitWord Forward)
          , metaCh 'w'           ?>>! killRingSaveE
          , metaCh 'x'           ?>>! executeExtendedCommandE
          , metaCh 'y'           ?>>! yankPopE

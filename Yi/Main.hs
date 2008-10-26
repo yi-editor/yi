@@ -205,7 +205,7 @@ defaultPublishedActions = M.fromList $
     , ("Document"               , box Document)
     , ("Forward"                , box Forward)
     , ("Line"                   , box Line)
-    , ("Word"                   , box Word)
+    , ("unitWord"               , box unitWord)
     , ("Point"                  , box Point)
     , ("atBoundaryB"            , box atBoundaryB)
     , ("cabalBuildE"            , box cabalBuildE)
@@ -233,6 +233,7 @@ defaultPublishedActions = M.fromList $
     , ("sortLines"              , box sortLines)
     , ("unLineCommentSelectionB", box unLineCommentSelectionB)
     , ("unitParagraph"          , box unitParagraph)
+    , ("unitViWord"          , box unitViWord)
     , ("writeB"                 , box writeB)
     ]
 

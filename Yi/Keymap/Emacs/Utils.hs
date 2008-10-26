@@ -308,7 +308,7 @@ maybeList _   ls = ls
 promptTag :: YiM ()
 promptTag = do
   -- default tag is where the buffer is on
-  defaultTag <- withBuffer $ readUnitB Word
+  defaultTag <- withBuffer $ readUnitB unitWord
   -- if we have tags use them to generate hints
   tagTable <- withEditor getTags
   -- Hints are expensive - only lazily generate 10

@@ -9,8 +9,12 @@
 --  * the textual units they work on
 --  * the direction towards which they operate (if applicable)
 
-module Yi.Buffer.Normal (TextUnit(Character, Word, Line, ViWord, ViWORD, VLine,
-                                  Delimited, Document),
+module Yi.Buffer.Normal (TextUnit(Delimited, ViWORD, ViWord, Character, Line, VLine, Document),
+                         leftBoundaryUnit,                         
+                         unitWord,
+                         unitViWord,
+                         unitViWORD,
+                         unitDelimited,
                          unitSentence, unitEmacsParagraph, unitParagraph,
                          -- TextUnit is exported abstract intentionally:
                          -- we'd like to move more units to the GenUnit format.
@@ -54,6 +58,11 @@ data TextUnit = Character -- ^ a single character
       -- there could be more text units, like Page, Searched, etc. it's probably a good
       -- idea to use GenUnit though.
                 deriving Typeable
+
+unitWord = Word
+unitViWord = ViWord
+unitViWORD = ViWORD
+unitDelimited = Delimited
 
 isWordChar :: Char -> Bool
 isWordChar x = isAlphaNum x || x == '_'

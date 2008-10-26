@@ -52,11 +52,11 @@ moveXorEol x = replicateM_ x $ do c <- atEol; when (not c) rightB
 
 -- | Move to first char of next word forwards
 nextWordB :: BufferM ()
-nextWordB = moveB Word Forward
+nextWordB = moveB unitWord Forward
 
 -- | Move to first char of next word backwards
 prevWordB :: BufferM ()
-prevWordB = moveB Word Backward
+prevWordB = moveB unitWord Backward
 
 -- * Char-based movement actions.
 
@@ -153,12 +153,12 @@ bdeleteB = deleteB Character Backward
 -- | Delete forward whitespace or non-whitespace depending on
 -- the character under point.
 killWordB :: BufferM ()
-killWordB = deleteB Word Forward
+killWordB = deleteB unitWord Forward
 
 -- | Delete backward whitespace or non-whitespace depending on
 -- the character before point.
 bkillWordB :: BufferM ()
-bkillWordB = deleteB Word Backward
+bkillWordB = deleteB unitWord Backward
 
 
 ----------------------------------------
@@ -166,15 +166,15 @@ bkillWordB = deleteB Word Backward
 
 -- | capitalise the word under the cursor
 uppercaseWordB :: BufferM ()
-uppercaseWordB = transformB (fmap toUpper) Word Forward
+uppercaseWordB = transformB (fmap toUpper) unitWord Forward
 
 -- | lowerise word under the cursor
 lowercaseWordB :: BufferM ()
-lowercaseWordB = transformB (fmap toLower) Word Forward
+lowercaseWordB = transformB (fmap toLower) unitWord Forward
 
 -- | capitalise the first letter of this word
 capitaliseWordB :: BufferM ()
-capitaliseWordB = transformB capitalizeFirst Word Forward
+capitaliseWordB = transformB capitalizeFirst unitWord Forward
 
 
 -- | Delete to the end of line, excluding it.

@@ -45,11 +45,11 @@ wordComplete = do
   Completion list <- getDynamic
   case list of 
     (x:xs) -> do -- more alternatives, use them.
-       withBuffer0 $ do reg <- regionOfPartB Word Backward       
+       withBuffer0 $ do reg <- regionOfPartB unitWord Backward       
                         replaceRegionB reg x
        setDynamic (Completion xs)
     [] -> do -- no alternatives, build them.
-      w <- withBuffer0 $ do readRegionB =<< regionOfPartB Word Backward
+      w <- withBuffer0 $ do readRegionB =<< regionOfPartB unitWord Backward
       ws <- wordsForCompletion
       setDynamic (Completion $ (nubSet $ filter (matches w) ws) ++ [w])
       -- We put 'w' back at the end so we go back to it after seeing
@@ -104,7 +104,7 @@ veryQuickCompleteWord =
 wordsAndCurrentWord :: BufferM (String, [String])
 wordsAndCurrentWord =
   do curText          <- readRegionB =<< regionOfB Document
-     curWord          <- readRegionB =<< regionOfPartB Word Backward
+     curWord          <- readRegionB =<< regionOfPartB unitWord Backward
      return (curWord, words' curText)
 
 wordsForCompletionInBuffer :: BufferM [String]
