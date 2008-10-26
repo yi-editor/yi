@@ -9,7 +9,7 @@
 --  * the textual units they work on
 --  * the direction towards which they operate (if applicable)
 
-module Yi.Buffer.Normal (TextUnit(Delimited, ViWORD, ViWord, Character, Line, VLine, Document),
+module Yi.Buffer.Normal (TextUnit(ViWORD, ViWord, Character, Line, VLine, Document),
                          leftBoundaryUnit,                         
                          unitWord,
                          unitViWord,
