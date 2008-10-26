@@ -477,11 +477,11 @@ defKeymap = Proto template
        ]
 
      select_any_unit :: (MonadInteract m Action Event) => (Region -> EditorM ()) -> m ()
-     select_any_unit f =
-       choice [ x
-              | (c, unit) <- char2unit,
-                x <- [ char 'i' ?>> (char c ?>> write (f =<< withBuffer0 (regionOfNonEmptyB $ unit False))), -- inner unit
-                       char 'a' ?>> (char c ?>> write (f =<< withBuffer0 (regionOfNonEmptyB $ unit True))) ] ]
+     select_any_unit f = do 
+       outer <- (char 'a' ?>> pure True) <|> (char 'i' ?>> pure False)
+       choice [ char c ?>> write (f =<< withBuffer0 (regionOfNonEmptyB $ unit outer))
+                | (c, unit) <- char2unit]
+               
 
      regionOfSelection :: BufferM (RegionStyle, Region)
      regionOfSelection = do
