@@ -1,4 +1,4 @@
--- -*- haskell -*- 
+-- -*- haskell -*-
 --
 -- Lexical syntax for illiterate Haskell 98.
 --
@@ -38,7 +38,7 @@ $idchar    = [$alpha $digit \']
 $symchar   = [$symbol \:]
 $nl        = [\n\r]
 
-@reservedid = 
+@reservedid =
         as|case|class|data|default|else|hiding|if|
         import|in|infix|infixl|infixr|instance|newtype|
         qualified|then|type|family|forall|foreign|export|dynamic|
@@ -99,38 +99,38 @@ haskell :-
 -- it's also possible that we have just finishing a line,
 -- people sometimes do this for example  when breaking up paragraphs
 -- in a long comment.
- "--"$nl                                       { c $ Comment Line }
+  "--"$nl                                       { c $ Comment Line }
 
- "{-"                                           { m (subtract 1) $ Comment Open }
+  "{-"                                          { m (subtract 1) $ Comment Open }
 
- ^"#".*                                         { c $ CppDirective }
- $special                                       { cs $ \(c:_) -> Special c }
- "deriving"                                     { c (Reserved Deriving) }
- @reservedid                                    { c (Reserved Other) }
- "module"                                       { c (Reserved Module) }
- "where"                                        { c (Reserved Where) }
- @layoutReservedId                              { c (Reserved OtherLayout) }
- `@qual @varid`                                       { c Operator }
- `@qual @conid`                                       { c ConsOperator }
- @qual @varid                                         { c VarIdent }
- @qual @conid                                         { c ConsIdent }
+  ^"#".*                                        { c $ CppDirective }
+  $special                                      { cs $ \(c:_) -> Special c }
+  "deriving"                                    { c (Reserved Deriving) }
+  @reservedid                                   { c (Reserved Other) }
+  "module"                                      { c (Reserved Module) }
+  "where"                                       { c (Reserved Where) }
+  @layoutReservedId                             { c (Reserved OtherLayout) }
+  `@qual @varid`                                { c Operator }
+  `@qual @conid`                                { c ConsOperator }
+  @qual @varid                                  { c VarIdent }
+  @qual @conid                                  { c ConsIdent }
 
- "|"                                            { c (ReservedOp Pipe) }
- "="                                            { c (ReservedOp Equal) }
- @reservedop                                    { c (ReservedOp OtherOp) }
- @qual @varsym                                        { c Operator }
- @qual @consym                                        { c ConsOperator }
+  "|"                                           { c (ReservedOp Pipe) }
+  "="                                           { c (ReservedOp Equal) }
+  @reservedop                                   { c (ReservedOp OtherOp) }
+  @qual @varsym                                 { c Operator }
+  @qual @consym                                 { c ConsOperator }
 
- @decimal 
-  | 0[oO] @octal
-  | 0[xX] @hexadecimal                          { c Number }
+  @decimal
+    | 0[oO] @octal
+    | 0[xX] @hexadecimal                        { c Number }
 
- @decimal \. @decimal @exponent?
-  | @decimal @exponent                          { c Number }
+  @decimal \. @decimal @exponent?
+    | @decimal @exponent                        { c Number }
 
- \' ($graphic # [\'\\] | " " | @escape) \'      { c CharTok }
- \" @string* \"                                 { c StringTok }
- .                                              { c Unrecognized }
+  \' ($graphic # [\'\\] | " " | @escape) \'     { c CharTok }
+  \" @string* \"                                { c StringTok }
+  .                                             { c Unrecognized }
 }
 
 {
