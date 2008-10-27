@@ -161,7 +161,7 @@ instance Foldable MarkSet where
 instance Functor MarkSet where
     fmap = fmapDefault
 
-instance Binary WinMarks where
+instance Binary a => Binary (MarkSet a) where
     put (MarkSet f i s t) = put f >> put i >> put s >> put t
     get = MarkSet <$> get <*> get <*> get <*> get
 

@@ -57,7 +57,18 @@ data Editor = Editor {
 
 instance Binary Editor where
     put (Editor bss bs supply ts _dv _sl kr _re _tt _dir _ev) = put bss >> put bs >> put supply >> put ts >> put kr
-    get = Editor <$> get <*> get <*> get <*> get <*> pure emptyDV <*> pure [] <*> get <*> pure Nothing <*> pure Nothing <*>pure Forward <*> pure []
+    get = do
+        bss <- get
+        bs <- get
+        supply <- get
+        ts <- get
+        kr <- get
+        return $ emptyEditor {bufferStack = bss,
+                              buffers = bs,
+                              refSupply = supply,
+                              tabs = ts,
+                              killring = kr
+                             }
 
 windows :: Editor -> WindowSet Window
 windows editor =
