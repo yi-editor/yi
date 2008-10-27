@@ -307,7 +307,7 @@ defKeymap = Proto template
         choice $
           [c ?>>! action i | (c,action) <- singleCmdFM ] ++
           [events evs >>! action i | (evs, action) <- multiCmdFM ] ++
-          [char 'r' ?>> textChar >>= write . writeN . replicate i
+          [char 'r' ?>> textChar >>= write . savingPointB . writeN . replicate i
           ,pString "gt" >>! nextTabE
           ,pString "gT" >>! previousTabE]
 
