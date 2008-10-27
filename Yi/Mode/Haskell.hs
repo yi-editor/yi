@@ -6,6 +6,7 @@ module Yi.Mode.Haskell
    plainMode,
    cleverMode, 
    preciseMode,
+   literateMode,
    testMode,
    
    -- * Buffer-level operations
@@ -36,6 +37,7 @@ import Yi.Syntax.Tree
 import Yi.Syntax.OnlineTree as OnlineTree
 import qualified Yi.IncrementalParse as IncrParser
 import qualified Yi.Lexer.Alex as Alex
+import qualified Yi.Lexer.LiterateHaskell as LiterateHaskell
 import Yi.Lexer.Haskell as Haskell
 import qualified Yi.Syntax.Linear as Linear
 import qualified Yi.Mode.Interactive as Interactive
@@ -64,7 +66,6 @@ plainMode = haskellAbstract
      modeHL = ExtHL $
      mkHighlighter (Linear.incrScanner . haskellLexer) (\begin end pos -> Linear.getStrokes begin end pos . fmap Paren.tokenToStroke)
    , modeIndent = \_ast -> autoIndentHaskellB
-   , modeToggleCommentSelection = haskellToggleCommentSelectionB
    }
 
 -- | "Clever" haskell mode, using the paren-matching syntax.
@@ -87,10 +88,20 @@ testMode = haskellAbstract
     modeApplies = modeApplies plainMode,
     modeHL = ExtHL $
     mkHighlighter (IncrParser.scanner OnlineTree.parse . haskellLexer)
-      (\point begin end t -> fmap Hask.tokenToStroke $ dropToIndex begin t)
+      (\_point begin _end t -> fmap Hask.tokenToStroke $ dropToIndex begin t)
 
  }
 
+literateMode :: Mode [Paren.Tree TT]
+literateMode = haskellAbstract
+  { modeName = "literate haskell"
+  , modeApplies = anyExtension ["lhs"]
+  , modeHL = ExtHL $
+    mkHighlighter (IncrParser.scanner Paren.parse . Paren.indentScanner . literateHaskellLexer)
+      (\point begin end t -> Paren.getStrokes point begin end t)
+  , modeAdjustBlock = adjustBlock
+  , modeIndent = cleverAutoIndentHaskellB
+  , modePrettify = cleverPrettify }
 
 -- | "Clever" hasell mode, using the 
 preciseMode :: Mode (Hask.Tree TT)
@@ -109,6 +120,8 @@ preciseMode = haskellAbstract
 
 
 haskellLexer = Alex.lexScanner Haskell.alexScanToken Haskell.initState 
+
+literateHaskellLexer = Alex.lexScanner LiterateHaskell.alexScanToken LiterateHaskell.initState
 
 adjustBlock :: Expr (Tok Token) -> Int -> BufferM ()
 adjustBlock e len = do

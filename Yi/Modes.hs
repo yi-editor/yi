@@ -1,5 +1,5 @@
 module Yi.Modes (fundamentalMode,
-                 latexMode, cppMode, literateHaskellMode, cabalMode, srmcMode, ocamlMode,
+                 latexMode, cppMode, cabalMode, srmcMode, ocamlMode,
                  ottMode, gnuMakeMode,
                  perlMode, pythonMode, latexMode2,
                  anyExtension
@@ -18,7 +18,6 @@ import qualified Yi.Lexer.Alex as Alex
 import qualified Yi.Lexer.Cabal               as Cabal
 import qualified Yi.Lexer.Cplusplus           as Cplusplus
 import qualified Yi.Lexer.Latex               as Latex
-import qualified Yi.Lexer.LiterateHaskell     as LiterateHaskell
 import qualified Yi.Lexer.GNUMake             as GNUMake
 import qualified Yi.Lexer.OCaml               as OCaml
 import qualified Yi.Lexer.Ott                 as Ott
@@ -30,7 +29,7 @@ import qualified Yi.Syntax.Latex as Latex
 
 
 fundamentalMode :: Mode syntax
-latexMode, cppMode, literateHaskellMode, cabalMode, srmcMode, ocamlMode, ottMode, gnuMakeMode, perlMode, pythonMode :: Mode (Linear.Result Stroke)
+latexMode, cppMode, cabalMode, srmcMode, ocamlMode, ottMode, gnuMakeMode, perlMode, pythonMode :: Mode (Linear.Result Stroke)
 
 fundamentalMode = emptyMode
   { 
@@ -60,13 +59,6 @@ cppMode = fundamentalMode
     -- Treat c file as cpp files, most users will allow for that.
     modeName = "c++",
     modeHL = ExtHL $ mkHighlighter' Cplusplus.initState Cplusplus.alexScanToken id
-  }
-
-literateHaskellMode = fundamentalMode
-  {
-    modeName = "literate haskell",
-    modeApplies = anyExtension ["lhs"],
-    modeHL = ExtHL $ mkHighlighter' LiterateHaskell.initState LiterateHaskell.alexScanToken id
   }
 
 cabalMode = fundamentalMode

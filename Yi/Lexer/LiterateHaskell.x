@@ -12,6 +12,7 @@
 {-# OPTIONS -w  #-}
 module Yi.Lexer.LiterateHaskell ( initState, alexScanToken ) where
 import Yi.Lexer.Alex
+import Yi.Lexer.Haskell hiding (initState, alexScanToken)
 import Yi.Style
 }
 
@@ -39,16 +40,21 @@ $symchar   = [$symbol \:]
 $nl        = [\n\r]
 
 @reservedid =
-        as|case|class|data|default|deriving|do|else|hiding|if|
-        import|in|infix|infixl|infixr|instance|let|module|newtype|
-        of|qualified|then|type|where|family|forall|mdo|foreign|export|dynamic|
+        as|case|class|data|default|else|hiding|if|
+        import|in|infix|infixl|infixr|instance|newtype|
+        qualified|then|type|family|forall|foreign|export|dynamic|
         safe|threadsafe|unsafe|stdcall|ccall|dotnet
+
+@layoutReservedId =
+    of|let|do|mdo
+
 
 @reservedop =
         ".." | ":" | "::" | "=" | \\ | "|" | "<-" | "->" | "@" | "~" | "=>"
 
 @varid  = $small $idchar*
 @conid  = $large $idchar*
+@qual   = (@conid ".")*
 @varsym = $symbol $symchar*
 @consym = \: $symchar*
 
@@ -69,118 +75,132 @@ $charesc = [abfnrtv\\\"\'\&]
 
 haskell :-
 
-<0> $white+                                     { c defaultStyle } -- whitespace
+<0> $white+                                     ;
 
 <nestcomm> {
-  "{-"                                          { m Comment commentStyle }
-  "-}"                                          { m unComment commentStyle }
-  $white+                                       { c defaultStyle } -- whitespace
-  .                                             { c commentStyle }
+  "{-"                                          { m CommentBlock (Comment Open) }
+  "-}"                                          { m unComment (Comment Close) }
+  $white+                                       ; -- whitespace
+  [^\-\{]+                                      { c $ Comment Text } -- rule to generate comments larger than 1 char
+  .                                             { c $ Comment Text }
 }
 
 <0> {
-  ^ "\begin{code}"                              { m (const CodeBlock) keywordStyle }
-  ^ ">"                                         { m (const CodeLine) operatorStyle }
-  $white+                                       { c defaultStyle } -- whitespace
-  .                                             { c latexStyle }
+  ^ "\begin{code}"                              { m (const CodeBlock) $ Reserved Other }
+  ^ ">"                                         { m (const CodeLine) Operator }
+  $white+                                       ; -- whitespace
+  .                                             { c $ Comment Text {-LaTeX-} }
 }
 
 <codeBlock> {
-  "\end{code}"                                  { m (const LaTeX) keywordStyle }
+  "\end{code}"                                  { m (const LaTeXBlock) $ Reserved Other }
 
-  $white+                                       { c defaultStyle } -- whitespace
+  $white+                                       ; -- whitespace
 
 -- The first rule matches operators that begin with --, eg --++-- is a valid
--- operator and *not* a comment. 
+-- operator and *not* a comment.
 -- Note that we have to dissallow '-' as a symbol char for the first one
--- of these because we may have -------- which would stilljust be the 
+-- of these because we may have -------- which would stilljust be the
 -- start of a comment.
-  "--"\-* [$symbol # \-] $symchar*              { c defaultStyle }
+  "--"\-* [$symbol # \-] $symchar*              { c Operator }
 -- The next rule allows for the start of a comment basically
 -- it is -- followed by anything which isn't a symbol character
 -- (OR more '-'s). So for example "-----:" is still the start of a comment.
-  "--"~[$symbol # \-][^$nl]*                    { c commentStyle }
--- Finally because the above rule had to add in a non symbol character 
+  "--"~[$symbol # \-][^$nl]*                    { c $ Comment Line }
+-- Finally because the above rule had to add in a non symbol character
 -- it's also possible that we have just finishing a line,
 -- people sometimes do this for example  when breaking up paragraphs
 -- in a long comment.
-  "--"$nl                                       { c commentStyle }
+  "--"$nl                                       { c $ Comment Line }
 
-  "{-"                                          { m Comment blockCommentStyle }
+  "{-"                                          { m CommentBlock $ Comment Open }
 
-  $special                                      { c defaultStyle }
+  ^"#".*                                        { c $ CppDirective }
+  $special                                      { cs $ \(c:_) -> Special c }
+  "deriving"                                    { c (Reserved Deriving) }
+  @reservedid                                   { c (Reserved Other) }
+  "module"                                      { c (Reserved Module) }
+  "where"                                       { c (Reserved Where) }
+  @layoutReservedId                             { c (Reserved OtherLayout) }
+  `@qual @varid`                                { c Operator }
+  `@qual @conid`                                { c ConsOperator }
+  @qual @varid                                  { c VarIdent }
+  @qual @conid                                  { c ConsIdent }
 
-  @reservedid                                   { c keywordStyle }
-  @varid                                        { c defaultStyle }
-  @conid                                        { c typeStyle }
-
-  @reservedop                                   { c operatorStyle }
-  @varsym                                       { c operatorStyle }
-  @consym                                       { c typeStyle }
+  "|"                                           { c (ReservedOp Pipe) }
+  "="                                           { c (ReservedOp Equal) }
+  @reservedop                                   { c (ReservedOp OtherOp) }
+  @qual @varsym                                 { c Operator }
+  @qual @consym                                 { c ConsOperator }
 
   @decimal
-   | 0[oO] @octal
-   | 0[xX] @hexadecimal                         { c defaultStyle }
+    | 0[oO] @octal
+    | 0[xX] @hexadecimal                        { c Number }
 
   @decimal \. @decimal @exponent?
-   | @decimal @exponent                         { c defaultStyle }
+    | @decimal @exponent                        { c Number }
 
-  \' ($graphic # [\'\\] | " " | @escape) \'     { c stringStyle }
-  \" @string* \"                                { c stringStyle }
-  .                                             { c operatorStyle }
+  \' ($graphic # [\'\\] | " " | @escape) \'     { c CharTok }
+  \" @string* \"                                { c StringTok }
+  .                                             { c Unrecognized }
 }
 
 <codeLine> {
-  [\t\n\r\f\v]+                                 { m (const LaTeX) keywordStyle }
+  [\t\n\r\f\v]+                                 { m (const LaTeXBlock) $ Reserved Other }
 
-  [\ \t]+                                       { c defaultStyle } -- whitespace
+  [\ \t]+                                       ; -- whitespace
 
 -- Same three rules for line comments as above (see above for explanation).
-  "--"\-* [$symbol # \-] $symchar*              { c defaultStyle }
-  "--"~[$symbol # \-][^$nl]*                    { c commentStyle }
-  "--"$nl                                       { c commentStyle }
+  "--"\-* [$symbol # \-] $symchar*              { c Operator }
+  "--"~[$symbol # \-][^$nl]*                    { c $ Comment Line }
+  "--"$nl                                       { c $ Comment Line }
 
-  "{-"                                          { m Comment blockCommentStyle }
+  "{-"                                          { m CommentBlock $ Comment Open }
 
-  $special                                      { c defaultStyle }
+  ^"#".*                                        { c $ CppDirective }
+  $special                                      { cs $ \(c:_) -> Special c }
+  "deriving"                                    { c (Reserved Deriving) }
+  @reservedid                                   { c (Reserved Other) }
+  "module"                                      { c (Reserved Module) }
+  "where"                                       { c (Reserved Where) }
+  @layoutReservedId                             { c (Reserved OtherLayout) }
+  `@qual @varid`                                { c Operator }
+  `@qual @conid`                                { c ConsOperator }
+  @qual @varid                                  { c VarIdent }
+  @qual @conid                                  { c ConsIdent }
 
-  @reservedid                                   { c keywordStyle }
-  @varid                                        { c defaultStyle }
-  @conid                                        { c typeStyle }
-
-  @reservedop                                   { c operatorStyle }
-  @varsym                                       { c operatorStyle }
-  @consym                                       { c typeStyle }
+  "|"                                           { c (ReservedOp Pipe) }
+  "="                                           { c (ReservedOp Equal) }
+  @reservedop                                   { c (ReservedOp OtherOp) }
+  @qual @varsym                                 { c Operator }
+  @qual @consym                                 { c ConsOperator }
 
   @decimal
-   | 0[oO] @octal
-   | 0[xX] @hexadecimal                         { c defaultStyle }
+    | 0[oO] @octal
+    | 0[xX] @hexadecimal                        { c Number }
 
   @decimal \. @decimal @exponent?
-   | @decimal @exponent                         { c defaultStyle }
+    | @decimal @exponent                        { c Number }
 
-  \' ($graphic # [\'\\] | " " | @escape) \'     { c stringStyle }
-  \" @string* \"                                { c stringStyle }
-  .                                             { c operatorStyle }
+  \' ($graphic # [\'\\] | " " | @escape) \'     { c CharTok }
+  \" @string* \"                                { c StringTok }
+  .                                             { c Unrecognized }
 }
 
 {
-type Token = StyleName
+
 data HlState = CodeBlock
              | CodeLine
-             | Comment { unComment :: HlState }
-             | LaTeX
+             | CommentBlock { unComment :: HlState }
+             | LaTeXBlock
   deriving (Eq)
 
-stateToInit (Comment _) = nestcomm
-stateToInit CodeBlock   = codeBlock
-stateToInit CodeLine    = codeLine
-stateToInit LaTeX       = 0
+stateToInit (CommentBlock _) = nestcomm
+stateToInit CodeBlock        = codeBlock
+stateToInit CodeLine         = codeLine
+stateToInit LaTeXBlock       = 0
 
-initState = LaTeX
-
-latexStyle = commentStyle
+initState = LaTeXBlock
 
 #include "alex.hsinc"
-
 }

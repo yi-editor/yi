@@ -178,7 +178,7 @@ defaultConfig =
          , modeTable = [AnyMode Haskell.cleverMode,
                         AnyMode latexMode2,
                         AnyMode cppMode,
-                        AnyMode literateHaskellMode,
+                        AnyMode Haskell.literateMode,
                         AnyMode cabalMode,
                         AnyMode gnuMakeMode,
                         AnyMode srmcMode,
