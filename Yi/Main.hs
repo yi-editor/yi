@@ -235,6 +235,7 @@ defaultPublishedActions = M.fromList $
     , ("unitParagraph"          , box unitParagraph)
     , ("unitViWord"          , box unitViWord)
     , ("writeB"                 , box writeB)
+    , ("ghci"                   , box Haskell.ghciGet)
     ]
 
   where box x = [Data.Dynamic.toDyn x]
