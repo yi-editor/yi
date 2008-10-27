@@ -1,4 +1,4 @@
-{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
 -- Consider splitting off as a separate package
 -- Copyright (c) 2008 Gustav Munkby
 
@@ -55,7 +55,7 @@ b -| t | B.null b  = t
 t |- b | B.null b  = t
        | otherwise = t |> b
 
-instance Measured Size ByteString where
+instance Measured (Sum Int) ByteString where
   measure = Sum . B.length
 
 toLazyByteString :: ByteRope -> LB.ByteString

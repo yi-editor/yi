@@ -8,7 +8,7 @@ derive:
 	derive -a Yi/KillRing.hs
 	derive -a Yi/Window.hs
 	derive -a Yi/WindowSet.hs
-	derive -a Yi/Undo.hs
+	derive -a Yi/Buffer/Undo.hs
 	derive -a Yi/Buffer/Implementation.hs
 
 test::
