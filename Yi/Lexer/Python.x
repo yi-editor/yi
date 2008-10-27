@@ -119,7 +119,7 @@ $charesc = [abfnrtv\\\"\'\&]
 @shortstring = $graphic # [\"\'\\] | " " | @escape | @gap
 @longstring  = @shortstring | $nl
 
-haskell :-
+main :-
 
 <0> {
  $white+                                        { c defaultStyle }

@@ -12,7 +12,7 @@ import Yi.Style
 import qualified Yi.Style as Style
 }
 
-make :-
+main :-
 
 <0>
 {
