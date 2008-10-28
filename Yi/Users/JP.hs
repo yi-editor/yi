@@ -12,6 +12,7 @@ import Prelude ()
 import Yi.Keymap.Keys
 import Yi.String
 import Data.Char
+import Yi.UI.Vty (start)
 
 increaseIndent :: BufferM ()
 increaseIndent = modifyExtendedSelectionB Line $ mapLines (' ':)
@@ -116,7 +117,7 @@ symbols =
 
 extraInput :: Keymap
 extraInput 
-    = choice [pString ('\\':i) >>! insertN o | (i,o) <- greek] <|> -- greek letters, LaTeX-style
+    = choice [spec KEsc ?>> pString i >>! insertN o | (i,o) <- greek] <|> -- greek letters, LaTeX-style
       choice [spec KEsc ?>> pString i >>! insertN o | (i,o) <- symbols] 
 
 parensInput :: Keymap
@@ -135,13 +136,14 @@ parenIns open close = do
 
 main :: IO ()
 main = yi $ defaultConfig {
+                           startFrontEnd = Yi.UI.Vty.start,
                            configKillringAccumulate = True,
                            modeTable = AnyMode bestHaskellMode : modeTable defaultConfig,
                            configUI = (configUI defaultConfig) 
                              { configFontSize = Just 10 
                              -- , configTheme = darkBlueTheme
                              },
-                           defaultKm = choice [extraInput, parensInput] <|| keymap
+                           defaultKm = choice [extraInput] <|| keymap
                               <|> (ctrl (char '>') ?>>! increaseIndent)
                               <|> (ctrl (char '<') ?>>! decreaseIndent)
                           }
