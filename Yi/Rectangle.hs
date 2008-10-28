@@ -1,4 +1,5 @@
 -- Copyright (C) 2008 JP Bernardy
+-- | emacs-style rectangle manipulation functions.
 module Yi.Rectangle where
 
 import Yi.Prelude
@@ -21,6 +22,7 @@ getRectangle = do
     [lowCol,highCol] <- sort <$> mapM colOf [regionStart r, regionEnd r]
     return (extR, lowCol, highCol)
 
+-- | Split a list at the boundaries given
 multiSplit :: [Int] -> [a] -> [[a]]
 multiSplit [] l = [l]
 multiSplit (x:xs) l = left : multiSplit (fmap (subtract x) xs) right

@@ -9,6 +9,7 @@ module Yi.Buffer.Region
   , swapRegionsB
   , deleteRegionB
   , replaceRegionB
+  , replaceRegionClever
   , readRegionB
   , mapRegionB
   , modifyRegionB
@@ -43,10 +44,24 @@ readRegionB :: Region -> BufferM String
 readRegionB r = nelemsB' (regionEnd r ~- i) i
     where i = regionStart r
 
+-- | Replace a region with a given string.
 replaceRegionB :: Region -> String -> BufferM ()
 replaceRegionB r s = do
   deleteRegionB r
   insertNAt s (regionStart r)
+
+-- | As 'replaceRegionB', but do a minimal edition instead of deleting the whole
+-- region and inserting it back.
+replaceRegionClever :: Region -> String -> BufferM ()
+replaceRegionClever region text' = savingExcursionB $ do
+    text <- readRegionB region
+    let diffs = getGroupedDiff text text'
+    moveTo (regionStart region)
+    forM_ diffs $ \(d,str) -> do
+        case d of
+            F -> deleteN $ length str
+            B -> rightN $ length str
+            S -> insertN str
 
 mapRegionB :: Region -> (Char -> Char) -> BufferM ()
 mapRegionB r f = do
@@ -62,6 +77,9 @@ swapRegionsB r r'
                      replaceRegionB r' w0
                      replaceRegionB r  w1
 
+-- Transform a replace into a modify.
+replToMod replace = \transform region -> replace region =<< transform <$> readRegionB region
+
 -- | Modifies the given region according to the given
 -- string transformation function
 modifyRegionB :: (String -> String)
@@ -69,21 +87,13 @@ modifyRegionB :: (String -> String)
               -> Region
                  -- ^ The region to modify
               -> BufferM ()
-modifyRegionB transform region = replaceRegionB region =<< transform <$> readRegionB region
+modifyRegionB = replToMod replaceRegionB
 
+    
 -- | As 'modifyRegionB', but do a minimal edition instead of deleting the whole
 -- region and inserting it back.
 modifyRegionClever :: (String -> [Char]) -> Region -> BufferM ()
-modifyRegionClever transform region = savingExcursionB $ do
-    text <- readRegionB region
-    let text' = transform text
-        diffs = getGroupedDiff text text'
-    moveTo (regionStart region)
-    forM_ diffs $ \(d,str) -> do
-        case d of
-            F -> deleteN $ length str
-            B -> rightN $ length str
-            S -> insertN str
+modifyRegionClever =  replToMod replaceRegionClever
 
 -- | Extend the right bound of a region to include it.
 inclusiveRegionB :: Region -> BufferM Region
