@@ -6,7 +6,7 @@ import Yi.Keymap.Emacs (keymap)
 -- If configured with ghcAPI, Shim Mode can be enabled:
 -- import qualified Yi.Mode.Shim as Shim
 import Yi.Mode.Haskell as Haskell
-import Data.List (drop)
+import Data.List (drop, length)
 import Yi.Prelude
 import Prelude ()
 import Yi.Keymap.Keys
@@ -50,7 +50,7 @@ symbols =
  ,(">","⟩")
  ,("[[","⟦")
  ,("]]","⟧")
-
+ 
  -- operators
  ,("<|","◃") 	   
  -- ,("<|","◁") alternative
@@ -100,7 +100,8 @@ symbols =
  ,("-","−")
  ]
 
-
+mkInputMethod :: [(String,String)] -> Keymap
+mkInputMethod list = choice [pString i >> adjustPriority (negate (length i)) >>! insertN o | (i,o) <- list] 
 
 
 -- More:
@@ -117,8 +118,7 @@ symbols =
 
 extraInput :: Keymap
 extraInput 
-    = choice [spec KEsc ?>> pString i >>! insertN o | (i,o) <- greek] <|> -- greek letters, LaTeX-style
-      choice [spec KEsc ?>> pString i >>! insertN o | (i,o) <- symbols] 
+    = spec KEsc ?>> mkInputMethod (greek ++ symbols)
 
 parensInput :: Keymap
 parensInput
@@ -143,7 +143,7 @@ main = yi $ defaultConfig {
                              { configFontSize = Just 10 
                              -- , configTheme = darkBlueTheme
                              },
-                           defaultKm = choice [extraInput] <|| keymap
+                           defaultKm = (adjustPriority (-1) >> choice [extraInput]) <|| keymap
                               <|> (ctrl (char '>') ?>>! increaseIndent)
                               <|> (ctrl (char '<') ?>>! decreaseIndent)
                           }
