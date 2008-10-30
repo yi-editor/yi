@@ -21,8 +21,18 @@ module Yi.UI.Cocoa.TextView
 
 import Yi.Buffer hiding (runBuffer)
 
-import Foundation
-import AppKit
+-- Specify Cocoa imports explicitly, to avoid name-clashes.
+-- Since the number of functions recognized by HOC varies
+-- between revisions, this seems like the safest choice.
+import HOC
+import Foundation (
+  NSPoint(..),NSRange(..),nsMinY,nsWidth,nsOffsetRect)
+import AppKit (
+  NSSelectionAffinity,characterRangeForGlyphRangeActualGlyphRange,
+  glyphRangeForBoundingRectInTextContainer,layoutManager,textContainer,
+  textContainerOrigin,visibleRect,frame,verticalScroller,NSTextView,
+  NSTextViewClass,setSelectedRangeAffinityStillSelecting,NSScrollView,
+  NSScrollViewClass,tile,setFrameOrigin)
 
 import qualified AppKit.NSScrollView (contentView)
 

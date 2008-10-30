@@ -45,10 +45,22 @@ import Yi.UI.Cocoa.Utils
 
 import Foreign.C
  
-import HOC ()
-
-import Foundation hiding (name, new, parent, error, self, null)
-import AppKit hiding (windows, start, rect, width, content, prompt, dictionary, icon, concat)
+-- Specify Cocoa imports explicitly, to avoid name-clashes.
+-- Since the number of functions recognized by HOC varies
+-- between revisions, this seems like the safest choice.
+import HOC
+import Foundation (
+  NSObject,NSObjectClass,NSNotification,synchronize,_NSUserDefaults,
+  standardUserDefaults,_NSArray,arrayWithObject,haskellString,
+  _NSTimer,scheduledTimerWithTimeIntervalTargetSelectorUserInfoRepeats,
+  toNSString)
+import AppKit (
+  NSEvent,NSMenu,NSApplication,NSApplicationClass,run,sendEvent,
+  applicationShouldTerminateAfterLastWindowClosed,_NSPasteboard,
+  applicationWillTerminate,generalPasteboard,availableTypeFromArray,
+  charactersIgnoringModifiers,declareTypesOwner,modifierFlags,
+  nsKeyDown,nsStringPboardType,setStringForType,changeCount,
+  stringForType)
 
 foreign import ccall "RtsAPI.h shutdownHaskellAndExit" shutdownHaskellAndExit :: CInt -> IO ()
 

@@ -36,9 +36,40 @@ import Data.Monoid
 import Data.Unique
 import qualified Data.Map as M
 
-import Foundation hiding (name, new, parent, error, self, null)
+-- Specify Cocoa imports explicitly, to avoid name-clashes.
+-- Since the number of functions recognized by HOC varies
+-- between revisions, this seems like the safest choice.
+import HOC
+import Foundation (
+  NSPoint(..),NSRect(..),NSRange(..),NSSize(..),nsHeight,nsWidth,
+  _NSThread,detachNewThreadSelectorToTargetWithObject,alloc,init,
+  NSObject,toNSString)
+import AppKit (
+  frame,bounds,setFrame,NSView,_NSView,NSTextField,_NSTextField,
+  NSCell,_NSSplitView,_NSImage,NSApplication,sharedApplication,
+  terminate_,run,setApplicationIconImage,NSWindow,_NSWindow,_NSMenu,
+  activateIgnoringOtherApps,makeKeyAndOrderFront,setMainMenu,
+  addSubview,removeFromSuperview,Has_setBackgroundColor,
+  Has_setTextColor,ID,NSSplitView,NewlyAllocated,_NSFont,
+  fontWithNameSize,setUserFixedPitchFont,userFixedPitchFontOfSize,
+  adjustSubviews,cell,center,containerSize,getSelectorForName,
+  initWithContentRectStyleMaskBackingDefer,initWithContentsOfFile,
+  initWithFrame,layoutManager,makeFirstResponder,
+  nsBackingStoreBuffered,nsClosableWindowMask,nsLeftTextAlignment,
+  nsLineBreakByTruncatingMiddle,nsMiniaturizableWindowMask,
+  nsResizableWindowMask,nsTitledWindowMask,nsViewHeightSizable,
+  nsViewMaxYMargin,nsViewNotSizable,nsViewWidthSizable,
+  performMiniaturize,replaceTextStorage,scrollRangeToVisible,
+  setAlignment,setAutodisplay,setAutohidesScrollers,
+  setAutoresizingMask,setBackgroundColor,setBezeled,setBordered,
+  setContainerSize,setDelegate,setDocumentView,setEditable,
+  setFrameAutosaveName,setHasHorizontalScroller,setHasVerticalScroller,
+  setHorizontallyResizable,setInsertionPointColor,setLineBreakMode,
+  setRichText,setSelectable,setSelectedRange,
+  setSelectedTextAttributes,setStringValue,setTextColor,setTitle,
+  setVerticallyResizable,setWidthTracksTextView,setWindowsMenu,
+  setWraps,sizeToFit,textColor,textContainer)
 
-import AppKit hiding (windows, start, rect, width, content, prompt, dictionary, icon, concat, remove, insert, update, convertAttributes)
 import qualified AppKit.NSWindow
 import qualified AppKit.NSView
 

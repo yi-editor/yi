@@ -12,8 +12,19 @@ import Yi.Style
 
 import Control.Applicative
 
-import Foundation hiding (new)
-import AppKit hiding (dictionary)
+-- Specify Cocoa imports explicitly, to avoid name-clashes.
+-- Since the number of functions recognized by HOC varies
+-- between revisions, this seems like the safest choice.
+import HOC
+import Foundation (
+  NSDictionary,NSMutableDictionary,NSObject,NSObject_,
+  _NSMutableDictionary,alloc,autorelease,catchNS,description,
+  haskellString,retain,setValueForKey,dictionary,init)
+import AppKit (
+  Has_setFont,NSColor,_NSColor,_NSFont,blackColor,
+  colorWithDeviceRedGreenBlueAlpha,nsBackgroundColorAttributeName,
+  nsFontAttributeName,nsForegroundColorAttributeName,setFont,
+  userFixedPitchFontOfSize,whiteColor)
 
 logNSException :: String -> IO () -> IO ()
 logNSException str act =

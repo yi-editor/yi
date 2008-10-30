@@ -30,8 +30,20 @@ import Foreign.C
 
 import qualified Data.ByteString.Lazy as LB
 
-import Foundation hiding (minimum, new, init, null, error)
-import AppKit hiding (concat, dictionary, convertAttributes)
+-- Specify Cocoa imports explicitly, to avoid name-clashes.
+-- Since the number of functions recognized by HOC varies
+-- between revisions, this seems like the safest choice.
+import HOC
+import Foundation (
+  Unichar,NSString,NSStringClass,NSDictionary,NSRange(..),NSRangePointer,
+  length,attributeAtIndexEffectiveRange,attributesAtIndexEffectiveRange,
+  beginEditing,endEditing,setAttributesRange,haskellString)
+import AppKit (
+  NSTextStorage,NSTextStorageClass,string,fixesAttributesLazily,
+  _NSCursor,_NSFont,replaceCharactersInRangeWithString,
+  _NSParagraphStyle,castObject,defaultParagraphStyle,ibeamCursor,
+  editedRangeChangeInLength,nsTextStorageEditedAttributes,
+  nsTextStorageEditedCharacters,userFixedPitchFontOfSize)
 
 -- Unfortunately, my version of hoc does not handle typedefs correctly,
 -- and thus misses every selector that uses the "unichar" type, even
@@ -162,7 +174,7 @@ yts_attributesAtIndexEffectiveRange i er slf = do
     returnRange pic@((end,s):_) = do
       slf # setIVar _pictureCacheStart pos
       slf # setIVar _pictureCache pic
-      logPutStrLn $ "yts_attributesAtIndexEffectiveRange " ++ show i ++ " => " ++ show (NSRange i (fromIntegral end)) ++ " " ++ show (take 1 pic)
+      -- logPutStrLn $ "yts_attributesAtIndexEffectiveRange " ++ show i ++ " => " ++ show (NSRange i (fromIntegral end)) ++ " " ++ show (take 1 pic)
       safePoke er (NSRange i (fromIntegral end - i))
       dicts <- slf #. _dictionaryCache
       -- Keep a cache of seen styles... usually, there should not be to many
@@ -199,7 +211,7 @@ yts_attributeAtIndexEffectiveRange attr i er slf = do
       castObject <$> getColor False (background a)
     _ -> do
       -- TODO: Optimize the other queries as well (if needed)
-      logPutStrLn $ "Unoptimized yts_attributeAtIndexEffectiveRange " ++ attr' ++ " at " ++ show i
+      -- logPutStrLn $ "Unoptimized yts_attributeAtIndexEffectiveRange " ++ attr' ++ " at " ++ show i
       super slf # attributeAtIndexEffectiveRange attr i er
   where
     safePokeFullRange = do
