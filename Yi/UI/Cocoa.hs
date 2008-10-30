@@ -88,8 +88,11 @@ data UI = UI {uiWindow :: NSWindow ()
              ,uiBuffers :: IORef (M.Map BufferRef TextStorage)
              ,windowCache :: IORef [WinInfo]
              ,uiActionCh :: Action -> IO ()
-             ,uiConfig :: UIConfig
+             ,uiFullConfig :: Config
              }
+
+uiConfig :: UI -> UIConfig
+uiConfig = configUI . uiFullConfig
 
 data WinInfo = WinInfo
   { wikey    :: !Unique        -- ^ Uniquely identify each window
@@ -163,7 +166,7 @@ addSubviewWithTextLine view parent = do
 
 -- | Initialise the ui
 start :: UIBoot
-start cfg ch outCh ed = do
+start cfg ch outCh _ed = do
 
   -- Ensure that our command line application is also treated as a gui application
   fptr <- mallocForeignPtrBytes 32 -- way to many bytes, but hey...
@@ -179,6 +182,7 @@ start cfg ch outCh ed = do
 
   app <- _YiApplication # sharedApplication >>= return . toYiApplication
   app # setIVar _eventChannel (Just ch)
+  app # setIVar _runAction (Just $ outCh . singleton . makeAction)
 
   -- Multithreading in Cocoa is initialized by spawning a new thread
   -- This spawns a thread that immediately exits, but that's okay
@@ -224,13 +228,11 @@ start cfg ch outCh ed = do
   win # setFrameAutosaveName (toNSString "main")
   win # makeKeyAndOrderFront nil
   app # activateIgnoringOtherApps False
-  app # setIVar _runAction (Just $ outCh . singleton . makeAction)
-  app # setIVar _queryEditor (Just $ \q -> snd $ runEditor cfg q ed)
 
   bufs <- newIORef M.empty
   wc <- newIORef []
 
-  let ui = UI win winContainer cmd bufs wc (outCh . singleton) (configUI cfg)
+  let ui = UI win winContainer cmd bufs wc (outCh . singleton) cfg
 
   cmd # setColors (Style.baseAttributes $ configStyle $ uiConfig ui)
 
@@ -355,6 +357,9 @@ newWindow ui win b = do
 
 refresh :: UI -> Editor -> IO ()
 refresh ui e = logNSException "refresh" $ do
+    _YiApplication # sharedApplication >>=
+      pushClipboard (snd $ runEditor (uiFullConfig ui) getRegE e) . toYiApplication
+  
     (uiCmdLine ui) # setStringValue (toNSString $ statusLine e)
 
     cache <- readRef $ windowCache ui

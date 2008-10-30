@@ -26,9 +26,9 @@ module Yi.UI.Cocoa.Application
   , initializeClass_Application
   , _eventChannel
   , _runAction
-  , _queryEditor
   , setAppleMenu
   , ImpType_setAppleMenu
+  , pushClipboard
   ) where
 
 import Prelude ()
@@ -113,10 +113,9 @@ $(declareSelector "setAppleMenu:" [t| forall t. NSMenu t -> IO () |] )
 instance Has_setAppleMenu (NSApplication a)
 $(exportClass "YiApplication" "ya_" [
     InstanceVariable "eventChannel" [t| Maybe (Yi.Event.Event -> IO ()) |] [| Nothing |]
-  , InstanceVariable "queryEditor" [t| Maybe (EditorM String -> String) |] [| Nothing |]
   , InstanceVariable "runAction" [t| Maybe (EditorM () -> IO ()) |] [| Nothing |]
-  , InstanceVariable "oldKillring" [t| String |] [| [] |]
-  , InstanceVariable "oldChangeCount" [t| CInt |] [| 0 |]
+  , InstanceVariable "lastPaste" [t| String |] [| "" |]
+  , InstanceVariable "lastChangeCount" [t| CInt |] [| 0 |]
   , InstanceMethod 'run -- '
   , InstanceMethod 'doTick -- '
   , InstanceMethod 'sendEvent -- '
@@ -126,28 +125,32 @@ ya_doTick :: YiApplication () -> IO ()
 ya_doTick slf = do
   pb <- _NSPasteboard # generalPasteboard
   cc <- pb # changeCount
-  ar <- castObject <$> _NSArray # arrayWithObject nsStringPboardType
-  oc <- slf #. _oldChangeCount
-  ok <- slf #. _oldKillring
-  Just ra <- slf #. _runAction
-  Just qe <- slf #. _queryEditor
-  let nk = qe getRegE
+  oc <- slf #. _lastChangeCount
+  when (cc /= oc) $ do
+    slf # setIVar _lastChangeCount cc
+    ar <- _NSArray # arrayWithObject nsStringPboardType
+    ty <- pb # availableTypeFromArray (castObject ar)
+    when (ty /= nil) $ do
+      news <- pb # stringForType ty >>= haskellString
+      olds <- slf #. _lastPaste
+      when (news /= olds) $ do
+        slf # setIVar _lastPaste news
+        Just runAct <- slf #. _runAction
+        runAct (setRegE news)
   
-  if ok /= nk
-    then do
-      slf # setIVar _oldKillring nk
-      pb # declareTypesOwner ar slf
-      pb # setStringForType nsStringPboardType (toNSString nk)
-      return ()
-    else 
-      when (cc /= oc) $ do
-        slf # setIVar _oldChangeCount cc
-        ty <- pb # availableTypeFromArray ar
-        st <- pb # stringForType ty
-        when (st /= nil) $ do
-          haskellString st >>= ra . setRegE
-    
   replicateM_ 4 yield
+
+pushClipboard :: String -> YiApplication () -> IO ()
+pushClipboard news slf = do
+  olds <- slf #. _lastPaste
+  when (news /= olds) $ do
+    slf # setIVar _lastPaste news
+    ar <- _NSArray # arrayWithObject nsStringPboardType
+    pb <- _NSPasteboard # generalPasteboard
+    cc <- pb # declareTypesOwner (castObject ar) nil
+    pb # setStringForType (toNSString news) nsStringPboardType
+    slf # setIVar _lastChangeCount cc
+    return ()
 
 ya_run :: YiApplication () -> IO ()
 ya_run self = do
