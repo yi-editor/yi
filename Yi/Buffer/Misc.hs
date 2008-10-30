@@ -180,7 +180,7 @@ data FBuffer = forall syntax.
                 , highlightSelection :: !Bool
                 , process :: !KeymapProcess
                 , winMarks :: !(M.Map WindowRef WinMarks)
-                , lastActiveWindow :: !WindowRef
+                , lastActiveWindow :: !Window
                 }
         deriving Typeable
 
@@ -215,7 +215,7 @@ queryAndModifyRawbuf f (FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 f13 f14) 
     let (f5', x) = f f5
     in (FBuffer f1 f2 f3 f4 f5' f6 f7 f8 f9 f10 f11 f12 f13 f14, x)
 
-lastActiveWindowA :: Accessor FBuffer WindowRef
+lastActiveWindowA :: Accessor FBuffer Window
 lastActiveWindowA = Accessor lastActiveWindow (\f e -> case e of 
                                    FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 f13 f14 -> 
                                     FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 f13 (f f14))
@@ -414,7 +414,7 @@ runBufferFull w b f =
             ms <- getMarks w
             when (isNothing ms) $ do
                 -- this window has no marks for this buffer yet; have to create them.
-                newMarkValues <- if lastActiveWindow b == dummyWindowKey
+                newMarkValues <- if wkey (lastActiveWindow b) == dummyWindowKey
                     then return
                         -- no previous window, create some marks from scratch.
                          MarkSet { insMark = MarkValue 0 Forward,
@@ -422,11 +422,11 @@ runBufferFull w b f =
                                    fromMark = MarkValue 0 Backward, -- from
                                    toMark = MarkValue 0 Forward } -- to
                     else do
-                        Just mrks  <- getsA winMarksA (M.lookup $ lastActiveWindow b)
+                        Just mrks  <- getsA winMarksA (M.lookup $ wkey (lastActiveWindow b))
                         forM mrks getMarkValueB
                 newMrks <- forM newMarkValues newMarkB
                 modifyA winMarksA (M.insert (wkey w) newMrks)
-            setA lastActiveWindowA (wkey w)
+            setA lastActiveWindowA w
             f
     in (a, updates, modifier pendingUpdatesA (++ fmap TextUpdate updates) b')
 
@@ -506,7 +506,7 @@ newB unique nm s =
             , highlightSelection = False
             , process = I.End
             , winMarks = M.empty
-            , lastActiveWindow = dummyWindowKey
+            , lastActiveWindow = dummyWindow unique
             }
 
 -- | Point of eof
