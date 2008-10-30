@@ -58,7 +58,6 @@ fillAttributeDict d a = do
 -- | Convert a Yi color into a Cocoa color
 getColor :: Bool -> Color -> IO (NSColor ())
 getColor fg Default = if fg then _NSColor # blackColor else _NSColor # whiteColor
-getColor fg Reverse = if fg then _NSColor # whiteColor else _NSColor # blackColor
 getColor _g (RGB r g b) =
   let conv = (/255) . fromIntegral in
   _NSColor # colorWithDeviceRedGreenBlueAlpha (conv r) (conv g) (conv b) 1.0

@@ -341,7 +341,7 @@ refresh ui e = logNSException "refresh" $ do
     forM_ cache' $ \w ->
         do let buf = findBufferWith (bufkey (window w)) e
            let ((p0,p1,showSel,txt),_) = runBuffer (window w) buf $
-                 (,,,) <$> pointB <*> getMarkPointB staticSelMark <*>
+                 (,,,) <$> pointB <*> (getMarkPointB =<< selMark <$> askMarks) <*>
                            getA highlightSelectionA <*> getModeLine
            let (p,l) = if showSel then (min p0 p1, abs $ p1~-p0) else (p0,0)
            (textview w) # setSelectedRange (NSRange (fromIntegral p) (fromIntegral l))
