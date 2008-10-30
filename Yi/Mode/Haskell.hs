@@ -314,6 +314,7 @@ ghciGet = do
 ghciSend :: String -> YiM ()
 ghciSend cmd = do
     b <- ghciGet
+    withGivenBuffer b botB
     sendToProcess b (cmd ++ "\n")
     
 -- | Load current buffer in GHCi

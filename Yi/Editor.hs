@@ -254,9 +254,11 @@ shiftBuffer shift = gets $ \e ->
 
 ------------------------------------------------------------------------
 
--- | Perform action with any given buffer
+-- | Perform action with any given buffer, using the last window that was used for that buffer.
 withGivenBuffer0 :: BufferRef -> BufferM a -> EditorM a
-withGivenBuffer0 k f = withGivenBufferAndWindow0 (dummyWindow k) k f
+withGivenBuffer0 k f = do
+    b <- gets (findBufferWith k)
+    withGivenBufferAndWindow0 (lastActiveWindow b) k f
 
 -- | Perform action with any given buffer
 withGivenBufferAndWindow0 :: Window -> BufferRef -> BufferM a -> EditorM a
