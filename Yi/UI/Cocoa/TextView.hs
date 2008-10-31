@@ -19,20 +19,32 @@ module Yi.UI.Cocoa.TextView
   , visibleRange
   )where
 
+import Prelude ()
+import Yi.Prelude
+import Yi.String
 import Yi.Buffer hiding (runBuffer)
+import Yi.UI.Cocoa.Utils
 
 -- Specify Cocoa imports explicitly, to avoid name-clashes.
 -- Since the number of functions recognized by HOC varies
 -- between revisions, this seems like the safest choice.
 import HOC
 import Foundation (
-  NSPoint(..),NSRange(..),nsMinY,nsWidth,nsOffsetRect)
+  NSPoint(..),NSRange(..),nsMinY,nsWidth,nsOffsetRect,NSArray,
+  addObject,haskellString,NSMutableArray,
+  _NSMutableArray,array,addObjectsFromArray)
 import AppKit (
   NSSelectionAffinity,characterRangeForGlyphRangeActualGlyphRange,
   glyphRangeForBoundingRectInTextContainer,layoutManager,textContainer,
   textContainerOrigin,visibleRect,frame,verticalScroller,NSTextView,
   NSTextViewClass,setSelectedRangeAffinityStillSelecting,NSScrollView,
-  NSScrollViewClass,tile,setFrameOrigin)
+  NSScrollViewClass,tile,setFrameOrigin,performDragOperation,
+  acceptableDragTypes,nsStringPboardType,stringForType,
+  draggingPasteboard,Has_draggingPasteboard,draggingSource,
+  Has_draggingSource,Has_draggingLocation,draggingLocation,
+  convertPointFromView,availableTypeFromArray,_NSPasteboard,
+  typesFilterableTo,nsFilenamesPboardType,propertyListForType,
+  glyphIndexForPointInTextContainerFractionOfDistanceThroughGlyph)
 
 import qualified AppKit.NSScrollView (contentView)
 
@@ -44,6 +56,8 @@ $(exportClass "YiTextView" "ytv_" [
     InstanceVariable "runBuffer" [t| BufferM () -> IO () |] [| \_ -> return () |]
   , InstanceVariable "selectingPosition" [t| Maybe CUInt |] [| Nothing |]
   , InstanceMethod 'setSelectedRangeAffinityStillSelecting -- '
+  , InstanceMethod 'acceptableDragTypes
+  , InstanceMethod 'performDragOperation
   ])
 
 -- | Intercept mouse selection so that we can update Yi's selection
@@ -68,6 +82,75 @@ ytv_setSelectedRangeAffinityStillSelecting r@(NSRange p1 l) a b v = do
       return ()
 
   super v # setSelectedRangeAffinityStillSelecting r a b
+
+ytv_acceptableDragTypes :: YiTextView () -> IO (NSArray ())
+ytv_acceptableDragTypes _ = do
+  ar <- castObject <$> _NSMutableArray # array :: IO (NSMutableArray ())
+  _NSPasteboard # typesFilterableTo nsStringPboardType >>=
+    flip addObjectsFromArray ar
+  ar # addObject nsFilenamesPboardType
+  return (castObject ar)
+
+-- TODO: The correct way of doing this would be to add the
+--       protocol constraints on the performDragOperation
+--       parameter, but for whatever reason, HOC doesn't
+--       do this, so we use this hack to work around it...
+instance Has_draggingPasteboard (ID t)
+instance Has_draggingSource (ID t)
+instance Has_draggingLocation (ID t)
+
+-- Implement support for drag and drop...
+ytv_performDragOperation :: ID t -> YiTextView () -> IO Bool
+ytv_performDragOperation dragInfo slf = do
+  pb <- dragInfo # draggingPasteboard
+
+  ty <- slf # ytv_acceptableDragTypes >>= flip availableTypeFromArray pb
+  
+  when (ty /= nil) $ do
+    str <-
+      if ty == nsFilenamesPboardType
+        then unlines' <$> 
+          (pb # propertyListForType ty >>= (haskellList.castObject) >>= mapM (haskellString.castObject))
+        else pb # stringForType ty >>= haskellString
+
+    src <- dragInfo # draggingSource
+    -- Apparently, the selection only looks as if it was updated...
+    -- we would have to use draggingLocation to figure out where
+    -- the new text should go. Which means that we need to get back
+    -- our old trick for translating a mouse-position to a text-position.
+
+    -- TODO: Convert ip from a character index to a buffer position (utf8)
+    pIns <- dragInfo # draggingLocation >>= flip charAtMouse slf
+
+    runbuf <- slf #. _runBuffer
+    runbuf $ do
+      hasSel <- getA highlightSelectionA
+      rSel <- if hasSel && src == (castObject slf) then getSelectRegionB else return emptyRegion
+
+      moveTo $ fromIntegral pIns
+      -- To not affect positions we make the "latter" modification first
+      -- Note that there will be no drag operation if they overlap...
+      if regionStart rSel < fromIntegral pIns
+        then insertN str >> deleteRegionB rSel
+        else deleteRegionB rSel >> insertN str
+  
+  return (ty /= nil)
+
+-- | Compute the character index of the specified mouse position
+charAtMouse :: NSPoint -> YiTextView () -> IO CUInt
+charAtMouse p slf = do
+  -- Determine the text-relative coordinate
+  container <- slf # textContainer
+  NSPoint ex ey <- slf # convertPointFromView p nil
+  NSPoint ox oy <- slf # textContainerOrigin
+  let mouse = NSPoint (ex - ox) (ey - oy)
+  -- Determine the index
+  layout <- slf # layoutManager
+  pf <- malloc -- I miss stack variables from C... =P
+  index <- layout # glyphIndexForPointInTextContainerFractionOfDistanceThroughGlyph mouse container pf
+  fract <- peek pf
+  free pf
+  return $ if (fract > 0.5) then index + 1 else index  
 
 -- | Compute the currently visible text range in the view
 visibleRange :: YiTextView () -> IO NSRange

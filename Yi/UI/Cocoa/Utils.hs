@@ -19,7 +19,8 @@ import HOC
 import Foundation (
   NSDictionary,NSMutableDictionary,NSObject,NSObject_,
   _NSMutableDictionary,alloc,autorelease,catchNS,description,
-  haskellString,retain,setValueForKey,dictionary,init)
+  haskellString,retain,setValueForKey,dictionary,init,
+  objectEnumerator,nextObject,NSArray)
 import AppKit (
   Has_setFont,NSColor,_NSColor,_NSFont,blackColor,
   colorWithDeviceRedGreenBlueAlpha,nsBackgroundColorAttributeName,
@@ -73,13 +74,6 @@ getColor _g (RGB r g b) =
   let conv = (/255) . fromIntegral in
   _NSColor # colorWithDeviceRedGreenBlueAlpha (conv r) (conv g) (conv b) 1.0
 
--- Debugging helpers
-
-{-
-
-data Hierarchy = View String NSRect [Hierarchy]
-  deriving Show
-
 haskellList :: forall t1. NSArray t1 -> IO [ID ()]
 haskellList a = a # objectEnumerator >>= helper
   where
@@ -88,6 +82,13 @@ haskellList a = a # objectEnumerator >>= helper
       if e == nil
         then return []
         else helper enum >>= return . (e :)
+{-
+
+-- Debugging helpers
+
+data Hierarchy = View String NSRect [Hierarchy]
+  deriving Show
+
 
 mkHierarchy :: forall t. NSView t -> IO Hierarchy
 mkHierarchy v = do
