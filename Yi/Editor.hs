@@ -29,6 +29,7 @@ import Data.Foldable (concatMap)
 import qualified Data.DelayList as DelayList
 import qualified Data.Map as M
 import Data.Typeable
+import System.FilePath (FilePath)
 import Control.Monad.RWS hiding (get, put)
 import qualified Data.ByteString.Lazy.UTF8 as LazyUTF8
 
@@ -49,6 +50,7 @@ data Editor = Editor {
        ,statusLines   :: !Statuses
        ,killring      :: !Killring
        ,regex         :: !(Maybe SearchExp) -- ^ most recent regex
+       ,tagsFileList  :: ![FilePath]        -- ^ file path list for  ctags
        ,tags          :: !(Maybe TagTable)  -- ^ table for ctags
        ,searchDirection :: !Direction
        ,pendingEvents :: ![Event]                   -- ^ Processed events that didn't yield any action yet.
@@ -56,18 +58,20 @@ data Editor = Editor {
     deriving Typeable
 
 instance Binary Editor where
-    put (Editor bss bs supply ts _dv _sl kr _re _tt _dir _ev) = put bss >> put bs >> put supply >> put ts >> put kr
+    put (Editor bss bs supply ts _dv _sl kr _re tfl _tt _dir _ev) = put bss >> put bs >> put supply >> put ts >> put kr >> put tfl
     get = do
         bss <- get
         bs <- get
         supply <- get
         ts <- get
         kr <- get
+        tfl <- get
         return $ emptyEditor {bufferStack = bss,
                               buffers = bs,
                               refSupply = supply,
                               tabs = ts,
-                              killring = kr
+                              killring = kr,
+                              tagsFileList = tfl
                              }
 
 windows :: Editor -> WindowSet Window
@@ -127,6 +131,9 @@ regexA = Accessor regex (\f e -> e{regex = f (regex e)})
 tagsA :: Accessor Editor (Maybe TagTable)
 tagsA = Accessor tags (\f e -> e {tags = f (tags e)})
 
+tagsFileListA :: Accessor Editor [FilePath]
+tagsFileListA = Accessor tagsFileList (\f e -> e {tagsFileList = f (tagsFileList e)})
+
 searchDirectionA :: Accessor Editor Direction
 searchDirectionA = Accessor searchDirection (\f e -> e{searchDirection = f (searchDirection e)})
 
@@ -137,9 +144,10 @@ emptyEditor = Editor {
         buffers      = M.singleton (bkey buf) buf
        ,tabs         = WS.new (WS.new win)
        ,bufferStack  = [bkey buf]
-       ,refSupply = 2
+       ,refSupply    = 2
        ,regex        = Nothing
-       ,tags     = Nothing
+       ,tags         = Nothing
+       ,tagsFileList = ["tags"]
        ,searchDirection = Forward
        ,dynamic      = M.empty
        ,statusLines  = DelayList.insert (maxBound, ("", defaultStyle)) []

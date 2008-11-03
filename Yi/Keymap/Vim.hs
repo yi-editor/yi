@@ -18,6 +18,7 @@ import Data.List (nub, take)
 import Data.Prototype
 import Numeric (showHex, showOct)
 import System.IO (readFile)
+import System.Posix.Files (fileExist)
 
 import Control.Monad.State hiding (mapM_, mapM)
 
@@ -28,11 +29,12 @@ import Yi.Eval (execEditorAction)
 import Yi.File
 import Yi.History
 import Yi.Misc (matchingFileNames,adjBlock,adjIndent)
-import Yi.String (dropSpace)
+import Yi.String (dropSpace,split)
 import Yi.MiniBuffer
 import Yi.Search
 import Yi.Style
 import Yi.TextCompletion
+import Yi.Tag (Tag,TagTable,lookupTag,importTagTable)
 import Yi.Window (bufkey)
 
 
@@ -319,6 +321,37 @@ defKeymap = Proto template
        w <- withBuffer0 $ readRegionB =<< regionOfNonEmptyB unitViWord
        viSearch w [] dir
 
+     gotoTag :: Tag -> YiM ()
+     gotoTag tag =
+       visitTagTable $ \tagTable ->
+         case lookupTag tag tagTable of
+           Nothing -> fail $ "No tags containing " ++ tag
+           Just (filename, line) -> do
+             fnewE $ filename
+             withBuffer $ gotoLn line
+             return ()
+
+     -- | Call continuation @act with the TagTable. Uses the global table
+     -- and prompts the user if it doesn't exist
+     visitTagTable :: (TagTable -> YiM ()) -> YiM ()
+     visitTagTable act = do
+       posTagTable <- withEditor getTags
+       -- does the tagtable exist?
+       case posTagTable of
+         Just tagTable -> act tagTable
+         Nothing -> do fps <- withEditor $ getA tagsFileListA -- withBuffer0 $ tagsFileList <$> getDynamicB
+                       efps <- io $ filterM fileExist fps
+                       when (null efps) $ fail ("No existing tags file among: " ++ show fps)
+                       tagTable <- io $ importTagTable (head efps)
+                       withEditor $ setTags tagTable
+                       act tagTable
+
+     gotoTagCurrentWord :: YiM ()
+     gotoTagCurrentWord = gotoTag =<< withEditor (withBuffer0 (readRegionB =<< regionOfNonEmptyB unitViWord))
+
+     setTagsFileList :: String -> EditorM ()
+     setTagsFileList fps = resetTags >> setA tagsFileListA (split "," fps)
+
      -- | Parse any character that can be inserted in the text.
      textChar :: KeymapM Char
      textChar = do
@@ -343,6 +376,7 @@ defKeymap = Proto template
          ,(ctrl $ char 'l',    const refreshEditor)
          ,(ctrl $ char 'r',    withBuffer . flip replicateM_ redoB)
          ,(ctrl $ char 'z',    const suspendEditor)
+         ,(ctrl $ char ']',    const gotoTagCurrentWord)
          ,(char 'D',      withEditor . cut Exclusive . (Replicate $ Move Line Forward))
          ,(char 'J',      const (withBuffer (moveToEol >> deleteN 1)))    -- the "\n"
          ,(char 'Y',      \n -> withEditor $ do
@@ -879,6 +913,7 @@ defKeymap = Proto template
            fn ('r':' ':f)  = withBuffer . insertN =<< io (readFile f)
            fn ('r':'e':'a':'d':' ':f) = withBuffer . insertN =<< io (readFile f)
            -- fn ('s':'e':'t':' ':'f':'t':'=':ft)  = withBuffer $ setSyntaxB $ highlighters M.! ft
+           fn ('s':'e':'t':' ':'t':'a':'g':'s':'=':fps)  = withEditor $ setTagsFileList fps
            fn ('n':'e':'w':' ':f) = withEditor splitE >> fnewE f
            fn ('s':'/':cs) = withEditor $ viSub cs Line
            fn ('%':'s':'/':cs) = withEditor $ viSub cs Document
@@ -894,6 +929,8 @@ defKeymap = Proto template
            fn ('b':'d':'!':' ':f)                     = bdeleteNoW f
            fn ('b':'d':'e':'l':'e':'t':'e':'!':' ':f) = bdeleteNoW f
            -- TODO: bd[!] [N]
+
+           fn ('t':'a':'g':' ':t) = gotoTag t
 
            -- send just this line through external command /fn/
            fn ('.':'!':f) = do
