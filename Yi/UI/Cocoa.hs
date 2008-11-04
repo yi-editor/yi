@@ -65,7 +65,7 @@ import AppKit (
   setContainerSize,setDelegate,setDocumentView,setEditable,
   setFrameAutosaveName,setHasHorizontalScroller,setHasVerticalScroller,
   setHorizontallyResizable,setInsertionPointColor,setLineBreakMode,
-  setRichText,setSelectable,setSelectedRange,
+  setRichText,setSelectable,setSelectedRange,NSLayoutManager,
   setSelectedTextAttributes,setStringValue,setTextColor,setTitle,
   setVerticallyResizable,setWidthTracksTextView,setWindowsMenu,
   setWraps,sizeToFit,textColor,textContainer)
@@ -79,6 +79,10 @@ import Foreign hiding (new)
 foreign import ccall "Processes.h TransformProcessType" transformProcessType :: Ptr (CInt) -> CInt -> IO (CInt)
 foreign import ccall "Processes.h SetFrontProcess" setFrontProcess :: Ptr (CInt) -> IO (CInt)
 foreign import ccall "Processes.h GetCurrentProcess" getCurrentProcess :: Ptr (CInt) -> IO (CInt)
+
+-- Don't import this, since it is only available in Leopard...
+$(declareRenamedSelector "setAllowsNonContiguousLayout:" "setAllowsNonContiguousLayout" [t| Bool -> IO () |])
+instance Has_setAllowsNonContiguousLayout (NSLayoutManager a)
 
 ------------------------------------------------------------------------
 
@@ -339,6 +343,7 @@ newWindow ui win b = do
   ml # setColors (Style.modelineAttributes sty)
   storage <- getTextStorage ui b
   layoutManager v >>= replaceTextStorage storage
+  layoutManager v >>= setAllowsNonContiguousLayout True
 
   k <- newUnique
   flip (setIVar _runBuffer) v $ \act -> do
