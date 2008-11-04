@@ -39,7 +39,8 @@ import Foundation (
   Unichar,NSString,NSStringClass,NSDictionary,NSRange(..),NSRangePointer,
   length,attributeAtIndexEffectiveRange,attributesAtIndexEffectiveRange,
   attributesAtIndexLongestEffectiveRangeInRange,nsMaxRange,
-  beginEditing,endEditing,setAttributesRange,haskellString)
+  beginEditing,endEditing,setAttributesRange,haskellString,
+  addAttributeValueRange,addAttributesRange)
 import AppKit (
   NSTextStorage,NSTextStorageClass,string,fixesAttributesLazily,
   _NSCursor,_NSFont,replaceCharactersInRangeWithString,
@@ -205,7 +206,9 @@ $(exportClass "YiTextStorage" "yts_" [
   , InstanceMethod 'attributesAtIndexEffectiveRange -- '
   , InstanceMethod 'attributesAtIndexLongestEffectiveRangeInRange
   , InstanceMethod 'replaceCharactersInRangeWithString -- '
-  , InstanceMethod 'setAttributesRange -- '
+  , InstanceMethod 'setAttributesRange     -- Disallow changing attributes
+  , InstanceMethod 'addAttributesRange     -- optimized to avoid needless work
+  , InstanceMethod 'addAttributeValueRange -- ...
   , InstanceMethod 'length -- '
   ])
 
@@ -311,6 +314,10 @@ yts_replaceCharactersInRangeWithString :: forall t. NSRange -> NSString t -> YiT
 yts_replaceCharactersInRangeWithString _ _ _ = return ()
 yts_setAttributesRange :: forall t. NSDictionary t -> NSRange -> YiTextStorage () -> IO ()
 yts_setAttributesRange _ _ _ = return ()
+yts_addAttributesRange :: NSDictionary t -> NSRange -> YiTextStorage () -> IO ()
+yts_addAttributesRange _ _ _ = return ()
+yts_addAttributeValueRange :: NSString t -> ID () -> NSRange -> YiTextStorage () -> IO ()
+yts_addAttributeValueRange s _ _ _ = return ()
 
 -- | Remove element x_i if f(x_i,x_(i+1)) is true
 filter2 :: (a -> a -> Bool) -> [a] -> [a]
