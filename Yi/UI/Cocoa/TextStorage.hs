@@ -108,22 +108,6 @@ yls_getCharactersRange p _r@(NSRange i l) slf = do
 -- queried for the same location multiple times, and thus caching
 -- them as well also seems fruitful.
 
--- Unfortunately HOC does not export Instance Variables, and thus
--- we cannot provide a type signature for withCache
--- withCache :: (InstanceVariables st iv) => st -> IVar iv (Maybe vt) -> (vt -> Bool) -> IO vt -> IO vt
-
--- | Obtain the result of the action and cache that as the
---   instance variable ivar in self. Use existing cache if
---   a result is stored, and cond says it is still valid.
-withCache slf ivar cond act = do
-  cache <- slf #. ivar
-  case cache of
-    Just val | cond val -> return val
-    _ -> do
-      val <- act
-      slf # setIVar ivar (Just val)
-      return val
-
 -- | Use this as the base length of computed stroke ranges
 strokeRangeExtent :: Num t => t
 strokeRangeExtent = 4000
@@ -314,7 +298,7 @@ yts_setAttributesRange _ _ _ = return ()
 yts_addAttributesRange :: NSDictionary t -> NSRange -> YiTextStorage () -> IO ()
 yts_addAttributesRange _ _ _ = return ()
 yts_addAttributeValueRange :: NSString t -> ID () -> NSRange -> YiTextStorage () -> IO ()
-yts_addAttributeValueRange s _ _ _ = return ()
+yts_addAttributeValueRange _ _ _ _ = return ()
 
 -- | Remove element x_i if f(x_i,x_(i+1)) is true
 filter2 :: (a -> a -> Bool) -> [a] -> [a]
@@ -322,10 +306,6 @@ filter2 _f [] = []
 filter2 _f [x] = [x]
 filter2 f (x1:x2:xs) =
   (if f x1 x2 then id else (x1:)) $ filter2 f (x2:xs)
-
--- | Merge needless style-span breaks
-filterSame :: Picture -> Picture
-filterSame p = p { picStrokes = filter2 ((==) `on` snd) (picStrokes p) }
 
 -- | Keep only the background information
 onlyBg :: [PicStroke] -> [PicStroke]
@@ -342,7 +322,7 @@ paintCocoaPicture sty end = tail . stylesift (baseAttributes sty)
 
 -- | A version of poke that does nothing if p is null.
 safePoke :: (Storable a) => Ptr a -> a -> IO ()
-safePoke p x = if p == nullPtr then return () else poke p x
+safePoke p x = when (p /= nullPtr) (poke p x)
 
 -- | Execute strokeRangesB on the buffer, and update the buffer
 --   so that we keep around cached syntax information...
