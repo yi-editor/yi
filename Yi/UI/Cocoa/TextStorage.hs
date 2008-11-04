@@ -199,7 +199,7 @@ $(exportClass "YiTextStorage" "yts_" [
   , InstanceVariable "uiStyle" [t| Maybe UIStyle |] [| Nothing |]
   , InstanceVariable "dictionaryCache" [t| M.Map Attributes (NSDictionary ()) |] [| M.empty |]
   , InstanceVariable "pictureCache" [t| (Picture, NSRange) |] [| emptyPicture |]
-  , InstanceVariable "stringCache" [t| Maybe (NSString ()) |] [| Nothing |]
+  , InstanceVariable "stringCache" [t| Maybe (YiLBString ()) |] [| Nothing |]
   , InstanceMethod 'string -- '
   , InstanceMethod 'fixesAttributesLazily -- '
   , InstanceMethod 'attributeAtIndexEffectiveRange -- '
@@ -218,12 +218,7 @@ yts_length slf = do
   (fromIntegral . flip runBufferDummyWindow sizeB . fromJust) <$> slf #. _buffer
 
 yts_string :: YiTextStorage () -> IO (NSString ())
-yts_string slf = do
-  withCache slf _stringCache (const True) $ do
-    s <- new _YiLBString
-    Just b <- slf #. _buffer
-    s # setIVar _str (runBufferDummyWindow b (streamB Forward 0))
-    castObject <$> return s
+yts_string slf = castObject <$> fromJust <$> slf #. _stringCache
 
 yts_fixesAttributesLazily :: YiTextStorage () -> IO Bool
 yts_fixesAttributesLazily _ = return True
@@ -384,6 +379,9 @@ newTextStorage sty b = do
   buf <- new _YiTextStorage
   buf # setIVar _buffer (Just b)
   buf # setIVar _uiStyle (Just sty)
+  s <- new _YiLBString
+  s # setIVar _str (runBufferDummyWindow b (streamB Forward 0))
+  buf # setIVar _stringCache (Just s)
   buf # setMonospaceFont
   return buf
 
@@ -394,7 +392,8 @@ setTextStorageBuffer buf storage = do
     mapM_ (applyUpdate storage) [u | TextUpdate u <- pendingUpdates buf]
     storage # setIVar _pictureCache emptyPicture
   storage # setIVar _buffer (Just buf)
-  storage # setIVar _stringCache Nothing
+  Just s <- storage #. _stringCache
+  s # setIVar _str (runBufferDummyWindow buf (streamB Forward 0))
   storage # endEditing
 
 visibleRangeChanged :: NSRange -> TextStorage -> IO ()
