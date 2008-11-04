@@ -285,6 +285,8 @@ yts_attributeAtIndexEffectiveRange attr i er slf = do
       safePokeFullRange >> return nil
     "NSLanguage" -> do
       safePokeFullRange >> return nil
+    "NSLink" -> do
+      safePokeFullRange >> return nil
     "NSParagraphStyle" -> do
       -- TODO: Adjust line break property...
       safePokeFullRange >> castObject <$> defaultParagraphStyle _NSParagraphStyle
