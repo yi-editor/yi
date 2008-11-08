@@ -46,8 +46,8 @@ import System.IO
 import System.IO.Error          ( isAlreadyExistsError )
 
 import GHC.IOBase               ( IOException(IOError),
-                                  Exception(IOException),
                                   IOErrorType(AlreadyExists) )
+import Control.Exception        ( Exception(IOException) )
 
 #ifndef __MINGW32__
 import qualified System.Posix.Internals ( c_getpid )

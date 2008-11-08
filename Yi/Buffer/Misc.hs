@@ -325,7 +325,11 @@ data IndentBehaviour =
 
 -- | The BufferM monad writes the updates performed.
 newtype BufferM a = BufferM { fromBufferM :: RWS Window [Update] FBuffer a }
+#if __GLASGOW_HASKELL__ >= 610
+    deriving (Monad, Functor, MonadWriter [Update], MonadState FBuffer, MonadReader Window, Typeable)
+#else
     deriving (Monad, Functor, MonadWriter [Update], MonadState FBuffer, MonadReader Window, Typeable1)
+#endif
 
 deriving instance Typeable4 RWS
 
