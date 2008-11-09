@@ -3,17 +3,17 @@ module Shim.CabalInfo where
 import Shim.Utils
 
 import qualified Control.Exception as CE
-import System.FilePath ( takeDirectory, (</>), (<.>), dropFileName, equalFilePath )
+import System.FilePath
 import Control.Monad.State
 import Data.Maybe
 
 import Control.Applicative
-import Distribution.Simple.Utils
+import Distribution.Simple.Utils hiding (findPackageDesc)
 import Distribution.ModuleName
 import Distribution.PackageDescription 
 import qualified Distribution.PackageDescription as Library (Library(..))
 import qualified Distribution.PackageDescription as BuildInfo (BuildInfo(..))
-import System.Directory (canonicalizePath)
+import System.Directory
 
 guessCabalFile :: String -> IO (Maybe FilePath)
 guessCabalFile sourcefile = do
@@ -23,8 +23,8 @@ guessCabalFile sourcefile = do
          logS $ "looking in: " ++ dir
          pdfile <- CE.try (findPackageDesc dir)
          case pdfile of
-           Right f -> return . Just $ dir </> f
-           Left _ -> return Nothing
+           Right (Just f) -> return . Just $ dir </> f
+           _ -> return Nothing
 
 -- | Guess what lib/exe the sourcefile belongs to.
 guessCabalStanza :: FilePath -> FilePath -> PackageDescription -> IO (Maybe String, BuildInfo)
@@ -42,3 +42,25 @@ guessCabalStanza projpath sourcefile pkg_descr = do
                        | (name, files, bi) <- allStanzas, buildable bi]
         eqPath p1 p2 = equalFilePath <$> canonicalizePath p1 <*> canonicalizePath p2
         matchingStanza (_,files,_) = or <$> mapM (eqPath sourcefile) files
+
+
+-- Taken from Cabal and modified so that nothing is printed to stdout.
+-- TODO: Perhaps export something better from Cabal
+
+-- |Find a package description file in the given directory.  Looks for
+-- @.cabal@ files.
+findPackageDesc :: FilePath            -- ^Where to look
+                -> IO (Maybe FilePath) -- ^<pkgname>.cabal
+findPackageDesc dir
+ = do files <- getDirectoryContents dir
+      -- to make sure we do not mistake a ~/.cabal/ dir for a <pkgname>.cabal
+      -- file we filter to exclude dirs and null base file names:
+      cabalFiles <- filterM doesFileExist
+                       [ dir </> file
+                       | file <- files
+                       , let (name, ext) = splitExtension file
+                       , not (null name) && ext == ".cabal" ]
+      case cabalFiles of
+        []          -> return Nothing
+        [cabalFile] -> return (Just cabalFile)
+        multiple    -> return Nothing
