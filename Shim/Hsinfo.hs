@@ -58,12 +58,9 @@ import Yi.Debug (logPutStrLn)
 import Distribution.Text 
 import Distribution.Simple ( pkgName )
 import Distribution.Compiler ( CompilerFlavor (..) )
-import Distribution.Simple.Compiler ( extensionsToFlags )
 import Distribution.Simple.GHC
-import Distribution.Simple.Program ( defaultProgramConfiguration )
 import Distribution.Simple.Configure
 import Distribution.Verbosity
-import Distribution.PackageDescription.Configuration (flattenPackageDescription)
 import Distribution.PackageDescription 
   ( buildDepends, PackageDescription, BuildInfo,
     library, executables, hsSourceDirs, extensions, includeDirs, extraLibs,
