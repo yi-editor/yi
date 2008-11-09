@@ -1,6 +1,11 @@
 module Shim.SessionMonad where
 
-import GHC(Session)
+#if __GLASGOW_HASKELL__ >= 610
+import HscTypes (Session)
+#else
+import GHC (Session)
+#endif
 
 class Monad m => SessionMonad m where
   getSession :: m Session 
+

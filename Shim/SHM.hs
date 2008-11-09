@@ -2,8 +2,15 @@
 module Shim.SHM where
 
 import Data.Typeable
+
+#if __GLASGOW_HASKELL__ >= 610
+import GHC hiding ( load )
+#else
 import GHC hiding ( load, newSession )
+#endif
+
 import qualified GHC
+import HscTypes
 import Outputable
 import ErrUtils
 
@@ -16,6 +23,7 @@ import qualified Data.Digest.Pure.MD5 as MD5
 
 import Shim.SessionMonad
 import Shim.Utils
+import Shim.GhcCompat
 --------------------------------------------------------------
 -- SHM Monad
 --------------------------------------------------------------
@@ -39,7 +47,7 @@ type IdData = [(String, String)]
 type Hash = MD5.MD5Digest
 
 
-type CachedMod = (Hash,CheckedModule)
+type CachedMod = (Hash,TypecheckedModule)
 type CompBuffer = M.Map FilePath (CompilationResult, IdData, Maybe CachedMod)
 
 type SessionMap = M.Map FilePath Session
@@ -77,7 +85,7 @@ shmCatch = flip shmHandle
 getCompBuffer :: SHM CompBuffer
 getCompBuffer = gets compBuffer
 
-addCompBuffer :: FilePath -> IdData -> CompilationResult -> Maybe (Hash,CheckedModule) -> SHM ()
+addCompBuffer :: FilePath -> IdData -> CompilationResult -> Maybe (Hash,TypecheckedModule) -> SHM ()
 addCompBuffer sourcefile id_data compilation_result checked_mod =
   modify (\s ->
             s{compBuffer=(M.insert sourcefile (compilation_result,id_data,checked_mod)
