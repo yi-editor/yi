@@ -40,11 +40,20 @@ data FindResult
   | FoundModule ModuleName
   | NotFound
 
+#if __GLASGOW_HASKELL__ < 610
 findExprInCheckedModule :: Int -> Int -> CheckedModule -> FindResult
 findExprInCheckedModule line col (CheckedModule {
 					parsedSource = hsSource,
 					renamedSource = mb_rnSource,
 					typecheckedSource = mb_tcSource }) =
+#else
+findExprInCheckedModule :: Int -> Int -> TypecheckedModule -> FindResult
+findExprInCheckedModule line col mdl =
+  let hsSource = parsedSource mdl
+      mb_rnSource = renamedSource mdl
+      mb_tcSource = Just $ typecheckedSource mdl
+  in
+#endif
   case doSearch searchLBinds FoundId mb_tcSource of
     NotFound -> case doSearch searchRenamedSource FoundName mb_rnSource of
                   NotFound -> doSearchModule hsSource
@@ -131,11 +140,21 @@ searchIPBind (IPBind _ipname e) = searchLExpr e
 
 searchLPat (L span (VarPat id))  = checkId span id
 searchLPat (L span (LitPat lit)) = checkLiteral span lit
+#if __GLASGOW_HASKELL__ >= 610
+searchLPat (L span (NPat lit _ _)) = checkLiteral span (over_lit_lit lit)
+#else
 searchLPat (L span (NPat lit _ _ _)) = checkLiteral span (over_lit_lit lit)
+#endif
    where
      over_lit_lit :: HsOverLit id -> HsLit
-     over_lit_lit (HsIntegral i   _) = HsIntPrim   i
+#if __GLASGOW_HASKELL__ >= 610
+     over_lit_lit (OverLit (HsIntegral i) _ _ _) = HsIntPrim i
+     over_lit_lit (OverLit (HsFractional f) _ _ _) = HsFloatPrim f
+     over_lit_lit (OverLit (HsIsString s) _ _ _) = HsStringPrim s
+#else
+     over_lit_lit (HsIntegral i _) = HsIntPrim   i
      over_lit_lit (HsFractional f _) = HsFloatPrim f
+#endif
 searchLPat lpat = lsearch searchPat lpat
 
 searchPat pat = 
@@ -499,7 +518,9 @@ searchRuleBndr (RuleBndrSig lid ltp) = searchLId lid `orSearch` searchLType ltp
 -- ----------------------------------------------------------------------------
 -- DeprecDecl
 
+#if __GLASGOW_HASKELL__ < 610
 searchLDeprecDecl (L span (Deprecation id _)) = checkId span id
+#endif
 
 -- ----------------------------------------------------------------------------
 -- Group
@@ -511,7 +532,9 @@ searchGroup g@(HsGroup {}) =
   searchList searchLFixitySig (hs_fixds g) `orSearch`
   searchList searchLDefaultDecl (hs_defds g) `orSearch`
   searchList searchLForeignDecl (hs_fords g) `orSearch`
+#if __GLASGOW_HASKELL__ < 610
   searchList searchLDeprecDecl (hs_depds g) `orSearch`
+#endif
   searchList searchLRuleDecl (hs_ruleds g)
 
 -- ----------------------------------------------------------------------------
@@ -519,7 +542,11 @@ searchGroup g@(HsGroup {}) =
 
 searchLImportDecl ldecl = lsearch searchImportDecl ldecl
 
+#if __GLASGOW_HASKELL__ >= 610
+searchImportDecl (ImportDecl (L span modl) _ _ _ _ _) = inSpan span (Search $ \_ _ _ _ -> FoundModule modl)
+#else
 searchImportDecl (ImportDecl (L span modl) _ _ _ _) = inSpan span (Search $ \_ _ _ _ -> FoundModule modl)
+#endif
 
 -- ----------------------------------------------------------------------------
 -- Utils
