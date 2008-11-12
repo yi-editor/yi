@@ -847,19 +847,11 @@ defKeymap = Proto template
                                ++ show bufferName
                                ++ " (add ! to override)"
            
-           isWorthlessB = gets (\b -> isUnchangedBuffer b || file b == Nothing)
            whenUnchanged mu f = do u <- mu
                                    if u then f
                                         else errorEditor "No write since last change (add ! to override)"
-           quitB = whenUnchanged (withBuffer isWorthlessB) closeWindow
 
 
-           quitNoW = do bufs <- withEditor $ do closeBufferE ""
-                                                bufs <- gets bufferStack
-                                                mapM (\x -> withGivenBuffer0 x isWorthlessB) bufs
-                        whenUnchanged (return $ all id bufs) quitEditor
-
-           quitall  = withAllBuffers quitB
            wquitall = withAllBuffers viWrite >> quitEditor
            bdelete  = whenUnchanged (withBuffer isUnchangedB) . withEditor . closeBufferE
            bdeleteNoW = withEditor . closeBufferE
