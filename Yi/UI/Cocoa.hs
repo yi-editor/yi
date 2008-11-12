@@ -43,7 +43,7 @@ import HOC
 import Foundation (
   NSPoint(..),NSRect(..),NSRange(..),NSSize(..),nsHeight,nsWidth,
   _NSThread,detachNewThreadSelectorToTargetWithObject,alloc,init,
-  NSObject,toNSString)
+  NSObject,toNSString,respondsToSelector)
 import AppKit (
   frame,bounds,setFrame,NSView,_NSView,NSTextField,_NSTextField,
   NSCell,_NSSplitView,_NSImage,NSApplication,sharedApplication,
@@ -343,7 +343,9 @@ newWindow ui win b = do
   ml # setColors (Style.modelineAttributes sty)
   storage <- getTextStorage ui b
   layoutManager v >>= replaceTextStorage storage
-  layoutManager v >>= setAllowsNonContiguousLayout True
+
+  responds <- layoutManager v >>= respondsToSelector (getSelectorForName "setAllowsNonContiguousLayout:")
+  when responds $ layoutManager v >>= setAllowsNonContiguousLayout True
 
   k <- newUnique
   flip (setIVar _runBuffer) v $ \act -> do
