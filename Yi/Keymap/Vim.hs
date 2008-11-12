@@ -14,7 +14,7 @@ module Yi.Keymap.Vim (keymap,
 import Prelude (maybe, length, filter, map, drop, break, uncurry)
 
 import Data.Char
-import Data.List (nub, take)
+import Data.List (nub, take, words)
 import Data.Prototype
 import Numeric (showHex, showOct)
 import System.IO (readFile)
@@ -28,7 +28,7 @@ import Yi.Dired
 import Yi.Eval (execEditorAction)
 import Yi.File
 import Yi.History
-import Yi.Misc (matchingFileNames,adjBlock,adjIndent)
+import Yi.Misc (matchingFileNames,adjBlock,adjIndent,cabalRun)
 import Yi.String (dropSpace,split)
 import Yi.MiniBuffer
 import Yi.Search
@@ -767,8 +767,15 @@ defKeymap = Proto template
            ex_complete ('b':'d':'!':' ':f)                     = b_complete f
            ex_complete ('b':'d':'e':'l':'e':'t':'e':' ':f)     = b_complete f
            ex_complete ('b':'d':'e':'l':'e':'t':'e':'!':' ':f) = b_complete f
+           ex_complete ('c':'a':'b':'a':'l':' ':s)             = cabalComplete s
            ex_complete ('y':'i':' ':s)                         = exSimpleComplete (\_->getAllNamesInScope) s
-           ex_complete _                                       = return ""
+           ex_complete s                                       = catchAllComplete s
+
+           catchAllComplete = exSimpleComplete $ const $ return $ map (++ " ") $ words
+                                "e edit r read tabe b buffer bd bd! bdelete bdelete! yi cabal"
+           cabalComplete = exSimpleComplete $ const $ return $ cabalCmds
+           cabalCmds = words "configure install list update upgrade fetch upload check sdist" ++
+                       words "report build copy haddock clean hscolour register test help"
 
        historyStart
        spawnMinibufferE prompt (const $ ex_process)
@@ -951,6 +958,7 @@ defKeymap = Proto template
            fn "st"         = suspendEditor
            fn "stop"       = suspendEditor
 
+           fn ('c':'a':'b':'a':'l':s) = cabalRun s1 (const $ return ()) (drop 1 s2) where (s1, s2) = break (==' ') s
            fn ('y':'i':' ':s) = execEditorAction s
            fn "tabnew"     = withEditor newTabE
            fn ('t':'a':'b':'e':' ':f) = do withEditor newTabE
