@@ -958,7 +958,7 @@ defKeymap = Proto template
            fn "st"         = suspendEditor
            fn "stop"       = suspendEditor
 
-           fn ('c':'a':'b':'a':'l':s) = cabalRun s1 (const $ return ()) (drop 1 s2) where (s1, s2) = break (==' ') s
+           fn ('c':'a':'b':'a':'l':' ':s) = cabalRun s1 (const $ return ()) (drop 1 s2) where (s1, s2) = break (==' ') s
            fn ('y':'i':' ':s) = execEditorAction s
            fn "tabnew"     = withEditor newTabE
            fn ('t':'a':'b':'e':' ':f) = do withEditor newTabE
