@@ -117,6 +117,7 @@ pythonMode = fundamentalMode
   }
 
 -- TODO: .mk is fairly standard but are there others?
+isMakefile :: String -> Bool
 isMakefile "Makefile"    = True
 isMakefile "makefile"    = True
 isMakefile "GNUmakefile" = True
