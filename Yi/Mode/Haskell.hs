@@ -12,7 +12,6 @@ module Yi.Mode.Haskell
    -- * Buffer-level operations
    haskellUnCommentSelectionB,
    haskellCommentSelectionB,
-   haskellToggleCommentSelectionB,
 
    -- * IO-level operations
    ghciGet,
@@ -20,7 +19,7 @@ module Yi.Mode.Haskell
   ) where
 
 import Data.Binary
-import Data.List (isPrefixOf, dropWhile, takeWhile, filter, drop)
+import Data.List (dropWhile, takeWhile, filter, drop)
 import Data.Maybe (maybe, listToMaybe, isJust)
 import Prelude (unwords)
 import Yi.Core
@@ -55,7 +54,7 @@ haskellAbstract = emptyMode
      'yi' are mostly haskell hackers, as of yet. -}
      modeApplies = anyExtension ["hs", "x", "hsc", "hsinc"],
      modeName = "haskell",
-     modeToggleCommentSelection = haskellToggleCommentSelectionB
+     modeToggleCommentSelection = toggleCommentSelectionB "-- "
   }
 
 -- | Plain haskell mode, providing only list of keywords.
@@ -271,17 +270,9 @@ autoIndentHaskellB =
 haskellCommentSelectionB :: BufferM ()
 haskellCommentSelectionB = linePrefixSelectionB "-- "
 
--- | uncomments a region of haskell line commented code
+-- | Uncomments a region of haskell line commented code
 haskellUnCommentSelectionB :: BufferM ()
 haskellUnCommentSelectionB = unLineCommentSelectionB "-- "
-
-haskellToggleCommentSelectionB :: BufferM ()
-haskellToggleCommentSelectionB = do
-  l <- readUnitB Yi.Core.Line
-  if ("--" `isPrefixOf` l)
-    then haskellUnCommentSelectionB
-    else haskellCommentSelectionB
-
 
 
 ---------------------------

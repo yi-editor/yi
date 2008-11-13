@@ -455,10 +455,6 @@ linePrefixSelectionB ::
 linePrefixSelectionB s =
   modifyExtendedSelectionB Line $ mapLines (s ++)
 
--- | Comments the region using latex line comments
-latexCommentSelectionB :: BufferM ()
-latexCommentSelectionB = linePrefixSelectionB "% "
-
 -- | Uncomments the selection using the given line comment
 -- starting string. This only works for the comments which
 -- begin at the start of the line.
@@ -472,10 +468,12 @@ unLineCommentSelectionB s =
     | isPrefixOf s line = drop (length s) line
     | otherwise         = line
 
--- | uncomments a region of latex line commented code
-latexUnCommentSelectionB :: BufferM ()
-latexUnCommentSelectionB = unLineCommentSelectionB "% "
-
+toggleCommentSelectionB :: String -> BufferM ()
+toggleCommentSelectionB prefix = do
+  l <- readUnitB Line
+  if (prefix `isPrefixOf` l)
+    then linePrefixSelectionB (prefix ++ " ")
+    else unLineCommentSelectionB (prefix ++ " ")
 
 -- Performs as search and replace on the given string.
 substituteInList :: Eq a => [ a ] -> [ a ] -> [ a ] -> [ a ]

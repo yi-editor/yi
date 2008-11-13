@@ -129,6 +129,7 @@ library
         Yi.Mode.Compilation
         Yi.Mode.Haskell
         Yi.Mode.Interactive
+        Yi.Mode.Latex
         Yi.Modes
         Yi.Monad
         Yi.Prelude

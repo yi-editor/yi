@@ -1,8 +1,8 @@
 module Yi.Modes (fundamentalMode,
-                 latexMode, cppMode, cabalMode, srmcMode, ocamlMode,
+                 cppMode, cabalMode, srmcMode, ocamlMode,
                  ottMode, gnuMakeMode,
-                 perlMode, pythonMode, latexMode2,
-                 anyExtension
+                 perlMode, pythonMode, 
+                 anyExtension, mkHighlighter'
                 ) where
 
 import Control.Arrow (first)
@@ -13,11 +13,9 @@ import Yi.Lexer.Alex (Tok(..), Posn(..))
 import Yi.Prelude
 import Yi.Style
 import Yi.Syntax
-import qualified Yi.IncrementalParse as IncrParser
 import qualified Yi.Lexer.Alex as Alex
 import qualified Yi.Lexer.Cabal               as Cabal
 import qualified Yi.Lexer.Cplusplus           as Cplusplus
-import qualified Yi.Lexer.Latex               as Latex
 import qualified Yi.Lexer.GNUMake             as GNUMake
 import qualified Yi.Lexer.OCaml               as OCaml
 import qualified Yi.Lexer.Ott                 as Ott
@@ -25,11 +23,9 @@ import qualified Yi.Lexer.Perl                as Perl
 import qualified Yi.Lexer.Python              as Python
 import qualified Yi.Lexer.Srmc                as Srmc
 import qualified Yi.Syntax.Linear as Linear
-import qualified Yi.Syntax.Latex as Latex
-
 
 fundamentalMode :: Mode syntax
-latexMode, cppMode, cabalMode, srmcMode, ocamlMode, ottMode, gnuMakeMode, perlMode, pythonMode :: Mode (Linear.Result Stroke)
+cppMode, cabalMode, srmcMode, ocamlMode, ottMode, gnuMakeMode, perlMode, pythonMode :: Mode (Linear.Result Stroke)
 
 fundamentalMode = emptyMode
   { 
@@ -68,24 +64,6 @@ cabalMode = fundamentalMode
     modeHL = ExtHL $ mkHighlighter' Cabal.initState Cabal.alexScanToken id
   }
 
-latexLexer = Alex.lexScanner Latex.alexScanToken Latex.initState
-
-latexMode = fundamentalMode
-  {
-    modeName = "plain latex",
-    modeApplies = anyExtension ["tex", "sty", "ltx"],
-    modeHL = ExtHL $ mkHighlighter' Latex.initState Latex.alexScanToken (Latex.tokenToStyle)
-  }
-
-latexMode2 :: Mode [Latex.Tree Latex.TT]
-latexMode2 = fundamentalMode
-  {
-    modeApplies = modeApplies latexMode,
-    modeName = "latex",
-    modeHL = ExtHL $ 
-       mkHighlighter (IncrParser.scanner Latex.parse . latexLexer)
-      (\point begin end t -> Latex.getStrokes point begin end t)
-  }
 
 srmcMode = fundamentalMode
   {

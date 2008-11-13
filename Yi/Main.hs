@@ -13,6 +13,7 @@ import qualified Yi.Keymap.Vim  as Vim
 import qualified Yi.Keymap.Cua  as Cua
 import Yi.Modes
 import qualified Yi.Mode.Haskell as Haskell
+import qualified Yi.Mode.Latex as Latex
 import {-# source #-} Yi.Boot
 import Yi.Config
 import Yi.Core hiding (file)
@@ -176,7 +177,8 @@ defaultConfig =
          , startActions     = [makeAction openScratchBuffer] -- emacs-style behaviour
          , publishedActions = defaultPublishedActions
          , modeTable = [AnyMode Haskell.cleverMode,
-                        AnyMode latexMode2,
+                        AnyMode Latex.latexMode2,
+                        AnyMode Latex.latexMode, -- available but the other one is preferred
                         AnyMode cppMode,
                         AnyMode Haskell.literateMode,
                         AnyMode cabalMode,
