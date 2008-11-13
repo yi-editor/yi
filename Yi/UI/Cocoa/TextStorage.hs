@@ -21,6 +21,7 @@ import Yi.Style
 import Yi.Syntax
 import Yi.UI.Cocoa.Utils
 import Yi.UI.Utils
+import Yi.Window
 
 import Data.Maybe
 import qualified Data.Map as M
@@ -180,6 +181,7 @@ mkRangeRegion (NSRange i l) = mkSizeRegion (fromIntegral i) (fromIntegral l)
 $(declareClass "YiTextStorage" "NSTextStorage")
 $(exportClass "YiTextStorage" "yts_" [
     InstanceVariable "buffer" [t| Maybe FBuffer |] [| Nothing |]
+  , InstanceVariable "window" [t| Maybe Window |] [| Nothing |]
   , InstanceVariable "uiStyle" [t| Maybe UIStyle |] [| Nothing |]
   , InstanceVariable "dictionaryCache" [t| M.Map Attributes (NSDictionary ()) |] [| M.empty |]
   , InstanceVariable "pictureCache" [t| (Picture, NSRange) |] [| emptyPicture |]
@@ -330,14 +332,15 @@ storagePicture :: Region -> YiTextStorage () -> IO Picture
 storagePicture r slf = do
   Just sty <- slf #. _uiStyle
   Just buf <- slf #. _buffer
+  Just win <- slf #. _window
   -- logPutStrLn $ "storagePicture " ++ show i
-  return $ bufferPicture sty buf r
+  return $ bufferPicture sty buf win r
 
-bufferPicture :: UIStyle -> FBuffer -> Region -> Picture
-bufferPicture sty buf r = Picture
+bufferPicture :: UIStyle -> FBuffer -> Window -> Region -> Picture
+bufferPicture sty buf win r = Picture
   { picRegion = r
-  , picStrokes = paintCocoaPicture sty (regionEnd r) $
-      runBufferDummyWindow buf (attributesPictureB sty Nothing r []) 
+  , picStrokes = paintCocoaPicture sty (regionEnd r) $ fst $
+      runBuffer win buf (attributesPictureB sty Nothing r []) 
   }
 
 type TextStorage = YiTextStorage ()
@@ -356,10 +359,11 @@ applyUpdate buf (Delete p _ s) =
   buf # editedRangeChangeInLength nsTextStorageEditedCharacters
           (NSRange (fromIntegral p) (fromIntegral len)) (fromIntegral (negate len))
 
-newTextStorage :: UIStyle -> FBuffer -> IO TextStorage
-newTextStorage sty b = do
+newTextStorage :: UIStyle -> FBuffer -> Window -> IO TextStorage
+newTextStorage sty b w = do
   buf <- new _YiTextStorage
   buf # setIVar _buffer (Just b)
+  buf # setIVar _window (Just w)
   buf # setIVar _uiStyle (Just sty)
   s <- new _YiLBString
   s # setIVar _str (runBufferDummyWindow b (streamB Forward 0))
@@ -370,12 +374,12 @@ newTextStorage sty b = do
 setTextStorageBuffer :: FBuffer -> TextStorage -> IO ()
 setTextStorageBuffer buf storage = do
   storage # beginEditing
+  Just s <- storage #. _stringCache
+  s # setIVar _str (runBufferDummyWindow buf (streamB Forward 0))
+  storage # setIVar _buffer (Just buf)
   when (not $ null $ pendingUpdates buf) $ do
     mapM_ (applyUpdate storage) [u | TextUpdate u <- pendingUpdates buf]
     storage # setIVar _pictureCache emptyPicture
-  storage # setIVar _buffer (Just buf)
-  Just s <- storage #. _stringCache
-  s # setIVar _str (runBufferDummyWindow buf (streamB Forward 0))
   storage # endEditing
 
 visibleRangeChanged :: NSRange -> TextStorage -> IO ()

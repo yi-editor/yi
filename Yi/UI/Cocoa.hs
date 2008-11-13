@@ -89,7 +89,6 @@ instance Has_setAllowsNonContiguousLayout (NSLayoutManager a)
 data UI = UI {uiWindow :: NSWindow ()
              ,uiBox :: NSSplitView ()
              ,uiCmdLine :: NSTextField ()
-             ,uiBuffers :: IORef (M.Map BufferRef TextStorage)
              ,windowCache :: IORef [WinInfo]
              ,uiActionCh :: Action -> IO ()
              ,uiFullConfig :: Config
@@ -104,6 +103,7 @@ data WinInfo = WinInfo
   , textview :: YiTextView ()
   , modeline :: NSTextField ()
   , widget   :: NSView ()      -- ^ Top-level widget for this window.
+  , storage  :: TextStorage
   }
 
 mkUI :: UI -> Common.UI
@@ -233,10 +233,9 @@ start cfg ch outCh _ed = do
   win # makeKeyAndOrderFront nil
   app # activateIgnoringOtherApps False
 
-  bufs <- newIORef M.empty
   wc <- newIORef []
 
-  let ui = UI win winContainer cmd bufs wc (outCh . singleton) cfg
+  let ui = UI win winContainer cmd wc (outCh . singleton) cfg
 
   cmd # setColors (Style.baseAttributes $ configStyle $ uiConfig ui)
 
@@ -341,8 +340,8 @@ newWindow ui win b = do
 
   -- TODO: Support focused modeline...
   ml # setColors (Style.modelineAttributes sty)
-  storage <- getTextStorage ui b
-  layoutManager v >>= replaceTextStorage storage
+  s <- newTextStorage (configStyle $ uiConfig ui) (snd $ runBuffer win b revertPendingUpdatesB) win
+  layoutManager v >>= replaceTextStorage s
 
   responds <- layoutManager v >>= respondsToSelector (getSelectorForName "setAllowsNonContiguousLayout:")
   when responds $ layoutManager v >>= setAllowsNonContiguousLayout True
@@ -360,6 +359,7 @@ newWindow ui win b = do
     , textview = v
     , modeline = ml
     , widget   = view
+    , storage  = s
     }
 
 refresh :: UI -> Editor -> IO ()
@@ -370,11 +370,6 @@ refresh ui e = logNSException "refresh" $ do
     (uiCmdLine ui) # setStringValue (toNSString $ statusLine e)
 
     cache <- readRef $ windowCache ui
-    forM_ (buffers e) $ \buf -> do
-      storage <- getTextStorage ui buf
-      storage # setMonospaceFont -- FIXME: Why is this needed for mini buffers?
-      storage # setTextStorageBuffer buf
-
     (uiWindow ui) # setAutodisplay False -- avoid redrawing while window syncing
     cache' <- syncWindows e ui (toList $ WS.withFocus $ windows e) cache
     writeRef (windowCache ui) cache'
@@ -383,6 +378,9 @@ refresh ui e = logNSException "refresh" $ do
 
     forM_ cache' $ \w ->
         do let buf = findBufferWith (bufkey (window w)) e
+           (storage w) # setMonospaceFont -- FIXME: Why is this needed for mini buffers?
+           (storage w) # setTextStorageBuffer buf
+
            let ((p0,p1,showSel,txt),_) = runBuffer (window w) buf $
                  (,,,) <$> pointB <*> (getMarkPointB =<< selMark <$> askMarks) <*>
                            getA highlightSelectionA <*> getModeLine
@@ -390,13 +388,3 @@ refresh ui e = logNSException "refresh" $ do
            (textview w) # setSelectedRange (NSRange (fromIntegral p) (fromIntegral l))
            (textview w) # scrollRangeToVisible (NSRange (fromIntegral p0) 0)
            (modeline w) # setStringValue (toNSString txt)
-
-getTextStorage :: UI -> FBuffer -> IO TextStorage
-getTextStorage ui b = do
-    let bufsRef = uiBuffers ui
-    bufs <- readRef bufsRef
-    storage <- case M.lookup (bkey b) bufs of
-      Just storage -> return storage
-      Nothing -> newTextStorage (configStyle $ uiConfig ui) b
-    modifyRef bufsRef (M.insert (bkey b) storage)
-    return storage
