@@ -388,3 +388,4 @@ refresh ui e = logNSException "refresh" $ do
            (textview w) # setSelectedRange (NSRange (fromIntegral p) (fromIntegral l))
            (textview w) # scrollRangeToVisible (NSRange (fromIntegral p0) 0)
            (modeline w) # setStringValue (toNSString txt)
+           (textview w) # visibleRange >>= flip visibleRangeChanged (storage w)
