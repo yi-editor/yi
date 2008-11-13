@@ -53,14 +53,17 @@ parse = pExpr True <* eof
     where 
       -- | Create a special character symbol
       newT c = tokFromT (Special c)
-      errT = newT '!'
-
+      -- errT = (\next -> case next of 
+      --     Nothing -> newT '!'
+      --     Just (Tok {tokPosn = posn}) -> Tok { tokT = Special '!', tokPosn = posn-1, tokSize = 1 -- FIXME: size should be 1 char, not one byte!
+      --                      }) <$> lookNext 
+      errT = pure (newT '!')
       -- | parse a special symbol
       sym' p = symbol (p . tokT)
       sym t = sym' (== t)
 
-      pleaseSym c = recoverWith (pure $ errT) <|> sym c
-      pleaseSym' c = recoverWith (pure $ errT) <|> sym' c
+      pleaseSym c = recoverWith errT <|> sym c
+      pleaseSym' c = recoverWith errT <|> sym' c
 
       -- pExpr :: P TT [Expr TT]
       pExpr = many . pTree
@@ -68,7 +71,7 @@ parse = pExpr True <* eof
       parens = [(Special x, Special y) | (x,y) <- zip "({[" ")}]"]
       openParens = fmap fst parens
 
-      pBlock = Paren <$> sym' isBegin <*> pExpr True <*> pleaseSym' isEnd
+      pBlock = sym' isBegin >>= \beg@Tok {tokT = Begin env} -> Paren <$> pure beg <*> pExpr True <*> pleaseSym (End env)
 
       pTree :: Bool -> P TT (Tree TT)
       pTree outsideMath = 
@@ -78,7 +81,6 @@ parse = pExpr True <* eof
           <|> (Atom <$> sym' isNoise)
           <|> (Error <$> recoverWith (sym' (not . ((||) <$> isNoise <*> (`elem` openParens)))))
 
--- TODO: (optimization) make sure we take in account the begin, so we don't return useless strokes
 getStrokes :: Point -> Point -> Point -> [Tree TT] -> [Stroke]
 getStrokes point _begin _end t0 = result 
     where getStrokes' (Atom t) = ts id t
@@ -111,6 +113,7 @@ getStrokes point _begin _end t0 = result
               | otherwise = (f (tokenToStroke t) :)
           list = foldr (.) id
           result = getStrokesL t0 []
+
 
 modStroke :: StyleName -> Stroke -> Stroke
 modStroke f (l,s,r) = (l,f `mappend` s,r) 
