@@ -140,8 +140,9 @@ main = yi $ defaultConfig {
                            configKillringAccumulate = True,
                            modeTable = AnyMode bestHaskellMode : modeTable defaultConfig,
                            configUI = (configUI defaultConfig) 
-                             { configFontSize = Just 10 
-                             -- , configTheme = darkBlueTheme
+                             { configFontSize = Just 12 
+                              -- , configTheme = darkBlueTheme
+                              -- , configFontName = Just "Monaco"
                              },
                            defaultKm = (adjustPriority (-1) >> choice [extraInput]) <|| keymap
                               <|> (ctrl (char '>') ?>>! increaseIndent)
