@@ -24,7 +24,7 @@ instance Functor Tree where
     fmap = fmapDefault
 
 case_ :: (Maybe s -> Bool) -> P s a -> P s a -> P s a
-case_ f true false = ((lookNext f) *> true) <|> (lookNext (not . f) *> false)
+case_ f true false = (testNext f *> true) <|> (testNext (not . f) *> false)
 
 symbolBefore :: Point -> Maybe (Tok t) -> Bool
 symbolBefore _ Nothing = False
