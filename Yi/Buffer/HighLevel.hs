@@ -330,7 +330,8 @@ getRawSelectRegionB :: BufferM Region
 getRawSelectRegionB = do
   m <- getSelectionMarkPointB
   p <- pointB
-  return $ mkRegion p m
+  s <- getA highlightSelectionA
+  return $ mkRegion p (if s then m else p)
 
 -- | Get the current region boundaries
 getSelectRegionB :: BufferM Region
