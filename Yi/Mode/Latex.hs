@@ -16,7 +16,7 @@ abstract :: forall syntax. Mode syntax
 abstract = fundamentalMode
  {
    modeApplies = anyExtension ["tex", "sty", "ltx"],
-   modeToggleCommentSelection = toggleCommentSelectionB "%"
+   modeToggleCommentSelection = toggleCommentSelectionB "% " "%"
  }
 
 -- | token-based latex mode 
@@ -39,11 +39,3 @@ latexMode2 = abstract
   }
     where latexLexer = Alex.lexScanner Latex.alexScanToken Latex.initState
 
-
--- | Comments the region using latex line comments
-latexCommentSelectionB :: BufferM ()
-latexCommentSelectionB = linePrefixSelectionB "% "
-
--- | uncomments a region of latex line commented code
-latexUnCommentSelectionB :: BufferM ()
-latexUnCommentSelectionB = unLineCommentSelectionB "% "

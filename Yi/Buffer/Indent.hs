@@ -450,4 +450,4 @@ increaseIndentSelectionB i = linePrefixSelectionB $ replicate i ' '
 -- | Decreases the indentation on the region by the given amount
 decreaseIndentSelectionB :: Int -> BufferM ()
 decreaseIndentSelectionB i =
-  unLineCommentSelectionB $ replicate i ' '
+  let pre = replicate i ' ' in unLineCommentSelectionB pre pre

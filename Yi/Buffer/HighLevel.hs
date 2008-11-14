@@ -460,21 +460,23 @@ linePrefixSelectionB s =
 -- starting string. This only works for the comments which
 -- begin at the start of the line.
 unLineCommentSelectionB :: String -- ^ The string which begins a line comment
+                        -> String -- ^ A potentially shorter string that begins a comment
                         -> BufferM ()
-unLineCommentSelectionB s =
+unLineCommentSelectionB s1 s2 =
   modifyExtendedSelectionB Line $ mapLines unCommentLine
   where
   unCommentLine :: String -> String
   unCommentLine line
-    | isPrefixOf s line = drop (length s) line
+    | isPrefixOf s1 line = drop (length s1) line
+    | isPrefixOf s2 line = drop (length s2) line
     | otherwise         = line
 
-toggleCommentSelectionB :: String -> BufferM ()
-toggleCommentSelectionB prefix = do
+toggleCommentSelectionB :: String -> String -> BufferM ()
+toggleCommentSelectionB insPrefix delPrefix = do
   l <- readUnitB Line
-  if (prefix `isPrefixOf` l)
-    then linePrefixSelectionB (prefix ++ " ")
-    else unLineCommentSelectionB (prefix ++ " ")
+  if (delPrefix `isPrefixOf` l)
+    then unLineCommentSelectionB insPrefix delPrefix
+    else linePrefixSelectionB insPrefix
 
 -- Performs as search and replace on the given string.
 substituteInList :: Eq a => [ a ] -> [ a ] -> [ a ] -> [ a ]

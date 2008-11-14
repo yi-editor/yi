@@ -9,10 +9,6 @@ module Yi.Mode.Haskell
    literateMode,
    testMode,
    
-   -- * Buffer-level operations
-   haskellUnCommentSelectionB,
-   haskellCommentSelectionB,
-
    -- * IO-level operations
    ghciGet,
    ghciLoadBuffer
@@ -54,7 +50,7 @@ haskellAbstract = emptyMode
      'yi' are mostly haskell hackers, as of yet. -}
      modeApplies = anyExtension ["hs", "x", "hsc", "hsinc"],
      modeName = "haskell",
-     modeToggleCommentSelection = toggleCommentSelectionB "-- "
+     modeToggleCommentSelection = toggleCommentSelectionB "-- " "--"
   }
 
 -- | Plain haskell mode, providing only list of keywords.
@@ -264,16 +260,6 @@ autoIndentHaskellB =
                           , "{-|"
                           , "--"
                           ]
-
-
--- | Comments the region using haskell line comments
-haskellCommentSelectionB :: BufferM ()
-haskellCommentSelectionB = linePrefixSelectionB "-- "
-
--- | Uncomments a region of haskell line commented code
-haskellUnCommentSelectionB :: BufferM ()
-haskellUnCommentSelectionB = unLineCommentSelectionB "-- "
-
 
 ---------------------------
 -- * Interaction with GHCi
