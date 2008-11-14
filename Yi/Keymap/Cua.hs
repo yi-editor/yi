@@ -91,6 +91,9 @@ other  cmd = choice [
  cmd (char 'z')   ?>>! undoB,
  cmd (char 'y')   ?>>! redoB,
  cmd (char 's')   ?>>! fwriteE,
- cmd (char 'o')   ?>>! findFile
+ cmd (char 'o')   ?>>! findFile,
+ cmd (char '/')   ?>>! withModeB modeToggleCommentSelection,
+ cmd (char ']')   ?>>! autoIndentB IncreaseOnly,
+ cmd (char '[')   ?>>! autoIndentB DecreaseOnly
  ]
 
