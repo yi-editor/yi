@@ -1,6 +1,6 @@
 -- Copyright (c) 2008 Jean-Philippe Bernardy
 
-module Yi.Keymap.Cua (keymap) where
+module Yi.Keymap.Cua (keymap, portableKeymap) where
 
 import Prelude hiding (error)
 import Yi.Core
@@ -9,7 +9,12 @@ import Yi.Keymap.Emacs.Utils
 import Yi.Misc
 
 keymap :: Keymap
-keymap = selfInsertKeymap <|> move <|> select <|> other
+keymap = portableKeymap ctrl
+
+-- | Introduce a keymap that is compatible with both windows and osx,
+--   by parameterising the event modifier required for commands
+portableKeymap :: (Event -> Event) -> Keymap
+portableKeymap cmd = selfInsertKeymap <|> move <|> select <|> other cmd
 
 selfInsertKeymap :: Keymap
 selfInsertKeymap = do
@@ -56,11 +61,12 @@ moveKeys = [
  ]
 
 
-move, select, other :: Keymap
+move, select :: Keymap
+other :: (Event -> Event) -> Keymap
 
 move   = choice [      k ?>>! unsetMark >> a | (k,a) <- moveKeys]
 select = choice [shift k ?>>!   setMark >> a | (k,a) <- moveKeys]
-other = choice [
+other  cmd = choice [
  spec KBS         ?>>! adjBlock (-1) >> bdeleteB,
  spec KDel        ?>>! do
    haveSelection <- withBuffer $ getA highlightSelectionA
@@ -68,16 +74,16 @@ other = choice [
        then withEditor del
        else withBuffer (adjBlock (-1) >> deleteN 1),
  spec KEnter      ?>>! insertB '\n',
- ctrl (char 'q')  ?>>! askQuitEditor,
- ctrl (char 'f')  ?>>  isearchKeymap Forward,
- ctrl (char 'x')  ?>>! cut,
- ctrl (char 'c')  ?>>! copy,
- ctrl (char 'v')  ?>>! paste,
- ctrl (spec KIns) ?>>! copy,
+ cmd (char 'q')   ?>>! askQuitEditor,
+ cmd (char 'f')   ?>>  isearchKeymap Forward,
+ cmd (char 'x')   ?>>! cut,
+ cmd (char 'c')   ?>>! copy,
+ cmd (char 'v')   ?>>! paste,
+ cmd (spec KIns)  ?>>! copy,
  shift (spec KIns) ?>>! paste,
- ctrl (char 'z')  ?>>! undoB,
- ctrl (char 'y')  ?>>! redoB,
- ctrl (char 's')  ?>>! fwriteE,
- ctrl (char 'o')  ?>>! findFile
+ cmd (char 'z')   ?>>! undoB,
+ cmd (char 'y')   ?>>! redoB,
+ cmd (char 's')   ?>>! fwriteE,
+ cmd (char 'o')   ?>>! findFile
  ]
 
