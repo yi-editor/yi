@@ -193,7 +193,7 @@ handleKeyEvent event mch = do
     _                 -> return ()
 
 modifierTable :: Bool -> [(CUInt, Modifier)]
-modifierTable False = [(bit 18,MCtrl), (bit 19,MMeta)]
+modifierTable False = [(bit 18,MCtrl), (bit 19,MMeta), (bit 20,MSuper)]
 modifierTable True  = (bit 17,MShift) : modifierTable False
 
 modifiers :: Bool -> CUInt -> [Modifier]

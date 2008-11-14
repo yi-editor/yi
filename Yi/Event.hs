@@ -12,7 +12,7 @@ import Data.Char (chr,ord)
 import Data.Monoid
 import Yi.Debug
 
-data Modifier = MShift | MCtrl | MMeta
+data Modifier = MShift | MCtrl | MMeta | MSuper
                 deriving (Show,Eq,Ord)
 
 data Key = KEsc | KFun Int | KPrtScr | KPause | KASCII Char | KBS | KIns

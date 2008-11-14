@@ -6,7 +6,7 @@ module Yi.Keymap.Keys
     (
      module Yi.Event,
      module Yi.Interact,
-     printableChar, charOf, shift, meta, ctrl, spec, char, (>>!), (?>>), (?>>!),
+     printableChar, charOf, shift, meta, ctrl, super, spec, char, (>>!), (?>>), (?>>!),
      ctrlCh, metaCh,
      pString
     ) where
@@ -43,6 +43,8 @@ shift (Event k ms) = Event k $ nub $ sort (MShift:ms)
 ctrl (Event k ms) = Event k $ nub $ sort (MCtrl:ms)
 
 meta (Event k ms) = Event k $ nub $ sort (MMeta:ms)
+
+super (Event k ms) = Event k $ nub $ sort (MSuper:ms)
 
 char :: Char -> Event
 char '\t' = Event KTab []
