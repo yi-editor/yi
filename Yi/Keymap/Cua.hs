@@ -50,8 +50,12 @@ moveKeys :: [(Event, BufferM ())]
 moveKeys = [
  (spec KHome          , maybeMoveB Line Backward),
  (spec KEnd           , maybeMoveB Line Forward),
+ (super (spec KRight) , maybeMoveB Line Forward),
+ (super (spec KLeft ) , maybeMoveB Line Backward),
  (ctrl (spec KHome)   , maybeMoveB Document Backward),
  (ctrl (spec KEnd)    , maybeMoveB Document Forward),
+ (super (spec KUp)    , maybeMoveB Document Backward),
+ (super (spec KDown)  , maybeMoveB Document Forward),
  (ctrl (spec KRight)  , moveB unitWord Forward),
  (ctrl (spec KLeft )  , moveB unitWord Backward),
  (spec KUp            , moveB VLine Backward),
