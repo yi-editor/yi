@@ -40,6 +40,13 @@ replaceSel s = do
       when (length s == 1) (adjBlock 1)
       insertN s
 
+deleteSel :: BufferM () -> YiM ()
+deleteSel act = do
+  haveSelection <- withBuffer $ getA highlightSelectionA
+  if haveSelection
+    then withEditor del
+    else withBuffer (adjBlock (-1) >> act)
+
 cut, del, copy, paste :: EditorM ()
 cut = copy >> del
 del = withBuffer0 (deleteRegionB =<< getSelectRegionB)
@@ -71,13 +78,9 @@ other :: (Event -> Event) -> Keymap
 move   = choice [      k ?>>! unsetMark >> a | (k,a) <- moveKeys]
 select = choice [shift k ?>>!   setMark >> a | (k,a) <- moveKeys]
 other  cmd = choice [
- spec KBS         ?>>! adjBlock (-1) >> bdeleteB,
- spec KDel        ?>>! do
-   haveSelection <- withBuffer $ getA highlightSelectionA
-   if haveSelection
-       then withEditor del
-       else withBuffer (adjBlock (-1) >> deleteN 1),
- spec KEnter      ?>>! insertB '\n',
+ spec KBS         ?>>! deleteSel bdeleteB,
+ spec KDel        ?>>! deleteSel (deleteN 1),
+ spec KEnter      ?>>! replaceSel "\n",
  cmd (char 'q')   ?>>! askQuitEditor,
  cmd (char 'f')   ?>>  isearchKeymap Forward,
  cmd (char 'x')   ?>>! cut,
