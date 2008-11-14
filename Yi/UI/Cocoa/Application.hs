@@ -182,6 +182,7 @@ handleKeyEvent event mch = do
                 "\63233" -> (Just KDown, True)
                 "\63234" -> (Just KLeft, True)
                 "\63235" -> (Just KRight, True)
+                "\63272" -> (Just KDel, True)
                 "\63273" -> (Just KHome, True)
                 "\63275" -> (Just KEnd, True)
                 "\63276" -> (Just KPageUp, True)
