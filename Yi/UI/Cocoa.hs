@@ -21,6 +21,8 @@ import Yi.Editor
 import Yi.Keymap
 import Yi.Monad
 import Yi.Config
+import Yi.Rectangle
+import Yi.String
 import qualified Yi.UI.Common as Common
 import qualified Yi.WindowSet as WS
 import qualified Yi.Style as Style
@@ -43,7 +45,8 @@ import HOC
 import Foundation (
   NSPoint(..),NSRect(..),NSRange(..),NSSize(..),nsHeight,nsWidth,
   _NSThread,detachNewThreadSelectorToTargetWithObject,alloc,init,
-  NSObject,toNSString,respondsToSelector)
+  NSObject,toNSString,respondsToSelector,_NSMutableArray,array,
+  _NSValue,valueWithRange,addObject,NSMutableArray)
 import AppKit (
   frame,bounds,setFrame,NSView,_NSView,NSTextField,_NSTextField,
   NSCell,_NSSplitView,_NSImage,NSApplication,sharedApplication,
@@ -65,7 +68,7 @@ import AppKit (
   setContainerSize,setDelegate,setDocumentView,setEditable,
   setFrameAutosaveName,setHasHorizontalScroller,setHasVerticalScroller,
   setHorizontallyResizable,setInsertionPointColor,setLineBreakMode,
-  setRichText,setSelectable,setSelectedRange,NSLayoutManager,
+  setRichText,setSelectable,setSelectedRanges,NSLayoutManager,
   setSelectedTextAttributes,setStringValue,setTextColor,setTitle,
   setVerticallyResizable,setWidthTracksTextView,setWindowsMenu,
   setWraps,sizeToFit,textColor,textContainer)
@@ -362,6 +365,24 @@ newWindow ui win b = do
     , storage  = s
     }
 
+getSelectedRegions :: BufferM [Region]
+getSelectedRegions = do
+  rect <- getA rectangleSelectionA
+  if (not rect)
+    then singleton <$> getSelectRegionB
+    else do
+      (reg, x1, x2) <- getRectangle
+      ls <- map (fromIntegral . L.length) <$> lines' <$> readRegionB reg
+      return $ catMaybes $ snd $ L.mapAccumL
+        (lineRegions (fromIntegral x1) (fromIntegral x2)) (regionStart reg) ls
+  where
+    lineRegions :: Size -> Size -> Point -> Size -> (Point, Maybe Region)
+    lineRegions x1 x2 p l 
+      | l <= x1   = (p +~ succ l, Nothing)
+      | l <= x2   = (p +~ succ l, Just $ mkRegion (p+~x1) (p +~ l))
+      | otherwise = (p +~ succ l, Just $ mkRegion (p+~x1) (p +~ x2))
+
+
 refresh :: UI -> Editor -> IO ()
 refresh ui e = withAutoreleasePool $ logNSException "refresh" $ do
     _YiApplication # sharedApplication >>=
@@ -381,11 +402,11 @@ refresh ui e = withAutoreleasePool $ logNSException "refresh" $ do
            (storage w) # setMonospaceFont -- FIXME: Why is this needed for mini buffers?
            (storage w) # setTextStorageBuffer e buf
 
-           let ((p0,p1,showSel,txt),_) = runBuffer (window w) buf $
-                 (,,,) <$> pointB <*> (getMarkPointB =<< selMark <$> askMarks) <*>
-                           getA highlightSelectionA <*> getModeLine
-           let (p,l) = if showSel then (min p0 p1, abs $ p1~-p0) else (p0,0)
-           (textview w) # setSelectedRange (NSRange (fromIntegral p) (fromIntegral l))
+           let ((p0,txt,rs),_) = runBuffer (window w) buf $
+                 (,,) <$> pointB <*> getModeLine <*> getSelectedRegions
+           a <- castObject <$> _NSMutableArray # array :: IO (NSMutableArray ())
+           mapM_ ((flip addObject a =<<) . flip valueWithRange _NSValue . mkRegionRange) rs
+           (textview w) # setSelectedRanges (castObject a)
            (textview w) # scrollRangeToVisible (NSRange (fromIntegral p0) 0)
            (modeline w) # setStringValue (toNSString txt)
            (textview w) # visibleRange >>= flip visibleRangeChanged (storage w)

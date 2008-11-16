@@ -60,7 +60,7 @@ import AppKit (
   applicationWillTerminate,generalPasteboard,availableTypeFromArray,
   charactersIgnoringModifiers,declareTypesOwner,modifierFlags,
   nsKeyDown,nsStringPboardType,setStringForType,changeCount,
-  stringForType)
+  stringForType,nsFlagsChanged)
 
 foreign import ccall "RtsAPI.h shutdownHaskellAndExit" shutdownHaskellAndExit :: CInt -> IO ()
 
@@ -166,7 +166,10 @@ ya_sendEvent event self = logNSException "sendEvent" $ do
   t <- event # (rawType :: ImpType_rawType (NSEvent t) inst)
   if t == fromCEnum nsKeyDown
     then self #. _eventChannel >>= handleKeyEvent event
-    else super self # sendEvent event
+    else if t == fromCEnum nsFlagsChanged
+      then do
+        logPutStrLn $ "Flags changed"
+      else super self # sendEvent event
 
 handleKeyEvent :: forall t. NSEvent t -> Maybe (Yi.Event.Event -> IO ()) -> IO ()
 handleKeyEvent event mch = do

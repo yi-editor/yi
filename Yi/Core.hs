@@ -203,10 +203,14 @@ refreshEditor = do
             e2 = modifier buffersA (fmap clearUpdates)  e1
         UI.refresh (yiUi yi) e1
         return var {yiEditor = e2}
-    where clearHighlight fb@FBuffer {pendingUpdates = us, highlightSelection = h} 
-              = modifier highlightSelectionA (const (h && null us)) fb
-          -- if there were updates, then hide the selection.
-          clearUpdates fb = modifier pendingUpdatesA (const []) fb
+  where 
+    clearUpdates fb = modifier pendingUpdatesA (const []) fb
+    clearHighlight fb =
+      -- if there were updates, then hide the selection.
+      let h = getter highlightSelectionA fb
+          us = getter pendingUpdatesA fb
+      in modifier highlightSelectionA (const (h && null us)) fb
+          
           
 
 -- | Suspend the program

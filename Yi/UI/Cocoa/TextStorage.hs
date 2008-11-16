@@ -176,9 +176,6 @@ extendPicture desired ext cache = do
       , picStrokes = picStrokes p1 ++ picStrokes p2
       }
 
-mkRangeRegion :: NSRange -> Region
-mkRangeRegion (NSRange i l) = mkSizeRegion (fromIntegral i) (fromIntegral l)
-
 $(declareClass "YiTextStorage" "NSTextStorage")
 $(exportClass "YiTextStorage" "yts_" [
     InstanceVariable "buffer" [t| Maybe FBuffer |] [| Nothing |]
@@ -210,11 +207,6 @@ yts_string slf = castObject <$> fromJust <$> slf #. _stringCache
 
 yts_fixesAttributesLazily :: YiTextStorage () -> IO Bool
 yts_fixesAttributesLazily _ = return True
-
-
-mkRegionRange :: Region -> NSRange
-mkRegionRange r = NSRange (fromIntegral $ regionStart r) (fromIntegral $ regionSize r)
-
 
 yts_attributesAtIndexEffectiveRange :: CUInt -> NSRangePointer -> YiTextStorage () -> IO (NSDictionary ())
 yts_attributesAtIndexEffectiveRange i er slf = do

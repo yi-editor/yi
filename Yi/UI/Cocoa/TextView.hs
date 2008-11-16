@@ -31,13 +31,13 @@ import Yi.UI.Cocoa.Utils
 import HOC
 import Foundation (
   NSPoint(..),NSRange(..),nsMinY,nsWidth,nsOffsetRect,NSArray,
-  addObject,haskellString,NSMutableArray,
-  _NSMutableArray,array,addObjectsFromArray)
+  addObject,haskellString,NSMutableArray,NSValue,
+  _NSMutableArray,array,addObjectsFromArray,rangeValue)
 import AppKit (
   NSSelectionAffinity,characterRangeForGlyphRangeActualGlyphRange,
   glyphRangeForBoundingRectInTextContainer,layoutManager,textContainer,
   textContainerOrigin,visibleRect,frame,verticalScroller,NSTextView,
-  NSTextViewClass,setSelectedRangeAffinityStillSelecting,NSScrollView,
+  NSTextViewClass,setSelectedRangesAffinityStillSelecting,NSScrollView,
   NSScrollViewClass,tile,setFrameOrigin,performDragOperation,
   acceptableDragTypes,nsStringPboardType,stringForType,
   draggingPasteboard,Has_draggingPasteboard,draggingSource,
@@ -54,34 +54,36 @@ import Foreign.C
 $(declareClass "YiTextView" "NSTextView")
 $(exportClass "YiTextView" "ytv_" [
     InstanceVariable "runBuffer" [t| BufferM () -> IO () |] [| \_ -> return () |]
-  , InstanceVariable "selectingPosition" [t| Maybe CUInt |] [| Nothing |]
-  , InstanceMethod 'setSelectedRangeAffinityStillSelecting -- '
+  , InstanceVariable "selectingPosition" [t| Maybe Point |] [| Nothing |]
+  , InstanceMethod 'setSelectedRangesAffinityStillSelecting -- '
   , InstanceMethod 'acceptableDragTypes
   , InstanceMethod 'performDragOperation
   ])
 
 -- | Intercept mouse selection so that we can update Yi's selection
 --   according to how Cocoa wants it.
-ytv_setSelectedRangeAffinityStillSelecting :: NSRange -> NSSelectionAffinity -> Bool -> YiTextView () -> IO ()
-ytv_setSelectedRangeAffinityStillSelecting r@(NSRange p1 l) a b v = do
+ytv_setSelectedRangesAffinityStillSelecting :: NSArray () -> NSSelectionAffinity -> Bool -> YiTextView () -> IO ()
+ytv_setSelectedRangesAffinityStillSelecting rs a b v = do
+  hrs <- fmap castObject <$> haskellList rs :: IO [NSValue ()]
+  r <- foldl1 unionRegion <$> fmap mkRangeRegion <$> mapM rangeValue hrs :: IO Region
   p <- v #. _selectingPosition
   case (b, p) of
     (True, Nothing) -> do
       -- Assume that the initial indication gives starting position
-      v # setIVar _selectingPosition (Just p1)
+      v # setIVar _selectingPosition (Just $ regionStart r)
     (False, Just p0) -> do
       v # setIVar _selectingPosition Nothing
       runbuf <- v #. _runBuffer
       runbuf $ do
-        setVisibleSelection (l /= 0)
-        setSelectionMarkPointB (fromIntegral p0)
-        moveTo (fromIntegral $ if p1 == p0 then p1 + l else p1)
+        setVisibleSelection (regionSize r /= 0)
+        setSelectionMarkPointB p0
+        moveTo (if regionStart r == p0 then regionEnd r else regionStart r)
     _ -> do
       -- Ignore intermediate updates (Cocoa buffers events until selection finishes)
       -- Ignore direct updates (to avoid having to detect "our" updates)
       return ()
 
-  super v # setSelectedRangeAffinityStillSelecting r a b
+  super v # setSelectedRangesAffinityStillSelecting rs a b
 
 ytv_acceptableDragTypes :: YiTextView () -> IO (NSArray ())
 ytv_acceptableDragTypes _ = do

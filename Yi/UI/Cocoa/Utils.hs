@@ -8,6 +8,7 @@ module Yi.UI.Cocoa.Utils where
 
 import Prelude hiding (init)
 import Yi.Debug
+import Yi.Region
 import Yi.Style
 
 import Control.Applicative
@@ -20,7 +21,7 @@ import Foundation (
   NSDictionary,NSMutableDictionary,NSObject,NSObject_,
   _NSMutableDictionary,alloc,autorelease,catchNS,description,
   haskellString,retain,setValueForKey,dictionary,init,
-  objectEnumerator,nextObject,NSArray)
+  objectEnumerator,nextObject,NSArray,NSRange(..))
 import AppKit (
   Has_setFont,NSColor,_NSColor,_NSFont,blackColor,
   colorWithDeviceRedGreenBlueAlpha,nsBackgroundColorAttributeName,
@@ -82,6 +83,13 @@ haskellList a = a # objectEnumerator >>= helper
       if e == nil
         then return []
         else helper enum >>= return . (e :)
+
+mkRangeRegion :: NSRange -> Region
+mkRangeRegion (NSRange i l) = mkSizeRegion (fromIntegral i) (fromIntegral l)
+
+mkRegionRange :: Region -> NSRange
+mkRegionRange r = NSRange (fromIntegral $ regionStart r) (fromIntegral $ regionSize r)
+
 {-
 
 -- Debugging helpers

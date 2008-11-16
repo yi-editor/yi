@@ -67,6 +67,6 @@ attributesPictureB sty mexp region extraLayers =
 attributesPictureAndSelB :: UIStyle -> Maybe SearchExp -> Region -> BufferM [(Point,Attributes)]
 attributesPictureAndSelB sty mexp region = do
     selReg <- getSelectRegionB
-    showSel <- gets highlightSelection
+    showSel <- getA highlightSelectionA
     let extraLayers = if showSel then [[(regionStart selReg, selectedStyle, regionEnd selReg)]] else []
     attributesPictureB sty mexp region extraLayers

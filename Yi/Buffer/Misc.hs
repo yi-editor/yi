@@ -77,6 +77,7 @@ module Yi.Buffer.Misc
   , savingPointB
   , pendingUpdatesA
   , highlightSelectionA
+  , rectangleSelectionA
   , revertPendingUpdatesB
   , askWindow
   , clearSyntax
@@ -176,7 +177,7 @@ data FBuffer = forall syntax.
                 , bufferDynamic :: !DynamicValues -- ^ dynamic components
                 , preferCol :: !(Maybe Int)       -- ^ prefered column to arrive at when we do a lineDown / lineUp
                 , pendingUpdates :: ![UIUpdate]    -- ^ updates that haven't been synched in the UI yet
-                , highlightSelection :: !Bool
+                , selectionStyle :: !SelectionStyle
                 , process :: !KeymapProcess
                 , winMarks :: !(M.Map WindowRef WinMarks)
                 , lastActiveWindow :: !Window
@@ -199,6 +200,16 @@ instance Binary FBuffer where
           pure (emptyMode {modeName = mnm}) <*> get <*> pure emptyDV <*> get <*> get <*> get <*> pure I.End <*> get <*> get
         where getStripped :: Get (BufferImpl ())
               getStripped = get
+
+data SelectionStyle = SelectionStyle
+  { highlightSelection :: !Bool
+  , rectangleSelection :: !Bool
+  }
+  deriving Typeable
+
+instance Binary SelectionStyle where
+  put (SelectionStyle h r) = put h >> put r
+  get = SelectionStyle <$> get <*> get
 
 -- | udpate the syntax information (clear the dirty "flag")
 clearSyntax :: FBuffer -> FBuffer
@@ -250,10 +261,20 @@ pendingUpdatesA = Accessor pendingUpdates (\f e -> case e of
                                    FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 f13 f14 -> 
                                     FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 (f f10) f11 f12 f13 f14)
 
-highlightSelectionA :: Accessor FBuffer Bool
-highlightSelectionA = Accessor highlightSelection (\f e -> case e of 
+selectionStyleA :: Accessor FBuffer SelectionStyle
+selectionStyleA = Accessor selectionStyle (\f e -> case e of 
                                    FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 f13 f14 -> 
                                     FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 (f f11) f12 f13 f14)
+
+highlightSelectionA :: Accessor FBuffer Bool
+highlightSelectionA = 
+  Accessor highlightSelection (\f e -> e { highlightSelection = f (highlightSelection e) })
+  .> selectionStyleA
+
+rectangleSelectionA :: Accessor FBuffer Bool
+rectangleSelectionA = 
+  Accessor rectangleSelection (\f e -> e { rectangleSelection = f (rectangleSelection e) })
+  .> selectionStyleA
 
 nameA :: Accessor FBuffer String
 nameA = Accessor name (\f e -> case e of 
@@ -506,7 +527,7 @@ newB unique nm s =
             , preferCol = Nothing
             , bufferDynamic = emptyDV 
             , pendingUpdates = []
-            , highlightSelection = False
+            , selectionStyle = SelectionStyle False False
             , process = I.End
             , winMarks = M.empty
             , lastActiveWindow = dummyWindow unique
