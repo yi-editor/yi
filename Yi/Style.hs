@@ -51,6 +51,9 @@ data UIStyle = UIStyle
   , typeStyle          :: Style      -- ^ type name (such as class in an OO language)
   , variableStyle      :: Style      -- ^ any standard variable (identifier)
   , operatorStyle      :: Style      -- ^ infix operators
+
+  , makeFileAction     :: Style      -- ^ stuff that's passed to the shell in a Makefile
+  , makeFileRuleHead   :: Style      -- ^ makefile rule headers
   }
 
 type StyleName = UIStyle -> Style

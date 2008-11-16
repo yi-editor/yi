@@ -20,13 +20,12 @@ make :-
 
 <0>
 {
-    -- All lines that start with a \t are passed to the shell
-    -- For now these are all effectively unstyled.
+    -- All lines that start with a \t are passed to the shell.
     -- This includes # characters that might be in the shell code! Those indicate comments *only* if
     -- the shell interpretting the code would consider it a comment. Wack huh?
     -- See 3.1
     ^\t.*
-        { c Style.defaultStyle }
+        { c Style.makeFileAction }
     \#
         { m (\_ -> InComment) Style.commentStyle }
     \n
