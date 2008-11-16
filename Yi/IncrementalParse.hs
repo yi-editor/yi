@@ -9,7 +9,6 @@ import Yi.Prelude
 import Prelude (Ordering(..))
 import Yi.Syntax
 import Data.List hiding (map, minimumBy)
-import Data.Maybe (listToMaybe)
 
 data a :< b
 
@@ -91,7 +90,7 @@ profile (Fail) = PFail
 profile (Dislike p) = mapSucc (profile p)
 profile (Sus _ _) = PSusp
 profile (Best _ pr _ _) = pr
-
+profile (Sh' _) = error "Sh' should be hidden by Sus"
 
 instance Show (Steps s r) where
     show (Val _ p) = "v" ++ show p
@@ -116,6 +115,7 @@ evalR (Shift v) = evalR v
 evalR (Dislike v) = evalR v
 evalR (Fail) = error "evalR: No parse!"
 evalR (Sus _ _) = error "evalR: Not fully evaluated!"
+evalR (Sh' _) = error "evalR: Sh' should be hidden by Sus"
 evalR (Best choice _ p q) = case choice of
     LT -> evalR p
     GT -> evalR q
