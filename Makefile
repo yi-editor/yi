@@ -44,10 +44,10 @@ distclean: clean
 Contributors: Contributors.hs
 	ghc --make $<
 
-CONTRIBUTORS: Contributors _darcs/inventory
+CONTRIBUTORS: Contributors _darcs/hashed_inventory
 	darcs changes | ./Contributors > $@
 
-activity.png: _darcs/inventory
+activity.png: _darcs/hashed_inventory
 	darcs-graph . -y20 --name=yi -o $@
 
 dist/yi-$(version).tar.gz:: sdist
