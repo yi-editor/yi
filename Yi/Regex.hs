@@ -10,6 +10,8 @@ module Yi.Regex
 where
 
 import Text.Regex.TDFA
+import Text.Regex.TDFA.Pattern
+import Text.Regex.TDFA.Common
 import Control.Monad
 
 type SearchExp = (String, Regex)
@@ -42,6 +44,8 @@ makeSearchOptsM opts re = liftM (\r->(re,r)) $ makeRegexOptsM (searchOpts opts d
 
 emptySearch :: SearchExp
 emptySearch = ("", emptyRegex)
+
+literalRegex = PConcat . map (PChar (DoPa 0))
 
 -- | The regular expression that matches nothing.
 emptyRegex :: Regex
