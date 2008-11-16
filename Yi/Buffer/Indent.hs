@@ -20,9 +20,8 @@ import Data.Char
 import Data.List (span, length, sort, nub, break, reverse, filter, takeWhile)
 import Yi.String
 
-
 {- |
-  Inserts either a \t or the number of spaces specified by tabSize in the
+  Insert either a \t or the number of spaces specified by tabSize in the
   IndentSettings. Note that if you actually want to insert a tab character
   (for example when editing makefiles) then you should use: @insertB '\t'@.
 -}
@@ -46,7 +45,7 @@ indentSettingsB = withModeB (\Mode {modeIndentSettings = x} -> return x)
   specialise 'autoIndentHelperB' on their own.
 -}
 autoIndentB :: IndentBehaviour -> BufferM ()
-autoIndentB indentBehave =
+autoIndentB indentBehave = do
   autoIndentHelperB fetchPreviousIndentsB indentsOfString indentBehave
   where
   -- Returns the indentation hints considering the given
@@ -55,11 +54,12 @@ autoIndentB indentBehave =
   --     The indent of the given string
   --     The indent of the given string plus two
   --     The offset of the last open bracket if any in the line.
-  indentsOfString :: String -> BufferM [ Int ]
+  indentsOfString :: String -> BufferM [Int]
   indentsOfString input = 
     do indent       <- indentOfB input
        bracketHints <- lastOpenBracketHint input
-       return $ indent : (indent + 2) : bracketHints
+       indentSettings <- indentSettingsB
+       return $ indent : (indent + shiftWidth indentSettings) : bracketHints
 
 {-|
   This takes two arguments the first is a function to
@@ -84,7 +84,7 @@ autoIndentHelperB :: BufferM [ Int ]
                  -- ^ Action to calculate hints from previous line
                  -> IndentBehaviour
                  -- ^ Sets the indent behaviour, 
-                 ---  see 'Yi.Buffer.IndentBehaviour' for a description
+                 -- see 'Yi.Buffer.IndentBehaviour' for a description
                  -> BufferM ()
 autoIndentHelperB getUpwards getPrevious indentBehave =
   do upwardHints   <- savingExcursionB getUpwards
@@ -377,33 +377,9 @@ spacingOfB text =
     of the line then we wish to remain pointing to the same character.
 -}
 indentToB :: Int -> BufferM ()
-indentToB level = 
-     -- Grab the current line
-  do line          <- readLnB
-     -- grab the current offset (in characters) from the start of the line
-     currentOffset <- curCol
-     -- move to the start of the line
-     moveToSol
-     -- delete the whole of the line.
-     deleteToEol
-         -- Separate the white space of the current line from the rest of it.
-     let (curIndent, restOfLine) = span isSpace line
-         -- The original offset (in characters) from the start of the rest
-         -- the line, this will be greater than zero if the current point
-         -- was somewhere after the indentation of the current line.
-         origOffsetFromIndent    = currentOffset - (length curIndent)
-         -- This calculates how far we should be from the end of the line.
-         -- if we are within the line then we wish to remain at the same
-         -- character, however if we were anywhere within the indentation
-         -- we wish to go to the start of the 'non' indentation, that is
-         -- to the end of the (new) indentation.
-         newFromEol = if origOffsetFromIndent <= 0
-                      then length restOfLine
-                      else (length restOfLine - origOffsetFromIndent)
-     -- Insert the new line
-     insertN (replicate level ' ' ++ restOfLine)
-     -- Then move to the place we have calculated
-     leftN newFromEol
+indentToB level = do
+    indentSettings <- indentSettingsB
+    modifyRegionClever (rePadString indentSettings level) =<< regionOfB Line
 
 -- | Indent as much as the previous line
 indentAsPreviousB :: BufferM ()
@@ -413,20 +389,27 @@ indentAsPreviousB =
      indentToB previousIndent
 
 
--- | 
--- shifts right (or left if num is negative) num times, filling in tabs if
+
+-- | Set the padding of the string to newCount, filling in tabs if
 -- expandTabs is set in the buffers IndentSettings
-indentString :: IndentSettings -> Int -> String -> String
-indentString indentSettings numOfShifts input 
+rePadString :: IndentSettings -> Int -> String -> String
+rePadString indentSettings newCount input 
     | newCount <= 0 = rest
     | expandTabs indentSettings = replicate newCount ' ' ++ rest
     | otherwise = tabs ++ spaces ++ rest
-    where (indents,rest) = span isSpace input
+    where (_indents,rest) = span isSpace input
+          tabs   = replicate (newCount `div` (tabSize indentSettings)) '\t'
+          spaces = replicate (newCount `mod` (tabSize indentSettings)) ' '
+
+
+-- | shifts right (or left if num is negative) num times, filling in tabs if
+-- expandTabs is set in the buffers IndentSettings
+indentString :: IndentSettings -> Int -> String -> String
+indentString indentSettings numOfShifts input = rePadString indentSettings newCount input 
+    where (indents,_) = span isSpace input
           countSpace '\t' = tabSize indentSettings
           countSpace _ = 1 -- we'll assume nothing but tabs and spaces
           newCount = sum (fmap countSpace indents) + ((shiftWidth indentSettings) * numOfShifts)
-          tabs   = replicate (newCount `div` (tabSize indentSettings)) '\t'
-          spaces = replicate (newCount `mod` (tabSize indentSettings)) ' '
          
 
 shiftIndentOfSelection :: Int -> BufferM ()
