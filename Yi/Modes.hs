@@ -108,7 +108,8 @@ gnuMakeMode = fundamentalMode
     modeHL = ExtHL $ mkHighlighter' GNUMake.initState GNUMake.alexScanToken id,
     modeIndentSettings = (modeIndentSettings fundamentalMode)
       {
-        expandTabs = False
+        expandTabs = False,
+        shiftWidth = 8
       }
   }
 
