@@ -20,6 +20,7 @@ increaseIndent = modifyExtendedSelectionB Line $ mapLines (' ':)
 decreaseIndent :: BufferM ()
 decreaseIndent = modifyExtendedSelectionB Line $ mapLines (drop 1)
 
+
 bestHaskellMode = 
                   -- uncomment for shim:
                   -- Shim.minorMode $ 
@@ -39,7 +40,6 @@ greek = [("alpha", "α"),
          ("delta", "δ")
         ]
 
-quotes = "“”"
 
 
 symbols :: [(String, String)]
@@ -48,6 +48,9 @@ symbols =
  -- parens
   ("<","⟨")
  ,(">","⟩")
+ ,(">>","⟫")
+ ,("<<","⟪")
+   
  ,("[[","⟦")
  ,("]]","⟧")
  
@@ -99,6 +102,9 @@ symbols =
 
  -- dashes
  ,("-","−")
+
+ -- quotes
+ ,("\"","“”")
  ]
 
 mkInputMethod :: [(String,String)] -> Keymap
@@ -106,14 +112,13 @@ mkInputMethod list = choice [pString i >> adjustPriority (negate (length i)) >>!
 
 
 -- More:
--- arrows: ↢ ↣   ↔ ⇤ ⇥ ⇸ ⇆
-
+-- arrows: ↢ ↣   ↔  ⇤  ⇥  ⇸ ⇆
 -- set: ∅ ∉ ∈ ⊇ ⊃
 -- relations: ≝ ≤ ≥
--- circled operators: ⊕⊖⊗⊘ ⊙⊚⊛⊜⊝⍟ ⎊⎉
--- squared operators: ⊞⊟⊠⊡ 
--- turnstyles: ⊢⊣⊤⊥⊦⊧⊨⊩⊬⊭
--- parens: ⟪ ⟫
+-- circled operators: ⊕ ⊖ ⊗ ⊘ ⊙ ⊚ ⊛ ⊜ ⊝ ⍟  ⎊ ⎉
+-- squared operators: ⊞ ⊟ ⊠ ⊡ 
+-- turnstyles: ⊢ ⊣ ⊤ ⊥ ⊦ ⊧ ⊨ ⊩ ⊬ ⊭
+
 
 
 
