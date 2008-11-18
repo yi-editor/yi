@@ -29,6 +29,7 @@ module Yi.Keymap.Emacs.Utils
   , killBufferE
   , insertNextC
   , findFile
+  , promptFile
   , promptTag
   )
 where

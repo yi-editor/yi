@@ -20,6 +20,7 @@ import Yi.Keymap.Emacs.Utils
   , evalRegionE
   , executeExtendedCommandE
   , findFile
+  , promptFile
   , insertNextC
   , isearchKeymap
   , killBufferE
@@ -193,10 +194,7 @@ emacsKeys univArg =
                  , ctrlCh 'c'    ?>>! askQuitEditor
                  , ctrlCh 'f'    ?>>! findFile
                  , ctrlCh 's'    ?>>! fwriteE
-                 , ctrlCh 'w'    ?>>! (withMinibuffer "Write file:"
-                                           (matchingFileNames Nothing)
-                                           fwriteToE
-                                      )
+                 , ctrlCh 'w'    ?>>! promptFile "Write file:" fwriteToE
                  , ctrlCh 'x'    ?>>! (exchangePointAndMarkB >> 
                                        setA highlightSelectionA True)
                  , char 'b'      ?>>! switchBufferE
