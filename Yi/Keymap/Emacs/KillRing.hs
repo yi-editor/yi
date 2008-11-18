@@ -43,9 +43,9 @@ yankE = do (text:_) <- getsA killringA krContents
 -- | M-w
 killRingSaveE :: EditorM ()
 killRingSaveE = do (r, text) <- withBuffer0 $ do
-                            setA highlightSelectionA False
                             r <- getSelectRegionB
                             text <- readRegionB r
+                            setA highlightSelectionA False
                             return (r,text)
                    killringPut (regionDirection r) text
 -- | M-y
