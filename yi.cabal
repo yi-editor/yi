@@ -249,7 +249,7 @@ executable yi
         build-depends: unix-compat >=0.1 && <0.2
         build-depends: pureMD5 >= 0.2.3
         build-depends: regex-base ==0.93.*
-        build-depends: regex-tdfa ==0.95.*
+        build-depends: regex-tdfa >=0.95.2
         build-depends: rosezipper >= 0.1 && < 0.2
         build-depends: utf8-string >= 0.3.1
 
