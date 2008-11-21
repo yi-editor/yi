@@ -1,13 +1,12 @@
-
 % Prototypes: Encoding Object Oriented inheritance in Haskell
 
 In this post I will sketch an encoding of OO-style inheritance in Haskell, and
 how this can be used to our advantage to write code that can be customized.
 
-This can serve as an introduction to the concepts defined in the module
+This can serve as an introduction to the concepts defined in Yi's module
 Data.Prototype.
 
-# Inheritance: a reminder
+## Inheritance: a reminder
 
 Inheritance can create structures which are difficult to understand. Since a
 given method call can call dispatch to a number of methods at runtime, tracking
@@ -17,45 +16,76 @@ Sometimes however, this is exactly the construct we need.
 
 Imagine you have the following piece of code
 
-x = f a b c 
-  where a = ... b ...
-        b = ... a ...
-        c = ... a ...
+~~~~
+a :: A
+a = fa b c
 
-that is, 'a' is defined in terms of 'c', and 'c' is buried deep down into 
-a where clause.  
+b :: B
+b = fb a c
 
-You realise that you'd like users to be able to change the value of either a, b
-or c. Worse, the new value should be defined in term of the the old one.
+c :: C
+c = fc a b
+~~~~
 
-This situation seems to cry for inheritance... What can we do if the management
-has made the decision that all development would be done with a with a purely
-functional language like haskell?
+That `a`, `b` and `c` are defined in terms of each other.
 
-# Encoding prototypes
+You realise that you'd like users to be able to customize `a` by change the value of `c`.
+Unfortunately, `a`'s value is *closed*, so this is not possible.
 
-All is not lost! TAPL (paragraph 18.10) tells us that 
+This situation seems to cry for inheritance... In an object oriented language,
+the solution is obvious: make `a`, `b` and `c` methods of a class. The user can
+then inherit it and override the definition of `c`. 
+
+In Yi, we have user-interface themes that have this structure: specific styles 
+are defined in terms of general ones, and we'd like the user to make only a few
+changes in pre-defined prototypes, not redefine everything from the ground up.
+
+So, what can we do, since we are stuck with a purely functional language,
+Haskell?
+
+
+## Encoding prototypes
+
+All is not lost! [Pierce (TAPL, paragraph 18.10)][TAPL] has taught us that 
 inheritance can be encoded as _open recursion_. The trick is to make the
-reference to the "self" object explicit.
+reference to the `self` object explicit.
 
-x self = f (a self) (b self) (c self)
-  where a = ... (b self) ...
-        a = ... (b self) ...
-        a = ... (c self) ...
+~~~~
+data Proto = Proto {a :: A, b :: A, c :: C}
+proto = \self -> $ Proto {
+  a = fa (b self) (c self),
+  b = fb (a self) (c self),
+  c = fc (a self) (b self)
+ }
+~~~~
 
+We can retrieve our original definitions by taking the fixpoint:
 
-we can retrieve our "old" x by taking the fixpoint of the new x.
-Of course, this works only because Haskell is lazy. Indeed, if the fields
-of the record are marked strict, this ceases to work.
+~~~~
+abc = fix proto
+~~~~
+
+Of course, this works only because Haskell is lazy, and because the original
+definiton did not introduce an infinite recursion in the first place.
+Indeed, if the fields of the record are marked strict, this ceases to work.
 
 And we can customize the value as follows:
 
+~~~~
+customizedA = a $ fix $ \self -> x_base {
+   c = userFunction (b self)
+ }
+~~~~
+
+## Conclusion
+
+Yi is intended to be highly customizable. In many instances, we can use
+compositional abstractions to provide customization. In some other instances, we
+prefer to provide a prototype that user can patch. 
+
+Despite Haskell lacking inheritance, we see that the basic concepts of lambda
+expression and lazy evaluation allow to provide a very lightweight encoding for
+it, and we take advantage of this in Yi.
 
 
-# Conclusion
-
-Despite haskell lacking inheritance, we see that the basic concepts of lambda expression
-and lazy evaluation allow to provide a very light encoding for it.
-
-
-
+[TAPL] http://www.cis.upenn.edu/~bcpierce/tapl/index.html
