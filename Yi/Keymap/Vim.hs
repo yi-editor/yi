@@ -43,6 +43,11 @@ import Yi.Window (bufkey)
 --   fancier :s//
 --   '.'
 --   movement parameterised \> \<
+--   C-d and C-u
+--   C-y in input mode
+--   C-v: visual block mode
+--   Support for marks
+--   C-o and C-i
 --
 
 -- ---------------------------------------------------------------------
