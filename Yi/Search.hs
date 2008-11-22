@@ -12,7 +12,7 @@ module Yi.Search (
         SearchMatch,
         SearchResult(..),
         SearchF(..),
-        searchAndRepRegion,  -- :: String -> String -> Bool -> Region -> EditorM Bool
+        searchAndRepRegion,
         searchAndRepUnit, -- :: String -> String -> Bool -> TextUnit -> EditorM Bool
         doSearch,            -- :: (Maybe String) -> [SearchF]
                             -- -> Direction -> YiM ()
@@ -133,24 +133,27 @@ continueSearch (c_re, dir) = do
 
 ------------------------------------------------------------------------
 -- | Search and replace in the given region.
--- If the input boolean is True, then the replace is done globally.
+-- If the input boolean is True, then the replace is done globally, otherwise only the first match is replaced
 -- Returns Bool indicating success or failure.
-searchAndRepRegion :: String -> String -> Bool -> Region -> EditorM Bool
-searchAndRepRegion [] _ _ _ = return False   -- hmm...
-searchAndRepRegion re str globally region = do
-    let Right c_re = makeSearchOptsM [] re
-    setRegexE c_re     -- store away for later use
-    setA searchDirectionA Forward
-    mp <- withBuffer0 $
-            (if globally then id else take 1) <$>
+searchAndRepRegion0 :: SearchExp -> String -> Bool -> Region -> BufferM Bool
+searchAndRepRegion0 c_re str globally region = do
+    mp <- (if globally then id else take 1) <$>
                filter (`includedRegion` region) <$>
                   regexRegionB c_re region  -- find the regex
     -- mp' is a maybe not reversed version of mp, the goal
     -- is to avoid replaceRegionB to mess up the next regions.
     -- So we start from the end.
     let mp' = mayReverse (reverseDir $ regionDirection region) mp
-    withBuffer0 $ mapM_ (`replaceRegionB` str) mp'
+    mapM_ (`replaceRegionB` str) mp'
     return (not $ null mp)
+
+searchAndRepRegion :: String -> String -> Bool -> Region -> EditorM Bool
+searchAndRepRegion [] _ _ _ = return False   -- hmm...
+searchAndRepRegion s str globally region = do
+    let c_re = makeSimpleSearch s
+    setRegexE c_re     -- store away for later use
+    setA searchDirectionA Forward
+    withBuffer0 $ searchAndRepRegion0 c_re str globally region
 
 ------------------------------------------------------------------------
 -- | Search and replace in the region defined by the given unit.
@@ -188,7 +191,11 @@ isearchIsEmpty = do
 isearchAddE :: String -> EditorM ()
 isearchAddE increment = isearchFunE (++ increment)
 
-makeISearch :: String -> (String, Regex)
+makeSimpleSearch :: String -> SearchExp
+makeSimpleSearch s = se
+    where Right se = makeSearchOptsM [] s
+
+makeISearch :: String -> SearchExp
 makeISearch s = case makeSearchOptsM opts s of
                   Left _ -> (s, emptyRegex)
                   Right search -> search
