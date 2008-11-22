@@ -662,7 +662,7 @@ defKeymap = Proto template
                  char 'V'     ?>> vis_mode (SelectionStyle Line),
                  char 'R'     ?>> rep_mode,
                  char 'i'     ?>> ins_mode self,
-                 char 'I'     ?>> beginIns self moveToSol,
+                 char 'I'     ?>> beginIns self firstNonSpaceB,
                  char 'a'     ?>> beginIns self $ moveXorEol 1,
                  char 'A'     ?>> beginIns self moveToEol,
                  char 'o'     ?>> beginIns self $ moveToEol >> insertB '\n',
