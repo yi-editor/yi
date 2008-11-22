@@ -326,14 +326,22 @@ newtype SelectionStyle = SelectionStyle TextUnit
 instance Initializable SelectionStyle where
   initial = SelectionStyle Character
 
-getRawSelectRegionB :: BufferM Region
-getRawSelectRegionB = do
+-- | Return the region between point and mark
+getRawestSelectRegionB :: BufferM Region
+getRawestSelectRegionB = do
   m <- getSelectionMarkPointB
   p <- pointB
-  s <- getA highlightSelectionA
-  return $ mkRegion p (if s then m else p)
+  return $ mkRegion p m
 
--- | Get the current region boundaries
+-- | Return the empty region if the selection is not visible.
+getRawSelectRegionB :: BufferM Region
+getRawSelectRegionB = do
+  s <- getA highlightSelectionA
+  if s then getRawestSelectRegionB else do
+     p <- pointB
+     return $ mkRegion p p
+
+-- | Get the current region boundaries. Extended to the current selection unit.
 getSelectRegionB :: BufferM Region
 getSelectRegionB = do
   SelectionStyle unit <- getDynamicB

@@ -54,7 +54,7 @@ killRingSaveE = do (r, text) <- withBuffer0 $ do
 yankPopE :: EditorM ()
 yankPopE = do 
   kr <- getA killringA
-  withBuffer0 (deleteRegionB =<< getSelectRegionB)
+  withBuffer0 (deleteRegionB =<< getRawestSelectRegionB)
   setA killringA $ let ring = krContents kr
                    in kr {krContents = tail ring ++ [head ring]}
   yankE
