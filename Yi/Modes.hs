@@ -94,12 +94,13 @@ pythonMode = fundamentalMode
     modeHL = ExtHL $ mkHighlighter' Python.initState Python.alexScanToken id
   }
 
--- TODO: .mk is fairly standard but are there others?
 isMakefile :: String -> Bool
-isMakefile "Makefile"    = True
-isMakefile "makefile"    = True
-isMakefile "GNUmakefile" = True
-isMakefile filename      = anyExtension ["mk"] filename
+isMakefile = matches . takeBaseName
+    where matches "Makefile"    = True
+          matches "makefile"    = True
+          matches "GNUmakefile" = True
+          matches filename      = anyExtension ["mk"] filename
+          -- TODO: .mk is fairly standard but are there others?
 
 gnuMakeMode = fundamentalMode
   {
