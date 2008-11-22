@@ -4,6 +4,11 @@ include config.mk
 
 include $(cabal-make)/cabal-make.inc
 
+interactive:
+	ghci -cpp -XRankNTypes -XFlexibleContexts -XGeneralizedNewtypeDeriving -XDeriveDataTypeable -IYi/Lexer -idist/build/autogen -idist/build/yi/yi-tmp HackerMain.hs
+# autogen -> Paths_
+# dist/build/yi/yi-tmp -> preprocessed lexers
+
 derive:
 	derive -a Yi/KillRing.hs
 	derive -a Yi/Window.hs
