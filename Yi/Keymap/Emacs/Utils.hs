@@ -187,7 +187,7 @@ queryReplaceE = do
                             oneOf [char 'y', char ' '] >>! qrReplaceOne win b re replaceWith,
                             oneOf [char 'q', ctrl (char 'g')] >>! qrFinish
                            ]
-        Just re = makeSearchOptsM [] replaceWhat
+        Right re = makeSearchOptsM [] replaceWhat
     withEditor $ do
        setRegexE re
        spawnMinibufferE

@@ -103,7 +103,7 @@ doSearch Nothing   _  d = do
 -- | Set up a search.
 searchInit :: String -> Direction -> [SearchF] -> EditorM (SearchExp, Direction)
 searchInit re d fs = do
-    let Just c_re = makeSearchOptsM fs re
+    let Right c_re = makeSearchOptsM fs re
     setRegexE c_re
     setA searchDirectionA d
     return (c_re,d)
@@ -138,7 +138,7 @@ continueSearch (c_re, dir) = do
 searchAndRepRegion :: String -> String -> Bool -> Region -> EditorM Bool
 searchAndRepRegion [] _ _ _ = return False   -- hmm...
 searchAndRepRegion re str globally region = do
-    let Just c_re = makeSearchOptsM [] re
+    let Right c_re = makeSearchOptsM [] re
     setRegexE c_re     -- store away for later use
     setA searchDirectionA Forward
     mp <- withBuffer0 $
@@ -190,8 +190,8 @@ isearchAddE increment = isearchFunE (++ increment)
 
 makeISearch :: String -> (String, Regex)
 makeISearch s = case makeSearchOptsM opts s of
-                  Nothing -> (s, emptyRegex)
-                  Just search -> search
+                  Left _ -> (s, emptyRegex)
+                  Right search -> search
    where opts = if any isUpper s then [] else [IgnoreCase]
 
 isearchFunE :: (String -> String) -> EditorM ()
