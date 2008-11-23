@@ -40,9 +40,16 @@ import Yi.Window (bufkey)
 
 --
 -- What's missing?
---   fancier :s//
+--   ESC should leave from the visual mode
+--   fancier :s// ==> missing /c, ...
 --   '.'
+--   @:
+--   g8
+--   8g8
+--   :sh[ell]
+--   :!!
 --   movement parameterised \> \<
+--   motion operators [motion.txt]: !, =, >, <
 --   C-y in input mode
 --   C-v: visual block mode
 --   Support for marks
