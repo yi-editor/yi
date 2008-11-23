@@ -383,8 +383,8 @@ defKeymap = Proto template
      singleCmdFM =
          [(ctrl $ char 'b',    withBuffer . upScreensB)             -- vim does (firstNonSpaceB;moveXorSol)
          ,(ctrl $ char 'f',    withBuffer . downScreensB)
-         ,(ctrl $ char 'u',    withBuffer . scrollByB (\height -> -(height `div` 2)))
-         ,(ctrl $ char 'd',    withBuffer . scrollByB (\height -> height `div` 2))
+         ,(ctrl $ char 'u',    withBuffer . scrollByB (negate . (`div` 2)))
+         ,(ctrl $ char 'd',    withBuffer . scrollByB (`div` 2))
          ,(ctrl $ char 'g',    const viFileInfo)
          ,(ctrl $ char 'l',    const refreshEditor)
          ,(ctrl $ char 'r',    withBuffer . flip replicateM_ redoB)
