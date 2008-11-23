@@ -63,7 +63,6 @@ module Yi.Buffer.Misc
   , modifyMode
   , regexRegionB
   , regexB
-  , searchB
   , readAtB
   , getModeLine
   , getPercent
@@ -629,13 +628,6 @@ gotoLn x = do moveTo 0
               (1 +) <$> gotoLnFrom (x - 1)
 
 ---------------------------------------------------------------------
-
--- | Return index of next (or previous) string in buffer that matches argument
-searchB :: Direction -> [Char] -> BufferM (Maybe Point)
-searchB dir s = do
-    p <- pointB
-    q <- directionElim dir sizeB (return 0)
-    queryBuffer (searchBI (mkRegion p q) s)
 
 setMode0 :: forall syntax. Mode syntax -> FBuffer -> FBuffer
 setMode0 m (FBuffer f1 f2 f3 f4 rb _ f7 f8 f9 f10 f11 f12 f13 f14) =

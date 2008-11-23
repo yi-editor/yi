@@ -25,7 +25,6 @@ module Yi.Buffer.Implementation
   , newBI
   , gotoLnRelI
   , charsFromSolBI
-  , searchBI
   , regexRegionBI
   , getMarkDefaultPosBI
   , modifyMarkBI
@@ -381,17 +380,6 @@ gotoLnRelI n (Point point) fb = (Point newPoint, difference)
   findDownLine acc _ [x]    = (acc, x)
   findDownLine acc 1 (x:_)  = (acc, x)
   findDownLine acc l (_:xs) = findDownLine (acc + 1) (l - 1) xs
-
--- | Return index of next string in buffer that matches argument in given region.
-searchBI :: Region -> String -> BufferImpl syntax -> Maybe Point
-searchBI region s fb = fmap Point $ case dir of
-      Forward -> fmap (pnt +) $ F.findSubstring (UTF8.fromString s) $ F.drop pnt ptr
-      Backward -> listToMaybe $ reverse $ F.findSubstrings (UTF8.fromString s) $ F.take (pnt + length s) ptr
-    -- FIXME: backward search is inefficient.
-    where ptr = mem fb
-          dir = regionDirection region
-          Point pnt = regionFirst region
-          -- FIXME: take end of region in account!!!
 
 charsFromSolBI :: Point -> BufferImpl syntax -> String
 charsFromSolBI (Point pnt) fb = LazyUTF8.toString $ F.toLazyByteString $ readChunk ptr (Size (pnt - sol)) (Point sol)
