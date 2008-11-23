@@ -193,13 +193,13 @@ isearchAddE increment = isearchFunE (++ increment)
 
 makeSimpleSearch :: String -> SearchExp
 makeSimpleSearch s = se
-    where Right se = makeSearchOptsM [] s
+    where Right se = makeSearchOptsM [QuoteRegex] s
 
 makeISearch :: String -> SearchExp
 makeISearch s = case makeSearchOptsM opts s of
                   Left _ -> (s, emptyRegex)
                   Right search -> search
-   where opts = if any isUpper s then [] else [IgnoreCase]
+   where opts = QuoteRegex : if any isUpper s then [] else [IgnoreCase]
 
 isearchFunE :: (String -> String) -> EditorM ()
 isearchFunE fun = do
