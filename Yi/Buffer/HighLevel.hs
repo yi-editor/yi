@@ -281,6 +281,13 @@ scrollScreensB n = do
     h <- askWindow height
     scrollB $ n * (h - 1)
 
+-- | Scroll according to function passed. The function takes the
+-- | Window height in lines, its result is passed to scrollB 
+-- | (negative for up)
+scrollByB :: (Int -> Int) -> Int -> BufferM ()
+scrollByB f n = do h <- askWindow height
+                   scrollB $ n * (f h)
+
 -- | Scroll by n lines.
 scrollB :: Int -> BufferM ()
 scrollB n = do setA pointDriveA False
