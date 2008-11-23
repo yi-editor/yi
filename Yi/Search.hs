@@ -360,4 +360,6 @@ qrReplaceOne win b reg replacement =
 -}
 qrReplaceCurrent :: Window -> BufferRef -> String -> EditorM ()
 qrReplaceCurrent win b replacement = 
-  withGivenBufferAndWindow0 win b $ modifySelectionB (const replacement)
+  withGivenBufferAndWindow0 win b $ do
+   flip replaceRegionB replacement =<< getRawestSelectRegionB
+
