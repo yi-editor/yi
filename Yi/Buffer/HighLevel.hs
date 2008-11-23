@@ -271,7 +271,7 @@ downScreensB = scrollScreensB
 upScreenB :: BufferM ()
 upScreenB = scrollScreensB (-1)
 
--- | Scroll up 1 screen
+-- | Scroll down 1 screen
 downScreenB :: BufferM ()
 downScreenB = scrollScreensB 1
 
