@@ -325,12 +325,11 @@ defKeymap = Proto template
           ,pString "gT" >>! previousTabE]
 
 
-     -- TODO: escape the current word
-     --       at word bounds: search for \<word\>
+     -- TODO: add word bounds: search for \<word\>
      searchCurrentWord :: Direction -> EditorM ()
      searchCurrentWord dir = do
        w <- withBuffer0 $ readRegionB =<< regionOfNonEmptyB unitViWord
-       viSearch w [] dir
+       viSearch w [QuoteRegex] dir
 
      gotoTag :: Tag -> YiM ()
      gotoTag tag =
