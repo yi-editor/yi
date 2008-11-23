@@ -8,7 +8,7 @@ own editor. This means that the configuration file is a top-level Haskell script
 
     import Yi
     import Yi.Keymap.Emacs as Emacs
-    import Yi.String (modifyLines)
+    import Yi.String (mapLines)
                                          
     main :: IO ()
     main = yi $ defaultConfig {
@@ -26,7 +26,7 @@ own editor. This means that the configuration file is a top-level Haskell script
       r <- getSelectRegionB 
       r' <- unitWiseRegion Line r 
          -- extend the region to full lines
-      modifyRegionB (modifyLines (' ':)) r'
+      modifyRegionB (mapLines (' ':)) r'
          -- prepend each line with a space
 
 
