@@ -3,14 +3,14 @@
 In this post I will sketch an encoding of OO-style inheritance in Haskell, and
 how this can be used to our advantage to write code that can be customized.
 
-This can serve as an introduction to the concepts defined in Yi's module
-Data.Prototype.
+This can serve as an introduction to the concepts defined in module
+Data.Prototype (currently found in Yi sources)
 
-## Inheritance: a reminder
+## Inheritance
 
 Inheritance can create structures which are difficult to understand. Since a
 given method call can call dispatch to a number of methods at runtime, tracking
-what's going on might be tricky.
+what is going on might be tricky.
 
 Sometimes however, this is exactly the construct we need.
 
@@ -29,25 +29,25 @@ c = fc a b
 
 That `a`, `b` and `c` are defined in terms of each other.
 
-You realise that you'd like users to be able to customize `a` by change the value of `c`.
+You realise that you would like users to be able to customize `a` by change the value of `c`.
 Unfortunately, `a`'s value is *closed*, so this is not possible.
 
-This situation seems to cry for inheritance... In an object oriented language,
+This situation seems to cry for inheritance: in an object oriented language,
 the solution is obvious: make `a`, `b` and `c` methods of a class. The user can
 then inherit it and override the definition of `c`. 
 
-In Yi, we have user-interface themes that have this structure: specific styles 
-are defined in terms of general ones, and we'd like the user to make only a few
-changes in pre-defined prototypes, not redefine everything from the ground up.
+In Yi, the user-interface themes have a similar structure: specific styles are
+defined in terms of base styles. If a user changes a base style, the change
+should be reflected automatically in all the styles that derive from it. We do
+not want the user to redefine everything from the ground up.
 
 So, what can we do, since we are stuck with a purely functional language,
 Haskell?
 
-
 ## Encoding prototypes
 
 All is not lost! [Pierce (TAPL, paragraph 18.10)][TAPL] has taught us that 
-inheritance can be encoded as _open recursion_. The trick is to make the
+inheritance can be encoded as *open recursion*. The trick is to make the
 reference to the `self` object explicit.
 
 ~~~~
@@ -65,17 +65,22 @@ We can retrieve our original definitions by taking the fixpoint:
 abc = fix proto
 ~~~~
 
-Of course, this works only because Haskell is lazy, and because the original
-definiton did not introduce an infinite recursion in the first place.
+Of course, this works only because Haskell is lazy (and because the original
+definiton did not introduce an infinite recursion in the first place).
 Indeed, if the fields of the record are marked strict, this ceases to work.
 
-And we can customize the value as follows:
+Given that definition, it is easy to customize the value as follows:
 
 ~~~~
-customizedA = a $ fix $ \self -> x_base {
+customizedProto = \self -> proto self {
    c = userFunction (b self)
  }
+
+customizedABC = fix customizedProto
 ~~~~
+
+The `Data.Prototype` module generalizes this example, and defines types and
+functions to corresponding to the prototype and inheritance abstractions.
 
 ## Conclusion
 
