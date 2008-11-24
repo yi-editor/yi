@@ -13,10 +13,9 @@ own editor. This means that the configuration file is a top-level Haskell script
     main :: IO ()
     main = yi $ defaultConfig {
       defaultKm = 
-         -- take the default Emacs keymap...
-         Emacs.keymap <|> 
-         -- ... and bind the function to 'Ctrl->'
-          (ctrl (char '>') ?>>! increaseIndent)
+          (meta (char 'r') ?>>! increaseIndent)
+         -- and use the default Emacs keymap otherwise
+         <|| Emacs.keymap 
      }
 
 
