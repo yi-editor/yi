@@ -379,7 +379,7 @@ refresh ui e = logNSException "refresh" $ do
     forM_ cache' $ \w ->
         do let buf = findBufferWith (bufkey (window w)) e
            (storage w) # setMonospaceFont -- FIXME: Why is this needed for mini buffers?
-           (storage w) # setTextStorageBuffer buf
+           (storage w) # setTextStorageBuffer e buf
 
            let ((p0,p1,showSel,txt),_) = runBuffer (window w) buf $
                  (,,,) <$> pointB <*> (getMarkPointB =<< selMark <$> askMarks) <*>

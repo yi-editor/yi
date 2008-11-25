@@ -15,6 +15,7 @@ module Yi.UI.Cocoa.TextStorage
   ) where
 
 import Prelude (take, dropWhile)
+import Yi.Editor (regex, emptyEditor, Editor)
 import Yi.Prelude
 import Yi.Buffer
 import Yi.Style
@@ -181,6 +182,7 @@ mkRangeRegion (NSRange i l) = mkSizeRegion (fromIntegral i) (fromIntegral l)
 $(declareClass "YiTextStorage" "NSTextStorage")
 $(exportClass "YiTextStorage" "yts_" [
     InstanceVariable "buffer" [t| Maybe FBuffer |] [| Nothing |]
+  , InstanceVariable "editor" [t| Editor |] [| emptyEditor |]
   , InstanceVariable "window" [t| Maybe Window |] [| Nothing |]
   , InstanceVariable "uiStyle" [t| Maybe UIStyle |] [| Nothing |]
   , InstanceVariable "dictionaryCache" [t| M.Map Attributes (NSDictionary ()) |] [| M.empty |]
@@ -228,7 +230,8 @@ yts_attributesAtIndexLongestEffectiveRangeInRange i er rl slf = do
   -- check to ensure that we do not re-read the window all the time...
   let use_rl = if prev_rl == rl then NSRange i (nsMaxRange rl) else rl
   -- logPutStrLn $ "yts_attributesAtIndexLongestEffectiveRangeInRange " ++ show i ++ " " ++ show rl
-  full <- extendPicture (mkRangeRegion use_rl) (flip storagePicture slf) cache
+  ed <- slf #. _editor
+  full <- extendPicture (mkRangeRegion use_rl) (flip (storagePicture ed) slf) cache
   -- TODO: Only merge identical strokes when "needed"?
   returnEffectiveRange full i er rl slf
 
@@ -279,7 +282,8 @@ yts_attributeAtIndexEffectiveRange attr i er slf = do
     "NSBackgroundColor" -> do
       -- safePokeFullRange >> castObject <$> blackColor _NSColor
       len <- yts_length slf
-      ~((s,a):_) <- onlyBg <$> picStrokes <$> slf # storagePicture (mkSizeRegion (fromIntegral i) strokeRangeExtent)
+      ed <- slf #. _editor
+      ~((s,a):_) <- onlyBg <$> picStrokes <$> slf # storagePicture ed (mkSizeRegion (fromIntegral i) strokeRangeExtent)
       safePoke er (NSRange i ((min len (fromIntegral s)) - i))
       castObject <$> getColor False (background a)
     _ -> do
@@ -328,19 +332,19 @@ safePoke p x = when (p /= nullPtr) (poke p x)
 
 -- | Execute strokeRangesB on the buffer, and update the buffer
 --   so that we keep around cached syntax information...
-storagePicture :: Region -> YiTextStorage () -> IO Picture
-storagePicture r slf = do
+storagePicture :: Editor -> Region -> YiTextStorage () -> IO Picture
+storagePicture ed r slf = do
   Just sty <- slf #. _uiStyle
   Just buf <- slf #. _buffer
   Just win <- slf #. _window
   -- logPutStrLn $ "storagePicture " ++ show i
-  return $ bufferPicture sty buf win r
+  return $ bufferPicture ed sty buf win r
 
-bufferPicture :: UIStyle -> FBuffer -> Window -> Region -> Picture
-bufferPicture sty buf win r = Picture
+bufferPicture :: Editor -> UIStyle -> FBuffer -> Window -> Region -> Picture
+bufferPicture ed sty buf win r = Picture
   { picRegion = r
   , picStrokes = paintCocoaPicture sty (regionEnd r) $ fst $
-      runBuffer win buf (attributesPictureB sty Nothing r []) 
+      runBuffer win buf (attributesPictureB sty (regex ed) r []) 
   }
 
 type TextStorage = YiTextStorage ()
@@ -371,12 +375,13 @@ newTextStorage sty b w = do
   buf # setMonospaceFont
   return buf
 
-setTextStorageBuffer :: FBuffer -> TextStorage -> IO ()
-setTextStorageBuffer buf storage = do
+setTextStorageBuffer :: Editor -> FBuffer -> TextStorage -> IO ()
+setTextStorageBuffer ed buf storage = do
   storage # beginEditing
   Just s <- storage #. _stringCache
   s # setIVar _str (runBufferDummyWindow buf (streamB Forward 0))
   storage # setIVar _buffer (Just buf)
+  storage # setIVar _editor ed
   when (not $ null $ pendingUpdates buf) $ do
     mapM_ (applyUpdate storage) [u | TextUpdate u <- pendingUpdates buf]
     storage # setIVar _pictureCache emptyPicture
