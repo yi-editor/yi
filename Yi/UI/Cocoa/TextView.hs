@@ -39,9 +39,7 @@ import AppKit (
   textContainerOrigin,visibleRect,frame,verticalScroller,NSTextView,
   NSTextViewClass,setSelectedRangesAffinityStillSelecting,NSScrollView,
   NSScrollViewClass,tile,setFrameOrigin,performDragOperation,
-  acceptableDragTypes,nsStringPboardType,stringForType,
-  draggingPasteboard,Has_draggingPasteboard,draggingSource,
-  Has_draggingSource,Has_draggingLocation,draggingLocation,
+  acceptableDragTypes,nsStringPboardType,stringForType,NSPasteboard,
   convertPointFromView,availableTypeFromArray,_NSPasteboard,
   typesFilterableTo,nsFilenamesPboardType,propertyListForType,
   glyphIndexForPointInTextContainerFractionOfDistanceThroughGlyph)
@@ -50,6 +48,23 @@ import qualified AppKit.NSScrollView (contentView)
 
 import Foreign
 import Foreign.C
+
+-- TODO: The correct way of doing this would be to add the
+--       protocol constraints on the performDragOperation
+--       parameter, but for whatever reason, HOC doesn't
+--       do this, so we use this hack to work around it...
+$(declareRenamedSelector "draggingLocation" "draggingLocation" [t| IO NSPoint |])
+$(declareRenamedSelector "draggingSource" "draggingSource" [t| IO (ID ()) |])
+$(declareRenamedSelector "draggingPasteboard" "draggingPasteboard" [t| IO (NSPasteboard ()) |])
+instance Has_draggingPasteboard (ID t)
+instance Has_draggingSource (ID t)
+instance Has_draggingLocation (ID t)
+_silenceWarning :: (
+  ImpType_draggingPasteboard a b,
+  ImpType_draggingSource c d,
+  ImpType_draggingLocation e f)
+_silenceWarning = undefined
+
 
 $(declareClass "YiTextView" "NSTextView")
 $(exportClass "YiTextView" "ytv_" [
@@ -92,14 +107,6 @@ ytv_acceptableDragTypes _ = do
     flip addObjectsFromArray ar
   ar # addObject nsFilenamesPboardType
   return (castObject ar)
-
--- TODO: The correct way of doing this would be to add the
---       protocol constraints on the performDragOperation
---       parameter, but for whatever reason, HOC doesn't
---       do this, so we use this hack to work around it...
-instance Has_draggingPasteboard (ID t)
-instance Has_draggingSource (ID t)
-instance Has_draggingLocation (ID t)
 
 -- Implement support for drag and drop...
 ytv_performDragOperation :: ID t -> YiTextView () -> IO Bool

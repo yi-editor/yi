@@ -36,7 +36,6 @@ import Data.IORef
 import Data.Maybe
 import Data.Monoid
 import Data.Unique
-import qualified Data.Map as M
 
 -- Specify Cocoa imports explicitly, to avoid name-clashes.
 -- Since the number of functions recognized by HOC varies
@@ -53,9 +52,9 @@ import AppKit (
   terminate_,run,setApplicationIconImage,NSWindow,_NSWindow,_NSMenu,
   activateIgnoringOtherApps,makeKeyAndOrderFront,setMainMenu,
   addSubview,removeFromSuperview,Has_setBackgroundColor,
-  Has_setTextColor,ID,NSSplitView,NewlyAllocated,_NSFont,
+  Has_setTextColor,NSSplitView,_NSFont,
   fontWithNameSize,setUserFixedPitchFont,userFixedPitchFontOfSize,
-  adjustSubviews,cell,center,containerSize,getSelectorForName,
+  adjustSubviews,cell,center,containerSize,
   initWithContentRectStyleMaskBackingDefer,initWithContentsOfFile,
   initWithFrame,layoutManager,makeFirstResponder,
   nsBackingStoreBuffered,nsClosableWindowMask,nsLeftTextAlignment,
@@ -86,6 +85,8 @@ foreign import ccall "Processes.h GetCurrentProcess" getCurrentProcess :: Ptr (C
 -- Don't import this, since it is only available in Leopard...
 $(declareRenamedSelector "setAllowsNonContiguousLayout:" "setAllowsNonContiguousLayout" [t| Bool -> IO () |])
 instance Has_setAllowsNonContiguousLayout (NSLayoutManager a)
+_silenceWarning :: ImpType_setAllowsNonContiguousLayout a b
+_silenceWarning = undefined
 
 ------------------------------------------------------------------------
 
@@ -117,8 +118,8 @@ mkUI ui = Common.dummyUI
   , Common.refresh = refresh ui
   }
 
-rect :: Float -> Float -> Float -> Float -> NSRect
-rect x y w h = NSRect (NSPoint x y) (NSSize w h)
+mkRect :: Float -> Float -> Float -> Float -> NSRect
+mkRect x y w h = NSRect (NSPoint x y) (NSSize w h)
 
 allSizable, normalWindowMask :: CUInt
 allSizable = nsViewWidthSizable .|. nsViewHeightSizable
@@ -166,8 +167,8 @@ addSubviewWithTextLine view parent = do
   -- Adjust frame sizes, as superb cocoa cannot do this itself...
   txtbox <- text # frame
   winbox <- container # bounds
-  view # setFrame (rect 0 (nsHeight txtbox) (nsWidth winbox) (nsHeight winbox - nsHeight txtbox))
-  text # setFrame (rect 0 0 (nsWidth winbox) (nsHeight txtbox))
+  view # setFrame (mkRect 0 (nsHeight txtbox) (nsWidth winbox) (nsHeight winbox - nsHeight txtbox))
+  text # setFrame (mkRect 0 0 (nsWidth winbox) (nsHeight txtbox))
 
   return (text, container)
 
@@ -216,7 +217,7 @@ start cfg ch outCh _ed = do
 
 
   -- Create main cocoa window...
-  win <- _NSWindow # alloc >>= initWithContentRect (rect 0 0 480 340)
+  win <- _NSWindow # alloc >>= initWithContentRect (mkRect 0 0 480 340)
   win # setTitle (toNSString "Yi")
   content <- win # AppKit.NSWindow.contentView >>= return . toNSView
   content # setAutoresizingMask allSizable
@@ -281,7 +282,7 @@ setColors s slf = do
 -- | Make A new window
 newWindow :: UI -> Window -> FBuffer -> IO WinInfo
 newWindow ui win b = do
-  v <- alloc _YiTextView >>= initWithFrame (rect 0 0 100 100)
+  v <- alloc _YiTextView >>= initWithFrame (mkRect 0 0 100 100)
   v # setRichText False
   v # setSelectable True
   v # setAlignment nsLeftTextAlignment
@@ -307,15 +308,15 @@ newWindow ui win b = do
     prect <- prompt # frame
     vrect <- v # frame
 
-    hb <- _NSView # alloc >>= initWithFrame (rect 0 0 (nsWidth prect + nsWidth vrect) (nsHeight prect))
-    v # setFrame (rect (nsWidth prect) 0 (nsWidth vrect) (nsHeight prect))
+    hb <- _NSView # alloc >>= initWithFrame (mkRect 0 0 (nsWidth prect + nsWidth vrect) (nsHeight prect))
+    v # setFrame (mkRect (nsWidth prect) 0 (nsWidth vrect) (nsHeight prect))
     v # setAutoresizingMask nsViewWidthSizable
     hb # addSubview prompt
     hb # addSubview v
     hb # setAutoresizingMask nsViewWidthSizable
 
     brect <- (uiBox ui) # bounds
-    hb # setFrame (rect 0 0 (nsWidth brect) (nsHeight prect))
+    hb # setFrame (mkRect 0 0 (nsWidth brect) (nsHeight prect))
 
     (uiBox ui) # addSubview hb
     dummy <- _NSTextField # alloc >>= init

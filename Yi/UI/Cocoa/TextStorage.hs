@@ -46,7 +46,7 @@ import Foundation (
 import AppKit (
   NSTextStorage,NSTextStorageClass,string,fixesAttributesLazily,
   _NSCursor,_NSFont,replaceCharactersInRangeWithString,
-  _NSParagraphStyle,castObject,defaultParagraphStyle,ibeamCursor,
+  _NSParagraphStyle,defaultParagraphStyle,ibeamCursor,
   editedRangeChangeInLength,nsTextStorageEditedAttributes,
   nsTextStorageEditedCharacters,userFixedPitchFontOfSize)
 
