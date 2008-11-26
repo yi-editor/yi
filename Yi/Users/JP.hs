@@ -12,7 +12,6 @@ import Prelude ()
 import Yi.Keymap.Keys
 import Yi.String
 import Data.Char
-import Yi.UI.Vty (start)
 
 increaseIndent :: BufferM ()
 increaseIndent = modifyExtendedSelectionB Line $ mapLines (' ':)
@@ -140,9 +139,11 @@ parenIns open close = do
     x <- readB
     if x == '\0' || isSpace x then insertN [open,close] >> leftB else insertN [open]
 
+Just frontend = foldr1 (<|>) $ fmap (flip lookup availableFrontends) ["cocoa", "vty"] 
+
 main :: IO ()
 main = yi $ defaultConfig {
-                           startFrontEnd = Yi.UI.Vty.start,
+                           startFrontEnd = frontend,
                            configKillringAccumulate = True,
                            modeTable = AnyMode bestHaskellMode : modeTable defaultConfig,
                            configUI = (configUI defaultConfig) 

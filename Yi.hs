@@ -32,7 +32,7 @@ import Yi.Core
 import Yi.Dired
 import Yi.Eval
 import Yi.File
-import Yi.Main (defaultConfig)
+import Yi.Main (defaultConfig, availableFrontends)
 import Yi.Search
 import Yi.Style
 import Yi.Style.Library

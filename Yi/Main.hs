@@ -5,7 +5,7 @@
 -- | This is the main module of Yi, called with configuration from the user.
 -- Here we mainly process command line arguments.
 
-module Yi.Main (main, defaultConfig, projectName) where
+module Yi.Main (main, defaultConfig, availableFrontends, projectName) where
 
 import Prelude ()
 import qualified Yi.Keymap.Emacs  as Emacs
@@ -57,8 +57,8 @@ import System.IO (readFile)
 #include "ghcconfig.h"
 
 
-frontends :: [(String,UIBoot)]
-frontends =
+availableFrontends :: [(String,UIBoot)]
+availableFrontends =
 #ifdef FRONTEND_COCOA
    ("cocoa", Yi.UI.Cocoa.start) :
 #endif
@@ -74,7 +74,7 @@ frontends =
    []
 
 frontendNames :: [String]
-frontendNames = fmap fst' frontends
+frontendNames = fmap fst' availableFrontends
   where fst' :: (a,UIBoot) -> a
         fst' (x,_) = x
 
@@ -163,7 +163,7 @@ nilKeymap = choice [
 
 defaultConfig :: Config
 defaultConfig = 
-  Config { startFrontEnd    = snd (head frontends)
+  Config { startFrontEnd    = snd (head availableFrontends)
          , configUI         =  UIConfig 
            { configFontSize = Nothing
            , configFontName = Nothing
@@ -262,7 +262,7 @@ do_args cfg args =
 getConfig :: Config -> Opts -> Either Err Config
 getConfig cfg opt =
     case opt of
-      Frontend f -> case lookup f frontends of
+      Frontend f -> case lookup f availableFrontends of
                       Just frontEnd -> return cfg { startFrontEnd = frontEnd }
                       Nothing       -> fail "Panic: frontend not found"
       Help          -> throwError $ Err usage ExitSuccess
