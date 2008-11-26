@@ -1,4 +1,4 @@
-{-# LANGUAGE PatternSignatures, DeriveDataTypeable #-}
+{-# LANGUAGE ScopedTypeVariables, DeriveDataTypeable #-}
 
 -- Copyright (c) 2005,2007,2008 Jean-Philippe Bernardy
 
