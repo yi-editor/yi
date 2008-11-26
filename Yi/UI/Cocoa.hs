@@ -52,9 +52,9 @@ import AppKit (
   terminate_,run,setApplicationIconImage,NSWindow,_NSWindow,_NSMenu,
   activateIgnoringOtherApps,makeKeyAndOrderFront,setMainMenu,
   addSubview,removeFromSuperview,Has_setBackgroundColor,
-  Has_setTextColor,NSSplitView,_NSFont,
+  Has_setTextColor,NSSplitView,_NSFont,addSubviewPositionedRelativeTo,
   fontWithNameSize,setUserFixedPitchFont,userFixedPitchFontOfSize,
-  adjustSubviews,cell,center,containerSize,
+  adjustSubviews,cell,center,containerSize,nsWindowBelow,
   initWithContentRectStyleMaskBackingDefer,initWithContentsOfFile,
   initWithFrame,layoutManager,makeFirstResponder,
   nsBackingStoreBuffered,nsClosableWindowMask,nsLeftTextAlignment,
@@ -153,8 +153,8 @@ newTextLine = do
   cl # setLineBreakMode nsLineBreakByTruncatingMiddle
   return tl
 
-addSubviewWithTextLine :: forall t1 t2. NSView t1 -> NSView t2 -> IO (NSTextField (), NSView ())
-addSubviewWithTextLine view parent = do
+addSubviewWithTextLine :: Maybe (NSView t0) -> NSView t1 -> NSView t2 -> IO (NSTextField (), NSView ())
+addSubviewWithTextLine sibling view parent = do
   container <- new _NSView
   parent # bounds >>= flip setFrame container
   container # setAutoresizingMask allSizable
@@ -163,7 +163,10 @@ addSubviewWithTextLine view parent = do
 
   text <- newTextLine
   container # addSubview text
-  parent # addSubview container
+  case sibling of
+    Nothing -> parent # addSubview container
+    Just v -> parent # addSubviewPositionedRelativeTo container nsWindowBelow v
+
   -- Adjust frame sizes, as superb cocoa cannot do this itself...
   txtbox <- text # frame
   winbox <- container # bounds
@@ -229,7 +232,7 @@ start cfg ch outCh _ed = do
 
   -- Create yi window container
   winContainer <- new _NSSplitView
-  (cmd,_) <- content # addSubviewWithTextLine winContainer
+  (cmd,_) <- content # addSubviewWithTextLine Nothing winContainer
 
   -- Activate application window
   win # center
@@ -256,19 +259,19 @@ end = _YiApplication # sharedApplication >>= terminate_ nil
 syncWindows :: Editor -> UI -> [(Window, Bool)] -> [WinInfo] -> IO [WinInfo]
 syncWindows e ui = sync
   where 
-    sync ws [] = mapM insert ws
+    sync ws [] = mapM (insert Nothing) ws
     sync [] cs = mapM_ remove cs >> return []
     sync (w:ws) (c:cs)
       | match w c          = (:) <$> update w c <*> sync ws cs
       | L.any (match w) cs = remove c >> sync (w:ws) cs
-      | otherwise          = (:) <$> insert w <*> sync ws (c:cs)
+      | otherwise          = (:) <$> insert (Just $ widget c) w <*> sync ws (c:cs)
 
     match w c = winkey (fst w) == winkey (window c)
 
     winbuf = flip findBufferWith e . bufkey
 
     remove = removeFromSuperview . widget
-    insert (w,f) = update (w,f) =<< newWindow ui w (winbuf w)
+    insert before (w,f) = update (w,f) =<< newWindow before ui w (winbuf w)
     update (w, False) i = return (i{window = w})
     update (w, True) i = do
       (textview i) # AppKit.NSView.window >>= makeFirstResponder (textview i)
@@ -280,8 +283,8 @@ setColors s slf = do
   getColor False (Style.background s) >>= flip setBackgroundColor slf
 
 -- | Make A new window
-newWindow :: UI -> Window -> FBuffer -> IO WinInfo
-newWindow ui win b = do
+newWindow :: Maybe (NSView t) -> UI -> Window -> FBuffer -> IO WinInfo
+newWindow before ui win b = do
   v <- alloc _YiTextView >>= initWithFrame (mkRect 0 0 100 100)
   v # setRichText False
   v # setSelectable True
@@ -340,7 +343,7 @@ newWindow ui win b = do
     scroll # setHasHorizontalScroller False
     scroll # setAutohidesScrollers (configAutoHideScrollBar $ uiConfig ui)
     scroll # setIVar _leftScroller (configLeftSideScrollBar $ uiConfig ui)
-    addSubviewWithTextLine scroll (uiBox ui)
+    addSubviewWithTextLine before scroll (uiBox ui)
 
   -- TODO: Support focused modeline...
   ml # setColors (Style.modelineAttributes sty)
