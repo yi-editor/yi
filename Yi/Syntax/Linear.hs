@@ -1,3 +1,4 @@
+{-# LANGUAGE RankNTypes #-}
 -- Copyright (C) 2008 JP Bernardy
 
 module Yi.Syntax.Linear

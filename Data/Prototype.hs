@@ -1,3 +1,4 @@
+{-# LANGUAGE RankNTypes #-}
 -- | Support for OO-like prototypes.
 module Data.Prototype where
 
