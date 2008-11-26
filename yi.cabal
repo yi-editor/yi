@@ -339,7 +339,7 @@ executable yi
 
            Yi.Mode.Interactive
 
-           Yi.Accessor, Yi.Interpreter,
+           Yi.Interpreter,
            Yi.Buffer.Indent
            Yi.Buffer.HighLevel, Yi.Buffer.Implementation,
            Yi.Buffer.Normal, Yi.Buffer.Region, Yi.Completion, Yi.Core,
