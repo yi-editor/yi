@@ -1,4 +1,4 @@
-{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE Rank2Types #-}
 module Yi.Lexer.Alex (
                        alexGetChar, alexInputPrevChar, unfoldLexer, lexScanner,
                        alexCollectChar,
