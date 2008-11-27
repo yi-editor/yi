@@ -12,6 +12,7 @@ import Prelude ()
 import Yi.Keymap.Keys
 import Yi.String
 import Data.Char
+import Data.Monoid
 
 increaseIndent :: BufferM ()
 increaseIndent = modifyExtendedSelectionB Line $ mapLines (' ':)
@@ -148,7 +149,12 @@ main = yi $ defaultConfig {
                            modeTable = AnyMode bestHaskellMode : modeTable defaultConfig,
                            configUI = (configUI defaultConfig) 
                              { configFontSize = Just 12 
-                              -- , configTheme = darkBlueTheme
+                               -- , configTheme = darkBlueTheme
+                             , configTheme = defaultLightTheme `override` \super _ -> super 
+                               {
+                                  selectedStyle = Endo $ \a -> a {foreground = white,
+                                                                  background = black}
+                               }
                               -- , configFontName = Just "Monaco"
                              },
                            defaultKm = (adjustPriority (-1) >> choice [extraInput]) <|| keymap
