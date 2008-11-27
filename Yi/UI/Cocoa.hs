@@ -363,7 +363,7 @@ newWindow ui win b = do
     }
 
 refresh :: UI -> Editor -> IO ()
-refresh ui e = logNSException "refresh" $ do
+refresh ui e = withAutoreleasePool $ logNSException "refresh" $ do
     _YiApplication # sharedApplication >>=
       pushClipboard (snd $ runEditor (uiFullConfig ui) getRegE e) . toYiApplication
   
