@@ -22,7 +22,7 @@ ireaderMode = abstract { modeName = "text files for interactive reading" }
 -- Default bindings.
 ikeys = (choice  [metaCh '1' ?>>! saveAndNextArticle,
                   metaCh '2' ?>>! saveAsNewArticle,
-                  metaCh '3' ?>>! nextArticle] <||)
+                  metaCh '3' ?>>! deleteAndNextArticle] <||)
 
 ireadMode ::  BufferM ()
-ireadMode = setAnyMode $ AnyMode ireaderMode
+ireadMode = setAnyMode (AnyMode ireaderMode)

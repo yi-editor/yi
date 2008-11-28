@@ -28,9 +28,9 @@ updateSetLast :: ArticleDB -> Article -> ArticleDB
 updateSetLast [] a = [a]
 updateSetLast (_:bs) a = bs ++ [a]
 
--- | Insert a new article with top priority.
+-- | Insert a new article with top priority (that is, at the front of the list).
 insertArticle :: ArticleDB -> Article -> ArticleDB
-insertArticle adb a = a:adb
+insertArticle = flip (:)
 
 -- | Delete the first
 deleteArticle :: ArticleDB -> Article -> ArticleDB
@@ -68,11 +68,20 @@ setDisplayedArticle newdb = do let nextarticle = getLatestArticle newdb
                                withBuffer topB -- replaceBufferContents moves us
                                                -- to bottom?
 
--- | Delete current article (the article as in the database), and go to next one.
+-- | Go to next one. This ignores the buffer, but it doesn't remove anything from the database.
+-- The ordering does change, however.
 nextArticle :: YiM ()
-nextArticle = do ((_:ndb),_) <- oldDbNewArticle -- throw away changes, drop head
-                 setDisplayedArticle ndb
-                 writeDB ndb
+nextArticle = do (oldb,_) <- oldDbNewArticle
+                 -- Ignore buffer, just set the first article last
+                 let newdb = updateSetLast oldb (getLatestArticle oldb)
+                 setDisplayedArticle newdb
+                 writeDB newdb
+
+-- | Delete current article (the article as in the database), and go to next one.
+deleteAndNextArticle :: YiM ()
+deleteAndNextArticle = do ((_:ndb),_) <- oldDbNewArticle -- throw away changes, drop head
+                          setDisplayedArticle ndb
+                          writeDB ndb
 
 -- | The main action. We fetch the old database, we fetch the modified article from the buffer,
 -- then we call the function 'updateSetLast' which removes the first article and pushes our modified article
