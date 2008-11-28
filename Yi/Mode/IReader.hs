@@ -23,3 +23,6 @@ ireaderMode = abstract { modeName = "text files for interactive reading" }
 ikeys = (choice  [metaCh '1' ?>>! saveAndNextArticle,
                   metaCh '2' ?>>! saveAsNewArticle,
                   metaCh '3' ?>>! nextArticle] <||)
+
+ireadMode ::  BufferM ()
+ireadMode = setAnyMode $ AnyMode ireaderMode
