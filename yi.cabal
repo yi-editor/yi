@@ -97,6 +97,7 @@ library
         Yi.Event
         Yi.File
         Yi.History
+        Yi.IReader
         Yi.IncrementalParse
         Yi.Interact
         Yi.Interpreter
@@ -128,6 +129,7 @@ library
         Yi.MkTemp
         Yi.Mode.Compilation
         Yi.Mode.Haskell
+        Yi.Mode.IReader
         Yi.Mode.Interactive
         Yi.Mode.Latex
         Yi.Modes
