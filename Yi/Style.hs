@@ -29,6 +29,10 @@ type Style = Endo Attributes
 data UIStyle = UIStyle
   { modelineAttributes :: Attributes -- ^ ground attributes for the modeline
   , modelineFocusStyle :: Style      -- ^ transformation of modeline in focus
+  
+  , tabBarAttributes   :: Attributes -- ^ ground attributes for the tabbar
+  , tabInFocusStyle    :: Style      -- ^ a tab that currently holds the focus
+  , tabNotFocusedStyle :: Style      -- ^ a tab that does not have the current focus
 
   , baseAttributes     :: Attributes -- ^ ground attributes for the main text views
 
@@ -107,4 +111,3 @@ darkcyan    = RGB 0 139 139
 cyan        = RGB 0 255 255
 white       = RGB 165 165 165
 brightwhite = RGB 255 255 255
-

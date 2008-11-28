@@ -24,7 +24,7 @@ import Data.Maybe
 import Data.Monoid
 import Data.Traversable
 import System.Exit
-import System.Posix.Signals         ( raiseSignal, sigTSTP )
+import System.Posix.Signals (raiseSignal, sigTSTP)
 import Yi.Buffer
 import Yi.Config
 import Yi.Editor
@@ -44,24 +44,17 @@ import qualified Graphics.Vty as Vty
 import Yi.UI.Utils
 import Yi.UI.TabBar
 
-------------------------------------------------------------------------
-
 data Rendered = 
-    Rendered {
-              picture :: !Image           -- ^ the picture currently displayed.
-             ,cursor  :: !(Maybe (Int,Int)) -- ^ cursor point on the above
+    Rendered { picture :: !Image             -- ^ the picture currently displayed.
+             , cursor  :: !(Maybe (Int,Int)) -- ^ cursor point on the above
              }
 
-
-
-
-data UI = UI { 
-              vty       :: Vty              -- ^ Vty
-             ,scrsize   :: IORef (Int,Int)  -- ^ screen size
-             ,uiThread  :: ThreadId
-             ,uiRefresh :: MVar ()
-             ,uiEditor  :: IORef Editor     -- ^ Copy of the editor state, local to the UI
-             ,config  :: Config
+data UI = UI {  vty       :: Vty             -- ^ Vty
+             , scrsize    :: IORef (Int,Int) -- ^ screen size
+             , uiThread   :: ThreadId
+             , uiRefresh  :: MVar ()
+             , uiEditor   :: IORef Editor    -- ^ Copy of the editor state, local to the UI
+             , config     :: Config
              }
 
 mkUI :: UI -> Common.UI
@@ -198,56 +191,37 @@ refresh ui e = do
   WS.debug "Drawing: " ws'
   logPutStrLn $ "startXs: " ++ show startXs
   Vty.update (vty $ ui) 
-      pic {pImage = vertcat tabBarImages 
-                    <->
-                    vertcat (toList wImages) 
-                    <-> 
-                    withAttributes statusBarStyle (take xss $ cmd ++ repeat ' '),
-           pCursor = case cursor (WS.current renders) of
-                       Just (y,x) -> Cursor x (y + WS.current startXs) 
-                       -- Add the position of the window to the position of the cursor
-                       Nothing -> NoCursor
-                       -- This case can occur if the user resizes the window. 
-                       -- Not really nice, but upon the next refresh the cursor will show.
-                       }
+      pic { pImage  = vertcat tabBarImages
+                      <->
+                      vertcat (toList wImages) 
+                      <-> 
+                      withAttributes statusBarStyle (take xss $ cmd ++ repeat ' ')
+          , pCursor = case cursor (WS.current renders) of
+                        Just (y,x) -> Cursor x (y + WS.current startXs) 
+                        -- Add the position of the window to the position of the cursor
+                        Nothing -> NoCursor
+                        -- This case can occur if the user resizes the window. 
+                        -- Not really nice, but upon the next refresh the cursor will show.
+          }
 
   return e'
 
-{- Produces a possible empty list of images that represent the tab bar.
- - The current tab bar image is basic: A single horizontal line divided into a number of segments
- - equal to the number of tabs. Plus maybe a bit extra to make up for a screen width that is not a
- - multiple of the number of tabs.
- - The tab current in focus is indicated by a segment of spaces. 
- - While the out of focus tabs are all segments filled with # characters.
- - 
- - TODO: Provide a hint as to what the tabs contain.
- - TODO: If there are too many tabs to be contained on a single line spill over onto the next line.
- -}
+-- | Construct images for the tabbar if at least one tab exists.
 renderTabBar :: Editor -> UI -> Int -> [Image]
-renderTabBar e ui xss = 
-    let tabCount = WS.size $ tabs e
-    in if tabCount > 1
-        then 
-            let tabWidth = xss `div` tabCount
-                descr = tabBarDescr e (tabWidth - 5) (configStyle $ configUI $ config $ ui)
-                tabImages = fmap (tabToVtyImage tabWidth) descr
-                -- If the screen width is not a multiple of the tab width then characters have to be
-                -- added to make them the same. Otherwise Vty will error out when trying to
-                -- vertically concat two images with different widths.
-                extraCount = xss - (tabWidth * WS.size tabImages)
-                extraStyle = modelineAttributes $ configStyle $ configUI $ config $ ui
-                extraImage = withAttributes extraStyle $ replicate extraCount '#'
-                finalImage = if extraCount /= 0
-                    then foldr (<|>) extraImage tabImages
-                    else foldr1 (<|>) tabImages
-            in [finalImage]
-        else []
-    where 
-        -- From an abstract description of a tab to a VTY image of the tab.
-        tabToVtyImage width (TabDescr txt sty inFocus) = 
-            let pad = replicate (width - length txt - 5) ' '
-                spacers = if inFocus then (">>", "<<") else ("  ", "  ")
-            in withAttributes sty $ (fst spacers) ++ txt ++ (snd spacers) ++ pad ++ "|"
+renderTabBar e ui xss =
+  if tabCount > 1
+    then [tabImages <|> extraImage]
+    else []
+  where tabCount        = WS.size $ tabs e
+
+        tabImages       = foldr1 (<|>) $ fmap tabToVtyImage $ tabBarDescr e
+        extraImage      = withAttributes (tabBarAttributes uiStyle) (replicate (xss-totalTabWidth) ' ')
+
+        totalTabWidth   = imgWidth tabImages
+        uiStyle         = configStyle $ configUI $ config $ ui
+        tabTitle text   = " " ++ text ++ " "
+        tabAttributes f = appEndo ((if f then tabInFocusStyle else tabNotFocusedStyle) uiStyle) (tabBarAttributes uiStyle)
+        tabToVtyImage (TabDescr text inFocus) = withAttributes (tabAttributes inFocus) (tabTitle text)
 
 scanrT :: (Int -> Int -> Int) -> Int -> WindowSet Int -> WindowSet Int
 scanrT (+*+) k t = fst $ runState (mapM f t) k
@@ -255,7 +229,6 @@ scanrT (+*+) k t = fst $ runState (mapM f t) k
                    let s' = s +*+ x
                    put s'
                    return s
-           
 
 -- | Scrolls the window to show the point if needed, and return a rendered wiew of the window.
 scrollAndRenderWindow :: UIConfig -> Int -> (Window, Bool) -> EditorM Rendered
@@ -382,7 +355,6 @@ drawText h w topPoint point tabWidth bufData
 
 withAttributes :: Attributes -> String -> Image
 withAttributes sty str = renderBS (attributesToAttr sty attr) (B.pack str)
-
 
 ------------------------------------------------------------------------
 

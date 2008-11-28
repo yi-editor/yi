@@ -12,6 +12,10 @@ defaultTheme = Proto $ const $ UIStyle
   { modelineAttributes = error "modeline attributes must be redefined!"
   , modelineFocusStyle = withFg brightwhite
 
+  , tabBarAttributes   = error "tabbar attributes must be redefined!"
+  , tabInFocusStyle    = withFg grey `mappend` withBg white
+  , tabNotFocusedStyle = withFg lightGrey `mappend` withBg white
+
   , baseAttributes     = error "base attributes must be redefined!"
 
   , selectedStyle      = Endo $ \a -> a {reverseAttr = True}
@@ -39,6 +43,7 @@ defaultTheme = Proto $ const $ UIStyle
 defaultLightTheme :: Theme
 defaultLightTheme = defaultTheme `override` \super _ -> super
   { modelineAttributes = emptyAttributes { foreground = black,    background = darkcyan }
+  , tabBarAttributes   = emptyAttributes { foreground = white,    background = black }
   , baseAttributes     = emptyAttributes
   }
 
@@ -47,6 +52,10 @@ darkBlueTheme :: Theme
 darkBlueTheme = defaultTheme `override` \super _ -> super
   { modelineAttributes = emptyAttributes { foreground = darkblue, background = white }
   , modelineFocusStyle = withBg brightwhite
+
+  , tabBarAttributes   = emptyAttributes { foreground = darkblue, background = brightwhite }
+  , tabInFocusStyle    = withFg grey `mappend` withBg white
+  , tabNotFocusedStyle = withFg lightGrey `mappend` withBg white
 
   , baseAttributes     = emptyAttributes { foreground = white,    background = black }
 
