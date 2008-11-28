@@ -2,8 +2,8 @@
 -- Copyright (C) 2008 JP Bernardy
 module Yi.Buffer.HighLevel where
 
-import Prelude (FilePath)
-import Yi.Prelude 
+import Prelude (FilePath, map)
+import Yi.Prelude
 import Control.Applicative
 import Control.Monad.RWS.Strict (ask)
 import Control.Monad.State
@@ -86,7 +86,10 @@ lastNonSpaceB :: BufferM ()
 lastNonSpaceB = do moveToEol
                    untilB_ ((||) <$> atSol <*> ((not . isSpace) <$> readB)) leftB
 
-
+-- | Go to the first character in the line; if already there, then go to the beginning of the line, period.
+moveNonspaceOrSol :: BufferM ()   
+moveNonspaceOrSol = do prev <- readPreviousOfLnB
+                       if and . map (isSpace) $ prev then moveToSol else firstNonSpaceB
 
 ------------
 
@@ -142,6 +145,10 @@ readLnB = readUnitB Line
 -- | Read from point to end of line
 readRestOfLnB :: BufferM String
 readRestOfLnB = readRegionB =<< regionOfPartB Line Forward
+
+-- | Read from point to beginning of line
+readPreviousOfLnB :: BufferM String
+readPreviousOfLnB = readRegionB =<< regionOfPartB Line Backward
 
 --------------------------
 -- Deletes
