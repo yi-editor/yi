@@ -59,7 +59,7 @@ oldDbNewArticle = do olddb <- readDB
                      return (olddb, newarticle)
 
 getBufferContents :: BufferM String
-getBufferContents = join $ liftM readRegionB $ regionOfB Document
+getBufferContents = readRegionB =<< regionOfB Document
 
 -- | Given an 'ArticleDB', dump the scheduled article into the buffer (replacing previous contents).
 setDisplayedArticle :: ArticleDB -> YiM ()
