@@ -486,6 +486,8 @@ unLineCommentSelectionB s1 s2 =
     | isPrefixOf s2 line = drop (length s2) line
     | otherwise         = line
 
+-- | Toggle line comments in the selection by adding or removing a prefix to each
+-- line.
 toggleCommentSelectionB :: String -> String -> BufferM ()
 toggleCommentSelectionB insPrefix delPrefix = do
   l <- readUnitB Line
@@ -493,7 +495,7 @@ toggleCommentSelectionB insPrefix delPrefix = do
     then unLineCommentSelectionB insPrefix delPrefix
     else linePrefixSelectionB insPrefix
 
--- Performs as search and replace on the given string.
+-- | Performs as search and replace on the given string.
 substituteInList :: Eq a => [ a ] -> [ a ] -> [ a ] -> [ a ]
 substituteInList _from _to []       = []
 substituteInList from to list@(h : rest)
