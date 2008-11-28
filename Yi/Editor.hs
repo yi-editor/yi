@@ -1,4 +1,4 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving, DeriveDataTypeable, StandaloneDeriving #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, DeriveDataTypeable, FlexibleContexts, StandaloneDeriving #-}
 
 -- Copyright (c) 2004-5, Don Stewart - http://www.cse.unsw.edu.au/~dons
 -- Copyright (c) 2007-8, JP Bernardy

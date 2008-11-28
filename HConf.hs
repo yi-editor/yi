@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 module HConf (getHConf, HConf(HConf), hconfOptions) where
 
 import Prelude hiding ( catch )

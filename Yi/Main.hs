@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 -- Copyright (c) Tuomo Valkonen 2004.
 -- Copyright (c) Don Stewart 2004-5.
 -- Copyright (c) Jean-Philippe Bernardy 2006,2007.
