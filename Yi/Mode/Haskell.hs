@@ -98,7 +98,7 @@ literateMode = haskellAbstract
   , modeIndent = cleverAutoIndentHaskellB
   , modePrettify = cleverPrettify }
 
--- | "Clever" hasell mode, using the 
+-- | Experimental Haskell mode, using a rather precise parser for the syntax.
 preciseMode :: Mode (Hask.Tree TT)
 preciseMode = haskellAbstract
   {
