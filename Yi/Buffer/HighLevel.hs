@@ -86,7 +86,8 @@ lastNonSpaceB :: BufferM ()
 lastNonSpaceB = do moveToEol
                    untilB_ ((||) <$> atSol <*> ((not . isSpace) <$> readB)) leftB
 
--- | Go to the first character in the line; if already there, then go to the beginning of the line, period.
+-- | Go to the first non space character in the line;
+-- if already there, then go to the beginning of the line.
 moveNonspaceOrSol :: BufferM ()   
 moveNonspaceOrSol = do prev <- readPreviousOfLnB
                        if and . map (isSpace) $ prev then moveToSol else firstNonSpaceB
