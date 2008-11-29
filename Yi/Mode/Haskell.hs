@@ -70,7 +70,7 @@ cleverMode = haskellAbstract
     modeApplies = modeApplies plainMode,
     modeIndent = cleverAutoIndentHaskellB,
     modeHL = ExtHL $
-    mkHighlighter (IncrParser.scanner Paren.parse . Paren.indentScanner . haskellLexer)
+    mkHighlighter (skipScanner 50 . IncrParser.scanner Paren.parse . Paren.indentScanner . haskellLexer)
       (\point begin end t -> Paren.getStrokes point begin end t)
 
   , modeAdjustBlock = adjustBlock
