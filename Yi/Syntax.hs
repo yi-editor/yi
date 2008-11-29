@@ -11,7 +11,7 @@ module Yi.Syntax
   , Cache
   , Scanner (..)
   , ExtHL        ( .. )
-  , noHighlighter, mkHighlighter
+  , noHighlighter, mkHighlighter, skipScanner
   , Point(..), Size(..), Length, Stroke
   ) 
 where
@@ -46,12 +46,19 @@ data Highlighter cache syntax =
 data ExtHL syntax = forall a. ExtHL (Highlighter a syntax) 
 
 data Scanner st a = Scanner {
---                             scanStart :: st -> Int,
                              scanInit :: st, -- ^ Initial state
-                             scanLooked :: st -> Point,
+                             scanLooked :: st -> Point, 
+                             -- ^ How far did the scanner look to produce this intermediate state?
+                             -- The state can be reused as long as nothing changes before that point.
                              scanEmpty :: a,      --  hack :/
                              scanRun  :: st -> [(st,a)]  -- ^ Running function returns a list of returns and intermediate states.
                             }
+
+skipScanner :: Int -> Scanner st a -> Scanner st a
+skipScanner n (Scanner i l e r) = Scanner i l e (other n . r)
+    where other _ [] = []
+          other 0 (x:xs) = x : other n xs
+          other m (_:xs) = other (m-1) xs
 
 instance Functor (Scanner st) where
     fmap f (Scanner i l e r) = Scanner i l (f e) (\st -> fmap (second f) (r st))
