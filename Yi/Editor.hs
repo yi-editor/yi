@@ -539,9 +539,10 @@ shiftOtherWindow = liftEditor $ do
 -- | Execute the argument in the context of an other window. Create
 -- one if necessary. The current window is re-focused after the
 -- argument has completed.
-withOtherWindow :: MonadEditor m => m () -> m ()
+withOtherWindow :: MonadEditor m => m a -> m a
 withOtherWindow f = do
   shiftOtherWindow
-  f
+  x <- f
   liftEditor prevWinE
+  return x
 
