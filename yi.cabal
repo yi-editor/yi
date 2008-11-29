@@ -222,13 +222,6 @@ library
 --                Yi.Keymap.Nano,
 --                Yi.Keymap.Vi,
 
---  extensions:   CPP, DeriveDataTypeable, FlexibleContexts, FlexibleInstances,
---                ForeignFunctionInterface, FunctionalDependencies, GADTs,
---                GeneralizedNewtypeDeriving, MagicHash, MultiParamTypeClasses,
---                ParallelListComp, PatternGuards, PatternSignatures, Rank2Types,
---                ScopedTypeVariables TypeSynonymInstances, UndecidableInstances
-
-
 
 executable yi
         build-tools:   alex >= 2.0.1 && < 3
