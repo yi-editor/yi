@@ -116,6 +116,7 @@ lexScanner l st0 src = Scanner
                          ofs -> case scanRun src (ofs - 1) of 
                              -- FIXME: if this is a non-ascii char the ofs. will be wrong.
                              -- However, since the only thing that matters (for now) is 'is the previous char a new line', we don't really care.
+                             -- (this is to support ^,$ in regexes)
                              [] -> []
                              ((_,ch):rest) -> unfoldLexer l (st, (ch, rest))
                  }

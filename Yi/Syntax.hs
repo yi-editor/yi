@@ -51,12 +51,15 @@ data Scanner st a = Scanner {
                              -- ^ How far did the scanner look to produce this intermediate state?
                              -- The state can be reused as long as nothing changes before that point.
                              scanEmpty :: a,      --  hack :/
-                             scanRun  :: st -> [(st,a)]  -- ^ Running function returns a list of returns and intermediate states.
+                             scanRun  :: st -> [(st,a)]  
+                             -- ^ Running function returns a list of results and intermediate states.
+                             -- Note: the state is the state /before/ producing the result in the second component.
                             }
 
 skipScanner :: Int -> Scanner st a -> Scanner st a
-skipScanner n (Scanner i l e r) = Scanner i l e (other n . r)
+skipScanner n (Scanner i l e r) = Scanner i l e (other 0 . r)
     where other _ [] = []
+          other _ [x] = [x] -- we must return the final result (because if the list is empty mkHighlighter thinks it can reuse the previous result)
           other 0 (x:xs) = x : other n xs
           other m (_:xs) = other (m-1) xs
 
