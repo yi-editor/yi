@@ -275,16 +275,18 @@ ghci = do
     withEditor $ setDynamic $ GhciBuffer $ Just b
     return b
 
--- | Return GHCi's buffer; create it if necessary
+-- | Return GHCi's buffer; create it if necessary.
+-- Show it in another window.
 ghciGet :: YiM BufferRef
-ghciGet = do
+ghciGet = withOtherWindow $ do
     GhciBuffer mb <- withEditor $ getDynamic
     case mb of
         Nothing -> ghci
         Just b -> do
             stillExists <- withEditor $ isJust <$> findBuffer b
             if stillExists 
-                then return b
+                then do withEditor $ switchToBufferE b
+                        return b
                 else ghci
     
 -- | Send a command to GHCi
