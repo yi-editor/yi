@@ -1,12 +1,13 @@
 module Yi.Mode.Interactive where
 
+import Data.List (elemIndex)
 import Prelude ()
 import Yi.Core
-import Yi.Region
-import Yi.Lexer.Alex (Tok(..))
 import Yi.History
-import qualified Yi.Lexer.Compilation         as Compilation
-import qualified Yi.Mode.Compilation         as Compilation
+import Yi.Lexer.Alex (Tok(..))
+import Yi.Region
+import qualified Yi.Lexer.Compilation as Compilation
+import qualified Yi.Mode.Compilation as Compilation
 import qualified Yi.Syntax.Linear as Linear
 
 atLastLine :: BufferM Bool
@@ -16,20 +17,30 @@ atLastLine = savingPointB $ do
 
 mode :: Mode (Linear.Result (Tok Compilation.Token))
 mode = Compilation.mode
-  { 
-       modeApplies = const False,
-       modeName = "interactive",
-       modeKeymap = (<||) 
-        (choice 
-         [spec KEnter ?>>! do
-             eof <- withBuffer $ atLastLine
-             if eof
-               then feedCommand
-               else withSyntax modeFollow,
-          meta (char 'p') ?>>! interactHistoryMove 1,
-          meta (char 'n') ?>>! interactHistoryMove (-1) 
-         ])
-  }
+  { modeApplies = const False,
+    modeName = "interactive",
+    modeKeymap = (<||)
+     (choice
+      [spec KHome ?>>! ghciHome,
+       spec KEnter ?>>! do
+          eof <- withBuffer $ atLastLine
+          if eof
+            then feedCommand
+            else withSyntax modeFollow,
+       meta (char 'p') ?>>! interactHistoryMove 1,
+       meta (char 'n') ?>>! interactHistoryMove (-1)
+      ]) }
+
+-- | The GHCi prompt always begins with ">"; this goes to just before it, or if one is already at the start
+-- of the prompt, goes to the beginning of the line. (If at the beginning of the line, this pushes you forward to it.)
+ghciHome :: BufferM ()
+ghciHome = do l <- readLnB
+              let epos = elemIndex '>' l
+              case epos of
+                  Nothing -> moveToSol
+                  Just pos -> do (_,mypos) <- getLineAndCol
+                                 if mypos == (pos+2) then moveToSol
+                                  else moveToSol >> moveXorEol (pos+2)
 
 interactId :: String
 interactId = "Interact"
@@ -44,11 +55,10 @@ interactHistoryStart :: EditorM ()
 interactHistoryStart = historyStartGen interactId
 
 getInputRegion :: BufferM Region
-getInputRegion = do
-    mo <- getMarkB (Just "StdOUT")
-    p <- pointAt botB
-    q <- getMarkPointB mo
-    return $ mkRegion p q
+getInputRegion = do mo <- getMarkB (Just "StdOUT")
+                    p <- pointAt botB
+                    q <- getMarkPointB mo
+                    return $ mkRegion p q
 
 getInput :: BufferM String
 getInput = readRegionB =<< getInputRegion
@@ -68,14 +78,12 @@ interactive cmd args = do
                     setMode mode
     return b
 
-
-
 -- | Send the type command to the process
 feedCommand :: YiM ()
 feedCommand = do
     b <- withEditor $ getBuffer
     withEditor interactHistoryFinish
-    cmd <- withBuffer $ do 
+    cmd <- withBuffer $ do
         botB
         insertN "\n"
         me <- getMarkB (Just "StdERR")
@@ -85,7 +93,6 @@ feedCommand = do
         cmd <- readRegionB $ mkRegion p q
         setMarkPointB me p
         setMarkPointB mo p
-        return $ cmd 
+        return $ cmd
     withEditor interactHistoryStart
     sendToProcess b cmd
-
