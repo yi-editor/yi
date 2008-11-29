@@ -67,7 +67,7 @@ importTagTable filename = do
                       tagTrie     = Trie.fromList $ keys ctags
                     }
 
--- | Gives all the possible expanded tags that could match a given @prefix
+-- | Gives all the possible expanded tags that could match a given @prefix@
 hintTags :: TagTable -> String -> [String]
 hintTags tags prefix = map (prefix ++) $ Trie.possibleSuffixes prefix $ tagTrie tags
 

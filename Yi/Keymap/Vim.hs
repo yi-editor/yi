@@ -341,7 +341,7 @@ defKeymap = Proto template
              withBuffer $ gotoLn line
              return ()
 
-     -- | Call continuation @act with the TagTable. Uses the global table
+     -- | Call continuation @act@ with the TagTable. Uses the global table
      -- and prompts the user if it doesn't exist
      visitTagTable :: (TagTable -> YiM ()) -> YiM ()
      visitTagTable act = do

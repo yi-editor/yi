@@ -320,7 +320,7 @@ promptTag = do
                  -- if the string is "" use the defaultTag
                  gotoTag . maybeList defaultTag
 
--- | Opens the file that contains @tag. Uses the global tag table and prompts
+-- | Opens the file that contains @tag@. Uses the global tag table and prompts
 -- the user to open one if it does not exist
 gotoTag :: Tag -> YiM ()
 gotoTag tag =
@@ -332,7 +332,7 @@ gotoTag tag =
             withBuffer $ gotoLn line
             return ()
 
--- | Call continuation @act with the TagTable. Uses the global table
+-- | Call continuation @act@ with the TagTable. Uses the global table
 -- and prompts the user if it doesn't exist
 visitTagTable :: (TagTable -> YiM ()) -> YiM ()
 visitTagTable act = do

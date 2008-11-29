@@ -16,6 +16,7 @@ import Data.Maybe
 -- General completion
 
 -- | Return the longest common prefix of a set of strings.
+--
 -- > P(xs) === all (isPrefixOf (commonPrefix xs)) xs
 -- > length s > length (commonPrefix xs) --> not (all (isPrefixOf s) xs)
 commonPrefix :: [String] -> String
