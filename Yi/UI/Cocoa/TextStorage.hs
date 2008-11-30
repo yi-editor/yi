@@ -12,9 +12,10 @@ module Yi.UI.Cocoa.TextStorage
   , newTextStorage
   , setTextStorageBuffer
   , visibleRangeChanged
+  , charIndexB, charRegionB
   ) where
 
-import Prelude (take, dropWhile)
+import Prelude (takeWhile, take, dropWhile, drop, span, unzip)
 import Yi.Editor (regex, emptyEditor, Editor)
 import Yi.Prelude
 import Yi.Buffer
@@ -31,7 +32,7 @@ import qualified Data.List as L
 import Foreign hiding (new)
 import Foreign.C
 
-import qualified Data.ByteString.Lazy as LB
+import qualified Data.ByteString.Lazy.UTF8 as LB
 
 -- Specify Cocoa imports explicitly, to avoid name-clashes.
 -- Since the number of functions recognized by HOC varies
@@ -42,11 +43,12 @@ import Foundation (
   length,attributeAtIndexEffectiveRange,attributesAtIndexEffectiveRange,
   attributesAtIndexLongestEffectiveRangeInRange,nsMaxRange,
   beginEditing,endEditing,setAttributesRange,haskellString,
+  substringWithRange,initWithStringAttributes,alloc,
   addAttributeValueRange,addAttributesRange)
 import AppKit (
   NSTextStorage,NSTextStorageClass,string,fixesAttributesLazily,
   _NSCursor,_NSFont,replaceCharactersInRangeWithString,
-  _NSParagraphStyle,defaultParagraphStyle,ibeamCursor,
+  _NSParagraphStyle,defaultParagraphStyle,ibeamCursor,_NSTextStorage,
   editedRangeChangeInLength,nsTextStorageEditedAttributes,
   nsTextStorageEditedCharacters,userFixedPitchFontOfSize)
 
@@ -69,7 +71,7 @@ instance Has_getCharactersRange (NSString a)
 
 $(declareClass "YiLBString" "NSString")
 $(exportClass "YiLBString" "yls_" [
-    InstanceVariable "str" [t| LB.ByteString |] [| LB.empty |]
+    InstanceVariable "str" [t| LB.ByteString |] [| LB.fromString "" |]
   , InstanceMethod 'length -- '
   , InstanceMethod 'characterAtIndex -- '
   , InstanceMethod 'getCharactersRange -- '
@@ -80,22 +82,27 @@ yls_length slf = do
   -- logPutStrLn $ "Calling yls_length (gah...)"
   slf #. _str >>= return . fromIntegral . LB.length
 
--- TODO: The result type should be UTF16...
 yls_characterAtIndex :: CUInt -> YiLBString () -> IO Unichar
 yls_characterAtIndex i slf = do
   -- logPutStrLn $ "Calling yls_characterAtIndex " ++ show i
-  slf #. _str >>= return . fromIntegral . flip LB.index (fromIntegral i)
+  slf #. _str >>= return . last . encodeUTF16 . fromEnum . fst . fromJust . LB.decode . LB.drop (fromIntegral i)
 
--- TODO: Should get an array of characters in UTF16...
 yls_getCharactersRange :: Ptr Unichar -> NSRange -> YiLBString () -> IO ()
 yls_getCharactersRange p _r@(NSRange i l) slf = do
   -- logPutStrLn $ "Calling yls_getCharactersRange " ++ show r
   slf #. _str >>=
     pokeArray p .
-    take (fromIntegral l) . -- TODO: Is l given in bytes or characters?
-    fmap fromIntegral . -- TODO: UTF16 recode
-    LB.unpack .
+    concatMap (encodeUTF16 . fromEnum) .
+    LB.toString .
+    LB.take (fromIntegral l) . -- TODO: Is l given in bytes or characters?
     LB.drop (fromIntegral i)
+
+encodeUTF16 :: Int -> [Unichar]
+encodeUTF16 c
+  | c < 0x10000 = [fromIntegral c]
+  | otherwise   = let c' = c - 0x10000
+                  in [0xd800 .|. (fromIntegral $ c' `shiftR` 10),
+                      0xdc00 .|. (fromIntegral $ c' .&. 0x3ff)]
 
 
 -- An implementation of NSTextStorage that uses Yi's FBuffer as
@@ -200,7 +207,7 @@ $(exportClass "YiTextStorage" "yts_" [
 yts_length :: YiTextStorage () -> IO CUInt
 yts_length slf = do
   -- logPutStrLn "Calling yts_length "
-  (fromIntegral . flip runBufferDummyWindow sizeB . fromJust) <$> slf #. _buffer
+  slf #. _stringCache >>= length . fromJust
 
 yts_string :: YiTextStorage () -> IO (NSString ())
 yts_string slf = castObject <$> fromJust <$> slf #. _stringCache
@@ -238,16 +245,33 @@ returnEffectiveRange full i er rl slf = do
       let begin = fromIntegral $ regionStart $ picRegion pic
       let (next,s) = head $ picStrokes pic
       let end = min (fromIntegral next) (nsMaxRange rl)
-      safePoke er (NSRange begin (end - begin))
-      dicts <- slf #. _dictionaryCache
+      len <- yts_length slf
+      safePoke er (NSRange begin ((min end len) - begin))
       -- Keep a cache of seen styles... usually, there should not be to many
       -- TODO: Have one centralized cache instead of one per text storage...
-      case M.lookup s dicts of
-        Just dict -> return dict
-        _ -> do
-          dict <- convertAttributes s
-          slf # setIVar _dictionaryCache (M.insert s dict dicts)
-          return dict
+      dict <- slf # cachedDictionaryFor s
+      -- TODO: Introduce some sort of cache for this...
+      -- Create a new NSTextStorage to enforce Cocoa font-substitution
+      str <- yts_string slf >>= substringWithRange (NSRange begin ((min end len) - begin))
+      store <- _NSTextStorage # alloc >>= initWithStringAttributes str dict
+      -- Extract the dictionary with adjusted fonts, and new (smaller) range
+      dict2 <- store # attributesAtIndexEffectiveRange (i - begin) er
+      when (er /= nullPtr) $ do
+        -- If we got a range, we should offset it Offset the effective range accordingly
+        NSRange b2 l2 <- peek er
+        poke er (NSRange (begin + b2) l2)
+      return dict2
+
+cachedDictionaryFor :: Attributes -> YiTextStorage () -> IO (NSDictionary ())
+cachedDictionaryFor s slf = do
+  dicts <- slf #. _dictionaryCache
+  case M.lookup s dicts of
+    Just dict -> return dict
+    _ -> do
+      dict <- convertAttributes s
+      slf # setIVar _dictionaryCache (M.insert s dict dicts)
+      return dict
+
   
 
 yts_attributeAtIndexEffectiveRange :: forall t. NSString t -> CUInt -> NSRangePointer -> YiTextStorage () -> IO (ID ())
@@ -324,6 +348,8 @@ safePoke p x = when (p /= nullPtr) (poke p x)
 
 -- | Execute strokeRangesB on the buffer, and update the buffer
 --   so that we keep around cached syntax information...
+--   We assume that the incoming region provide character-indices,
+--   and we need to find out the corresponding byte-indices
 storagePicture :: Editor -> Region -> YiTextStorage () -> IO Picture
 storagePicture ed r slf = do
   Just sty <- slf #. _uiStyle
@@ -332,11 +358,42 @@ storagePicture ed r slf = do
   -- logPutStrLn $ "storagePicture " ++ show i
   return $ bufferPicture ed sty buf win r
 
+charIndexB :: Point -> BufferM Point
+charIndexB p =
+  fromIntegral <$> L.length <$> takeWhile (< p) <$> fst <$> unzip <$> indexedStreamB Forward 0
+
+charRegionB :: Region -> BufferM Region
+charRegionB r = do
+  (xs,ys) <- span (< regionStart r) <$> fst <$> unzip <$> indexedStreamB Forward 0
+  return (mkSizeRegion (fromIntegral (L.length xs)) (fromIntegral (L.length (takeWhile (< regionEnd r) ys))))
+
+byteRegionB :: Region -> BufferM Region
+byteRegionB r = do
+  xs <- indexStreamRegionB r
+  return $ mkRegion (head xs) (1 + last xs)
+
+indexStreamRegionB :: Region -> BufferM [Point]
+indexStreamRegionB r =
+  take (fromIntegral (regionSize r)) <$>
+  drop (fromIntegral (regionStart r)) <$>
+  fst <$> unzip <$> indexedStreamB Forward 0
+
+byteToCharPicture :: Point -> [Point] -> [PicStroke] -> [PicStroke]
+byteToCharPicture o [] xs = [(o,a) | (_,a) <- take 1 xs]
+byteToCharPicture _ _ [] = []
+byteToCharPicture o (p:ps) ((i,a):xs)
+  | p < i = byteToCharPicture (succ o) ps ((i,a):xs)
+  | otherwise = (o,a) : byteToCharPicture o (p:ps) xs 
+
 bufferPicture :: Editor -> UIStyle -> FBuffer -> Window -> Region -> Picture
-bufferPicture ed sty buf win r = Picture
+bufferPicture ed sty buf win r =
+  let (r',is) = fst $ runBuffer win buf ((,) <$> byteRegionB r <*> indexStreamRegionB r)
+  in Picture
   { picRegion = r
-  , picStrokes = paintCocoaPicture sty (regionEnd r) $ fst $
-      runBuffer win buf (attributesPictureB sty (regex ed) r []) 
+  , picStrokes =
+      paintCocoaPicture sty (regionEnd r) $
+        byteToCharPicture (regionStart r) is $
+          (fst $ runBuffer win buf (attributesPictureB sty (regex ed) r' []))
   }
 
 type TextStorage = YiTextStorage ()
@@ -345,15 +402,16 @@ initializeClass_TextStorage = do
   initializeClass_YiLBString
   initializeClass_YiTextStorage
 
-applyUpdate :: YiTextStorage () -> Update -> IO ()
-applyUpdate buf (Insert p _ s) =
+applyUpdate :: YiTextStorage () -> FBuffer -> Update -> IO ()
+applyUpdate buf b (Insert p _ s) =
+  let p' = runBufferDummyWindow b (charIndexB p) in
   buf # editedRangeChangeInLength nsTextStorageEditedCharacters
-          (NSRange (fromIntegral p) 0) (fromIntegral $ LB.length s)
+          (NSRange (fromIntegral p') 0) (fromIntegral $ LB.length s)
 
-applyUpdate buf (Delete p _ s) =
-  let len = LB.length s in
+applyUpdate buf b (Delete p _ s) =
+  let (p', len) = (runBufferDummyWindow b (charIndexB p), LB.length s) in
   buf # editedRangeChangeInLength nsTextStorageEditedCharacters
-          (NSRange (fromIntegral p) (fromIntegral len)) (fromIntegral (negate len))
+          (NSRange (fromIntegral p') (fromIntegral len)) (fromIntegral (negate len))
 
 newTextStorage :: UIStyle -> FBuffer -> Window -> IO TextStorage
 newTextStorage sty b w = do
@@ -375,11 +433,11 @@ setTextStorageBuffer ed buf storage = do
   storage # setIVar _buffer (Just buf)
   storage # setIVar _editor ed
   when (not $ null $ pendingUpdates buf) $ do
-    mapM_ (applyUpdate storage) [u | TextUpdate u <- pendingUpdates buf]
+    mapM_ (applyUpdate storage buf) [u | TextUpdate u <- pendingUpdates buf]
     storage # setIVar _pictureCache emptyPicture
   storage # endEditing
 
 visibleRangeChanged :: NSRange -> TextStorage -> IO ()
 visibleRangeChanged range storage = do
-  storage # editedRangeChangeInLength nsTextStorageEditedAttributes range 0
   storage # setIVar _pictureCache emptyPicture
+  storage # editedRangeChangeInLength nsTextStorageEditedAttributes range 0
