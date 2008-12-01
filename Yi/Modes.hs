@@ -1,3 +1,4 @@
+{-# LANGUAGE Rank2Types #-}
 module Yi.Modes (fundamentalMode,
                  cppMode, cabalMode, srmcMode, ocamlMode,
                  ottMode, gnuMakeMode,

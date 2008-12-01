@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 -- Copyright (c) 2008 Jean-Philippe Bernardy
 
 -- | Combinators for building keymaps.
