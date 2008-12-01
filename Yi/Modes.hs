@@ -96,7 +96,7 @@ pythonMode = fundamentalMode
   }
 
 isMakefile :: String -> Bool
-isMakefile = matches . takeBaseName
+isMakefile = matches . takeFileName
     where matches "Makefile"    = True
           matches "makefile"    = True
           matches "GNUmakefile" = True
