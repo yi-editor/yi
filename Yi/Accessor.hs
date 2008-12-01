@@ -5,10 +5,12 @@
 -- | A module for "rich" accesssors.
 
 module Yi.Accessor where
+import Prelude hiding ((.), id)
 import Control.Monad.State
 import Data.Traversable as Traversable
 import Data.Foldable
 import qualified Data.Map as M
+import Control.Category
 
 -- | A way to access and modify a part of a complex structure.
 -- Categorically, an arrow from @whole@ to @part@.
@@ -17,24 +19,9 @@ data Accessor whole part
                  modifier :: (part -> part) -> (whole -> whole)
                }
 
--- Should be made instance of the upcoming Control.Category class as such:
--- import qualified Prelude
--- import Prelude hiding (id,(.))
---
--- instance Category (->) where
---   id = Prelude.id
---   (.) = (Prelude..)
---
--- class Category cat where
---   -- | the identity morphism
---   id :: cat a a
---
---   -- | morphism composition
---   (.) :: cat b c -> cat a b -> cat a c
---
--- instance Category Accessor where
---     id = Accessor id id
---     (.) = (.>)
+instance Category Accessor where
+    id = Accessor id id
+    (.) = (.>)
 
 -- | Compose accessors
 (.>) :: Accessor t1 t -> Accessor t2 t1 -> Accessor t2 t
