@@ -16,7 +16,8 @@ main = yi $ defaultConfig
   { modeTable = AnyMode bestHaskellMode : AnyMode IReader.ireaderMode : modeTable defaultConfig,
 
    -- Keymap Configuration
-   defaultKm = Yi.Keymap.Emacs.keymap,   -- Replace Emacs by Vim or Cua as needed.
+   defaultKm = Yi.Keymap.Emacs.keymap -- Override M-g g, for shorter M-g binding.
+                                <|> (metaCh 'g' ?>>! gotoLn),
    configKillringAccumulate = True,      -- Should be True for emacs, False for others.
 
    -- UI Configuration
