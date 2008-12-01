@@ -14,6 +14,8 @@ import qualified Yi.Keymap.Vim  as Vim
 import qualified Yi.Keymap.Cua  as Cua
 import Yi.Modes
 import qualified Yi.Mode.Haskell as Haskell
+import Yi.Mode.IReader (ireaderMode, ireadMode)
+import Yi.IReader (nextArticle, saveAsNewArticle)
 import qualified Yi.Mode.Latex as Latex
 import {-# source #-} Yi.Boot
 import Yi.Config
@@ -189,6 +191,7 @@ defaultConfig =
                         AnyMode ottMode,
                         AnyMode perlMode,
                         AnyMode pythonMode,
+                        AnyMode ireaderMode,
                         AnyMode fundamentalMode]
          , debugMode = False
          , configKillringAccumulate = False
@@ -219,7 +222,9 @@ defaultPublishedActions = M.fromList $
     , ("getSelectRegionB"       , box getSelectRegionB)
     , ("grepFind"               , box grepFind)
     , ("insertB"                , box insertB)
-    , ("leftB"                  , box leftB) 
+    , ("ireadMode"              , box (withBuffer ireadMode >> nextArticle))
+    , ("ireadSaveAsArticle"     , box saveAsNewArticle)
+    , ("leftB"                  , box leftB)
     , ("linePrefixSelectionB"   , box linePrefixSelectionB)
     , ("mkRegion"               , box mkRegion)
     , ("moveB"                  , box moveB)
