@@ -2,7 +2,7 @@
 
 module Yi.Keymap.Cua (keymap, portableKeymap) where
 
-import Prelude hiding (error)
+import Prelude (length, take, drop)
 import Yi.Core
 import Yi.File
 import Yi.Keymap.Emacs.Utils

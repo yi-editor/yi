@@ -38,6 +38,7 @@ lookup,
 mapAdjust',
 mapAlter',
 module Control.Applicative,
+module Control.Category,
 module Data.Bool,
 module Data.Foldable,
 module Data.Function,
@@ -69,10 +70,11 @@ import Yi.Accessor
 import Text.Show
 import Data.Bool
 import Data.Foldable
-import Data.Function
+import Data.Function hiding ((.), id)
 import Data.Int
 import Control.Monad.Reader
 import Control.Applicative
+import Control.Category
 import Data.Traversable 
 import Control.Monad
 import qualified Data.Set as Set

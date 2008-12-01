@@ -10,7 +10,7 @@ module Yi.Eval (
 
 import Data.Array
 import Data.List
-import Prelude hiding (error)
+import Prelude hiding (error, (.))
 import Yi.Regex
 import Yi.Config
 import Yi.Core  hiding (toDyn)

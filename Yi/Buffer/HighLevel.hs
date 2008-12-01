@@ -2,7 +2,6 @@
 -- Copyright (C) 2008 JP Bernardy
 module Yi.Buffer.HighLevel where
 
-import Control.Applicative
 import Control.Monad.RWS.Strict (ask)
 import Control.Monad.State
 import Data.Char

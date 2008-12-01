@@ -2,7 +2,7 @@
 -- Copyright 2008 JP Bernardy
 -- | Basic types useful everywhere we play with buffers.
 module Yi.Buffer.Basic where
-
+import Prelude (reverse)
 import Data.Binary    
 import Yi.Prelude
 import qualified Data.ByteString.UTF8 as UTF8

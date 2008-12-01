@@ -6,8 +6,8 @@
 -- emulation. For example, M-x gives access to Yi (Haskell) functions,
 -- with their native names.
 
-module Yi.Keymap.Emacs (keymap)
-where
+module Yi.Keymap.Emacs (keymap) where
+import Prelude ()
 import Yi.Core
 import Yi.Dired
 import Yi.File
