@@ -398,33 +398,33 @@ getY screenHeight numberOfWindows = screenHeight `quotRem` numberOfWindows
 ------------------------------------------------------------------------
 
 -- | Convert a Yi Attr into a Vty attribute change.
-colorToAttr :: (Vty.Attr -> Vty.Attr) -> (Vty.Color -> Vty.Attr -> Vty.Attr) -> Vty.Color -> Style.Color -> (Vty.Attr -> Vty.Attr)
-colorToAttr bold set unknown c =
+colorToAttr :: (Vty.Color -> Vty.Attr -> Vty.Attr) -> (Vty.Color -> Vty.Attr -> Vty.Attr) -> Vty.Color -> Style.Color -> (Vty.Attr -> Vty.Attr)
+colorToAttr setVivid set unknown c =
   case c of 
-    RGB 0 0 0         -> id       . set Vty.black
-    RGB 128 128 128   -> bold     . set Vty.black
-    RGB 139 0 0       -> id       . set Vty.red
-    RGB 255 0 0       -> bold     . set Vty.red
-    RGB 0 100 0       -> id       . set Vty.green
-    RGB 0 128 0       -> bold     . set Vty.green
-    RGB 165 42 42     -> id       . set Vty.yellow
-    RGB 255 255 0     -> bold     . set Vty.yellow
-    RGB 0 0 139       -> id       . set Vty.blue
-    RGB 0 0 255       -> bold     . set Vty.blue
-    RGB 128 0 128     -> id       . set Vty.magenta
-    RGB 255 0 255     -> bold     . set Vty.magenta
-    RGB 0 139 139     -> id       . set Vty.cyan
-    RGB 0 255 255     -> bold     . set Vty.cyan
-    RGB 165 165 165   -> id       . set Vty.white
-    RGB 255 255 255   -> bold     . set Vty.white
-    Default           -> id       . set Vty.def
-    _                 -> id       . set unknown -- NB
+    RGB 0 0 0         -> set      Vty.black
+    RGB 128 128 128   -> setVivid Vty.black
+    RGB 139 0 0       -> set      Vty.red
+    RGB 255 0 0       -> setVivid Vty.red
+    RGB 0 100 0       -> set      Vty.green
+    RGB 0 128 0       -> setVivid Vty.green
+    RGB 165 42 42     -> set      Vty.yellow
+    RGB 255 255 0     -> setVivid Vty.yellow
+    RGB 0 0 139       -> set      Vty.blue
+    RGB 0 0 255       -> setVivid Vty.blue
+    RGB 128 0 128     -> set      Vty.magenta
+    RGB 255 0 255     -> setVivid Vty.magenta
+    RGB 0 139 139     -> set      Vty.cyan
+    RGB 0 255 255     -> setVivid Vty.cyan
+    RGB 165 165 165   -> set      Vty.white
+    RGB 255 255 255   -> setVivid Vty.white
+    Default           -> set      Vty.def
+    _                 -> set      unknown -- NB
 
 attributesToAttr :: Attributes -> (Vty.Attr -> Vty.Attr)
 attributesToAttr (Attributes fg bg reverse) =
   (if reverse then setRV else id) .
-  colorToAttr setBold setFG Vty.black fg .
-  colorToAttr id      setBG Vty.white bg
+  colorToAttr setFGVivid setFG Vty.black fg .
+  colorToAttr setBGVivid setBG Vty.white bg
 
 
 ---------------------------------
