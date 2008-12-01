@@ -231,7 +231,7 @@ executable yi
         build-depends: Cabal >= 1.6 && < 1.7
         build-depends: Diff >=0.1 && <0.2
         build-depends: array, containers,  directory, mtl, process, old-locale, old-time, random
-        build-depends: base == 3.*
+        build-depends: base>=4
         build-depends: binary >=0.4.2 && <0.5
         build-depends: bytestring >=0.9.1 && <0.9.2
         -- build-depends: derive >=0.1 && <0.2 

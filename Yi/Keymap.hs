@@ -11,7 +11,7 @@ import Yi.Editor (EditorM, Editor, runEditor, MonadEditor(..))
 import qualified Data.Map as M
 import Control.Monad.Reader
 import Data.Typeable
-import Control.Exception
+import Control.OldException
 import Control.Concurrent
 import Yi.Buffer
 import Yi.Config

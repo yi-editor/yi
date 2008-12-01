@@ -11,7 +11,7 @@ import Yi.Prelude hiding ((<|>))
 import Prelude (map, take, zip, repeat, length, break, splitAt)
 import Control.Arrow
 import Control.Concurrent
-import Control.Exception
+import Control.OldException
 import Control.Monad (forever)
 import Control.Monad.State (runState, State, gets, modify, get, put)
 import Control.Monad.Trans (liftIO, MonadIO)

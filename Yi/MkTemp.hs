@@ -40,14 +40,14 @@ module Yi.MkTemp (
 import Data.List
 import Data.Char                ( chr, ord, isDigit )
 import Control.Monad            ( liftM )
-import Control.Exception        ( handleJust )
+import Control.OldException        ( handleJust )
 import System.Directory         ( doesDirectoryExist, doesFileExist, createDirectory )
 import System.IO
 import System.IO.Error          ( isAlreadyExistsError )
 
 import GHC.IOBase               ( IOException(IOError),
                                   IOErrorType(AlreadyExists) )
-import Control.Exception        ( Exception(IOException) )
+import Control.OldException        ( Exception(IOException) )
 
 #ifndef __MINGW32__
 import qualified System.Posix.Internals ( c_getpid )

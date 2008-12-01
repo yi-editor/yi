@@ -80,7 +80,7 @@ import Control.Monad.Reader (runReaderT, ask, asks)
 import Control.Monad.Trans
 import Control.Monad.Error ()
 import Control.Monad.State (gets)
-import Control.Exception
+import Control.OldException
 import Control.Concurrent
 
 -- | Make an action suitable for an interactive run.

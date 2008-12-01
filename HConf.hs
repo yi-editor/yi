@@ -2,7 +2,7 @@
 module HConf (getHConf, HConf(HConf), hconfOptions) where
 
 import Prelude hiding ( catch )
-import Control.Exception (catch, bracket)
+import Control.OldException (catch, bracket)
 import Control.Applicative
 import Control.Monad.Reader
 import System.IO
@@ -16,7 +16,7 @@ import System.Posix.Process
              exitImmediately)
 #else
 import System.Posix.Process (executeFile)
-import Control.Exception (handle)
+import Control.OldException (handle)
 #endif
 #endif
 import System.Process

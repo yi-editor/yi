@@ -25,7 +25,7 @@ import System.Directory
   , getDirectoryContents
   , getCurrentDirectory
   )
-import Control.Exception
+import Control.OldException
 import Control.Monad.Trans (MonadIO (..))
 {- External Library Module Imports -}
 {- Local (yi) module imports -}

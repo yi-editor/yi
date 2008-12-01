@@ -14,7 +14,7 @@ import HscTypes
 import Outputable
 import ErrUtils
 
-import qualified Control.Exception as CE
+import qualified Control.OldException as CE
 import Control.Monad.State
 import qualified Data.ByteString.Char8 as BC
 import qualified Data.Map as M

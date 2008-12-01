@@ -9,7 +9,7 @@ import System.Environment ( getEnv )
 
 import Control.Concurrent       (forkIO)
 import Control.Monad(liftM)
-import qualified Control.Exception
+import qualified Control.OldException as Control.Exception
 
 import Foreign.Marshal.Alloc(allocaBytes)
 import Foreign.C.String
