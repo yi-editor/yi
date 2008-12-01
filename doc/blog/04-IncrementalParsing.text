@@ -1,3 +1,5 @@
+# Incremental Parsing
+
 In this post I will motivate Yi's incremental parsing library and describe the
 main ideas behind it.
 

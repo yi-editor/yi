@@ -1,4 +1,4 @@
-% Prototypes: Encoding Object Oriented inheritance in Haskell
+# Prototypes: Encoding Object Oriented inheritance in Haskell
 
 In this post I will sketch an encoding of OO-style inheritance in Haskell, and
 show how this is used to in Yi to write code that can be customized.
