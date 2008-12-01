@@ -8,7 +8,7 @@ module Yi.MiniBuffer
   matchingBufferNames
  ) where
 
-import Prelude (filter)
+import Prelude (filter, length)
 import Data.List (isInfixOf)
 import Data.Maybe
 import Yi.Config
@@ -143,6 +143,11 @@ class Promptable a where
 instance Promptable String where
     getPromptedValue = return
     getPrompt _ = "String"
+
+instance Promptable Char where
+    getPromptedValue x = if length x == 0 then error "Please supply a character." 
+                         else return $ head x
+    getPrompt _ = "Char"
 
 instance Promptable Int where
     getPromptedValue = return . read
