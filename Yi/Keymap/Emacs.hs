@@ -142,6 +142,7 @@ emacsKeys univArg =
          , metaCh '<'           ?>>! (repeatingArg topB)
          , metaCh '>'           ?>>! (repeatingArg botB)
          , metaCh '%'           ?>>! queryReplaceE
+         , metaCh ';'           ?>>! withModeB modeToggleCommentSelection
          , metaCh 'a'           ?>>! (repeatingArg $ moveB unitSentence Backward)
          , metaCh 'b'           ?>>! (repeatingArg prevWordB)
          , metaCh 'c'           ?>>! (repeatingArg capitaliseWordB)
