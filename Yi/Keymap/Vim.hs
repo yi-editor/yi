@@ -458,7 +458,8 @@ defKeymap = Proto template
          ,([ctrlW, ctrl $ char 'j'], const $ withEditor nextWinE)
          ,(map char ">>", withBuffer . shiftIndentOfLine)
          ,(map char "<<", withBuffer . shiftIndentOfLine . negate)
-         ,(map char "ZZ", const $ viWrite >> quitEditor)
+         ,(map char "ZZ", const $ viWrite >> closeWindow)
+         ,(map char "ZQ", const $ closeWindow)
          ,(map char "ga", const $ viCharInfo)
          ,(map char "==", const $ withBuffer $ adjIndent IncreaseCycle)
          ]
