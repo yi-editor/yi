@@ -755,15 +755,17 @@ defKeymap = Proto template
              ex_eval (head prompt : lineString)
            ex_process :: VimMode
            ex_process =
-               choice [spec KEnter ?>>! ex_buffer_finish,
-                       spec KTab   ?>>! completeMinibuffer,
-                       spec KEsc   ?>>! closeBufferAndWindowE,
-                       spec KBS    ?>>! deleteB Character Backward,
-                       spec KDel   ?>>! deleteB Character Forward,
-                       spec KUp    ?>>! historyUp,
-                       spec KDown  ?>>! historyDown,
-                       spec KLeft  ?>>! moveXorSol 1,
-                       spec KRight ?>>! moveXorEol 1]
+               choice [spec KEnter       ?>>! ex_buffer_finish,
+                       spec KTab         ?>>! completeMinibuffer,
+                       spec KEsc         ?>>! closeBufferAndWindowE,
+                       spec KBS          ?>>! deleteB Character Backward,
+                       spec KDel         ?>>! deleteB Character Forward,
+                       spec KUp          ?>>! historyUp,
+                       spec KDown        ?>>! historyDown,
+                       spec KLeft        ?>>! moveXorSol 1,
+                       spec KRight       ?>>! moveXorEol 1,
+                       (ctrl $ char 'w') ?>>! deleteB unitWord Backward,
+                       (ctrl $ char 'u') ?>>! moveToSol >> deleteToEol]
                   <|| (textChar >>= write . insertB)
            completeMinibuffer = withBuffer elemsB >>= ex_complete >>= withBuffer . insertN
            exSimpleComplete compl s = drop (length s) <$> simpleComplete compl s
