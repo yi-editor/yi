@@ -2,15 +2,14 @@
 -- Copyright (C) 2008 JP Bernardy
 module Yi.Buffer.HighLevel where
 
-import Prelude (FilePath, map)
-import Yi.Prelude
 import Control.Applicative
 import Control.Monad.RWS.Strict (ask)
 import Control.Monad.State
 import Data.Char
 import Data.List (isPrefixOf, sort, lines, drop, filter, length, takeWhile, dropWhile)
-import Data.Maybe
-  ( fromMaybe, listToMaybe )
+import Data.Maybe (fromMaybe, listToMaybe)
+import Prelude (FilePath, map)
+import Yi.Prelude
 
 import Yi.Buffer.Basic
 import Yi.Buffer.Misc
@@ -88,7 +87,7 @@ lastNonSpaceB = do moveToEol
 
 -- | Go to the first non space character in the line;
 -- if already there, then go to the beginning of the line.
-moveNonspaceOrSol :: BufferM ()   
+moveNonspaceOrSol :: BufferM ()
 moveNonspaceOrSol = do prev <- readPreviousOfLnB
                        if and . map (isSpace) $ prev then moveToSol else firstNonSpaceB
 
@@ -143,6 +142,9 @@ getLineAndCol = (,) <$> curLn <*> curCol
 readLnB :: BufferM String
 readLnB = readUnitB Line
 
+readCharB :: BufferM (Maybe Char)
+readCharB = liftM listToMaybe (readUnitB Character)
+
 -- | Read from point to end of line
 readRestOfLnB :: BufferM String
 readRestOfLnB = readRegionB =<< regionOfPartB Line Forward
@@ -191,11 +193,11 @@ deleteToEol = deleteRegionB =<< regionOfPartB Line Forward
 
 -- | Delete whole line moving to the next line
 deleteLineForward :: BufferM ()
-deleteLineForward = 
+deleteLineForward =
   do moveToSol   -- Move to the start of the line
      deleteToEol -- Delete the rest of the line not including the newline char
      deleteN 1   -- Delete the newline character
-     
+
 
 -- | Transpose two characters, (the Emacs C-t action)
 swapB :: BufferM ()
@@ -290,7 +292,7 @@ scrollScreensB n = do
     scrollB $ n * (h - 1)
 
 -- | Scroll according to function passed. The function takes the
--- | Window height in lines, its result is passed to scrollB 
+-- | Window height in lines, its result is passed to scrollB
 -- | (negative for up)
 scrollByB :: (Int -> Int) -> Int -> BufferM ()
 scrollByB f n = do h <- askWindow height
@@ -391,7 +393,7 @@ deleteBlankLinesB =
 -- in the given direction.
 lineStreamB :: Direction -> BufferM [String]
 lineStreamB dir = fmap (LazyUTF8.toString . rev) . drop 1 . LB.split newLine <$> (streamB dir =<< pointB)
-    where rev = case dir of 
+    where rev = case dir of
                   Forward -> id
                   Backward -> LB.reverse
 
@@ -439,7 +441,7 @@ modifySelectionB = modifyExtendedSelectionB Character
 
 
 modifyExtendedSelectionB :: TextUnit -> (String -> String) -> BufferM ()
-modifyExtendedSelectionB unit transform 
+modifyExtendedSelectionB unit transform
     = modifyRegionB transform =<< unitWiseRegion unit =<< getSelectRegionB
 
 
@@ -448,7 +450,7 @@ modifyExtendedSelectionB unit transform
 -- the same search and replace over multiple regions however we are
 -- unlikely to perform several search and replaces over the same region
 -- since the first such may change the bounds of the region.
-searchReplaceRegionB :: 
+searchReplaceRegionB ::
                        String -- ^ The String to search for
                     -> String -- ^ The String to replace it with
                     -> Region -- ^ The region to perform this over
@@ -461,7 +463,7 @@ searchReplaceRegionB from to =
 
 
 -- | Peform a search and replace on the selection
-searchReplaceSelectionB :: 
+searchReplaceSelectionB ::
                            String -- ^ The String to search for
                         -> String
                            -- ^ The String to replace it with
@@ -469,10 +471,14 @@ searchReplaceSelectionB ::
 searchReplaceSelectionB from to =
   modifySelectionB $ substituteInList from to
 
+replaceString :: String -> String -> BufferM ()
+replaceString a b = do end <- sizeB
+                       let region = mkRegion 0 end
+                       searchReplaceRegionB a b region
 
 -- | Prefix each line in the selection using
 -- the given string.
-linePrefixSelectionB :: 
+linePrefixSelectionB ::
                          String -- ^ The string that starts a line comment
                       -> BufferM ()
                          -- The returned buffer action
@@ -507,7 +513,7 @@ toggleCommentSelectionB insPrefix delPrefix = do
 substituteInList :: Eq a => [ a ] -> [ a ] -> [ a ] -> [ a ]
 substituteInList _from _to []       = []
 substituteInList from to list@(h : rest)
-  | isPrefixOf from list = 
+  | isPrefixOf from list =
     to ++ (substituteInList from to $ drop (length from) list)
   | otherwise            =
     h : (substituteInList from to rest)
