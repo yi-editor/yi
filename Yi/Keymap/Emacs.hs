@@ -30,7 +30,6 @@ import Yi.Keymap.Emacs.Utils
   , scrollUpE
   , cabalConfigureE
   , switchBufferE
-  , withMinibuffer
   , askSaveEditor
   , argToInt
   , promptTag
