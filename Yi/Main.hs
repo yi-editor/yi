@@ -230,6 +230,7 @@ defaultPublishedActions = M.fromList $
     , ("regionOfPartNonEmptyB"  , box regionOfPartNonEmptyB)
     , ("reloadEditor"           , box reloadEditor)
     , ("reloadProjectE"         , box reloadProjectE)
+    , ("replaceString"          , box replaceString)
     , ("revertE"                , box revertE)
     , ("shell"                  , box shell)
     , ("setAnyMode"             , box setAnyMode)
