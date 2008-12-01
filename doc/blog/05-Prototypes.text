@@ -1,6 +1,6 @@
 # Prototypes: Encoding Object Oriented inheritance in Haskell
 
-In this post I will sketch an encoding of OO-style inheritance in Haskell, and
+In this post I will sketch an encoding for OO-style inheritance in Haskell, and
 show how this is used to in Yi to write code that can be customized.
 
 This can also serve as an introduction to the concepts defined in module
@@ -10,7 +10,8 @@ Data.Prototype (currently found in Yi sources)
 
 Inheritance can create structures which are difficult to understand. Since a
 given method call can call dispatch to a number of methods at run-time, tracking
-what is going on might be tricky. Sometimes however, inheritance is exactly the construct we need.
+what is going on might be tricky. Sometimes however, inheritance is exactly the
+construct we need.
 
 Imagine you have the following piece of code:
 
