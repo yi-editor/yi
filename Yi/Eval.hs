@@ -83,6 +83,7 @@ execEditorAction s = do
         mkAct = [
                  toDyn (makeAction :: BufferM () -> Action),
                  toDyn (makeAction :: BufferM Bool -> Action),
+                 toDyn (makeAction :: BufferM Char -> Action),
                  toDyn (makeAction :: BufferM Int -> Action),
                  toDyn (makeAction :: BufferM String -> Action),
                  toDyn (makeAction :: BufferM Region -> Action),
@@ -98,6 +99,9 @@ execEditorAction s = do
                  toDyn (makeAction :: YiM BufferRef -> Action),
 
                  toDyn (makeAction :: (String -> YiM ()) -> Action),
+
+                 toDyn (makeAction :: (String -> String -> BufferM ()) -> Action),
+                 toDyn (makeAction :: (Char -> BufferM ()) -> Action),
 
                  toDyn (makeAction :: (BufferRef -> EditorM ()) -> Action)
 
