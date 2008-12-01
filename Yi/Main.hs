@@ -242,7 +242,7 @@ defaultPublishedActions = M.fromList $
     , ("sortLines"              , box sortLines)
     , ("unLineCommentSelectionB", box unLineCommentSelectionB)
     , ("unitParagraph"          , box unitParagraph)
-    , ("unitViWord"          , box unitViWord)
+    , ("unitViWord"             , box unitViWord)
     , ("writeB"                 , box writeB)
     , ("ghci"                   , box Haskell.ghciGet)
     ]
