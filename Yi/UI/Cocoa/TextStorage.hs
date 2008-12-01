@@ -12,7 +12,6 @@ module Yi.UI.Cocoa.TextStorage
   , newTextStorage
   , setTextStorageBuffer
   , visibleRangeChanged
-  , charIndexB, charRegionB
   ) where
 
 import Prelude (takeWhile, take, dropWhile, drop, span, unzip)
@@ -357,26 +356,6 @@ storagePicture ed r slf = do
   Just win <- slf #. _window
   -- logPutStrLn $ "storagePicture " ++ show i
   return $ bufferPicture ed sty buf win r
-
-charIndexB :: Point -> BufferM Point
-charIndexB p =
-  fromIntegral <$> L.length <$> takeWhile (< p) <$> fst <$> unzip <$> indexedStreamB Forward 0
-
-charRegionB :: Region -> BufferM Region
-charRegionB r = do
-  (xs,ys) <- span (< regionStart r) <$> fst <$> unzip <$> indexedStreamB Forward 0
-  return (mkSizeRegion (fromIntegral (L.length xs)) (fromIntegral (L.length (takeWhile (< regionEnd r) ys))))
-
-byteRegionB :: Region -> BufferM Region
-byteRegionB r = do
-  xs <- indexStreamRegionB r
-  return $ mkRegion (head xs) (1 + last xs)
-
-indexStreamRegionB :: Region -> BufferM [Point]
-indexStreamRegionB r =
-  take (fromIntegral (regionSize r)) <$>
-  drop (fromIntegral (regionStart r)) <$>
-  fst <$> unzip <$> indexedStreamB Forward 0
 
 byteToCharPicture :: Point -> [Point] -> [PicStroke] -> [PicStroke]
 byteToCharPicture o [] xs = [(o,a) | (_,a) <- take 1 xs]

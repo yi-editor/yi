@@ -102,10 +102,15 @@ module Yi.Buffer.Misc
   , nameA
   , pointDriveA
   , SearchExp
+  , charIndexB
+  , byteIndexB
+  , charRegionB
+  , byteRegionB
+  , indexStreamRegionB
   )
 where
 
-import Prelude (ceiling)
+import Prelude (ceiling, span, unzip, take, drop)
 import Yi.Prelude
 import Yi.Region
 import System.FilePath
@@ -893,5 +898,36 @@ pointAt f = savingPointB (f *> pointB)
 askWindow :: (Window -> a) -> BufferM a
 askWindow = asks
 
+-------------
+-- Character-positions
+
+-- | Convert a buffer position to a character position
+charIndexB :: Point -> BufferM Point
+charIndexB p =
+  fromIntegral <$> length <$> takeWhile (< p) <$> fst <$> unzip <$> indexedStreamB Forward 0
+
+-- | Convert a character position to a buffer position
+byteIndexB :: Point -> BufferM Point
+byteIndexB p =
+  fromIntegral <$> head <$> drop (fromIntegral p) <$> fst <$> unzip <$> indexedStreamB Forward 0
+
+-- | Convert a character position region to a buffer position region
+charRegionB :: Region -> BufferM Region
+charRegionB r = do
+  (xs,ys) <- span (< regionStart r) <$> fst <$> unzip <$> indexedStreamB Forward 0
+  return (mkSizeRegion (fromIntegral (length xs)) (fromIntegral (length (takeWhile (< regionEnd r) ys))))
+
+-- | Convert a buffer position region to  position region
+byteRegionB :: Region -> BufferM Region
+byteRegionB r = do
+  xs <- indexStreamRegionB r
+  return $ mkRegion (head xs) (1 + last xs)
+
+-- | Obtain an indexStreamRegion for the specified buff
+indexStreamRegionB :: Region -> BufferM [Point]
+indexStreamRegionB r =
+  take (fromIntegral (regionSize r)) <$>
+  drop (fromIntegral (regionStart r)) <$>
+  fst <$> unzip <$> indexedStreamB Forward 0
 
 
