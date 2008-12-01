@@ -36,7 +36,7 @@ charOf modifier l h =
     do Event (KASCII c) [] <- eventBetween (modifier $ char l) (modifier $ char h)
        return c
 
-shift,ctrl,meta :: Event -> Event
+shift,ctrl,meta,super :: Event -> Event
 shift (Event (KASCII c) ms) | isAlpha c = Event (KASCII (toUpper c)) ms
                            | otherwise = error "shift: unhandled event"
 shift (Event k ms) = Event k $ nub $ sort (MShift:ms)
