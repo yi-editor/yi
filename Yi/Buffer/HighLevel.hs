@@ -304,6 +304,13 @@ scrollByB :: (Int -> Int) -> Int -> BufferM ()
 scrollByB f n = do h <- askWindow height
                    scrollB $ n * (f h)
 
+-- | Same as ScrollByB, but also moves the cursor
+vimScrollByB :: (Int -> Int) -> Int -> BufferM ()
+vimScrollByB f n = do h <- askWindow height
+                      scrollB $ n * (f h)
+                      lineMoveRel $ n * (f h)
+                      return ()
+
 -- | Scroll by n lines.
 scrollB :: Int -> BufferM ()
 scrollB n = do setA pointDriveA False
