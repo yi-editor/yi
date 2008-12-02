@@ -21,7 +21,7 @@ guessCabalFile sourcefile = do
   recurseDir findCabalFile dir  -- "/bar/foo/s.hs" -> "/bar/foo"
  where findCabalFile dir = do
          logS $ "looking in: " ++ dir
-         pdfile <- CE.try (findPackageDesc dir)
+         pdfile <- CE.try (findPackageDesc dir) :: IO (Either CE.IOException (Maybe FilePath))
          case pdfile of
            Right (Just f) -> return . Just $ dir </> f
            _ -> return Nothing
