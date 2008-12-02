@@ -708,6 +708,8 @@ defKeymap = Proto template
                             spec KDel          ?>>! (adjBlock (-1) >> deleteB Character Forward),
                             spec KEnter        ?>>! insertB '\n',
                             spec KTab          ?>>! insertTabB,
+                            (ctrl $ char 't')  ?>>! shiftIndentOfLine 1,
+                            (ctrl $ char 'd')  ?>>! shiftIndentOfLine (-1),
                             (ctrl $ char 'w')  ?>>! cut Exclusive (GenMove unitViWord (Backward,InsideBound) Backward)]
 
      --
