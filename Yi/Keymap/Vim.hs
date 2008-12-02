@@ -170,15 +170,7 @@ defKeymap = Proto template
      gen_cmd_move :: KeymapM (RegionStyle, ViMove)
      gen_cmd_move = choice
         [ char '0' ?>> return (Exclusive, viMoveToSol)
-        , char '%' ?>> return (Exclusive, ArbMove (do
-                           c <- readB
-                           case c of '(' -> goUnmatchedB Forward  '(' ')'
-                                     ')' -> goUnmatchedB Backward '(' ')'
-                                     '{' -> goUnmatchedB Forward  '{' '}'
-                                     '}' -> goUnmatchedB Backward '{' '}'
-                                     '[' -> goUnmatchedB Forward  '[' ']'
-                                     ']' -> goUnmatchedB Backward '[' ']'
-                                     _   -> fail $ "Not matchable character: " ++ [c]))
+        , char '%' ?>> return percentMove
         , do 
           cnt <- count
           let x = maybe 1 id cnt
@@ -1056,6 +1048,30 @@ ins_mode self = write (setStatus ("-- INSERT --", defaultStyle)) >> many (v_ins_
 
 beginIns :: (Show x, YiAction a x) => ModeMap -> a -> I Event Action ()
 beginIns self a = write a >> ins_mode self
+
+-- Find the item after or under the cursor and jump to its match
+percentMove :: (RegionStyle, ViMove)
+percentMove = (Inclusive, ArbMove tryGoingToMatch)
+    where tryGoingToMatch = do
+              p <- pointB
+              foundMatch <- goToMatch
+              when (not foundMatch) $ moveTo p
+              return ()
+          go dir a b = goUnmatchedB dir a b >> return True
+          goToMatch = do
+            c <- readB
+            case c of '(' -> go Forward  '(' ')'
+                      ')' -> go Backward '(' ')'
+                      '{' -> go Forward  '{' '}'
+                      '}' -> go Backward '{' '}'
+                      '[' -> go Forward  '[' ']'
+                      ']' -> go Backward '[' ']'
+                      _   -> otherChar
+          otherChar = do eof <- atEof
+                         eol <- atEol
+                         if (eof || eol)
+                             then return False
+                             else rightB >> goToMatch -- search for matchable character after the cursor
 
 -- --------------------
 -- | Keyword
