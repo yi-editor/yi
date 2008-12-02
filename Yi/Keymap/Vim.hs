@@ -558,6 +558,7 @@ defKeymap = Proto template
      cutRegion regionStyle region = do
        txt <- withBuffer0 $ do
          txt <- readRegionB region
+         adjBlock $ negate $ length txt
          deleteRegionB region
          return txt
        setRegE $ if (regionStyle == LineWise) then '\n':txt else txt
@@ -586,7 +587,8 @@ defKeymap = Proto template
      pasteAfter :: EditorM ()
      pasteAfter = do
        txt' <- getRegE
-       withBuffer0 $
+       withBuffer0 $ do
+         adjBlock $ length txt'
          case txt' of
            '\n':txt -> moveToEol >> rightB >> insertN txt >> leftN (length txt)
            _      -> moveXorEol 1 >> insertN txt' >> leftB
@@ -595,6 +597,7 @@ defKeymap = Proto template
      pasteBefore = do
        txt' <- getRegE
        withBuffer0 $ do
+         adjBlock $ length txt'
          case txt' of
            '\n':txt -> moveToSol >> insertN txt >> leftN (length txt)
            _      -> insertN txt' >> leftB
