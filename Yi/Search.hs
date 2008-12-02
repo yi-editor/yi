@@ -135,7 +135,7 @@ continueSearch (c_re, dir) = do
 -- | Search and replace in the given region.
 -- If the input boolean is True, then the replace is done globally, otherwise only the first match is replaced
 -- Returns Bool indicating success or failure.
-searchAndRepRegion0 :: SearchExp -> String -> Bool -> Region -> BufferM Bool
+searchAndRepRegion0 :: SearchExp -> String -> Bool -> Region -> BufferM Int
 searchAndRepRegion0 c_re str globally region = do
     mp <- (if globally then id else take 1) <$>
                filter (`includedRegion` region) <$>
@@ -145,7 +145,7 @@ searchAndRepRegion0 c_re str globally region = do
     -- So we start from the end.
     let mp' = mayReverse (reverseDir $ regionDirection region) mp
     mapM_ (`replaceRegionB` str) mp'
-    return (not $ null mp)
+    return (length mp)
 
 searchAndRepRegion :: String -> String -> Bool -> Region -> EditorM Bool
 searchAndRepRegion [] _ _ _ = return False   -- hmm...
@@ -153,7 +153,7 @@ searchAndRepRegion s str globally region = do
     let c_re = makeSimpleSearch s
     setRegexE c_re     -- store away for later use
     setA searchDirectionA Forward
-    withBuffer0 $ searchAndRepRegion0 c_re str globally region
+    withBuffer0 $ (/= 0) <$> searchAndRepRegion0 c_re str globally region
 
 ------------------------------------------------------------------------
 -- | Search and replace in the region defined by the given unit.
@@ -333,10 +333,10 @@ qrNext win b what = do
 -}
 qrReplaceAll :: Window -> BufferRef -> SearchExp -> String -> EditorM ()
 qrReplaceAll win b what replacement = do
-     withGivenBufferAndWindow0 win b $ do 
+     n <- withGivenBufferAndWindow0 win b $ do 
          exchangePointAndMarkB -- so we replace the current occurence too
          searchAndRepRegion0 what replacement True =<< regionOfPartB Document Forward
-     printMsg "Replaced all occurrences"
+     printMsg $ "Replaced " ++ show n  ++ " occurrences"
      qrFinish
 
 -- |  Exit from query/replace.
