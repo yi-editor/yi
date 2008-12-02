@@ -59,9 +59,13 @@ data TextUnit = Character -- ^ a single character
       -- idea to use GenUnit though.
                 deriving Typeable
 
+
+unitWord, unitViWord, unitViWORD :: TextUnit
 unitWord = Word
 unitViWord = ViWord
 unitViWORD = ViWORD
+
+unitDelimited :: Char -> Char -> Bool -> TextUnit
 unitDelimited = Delimited
 
 isWordChar :: Char -> Bool
@@ -69,11 +73,6 @@ isWordChar x = isAlphaNum x || x == '_'
 
 isNl :: Char -> Bool
 isNl = (== '\n')
-
--- | A visible space is one that actually takes up space on screen. In other 
--- words: everything but the newline. 
-isVisSpace :: Char -> Bool
-isVisSpace c = (not $ isNl c) && (isSpace c)
 
 -- | Tells if a char can end a sentence ('.', '!', '?').
 isEndOfSentence :: Char -> Bool
@@ -99,6 +98,14 @@ peekB dir siz ofs = savingPointB $
 checkPeekB :: Int -> [Char -> Bool] -> Direction -> BufferM Bool
 checkPeekB offset conds dir = checks conds <$> peekB dir (length conds) offset
 
+atViWordBoundary :: (Char -> Int) -> Direction -> BufferM Bool
+atViWordBoundary charType direction = do
+    cs <- peekB direction 2 (-1)
+    return $ case cs of
+      [nl1,nl2] | isNl nl1 && isNl nl2 -> True -- stop at empty lines
+      [c1,c2] -> not (isSpace c1) && (charType c1 /= charType c2)
+      _ -> True
+
 -- | Is the point at a @Unit@ boundary in the specified @Direction@?
 atBoundary :: TextUnit -> Direction -> BufferM Bool
 atBoundary Document Backward = (== 0) <$> pointB
@@ -107,16 +114,13 @@ atBoundary Character _ = return True
 atBoundary VLine _ = return True -- a fallacy; this needs a little refactoring.
 atBoundary Word direction =
     checkPeekB (-1) [isWordChar, not . isWordChar] direction
-atBoundary ViWORD direction =
-    checkPeekB (-1) [not . isVisSpace, isVisSpace] direction
-atBoundary ViWord direction = do
-    cs <- peekB direction 2 (-1)
-    return $ case cs of
-      [c1,c2] -> not (isVisSpace c1) && (charType c1 /= charType c2)
-        where charType c | isVisSpace c = 1::Int
-                         | isWordChar c = 2
-                         | otherwise    = 3
-      _ -> True
+atBoundary ViWORD direction = atViWordBoundary charType direction
+    where charType c | isSpace c = 1::Int
+                     | otherwise = 2
+atBoundary ViWord direction = atViWordBoundary charType direction
+    where charType c | isSpace c    = 1::Int
+                     | isWordChar c = 2
+                     | otherwise    = 3
 atBoundary Line direction = checkPeekB 0 [isNl] direction
 atBoundary (Delimited c _ False) Backward = checkPeekB 0 [(== c)] Backward
 atBoundary (Delimited _ c False) Forward  = (== c) <$> readB
