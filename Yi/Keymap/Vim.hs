@@ -633,6 +633,7 @@ defKeymap = Proto template
                  char 'x'  ?>>! cutSelection,
                  char 'd'  ?>>! cutSelection,
                  char 'p'  ?>>! pasteOverSelection,
+                 char 's'  ?>> beginIns self (cutSelection >> withBuffer0 (setVisibleSelection False)),
                  char 'c'  ?>> beginIns self (cutSelection >> withBuffer0 (setVisibleSelection False))]
 
 
