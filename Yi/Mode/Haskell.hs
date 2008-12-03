@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveDataTypeable, GeneralizedNewtypeDeriving, Rank2Types #-}
 -- Copyright (c) 2008 Jean-Philippe Bernardy
 -- | Haskell-specific modes and commands.
 module Yi.Mode.Haskell 

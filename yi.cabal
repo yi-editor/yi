@@ -161,8 +161,6 @@ library
         Yi.Window
         Yi.WindowSet
 
-    extensions: CPP, DeriveDataTypeable, FlexibleContexts, FlexibleInstances,
-                GADTs, GeneralizedNewtypeDeriving, Rank2Types, TypeSynonymInstances
     include-dirs:   Yi/Lexer
     if flag (vty)
        cpp-options: -DFRONTEND_VTY
@@ -354,8 +352,6 @@ executable yi
            Data.DelayList
 
         include-dirs:   Yi/Lexer
-        extensions: CPP, DeriveDataTypeable, FlexibleContexts, FlexibleInstances,
-                    GADTs, GeneralizedNewtypeDeriving, Rank2Types, TypeSynonymInstances
 
         if flag(testing)
             cpp-options:    -DTESTING

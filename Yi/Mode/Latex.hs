@@ -1,3 +1,4 @@
+{-# LANGUAGE Rank2Types #-}
 module Yi.Mode.Latex (latexMode, latexMode2) where
 
 import Prelude ()

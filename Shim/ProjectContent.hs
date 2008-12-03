@@ -1,4 +1,4 @@
---
+{-# LANGUAGE Rank2Types #-}
 -- Copyright (c) Krasimir Angelov 2008.
 --
 -- Extraction of the "Project View" from

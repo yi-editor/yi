@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE CPP, DeriveDataTypeable, TypeSynonymInstances #-}
 module Shim.SHM where
 
 import Data.Typeable

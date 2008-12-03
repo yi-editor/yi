@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 -- Copyright (c) 2005,2007,2008 Jean-Philippe Bernardy
 
 -- | This module aims at a mode that should be (mostly) intuitive to

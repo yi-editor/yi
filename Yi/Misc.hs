@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveDataTypeable, GeneralizedNewtypeDeriving #-}
 -- Copyright (c) 2008 Jean-Philippe Bernardy
 -- | Various high-level functions to further classify.
 module Yi.Misc
