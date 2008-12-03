@@ -718,8 +718,8 @@ defKeymap = Proto template
                             spec KEnter        ?>>! insertB '\n',
                             spec KTab          ?>>! insertTabB,
                             (ctrl $ char 't')  ?>>! shiftIndentOfLine 1,
-                            (ctrl $ char 'd')  ?>>! shiftIndentOfLine (-1),
-                            (ctrl $ char 'w')  ?>>! cut Exclusive (GenMove unitViWord (Backward,InsideBound) Backward)]
+                            (ctrl $ char 'd')  ?>>! shiftIndentOfLine (-1)
+                            ]
 
      --
      -- Some ideas for a better insert mode are contained in:
@@ -730,7 +730,11 @@ defKeymap = Proto template
      -- which suggest that movement commands be added to insert mode, along
      -- with delete.
      --
-     def_ins_char = (spec KBS ?>>! adjBlock (-1) >> deleteB Character Backward)
+     def_ins_char =
+            choice [spec KBS           ?>>! adjBlock (-1) >> deleteB Character Backward,
+                    (ctrl $ char 'h')  ?>>! adjBlock (-1) >> deleteB Character Backward,
+                    (ctrl $ char 'w')  ?>>! cut Exclusive (GenMove unitViWord (Backward,InsideBound) Backward)
+                    ]
             <|> ins_rep_char
             <|| (textChar >>= write . (adjBlock 1 >>) . insertB)
 
@@ -744,7 +748,10 @@ defKeymap = Proto template
      --  characters in a line stays the same until you get to the end of the line.
      --  If a <NL> is typed, a line break is inserted and no character is deleted.
      rep_char :: VimMode
-     rep_char = (spec KBS ?>>! leftB) -- should undo unless pointer has been moved
+     rep_char = choice [spec KBS           ?>>! leftB,
+                        (ctrl $ char 'h')  ?>>! leftB,
+                        (ctrl $ char 'w')  ?>>! genMoveB unitViWord (Backward,InsideBound) Backward
+                       ] -- should undo unless pointer has been moved
                 <|> ins_rep_char
                 <|| do c <- textChar; write (do e <- atEol; if e then insertB c else writeB c)
 
