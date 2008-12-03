@@ -40,6 +40,13 @@ topB = moveTo 0
 botB :: BufferM ()
 botB = moveTo =<< sizeB
 
+-- | Move left if on eol, but not on blank line
+leftOnEol :: BufferM ()
+leftOnEol = do
+        eol <- atEol
+        sol <- atSol
+        when (eol && not sol) leftB
+
 -- | Move @x@ chars back, or to the sol, whichever is less
 moveXorSol :: Int -> BufferM ()
 moveXorSol x = replicateM_ x $ do c <- atSol; when (not c) leftB

@@ -107,26 +107,29 @@ defKeymap = Proto template
 
      -- | Replace mode is like insert, except it performs writes, not inserts
      rep_mode :: VimMode
-     rep_mode = write (setStatus ("-- REPLACE --", defaultStyle)) >> many rep_char >> leave
+     rep_mode = write (setStatus ("-- REPLACE --", defaultStyle)) >> many rep_char >> leave >> (write leftB)
 
      -- | Reset the selection style to a character-wise mode 'SelectionStyle Character'.
      resetSelectStyle :: BufferM ()
      resetSelectStyle = setDynamicB $ SelectionStyle Character
 
      -- | Visual mode, similar to command mode
-     vis_mode :: SelectionStyle -> VimMode
-     vis_mode selectionStyle = do
-       write (setVisibleSelection True >> pointB >>= setSelectionMarkPointB)
-       core_vis_mode selectionStyle
-       write (clrStatus >> withBuffer0 (setVisibleSelection False) >> withBuffer0 resetSelectStyle)
+     vis_move :: VimMode
+     vis_move = gen_cmd_move >>= write . viMove . snd
 
+     vis_mode :: SelectionStyle -> VimMode
+     vis_mode selStyle = do
+       write (setVisibleSelection True >> pointB >>= setSelectionMarkPointB)
+       core_vis_mode selStyle
+       write (clrStatus >> withBuffer0 (setVisibleSelection False) >> withBuffer0 resetSelectStyle)
+     
      core_vis_mode :: SelectionStyle -> VimMode
-     core_vis_mode selectionStyle = do
-       write $ do withBuffer0 $ setDynamicB $ selectionStyle
-                  setStatus $ (msg selectionStyle, defaultStyle)
-       many (cmd_move <|>
+     core_vis_mode selStyle = do
+       write $ do withBuffer0 $ setDynamicB $ selStyle
+                  setStatus $ (msg selStyle, defaultStyle)
+       many (vis_move <|>
              select_any_unit (withBuffer0 . (\r -> resetSelectStyle >> extendSelectRegionB r >> leftB)))
-       (vis_single selectionStyle <|| vis_multi)
+       (vis_single selStyle <|| vis_multi)
        where msg (SelectionStyle Line) = "-- VISUAL LINE --"
              msg (SelectionStyle _)    = "-- VISUAL --"
 
@@ -144,6 +147,9 @@ defKeymap = Proto template
          c <- charOf id '1' '9'
          cs <- many $ charOf id '0' '9'
          return $ Just $ read (c:cs)
+
+     viMoveToNthEol :: Int -> BufferM ()
+     viMoveToNthEol n = (replicateM_ n $ moveB Line Forward)
 
      viMoveToEol :: ViMove
      viMoveToEol = MaybeMove Line Forward
@@ -164,7 +170,7 @@ defKeymap = Proto template
      --
 
      cmd_move :: VimMode
-     cmd_move = gen_cmd_move >>= write . viMove . snd
+     cmd_move = gen_cmd_move >>= write . viMoveNM . snd
 
      -- the returned RegionStyle is used when the movement is combined with a 'cut' or 'yank'.
      gen_cmd_move :: KeymapM (RegionStyle, ViMove)
@@ -189,7 +195,7 @@ defKeymap = Proto template
      -- | movement commands (with exclusive cut/yank semantics)
      moveCmdFM_exclusive :: [(Event, (Int -> ViMove))]
      moveCmdFM_exclusive =
-     -- left/right
+         -- left/right
          [(char 'h',        left)
          ,(ctrl $ char 'h', left)
          ,(spec KBS,        left)
@@ -197,10 +203,12 @@ defKeymap = Proto template
          ,(spec KRight,     right)
          ,(char 'l',        right)
          ,(char ' ',        right)
+         -- eol / sol / special column
          ,(spec KHome,      sol)
          ,(char '^',        const $ ArbMove firstNonSpaceB)
          ,(char '|',        \i -> SeqMove viMoveToSol (Replicate (CharMove Forward) (i-1)))
-
+         ,(char '$',  eol)
+         ,(spec KEnd, eol)
           -- words
          ,(char 'w',       Replicate $ GenMove unitViWord (Backward,InsideBound) Forward)
          ,(char 'W',       Replicate $ GenMove unitViWORD (Backward,InsideBound) Forward)
@@ -216,6 +224,7 @@ defKeymap = Proto template
              left  = Replicate $ CharMove Backward
              right = Replicate $ CharMove Forward
              sol   = Replicate $ viMoveToSol
+             eol   = ArbMove . viMoveToNthEol
 
      -- | movement *multi-chars* commands (with exclusive cut/yank semantics)
      moveCmdS_exclusive :: [(String, (Int -> ViMove))]
@@ -223,20 +232,13 @@ defKeymap = Proto template
          [("[(", Replicate $ ArbMove (goUnmatchedB Backward '(' ')'))
          ,("[{", Replicate $ ArbMove (goUnmatchedB Backward '{' '}'))
          ,("])", Replicate $ ArbMove (goUnmatchedB Forward  '(' ')'))
-         ,("]}", Replicate $ ArbMove (goUnmatchedB Forward  '{' '}'))
-         ]
+         ,("]}", Replicate $ ArbMove (goUnmatchedB Forward  '{' '}'))]
 
      -- | movement commands (with inclusive cut/yank semantics)
      moveCmdFM_inclusive :: [(Event, (Int -> ViMove))]
      moveCmdFM_inclusive =
-     -- left/right
-         [(char '$',  eol)
-         ,(spec KEnd, eol)
-          -- words
-         ,(char 'e',     Replicate $ GenMove unitViWord (Forward, InsideBound) Forward)
+         [(char 'e',     Replicate $ GenMove unitViWord (Forward, InsideBound) Forward)
          ,(char 'E',     Replicate $ GenMove unitViWORD (Forward, InsideBound) Forward)]
-         where
-             eol   = Replicate $ viMoveToEol
 
      -- | movement *multi-chars* commands (with inclusive cut/yank semantics)
      moveCmdS_inclusive :: [(String, (Int -> ViMove))]
@@ -251,6 +253,10 @@ defKeymap = Proto template
                                <*> (savingPointB (viMove move >> pointB))
                                <*> pure regionStyle
 
+     -- viMove Normal Mode
+     viMoveNM :: ViMove -> BufferM ()
+     viMoveNM move = viMove move >> leftOnEol
+     
      viMove :: ViMove -> BufferM ()
      viMove NoMove                        = return ()
      viMove (GenMove   unit boundary dir) = genMoveB unit boundary dir
@@ -381,7 +387,7 @@ defKeymap = Proto template
          ,(ctrl $ char 'r',    withBuffer . flip replicateM_ redoB)
          ,(ctrl $ char 'z',    const suspendEditor)
          ,(ctrl $ char ']',    const gotoTagCurrentWord)
-         ,(char 'D',      withEditor . cut Exclusive . (Replicate $ Move Line Forward))
+         ,(char 'D',      withEditor . cut Exclusive . ArbMove . viMoveToNthEol)
          ,(char 'J',      const (withBuffer (moveToEol >> deleteN 1)))    -- the "\n"
          ,(char 'Y',      \n -> withEditor $ do
                                     let move = Replicate (Move Line Forward) n
@@ -558,8 +564,10 @@ defKeymap = Proto template
        when (rowsCut > 2) $ printMsg $ show rowsCut ++ " fewer lines"
 
      cut :: RegionStyle -> ViMove -> EditorM ()
-     cut regionStyle move =
-       cutRegion regionStyle =<< (withBuffer0 $ regionOfViMove move regionStyle)
+     cut regionStyle move = do
+         region <- withBuffer0 $ regionOfViMove move regionStyle
+         cutRegion regionStyle region
+         withBuffer0 leftOnEol
 
      cutSelection :: EditorM ()
      cutSelection = uncurry cutRegion =<< withBuffer0 regionOfSelection
@@ -568,10 +576,10 @@ defKeymap = Proto template
      pasteOverSelection = do
        txt <- getRegE
        withBuffer0 $ do
-         selectionStyle <- getDynamicB
+         selStyle <- getDynamicB
          start <- getSelectionMarkPointB
          stop <- pointB
-         region <- mkRegionOfStyleB start stop $ selection2regionStyle $ selectionStyle
+         region <- mkRegionOfStyleB start stop $ selection2regionStyle $ selStyle
          moveTo $ regionStart region
          deleteRegionB region
          insertN txt
@@ -616,10 +624,10 @@ defKeymap = Proto template
      -- KeymapM. In this way vis_single is analogous to cmd2other
      --
      vis_single :: SelectionStyle -> VimMode
-     vis_single selectionStyle =
+     vis_single selStyle =
          choice [spec KEsc ?>> return (),
-                 char 'V'  ?>> change_vis_mode selectionStyle (SelectionStyle Line),
-                 char 'v'  ?>> change_vis_mode selectionStyle (SelectionStyle Character),
+                 char 'V'  ?>> change_vis_mode selStyle (SelectionStyle Line),
+                 char 'v'  ?>> change_vis_mode selStyle (SelectionStyle Character),
                  char ':'  ?>>! ex_mode ":'<,'>",
                  char 'y'  ?>>! yankSelection,
                  char 'x'  ?>>! cutSelection,
@@ -671,7 +679,7 @@ defKeymap = Proto template
                  char 'o'     ?>> beginIns self $ moveToEol >> insertB '\n',
                  char 'O'     ?>> beginIns self $ moveToSol >> insertB '\n' >> lineUp,
                  char 'c'     ?>> changeCmds,
-                 char 'C'     ?>> beginIns self $ cut Exclusive viMoveToEol, -- alias of "c$"
+                 char 'C'     ?>> beginIns self $ cut Exclusive viMoveToEol, -- alias of "c$" FIXME
                  char 'S'     ?>> beginIns self $ withBuffer0 moveToSol >> cut Exclusive viMoveToEol, -- non-linewise alias of "cc"
                  char 's'     ?>> beginIns self $ cut Exclusive (CharMove Forward), -- non-linewise alias of "cl"
                  char '/'     ?>>! ex_mode "/",
@@ -691,7 +699,7 @@ defKeymap = Proto template
      change :: ViMove -> RegionStyle -> ViMove -> I Event Action ()
      change preMove regionStyle move = do
        write $ do
-         withBuffer0 $ viMove preMove
+         withBuffer0 $ viMoveNM preMove
          cut regionStyle move
          when (regionStyle == LineWise) $ withBuffer0 (insertB '\n' >> leftB)
        ins_mode self
@@ -1046,7 +1054,7 @@ leave = oneOf [spec KEsc, ctrl $ char 'c'] >> adjustPriority (-1) >> (write clrS
 
 -- | Insert mode is either insertion actions, or the meta (\ESC) action
 ins_mode :: ModeMap -> VimMode
-ins_mode self = write (setStatus ("-- INSERT --", defaultStyle)) >> many (v_ins_char self <|> kwd_mode) >> leave
+ins_mode self = write (setStatus ("-- INSERT --", defaultStyle)) >> many (v_ins_char self <|> kwd_mode) >> leave >> (write leftB)
 
 beginIns :: (Show x, YiAction a x) => ModeMap -> a -> I Event Action ()
 beginIns self a = write a >> ins_mode self
