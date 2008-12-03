@@ -2,7 +2,7 @@ module Shim.CabalInfo where
 
 import Shim.Utils
 
-import qualified Control.Exception as CE
+import qualified Control.OldException as CE
 import System.FilePath
 import Control.Monad.State
 import Data.Maybe
@@ -20,7 +20,7 @@ guessCabalFile sourcefile = do
   recurseDir findCabalFile dir  -- "/bar/foo/s.hs" -> "/bar/foo"
  where findCabalFile dir = do
          logS $ "looking in: " ++ dir
-         pdfile <- CE.try (findPackageDesc dir) :: IO (Either CE.IOException (Maybe FilePath))
+         pdfile <- CE.try (findPackageDesc dir) :: IO (Either CE.Exception (Maybe FilePath))
          case pdfile of
            Right (Just f) -> return . Just $ dir </> f
            _ -> return Nothing

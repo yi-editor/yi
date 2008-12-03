@@ -15,7 +15,7 @@ import qualified Shim.GhcCompat as GhcCompat
 import Shim.CabalInfo
 
 import Control.Applicative
-import qualified Control.Exception as CE
+import qualified Control.OldException as CE
 import qualified Data.Map as M
 import List ( isPrefixOf, find, nubBy,
               sort, (\\), nub )

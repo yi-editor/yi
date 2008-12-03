@@ -38,7 +38,7 @@ import Text.Printf
 import Data.Maybe
 import System.FilePath ( takeDirectory )
 import Data.List ( elem )
--- import qualified Control.Exception as CE
+-- import qualified Control.OldException as CE
 import System.IO.Unsafe ( unsafePerformIO )
 import Control.Concurrent.MVar
 import Yi.Debug
