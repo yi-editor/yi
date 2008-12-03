@@ -903,8 +903,7 @@ defKeymap = Proto template
            -- command.
            fn ""           = withEditor clrStatus
 
-           fn s | all isDigit s = do let lineNum = read s
-                                     withBuffer (gotoLn lineNum) >> return ()
+           fn s | all isDigit s = withBuffer (gotoLn (read s) >> firstNonSpaceB)
 
            fn "w"          = viWrite
            fn ('w':' ':f)  = viWriteTo $ dropSpace f
