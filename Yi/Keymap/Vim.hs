@@ -122,7 +122,7 @@ defKeymap = Proto template
        write (setVisibleSelection True >> pointB >>= setSelectionMarkPointB)
        core_vis_mode selStyle
        write (clrStatus >> withBuffer0 (setVisibleSelection False) >> withBuffer0 resetSelectStyle)
-     
+
      core_vis_mode :: SelectionStyle -> VimMode
      core_vis_mode selStyle = do
        write $ do withBuffer0 $ setDynamicB $ selStyle
@@ -149,7 +149,7 @@ defKeymap = Proto template
          return $ Just $ read (c:cs)
 
      viMoveToNthEol :: Int -> BufferM ()
-     viMoveToNthEol n = (replicateM_ n $ moveB Line Forward)
+     viMoveToNthEol n = replicateM_ n $ moveB Line Forward
 
      viMoveToEol :: ViMove
      viMoveToEol = MaybeMove Line Forward
@@ -1061,7 +1061,7 @@ viSub cs unit = do
 
 -- | Leave a mode. This always has priority over catch-all actions inside the mode.
 leave :: VimMode
-leave = oneOf [spec KEsc, ctrl $ char 'c'] >> adjustPriority (-1) >> (write clrStatus)
+leave = oneOf [spec KEsc, ctrl $ char 'c'] >> adjustPriority (-1) >> write clrStatus
 
 -- | Insert mode is either insertion actions, or the meta (\ESC) action
 ins_mode :: ModeMap -> VimMode
