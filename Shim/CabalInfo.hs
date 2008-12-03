@@ -8,7 +8,6 @@ import Control.Monad.State
 import Data.Maybe
 
 import Control.Applicative
-import Distribution.Simple.Utils hiding (findPackageDesc)
 import Distribution.ModuleName
 import Distribution.PackageDescription 
 import qualified Distribution.PackageDescription as Library (Library(..))
@@ -26,7 +25,7 @@ guessCabalFile sourcefile = do
            Right (Just f) -> return . Just $ dir </> f
            _ -> return Nothing
 
--- | Guess what lib/exe the sourcefile belongs to.
+-- | Guess what lib\/exe the sourcefile belongs to.
 guessCabalStanza :: FilePath -> FilePath -> PackageDescription -> IO (Maybe String, BuildInfo)
 guessCabalStanza projpath sourcefile pkg_descr = do
   matchingStanzas <- filterM matchingStanza allStanzas'
@@ -37,7 +36,7 @@ guessCabalStanza projpath sourcefile pkg_descr = do
              | Just lib <- [library pkg_descr] ]
          ++ [ (Just (exeName exe), [modulePath exe], buildInfo exe) 
              | exe <- executables pkg_descr ]
-        moduleFiles mod = [toFilePath mod <.> ext | ext <- ["hs", "lhs"] ]
+        moduleFiles modl = [toFilePath modl <.> ext | ext <- ["hs", "lhs"] ]
         allStanzas' = [(name, [projpath </> dir </> file | dir <- hsSourceDirs bi, file <- files ++ concatMap moduleFiles (BuildInfo.otherModules bi)], bi)
                        | (name, files, bi) <- allStanzas, buildable bi]
         eqPath p1 p2 = equalFilePath <$> canonicalizePath p1 <*> canonicalizePath p2
@@ -63,4 +62,4 @@ findPackageDesc dir
       case cabalFiles of
         []          -> return Nothing
         [cabalFile] -> return (Just cabalFile)
-        multiple    -> return Nothing
+        _    -> return Nothing
