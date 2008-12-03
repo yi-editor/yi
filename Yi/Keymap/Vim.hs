@@ -186,9 +186,7 @@ defKeymap = Proto template
                   [pString s >> return (Exclusive, a x) | (s,a) <- moveCmdS_exclusive ] ++
                   [c ?>> return (LineWise, a x) | (c,a) <- moveUpDownCmdFM] ++
                   [do event c; c' <- textChar; return (r, a c' x) | (c,r,a) <- move2CmdFM] ++
-                  [char 'G' ?>> return (LineWise, ArbMove (case cnt of
-                                                             Nothing -> botB >> firstNonSpaceB
-                                                             Just n  -> gotoFNS n))
+                  [char 'G' ?>> return (LineWise, ArbMove $ maybe (botB >> firstNonSpaceB) gotoFNS cnt)
                   ,pString "gg" >> return (LineWise, ArbMove $ gotoFNS $ fromMaybe 0 cnt)])]
               where gotoFNS :: Int -> BufferM ()
                     gotoFNS n = do
