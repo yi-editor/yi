@@ -537,7 +537,8 @@ defKeymap = Proto template
        return (regionStyle, region)
 
      yankRegion :: RegionStyle -> Region -> EditorM ()
-     yankRegion regionStyle region = do
+     yankRegion regionStyle region | regionIsEmpty region = return ()
+                                   | otherwise            = do
        txt <- withBuffer0 $ readRegionB region
        setRegE $ if (regionStyle == LineWise) then '\n':txt else txt
        let rowsYanked = length (filter (== '\n') txt)
@@ -553,7 +554,8 @@ defKeymap = Proto template
      yankSelection = uncurry yankRegion =<< withBuffer0 regionOfSelection
 
      cutRegion :: RegionStyle -> Region -> EditorM ()
-     cutRegion regionStyle region = do
+     cutRegion regionStyle region | regionIsEmpty region = return ()
+                                  | otherwise            = do
        txt <- withBuffer0 $ do
          txt <- readRegionB region
          adjBlock $ negate $ length txt
