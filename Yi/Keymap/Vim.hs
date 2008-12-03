@@ -187,10 +187,13 @@ defKeymap = Proto template
                   [c ?>> return (LineWise, a x) | (c,a) <- moveUpDownCmdFM] ++
                   [do event c; c' <- textChar; return (r, a c' x) | (c,r,a) <- move2CmdFM] ++
                   [char 'G' ?>> return (LineWise, ArbMove (case cnt of
-                                                             Nothing -> botB >> moveToSol
-                                                             Just n  -> gotoLn n >> return ()))
-                  ,pString "gg" >> return (LineWise, ArbMove (gotoLn (fromMaybe 0 cnt) >> return ()))])
-        ]
+                                                             Nothing -> botB >> firstNonSpaceB
+                                                             Just n  -> gotoFNS n))
+                  ,pString "gg" >> return (LineWise, ArbMove $ gotoFNS $ fromMaybe 0 cnt)])]
+              where gotoFNS :: Int -> BufferM ()
+                    gotoFNS n = do
+                        gotoLn n
+                        firstNonSpaceB
 
      -- | movement commands (with exclusive cut/yank semantics)
      moveCmdFM_exclusive :: [(Event, (Int -> ViMove))]
