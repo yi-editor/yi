@@ -40,7 +40,6 @@ import Yi.Window (bufkey)
 
 --
 -- What's missing?
---   ESC should leave from the visual mode
 --   fancier :s// ==> missing /c, ...
 --   '.'
 --   @:
@@ -682,7 +681,9 @@ defKeymap = Proto template
                  char 'o'     ?>> beginIns self $ moveToEol >> insertB '\n',
                  char 'O'     ?>> beginIns self $ moveToSol >> insertB '\n' >> lineUp,
                  char 'c'     ?>> changeCmds,
-                 char 'C'     ?>> beginIns self $ cut Exclusive viMoveToEol, -- alias of "c$" FIXME
+
+                 -- FIXME: those two should take int argument
+                 char 'C'     ?>> beginIns self $ cut Exclusive viMoveToEol, -- alias of "c$"
                  char 'S'     ?>> beginIns self $ withBuffer0 moveToSol >> cut Exclusive viMoveToEol, -- non-linewise alias of "cc"
                  char 's'     ?>> beginIns self $ cut Exclusive (CharMove Forward), -- non-linewise alias of "cl"
                  char '/'     ?>>! ex_mode "/",
