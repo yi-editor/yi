@@ -1101,7 +1101,7 @@ percentMove = (Inclusive, ArbMove tryGoingToMatch)
 -- --------------------
 -- | Keyword
 kwd_mode :: VimMode
-kwd_mode = some ((ctrl $ char 'n') ?>> (write wordComplete)) >> deprioritize >> (write resetComplete)
+kwd_mode = some ((ctrl $ char 'n') ?>> write wordComplete) >> deprioritize >> write resetComplete
 -- 'adjustPriority' is there to lift the ambiguity between "continuing" completion
 -- and resetting it (restarting at the 1st completion).
 
