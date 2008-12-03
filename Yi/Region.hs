@@ -7,6 +7,7 @@ module Yi.Region
   (
    Region
   , emptyRegion
+  , regionIsEmpty
   , mkRegion, mkRegion', mkSizeRegion
   , regionStart
   , regionEnd
@@ -95,4 +96,5 @@ p `nearRegion` (Region _ start stop) = start <= p && p <= stop
 includedRegion :: Region -> Region -> Bool
 (Region _ start stop) `includedRegion` r = start `inRegion` r && stop `inRegion` r
 
-
+regionIsEmpty :: Region -> Bool
+regionIsEmpty (Region _ start stop) = start >= stop
