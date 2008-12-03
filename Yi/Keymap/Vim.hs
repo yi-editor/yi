@@ -107,7 +107,7 @@ defKeymap = Proto template
 
      -- | Replace mode is like insert, except it performs writes, not inserts
      rep_mode :: VimMode
-     rep_mode = write (setStatus ("-- REPLACE --", defaultStyle)) >> many rep_char >> leave >> (write leftB)
+     rep_mode = write (setStatus ("-- REPLACE --", defaultStyle)) >> many rep_char >> leave >> write (moveXorSol 1)
 
      -- | Reset the selection style to a character-wise mode 'SelectionStyle Character'.
      resetSelectStyle :: BufferM ()
@@ -1065,7 +1065,7 @@ leave = oneOf [spec KEsc, ctrl $ char 'c'] >> adjustPriority (-1) >> (write clrS
 
 -- | Insert mode is either insertion actions, or the meta (\ESC) action
 ins_mode :: ModeMap -> VimMode
-ins_mode self = write (setStatus ("-- INSERT --", defaultStyle)) >> many (v_ins_char self <|> kwd_mode) >> leave >> (write leftB)
+ins_mode self = write (setStatus ("-- INSERT --", defaultStyle)) >> many (v_ins_char self <|> kwd_mode) >> leave >> write (moveXorSol 1)
 
 beginIns :: (Show x, YiAction a x) => ModeMap -> a -> I Event Action ()
 beginIns self a = write a >> ins_mode self
