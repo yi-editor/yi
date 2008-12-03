@@ -222,7 +222,7 @@ defaultPublishedActions = M.fromList $
     , ("getSelectRegionB"       , box getSelectRegionB)
     , ("grepFind"               , box grepFind)
     , ("insertB"                , box insertB)
-    , ("ireadMode"              , box (withBuffer ireadMode >> nextArticle))
+    , ("iread"                  , box (withBuffer ireadMode >> nextArticle))
     , ("ireadSaveAsArticle"     , box saveAsNewArticle)
     , ("leftB"                  , box leftB)
     , ("linePrefixSelectionB"   , box linePrefixSelectionB)
