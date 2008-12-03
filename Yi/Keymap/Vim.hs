@@ -764,6 +764,7 @@ defKeymap = Proto template
                choice [spec KEnter       ?>>! ex_buffer_finish,
                        spec KTab         ?>>! completeMinibuffer,
                        spec KEsc         ?>>! closeBufferAndWindowE,
+                       (ctrl $ char 'h') ?>>! deleteB Character Backward,
                        spec KBS          ?>>! deleteB Character Backward,
                        spec KDel         ?>>! deleteB Character Forward,
                        (ctrl $ char 'p') ?>>! historyUp,
