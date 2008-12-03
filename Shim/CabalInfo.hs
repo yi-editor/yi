@@ -9,14 +9,14 @@ import Data.Maybe
 
 import Control.Applicative
 import Distribution.ModuleName
-import Distribution.PackageDescription 
+import Distribution.PackageDescription
 import qualified Distribution.PackageDescription as Library (Library(..))
 import qualified Distribution.PackageDescription as BuildInfo (BuildInfo(..))
 import System.Directory
 
 guessCabalFile :: String -> IO (Maybe FilePath)
 guessCabalFile sourcefile = do
-  let dir = takeDirectory $ dropFileName sourcefile 
+  let dir = takeDirectory $ dropFileName sourcefile
   recurseDir findCabalFile dir  -- "/bar/foo/s.hs" -> "/bar/foo"
  where findCabalFile dir = do
          logS $ "looking in: " ++ dir
@@ -31,10 +31,10 @@ guessCabalStanza projpath sourcefile pkg_descr = do
   matchingStanzas <- filterM matchingStanza allStanzas'
   let ((name, _, bi):_) = matchingStanzas ++ allStanzas'
   return (name, bi)
-  where allStanzas = 
-            [ (Nothing, concatMap moduleFiles (Library.exposedModules lib) , libBuildInfo lib) 
+  where allStanzas =
+            [ (Nothing, concatMap moduleFiles (Library.exposedModules lib) , libBuildInfo lib)
              | Just lib <- [library pkg_descr] ]
-         ++ [ (Just (exeName exe), [modulePath exe], buildInfo exe) 
+         ++ [ (Just (exeName exe), [modulePath exe], buildInfo exe)
              | exe <- executables pkg_descr ]
         moduleFiles modl = [toFilePath modl <.> ext | ext <- ["hs", "lhs"] ]
         allStanzas' = [(name, [projpath </> dir </> file | dir <- hsSourceDirs bi, file <- files ++ concatMap moduleFiles (BuildInfo.otherModules bi)], bi)

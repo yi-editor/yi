@@ -1,4 +1,4 @@
-{-# OPTIONS -fth -fglasgow-exts #-}
+{-# LANGUAGE TemplateHaskell #-}
 module Shim.MessagesTH where
 
 import Data.Char

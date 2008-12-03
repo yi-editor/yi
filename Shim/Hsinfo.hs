@@ -7,26 +7,24 @@
 module Shim.Hsinfo (ghcInit, findTypeOfPos, getSessionFor,
                     evaluate, findDefinition, load) where
 
-import Shim.SHM
-import Shim.Utils
-import Shim.ExprSearch
-import Shim.SessionMonad
-import qualified Shim.GhcCompat as GhcCompat
 import Shim.CabalInfo
+import Shim.ExprSearch
+import Shim.SHM
+import Shim.SessionMonad
+import Shim.Utils
+import qualified Shim.GhcCompat as GhcCompat
 
 import Control.Applicative
-import qualified Control.OldException as CE
-import qualified Data.Map as M
-import List ( isPrefixOf, find, nubBy,
-              sort, (\\), nub )
-import Directory
-import Time ( getClockTime, ClockTime )
-import System.FilePath ( takeDirectory, (</>), (<.>), dropFileName, takeExtension, equalFilePath )
-import System.Directory (canonicalizePath)
 import Control.Monad.State
+import Data.List ( isPrefixOf, find, nubBy, sort, (\\) )
 import Data.Maybe
+import System.Directory
+import System.Directory (canonicalizePath)
+import System.FilePath ( takeDirectory, (</>), (<.>), dropFileName, takeExtension, equalFilePath )
+import System.Time ( getClockTime, ClockTime )
 import qualified Data.ByteString.Lazy.Char8 as BC
 import qualified Data.Digest.Pure.MD5 as MD5
+import qualified Data.Map as M
 
 import qualified GHC
 

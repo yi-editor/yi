@@ -1,4 +1,4 @@
-{-# OPTIONS -fglasgow-exts #-}
+{-# LANGUAGE CPP #-}
 module Shim.SHM where
 
 import Data.Typeable
@@ -27,7 +27,7 @@ import Shim.GhcCompat
 --------------------------------------------------------------
 -- SHM Monad
 --------------------------------------------------------------
-                     
+
 
 data CompilationResult
   = FileCompiled

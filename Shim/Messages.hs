@@ -1,4 +1,4 @@
-{-# OPTIONS -fth #-}
+{-# LANGUAGE TemplateHaskell #-}
 module Shim.Messages where
 
 import Shim.MessagesTH
