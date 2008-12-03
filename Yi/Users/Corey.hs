@@ -11,6 +11,7 @@ import Yi
 import Yi.Keymap.Vim
 import Yi.Buffer.Indent (indentAsPreviousB)
 import Yi.Keymap.Keys
+import Yi.Misc (adjBlock)
 
 import qualified Yi.UI.Vty
 
@@ -53,7 +54,6 @@ extendedVimKeymap = defKeymap `override` \super self -> super
                     moveToEol
                     insertB '\n'
                     indentAsPreviousB
-                    return ()
                 ),
         v_ins_char = 
             (deprioritize >> v_ins_char super) 
@@ -63,7 +63,6 @@ extendedVimKeymap = defKeymap `override` \super self -> super
             <|> ( spec KEnter ?>>! do
                     insertB '\n'
                     indentAsPreviousB
-                    return ()
                 )
             -- I want softtabs to be deleted as if they are tabs. So if the 
             -- current col is a multiple of 4 and the previous 4 characters
@@ -77,6 +76,7 @@ extendedVimKeymap = defKeymap `override` \super self -> super
                                 else if "    " `isPrefixOf` reverse line 
                                     then 4
                                     else 1
+                    adjBlock (-i)
                     replicateM_ i $ deleteB Character Backward
                 )
             -- On starting to write a block comment I want the close comment 
