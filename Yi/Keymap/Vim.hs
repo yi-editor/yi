@@ -15,6 +15,7 @@ import Prelude (maybe, length, filter, map, drop, break, uncurry)
 
 import Data.Char
 import Data.List (nub, take, words)
+import Data.Maybe (fromMaybe)
 import Data.Prototype
 import Numeric (showHex, showOct)
 import System.IO (readFile)
@@ -188,7 +189,7 @@ defKeymap = Proto template
                   [char 'G' ?>> return (LineWise, ArbMove (case cnt of
                                                              Nothing -> botB >> moveToSol
                                                              Just n  -> gotoLn n >> return ()))
-                  ,pString "gg" >> return (LineWise, ArbMove (gotoLn 0 >> return ()))])
+                  ,pString "gg" >> return (LineWise, ArbMove (gotoLn (fromMaybe 0 cnt) >> return ()))])
         ]
 
      -- | movement commands (with exclusive cut/yank semantics)
