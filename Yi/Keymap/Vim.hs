@@ -399,8 +399,8 @@ defKeymap = Proto template
          ,(char 'N',      const $ withEditor $ continueSearching reverseDir)
          ,(char 'u',      withBuffer . flip replicateM_ undoB)
 
-         ,(char 'X',      withEditor . cut Exclusive . (Replicate $ Move Character Backward))
-         ,(char 'x',      withEditor . cut Exclusive . (Replicate $ Move Character Forward))
+         ,(char 'X',      withEditor . cut Exclusive . (Replicate $ CharMove Backward))
+         ,(char 'x',      withEditor . cut Exclusive . (Replicate $ CharMove Forward))
 
          ,(char 'p',      withEditor . flip replicateM_ pasteAfter)
 
