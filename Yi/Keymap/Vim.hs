@@ -556,13 +556,14 @@ defKeymap = Proto template
      cutRegion :: RegionStyle -> Region -> EditorM ()
      cutRegion regionStyle region | regionIsEmpty region = return ()
                                   | otherwise            = do
-       txt <- withBuffer0 $ do
+       (txt, rowsCut) <- withBuffer0 $ do
          txt <- readRegionB region
-         adjBlock $ negate $ length txt
+         let rowsCut = length $ filter (=='\n') txt
+         when (rowsCut==0) $ adjBlock $ negate $ length txt
          deleteRegionB region
-         return txt
+         return (txt, rowsCut)
        setRegE $ if (regionStyle == LineWise) then '\n':txt else txt
-       let rowsCut = length (filter (== '\n') txt)
+
        when (rowsCut > 2) $ printMsg $ show rowsCut ++ " fewer lines"
 
      cut :: RegionStyle -> ViMove -> EditorM ()
@@ -590,7 +591,7 @@ defKeymap = Proto template
      pasteAfter = do
        txt' <- getRegE
        withBuffer0 $ do
-         adjBlock $ length txt'
+         when ('\n' `notElem` txt') $ adjBlock $ length txt'
          case txt' of
            '\n':txt -> moveToEol >> rightB >> insertN txt >> leftN (length txt)
            _      -> moveXorEol 1 >> insertN txt' >> leftB
@@ -599,7 +600,7 @@ defKeymap = Proto template
      pasteBefore = do
        txt' <- getRegE
        withBuffer0 $ do
-         adjBlock $ length txt'
+         when ('\n' `notElem` txt') $ adjBlock $ length txt'
          case txt' of
            '\n':txt -> moveToSol >> insertN txt >> leftN (length txt)
            _      -> insertN txt' >> leftB
