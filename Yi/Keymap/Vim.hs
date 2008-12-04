@@ -375,6 +375,11 @@ defKeymap = Proto template
        printMsg $ directionElim dir '?' '/' : maybe "" fst m
        viSearch "" [] dir
 
+     joinLinesB :: BufferM ()
+     joinLinesB = do moveToEol
+                     writeB ' '
+                     deleteN =<< indentOfB =<< nelemsB maxBound =<< pointB
+
      -- | cmd mode commands
      -- An event specified paired with an action that may take an integer argument.
      -- Usually the integer argument is the number of times an action should be repeated.
@@ -392,7 +397,7 @@ defKeymap = Proto template
          ,(ctrl $ char 'z',    const suspendEditor)
          ,(ctrl $ char ']',    const gotoTagCurrentWord)
          ,(char 'D',      withEditor . cut Exclusive . ArbMove . viMoveToNthEol)
-         ,(char 'J',      const (withBuffer (moveToEol >> deleteN 1)))    -- the "\n"
+         ,(char 'J',      const $ withBuffer $ joinLinesB)
          ,(char 'Y',      \n -> withEditor $ do
                                     let move = Replicate (Move Line Forward) n
                                     region <- withBuffer0 $ regionOfViMove move LineWise
