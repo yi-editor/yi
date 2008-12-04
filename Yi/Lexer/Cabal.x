@@ -1,9 +1,10 @@
 -- -*- haskell -*- 
 --
--- Lexical syntax for illiterate Haskell 98.
+-- Lexical syntax for Cabal files
 --
--- (c) Simon Marlow 2003, with the caveat that much of this is
--- translated directly from the syntax in the Haskell 98 report.
+-- History:
+--   Adapted from the Haskell lexical syntax by Allan Clark
+--   Adapted to follow more closely the Cabal tool by Nicolas Pouillard
 --
 
 {
@@ -50,7 +51,7 @@ $symchar   = [$symbol \:]
 $nl        = [\n\r]
 
 @reservedid = 
-  GPL
+   GPL
   |LGPL
   |BSD3
   |BSD4
@@ -58,42 +59,70 @@ $nl        = [\n\r]
   |AllRightsReserved
   |OtherLicense
   |if
-  |flag
+  |[Ff]lag
+  |else
+  |[Oo][Ss]
+  |[Aa]rch
+  |[Tt]rue
+  |[Ff]alse
+  |[Ii]mpl
 
 @fieldid =
-  [Nn]ame
-  |[Vv]ersion
-  |[Cc]abal\-Version
-  |[Cc]abal\-version
-  |[Dd]escription
-  |[Ll]icense
-  |[Ll]icense\-file
-  |[Aa]uthor
-  |[Mm]aintainer
+   [Aa]uthor
+  |[Bb]ug\-[Rr]eports
   |[Bb]uild\-[Dd]epends
   |[Bb]uild\-[Tt]ype
-  |[Ee]xecutable
-  |[Mm]ain\-Is
-  |[Mm]ain\-is
-  |[Oo]ther\-Modules
-  |[Oo]ther\-modules
-  |[Gg]hc\-Options
-  |[Gg]hc\-options
-  |[Cc]opyright
-  |[Hh]omepage
-  |[Ss]ynopsis
-  |[Ee]xposed\-Modules
-  |[Ee]xposed\-modules
-  |[Ii]nclude\-Dirs
-  |[Ii]nclude\-dirs
-  |[Cc]\-Sources
-  |[Cc]\-sources
-  |[Ee]xtra\-Libraries
-  |[Ee]xtra\-libraries
-  |[Ee]xtensions
+  |[Bb]uild\-[Tt]ools
+  |[Bb]uildable
+  |[Cc]\-[Ss]ources
+  |[Cc][Cc]\-[Oo]ptions
+  |[Cc]abal\-[Vv]ersion
   |[Cc]ategory
-  |[Bb]uildabl
+  |[Cc]opyright
+  |[Dd]ata\-[Dd]ir
+  |[Dd]ata\-[Ff]iles
+  |[Dd]efault
+  |[Dd]escription
+  |[Ee]xecutable
+  |[Ee]xposed
+  |[Ee]xposed\-[Mm]odules
+  |[Ee]xtensions
+  |[Ee]xtra\-[Ll]ibraries
+  |[Ee]xtra\-[Ll]ib\-[Dd]irs
   |[Ee]xtra\-[Ss]ource\-[Ff]iles
+  |[Ee]xtra\-[Tt]mp\-[Ff]iles
+  |[Ff]rameworks
+  |[Gg][Hh][Cc]\-[Oo]ptions
+  |[Gg][Hh][Cc]\-[Pp]rof\-[Oo]ptions
+  |[Gg][Hh][Cc]\-[Ss]hared\-[Oo]ptions
+  |[Hh][Uu][Gg][Ss]\-[Oo]ptions
+  |[Nn][Hh][Cc]98\-[Oo]ptions
+  |[Hh]omepage
+  |[Hh][Ss]\-[Ss]ource\-[Dd]irs
+  |[Ii]nclude\-[Dd]irs
+  |[Ii]ncludes
+  |[Ii]nstall\-[Ii]ncludes
+  |[Ll]icense
+  |[Ll]icense\-[Ff]ile
+  |[Ll][Dd]\-[Oo]ptions
+  |[Mm]ain\-[Ii]s
+  |[Mm]aintainer
+  |[Nn]ame
+  |[Oo]ther\-[Mm]odules
+  |[Pp]ackage\-[Uu][Rr][Ll]
+  |[Pp]kgconfig\-[Dd]epends
+  |[Ss]tability
+  |[Ss]ynopsis
+  |[Tt]ested\-[Ww]ith
+  |[Vv]ersion
+
+@sourcerepofieldid =
+   [Tt]ype
+  |[Ll]ocation
+  |[Mm]odule
+  |[Bb]ranch
+  |[Tt]ag
+  |[Ss]ubdir
 
 @reservedop =
         ">" | ">=" | "<" | "<="
@@ -106,7 +135,6 @@ $nl        = [\n\r]
 @decimal     = $digit+
 @octal       = $octit+
 @hexadecimal = $hexit+
-@exponent    = [eE] [\-\+] @decimal
 
 $cntrl   = [$large \@\[\\\]\^\_]
 @ascii   = \^ $cntrl | NUL | SOH | STX | ETX | EOT | ENQ | ACK
@@ -118,26 +146,13 @@ $charesc = [abfnrtv\\\"\'\&]
 @gap     = \\ $whitechar+ \\
 @string  = $graphic # [\"\\] | " " | @escape | @gap
 
-haskell :-
-
-<0> $white+                                     { c defaultStyle } -- whitespace
-
-
--- I'm allowing full haskell style comments here, I think that maybe
--- in the future cabal will allow this too so ... Also I don't think it
--- does significant harm at the moment
-<nestcomm> {
-  "{-"                                          { m (subtract 1) blockCommentStyle }
-  "-}"                                          { m (+1) blockCommentStyle }
-  $white+                                       { c defaultStyle } -- whitespace
-  .                                             { c blockCommentStyle }
-}
+main :-
 
 <0> {
-  "--"\-* $symbol $symchar*                     { c defaultStyle }
-  "--"\-*[^\n]*                                 { c commentStyle }
+ [\ \t]+                                        { c defaultStyle }
+ $nl+                                           { c defaultStyle }
 
- "{-"                                           { m (subtract 1) blockCommentStyle }
+ ^ [\ \t]* "--" [^$nl]* $                       { c commentStyle }
 
  $special                                       { c defaultStyle }
 
@@ -146,6 +161,7 @@ haskell :-
  @conid                                         { c defaultStyle }
 
  @fieldid ":"                                   { c typeStyle }
+ @sourcerepofieldid ":"                         { c typeStyle }
 
  @reservedop                                    { c operatorStyle }
  @varsym                                        { c operatorStyle }
@@ -155,8 +171,7 @@ haskell :-
   | 0[oO] @octal
   | 0[xX] @hexadecimal                          { c defaultStyle }
 
- @decimal \. @decimal @exponent?
-  | @decimal @exponent                          { c defaultStyle }
+ @decimal \. @decimal                           { c defaultStyle }
 
  \' ($graphic # [\'\\] | " " | @escape) \'      { c stringStyle }
  \" @string* \"                                 { c stringStyle }
@@ -164,14 +179,13 @@ haskell :-
 }
 
 {
-type HlState = Int
+type HlState = ()
 type Token = StyleName
 
-stateToInit x | x < 0     = nestcomm
-              | otherwise = 0
+stateToInit () = 0
 
 initState :: HlState
-initState = 0
+initState = ()
 
 #include "alex.hsinc"
 }
