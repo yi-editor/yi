@@ -23,9 +23,26 @@ endif
 # Variable assignments of different forms.
 EXTERNAL_PREFIX_DIR := ../build/linux$(TARGET_ARCH)/external
 
+# The include in the following variable assignment should not be recognized as an include
+# directive.
+
 INCLUDE_DIRS := $(INCLUDE_DIRS) \
 . \
 $(EXTERNAL_PREFIX_DIR)/include \
+
+# include test start
+# However, the lines up to the 'include test end' should all be recognized as include 
+# directives
+include foo
+-include baz
+   include zup asd ggg
+   -include fub fab fiz
+
+# The following line contains variable expansions inside the include directive. They 
+# should be recognized
+ include *.mk $(BACON) $(shell echo kittens) 
+
+# include test end
 
 ifndef $(BUILD_VARIANT)
   BUILD_VARIANT := debug
