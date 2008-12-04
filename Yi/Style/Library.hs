@@ -67,5 +67,6 @@ darkBlueTheme = defaultTheme `override` \super _ -> super
   , commentStyle       = withFg darkred
   , keywordStyle       = withFg brown
   , stringStyle        = withFg purple
-  , operatorStyle      = withFg white
+  , variableStyle      = withFg cyan
+  , operatorStyle      = withFg brown
   }
