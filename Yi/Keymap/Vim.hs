@@ -465,21 +465,22 @@ defKeymap = Proto template
          ,(map char "==", const $ withBuffer $ adjIndent IncreaseCycle)
          ]
 
-     zScrollCmdFM :: [([Event], Maybe Int -> YiM ())]
+     zScrollCmdFM :: [([Event], Maybe Int -> BufferM ())]
      zScrollCmdFM =
-         [(map char "zz", mayMove scrollToCursorB)
-         ,(map char "z.", mmGoFNS scrollToCursorB)
-         ,(map char "zt", mayMove scrollCursorToTopB)
-         ,(map char "z+", mmGoFNS scrollCursorToTopB)
-         ,(map char "zb", mayMove scrollCursorToBottomB)
-         ,(map char "z-", mmGoFNS scrollCursorToBottomB)]
-             where mayMove :: BufferM () -> Maybe Int -> YiM ()
-                   mayMove scroll cnt = withEditor $ withBuffer0 $ do
+         [([char 'z', spec KEnter], mmGoFNS scrollCursorToTopB)
+         ,(map char "zt",           mmGoSC  scrollCursorToTopB)
+         ,(map char "z.",           mmGoFNS scrollToCursorB)
+         ,(map char "zz",           mmGoSC  scrollToCursorB)
+         ,(map char "z-",           mmGoFNS scrollCursorToBottomB)
+         ,(map char "zb",           mmGoSC  scrollCursorToBottomB)]
+             where mayMove :: BufferM () -> Maybe Int -> BufferM ()
+                   mayMove scroll cnt = do
                       case cnt of
                          Just n -> gotoLn n >> return ()
                          Nothing -> return ()
                       scroll
                    mmGoFNS scroll = mayMove (scroll >> firstNonSpaceB)
+                   mmGoSC  scroll = movingToPrefCol . mayMove scroll
 
      -- | So-called 'operators', which take movement actions as arguments.
      --
