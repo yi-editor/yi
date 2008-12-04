@@ -70,7 +70,7 @@ data ViMove = Move TextUnit Direction
             | NoMove
 
 
-mkKeymap :: (Proto ModeMap) -> VimMode
+mkKeymap :: Proto ModeMap -> VimMode
 mkKeymap = v_top_level . extractValue
 
 keymap :: VimMode
@@ -80,21 +80,18 @@ keymap = mkKeymap defKeymap
 -- to the different modes of vi. Each mode is in turn broken up into
 -- separate VimProcs for each phase of key input in that mode.
 
-data ModeMap = ModeMap {
-      -- | Top level mode
-      v_top_level :: VimMode,
+data ModeMap = ModeMap { -- | Top level mode
+                         v_top_level :: VimMode
 
-      -- | vim insert mode
-      v_ins_char :: VimMode
-    }
+                         -- | vim insert mode
+                       , v_ins_char :: VimMode
+                       }
 
 defKeymap :: Proto ModeMap
 defKeymap = Proto template
   where 
-    template self = ModeMap {
-                   v_top_level = def_top_level,
-                   v_ins_char = def_ins_char
-                 }
+    template self = ModeMap { v_top_level = def_top_level
+                            , v_ins_char  = def_ins_char }
      where
      -- | Top level consists of simple commands that take a count arg,
      -- the replace cmd, which consumes one char of input, and commands
@@ -121,7 +118,7 @@ defKeymap = Proto template
      vis_mode selStyle = do
        write (setVisibleSelection True >> pointB >>= setSelectionMarkPointB)
        core_vis_mode selStyle
-       write (clrStatus >> withBuffer0 (setVisibleSelection False) >> withBuffer0 resetSelectStyle)
+       write (clrStatus >> withBuffer0 (setVisibleSelection False >> resetSelectStyle))
 
      core_vis_mode :: SelectionStyle -> VimMode
      core_vis_mode selStyle = do
@@ -189,9 +186,7 @@ defKeymap = Proto template
                   [char 'G' ?>> return (LineWise, ArbMove $ maybe (botB >> firstNonSpaceB) gotoFNS cnt)
                   ,pString "gg" >> return (LineWise, ArbMove $ gotoFNS $ fromMaybe 0 cnt)])]
               where gotoFNS :: Int -> BufferM ()
-                    gotoFNS n = do
-                        gotoLn n
-                        firstNonSpaceB
+                    gotoFNS n = gotoLn n >> firstNonSpaceB
 
      -- | movement commands (with exclusive cut/yank semantics)
      moveCmdFM_exclusive :: [(Event, (Int -> ViMove))]
@@ -208,8 +203,8 @@ defKeymap = Proto template
          ,(spec KHome,      sol)
          ,(char '^',        const $ ArbMove firstNonSpaceB)
          ,(char '|',        ArbMove . moveToColB . pred)
-         ,(char '$',  eol)
-         ,(spec KEnd, eol)
+         ,(char '$',        eol)
+         ,(spec KEnd,       eol)
           -- words
          ,(char 'w',       Replicate $ GenMove unitViWord (Backward,InsideBound) Forward)
          ,(char 'W',       Replicate $ GenMove unitViWORD (Backward,InsideBound) Forward)
@@ -251,7 +246,7 @@ defKeymap = Proto template
      regionOfViMove :: ViMove -> RegionStyle -> BufferM Region
      regionOfViMove move regionStyle =
        join $ mkRegionOfStyleB <$> pointB
-                               <*> (savingPointB (viMove move >> pointB))
+                               <*> savingPointB (viMove move >> pointB)
                                <*> pure regionStyle
 
      -- viMove Normal Mode
@@ -291,9 +286,9 @@ defKeymap = Proto template
          ,(ctrl $ char 'n', down)
          ,(spec KEnter,     down)
           -- misc
-         ,(char 'H',        \i -> ArbMove (downFromTosB (i - 1)))
+         ,(char 'H',        ArbMove . downFromTosB . pred)
          ,(char 'M',        const $ ArbMove middleB)
-         ,(char 'L',        \i -> ArbMove (upFromBosB (i - 1)))
+         ,(char 'L',        ArbMove . upFromBosB . pred)
          ]
          where
              up   = Replicate (Move VLine Backward)
@@ -415,7 +410,7 @@ defKeymap = Proto template
 
          ,(char 'P',      withEditor . flip replicateM_ pasteBefore)
 
-         ,(spec KPageUp, withBuffer . upScreensB)
+         ,(spec KPageUp,   withBuffer . upScreensB)
          ,(spec KPageDown, withBuffer . downScreensB)
          ,(char '*',      const $ withEditor $ searchCurrentWord Forward)
          ,(char '#',      const $ withEditor $ searchCurrentWord Backward)
@@ -454,12 +449,12 @@ defKeymap = Proto template
 
          -- since we don't have vertical splitting,
          -- these moving can be done using next/prev.
-         ,([ctrlW,spec KDown], const $ withEditor nextWinE)
-         ,([ctrlW,spec KUp], const $ withEditor prevWinE)
+         ,([ctrlW,spec KDown],  const $ withEditor nextWinE)
+         ,([ctrlW,spec KUp],    const $ withEditor prevWinE)
          ,([ctrlW,spec KRight], const $ withEditor nextWinE)
-         ,([ctrlW,spec KLeft], const $ withEditor prevWinE)
-         ,([ctrlW,char 'k'],   const $ withEditor prevWinE)
-         ,([ctrlW,char 'j'],   const $ withEditor nextWinE)    -- Same as the above pair, when you're a bit slow to release ctl.
+         ,([ctrlW,spec KLeft],  const $ withEditor prevWinE)
+         ,([ctrlW,char 'k'],    const $ withEditor prevWinE)
+         ,([ctrlW,char 'j'],    const $ withEditor nextWinE)    -- Same as the above pair, when you're a bit slow to release ctl.
          ,([ctrlW, ctrl $ char 'k'], const $ withEditor prevWinE)
          ,([ctrlW, ctrl $ char 'j'], const $ withEditor nextWinE)
          ,(map char ">>", withBuffer . shiftIndentOfLine)
@@ -550,8 +545,8 @@ defKeymap = Proto template
      select_any_unit f = do 
        outer <- (char 'a' ?>> pure True) <|> (char 'i' ?>> pure False)
        choice [ char c ?>> write (f =<< withBuffer0 (regionOfNonEmptyB $ unit outer))
-                | (c, unit) <- char2unit]
-               
+              | (c, unit) <- char2unit]
+
 
      regionOfSelection :: BufferM (RegionStyle, Region)
      regionOfSelection = do
@@ -605,9 +600,9 @@ defKeymap = Proto template
        txt <- getRegE
        withBuffer0 $ do
          selStyle <- getDynamicB
-         start <- getSelectionMarkPointB
-         stop <- pointB
-         region <- mkRegionOfStyleB start stop $ selection2regionStyle $ selStyle
+         start    <- getSelectionMarkPointB
+         stop     <- pointB
+         region   <- mkRegionOfStyleB start stop $ selection2regionStyle $ selStyle
          moveTo $ regionStart region
          deleteRegionB region
          insertN txt
@@ -619,7 +614,7 @@ defKeymap = Proto template
          when ('\n' `notElem` txt') $ adjBlock $ length txt'
          case txt' of
            '\n':txt -> moveToEol >> rightB >> insertN txt >> leftN (length txt)
-           _      -> moveXorEol 1 >> insertN txt' >> leftB
+           _        -> moveXorEol 1 >> insertN txt' >> leftB
 
      pasteBefore :: EditorM ()
      pasteBefore = do
@@ -628,7 +623,7 @@ defKeymap = Proto template
          when ('\n' `notElem` txt') $ adjBlock $ length txt'
          case txt' of
            '\n':txt -> moveToSol >> insertN txt >> leftN (length txt)
-           _      -> insertN txt' >> leftB
+           _        -> insertN txt' >> leftB
 
      switchCaseChar :: Char -> Char
      switchCaseChar c = if isUpper c then toLower c else toUpper c
@@ -732,7 +727,7 @@ defKeymap = Proto template
        write $ do
          withBuffer0 $ viMoveNM preMove
          cut regionStyle move
-         when (regionStyle == LineWise) $ withBuffer0 (insertB '\n' >> leftB)
+         when (regionStyle == LineWise) $ withBuffer0 $ insertB '\n' >> leftB
        ins_mode self
 
      ins_rep_char :: VimMode
@@ -885,7 +880,7 @@ defKeymap = Proto template
                  else closeWindow
            
            needsAWindowB = do
-             isWorthless <- gets (\b -> file b == Nothing)
+             isWorthless <- gets ((==Nothing).file)
              canClose <- isUnchangedB
              if isWorthless || canClose then return False else return True
            
@@ -1106,7 +1101,6 @@ percentMove = (Inclusive, ArbMove tryGoingToMatch)
               p <- pointB
               foundMatch <- goToMatch
               when (not foundMatch) $ moveTo p
-              return ()
           go dir a b = goUnmatchedB dir a b >> return True
           goToMatch = do
             c <- readB
@@ -1119,7 +1113,7 @@ percentMove = (Inclusive, ArbMove tryGoingToMatch)
                       _   -> otherChar
           otherChar = do eof <- atEof
                          eol <- atEol
-                         if (eof || eol)
+                         if eof || eol
                              then return False
                              else rightB >> goToMatch -- search for matchable character after the cursor
 
