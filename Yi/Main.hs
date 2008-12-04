@@ -166,7 +166,9 @@ nilKeymap = choice [
 
 defaultConfig :: Config
 defaultConfig = 
-  Config { startFrontEnd    = snd (head availableFrontends)
+  Config { startFrontEnd    = case availableFrontends of
+             [] -> error "panic: no frontend compiled in! (configure with -fvty or another frontend.)"
+             ((_,f):_) -> f
          , configUI         =  UIConfig 
            { configFontSize = Nothing
            , configFontName = Nothing
