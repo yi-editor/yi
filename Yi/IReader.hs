@@ -1,3 +1,8 @@
+-- | This module defines a list type and operations on it; it further
+-- provides functions which write in and out the list.
+-- The goal is to make it easy for the user to store a large number of text buffers
+-- and cycle among them, making edits as she goes. The idea is inspired by
+-- \"incremental reading\", see <http://en.wikipedia.org/wiki/Incremental_reading>.
 module Yi.IReader where
 
 import Control.Monad.State
@@ -12,12 +17,11 @@ import Yi.Buffer.Normal
 import Yi.Buffer.HighLevel
 import qualified System.IO as IO
 
-
 type Article = String
 type ArticleDB = [String]
 
 -- | Get the first article in the list. We use the list to express relative priority;
--- the first is the most, the last least. We then just cycle through - everybody gets equal time.
+-- the first is the most, the last least. We then just cycle through - every article gets equal time.
 getLatestArticle :: ArticleDB -> Article
 getLatestArticle [] = ""
 getLatestArticle adb = head adb
@@ -36,9 +40,11 @@ insertArticle = flip (:)
 deleteArticle :: ArticleDB -> Article -> ArticleDB
 deleteArticle = flip delete
 
+-- | Serialize given 'ArticleDB' out.
 writeDB :: ArticleDB -> YiM ()
 writeDB adb = io $ join $ liftM (flip writeFile $ show adb) $ dbLocation
 
+-- | Read in database from 'dbLocation' and then parse it into an 'ArticleDB'.
 readDB :: YiM ArticleDB
 readDB = io $ rddb `catch` (\_ -> return (return []))
          where rddb = do db <- liftM readfile $ dbLocation
@@ -49,6 +55,7 @@ readDB = io $ rddb `catch` (\_ -> return (return []))
                hGetContents :: IO.Handle -> IO.IO String
                hGetContents h  = IO.hGetContents h >>= \s -> length s `seq` return s
 
+-- | The canonical location. We assume \~\/.yi has been set up already.
 dbLocation :: IO FilePath
 dbLocation = getHomeDirectory >>= \home -> return (home ++ "/.yi/articles.db")
 
@@ -69,7 +76,7 @@ setDisplayedArticle newdb = do let nextarticle = getLatestArticle newdb
                                                -- to bottom?
 
 -- | Go to next one. This ignores the buffer, but it doesn't remove anything from the database.
--- The ordering does change, however.
+-- However, the ordering does change.
 nextArticle :: YiM ()
 nextArticle = do (oldb,_) <- oldDbNewArticle
                  -- Ignore buffer, just set the first article last
