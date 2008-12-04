@@ -16,6 +16,21 @@ import Yi.Style
 import qualified Yi.Style as Style
 }
 
+@varAssignOp = 
+      "="
+    | "?="
+    | "+="
+    | ":="
+
+-- The documentation implies that {,},(, and ) can be used as single character variable names.
+-- "A variable name may be any sequence of characters not containing `:', `#', `=', or leading or
+-- trailing whitespace."
+-- http://www.gnu.org/software/make/manual/make.html#Using-Variables
+-- However when I try to feed GNU makefile containing such weird variable names GNU make fails.
+-- Though the specification does leave limiting the scope of valid variable names that as an open
+-- option for "the future" 
+$varChar = $printable # [\: \# \= \ \{ \} \( \)]
+
 @directives = 
       include 
     | if
@@ -52,6 +67,20 @@ make :-
     --  Another not preceeded by a "-"
     \-?"include"
         { m (\_ -> IncludeDirective) Style.keywordStyle }
+
+    -- A variable expansion outside of a prerequisite can occur in three different forms.
+    -- Inside a prerequisite they can occur in four different forms.
+    -- TODO: Highlight the automatic variables differently.
+    -- 1. Single character variable name
+    --\$$varChar
+    --    { c Style.variableStyle }
+
+    -- 2 & 3: Parentheses or brackets could indicate a variable expansion or function call.
+    "${"
+        { m (\_ -> ComplexExpansion '}') Style.operatorStyle }
+    "$(" 
+        { m (\_ -> ComplexExpansion ')') Style.operatorStyle }
+
     \#
         { m (\_ -> InComment) Style.commentStyle }
     \n
@@ -79,6 +108,27 @@ make :-
         { c Style.stringStyle }
 }
 
+-- A variable expansion that starts with a parentheses or bracket could be a function call. For now
+-- everything up to the close character is considered part of the variable name.
+<complexExpansion>
+{
+    $white+ { c Style.defaultStyle }
+    ./
+        {
+            \state preInput _ _ ->
+                case state of
+                    ComplexExpansion endChar ->
+                        let currentChar = head $ alexCollectChar preInput
+                        in if (currentChar == endChar) then True else False
+                    _ -> False
+        }
+        {
+            m (\_ -> TopLevel) Style.operatorStyle
+        }
+    . 
+        { c Style.variableStyle }
+}
+
 <comment>
 {
     -- Comments can be continued to the next line with a trailing slash.
@@ -96,10 +146,12 @@ data HlState =
       TopLevel 
     | InComment
     | IncludeDirective
+    | ComplexExpansion Char
 
 stateToInit TopLevel = 0
 stateToInit InComment = comment
 stateToInit IncludeDirective = includeDirective
+stateToInit (ComplexExpansion _) = complexExpansion
 
 initState :: HlState
 initState = TopLevel
