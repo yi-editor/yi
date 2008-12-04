@@ -207,7 +207,7 @@ defKeymap = Proto template
          -- eol / sol / special column
          ,(spec KHome,      sol)
          ,(char '^',        const $ ArbMove firstNonSpaceB)
-         ,(char '|',        \i -> SeqMove viMoveToSol (Replicate (CharMove Forward) (i-1)))
+         ,(char '|',        ArbMove . moveToColB . pred)
          ,(char '$',  eol)
          ,(spec KEnd, eol)
           -- words
