@@ -19,8 +19,10 @@ module Yi.Buffer.Misc
   , curCol
   , sizeB
   , pointB
+  , solPointB
   , markLines
   , moveTo
+  , moveToColB
   , lineMoveRel
   , lineUp
   , lineDown
@@ -68,6 +70,7 @@ module Yi.Buffer.Misc
   , getModeLine
   , getPercent
   , forgetPreferCol
+  , movingToPrefCol
   , markSavedB
   , addOverlayB
   , delOverlayB
@@ -792,20 +795,24 @@ setPrefCol = setA preferColA
 -- Returns the actual difference in lines which we moved which
 -- may be negative if the requested line difference is negative.
 lineMoveRel :: Int -> BufferM Int
-lineMoveRel n = do
+lineMoveRel = movingToPrefCol . gotoLnFrom
+
+movingToPrefCol :: BufferM a -> BufferM a
+movingToPrefCol f = do
   prefCol <- getA preferColA
-  targetCol <- case prefCol of
-    Nothing -> curCol
-    Just x -> return x
-  ofs <- gotoLnFrom n
-  gotoLnFrom 0 -- make sure we are at the start of line.
-  solPnt <- pointB
+  targetCol <- maybe curCol return prefCol
+  r <- f
+  moveToColB targetCol
+  setPrefCol $ Just targetCol
+  return r
+
+moveToColB :: Int -> BufferM ()
+moveToColB targetCol = do
+  solPnt <- solPointB
   chrs <- nelemsB maxBound solPnt -- get all chars in the buffer, lazily.
   let cols = scanl colMove 0 chrs    -- columns corresponding to the char
-  let toSkip = takeWhile (\(char,col) -> char /= '\n' && col < targetCol) (zip chrs cols)
-  moveN (length toSkip)
-  setPrefCol (Just targetCol)
-  return ofs
+      toSkip = takeWhile (\(char,col) -> char /= '\n' && col < targetCol) (zip chrs cols)
+  moveTo =<< queryBuffer (findNextChar (length toSkip) solPnt)
 
 forgetPreferCol :: BufferM ()
 forgetPreferCol = setPrefCol Nothing
@@ -861,7 +868,11 @@ curCol = do
 colMove :: Int -> Char -> Int
 colMove col '\t' = (col + 7) `mod` 8
 colMove col _    = col + 1
-        
+
+solPointB :: BufferM Point
+solPointB = do
+  p <- pointB
+  queryBuffer $ solPointI p
 
 -- | Go to line indexed from current point
 -- Returns the actual moved difference which of course

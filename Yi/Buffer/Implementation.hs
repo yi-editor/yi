@@ -23,6 +23,7 @@ module Yi.Buffer.Implementation
   , nelemsBI'
   , sizeBI
   , newBI
+  , solPointI
   , gotoLnRelI
   , charsFromSolBI
   , regexRegionBI
@@ -330,6 +331,9 @@ newLine = ord' '\n'
 lineAt :: Point -> BufferImpl syntax -> Int
 lineAt point fb = 1 + F.count newLine (F.take (fromPoint point) (mem fb))
 
+-- | Get begin of the line relatively to @point@.
+solPointI :: Point -> BufferImpl syntax -> Point
+solPointI (Point point) = Point . maybe 0 (+1) . F.elemIndexEnd newLine . F.take point . mem
 
 -- | Get the point at line number @n@, relatively from @point@. @0@ will go to
 -- the start of this line. Returns the actual line difference we went
