@@ -84,14 +84,14 @@ ocamlMode = fundamentalMode
 perlMode = fundamentalMode
   {
     modeName = "perl",
-    modeApplies = anyExtension ["pl", "pm"],
+    modeApplies = anyExtension ["t", "pl", "pm"],
     modeHL = ExtHL $ mkHighlighter' Perl.initState Perl.alexScanToken id
   }
 
 pythonMode = fundamentalMode
   {
     modeName = "python",
-    modeApplies = anyExtension ["t", "py"], 
+    modeApplies = anyExtension ["py"], 
     modeHL = ExtHL $ mkHighlighter' Python.initState Python.alexScanToken id
   }
 
