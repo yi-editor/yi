@@ -35,12 +35,16 @@ $(EXTERNAL_PREFIX_DIR)/include \
 # directives
 include foo
 -include baz
-   include zup asd ggg
+   include zup asd ggg # This should be parsed as a comment. 
    -include fub fab fiz
 
 # The following line contains variable expansions inside the include directive. They 
 # should be recognized
- include *.mk $(BACON) $(shell echo kittens) 
+ include $(BACON) $(shell echo kittens) 
+ 
+# The following include directive includes filename globs. I'd like these to be recognized
+# as different from string literals
+-include *.mk disco*bar
 
 # include test end
 
