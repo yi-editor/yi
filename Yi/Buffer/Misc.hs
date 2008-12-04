@@ -19,6 +19,7 @@ module Yi.Buffer.Misc
   , curCol
   , sizeB
   , pointB
+  , markLines
   , moveTo
   , lineMoveRel
   , lineUp
@@ -645,6 +646,19 @@ curLn :: BufferM Int
 curLn = do 
     p <- pointB
     queryBuffer (lineAt p)
+
+-- | Return line numbers of (from, ins, sel, to) marks
+markLines :: BufferM (Int, Int, Int, Int)
+markLines = do
+    MarkSet from ins sel to <- askMarks
+    f <- getLn from
+    i <- getLn ins
+    s <- getLn sel
+    t <- getLn to
+    return (f, i, s, t)
+        where getLn m = getMarkPointB m >>= pointLine
+              pointLine p = queryBuffer $ lineAt p
+
 
 -- | Go to line number @n@. @n@ is indexed from 1. Returns the
 -- actual line we went to (which may be not be the requested line,

@@ -319,6 +319,7 @@ defKeymap = Proto template
         choice $
           [c ?>>! action i | (c,action) <- singleCmdFM ] ++
           [events evs >>! action i | (evs, action) <- multiCmdFM ] ++
+          [events evs >>! action cnt | (evs, action) <- zScrollCmdFM ] ++
           [char 'r' ?>> textChar >>= write . savingPointB . writeN . replicate i
           ,pString "gt" >>! nextTabE
           ,pString "gT" >>! previousTabE]
@@ -383,6 +384,8 @@ defKeymap = Proto template
          ,(ctrl $ char 'f',    withBuffer . downScreensB)
          ,(ctrl $ char 'u',    withBuffer . vimScrollByB (negate . (`div` 2)))
          ,(ctrl $ char 'd',    withBuffer . vimScrollByB (`div` 2))
+         ,(ctrl $ char 'y',    withBuffer . vimScrollB . negate)
+         ,(ctrl $ char 'e',    withBuffer . vimScrollB)
          ,(ctrl $ char 'g',    const viFileInfo)
          ,(ctrl $ char 'l',    const refreshEditor)
          ,(ctrl $ char 'r',    withBuffer . flip replicateM_ redoB)
@@ -461,6 +464,22 @@ defKeymap = Proto template
          ,(map char "ga", const $ viCharInfo)
          ,(map char "==", const $ withBuffer $ adjIndent IncreaseCycle)
          ]
+
+     zScrollCmdFM :: [([Event], Maybe Int -> YiM ())]
+     zScrollCmdFM =
+         [(map char "zz", mayMove scrollToCursorB)
+         ,(map char "z.", mmGoFNS scrollToCursorB)
+         ,(map char "zt", mayMove scrollCursorToTopB)
+         ,(map char "z+", mmGoFNS scrollCursorToTopB)
+         ,(map char "zb", mayMove scrollCursorToBottomB)
+         ,(map char "z-", mmGoFNS scrollCursorToBottomB)]
+             where mayMove :: BufferM () -> Maybe Int -> YiM ()
+                   mayMove scroll cnt = withEditor $ withBuffer0 $ do
+                      case cnt of
+                         Just n -> gotoLn n >> return ()
+                         Nothing -> return ()
+                      scroll
+                   mmGoFNS scroll = mayMove (scroll >> firstNonSpaceB)
 
      -- | So-called 'operators', which take movement actions as arguments.
      --

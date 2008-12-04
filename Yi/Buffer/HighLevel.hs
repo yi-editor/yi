@@ -304,12 +304,35 @@ scrollByB :: (Int -> Int) -> Int -> BufferM ()
 scrollByB f n = do h <- askWindow height
                    scrollB $ n * (f h)
 
--- | Same as ScrollByB, but also moves the cursor
+-- | Same as scrollB, but also moves the cursor
+vimScrollB :: Int -> BufferM ()
+vimScrollB n = do scrollB n
+                  lineMoveRel n
+                  return ()
+
+-- | Same as scrollByB, but also moves the cursor
 vimScrollByB :: (Int -> Int) -> Int -> BufferM ()
 vimScrollByB f n = do h <- askWindow height
-                      scrollB $ n * (f h)
-                      lineMoveRel $ n * (f h)
-                      return ()
+                      vimScrollB $ n * (f h)
+
+-- | Move to middle line in screen
+scrollToCursorB :: BufferM ()
+scrollToCursorB = do
+    (f, i, _, t) <- markLines
+    let m = (f + t) `div` 2
+    scrollB $ i - m
+
+-- | Move cursor to the top of the screen
+scrollCursorToTopB :: BufferM ()
+scrollCursorToTopB = do
+    (f, i, _, t) <- markLines
+    scrollB $ i - f
+
+-- | Move cursor to the bottom of the screen
+scrollCursorToBottomB :: BufferM ()
+scrollCursorToBottomB = do
+    (f, i, _, t) <- markLines
+    scrollB $ i - t
 
 -- | Scroll by n lines.
 scrollB :: Int -> BufferM ()
