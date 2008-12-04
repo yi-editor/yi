@@ -118,14 +118,14 @@ defKeymap = Proto template
      vis_mode selStyle = do
        write (setVisibleSelection True >> pointB >>= setSelectionMarkPointB)
        core_vis_mode selStyle
-       write (clrStatus >> withBuffer0 (setVisibleSelection False >> resetSelectStyle))
+       write (clrStatus >> withBuffer0' (setVisibleSelection False >> resetSelectStyle))
 
      core_vis_mode :: SelectionStyle -> VimMode
      core_vis_mode selStyle = do
-       write $ do withBuffer0 $ setDynamicB $ selStyle
+       write $ do withBuffer0' $ setDynamicB $ selStyle
                   setStatus $ (msg selStyle, defaultStyle)
        many (vis_move <|>
-             select_any_unit (withBuffer0 . (\r -> resetSelectStyle >> extendSelectRegionB r >> leftB)))
+             select_any_unit (withBuffer0' . (\r -> resetSelectStyle >> extendSelectRegionB r >> leftB)))
        (vis_single selStyle <|| vis_multi)
        where msg (SelectionStyle Line) = "-- VISUAL LINE --"
              msg (SelectionStyle _)    = "-- VISUAL --"
@@ -167,7 +167,7 @@ defKeymap = Proto template
      --
 
      cmd_move :: VimMode
-     cmd_move = gen_cmd_move >>= write . viMoveNM . snd
+     cmd_move = gen_cmd_move >>= write . withBuffer0' . viMove . snd
 
      -- the returned RegionStyle is used when the movement is combined with a 'cut' or 'yank'.
      gen_cmd_move :: KeymapM (RegionStyle, ViMove)
@@ -249,10 +249,6 @@ defKeymap = Proto template
                                <*> savingPointB (viMove move >> pointB)
                                <*> pure regionStyle
 
-     -- viMove Normal Mode
-     viMoveNM :: ViMove -> BufferM ()
-     viMoveNM move = viMove move >> leftOnEol
-     
      viMove :: ViMove -> BufferM ()
      viMove NoMove                        = return ()
      viMove (GenMove   unit boundary dir) = genMoveB unit boundary dir
@@ -323,7 +319,7 @@ defKeymap = Proto template
      -- TODO: add word bounds: search for \<word\>
      searchCurrentWord :: Direction -> EditorM ()
      searchCurrentWord dir = do
-       w <- withBuffer0 $ readRegionB =<< regionOfNonEmptyB unitViWord
+       w <- withBuffer0' $ readRegionB =<< regionOfNonEmptyB unitViWord
        viSearch w [QuoteRegex] dir
 
      gotoTag :: Tag -> YiM ()
@@ -333,7 +329,7 @@ defKeymap = Proto template
            Nothing -> fail $ "No tags containing " ++ tag
            Just (filename, line) -> do
              fnewE $ filename
-             withBuffer $ gotoLn line
+             withBuffer' $ gotoLn line
              return ()
 
      -- | Call continuation @act@ with the TagTable. Uses the global table
@@ -344,7 +340,7 @@ defKeymap = Proto template
        -- does the tagtable exist?
        case posTagTable of
          Just tagTable -> act tagTable
-         Nothing -> do fps <- withEditor $ getA tagsFileListA -- withBuffer0 $ tagsFileList <$> getDynamicB
+         Nothing -> do fps <- withEditor $ getA tagsFileListA -- withBuffer0' $ tagsFileList <$> getDynamicB
                        efps <- io $ filterM fileExist fps
                        when (null efps) $ fail ("No existing tags file among: " ++ show fps)
                        tagTable <- io $ importTagTable (head efps)
@@ -352,7 +348,7 @@ defKeymap = Proto template
                        act tagTable
 
      gotoTagCurrentWord :: YiM ()
-     gotoTagCurrentWord = gotoTag =<< withEditor (withBuffer0 (readRegionB =<< regionOfNonEmptyB unitViWord))
+     gotoTagCurrentWord = gotoTag =<< withEditor (withBuffer0' (readRegionB =<< regionOfNonEmptyB unitViWord))
 
      setTagsFileList :: String -> EditorM ()
      setTagsFileList fps = resetTags >> setA tagsFileListA (split "," fps)
@@ -380,28 +376,28 @@ defKeymap = Proto template
      -- Usually the integer argument is the number of times an action should be repeated.
      singleCmdFM :: [(Event, Int -> YiM ())]
      singleCmdFM =
-         [(ctrl $ char 'b',    withBuffer . upScreensB)             -- vim does (firstNonSpaceB;moveXorSol)
-         ,(ctrl $ char 'f',    withBuffer . downScreensB)
-         ,(ctrl $ char 'u',    withBuffer . vimScrollByB (negate . (`div` 2)))
-         ,(ctrl $ char 'd',    withBuffer . vimScrollByB (`div` 2))
-         ,(ctrl $ char 'y',    withBuffer . vimScrollB . negate)
-         ,(ctrl $ char 'e',    withBuffer . vimScrollB)
+         [(ctrl $ char 'b',    withBuffer' . upScreensB)             -- vim does (firstNonSpaceB;moveXorSol)
+         ,(ctrl $ char 'f',    withBuffer' . downScreensB)
+         ,(ctrl $ char 'u',    withBuffer' . vimScrollByB (negate . (`div` 2)))
+         ,(ctrl $ char 'd',    withBuffer' . vimScrollByB (`div` 2))
+         ,(ctrl $ char 'y',    withBuffer' . vimScrollB . negate)
+         ,(ctrl $ char 'e',    withBuffer' . vimScrollB)
          ,(ctrl $ char 'g',    const viFileInfo)
          ,(ctrl $ char 'l',    const refreshEditor)
-         ,(ctrl $ char 'r',    withBuffer . flip replicateM_ redoB)
+         ,(ctrl $ char 'r',    withBuffer' . flip replicateM_ redoB)
          ,(ctrl $ char 'z',    const suspendEditor)
          ,(ctrl $ char ']',    const gotoTagCurrentWord)
          ,(char 'D',      withEditor . cut Exclusive . ArbMove . viMoveToNthEol)
-         ,(char 'J',      const $ withBuffer $ joinLinesB)
+         ,(char 'J',      const $ withBuffer' $ joinLinesB)
          ,(char 'Y',      \n -> withEditor $ do
                                     let move = Replicate (Move Line Forward) n
-                                    region <- withBuffer0 $ regionOfViMove move LineWise
+                                    region <- withBuffer0' $ regionOfViMove move LineWise
                                     yankRegion LineWise region
           )
-         ,(char 'U',      withBuffer . flip replicateM_ undoB)    -- NB not correct
+         ,(char 'U',      withBuffer' . flip replicateM_ undoB)    -- NB not correct
          ,(char 'n',      const $ withEditor $ continueSearching id)
          ,(char 'N',      const $ withEditor $ continueSearching reverseDir)
-         ,(char 'u',      withBuffer . flip replicateM_ undoB)
+         ,(char 'u',      withBuffer' . flip replicateM_ undoB)
 
          ,(char 'X',      withEditor . cut Exclusive . (Replicate $ CharMove Backward))
          ,(char 'x',      withEditor . cut Exclusive . (Replicate $ CharMove Forward))
@@ -410,11 +406,11 @@ defKeymap = Proto template
 
          ,(char 'P',      withEditor . flip replicateM_ pasteBefore)
 
-         ,(spec KPageUp,   withBuffer . upScreensB)
-         ,(spec KPageDown, withBuffer . downScreensB)
+         ,(spec KPageUp,   withBuffer' . upScreensB)
+         ,(spec KPageDown, withBuffer' . downScreensB)
          ,(char '*',      const $ withEditor $ searchCurrentWord Forward)
          ,(char '#',      const $ withEditor $ searchCurrentWord Backward)
-         ,(char '~',      \i -> withBuffer $ do
+         ,(char '~',      \i -> withBuffer' $ do
                               p <- pointB
                               moveXorEol i
                               q <- pointB
@@ -423,7 +419,7 @@ defKeymap = Proto template
                               moveTo q)
          -- The count value , in this case, is interpretted as a percentage instead of a repeat
          -- count.
-         ,(char '%',      \i -> withBuffer $ do
+         ,(char '%',      \i -> withBuffer' $ do
                               let f :: Double
                                   f  = case fromIntegral i / 100.0 of
                                           x | x > 1.0 -> 1.0
@@ -457,12 +453,12 @@ defKeymap = Proto template
          ,([ctrlW,char 'j'],    const $ withEditor nextWinE)    -- Same as the above pair, when you're a bit slow to release ctl.
          ,([ctrlW, ctrl $ char 'k'], const $ withEditor prevWinE)
          ,([ctrlW, ctrl $ char 'j'], const $ withEditor nextWinE)
-         ,(map char ">>", withBuffer . shiftIndentOfLine)
-         ,(map char "<<", withBuffer . shiftIndentOfLine . negate)
+         ,(map char ">>", withBuffer' . shiftIndentOfLine)
+         ,(map char "<<", withBuffer' . shiftIndentOfLine . negate)
          ,(map char "ZZ", const $ viWrite >> closeWindow)
          ,(map char "ZQ", const $ closeWindow)
          ,(map char "ga", const $ viCharInfo)
-         ,(map char "==", const $ withBuffer $ adjIndent IncreaseCycle)
+         ,(map char "==", const $ withBuffer' $ adjIndent IncreaseCycle)
          ]
 
      zScrollCmdFM :: [([Event], Maybe Int -> BufferM ())]
@@ -494,7 +490,7 @@ defKeymap = Proto template
        cnt <- count
        let i = maybe 1 id cnt
        choice $ [let onMove regionStyle move =
-                        onRegion regionStyle =<< withBuffer0 (regionOfViMove move regionStyle)
+                        onRegion regionStyle =<< withBuffer0' (regionOfViMove move regionStyle)
                      s1 = prefix [c]
                      ss = nub [[c], s1]
                  in
@@ -514,8 +510,8 @@ defKeymap = Proto template
                         , (('g':), 'u', viMapRegion toLower)
                         , (('g':), 'U', viMapRegion toUpper)
                         , (('g':), '?', viMapRegion rot13Char)
-                        , (('g':), 'q', const $ withBuffer0 . fillRegion)
-                        , (('g':), 'w', const $ withBuffer0 . savingPointB . fillRegion)
+                        , (('g':), 'q', const $ withBuffer0' . fillRegion)
+                        , (('g':), 'w', const $ withBuffer0' . savingPointB . fillRegion)
                         ]
 
      -- Argument of the 2nd component is whether the unit is outer.
@@ -544,7 +540,7 @@ defKeymap = Proto template
      select_any_unit :: (MonadInteract m Action Event) => (Region -> EditorM ()) -> m ()
      select_any_unit f = do 
        outer <- (char 'a' ?>> pure True) <|> (char 'i' ?>> pure False)
-       choice [ char c ?>> write (f =<< withBuffer0 (regionOfNonEmptyB $ unit outer))
+       choice [ char c ?>> write (f =<< withBuffer0' (regionOfNonEmptyB $ unit outer))
               | (c, unit) <- char2unit]
 
 
@@ -559,7 +555,7 @@ defKeymap = Proto template
      yankRegion :: RegionStyle -> Region -> EditorM ()
      yankRegion regionStyle region | regionIsEmpty region = return ()
                                    | otherwise            = do
-       txt <- withBuffer0 $ readRegionB region
+       txt <- withBuffer0' $ readRegionB region
        setRegE $ if (regionStyle == LineWise) then '\n':txt else txt
        let rowsYanked = length (filter (== '\n') txt)
        when (rowsYanked > 2) $ printMsg $ show rowsYanked ++ " lines yanked"
@@ -567,16 +563,16 @@ defKeymap = Proto template
      {-
      yank :: RegionStyle -> ViMove -> EditorM ()
      yank regionStyle move =
-       yankRegion regionStyle =<< (withBuffer0 $ regionOfViMove move regionStyle)
+       yankRegion regionStyle =<< (withBuffer0' $ regionOfViMove move regionStyle)
      -}
 
      yankSelection :: EditorM ()
-     yankSelection = uncurry yankRegion =<< withBuffer0 regionOfSelection
+     yankSelection = uncurry yankRegion =<< withBuffer0' regionOfSelection
 
      cutRegion :: RegionStyle -> Region -> EditorM ()
      cutRegion regionStyle region | regionIsEmpty region = return ()
                                   | otherwise            = do
-       (txt, rowsCut) <- withBuffer0 $ do
+       (txt, rowsCut) <- withBuffer0' $ do
          txt <- readRegionB region
          let rowsCut = length $ filter (=='\n') txt
          when (rowsCut==0) $ replicateM_ (length txt) (adjBlock (-1))
@@ -588,17 +584,17 @@ defKeymap = Proto template
 
      cut :: RegionStyle -> ViMove -> EditorM ()
      cut regionStyle move = do
-         region <- withBuffer0 $ regionOfViMove move regionStyle
+         region <- withBuffer0' $ regionOfViMove move regionStyle
          cutRegion regionStyle region
-         withBuffer0 leftOnEol
+         withBuffer0' leftOnEol
 
      cutSelection :: EditorM ()
-     cutSelection = uncurry cutRegion =<< withBuffer0 regionOfSelection
+     cutSelection = uncurry cutRegion =<< withBuffer0' regionOfSelection
 
      pasteOverSelection :: EditorM ()
      pasteOverSelection = do
        txt <- getRegE
-       withBuffer0 $ do
+       withBuffer0' $ do
          selStyle <- getDynamicB
          start    <- getSelectionMarkPointB
          stop     <- pointB
@@ -610,7 +606,7 @@ defKeymap = Proto template
      pasteAfter :: EditorM ()
      pasteAfter = do
        txt' <- getRegE
-       withBuffer0 $ do
+       withBuffer0' $ do
          when ('\n' `notElem` txt') $ adjBlock $ length txt'
          case txt' of
            '\n':txt -> moveToEol >> rightB >> insertN txt >> leftN (length txt)
@@ -619,7 +615,7 @@ defKeymap = Proto template
      pasteBefore :: EditorM ()
      pasteBefore = do
        txt' <- getRegE
-       withBuffer0 $ do
+       withBuffer0' $ do
          when ('\n' `notElem` txt') $ adjBlock $ length txt'
          case txt' of
            '\n':txt -> moveToSol >> insertN txt >> leftN (length txt)
@@ -639,7 +635,7 @@ defKeymap = Proto template
      rot13Char = onCharLetterCode (+13)
 
      viMapRegion :: (Char -> Char) -> RegionStyle -> Region -> EditorM ()
-     viMapRegion f _ region = withBuffer0 $ mapRegionB region f
+     viMapRegion f _ region = withBuffer0' $ mapRegionB region f
 
      -- | Switching to another mode from visual mode.
      --
@@ -656,8 +652,8 @@ defKeymap = Proto template
                  char 'x'  ?>>! cutSelection,
                  char 'd'  ?>>! cutSelection,
                  char 'p'  ?>>! pasteOverSelection,
-                 char 's'  ?>> beginIns self (cutSelection >> withBuffer0 (setVisibleSelection False)),
-                 char 'c'  ?>> beginIns self (cutSelection >> withBuffer0 (setVisibleSelection False))]
+                 char 's'  ?>> beginIns self (cutSelection >> withBuffer0' (setVisibleSelection False)),
+                 char 'c'  ?>> beginIns self (cutSelection >> withBuffer0' (setVisibleSelection False))]
 
 
      -- | These also switch mode, as all visual commands do, but these are
@@ -706,7 +702,7 @@ defKeymap = Proto template
 
                  -- FIXME: those two should take int argument
                  char 'C'     ?>> beginIns self $ cut Exclusive viMoveToEol, -- alias of "c$"
-                 char 'S'     ?>> beginIns self $ withBuffer0 moveToSol >> cut Exclusive viMoveToEol, -- non-linewise alias of "cc"
+                 char 'S'     ?>> beginIns self $ withBuffer0' moveToSol >> cut Exclusive viMoveToEol, -- non-linewise alias of "cc"
                  char 's'     ?>> beginIns self $ cut Exclusive (CharMove Forward), -- non-linewise alias of "cl"
                  char '/'     ?>>! ex_mode "/",
                  char '?'     ?>>! ex_mode "?",
@@ -725,9 +721,9 @@ defKeymap = Proto template
      change :: ViMove -> RegionStyle -> ViMove -> I Event Action ()
      change preMove regionStyle move = do
        write $ do
-         withBuffer0 $ viMoveNM preMove
+         withBuffer0' $ viMove preMove
          cut regionStyle move
-         when (regionStyle == LineWise) $ withBuffer0 $ insertB '\n' >> leftB
+         when (regionStyle == LineWise) $ withBuffer0' $ insertB '\n' >> leftB
        ins_mode self
 
      ins_rep_char :: VimMode
@@ -788,7 +784,7 @@ defKeymap = Proto template
        -- The above ensures that the action is performed on the buffer that originated the minibuffer.
        let ex_buffer_finish = do
              withEditor $ historyFinish
-             lineString <- withBuffer elemsB
+             lineString <- withBuffer' elemsB
              withEditor closeBufferAndWindowE
              ex_eval (head prompt : lineString)
            ex_process :: VimMode
@@ -808,7 +804,7 @@ defKeymap = Proto template
                        (ctrl $ char 'w') ?>>! deleteB unitWord Backward,
                        (ctrl $ char 'u') ?>>! moveToSol >> deleteToEol]
                   <|| (textChar >>= write . insertB)
-           completeMinibuffer = withBuffer elemsB >>= ex_complete >>= withBuffer . insertN
+           completeMinibuffer = withBuffer' elemsB >>= ex_complete >>= withBuffer' . insertN
            exSimpleComplete compl s = drop (length s) <$> simpleComplete compl s
            f_complete = exSimpleComplete (matchingFileNames Nothing)
            b_complete = exSimpleComplete matchingBufferNames
@@ -873,7 +869,7 @@ defKeymap = Proto template
             - modified buffer that is not considered "worthless".
             -}
            safeQuitWindow = do
-               nw <- withBuffer needsAWindowB
+               nw <- withBuffer' needsAWindowB
                ws <- withEditor $ getA currentWindowA >>= windowsOnBufferE . bufkey
                if 1 == length ws && nw 
                  then errorEditor "No write since last change (add ! to override)"
@@ -916,14 +912,14 @@ defKeymap = Proto template
 
 
            wquitall = withAllBuffers viWrite >> quitEditor
-           bdelete  = whenUnchanged (withBuffer isUnchangedB) . withEditor . closeBufferE
+           bdelete  = whenUnchanged (withBuffer' isUnchangedB) . withEditor . closeBufferE
            bdeleteNoW = withEditor . closeBufferE
 
            -- fn maps from the text entered on the command line to a YiM () implementing the 
            -- command.
            fn ""           = withEditor clrStatus
 
-           fn s | all isDigit s = withBuffer (gotoLn (read s) >> firstNonSpaceB)
+           fn s | all isDigit s = withBuffer' (gotoLn (read s) >> firstNonSpaceB)
 
            fn "w"          = viWrite
            fn ('w':' ':f)  = viWriteTo $ dropSpace f
@@ -951,12 +947,12 @@ defKeymap = Proto template
            fn "wqall"      = wquitall
            fn "as"         = viCharInfo
            fn "ascii"      = viCharInfo
-           fn "x"          = do unchanged <- withBuffer isUnchangedB
+           fn "x"          = do unchanged <- withBuffer' isUnchangedB
                                 unless unchanged viWrite
                                 closeWindow
            fn "n"          = withEditor nextBufW
            fn "next"       = withEditor nextBufW
-           fn "$"          = withBuffer botB
+           fn "$"          = withBuffer' botB
            fn "p"          = withEditor prevBufW
            fn "prev"       = withEditor prevBufW
            fn ('s':'p':_)  = withEditor splitE
@@ -964,9 +960,9 @@ defKeymap = Proto template
            fn "edit"       = revertE
            fn ('e':' ':f)  = fnewE f
            fn ('e':'d':'i':'t':' ':f) = fnewE f
-           fn ('r':' ':f)  = withBuffer . insertN =<< io (readFile f)
-           fn ('r':'e':'a':'d':' ':f) = withBuffer . insertN =<< io (readFile f)
-           -- fn ('s':'e':'t':' ':'f':'t':'=':ft)  = withBuffer $ setSyntaxB $ highlighters M.! ft
+           fn ('r':' ':f)  = withBuffer' . insertN =<< io (readFile f)
+           fn ('r':'e':'a':'d':' ':f) = withBuffer' . insertN =<< io (readFile f)
+           -- fn ('s':'e':'t':' ':'f':'t':'=':ft)  = withBuffer' $ setSyntaxB $ highlighters M.! ft
            fn ('s':'e':'t':' ':'t':'a':'g':'s':'=':fps)  = withEditor $ setTagsFileList fps
            fn ('n':'e':'w':' ':f) = withEditor splitE >> fnewE f
            fn ('s':'/':cs) = withEditor $ viSub cs Line
@@ -988,12 +984,12 @@ defKeymap = Proto template
 
            -- send just this line through external command /fn/
            fn ('.':'!':f) = do
-                 ln  <- withBuffer readLnB
+                 ln  <- withBuffer' readLnB
                  ln' <- runProcessWithInput f ln
-                 withBuffer $ do moveToSol
-                                 deleteToEol
-                                 insertN ln'
-                                 moveToSol
+                 withBuffer' $ do moveToSol
+                                  deleteToEol
+                                  insertN ln'
+                                  moveToSol
 
      --    Needs to occur in another buffer
      --    fn ('!':f) = runProcessWithInput f []
@@ -1003,10 +999,10 @@ defKeymap = Proto template
            fn "redr"       = refreshEditor
            fn "redraw"     = refreshEditor
 
-           fn "u"          = withBuffer undoB
-           fn "undo"       = withBuffer undoB
-           fn "red"        = withBuffer redoB
-           fn "redo"       = withBuffer redoB
+           fn "u"          = withBuffer' undoB
+           fn "undo"       = withBuffer' undoB
+           fn "red"        = withBuffer' redoB
+           fn "redo"       = withBuffer' redoB
 
            fn "sus"        = suspendEditor
            fn "suspend"    = suspendEditor
@@ -1033,7 +1029,7 @@ defKeymap = Proto template
      withAllBuffers m = mapM_ (\b -> withEditor (setBuffer b) >> m) =<< readEditor bufferStack
 
      viCharInfo :: YiM ()
-     viCharInfo = do c <- withBuffer readB
+     viCharInfo = do c <- withBuffer' readB
                      msgEditor $ showCharInfo c ""
          where showCharInfo :: Char -> String -> String
                showCharInfo c = shows c . showChar ' ' . shows d
@@ -1043,7 +1039,7 @@ defKeymap = Proto template
 
      viFileInfo :: YiM ()
      viFileInfo =
-         do bufInfo <- withBuffer bufInfoB
+         do bufInfo <- withBuffer' bufInfoB
             msgEditor $ showBufInfo bufInfo
          where
          showBufInfo :: BufferFileInfo -> String
@@ -1093,6 +1089,14 @@ ins_mode self = write (setStatus ("-- INSERT --", defaultStyle)) >> many (v_ins_
 
 beginIns :: (Show x, YiAction a x) => ModeMap -> a -> I Event Action ()
 beginIns self a = write a >> ins_mode self
+
+withBuffer0' :: BufferM a -> EditorM a
+withBuffer0' f = withBuffer0 $ do x <- f
+                                  leftOnEol
+                                  return x
+
+withBuffer' :: BufferM a -> YiM a
+withBuffer' = withEditor . withBuffer0'
 
 -- Find the item after or under the cursor and jump to its match
 percentMove :: (RegionStyle, ViMove)
