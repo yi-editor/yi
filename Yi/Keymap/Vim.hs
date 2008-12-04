@@ -422,14 +422,13 @@ defKeymap = Proto template
          -- count.
          ,(char '%',      \i -> withBuffer $ do
                               let f :: Double
-                                  f  = case (fromIntegral i / 100.0) of
+                                  f  = case fromIntegral i / 100.0 of
                                           x | x > 1.0 -> 1.0
                                             | x < 0.0 -> 0.0 -- Impossible?
                                             | otherwise -> x
                               Point max_p <- sizeB 
-                              let p = floor (fromIntegral max_p * f)
-                              moveTo $ Point p
-                              moveToSol
+                              moveTo $ Point $ floor (fromIntegral max_p * f)
+                              firstNonSpaceB
           )
          ]
 
