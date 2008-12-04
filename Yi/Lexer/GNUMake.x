@@ -29,19 +29,23 @@ import qualified Yi.Style as Style
 -- However when I try to feed GNU makefile containing such weird variable names GNU make fails.
 -- Though the specification does leave limiting the scope of valid variable names that as an open
 -- option for "the future" 
-$varChar = $printable # [\: \# \= \ \{ \} \( \)]
+$varChar = $printable # [\: \# \= \ \{ \} \( \) \$]
 
 @directives = 
       include 
     | if
+    | export
+    | unexport
+    | define
 
-@special_vars = 
+@specialVars = 
       MAKEFILE_LIST
     | ".DEFAULT_GOAL"
     | MAKE_RESTARTS
     | ".VARIABLES"
     | ".FEATURES"
     | ".INCLUDE_DIRS"
+    | MAKE
 
 $space = [\ ]
 
