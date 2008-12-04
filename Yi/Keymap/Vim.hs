@@ -584,7 +584,7 @@ defKeymap = Proto template
        (txt, rowsCut) <- withBuffer0 $ do
          txt <- readRegionB region
          let rowsCut = length $ filter (=='\n') txt
-         when (rowsCut==0) $ adjBlock $ negate $ length txt
+         when (rowsCut==0) $ replicateM_ (length txt) (adjBlock (-1))
          deleteRegionB region
          return (txt, rowsCut)
        setRegE $ if (regionStyle == LineWise) then '\n':txt else txt
