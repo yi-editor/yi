@@ -16,7 +16,7 @@ import Yi.Misc (adjBlock)
 import qualified Yi.UI.Vty
 
 import Yi.Style.Library (darkBlueTheme)
-import Data.List (isPrefixOf, reverse)
+import Data.List (isPrefixOf, reverse, replicate)
 import Control.Monad (replicateM_)
 
 -- Set soft tabs of 4 spaces in width.
@@ -50,6 +50,8 @@ extendedVimKeymap = defKeymap `override` \super self -> super
             -- On 'o' in normal mode I always want to use the indent of the previous line.
             -- TODO: If the line where the newline is to be inserted is inside a
             -- block comment then the block comment should be "continued"
+            -- TODO: Ends up I'm trying to replicate vim's "autoindent" feature. This 
+            -- should be made a function in Yi.
             <|> (char 'o' ?>> beginIns self $ do 
                     moveToEol
                     insertB '\n'
@@ -60,6 +62,8 @@ extendedVimKeymap = defKeymap `override` \super self -> super
             -- On enter I always want to use the indent of previous line
             -- TODO: If the line where the newline is to be inserted is inside a
             -- block comment then the block comment should be "continued"
+            -- TODO: Ends up I'm trying to replicate vim's "autoindent" feature. This 
+            -- should be made a function in Yi.
             <|> ( spec KEnter ?>>! do
                     insertB '\n'
                     indentAsPreviousB
@@ -71,13 +75,15 @@ extendedVimKeymap = defKeymap `override` \super self -> super
             <|> ( spec KBS ?>>! do
                     c <- curCol
                     line <- readRegionB =<< regionOfPartB Line Backward
-                    let i = if (c `mod` 4) /= 0
-                                then 1
-                                else if "    " `isPrefixOf` reverse line 
-                                    then 4
-                                    else 1
-                    adjBlock (-i)
-                    replicateM_ i $ deleteB Character Backward
+                    sw <- indentSettingsB >>= return . shiftWidth
+                    let indentStr = replicate sw ' '
+                        toDel = if (c `mod` sw) /= 0
+                                    then 1
+                                    else if indentStr `isPrefixOf` reverse line 
+                                        then sw
+                                        else 1
+                    adjBlock (-toDel)
+                    replicateM_ toDel $ deleteB Character Backward
                 )
             -- On starting to write a block comment I want the close comment 
             -- text inserted automatically.
