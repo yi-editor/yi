@@ -50,7 +50,7 @@ module Yi.Buffer.Implementation
 where
 
 import Yi.Prelude
-import Prelude (take, takeWhile, dropWhile, map, length, reverse)
+import Prelude (take, takeWhile, dropWhile, map, reverse)
 import Yi.Syntax 
 
 import qualified Data.Map as M
@@ -353,7 +353,7 @@ gotoLnRelI n (Point point) fb = (Point newPoint, difference)
     | otherwise = findDownLine 1 n downLineStarts
 
   -- The offsets of all line beginnings above the current point.
-  upLineStarts = map (+1) ((F.elemIndicesEnd newLine) (F.take point s)) ++ [0]
+  upLineStarts = map (+1) (F.elemIndicesEnd newLine (F.take point s)) ++ [0]
 
   -- Go up to find the line we wish for the returned value is a pair
   -- consisting of the point of the start of the line to which we move
