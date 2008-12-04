@@ -23,6 +23,9 @@ endif
 # Variable assignments of different forms.
 EXTERNAL_PREFIX_DIR := ../build/linux$(TARGET_ARCH)/external
 
+FOO = $_
+FOO += $x
+
 # The include in the following variable assignment should not be recognized as an include
 # directive.
 
