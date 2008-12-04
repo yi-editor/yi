@@ -72,8 +72,8 @@ make :-
     -- Inside a prerequisite they can occur in four different forms.
     -- TODO: Highlight the automatic variables differently.
     -- 1. Single character variable name
-    --\$$varChar
-    --    { c Style.variableStyle }
+    \$$varChar
+        { c Style.variableStyle }
 
     -- 2 & 3: Parentheses or brackets could indicate a variable expansion or function call.
     "${"
