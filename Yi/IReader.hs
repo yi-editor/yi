@@ -5,16 +5,16 @@
 -- \"incremental reading\", see <http://en.wikipedia.org/wiki/Incremental_reading>.
 module Yi.IReader where
 
-import Control.Monad.State
-import Data.List
+import Control.Monad.State (join, liftM)
+import Data.List (delete)
 import System.Directory (getHomeDirectory)
 
-import Yi.Keymap
-import Yi.Prelude
-import Yi.Buffer.Misc
-import Yi.Buffer.Region
-import Yi.Buffer.Normal
-import Yi.Buffer.HighLevel
+import Yi.Keymap (withBuffer, YiM)
+import Yi.Prelude (io)
+import Yi.Buffer.Misc (BufferM)
+import Yi.Buffer.Region (readRegionB)
+import Yi.Buffer.Normal (regionOfB, TextUnit(Document))
+import Yi.Buffer.HighLevel (replaceBufferContent, topB)
 import qualified System.IO as IO
 
 type Article = String
