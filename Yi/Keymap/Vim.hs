@@ -507,7 +507,7 @@ defKeymap = Proto template
              -- | Forces RegionStyle; see motion.txt, line 116 and below (Vim 7.2)
              -- TODO: CTRL+v
              forceRegStyle = do
-                 style <- many $ choice [ char 'V' ?>> return (\_ -> LineWise)
+                 style <- many $ choice [ char 'V' ?>> return (const LineWise)
                                         , char 'v' ?>> return swpRsOrIncl]
                  return $ last (id:style)
                             where swpRsOrIncl Exclusive = Inclusive
