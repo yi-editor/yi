@@ -572,7 +572,7 @@ defKeymap = Proto template
      cutRegion :: RegionStyle -> Region -> EditorM ()
      cutRegion regionStyle region | regionIsEmpty region = return ()
                                   | otherwise            = do
-       (txt, rowsCut) <- withBuffer0' $ do
+       (txt, rowsCut) <- withBuffer0 $ do
          txt <- readRegionB region
          let rowsCut = length $ filter (=='\n') txt
          when (rowsCut==0) $ replicateM_ (length txt) (adjBlock (-1))
