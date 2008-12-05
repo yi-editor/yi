@@ -920,6 +920,9 @@ askWindow = asks
 -------------
 -- Character-positions
 
+{-# DEPRECATED charIndexB, byteIndexB, charRegionB, byteRegionB "The Point type was introduced to avoid confusion between byte-index and character-index, this function defeats the purpose." #-}
+
+
 -- | Convert a buffer position to a character position
 charIndexB :: Point -> BufferM Point
 charIndexB p =
