@@ -199,17 +199,17 @@ refreshEditor = do
     yi <- ask
     io $ modifyMVar_ (yiVar yi) $ \var -> do
         let e0 = yiEditor var 
-            e1 = modifier buffersA (fmap (clearSyntax . clearHighlight)) e0
-            e2 = modifier buffersA (fmap clearUpdates)  e1
+            e1 = buffersA ^: (fmap (clearSyntax . clearHighlight)) $ e0
+            e2 = buffersA ^: (fmap clearUpdates) $ e1
         UI.refresh (yiUi yi) e1
         return var {yiEditor = e2}
   where 
-    clearUpdates fb = modifier pendingUpdatesA (const []) fb
+    clearUpdates fb = pendingUpdatesA ^= [] $ fb
     clearHighlight fb =
       -- if there were updates, then hide the selection.
       let h = getVal highlightSelectionA fb
           us = getVal pendingUpdatesA fb
-      in modifier highlightSelectionA (const (h && null us)) fb
+      in highlightSelectionA ^= (h && null us) $ fb
           
           
 

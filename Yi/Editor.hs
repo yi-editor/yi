@@ -417,7 +417,7 @@ newWindowE mini bk = do
 -- | Attach the specified buffer to the current window
 switchToBufferE :: BufferRef -> EditorM ()
 switchToBufferE bk = do
-    modifyWindows (modifier WS.currentA (\w -> w { bufkey = bk }))
+    modifyWindows (WS.currentA ^: (\w -> w { bufkey = bk }))
 
 -- | Attach the specified buffer to some other window than the current one
 switchToBufferOtherWindowE :: BufferRef -> EditorM ()

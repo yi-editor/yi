@@ -3,7 +3,7 @@
 -- | A module for "rich" accesssors.
 
 module Yi.Accessor (Accessor, mkAccessor, setA, getA, getsA, 
-                    modifyA, modifier, getsAndModifyA, modifyAllA, getVal) where
+                    modifyA, getsAndModifyA, modifyAllA, getVal, (^:), (^=)) where
 import Prelude hiding ((.), id)
 import Data.Accessor
 import Control.Monad.State
@@ -21,22 +21,18 @@ instance Category T where
 mkAccessor :: (whole -> part) -> ((part -> part) -> (whole -> whole)) -> Accessor whole part 
 mkAccessor getter modifier = fromLens $ \whole -> (getter whole, \part -> modifier (\part' -> part) whole) 
 
-modifier = (^:)
-
 getsA :: MonadState s m => Accessor s p -> (p -> a) -> m a
 getsA a f = gets (f . getVal a)
 
 modifyA :: MonadState s m => Accessor s p -> (p -> p) -> m ()
 modifyA = modA
 
+
 modifyAllA :: (MonadState s m, Functor f) => Accessor s (f w) -> Accessor w p -> (p -> p) -> m ()
-modifyAllA a a' f = modifyA a (fmap $ modifier a' f)
+modifyAllA a a' f = modA a (fmap $  a' ^: f)
 
 setA :: MonadState s m => Accessor s p -> p -> m ()
 setA = putA
-
-keyA :: Ord k => k -> Accessor (M.Map k v) v
-keyA = mapDefault (error "keyA: accessing key without value")
 
 getsAndModifyA :: MonadState s m => Accessor s p -> (p -> (p,a)) -> m a
 getsAndModifyA a f = do

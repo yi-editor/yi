@@ -461,7 +461,7 @@ runBufferFull w b f =
                 modifyA winMarksA (M.insert (wkey w) newMrks)
             setA lastActiveWindowA w
             f
-    in (a, updates, modifier pendingUpdatesA (++ fmap TextUpdate updates) b')
+    in (a, updates, pendingUpdatesA ^: (++ fmap TextUpdate updates) $ b')
 
 getMarkValueB :: Mark -> BufferM MarkValue
 getMarkValueB m = maybe (MarkValue 0 Forward) id <$> queryBuffer (getMarkValueBI m)
