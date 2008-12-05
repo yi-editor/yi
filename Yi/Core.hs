@@ -207,8 +207,8 @@ refreshEditor = do
     clearUpdates fb = modifier pendingUpdatesA (const []) fb
     clearHighlight fb =
       -- if there were updates, then hide the selection.
-      let h = getter highlightSelectionA fb
-          us = getter pendingUpdatesA fb
+      let h = getVal highlightSelectionA fb
+          us = getVal pendingUpdatesA fb
       in modifier highlightSelectionA (const (h && null us)) fb
           
           

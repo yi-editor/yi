@@ -235,68 +235,68 @@ queryAndModifyRawbuf f (FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 f13 f14) 
     in (FBuffer f1 f2 f3 f4 f5' f6 f7 f8 f9 f10 f11 f12 f13 f14, x)
 
 lastActiveWindowA :: Accessor FBuffer Window
-lastActiveWindowA = Accessor lastActiveWindow (\f e -> case e of 
+lastActiveWindowA = mkAccessor lastActiveWindow (\f e -> case e of 
                                    FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 f13 f14 -> 
                                     FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 f13 (f f14))
 
 pointDriveA :: Accessor FBuffer Bool
-pointDriveA = Accessor pointDrive (\f e -> case e of 
+pointDriveA = mkAccessor pointDrive (\f e -> case e of 
                                    FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 f13 f14 -> 
                                     FBuffer f1 f2 f3 f4 f5 f6 (f f7) f8 f9 f10 f11 f12 f13 f14)
 
 
 undosA :: Accessor (FBuffer) (URList)
-undosA = Accessor undos (\f e -> case e of 
+undosA = mkAccessor undos (\f e -> case e of 
                                    FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 f13 f14 -> 
                                     FBuffer f1 f2 f3 (f f4) f5 f6 f7 f8 f9 f10 f11 f12 f13 f14)
 
 fileA :: Accessor (FBuffer) (Maybe FilePath)
-fileA = Accessor file (\f e -> case e of 
+fileA = mkAccessor file (\f e -> case e of 
                                    FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 f13 f14 -> 
                                     FBuffer f1 f2 (f f3) f4 f5 f6 f7 f8 f9 f10 f11 f12 f13 f14)
 
 preferColA :: Accessor (FBuffer) (Maybe Int)
-preferColA = Accessor preferCol (\f e -> case e of 
+preferColA = mkAccessor preferCol (\f e -> case e of 
                                    FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 f13 f14 -> 
                                     FBuffer f1 f2 f3 f4 f5 f6 f7 f8 (f f9) f10 f11 f12 f13 f14)
 
 bufferDynamicA :: Accessor (FBuffer) (DynamicValues)
-bufferDynamicA = Accessor bufferDynamic (\f e -> case e of 
+bufferDynamicA = mkAccessor bufferDynamic (\f e -> case e of 
                                    FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 f13 f14 -> 
                                     FBuffer f1 f2 f3 f4 f5 f6 f7 (f f8) f9 f10 f11 f12 f13 f14)
 
 pendingUpdatesA :: Accessor (FBuffer) ([UIUpdate])
-pendingUpdatesA = Accessor pendingUpdates (\f e -> case e of 
+pendingUpdatesA = mkAccessor pendingUpdates (\f e -> case e of 
                                    FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 f13 f14 -> 
                                     FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 (f f10) f11 f12 f13 f14)
 
 selectionStyleA :: Accessor FBuffer SelectionStyle
-selectionStyleA = Accessor selectionStyle (\f e -> case e of 
+selectionStyleA = mkAccessor selectionStyle (\f e -> case e of 
                                    FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 f13 f14 -> 
                                     FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 (f f11) f12 f13 f14)
 
 highlightSelectionA :: Accessor FBuffer Bool
 highlightSelectionA = 
-  Accessor highlightSelection (\f e -> e { highlightSelection = f (highlightSelection e) })
-  .> selectionStyleA
+  mkAccessor highlightSelection (\f e -> e { highlightSelection = f (highlightSelection e) })
+  . selectionStyleA
 
 rectangleSelectionA :: Accessor FBuffer Bool
 rectangleSelectionA = 
-  Accessor rectangleSelection (\f e -> e { rectangleSelection = f (rectangleSelection e) })
-  .> selectionStyleA
+  mkAccessor rectangleSelection (\f e -> e { rectangleSelection = f (rectangleSelection e) })
+  . selectionStyleA
 
 nameA :: Accessor FBuffer String
-nameA = Accessor name (\f e -> case e of 
+nameA = mkAccessor name (\f e -> case e of 
                                    FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 f13 f14 -> 
                                     FBuffer (f f1) f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 f13 f14)
 
 keymapProcessA :: Accessor FBuffer KeymapProcess
-keymapProcessA = Accessor process (\f e -> case e of 
+keymapProcessA = mkAccessor process (\f e -> case e of 
                                    FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 f13 f14 -> 
                                     FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 (f f12) f13 f14)
 
 winMarksA :: Accessor FBuffer (M.Map Int WinMarks)
-winMarksA = Accessor winMarks (\f e -> case e of 
+winMarksA = mkAccessor winMarks (\f e -> case e of 
                                    FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 f13 f14 -> 
                                     FBuffer f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 (f f13) f14)
 
@@ -885,7 +885,7 @@ gotoLnFrom x = do
     return lineDiff
 
 bufferDynamicValueA :: Initializable a => Accessor FBuffer a
-bufferDynamicValueA = dynamicValueA .> bufferDynamicA
+bufferDynamicValueA = dynamicValueA . bufferDynamicA
 
 getDynamicB :: Initializable a => BufferM a
 getDynamicB = getA bufferDynamicValueA

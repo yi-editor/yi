@@ -41,7 +41,7 @@ instance (Typeable a) => Initializable (Maybe a) where
 
 -- | Accessor for a dynamic component
 dynamicValueA :: Initializable a => Accessor DynamicValues a
-dynamicValueA = Accessor getDynamicValue modifyDynamicValue
+dynamicValueA = mkAccessor getDynamicValue modifyDynamicValue
     where
       modifyDynamicValue :: forall a. Initializable a => (a -> a) -> DynamicValues -> DynamicValues
       modifyDynamicValue f = flip M.alter (show $ typeOf (undefined::a)) $ \m ->

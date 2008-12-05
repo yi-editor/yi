@@ -41,7 +41,7 @@ instance Traversable WindowSet where
     traverse f (WindowSet b c a) = WindowSet <$> (reverse <$> traverse f (reverse b)) <*> f c <*> traverse f a
 
 currentA :: Accessor (WindowSet a) a
-currentA = Accessor current modifyCurrent
+currentA = mkAccessor current modifyCurrent
     where modifyCurrent :: (a -> a) -> WindowSet a -> WindowSet a
           modifyCurrent f (WindowSet b c a) = WindowSet b (f c) a
 

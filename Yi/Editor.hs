@@ -98,44 +98,44 @@ instance MonadEditor EditorM where
     withEditor = id
 
 pendingEventsA :: Accessor Editor [Event]
-pendingEventsA = Accessor pendingEvents (\f e -> e {pendingEvents = f (pendingEvents e)})
+pendingEventsA = mkAccessor pendingEvents (\f e -> e {pendingEvents = f (pendingEvents e)})
 
 statusLinesA :: Accessor Editor Statuses
-statusLinesA = Accessor statusLines (\f e -> e {statusLines = f (statusLines e)})
+statusLinesA = mkAccessor statusLines (\f e -> e {statusLines = f (statusLines e)})
 
 
 refSupplyA :: Accessor Editor Int
-refSupplyA = Accessor refSupply (\f e -> e {refSupply = f (refSupply e)})
+refSupplyA = mkAccessor refSupply (\f e -> e {refSupply = f (refSupply e)})
 
 buffersA :: Accessor Editor (M.Map BufferRef FBuffer)
-buffersA = Accessor buffers (\f e -> e {buffers = f (buffers e)})
+buffersA = mkAccessor buffers (\f e -> e {buffers = f (buffers e)})
 
 dynamicA :: Accessor Editor DynamicValues
-dynamicA = Accessor dynamic (\f e -> e {dynamic = f (dynamic e)})
+dynamicA = mkAccessor dynamic (\f e -> e {dynamic = f (dynamic e)})
 
 windowsA :: Accessor Editor (WindowSet Window)
-windowsA = WS.currentA .> tabsA
+windowsA = WS.currentA . tabsA
 
 tabsA :: Accessor Editor (WindowSet (WindowSet Window))
-tabsA = Accessor tabs (\f e -> e {tabs = f (tabs e)})
+tabsA = mkAccessor tabs (\f e -> e {tabs = f (tabs e)})
 
 killringA :: Accessor Editor Killring
-killringA = Accessor killring (\f e -> e {killring = f (killring e)})
+killringA = mkAccessor killring (\f e -> e {killring = f (killring e)})
 
 dynA :: Initializable a => Accessor Editor a
-dynA = dynamicValueA .> dynamicA
+dynA = dynamicValueA . dynamicA
 
 regexA :: Accessor Editor (Maybe SearchExp)
-regexA = Accessor regex (\f e -> e{regex = f (regex e)})
+regexA = mkAccessor regex (\f e -> e{regex = f (regex e)})
 
 tagsA :: Accessor Editor (Maybe TagTable)
-tagsA = Accessor tags (\f e -> e {tags = f (tags e)})
+tagsA = mkAccessor tags (\f e -> e {tags = f (tags e)})
 
 tagsFileListA :: Accessor Editor [FilePath]
-tagsFileListA = Accessor tagsFileList (\f e -> e {tagsFileList = f (tagsFileList e)})
+tagsFileListA = mkAccessor tagsFileList (\f e -> e {tagsFileList = f (tagsFileList e)})
 
 searchDirectionA :: Accessor Editor Direction
-searchDirectionA = Accessor searchDirection (\f e -> e{searchDirection = f (searchDirection e)})
+searchDirectionA = mkAccessor searchDirection (\f e -> e{searchDirection = f (searchDirection e)})
 
 
 -- | The initial state
@@ -292,7 +292,7 @@ withBuffer0 f = do
   withGivenBufferAndWindow0 w (bufkey w) f
 
 currentWindowA :: Accessor Editor Window
-currentWindowA = WS.currentA .> windowsA
+currentWindowA = WS.currentA . windowsA
 
 -- | Return the current buffer
 getBuffer :: EditorM BufferRef
@@ -381,11 +381,11 @@ getTags = getA tagsA
 
 -- | Retrieve a value from the extensible state
 getDynamic :: Initializable a => EditorM a
-getDynamic = getA (dynamicValueA .> dynamicA)
+getDynamic = getA (dynamicValueA . dynamicA)
 
 -- | Insert a value into the extensible state, keyed by its type
 setDynamic :: Initializable a => a -> EditorM ()
-setDynamic x = setA (dynamicValueA .> dynamicA) x
+setDynamic x = setA (dynamicValueA . dynamicA) x
 
 -- | Attach the next buffer in the buffer list
 -- to the current window.
@@ -471,7 +471,7 @@ withWindows :: (WindowSet Window -> a) -> EditorM a
 withWindows = getsA windowsA
 
 withWindow :: (Window -> a) -> EditorM a
-withWindow f = getsA (WS.currentA .> windowsA) f
+withWindow f = getsA (WS.currentA . windowsA) f
 
 findWindowWith :: WindowRef -> Editor -> Window
 findWindowWith k e =
