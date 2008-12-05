@@ -81,9 +81,9 @@ make :-
 
     -- 2 & 3: Parentheses or brackets could indicate a variable expansion or function call.
     "${"
-        { m (\_ -> ComplexExpansion '}') Style.operatorStyle }
+        { m (\_ -> ComplexExpansion '}' TopLevel) Style.operatorStyle }
     "$(" 
-        { m (\_ -> ComplexExpansion ')') Style.operatorStyle }
+        { m (\_ -> ComplexExpansion ')' TopLevel) Style.operatorStyle }
 
     \#
         { m (\_ -> InComment) Style.commentStyle }
@@ -121,13 +121,13 @@ make :-
         {
             \state preInput _ _ ->
                 case state of
-                    ComplexExpansion endChar ->
+                    ComplexExpansion endChar _ ->
                         let currentChar = head $ alexCollectChar preInput
                         in if (currentChar == endChar) then True else False
                     _ -> False
         }
         {
-            m (\_ -> TopLevel) Style.operatorStyle
+            m (\(ComplexExpansion _ prevState) -> prevState) Style.operatorStyle
         }
     . 
         { c Style.variableStyle }
@@ -146,8 +146,17 @@ make :-
         { c Style.makeFileAction }
     \n
         { m (\_ -> TopLevel) Style.defaultStyle }
-    $white
-        { c Style.defaultStyle }
+    
+    -- Variable expansion is supported in a rule command.
+    "$$"
+        { c Style.makeFileAction }
+    \$$varChar
+        { c Style.variableStyle }
+    "${"
+        { m (\_ -> ComplexExpansion '}' RuleCommand) Style.operatorStyle }
+    "$(" 
+        { m (\_ -> ComplexExpansion ')' RuleCommand) Style.operatorStyle }
+
     .
         { c Style.makeFileAction }
 }
@@ -160,8 +169,6 @@ make :-
         { c Style.commentStyle }
     \n
         { m (\_ -> TopLevel) Style.defaultStyle }
-    $white 
-        { c Style.defaultStyle }
     .
         { c Style.commentStyle }
 }
@@ -171,13 +178,13 @@ data HlState =
       TopLevel 
     | InComment
     | IncludeDirective
-    | ComplexExpansion Char
+    | ComplexExpansion Char HlState
     | RuleCommand
 
 stateToInit TopLevel = 0
 stateToInit InComment = comment
 stateToInit IncludeDirective = includeDirective
-stateToInit (ComplexExpansion _) = complexExpansion
+stateToInit (ComplexExpansion _ _) = complexExpansion
 stateToInit RuleCommand = ruleCommand
 
 initState :: HlState
