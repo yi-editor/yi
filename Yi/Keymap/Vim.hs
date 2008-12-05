@@ -491,18 +491,27 @@ defKeymap = Proto template
        let i = maybe 1 id cnt
        choice $ [let onMove regionStyle move =
                         onRegion regionStyle =<< withBuffer0' (regionOfViMove move regionStyle)
+                     applyOperator frs (regionStyle, m) = write $ onMove (frs regionStyle) (Replicate m i)
                      s1 = prefix [c]
                      ss = nub [[c], s1]
                  in
                  pString s1 >>
-                    choice ([ gen_cmd_move >>= (\(regionStyle, m) -> write $ onMove regionStyle (Replicate m i))
-                            , select_any_unit (onRegion Exclusive)] ++
-                            [ pString s >>! onMove LineWise (Replicate (Move VLine Forward) (i-1))
-                            | s <- ss ])
+                    choice ([ forceRegStyle >>= \ frs -> gen_cmd_move >>= applyOperator frs -- TODO: text units (eg. dViB)
+                            , gen_cmd_move >>= applyOperator id
+                            , select_any_unit (onRegion Exclusive) ] ++
+                            [ pString s >>! onMove LineWise (Replicate (Move VLine Forward) (i-1)) | s <- ss ]
+                           )
 
                 | (prefix,c,onRegion) <- opCmdFM
                 ]
          where
+             -- | Forces RegionStyle; see motion.txt, line 116 and below (Vim 7.2)
+             -- TODO: chainging (vVVvVv), CTRL+v
+             forceRegStyle :: KeymapM (RegionStyle -> RegionStyle)
+             forceRegStyle = choice [ char 'V' ?>> return (\_ -> LineWise)
+                                 , char 'v' ?>> return swpRsOrIncl]
+                            where swpRsOrIncl Exclusive = Inclusive
+                                  swpRsOrIncl _         = Exclusive
              -- | operator (i.e. movement-parameterised) actions
              opCmdFM =  [ (id,     'd', \s r -> cutRegion s r >> withBuffer0 leftOnEol)
                         , (id,     'y', yankRegion)
