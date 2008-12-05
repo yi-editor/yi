@@ -53,14 +53,12 @@ make :-
 
 <0>
 {
-    -- All lines that start with a \t are passed to the shell.
-    -- This includes # characters that might be in the shell code! Those indicate comments *only* if
-    -- the shell interpretting the code would consider it a comment. Wack huh?
-    -- See 3.1
-    -- TODO: I would really like to see the tab character visually distinct from a space. One
-    -- possibility would be to treat the tab character as an operator.
-    ^\t.*
-        { c Style.makeFileAction }
+    -- All lines that start with a \t are passed to the shell post variable expansion and '\'
+    -- handling.
+    -- TODO: I'm almost convinced I'd like to see the tab character visually distinct from a space.
+    -- One possibility would be to treat the tab character as an operator.
+    ^\t
+        { m (\_ -> RuleCommand) Style.defaultStyle }
 
     -- There can be any number of spaces (but not tabs!) preceeded a directive.
     ^$space+
@@ -133,6 +131,25 @@ make :-
         { c Style.variableStyle }
 }
 
+-- After all the lines joined by a '\' character are appended together the text only undergoes
+-- variable expansion before being passed to the shell. 
+-- This means that a '#' character only indicates a comment *only* if the shell interpretting the
+-- expanded text would consider it a comment. Wack huh?
+-- See 3.1
+<ruleCommand> 
+{
+    -- If the \n is preceeded by a \ then the next line is part of this command even if there is no
+    -- \t at the start.
+    \\[.\n]
+        { c Style.makeFileAction }
+    \n
+        { m (\_ -> TopLevel) Style.defaultStyle }
+    $white
+        { c Style.defaultStyle }
+    .
+        { c Style.makeFileAction }
+}
+
 <comment>
 {
     -- Comments can be continued to the next line with a trailing slash.
@@ -141,6 +158,8 @@ make :-
         { c Style.commentStyle }
     \n
         { m (\_ -> TopLevel) Style.defaultStyle }
+    $white 
+        { c Style.defaultStyle }
     .
         { c Style.commentStyle }
 }
@@ -151,11 +170,13 @@ data HlState =
     | InComment
     | IncludeDirective
     | ComplexExpansion Char
+    | RuleCommand
 
 stateToInit TopLevel = 0
 stateToInit InComment = comment
 stateToInit IncludeDirective = includeDirective
 stateToInit (ComplexExpansion _) = complexExpansion
+stateToInit RuleCommand = ruleCommand
 
 initState :: HlState
 initState = TopLevel
