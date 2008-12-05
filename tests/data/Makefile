@@ -153,3 +153,6 @@ $(EXTERNAL_PREFIX_DIR) :
 # command. 
 $$=FOO
 FOO:=$($$)
+
+# Mixing brackets within a variable expansion.
+$(shell echo ${shell echo $($$)})
