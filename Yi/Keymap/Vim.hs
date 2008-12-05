@@ -823,7 +823,7 @@ defKeymap = Proto template
            ex_complete s                                       = catchAllComplete s
 
            catchAllComplete = exSimpleComplete $ const $ return $ map (++ " ") $ words
-                                "e edit r read tabe b buffer bd bd! bdelete bdelete! yi cabal"
+                                "e edit r read tabe b buffer bd bd! bdelete bdelete! yi cabal nohlsearch"
            cabalComplete = exSimpleComplete $ const $ return $ cabalCmds
            cabalCmds = words "configure install list update upgrade fetch upload check sdist" ++
                        words "report build copy haddock clean hscolour register test help"
@@ -1013,6 +1013,8 @@ defKeymap = Proto template
            fn "tabnew"     = withEditor newTabE
            fn ('t':'a':'b':'e':' ':f) = do withEditor newTabE
                                            fnewE f
+           fn "noh"        = withEditor resetRegexE
+           fn "nohlsearch" = withEditor resetRegexE
            fn s            = errorEditor $ "The "++show s++ " command is unknown."
 
 
