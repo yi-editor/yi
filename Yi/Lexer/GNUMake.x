@@ -117,6 +117,18 @@ make :-
 <complexExpansion>
 {
     $white+ { c Style.defaultStyle }
+    
+    -- Variable expansion is supported in a variable expansion. Unlike in a rule commmand the
+    -- sequence $$ means the variable named $$.
+    "$$"
+        { c Style.variableStyle }
+    \$$varChar
+        { c Style.variableStyle }
+    "${"
+        { m (\this -> ComplexExpansion '}' this) Style.operatorStyle }
+    "$(" 
+        { m (\this -> ComplexExpansion ')' this) Style.operatorStyle }
+
     ./
         {
             \state preInput _ _ ->
