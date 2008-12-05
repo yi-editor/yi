@@ -115,6 +115,7 @@ $(EXE_PATH) : $(BIN_DIR) $(EXTERNALS) $(OBJECTS)
 
 $(BIN_DIR) : $(BUILD_DIR_BASE)
 	mkdir -p $(BIN_DIR)
+	echo $$PWD
 
 $(BUILD_DIR_BASE) : 
 	@echo Creating build directory.
