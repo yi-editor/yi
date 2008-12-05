@@ -497,7 +497,6 @@ defKeymap = Proto template
                  in
                  pString s1 >>
                     choice ([ forceRegStyle >>= \ frs -> gen_cmd_move >>= applyOperator frs -- TODO: text units (eg. dViB)
-                            , gen_cmd_move >>= applyOperator id
                             , select_any_unit (onRegion Exclusive) ] ++
                             [ pString s >>! onMove LineWise (Replicate (Move VLine Forward) (i-1)) | s <- ss ]
                            )
@@ -506,10 +505,11 @@ defKeymap = Proto template
                 ]
          where
              -- | Forces RegionStyle; see motion.txt, line 116 and below (Vim 7.2)
-             -- TODO: chainging (vVVvVv), CTRL+v
-             forceRegStyle :: KeymapM (RegionStyle -> RegionStyle)
-             forceRegStyle = choice [ char 'V' ?>> return (\_ -> LineWise)
-                                 , char 'v' ?>> return swpRsOrIncl]
+             -- TODO: CTRL+v
+             forceRegStyle = do
+                 style <- many $ choice [ char 'V' ?>> return (\_ -> LineWise)
+                                        , char 'v' ?>> return swpRsOrIncl]
+                 return $ last (id:style)
                             where swpRsOrIncl Exclusive = Inclusive
                                   swpRsOrIncl _         = Exclusive
              -- | operator (i.e. movement-parameterised) actions
