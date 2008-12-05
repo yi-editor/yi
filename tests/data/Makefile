@@ -147,3 +147,9 @@ clean : $(EXTERNAL_CLEAN_TARGETS)
 $(EXTERNALS) : $(EXTERNAL_PREFIX_DIR)
 $(EXTERNAL_PREFIX_DIR) :
 	@mkdir -p $(EXTERNAL_PREFIX_DIR)
+
+# What follows makes no sense but is perfectly valid.
+# The $$ should be recognized as a variable identifier and *not* as escaping $ as it is in a rule 
+# command. 
+$$=FOO
+FOO:=$($$)
