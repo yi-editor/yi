@@ -8,6 +8,7 @@
 
 module Yi.Search (
         setRegexE,      -- :: SearchExp -> EditorM ()
+        resetRegexE,    -- :: EditorM ()
         getRegexE,      -- :: EditorM (Maybe SearchExp)
         SearchMatch,
         SearchResult(..),
@@ -65,6 +66,10 @@ import Yi.History
 -- | Put regex into regex 'register'
 setRegexE :: SearchExp -> EditorM ()
 setRegexE re = setA regexA (Just re)
+
+-- | Clear the regex 'register'
+resetRegexE :: EditorM ()
+resetRegexE = setA regexA Nothing
 
 -- | Return contents of regex register
 getRegexE :: EditorM (Maybe SearchExp)
