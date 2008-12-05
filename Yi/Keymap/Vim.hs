@@ -14,7 +14,7 @@ module Yi.Keymap.Vim (keymap,
 import Prelude (maybe, length, filter, map, drop, break, uncurry)
 
 import Data.Char
-import Data.List (nub, take, words)
+import Data.List (nub, take, words, dropWhile)
 import Data.Maybe (fromMaybe)
 import Data.Prototype
 import Numeric (showHex, showOct)
@@ -804,11 +804,13 @@ defKeymap = Proto template
                        (ctrl $ char 'u') ?>>! moveToSol >> deleteToEol]
                   <|| (textChar >>= write . insertB)
            completeMinibuffer = withBuffer elemsB >>= ex_complete >>= withBuffer . insertN
-           exSimpleComplete compl s = drop (length s) <$> simpleComplete compl s
+           exSimpleComplete compl s' = let s = dropWhile isSpace s' in drop (length s) <$> simpleComplete compl s
            f_complete = exSimpleComplete (matchingFileNames Nothing)
            b_complete = exSimpleComplete matchingBufferNames
            ex_complete ('e':' ':f)                             = f_complete f
            ex_complete ('e':'d':'i':'t':' ':f)                 = f_complete f
+           ex_complete ('w':' ':f)                             = f_complete f
+           ex_complete ('w':'r':'i':'t':'e':' ':f)             = f_complete f
            ex_complete ('r':' ':f)                             = f_complete f
            ex_complete ('r':'e':'a':'d':' ':f)                 = f_complete f
            ex_complete ('t':'a':'b':'e':' ':f)                 = f_complete f
@@ -911,8 +913,8 @@ defKeymap = Proto template
 
 
            wquitall = withAllBuffers viWrite >> quitEditor
-           bdelete  = whenUnchanged (withBuffer' isUnchangedB) . withEditor . closeBufferE
-           bdeleteNoW = withEditor . closeBufferE
+           bdelete  = whenUnchanged (withBuffer' isUnchangedB) . withEditor . closeBufferE . dropSpace
+           bdeleteNoW = withEditor . closeBufferE . dropSpace
 
            -- fn maps from the text entered on the command line to a YiM () implementing the 
            -- command.
@@ -957,18 +959,18 @@ defKeymap = Proto template
            fn ('s':'p':_)  = withEditor splitE
            fn "e"          = revertE
            fn "edit"       = revertE
-           fn ('e':' ':f)  = fnewE f
-           fn ('e':'d':'i':'t':' ':f) = fnewE f
-           fn ('r':' ':f)  = withBuffer' . insertN =<< io (readFile f)
-           fn ('r':'e':'a':'d':' ':f) = withBuffer' . insertN =<< io (readFile f)
+           fn ('e':' ':f)  = fnewE $ dropSpace f
+           fn ('e':'d':'i':'t':' ':f) = fnewE $ dropSpace f
+           fn ('r':' ':f)  = withBuffer' . insertN =<< io (readFile $ dropSpace f)
+           fn ('r':'e':'a':'d':' ':f) = withBuffer' . insertN =<< io (readFile $ dropSpace f)
            -- fn ('s':'e':'t':' ':'f':'t':'=':ft)  = withBuffer' $ setSyntaxB $ highlighters M.! ft
            fn ('s':'e':'t':' ':'t':'a':'g':'s':'=':fps)  = withEditor $ setTagsFileList fps
-           fn ('n':'e':'w':' ':f) = withEditor splitE >> fnewE f
+           fn ('n':'e':'w':' ':f) = withEditor splitE >> fnewE (dropSpace f)
            fn ('s':'/':cs) = withEditor $ viSub cs Line
            fn ('%':'s':'/':cs) = withEditor $ viSub cs Document
 
            fn ('b':' ':"m") = withEditor $ switchToBufferWithNameE "*messages*"
-           fn ('b':' ':f)   = withEditor $ switchToBufferWithNameE f
+           fn ('b':' ':f)   = withEditor $ switchToBufferWithNameE $ dropSpace f
            fn "bd"                                    = bdelete ""
            fn "bdelete"                               = bdelete ""
            fn ('b':'d':' ':f)                         = bdelete f
@@ -1009,10 +1011,9 @@ defKeymap = Proto template
            fn "stop"       = suspendEditor
 
            fn ('c':'a':'b':'a':'l':' ':s) = cabalRun s1 (const $ return ()) (drop 1 s2) where (s1, s2) = break (==' ') s
-           fn ('y':'i':' ':s) = execEditorAction s
+           fn ('y':'i':' ':s) = execEditorAction $ dropSpace s
            fn "tabnew"     = withEditor newTabE
-           fn ('t':'a':'b':'e':' ':f) = do withEditor newTabE
-                                           fnewE f
+           fn ('t':'a':'b':'e':' ':f) = withEditor newTabE >> fnewE (dropSpace f)
            fn "noh"        = withEditor resetRegexE
            fn "nohlsearch" = withEditor resetRegexE
            fn s            = errorEditor $ "The "++show s++ " command is unknown."
