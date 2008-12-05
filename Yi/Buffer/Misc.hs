@@ -650,15 +650,9 @@ curLn = do
     p <- pointB
     queryBuffer (lineAt p)
 
--- | Return line numbers of (from, ins, sel, to) marks
-markLines :: BufferM (Int, Int, Int, Int)
-markLines = do
-    MarkSet from ins sel to <- askMarks
-    f <- getLn from
-    i <- getLn ins
-    s <- getLn sel
-    t <- getLn to
-    return (f, i, s, t)
+-- | Return line numbers of marks
+markLines :: BufferM (MarkSet Int)
+markLines = mapM getLn =<< askMarks
         where getLn m = getMarkPointB m >>= pointLine
               pointLine p = queryBuffer $ lineAt p
 
