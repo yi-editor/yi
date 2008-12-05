@@ -29,7 +29,7 @@ import qualified Yi.Style as Style
 -- However when I try to feed GNU makefile containing such weird variable names GNU make fails.
 -- Though the specification does leave limiting the scope of valid variable names that as an open
 -- option for "the future" 
-$varChar = $printable # [\: \# \= \ \{ \} \( \) \$]
+$varChar = $printable # [\: \# \= \ \{ \} \( \)]
 
 @directives = 
       include 
@@ -73,7 +73,9 @@ make :-
     -- A variable expansion outside of a prerequisite can occur in three different forms.
     -- Inside a prerequisite they can occur in four different forms.
     -- TODO: Highlight the automatic variables differently.
-    -- 1. Single character variable name
+    -- 1. Single character variable names unless the character is a $.
+    "$$"
+        { c Style.defaultStyle }
     \$$varChar
         { c Style.variableStyle }
 
