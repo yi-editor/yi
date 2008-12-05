@@ -803,7 +803,7 @@ defKeymap = Proto template
                        (ctrl $ char 'w') ?>>! deleteB unitWord Backward,
                        (ctrl $ char 'u') ?>>! moveToSol >> deleteToEol]
                   <|| (textChar >>= write . insertB)
-           completeMinibuffer = withBuffer' elemsB >>= ex_complete >>= withBuffer' . insertN
+           completeMinibuffer = withBuffer elemsB >>= ex_complete >>= withBuffer . insertN
            exSimpleComplete compl s = drop (length s) <$> simpleComplete compl s
            f_complete = exSimpleComplete (matchingFileNames Nothing)
            b_complete = exSimpleComplete matchingBufferNames
