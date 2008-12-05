@@ -387,7 +387,7 @@ defKeymap = Proto template
          ,(ctrl $ char 'r',    withBuffer' . flip replicateM_ redoB)
          ,(ctrl $ char 'z',    const suspendEditor)
          ,(ctrl $ char ']',    const gotoTagCurrentWord)
-         ,(char 'D',      withEditor . cut Exclusive . ArbMove . viMoveToNthEol)
+         ,(char 'D',      withEditor' . cut Exclusive . ArbMove . viMoveToNthEol)
          ,(char 'J',      const $ withBuffer' $ joinLinesB)
          ,(char 'Y',      \n -> withEditor $ do
                                     let move = Replicate (Move Line Forward) n
@@ -399,8 +399,8 @@ defKeymap = Proto template
          ,(char 'N',      const $ withEditor $ continueSearching reverseDir)
          ,(char 'u',      withBuffer' . flip replicateM_ undoB)
 
-         ,(char 'X',      withEditor . cut Exclusive . (Replicate $ CharMove Backward))
-         ,(char 'x',      withEditor . cut Exclusive . (Replicate $ CharMove Forward))
+         ,(char 'X',      withEditor' . cut Exclusive . (Replicate $ CharMove Backward))
+         ,(char 'x',      withEditor' . cut Exclusive . (Replicate $ CharMove Forward))
 
          ,(char 'p',      withEditor . flip replicateM_ pasteAfter)
 
@@ -504,7 +504,7 @@ defKeymap = Proto template
                 ]
          where
              -- | operator (i.e. movement-parameterised) actions
-             opCmdFM =  [ (id,     'd', cutRegion)
+             opCmdFM =  [ (id,     'd', \s r -> cutRegion s r >> withBuffer0 leftOnEol)
                         , (id,     'y', yankRegion)
                         , (('g':), '~', viMapRegion switchCaseChar)
                         , (('g':), 'u', viMapRegion toLower)
@@ -584,9 +584,8 @@ defKeymap = Proto template
 
      cut :: RegionStyle -> ViMove -> EditorM ()
      cut regionStyle move = do
-         region <- withBuffer0' $ regionOfViMove move regionStyle
+         region <- withBuffer0 $ regionOfViMove move regionStyle
          cutRegion regionStyle region
-         withBuffer0' leftOnEol
 
      cutSelection :: EditorM ()
      cutSelection = uncurry cutRegion =<< withBuffer0' regionOfSelection
@@ -649,11 +648,11 @@ defKeymap = Proto template
                  char 'v'  ?>> change_vis_mode selStyle (SelectionStyle Character),
                  char ':'  ?>>! ex_mode ":'<,'>",
                  char 'y'  ?>>! yankSelection,
-                 char 'x'  ?>>! cutSelection,
-                 char 'd'  ?>>! cutSelection,
+                 char 'x'  ?>>! (cutSelection >> withBuffer0 leftOnEol),
+                 char 'd'  ?>>! (cutSelection >> withBuffer0 leftOnEol),
                  char 'p'  ?>>! pasteOverSelection,
-                 char 's'  ?>> beginIns self (cutSelection >> withBuffer0' (setVisibleSelection False)),
-                 char 'c'  ?>> beginIns self (cutSelection >> withBuffer0' (setVisibleSelection False))]
+                 char 's'  ?>> beginIns self (cutSelection >> withBuffer0 (setVisibleSelection False)),
+                 char 'c'  ?>> beginIns self (cutSelection >> withBuffer0 (setVisibleSelection False))]
 
 
      -- | These also switch mode, as all visual commands do, but these are
@@ -1090,13 +1089,19 @@ ins_mode self = write (setStatus ("-- INSERT --", defaultStyle)) >> many (v_ins_
 beginIns :: (Show x, YiAction a x) => ModeMap -> a -> I Event Action ()
 beginIns self a = write a >> ins_mode self
 
+post :: Monad m => m a -> m () -> m a
+f `post` g = do x <- f
+                g
+                return x
+
 withBuffer0' :: BufferM a -> EditorM a
-withBuffer0' f = withBuffer0 $ do x <- f
-                                  leftOnEol
-                                  return x
+withBuffer0' f = withBuffer0 $ f `post` leftOnEol
 
 withBuffer' :: BufferM a -> YiM a
 withBuffer' = withEditor . withBuffer0'
+
+withEditor' :: EditorM a -> YiM a
+withEditor' f = withEditor $ f `post` withBuffer0 leftOnEol
 
 -- Find the item after or under the cursor and jump to its match
 percentMove :: (RegionStyle, ViMove)
