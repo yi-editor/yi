@@ -21,16 +21,16 @@ import Data.List (span, length, sort, nub, break, reverse, filter, takeWhile, dr
 import Yi.String
 
 {- |
-  Insert either a \t or the number of spaces specified by tabSize in the
+  Return either a \t or the number of spaces specified by tabSize in the
   IndentSettings. Note that if you actually want to insert a tab character
   (for example when editing makefiles) then you should use: @insertB '\t'@.
 -}
-insertTabB :: BufferM ()
-insertTabB = do
+tabB :: BufferM String
+tabB = do
   indentSettings <- indentSettingsB
-  insertN $ if expandTabs indentSettings
+  return $ if expandTabs indentSettings
     then replicate (tabSize indentSettings) ' '
-    else ['\t']
+    else "\t"
 
 {-|
   Retrieve the current indentation settings for the buffer.
