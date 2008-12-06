@@ -62,9 +62,9 @@ viWriteTo f = do
 -- | Try to write to a named file if it doesn't exist. Error out if it does.
 viSafeWriteTo :: String -> YiM ()
 viSafeWriteTo f = do
-    existsF <- (liftIO $ doesFileExist f)
+    existsF <- liftIO $ doesFileExist f
     if existsF
-       then (errorEditor $ f ++ ": File exists (add '!' to override)")
+       then errorEditor $ f ++ ": File exists (add '!' to override)"
        else viWriteTo f
 
 -- | Write current buffer to disk, if this buffer is associated with a file
