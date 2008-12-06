@@ -70,7 +70,7 @@ runShimThread f = do
               return a
 
 maybeShimA  :: Accessor Editor (Maybe (MVar ShimState))
-maybeShimA = dynamicValueA .> dynamicA
+maybeShimA = dynamicValueA . dynamicA
 
 -- ---------------------------------------------------------------------
 -- CompileNote
@@ -102,7 +102,7 @@ instance Initializable ShimNotes where
 
 
 notesA :: Accessor Editor T
-notesA =  (Accessor fromShimNotes (\f (ShimNotes x) -> ShimNotes (f x))) 
-          .> dynamicValueA .> dynamicA 
+notesA =  (mkAccessor fromShimNotes (\f (ShimNotes x) -> ShimNotes (f x))) 
+          . dynamicValueA . dynamicA 
 
 
