@@ -12,7 +12,7 @@ maintainer:     yi-devel@googlegroups.com
 homepage:       http://haskell.org/haskellwiki/Yi
 
 Cabal-Version:  >= 1.6
-tested-with:    GHC==6.8.3
+tested-with:    GHC==6.10.1
 build-type:     Simple
 data-files:
   art/yi+lambda-fat.pdf
