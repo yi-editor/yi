@@ -50,7 +50,6 @@ import Yi.Window (bufkey)
 --   :!!
 --   movement parameterised \> \<
 --   motion operators [motion.txt]: !, =, >, <
---   C-y in input mode
 --   C-v: visual block mode
 --   Support for marks
 --   C-o and C-i
