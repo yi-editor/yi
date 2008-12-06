@@ -4,7 +4,7 @@ import Yi.Keymap.Emacs (keymap)
 -- import  Yi.Keymap.Cua (keymap)
 
 -- If configured with ghcAPI, Shim Mode can be enabled:
--- import qualified Yi.Mode.Shim as Shim
+import qualified Yi.Mode.Shim as Shim
 import Yi.Mode.Haskell as Haskell
 import Data.List (drop, length)
 import Yi.Prelude
@@ -28,7 +28,7 @@ bestHaskellMode =
                        -- Haskell.preciseMode
                        {
                         -- example of Mode-local rebinding
-                        modeKeymap = (choice [ctrlCh 'c' ?>> char 'l' ?>>! ghciLoadBuffer,
+                        modeKeymap = (choice [ctrlCh 'c' ?>> ctrlCh 'l' ?>>! ghciLoadBuffer,
                                               ctrlCh 'c' ?>> ctrl (char 'z') ?>>! ghciGet
                                              ]
                                       <||)  
