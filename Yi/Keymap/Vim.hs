@@ -192,29 +192,29 @@ defKeymap = Proto template
      moveCmdFM_exclusive :: [(Event, (Int -> ViMove))]
      moveCmdFM_exclusive =
          -- left/right
-         [(char 'h',        left)
-         ,(ctrl $ char 'h', left)
-         ,(spec KBS,        left)
-         ,(spec KLeft,      left)
-         ,(spec KRight,     right)
-         ,(char 'l',        right)
-         ,(char ' ',        right)
+         [(char 'h',    left)
+         ,(ctrlCh 'h',  left)
+         ,(spec KBS,    left)
+         ,(spec KLeft,  left)
+         ,(spec KRight, right)
+         ,(char 'l',    right)
+         ,(char ' ',    right)
          -- eol / sol / special column
-         ,(spec KHome,      sol)
-         ,(char '^',        const $ ArbMove firstNonSpaceB)
-         ,(char '|',        ArbMove . moveToColB . pred)
-         ,(char '$',        eol)
-         ,(spec KEnd,       eol)
+         ,(spec KHome,  sol)
+         ,(char '^',    const $ ArbMove firstNonSpaceB)
+         ,(char '|',    ArbMove . moveToColB . pred)
+         ,(char '$',    eol)
+         ,(spec KEnd,   eol)
           -- words
-         ,(char 'w',       Replicate $ GenMove unitViWord (Backward,InsideBound) Forward)
-         ,(char 'W',       Replicate $ GenMove unitViWORD (Backward,InsideBound) Forward)
-         ,(char 'b',       Replicate $ Move unitViWord Backward)
-         ,(char 'B',       Replicate $ Move unitViWORD Backward)
+         ,(char 'w',    Replicate $ GenMove unitViWord (Backward,InsideBound) Forward)
+         ,(char 'W',    Replicate $ GenMove unitViWORD (Backward,InsideBound) Forward)
+         ,(char 'b',    Replicate $ Move unitViWord Backward)
+         ,(char 'B',    Replicate $ Move unitViWORD Backward)
           -- text
-         ,(char '{',       Replicate $ Move unitEmacsParagraph Backward)
-         ,(char '}',       Replicate $ Move unitEmacsParagraph Forward)
-         ,(char '(',       Replicate $ Move unitSentence  Backward)
-         ,(char ')',       Replicate $ Move unitSentence  Forward)
+         ,(char '{',    Replicate $ Move unitEmacsParagraph Backward)
+         ,(char '}',    Replicate $ Move unitEmacsParagraph Forward)
+         ,(char '(',    Replicate $ Move unitSentence  Backward)
+         ,(char ')',    Replicate $ Move unitSentence  Forward)
          ]
          where
              left  = Replicate $ CharMove Backward
@@ -273,18 +273,18 @@ defKeymap = Proto template
      -- because they behave differently when yanking/cuting (line mode).
      moveUpDownCmdFM :: [(Event, Int -> ViMove)]
      moveUpDownCmdFM =
-         [(char 'k',        up)
-         ,(spec KUp,        up)
-         ,(ctrl $ char 'p', up)
-         ,(char 'j',        down)
-         ,(spec KDown,      down)
-         ,(ctrl $ char 'j', down)
-         ,(ctrl $ char 'n', down)
-         ,(spec KEnter,     down)
+         [(char 'k',    up)
+         ,(spec KUp,    up)
+         ,(ctrlCh 'p',  up)
+         ,(char 'j',    down)
+         ,(spec KDown,  down)
+         ,(ctrlCh 'j',  down)
+         ,(ctrlCh 'n',  down)
+         ,(spec KEnter, down)
           -- misc
-         ,(char 'H',        ArbMove . downFromTosB . pred)
-         ,(char 'M',        const $ ArbMove middleB)
-         ,(char 'L',        ArbMove . upFromBosB . pred)
+         ,(char 'H',    ArbMove . downFromTosB . pred)
+         ,(char 'M',    const $ ArbMove middleB)
+         ,(char 'L',    ArbMove . upFromBosB . pred)
          ]
          where
              up   = Replicate (Move VLine Backward)
@@ -385,19 +385,19 @@ defKeymap = Proto template
      -- Usually the integer argument is the number of times an action should be repeated.
      singleCmdFM :: [(Event, Int -> YiM ())]
      singleCmdFM =
-         [(ctrl $ char 'b',    withBuffer' . upScreensB)             -- vim does (firstNonSpaceB;moveXorSol)
-         ,(ctrl $ char 'f',    withBuffer' . downScreensB)
-         ,(ctrl $ char 'u',    withBuffer' . vimScrollByB (negate . (`div` 2)))
-         ,(ctrl $ char 'd',    withBuffer' . vimScrollByB (`div` 2))
-         ,(ctrl $ char 'y',    withBuffer' . vimScrollB . negate)
-         ,(ctrl $ char 'e',    withBuffer' . vimScrollB)
-         ,(ctrl $ char 'g',    const viFileInfo)
-         ,(ctrl $ char 'l',    const refreshEditor)
-         ,(ctrl $ char 'r',    withBuffer' . flip replicateM_ redoB)
-         ,(ctrl $ char 'z',    const suspendEditor)
-         ,(ctrl $ char ']',    const gotoTagCurrentWord)
-         ,(ctrl $ char 'a',    withBuffer' . onCurrentWord . onNumberInString . (+))
-         ,(ctrl $ char 'x',    withBuffer' . onCurrentWord . onNumberInString . flip (-))
+         [(ctrlCh 'b',    withBuffer' . upScreensB)             -- vim does (firstNonSpaceB;moveXorSol)
+         ,(ctrlCh 'f',    withBuffer' . downScreensB)
+         ,(ctrlCh 'u',    withBuffer' . vimScrollByB (negate . (`div` 2)))
+         ,(ctrlCh 'd',    withBuffer' . vimScrollByB (`div` 2))
+         ,(ctrlCh 'y',    withBuffer' . vimScrollB . negate)
+         ,(ctrlCh 'e',    withBuffer' . vimScrollB)
+         ,(ctrlCh 'g',    const viFileInfo)
+         ,(ctrlCh 'l',    const refreshEditor)
+         ,(ctrlCh 'r',    withBuffer' . flip replicateM_ redoB)
+         ,(ctrlCh 'z',    const suspendEditor)
+         ,(ctrlCh ']',    const gotoTagCurrentWord)
+         ,(ctrlCh 'a',    withBuffer' . onCurrentWord . onNumberInString . (+))
+         ,(ctrlCh 'x',    withBuffer' . onCurrentWord . onNumberInString . flip (-))
          ,(char 'D',      withEditor' . cut Exclusive . ArbMove . viMoveToNthEol)
          ,(char 'J',      const $ withBuffer' $ joinLinesB)
          ,(char 'Y',      \n -> withEditor $ do
@@ -443,7 +443,7 @@ defKeymap = Proto template
          ]
 
      ctrlW :: Event
-     ctrlW = ctrl $ char 'w'
+     ctrlW = ctrlCh 'w'
 
      multiCmdFM :: [([Event], Int -> YiM ())]
      multiCmdFM =
@@ -462,8 +462,8 @@ defKeymap = Proto template
          ,([ctrlW,spec KLeft],  const $ withEditor prevWinE)
          ,([ctrlW,char 'k'],    const $ withEditor prevWinE)
          ,([ctrlW,char 'j'],    const $ withEditor nextWinE)    -- Same as the above pair, when you're a bit slow to release ctl.
-         ,([ctrlW, ctrl $ char 'k'], const $ withEditor prevWinE)
-         ,([ctrlW, ctrl $ char 'j'], const $ withEditor nextWinE)
+         ,([ctrlW, ctrlCh 'k'], const $ withEditor prevWinE)
+         ,([ctrlW, ctrlCh 'j'], const $ withEditor nextWinE)
          ,(map char ">>", withBuffer' . shiftIndentOfLine)
          ,(map char "<<", withBuffer' . shiftIndentOfLine . negate)
          ,(map char "ZZ", const $ viWrite >> closeWindow)
@@ -760,8 +760,8 @@ defKeymap = Proto template
      _ `upTo` 0 = empty
      p `upTo` n = (:) <$> p <*> (p `upTo` pred n <|> pure []) 
 
-     insertNumber :: VimMode
-     insertNumber = do
+     insertNumber :: (Char -> BufferM ()) -> VimMode
+     insertNumber insrepB = do
          choice [g [charOf id '0' '2',charOf id '0' '5',dec] ""
                 ,g [charOf id '0' '2',charOf id '6' '9'] ""
                 ,g [charOf id '3' '9',dec] ""
@@ -776,31 +776,32 @@ defKeymap = Proto template
              oct = charOf id '0' '7'
              hex = charOf id '0' '9' <|> charOf id 'a' 'f' <|> charOf id 'A' 'F'
              f digits prefix = do xs <- digits
-                                  write $ withBuffer0' $ insertB $ chr $ read $ prefix ++ xs
+                                  write $ withBuffer0' $ insrepB $ chr $ read $ prefix ++ xs
              g digits prefix = f (sequence digits) prefix
 
-     ins_rep_char :: VimMode
-     ins_rep_char = choice [spec KPageUp       ?>>! upScreenB,
-                            spec KPageDown     ?>>! downScreenB,
-                            spec KUp           ?>>! lineUp,
-                            spec KDown         ?>>! lineDown,
-                            spec KLeft         ?>>! moveXorSol 1,
-                            spec KRight        ?>>! moveXorEol 1,
-                            spec KEnd          ?>>! moveToEol,
-                            spec KHome         ?>>! moveToSol,
-                            spec KDel          ?>>! (adjBlock (-1) >> deleteB Character Forward),
-                            spec KEnter        ?>>! insertB '\n',
-                            (ctrl $ char 'j')  ?>>! insertB '\n',
-                            (ctrl $ char 'm')  ?>>! insertB '\r',
-                            spec KTab          ?>>! insertTabB,
-                            (ctrl $ char 'i')  ?>>! insertTabB,
-                            (ctrl $ char 'e')  ?>>! insertB =<< savingPointB (lineDown >> readB),
-                            (ctrl $ char 'y')  ?>>! insertB =<< savingPointB (lineUp >> readB),
-                            (ctrl $ char 't')  ?>>! shiftIndentOfLine 1,
-                            (ctrl $ char 'd')  ?>>! withBuffer0' dedentOrDeleteIndent
-                           ,(ctrl $ char 'v')  ?>>  insertNumber
-                           ,(ctrl $ char 'q')  ?>>  insertNumber
-                            ]
+     ins_rep_char :: (Char -> BufferM ()) -> VimMode
+     ins_rep_char insrepB =
+       choice [spec KPageUp   ?>>! upScreenB
+              ,spec KPageDown ?>>! downScreenB
+              ,spec KUp       ?>>! lineUp
+              ,spec KDown     ?>>! lineDown
+              ,spec KLeft     ?>>! moveXorSol 1
+              ,spec KRight    ?>>! moveXorEol 1
+              ,spec KEnd      ?>>! moveToEol
+              ,spec KHome     ?>>! moveToSol
+              ,spec KDel      ?>>! (adjBlock (-1) >> deleteB Character Forward)
+              ,spec KEnter    ?>>! insertB '\n'
+              ,ctrlCh 'j'     ?>>! insertB '\n'
+              ,ctrlCh 'm'     ?>>! insertB '\r'
+              ,spec KTab      ?>>! mapM_ insrepB =<< tabB
+              ,ctrlCh 'i'     ?>>! mapM_ insrepB =<< tabB
+              ,ctrlCh 'e'     ?>>! insrepB =<< savingPointB (lineDown >> readB)
+              ,ctrlCh 'y'     ?>>! insrepB =<< savingPointB (lineUp >> readB)
+              ,ctrlCh 't'     ?>>! shiftIndentOfLine 1
+              ,ctrlCh 'd'     ?>>! withBuffer0' dedentOrDeleteIndent
+              ,ctrlCh 'v'     ?>>  insertNumber insrepB
+              ,ctrlCh 'q'     ?>>  insertNumber insrepB
+              ]
 
      --
      -- Some ideas for a better insert mode are contained in:
@@ -812,11 +813,11 @@ defKeymap = Proto template
      -- with delete.
      --
      def_ins_char =
-            choice [spec KBS           ?>>! adjBlock (-1) >> deleteB Character Backward,
-                    (ctrl $ char 'h')  ?>>! adjBlock (-1) >> deleteB Character Backward,
-                    (ctrl $ char 'w')  ?>>! cut Exclusive (GenMove unitViWord (Backward,InsideBound) Backward)
-                    ]
-            <|> ins_rep_char
+            choice [spec KBS   ?>>! adjBlock (-1) >> deleteB Character Backward
+                   ,ctrlCh 'h' ?>>! adjBlock (-1) >> deleteB Character Backward
+                   ,ctrlCh 'w' ?>>! cut Exclusive (GenMove unitViWord (Backward,InsideBound) Backward)
+                   ]
+            <|> ins_rep_char insertB
             <|| (textChar >>= write . (adjBlock 1 >>) . insertB)
 
      -- ---------------------------------------------------------------------
@@ -829,12 +830,13 @@ defKeymap = Proto template
      --  characters in a line stays the same until you get to the end of the line.
      --  If a <NL> is typed, a line break is inserted and no character is deleted.
      rep_char :: VimMode
-     rep_char = choice [spec KBS           ?>>! leftB,
-                        (ctrl $ char 'h')  ?>>! leftB,
-                        (ctrl $ char 'w')  ?>>! genMoveB unitViWord (Backward,InsideBound) Backward
+     rep_char = choice [spec KBS   ?>>! leftB
+                       ,ctrlCh 'h' ?>>! leftB
+                       ,ctrlCh 'w' ?>>! genMoveB unitViWord (Backward,InsideBound) Backward
                        ] -- should undo unless pointer has been moved
-                <|> ins_rep_char
-                <|| do c <- textChar; write (do e <- atEol; if e then insertB c else writeB c)
+                <|> ins_rep_char replaceB
+                <|| do c <- textChar; write $ replaceB c
+        where replaceB c = do e <- atEol; if e then insertB c else writeB c
 
      -- ---------------------------------------------------------------------
      -- Ex mode. We also process regex searching mode here.
@@ -849,20 +851,20 @@ defKeymap = Proto template
              ex_eval (head prompt : lineString)
            ex_process :: VimMode
            ex_process =
-               choice [spec KEnter       ?>>! ex_buffer_finish,
-                       spec KTab         ?>>! completeMinibuffer,
-                       spec KEsc         ?>>! closeBufferAndWindowE,
-                       (ctrl $ char 'h') ?>>! deleteB Character Backward,
-                       spec KBS          ?>>! deleteB Character Backward,
-                       spec KDel         ?>>! deleteB Character Forward,
-                       (ctrl $ char 'p') ?>>! historyUp,
-                       spec KUp          ?>>! historyUp,
-                       (ctrl $ char 'n') ?>>! historyDown,
-                       spec KDown        ?>>! historyDown,
-                       spec KLeft        ?>>! moveXorSol 1,
-                       spec KRight       ?>>! moveXorEol 1,
-                       (ctrl $ char 'w') ?>>! deleteB unitWord Backward,
-                       (ctrl $ char 'u') ?>>! moveToSol >> deleteToEol]
+               choice [spec KEnter ?>>! ex_buffer_finish
+                      ,spec KTab   ?>>! completeMinibuffer
+                      ,spec KEsc   ?>>! closeBufferAndWindowE
+                      ,ctrlCh 'h'  ?>>! deleteB Character Backward
+                      ,spec KBS    ?>>! deleteB Character Backward
+                      ,spec KDel   ?>>! deleteB Character Forward
+                      ,ctrlCh 'p'  ?>>! historyUp
+                      ,spec KUp    ?>>! historyUp
+                      ,ctrlCh 'n'  ?>>! historyDown
+                      ,spec KDown  ?>>! historyDown
+                      ,spec KLeft  ?>>! moveXorSol 1
+                      ,spec KRight ?>>! moveXorEol 1
+                      ,ctrlCh 'w'  ?>>! deleteB unitWord Backward
+                      ,ctrlCh 'u'  ?>>! moveToSol >> deleteToEol]
                   <|| (textChar >>= write . insertB)
            completeMinibuffer = withBuffer elemsB >>= ex_complete >>= withBuffer . insertN
            exSimpleComplete compl s' = let s = dropWhile isSpace s' in drop (length s) <$> simpleComplete compl s
@@ -1144,10 +1146,10 @@ viSub cs unit = do
 
 -- | Leave a mode. This always has priority over catch-all actions inside the mode.
 leave :: VimMode
-leave = oneOf [spec KEsc, ctrl $ char 'c'] >> adjustPriority (-1) >> write clrStatus
+leave = oneOf [spec KEsc, ctrlCh 'c'] >> adjustPriority (-1) >> write clrStatus
 
 leaveInsRep :: VimMode
-leaveInsRep = oneOf [spec KEsc, ctrl $ char '[', ctrl $ char 'c'] >> adjustPriority (-1) >> write clrStatus
+leaveInsRep = oneOf [spec KEsc, ctrlCh '[', ctrlCh 'c'] >> adjustPriority (-1) >> write clrStatus
 
 -- | Insert mode is either insertion actions, or the meta (\ESC) action
 ins_mode :: ModeMap -> VimMode
@@ -1196,7 +1198,7 @@ percentMove = (Inclusive, ArbMove tryGoingToMatch)
 -- --------------------
 -- | Keyword
 kwd_mode :: VimMode
-kwd_mode = some ((ctrl $ char 'n') ?>> write wordComplete) >> deprioritize >> write resetComplete
+kwd_mode = some (ctrlCh 'n' ?>> write wordComplete) >> deprioritize >> write resetComplete
 -- 'adjustPriority' is there to lift the ambiguity between "continuing" completion
 -- and resetting it (restarting at the 1st completion).
 
