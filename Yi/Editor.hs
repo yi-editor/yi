@@ -23,6 +23,7 @@ import Yi.Style (StyleName, defaultStyle)
 import Prelude (map, filter, (!!), takeWhile, length, reverse, zip)
 import Yi.Prelude
 
+import Data.Accessor.Basic (fromSetGet)
 import Data.Binary
 import Data.List (nub, delete)
 import Data.Foldable (concatMap)
@@ -114,10 +115,10 @@ dynamicA :: Accessor Editor DynamicValues
 dynamicA = mkAccessor dynamic (\f e -> e {dynamic = f (dynamic e)})
 
 windowsA :: Accessor Editor (WindowSet Window)
-windowsA = WS.currentA . tabsA
+windowsA =  WS.currentA . tabsA
 
 tabsA :: Accessor Editor (WindowSet (WindowSet Window))
-tabsA = mkAccessor tabs (\f e -> e {tabs = f (tabs e)})
+tabsA = mkAccessor tabs (\f e -> e {tabs = f (tabs e)}) . fixCurrentBufferA_
 
 killringA :: Accessor Editor Killring
 killringA = mkAccessor killring (\f e -> e {killring = f (killring e)})
@@ -298,12 +299,6 @@ currentWindowA = WS.currentA . windowsA
 getBuffer :: EditorM BufferRef
 getBuffer = gets (head . bufferStack)
 
--- | Set the current buffer
-setBuffer :: BufferRef -> EditorM BufferRef
-setBuffer k = do
-  b <- gets $ findBufferWith k
-  insertBuffer b -- a bit of a hack.
-
 -----------------------
 -- Handling of status
 
@@ -461,11 +456,16 @@ prevWinE = modifyWindows WS.backward
 
 -- | Apply a function to the windowset.
 modifyWindows :: (WindowSet Window -> WindowSet Window) -> EditorM ()
-modifyWindows f = do
-  b <- getsAndModifyA windowsA $ \ws -> let ws' = f ws in (ws', bufkey $ WS.current ws')
-  -- TODO: push this fiddling with current buffer into windowsA
-  setBuffer b
-  return ()
+modifyWindows = modifyA windowsA
+
+-- | A "fake" accessor that fixes the current buffer after a change of the current
+-- window.
+fixCurrentBufferA_ :: Accessor Editor Editor
+fixCurrentBufferA_ = fromSetGet (\new _old -> let 
+    ws = windows new
+    b = findBufferWith (bufkey $ WS.current ws) new
+    in new { bufferStack = nub (bkey b : bufferStack new) } ) id
+    
 
 withWindows :: (WindowSet Window -> a) -> EditorM a
 withWindows = getsA windowsA
