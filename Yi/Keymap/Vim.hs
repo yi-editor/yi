@@ -986,7 +986,8 @@ defKeymap = Proto template
            fn s | all isDigit s = withBuffer' (gotoLn (read s) >> firstNonSpaceB)
 
            fn "w"          = viWrite
-           fn ('w':' ':f)  = viWriteTo $ dropSpace f
+           fn ('w':' ':f)  = viSafeWriteTo $ dropSpace f
+           fn ('w':'!':' ':f)  = viWriteTo $ dropSpace f
            fn "qa"         = safeQuitAllWindows
            fn "qal"        = safeQuitAllWindows
            fn "qall"       = safeQuitAllWindows
