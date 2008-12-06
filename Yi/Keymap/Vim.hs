@@ -759,10 +759,17 @@ defKeymap = Proto template
      _ `upTo` 0 = empty
      p `upTo` n = (:) <$> p <*> (p `upTo` pred n <|> pure []) 
 
+     insertSpecialChar :: (Char -> BufferM ()) -> VimMode
+     insertSpecialChar insrepB =
+          insertNumber insrepB
+      <|> (ctrlCh '@' ?>>! insrepB '\000')
+      <|| (write . withBuffer0' . insrepB . eventToChar =<< anyEvent)
+
      insertNumber :: (Char -> BufferM ()) -> VimMode
      insertNumber insrepB = do
-         choice [g [charOf id '0' '2',charOf id '0' '5',dec] ""
-                ,g [charOf id '0' '2',charOf id '6' '9'] ""
+         choice [g [charOf id '0' '1',dec,dec] ""
+                ,g [charOf id '2' '2',charOf id '0' '5',dec] ""
+                ,g [charOf id '2' '2',charOf id '6' '9'] ""
                 ,g [charOf id '3' '9',dec] ""
                 ,oneOf (map char "oO") >> g [charOf id '0' '3',oct,oct] "0o"
                 ,oneOf (map char "oO") >> g [charOf id '4' '7',oct] "0o"
@@ -798,8 +805,8 @@ defKeymap = Proto template
               ,ctrlCh 'y'     ?>>! insrepB =<< savingPointB (lineUp >> readB)
               ,ctrlCh 't'     ?>>! shiftIndentOfLine 1
               ,ctrlCh 'd'     ?>>! withBuffer0' dedentOrDeleteIndent
-              ,ctrlCh 'v'     ?>>  insertNumber insrepB
-              ,ctrlCh 'q'     ?>>  insertNumber insrepB
+              ,ctrlCh 'v'     ?>>  insertSpecialChar insrepB
+              ,ctrlCh 'q'     ?>>  insertSpecialChar insrepB
               ]
 
      --
