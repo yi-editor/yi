@@ -28,7 +28,7 @@ spawnMinibufferE prompt kmMod =
     do b <- stringToNewBuffer prompt (fromString "")
        withGivenBuffer0 b $ modifyMode (\m -> m {modeKeymap = kmMod})
        w <- newWindowE True b
-       modifyWindows (WS.add w)
+       modifyA windowsA (WS.add w)
        return b
 
 -- | @withMinibuffer prompt completer act@: open a minibuffer with @prompt@. Once

@@ -411,8 +411,7 @@ newWindowE mini bk = do
 
 -- | Attach the specified buffer to the current window
 switchToBufferE :: BufferRef -> EditorM ()
-switchToBufferE bk = do
-    modifyWindows (WS.currentA ^: (\w -> w { bufkey = bk }))
+switchToBufferE bk = modifyA windowsA (WS.currentA ^: (\w -> w { bufkey = bk }))
 
 -- | Attach the specified buffer to some other window than the current one
 switchToBufferOtherWindowE :: BufferRef -> EditorM ()
@@ -448,15 +447,11 @@ closeBufferAndWindowE = do
 
 -- | Rotate focus to the next window
 nextWinE :: EditorM ()
-nextWinE = modifyWindows WS.forward
+nextWinE = modifyA windowsA WS.forward
 
 -- | Rotate focus to the previous window
 prevWinE :: EditorM ()
-prevWinE = modifyWindows WS.backward
-
--- | Apply a function to the windowset.
-modifyWindows :: (WindowSet Window -> WindowSet Window) -> EditorM ()
-modifyWindows = modifyA windowsA
+prevWinE = modifyA windowsA WS.backward
 
 -- | A "fake" accessor that fixes the current buffer after a change of the current
 -- window.
@@ -488,7 +483,7 @@ splitE :: EditorM ()
 splitE = do
   b <- getBuffer
   w <- newWindowE False b
-  modifyWindows (WS.add w)
+  modifyA windowsA (WS.add w)
 
 
 -- | Enlarge the current window
@@ -526,7 +521,7 @@ tryCloseE = do
 
 -- | Make the current window the only window on the screen
 closeOtherE :: EditorM ()
-closeOtherE = modifyWindows WS.deleteOthers
+closeOtherE = modifyA windowsA WS.deleteOthers
 
 -- | Switch focus to some other window. If none is available, create one.
 shiftOtherWindow :: MonadEditor m => m ()

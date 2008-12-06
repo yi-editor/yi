@@ -160,7 +160,7 @@ prepareAction ui = do
     ts <- getA tabsA
     let hasTabBar = WS.size ts > 1
         tabBarHeight = if hasTabBar then 1 else 0
-    modifyWindows (computeHeights (yss - tabBarHeight))
+    modifyA windowsA (computeHeights (yss - tabBarHeight))
     e <- get
     let ws = windows e
         renderSeq = fmap (scrollAndRenderWindow (configUI $ config ui) xss) (WS.withFocus ws)
