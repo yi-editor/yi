@@ -3,7 +3,7 @@
 -- | A module for "rich" accesssors.
 
 module Yi.Accessor (Accessor, mkAccessor, setA, getA, getsA, 
-                    modifyA, getsAndModifyA, modifyAllA, getVal, (^:), (^=)) where
+                    modifyA, getsAndModifyA, getVal, (^:), (^=)) where
 import Prelude hiding ((.), id)
 import Data.Accessor
 import Control.Monad.State
@@ -22,10 +22,6 @@ getsA a f = gets (f . getVal a)
 
 modifyA :: MonadState s m => Accessor s p -> (p -> p) -> m ()
 modifyA = modA
-
-
-modifyAllA :: (MonadState s m, Functor f) => Accessor s (f w) -> Accessor w p -> (p -> p) -> m ()
-modifyAllA a a' f = modA a (fmap $  a' ^: f)
 
 setA :: MonadState s m => Accessor s p -> p -> m ()
 setA = putA

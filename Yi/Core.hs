@@ -91,7 +91,7 @@ interactive action = do
   logPutStrLn $ ">>> interactively" ++ showEvs evs
   prepAction <- withUI UI.prepareAction
   withEditor $ do prepAction
-                  modifyAllA buffersA undosA (addChangeU InteractivePoint)
+                  modifyA buffersA (fmap $  undosA ^: addChangeU InteractivePoint)
   mapM_ runAction action
   withEditor $ modifyA killringA krEndCmd
   refreshEditor
