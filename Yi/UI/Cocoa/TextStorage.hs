@@ -1,4 +1,6 @@
-{-# LANGUAGE TemplateHaskell, EmptyDataDecls, MultiParamTypeClasses #-}
+{-# LANGUAGE TemplateHaskell, EmptyDataDecls, MultiParamTypeClasses,
+             FlexibleInstances, TypeSynonymInstances,
+             DeriveDataTypeable, Rank2Types #-}
 --
 -- Copyright (c) 2008 Gustav Munkby
 --

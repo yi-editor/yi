@@ -1,3 +1,4 @@
+{-# LANGUAGE Rank2Types #-}
 --
 -- Copyright (c) 2008 Gustav Munkby
 --

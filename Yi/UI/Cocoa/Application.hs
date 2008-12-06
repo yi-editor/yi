@@ -1,4 +1,6 @@
-{-# LANGUAGE TemplateHaskell, EmptyDataDecls, MultiParamTypeClasses, ForeignFunctionInterface #-}
+{-# LANGUAGE TemplateHaskell, EmptyDataDecls, MultiParamTypeClasses,
+             ForeignFunctionInterface, TypeSynonymInstances,
+             FlexibleInstances, Rank2Types, DeriveDataTypeable #-}
 
 --
 -- Copyright (c) 2008 Gustav Munkby
