@@ -21,7 +21,7 @@ import Numeric (showHex, showOct)
 import System.IO (readFile)
 import System.Posix.Files (fileExist)
 
-import Control.Monad.State hiding (mapM_, mapM)
+import Control.Monad.State hiding (mapM_, mapM, sequence)
 
 import {-# source #-} Yi.Boot
 import Yi.Core
@@ -756,6 +756,29 @@ defKeymap = Proto template
        if c == '0' then deleteB Character Backward >> deleteIndentOfLine
                    else shiftIndentOfLine (-1)
 
+     upTo :: Alternative f => f a -> Int -> f [a]
+     _ `upTo` 0 = empty
+     p `upTo` n = (:) <$> p <*> (p `upTo` pred n <|> pure []) 
+
+     insertNumber :: VimMode
+     insertNumber = do
+         choice [g [charOf id '0' '2',charOf id '0' '5',dec] ""
+                ,g [charOf id '0' '2',charOf id '6' '9'] ""
+                ,g [charOf id '3' '9',dec] ""
+                ,oneOf (map char "oO") >> g [charOf id '0' '3',oct,oct] "0o"
+                ,oneOf (map char "oO") >> g [charOf id '4' '7',oct] "0o"
+                ,oneOf (map char "xX") >> g [hex,hex] "0x"
+                -- NP: I don't get why this does not work (ex typing "i<CTRL-Q>u3b1.")
+                -- ,char 'u' ?>> f (hex `upTo` 4) "0x"
+                ,char 'u' ?>> f (sequence $ replicate 4 hex) "0x"
+                ,char 'U' ?>> f (sequence $ replicate 8 hex) "0x"]
+       where dec = charOf id '0' '9'
+             oct = charOf id '0' '7'
+             hex = charOf id '0' '9' <|> charOf id 'a' 'f' <|> charOf id 'A' 'F'
+             f digits prefix = do xs <- digits
+                                  write $ withBuffer0' $ insertB $ chr $ read $ prefix ++ xs
+             g digits prefix = f (sequence digits) prefix
+
      ins_rep_char :: VimMode
      ins_rep_char = choice [spec KPageUp       ?>>! upScreenB,
                             spec KPageDown     ?>>! downScreenB,
@@ -775,6 +798,8 @@ defKeymap = Proto template
                             (ctrl $ char 'y')  ?>>! insertB =<< savingPointB (lineUp >> readB),
                             (ctrl $ char 't')  ?>>! shiftIndentOfLine 1,
                             (ctrl $ char 'd')  ?>>! withBuffer0' dedentOrDeleteIndent
+                           ,(ctrl $ char 'v')  ?>>  insertNumber
+                           ,(ctrl $ char 'q')  ?>>  insertNumber
                             ]
 
      --
