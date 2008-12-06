@@ -17,7 +17,7 @@ import Yi.Buffer.Normal
 import Yi.Buffer.Region
 import Prelude ()
 import Data.Char
-import Data.List (span, length, sort, nub, break, reverse, filter, takeWhile)
+import Data.List (span, length, sort, nub, break, reverse, filter, takeWhile, dropWhile)
 import Yi.String
 
 {- |
@@ -425,6 +425,8 @@ shiftIndentOfLine shiftCount = do
     modifyRegionB (indentString indentSettings shiftCount) reg
     firstNonSpaceB
 
+deleteIndentOfLine :: BufferM ()
+deleteIndentOfLine = modifyRegionB (dropWhile isSpace) =<< regionOfB Line
 
 -- | Increases the indentation on the region by the given amount
 increaseIndentSelectionB :: Int -> BufferM ()
