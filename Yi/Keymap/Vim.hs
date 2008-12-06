@@ -876,6 +876,7 @@ defKeymap = Proto template
            ex_complete ('r':' ':f)                             = f_complete f
            ex_complete ('r':'e':'a':'d':' ':f)                 = f_complete f
            ex_complete ('t':'a':'b':'e':' ':f)                 = f_complete f
+           ex_complete ('s':'a':'v':'e':'a':'s':'!':' ':f)     = f_complete f
            ex_complete ('b':' ':f)                             = b_complete f
            ex_complete ('b':'u':'f':'f':'e':'r':' ':f)         = b_complete f
            ex_complete ('b':'d':' ':f)                         = b_complete f
@@ -887,7 +888,7 @@ defKeymap = Proto template
            ex_complete s                                       = catchAllComplete s
 
            catchAllComplete = exSimpleComplete $ const $ return $ map (++ " ") $ words
-                                "e edit r read tabe b buffer bd bd! bdelete bdelete! yi cabal nohlsearch"
+                                "e edit r read saveas saveas! tabe b buffer bd bd! bdelete bdelete! yi cabal nohlsearch"
            cabalComplete = exSimpleComplete $ const $ return $ cabalCmds
            cabalCmds = words "configure install list update upgrade fetch upload check sdist" ++
                        words "report build copy haddock clean hscolour register test help"
@@ -1023,6 +1024,8 @@ defKeymap = Proto template
            fn "edit"       = revertE
            fn ('e':' ':f)  = fnewE $ dropSpace f
            fn ('e':'d':'i':'t':' ':f) = fnewE $ dropSpace f
+           fn ('s':'a':'v':'e':'a':'s':' ':f)     = (\f' -> viSafeWriteTo f' >> fnewE f') $ dropSpace f
+           fn ('s':'a':'v':'e':'a':'s':'!':' ':f) = (\f' -> viWriteTo f' >> fnewE f') $ dropSpace f
            fn ('r':' ':f)  = withBuffer' . insertN =<< io (readFile $ dropSpace f)
            fn ('r':'e':'a':'d':' ':f) = withBuffer' . insertN =<< io (readFile $ dropSpace f)
            -- fn ('s':'e':'t':' ':'f':'t':'=':ft)  = withBuffer' $ setSyntaxB $ highlighters M.! ft
