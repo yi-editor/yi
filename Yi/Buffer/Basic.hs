@@ -9,6 +9,7 @@ import qualified Data.ByteString.UTF8 as UTF8
 import qualified Data.ByteString.Lazy.UTF8 as LazyUTF8
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as LB
+import Data.Char (ord)
 import Data.Typeable
 
 -- | Direction of movement inside a buffer
@@ -65,6 +66,12 @@ instance SemiNum Point Size where
 
 utf8Size :: String -> Size
 utf8Size s = Size $ B.length $ UTF8.fromString s
+
+utf8CharSize :: Char -> Size
+utf8CharSize c = case ord c of i | i < 0x80    -> 1
+                                 | i < 0x800   -> 2
+                                 | i < 0x10000 -> 3
+                                 | otherwise   -> 4
 
 -- fromUTF8ByteString :: B.ByteString -> String
 -- fromUTF8ByteString = UTF8.toString
