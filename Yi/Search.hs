@@ -142,9 +142,7 @@ continueSearch (c_re, dir) = do
 -- Returns Bool indicating success or failure.
 searchAndRepRegion0 :: SearchExp -> String -> Bool -> Region -> BufferM Int
 searchAndRepRegion0 c_re str globally region = do
-    mp <- (if globally then id else take 1) <$>
-               filter (`includedRegion` region) <$>
-                  regexRegionB c_re region  -- find the regex
+    mp <- (if globally then id else take 1) <$> regexRegionB c_re region  -- find the regex
     -- mp' is a maybe not reversed version of mp, the goal
     -- is to avoid replaceRegionB to mess up the next regions.
     -- So we start from the end.
