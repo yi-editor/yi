@@ -52,8 +52,10 @@ import Yi.Window (bufkey)
 --   motion operators [motion.txt]: !, =, >, <
 --   C-v: visual block mode
 --   Support for marks
---   C-o and C-i
---
+--   C-o and C-i: jump list
+--   C-a C-@: insert prev text
+--   C-k <C-K><S-Space>: insert a char using it's specification
+--   C-r <reg>: insert the content of a register
 
 -- ---------------------------------------------------------------------
 
