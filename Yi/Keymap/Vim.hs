@@ -745,6 +745,17 @@ defKeymap = Proto template
          when (regionStyle == LineWise) $ withBuffer0' $ insertB '\n' >> leftB
        ins_mode self
 
+     -- The Vim semantics is a little different here, When receiving CTRL-D
+     -- instead of looking at the last typed character, one look at the previous
+     -- character in buffer and if it's '0' then one delete the indentation.
+     -- This means that one are sensible to lines already containing a '0'.
+     -- I consider this to be very minor issue.
+     dedentOrDeleteIndent :: BufferM ()
+     dedentOrDeleteIndent = do
+       c <- savingPointB (moveXorSol 1 >> readB)
+       if c == '0' then deleteB Character Backward >> deleteIndentOfLine
+                   else shiftIndentOfLine (-1)
+
      ins_rep_char :: VimMode
      ins_rep_char = choice [spec KPageUp       ?>>! upScreenB,
                             spec KPageDown     ?>>! downScreenB,
@@ -761,7 +772,7 @@ defKeymap = Proto template
                             spec KTab          ?>>! insertTabB,
                             (ctrl $ char 'i')  ?>>! insertTabB,
                             (ctrl $ char 't')  ?>>! shiftIndentOfLine 1,
-                            (ctrl $ char 'd')  ?>>! shiftIndentOfLine (-1)
+                            (ctrl $ char 'd')  ?>>! withBuffer0' dedentOrDeleteIndent
                             ]
 
      --
