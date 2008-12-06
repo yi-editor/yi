@@ -181,7 +181,7 @@ defKeymap = Proto template
           choice ([c ?>> return (Inclusive, a x) | (c,a) <- moveCmdFM_inclusive ] ++
                   [pString s >> return (Inclusive, a x) | (s,a) <- moveCmdS_inclusive ] ++
                   [c ?>> return (Exclusive, a x) | (c,a) <- moveCmdFM_exclusive ] ++
-                  [pString s >> return (Exclusive, a x) | (s,a) <- moveCmdS_exclusive ] ++
+                  [events evs >> return (Exclusive, a x) | (evs,a) <- moveCmdS_exclusive ] ++
                   [c ?>> return (LineWise, a x) | (c,a) <- moveUpDownCmdFM] ++
                   [do event c; c' <- textChar; return (r, a c' x) | (c,r,a) <- move2CmdFM] ++
                   [char 'G' ?>> return (LineWise, ArbMove $ maybe (botB >> firstNonSpaceB) gotoFNS cnt)
@@ -224,12 +224,20 @@ defKeymap = Proto template
              eol   = ArbMove . viMoveToNthEol
 
      -- | movement *multi-chars* commands (with exclusive cut/yank semantics)
-     moveCmdS_exclusive :: [(String, (Int -> ViMove))]
+     moveCmdS_exclusive :: [([Event], (Int -> ViMove))]
      moveCmdS_exclusive =
-         [("[(", Replicate $ ArbMove (goUnmatchedB Backward '(' ')'))
-         ,("[{", Replicate $ ArbMove (goUnmatchedB Backward '{' '}'))
-         ,("])", Replicate $ ArbMove (goUnmatchedB Forward  '(' ')'))
-         ,("]}", Replicate $ ArbMove (goUnmatchedB Forward  '{' '}'))]
+         [(map char "[(", Replicate $ ArbMove (goUnmatchedB Backward '(' ')'))
+         ,(map char "[{", Replicate $ ArbMove (goUnmatchedB Backward '{' '}'))
+         ,(map char "])", Replicate $ ArbMove (goUnmatchedB Forward  '(' ')'))
+         ,(map char "]}", Replicate $ ArbMove (goUnmatchedB Forward  '{' '}'))
+         ,(map char "gk",          up)
+         ,([char 'g', spec KUp],   up)
+         ,(map char "gj",          down)
+         ,([char 'g', spec KDown], down)
+         ]
+         where
+             up   = Replicate (Move VLine Backward)
+             down = Replicate (Move VLine Forward)
 
      -- | movement commands (with inclusive cut/yank semantics)
      moveCmdFM_inclusive :: [(Event, (Int -> ViMove))]
@@ -282,14 +290,19 @@ defKeymap = Proto template
          ,(ctrlCh 'j',  down)
          ,(ctrlCh 'n',  down)
          ,(spec KEnter, down)
+         ,(char '-',    fns up)
+         ,(char '+',    fns down)
+         ,(ctrlCh 'm',  fns down)
+         ,(char '_',    fns down . pred)
           -- misc
          ,(char 'H',    ArbMove . downFromTosB . pred)
          ,(char 'M',    const $ ArbMove middleB)
          ,(char 'L',    ArbMove . upFromBosB . pred)
          ]
          where
-             up   = Replicate (Move VLine Backward)
-             down = Replicate (Move VLine Forward)
+             up    = Replicate (Move VLine Backward)
+             down  = Replicate (Move VLine Forward)
+             fns m = (`SeqMove` ArbMove firstNonSpaceB) . m
 
      --  | more movement commands. these ones are paramaterised by a character
      -- to find in the buffer.
