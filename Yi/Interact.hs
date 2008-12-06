@@ -142,7 +142,7 @@ deprioritize :: (MonadInteract f w e) => f ()
 deprioritize = adjustPriority 1
 
 (<||) :: (MonadInteract f w e) => f a -> f a -> f a
-a <|| b = a <|> ((adjustPriority 1) >> b)
+a <|| b = a <|> (deprioritize >> b)
 
 
 
