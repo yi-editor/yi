@@ -771,6 +771,8 @@ defKeymap = Proto template
                             (ctrl $ char 'm')  ?>>! insertB '\r',
                             spec KTab          ?>>! insertTabB,
                             (ctrl $ char 'i')  ?>>! insertTabB,
+                            (ctrl $ char 'e')  ?>>! insertB =<< savingPointB (lineDown >> readB),
+                            (ctrl $ char 'y')  ?>>! insertB =<< savingPointB (lineUp >> readB),
                             (ctrl $ char 't')  ?>>! shiftIndentOfLine 1,
                             (ctrl $ char 'd')  ?>>! withBuffer0' dedentOrDeleteIndent
                             ]
