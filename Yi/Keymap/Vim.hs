@@ -104,7 +104,7 @@ defKeymap = Proto template
 
      -- | Replace mode is like insert, except it performs writes, not inserts
      rep_mode :: VimMode
-     rep_mode = write (setStatus ("-- REPLACE --", defaultStyle)) >> many rep_char >> leave >> write (moveXorSol 1)
+     rep_mode = write (setStatus ("-- REPLACE --", defaultStyle)) >> many rep_char >> leaveInsRep >> write (moveXorSol 1)
 
      -- | Reset the selection style to a character-wise mode 'SelectionStyle Character'.
      resetSelectStyle :: BufferM ()
@@ -756,7 +756,10 @@ defKeymap = Proto template
                             spec KHome         ?>>! moveToSol,
                             spec KDel          ?>>! (adjBlock (-1) >> deleteB Character Forward),
                             spec KEnter        ?>>! insertB '\n',
+                            (ctrl $ char 'j')  ?>>! insertB '\n',
+                            (ctrl $ char 'm')  ?>>! insertB '\r',
                             spec KTab          ?>>! insertTabB,
+                            (ctrl $ char 'i')  ?>>! insertTabB,
                             (ctrl $ char 't')  ?>>! shiftIndentOfLine 1,
                             (ctrl $ char 'd')  ?>>! shiftIndentOfLine (-1)
                             ]
@@ -1105,9 +1108,12 @@ viSub cs unit = do
 leave :: VimMode
 leave = oneOf [spec KEsc, ctrl $ char 'c'] >> adjustPriority (-1) >> write clrStatus
 
+leaveInsRep :: VimMode
+leaveInsRep = oneOf [spec KEsc, ctrl $ char '[', ctrl $ char 'c'] >> adjustPriority (-1) >> write clrStatus
+
 -- | Insert mode is either insertion actions, or the meta (\ESC) action
 ins_mode :: ModeMap -> VimMode
-ins_mode self = write (setStatus ("-- INSERT --", defaultStyle)) >> many (v_ins_char self <|> kwd_mode) >> leave >> write (moveXorSol 1)
+ins_mode self = write (setStatus ("-- INSERT --", defaultStyle)) >> many (v_ins_char self <|> kwd_mode) >> leaveInsRep >> write (moveXorSol 1)
 
 beginIns :: (Show x, YiAction a x) => ModeMap -> a -> I Event Action ()
 beginIns self a = write a >> ins_mode self
