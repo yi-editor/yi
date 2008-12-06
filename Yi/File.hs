@@ -1,7 +1,7 @@
 module Yi.File 
  (
   -- * File-based actions
-  viWrite, viWriteTo,
+  viWrite, viWriteTo, viSafeWriteTo,
   fwriteE,        -- :: YiM ()
   fwriteBufferE,  -- :: BufferM ()
   fwriteAllE,     -- :: YiM ()
@@ -58,6 +58,14 @@ viWriteTo f = do
     let s   = bufInfoFileName bufInfo
     fwriteToE f
     msgEditor $ show f++" "++show s ++ " written"
+
+-- | Try to write to a named file if it doesn't exist. Error out if it does.
+viSafeWriteTo :: String -> YiM ()
+viSafeWriteTo f = do
+    existsF <- (liftIO $ doesFileExist f)
+    if existsF
+       then (errorEditor $ f ++ ": File exists (add '!' to override)")
+       else viWriteTo f
 
 -- | Write current buffer to disk, if this buffer is associated with a file
 fwriteE :: YiM ()
