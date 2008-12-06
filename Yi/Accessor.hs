@@ -7,19 +7,15 @@ module Yi.Accessor (Accessor, mkAccessor, setA, getA, getsA,
 import Prelude hiding ((.), id)
 import Data.Accessor
 import Control.Monad.State
-import Data.Traversable as Traversable
-import Data.Foldable
-import qualified Data.Map as M
 import Control.Category
 import Data.Accessor.Basic (T, self, fromLens)
-import Data.Accessor.Container
 
 instance Category T where
     id = self
     (.) = (<.)
 
 mkAccessor :: (whole -> part) -> ((part -> part) -> (whole -> whole)) -> Accessor whole part 
-mkAccessor getter modifier = fromLens $ \whole -> (getter whole, \part -> modifier (\part' -> part) whole) 
+mkAccessor getter modifier = fromLens $ \whole -> (getter whole, \part -> modifier (const part) whole) 
 
 getsA :: MonadState s m => Accessor s p -> (p -> a) -> m a
 getsA a f = gets (f . getVal a)
