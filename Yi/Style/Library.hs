@@ -13,8 +13,8 @@ defaultTheme = Proto $ const $ UIStyle
   , modelineFocusStyle = withFg brightwhite
 
   , tabBarAttributes   = error "tabbar attributes must be redefined!"
-  , tabInFocusStyle    = withFg grey `mappend` withBg white
-  , tabNotFocusedStyle = withFg lightGrey `mappend` withBg white
+  , tabInFocusStyle    = withFg black `mappend` withBg brightwhite
+  , tabNotFocusedStyle = withFg grey `mappend` withBg white
 
   , baseAttributes     = error "base attributes must be redefined!"
 
