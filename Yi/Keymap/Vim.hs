@@ -391,7 +391,7 @@ defKeymap = Proto template
          ,(ctrlCh 'y',    withBuffer' . vimScrollB . negate)
          ,(ctrlCh 'e',    withBuffer' . vimScrollB)
          ,(ctrlCh 'g',    const viFileInfo)
-         ,(ctrlCh 'l',    const refreshEditor)
+         ,(ctrlCh 'l',    const userForceRefresh)
          ,(ctrlCh 'r',    withBuffer' . flip replicateM_ redoB)
          ,(ctrlCh 'z',    const suspendEditor)
          ,(ctrlCh ']',    const gotoTagCurrentWord)
@@ -1063,8 +1063,8 @@ defKeymap = Proto template
 
            fn "reload"     = reloadEditor >> return ()    -- not in vim
 
-           fn "redr"       = refreshEditor
-           fn "redraw"     = refreshEditor
+           fn "redr"       = userForceRefresh
+           fn "redraw"     = userForceRefresh
 
            fn "u"          = withBuffer' undoB
            fn "undo"       = withBuffer' undoB
