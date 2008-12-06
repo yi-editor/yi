@@ -87,7 +87,7 @@ fwriteToE f = do
     b <- withEditor $ do
         b <- getBuffer
         currentBufferNames <- fmap name <$> getBuffers
-        withBuffer0 $ setA nameA (bestNewName (takeFileName f) currentBufferNames)
+        withBuffer0 $ putA nameA (bestNewName (takeFileName f) currentBufferNames)
         return b
     setFileName b f
     fwriteBufferE b
@@ -109,7 +109,7 @@ backupE = error "backupE not implemented"
 setFileName :: BufferRef -> FilePath -> YiM ()
 setFileName b filename = do
   cfn <- liftIO $ canonicalizePath =<< expandTilda filename
-  withGivenBuffer b $ setA fileA $ Just cfn
+  withGivenBuffer b $ putA fileA $ Just cfn
 
 -- Given the desired buffer name, plus a list of current buffer
 -- names returns the best name for the new buffer. This will

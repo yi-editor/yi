@@ -336,7 +336,7 @@ scrollCursorToBottomB = do
 
 -- | Scroll by n lines.
 scrollB :: Int -> BufferM ()
-scrollB n = do setA pointDriveA False
+scrollB n = do putA pointDriveA False
                MarkSet fr _ _ _ <- askMarks
                savingPointB $ do
                    moveTo =<< getMarkPointB fr

@@ -2,8 +2,8 @@
 
 -- | A module for "rich" accesssors.
 
-module Yi.Accessor (Accessor, mkAccessor, setA, getA, getsA, 
-                    modifyA, getsAndModifyA, getVal, (^:), (^=)) where
+module Yi.Accessor (Accessor, mkAccessor, putA, getA, getsA, 
+                    modA, getVal, (^:), (^=)) where
 import Prelude hiding ((.), id)
 import Data.Accessor
 import Control.Monad.State
@@ -19,18 +19,3 @@ mkAccessor getter modifier = fromLens $ \whole -> (getter whole, \part -> modifi
 
 getsA :: MonadState s m => Accessor s p -> (p -> a) -> m a
 getsA a f = gets (f . getVal a)
-
-modifyA :: MonadState s m => Accessor s p -> (p -> p) -> m ()
-modifyA = modA
-
-setA :: MonadState s m => Accessor s p -> p -> m ()
-setA = putA
-
-getsAndModifyA :: MonadState s m => Accessor s p -> (p -> (p,a)) -> m a
-getsAndModifyA a f = do
-  b <- getA a
-  let (b',x) = f b
-  setA a b'
-  return x
-
-

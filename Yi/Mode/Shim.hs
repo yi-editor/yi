@@ -26,7 +26,7 @@ jumpToSrcLoc locn =
 jumpToNextNote :: YiM ()
 jumpToNextNote = do
   note <- withEditor $ do
-    modifyA notesA (fmap forward)
+    modA notesA (fmap forward)
     getsA notesA (fmap current)
   case note of
     Nothing -> msgEditor "No note!"

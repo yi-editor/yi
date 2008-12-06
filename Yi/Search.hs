@@ -65,11 +65,11 @@ import Yi.History
 
 -- | Put regex into regex 'register'
 setRegexE :: SearchExp -> EditorM ()
-setRegexE re = setA regexA (Just re)
+setRegexE re = putA regexA (Just re)
 
 -- | Clear the regex 'register'
 resetRegexE :: EditorM ()
-resetRegexE = setA regexA Nothing
+resetRegexE = putA regexA Nothing
 
 -- | Return contents of regex register
 getRegexE :: EditorM (Maybe SearchExp)
@@ -110,7 +110,7 @@ searchInit :: String -> Direction -> [SearchF] -> EditorM (SearchExp, Direction)
 searchInit re d fs = do
     let Right c_re = makeSearchOptsM fs re
     setRegexE c_re
-    setA searchDirectionA d
+    putA searchDirectionA d
     return (c_re,d)
 
 -- | Do a forward search, placing cursor at first char of pattern, if found.
@@ -155,7 +155,7 @@ searchAndRepRegion [] _ _ _ = return False   -- hmm...
 searchAndRepRegion s str globally region = do
     let c_re = makeSimpleSearch s
     setRegexE c_re     -- store away for later use
-    setA searchDirectionA Forward
+    putA searchDirectionA Forward
     withBuffer0 $ (/= 0) <$> searchAndRepRegion0 c_re str globally region
 
 ------------------------------------------------------------------------
@@ -345,7 +345,7 @@ qrReplaceAll win b what replacement = do
 -- |  Exit from query/replace.
 qrFinish :: EditorM ()
 qrFinish = do
-  setA regexA Nothing
+  putA regexA Nothing
   closeBufferAndWindowE  -- the minibuffer.
   
 {-

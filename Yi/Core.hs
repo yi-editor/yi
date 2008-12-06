@@ -91,9 +91,9 @@ interactive action = do
   logPutStrLn $ ">>> interactively" ++ showEvs evs
   prepAction <- withUI UI.prepareAction
   withEditor $ do prepAction
-                  modifyA buffersA (fmap $  undosA ^: addChangeU InteractivePoint)
+                  modA buffersA (fmap $  undosA ^: addChangeU InteractivePoint)
   mapM_ runAction action
-  withEditor $ modifyA killringA krEndCmd
+  withEditor $ modA killringA krEndCmd
   refreshEditor
   logPutStrLn "<<<"
   return ()
@@ -124,7 +124,7 @@ startEditor cfg st = do
 
       when (isNothing st) $ do -- process options if booting for the first time
         postActions $ startActions cfg
-      withEditor $ modifyA buffersA (fmap (recoverMode (modeTable cfg)))
+      withEditor $ modA buffersA (fmap (recoverMode (modeTable cfg)))
 
     runYi refreshEditor
 
@@ -162,7 +162,7 @@ dispatch ev =
              ambiguous = case state of 
                  I.Ambiguous _ -> True
                  _ -> False
-         setA keymapProcessA (if ambiguous then freshP else p')
+         putA keymapProcessA (if ambiguous then freshP else p')
          let actions0 = case state of 
                           I.Dead -> [makeAction $ do
                                          evs <- getA pendingEventsA
@@ -176,11 +176,11 @@ dispatch ev =
        -- logPutStrLn $ "Actions posted:" ++ show userActions
        -- logPutStrLn $ "New automation: " ++ show _p'
        let decay, pendingFeedback :: EditorM ()
-           decay = modifyA statusLinesA (DelayList.decrease 1)
-           pendingFeedback = do modifyA pendingEventsA (++ [ev])
+           decay = modA statusLinesA (DelayList.decrease 1)
+           pendingFeedback = do modA pendingEventsA (++ [ev])
                                 if null userActions
                                     then printMsg . showEvs =<< getA pendingEventsA
-                                    else setA pendingEventsA []
+                                    else putA pendingEventsA []
        postActions $ [makeAction decay] ++ userActions ++ [makeAction pendingFeedback]
 
 showEvs = intercalate " " . fmap prettyEvent

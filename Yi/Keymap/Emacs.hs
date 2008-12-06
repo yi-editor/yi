@@ -65,7 +65,7 @@ completionKm = do some ((meta (char '/') ?>>! wordComplete))
 
 placeMark :: BufferM ()
 placeMark = do
-  setA highlightSelectionA True
+  putA highlightSelectionA True
   pointB >>= setSelectionMarkPointB
 
 deleteB' :: BufferM ()
@@ -197,7 +197,7 @@ emacsKeys univArg =
                  , ctrlCh 's'    ?>>! fwriteE
                  , ctrlCh 'w'    ?>>! promptFile "Write file:" fwriteToE
                  , ctrlCh 'x'    ?>>! (exchangePointAndMarkB >> 
-                                       setA highlightSelectionA True)
+                                       putA highlightSelectionA True)
                  , char 'b'      ?>>! switchBufferE
                  , char 'd'      ?>>! dired
                  , char 'e' ?>> 

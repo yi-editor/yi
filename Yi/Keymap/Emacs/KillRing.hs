@@ -26,7 +26,7 @@ killLineE a = withBuffer $ case a of
                Just n -> replicateM_ (2*n) killRestOfLine
 
 killringPut :: Direction -> String -> EditorM ()
-killringPut dir s = modifyA killringA $ krPut dir s
+killringPut dir s = modA killringA $ krPut dir s
 
 -- | Kill the rest of line
 killRestOfLine :: BufferM ()
@@ -45,7 +45,7 @@ killRingSaveE :: EditorM ()
 killRingSaveE = do (r, text) <- withBuffer0 $ do
                             r <- getSelectRegionB
                             text <- readRegionB r
-                            setA highlightSelectionA False
+                            putA highlightSelectionA False
                             return (r,text)
                    killringPut (regionDirection r) text
 -- | M-y
@@ -55,10 +55,10 @@ yankPopE :: EditorM ()
 yankPopE = do 
   kr <- getA killringA
   withBuffer0 (deleteRegionB =<< getRawestSelectRegionB)
-  setA killringA $ let ring = krContents kr
+  putA killringA $ let ring = krContents kr
                    in kr {krContents = tail ring ++ [head ring]}
   yankE
 
 -- | C-M-w
 appendNextKillE :: EditorM ()
-appendNextKillE = modifyA killringA (\kr -> kr {krKilled=True})
+appendNextKillE = modA killringA (\kr -> kr {krKilled=True})

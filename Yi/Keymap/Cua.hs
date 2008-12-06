@@ -26,13 +26,13 @@ selfInsertKeymap = do
 setMark :: Bool -> BufferM ()
 setMark b = do
   isSet <- getA highlightSelectionA
-  setA rectangleSelectionA b
+  putA rectangleSelectionA b
   when (not isSet) $ do
-       setA highlightSelectionA True
+       putA highlightSelectionA True
        pointB >>= setSelectionMarkPointB
 
 unsetMark :: BufferM ()
-unsetMark = setA highlightSelectionA False
+unsetMark = putA highlightSelectionA False
 
 replaceSel :: String -> BufferM ()
 replaceSel s = do

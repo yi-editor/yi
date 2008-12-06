@@ -415,13 +415,13 @@ queryAndModify f = getsAndModify (queryAndModifyRawbuf f)
 -- | Adds an "overlay" to the buffer
 addOverlayB :: Overlay -> BufferM ()
 addOverlayB ov = do
-  modifyA pendingUpdatesA (++ [overlayUpdate ov])
+  modA pendingUpdatesA (++ [overlayUpdate ov])
   modifyBuffer $ addOverlayBI ov
 
 -- | Remove an existing "overlay"
 delOverlayB :: Overlay -> BufferM ()
 delOverlayB ov = do
-  modifyA pendingUpdatesA (++ [overlayUpdate ov])
+  modA pendingUpdatesA (++ [overlayUpdate ov])
   modifyBuffer $ delOverlayBI ov
 
 delOverlayLayerB :: OvlLayer -> BufferM ()
@@ -458,8 +458,8 @@ runBufferFull w b f =
                         Just mrks  <- getsA winMarksA (M.lookup $ wkey (lastActiveWindow b))
                         forM mrks getMarkValueB
                 newMrks <- forM newMarkValues newMarkB
-                modifyA winMarksA (M.insert (wkey w) newMrks)
-            setA lastActiveWindowA w
+                modA winMarksA (M.insert (wkey w) newMrks)
+            putA lastActiveWindowA w
             f
     in (a, updates, pendingUpdatesA ^: (++ fmap TextUpdate updates) $ b')
 
@@ -477,7 +477,7 @@ runBufferDummyWindow b = fst . runBuffer (dummyWindow $ bkey b) b
 
 -- | Mark the current point in the undo list as a saved state.
 markSavedB :: BufferM ()
-markSavedB = modifyA undosA setSavedFilePointU
+markSavedB = modA undosA setSavedFilePointU
 
 keyB :: FBuffer -> BufferRef
 keyB (FBuffer { bkey = u }) = u
@@ -494,7 +494,7 @@ undoRedo f = do
   m <- getInsMark
   ur <- gets undos
   (ur', updates) <- queryAndModify (f m ur)
-  setA undosA ur'
+  putA undosA ur'
   tell updates
 
 undoB :: BufferM ()
@@ -588,7 +588,7 @@ applyUpdate update = do
        forgetPreferCol
        let reversed = reverseUpdateI update
        modifyBuffer (applyUpdateI update)
-       modifyA undosA $ addChangeU $ AtomicChange $ reversed
+       modA undosA $ addChangeU $ AtomicChange $ reversed
        tell [update]
   -- otherwise, just ignore.
 
@@ -684,7 +684,7 @@ setMode :: Mode syntax -> BufferM ()
 setMode m = do
   modify (setMode0 m)
   -- reset the keymap process so we use the one of the new mode.
-  setA keymapProcessA I.End 
+  putA keymapProcessA I.End 
 
 
 -- | Modify the mode
@@ -692,7 +692,7 @@ modifyMode :: (forall syntax. Mode syntax -> Mode syntax) -> BufferM ()
 modifyMode f = do
   modify (modifyMode0 f)
   -- reset the keymap process so we use the one of the new mode.
-  setA keymapProcessA I.End 
+  putA keymapProcessA I.End 
 
 onMode :: (forall syntax. Mode syntax -> Mode syntax) -> AnyMode -> AnyMode
 onMode f (AnyMode m) = AnyMode (f m)
@@ -738,7 +738,7 @@ modifyMarkB m f = modifyBuffer $ modifyMarkBI m f
 
 
 setVisibleSelection :: Bool -> BufferM ()
-setVisibleSelection = setA highlightSelectionA
+setVisibleSelection = putA highlightSelectionA
 
 getInsMark :: BufferM Mark
 getInsMark = insMark <$> askMarks
@@ -783,7 +783,7 @@ rightN = moveN
 -- Line based movement and friends
 
 setPrefCol :: Maybe Int -> BufferM ()
-setPrefCol = setA preferColA
+setPrefCol = putA preferColA
 
 -- | Move point down by @n@ lines. @n@ can be negative.
 -- Returns the actual difference in lines which we moved which
@@ -886,7 +886,7 @@ getDynamicB = getA bufferDynamicValueA
 
 -- | Insert a value into the extensible state, keyed by its type
 setDynamicB :: Initializable a => a -> BufferM ()
-setDynamicB = setA bufferDynamicValueA
+setDynamicB = putA bufferDynamicValueA
 
 
 -- | perform a @BufferM a@, and return to the current point. (by using a mark)

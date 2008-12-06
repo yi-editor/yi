@@ -365,7 +365,7 @@ defKeymap = Proto template
      gotoTagCurrentWord = gotoTag =<< withEditor (withBuffer0' (readRegionB =<< regionOfNonEmptyB unitViWord))
 
      setTagsFileList :: String -> EditorM ()
-     setTagsFileList fps = resetTags >> setA tagsFileListA (split "," fps)
+     setTagsFileList fps = resetTags >> putA tagsFileListA (split "," fps)
 
      -- | Parse any character that can be inserted in the text.
      textChar :: KeymapM Char

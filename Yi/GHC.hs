@@ -32,7 +32,7 @@ newShim = do
     let logMsg msgSeverity msgSrcSpan style msg = 
            unsafeWithEditor cfg r $ do                             
              let note = CompileNote msgSeverity msgSrcSpan style msg
-             modifyA notesA (Just . maybe (WS.new note) (WS.add note))
+             modA notesA (Just . maybe (WS.new note) (WS.add note))
              printMsg ('\n':show ((mkLocMessage msgSrcSpan msg) style))
 
 
@@ -49,7 +49,7 @@ getShim = do
   case r of
     Just x -> return x
     Nothing -> do x <- newShim
-                  withEditor $ setA maybeShimA (Just x)
+                  withEditor $ putA maybeShimA (Just x)
                   return x
 
 withShim :: SHM a -> YiM a

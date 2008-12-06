@@ -168,7 +168,7 @@ runEditor cfg f e = let (a, e',()) = runRWS (fromEditorM f) cfg e in (e',a)
 
 newRef :: EditorM Int
 newRef = do
-  modifyA refSupplyA (+ 1)
+  modA refSupplyA (+ 1)
   getA refSupplyA
 
 newBufRef :: EditorM BufferRef
@@ -326,7 +326,7 @@ statusLineInfo = snd . head . statusLines
 
 setTmpStatus :: Int -> Status -> EditorM ()
 setTmpStatus delay (s,sty) = do
-  modifyA statusLinesA $ DelayList.insert (delay, 
+  modA statusLinesA $ DelayList.insert (delay, 
                                            (takeWhile (/= '\n') s,sty))
   -- also show in the messages buffer, so we don't loose any message
   bs <- gets $ findBufferWithName "*messages*"
@@ -341,7 +341,7 @@ setTmpStatus delay (s,sty) = do
 
 -- | Put string into yank register
 setRegE :: String -> EditorM ()
-setRegE s = modifyA killringA $ krSet s
+setRegE s = modA killringA $ krSet s
 
 -- | Return the contents of the yank register
 getRegE :: EditorM String
@@ -352,11 +352,11 @@ getRegE = getsA killringA krGet
 
 -- | Set a new TagTable
 setTags :: TagTable -> EditorM ()
-setTags = setA tagsA . Just
+setTags = putA tagsA . Just
 
 -- | Reset the TagTable
 resetTags :: EditorM ()
-resetTags = setA tagsA Nothing
+resetTags = putA tagsA Nothing
 
 -- | Get the currently registered tag table
 getTags :: EditorM (Maybe TagTable)
@@ -380,7 +380,7 @@ getDynamic = getA (dynamicValueA . dynamicA)
 
 -- | Insert a value into the extensible state, keyed by its type
 setDynamic :: Initializable a => a -> EditorM ()
-setDynamic x = setA (dynamicValueA . dynamicA) x
+setDynamic x = putA (dynamicValueA . dynamicA) x
 
 -- | Attach the next buffer in the buffer list
 -- to the current window.
@@ -411,7 +411,7 @@ newWindowE mini bk = do
 
 -- | Attach the specified buffer to the current window
 switchToBufferE :: BufferRef -> EditorM ()
-switchToBufferE bk = modifyA (WS.currentA . windowsA) (\w -> w { bufkey = bk })
+switchToBufferE bk = modA (WS.currentA . windowsA) (\w -> w { bufkey = bk })
 
 -- | Attach the specified buffer to some other window than the current one
 switchToBufferOtherWindowE :: BufferRef -> EditorM ()
@@ -447,11 +447,11 @@ closeBufferAndWindowE = do
 
 -- | Rotate focus to the next window
 nextWinE :: EditorM ()
-nextWinE = modifyA windowsA WS.forward
+nextWinE = modA windowsA WS.forward
 
 -- | Rotate focus to the previous window
 prevWinE :: EditorM ()
-prevWinE = modifyA windowsA WS.backward
+prevWinE = modA windowsA WS.backward
 
 -- | A "fake" accessor that fixes the current buffer after a change of the current
 -- window.
@@ -483,7 +483,7 @@ splitE :: EditorM ()
 splitE = do
   b <- getBuffer
   w <- newWindowE False b
-  modifyA windowsA (WS.add w)
+  modA windowsA (WS.add w)
 
 
 -- | Enlarge the current window
@@ -500,15 +500,15 @@ newTabE = do
     bk <- getBuffer
     k <- newRef
     let win = Window False bk 0 k
-    modifyA tabsA (WS.add (WS.new win))
+    modA tabsA (WS.add (WS.new win))
 
 -- | Moves to the next tab in the round robin set of tabs
 nextTabE :: EditorM ()
-nextTabE = modifyA tabsA WS.forward
+nextTabE = modA tabsA WS.forward
 
 -- | Moves to the previous tab in the round robin set of tabs
 previousTabE :: EditorM ()
-previousTabE = modifyA tabsA WS.backward
+previousTabE = modA tabsA WS.backward
 
 -- | Close the current window. If there is only one tab open and the tab 
 -- contains only one window then do nothing.
@@ -516,12 +516,12 @@ tryCloseE :: EditorM ()
 tryCloseE = do
     n <- getsA windowsA WS.size
     if n == 1
-        then modifyA tabsA WS.delete
-        else modifyA windowsA WS.delete
+        then modA tabsA WS.delete
+        else modA windowsA WS.delete
 
 -- | Make the current window the only window on the screen
 closeOtherE :: EditorM ()
-closeOtherE = modifyA windowsA WS.deleteOthers
+closeOtherE = modA windowsA WS.deleteOthers
 
 -- | Switch focus to some other window. If none is available, create one.
 shiftOtherWindow :: MonadEditor m => m ()
