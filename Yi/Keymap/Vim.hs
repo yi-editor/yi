@@ -997,7 +997,7 @@ defKeymap = Proto template
                                         else errorEditor "No write since last change (add ! to override)"
 
 
-           wquitall = withAllBuffers viWrite >> quitEditor
+           wquitall = forAllBuffers fwriteBufferE >> quitEditor
            bdelete  = whenUnchanged (withBuffer' isUnchangedB) . withEditor . closeBufferE . dropSpace
            bdeleteNoW = withEditor . closeBufferE . dropSpace
 
@@ -1115,8 +1115,8 @@ defKeymap = Proto template
      -- ---------------------------------------------------------------------
      -- Misc functions
 
-     withAllBuffers :: YiM () -> YiM ()
-     withAllBuffers m = mapM_ (\b -> withEditor (setBuffer b) >> m) =<< readEditor bufferStack
+     forAllBuffers :: (BufferRef -> YiM ()) -> YiM ()
+     forAllBuffers f = mapM_ f =<< readEditor bufferStack
 
      viCharInfo :: YiM ()
      viCharInfo = do c <- withBuffer' readB
