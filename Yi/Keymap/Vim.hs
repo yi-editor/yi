@@ -1025,8 +1025,8 @@ defKeymap = Proto template
            fn "edit"       = revertE
            fn ('e':' ':f)  = fnewE $ dropSpace f
            fn ('e':'d':'i':'t':' ':f) = fnewE $ dropSpace f
-           fn ('s':'a':'v':'e':'a':'s':' ':f)     = (\f' -> viSafeWriteTo f' >> fnewE f') $ dropSpace f
-           fn ('s':'a':'v':'e':'a':'s':'!':' ':f) = (\f' -> viWriteTo f' >> fnewE f') $ dropSpace f
+           fn ('s':'a':'v':'e':'a':'s':' ':f)     = let f' = dropSpace f in viSafeWriteTo f' >> fnewE f'
+           fn ('s':'a':'v':'e':'a':'s':'!':' ':f) = let f' = dropSpace f in viWriteTo f' >> fnewE f'
            fn ('r':' ':f)  = withBuffer' . insertN =<< io (readFile $ dropSpace f)
            fn ('r':'e':'a':'d':' ':f) = withBuffer' . insertN =<< io (readFile $ dropSpace f)
            -- fn ('s':'e':'t':' ':'f':'t':'=':ft)  = withBuffer' $ setSyntaxB $ highlighters M.! ft
