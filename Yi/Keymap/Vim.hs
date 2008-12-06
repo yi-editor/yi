@@ -11,7 +11,7 @@ module Yi.Keymap.Vim (keymap,
                       mkKeymap,
                       beginIns) where
 
-import Prelude (maybe, length, filter, map, drop, break, uncurry)
+import Prelude (maybe, length, filter, map, drop, break, uncurry, reads)
 
 import Data.Char
 import Data.List (nub, take, words, dropWhile)
@@ -371,6 +371,15 @@ defKeymap = Proto template
                      writeB ' '
                      deleteN =<< indentOfB =<< nelemsB maxBound =<< pointB
 
+     onCurrentWord :: (String -> String) -> BufferM ()
+     onCurrentWord f = modifyRegionB f =<< regionOfNonEmptyB unitViWord
+
+     onNumberInString :: (Read a, Show a, Num a) => (a -> a) -> String -> String
+     onNumberInString f s = case reads s2 of
+         []          -> s
+         (n, rest):_ -> s1 ++ show (f n) ++ rest
+       where (s1,s2) = break isDigit s
+
      -- | cmd mode commands
      -- An event specified paired with an action that may take an integer argument.
      -- Usually the integer argument is the number of times an action should be repeated.
@@ -387,6 +396,8 @@ defKeymap = Proto template
          ,(ctrl $ char 'r',    withBuffer' . flip replicateM_ redoB)
          ,(ctrl $ char 'z',    const suspendEditor)
          ,(ctrl $ char ']',    const gotoTagCurrentWord)
+         ,(ctrl $ char 'a',    withBuffer' . onCurrentWord . onNumberInString . (+))
+         ,(ctrl $ char 'x',    withBuffer' . onCurrentWord . onNumberInString . flip (-))
          ,(char 'D',      withEditor' . cut Exclusive . ArbMove . viMoveToNthEol)
          ,(char 'J',      const $ withBuffer' $ joinLinesB)
          ,(char 'Y',      \n -> withEditor $ do
