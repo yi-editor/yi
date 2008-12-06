@@ -41,7 +41,9 @@ prettyEvent (Event k mods) =
 -- | Map an Event to a Char. This should be gotten rid of, eventually.
 eventToChar :: Event -> Char
 eventToChar (Event KEnter _) = '\n'
-eventToChar (Event KEsc _) = '\ESC'
+eventToChar (Event KEsc _)   = '\ESC'
+eventToChar (Event KBS _)    = '\127'
+eventToChar (Event KTab _)   = '\t'
 
 eventToChar (Event (KASCII c) mods) = (if MMeta `elem` mods then setMeta else id) $
                                       (if MCtrl `elem` mods then ctrlLowcase else id) $
