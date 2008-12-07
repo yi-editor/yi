@@ -104,7 +104,7 @@ noHighlighter :: Highlighter () syntax
 noHighlighter = SynHL {hlStartState = (), 
                        hlRun = \_ _ a -> a,
                        hlGetStrokes = \_ _ _ _ -> [],
-                       hlGetTree = \_ -> error "noHighlighter: tried to fetch syntax"
+                       hlGetTree = const $ error "noHighlighter: tried to fetch syntax"
                       }
 
 
