@@ -159,11 +159,11 @@ perlHighlighterRules :-
     -- Chunks that are handled as interpolating strings.
     \"
     { 
-        m (\_ -> HlInInterpString False "\"" ) operatorStyle 
+        m (const $ HlInInterpString False "\"" ) operatorStyle 
     }
     "`" 
     {
-        m (\_ -> HlInInterpString False "`" ) operatorStyle
+        m (const $ HlInInterpString False "`" ) operatorStyle
     }
 
     -- Matching regex quote-like operators are also kinda like interpolating strings.
@@ -171,14 +171,14 @@ perlHighlighterRules :-
     -- division this only matches in the case the / is preeceded with the usual 
     -- context I use it.
     ^($white*)"/"
-        { m (\_ -> HlInInterpString True "/" ) operatorStyle }
+        { m (const $ HlInInterpString True "/" ) operatorStyle }
     (@preMatchRegexOp $whitechar* "/")
         {
-            m (\_ -> HlInInterpString True "/" ) operatorStyle
+            m (const $ HlInInterpString True "/" ) operatorStyle
         }
     -- "?"
     --     {
-    --         m (\_ -> HlInInterpString True "?" ) operatorStyle
+    --         m (const $ HlInInterpString True "?" ) operatorStyle
     --     }
 
     "m/"
@@ -210,7 +210,7 @@ perlHighlighterRules :-
     -- Chunks that are handles as non-interpolating strings.
     \' 
     { 
-        m (\_ -> HlInString '\'') operatorStyle 
+        m (const $  HlInString '\'') operatorStyle 
     }
 
     "qw" @quoteLikeDelimiter
@@ -229,7 +229,7 @@ perlHighlighterRules :-
     -- (man perlsyn)
     ^ @perlDocStartWord
         {
-            m (\_ -> HlInPerldoc) commentStyle
+            m (const $ HlInPerldoc) commentStyle
         }
 
 
