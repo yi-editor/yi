@@ -98,7 +98,7 @@ cabalRun cmd onExit args = withOtherWindow $ do
 -----------------------
 -- | cabal-build
 cabalBuildE :: YiM ()
-cabalBuildE = withMinibufferFree "Build args:" $ cabalRun "build" (\_ -> return ())
+cabalBuildE = withMinibufferFree "Build args:" $ cabalRun "build" (const $ return ())
 
 
 shell :: YiM BufferRef
@@ -107,19 +107,18 @@ shell = do
     Interactive.interactive sh ["-i"]
     -- use the -i option for interactive mode (assuming bash)
 
--- | Search the haskell files in the project.
+-- | Search the Haskell files in the project.
 grepFind :: String -> YiM ()
 grepFind searched = withOtherWindow $ do
     startSubprocess "find" [".", 
                             "-name", "_darcs", "-prune", "-o", 
-                            "-name", "*.hs", "-exec", "grep", "-Hnie", searched, "{}", ";"] (\_ -> return ())
+                            "-name", "*.hs", "-exec", "grep", "-Hnie", searched, "{}", ";"] (const $ return ())
     withBuffer $ setMode Compilation.mode
     return ()
      
 -- | Inserting a template from the templates defined in Yi.Templates
 insertTemplate :: YiM ()
-insertTemplate =
-  withMinibuffer "template-name:" (\_ -> return templateNames) $ withEditor . addTemplate
+insertTemplate = withMinibuffer "template-name:" (const $ return templateNames) $ withEditor . addTemplate
 
 -- | Given a possible starting path (which if not given defaults to
 --   the current directory) and a fragment of a path we find all
