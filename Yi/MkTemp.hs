@@ -116,9 +116,9 @@ gettemp path doopen domkdir slen = do
     -- We need a function for looking for appropriate temp files
     --
     ;let fn p
-          | doopen    = handleJust isInUse (\_ -> return Nothing) $
+          | doopen    = handleJust isInUse (const $ return Nothing) $
                           do h <- open0600 p ; return $ Just h
-          | domkdir   = handleJust alreadyExists (\_ -> return Nothing) $
+          | domkdir   = handleJust alreadyExists (const $ return Nothing) $
                           do mkdir0700 p ; return $ Just undefined
           | otherwise = do b <- doesFileExist p
                            return $ if b then Nothing else Just undefined
