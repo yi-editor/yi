@@ -56,6 +56,8 @@ data UIStyle = UIStyle
   , variableStyle      :: Style      -- ^ any standard variable (identifier)
   , operatorStyle      :: Style      -- ^ infix operators
 
+  , quoteStyle         :: Style      -- ^ Style of a quotation (e.g. in template haskell)    
+
   , makeFileAction     :: Style      -- ^ stuff that's passed to the shell in a Makefile
   , makeFileRuleHead   :: Style      -- ^ makefile rule headers
   }

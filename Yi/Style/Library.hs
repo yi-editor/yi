@@ -36,6 +36,7 @@ defaultTheme = Proto $ const $ UIStyle
   , operatorStyle      = withFg brown
   , makeFileRuleHead   = withFg blue
   , makeFileAction     = withFg grey
+  , quoteStyle         = withFg grey
   }
 
 

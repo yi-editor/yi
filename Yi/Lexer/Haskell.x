@@ -53,6 +53,7 @@ $nl        = [\n\r]
 
 @varid  = $small $idchar*
 @conid  = $large $idchar*
+@anyid = (@varid | @conid)
 @qual   = (@conid ".")*
 @varsym = $symbol $symchar*
 @consym = \: $symchar*
@@ -128,6 +129,8 @@ haskell :-
   @decimal \. @decimal @exponent?
     | @decimal @exponent                        { c Number }
 
+  \'\' @anyid                                   { c THQuote } -- type
+  \' @anyid                                     { c THQuote } -- expression
   \' ($graphic # [\'\\] | " " | @escape) \'     { c CharTok }
   \" @string* \"                                { c StringTok }
   .                                             { c Unrecognized }
@@ -150,6 +153,7 @@ data Token = Number | CharTok | StringTok | VarIdent | ConsIdent
            | Reserved !ReservedType | ReservedOp !OpType | Special Char
            | ConsOperator | Operator
            | Comment !CommentType
+           | THQuote
            | CppDirective | Unrecognized
              deriving (Eq, Show)
 
@@ -167,6 +171,7 @@ tokenToStyle tok = case tok of
   ConsOperator -> operatorStyle
   Operator     -> operatorStyle
   Comment _    -> commentStyle
+  THQuote      -> quoteStyle
   Unrecognized -> errorStyle
 
 startsLayout (Reserved OtherLayout) = True
