@@ -69,7 +69,7 @@ _silenceWarning = undefined
 
 $(declareClass "YiTextView" "NSTextView")
 $(exportClass "YiTextView" "ytv_" [
-    InstanceVariable "runBuffer" [t| BufferM () -> IO () |] [| \_ -> return () |]
+    InstanceVariable "runBuffer" [t| BufferM () -> IO () |] [| const $ return () |]
   , InstanceVariable "selectingPosition" [t| Maybe Point |] [| Nothing |]
   , InstanceMethod 'setSelectedRangesAffinityStillSelecting -- '
   , InstanceMethod 'acceptableDragTypes
