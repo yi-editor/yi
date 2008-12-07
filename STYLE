@@ -1,4 +1,5 @@
-DISCLAIMER:
+DISCLAIMER
+==========
 
 We don't need endless discussions, or worse a flamewar, regarding
 coding guidelines, but we want (some) consistency in the
@@ -10,15 +11,21 @@ For obvious reasons, don't change this file.
 
 -- JP
 
-STYLE GUIDELINES:
+STYLE GUIDELINES
+================
+
+* Rules on the top of this list are more important, and take precedence over
+  rules at the bottom.
+
+* Don't change code for purely stylistic reasons! It is the
+  responsibility of the maintainer of a piece of code to interpret
+  and apply the style rules of this document.
 
 * Please stick to the following guidelines when you write new code.
 
-* Don't change code for purely stylistic reasons!
-
 * Haddock.
 
-** Comment all top-level functions
+  * Comment all top-level functions
     Use no line with just '--' before or after the comment text.
     Don't put a blank line between the haddock comment and the commented entity.
 
@@ -29,30 +36,31 @@ STYLE GUIDELINES:
      f :: Type
      f = definition
 
-   If the comment is extremely lengthy (> 5 lines), you may want to consider switching to {- -} 
+   If the comment is extremely lengthy (> 10 lines), you may want to consider switching to {- -} 
    style to reduce visual clutter.
 
 * Parentheses, brackets, etc.
 
-** Space outside; no space inside.
+  Space outside; no space inside.
 
-    Example
+  Example:
 
      x :: [Int]
      x = (a + 1) * 2
 
 * Case
 
-** Use camelCase in naming functions.
+  Use camelCase in naming functions.
 
-    example:
+  Example:
 
-     good: 'oneTwoThree'
-     bad:  'onetwothree'
+     good: `oneTwoThree`
+     bad:  `onetwothree`
+     bad:  `one_two_three`
 
 * Follow the coding style of the other modules.
 
-* Code should ideally be compilable with -Wall -Werror; there should be no warnings.
+* Code should ideally be compilable with `-Wall -Werror`; there should be no warnings.
   Exceptions, however, can be made if one must declare an instance or omit a 
   signature. 
 
@@ -63,13 +71,23 @@ STYLE GUIDELINES:
 * Partial functions should be avoided; your code should be reliable. An editor 
   crashing can cost the user a lot of work!
 
-* Please try to avoid adding stray whitespace or using tabs; they can cause
-  problems.
+  However, all exceptions in functions that run interactively (called by the
+  keymap) are caught. You are in fact encourarged to rely on this to reduce
+  clutter. 
+  For example, if your function expects an integer smaller than 10,
+  it is better to just error out than to add specific error handling in
+  that function
+
+* Do not add tabs; they can cause problems.
+
+* Please try to avoid trailing whitespace. Some people don't like them,
+  and they are in general useless.
 
 * New modules should identify the author, and include comments on the
-  purpose of the module..
+  purpose of the module.
 
-* Try to write both concisely and clearly. For example, '\_ -> foo' is
-  worse than 'const foo', but '\_ b _ -> foo b' is definitely better than
-  the equivalent 'const (const . foo)'. No excuses for obvious things like
-  replacing 'foo a b = a' with 'foo a _ = a', though.
+* Try to write both concisely and clearly. For example, `\_ -> foo` is usually
+worse than `const foo`, but `\_ b _ -> foo b` is definitely better than the
+equivalent `const (const . foo)`. No excuses for obvious things, like not
+replacing `foo a b = a` with `foo a _ = a`, though. (Or even better `foo a _b =
+a`, if you feel the meaning of the ignored argument should be reminded)
