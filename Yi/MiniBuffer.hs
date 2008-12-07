@@ -172,7 +172,7 @@ instance Promptable BufferRef where
 
 -- | Returns all the buffer names.
 matchingBufferNames :: String -> YiM [String]
-matchingBufferNames _s = withEditor $ do
+matchingBufferNames _ = withEditor $ do
   bs <- getBuffers
   return (fmap name bs)
 
