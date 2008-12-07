@@ -325,13 +325,13 @@ scrollToCursorB = do
 -- | Move cursor to the top of the screen
 scrollCursorToTopB :: BufferM ()
 scrollCursorToTopB = do
-    MarkSet f i _ t <- markLines
+    MarkSet f i _ _ <- markLines
     scrollB $ i - f
 
 -- | Move cursor to the bottom of the screen
 scrollCursorToBottomB :: BufferM ()
 scrollCursorToBottomB = do
-    MarkSet f i _ t <- markLines
+    MarkSet _ i _ t <- markLines
     scrollB $ i - t
 
 -- | Scroll by n lines.
