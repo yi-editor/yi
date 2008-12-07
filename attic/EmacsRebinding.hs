@@ -136,7 +136,7 @@ myActions =
   Helper functions
 -}
 funnyModifySelectionB :: BufferM ()
-funnyModifySelectionB = modifySelectionB (\_ -> "hello")
+funnyModifySelectionB = modifySelectionB (const "hello")
 
 -- | Goto a line specified in the mini buffer.
 gotoLineE :: YiM ()
