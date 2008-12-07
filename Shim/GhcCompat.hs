@@ -68,7 +68,7 @@ newSession mode mb_top_dir = do
   old <- tryTakeMVar interruptTargetThread
   case old of
     Nothing -> -- =6.6, first newSession and empty MVar
-      do modifyMVar_ haveNewSessionBug (\_ -> return True)
+      do modifyMVar_ haveNewSessionBug (const $ return True)
          GHC.newSession mode mb_top_dir
     Just tids -> -- both ghc versions, nonempty MVar
       do bug <- readMVar haveNewSessionBug
