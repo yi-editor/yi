@@ -78,6 +78,7 @@ swapRegionsB r r'
                      replaceRegionB r  w1
 
 -- Transform a replace into a modify.
+replToMod :: (Region -> a -> BufferM b) -> (String -> a) -> Region -> BufferM b
 replToMod replace = \transform region -> replace region =<< transform <$> readRegionB region
 
 -- | Modifies the given region according to the given
