@@ -1,7 +1,6 @@
 -- Copyright (C) 2008 JP Bernardy
-
+-- | Utilities shared by various UIs
 module Yi.UI.Utils where
--- Utilities shared by various UIs
 
 import Yi.Buffer
 import Yi.Prelude
@@ -10,7 +9,7 @@ import Yi.Window
 import Control.Arrow (second)
 import Data.Monoid
 import Yi.Style
-import Control.Monad.State (gets)
+
 -- | return index of Sol on line @n@ above current line
 indexOfSolAbove :: Int -> BufferM Point
 indexOfSolAbove n = savingPointB $ do
