@@ -12,17 +12,12 @@ import Yi.Editor
 -- import Yi.UI as UI
 import Yi.History
 
-import Prelude       hiding ( any, error )
-
-import Data.Char
-import Data.List            ( (\\) )
-
 import Control.Arrow ((+++))
-import Control.Exception    ( ioErrors, try, evaluate )
-
+import Control.Exception ( ioErrors, try, evaluate )
 import Control.Monad.State
-
-
+import Data.Char
+import Data.List ( (\\) )
+import Prelude hiding ( any, error )
 
 -- ---------------------------------------------------------------------
 
@@ -212,7 +207,7 @@ cmdCmdFM =
                          gotoPointE p
                          when (q-p > 0) $ deleteNE (q-p) )
 
-    ,('p',      (\_ -> getRegE >>= \s ->
+    ,('p',      (const $ getRegE >>= \s ->
                         moveToEol >> insertN '\n' >>
                             mapM_ insertN s >> moveToSol)) -- ToDo insertNE
 
