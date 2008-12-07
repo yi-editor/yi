@@ -83,6 +83,12 @@ backward (WindowSet [] c []) = WindowSet [] c []
 backward (WindowSet (b:bs) c a) = WindowSet bs b (c:a)
 backward (WindowSet [] c a) = WindowSet (c:reverse (init a)) (last a) []
 
+move :: Int ->  WindowSet a -> WindowSet a
+move n ws@(WindowSet a b c)
+    | length a <  n = WindowSet (reverse (take (n - (length a)) c) ++ a) b (drop n c)
+    | length a == n = ws
+    | length a >  n = WindowSet (take n (reverse a)) b (drop n (reverse a) ++ c)
+
 setFocus :: (Show a, Eq a) => a -> WindowSet a -> WindowSet a
 setFocus w ws@(WindowSet b c a) 
     | c == w = ws

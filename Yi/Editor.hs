@@ -478,6 +478,10 @@ nextTabE = modA tabsA WS.forward
 previousTabE :: EditorM ()
 previousTabE = modA tabsA WS.backward
 
+-- | Moves to the tab to the given index
+moveTab :: Int -> EditorM ()
+moveTab n = modA tabsA $ WS.move n
+
 -- | Close the current window. If there is only one tab open and the tab 
 -- contains only one window then do nothing.
 tryCloseE :: EditorM ()
