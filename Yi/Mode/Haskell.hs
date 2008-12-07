@@ -61,7 +61,7 @@ plainMode = haskellAbstract
      modeName = "plain haskell",
      modeHL = ExtHL $
      mkHighlighter (Linear.incrScanner . haskellLexer) (\begin end pos -> Linear.getStrokes begin end pos . fmap Paren.tokenToStroke)
-   , modeIndent = \_ast -> autoIndentHaskellB
+   , modeIndent = const autoIndentHaskellB
    }
 
 -- | "Clever" haskell mode, using the paren-matching syntax.
@@ -130,7 +130,7 @@ adjustBlock e len = do
            savingExcursionB $ do
                    let (_startOfs, height) = Paren.getSubtreeSpan it
                    col <- curCol
-                   forM_ [1..height] $ \_ -> do
+                   forM_ [1..height] $ const $ do
                                lineDown
                                indent <- indentOfB =<< readLnB
                                -- it might be that we have 1st column comments in the block,
