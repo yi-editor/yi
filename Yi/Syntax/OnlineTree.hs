@@ -36,6 +36,7 @@ factor = 2
 initialLeftSize :: Size
 initialLeftSize = 2 
 
+parse :: P (Tok t) (Tree (Tok t))
 parse = parse' initialLeftSize 0 maxBound
 
 -- Invariant: all symbols are after the l
@@ -53,6 +54,7 @@ parse' leftSize lB rB
     -- parser would have to keep this case until the very end of input
     -- is reached.
 
+toEndo :: Tree a -> [a] -> [a]
 toEndo Leaf = id
 toEndo (Node x l r) = (x :) . toEndo l . toEndo r
 
