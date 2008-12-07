@@ -195,11 +195,11 @@ data FBuffer = forall syntax.
 
 -- unfortunately the dynamic stuff can't be read.
 instance Binary FBuffer where
-    put (FBuffer n b f u r bmode pd _bd pc pu hs _proc wm law)  =
+    put (FBuffer n b f u r binmode pd _bd pc pu hs _proc wm law)  =
       let strippedRaw :: BufferImpl ()
           strippedRaw = (setSyntaxBI (modeHL emptyMode) r) 
       in do
-          put (modeName bmode)
+          put (modeName binmode)
           put n >> put b >> put f >> put u >> put strippedRaw
           put pd >> put pc >> put pu >> put hs >> put wm
           put law
