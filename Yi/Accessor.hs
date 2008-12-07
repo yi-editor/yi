@@ -19,3 +19,12 @@ mkAccessor getter modifier = fromLens $ \whole -> (getter whole, \part -> modifi
 
 getsA :: MonadState s m => Accessor s p -> (p -> a) -> m a
 getsA a f = gets (f . getVal a)
+
+every :: Traversable t => Accessor whole part -> Accessor (t whole) (t part)
+every a = accessor (fmap (getVal a)) (\parts wholes -> zipT (setVal a) parts wholes)
+
+zipT :: Traversable t => (a -> b -> c) -> t a -> t b -> t c
+zipT f ta tb = result
+  where step []     _ = error "zipT: non matching structures!"
+        step (b:bs) a = (bs,f a b)
+        ([], result) = mapAccumL step (toList tb) ta
