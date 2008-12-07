@@ -64,8 +64,8 @@ shellCommandSwitch = "-c"
 
 runShellCommand :: String -> IO (String,String,ExitCode)
 runShellCommand cmd = do
-      shell <- shellFileName
-      popen shell [shellCommandSwitch, cmd] Nothing
+      sh <- shellFileName
+      popen sh [shellCommandSwitch, cmd] Nothing
 
 
 --------------------------------------------------------------------------------
