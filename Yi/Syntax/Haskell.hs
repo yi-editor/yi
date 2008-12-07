@@ -175,6 +175,7 @@ parse' toTok fromT = pBlockOf pDecl <* eof
       -- note that, by construction in Layout module, '<' and '>' will always be
       -- matched, so we don't try to recover errors with them.
 
+(<||>) :: (t -> Bool) -> (t -> Bool) -> t -> Bool
 (<||>) f g x = f x || g x
 
 
@@ -205,8 +206,6 @@ getStrokes point _begin _end t0 = result
           list = foldr (.) id
           result = getStrokes' t0 []
           -- result = getStrokesL t0 []
-          -- stupid = appEndo (foldMap (Endo . tk) . foldMap toList $ t0) []
-          stupid = appEndo (foldMap (Endo . tk) t0) []
 
 modStroke :: StyleName -> Stroke -> Stroke
 modStroke f (l,s,r) = (l,f `mappend` s,r) 
