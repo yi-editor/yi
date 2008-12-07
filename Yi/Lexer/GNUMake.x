@@ -58,7 +58,7 @@ make :-
     -- TODO: I'm almost convinced I'd like to see the tab character visually distinct from a space.
     -- One possibility would be to treat the tab character as an operator.
     ^\t
-        { m (\_ -> RuleCommand) Style.defaultStyle }
+        { m (const  RuleCommand) Style.defaultStyle }
 
     -- There can be any number of spaces (but not tabs!) preceeded a directive.
     ^$space+
@@ -68,7 +68,7 @@ make :-
     --  One preceeded by a "-" 
     --  Another not preceeded by a "-"
     \-?"include"
-        { m (\_ -> IncludeDirective) Style.keywordStyle }
+        { m (const IncludeDirective) Style.keywordStyle }
 
     -- A variable expansion outside of a prerequisite can occur in three different forms.
     -- Inside a prerequisite they can occur in four different forms.
@@ -81,12 +81,12 @@ make :-
 
     -- 2 & 3: Parentheses or brackets could indicate a variable expansion or function call.
     "${"
-        { m (\_ -> ComplexExpansion '}' TopLevel) Style.operatorStyle }
+        { m (const $ ComplexExpansion '}' TopLevel) Style.operatorStyle }
     "$(" 
-        { m (\_ -> ComplexExpansion ')' TopLevel) Style.operatorStyle }
+        { m (const $ ComplexExpansion ')' TopLevel) Style.operatorStyle }
 
     \#
-        { m (\_ -> InComment) Style.commentStyle }
+        { m (const $ InComment) Style.commentStyle }
     \n
         { c Style.defaultStyle }
     .
@@ -99,9 +99,9 @@ make :-
     $space+
         { c Style.defaultStyle }
     \#
-        { m (\_ -> InComment) Style.commentStyle } 
+        { m (const $ InComment) Style.commentStyle } 
     \n
-        { m (\_ -> TopLevel)  Style.defaultStyle }
+        { m (const $ TopLevel)  Style.defaultStyle }
 
     -- For now anything else is considered a string.
     -- This is incorrect. The items of the space separated list can be:
@@ -157,7 +157,7 @@ make :-
     \\[.\n]
         { c Style.makeFileAction }
     \n
-        { m (\_ -> TopLevel) Style.defaultStyle }
+        { m (const $ TopLevel) Style.defaultStyle }
     
     -- Variable expansion is supported in a rule command.
     "$$"
@@ -165,9 +165,9 @@ make :-
     \$$varChar
         { c Style.variableStyle }
     "${"
-        { m (\_ -> ComplexExpansion '}' RuleCommand) Style.operatorStyle }
+        { m (const $ ComplexExpansion '}' RuleCommand) Style.operatorStyle }
     "$(" 
-        { m (\_ -> ComplexExpansion ')' RuleCommand) Style.operatorStyle }
+        { m (const $ ComplexExpansion ')' RuleCommand) Style.operatorStyle }
 
     .
         { c Style.makeFileAction }
@@ -180,7 +180,7 @@ make :-
     \\[.\n]
         { c Style.commentStyle }
     \n
-        { m (\_ -> TopLevel) Style.defaultStyle }
+        { m (const TopLevel) Style.defaultStyle }
     .
         { c Style.commentStyle }
 }
