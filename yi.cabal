@@ -247,7 +247,9 @@ executable yi
         build-depends: rosezipper >= 0.1 && < 0.2
         build-depends: utf8-string >= 0.3.1
 
-        ghc-options:   -Wall -optl-Wl,-s -threaded
+        ghc-options:   -Wall -fno-warn-orphans -threaded
+        -- orphans are a performance warning, but 
+        -- we need this in Yi.
 -- ghc-options later on get appended to the original
         ghc-prof-options:   -prof -auto-all
 
