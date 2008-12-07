@@ -71,7 +71,7 @@ hconfOptions projectName =
     [
         ("recompile-force", 
          "Force recompile of custom " ++ projectName ++ " before starting.", 
-         \_ -> recompile projectName True >> return ()
+         const $ recompile projectName True >> return ()
         ),
         ("resume",
          "Resume execution of " ++ projectName ++ " from previous state",
@@ -79,7 +79,7 @@ hconfOptions projectName =
         ),
         ("recompile",
          "Recompile custom " ++ projectName ++ " if required then exit.",
-         \_ -> do
+         const $ do
             recompile projectName False
             exitWith ExitSuccess
         )
