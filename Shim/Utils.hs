@@ -148,13 +148,13 @@ logfile :: MVar FilePath
 logfile = unsafePerformIO $ newMVar ""
 
 logAction :: MVar (FilePath -> String -> IO ())
-logAction = unsafePerformIO $ newMVar (\_ _ -> return ())
+logAction = unsafePerformIO $ newMVar $ const $ const $ return ()
 
 setLogAction ::  (FilePath -> String -> IO ()) -> IO ()
-setLogAction m = modifyMVar_ logAction (\_ -> return m)
+setLogAction = modifyMVar_ logAction . const . return
 
 setLogfile :: FilePath -> IO ()
-setLogfile lf = modifyMVar_ logfile (\_ -> return lf)
+setLogfile = modifyMVar_ logfile . const . return 
 
 getLogfile :: IO FilePath
 getLogfile = readMVar logfile
@@ -172,7 +172,7 @@ unlessM cond = whenM (liftM not cond)
 
 -- excToMaybe :: (NFData a) => a -> Maybe a
 -- excToMaybe x = unsafePerformIO $
---   CE.catch (rnf x `seq` return $ Just x) (\_ -> return $  Nothing)
+--   CE.catch (rnf x `seq` return $ Just x) (const $ return $ Nothing)
 
 shorten :: Int -> String -> String
 shorten n s = if length s > n then take (n-4) s ++ "..." else s
