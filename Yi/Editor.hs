@@ -443,6 +443,7 @@ findWindowWith :: WindowRef -> Editor -> Window
 findWindowWith k e =
     head $ concatMap (\win -> if (wkey win == k) then [win] else []) $ windows e
 
+-- | Return the windows that are currently open on the buffer whose key is given
 windowsOnBufferE :: BufferRef -> EditorM [Window]
 windowsOnBufferE k = do
   ts <- getA tabsA
