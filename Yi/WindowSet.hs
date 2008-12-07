@@ -82,6 +82,7 @@ backward (WindowSet [] c []) = WindowSet [] c []
 backward (WindowSet (b:bs) c a) = WindowSet bs b (c:a)
 backward (WindowSet [] c a) = WindowSet (c:reverse (init a)) (last a) []
 
+-- | Move the focused window or tab to the specified index
 move :: Int ->  WindowSet a -> WindowSet a
 move n ws@(WindowSet a b c)
     | length a <  n = WindowSet (reverse (take (n - (length a)) c) ++ a) b (drop n c)

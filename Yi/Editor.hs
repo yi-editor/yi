@@ -482,7 +482,7 @@ nextTabE = modA tabsA WS.forward
 previousTabE :: EditorM ()
 previousTabE = modA tabsA WS.backward
 
--- | Moves to the tab to the given index
+-- | Moves the focused tab to the given index, or to the end if the index is not specified.
 moveTab :: Maybe Int -> EditorM ()
 moveTab Nothing  = do count <- getsA tabsA WS.size
                       modA tabsA $ WS.move count
