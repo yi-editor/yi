@@ -87,27 +87,21 @@ interpret (UApp df da) = do
   t2 <- interpret da
   return $ catMaybes [dynApply f a | f <- t1, a <- t2]
 
-
-eval :: Env -> String -> Either Err [Dynamic]
-eval env s =  interpret =<< rename env =<< parse s 
-
 toMono :: forall a. Typeable a => [Dynamic] -> Either Err a
 toMono rs = case catMaybes $ map fromDynamic rs of
            [] -> Left $ "value doesn't have type " ++ show (typeOf (undefined::a))
            [r] -> Right r
            _ -> error "eval': ambiguous types"
-    
 
+-- eval :: Env -> String -> Either Err [Dynamic]
+-- eval env s =  interpret =<< rename env =<< parse s 
 
-test :: String -> Maybe String
-test s = case eval symTable s of
-           Right [result] -> fromDynamic result
-           Right [] -> Just "type error"
-           Right _ -> Just "ambiguous"
-           Left err -> Just err
-           
-   where 
-        symTable = M.fromList [("one", [toDyn (1::Int)]),
-                               ("show",[toDyn (show :: Int -> String)])
-                              ]
-
+-- test :: String -> Maybe String
+-- test s = case eval symTable s of
+--            Right [result] -> fromDynamic result
+--            Right [] -> Just "type error"
+--            Right _ -> Just "ambiguous"
+--            Left err -> Just err
+--    where 
+--         symTable = M.fromList [("one", [toDyn (1::Int)]),
+--                                ("show",[toDyn (show :: Int -> String)]) ]
