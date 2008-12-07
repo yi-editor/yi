@@ -66,7 +66,6 @@ import Yi.Regex
 import qualified Data.ByteRope as F
 import Data.ByteRope (ByteRope)
 import qualified Data.ByteString.Lazy as LazyB
-import qualified Data.ByteString.UTF8 as UTF8
 import qualified Data.ByteString.Lazy.UTF8 as LazyUTF8
 import qualified Codec.Binary.UTF8.Generic as UF8Codec
 import Yi.Buffer.Basic
