@@ -2,7 +2,7 @@
 -- Copyright (c) Jean-Philippe Bernardy 2008
 module Yi.Regex 
   (
-   SearchF(..), makeSearchOptsM,
+   SearchF(..), makeSearchOptsM, makeSearchOptsM',
    SearchExp, searchString, searchRegex, emptySearch,
    emptyRegex,
    module Text.Regex.TDFA,
@@ -42,7 +42,8 @@ searchOpt IgnoreCase = \o->o{caseSensitive = False}
 searchOpt NoNewLine = \o->o{multiline = False}
 searchOpt QuoteRegex = id
 
-makeSearchOptsM' :: (Functor m, Monad m, RegexMaker Regex CompOption ExecOption source) => [SearchF] -> source -> m (source, Regex)
+makeSearchOptsM' :: (Functor m, Monad m, RegexMaker Regex CompOption ExecOption source) => [SearchF] -> 
+                     source -> m (source, Regex)
 makeSearchOptsM' opts re = (\r->(re,r)) <$> makeRegexOptsM (searchOpts opts defaultCompOpt) defaultExecOpt re
     where searchOpts = foldr (.) id . map searchOpt
 
