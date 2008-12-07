@@ -282,12 +282,12 @@ selectionStyleA = selectionStyleAA . attrsA
 
 highlightSelectionA :: Accessor FBuffer Bool
 highlightSelectionA = 
-  mkAccessor highlightSelection (\f e -> e { highlightSelection = f (highlightSelection e) })
+  accessor highlightSelection (\x e -> e { highlightSelection = x })
   . selectionStyleAA . attrsA
 
 rectangleSelectionA :: Accessor FBuffer Bool
 rectangleSelectionA = 
-  mkAccessor rectangleSelection (\f e -> e { rectangleSelection = f (rectangleSelection e) })
+  accessor rectangleSelection (\x e -> e { rectangleSelection = x })
   . selectionStyleAA . attrsA
 
 nameA :: Accessor FBuffer String

@@ -8,11 +8,12 @@ module Yi.History where
 
 import Yi.Buffer
 import Data.List
+import Data.Accessor.Container
 import Yi.Dynamic
 import Yi.Editor
 import qualified Data.Map as M
 import Yi.Prelude 
-import Prelude (maybe)
+import Prelude ()
 type Histories = M.Map String History
 
 instance (Typeable k, Typeable v) => Initializable (M.Map k v) where
@@ -26,9 +27,7 @@ instance Initializable History where
     initial = (History (-1) [])
 
 dynKeyA :: (Initializable v, Ord k) => k -> Accessor (M.Map k v) v
-dynKeyA k = mkAccessor (maybe initial id . M.lookup k) (\f -> mapAlter' (upd f) k)
-    where upd f Nothing = Just (f initial)
-          upd f (Just x) = Just (f x)
+dynKeyA = mapDefault initial
 
 miniBuffer :: String
 miniBuffer = "minibuffer"

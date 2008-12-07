@@ -12,6 +12,7 @@ import Prelude ()
 import Yi.Prelude
 
 import Control.Monad.Trans
+import Data.Accessor (accessor)
 import Data.Binary
 import Data.Foldable
 import Data.Traversable
@@ -41,9 +42,7 @@ instance Traversable WindowSet where
     traverse f (WindowSet b c a) = WindowSet <$> (reverse <$> traverse f (reverse b)) <*> f c <*> traverse f a
 
 currentA :: Accessor (WindowSet a) a
-currentA = mkAccessor current modifyCurrent
-    where modifyCurrent :: (a -> a) -> WindowSet a -> WindowSet a
-          modifyCurrent f (WindowSet b c a) = WindowSet b (f c) a
+currentA = accessor current (\b (WindowSet a _ c) -> WindowSet a b c)
 
 fromList :: [a] -> Maybe (WindowSet a)
 fromList [] = Nothing
