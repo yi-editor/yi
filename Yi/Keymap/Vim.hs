@@ -1101,8 +1101,8 @@ defKeymap = Proto template
 
            fn ('c':'a':'b':'a':'l':' ':s) = cabalRun s1 (const $ return ()) (drop 1 s2) where (s1, s2) = break (==' ') s
            fn ('y':'i':' ':s) = execEditorAction $ dropSpace s
-           fn "tabm"       = withEditor (moveTab 0)
-           fn ('t':'a':'b':'m':' ':n) = withEditor (moveTab $ read n)
+           fn "tabm"       = withEditor (moveTab Nothing)
+           fn ('t':'a':'b':'m':' ':n) = withEditor (moveTab $ Just (read n))
            fn "tabnew"     = withEditor newTabE
            fn ('t':'a':'b':'e':' ':f) = withEditor newTabE >> fnewE (dropSpace f)
            fn "noh"        = withEditor resetRegexE

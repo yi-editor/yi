@@ -479,8 +479,10 @@ previousTabE :: EditorM ()
 previousTabE = modA tabsA WS.backward
 
 -- | Moves to the tab to the given index
-moveTab :: Int -> EditorM ()
-moveTab n = modA tabsA $ WS.move n
+moveTab :: Maybe Int -> EditorM ()
+moveTab Nothing  = do count <- getsA tabsA WS.size
+                      modA tabsA $ WS.move count
+moveTab (Just n) = do modA tabsA $ WS.move n
 
 -- | Close the current window. If there is only one tab open and the tab 
 -- contains only one window then do nothing.
