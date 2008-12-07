@@ -57,7 +57,7 @@ popen file args minput =
 -- | Run a command using the system shell, returning stdout, stderr and exit code
 
 shellFileName :: IO String
-shellFileName = Prelude.catch (getEnv "SHELL") (\_ -> return "/bin/sh")
+shellFileName = Prelude.catch (getEnv "SHELL") (const $ return "/bin/sh")
 
 shellCommandSwitch :: String
 shellCommandSwitch = "-c"
