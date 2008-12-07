@@ -898,6 +898,7 @@ defKeymap = Proto template
            ex_complete ('r':' ':f)                             = f_complete f
            ex_complete ('r':'e':'a':'d':' ':f)                 = f_complete f
            ex_complete ('t':'a':'b':'e':' ':f)                 = f_complete f
+           ex_complete ('s':'a':'v':'e':'a':'s':' ':f)         = f_complete f
            ex_complete ('s':'a':'v':'e':'a':'s':'!':' ':f)     = f_complete f
            ex_complete ('b':' ':f)                             = b_complete f
            ex_complete ('b':'u':'f':'f':'e':'r':' ':f)         = b_complete f
