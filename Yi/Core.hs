@@ -328,7 +328,7 @@ sendToProcess bufref s = do
 
 pipeToBuffer :: Handle -> (String -> IO ()) -> IO ()
 pipeToBuffer h append = 
-  handle (\_ -> return ()) $ forever $ (hWaitForInput h (-1) >> readAvailable h >>= append)
+  handle (const $ return ()) $ forever $ (hWaitForInput h (-1) >> readAvailable h >>= append)
 
 
 waitForExit :: ProcessHandle -> IO (Either Exception ExitCode)
