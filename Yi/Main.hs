@@ -19,7 +19,7 @@ import Yi.IReader (nextArticle, saveAsNewArticle)
 import qualified Yi.Mode.Latex as Latex
 import {-# source #-} Yi.Boot
 import Yi.Config
-import Yi.Core hiding (file)
+import Yi.Core
 import Yi.Dired
 import Yi.File
 import Yi.Misc

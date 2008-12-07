@@ -174,7 +174,7 @@ instance Promptable BufferRef where
 matchingBufferNames :: String -> YiM [String]
 matchingBufferNames _ = withEditor $ do
   bs <- getBuffers
-  return (fmap name bs)
+  return (fmap (^. nameA) bs)
 
 
 -- TODO: be a bit more clever than 'Read r'

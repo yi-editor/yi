@@ -963,7 +963,7 @@ defKeymap = Proto template
                  else closeWindow
            
            needsAWindowB = do
-             isWorthless <- gets ((==Nothing).file)
+             isWorthless <- gets ((==Nothing) . (^. fileA))
              canClose <- isUnchangedB
              if isWorthless || canClose then return False else return True
            
@@ -988,7 +988,7 @@ defKeymap = Proto template
              case find snd bs of
                Nothing -> quitEditor
                Just (b, _) -> do
-                 bufferName <- withEditor $ withGivenBuffer0 b $ gets name
+                 bufferName <- withEditor $ withGivenBuffer0 b $ getA nameA
                  errorEditor $ "No write since last change for buffer " 
                                ++ show bufferName
                                ++ " (add ! to override)"

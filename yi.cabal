@@ -236,6 +236,7 @@ executable yi
         -- requirements on TH means bytestring version must be consistent with GHC
         -- --> can't use.
         build-depends: data-accessor == 0.1.*
+        build-depends: data-accessor-template == 0.1.*
         build-depends: filepath>=1.1 && <1.2
         build-depends: fingertree >= 0 && <0.1
         build-depends: ghc-paths ==0.1.*

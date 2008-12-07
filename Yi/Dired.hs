@@ -71,7 +71,7 @@ fnewCanonicalized f = do
         -- The file names associated with the list of current buffers
     bufsWithThisFilename <- liftIO $ filterM assocWithSameFile bufs
         -- The names of the existing buffers
-    let currentBufferNames   = map name bufs
+    let currentBufferNames   = bufs ^. every nameA
         -- The new name for the buffer
         bufferName           = bestNewName desiredBufferName currentBufferNames
         fDirectory           = takeDirectory f
@@ -103,7 +103,7 @@ fnewCanonicalized f = do
     -- it with a file. Personally I find this more robust.
     assocWithSameFile :: FBuffer -> IO Bool
     assocWithSameFile fbuffer =
-      case file fbuffer of
+      case fbuffer ^. fileA of
         Nothing -> return False
         Just f2 -> do filename1 <- canonicalizePath f
                       filename2 <- canonicalizePath f2

@@ -233,7 +233,7 @@ findBufferWith k e =
 
 -- | Find buffer with this name
 findBufferWithName :: String -> Editor -> [BufferRef]
-findBufferWithName n e = map bkey $ filter (\b -> name b == n) (M.elems $ buffers e)
+findBufferWithName n e = map bkey $ filter (\b -> b ^. nameA == n) (M.elems $ buffers e)
 
 -- | Find buffer with given name. Fail if not found.
 getBufferWithName :: String -> EditorM BufferRef
@@ -267,7 +267,7 @@ shiftBuffer shift = gets $ \e ->
 withGivenBuffer0 :: BufferRef -> BufferM a -> EditorM a
 withGivenBuffer0 k f = do
     b <- gets (findBufferWith k)
-    withGivenBufferAndWindow0 (lastActiveWindow b) k f
+    withGivenBufferAndWindow0 (b ^. lastActiveWindowA) k f
 
 -- | Perform action with any given buffer
 withGivenBufferAndWindow0 :: Window -> BufferRef -> BufferM a -> EditorM a
@@ -426,7 +426,7 @@ switchToBufferWithNameE bufName = switchToBufferE =<< getBufferWithName bufName
 listBuffersE :: EditorM [(String,Int)]
 listBuffersE = do
         bs  <- getBuffers
-        return $ zip (map name bs) [0..]
+        return $ zip (map (^. nameA) bs) [0..]
 
 -- | Close a buffer.
 -- Note: close the current buffer if the empty string is given

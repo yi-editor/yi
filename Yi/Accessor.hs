@@ -2,13 +2,15 @@
 
 -- | A module for "rich" accesssors.
 
-module Yi.Accessor (Accessor, mkAccessor, putA, getA, getsA, 
-                    modA, getVal, (^:), (^=)) where
+module Yi.Accessor (Accessor, mkAccessor, putA, getA, every, getsA, 
+                    modA, getVal, (^:), (^=), (^.)) where
 import Prelude hiding ((.), id)
 import Data.Accessor
 import Control.Monad.State
 import Control.Category
 import Data.Accessor.Basic (T, self, fromLens)
+import Data.Traversable
+import Data.Foldable
 
 instance Category T where
     id = self

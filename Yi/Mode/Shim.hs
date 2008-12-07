@@ -34,7 +34,7 @@ jumpToNextNote = do
 
 -- | Position of the cursor
 cursorPos :: BufferM (Maybe String, Int, Int)
-cursorPos = (,,) <$> gets file <*> curLn <*> curCol
+cursorPos = (,,) <$> getA fileA <*> curLn <*> curCol
 
 -- | Type of the symbol at current position
 typeAtPos :: YiM String
@@ -55,7 +55,7 @@ annotType = do
 annotValue :: YiM ()
 annotValue = do
   lnReg <- withBuffer $ regionOfB Yi.Line
-  Just sourcefile <- withBuffer $ gets file
+  Just sourcefile <- withBuffer $ getA fileA
   ln <- withBuffer $ readRegionB lnReg
   let lhs = takeWhile (/= '=') $ dropWhile (== '-') $ dropWhile isSpace $ ln
   newVal <- withShim $ do
@@ -86,7 +86,7 @@ minorMode m = m
                  withOtherWindow $ do
                      switchToBufferWithNameE "*messages*"
              msgEditor "Loading..."
-             Just filename <- withBuffer $ gets file
+             Just filename <- withBuffer $ getA fileA
              runShimThread (Hsinfo.load filename True Nothing >> return ())
              return ()
          ]

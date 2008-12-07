@@ -280,7 +280,7 @@ drawWindow cfg mre b sty focused w win = (Rendered { picture = pict,cursor = cur
         bufData = -- trace (unlines (map show text) ++ unlines (map show $ concat strokes)) $ 
                   paintChars attr colors text
         tabWidth = tabSize . fst $ runBuffer win b indentSettingsB
-        prompt = if isMini win then name b else ""
+        prompt = if isMini win then b ^. nameA else ""
 
         (rendered,toMarkPoint',cur) = drawText h' w
                                 fromMarkPoint

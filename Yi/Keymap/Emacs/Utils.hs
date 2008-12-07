@@ -87,7 +87,7 @@ deservesSave b
 -- | Is there a proper file associated with the buffer?
 -- In other words, does it make sense to offer to save it?
 isFileBuffer :: (Functor m, MonadIO m) => FBuffer -> m Bool
-isFileBuffer b = case file b of
+isFileBuffer b = case b ^. fileA of
                    Nothing -> return False
                    Just fn -> not <$> liftIO (doesDirectoryExist fn)
                      
@@ -105,7 +105,7 @@ askIndividualSave hasQuit allBuffers@(firstBuffer : others) =
                        , bufferName
                        , "? (y/n/"++ (if hasQuit then "q/" else "") ++"c/!)"
                        ]
-  bufferName  = name firstBuffer
+  bufferName  = firstBuffer ^. nameA
 
   askKeymap = choice ([ char 'n' ?>>! noAction
                       , char 'y' ?>>! yesAction 
@@ -276,7 +276,7 @@ switchBufferE = do
     openBufs <- fmap bufkey . toList <$> getA windowsA
     bs <- withEditor (fmap bkey <$> getBufferStack)
     let choices = (bs \\ openBufs) ++ openBufs -- put the open buffers at the end.
-    names <- forM choices $ \k -> gets $ (name . findBufferWith k)
+    names <- forM choices $ \k -> gets $ ((^. nameA) . findBufferWith k)
     withMinibufferFin "switch to buffer:" names (withEditor . switchToBufferWithNameE)
 
 askCloseBuffer :: String -> YiM ()
@@ -289,7 +289,7 @@ askCloseBuffer nm = do
                            ]
         delBuf = deleteBuffer $ bkey b
     withEditor $ 
-       if ch then (spawnMinibufferE ("Buffer " ++ name b ++ " changed, close anyway? (y/n)") (const askKeymap)) >> return () 
+       if ch then (spawnMinibufferE ("Buffer " ++ b ^. nameA ++ " changed, close anyway? (y/n)") (const askKeymap)) >> return () 
              else delBuf
 
 killBufferE :: YiM ()

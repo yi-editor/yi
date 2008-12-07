@@ -86,7 +86,7 @@ fwriteToE :: String -> YiM ()
 fwriteToE f = do 
     b <- withEditor $ do
         b <- getBuffer
-        currentBufferNames <- fmap name <$> getBuffers
+        currentBufferNames <- fmap (^. nameA) <$> getBuffers
         withBuffer0 $ putA nameA (bestNewName (takeFileName f) currentBufferNames)
         return b
     setFileName b f
