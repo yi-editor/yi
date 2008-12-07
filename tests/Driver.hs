@@ -2,28 +2,20 @@
 
 module Driver where
 
-import Debug.Trace
-import Data.Word
-import Data.Ratio
 import Data.Maybe
 import System.Environment
-import Control.Exception    (assert)
-import qualified Control.Exception as C
 import Control.Monad
 import Test.QuickCheck hiding (promote)
-import System.IO.Unsafe
 import System.IO
 import System.Random hiding (next)
 import Text.Printf
-import Data.List            (nub,sort,sortBy,group,sort,intersperse,genericLength)
+import Data.List            (nub,sort,group,intersperse)
 import qualified Data.List as L
-import Data.Char            (ord)
-import Data.Map             (keys,elems)
-import qualified Data.Map as M
 
 
 -- Following code shamelessly stolen from XMonad.
-
+main :: (Read t, Num t, PrintfArg t1, Num b, PrintfArg b) =>
+                                    [(t1, t -> IO (Bool, b))] -> IO ()
 main tests  = do
     args <- fmap (drop 1) getArgs
     let n = if null args then 100 else read (head args)
@@ -37,12 +29,13 @@ main tests  = do
 --
 
 
+debug :: Bool
 debug = False
 
 mytest :: Testable a => a -> Int -> IO (Bool, Int)
 mytest a n = mycheck defaultConfig
     { configMaxTest=n
-    , configEvery   = \n args -> let s = show n in s ++ [ '\b' | _ <- s ] } a
+    , configEvery   = \o _ -> let s = show o in s ++ [ '\b' | _ <- s ] } a
  -- , configEvery= \n args -> if debug then show n ++ ":\n" ++ unlines args else [] } a
 
 mycheck :: Testable a => Config -> a -> IO (Bool, Int)
@@ -89,6 +82,7 @@ done mesg ntest stamps = putStr ( mesg ++ " " ++ show ntest ++ " tests" ++ table
     display xs  = ".\n" ++ unlines (map (++ ".") xs)
 
     pairLength xss@(xs:_) = (length xss, xs)
+    pairLength []         = (0, [])
     entry (n, xs)         = percentage n ntest
                        ++ " "
                        ++ concat (intersperse ", " xs)
@@ -97,39 +91,10 @@ done mesg ntest stamps = putStr ( mesg ++ " " ++ show ntest ++ " tests" ++ table
 
 ------------------------------------------------------------------------
 
-instance Arbitrary Char where
-    arbitrary = choose ('a','z')
-    coarbitrary n = coarbitrary (ord n)
-
-instance Random Word8 where
-  randomR = integralRandomR
-  random = randomR (minBound,maxBound)
-
-instance Arbitrary Word8 where
-  arbitrary     = choose (minBound,maxBound)
-  coarbitrary n = variant (fromIntegral ((fromIntegral n) `rem` 4))
-
-instance Random Word64 where
-  randomR = integralRandomR
-  random = randomR (minBound,maxBound)
-
-instance Arbitrary Word64 where
-  arbitrary     = choose (minBound,maxBound)
-  coarbitrary n = variant (fromIntegral ((fromIntegral n) `rem` 4))
-
 integralRandomR :: (Integral a, RandomGen g) => (a,a) -> g -> (a,g)
 integralRandomR  (a,b) g = case randomR (fromIntegral a :: Integer,
                                          fromIntegral b :: Integer) g of
-                            (x,g) -> (fromIntegral x, g)
-
-
-instance Arbitrary Rational where
-    arbitrary = do
-        n <- arbitrary
-        d' <- arbitrary
-        let d =  if d' == 0 then 1 else d'
-        return (n % d)
-    coarbitrary = undefined
+                            (x,h) -> (fromIntegral x, h)
 
 ------------------------------------------------------------------------
 -- QC 2
