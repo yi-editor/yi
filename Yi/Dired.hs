@@ -312,8 +312,8 @@ diredScanDir dir = do
                         _filenm <- if (isSymbolicLink fileStatus) then
                                   return . ((++) (takeFileName fp ++ " -> ")) =<< readSymbolicLink fp else
                                   return $ takeFileName fp
-                        ownerEntry <- catch (getUserEntryForID uid) (\_ -> getAllUserEntries >>= return . scanForUid uid)
-                        groupEntry <- catch (getGroupEntryForID gid) (\_ -> getAllGroupEntries >>= return . scanForGid gid)
+                        ownerEntry <- catch (getUserEntryForID uid) (const $ getAllUserEntries >>= return . scanForUid uid)
+                        groupEntry <- catch (getGroupEntryForID gid) (const $ getAllGroupEntries >>= return . scanForGid gid)
                         let fmodeStr   = (modeString . fileMode) fileStatus
                             sz = toInteger $ fileSize fileStatus
                             ownerStr   = userName ownerEntry
