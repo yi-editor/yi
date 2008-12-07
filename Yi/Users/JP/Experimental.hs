@@ -142,7 +142,7 @@ commands = [[copy, cut,   del  b, del f,  complete],
           xpo dir u = transposeB u dir
           b = Backward
           f = Forward
-          todo = \_ -> return ()
+          todo = const $ return ()
 
 
 {-
