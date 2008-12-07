@@ -4,7 +4,17 @@ import Data.IORef
 import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Trans
+import Control.Applicative
 import Control.Concurrent.MVar
+
+instance (Monad f, Applicative f) => Applicative (ReaderT r f) where
+    pure x = ReaderT $ \_ -> pure x
+    ReaderT f <*> ReaderT x = ReaderT $ \r -> f r <*> x r
+
+instance (Monad f, Alternative f) => Alternative (ReaderT r f) where
+    empty = ReaderT $ \_ -> empty
+    ReaderT a <|> ReaderT b = ReaderT $ \r -> a r <|> b r
+
 
 -- | Combination of the Control.Monad.State 'modify' and 'gets'
 getsAndModify :: MonadState s m => (s -> (s,a)) -> m a
