@@ -1,4 +1,3 @@
-
 DISCLAIMER:
 
 We don't need endless discussions, or worse a flamewar, regarding
@@ -11,7 +10,6 @@ For obvious reasons, don't change this file.
 
 -- JP
 
-
 STYLE GUIDELINES:
 
 * Please stick to the following guidelines when you write new code.
@@ -20,33 +18,58 @@ STYLE GUIDELINES:
 
 * Haddock.
 
-Comment all top-level functions
-Use no line with just '--' before or after the comment text.
-Don't put a blank line between the haddock comment and the commented entity.
+** Comment all top-level functions
+    Use no line with just '--' before or after the comment text.
+    Don't put a blank line between the haddock comment and the commented entity.
 
-Example
+    Example
 
-    -- | Description, description, description
-    -- ... continued on other line.
-    f :: Type
-    f = definition
+     -- | Description, description, description
+     -- ... continued on other line.
+     f :: Type
+     f = definition
 
-
+   If the comment is extremely lengthy (> 5 lines), you may want to consider switching to {- -} 
+   style to reduce visual clutter.
 
 * Parentheses, brackets, etc.
 
-Space outside; no space inside.
+** Space outside; no space inside.
 
-Example
+    Example
 
-x :: [Int]
-x = (a + 1) * 2
-
+     x :: [Int]
+     x = (a + 1) * 2
 
 * Case
 
-Use camelCase
+** Use camelCase in naming functions.
 
-example:
+    example:
 
-oneTwoThree
+     good: 'oneTwoThree'
+     bad:  'onetwothree'
+
+* Follow the coding style of the other modules.
+
+* Code should ideally be compilable with -Wall -Werror; there should be no warnings.
+  Exceptions, however, can be made if one must declare an instance or omit a 
+  signature. 
+
+* If a module imports another module, but only uses a few things, it should 
+  enumerate its imports; this makes things clearer for later developers, and it
+  also prevents potential future breakage (from name clashes etc.).
+
+* Partial functions should be avoided; your code should be reliable. An editor 
+  crashing can cost the user a lot of work!
+
+* Please try to avoid adding stray whitespace or using tabs; they can cause
+  problems.
+
+* New modules should identify the author, and include comments on the
+  purpose of the module..
+
+* Try to write both concisely and clearly. For example, '\_ -> foo' is
+  worse than 'const foo', but '\_ b _ -> foo b' is definitely better than
+  the equivalent 'const (const . foo)'. No excuses for obvious things like
+  replacing 'foo a b = a' with 'foo a _ = a', though.
