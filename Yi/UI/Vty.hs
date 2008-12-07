@@ -174,7 +174,7 @@ prepareAction ui = do
 refresh :: UI -> Editor -> IO Editor
 refresh ui e = do
   let ws = windows e
-      hasTabBar = WS.size (tabs e) > 1
+      hasTabBar = WS.size (e ^. tabsA) > 1
       tabBarHeight = if hasTabBar then 1 else 0
       windowStartY = if hasTabBar then 1 else 0
   logPutStrLn "refreshing screen."
@@ -212,7 +212,7 @@ renderTabBar e ui xss =
   if tabCount > 1
     then [tabImages <|> extraImage]
     else []
-  where tabCount        = WS.size $ tabs e
+  where tabCount        = WS.size $ e ^. tabsA
 
         tabImages       = foldr1 (<|>) $ fmap tabToVtyImage $ tabBarDescr e
         extraImage      = withAttributes (tabBarAttributes uiStyle) (replicate (xss-totalTabWidth) ' ')

@@ -4,7 +4,7 @@ import Yi.Buffer (FBuffer(..), nameA)
 import Yi.Window
 import Yi.WindowSet
 import Yi.Editor (Editor(..)
-                 ,findBufferWith)
+                 ,findBufferWith, tabsA)
 
 data TabDescr = TabDescr
     {
@@ -19,4 +19,4 @@ tabBarDescr editor =
     let hintForTab tab = findBufferWith (bufkey $ current tab) editor ^. nameA
         tabDescr (tab,True) = TabDescr (hintForTab tab) True
         tabDescr (tab,False) = TabDescr (hintForTab tab) False
-    in fmap tabDescr (withFocus $ tabs editor)
+    in fmap tabDescr (withFocus $ editor ^. tabsA)

@@ -45,7 +45,7 @@ data Editor = Editor {
        ,buffers       :: !(M.Map BufferRef FBuffer)
        ,refSupply     :: !Int  -- ^ Supply for buffer and window ids.
 
-       ,tabs          :: !(WindowSet (WindowSet Window))
+       ,tabs_          :: !(WindowSet (WindowSet Window))
 
        ,dynamic       :: !(DynamicValues)              -- ^ dynamic components
 
@@ -71,14 +71,10 @@ instance Binary Editor where
         return $ emptyEditor {bufferStack = bss,
                               buffers = bs,
                               refSupply = supply,
-                              tabs = ts,
+                              tabs_ = ts,
                               killring = kr,
                               tagsFileList = tfl
                              }
-
-windows :: Editor -> WindowSet Window
-windows editor =
-    WS.current $ tabs editor
 
 newtype EditorM a = EditorM {fromEditorM :: RWS Config () Editor a}
     deriving (Monad, MonadState Editor, MonadReader Config, Functor)
@@ -103,7 +99,7 @@ instance MonadEditor EditorM where
 emptyEditor :: Editor
 emptyEditor = Editor {
         buffers      = M.singleton (bkey buf) buf
-       ,tabs         = WS.new (WS.new win)
+       ,tabs_        = WS.new (WS.new win)
        ,bufferStack  = [bkey buf]
        ,refSupply    = 2
        ,regex        = Nothing
@@ -125,8 +121,15 @@ runEditor cfg f e = let (a, e',()) = runRWS (fromEditorM f) cfg e in (e',a)
 
 $(nameDeriveAccessors ''Editor (\n -> Just (n ++ "A")))
 
+
+-- TODO: replace this by accessor
+windows :: Editor -> WindowSet Window
+windows editor = WS.current $ tabs_ editor
+
 windowsA :: Accessor Editor (WindowSet Window)
 windowsA =  WS.currentA . tabsA
+
+tabsA = tabs_A . fixCurrentBufferA_
 
 dynA :: Initializable a => Accessor Editor a
 dynA = dynamicValueA . dynamicA
@@ -174,7 +177,7 @@ deleteBuffer k = do
           modify $ \e -> e {
                             bufferStack = filter (k /=) $ bufferStack e,
                             buffers = M.delete k (buffers e),
-                            tabs = fmap (fmap pickOther) (tabs e)
+                            tabs_ = fmap (fmap pickOther) (tabs_ e)
                             -- all windows open on that buffer must switch to another buffer.
                            }
       _ -> return () -- Don't delete the last buffer.
@@ -442,8 +445,8 @@ findWindowWith k e =
 
 windowsOnBufferE :: BufferRef -> EditorM [Window]
 windowsOnBufferE k = do
-  e <- gets id
-  return $ concatMap (concatMap (\win -> if (bufkey win == k) then [win] else [])) (tabs e)
+  ts <- getA tabsA
+  return $ concatMap (concatMap (\win -> if (bufkey win == k) then [win] else [])) ts
 
 -- | Split the current window, opening a second window onto current buffer.
 -- TODO: unfold newWindowE here?
