@@ -15,7 +15,6 @@ module Data.ByteRope (
   toLazyByteString, toReverseLazyByteString,
   toByteString, 
 
-  -- rebalance, -- should not be needed.
   -- List-like functions
   null, empty, take, drop, append, splitAt, count, length,
 
@@ -92,10 +91,6 @@ fromString = ByteRope . toTree
   where
     toTree [] = T.empty
     toTree b = let (h,t) = L.splitAt chunkSize b in B.pack h <| toTree t
-
--- | Optimize the tree, to contain equally sized substrings
-rebalance :: ByteRope -> ByteRope
-rebalance = fromLazyByteString . toLazyByteString
 
 null :: ByteRope -> Bool
 null (ByteRope a) = T.null a
