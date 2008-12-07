@@ -1,3 +1,4 @@
+-- Copyright (c) Jean-Philippe Bernardy 2008 
 module Yi.Mode.Compilation where
 
 import Prelude ()
@@ -26,7 +27,8 @@ mode = emptyMode
           follow errs = do 
               point <- withBuffer pointB
               case Linear.tokAtOrBefore point errs of
-                 Just (Tok {tokT = Compilation.Report filename line col _message}) -> do
+                 Just (t@Tok {tokT = Compilation.Report filename line col _message}) -> do
+                     withBuffer $ moveTo $ posnOfs $ tokPosn $ t
                      shiftOtherWindow
                      fnewE filename
                      withBuffer $ do 
