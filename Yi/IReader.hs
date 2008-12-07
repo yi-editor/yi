@@ -41,7 +41,7 @@ writeDB adb = io $ join $ liftM (flip B.writeFile $ B.pack $ show adb) $ dbLocat
 
 -- | Read in database from 'dbLocation' and then parse it into an 'ArticleDB'.
 readDB :: YiM ArticleDB
-readDB = io $ rddb `catch` (\_ -> return [B.empty])
+readDB = io $ rddb `catch` (const $ return [B.empty])
          where rddb = do db <- liftM B.readFile $ dbLocation
                          liftM (read . B.unpack) db
 
