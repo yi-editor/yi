@@ -196,8 +196,7 @@ queryReplaceE = do
        qrNext win b re
 
 executeExtendedCommandE :: YiM ()
-executeExtendedCommandE = do
-  withMinibuffer "M-x" (\_ -> getAllNamesInScope) execEditorAction
+executeExtendedCommandE = withMinibuffer "M-x" (const getAllNamesInScope) execEditorAction
 
 evalRegionE :: YiM ()
 evalRegionE = do
