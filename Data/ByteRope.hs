@@ -95,16 +95,6 @@ fromString = ByteRope . toTree
 null :: ByteRope -> Bool
 null (ByteRope a) = T.null a
 
-head :: ByteRope -> Word8
-head (ByteRope a) = case T.viewl a of
-  EmptyL -> error "ByteRope.head: empty string"
-  x :< _ -> B.head x
-
-tail :: ByteRope -> ByteRope
-tail (ByteRope a) = case T.viewl a of
-  EmptyL -> error "ByteRope.tail: empty string"
-  x :< r -> ByteRope $ (B.tail x) -| r
-
 empty :: ByteRope
 empty = ByteRope T.empty
 
