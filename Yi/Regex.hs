@@ -53,11 +53,12 @@ makeSearchOptsM opts re = (\r->(re,r)) <$> compilePattern (searchOpts opts defau
                           then Right (literalPattern re) 
                           else mapLeft show (parseRegex re)
 
-
-mapLeft f (Right a) = Right a
+mapLeft :: (t1 -> a) -> Either t1 t -> Either a t
+mapLeft _ (Right a) = Right a
 mapLeft f (Left a) = Left (f a)
 
 -- | Return a pattern that matches its argument.
+literalPattern :: (Num t) => String -> (Pattern, (t, DoPa))
 literalPattern source = (PConcat $ map (PChar (DoPa 0)) $ source, (0,DoPa 0))
 
 compilePattern  :: CompOption -- ^ Flags (summed together)
