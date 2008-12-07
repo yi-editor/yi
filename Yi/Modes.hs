@@ -9,21 +9,22 @@ module Yi.Modes (fundamentalMode,
 import Control.Arrow (first)
 import Prelude ()
 import System.FilePath
+
 import Yi.Buffer
 import Yi.Lexer.Alex (Tok(..), Posn(..))
 import Yi.Prelude
 import Yi.Style
 import Yi.Syntax
-import qualified Yi.Lexer.Alex as Alex
-import qualified Yi.Lexer.Cabal               as Cabal
-import qualified Yi.Lexer.Cplusplus           as Cplusplus
-import qualified Yi.Lexer.GNUMake             as GNUMake
-import qualified Yi.Lexer.OCaml               as OCaml
-import qualified Yi.Lexer.Ott                 as Ott
-import qualified Yi.Lexer.Perl                as Perl
-import qualified Yi.Lexer.Python              as Python
-import qualified Yi.Lexer.Srmc                as Srmc
-import qualified Yi.Syntax.Linear as Linear
+import qualified Yi.Lexer.Alex      as Alex
+import qualified Yi.Lexer.Cabal     as Cabal
+import qualified Yi.Lexer.Cplusplus as Cplusplus
+import qualified Yi.Lexer.GNUMake   as GNUMake
+import qualified Yi.Lexer.OCaml     as OCaml
+import qualified Yi.Lexer.Ott       as Ott
+import qualified Yi.Lexer.Perl      as Perl
+import qualified Yi.Lexer.Python    as Python
+import qualified Yi.Lexer.Srmc      as Srmc
+import qualified Yi.Syntax.Linear   as Linear
 
 fundamentalMode :: Mode syntax
 cppMode, cabalMode, srmcMode, ocamlMode, ottMode, gnuMakeMode, perlMode, pythonMode :: Mode (Linear.Result Stroke)
@@ -32,8 +33,8 @@ fundamentalMode = emptyMode
   { 
    modeName = "fundamental",
    modeApplies = const True,
-   modeIndent = \_ast -> autoIndentB,
-   modePrettify = \_ -> fillParagraph
+   modeIndent = const autoIndentB,
+   modePrettify = const fillParagraph
   }
 
 mkHighlighter' :: forall token lexerState.
