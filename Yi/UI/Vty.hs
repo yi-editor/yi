@@ -434,8 +434,8 @@ attributesToAttr (Attributes fg bg reverse) =
 -- This routine also does syntax highlighting and applies overlays.
 paintChars :: a -> [(Point,a)] -> [(Point,Char)] -> [(Char, (a,Point))]
 paintChars sty [] cs = setSty sty cs
-paintChars sty ((endPos,sty'):xs) cs = setSty sty before ++ paintChars sty' xs after
-        where (before, after) = break ((endPos <=) . fst) cs
+paintChars sty ((endPos,sty'):xs) cs = setSty sty previous ++ paintChars sty' xs later
+        where (previous, later) = break ((endPos <=) . fst) cs
 
 setSty :: a -> [(Point,Char)] -> [(Char, (a,Point))]
 setSty sty cs = [(c,(sty,p)) | (p,c) <- cs]
