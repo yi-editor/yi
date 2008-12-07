@@ -69,7 +69,7 @@ setInput val = flip replaceRegionB val =<< getInputRegion
 -- | Open a new buffer for interaction with a process.
 interactive :: String -> [String] -> YiM BufferRef
 interactive cmd args = do
-    b <- startSubprocess cmd args (\_ -> return ())
+    b <- startSubprocess cmd args (const $ return ())
     withEditor $ interactHistoryStart
     withBuffer $ do m1 <- getMarkB (Just "StdERR")
                     m2 <- getMarkB (Just "StdOUT")
