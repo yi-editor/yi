@@ -81,13 +81,15 @@ STYLE GUIDELINES
 * Do not add tabs; they can cause problems.
 
 * Please try to avoid trailing whitespace. Some people don't like them,
-  and they are in general useless.
+  and they are in general useless. One empty line at the end of the file
+  is ok though (and in fact encouraged by unix tradition).
 
 * New modules should identify the author, and include comments on the
   purpose of the module.
 
 * Try to write both concisely and clearly. For example, `\_ -> foo` is usually
-worse than `const foo`, but `\_ b _ -> foo b` is definitely better than the
-equivalent `const (const . foo)`. No excuses for obvious things, like not
-replacing `foo a b = a` with `foo a _ = a`, though. (Or even better `foo a _b =
-a`, if you feel the meaning of the ignored argument should be reminded)
+  worse than `const foo`, but `\_ b _ -> foo b` is definitely better than the
+  equivalent `const (const . foo)`. No excuses for obvious things, like not
+  replacing `foo a b = a` with `foo a _ = a`, though. (Or even better `foo a
+  _interestingName = a`, if you feel the meaning of the ignored argument should be
+  reminded)
