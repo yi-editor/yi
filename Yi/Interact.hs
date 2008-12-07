@@ -82,18 +82,10 @@ class (PEq w, Monad m, Alternative m, Applicative m, MonadPlus m) => MonadIntera
 
 -- Needs -fallow-undecidable-instances
 -- TODO: abstract over MonadTransformer
-instance MonadInteract m w e => MonadInteract (StateT s m) w e where
+instance ((Alternative (StateT s m)), MonadInteract m w e) => MonadInteract (StateT s m) w e where
     write = lift . write
     eventBounds l h = lift (eventBounds l h)
     adjustPriority p = lift (adjustPriority p)
-
-instance (MonadInteract m w e) => Alternative (StateT s m) where
-    empty = mzero
-    (<|>) = mplus
-
-instance MonadInteract m w e => Applicative (StateT s m) where
-    pure = return
-    a <*> b = do f <- a; x <- b; return (f x)
 
 ---------------------------------------------------------------------------
 -- | Interactive process description
