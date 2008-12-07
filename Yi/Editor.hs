@@ -1,4 +1,4 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving, DeriveDataTypeable, FlexibleContexts, StandaloneDeriving #-}
+{-# LANGUAGE TemplateHaskell, GeneralizedNewtypeDeriving, DeriveDataTypeable, FlexibleContexts, StandaloneDeriving #-}
 
 -- Copyright (c) 2004-5, Don Stewart - http://www.cse.unsw.edu.au/~dons
 -- Copyright (c) 2007-8, JP Bernardy
@@ -24,6 +24,7 @@ import Prelude (map, filter, (!!), takeWhile, length, reverse, zip)
 import Yi.Prelude
 
 import Data.Accessor.Basic (fromSetGet)
+import Data.Accessor.Template
 import Data.Binary
 import Data.List (nub, delete)
 import Data.Foldable (concatMap)
@@ -98,47 +99,6 @@ instance MonadEditor EditorM where
     askCfg = ask
     withEditor = id
 
-pendingEventsA :: Accessor Editor [Event]
-pendingEventsA = mkAccessor pendingEvents (\f e -> e {pendingEvents = f (pendingEvents e)})
-
-statusLinesA :: Accessor Editor Statuses
-statusLinesA = mkAccessor statusLines (\f e -> e {statusLines = f (statusLines e)})
-
-
-refSupplyA :: Accessor Editor Int
-refSupplyA = mkAccessor refSupply (\f e -> e {refSupply = f (refSupply e)})
-
-buffersA :: Accessor Editor (M.Map BufferRef FBuffer)
-buffersA = mkAccessor buffers (\f e -> e {buffers = f (buffers e)})
-
-dynamicA :: Accessor Editor DynamicValues
-dynamicA = mkAccessor dynamic (\f e -> e {dynamic = f (dynamic e)})
-
-windowsA :: Accessor Editor (WindowSet Window)
-windowsA =  WS.currentA . tabsA
-
-tabsA :: Accessor Editor (WindowSet (WindowSet Window))
-tabsA = mkAccessor tabs (\f e -> e {tabs = f (tabs e)}) . fixCurrentBufferA_
-
-killringA :: Accessor Editor Killring
-killringA = mkAccessor killring (\f e -> e {killring = f (killring e)})
-
-dynA :: Initializable a => Accessor Editor a
-dynA = dynamicValueA . dynamicA
-
-regexA :: Accessor Editor (Maybe SearchExp)
-regexA = mkAccessor regex (\f e -> e{regex = f (regex e)})
-
-tagsA :: Accessor Editor (Maybe TagTable)
-tagsA = mkAccessor tags (\f e -> e {tags = f (tags e)})
-
-tagsFileListA :: Accessor Editor [FilePath]
-tagsFileListA = mkAccessor tagsFileList (\f e -> e {tagsFileList = f (tagsFileList e)})
-
-searchDirectionA :: Accessor Editor Direction
-searchDirectionA = mkAccessor searchDirection (\f e -> e{searchDirection = f (searchDirection e)})
-
-
 -- | The initial state
 emptyEditor :: Editor
 emptyEditor = Editor {
@@ -162,6 +122,14 @@ emptyEditor = Editor {
 
 runEditor :: Config -> EditorM a -> Editor -> (Editor, a)
 runEditor cfg f e = let (a, e',()) = runRWS (fromEditorM f) cfg e in (e',a)
+
+$(nameDeriveAccessors ''Editor (\n -> Just (n ++ "A")))
+
+windowsA :: Accessor Editor (WindowSet Window)
+windowsA =  WS.currentA . tabsA
+
+dynA :: Initializable a => Accessor Editor a
+dynA = dynamicValueA . dynamicA
 
 -- ---------------------------------------------------------------------
 -- Buffer operations
