@@ -229,7 +229,7 @@ executable yi
 
         build-depends: Cabal >= 1.6 && < 1.7
         build-depends: Diff >=0.1 && <0.2
-        build-depends: array, containers,  directory, mtl, process, old-locale, old-time, random
+        build-depends: array, containers,  directory, mtl, process, old-locale, old-time
         build-depends: base>=4
         build-depends: binary >=0.4.2 && <0.5
         build-depends: bytestring >=0.9.1 && <0.9.2
@@ -361,5 +361,6 @@ executable yi
         if flag(testing)
             cpp-options:    -DTESTING
             hs-source-dirs: . tests/
-            other-modules:  Driver, TestSuite
-            build-depends:  QuickCheck < 2
+            other-modules: Driver, TestSuite
+            build-depends: QuickCheck < 2
+            build-depends: random
