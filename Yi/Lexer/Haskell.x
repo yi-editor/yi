@@ -54,6 +54,7 @@ $nl        = [\n\r]
 @varid  = $small $idchar*
 @conid  = $large $idchar*
 @anyid = (@varid | @conid)
+@anyTHid = [$small $large] [$alpha $digit]*
 @qual   = (@conid ".")*
 @varsym = $symbol $symchar*
 @consym = \: $symchar*
@@ -130,7 +131,7 @@ haskell :-
     | @decimal @exponent                        { c Number }
 
   \'\' @anyid                                   { c THQuote } -- type
-  \' @anyid                                     { c THQuote } -- expression
+  \' @anyTHid                                   { c THQuote } -- expression
   \' ($graphic # [\'\\] | " " | @escape) \'     { c CharTok }
   \" @string* \"                                { c StringTok }
   .                                             { c Unrecognized }
