@@ -7,7 +7,7 @@
 -- buffers, maintaining a current /point/.
 
 module Yi.Buffer.Misc
-  ( FBuffer (..)
+  ( FBuffer (FBuffer, bmode)
   , BufferM (..)
   , WinMarks, MarkSet (..)
   , bkey
