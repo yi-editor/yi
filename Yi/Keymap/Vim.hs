@@ -481,7 +481,7 @@ defKeymap = Proto template
          ,([ctrlW, ctrlCh 'j'], const $ withEditor nextWinE)
          ,(map char ">>", withBuffer' . shiftIndentOfLine)
          ,(map char "<<", withBuffer' . shiftIndentOfLine . negate)
-         ,(map char "ZZ", const $ viWrite >> closeWindow)
+         ,(map char "ZZ", const $ viWriteModified >> closeWindow)
          ,(map char "ZQ", const $ closeWindow)
          ,(map char "ga", const $ viCharInfo)
          ,(map char "==", const $ withBuffer' $ adjIndent IncreaseCycle)
@@ -1036,9 +1036,7 @@ defKeymap = Proto template
            fn "wqall"      = wquitall
            fn "as"         = viCharInfo
            fn "ascii"      = viCharInfo
-           fn "x"          = do unchanged <- withBuffer' isUnchangedB
-                                unless unchanged viWrite
-                                closeWindow
+           fn "x"          = viWriteModified >> closeWindow
            fn "n"          = withEditor nextBufW
            fn "next"       = withEditor nextBufW
            fn "$"          = withBuffer' botB
@@ -1144,6 +1142,12 @@ defKeymap = Proto template
               , bufInfoPercent bufInfo
               , "]"
               ]
+
+
+-- | write the current buffer, but only if modified (cf. :help :x)
+viWriteModified :: YiM ()
+viWriteModified = do unchanged <- withBuffer' isUnchangedB
+                     unless unchanged viWrite
 
 -- | viSearch is a doSearch wrapper that print the search outcome.
 viSearch :: String -> [SearchF] -> Direction -> EditorM ()
