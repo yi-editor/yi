@@ -7,6 +7,7 @@ import Yi.Keymap.Emacs (keymap)
 import qualified Yi.Mode.Shim as Shim
 import Yi.Mode.Haskell as Haskell
 import Data.List (drop, length)
+import Yi.Char.Unicode (greek, symbols)
 import Yi.Prelude
 import Prelude ()
 import Yi.Keymap.Keys
@@ -20,7 +21,6 @@ increaseIndent = modifyExtendedSelectionB Line $ mapLines (' ':)
 decreaseIndent :: BufferM ()
 decreaseIndent = modifyExtendedSelectionB Line $ mapLines (drop 1)
 
-
 bestHaskellMode = 
                   -- uncomment for shim:
                   -- Shim.minorMode $ 
@@ -33,94 +33,8 @@ bestHaskellMode =
                                              ]
                                       <||)  
                        }
-greek :: [(String, String)]
-greek = [("alpha", "α"),
-         ("beta", "β"),
-         ("gamma", "γ"),
-         ("delta", "δ")
-        ]
-
-
-
-symbols :: [(String, String)]
-symbols = 
- [
- -- parens
-  ("<","⟨")
- ,(">","⟩")
- ,(">>","⟫")
- ,("<<","⟪")
-   
- ,("[[","⟦")
- ,("]]","⟧")
- 
- -- operators
- ,("<|","◃") 	   
- -- ,("<|","◁") alternative
- ,("|>","▹")
- ,("v","∨")
- ,("u","∪")
- ,("V","⋁")
- ,("^","∧")
- ,("o","∘")
- ,(".","·")
- ,("x","×")
- ,("neg","¬")
- 
- --- arrows
- ,("<-","←")
- ,("->","→")
- ,("|->","↦")
- ,("<-|","↤")
- ,("<--","⟵")
- ,("-->","⟶")
- ,("|-->","⟼")
- ,("==>","⟹")
- ,("=>","⇒")
- ,("<=","⇐")
- ,("~>","↝")
- ,("<~","↜")
-
- --- relations
- ,("c=","⊆") 
- ,("c","⊂")    
-
- ---- equal signs
- ,("=def","≝")
- ,("=?","≟")
- ,("=-","≡")
- ,("~=","≃")
- ,("/=","≠")
-
- -- misc
- ,("_|_","⊥")
- ,("T","⊤")
- ,("|N","ℕ")
- ,("|P","ℙ")
- ,("^n","ⁿ")
- ,("::","∷")
-
- -- dashes
- ,("-","−")
-
- -- quotes
- ,("\"","“”")
- ]
-
 mkInputMethod :: [(String,String)] -> Keymap
 mkInputMethod list = choice [pString i >> adjustPriority (negate (length i)) >>! insertN o | (i,o) <- list] 
-
-
--- More:
--- arrows: ↢ ↣   ↔  ⇤  ⇥  ⇸ ⇆
--- set: ∅ ∉ ∈ ⊇ ⊃
--- relations: ≝ ≤ ≥
--- circled operators: ⊕ ⊖ ⊗ ⊘ ⊙ ⊚ ⊛ ⊜ ⊝ ⍟  ⎊ ⎉
--- squared operators: ⊞ ⊟ ⊠ ⊡ 
--- turnstyles: ⊢ ⊣ ⊤ ⊥ ⊦ ⊧ ⊨ ⊩ ⊬ ⊭
-
-
-
 
 extraInput :: Keymap
 extraInput 

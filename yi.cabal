@@ -160,6 +160,7 @@ library
         Yi.UI.TabBar
         Yi.Window
         Yi.WindowSet
+        Yi.Char.Unicode
 
     include-dirs:   Yi/Lexer
     if flag (vty)
