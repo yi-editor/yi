@@ -1,5 +1,6 @@
 module Yi.Monad where
 
+import Data.Accessor
 import Data.IORef
 import Control.Monad.Reader
 import Control.Monad.State
@@ -81,3 +82,5 @@ repeatUntilM m = do
     True -> do xs <- repeatUntilM m
                return (x:xs)
 
+getsA :: MonadState s m => Accessor s p -> (p -> a) -> m a
+getsA a f = gets (f . getVal a)

@@ -4,9 +4,10 @@
 
 module Yi.Keymap.Emacs.KillRing where
 
+import Data.Accessor
+import Yi.Monad
 import Yi.Keymap
 import Yi.Buffer
-import Yi.Accessor
 import Yi.Editor
 import Control.Monad ( replicateM_ )
 import Yi.KillRing

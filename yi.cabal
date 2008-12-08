@@ -71,7 +71,7 @@ flag testing
 library
   if flag(hacking)
     exposed-modules:
-           Yi.Accessor
+           Yi.Monad
            -- the most insignificant module (with no dep) I can find.
   else
     exposed-modules:
