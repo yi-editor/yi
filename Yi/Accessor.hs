@@ -2,7 +2,7 @@
 
 -- | A module for "rich" accesssors.
 
-module Yi.Accessor (Accessor, mkAccessor, putA, getA, every, getsA, 
+module Yi.Accessor (Accessor, putA, getA, every, getsA, 
                     modA, getVal, (^:), (^=), (^.)) where
 import Prelude hiding ((.), id)
 import Data.Accessor
@@ -15,9 +15,6 @@ import Data.Foldable
 instance Category T where
     id = self
     (.) = (<.)
-
-mkAccessor :: (whole -> part) -> ((part -> part) -> (whole -> whole)) -> Accessor whole part 
-mkAccessor getter modifier = fromLens $ \whole -> (getter whole, \part -> modifier (const part) whole) 
 
 getsA :: MonadState s m => Accessor s p -> (p -> a) -> m a
 getsA a f = gets (f . getVal a)

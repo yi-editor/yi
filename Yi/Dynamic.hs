@@ -13,6 +13,7 @@ import Prelude ()
 import Yi.Prelude
 
 import GHC.Exts
+import Data.Accessor
 import Data.Maybe
 import Data.Typeable
 import Data.Map as M
@@ -41,13 +42,10 @@ instance (Typeable a) => Initializable (Maybe a) where
 
 -- | Accessor for a dynamic component
 dynamicValueA :: Initializable a => Accessor DynamicValues a
-dynamicValueA = mkAccessor getDynamicValue modifyDynamicValue
+dynamicValueA = accessor getDynamicValue setDynamicValue
     where
-      modifyDynamicValue :: forall a. Initializable a => (a -> a) -> DynamicValues -> DynamicValues
-      modifyDynamicValue f = flip M.alter (show $ typeOf (undefined::a)) $ \m ->
-                                Just $ toDyn $ f $ case m of
-                                                 Nothing -> initial
-                                                 Just x -> fromJust $ fromDynamic x
+      setDynamicValue :: forall a. Initializable a => a -> DynamicValues -> DynamicValues
+      setDynamicValue v = M.insert (show $ typeOf (undefined::a)) (toDyn v)
 
       getDynamicValue :: forall a. Initializable a => DynamicValues -> a
       getDynamicValue dv = case M.lookup (show $ typeOf (undefined::a)) dv of
