@@ -1,41 +1,39 @@
 import Yi
 import Yi.Keymap.Vim (keymap)
-import qualified Yi.Mode.Shim as Shim
-import Yi.Mode.Haskell
-import Data.List (isSuffixOf)
+import qualified Yi.Mode.Haskell as Haskell
+import Yi.Style
+import Yi.Style.Library
 import Yi.Prelude
 import Prelude ()
-import Yi.Keymap.Keys
 
-myModetable :: ReaderT String Maybe AnyMode
-myModetable = ReaderT $ \fname -> case () of 
-                        _ | ".hs" `isSuffixOf` fname -> Just $ AnyMode bestHaskellMode
-                        _ ->  Nothing
-    where bestHaskellMode = cleverHaskellMode 
-                            {
-                             modeKeymap = modeKeymap Shim.mode
-                            }
-
-Config {
-        configUI = defUI@UIConfig { configStyle = defStyle }
-       } = defaultConfig
+-- Uncomment for Shim support
+-- import qualified Yi.Mode.Shim as Shim
+-- -- Shim.minorMode gives us emacs-like keybindings - what would be a good
+-- -- set of keybindings for vim?
+-- shimMode :: AnyMode
+-- shimMode = AnyMode (Shim.minorMode Haskell.cleverMode)
 
 {-
   For now we just make the selected style the same as the
   modeline_focused style... Just because i'm not good with
   styles yet - Jim
 -}
-defaultVimUiStyle :: Style.UIStyle
-defaultVimUiStyle = defStyle { selected = Style.modeline_focused Style.uiStyle}
+defaultVimUiTheme :: Theme
+defaultVimUiTheme = defaultLightTheme  `override` \super self -> super {
+        selectedStyle = modelineFocusStyle self
+}
 
-
+myConfigUI :: UIConfig
+myConfigUI = (configUI defaultConfig)  {
+        configFontSize = Just 10,
+        configTheme = defaultVimUiTheme,
+        configWindowFill = '~'
+}
 
 main :: IO ()
 main = yi $ defaultConfig {
-                           modeTable = myModetable <|> modeTable defaultConfig,
-                           configUI = defConfigUI { configFontSize = Just 10,
-                                                    configStyle = defaultVimUiStyle,
-                                                    configWindowFill = '~'
-                                                  },
-                           defaultKm = keymap
-                          }
+    -- Uncomment for Shim support
+    -- modeTable = [shimMode] <|> modeTable defaultConfig,
+    configUI = myConfigUI,
+    defaultKm = keymap
+}
