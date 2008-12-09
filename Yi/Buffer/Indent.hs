@@ -412,27 +412,13 @@ indentString indentSettings numOfShifts input = rePadString indentSettings newCo
           countSpace _ = 1 -- we'll assume nothing but tabs and spaces
           newCount = sum (fmap countSpace indents) + ((shiftWidth indentSettings) * numOfShifts)
 
-shiftIndentOfSelection :: Int -> BufferM ()
-shiftIndentOfSelection shiftCount = do
+-- | Increases the indentation on the region by the given amount of shiftWidth
+shiftIndentOfRegion :: Int -> Region -> BufferM ()
+shiftIndentOfRegion shiftCount region = do
     indentSettings <- indentSettingsB
-    modifyExtendedSelectionB Line $ mapLines (indentString indentSettings shiftCount)
+    modifyRegionB (mapLines $ indentString indentSettings shiftCount) region
+    moveTo $ regionStart region
     firstNonSpaceB
 
-shiftIndentOfLine :: Int -> BufferM ()
-shiftIndentOfLine shiftCount = do
-    indentSettings <- indentSettingsB
-    reg <- regionOfB Line
-    modifyRegionB (indentString indentSettings shiftCount) reg
-    firstNonSpaceB
-
-deleteIndentOfLine :: BufferM ()
-deleteIndentOfLine = modifyRegionB (dropWhile isSpace) =<< regionOfB Line
-
--- | Increases the indentation on the region by the given amount
-increaseIndentSelectionB :: Int -> BufferM ()
-increaseIndentSelectionB i = linePrefixSelectionB $ replicate i ' '
-
--- | Decreases the indentation on the region by the given amount
-decreaseIndentSelectionB :: Int -> BufferM ()
-decreaseIndentSelectionB i =
-  let pre = replicate i ' ' in unLineCommentSelectionB pre pre
+deleteIndentOfRegion :: Region -> BufferM ()
+deleteIndentOfRegion = modifyRegionB (mapLines $ dropWhile isSpace)
