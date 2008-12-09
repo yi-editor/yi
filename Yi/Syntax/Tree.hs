@@ -1,4 +1,10 @@
+{- Copyright JP Bernardy 2008 -}
+
+-- | Generic syntax tree handling functions
 module Yi.Syntax.Tree where
+
+-- Some of this might be replaced by a generic package
+-- such as multirec, uniplace, emgm, ...
 
 import Data.List (takeWhile)
 import Data.Maybe
