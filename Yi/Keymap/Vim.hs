@@ -728,6 +728,7 @@ defKeymap = Proto template
                  char 'R'     ?>> rep_mode,
                  char 'i'     ?>> ins_mode self,
                  char 'I'     ?>> beginIns self firstNonSpaceB,
+                 pString "gI"  >> beginIns self moveToSol,
                  char 'a'     ?>> beginIns self $ moveXorEol 1,
                  char 'A'     ?>> beginIns self moveToEol,
                  char 'o'     ?>> beginIns self $ moveToEol >> insertB '\n',
