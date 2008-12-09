@@ -394,6 +394,7 @@ indentAsPreviousB =
 -- expandTabs is set in the buffers IndentSettings
 rePadString :: IndentSettings -> Int -> String -> String
 rePadString indentSettings newCount input 
+    | null input = input
     | newCount <= 0 = rest
     | expandTabs indentSettings = replicate newCount ' ' ++ rest
     | otherwise = tabs ++ spaces ++ rest
@@ -410,7 +411,6 @@ indentString indentSettings numOfShifts input = rePadString indentSettings newCo
           countSpace '\t' = tabSize indentSettings
           countSpace _ = 1 -- we'll assume nothing but tabs and spaces
           newCount = sum (fmap countSpace indents) + ((shiftWidth indentSettings) * numOfShifts)
-         
 
 shiftIndentOfSelection :: Int -> BufferM ()
 shiftIndentOfSelection shiftCount = do
