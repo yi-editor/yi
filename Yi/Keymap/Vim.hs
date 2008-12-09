@@ -22,6 +22,7 @@ import System.IO (readFile)
 import System.Posix.Files (fileExist)
 
 import Control.Monad.State hiding (mapM_, mapM, sequence)
+import Control.Arrow hiding (left, right)
 
 import {-# source #-} Yi.Boot
 import Yi.Core
@@ -30,7 +31,7 @@ import Yi.Eval (execEditorAction)
 import Yi.File
 import Yi.History
 import Yi.Misc (matchingFileNames,adjBlock,adjIndent,cabalRun)
-import Yi.String (dropSpace,split)
+import Yi.String (dropSpace,split,lines')
 import Yi.MiniBuffer
 import Yi.Search
 import Yi.Style
@@ -49,7 +50,7 @@ import Yi.Window (bufkey)
 --   :sh[ell]
 --   :!!
 --   movement parameterised \> \<
---   motion operators [motion.txt]: !, =, >, <
+--   motion operators [motion.txt]: !
 --   C-v: visual block mode
 --   Support for marks
 --   C-o and C-i: jump list
@@ -65,6 +66,7 @@ data ViMove = Move TextUnit Direction
             | MaybeMove TextUnit Direction
             | GenMove TextUnit (Direction, BoundarySide) Direction
             | CharMove Direction
+            | PercentageFile Int
             | ArbMove (BufferM ())
             | Replicate ViMove Int
             | SeqMove ViMove ViMove
@@ -114,7 +116,10 @@ defKeymap = Proto template
 
      -- | Visual mode, similar to command mode
      vis_move :: VimMode
-     vis_move = gen_cmd_move >>= write . viMove . snd
+     vis_move = (moveKeymap >>= write . viMove . snd)
+                <|> do cnt <- count
+                       choice ([events evs >>! action | (evs,action) <- visOrCmdFM ] ++
+                               [events evs >>! action cnt | (evs, action) <- scrollCmdFM ])
 
      vis_mode :: SelectionStyle -> VimMode
      vis_mode selStyle = do
@@ -128,7 +133,7 @@ defKeymap = Proto template
                   setStatus $ (msg selStyle, defaultStyle)
        many (vis_move <|>
              select_any_unit (withBuffer0' . (\r -> resetSelectStyle >> extendSelectRegionB r >> leftB)))
-       (vis_single selStyle <|| vis_multi)
+       visual2other selStyle
        where msg (SelectionStyle Line) = "-- VISUAL LINE --"
              msg (SelectionStyle _)    = "-- VISUAL --"
 
@@ -169,16 +174,16 @@ defKeymap = Proto template
      --
 
      cmd_move :: VimMode
-     cmd_move = gen_cmd_move >>= write . withBuffer0' . viMove . snd
+     cmd_move = moveKeymap >>= write . withBuffer0' . viMove . snd
 
      -- the returned RegionStyle is used when the movement is combined with a 'cut' or 'yank'.
-     gen_cmd_move :: KeymapM (RegionStyle, ViMove)
-     gen_cmd_move = choice
+     moveKeymap :: KeymapM (RegionStyle, ViMove)
+     moveKeymap = choice
         [ char '0' ?>> return (Exclusive, viMoveToSol)
         , char '%' ?>> return percentMove
         , do 
           cnt <- count
-          let x = maybe 1 id cnt
+          let x = fromMaybe 1 cnt
           choice ([c ?>> return (Inclusive, a x) | (c,a) <- moveCmdFM_inclusive ] ++
                   [pString s >> return (Inclusive, a x) | (s,a) <- moveCmdS_inclusive ] ++
                   [c ?>> return (Exclusive, a x) | (c,a) <- moveCmdFM_exclusive ] ++
@@ -186,7 +191,11 @@ defKeymap = Proto template
                   [c ?>> return (LineWise, a x) | (c,a) <- moveUpDownCmdFM] ++
                   [do event c; c' <- textChar; return (r, a c' x) | (c,r,a) <- move2CmdFM] ++
                   [char 'G' ?>> return (LineWise, ArbMove $ maybe (botB >> firstNonSpaceB) gotoFNS cnt)
-                  ,pString "gg" >> return (LineWise, ArbMove $ gotoFNS $ fromMaybe 0 cnt)])]
+                  ,pString "gg" >> return (LineWise, ArbMove $ gotoFNS $ fromMaybe 0 cnt)
+
+                  -- The count value, in this case, is interpretted as a percentage instead of a repeat
+                  -- count.
+                  ,char '%' ?>> return (LineWise, PercentageFile x)])]
               where gotoFNS :: Int -> BufferM ()
                     gotoFNS n = gotoLn n >> firstNonSpaceB
 
@@ -259,6 +268,16 @@ defKeymap = Proto template
                                <*> savingPointB (viMove move >> pointB)
                                <*> pure regionStyle
 
+     movePercentageFile :: Int -> BufferM ()
+     movePercentageFile i = do let f :: Double
+                                   f  = case fromIntegral i / 100.0 of
+                                           x | x > 1.0 -> 1.0
+                                             | x < 0.0 -> 0.0 -- Impossible?
+                                             | otherwise -> x
+                               Point max_p <- sizeB
+                               moveTo $ Point $ floor (fromIntegral max_p * f)
+                               firstNonSpaceB
+
      viMove :: ViMove -> BufferM ()
      viMove NoMove                        = return ()
      viMove (GenMove   unit boundary dir) = genMoveB unit boundary dir
@@ -266,6 +285,7 @@ defKeymap = Proto template
      viMove (Move      unit          dir) = moveB unit dir
      viMove (CharMove Forward)            = moveXorEol 1
      viMove (CharMove Backward)           = moveXorSol 1
+     viMove (PercentageFile i)            = movePercentageFile i
      viMove (ArbMove       move)          = move
      viMove (SeqMove move1 move2)         = viMove move1 >> viMove move2
      viMove (Replicate     move i)        = viReplicateMove move i
@@ -321,15 +341,13 @@ defKeymap = Proto template
      cmd_eval :: VimMode
      cmd_eval = do
         cnt <- count
-        let i = maybe 1 id cnt
+        let i = fromMaybe 1 cnt
         choice $
-          [c ?>>! action i | (c,action) <- singleCmdFM ] ++
-          [events evs >>! action i | (evs, action) <- multiCmdFM ] ++
-          [events evs >>! action cnt | (evs, action) <- zScrollCmdFM ] ++
+          [events evs >>! action i   | (evs, action) <- cmdFM ] ++
+          [events evs >>! action     | (evs, action) <- visOrCmdFM ] ++
+          [events evs >>! action cnt | (evs, action) <- scrollCmdFM ] ++
           [char 'r' ?>> textChar >>= write . savingPointB . writeN . replicate i
-          ,pString "gt" >>! nextTabE
-          ,pString "gT" >>! previousTabE]
-
+          ,pString "gJ" >>! withBuffer' (concatLinesB =<< twoLinesRegion)]
 
      -- TODO: add word bounds: search for \<word\>
      searchCurrentWord :: Direction -> EditorM ()
@@ -381,10 +399,23 @@ defKeymap = Proto template
        printMsg $ directionElim dir '?' '/' : maybe "" fst m
        viSearch "" [] dir
 
-     joinLinesB :: BufferM ()
-     joinLinesB = do moveToEol
-                     writeB ' '
-                     deleteN =<< indentOfB =<< nelemsB maxBound =<< pointB
+     skippingFirst :: ([a] -> [a]) -> [a] -> [a]
+     skippingFirst f = list [] (\x -> (x :) . f)
+
+     skippingLast :: ([a] -> [a]) -> [a] -> [a]
+     skippingLast f xs = f (init xs) ++ [last xs]
+
+     skippingNull :: ([a] -> [b]) -> [a] -> [b]
+     skippingNull _ [] = []
+     skippingNull f xs = f xs
+
+     joinLinesB :: Region -> BufferM ()
+     joinLinesB =
+       savingPointB .
+         (modifyRegionB $ concat . skippingFirst (map $ skippingNull ((' ':) . dropWhile isSpace)) . lines')
+
+     concatLinesB :: Region -> BufferM ()
+     concatLinesB = savingPointB . (modifyRegionB $ skippingLast $ filter (/='\n'))
 
      onCurrentWord :: (String -> String) -> BufferM ()
      onCurrentWord f = modifyRegionB f =<< regionOfNonEmptyB unitViWord
@@ -395,101 +426,96 @@ defKeymap = Proto template
          (n, rest):_ -> s1 ++ show (f n) ++ rest
        where (s1,s2) = break isDigit s
 
+     -- as cmdFM but these commands are also valid in visual mode
+     visOrCmdFM :: [([Event], YiM ())]
+     visOrCmdFM =
+         [([ctrlCh 'l'],      userForceRefresh)
+         ,([ctrlCh 'z'],      suspendEditor)
+         ,([ctrlCh ']'],      gotoTagCurrentWord)
+         ] ++
+         map (second withEditor)
+         [([ctrlW, char 'c'], tryCloseE)
+         ,([ctrlW, char 'o'], closeOtherE)
+         ,([ctrlW, char 's'], splitE)
+         ,([ctrlW, char 'w'], nextWinE)
+         ,([ctrlW, char 'W'], prevWinE)
+         ,([ctrlW, char 'p'], prevWinE)
+
+         -- these 4 commands should go to moveKeymap
+         -- however moveKeymap is currently confined to BufferM
+         ,([char 'n'],        continueSearching id)
+         ,([char 'N'],        continueSearching reverseDir)
+         ,([char '*'],        searchCurrentWord Forward)
+         ,([char '#'],        searchCurrentWord Backward)
+
+         -- since we don't have vertical splitting,
+         -- these moving can be done using next/prev.
+         ,([ctrlW,spec KDown],  nextWinE)
+         ,([ctrlW,spec KUp],    prevWinE)
+         ,([ctrlW,spec KRight], nextWinE)
+         ,([ctrlW,spec KLeft],  prevWinE)
+         ,([ctrlW,char 'k'],    prevWinE)
+         ,([ctrlW,char 'j'],    nextWinE)    -- Same as the above pair, when you're a bit slow to release ctl.
+         ,([ctrlW, ctrlCh 'k'], prevWinE)
+         ,([ctrlW, ctrlCh 'j'], nextWinE)
+         ,(map char "ga",       viCharInfo)
+         ,(map char "gt",       nextTabE)
+         ,(map char "gT",       previousTabE)
+         ]
+
      -- | cmd mode commands
      -- An event specified paired with an action that may take an integer argument.
      -- Usually the integer argument is the number of times an action should be repeated.
-     singleCmdFM :: [(Event, Int -> YiM ())]
-     singleCmdFM =
-         [(ctrlCh 'b',    withBuffer' . upScreensB)             -- vim does (firstNonSpaceB;moveXorSol)
-         ,(ctrlCh 'f',    withBuffer' . downScreensB)
-         ,(ctrlCh 'u',    withBuffer' . vimScrollByB (negate . (`div` 2)))
-         ,(ctrlCh 'd',    withBuffer' . vimScrollByB (`div` 2))
-         ,(ctrlCh 'y',    withBuffer' . vimScrollB . negate)
-         ,(ctrlCh 'e',    withBuffer' . vimScrollB)
-         ,(ctrlCh 'g',    const viFileInfo)
-         ,(ctrlCh 'l',    const userForceRefresh)
-         ,(ctrlCh 'r',    withBuffer' . flip replicateM_ redoB)
-         ,(ctrlCh 'z',    const suspendEditor)
-         ,(ctrlCh ']',    const gotoTagCurrentWord)
-         ,(ctrlCh 'a',    withBuffer' . onCurrentWord . onNumberInString . (+))
-         ,(ctrlCh 'x',    withBuffer' . onCurrentWord . onNumberInString . flip (-))
-         ,(char 'D',      withEditor' . cut Exclusive . ArbMove . viMoveToNthEol)
-         ,(char 'J',      const $ withBuffer' $ joinLinesB)
-         ,(char 'Y',      \n -> withEditor $ do
+     cmdFM :: [([Event], Int -> YiM ())]
+     cmdFM =
+         [([ctrlCh 'g'],    const $ withEditor viFileInfo)
+
+         -- undo/redo
+         ,([char 'u'],      withBuffer' . flip replicateM_ undoB)
+         ,([char 'U'],      withBuffer' . flip replicateM_ undoB)    -- NB not correct
+         ,([ctrlCh 'r'],    withBuffer' . flip replicateM_ redoB)
+
+         ,([ctrlCh 'a'],    withBuffer' . onCurrentWord . onNumberInString . (+))
+         ,([ctrlCh 'x'],    withBuffer' . onCurrentWord . onNumberInString . flip (-))
+         ,([char 'D'],      withEditor' . cut Exclusive . ArbMove . viMoveToNthEol)
+         ,([char 'J'],      const $ withBuffer' (joinLinesB =<< twoLinesRegion))
+         ,([char 'Y'],      \n -> withEditor $ do
                                     let move = Replicate (Move Line Forward) n
                                     region <- withBuffer0' $ regionOfViMove move LineWise
                                     yankRegion LineWise region
           )
-         ,(char 'U',      withBuffer' . flip replicateM_ undoB)    -- NB not correct
-         ,(char 'n',      const $ withEditor $ continueSearching id)
-         ,(char 'N',      const $ withEditor $ continueSearching reverseDir)
-         ,(char 'u',      withBuffer' . flip replicateM_ undoB)
+         ,([char 'X'],      withEditor' . cut Exclusive . (Replicate $ CharMove Backward))
+         ,([char 'x'],      withEditor' . cut Exclusive . (Replicate $ CharMove Forward))
 
-         ,(char 'X',      withEditor' . cut Exclusive . (Replicate $ CharMove Backward))
-         ,(char 'x',      withEditor' . cut Exclusive . (Replicate $ CharMove Forward))
+         -- pasting
+         ,([char 'p'],      withEditor . flip replicateM_ pasteAfter)
+         ,([char 'P'],      withEditor . flip replicateM_ pasteBefore)
 
-         ,(char 'p',      withEditor . flip replicateM_ pasteAfter)
-
-         ,(char 'P',      withEditor . flip replicateM_ pasteBefore)
-
-         ,(spec KPageUp,   withBuffer' . upScreensB)
-         ,(spec KPageDown, withBuffer' . downScreensB)
-         ,(char '*',      const $ withEditor $ searchCurrentWord Forward)
-         ,(char '#',      const $ withEditor $ searchCurrentWord Backward)
-         ,(char '~',      \i -> withBuffer' $ do
+         ,([char '~'],      \i -> withBuffer' $ do
                               p <- pointB
                               moveXorEol i
                               q <- pointB
                               moveTo p
                               mapRegionB (mkRegion p q) switchCaseChar
                               moveTo q)
-         -- The count value , in this case, is interpretted as a percentage instead of a repeat
-         -- count.
-         ,(char '%',      \i -> withBuffer' $ do
-                              let f :: Double
-                                  f  = case fromIntegral i / 100.0 of
-                                          x | x > 1.0 -> 1.0
-                                            | x < 0.0 -> 0.0 -- Impossible?
-                                            | otherwise -> x
-                              Point max_p <- sizeB 
-                              moveTo $ Point $ floor (fromIntegral max_p * f)
-                              firstNonSpaceB
-          )
+         ,(map char "ZZ",   const $ viWriteModified >> closeWindow)
+         ,(map char "ZQ",   const $ closeWindow)
          ]
 
      ctrlW :: Event
      ctrlW = ctrlCh 'w'
 
-     multiCmdFM :: [([Event], Int -> YiM ())]
-     multiCmdFM =
-         [([ctrlW, char 'c'], const $ withEditor tryCloseE)
-         ,([ctrlW, char 'o'], const $ withEditor closeOtherE)
-         ,([ctrlW, char 's'], const $ withEditor splitE)
-         ,([ctrlW, char 'w'], const $ withEditor nextWinE)
-         ,([ctrlW, char 'W'], const $ withEditor prevWinE)
-         ,([ctrlW, char 'p'], const $ withEditor prevWinE)
-
-         -- since we don't have vertical splitting,
-         -- these moving can be done using next/prev.
-         ,([ctrlW,spec KDown],  const $ withEditor nextWinE)
-         ,([ctrlW,spec KUp],    const $ withEditor prevWinE)
-         ,([ctrlW,spec KRight], const $ withEditor nextWinE)
-         ,([ctrlW,spec KLeft],  const $ withEditor prevWinE)
-         ,([ctrlW,char 'k'],    const $ withEditor prevWinE)
-         ,([ctrlW,char 'j'],    const $ withEditor nextWinE)    -- Same as the above pair, when you're a bit slow to release ctl.
-         ,([ctrlW, ctrlCh 'k'], const $ withEditor prevWinE)
-         ,([ctrlW, ctrlCh 'j'], const $ withEditor nextWinE)
-         ,(map char ">>", withBuffer' . shiftIndentOfLine)
-         ,(map char "<<", withBuffer' . shiftIndentOfLine . negate)
-         ,(map char "ZZ", const $ viWriteModified >> closeWindow)
-         ,(map char "ZQ", const $ closeWindow)
-         ,(map char "ga", const $ viCharInfo)
-         ,(map char "==", const $ withBuffer' $ adjIndent IncreaseCycle)
-         ]
-
-     zScrollCmdFM :: [([Event], Maybe Int -> BufferM ())]
-     zScrollCmdFM =
-         [([char 'z', spec KEnter], mmGoFNS scrollCursorToTopB)
+     scrollCmdFM :: [([Event], Maybe Int -> BufferM ())]
+     scrollCmdFM =
+         [([ctrlCh 'b'],            upScreensB . fromMaybe 1)   -- vim does (firstNonSpaceB;moveXorSol)
+         ,([ctrlCh 'f'],            downScreensB . fromMaybe 1)
+         ,([ctrlCh 'u'],            vimScrollByB (negate . (`div` 2)) . fromMaybe 1)
+         ,([ctrlCh 'd'],            vimScrollByB (`div` 2) . fromMaybe 1)
+         ,([ctrlCh 'y'],            vimScrollB . negate . fromMaybe 1)
+         ,([ctrlCh 'e'],            vimScrollB . fromMaybe 1)
+         ,([spec KPageUp],          upScreensB . fromMaybe 1)
+         ,([spec KPageDown],        downScreensB . fromMaybe 1)
+         ,([char 'z', spec KEnter], mmGoFNS scrollCursorToTopB)
          ,(map char "zt",           mmGoSC  scrollCursorToTopB)
          ,(map char "z.",           mmGoFNS scrollToCursorB)
          ,(map char "zz",           mmGoSC  scrollToCursorB)
@@ -514,20 +540,20 @@ defKeymap = Proto template
      cmd_op :: VimMode
      cmd_op = do
        cnt <- count
-       let i = maybe 1 id cnt
+       let i = fromMaybe 1 cnt
        choice $ [let onMove regionStyle move =
-                        onRegion regionStyle =<< withBuffer0' (regionOfViMove move regionStyle)
+                        onRegion 1 regionStyle =<< withBuffer0' (regionOfViMove move regionStyle)
                      applyOperator frs (regionStyle, m) = write $ onMove (frs regionStyle) (Replicate m i)
                      s1 = prefix [c]
                      ss = nub [[c], s1]
                  in
                  pString s1 >>
-                    choice ([ forceRegStyle >>= \ frs -> gen_cmd_move >>= applyOperator frs -- TODO: text units (eg. dViB)
-                            , select_any_unit (onRegion Exclusive) ] ++
+                    choice ([ forceRegStyle >>= \ frs -> moveKeymap >>= applyOperator frs -- TODO: text units (eg. dViB)
+                            , select_any_unit (onRegion 1 Exclusive) ] ++
                             [ pString s >>! onMove LineWise (Replicate (Move VLine Forward) (i-1)) | s <- ss ]
                            )
 
-                | (prefix,c,onRegion) <- opCmdFM
+                | (prefix,_,c,onRegion) <- operators, c /= 'J'
                 ]
          where
              -- | Forces RegionStyle; see motion.txt, line 116 and below (Vim 7.2)
@@ -538,16 +564,24 @@ defKeymap = Proto template
                  return $ last (id:style)
                             where swpRsOrIncl Exclusive = Inclusive
                                   swpRsOrIncl _         = Exclusive
-             -- | operator (i.e. movement-parameterised) actions
-             opCmdFM =  [ (id,     'd', \s r -> cutRegion s r >> withBuffer0 leftOnEol)
-                        , (id,     'y', yankRegion)
-                        , (('g':), '~', viMapRegion switchCaseChar)
-                        , (('g':), 'u', viMapRegion toLower)
-                        , (('g':), 'U', viMapRegion toUpper)
-                        , (('g':), '?', viMapRegion rot13Char)
-                        , (('g':), 'q', const $ withBuffer0' . fillRegion)
-                        , (('g':), 'w', const $ withBuffer0' . savingPointB . fillRegion)
-                        ]
+
+     -- | operator (i.e. movement-parameterised) actions
+     operators :: [((String->String), (String->String), Char, (Int -> RegionStyle -> Region -> EditorM ()))]
+     operators = [ (id, id, 'd', const $ \s r -> cutRegion s r >> withBuffer0 leftOnEol)
+                 , (id, id, 'y', const $ yankRegion)
+                 , (id, id, '=', const $ const $ withBuffer0' . indentRegion)
+                 , (id, id, '>', \i -> const $ withBuffer0' . shiftIndentOfRegion i)
+                 , (id, id, '<', \i -> const $ withBuffer0' . shiftIndentOfRegion (-i))
+                 , (id, id, 'J', const $ const $ withBuffer0' . joinLinesB)
+                 , (g_, g_, 'J', const $ const $ withBuffer0' . concatLinesB)
+                 , (g_, id, '~', const $ viMapRegion switchCaseChar)
+                 , (g_, id, 'u', const $ viMapRegion toLower)
+                 , (g_, id, 'U', const $ viMapRegion toUpper)
+                 , (g_, g_, '?', const $ viMapRegion rot13Char)
+                 , (g_, g_, 'q', const $ const $ withBuffer0' . fillRegion)
+                 , (g_, g_, 'w', const $ const $ withBuffer0' . savingPointB . fillRegion)
+                 ]
+        where g_ = ('g':)
 
      -- Argument of the 2nd component is whether the unit is outer.
      toOuter u True = leftBoundaryUnit u
@@ -587,6 +621,14 @@ defKeymap = Proto template
                                          <*> pure regionStyle
        return (regionStyle, region)
 
+     indentRegion :: Region -> BufferM ()
+     indentRegion region = do
+       len <- length . filter (=='\n') <$> readRegionB region
+       savingPointB $ do
+         moveTo $ regionStart region
+         replicateM_ len $ adjIndent IncreaseCycle >> lineDown
+       firstNonSpaceB
+
      yankRegion :: RegionStyle -> Region -> EditorM ()
      yankRegion regionStyle region | regionIsEmpty region = return ()
                                    | otherwise            = do
@@ -600,9 +642,6 @@ defKeymap = Proto template
      yank regionStyle move =
        yankRegion regionStyle =<< (withBuffer0' $ regionOfViMove move regionStyle)
      -}
-
-     yankSelection :: EditorM ()
-     yankSelection = uncurry yankRegion =<< withBuffer0' regionOfSelection
 
      cutRegion :: RegionStyle -> Region -> EditorM ()
      cutRegion regionStyle region | regionIsEmpty region = return ()
@@ -671,49 +710,41 @@ defKeymap = Proto template
      viMapRegion :: (Char -> Char) -> RegionStyle -> Region -> EditorM ()
      viMapRegion f _ region = withBuffer0' $ mapRegionB region f
 
+     twoLinesRegion :: BufferM Region
+     twoLinesRegion = regionOfViMove (Move VLine Forward) LineWise
+
      -- | Switching to another mode from visual mode.
      --
      -- All visual commands are meta actions, as they transfer control to another
      -- KeymapM. In this way vis_single is analogous to cmd2other
      --
-     vis_single :: SelectionStyle -> VimMode
-     vis_single selStyle =
-         choice [spec KEsc ?>> return (),
-                 char 'V'  ?>> change_vis_mode selStyle (SelectionStyle Line),
-                 char 'v'  ?>> change_vis_mode selStyle (SelectionStyle Character),
-                 char ':'  ?>>! ex_mode ":'<,'>",
-                 char 'y'  ?>>! yankSelection,
-                 char 'x'  ?>>! (cutSelection >> withBuffer0 leftOnEol),
-                 char 'd'  ?>>! (cutSelection >> withBuffer0 leftOnEol),
-                 char 'p'  ?>>! pasteOverSelection,
-                 char 's'  ?>> beginIns self (cutSelection >> withBuffer0 (setVisibleSelection False)),
-                 char 'c'  ?>> beginIns self (cutSelection >> withBuffer0 (setVisibleSelection False))]
-
-
-     -- | These also switch mode, as all visual commands do, but these are
-     -- analogous to the commands in cmd_eval.  They are different in that
-     -- they are multiple characters
-     vis_multi :: VimMode
-     vis_multi = do
-        cnt <- count
-        let i = maybe 1 id cnt
-        choice ([pString "ZZ" >>! (viWrite >> quitEditor),
-                 char '>' ?>>! shiftIndentOfSelection i,
-                 char '<' ?>>! shiftIndentOfSelection (-i),
-                 char 'r' ?>> do x <- textChar
-                                 -- TODO: rewrite in functional style. (modifyRegionB?)
-                                 write $ do
-                                        mrk <- getSelectionMarkPointB
-                                        pt <- pointB
-                                        r <- inclusiveRegionB $ mkRegion mrk pt
-                                        text <- readRegionB r
-                                        moveTo mrk
-                                        deleteRegionB r
-                                        let convert '\n' = '\n'
-                                            convert  _   = x
-                                        insertN $ map convert $ text] ++
-                [c ?>>! action i | (c,action) <- singleCmdFM ])
-
+     visual2other :: SelectionStyle -> VimMode
+     visual2other selStyle = do
+         cnt <- count
+         let i = fromMaybe 1 cnt
+         choice $ [spec KEsc ?>> return ()
+                  ,char 'V'  ?>> change_vis_mode selStyle (SelectionStyle Line)
+                  ,char 'v'  ?>> change_vis_mode selStyle (SelectionStyle Character)
+                  ,char ':'  ?>>! ex_mode ":'<,'>"
+                  ,char 'p'  ?>>! pasteOverSelection
+                  ,char 'x'  ?>>! (cutSelection >> withBuffer0 leftOnEol)
+                  ,char 's'  ?>> beginIns self (cutSelection >> withBuffer0 (setVisibleSelection False))
+                  ,char 'c'  ?>> beginIns self (cutSelection >> withBuffer0 (setVisibleSelection False))
+                  ,char 'r'  ?>> do x <- textChar
+                                    -- TODO: rewrite in functional style. (modifyRegionB?)
+                                    write $ do
+                                           mrk <- getSelectionMarkPointB
+                                           pt <- pointB
+                                           r <- inclusiveRegionB $ mkRegion mrk pt
+                                           text <- readRegionB r
+                                           moveTo mrk
+                                           deleteRegionB r
+                                           let convert '\n' = '\n'
+                                               convert  _   = x
+                                           insertN $ map convert $ text
+                  ] ++
+                  [pString (prefix [c]) >>! (uncurry (action i) =<< withBuffer0' regionOfSelection)
+                  | (_, prefix, c, action) <- operators ]
 
      -- | Switch to another vim mode from command mode.
      --
@@ -750,7 +781,7 @@ defKeymap = Proto template
          ((char 'w' ?>> change NoMove Exclusive (GenMove unitViWord (Forward, OutsideBound) Forward)) <|>
           (char 'W' ?>> change NoMove Exclusive (GenMove unitViWORD (Forward, OutsideBound) Forward))) <|>
        (char 'c' ?>> change viMoveToSol LineWise viMoveToEol) <|>
-       (uncurry (change NoMove) =<< gen_cmd_move) <|>
+       (uncurry (change NoMove) =<< moveKeymap) <|>
        (select_any_unit (cutRegion Exclusive) >> ins_mode self) -- this correct while the RegionStyle is not LineWise
 
      change :: ViMove -> RegionStyle -> ViMove -> I Event Action ()
@@ -769,8 +800,9 @@ defKeymap = Proto template
      dedentOrDeleteIndent :: BufferM ()
      dedentOrDeleteIndent = do
        c <- savingPointB (moveXorSol 1 >> readB)
-       if c == '0' then deleteB Character Backward >> deleteIndentOfLine
-                   else shiftIndentOfLine (-1)
+       r <- regionOfB Line
+       if c == '0' then deleteB Character Backward >> deleteIndentOfRegion r
+                   else shiftIndentOfRegion (-1) r
 
      upTo :: Alternative f => f a -> Int -> f [a]
      _ `upTo` 0 = empty
@@ -820,7 +852,7 @@ defKeymap = Proto template
               ,ctrlCh 'i'     ?>>! mapM_ insrepB =<< tabB
               ,ctrlCh 'e'     ?>>! insrepB =<< savingPointB (lineDown >> readB)
               ,ctrlCh 'y'     ?>>! insrepB =<< savingPointB (lineUp >> readB)
-              ,ctrlCh 't'     ?>>! shiftIndentOfLine 1
+              ,ctrlCh 't'     ?>>! shiftIndentOfRegion 1 =<< regionOfB Line
               ,ctrlCh 'd'     ?>>! withBuffer0' dedentOrDeleteIndent
               ,ctrlCh 'v'     ?>>  insertSpecialChar insrepB
               ,ctrlCh 'q'     ?>>  insertSpecialChar insrepB
@@ -1035,8 +1067,8 @@ defKeymap = Proto template
            fn "wqa"        = wquitall
            fn "wqal"       = wquitall
            fn "wqall"      = wquitall
-           fn "as"         = viCharInfo
-           fn "ascii"      = viCharInfo
+           fn "as"         = withEditor viCharInfo
+           fn "ascii"      = withEditor viCharInfo
            fn "x"          = viWriteModified >> closeWindow
            fn "xi"         = viWriteModified >> closeWindow
            fn "xit"        = viWriteModified >> closeWindow
@@ -1125,19 +1157,19 @@ defKeymap = Proto template
      forAllBuffers :: (BufferRef -> YiM ()) -> YiM ()
      forAllBuffers f = mapM_ f =<< readEditor bufferStack
 
-     viCharInfo :: YiM ()
-     viCharInfo = do c <- withBuffer' readB
-                     msgEditor $ showCharInfo c ""
+     viCharInfo :: EditorM ()
+     viCharInfo = do c <- withBuffer0' readB
+                     printMsg $ showCharInfo c ""
          where showCharInfo :: Char -> String -> String
                showCharInfo c = shows c . showChar ' ' . shows d
                               . showString ",  Hex " . showHex d
                               . showString ",  Octal " . showOct d
                  where d = ord c
 
-     viFileInfo :: YiM ()
+     viFileInfo :: EditorM ()
      viFileInfo =
-         do bufInfo <- withBuffer' bufInfoB
-            msgEditor $ showBufInfo bufInfo
+         do bufInfo <- withBuffer0' bufInfoB
+            printMsg $ showBufInfo bufInfo
          where
          showBufInfo :: BufferFileInfo -> String
          showBufInfo bufInfo = concat [ show $ bufInfoFileName bufInfo
