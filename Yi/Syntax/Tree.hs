@@ -30,7 +30,7 @@ getLastPath :: IsTree tree => [tree (Tok t)] -> Point -> Maybe [tree (Tok t)]
 getLastPath roots offset =
     case takeWhile ((< offset) . posnOfs . snd) allSubPathPosn of
       [] -> Nothing
-      list -> Just $ fst $ last list
+      xs -> Just $ fst $ last xs
     where allSubPathPosn = [(p,posn) | root <- roots, p@(t':_) <- getAllPaths root, 
                             Just tok <- [getFirstElement t'], let posn = tokPosn tok]
 
