@@ -42,8 +42,8 @@ resetComplete = setDynamic (Completion [])
 -- editor. Further calls try other options. 
 wordComplete :: EditorM ()
 wordComplete = do
-  Completion list <- getDynamic
-  case list of 
+  Completion complList <- getDynamic
+  case complList of
     (x:xs) -> do -- more alternatives, use them.
        withBuffer0 $ do reg <- regionOfPartB unitWord Backward       
                         replaceRegionB reg x
