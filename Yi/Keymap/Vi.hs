@@ -477,7 +477,7 @@ viWriteTo f = do
 
 
 -- | Try to do a substitution
-viSub :: [Char] -> Action
+viSub :: String -> Action
 viSub cs = do
     let (pat,rep') = break (== '/')  cs
         (rep,opts) = case rep' of
@@ -508,7 +508,7 @@ viSub cs = do
 -- | Handle delete chars in a string
 --
 {-
-clean :: [Char] -> [Char]
+clean :: String -> String
 clean (_:c:cs) | isDel c = clean cs
 clean (c:cs)   | isDel c = clean cs
 clean (c:cs) = c : clean cs
@@ -530,10 +530,10 @@ enter   = oneOf enter'
 delete  = oneOf delete'
 anyButEsc = oneOf $ (keyBackspace : any' ++ cursc') \\ ['\ESC']
 
-enter', any', delete' :: [Char]
+enter', any', delete' :: String
 enter'   = ['\n', '\r']
 delete'  = ['\BS', '\127', keyBackspace ]
 any'     = ['\0' .. '\255']
 
-cursc' :: [Char]
+cursc' :: String
 cursc'   = [keyPPage, keyNPage, keyLeft, keyRight, keyDown, keyUp]

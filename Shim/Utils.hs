@@ -106,11 +106,11 @@ commonPrefix [] = ""
 commonPrefix (x:xs) = foldr (\a b -> map fst . takeWhile (uncurry (==))
                                        $ zip a b) x xs 
 
-netEncode :: [Char] -> [Char]
+netEncode :: String -> String
 netEncode s =
   hexEncode (length s) ++ s
 
-netDecode :: [Char] -> [Char]
+netDecode :: String -> String
 netDecode s = text
   where (lens, ':':xs) = break (==':') s
         (text, ";") = splitAt (read lens) xs
@@ -129,13 +129,13 @@ skipWhite h = do
     then skipWhite h
     else return c
 
-readCharN :: Handle -> Int -> IO [Char]
+readCharN :: Handle -> Int -> IO String
 readCharN h n = replicateM n (hGetChar h)
 
 hexEncode :: Int -> String
 hexEncode = printf "%06x"
 
-hexDecode :: (Num a) => [Char] -> a
+hexDecode :: (Num a) => String -> a
 hexDecode [] = 0
 hexDecode (x:xs) = (h x)* 16^(length xs) + hexDecode xs
  where h '0' = 0;  h '1' = 1;  h '2' = 2;  h '3' = 3

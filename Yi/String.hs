@@ -78,9 +78,8 @@ breakOnGlue glue rest@(x:xs)
 
 
 -- | Trim spaces at beginning /and/ end
-dropSpace :: [Char] -> [Char]
+dropSpace :: String -> String
 dropSpace = let f = reverse . dropWhile isSpace in f . f
-
 
 isBlank :: String -> Bool
 isBlank = all isSpace
