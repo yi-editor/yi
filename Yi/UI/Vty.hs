@@ -146,6 +146,7 @@ fromVtyKey (Vty.KLeft    ) = Yi.Event.KLeft
 fromVtyKey (Vty.KDown    ) = Yi.Event.KDown     
 fromVtyKey (Vty.KRight   ) = Yi.Event.KRight    
 fromVtyKey (Vty.KEnter   ) = Yi.Event.KEnter    
+fromVtyKey (Vty.KBackTab ) = error "This should be handled in fromVtyEvent"
 
 fromVtyMod :: Vty.Modifier -> Yi.Event.Modifier
 fromVtyMod Vty.MShift = Yi.Event.MShift
