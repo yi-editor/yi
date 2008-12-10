@@ -21,14 +21,14 @@ import Prelude ()
 defaultVimUiTheme :: Theme
 defaultVimUiTheme = defaultLightTheme  `override` \super self -> super {
         selectedStyle = modelineFocusStyle self
-}
+ }
 
 myConfigUI :: UIConfig
 myConfigUI = (configUI defaultConfig)  {
         configFontSize = Just 10,
         configTheme = defaultVimUiTheme,
         configWindowFill = '~'
-}
+ }
 
 main :: IO ()
 main = yi $ defaultConfig {
@@ -36,4 +36,4 @@ main = yi $ defaultConfig {
     -- modeTable = [shimMode] <|> modeTable defaultConfig,
     configUI = myConfigUI,
     defaultKm = keymap
-}
+ }
