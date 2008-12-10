@@ -14,7 +14,7 @@ module Yi.Keymap.Vim (keymap,
 import Prelude (maybe, length, filter, map, drop, break, uncurry, reads)
 
 import Data.Char
-import Data.List (nub, take, words, dropWhile, intersperse)
+import Data.List (nub, take, words, dropWhile, intersperse, reverse)
 import Data.Maybe (fromMaybe)
 import Data.Prototype
 import Numeric (showHex, showOct)
@@ -110,9 +110,9 @@ defKeymap = Proto template
      rep_mode :: VimMode
      rep_mode = write (setStatus ("-- REPLACE --", defaultStyle)) >> many rep_char >> leaveInsRep >> write (moveXorSol 1)
 
-     -- | Reset the selection style to a character-wise mode 'SelectionStyle Character'.
+     -- | Reset the selection style to a character-wise mode 'Inclusive'.
      resetSelectStyle :: BufferM ()
-     resetSelectStyle = setDynamicB $ SelectionStyle Character
+     resetSelectStyle = setDynamicB $ Inclusive
 
      -- | Visual mode, similar to command mode
      vis_move :: VimMode
@@ -121,28 +121,29 @@ defKeymap = Proto template
                        choice ([events evs >>! action | (evs,action) <- visOrCmdFM ] ++
                                [events evs >>! action cnt | (evs, action) <- scrollCmdFM ])
 
-     vis_mode :: SelectionStyle -> VimMode
+     vis_mode :: RegionStyle -> VimMode
      vis_mode selStyle = do
-       write (setVisibleSelection True >> pointB >>= setSelectionMarkPointB)
+       write $ do putA rectangleSelectionA $ Block == selStyle
+                  setVisibleSelection True
+                  pointB >>= setSelectionMarkPointB
        core_vis_mode selStyle
        write (clrStatus >> withBuffer0' (setVisibleSelection False >> resetSelectStyle))
 
-     core_vis_mode :: SelectionStyle -> VimMode
+     core_vis_mode :: RegionStyle -> VimMode
      core_vis_mode selStyle = do
        write $ do withBuffer0' $ setDynamicB $ selStyle
                   setStatus $ (msg selStyle, defaultStyle)
        many (vis_move <|>
              select_any_unit (withBuffer0' . (\r -> resetSelectStyle >> extendSelectRegionB r >> leftB)))
        visual2other selStyle
-       where msg (SelectionStyle Line) = "-- VISUAL LINE --"
-             msg (SelectionStyle _)    = "-- VISUAL --"
+       where msg LineWise  = "-- VISUAL LINE --"
+             msg Block     = "-- VISUAL BLOCK --"
+             msg _         = "-- VISUAL --"
 
      -- | Change visual mode
-     change_vis_mode :: SelectionStyle -> SelectionStyle -> VimMode
-     change_vis_mode (SelectionStyle Character) (SelectionStyle Character) = return ()
-     change_vis_mode (SelectionStyle Line)      (SelectionStyle Line)      = return ()
-     change_vis_mode _                          dst                        = core_vis_mode dst
-
+     change_vis_mode :: RegionStyle -> RegionStyle -> VimMode
+     change_vis_mode src dst | src == dst = return ()
+                             | otherwise  = core_vis_mode dst
 
      -- | A KeymapM to accumulate digits.
      -- typically what is needed for integer repetition arguments to commands
@@ -160,11 +161,6 @@ defKeymap = Proto template
 
      viMoveToSol :: ViMove
      viMoveToSol = MaybeMove Line Backward
-
-     selection2regionStyle :: SelectionStyle -> RegionStyle
-     selection2regionStyle (SelectionStyle Line)      = LineWise
-     selection2regionStyle (SelectionStyle Character) = Inclusive
-     selection2regionStyle _                          = error "selection2regionStyle"
 
      -- ---------------------------------------------------------------------
      -- | KeymapM for movement commands
@@ -569,20 +565,24 @@ defKeymap = Proto template
      -- | operator (i.e. movement-parameterised) actions
      operators :: [((String->String), (String->String), Char, (Int -> RegionStyle -> Region -> EditorM ()))]
      operators = [ (id, id, 'd', const $ \s r -> cutRegion s r >> withBuffer0 leftOnEol)
-                 , (id, id, 'y', const $ yankRegion)
-                 , (id, id, '=', const $ const $ withBuffer0' . indentRegion)
-                 , (id, id, '>', \i -> const $ withBuffer0' . shiftIndentOfRegion i)
-                 , (id, id, '<', \i -> const $ withBuffer0' . shiftIndentOfRegion (-i))
-                 , (id, id, 'J', const $ const $ withBuffer0' . joinLinesB)
-                 , (g_, g_, 'J', const $ const $ withBuffer0' . concatLinesB)
+                 , (id, id, 'y', const $ nonBlockRegion "y" yankRegion)
+                 , (id, id, '=', const $ mapRegions_ indentRegion)
+                 , (id, id, '>', mapRegions_ . shiftIndentOfRegion)
+                 , (id, id, '<', mapRegions_ . shiftIndentOfRegion . negate)
+                 , (id, id, 'J', const $ nonBlockRegion "J" (const $ withBuffer0' . joinLinesB))
+                 , (g_, g_, 'J', const $ nonBlockRegion "gJ" (const $ withBuffer0' . concatLinesB))
                  , (g_, id, '~', const $ viMapRegion switchCaseChar)
                  , (g_, id, 'u', const $ viMapRegion toLower)
                  , (g_, id, 'U', const $ viMapRegion toUpper)
                  , (g_, g_, '?', const $ viMapRegion rot13Char)
-                 , (g_, g_, 'q', const $ const $ withBuffer0' . fillRegion)
-                 , (g_, g_, 'w', const $ const $ withBuffer0' . savingPointB . fillRegion)
+                 , (g_, g_, 'q', const $ nonBlockRegion "gq" (const $ withBuffer0' . fillRegion))
+                 , (g_, g_, 'w', const $ nonBlockRegion "gw" (const $ withBuffer0' . savingPointB . fillRegion))
                  ]
         where g_ = ('g':)
+              nonBlockRegion n _  Block _ = fail (show n ++ " does not works yet for block selections")
+              nonBlockRegion _ op s     r = op s r
+              mapRegions_ f Block r = withBuffer0' $ mapM_ f =<< blockifyRegion r
+              mapRegions_ f _     r = withBuffer0' $ f r
 
      -- Argument of the 2nd component is whether the unit is outer.
      toOuter u True = leftBoundaryUnit u
@@ -616,7 +616,7 @@ defKeymap = Proto template
 
      regionOfSelection :: BufferM (RegionStyle, Region)
      regionOfSelection = do
-       regionStyle <- selection2regionStyle <$> getDynamicB
+       regionStyle <- getDynamicB
        region <- join $ mkRegionOfStyleB <$> getSelectionMarkPointB
                                          <*> pointB
                                          <*> pure regionStyle
@@ -633,6 +633,7 @@ defKeymap = Proto template
      yankRegion :: RegionStyle -> Region -> EditorM ()
      yankRegion regionStyle region | regionIsEmpty region = return ()
                                    | otherwise            = do
+       when (regionStyle == Block) $ fail "yankRegion does not work on block regions"
        txt <- withBuffer0' $ readRegionB region
        setRegE $ if (regionStyle == LineWise) then '\n':txt else txt
        let rowsYanked = length (filter (== '\n') txt)
@@ -645,6 +646,8 @@ defKeymap = Proto template
      -}
 
      cutRegion :: RegionStyle -> Region -> EditorM ()
+     cutRegion Block region = do withBuffer0' $ mapM_ deleteRegionB =<< reverse <$> blockifyRegion region
+                                 printMsg "This block region is not cut just deleted"
      cutRegion regionStyle region | regionIsEmpty region = return ()
                                   | otherwise            = do
        (txt, rowsCut) <- withBuffer0 $ do
@@ -672,7 +675,7 @@ defKeymap = Proto template
          selStyle <- getDynamicB
          start    <- getSelectionMarkPointB
          stop     <- pointB
-         region   <- mkRegionOfStyleB start stop $ selection2regionStyle $ selStyle
+         region   <- mkRegionOfStyleB start stop selStyle
          moveTo $ regionStart region
          deleteRegionB region
          insertN txt
@@ -709,7 +712,8 @@ defKeymap = Proto template
      rot13Char = onCharLetterCode (+13)
 
      viMapRegion :: (Char -> Char) -> RegionStyle -> Region -> EditorM ()
-     viMapRegion f _ region = withBuffer0' $ mapRegionB region f
+     viMapRegion f Block region = withBuffer0' $ mapM_ (`mapRegionB` f) =<< blockifyRegion region
+     viMapRegion f _     region = withBuffer0' $ mapRegionB region f
 
      twoLinesRegion :: BufferM Region
      twoLinesRegion = regionOfViMove (Move VLine Forward) LineWise
@@ -719,13 +723,14 @@ defKeymap = Proto template
      -- All visual commands are meta actions, as they transfer control to another
      -- KeymapM. In this way vis_single is analogous to cmd2other
      --
-     visual2other :: SelectionStyle -> VimMode
+     visual2other :: RegionStyle -> VimMode
      visual2other selStyle = do
          cnt <- count
          let i = fromMaybe 1 cnt
          choice $ [spec KEsc ?>> return ()
-                  ,char 'V'  ?>> change_vis_mode selStyle (SelectionStyle Line)
-                  ,char 'v'  ?>> change_vis_mode selStyle (SelectionStyle Character)
+                  ,char 'V'  ?>> change_vis_mode selStyle LineWise
+                  ,char 'v'  ?>> change_vis_mode selStyle Inclusive
+                  ,ctrlCh 'v'?>> change_vis_mode selStyle Block
                   ,char ':'  ?>>! ex_mode ":'<,'>"
                   ,char 'p'  ?>>! pasteOverSelection
                   ,char 'x'  ?>>! (cutSelection >> withBuffer0 leftOnEol)
@@ -755,8 +760,9 @@ defKeymap = Proto template
      cmd2other :: VimMode
      cmd2other =
          choice [char ':'     ?>>! ex_mode ":",
-                 char 'v'     ?>> vis_mode (SelectionStyle Character),
-                 char 'V'     ?>> vis_mode (SelectionStyle Line),
+                 char 'v'     ?>> vis_mode Inclusive,
+                 char 'V'     ?>> vis_mode LineWise,
+                 ctrlCh 'v'   ?>> vis_mode Block, -- one use VLine for block mode
                  char 'R'     ?>> rep_mode,
                  char 'i'     ?>> ins_mode self,
                  char 'I'     ?>> beginIns self firstNonSpaceB,
