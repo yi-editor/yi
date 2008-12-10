@@ -16,6 +16,7 @@ module Yi.Buffer.Region
   , modifyRegionClever
   , winRegionB
   , inclusiveRegionB
+  , blockifyRegion
   )
 where
 import Data.Algorithm.Diff
@@ -105,3 +106,16 @@ inclusiveRegionB r =
     where pointAfter p = pointAt $ do 
                            moveTo p
                            rightB
+
+-- | See a region as a block/rectangular region,
+-- since regions are represented by two point, this returns
+-- a list of small regions form this block region.
+blockifyRegion :: Region -> BufferM [Region]
+blockifyRegion r = savingPointB $ do
+  startCol  <- colOf  $ regionStart r
+  startLine <- lineOf $ regionStart r
+  endCol    <- colOf  $ regionEnd r
+  endLine   <- lineOf $ regionEnd r
+  when (startLine > endLine) $ fail "blockifyRegion: impossible"
+  mapM (\line -> mkRegion <$> pointOfLineColB line startCol <*> pointOfLineColB line (1 + endCol))
+       [startLine..endLine]
