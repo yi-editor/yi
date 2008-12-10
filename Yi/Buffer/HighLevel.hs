@@ -598,6 +598,3 @@ fillParagraph = fillRegion =<< regionOfB unitParagraph
 sortLines :: BufferM ()
 sortLines = modifyRegionB (onLines sort) =<< unitWiseRegion Line =<< getSelectRegionB
 
-colOf :: Point -> BufferM Int
-colOf p = savingPointB (moveTo p >> curCol)
-

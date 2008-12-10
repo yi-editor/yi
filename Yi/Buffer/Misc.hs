@@ -17,12 +17,16 @@ module Yi.Buffer.Misc
   , runBufferDummyWindow
   , curLn
   , curCol
+  , colOf
+  , lineOf
   , sizeB
   , pointB
+  , pointOfLineColB
   , solPointB
   , markLines
   , moveTo
   , moveToColB
+  , moveToLineColB
   , lineMoveRel
   , lineUp
   , lineDown
@@ -651,8 +655,7 @@ curLn = do
 -- | Return line numbers of marks
 markLines :: BufferM (MarkSet Int)
 markLines = mapM getLn =<< askMarks
-        where getLn m = getMarkPointB m >>= pointLine
-              pointLine p = queryBuffer $ lineAt p
+        where getLn m = getMarkPointB m >>= lineOf
 
 
 -- | Go to line number @n@. @n@ is indexed from 1. Returns the
@@ -805,6 +808,12 @@ moveToColB targetCol = do
       toSkip = takeWhile (\(char,col) -> char /= '\n' && col < targetCol) (zip chrs cols)
   moveTo =<< queryBuffer (findNextChar (length toSkip) solPnt)
 
+moveToLineColB :: Int -> Int -> BufferM ()
+moveToLineColB line col = gotoLn line >> moveToColB col
+
+pointOfLineColB :: Int -> Int -> BufferM Point
+pointOfLineColB line col = savingPointB $ moveToLineColB line col >> pointB
+
 forgetPreferCol :: BufferM ()
 forgetPreferCol = setPrefCol Nothing
 
@@ -851,10 +860,13 @@ deleteN n = pointB >>= deleteNAt Forward n
 -- Note that this is different from offset or number of chars from sol.
 -- (This takes into account tabs, unicode chars, etc.)
 curCol :: BufferM Int
-curCol = do 
-  p <- pointB
-  chars <- queryBuffer (charsFromSolBI p)
-  return (foldl colMove 0 chars)
+curCol = colOf =<< pointB
+
+colOf :: Point -> BufferM Int
+colOf p = foldl colMove 0 <$> queryBuffer (charsFromSolBI p)
+
+lineOf :: Point -> BufferM Int
+lineOf p = queryBuffer $ lineAt p
 
 colMove :: Int -> Char -> Int
 colMove col '\t' = (col + 7) `mod` 8
