@@ -14,7 +14,7 @@ module Yi.Keymap.Vim (keymap,
 import Prelude (maybe, length, filter, map, drop, break, uncurry, reads)
 
 import Data.Char
-import Data.List (nub, take, words, dropWhile)
+import Data.List (nub, take, words, dropWhile, intersperse)
 import Data.Maybe (fromMaybe)
 import Data.Prototype
 import Numeric (showHex, showOct)
@@ -38,6 +38,7 @@ import Yi.Style
 import Yi.TextCompletion
 import Yi.Tag (Tag,TagTable,lookupTag,importTagTable)
 import Yi.Window (bufkey)
+import qualified Codec.Binary.UTF8.String as UTF8
 
 
 --
@@ -45,7 +46,6 @@ import Yi.Window (bufkey)
 --   fancier :s// ==> missing /c, ...
 --   '.'
 --   @:
---   g8
 --   8g8
 --   :sh[ell]
 --   :!!
@@ -459,6 +459,7 @@ defKeymap = Proto template
          ,([ctrlW, ctrlCh 'k'], prevWinE)
          ,([ctrlW, ctrlCh 'j'], nextWinE)
          ,(map char "ga",       viCharInfo)
+         ,(map char "g8",       viChar8Info)
          ,(map char "gt",       nextTabE)
          ,(map char "gT",       previousTabE)
          ]
@@ -1160,11 +1161,19 @@ defKeymap = Proto template
      viCharInfo :: EditorM ()
      viCharInfo = do c <- withBuffer0' readB
                      printMsg $ showCharInfo c ""
-         where showCharInfo :: Char -> String -> String
+         where showCharInfo :: Char -> ShowS
                showCharInfo c = shows c . showChar ' ' . shows d
                               . showString ",  Hex " . showHex d
                               . showString ",  Octal " . showOct d
                  where d = ord c
+
+     viChar8Info :: EditorM ()
+     viChar8Info = do c <- withBuffer0' readB
+                      let w8 = UTF8.encode [c]
+                      printMsg $ shows c . showChar ' ' . showSeq shows w8
+                               . showString ",  Hex " . showSeq showHex w8
+                               . showString ",  Octal " . showSeq showOct w8 $ ""
+         where showSeq showX xs s = foldr ($) s $ intersperse (showChar ' ') $ map showX $ xs
 
      viFileInfo :: EditorM ()
      viFileInfo =
