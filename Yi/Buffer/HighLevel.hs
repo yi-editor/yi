@@ -371,14 +371,6 @@ pointInWindowB p = nearRegion p <$> winRegionB
 -----------------------------
 -- Region-related operations
 
--- TODO: either decide this is evil and contain it to Vim, or embrace it and move it to the
--- Buffer record.
-newtype SelectionStyle = SelectionStyle TextUnit
-  deriving (Typeable)
-
-instance Initializable SelectionStyle where
-  initial = SelectionStyle Character
-
 -- | Return the region between point and mark
 getRawestSelectRegionB :: BufferM Region
 getRawestSelectRegionB = do
@@ -397,8 +389,9 @@ getRawSelectRegionB = do
 -- | Get the current region boundaries. Extended to the current selection unit.
 getSelectRegionB :: BufferM Region
 getSelectRegionB = do
-  SelectionStyle unit <- getDynamicB
-  unitWiseRegion unit =<< getRawSelectRegionB
+  regionStyle <- getDynamicB
+  r <- getRawSelectRegionB
+  mkRegionOfStyleB (regionStart r) (regionEnd r) regionStyle
 
 -- | Select the given region: set the selection mark at the 'regionStart'
 -- and the current point at the 'regionEnd'.

@@ -38,6 +38,7 @@ module Yi.Buffer.Normal (TextUnit(Character, Line, VLine, Document),
 import Yi.Buffer.Basic
 import Yi.Buffer.Misc
 import Yi.Buffer.Region
+import Yi.Dynamic
 import Data.Char
 import Data.List (sort)
 import Control.Applicative
@@ -314,7 +315,11 @@ readUnitB = readRegionB <=< regionOfB
 data RegionStyle = LineWise
                  | Inclusive
                  | Exclusive
+                 | Block
   deriving (Eq, Typeable, Show)
+
+instance Initializable RegionStyle where
+  initial = Inclusive
 
 mkRegionOfStyleB :: Point -> Point -> RegionStyle -> BufferM Region
 mkRegionOfStyleB start' stop' regionStyle =
@@ -324,6 +329,7 @@ mkRegionOfStyleB start' stop' regionStyle =
      LineWise  -> inclusiveRegionB =<< unitWiseRegion Line region
      Inclusive -> inclusiveRegionB region
      Exclusive -> return region
+     Block     -> return region
 
 unitWiseRegion :: TextUnit -> Region -> BufferM Region
 unitWiseRegion unit = extendRegionToBoundaries unit InsideBound OutsideBound
