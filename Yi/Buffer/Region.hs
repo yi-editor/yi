@@ -24,7 +24,7 @@ import Yi.Region
 import Yi.Buffer.Misc
 import Yi.Prelude
 import Prelude ()
-import Data.List (length)
+import Data.List (length, sort)
 
 import Control.Monad.RWS.Strict (ask)
 
@@ -112,10 +112,9 @@ inclusiveRegionB r =
 -- a list of small regions form this block region.
 blockifyRegion :: Region -> BufferM [Region]
 blockifyRegion r = savingPointB $ do
-  startCol  <- colOf  $ regionStart r
+  [lowCol,highCol] <- sort <$> mapM colOf [regionStart r, regionEnd r]
   startLine <- lineOf $ regionStart r
-  endCol    <- colOf  $ regionEnd r
   endLine   <- lineOf $ regionEnd r
   when (startLine > endLine) $ fail "blockifyRegion: impossible"
-  mapM (\line -> mkRegion <$> pointOfLineColB line startCol <*> pointOfLineColB line (1 + endCol))
+  mapM (\line -> mkRegion <$> pointOfLineColB line lowCol <*> pointOfLineColB line (1 + highCol))
        [startLine..endLine]
