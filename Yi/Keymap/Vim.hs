@@ -43,10 +43,17 @@ import qualified Codec.Binary.UTF8.String as UTF8
 
 --
 -- What's missing?
+--   gq,gw,fillText should leave the last \n as is.
 --   fancier :s// ==> missing /c, ...
 --   '.'
 --   @:
 --   8g8
+--   free keys g[bBcClLnNOSWxXyYzZ]
+--   could be reused g[dDhHiQ]
+--   go
+--   gm, g$, g<End>, gp, gP, ]p, ]P, [P, [p, gr, gR, gs, gv, gV
+--   goto file [{visual}][count]g{f,F}
+--   invent a variant of o and O that add spaces to be at the same col
 --   :sh[ell]
 --   :!!
 --   movement parameterised \> \<
