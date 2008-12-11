@@ -489,11 +489,7 @@ defKeymap = Proto template
          ,([ctrlCh 'x'],    withBuffer' . onCurrentWord . onNumberInString . flip (-))
          ,([char 'D'],      withEditor' . cut Exclusive . ArbMove . viMoveToNthEol)
          ,([char 'J'],      const $ withBuffer' (joinLinesB =<< twoLinesRegion))
-         ,([char 'Y'],      \n -> withEditor $ do
-                                    let move = Replicate (Move Line Forward) n
-                                    region <- withBuffer0' $ regionOfViMove move LineWise
-                                    yankRegion LineWise region
-          )
+         ,([char 'Y'],      withEditor . yank LineWise . (Replicate $ Move Line Forward))
          ,([char 'X'],      withEditor' . cut Exclusive . (Replicate $ CharMove Backward))
          ,([char 'x'],      withEditor' . cut Exclusive . (Replicate $ CharMove Forward))
 
@@ -652,11 +648,9 @@ defKeymap = Proto template
        let rowsYanked = length (filter (== '\n') txt)
        when (rowsYanked > 2) $ printMsg $ show rowsYanked ++ " lines yanked"
 
-     {-
      yank :: RegionStyle -> ViMove -> EditorM ()
      yank regionStyle move =
        yankRegion regionStyle =<< (withBuffer0' $ regionOfViMove move regionStyle)
-     -}
 
      cutRegion :: RegionStyle -> Region -> EditorM ()
      cutRegion Block region = do withBuffer0' $ mapM_ deleteRegionB =<< reverse <$> blockifyRegion region
