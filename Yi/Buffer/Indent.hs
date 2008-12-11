@@ -394,7 +394,6 @@ indentAsPreviousB =
 -- expandTabs is set in the buffers IndentSettings
 rePadString :: IndentSettings -> Int -> String -> String
 rePadString indentSettings newCount input 
-    | null input = input
     | newCount <= 0 = rest
     | expandTabs indentSettings = replicate newCount ' ' ++ rest
     | otherwise = tabs ++ spaces ++ rest
@@ -416,9 +415,10 @@ indentString indentSettings numOfShifts input = rePadString indentSettings newCo
 shiftIndentOfRegion :: Int -> Region -> BufferM ()
 shiftIndentOfRegion shiftCount region = do
     indentSettings <- indentSettingsB
-    modifyRegionB (mapLines $ indentString indentSettings shiftCount) region
+    modifyRegionB (mapLines $ (indentString indentSettings shiftCount `unless` null)) region
     moveTo $ regionStart region
     firstNonSpaceB
+  where (f `unless` c) x = if c x then x else f x
 
 deleteIndentOfRegion :: Region -> BufferM ()
 deleteIndentOfRegion = modifyRegionB (mapLines $ dropWhile isSpace)
