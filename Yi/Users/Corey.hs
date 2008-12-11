@@ -56,7 +56,16 @@ extendedVimKeymap = defKeymap `override` \super self -> super
                     moveToEol
                     insertB '\n'
                     indentAsPreviousB
-                ),
+                )
+            -- On HLX (Haskell Language Extension) I want to go into insert mode such 
+            -- that the cursor position is correctly placed to start entering the name
+            -- of an language extension in a LANGUAGE pragma.
+            -- A language pragma will take either the form
+            -- {-# LANGUAGE Foo #-}
+            -- or
+            -- >{-# LANGUAGE Foo #-}
+            -- The form should be chosen based on the current mode.
+            <|> ( pString "HXL" >> startExtesnionNameInsert self ),
         v_ins_char = 
             (deprioritize >> v_ins_char super) 
             -- On enter I always want to use the indent of previous line
@@ -100,4 +109,14 @@ extendedVimKeymap = defKeymap `override` \super self -> super
                 ]
     }
 
+
+startExtesnionNameInsert :: ModeMap -> I Event Action ()
+startExtesnionNameInsert self = beginIns self $ do
+    moveTo $ Point 0
+    insertB '\n'
+    moveTo $ Point 0
+    insertN "{-# LANGUAGE "
+    p <- pointB
+    insertN " #-}"
+    moveTo p
 
