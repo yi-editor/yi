@@ -744,17 +744,9 @@ defKeymap = Proto template
                   ,char 's'  ?>> beginIns self (cutSelection >> withBuffer0 (setVisibleSelection False))
                   ,char 'c'  ?>> beginIns self (cutSelection >> withBuffer0 (setVisibleSelection False))
                   ,char 'r'  ?>> do x <- textChar
-                                    -- TODO: rewrite in functional style. (modifyRegionB?)
-                                    write $ do
-                                           mrk <- getSelectionMarkPointB
-                                           pt <- pointB
-                                           r <- inclusiveRegionB $ mkRegion mrk pt
-                                           text <- readRegionB r
-                                           moveTo mrk
-                                           deleteRegionB r
-                                           let convert '\n' = '\n'
-                                               convert  _   = x
-                                           insertN $ map convert $ text
+                                    let convert '\n' = '\n'
+                                        convert  _   = x
+                                    write $ uncurry (viMapRegion convert) =<< withBuffer0 regionOfSelection
                   ] ++
                   [pString (prefix [c]) >>! (uncurry (action i) =<< withBuffer0' regionOfSelection)
                   | (_, prefix, c, action) <- operators ]
