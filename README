@@ -13,12 +13,12 @@ DEPENDENCIES
 
 * Cabal 1.4
 
-* ghc 6.8.3
+* ghc 6.10.1
 
 * Alex (the haskell lexer generator) 
 	http://www.haskell.org/alex/
 
-* for vty frontend, vty 3.0.2
+* for vty frontend, vty 3.1.6
   * http://hackage.haskell.org/cgi-bin/hackage-scripts/package/vty
 
 * for gtk frontend, gtk2hs 0.9.13.
