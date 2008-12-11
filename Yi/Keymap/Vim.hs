@@ -170,7 +170,14 @@ defKeymap = Proto template
      --
 
      cmd_move :: VimMode
-     cmd_move = moveKeymap >>= write . withBuffer0' . viMove . snd
+     cmd_move = markMovementKeymap 
+                <|> ( moveKeymap >>= write . withBuffer0' . viMove . snd )
+
+     markMovementKeymap :: VimMode
+     markMovementKeymap = choice
+        [ char '\'' ?>> jumpToMark
+        , char 'm' ?>> setMark
+        ]
 
      -- the returned RegionStyle is used when the movement is combined with a 'cut' or 'yank'.
      moveKeymap :: KeymapM (RegionStyle, ViMove)
@@ -1279,6 +1286,33 @@ percentMove = (Inclusive, ArbMove tryGoingToMatch)
                          if eof || eol
                              then return False
                              else rightB >> goToMatch -- search for matchable character after the cursor
+
+jumpToMark :: VimMode
+jumpToMark = do
+    c <- validMarkIdentifier
+    write $ do
+        -- This is incorrect as it will add a new mark behind the scenes. In Vim this should only
+        -- display the error message "Mark not set" 
+        p_next <- getMarkB (Just [c]) >>= getMarkPointB 
+        -- Retain the current point in the mark "'" automatically.
+        p <- pointB
+        getMarkB (Just "'") >>= flip setMarkPointB p
+        -- now jump to p_next.
+        moveTo p_next
+
+setMark :: VimMode
+setMark = do
+    c <- validMarkIdentifier
+    write $ do
+        p <- pointB
+        getMarkB (Just [c]) >>= flip setMarkPointB p
+
+validMarkIdentifier :: (MonadInteract m w Event) => m Char 
+validMarkIdentifier = do
+  Event (KASCII c) [] <- anyEvent
+  when (not $ elem c ('\'' : ['a'..'z'])) $ 
+       fail "Not a valid mark identifier."
+  return c
 
 -- --------------------
 -- | Keyword
