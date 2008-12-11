@@ -170,14 +170,7 @@ defKeymap = Proto template
      --
 
      cmd_move :: VimMode
-     cmd_move = markMovementKeymap 
-                <|> ( moveKeymap >>= write . withBuffer0' . viMove . snd )
-
-     markMovementKeymap :: VimMode
-     markMovementKeymap = choice
-        [ char '\'' ?>> jumpToMark
-        , char 'm' ?>> setMark
-        ]
+     cmd_move = moveKeymap >>= write . withBuffer0' . viMove . snd
 
      -- the returned RegionStyle is used when the movement is combined with a 'cut' or 'yank'.
      moveKeymap :: KeymapM (RegionStyle, ViMove)
@@ -195,6 +188,10 @@ defKeymap = Proto template
                   [do event c; c' <- textChar; return (r, a c' x) | (c,r,a) <- move2CmdFM] ++
                   [char 'G' ?>> return (LineWise, ArbMove $ maybe (botB >> firstNonSpaceB) gotoFNS cnt)
                   ,pString "gg" >> return (LineWise, ArbMove $ gotoFNS $ fromMaybe 0 cnt)
+                  ,char '\'' ?>> do c <- validMarkIdentifier
+                                    return (LineWise, ArbMove $ jumpToMark c >> firstNonSpaceB)
+                  ,char '`'  ?>> do c <- validMarkIdentifier
+                                    return (Exclusive, ArbMove $ jumpToMark c)
 
                   -- The count value, in this case, is interpretted as a percentage instead of a repeat
                   -- count.
@@ -350,7 +347,9 @@ defKeymap = Proto template
           [events evs >>! action     | (evs, action) <- visOrCmdFM ] ++
           [events evs >>! action cnt | (evs, action) <- scrollCmdFM ] ++
           [char 'r' ?>> textChar >>= write . savingPointB . writeN . replicate i
-          ,pString "gJ" >>! withBuffer' (concatLinesB =<< twoLinesRegion)]
+          ,pString "gJ" >>! withBuffer' (concatLinesB =<< twoLinesRegion)
+          ,char 'm' ?>> setMark]
+
 
      -- TODO: add word bounds: search for \<word\>
      searchCurrentWord :: Direction -> EditorM ()
@@ -1287,32 +1286,33 @@ percentMove = (Inclusive, ArbMove tryGoingToMatch)
                              then return False
                              else rightB >> goToMatch -- search for matchable character after the cursor
 
-jumpToMark :: VimMode
-jumpToMark = do
-    c <- validMarkIdentifier
-    write $ do
-        -- This is incorrect as it will add a new mark behind the scenes. In Vim this should only
-        -- display the error message "Mark not set" 
-        p_next <- getMarkB (Just [c]) >>= getMarkPointB 
-        -- Retain the current point in the mark "'" automatically.
-        p <- pointB
-        getMarkB (Just "'") >>= flip setMarkPointB p
-        -- now jump to p_next.
-        moveTo p_next
+jumpToMark :: Char -> BufferM ()
+jumpToMark c = do
+  mm <- mayGetMarkB [c]
+  case mm of
+    Nothing -> fail "Mark not set"
+    Just m -> do
+       p_next <- getMarkPointB m
+       -- Retain the current point in the mark "'" automatically.
+       p <- pointB
+       getMarkB (Just "'") >>= flip setMarkPointB p
+       -- now jump to p_next.
+       moveTo p_next
 
 setMark :: VimMode
 setMark = do
     c <- validMarkIdentifier
     write $ do
         p <- pointB
+        -- Retain the current point in the mark "'" automatically.
+        getMarkB (Just "'") >>= flip setMarkPointB p
         getMarkB (Just [c]) >>= flip setMarkPointB p
 
 validMarkIdentifier :: (MonadInteract m w Event) => m Char 
-validMarkIdentifier = do
-  Event (KASCII c) [] <- anyEvent
-  when (not $ elem c ('\'' : ['a'..'z'])) $ 
-       fail "Not a valid mark identifier."
-  return c
+validMarkIdentifier = fmap f $ oneOfchar "'`" <|> charOf id 'a' 'z' <|> fail "Not a valid mark identifier."
+  where oneOfchar = choice . map (\c -> event (char c) >> return c)
+        f '`' = '\''
+        f  c  =  c
 
 -- --------------------
 -- | Keyword
