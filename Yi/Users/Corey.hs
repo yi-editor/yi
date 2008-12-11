@@ -112,6 +112,9 @@ extendedVimKeymap = defKeymap `override` \super self -> super
 
 startExtesnionNameInsert :: ModeMap -> I Event Action ()
 startExtesnionNameInsert self = beginIns self $ do
+    p_current <- pointB
+    m_current <- getMarkB (Just "'") 
+    setMarkPointB m_current p_current
     moveTo $ Point 0
     insertB '\n'
     moveTo $ Point 0
