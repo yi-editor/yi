@@ -57,6 +57,7 @@ module Yi.Buffer.Misc
   , undoB
   , redoB
   , getMarkB
+  , mayGetMarkB
   , getMarkValueB
   , setMarkPointB
   , modifyMarkB
@@ -753,7 +754,8 @@ getMarkB m = do
   p <- pointB
   queryAndModify (getMarkDefaultPosBI m p) 
   
-
+mayGetMarkB :: String -> BufferM (Maybe Mark)
+mayGetMarkB m = queryBuffer (getMarkBI m)
 
 -- | Move point by the given number of characters.
 -- A negative offset moves backwards a positive one forward.

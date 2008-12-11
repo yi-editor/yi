@@ -30,6 +30,7 @@ module Yi.Buffer.Implementation
   , getMarkDefaultPosBI
   , modifyMarkBI
   , getMarkValueBI
+  , getMarkBI
   , newMarkBI
   , setSyntaxBI
   , addOverlayBI
@@ -409,6 +410,9 @@ newMarkBI initialValue fb =
 
 getMarkValueBI :: Mark -> BufferImpl syntax -> Maybe MarkValue
 getMarkValueBI m (FBufferData { marks = marksMap } ) = M.lookup m marksMap
+
+getMarkBI :: String -> BufferImpl syntax -> Maybe Mark
+getMarkBI name FBufferData {markNames = nms} = M.lookup name nms
 
 -- | Modify a mark value.
 modifyMarkBI :: Mark -> (MarkValue -> MarkValue) -> (forall syntax. BufferImpl syntax -> BufferImpl syntax)
