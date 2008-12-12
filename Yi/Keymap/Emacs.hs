@@ -179,7 +179,8 @@ emacsKeys univArg =
   ctrlC = choice [ ctrlCh 'c' ?>>! withModeB modeToggleCommentSelection ]
 
 
-  rectangleFuntions = choice [char 'o' ?>>! openRectangle,
+  rectangleFuntions = choice [char 'a' ?>>! alignRegionOn,
+                              char 'o' ?>>! openRectangle,
                               char 't' ?>>! stringRectangle,
                               char 'k' ?>>! killRectangle,
                               char 'y' ?>>! yankRectangle

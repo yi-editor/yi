@@ -14,30 +14,35 @@ import Yi.Editor
 import Yi.String
 import Text.Regex.TDFA
 
--- pad :: String -> Int -> String
-pad n [] = replicate n ' '
-pad n (x:xs) = x : pad (n-1) xs
-
-regexSplit :: String -> String -> [String]
-regexSplit regex l = case l =~ regex of
-    AllTextSubmatches (_:matches) -> matches
-    _ -> error "regexSplit: text does not match"
-
-alignText :: String -> String -> String
-alignText regex text = unlines' ls'
-  where ls, ls' :: [String]
-        ls = lines' text
-        columns, columns' :: [[String]]
-        columns = fmap (regexSplit regex) ls
-        columnsWidth :: [Int]
-        columnsWidth =  fmap (maximum . fmap length) $ transpose columns
-        columns' = fmap (zipWith pad columnsWidth) columns
-        
-        ls' = fmap concat columns'
-
 alignRegion :: String -> BufferM ()
-alignRegion str =
-    modifyRegionClever (alignText str) =<< unitWiseRegion Line =<< getSelectRegionB
+alignRegion str = modifyRegionClever (alignText str) =<< unitWiseRegion Line =<< getSelectRegionB
+    where pad :: Int -> String -> String
+          pad n [] = replicate n ' '
+          pad n (x:xs) = x : pad (n-1) xs
+          
+          regexSplit :: String -> String -> [String]
+          regexSplit regex l = case l =~ regex of
+              AllTextSubmatches (_:matches) -> matches
+              _ -> error "regexSplit: text does not match"
+          
+          alignText :: String -> String -> String
+          alignText regex text = unlines' ls'
+            where ls, ls' :: [String]
+                  ls = lines' text
+                  columns, columns' :: [[String]]
+                  columns = fmap (regexSplit regex) ls
+                  columnsWidth :: [Int]
+                  columnsWidth =  fmap (maximum . fmap length) $ transpose columns
+                  columns' = fmap (zipWith pad columnsWidth) columns
+                  
+                  ls' = fmap concat columns'
+
+
+
+-- | Align each line of the region on the given regex.
+-- Fails if it is not found in any line.
+alignRegionOn :: String -> BufferM ()
+alignRegionOn s = alignRegion ("^(.*)(" ++ s ++ ")(.*)")
 
 -- | Get the selected region as a rectangle.
 -- Returns the region extended to lines, plus the start and end columns of the rectangle.
