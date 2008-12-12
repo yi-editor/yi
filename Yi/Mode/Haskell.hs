@@ -143,10 +143,6 @@ adjustBlock e len = do
                                  else do
                                     deleteN (negate len)
 
--- TODO: use the indentSettings
-indentLevel :: Int
-indentLevel = 4
-
 -- | Returns true if the token should be indented to look as "inside" the group.
 insideGroup :: Token -> Bool
 insideGroup (Special c) = not $ c `elem` "',;})]" 
@@ -154,6 +150,8 @@ insideGroup _ = True
 
 cleverAutoIndentHaskellB :: Expr TT -> IndentBehaviour -> BufferM ()
 cleverAutoIndentHaskellB e behaviour = do
+  indentSettings <- indentSettingsB
+  let indentLevel = shiftWidth indentSettings
   previousIndent <- indentOfB =<< getNextNonBlankLineB Backward
   nextIndent     <- indentOfB =<< getNextNonBlankLineB Forward
   solPnt <- pointAt moveToSol
