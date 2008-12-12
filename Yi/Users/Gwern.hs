@@ -1,7 +1,8 @@
-import Yi 
+import Yi  hiding ((.))
 import Yi.Buffer.HighLevel
 import Yi.Buffer.Misc
 import Yi.Keymap.Emacs (keymap)
+import Yi.Misc
 import Yi.Mode.Haskell as Haskell
 import Yi.Mode.IReader as IReader
 import Yi.Mode.Shim    as Shim
@@ -15,15 +16,17 @@ main = yi $ defaultConfig
                                 <|> (metaCh 'g' ?>>! gotoLn),
    configKillringAccumulate = True,      -- Should be True for emacs, False for others.
 
-   -- UI Configuration
-   -- Override the default UI as such:
-   startFrontEnd = startFrontEnd defaultConfig,
-   configUI = defaultUIConfig {configFontSize = Nothing, configTheme = configTheme defaultUIConfig, 
-                               configWindowFill = ' '}}
-    where defaultUIConfig = configUI defaultConfig
+   configUI = defaultUIConfig {configFontSize = Nothing, configWindowFill = ' '}}
+    where defaultUIConfig :: UIConfig
+          defaultUIConfig = configUI defaultConfig
 
           bestHaskellMode = Shim.minorMode $ 
-           Haskell.cleverMode { modeKeymap = (choice [ctrlCh 'c' ?>> ctrl (char 'l') ?>>! ghciLoadBuffer,
-                                                      ctrlCh 'c' ?>> ctrl (char 't') ?>>! annotType,
-                                                      -- Use a more clever binding for Home
-                                                      spec KHome ?>>! moveNonspaceOrSol] <||) }
+           Haskell.cleverMode { modeKeymap = 
+                                (choice [ctrlCh 'c' ?>> ctrl (char 'l') ?>>! ghciLoadBuffer,
+                                         -- Insert a type, go back up a line, and indent it properly
+                                         -- good for 'where' expressions
+                                         ctrlCh 'c' ?>> ctrl (char 't') ?>>! (annotType 
+                                                                              >> (withBuffer $ moveB VLine Backward 
+                                                                                  >> adjIndent IncreaseCycle)),
+                                         -- Use a more clever binding for Home
+                                         spec KHome ?>>! moveNonspaceOrSol] <||) }
