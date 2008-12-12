@@ -94,7 +94,7 @@ modifyRegionB = replToMod replaceRegionB
     
 -- | As 'modifyRegionB', but do a minimal edition instead of deleting the whole
 -- region and inserting it back.
-modifyRegionClever :: (String -> [Char]) -> Region -> BufferM ()
+modifyRegionClever :: (String -> String) -> Region -> BufferM ()
 modifyRegionClever =  replToMod replaceRegionClever
 
 -- | Extend the right bound of a region to include it.

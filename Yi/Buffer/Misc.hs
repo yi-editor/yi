@@ -556,11 +556,11 @@ pointB = getMarkPointB =<< getInsMark
 
 
 -- | Return @n@ elems starting at @i@ of the buffer as a list
-nelemsB :: Int -> Point -> BufferM [Char]
+nelemsB :: Int -> Point -> BufferM String
 nelemsB n i = queryBuffer $ nelemsBI n i
 
 -- | Return @n@ bytes starting at @i@ of the buffer as a list, and convert it to a string.
-nelemsB' :: Size -> Point -> BufferM [Char]
+nelemsB' :: Size -> Point -> BufferM String
 nelemsB' n i = queryBuffer $ nelemsBI' n i
 
 streamB :: Direction -> Point -> BufferM LazyUTF8.ByteString
@@ -619,11 +619,11 @@ writeN cs = do
 ------------------------------------------------------------------------
 
 -- | Insert the list at specified point, extending size of buffer
-insertNAt :: [Char] -> Point -> BufferM ()
+insertNAt :: String -> Point -> BufferM ()
 insertNAt cs pnt = applyUpdate (Insert pnt Forward $ LazyUTF8.fromString cs)
 
 -- | Insert the list at current point, extending size of buffer
-insertN :: [Char] -> BufferM ()
+insertN :: String -> BufferM ()
 insertN cs = insertNAt cs =<< pointB
 
 -- | Insert the char at current point, extending size of buffer
@@ -836,7 +836,7 @@ lineDown :: BufferM ()
 lineDown = lineMoveRel 1 >> return ()
 
 -- | Return the contents of the buffer as a list
-elemsB :: BufferM [Char]
+elemsB :: BufferM String
 elemsB = nelemsB maxBound 0
 
 -- | Read the character at the current point
