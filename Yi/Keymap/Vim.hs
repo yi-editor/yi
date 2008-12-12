@@ -949,6 +949,7 @@ defKeymap = Proto template
            ex_complete ('b':'d':'e':'l':'e':'t':'e':' ':f)     = b_complete f
            ex_complete ('b':'d':'e':'l':'e':'t':'e':'!':' ':f) = b_complete f
            ex_complete ('c':'a':'b':'a':'l':' ':s)             = cabalComplete s
+           ex_complete ('s':'e':'t':' ':'f':'t':'=':f)         = completeModes f
            ex_complete ('y':'i':' ':s)                         = exSimpleComplete (\_->getAllNamesInScope) s
            ex_complete s                                       = catchAllComplete s
 
@@ -957,6 +958,7 @@ defKeymap = Proto template
            cabalComplete = exSimpleComplete $ const $ return $ cabalCmds
            cabalCmds = words "configure install list update upgrade fetch upload check sdist" ++
                        words "report build copy haddock clean hscolour register test help"
+           completeModes = exSimpleComplete (const $ getAllModeNames)
 
        historyStart
        spawnMinibufferE prompt (const $ ex_process)
@@ -1096,7 +1098,7 @@ defKeymap = Proto template
            fn ('s':'a':'v':'e':'a':'s':'!':' ':f) = let f' = dropSpace f in viWriteTo f' >> fnewE f'
            fn ('r':' ':f)  = withBuffer' . insertN =<< io (readFile $ dropSpace f)
            fn ('r':'e':'a':'d':' ':f) = withBuffer' . insertN =<< io (readFile $ dropSpace f)
-           -- fn ('s':'e':'t':' ':'f':'t':'=':ft)  = withBuffer' $ setSyntaxB $ highlighters M.! ft
+           fn ('s':'e':'t':' ':'f':'t':'=':ft)  = do (AnyMode m) <- anyModeByName (dropSpace ft) ; withBuffer $ setMode m
            fn ('s':'e':'t':' ':'t':'a':'g':'s':'=':fps)  = withEditor $ setTagsFileList fps
            fn ('n':'e':'w':' ':f) = withEditor splitE >> viFnewE f
            fn ('s':'/':cs) = withEditor $ viSub cs Line
