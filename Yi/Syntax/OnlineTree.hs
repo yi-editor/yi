@@ -39,7 +39,6 @@ initialLeftSize = 2
 parse :: P (Tok t) (Tree (Tok t))
 parse = parse' initialLeftSize 0 maxBound
 
--- Invariant: all symbols are after the l
 -- | Parse all the symbols starting in the interval [lb, rb[
 parse' :: Size -> Point -> Point -> P (Tok t) (Tree (Tok t))
 parse' leftSize lB rB
@@ -50,9 +49,18 @@ parse' leftSize lB rB
              <*> parse' (leftSize * fromIntegral factor)  midB rB)
        (pure Leaf) 
   where midB = min rB (lB +~ leftSize)
-    -- NOTE: eof here is important for performance (otherwise the
-    -- parser would have to keep this case until the very end of input
-    -- is reached.
+
+-- | Parse all the symbols starting in the interval [lb, rb[
+parse'' :: Size -> Point -> Point -> P (Tok t) x -> P (Tok t) (Tree x)
+parse'' leftSize lB rB p
+   | rB <= lB = pure Leaf
+   | otherwise = case_ (symbolBefore rB)
+       (Node <$> p
+             <*> parse'' initialLeftSize                   lB   midB  p
+             <*> parse'' (leftSize * fromIntegral factor)  midB rB    p)
+       (pure Leaf) 
+  where midB = min rB (lB +~ leftSize)
+
 
 toEndo :: Tree a -> [a] -> [a]
 toEndo Leaf = id
@@ -69,4 +77,29 @@ dropHelp leftsize (Node x l r) index
     -- add only O(log n) elements this way.
     | otherwise         = (x :) . dropHelp (leftsize * fromIntegral factor) r  (index -~ leftsize)
 
+
+type E a = a -> a
+
+-- As above, but ensure we also put the element "just before" into result as well.
+dropButHelp :: Size -> Tree a -> Point -> E [a] -> E [a]
+dropButHelp _leftsize Leaf _n previous =  -- we may have forgotten to insert the previous element here, so we add it.
+       previous
+dropButHelp leftsize (Node x l r) index _previous
+    -- Note that we do not know if the head is to the left or to the right of the middle.
+    -- So, the head is speculatively put in the result; but it does not matter, since we
+    -- add only O(log n) elements this way.
+
+    -- go to the left
+    -- here the previous element was the head, so we do not need to do add any other previous element.
+    | fromIntegral index <  leftsize = (x :) . dropButHelp initialLeftSize     l index id . toEndo  r
+    -- go to the right.
+    -- we also put the last element of the left branch /if it exists/. If it does not exist,
+    -- we know we have kept the "just previous element": it was the head.
+    | otherwise         = (x :) . dropButHelp (leftsize * fromIntegral factor) r  (index -~ leftsize) (lastElem l)
+  where lastElem t = case toReverseList t of
+             [] -> id
+             (y:_) -> (y :)
+
+        toReverseList :: Tree a -> [a]
+        toReverseList = foldl (flip (:)) []
 
