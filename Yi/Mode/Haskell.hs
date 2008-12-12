@@ -145,7 +145,7 @@ adjustBlock e len = do
 
 -- | Returns true if the token should be indented to look as "inside" the group.
 insideGroup :: Token -> Bool
-insideGroup (Special c) = not $ c `elem` "',;})]" 
+insideGroup (Special c) = c `notElem` "',;})]"
 insideGroup _ = True
 
 cleverAutoIndentHaskellB :: Expr TT -> IndentBehaviour -> BufferM ()
