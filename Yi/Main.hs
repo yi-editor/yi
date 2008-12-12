@@ -103,7 +103,7 @@ data Opts = Help
 -- | List of editors for which we provide an emulation.
 editors :: [(String,Config -> Config)]
 editors = [("emacs", \cfg -> cfg {defaultKm = Emacs.keymap, configKillringAccumulate = True}),
-           ("vim",   \cfg -> cfg {defaultKm = Vim.keymap}),
+           ("vim",   \cfg -> cfg {defaultKm = Vim.keymap, configRegionStyle = Inclusive}),
            ("cua",   \cfg -> cfg {defaultKm = Cua.keymap})]
 
 options :: [OptDescr Opts]
