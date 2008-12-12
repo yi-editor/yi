@@ -370,7 +370,7 @@ defKeymap = Proto template
          case lookupTag tag tagTable of
            Nothing -> fail $ "No tags containing " ++ tag
            Just (filename, line) -> do
-             fnewE $ filename
+             viFnewE filename
              withBuffer' $ gotoLn line
              return ()
 
@@ -1088,15 +1088,15 @@ defKeymap = Proto template
            fn ('s':'p':_)  = withEditor splitE
            fn "e"          = revertE
            fn "edit"       = revertE
-           fn ('e':' ':f)  = fnewE $ dropSpace f
-           fn ('e':'d':'i':'t':' ':f) = fnewE $ dropSpace f
+           fn ('e':' ':f)  = viFnewE f
+           fn ('e':'d':'i':'t':' ':f) = viFnewE f
            fn ('s':'a':'v':'e':'a':'s':' ':f)     = let f' = dropSpace f in viSafeWriteTo f' >> fnewE f'
            fn ('s':'a':'v':'e':'a':'s':'!':' ':f) = let f' = dropSpace f in viWriteTo f' >> fnewE f'
            fn ('r':' ':f)  = withBuffer' . insertN =<< io (readFile $ dropSpace f)
            fn ('r':'e':'a':'d':' ':f) = withBuffer' . insertN =<< io (readFile $ dropSpace f)
            -- fn ('s':'e':'t':' ':'f':'t':'=':ft)  = withBuffer' $ setSyntaxB $ highlighters M.! ft
            fn ('s':'e':'t':' ':'t':'a':'g':'s':'=':fps)  = withEditor $ setTagsFileList fps
-           fn ('n':'e':'w':' ':f) = withEditor splitE >> fnewE (dropSpace f)
+           fn ('n':'e':'w':' ':f) = withEditor splitE >> viFnewE f
            fn ('s':'/':cs) = withEditor $ viSub cs Line
            fn ('%':'s':'/':cs) = withEditor $ viSub cs Document
 
@@ -1146,7 +1146,7 @@ defKeymap = Proto template
            fn "tabm"       = withEditor (moveTab Nothing)
            fn ('t':'a':'b':'m':' ':n) = withEditor (moveTab $ Just (read n))
            fn "tabnew"     = withEditor newTabE
-           fn ('t':'a':'b':'e':' ':f) = withEditor newTabE >> fnewE (dropSpace f)
+           fn ('t':'a':'b':'e':' ':f) = withEditor newTabE >> viFnewE f
            fn "noh"        = withEditor resetRegexE
            fn "nohlsearch" = withEditor resetRegexE
            fn s            = errorEditor $ "The "++show s++ " command is unknown."
@@ -1199,6 +1199,9 @@ defKeymap = Proto template
 viWriteModified :: YiM ()
 viWriteModified = do unchanged <- withBuffer' isUnchangedB
                      unless unchanged viWrite
+
+viFnewE :: String -> YiM ()
+viFnewE = fnewE . dropSpace
 
 -- | viSearch is a doSearch wrapper that print the search outcome.
 viSearch :: String -> [SearchF] -> Direction -> EditorM ()
