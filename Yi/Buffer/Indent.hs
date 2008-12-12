@@ -7,8 +7,6 @@
 
 module Yi.Buffer.Indent where
 
-import Control.Monad
-
 import Yi.Buffer.Basic
 import Yi.Buffer.Misc
 import Yi.Buffer.HighLevel
@@ -177,7 +175,7 @@ fetchPreviousIndentsB =
         ( indent == 0 &&
           (any (not . isSpace) line) )
         then return [ indent ]
-        else liftM (indent :) fetchPreviousIndentsB
+        else (indent :) <$> fetchPreviousIndentsB
 
 
 {-| An application of 'autoIndentHelperB' which adds more
@@ -229,7 +227,7 @@ lastOpenBracketHint :: String -> BufferM [ Int ]
 lastOpenBracketHint input =
   case getOpen 0 $ reverse input of
     Nothing -> return []
-    Just s  -> liftM (: []) $ spacingOfB s
+    Just s  -> (: []) <$> spacingOfB s
   where
   -- We get the last open bracket by counting through
   -- the reversed line, when we see a closed bracket we
@@ -291,7 +289,7 @@ keywordHints keywords =
                                           getHints (i + spaceSize) rest
     -- If there are no white space characters check if we are looking
     -- at a keyword and if so add it as a hint
-    | any (== initNonWhite) keywords = liftM (i :) $ whiteRestHints
+    | any (== initNonWhite) keywords = (i :) <$> whiteRestHints
     -- Finally we just continue with the tail.
     | otherwise                      = whiteRestHints
     where
