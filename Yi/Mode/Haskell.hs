@@ -8,7 +8,7 @@ module Yi.Mode.Haskell
    cleverMode, 
    preciseMode,
    literateMode,
-   testMode,
+   fastMode,
    
    -- * IO-level operations
    ghciGet,
@@ -78,9 +78,10 @@ cleverMode = haskellAbstract
   , modePrettify = cleverPrettify
  }
 
-testMode :: Mode (OnlineTree.Tree TT)
-testMode = haskellAbstract
+fastMode :: Mode (OnlineTree.Tree TT)
+fastMode = haskellAbstract
   {
+    modeName = "fast haskell",
     modeApplies = modeApplies plainMode,
     modeHL = ExtHL $
     mkHighlighter (IncrParser.scanner OnlineTree.parse . haskellLexer)
