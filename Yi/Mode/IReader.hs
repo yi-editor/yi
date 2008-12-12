@@ -5,7 +5,9 @@ module Yi.Mode.IReader where
 
 import Yi.Buffer.Misc
 import Yi.IReader
+import Yi.Keymap
 import Yi.Keymap.Keys
+import Yi.Core (msgEditor)
 import Yi.Modes (anyExtension, fundamentalMode)
 import Yi.Syntax (Stroke)
 import qualified Yi.Syntax.Linear as Linear (Result)
@@ -22,5 +24,7 @@ abstract = fundamentalMode { modeApplies = anyExtension ["irtxt"],
 ireaderMode :: Mode (Linear.Result Stroke)
 ireaderMode = abstract { modeName = "interactive reading of text" }
 
-ireadMode ::  BufferM ()
-ireadMode = setAnyMode (AnyMode ireaderMode)
+ireadMode ::  YiM ()
+ireadMode = do withBuffer $ setAnyMode $ AnyMode ireaderMode
+               nextArticle 
+               msgEditor "M-1: next; M-2: save; M-3: delete"
