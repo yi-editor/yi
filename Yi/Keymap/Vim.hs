@@ -625,6 +625,7 @@ defKeymap = Proto template
 
      regionOfSelection :: BufferM (RegionStyle, Region)
      regionOfSelection = do
+       setMarkHere '>'
        regionStyle <- getDynamicB
        region <- join $ mkRegionOfStyleB <$> getSelectionMarkPointB
                                          <*> pointB
@@ -765,6 +766,7 @@ defKeymap = Proto template
                  char 'R'     ?>> rep_mode,
                  char 'i'     ?>> ins_mode self,
                  char 'I'     ?>> beginIns self firstNonSpaceB,
+                 pString "gi"  >> beginIns self (jumpToMark '^'),
                  pString "gI"  >> beginIns self moveToSol,
                  char 'a'     ?>> beginIns self $ moveXorEol 1,
                  char 'A'     ?>> beginIns self moveToEol,
@@ -1236,7 +1238,10 @@ leave :: VimMode
 leave = oneOf [spec KEsc, ctrlCh 'c'] >> adjustPriority (-1) >> write clrStatus
 
 leaveInsRep :: VimMode
-leaveInsRep = oneOf [spec KEsc, ctrlCh '[', ctrlCh 'c'] >> adjustPriority (-1) >> write clrStatus
+leaveInsRep = do oneOf [spec KEsc, ctrlCh '[', ctrlCh 'c']
+                 adjustPriority (-1)
+                 write $ withBuffer0' (setMarkHere '^') >> clrStatus
+
 
 -- | Insert mode is either insertion actions, or the meta (\ESC) action
 ins_mode :: ModeMap -> VimMode
@@ -1284,14 +1289,14 @@ percentMove = (Inclusive, ArbMove tryGoingToMatch)
 
 jumpToMark :: Char -> BufferM ()
 jumpToMark c = do
-  mm <- mayGetMarkB [c]
+  mm <- mayGetViMarkB c
   case mm of
     Nothing -> fail "Mark not set"
     Just m -> do
        p_next <- getMarkPointB m
        -- Retain the current point in the mark "'" automatically.
        p <- pointB
-       getMarkB (Just "'") >>= flip setMarkPointB p
+       getViMarkB '\'' >>= flip setMarkPointB p
        -- now jump to p_next.
        moveTo p_next
 
@@ -1301,11 +1306,24 @@ setMark = do
     write $ do
         p <- pointB
         -- Retain the current point in the mark "'" automatically.
-        getMarkB (Just "'") >>= flip setMarkPointB p
-        getMarkB (Just [c]) >>= flip setMarkPointB p
+        getViMarkB '\'' >>= flip setMarkPointB p
+        getViMarkB c >>= flip setMarkPointB p
+
+setMarkHere :: Char -> BufferM ()
+setMarkHere c = do
+    p <- pointB
+    getViMarkB c >>= flip setMarkPointB p
+
+getViMarkB :: Char -> BufferM Mark
+getViMarkB '<' = selMark <$> askMarks
+getViMarkB  c  = getMarkB $ Just [c]
+
+mayGetViMarkB :: Char -> BufferM (Maybe Mark)
+mayGetViMarkB '<' = Just . selMark <$> askMarks
+mayGetViMarkB  c  = mayGetMarkB [c]
 
 validMarkIdentifier :: (MonadInteract m w Event) => m Char 
-validMarkIdentifier = fmap f $ oneOfchar "'`" <|> charOf id 'a' 'z' <|> fail "Not a valid mark identifier."
+validMarkIdentifier = fmap f $ oneOfchar "<>^'`" <|> charOf id 'a' 'z' <|> fail "Not a valid mark identifier."
   where oneOfchar = choice . map (\c -> event (char c) >> return c)
         f '`' = '\''
         f  c  =  c
