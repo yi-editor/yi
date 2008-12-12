@@ -4,7 +4,7 @@ import Yi.Keymap.Emacs (keymap)
 -- import  Yi.Keymap.Cua (keymap)
 
 -- If configured with ghcAPI, Shim Mode can be enabled:
-import qualified Yi.Mode.Shim as Shim
+-- import qualified Yi.Mode.Shim as Shim
 import Yi.Mode.Haskell as Haskell
 import Data.List (drop, length)
 import Yi.Char.Unicode (greek, symbols)
@@ -21,18 +21,19 @@ increaseIndent = modifyExtendedSelectionB Line $ mapLines (' ':)
 decreaseIndent :: BufferM ()
 decreaseIndent = modifyExtendedSelectionB Line $ mapLines (drop 1)
 
-bestHaskellMode = 
+
+haskellModeHooks mode = 
                   -- uncomment for shim:
                   -- Shim.minorMode $ 
-                  Haskell.cleverMode 
-                       -- Haskell.preciseMode
-                       {
+                     mode {
+                        modeName = "my " ++ modeName mode,
                         -- example of Mode-local rebinding
                         modeKeymap = (choice [ctrlCh 'c' ?>> ctrlCh 'l' ?>>! ghciLoadBuffer,
                                               ctrlCh 'c' ?>> ctrl (char 'z') ?>>! ghciGet
                                              ]
                                       <||)  
                        }
+              
 mkInputMethod :: [(String,String)] -> Keymap
 mkInputMethod list = choice [pString i >> adjustPriority (negate (length i)) >>! insertN o | (i,o) <- list] 
 
@@ -60,7 +61,9 @@ main :: IO ()
 main = yi $ defaultConfig {
                            startFrontEnd = frontend,
                            configKillringAccumulate = True,
-                           modeTable = AnyMode bestHaskellMode : modeTable defaultConfig,
+                           modeTable = AnyMode (haskellModeHooks Haskell.cleverMode)
+                                     : AnyMode (haskellModeHooks Haskell.fastMode)
+                                     : modeTable defaultConfig,
                            configUI = (configUI defaultConfig) 
                              { configFontSize = Just 12 
                                -- , configTheme = darkBlueTheme
