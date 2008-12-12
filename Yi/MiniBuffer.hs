@@ -4,7 +4,7 @@ module Yi.MiniBuffer
  (
   spawnMinibufferE,
   withMinibufferFree, withMinibuffer, withMinibufferGen, withMinibufferFin, 
-  noHint, noPossibilities, simpleComplete,
+  noHint, noPossibilities, simpleComplete, anyModeByName, getAllModeNames,
   matchingBufferNames
  ) where
 
@@ -156,12 +156,16 @@ instance Promptable Int where
 anyModeName :: AnyMode -> String
 anyModeName (AnyMode m) = modeName m
 
+anyModeByName :: String -> YiM AnyMode
+anyModeByName n = maybe (fail "no such mode") return =<< find ((n == ). anyModeName) . modeTable <$> askCfg
+
+getAllModeNames :: YiM [String]
+getAllModeNames = fmap anyModeName . modeTable <$> askCfg
+
 instance Promptable AnyMode where
     doPrompt act = do
-      names <- fmap (anyModeName) . modeTable <$> askCfg
-      withMinibufferFin "Mode" names $ \n -> 
-          do Just m <- find ((n == ). anyModeName) . modeTable <$> askCfg
-             act m
+      names <- getAllModeNames
+      withMinibufferFin "Mode" names $ anyModeByName >=> act
 
 instance Promptable BufferRef where
     doPrompt act = do 
