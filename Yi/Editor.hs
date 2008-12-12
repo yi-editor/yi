@@ -151,10 +151,16 @@ stringToNewBuffer :: String -- ^ The buffer name (*not* the associated file)
                   -> EditorM BufferRef
 stringToNewBuffer nm cs = do
     u <- newBufRef
-    b <- insertBuffer (newB u nm cs)
+    defRegStyle <- configRegionStyle <$> askCfg
+    insertBuffer $ setVal regionStyleA defRegStyle $ newB u nm cs
     m <- asks configFundamentalMode
-    withGivenBuffer0 b $ setAnyMode m
-    return b
+    withGivenBuffer0 u $ setAnyMode m
+    return u
+
+regionStyleA :: Accessor FBuffer RegionStyle
+regionStyleA = bufferDynamicValueA
+
+
 
 insertBuffer :: FBuffer -> EditorM BufferRef
 insertBuffer b = getsAndModify $

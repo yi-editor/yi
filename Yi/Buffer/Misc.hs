@@ -117,6 +117,7 @@ module Yi.Buffer.Misc
   , byteRegionB
   , indexStreamRegionB
   , lastActiveWindowA
+  , bufferDynamicValueA
   )
 where
 

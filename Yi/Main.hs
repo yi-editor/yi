@@ -197,6 +197,7 @@ defaultConfig =
                         AnyMode fundamentalMode]
          , debugMode = False
          , configKillringAccumulate = False
+         , configRegionStyle = Exclusive
          }
 
 -- | List of published Actions

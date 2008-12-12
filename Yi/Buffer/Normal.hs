@@ -318,6 +318,7 @@ data RegionStyle = LineWise
                  | Block
   deriving (Eq, Typeable, Show)
 
+-- TODO: put in the buffer state proper.
 instance Initializable RegionStyle where
   initial = Inclusive
 
