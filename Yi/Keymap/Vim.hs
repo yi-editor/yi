@@ -953,7 +953,8 @@ defKeymap = Proto template
            ex_complete ('y':'i':' ':s)                         = exSimpleComplete (\_->getAllNamesInScope) s
            ex_complete s                                       = catchAllComplete s
 
-           catchAllComplete = exSimpleComplete $ const $ return $ map (++ " ") $ words
+           catchAllComplete = exSimpleComplete $ const $ return $
+                                ("set ft=" :) $ map (++ " ") $ words
                                 "e edit r read saveas saveas! tabe b buffer bd bd! bdelete bdelete! yi cabal nohlsearch"
            cabalComplete = exSimpleComplete $ const $ return $ cabalCmds
            cabalCmds = words "configure install list update upgrade fetch upload check sdist" ++
