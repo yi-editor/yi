@@ -14,6 +14,7 @@ import Yi.Keymap.Keys
 import Yi.String
 import Data.Char
 import Data.Monoid
+import Yi.Hoogle
 
 increaseIndent :: BufferM ()
 increaseIndent = modifyExtendedSelectionB Line $ mapLines (' ':)
@@ -29,7 +30,8 @@ haskellModeHooks mode =
                         modeName = "my " ++ modeName mode,
                         -- example of Mode-local rebinding
                         modeKeymap = (choice [ctrlCh 'c' ?>> ctrlCh 'l' ?>>! ghciLoadBuffer,
-                                              ctrlCh 'c' ?>> ctrl (char 'z') ?>>! ghciGet
+                                              ctrlCh 'c' ?>> ctrl (char 'z') ?>>! ghciGet,
+                                              ctrlCh 'c' ?>> ctrl (char 'h') ?>>! hoogle
                                              ]
                                       <||)  
                        }
