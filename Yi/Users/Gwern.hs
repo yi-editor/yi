@@ -1,6 +1,7 @@
 import Yi  hiding ((.))
 import Yi.Buffer.HighLevel
 import Yi.Buffer.Misc
+import Yi.Hoogle (hoogle)
 import Yi.Keymap.Emacs (keymap)
 import Yi.Misc
 import Yi.Mode.Haskell as Haskell
@@ -28,5 +29,7 @@ main = yi $ defaultConfig
                                          ctrlCh 'c' ?>> ctrl (char 't') ?>>! (annotType 
                                                                               >> (withBuffer $ moveB VLine Backward 
                                                                                   >> adjIndent IncreaseCycle)),
+                                         -- Complete the word at point with Hoogle
+                                         ctrlCh 'c' ?>> ctrl (char 'h') ?>>! hoogle,
                                          -- Use a more clever binding for Home
                                          spec KHome ?>>! moveNonspaceOrSol] <||) }
