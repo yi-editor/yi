@@ -16,6 +16,7 @@ import Yi.Config
 import Yi.Editor (EditorM, Editor, runEditor, MonadEditor(..))
 import Yi.Event
 import Yi.Monad
+import Yi.Prelude (io)
 import Yi.Process (SubprocessInfo, SubprocessId)
 import Yi.UI.Common
 import qualified Data.Map as M
@@ -137,9 +138,11 @@ shutdown = do ts <- threads <$> readsRef yiVar
 class YiAction a x | a -> x where
     makeAction :: Show x => a -> Action
 
+instance YiAction (IO x) x where
+    makeAction = YiA . io
+
 instance YiAction (YiM x) x where
     makeAction = YiA
-
 
 instance YiAction (EditorM x) x where
     makeAction = EditorA
