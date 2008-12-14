@@ -67,8 +67,3 @@ hooglePaste = do word <- getWord
                  killWordB
                  insertN fun
                  return modl
-
--- | Read the current word being typed.
--- TODO: move to Yi.Buffer.HighLevel
-getWord :: BufferM String
-getWord = readRegionB =<< regionOfPartNonEmptyB unitWord Backward
