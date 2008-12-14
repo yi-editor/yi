@@ -398,12 +398,6 @@ switchToBufferWithNameE :: String -> EditorM ()
 switchToBufferWithNameE "" = nextBufW
 switchToBufferWithNameE bufName = switchToBufferE =<< getBufferWithName bufName
 
--- | Return a list of all buffers, and their indicies
-listBuffersE :: EditorM [(String,Int)]
-listBuffersE = do
-        bs  <- getBuffers
-        return $ zip (map (^. nameA) bs) [0..]
-
 -- | Close a buffer.
 -- Note: close the current buffer if the empty string is given
 closeBufferE :: String -> EditorM ()
