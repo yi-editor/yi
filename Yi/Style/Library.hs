@@ -18,10 +18,10 @@ defaultTheme = Proto $ const $ UIStyle
 
   , baseAttributes     = error "base attributes must be redefined!"
 
-  , selectedStyle      = Endo $ \a -> a {reverseAttr = True}
+  , selectedStyle      = withFg black `mappend` withBg cyan
   , eofStyle           = withFg blue
   , errorStyle         = withBg red
-  , hintStyle          = withBg cyan
+  , hintStyle          = withFg black `mappend` withBg cyan
   , strongHintStyle    = withBg magenta
 
   , commentStyle       = withFg purple
