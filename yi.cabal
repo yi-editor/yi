@@ -96,6 +96,7 @@ library
         Yi.Event
         Yi.File
         Yi.History
+        Yi.Hoogle
         Yi.IReader
         Yi.IncrementalParse
         Yi.Interact
