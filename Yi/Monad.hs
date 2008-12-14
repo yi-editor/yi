@@ -1,4 +1,17 @@
-module Yi.Monad where
+module Yi.Monad (
+                 Ref(..), 
+                 gets, 
+                 getsA, 
+                 getsAndModify, 
+                 maybeM,
+                 modifiesRef,
+                 modifiesThenReadsRef,
+                 readsRef,
+                 repeatUntilM,
+                 whenM,
+                 with,
+                 writesRef
+                ) where
 
 import Data.Accessor
 import Data.IORef
