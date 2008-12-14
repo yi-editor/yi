@@ -4,25 +4,24 @@
 
 module Yi.Keymap where
 
-import Prelude hiding (error)
-import Yi.UI.Common
-import qualified Yi.Editor as Editor
-import Yi.Editor (EditorM, Editor, runEditor, MonadEditor(..))
-import qualified Data.Map as M
-import Control.Monad.Reader
-import Data.Typeable
-import Control.OldException
+import Control.Applicative 
 import Control.Concurrent
+import Control.Monad.Reader
+import Control.Monad.State
+import Control.OldException
+import Data.Typeable
+import Prelude hiding (error)
 import Yi.Buffer
 import Yi.Config
-import qualified Yi.Interact as I
-import Yi.Monad
-import Control.Monad.State
+import Yi.Editor (EditorM, Editor, runEditor, MonadEditor(..))
 import Yi.Event
-import Yi.Process ( SubprocessInfo, SubprocessId )
+import Yi.Monad
+import Yi.Process (SubprocessInfo, SubprocessId)
+import Yi.UI.Common
+import qualified Data.Map as M
+import qualified Yi.Editor as Editor
+import qualified Yi.Interact as I
 import qualified Yi.UI.Common as UI
-import Data.Typeable
-import Control.Applicative 
 
 data Action = forall a. Show a => YiA (YiM a)
             | forall a. Show a => EditorA (EditorM a)
