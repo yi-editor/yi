@@ -1,10 +1,12 @@
 {-# LANGUAGE CPP #-}
 -- Copyright (c) 2005 Don Stewart - http://www.cse.unsw.edu.au/~dons
-module Yi.Process (popen, runShellCommand, shellFileName,
+module Yi.Process (popen, runProgCommand, runShellCommand, shellFileName,
                    createSubprocess, readAvailable, SubprocessInfo(..), SubprocessId) where
+
+import System.Exit (ExitCode(ExitFailure))
+import System.Directory (findExecutable)
 import System.IO
 import System.Process
-import System.Exit ( ExitCode )
 import System.Environment ( getEnv )
 
 import Control.Concurrent       (forkIO)
@@ -52,6 +54,14 @@ popen file args minput =
     exitCode <- waitForProcess pid -- blocks without -threaded, you're warned.
 
     return (output,errput,exitCode)
+
+-- | Run a command. This looks up a program name in \$PATH, but then calls it
+-- directly with the argument.
+runProgCommand :: String -> [String] -> IO (String,String,ExitCode)
+runProgCommand prog args = do loc <- findExecutable prog
+                              case loc of 
+                                  Nothing -> return ("","",ExitFailure 1)
+                                  Just fp -> popen fp args Nothing
 
 ------------------------------------------------------------------------
 -- | Run a command using the system shell, returning stdout, stderr and exit code
