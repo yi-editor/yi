@@ -9,7 +9,6 @@ module Yi.Editor where
 
 import Yi.Buffer
 import Yi.Config
-import Yi.Monad
 import Yi.Dynamic
 import Yi.KillRing
 import Yi.Tag
