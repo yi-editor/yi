@@ -80,8 +80,10 @@ hconfOptions projectName =
         ("recompile",
          "Recompile custom " ++ projectName ++ " if required then exit.",
          const $ do
-            recompile projectName False
-            exitWith ExitSuccess
+            maybeError <- recompile projectName False
+            maybe exitSuccess
+                  (\err -> hPutStrLn stderr err >> exitFailure)
+                  maybeError
         )
     ]
 
