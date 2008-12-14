@@ -158,10 +158,6 @@ readRestOfLnB = readRegionB =<< regionOfPartB Line Forward
 readPreviousOfLnB :: BufferM String
 readPreviousOfLnB = readRegionB =<< regionOfPartB Line Backward
 
--- | Read the word prior to point.
-getWord :: BufferM String
-getWord = readRegionB =<< regionOfPartNonEmptyB unitWord Backward
-
 --------------------------
 -- Deletes
 

@@ -10,7 +10,7 @@ import System.IO.Unsafe (unsafePerformIO)
 import Yi hiding ((.), error)
 import Yi.Process (runShellCommand)
 import Yi.Core (msgEditor)
-
+import Yi.Buffer (replaceRegionB, unitWord)
 
 -- | Remove anything starting with uppercase letter. These denote either module names or types.
 caseSensitize :: [String] -> [String]
@@ -47,23 +47,13 @@ hoogleFunModule a = do let results = hoogleRaw a ""
                        let functions = (map $ \x -> x !! 1) ws
                        return $ Prelude.zip modules functions
 
--- | Bring 'hooglePaste' up to YiM type level, and also flash the user a message
--- about what module the completion came from.
-hoogle :: YiM ()
-hoogle = do mdl <- withBuffer hooglePaste
-            msgEditor mdl
-            return ()
-
 -- | Call out to 'hoogleFunModule', and overwrite the word at point with
 -- the first returned function.
--- TODO: get rid of the unsafePerformIO.
-hooglePaste :: BufferM String
-hooglePaste = do word <- getWord
-                 let results = unsafePerformIO $ hoogleFunModule word
-                 let foo = head results
-                 let modl =  fst foo
-                 let fun = snd foo
-                 prevWordB
-                 killWordB
-                 insertN fun
-                 return modl
+hoogle :: YiM String
+hoogle = do 
+    (wordRegion,word) <- withBuffer $ do wordRegion <- regionOfB unitWord
+                                         word <- readRegionB wordRegion
+                                         return (wordRegion, word)
+    ((modl,fun):_) <- io $ hoogleFunModule word
+    withBuffer $ replaceRegionB wordRegion fun
+    return modl
