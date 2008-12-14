@@ -8,7 +8,7 @@ import Data.List (isInfixOf, nub)
 import System.IO.Unsafe (unsafePerformIO)
 
 import Yi hiding ((.), error)
-import Yi.Process (runShellCommand)
+import Yi.Process (runProgCommand)
 import Yi.Core (msgEditor)
 import Yi.Buffer (replaceRegionB, unitWord)
 
@@ -25,11 +25,10 @@ gv = filter (\x -> not $ "module " `isInfixOf` x || " type " `isInfixOf` x || "p
 
 -- | Query Hoogle, with given search and options. This errors out on no results.
 hoogleRaw :: String -> String -> IO [String]
-hoogleRaw srch opts = do (out,_err,_status) <- runShellCommand cmd
+hoogleRaw srch opts = do (out,_err,_status) <- runProgCommand "hoogle" [opts, srch]
                          let results = lines out
                          if results == ["No results found"] then error "No Hoogle results" else
                           return $ results
-                         where cmd = "hoogle " ++ opts ++ " " ++ srch
 
 -- | Filter the output of 'hoogleRaw' to leave just functions.
 hoogleFunctions :: String -> IO [String]
