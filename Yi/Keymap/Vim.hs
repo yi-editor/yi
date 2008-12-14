@@ -16,6 +16,7 @@ import Prelude (maybe, length, filter, map, drop, break, uncurry, reads)
 import Data.Char
 import Data.List (nub, take, words, dropWhile, intersperse, reverse)
 import Data.Maybe (fromMaybe)
+import Data.Either (either)
 import Data.Prototype
 import Numeric (showHex, showOct)
 import System.IO (readFile)
@@ -1008,7 +1009,7 @@ defKeymap = Proto template
                  else closeWindow
            
            needsAWindowB = do
-             isWorthless <- gets ((==Nothing) . (^. fileA))
+             isWorthless <- gets (either (const True) (const False) . (^. identA))
              canClose <- isUnchangedB
              if isWorthless || canClose then return False else return True
            
@@ -1033,7 +1034,7 @@ defKeymap = Proto template
              case find snd bs of
                Nothing -> quitEditor
                Just (b, _) -> do
-                 bufferName <- withEditor $ withGivenBuffer0 b $ getA nameA
+                 bufferName <- withEditor $ withGivenBuffer0 b $ gets file
                  errorEditor $ "No write since last change for buffer " 
                                ++ show bufferName
                                ++ " (add ! to override)"

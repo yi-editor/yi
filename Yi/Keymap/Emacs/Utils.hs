@@ -49,7 +49,6 @@ import Control.Monad.Trans (MonadIO (..))
 {- Local (yi) module imports -}
 
 import Control.Monad (filterM, replicateM_)
-import Control.Monad.State (gets)
 import Yi.Core
 import Yi.Dired
 import Yi.Eval
@@ -87,9 +86,9 @@ deservesSave b
 -- | Is there a proper file associated with the buffer?
 -- In other words, does it make sense to offer to save it?
 isFileBuffer :: (Functor m, MonadIO m) => FBuffer -> m Bool
-isFileBuffer b = case b ^. fileA of
-                   Nothing -> return False
-                   Just fn -> not <$> liftIO (doesDirectoryExist fn)
+isFileBuffer b = case b ^. identA of
+                   Left _ -> return False
+                   Right fn -> not <$> liftIO (doesDirectoryExist fn)
                      
 --------------------------------------------------
 -- Takes in a list of buffers which have been identified
@@ -105,7 +104,7 @@ askIndividualSave hasQuit allBuffers@(firstBuffer : others) =
                        , bufferName
                        , "? (y/n/"++ (if hasQuit then "q/" else "") ++"c/!)"
                        ]
-  bufferName  = firstBuffer ^. nameA
+  bufferName  = identString firstBuffer
 
   askKeymap = choice ([ char 'n' ?>>! noAction
                       , char 'y' ?>>! yesAction 
@@ -242,7 +241,7 @@ readUniversalArg =
 -- | Generic emacs prompt file action. Takes a @prompt and a continuation @act
 --   and prompts the user with file hints
 promptFile :: String -> (String -> YiM ()) -> YiM ()
-promptFile prompt act = do maybePath <- withBuffer $ getA fileA
+promptFile prompt act = do maybePath <- withBuffer $ gets file
                            startPath <- addTrailingPathSeparator <$> (liftIO $ canonicalizePath' =<< getFolder maybePath)
                            -- TODO: Just call withMinibuffer
                            withMinibufferGen startPath (findFileHint startPath) prompt (simpleComplete $ matchingFileNames (Just startPath)) act
@@ -276,7 +275,7 @@ switchBufferE = do
     openBufs <- fmap bufkey . toList <$> getA windowsA
     bs <- withEditor (fmap bkey <$> getBufferStack)
     let choices = (bs \\ openBufs) ++ openBufs -- put the open buffers at the end.
-    names <- forM choices $ \k -> gets $ ((^. nameA) . findBufferWith k)
+    names <- forM choices $ \k -> gets $ (identString . findBufferWith k)
     withMinibufferFin "switch to buffer:" names (withEditor . switchToBufferWithNameE)
 
 askCloseBuffer :: String -> YiM ()
@@ -289,7 +288,7 @@ askCloseBuffer nm = do
                            ]
         delBuf = deleteBuffer $ bkey b
     withEditor $ 
-       if ch then (spawnMinibufferE ("Buffer " ++ b ^. nameA ++ " changed, close anyway? (y/n)") (const askKeymap)) >> return () 
+       if ch then (spawnMinibufferE (identString b ++ " changed, close anyway? (y/n)") (const askKeymap)) >> return () 
              else delBuf
 
 killBufferE :: YiM ()

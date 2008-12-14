@@ -47,14 +47,14 @@ import qualified Yi.Mode.Interactive as Interactive
 
 ---------------------------
 -- | Changing the buffer name quite useful if you have
--- several the same.
+-- several the same. This also breaks the relation with the file.
 
 changeBufferNameE :: YiM ()
 changeBufferNameE =
   withMinibufferFree "New buffer name:" strFun
   where
   strFun :: String -> YiM ()
-  strFun = withBuffer . putA nameA
+  strFun = withBuffer . putA identA . Left
 
 ----------------------------
 -- | shell-command
@@ -63,7 +63,7 @@ shellCommandE = do
     withMinibufferFree "Shell command:" $ \cmd -> do
       (cmdOut,cmdErr,exitCode) <- liftIO $ runShellCommand cmd
       case exitCode of
-        ExitSuccess -> withEditor $ newBufferE "*Shell Command Output*" (LazyUTF8.fromString cmdOut) >> return ()
+        ExitSuccess -> withEditor $ newBufferE (Left "Shell Command Output") (LazyUTF8.fromString cmdOut) >> return ()
         -- FIXME: here we get a string and convert it back to utf8; this indicates a possible bug.
         ExitFailure _ -> msgEditor cmdErr
 
@@ -131,7 +131,7 @@ insertTemplate = withMinibuffer "template-name:" (const $ return templateNames) 
 getAppropriateFiles :: Maybe String -> String -> YiM (String, [ String ])
 getAppropriateFiles start s = do
   curDir <- case start of
-            Nothing -> do bufferPath <- withBuffer $ getA fileA
+            Nothing -> do bufferPath <- withBuffer $ gets file
                           liftIO $ getFolder bufferPath
             (Just path) -> return path
   let sDir = if hasTrailingPathSeparator s then s else takeDirectory s

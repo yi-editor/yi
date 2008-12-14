@@ -110,7 +110,7 @@ emptyEditor = Editor {
        ,killring     = krEmpty
        ,pendingEvents = []
        }
-        where buf = newB 0 "*console*" (LazyUTF8.fromString "")
+        where buf = newB 0 (Left "console") (LazyUTF8.fromString "")
               win = (dummyWindow (bkey buf)) {wkey = 1, isMini = False}
 
 -- ---------------------------------------------------------------------
@@ -145,7 +145,7 @@ newBufRef :: EditorM BufferRef
 newBufRef = BufferRef <$> newRef
 
 -- | Create and fill a new buffer, using contents of string.
-stringToNewBuffer :: String -- ^ The buffer name (*not* the associated file)
+stringToNewBuffer :: BufferId -- ^ The buffer indentifier
                   -> LazyUTF8.ByteString -- ^ The contents with which to populate the buffer
                   -> EditorM BufferRef
 stringToNewBuffer nm cs = do
@@ -201,7 +201,7 @@ findBuffer k = gets (M.lookup k . buffers)
 
 -- | Find buffer with this key
 findBufferWith :: BufferRef -> Editor -> FBuffer
-findBufferWith k e =
+findBufferWith k e = 
     case M.lookup k (buffers e) of
         Just b  -> b
         Nothing -> error "Editor.findBufferWith: no buffer has this key"
@@ -209,7 +209,7 @@ findBufferWith k e =
 
 -- | Find buffer with this name
 findBufferWithName :: String -> Editor -> [BufferRef]
-findBufferWithName n e = map bkey $ filter (\b -> b ^. nameA == n) (M.elems $ buffers e)
+findBufferWithName n e = map bkey $ filter (\b -> identString b == n) (M.elems $ buffers e)
 
 -- | Find buffer with given name. Fail if not found.
 getBufferWithName :: String -> EditorM BufferRef
@@ -243,6 +243,7 @@ shiftBuffer shift = gets $ \e ->
 withGivenBuffer0 :: BufferRef -> BufferM a -> EditorM a
 withGivenBuffer0 k f = do
     b <- gets (findBufferWith k)
+
     withGivenBufferAndWindow0 (b ^. lastActiveWindowA) k f
 
 -- | Perform action with any given buffer
@@ -305,10 +306,11 @@ setTmpStatus delay (s,sty) = do
   modA statusLinesA $ DelayList.insert (delay, 
                                            (takeWhile (/= '\n') s,sty))
   -- also show in the messages buffer, so we don't loose any message
-  bs <- gets $ findBufferWithName "*messages*"
+  bs <- gets (filter (\b -> b ^. identA == Left "messages") . M.elems . buffers)
+
   b <- case bs of
-         (b':_) -> return b'
-         [] -> stringToNewBuffer "*messages*" (fromString "")
+         (b':_) -> return $ bkey b'
+         [] -> stringToNewBuffer (Left "messages") (fromString "")
   withGivenBuffer0 b $ do botB; insertN (s ++ "\n")
 
 
@@ -371,7 +373,7 @@ prevBufW = prevBuffer >>= switchToBufferE
 -- Switch the current window to this buffer. Doesn't associate any file
 -- with the buffer (unlike fnewE) and so is good for popup internal
 -- buffers (like scratch)
-newBufferE :: String   -- ^ buffer name
+newBufferE :: BufferId   -- ^ buffer name
               -> LazyUTF8.ByteString -- ^ buffer contents
               -> EditorM BufferRef
 newBufferE f s = do

@@ -12,7 +12,6 @@ where
 import Text.Regex.TDFA
 import Text.Regex.TDFA.Pattern
 import Text.Regex.TDFA.Common
-import Control.Monad
 import Control.Applicative
 import Text.Regex.TDFA.ReadRegex(parseRegex)
 import Text.Regex.TDFA.TDFA(patternToDFA)

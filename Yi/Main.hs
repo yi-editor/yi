@@ -143,7 +143,7 @@ nilKeymap = choice [
              char 'h' ?>>! configHelp
             ] 
             <|| (anyEvent >>! errorEditor "Keymap not defined, 'q' to quit, 'h' for help.")
-    where configHelp = newBufferE "*configuration help*" $ fromString $ unlines $
+    where configHelp = newBufferE (Left "configuration help") $ fromString $ unlines $
                          ["This instance of Yi is not configured.",
                           "To get a standard reasonable keymap, you can run yi with either --as=cua, --as=vim or --as=emacs.",
                           "You should however create your own ~/.yi/yi.hs file: ",
@@ -255,7 +255,7 @@ defaultPublishedActions = M.fromList $
 
 openScratchBuffer :: YiM ()
 openScratchBuffer = withEditor $ do     -- emacs-like behaviour
-      newBufferE "*scratch*" $ fromString $ unlines
+      newBufferE (Left "scratch") $ fromString $ unlines
                    ["This buffer is for notes you don't want to save.", --, and for haskell evaluation" -- maybe someday?
                     "If you want to create a file, open that file,",
                     "then enter the text in that file's own buffer."]

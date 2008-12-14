@@ -42,5 +42,5 @@ HConf driver yi restart = getHConf Yi.Main.projectName initState recoverState sa
 
 showErrorsInConf :: String -> Config -> Config
 showErrorsInConf errs conf 
-    = conf {startActions = [makeAction $ newBufferE "*errors*" (fromString errs)]}
+    = conf {startActions = [makeAction $ newBufferE (Left "errors") (fromString errs)]}
 

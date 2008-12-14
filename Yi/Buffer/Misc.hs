@@ -107,8 +107,6 @@ module Yi.Buffer.Misc
   , getMarkPointB
   , askMarks
   , pointAt
-  , fileA
-  , nameA
   , pointDriveA
   , SearchExp
   , charIndexB
@@ -118,6 +116,10 @@ module Yi.Buffer.Misc
   , indexStreamRegionB
   , lastActiveWindowA
   , bufferDynamicValueA
+  , identString
+  , identA
+  , BufferId
+  , file
   )
 where
 
@@ -145,6 +147,7 @@ import Yi.Interact as I
 import qualified Data.ByteString.Lazy.UTF8 as LazyUTF8
 import qualified Data.ByteString.Lazy as LB
 import Yi.Buffer.Basic
+
 
 #ifdef TESTING
 import Test.QuickCheck hiding (Config)
@@ -190,11 +193,17 @@ data SelectionStyle = SelectionStyle
   }
   deriving Typeable
 
+type BufferId = Either String FilePath
+-- ^ maybe a filename associated with this buffer. Filename is canonicalized.
+
+-- TODO:
+-- data BufferIdent
+--     = MemBuffer String -- ^ Buffer ident
+--     | FileBuffer FilePath 
 
 data Attributes = Attributes 
-                { name   :: !String               -- ^ immutable buffer name
+                { ident :: !BufferId
                 , bkey__   :: !BufferRef            -- ^ immutable unique key
-                , file   :: !(Maybe FilePath)     -- ^ maybe a filename associated with this buffer. Filename is canonicalized.
                 , undos  :: !URList               -- ^ undo/redo list
                 -- , readOnly :: !Bool                -- ^ a read-only bit (TODO)
                 , pointDrive :: !Bool
@@ -209,14 +218,13 @@ data Attributes = Attributes
 
 $(nameDeriveAccessors ''Attributes (\n -> Just (n ++ "AA")))
 
-
 -- unfortunately the dynamic stuff can't be read.
 instance Binary Attributes where
-    put (Attributes n b f u pd _bd pc pu selectionStyle_ _proc wm law) = do
-          put n >> put b >> put f >> put u
+    put (Attributes n b u pd _bd pc pu selectionStyle_ _proc wm law) = do
+          put n >> put b >> put u
           put pd >> put pc >> put pu >> put selectionStyle_ >> put wm
           put law
-    get = Attributes <$> get <*> get <*> get <*> get <*> 
+    get = Attributes <$> get <*> get <*> get <*> 
           get <*> pure emptyDV <*> get <*> get <*> get <*> pure I.End <*> get <*> get
 
 data FBuffer = forall syntax.
@@ -225,6 +233,16 @@ data FBuffer = forall syntax.
                 , attributes :: !Attributes
                } 
         deriving Typeable
+
+identString = joinPath . identPath
+
+identA = identAA . attrsA
+
+identPath b = case b ^. identA of
+    Left bName -> ["*" ++ bName ++ "*"]
+    Right fName -> splitDirectories fName
+
+
 
 -- unfortunately the dynamic stuff can't be read.
 instance Binary FBuffer where
@@ -271,8 +289,10 @@ pointDriveA = pointDriveAA . attrsA
 undosA :: Accessor FBuffer URList
 undosA = undosAA . attrsA
 
-fileA :: Accessor FBuffer (Maybe FilePath)
-fileA = fileAA . attrsA
+file :: FBuffer -> (Maybe FilePath)
+file b = case b ^. identA of
+    Right f -> Just f
+    _ -> Nothing
 
 preferColA :: Accessor FBuffer (Maybe Int)
 preferColA = preferColAA . attrsA
@@ -295,9 +315,6 @@ rectangleSelectionA :: Accessor FBuffer Bool
 rectangleSelectionA = 
   accessor rectangleSelection (\x e -> e { rectangleSelection = x })
   . selectionStyleAA . attrsA
-
-nameA :: Accessor FBuffer String
-nameA = nameAA . attrsA
 
 keymapProcessA :: Accessor FBuffer KeymapProcess
 keymapProcessA = processAA . attrsA
@@ -373,7 +390,7 @@ instance Eq FBuffer where
    b1 == b2 = bkey b1 == bkey b2
 
 instance Show FBuffer where
-    showsPrec _ (FBuffer { attributes = Attributes {bkey__ = u, name = f, undos = us }}) = showString $ "Buffer #" ++ show u ++ " (" ++ show f ++ "..." ++ show us ++ ")"
+    show b = "Buffer #" ++ show (bkey b) ++ " (" ++ identString b ++ ")"
 
 -- | Given a buffer, and some information update the modeline
 --
@@ -391,7 +408,7 @@ getModeLine = do
     unchanged <- isUnchangedB
     let pct = if pos == 1 then "Top" else getPercent p s
         chg = if unchanged then "-" else "*"
-    nm <- getA nameA
+    nm <- gets identString
     return $
            chg ++ " "
            ++ nm ++
@@ -526,14 +543,13 @@ emptyMode = Mode
   }
 
 -- | Create buffer named @nm@ with contents @s@
-newB :: BufferRef -> String -> LB.ByteString -> FBuffer
+newB :: BufferRef -> BufferId -> LB.ByteString -> FBuffer
 newB unique nm s = 
  FBuffer { bmode  = emptyMode
          , rawbuf = newBI s
          , attributes =
- Attributes { name   = nm
+ Attributes { ident  = nm
             , bkey__ = unique
-            , file   = Nothing          -- has name, not connected to a file
             , undos  = emptyU
             -- , readOnly = False
             , pointDrive = True
@@ -963,5 +979,6 @@ indexStreamRegionB r =
   take (fromIntegral (regionSize r)) <$>
   drop (fromIntegral (regionStart r)) <$>
   fst <$> unzip <$> indexedStreamB Forward 0
+
 
 

@@ -281,7 +281,7 @@ startSubprocess cmd args onExit = do
     io $ modifyMVar (yiVar yi) $ \var -> do        
         let (e', bufref) = runEditor 
                               (yiConfig yi) 
-                              (printMsg ("Launched process: " ++ cmd) >> newBufferE bufferName (fromString ""))
+                              (printMsg ("Launched process: " ++ cmd) >> newBufferE (Left bufferName) (fromString ""))
                               (yiEditor var)
             procid = yiSubprocessIdSupply var + 1
         procinfo <- createSubprocess cmd args bufref

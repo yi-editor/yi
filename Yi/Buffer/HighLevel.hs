@@ -253,7 +253,7 @@ bufInfoB = do
     m <- isUnchangedB
     l <- curLn
     c <- curCol
-    nm <- getA nameA -- FIXME: should be gets file
+    nm <- gets identString
     let bufInfo = BufferFileInfo { bufInfoFileName = nm
                                  , bufInfoSize     = fromIntegral s
                                  , bufInfoLineNo   = l

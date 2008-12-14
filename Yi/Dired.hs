@@ -71,10 +71,7 @@ fnewCanonicalized f = do
         -- The file names associated with the list of current buffers
     bufsWithThisFilename <- liftIO $ filterM assocWithSameFile bufs
         -- The names of the existing buffers
-    let currentBufferNames   = bufs ^. every nameA
-        -- The new name for the buffer
-        bufferName           = bestNewName desiredBufferName currentBufferNames
-        fDirectory           = takeDirectory f
+    let fDirectory           = takeDirectory f
     de <- liftIO $ doesDirectoryExist f
     fe <- liftIO $ doesFileExist f
     dfe <- liftIO $ doesDirectoryExist fDirectory
@@ -82,11 +79,11 @@ fnewCanonicalized f = do
         (h:_) -> return (bkey h)
         [] -> 
           if de then diredDirBuffer f else do
-            b <- if fe then fileToNewBuffer bufferName f else do -- Load the file into a new buffer
+            b <- if fe then fileToNewBuffer f else do -- Load the file into a new buffer
                 when (not dfe) $ do
                   userWantMkDir <- return True -- TODO
                   when userWantMkDir $ liftIO $ createDirectory fDirectory
-                withEditor $ stringToNewBuffer bufferName (fromString "") -- Create new empty buffer
+                withEditor $ stringToNewBuffer (Right f) (fromString "") -- Create new empty buffer
             tbl <- asks (modeTable . yiConfig)
             case fromMaybe (AnyMode emptyMode) (find (\(AnyMode m)->modeApplies m f) tbl) of
                 AnyMode newMode -> withGivenBuffer b $ setMode newMode
@@ -103,7 +100,7 @@ fnewCanonicalized f = do
     -- it with a file. Personally I find this more robust.
     assocWithSameFile :: FBuffer -> IO Bool
     assocWithSameFile fbuffer =
-      case fbuffer ^. fileA of
+      case file fbuffer of
         Nothing -> return False
         Just f2 -> do filename1 <- canonicalizePath f
                       filename2 <- canonicalizePath f2
@@ -112,10 +109,10 @@ fnewCanonicalized f = do
 
 
     -- The first argument is the buffer name
-    fileToNewBuffer :: String -> FilePath -> YiM BufferRef
-    fileToNewBuffer bufferName path = do
+    fileToNewBuffer :: FilePath -> YiM BufferRef
+    fileToNewBuffer path = do
       contents <- liftIO $ LazyB.readFile path
-      withEditor $ stringToNewBuffer bufferName contents
+      withEditor $ stringToNewBuffer (Right path) contents
     desiredBufferName  = takeFileName f
 
 ------------------------------------------------
@@ -184,7 +181,7 @@ diredDir dir = diredDirBuffer dir >> return ()
 
 diredDirBuffer :: FilePath -> YiM BufferRef
 diredDirBuffer dir = do
-                b <- withEditor $ stringToNewBuffer ("dired-"++dir) (fromString "")
+                b <- withEditor $ stringToNewBuffer (Right dir) (fromString "")
                 setFileName b dir -- associate the buffer with the dir
                 withEditor $ switchToBufferE b
                 diredLoadNewDir dir
@@ -198,7 +195,7 @@ diredRefresh = do
     withBuffer $ do end <- sizeB
                     deleteRegionB (mkRegion 0 end)
     -- Write Header
-    Just dir <- withBuffer $ getA fileA
+    Just dir <- withBuffer $ gets file
     withBuffer $ insertN $ dir ++ ":\n"
     p <- withBuffer pointB
     withBuffer $ addOverlayB $ mkOverlay UserLayer (mkRegion 0 (p-2)) headStyle
@@ -374,7 +371,7 @@ diredUnmark = diredMarkWithChar ' ' lineUp
 
 diredLoad :: YiM ()
 diredLoad = do
-    (Just dir) <- withBuffer $ getA fileA
+    (Just dir) <- withBuffer $ gets file
     (fn, de) <- fileFromPoint
     let sel = dir </> fn
     case de of
@@ -416,13 +413,13 @@ fileFromPoint = do
 
 diredUpDir :: YiM ()
 diredUpDir = do
-    (Just dir) <- withBuffer $ getA fileA
+    (Just dir) <- withBuffer $ gets file
     diredDir $ takeDirectory dir
 
 diredCreateDir :: YiM ()
 diredCreateDir = do
     withMinibufferGen "" noHint "Create Dir:" return $ \nm -> do
-    (Just dir) <- withBuffer $ getA fileA
+    (Just dir) <- withBuffer $ gets file
     let newdir = dir </> nm
     msgEditor $ "Creating "++newdir++"..."
     liftIO $ createDirectoryIfMissing True newdir

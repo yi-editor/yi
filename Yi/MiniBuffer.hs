@@ -25,7 +25,7 @@ import Control.Monad.Reader
 -- string. If you don't need this just supply @return ()@
 spawnMinibufferE :: String -> KeymapEndo -> EditorM BufferRef
 spawnMinibufferE prompt kmMod =
-    do b <- stringToNewBuffer prompt (fromString "")
+    do b <- stringToNewBuffer (Left prompt) (fromString "")
        withGivenBuffer0 b $ modifyMode (\m -> m {modeKeymap = kmMod})
        w <- newWindowE True b
        modA windowsA (WS.add w)
@@ -178,7 +178,7 @@ instance Promptable BufferRef where
 matchingBufferNames :: String -> YiM [String]
 matchingBufferNames _ = withEditor $ do
   bs <- getBuffers
-  return (fmap (^. nameA) bs)
+  return (fmap identString bs)
 
 
 -- TODO: be a bit more clever than 'Read r'

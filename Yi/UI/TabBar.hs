@@ -1,6 +1,6 @@
 module Yi.UI.TabBar where
 import Data.Accessor
-import Yi.Buffer (FBuffer(..), nameA)
+import Yi.Buffer (identString)
 import Yi.Window
 import Yi.WindowSet
 import Yi.Editor (Editor(..)
@@ -16,7 +16,7 @@ type TabBarDescr = WindowSet TabDescr
 
 tabBarDescr :: Editor -> TabBarDescr
 tabBarDescr editor = 
-    let hintForTab tab = findBufferWith (bufkey $ current tab) editor ^. nameA
+    let hintForTab tab = identString $ findBufferWith (bufkey $ current tab) editor 
         tabDescr (tab,True) = TabDescr (hintForTab tab) True
         tabDescr (tab,False) = TabDescr (hintForTab tab) False
     in fmap tabDescr (withFocus $ editor ^. tabsA)

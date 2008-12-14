@@ -300,6 +300,6 @@ ghciSend cmd = do
 ghciLoadBuffer :: YiM ()
 ghciLoadBuffer = do
     fwriteE
-    Just filename <- withBuffer $ getA fileA
+    Just filename <- withBuffer $ gets file
     ghciSend $ ":load " ++ filename
 
