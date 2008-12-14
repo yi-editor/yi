@@ -15,7 +15,7 @@ import qualified Yi.Keymap.Cua  as Cua
 import Yi.Modes
 import qualified Yi.Mode.Haskell as Haskell
 import Yi.Mode.IReader (ireaderMode, ireadMode)
-import Yi.IReader (nextArticle, saveAsNewArticle)
+import Yi.IReader (saveAsNewArticle)
 import qualified Yi.Mode.Latex as Latex
 import {-# source #-} Yi.Boot
 import Yi.Config
