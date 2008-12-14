@@ -17,7 +17,6 @@ import Yi.Buffer.Normal
 import Yi.Buffer.Region
 import Yi.String
 import Yi.Window
-import Yi.Dynamic
 import qualified Data.ByteString.Lazy as LB
 import qualified Data.ByteString.Lazy.UTF8 as LazyUTF8
 
@@ -541,9 +540,9 @@ toggleCommentSelectionB insPrefix delPrefix = do
 -- | Performs as search and replace on the given string.
 substituteInList :: Eq a => [ a ] -> [ a ] -> [ a ] -> [ a ]
 substituteInList _from _to []       = []
-substituteInList from to list@(h : rest)
-  | isPrefixOf from list =
-    to ++ (substituteInList from to $ drop (length from) list)
+substituteInList from to lst@(h : rest)
+  | isPrefixOf from lst =
+    to ++ (substituteInList from to $ drop (length from) lst)
   | otherwise            =
     h : (substituteInList from to rest)
 
