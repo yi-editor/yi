@@ -511,7 +511,8 @@ linePrefixSelectionB ::
                       -> BufferM ()
                          -- The returned buffer action
 linePrefixSelectionB s =
-  modifyExtendedSelectionB Line $ mapLines (s ++)
+  modifyExtendedSelectionB Line $ skippingLast $ mapLines (s++)
+  where skippingLast f xs = f (init xs) ++ [last xs]
 
 -- | Uncomments the selection using the given line comment
 -- starting string. This only works for the comments which
