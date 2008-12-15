@@ -53,6 +53,7 @@ import qualified Codec.Binary.UTF8.String as UTF8
 --   could be reused g[dDhHiQ]
 --   go
 --   gm, g$, g<End>, gp, gP, ]p, ]P, [P, [p, gr, gR, gs, gv, gV
+--   &, :&&, g&
 --   goto file [{visual}][count]g{f,F}
 --   invent a variant of o and O that add spaces to be at the same col
 --   :sh[ell]
