@@ -46,7 +46,7 @@ import qualified Codec.Binary.UTF8.String as UTF8
 -- What's missing?
 --   gq,gw,fillText should leave the last \n as is.
 --   fancier :s// ==> missing /c, ...
---   '.'
+--   '.': started look at "TODO repeat" for missing things
 --   @:
 --   8g8
 --   free keys g[bBcClLnNOSWxXyYzZ]
@@ -79,7 +79,79 @@ data ViMove = Move TextUnit Direction
             | Replicate ViMove Int
             | SeqMove ViMove ViMove
             | NoMove
+  deriving (Typeable)
 
+data ViCmd = ArbCmd (Int -> EditorM ()) Int
+           | NoOp
+  deriving (Typeable)
+
+instance Initializable ViCmd where
+  initial = NoOp
+
+lastViCommandA :: Accessor Editor ViCmd
+lastViCommandA = dynA
+
+applyViCmd :: Maybe Int -> ViCmd -> EditorM ()
+applyViCmd _  NoOp = return ()
+applyViCmd mi (ArbCmd f i') = f $ fromMaybe i' mi
+
+regionOfViMove :: ViMove -> RegionStyle -> BufferM Region
+regionOfViMove move regionStyle =
+  join $ mkRegionOfStyleB <$> pointB
+                          <*> savingPointB (viMove move >> pointB)
+                          <*> pure regionStyle
+
+applyOperator :: (RegionStyle -> Region -> EditorM ()) -> Int -> (RegionStyle, ViMove) -> EditorM ()
+applyOperator onRegion i (regionStyle, move) = savingCommandE f i
+   where f j = onRegion regionStyle =<< withBuffer0' (regionOfViMove (Replicate move j) regionStyle)
+
+savingCommandE :: (Int -> EditorM ()) -> Int -> EditorM ()
+savingCommandE f i = putA lastViCommandA (ArbCmd f i) >> f i
+
+savingCommandE'Y :: (Int -> EditorM ()) -> Int -> YiM ()
+savingCommandE'Y f = withEditor' . savingCommandE f
+
+savingCommandEY :: (Int -> EditorM ()) -> Int -> YiM ()
+savingCommandEY f = withEditor . savingCommandE f
+
+savingCommandB :: (Int -> BufferM ()) -> Int -> EditorM ()
+savingCommandB f = savingCommandE (withBuffer0 . f)
+
+savingCommandB' :: (Int -> BufferM ()) -> Int -> EditorM ()
+savingCommandB' f = savingCommandE (withBuffer0' . f)
+
+savingCommandB'Y :: (Int -> BufferM ()) -> Int -> YiM ()
+savingCommandB'Y f = withEditor . savingCommandB' f
+
+viMove :: ViMove -> BufferM ()
+viMove NoMove                        = return ()
+viMove (GenMove   unit boundary dir) = genMoveB unit boundary dir
+viMove (MaybeMove unit          dir) = maybeMoveB unit dir
+viMove (Move      unit          dir) = moveB unit dir
+viMove (CharMove Forward)            = moveXorEol 1
+viMove (CharMove Backward)           = moveXorSol 1
+viMove (PercentageFile i)            = movePercentageFile i
+viMove (ArbMove       move)          = move
+viMove (SeqMove move1 move2)         = viMove move1 >> viMove move2
+viMove (Replicate     move i)        = viReplicateMove move i
+
+viReplicateMove :: ViMove -> Int -> BufferM ()
+viReplicateMove (Move VLine Forward)  i = lineMoveRel i >> return ()
+viReplicateMove (Move VLine Backward) i = lineMoveRel (-i) >> return ()
+viReplicateMove (CharMove Forward)    i = moveXorEol i
+viReplicateMove (CharMove Backward)   i = moveXorSol i
+viReplicateMove (Replicate move j)    i = viReplicateMove move (i * j)
+viReplicateMove move                  i = replicateM_ i $ viMove move
+
+movePercentageFile :: Int -> BufferM ()
+movePercentageFile i = do let f :: Double
+                              f  = case fromIntegral i / 100.0 of
+                                      x | x > 1.0 -> 1.0
+                                        | x < 0.0 -> 0.0 -- Impossible?
+                                        | otherwise -> x
+                          Point max_p <- sizeB
+                          moveTo $ Point $ floor (fromIntegral max_p * f)
+                          firstNonSpaceB
 
 mkKeymap :: Proto ModeMap -> VimMode
 mkKeymap = v_top_level . extractValue
@@ -115,6 +187,7 @@ defKeymap = Proto template
                         choice [cmd_eval,cmd_move,cmd2other,cmd_op]
 
      -- | Replace mode is like insert, except it performs writes, not inserts
+     -- TODO repeat
      rep_mode :: VimMode
      rep_mode = write (setStatus ("-- REPLACE --", defaultStyle)) >> many rep_char >> leaveInsRep >> write (moveXorSol 1)
 
@@ -270,43 +343,6 @@ defKeymap = Proto template
          ,("gE", Replicate $ GenMove unitViWORD (Forward, InsideBound) Backward)
          ,("g_", const $ ArbMove lastNonSpaceB)]
 
-     regionOfViMove :: ViMove -> RegionStyle -> BufferM Region
-     regionOfViMove move regionStyle =
-       join $ mkRegionOfStyleB <$> pointB
-                               <*> savingPointB (viMove move >> pointB)
-                               <*> pure regionStyle
-
-     movePercentageFile :: Int -> BufferM ()
-     movePercentageFile i = do let f :: Double
-                                   f  = case fromIntegral i / 100.0 of
-                                           x | x > 1.0 -> 1.0
-                                             | x < 0.0 -> 0.0 -- Impossible?
-                                             | otherwise -> x
-                               Point max_p <- sizeB
-                               moveTo $ Point $ floor (fromIntegral max_p * f)
-                               firstNonSpaceB
-
-     viMove :: ViMove -> BufferM ()
-     viMove NoMove                        = return ()
-     viMove (GenMove   unit boundary dir) = genMoveB unit boundary dir
-     viMove (MaybeMove unit          dir) = maybeMoveB unit dir
-     viMove (Move      unit          dir) = moveB unit dir
-     viMove (CharMove Forward)            = moveXorEol 1
-     viMove (CharMove Backward)           = moveXorSol 1
-     viMove (PercentageFile i)            = movePercentageFile i
-     viMove (ArbMove       move)          = move
-     viMove (SeqMove move1 move2)         = viMove move1 >> viMove move2
-     viMove (Replicate     move i)        = viReplicateMove move i
-
-     viReplicateMove :: ViMove -> Int -> BufferM ()
-     viReplicateMove (Move VLine Forward)  i = lineMoveRel i >> return ()
-     viReplicateMove (Move VLine Backward) i = lineMoveRel (-i) >> return ()
-     viReplicateMove (CharMove Forward)    i = moveXorEol i
-     viReplicateMove (CharMove Backward)   i = moveXorSol i
-     viReplicateMove (Replicate move j)    i = viReplicateMove move (i * j)
-     viReplicateMove move                  i = replicateM_ i $ viMove move
-
-
      -- | up/down movement commands. these one are separated from moveCmdFM_{inclusive,exclusive}
      -- because they behave differently when yanking/cuting (line mode).
      moveUpDownCmdFM :: [(Event, Int -> ViMove)]
@@ -354,8 +390,10 @@ defKeymap = Proto template
           [events evs >>! action i   | (evs, action) <- cmdFM ] ++
           [events evs >>! action     | (evs, action) <- visOrCmdFM ] ++
           [events evs >>! action cnt | (evs, action) <- scrollCmdFM ] ++
-          [char 'r' ?>> textChar >>= write . savingPointB . writeN . replicate i
-          ,char 'm' ?>> setMark]
+          [char 'r' ?>> do c <- textChar
+                           write $ savingCommandB (savingPointB . writeN . flip replicate c) i
+          ,char 'm' ?>> setMark
+          ,char '.' ?>>! applyViCmd cnt =<< getA lastViCommandA]
 
 
      -- TODO: add word bounds: search for \<word\>
@@ -486,20 +524,20 @@ defKeymap = Proto template
          ,([char 'U'],      withBuffer' . flip replicateM_ undoB)    -- NB not correct
          ,([ctrlCh 'r'],    withBuffer' . flip replicateM_ redoB)
 
-         ,([ctrlCh 'a'],    withBuffer' . onCurrentWord . onNumberInString . (+))
-         ,([ctrlCh 'x'],    withBuffer' . onCurrentWord . onNumberInString . flip (-))
-         ,([char 'D'],      withEditor' . cut Exclusive . ArbMove . viMoveToNthEol)
-         ,([char 'J'],      withBuffer' . (joinLinesB =<<) . countLinesRegion . max 2)
-         ,(map char "gJ",   withBuffer' . (concatLinesB =<<) . countLinesRegion . max 2)
+         ,([ctrlCh 'a'],    savingCommandB'Y $ onCurrentWord . onNumberInString . (+))
+         ,([ctrlCh 'x'],    savingCommandB'Y $ onCurrentWord . onNumberInString . flip (-))
+         ,([char 'D'],      savingCommandE'Y $ cut Exclusive . ArbMove . viMoveToNthEol)
+         ,([char 'J'],      savingCommandB'Y $ (joinLinesB =<<) . countLinesRegion . max 2)
+         ,(map char "gJ",   savingCommandB'Y $ (concatLinesB =<<) . countLinesRegion . max 2)
          ,([char 'Y'],      withEditor . yank LineWise . (Replicate $ Move Line Forward))
-         ,([char 'X'],      withEditor' . cut Exclusive . (Replicate $ CharMove Backward))
-         ,([char 'x'],      withEditor' . cut Exclusive . (Replicate $ CharMove Forward))
+         ,([char 'X'],      savingCommandE'Y $ cut Exclusive . (Replicate $ CharMove Backward))
+         ,([char 'x'],      savingCommandE'Y $ cut Exclusive . (Replicate $ CharMove Forward))
 
          -- pasting
-         ,([char 'p'],      withEditor . flip replicateM_ pasteAfter)
-         ,([char 'P'],      withEditor . flip replicateM_ pasteBefore)
+         ,([char 'p'],      savingCommandEY $ flip replicateM_ pasteAfter)
+         ,([char 'P'],      savingCommandEY $ flip replicateM_ pasteBefore)
 
-         ,([char '~'],      \i -> withBuffer' $ do
+         ,([char '~'],      savingCommandB'Y $ \i -> do -- TODO cleanup
                               p <- pointB
                               moveXorEol i
                               q <- pointB
@@ -549,19 +587,17 @@ defKeymap = Proto template
      cmd_op = do
        cnt <- count
        let i = fromMaybe 1 cnt
-       choice $ [let onMove regionStyle move =
-                        onRegion 1 regionStyle =<< withBuffer0' (regionOfViMove move regionStyle)
-                     applyOperator frs (regionStyle, m) = write $ onMove (frs regionStyle) (Replicate m i)
-                     s1 = prefix [c]
+       choice $ [let s1 = prefix [c]
                      ss = nub [[c], s1]
+                     onRegion = onRegion' 1
                  in
                  pString s1 >>
-                    choice ([ forceRegStyle >>= \ frs -> moveKeymap >>= applyOperator frs -- TODO: text units (eg. dViB)
-                            , select_any_unit (onRegion 1 Exclusive) ] ++
-                            [ pString s >>! onMove LineWise (Replicate (Move VLine Forward) (i-1)) | s <- ss ]
+                    choice ([ forceRegStyle >>= \ frs -> moveKeymap >>= write . applyOperator onRegion i . first frs -- TODO: text units (eg. dViB)
+                            , select_any_unit (onRegion Exclusive) ] ++ -- TODO repeat
+                            [ pString s >>! applyOperator onRegion (i-1) (LineWise, Move VLine Forward) | s <- ss ]
                            )
 
-                | (prefix,_,c,onRegion) <- operators, c /= 'J'
+                | (prefix,_,c,onRegion') <- operators, c /= 'J'
                 ]
          where
              -- | Forces RegionStyle; see motion.txt, line 116 and below (Vim 7.2)
@@ -742,16 +778,16 @@ defKeymap = Proto template
                   ,char 'v'  ?>> change_vis_mode selStyle Inclusive
                   ,ctrlCh 'v'?>> change_vis_mode selStyle Block
                   ,char ':'  ?>>! ex_mode ":'<,'>"
-                  ,char 'p'  ?>>! pasteOverSelection
-                  ,char 'x'  ?>>! (cutSelection >> withBuffer0 leftOnEol)
-                  ,char 's'  ?>> beginIns self (cutSelection >> withBuffer0 (setVisibleSelection False))
-                  ,char 'c'  ?>> beginIns self (cutSelection >> withBuffer0 (setVisibleSelection False))
-                  ,char 'r'  ?>> do x <- textChar
+                  ,char 'p'  ?>>! pasteOverSelection -- TODO repeat
+                  ,char 'x'  ?>>! (cutSelection >> withBuffer0 leftOnEol) -- TODO repeat
+                  ,char 's'  ?>> beginIns self (cutSelection >> withBuffer0 (setVisibleSelection False)) -- TODO repeat
+                  ,char 'c'  ?>> beginIns self (cutSelection >> withBuffer0 (setVisibleSelection False)) -- TODO repeat
+                  ,char 'r'  ?>> do x <- textChar -- TODO repeat
                                     let convert '\n' = '\n'
                                         convert  _   = x
                                     write $ uncurry (viMapRegion convert) =<< withBuffer0 regionOfSelection
                   ] ++
-                  [pString (prefix [c]) >>! (uncurry (action i) =<< withBuffer0' regionOfSelection)
+                  [pString (prefix [c]) >>! (uncurry (action i) =<< withBuffer0' regionOfSelection) -- TODO repeat
                   | (_, prefix, c, action) <- operators ]
 
      -- | Switch to another vim mode from command mode.
@@ -777,14 +813,15 @@ defKeymap = Proto template
                  char 'c'     ?>> changeCmds,
 
                  -- FIXME: those two should take int argument
-                 char 'C'     ?>> beginIns self $ cut Exclusive viMoveToEol, -- alias of "c$"
-                 char 'S'     ?>> beginIns self $ withBuffer0' moveToSol >> cut Exclusive viMoveToEol, -- non-linewise alias of "cc"
-                 char 's'     ?>> beginIns self $ cut Exclusive (CharMove Forward), -- non-linewise alias of "cl"
+                 char 'C'     ?>> beginIns self $ cut Exclusive viMoveToEol, -- alias of "c$" -- TODO repeat
+                 char 'S'     ?>> beginIns self $ withBuffer0' moveToSol >> cut Exclusive viMoveToEol, -- non-linewise alias of "cc" -- TODO repeat
+                 char 's'     ?>> beginIns self $ cut Exclusive (CharMove Forward), -- non-linewise alias of "cl" -- TODO repeat
                  char '/'     ?>>! ex_mode "/",
                  char '?'     ?>>! ex_mode "?",
                  leave,
                  spec KIns    ?>> ins_mode self]
 
+     -- TODO repeat
      changeCmds :: I Event Action ()
      changeCmds =
        adjustPriority (-1) >>
@@ -1249,6 +1286,7 @@ leaveInsRep = do oneOf [spec KEsc, ctrlCh '[', ctrlCh 'c']
 
 
 -- | Insert mode is either insertion actions, or the meta (\ESC) action
+-- TODO repeat
 ins_mode :: ModeMap -> VimMode
 ins_mode self = write (setStatus ("-- INSERT --", defaultStyle)) >> many (v_ins_char self <|> kwd_mode) >> leaveInsRep >> write (moveXorSol 1)
 
