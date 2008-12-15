@@ -1244,7 +1244,7 @@ leave = oneOf [spec KEsc, ctrlCh 'c'] >> adjustPriority (-1) >> write clrStatus
 leaveInsRep :: VimMode
 leaveInsRep = do oneOf [spec KEsc, ctrlCh '[', ctrlCh 'c']
                  adjustPriority (-1)
-                 write $ withBuffer0' (setMarkHere '^') >> clrStatus
+                 write $ withBuffer0 (setMarkHere '^') >> clrStatus
 
 
 -- | Insert mode is either insertion actions, or the meta (\ESC) action
