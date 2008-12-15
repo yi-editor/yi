@@ -355,7 +355,6 @@ defKeymap = Proto template
           [events evs >>! action     | (evs, action) <- visOrCmdFM ] ++
           [events evs >>! action cnt | (evs, action) <- scrollCmdFM ] ++
           [char 'r' ?>> textChar >>= write . savingPointB . writeN . replicate i
-          ,pString "gJ" >>! withBuffer' (concatLinesB =<< twoLinesRegion)
           ,char 'm' ?>> setMark]
 
 
@@ -422,7 +421,8 @@ defKeymap = Proto template
      joinLinesB :: Region -> BufferM ()
      joinLinesB =
        savingPointB .
-         (modifyRegionB $ concat . skippingFirst (map $ skippingNull ((' ':) . dropWhile isSpace)) . lines')
+         (modifyRegionB $ skippingLast $
+            concat . (skippingFirst $ map $ skippingNull ((' ':) . dropWhile isSpace)) . lines')
 
      concatLinesB :: Region -> BufferM ()
      concatLinesB = savingPointB . (modifyRegionB $ skippingLast $ filter (/='\n'))
@@ -489,7 +489,8 @@ defKeymap = Proto template
          ,([ctrlCh 'a'],    withBuffer' . onCurrentWord . onNumberInString . (+))
          ,([ctrlCh 'x'],    withBuffer' . onCurrentWord . onNumberInString . flip (-))
          ,([char 'D'],      withEditor' . cut Exclusive . ArbMove . viMoveToNthEol)
-         ,([char 'J'],      const $ withBuffer' (joinLinesB =<< twoLinesRegion))
+         ,([char 'J'],      withBuffer' . (joinLinesB =<<) . countLinesRegion . max 2)
+         ,(map char "gJ",   withBuffer' . (concatLinesB =<<) . countLinesRegion . max 2)
          ,([char 'Y'],      withEditor . yank LineWise . (Replicate $ Move Line Forward))
          ,([char 'X'],      withEditor' . cut Exclusive . (Replicate $ CharMove Backward))
          ,([char 'x'],      withEditor' . cut Exclusive . (Replicate $ CharMove Forward))
@@ -724,8 +725,8 @@ defKeymap = Proto template
      viMapRegion f Block region = withBuffer0' $ mapM_ (`mapRegionB` f) =<< blockifyRegion region
      viMapRegion f _     region = withBuffer0' $ mapRegionB region f
 
-     twoLinesRegion :: BufferM Region
-     twoLinesRegion = regionOfViMove (Move VLine Forward) LineWise
+     countLinesRegion :: Int -> BufferM Region
+     countLinesRegion n = regionOfViMove (Replicate (Move VLine Forward) (n - 1)) LineWise
 
      -- | Switching to another mode from visual mode.
      --
