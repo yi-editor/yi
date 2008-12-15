@@ -22,7 +22,7 @@ defaultTheme = Proto $ const $ UIStyle
   , eofStyle           = withFg blue
   , errorStyle         = withBg red
   , hintStyle          = withFg black `mappend` withBg cyan
-  , strongHintStyle    = withBg magenta
+  , strongHintStyle    = withFg black `mappend` withBg magenta
 
   , commentStyle       = withFg purple
   , blockCommentStyle  = mempty
