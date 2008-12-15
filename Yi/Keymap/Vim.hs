@@ -627,7 +627,7 @@ defKeymap = Proto template
      regionOfSelection :: BufferM (RegionStyle, Region)
      regionOfSelection = do
        setMarkHere '>'
-       regionStyle <- getDynamicB
+       regionStyle <- getA regionStyleA
        region <- join $ mkRegionOfStyleB <$> getSelectionMarkPointB
                                          <*> pointB
                                          <*> pure regionStyle
@@ -681,10 +681,10 @@ defKeymap = Proto template
      pasteOverSelection = do
        txt <- getRegE
        withBuffer0' $ do
-         selStyle <- getDynamicB
+         regStyle <- getA regionStyleA
          start    <- getSelectionMarkPointB
          stop     <- pointB
-         region   <- mkRegionOfStyleB start stop selStyle
+         region   <- mkRegionOfStyleB start stop regStyle
          moveTo $ regionStart region
          deleteRegionB region
          insertN txt
