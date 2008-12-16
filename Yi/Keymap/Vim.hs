@@ -49,6 +49,7 @@ import qualified Codec.Binary.UTF8.String as UTF8
 --   '.': started look at "TODO repeat" for missing things
 --   @:
 --   8g8
+--   integrate unit transposing (transposeB) (gSaw: swap a word)
 --   free keys g[bBcClLnNOSWxXyYzZ]
 --   could be reused g[dDhHiQ]
 --   go
@@ -897,8 +898,8 @@ defKeymap = Proto template
               ,ctrlCh 'm'     ?>>! insertB '\r'
               ,spec KTab      ?>>! mapM_ insrepB =<< tabB
               ,ctrlCh 'i'     ?>>! mapM_ insrepB =<< tabB
-              ,ctrlCh 'e'     ?>>! insrepB =<< savingPointB (lineDown >> readB)
-              ,ctrlCh 'y'     ?>>! insrepB =<< savingPointB (lineUp >> readB)
+              ,ctrlCh 'e'     ?>>! insrepB =<< savingPointB (lineDown >> readB) -- TODO repeat: not symbolically reminded, just the inserted char
+              ,ctrlCh 'y'     ?>>! insrepB =<< savingPointB (lineUp >> readB) -- IDEM
               ,ctrlCh 't'     ?>>! shiftIndentOfRegion 1 =<< regionOfB Line
               ,ctrlCh 'd'     ?>>! withBuffer0' dedentOrDeleteIndent
               ,ctrlCh 'v'     ?>>  insertSpecialChar insrepB
@@ -913,6 +914,9 @@ defKeymap = Proto template
      --
      -- which suggest that movement commands be added to insert mode, along
      -- with delete.
+     --
+     -- Which is fine in Vim (and so in Yi too) since there is a bunch of
+     -- handy bindings to edit while composing (backspace, C-W, C-T, C-D, C-E, C-Y...)
      --
      def_ins_char =
             choice [spec KBS   ?>>! adjBlock (-1) >> deleteB Character Backward
