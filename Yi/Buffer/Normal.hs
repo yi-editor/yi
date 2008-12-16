@@ -14,6 +14,10 @@ module Yi.Buffer.Normal (TextUnit(Character, Line, VLine, Document),
                          unitWord,
                          unitViWord,
                          unitViWORD,
+                         unitViWordAnyBnd,
+                         unitViWORDAnyBnd,
+                         unitViWordOnLine,
+                         unitViWORDOnLine,
                          unitDelimited,
                          unitSentence, unitEmacsParagraph, unitParagraph,
                          -- TextUnit is exported abstract intentionally:
@@ -48,8 +52,6 @@ import Data.Typeable
 -- | Designate a given "unit" of text.
 data TextUnit = Character -- ^ a single character
               | Word -- ^ a word as in use in Emacs (fundamental mode)
-              | ViWord -- ^ a word as in use in Vim
-              | ViWORD -- ^ a WORD as in use in Vim
               | Line  -- ^ a line of text (between newlines)
               | VLine -- ^ a "vertical" line of text (area of text between two characters at the same column number)
               | Delimited Char Char Bool -- ^ delimited on the left and right by given characters, boolean argument tells if whether those are included.
@@ -61,10 +63,8 @@ data TextUnit = Character -- ^ a single character
                 deriving Typeable
 
 
-unitWord, unitViWord, unitViWORD :: TextUnit
+unitWord :: TextUnit
 unitWord = Word
-unitViWord = ViWord
-unitViWORD = ViWORD
 
 unitDelimited :: Char -> Char -> Bool -> TextUnit
 unitDelimited = Delimited
@@ -103,9 +103,50 @@ atViWordBoundary :: (Char -> Int) -> Direction -> BufferM Bool
 atViWordBoundary charType direction = do
     cs <- peekB direction 2 (-1)
     return $ case cs of
-      [nl1,nl2] | isNl nl1 && isNl nl2 -> True -- stop at empty lines
-      [c1,c2] -> not (isSpace c1) && (charType c1 /= charType c2)
+      [c1,c2] -> isNl c1 && isNl c2 -- stop at empty lines
+              || not (isSpace c1) && (charType c1 /= charType c2)
       _ -> True
+
+atAnyViWordBoundary :: (Char -> Int) -> Direction -> BufferM Bool
+atAnyViWordBoundary charType direction = do
+    cs <- peekB direction 2 (-1)
+    return $ case cs of
+      [c1,c2] -> isNl c1 || isNl c2 || charType c1 /= charType c2
+      _ -> True
+
+atViWordBoundaryOnLine :: (Char -> Int) -> Direction -> BufferM Bool
+atViWordBoundaryOnLine charType direction = do
+    cs <- peekB direction 2 (-1)
+    return $ case cs of
+      [c1,c2] -> isNl c1 || isNl c2 || not (isSpace c1) && charType c1 /= charType c2
+      _ -> True
+
+unitViWord :: TextUnit
+unitViWord = GenUnit Document $ atViWordBoundary viWordCharType
+
+unitViWORD :: TextUnit
+unitViWORD = GenUnit Document $ atViWordBoundary viWORDCharType
+
+unitViWordAnyBnd :: TextUnit
+unitViWordAnyBnd = GenUnit Document $ atAnyViWordBoundary viWordCharType
+
+unitViWORDAnyBnd :: TextUnit
+unitViWORDAnyBnd = GenUnit Document $ atAnyViWordBoundary viWORDCharType
+
+unitViWordOnLine :: TextUnit
+unitViWordOnLine = GenUnit Document $ atViWordBoundaryOnLine viWordCharType
+
+unitViWORDOnLine :: TextUnit
+unitViWORDOnLine = GenUnit Document $ atViWordBoundaryOnLine viWORDCharType
+
+viWordCharType :: Char -> Int
+viWordCharType c | isSpace c    = 1
+                 | isWordChar c = 2
+                 | otherwise    = 3
+
+viWORDCharType :: Char -> Int
+viWORDCharType c | isSpace c = 1
+                 | otherwise = 2
 
 -- | Is the point at a @Unit@ boundary in the specified @Direction@?
 atBoundary :: TextUnit -> Direction -> BufferM Bool
@@ -115,13 +156,6 @@ atBoundary Character _ = return True
 atBoundary VLine _ = return True -- a fallacy; this needs a little refactoring.
 atBoundary Word direction =
     checkPeekB (-1) [isWordChar, not . isWordChar] direction
-atBoundary ViWORD direction = atViWordBoundary charType direction
-    where charType c | isSpace c = 1::Int
-                     | otherwise = 2
-atBoundary ViWord direction = atViWordBoundary charType direction
-    where charType c | isSpace c    = 1::Int
-                     | isWordChar c = 2
-                     | otherwise    = 3
 atBoundary Line direction = checkPeekB 0 [isNl] direction
 atBoundary (Delimited c _ False) Backward = checkPeekB 0 [(== c)] Backward
 atBoundary (Delimited _ c False) Forward  = (== c) <$> readB
