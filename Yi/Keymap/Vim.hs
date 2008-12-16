@@ -632,16 +632,15 @@ defKeymap = Proto template
               mapRegions_ f Block r = withBuffer0' $ mapM_ f =<< blockifyRegion r
               mapRegions_ f _     r = withBuffer0' $ f r
 
-     -- Argument of the 2nd component is whether the unit is outer.
-     toOuter u True = leftBoundaryUnit u
-     toOuter u False = u
+     toOuter outer _     True  = leftBoundaryUnit outer
+     toOuter _     inner False = inner
 
      char2unit :: [(Char, Bool -> TextUnit)]
      char2unit =
-       [('w',  toOuter unitViWord)
-       ,('W',  toOuter unitViWORD)
-       ,('p',  toOuter unitEmacsParagraph)
-       ,('s',  toOuter unitSentence)
+       [('w',  toOuter unitViWord unitViWordAnyBnd)
+       ,('W',  toOuter unitViWORD unitViWORDAnyBnd)
+       ,('p',  toOuter unitEmacsParagraph unitEmacsParagraph) -- TODO inner could be inproved
+       ,('s',  toOuter unitSentence unitSentence) -- TODO inner could be inproved
        ,('"',  unitDelimited '"' '"')
        ,('`',  unitDelimited '`' '`')
        ,('\'', unitDelimited '\'' '\'')
