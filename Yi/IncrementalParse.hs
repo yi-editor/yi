@@ -2,7 +2,7 @@
 {-# OPTIONS -fglasgow-exts #-}
 module Yi.IncrementalParse (Process, 
                             recoverWith, symbol, eof, lookNext, testNext, runPolish, 
-                            runP, profile, pushSyms, pushEof, 
+                            runP, profile, pushSyms, pushEof, evalR,
                             P, AlexState (..), scanner) where
 import Yi.Lexer.Alex (AlexState (..))
 import Yi.Prelude
@@ -10,8 +10,8 @@ import Prelude (Ordering(..))
 import Yi.Syntax
 import Data.List hiding (map, minimumBy)
 
-data a :< b = (:<) {top :: a, _rest :: b}
-infixr :<
+data a :< b
+
 
 type P s a = Parser s a
 
@@ -104,24 +104,36 @@ instance Show (Steps s r) where
     show (Best _ _ p q) = "(" ++ show p ++ ")" ++ show q
 
 
-apply :: forall t t1 a. ((t -> a) :< (t :< t1)) -> a :< t1
-apply ~(f:< ~(a:<r)) = f a :< r
-
 -- | Right-eval a fully defined process (ie. one that has no Sus)
-evalR' :: Steps s r -> r
-evalR' Done = ()
-evalR' (Val a r) = a :< evalR' r
-evalR' (App s) = apply (evalR' s)
-evalR' (Shift v) = evalR' v
-evalR' (Dislike v) = evalR' v
-evalR' (Fail) = error "evalR: No parse!"
-evalR' (Sus _ _) = error "evalR: Not fully evaluated!"
-evalR' (Sh' _) = error "evalR: Sh' should be hidden by Sus"
-evalR' (Best choice _ p q) = case choice of
-    LT -> evalR' p
-    GT -> evalR' q
+-- Returns value and continuation.
+evalR :: Steps s (a :< r) -> (a, Steps s r)
+evalR (Val a r) = (a,r)
+evalR (App s) = let (f, s') = evalR s
+                    (x, s'') = evalR s'
+                in (f x, s'')
+evalR (Shift v) = evalR v
+evalR (Dislike v) = evalR v
+evalR (Fail) = error "evalR: No parse!"
+evalR (Sus _ _) = error "evalR: Not fully evaluated!"
+evalR (Sh' _) = error "evalR: Sh' should be hidden by Sus"
+evalR (Best choice _ p q) = case choice of
+    LT -> evalR p
+    GT -> evalR q
     EQ -> error $ "evalR: Ambiguous parse: " ++ show p ++ " ~~~ " ++ show q
 
+-- | Pre-compute a left-prefix of some steps (as far as possible)
+evalL :: Steps s r -> Steps s r
+evalL (Shift p) = evalL p
+evalL (Dislike p) = evalL p
+evalL (Val x r) = Val x (evalL r)
+evalL (App f) = case evalL f of
+                  (Val a (Val b r)) -> Val (a b) r
+                  r -> App r
+evalL x@(Best choice _ p q) = case choice of
+    LT -> evalL p
+    GT -> evalL q
+    EQ -> x -- don't know where to go: don't speculate on evaluating either branch.
+evalL x = x
 
 instance Functor (Parser s) where
     fmap f = (pure f <*>)
@@ -186,30 +198,20 @@ feed ss p = case p of
                   Best _ _ p' q' -> iBest (feed ss p') (feed ss q')
                   -- TODO: it would be nice to be able to reuse the profile here.
 
-
-feedZ :: Maybe [s] -> Zip s r -> Zip s r
-feedZ x = onRight (feed x)
-
-
-evalZL :: forall s a. Zip s a -> Zip s a
-evalZL = onLeft simplify . simplAll
-    where simplAll = right simplAll . onLeft simplify
-
-
 -- | Push some symbols.
-pushSyms :: forall s r. [s] -> Zip s r -> Zip s r
-pushSyms x = feedZ (Just x)
+pushSyms :: [s] -> Steps s r -> Steps s r
+pushSyms x = feed (Just x)
 
 -- | Push eof
-pushEof :: forall s r. Zip s r -> Zip s r
-pushEof = feedZ Nothing
+pushEof :: Steps s r -> Steps s r
+pushEof = feed Nothing
 
 runP :: forall s a. P s a -> Process s a
-runP p = Zip RStop (toP p Done)
+runP p = toP p Done
 
 -- | Run a parser.
 runPolish :: forall s a. P s a -> [s] -> a
-runPolish p input = top $ evalZR $ pushEof $ pushSyms input $ runP p
+runPolish p input = fst $ evalR $ pushEof $ pushSyms input $ runP p
 
 testNext :: (Maybe s -> Bool) -> P s ()
 testNext f = Look (if f Nothing then ok else empty) (\s -> 
@@ -227,66 +229,9 @@ lookNext = Look (pure Nothing) (\s -> pure (Just s))
 recoverWith :: forall s a. P s a -> P s a
 recoverWith = Yuck
 
-----------------------------------------------------
-
---------------------------------
--- The zipper for efficient evaluation:
-
--- Arbitrary expressions in Reverse Polish notation.
--- This can also be seen as an automaton that transforms a stack.
--- RPolish is indexed by the types in the stack consumed by the automaton (input),
--- and the stack produced (output)
-data RPolish input output where
-  RPush :: a -> RPolish (a :< rest) output -> RPolish rest output
-  RApp :: RPolish (b :< rest) output -> RPolish ((a -> b) :< a :< rest) output 
-  RStop :: RPolish rest rest
-
--- Evaluate the output of an RP automaton, given an input stack
-evalRP :: RPolish input output -> input -> output
-evalRP RStop acc = acc 
-evalRP (RPush v r) acc = evalRP r (v :< acc)
-evalRP (RApp r) (f :< a :< acc) = evalRP r (f a :< acc)
-
-
--- execute the automaton as far as possible
-simplify :: RPolish s output -> RPolish s output
-simplify (RPush a (RPush f (RApp r))) = simplify (RPush (f a) r)
-simplify x = x
-
-evalZR :: Zip token output -> output
-evalZR (Zip l r) = evalRP l (evalR' r)
-
--- Gluing a Polish expression and an RP automaton.
--- This can also be seen as a zipper of Polish expressions.
-data Zip s output where
-   Zip :: RPolish mid output -> Steps s mid -> Zip s output
-   -- note that the Stack produced by the Polish expression matches
-   -- the stack consumed by the RP automaton.
-
--- Move the zipper to right, and call continuation if something was pushed in
--- the left part.
-right :: (Zip s output -> Zip s output) -> (Zip s output -> Zip s output) 
-right k x@(Zip l rhs) = case rhs of
-    (Val a r) -> k (Zip (RPush a l) r)
-    (App r)  -> k (Zip (RApp l) r)
-    (Shift p) -> right k (Zip l p)
-    (Dislike p) -> right k (Zip l p)
-    (Best choice _ p q) -> case choice of
-        LT -> right k (Zip l p)
-        GT -> right k (Zip l q)
-        EQ -> x -- don't know where to go: don't speculate on evaluating either branch.
-    _ -> x
-
-
-onLeft :: (forall i o. RPolish i o -> RPolish i o) -> Zip s a -> Zip s a
-onLeft f (Zip x y) = (Zip (f x) y)
-
-onRight :: (forall r. Steps s r -> Steps s r) -> Zip s a -> Zip s a
-onRight f (Zip x y) = Zip x (f y)
-
 
 ----------------------------------------------------
-type Process token result = Zip token (result :< ())
+type Process token result = Steps token (result :< ())
 type State st token result = (st, Process token result)
 
 scanner :: forall st token result. P token result -> Scanner st token -> Scanner (State st token result) result
@@ -295,7 +240,7 @@ scanner parser input = Scanner
       scanInit = (scanInit input, runP parser),
       scanLooked = scanLooked input . fst,
       scanRun = run,
-      scanEmpty = top $ evalZR $ pushEof $ runP parser
+      scanEmpty = fst $ evalR $ pushEof $ runP parser
     }
     where
         run :: State st token result -> [(State st token result, result)]
@@ -304,6 +249,6 @@ scanner parser input = Scanner
         updateState0 :: Process token result -> [(st,token)] -> [(State st token result, result)]
         updateState0 _        [] = []
         updateState0 curState toks@((st,tok):rest) = ((st, curState), result) : updateState0 nextState rest
-            where nextState =       evalZL $           pushSyms [tok]           $ curState
-                  result    = top $ evalZR $ pushEof $ pushSyms (fmap snd toks) $ curState
+            where nextState =       evalL $           pushSyms [tok]           $ curState
+                  result    = fst $ evalR $ pushEof $ pushSyms (fmap snd toks) $ curState
 
