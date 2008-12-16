@@ -55,9 +55,11 @@ parse'' :: Size -> Point -> Point -> P (Tok t) x -> P (Tok t) (Tree x)
 parse'' leftSize lB rB p
    | rB <= lB = pure Leaf
    | otherwise = case_ (symbolBefore rB)
-       (Node <$> p
-             <*> parse'' initialLeftSize                   lB   midB  p
-             <*> parse'' (leftSize * fromIntegral factor)  midB rB    p)
+       ((Node <$> p -- FIXME: we'd like a cut here
+              <*> parse'' initialLeftSize                   lB   midB  p
+              <*> parse'' (leftSize * fromIntegral factor)  midB rB    p)
+        <|> pure Leaf -- This creates a branch which cannot be discarded without parsing some of the future.
+       )
        (pure Leaf) 
   where midB = min rB (lB +~ leftSize)
 
