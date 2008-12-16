@@ -921,7 +921,7 @@ defKeymap = Proto template
      def_ins_char =
             choice [spec KBS   ?>>! adjBlock (-1) >> deleteB Character Backward
                    ,ctrlCh 'h' ?>>! adjBlock (-1) >> deleteB Character Backward
-                   ,ctrlCh 'w' ?>>! cut Exclusive (GenMove unitViWord (Backward,InsideBound) Backward)
+                   ,ctrlCh 'w' ?>>! deleteRegionB =<< regionOfPartNonEmptyB unitViWordOnLine Backward
                    ]
             <|> ins_rep_char insertB
             <|| (textChar >>= write . (adjBlock 1 >>) . insertB)
