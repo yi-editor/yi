@@ -1,7 +1,7 @@
 -- Copyright (c) JP Bernardy 2008
 {-# OPTIONS -fglasgow-exts #-}
-module Parser.Incremental (Process, recoverWith, symbol, eof, lookNext, testNext, runPolish, 
-                            runP, pushSyms, pushEof, evalR, evalL,
+module Parser.Incremental (Process, recoverWith, symbol, eof, lookNext, testNext, run, 
+                            mkProcess, pushSyms, pushEof, evalR, evalL,
                             P) where
 import Control.Applicative
 import Data.List hiding (map, minimumBy)
@@ -202,12 +202,12 @@ pushSyms x = feed (Just x)
 pushEof :: Steps s r -> Steps s r
 pushEof = feed Nothing
 
-runP :: forall s a. P s a -> Process s a
-runP p = toP p Done
+mkProcess :: forall s a. P s a -> Process s a
+mkProcess p = toP p Done
 
 -- | Run a parser.
-runPolish :: forall s a. P s a -> [s] -> a
-runPolish p input = fst $ evalR $ pushEof $ pushSyms input $ runP p
+run :: forall s a. P s a -> [s] -> a
+run p input = fst $ evalR $ pushEof $ pushSyms input $ mkProcess p
 
 testNext :: (Maybe s -> Bool) -> P s ()
 testNext f = Look (if f Nothing then ok else empty) (\s -> 
