@@ -10,7 +10,7 @@ license-file:   LICENSE
 author:         AUTHORS
 maintainer:     yi-devel@googlegroups.com
 homepage:       http://haskell.org/haskellwiki/Yi
-
+bug-reports:    http://code.google.com/p/yi-editor/issues/list
 Cabal-Version:  >= 1.6
 tested-with:    GHC==6.10.1
 build-type:     Simple
