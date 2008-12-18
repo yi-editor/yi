@@ -74,7 +74,7 @@ emptyFileScan = Scanner { scanInit = 0, scanRun = const [], scanLooked = id, sca
 -- | This takes as input a scanner that returns the "full" result at
 -- each element in the list; perhaps in a different form for the
 -- purpose of incremental-lazy eval.
-mkHighlighter :: forall state result. 
+mkHighlighter :: forall state result. Show state => 
                  (Scanner Point Char -> Scanner state result) -> 
                  (Point -> Point -> Point -> result -> [Stroke]) -> 
                      Highlighter (Cache state result) result
@@ -95,6 +95,7 @@ mkHighlighter scanner getStrokes =
                   reused = takeWhile ((< dirtyOffset) . scanLooked (scanner newFileScan)) cachedStates
                   resumeState :: state
                   resumeState = if null reused then startState else last reused
+                  
                   newCachedStates = reused ++ fmap fst recomputed
                   recomputed = scanRun newScan resumeState
                   newResult :: result

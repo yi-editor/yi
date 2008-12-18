@@ -193,7 +193,7 @@ data HlState = CodeBlock
              | CodeLine
              | CommentBlock { unComment :: HlState }
              | LaTeXBlock
-  deriving (Eq)
+  deriving (Eq, Show)
 
 stateToInit (CommentBlock _) = nestcomm
 stateToInit CodeBlock        = codeBlock

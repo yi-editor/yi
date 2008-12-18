@@ -37,7 +37,7 @@ fundamentalMode = emptyMode
    modePrettify = const fillParagraph
   }
 
-mkHighlighter' :: forall token lexerState.
+mkHighlighter' :: forall token lexerState. Show lexerState =>
                     lexerState
                     -> (Alex.ASI lexerState
                         -> Maybe (Tok token, Alex.ASI lexerState))

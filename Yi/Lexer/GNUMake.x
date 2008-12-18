@@ -192,7 +192,7 @@ data HlState =
     | IncludeDirective
     | ComplexExpansion Char HlState
     | RuleCommand
-
+  deriving Show
 stateToInit TopLevel = 0
 stateToInit InComment = comment
 stateToInit IncludeDirective = includeDirective

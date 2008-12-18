@@ -362,7 +362,7 @@ data HlState =
     | HlInSubstRegex String
     -- Count of nested {} and the state to transition to once variable is done.
     | HlInVariable Int HlState
-
+    deriving Show
 fromQuoteState (HlInSubstRegex s) = HlInInterpString True s
 fromQuoteState _ = HlInCode
 
