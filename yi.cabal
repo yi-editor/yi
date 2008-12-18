@@ -207,6 +207,7 @@ library
         Data.ByteRope
         Data.DelayList
         Data.Trie
+        Parser.Incremental
         Shim.CabalInfo
         Shim.Utils 
         Shim.ProjectContent
