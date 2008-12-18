@@ -62,7 +62,7 @@ newtype Size = Size {fromSize :: Int}             -- size in bytes (#bytes, NOT 
 instance SemiNum Point Size where
     Point p +~ Size s = Point (p + s)
     Point p -~ Size s = Point (p - s)
-    Point p ~- Point q = Size (p - q)
+    Point p ~- Point q = Size (abs (p - q))
 
 utf8Size :: String -> Size
 utf8Size s = Size $ B.length $ UTF8.fromString s
