@@ -116,6 +116,7 @@ module Yi.Buffer.Misc
   , indexStreamRegionB
   , lastActiveWindowA
   , bufferDynamicValueA
+  , shortIdentString
   , identString
   , identA
   , BufferId
@@ -237,7 +238,7 @@ data FBuffer = forall syntax.
 
 shortIdentString prefix b = case b ^. identA of
     Left bName -> "*" ++ bName ++ "*"
-    Right fName -> drop (length prefix) fName
+    Right fName -> joinPath $ drop (length prefix) $ splitPath $ fName
 
 identString b = case b ^. identA of
     Left bName -> "*" ++ bName ++ "*"

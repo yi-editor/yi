@@ -31,7 +31,7 @@ import Data.Foldable (concatMap)
 import qualified Data.DelayList as DelayList
 import qualified Data.Map as M
 import Data.Typeable
-import System.FilePath (FilePath)
+import System.FilePath (FilePath, splitPath)
 import Control.Monad.RWS hiding (get, put, mapM, forM)
 import qualified Data.ByteString.Lazy.UTF8 as LazyUTF8
 
@@ -192,8 +192,13 @@ deleteBuffer k = do
 getBuffers :: EditorM [FBuffer]
 getBuffers = gets (M.elems . buffers)
 
-getCommonNamePrefix :: EditorM String
-getCommonNamePrefix = commonPrefix . rights . fmap (^. identA) <$> getBuffers
+-- | Return a prefix that can be removed from all buffer paths while keeping them
+-- unique.
+getCommonNamePrefix :: EditorM [String]
+getCommonNamePrefix = commonPrefix . fmap (dropLast . splitPath) . rights . fmap (^. identA) <$> getBuffers
+    where dropLast [] = []
+          dropLast x = init x
+          -- drop the last component, so that it is never hidden.
     
     
 
