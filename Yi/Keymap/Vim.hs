@@ -1191,10 +1191,14 @@ defKeymap = Proto template
 
            fn ('c':'a':'b':'a':'l':' ':s) = cabalRun s1 (const $ return ()) (drop 1 s2) where (s1, s2) = break (==' ') s
            fn ('y':'i':' ':s) = execEditorAction $ dropSpace s
+
            fn "tabm"       = withEditor (moveTab Nothing)
            fn ('t':'a':'b':'m':' ':n) = withEditor (moveTab $ Just (read n))
            fn "tabnew"     = withEditor newTabE
            fn ('t':'a':'b':'e':' ':f) = withEditor newTabE >> viFnewE f
+
+           fn "ball"       = withEditor openAllBuffersE
+
            fn "noh"        = withEditor resetRegexE
            fn "nohlsearch" = withEditor resetRegexE
            fn s            = errorEditor $ "The "++show s++ " command is unknown."

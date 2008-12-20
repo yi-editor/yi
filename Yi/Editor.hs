@@ -31,7 +31,7 @@ import qualified Data.DelayList as DelayList
 import qualified Data.Map as M
 import Data.Typeable
 import System.FilePath (FilePath)
-import Control.Monad.RWS hiding (get, put)
+import Control.Monad.RWS hiding (get, put, mapM, forM)
 import qualified Data.ByteString.Lazy.UTF8 as LazyUTF8
 
 type Status = (String,StyleName)
@@ -218,6 +218,13 @@ getBufferWithName bufName = do
   case bs of
     [] -> fail ("Buffer not found: " ++ bufName)
     (b:_) -> return b
+
+-- | Make all buffers visible by splitting the current WindowSet
+openAllBuffersE :: EditorM ()
+openAllBuffersE = do buffers <- getBuffers
+                     forM buffers $ \buffer -> do w <- newWindowE False (bkey buffer)
+                                                  modA windowsA (WS.add w)
+                     return ()
 
 ------------------------------------------------------------------------
 
@@ -457,7 +464,6 @@ splitE = do
   b <- getBuffer
   w <- newWindowE False b
   modA windowsA (WS.add w)
-
 
 -- | Enlarge the current window
 enlargeWinE :: EditorM ()
