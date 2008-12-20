@@ -234,13 +234,13 @@ data FBuffer = forall syntax.
                } 
         deriving Typeable
 
-identString = joinPath . identPath
+
+identString b = case b ^. identA of
+    Left bName -> "*" ++ bName ++ "*"
+    Right fName -> fName
 
 identA = identAA . attrsA
 
-identPath b = case b ^. identA of
-    Left bName -> ["*" ++ bName ++ "*"]
-    Right fName -> splitDirectories fName
 
 
 
