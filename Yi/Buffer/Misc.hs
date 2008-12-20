@@ -235,6 +235,10 @@ data FBuffer = forall syntax.
         deriving Typeable
 
 
+shortIdentString prefix b = case b ^. identA of
+    Left bName -> "*" ++ bName ++ "*"
+    Right fName -> drop (length prefix) fName
+
 identString b = case b ^. identA of
     Left bName -> "*" ++ bName ++ "*"
     Right fName -> fName

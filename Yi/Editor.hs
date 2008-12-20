@@ -26,6 +26,7 @@ import Data.Accessor.Basic (fromSetGet)
 import Data.Accessor.Template
 import Data.Binary
 import Data.List (nub, delete)
+import Data.Either (rights)
 import Data.Foldable (concatMap)
 import qualified Data.DelayList as DelayList
 import qualified Data.Map as M
@@ -190,6 +191,11 @@ deleteBuffer k = do
 -- | Return the buffers we have
 getBuffers :: EditorM [FBuffer]
 getBuffers = gets (M.elems . buffers)
+
+getCommonNamePrefix :: EditorM String
+getCommonNamePrefix = commonPrefix . rights . fmap (^. identA) <$> getBuffers
+    
+    
 
 getBufferStack :: EditorM [FBuffer]
 getBufferStack = do
