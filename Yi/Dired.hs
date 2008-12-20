@@ -113,7 +113,6 @@ fnewCanonicalized f = do
     fileToNewBuffer path = do
       contents <- liftIO $ LazyB.readFile path
       withEditor $ stringToNewBuffer (Right path) contents
-    desiredBufferName  = takeFileName f
 
 ------------------------------------------------
 
