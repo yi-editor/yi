@@ -98,5 +98,7 @@ STYLE GUIDELINES
   of its suggestions should be followed (and one should check that a suggestion results
   in clearer/better code, and compilable code, for that matter). To filter out entire categories
   of suggestions we find objectionable, use an invocation of hlint that looks like this:
-  $ hlint --ignore='Eta reduce' --ignore="Lambda shift" --ignore="Use liftM" --ignore="Use const"
+  $ hlint --ignore='Eta reduce' --ignore="Lambda shift" --ignore="Use const"
      --ignore="Use a string literal" Yi/
+  
+  (Do not use liftM, use <$> or fmap)
