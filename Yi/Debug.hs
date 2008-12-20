@@ -1,5 +1,3 @@
-{-# LANGUAGE ParallelListComp #-}
-
 module Yi.Debug (
         initDebug       -- :: FilePath -> IO ()
        ,trace           -- :: String -> a -> a
@@ -70,4 +68,4 @@ logStream msg ch = do
 logStreamThread :: Show a => String -> Chan a -> IO ()
 logStreamThread msg ch = do
   stream <- getChanContents =<< dupChan ch
-  mapM_ logPutStrLn [msg ++ "(" ++ show i ++ ")" ++ show event | event <- stream | i <- [(0::Int)..] ]
+  mapM_ logPutStrLn [msg ++ "(" ++ show i ++ ")" ++ show event | (event, i) <- zip stream [(0::Int)..]]
