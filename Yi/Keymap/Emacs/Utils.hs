@@ -275,7 +275,8 @@ switchBufferE = do
     openBufs <- fmap bufkey . toList <$> getA windowsA
     names <- withEditor $ do bs <- fmap bkey <$> getBufferStack
                              let choices = (bs \\ openBufs) ++ openBufs -- put the open buffers at the end.
-                             forM choices $ \k -> gets $ (identString . findBufferWith k)
+                             prefix <- getCommonNamePrefix
+                             forM choices $ \k -> gets (shortIdentString prefix . findBufferWith k)
     withMinibufferFin "switch to buffer:" names (withEditor . switchToBufferWithNameE)
 
 askCloseBuffer :: String -> YiM ()
