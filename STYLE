@@ -93,3 +93,10 @@ STYLE GUIDELINES
   replacing `foo a b = a` with `foo a _ = a`, though. (Or even better `foo a
   _interestingName = a`, if you feel the meaning of the ignored argument should be
   reminded)
+
+* A useful tool for checking style is the 'hlint' tool on Hackage. However, not all 
+  of its suggestions should be followed (and one should check that a suggestion results
+  in clearer/better code, and compilable code, for that matter). To filter out entire categories
+  of suggestions we find objectionable, use an invocation of hlint that looks like this:
+  $ hlint --ignore='Eta reduce' --ignore="Lambda shift" --ignore="Use liftM" --ignore="Use const"
+     --ignore="Use a string literal" Yi/
