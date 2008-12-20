@@ -7,6 +7,8 @@
 module Yi.Keymap.Vim (keymap, 
                       viWrite, 
                       defKeymap, 
+                      leaveInsRep,
+                      leave,
                       ModeMap(..),
                       mkKeymap,
                       beginIns) where
