@@ -22,7 +22,6 @@ tabBarDescr editor =
     in fmap tabDescr (withFocus $ editor ^. tabsA)
 
 tabAbbrevTitle :: String -> String
-tabAbbrevTitle []    = []
 tabAbbrevTitle title = case break (=='/') title of
                          ([],     ('/':suffix)) -> '/' : tabAbbrevTitle suffix
                          (prefix, ('/':suffix)) -> head prefix : '/' : tabAbbrevTitle (suffix)
