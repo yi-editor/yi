@@ -5,6 +5,7 @@ import Prelude hiding ( catch )
 import Control.OldException (catch, bracket)
 import Control.Applicative
 import Control.Monad.Reader
+import Data.List (intercalate)
 import System.IO
 import System.Info
 #ifndef mingw32_HOST_OS
@@ -26,6 +27,7 @@ import System.Environment
 import System.Console.GetOpt 
 import System.FilePath ((</>), takeDirectory)
 import qualified GHC.Paths
+import HConfUtils
 
 {-
 
@@ -66,12 +68,16 @@ data HConf state configuration = HConf {
       restart :: state -> IO ()
  }
 
-hconfOptions :: String -> [(String, String, IO () -> IO ())]
-hconfOptions projectName = 
+data HConfOption
+    = Action (IO () -> IO ())
+    | GhcFlags String
+
+actions :: String -> [String] -> [(String, String, IO () -> IO ())]
+actions projectName flags =
     [
         ("recompile-force", 
          "Force recompile of custom " ++ projectName ++ " before starting.", 
-         const $ recompile projectName True >> return ()
+         const $ recompile projectName flags True >> return ()
         ),
         ("resume",
          "Resume execution of " ++ projectName ++ " from previous state",
@@ -80,12 +86,23 @@ hconfOptions projectName =
         ("recompile",
          "Recompile custom " ++ projectName ++ " if required then exit.",
          const $ do
-            maybeError <- recompile projectName False
+            maybeError <- recompile projectName flags False
             maybe exitSuccess
                   (\err -> hPutStrLn stderr err >> exitFailure)
                   maybeError
         )
     ]
+
+actionDescriptions :: String -> [String] -> [OptDescr HConfOption]
+actionDescriptions projectName flags =
+    (flip fmap) (actions projectName flags) $ \(name,desc,f) ->
+            Option [] [name] (NoArg . Action $ f) desc
+
+ghcFlagsDescription :: OptDescr HConfOption
+ghcFlagsDescription = Option [] ["ghc-options"] (ReqArg GhcFlags "[flags]") "Flags to pass to GHC"
+
+hconfOptions :: String -> [OptDescr HConfOption]
+hconfOptions projectName = actionDescriptions projectName [""] ++ [ghcFlagsDescription]
 
 getHConf :: String -> state -> (FilePath -> IO state) -> (FilePath -> state -> IO ()) ->
             configuration -> (String -> configuration -> configuration) ->
@@ -97,18 +114,18 @@ getHConf projectName initialState recoverState saveState defaultConfiguration sh
     -- The entry point into Project. Attempts to compile any custom main
     -- for Project, and if it doesn't find one, just launches the default.
     mainMaster = do
+        args <- getArgs
         let launch = do
-                maybeErrors <- buildLaunch projectName
+                maybeErrors <- buildLaunch projectName flags
                 case maybeErrors of 
                     Nothing     -> realMain defaultConfiguration initialState
                     Just errors -> realMain (showErrorsInConf errors defaultConfiguration) initialState
-        let optDescriptions = 
-                (flip fmap) (hconfOptions projectName) $ \(name,desc,f) -> 
-                    let apply_f_descr = NoArg (f launch)
-                    in Option [] [name] apply_f_descr desc
-        args <- getArgs
-        let (opt_actions, _, _) = getOpt Permute optDescriptions args 
-        sequence_  opt_actions
+            (opt_actions, _, _) = getOpt Permute (actionDescriptions projectName flags) args
+            (opt_flags, _, _)   = getOpt Permute [ghcFlagsDescription] args
+            actions    = map (\(Action x) -> x) opt_actions
+            flags      = shellWords . intercalate " " .
+                         map (\(GhcFlags x) -> x) $ opt_flags
+        mapM_ ($ launch) actions
         launch
 
      -- @restart state@. Attempt to restart Project by executing the
@@ -174,8 +191,8 @@ getErrorsFile projectName = do dir <- getProjectDir projectName
 --      ** type error, syntax error, ..
 --   * Missing Project dependency packages
 --
-recompile :: MonadIO m => String -> Bool -> m (Maybe String)
-recompile projectName force = io $ do
+recompile :: MonadIO m => String -> [String] -> Bool -> m (Maybe String)
+recompile projectName flags force = io $ do
     dir <- getProjectDir projectName
     let binn = projectName ++ "-"++arch++"-"++os
         bin  = dir ++ "/" ++ binn
@@ -192,8 +209,11 @@ recompile projectName force = io $ do
         status <- bracket (openFile err WriteMode) hClose $ \h -> do
             -- note that since we checked for recompilation ourselves,
             -- we disable ghc recompilaton checks.
-            waitForProcess =<< runProcess GHC.Paths.ghc ["--make", projectName ++ ".hs", "-i", "-fforce-recomp", "-v0", "-o",binn,"-threaded"] (Just dir)
-                                    Nothing Nothing Nothing (Just h)
+            let allFlags = ["--make", projectName ++ ".hs", "-i",
+                             "-fforce-recomp", "-v0", "-o",binn,"-threaded"]
+                            ++ flags
+            waitForProcess =<< runProcess GHC.Paths.ghc allFlags (Just dir)
+                                          Nothing Nothing Nothing (Just h)
             -- note that we use the ghc executable used to build Yi (through GHC.Paths).
 
         -- now, if it fails, run xmessage to let the user know:
@@ -225,14 +245,14 @@ x +++ Nothing = x
 -- If there are errors and the function returns, they are returned in a string;
 -- If there are errors and the slave is run, we pass the error file as an argument to it. 
 
-buildLaunch :: String -> IO (Maybe String)
-buildLaunch projectName = do
+buildLaunch :: String -> [String] -> IO (Maybe String)
+buildLaunch projectName flags = do
     haveConfigFile <- doesFileExist =<< (</> (projectName ++ ".hs")) <$> getProjectDir projectName 
     -- if there is no config file, then we return immediately /with no error/. This is 
     -- a normal situation: the user has not produced a config file.
     if not haveConfigFile then return Nothing else do
 #ifndef mingw32_HOST_OS
-    errMsg <- recompile projectName False
+    errMsg <- recompile projectName flags False
     dir  <- getProjectDir projectName
     args <- getArgs
     args' <- case errMsg of

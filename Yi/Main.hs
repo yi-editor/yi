@@ -120,9 +120,7 @@ options = [
     Option []     ["as"]          (ReqArg EditorNm "[editor]")
         ("Start with editor keymap, where editor is one of:\n" ++
                 (concat . intersperse ", " . fmap fst) editors)
-    ] ++ (map (\(opt_name,desc,_) -> Option [] [opt_name] (NoArg HConfOption) desc) 
-              (hconfOptions projectName)
-         )
+    ] ++ (map (fmap $ const HConfOption) (hconfOptions projectName))
 
 -- | usage string.
 usage, versinfo :: String
