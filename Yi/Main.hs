@@ -280,7 +280,7 @@ getConfig cfg opt =
       Version       -> throwError $ Err versinfo ExitSuccess
       Debug         -> return cfg { debugMode = True }
       LineNo l      -> appendAction (withBuffer (gotoLn (read l)))
-      File file     -> appendAction (fnewE file)
+      File filename -> appendAction (fnewE filename)
       EditorNm emul -> case lookup (fmap toLower emul) editors of
              Just modifyCfg -> return $ modifyCfg cfg
              Nothing -> fail $ "Unknown emulation: " ++ show emul
