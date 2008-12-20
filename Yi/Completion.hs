@@ -8,6 +8,8 @@ module Yi.Completion
   )
 where
 
+import Prelude ()
+import Yi.Prelude hiding (elem)
 import Yi.Editor
 import Data.List
 import Data.Maybe
@@ -15,20 +17,6 @@ import Data.Maybe
 -------------------------------------------
 -- General completion
 
--- | Return the longest common prefix of a set of strings.
---
--- > P(xs) === all (isPrefixOf (commonPrefix xs)) xs
--- > length s > length (commonPrefix xs) --> not (all (isPrefixOf s) xs)
-commonPrefix :: [String] -> String
-commonPrefix [] = []
-commonPrefix strings
-    | any null strings = []
-    | all (== prefix) heads = prefix : commonPrefix tailz
-    | otherwise = []
-    where
-          (heads, tailz) = unzip [(h,t) | (h:t) <- strings]
-          prefix = head heads
--- for an alternative implementation see GHC's InteractiveUI module.
 
 -- | Prefix matching function, for use with 'completeInList'
 prefixMatch :: String -> String -> Maybe String

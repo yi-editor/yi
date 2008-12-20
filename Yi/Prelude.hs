@@ -26,6 +26,7 @@ RealFrac(..),
 ReaderT(..),
 SemiNum(..),
 String,
+commonPrefix,
 every,
 fromIntegral,
 fst,
@@ -68,6 +69,7 @@ when,
 writeFile -- because Data.Derive uses it.
     ) where
 
+import Prelude hiding (any, all)
 import Yi.Debug
 import Yi.Monad
 import Data.Accessor
@@ -179,3 +181,18 @@ zipWithT f ta tb = result
   where step []     _ = Yi.Debug.error "zipT: non matching structures!"
         step (b:bs) a = (bs,f a b)
         ([], result) = mapAccumL step (toList tb) ta
+
+-- | Return the longest common prefix of a set of lists.
+--
+-- > P(xs) === all (isPrefixOf (commonPrefix xs)) xs
+-- > length s > length (commonPrefix xs) --> not (all (isPrefixOf s) xs)
+commonPrefix :: Eq a => [[a]] -> [a]
+commonPrefix [] = []
+commonPrefix strings
+    | any null strings = []
+    | all (== prefix) heads = prefix : commonPrefix tailz
+    | otherwise = []
+    where
+          (heads, tailz) = unzip [(h,t) | (h:t) <- strings]
+          prefix = head heads
+-- for an alternative implementation see GHC's InteractiveUI module.
