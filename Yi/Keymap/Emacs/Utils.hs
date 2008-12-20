@@ -273,9 +273,9 @@ scrollUpE a = case a of
 switchBufferE :: YiM ()
 switchBufferE = do
     openBufs <- fmap bufkey . toList <$> getA windowsA
-    bs <- withEditor (fmap bkey <$> getBufferStack)
-    let choices = (bs \\ openBufs) ++ openBufs -- put the open buffers at the end.
-    names <- forM choices $ \k -> gets $ (identString . findBufferWith k)
+    names <- withEditor $ do bs <- fmap bkey <$> getBufferStack
+                             let choices = (bs \\ openBufs) ++ openBufs -- put the open buffers at the end.
+                             forM choices $ \k -> gets $ (identString . findBufferWith k)
     withMinibufferFin "switch to buffer:" names (withEditor . switchToBufferWithNameE)
 
 askCloseBuffer :: String -> YiM ()
