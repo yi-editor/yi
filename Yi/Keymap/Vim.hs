@@ -1006,8 +1006,10 @@ defKeymap = Proto template
            ex_complete s                                       = catchAllComplete s
 
            catchAllComplete = exSimpleComplete $ const $ return $
-                                ("hoogle-word" :) $ ("set ft=" :) $ map (++ " ") $ words
-                                "e edit r read saveas saveas! tabe b buffer bd bd! bdelete bdelete! yi cabal nohlsearch"
+                                ("hoogle-word" :) $ ("set ft=" :) $ ("set tags=" :) $ map (++ " ") $ words $
+                                "e edit r read saveas saveas! tabe tabnew tabm b buffer bd bd! bdelete bdelete! " ++
+                                "yi cabal nohlsearch suspend stop undo redo redraw reload tag .! quit quitall " ++
+                                "qall quit! quitall! qall! write wq wqall ascii xit exit next prev $ split new ball"
            cabalComplete = exSimpleComplete $ const $ return $ cabalCmds
            cabalCmds = words "configure install list update upgrade fetch upload check sdist" ++
                        words "report build copy haddock clean hscolour register test help"
@@ -1042,7 +1044,7 @@ defKeymap = Proto template
 
 
              -- just a normal ex command
-               (_:src) -> fn src
+               (_:src) -> fn $ dropSpace src
 
              -- can't happen, but deal with it
                [] -> return ()
@@ -1107,7 +1109,9 @@ defKeymap = Proto template
 
            fn "w"          = viWrite
            fn ('w':' ':f)  = viSafeWriteTo $ dropSpace f
+           fn ('w':'r':'i':'t':'e':' ':f)  = viSafeWriteTo $ dropSpace f
            fn ('w':'!':' ':f)  = viWriteTo $ dropSpace f
+           fn ('w':'r':'i':'t':'e':'!':' ':f)  = viWriteTo $ dropSpace f
            fn "qa"         = safeQuitAllWindows
            fn "qal"        = safeQuitAllWindows
            fn "qall"       = safeQuitAllWindows
