@@ -222,7 +222,7 @@ renderTabBar e ui xss =
         uiStyle         = configStyle $ configUI $ config $ ui
         tabTitle text   = " " ++ text ++ " "
         tabAttributes f = appEndo ((if f then tabInFocusStyle else tabNotFocusedStyle) uiStyle) (tabBarAttributes uiStyle)
-        tabToVtyImage (TabDescr text inFocus) = withAttributes (tabAttributes inFocus) (tabTitle text)
+        tabToVtyImage tab@(TabDescr text inFocus) = withAttributes (tabAttributes inFocus) (tabTitle $ tabAbbrevTitle text)
 
 scanrT :: (Int -> Int -> Int) -> Int -> WindowSet Int -> WindowSet Int
 scanrT (+*+) k t = fst $ runState (mapM f t) k
