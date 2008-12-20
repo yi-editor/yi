@@ -52,19 +52,25 @@ import qualified Codec.Binary.UTF8.String as UTF8
 --   integrate unit transposing (transposeB) (gSaw: swap a word)
 --   free keys g[bBcClLnNOSWxXyYzZ]
 --   could be reused g[dDhHiQ]
+--   free insert keys C-!, C-#, C-$, C-%, C-&, C-*, C-(, C-), C-/, C-+, C-=, C--, C-:, C-;, C-|
+--   could be reused insert keys C-_, C-^
 --   go
 --   gm, g$, g<End>, gp, gP, ]p, ]P, [P, [p, gr, gR, gs, gv, gV
 --   &, :&&, g&
 --   goto file [{visual}][count]g{f,F}
 --   invent a variant of o and O that add spaces to be at the same col
+--   invent a "indent as previous" in insert mode
 --   :sh[ell]
 --   :!!
 --   movement parameterised \> \<
 --   motion operators [motion.txt]: !
---   C-v: visual block mode
+--   C-v: visual block mode: almost works, block yanking/pasting is still to do.
 --   Support for marks
 --   C-o and C-i: jump list
---   C-a C-@: insert prev text
+--   C-a or C-@: insert prev text
+--   C-u: delete all entered chars of the current line
+--   C-f: reindent the line
+--   C-o: execute one command, return to Insert mode (see also C-\ C-O)
 --   C-k <C-K><S-Space>: insert a char using it's specification
 --   C-r <reg>: insert the content of a register
 
