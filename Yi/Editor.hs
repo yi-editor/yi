@@ -231,6 +231,7 @@ getBufferWithName bufName = do
     (b:_) -> return b
 
 -- | Make all buffers visible by splitting the current WindowSet
+-- FIXME: rename to displayAllBuffersE; make sure buffers are not open twice.
 openAllBuffersE :: EditorM ()
 openAllBuffersE = do buffers <- getBuffers
                      forM buffers $ \buffer -> do w <- newWindowE False (bkey buffer)
