@@ -246,7 +246,7 @@ defKeymap = Proto template
          return $ Just $ read (c:cs)
 
      viMoveToNthEol :: Int -> BufferM ()
-     viMoveToNthEol n = replicateM_ n $ moveB Line Forward
+     viMoveToNthEol n = replicateM_ n $ maybeMoveB Line Forward
 
      viMoveToEol :: ViMove
      viMoveToEol = MaybeMove Line Forward
