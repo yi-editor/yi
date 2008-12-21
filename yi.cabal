@@ -283,6 +283,8 @@ executable yi
         if flag (ghcAPI)
           build-depends: ghc == 6.8.3 || == 6.10.1
           build-depends: haskell98
+          build-depends: old-time
+          -- Shim uses old-time
           cpp-options: -DGHC_API
 
         if !(flag(vty) || flag (gtk) || flag(cocoa))
