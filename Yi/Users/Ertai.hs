@@ -9,7 +9,7 @@ import Control.Monad (replicateM_)
 import Yi.Keymap.Keys (char,(?>>!),(>>!))
 import Yi.Misc (adjBlock)
 import Yi.Buffer
-import Yi.Keymap.Vim (viWrite, v_top_level, v_ins_char, savingInsertStringE, savingDeleteCharB)
+import Yi.Keymap.Vim (viWrite, v_top_level, v_ins_char, savingInsertStringB, savingDeleteCharB)
 import qualified Yi.Keymap.Vim as Vim
 
 myModetable :: [AnyMode]
@@ -35,7 +35,7 @@ prefIndent m = m { modeIndentSettings = IndentSettings { expandTabs = True
                  }
 
 mkInputMethod :: [(String,String)] -> Keymap
-mkInputMethod xs = choice [pString i >> adjustPriority (negate (length i)) >>! savingInsertStringE o | (i,o) <- xs]
+mkInputMethod xs = choice [pString i >> adjustPriority (negate (length i)) >>! savingInsertStringB o | (i,o) <- xs]
 
 extraInput :: Keymap
 extraInput = ctrl (char ']') ?>> mkInputMethod (greek ++ symbols)
