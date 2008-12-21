@@ -402,8 +402,8 @@ instance Show FBuffer where
 -- N.B. the contents of modelines should be specified by user, and
 -- not hardcoded.
 --
-getModeLine :: BufferM String
-getModeLine = do
+getModeLine :: [String] -> BufferM String
+getModeLine prefix = do
     col <- curCol
     pos <- pointB
     ln <- curLn
@@ -413,7 +413,7 @@ getModeLine = do
     unchanged <- isUnchangedB
     let pct = if pos == 1 then "Top" else getPercent p s
         chg = if unchanged then "-" else "*"
-    nm <- gets identString
+    nm <- gets $ shortIdentString prefix
     return $
            chg ++ " "
            ++ nm ++

@@ -407,7 +407,7 @@ refresh ui e = withAutoreleasePool $ logNSException "refresh" $ do
            (storage w) # setTextStorageBuffer e buf
 
            let ((p0,txt,rs),_) = runBuffer (window w) buf $
-                 (,,) <$> (pointB >>= charIndexB) <*> getModeLine <*> getSelectedRegions
+                 (,,) <$> (pointB >>= charIndexB) <*> getModeLine (commonNamePrefix e) <*> getSelectedRegions
            a <- castObject <$> _NSMutableArray # array :: IO (NSMutableArray ())
            mapM_ ((flip addObject a =<<) . flip valueWithRange _NSValue . mkRegionRange) rs
            (textview w) # setSelectedRanges (castObject a)

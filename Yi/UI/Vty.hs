@@ -242,12 +242,12 @@ scrollAndRenderWindow cfg width (win,hasFocus) = do
                                                             (,) <$> getA pointDriveA <*> pointInWindowB point
         b' = if inWindow then b else 
                 if pointDriven then moveWinTosShowPoint b win else showPoint b
-        (rendered, b'') = drawWindow cfg (regex e) b' sty hasFocus width win
+        (rendered, b'') = drawWindow cfg e b' sty hasFocus width win
         showPoint buf = snd $ runBuffer win buf' $ do r <- winRegionB
                                                       p <- pointB
                                                       moveTo $ max (regionStart r) $ min (regionEnd r - 1) $ p
                                                       putA pointDriveA True -- revert to a point-driven behaviour
-                      where (_,buf') = drawWindow cfg (regex e) buf sty hasFocus width win
+                      where (_,buf') = drawWindow cfg e buf sty hasFocus width win
                              -- this is merely to recompute the bos point.
 
     put e { buffers = M.insert (bufkey win) b'' (buffers e) }
@@ -255,9 +255,10 @@ scrollAndRenderWindow cfg width (win,hasFocus) = do
 
 -- | Draw a window
 -- TODO: horizontal scrolling.
-drawWindow :: UIConfig -> Maybe SearchExp -> FBuffer -> UIStyle -> Bool -> Int -> Window -> (Rendered, FBuffer)
-drawWindow cfg mre b sty focused w win = (Rendered { picture = pict,cursor = cur}, b')
+drawWindow :: UIConfig -> Editor -> FBuffer -> UIStyle -> Bool -> Int -> Window -> (Rendered, FBuffer)
+drawWindow cfg e b sty focused w win = (Rendered { picture = pict,cursor = cur}, b')
     where
+        
         notMini = not (isMini win)
         -- off reserves space for the mode line. The mini window does not have a mode line.
         off = if notMini then 1 else 0
@@ -276,7 +277,7 @@ drawWindow cfg mre b sty focused w win = (Rendered { picture = pict,cursor = cur
                             else Point 0
         (text, _)    = runBuffer win b (indexedStreamB Forward fromMarkPoint) -- read chars from the buffer, lazily
         
-        (attributes, _) = runBuffer win b $ attributesPictureAndSelB sty mre region 
+        (attributes, _) = runBuffer win b $ attributesPictureAndSelB sty (regex e) region 
         colors = map (second (($ attr) . attributesToAttr)) attributes
         bufData = -- trace (unlines (map show text) ++ unlines (map show $ concat strokes)) $ 
                   paintChars attr colors text
@@ -293,7 +294,7 @@ drawWindow cfg mre b sty focused w win = (Rendered { picture = pict,cursor = cur
                                 ([(c,(wsty, (-1))) | c <- prompt] ++ bufData ++ [(' ',(wsty, eofPoint))])
                              -- we always add one character which can be used to position the cursor at the end of file
         (_, b') = runBuffer win b (setMarkPointB toM toMarkPoint')
-        (modeLine0, _) = runBuffer win b getModeLine
+        (modeLine0, _) = runBuffer win b $ getModeLine (commonNamePrefix e)
         modeLine = if notMini then Just modeLine0 else Nothing
         modeLines = map (withAttributes modeStyle . take w . (++ repeat ' ')) $ maybeToList $ modeLine
         modeStyle = (if focused then appEndo (modelineFocusStyle sty) else id) (modelineAttributes sty)
