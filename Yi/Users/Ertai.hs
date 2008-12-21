@@ -9,7 +9,7 @@ import Control.Monad (replicateM_)
 import Yi.Keymap.Keys (char,(?>>!),(>>!))
 import Yi.Misc (adjBlock)
 import Yi.Buffer
-import Yi.Keymap.Vim (viWrite, v_top_level, v_ins_char)
+import Yi.Keymap.Vim (viWrite, v_top_level, v_ins_char, savingInsertStringE, savingDeleteCharE)
 import qualified Yi.Keymap.Vim as Vim
 
 myModetable :: [AnyMode]
@@ -20,9 +20,12 @@ myModetable = [
               ]
 
 main :: IO ()
-main = yi $ defaultConfig { modeTable = fmap (onMode prefIndent) (myModetable ++ modeTable defaultConfig)
-                          , defaultKm = Vim.mkKeymap extendedVimKeymap
-                          }
+main = yi $ myConfig defaultVimConfig
+
+myConfig :: Config -> Config
+myConfig cfg = cfg { modeTable = fmap (onMode prefIndent) (myModetable ++ modeTable cfg)
+                   , defaultKm = Vim.mkKeymap extendedVimKeymap
+                   }
 
 -- Set soft tabs of 4 spaces in width.
 prefIndent :: Mode s -> Mode s
@@ -32,7 +35,7 @@ prefIndent m = m { modeIndentSettings = IndentSettings { expandTabs = True
                  }
 
 mkInputMethod :: [(String,String)] -> Keymap
-mkInputMethod xs = choice [pString i >> adjustPriority (negate (length i)) >>! insertN o | (i,o) <- xs]
+mkInputMethod xs = choice [pString i >> adjustPriority (negate (length i)) >>! savingInsertStringE o | (i,o) <- xs]
 
 extraInput :: Keymap
 extraInput = ctrl (char ']') ?>> mkInputMethod (greek ++ symbols)
@@ -54,15 +57,15 @@ extendedVimKeymap = Vim.defKeymap `override` \super self -> super
             -- current col is a multiple of 4 and the previous 4 characters
             -- are spaces then delete all 4 characters.
             <|> (spec KBS ?>>! do
-                    c <- curCol
-                    line <- readRegionB =<< regionOfPartB Line Backward
-                    sw <- indentSettingsB >>= return . shiftWidth
-                    let indentStr = replicate sw ' '
-                        toDel = if (c `mod` sw) == 0 && indentStr `isPrefixOf` reverse line
-                                then sw
-                                else 1
-                    adjBlock (-toDel)
-                    replicateM_ toDel $ deleteB Character Backward
+                    toDel <- withBuffer0 $
+                      do c <- curCol
+                         line <- readRegionB =<< regionOfPartB Line Backward
+                         sw <- indentSettingsB >>= return . shiftWidth
+                         let indentStr = replicate sw ' '
+                         return $ if (c `mod` sw) == 0 && indentStr `isPrefixOf` reverse line
+                                  then sw
+                                  else 1
+                    replicateM_ toDel $ savingDeleteCharE Backward
                 )
             <|> (adjustPriority (-1) >> extraInput)
     }
