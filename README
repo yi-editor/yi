@@ -129,6 +129,27 @@ development repository.
 NOTE: You must still install Yi once so that the icons can be found!
 
 
+PROFILING
+
+If you're interested in optimizing yi, the Makefile contains two example rules
+for profiling called 'prof-config-hacking' and 'prof-config', depending on
+whether you want to use -fhacking or not:
+
+    make prof-config-hacking
+    make run-inplace
+
+    # or
+
+    make prof-config
+    make install
+
+Of course, feel free to adjust those rules to your needs. If you go for the
+prof-config variant, here's an example of how you then can run yi to get
+profiling output:
+
+    yi --recompile-force --ghc-options="-prof -auto-all" +RTS -p -hc
+
+
 PORTABILITY
 
 A porting checklist:
