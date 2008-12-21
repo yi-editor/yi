@@ -30,7 +30,6 @@ import Yi.Config
 import Yi.Editor
 import Yi.Event
 import Yi.Monad
-import Yi.Regex (SearchExp)
 import Yi.Style
 import Yi.WindowSet as WS
 import qualified Data.ByteString.Char8 as B
@@ -222,7 +221,7 @@ renderTabBar e ui xss =
         uiStyle         = configStyle $ configUI $ config $ ui
         tabTitle text   = " " ++ text ++ " "
         tabAttributes f = appEndo ((if f then tabInFocusStyle else tabNotFocusedStyle) uiStyle) (tabBarAttributes uiStyle)
-        tabToVtyImage tab@(TabDescr text inFocus) = withAttributes (tabAttributes inFocus) (tabTitle $ tabAbbrevTitle text)
+        tabToVtyImage _tab@(TabDescr text inFocus) = withAttributes (tabAttributes inFocus) (tabTitle $ tabAbbrevTitle text)
 
 scanrT :: (Int -> Int -> Int) -> Int -> WindowSet Int -> WindowSet Int
 scanrT (+*+) k t = fst $ runState (mapM f t) k
