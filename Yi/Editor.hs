@@ -32,7 +32,7 @@ import qualified Data.DelayList as DelayList
 import qualified Data.Map as M
 import Data.Typeable
 import System.FilePath (FilePath, splitPath)
-import Control.Monad.RWS hiding (get, put, mapM, forM)
+import Control.Monad.RWS hiding (get, put, mapM, forM_)
 import qualified Data.ByteString.Lazy.UTF8 as LazyUTF8
 
 type Status = (String,StyleName)
@@ -199,8 +199,6 @@ commonNamePrefix = commonPrefix . fmap (dropLast . splitPath) . rights . fmap (^
     where dropLast [] = []
           dropLast x = init x
           -- drop the last component, so that it is never hidden.
-    
-    
 
 getBufferStack :: EditorM [FBuffer]
 getBufferStack = do
@@ -234,9 +232,7 @@ getBufferWithName bufName = do
 -- FIXME: rename to displayAllBuffersE; make sure buffers are not open twice.
 openAllBuffersE :: EditorM ()
 openAllBuffersE = do buffers <- getBuffers
-                     forM buffers $ \buffer -> do w <- newWindowE False (bkey buffer)
-                                                  modA windowsA (WS.add w)
-                     return ()
+                     forM_ buffers $ (modA windowsA . WS.add =<<) . newWindowE False . bkey
 
 ------------------------------------------------------------------------
 
