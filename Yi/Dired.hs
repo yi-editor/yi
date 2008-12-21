@@ -67,7 +67,7 @@ fnewE f = fnewCanonicalized =<< liftIO (expandTilda f)
 
 fnewCanonicalized :: FilePath -> YiM ()
 fnewCanonicalized f = do
-    bufs                 <- withEditor getBuffers
+    bufs <- gets bufferSet
         -- The file names associated with the list of current buffers
     bufsWithThisFilename <- liftIO $ filterM assocWithSameFile bufs
         -- The names of the existing buffers

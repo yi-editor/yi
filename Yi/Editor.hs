@@ -188,14 +188,14 @@ deleteBuffer k = do
                            }
       _ -> return () -- Don't delete the last buffer.
 
--- | Return the buffers we have
-getBuffers :: EditorM [FBuffer]
-getBuffers = gets (M.elems . buffers)
+-- | Return the buffers we have, /in no particular order/
+bufferSet :: Editor -> [FBuffer]
+bufferSet = M.elems . buffers
 
 -- | Return a prefix that can be removed from all buffer paths while keeping them
 -- unique.
 commonNamePrefix :: Editor -> [String]
-commonNamePrefix = commonPrefix . fmap (dropLast . splitPath) . rights . fmap (^. identA) . M.elems . buffers
+commonNamePrefix = commonPrefix . fmap (dropLast . splitPath) . rights . fmap (^. identA) . bufferSet
     where dropLast [] = []
           dropLast x = init x
           -- drop the last component, so that it is never hidden.
@@ -231,7 +231,7 @@ getBufferWithName bufName = do
 -- | Make all buffers visible by splitting the current WindowSet
 -- FIXME: rename to displayAllBuffersE; make sure buffers are not open twice.
 openAllBuffersE :: EditorM ()
-openAllBuffersE = do buffers <- getBuffers
+openAllBuffersE = do buffers <- gets bufferSet
                      forM_ buffers $ (modA windowsA . WS.add =<<) . newWindowE False . bkey
 
 ------------------------------------------------------------------------

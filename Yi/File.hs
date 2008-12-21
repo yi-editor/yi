@@ -92,7 +92,7 @@ fwriteToE f = do
 -- | Write all open buffers
 fwriteAllE :: YiM ()
 fwriteAllE = 
-  do allBuffs <- withEditor getBuffers
+  do allBuffs <- gets bufferSet
      let modifiedBuffers = filter (not . isUnchangedBuffer) allBuffs
      mapM_ fwriteBufferE (fmap bkey modifiedBuffers)
 

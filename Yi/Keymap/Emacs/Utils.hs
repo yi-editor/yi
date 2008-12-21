@@ -76,7 +76,7 @@ askQuitEditor = askIndividualSave True =<< getModifiedBuffers
 askSaveEditor = askIndividualSave False =<< getModifiedBuffers
 
 getModifiedBuffers :: YiM [FBuffer]
-getModifiedBuffers = filterM deservesSave =<< withEditor getBuffers
+getModifiedBuffers = filterM deservesSave =<< gets bufferSet
 
 deservesSave :: FBuffer -> YiM Bool
 deservesSave b

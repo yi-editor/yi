@@ -182,7 +182,7 @@ instance Promptable BufferRef where
 matchingBufferNames :: String -> YiM [String]
 matchingBufferNames _ = withEditor $ do
   p <- gets commonNamePrefix 
-  bs <- getBuffers
+  bs <- gets bufferSet
   return $ fmap (shortIdentString p) bs
 
 
