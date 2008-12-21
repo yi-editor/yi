@@ -60,9 +60,8 @@ parenIns open close = do
 Just frontend = foldr1 (<|>) $ fmap (flip lookup availableFrontends) ["cocoa", "vty"] 
 
 main :: IO ()
-main = yi $ defaultConfig {
+main = yi $ defaultEmacsConfig {
                            startFrontEnd = frontend,
-                           configKillringAccumulate = True,
                            modeTable = AnyMode (haskellModeHooks Haskell.cleverMode)
                                      : AnyMode (haskellModeHooks Haskell.fastMode)
                                      : modeTable defaultConfig,
