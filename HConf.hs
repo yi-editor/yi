@@ -6,6 +6,7 @@ import Control.OldException (catch, bracket)
 import Control.Applicative
 import Control.Monad.Reader
 import Data.List (intercalate)
+import GHC.Environment (getFullArgs)
 import System.IO
 import System.Info
 #ifndef mingw32_HOST_OS
@@ -254,7 +255,7 @@ buildLaunch projectName flags = do
 #ifndef mingw32_HOST_OS
     errMsg <- recompile projectName flags False
     dir  <- getProjectDir projectName
-    args <- getArgs
+    args <- getFullArgs
     args' <- case errMsg of
                Nothing -> return args
                Just _ -> do errFile <- getErrorsFile projectName
