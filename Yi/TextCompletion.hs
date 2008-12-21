@@ -5,6 +5,7 @@
 module Yi.TextCompletion (
         -- * Word completion
         wordComplete,
+        wordCompleteString,
         resetComplete,
         completeWordB,
 ) where
@@ -40,23 +41,26 @@ resetComplete = setDynamic (Completion [])
 
 -- | Try to complete the current word with occurences found elsewhere in the
 -- editor. Further calls try other options. 
-wordComplete :: EditorM ()
-wordComplete = do
+wordCompleteString :: EditorM String
+wordCompleteString = do
   Completion complList <- getDynamic
   case complList of
     (x:xs) -> do -- more alternatives, use them.
-       withBuffer0 $ do reg <- regionOfPartB unitWord Backward       
-                        replaceRegionB reg x
        setDynamic (Completion xs)
+       return x
     [] -> do -- no alternatives, build them.
       w <- withBuffer0 $ do readRegionB =<< regionOfPartB unitWord Backward
       ws <- wordsForCompletion
       setDynamic (Completion $ (nubSet $ filter (matches w) ws) ++ [w])
       -- We put 'w' back at the end so we go back to it after seeing
       -- all possibilities. 
-      wordComplete -- to pick the 1st possibility.
+      wordCompleteString -- to pick the 1st possibility.
 
   where matches x y = x `isPrefixOf` y && x /= y
+
+wordComplete :: EditorM ()
+wordComplete = do x <- wordCompleteString
+                  withBuffer0 $ flip replaceRegionB x =<< regionOfPartB unitWord Backward
 
 ----------------------------
 -- Alternative Word Completion
