@@ -40,7 +40,7 @@ prof-config-hacking::
 	cabal configure -fhacking -f-cocoa -f-gtk -f-pango --enable-executable-profiling --ghc-options=-auto-all
 
 prof-config::
-	cabal configure -f-cocoa -f-gtk -f-pango --enable-executable-profiling --ghc-options=-auto-all
+	cabal configure -f-cocoa -f-gtk -f-pango --enable-executable-profiling --enable-library-profiling --ghc-options=-auto-all
 
 run-inplace: build
 	dist/build/yi/yi -f$(frontend)
