@@ -5,11 +5,9 @@ module Yi.Hoogle where
 import Control.Monad (liftM)
 import Data.Char (isUpper)
 import Data.List (isInfixOf, nub)
-import System.IO.Unsafe (unsafePerformIO)
 
 import Yi hiding ((.), error)
 import Yi.Process (runProgCommand)
-import Yi.Core (msgEditor)
 import Yi.Buffer (replaceRegionB, unitWord)
 
 -- | Remove anything starting with uppercase letter. These denote either module names or types.
