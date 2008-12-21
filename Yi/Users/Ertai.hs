@@ -9,7 +9,7 @@ import Control.Monad (replicateM_)
 import Yi.Keymap.Keys (char,(?>>!),(>>!))
 import Yi.Misc (adjBlock)
 import Yi.Buffer
-import Yi.Keymap.Vim (viWrite, v_top_level, v_ins_char, savingInsertStringE, savingDeleteCharE)
+import Yi.Keymap.Vim (viWrite, v_top_level, v_ins_char, savingInsertStringE, savingDeleteCharB)
 import qualified Yi.Keymap.Vim as Vim
 
 myModetable :: [AnyMode]
@@ -57,15 +57,13 @@ extendedVimKeymap = Vim.defKeymap `override` \super self -> super
             -- current col is a multiple of 4 and the previous 4 characters
             -- are spaces then delete all 4 characters.
             <|> (spec KBS ?>>! do
-                    toDel <- withBuffer0 $
-                      do c <- curCol
-                         line <- readRegionB =<< regionOfPartB Line Backward
-                         sw <- indentSettingsB >>= return . shiftWidth
-                         let indentStr = replicate sw ' '
-                         return $ if (c `mod` sw) == 0 && indentStr `isPrefixOf` reverse line
-                                  then sw
-                                  else 1
-                    replicateM_ toDel $ savingDeleteCharE Backward
+                    c <- curCol
+                    line <- readRegionB =<< regionOfPartB Line Backward
+                    sw <- indentSettingsB >>= return . shiftWidth
+                    let indentStr = replicate sw ' '
+                        toDel | (c `mod` sw) == 0 && indentStr `isPrefixOf` reverse line = sw
+                              | otherwise                                                = 1
+                    replicateM_ toDel $ savingDeleteCharB Backward
                 )
             <|> (adjustPriority (-1) >> extraInput)
     }
