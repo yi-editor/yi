@@ -441,7 +441,9 @@ fixCurrentBufferA_ :: Accessor Editor Editor
 fixCurrentBufferA_ = fromSetGet (\new _old -> let 
     ws = windows new
     b = findBufferWith (bufkey $ WS.current ws) new
-    in new { bufferStack = nub (bkey b : bufferStack new) } ) id
+    newBufferStack = nub (bkey b : bufferStack new)
+    -- make sure we do not hold to old versions.
+    in length newBufferStack `seq` new { bufferStack = newBufferStack  } ) id
     
 
 withWindows :: (WindowSet Window -> a) -> EditorM a
