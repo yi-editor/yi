@@ -21,6 +21,8 @@ tabBarDescr editor =
         tabDescr (tab,False) = TabDescr (hintForTab tab) False
     in fmap tabDescr (withFocus $ editor ^. tabsA)
 
+-- FIXME: * use System.FilePath functions;
+--        * handle the empty String
 tabAbbrevTitle :: String -> String
 tabAbbrevTitle title = case break (=='/') title of
                          ([],     ('/':suffix)) -> '/' : tabAbbrevTitle suffix
