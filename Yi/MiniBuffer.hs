@@ -182,7 +182,6 @@ matchingBufferNames _ = withEditor $ do
   return $ fmap (shortIdentString p) bs
 
 
--- TODO: be a bit more clever than 'Read r'
-instance (YiAction a x, Promptable r, Typeable r) => YiAction (r -> a) x where
+instance (YiAction a x, Promptable r) => YiAction (r -> a) x where
     makeAction f = YiA $ doPrompt (runAction . makeAction . f)
                    
