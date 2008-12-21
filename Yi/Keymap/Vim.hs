@@ -13,9 +13,9 @@ module Yi.Keymap.Vim (keymap,
                       savingInsertE,
                       savingInsertCharE,
                       savingInsertStringE,
-                      savingDeleteE,
-                      savingDeleteCharE,
-                      savingDeleteWordE,
+                      savingDeleteB,
+                      savingDeleteCharB,
+                      savingDeleteWordB,
                       savingCommandE,
                       mkKeymap,
                       beginIns,
@@ -108,10 +108,10 @@ data ViCmd = ArbCmd (Int -> EditorM ()) Int
 instance Initializable ViCmd where
   initial = NoOp
 
-data ViInsertion = ViIns { viDelBefore :: BufferM () -- ^ The action performed before insertion
+data ViInsertion = ViIns { viActBefore :: BufferM () -- ^ The action performed before insertion
                          , viBeginPos  :: Point      -- ^ The position _before_ insertion
                          , viEndPos    :: Point      -- ^ The position _after_ insertion
-                         , viDelAfter  :: BufferM () -- ^ The action performed after insertion
+                         , viActAfter  :: BufferM () -- ^ The action performed after insertion
                          }
   deriving (Typeable)
 
@@ -121,8 +121,8 @@ lastViCommandA :: Accessor Editor ViCmd
 lastViCommandA = dynA
 
 -- TODO make this piece of data part of the buffer
-currentViInsertionA :: Accessor Editor (Maybe ViInsertion)
-currentViInsertionA = dynA
+currentViInsertionA :: Accessor FBuffer (Maybe ViInsertion)
+currentViInsertionA = bufferDynamicValueA
 
 applyViCmd :: Maybe Int -> ViCmd -> EditorM ()
 applyViCmd _  NoOp = return ()
@@ -141,9 +141,9 @@ applyOperator onRegion i (regionStyle, move) = savingCommandE f i
 emptyViIns :: Point -> ViInsertion
 emptyViIns p = ViIns (return ()) p p (return ())
 
-getViIns :: EditorM ViInsertion
+getViIns :: BufferM ViInsertion
 getViIns = maybe def return =<< getA currentViInsertionA
-  where def = do ins <- emptyViIns <$> withBuffer0 pointB
+  where def = do ins <- emptyViIns <$> pointB
                  putA currentViInsertionA $ Just ins
                  return ins
 
@@ -153,7 +153,7 @@ viInsText ins = readRegionB $ mkRegion (viBeginPos ins) (viEndPos ins)
 -- | The given buffer action should be an insertion action.
 -- The given action is an EditorM for needs of wordComplete.
 savingInsertE :: EditorM () -> EditorM ()
-savingInsertE action = do ins0 <- getViIns
+savingInsertE action = do ins0 <- withBuffer0 getViIns
                           oldP <- withBuffer0 pointB
                           action
                           newP <- withBuffer0 pointB
@@ -164,7 +164,7 @@ savingInsertE action = do ins0 <- getViIns
                                    | otherwise                     = emptyViIns newP
                           -- txt <- withBuffer0 $ viInsText ins1
                           -- printMsg $ "current insert text " ++ show txt
-                          putA currentViInsertionA $ Just ins1
+                          withBuffer0 $ putA currentViInsertionA $ Just ins1
 
 savingInsertCharE :: Char -> EditorM ()
 savingInsertCharE = savingInsertE . withBuffer0 . insertB
@@ -175,37 +175,37 @@ savingInsertStringE = savingInsertE . withBuffer0 . insertN
 -- | The given action should be a deletion action.
 -- The only well tested buffer actions are deleting one character,
 -- or one word, forward or backward.
-savingDeleteE :: BufferM () -> EditorM ()
-savingDeleteE action = do
+savingDeleteB :: BufferM () -> BufferM ()
+savingDeleteB action = do
   ins0 <- getViIns
-  (oldP, newP, diff) <- withBuffer0 $ do o  <- pointB
-                                         s1 <- sizeB
-                                         action
-                                         s2 <- sizeB
-                                         n  <- pointB
-                                         return (o, n, s2 ~- s1)
-  let endP   = viEndPos ins0
+  oldP <- pointB
+  s1   <- sizeB
+  action
+  s2   <- sizeB
+  newP <- pointB
+  let diff   = s2 ~- s1
+      endP   = viEndPos ins0
       beginP = viBeginPos ins0
       shrinkEndPos = viEndPosA ^: (-~ diff)
       ins1 =
         if oldP >= beginP && oldP <= endP then
           if newP > endP then
-            viDelAfterA  ^: (>> action) $ ins0 { viEndPos = newP }
+            viActAfterA  ^: (>> action) $ ins0 { viEndPos = newP }
           else if newP < beginP then
-            viDelBeforeA ^: (>> action) $ shrinkEndPos $ ins0 { viBeginPos = newP }
+            viActBeforeA ^: (>> action) $ shrinkEndPos $ ins0 { viBeginPos = newP }
           else shrinkEndPos ins0
-        else if newP > oldP then viDelAfterA  ^: (>> action) $ emptyViIns newP
-                            else viDelBeforeA ^: (>> action) $ emptyViIns newP
+        else if newP > oldP then viActAfterA  ^: (>> action) $ emptyViIns newP
+                            else viActBeforeA ^: (>> action) $ emptyViIns newP
 
   -- txt <- withBuffer0 $ viInsText ins1
   -- printMsg $ "current insert text " ++ show txt
   putA currentViInsertionA $ Just ins1
 
-savingDeleteCharE :: Direction -> EditorM ()
-savingDeleteCharE dir = savingDeleteE (adjBlock (-1) >> deleteB Character dir)
+savingDeleteCharB :: Direction -> BufferM ()
+savingDeleteCharB dir = savingDeleteB (adjBlock (-1) >> deleteB Character dir)
 
-savingDeleteWordE :: Direction -> EditorM ()
-savingDeleteWordE dir = savingDeleteE $ deleteRegionB =<< regionOfPartNonEmptyB unitViWordOnLine dir
+savingDeleteWordB :: Direction -> BufferM ()
+savingDeleteWordB dir = savingDeleteB $ deleteRegionB =<< regionOfPartNonEmptyB unitViWordOnLine dir
 
 viCommandOfViInsertion :: ViInsertion -> BufferM ViCmd
 viCommandOfViInsertion ins@(ViIns before _ _ after) = do
@@ -213,8 +213,8 @@ viCommandOfViInsertion ins@(ViIns before _ _ after) = do
   return $ ArbCmd (flip replicateM_ $ withBuffer0 $ before >> insertN text >> after) 1
 
 commitLastInsertionE :: EditorM ()
-commitLastInsertionE = do mins <- getA currentViInsertionA
-                          putA currentViInsertionA Nothing
+commitLastInsertionE = do mins <- withBuffer0 $ getA currentViInsertionA
+                          withBuffer0 $ putA currentViInsertionA Nothing
                           putA lastViCommandA =<< maybe (return NoOp) (withBuffer0 . viCommandOfViInsertion) mins
 
 savingCommandE :: (Int -> EditorM ()) -> Int -> EditorM ()
@@ -1002,7 +1002,7 @@ defKeymap = Proto template
               ,spec KRight    ?>>! moveXorEol 1
               ,spec KEnd      ?>>! moveToEol
               ,spec KHome     ?>>! moveToSol
-              ,spec KDel      ?>>! savingDeleteCharE Forward
+              ,spec KDel      ?>>! savingDeleteCharB Forward
               ,spec KEnter    ?>>! savingInsertCharE '\n'
               ,ctrlCh 'j'     ?>>! savingInsertCharE '\n'
               ,ctrlCh 'm'     ?>>! savingInsertCharE '\r'
@@ -1029,9 +1029,9 @@ defKeymap = Proto template
      -- handy bindings to edit while composing (backspace, C-W, C-T, C-D, C-E, C-Y...)
      --
      def_ins_char =
-            choice [spec KBS   ?>>! savingDeleteCharE Backward
-                   ,ctrlCh 'h' ?>>! savingDeleteCharE Backward
-                   ,ctrlCh 'w' ?>>! savingDeleteWordE Backward
+            choice [spec KBS   ?>>! savingDeleteCharB Backward
+                   ,ctrlCh 'h' ?>>! savingDeleteCharB Backward
+                   ,ctrlCh 'w' ?>>! savingDeleteWordB Backward
                    ]
             <|> ins_rep_char savingInsertCharE
             <|| (textChar >>= write . (withBuffer0 (adjBlock 1) >>) . savingInsertCharE)
@@ -1418,8 +1418,8 @@ beginIns :: (Show x, YiAction a x) => ModeMap -> a -> I Event Action ()
 beginIns self a = write a >> ins_mode self
 
 beginInsB :: ModeMap -> BufferM () -> I Event Action ()
-beginInsB self a = do write $ do p <- withBuffer0 $ a >> pointB
-                                 putA currentViInsertionA $ Just $ viDelBeforeA ^= a $ emptyViIns p
+beginInsB self a = do write $ do p <- a >> pointB
+                                 putA currentViInsertionA $ Just $ viActBeforeA ^= a $ emptyViIns p
                       ins_mode self
 
 post :: Monad m => m a -> m () -> m a
