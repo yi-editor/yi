@@ -10,9 +10,9 @@ module Yi.Keymap.Vim (keymap,
                       leaveInsRep,
                       leave,
                       ModeMap(..),
-                      savingInsertE,
-                      savingInsertCharE,
-                      savingInsertStringE,
+                      savingInsertB,
+                      savingInsertCharB,
+                      savingInsertStringB,
                       savingDeleteB,
                       savingDeleteCharB,
                       savingDeleteWordB,
@@ -151,26 +151,23 @@ viInsText :: ViInsertion -> BufferM String
 viInsText ins = readRegionB $ mkRegion (viBeginPos ins) (viEndPos ins)
 
 -- | The given buffer action should be an insertion action.
--- The given action is an EditorM for needs of wordComplete.
-savingInsertE :: EditorM () -> EditorM ()
-savingInsertE action = do ins0 <- withBuffer0 getViIns
-                          oldP <- withBuffer0 pointB
+savingInsertB :: BufferM () -> BufferM ()
+savingInsertB action = do ins0 <- getViIns
+                          oldP <- pointB
                           action
-                          newP <- withBuffer0 pointB
+                          newP <- pointB
                           let endP   = viEndPos ins0
                               beginP = viBeginPos ins0
                               ins1 | endP == oldP                  = ins0 { viEndPos = newP }
                                    | oldP >= beginP && oldP < endP = ins0 { viEndPos = endP +~ (newP ~- oldP) }
                                    | otherwise                     = emptyViIns newP
-                          -- txt <- withBuffer0 $ viInsText ins1
-                          -- printMsg $ "current insert text " ++ show txt
-                          withBuffer0 $ putA currentViInsertionA $ Just ins1
+                          putA currentViInsertionA $ Just ins1
 
-savingInsertCharE :: Char -> EditorM ()
-savingInsertCharE = savingInsertE . withBuffer0 . insertB
+savingInsertCharB :: Char -> BufferM ()
+savingInsertCharB = savingInsertB . insertB
 
-savingInsertStringE :: String -> EditorM ()
-savingInsertStringE = savingInsertE . withBuffer0 . insertN
+savingInsertStringB :: String -> BufferM ()
+savingInsertStringB = savingInsertB . insertN
 
 -- | The given action should be a deletion action.
 -- The only well tested buffer actions are deleting one character,
@@ -197,8 +194,6 @@ savingDeleteB action = do
         else if newP > oldP then viActAfterA  ^: (>> action) $ emptyViIns newP
                             else viActBeforeA ^: (>> action) $ emptyViIns newP
 
-  -- txt <- withBuffer0 $ viInsText ins1
-  -- printMsg $ "current insert text " ++ show txt
   putA currentViInsertionA $ Just ins1
 
 savingDeleteCharB :: Direction -> BufferM ()
@@ -947,7 +942,7 @@ defKeymap = Proto template
        write $ do
          withBuffer0' $ viMove preMove
          cut regionStyle move
-         when (regionStyle == LineWise) $ withBuffer0' $ insertB '\n' >> leftB -- TODO repeat (savingInsertCharE?)
+         when (regionStyle == LineWise) $ withBuffer0' $ insertB '\n' >> leftB -- TODO repeat (savingInsertCharB?)
        ins_mode self
 
      -- The Vim semantics is a little different here, When receiving CTRL-D
@@ -966,14 +961,14 @@ defKeymap = Proto template
      _ `upTo` 0 = empty
      p `upTo` n = (:) <$> p <*> (p `upTo` pred n <|> pure []) 
 
-     insertSpecialChar :: (Char -> EditorM ()) -> VimMode
-     insertSpecialChar insrepE =
-          insertNumber insrepE
-      <|> (ctrlCh '@' ?>>! insrepE '\000')
-      <|| (write . withEditor' . insrepE . eventToChar =<< anyEvent)
+     insertSpecialChar :: (Char -> BufferM ()) -> VimMode
+     insertSpecialChar insrepB =
+          insertNumber insrepB
+      <|> (ctrlCh '@' ?>>! insrepB '\000')
+      <|| (write . withBuffer0' . insrepB . eventToChar =<< anyEvent)
 
-     insertNumber :: (Char -> EditorM ()) -> VimMode
-     insertNumber insrepE = do
+     insertNumber :: (Char -> BufferM ()) -> VimMode
+     insertNumber insrepB = do
          choice [g [charOf id '0' '1',dec,dec] ""
                 ,g [charOf id '2' '2',charOf id '0' '5',dec] ""
                 ,g [charOf id '2' '2',charOf id '6' '9'] ""
@@ -989,11 +984,11 @@ defKeymap = Proto template
              oct = charOf id '0' '7'
              hex = charOf id '0' '9' <|> charOf id 'a' 'f' <|> charOf id 'A' 'F'
              f digits prefix = do xs <- digits
-                                  write $ withEditor' $ insrepE $ chr $ read $ prefix ++ xs
+                                  write $ withBuffer0' $ insrepB $ chr $ read $ prefix ++ xs
              g digits prefix = f (sequence digits) prefix
 
-     ins_rep_char :: (Char -> EditorM ()) -> VimMode
-     ins_rep_char insrepE =
+     ins_rep_char :: (Char -> BufferM ()) -> VimMode
+     ins_rep_char insrepB =
        choice [spec KPageUp   ?>>! upScreenB
               ,spec KPageDown ?>>! downScreenB
               ,spec KUp       ?>>! lineUp
@@ -1003,17 +998,17 @@ defKeymap = Proto template
               ,spec KEnd      ?>>! moveToEol
               ,spec KHome     ?>>! moveToSol
               ,spec KDel      ?>>! savingDeleteCharB Forward
-              ,spec KEnter    ?>>! savingInsertCharE '\n'
-              ,ctrlCh 'j'     ?>>! savingInsertCharE '\n'
-              ,ctrlCh 'm'     ?>>! savingInsertCharE '\r'
-              ,spec KTab      ?>>! mapM_ insrepE =<< withBuffer0 tabB
-              ,ctrlCh 'i'     ?>>! mapM_ insrepE =<< withBuffer0 tabB
-              ,ctrlCh 'e'     ?>>! insrepE =<< withBuffer0 (savingPointB $ lineDown >> readB) -- TODO repeat: not symbolically reminded, just the inserted char, as in Vim though
-              ,ctrlCh 'y'     ?>>! insrepE =<< withBuffer0 (savingPointB $ lineUp >> readB) -- IDEM
+              ,spec KEnter    ?>>! savingInsertCharB '\n'
+              ,ctrlCh 'j'     ?>>! savingInsertCharB '\n'
+              ,ctrlCh 'm'     ?>>! savingInsertCharB '\r'
+              ,spec KTab      ?>>! mapM_ insrepB =<< tabB
+              ,ctrlCh 'i'     ?>>! mapM_ insrepB =<< tabB
+              ,ctrlCh 'e'     ?>>! insrepB =<< savingPointB (lineDown >> readB)
+              ,ctrlCh 'y'     ?>>! insrepB =<< savingPointB (lineUp >> readB)
               ,ctrlCh 't'     ?>>! savingCommandB (const $ savingPointB $ shiftIndentOfRegion 1 =<< regionOfB Line) 1 --TODO should not move the cursor
               ,ctrlCh 'd'     ?>>! savingCommandE (const $ withBuffer0' $ savingPointB dedentOrDeleteIndent) 1 -- IDEM
-              ,ctrlCh 'v'     ?>>  insertSpecialChar insrepE
-              ,ctrlCh 'q'     ?>>  insertSpecialChar insrepE
+              ,ctrlCh 'v'     ?>>  insertSpecialChar insrepB
+              ,ctrlCh 'q'     ?>>  insertSpecialChar insrepB
               ]
 
      --
@@ -1033,8 +1028,8 @@ defKeymap = Proto template
                    ,ctrlCh 'h' ?>>! savingDeleteCharB Backward
                    ,ctrlCh 'w' ?>>! savingDeleteWordB Backward
                    ]
-            <|> ins_rep_char savingInsertCharE
-            <|| (textChar >>= write . (withBuffer0 (adjBlock 1) >>) . savingInsertCharE)
+            <|> ins_rep_char savingInsertCharB
+            <|| (textChar >>= write . (adjBlock 1 >>) . savingInsertCharB)
 
      -- ---------------------------------------------------------------------
      -- | vim replace mode
@@ -1050,9 +1045,9 @@ defKeymap = Proto template
                        ,ctrlCh 'h' ?>>! leftB
                        ,ctrlCh 'w' ?>>! genMoveB unitViWord (Backward,InsideBound) Backward
                        ] -- should undo unless pointer has been moved
-                <|> ins_rep_char (withBuffer0 . replaceB)
+                <|> ins_rep_char replaceB
                 <|| do c <- textChar; write $ replaceB c
-        where replaceB c = do e <- atEol; if e then insertB c else writeB c -- savingInsertCharE ?
+        where replaceB c = do e <- atEol; if e then insertB c else writeB c -- savingInsertCharB ?
 
      -- ---------------------------------------------------------------------
      -- Ex mode. We also process regex searching mode here.
@@ -1503,8 +1498,9 @@ validMarkIdentifier = fmap f $ oneOfchar "<>^'`" <|> charOf id 'a' 'z' <|> fail 
 -- --------------------
 -- | Keyword
 kwd_mode :: VimMode
-kwd_mode = some (ctrlCh 'n' ?>> write (savingInsertE wordComplete)) >> deprioritize >> write resetComplete
+kwd_mode = some (ctrlCh 'n' ?>> write viWordComplete) >> deprioritize >> write resetComplete
 -- 'adjustPriority' is there to lift the ambiguity between "continuing" completion
 -- and resetting it (restarting at the 1st completion).
+  where viWordComplete = withBuffer0 . savingInsertStringB =<< wordCompleteString
 
 
