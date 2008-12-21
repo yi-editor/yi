@@ -231,7 +231,7 @@ executable yi
 
         build-depends: Cabal >= 1.6 && < 1.7
         build-depends: Diff >=0.1 && <0.2
-        build-depends: array, containers,  directory, mtl, process, old-locale, old-time
+        build-depends: array, containers,  directory, mtl, process, old-locale
         build-depends: base>=4
         build-depends: binary >=0.4.2 && <0.5
         build-depends: bytestring >=0.9.1 && <0.9.2
@@ -249,6 +249,7 @@ executable yi
         build-depends: regex-base ==0.93.*
         build-depends: regex-tdfa >=0.95.2
         build-depends: rosezipper >= 0.1 && < 0.2
+        build-depends: time == 1.1.*
         build-depends: utf8-string >= 0.3.1
 
         ghc-options:   -Wall -fno-warn-orphans -threaded

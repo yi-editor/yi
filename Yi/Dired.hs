@@ -28,8 +28,7 @@ module Yi.Dired (
        ,fnewE
     ) where
 
-import Data.Accessor (putA, getA)
-import Prelude (uncurry, catch)
+import Prelude (uncurry, catch, realToFrac)
 
 import qualified Data.ByteString.Lazy as LazyB
 import Data.List hiding (find, maximum, concat)
@@ -43,7 +42,8 @@ import System.PosixCompat.Types
 import System.PosixCompat.User
 import Control.Monad.Reader hiding (mapM)
 
-import System.Time
+import Data.Time
+import Data.Time.Clock.POSIX
 import Text.Printf
 import Yi.Regex
 
@@ -303,7 +303,7 @@ diredScanDir dir = do
 
     lineForFilePath :: FilePath -> FileStatus -> IO DiredFileInfo
     lineForFilePath fp fileStatus = do
-                        modTimeStr <- return . shortCalendarTimeToString =<< toCalendarTime (TOD (floor $ toRational $ modificationTime fileStatus) 0)
+                        let modTimeStr = shortCalendarTimeToString $ posixSecondsToUTCTime $ realToFrac $ modificationTime fileStatus
                         let uid = fileOwner fileStatus
                             gid = fileGroup fileStatus
                         _filenm <- if (isSymbolicLink fileStatus) then
@@ -346,8 +346,8 @@ modeString fm = ""
     where
     strIfSet s mode = if fm == (fm `unionFileModes` mode) then s else "-"
 
-shortCalendarTimeToString :: CalendarTime -> String
-shortCalendarTimeToString = formatCalendarTime defaultTimeLocale "%b %d %H:%M"
+shortCalendarTimeToString :: UTCTime -> String
+shortCalendarTimeToString = formatTime defaultTimeLocale "%b %d %H:%M"
 
 -- Default Filter: omit files ending in '~' or '#' and also '.' and '..'.
 diredOmitFile :: String -> Bool

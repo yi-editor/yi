@@ -12,7 +12,8 @@ import Control.Monad.Trans
 import Data.IORef
 import System.IO
 import System.IO.Unsafe ( unsafePerformIO )
-import System.Time
+import Data.Time
+import System.Locale
 
 dbgHandle :: IORef (Maybe Handle)
 dbgHandle = unsafePerformIO $ newIORef Nothing
@@ -51,9 +52,9 @@ logPutStrLn s = liftIO $ do
                    case mh of
                      Nothing -> return ()
                      Just h -> do
-                       time <- toCalendarTime =<< getClockTime
+                       time <-  getCurrentTime
                        tId <- myThreadId
-                       hPutStrLn h $ calendarTimeToString time ++ " " ++ show tId ++ " " ++ s
+                       hPutStrLn h $ formatTime defaultTimeLocale rfc822DateFormat time ++ " " ++ show tId ++ " " ++ s
                        hFlush h
 
 logError :: (MonadIO m) => String -> m ()
