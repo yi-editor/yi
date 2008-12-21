@@ -1,11 +1,15 @@
-{-# LANGUAGE ScopedTypeVariables, FlexibleInstances, MultiParamTypeClasses, UndecidableInstances, TypeSynonymInstances #-}
+{-# LANGUAGE ScopedTypeVariables, FlexibleInstances, MultiParamTypeClasses, UndecidableInstances, TypeSynonymInstances, 
+  TypeOperators, EmptyDataDecls #-}
 
 module Yi.MiniBuffer 
  (
   spawnMinibufferE,
   withMinibufferFree, withMinibuffer, withMinibufferGen, withMinibufferFin, 
   noHint, noPossibilities, simpleComplete, anyModeByName, getAllModeNames,
-  matchingBufferNames
+  matchingBufferNames,
+
+  (:::)(..),
+  LineNumber
  ) where
 
 import Prelude (filter, length)
@@ -185,3 +189,18 @@ matchingBufferNames _ = withEditor $ do
 instance (YiAction a x, Promptable r) => YiAction (r -> a) x where
     makeAction f = YiA $ doPrompt (runAction . makeAction . f)
                    
+
+-- | Tag a type with a documentation
+newtype (:::) t doc = Doc {fromDoc :: t} 
+
+instance (DocType doc, Promptable t) => Promptable (t ::: doc) where
+    getPrompt _ = typeGetPrompt (error "typeGetPrompt should not enter its argument" :: doc)
+
+class DocType t where
+    -- | What to prompt the user when asked this type?
+    typeGetPrompt :: t -> String 
+
+data LineNumber
+instance DocType LineNumber where
+    typeGetPrompt _ = "Line"
+    

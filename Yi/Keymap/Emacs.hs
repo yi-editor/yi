@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts, TypeOperators #-}
 -- Copyright (c) 2005,2007,2008 Jean-Philippe Bernardy
 
 -- | This module aims at a mode that should be (mostly) intuitive to
@@ -12,6 +12,7 @@ import Prelude ()
 import Yi.Core
 import Yi.Dired
 import Yi.File
+import Yi.MiniBuffer
 import Yi.Misc
 import Yi.Rectangle
 import Yi.TextCompletion
@@ -164,7 +165,7 @@ emacsKeys univArg =
          -- Other meta key-bindings
          , meta (spec KBS)      ?>>! (repeatingArg bkillWordB)
          , metaCh 'g' ?>> 
-             char 'g'           ?>>! gotoLn
+             char 'g'           ?>>! (gotoLn . fromDoc :: Int ::: LineNumber -> BufferM Int)
          ]
   where
   withUnivArg :: YiAction (m ()) () => (Maybe Int -> m ()) -> YiM ()
