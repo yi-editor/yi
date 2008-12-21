@@ -1,13 +1,33 @@
 -- Copyright (c) JP Bernardy 2008
-{-# OPTIONS -fglasgow-exts #-}
-module Parser.Incremental (Process, recoverWith, symbol, eof, lookNext, testNext, run, 
-                            mkProcess, pushSyms, pushEof, evalR, evalL,
-                            P) where
+{-# OPTIONS -Wall -fglasgow-exts #-}
+
+-- TODO:
+-- better interface
+-- have error messages in the right order
+-- have a message for plain failures as well / remove failure in recoveries
+
+-- Optimize profile info (no more Ints)
+
+module Parser.Incremental (Process, 
+                          recoverWith, symbol, eof, lookNext, testNext, run,
+                          mkProcess, profile, pushSyms, pushEof, evalL, evalR, feedZ,
+                          P) where
+
 import Control.Applicative
 import Data.List hiding (map, minimumBy)
 
-data a :< b
+-- Local versions of our Control.Arrow friends (also make sure they are lazy enough)
+first :: forall t t1 t2. (t -> t2) -> (t, t1) -> (t2, t1)
+first f ~(a,b) = (f a,b)
 
+second :: forall t t1 t2. (t1 -> t2) -> (t, t1) -> (t, t2)
+second f ~(a,b) = (a,f b)
+
+(***) :: forall t t1 t2 t3. (t -> t2) -> (t1 -> t3) -> (t, t1) -> (t2, t3)
+(f *** g) ~(a,b) = (f a,g b)
+
+data a :< b = (:<) {top :: a, _rest :: b}
+infixr :<
 
 type P s a = Parser s a
 
@@ -22,7 +42,7 @@ data Parser s a where
     Shif :: Parser s a -> Parser s a
     Empt :: Parser s a
     Disj :: Parser s a -> Parser s a -> Parser s a
-    Yuck :: Parser s a -> Parser s a
+    Yuck :: String -> Parser s a -> Parser s a
     
 
 -- | Parser process
@@ -31,11 +51,11 @@ data Steps s a where
     App   :: Steps s ((b -> a) :< (b :< r))      -> Steps s (a :< r)
     Done  ::                               Steps s ()
     Shift ::           Steps s a        -> Steps s a
-    Sh' ::             Steps s a        -> Steps s a
-    Fail  ::                                Steps s a
-    Sus    :: Steps s a -> (s -> Steps s a) -> Steps s a
+    Sh'   ::             Steps s a        -> Steps s a
+    Sus   :: Steps s a -> (s -> Steps s a) -> Steps s a
     Best  :: Ordering -> Profile -> Steps s a -> Steps s a -> Steps s a
-    Dislike :: Steps s a -> Steps s a
+    Dislike :: String -> Steps s a -> Steps s a
+    Fail :: Steps s a
 
 
 -- profile !! s = number of Dislikes found to do s Shifts
@@ -83,7 +103,7 @@ profile (App p) = profile p
 profile (Shift p) = 0 :> profile p
 profile (Done) = PRes 0 -- success with zero dislikes
 profile (Fail) = PFail
-profile (Dislike p) = mapSucc (profile p)
+profile (Dislike _ p) = mapSucc (profile p)
 profile (Sus _ _) = PSusp
 profile (Best _ pr _ _) = pr
 profile (Sh' _) = error "Sh' should be hidden by Sus"
@@ -94,42 +114,35 @@ instance Show (Steps s r) where
     show (Done) = "1"
     show (Shift p) = ">" ++ show p
     show (Sh' p) = "'" ++ show p
-    show (Dislike p) = "?" ++ show p
+    show (Dislike msg p) = msg ++ "?"  ++ show p
     show (Fail) = "0"
     show (Sus _ _) = "..."
     show (Best _ _ p q) = "(" ++ show p ++ ")" ++ show q
 
+instance Show (RPolish i o) where
+    show (RPush _ p) = show p ++ "^"
+    show (RApp p) = show p ++ "@"
+    show (RStop) = "!"
+
+
+apply :: forall t t1 a. ((t -> a) :< (t :< t1)) -> a :< t1
+apply ~(f:< ~(a:<r)) = f a :< r
 
 -- | Right-eval a fully defined process (ie. one that has no Sus)
--- Returns value and continuation.
-evalR :: Steps s (a :< r) -> (a, Steps s r)
-evalR (Val a r) = (a,r)
-evalR (App s) = let (f, s') = evalR s
-                    (x, s'') = evalR s'
-                in (f x, s'')
-evalR (Shift v) = evalR v
-evalR (Dislike v) = evalR v
-evalR (Fail) = error "evalR: No parse!"
-evalR (Sus _ _) = error "evalR: Not fully evaluated!"
-evalR (Sh' _) = error "evalR: Sh' should be hidden by Sus"
-evalR (Best choice _ p q) = case choice of
-    LT -> evalR p
-    GT -> evalR q
+evalR' :: Steps s r -> (r, [String])
+evalR' Done = ((), [])
+evalR' (Val a r) = first (a :<) (evalR' r)
+evalR' (App s) = first apply (evalR' s)
+evalR' (Shift v) = evalR' v
+evalR' (Dislike err v) = second (err:) (evalR' v)
+evalR' (Fail) = error "evalR: No parse!"
+evalR' (Sus _ _) = error "evalR: Not fully evaluated!"
+evalR' (Sh' _) = error "evalR: Sh' should be hidden by Sus"
+evalR' (Best choice _ p q) = case choice of
+    LT -> evalR' p
+    GT -> evalR' q
     EQ -> error $ "evalR: Ambiguous parse: " ++ show p ++ " ~~~ " ++ show q
 
--- | Pre-compute a left-prefix of some steps (as far as possible)
-evalL :: Steps s r -> Steps s r
-evalL (Shift p) = evalL p
-evalL (Dislike p) = evalL p
-evalL (Val x r) = Val x (evalL r)
-evalL (App f) = case evalL f of
-                  (Val a (Val b r)) -> Val (a b) r
-                  r -> App r
-evalL x@(Best choice _ p q) = case choice of
-    LT -> evalL p
-    GT -> evalL q
-    EQ -> x -- don't know where to go: don't speculate on evaluating either branch.
-evalL x = x
 
 instance Functor (Parser s) where
     fmap f = (pure f <*>)
@@ -145,6 +158,7 @@ instance Alternative (Parser s) where
 instance Monad (Parser s) where
     (>>=) = Bind
     return = pure
+    fail _message = Empt
 
 toQ :: Parser s a -> forall h r. ((h,a) -> Steps s r)  -> (h -> Steps s r)
 toQ (Look a f) = \k h -> Sus (toQ a k h) (\s -> toQ (f s) k h)
@@ -153,7 +167,7 @@ toQ (Pure a)     = \k h -> k (h, a)
 toQ (Disj p q)   = \k h -> iBest (toQ p k h) (toQ q k h)
 toQ (Bind p a2q) = \k -> (toQ p) (\(h,a) -> toQ (a2q a) k h)
 toQ Empt = \_k _h -> Fail
-toQ (Yuck p) = \k h -> Dislike $ toQ p k h
+toQ (Yuck err p) = \k h -> Dislike err $ toQ p k h
 toQ (Shif p) = \k h -> Sh' $ toQ p k h
 
 toP :: Parser s a -> forall r. (Steps s r)  -> (Steps s (a :< r))
@@ -163,7 +177,7 @@ toP (Pure x)   = Val x
 toP Empt = \_fut -> Fail
 toP (Disj a b)  = \fut -> iBest (toP a fut) (toP b fut)
 toP (Bind p a2q) = \fut -> (toQ p) (\(_,a) -> (toP (a2q a)) fut) ()
-toP (Yuck p) = Dislike . toP p 
+toP (Yuck err p) = Dislike err . toP p 
 toP (Shif p) = Sh' . toP p
 
 -- | Intelligent, caching best.
@@ -186,7 +200,7 @@ feed ss p = case p of
                       Just (s:_) -> feed ss (cons s)
                   (Shift p') -> Shift (feed ss p')
                   (Sh' p')   -> Shift (feed (fmap (drop 1) ss) p')
-                  (Dislike p') -> Dislike (feed ss p')
+                  (Dislike err p') -> Dislike err (feed ss p')
                   (Val x p') -> Val x (feed ss p')
                   (App p') -> App (feed ss p')
                   Done -> Done
@@ -194,20 +208,45 @@ feed ss p = case p of
                   Best _ _ p' q' -> iBest (feed ss p') (feed ss q')
                   -- TODO: it would be nice to be able to reuse the profile here.
 
+
+feedZ :: Maybe [s] -> Zip s r -> Zip s r
+feedZ x = onRight (feed x)
+
+
+-- Move the zipper to right, and simplify if something is pushed in
+-- the left part.
+
+evalL :: Zip s output -> Zip s output
+evalL (Zip errs0 l0 r0) = help errs0 l0 r0
+  where
+      help :: [String] -> RPolish mid output -> Steps s mid -> Zip s output
+      help errs l rhs = case rhs of
+          (Val a r) -> help errs (simplify (RPush a l)) r
+          (App r)  -> help errs (RApp l) r
+          (Shift p) -> help errs l p
+          (Dislike err p) -> help (err:errs) l p
+          (Best choice _ p q) -> case choice of
+              LT -> help errs l p
+              GT -> help errs l q
+              EQ -> reZip errs l rhs -- don't know where to go: don't speculate on evaluating either branch.
+          _ -> reZip errs l rhs
+      reZip errs l r = l `seq` Zip errs l r
+
 -- | Push some symbols.
-pushSyms :: [s] -> Steps s r -> Steps s r
-pushSyms x = feed (Just x)
+pushSyms :: forall s r. [s] -> Zip s r -> Zip s r
+pushSyms x = feedZ (Just x)
 
 -- | Push eof
-pushEof :: Steps s r -> Steps s r
-pushEof = feed Nothing
+pushEof :: forall s r. Zip s r -> Zip s r
+pushEof = feedZ Nothing
 
+-- | Make a parser into a process.
 mkProcess :: forall s a. P s a -> Process s a
-mkProcess p = toP p Done
+mkProcess p = Zip [] RStop (toP p Done)
 
--- | Run a parser.
-run :: forall s a. P s a -> [s] -> a
-run p input = fst $ evalR $ pushEof $ pushSyms input $ mkProcess p
+-- | Run a process (in case you do not need the incremental interface)
+run :: Process s a -> [s] -> (a, [String])
+run p input = evalR $ pushEof $ pushSyms input $ p
 
 testNext :: (Maybe s -> Bool) -> P s ()
 testNext f = Look (if f Nothing then ok else empty) (\s -> 
@@ -222,9 +261,70 @@ lookNext = Look (pure Nothing) (\s -> pure (Just s))
 -- | Parse the same thing as the argument, but will be used only as
 -- backup. ie, it will be used only if disjuncted with a failing
 -- parser.
-recoverWith :: forall s a. P s a -> P s a
-recoverWith = Yuck
-
+recoverWith :: P s a -> P s a
+recoverWith = Yuck "recoverWith"
 
 ----------------------------------------------------
-type Process token result = Steps token (result :< ())
+
+--------------------------------
+-- The zipper for efficient evaluation:
+
+-- Arbitrary expressions in Reverse Polish notation.
+-- This can also be seen as an automaton that transforms a stack.
+-- RPolish is indexed by the types in the stack consumed by the automaton (input),
+-- and the stack produced (output)
+data RPolish input output where
+  RPush :: a -> RPolish (a :< rest) output -> RPolish rest output
+  RApp :: RPolish (b :< rest) output -> RPolish ((a -> b) :< a :< rest) output 
+  RStop :: RPolish rest rest
+
+-- Evaluate the output of an RP automaton, given an input stack
+evalRP :: RPolish input output -> input -> output
+evalRP RStop  acc = acc
+evalRP (RPush v r) acc = evalRP r (v :< acc)
+evalRP (RApp r) ~(f :< ~(a :< rest)) = evalRP r (f a :< rest)
+
+-- execute the automaton as far as possible
+simplify :: RPolish s output -> RPolish s output
+simplify (RPush a (RPush f (RApp r))) = let b = f a in b `seq` simplify (RPush b r)
+simplify x = x
+
+evalR :: Zip token (a :< rest) -> (a, [String])
+evalR (Zip errs l r) = ((top . evalRP l) *** (errs ++)) (evalR' r)
+
+-- Gluing a Polish expression and an RP automaton.
+-- This can also be seen as a zipper of Polish expressions.
+data Zip s output where
+   Zip :: [String] -> RPolish mid output -> Steps s mid -> Zip s output
+   -- note that the Stack produced by the Polish expression matches
+   -- the stack consumed by the RP automaton.
+
+instance Show (Zip s output) where
+    show (Zip errs l r) = show l ++ "<>" ++ show r ++ ", errs = " ++ show errs
+
+-- Move the zipper to right, and call continuation if something was pushed in
+-- the left part.
+right :: (Zip s output -> Zip s output) -> (Zip s output -> Zip s output) 
+right k x@(Zip errs l rhs) = case rhs of
+    (Val a r) -> k (Zip errs (RPush a l) r)
+    (App r)  -> k (Zip errs (RApp l) r)
+    (Shift p) -> right k (Zip errs l p)
+    (Dislike err p) -> right k (Zip (err:errs) l p)
+    (Best choice _ p q) -> case choice of
+        LT -> right k (Zip errs l p)
+        GT -> right k (Zip errs l q)
+        EQ -> x -- don't know where to go: don't speculate on evaluating either branch.
+    _ -> x
+
+
+onLeft :: (forall i o. RPolish i o -> RPolish i o) -> Zip s a -> Zip s a
+onLeft f (Zip errs x y) = (Zip errs (f x) y)
+
+onRight :: (forall r. Steps s r -> Steps s r) -> Zip s a -> Zip s a
+onRight f (Zip errs x y) = Zip errs x (f y)
+
+
+type Process token result = Zip token (result :< ())
+
+
+
