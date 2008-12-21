@@ -37,7 +37,8 @@ module Yi.Buffer.Normal (TextUnit(Character, Line, VLine, Document),
                          , mkRegionOfStyleB
                          , unitWiseRegion
                          , extendRegionToBoundaries
-                         ) where
+                        , regionStyleA
+                        ) where
 
 import Yi.Buffer.Basic
 import Yi.Buffer.Misc
@@ -48,6 +49,7 @@ import Data.List (sort)
 import Control.Applicative
 import Control.Monad
 import Data.Typeable
+import Data.Accessor (Accessor)
 
 -- | Designate a given "unit" of text.
 data TextUnit = Character -- ^ a single character
@@ -355,6 +357,9 @@ data RegionStyle = LineWise
 -- TODO: put in the buffer state proper.
 instance Initializable RegionStyle where
   initial = Inclusive
+
+regionStyleA :: Accessor FBuffer RegionStyle
+regionStyleA = bufferDynamicValueA
 
 mkRegionOfStyleB :: Point -> Point -> RegionStyle -> BufferM Region
 mkRegionOfStyleB start' stop' regionStyle =

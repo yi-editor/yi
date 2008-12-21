@@ -388,7 +388,7 @@ getRawSelectRegionB = do
 -- | Get the current region boundaries. Extended to the current selection unit.
 getSelectRegionB :: BufferM Region
 getSelectRegionB = do
-  regionStyle <- getDynamicB
+  regionStyle <- getA regionStyleA
   r <- getRawSelectRegionB
   mkRegionOfStyleB (regionStart r) (regionEnd r) regionStyle
 

@@ -80,8 +80,6 @@ module Yi.Buffer.Misc
   , addOverlayB
   , delOverlayB
   , delOverlayLayerB
-  , getDynamicB
-  , setDynamicB
   , savingExcursionB
   , savingPointB
   , pendingUpdatesA
@@ -911,16 +909,9 @@ gotoLnFrom x = do
     moveTo p'
     return lineDiff
 
+-- | Access to a value into the extensible state, keyed by its type
 bufferDynamicValueA :: Initializable a => Accessor FBuffer a
 bufferDynamicValueA = dynamicValueA . bufferDynamicA
-
-getDynamicB :: Initializable a => BufferM a
-getDynamicB = getA bufferDynamicValueA
-
--- | Insert a value into the extensible state, keyed by its type
-setDynamicB :: Initializable a => a -> BufferM ()
-setDynamicB = putA bufferDynamicValueA
-
 
 -- | perform a @BufferM a@, and return to the current point. (by using a mark)
 savingExcursionB :: BufferM a -> BufferM a

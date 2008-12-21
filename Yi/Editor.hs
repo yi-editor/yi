@@ -157,11 +157,6 @@ stringToNewBuffer nm cs = do
     withGivenBuffer0 u $ setAnyMode m
     return u
 
-regionStyleA :: Accessor FBuffer RegionStyle
-regionStyleA = bufferDynamicValueA
-
-
-
 insertBuffer :: FBuffer -> EditorM BufferRef
 insertBuffer b = getsAndModify $
                  \e -> (e { bufferStack = nub (bkey b : bufferStack e),

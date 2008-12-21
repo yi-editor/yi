@@ -28,6 +28,7 @@ module Yi.Dired (
        ,fnewE
     ) where
 
+import Data.Accessor (putA, getA)
 import Prelude (uncurry, catch)
 
 import qualified Data.ByteString.Lazy as LazyB
@@ -205,13 +206,13 @@ diredRefresh = do
                         , diredEntries    = di
                         , diredFilePoints = []
                         }
-    withBuffer $ setDynamicB ds
+    withBuffer $ putA bufferDynamicValueA ds
     -- Display results
     dlines <- linesToDisplay
     let (strss, stys, strs) = unzip3 dlines
         strss' = transpose $ map doPadding $ transpose $ strss
     ptsList <- mapM insertDiredLine $ zip3 strss' stys strs
-    withBuffer $ do setDynamicB ds{diredFilePoints=ptsList}
+    withBuffer $ do putA bufferDynamicValueA ds{diredFilePoints=ptsList}
                     moveTo p
     return ()
     where
@@ -252,7 +253,7 @@ data DRStrings = DRPerms {undrs :: String}
 -- | Return a List of (prefix, fullDisplayNameIncludingSourceAndDestOfLink, style, filename)
 linesToDisplay :: YiM ([([DRStrings], StyleName, String)])
 linesToDisplay = do
-    dState <- withBuffer getDynamicB
+    dState <- withBuffer $ getA bufferDynamicValueA
     return $ map (uncurry lineToDisplay) (M.assocs $ diredEntries dState)
     where
     lineToDisplay k (DiredFile v)      = (l " -" v ++ [DRFiles k], defaultStyle, k)
@@ -406,7 +407,7 @@ diredLoad = do
 fileFromPoint :: YiM (FilePath, DiredEntry)
 fileFromPoint = do
     p <- withBuffer pointB
-    dState <- withBuffer getDynamicB
+    dState <- withBuffer $ getA bufferDynamicValueA
     let (_,_,f) = head $ filter (\(_,p2,_)->p<=p2) (diredFilePoints dState)
     return (f, M.findWithDefault DiredNoInfo f $ diredEntries dState)
 

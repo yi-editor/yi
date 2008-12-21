@@ -305,7 +305,7 @@ defKeymap = Proto template
 
      -- | Reset the selection style to a character-wise mode 'Inclusive'.
      resetSelectStyle :: BufferM ()
-     resetSelectStyle = setDynamicB $ Inclusive
+     resetSelectStyle = putA regionStyleA $ Inclusive
 
      -- | Visual mode, similar to command mode
      vis_move :: VimMode
@@ -324,7 +324,7 @@ defKeymap = Proto template
 
      core_vis_mode :: RegionStyle -> VimMode
      core_vis_mode selStyle = do
-       write $ do withBuffer0' $ setDynamicB $ selStyle
+       write $ do withBuffer0' $ putA regionStyleA $ selStyle
                   setStatus $ (msg selStyle, defaultStyle)
        many (vis_move <|>
              select_any_unit (withBuffer0' . (\r -> resetSelectStyle >> extendSelectRegionB r >> leftB)))
