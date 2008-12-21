@@ -87,6 +87,7 @@ library
         Yi.Buffer.Undo
         Yi.Completion
         Yi.Config
+        Yi.Config.Default
         Yi.Core
         Yi.Debug
         Yi.Dired

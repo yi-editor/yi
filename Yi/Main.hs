@@ -6,26 +6,13 @@
 -- | This is the main module of Yi, called with configuration from the user.
 -- Here we mainly process command line arguments.
 
-module Yi.Main (main, defaultConfig, availableFrontends, projectName) where
+module Yi.Main (main, projectName) where
 
 import Prelude ()
-import qualified Yi.Keymap.Emacs  as Emacs
-import qualified Yi.Keymap.Vim  as Vim
-import qualified Yi.Keymap.Cua  as Cua
-import Yi.Modes
-import qualified Yi.Mode.Haskell as Haskell
-import Yi.Mode.IReader (ireaderMode, ireadMode)
-import Yi.IReader (saveAsNewArticle)
-import qualified Yi.Mode.Latex as Latex
-import {-# source #-} Yi.Boot
 import Yi.Config
+import Yi.Config.Default
 import Yi.Core
 import Yi.Dired
-import Yi.File
-import Yi.Misc
-import Yi.Style.Library
-import Data.Dynamic
-import Yi.Keymap.Emacs.Utils
 import HConf (hconfOptions)
 import Paths_yi
 import Distribution.Text (display)
@@ -33,48 +20,14 @@ import Distribution.Text (display)
 import qualified TestSuite
 #endif
 
-#ifdef FRONTEND_COCOA
-import qualified Yi.UI.Cocoa
-import Foundation (withAutoreleasePool)
-#endif
-#ifdef FRONTEND_GTK
-import qualified Yi.UI.Gtk
-#endif
-#ifdef FRONTEND_VTY
-import qualified Yi.UI.Vty
-#endif
-#ifdef FRONTEND_PANGO
-import qualified Yi.UI.Pango
-#endif
 
 import Data.Char
 import Data.List                ( intersperse, map )
-import qualified Data.Map as M
 import Control.Monad.Error
 import System.Console.GetOpt
-import System.Directory
 import System.Environment       ( getArgs )
 import System.Exit
-import System.FilePath
-import System.IO (readFile)
 #include "ghcconfig.h"
-
-
-availableFrontends :: [(String,UIBoot)]
-availableFrontends =
-#ifdef FRONTEND_COCOA
-   ("cocoa", Yi.UI.Cocoa.start) :
-#endif
-#ifdef FRONTEND_GTK
-   ("gtk", Yi.UI.Gtk.start) :
-#endif
-#ifdef FRONTEND_VTY
-   ("vty", Yi.UI.Vty.start) :
-#endif
-#ifdef FRONTEND_PANGO
-   ("pango", Yi.UI.Pango.start) :
-#endif
-   []
 
 frontendNames :: [String]
 frontendNames = fmap fst' availableFrontends
@@ -102,9 +55,9 @@ data Opts = Help
 
 -- | List of editors for which we provide an emulation.
 editors :: [(String,Config -> Config)]
-editors = [("emacs", \cfg -> cfg {defaultKm = Emacs.keymap, configKillringAccumulate = True}),
-           ("vim",   \cfg -> cfg {defaultKm = Vim.keymap, configRegionStyle = Inclusive}),
-           ("cua",   \cfg -> cfg {defaultKm = Cua.keymap})]
+editors = [("emacs", toEmacsStyleConfig),
+           ("vim",   toVimStyleConfig),
+           ("cua",   toCuaStyleConfig)]
 
 options :: [OptDescr Opts]
 options = [
@@ -131,134 +84,6 @@ projectName = "yi"
 
 versinfo = projectName ++ ' ' : display version
 
-nilKeymap :: Keymap
-nilKeymap = choice [
-             char 'c' ?>>  openCfg Cua.keymap,
-             char 'e' ?>>  openCfg Emacs.keymap,
-             char 'v' ?>>  openCfg Vim.keymap,
-             char 'q' ?>>! quitEditor,
-             char 'r' ?>>! reloadEditor,
-             char 'h' ?>>! configHelp
-            ] 
-            <|| (anyEvent >>! errorEditor "Keymap not defined, 'q' to quit, 'h' for help.")
-    where configHelp = newBufferE (Left "configuration help") $ fromString $ unlines $
-                         ["This instance of Yi is not configured.",
-                          "To get a standard reasonable keymap, you can run yi with either --as=cua, --as=vim or --as=emacs.",
-                          "You should however create your own ~/.yi/yi.hs file: ",
-                          "You can type 'c', 'e' or 'v' now to create and edit it using a temporary cua, emacs or vim keymap."]
-          openCfg km = write $ do
-            dataDir <- io $ getDataDir
-            let exampleCfg = dataDir </> "examples" </> "yi.hs"
-            homeDir <- io $ getHomeDirectory
-            let cfgDir = homeDir </> ".yi"
-                cfgFile = cfgDir </> "yi.hs"
-            cfgExists <- io $ doesFileExist cfgFile
-            fnewE cfgFile -- load config file
-            -- locally override the keymap to the user choice
-            withBuffer $ modifyMode (\m -> m {modeKeymap = const km})
-            when (not cfgExists) $ do
-                 -- file did not exist, load a reasonable default
-                 io $ createDirectoryIfMissing True cfgDir -- so that the file can be saved.
-                 defCfg <- io $ readFile exampleCfg
-                 withBuffer $ insertN defCfg
-
-defaultConfig :: Config
-defaultConfig = 
-  Config { startFrontEnd    = case availableFrontends of
-             [] -> error "panic: no frontend compiled in! (configure with -fvty or another frontend.)"
-             ((_,f):_) -> f
-         , configUI         =  UIConfig 
-           { configFontSize = Nothing
-           , configFontName = Nothing
-           , configLineWrap = True
-           , configLeftSideScrollBar = True
-           , configAutoHideScrollBar = False
-           , configWindowFill = ' '
-           , configTheme = defaultLightTheme
-           }
-         , defaultKm        = nilKeymap
-         , startActions     = [makeAction openScratchBuffer] -- emacs-style behaviour
-         , publishedActions = defaultPublishedActions
-         , modeTable = [AnyMode Haskell.cleverMode,
-                        AnyMode Latex.latexMode2,
-                        AnyMode Latex.latexMode, -- available but the other one is preferred
-                        AnyMode Latex.fastMode,
-                        AnyMode cppMode,
-                        AnyMode Haskell.literateMode,
-                        AnyMode cabalMode,
-                        AnyMode gnuMakeMode,
-                        AnyMode srmcMode,
-                        AnyMode ocamlMode,
-                        AnyMode ottMode,
-                        AnyMode perlMode,
-                        AnyMode pythonMode,
-                        AnyMode ireaderMode,
-                        AnyMode fundamentalMode]
-         , debugMode = False
-         , configKillringAccumulate = False
-         , configRegionStyle = Exclusive
-         }
-
--- | List of published Actions
-
--- THIS MUST BE OF THE FORM:
--- ("symbol", box symbol")
--- ... so we can hope getting rid of this someday.
--- Failing to conform to this rule exposes the code to instant deletion.
-
-defaultPublishedActions :: M.Map String [Data.Dynamic.Dynamic]
-defaultPublishedActions = M.fromList $ 
-    [ ("Backward"               , box Backward)
-    , ("Character"              , box Character)
-    , ("Document"               , box Document)
-    , ("Forward"                , box Forward)
-    , ("Line"                   , box Line)
-    , ("unitWord"               , box unitWord)
-    , ("Point"                  , box Point)
-    , ("atBoundaryB"            , box atBoundaryB)
-    , ("cabalBuildE"            , box cabalBuildE)
-    , ("cabalConfigureE"        , box cabalConfigureE)
-    , ("closeBufferE"           , box closeBufferE)
-    , ("deleteB"                , box deleteB)
-    , ("deleteBlankLinesB"      , box deleteBlankLinesB)
-    , ("getSelectRegionB"       , box getSelectRegionB)
-    , ("grepFind"               , box grepFind)
-    , ("insertB"                , box insertB)
-    , ("iread"                  , box ireadMode)
-    , ("ireadSaveAsArticle"     , box saveAsNewArticle)
-    , ("leftB"                  , box leftB)
-    , ("linePrefixSelectionB"   , box linePrefixSelectionB)
-    , ("mkRegion"               , box mkRegion)
-    , ("moveB"                  , box moveB)
-    , ("numberOfB"              , box numberOfB)
-    , ("pointB"                 , box pointB) 
-    , ("regionOfB"              , box regionOfB)
-    , ("regionOfPartB"          , box regionOfPartB)
-    , ("regionOfPartNonEmptyB"  , box regionOfPartNonEmptyB)
-    , ("reloadEditor"           , box reloadEditor)
-    , ("reloadProjectE"         , box reloadProjectE)
-    , ("replaceString"          , box replaceString)
-    , ("revertE"                , box revertE)
-    , ("shell"                  , box shell)
-    , ("setAnyMode"             , box setAnyMode)
-    , ("sortLines"              , box sortLines)
-    , ("unLineCommentSelectionB", box unLineCommentSelectionB)
-    , ("unitParagraph"          , box unitParagraph)
-    , ("unitViWord"             , box unitViWord)
-    , ("writeB"                 , box writeB)
-    , ("ghci"                   , box Haskell.ghciGet)
-    ]
-
-  where box x = [Data.Dynamic.toDyn x]
-
-
-openScratchBuffer :: YiM ()
-openScratchBuffer = withEditor $ do     -- emacs-like behaviour
-      newBufferE (Left "scratch") $ fromString $ unlines
-                   ["This buffer is for notes you don't want to save.", --, and for haskell evaluation" -- maybe someday?
-                    "If you want to create a file, open that file,",
-                    "then enter the text in that file's own buffer."]
-      return ()
 
 -- | Transform the config with options
 do_args :: Config -> [String] -> Either Err Config

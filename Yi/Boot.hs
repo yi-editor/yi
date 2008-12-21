@@ -10,6 +10,7 @@ import Yi.Debug
 import Yi.Editor (newBufferE, Editor, withEditor)
 import Yi.Keymap (makeAction, YiM)
 import qualified Yi.Main
+import qualified Yi.Config.Default
 
 recoverState :: FilePath -> IO (Maybe Editor)
 recoverState path = do
@@ -38,7 +39,7 @@ reloadEditor = do
 driver :: IO ()
 yi :: Config -> IO ()
 restart :: Maybe Editor -> IO ()
-HConf driver yi restart = getHConf Yi.Main.projectName initState recoverState saveState Yi.Main.defaultConfig showErrorsInConf realMain
+HConf driver yi restart = getHConf Yi.Main.projectName initState recoverState saveState Yi.Config.Default.defaultConfig showErrorsInConf realMain
 
 showErrorsInConf :: String -> Config -> Config
 showErrorsInConf errs conf 

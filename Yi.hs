@@ -19,7 +19,7 @@ module Yi
     module Yi.Dired,
     module Yi.Eval,
     module Yi.File,
-    module Yi.Main,
+    module Yi.Config.Default,
     module Yi.Search,
     module Yi.Style,
     module Yi.Style.Library,
@@ -32,7 +32,7 @@ import Yi.Core
 import Yi.Dired
 import Yi.Eval
 import Yi.File
-import Yi.Main (defaultConfig, availableFrontends)
+import Yi.Config.Default
 import Yi.Search
 import Yi.Style
 import Yi.Style.Library
