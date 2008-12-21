@@ -177,8 +177,9 @@ instance Promptable BufferRef where
 -- | Returns all the buffer names.
 matchingBufferNames :: String -> YiM [String]
 matchingBufferNames _ = withEditor $ do
+  p <- gets commonNamePrefix 
   bs <- getBuffers
-  return (fmap identString bs)
+  return $ fmap (shortIdentString p) bs
 
 
 -- TODO: be a bit more clever than 'Read r'

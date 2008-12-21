@@ -194,8 +194,8 @@ getBuffers = gets (M.elems . buffers)
 
 -- | Return a prefix that can be removed from all buffer paths while keeping them
 -- unique.
-getCommonNamePrefix :: EditorM [String]
-getCommonNamePrefix = commonPrefix . fmap (dropLast . splitPath) . rights . fmap (^. identA) <$> getBuffers
+commonNamePrefix :: Editor -> [String]
+commonNamePrefix = commonPrefix . fmap (dropLast . splitPath) . rights . fmap (^. identA) . M.elems . buffers
     where dropLast [] = []
           dropLast x = init x
           -- drop the last component, so that it is never hidden.
@@ -220,7 +220,7 @@ findBufferWith k e =
 
 -- | Find buffer with this name
 findBufferWithName :: String -> Editor -> [BufferRef]
-findBufferWithName n e = map bkey $ filter (\b -> identString b == n) (M.elems $ buffers e)
+findBufferWithName n e = map bkey $ filter (\b -> shortIdentString (commonNamePrefix e) b == n) (M.elems $ buffers e)
 
 -- | Find buffer with given name. Fail if not found.
 getBufferWithName :: String -> EditorM BufferRef
