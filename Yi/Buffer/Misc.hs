@@ -146,7 +146,7 @@ import Yi.Interact as I
 import qualified Data.ByteString.Lazy.UTF8 as LazyUTF8
 import qualified Data.ByteString.Lazy as LB
 import Yi.Buffer.Basic
-
+import Data.Time
 
 #ifdef TESTING
 import Test.QuickCheck hiding (Config)
@@ -213,18 +213,23 @@ data Attributes = Attributes
                 , process :: !KeymapProcess
                 , winMarks :: !(M.Map WindowRef WinMarks)
                 , lastActiveWindow :: !Window
+                , lastSyncTime :: !UTCTime -- ^ time of the last synchronization with disk
                 } deriving Typeable
 
 $(nameDeriveAccessors ''Attributes (\n -> Just (n ++ "AA")))
 
 -- unfortunately the dynamic stuff can't be read.
 instance Binary Attributes where
-    put (Attributes n b u pd _bd pc pu selectionStyle_ _proc wm law) = do
+    put (Attributes n b u pd _bd pc pu selectionStyle_ _proc wm law lst) = do
           put n >> put b >> put u
           put pd >> put pc >> put pu >> put selectionStyle_ >> put wm
-          put law
+          put law >> put lst
     get = Attributes <$> get <*> get <*> get <*> 
-          get <*> pure emptyDV <*> get <*> get <*> get <*> pure I.End <*> get <*> get
+          get <*> pure emptyDV <*> get <*> get <*> get <*> pure I.End <*> get <*> get <*> get
+
+instance Binary UTCTime where
+    put (UTCTime x y) = put (fromEnum x) >> put (fromEnum y)
+    get = UTCTime <$> (toEnum <$> get) <*> (toEnum <$> get)
 
 data FBuffer = forall syntax.
         FBuffer { bmode  :: !(Mode syntax)
@@ -285,6 +290,8 @@ attrsA = accessor attributes (\a e -> case e of FBuffer f1 f2 _ -> FBuffer f1 f2
 -- | Use in readonly!
 lastActiveWindowA :: Accessor FBuffer Window
 lastActiveWindowA = lastActiveWindowAA . attrsA
+
+lastSyncTimeA = lastSyncTimeAA . attrsA
 
 pointDriveA :: Accessor FBuffer Bool
 pointDriveA = pointDriveAA . attrsA
@@ -499,8 +506,9 @@ runBufferDummyWindow b = fst . runBuffer (dummyWindow $ bkey b) b
 
 
 -- | Mark the current point in the undo list as a saved state.
-markSavedB :: BufferM ()
-markSavedB = modA undosA setSavedFilePointU
+markSavedB :: UTCTime -> BufferM ()
+markSavedB t = do modA undosA setSavedFilePointU
+                  putA lastSyncTimeA t
 
 bkey :: FBuffer -> BufferRef
 bkey = getVal (bkey__AA . attrsA)
@@ -563,7 +571,10 @@ newB unique nm s =
             , process = I.End
             , winMarks = M.empty
             , lastActiveWindow = dummyWindow unique
+            , lastSyncTime = epoch
             } }
+
+epoch = UTCTime (toEnum 0) (toEnum 0)
 
 -- | Point of eof
 sizeB :: BufferM Point

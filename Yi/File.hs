@@ -13,8 +13,9 @@ module Yi.File
   setFileName,
  ) where
 
+import Data.Time
 import Control.Monad.Trans
-import Prelude (filter)
+import Prelude (filter, realToFrac)
 import Yi.Core
 import Yi.Buffer (file)
 import Control.Monad.State (gets)
@@ -23,6 +24,8 @@ import System.IO.UTF8 as UTF8
 import System.FilePath
 import System.FriendlyPath
 import qualified Data.ByteString.Lazy as LB
+import System.PosixCompat.Files
+import Data.Time.Clock.POSIX
 
 -- | Revert to the contents of the file on disk
 revertE :: YiM ()
@@ -30,10 +33,11 @@ revertE = do
             mfp <- withBuffer $ gets file
             case mfp of
                      Just fp -> do
+                             now <- io getCurrentTime
                              s <- liftIO $ UTF8.readFile fp
-                             withBuffer $ do
-                                  savingPointB $ replaceBufferContent s 
-                                  markSavedB
+                             withBuffer $ do                                 
+                                  savingPointB $ replaceBufferContent s
+                                  markSavedB now
                              msgEditor ("Reverted from " ++ show fp)
                      Nothing -> do
                                 msgEditor "Can't revert, no file associated with buffer."
@@ -76,8 +80,9 @@ fwriteE = fwriteBufferE =<< withEditor getBuffer
 fwriteBufferE :: BufferRef -> YiM ()
 fwriteBufferE bufferKey = 
   do nameContents <- withGivenBuffer bufferKey ((,) <$> gets file <*> streamB Forward 0)
+     now <- io getCurrentTime
      case nameContents of
-       (Just f, contents) -> do withGivenBuffer bufferKey markSavedB
+       (Just f, contents) -> do withGivenBuffer bufferKey (markSavedB now)
                                 liftIO $ LB.writeFile f contents 
        (Nothing, _c)      -> msgEditor "Buffer not associated with a file"
 

@@ -19,7 +19,7 @@ import qualified Yi.WindowSet as WS
 import Yi.Event (Event)
 import Yi.Style (StyleName, defaultStyle)
 
-import Prelude (map, filter, (!!), takeWhile, length, reverse, zip)
+import Prelude (map, filter, (!!), takeWhile, length, reverse)
 import Yi.Prelude
 
 import Data.Accessor.Basic (fromSetGet)

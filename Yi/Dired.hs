@@ -80,11 +80,13 @@ fnewCanonicalized f = do
         (h:_) -> return (bkey h)
         [] -> 
           if de then diredDirBuffer f else do
-            b <- if fe then fileToNewBuffer f else do -- Load the file into a new buffer
-                when (not dfe) $ do
-                  userWantMkDir <- return True -- TODO
-                  when userWantMkDir $ liftIO $ createDirectory fDirectory
-                withEditor $ stringToNewBuffer (Right f) (fromString "") -- Create new empty buffer
+            b <- if fe then 
+                   fileToNewBuffer f 
+                 else -- File does not exist
+                   do when (not dfe) $ do
+                        userWantMkDir <- return True -- TODO
+                        when userWantMkDir $ liftIO $ createDirectory fDirectory
+                      withEditor $ stringToNewBuffer (Right f) (fromString "") -- Create new empty buffer
             tbl <- asks (modeTable . yiConfig)
             case fromMaybe (AnyMode emptyMode) (find (\(AnyMode m)->modeApplies m f) tbl) of
                 AnyMode newMode -> withGivenBuffer b $ setMode newMode
@@ -112,8 +114,11 @@ fnewCanonicalized f = do
     -- The first argument is the buffer name
     fileToNewBuffer :: FilePath -> YiM BufferRef
     fileToNewBuffer path = do
-      contents <- liftIO $ LazyB.readFile path
-      withEditor $ stringToNewBuffer (Right path) contents
+      contents <- io $ LazyB.readFile path
+      now <- io getCurrentTime
+      b <- withEditor $ stringToNewBuffer (Right path) contents
+      withGivenBuffer b $ markSavedB now
+      return b
 
 ------------------------------------------------
 
