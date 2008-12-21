@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, DeriveDataTypeable #-}
+{-# LANGUAGE FlexibleContexts, DeriveDataTypeable, TemplateHaskell #-}
 
 -- Copyright (c) 2004-5 Don Stewart - http://www.cse.unsw.edu.au/~dons
 -- Copyright (c) 2008 Nicolas Pouillard
@@ -10,8 +10,16 @@ module Yi.Keymap.Vim (keymap,
                       leaveInsRep,
                       leave,
                       ModeMap(..),
+                      savingInsertE,
+                      savingInsertCharE,
+                      savingInsertStringE,
+                      savingDeleteE,
+                      savingDeleteCharE,
+                      savingDeleteWordE,
+                      savingCommandE,
                       mkKeymap,
-                      beginIns) where
+                      beginIns,
+                      beginInsB) where
 
 import Prelude (maybe, length, filter, map, drop, break, uncurry, reads)
 
@@ -20,6 +28,7 @@ import Data.List (nub, take, words, dropWhile, intersperse, reverse)
 import Data.Maybe (fromMaybe)
 import Data.Either (either)
 import Data.Prototype
+import Data.Accessor.Template
 import Numeric (showHex, showOct)
 import System.IO (readFile)
 import System.Posix.Files (fileExist)
@@ -99,8 +108,21 @@ data ViCmd = ArbCmd (Int -> EditorM ()) Int
 instance Initializable ViCmd where
   initial = NoOp
 
+data ViInsertion = ViIns { viDelBefore :: BufferM () -- ^ The action performed before insertion
+                         , viBeginPos  :: Point      -- ^ The position _before_ insertion
+                         , viEndPos    :: Point      -- ^ The position _after_ insertion
+                         , viDelAfter  :: BufferM () -- ^ The action performed after insertion
+                         }
+  deriving (Typeable)
+
+$(nameDeriveAccessors ''ViInsertion $ Just.(++ "A"))
+
 lastViCommandA :: Accessor Editor ViCmd
 lastViCommandA = dynA
+
+-- TODO make this piece of data part of the buffer
+currentViInsertionA :: Accessor Editor (Maybe ViInsertion)
+currentViInsertionA = dynA
 
 applyViCmd :: Maybe Int -> ViCmd -> EditorM ()
 applyViCmd _  NoOp = return ()
@@ -115,6 +137,85 @@ regionOfViMove move regionStyle =
 applyOperator :: (RegionStyle -> Region -> EditorM ()) -> Int -> (RegionStyle, ViMove) -> EditorM ()
 applyOperator onRegion i (regionStyle, move) = savingCommandE f i
    where f j = onRegion regionStyle =<< withBuffer0' (regionOfViMove (Replicate move j) regionStyle)
+
+emptyViIns :: Point -> ViInsertion
+emptyViIns p = ViIns (return ()) p p (return ())
+
+getViIns :: EditorM ViInsertion
+getViIns = maybe def return =<< getA currentViInsertionA
+  where def = do ins <- emptyViIns <$> withBuffer0 pointB
+                 putA currentViInsertionA $ Just ins
+                 return ins
+
+viInsText :: ViInsertion -> BufferM String
+viInsText ins = readRegionB $ mkRegion (viBeginPos ins) (viEndPos ins)
+
+-- | The given buffer action should be an insertion action.
+-- The given action is an EditorM for needs of wordComplete.
+savingInsertE :: EditorM () -> EditorM ()
+savingInsertE action = do ins0 <- getViIns
+                          oldP <- withBuffer0 pointB
+                          action
+                          newP <- withBuffer0 pointB
+                          let endP   = viEndPos ins0
+                              beginP = viBeginPos ins0
+                              ins1 | endP == oldP                  = ins0 { viEndPos = newP }
+                                   | oldP >= beginP && oldP < endP = ins0 { viEndPos = endP +~ (newP ~- oldP) }
+                                   | otherwise                     = emptyViIns newP
+                          -- txt <- withBuffer0 $ viInsText ins1
+                          -- printMsg $ "current insert text " ++ show txt
+                          putA currentViInsertionA $ Just ins1
+
+savingInsertCharE :: Char -> EditorM ()
+savingInsertCharE = savingInsertE . withBuffer0 . insertB
+
+savingInsertStringE :: String -> EditorM ()
+savingInsertStringE = savingInsertE . withBuffer0 . insertN
+
+-- | The given action should be a deletion action.
+-- The only well tested buffer actions are deleting one character,
+-- or one word, forward or backward.
+savingDeleteE :: BufferM () -> EditorM ()
+savingDeleteE action = do
+  ins0 <- getViIns
+  (oldP, newP, diff) <- withBuffer0 $ do o  <- pointB
+                                         s1 <- sizeB
+                                         action
+                                         s2 <- sizeB
+                                         n  <- pointB
+                                         return (o, n, s2 ~- s1)
+  let endP   = viEndPos ins0
+      beginP = viBeginPos ins0
+      shrinkEndPos = viEndPosA ^: (-~ diff)
+      ins1 =
+        if oldP >= beginP && oldP <= endP then
+          if newP > endP then
+            viDelAfterA  ^: (>> action) $ ins0 { viEndPos = newP }
+          else if newP < beginP then
+            viDelBeforeA ^: (>> action) $ shrinkEndPos $ ins0 { viBeginPos = newP }
+          else shrinkEndPos ins0
+        else if newP > oldP then viDelAfterA  ^: (>> action) $ emptyViIns newP
+                            else viDelBeforeA ^: (>> action) $ emptyViIns newP
+
+  -- txt <- withBuffer0 $ viInsText ins1
+  -- printMsg $ "current insert text " ++ show txt
+  putA currentViInsertionA $ Just ins1
+
+savingDeleteCharE :: Direction -> EditorM ()
+savingDeleteCharE dir = savingDeleteE (adjBlock (-1) >> deleteB Character dir)
+
+savingDeleteWordE :: Direction -> EditorM ()
+savingDeleteWordE dir = savingDeleteE $ deleteRegionB =<< regionOfPartNonEmptyB unitViWordOnLine dir
+
+viCommandOfViInsertion :: ViInsertion -> BufferM ViCmd
+viCommandOfViInsertion ins@(ViIns before _ _ after) = do
+  text <- viInsText ins
+  return $ ArbCmd (flip replicateM_ $ withBuffer0 $ before >> insertN text >> after) 1
+
+commitLastInsertionE :: EditorM ()
+commitLastInsertionE = do mins <- getA currentViInsertionA
+                          putA currentViInsertionA Nothing
+                          putA lastViCommandA =<< maybe (return NoOp) (withBuffer0 . viCommandOfViInsertion) mins
 
 savingCommandE :: (Int -> EditorM ()) -> Int -> EditorM ()
 savingCommandE f i = putA lastViCommandA (ArbCmd f i) >> f i
@@ -813,13 +914,13 @@ defKeymap = Proto template
                  ctrlCh 'v'   ?>> vis_mode Block, -- one use VLine for block mode
                  char 'R'     ?>> rep_mode,
                  char 'i'     ?>> ins_mode self,
-                 char 'I'     ?>> beginIns self firstNonSpaceB,
-                 pString "gi"  >> beginIns self (jumpToMark '^'),
-                 pString "gI"  >> beginIns self moveToSol,
-                 char 'a'     ?>> beginIns self $ moveXorEol 1,
-                 char 'A'     ?>> beginIns self moveToEol,
-                 char 'o'     ?>> beginIns self $ moveToEol >> insertB '\n',
-                 char 'O'     ?>> beginIns self $ moveToSol >> insertB '\n' >> lineUp,
+                 char 'I'     ?>> beginInsB self firstNonSpaceB,
+                 pString "gi"  >> beginInsB self (jumpToMark '^'),
+                 pString "gI"  >> beginInsB self moveToSol,
+                 char 'a'     ?>> beginInsB self $ moveXorEol 1,
+                 char 'A'     ?>> beginInsB self moveToEol,
+                 char 'o'     ?>> beginInsB self $ moveToEol >> insertB '\n',
+                 char 'O'     ?>> beginInsB self $ moveToSol >> insertB '\n' >> lineUp,
                  char 'c'     ?>> changeCmds,
 
                  -- FIXME: those two should take int argument
@@ -846,7 +947,7 @@ defKeymap = Proto template
        write $ do
          withBuffer0' $ viMove preMove
          cut regionStyle move
-         when (regionStyle == LineWise) $ withBuffer0' $ insertB '\n' >> leftB
+         when (regionStyle == LineWise) $ withBuffer0' $ insertB '\n' >> leftB -- TODO repeat (savingInsertCharE?)
        ins_mode self
 
      -- The Vim semantics is a little different here, When receiving CTRL-D
@@ -865,14 +966,14 @@ defKeymap = Proto template
      _ `upTo` 0 = empty
      p `upTo` n = (:) <$> p <*> (p `upTo` pred n <|> pure []) 
 
-     insertSpecialChar :: (Char -> BufferM ()) -> VimMode
-     insertSpecialChar insrepB =
-          insertNumber insrepB
-      <|> (ctrlCh '@' ?>>! insrepB '\000')
-      <|| (write . withBuffer0' . insrepB . eventToChar =<< anyEvent)
+     insertSpecialChar :: (Char -> EditorM ()) -> VimMode
+     insertSpecialChar insrepE =
+          insertNumber insrepE
+      <|> (ctrlCh '@' ?>>! insrepE '\000')
+      <|| (write . withEditor' . insrepE . eventToChar =<< anyEvent)
 
-     insertNumber :: (Char -> BufferM ()) -> VimMode
-     insertNumber insrepB = do
+     insertNumber :: (Char -> EditorM ()) -> VimMode
+     insertNumber insrepE = do
          choice [g [charOf id '0' '1',dec,dec] ""
                 ,g [charOf id '2' '2',charOf id '0' '5',dec] ""
                 ,g [charOf id '2' '2',charOf id '6' '9'] ""
@@ -888,11 +989,11 @@ defKeymap = Proto template
              oct = charOf id '0' '7'
              hex = charOf id '0' '9' <|> charOf id 'a' 'f' <|> charOf id 'A' 'F'
              f digits prefix = do xs <- digits
-                                  write $ withBuffer0' $ insrepB $ chr $ read $ prefix ++ xs
+                                  write $ withEditor' $ insrepE $ chr $ read $ prefix ++ xs
              g digits prefix = f (sequence digits) prefix
 
-     ins_rep_char :: (Char -> BufferM ()) -> VimMode
-     ins_rep_char insrepB =
+     ins_rep_char :: (Char -> EditorM ()) -> VimMode
+     ins_rep_char insrepE =
        choice [spec KPageUp   ?>>! upScreenB
               ,spec KPageDown ?>>! downScreenB
               ,spec KUp       ?>>! lineUp
@@ -901,18 +1002,18 @@ defKeymap = Proto template
               ,spec KRight    ?>>! moveXorEol 1
               ,spec KEnd      ?>>! moveToEol
               ,spec KHome     ?>>! moveToSol
-              ,spec KDel      ?>>! (adjBlock (-1) >> deleteB Character Forward)
-              ,spec KEnter    ?>>! insertB '\n'
-              ,ctrlCh 'j'     ?>>! insertB '\n'
-              ,ctrlCh 'm'     ?>>! insertB '\r'
-              ,spec KTab      ?>>! mapM_ insrepB =<< tabB
-              ,ctrlCh 'i'     ?>>! mapM_ insrepB =<< tabB
-              ,ctrlCh 'e'     ?>>! insrepB =<< savingPointB (lineDown >> readB) -- TODO repeat: not symbolically reminded, just the inserted char
-              ,ctrlCh 'y'     ?>>! insrepB =<< savingPointB (lineUp >> readB) -- IDEM
-              ,ctrlCh 't'     ?>>! shiftIndentOfRegion 1 =<< regionOfB Line
-              ,ctrlCh 'd'     ?>>! withBuffer0' dedentOrDeleteIndent
-              ,ctrlCh 'v'     ?>>  insertSpecialChar insrepB
-              ,ctrlCh 'q'     ?>>  insertSpecialChar insrepB
+              ,spec KDel      ?>>! savingDeleteCharE Forward
+              ,spec KEnter    ?>>! savingInsertCharE '\n'
+              ,ctrlCh 'j'     ?>>! savingInsertCharE '\n'
+              ,ctrlCh 'm'     ?>>! savingInsertCharE '\r'
+              ,spec KTab      ?>>! mapM_ insrepE =<< withBuffer0 tabB
+              ,ctrlCh 'i'     ?>>! mapM_ insrepE =<< withBuffer0 tabB
+              ,ctrlCh 'e'     ?>>! insrepE =<< withBuffer0 (savingPointB $ lineDown >> readB) -- TODO repeat: not symbolically reminded, just the inserted char, as in Vim though
+              ,ctrlCh 'y'     ?>>! insrepE =<< withBuffer0 (savingPointB $ lineUp >> readB) -- IDEM
+              ,ctrlCh 't'     ?>>! savingCommandB (const $ savingPointB $ shiftIndentOfRegion 1 =<< regionOfB Line) 1 --TODO should not move the cursor
+              ,ctrlCh 'd'     ?>>! savingCommandE (const $ withBuffer0' $ savingPointB dedentOrDeleteIndent) 1 -- IDEM
+              ,ctrlCh 'v'     ?>>  insertSpecialChar insrepE
+              ,ctrlCh 'q'     ?>>  insertSpecialChar insrepE
               ]
 
      --
@@ -928,12 +1029,12 @@ defKeymap = Proto template
      -- handy bindings to edit while composing (backspace, C-W, C-T, C-D, C-E, C-Y...)
      --
      def_ins_char =
-            choice [spec KBS   ?>>! adjBlock (-1) >> deleteB Character Backward
-                   ,ctrlCh 'h' ?>>! adjBlock (-1) >> deleteB Character Backward
-                   ,ctrlCh 'w' ?>>! deleteRegionB =<< regionOfPartNonEmptyB unitViWordOnLine Backward
+            choice [spec KBS   ?>>! savingDeleteCharE Backward
+                   ,ctrlCh 'h' ?>>! savingDeleteCharE Backward
+                   ,ctrlCh 'w' ?>>! savingDeleteWordE Backward
                    ]
-            <|> ins_rep_char insertB
-            <|| (textChar >>= write . (adjBlock 1 >>) . insertB)
+            <|> ins_rep_char savingInsertCharE
+            <|| (textChar >>= write . (withBuffer0 (adjBlock 1) >>) . savingInsertCharE)
 
      -- ---------------------------------------------------------------------
      -- | vim replace mode
@@ -949,9 +1050,9 @@ defKeymap = Proto template
                        ,ctrlCh 'h' ?>>! leftB
                        ,ctrlCh 'w' ?>>! genMoveB unitViWord (Backward,InsideBound) Backward
                        ] -- should undo unless pointer has been moved
-                <|> ins_rep_char replaceB
+                <|> ins_rep_char (withBuffer0 . replaceB)
                 <|| do c <- textChar; write $ replaceB c
-        where replaceB c = do e <- atEol; if e then insertB c else writeB c
+        where replaceB c = do e <- atEol; if e then insertB c else writeB c -- savingInsertCharE ?
 
      -- ---------------------------------------------------------------------
      -- Ex mode. We also process regex searching mode here.
@@ -1304,7 +1405,7 @@ leave = oneOf [spec KEsc, ctrlCh 'c'] >> adjustPriority (-1) >> write clrStatus
 leaveInsRep :: VimMode
 leaveInsRep = do oneOf [spec KEsc, ctrlCh '[', ctrlCh 'c']
                  adjustPriority (-1)
-                 write $ withBuffer0 (setMarkHere '^') >> clrStatus
+                 write $ commitLastInsertionE >> withBuffer0 (setMarkHere '^') >> clrStatus
 
 
 -- | Insert mode is either insertion actions, or the meta (\ESC) action
@@ -1312,8 +1413,14 @@ leaveInsRep = do oneOf [spec KEsc, ctrlCh '[', ctrlCh 'c']
 ins_mode :: ModeMap -> VimMode
 ins_mode self = write (setStatus ("-- INSERT --", defaultStyle)) >> many (v_ins_char self <|> kwd_mode) >> leaveInsRep >> write (moveXorSol 1)
 
+-- TODO refactor with beginInsB
 beginIns :: (Show x, YiAction a x) => ModeMap -> a -> I Event Action ()
 beginIns self a = write a >> ins_mode self
+
+beginInsB :: ModeMap -> BufferM () -> I Event Action ()
+beginInsB self a = do write $ do p <- withBuffer0 $ a >> pointB
+                                 putA currentViInsertionA $ Just $ viDelBeforeA ^= a $ emptyViIns p
+                      ins_mode self
 
 post :: Monad m => m a -> m () -> m a
 f `post` g = do x <- f
@@ -1396,7 +1503,7 @@ validMarkIdentifier = fmap f $ oneOfchar "<>^'`" <|> charOf id 'a' 'z' <|> fail 
 -- --------------------
 -- | Keyword
 kwd_mode :: VimMode
-kwd_mode = some (ctrlCh 'n' ?>> write wordComplete) >> deprioritize >> write resetComplete
+kwd_mode = some (ctrlCh 'n' ?>> write (savingInsertE wordComplete)) >> deprioritize >> write resetComplete
 -- 'adjustPriority' is there to lift the ambiguity between "continuing" completion
 -- and resetting it (restarting at the 1st completion).
 
