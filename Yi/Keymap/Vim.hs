@@ -19,6 +19,7 @@ module Yi.Keymap.Vim (keymap,
                       savingCommandE,
                       mkKeymap,
                       beginIns,
+                      beginInsE,
                       beginInsB) where
 
 import Prelude (maybe, length, filter, map, drop, break, uncurry, reads)
@@ -108,7 +109,8 @@ data ViCmd = ArbCmd (Int -> EditorM ()) Int
 instance Initializable ViCmd where
   initial = NoOp
 
-data ViInsertion = ViIns { viActBefore :: BufferM () -- ^ The action performed before insertion
+data ViInsertion = ViIns { viActFirst  :: Maybe (EditorM ()) -- ^ The action performed first
+                         , viActBefore :: BufferM () -- ^ The action performed before insertion
                          , viBeginPos  :: Point      -- ^ The position _before_ insertion
                          , viEndPos    :: Point      -- ^ The position _after_ insertion
                          , viActAfter  :: BufferM () -- ^ The action performed after insertion
@@ -139,7 +141,7 @@ applyOperator onRegion i (regionStyle, move) = savingCommandE f i
    where f j = onRegion regionStyle =<< withBuffer0' (regionOfViMove (Replicate move j) regionStyle)
 
 emptyViIns :: Point -> ViInsertion
-emptyViIns p = ViIns (return ()) p p (return ())
+emptyViIns p = ViIns Nothing (return ()) p p (return ())
 
 getViIns :: BufferM ViInsertion
 getViIns = maybe def return =<< getA currentViInsertionA
@@ -203,9 +205,13 @@ savingDeleteWordB :: Direction -> BufferM ()
 savingDeleteWordB dir = savingDeleteB $ deleteRegionB =<< regionOfPartNonEmptyB unitViWordOnLine dir
 
 viCommandOfViInsertion :: ViInsertion -> BufferM ViCmd
-viCommandOfViInsertion ins@(ViIns before _ _ after) = do
+viCommandOfViInsertion ins@(ViIns mayFirstAct before _ _ after) = do
   text <- viInsText ins
-  return $ ArbCmd (flip replicateM_ $ withBuffer0 $ before >> insertN text >> after) 1
+  return $ flip ArbCmd 1 $ case mayFirstAct of
+    Just firstAct -> \n->
+      replicateM_ n firstAct >> withBuffer0 (before >> insertN text >> after)
+    Nothing ->
+      flip replicateM_ $ withBuffer0 $ before >> insertN text >> after
 
 commitLastInsertionE :: EditorM ()
 commitLastInsertionE = do mins <- withBuffer0 $ getA currentViInsertionA
@@ -919,15 +925,15 @@ defKeymap = Proto template
                  char 'c'     ?>> changeCmds,
 
                  -- FIXME: those two should take int argument
-                 char 'C'     ?>> beginIns self $ cut Exclusive viMoveToEol, -- alias of "c$" -- TODO repeat
-                 char 'S'     ?>> beginIns self $ withBuffer0' moveToSol >> cut Exclusive viMoveToEol, -- non-linewise alias of "cc" -- TODO repeat
-                 char 's'     ?>> beginIns self $ cut Exclusive (CharMove Forward), -- non-linewise alias of "cl" -- TODO repeat
+                 char 'C'     ?>> beginInsE self $ cut Exclusive viMoveToEol, -- alias of "c$"
+                 char 'S'     ?>> beginInsE self $ withBuffer0' moveToSol >> cut Exclusive viMoveToEol, -- non-linewise alias of "cc"
+                 char 's'     ?>> beginInsE self $ cut Exclusive (CharMove Forward), -- non-linewise alias of "cl"
                  char '/'     ?>>! ex_mode "/",
                  char '?'     ?>>! ex_mode "?",
                  leave,
                  spec KIns    ?>> ins_mode self]
 
-     -- TODO repeat
+     -- TODO cw,cW,cc,c[ai]<unit> don't support counting
      changeCmds :: I Event Action ()
      changeCmds =
        adjustPriority (-1) >>
@@ -938,12 +944,11 @@ defKeymap = Proto template
        (select_any_unit (cutRegion Exclusive) >> ins_mode self) -- this correct while the RegionStyle is not LineWise
 
      change :: ViMove -> RegionStyle -> ViMove -> I Event Action ()
-     change preMove regionStyle move = do
-       write $ do
+     change preMove regionStyle move =
+       beginInsE self $ do
          withBuffer0' $ viMove preMove
          cut regionStyle move
          when (regionStyle == LineWise) $ withBuffer0' $ insertB '\n' >> leftB -- TODO repeat (savingInsertCharB?)
-       ins_mode self
 
      -- The Vim semantics is a little different here, When receiving CTRL-D
      -- instead of looking at the last typed character, one look at the previous
@@ -1408,14 +1413,19 @@ leaveInsRep = do oneOf [spec KEsc, ctrlCh '[', ctrlCh 'c']
 ins_mode :: ModeMap -> VimMode
 ins_mode self = write (setStatus ("-- INSERT --", defaultStyle)) >> many (v_ins_char self <|> kwd_mode) >> leaveInsRep >> write (moveXorSol 1)
 
--- TODO refactor with beginInsB
+-- TODO refactor with beginInsB and beginInsE
 beginIns :: (Show x, YiAction a x) => ModeMap -> a -> I Event Action ()
 beginIns self a = write a >> ins_mode self
 
 beginInsB :: ModeMap -> BufferM () -> I Event Action ()
-beginInsB self a = do write $ do p <- a >> pointB
-                                 putA currentViInsertionA $ Just $ viActBeforeA ^= a $ emptyViIns p
-                      ins_mode self
+beginInsB self = beginInsE self . withBuffer0
+
+beginInsE :: ModeMap -> EditorM () -> I Event Action ()
+beginInsE self a = do
+  write $ do a
+             withBuffer0 $ do p <- pointB
+                              putA currentViInsertionA $ Just $ viActFirstA ^= Just a $ emptyViIns p
+  ins_mode self
 
 post :: Monad m => m a -> m () -> m a
 f `post` g = do x <- f
