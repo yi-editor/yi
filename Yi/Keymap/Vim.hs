@@ -263,6 +263,7 @@ movePercentageFile i = do let f :: Double
                                         | x < 0.0 -> 0.0 -- Impossible?
                                         | otherwise -> x
                           Point max_p <- sizeB
+                          setMarkHere '\''
                           moveTo $ Point $ floor (fromIntegral max_p * f)
                           firstNonSpaceB
 
@@ -380,8 +381,8 @@ defKeymap = Proto template
                   [events evs >> return (Exclusive, a x) | (evs,a) <- moveCmdS_exclusive ] ++
                   [c ?>> return (LineWise, a x) | (c,a) <- moveUpDownCmdFM] ++
                   [do event c; c' <- textChar; return (r, a c' x) | (c,r,a) <- move2CmdFM] ++
-                  [char 'G' ?>> return (LineWise, ArbMove $ maybe (botB >> firstNonSpaceB) gotoFNS cnt)
-                  ,pString "gg" >> return (LineWise, ArbMove $ gotoFNS $ fromMaybe 0 cnt)
+                  [char 'G' ?>> return (LineWise, ArbMove $ setMarkHere '\'' >> maybe (botB >> firstNonSpaceB) gotoFNS cnt)
+                  ,pString "gg" >> return (LineWise, ArbMove $ setMarkHere '\'' >> gotoFNS (fromMaybe 0 cnt))
                   ,char '\'' ?>> do c <- validMarkIdentifier
                                     return (LineWise, ArbMove $ jumpToMark c >> firstNonSpaceB)
                   ,char '`'  ?>> do c <- validMarkIdentifier
@@ -1206,7 +1207,7 @@ defKeymap = Proto template
            -- command.
            fn ""           = withEditor clrStatus
 
-           fn s | all isDigit s = withBuffer' (gotoLn (read s) >> firstNonSpaceB)
+           fn s | all isDigit s = withBuffer' (setMarkHere '\'' >> gotoLn (read s) >> firstNonSpaceB)
 
            fn "w"          = viWrite
            fn ('w':' ':f)  = viSafeWriteTo $ dropSpace f
@@ -1446,6 +1447,7 @@ percentMove :: (RegionStyle, ViMove)
 percentMove = (Inclusive, ArbMove tryGoingToMatch)
     where tryGoingToMatch = do
               p <- pointB
+              getViMarkB '\'' >>= flip setMarkPointB p
               foundMatch <- goToMatch
               when (not foundMatch) $ moveTo p
           go dir a b = goUnmatchedB dir a b >> return True
