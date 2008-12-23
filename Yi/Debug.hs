@@ -1,3 +1,4 @@
+{-# LANGUAGE ParallelListComp #-}
 module Yi.Debug (
         initDebug       -- :: FilePath -> IO ()
        ,trace           -- :: String -> a -> a
@@ -46,7 +47,7 @@ error :: String -> a
 error s = unsafePerformIO $ do logPutStrLn s
                                Prelude.error s
 
-logPutStrLn :: (MonadIO m) => [Char] -> m ()
+logPutStrLn :: (MonadIO m) => String -> m ()
 logPutStrLn s = liftIO $ do
                    mh <- readIORef dbgHandle
                    case mh of
