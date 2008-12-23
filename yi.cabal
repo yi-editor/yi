@@ -201,7 +201,8 @@ library
         
         -- "Internal" modules that the user better not see.
         HConf
-        HConfUtils
+        HConf.Utils
+        HConf.Paths
         Yi.Buffer.Implementation
         Data.Prototype
 
@@ -357,7 +358,8 @@ executable yi
            Yi.IncrementalParse
            Yi.UI.Utils
            HConf
-           HConfUtils
+           HConf.Utils
+           HConf.Paths
            -- Should probably be split out to another package.
            Data.DelayList
 

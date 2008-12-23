@@ -1,9 +1,10 @@
 -- | Boot process of Yi, as an instanciation of HConf
-module Yi.Boot (driver, yi, reloadEditor) where
+module Yi.Boot (driver, yi, reloadEditor, defaultHConfParams, projectName) where
 
 import Control.Monad.State
 import qualified Data.Binary
-import HConf
+import HConf (HConf(HConf), getHConf)
+import qualified HConf
 import Yi.Buffer.Basic
 import Yi.Config
 import Yi.Debug
@@ -30,6 +31,10 @@ realMain staticConfig state = do
 initState :: Maybe Editor
 initState = Nothing
 
+-- FIXME: Reloading works now, but the terminal is messed up when we reload,
+-- then quit (in vty).  I attempted to quit the UI (via withUI UI.end) from
+-- here, as a cleanup before restarting, but then the program would exit
+-- immediately.
 reloadEditor :: YiM ()
 reloadEditor = do
     editor <- withEditor get
@@ -39,9 +44,22 @@ reloadEditor = do
 driver :: IO ()
 yi :: Config -> IO ()
 restart :: Maybe Editor -> IO ()
-HConf driver yi restart = getHConf Yi.Main.projectName initState recoverState saveState Yi.Config.Default.defaultConfig showErrorsInConf realMain
+HConf driver yi restart = getHConf defaultHConfParams Yi.Config.Default.defaultConfig initState
 
 showErrorsInConf :: String -> Config -> Config
 showErrorsInConf errs conf 
     = conf {startActions = [makeAction $ newBufferE (Left "errors") (fromString errs)]}
+
+projectName :: String
+projectName = "yi"
+
+defaultHConfParams :: HConf.HConfParams Config (Maybe Editor)
+defaultHConfParams = HConf.HConfParams
+    { HConf.projectName      = projectName
+    , HConf.recoverState     = recoverState
+    , HConf.saveState        = saveState
+    , HConf.showErrorsInConf = showErrorsInConf
+    , HConf.realMain         = realMain
+    , HConf.ghcFlags         = []
+    }
 

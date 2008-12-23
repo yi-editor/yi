@@ -9,11 +9,13 @@
 module Yi.Main (main, projectName) where
 
 import Prelude ()
+import {-# SOURCE #-} Yi.Boot
 import Yi.Config
 import Yi.Config.Default
 import Yi.Core
 import Yi.Dired
 import HConf (hconfOptions)
+import qualified HConf
 import Paths_yi
 import Distribution.Text (display)
 #ifdef TESTING
@@ -73,14 +75,11 @@ options = [
     Option []     ["as"]          (ReqArg EditorNm "[editor]")
         ("Start with editor keymap, where editor is one of:\n" ++
                 (concat . intersperse ", " . fmap fst) editors)
-    ] ++ (map (fmap $ const HConfOption) (hconfOptions projectName))
+    ] ++ (map (fmap $ const HConfOption) (hconfOptions defaultHConfParams))
 
 -- | usage string.
 usage, versinfo :: String
 usage = usageInfo ("Usage: " ++ projectName ++ " [option...] [file]") options
-
-projectName :: String
-projectName = "yi"
 
 versinfo = projectName ++ ' ' : display version
 

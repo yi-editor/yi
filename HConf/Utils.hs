@@ -1,9 +1,19 @@
 -- | Utility functions/instances for HConf for which a better place has not
 -- been found yet.
-module HConfUtils (shellWords) where
+module HConf.Utils (shellWords, (+++), io) where
 
+import Control.Monad.Trans (MonadIO, liftIO)
 import Data.List (unfoldr)
 import System.Console.GetOpt (ArgDescr(..), OptDescr(..))
+
+(+++) :: Maybe [a] -> Maybe [a] -> Maybe [a]
+Nothing +++ x = x
+x +++ Nothing = x
+(Just x) +++ (Just y) = Just (x ++ y)
+
+-- | Lift an IO action
+io :: MonadIO m => IO a -> m a
+io = liftIO
 
 -- | Break up a string the way a shell breaks up a command into arguments.
 -- Similar to 'words', but respects quotes and escaped spaces.  TODO: Verify

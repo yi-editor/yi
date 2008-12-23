@@ -3,6 +3,8 @@ module Yi.Config where
 import qualified Data.Map as M
 import Data.Prototype
 
+import HConf (HConfParams)
+
 import Yi.Buffer
 import {-# source #-} Yi.Keymap
 import {-# source #-} Yi.Editor
@@ -45,9 +47,11 @@ data Config = Config {startFrontEnd :: UIBoot,
                       -- ^ Produce a .yi.dbg file with a lot of debug information.
                       configRegionStyle :: RegionStyle,
                       -- ^ Set to 'Exclusive' for an emacs-like behaviour.
-                      configKillringAccumulate :: !Bool
+                      configKillringAccumulate :: !Bool,
                       -- ^ Set to 'True' for an emacs-like behaviour, where 
                       -- all deleted text is accumulated in a killring.
+                      configHConf :: HConfParams Config (Maybe Editor)
+                      -- ^ Tune HConf behaviour
                      }
 
 configFundamentalMode :: Config -> AnyMode
