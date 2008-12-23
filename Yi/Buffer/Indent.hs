@@ -71,7 +71,7 @@ autoIndentB indentBehave = do
 
   To get the straightforward behaviour of the indents of all previous
   lines until one of them has zero indent call this with:
-  @autoIndentHelperB fetchPreviousIndentsB (liftM (: []) indentOfB)@
+  @autoIndentHelperB fetchPreviousIndentsB (fmap (: []) indentOfB)@
   However commonly we wish to have something more interesting for
   the second argument, in particular we commonly wish to have the
   last opening bracket of the previous line as well as its indent.

@@ -5,7 +5,7 @@
 -- \"incremental reading\", see <http://en.wikipedia.org/wiki/Incremental_reading>.
 module Yi.IReader where
 
-import Control.Monad.State (join, liftM)
+import Control.Monad.State (join)
 import System.Directory (getHomeDirectory)
 
 import Yi.Keymap (withBuffer, YiM)
@@ -37,13 +37,13 @@ insertArticle = flip (:)
 
 -- | Serialize given 'ArticleDB' out.
 writeDB :: ArticleDB -> YiM ()
-writeDB adb = io $ join $ liftM (flip B.writeFile $ B.pack $ show adb) $ dbLocation
+writeDB adb = io $ join $ fmap (flip B.writeFile $ B.pack $ show adb) $ dbLocation
 
 -- | Read in database from 'dbLocation' and then parse it into an 'ArticleDB'.
 readDB :: YiM ArticleDB
 readDB = io $ rddb `catch` (const $ return [B.empty])
-         where rddb = do db <- liftM B.readFile $ dbLocation
-                         liftM (read . B.unpack) db
+         where rddb = do db <- fmap B.readFile $ dbLocation
+                         fmap (read . B.unpack) db
 
 -- | The canonical location. We assume \~\/.yi has been set up already.
 dbLocation :: IO FilePath

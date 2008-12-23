@@ -155,7 +155,7 @@ import Driver ()
 -- TODO: make this compile.
 
 -- instance Arbitrary FBuffer where
---     arbitrary = do b0 <- return (newB 0 "*buffername*") `ap` (LazyUTF8.fromString `liftM` arbitrary)
+--     arbitrary = do b0 <- return (newB 0 "*buffername*") `ap` (LazyUTF8.fromString `fmap` arbitrary)
 --                    p0 <- arbitrary
 --                    return $ snd $ runBuffer (dummyWindow $ bkey b0) b0 (moveTo $ Point p0)
 

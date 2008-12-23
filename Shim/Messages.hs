@@ -44,7 +44,7 @@ fuzzyCompleteIdentifier filename name = do
 
 simpleCompleteIdentifier :: FilePath -> String -> SHM (Response ([String], String))
 simpleCompleteIdentifier filename name = do
-  l <- map fst `liftM` Hsinfo.findIdPrefix filename name
+  l <- map fst `fmap` Hsinfo.findIdPrefix filename name
   retVal $ (l, commonPrefix l)
 
 bufferNeedsPreprocessing :: FilePath -> String -> SHM (Response [Bool])

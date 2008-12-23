@@ -10,7 +10,6 @@ import System.Process
 import System.Environment ( getEnv )
 
 import Control.Concurrent       (forkIO)
-import Control.Monad(liftM)
 import qualified Control.OldException as Control.Exception
 
 import Foreign.Marshal.Alloc(allocaBytes)
@@ -130,7 +129,7 @@ createSubprocess cmd args bufref = do
 
 -- Read as much as possible from handle without blocking
 readAvailable :: Handle -> IO String
-readAvailable handle = (liftM concat) $ repeatUntilM $ read_chunk handle
+readAvailable handle = (fmap concat) $ repeatUntilM $ read_chunk handle
 
 -- Read a chunk from a handle, bool indicates if there is potentially more data available
 read_chunk :: Handle -> IO (Bool,String)  

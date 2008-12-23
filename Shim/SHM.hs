@@ -95,7 +95,7 @@ io :: IO a -> SHM a
 io = lift
 
 runSHM :: Session -> FilePath -> (Severity -> SrcSpan -> PprStyle -> Message -> IO ()) -> SHM a -> IO a
-runSHM ses ghc compLogAction m = liftM fst $ runStateT m
+runSHM ses ghc compLogAction m = fmap fst $ runStateT m
                              $ ShimState {tempSession=ses,
                                           sessionMap=M.empty,
                                           compBuffer=M.empty,

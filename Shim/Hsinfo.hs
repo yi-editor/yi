@@ -208,7 +208,7 @@ load sourcefile store source = do
                storeIfNeeded cres ses
                return (cres,ses)
  where storeIfNeeded cres ses = do
-         storedres <- M.lookup sourcefile `liftM` getCompBuffer
+         storedres <- M.lookup sourcefile `fmap` getCompBuffer
          when (store && (isNothing storedres ||
                          ((fst3 . fromJust) storedres `replaceWith` cres))) $
            do logInfo $ "compBuffer for "++ sourcefile++" replaced"
@@ -243,7 +243,7 @@ load' sourcefile source = do
          io $ GhcCompat.setContext ses [modq] []
          return (Succeeded,ses)
        Failed    -> do   -- We take care of getting at least the Prelude
-         io(GhcCompat.setContext ses [] =<< liftM (:[]) (getPrelude ses))
+         io(GhcCompat.setContext ses [] =<< fmap (:[]) (getPrelude ses))
          return (Failed,ses)
 
 addTime :: Maybe String -> SHM (Maybe (StringBuffer, ClockTime))
@@ -268,7 +268,7 @@ getSessionFor sourcefile = do
 
 checkModuleCached :: FilePath -> Maybe String -> SHM (TypecheckedModule, Session)
 checkModuleCached sourcefile source = do
-  l0 <- M.lookup sourcefile `liftM` getCompBuffer
+  l0 <- M.lookup sourcefile `fmap` getCompBuffer
   hash <- io $ hashSource sourcefile source
   case l0 of -- ToDo: check hash of all files, or just speed up ghc-api
     Just (_,_,Just (h, checkedModule)) | h == hash -> do
@@ -276,7 +276,7 @@ checkModuleCached sourcefile source = do
       return (checkedModule,ses)
     _ -> do
       (_,ses) <- load sourcefile True source
-      l1 <- M.lookup sourcefile `liftM` getCompBuffer
+      l1 <- M.lookup sourcefile `fmap` getCompBuffer
       case l1 of
         Just (_,_,Just (_, checkedModule)) -> return (checkedModule,ses)
         _ -> error "CheckModuleCached: no checked_module"
@@ -331,12 +331,12 @@ allExposedModules dflags =
 
 findIdPrefix :: FilePath -> String -> SHM [(String, String)]
 findIdPrefix sourcefile pref = do
-  l0 <- M.lookup sourcefile `liftM` getCompBuffer
+  l0 <- M.lookup sourcefile `fmap` getCompBuffer
   case l0 of
     Just (_,l,_) -> return . (filterPrefix pref) $ l
     Nothing -> do
       load sourcefile True Nothing
-      l1 <- M.lookup sourcefile `liftM` getCompBuffer
+      l1 <- M.lookup sourcefile `fmap` getCompBuffer
       maybe (return []) (return . (filterPrefix pref) . snd3) l1
 
 
@@ -378,7 +378,7 @@ getModuleExports sourcefile0 modname pref = do
     Just mod_info -> do
       let names = modInfoExports mod_info
       things <- io $ forM names
-                       (\n -> ((,) n) `liftM` GhcCompat.lookupName ses n)
+                       (\n -> ((,) n) `fmap` GhcCompat.lookupName ses n)
       return
         $ filterPrefix pref
         $ map (\(n,t) ->

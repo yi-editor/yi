@@ -39,7 +39,6 @@ module Yi.MkTemp (
 
 import Data.List
 import Data.Char                ( chr, ord, isDigit )
-import Control.Monad            ( liftM )
 import Control.OldException        ( handleJust )
 import System.Directory         ( doesDirectoryExist, doesFileExist, createDirectory )
 import System.IO
@@ -98,7 +97,7 @@ gettemp path doopen domkdir slen = do
     --
     -- replace end of template with process id, and rest with randomness
     --
-    ;pid <- liftM show $ getProcessID
+    ;pid <- fmap show $ getProcessID
     ;let (rest, xs) = merge tmpl pid
     ;as <- randomise rest
     ;let tmpl' = as ++ xs

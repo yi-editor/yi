@@ -19,7 +19,7 @@ main :: (Read t, Num t, PrintfArg t1, Num b, PrintfArg b) =>
 main tests  = do
     args <- fmap (drop 1) getArgs
     let n = if null args then 100 else read (head args)
-    (results, passed) <- liftM unzip $ mapM (\(s,a) -> printf "%-25s: " s >> a n) tests
+    (results, passed) <- fmap unzip $ mapM (\(s,a) -> printf "%-25s: " s >> a n) tests
     printf "Passed %d tests!\n" (sum passed)
     when (not . and $ results) $ fail "Not all tests passed!"
 
@@ -112,7 +112,7 @@ newtype NonEmptyNubList a = NonEmptyNubList [a]
  deriving ( Eq, Ord, Show, Read )
 
 instance (Eq a, Arbitrary a) => Arbitrary (NonEmptyNubList a) where
-  arbitrary   = NonEmptyNubList `fmap` ((liftM nub arbitrary) `suchThat` (not . null))
+  arbitrary   = NonEmptyNubList `fmap` ((fmap nub arbitrary) `suchThat` (not . null))
   coarbitrary = undefined
 
 type Positive a = NonZero (NonNegative a)

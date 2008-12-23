@@ -148,7 +148,7 @@ readLnB :: BufferM String
 readLnB = readUnitB Line
 
 readCharB :: BufferM (Maybe Char)
-readCharB = liftM listToMaybe (readUnitB Character)
+readCharB = fmap listToMaybe (readUnitB Character)
 
 -- | Read from point to end of line
 readRestOfLnB :: BufferM String
