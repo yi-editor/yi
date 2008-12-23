@@ -1,24 +1,26 @@
-{-# LANGUAGE OverloadedStrings, PatternSignatures, PatternGuards  #-}
-import Data.Array (elems, Array)
+{-# LANGUAGE OverloadedStrings, ScopedTypeVariables, PatternGuards  #-}
+
 import Data.ByteString.Char8 (pack, ByteString)
 import Data.Char
 import Data.Function
-import Data.String
 import Data.List 
 import Prelude hiding (lines, readFile)
-import Text.Regex.Base
 import Text.Regex.TDFA
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.Map as M
 
+capitalize :: ByteString -> ByteString
 capitalize s = BS.cons (toUpper $ BS.head s) (BS.tail s)
 
-tx :: String = "Thu Oct 14 05:40:06 CEST 2004 "
+tx :: String
+tx = "Thu Oct 14 05:40:06 CEST 2004 "
 
+unquote :: ByteString -> ByteString
 unquote x
     | BS.head x == '\'' && BS.last x == '\'' = unquote (BS.init $ BS.tail $ x)
     | otherwise = x
 
+mkName :: ByteString -> ByteString -> ByteString
 mkName firstname lastname = BS.concat . intersperse " " . map capitalize $ [firstname, lastname]
 
 name :: ByteString -> ByteString
@@ -26,13 +28,14 @@ name tag
      | tag == "tora@zonetora.co.uk" = "Tristan Allwood"
      | tag == "andy@nobugs.org" = "Andrew Birkett"
      | tag == "jeff@nokrev.com" = "Jeff Wheeler"
-     | AllTextSubmatches [_,name] <- tag =~ pack "^\"?(.+)<.*>\"?$" = name
-     | AllTextSubmatches [_,name] <- tag =~ pack "^?(.+)<.*>?$" = name
+     | AllTextSubmatches [_,nme] <- tag =~ pack "^\"?(.+)<.*>\"?$" = nme
+     | AllTextSubmatches [_,nme] <- tag =~ pack "^?(.+)<.*>?$" = nme
      | AllTextSubmatches [_,firstname,lastname] <- tag =~ pack "^<?(.*)@(.*)\\.name>?$"
                                                 = mkName firstname lastname
      | AllTextSubmatches [_,user] <- tag =~ pack "^<?(.*)@.*>?$" = nickToName user
      | otherwise = nickToName tag
 
+trim :: ByteString -> ByteString
 trim = fst . BS.spanEnd isSpace
 
 nickToName :: ByteString -> ByteString
@@ -63,11 +66,12 @@ nickToName x = case BS.map toLower x of
                                                          -> mkName firstname lastname
               | otherwise -> x
 
+main :: IO ()
 main = do
   f <- BS.getContents
   let ls = BS.lines f
       ps = filter (not . isSpace . BS.head) $ filter (not . BS.null) $ ls
-      contrs = M.fromListWith (+) $ flip zip (repeat 1) $ map (trim . name . unquote . BS.dropWhile isSpace . BS.drop (length tx)) $ ps
+      contrs = M.fromListWith (+) $ flip zip (repeat (1::Int)) $ map (trim . name . unquote . BS.dropWhile isSpace . BS.drop (length tx)) $ ps
   putStrLn $ show (length ps) ++ " patches"
   putStrLn $ show (M.size contrs) ++ " contributors"
   mapM print $ sortBy (compare `on` snd) $ M.toList $ contrs
