@@ -35,7 +35,7 @@ hoogleFunctions a = caseSensitize . gv . nub . map ((!!1) . words) <$> hoogleRaw
 
 -- | Return module-function pairs.
 hoogleFunModule :: String -> IO [(String, String)]
-hoogleFunModule a = (map (head &&& (!! 1)) . map words . gv) <$> hoogleRaw a ""
+hoogleFunModule a = map ((head &&& (!! 1)) . words) . gv  <$> hoogleRaw a ""
 
 -- | Call out to 'hoogleFunModule', and overwrite the word at point with
 -- the first returned function.
