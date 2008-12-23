@@ -941,6 +941,7 @@ defKeymap = Proto template
          ((char 'w' ?>> change NoMove Exclusive (GenMove unitViWord (Forward, OutsideBound) Forward)) <|>
           (char 'W' ?>> change NoMove Exclusive (GenMove unitViWORD (Forward, OutsideBound) Forward))) <|>
        (char 'c' ?>> change viMoveToSol LineWise viMoveToEol) <|>
+       (char 'C' ?>> change NoMove LineWise viMoveToEol) <|>
        (uncurry (change NoMove) =<< moveKeymap) <|>
        (select_any_unit (cutRegion Exclusive) >> ins_mode self) -- this correct while the RegionStyle is not LineWise
 
