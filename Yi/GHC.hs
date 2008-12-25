@@ -7,7 +7,6 @@ import Control.Monad.Error ()
 import Control.Monad.Reader (asks)
 import Control.Monad.State
 import Control.Monad.Writer
-import Data.Accessor
 import Data.Maybe
 import ErrUtils
 import GHC

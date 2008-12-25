@@ -15,7 +15,7 @@ module Yi.File
 
 import Data.Time
 import Control.Monad.Trans
-import Prelude (filter, realToFrac)
+import Prelude (filter)
 import Yi.Core
 import Yi.Buffer (file)
 import Control.Monad.State (gets)
@@ -24,8 +24,6 @@ import System.IO.UTF8 as UTF8
 import System.FilePath
 import System.FriendlyPath
 import qualified Data.ByteString.Lazy as LB
-import System.PosixCompat.Files
-import Data.Time.Clock.POSIX
 
 -- | Revert to the contents of the file on disk
 revertE :: YiM ()
