@@ -119,6 +119,7 @@ module Yi.Buffer.Misc
   , identA
   , BufferId
   , file
+  , lastSyncTimeA
   )
 where
 

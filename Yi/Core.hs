@@ -197,9 +197,17 @@ refreshEditor = do
     yi <- ask
     io $ modifyMVar_ (yiVar yi) $ \var -> do
         let e0 = yiEditor var 
+            touchedBuffers = [(b,fname) | b <- bufferSet e0, Right fname <- [b ^.identA], not $ null $ b ^. pendingUpdatesA]
+
+        modTimes <- mapM fileModTime (fmap snd touchedBuffers)
+        let externallyTouchedBuffers = [b | ((b,fname),time) <- zip touchedBuffers modTimes, b ^. lastSyncTimeA < time]
             e1 = buffersA ^: (fmap (clearSyntax . clearHighlight)) $ e0
             e2 = buffersA ^: (fmap clearUpdates) $ e1
-        UI.refresh (yiUi yi) e1
+            msg = (1, ("Careful: buffers you are currently editing are modified by another process!", errorStyle))
+            e1' = if not $ null $ externallyTouchedBuffers 
+               then (statusLinesA ^: DelayList.insert msg) e1
+               else e1
+        UI.refresh (yiUi yi) e1'
         return var {yiEditor = e2}
   where 
     clearUpdates fb = pendingUpdatesA ^= [] $ fb
@@ -208,7 +216,9 @@ refreshEditor = do
       let h = getVal highlightSelectionA fb
           us = getVal pendingUpdatesA fb
       in highlightSelectionA ^= (h && null us) $ fb
-          
+    isRight (Right _) = True
+    isRight _ = False
+    fileModTime f = posixSecondsToUTCTime . realToFrac . modificationTime <$> getFileStatus f
           
 
 -- | Suspend the program
