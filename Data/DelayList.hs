@@ -1,8 +1,9 @@
 -- maybe use package event-list instead.
-module Data.DelayList where
+module Data.DelayList (insert, decrease, DelayList) where
 
 type DelayList a = [(Int, a)]
 
+-- | Subtraction, but treat maxBound as infinity. i.e. maxBound -? x == maxBound
 (-?) :: Int -> Int -> Int
 x -? y | x == maxBound = x
        | otherwise = x - y
