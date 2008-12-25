@@ -44,44 +44,42 @@ module Yi.Core
   ) 
 where
 
-import Prelude ()
-import Yi.Prelude
-
-import Yi.Config
+import Control.Concurrent
+import Control.Monad (when, forever)
+import Control.Monad.Error ()
+import Control.Monad.Reader (runReaderT, ask, asks)
+import Control.Monad.State (gets)
+import Control.Monad.Trans
+import Control.OldException
+import Data.Foldable (mapM_)
+import Data.List (intercalate, filter, zip)
+import Data.Maybe
+import Data.Time.Clock.POSIX
+import Prelude (realToFrac)
+import System.Exit
+import System.FilePath
+import System.IO (Handle, hWaitForInput, hPutStr)
+import System.PosixCompat.Files
+import System.Process ( getProcessExitCode, ProcessHandle )
 import Yi.Buffer
+import Yi.Config
 import Yi.Dynamic
-import Yi.String
-import Yi.Process ( popen, createSubprocess, readAvailable, SubprocessId, SubprocessInfo(..) )
 import Yi.Editor
 import Yi.Keymap
 import Yi.Keymap.Keys
 import Yi.KillRing (krEndCmd)
-import Yi.Style (errorStyle)
-import qualified Yi.Interact as I
 import Yi.Monad
-import qualified Yi.WindowSet as WS
-import qualified Yi.Editor as Editor
-import qualified Yi.UI.Common as UI
+import Yi.Prelude
+import Yi.Process ( popen, createSubprocess, readAvailable, SubprocessId, SubprocessInfo(..) )
+import Yi.String
+import Yi.Style (errorStyle)
 import Yi.UI.Common as UI (UI)
 import qualified Data.DelayList as DelayList
-
-import Data.List (intercalate)
-import Data.Maybe
 import qualified Data.Map as M
-import Data.Foldable (mapM_)
-
-import System.IO (Handle, hWaitForInput, hPutStr)
-import System.Exit
-import System.FilePath
-import System.Process ( getProcessExitCode, ProcessHandle )
-
-import Control.Monad (when,forever)
-import Control.Monad.Reader (runReaderT, ask, asks)
-import Control.Monad.Trans
-import Control.Monad.Error ()
-import Control.Monad.State (gets)
-import Control.OldException
-import Control.Concurrent
+import qualified Yi.Editor as Editor
+import qualified Yi.Interact as I
+import qualified Yi.UI.Common as UI
+import qualified Yi.WindowSet as WS
 
 -- | Make an action suitable for an interactive run.
 -- UI will be refreshed.
