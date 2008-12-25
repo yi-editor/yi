@@ -5,7 +5,7 @@ module Yi.Config.Default (defaultConfig, availableFrontends,
                           defaultEmacsConfig, defaultVimConfig, defaultCuaConfig,
                           toVimStyleConfig, toEmacsStyleConfig, toCuaStyleConfig) where
 
-import {-# source #-} Yi.Boot (defaultHConfParams, reloadEditor)
+import {-# source #-} Yi.Boot (reloadEditor)
 import Data.Dynamic
 import Paths_yi
 import Prelude ()
@@ -146,7 +146,6 @@ defaultConfig =
          , debugMode = False
          , configKillringAccumulate = False
          , configRegionStyle = Exclusive
-         , configHConf = defaultHConfParams
          }
 
 defaultEmacsConfig, defaultVimConfig, defaultCuaConfig :: Config
