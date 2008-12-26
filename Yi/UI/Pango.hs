@@ -28,7 +28,6 @@ import Control.Monad.Reader (liftIO, when, MonadIO)
 import Control.Monad.State (gets)
 
 import Data.Prototype
-import Data.Function
 import Data.Foldable
 import Data.IORef
 import Data.List (nub, findIndex, zip, drop)
@@ -36,7 +35,8 @@ import Data.Maybe
 import Data.Traversable
 import qualified Data.Map as M
 
-import Graphics.UI.Gtk hiding (Region, Window, Event, Action, Point, Style)
+import Graphics.UI.Gtk hiding (on, Region, Window, Action, Point, Style)
+import qualified Graphics.UI.Gtk.Gdk.Events as Gdk.Events
 import qualified Graphics.UI.Gtk as Gtk
 import Yi.UI.Gtk.ProjectTree
 import Yi.UI.Gtk.Utils
@@ -154,13 +154,7 @@ main _ui =
     do logPutStrLn "GTK main loop running"
        mainGUI
 
-instance Show Gtk.Event where
-    show (Key _eventRelease _eventSent _eventTime _eventModifier' _eventWithCapsLock _eventWithNumLock
-                  _eventWithScrollLock _eventKeyVal eventKeyName' eventKeyChar')
-        = "<modifier>" ++ " " ++ show eventKeyName' ++ " " ++ show eventKeyChar'
-    show _ = "Not a key event"
-
-processEvent :: (Event -> IO ()) -> Gtk.Event -> IO Bool
+processEvent :: (Event -> IO ()) -> Gdk.Events.Event -> IO Bool
 processEvent ch ev = do
   -- logPutStrLn $ "Gtk.Event: " ++ show ev
   -- logPutStrLn $ "Event: " ++ show (gtkToYiEvent ev)
@@ -169,16 +163,16 @@ processEvent ch ev = do
     Just e -> ch e
   return True
 
-gtkToYiEvent :: Gtk.Event -> Maybe Event
-gtkToYiEvent (Key {eventKeyName = keyName, eventModifier = evModifier, eventKeyChar = char})
+gtkToYiEvent :: Gdk.Events.Event -> Maybe Event
+gtkToYiEvent (Gdk.Events.Key {Gdk.Events.eventKeyName = keyName, Gdk.Events.eventModifier = evModifier, Gdk.Events.eventKeyChar = char})
     = fmap (\k -> Event k $ (nub $ (if isShift then filter (/= MShift) else id) $ concatMap modif evModifier)) key'
       where (key',isShift) =
                 case char of
                   Just c -> (Just $ KASCII c, True)
                   Nothing -> (M.lookup keyName keyTable, False)
-            modif Control = [MCtrl]
-            modif Alt = [MMeta]
-            modif Shift = [MShift]
+            modif Gdk.Events.Control = [MCtrl]
+            modif Gdk.Events.Alt = [MMeta]
+            modif Gdk.Events.Shift = [MShift]
             modif _ = []
 gtkToYiEvent _ = Nothing
 
@@ -230,25 +224,18 @@ syncWin e w wi = do
 setFocus :: WinInfo -> IO ()
 setFocus w = do
   logPutStrLn $ "gtk focusing " ++ show w
-  hasFocus <- widgetIsFocus (textview w)
+  hasFocus <- get (textview w) widgetIsFocus
   when (not hasFocus) $ widgetGrabFocus (textview w)
 
 removeWindow :: UI -> WinInfo -> IO ()
 removeWindow i win = containerRemove (uiBox i) (widget win)
 
-instance Show Click where
-    show x = case x of
-               SingleClick  -> "SingleClick "
-               DoubleClick  -> "DoubleClick "
-               TripleClick  -> "TripleClick "
-               ReleaseClick -> "ReleaseClick"
-
-handleClick :: UI -> WinInfo -> Gtk.Event -> IO Bool
+handleClick :: UI -> WinInfo -> Gdk.Events.Event -> IO Bool
 handleClick ui w event = do
   -- logPutStrLn $ "Click: " ++ show (eventX e, eventY e, eventClick e)
 
   -- retrieve the clicked offset.
-  (_,layoutIndex,_) <- layoutXYToIndex (winLayout w) (eventX event) (eventY event)
+  (_,layoutIndex,_) <- layoutXYToIndex (winLayout w) (Gdk.Events.eventX event) (Gdk.Events.eventY event)
   r <- readRef (shownRegion w)
   let p1 = regionStart r + fromIntegral layoutIndex
 
@@ -256,10 +243,10 @@ handleClick ui w event = do
   logPutStrLn $ "Clicked inside window: " ++ show w
   wCache <- readIORef (windowCache ui)
   let Just idx = findIndex (((==) `on` (winkey . coreWin)) w) wCache
-      focusWindow = modifyWindows (WS.focusIndex idx)
+      focusWindow = modA windowsA (WS.focusIndex idx)
 
-  case (eventClick event, eventButton event) of
-     (SingleClick, LeftButton) -> do
+  case (Gdk.Events.eventClick event, Gdk.Events.eventButton event) of
+     (Gdk.Events.SingleClick, Gdk.Events.LeftButton) -> do
        writeRef (winMotionSignal w) =<< Just <$> onMotionNotify (textview w) False (handleMove ui w p1)
 
      _ -> do maybe (return ()) signalDisconnect =<< readRef (winMotionSignal w)
@@ -269,12 +256,12 @@ handleClick ui w event = do
 
   let editorAction = do
         b <- gets $ (bkey . findBufferWith (bufkey $ coreWin w))
-        case (eventClick event, eventButton event) of
-          (SingleClick, LeftButton) -> do
+        case (Gdk.Events.eventClick event, Gdk.Events.eventButton event) of
+          (Gdk.Events.SingleClick, Gdk.Events.LeftButton) -> do
               focusWindow
               withGivenBufferAndWindow0 (coreWin w) b $ moveTo p1
-          (SingleClick, _) -> focusWindow
-          (ReleaseClick, MiddleButton) -> do
+          (Gdk.Events.SingleClick, _) -> focusWindow
+          (Gdk.Events.ReleaseClick, Gdk.Events.MiddleButton) -> do
             txt <- getRegE
             withGivenBufferAndWindow0 (coreWin w) b $ do
               pointB >>= setSelectionMarkPointB
@@ -286,12 +273,12 @@ handleClick ui w event = do
   uiActionCh ui (makeAction editorAction)
   return True
 
-handleMove :: UI -> WinInfo -> Point -> Gtk.Event -> IO Bool
+handleMove :: UI -> WinInfo -> Point -> Gdk.Events.Event -> IO Bool
 handleMove ui w p0 event = do
-  logPutStrLn $ "Motion: " ++ show (eventX event, eventY event)
+  logPutStrLn $ "Motion: " ++ show (Gdk.Events.eventX event, Gdk.Events.eventY event)
 
   -- retrieve the clicked offset.
-  (_,layoutIndex,_) <- layoutXYToIndex (winLayout w) (eventX event) (eventY event)
+  (_,layoutIndex,_) <- layoutXYToIndex (winLayout w) (Gdk.Events.eventX event) (Gdk.Events.eventY event)
   r <- readRef (shownRegion w)
   let p1 = regionStart r + fromIntegral layoutIndex
 
@@ -331,7 +318,7 @@ newWindow e ui w b = mdo
      then do
       widgetSetSizeRequest v (-1) 1
 
-      prompt <- labelNew (Just $ name b)
+      prompt <- labelNew (Just $ identString b)
       widgetModifyFont prompt (Just f)
 
       hb <- hBoxNew False 1

@@ -36,9 +36,10 @@ import Data.Traversable
 import Data.Unique
 import qualified Data.Map as M
 
-import Graphics.UI.Gtk hiding ( Window, Event, Action, Point, Style, Region )
+import Graphics.UI.Gtk hiding ( on, Window, Action, Point, Style, Region )
 import qualified Graphics.UI.Gtk as Gtk
 import qualified Graphics.UI.Gtk.ModelView as MView
+import qualified Graphics.UI.Gtk.Gdk.Events as Gdk.Events
 import Yi.UI.Gtk.ProjectTree
 import Yi.UI.Gtk.Utils
 import Yi.UI.Utils
@@ -162,14 +163,7 @@ main _ui =
     do logPutStrLn "GTK main loop running"
        mainGUI
 
-instance Show Gtk.Event where
-    show (Key _eventRelease _eventSent _eventTime _eventModifier' _eventWithCapsLock _eventWithNumLock
-                  _eventWithScrollLock _eventKeyVal eventKeyName' eventKeyChar')
-        = "<modifier>" ++ " " ++ show eventKeyName' ++ " " ++ show eventKeyChar'
-    show _ = "Not a key event"
-
-
-processEvent :: (Event -> IO ()) -> Gtk.Event -> IO Bool
+processEvent :: (Event -> IO ()) -> Gdk.Events.Event -> IO Bool
 processEvent ch ev = do
   -- logPutStrLn $ "Gtk.Event: " ++ show ev
   -- logPutStrLn $ "Event: " ++ show (gtkToYiEvent ev)
@@ -178,16 +172,16 @@ processEvent ch ev = do
     Just e -> ch e
   return True
 
-gtkToYiEvent :: Gtk.Event -> Maybe Event
-gtkToYiEvent (Key {eventKeyName = keyName, eventModifier = evModifier, eventKeyChar = char})
+gtkToYiEvent :: Gdk.Events.Event -> Maybe Event
+gtkToYiEvent (Gdk.Events.Key {Gdk.Events.eventKeyName = keyName, Gdk.Events.eventModifier = evModifier, Gdk.Events.eventKeyChar = char})
     = fmap (\k -> Event k $ (nub $ sort $ (if isShift then filter (/= MShift) else id) $ concatMap modif evModifier)) key'
       where (key',isShift) =
                 case char of
                   Just c -> (Just $ KASCII c, True)
                   Nothing -> (M.lookup keyName keyTable, False)
-            modif Control = [MCtrl]
-            modif Alt = [MMeta]
-            modif Shift = [MShift]
+            modif Gdk.Events.Control = [MCtrl]
+            modif Gdk.Events.Alt = [MMeta]
+            modif Gdk.Events.Shift = [MShift]
             modif _ = [] -- Use underscore so we don't depend on the differences between gtk2hs versions
 gtkToYiEvent _ = Nothing
 
@@ -231,27 +225,20 @@ syncWindows _e ui [] cs = mapM_ (removeWindow ui) cs >> return []
 setFocus :: WinInfo -> IO ()
 setFocus w = do
   logPutStrLn $ "gtk focusing " ++ show w
-  hasFocus <- widgetIsFocus (textview w)
+  hasFocus <- get (textview w) widgetIsFocus 
   when (not hasFocus) $ widgetGrabFocus (textview w)
 
 removeWindow :: UI -> WinInfo -> IO ()
 removeWindow i win = containerRemove (uiBox i) (widget win)
 
-instance Show Click where
-    show x = case x of
-               SingleClick  -> "SingleClick "
-               DoubleClick  -> "DoubleClick "
-               TripleClick  -> "TripleClick "
-               ReleaseClick -> "ReleaseClick"
-
-handleClick :: UI -> WinInfo -> Gtk.Event -> IO Bool
+handleClick :: UI -> WinInfo -> Gdk.Events.Event -> IO Bool
 handleClick ui w event = do
   -- logPutStrLn $ "Click: " ++ show (eventX e, eventY e, eventClick e)
 
   -- retrieve the clicked offset.
   let tv = textview w
-  let wx = round (eventX event)
-  let wy = round (eventY event)
+  let wx = round (Gdk.Events.eventX event)
+  let wy = round (Gdk.Events.eventY event)
   (bx, by) <- textViewWindowToBufferCoords tv TextWindowText (wx,wy)
   iter <- textViewGetIterAtLocation tv bx by
   p1 <- Point <$> get iter textIterOffset
@@ -260,18 +247,18 @@ handleClick ui w event = do
   logPutStrLn $ "Clicked inside window: " ++ show w
   wCache <- readIORef (windowCache ui)
   let Just idx = findIndex ((wkey w ==) . wkey) wCache
-      focusWindow = modifyWindows (WS.focusIndex idx)
+      focusWindow = modA windowsA (WS.focusIndex idx)
   logPutStrLn $ "Will focus to index: " ++ show (findIndex ((wkey w ==) . wkey) wCache)
 
   let editorAction = do
         b <- gets $ \editor -> bkey $ findBufferWith (bufkey editor w) editor
-        case (eventClick event, eventButton event) of
-          (SingleClick, LeftButton) -> do
+        case (Gdk.Events.eventClick event, Gdk.Events.eventButton event) of
+          (Gdk.Events.SingleClick, Gdk.Events.LeftButton) -> do
               focusWindow
               withGivenBuffer0 b $ do moveTo p1 -- as a side effect we forget the prefered column
                                       setVisibleSelection True
-          (SingleClick, _) -> focusWindow
-          (ReleaseClick, LeftButton) -> do
+          (Gdk.Events.SingleClick, _) -> focusWindow
+          (Gdk.Events.ReleaseClick, Gdk.Events.LeftButton) -> do
             p0 <- withGivenBuffer0 b $ pointB
             if p1 == p0
               then withGivenBuffer0 b $ setVisibleSelection False
@@ -280,7 +267,7 @@ handleClick ui w event = do
                                                      let [i,j] = sort [p1,p0]
                                                      nelemsB' (j~-i) i
                       setRegE txt
-          (ReleaseClick, MiddleButton) -> do
+          (Gdk.Events.ReleaseClick, Gdk.Events.MiddleButton) -> do
             txt <- getRegE
             withGivenBuffer0 b $ do
               pointB >>= setSelectionMarkPointB
@@ -320,7 +307,7 @@ newWindow editor ui mini win = do
      then do
       widgetSetSizeRequest v (-1) 1
 
-      prompt <- labelNew (Just $ name buf)
+      prompt <- labelNew (Just $ identString buf)
       widgetModifyFont prompt (Just f)
 
       hb <- hBoxNew False 1
@@ -385,12 +372,12 @@ refresh ui e = do
     -- Update the GTK text buffers for all the updates that have occured in the backing Yi buffers
     -- since the last refresh.
     -- Iterate over all the buffers in the editor 
-    forM_ (buffers e) $ \buf -> when (not $ null $ pendingUpdates $ buf) $ do
+    forM_ (buffers e) $ \buf -> when (not $ null $ runBufferDummyWindow buf (getA pendingUpdatesA)) $ do
       -- Apply all pending updates.
       gtkBuf <- getGtkBuffer ui buf
-      forM_ ([u | TextUpdate u <- pendingUpdates buf]) $ applyUpdate gtkBuf
+      forM_ ([u | TextUpdate u <- runBufferDummyWindow buf (getA pendingUpdatesA)]) $ applyUpdate gtkBuf
       let size = runBufferDummyWindow buf sizeB
-      forM_ ([mkSizeRegion s l | StyleUpdate s l <- pendingUpdates buf]) $ \r -> replaceTagsIn ui r buf gtkBuf
+      forM_ ([mkSizeRegion s l | StyleUpdate s l <- runBufferDummyWindow buf (getA pendingUpdatesA)]) $ \r -> replaceTagsIn ui r buf gtkBuf
       -- Update all the tags in each region that is currently displayed.
       -- As multiple windows can be displaying the same buffer this is done for each window.
       forM_ ws $ \w -> when (Window.bufkey w == bkey buf) $ do  
@@ -418,7 +405,7 @@ refresh ui e = do
                  textBufferPlaceCursor gtkBuf i
            insertMark <- textBufferGetInsert gtkBuf
            textViewScrollMarkOnscreen (textview w) insertMark
-           let txt = fst $ runBuffer win buf $ getModeLine getModeLine (commonNamePrefix e)
+           let txt = fst $ runBuffer win buf $ getModeLine (commonNamePrefix e)
            set (modeline w) [labelText := txt]
 
 replaceTagsIn :: UI -> Region -> FBuffer -> TextBuffer -> IO ()
@@ -475,9 +462,9 @@ prepareAction ui = do
                      return (l1 - l0)
     -- updates the heights of the windows
     return $ 
-      modifyWindows (\ws -> if WS.size ws == length heights 
-                              then fst $ runState (mapM distribute ws) heights
-                              else trace ("INFO: updates the heights of the windows: unmatching lengths") ws)
+      modA windowsA  (\ws -> if WS.size ws == length heights 
+                                  then fst $ runState (mapM distribute ws) heights
+                                  else trace ("INFO: updates the heights of the windows: unmatching lengths") ws)
 
 reloadProject :: UI -> FilePath -> IO ()
 reloadProject ui fpath = do

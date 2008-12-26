@@ -268,6 +268,7 @@ executable yi
 
         if flag (gtk)
           build-depends: gtk>=0.9.13
+          build-depends: glib>=0.9.13
           cpp-options: -DFRONTEND_GTK
 
         if flag (pango)

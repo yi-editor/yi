@@ -16,7 +16,11 @@ import Distribution.Package
 import Shim.ProjectContent
 import qualified Graphics.UI.Gtk.ModelView as MView
 import qualified Graphics.UI.Gtk as Gtk
-import Graphics.UI.Gtk hiding ( Window, Event, Point, Style )
+import Graphics.UI.Gtk.Gdk.Pixbuf (Pixbuf(..))
+import Graphics.UI.Gtk.ModelView.TreeView ( treeViewHeadersVisible
+                                          , onRowActivated
+                                          )
+import System.Glib.Attributes
 import Yi.Keymap
 import Yi.Dired
 import Yi.UI.Gtk.Utils
