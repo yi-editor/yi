@@ -33,9 +33,7 @@ revertE = do
                      Just fp -> do
                              now <- io getCurrentTime
                              s <- liftIO $ UTF8.readFile fp
-                             withBuffer $ do                                 
-                                  savingPointB $ replaceBufferContent s
-                                  markSavedB now
+                             withBuffer $ revertB s now
                              msgEditor ("Reverted from " ++ show fp)
                      Nothing -> do
                                 msgEditor "Can't revert, no file associated with buffer."

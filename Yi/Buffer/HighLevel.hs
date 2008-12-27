@@ -7,6 +7,7 @@ import Control.Monad.State
 import Data.Char
 import Data.List (isPrefixOf, sort, lines, drop, filter, length, takeWhile, dropWhile)
 import Data.Maybe (fromMaybe, listToMaybe)
+import Data.Time (UTCTime)
 import Prelude (FilePath, map)
 import Yi.Prelude
 
@@ -591,3 +592,8 @@ fillParagraph = fillRegion =<< regionOfB unitParagraph
 sortLines :: BufferM ()
 sortLines = modifyRegionB (onLines sort) =<< unitWiseRegion Line =<< getSelectRegionB
 
+
+revertB :: String -> UTCTime -> BufferM ()
+revertB s now = do
+    savingPointB $ replaceBufferContent s
+    markSavedB now
