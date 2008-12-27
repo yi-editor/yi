@@ -88,7 +88,8 @@ fnewCanonicalized f = do
                         when userWantMkDir $ liftIO $ createDirectory fDirectory
                       withEditor $ stringToNewBuffer (Right f) (fromString "") -- Create new empty buffer
             tbl <- asks (modeTable . yiConfig)
-            case fromMaybe (AnyMode emptyMode) (find (\(AnyMode m)->modeApplies m f) tbl) of
+            contents <- withGivenBuffer b $ elemsB
+            case fromMaybe (AnyMode emptyMode) (find (\(AnyMode m)->modeApplies m f contents) tbl) of
                 AnyMode newMode -> withGivenBuffer b $ setMode newMode
             return b
     setFileName b f

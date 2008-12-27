@@ -2,6 +2,7 @@
 module Yi.Mode.Compilation where
 
 import Prelude ()
+import Yi.Buffer.Misc (modeNeverApplies)
 import Yi.Core
 import Yi.Lexer.Alex (Tok(..), Posn(..))
 import Yi.Style
@@ -14,7 +15,7 @@ import qualified Yi.Syntax.Linear as Linear
 mode :: Mode (Linear.Result (Tok Compilation.Token))
 mode = emptyMode
   { 
-   modeApplies = const False,
+   modeApplies = modeNeverApplies,
    modeName = "compilation",
    modeKeymap = (<||) (spec KEnter ?>>! withSyntax modeFollow),
    modeFollow = \synTree -> YiA (follow synTree),

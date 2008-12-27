@@ -37,11 +37,15 @@ import qualified Yi.Lexer.LiterateHaskell as LiterateHaskell
 import Yi.Lexer.Haskell as Haskell
 import qualified Yi.Syntax.Linear as Linear
 import qualified Yi.Mode.Interactive as Interactive
-import Yi.Modes (anyExtension)
+import Yi.Modes (anyExtension, extensionOrContentsMatch)
 
 haskellAbstract :: Mode syntax
 haskellAbstract = emptyMode 
   {
+     modeApplies = extensionOrContentsMatch extensions shebangPattern,
+     modeName = "haskell",
+     modeToggleCommentSelection = toggleCommentSelectionB "-- " "--"
+  }
      {-    
      Some of these are a little questionably haskell
      related. For example ".x" is an alex lexer specification
@@ -49,10 +53,8 @@ haskellAbstract = emptyMode
      as the file extension.
      For now though this is probably okay given the users of
      'yi' are mostly haskell hackers, as of yet. -}
-     modeApplies = anyExtension ["hs", "x", "hsc", "hsinc"],
-     modeName = "haskell",
-     modeToggleCommentSelection = toggleCommentSelectionB "-- " "--"
-  }
+    where extensions = ["hs", "x", "hsc", "hsinc"]
+          shebangPattern = "^#![[:space:]]*/usr/bin/env[[:space:]]+runhaskell"
 
 -- | Plain haskell mode, providing only list of keywords.
 plainMode :: Mode (Linear.Result (Tok Token))

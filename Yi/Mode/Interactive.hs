@@ -2,6 +2,7 @@ module Yi.Mode.Interactive where
 
 import Data.List (elemIndex)
 import Prelude ()
+import Yi.Buffer.Misc (modeNeverApplies)
 import Yi.Core
 import Yi.History
 import Yi.Lexer.Alex (Tok(..))
@@ -17,7 +18,7 @@ atLastLine = savingPointB $ do
 
 mode :: Mode (Linear.Result (Tok Compilation.Token))
 mode = Compilation.mode
-  { modeApplies = const False,
+  { modeApplies = modeNeverApplies,
     modeName = "interactive",
     modeKeymap = (<||)
      (choice

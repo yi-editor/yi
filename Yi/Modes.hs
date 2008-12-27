@@ -3,12 +3,13 @@ module Yi.Modes (fundamentalMode,
                  cppMode, cabalMode, srmcMode, ocamlMode,
                  ottMode, gnuMakeMode,
                  perlMode, pythonMode, 
-                 anyExtension, mkHighlighter'
+                 anyExtension, mkHighlighter', extensionOrContentsMatch
                 ) where
 
 import Control.Arrow (first)
 import Prelude ()
 import System.FilePath
+import Text.Regex.TDFA ((=~))
 
 import Yi.Buffer
 import Yi.Lexer.Alex (Tok(..), Posn(..))
@@ -32,7 +33,7 @@ cppMode, cabalMode, srmcMode, ocamlMode, ottMode, gnuMakeMode, perlMode, pythonM
 fundamentalMode = emptyMode
   { 
    modeName = "fundamental",
-   modeApplies = const True,
+   modeApplies = modeAlwaysApplies,
    modeIndent = const autoIndentB,
    modePrettify = const fillParagraph
   }
@@ -96,12 +97,12 @@ pythonMode = fundamentalMode
     modeHL = ExtHL $ mkHighlighter' Python.initState Python.alexScanToken id
   }
 
-isMakefile :: String -> Bool
-isMakefile = matches . takeFileName
+isMakefile :: FilePath -> String -> Bool
+isMakefile path _contents = matches $ takeFileName path
     where matches "Makefile"    = True
           matches "makefile"    = True
           matches "GNUmakefile" = True
-          matches filename      = anyExtension ["mk"] filename
+          matches filename      = extensionMatches ["mk"] filename
           -- TODO: .mk is fairly standard but are there others?
 
 gnuMakeMode = fundamentalMode
@@ -123,6 +124,20 @@ ottMode = fundamentalMode
     modeHL = ExtHL $ mkHighlighter' Ott.initState Ott.alexScanToken id
   }
 
-anyExtension :: [String] -> FilePath -> Bool
-anyExtension exts fileName = or [takeExtension fileName == ('.' : ext) | ext <- exts] 
+-- | Determines if the file's extension is one of the extensions in the list.
+extensionMatches :: [String] -> FilePath -> Bool
+extensionMatches extensions fileName = extension `elem` extensions'
+    where extension = takeExtension fileName
+          extensions' = ['.' : ext | ext <- extensions]
 
+-- | When applied to an extensions list, creates a 'Mode.modeApplies' function.
+anyExtension :: [String] -> FilePath -> String -> Bool
+anyExtension extensions fileName _contents
+    = extensionMatches extensions fileName
+
+-- | When applied to an extensions list and regular expression pattern, creates
+-- a 'Mode.modeApplies' function.
+extensionOrContentsMatch :: [String] -> String -> FilePath -> String -> Bool
+extensionOrContentsMatch extensions pattern fileName contents
+    = extensionMatches extensions fileName || contentsMatch
+    where contentsMatch = contents =~ pattern :: Bool

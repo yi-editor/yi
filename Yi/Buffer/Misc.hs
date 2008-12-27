@@ -92,6 +92,8 @@ module Yi.Buffer.Misc
   , AnyMode (..)
   , IndentBehaviour (..)
   , IndentSettings (..)
+  , modeAlwaysApplies
+  , modeNeverApplies
   , emptyMode
   , withModeB
   , withMode0
@@ -351,7 +353,7 @@ data AnyMode = forall syntax. AnyMode (Mode syntax)
 data Mode syntax = Mode
     {
      modeName :: String,              -- ^ so this can be serialized, debugged.
-     modeApplies :: FilePath -> Bool, -- ^ What type of files does this mode apply to?
+     modeApplies :: FilePath -> String -> Bool, -- ^ What type of files does this mode apply to?
      modeHL :: ExtHL syntax,          -- ^ Syntax highlighter
      modePrettify :: syntax -> BufferM (), -- ^ Prettify current "paragraph"
      modeKeymap :: KeymapEndo, -- ^ Buffer-local keymap modification
@@ -535,11 +537,24 @@ undoB = undoRedo undoU
 redoB :: BufferM ()
 redoB = undoRedo redoU
 
+-- | Analogous to const, but returns a function that takes two parameters,
+-- rather than one.
+const2 :: t -> t1 -> t2 -> t
+const2 x = \_ _ -> x
+
+-- | Mode applies function that always returns True.
+modeAlwaysApplies :: FilePath -> String -> Bool
+modeAlwaysApplies = const2 True
+
+-- | Mode applies function that always returns False.
+modeNeverApplies :: FilePath -> String -> Bool
+modeNeverApplies = const2 False
+
 emptyMode :: Mode syntax
 emptyMode = Mode
   { 
    modeName = "empty",
-   modeApplies = const False,
+   modeApplies = modeNeverApplies,
    modeHL = ExtHL noHighlighter,
    modePrettify = const $ return (),
    modeKeymap = id,
