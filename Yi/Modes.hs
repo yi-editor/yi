@@ -124,5 +124,5 @@ ottMode = fundamentalMode
   }
 
 anyExtension :: [String] -> FilePath -> Bool
-anyExtension list fileName = or [takeExtension fileName == ('.' : ext) | ext <- list] 
+anyExtension exts fileName = or [takeExtension fileName == ('.' : ext) | ext <- exts] 
 
