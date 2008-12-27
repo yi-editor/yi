@@ -284,7 +284,11 @@ currentWindowA = WS.currentA . windowsA
 
 -- | Return the current buffer
 getBuffer :: EditorM BufferRef
-getBuffer = gets (head . bufferStack)
+getBuffer = gets currentBuffer
+
+-- | Return the current buffer
+currentBuffer :: Editor -> BufferRef
+currentBuffer = head . bufferStack
 
 -----------------------
 -- Handling of status
