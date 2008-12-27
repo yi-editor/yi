@@ -349,7 +349,7 @@ waitForExit ph =
 
 withSyntax :: (Show x, YiAction a x) => (forall syntax. Mode syntax -> syntax -> a) -> YiM ()
 withSyntax f = do
-            b <- withEditor Editor.getBuffer
+            b <- gets currentBuffer
             act <- withGivenBuffer b $ gets (withSyntax0 f)
             runAction $ makeAction $ act
 

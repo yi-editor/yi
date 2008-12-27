@@ -179,7 +179,7 @@ queryReplaceE :: YiM ()
 queryReplaceE = do
     withMinibufferFree "Replace:" $ \replaceWhat -> do
     withMinibufferFree "With:" $ \replaceWith -> do
-    b <- withEditor $ getBuffer
+    b <- gets currentBuffer
     win <- getA currentWindowA
     let replaceKm = choice [char 'n' ?>>! qrNext win b re,
                             char '!' ?>>! qrReplaceAll win b re replaceWith,

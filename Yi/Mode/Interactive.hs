@@ -81,7 +81,7 @@ interactive cmd args = do
 -- | Send the type command to the process
 feedCommand :: YiM ()
 feedCommand = do
-    b <- withEditor $ getBuffer
+    b <- gets currentBuffer
     withEditor interactHistoryFinish
     cmd <- withBuffer $ do
         botB

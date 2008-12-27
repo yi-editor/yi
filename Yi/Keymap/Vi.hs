@@ -345,10 +345,10 @@ rep_char = write . fn =<< anyButEsc
 
 spawn_ex_buffer :: String -> Action
 spawn_ex_buffer prompt = do
-  initialBuffer <- getBuffer
+  initialBuffer <- gets currentBuffer
   Just initialWindow <- getWindow
   -- The above ensures that the action is performed on the buffer that originated the minibuffer.
-  let closeMinibuffer = do b <- getBuffer; closeWindow; deleteBuffer b
+  let closeMinibuffer = do b <- gets currentBuffer; closeWindow; deleteBuffer b
       anyButDelNlArrow = oneOf $ any' \\ (enter' ++ delete' ++ ['\ESC',keyUp,keyDown])
       ex_buffer_finish = do
         historyFinish

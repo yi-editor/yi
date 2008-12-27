@@ -68,7 +68,7 @@ withMinibufferFree prompt = withMinibufferGen "" noHint prompt return
 withMinibufferGen :: String -> (String -> YiM String) -> 
                      String -> (String -> YiM String) -> (String -> YiM ()) -> YiM ()
 withMinibufferGen proposal getHint prompt completer act = do
-  initialBuffer <- withEditor getBuffer
+  initialBuffer <- gets currentBuffer
   let innerAction :: YiM ()
       -- ^ Read contents of current buffer (which should be the minibuffer), and
       -- apply it to the desired action

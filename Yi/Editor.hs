@@ -283,10 +283,6 @@ currentWindowA :: Accessor Editor Window
 currentWindowA = WS.currentA . windowsA
 
 -- | Return the current buffer
-getBuffer :: EditorM BufferRef
-getBuffer = gets currentBuffer
-
--- | Return the current buffer
 currentBuffer :: Editor -> BufferRef
 currentBuffer = head . bufferStack
 
@@ -420,7 +416,7 @@ closeBufferE :: String -> EditorM ()
 closeBufferE nm = deleteBuffer =<< getBufferWithNameOrCurrent nm
 
 getBufferWithNameOrCurrent :: String -> EditorM BufferRef
-getBufferWithNameOrCurrent nm = if null nm then getBuffer else getBufferWithName nm
+getBufferWithNameOrCurrent nm = if null nm then gets currentBuffer else getBufferWithName nm
 
 
 ------------------------------------------------------------------------
@@ -428,7 +424,7 @@ getBufferWithNameOrCurrent nm = if null nm then getBuffer else getBufferWithName
 -- | Close current buffer and window, unless it's the last one.
 closeBufferAndWindowE :: EditorM ()
 closeBufferAndWindowE = do
-  deleteBuffer =<< getBuffer
+  deleteBuffer =<< gets currentBuffer
   tryCloseE
 
 -- | Rotate focus to the next window
@@ -470,7 +466,7 @@ windowsOnBufferE k = do
 -- TODO: unfold newWindowE here?
 splitE :: EditorM ()
 splitE = do
-  b <- getBuffer
+  b <- gets currentBuffer
   w <- newWindowE False b
   modA windowsA (WS.add w)
 
@@ -485,9 +481,8 @@ shrinkWinE = error "shrinkWinE: not implemented"
 -- | Creates a new tab containing a window that views the current buffer.
 newTabE :: EditorM ()
 newTabE = do
-    bk <- getBuffer
-    k <- newRef
-    let win = Window False bk 0 k
+    bk <- gets currentBuffer
+    win <- newWindowE False bk
     modA tabsA (WS.add (WS.new win))
 
 -- | Moves to the next tab in the round robin set of tabs

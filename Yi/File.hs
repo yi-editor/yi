@@ -70,7 +70,7 @@ viSafeWriteTo f = do
 
 -- | Write current buffer to disk, if this buffer is associated with a file
 fwriteE :: YiM ()
-fwriteE = fwriteBufferE =<< withEditor getBuffer
+fwriteE = fwriteBufferE =<< gets currentBuffer
 
 -- | Write a given buffer to disk if it is associated with a file.
 fwriteBufferE :: BufferRef -> YiM ()
@@ -85,7 +85,7 @@ fwriteBufferE bufferKey =
 -- | Write current buffer to disk as @f@. The file is also set to @f@
 fwriteToE :: String -> YiM ()
 fwriteToE f = do 
-    b <- withEditor getBuffer
+    b <- gets currentBuffer
     setFileName b f
     fwriteBufferE b
     
