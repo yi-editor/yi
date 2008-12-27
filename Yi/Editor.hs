@@ -391,11 +391,9 @@ newBufferE f s = do
     switchToBufferE b
     return b
 
--- | Create a new window onto the current buffer.
+-- | Create a new window onto the given buffer.
 newWindowE :: Bool -> BufferRef -> EditorM Window
-newWindowE mini bk = do
-  k <- newRef
-  return $ Window mini bk 0 k
+newWindowE mini bk = Window mini bk 0 <$> newRef
 
 -- | Attach the specified buffer to the current window
 switchToBufferE :: BufferRef -> EditorM ()
