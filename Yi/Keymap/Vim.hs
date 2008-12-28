@@ -63,8 +63,9 @@ import qualified Codec.Binary.UTF8.String as UTF8
 --   '.': started look at "TODO repeat" for missing things
 --   @:
 --   8g8
+--   provide and improve "g@{motion}"
 --   integrate unit transposing (transposeB) (gSaw: swap a word)
---   free keys g[bBcClLnNOSWxXyYzZ]
+--   free keys g[bBcClLnNOSWxXyYzZ(){}[/=|\:">.] z[BIJKpPqQSTVyYZ~`!@#$%&*()[]{}/?_:;,<>"'|\]
 --   could be reused g[dDhHiQ]
 --   free insert keys C-!, C-#, C-$, C-%, C-&, C-*, C-(, C-), C-/, C-+, C-=, C--, C-:, C-;, C-|
 --   could be reused insert keys C-_, C-^
@@ -141,7 +142,6 @@ $(nameDeriveAccessors ''ModeMap $ Just.(++ "A"))
 lastViCommandA :: Accessor Editor ViCmd
 lastViCommandA = dynA
 
--- TODO make this piece of data part of the buffer
 currentViInsertionA :: Accessor FBuffer (Maybe ViInsertion)
 currentViInsertionA = bufferDynamicValueA
 
