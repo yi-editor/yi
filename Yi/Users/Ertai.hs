@@ -9,7 +9,7 @@ import Control.Monad (replicateM_)
 import Yi.Keymap.Keys (char,(?>>!),(>>!))
 import Yi.Misc (adjBlock)
 import Yi.Buffer
-import Yi.Keymap.Vim (viWrite, v_top_level, v_ins_char, savingInsertStringB, savingDeleteCharB)
+import Yi.Keymap.Vim (viWrite, v_top_level, v_ins_char, v_opts, tildeop, savingInsertStringB, savingDeleteCharB)
 import qualified Yi.Keymap.Vim as Vim
 
 myModetable :: [AnyMode]
@@ -66,5 +66,6 @@ extendedVimKeymap = Vim.defKeymap `override` \super self -> super
                     replicateM_ toDel $ savingDeleteCharB Backward
                 )
             <|> (adjustPriority (-1) >> extraInput)
+    , v_opts = (v_opts super) { tildeop = True }
     }
 
