@@ -17,7 +17,7 @@ module Yi.Mode.Haskell
 
 import Data.Binary
 import Data.List (dropWhile, takeWhile, filter, drop)
-import Data.Maybe (maybe, listToMaybe, isJust)
+import Data.Maybe (maybe, listToMaybe, isJust, catMaybes)
 import Prelude (unwords)
 import Yi.Core
 import Yi.File
@@ -87,8 +87,8 @@ fastMode = haskellAbstract
     modeApplies = modeApplies plainMode,
     modeHL = ExtHL $
     mkHighlighter (IncrParser.scanner OnlineTree.parse . haskellLexer)
-      (\_point begin _end t -> fmap Hask.tokenToStroke $ dropToIndex begin t)
-
+      (\_point begin _end t -> fmap Hask.tokenToStroke $ dropToIndex begin t),
+    modeGetAnnotations = \t begin -> catMaybes $ fmap Hask.tokenToAnnot $ dropToIndex begin t
  }
 
 literateMode :: Mode [Paren.Tree TT]

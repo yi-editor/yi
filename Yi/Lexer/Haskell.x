@@ -9,6 +9,7 @@
 {
 {-# OPTIONS -w  #-}
 module Yi.Lexer.Haskell ( initState, alexScanToken, tokenToStyle, 
+                          tokenToText,
                           TT, isErrorTok, isSpecial,
                           startsLayout, isComment, Token(..), CommentType(..), ReservedType(..), OpType(..) ) where
 import Yi.Lexer.Alex
@@ -175,6 +176,10 @@ tokenToStyle tok = case tok of
   Comment _    -> commentStyle
   THQuote      -> quoteStyle
   Unrecognized -> errorStyle
+
+tokenToText :: Token -> Maybe String
+tokenToText (ReservedOp BackSlash) = Just "λ"
+tokenToText _ = Nothing
 
 startsLayout (Reserved OtherLayout) = True
 startsLayout (Reserved Where) = True

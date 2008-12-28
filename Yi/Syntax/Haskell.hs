@@ -213,3 +213,8 @@ modStroke f (l,s,r) = (l,f `mappend` s,r)
 tokenToStroke :: TT -> Stroke
 tokenToStroke (Tok t len posn) = (posnOfs posn, tokenToStyle t, posnOfs posn +~ len)
 
+tokenToAnnot :: TT -> Maybe (Span String)
+tokenToAnnot (Tok t len posn) = case tokenToText t of
+    Nothing -> Nothing
+    Just x -> Just (Span (posnOfs posn) x (posnOfs posn +~ len))
+
