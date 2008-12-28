@@ -49,7 +49,7 @@ $nl        = [\n\r]
 
 
 @reservedop =
-        ".." | ":" | "::" | "=" | \\ | "|" | "<-" | "->" | "@" | "~" | "=>"
+        ".." | ":" | "::" | "=" | "|" | "<-" | "->" | "@" | "~" | "=>"
 
 @varid  = $small $idchar*
 @conid  = $large $idchar*
@@ -119,6 +119,7 @@ haskell :-
 
   "|"                                           { c (ReservedOp Pipe) }
   "="                                           { c (ReservedOp Equal) }
+  \\                                            { c (ReservedOp BackSlash) }
   @reservedop                                   { c (ReservedOp OtherOp) }
   @qual @varsym                                 { c Operator }
   @qual @consym                                 { c ConsOperator }
@@ -147,7 +148,7 @@ data CommentType = Open | Close | Text | Line
 data ReservedType = Where | Let | OtherLayout | Deriving | Module | Other
     deriving (Eq, Show)
 
-data OpType = Pipe | Equal | OtherOp
+data OpType = Pipe | Equal | BackSlash | OtherOp
     deriving (Eq, Show)
 
 data Token = Number | CharTok | StringTok | VarIdent | ConsIdent
