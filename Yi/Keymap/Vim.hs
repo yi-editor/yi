@@ -10,6 +10,7 @@ module Yi.Keymap.Vim (keymap,
                       leaveInsRep,
                       leave,
                       ModeMap(..),
+                      VimOpts(..),
                       savingInsertB,
                       savingInsertCharB,
                       savingInsertStringB,
@@ -118,6 +119,24 @@ data ViInsertion = ViIns { viActFirst  :: Maybe (EditorM ()) -- ^ The action per
   deriving (Typeable)
 
 $(nameDeriveAccessors ''ViInsertion $ Just.(++ "A"))
+
+data VimOpts = VimOpts { tildeop :: Bool }
+$(nameDeriveAccessors ''VimOpts $ Just.(++ "A"))
+
+-- | The Vim keymap is divided into several parts, roughly corresponding
+-- to the different modes of vi. Each mode is in turn broken up into
+-- separate VimProcs for each phase of key input in that mode.
+
+data ModeMap = ModeMap { -- | Top level mode
+                         v_top_level :: VimMode
+
+                         -- | vim insert mode
+                       , v_ins_char :: VimMode
+
+                       , v_opts :: VimOpts
+                       }
+
+$(nameDeriveAccessors ''ModeMap $ Just.(++ "A"))
 
 lastViCommandA :: Accessor Editor ViCmd
 lastViCommandA = dynA
@@ -273,23 +292,16 @@ mkKeymap = v_top_level . extractValue
 keymap :: VimMode
 keymap = mkKeymap defKeymap
 
--- | The Vim keymap is divided into several parts, roughly corresponding
--- to the different modes of vi. Each mode is in turn broken up into
--- separate VimProcs for each phase of key input in that mode.
-
-data ModeMap = ModeMap { -- | Top level mode
-                         v_top_level :: VimMode
-
-                         -- | vim insert mode
-                       , v_ins_char :: VimMode
-                       }
-
 defKeymap :: Proto ModeMap
 defKeymap = Proto template
   where 
     template self = ModeMap { v_top_level = def_top_level
-                            , v_ins_char  = def_ins_char }
+                            , v_ins_char  = def_ins_char
+                            , v_opts      = def_opts }
      where
+
+     def_opts = VimOpts { tildeop = False }
+
      -- | Top level consists of simple commands that take a count arg,
      -- the replace cmd, which consumes one char of input, and commands
      -- that switch modes.
@@ -651,16 +663,15 @@ defKeymap = Proto template
          ,([char 'p'],      savingCommandEY $ flip replicateM_ pasteAfter)
          ,([char 'P'],      savingCommandEY $ flip replicateM_ pasteBefore)
 
-         ,([char '~'],      savingCommandB'Y $ \i -> do -- TODO cleanup
-                              p <- pointB
-                              moveXorEol i
-                              q <- pointB
-                              moveTo p
-                              mapRegionB (mkRegion p q) switchCaseChar
-                              moveTo q)
          ,(map char "ZZ",   const $ viWriteModified >> closeWindow)
          ,(map char "ZQ",   const $ closeWindow)
          ]
+         ++
+         [ ([char '~'],     savingCommandB'Y $
+                              (flip mapRegionB switchCaseChar =<<) .
+                              flip regionOfViMove Exclusive .
+                              Replicate (CharMove Forward))
+         | not $ tildeop $ v_opts $ self ]
 
      ctrlW :: Event
      ctrlW = ctrlCh 'w'
@@ -732,7 +743,7 @@ defKeymap = Proto template
                  , (id, id, '<', mapRegions_ . shiftIndentOfRegion . negate)
                  , (id, id, 'J', const $ nonBlockRegion "J" (const $ withBuffer0' . joinLinesB))
                  , (g_, g_, 'J', const $ nonBlockRegion "gJ" (const $ withBuffer0' . concatLinesB))
-                 , (g_, id, '~', const $ viMapRegion switchCaseChar)
+                 , (ti, id, '~', const $ viMapRegion switchCaseChar)
                  , (g_, id, 'u', const $ viMapRegion toLower)
                  , (g_, id, 'U', const $ viMapRegion toUpper)
                  , (g_, g_, '?', const $ viMapRegion rot13Char)
@@ -740,6 +751,7 @@ defKeymap = Proto template
                  , (g_, g_, 'w', const $ nonBlockRegion "gw" (const $ withBuffer0' . savingPointB . fillRegion))
                  ]
         where g_ = ('g':)
+              ti = if tildeop $ v_opts self then id else g_
               nonBlockRegion n _  Block _ = fail (show n ++ " does not works yet for block selections")
               nonBlockRegion _ op s     r = op s r
               mapRegions_ f Block r = withBuffer0' $ mapM_ f =<< blockifyRegion r
