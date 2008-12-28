@@ -1166,7 +1166,7 @@ defKeymap = Proto template
            
            needsAWindowB = do
              isWorthless <- gets (either (const True) (const False) . (^. identA))
-             canClose <- isUnchangedB
+             canClose <- gets isUnchangedBuffer
              if isWorthless || canClose then return False else return True
            
            {- quitWindow implements the commands in vim equivalent to :q!
@@ -1201,7 +1201,7 @@ defKeymap = Proto template
 
 
            wquitall = forAllBuffers fwriteBufferE >> quitEditor
-           bdelete  = whenUnchanged (withBuffer' isUnchangedB) . withEditor . closeBufferE . dropSpace
+           bdelete  = whenUnchanged (withBuffer' $ gets isUnchangedBuffer) . withEditor . closeBufferE . dropSpace
            bdeleteNoW = withEditor . closeBufferE . dropSpace
 
            -- fn maps from the text entered on the command line to a YiM () implementing the 
@@ -1366,7 +1366,7 @@ defKeymap = Proto template
 
 -- | write the current buffer, but only if modified (cf. :help :x)
 viWriteModified :: YiM ()
-viWriteModified = do unchanged <- withBuffer' isUnchangedB
+viWriteModified = do unchanged <- withBuffer' $ gets isUnchangedBuffer
                      unless unchanged viWrite
 
 viFnewE :: String -> YiM ()

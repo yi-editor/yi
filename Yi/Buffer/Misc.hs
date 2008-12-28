@@ -63,7 +63,6 @@ module Yi.Buffer.Misc
   , modifyMarkB
   , newMarkB
   , setVisibleSelection
-  , isUnchangedB
   , isUnchangedBuffer
   , setAnyMode
   , setMode
@@ -418,7 +417,7 @@ getModeLine prefix = do
     p <- pointB
     s <- sizeB
     modeNm <- gets (withMode0 modeName)
-    unchanged <- isUnchangedB
+    unchanged <- gets isUnchangedBuffer
     let pct = if pos == 1 then "Top" else getPercent p s
         chg = if unchanged then "-" else "*"
     nm <- gets $ shortIdentString prefix
@@ -515,9 +514,6 @@ markSavedB t = do modA undosA setSavedFilePointU
 
 bkey :: FBuffer -> BufferRef
 bkey = getVal (bkey__AA . attrsA)
-
-isUnchangedB :: BufferM Bool
-isUnchangedB = gets isUnchangedBuffer
 
 isUnchangedBuffer :: FBuffer -> Bool
 isUnchangedBuffer = isAtSavedFilePointU . getVal undosA

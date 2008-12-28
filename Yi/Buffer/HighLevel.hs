@@ -251,7 +251,7 @@ bufInfoB :: BufferM BufferFileInfo
 bufInfoB = do
     s <- sizeB
     p <- pointB
-    m <- isUnchangedB
+    m <- gets isUnchangedBuffer
     l <- curLn
     c <- curCol
     nm <- gets identString
