@@ -19,6 +19,7 @@ data UIConfig = UIConfig {
    configFontSize :: Maybe Int,     -- ^ Font size, for the UI that support it.
    configLeftSideScrollBar :: Bool, -- ^ Should the scrollbar be shown on the left side?
    configAutoHideScrollBar :: Bool, -- ^ Hide scrollbar automatically if text fits on one page.
+   configAutoHideTabBar :: Bool,    -- ^ Hide the tabbar automatically if only one tab is present
    configLineWrap :: Bool,          -- ^ Wrap lines at the edge of the window if too long to display.
    configWindowFill :: !Char,
    -- ^ The char with which to fill empty window space.  Usually '~' for vi-like

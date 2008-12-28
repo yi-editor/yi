@@ -157,11 +157,8 @@ prepareAction :: UI -> IO (EditorM ())
 prepareAction ui = do
   (yss,xss) <- readRef (scrsize ui)
   return $ do
-    ts <- getA tabsA
-    let hasTabBar = WS.size ts > 1
-        tabBarHeight = if hasTabBar then 1 else 0
-    modA windowsA (computeHeights (yss - tabBarHeight))
     e <- get
+    modA windowsA (computeHeights (yss - (if hasTabBar e ui then 1 else 0)))
     let ws = windows e
         renderSeq = fmap (scrollAndRenderWindow (configUI $ config ui) xss) (WS.withFocus ws)
     sequence_ renderSeq
@@ -174,9 +171,8 @@ prepareAction ui = do
 refresh :: UI -> Editor -> IO Editor
 refresh ui e = do
   let ws = windows e
-      hasTabBar = WS.size (e ^. tabsA) > 1
-      tabBarHeight = if hasTabBar then 1 else 0
-      windowStartY = if hasTabBar then 1 else 0
+      tabBarHeight = if hasTabBar e ui then 1 else 0
+      windowStartY = if hasTabBar e ui then 1 else 0
   logPutStrLn "refreshing screen."
   (yss,xss) <- readRef (scrsize ui)
   let ws' = computeHeights (yss - tabBarHeight) ws
@@ -209,12 +205,10 @@ refresh ui e = do
 -- | Construct images for the tabbar if at least one tab exists.
 renderTabBar :: Editor -> UI -> Int -> [Image]
 renderTabBar e ui xss =
-  if tabCount > 1
+  if hasTabBar e ui
     then [tabImages <|> extraImage]
     else []
-  where tabCount        = WS.size $ e ^. tabsA
-
-        tabImages       = foldr1 (<|>) $ fmap tabToVtyImage $ tabBarDescr e
+  where tabImages       = foldr1 (<|>) $ fmap tabToVtyImage $ tabBarDescr e
         extraImage      = withAttributes (tabBarAttributes uiStyle) (replicate (xss-totalTabWidth) ' ')
 
         totalTabWidth   = imgWidth tabImages
@@ -222,6 +216,10 @@ renderTabBar e ui xss =
         tabTitle text   = " " ++ text ++ " "
         tabAttributes f = appEndo ((if f then tabInFocusStyle else tabNotFocusedStyle) uiStyle) (tabBarAttributes uiStyle)
         tabToVtyImage _tab@(TabDescr text inFocus) = withAttributes (tabAttributes inFocus) (tabTitle text)
+
+-- | Determine whether it is necessary to render the tab bar
+hasTabBar :: Editor -> UI -> Bool
+hasTabBar e ui = (not . configAutoHideTabBar . configUI . config $ ui) || (WS.size $ e ^. tabsA) > 1
 
 scanrT :: (Int -> Int -> Int) -> Int -> WindowSet Int -> WindowSet Int
 scanrT (+*+) k t = fst $ runState (mapM f t) k

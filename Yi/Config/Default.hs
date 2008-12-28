@@ -122,6 +122,7 @@ defaultConfig =
            , configLineWrap = True
            , configLeftSideScrollBar = True
            , configAutoHideScrollBar = False
+           , configAutoHideTabBar = True
            , configWindowFill = ' '
            , configTheme = defaultLightTheme
            }
