@@ -1515,6 +1515,6 @@ kwd_mode :: VimMode
 kwd_mode = some (ctrlCh 'n' ?>> write viWordComplete) >> deprioritize >> write resetComplete
 -- 'adjustPriority' is there to lift the ambiguity between "continuing" completion
 -- and resetting it (restarting at the 1st completion).
-  where viWordComplete = withBuffer0 . savingInsertStringB =<< wordCompleteString
+  where viWordComplete = withBuffer0 . (savingDeleteWordB Backward >>) . savingInsertStringB =<< wordCompleteString
 
 
