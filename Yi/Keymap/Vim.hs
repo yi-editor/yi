@@ -1429,6 +1429,7 @@ beginInsE self a = do
                               putA currentViInsertionA $ Just $ viActFirstA ^= Just a $ emptyViIns p
   ins_mode self
 
+-- This seems to be the Applicative <* operator. Refactor?
 post :: Monad m => m a -> m () -> m a
 f `post` g = do x <- f
                 g
