@@ -12,7 +12,7 @@ module Yi.Syntax
   , Scanner (..)
   , ExtHL        ( .. )
   , noHighlighter, mkHighlighter, skipScanner
-  , Point(..), Size(..), Length, Stroke
+  , Point(..), Size(..), Length, Stroke, Span(..)
   ) 
 where
 
@@ -26,7 +26,8 @@ import Yi.Buffer.Basic
 type Length = Int                   -- size in #codepoints
 
 type Stroke = (Point,StyleName,Point)
--- TODO: use Region datatype.
+data Span a = Span !Point !a !Point
+    deriving Show
 
 
 -- | The main type of syntax highlighters.  This record type combines all
@@ -39,7 +40,7 @@ data Highlighter cache syntax =
   SynHL { hlStartState :: cache -- ^ The start state for the highlighter.
         , hlRun :: Scanner Point Char -> Point -> cache -> cache
         , hlGetStrokes :: Point -> Point -> Point -> syntax -> [Stroke]
-         -- TODO: move hlGetStrokes out of this into the Buffer
+         -- TODO: move hlGetStrokes out of this into the Mode
         , hlGetTree :: cache -> syntax
         }
 

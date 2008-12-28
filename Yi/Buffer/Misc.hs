@@ -360,7 +360,8 @@ data Mode syntax = Mode
      modeAdjustBlock :: syntax -> Int -> BufferM (), -- ^ adjust the indentation after modification
      modeFollow :: syntax -> Action, -- ^ Follow a "link" in the file. (eg. go to location of error message)
      modeIndentSettings :: IndentSettings,
-     modeToggleCommentSelection :: BufferM ()
+     modeToggleCommentSelection :: BufferM (),
+     modeGetAnnotations :: syntax -> Point -> [Span String]
     }
 
 instance Binary (Mode syntax) where
@@ -562,7 +563,8 @@ emptyMode = Mode
    , tabSize = 8
    , shiftWidth = 4
    },
-   modeToggleCommentSelection = fail "'comment selection' not defined for this mode"
+   modeToggleCommentSelection = fail "'comment selection' not defined for this mode",
+   modeGetAnnotations = \_ _ -> []
   }
 
 -- | Create buffer named @nm@ with contents @s@

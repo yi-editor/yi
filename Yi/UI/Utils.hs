@@ -9,6 +9,8 @@ import Yi.Window
 import Control.Arrow (second)
 import Data.Monoid
 import Yi.Style
+import Data.List (zip, repeat, span)
+import Yi.Syntax (Span(..))
 
 -- | return index of Sol on line @n@ above current line
 indexOfSolAbove :: Int -> BufferM Point
@@ -26,6 +28,19 @@ moveWinTosShowPoint b w = result
                f <- fromMark <$> askMarks
                setMarkPointB f i
                return ()
+
+indexedAnnotatedStreamB :: Point -> BufferM [(Point, Char)]
+indexedAnnotatedStreamB p = do
+    text <- indexedStreamB Forward p
+    annots <- gets (withSyntax0 modeGetAnnotations)
+    return $ spliceAnnots text (annots p)
+       
+
+spliceAnnots :: [(Point,Char)] -> [Span String] -> [(Point,Char)]
+spliceAnnots text [] = text
+spliceAnnots text (Span start x stop:anns) = l ++ zip (repeat start) x ++ spliceAnnots r anns
+    where (l,rest) =  span ((start >) . fst) text
+          (_,r) = span ((stop >) . fst) rest
 
 -- | Turn a sequence of (from,style,to) strokes into a sequence
 --   of picture points (from,style), taking special care to

@@ -274,7 +274,7 @@ drawWindow cfg e b sty focused w win = (Rendered { picture = pict,cursor = cur},
         fromMarkPoint = if notMini
                             then fst $ runBuffer win b (getMarkPointB fromM)
                             else Point 0
-        (text, _)    = runBuffer win b (indexedStreamB Forward fromMarkPoint) -- read chars from the buffer, lazily
+        (text, _)    = runBuffer win b (indexedAnnotatedStreamB fromMarkPoint) -- read chars from the buffer, lazily
         
         (attributes, _) = runBuffer win b $ attributesPictureAndSelB sty (regex e) region 
         colors = map (second (($ attr) . attributesToAttr)) attributes
