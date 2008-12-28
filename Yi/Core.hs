@@ -22,8 +22,7 @@ module Yi.Core
   , startEditor         
   , quitEditor          -- :: YiM ()
 
-  , getAllNamesInScope
-
+  -- * User interaction
   , refreshEditor       -- :: YiM ()
   , suspendEditor       -- :: YiM ()
   , userForceRefresh  
@@ -41,6 +40,8 @@ module Yi.Core
   -- * Misc
   , runAction
   , withSyntax
+  , getAllNamesInScope
+
   ) 
 where
 
@@ -284,7 +285,8 @@ errorEditor s = do withEditor $ printStatus ("error: " ++ s, errorStyle)
 
 -- | Close the current window.
 -- If this is the last window open, quit the program.
--- FIXME: call quitEditor when there are no other window in the interactive command.
+-- CONSIDER: call quitEditor when there are no other window in the 'interactive' function.
+-- (Not possible since the windowset type disallows it -- should it be relaxed?)
 closeWindow :: YiM ()
 closeWindow = do
     winCount <- withEditor $ getsA windowsA WS.size
