@@ -57,6 +57,7 @@ import Data.Monoid
 import Data.Time
 import Data.Time.Clock.POSIX
 import Prelude (realToFrac)
+import System.Directory (doesFileExist)
 import System.Exit
 import System.FilePath
 import System.IO (Handle, hWaitForInput, hPutStr)
@@ -209,15 +210,17 @@ refreshEditor = do
           if bkey b `elem` visibleBuffers
           then do
             case b ^.identA of
-                Right fname -> do 
-                    modTime <- fileModTime fname
-                    if b ^. lastSyncTimeA < modTime
-                       then if isUnchangedBuffer b
-                         then do newContents <- UTF8.readFile fname
-                                 return (snd $ runBuffer (dummyWindow $ bkey b) b (revertB newContents now), Just msg1)
-                         else do return (b, Just msg2)
-                       else nothing
-                _ -> nothing
+               Right fname -> do 
+                  fe <- doesFileExist fname
+                  if not fe then nothing else do
+                  modTime <- fileModTime fname
+                  if b ^. lastSyncTimeA < modTime
+                     then if isUnchangedBuffer b
+                       then do newContents <- UTF8.readFile fname
+                               return (snd $ runBuffer (dummyWindow $ bkey b) b (revertB newContents now), Just msg1)
+                       else do return (b, Just msg2)
+                     else nothing
+               _ -> nothing
           else nothing  
     
         let
