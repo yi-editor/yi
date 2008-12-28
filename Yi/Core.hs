@@ -48,12 +48,12 @@ import Control.Concurrent
 import Control.Monad (when, forever)
 import Control.Monad.Error ()
 import Control.Monad.Reader (runReaderT, ask, asks)
-import Control.Monad.State (gets)
 import Control.Monad.Trans
 import Control.OldException
-import Data.Foldable (mapM_)
-import Data.List (intercalate, filter, zip)
+import Data.List (intercalate)
 import Data.Maybe
+import Data.Monoid
+import Data.Time
 import Data.Time.Clock.POSIX
 import Prelude (realToFrac)
 import System.Exit
@@ -68,14 +68,15 @@ import Yi.Editor
 import Yi.Keymap
 import Yi.Keymap.Keys
 import Yi.KillRing (krEndCmd)
-import Yi.Monad
 import Yi.Prelude
 import Yi.Process ( popen, createSubprocess, readAvailable, SubprocessId, SubprocessInfo(..) )
 import Yi.String
-import Yi.Style (errorStyle)
+import Yi.Style (errorStyle, strongHintStyle)
 import Yi.UI.Common as UI (UI)
+import Yi.Window (dummyWindow, bufkey)
 import qualified Data.DelayList as DelayList
 import qualified Data.Map as M
+import qualified System.IO.UTF8 as UTF8
 import qualified Yi.Editor as Editor
 import qualified Yi.Interact as I
 import qualified Yi.UI.Common as UI
@@ -197,18 +198,35 @@ refreshEditor = do
     yi <- ask
     io $ modifyMVar_ (yiVar yi) $ \var -> do
         let e0 = yiEditor var 
-            touchedBuffers = [(b,fname) | b <- bufferSet e0, Right fname <- [b ^.identA], not $ null $ b ^. pendingUpdatesA]
-
-        modTimes <- mapM fileModTime (fmap snd touchedBuffers)
-        let externallyTouchedBuffers = [b | ((b,fname),time) <- zip touchedBuffers modTimes, b ^. lastSyncTimeA < time]
-            e1 = buffersA ^: (fmap (clearSyntax . clearHighlight)) $ e0
-            e2 = buffersA ^: (fmap clearUpdates) $ e1
-            msg = (1, ("Careful: buffers you are currently editing are modified by another process!", errorStyle))
-            e1' = if not $ null $ externallyTouchedBuffers 
-               then (statusLinesA ^: DelayList.insert msg) e1
-               else e1
-        UI.refresh (yiUi yi) e1'
-        return var {yiEditor = e2}
+            msg1 = (1, ("File was changed by a concurrent process, reloaded!", strongHintStyle))
+            msg2 = (1, ("Disk version changed by a concurrent process", strongHintStyle))
+            visibleBuffers = fmap bufkey $ windows e0
+        -- Find out if any file was modified "behind our back" by other processes.            
+        -- FIXME: since we do IO here we must catch exceptions!
+        now <- getCurrentTime
+        newBuffers <- forM (buffers e0) $ \b -> let nothing = return (b, Nothing) in 
+          if bkey b `elem` visibleBuffers
+          then do
+            case b ^.identA of
+                Right fname -> do 
+                    modTime <- fileModTime fname
+                    if b ^. lastSyncTimeA < modTime
+                       then if isUnchangedBuffer b
+                         then do newContents <- UTF8.readFile fname
+                                 return (snd $ runBuffer (dummyWindow $ bkey b) b (revertB newContents now), Just msg1)
+                         else do return (b, Just msg2)
+                       else nothing
+                _ -> nothing
+          else nothing  
+    
+        let
+            e1 = case getFirst (foldMap (First . snd) newBuffers) of
+               Just msg -> (statusLinesA ^: DelayList.insert msg) e0 {buffers = fmap fst newBuffers}
+               Nothing -> e0
+            e2 = buffersA ^: (fmap (clearSyntax . clearHighlight)) $ e1
+            e3 = buffersA ^: (fmap clearUpdates) $ e2
+        UI.refresh (yiUi yi) e2
+        return var {yiEditor = e3}
   where 
     clearUpdates fb = pendingUpdatesA ^= [] $ fb
     clearHighlight fb =
@@ -216,8 +234,6 @@ refreshEditor = do
       let h = getVal highlightSelectionA fb
           us = getVal pendingUpdatesA fb
       in highlightSelectionA ^= (h && null us) $ fb
-    isRight (Right _) = True
-    isRight _ = False
     fileModTime f = posixSecondsToUTCTime . realToFrac . modificationTime <$> getFileStatus f
           
 
