@@ -1,5 +1,8 @@
 module Yi.UI.TabBar where
+
 import Data.Accessor
+import System.FilePath
+
 import Yi.Buffer (identString)
 import Yi.Window
 import Yi.WindowSet
@@ -22,10 +25,10 @@ tabBarDescr editor =
         tabDescr (tab,False) = TabDescr (hintForTab tab) False
     in fmap tabDescr (withFocus $ editor ^. tabsA)
 
--- FIXME: * use System.FilePath functions;
---        * handle the empty String
 tabAbbrevTitle :: String -> String
-tabAbbrevTitle title = case break (=='/') title of
-                         ([],     ('/':suffix)) -> '/' : tabAbbrevTitle suffix
-                         (prefix, ('/':suffix)) -> head prefix : '/' : tabAbbrevTitle (suffix)
-                         (prefix, [])           -> prefix
+tabAbbrevTitle title = if isValid title
+                           then concatMap abbrev (splitPath title)
+                           else title
+  where abbrev "/" = "/"
+        abbrev path | last path == '/' = head path : "/"
+                    | otherwise        = path
