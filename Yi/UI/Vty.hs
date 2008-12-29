@@ -166,8 +166,6 @@ prepareAction ui = do
 
 -- | Redraw the entire terminal from the UI.
 -- Among others, this re-computes the heights and widths of all the windows.
-
--- Two points remain: horizontal scrolling, and tab handling.
 refresh :: UI -> Editor -> IO Editor
 refresh ui e = do
   let ws = windows e
