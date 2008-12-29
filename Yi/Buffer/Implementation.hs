@@ -259,8 +259,9 @@ delOverlayLayer layer fb = fb{overlays = Set.filter ((/= layer) . overlayLayer) 
 --   the buffer.  In each list, the strokes are guaranteed to be
 --   ordered and non-overlapping.  The lists of strokes are ordered by
 --   decreasing priority: the 1st layer should be "painted" on top.
-strokesRangesBI :: Maybe SearchExp -> Region -> Point -> BufferImpl syntax -> [[Stroke]]
-strokesRangesBI regex rgn  point fb@(FBufferData {hlCache = HLState hl cache}) = result
+strokesRangesBI :: (Point -> Point -> Point -> [Stroke]) -> 
+  Maybe SearchExp -> Region -> Point -> BufferImpl syntax -> [[Stroke]]
+strokesRangesBI getStrokes regex rgn  point fb@(FBufferData {hlCache = HLState hl cache}) = result
   where
     i = regionStart rgn
     j = regionEnd rgn
@@ -268,7 +269,7 @@ strokesRangesBI regex rgn  point fb@(FBufferData {hlCache = HLState hl cache}) =
     takeIn  = takeWhile (\(l,_s,_r) -> l <= j)
 
     groundLayer = [(i,mempty,j)]
-    syntaxHlLayer = hlGetStrokes hl point i j $ hlGetTree hl cache
+    syntaxHlLayer = getStrokes point i j 
     layers2 = map (map overlayStroke) $ groupBy ((==) `on` overlayLayer) $  Set.toList $ overlays fb
     layer3 = case regex of 
                Just re -> takeIn $ map hintStroke $ regexRegionBI re (mkRegion i j) fb

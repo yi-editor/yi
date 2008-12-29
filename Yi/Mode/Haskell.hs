@@ -61,8 +61,8 @@ plainMode :: Mode (Linear.Result (Tok Token))
 plainMode = haskellAbstract
    {
      modeName = "plain haskell",
-     modeHL = ExtHL $
-     mkHighlighter (Linear.incrScanner . haskellLexer) (\begin end pos -> Linear.getStrokes begin end pos . fmap Paren.tokenToStroke)
+     modeGetStrokes = \ast begin end pos -> Linear.getStrokes (fmap Paren.tokenToStroke ast) begin end pos,
+     modeHL = ExtHL $ mkHighlighter (Linear.incrScanner . haskellLexer) 
    , modeIndent = const autoIndentHaskellB
    }
 
@@ -72,9 +72,9 @@ cleverMode = haskellAbstract
   {
     modeApplies = modeApplies plainMode,
     modeIndent = cleverAutoIndentHaskellB,
+    modeGetStrokes = \t point begin end -> Paren.getStrokes point begin end t,
     modeHL = ExtHL $
     mkHighlighter (skipScanner 50 . IncrParser.scanner Paren.parse . Paren.indentScanner . haskellLexer)
-      (\point begin end t -> Paren.getStrokes point begin end t)
 
   , modeAdjustBlock = adjustBlock
   , modePrettify = cleverPrettify
@@ -88,8 +88,8 @@ fastMode = haskellAbstract
     modeName = "fast haskell",
     modeApplies = modeApplies plainMode,
     modeHL = ExtHL $
-    mkHighlighter (IncrParser.scanner OnlineTree.parse . haskellLexer)
-      (\_point begin _end t -> fmap Hask.tokenToStroke $ dropToIndex begin t),
+    mkHighlighter (IncrParser.scanner OnlineTree.parse . haskellLexer),
+    modeGetStrokes = \t _point begin _end -> fmap Hask.tokenToStroke $ dropToIndex begin t,
     modeGetAnnotations = \t begin -> catMaybes $ fmap Hask.tokenToAnnot $ dropToIndex begin t
  }
 
@@ -99,7 +99,7 @@ literateMode = haskellAbstract
   , modeApplies = anyExtension ["lhs"]
   , modeHL = ExtHL $
     mkHighlighter (IncrParser.scanner Paren.parse . Paren.indentScanner . literateHaskellLexer)
-      (\point begin end t -> Paren.getStrokes point begin end t)
+  , modeGetStrokes = \t point begin end -> Paren.getStrokes point begin end t
   , modeAdjustBlock = adjustBlock
   , modeIndent = cleverAutoIndentHaskellB
   , modePrettify = cleverPrettify }
@@ -111,9 +111,9 @@ preciseMode = haskellAbstract
     modeName = "precise haskell",
     modeApplies = modeApplies plainMode,
     --    modeIndent = cleverAutoIndentHaskellB,
+    modeGetStrokes = \ast point begin end -> Hask.getStrokes point begin end ast,
     modeHL = ExtHL $
       mkHighlighter (IncrParser.scanner Hask.parse . Hask.indentScanner . haskellLexer)
-        (\point begin end t -> Hask.getStrokes point begin end t)
     --}                              
     -- ,  modeAdjustBlock = adjustBlock
   -- , modePrettify = cleverPrettify

@@ -361,6 +361,7 @@ data Mode syntax = Mode
      modeFollow :: syntax -> Action, -- ^ Follow a "link" in the file. (eg. go to location of error message)
      modeIndentSettings :: IndentSettings,
      modeToggleCommentSelection :: BufferM (),
+     modeGetStrokes :: syntax -> Point -> Point -> Point -> [Stroke],
      modeGetAnnotations :: syntax -> Point -> [Span String]
     }
 
@@ -564,6 +565,7 @@ emptyMode = Mode
    , shiftWidth = 4
    },
    modeToggleCommentSelection = fail "'comment selection' not defined for this mode",
+   modeGetStrokes = \_ _ _ _ -> [],
    modeGetAnnotations = \_ _ -> []
   }
 
@@ -617,7 +619,8 @@ indexedStreamB dir i = queryBuffer (getIndexedStream dir i)
 strokesRangesB :: Maybe SearchExp -> Region -> BufferM [[Stroke]]
 strokesRangesB regex r = do
     p <- pointB
-    queryBuffer $ strokesRangesBI regex r p
+    getStrokes <- gets (withSyntax0 modeGetStrokes)
+    queryBuffer $ strokesRangesBI getStrokes regex r p
 
 ------------------------------------------------------------------------
 -- Point based operations

@@ -4,7 +4,7 @@
 --
 --
 
--- | This module defines a common interface for syntax highlighters.
+-- | This module defines a common interface for syntax-awareness.
 
 module Yi.Syntax 
   ( Highlighter  ( .. )
@@ -34,17 +34,15 @@ data Span a = Span {spanBegin :: !Point, spanContents :: !a, spanEnd :: !Point}
 -- the required functions, and is parametrized on the type of the internal
 -- state.
 
--- FIXME: this actually does more than just HL, so the names are silly.
+-- FIXME: this is actually completelty abstrcted from sytnax HL, so the names are silly.
 
 data Highlighter cache syntax = 
   SynHL { hlStartState :: cache -- ^ The start state for the highlighter.
         , hlRun :: Scanner Point Char -> Point -> cache -> cache
-        , hlGetStrokes :: Point -> Point -> Point -> syntax -> [Stroke]
-         -- TODO: move hlGetStrokes out of this into the Mode
         , hlGetTree :: cache -> syntax
         }
 
-data ExtHL syntax = forall a. ExtHL (Highlighter a syntax) 
+data ExtHL syntax = forall cache. ExtHL (Highlighter cache syntax) 
 
 data Scanner st a = Scanner {
                              scanInit :: st, -- ^ Initial state
@@ -77,13 +75,11 @@ emptyFileScan = Scanner { scanInit = 0, scanRun = const [], scanLooked = id, sca
 -- purpose of incremental-lazy eval.
 mkHighlighter :: forall state result. Show state => 
                  (Scanner Point Char -> Scanner state result) -> 
-                 (Point -> Point -> Point -> result -> [Stroke]) -> 
                      Highlighter (Cache state result) result
-mkHighlighter scanner getStrokes =
+mkHighlighter scanner =
   Yi.Syntax.SynHL 
         { hlStartState   = Cache [] emptyResult
         , hlRun          = updateCache
-        , hlGetStrokes   = getStrokes
         , hlGetTree      = \(Cache _ result) -> result
         }
     where startState :: state
@@ -105,7 +101,6 @@ mkHighlighter scanner getStrokes =
 noHighlighter :: Highlighter () syntax
 noHighlighter = SynHL {hlStartState = (), 
                        hlRun = \_ _ a -> a,
-                       hlGetStrokes = \_ _ _ _ -> [],
                        hlGetTree = const $ error "noHighlighter: tried to fetch syntax"
                       }
 

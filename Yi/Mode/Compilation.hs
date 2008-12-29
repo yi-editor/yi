@@ -19,8 +19,8 @@ mode = emptyMode
    modeName = "compilation",
    modeKeymap = (<||) (spec KEnter ?>>! withSyntax modeFollow),
    modeFollow = \synTree -> YiA (follow synTree),
+   modeGetStrokes = \synTree begin end pos -> Linear.getStrokes (fmap tokenToStroke synTree) begin end pos,
    modeHL = ExtHL $ mkHighlighter (Linear.incrScanner . Alex.lexScanner Compilation.alexScanToken Compilation.initState) 
-                                  (\begin end pos -> Linear.getStrokes begin end pos . fmap tokenToStroke)
   }
     where tokenToStroke (Tok t len posn) = (posnOfs posn, tokenToStyle t, posnOfs posn +~ len)
           tokenToStyle _ = commentStyle

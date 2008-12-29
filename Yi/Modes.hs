@@ -38,6 +38,8 @@ fundamentalMode = emptyMode
    modePrettify = const fillParagraph
   }
 
+linearSyntaxMode = fundamentalMode { modeGetStrokes = Linear.getStrokes }
+
 mkHighlighter' :: forall token lexerState. Show lexerState =>
                     lexerState
                     -> (Alex.ASI lexerState
@@ -49,10 +51,10 @@ mkHighlighter' :: forall token lexerState. Show lexerState =>
                              [Stroke])
                             (Linear.Result Stroke))
                          (Linear.Result Stroke)
-mkHighlighter' initSt scan tokenToStyle = mkHighlighter (Linear.incrScanner . Alex.lexScanner (fmap (first tokenToStroke) . scan) initSt) Linear.getStrokes
+mkHighlighter' initSt scan tokenToStyle = mkHighlighter (Linear.incrScanner . Alex.lexScanner (fmap (first tokenToStroke) . scan) initSt) 
     where tokenToStroke (Tok t len posn) = (posnOfs posn, tokenToStyle t, posnOfs posn +~ len)
 
-cppMode = fundamentalMode
+cppMode = linearSyntaxMode
   {
     modeApplies = anyExtension ["cxx", "cpp", "C", "hxx", "H", "h", "c"], 
     -- Treat c file as cpp files, most users will allow for that.
@@ -60,7 +62,7 @@ cppMode = fundamentalMode
     modeHL = ExtHL $ mkHighlighter' Cplusplus.initState Cplusplus.alexScanToken id
   }
 
-cabalMode = fundamentalMode
+cabalMode = linearSyntaxMode
   {
     modeName = "cabal",
     modeApplies = anyExtension ["cabal"],
@@ -68,7 +70,7 @@ cabalMode = fundamentalMode
   }
 
 
-srmcMode = fundamentalMode
+srmcMode = linearSyntaxMode
   {
     modeName = "srmc",
     modeApplies = anyExtension ["pepa", -- pepa is a subset of srmc    
@@ -76,21 +78,21 @@ srmcMode = fundamentalMode
     modeHL = ExtHL $ mkHighlighter' Srmc.initState Srmc.alexScanToken id
   }
 
-ocamlMode = fundamentalMode
+ocamlMode = linearSyntaxMode
   {
     modeName = "ocaml",
     modeApplies = anyExtension ["ml", "mli", "mly", "mll", "ml4", "mlp4"],
     modeHL = ExtHL $ mkHighlighter' OCaml.initState OCaml.alexScanToken OCaml.tokenToStyle
   }
 
-perlMode = fundamentalMode
+perlMode = linearSyntaxMode
   {
     modeName = "perl",
     modeApplies = anyExtension ["t", "pl", "pm"],
     modeHL = ExtHL $ mkHighlighter' Perl.initState Perl.alexScanToken id
   }
 
-pythonMode = fundamentalMode
+pythonMode = linearSyntaxMode
   {
     modeName = "python",
     modeApplies = anyExtension ["py"], 
@@ -105,19 +107,19 @@ isMakefile path _contents = matches $ takeFileName path
           matches filename      = extensionMatches ["mk"] filename
           -- TODO: .mk is fairly standard but are there others?
 
-gnuMakeMode = fundamentalMode
+gnuMakeMode = linearSyntaxMode
   {
     modeName = "Makefile",
     modeApplies = isMakefile,
     modeHL = ExtHL $ mkHighlighter' GNUMake.initState GNUMake.alexScanToken id,
-    modeIndentSettings = (modeIndentSettings fundamentalMode)
+    modeIndentSettings = (modeIndentSettings linearSyntaxMode)
       {
         expandTabs = False,
         shiftWidth = 8
       }
   }
 
-ottMode = fundamentalMode
+ottMode = linearSyntaxMode
   {
     modeName = "ott",
     modeApplies = anyExtension ["ott"],

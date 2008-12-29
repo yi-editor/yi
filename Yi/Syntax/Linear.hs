@@ -48,8 +48,8 @@ toksInRegion reg (Result lefts rights) = reverse (usefulsL lefts) ++ usefulsR ri
                  takeWhile (\t -> tokEnd t   >= regionStart reg)
 
 
-getStrokes :: Point -> Point -> Point -> Result Stroke -> [Stroke]
-getStrokes _point begin end (Result leftHL rightHL) = reverse (usefulsL leftHL) ++ usefulsR rightHL
+getStrokes :: Result Stroke -> Point -> Point -> Point -> [Stroke]
+getStrokes (Result leftHL rightHL) _point begin end = reverse (usefulsL leftHL) ++ usefulsR rightHL
     where
       usefulsR = dropWhile (\(_l,_s,r) -> r <= begin) .
                  takeWhile (\(l,_s,_r) -> l <= end)
