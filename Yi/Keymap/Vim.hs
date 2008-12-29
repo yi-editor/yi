@@ -938,9 +938,9 @@ defKeymap = Proto template
                  char 'c'     ?>> changeCmds,
 
                  -- FIXME: those two should take int argument
-                 char 'C'     ?>> beginInsE self $ cut Exclusive viMoveToEol, -- alias of "c$"
-                 char 'S'     ?>> beginInsE self $ withBuffer0' moveToSol >> cut Exclusive viMoveToEol, -- non-linewise alias of "cc"
-                 char 's'     ?>> beginInsE self $ cut Exclusive (CharMove Forward), -- non-linewise alias of "cl"
+                 char 'C'     ?>> change NoMove Exclusive viMoveToEol, -- alias of "c$"
+                 char 'S'     ?>> change viMoveToSol LineWise viMoveToEol, -- alias of "cc" TODO update
+                 char 's'     ?>> change NoMove Exclusive (CharMove Forward), -- non-linewise alias of "cl"
                  char '/'     ?>>! ex_mode "/",
                  char '?'     ?>>! ex_mode "?",
                  leave,
@@ -952,7 +952,7 @@ defKeymap = Proto template
        adjustPriority (-1) >>
          ((char 'w' ?>> change NoMove Exclusive (GenMove unitViWord (Forward, OutsideBound) Forward)) <|>
           (char 'W' ?>> change NoMove Exclusive (GenMove unitViWORD (Forward, OutsideBound) Forward))) <|>
-       (char 'c' ?>> change viMoveToSol LineWise viMoveToEol) <|>
+       (char 'c' ?>> change NoMove LineWise NoMove) <|>
        (uncurry (change NoMove) =<< moveKeymap) <|>
        (select_any_unit (cutRegion Exclusive) >> ins_mode self) -- this correct while the RegionStyle is not LineWise
 
