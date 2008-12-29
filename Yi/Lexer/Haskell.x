@@ -121,6 +121,9 @@ haskell :-
   "|"                                           { c (ReservedOp Pipe) }
   "="                                           { c (ReservedOp Equal) }
   \\                                            { c (ReservedOp BackSlash) }
+  "<-"                                          { c (ReservedOp LeftArrow) }
+  "->"                                          { c (ReservedOp RightArrow) }
+  "=>"                                          { c (ReservedOp DoubleRightArrow) }
   @reservedop                                   { c (ReservedOp OtherOp) }
   @qual @varsym                                 { c Operator }
   @qual @consym                                 { c ConsOperator }
@@ -149,7 +152,7 @@ data CommentType = Open | Close | Text | Line
 data ReservedType = Where | Let | OtherLayout | Deriving | Module | Other
     deriving (Eq, Show)
 
-data OpType = Pipe | Equal | BackSlash | OtherOp
+data OpType = Pipe | Equal | BackSlash | LeftArrow | RightArrow | DoubleRightArrow | OtherOp
     deriving (Eq, Show)
 
 data Token = Number | CharTok | StringTok | VarIdent | ConsIdent
@@ -179,6 +182,9 @@ tokenToStyle tok = case tok of
 
 tokenToText :: Token -> Maybe String
 tokenToText (ReservedOp BackSlash) = Just "λ"
+tokenToText (ReservedOp RightArrow) = Just "→ "
+tokenToText (ReservedOp DoubleRightArrow) = Just "⇒ "
+tokenToText (ReservedOp LeftArrow) = Just "← "
 tokenToText _ = Nothing
 
 startsLayout (Reserved OtherLayout) = True
