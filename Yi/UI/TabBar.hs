@@ -25,6 +25,8 @@ tabBarDescr editor =
         tabDescr (tab,False) = TabDescr (hintForTab tab) False
     in fmap tabDescr (withFocus $ editor ^. tabsA)
 
+-- FIXME: it seems that using splitDirectories can abstract the '/' handling away.
+-- (Making it win32 friendly and simpler)
 tabAbbrevTitle :: String -> String
 tabAbbrevTitle title = if isValid title
                            then concatMap abbrev (splitPath title)
