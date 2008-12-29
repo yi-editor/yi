@@ -3,8 +3,6 @@ module Yi.Config where
 import qualified Data.Map as M
 import Data.Prototype
 
-import HConf (HConfParams)
-
 import Yi.Buffer
 import {-# source #-} Yi.Keymap
 import {-# source #-} Yi.Editor

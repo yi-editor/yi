@@ -588,6 +588,7 @@ newB unique nm s =
             , lastSyncTime = epoch
             } }
 
+epoch :: UTCTime
 epoch = UTCTime (toEnum 0) (toEnum 0)
 
 -- | Point of eof
