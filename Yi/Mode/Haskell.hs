@@ -78,6 +78,8 @@ cleverMode = haskellAbstract
 
   , modeAdjustBlock = adjustBlock
   , modePrettify = cleverPrettify
+  , modeGetAnnotations = \t begin -> catMaybes $ fmap Hask.tokenToAnnot $ allToks t
+
  }
 
 fastMode :: Mode (OnlineTree.Tree TT)
