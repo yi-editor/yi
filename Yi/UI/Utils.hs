@@ -9,7 +9,7 @@ import Yi.Window
 import Control.Arrow (second)
 import Data.Monoid
 import Yi.Style
-import Data.List (zip, repeat, span)
+import Data.List (zip, repeat, span, dropWhile)
 import Yi.Syntax (Span(..))
 
 -- | return index of Sol on line @n@ above current line
@@ -33,7 +33,7 @@ indexedAnnotatedStreamB :: Point -> BufferM [(Point, Char)]
 indexedAnnotatedStreamB p = do
     text <- indexedStreamB Forward p
     annots <- gets (withSyntax0 modeGetAnnotations)
-    return $ spliceAnnots text (annots p)
+    return $ spliceAnnots text (dropWhile (\s -> spanEnd s < p) (annots p))
        
 
 spliceAnnots :: [(Point,Char)] -> [Span String] -> [(Point,Char)]

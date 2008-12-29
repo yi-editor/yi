@@ -26,7 +26,7 @@ import Yi.Buffer.Basic
 type Length = Int                   -- size in #codepoints
 
 type Stroke = (Point,StyleName,Point)
-data Span a = Span !Point !a !Point
+data Span a = Span {spanBegin :: !Point, spanContents :: !a, spanEnd :: !Point}
     deriving Show
 
 
