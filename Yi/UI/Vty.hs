@@ -231,21 +231,20 @@ scrollAndRenderWindow :: UIConfig -> Int -> (Window, Bool) -> EditorM Rendered
 scrollAndRenderWindow cfg width (win,hasFocus) = do 
     e <- get
     let sty = configStyle cfg
-        b = findBufferWith (bufkey win) e
+        b0 = findBufferWith (bufkey win) e
+        (_,b1) = drawWindow cfg e b0 sty hasFocus width win
+        -- this is merely to recompute the bos point.
+        ((pointDriven, inWindow), _) = runBuffer win b1 $ do point <- pointB
+                                                             (,) <$> getA pointDriveA <*> pointInWindowB point
         
-        ((pointDriven, inWindow), _) = runBuffer win b $ do point <- pointB
-                                                            (,) <$> getA pointDriveA <*> pointInWindowB point
-        b' = if inWindow then b else 
-                if pointDriven then moveWinTosShowPoint b win else showPoint b
-        (rendered, b'') = drawWindow cfg e b' sty hasFocus width win
-        showPoint buf = snd $ runBuffer win buf' $ do r <- winRegionB
-                                                      p <- pointB
-                                                      moveTo $ max (regionStart r) $ min (regionEnd r - 1) $ p
-                                                      putA pointDriveA True -- revert to a point-driven behaviour
-                      where (_,buf') = drawWindow cfg e buf sty hasFocus width win
-                             -- this is merely to recompute the bos point.
-
-    put e { buffers = M.insert (bufkey win) b'' (buffers e) }
+        showPoint buf = snd $ runBuffer win buf $ do r <- winRegionB
+                                                     p <- pointB
+                                                     moveTo $ max (regionStart r) $ min (regionEnd r - 1) $ p
+                                                     putA pointDriveA True -- revert to a point-driven behaviour
+        b2 = if inWindow then b1 else 
+                if pointDriven then moveWinTosShowPoint b1 win else showPoint b1
+        (rendered, b3) = drawWindow cfg e b2 sty hasFocus width win
+    put e { buffers = M.insert (bufkey win) b3 (buffers e) }
     return rendered
 
 -- | Draw a window
