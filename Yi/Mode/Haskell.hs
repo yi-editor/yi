@@ -100,6 +100,7 @@ literateMode = haskellAbstract
   , modeHL = ExtHL $
     mkHighlighter (IncrParser.scanner Paren.parse . Paren.indentScanner . literateHaskellLexer)
   , modeGetStrokes = \t point begin end -> Paren.getStrokes point begin end t
+  , modeGetAnnotations = \t _begin -> catMaybes $ fmap Hask.tokenToAnnot $ allToks t -- FIXME I think that 'begin' should not be ignored
   , modeAdjustBlock = adjustBlock
   , modeIndent = cleverAutoIndentHaskellB
   , modePrettify = cleverPrettify }
