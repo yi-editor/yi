@@ -780,7 +780,7 @@ defKeymap = Proto template
        ]
 
      select_any_unit :: (MonadInteract m Action Event) => (Region -> EditorM ()) -> m ()
-     select_any_unit f = do 
+     select_any_unit f = do
        outer <- (char 'a' ?>> pure True) <|> (char 'i' ?>> pure False)
        choice [ char c ?>> write (f =<< withBuffer0' (regionOfNonEmptyB $ unit outer))
               | (c, unit) <- char2unit]
@@ -808,7 +808,7 @@ defKeymap = Proto template
                                    | otherwise            = do
        when (regionStyle == Block) $ fail "yankRegion does not work on block regions"
        txt <- withBuffer0' $ readRegionB region
-       setRegE $ if (regionStyle == LineWise) then '\n':txt else txt
+       setRegE $ if regionStyle == LineWise then '\n':txt else txt
        let rowsYanked = length (filter (== '\n') txt)
        when (rowsYanked > 2) $ printMsg $ show rowsYanked ++ " lines yanked"
 
@@ -827,7 +827,7 @@ defKeymap = Proto template
          when (rowsCut==0) $ replicateM_ (length txt) (adjBlock (-1))
          deleteRegionB region
          return (txt, rowsCut)
-       setRegE $ if (regionStyle == LineWise) then '\n':txt else txt
+       setRegE $ if regionStyle == LineWise then '\n':txt else txt
 
        when (rowsCut > 2) $ printMsg $ show rowsCut ++ " fewer lines"
 
@@ -1003,7 +1003,7 @@ defKeymap = Proto template
              hex = charOf id '0' '9' <|> charOf id 'a' 'f' <|> charOf id 'A' 'F'
              f digits prefix = do xs <- digits
                                   write $ withBuffer0' $ insrepB $ chr $ read $ prefix ++ xs
-             g digits prefix = f (sequence digits) prefix
+             g = f . sequence
 
      ins_rep_char :: (Char -> BufferM ()) -> VimMode
      ins_rep_char insrepB =
@@ -1116,7 +1116,7 @@ defKeymap = Proto template
            ex_complete ('b':'d':'e':'l':'e':'t':'e':'!':' ':f) = b_complete f
            ex_complete ('c':'a':'b':'a':'l':' ':s)             = cabalComplete s
            ex_complete ('s':'e':'t':' ':'f':'t':'=':f)         = completeModes f
-           ex_complete ('y':'i':' ':s)                         = exSimpleComplete (\_->getAllNamesInScope) s
+           ex_complete ('y':'i':' ':s)                         = exSimpleComplete (const getAllNamesInScope) s
            ex_complete s                                       = catchAllComplete s
 
            catchAllComplete = exSimpleComplete $ const $ return $
@@ -1196,7 +1196,7 @@ defKeymap = Proto template
             - Exits the editor unless there is a modified buffer that is not worthless.
             -}
            safeQuitAllWindows = do
-             bs <- mapM (\b -> withEditor (withGivenBuffer0 b needsAWindowB) >>= return . (,) b) =<< readEditor bufferStack
+             bs <- mapM (\b -> (,) b <$> withEditor (withGivenBuffer0 b needsAWindowB)) =<< readEditor bufferStack
              -- Vim only shows the first modified buffer in the error.
              case find snd bs of
                Nothing -> quitEditor
