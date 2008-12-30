@@ -3,7 +3,7 @@ module Yi.Lexer.Alex (
                        alexGetChar, alexInputPrevChar, unfoldLexer, lexScanner,
                        alexCollectChar, utf8CharSize,
                        AlexState(..), AlexInput, Stroke,
-                       actionConst, actionAndModify, actionStringConst,
+                       actionConst, actionAndModify, actionStringAndModify, actionStringConst,
                        Tok(..), tokBegin, tokEnd, tokFromT, tokRegion, 
                        Posn(..), startPosn, moveStr, 
                        ASI,
@@ -82,6 +82,9 @@ actionConst token _str state = (state, token)
 
 actionAndModify :: (lexState -> lexState) -> token -> Action lexState token
 actionAndModify modifierFct token _str state = (modifierFct state, token)
+
+actionStringAndModify :: (lexState -> lexState) -> (String ->token) -> Action lexState token
+actionStringAndModify modifierFct f indexedStr state = (modifierFct state, f $ fmap snd indexedStr)
 
 actionStringConst :: (String -> token) -> Action lexState token
 actionStringConst f indexedStr state = (state, f $ fmap snd indexedStr)

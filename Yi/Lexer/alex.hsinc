@@ -74,5 +74,6 @@ alex_scan_tkn' user orig_input len input s last_acc =
 
 c = actionConst
 m = actionAndModify
+ms = actionStringAndModify
 cs = actionStringConst
 
