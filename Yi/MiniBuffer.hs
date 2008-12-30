@@ -195,6 +195,7 @@ newtype (:::) t doc = Doc {fromDoc :: t}
 
 instance (DocType doc, Promptable t) => Promptable (t ::: doc) where
     getPrompt _ = typeGetPrompt (error "typeGetPrompt should not enter its argument" :: doc)
+    getPromptedValue x = Doc <$> getPromptedValue x
 
 class DocType t where
     -- | What to prompt the user when asked this type?
