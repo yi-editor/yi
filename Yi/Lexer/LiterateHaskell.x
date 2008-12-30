@@ -42,7 +42,7 @@ $nl        = [\n\r]
 @reservedid =
         as|case|class|data|default|else|hiding|if|
         import|in|infix|infixl|infixr|instance|newtype|
-        qualified|then|type|family|forall|foreign|export|dynamic|
+        qualified|then|type|family|foreign|export|dynamic|
         safe|threadsafe|unsafe|stdcall|ccall|dotnet
 
 @layoutReservedId =
@@ -118,6 +118,7 @@ haskell :-
   ^"#".*                                        { c $ CppDirective }
   $special                                      { cs $ \(c:_) -> Special c }
   "deriving"                                    { c (Reserved Deriving) }
+  "forall"                                      { c (Reserved Forall) }
   @reservedid                                   { c (Reserved Other) }
   "module"                                      { c (Reserved Module) }
   "where"                                       { c (Reserved Where) }
@@ -164,6 +165,7 @@ haskell :-
   ^"#".*                                        { c $ CppDirective }
   $special                                      { cs $ \(c:_) -> Special c }
   "deriving"                                    { c (Reserved Deriving) }
+  "forall"                                      { c (Reserved Forall) }
   @reservedid                                   { c (Reserved Other) }
   "module"                                      { c (Reserved Module) }
   "where"                                       { c (Reserved Where) }
