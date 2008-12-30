@@ -133,7 +133,7 @@ getStrokes :: Point -> Point -> Point -> [Tree TT] -> [Stroke]
 getStrokes point _begin _end t0 = result 
     where getStrokes' (Atom t) = (ts t :)
           getStrokes' (Error t) = (modStroke errorStyle (ts t) :) -- paint in red
-          getStrokes' (Block s) = list (fmap getStrokesL s)
+          getStrokes' (Block s) = compose (fmap getStrokesL s)
           getStrokes' (Paren l g r)
               | isErrorTok $ tokT r = (modStroke errorStyle (ts l) :) . getStrokesL g
               -- left paren wasn't matched: paint it in red.
@@ -143,10 +143,12 @@ getStrokes point _begin _end t0 = result
 
                = (modStroke hintStyle (ts l) :) . getStrokesL g . (modStroke hintStyle (ts r) :)
               | otherwise  = (ts l :) . getStrokesL g . (ts r :)
-          getStrokesL g = list (fmap getStrokes' g)
+          getStrokesL = compose . fmap getStrokes'
           ts = tokenToStroke
-          list = foldr (.) id
           result = getStrokesL t0 []
+
+compose :: [a -> a] -> a -> a
+compose = foldr (.) id
 
 modStroke :: StyleName -> Stroke -> Stroke
 modStroke f (l,s,r) = (l,f `mappend` s,r) 
