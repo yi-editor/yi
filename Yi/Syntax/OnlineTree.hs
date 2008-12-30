@@ -64,7 +64,7 @@ parse'' leftSize lB rB p
   where midB = min rB (lB +~ leftSize)
 
 
-toEndo :: Tree a -> [a] -> [a]
+toEndo :: Tree a -> E [a]
 toEndo Leaf = id
 toEndo (Node x l r) = (x :) . toEndo l . toEndo r
 
