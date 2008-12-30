@@ -93,7 +93,7 @@ haskell :-
 -- Note that we have to dissallow '-' as a symbol char for the first one
 -- of these because we may have -------- which would stilljust be the 
 -- start of a comment.
-  "--"\-* [$symbol # \-] $symchar*              { c Operator }
+  "--"\-* [$symbol # \-] $symchar*              { cs Operator }
 -- The next rule allows for the start of a comment basically
 -- it is -- followed by anything which isn't a symbol character
 -- (OR more '-'s). So for example "-----:" is still the start of a comment.
@@ -113,8 +113,8 @@ haskell :-
   "module"                                      { c (Reserved Module) }
   "where"                                       { c (Reserved Where) }
   @layoutReservedId                             { c (Reserved OtherLayout) }
-  `@qual @varid`                                { c Operator }
-  `@qual @conid`                                { c ConsOperator }
+  `@qual @varid`                                { cs $ Operator . init . tail }
+  `@qual @conid`                                { cs $ ConsOperator . init . tail }
   @qual @varid                                  { c VarIdent }
   @qual @conid                                  { c ConsIdent }
 
@@ -124,9 +124,9 @@ haskell :-
   "<-"                                          { c (ReservedOp LeftArrow) }
   "->"                                          { c (ReservedOp RightArrow) }
   "=>"                                          { c (ReservedOp DoubleRightArrow) }
-  @reservedop                                   { c (ReservedOp OtherOp) }
-  @qual @varsym                                 { c Operator }
-  @qual @consym                                 { c ConsOperator }
+  @reservedop                                   { cs (ReservedOp . OtherOp) }
+  @qual @varsym                                 { cs Operator }
+  @qual @consym                                 { cs ConsOperator }
 
   @decimal
     | 0[oO] @octal
@@ -152,12 +152,12 @@ data CommentType = Open | Close | Text | Line
 data ReservedType = Where | Let | OtherLayout | Deriving | Module | Other
     deriving (Eq, Show)
 
-data OpType = Pipe | Equal | BackSlash | LeftArrow | RightArrow | DoubleRightArrow | OtherOp
+data OpType = Pipe | Equal | BackSlash | LeftArrow | RightArrow | DoubleRightArrow | OtherOp String
     deriving (Eq, Show)
 
 data Token = Number | CharTok | StringTok | VarIdent | ConsIdent
            | Reserved !ReservedType | ReservedOp !OpType | Special Char
-           | ConsOperator | Operator
+           | ConsOperator String | Operator String
            | Comment !CommentType
            | THQuote
            | CppDirective | Unrecognized
@@ -165,26 +165,59 @@ data Token = Number | CharTok | StringTok | VarIdent | ConsIdent
 
 tokenToStyle :: Token -> StyleName
 tokenToStyle tok = case tok of
-  CppDirective -> preprocessorStyle
-  Number       -> numberStyle
-  CharTok      -> stringStyle
-  StringTok    -> stringStyle
-  VarIdent     -> variableStyle
-  ConsIdent    -> typeStyle
-  ReservedOp _ -> operatorStyle
-  Reserved _   -> keywordStyle
-  Special _    -> defaultStyle
-  ConsOperator -> operatorStyle
-  Operator     -> operatorStyle
-  Comment _    -> commentStyle
-  THQuote      -> quoteStyle
-  Unrecognized -> errorStyle
+  CppDirective   -> preprocessorStyle
+  Number         -> numberStyle
+  CharTok        -> stringStyle
+  StringTok      -> stringStyle
+  VarIdent       -> variableStyle
+  ConsIdent      -> typeStyle
+  ReservedOp _   -> operatorStyle
+  Reserved _     -> keywordStyle
+  Special _      -> defaultStyle
+  ConsOperator _ -> operatorStyle
+  Operator _     -> operatorStyle
+  Comment _      -> commentStyle
+  THQuote        -> quoteStyle
+  Unrecognized   -> errorStyle
 
 tokenToText :: Token -> Maybe String
 tokenToText (ReservedOp BackSlash) = Just "λ"
-tokenToText (ReservedOp RightArrow) = Just "→ "
-tokenToText (ReservedOp DoubleRightArrow) = Just "⇒ "
-tokenToText (ReservedOp LeftArrow) = Just "← "
+tokenToText (ReservedOp RightArrow) = Just "→"
+tokenToText (ReservedOp DoubleRightArrow) = Just "⇒"
+tokenToText (ReservedOp LeftArrow) = Just "←"
+tokenToText (ReservedOp (OtherOp "::")) = Just "∷"
+-- missing: ++ >>=
+tokenToText (Operator "*") = Just "×"
+tokenToText (Operator "-") = Just "−"
+-- tokenToText (Operator "-->") = Just "⟶"
+tokenToText (Operator ".") = Just "·"
+tokenToText (Operator "/=") = Just "≠"
+-- tokenToText (Operator "<--") = Just "⟵" 
+tokenToText (Operator "<-|") = Just "↤"
+-- tokenToText (Operator "<<") = Just "⟪"
+tokenToText (Operator "<|") = Just "◃"
+tokenToText (Operator "<~") = Just "↜"
+tokenToText (Operator "=-") = Just "≡"
+-- tokenToText (Operator "==>") = Just "⟹"
+tokenToText (Operator "=?") = Just "≟"
+-- tokenToText (Operator ">>") = Just "⟫"
+tokenToText (Operator "|-->") = Just "⟼"
+tokenToText (Operator "|->") = Just "↦"
+tokenToText (Operator "|>") = Just "▹"
+tokenToText (Operator "~=") = Just "≃"
+tokenToText (Operator "~>") = Just "↝"
+tokenToText (Operator ">=") = Just "≥"
+tokenToText (Operator "<=") = Just "≤"
+tokenToText (Operator "-<") = Just "↢"
+tokenToText (Operator "&&") = Just "∧"
+tokenToText (Operator "||") = Just "∨"
+{- these are not operators
+tokenToText (Operator "_|_") = Just "⊥"
+tokenToText (Operator "exists") = Just "∃"
+tokenToText (Operator "not") = Just "¬"
+tokenToText (Operator "forall") = Just "∀"
+tokenToText (Operator "neg") = Just "¬"
+-}
 tokenToText _ = Nothing
 
 startsLayout (Reserved OtherLayout) = True
@@ -203,7 +236,7 @@ initState = 0
 
 type TT = Tok Token
 
-isSpecial :: [Char] -> Token -> Bool
+isSpecial :: String -> Token -> Bool
 isSpecial cs (Special c) = c `elem` cs
 isSpecial _  _ = False
 

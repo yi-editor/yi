@@ -87,7 +87,7 @@ haskell :-
 
 <0> {
   ^ "\begin{code}"                              { m (const CodeBlock) $ Reserved Other }
-  ^ ">"                                         { m (const CodeLine) Operator }
+  ^ ">"                                         { ms (const CodeLine) Operator }
   $white+                                       ; -- whitespace
   .                                             { c $ Comment Text {-LaTeX-} }
 }
@@ -102,7 +102,7 @@ haskell :-
 -- Note that we have to dissallow '-' as a symbol char for the first one
 -- of these because we may have -------- which would stilljust be the
 -- start of a comment.
-  "--"\-* [$symbol # \-] $symchar*              { c Operator }
+  "--"\-* [$symbol # \-] $symchar*              { cs Operator }
 -- The next rule allows for the start of a comment basically
 -- it is -- followed by anything which isn't a symbol character
 -- (OR more '-'s). So for example "-----:" is still the start of a comment.
@@ -122,16 +122,20 @@ haskell :-
   "module"                                      { c (Reserved Module) }
   "where"                                       { c (Reserved Where) }
   @layoutReservedId                             { c (Reserved OtherLayout) }
-  `@qual @varid`                                { c Operator }
-  `@qual @conid`                                { c ConsOperator }
+  `@qual @varid`                                { cs $ Operator . init . tail }
+  `@qual @conid`                                { cs $ ConsOperator . init . tail }
   @qual @varid                                  { c VarIdent }
   @qual @conid                                  { c ConsIdent }
 
   "|"                                           { c (ReservedOp Pipe) }
   "="                                           { c (ReservedOp Equal) }
-  @reservedop                                   { c (ReservedOp OtherOp) }
-  @qual @varsym                                 { c Operator }
-  @qual @consym                                 { c ConsOperator }
+  \\                                            { c (ReservedOp BackSlash) }
+  "<-"                                          { c (ReservedOp LeftArrow) }
+  "->"                                          { c (ReservedOp RightArrow) }
+  "=>"                                          { c (ReservedOp DoubleRightArrow) }
+  @reservedop                                   { cs $ ReservedOp . OtherOp }
+  @qual @varsym                                 { cs Operator }
+  @qual @consym                                 { cs ConsOperator }
 
   @decimal
     | 0[oO] @octal
@@ -151,7 +155,7 @@ haskell :-
   [\ \t]+                                       ; -- whitespace
 
 -- Same three rules for line comments as above (see above for explanation).
-  "--"\-* [$symbol # \-] $symchar*              { c Operator }
+  "--"\-* [$symbol # \-] $symchar*              { cs Operator }
   "--"~[$symbol # \-][^$nl]*                    { c $ Comment Line }
   "--"$nl                                       { c $ Comment Line }
 
@@ -164,16 +168,20 @@ haskell :-
   "module"                                      { c (Reserved Module) }
   "where"                                       { c (Reserved Where) }
   @layoutReservedId                             { c (Reserved OtherLayout) }
-  `@qual @varid`                                { c Operator }
-  `@qual @conid`                                { c ConsOperator }
+  `@qual @varid`                                { cs $ Operator . init . tail }
+  `@qual @conid`                                { cs $ ConsOperator . init . tail }
   @qual @varid                                  { c VarIdent }
   @qual @conid                                  { c ConsIdent }
 
   "|"                                           { c (ReservedOp Pipe) }
   "="                                           { c (ReservedOp Equal) }
-  @reservedop                                   { c (ReservedOp OtherOp) }
-  @qual @varsym                                 { c Operator }
-  @qual @consym                                 { c ConsOperator }
+  \\                                            { c (ReservedOp BackSlash) }
+  "<-"                                          { c (ReservedOp LeftArrow) }
+  "->"                                          { c (ReservedOp RightArrow) }
+  "=>"                                          { c (ReservedOp DoubleRightArrow) }
+  @reservedop                                   { cs $ ReservedOp . OtherOp }
+  @qual @varsym                                 { cs Operator }
+  @qual @consym                                 { cs ConsOperator }
 
   @decimal
     | 0[oO] @octal
