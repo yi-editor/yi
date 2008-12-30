@@ -401,7 +401,7 @@ instance Applicative BufferM where
     (<*>) = ap
 
 instance Eq FBuffer where
-   b1 == b2 = bkey b1 == bkey b2
+    (==) = (==) `on` bkey
 
 instance Show FBuffer where
     show b = "Buffer #" ++ show (bkey b) ++ " (" ++ identString b ++ ")"
@@ -435,7 +435,7 @@ getModeLine prefix = do
 -- | Given a point, and the file size, gives us a percent string
 getPercent :: Point -> Point -> String
 getPercent a b = show p ++ "%"
-    where p = ceiling ((fromIntegral a) / (fromIntegral b) * 100 :: Double) :: Int
+    where p = ceiling (fromIntegral a / fromIntegral b * 100 :: Double) :: Int
 
 queryBuffer :: (forall syntax. BufferImpl syntax -> x) -> BufferM x
 queryBuffer f = gets (\(FBuffer _ fb _) -> f fb)
@@ -498,7 +498,7 @@ runBufferFull w b f =
     in (a, updates, pendingUpdatesA ^: (++ fmap TextUpdate updates) $ b')
 
 getMarkValueB :: Mark -> BufferM MarkValue
-getMarkValueB m = maybe (MarkValue 0 Forward) id <$> queryBuffer (getMarkValueBI m)
+getMarkValueB m = fromMaybe (MarkValue 0 Forward) <$> queryBuffer (getMarkValueBI m)
 
 newMarkB :: MarkValue -> BufferM Mark
 newMarkB v = queryAndModify $ newMarkBI v
@@ -721,10 +721,8 @@ setMode0 :: forall syntax. Mode syntax -> FBuffer -> FBuffer
 setMode0 m (FBuffer _ rb at) = (FBuffer m (setSyntaxBI (modeHL m) rb) at)
 
 modifyMode0 :: (forall syntax. Mode syntax -> Mode syntax) -> FBuffer -> FBuffer
-modifyMode0 f (FBuffer m rb f3) = 
-    let m' = f m
-    in (FBuffer m' (setSyntaxBI (modeHL m') rb) f3)
-
+modifyMode0 f (FBuffer m rb f3) = FBuffer m' (setSyntaxBI (modeHL m') rb) f3
+  where m' = f m
 
 -- | Set the mode
 setAnyMode :: AnyMode -> BufferM ()

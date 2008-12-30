@@ -147,11 +147,11 @@ cycleIndentsB indentBehave indents =
 
   chooseIncreaseOnly :: Int -> [ Int ] -> Int
   chooseIncreaseOnly currentIndent hints =
-    head $ (filter (> currentIndent) hints) ++ [ currentIndent ]
+    head $ filter (> currentIndent) hints ++ [ currentIndent ]
 
   chooseDecreaseOnly :: Int -> [ Int ] -> Int
   chooseDecreaseOnly currentIndent hints =
-    last $ currentIndent : (filter (< currentIndent) hints)
+    last $ currentIndent : filter (< currentIndent) hints
 
 {-|
   A function generally useful as the first argument to
@@ -173,7 +173,7 @@ fetchPreviousIndentsB =
      -- indent (it might be the first line but indented some.)
      if moveOffset == 0 ||
         ( indent == 0 &&
-          (any (not . isSpace) line) )
+          any (not . isSpace) line )
         then return [ indent ]
         else (indent :) <$> fetchPreviousIndentsB
 
@@ -299,7 +299,7 @@ keywordHints keywords =
     (white, rest)             = span isSpace input
     -- Get the hints from everything after any leading non-white space.
     -- This should only be used if there is no white space at the start.
-    whiteRestHints            = getHints (i + (length initNonWhite)) whiteRest
+    whiteRestHints            = getHints (i + length initNonWhite) whiteRest
 
 
 -- | Returns the offsets of anything that isn't white space 'after'
@@ -327,7 +327,7 @@ keywordAfterHints keywords =
     -- the keyword isn't the last thing on the line.
     | any (== key) keywords
       && (not $ null afterwhite)  =  do indent    <- spacingOfB white
-                                        let hint  =  i + (length key) + indent
+                                        let hint  =  i + length key + indent
                                         tailHints <- getHints hint afterwhite
                                         return $ hint : tailHints
     -- we don't have a hint and we can re-try for the rest of the line
@@ -345,7 +345,7 @@ keywordAfterHints keywords =
 
     -- Get the hints from everything after any leading non-white space.
     -- This should only be used if there is no white space at the start.
-    afterKeyHints       = getHints (i + (length key)) afterkey
+    afterKeyHints       = getHints (i + length key) afterkey
 
 
 {-|
@@ -396,8 +396,8 @@ rePadString indentSettings newCount input
     | expandTabs indentSettings = replicate newCount ' ' ++ rest
     | otherwise = tabs ++ spaces ++ rest
     where (_indents,rest) = span isSpace input
-          tabs   = replicate (newCount `div` (tabSize indentSettings)) '\t'
-          spaces = replicate (newCount `mod` (tabSize indentSettings)) ' '
+          tabs   = replicate (newCount `div` tabSize indentSettings) '\t'
+          spaces = replicate (newCount `mod` tabSize indentSettings) ' '
 
 
 -- | shifts right (or left if num is negative) num times, filling in tabs if
@@ -407,7 +407,7 @@ indentString indentSettings numOfShifts input = rePadString indentSettings newCo
     where (indents,_) = span isSpace input
           countSpace '\t' = tabSize indentSettings
           countSpace _ = 1 -- we'll assume nothing but tabs and spaces
-          newCount = sum (fmap countSpace indents) + ((shiftWidth indentSettings) * numOfShifts)
+          newCount = sum (fmap countSpace indents) + (shiftWidth indentSettings * numOfShifts)
 
 -- | Increases the indentation on the region by the given amount of shiftWidth
 shiftIndentOfRegion :: Int -> Region -> BufferM ()

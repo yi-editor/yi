@@ -214,7 +214,7 @@ mapOvlMarks f (Overlay l s e v) = Overlay l (f s) (f e) v
 
 -- | Point of EOF
 sizeBI :: BufferImpl syntax -> Point
-sizeBI fb = Point $ F.length $ mem fb
+sizeBI = Point . F.length . mem
 
 -- | Return @n@ Chars starting at @i@ of the buffer as a list
 nelemsBI :: Int -> Point -> BufferImpl syntax -> String
@@ -234,7 +234,7 @@ getIndexedStream Backward (Point i) fb = toIndexedString Backward (Point i) $ F.
 
 -- | Create an "overlay" for the style @sty@ between points @s@ and @e@
 mkOverlay :: OvlLayer -> Region -> StyleName -> Overlay
-mkOverlay l r s = Overlay l (MarkValue (regionStart r) Backward) (MarkValue (regionEnd r) Forward) s
+mkOverlay l r = Overlay l (MarkValue (regionStart r) Backward) (MarkValue (regionEnd r) Forward)
 
 -- | Obtain a style-update for a specific overlay
 overlayUpdate :: Overlay -> UIUpdate
@@ -370,7 +370,7 @@ gotoLnRelI n (Point point) fb = (Point newPoint, difference)
   -- The offsets of all the line beginnings below the current point
   -- so we drop everything before the point, find all the indices of
   -- the newlines from there and add the point (plus 1) to them.
-  downLineStarts = map (+(1 + point)) ((F.elemIndices newLine) (F.drop point s))
+  downLineStarts = map (+(1 + point)) (F.elemIndices newLine $ F.drop point s)
 
   -- Go down to find the line we wish for, the returned value is a pair
   -- consisting of the point of the start of the line to which we move
@@ -404,7 +404,7 @@ regexRegionBI (_,re) r fb = mayReverse (regionDirection r) $
 
 newMarkBI :: MarkValue -> BufferImpl syntax -> (BufferImpl syntax, Mark)
 newMarkBI initialValue fb =
-    let maxId = maybe 0 id $ markId . fst . fst <$> M.maxViewWithKey (marks fb)
+    let maxId = fromMaybe 0 $ markId . fst . fst <$> M.maxViewWithKey (marks fb)
         newMark = Mark $ maxId + 1
         fb' = fb { marks = M.insert newMark initialValue (marks fb)}
     in (fb', newMark)
@@ -446,14 +446,14 @@ toIndexedStringForward :: Point -> [Word8] -> [(Point, Char)]
 toIndexedStringForward curIdx bs = 
     case UF8Codec.decode bs of
       Nothing -> []
-      Just (c,n) -> let newIndex = curIdx + (fromIntegral n) in
-                    (curIdx,c) : (newIndex `seq` (toIndexedStringForward newIndex (drop n bs)))
+      Just (c,n) -> let newIndex = curIdx + fromIntegral n in
+                    (curIdx,c) : (newIndex `seq` toIndexedStringForward newIndex (drop n bs))
                   
 toIndexedStringBackward :: Point -> [Word8] -> [(Point,Char)]
 toIndexedStringBackward curIdx bs = case UF8Codec.decode (reverse $ decodeBack bs) of
     Nothing -> []
-    Just (c,n) -> let newIndex = curIdx - (fromIntegral n) in
-                      (newIndex,c) : (newIndex `seq` (toIndexedStringBackward newIndex (drop n bs)))
+    Just (c,n) -> let newIndex = curIdx - fromIntegral n in
+                      (newIndex,c) : (newIndex `seq` toIndexedStringBackward newIndex (drop n bs))
     
 
 decodeBack :: [Word8] -> [Word8]

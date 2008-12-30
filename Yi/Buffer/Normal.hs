@@ -162,7 +162,7 @@ atBoundary Line direction = checkPeekB 0 [isNl] direction
 atBoundary (Delimited c _ False) Backward = checkPeekB 0 [(== c)] Backward
 atBoundary (Delimited _ c False) Forward  = (== c) <$> readB
 atBoundary (Delimited c _ True) Backward = checkPeekB (-1) [(== c)] Backward
-atBoundary (Delimited _ c True) Forward  = checkPeekB (0) [(== c)] Backward
+atBoundary (Delimited _ c True) Forward  = checkPeekB 0 [(== c)] Backward
 atBoundary (GenUnit _ atBound) dir = atBound dir
 
 enclosingUnit :: TextUnit -> TextUnit
@@ -221,7 +221,7 @@ numberOfB unit containingUnit = savingPointB $ do
                    length <$> untilB ((>= end) <$> pointB) (moveB unit Forward)
 
 whileB :: BufferM Bool -> BufferM a -> BufferM [a]
-whileB cond f = untilB (not <$> cond) f
+whileB cond = untilB (not <$> cond)
 
 -- | Repeat an action until the condition is fulfilled or the cursor stops moving.
 -- The Action may be performed zero times.
@@ -239,7 +239,7 @@ doUntilB cond f = loop
               x <- f
               p' <- pointB
               stop <- cond
-              (x:) <$> if (p /= p' && not stop) 
+              (x:) <$> if p /= p' && not stop
                 then loop
                 else return []
 
@@ -257,7 +257,7 @@ data BoundarySide = InsideBound | OutsideBound
 -- Warning: moving To the (OutsideBound, Backward) bound of Document is impossible (offset -1!)
 -- @genMoveB u b d@: move in direction d until encountering boundary b or unit u. See 'genAtBoundaryB' for boundary explanation.
 genMoveB :: TextUnit -> (Direction, BoundarySide) -> Direction -> BufferM ()
-genMoveB Document (Forward,InsideBound) Forward = moveTo =<< (subtract 1) <$> sizeB
+genMoveB Document (Forward,InsideBound) Forward = moveTo =<< subtract 1 <$> sizeB
 genMoveB Document _                     Forward = moveTo =<< sizeB
 genMoveB Document _ Backward = moveTo 0 -- impossible to go outside beginning of doc.
 genMoveB Character _ Forward  = rightB

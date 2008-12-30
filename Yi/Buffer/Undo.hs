@@ -100,11 +100,11 @@ setSavedFilePointU (URList undos redos) =
 
 -- | This undoes one interaction step.
 undoU :: Mark -> URList -> BufferImpl syntax -> (BufferImpl syntax, (URList, [Update]))
-undoU m ur b = undoUntilInteractive m [] (undoInteractive ur) b
+undoU m = undoUntilInteractive m [] . undoInteractive
 
 -- | This redoes one iteraction step.
 redoU :: Mark -> URList -> BufferImpl syntax -> (BufferImpl syntax, (URList, [Update]))
-redoU m = asRedo (undoU m)
+redoU = asRedo . undoU
 
 -- | Prepare undo by moving one interaction point from undoes to redoes.
 undoInteractive :: URList -> URList

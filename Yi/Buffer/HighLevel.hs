@@ -95,7 +95,7 @@ lastNonSpaceB = do moveToEol
 -- if already there, then go to the beginning of the line.
 moveNonspaceOrSol :: BufferM ()
 moveNonspaceOrSol = do prev <- readPreviousOfLnB
-                       if and . map (isSpace) $ prev then moveToSol else firstNonSpaceB
+                       if and . map isSpace $ prev then moveToSol else firstNonSpaceB
 
 ------------
 
@@ -230,7 +230,7 @@ exchangePointAndMarkB = do m <- getSelectionMarkPointB
                            moveTo m
 
 getBookmarkB :: String -> BufferM Mark
-getBookmarkB nm = getMarkB (Just nm)
+getBookmarkB = getMarkB . Just
 
 
 -- ---------------------------------------------------------------------
@@ -302,7 +302,7 @@ scrollScreensB n = do
 -- | (negative for up)
 scrollByB :: (Int -> Int) -> Int -> BufferM ()
 scrollByB f n = do h <- askWindow height
-                   scrollB $ n * (f h)
+                   scrollB $ n * f h
 
 -- | Same as scrollB, but also moves the cursor
 vimScrollB :: Int -> BufferM ()
@@ -313,7 +313,7 @@ vimScrollB n = do scrollB n
 -- | Same as scrollByB, but also moves the cursor
 vimScrollByB :: (Int -> Int) -> Int -> BufferM ()
 vimScrollByB f n = do h <- askWindow height
-                      vimScrollB $ n * (f h)
+                      vimScrollB $ n * f h
 
 -- | Move to middle line in screen
 scrollToCursorB :: BufferM ()
@@ -535,7 +535,7 @@ unLineCommentSelectionB s1 s2 =
 toggleCommentSelectionB :: String -> String -> BufferM ()
 toggleCommentSelectionB insPrefix delPrefix = do
   l <- readUnitB Line
-  if (delPrefix `isPrefixOf` l)
+  if delPrefix `isPrefixOf` l
     then unLineCommentSelectionB insPrefix delPrefix
     else linePrefixSelectionB insPrefix
 
@@ -546,7 +546,7 @@ substituteInList from to lst@(h : rest)
   | isPrefixOf from lst =
     to ++ (substituteInList from to $ drop (length from) lst)
   | otherwise            =
-    h : (substituteInList from to rest)
+    h : substituteInList from to rest
 
 -- | Justifies all the lines of the selection to be the same as
 -- the top line.
@@ -573,7 +573,7 @@ justifySelectionWithTopB =
                       -- contains tab characters.
                       justifyLine :: String -> String
                       justifyLine "" = ""
-                      justifyLine l  = topIndent ++ (dropWhile isSpace l)
+                      justifyLine l  = topIndent ++ dropWhile isSpace l
 
 
 replaceBufferContent :: String -> BufferM ()

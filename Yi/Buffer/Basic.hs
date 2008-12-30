@@ -65,7 +65,7 @@ instance SemiNum Point Size where
     Point p ~- Point q = Size (abs (p - q))
 
 utf8Size :: String -> Size
-utf8Size s = Size $ B.length $ UTF8.fromString s
+utf8Size = Size . B.length . UTF8.fromString
 
 utf8CharSize :: Char -> Size
 utf8CharSize c = case ord c of i | i < 0x80    -> 1
