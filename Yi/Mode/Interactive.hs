@@ -9,14 +9,12 @@ import Yi.Lexer.Alex (Tok(..))
 import Yi.Region
 import qualified Yi.Lexer.Compilation as Compilation
 import qualified Yi.Mode.Compilation as Compilation
-import qualified Yi.Syntax.Linear as Linear
 
 atLastLine :: BufferM Bool
 atLastLine = savingPointB $ do
     moveToEol
     (==) <$> sizeB <*> pointB
 
-mode :: Mode (Linear.Result (Tok Compilation.Token))
 mode = Compilation.mode
   { modeApplies = modeNeverApplies,
     modeName = "interactive",

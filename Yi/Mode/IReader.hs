@@ -10,7 +10,6 @@ import Yi.Keymap.Keys
 import Yi.Core (msgEditor)
 import Yi.Modes (anyExtension, fundamentalMode)
 import Yi.Syntax (Stroke)
-import qualified Yi.Syntax.Linear as Linear (Result)
 
 abstract :: forall syntax. Mode syntax
 abstract = fundamentalMode { modeApplies = anyExtension ["irtxt"],
@@ -21,7 +20,6 @@ abstract = fundamentalMode { modeApplies = anyExtension ["irtxt"],
                             metaCh '2' ?>>! saveAsNewArticle,
                             metaCh '3' ?>>! deleteAndNextArticle] <||)
 
-ireaderMode :: Mode (Linear.Result Stroke)
 ireaderMode = abstract { modeName = "interactive reading of text" }
 
 ireadMode ::  YiM ()

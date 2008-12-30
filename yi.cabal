@@ -148,7 +148,6 @@ library
         Yi.Syntax.Haskell
         Yi.Syntax.Latex
         Yi.Syntax.Layout
-        Yi.Syntax.Linear
         Yi.Syntax.OnlineTree
         Yi.Syntax.Paren
         Yi.Syntax.Tree
@@ -338,7 +337,6 @@ executable yi
            Yi.Syntax.OnlineTree
            Yi.Syntax.Paren
            Yi.Syntax.Latex
-           Yi.Syntax.Linear
            Yi.Syntax.Tree
 
            Yi.Mode.Interactive

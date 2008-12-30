@@ -3,7 +3,8 @@ module Yi.Modes (fundamentalMode,
                  cppMode, cabalMode, srmcMode, ocamlMode,
                  ottMode, gnuMakeMode,
                  perlMode, pythonMode, 
-                 anyExtension, mkHighlighter', extensionOrContentsMatch
+                 anyExtension, extensionOrContentsMatch,
+                 linearSyntaxMode
                 ) where
 
 import Control.Arrow (first)
@@ -25,10 +26,11 @@ import qualified Yi.Lexer.Ott       as Ott
 import qualified Yi.Lexer.Perl      as Perl
 import qualified Yi.Lexer.Python    as Python
 import qualified Yi.Lexer.Srmc      as Srmc
-import qualified Yi.Syntax.Linear   as Linear
+import Yi.Syntax.OnlineTree as OnlineTree
+import qualified Yi.IncrementalParse as IncrParser
 
 fundamentalMode :: Mode syntax
-cppMode, cabalMode, srmcMode, ocamlMode, ottMode, gnuMakeMode, perlMode, pythonMode :: Mode (Linear.Result Stroke)
+-- cppMode, cabalMode, srmcMode, ocamlMode, ottMode, gnuMakeMode, perlMode, pythonMode :: Mode (OnlineTree.Tree Stroke)
 
 fundamentalMode = emptyMode
   { 
@@ -38,65 +40,51 @@ fundamentalMode = emptyMode
    modePrettify = const fillParagraph
   }
 
-linearSyntaxMode = fundamentalMode { modeGetStrokes = Linear.getStrokes }
-
-mkHighlighter' :: forall token lexerState. Show lexerState =>
-                    lexerState
-                    -> (Alex.ASI lexerState
-                        -> Maybe (Tok token, Alex.ASI lexerState))
-                    -> (token -> StyleName)
-                    -> Highlighter
-                         (Yi.Syntax.Cache
-                            (Alex.AlexState lexerState,
-                             [Stroke])
-                            (Linear.Result Stroke))
-                         (Linear.Result Stroke)
-mkHighlighter' initSt scan tokenToStyle = mkHighlighter (Linear.incrScanner . Alex.lexScanner (fmap (first tokenToStroke) . scan) initSt) 
+linearSyntaxMode initSt scanToken tokenToStyle 
+    = fundamentalMode { 
+                        modeHL = ExtHL $ mkHighlighter (IncrParser.scanner OnlineTree.parse . lexer),
+                        modeGetStrokes = \t _point begin _end -> fmap tokenToStroke $ dropToIndex begin t
+                      }
     where tokenToStroke (Tok t len posn) = (posnOfs posn, tokenToStyle t, posnOfs posn +~ len)
+          lexer = Alex.lexScanner scanToken initSt
 
-cppMode = linearSyntaxMode
+cppMode = (linearSyntaxMode Cplusplus.initState Cplusplus.alexScanToken id)
   {
     modeApplies = anyExtension ["cxx", "cpp", "C", "hxx", "H", "h", "c"], 
     -- Treat c file as cpp files, most users will allow for that.
-    modeName = "c++",
-    modeHL = ExtHL $ mkHighlighter' Cplusplus.initState Cplusplus.alexScanToken id
+    modeName = "c++"
   }
 
-cabalMode = linearSyntaxMode
+cabalMode = (linearSyntaxMode Cabal.initState Cabal.alexScanToken id)
   {
     modeName = "cabal",
-    modeApplies = anyExtension ["cabal"],
-    modeHL = ExtHL $ mkHighlighter' Cabal.initState Cabal.alexScanToken id
+    modeApplies = anyExtension ["cabal"]
   }
 
 
-srmcMode = linearSyntaxMode
+srmcMode = (linearSyntaxMode Srmc.initState Srmc.alexScanToken id)
   {
     modeName = "srmc",
     modeApplies = anyExtension ["pepa", -- pepa is a subset of srmc    
-                                "srmc"],
-    modeHL = ExtHL $ mkHighlighter' Srmc.initState Srmc.alexScanToken id
+                                "srmc"]
   }
 
-ocamlMode = linearSyntaxMode
+ocamlMode = (linearSyntaxMode OCaml.initState OCaml.alexScanToken OCaml.tokenToStyle)
   {
     modeName = "ocaml",
-    modeApplies = anyExtension ["ml", "mli", "mly", "mll", "ml4", "mlp4"],
-    modeHL = ExtHL $ mkHighlighter' OCaml.initState OCaml.alexScanToken OCaml.tokenToStyle
+    modeApplies = anyExtension ["ml", "mli", "mly", "mll", "ml4", "mlp4"]
   }
 
-perlMode = linearSyntaxMode
+perlMode = (linearSyntaxMode Perl.initState Perl.alexScanToken id)
   {
     modeName = "perl",
-    modeApplies = anyExtension ["t", "pl", "pm"],
-    modeHL = ExtHL $ mkHighlighter' Perl.initState Perl.alexScanToken id
+    modeApplies = anyExtension ["t", "pl", "pm"]
   }
 
-pythonMode = linearSyntaxMode
+pythonMode = (linearSyntaxMode Python.initState Python.alexScanToken id)
   {
     modeName = "python",
-    modeApplies = anyExtension ["py"], 
-    modeHL = ExtHL $ mkHighlighter' Python.initState Python.alexScanToken id
+    modeApplies = anyExtension ["py"]
   }
 
 isMakefile :: FilePath -> String -> Bool
@@ -107,23 +95,22 @@ isMakefile path _contents = matches $ takeFileName path
           matches filename      = extensionMatches ["mk"] filename
           -- TODO: .mk is fairly standard but are there others?
 
-gnuMakeMode = linearSyntaxMode
+gnuMakeMode = base
   {
     modeName = "Makefile",
     modeApplies = isMakefile,
-    modeHL = ExtHL $ mkHighlighter' GNUMake.initState GNUMake.alexScanToken id,
-    modeIndentSettings = (modeIndentSettings linearSyntaxMode)
+    modeIndentSettings = (modeIndentSettings base)
       {
         expandTabs = False,
         shiftWidth = 8
       }
   }
+    where base = linearSyntaxMode GNUMake.initState GNUMake.alexScanToken id
 
-ottMode = linearSyntaxMode
+ottMode = (linearSyntaxMode Ott.initState Ott.alexScanToken id)
   {
     modeName = "ott",
-    modeApplies = anyExtension ["ott"],
-    modeHL = ExtHL $ mkHighlighter' Ott.initState Ott.alexScanToken id
+    modeApplies = anyExtension ["ott"]
   }
 
 -- | Determines if the file's extension is one of the extensions in the list.

@@ -8,26 +8,22 @@ import Yi.Lexer.Alex (Tok(..), Posn(..))
 import Yi.Style
 import Yi.Syntax
 import Yi.Dired
+import Yi.Modes (linearSyntaxMode)
 import qualified Yi.Lexer.Alex as Alex
 import qualified Yi.Lexer.Compilation         as Compilation
-import qualified Yi.Syntax.Linear as Linear
+import qualified Yi.Syntax.OnlineTree as OnlineTree
 
-mode :: Mode (Linear.Result (Tok Compilation.Token))
-mode = emptyMode
+mode = (linearSyntaxMode Compilation.initState Compilation.alexScanToken tokenToStyle)
   { 
    modeApplies = modeNeverApplies,
    modeName = "compilation",
    modeKeymap = (<||) (spec KEnter ?>>! withSyntax modeFollow),
-   modeFollow = \synTree -> YiA (follow synTree),
-   modeGetStrokes = \synTree begin end pos -> Linear.getStrokes (fmap tokenToStroke synTree) begin end pos,
-   modeHL = ExtHL $ mkHighlighter (Linear.incrScanner . Alex.lexScanner Compilation.alexScanToken Compilation.initState) 
+   modeFollow = \synTree -> YiA (follow synTree)
   }
-    where tokenToStroke (Tok t len posn) = (posnOfs posn, tokenToStyle t, posnOfs posn +~ len)
-          tokenToStyle _ = commentStyle
-          follow :: Linear.Result (Tok Compilation.Token) -> YiM ()
+    where tokenToStyle _ = commentStyle
           follow errs = do 
               point <- withBuffer pointB
-              case Linear.tokAtOrBefore point errs of
+              case OnlineTree.tokAtOrBefore point errs of
                  Just (t@Tok {tokT = Compilation.Report filename line col _message}) -> do
                      withBuffer $ moveTo $ posnOfs $ tokPosn $ t
                      shiftOtherWindow

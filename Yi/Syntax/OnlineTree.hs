@@ -1,13 +1,15 @@
-module Yi.Syntax.OnlineTree (Tree(..), parse, dropToIndex) where
+module Yi.Syntax.OnlineTree (Tree(..), parse, dropToIndex, tokAtOrBefore) where
 import Prelude ()
 import Yi.Prelude
 import Yi.IncrementalParse
 import Control.Applicative
 import Data.Traversable
 import Data.Foldable
+import Data.List (takeWhile, dropWhile, reverse)
+import Data.Maybe (listToMaybe)
 import Yi.Lexer.Alex
 import Yi.Buffer.Basic (Point)
-
+import Yi.Region
 
 data Tree a = Node a (Tree a) (Tree a)
             | Leaf
@@ -105,3 +107,10 @@ dropButHelp leftsize (Node x l r) index _previous
         toReverseList :: Tree a -> [a]
         toReverseList = foldl (flip (:)) []
 
+
+tokAtOrBefore :: Point -> Tree (Tok a) -> Maybe (Tok a)
+tokAtOrBefore p res = listToMaybe $ reverse $ toksInRegion (mkRegion 0 (p+1)) res
+
+-- TODO: improve
+toksInRegion :: Region -> Tree (Tok a) -> [Tok a]
+toksInRegion reg = takeWhile (\t -> tokBegin t <= regionEnd   reg) . dropToIndex (regionStart reg)

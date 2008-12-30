@@ -4,7 +4,6 @@
 module Yi.Mode.Haskell 
   (
    -- * Modes
-   plainMode,
    cleverMode, 
    preciseMode,
    literateMode,
@@ -35,7 +34,6 @@ import qualified Yi.IncrementalParse as IncrParser
 import qualified Yi.Lexer.Alex as Alex
 import qualified Yi.Lexer.LiterateHaskell as LiterateHaskell
 import Yi.Lexer.Haskell as Haskell
-import qualified Yi.Syntax.Linear as Linear
 import qualified Yi.Mode.Interactive as Interactive
 import Yi.Modes (anyExtension, extensionOrContentsMatch)
 
@@ -56,21 +54,10 @@ haskellAbstract = emptyMode
     where extensions = ["hs", "x", "hsc", "hsinc"]
           shebangPattern = "^#![[:space:]]*/usr/bin/env[[:space:]]+runhaskell"
 
--- | Plain haskell mode, providing only list of keywords.
-plainMode :: Mode (Linear.Result (Tok Token))
-plainMode = haskellAbstract
-   {
-     modeName = "plain haskell",
-     modeGetStrokes = \ast begin end pos -> Linear.getStrokes (fmap Paren.tokenToStroke ast) begin end pos,
-     modeHL = ExtHL $ mkHighlighter (Linear.incrScanner . haskellLexer) 
-   , modeIndent = const autoIndentHaskellB
-   }
-
 -- | "Clever" haskell mode, using the paren-matching syntax.
 cleverMode :: Mode (Expr (Tok Haskell.Token))
 cleverMode = haskellAbstract
   {
-    modeApplies = modeApplies plainMode,
     modeIndent = cleverAutoIndentHaskellB,
     modeGetStrokes = \t point begin end -> Paren.getStrokes point begin end t,
     modeHL = ExtHL $
@@ -86,7 +73,6 @@ fastMode :: Mode (OnlineTree.Tree TT)
 fastMode = haskellAbstract
   {
     modeName = "fast haskell",
-    modeApplies = modeApplies plainMode,
     modeHL = ExtHL $
     mkHighlighter (IncrParser.scanner OnlineTree.parse . haskellLexer),
     modeGetStrokes = \t _point begin _end -> fmap Hask.tokenToStroke $ dropToIndex begin t,
@@ -110,7 +96,6 @@ preciseMode :: Mode (Hask.Tree TT)
 preciseMode = haskellAbstract
   {
     modeName = "precise haskell",
-    modeApplies = modeApplies plainMode,
     --    modeIndent = cleverAutoIndentHaskellB,
     modeGetStrokes = \ast point begin end -> Hask.getStrokes point begin end ast,
     modeHL = ExtHL $

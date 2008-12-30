@@ -131,7 +131,6 @@ defaultConfig =
          , publishedActions = defaultPublishedActions
          , modeTable = [AnyMode Haskell.cleverMode,
                         AnyMode Latex.latexMode2,
-                        AnyMode Latex.latexMode, -- available but the other one is preferred
                         AnyMode Latex.fastMode,
                         AnyMode cppMode,
                         AnyMode Haskell.literateMode,
