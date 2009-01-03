@@ -6,6 +6,7 @@ import Prelude ()
 import Control.Arrow ((&&&))
 import Data.Char (isUpper)
 import Data.List (isInfixOf, nub, filter, lines, words, map, (!!))
+import System.Exit (ExitCode(ExitFailure))
 
 import Yi.Core
 import Yi.Process (runProgCommand)
@@ -22,9 +23,13 @@ gv :: [String] -> [String]
 gv = filter f
   where f x = not $ any (`isInfixOf` x) ["module ", " type ", "package ", " data ", " keyword "]
 
--- | Query Hoogle, with given search and options. This errors out on no results.
+-- | Query Hoogle, with given search and options. This errors out on no
+-- results or if the hoogle command is not on path.
 hoogleRaw :: String -> String -> IO [String]
-hoogleRaw srch opts = do (out,_err,_status) <- runProgCommand "hoogle" [opts, srch]
+hoogleRaw srch opts = do (out,_err,status) <- runProgCommand "hoogle" [opts, srch]
+                         when (status == ExitFailure 1) $
+                             fail "Error running hoogle command.  Is hoogle \
+                                  \on path?"
                          let results = lines out
                          if results == ["No results found"] then fail "No Hoogle results"
                                                             else return results
