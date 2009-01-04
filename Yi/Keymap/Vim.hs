@@ -1440,20 +1440,14 @@ beginInsE self a = do
                               putA currentViInsertionA $ Just $ viActFirstA ^= Just a $ emptyViIns p
   ins_mode self
 
--- This seems to be the Applicative <* operator. Refactor?
-post :: Monad m => m a -> m () -> m a
-f `post` g = do x <- f
-                g
-                return x
-
 withBuffer0' :: BufferM a -> EditorM a
-withBuffer0' f = withBuffer0 $ f `post` leftOnEol
+withBuffer0' f = withBuffer0 (f <* leftOnEol)
 
 withBuffer' :: BufferM a -> YiM a
 withBuffer' = withEditor . withBuffer0'
 
 withEditor' :: EditorM a -> YiM a
-withEditor' f = withEditor $ f `post` withBuffer0 leftOnEol
+withEditor' f = withEditor (f <* withBuffer0 leftOnEol)
 
 -- Find the item after or under the cursor and jump to its match
 percentMove :: (RegionStyle, ViMove)
