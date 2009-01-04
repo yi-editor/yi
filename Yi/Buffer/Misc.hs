@@ -321,12 +321,12 @@ selectionStyleA = selectionStyleAA . attrsA
 highlightSelectionA :: Accessor FBuffer Bool
 highlightSelectionA = 
   accessor highlightSelection (\x e -> e { highlightSelection = x })
-  . selectionStyleAA . attrsA
+  . selectionStyleA
 
 rectangleSelectionA :: Accessor FBuffer Bool
 rectangleSelectionA = 
   accessor rectangleSelection (\x e -> e { rectangleSelection = x })
-  . selectionStyleAA . attrsA
+  . selectionStyleA
 
 keymapProcessA :: Accessor FBuffer KeymapProcess
 keymapProcessA = processAA . attrsA
