@@ -129,6 +129,7 @@ import Yi.Prelude
 import Yi.Region
 import System.FilePath
 import Yi.Buffer.Implementation
+import Yi.Lexer.Alex (Span(..))
 import Yi.Region
 import Yi.Syntax
 import Yi.Buffer.Undo

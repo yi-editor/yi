@@ -10,7 +10,7 @@ import Control.Arrow (second)
 import Data.Monoid
 import Yi.Style
 import Data.List (zip, repeat, span, dropWhile)
-import Yi.Syntax (Span(..))
+import Yi.Lexer.Alex (Span(..))
 
 -- | return index of Sol on line @n@ above current line
 indexOfSolAbove :: Int -> BufferM Point

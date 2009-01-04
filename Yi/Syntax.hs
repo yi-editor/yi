@@ -12,7 +12,7 @@ module Yi.Syntax
   , Scanner (..)
   , ExtHL        ( .. )
   , noHighlighter, mkHighlighter, skipScanner
-  , Point(..), Size(..), Length, Stroke, Span(..)
+  , Point(..), Size(..), Length, Stroke
   ) 
 where
 
@@ -26,9 +26,7 @@ import Yi.Buffer.Basic
 type Length = Int                   -- size in #codepoints
 
 type Stroke = (Point,StyleName,Point)
-data Span a = Span {spanBegin :: !Point, spanContents :: !a, spanEnd :: !Point}
-    deriving Show
-
+-- TODO: use Span
 
 -- | The main type of syntax highlighters.  This record type combines all
 -- the required functions, and is parametrized on the type of the internal

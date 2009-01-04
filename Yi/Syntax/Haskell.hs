@@ -218,3 +218,4 @@ tokenToAnnot (Tok t len posn) = case tokenToText t of
     Nothing -> Nothing
     Just x -> Just (Span (posnOfs posn) x (posnOfs posn +~ len))
 
+
