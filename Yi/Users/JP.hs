@@ -15,13 +15,30 @@ import Yi.String
 import Data.Char
 import Data.Monoid
 import Yi.Hoogle
+import Yi.Syntax.Haskell as Hask
+import Yi.Lexer.Haskell as Hask
+import Yi.Syntax.Paren as Paren
+import Yi.Syntax.Tree
+import Yi.Syntax.OnlineTree as OnlineTree
+import Data.Maybe
+import Yi.Lexer.Alex (tokToSpan)
 
 increaseIndent :: BufferM ()
-increaseIndent = modifyExtendedSelectionB Line $ mapLines (' ':)
+increaseIndent = modifyExtendedSelectionB Yi.Line $ mapLines (' ':)
 
 decreaseIndent :: BufferM ()
-decreaseIndent = modifyExtendedSelectionB Line $ mapLines (drop 1)
+decreaseIndent = modifyExtendedSelectionB Yi.Line $ mapLines (drop 1)
 
+tokenToText :: Token -> Maybe String
+tokenToText (Hask.ReservedOp Hask.BackSlash) = Just "λ"
+-- tokenToText (Hask.ReservedOp Hask.RightArrow) = Just "→ " -- should be → in types and · in exprs
+tokenToText (Hask.ReservedOp Hask.DoubleRightArrow) = Just "⇒ "
+tokenToText (Hask.ReservedOp Hask.LeftArrow) = Just "← "
+-- tokenToText (Hask.Operator ".") = Just "∘" -- should be · or . in types and ∘ in exprs
+tokenToText (Hask.Operator "/=") = Just "≠"
+tokenToText (Hask.Operator ">=") = Just "≥"
+tokenToText (Hask.Operator "<=") = Just "≤"
+tokenToText _ = Nothing
 
 haskellModeHooks mode = 
                   -- uncomment for shim:
@@ -52,6 +69,8 @@ parensInput
               ]
              ]
 
+tta = sequenceA . tokToSpan . (fmap Main.tokenToText)
+
 parenIns :: Char -> Char -> BufferM ()
 parenIns open close = do
     x <- readB
@@ -62,8 +81,10 @@ Just frontend = foldr1 (<|>) $ fmap (flip lookup availableFrontends) ["cocoa", "
 main :: IO ()
 main = yi $ defaultEmacsConfig {
                            startFrontEnd = frontend,
-                           modeTable = AnyMode (haskellModeHooks Haskell.cleverMode)
-                                     : AnyMode (haskellModeHooks Haskell.fastMode)
+                           modeTable = AnyMode (haskellModeHooks Haskell.cleverMode) {modeGetAnnotations = \t begin -> catMaybes $ fmap tta $ concatMap toList t}
+                                                                                        
+                                     : AnyMode (haskellModeHooks Haskell.fastMode) {modeGetAnnotations = \t begin -> catMaybes $ fmap tta $ dropToIndex begin t}
+
                                      : modeTable defaultConfig,
                            configUI = (configUI defaultConfig) 
                              { configFontSize = Just 12 
