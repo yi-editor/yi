@@ -81,6 +81,10 @@ newtype EditorM a = EditorM {fromEditorM :: RWS Config () Editor a}
 
 deriving instance Typeable1 EditorM
 
+instance Applicative EditorM where
+  pure = return
+  (<*>) = ap
+
 class (Monad m, MonadState Editor m) => MonadEditor m
     where askCfg :: m Config
           withEditor :: EditorM a -> m a
