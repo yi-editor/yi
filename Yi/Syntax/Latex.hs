@@ -116,10 +116,10 @@ getStrokes point _begin _end t0 = result
 
 
 modStroke :: StyleName -> Stroke -> Stroke
-modStroke f (l,s,r) = (l,f `mappend` s,r) 
+modStroke f = fmap (f `mappend`)
 
 tokenToStroke :: TT -> Stroke
-tokenToStroke (Tok t len posn) = (posnOfs posn, tokenToStyle t, posnOfs posn +~ len)
+tokenToStroke = fmap tokenToStyle . tokToSpan
 
 tokenToStyle :: Token -> StyleName
 tokenToStyle t =

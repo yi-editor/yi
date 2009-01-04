@@ -9,7 +9,6 @@ import Yi.Keymap
 import Yi.Keymap.Keys
 import Yi.Core (msgEditor)
 import Yi.Modes (anyExtension, fundamentalMode)
-import Yi.Syntax (Stroke)
 
 abstract :: forall syntax. Mode syntax
 abstract = fundamentalMode { modeApplies = anyExtension ["irtxt"],

@@ -7,13 +7,12 @@ module Yi.Modes (fundamentalMode,
                  linearSyntaxMode
                 ) where
 
-import Control.Arrow (first)
 import Prelude ()
 import System.FilePath
 import Text.Regex.TDFA ((=~))
 
 import Yi.Buffer
-import Yi.Lexer.Alex (Tok(..), Posn(..))
+import Yi.Lexer.Alex (Tok(..), Posn(..), tokToSpan)
 import Yi.Prelude
 import Yi.Style
 import Yi.Syntax
@@ -40,12 +39,23 @@ fundamentalMode = emptyMode
    modePrettify = const fillParagraph
   }
 
+linearSyntaxMode :: forall lexerState t.
+                                                (Show lexerState) =>
+                                                lexerState
+                                                -> ((IncrParser.AlexState lexerState,
+                                                     Alex.AlexInput)
+                                                    -> Maybe
+                                                         (Tok t,
+                                                          (IncrParser.AlexState lexerState,
+                                                           Alex.AlexInput)))
+                                                -> (t -> StyleName)
+                                                -> Mode (Tree (Tok t))
 linearSyntaxMode initSt scanToken tokenToStyle 
     = fundamentalMode { 
                         modeHL = ExtHL $ mkHighlighter (IncrParser.scanner OnlineTree.parse . lexer),
                         modeGetStrokes = \t _point begin _end -> fmap tokenToStroke $ dropToIndex begin t
                       }
-    where tokenToStroke (Tok t len posn) = (posnOfs posn, tokenToStyle t, posnOfs posn +~ len)
+    where tokenToStroke = fmap tokenToStyle . tokToSpan
           lexer = Alex.lexScanner scanToken initSt
 
 cppMode = (linearSyntaxMode Cplusplus.initState Cplusplus.alexScanToken id)

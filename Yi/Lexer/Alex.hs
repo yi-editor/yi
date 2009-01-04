@@ -8,7 +8,7 @@ module Yi.Lexer.Alex (
                        Posn(..), startPosn, moveStr, 
                        ASI,
                        (+~), (~-), Size(..),
-                       Span(..), tokToSpan
+                       tokToSpan
                       ) where
 
 import Yi.Syntax hiding (mkHighlighter)
@@ -38,13 +38,6 @@ data Tok t = Tok
 instance Functor Tok where
     fmap f (Tok t l p) = Tok (f t) l p
 
-data Span a = Span {spanBegin :: !Point, spanContents :: !a, spanEnd :: !Point}
-    deriving Show
-
-instance Traversable Span where
-    traverse f (Span l a r) = (\a' -> Span l a' r) <$> f a
-instance Foldable Span where foldMap = foldMapDefault
-instance Functor Span where fmap = fmapDefault
 
 
 tokToSpan :: Tok t -> Span t

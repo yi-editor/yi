@@ -265,19 +265,19 @@ strokesRangesBI getStrokes regex rgn  point fb@(FBufferData {hlCache = HLState h
   where
     i = regionStart rgn
     j = regionEnd rgn
-    dropBefore = dropWhile (\(_l,_s,r) -> r <= i)
-    takeIn  = takeWhile (\(l,_s,_r) -> l <= j)
+    dropBefore = dropWhile (\s ->spanEnd s <= i)
+    takeIn  = takeWhile (\s -> spanBegin s <= j)
 
-    groundLayer = [(i,mempty,j)]
+    groundLayer = [(Span i mempty j)]
     syntaxHlLayer = getStrokes point i j 
     layers2 = map (map overlayStroke) $ groupBy ((==) `on` overlayLayer) $  Set.toList $ overlays fb
     layer3 = case regex of 
                Just re -> takeIn $ map hintStroke $ regexRegionBI re (mkRegion i j) fb
                Nothing -> []
     result = map (map clampStroke . takeIn . dropBefore) (layer3 : layers2 ++ [syntaxHlLayer, groundLayer])
-    overlayStroke (Overlay _ sm  em a) = (markPoint sm, a, markPoint em)
-    clampStroke (l,x,r) = (max i l, x, min j r)
-    hintStroke r = (regionStart r,if point `nearRegion` r then strongHintStyle else hintStyle,regionEnd r)
+    overlayStroke (Overlay _ sm  em a) = Span (markPoint sm) a (markPoint em)
+    clampStroke (Span l x r) = Span (max i l) x (min j r)
+    hintStroke r = Span (regionStart r) (if point `nearRegion` r then strongHintStyle else hintStyle) (regionEnd r)
 
 ------------------------------------------------------------------------
 -- Point based editing

@@ -10,7 +10,7 @@ import Control.Arrow (second)
 import Data.Monoid
 import Yi.Style
 import Data.List (zip, repeat, span, dropWhile)
-import Yi.Lexer.Alex (Span(..))
+import Yi.Syntax (Span(..))
 
 -- | return index of Sol on line @n@ above current line
 indexOfSolAbove :: Int -> BufferM Point
@@ -47,12 +47,12 @@ spliceAnnots text (Span start x stop:anns) = l ++ zip (repeat start) x ++ splice
 --   ensure that the points are strictly increasing and introducing
 --   padding segments where neccessary.
 --   Precondition: Strokes are ordered and not overlapping.
-strokePicture :: [(Point,Endo a,Point)] -> [(Point,(a -> a))]
+strokePicture :: [Span (Endo a)] -> [(Point,(a -> a))]
 strokePicture [] = []
-strokePicture wholeList@((leftMost,_,_):_) = helper leftMost wholeList
-    where helper :: Point -> [(Point,Endo a,Point)] -> [(Point,(a -> a))]
+strokePicture wholeList@((Span leftMost _ _):_) = helper leftMost wholeList
+    where helper :: Point -> [Span (Endo a)] -> [(Point,(a -> a))]
           helper prev [] = [(prev,id)]
-          helper prev ((l,f,r):xs) 
+          helper prev ((Span l f r):xs) 
               | prev < l  = (prev, id) : (l,appEndo f) : helper r xs
               | otherwise = (l,appEndo f) : helper r xs
 
@@ -68,13 +68,13 @@ paintStrokes f0 x0 lf@((pf,f):tf) lx@((px,x):tx) =
 
     
 
-paintPicture :: a -> [[(Point,Endo a,Point)]] -> [(Point,a)]
+paintPicture :: a -> [[Span (Endo a)]] -> [(Point,a)]
 paintPicture a = foldr (paintStrokes id a . strokePicture) []
 
-attributesPictureB :: UIStyle -> Maybe SearchExp -> Region -> [[(Point,StyleName,Point)]] -> BufferM [(Point,Attributes)]
+attributesPictureB :: UIStyle -> Maybe SearchExp -> Region -> [[Span StyleName]] -> BufferM [(Point,Attributes)]
 attributesPictureB sty mexp region extraLayers =
   paintPicture (baseAttributes sty) <$>
-    fmap (fmap $ \(l,s,r) -> (l,s sty, r)) <$>
+    fmap (fmap (fmap ($ sty))) <$>
     (extraLayers ++) <$>
     strokesRangesB mexp region
 
@@ -83,7 +83,7 @@ attributesPictureAndSelB sty mexp region = do
     selReg <- getSelectRegionB
     showSel <- getA highlightSelectionA
     rectSel <- getA rectangleSelectionA
-    let styliseReg reg = (regionStart reg, selectedStyle, regionEnd reg)
+    let styliseReg reg = Span (regionStart reg) selectedStyle (regionEnd reg)
         extraLayers | rectSel && showSel = (:[]) . fmap styliseReg <$> blockifyRegion selReg
                     | showSel            = return [[styliseReg selReg]]
                     | otherwise          = return []

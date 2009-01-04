@@ -13,6 +13,7 @@ module Yi.Syntax
   , ExtHL        ( .. )
   , noHighlighter, mkHighlighter, skipScanner
   , Point(..), Size(..), Length, Stroke
+  , Span(..)
   ) 
 where
 
@@ -25,8 +26,14 @@ import Yi.Buffer.Basic
 
 type Length = Int                   -- size in #codepoints
 
-type Stroke = (Point,StyleName,Point)
--- TODO: use Span
+type Stroke = Span StyleName
+data Span a = Span {spanBegin :: !Point, spanContents :: !a, spanEnd :: !Point}
+    deriving Show
+
+instance Traversable Span where
+    traverse f (Span l a r) = (\a' -> Span l a' r) <$> f a
+instance Foldable Span where foldMap = foldMapDefault
+instance Functor Span where fmap = fmapDefault
 
 -- | The main type of syntax highlighters.  This record type combines all
 -- the required functions, and is parametrized on the type of the internal
