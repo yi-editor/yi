@@ -32,6 +32,9 @@ instance Show Window where
              -- ++ "{" ++ show (tospnt w) ++ "->" ++ show (bospnt w) ++ "}" 
              ++ "(" ++ show (height w) ++ ")"
 
+instance Eq Window where
+    (==) w1 w2 = wkey w1 == wkey w2
+
 {-
 -- | Is a given point within tospnt / bospnt?
 pointInWindow :: Point -> Window -> Bool

@@ -22,7 +22,7 @@ import Yi.Completion (commonPrefix, infixMatch, prefixMatch, completeInList)
 import qualified Yi.Core as Editor
 import qualified Yi.WindowSet as WS
 import Control.Monad.Reader
-
+import qualified Data.Accessor.MonadState as AM
 -- | Open a minibuffer window with the given prompt and keymap
 -- The third argument is an action to perform after the minibuffer
 -- is opened such as move to the first occurence of a searched for
@@ -32,7 +32,7 @@ spawnMinibufferE prompt kmMod =
     do b <- stringToNewBuffer (Left prompt) (fromString "")
        withGivenBuffer0 b $ modifyMode (\m -> m {modeKeymap = kmMod})
        w <- newWindowE True b
-       modA windowsA (WS.add w)
+       modA windowsA (WS.addLast w)
        return b
 
 -- | @withMinibuffer prompt completer act@: open a minibuffer with @prompt@. Once
@@ -69,10 +69,12 @@ withMinibufferGen :: String -> (String -> YiM String) ->
                      String -> (String -> YiM String) -> (String -> YiM ()) -> YiM ()
 withMinibufferGen proposal getHint prompt completer act = do
   initialBuffer <- gets currentBuffer
+  initialWindow <- AM.get currentWindowA
   let innerAction :: YiM ()
       -- ^ Read contents of current buffer (which should be the minibuffer), and
       -- apply it to the desired action
-      closeMinibuffer = closeBufferAndWindowE
+      closeMinibuffer = closeBufferAndWindowE >>
+                        modA windowsA (WS.setFocus initialWindow)
       showMatchings = msgEditor =<< getHint =<< withBuffer elemsB
       innerAction = do
         lineString <- withEditor $ do historyFinishGen prompt (withBuffer0 elemsB)

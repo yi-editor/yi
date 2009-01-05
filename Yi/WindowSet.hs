@@ -55,6 +55,10 @@ new w = WindowSet [] w []
 add :: a -> WindowSet a -> WindowSet a
 add w (WindowSet b c a) = WindowSet (c:b) w a
 
+-- | Add a window to the end, and focus it.
+addLast :: a -> WindowSet a -> WindowSet a
+addLast w (WindowSet b c a) = WindowSet (reverse a ++ c:b) w ([]::[a]) 
+
 next :: WindowSet a -> a
 next = current . forward
 
