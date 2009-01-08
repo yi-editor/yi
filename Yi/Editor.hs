@@ -11,7 +11,6 @@ import Yi.Buffer
 import Yi.Config
 import Yi.Dynamic
 import Yi.KillRing
-import Yi.Tag
 import Yi.Window
 import Yi.Window
 import Yi.WindowSet (WindowSet)
@@ -54,28 +53,24 @@ data Editor = Editor {
        ,statusLines   :: !Statuses
        ,killring      :: !Killring
        ,regex         :: !(Maybe SearchExp) -- ^ most recent regex
-       ,tagsFileList  :: ![FilePath]        -- ^ file path list for  ctags
-       ,tags          :: !(Maybe TagTable)  -- ^ table for ctags
        ,searchDirection :: !Direction
        ,pendingEvents :: ![Event]                   -- ^ Processed events that didn't yield any action yet.
     }
     deriving Typeable
 
 instance Binary Editor where
-    put (Editor bss bs supply ts _dv _sl kr _re tfl _tt _dir _ev) = put bss >> put bs >> put supply >> put ts >> put kr >> put tfl
+    put (Editor bss bs supply ts _dv _sl kr _re _dir _ev) = put bss >> put bs >> put supply >> put ts >> put kr 
     get = do
         bss <- get
         bs <- get
         supply <- get
         ts <- get
         kr <- get
-        tfl <- get
         return $ emptyEditor {bufferStack = bss,
                               buffers = bs,
                               refSupply = supply,
                               tabs_ = ts,
-                              killring = kr,
-                              tagsFileList = tfl
+                              killring = kr
                              }
 
 newtype EditorM a = EditorM {fromEditorM :: RWS Config () Editor a}
@@ -109,8 +104,6 @@ emptyEditor = Editor {
        ,bufferStack  = [bkey buf]
        ,refSupply    = 2
        ,regex        = Nothing
-       ,tags         = Nothing
-       ,tagsFileList = ["tags"]
        ,searchDirection = Forward
        ,dynamic      = M.empty
        ,statusLines  = DelayList.insert (maxBound, ("", defaultStyle)) []
@@ -344,21 +337,6 @@ setRegE s = modA killringA $ krSet s
 -- | Return the contents of the yank register
 getRegE :: EditorM String
 getRegE = getsA killringA krGet
-
--- ---------------------------------------------------------------------
--- Direct access interface to TagTable.
-
--- | Set a new TagTable
-setTags :: TagTable -> EditorM ()
-setTags = putA tagsA . Just
-
--- | Reset the TagTable
-resetTags :: EditorM ()
-resetTags = putA tagsA Nothing
-
--- | Get the currently registered tag table
-getTags :: EditorM (Maybe TagTable)
-getTags = getA tagsA
 
 
 

@@ -50,7 +50,7 @@ import Yi.MiniBuffer
 import Yi.Search
 import Yi.Style
 import Yi.TextCompletion
-import Yi.Tag (Tag,TagTable,lookupTag,importTagTable)
+import Yi.Tag 
 import Yi.Window (bufkey)
 import Yi.Hoogle (hoogle)
 import qualified Codec.Binary.UTF8.String as UTF8
@@ -542,11 +542,11 @@ defKeymap = Proto template
      -- and prompts the user if it doesn't exist
      visitTagTable :: (TagTable -> YiM ()) -> YiM ()
      visitTagTable act = do
-       posTagTable <- withEditor getTags
+       posTagTable <- withEditor $ getTags
        -- does the tagtable exist?
        case posTagTable of
          Just tagTable -> act tagTable
-         Nothing -> do fps <- withEditor $ getA tagsFileListA -- withBuffer0' $ tagsFileList <$> getDynamicB
+         Nothing -> do fps <- withEditor $ getTagsFileList  -- withBuffer0' $ tagsFileList <$> getDynamicB
                        efps <- io $ filterM fileExist fps
                        when (null efps) $ fail ("No existing tags file among: " ++ show fps)
                        tagTable <- io $ importTagTable (head efps)
@@ -555,9 +555,6 @@ defKeymap = Proto template
 
      gotoTagCurrentWord :: YiM ()
      gotoTagCurrentWord = gotoTag =<< withEditor (withBuffer0' (readRegionB =<< regionOfNonEmptyB unitViWord))
-
-     setTagsFileList :: String -> EditorM ()
-     setTagsFileList fps = resetTags >> putA tagsFileListA (split "," fps)
 
      -- | Parse any character that can be inserted in the text.
      textChar :: KeymapM Char

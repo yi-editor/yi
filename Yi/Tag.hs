@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts, DeriveDataTypeable, TemplateHaskell #-}
 
 -- | A module for CTags integration
 
@@ -8,11 +9,21 @@ module Yi.Tag
    hintTags,
    completeTag,
    Tag,
-   TagTable(..)
+   TagTable(..),
+   getTags,
+   setTags,
+   resetTags,
+   getTagsFileList,
+   setTagsFileList
   )
 where
 
 {- Standard Library Module Imports -}
+import Prelude (map, filter, words, lines, readFile)
+import Yi.Prelude
+import Yi.Editor
+import Yi.Dynamic 
+import Yi.String (split)
 
 import Data.Maybe (mapMaybe)
 import Data.List (isPrefixOf)
@@ -20,7 +31,17 @@ import System.FilePath (takeFileName, takeDirectory, FilePath, (</>))
 import System.FriendlyPath
 import Data.Map (Map, fromList, lookup, keys)
 
+import Data.Typeable
 import qualified Data.Trie as Trie
+
+newtype Tags  = Tags (Maybe TagTable) deriving Typeable
+instance Initializable Tags where
+    initial = Tags Nothing
+
+
+newtype TagsFileList  = TagsFileList [FilePath] deriving Typeable
+instance Initializable TagsFileList where
+    initial = TagsFileList ["tags"]
 
 
 type Tag = String
@@ -35,7 +56,7 @@ data TagTable = TagTable { tagFileName :: FilePath
                            -- ^ map from tags to files
                            , tagTrie :: Trie.Trie
                            -- ^ trie to speed up tag hinting
-                         }
+                         } deriving Typeable
 
 -- | Find the location of a tag using the tag table.
 -- Returns a full path and line number
@@ -74,3 +95,31 @@ hintTags tags prefix = map (prefix ++) $ Trie.possibleSuffixes prefix $ tagTrie 
 -- | Extends the string to the longest certain length
 completeTag :: TagTable -> String -> String
 completeTag tags prefix = prefix ++ (Trie.certainSuffix prefix $ tagTrie tags)
+
+
+-- ---------------------------------------------------------------------
+-- Direct access interface to TagTable.
+
+-- | Set a new TagTable
+setTags :: TagTable -> EditorM ()
+setTags = setDynamic . Tags . Just
+
+-- | Reset the TagTable
+resetTags :: EditorM ()
+resetTags = setDynamic $ Tags Nothing
+
+-- | Get the currently registered tag table
+getTags :: EditorM (Maybe TagTable)
+getTags = do 
+  Tags t <- getDynamic
+  return t
+
+setTagsFileList :: String -> EditorM ()
+setTagsFileList fps = do 
+  resetTags 
+  setDynamic $ TagsFileList (split "," fps)
+
+getTagsFileList :: EditorM [FilePath]
+getTagsFileList = do 
+  TagsFileList fps <- getDynamic
+  return fps
