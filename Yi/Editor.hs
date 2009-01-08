@@ -23,6 +23,7 @@ import Prelude (map, filter, (!!), takeWhile, length, reverse)
 import Yi.Prelude
 
 import Data.Accessor.Basic (fromSetGet)
+import qualified Data.Accessor.MonadState as MS
 import Data.Accessor.Template
 import Data.Binary
 import Data.List (nub, delete)
@@ -40,8 +41,9 @@ type Statuses = DelayList.DelayList Status
 
 -- | The Editor state
 data Editor = Editor {
-        bufferStack   :: ![BufferRef]               -- ^ Stack of all the buffers. Never empty;
-                                                    -- first buffer is the current one.
+        bufferStack   :: ![BufferRef]               -- ^ Stack of all the buffers. 
+                                                    -- Invariant: never empty
+                                                    -- Invariant: first buffer is the current one.
        ,buffers       :: !(M.Map BufferRef FBuffer)
        ,refSupply     :: !Int  -- ^ Supply for buffer and window ids.
 
@@ -150,6 +152,8 @@ newBufRef :: EditorM BufferRef
 newBufRef = BufferRef <$> newRef
 
 -- | Create and fill a new buffer, using contents of string.
+-- | Does not focus the window, or make it the current window.
+-- | Call newWindowE or switchToBufferE to take care of that.
 stringToNewBuffer :: BufferId -- ^ The buffer indentifier
                   -> LazyUTF8.ByteString -- ^ The contents with which to populate the buffer
                   -> EditorM BufferRef
@@ -163,8 +167,11 @@ stringToNewBuffer nm cs = do
 
 insertBuffer :: FBuffer -> EditorM BufferRef
 insertBuffer b = getsAndModify $
-                 \e -> (e { bufferStack = nub (bkey b : bufferStack e),
-                            buffers = M.insert (bkey b) b (buffers e)
+                 \e -> (let first:bs = bufferStack e in 
+                        -- may not be active so don't put it on the top of the stack
+                        -- valid since bufferstack is never empty
+                        e {bufferStack = nub (first:bkey b:bs),
+                           buffers = M.insert (bkey b) b (buffers e)
                           }, bkey b)
 
 -- | Delete a buffer (and release resources associated with it).
@@ -173,14 +180,13 @@ deleteBuffer k = do
   bs <- gets bufferStack
   case bs of
       (b0:nextB:_) -> do
-          let pickOther = \w -> if bufkey w == k then w {bufkey = other} else w
+          let pickOther w = if bufkey w == k then w {bufkey = other} else w
               other = head (delete k bs)
           when (b0 == k) $ do
               -- we delete the currently selected buffer: the next buffer will become active in
               -- the main window, therefore it must be assigned a new window.
               switchToBufferE nextB
-          modify $ \e -> e {
-                            bufferStack = filter (k /=) $ bufferStack e,
+          modify $ \e -> e {bufferStack = filter (k /=) $ bufferStack e,
                             buffers = M.delete k (buffers e),
                             tabs_ = fmap (fmap pickOther) (tabs_ e)
                             -- all windows open on that buffer must switch to another buffer.
@@ -438,7 +444,8 @@ prevWinE :: EditorM ()
 prevWinE = modA windowsA WS.backward
 
 -- | A "fake" accessor that fixes the current buffer after a change of the current
--- window.
+-- window. 
+-- Enforces invariant that top of buffer stack is the buffer of the current
 fixCurrentBufferA_ :: Accessor Editor Editor
 fixCurrentBufferA_ = fromSetGet (\new _old -> let 
     ws = windows new
