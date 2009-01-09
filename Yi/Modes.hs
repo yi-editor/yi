@@ -52,8 +52,8 @@ linearSyntaxMode :: forall lexerState t.
                                                 -> Mode (Tree (Tok t))
 linearSyntaxMode initSt scanToken tokenToStyle 
     = fundamentalMode { 
-                        modeHL = ExtHL $ mkHighlighter (IncrParser.scanner OnlineTree.parse . lexer),
-                        modeGetStrokes = \t _point begin _end -> fmap tokenToStroke $ dropToIndex begin t
+                        modeHL = ExtHL $ mkHighlighter (IncrParser.scanner OnlineTree.manyToks . lexer),
+                        modeGetStrokes = \t _point begin _end -> fmap tokenToStroke $ dropToIndexBad begin t
                       }
     where tokenToStroke = fmap tokenToStyle . tokToSpan
           lexer = Alex.lexScanner scanToken initSt

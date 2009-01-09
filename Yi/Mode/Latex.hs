@@ -25,8 +25,8 @@ fastMode = abstract
   {
     modeName = "fast latex",
     modeHL = ExtHL $
-    mkHighlighter (IncrParser.scanner OnlineTree.parse . latexLexer),
-    modeGetStrokes = \t _point begin _end -> fmap Latex.tokenToStroke $ dropToIndex begin t
+    mkHighlighter (IncrParser.scanner OnlineTree.manyToks . latexLexer),
+    modeGetStrokes = \t _point begin _end -> fmap Latex.tokenToStroke $ dropToIndexBad begin t
  }
 
 -- | syntax-based latex mode

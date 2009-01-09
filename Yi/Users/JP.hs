@@ -86,7 +86,7 @@ main = yi $ defaultEmacsConfig {
                            startFrontEnd = frontend,
                            modeTable = AnyMode (haskellModeHooks Haskell.cleverMode) {modeGetAnnotations = \t begin -> catMaybes $ fmap tta $ concatMap toList t}
                                                                                         
-                                     : AnyMode (haskellModeHooks Haskell.fastMode) {modeGetAnnotations = \t begin -> catMaybes $ fmap tta $ dropToIndex begin t}
+                                     : AnyMode (haskellModeHooks Haskell.fastMode) {modeGetAnnotations = \t begin -> catMaybes $ fmap tta $ dropToIndexBad begin t}
 
                                      : modeTable defaultConfig,
                            configUI = (configUI defaultConfig) 

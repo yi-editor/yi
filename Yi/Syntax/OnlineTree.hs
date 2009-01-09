@@ -1,4 +1,4 @@
-module Yi.Syntax.OnlineTree (Tree(..), parse, dropToIndex, tokAtOrBefore) where
+module Yi.Syntax.OnlineTree (Tree(..), manyToks, dropToIndex, dropToIndexBad, tokAtOrBefore) where
 import Prelude ()
 import Yi.Prelude
 import Yi.IncrementalParse
@@ -37,27 +37,36 @@ factor = 2
 
 initialLeftSize :: Size
 initialLeftSize = 2 
+-- TODO: increase to a reasonable value. Since files are often > 1024 bytes, this
+-- seems a reasonable start.
 
-parse :: P (Tok t) (Tree (Tok t))
-parse = parse' initialLeftSize 0 maxBound
+manyToks :: P (Tok t) (Tree (Tok t))
+manyToks = parse' initialLeftSize 0 maxBound
+    where
+       -- | Parse all the symbols starting in the interval [lb, rb[
+       parse' :: Size -> Point -> Point -> P (Tok t) (Tree (Tok t))
+       parse' leftSize lB rB
+          | rB <= lB = pure Leaf
+          | otherwise = case_ (symbolBefore rB)
+              (Node <$> symbol (const True)
+                    <*> parse' initialLeftSize      lB   midB
+                    <*> parse' (leftSize * fromIntegral factor)  midB rB)
+              (pure Leaf) 
+         where midB = min rB (lB +~ leftSize)
 
--- | Parse all the symbols starting in the interval [lb, rb[
-parse' :: Size -> Point -> Point -> P (Tok t) (Tree (Tok t))
-parse' leftSize lB rB
-   | rB <= lB = pure Leaf
-   | otherwise = case_ (symbolBefore rB)
-       (Node <$> symbol (const True)
-             <*> parse' initialLeftSize      lB   midB
-             <*> parse' (leftSize * fromIntegral factor)  midB rB)
-       (pure Leaf) 
-  where midB = min rB (lB +~ leftSize)
+manyInTree :: P (Tok t) x -> P (Tok t) (TreeAtPos x)
+manyInTree p = lookNext >>= \x -> case x of
+    Nothing -> pure (TreeAtPos 0 Leaf)
+    Just t -> let b = tokBegin t 
+               in (TreeAtPos 0) <$> parse'' initialLeftSize b maxBound p
 
--- | Parse all the symbols starting in the interval [lb, rb[
+
+-- | Parse all the elements starting in the interval [lb, rb[
 parse'' :: Size -> Point -> Point -> P (Tok t) x -> P (Tok t) (Tree x)
 parse'' leftSize lB rB p
    | rB <= lB = pure Leaf
    | otherwise = case_ (symbolBefore rB)
-       ((Node <$> p -- FIXME: we'd like a cut here
+       ((Node <$> p -- FIXME: we'd like a cut here (?)
               <*> parse'' initialLeftSize                   lB   midB  p
               <*> parse'' (leftSize * fromIntegral factor)  midB rB    p)
         <|> pure Leaf -- This creates a branch which cannot be discarded without parsing some of the future.
@@ -70,8 +79,8 @@ toEndo :: Tree a -> E [a]
 toEndo Leaf = id
 toEndo (Node x l r) = (x :) . toEndo l . toEndo r
 
-dropToIndex :: Point -> Tree t -> [t]
-dropToIndex index t = dropHelp initialLeftSize t index []
+dropToIndexBad :: Point -> Tree t -> [t]
+dropToIndexBad index t = dropHelp initialLeftSize t index []
 
 dropHelp :: Size -> Tree a -> Point -> [a] -> [a]
 dropHelp _leftsize Leaf _n = id
@@ -84,7 +93,15 @@ dropHelp leftsize (Node x l r) index
 
 type E a = a -> a
 
+dropToIndex index (TreeAtPos begin t) = dropButHelp initialLeftSize t (index -~ begin)
+
 -- As above, but ensure we also put the element "just before" into result as well.
+
+-- We need this because we constructed the tree in such a way that the elements
+-- begin after a given bound. So, if we drop stuff before, we might drop a node
+-- that indeed starts before the bound, but ends after it. So, we must keep one
+-- extra element before.
+
 dropButHelp :: Size -> Tree a -> Point -> E [a] -> E [a]
 dropButHelp _leftsize Leaf _n previous =  -- we may have forgotten to insert the previous element here, so we add it.
        previous
@@ -113,4 +130,4 @@ tokAtOrBefore p res = listToMaybe $ reverse $ toksInRegion (mkRegion 0 (p+1)) re
 
 -- TODO: improve
 toksInRegion :: Region -> Tree (Tok a) -> [Tok a]
-toksInRegion reg = takeWhile (\t -> tokBegin t <= regionEnd   reg) . dropToIndex (regionStart reg)
+toksInRegion reg = takeWhile (\t -> tokBegin t <= regionEnd   reg) . dropToIndexBad (regionStart reg)
