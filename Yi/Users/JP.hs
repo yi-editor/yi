@@ -4,7 +4,7 @@ import Yi.Keymap.Emacs (keymap)
 -- import  Yi.Keymap.Cua (keymap)
 
 -- If configured with ghcAPI, Shim Mode can be enabled:
--- import qualified Yi.Mode.Shim as Shim
+import qualified Yi.Mode.Shim as Shim
 import Yi.Mode.Haskell as Haskell
 import Data.List (drop, length)
 import Yi.Char.Unicode (greek, symbols)
@@ -22,6 +22,8 @@ import Yi.Syntax.Tree
 import Yi.Syntax.OnlineTree as OnlineTree
 import Data.Maybe
 import Yi.Lexer.Alex (tokToSpan)
+import qualified Yi.Interact as I
+import Control.Monad
 
 increaseIndent :: BufferM ()
 increaseIndent = modifyExtendedSelectionB Yi.Line $ mapLines (' ':)
@@ -31,7 +33,7 @@ decreaseIndent = modifyExtendedSelectionB Yi.Line $ mapLines (drop 1)
 
 tokenToText :: Token -> Maybe String
 tokenToText (Hask.ReservedOp Hask.BackSlash) = Just "λ"
--- tokenToText (Hask.ReservedOp Hask.RightArrow) = Just "→ " -- should be → in types and · in exprs
+tokenToText (Hask.ReservedOp Hask.RightArrow) = Just "→ " -- should be → in types and · in exprs
 tokenToText (Hask.ReservedOp Hask.DoubleRightArrow) = Just "⇒ "
 tokenToText (Hask.ReservedOp Hask.LeftArrow) = Just "← "
 -- tokenToText (Hask.Operator ".") = Just "∘" -- should be · or . in types and ∘ in exprs
@@ -80,6 +82,7 @@ Just frontend = foldr1 (<|>) $ fmap (flip lookup availableFrontends) ["cocoa", "
 
 main :: IO ()
 main = yi $ defaultEmacsConfig {
+                           -- configInputPreprocess = escToMeta,
                            startFrontEnd = frontend,
                            modeTable = AnyMode (haskellModeHooks Haskell.cleverMode) {modeGetAnnotations = \t begin -> catMaybes $ fmap tta $ concatMap toList t}
                                                                                         
@@ -100,3 +103,14 @@ main = yi $ defaultEmacsConfig {
                               <|> (ctrl (char '>') ?>>! increaseIndent)
                               <|> (ctrl (char '<') ?>>! decreaseIndent)
                           }
+
+testPrep :: I.P Event Event
+testPrep = mkAutomaton $ forever $ ((anyEvent >>= I.write) ||> do
+    char 'C' ?>> I.write (Event (KASCII 'X') []))
+
+
+escToMeta :: I.P Event Event
+escToMeta = mkAutomaton $ forever $ (anyEvent >>= I.write) ||> do
+    event (spec KEsc)
+    c <- printableChar
+    I.write (Event (KASCII c) [MMeta])
