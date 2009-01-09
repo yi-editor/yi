@@ -126,6 +126,7 @@ defaultConfig =
            , configAutoHideTabBar = True
            , configWindowFill = ' '
            , configTheme = defaultLightTheme
+           , configVtyEscDelay = 0
            }
          , defaultKm        = nilKeymap
          , startActions     = [makeAction openScratchBuffer] -- emacs-style behaviour
@@ -156,7 +157,13 @@ defaultVimConfig = toVimStyleConfig defaultConfig
 defaultCuaConfig = toCuaStyleConfig defaultConfig
 
 toEmacsStyleConfig, toVimStyleConfig, toCuaStyleConfig :: Config -> Config
-toEmacsStyleConfig cfg = cfg {defaultKm = Emacs.keymap, configKillringAccumulate = True}
+toEmacsStyleConfig cfg 
+    = cfg {
+            configUI = (configUI cfg) { configVtyEscDelay = 1000 },
+            defaultKm = Emacs.keymap,
+            configKillringAccumulate = True
+          }
+
 toVimStyleConfig cfg = cfg {defaultKm = Vim.keymap, configRegionStyle = Inclusive}
 toCuaStyleConfig cfg = cfg {defaultKm = Cua.keymap}
 

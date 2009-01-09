@@ -14,6 +14,7 @@ import {-# source #-} Yi.UI.Common
 import qualified Yi.Interact as I
 
 data UIConfig = UIConfig {
+   configVtyEscDelay :: Int,       
    configFontName :: Maybe String,  -- ^ Font name, for the UI that support it.
    configFontSize :: Maybe Int,     -- ^ Font size, for the UI that support it.
    configLeftSideScrollBar :: Bool, -- ^ Should the scrollbar be shown on the left side?
