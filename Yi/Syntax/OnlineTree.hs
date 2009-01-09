@@ -11,6 +11,15 @@ import Yi.Lexer.Alex
 import Yi.Buffer.Basic (Point)
 import Yi.Region
 
+data TreeAtPos a = TreeAtPos Size (Tree a)
+    deriving Show
+
+
+
+-- class AST ast where
+--     type Token ast
+--     toksAfter :: Point -> ast -> [Token ast]
+
 data Tree a = Node a (Tree a) (Tree a)
             | Leaf
               deriving Show
