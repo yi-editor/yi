@@ -152,3 +152,7 @@ instance YiAction (BufferM x) x where
 
 instance YiAction Action () where
     makeAction = id
+
+
+instance I.PEq Event where
+    equiv = (==)

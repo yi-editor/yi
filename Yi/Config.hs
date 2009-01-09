@@ -11,6 +11,7 @@ import Yi.Event
 import Yi.Style
 import Yi.Style.Library
 import {-# source #-} Yi.UI.Common
+import qualified Yi.Interact as I
 
 data UIConfig = UIConfig {
    configFontName :: Maybe String,  -- ^ Font name, for the UI that support it.
@@ -38,6 +39,7 @@ data Config = Config {startFrontEnd :: UIBoot,
                       -- ^ Actions to run when the editor is started.
                       defaultKm :: Keymap,
                       -- ^ Default keymap to use.
+                      configInputPreprocess :: I.P Event Event,
                       modeTable :: [AnyMode],
                       -- ^ List modes by order of preference.
                       publishedActions :: M.Map String [Data.Dynamic.Dynamic],

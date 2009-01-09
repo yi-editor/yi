@@ -35,12 +35,13 @@ input (prefix), but produce conflicting output?
 
 module Yi.Interact
     (
-     I, P (End),
+     I, P (Chain,End),
      InteractState (..),
      MonadInteract (..),
      PEq (..),
      deprioritize,
      (<||),
+     (||>),
      option,
      oneOf,
      processOneEvent,
@@ -48,7 +49,7 @@ module Yi.Interact
      event,
      events,
      choice,
-     mkAutomaton,
+     mkAutomaton, idAutomaton,
      runWrite,
      anyEvent,
      eventBetween,
@@ -109,7 +110,6 @@ data I ev w a where
     Priority :: Int -> I ev w ()
     Plus :: I ev w a -> I ev w a -> I ev w a
 
-
 instance Functor (I event w) where
   fmap f i = pure f <*> i
 
@@ -141,10 +141,10 @@ infixl 3 <||
 deprioritize :: (MonadInteract f w e) => f ()
 deprioritize = adjustPriority 1
 
-(<||) :: (MonadInteract f w e) => f a -> f a -> f a
+(<||), (||>) :: (MonadInteract f w e) => f a -> f a -> f a
 a <|| b = a <|> (deprioritize >> b)
 
-
+(||>) = flip (<||)
 
 -- | Convert a process description to an "executable" process.
 mkProcess :: PEq w => I ev w a -> ((a -> P ev w) -> P ev w)
@@ -168,6 +168,7 @@ data P event w
     | Prior Int (P event w) -- low numbers indicate high priority
     | Best (P event w) (P event w)
     | End
+    | forall mid. PEq mid => Chain (P event mid) (P mid w)
 
 -- ---------------------------------------------------------------------------
 -- Operations over P
@@ -188,6 +189,7 @@ pushEvent (Get l h f) e = if test (e >=) l && test (e <=) h then f e else Fail
     where test = maybe True
 pushEvent Fail _ = Fail
 pushEvent End _ = End
+pushEvent (Chain p q) e = Chain (pushEvent p e) q
 
 -- | Abstraction of the automaton state.
 data InteractState event w =  Ambiguous [(Int,w,P event w)] | Waiting | Dead | Running w (P event w)
@@ -215,7 +217,15 @@ findWrites p (Prior dp c) = findWrites (p+dp) c
 findWrites _ Fail = Dead
 findWrites _ End = Dead
 findWrites _ (Get _ _ _) = Waiting
-
+findWrites p (Chain a b) = case computeState a of 
+    Dead -> Dead
+    Ambiguous _ -> Dead -- If ambiguity, don't try to do anything clever for now; die.
+    Running w c -> findWrites p (Chain c (pushEvent b w)) -- pull as much as possible from the left automaton
+    Waiting -> case findWrites p b of
+        Ambiguous choices -> Ambiguous [(p,w',Chain a c') | (p,w',c') <- choices]
+        Running w' c' -> Running w' (Chain a c') -- when it has nothing more, pull from the right.
+        Dead -> Dead
+        Waiting -> Waiting
 
 computeState :: PEq w => P event w -> InteractState event  w
 computeState a = case findWrites 0 a of
@@ -284,5 +294,6 @@ option x p = p `mplus` return x
 mkAutomaton :: PEq w => I ev w a -> P ev w
 mkAutomaton i = mkProcess i (const End)
 
-
-
+-- An automaton that produces its input
+idAutomaton :: (Ord a, PEq a) => P a a
+idAutomaton = mkAutomaton (forever (anyEvent >>= write))

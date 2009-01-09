@@ -27,6 +27,7 @@ import qualified Yi.Keymap.Emacs  as Emacs
 import qualified Yi.Keymap.Vim  as Vim
 import qualified Yi.Mode.Haskell as Haskell
 import qualified Yi.Mode.Latex as Latex
+import qualified Yi.Interact as I
 
 #ifdef FRONTEND_COCOA
 import qualified Yi.UI.Cocoa
@@ -146,6 +147,7 @@ defaultConfig =
          , debugMode = False
          , configKillringAccumulate = False
          , configRegionStyle = Exclusive
+         , configInputPreprocess = I.idAutomaton
          }
 
 defaultEmacsConfig, defaultVimConfig, defaultCuaConfig :: Config
