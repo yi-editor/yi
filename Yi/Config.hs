@@ -21,7 +21,7 @@ data UIConfig = UIConfig {
    configAutoHideScrollBar :: Bool, -- ^ Hide scrollbar automatically if text fits on one page.
    configAutoHideTabBar :: Bool,    -- ^ Hide the tabbar automatically if only one tab is present
    configLineWrap :: Bool,          -- ^ Wrap lines at the edge of the window if too long to display.
-   configWindowFill :: !Char,
+   configWindowFill :: Char,
    -- ^ The char with which to fill empty window space.  Usually '~' for vi-like
    -- editors, ' ' for everything else.
    configTheme :: Theme             -- ^ UI colours
@@ -49,7 +49,7 @@ data Config = Config {startFrontEnd :: UIBoot,
                       -- ^ Produce a .yi.dbg file with a lot of debug information.
                       configRegionStyle :: RegionStyle,
                       -- ^ Set to 'Exclusive' for an emacs-like behaviour.
-                      configKillringAccumulate :: !Bool
+                      configKillringAccumulate :: Bool
                       -- ^ Set to 'True' for an emacs-like behaviour, where 
                       -- all deleted text is accumulated in a killring.
                      }

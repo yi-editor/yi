@@ -19,6 +19,7 @@ abstract = fundamentalMode { modeApplies = anyExtension ["irtxt"],
                             metaCh '2' ?>>! saveAsNewArticle,
                             metaCh '3' ?>>! deleteAndNextArticle] <||)
 
+ireaderMode :: Mode syntax
 ireaderMode = abstract { modeName = "interactive reading of text" }
 
 ireadMode ::  YiM ()

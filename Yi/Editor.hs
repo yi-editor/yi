@@ -22,7 +22,6 @@ import Prelude (map, filter, (!!), takeWhile, length, reverse)
 import Yi.Prelude
 
 import Data.Accessor.Basic (fromSetGet)
-import qualified Data.Accessor.MonadState as MS
 import Data.Accessor.Template
 import Data.Binary
 import Data.List (nub, delete)
@@ -31,7 +30,7 @@ import Data.Foldable (concatMap)
 import qualified Data.DelayList as DelayList
 import qualified Data.Map as M
 import Data.Typeable
-import System.FilePath (FilePath, splitPath)
+import System.FilePath (splitPath)
 import Control.Monad.RWS hiding (get, put, mapM, forM_)
 import qualified Data.ByteString.Lazy.UTF8 as LazyUTF8
 
