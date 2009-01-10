@@ -595,5 +595,6 @@ sortLines = modifyRegionB (onLines sort) =<< unitWiseRegion Line =<< getSelectRe
 
 revertB :: String -> UTCTime -> BufferM ()
 revertB s now = do
-    savingPointB $ replaceBufferContent s
+    r <- regionOfB Document
+    replaceRegionClever r s
     markSavedB now
