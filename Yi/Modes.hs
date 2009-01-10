@@ -1,10 +1,9 @@
 {-# LANGUAGE Rank2Types #-}
 module Yi.Modes (fundamentalMode,
-                 cppMode, cabalMode, srmcMode, ocamlMode,
-                 ottMode, gnuMakeMode,
-                 perlMode, pythonMode, 
-                 anyExtension, extensionOrContentsMatch,
-                 linearSyntaxMode
+                 cMode, objectiveCMode, cppMode, cabalMode,
+                 srmcMode, ocamlMode, ottMode, gnuMakeMode,
+                 perlMode, pythonMode,  anyExtension,
+                 extensionOrContentsMatch, linearSyntaxMode
                 ) where
 
 import Prelude ()
@@ -16,20 +15,22 @@ import Yi.Lexer.Alex (Tok(..), Posn(..), tokToSpan)
 import Yi.Prelude
 import Yi.Style
 import Yi.Syntax
-import qualified Yi.Lexer.Alex      as Alex
-import qualified Yi.Lexer.Cabal     as Cabal
-import qualified Yi.Lexer.Cplusplus as Cplusplus
-import qualified Yi.Lexer.GNUMake   as GNUMake
-import qualified Yi.Lexer.OCaml     as OCaml
-import qualified Yi.Lexer.Ott       as Ott
-import qualified Yi.Lexer.Perl      as Perl
-import qualified Yi.Lexer.Python    as Python
-import qualified Yi.Lexer.Srmc      as Srmc
+import qualified Yi.Lexer.Alex       as Alex
+import qualified Yi.Lexer.Cabal      as Cabal
+import qualified Yi.Lexer.C          as C
+import qualified Yi.Lexer.ObjectiveC as ObjectiveC
+import qualified Yi.Lexer.Cplusplus  as Cplusplus
+import qualified Yi.Lexer.GNUMake    as GNUMake
+import qualified Yi.Lexer.OCaml      as OCaml
+import qualified Yi.Lexer.Ott        as Ott
+import qualified Yi.Lexer.Perl       as Perl
+import qualified Yi.Lexer.Python     as Python
+import qualified Yi.Lexer.Srmc       as Srmc
 import Yi.Syntax.OnlineTree as OnlineTree
 import qualified Yi.IncrementalParse as IncrParser
 
 fundamentalMode :: Mode syntax
--- cppMode, cabalMode, srmcMode, ocamlMode, ottMode, gnuMakeMode, perlMode, pythonMode :: Mode (OnlineTree.Tree Stroke)
+-- cMode, objectiveCMode, cppMode, cabalMode, srmcMode, ocamlMode, ottMode, gnuMakeMode, perlMode, pythonMode :: Mode (OnlineTree.Tree Stroke)
 
 fundamentalMode = emptyMode
   { 
@@ -58,10 +59,21 @@ linearSyntaxMode initSt scanToken tokenToStyle
     where tokenToStroke = fmap tokenToStyle . tokToSpan
           lexer = Alex.lexScanner scanToken initSt
 
+cMode = (linearSyntaxMode C.initState C.alexScanToken id)
+  {
+    modeApplies = anyExtension ["c", "h"], 
+    modeName = "c"
+  }
+
+objectiveCMode = (linearSyntaxMode ObjectiveC.initState ObjectiveC.alexScanToken id)
+  {
+    modeApplies = anyExtension ["m"], 
+    modeName = "objective-c"
+  }
+
 cppMode = (linearSyntaxMode Cplusplus.initState Cplusplus.alexScanToken id)
   {
-    modeApplies = anyExtension ["cxx", "cpp", "C", "hxx", "H", "h", "c"], 
-    -- Treat c file as cpp files, most users will allow for that.
+    modeApplies = anyExtension ["cxx", "cpp", "hxx"], 
     modeName = "c++"
   }
 

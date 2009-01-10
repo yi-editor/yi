@@ -134,6 +134,8 @@ defaultConfig =
          , modeTable = [AnyMode Haskell.cleverMode,
                         AnyMode Latex.latexMode2,
                         AnyMode Latex.fastMode,
+                        AnyMode cMode,
+                        AnyMode objectiveCMode,
                         AnyMode cppMode,
                         AnyMode Haskell.literateMode,
                         AnyMode cabalMode,

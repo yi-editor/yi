@@ -114,6 +114,8 @@ library
         Yi.Lexer.Alex
         Yi.Lexer.Cabal
         Yi.Lexer.Compilation
+        Yi.Lexer.C
+        Yi.Lexer.ObjectiveC
         Yi.Lexer.Cplusplus
         Yi.Lexer.Haskell
         Yi.Lexer.Latex 
@@ -320,6 +322,8 @@ executable yi
 
            Yi.Lexer.Alex
            Yi.Lexer.Compilation
+           Yi.Lexer.C
+           Yi.Lexer.ObjectiveC
            Yi.Lexer.Cplusplus
            Yi.Lexer.Haskell
            Yi.Lexer.LiterateHaskell
