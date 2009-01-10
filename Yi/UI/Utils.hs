@@ -14,20 +14,16 @@ import Yi.Syntax (Span(..))
 
 -- | return index of Sol on line @n@ above current line
 indexOfSolAbove :: Int -> BufferM Point
-indexOfSolAbove n = savingPointB $ do
-    gotoLnFrom (negate n)
-    pointB
+indexOfSolAbove n = pointAt $ gotoLnFrom (negate n)
 
--- | Transform (scroll) the window so that the point is visible.
+-- | Scroll in the window so that the point is visible.
 moveWinTosShowPoint :: FBuffer -> Window -> FBuffer
 moveWinTosShowPoint b w = result
-  where (_, result) = runBuffer w b $ 
-            do ln <- curLn
-               let gap = min (ln-1) (height w `div` 2)
+  where gap = height w `div` 2
+        (_, result) = runBuffer w b $ do
                i <- indexOfSolAbove gap
                f <- fromMark <$> askMarks
                setMarkPointB f i
-               return ()
 
 indexedAnnotatedStreamB :: Point -> BufferM [(Point, Char)]
 indexedAnnotatedStreamB p = do

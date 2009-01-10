@@ -236,7 +236,7 @@ scrollAndRenderWindow cfg width (win,hasFocus) = do
         -- this is merely to recompute the bos point.
         ((pointDriven, inWindow), _) = runBuffer win b1 $ do point <- pointB
                                                              (,) <$> getA pointDriveA <*> pointInWindowB point
-        
+        -- | Move the point inside the window.
         showPoint buf = snd $ runBuffer win buf $ do r <- winRegionB
                                                      p <- pointB
                                                      moveTo $ max (regionStart r) $ min (regionEnd r - 1) $ p
