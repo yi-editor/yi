@@ -63,7 +63,7 @@ parse = pExpr True <* eof
       sym t = sym' (== t)
 
       pleaseSym c = recoverWith errT <|> sym c
-      pleaseSym' c = recoverWith errT <|> sym' c
+      -- pleaseSym' c = recoverWith errT <|> sym' c
 
       -- pExpr :: P TT [Expr TT]
       pExpr = many . pTree
@@ -107,11 +107,11 @@ getStrokes point _begin _end t0 = result
           tsEnd _ (Tok{tokT = Begin b}) t@(Tok{tokT = End e}) 
               | b /= e = ts (modStroke errorStyle) t
           tsEnd f _ t = ts f t
-          getStrokesL g = list (fmap getStrokes' g)
+          getStrokesL g = compose (fmap getStrokes' g)
           ts f t 
               | isErrorTok (tokT t) = id
               | otherwise = (f (tokenToStroke t) :)
-          list = foldr (.) id
+          compose = foldr (.) id
           result = getStrokesL t0 []
 
 

@@ -145,15 +145,15 @@ parse' toTok fromT = pBlockOf pDecl <* eof
       pRhs, pEmpty :: P TT (Tree TT)
       pRhs = KW <$> spec '=' <*> pExpr 
       pModule = KW <$> sym (`elem` fmap Reserved [Module]) <*> pExpr
-      pComment p = p <|> (Cmnt <$> some (sym isComment) <*> p)
+      -- pComment p = p <|> (Cmnt <$> some (sym isComment) <*> p)
 
 
       pTuple = Paren  <$>  spec '(' <*> pExpr  <*> pleaseSym ')'
       pBlockOf p = Block <$> (spec '<' *> (filter (not . isEmpty) <$> (p `sepBy` spec '.')) <* spec '>')  -- see HACK above 
       pBlock = pBlockOf pExpr
-      pWhereCl = KW <$> sym (== Reserved Where) <*> pBlock
+      -- pWhereCl = KW <$> sym (== Reserved Where) <*> pBlock
 
-      pDecls = many pDecl
+      -- pDecls = many pDecl
       pEmpty = pure Empty
       pDecl = pModule <|> pFun <|> pExpr' <|> pEmpty -- pComment (pBind <|> pModule)
 
@@ -198,12 +198,12 @@ getStrokes point _begin _end t0 = result
           getStrokes' (Bin l r) = getStrokes' l . getStrokes' r
           getStrokes' (KW k b) = tk k . getStrokes' b
           getStrokes' Empty = id
-          getStrokesL g = list (fmap getStrokes' g)
+          getStrokesL g = compose (fmap getStrokes' g)
           tk t | isErrorTok $ tokT t = id
                | otherwise = (ts t :)
           err t = (modStroke errorStyle (ts t) :)
           ts = tokenToStroke
-          list = foldr (.) id
+          compose = foldr (.) id
           result = getStrokes' t0 []
           -- result = getStrokesL t0 []
 
