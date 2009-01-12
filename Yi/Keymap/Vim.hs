@@ -320,7 +320,7 @@ defKeymap = Proto template
 
      -- | Reset the selection style to a character-wise mode 'Inclusive'.
      resetSelectStyle :: BufferM ()
-     resetSelectStyle = putA regionStyleA $ Inclusive
+     resetSelectStyle = putA regionStyleA Inclusive
 
      -- | Visual mode, similar to command mode
      vis_move :: VimMode
@@ -339,8 +339,8 @@ defKeymap = Proto template
 
      core_vis_mode :: RegionStyle -> VimMode
      core_vis_mode selStyle = do
-       write $ do withBuffer0' $ putA regionStyleA $ selStyle
-                  setStatus $ (msg selStyle, defaultStyle)
+       write $ do withBuffer0' $ putA regionStyleA selStyle
+                  setStatus (msg selStyle, defaultStyle)
        many (vis_move <|>
              select_any_unit (withBuffer0' . (\r -> resetSelectStyle >> extendSelectRegionB r >> leftB)))
        visual2other selStyle
@@ -438,7 +438,7 @@ defKeymap = Proto template
          where
              left  = Replicate $ CharMove Backward
              right = Replicate $ CharMove Forward
-             sol   = Replicate $ viMoveToSol
+             sol   = Replicate viMoveToSol
              eol   = ArbMove . viMoveToNthEol
 
      -- | movement *multi-chars* commands (with exclusive cut/yank semantics)
@@ -543,11 +543,11 @@ defKeymap = Proto template
      -- and prompts the user if it doesn't exist
      visitTagTable :: (TagTable -> YiM ()) -> YiM ()
      visitTagTable act = do
-       posTagTable <- withEditor $ getTags
+       posTagTable <- withEditor getTags
        -- does the tagtable exist?
        case posTagTable of
          Just tagTable -> act tagTable
-         Nothing -> do fps <- withEditor $ getTagsFileList  -- withBuffer0' $ tagsFileList <$> getDynamicB
+         Nothing -> do fps <- withEditor getTagsFileList  -- withBuffer0' $ tagsFileList <$> getDynamicB
                        efps <- io $ filterM fileExist fps
                        when (null efps) $ fail ("No existing tags file among: " ++ show fps)
                        tagTable <- io $ importTagTable (head efps)
@@ -662,14 +662,14 @@ defKeymap = Proto template
          ,([char 'P'],      savingCommandEY $ flip replicateM_ pasteBefore)
 
          ,(map char "ZZ",   const $ viWriteModified >> closeWindow)
-         ,(map char "ZQ",   const $ closeWindow)
+         ,(map char "ZQ",   const closeWindow)
          ]
          ++
          [ ([char '~'],     savingCommandB'Y $
                               (flip mapRegionB switchCaseChar =<<) .
                               flip regionOfViMove Exclusive .
                               Replicate (CharMove Forward))
-         | not $ tildeop $ v_opts $ self ]
+         | not $ tildeop $ v_opts self ]
 
      ctrlW :: Event
      ctrlW = ctrlCh 'w'
@@ -710,7 +710,7 @@ defKeymap = Proto template
      cmd_op = do
        cnt <- count
        let i = fromMaybe 1 cnt
-       choice $ [let s1 = prefix [c]
+       choice   [let s1 = prefix [c]
                      ss = nub [[c], s1]
                      onRegion = onRegion' 1
                  in
@@ -984,7 +984,7 @@ defKeymap = Proto template
       <|| (write . withBuffer0' . insrepB . eventToChar =<< anyEvent)
 
      insertNumber :: (Char -> BufferM ()) -> VimMode
-     insertNumber insrepB = do
+     insertNumber insrepB =
          choice [g [charOf id '0' '1',dec,dec] ""
                 ,g [charOf id '2' '2',charOf id '0' '5',dec] ""
                 ,g [charOf id '2' '2',charOf id '6' '9'] ""
@@ -1072,7 +1072,7 @@ defKeymap = Proto template
      ex_mode prompt = do
        -- The above ensures that the action is performed on the buffer that originated the minibuffer.
        let ex_buffer_finish = do
-             withEditor $ historyFinish
+             withEditor historyFinish
              lineString <- withBuffer' elemsB
              withEditor closeBufferAndWindowE
              ex_eval (head prompt : lineString)
@@ -1122,18 +1122,18 @@ defKeymap = Proto template
                                 "e edit r read saveas saveas! tabe tabnew tabm b buffer bd bd! bdelete bdelete! " ++
                                 "yi cabal nohlsearch suspend stop undo redo redraw reload tag .! quit quitall " ++
                                 "qall quit! quitall! qall! write wq wqall ascii xit exit next prev $ split new ball"
-           cabalComplete = exSimpleComplete $ const $ return $ cabalCmds
+           cabalComplete = exSimpleComplete $ const $ return cabalCmds
            cabalCmds = words "configure install list update upgrade fetch upload check sdist" ++
                        words "report build copy haddock clean hscolour register test help"
-           completeModes = exSimpleComplete (const $ getAllModeNames)
+           completeModes = exSimpleComplete $ const getAllModeNames
 
        historyStart
-       spawnMinibufferE prompt (const $ ex_process)
+       spawnMinibufferE prompt $ const ex_process
        return ()
 
      -- | eval an ex command to an YiM (), also appends to the ex history
      ex_eval :: String -> YiM ()
-     ex_eval cmd = do
+     ex_eval cmd =
        case cmd of
              -- regex searching
                ('/':pat) -> withEditor $ viSearch pat [] Forward
@@ -1356,7 +1356,7 @@ defKeymap = Proto template
                       printMsg $ shows c . showChar ' ' . showSeq shows w8
                                . showString ",  Hex " . showSeq showHex w8
                                . showString ",  Octal " . showSeq showOct w8 $ ""
-         where showSeq showX xs s = foldr ($) s $ intersperse (showChar ' ') $ map showX $ xs
+         where showSeq showX xs s = foldr ($) s $ intersperse (showChar ' ') $ map showX xs
 
      viFileInfo :: EditorM ()
      viFileInfo =
@@ -1454,7 +1454,7 @@ percentMove = (Inclusive, ArbMove tryGoingToMatch)
               p <- pointB
               getViMarkB '\'' >>= flip setMarkPointB p
               foundMatch <- goToMatch
-              when (not foundMatch) $ moveTo p
+              unless foundMatch $ moveTo p
           go dir a b = goUnmatchedB dir a b >> return True
           goToMatch = do
             c <- readB
