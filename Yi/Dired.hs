@@ -89,7 +89,14 @@ fnewCanonicalized f = do
                       withEditor $ stringToNewBuffer (Right f) (fromString "") -- Create new empty buffer
             tbl <- asks (modeTable . yiConfig)
             contents <- withGivenBuffer b $ elemsB
-            case fromMaybe (AnyMode emptyMode) (find (\(AnyMode m)->modeApplies m f contents) tbl) of
+            let header = take 1024 contents
+                hmode = case header =~ "\\-\\*\\- *([^ ]*) *\\-\\*\\-" of 
+                    AllTextSubmatches [_,m] ->m
+                    _ -> ""
+                Just mode = (find (\(AnyMode m)->modeName m == hmode) tbl) <|>
+                            (find (\(AnyMode m)->modeApplies m f contents) tbl) <|>
+                            Just (AnyMode emptyMode) 
+            case mode of
                 AnyMode newMode -> withGivenBuffer b $ setMode newMode
             return b
     setFileName b f
