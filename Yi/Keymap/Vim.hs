@@ -590,7 +590,7 @@ defKeymap = Proto template
      concatLinesB = savingPointB . (modifyRegionB $ skippingLast $ filter (/='\n'))
 
      onCurrentWord :: (String -> String) -> BufferM ()
-     onCurrentWord f = modifyRegionB f =<< regionOfNonEmptyB unitViWord
+     onCurrentWord f = savingPointB $ modifyRegionB f =<< regionOfNonEmptyB unitViWord
 
      onNumberInString :: (Read a, Show a, Num a) => (a -> a) -> String -> String
      onNumberInString f s = case reads s2 of
