@@ -1,11 +1,13 @@
-module Yi.Syntax.OnlineTree (Tree(..), manyToks, dropToIndex, dropToIndexBad, tokAtOrBefore) where
+module Yi.Syntax.OnlineTree (Tree(..), manyToks, dropToIndex, 
+                             dropToIndexBad, tokAtOrBefore, 
+                             manyT, sepByT, MaybeOneMore(..), TreeAtPos) where
 import Prelude ()
 import Yi.Prelude
 import Yi.IncrementalParse
 import Control.Applicative
 import Data.Traversable
 import Data.Foldable
-import Data.List (takeWhile, dropWhile, reverse)
+import Data.List (takeWhile, reverse)
 import Data.Maybe (listToMaybe)
 import Yi.Lexer.Alex
 import Yi.Buffer.Basic (Point)
@@ -14,15 +16,25 @@ import Yi.Region
 data TreeAtPos a = TreeAtPos Size (Tree a)
     deriving Show
 
-
-
--- class AST ast where
---     type Token ast
---     toksAfter :: Point -> ast -> [Token ast]
+data MaybeOneMore f x = None | OneMore x (f x)
+    deriving Show
 
 data Tree a = Node a (Tree a) (Tree a)
             | Leaf
               deriving Show
+
+instance Traversable f => Traversable (MaybeOneMore f) where
+    traverse f None = pure None
+    traverse f (OneMore x xs) = OneMore <$> f x <*> traverse f xs
+
+instance Traversable f => Foldable (MaybeOneMore f) where foldMap = foldMapDefault
+instance Traversable f => Functor (MaybeOneMore f) where fmap = fmapDefault
+
+instance Traversable TreeAtPos where
+    traverse f (TreeAtPos s t) = TreeAtPos s <$> traverse f t
+
+instance Foldable TreeAtPos where foldMap = foldMapDefault
+instance Functor TreeAtPos where fmap = fmapDefault
 
 instance Traversable Tree where
     traverse f (Node x l r) = Node <$> f x <*> traverse f l <*> traverse f r
@@ -63,13 +75,18 @@ manyToks = parse' initialLeftSize 0 maxBound
               (pure Leaf) 
          where midB = min rB (lB +~ leftSize)
 
-manyInTree :: P (Tok t) x -> P (Tok t) (TreeAtPos x)
-manyInTree p = lookNext >>= \x -> case x of
+manyT :: P (Tok t) x -> P (Tok t) (TreeAtPos x)
+manyT p = lookNext >>= \x -> case x of
     Nothing -> pure (TreeAtPos 0 Leaf)
     Just t -> let b = tokBegin t 
                in (TreeAtPos 0) <$> parse'' initialLeftSize b maxBound p
 
 
+sepByT :: P (Tok t) x -> P (Tok t) y -> P (Tok t) (MaybeOneMore TreeAtPos x)
+sepByT p q = pure None <|> OneMore <$> p <*> manyT (q *> p)
+
+
+      
 -- | Parse all the elements starting in the interval [lb, rb[
 parse'' :: Size -> Point -> Point -> P (Tok t) x -> P (Tok t) (Tree x)
 parse'' leftSize lB rB p
@@ -82,6 +99,8 @@ parse'' leftSize lB rB p
        )
        (pure Leaf) 
   where midB = min rB (lB +~ leftSize)
+
+       
 
 
 toEndo :: Tree a -> E [a]
@@ -96,7 +115,7 @@ dropHelp _leftsize Leaf _n = id
 dropHelp leftsize (Node x l r) index
     | fromIntegral index <  leftsize = (x :) . dropHelp initialLeftSize     l index . toEndo  r
     -- the head is speculatively put in the result; but it does not matter, since we
-    -- add only O(log n) elements this way.
+-- add only O(log n) elements this way.
     | otherwise         = (x :) . dropHelp (leftsize * fromIntegral factor) r  (index -~ leftsize)
 
 

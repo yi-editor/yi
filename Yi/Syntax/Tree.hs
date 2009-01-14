@@ -18,6 +18,9 @@ import Yi.Prelude
 class Foldable tree => IsTree tree where
     -- | Direct subtrees of a tree
     subtrees :: tree t -> [tree t]
+--     type Token tree
+--     toksAfter :: Point -> tree -> [Token tree]
+
 
 -- | Return all subtrees in a tree; each element of the return list
 -- contains paths to nodes. (Root is at the start of each path)
@@ -43,7 +46,6 @@ getAllSubTrees t = t : concatMap getAllSubTrees (subtrees t)
 -- | Return the 1st token of a subtree.
 getFirstElement :: Foldable t => t a -> Maybe a
 getFirstElement tree = getFirst $ foldMap (\x -> First (Just x)) tree
-
 
 -- | Return the last token of a subtree.
 getLastElement :: Foldable t => t a -> Maybe a
