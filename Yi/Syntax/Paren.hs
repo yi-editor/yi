@@ -147,7 +147,7 @@ getStrokes point _begin _end t0 = result
           ts = tokenToStroke
           result = getStrokesL t0 []
 
-compose :: [a -> a] -> a -> a
+compose :: Foldable t => t (a -> a) -> a -> a
 compose = foldr (.) id
 
 tokenToStroke :: TT -> Stroke
