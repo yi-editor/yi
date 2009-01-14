@@ -71,7 +71,7 @@ mkUI ui = Common.dummyUI
 start :: UIBoot
 start cfg ch _outCh editor = do
   liftIO $ do 
-          v <- mkVty
+          v <- mkVtyEscDelay $ configVtyEscDelay $ configUI $ cfg
           (x0,y0) <- Vty.getSize v
           sz <- newIORef (y0,x0)
           -- fork input-reading thread. important to block *thread* on getKey
