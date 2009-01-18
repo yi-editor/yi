@@ -313,6 +313,7 @@ newWindow e ui w b = mdo
     v <- drawingAreaNew
     widgetModifyFont v (Just f)
     widgetAddEvents v [Button1MotionMask]
+    widgetModifyBg v StateNormal $ mkCol $ Yi.Style.background $ baseAttributes $ configStyle $ uiConfig ui
 
     box <- if isMini w
      then do
