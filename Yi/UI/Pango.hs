@@ -97,7 +97,7 @@ start cfg ch outCh _ed = do
 
   -- rest.
   win <- windowNew
-  windowSetDefaultSize win 500 700
+  windowSetDefaultSize win 800 700
   --windowFullscreen win
   ico <- loadIcon "yi+lambda-fat.32.png"
   windowSetIcon win ico
@@ -466,6 +466,7 @@ render e ui b w _ev = do
   drawLayout drawWindow gc 0 0 layout
 
   -- paint the cursor   
+  gcSetValues gc (newGCValues { Gtk.foreground = mkCol $ Yi.Style.foreground $ baseAttributes $ configStyle $ uiConfig ui })
   drawLine drawWindow gc (round curx, round cury) (round $ curx + curw, round $ cury + curh) 
   return True
 
