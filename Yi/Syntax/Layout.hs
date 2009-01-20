@@ -49,8 +49,7 @@ layoutHandler isSpecial parens isIgnored [openT, closeT, nextT] lexSource = Scan
                      in --trace ("toks = " ++ show (fmap snd result)) $ 
                         result
   }
-    where tt = tokFromT
-          dummyAlexState = AlexState 
+    where dummyAlexState = AlexState 
               {
                stLexer = error "dummyAlexState: should not be reused for restart!",
                lookedOffset = maxBound, -- setting this to maxBound ensures nobody ever uses it.
@@ -111,6 +110,7 @@ layoutHandler isSpecial parens isIgnored [openT, closeT, nextT] lexSource = Scan
                 = (st', tok) : parse (IState levels doOpen line) tokss
                   where st = (iSt, aSt)
                         st' = (iSt, aSt {lookedOffset = max peeked (lookedOffset aSt)})
+                        tt t = Tok t 0 (tokPosn tok)
                         peeked = case tokss of 
                                    [] -> maxBound
                                    (AlexState {lookedOffset = p},_):_ -> p
@@ -120,7 +120,7 @@ layoutHandler isSpecial parens isIgnored [openT, closeT, nextT] lexSource = Scan
 
           -- finish by closing all the indent states.
           parse iSt@(IState (Indent _:levs) doOpen posn) [] 
-              = ((iSt,dummyAlexState), tt closeT) : parse (IState levs doOpen posn) []
+              = ((iSt,dummyAlexState), tokFromT closeT) : parse (IState levs doOpen posn) []
           parse (IState (Paren _:levs) doOpen posn) [] 
               = parse (IState levs doOpen posn) []
           parse (IState [] _ _) [] = []
