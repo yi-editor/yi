@@ -1,17 +1,18 @@
 -- Copyright (c) JP Bernardy 2008
 {-# OPTIONS -fglasgow-exts #-}
 module Yi.IncrementalParse (recoverWith, symbol, eof, lookNext, testNext,
-                            P, AlexState (..), scanner) where
+                            P, Parser(..), AlexState (..), scanner) where
 import Parser.Incremental hiding (run)
 import Yi.Lexer.Alex (AlexState (..))
 import Yi.Prelude
 import Prelude ()
 import Yi.Syntax
 
+type P s a = Parser s a
 
 type State st token result = (st, Process token result)
 
-scanner :: forall st token result. P token result -> Scanner st token -> Scanner (State st token result) result
+scanner :: forall st token result. Parser token result -> Scanner st token -> Scanner (State st token result) result
 scanner parser input = Scanner 
     {
       scanInit = (scanInit input, mkProcess parser),

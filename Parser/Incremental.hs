@@ -11,7 +11,8 @@
 module Parser.Incremental (Process, 
                           recoverWith, symbol, eof, lookNext, testNext, run,
                           mkProcess, profile, pushSyms, pushEof, evalL, evalR, feedZ,
-                          P) where
+                           Parser(Look)
+                          ) where
 
 import Control.Applicative
 import Data.List hiding (map, minimumBy)
@@ -28,8 +29,6 @@ second f ~(a,b) = (a,f b)
 
 data a :< b = (:<) {top :: a, _rest :: b}
 infixr :<
-
-type P s a = Parser s a
 
 -- | Parser specification
 data Parser s a where
@@ -241,19 +240,19 @@ pushEof :: forall s r. Zip s r -> Zip s r
 pushEof = feedZ Nothing
 
 -- | Make a parser into a process.
-mkProcess :: forall s a. P s a -> Process s a
+mkProcess :: forall s a. Parser s a -> Process s a
 mkProcess p = Zip [] RStop (toP p Done)
 
 -- | Run a process (in case you do not need the incremental interface)
 run :: Process s a -> [s] -> (a, [String])
 run p input = evalR $ pushEof $ pushSyms input $ p
 
-testNext :: (Maybe s -> Bool) -> P s ()
+testNext :: (Maybe s -> Bool) -> Parser s ()
 testNext f = Look (if f Nothing then ok else empty) (\s -> 
    if (f $ Just s) then ok else empty)
     where ok = pure ()
 
-lookNext :: P s (Maybe s)
+lookNext :: Parser s (Maybe s)
 lookNext = Look (pure Nothing) (\s -> pure (Just s))
 
         
@@ -261,7 +260,8 @@ lookNext = Look (pure Nothing) (\s -> pure (Just s))
 -- | Parse the same thing as the argument, but will be used only as
 -- backup. ie, it will be used only if disjuncted with a failing
 -- parser.
-recoverWith :: P s a -> P s a
+
+recoverWith :: Parser s a -> Parser s a
 recoverWith = Yuck "recoverWith"
 
 ----------------------------------------------------
