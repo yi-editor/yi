@@ -62,7 +62,7 @@ instance Show t => Show (Tok t) where
 data Posn = Posn {posnOfs :: !Point, posnLine :: !Int, posnCol :: !Int}
 
 instance Show Posn where
-    show (Posn _ l c) = "L" ++ show l ++ " " ++ "C" ++ show c
+    show (Posn o l c) = "L" ++ show l ++ " " ++ "C" ++ show c ++ "@" ++ show o
 
 startPosn :: Posn
 startPosn = Posn 0 1 0
