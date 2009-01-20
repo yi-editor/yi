@@ -1,4 +1,4 @@
-import Yi
+import Yi hiding (defaultConfig)
 import Yi.Keymap.Emacs (keymap)
 -- You can use other keymap by importing some other module:
 -- import  Yi.Keymap.Cua (keymap)
@@ -80,8 +80,10 @@ parenIns open close = do
 
 Just frontend = foldr1 (<|>) $ fmap (flip lookup availableFrontends) ["cocoa", "vty"] 
 
+defaultConfig = defaultEmacsConfig
+
 main :: IO ()
-main = yi $ defaultEmacsConfig {
+main = yi $ defaultConfig {
                            -- configInputPreprocess = escToMeta,
                            startFrontEnd = frontend,
                            modeTable = AnyMode (haskellModeHooks Haskell.cleverMode) {modeGetAnnotations = \t begin -> catMaybes $ fmap tta $ concatMap toList t}
