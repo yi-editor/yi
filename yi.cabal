@@ -253,6 +253,7 @@ executable yi
         build-depends: rosezipper >= 0.1 && < 0.2
         build-depends: time == 1.1.*
         build-depends: utf8-string >= 0.3.1
+        build-depends: random
 
         ghc-options:   -Wall -fno-warn-orphans -threaded
         -- orphans are a performance warning, but 
