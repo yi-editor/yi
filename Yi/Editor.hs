@@ -24,7 +24,7 @@ import Yi.Prelude
 import Data.Accessor.Basic (fromSetGet)
 import Data.Accessor.Template
 import Data.Binary
-import Data.List (nub, delete)
+import Data.List (nub, delete, (\\))
 import Data.Either (rights)
 import Data.Foldable (concatMap)
 import qualified Data.DelayList as DelayList
@@ -170,10 +170,12 @@ insertBuffer b = getsAndModify $
 deleteBuffer :: BufferRef -> EditorM ()
 deleteBuffer k = do
   bs <- gets bufferStack
+  ws <- getA windowsA
   case bs of
       (b0:nextB:_) -> do
           let pickOther w = if bufkey w == k then w {bufkey = other} else w
-              other = head (delete k bs)
+              visibleBuffers = fmap bufkey $ toList ws
+              other = head $ (bs \\ visibleBuffers) ++ (delete k bs)
           when (b0 == k) $ do
               -- we delete the currently selected buffer: the next buffer will become active in
               -- the main window, therefore it must be assigned a new window.
