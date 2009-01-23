@@ -152,7 +152,7 @@ import Yi.Buffer.Basic
 import Data.Time
 
 #ifdef TESTING
-import Test.QuickCheck hiding (Config)
+import Test.QuickCheck
 import Driver ()
 
 -- TODO: make this compile.

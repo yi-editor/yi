@@ -372,5 +372,5 @@ executable yi
             cpp-options:    -DTESTING
             hs-source-dirs: . tests/
             other-modules: Driver, TestSuite
-            build-depends: QuickCheck < 2
+            build-depends: QuickCheck >= 2
             build-depends: random
