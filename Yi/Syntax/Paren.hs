@@ -14,6 +14,7 @@ import Prelude ()
 import Data.Monoid
 import Data.Maybe
 import Data.List (filter, takeWhile)
+import qualified Yi.Syntax.OnlineTree as O
 
 indentScanner :: Scanner (AlexState lexState) (TT)
               -> Scanner (Yi.Syntax.Layout.State Token lexState) (TT)
@@ -36,7 +37,7 @@ type Expr t = [Tree t]
 
 data Tree t
     = Paren t (Expr t) t -- A parenthesized expression (maybe with [ ] ...)
-    | Block [Expr t]      -- A list of things (as in do; etc.)
+    | Block (O.MaybeOneMore O.TreeAtPos (Expr t))      -- A list of things separated by layout (as in do; etc.)
     | Atom t
     | Error t
       deriving Show
@@ -63,8 +64,9 @@ getIndentingSubtree roots offset line =
                    -- here (takeWhile), so that the tree is evaluated
                    -- lazily and therefore parsing it can be lazy.
                    posnOfs posn > offset, posnLine posn == line]
-    where allSubTreesPosn = [(t',posn) | root <- roots, t'@(Block ((t:_):_)) <- getAllSubTrees root, 
-                               let Just tok = getFirstElement t, let posn = tokPosn tok]
+    where allSubTreesPosn = [(t',posn) | root <- roots, t'@(Block _) <-filter (not . null . toList) (getAllSubTrees root), 
+                             let (tok:_) = toList t',
+                             let posn = tokPosn tok]
 
 
 -- | given a tree, return (first offset, number of lines).
@@ -98,6 +100,10 @@ instance Traversable Tree where
 parse :: P TT [Tree TT]
 parse = parse' tokT tokFromT
 
+lastExprOfs :: [Tree TT] -> Point
+lastExprOfs [] = 0
+lastExprOfs l = getLastOffset $ last $ l
+
 parse' :: (TT -> Token) -> (Token -> TT) -> P TT [Tree TT]
 parse' toTok fromT = pExpr <* eof
     where 
@@ -112,7 +118,7 @@ parse' toTok fromT = pExpr <* eof
       pExpr :: P TT (Expr TT)
       pExpr = many pTree
 
-      pBlocks = filter (not . null) <$> pExpr `sepBy` sym '.' -- see HACK above
+      pBlocks = pExpr `O.sepByT` sym '.' -- see HACK above
       -- also, we discard the empty statements
 
       pTree :: P TT (Tree TT)
@@ -128,12 +134,32 @@ parse' toTok fromT = pExpr <* eof
       -- note that, by construction, '<' and '>' will always be matched, so
       -- we don't try to recover errors with them.
 
+(<>) :: Monoid m => m -> m -> m
+(<>) = mappend
+
+foldMapToksAfter :: Monoid m => Point -> (TT -> m) ->Tree TT ->m
+foldMapToksAfter begin f t0 = work t0
+    where work (Atom t) = f t
+          work (Error t) = f t
+          work (Block s) = foldMap (foldMapToksAfterL begin f) (O.dropToIndex' begin lastExprOfs s)
+          work (Paren l g r) = f l <> foldMap work g <> f r
+
+foldMapToksAfterL :: Monoid m => Point -> (TT -> m) ->[Tree TT] ->m
+foldMapToksAfterL begin f = foldMap (foldMapToksAfter begin f)
+
+
+toksAfter :: Point -> Tree TT -> [TT]
+toksAfter begin t = foldMapToksAfter begin (\x ->(x:)) t []
+
+toksAfterL :: Point -> [Tree TT] -> [TT]
+toksAfterL begin t = foldMapToksAfterL begin (\x ->(x:)) t []
+
 -- TODO: (optimization) make sure we take in account the begin, so we don't return useless strokes
 getStrokes :: Point -> Point -> Point -> [Tree TT] -> [Stroke]
-getStrokes point _begin _end t0 = result 
+getStrokes point begin _end t0 = result 
     where getStrokes' (Atom t) = (ts t :)
           getStrokes' (Error t) = (modStroke errorStyle (ts t) :) -- paint in red
-          getStrokes' (Block s) = compose (fmap getStrokesL s)
+          getStrokes' (Block s) = compose (fmap getStrokesL $ O.dropToIndex' begin (lastExprOfs) s)
           getStrokes' (Paren l g r)
               | isErrorTok $ tokT r = (modStroke errorStyle (ts l) :) . getStrokesL g
               -- left paren wasn't matched: paint it in red.
@@ -146,6 +172,7 @@ getStrokes point _begin _end t0 = result
           getStrokesL = compose . fmap getStrokes'
           ts = tokenToStroke
           result = getStrokesL t0 []
+          
 
 compose :: Foldable t => t (a -> a) -> a -> a
 compose = foldr (.) id

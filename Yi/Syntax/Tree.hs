@@ -14,12 +14,11 @@ import Yi.Buffer.Basic
 import Yi.Lexer.Alex
 import Yi.Prelude
 
--- TODO: can I use uniplate?
 class Foldable tree => IsTree tree where
     -- | Direct subtrees of a tree
     subtrees :: tree t -> [tree t]
 --     type Token tree
---     toksAfter :: Point -> tree -> [Token tree]
+--    toksAfter :: Point -> tree -> [Token tree]
 
 
 -- | Return all subtrees in a tree; each element of the return list

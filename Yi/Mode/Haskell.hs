@@ -65,7 +65,7 @@ cleverMode = haskellAbstract
 
   , modeAdjustBlock = adjustBlock
   , modePrettify = cleverPrettify
-  , modeGetAnnotations = \t _begin -> catMaybes $ fmap Hask.tokenToAnnot $ allToks t
+  , modeGetAnnotations = \t begin -> catMaybes $ fmap Hask.tokenToAnnot $ toksAfterL begin t
 
  }
 
