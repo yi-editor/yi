@@ -1,4 +1,4 @@
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ScopedTypeVariables, FlexibleInstances, TypeFamilies #-}
 module Yi.Syntax.OnlineTree (Tree(..), manyToks, dropToIndex, dropToIndex',
                              dropToIndexBad, tokAtOrBefore, 
                              manyT, sepByT, MaybeOneMore(..), TreeAtPos) where
@@ -14,6 +14,7 @@ import Data.Maybe (listToMaybe)
 import Yi.Lexer.Alex
 import Yi.Buffer.Basic (Point)
 import Yi.Region
+import Yi.Syntax.Tree
 -- #ifdef TESTING
 import Test.QuickCheck 
 import Data.List (isSuffixOf, dropWhile, length, drop, take, zipWith, scanl)
@@ -59,6 +60,10 @@ instance Foldable Tree where
 instance Functor Tree where
     fmap = fmapDefault
 
+instance SubTree (TreeAtPos (Tok a)) where
+    type Element (TreeAtPos (Tok a)) = Tok a
+    foldMapToksAfter begin f t = foldMap f $ dropToIndex begin tokEnd t
+
 case_ :: (s -> Bool) -> P s a -> P s a -> P s a
 case_ f true false = Look false (\s -> if f s then true else false)
 
@@ -75,8 +80,10 @@ initialLeftSize = 1
 -- TODO: increase to a reasonable value. Since files are often > 1024 bytes, this
 -- seems a reasonable start.
 
-manyToks :: P (Tok t) (Tree (Tok t))
-manyToks = parse' initialLeftSize 0 maxBound
+manyToks = TreeAtPos 0 <$> manyToks' -- FIXME: read the current position!
+
+manyToks' :: P (Tok t) (Tree (Tok t))
+manyToks' = parse' initialLeftSize 0 maxBound
     where
        -- | Parse all the symbols starting in the interval [lb, rb[
        parse' :: Size -> Point -> Point -> P (Tok t) (Tree (Tok t))
@@ -143,7 +150,7 @@ type E a = a -> a
 dropToIndex' _index elementEnd None = []
 dropToIndex' index  elementEnd (OneMore x xs) = x : dropToIndex index elementEnd xs
 
-dropToIndex :: Show t => Point ->(t -> Point) -> TreeAtPos t -> [t]
+dropToIndex :: Point ->(t -> Point) -> TreeAtPos t -> [t]
 dropToIndex index elementEnd (TreeAtPos begin t) = --trace ("t=" ++ shapeSig t ++ " index=" ++ show index ++ " begin = " ++ show begin ) $
   dropTo elementEnd t (index - begin) 
 
@@ -169,7 +176,7 @@ xSz elEnd tree index0 = extraSz initialLeftSize tree index0 id
              params = "x="++show x ++ " ls=" ++ show leftsize ++ " ix=" ++ show index ++ " -->"
 
 
-dropTo :: forall a. Show a => (a -> Point) ->Tree a -> Point -> [a]
+dropTo :: forall a. (a -> Point) ->Tree a -> Point -> [a]
 dropTo elEnd tree index0 = dropButHelp initialLeftSize  tree index0 id []
    where dropButHelp :: Size -> Tree a -> Point -> E [a] ->E [a]
          dropButHelp _leftsize Leaf index previous =  -- we may have forgotten to insert the previous element here, so we add it.
@@ -194,19 +201,11 @@ dropTo elEnd tree index0 = dropButHelp initialLeftSize  tree index0 id []
            where lastElem t = case toReverseList t [] of
                       [] -> id
                       (y:_) -> (y :)
-                 params = "x="++show x ++ " ls=" ++ show leftsize ++ " ix=" ++ show index ++ " -->"
+                 -- params = "x="++show x ++ " ls=" ++ show leftsize ++ " ix=" ++ show index ++ " -->"
 
 toReverseList :: Tree a -> E [a]
 toReverseList Leaf = id
 toReverseList (Node a l r) = toReverseList r . toReverseList l . (a:)
-
-
-tokAtOrBefore :: Point -> Tree (Tok a) -> Maybe (Tok a)
-tokAtOrBefore p res = listToMaybe $ reverse $ toksInRegion (mkRegion 0 (p+1)) res
-
--- TODO: improve
-toksInRegion :: Region -> Tree (Tok a) -> [Tok a]
-toksInRegion reg = takeWhile (\t -> tokBegin t <= regionEnd   reg) . dropToIndexBad (regionStart reg)
 
 
 -- debug.

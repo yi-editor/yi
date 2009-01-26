@@ -5,6 +5,7 @@ import Prelude ()
 import Yi.Buffer
 import Yi.Prelude
 import Yi.Syntax
+import Yi.Syntax.Tree
 import qualified Yi.IncrementalParse as IncrParser
 import qualified Yi.Lexer.Alex as Alex
 import qualified Yi.Syntax.Latex as Latex
@@ -20,13 +21,13 @@ abstract = fundamentalMode
    modeToggleCommentSelection = toggleCommentSelectionB "% " "%"
  }
 
-fastMode :: Mode (OnlineTree.Tree Latex.TT)
+fastMode :: Mode (OnlineTree.TreeAtPos Latex.TT)
 fastMode = abstract
   {
     modeName = "fast latex",
     modeHL = ExtHL $
     mkHighlighter (IncrParser.scanner OnlineTree.manyToks . latexLexer),
-    modeGetStrokes = \t _point begin _end -> fmap Latex.tokenToStroke $ dropToIndexBad begin t
+    modeGetStrokes = tokenBasedStrokes Latex.tokenToStroke
  }
 
 -- | syntax-based latex mode

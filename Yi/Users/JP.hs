@@ -89,7 +89,7 @@ main = yi $ defaultConfig {
                            startFrontEnd = frontend,
                            modeTable = AnyMode (haskellModeHooks Haskell.cleverMode) {modeGetAnnotations = tokenBasedAnnots tta}
                                                                                         
-                                     : AnyMode (haskellModeHooks Haskell.fastMode) {modeGetAnnotations = \t begin -> catMaybes $ fmap tta $ dropToIndexBad begin t}
+                                     : AnyMode (haskellModeHooks Haskell.fastMode) {modeGetAnnotations = tokenBasedAnnots tta}
 
                                      : modeTable defaultConfig,
                            configUI = (configUI defaultConfig) 

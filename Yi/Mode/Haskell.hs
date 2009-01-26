@@ -69,14 +69,14 @@ cleverMode = haskellAbstract
 
  }
 
-fastMode :: Mode (OnlineTree.Tree TT)
+fastMode :: Mode (OnlineTree.TreeAtPos TT)
 fastMode = haskellAbstract
   {
     modeName = "fast haskell",
     modeHL = ExtHL $
     mkHighlighter (IncrParser.scanner OnlineTree.manyToks . haskellLexer),
-    modeGetStrokes = \t _point begin _end -> fmap Hask.tokenToStroke $ dropToIndexBad begin t,
-    modeGetAnnotations = \t begin -> catMaybes $ fmap Hask.tokenToAnnot $ dropToIndexBad begin t
+    modeGetStrokes = tokenBasedStrokes Hask.tokenToStroke,
+    modeGetAnnotations = tokenBasedAnnots Hask.tokenToAnnot
  }
 
 literateMode :: Mode [Paren.Tree TT]

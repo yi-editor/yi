@@ -15,6 +15,7 @@ import Yi.Lexer.Alex (Tok(..), Posn(..), tokToSpan)
 import Yi.Prelude
 import Yi.Style
 import Yi.Syntax
+import Yi.Syntax.Tree
 import qualified Yi.Lexer.Alex       as Alex
 import qualified Yi.Lexer.Cabal      as Cabal
 import qualified Yi.Lexer.C          as C
@@ -50,11 +51,11 @@ linearSyntaxMode :: forall lexerState t.
                                                           (IncrParser.AlexState lexerState,
                                                            Alex.AlexInput)))
                                                 -> (t -> StyleName)
-                                                -> Mode (Tree (Tok t))
+                                                -> Mode (TreeAtPos (Tok t))
 linearSyntaxMode initSt scanToken tokenToStyle 
     = fundamentalMode { 
                         modeHL = ExtHL $ mkHighlighter (IncrParser.scanner OnlineTree.manyToks . lexer),
-                        modeGetStrokes = \t _point begin _end -> fmap tokenToStroke $ dropToIndexBad begin t
+                        modeGetStrokes = tokenBasedStrokes tokenToStroke
                       }
     where tokenToStroke = fmap tokenToStyle . tokToSpan
           lexer = Alex.lexScanner scanToken initSt

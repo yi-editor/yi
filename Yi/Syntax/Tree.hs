@@ -7,24 +7,23 @@ module Yi.Syntax.Tree where
 -- Some of this might be replaced by a generic package
 -- such as multirec, uniplace, emgm, ...
 
-import Data.List (takeWhile)
+import Data.List (takeWhile, reverse)
 import Data.Maybe
 import Data.Monoid
 import Prelude ()
 import Yi.Buffer.Basic
 import Yi.Lexer.Alex
 import Yi.Prelude
+import Yi.Region
 
 class Foldable tree => IsTree tree where
     -- | Direct subtrees of a tree
     subtrees :: tree t -> [tree t]
---     type Token tree
---    toksAfter :: Point -> tree -> [Token tree]
 
 class SubTree tree where
     type Element tree
     foldMapToksAfter :: Monoid m => Point -> (Element tree -> m) ->tree ->m
-    
+
 
 
 instance SubTree t => SubTree [t] where
@@ -34,8 +33,17 @@ instance SubTree t => SubTree [t] where
 toksAfter :: SubTree tree =>Point -> tree -> [Element tree]
 toksAfter begin t = foldMapToksAfter begin (\x ->(x:)) t []
 
+tokAtOrBefore p res = listToMaybe $ reverse $ toksInRegion (mkRegion 0 (p+1)) res
+
+toksInRegion reg = takeWhile (\t -> tokBegin t <= regionEnd   reg) . toksAfter (regionStart reg)
+
+
 tokenBasedAnnots :: SubTree tree =>(Element tree ->Maybe a) -> tree -> Point -> [a]
 tokenBasedAnnots tta t begin = catMaybes $ fmap tta $ toksAfter begin t
+
+tokenBasedStrokes :: SubTree tree =>(Element tree -> a) -> tree -> Point -> Point -> Point -> [a]
+tokenBasedStrokes tts t _point begin _end = foldMapToksAfter begin (\x ->(tts x:)) t []
+
 
 -- | Return all subtrees in a tree; each element of the return list
 -- contains paths to nodes. (Root is at the start of each path)
