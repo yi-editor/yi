@@ -1,4 +1,4 @@
-{-# LANGUAGE ScopedTypeVariables, FlexibleInstances, TypeFamilies #-}
+{-# LANGUAGE ScopedTypeVariables, FlexibleInstances, TypeFamilies, CPP #-}
 module Yi.Syntax.OnlineTree (Tree(..), manyToks, dropToIndex, dropToIndex',
                              dropToIndexBad, tokAtOrBefore, 
                              manyT, sepByT, MaybeOneMore(..), TreeAtPos) where
@@ -15,13 +15,18 @@ import Yi.Lexer.Alex
 import Yi.Buffer.Basic (Point)
 import Yi.Region
 import Yi.Syntax.Tree
--- #ifdef TESTING
+
+#ifdef TESTING
 import Test.QuickCheck 
+#endif
+
 import Data.List (isSuffixOf, dropWhile, length, drop, take, zipWith, scanl)
 import Yi.Buffer.Basic
+
+#ifdef TESTING
 instance Arbitrary Point where
     arbitrary = Point  <$> arbitrary
--- #endif
+#endif
 
 
 data TreeAtPos a = TreeAtPos Point (Tree a)
@@ -233,6 +238,7 @@ checkTree start root = ct initialLeftSize 0 maxBound root
 
 both f (x,y) = (f x, f y)
 
+#ifdef TESTING
 -- | Generate a list of @n@ non-overlapping things
 anyList 0 = return [(0,1)]
 anyList n = do h <-choose (1,100)
@@ -241,7 +247,6 @@ anyList n = do h <-choose (1,100)
     
 shrinkList l = concat [[drop (n+1) l, take n l] | n <- shrinkIntegral n]
     where n = length l
-
 
 prop_dropBut' = 
        forAll (choose (1::Int,100)) $ \n -> 
@@ -266,3 +271,6 @@ testTree2 = toTree [(0,4),(5,9),(10,17),(18,28),(29,32),(33,36),(37,46),(47,52),
 
 
 test2 = dropTo snd (testTree2) 382 
+
+#endif
+
