@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleInstances, TypeFamilies #-}
 -- Copyright (c) JP Bernardy 2008
 -- | Parser for haskell that takes in account only parenthesis and layout
 module Yi.Syntax.Paren where
@@ -137,22 +138,14 @@ parse' toTok fromT = pExpr <* eof
 (<>) :: Monoid m => m -> m -> m
 (<>) = mappend
 
-foldMapToksAfter :: Monoid m => Point -> (TT -> m) ->Tree TT ->m
-foldMapToksAfter begin f t0 = work t0
-    where work (Atom t) = f t
-          work (Error t) = f t
-          work (Block s) = foldMap (foldMapToksAfterL begin f) (O.dropToIndex' begin lastExprOfs s)
-          work (Paren l g r) = f l <> foldMap work g <> f r
+instance SubTree (Tree TT) where
+    type Element (Tree TT) = TT
+    foldMapToksAfter begin f t0 = work t0
+        where work (Atom t) = f t
+              work (Error t) = f t
+              work (Block s) = foldMap (foldMapToksAfter begin f) (O.dropToIndex' begin lastExprOfs s)
+              work (Paren l g r) = f l <> foldMap work g <> f r
 
-foldMapToksAfterL :: Monoid m => Point -> (TT -> m) ->[Tree TT] ->m
-foldMapToksAfterL begin f = foldMap (foldMapToksAfter begin f)
-
-
-toksAfter :: Point -> Tree TT -> [TT]
-toksAfter begin t = foldMapToksAfter begin (\x ->(x:)) t []
-
-toksAfterL :: Point -> [Tree TT] -> [TT]
-toksAfterL begin t = foldMapToksAfterL begin (\x ->(x:)) t []
 
 -- TODO: (optimization) make sure we take in account the begin, so we don't return useless strokes
 getStrokes :: Point -> Point -> Point -> [Tree TT] -> [Stroke]

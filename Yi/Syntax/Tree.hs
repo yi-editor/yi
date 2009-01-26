@@ -1,3 +1,4 @@
+{-# LANGUAGE TypeFamilies #-}
 {- Copyright JP Bernardy 2008 -}
 
 -- | Generic syntax tree handling functions
@@ -20,6 +21,21 @@ class Foldable tree => IsTree tree where
 --     type Token tree
 --    toksAfter :: Point -> tree -> [Token tree]
 
+class SubTree tree where
+    type Element tree
+    foldMapToksAfter :: Monoid m => Point -> (Element tree -> m) ->tree ->m
+    
+
+
+instance SubTree t => SubTree [t] where
+    type Element [t] = Element t
+    foldMapToksAfter begin f = foldMap (foldMapToksAfter begin f)
+
+toksAfter :: SubTree tree =>Point -> tree -> [Element tree]
+toksAfter begin t = foldMapToksAfter begin (\x ->(x:)) t []
+
+tokenBasedAnnots :: SubTree tree =>(Element tree ->Maybe a) -> tree -> Point -> [a]
+tokenBasedAnnots tta t begin = catMaybes $ fmap tta $ toksAfter begin t
 
 -- | Return all subtrees in a tree; each element of the return list
 -- contains paths to nodes. (Root is at the start of each path)

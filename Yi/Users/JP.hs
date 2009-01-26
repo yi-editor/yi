@@ -82,14 +82,12 @@ Just frontend = foldr1 (<|>) $ fmap (flip lookup availableFrontends) ["cocoa", "
 
 defaultConfig = defaultEmacsConfig
 
-myAnnots t begin = catMaybes $ fmap tta $ concatMap toList t
-noAnnots = \t begin ->[]
 
 main :: IO ()
 main = yi $ defaultConfig {
                            -- configInputPreprocess = escToMeta,
                            startFrontEnd = frontend,
-                           modeTable = AnyMode (haskellModeHooks Haskell.cleverMode) {modeGetAnnotations = \t begin -> catMaybes $ fmap tta $ concatMap toList t}
+                           modeTable = AnyMode (haskellModeHooks Haskell.cleverMode) {modeGetAnnotations = tokenBasedAnnots tta}
                                                                                         
                                      : AnyMode (haskellModeHooks Haskell.fastMode) {modeGetAnnotations = \t begin -> catMaybes $ fmap tta $ dropToIndexBad begin t}
 
