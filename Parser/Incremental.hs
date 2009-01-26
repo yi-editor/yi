@@ -302,21 +302,6 @@ data Zip s output where
 instance Show (Zip s output) where
     show (Zip errs l r) = show l ++ "<>" ++ show r ++ ", errs = " ++ show errs
 
--- Move the zipper to right, and call continuation if something was pushed in
--- the left part.
-right :: (Zip s output -> Zip s output) -> (Zip s output -> Zip s output) 
-right k x@(Zip errs l rhs) = case rhs of
-    (Val a r) -> k (Zip errs (RPush a l) r)
-    (App r)  -> k (Zip errs (RApp l) r)
-    (Shift p) -> right k (Zip errs l p)
-    (Dislike err p) -> right k (Zip (err:errs) l p)
-    (Best choice _ p q) -> case choice of
-        LT -> right k (Zip errs l p)
-        GT -> right k (Zip errs l q)
-        EQ -> x -- don't know where to go: don't speculate on evaluating either branch.
-    _ -> x
-
-
 onLeft :: (forall i o. RPolish i o -> RPolish i o) -> Zip s a -> Zip s a
 onLeft f (Zip errs x y) = (Zip errs (f x) y)
 
