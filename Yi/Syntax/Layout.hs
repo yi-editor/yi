@@ -78,6 +78,14 @@ layoutHandler isSpecial parens isIgnored [openT, closeT, nextT] lexSource = Scan
             | doOpen
               = (st', tt openT) : parse (IState (Indent col:levels) (False) lastLine) toks
 
+            -- close, or prepare to close, a paren block
+            | isJust $ findParen id $ (deepestParen levels, tokT tok) -- check that the most nested paren matches.
+              = case levels of
+                      Indent _:levs -> (st',tt closeT) : parse (IState levs False lastLine) toks 
+                      -- close an indent level inside the paren block
+                      Paren _ :levs -> (st', tok)      : parse (IState levs False line)     tokss
+                      -- same as the otherwise case below.
+
             -- pop an indent block
             | col < deepestIndent levels
               = let (_lev:levs) = dropWhile isParen levels
@@ -93,14 +101,6 @@ layoutHandler isSpecial parens isIgnored [openT, closeT, nextT] lexSource = Scan
             -- open a paren block
             | isJust $ findParen fst $ (tokT tok)
               = (st', tok) : parse (IState (Paren (tokT tok):levels) False  line) tokss
-
-            -- prepare to close a paren block
-            | isJust $ findParen id $ (deepestParen levels, tokT tok) -- check that the most nested paren matches.
-              = case levels of
-                      Indent _:levs -> (st',tt closeT) : parse (IState levs False lastLine) toks 
-                      -- close an indent level inside the paren block
-                      Paren _ :levs -> (st', tok)      : parse (IState levs False line)     tokss
-                      -- same as the otherwise case below.
 
             -- prepare to open a compound
             | isSpecial (tokT tok) 
