@@ -41,6 +41,7 @@ import qualified Data.ByteString.Lazy.UTF8 as LB
 import HOC
 import Foundation (
   Unichar,NSString,NSStringClass,NSDictionary,NSRange(..),NSRangePointer,
+  NSStringMetaClass,
   length,attributeAtIndexEffectiveRange,attributesAtIndexEffectiveRange,
   attributesAtIndexLongestEffectiveRangeInRange,nsMaxRange,
   beginEditing,endEditing,setAttributesRange,haskellString,
@@ -48,6 +49,7 @@ import Foundation (
   addAttributeValueRange,addAttributesRange)
 import AppKit (
   NSTextStorage,NSTextStorageClass,string,fixesAttributesLazily,
+  NSTextStorageMetaClass,
   _NSCursor,_NSFont,replaceCharactersInRangeWithString,
   _NSParagraphStyle,defaultParagraphStyle,ibeamCursor,_NSTextStorage,
   editedRangeChangeInLength,nsTextStorageEditedAttributes,
@@ -413,8 +415,8 @@ setTextStorageBuffer ed buf storage = do
   s # setIVar _str (runBufferDummyWindow buf (streamB Forward 0))
   storage # setIVar _buffer (Just buf)
   storage # setIVar _editor ed
-  when (not $ null $ pendingUpdates buf) $ do
-    mapM_ (applyUpdate storage buf) [u | TextUpdate u <- pendingUpdates buf]
+  when (not $ null $ getVal pendingUpdatesA buf) $ do
+    mapM_ (applyUpdate storage buf) [u | TextUpdate u <- getVal pendingUpdatesA buf]
     storage # setIVar _pictureCache emptyPicture
   storage # endEditing
 

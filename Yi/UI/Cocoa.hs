@@ -8,7 +8,7 @@
 
 module Yi.UI.Cocoa (start) where
 
-import Prelude hiding (init, length, error, sequence_, elem, mapM_, mapM, concat, concatMap)
+import Prelude (Float)
 
 import Yi.UI.Cocoa.Application
 import Yi.UI.Cocoa.TextStorage
@@ -302,7 +302,7 @@ newWindow before ui win b = do
     v # setHorizontallyResizable False
     v # setVerticallyResizable False
     prompt <- newTextLine
-    prompt # setStringValue (toNSString (name b))
+    prompt # setStringValue (toNSString $ miniIdentString b)
     prompt # sizeToFit
     prompt # setAutoresizingMask nsViewNotSizable
     prompt # setBordered False
@@ -357,8 +357,8 @@ newWindow before ui win b = do
   flip (setIVar _runBuffer) v $ \act -> do
     wCache <- readIORef (windowCache ui)
     uiActionCh ui $ makeAction $ do
-      modifyWindows $ WS.focusIndex $ fromJust $ L.findIndex ((k ==) . wikey) wCache
-      withGivenBufferAndWindow0 win (keyB b) act
+      (modA windowsA) $ WS.focusIndex $ fromJust $ L.findIndex ((k ==) . wikey) wCache
+      withGivenBufferAndWindow0 win (bkey b) act
 
   return $ WinInfo 
     { wikey    = k
@@ -376,7 +376,7 @@ getSelectedRegions = do
     then singleton <$> (getSelectRegionB >>= charRegionB)
     else do
       (reg, x1, x2) <- getRectangle
-      ls <- map (fromIntegral . L.length) <$> lines' <$> readRegionB reg
+      ls <- fmap (fromIntegral . L.length) <$> lines' <$> readRegionB reg
       mapM charRegionB $ catMaybes $ snd $ L.mapAccumL
         (lineRegions (fromIntegral x1) (fromIntegral x2)) (regionStart reg) ls
   where

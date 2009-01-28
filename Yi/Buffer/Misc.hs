@@ -117,6 +117,7 @@ module Yi.Buffer.Misc
   , bufferDynamicValueA
   , shortIdentString
   , identString
+  , miniIdentString
   , identA
   , BufferId
   , file
@@ -249,6 +250,10 @@ shortIdentString prefix b = case b ^. identA of
 identString b = case b ^. identA of
     Left bName -> "*" ++ bName ++ "*"
     Right fName -> fName
+
+miniIdentString b = case b ^. identA of
+    Right _ -> "MINIFILE:"
+    Left bufName -> bufName
 
 identA = identAA . attrsA
 

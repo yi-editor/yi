@@ -40,6 +40,7 @@ import AppKit (
   textContainerOrigin,visibleRect,frame,verticalScroller,NSTextView,
   NSTextViewClass,setSelectedRangesAffinityStillSelecting,NSScrollView,
   NSScrollViewClass,tile,setFrameOrigin,performDragOperation,
+  NSTextViewMetaClass,NSScrollViewMetaClass,
   acceptableDragTypes,nsStringPboardType,stringForType,NSPasteboard,
   convertPointFromView,availableTypeFromArray,_NSPasteboard,
   typesFilterableTo,nsFilenamesPboardType,propertyListForType,

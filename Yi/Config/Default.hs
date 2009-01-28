@@ -31,7 +31,6 @@ import qualified Yi.Interact as I
 
 #ifdef FRONTEND_COCOA
 import qualified Yi.UI.Cocoa
-import Foundation (withAutoreleasePool)
 #endif
 #ifdef FRONTEND_GTK
 import qualified Yi.UI.Gtk

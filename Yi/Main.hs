@@ -22,6 +22,9 @@ import Distribution.Text (display)
 import qualified TestSuite
 #endif
 
+#ifdef FRONTEND_COCOA
+import HOC (withAutoreleasePool)
+#endif
 
 import Data.Char
 import Data.List                ( intersperse, map )

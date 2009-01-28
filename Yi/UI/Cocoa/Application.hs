@@ -55,14 +55,14 @@ import Foundation (
   NSObject,NSObjectClass,NSNotification,synchronize,_NSUserDefaults,
   standardUserDefaults,_NSArray,arrayWithObject,haskellString,
   _NSTimer,scheduledTimerWithTimeIntervalTargetSelectorUserInfoRepeats,
-  toNSString)
+  toNSString,NSObjectMetaClass)
 import AppKit (
   NSEvent,NSMenu,NSApplication,NSApplicationClass,run,sendEvent,
   applicationShouldTerminateAfterLastWindowClosed,_NSPasteboard,
   applicationWillTerminate,generalPasteboard,availableTypeFromArray,
   charactersIgnoringModifiers,declareTypesOwner,modifierFlags,
   nsKeyDown,nsStringPboardType,setStringForType,changeCount,
-  stringForType,nsFlagsChanged)
+  stringForType,nsFlagsChanged,NSApplicationMetaClass)
 
 foreign import ccall "RtsAPI.h shutdownHaskellAndExit" shutdownHaskellAndExit :: CInt -> IO ()
 
