@@ -120,7 +120,7 @@ layoutHandler isSpecial parens isIgnored [openT, closeT, nextT] lexSource = Scan
 
           -- finish by closing all the indent states.
           parse iSt@(IState (Indent _:levs) doOpen posn) [] 
-              = ((iSt,dummyAlexState), tokFromT closeT) : parse (IState levs doOpen posn) []
+              = ((iSt,dummyAlexState), Tok closeT 0 maxPosn) : parse (IState levs doOpen posn) []
           parse (IState (Paren _:levs) doOpen posn) [] 
               = parse (IState levs doOpen posn) []
           parse (IState [] _ _) [] = []

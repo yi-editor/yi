@@ -5,7 +5,7 @@ module Yi.Lexer.Alex (
                        AlexState(..), AlexInput, Stroke,
                        actionConst, actionAndModify, actionStringAndModify, actionStringConst,
                        Tok(..), tokBegin, tokEnd, tokFromT, tokRegion, 
-                       Posn(..), startPosn, moveStr, 
+                       Posn(..), startPosn, maxPosn, moveStr, 
                        ASI,
                        (+~), (~-), Size(..),
                        tokToSpan
@@ -66,6 +66,10 @@ instance Show Posn where
 
 startPosn :: Posn
 startPosn = Posn 0 1 0
+
+maxPosn :: Posn
+maxPosn = Posn (maxBound-1) (maxBound-1) 0
+
 
 moveStr :: Posn -> IndexedStr -> Posn
 moveStr posn str = foldl' moveCh posn (fmap snd str)
