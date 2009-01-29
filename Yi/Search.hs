@@ -182,7 +182,7 @@ isearchInitE :: Direction -> EditorM ()
 isearchInitE dir = do
   historyStartGen iSearch
   p <- withBuffer0 pointB
-  setRegexE emptySearch
+  resetRegexE 
   setDynamic (Isearch [("",mkRegion p p,dir)])
   printMsg "I-search: "
 
@@ -306,7 +306,7 @@ isearchEnd accept = do
   let (lastSearched,_,_) = head s
   let (_,p0,_) = last s
   historyFinishGen iSearch (return lastSearched)
-  setRegexE emptySearch
+  resetRegexE
   if accept 
      then do withBuffer0 $ setSelectionMarkPointB $ regionStart p0 
              printMsg "Quit"
