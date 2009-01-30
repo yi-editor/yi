@@ -91,6 +91,7 @@ symbolAt p x = tokBegin x == p
 
 manyToks = manyToks' tokBegin
 
+-- TODO: scrap in favour of the below.
 manyToks' :: (a -> Point) -> P a (TreeAtPos a)
 manyToks' tokBegin = curPos >>= \p -> TreeAtPos p <$> topLvl p initialSize
     where 
@@ -98,15 +99,35 @@ manyToks' tokBegin = curPos >>= \p -> TreeAtPos p <$> topLvl p initialSize
             Nothing -> pure []
             Just _ -> (:) <$> subTree start size <*> topLvl (start +~ size) (2 * size)
 
-        subTree start 1 = lookNext >>= \ms ->case ms of
-            Nothing -> pure Tip
-            Just s -> if tokBegin s == start 
+        subTree start 1 = curPos >>= \p ->if p == start 
               then (Leaf <$> symbol (const True))
               else (pure Tip)
-        subTree start size = lookNext >>= \ms ->
-            case ms of 
-                Nothing -> pure Tip
-                Just s ->if tokBegin s >= end then pure Tip else Bin <$> subTree startL subSize <*> subTree startR subSize
+        subTree start size = case_ (\s -> tokBegin s < end)
+               (Bin <$> subTree startL subSize <*> subTree startR subSize)
+               (pure Tip)
+            where startL = start 
+                  startR = startL +~ subSize
+                  end = start +~ size
+                  subSize = size `div` 2
+
+        curPos = tB <$> lookNext
+            where tB Nothing = maxBound
+                  tB (Just x) = tokBegin x
+
+
+manyT' :: (a -> Point) -> P a b -> P a (TreeAtPos b)
+manyT' tokBegin element = curPos >>= \p -> TreeAtPos p <$> topLvl p initialSize
+    where 
+        topLvl start size = case_ (\s ->tokBegin s >= start)
+                  ((:) <$> subTree start size <*> topLvl (start +~ size) (2 * size))
+                  (pure [])
+
+        subTree start 1 = curPos >>= \p ->if p == start 
+              then (Leaf <$> element  <|> pure Tip)
+              else (pure Tip)
+        subTree start size = case_ (\s ->tokBegin s >= start && tokBegin s < end)
+               (Bin <$> subTree startL subSize <*> subTree startR subSize)
+               (pure Tip)
             where startL = start 
                   startR = startL +~ subSize
                   end = start +~ size
@@ -124,10 +145,12 @@ curPos = tB <$> lookNext
     where tB Nothing = maxBound
           tB (Just x) = tokBegin x
 
-manyT :: P (Tok t) x -> P (Tok t) (TreeAtPos x)
-manyT p = lookNext >>= \x -> case x of
+manyT0 :: P (Tok t) x -> P (Tok t) (TreeAtPos x)
+manyT0 p = lookNext >>= \x -> case x of
     Nothing -> pure (TreeAtPos maxBound [])
     Just t -> fmap snd . toTree (tokBegin t) fst <$> many ((,) <$> curPos <*> p)
+
+manyT = manyT' tokBegin
 
 sepByT :: Show t =>P (Tok t) x -> P (Tok t) y -> P (Tok t) (MaybeOneMore TreeAtPos x)
 sepByT p q = pure None <|> OneMore <$> p <*> manyT (q *> p)
@@ -182,28 +205,28 @@ dropToBut' index  (OneMore x xs) = x : dropToBut index xs
 
 
 selectTo :: Monoid m =>Bool -> (a -> m) -> Point ->TreeAtPos a -> m 
-selectTo toTheLeft f index (TreeAtPos point0 input) = trace ("selectTo: start=" ++ show point0) $
-           mconcat $ fmap help0 $ zip3 sizes starts' input
+selectTo toTheLeft f index (TreeAtPos point0 input) = -- trace ("selectTo: start=" ++ show point0) $
+           mconcat $ fmap help $ zip3 sizes starts' input
     where help (size,start,t)
             | index <= start = before f t
             | end <= index = after f t
             | otherwise = case t of
-                 Bin l r -> help0 (subSize, startL, l) <> help0 (subSize, startR, r)
+                 Bin l r -> help (subSize, startL, l) <> help (subSize, startR, r)
                  _ -> mempty
              where
                    startL = start 
                    startR = startL +~ subSize
                    end = start +~ size
                    subSize = size `div` 2
-          help0 x@(size,start,t) = trace ("help0 start=" ++ show start ++ " index=" ++ show index) $ help x
+          -- help0 x@(size,start,t) = trace ("help0 start=" ++ show start ++ " index=" ++ show index) $ help x
           starts' = preFilter $ fmap (point0 +) starts
           (preFilter,before,after) = if toTheLeft then (takeWhile (< index),\_ _ ->mempty,foldMap)
                                                   else (id,                 foldMap,\_ _ ->mempty)
 
 
+#ifdef TESTING
 both f (x,y) = (f x, f y)
 
-#ifdef TESTING
 -- | Generate a list of @n@ non-overlapping things
 anyList 0 = return [(0,1)]
 anyList n = do h <-choose (1,100)
