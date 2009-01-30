@@ -13,24 +13,41 @@ import Yi.Style
 import qualified Yi.Style as Style
 }
 
-main :-
+@changeType = [^$white]+$white*
+
+svnCommitMessage :-
 
 <0>
 {
+    ^"--".*"--"$
+        { m (const $ HlCommitSummary) Style.commentStyle }
     $white
         { c Style.defaultStyle }
     .
         { c Style.defaultStyle }
 }
 
+<commitSummary>
 {
-data HlState = CommitMessage
+    ^@changeType
+        { c Style.keywordStyle }
+    $white
+        { c Style.commentStyle }
+    .
+        { c Style.commentStyle }
+}
+
+{
+data HlState = 
+    HlCommitMessage
+    | HlCommitSummary
     deriving (Show)
 
-stateToInit CommitMessage = 0
+stateToInit HlCommitMessage = 0
+stateToInit HlCommitSummary = commitSummary
 
 initState :: HlState
-initState = CommitMessage
+initState = HlCommitMessage
 
 type Token = StyleName
 #include "alex.hsinc"
