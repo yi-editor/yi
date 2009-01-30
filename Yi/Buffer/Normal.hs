@@ -319,6 +319,8 @@ transformB f unit direction = do
 deleteB :: TextUnit -> Direction -> BufferM ()
 deleteB unit dir = deleteRegionB =<< regionOfPartNonEmptyB unit dir
 
+-- | What would be the point after doing the given action?
+-- The argument must not modify the buffer.
 indexAfterB :: BufferM a -> BufferM Point
 indexAfterB f = savingPointB (f >> pointB)
 
