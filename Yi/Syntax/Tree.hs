@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeFamilies, NoMonomorphismRestriction #-}
 {- Copyright JP Bernardy 2008 -}
 
 -- | Generic syntax tree handling functions
@@ -23,12 +23,19 @@ class Foldable tree => IsTree tree where
 class SubTree tree where
     type Element tree
     foldMapToksAfter :: Monoid m => Point -> (Element tree -> m) ->tree ->m
+    foldMapToks :: Monoid m => (Element tree -> m) ->tree ->m
 
+
+instance SubTree (Tok a) where
+    type Element (Tok a) = Tok a
+    foldMapToksAfter _begin f t = f t
+    foldMapToks f t = f t
 
 
 instance SubTree t => SubTree [t] where
     type Element [t] = Element t
     foldMapToksAfter begin f = foldMap (foldMapToksAfter begin f)
+    foldMapToks f = foldMap (foldMapToks f)
 
 toksAfter :: SubTree tree =>Point -> tree -> [Element tree]
 toksAfter begin t = foldMapToksAfter begin (\x ->(x:)) t []
@@ -70,6 +77,9 @@ getAllSubTrees t = t : concatMap getAllSubTrees (subtrees t)
 getFirstElement :: Foldable t => t a -> Maybe a
 getFirstElement tree = getFirst $ foldMap (\x -> First (Just x)) tree
 
+getFirstTok = getFirst . foldMapToks (First . Just) 
+getLastTok = getLast . foldMapToks (Last . Just) 
+
 -- | Return the last token of a subtree.
 getLastElement :: Foldable t => t a -> Maybe a
 getLastElement tree = getLast $ foldMap (\x -> Last (Just x)) tree
@@ -78,6 +88,8 @@ getLastElement tree = getLast $ foldMap (\x -> Last (Just x)) tree
 getLastOffset :: (Foldable t) => t (Tok tok) -> Point
 getLastOffset = maybe 0 tokEnd . getLastElement
 
+getFirstOffset :: (Element a ~ Tok t, SubTree a) =>a -> Point
+getFirstOffset = maybe 0 tokBegin . getFirstTok
 
 -- | Given a tree, return (first offset, number of lines).
 getSubtreeSpan :: (Foldable tree) => tree (Tok t) -> (Point, Int)
