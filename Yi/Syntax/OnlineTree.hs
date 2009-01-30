@@ -99,12 +99,12 @@ manyToks' tokBegin = curPos >>= \p -> TreeAtPos p <$> topLvl p initialSize
             Nothing -> pure []
             Just _ -> (:) <$> subTree start size <*> topLvl (start +~ size) (2 * size)
 
-        subTree start 1 = curPos >>= \p ->if p == start 
-              then (Leaf <$> symbol (const True))
-              else (pure Tip)
+        subTree start 1 = case_ (\s ->tokBegin s == start)
+              (Leaf <$> symbol (const True))
+              (pure Tip)
         subTree start size = case_ (\s -> tokBegin s < end)
-               (Bin <$> subTree startL subSize <*> subTree startR subSize)
-               (pure Tip)
+              (Bin <$> subTree startL subSize <*> subTree startR subSize)
+              (pure Tip)
             where startL = start 
                   startR = startL +~ subSize
                   end = start +~ size
@@ -122,9 +122,9 @@ manyT' tokBegin element = curPos >>= \p -> TreeAtPos p <$> topLvl p initialSize
                   ((:) <$> subTree start size <*> topLvl (start +~ size) (2 * size))
                   (pure [])
 
-        subTree start 1 = curPos >>= \p ->if p == start 
-              then (Leaf <$> element  <|> pure Tip)
-              else (pure Tip)
+        subTree start 1 = case_ (\s ->tokBegin s == start)
+              (Leaf <$> element  <|> pure Tip)
+              (pure Tip)
         subTree start size = case_ (\s ->tokBegin s >= start && tokBegin s < end)
                (Bin <$> subTree startL subSize <*> subTree startR subSize)
                (pure Tip)
@@ -153,7 +153,7 @@ manyT0 p = lookNext >>= \x -> case x of
 manyT = manyT' tokBegin
 
 sepByT :: Show t =>P (Tok t) x -> P (Tok t) y -> P (Tok t) (MaybeOneMore TreeAtPos x)
-sepByT p q = pure None <|> OneMore <$> p <*> manyT (q *> p)
+sepByT p q = pure None <|> OneMore <$> p <*> manyT0 (q *> p)
 
 
 initialSize = 1
@@ -253,14 +253,25 @@ prop_dropToBut =
                   dropWhile ((<= i) . snd) l `isSuffixOf` dropToBut i (toTree 0 fst l)
 
 
+prop_parse = 
+       forAll (choose (1::Int,100)) $ \n -> 
+       forAllShrink (anyList n) shrinkList $ \l0 ->not (null l0) ==>
+              let m = snd $ last l0; l = fmap (both Point) l0 in
+                  forAllShrink (choose (0,m)) shrinkIntegral $ \i0 ->let i = Point i0 in
+                                                     
+                  dropWhile ((<= i) . snd) l `isSuffixOf` (dropToBut i $ fst $ run (mkProcess $ manyT' fst (symbol $ const True) <* eof) $ l)
 
-qc = quickCheck prop_dropToBut
+
+
+qc = quickCheck prop_parse
 
 box x = [x]
 
 
 t1 = toTree 0 fst $ [(408,420),(421,499)] ++ undefined
 t2 = dropTo box 440 t1
+
+t3 = dropToBut 5 $ fst $ run (mkProcess $ manyT' id (symbol $ const True) <* eof) $ [1..10]
 
 #endif
 
