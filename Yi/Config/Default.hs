@@ -145,6 +145,7 @@ defaultConfig =
                         AnyMode perlMode,
                         AnyMode pythonMode,
                         AnyMode ireaderMode,
+                        AnyMode svnCommitMode,
                         AnyMode fundamentalMode]
          , debugMode = False
          , configKillringAccumulate = False

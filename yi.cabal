@@ -126,6 +126,7 @@ library
         Yi.Lexer.Perl
         Yi.Lexer.Python
         Yi.Lexer.Srmc
+        Yi.Lexer.SVNCommit
         Yi.Main
         Yi.MiniBuffer
         Yi.Misc
@@ -336,6 +337,7 @@ executable yi
            Yi.Lexer.Ott
            Yi.Lexer.Perl
            Yi.Lexer.Python
+           Yi.Lexer.SVNCommit
 
            Yi.Syntax
            Yi.Syntax.Layout

@@ -3,10 +3,12 @@ module Yi.Modes (fundamentalMode,
                  cMode, objectiveCMode, cppMode, cabalMode,
                  srmcMode, ocamlMode, ottMode, gnuMakeMode,
                  perlMode, pythonMode,  anyExtension,
-                 extensionOrContentsMatch, linearSyntaxMode
+                 extensionOrContentsMatch, linearSyntaxMode,
+                 svnCommitMode
                 ) where
 
 import Prelude ()
+import Data.List ( isPrefixOf )
 import System.FilePath
 import Text.Regex.TDFA ((=~))
 
@@ -27,6 +29,7 @@ import qualified Yi.Lexer.Ott        as Ott
 import qualified Yi.Lexer.Perl       as Perl
 import qualified Yi.Lexer.Python     as Python
 import qualified Yi.Lexer.Srmc       as Srmc
+import qualified Yi.Lexer.SVNCommit  as SVNCommit
 import Yi.Syntax.OnlineTree as OnlineTree
 import qualified Yi.IncrementalParse as IncrParser
 
@@ -90,6 +93,12 @@ srmcMode = (linearSyntaxMode Srmc.initState Srmc.alexScanToken id)
     modeName = "srmc",
     modeApplies = anyExtension ["pepa", -- pepa is a subset of srmc    
                                 "srmc"]
+  }
+
+svnCommitMode = (linearSyntaxMode SVNCommit.initState SVNCommit.alexScanToken id)
+  {
+    modeName = "svn-commit",
+    modeApplies = \path _contents -> isPrefixOf "svn-commit" path && extensionMatches ["tmp"] path 
   }
 
 ocamlMode = (linearSyntaxMode OCaml.initState OCaml.alexScanToken OCaml.tokenToStyle)
