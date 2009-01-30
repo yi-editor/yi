@@ -1,4 +1,5 @@
 -- -*- haskell -*-
+-- Maintainer: Corey O'Connor
 {
 {-# OPTIONS -w  #-}
 module Yi.Lexer.SVNCommit

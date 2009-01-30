@@ -1,7 +1,7 @@
 -- -*- haskell -*- 
 -- Simple lexer for Perl source files.
 -- This started as a copy of the C++ lexer so some bits and pieces don't make sense for Perl.
-
+-- Maintainer: Corey O'Connor
 {
 {-# OPTIONS -w  #-}
 module Yi.Lexer.Perl ( initState, alexScanToken ) where

@@ -2,7 +2,7 @@
 -- Lexer for Makefiles with consideration of GNU extensions 
 -- This is based off the syntax as described in the GNU Make manual:
 -- http://www.gnu.org/software/make/manual/make.html
---
+-- Maintainer: Corey O'Connor
 {
 {-# OPTIONS -w  #-}
 module Yi.Lexer.GNUMake
