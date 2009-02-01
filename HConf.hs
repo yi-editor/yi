@@ -56,9 +56,9 @@ import System.IO
 import System.Info
 #ifndef mingw32_HOST_OS
 #ifdef darwin_HOST_OS
-import System.Posix.Process 
-            (executeFile, 
-             getProcessStatus, 
+import System.Posix.Process
+            (executeFile,
+             getProcessStatus,
              forkProcess,
              exitImmediately)
 #else
@@ -70,7 +70,7 @@ import System.Process
 import System.Directory
 import System.Exit
 import System.Environment
-import System.Console.GetOpt 
+import System.Console.GetOpt
 import System.FilePath ((</>), takeDirectory)
 import qualified GHC.Paths
 import HConf.Paths
@@ -90,7 +90,7 @@ data HConfParams config state = HConfParams
     -- ^ how to recover state from a status file
  , saveState            :: FilePath -> state -> IO ()
     -- ^ how to write state to a status file
- , showErrorsInConf     :: (String -> config -> config) 
+ , showErrorsInConf     :: (String -> config -> config)
     -- ^ how to report compilation errors to the user (the resulting
     --   configuration will be passed to the main function)
  , realMain             :: config -> state -> IO ()
@@ -151,7 +151,7 @@ getGhcFlags :: IO [String]
 getGhcFlags = do
         args <- getArgs
         let (opt_flags, _, _) = getOpt Permute [ghcFlagsDescription] args
-        return . shellWords . intercalate " " . map (\(GhcFlags x) -> x) 
+        return . shellWords . intercalate " " . map (\(GhcFlags x) -> x)
                $ opt_flags
 
 getHConf :: HConfParams config state -- ^ general parameters
@@ -283,15 +283,15 @@ recompile HConfParams {projectName = app, ghcFlags = flags} force = do
 
 -- Call @recompile False@
 
--- If there is a slave to run, this function does not return. 
+-- If there is a slave to run, this function does not return.
 
 -- If there are errors and the function returns, they are returned in a string;
--- If there are errors and the slave is run, we pass the error file as an argument to it. 
+-- If there are errors and the slave is run, we pass the error file as an argument to it.
 
 buildLaunch :: HConfParams config state -> IO (Maybe String)
 buildLaunch params@HConfParams{ projectName = app } = do
     haveConfigFile <- doesFileExist =<< getConfigFile app
-    -- if there is no config file, then we return immediately /with no error/. This is 
+    -- if there is no config file, then we return immediately /with no error/. This is
     -- a normal situation: the user has not produced a config file.
     if not haveConfigFile then return Nothing else do
 #ifndef mingw32_HOST_OS
@@ -303,7 +303,7 @@ buildLaunch params@HConfParams{ projectName = app } = do
                Just _ -> do errFile <- getErrorsFile app
                             return (args ++ [errFile])
     putStrLn $ "Launching custom " ++ app ++ ": " ++ show executable_path
-    let launchFailed = return $ Just 
+    let launchFailed = return $ Just
          ("Custom " ++ app
           ++ " (" ++ show executable_path ++ ") "
           ++ "could not be launched!\n") +++ errMsg
@@ -324,7 +324,7 @@ buildLaunch params@HConfParams{ projectName = app } = do
     child_status <- getProcessStatus True False child_pid
     case child_status of
         Nothing -> launchFailed
-        Just _ -> do 
+        Just _ -> do
             exitImmediately ExitSuccess
             return Nothing
 # endif
