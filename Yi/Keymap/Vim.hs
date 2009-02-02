@@ -229,9 +229,9 @@ viCommandOfViInsertion ins@(ViIns mayFirstAct before _ _ after) = do
   text <- viInsText ins
   return $ flip ArbCmd 1 $ case mayFirstAct of
     Just firstAct -> \n->
-      replicateM_ n firstAct >> withBuffer0 (before >> insertN text >> after)
+      replicateM_ n firstAct >> withBuffer0' (before >> insertN text >> after)
     Nothing ->
-      flip replicateM_ $ withBuffer0 $ before >> insertN text >> after
+      flip replicateM_ $ withBuffer0' $ before >> insertN text >> after
 
 commitLastInsertionE :: EditorM ()
 commitLastInsertionE = do mins <- withBuffer0 $ getA currentViInsertionA
