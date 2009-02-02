@@ -201,11 +201,10 @@ perlHighlighterRules :-
             \str _ -> (HlInSubstRegex "#", operatorStyle)
         }
 
-    -- Heredocs are kinda like interpolating strings...
-    "<<" @heredocId
-    { 
-        \str _ -> (HlInHeredoc (drop 2 $ fmap snd str), operatorStyle)
-    }
+    -- In order to handle the various interpolation forms of a heredoc the lexer transitions to a
+    -- state devoted to just collecting the heredoc identifier. 
+    "<<" 
+        { \str _ -> (HlStartCollectHeredocIdent, operatorStyle) }
 
     -- Chunks that are handles as non-interpolating strings.
     \' 
@@ -282,6 +281,113 @@ perlHighlighterRules :-
     .   { c stringStyle }
 }
 
+-- The << operator can be followed by 
+-- Any number of spaces up to a ' or ". In which case the identifier is the sequence of characters
+-- collected until the matching quote. The heredoc is then processed in an interpolating context if
+-- the delimiter was " and a non-interpolating context if the delimiter was '
+-- Any number of spaces followed by a non-quote and non-identifier character indicates the start of
+-- a heredoc with an empty line as the identifier.
+-- An identifier character following the << operator is the start of a heredoc identifier to be
+-- processed in an interpolating context.
+<startCollectHeredocIdent>
+{
+    $white 
+        { c defaultStyle }
+    \'
+        { m (const $ HlCollectHeredocIdent "" (Just '\'')) operatorStyle }
+    \"
+        { m (const $ HlCollectHeredocIdent "" (Just '\"')) operatorStyle }
+    @heredocId
+        { 
+            \indexedStr _
+                -> ( HlCollectHeredocIdent (fmap snd indexedStr) Nothing
+                   , variableStyle
+                   )
+        }
+    .
+        {
+            m (const $ HlInInterpHeredocNoIdent) stringStyle
+        }
+    -- Although any HEREDOC identifier followed immediately by a newline is likely a syntax error we should still recognize them as 
+    -- HEREDOCs. 
+    \n
+        {
+            m (const $ HlInInterpHeredocNoIdent) stringStyle
+        }
+}
+
+-- A heredoc identifier is collected until:
+-- If there is no defined deliminating quote then the next non-identifier character
+-- If there is a defined deliminating quote then the next character matching the specified
+-- character.
+-- TODO: Nested heredoc declarations
+<collectHeredocIdent>
+{
+    @heredocId 
+        {
+            \indexedStr (HlCollectHeredocIdent ident delim) 
+                -> ( HlCollectHeredocIdent (ident ++ fmap snd indexedStr) delim
+                   , variableStyle
+                   )
+        }
+    .
+        {
+            \indexedStr state
+                ->  let c = head $ fmap snd indexedStr
+                    in case state of
+                        HlCollectHeredocIdent ident Nothing -> (HlInInterpHeredoc ident, stringStyle)
+                        HlCollectHeredocIdent ident (Just '\'') | c == '\'' -> (HlInHeredoc ident, operatorStyle)
+                                                                | otherwise -> (HlCollectHeredocIdent ident (Just '\''), variableStyle)
+                        HlCollectHeredocIdent ident (Just '"')  | c == '"' -> (HlInInterpHeredoc ident, operatorStyle)
+                                                                | otherwise -> (HlCollectHeredocIdent ident (Just '"'), variableStyle)
+        }
+    -- Although any HEREDOC identifier followed immediately by a newline is likely a syntax error we should still recognize them as 
+    -- HEREDOCs. 
+    \n
+        { 
+            \indexedStr state
+                ->  let c = head $ fmap snd indexedStr
+                    in case state of
+                        HlCollectHeredocIdent ident Nothing -> (HlInInterpHeredoc ident, stringStyle)
+                        HlCollectHeredocIdent ident (Just '\'') | c == '\'' -> (HlInHeredoc ident, operatorStyle)
+                                                                | otherwise -> (HlCollectHeredocIdent ident (Just '\''), variableStyle)
+                        HlCollectHeredocIdent ident (Just '"')  | c == '"' -> (HlInInterpHeredoc ident, operatorStyle)
+                                                                | otherwise -> (HlCollectHeredocIdent ident (Just '"'), variableStyle)
+        }
+}
+
+<interpHeredocNoIdent>
+{
+    \n\n
+        {
+            m fromQuoteState defaultStyle
+        }
+    $white { c defaultStyle }
+    @varTypeOp
+        { m (\s -> HlInVariable 0 s) (const $ withFg darkcyan) }
+    .   { c stringStyle }
+}
+
+<interpHeredoc>
+{
+    ^(@heredocId\n)/
+        {
+            \state preInput _ _ ->
+                case state of
+                    HlInInterpHeredoc tag ->
+                        let inputText = take (length tag) $ alexCollectChar preInput
+                        in if (inputText == tag) then True else False
+                    _ -> False
+        }
+        {
+            m fromQuoteState operatorStyle
+        }
+    $white+ { c defaultStyle }
+    @varTypeOp
+        { m (\s -> HlInVariable 0 s) (const $ withFg darkcyan) }
+    .   { c stringStyle }
+}
+
 <heredoc>
 {
     ^(@heredocId\n)/
@@ -297,8 +403,6 @@ perlHighlighterRules :-
             m fromQuoteState operatorStyle
         }
     $white+ { c defaultStyle }
-    @varTypeOp
-        { m (\s -> HlInVariable 0 s) (const $ withFg darkcyan) }
     .   { c stringStyle }
 }
 
@@ -355,14 +459,19 @@ perlHighlighterRules :-
 data HlState = 
     HlInCode
     -- Boolean indicating if the interpolated quote is a regex and deliminator of quote.
-    | HlInInterpString Bool String
-    | HlInString Char
-    | HlInHeredoc String
+    | HlInInterpString !Bool !String
+    | HlInString !Char
+    | HlStartCollectHeredocIdent
+    | HlCollectHeredocIdent !String !(Maybe Char)
+    | HlInInterpHeredoc !String
+    | HlInInterpHeredocNoIdent
+    | HlInHeredoc !String
     | HlInPerldoc
-    | HlInSubstRegex String
+    | HlInSubstRegex !String
     -- Count of nested {} and the state to transition to once variable is done.
-    | HlInVariable Int HlState
+    | HlInVariable !Int !HlState
     deriving Show
+
 fromQuoteState (HlInSubstRegex s) = HlInInterpString True s
 fromQuoteState _ = HlInCode
 
@@ -381,6 +490,10 @@ type Token = StyleName
 stateToInit HlInCode = 0
 stateToInit (HlInInterpString _ _) = interpString
 stateToInit (HlInString _) = string
+stateToInit HlStartCollectHeredocIdent = startCollectHeredocIdent
+stateToInit (HlCollectHeredocIdent _ _) = collectHeredocIdent
+stateToInit (HlInInterpHeredoc _) = interpHeredoc
+stateToInit HlInInterpHeredocNoIdent = interpHeredocNoIdent
 stateToInit (HlInHeredoc _) = heredoc
 stateToInit HlInPerldoc = perldoc
 stateToInit (HlInSubstRegex _) = interpString
