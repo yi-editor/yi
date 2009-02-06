@@ -259,16 +259,12 @@ recompile HConfParams {projectName = app, ghcFlags = flags} force = do
             -- note that since we checked for recompilation ourselves,
             -- we disable ghc recompilaton checks.
             flags' <- getGhcFlags
-            let allFlags = ["--make", app ++ ".hs", "-i",
+            let allFlags = ["--make", app ++ ".hs", "-i", "-optl-s",
                              "-fforce-recomp", "-v0", "-o",binn,"-threaded"]
                             ++ flags ++ flags'
             waitForProcess =<< runProcess GHC.Paths.ghc allFlags (Just dir)
                                           Nothing Nothing Nothing (Just h)
             -- note that we use the ghc executable used to build Yi (through GHC.Paths).
-        -- Run 'strip' on the compiled binary to save us 10 megabytes or so. We don't care
-        -- about exit status - if it succeeds great, else oh well.
-        -- We could've added "-optl-s" to GHC-options, but that is GNU ld-only.
-        runProcess "strip" [binn] (Just dir) Nothing Nothing Nothing Nothing
 
         -- now, if GHC fails, return the error message that was written to 'err':
         if status /= ExitSuccess
