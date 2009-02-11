@@ -3,6 +3,7 @@ module Yi.Mode.Interactive where
 import Data.List (elemIndex)
 import Prelude ()
 import Yi.Buffer.Misc (modeNeverApplies)
+import Yi.Modes
 import Yi.Core
 import Yi.History
 import Yi.Lexer.Alex (Tok(..))
@@ -70,11 +71,12 @@ interactive :: String -> [String] -> YiM BufferRef
 interactive cmd args = do
     b <- startSubprocess cmd args (const $ return ())
     withEditor $ interactHistoryStart
+    mode' <- lookupMode $ AnyMode mode
     withBuffer $ do m1 <- getMarkB (Just "StdERR")
                     m2 <- getMarkB (Just "StdOUT")
                     modifyMarkB m1 (\v -> v {markGravity = Backward})
                     modifyMarkB m2 (\v -> v {markGravity = Backward})
-                    setMode mode
+                    setAnyMode mode'
     return b
 
 -- | Send the type command to the process

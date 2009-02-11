@@ -4,11 +4,13 @@ module Yi.Modes (fundamentalMode,
                  srmcMode, ocamlMode, ottMode, gnuMakeMode,
                  perlMode, pythonMode,  anyExtension,
                  extensionOrContentsMatch, linearSyntaxMode,
-                 svnCommitMode
+                 svnCommitMode, hookModes, applyModeHooks,
+                 lookupMode
                 ) where
 
 import Prelude ()
-import Data.List ( isPrefixOf )
+import Data.List ( isPrefixOf, map, filter )
+import Data.Maybe
 import System.FilePath
 import Text.Regex.TDFA ((=~))
 
@@ -18,6 +20,8 @@ import Yi.Prelude
 import Yi.Style
 import Yi.Syntax
 import Yi.Syntax.Tree
+import Yi.Keymap
+import Yi.MiniBuffer
 import qualified Yi.Lexer.Alex       as Alex
 import qualified Yi.Lexer.Cabal      as Cabal
 import qualified Yi.Lexer.C          as C
@@ -162,3 +166,20 @@ extensionOrContentsMatch :: [String] -> String -> FilePath -> String -> Bool
 extensionOrContentsMatch extensions pattern fileName contents
     = extensionMatches extensions fileName || contentsMatch
     where contentsMatch = contents =~ pattern :: Bool
+
+-- | Adds a hook to all matching hooks in a list
+hookModes :: (AnyMode -> Bool) -> BufferM () -> [AnyMode] -> [AnyMode]
+hookModes p h = map $ \am@(AnyMode m) -> if p am
+                                            then AnyMode $ m { modeOnLoad = modeOnLoad m >> h }
+                                            else am
+
+-- | Apply a list of mode hooks to a list of AnyModes
+applyModeHooks :: [(AnyMode -> Bool, BufferM ())] -> [AnyMode] -> [AnyMode]
+applyModeHooks hs ms = flip map ms $ \am -> case filter (($am) . fst) hs of
+    [] -> am
+    ls -> flip onMode am $ \m -> m { modeOnLoad = foldr (>>) (modeOnLoad m) (map snd ls) }
+
+-- | Check whether a mode of the same name is already in modeTable and returns the
+-- original mode, if it isn't the case.
+lookupMode :: AnyMode -> YiM AnyMode
+lookupMode am@(AnyMode m) = fromMaybe am <$> anyModeByNameM (modeName m)

@@ -368,7 +368,9 @@ data Mode syntax = Mode
      modeIndentSettings :: IndentSettings,
      modeToggleCommentSelection :: BufferM (),
      modeGetStrokes :: syntax -> Point -> Point -> Point -> [Stroke],
-     modeGetAnnotations :: syntax -> Point -> [Span String]
+     modeGetAnnotations :: syntax -> Point -> [Span String],
+     -- should this be an Action instead?
+     modeOnLoad :: BufferM () -- ^ An action that is to be executed when this mode is set
     }
 
 instance Binary (Mode syntax) where
@@ -572,7 +574,8 @@ emptyMode = Mode
    },
    modeToggleCommentSelection = fail "'comment selection' not defined for this mode",
    modeGetStrokes = \_ _ _ _ -> [],
-   modeGetAnnotations = \_ _ -> []
+   modeGetAnnotations = \_ _ -> [],
+   modeOnLoad = return ()
   }
 
 -- | Create buffer named @nm@ with contents @s@
@@ -739,7 +742,7 @@ setMode m = do
   modify (setMode0 m)
   -- reset the keymap process so we use the one of the new mode.
   putA keymapProcessA I.End 
-
+  modeOnLoad m
 
 -- | Modify the mode
 modifyMode :: (forall syntax. Mode syntax -> Mode syntax) -> BufferM ()

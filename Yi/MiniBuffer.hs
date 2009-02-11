@@ -6,7 +6,7 @@ module Yi.MiniBuffer
   spawnMinibufferE,
   withMinibufferFree, withMinibuffer, withMinibufferGen, withMinibufferFin, 
   noHint, noPossibilities, simpleComplete, anyModeByName, getAllModeNames,
-  matchingBufferNames,
+  matchingBufferNames, anyModeByNameM, anyModeName,
 
   (:::)(..),
   LineNumber
@@ -162,8 +162,12 @@ instance Promptable Int where
 anyModeName :: AnyMode -> String
 anyModeName (AnyMode m) = modeName m
 
+-- TODO: Better name
+anyModeByNameM :: String -> YiM (Maybe AnyMode)
+anyModeByNameM n = find ((n==) . anyModeName) . modeTable <$> askCfg
+
 anyModeByName :: String -> YiM AnyMode
-anyModeByName n = maybe (fail "no such mode") return =<< find ((n == ). anyModeName) . modeTable <$> askCfg
+anyModeByName n = maybe (fail "no such mode") return =<< anyModeByNameM n
 
 getAllModeNames :: YiM [String]
 getAllModeNames = fmap anyModeName . modeTable <$> askCfg
