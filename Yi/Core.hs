@@ -292,8 +292,8 @@ errorEditor s = do withEditor $ printStatus ("error: " ++ s, errorStyle)
 -- (Not possible since the windowset type disallows it -- should it be relaxed?)
 closeWindow :: YiM ()
 closeWindow = do
-    winCount <- withEditor $ getsA windowsA WS.size
-    tabCount <- withEditor $ getsA tabsA WS.size
+    winCount <- withEditor $ getsA windowsA WS.length
+    tabCount <- withEditor $ getsA tabsA WS.length
     when (winCount == 1 && tabCount == 1) quitEditor
     withEditor $ tryCloseE
 

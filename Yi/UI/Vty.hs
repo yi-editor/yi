@@ -31,7 +31,7 @@ import Yi.Editor
 import Yi.Event
 import Yi.Monad
 import Yi.Style
-import Yi.WindowSet as WS
+import qualified Yi.WindowSet as WS
 import qualified Data.ByteString.Char8 as B
 import qualified Yi.UI.Common as Common
 import Yi.Config
@@ -217,9 +217,9 @@ renderTabBar e ui xss =
 
 -- | Determine whether it is necessary to render the tab bar
 hasTabBar :: Editor -> UI -> Bool
-hasTabBar e ui = (not . configAutoHideTabBar . configUI . config $ ui) || (WS.size $ e ^. tabsA) > 1
+hasTabBar e ui = (not . configAutoHideTabBar . configUI . config $ ui) || (WS.length $ e ^. tabsA) > 1
 
-scanrT :: (Int -> Int -> Int) -> Int -> WindowSet Int -> WindowSet Int
+scanrT :: (Int -> Int -> Int) -> Int -> WS.WindowSet Int -> WS.WindowSet Int
 scanrT (+*+) k t = fst $ runState (mapM f t) k
     where f x = do s <- get
                    let s' = s +*+ x
@@ -371,7 +371,7 @@ scheduleRefresh ui e = do
 
 -- | Calculate window heights, given all the windows and current height.
 -- (No specific code for modelines)
-computeHeights :: Int -> WindowSet Window  -> WindowSet Window
+computeHeights :: Int -> WS.WindowSet Window  -> WS.WindowSet Window
 computeHeights totalHeight ws = result
   where (mwls, wls) = partition isMini (toList ws)
         (y,r) = getY (totalHeight - length mwls) (length wls) 

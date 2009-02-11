@@ -99,7 +99,7 @@ instance MonadEditor EditorM where
 emptyEditor :: Editor
 emptyEditor = Editor {
         buffers      = M.singleton (bkey buf) buf
-       ,tabs_        = WS.new (WS.new win)
+       ,tabs_        = WS.singleton (WS.singleton win)
        ,bufferStack  = [bkey buf]
        ,refSupply    = 2
        ,regex        = Nothing
@@ -471,7 +471,7 @@ newTabE :: EditorM ()
 newTabE = do
     bk <- gets currentBuffer
     win <- newWindowE False bk
-    modA tabsA (WS.add (WS.new win))
+    modA tabsA (WS.add (WS.singleton win))
 
 -- | Moves to the next tab in the round robin set of tabs
 nextTabE :: EditorM ()
@@ -483,7 +483,7 @@ previousTabE = modA tabsA WS.backward
 
 -- | Moves the focused tab to the given index, or to the end if the index is not specified.
 moveTab :: Maybe Int -> EditorM ()
-moveTab Nothing  = do count <- getsA tabsA WS.size
+moveTab Nothing  = do count <- getsA tabsA WS.length
                       modA tabsA $ WS.move count
 moveTab (Just n) = do modA tabsA $ WS.move n
 
@@ -491,7 +491,7 @@ moveTab (Just n) = do modA tabsA $ WS.move n
 -- contains only one window then do nothing.
 tryCloseE :: EditorM ()
 tryCloseE = do
-    n <- getsA windowsA WS.size
+    n <- getsA windowsA WS.length
     if n == 1
         then modA tabsA WS.delete
         else modA windowsA WS.delete
@@ -503,7 +503,7 @@ closeOtherE = modA windowsA WS.deleteOthers
 -- | Switch focus to some other window. If none is available, create one.
 shiftOtherWindow :: MonadEditor m => m ()
 shiftOtherWindow = liftEditor $ do
-  len <- withWindows WS.size
+  len <- withWindows WS.length
   if (len == 1) 
     then splitE
     else nextWinE
