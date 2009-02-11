@@ -12,12 +12,16 @@ module Yi.WindowSet
   , deleteOthers
   , setFocus
   , withFocus
+  , focusIndex
   , debug
   ) where
+
+import Prelude hiding (elem)
 
 import Control.Monad
 import Control.Monad.Trans
 import Data.Accessor
+import Data.Foldable
 import Data.List.PointedList hiding (delete)
 
 import Yi.Debug (logPutStrLn)
@@ -76,6 +80,10 @@ setFocus w ws@(PointedList a b c)
 
 withFocus :: WindowSet a -> WindowSet (a, Bool)
 withFocus (PointedList a b c) = PointedList (zip a (repeat False)) (b, True) (zip c (repeat False))
+
+focusIndex :: Int -> WindowSet a -> WindowSet a
+focusIndex n ws = PointedList (reverse a) b c
+  where (a, b:c) = splitAt n $ toList ws
 
 debug :: (Show a, MonadIO m) => String -> WindowSet a -> m ()
 debug msg ws = logPutStrLn $ msg ++ ": " ++ show ws

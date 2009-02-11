@@ -462,7 +462,7 @@ prepareAction ui = do
                      return (l1 - l0)
     -- updates the heights of the windows
     return $ 
-      modA windowsA  (\ws -> if WS.size ws == length heights 
+      modA windowsA  (\ws -> if WS.length ws == length heights 
                                   then fst $ runState (mapM distribute ws) heights
                                   else trace ("INFO: updates the heights of the windows: unmatching lengths") ws)
 
