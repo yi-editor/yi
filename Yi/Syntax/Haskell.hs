@@ -8,6 +8,7 @@ import Yi.Lexer.Haskell
 import Yi.Style (hintStyle, errorStyle, StyleName)
 import Yi.Syntax.Layout
 import Yi.Syntax.Tree
+import Yi.Syntax.Paren (modStroke, tokenToStroke)
 import Yi.Syntax
 import Yi.Prelude
 import Prelude ()
@@ -206,16 +207,4 @@ getStrokes point _begin _end t0 = result
           compose = foldr (.) id
           result = getStrokes' t0 []
           -- result = getStrokesL t0 []
-
-modStroke :: StyleName -> Stroke -> Stroke
-modStroke f = fmap (f `mappend`)
-
-tokenToStroke :: TT -> Stroke
-tokenToStroke = fmap tokenToStyle . tokToSpan
-
-tokenToAnnot :: TT -> Maybe (Span String)
-tokenToAnnot (Tok t len posn) = case tokenToText t of
-    Nothing -> Nothing
-    Just x -> Just (Span (posnOfs posn) x (posnOfs posn +~ len))
-
 

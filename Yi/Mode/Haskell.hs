@@ -65,7 +65,7 @@ cleverMode = haskellAbstract
 
   , modeAdjustBlock = adjustBlock
   , modePrettify = cleverPrettify
-  , modeGetAnnotations = tokenBasedAnnots Hask.tokenToAnnot
+  , modeGetAnnotations = tokenBasedAnnots Paren.tokenToAnnot
 
  }
 
@@ -75,8 +75,8 @@ fastMode = haskellAbstract
     modeName = "fast haskell",
     modeHL = ExtHL $
     mkHighlighter (IncrParser.scanner OnlineTree.manyToks . haskellLexer),
-    modeGetStrokes = tokenBasedStrokes Hask.tokenToStroke,
-    modeGetAnnotations = tokenBasedAnnots Hask.tokenToAnnot
+    modeGetStrokes = tokenBasedStrokes Paren.tokenToStroke,
+    modeGetAnnotations = tokenBasedAnnots Paren.tokenToAnnot
  }
 
 literateMode :: Mode [Paren.Tree TT]
@@ -86,7 +86,7 @@ literateMode = haskellAbstract
   , modeHL = ExtHL $
     mkHighlighter (IncrParser.scanner Paren.parse . Paren.indentScanner . literateHaskellLexer)
   , modeGetStrokes = \t point begin end -> Paren.getStrokes point begin end t
-  , modeGetAnnotations = \t _begin -> catMaybes $ fmap Hask.tokenToAnnot $ allToks t -- FIXME I think that 'begin' should not be ignored
+  , modeGetAnnotations = \t _begin -> catMaybes $ fmap Paren.tokenToAnnot $ allToks t -- FIXME I think that 'begin' should not be ignored
   , modeAdjustBlock = adjustBlock
   , modeIndent = cleverAutoIndentHaskellB
   , modePrettify = cleverPrettify }

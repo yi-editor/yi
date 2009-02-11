@@ -172,3 +172,10 @@ tokenToStroke = fmap tokenToStyle . tokToSpan
 
 modStroke :: StyleName -> Stroke -> Stroke
 modStroke f = fmap (f `mappend`)
+
+tokenToAnnot :: TT -> Maybe (Span String)
+tokenToAnnot (Tok t len posn) = case tokenToText t of
+    Nothing -> Nothing
+    Just x -> Just (Span (posnOfs posn) x (posnOfs posn +~ len))
+
+
