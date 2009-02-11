@@ -46,6 +46,10 @@ haskellModeHooks mode =
                   -- uncomment for shim:
                   -- Shim.minorMode $ 
                      mode {
+                        modeGetAnnotations = tokenBasedAnnots tta,
+
+                        -- modeAdjustBlock = \_ _ -> return (),
+                        -- modeGetStrokes = \_ _ _ _ -> [],
                         modeName = "my " ++ modeName mode,
                         -- example of Mode-local rebinding
                         modeKeymap = (choice [ctrlCh 'c' ?>> ctrlCh 'l' ?>>! ghciLoadBuffer,
@@ -54,7 +58,9 @@ haskellModeHooks mode =
                                              ]
                                       <||)  
                        }
-              
+
+noAnnots _ _ = []              
+
 mkInputMethod :: [(String,String)] -> Keymap
 mkInputMethod list = choice [pString i >> adjustPriority (negate (length i)) >>! insertN o | (i,o) <- list] 
 
@@ -87,10 +93,8 @@ main :: IO ()
 main = yi $ defaultConfig {
                            -- configInputPreprocess = escToMeta,
                            startFrontEnd = frontend,
-                           modeTable = AnyMode (haskellModeHooks Haskell.cleverMode) {modeGetAnnotations = tokenBasedAnnots tta}
-                                                                                        
-                                     : AnyMode (haskellModeHooks Haskell.fastMode) {modeGetAnnotations = tokenBasedAnnots tta}
-
+                           modeTable = AnyMode (haskellModeHooks Haskell.cleverMode) 
+                                     : AnyMode (haskellModeHooks Haskell.fastMode) 
                                      : modeTable defaultConfig,
                            configUI = (configUI defaultConfig) 
                              { configFontSize = Just 12 
