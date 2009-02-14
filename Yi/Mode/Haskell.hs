@@ -192,9 +192,6 @@ nominalIndent '{' = 2
 nominalIndent _ = 1
 
 
-allToks :: Expr TT -> [TT]
-allToks = concatMap toList
-
 tokText :: Tok t -> BufferM String
 tokText = readRegionB . tokRegion
 

@@ -7,7 +7,7 @@ module Yi.Syntax.Tree where
 -- Some of this might be replaced by a generic package
 -- such as multirec, uniplace, emgm, ...
 
-import Data.List (takeWhile, reverse)
+import Data.List (dropWhile, takeWhile, reverse)
 import Data.Maybe
 import Data.Monoid
 import Prelude ()
@@ -37,12 +37,15 @@ instance SubTree t => SubTree [t] where
     foldMapToksAfter begin f = foldMap (foldMapToksAfter begin f)
     foldMapToks f = foldMap (foldMapToks f)
 
-toksAfter :: SubTree tree =>Point -> tree -> [Element tree]
+toksAfter :: SubTree tree => Point -> tree -> [Element tree]
 toksAfter begin t = foldMapToksAfter begin (\x ->(x:)) t []
+
+allToks :: SubTree tree =>tree -> [Element tree]
+allToks t = foldMapToks (\x ->(x:)) t []
 
 tokAtOrBefore p res = listToMaybe $ reverse $ toksInRegion (mkRegion 0 (p+1)) res
 
-toksInRegion reg = takeWhile (\t -> tokBegin t <= regionEnd   reg) . toksAfter (regionStart reg)
+toksInRegion reg = takeWhile (\t -> tokBegin t <= regionEnd   reg) . dropWhile (\t -> tokEnd t < regionStart reg) . toksAfter (regionStart reg)
 
 
 tokenBasedAnnots :: SubTree tree =>(Element tree ->Maybe a) -> tree -> Point -> [a]
