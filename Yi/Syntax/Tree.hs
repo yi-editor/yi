@@ -88,8 +88,8 @@ getLastElement :: Foldable t => t a -> Maybe a
 getLastElement tree = getLast $ foldMap (\x -> Last (Just x)) tree
 
 
-getLastOffset :: (Foldable t) => t (Tok tok) -> Point
-getLastOffset = maybe 0 tokEnd . getLastElement
+getLastOffset :: (Element a ~ Tok t, SubTree a) =>a -> Point
+getLastOffset = maybe 0 tokEnd . getLastTok
 
 getFirstOffset :: (Element a ~ Tok t, SubTree a) =>a -> Point
 getFirstOffset = maybe 0 tokBegin . getFirstTok
