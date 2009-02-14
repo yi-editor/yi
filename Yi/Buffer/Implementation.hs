@@ -394,13 +394,18 @@ charsFromSolBI (Point pnt) fb = LazyUTF8.toString $ F.toLazyByteString $ readChu
 
 -- | Return indices of all strings in buffer matching regex, inside the given region.
 regexRegionBI :: SearchExp -> Region -> forall syntax. BufferImpl syntax -> [Region]
-regexRegionBI (_,re) r fb = mayReverse (regionDirection r) $ 
-  fmap (fmapRegion addPoint . matchedRegion) $ matchAll re $ F.toLazyByteString $ F.take s $ F.drop p $ mem fb
-    -- FIXME: lazy backward search is very inefficient with large regions.
-   where matchedRegion arr = let (off,len) = arr!0 in mkRegion (Point off) (Point (off+len))
-         addPoint (Point x) = Point (p + x)
-         Point p = regionStart r
-         Size s = regionSize r
+regexRegionBI se r fb = case dir of
+     Forward  -> fmap (fmapRegion addPoint . matchedRegion) $ matchAll' $ F.toLazyByteString bufReg
+     Backward -> fmap (fmapRegion subPoint . matchedRegion) $ matchAll' $ F.toReverseLazyByteString bufReg
+    where matchedRegion arr = let (off,len) = arr!0 in mkRegion (Point off) (Point (off+len))
+          addPoint (Point x) = Point (p + x)
+          subPoint (Point x) = Point (q - x) 
+          matchAll' = matchAll (searchRegex dir se)
+          dir = regionDirection r
+          Point p = regionStart r
+          Point q = regionEnd r
+          Size s = regionSize r
+          bufReg = F.take s $ F.drop p $ mem fb
 
 newMarkBI :: MarkValue -> BufferImpl syntax -> (BufferImpl syntax, Mark)
 newMarkBI initialValue fb =

@@ -1,28 +1,35 @@
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts, TemplateHaskell #-}
 -- Copyright (c) Jean-Philippe Bernardy 2008
 module Yi.Regex 
   (
    SearchF(..), makeSearchOptsM,
-   SearchExp, searchString, searchRegex, emptySearch,
+   SearchExp(..), searchString, searchRegex, emptySearch,
    emptyRegex,
    module Text.Regex.TDFA,
    )
 where
 
+import Control.Arrow (first)
+import Data.DeriveTH
+import Data.Derive.Uniplate
+import Data.Generics.Uniplate
 import Text.Regex.TDFA
 import Text.Regex.TDFA.Pattern
 import Text.Regex.TDFA.Common
 import Control.Applicative
 import Text.Regex.TDFA.ReadRegex(parseRegex)
 import Text.Regex.TDFA.TDFA(patternToDFA)
+import Yi.Buffer.Basic (Direction(..))
 
-type SearchExp = (String, Regex)
+-- input string, regexexp, backward regex.
+data SearchExp = SearchExp { seInput :: String, seCompiled :: Regex, seBackCompiled :: Regex}
 
 searchString :: SearchExp -> String
-searchString = fst
+searchString = seInput
 
-searchRegex :: SearchExp -> Regex
-searchRegex = snd
+searchRegex :: Direction -> SearchExp -> Regex
+searchRegex Forward = seCompiled
+searchRegex Backward = seBackCompiled
 
 --
 -- What would be interesting would be to implement our own general
@@ -41,9 +48,10 @@ searchOpt IgnoreCase = \o->o{caseSensitive = False}
 searchOpt NoNewLine = \o->o{multiline = False}
 searchOpt QuoteRegex = id
 
-makeSearchOptsM :: [SearchF] -> String -> Either String (String, Regex)
-makeSearchOptsM opts re = (\r->(re,r)) <$> compilePattern (searchOpts opts defaultCompOpt) defaultExecOpt <$> pattern
+makeSearchOptsM :: [SearchF] -> String -> Either String SearchExp
+makeSearchOptsM opts re = (\p->SearchExp re (compile p) (compile $ first reversePattern p)) <$> pattern
     where searchOpts = foldr (.) id . map searchOpt
+          compile = compilePattern (searchOpts opts defaultCompOpt) defaultExecOpt
           pattern = if QuoteRegex `elem` opts 
                           then Right (literalPattern re) 
                           else mapLeft show (parseRegex re)
@@ -65,8 +73,16 @@ compilePattern compOpt execOpt source =
       in Regex dfa i tags groups compOpt execOpt
 
 
+reversePattern :: Pattern -> Pattern
+reversePattern = transform rev
+    where rev (PConcat l) = PConcat (reverse l)
+
+
+$(derive makeUniplate ''Pattern)
+
+
 emptySearch :: SearchExp
-emptySearch = ("", emptyRegex)
+emptySearch = SearchExp "" emptyRegex emptyRegex
 
 
 -- | The regular expression that matches nothing.

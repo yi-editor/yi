@@ -47,6 +47,7 @@ import Yi.History
 import Yi.Misc (matchingFileNames,adjBlock,adjIndent,cabalRun)
 import Yi.String (dropSpace,split,lines')
 import Yi.MiniBuffer
+import Yi.Regex (seInput)
 import Yi.Search
 import Yi.Style
 import Yi.TextCompletion
@@ -566,7 +567,7 @@ defKeymap = Proto template
      continueSearching fdir = do
        m <- getRegexE
        dir <- fdir <$> getA searchDirectionA 
-       printMsg $ directionElim dir '?' '/' : maybe "" fst m
+       printMsg $ directionElim dir '?' '/' : maybe "" seInput m
        viSearch "" [] dir
 
      skippingFirst :: ([a] -> [a]) -> [a] -> [a]
