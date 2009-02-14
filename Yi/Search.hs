@@ -138,8 +138,8 @@ continueSearch (c_re, dir) = do
 
 ------------------------------------------------------------------------
 -- | Search and replace in the given region.
--- If the input boolean is True, then the replace is done globally, otherwise only the first match is replaced
--- Returns Bool indicating success or failure.
+-- If the input boolean is True, then the replace is done globally, otherwise only the first match is replaced.
+-- Returns the number of replacements done.
 searchAndRepRegion0 :: SearchExp -> String -> Bool -> Region -> BufferM Int
 searchAndRepRegion0 c_re str globally region = do
     mp <- (if globally then id else take 1) <$> regexRegionB c_re region  -- find the regex
@@ -328,12 +328,7 @@ qrNext win b what = do
       qrFinish
     (r:_) -> withGivenBufferAndWindow0 win b $ setSelectRegionB r
 
-{- Replace all the remaining occurrences.
-   We might think that since 'regexB' returns all the remaining
-   matches that we could replace them all without re-searching.
-   However this would work only if the replacement was the same
-   length as the pattern being replaced.
--}
+-- | Replace all the remaining occurrences.
 qrReplaceAll :: Window -> BufferRef -> SearchExp -> String -> EditorM ()
 qrReplaceAll win b what replacement = do
      n <- withGivenBufferAndWindow0 win b $ do 

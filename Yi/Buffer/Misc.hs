@@ -771,8 +771,8 @@ withSyntaxB f = do
     act <- gets (withSyntax0 f)
     act
            
--- | Return indices of next string in buffer matched by regex in the
--- given region
+-- | Return indices of strings in buffer matched by regex in the
+-- given region.
 regexRegionB :: SearchExp -> Region -> BufferM [Region]
 regexRegionB regex region = queryBuffer $ regexRegionBI regex region
 
