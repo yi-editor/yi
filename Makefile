@@ -9,13 +9,6 @@ interactive:
 # autogen -> Paths_
 # dist/build/yi/yi-tmp -> preprocessed lexers
 
-derive:
-	derive -a Yi/KillRing.hs
-	derive -a Yi/Window.hs
-	derive -a Yi/WindowSet.hs
-	derive -a Yi/Buffer/Undo.hs
-	derive -a Yi/Buffer/Implementation.hs
-
 test::
 	cabal configure -f-cocoa -ftesting --disable-library-profiling
 	cabal build

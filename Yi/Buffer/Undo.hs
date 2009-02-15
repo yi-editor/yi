@@ -1,3 +1,5 @@
+{-# LANGUAGE TemplateHaskell #-}
+
 -- Copyright (c) 2004 Don Stewart - http://www.cse.unsw.edu.au/~dons
 -- Copyright (c) 2008 JP Bernardy
 
@@ -57,6 +59,8 @@ module Yi.Buffer.Undo (
 
 import Control.Monad (ap)
 import Data.Binary
+import Data.DeriveTH
+import Data.Derive.Binary
 import Yi.Buffer.Implementation            
 
 data Change = SavedFilePoint
@@ -65,11 +69,12 @@ data Change = SavedFilePoint
 -- !!! It's very important that the updates are forced, otherwise
 -- !!! we'll keep a full copy of the buffer state for each update
 -- !!! (thunk) put in the URList.
-            deriving (Show {-! Binary !-})
-
+            deriving (Show)
+$(derive makeBinary ''Change)
 -- | A URList consists of an undo and a redo list.
 data URList = URList [Change] [Change]
-            deriving (Show {-! Binary !-})
+            deriving (Show)
+$(derive makeBinary ''URList)
 
 -- | A new empty 'URList'.
 -- Notice we must have a saved file point as this is when we assume we are
@@ -164,24 +169,3 @@ isAtSavedFilePointU (URList us _) = isUnchanged us
       (SavedFilePoint : _)     -> True
       (InteractivePoint : cs') -> isUnchanged cs'
       _                        -> False
-
-
-
---------------------------------------------------------
--- DERIVES GENERATED CODE
--- DO NOT MODIFY BELOW THIS LINE
--- CHECKSUM: 809201852
-
-instance Binary Change
-    where put (SavedFilePoint) = putWord8 0
-          put (InteractivePoint) = putWord8 1
-          put (AtomicChange x1) = putWord8 2 >> put x1
-          get = getWord8 >>= (\tag_ -> case tag_ of
-                                           0 -> return SavedFilePoint
-                                           1 -> return InteractivePoint
-                                           2 -> ap (return AtomicChange) get)
-
-instance Binary URList
-    where put (URList x1 x2) = return () >> (put x1 >> put x2)
-          get = case 0 of
-                    0 -> ap (ap (return URList) get) get

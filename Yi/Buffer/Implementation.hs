@@ -1,4 +1,4 @@
-{-# LANGUAGE PatternGuards, ExistentialQuantification, DeriveDataTypeable, Rank2Types, FlexibleContexts, FlexibleInstances #-}
+{-# LANGUAGE PatternGuards, ExistentialQuantification, DeriveDataTypeable, Rank2Types, FlexibleContexts, FlexibleInstances, TemplateHaskell #-}
 
 -- Copyright (c) 2004-5 Don Stewart - http://www.cse.unsw.edu.au/~dons
 -- Copyright (c) 2007-8 JP Bernardy
@@ -50,37 +50,36 @@ module Yi.Buffer.Implementation
 )
 where
 
-import Yi.Prelude
-import Prelude (take, takeWhile, dropWhile, map, reverse)
-import Yi.Syntax 
-
-import qualified Data.Map as M
+import Control.Monad
+import Data.Array
 import Data.Binary
+import Data.ByteRope (ByteRope)
+import Data.Char
+import Data.DeriveTH
+import Data.Derive.Binary
+import Data.List (groupBy, drop)
 import Data.Maybe 
 import Data.Monoid
-import Yi.Style
-
-import Control.Monad
-
+import Data.Typeable
+import Data.Word
+import Prelude (take, takeWhile, dropWhile, map, reverse)
+import Yi.Buffer.Basic
+import Yi.Prelude
 import Yi.Regex
-
+import Yi.Region
+import Yi.Style
+import Yi.Syntax 
+import qualified Codec.Binary.UTF8.Generic as UF8Codec
 import qualified Data.ByteRope as F
-import Data.ByteRope (ByteRope)
 import qualified Data.ByteString.Lazy as LazyB
 import qualified Data.ByteString.Lazy.UTF8 as LazyUTF8
-import qualified Codec.Binary.UTF8.Generic as UF8Codec
-import Yi.Buffer.Basic
-import Data.Array
-import Data.Char
-import Data.Maybe
-import Data.List (groupBy, drop)
-import Data.Word
+import qualified Data.Map as M
 import qualified Data.Set as Set
-import Data.Typeable
-import Yi.Region
 
 data MarkValue = MarkValue {markPoint :: !Point, markGravity :: !Direction}
-               deriving (Ord, Eq, Show, Typeable {-! Binary !-})
+               deriving (Ord, Eq, Show, Typeable)
+
+$(derive makeBinary ''MarkValue) 
 
 type Marks = M.Map Mark MarkValue
 
@@ -112,6 +111,10 @@ data BufferImpl syntax =
                     }
         deriving Typeable
 
+
+dummyHlState :: HLState syntax
+dummyHlState = (HLState noHighlighter (hlStartState noHighlighter))
+
 -- Atm we can't store overlays because stylenames are functions (can't be serialized)
 -- TODO: ideally I'd like to get rid of overlays entirely; although we could imagine them storing mere styles.
 instance Binary (BufferImpl ()) where
@@ -134,7 +137,8 @@ data Update = Insert {updatePoint :: !Point, updateDirection :: !Direction, inse
               -- if it's a "Delete" it means we have just inserted the text in the buffer, so the update shares
               -- the data with the buffer. If it's an "Insert" we have to keep the data any way.
 
-              deriving (Show, Typeable {-! Binary !-})
+              deriving (Show, Typeable)
+$(derive makeBinary ''Update)
 
 updateIsDelete :: Update -> Bool
 updateIsDelete Delete {} = True
@@ -149,13 +153,11 @@ updateSize = Size . fromIntegral . LazyB.length . updateString
 
 data UIUpdate = TextUpdate !Update
               | StyleUpdate !Point !Size
- deriving ({-! Binary !-})
+$(derive makeBinary ''UIUpdate)
+
 
 --------------------------------------------------
 -- Low-level primitives.
-
-dummyHlState :: HLState syntax
-dummyHlState = (HLState noHighlighter (hlStartState noHighlighter))
 
 -- | New FBuffer filled from string.
 newBI :: LazyB.ByteString -> BufferImpl ()
@@ -488,31 +490,3 @@ getAst :: BufferImpl syntax -> syntax
 getAst FBufferData {hlCache = HLState (SynHL {hlGetTree = gt}) cache} = gt cache
 
 
-
---------------------------------------------------------
--- DERIVES GENERATED CODE
--- DO NOT MODIFY BELOW THIS LINE
--- CHECKSUM: 1150468583
-
-instance Binary MarkValue
-    where put (MarkValue x1 x2) = return () >> (put x1 >> put x2)
-          get = case 0 of
-                    0 -> ap (ap (return MarkValue) get) get
-
-instance Binary Update
-    where put (Insert x1
-                      x2
-                      x3) = putWord8 0 >> (put x1 >> (put x2 >> put x3))
-          put (Delete x1
-                      x2
-                      x3) = putWord8 1 >> (put x1 >> (put x2 >> put x3))
-          get = getWord8 >>= (\tag_ -> case tag_ of
-                                           0 -> ap (ap (ap (return Insert) get) get) get
-                                           1 -> ap (ap (ap (return Delete) get) get) get)
-
-instance Binary UIUpdate
-    where put (TextUpdate x1) = putWord8 0 >> put x1
-          put (StyleUpdate x1 x2) = putWord8 1 >> (put x1 >> put x2)
-          get = getWord8 >>= (\tag_ -> case tag_ of
-                                           0 -> ap (return TextUpdate) get
-                                           1 -> ap (ap (return StyleUpdate) get) get)

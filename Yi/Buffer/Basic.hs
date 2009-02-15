@@ -1,4 +1,4 @@
-{-# LANGUAGE StandaloneDeriving, DeriveDataTypeable, ScopedTypeVariables, ExistentialQuantification, GeneralizedNewtypeDeriving, MultiParamTypeClasses #-}
+{-# LANGUAGE StandaloneDeriving, DeriveDataTypeable, ScopedTypeVariables, ExistentialQuantification, GeneralizedNewtypeDeriving, MultiParamTypeClasses, TemplateHaskell #-}
 -- Copyright 2008 JP Bernardy
 -- | Basic types useful everywhere we play with buffers.
 module Yi.Buffer.Basic where
@@ -11,11 +11,15 @@ import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as LB
 import Data.Char (ord)
 import Data.Typeable
+import Data.DeriveTH
+import Data.Derive.Binary
 
 -- | Direction of movement inside a buffer
 data Direction = Backward
                | Forward
-                 deriving (Eq,Ord,Typeable,Show {-! Binary !-})
+                 deriving (Eq,Ord,Typeable,Show)
+
+$(derive makeBinary ''Direction)
 
 reverseDir :: Direction -> Direction
 reverseDir Forward = Backward
@@ -78,17 +82,3 @@ utf8CharSize c = case ord c of i | i < 0x80    -> 1
 
 fromString :: String -> LB.ByteString
 fromString = LazyUTF8.fromString
-
-
-
---------------------------------------------------------
--- DERIVES GENERATED CODE
--- DO NOT MODIFY BELOW THIS LINE
--- CHECKSUM: 286904097
-
-instance Binary Direction
-    where put (Backward) = putWord8 0
-          put (Forward) = putWord8 1
-          get = getWord8 >>= (\tag_ -> case tag_ of
-                                           0 -> return Backward
-                                           1 -> return Forward)
