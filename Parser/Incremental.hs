@@ -11,7 +11,7 @@
 module Parser.Incremental (Process, 
                           recoverWith, symbol, eof, lookNext, testNext, run,
                           mkProcess, profile, pushSyms, pushEof, evalL, evalR, feedZ,
-                           Parser(Look)
+                           Parser(Look, Pure)
                           ) where
 
 import Control.Applicative
@@ -32,7 +32,7 @@ infixr :<
 
 -- | Parser specification
 data Parser s a where
-    Pure :: a -> Parser s a
+    Pure :: a ->a -> Parser s a
     Appl :: Parser s (b -> a) -> Parser s b -> Parser s a
 
     Bind :: Parser s a -> (a -> Parser s b) -> Parser s b
@@ -46,7 +46,7 @@ data Parser s a where
 
 -- | Parser process
 data Steps s a where
-    Val   :: a -> Steps s r                      -> Steps s (a :< r)
+    Val   :: a -> a -> Steps s r                      -> Steps s (a :< r)
     App   :: Steps s ((b -> a) :< (b :< r))      -> Steps s (a :< r)
     Done  ::                               Steps s ()
     Shift ::           Steps s a        -> Steps s a
@@ -97,7 +97,7 @@ better lk (x:>xs) (y:>ys)
 x +> ~(ordering, xs) = (ordering, x :> xs)
 
 profile :: Steps s r -> Profile
-profile (Val _ p) = profile p
+profile (Val _ _ p) = profile p
 profile (App p) = profile p
 profile (Shift p) = 0 :> profile p
 profile (Done) = PRes 0 -- success with zero dislikes
@@ -108,7 +108,7 @@ profile (Best _ pr _ _) = pr
 profile (Sh' _) = error "Sh' should be hidden by Sus"
 
 instance Show (Steps s r) where
-    show (Val _ p) = "v" ++ show p
+    show (Val _ _ p) = "v" ++ show p
     show (App p) = "*" ++ show p
     show (Done) = "1"
     show (Shift p) = ">" ++ show p
@@ -119,7 +119,7 @@ instance Show (Steps s r) where
     show (Best _ _ p q) = "(" ++ show p ++ ")" ++ show q
 
 instance Show (RPolish i o) where
-    show (RPush _ p) = show p ++ "^"
+    show (RPush _ _ p) = show p ++ "^"
     show (RApp p) = show p ++ "@"
     show (RStop) = "!"
 
@@ -130,7 +130,7 @@ apply ~(f:< ~(a:<r)) = f a :< r
 -- | Right-eval a fully defined process (ie. one that has no Sus)
 evalR' :: Steps s r -> (r, [String])
 evalR' Done = ((), [])
-evalR' (Val a r) = first (a :<) (evalR' r)
+evalR' (Val _ a r) = first (a :<) (evalR' r)
 evalR' (App s) = first apply (evalR' s)
 evalR' (Shift v) = evalR' v
 evalR' (Dislike err v) = second (err:) (evalR' v)
@@ -148,7 +148,7 @@ instance Functor (Parser s) where
 
 instance Applicative (Parser s) where
     (<*>) = Appl
-    pure = Pure
+    pure x = Pure x x
 
 instance Alternative (Parser s) where
     (<|>) = Disj
@@ -162,7 +162,7 @@ instance Monad (Parser s) where
 toQ :: Parser s a -> forall h r. ((h,a) -> Steps s r)  -> (h -> Steps s r)
 toQ (Look a f) = \k h -> Sus (toQ a k h) (\s -> toQ (f s) k h)
 toQ (p `Appl` q) = \k -> toQ p $ toQ q $ \((h, b2a), b) -> k (h, b2a b)
-toQ (Pure a)     = \k h -> k (h, a)
+toQ (Pure a _)     = \k h -> k (h, a)
 toQ (Disj p q)   = \k h -> iBest (toQ p k h) (toQ q k h)
 toQ (Bind p a2q) = \k -> (toQ p) (\(h,a) -> toQ (a2q a) k h)
 toQ Empt = \_k _h -> Fail
@@ -172,7 +172,7 @@ toQ (Shif p) = \k h -> Sh' $ toQ p k h
 toP :: Parser s a -> forall r. (Steps s r)  -> (Steps s (a :< r))
 toP (Look a f) = \fut -> Sus (toP a fut) (\s -> toP (f s) fut)
 toP (Appl f x) = App . toP f . toP x
-toP (Pure x)   = Val x
+toP (Pure x y)   = Val x y
 toP Empt = \_fut -> Fail
 toP (Disj a b)  = \fut -> iBest (toP a fut) (toP b fut)
 toP (Bind p a2q) = \fut -> (toQ p) (\(_,a) -> (toP (a2q a)) fut) ()
@@ -200,7 +200,7 @@ feed ss p = case p of
                   (Shift p') -> Shift (feed ss p')
                   (Sh' p')   -> Shift (feed (fmap (drop 1) ss) p')
                   (Dislike err p') -> Dislike err (feed ss p')
-                  (Val x p') -> Val x (feed ss p')
+                  (Val x y p') -> Val x y (feed ss p')
                   (App p') -> App (feed ss p')
                   Done -> Done
                   Fail -> Fail
@@ -220,7 +220,7 @@ evalL (Zip errs0 l0 r0) = help errs0 l0 r0
   where
       help :: [String] -> RPolish mid output -> Steps s mid -> Zip s output
       help errs l rhs = case rhs of
-          (Val a r) -> help errs (simplify (RPush a l)) r
+          (Val a b r) -> help errs (simplify (RPush a b l)) r
           (App r)  -> help errs (RApp l) r
           (Shift p) -> help errs l p
           (Dislike err p) -> help (err:errs) l p
@@ -274,19 +274,19 @@ recoverWith = Yuck "recoverWith"
 -- RPolish is indexed by the types in the stack consumed by the automaton (input),
 -- and the stack produced (output)
 data RPolish input output where
-  RPush :: a -> RPolish (a :< rest) output -> RPolish rest output
+  RPush :: a -> a -> RPolish (a :< rest) output -> RPolish rest output
   RApp :: RPolish (b :< rest) output -> RPolish ((a -> b) :< a :< rest) output 
   RStop :: RPolish rest rest
 
 -- Evaluate the output of an RP automaton, given an input stack
 evalRP :: RPolish input output -> input -> output
 evalRP RStop  acc = acc
-evalRP (RPush v r) acc = evalRP r (v :< acc)
+evalRP (RPush _ v r) acc = evalRP r (v :< acc)
 evalRP (RApp r) ~(f :< ~(a :< rest)) = evalRP r (f a :< rest)
 
 -- execute the automaton as far as possible
 simplify :: RPolish s output -> RPolish s output
-simplify (RPush a (RPush f (RApp r))) = let b = f a in b `seq` simplify (RPush b r)
+simplify (RPush x y (RPush f _ (RApp r))) = simplify (RPush (f x) (f y) r)
 simplify x = x
 
 evalR :: Zip token (a :< rest) -> (a, [String])
