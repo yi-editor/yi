@@ -32,7 +32,7 @@ newShim = do
     let logMsg msgSeverity msgSrcSpan style msg = 
            unsafeWithEditor cfg r $ do                             
              let note = CompileNote msgSeverity msgSrcSpan style msg
-             modA notesA (Just . maybe (WS.new note) (WS.add note))
+             modA notesA (Just . maybe (WS.singleton note) (WS.add note))
              printMsg ('\n':show ((mkLocMessage msgSrcSpan msg) style))
 
 
