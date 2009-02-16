@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleInstances, TypeFamilies #-}
+{-# LANGUAGE FlexibleInstances, TypeFamilies, TemplateHaskell #-}
 -- Copyright (c) JP Bernardy 2008
 -- | Parser for haskell that takes in account only parenthesis and layout
 module Yi.Syntax.Paren where
@@ -9,13 +9,15 @@ import Yi.Lexer.Haskell
 import Yi.Style (hintStyle, errorStyle, StyleName)
 import Yi.Syntax.Layout
 import Yi.Syntax.Tree
+import Yi.Syntax.BList
 import Yi.Syntax
 import Yi.Prelude 
 import Prelude ()
 import Data.Monoid
+import Data.DeriveTH
+import Data.Derive.Foldable
 import Data.Maybe
 import Data.List (filter, takeWhile)
-import qualified Yi.Syntax.OnlineTree as O
 
 indentScanner :: Scanner (AlexState lexState) (TT)
               -> Scanner (Yi.Syntax.Layout.State Token lexState) (TT)
@@ -38,14 +40,12 @@ type Expr t = [Tree t]
 
 data Tree t
     = Paren t (Expr t) t -- A parenthesized expression (maybe with [ ] ...)
-    | Block (O.MaybeOneMore O.TreeAtPos (Expr t))      -- A list of things separated by layout (as in do; etc.)
+    | Block (BList (Expr t))      -- A list of things separated by layout (as in do; etc.)
     | Atom t
     | Error t
       deriving Show
 
-instance Functor Tree where
-  fmap = fmapDefault
-
+$(derive makeFoldable ''Tree)
 instance IsTree Tree where
     subtrees (Paren _ g _) = g
     subtrees (Block s) = concat s
@@ -79,14 +79,7 @@ getSubtreeSpan tree = (posnOfs $ first, lastLine - firstLine)
           assertJust _ = error "assertJust: Just expected"
     
 
-instance Foldable Tree where
-    foldMap = foldMapDefault
-
-instance Traversable Tree where
-    traverse f (Atom t) = Atom <$> f t
-    traverse f (Error t) = Error <$> f t
-    traverse f (Paren l g r) = Paren <$> f l <*> traverse (traverse f) g <*> f r
-    traverse f (Block s) = Block <$> traverse (traverse (traverse f)) s
+-- $(derive makeFunctor ''Tree)
 
 -- dropWhile' f = foldMap (\x -> if f x then mempty else Endo (x :))
 -- 
@@ -113,9 +106,9 @@ parse' toTok fromT = pExpr <* eof
       pleaseSym c = (recoverWith (pure $ newT '!')) <|> sym c
 
       pExpr :: P TT (Expr TT)
-      pExpr = many pTree
+      pExpr = Yi.Prelude.many pTree
 
-      pBlocks = pExpr `O.sepByT` sym '.' -- see HACK above
+      pBlocks = pExpr `Yi.Syntax.BList.sepBy` sym '.' -- see HACK above
       -- also, we discard the empty statements
 
       pTree :: P TT (Tree TT)
@@ -136,33 +129,31 @@ instance SubTree (Tree TT) where
     foldMapToksAfter begin f t0 = work t0
         where work (Atom t) = f t
               work (Error t) = f t
-              work (Block s) = foldMap (foldMapToksAfter begin f) (O.dropToBut' begin s)
+              work (Block s) = foldMapAfter begin (foldMapToksAfter begin f) s
               work (Paren l g r) = f l <> foldMap work g <> f r
     foldMapToks f = foldMap (foldMapToks f)
 
 
 -- TODO: (optimization) make sure we take in account the begin, so we don't return useless strokes
 getStrokes :: Point -> Point -> Point -> [Tree TT] -> [Stroke]
-getStrokes point begin _end t0 = result 
-    where getStrokes' (Atom t) = (ts t :)
-          getStrokes' (Error t) = (modStroke errorStyle (ts t) :) -- paint in red
-          getStrokes' (Block s) = compose (fmap getStrokesL $ O.dropToBut' begin s)
+getStrokes point begin _end t0 = trace (show t0) result 
+    where getStrokes' (Atom t) = one (ts t)
+          getStrokes' (Error t) = one (modStroke errorStyle (ts t)) -- paint in red
+          getStrokes' (Block s) = foldMapAfter begin getStrokesL s
           getStrokes' (Paren l g r)
-              | isErrorTok $ tokT r = (modStroke errorStyle (ts l) :) . getStrokesL g
+              | isErrorTok $ tokT r = one (modStroke errorStyle (ts l)) <> getStrokesL g
               -- left paren wasn't matched: paint it in red.
               -- note that testing this on the "Paren" node actually forces the parsing of the
               -- right paren, undermining online behaviour.
               | (posnOfs $ tokPosn $ l) == point || (posnOfs $ tokPosn $ r) == point - 1
 
-               = (modStroke hintStyle (ts l) :) . getStrokesL g . (modStroke hintStyle (ts r) :)
-              | otherwise  = (ts l :) . getStrokesL g . (ts r :)
-          getStrokesL = compose . fmap getStrokes'
+               = one (modStroke hintStyle (ts l)) <> getStrokesL g <> one (modStroke hintStyle (ts r))
+              | otherwise  = one (ts l) <> getStrokesL g <> one (ts r)
+          getStrokesL = foldMap getStrokes'
           ts = tokenToStroke
-          result = getStrokesL t0 []
+          result = appEndo (getStrokesL t0) []
+          one x = Endo (x :)
           
-
-compose :: Foldable t => t (a -> a) -> a -> a
-compose = foldr (.) id
 
 tokenToStroke :: TT -> Stroke
 tokenToStroke = fmap tokenToStyle . tokToSpan

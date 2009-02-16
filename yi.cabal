@@ -339,6 +339,7 @@ executable yi
            Yi.Lexer.SVNCommit
 
            Yi.Syntax
+           Yi.Syntax.BList
            Yi.Syntax.Layout
            Yi.Syntax.OnlineTree
            Yi.Syntax.Paren
