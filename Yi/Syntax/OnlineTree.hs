@@ -188,11 +188,6 @@ toTree point0 startPoint input = TreeAtPos point0 (snd $ mapAccumL toTree' input
                   subSize = size `div` 2
         starts' = (point0 +) <$> starts
 
-
-(<>) :: (Monoid a) => a -> a -> a
-(<>) = mappend
-
-
 dropTo = selectTo False
 takeTo = selectTo True
 

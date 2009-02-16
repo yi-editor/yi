@@ -131,9 +131,6 @@ parse' toTok fromT = pExpr <* eof
       -- note that, by construction, '<' and '>' will always be matched, so
       -- we don't try to recover errors with them.
 
-(<>) :: Monoid m => m -> m -> m
-(<>) = mappend
-
 instance SubTree (Tree TT) where
     type Element (Tree TT) = TT
     foldMapToksAfter begin f t0 = work t0

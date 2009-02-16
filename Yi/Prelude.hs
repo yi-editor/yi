@@ -2,7 +2,8 @@
 
 module Yi.Prelude 
     (
-(++),
+(<>),
+(++), -- consider scrapping this and replacing it by the above
 (=<<),
 Double,
 Char,
@@ -85,10 +86,15 @@ import Control.Applicative
 import Control.Category
 import Data.Traversable 
 import Control.Monad
+import Data.Monoid
 import qualified Data.Set as Set
 import qualified Data.Map as Map
     
 type Endom a = a -> a
+
+
+(<>) :: Monoid a => a -> a -> a
+(<>) = mappend
 
 io :: MonadIO m => IO a -> m a
 io = liftIO
