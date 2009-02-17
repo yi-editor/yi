@@ -76,6 +76,9 @@ compilePattern compOpt execOpt source =
 reversePattern :: Pattern -> Pattern
 reversePattern = transform rev
     where rev (PConcat l) = PConcat (reverse l)
+          rev (PCarat  x) = PDollar x
+          rev (PDollar x) = PCarat  x
+          rev x           = x
 
 
 $(derive makeUniplate ''Pattern)
