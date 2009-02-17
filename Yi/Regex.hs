@@ -9,9 +9,6 @@ module Yi.Regex
    )
 where
 
-import Control.Arrow (first)
-import Data.DeriveTH
-import Data.Derive.Uniplate
 import Data.Generics.Uniplate
 import Text.Regex.TDFA
 import Text.Regex.TDFA.Pattern
@@ -49,7 +46,7 @@ searchOpt NoNewLine = \o->o{multiline = False}
 searchOpt QuoteRegex = id
 
 makeSearchOptsM :: [SearchF] -> String -> Either String SearchExp
-makeSearchOptsM opts re = (\p->SearchExp re (compile p) (compile $ first reversePattern p)) <$> pattern
+makeSearchOptsM opts re = (\p->SearchExp re (compile p) (compile $ reversePattern p)) <$> pattern
     where searchOpts = foldr (.) id . map searchOpt
           compile = compilePattern (searchOpts opts defaultCompOpt) defaultExecOpt
           pattern = if QuoteRegex `elem` opts 
@@ -73,16 +70,36 @@ compilePattern compOpt execOpt source =
       in Regex dfa i tags groups compOpt execOpt
 
 
-reversePattern :: Pattern -> Pattern
-reversePattern = transform rev
+-- reversePattern :: (Pattern,(gi,DoPa max)) -> (Pattern,(gi,DoPa max))
+reversePattern (pattern,(gi,DoPa maxDoPa)) = (transform (rev) pattern, (gi,DoPa maxDoPa))
     where rev (PConcat l) = PConcat (reverse l)
           rev (PCarat  x) = PDollar x
           rev (PDollar x) = PCarat  x
           rev x           = x
+          fixDoPa (PCarat p) = PCarat (f p)
+          fixDoPa (PDollar p) = PDollar (f p)
+          fixDoPa (PAny p x) = PAny (f p) x
+          fixDoPa (PDot p) = PDot (f p)
+          fixDoPa (PAnyNot p x) = PAnyNot (f p) x
+          fixDoPa (PEscape p x) = PEscape (f p) x
+          fixDoPa (PChar p x) = PChar (f p) x
+          fixDoPa x = x
+          f (DoPa x) = DoPa (maxDoPa + 1 - x)
 
-
-$(derive makeUniplate ''Pattern)
-
+-- Cannot use Derive because we have to handle list arguments specially.
+instance Uniplate Pattern where
+    uniplate = \p -> 
+      case p of
+          PGroup x p -> ([p], \[z] ->PGroup x z)
+          POr ps -> (ps, POr)
+          PConcat ps -> (ps, PConcat)
+          PQuest p ->([p], \[z] -> PQuest z)
+          PPlus p ->([p], \[z] -> PPlus z)
+          PStar x p -> ([p], \[z] ->PStar x z)
+          PBound w x p -> ([p], \[z] ->PBound w x z)
+          PNonCapture p ->([p], \[z] -> PNonCapture z)
+          PNonEmpty p ->([p], \[z] -> PNonEmpty z)
+          p ->([],\[]->p)
 
 emptySearch :: SearchExp
 emptySearch = SearchExp "" emptyRegex emptyRegex
@@ -91,5 +108,4 @@ emptySearch = SearchExp "" emptyRegex emptyRegex
 -- | The regular expression that matches nothing.
 emptyRegex :: Regex
 Just emptyRegex = makeRegexOptsM defaultCompOpt defaultExecOpt "[[:empty:]]"
-
 
