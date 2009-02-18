@@ -118,6 +118,7 @@ library
         Yi.Lexer.ObjectiveC
         Yi.Lexer.Cplusplus
         Yi.Lexer.Haskell
+        Yi.Lexer.JavaScript
         Yi.Lexer.Latex 
         Yi.Lexer.LiterateHaskell
         Yi.Lexer.GNUMake
@@ -327,6 +328,7 @@ executable yi
            Yi.Lexer.ObjectiveC
            Yi.Lexer.Cplusplus
            Yi.Lexer.Haskell
+           Yi.Lexer.JavaScript
            Yi.Lexer.LiterateHaskell
            Yi.Lexer.Latex 
            Yi.Lexer.Srmc

@@ -143,6 +143,7 @@ defaultConfig =
                         AnyMode ocamlMode,
                         AnyMode ottMode,
                         AnyMode perlMode,
+                        AnyMode javaScriptMode,
                         AnyMode pythonMode,
                         AnyMode ireaderMode,
                         AnyMode svnCommitMode,
