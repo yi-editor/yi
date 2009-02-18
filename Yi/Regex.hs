@@ -70,12 +70,15 @@ compilePattern compOpt execOpt source =
       in Regex dfa i tags groups compOpt execOpt
 
 
--- reversePattern :: (Pattern,(gi,DoPa max)) -> (Pattern,(gi,DoPa max))
+reversePattern :: (Pattern, (t, DoPa)) -> (Pattern, (t, DoPa))
 reversePattern (pattern,(gi,DoPa maxDoPa)) = (transform (rev) pattern, (gi,DoPa maxDoPa))
     where rev (PConcat l) = PConcat (reverse l)
           rev (PCarat  x) = PDollar x
           rev (PDollar x) = PCarat  x
           rev x           = x
+          -- I'm unsure if messinng with DoPa's is necessary.
+          -- I leave the code here for a while (today is 20080218)
+          -- we can drop it later.
           fixDoPa (PCarat p) = PCarat (f p)
           fixDoPa (PDollar p) = PDollar (f p)
           fixDoPa (PAny p x) = PAny (f p) x
@@ -86,10 +89,10 @@ reversePattern (pattern,(gi,DoPa maxDoPa)) = (transform (rev) pattern, (gi,DoPa 
           fixDoPa x = x
           f (DoPa x) = DoPa (maxDoPa + 1 - x)
 
--- Cannot use Derive because we have to handle list arguments specially.
+-- Cannot use Derive because we have to handle list arguments specially (POr, PConcat)
 instance Uniplate Pattern where
-    uniplate = \p -> 
-      case p of
+    uniplate = \pat -> 
+      case pat of
           PGroup x p -> ([p], \[z] ->PGroup x z)
           POr ps -> (ps, POr)
           PConcat ps -> (ps, PConcat)
