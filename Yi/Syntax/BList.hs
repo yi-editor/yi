@@ -21,6 +21,8 @@ instance Show a => Show (BList a) where
     show (One r) =  "[]<>" ++ show r
     show (Two l r) = show (reverse $ l []) ++ "<>" ++ show r
 
+-- Note that consR /must/ be lazy in its rhs argument.
+-- It's possible because it /cannot/ take the 'Two' case.
 consR x ~(One r) = One  (x:r)
 consL x (One r) = Two (x:) r
 consL x (Two l r) = Two (l . (x:))  r
