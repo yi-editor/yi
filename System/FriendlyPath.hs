@@ -3,6 +3,11 @@ import System.FilePath
 import System.Directory
 import Data.List
 
+-- | Canonicalize a user-friendly path
+userToCanonPath :: FilePath -> IO String
+userToCanonPath f = canonicalizePath =<< expandTilda f
+
+
 -- | Make a path more user-friendly by replacing the home directory with tilda.
 recoverTilda :: FilePath -> IO String
 recoverTilda path = do

@@ -52,7 +52,6 @@ import Yi.Config
 import Yi.Core
 import Yi.Style
 import System.FriendlyPath
-import Yi.File
 ------------------------------------------------
 -- | If file exists, read contents of file into a new buffer, otherwise
 -- creating a new empty buffer. Replace the current window with a new
@@ -64,7 +63,7 @@ import Yi.File
 -- windows to buffers.
 --
 fnewE  :: FilePath -> YiM ()
-fnewE f = fnewCanonicalized =<< liftIO (expandTilda f)
+fnewE f = fnewCanonicalized =<< liftIO (userToCanonPath f)
 
 fnewCanonicalized :: FilePath -> YiM ()
 fnewCanonicalized f = do
@@ -89,6 +88,7 @@ fnewCanonicalized f = do
                       withEditor $ stringToNewBuffer (Right f) (fromString "") -- Create new empty buffer
             tbl <- asks (modeTable . yiConfig)
             contents <- withGivenBuffer b $ elemsB
+            -- adjust the mode
             let header = take 1024 contents
                 hmode = case header =~ "\\-\\*\\- *([^ ]*) *\\-\\*\\-" of 
                     AllTextSubmatches [_,m] ->m
@@ -99,7 +99,6 @@ fnewCanonicalized f = do
             case mode of
                 AnyMode newMode -> withGivenBuffer b $ setMode newMode
             return b
-    setFileName b f
     -- by default stick with the current mode (eg. stick with dired if
     -- set as such)
     withEditor $ switchToBufferE b
@@ -194,13 +193,10 @@ diredDir dir = diredDirBuffer dir >> return ()
 
 diredDirBuffer :: FilePath -> YiM BufferRef
 diredDirBuffer dir = do
-                b <- withEditor $ stringToNewBuffer (Right dir) (fromString "")
-                setFileName b dir -- associate the buffer with the directory
-                withEditor $ switchToBufferE b
-                diredRefresh
-                withBuffer $ modifyMode $ \m -> m {modeKeymap = diredKeymap, modeName = "dired"}
-                -- Colours for Dired come from overlays not syntax highlighting
-                return b
+    b <- withEditor $ stringToNewBuffer (Right dir) (fromString "")
+    withEditor $ switchToBufferE b
+    diredRefresh
+    return b
 
 -- | Write the contents of the supplied directory into the current buffer in dired format
 diredRefresh :: YiM ()
@@ -229,6 +225,8 @@ diredRefresh = do
                     addOverlayB $ mkOverlay UserLayer (mkRegion 0 (p-2)) headStyle
                     ptsList <- mapM insertDiredLine $ zip3 strss' stys strs
                     putA bufferDynamicValueA ds{diredFilePoints=ptsList}
+                    -- Colours for Dired come from overlays not syntax highlighting
+                    modifyMode $ \m -> m {modeKeymap = diredKeymap, modeName = "dired"}                    
                     moveTo p
     where
     headStyle = const (withFg grey)

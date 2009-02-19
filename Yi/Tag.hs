@@ -19,7 +19,7 @@ module Yi.Tag
 where
 
 {- Standard Library Module Imports -}
-import Prelude (map, filter, words, lines, readFile)
+import Prelude (map, words, lines, readFile)
 import Yi.Prelude
 import Yi.Editor
 import Yi.Dynamic 

@@ -105,6 +105,6 @@ backupE = error "backupE not implemented"
 -- | Associate buffer with file; canonicalize the given path name.
 setFileName :: BufferRef -> FilePath -> YiM ()
 setFileName b filename = do
-  cfn <- liftIO $ canonicalizePath =<< expandTilda filename
+  cfn <- liftIO $ userToCanonPath filename
   withGivenBuffer b $ putA identA $ Right cfn
 
