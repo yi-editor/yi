@@ -99,8 +99,6 @@ fnewCanonicalized f = do
             case mode of
                 AnyMode newMode -> withGivenBuffer b $ setMode newMode
             return b
-    -- by default stick with the current mode (eg. stick with dired if
-    -- set as such)
     withEditor $ switchToBufferE b
     where
     -- Determines whether or not a given buffer is associated with
