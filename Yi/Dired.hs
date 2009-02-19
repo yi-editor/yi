@@ -12,7 +12,7 @@
 -- - rename
 -- - delete
 -- - search
--- set 'bmode' in buffer - ReadOnly
+-- set buffer to ReadOnly
 -- Improve the colouring to show
 -- - loaded buffers
 -- - .hs files
@@ -69,9 +69,9 @@ fnewCanonicalized :: FilePath -> YiM ()
 fnewCanonicalized f = do
     bufs <- gets bufferSet
         -- The file names associated with the list of current buffers
-    bufsWithThisFilename <- liftIO $ filterM assocWithSameFile bufs
+    let bufsWithThisFilename = filter assocWithSameFile bufs
         -- The names of the existing buffers
-    let fDirectory           = takeDirectory f
+    let fDirectory = takeDirectory f
     de <- liftIO $ doesDirectoryExist f
     fe <- liftIO $ doesFileExist f
     dfe <- liftIO $ doesDirectoryExist fDirectory
@@ -86,9 +86,9 @@ fnewCanonicalized f = do
                         userWantMkDir <- return True -- TODO
                         when userWantMkDir $ liftIO $ createDirectory fDirectory
                       withEditor $ stringToNewBuffer (Right f) (fromString "") -- Create new empty buffer
+            -- adjust the mode
             tbl <- asks (modeTable . yiConfig)
             contents <- withGivenBuffer b $ elemsB
-            -- adjust the mode
             let header = take 1024 contents
                 hmode = case header =~ "\\-\\*\\- *([^ ]*) *\\-\\*\\-" of 
                     AllTextSubmatches [_,m] ->m
@@ -104,17 +104,12 @@ fnewCanonicalized f = do
     withEditor $ switchToBufferE b
     where
     -- Determines whether or not a given buffer is associated with
-    -- the given file. 
-    -- If this turns out to be slow when there are a lot of buffers
-    -- we could consider canonicalising the path before associating
-    -- it with a file. Personally I find this more robust.
-    assocWithSameFile :: FBuffer -> IO Bool
+    -- the given file. Note that filepaths are always canonicalized.
+    assocWithSameFile :: FBuffer -> Bool
     assocWithSameFile fbuffer =
       case file fbuffer of
-        Nothing -> return False
-        Just f2 -> do filename1 <- canonicalizePath f
-                      filename2 <- canonicalizePath f2
-                      return $ equalFilePath filename1 filename2
+        Nothing -> False
+        Just f2 -> equalFilePath f f2
 
 
 
