@@ -195,23 +195,18 @@ diredDir dir = diredDirBuffer dir >> return ()
 diredDirBuffer :: FilePath -> YiM BufferRef
 diredDirBuffer dir = do
                 b <- withEditor $ stringToNewBuffer (Right dir) (fromString "")
-                setFileName b dir -- associate the buffer with the dir
+                setFileName b dir -- associate the buffer with the directory
                 withEditor $ switchToBufferE b
-                diredLoadNewDir dir
+                diredRefresh
                 withBuffer $ modifyMode $ \m -> m {modeKeymap = diredKeymap, modeName = "dired"}
                 -- Colours for Dired come from overlays not syntax highlighting
                 return b
 
+-- | Write the contents of the supplied directory into the current buffer in dired format
 diredRefresh :: YiM ()
 diredRefresh = do
-    -- Clear buffer
-    withBuffer $ do end <- sizeB
-                    deleteRegionB (mkRegion 0 end)
-    -- Write Header
+    -- Get directory name
     Just dir <- withBuffer $ gets file
-    withBuffer $ insertN $ dir ++ ":\n"
-    p <- withBuffer pointB
-    withBuffer $ addOverlayB $ mkOverlay UserLayer (mkRegion 0 (p-2)) headStyle
     -- Scan directory
     di <- liftIO $ diredScanDir dir
     let ds = DiredState { diredPath        = dir
@@ -219,15 +214,22 @@ diredRefresh = do
                         , diredEntries    = di
                         , diredFilePoints = []
                         }
-    withBuffer $ putA bufferDynamicValueA ds
-    -- Display results
-    dlines <- linesToDisplay
-    let (strss, stys, strs) = unzip3 dlines
+    -- Compute results
+    let dlines = linesToDisplay ds
+        (strss, stys, strs) = unzip3 dlines
         strss' = transpose $ map doPadding $ transpose $ strss
-    ptsList <- mapM insertDiredLine $ zip3 strss' stys strs
-    withBuffer $ do putA bufferDynamicValueA ds{diredFilePoints=ptsList}
+
+    -- Set buffer contents
+    withBuffer $ do -- Clear buffer
+                    deleteRegionB =<< regionOfB Document
+                    -- Write Header
+                    insertN $ dir ++ ":\n"
+                    p <-pointB
+                    -- paint header
+                    addOverlayB $ mkOverlay UserLayer (mkRegion 0 (p-2)) headStyle
+                    ptsList <- mapM insertDiredLine $ zip3 strss' stys strs
+                    putA bufferDynamicValueA ds{diredFilePoints=ptsList}
                     moveTo p
-    return ()
     where
     headStyle = const (withFg grey)
     doPadding :: [DRStrings] -> [String]
@@ -245,14 +247,14 @@ diredRefresh = do
 
 -- | Returns a tuple containing the textual region (the end of) which is used for 'click' detection
 --   and the FilePath of the file represented by that textual region
-insertDiredLine :: ([String], StyleName, String) -> YiM (Point, Point, FilePath)
-insertDiredLine (fields, sty, filenm) = withBuffer $ do
+insertDiredLine :: ([String], StyleName, String) -> BufferM (Point, Point, FilePath)
+insertDiredLine (fields, sty, filenm) = do
     insertN $ (concat $ intersperse " " (init fields))
     p1 <- pointB
     insertN (" " ++ last fields)
     p2 <- pointB
     insertN "\n"
-    addOverlayB (mkOverlay UserLayer (mkRegion p1 p2) sty) >> return ()
+    addOverlayB (mkOverlay UserLayer (mkRegion p1 p2) sty)
     return (p1, p2, filenm)
 
 data DRStrings = DRPerms {undrs :: String}
@@ -264,10 +266,8 @@ data DRStrings = DRPerms {undrs :: String}
                | DRFiles {undrs :: String}
 
 -- | Return a List of (prefix, fullDisplayNameIncludingSourceAndDestOfLink, style, filename)
-linesToDisplay :: YiM ([([DRStrings], StyleName, String)])
-linesToDisplay = do
-    dState <- withBuffer $ getA bufferDynamicValueA
-    return $ map (uncurry lineToDisplay) (M.assocs $ diredEntries dState)
+linesToDisplay :: DiredState ->([([DRStrings], StyleName, String)])
+linesToDisplay dState = map (uncurry lineToDisplay) (M.assocs $ diredEntries dState)
     where
     lineToDisplay k (DiredFile v)      = (l " -" v ++ [DRFiles k], defaultStyle, k)
     lineToDisplay k (DiredDir v)       = (l " d" v ++ [DRFiles k], const (withFg blue), k)
@@ -284,12 +284,6 @@ linesToDisplay = do
                DRGroups $ grp v,
                DRSizes $ printf "%8d" (sizeInBytes v),
                DRDates $ modificationTimeString v]
-
--- | Write the contents of the supplied directory into the current buffer in dired format
--- TODO: trash this.
-diredLoadNewDir :: FilePath -> YiM ()
-diredLoadNewDir _dir = do
-    diredRefresh
 
 -- | Return dired entries for the contents of the supplied directory
 diredScanDir :: FilePath -> IO (M.Map FilePath DiredEntry)
