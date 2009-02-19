@@ -121,11 +121,10 @@ startEditor cfg st = do
                            yi = Yi ui inF outF cfg newSt 
                        return (ui, runYi)
   
-    runYi $ do
-
-      when (isNothing st) $ do -- process options if booting for the first time
-        postActions $ startActions cfg
-      withEditor $ modA buffersA (fmap (recoverMode (modeTable cfg)))
+    runYi $
+      if isNothing st 
+         then postActions $ startActions cfg -- process options if booting for the first time
+         else withEditor $ modA buffersA (fmap (recoverMode (modeTable cfg))) -- otherwise: recover the mode of buffers
 
     runYi refreshEditor
 
