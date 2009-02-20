@@ -149,6 +149,7 @@ library
         Yi.Style
         Yi.Style.Library
         Yi.Syntax
+        Yi.Syntax.BList
         Yi.Syntax.Haskell
         Yi.Syntax.Latex
         Yi.Syntax.Layout
