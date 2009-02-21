@@ -24,7 +24,6 @@ import Yi.Config
 import Yi.Rectangle
 import Yi.String
 import qualified Yi.UI.Common as Common
-import qualified Yi.WindowSet as WS
 import qualified Yi.Style as Style
 import Yi.Window
 import Paths_yi (getDataFileName)
@@ -32,6 +31,7 @@ import Paths_yi (getDataFileName)
 import Control.Monad.Reader (when)
 
 import qualified Data.List as L
+import qualified Data.List.PointedList.Circular as PL
 import Data.IORef
 import Data.Maybe
 import Data.Monoid
@@ -357,7 +357,7 @@ newWindow before ui win b = do
   flip (setIVar _runBuffer) v $ \act -> do
     wCache <- readIORef (windowCache ui)
     uiActionCh ui $ makeAction $ do
-      (modA windowsA) $ WS.focusIndex $ fromJust $ L.findIndex ((k ==) . wikey) wCache
+      (modA windowsA) $ fromJust $ PL.move $ fromJust $ L.findIndex ((k ==) . wikey) wCache
       withGivenBufferAndWindow0 win (bkey b) act
 
   return $ WinInfo 
@@ -396,7 +396,7 @@ refresh ui e = withAutoreleasePool $ logNSException "refresh" $ do
 
     cache <- readRef $ windowCache ui
     (uiWindow ui) # setAutodisplay False -- avoid redrawing while window syncing
-    cache' <- syncWindows e ui (toList $ WS.withFocus $ windows e) cache
+    cache' <- syncWindows e ui (toList $ PL.withFocus $ windows e) cache
     writeRef (windowCache ui) cache'
     (uiBox ui) # adjustSubviews -- FIX: maybe it is not needed
     (uiWindow ui) # setAutodisplay True -- reenable automatic redrawing

@@ -1,10 +1,9 @@
 module TestSuite where
+
 import Driver
 
-import Yi.WindowSet
-
-import Data.Traversable
 import Control.Monad.Identity
+import Data.Traversable
 import Text.Show.Functions ()
 
 main :: IO ()
@@ -20,9 +19,8 @@ prop_traversable ws f = runIdentity (Data.Traversable.mapM (Identity . f) ws) ==
 
 tests :: [(String, Int -> IO (Bool, Int))]
 tests = 
-    [
-     ("WindowSet prop_functor"     , mytest (prop_functor :: WindowSet Int -> Bool)),
-     ("WindowSet prop_traversable" , mytest (prop_traversable :: WindowSet Int -> (Int -> Int) -> Bool))
+    [ -- Format like this in the future, but no tests are applicable here:
+      -- ("WindowSet prop_traversable" , mytest (prop_traversable :: WindowSet Int -> (Int -> Int) -> Bool))
     ]
 
 

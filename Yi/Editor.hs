@@ -13,8 +13,6 @@ import Yi.Dynamic
 import Yi.KillRing
 import Yi.Window
 import Yi.Window
-import Yi.WindowSet (WindowSet)
-import qualified Yi.WindowSet as WS
 import Yi.Event (Event)
 import Yi.Style (StyleName, defaultStyle)
 
@@ -25,10 +23,12 @@ import Data.Accessor.Basic (fromSetGet)
 import Data.Accessor.Template
 import Data.Binary
 import Data.List (nub, delete, (\\))
+import qualified Data.List.PointedList.Circular as PL
 import Data.Either (rights)
 import Data.Foldable (concatMap)
 import qualified Data.DelayList as DelayList
 import qualified Data.Map as M
+import Data.Maybe
 import Data.Typeable
 import System.FilePath (splitPath)
 import Control.Monad.RWS hiding (get, put, mapM, forM_)
@@ -45,7 +45,7 @@ data Editor = Editor {
        ,buffers       :: !(M.Map BufferRef FBuffer)
        ,refSupply     :: !Int  -- ^ Supply for buffer and window ids.
 
-       ,tabs_          :: !(WindowSet (WindowSet Window))
+       ,tabs_          :: !(PL.PointedList (PL.PointedList Window))
 
        ,dynamic       :: !(DynamicValues)              -- ^ dynamic components
 
@@ -99,7 +99,7 @@ instance MonadEditor EditorM where
 emptyEditor :: Editor
 emptyEditor = Editor {
         buffers      = M.singleton (bkey buf) buf
-       ,tabs_        = WS.singleton (WS.singleton win)
+       ,tabs_        = PL.singleton (PL.singleton win)
        ,bufferStack  = [bkey buf]
        ,refSupply    = 2
        ,regex        = Nothing
@@ -121,11 +121,11 @@ $(nameDeriveAccessors ''Editor (\n -> Just (n ++ "A")))
 
 
 -- TODO: replace this by accessor
-windows :: Editor -> WindowSet Window
-windows editor = WS.current $ tabs_ editor
+windows :: Editor -> PL.PointedList Window
+windows editor = PL.focus $ tabs_ editor
 
-windowsA :: Accessor Editor (WindowSet Window)
-windowsA =  WS.currentA . tabsA
+windowsA :: Accessor Editor (PL.PointedList Window)
+windowsA =  PL.focusA . tabsA
 
 tabsA = tabs_A . fixCurrentBufferA_
 
@@ -227,11 +227,11 @@ getBufferWithName bufName = do
     [] -> fail ("Buffer not found: " ++ bufName)
     (b:_) -> return b
 
--- | Make all buffers visible by splitting the current WindowSet
+-- | Make all buffers visible by splitting the current window list.
 -- FIXME: rename to displayAllBuffersE; make sure buffers are not open twice.
 openAllBuffersE :: EditorM ()
 openAllBuffersE = do bs <- gets bufferSet
-                     forM_ bs $ (modA windowsA . WS.add =<<) . newWindowE False . bkey
+                     forM_ bs $ (modA windowsA . PL.insertRight =<<) . newWindowE False . bkey
 
 ------------------------------------------------------------------------
 
@@ -284,7 +284,7 @@ withBuffer0 f = do
   withGivenBufferAndWindow0 w (bufkey w) f
 
 currentWindowA :: Accessor Editor Window
-currentWindowA = WS.currentA . windowsA
+currentWindowA = PL.focusA . windowsA
 
 -- | Return the current buffer
 currentBuffer :: Editor -> BufferRef
@@ -386,7 +386,7 @@ newWindowE mini bk = Window mini bk 0 <$> newRef
 
 -- | Attach the specified buffer to the current window
 switchToBufferE :: BufferRef -> EditorM ()
-switchToBufferE bk = modA (WS.currentA . windowsA) (\w -> w { bufkey = bk })
+switchToBufferE bk = modA (PL.focusA . windowsA) (\w -> w { bufkey = bk })
 
 -- | Attach the specified buffer to some other window than the current one
 switchToBufferOtherWindowE :: BufferRef -> EditorM ()
@@ -416,11 +416,11 @@ closeBufferAndWindowE = do
 
 -- | Rotate focus to the next window
 nextWinE :: EditorM ()
-nextWinE = modA windowsA WS.forward
+nextWinE = modA windowsA PL.next
 
 -- | Rotate focus to the previous window
 prevWinE :: EditorM ()
-prevWinE = modA windowsA WS.backward
+prevWinE = modA windowsA PL.previous
 
 -- | A "fake" accessor that fixes the current buffer after a change of the current
 -- window. 
@@ -428,17 +428,17 @@ prevWinE = modA windowsA WS.backward
 fixCurrentBufferA_ :: Accessor Editor Editor
 fixCurrentBufferA_ = fromSetGet (\new _old -> let 
     ws = windows new
-    b = findBufferWith (bufkey $ WS.current ws) new
+    b = findBufferWith (bufkey $ PL.focus ws) new
     newBufferStack = nub (bkey b : bufferStack new)
     -- make sure we do not hold to old versions.
     in length newBufferStack `seq` new { bufferStack = newBufferStack  } ) id
     
 
-withWindows :: (WindowSet Window -> a) -> EditorM a
+withWindows :: (PL.PointedList Window -> a) -> EditorM a
 withWindows = getsA windowsA
 
 withWindow :: (Window -> a) -> EditorM a
-withWindow f = getsA (WS.currentA . windowsA) f
+withWindow f = getsA (PL.focusA . windowsA) f
 
 findWindowWith :: WindowRef -> Editor -> Window
 findWindowWith k e =
@@ -456,7 +456,7 @@ splitE :: EditorM ()
 splitE = do
   b <- gets currentBuffer
   w <- newWindowE False b
-  modA windowsA (WS.add w)
+  modA windowsA (PL.insertRight w)
 
 -- | Enlarge the current window
 enlargeWinE :: EditorM ()
@@ -471,39 +471,41 @@ newTabE :: EditorM ()
 newTabE = do
     bk <- gets currentBuffer
     win <- newWindowE False bk
-    modA tabsA (WS.add (WS.singleton win))
+    modA tabsA (PL.insertRight (PL.singleton win))
 
 -- | Moves to the next tab in the round robin set of tabs
 nextTabE :: EditorM ()
-nextTabE = modA tabsA WS.forward
+nextTabE = modA tabsA PL.next
 
 -- | Moves to the previous tab in the round robin set of tabs
 previousTabE :: EditorM ()
-previousTabE = modA tabsA WS.backward
+previousTabE = modA tabsA PL.previous
 
 -- | Moves the focused tab to the given index, or to the end if the index is not specified.
 moveTab :: Maybe Int -> EditorM ()
-moveTab Nothing  = do count <- getsA tabsA WS.length
-                      modA tabsA $ WS.move count
-moveTab (Just n) = do modA tabsA $ WS.move n
+moveTab Nothing  = do count <- getsA tabsA PL.length
+                      modA tabsA $ fromJust . PL.move count
+moveTab (Just n) = do modA tabsA $ fromJust . PL.move n
 
 -- | Close the current window. If there is only one tab open and the tab 
 -- contains only one window then do nothing.
 tryCloseE :: EditorM ()
 tryCloseE = do
-    n <- getsA windowsA WS.length
+    n <- getsA windowsA PL.length
     if n == 1
-        then modA tabsA WS.delete
-        else modA windowsA WS.delete
+        -- Could the Maybe response from deleteRight be used instead of the
+        -- initial 'if'?
+        then modA tabsA (fromJust . PL.deleteRight)
+        else modA windowsA (fromJust . PL.deleteRight)
 
 -- | Make the current window the only window on the screen
 closeOtherE :: EditorM ()
-closeOtherE = modA windowsA WS.deleteOthers
+closeOtherE = modA windowsA PL.deleteOthers
 
 -- | Switch focus to some other window. If none is available, create one.
 shiftOtherWindow :: MonadEditor m => m ()
 shiftOtherWindow = liftEditor $ do
-  len <- withWindows WS.length
+  len <- withWindows PL.length
   if (len == 1) 
     then splitE
     else nextWinE

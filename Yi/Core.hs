@@ -52,6 +52,7 @@ import Control.Monad.Reader (runReaderT, ask, asks)
 import Control.Monad.Trans
 import Control.OldException
 import Data.List (intercalate)
+import qualified Data.List.PointedList.Circular as PL
 import Data.Maybe
 import Data.Monoid
 import Data.Time
@@ -82,7 +83,6 @@ import qualified System.IO.UTF8 as UTF8
 import qualified Yi.Editor as Editor
 import qualified Yi.Interact as I
 import qualified Yi.UI.Common as UI
-import qualified Yi.WindowSet as WS
 
 -- | Make an action suitable for an interactive run.
 -- UI will be refreshed.
@@ -291,8 +291,8 @@ errorEditor s = do withEditor $ printStatus ("error: " ++ s, errorStyle)
 -- (Not possible since the windowset type disallows it -- should it be relaxed?)
 closeWindow :: YiM ()
 closeWindow = do
-    winCount <- withEditor $ getsA windowsA WS.length
-    tabCount <- withEditor $ getsA tabsA WS.length
+    winCount <- withEditor $ getsA windowsA PL.length
+    tabCount <- withEditor $ getsA tabsA PL.length
     when (winCount == 1 && tabCount == 1) quitEditor
     withEditor $ tryCloseE
 

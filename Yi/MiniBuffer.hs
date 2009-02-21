@@ -14,13 +14,13 @@ module Yi.MiniBuffer
 
 import Prelude (filter, length)
 import Data.List (isInfixOf)
+import qualified Data.List.PointedList.Circular as PL
 import Data.Maybe
 import Yi.Config
 import Yi.Core
 import Yi.History
 import Yi.Completion (commonPrefix, infixMatch, prefixMatch, completeInList)
 import qualified Yi.Core as Editor
-import qualified Yi.WindowSet as WS
 import Control.Monad.Reader
 import qualified Data.Accessor.MonadState as AM
 -- | Open a minibuffer window with the given prompt and keymap
@@ -32,7 +32,7 @@ spawnMinibufferE prompt kmMod =
     do b <- stringToNewBuffer (Left prompt) (fromString "")
        withGivenBuffer0 b $ modifyMode (\m -> m {modeKeymap = kmMod})
        w <- newWindowE True b
-       modA windowsA (WS.add w)
+       modA windowsA (PL.insertRight w)
        return b
 
 -- | @withMinibuffer prompt completer act@: open a minibuffer with @prompt@. Once
@@ -74,7 +74,7 @@ withMinibufferGen proposal getHint prompt completer act = do
       -- ^ Read contents of current buffer (which should be the minibuffer), and
       -- apply it to the desired action
       closeMinibuffer = closeBufferAndWindowE >>
-                        modA windowsA (WS.setFocus initialWindow)
+                        modA windowsA (fromJust . PL.find initialWindow)
       showMatchings = msgEditor =<< getHint =<< withBuffer elemsB
       innerAction = do
         lineString <- withEditor $ do historyFinishGen prompt (withBuffer0 elemsB)

@@ -5,6 +5,7 @@ module Yi.Mode.Shim where
 import Control.Monad.State
 import Data.Char
 import Data.List
+import qualified Data.List.PointedList.Circular as PL
 import FastString
 import Outputable hiding (char)
 import Prelude ()
@@ -14,7 +15,6 @@ import Yi
 import Yi.Buffer
 import Yi.GHC
 import Yi.Prelude
-import Yi.WindowSet as Robin
 import qualified Shim.Hsinfo as Hsinfo
 
 jumpToSrcLoc :: SrcLoc -> YiM ()
@@ -26,8 +26,8 @@ jumpToSrcLoc locn =
 jumpToNextNote :: YiM ()
 jumpToNextNote = do
   note <- withEditor $ do
-    modA notesA (fmap forward)
-    getsA notesA (fmap current)
+    modA notesA (fmap PL.next)
+    getsA notesA (fmap PL.focus)
   case note of
     Nothing -> msgEditor "No note!"
     Just n -> jumpToSrcLoc $ srcSpanStart $ srcSpan $ n

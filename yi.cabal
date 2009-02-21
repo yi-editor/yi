@@ -163,7 +163,6 @@ library
         Yi.UI.Utils
         Yi.UI.TabBar
         Yi.Window
-        Yi.WindowSet
         Yi.Char.Unicode
 
     include-dirs:   Yi/Lexer
@@ -247,7 +246,7 @@ executable yi
         build-depends: fingertree >= 0 && <0.1
         build-depends: ghc-paths ==0.1.*
         build-depends: parsec >= 3 && <= 3.0.2
-        build-depends: pointedlist >= 0.1
+        build-depends: pointedlist >= 0.3.1
         build-depends: pureMD5 >= 0.2.3
         build-depends: random
         build-depends: regex-base ==0.93.*
@@ -360,7 +359,7 @@ executable yi
            Yi.Keymap.Emacs.KillRing, 
            Yi.Keymap.Emacs.Utils, Yi.Main, Yi.MkTemp, Yi.Monad, Yi.Process,
            Yi.Search, Yi.String, Yi.Style, Yi.Templates, Yi.TextCompletion,
-           Yi.Buffer.Undo, Yi.Window, Yi.WindowSet
+           Yi.Buffer.Undo, Yi.Window,
            Yi.MiniBuffer
            Yi.File
            Yi.KillRing

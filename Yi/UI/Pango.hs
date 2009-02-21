@@ -19,7 +19,6 @@ import Yi.Monad
 import qualified Yi.UI.Common as Common
 import Yi.Config
 import Yi.Style
-import qualified Yi.WindowSet as WS
 
 import Control.Applicative
 import Control.Concurrent ( yield )
@@ -31,6 +30,7 @@ import Data.Prototype
 import Data.Foldable
 import Data.IORef
 import Data.List (nub, findIndex, zip, drop)
+import qualified Data.List.PointedList.Circular as PL
 import Data.Maybe
 import Data.Traversable
 import qualified Data.Map as M
@@ -243,7 +243,7 @@ handleClick ui w event = do
   logPutStrLn $ "Clicked inside window: " ++ show w
   wCache <- readIORef (windowCache ui)
   let Just idx = findIndex (((==) `on` (winkey . coreWin)) w) wCache
-      focusWindow = modA windowsA (WS.focusIndex idx)
+      focusWindow = modA windowsA (fromJust . PL.move idx)
 
   case (Gdk.Events.eventClick event, Gdk.Events.eventButton event) of
      (Gdk.Events.SingleClick, Gdk.Events.LeftButton) -> do
@@ -384,7 +384,7 @@ refresh ui e = do
     cache <- readRef $ windowCache ui
     logPutStrLn $ "syncing: " ++ show ws
     logPutStrLn $ "with: " ++ show cache
-    cache' <- syncWindows e ui (toList $ WS.withFocus $ ws) cache
+    cache' <- syncWindows e ui (toList $ PL.withFocus $ ws) cache
     logPutStrLn $ "Gives: " ++ show cache'
     writeRef (windowCache ui) cache'
     forM_ cache' $ \w -> do

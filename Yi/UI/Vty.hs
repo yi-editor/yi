@@ -19,6 +19,7 @@ import Data.Char (ord,chr)
 import Data.Foldable
 import Data.IORef
 import Data.List (partition, sort, nub)
+import qualified Data.List.PointedList.Circular as PL
 import qualified Data.Map as M
 import Data.Maybe
 import Data.Monoid
@@ -31,7 +32,6 @@ import Yi.Editor
 import Yi.Event
 import Yi.Monad
 import Yi.Style
-import qualified Yi.WindowSet as WS
 import qualified Data.ByteString.Char8 as B
 import qualified Yi.UI.Common as Common
 import Yi.Config
@@ -160,7 +160,7 @@ prepareAction ui = do
     e <- get
     modA windowsA (computeHeights (yss - (if hasTabBar e ui then 1 else 0)))
     let ws = windows e
-        renderSeq = fmap (scrollAndRenderWindow (configUI $ config ui) xss) (WS.withFocus ws)
+        renderSeq = fmap (scrollAndRenderWindow (configUI $ config ui) xss) (PL.withFocus ws)
     sequence_ renderSeq
 
 
@@ -175,14 +175,13 @@ refresh ui e = do
   (yss,xss) <- readRef (scrsize ui)
   let ws' = computeHeights (yss - tabBarHeight) ws
       (cmd, cmdSty) = statusLineInfo e
-      renderSeq = fmap (scrollAndRenderWindow (configUI $ config ui) xss) (WS.withFocus ws')
+      renderSeq = fmap (scrollAndRenderWindow (configUI $ config ui) xss) (PL.withFocus ws')
       (e', renders) = runEditor (config ui) (sequence renderSeq) e
 
   let startXs = scanrT (+) windowStartY (fmap height ws')
       wImages = fmap picture renders
       statusBarStyle = ((appEndo <$> cmdSty) <*> baseAttributes) $ configStyle $ configUI $ config $ ui
       tabBarImages = renderTabBar e' ui xss
-  WS.debug "Drawing: " ws'
   logPutStrLn $ "startXs: " ++ show startXs
   Vty.update (vty $ ui) 
       pic { pImage  = vertcat tabBarImages
@@ -190,8 +189,8 @@ refresh ui e = do
                       vertcat (toList wImages) 
                       <-> 
                       withAttributes statusBarStyle (take xss $ cmd ++ repeat ' ')
-          , pCursor = case cursor (WS.current renders) of
-                        Just (y,x) -> Cursor x (y + WS.current startXs) 
+          , pCursor = case cursor (PL.focus renders) of
+                        Just (y,x) -> Cursor x (y + PL.focus startXs) 
                         -- Add the position of the window to the position of the cursor
                         Nothing -> NoCursor
                         -- This case can occur if the user resizes the window. 
@@ -217,9 +216,9 @@ renderTabBar e ui xss =
 
 -- | Determine whether it is necessary to render the tab bar
 hasTabBar :: Editor -> UI -> Bool
-hasTabBar e ui = (not . configAutoHideTabBar . configUI . config $ ui) || (WS.length $ e ^. tabsA) > 1
+hasTabBar e ui = (not . configAutoHideTabBar . configUI . config $ ui) || (PL.length $ e ^. tabsA) > 1
 
-scanrT :: (Int -> Int -> Int) -> Int -> WS.WindowSet Int -> WS.WindowSet Int
+scanrT :: (Int -> Int -> Int) -> Int -> PL.PointedList Int -> PL.PointedList Int
 scanrT (+*+) k t = fst $ runState (mapM f t) k
     where f x = do s <- get
                    let s' = s +*+ x
@@ -371,7 +370,7 @@ scheduleRefresh ui e = do
 
 -- | Calculate window heights, given all the windows and current height.
 -- (No specific code for modelines)
-computeHeights :: Int -> WS.WindowSet Window  -> WS.WindowSet Window
+computeHeights :: Int -> PL.PointedList Window -> PL.PointedList Window
 computeHeights totalHeight ws = result
   where (mwls, wls) = partition isMini (toList ws)
         (y,r) = getY (totalHeight - length mwls) (length wls) 

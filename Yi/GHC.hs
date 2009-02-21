@@ -17,11 +17,10 @@ import Shim.SHM hiding (io)
 import Yi.Dynamic
 import Yi.Editor
 import Yi.Keymap
-import Yi.Prelude
+import Yi.Prelude hiding ((<>))
+import qualified Data.List.PointedList.Circular as PL
 import qualified Data.Map as M
 import qualified Yi.Editor as Editor
-import qualified Yi.WindowSet as Robin
-import qualified Yi.WindowSet as WS
 
 newShim :: YiM (MVar ShimState)
 newShim = do
@@ -32,7 +31,7 @@ newShim = do
     let logMsg msgSeverity msgSrcSpan style msg = 
            unsafeWithEditor cfg r $ do                             
              let note = CompileNote msgSeverity msgSrcSpan style msg
-             modA notesA (Just . maybe (WS.singleton note) (WS.add note))
+             modA notesA (Just . maybe (PL.singleton note) (PL.insertRight note))
              printMsg ('\n':show ((mkLocMessage msgSrcSpan msg) style))
 
 
@@ -92,7 +91,7 @@ instance Show CompileNote where
                (hang (ppr (srcSpan n) <> colon) 4  (message n)) (pprStyle n)
 
 
-type T = (Maybe (Robin.WindowSet CompileNote))
+type T = (Maybe (PL.PointedList CompileNote))
 newtype ShimNotes = ShimNotes { fromShimNotes :: T }
     deriving Typeable
 

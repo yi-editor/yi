@@ -20,7 +20,6 @@ import Yi.Monad
 import qualified Yi.UI.Common as Common
 import Yi.Config
 import Yi.Style as Style
-import qualified Yi.WindowSet as WS
 import Control.Applicative
 import Control.Concurrent ( yield )
 import Control.Monad (ap)
@@ -30,6 +29,7 @@ import Control.Monad.State (runState, State, gets, modify)
 import Data.Foldable
 import Data.IORef
 import Data.List (drop, nub, findIndex, sort, zip)
+import qualified Data.List.PointedList.Circular as PL
 import Data.Maybe
 import Data.Monoid
 import Data.Traversable
@@ -247,7 +247,7 @@ handleClick ui w event = do
   logPutStrLn $ "Clicked inside window: " ++ show w
   wCache <- readIORef (windowCache ui)
   let Just idx = findIndex ((wkey w ==) . wkey) wCache
-      focusWindow = modA windowsA (WS.focusIndex idx)
+      focusWindow = modA windowsA (fromJust . PL.move idx)
   logPutStrLn $ "Will focus to index: " ++ show (findIndex ((wkey w ==) . wkey) wCache)
 
   let editorAction = do
@@ -385,7 +385,7 @@ refresh ui e = do
           replaceTagsIn ui (mkRegion (max 0 (p-100)) (min (p+100) size)) buf gtkBuf
     logPutStrLn $ "syncing: " ++ show ws
     logPutStrLn $ "with: " ++ show cache
-    cache' <- syncWindows e ui (toList $ WS.withFocus $ ws) cache
+    cache' <- syncWindows e ui (toList $ PL.withFocus $ ws) cache
     logPutStrLn $ "Gives: " ++ show cache'
     writeRef (windowCache ui) cache'
     forM_ cache' $ \w ->
@@ -462,7 +462,7 @@ prepareAction ui = do
                      return (l1 - l0)
     -- updates the heights of the windows
     return $ 
-      modA windowsA  (\ws -> if WS.length ws == length heights 
+      modA windowsA  (\ws -> if PL.length ws == length heights 
                                   then fst $ runState (mapM distribute ws) heights
                                   else trace ("INFO: updates the heights of the windows: unmatching lengths") ws)
 
