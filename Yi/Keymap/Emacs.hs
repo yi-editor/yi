@@ -49,9 +49,9 @@ keymap = selfInsertKeymap Nothing isDigit <|> completionKm <|>
 
 
 selfInsertKeymap :: Maybe Int -> (Char -> Bool) -> Keymap
-selfInsertKeymap univArg except = do
+selfInsertKeymap univArg condition = do
   c <- printableChar
-  when (not . except $ c) empty
+  when (not . condition $ c) empty
   let n = argToInt univArg
   write (adjBlock n >> replicateM_ n (insertB c))
 

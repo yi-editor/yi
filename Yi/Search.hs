@@ -91,7 +91,7 @@ data SearchResult = PatternFound
                   | PatternNotFound
                   | SearchWrapped
 
-doSearch :: (Maybe String)       -- ^ @Nothing@ means used previous
+doSearch :: Maybe String        -- ^ @Nothing@ means used previous
                                 -- pattern, if any. Complain otherwise.
                                 -- Use getRegexE to check for previous patterns
         -> [SearchF]            -- ^ Flags to modify the compiled regex
@@ -113,7 +113,7 @@ searchInit re d fs = do
     putA searchDirectionA d
     return (c_re,d)
 
--- | Do a forward search, placing cursor at first char of pattern, if found.
+-- | Do a search, placing cursor at first char of pattern, if found.
 -- Keymaps may implement their own regex language. How do we provide for this?
 -- Also, what's happening with ^ not matching sol?
 continueSearch :: (SearchExp, Direction) -> BufferM SearchResult

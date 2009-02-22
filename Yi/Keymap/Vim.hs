@@ -1382,6 +1382,7 @@ viFnewE :: String -> YiM ()
 viFnewE = fnewE . dropSpace
 
 -- | viSearch is a doSearch wrapper that print the search outcome.
+-- TODO: consider merging with doSearch 
 viSearch :: String -> [SearchF] -> Direction -> EditorM ()
 viSearch x y z = do
   r <- doSearch (if null x then Nothing else Just x) y z
