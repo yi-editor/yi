@@ -1,14 +1,14 @@
 {-# LANGUAGE FlexibleContexts #-}
-module Yi.Keymap.Users.JP where
+module Yi.Users.JP.Experimental where
 -- This is an attempt at a completely "normalized" keymap.
 -- Choose your mode/unit with the left hand;
 -- Perform commands with the right hand.
 
-import Prelude hiding (error)
+import Prelude (zipWith)
 import Control.Monad.State
 import Data.Char
-import Yi.Keymap.Keys
-import Yi.Keymap.Emacs.Utils (insertSelf)
+import Yi.Keymap.Emacs.Utils
+import Yi.Rectangle
 import Yi
 import qualified Yi.Interact as I (choice, I())
 
@@ -33,6 +33,7 @@ rightHand = ["yuiop", "hjkl;", "nm,./"]
 -- data Special = Complete | Undo | Indent | Search
 
 -- Special shift for events that understands qwerty layout.
+shi_ :: Event ->Event
 shi_ (Event (KASCII c) ms) | isAlpha c = Event (KASCII (toUpper c)) ms
 shi_ (Event (KASCII ',') ms)  = Event (KASCII '<') ms
 shi_ (Event (KASCII '.') ms)  = Event (KASCII '>') ms
@@ -47,12 +48,12 @@ shi_ _ = error "shi_: unhandled event"
 selfInsertKeymap :: KM ()
 selfInsertKeymap = do
   c <- printableChar
-  write (insertSelf c)
+  write (insertB c)
 
 retKeymap :: KM ()
 retKeymap = do
   Event KEnter [] <- anyEvent
-  write (insertSelf '\n')
+  write (insertB '\n')
 
 insertKeymap :: KM ()
 insertKeymap = do
@@ -64,11 +65,12 @@ insertKeymap = do
   quitInsert
   return ()
 
-quitInsert = oneOf [ctrl $ spec KEnter, spec KEsc]
+quitInsert :: KM Event
+quitInsert = oneOf [ctrl $ spec KEnter, spec KEsc, ctrlCh '\\']
 
 quickCmdKeymap :: KM ()
 quickCmdKeymap =     mkCmdKeymap (return Character)  ctrl
-                 <|> mkCmdKeymap (return Word)      (ctrl . shi_)
+                 <|> mkCmdKeymap (return unitWord)   (ctrl . shi_)
 
 quitKeymap :: KM ()
 quitKeymap = do
@@ -100,14 +102,19 @@ mkCmdKeymap getUnit mods = I.choice $ concat $ zipWith (zipWith mkCmd) commands 
             write (cmd unt)
 
 keymap :: Keymap
-keymap = runKM $ forever commandsKeymap
+keymap = runKM $ forever $ choice 
+         [ 
+          metaCh 'x' ?>>! executeExtendedCommandE,
+          commandsKeymap,
+          ctrlCh 'x' ?>> ctrlX
+         ]
 
 
 {-
 Commands: (right hand)
 
 
-                cop  cut del del com
+                cop  cut del del com ???
                  pop  pas mov mov sea '''
                   mpp  mxp xpo xpo und
 
@@ -161,8 +168,8 @@ column = Character
 
 units :: [[(TextUnit, String)]]
 units = [
-         [(document, "DOC"), (page, "PAGE"), (column, "COL"), (VLine, "↕")],
-         [(unitParagraph, "§"), (Line, "Line"), (Word, "Word"), (Character, "Char")]
+         [(document, "DOC"), (page, "PAGE"), (column, "COL"), (VLine, "VER")], -- ↕
+         [(unitParagraph, "PARA"), (Line, "Line"), (unitWord, "Word"), (Character, "Char")]
         ]
 
 runKM :: KM () -> Keymap
@@ -188,3 +195,39 @@ C-mode: go to that mode
 -}
 
 
+
+
+------------
+-- C-x commands borrowed from emacs.
+
+ctrlX :: KM ()
+ctrlX = 
+        choice [ ctrlCh 'o'    ?>>! deleteBlankLinesB
+               , char '0'      ?>>! closeWindow
+               , char '1'      ?>>! closeOtherE
+               , char '2'      ?>>! splitE
+               , char 's'      ?>>! askSaveEditor
+               , ctrlCh 'c'    ?>>! askQuitEditor
+               , ctrlCh 'f'    ?>>! findFile
+               , ctrlCh 's'    ?>>! fwriteE
+               , ctrlCh 'w'    ?>>! promptFile "Write file:" fwriteToE
+               , ctrlCh 'x'    ?>>! (exchangePointAndMarkB >> 
+                                     putA highlightSelectionA True)
+               , char 'b'      ?>>! switchBufferE
+               , char 'd'      ?>>! dired
+               , char 'e' ?>> 
+                 char 'e'      ?>>! evalRegionE
+               , char 'o'      ?>>! nextWinE
+               , char 'k'      ?>>! killBufferE
+               , char 'r'      ?>> rectangleFuntions
+               , char 'u'      ?>>! undoB
+               , char 'v'      ?>>! shrinkWinE
+               ]
+
+rectangleFuntions :: KM ()
+rectangleFuntions = choice [char 'a' ?>>! alignRegionOn,
+                            char 'o' ?>>! openRectangle,
+                            char 't' ?>>! stringRectangle,
+                            char 'k' ?>>! killRectangle,
+                            char 'y' ?>>! yankRectangle
+                            ]
