@@ -8,6 +8,7 @@ module Yi.IReader where
 import Control.Monad.State (join)
 import Data.Sequence
 import System.Directory (getHomeDirectory)
+import Control.Concurrent
 
 import Yi.Keymap (withBuffer, YiM)
 import Yi.Prelude (io)
@@ -40,14 +41,15 @@ removeSetLast adb old = (snd $ split adb) |> old
 insertArticle :: ArticleDB -> Article -> ArticleDB
 insertArticle adb new = new <| adb
 
--- | Serialize given 'ArticleDB' out.
+-- | In the background, serialize given 'ArticleDB' out.
 writeDB :: ArticleDB -> YiM ()
-writeDB adb = io $ join $ fmap (flip B.writeFile $ B.pack $ show adb) $ dbLocation
+writeDB adb = do io . forkIO . join . fmap (flip B.writeFile $ B.pack $ show adb) $ dbLocation
+                 return ()
 
 -- | Read in database from 'dbLocation' and then parse it into an 'ArticleDB'.
 readDB :: YiM ArticleDB
 readDB = io $ rddb `catch` (const $ return empty) -- May seem silly to read in as bytestring
-         where rddb = do db <- fmap B.readFile $ dbLocation -- and then unpack it, but - is strict
+         where rddb = do db <- fmap B.readFile dbLocation -- and then unpack it, but - is strict
                          fmap (read . B.unpack) db 
 
 -- | The canonical location. We assume \~\/.yi has been set up already.
@@ -76,8 +78,8 @@ nextArticle :: YiM ()
 nextArticle = do (oldb,_) <- oldDbNewArticle
                  -- Ignore buffer, just set the first article last
                  let newdb = removeSetLast oldb (getLatestArticle oldb)
-                 setDisplayedArticle newdb
                  writeDB newdb
+                 setDisplayedArticle newdb
 
 -- | Delete current article (the article as in the database), and go to next one.
 deleteAndNextArticle :: YiM ()
@@ -85,8 +87,8 @@ deleteAndNextArticle = do (oldb,_) <- oldDbNewArticle -- throw away changes,
                           let ndb = case viewl oldb of     -- drop 1st article
                                 EmptyL -> empty
                                 (_ :< b) -> b
-                          setDisplayedArticle ndb
                           writeDB ndb
+                          setDisplayedArticle ndb
 
 -- | The main action. We fetch the old database, we fetch the modified article from the buffer,
 -- then we call the function 'updateSetLast' which removes the first article and pushes our modified article
@@ -94,8 +96,8 @@ deleteAndNextArticle = do (oldb,_) <- oldDbNewArticle -- throw away changes,
 saveAndNextArticle :: YiM ()
 saveAndNextArticle = do (oldb,newa) <- oldDbNewArticle
                         let newdb = removeSetLast oldb newa
-                        setDisplayedArticle newdb
                         writeDB newdb
+                        setDisplayedArticle newdb
 
 -- | Assume the buffer is an entirely new article just imported this second, and save it.
 -- We don't want to use 'updateSetLast' since that will erase an article.
