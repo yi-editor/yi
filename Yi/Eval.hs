@@ -1,4 +1,4 @@
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ScopedTypeVariables, TypeOperators #-}
 
 module Yi.Eval (
         -- * Eval\/Interpretation
@@ -20,7 +20,7 @@ import Yi.Dired
 import Yi.Interpreter
 import Data.Dynamic
 import Control.Monad.Reader (asks)
-import Yi.MiniBuffer () -- instances
+import Yi.MiniBuffer (FilePatternTag, RegexTag, (:::))
 
 jumpToE :: String -> Int -> Int -> YiM ()
 jumpToE filename line column = do
@@ -98,12 +98,13 @@ execEditorAction s = do
                  toDyn (makeAction :: YiM () -> Action),
                  toDyn (makeAction :: YiM BufferRef -> Action),
 
+                 toDyn (makeAction :: (String ::: RegexTag -> YiM ()) -> Action),
+                 toDyn (makeAction :: (String ::: FilePatternTag -> String ::: RegexTag -> YiM ()) -> Action),
                  toDyn (makeAction :: (String -> YiM ()) -> Action),
 
                  toDyn (makeAction :: (String -> String -> BufferM ()) -> Action),
                  toDyn (makeAction :: (Char -> BufferM ()) -> Action),
 
                  toDyn (makeAction :: (BufferRef -> EditorM ()) -> Action)
-
                 ]
             

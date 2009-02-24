@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable, GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE DeriveDataTypeable, GeneralizedNewtypeDeriving, TypeOperators #-}
 -- Copyright (c) 2008 Jean-Philippe Bernardy
 -- | Various high-level functions to further classify.
 module Yi.Misc
@@ -106,14 +106,19 @@ shell = do
     Interactive.interactive sh ["-i"]
     -- use the -i option for interactive mode (assuming bash)
 
--- | Search the Haskell files in the project.
-grepFind :: String -> YiM ()
-grepFind searched = withOtherWindow $ do
+-- | Search the source files in the project.
+searchSources :: String ::: RegexTag -> YiM ()
+searchSources = grepFind (Doc "*.hs")
+
+-- | Perform a find+grep operation
+grepFind :: String ::: FilePatternTag -> String ::: RegexTag -> YiM ()
+grepFind (Doc pattern) (Doc searched) = withOtherWindow $ do
     startSubprocess "find" [".", 
                             "-name", "_darcs", "-prune", "-o", 
-                            "-name", "*.hs", "-exec", "grep", "-Hnie", searched, "{}", ";"] (const $ return ())
+                            "-name", pattern, "-exec", "grep", "-Hnie", searched, "{}", ";"] (const $ return ())
     withBuffer $ setMode Compilation.mode
     return ()
+
      
 -- | Inserting a template from the templates defined in Yi.Templates
 insertTemplate :: YiM ()

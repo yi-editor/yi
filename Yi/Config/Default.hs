@@ -99,6 +99,7 @@ defaultPublishedActions = M.fromList $
     , ("replaceString"          , box replaceString)
     , ("revertE"                , box revertE)
     , ("shell"                  , box shell)
+    , ("searchSources"          , box searchSources)
     , ("setAnyMode"             , box setAnyMode)
     , ("sortLines"              , box sortLines)
     , ("unLineCommentSelectionB", box unLineCommentSelectionB)

@@ -1,5 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables, FlexibleInstances, MultiParamTypeClasses, UndecidableInstances, TypeSynonymInstances, 
-  TypeOperators, EmptyDataDecls #-}
+  TypeOperators, EmptyDataDecls, DeriveDataTypeable #-}
 
 module Yi.MiniBuffer 
  (
@@ -9,7 +9,7 @@ module Yi.MiniBuffer
   matchingBufferNames, anyModeByNameM, anyModeName,
 
   (:::)(..),
-  LineNumber
+  LineNumber, RegexTag, FilePatternTag
  ) where
 
 import Prelude (filter, length)
@@ -197,7 +197,7 @@ instance (YiAction a x, Promptable r) => YiAction (r -> a) x where
                    
 
 -- | Tag a type with a documentation
-newtype (:::) t doc = Doc {fromDoc :: t} 
+newtype (:::) t doc = Doc {fromDoc :: t} deriving Typeable
 
 instance (DocType doc, Promptable t) => Promptable (t ::: doc) where
     getPrompt _ = typeGetPrompt (error "typeGetPrompt should not enter its argument" :: doc)
@@ -211,3 +211,10 @@ data LineNumber
 instance DocType LineNumber where
     typeGetPrompt _ = "Line"
     
+data RegexTag deriving Typeable
+instance DocType RegexTag where
+    typeGetPrompt _ = "Regex"
+    
+data FilePatternTag deriving Typeable
+instance DocType FilePatternTag where
+    typeGetPrompt _ = "FilePattern"
