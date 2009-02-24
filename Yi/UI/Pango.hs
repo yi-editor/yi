@@ -313,7 +313,7 @@ newWindow e ui w b = mdo
     v <- drawingAreaNew
     widgetModifyFont v (Just f)
     widgetAddEvents v [Button1MotionMask]
-    widgetModifyBg v StateNormal $ mkCol $ Yi.Style.background $ baseAttributes $ configStyle $ uiConfig ui
+    widgetModifyBg v StateNormal $ mkCol False $ Yi.Style.background $ baseAttributes $ configStyle $ uiConfig ui
 
     box <- if isMini w
      then do
@@ -452,9 +452,9 @@ render e ui b w _ev = do
       strokes = [(start,s,end) | ((start, s), end) <- zip picture (drop 1 (map fst picture) ++ [regionEnd r'']),
                   s /= emptyAttributes]
       rel p = fromIntegral (p - regionStart r'')
-      allAttrs = [gen (rel p1) (rel p2) (mkCol col) 
+      allAttrs = [gen (rel p1) (rel p2) (mkCol isFg col) 
                   | (p1,Attributes fg bg _rv,p2) <- strokes, 
-                  (gen,col) <- zip [AttrForeground, AttrBackground] [fg,bg],
+                  ((isFg,gen),col) <- zip [(True,AttrForeground), (False,AttrBackground)] [fg,bg],
                   col /= Default]
 
   layoutSetAttributes layout allAttrs
@@ -466,7 +466,7 @@ render e ui b w _ev = do
   drawLayout drawWindow gc 0 0 layout
 
   -- paint the cursor   
-  gcSetValues gc (newGCValues { Gtk.foreground = mkCol $ Yi.Style.foreground $ baseAttributes $ configStyle $ uiConfig ui })
+  gcSetValues gc (newGCValues { Gtk.foreground = mkCol True $ Yi.Style.foreground $ baseAttributes $ configStyle $ uiConfig ui })
   drawLine drawWindow gc (round curx, round cury) (round $ curx + curw, round $ cury + curh) 
   return True
 
@@ -490,8 +490,10 @@ prepareAction ui = do
 reloadProject :: UI -> FilePath -> IO ()
 reloadProject _ _ = return ()
 
-mkCol :: Yi.Style.Color -> Gtk.Color
-mkCol Default = Color 0 0 0
-mkCol (RGB x y z) = Color (fromIntegral x * 256)
-                          (fromIntegral y * 256)
-                          (fromIntegral z * 256)
+mkCol :: Bool -- ^ is foreground?
+   ->Yi.Style.Color -> Gtk.Color
+mkCol True  Default = Color 0 0 0
+mkCol False Default = Color maxBound maxBound maxBound
+mkCol _ (RGB x y z) = Color (fromIntegral x * 256)
+                            (fromIntegral y * 256)
+                            (fromIntegral z * 256)
