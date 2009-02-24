@@ -1,3 +1,4 @@
+{-# LANGUAGE TypeSynonymInstances #-}
 -- | This module defines a list type and operations on it; it further
 -- provides functions which write in and out the list.
 -- The goal is to make it easy for the user to store a large number of text buffers
@@ -5,14 +6,15 @@
 -- \"incremental reading\", see <http://en.wikipedia.org/wiki/Incremental_reading>.
 module Yi.IReader where
 
+import Control.Concurrent (forkIO)
 import Control.Monad.State (join)
-import Data.Sequence
+import Data.Sequence as S
 import System.Directory (getHomeDirectory)
-import Control.Concurrent
 
+import Yi.Dynamic (Initializable(initial))
 import Yi.Keymap (withBuffer, YiM)
-import Yi.Prelude (io)
-import Yi.Buffer.Misc (BufferM)
+import Yi.Prelude (getA, putA, io)
+import Yi.Buffer.Misc (bufferDynamicValueA, BufferM)
 import Yi.Buffer.Region (readRegionB)
 import Yi.Buffer.Normal (regionOfB, TextUnit(Document))
 import Yi.Buffer.HighLevel (replaceBufferContent, topB)
@@ -21,10 +23,13 @@ import qualified Data.ByteString.Char8 as B (pack, unpack, readFile, writeFile)
 type Article = String
 type ArticleDB = Seq Article
 
+instance Initializable ArticleDB where
+    initial = S.empty
+
 -- | Take an 'ArticleDB', and return the first 'Article' and an ArticleDB - *without* that article.
 split :: ArticleDB -> (Article, ArticleDB)
 split adb = case viewl adb of
-               EmptyL -> ("", empty)
+               EmptyL -> ("", S.empty)
                (a :< b) -> (a, b)
 
 -- | Get the first article in the list. We use the list to express relative priority;
@@ -49,18 +54,25 @@ writeDB adb = do io . forkIO . join . fmap (flip B.writeFile $ B.pack $ show adb
 -- | Read in database from 'dbLocation' and then parse it into an 'ArticleDB'.
 readDB :: YiM ArticleDB
 readDB = io $ rddb `catch` (const $ return empty) -- May seem silly to read in as bytestring
-         where rddb = do db <- fmap B.readFile dbLocation -- and then unpack it, but - is strict
-                         fmap (read . B.unpack) db 
+         where rddb = fmap B.readFile dbLocation >>= fmap (read . B.unpack) -- and then unpack it, 
+                                                                            -- but - is strict
 
 -- | The canonical location. We assume \~\/.yi has been set up already.
 dbLocation :: IO FilePath
 dbLocation = getHomeDirectory >>= \home -> return (home ++ "/.yi/articles.db")
 
 -- | Returns the database as it exists on the disk, and the current Yi buffer contents.
+--   Note that the Initializable typeclass gives us an empty Seq. So first we try the buffer
+--   state in the hope we can avoid a very expensive read from disk, and if we find nothing 
+--   (that is, if we get an empty Seq), only then do we call 'readDB'.
 oldDbNewArticle :: YiM (ArticleDB, Article)
-oldDbNewArticle = do olddb <- readDB
+oldDbNewArticle = do 
+                     saveddb <- withBuffer $ getA bufferDynamicValueA
                      newarticle <- withBuffer getBufferContents
-                     return (olddb, newarticle)
+                     if not $ S.null saveddb
+                      then return (saveddb, newarticle)
+                      else do olddb <- readDB
+                              return (olddb, newarticle)
 
 getBufferContents :: BufferM String
 getBufferContents = readRegionB =<< regionOfB Document
@@ -68,9 +80,10 @@ getBufferContents = readRegionB =<< regionOfB Document
 -- | Given an 'ArticleDB', dump the scheduled article into the buffer (replacing previous contents).
 setDisplayedArticle :: ArticleDB -> YiM ()
 setDisplayedArticle newdb = do let nextarticle = getLatestArticle newdb
-                               withBuffer (replaceBufferContent nextarticle)
-                               withBuffer topB -- replaceBufferContents moves us
-                                               -- to bottom?
+                               withBuffer $ do replaceBufferContent nextarticle
+                                               topB -- replaceBufferContents moves us
+                                                    -- to bottom?
+                                               putA bufferDynamicValueA newdb
 
 -- | Go to next one. This ignores the buffer, but it doesn't remove anything from the database.
 -- However, the ordering does change.
