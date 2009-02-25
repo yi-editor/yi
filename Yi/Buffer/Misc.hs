@@ -939,7 +939,11 @@ gotoLnFrom x = do
     moveTo p'
     return lineDiff
 
--- | Access to a value into the extensible state, keyed by its type
+-- | Access to a value into the extensible state, keyed by its type.
+--   This allows you to save or retrieve inside a 'BufferM' monad, ie:
+--
+-- > putA bufferDynamicValueA updatedvalue
+-- > value <- getA bufferDynamicValueA
 bufferDynamicValueA :: Initializable a => Accessor FBuffer a
 bufferDynamicValueA = dynamicValueA . bufferDynamicA
 

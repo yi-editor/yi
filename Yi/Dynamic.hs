@@ -22,6 +22,10 @@ import Data.Map as M
 --
 
 
+-- | The default value. If a function tries to get a copy of the state, but the state
+--   hasn't yet been created, 'initial' will be called to supply *some* value. The value
+--   of initial will probably be something like Nothing,  \[\], \"\", or 'Data.Sequence.empty' - compare 
+--   the 'mempty' of "Data.Monoid".
 class (Typeable a) => Initializable a where
     initial :: a
 
