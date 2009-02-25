@@ -10,6 +10,7 @@ import Control.Concurrent (forkIO)
 import Control.Monad.State (join)
 import Data.Binary (decode, encodeFile)
 import Data.Sequence as S
+import Data.Typeable (Typeable)
 import System.Directory (getHomeDirectory)
 import qualified Data.ByteString.Char8 as B (readFile)
 import qualified Data.ByteString.Lazy.Char8 as BL (fromChunks)
@@ -25,7 +26,7 @@ import Yi.Prelude (getA, putA, io)
 type Article = String
 type ArticleDB = Seq Article
 
-instance Initializable ArticleDB where
+instance (Typeable a) => Initializable (Seq a) where
     initial = S.empty
 
 -- | Take an 'ArticleDB', and return the first 'Article' and an ArticleDB - *without* that article.
