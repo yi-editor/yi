@@ -41,7 +41,7 @@ import Control.Arrow hiding (left, right)
 import {-# source #-} Yi.Boot
 import Yi.Core
 import Yi.Dired
-import Yi.Eval (execEditorAction)
+import Yi.Eval (execEditorAction, getAllNamesInScope)
 import Yi.File
 import Yi.History
 import Yi.Misc (matchingFileNames,adjBlock,adjIndent,cabalRun)

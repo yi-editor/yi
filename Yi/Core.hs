@@ -40,7 +40,6 @@ module Yi.Core
   -- * Misc
   , runAction
   , withSyntax
-  , getAllNamesInScope
 
   ) 
 where
@@ -296,12 +295,7 @@ closeWindow = do
     when (winCount == 1 && tabCount == 1) quitEditor
     withEditor $ tryCloseE
 
-  
-getAllNamesInScope :: YiM [String]
-getAllNamesInScope = do 
-  acts <- asks (publishedActions . yiConfig)
-  return (M.keys acts)
-
+ 
 -- | Start a subprocess with the given command and arguments.
 startSubprocess :: FilePath -> [String] -> (Either Exception ExitCode -> YiM x) -> YiM BufferRef
 startSubprocess cmd args onExit = do

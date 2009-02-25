@@ -36,6 +36,10 @@ data-files:
   examples/yi-simple.hs
 extra-source-files: Yi/Lexer/alex.hsinc
 
+flag ghcInterpreter
+  Description: Use the "hint" interpreter
+  Default: False      
+
 flag ghcAPI
   Description: Enable linking with GHC API for advanced features.
   Default: False
@@ -101,7 +105,6 @@ library
         Yi.IReader
         Yi.IncrementalParse
         Yi.Interact
-        Yi.Interpreter
         Yi.Keymap
         Yi.Keymap.Completion,
         Yi.Keymap.Cua
@@ -190,6 +193,12 @@ library
                      Yi.UI.Cocoa.TextStorage
                      Yi.UI.Cocoa.TextView
                      Yi.UI.Cocoa.Utils
+
+    if flag (ghcInterpreter)
+      cpp-options: -DGHC_INTERPRETER
+    else
+      other-modules:
+         Yi.Interpreter
 
     if flag (ghcAPI)
       cpp-options: -DGHC_API
@@ -291,7 +300,6 @@ executable yi
         build-depends: fingertree >= 0 && <0.1
         build-depends: ghc-paths ==0.1.*
         build-depends: monads-fd
-        build-depends: parsec >= 3 && <= 3.0.2
         build-depends: pointedlist >= 0.3.1
         build-depends: pureMD5 >= 0.2.3
         build-depends: random
@@ -332,6 +340,13 @@ executable yi
         if flag (cocoa)
           build-depends: HOC, HOC-AppKit, HOC-Foundation
           cpp-options: -DFRONTEND_COCOA
+
+        if flag (ghcInterpreter)
+          cpp-options: -DGHC_INTERPRETER
+          build-depends: hint > 0.3.1 
+          -- requires an unreleased version atm.
+        else
+          build-depends: parsec >= 3 && <= 3.0.2
 
         if flag (ghcAPI)
           build-depends: ghc == 6.8.3 || == 6.10.1
@@ -397,7 +412,6 @@ executable yi
 
            Yi.Mode.Interactive
 
-           Yi.Interpreter,
            Yi.Buffer.Indent
            Yi.Buffer.HighLevel, Yi.Buffer.Implementation,
            Yi.Buffer.Normal, Yi.Buffer.Region, Yi.Completion, Yi.Core,
