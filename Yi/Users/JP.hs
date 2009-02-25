@@ -1,29 +1,29 @@
 import Yi hiding (defaultConfig)
 import Yi.Keymap.Emacs (keymap)
+-- import Yi.Users.JP.Experimental (keymap)
 -- You can use other keymap by importing some other module:
 -- import  Yi.Keymap.Cua (keymap)
 
 -- If configured with ghcAPI, Shim Mode can be enabled:
 -- import qualified Yi.Mode.Shim as Shim
-import Yi.Mode.Haskell as Haskell
-import Data.List (drop, length)
-import Yi.Char.Unicode (greek, symbols)
-import Yi.Prelude
-import Prelude ()
-import Yi.Keymap.Keys
-import Yi.String
-import Data.Char
-import Data.Monoid
-import Yi.Hoogle
-import Yi.Syntax.Haskell as Hask
-import Yi.Lexer.Haskell as Hask
-import Yi.Syntax.Paren as Paren
-import Yi.Syntax.Tree
-import Yi.Syntax.OnlineTree as OnlineTree
-import Data.Maybe
-import Yi.Lexer.Alex (tokToSpan)
-import qualified Yi.Interact as I
+
 import Control.Monad
+import Data.Char
+import Data.List (drop, length)
+import Data.Maybe
+import Data.Monoid
+import Prelude ()
+import Yi.Char.Unicode (greek, symbols)
+import Yi.Hoogle
+import Yi.Keymap.Keys
+import Yi.Lexer.Alex (tokToSpan, Tok)
+import Yi.Lexer.Haskell as Hask
+import Yi.Mode.Haskell as Haskell
+import Yi.Prelude
+import Yi.String
+import Yi.Syntax
+import Yi.Syntax.Tree
+import qualified Yi.Interact as I
 
 increaseIndent :: BufferM ()
 increaseIndent = modifyExtendedSelectionB Yi.Line $ mapLines (' ':)
@@ -41,6 +41,7 @@ tokenToText (Hask.Operator "/=") = Just "≠"
 tokenToText (Hask.Operator ">=") = Just "≥"
 tokenToText (Hask.Operator "<=") = Just "≤"
 tokenToText _ = Nothing
+
 
 haskellModeHooks mode = 
                   -- uncomment for shim:
@@ -77,6 +78,7 @@ parensInput
               ]
              ]
 
+tta :: Yi.Lexer.Alex.Tok Token -> Maybe (Yi.Syntax.Span String)
 tta = sequenceA . tokToSpan . (fmap Main.tokenToText)
 
 parenIns :: Char -> Char -> BufferM ()
@@ -84,6 +86,7 @@ parenIns open close = do
     x <- readB
     if x == '\0' || isSpace x then insertN [open,close] >> leftB else insertN [open]
 
+frontend :: UIBoot
 Just frontend = foldr1 (<|>) $ fmap (flip lookup availableFrontends) ["cocoa", "vty"] 
 
 defaultConfig = defaultEmacsConfig
@@ -111,11 +114,14 @@ main = yi $ defaultConfig {
                               <|> (ctrl (char '<') ?>>! decreaseIndent)
                           }
 
+-- Just a stupid input preprocessor for testing. 
 testPrep :: I.P Event Event
 testPrep = mkAutomaton $ forever $ ((anyEvent >>= I.write) ||> do
     char 'C' ?>> I.write (Event (KASCII 'X') []))
 
 
+-- Input preprocessor: Transform Esc;Char into Meta-Char
+-- Useful for emacs lovers ;)
 escToMeta :: I.P Event Event
 escToMeta = mkAutomaton $ forever $ (anyEvent >>= I.write) ||> do
     event (spec KEsc)
