@@ -23,6 +23,7 @@ module Yi
     module Yi.Search,
     module Yi.Style,
     module Yi.Style.Library,
+    module Yi.Misc
   ) where
 
 import Data.Prototype
@@ -36,3 +37,4 @@ import Yi.Config.Default
 import Yi.Search
 import Yi.Style
 import Yi.Style.Library
+import Yi.Misc
