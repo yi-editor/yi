@@ -29,6 +29,8 @@ import HOC (withAutoreleasePool)
 import Data.Char
 import Data.List                ( intersperse, map )
 import Control.Monad.Error
+import Control.Monad.Trans.Error (Error(..))
+import Control.Monad (foldM)
 import System.Console.GetOpt
 import System.Environment       ( getArgs )
 import System.Exit

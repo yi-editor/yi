@@ -4,7 +4,8 @@
 
 module Yi.Keymap.Emacs.KillRing where
 
-import Data.Accessor
+import Prelude ()
+import Yi.Prelude 
 import Yi.Monad
 import Yi.Keymap
 import Yi.Buffer

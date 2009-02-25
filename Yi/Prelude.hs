@@ -43,7 +43,7 @@ mapAdjust',
 mapAlter',
 module Control.Applicative,
 module Control.Category,
-module Data.Accessor,
+module Data.Accessor, putA, getA, modA, (%=), (%:),
 module Data.Bool,
 module Data.Foldable,
 module Data.Function,
@@ -73,7 +73,6 @@ writeFile -- because Data.Derive uses it.
 import Prelude hiding (any, all)
 import Yi.Debug
 import Yi.Monad
-import Data.Accessor
 import qualified Data.Accessor.Basic
 import Text.Show
 import Data.Bool
@@ -89,6 +88,9 @@ import Control.Monad
 import Data.Monoid
 import qualified Data.Set as Set
 import qualified Data.Map as Map
+import qualified Control.Monad.State.Class as CMSC
+import qualified Data.Accessor.Basic as Accessor
+import Data.Accessor ((<.), accessor, getVal, setVal, Accessor,(^.),(^:),(^=))
     
 type Endom a = a -> a
 
@@ -202,3 +204,34 @@ commonPrefix strings
           (heads, tailz) = unzip [(h,t) | (h:t) <- strings]
           prefix = head heads
 -- for an alternative implementation see GHC's InteractiveUI module.
+
+
+
+
+-----------------------
+-- Acessor stuff
+
+putA :: CMSC.MonadState r m => Accessor.T r a -> a -> m ()
+putA f x = CMSC.modify (Accessor.set f x)
+
+getA :: CMSC.MonadState r m => Accessor.T r a -> m a
+getA f = CMSC.gets (Accessor.get f)
+
+
+modA :: CMSC.MonadState r m => Accessor.T r a -> (a -> a) -> m ()
+modA f g = CMSC.modify (Accessor.modify f g)
+
+infix 1 %=, %:
+
+{- |
+Infix variant of 'set'.
+-}
+(%=) :: CMSC.MonadState r m => Accessor.T r a -> a -> m ()
+(%=) = putA
+
+{- |
+Infix variant of 'modify'.
+-}
+(%:) :: CMSC.MonadState r m => Accessor.T r a -> (a -> a) -> m ()
+(%:) = modA
+

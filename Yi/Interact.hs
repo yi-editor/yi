@@ -88,14 +88,6 @@ instance MonadInteract m w e => MonadInteract (StateT s m) w e where
     eventBounds l h = lift (eventBounds l h)
     adjustPriority p = lift (adjustPriority p)
 
-instance (MonadInteract m w e) => Alternative (StateT s m) where
-    empty = mzero
-    (<|>) = mplus
-
-instance MonadInteract m w e => Applicative (StateT s m) where
-    pure = return
-    a <*> b = do f <- a; x <- b; return (f x)
-
 ---------------------------------------------------------------------------
 -- | Interactive process description
 

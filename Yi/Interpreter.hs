@@ -15,7 +15,7 @@ import qualified Text.ParserCombinators.Parsec as Parsec
 import Text.ParserCombinators.Parsec (chainl1)
 import qualified Data.Map as M
 import Data.Traversable
-import Prelude hiding (mapM)
+import Prelude hiding (foldl, mapM)
 import Data.Foldable
 import GHC.Base (Any)
 import Unsafe.Coerce

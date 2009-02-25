@@ -1,4 +1,4 @@
-{-# LANGUAGE TemplateHaskell, CPP, GeneralizedNewtypeDeriving, DeriveDataTypeable, StandaloneDeriving, ExistentialQuantification, Rank2Types #-}
+{-# LANGUAGE TemplateHaskell, CPP, GeneralizedNewtypeDeriving, DeriveDataTypeable, StandaloneDeriving, ExistentialQuantification, Rank2Types, TypeSynonymInstances #-}
 
 -- Copyright (C) 2004, 2007 Don Stewart - http://www.cse.unsw.edu.au/~dons
 -- Copyright (C) 2007, 2008 JP Bernardy
@@ -136,7 +136,6 @@ import Yi.Buffer.Undo
 import Yi.Dynamic
 import Yi.Window
 import Control.Monad.RWS.Strict hiding (mapM_, mapM, get, put, forM)
-import Data.Accessor
 import Data.Accessor.Template
 import Data.Binary
 import Data.List (scanl, takeWhile, zip, length)
@@ -395,13 +394,9 @@ data IndentBehaviour =
 
 -- | The BufferM monad writes the updates performed.
 newtype BufferM a = BufferM { fromBufferM :: RWS Window [Update] FBuffer a }
-#if __GLASGOW_HASKELL__ >= 610
     deriving (Monad, Functor, MonadWriter [Update], MonadState FBuffer, MonadReader Window, Typeable)
-#else
-    deriving (Monad, Functor, MonadWriter [Update], MonadState FBuffer, MonadReader Window, Typeable1)
-#endif
 
-deriving instance Typeable4 RWS
+-- deriving instance Typeable4 RWS
 
 instance Applicative BufferM where
     pure = return
