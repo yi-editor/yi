@@ -8,17 +8,19 @@ module Yi.IReader where
 
 import Control.Concurrent (forkIO)
 import Control.Monad.State (join)
+import Data.Binary (decode, encodeFile)
 import Data.Sequence as S
 import System.Directory (getHomeDirectory)
+import qualified Data.ByteString.Char8 as B (readFile)
+import qualified Data.ByteString.Lazy.Char8 as BL (fromChunks)
 
+import Yi.Buffer.HighLevel (replaceBufferContent, topB)
+import Yi.Buffer.Misc (bufferDynamicValueA, BufferM)
+import Yi.Buffer.Normal (regionOfB, TextUnit(Document))
+import Yi.Buffer.Region (readRegionB)
 import Yi.Dynamic (Initializable(initial))
 import Yi.Keymap (withBuffer, YiM)
 import Yi.Prelude (getA, putA, io)
-import Yi.Buffer.Misc (bufferDynamicValueA, BufferM)
-import Yi.Buffer.Region (readRegionB)
-import Yi.Buffer.Normal (regionOfB, TextUnit(Document))
-import Yi.Buffer.HighLevel (replaceBufferContent, topB)
-import qualified Data.ByteString.Char8 as B (pack, unpack, readFile, writeFile)
 
 type Article = String
 type ArticleDB = Seq Article
@@ -48,14 +50,16 @@ insertArticle adb new = new <| adb
 
 -- | In the background, serialize given 'ArticleDB' out.
 writeDB :: ArticleDB -> YiM ()
-writeDB adb = do io . forkIO . join . fmap (flip B.writeFile $ B.pack $ show adb) $ dbLocation
+writeDB adb = do io . forkIO . join . fmap (flip encodeFile adb) $ dbLocation
                  return ()
 
 -- | Read in database from 'dbLocation' and then parse it into an 'ArticleDB'.
 readDB :: YiM ArticleDB
-readDB = io $ rddb `catch` (const $ return empty) -- May seem silly to read in as bytestring
-         where rddb = fmap B.readFile dbLocation >>= fmap (read . B.unpack) -- and then unpack it, 
-                                                                            -- but - is strict
+readDB = io $ (dbLocation >>= r) `catch` (\_ -> return empty)
+          where r x = fmap (decode . BL.fromChunks . return) $ B.readFile x
+                -- We read in with strict bytestrings to guarantee the file is closed,
+                -- and then we convert it to the lazy bytestring data.binary expects.
+                -- This is inefficient, but alas...
 
 -- | The canonical location. We assume \~\/.yi has been set up already.
 dbLocation :: IO FilePath
@@ -66,14 +70,14 @@ dbLocation = getHomeDirectory >>= \home -> return (home ++ "/.yi/articles.db")
 --   state in the hope we can avoid a very expensive read from disk, and if we find nothing 
 --   (that is, if we get an empty Seq), only then do we call 'readDB'.
 oldDbNewArticle :: YiM (ArticleDB, Article)
-oldDbNewArticle = do 
-                     saveddb <- withBuffer $ getA bufferDynamicValueA
+oldDbNewArticle = do saveddb <- withBuffer $ getA bufferDynamicValueA
                      newarticle <- withBuffer getBufferContents
                      if not $ S.null saveddb
                       then return (saveddb, newarticle)
                       else do olddb <- readDB
                               return (olddb, newarticle)
 
+-- TODO: move to somewhere more sensible. Buffer.Misc?
 getBufferContents :: BufferM String
 getBufferContents = readRegionB =<< regionOfB Document
 
