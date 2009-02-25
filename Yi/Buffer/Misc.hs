@@ -138,6 +138,8 @@ import Yi.Window
 import Control.Monad.RWS.Strict hiding (mapM_, mapM, get, put, forM)
 import Data.Accessor.Template
 import Data.Binary
+import Data.DeriveTH
+import Data.Derive.Binary
 import Data.List (scanl, takeWhile, zip, length)
 import qualified Data.Map as M
 import Data.Maybe
@@ -183,9 +185,7 @@ instance Foldable MarkSet where
 instance Functor MarkSet where
     fmap = fmapDefault
 
-instance Binary a => Binary (MarkSet a) where
-    put (MarkSet f i s t) = put f >> put i >> put s >> put t
-    get = MarkSet <$> get <*> get <*> get <*> get
+$(derive makeBinary ''MarkSet)
 
 
 data SelectionStyle = SelectionStyle
