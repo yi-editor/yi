@@ -227,6 +227,51 @@ library
 --                Yi.Keymap.Nano,
 --                Yi.Keymap.Vi,
 
+executable parserTest
+        main-is:        ParserTest.hs
+        if flag(testing)
+            other-modules:
+                Yi
+                Yi.Modes
+                Yi.Mode.Compilation
+                Yi.Mode.Haskell
+                Yi.UI.Common
+
+                Paths_yi
+                Yi.GHC
+
+                Yi.Lexer.Alex
+                Yi.Lexer.Compilation
+                Yi.Lexer.C
+                Yi.Lexer.ObjectiveC
+                Yi.Lexer.Cplusplus
+                Yi.Lexer.Haskell
+                Yi.Lexer.JavaScript
+                Yi.Lexer.LiterateHaskell
+                Yi.Lexer.Latex 
+                Yi.Lexer.Srmc
+                Yi.Lexer.Cabal
+                Yi.Lexer.GNUMake
+                Yi.Lexer.OCaml
+                Yi.Lexer.Ott
+                Yi.Lexer.Perl
+                Yi.Lexer.Python
+                Yi.Lexer.SVNCommit
+
+                Yi.Syntax
+                Yi.Syntax.BList
+                Yi.Syntax.Layout
+                Yi.Syntax.OnlineTree
+                Yi.Syntax.Paren
+                Yi.Syntax.Latex
+                Yi.Syntax.Tree
+
+                Yi.Mode.Interactive
+
+                HConf
+                HConf.Utils
+                HConf.Paths
+        include-dirs:   Yi/Lexer
 
 executable yi
         build-tools:   alex >= 2.0.1 && < 3
