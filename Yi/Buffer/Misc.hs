@@ -241,18 +241,22 @@ data FBuffer = forall syntax.
         deriving Typeable
 
 
+shortIdentString :: [a] -> FBuffer -> [Char]
 shortIdentString prefix b = case b ^. identA of
     Left bName -> "*" ++ bName ++ "*"
     Right fName -> joinPath $ drop (length prefix) $ splitPath $ fName
 
+identString :: FBuffer -> [Char]
 identString b = case b ^. identA of
     Left bName -> "*" ++ bName ++ "*"
     Right fName -> fName
 
+miniIdentString :: FBuffer -> [Char]
 miniIdentString b = case b ^. identA of
     Right _ -> "MINIFILE:"
     Left bufName -> bufName
 
+identA :: Accessor FBuffer BufferId
 identA = identAA . attrsA
 
 
@@ -297,6 +301,7 @@ attrsA = accessor attributes (\a e -> case e of FBuffer f1 f2 _ -> FBuffer f1 f2
 lastActiveWindowA :: Accessor FBuffer Window
 lastActiveWindowA = lastActiveWindowAA . attrsA
 
+lastSyncTimeA :: Accessor FBuffer UTCTime
 lastSyncTimeA = lastSyncTimeAA . attrsA
 
 pointDriveA :: Accessor FBuffer Bool

@@ -47,7 +47,7 @@ where
 import Control.Concurrent
 import Control.Monad (when, forever)
 import Control.Monad.Error ()
-import Control.Monad.Reader (runReaderT, ask, asks)
+import Control.Monad.Reader (runReaderT, ask)
 import Control.Monad.Trans
 import Control.OldException
 import Data.List (intercalate)

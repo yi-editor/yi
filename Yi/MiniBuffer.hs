@@ -22,7 +22,6 @@ import Yi.History
 import Yi.Completion (commonPrefix, infixMatch, prefixMatch, completeInList)
 import qualified Yi.Core as Editor
 import Control.Monad.Reader
-import qualified Data.Accessor.MonadState as AM
 -- | Open a minibuffer window with the given prompt and keymap
 -- The third argument is an action to perform after the minibuffer
 -- is opened such as move to the first occurence of a searched for
