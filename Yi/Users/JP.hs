@@ -98,6 +98,7 @@ main = yi $ defaultConfig {
                            startFrontEnd = frontend,
                            modeTable = AnyMode (haskellModeHooks Haskell.cleverMode) 
                                      : AnyMode (haskellModeHooks Haskell.fastMode) 
+                                     : AnyMode (haskellModeHooks Haskell.literateMode) 
                                      : modeTable defaultConfig,
                            configUI = (configUI defaultConfig) 
                              { configFontSize = Just 12 
