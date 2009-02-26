@@ -1,5 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables, FlexibleInstances, MultiParamTypeClasses, UndecidableInstances, TypeSynonymInstances, 
-  TypeOperators, EmptyDataDecls, DeriveDataTypeable #-}
+  TypeOperators, EmptyDataDecls, DeriveDataTypeable, GeneralizedNewtypeDeriving #-}
 
 module Yi.MiniBuffer 
  (
@@ -16,6 +16,7 @@ import Prelude (filter, length)
 import Data.List (isInfixOf)
 import qualified Data.List.PointedList.Circular as PL
 import Data.Maybe
+import Data.String (IsString)
 import Yi.Config
 import Yi.Core
 import Yi.History
@@ -196,7 +197,10 @@ instance (YiAction a x, Promptable r) => YiAction (r -> a) x where
                    
 
 -- | Tag a type with a documentation
-newtype (:::) t doc = Doc {fromDoc :: t} deriving Typeable
+newtype (:::) t doc = Doc {fromDoc :: t} deriving (Eq, Typeable, Num, IsString)
+
+instance Show x => Show (x ::: t) where
+    show (Doc d) = show d
 
 instance (DocType doc, Promptable t) => Promptable (t ::: doc) where
     getPrompt _ = typeGetPrompt (error "typeGetPrompt should not enter its argument" :: doc)
