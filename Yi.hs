@@ -23,7 +23,8 @@ module Yi
     module Yi.Search,
     module Yi.Style,
     module Yi.Style.Library,
-    module Yi.Misc
+    module Yi.Misc,
+    module Yi.Mode.Haskell
   ) where
 
 import Data.Prototype
@@ -38,3 +39,4 @@ import Yi.Search
 import Yi.Style
 import Yi.Style.Library
 import Yi.Misc
+import Yi.Mode.Haskell (ghciGet, ghciLoadBuffer)
