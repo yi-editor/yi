@@ -61,11 +61,12 @@ data TextUnit = Character -- ^ a single character
       -- idea to use GenUnit though.
                 deriving Typeable
 
-genBoundary siz ofs condition direction = do
-    condition <$> peekB direction siz ofs
-  where -- | read some characters in the specified direction, for boundary testing purposes
-        peekB :: Direction -> Int -> Int -> BufferM String
-        peekB dir siz ofs = savingPointB $
+-- | Common boundary checking function: run the condition on @siz@ characters in specified direction
+-- shifted by specified offset.
+genBoundary :: Int ->Int -> (String -> Bool) -> Direction -> BufferM Bool
+genBoundary siz ofs condition dir = condition <$> peekB
+  where -- | read some characters in the specified direction
+        peekB = savingPointB $
           do moveN dirOfs
              mayReverse dir <$> (nelemsB siz =<< pointB)
           where
