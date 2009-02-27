@@ -53,7 +53,6 @@ import Data.Accessor (Accessor)
 
 -- | Designate a given "unit" of text.
 data TextUnit = Character -- ^ a single character
-              | Word -- ^ a word as in use in Emacs (fundamental mode)
               | Line  -- ^ a line of text (between newlines)
               | VLine -- ^ a "vertical" line of text (area of text between two characters at the same column number)
               | Delimited Char Char Bool -- ^ delimited on the left and right by given characters, boolean argument tells if whether those are included.
@@ -65,8 +64,9 @@ data TextUnit = Character -- ^ a single character
                 deriving Typeable
 
 
+-- | a word as in use in Emacs (fundamental mode)
 unitWord :: TextUnit
-unitWord = Word
+unitWord = GenUnit Document $ \direction -> checkPeekB (-1) [isWordChar, not . isWordChar] direction
 
 unitDelimited :: Char -> Char -> Bool -> TextUnit
 unitDelimited = Delimited
@@ -156,8 +156,6 @@ atBoundary Document Backward = (== 0) <$> pointB
 atBoundary Document Forward  = (>=)   <$> pointB <*> sizeB
 atBoundary Character _ = return True
 atBoundary VLine _ = return True -- a fallacy; this needs a little refactoring.
-atBoundary Word direction =
-    checkPeekB (-1) [isWordChar, not . isWordChar] direction
 atBoundary Line direction = checkPeekB 0 [isNl] direction
 atBoundary (Delimited c _ False) Backward = checkPeekB 0 [(== c)] Backward
 atBoundary (Delimited _ c False) Forward  = (== c) <$> readB
