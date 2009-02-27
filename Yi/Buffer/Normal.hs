@@ -63,17 +63,12 @@ data TextUnit = Character -- ^ a single character
 
 -- | Common boundary checking function: run the condition on @siz@ characters in specified direction
 -- shifted by specified offset.
-genBoundary :: Int ->Int -> (String -> Bool) -> Direction -> BufferM Bool
-genBoundary siz ofs condition dir = condition <$> peekB
+genBoundary :: (Direction ->Int) -> (String -> Bool) -> Direction -> BufferM Bool
+genBoundary ofs condition dir = condition <$> peekB
   where -- | read some characters in the specified direction
         peekB = savingPointB $
-          do moveN dirOfs
-             mayReverse dir <$> (nelemsB siz =<< pointB)
-          where
-          dirOfs = case dir of
-                     Forward  -> ofs
-                     Backward -> 0 - siz - ofs
-
+          do moveN (ofs dir)
+             mayReverse dir <$> fmap snd <$> (indexedStreamB dir =<< pointB)
 
 -- | a word as in use in Emacs (fundamental mode)
 unitWord :: TextUnit
@@ -107,21 +102,24 @@ checks (p:ps) (x:xs) = p x && checks ps xs
 
 
 checkPeekB :: Int -> [Char -> Bool] -> Direction -> BufferM Bool
-checkPeekB offset conds = genBoundary (length conds) offset (checks conds)
+checkPeekB offset conds = genBoundary dirOfs (checks conds)
+    where dirOfs dir = case dir of
+             Forward  -> offset
+             Backward -> 0 - length conds - offset
 
 atViWordBoundary :: (Char -> Int) -> Direction -> BufferM Bool
-atViWordBoundary charType = genBoundary 2 (-1) $ \cs ->case cs of
+atViWordBoundary charType = genBoundary (const (-1)) $ \cs ->case cs of
       [c1,c2] -> isNl c1 && isNl c2 -- stop at empty lines
               || not (isSpace c1) && (charType c1 /= charType c2)
       _ -> True
 
 atAnyViWordBoundary :: (Char -> Int) -> Direction -> BufferM Bool
-atAnyViWordBoundary charType = genBoundary 2 (-1) $ \cs ->case cs of
+atAnyViWordBoundary charType = genBoundary (const (-1)) $ \cs ->case cs of
       [c1,c2] -> isNl c1 || isNl c2 || charType c1 /= charType c2
       _ -> True
 
 atViWordBoundaryOnLine :: (Char -> Int) -> Direction -> BufferM Bool
-atViWordBoundaryOnLine charType = genBoundary 2 (-1) $ \cs ->case cs of
+atViWordBoundaryOnLine charType = genBoundary (const (-1))  $ \cs ->case cs of
       [c1,c2] -> isNl c1 || isNl c2 || not (isSpace c1) && charType c1 /= charType c2
       _ -> True
 
