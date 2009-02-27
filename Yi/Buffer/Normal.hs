@@ -55,7 +55,6 @@ import Data.Accessor (Accessor)
 data TextUnit = Character -- ^ a single character
               | Line  -- ^ a line of text (between newlines)
               | VLine -- ^ a "vertical" line of text (area of text between two characters at the same column number)
-              | Delimited Char Char Bool -- ^ delimited on the left and right by given characters, boolean argument tells if whether those are included.
               | Document -- ^ the whole document
               | GenUnit {genEnclosingUnit :: TextUnit,
                          genUnitBoundary :: Direction -> BufferM Bool}
@@ -68,8 +67,14 @@ data TextUnit = Character -- ^ a single character
 unitWord :: TextUnit
 unitWord = GenUnit Document $ \direction -> checkPeekB (-1) [isWordChar, not . isWordChar] direction
 
+-- ^ delimited on the left and right by given characters, boolean argument tells if whether those are included.
 unitDelimited :: Char -> Char -> Bool -> TextUnit
-unitDelimited = Delimited
+unitDelimited left right included = GenUnit Document $ \direction ->
+   case (included,direction) of
+       (False, Backward) -> checkPeekB 0 [(== left)] Backward
+       (False, Forward)  -> (== right) <$> readB
+       (True,  Backward) -> checkPeekB (-1) [(== left)] Backward
+       (True,  Forward)  -> checkPeekB 0 [(== right)] Backward
 
 isWordChar :: Char -> Bool
 isWordChar x = isAlphaNum x || x == '_'
@@ -157,10 +162,6 @@ atBoundary Document Forward  = (>=)   <$> pointB <*> sizeB
 atBoundary Character _ = return True
 atBoundary VLine _ = return True -- a fallacy; this needs a little refactoring.
 atBoundary Line direction = checkPeekB 0 [isNl] direction
-atBoundary (Delimited c _ False) Backward = checkPeekB 0 [(== c)] Backward
-atBoundary (Delimited _ c False) Forward  = (== c) <$> readB
-atBoundary (Delimited c _ True) Backward = checkPeekB (-1) [(== c)] Backward
-atBoundary (Delimited _ c True) Forward  = checkPeekB 0 [(== c)] Backward
 atBoundary (GenUnit _ atBound) dir = atBound dir
 
 enclosingUnit :: TextUnit -> TextUnit
