@@ -5,17 +5,14 @@ module Yi.Interpreter (
                        UExpr(..),
                        parse, rename, interpret, toMono) where
 
+import Yi.Prelude
 import Data.Dynamic
 import Control.Monad.Error ()
 import Data.Maybe
-import Text.ParserCombinators.Parsec.Language (haskell)
 import Control.Applicative
-import Text.ParserCombinators.Parsec.Token
-import qualified Text.ParserCombinators.Parsec as Parsec
-import Text.ParserCombinators.Parsec (chainl1)
 import qualified Data.Map as M
 import Data.Traversable
-import Prelude hiding (foldl, mapM)
+import Prelude (words)
 import Data.Foldable
 import GHC.Base (Any)
 import Unsafe.Coerce
@@ -77,21 +74,11 @@ instance Show Atom where
 type Env = M.Map String [Dynamic]
 type Env' = M.Map String PolyDyn
 
--- TODO: parens
-patom :: Parsec.CharParser st Atom
-patom = lexeme haskell (    AVar    <$> identifier     haskell
-                        <|> AString <$> stringLiteral  haskell
-                        <|> AChar   <$> charLiteral    haskell
-                        <|> (AInt . fromIntegral) <$> integer        haskell)
 
-pexpr :: Parsec.CharParser st (UExpr Atom)
-pexpr = chainl1 (UVal <$> patom) (pure UApp)
+parse :: (Monad m) => String -> m (UExpr Atom)
+parse s = return $ foldl1 UApp $ fmap (UVal . AVar) $ words $ s -- trivial parser that builds a single application of vars
+-- If we want a nicer parser we should use haskell-src package.          
 
-parse ::  (Monad m) => [Char] -> m (UExpr Atom)
-parse s = case Parsec.parse pexpr "interactive" s of
-            Left err -> fail (show err)
-            Right x -> return x
-          
 
 data UExpr a where
     UVal :: a -> UExpr a
@@ -166,7 +153,7 @@ interpret' (UApp df da) = do
 
 
 toMono :: forall a. Typeable a => [Dynamic] -> Either Err a
-toMono rs = case catMaybes $ map fromDynamic rs of
+toMono rs = case catMaybes $ fmap fromDynamic rs of
            [] -> Left $ "value doesn't have type " ++ show (typeOf (undefined::a))
            [r] -> Right r
            _ -> error "eval': ambiguous types"
