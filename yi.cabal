@@ -106,7 +106,7 @@ library
         Yi.IncrementalParse
         Yi.Interact
         Yi.Keymap
-        Yi.Keymap.Completion,
+        Yi.Keymap.Completion
         Yi.Keymap.Cua
         Yi.Keymap.Emacs
         Yi.Keymap.Emacs.KillRing
@@ -237,9 +237,11 @@ library
 --                Yi.Keymap.Vi,
 
 executable parserTest
-        main-is:        ParserTest.hs
-        if flag(testing)
-            other-modules:
+  if !flag(testing)
+          main-is:        Dummy.hs
+  else
+          main-is:        ParserTest.hs
+          other-modules:
                 Yi
                 Yi.Modes
                 Yi.Mode.Compilation
