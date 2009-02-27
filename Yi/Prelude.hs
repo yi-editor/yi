@@ -43,7 +43,8 @@ mapAdjust',
 mapAlter',
 module Control.Applicative,
 module Control.Category,
-module Data.Accessor, putA, getA, modA, (%=), (%:),
+module Data.Accessor, 
+module Data.Accessor.Monad.FD.State, putA, getA, modA, 
 module Data.Bool,
 module Data.Foldable,
 module Data.Function,
@@ -91,6 +92,8 @@ import qualified Data.Map as Map
 import qualified Control.Monad.State.Class as CMSC
 import qualified Data.Accessor.Basic as Accessor
 import Data.Accessor ((<.), accessor, getVal, setVal, Accessor,(^.),(^:),(^=))
+import qualified Data.Accessor.Monad.FD.State as Accessor.FD
+import Data.Accessor.Monad.FD.State ((%:), (%=))
     
 type Endom a = a -> a
 
@@ -212,26 +215,11 @@ commonPrefix strings
 -- Acessor stuff
 
 putA :: CMSC.MonadState r m => Accessor.T r a -> a -> m ()
-putA f x = CMSC.modify (Accessor.set f x)
+putA = Accessor.FD.set
 
 getA :: CMSC.MonadState r m => Accessor.T r a -> m a
-getA f = CMSC.gets (Accessor.get f)
-
+getA = Accessor.FD.get
 
 modA :: CMSC.MonadState r m => Accessor.T r a -> (a -> a) -> m ()
-modA f g = CMSC.modify (Accessor.modify f g)
-
-infix 1 %=, %:
-
-{- |
-Infix variant of 'set'.
--}
-(%=) :: CMSC.MonadState r m => Accessor.T r a -> a -> m ()
-(%=) = putA
-
-{- |
-Infix variant of 'modify'.
--}
-(%:) :: CMSC.MonadState r m => Accessor.T r a -> (a -> a) -> m ()
-(%:) = modA
+modA = Accessor.FD.modify
 
