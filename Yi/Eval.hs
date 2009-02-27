@@ -36,7 +36,7 @@ execEditorAction :: String -> YiM ()
 execEditorAction s = do
    res <-io $ LHI.runInterpreter $ do
        LHI.set [LHI.searchPath LHI.:= []]
-       LHI.set [LHI.languageExtensions := [LHI.OverloadedStrings]]
+       LHI.set [LHI.languageExtensions LHI.:= [LHI.OverloadedStrings]]
        LHI.setImportsQ [("Yi", Nothing), ("Yi.Keymap",Just "Yi.Keymap")] -- Yi.Keymap: Action lives there
        LHI.interpret ("Yi.makeAction ("++s++")") (error "as" :: Action)
    case res of
