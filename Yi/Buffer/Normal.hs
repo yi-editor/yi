@@ -24,7 +24,6 @@ module Yi.Buffer.Normal (TextUnit(Character, Line, VLine, Document),
                          -- we'd like to move more units to the GenUnit format.
                          moveB, maybeMoveB,
                          transformB, transposeB,
-                         peekB, 
                          regionOfB, regionOfNonEmptyB, regionOfPartB, regionOfPartNonEmptyB,
                          readUnitB,
                          untilB, doUntilB_, untilB_, whileB,
@@ -62,6 +61,18 @@ data TextUnit = Character -- ^ a single character
       -- idea to use GenUnit though.
                 deriving Typeable
 
+genBoundary siz ofs condition direction = do
+    condition <$> peekB direction siz ofs
+  where -- | read some characters in the specified direction, for boundary testing purposes
+        peekB :: Direction -> Int -> Int -> BufferM String
+        peekB dir siz ofs = savingPointB $
+          do moveN dirOfs
+             mayReverse dir <$> (nelemsB siz =<< pointB)
+          where
+          dirOfs = case dir of
+                     Forward  -> ofs
+                     Backward -> 0 - siz - ofs
+
 
 -- | a word as in use in Emacs (fundamental mode)
 unitWord :: TextUnit
@@ -93,38 +104,23 @@ checks [] _ = True
 checks _ [] = False
 checks (p:ps) (x:xs) = p x && checks ps xs
 
--- | read some characters in the specified direction, for boundary testing purposes
-peekB :: Direction -> Int -> Int -> BufferM String
-peekB dir siz ofs = savingPointB $
-  do moveN dirOfs
-     mayReverse dir <$> (nelemsB siz =<< pointB)
-  where
-  dirOfs = case dir of
-             Forward  -> ofs
-             Backward -> 0 - siz - ofs
 
 checkPeekB :: Int -> [Char -> Bool] -> Direction -> BufferM Bool
-checkPeekB offset conds dir = checks conds <$> peekB dir (length conds) offset
+checkPeekB offset conds = genBoundary (length conds) offset (checks conds)
 
 atViWordBoundary :: (Char -> Int) -> Direction -> BufferM Bool
-atViWordBoundary charType direction = do
-    cs <- peekB direction 2 (-1)
-    return $ case cs of
+atViWordBoundary charType = genBoundary 2 (-1) $ \cs ->case cs of
       [c1,c2] -> isNl c1 && isNl c2 -- stop at empty lines
               || not (isSpace c1) && (charType c1 /= charType c2)
       _ -> True
 
 atAnyViWordBoundary :: (Char -> Int) -> Direction -> BufferM Bool
-atAnyViWordBoundary charType direction = do
-    cs <- peekB direction 2 (-1)
-    return $ case cs of
+atAnyViWordBoundary charType = genBoundary 2 (-1) $ \cs ->case cs of
       [c1,c2] -> isNl c1 || isNl c2 || charType c1 /= charType c2
       _ -> True
 
 atViWordBoundaryOnLine :: (Char -> Int) -> Direction -> BufferM Bool
-atViWordBoundaryOnLine charType direction = do
-    cs <- peekB direction 2 (-1)
-    return $ case cs of
+atViWordBoundaryOnLine charType = genBoundary 2 (-1) $ \cs ->case cs of
       [c1,c2] -> isNl c1 || isNl c2 || not (isSpace c1) && charType c1 /= charType c2
       _ -> True
 
