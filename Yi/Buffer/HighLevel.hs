@@ -541,7 +541,7 @@ fillParagraph = fillRegion =<< regionOfB unitParagraph
 sortLines :: BufferM ()
 sortLines = modifyExtendedSelectionB Line (onLines sort)
 
--- | Revert the buffer contents to its on-disk version
+-- | Helper function: revert the buffer contents to its on-disk version
 revertB :: String -> UTCTime -> BufferM ()
 revertB s now = do
     r <- regionOfB Document
