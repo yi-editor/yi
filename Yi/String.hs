@@ -15,10 +15,11 @@ module Yi.String (isBlank,
                   mapLines,
                   lines',
                   unlines',
+                  padLeft, padRight
                  ) where
 
 import Data.List.Split
-import Data.List (isSuffixOf, isPrefixOf, intercalate)
+import Data.List (isSuffixOf, intercalate)
 import Data.Char (toUpper, toLower, isSpace, isAlphaNum)
 
 capitalize :: String -> String
@@ -77,3 +78,8 @@ mapLines transform = onLines (fmap transform)
 onLines :: ([String] -> [String]) -> String -> String
 onLines transform = unlines' . transform . lines'
 
+padLeft, padRight :: Int -> String -> String
+padLeft n [] = replicate n ' '
+padLeft n (x:xs) = x : padLeft (n-1) xs
+          
+padRight n = reverse . padLeft n . reverse          

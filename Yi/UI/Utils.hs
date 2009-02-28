@@ -4,13 +4,15 @@ module Yi.UI.Utils where
 
 import Yi.Buffer
 import Yi.Prelude
-import Prelude (Ordering(..))
+import Prelude (Ordering(..), maybe)
 import Yi.Window
 import Control.Arrow (second)
 import Data.Monoid
 import Yi.Style
-import Data.List (zip, repeat, span, dropWhile)
+import Data.List (zip, repeat, span, dropWhile, length, zipWith, transpose, scanl, take, intercalate, takeWhile, reverse)
 import Yi.Syntax (Span(..))
+import Data.List.Split (splitEvery)
+import Yi.String (padLeft)
 
 -- | return index of Sol on line @n@ above current line
 indexOfSolAbove :: Int -> BufferM Point
@@ -84,3 +86,18 @@ attributesPictureAndSelB sty mexp region = do
                     | showSel            = return [[styliseReg selReg]]
                     | otherwise          = return []
     attributesPictureB sty mexp region =<< extraLayers
+
+
+-- | Arrange a list of items in columns over maximum @maxNumberOfLines@ lines
+arrangeItems items maxWidth maxNumberOfLines = take maxNumberOfLines $ snd choice
+    where choice = maximumBy (compare `on` fst) arrangements
+          arrangements = fmap (arrangeItems' items maxWidth) (reverse [1..maxNumberOfLines])
+
+-- | Arrange a list of items in columns over @numberOfLines@ lines.
+arrangeItems' items maxWidth numberOfLines = (fittedItems,theLines)
+    where columns = splitEvery numberOfLines items
+          columnsWidth = fmap (maximum . fmap length) columns
+          totalWidths = scanl (\x y -> 1 + x + y) 0 columnsWidth
+          shownItems = scanl (+) 0 (fmap length columns)
+          fittedItems = snd $ last $ takeWhile ((<= maxWidth) . fst) $ zip totalWidths shownItems
+          theLines = fmap (intercalate " " . zipWith padLeft columnsWidth) $ transpose columns

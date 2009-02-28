@@ -317,7 +317,7 @@ defKeymap = Proto template
      -- | Replace mode is like insert, except it performs writes, not inserts
      -- TODO repeat
      rep_mode :: VimMode
-     rep_mode = write (setStatus ("-- REPLACE --", defaultStyle)) >> many rep_char >> leaveInsRep >> write (moveXorSol 1)
+     rep_mode = write (setStatus (["-- REPLACE --"], defaultStyle)) >> many rep_char >> leaveInsRep >> write (moveXorSol 1)
 
      -- | Reset the selection style to a character-wise mode 'Inclusive'.
      resetSelectStyle :: BufferM ()
@@ -341,7 +341,7 @@ defKeymap = Proto template
      core_vis_mode :: RegionStyle -> VimMode
      core_vis_mode selStyle = do
        write $ do withBuffer0' $ putA regionStyleA selStyle
-                  setStatus (msg selStyle, defaultStyle)
+                  setStatus ([msg selStyle], defaultStyle)
        many (vis_move <|>
              select_any_unit (withBuffer0' . (\r -> resetSelectStyle >> extendSelectRegionB r >> leftB)))
        visual2other selStyle
@@ -1424,7 +1424,7 @@ leaveInsRep = do oneOf [spec KEsc, ctrlCh '[', ctrlCh 'c']
 -- | Insert mode is either insertion actions, or the meta (\ESC) action
 -- TODO repeat
 ins_mode :: ModeMap -> VimMode
-ins_mode self = write (setStatus ("-- INSERT --", defaultStyle)) >> many (v_ins_char self <|> kwd_mode) >> leaveInsRep >> write (moveXorSol 1)
+ins_mode self = write (setStatus (["-- INSERT --"], defaultStyle)) >> many (v_ins_char self <|> kwd_mode) >> leaveInsRep >> write (moveXorSol 1)
 
 -- TODO refactor with beginInsB and beginInsE
 beginIns :: (Show x, YiAction a x) => ModeMap -> a -> I Event Action ()

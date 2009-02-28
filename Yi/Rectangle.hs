@@ -16,11 +16,7 @@ import Text.Regex.TDFA
 
 alignRegion :: String -> BufferM ()
 alignRegion str = modifyRegionClever (alignText str) =<< unitWiseRegion Line =<< getSelectRegionB
-    where pad :: Int -> String -> String
-          pad n [] = replicate n ' '
-          pad n (x:xs) = x : pad (n-1) xs
-          
-          regexSplit :: String -> String -> [String]
+    where regexSplit :: String -> String -> [String]
           regexSplit regex l = case l =~ regex of
               AllTextSubmatches (_:matches) -> matches
               _ -> error "regexSplit: text does not match"
@@ -33,7 +29,7 @@ alignRegion str = modifyRegionClever (alignText str) =<< unitWiseRegion Line =<<
                   columns = fmap (regexSplit regex) ls
                   columnsWidth :: [Int]
                   columnsWidth =  fmap (maximum . fmap length) $ transpose columns
-                  columns' = fmap (zipWith pad columnsWidth) columns
+                  columns' = fmap (zipWith padLeft columnsWidth) columns
                   
                   ls' = fmap concat columns'
 

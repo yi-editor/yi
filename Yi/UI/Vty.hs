@@ -168,27 +168,30 @@ prepareAction ui = do
 -- Among others, this re-computes the heights and widths of all the windows.
 refresh :: UI -> Editor -> IO Editor
 refresh ui e = do
-  let ws = windows e
+  (yss,xss) <- readRef (scrsize ui)
+  let ws' = computeHeights (yss - tabBarHeight - cmdHeight + 1) ws
+      ws = windows e
       tabBarHeight = if hasTabBar e ui then 1 else 0
       windowStartY = if hasTabBar e ui then 1 else 0
-  logPutStrLn "refreshing screen."
-  (yss,xss) <- readRef (scrsize ui)
-  let ws' = computeHeights (yss - tabBarHeight) ws
       (cmd, cmdSty) = statusLineInfo e
+      niceCmd = arrangeItems cmd xss 10
+      formatCmdLine text = withAttributes statusBarStyle (take xss $ text ++ repeat ' ')
+      cmdHeight = length niceCmd
       renderSeq = fmap (scrollAndRenderWindow (configUI $ config ui) xss) (PL.withFocus ws')
       (e', renders) = runEditor (config ui) (sequence renderSeq) e
 
-  let startXs = scanrT (+) windowStartY (fmap height ws')
+      startXs = scanrT (+) windowStartY (fmap height ws')
       wImages = fmap picture renders
       statusBarStyle = ((appEndo <$> cmdSty) <*> baseAttributes) $ configStyle $ configUI $ config $ ui
       tabBarImages = renderTabBar e' ui xss
+  logPutStrLn "refreshing screen."
   logPutStrLn $ "startXs: " ++ show startXs
   Vty.update (vty $ ui) 
       pic { pImage  = vertcat tabBarImages
                       <->
                       vertcat (toList wImages) 
                       <-> 
-                      withAttributes statusBarStyle (take xss $ cmd ++ repeat ' ')
+                      vertcat (fmap formatCmdLine niceCmd)
           , pCursor = case cursor (PL.focus renders) of
                         Just (y,x) -> Cursor x (y + PL.focus startXs) 
                         -- Add the position of the window to the position of the cursor

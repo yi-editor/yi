@@ -34,7 +34,7 @@ import System.FilePath (splitPath)
 import Control.Monad.RWS hiding (get, put, mapM, forM_)
 import qualified Data.ByteString.Lazy.UTF8 as LazyUTF8
 
-type Status = (String,StyleName)
+type Status = ([String],StyleName)
 type Statuses = DelayList.DelayList Status
 
 -- | The Editor state
@@ -105,7 +105,7 @@ emptyEditor = Editor {
        ,regex        = Nothing
        ,searchDirection = Forward
        ,dynamic      = M.empty
-       ,statusLines  = DelayList.insert (maxBound, ("", defaultStyle)) []
+       ,statusLines  = DelayList.insert (maxBound, ([""], defaultStyle)) []
        ,killring     = krEmpty
        ,pendingEvents = []
        }
@@ -295,7 +295,7 @@ currentBuffer = head . bufferStack
 
 -- | Display a transient message
 printMsg :: String -> EditorM ()
-printMsg s = printStatus (s, defaultStyle)
+printMsg s = printStatus ([s], defaultStyle)
 
 printStatus :: Status -> EditorM ()
 printStatus = setTmpStatus 1
@@ -306,9 +306,9 @@ setStatus = setTmpStatus maxBound
 
 -- | Clear the status line
 clrStatus :: EditorM ()
-clrStatus = setStatus ("", defaultStyle)
+clrStatus = setStatus ([""], defaultStyle)
 
-statusLine :: Editor -> String
+statusLine :: Editor -> [String]
 statusLine = fst . statusLineInfo
 
 statusLineInfo :: Editor -> Status
@@ -316,16 +316,15 @@ statusLineInfo = snd . head . statusLines
 
 
 setTmpStatus :: Int -> Status -> EditorM ()
-setTmpStatus delay (s,sty) = do
-  modA statusLinesA $ DelayList.insert (delay, 
-                                           (takeWhile (/= '\n') s,sty))
+setTmpStatus delay s = do
+  modA statusLinesA $ DelayList.insert (delay, s)
   -- also show in the messages buffer, so we don't loose any message
   bs <- gets (filter (\b -> b ^. identA == Left "messages") . M.elems . buffers)
 
   b <- case bs of
          (b':_) -> return $ bkey b'
          [] -> stringToNewBuffer (Left "messages") (fromString "")
-  withGivenBuffer0 b $ do botB; insertN (s ++ "\n")
+  withGivenBuffer0 b $ do botB; insertN (show s ++ "\n")
 
 
 -- ---------------------------------------------------------------------

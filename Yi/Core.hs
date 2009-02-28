@@ -199,8 +199,8 @@ refreshEditor = do
     yi <- ask
     io $ modifyMVar_ (yiVar yi) $ \var -> do
         let e0 = yiEditor var 
-            msg1 = (1, ("File was changed by a concurrent process, reloaded!", strongHintStyle))
-            msg2 = (1, ("Disk version changed by a concurrent process", strongHintStyle))
+            msg1 = (1, (["File was changed by a concurrent process, reloaded!"], strongHintStyle))
+            msg2 = (1, (["Disk version changed by a concurrent process"], strongHintStyle))
             visibleBuffers = fmap bufkey $ windows e0
         -- Find out if any file was modified "behind our back" by other processes.            
         -- FIXME: since we do IO here we must catch exceptions!
@@ -282,7 +282,7 @@ msgEditor = withEditor . printMsg
 
 -- | Show an error on the status line and log it.
 errorEditor :: String -> YiM ()
-errorEditor s = do withEditor $ printStatus ("error: " ++ s, errorStyle)
+errorEditor s = do withEditor $ printStatus (["error: " ++ s], errorStyle)
                    logPutStrLn $ "errorEditor: " ++ s
 
 -- | Close the current window.
