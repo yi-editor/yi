@@ -68,7 +68,7 @@ genBoundary ofs condition dir = condition <$> peekB
   where -- | read some characters in the specified direction
         peekB = savingPointB $
           do moveN (ofs dir)
-             mayReverse dir <$> fmap snd <$> (indexedStreamB dir =<< pointB)
+             fmap snd <$> (indexedStreamB dir =<< pointB)
 
 -- | a word as in use in Emacs (fundamental mode)
 unitWord :: TextUnit
@@ -105,22 +105,26 @@ checkPeekB :: Int -> [Char -> Bool] -> Direction -> BufferM Bool
 checkPeekB offset conds = genBoundary dirOfs (checks conds)
     where dirOfs dir = case dir of
              Forward  -> offset
-             Backward -> 0 - length conds - offset
+             Backward -> 0 - offset
+
+viWordOfs dir = case dir of
+    Forward -> (-1)
+    Backward -> 1
 
 atViWordBoundary :: (Char -> Int) -> Direction -> BufferM Bool
-atViWordBoundary charType = genBoundary (const (-1)) $ \cs ->case cs of
-      [c1,c2] -> isNl c1 && isNl c2 -- stop at empty lines
+atViWordBoundary charType = genBoundary viWordOfs $ \cs ->case cs of
+      (c1:c2:_) -> isNl c1 && isNl c2 -- stop at empty lines
               || not (isSpace c1) && (charType c1 /= charType c2)
       _ -> True
 
 atAnyViWordBoundary :: (Char -> Int) -> Direction -> BufferM Bool
-atAnyViWordBoundary charType = genBoundary (const (-1)) $ \cs ->case cs of
-      [c1,c2] -> isNl c1 || isNl c2 || charType c1 /= charType c2
+atAnyViWordBoundary charType = genBoundary viWordOfs $ \cs ->case cs of
+      (c1:c2:_) -> isNl c1 || isNl c2 || charType c1 /= charType c2
       _ -> True
 
 atViWordBoundaryOnLine :: (Char -> Int) -> Direction -> BufferM Bool
-atViWordBoundaryOnLine charType = genBoundary (const (-1))  $ \cs ->case cs of
-      [c1,c2] -> isNl c1 || isNl c2 || not (isSpace c1) && charType c1 /= charType c2
+atViWordBoundaryOnLine charType = genBoundary viWordOfs  $ \cs ->case cs of
+      (c1:c2:_) -> isNl c1 || isNl c2 || not (isSpace c1) && charType c1 /= charType c2
       _ -> True
 
 unitViWord :: TextUnit
