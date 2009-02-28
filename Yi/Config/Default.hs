@@ -20,6 +20,7 @@ import Yi.IReader (saveAsNewArticle)
 import Yi.Misc
 import Yi.Mode.IReader (ireaderMode, ireadMode)
 import Yi.Modes
+import Yi.Search
 import Yi.Style.Library
 import qualified Data.Map as M
 import qualified Yi.Keymap.Cua  as Cua

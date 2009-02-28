@@ -473,43 +473,10 @@ modifyExtendedSelectionB :: TextUnit -> (String -> String) -> BufferM ()
 modifyExtendedSelectionB unit transform
     = modifyRegionB transform =<< unitWiseRegion unit =<< getSelectRegionB
 
-
--- | Search and Replace all within the current region.
--- Note the region is the final argument since we might perform
--- the same search and replace over multiple regions however we are
--- unlikely to perform several search and replaces over the same region
--- since the first such may change the bounds of the region.
-searchReplaceRegionB ::
-                       String -- ^ The String to search for
-                    -> String -- ^ The String to replace it with
-                    -> Region -- ^ The region to perform this over
-                       -- The int contained is the difference
-                       -- in lengths between the region before and
-                       -- after the substitution.
-                    -> BufferM ()
-searchReplaceRegionB from to =
-  modifyRegionB $ substituteInList from to
-
-
--- | Peform a search and replace on the selection
-searchReplaceSelectionB ::
-                           String -- ^ The String to search for
-                        -> String
-                           -- ^ The String to replace it with
-                        -> BufferM ()
-searchReplaceSelectionB from to =
-  modifySelectionB $ substituteInList from to
-
-replaceString :: String -> String -> BufferM ()
-replaceString a b = do end <- sizeB
-                       let region = mkRegion 0 end
-                       searchReplaceRegionB a b region
-
 -- | Prefix each line in the selection using
 -- the given string.
-linePrefixSelectionB ::
-                         String -- ^ The string that starts a line comment
-                      -> BufferM ()
+linePrefixSelectionB :: String -- ^ The string that starts a line comment
+                     ->  BufferM ()
                          -- The returned buffer action
 linePrefixSelectionB s =
   modifyExtendedSelectionB Line $ skippingLast $ mapLines (s++)
@@ -538,15 +505,6 @@ toggleCommentSelectionB insPrefix delPrefix = do
   if delPrefix `isPrefixOf` l
     then unLineCommentSelectionB insPrefix delPrefix
     else linePrefixSelectionB insPrefix
-
--- | Performs as search and replace on the given string.
-substituteInList :: Eq a => [a] -> [a] -> [a] -> [a]
-substituteInList _from _to []       = []
-substituteInList from to lst@(h : rest)
-  | isPrefixOf from lst =
-    to ++ (substituteInList from to $ drop (length from) lst)
-  | otherwise            =
-    h : substituteInList from to rest
 
 -- | Justifies all the lines of the selection to be the same as
 -- the top line.
@@ -590,7 +548,7 @@ fillParagraph = fillRegion =<< regionOfB unitParagraph
 
 -- | Sort the lines of the region.
 sortLines :: BufferM ()
-sortLines = modifyRegionB (onLines sort) =<< unitWiseRegion Line =<< getSelectRegionB
+sortLines = modifyExtendedSelectionB Line (onLines sort)
 
 -- | Revert the buffer contents to its on-disk version
 revertB :: String -> UTCTime -> BufferM ()

@@ -13,8 +13,6 @@ module Yi.Search (
         SearchMatch,
         SearchResult(..),
         SearchF(..),
-        searchAndRepRegion,
-        searchAndRepUnit, -- :: String -> String -> Bool -> TextUnit -> EditorM Bool
         doSearch,            -- :: (Maybe String) -> [SearchF]
                             -- -> Direction -> YiM ()
         searchInit,        -- :: String
@@ -23,6 +21,12 @@ module Yi.Search (
         continueSearch,          -- :: SearchExp
                             -- -> IO SearchResult
 
+        -- * Batch search-replace
+        searchReplaceRegionB,
+        searchReplaceSelectionB,
+        replaceString,
+        searchAndRepRegion,
+        searchAndRepUnit, -- :: String -> String -> Bool -> TextUnit -> EditorM Bool
         -- * Incremental Search
 
         isearchInitE,
@@ -132,9 +136,32 @@ continueSearch (c_re, dir) = do
         f Nothing          = PatternNotFound
 
 ------------------------------------------------------------------------
--- Global search and replace
+-- Batch search and replace
 --
 
+-- | Search and Replace all within the current region.
+-- Note the region is the final argument since we might perform
+-- the same search and replace over multiple regions however we are
+-- unlikely to perform several search and replaces over the same region
+-- since the first such may change the bounds of the region.
+searchReplaceRegionB ::
+                       String -- ^ The String to search for
+                    -> String -- ^ The String to replace it with
+                    -> Region -- ^ The region to perform this over
+                    -> BufferM Int
+searchReplaceRegionB from to = searchAndRepRegion0 (makeSimpleSearch from) to True
+
+
+-- | Peform a search and replace on the selection
+searchReplaceSelectionB ::
+                           String -- ^ The String to search for
+                        -> String  -- ^ The String to replace it with
+                        -> BufferM Int
+searchReplaceSelectionB from to = searchReplaceRegionB from to =<< getSelectRegionB
+
+-- | Replace a string by another everywhere in the document
+replaceString :: String -> String -> BufferM Int
+replaceString a b = searchReplaceRegionB a b =<< regionOfB Document
 
 ------------------------------------------------------------------------
 -- | Search and replace in the given region.
@@ -194,6 +221,7 @@ isearchIsEmpty = do
 isearchAddE :: String -> EditorM ()
 isearchAddE increment = isearchFunE (++ increment)
 
+-- | Create a SearchExp that matches exactly its argument
 makeSimpleSearch :: String -> SearchExp
 makeSimpleSearch s = se
     where Right se = makeSearchOptsM [QuoteRegex] s
