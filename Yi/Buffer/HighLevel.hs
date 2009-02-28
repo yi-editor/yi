@@ -268,15 +268,6 @@ bufInfoB = do
 -----------------------------
 -- Window-related operations
 
--- | Scroll down by one screen.
-scrollScreenDownB :: BufferM ()
-scrollScreenDownB = do
-    p <- pointAt $ do moveTo =<< getMarkPointB =<< toMark <$> askMarks
-                      gotoLnFrom (-1) -- move back a little so we have some overlap
-    t <- fromMark <$> askMarks
-    setMarkPointB t p
-    moveTo p
-
 upScreensB :: Int -> BufferM ()
 upScreensB = scrollScreensB . negate
 
@@ -295,7 +286,7 @@ downScreenB = scrollScreensB 1
 scrollScreensB :: Int -> BufferM ()
 scrollScreensB n = do
     h <- askWindow height
-    scrollB $ n * (h - 1)
+    scrollB $ n * max 0 (h - 3) -- subtract some amount to get some overlap (emacs-like).
 
 -- | Scroll according to function passed. The function takes the
 -- | Window height in lines, its result is passed to scrollB
