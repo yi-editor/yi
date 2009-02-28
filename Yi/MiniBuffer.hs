@@ -21,6 +21,7 @@ import Yi.Config
 import Yi.Core
 import Yi.History
 import Yi.Completion (commonPrefix, infixMatch, prefixMatch, completeInList)
+import Yi.Style (defaultStyle)
 import qualified Yi.Core as Editor
 import Control.Monad.Reader
 -- | Open a minibuffer window with the given prompt and keymap
@@ -41,7 +42,7 @@ spawnMinibufferE prompt kmMod =
 withMinibuffer :: String -> (String -> YiM [String]) -> (String -> YiM ()) -> YiM ()
 withMinibuffer prompt getPossibilities act = 
   withMinibufferGen "" giveHint prompt completer act
-    where giveHint s = show . catMaybes . fmap (prefixMatch s) <$> getPossibilities s
+    where giveHint s = catMaybes . fmap (prefixMatch s) <$> getPossibilities s
           completer = simpleComplete getPossibilities
 
 simpleComplete :: (String -> YiM [String]) -> String -> YiM String
@@ -49,15 +50,13 @@ simpleComplete getPossibilities s = do
               possibles <- getPossibilities s
               withEditor $ completeInList s (prefixMatch s) possibles
 
-noHint :: String -> YiM String
-noHint = const $ return ""
+noHint :: String -> YiM [String]
+noHint = const $ return []
 
 noPossibilities :: String -> YiM [ String ]
 noPossibilities _s = return []
 
-withMinibufferFree :: String
-                                                  -> (String -> YiM ())
-                                                  -> YiM ()
+withMinibufferFree :: String -> (String -> YiM ()) -> YiM ()
 withMinibufferFree prompt = withMinibufferGen "" noHint prompt return
 
 -- | @withMinibuffer proposal getHint prompt completer act@: open a minibuffer
@@ -65,7 +64,7 @@ withMinibufferFree prompt = withMinibufferGen "" noHint prompt return
 -- run @act s@. @completer@ can be used to complete inputs by returning an
 -- incrementally better match, and getHint can give an immediate feedback to the
 -- user on the current input.
-withMinibufferGen :: String -> (String -> YiM String) -> 
+withMinibufferGen :: String -> (String -> YiM [String]) -> 
                      String -> (String -> YiM String) -> (String -> YiM ()) -> YiM ()
 withMinibufferGen proposal getHint prompt completer act = do
   initialBuffer <- gets currentBuffer
@@ -75,7 +74,9 @@ withMinibufferGen proposal getHint prompt completer act = do
       -- apply it to the desired action
       closeMinibuffer = closeBufferAndWindowE >>
                         modA windowsA (fromJust . PL.find initialWindow)
-      showMatchings = msgEditor =<< getHint =<< withBuffer elemsB
+      showMatchings = showMatchingsOf =<< withBuffer elemsB
+      showMatchingsOf userInput = withEditor . printStatus =<< fmap withDefaultStyle (getHint userInput)
+      withDefaultStyle msg = (msg, defaultStyle)
       innerAction = do
         lineString <- withEditor $ do historyFinishGen prompt (withBuffer0 elemsB)
                                       lineString <- withBuffer0 elemsB
@@ -93,7 +94,7 @@ withMinibufferGen proposal getHint prompt completer act = do
                            oneOf [spec KDown,  meta $ char 'n'] >>! down,
                            oneOf [spec KTab,   ctrl $ char 'i'] >>! completionFunction completer >>! showMatchings,
                            ctrl (char 'g')                     ?>>! closeMinibuffer]
-  msgEditor =<< getHint ""
+  showMatchingsOf ""
   withEditor $ do 
       historyStartGen prompt
       spawnMinibufferE (prompt ++ " ") (\bindings -> rebindings <|| (bindings >> write showMatchings))
@@ -107,7 +108,7 @@ withMinibufferFin prompt posibilities act
       where 
         -- The function for returning the hints provided to the user underneath
         -- the input, basically all those that currently match.
-        hinter s = return $ show $ match s
+        hinter s = return $ match s
         -- All those which currently match.
         match s = filter (s `isInfixOf`) posibilities
 

@@ -257,8 +257,8 @@ findFile = promptFile "find file:" $ \filename -> do
 -- | For use as the hint when opening a file using the minibuffer.
 -- We essentially return all the files in the given directory which
 -- have the given prefix.
-findFileHint :: String -> String -> YiM String
-findFileHint startPath s = show . snd <$> getAppropriateFiles (Just startPath) s
+findFileHint :: String -> String -> YiM [String]
+findFileHint startPath s = snd <$> getAppropriateFiles (Just startPath) s
 
 scrollDownE :: UnivArgument -> BufferM ()
 scrollDownE a = case a of
@@ -312,7 +312,7 @@ promptTag = do
   -- if we have tags use them to generate hints
   tagTable <- withEditor getTags
   -- Hints are expensive - only lazily generate 10
-  let hinter =  return . show . take 10 . maybe fail hintTags tagTable
+  let hinter =  return . take 10 . maybe fail hintTags tagTable
   -- Completions are super-cheap. Go wild
   let completer =  return . maybe id completeTag tagTable
   withMinibufferGen "" hinter ("Find tag: (default " ++ defaultTag ++ ")") completer  $
