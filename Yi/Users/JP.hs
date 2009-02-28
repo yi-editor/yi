@@ -33,7 +33,7 @@ decreaseIndent = modifyExtendedSelectionB Yi.Line $ mapLines (drop 1)
 
 tokenToText :: Token -> Maybe String
 tokenToText (Hask.ReservedOp Hask.BackSlash) = Just "λ"
-tokenToText (Hask.ReservedOp Hask.RightArrow) = Just "→ " -- should be → in types and · in exprs
+tokenToText (Hask.ReservedOp Hask.RightArrow) = Just "→" -- should be → in types and · in exprs
 tokenToText (Hask.ReservedOp Hask.DoubleRightArrow) = Just "⇒ "
 tokenToText (Hask.ReservedOp Hask.LeftArrow) = Just "← "
 -- tokenToText (Hask.Operator ".") = Just "∘" -- should be · or . in types and ∘ in exprs
