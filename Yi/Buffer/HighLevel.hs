@@ -540,7 +540,7 @@ toggleCommentSelectionB insPrefix delPrefix = do
     else linePrefixSelectionB insPrefix
 
 -- | Performs as search and replace on the given string.
-substituteInList :: Eq a => [ a ] -> [ a ] -> [ a ] -> [ a ]
+substituteInList :: Eq a => [a] -> [a] -> [a] -> [a]
 substituteInList _from _to []       = []
 substituteInList from to lst@(h : rest)
   | isPrefixOf from lst =
@@ -575,7 +575,7 @@ justifySelectionWithTopB =
                       justifyLine "" = ""
                       justifyLine l  = topIndent ++ dropWhile isSpace l
 
-
+-- | Replace the contents of the buffer with some string
 replaceBufferContent :: String -> BufferM ()
 replaceBufferContent newvalue = do
   r <- regionOfB Document
@@ -592,7 +592,7 @@ fillParagraph = fillRegion =<< regionOfB unitParagraph
 sortLines :: BufferM ()
 sortLines = modifyRegionB (onLines sort) =<< unitWiseRegion Line =<< getSelectRegionB
 
-
+-- | Revert the buffer contents to its on-disk version
 revertB :: String -> UTCTime -> BufferM ()
 revertB s now = do
     r <- regionOfB Document
