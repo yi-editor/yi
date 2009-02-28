@@ -45,7 +45,8 @@ import Yi.Eval (execEditorAction, getAllNamesInScope)
 import Yi.File
 import Yi.History
 import Yi.Misc (matchingFileNames,adjBlock,adjIndent,cabalRun)
-import Yi.String (dropSpace,split,lines')
+import Yi.String (dropSpace,lines')
+import Data.List.Split (splitOn)
 import Yi.MiniBuffer
 import Yi.Regex (seInput)
 import Yi.Search

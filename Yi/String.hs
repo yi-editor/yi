@@ -7,7 +7,6 @@
 
 module Yi.String (isBlank,
                   chomp,
-                  split,
                   capitalize,
                   capitalizeFirst,
                   dropSpace,
@@ -18,6 +17,7 @@ module Yi.String (isBlank,
                   unlines',
                  ) where
 
+import Data.List.Split
 import Data.List (isSuffixOf, isPrefixOf, intercalate)
 import Data.Char (toUpper, toLower, isSpace, isAlphaNum)
 
@@ -42,40 +42,6 @@ chomp irs st
     | otherwise = st
 {-# INLINE chomp #-}
 
---
--- | Split a list into pieces that were held together by glue.  Example:
---
--- > split ", " "one, two, three" ===> ["one","two","three"]
---
-split :: Eq a => [a] -- ^ Glue that holds pieces together
-      -> [a]         -- ^ List to break into pieces
-      -> [[a]]       -- ^ Result: list of pieces
-
-split glue xs = split' xs
-    where
-    split' [] = []
-    split' xs' = piece : split' (dropGlue rest)
-        where (piece, rest) = breakOnGlue glue xs'
-    dropGlue = drop (length glue)
-{-# INLINE split #-}
-
---
--- | Break off the first piece of a list held together by glue,
---   leaving the glue attached to the remainder of the list.  Example:
---   Like break, but works with a [a] match.
---
--- > breakOnGlue ", " "one, two, three" ===> ("one", ", two, three")
---
-breakOnGlue :: (Eq a) => [a] -- ^ Glue that holds pieces together
-            -> [a]           -- ^ List from which to break off a piece
-            -> ([a],[a])     -- ^ Result: (first piece, glue ++ rest of list)
-breakOnGlue _ [] = ([],[])
-breakOnGlue glue rest@(x:xs)
-    | glue `isPrefixOf` rest = ([], rest)
-    | otherwise = (x:piece, rest')
-        where (piece, rest') = breakOnGlue glue xs
-{-# INLINE breakOnGlue #-}
-
 
 -- | Trim spaces at beginning /and/ end
 dropSpace :: String -> String
@@ -99,7 +65,7 @@ unlines' = intercalate "\n"
 -- | Split a String in lines. Unlike 'Prelude.lines', this does not
 -- remove any empty line at the end.
 lines' :: String -> [String]
-lines' = stratify "\n" 
+lines' = unintercalate "\n" 
 
 -- | A helper function for creating functions suitable for
 -- 'modifySelectionB' and 'modifyRegionB'.
@@ -111,14 +77,3 @@ mapLines transform = onLines (fmap transform)
 onLines :: ([String] -> [String]) -> String -> String
 onLines transform = unlines' . transform . lines'
 
-
-
--- | Right inverse of intercalate.
-
--- (courtesy Bart Massey)
-stratify :: (Eq a) => [a] -> [a] -> [[a]]
-stratify [] l = map (:[]) l
-stratify _ [] = [[]]
-stratify sep l | isPrefixOf sep l = [] : stratify sep (drop (length sep) l)
-stratify sep (e  : es) = (e : l') : ls' where
-    (l' : ls') = stratify sep es

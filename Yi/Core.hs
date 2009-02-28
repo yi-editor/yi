@@ -71,7 +71,8 @@ import Yi.Keymap
 import Yi.Keymap.Keys
 import Yi.KillRing (krEndCmd)
 import Yi.Prelude
-import Yi.Process ( popen, createSubprocess, readAvailable, SubprocessId, SubprocessInfo(..) )
+import Yi.Process (popen, createSubprocess, readAvailable, SubprocessId, SubprocessInfo(..))
+import Data.List.Split (splitOn)
 import Yi.String
 import Yi.Style (errorStyle, strongHintStyle)
 import Yi.UI.Common as UI (UI)
@@ -253,7 +254,7 @@ suspendEditor = withUI UI.suspend
 --
 runProcessWithInput :: String -> String -> YiM String
 runProcessWithInput cmd inp = do
-    let (f:args) = split " " cmd
+    let (f:args) = splitOn " " cmd
     (out,_err,_) <- liftIO $ popen f args (Just inp)
     return (chomp "\n" out)
 

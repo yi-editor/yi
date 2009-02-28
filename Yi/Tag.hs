@@ -23,13 +23,13 @@ import Prelude (map, words, lines, readFile)
 import Yi.Prelude
 import Yi.Editor
 import Yi.Dynamic 
-import Yi.String (split)
 
 import Data.Maybe (mapMaybe)
 import Data.List (isPrefixOf)
 import System.FilePath (takeFileName, takeDirectory, FilePath, (</>))
 import System.FriendlyPath
 import Data.Map (Map, fromList, lookup, keys)
+import Data.List.Split (splitOn)
 
 import Data.Typeable
 import qualified Data.Trie as Trie
@@ -117,7 +117,7 @@ getTags = do
 setTagsFileList :: String -> EditorM ()
 setTagsFileList fps = do 
   resetTags 
-  setDynamic $ TagsFileList (split "," fps)
+  setDynamic $ TagsFileList (splitOn "," fps)
 
 getTagsFileList :: EditorM [FilePath]
 getTagsFileList = do 
