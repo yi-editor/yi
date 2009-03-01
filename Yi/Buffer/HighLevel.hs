@@ -5,7 +5,7 @@ module Yi.Buffer.HighLevel where
 import Control.Monad.RWS.Strict (ask)
 import Control.Monad.State
 import Data.Char
-import Data.List (isPrefixOf, sort, lines, drop, filter, length, takeWhile, dropWhile)
+import Data.List (isPrefixOf, sort, lines, drop, filter, length, takeWhile, dropWhile, reverse)
 import Data.Maybe (fromMaybe, listToMaybe)
 import Data.Time (UTCTime)
 import Prelude (FilePath, map)
@@ -210,6 +210,12 @@ swapB :: BufferM ()
 swapB = do eol <- atEol
            when eol leftB
            transposeB Character Forward
+
+-- | Delete trailing whitespace from all lines
+deleteTrailingSpaceB :: BufferM ()
+deleteTrailingSpaceB = do r <- regionOfB Document
+                          modifyRegionClever deleteSpaces r
+  where deleteSpaces = mapLines $ reverse . dropWhile (' '==) . reverse
 
 -- ----------------------------------------------------
 -- | Marks
