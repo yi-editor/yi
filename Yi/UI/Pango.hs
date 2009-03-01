@@ -44,25 +44,25 @@ import Yi.UI.Utils
 
 ------------------------------------------------------------------------
 
-data UI = UI { uiWindow :: Gtk.Window
-             , uiBox :: VBox
-             , uiCmdLine :: Label
-             , windowCache :: IORef [WinInfo]
-             , uiActionCh :: Action -> IO ()
-             , uiConfig :: UIConfig
-             }
+data UI = UI
+    { uiWindow    :: Gtk.Window
+    , uiBox       :: VBox
+    , uiCmdLine   :: Label
+    , windowCache :: IORef [WinInfo]
+    , uiActionCh  :: Action -> IO ()
+    , uiConfig    :: UIConfig
+    }
 
 data WinInfo = WinInfo
-    {
-      coreWin     :: Window
-    , shownRegion :: IORef Region
-    , renderer    :: IORef (ConnectId DrawingArea)
+    { coreWin         :: Window
+    , shownRegion     :: IORef Region
+    , renderer        :: IORef (ConnectId DrawingArea)
     , winMotionSignal :: IORef (Maybe (ConnectId DrawingArea))
-    , winLayout   :: PangoLayout
-    , winMetrics  :: FontMetrics
-    , textview    :: DrawingArea
-    , modeline    :: Label
-    , widget      :: Box            -- ^ Top-level widget for this window.
+    , winLayout       :: PangoLayout
+    , winMetrics      :: FontMetrics
+    , textview        :: DrawingArea
+    , modeline        :: Label
+    , widget          :: Box -- ^ Top-level widget for this window.
     }
 
 instance Show WinInfo where
@@ -70,14 +70,13 @@ instance Show WinInfo where
 
 mkUI :: UI -> Common.UI
 mkUI ui = Common.dummyUI
-  {
-   Common.main                  = main                  ui,
-   Common.end                   = end,
-   Common.suspend               = windowIconify (uiWindow ui),
-   Common.refresh               = refresh               ui,
-   Common.prepareAction         = prepareAction         ui,
-   Common.reloadProject         = reloadProject         ui
-  }
+    { Common.main          = main ui
+    , Common.end           = end
+    , Common.suspend       = windowIconify (uiWindow ui)
+    , Common.refresh       = refresh ui
+    , Common.prepareAction = prepareAction ui
+    , Common.reloadProject = reloadProject ui
+    }
 
 mkFontDesc :: UIConfig -> IO FontDescription
 mkFontDesc cfg = do
@@ -379,7 +378,7 @@ refresh :: UI -> Editor -> IO ()
 refresh ui e = do
     let ws = Editor.windows e
     let takeEllipsis s = if length s > 132 then take 129 s ++ "..." else s
-    set (uiCmdLine ui) [labelText := takeEllipsis (statusLine e)]
+    set (uiCmdLine ui) [labelText := takeEllipsis (show $ statusLine e)]
 
     cache <- readRef $ windowCache ui
     logPutStrLn $ "syncing: " ++ show ws

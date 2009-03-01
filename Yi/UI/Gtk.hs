@@ -366,7 +366,7 @@ refresh :: UI -> Editor -> IO ()
 refresh ui e = do
     let ws = Editor.windows e
     let takeEllipsis s = if length s > 132 then take 129 s ++ "..." else s
-    set (uiCmdLine ui) [labelText := takeEllipsis (statusLine e)]
+    set (uiCmdLine ui) [labelText := takeEllipsis (show $ statusLine e)]
     cache <- readRef $ windowCache ui
 
     -- Update the GTK text buffers for all the updates that have occured in the backing Yi buffers
