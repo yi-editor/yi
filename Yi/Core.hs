@@ -192,14 +192,12 @@ showEvs :: [Event] -> String
 -- | Quit.
 quitEditor :: YiM ()
 quitEditor = do
-    terminateSubprocesses (const True)
+    onYiVar $ terminateSubprocesses (const True)
     withUI UI.end
 
 -- | Redraw
 refreshEditor :: YiM ()
-refreshEditor = do 
-    yi <- ask
-    io $ modifyMVar_ (yiVar yi) $ \var -> do
+refreshEditor = onYiVar $ \yi var -> do
         let e0 = yiEditor var 
             msg1 = (1, (["File was changed by a concurrent process, reloaded!"], strongHintStyle))
             msg2 = (1, (["Disk version changed by a concurrent process"], strongHintStyle))
@@ -224,14 +222,13 @@ refreshEditor = do
                _ -> nothing
           else nothing  
     
-        let
-            e1 = case getFirst (foldMap (First . snd) newBuffers) of
+        let e1 = case getFirst (foldMap (First . snd) newBuffers) of
                Just msg -> (statusLinesA ^: DelayList.insert msg) e0 {buffers = fmap fst newBuffers}
                Nothing -> e0
             e2 = buffersA ^: (fmap (clearSyntax . clearHighlight)) $ e1
             e3 = buffersA ^: (fmap clearUpdates) $ e2
         UI.refresh (yiUi yi) e2
-        return var {yiEditor = e3}
+        terminateSubprocesses (staleProcess $ buffers e3) yi var {yiEditor = e3}
   where 
     clearUpdates fb = pendingUpdatesA ^= [] $ fb
     clearHighlight fb =
@@ -240,7 +237,8 @@ refreshEditor = do
           us = getVal pendingUpdatesA fb
       in highlightSelectionA ^= (h && null us) $ fb
     fileModTime f = posixSecondsToUTCTime . realToFrac . modificationTime <$> getFileStatus f
-          
+    staleProcess bs p = not (bufRef p `M.member` bs)
+    
 
 -- | Suspend the program
 suspendEditor :: YiM ()
@@ -299,20 +297,21 @@ closeWindow = do
     withEditor $ tryCloseE
 
 
+onYiVar :: (Yi -> YiVar -> IO (YiVar, a)) -> YiM a
+onYiVar f = do
+    yi <- ask
+    io $ modifyMVar (yiVar yi) (f yi)
 
 -- | Kill a given subprocess
-terminateSubprocesses shouldTerminate = do
-    yi <- ask
-    io $ modifyMVar (yiVar yi)  $ \var -> do
+terminateSubprocesses :: (SubprocessInfo -> Bool) -> Yi -> YiVar -> IO (YiVar, ())
+terminateSubprocesses shouldTerminate _yi var = do
         let (toKill, toKeep) = partition (shouldTerminate . snd) $ M.assocs $ yiSubprocesses var
         forM toKill $ terminateProcess . procHandle . snd
         return (var {yiSubprocesses = M.fromList toKeep}, ())
 
 -- | Start a subprocess with the given command and arguments.
 startSubprocess :: FilePath -> [String] -> (Either Exception ExitCode -> YiM x) -> YiM BufferRef
-startSubprocess cmd args onExit = do
-    yi <- ask
-    io $ modifyMVar (yiVar yi) $ \var -> do        
+startSubprocess cmd args onExit = onYiVar $ \yi var -> do
         let (e', bufref) = runEditor 
                               (yiConfig yi) 
                               (printMsg ("Launched process: " ++ cmd) >> newBufferE (Left bufferName) (fromString ""))
@@ -329,8 +328,8 @@ startSubprocess cmd args onExit = do
 startSubprocessWatchers :: SubprocessId -> SubprocessInfo -> Yi -> (Either Exception ExitCode -> YiM x) -> IO ()
 startSubprocessWatchers procid procinfo yi onExit = do
     mapM_ forkOS ([pipeToBuffer (hErr procinfo) (send . append True) | separateStdErr procinfo] ++
-                 [pipeToBuffer (hOut procinfo) (send . append False),
-                  waitForExit (procHandle procinfo) >>= reportExit])
+                  [pipeToBuffer (hOut procinfo) (send . append False),
+                   waitForExit (procHandle procinfo) >>= reportExit])
   where send a = output yi [makeAction a]
         append :: Bool -> String -> YiM ()
         append atMark s = withEditor $ appendToBuffer atMark (bufRef procinfo) s
