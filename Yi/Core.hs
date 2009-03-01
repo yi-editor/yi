@@ -50,7 +50,7 @@ import Control.Monad.Error ()
 import Control.Monad.Reader (runReaderT, ask)
 import Control.Monad.Trans
 import Control.OldException
-import Data.List (intercalate)
+import Data.List (intercalate, partition)
 import qualified Data.List.PointedList.Circular as PL
 import Data.Maybe
 import Data.Monoid
@@ -62,7 +62,7 @@ import System.Exit
 import System.FilePath
 import System.IO (Handle, hWaitForInput, hPutStr)
 import System.PosixCompat.Files
-import System.Process ( getProcessExitCode, ProcessHandle )
+import System.Process (terminateProcess, getProcessExitCode, ProcessHandle)
 import Yi.Buffer
 import Yi.Config
 import Yi.Dynamic
@@ -191,7 +191,9 @@ showEvs :: [Event] -> String
 
 -- | Quit.
 quitEditor :: YiM ()
-quitEditor = withUI UI.end
+quitEditor = do
+    terminateSubprocesses (const True)
+    withUI UI.end
 
 -- | Redraw
 refreshEditor :: YiM ()
@@ -296,7 +298,16 @@ closeWindow = do
     when (winCount == 1 && tabCount == 1) quitEditor
     withEditor $ tryCloseE
 
- 
+
+
+-- | Kill a given subprocess
+terminateSubprocesses shouldTerminate = do
+    yi <- ask
+    io $ modifyMVar (yiVar yi)  $ \var -> do
+        let (toKill, toKeep) = partition (shouldTerminate . snd) $ M.assocs $ yiSubprocesses var
+        forM toKill $ terminateProcess . procHandle . snd
+        return (var {yiSubprocesses = M.fromList toKeep}, ())
+
 -- | Start a subprocess with the given command and arguments.
 startSubprocess :: FilePath -> [String] -> (Either Exception ExitCode -> YiM x) -> YiM BufferRef
 startSubprocess cmd args onExit = do
