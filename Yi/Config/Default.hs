@@ -6,6 +6,7 @@ module Yi.Config.Default (defaultConfig, availableFrontends,
                           toVimStyleConfig, toEmacsStyleConfig, toCuaStyleConfig) where
 
 import {-# source #-} Yi.Boot (reloadEditor)
+import Control.Monad (forever)
 import Data.Dynamic
 import Paths_yi
 import Prelude ()
@@ -166,8 +167,17 @@ toEmacsStyleConfig cfg
     = cfg {
             configUI = (configUI cfg) { configVtyEscDelay = 1000 },
             defaultKm = Emacs.keymap,
+            configInputPreprocess = escToMeta,
             configKillringAccumulate = True
           }
+
+-- Input preprocessor: Transform Esc;Char into Meta-Char
+-- Useful for emacs lovers ;)
+escToMeta :: I.P Event Event
+escToMeta = mkAutomaton $ forever $ (anyEvent >>= I.write) ||> do
+    event (spec KEsc)
+    c <- printableChar
+    I.write (Event (KASCII c) [MMeta])
 
 toVimStyleConfig cfg = cfg {defaultKm = Vim.keymap, configRegionStyle = Inclusive}
 toCuaStyleConfig cfg = cfg {defaultKm = Cua.keymap}
