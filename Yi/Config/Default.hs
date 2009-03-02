@@ -51,14 +51,14 @@ availableFrontends =
 #ifdef FRONTEND_COCOA
    ("cocoa", Yi.UI.Cocoa.start) :
 #endif
+#ifdef FRONTEND_PANGO
+   ("pango", Yi.UI.Pango.start) :
+#endif
 #ifdef FRONTEND_GTK
    ("gtk", Yi.UI.Gtk.start) :
 #endif
 #ifdef FRONTEND_VTY
    ("vty", Yi.UI.Vty.start) :
-#endif
-#ifdef FRONTEND_PANGO
-   ("pango", Yi.UI.Pango.start) :
 #endif
    []
 
