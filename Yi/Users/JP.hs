@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP, TypeFamilies #-}
 import Yi hiding (defaultConfig)
 import Yi.Keymap.Emacs (keymap)
 -- import Yi.Users.JP.Experimental (keymap)
@@ -7,10 +8,7 @@ import Yi.Keymap.Emacs (keymap)
 -- If configured with ghcAPI, Shim Mode can be enabled:
 -- import qualified Yi.Mode.Shim as Shim
 
-import Control.Monad
-import Data.Char
 import Data.List (drop, length)
-import Data.Maybe
 import Data.Monoid
 import Prelude ()
 import Yi.Char.Unicode (greek, symbols)
@@ -31,18 +29,29 @@ increaseIndent = modifyExtendedSelectionB Yi.Line $ mapLines (' ':)
 decreaseIndent :: BufferM ()
 decreaseIndent = modifyExtendedSelectionB Yi.Line $ mapLines (drop 1)
 
+osx :: Bool
+#ifdef darwin_HOST_OS
+osx = True
+#else
+osx = False
+#endif
+
+
 tokenToText :: Token -> Maybe String
 tokenToText (Hask.ReservedOp Hask.BackSlash) = Just "λ"
 tokenToText (Hask.ReservedOp Hask.RightArrow) = Just "→" -- should be → in types and · in exprs
-tokenToText (Hask.ReservedOp Hask.DoubleRightArrow) = Just "⇒ "
-tokenToText (Hask.ReservedOp Hask.LeftArrow) = Just "← "
+tokenToText (Hask.ReservedOp Hask.DoubleRightArrow) = Just $ if osx then "⇒ " else "⇒"
+tokenToText (Hask.ReservedOp Hask.LeftArrow) = Just $ if osx then "← " else "←"
 -- tokenToText (Hask.Operator ".") = Just "∘" -- should be · or . in types and ∘ in exprs
 tokenToText (Hask.Operator "/=") = Just "≠"
 tokenToText (Hask.Operator ">=") = Just "≥"
 tokenToText (Hask.Operator "<=") = Just "≤"
+tokenToText (Hask.Operator "&&") = Just "∧"
+tokenToText (Hask.Operator "||") = Just "∨"
 tokenToText _ = Nothing
 
 
+haskellModeHooks :: (Tok Token ~ Element syntax, SubTree syntax) =>Mode syntax -> Mode syntax
 haskellModeHooks mode = 
                   -- uncomment for shim:
                   -- Shim.minorMode $ 
@@ -60,53 +69,48 @@ haskellModeHooks mode =
                                       <||)  
                        }
 
-noAnnots _ _ = []              
+-- noAnnots _ _ = []              
 
 mkInputMethod :: [(String,String)] -> Keymap
-mkInputMethod list = choice [pString i >> adjustPriority (negate (length i)) >>! insertN o | (i,o) <- list] 
+mkInputMethod xs = choice [pString i >> adjustPriority (negate (length i)) >>! insertN o | (i,o) <- xs] 
 
 extraInput :: Keymap
 extraInput 
     = spec KEsc ?>> mkInputMethod (greek ++ symbols)
 
-parensInput :: Keymap
-parensInput
-    = choice [char open ?>>! parenIns open close | (open,close) <- 
-              [('(',')'),
-               ('[',']'),
-               ('{','}')               
-              ]
-             ]
 
 tta :: Yi.Lexer.Alex.Tok Token -> Maybe (Yi.Syntax.Span String)
 tta = sequenceA . tokToSpan . (fmap Main.tokenToText)
 
-parenIns :: Char -> Char -> BufferM ()
-parenIns open close = do
-    x <- readB
-    if x == '\0' || isSpace x then insertN [open,close] >> leftB else insertN [open]
-
 frontend :: UIBoot
-Just frontend = foldr1 (<|>) $ fmap (flip lookup availableFrontends) ["cocoa", "vty"] 
+frontendName :: String
+Just (frontendName, frontend) = foldr1 (<|>) $ fmap (\nm -> find ((nm ==) . fst) availableFrontends) ["cocoa", "vty"] 
 
+isCocoa :: Bool
+isCocoa = frontendName == "cocoa"
+
+
+defaultConfig :: Config
 defaultConfig = defaultEmacsConfig
 
 
 main :: IO ()
 main = yi $ defaultConfig {
-                           -- configInputPreprocess = escToMeta,
+                           configInputPreprocess = I.idAutomaton,
                            startFrontEnd = frontend,
                            modeTable = AnyMode (haskellModeHooks Haskell.cleverMode) 
                                      : AnyMode (haskellModeHooks Haskell.fastMode) 
                                      : AnyMode (haskellModeHooks Haskell.literateMode) 
                                      : modeTable defaultConfig,
                            configUI = (configUI defaultConfig) 
-                             { configFontSize = Just 12 
+                             { configFontSize = if isCocoa then Just 12 else Just 10
                                -- , configTheme = darkBlueTheme
-                             , configTheme = defaultLightTheme `override` \super _ -> super 
+                             , configTheme = defaultLightTheme `override` \superTheme _ -> superTheme
                                {
-                                  selectedStyle = Endo $ \a -> a {foreground = white,
-                                                                  background = black}
+                                 selectedStyle = Endo $ \a -> a { 
+                                                                  foreground = white,
+                                                                  background = black
+                                                                }
                                }
                               -- , configFontName = Just "Monaco"
                              },
@@ -115,16 +119,3 @@ main = yi $ defaultConfig {
                               <|> (ctrl (char '<') ?>>! decreaseIndent)
                           }
 
--- Just a stupid input preprocessor for testing. 
-testPrep :: I.P Event Event
-testPrep = mkAutomaton $ forever $ ((anyEvent >>= I.write) ||> do
-    char 'C' ?>> I.write (Event (KASCII 'X') []))
-
-
--- Input preprocessor: Transform Esc;Char into Meta-Char
--- Useful for emacs lovers ;)
-escToMeta :: I.P Event Event
-escToMeta = mkAutomaton $ forever $ (anyEvent >>= I.write) ||> do
-    event (spec KEsc)
-    c <- printableChar
-    I.write (Event (KASCII c) [MMeta])
