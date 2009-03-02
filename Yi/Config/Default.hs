@@ -36,14 +36,14 @@ import qualified Yi.Interact as I
 #ifdef FRONTEND_COCOA
 import qualified Yi.UI.Cocoa
 #endif
+#ifdef FRONTEND_PANGO
+import qualified Yi.UI.Pango
+#endif
 #ifdef FRONTEND_GTK
 import qualified Yi.UI.Gtk
 #endif
 #ifdef FRONTEND_VTY
 import qualified Yi.UI.Vty
-#endif
-#ifdef FRONTEND_PANGO
-import qualified Yi.UI.Pango
 #endif
 
 availableFrontends :: [(String,UIBoot)]
