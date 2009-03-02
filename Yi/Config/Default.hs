@@ -20,7 +20,6 @@ import Yi.File
 import Yi.IReader (saveAsNewArticle)
 import Yi.Misc
 import Yi.Mode.IReader (ireaderMode, ireadMode)
-import Yi.Mode.JavaScript (javaScriptMode)
 import Yi.Modes
 import Yi.Search
 import Yi.Style.Library
