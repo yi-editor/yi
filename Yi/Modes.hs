@@ -2,7 +2,7 @@
 module Yi.Modes (fundamentalMode,
                  cMode, objectiveCMode, cppMode, cabalMode,
                  srmcMode, ocamlMode, ottMode, gnuMakeMode,
-                 perlMode, pythonMode, javaScriptMode, anyExtension,
+                 perlMode, pythonMode, anyExtension,
                  extensionOrContentsMatch, linearSyntaxMode,
                  svnCommitMode, hookModes, applyModeHooks,
                  lookupMode
@@ -27,7 +27,6 @@ import qualified Yi.Lexer.Cabal      as Cabal
 import qualified Yi.Lexer.C          as C
 import qualified Yi.Lexer.ObjectiveC as ObjectiveC
 import qualified Yi.Lexer.Cplusplus  as Cplusplus
-import qualified Yi.Lexer.JavaScript as JavaScript
 import qualified Yi.Lexer.GNUMake    as GNUMake
 import qualified Yi.Lexer.OCaml      as OCaml
 import qualified Yi.Lexer.Ott        as Ott
@@ -39,7 +38,7 @@ import Yi.Syntax.OnlineTree as OnlineTree
 import qualified Yi.IncrementalParse as IncrParser
 
 fundamentalMode :: Mode syntax
--- cMode, objectiveCMode, cppMode, cabalMode, srmcMode, ocamlMode, ottMode, gnuMakeMode, perlMode, pythonMode, javaScriptMode :: Mode (OnlineTree.Tree Stroke)
+-- cMode, objectiveCMode, cppMode, cabalMode, srmcMode, ocamlMode, ottMode, gnuMakeMode, perlMode, pythonMode :: Mode (OnlineTree.Tree Stroke)
 
 fundamentalMode = emptyMode
   { 
@@ -72,12 +71,6 @@ cMode = (linearSyntaxMode C.initState C.alexScanToken id)
   {
     modeApplies = anyExtension ["c", "h"], 
     modeName = "c"
-  }
-
-javaScriptMode = (linearSyntaxMode JavaScript.initState JavaScript.alexScanToken JavaScript.tokenToStyle)
-  {
-    modeApplies = anyExtension ["js", "json"],
-    modeName = "javascript"
   }
 
 objectiveCMode = (linearSyntaxMode ObjectiveC.initState ObjectiveC.alexScanToken id)
