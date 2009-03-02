@@ -61,24 +61,35 @@ mapLeft f (Left a) = Left (f a)
 literalPattern :: (Num t) => String -> (Pattern, (t, DoPa))
 literalPattern source = (PConcat $ map (PChar (DoPa 0)) $ source, (0,DoPa 0))
 
+-- | Reverse a pattern. Note that the submatches will be reversed as well.
 reversePattern :: (Pattern, (t, DoPa)) -> (Pattern, (t, DoPa))
 reversePattern (pattern,(gi,DoPa maxDoPa)) = (transform (rev) pattern, (gi,DoPa maxDoPa))
     where rev (PConcat l) = PConcat (reverse l)
           rev (PCarat  x) = PDollar x
           rev (PDollar x) = PCarat  x
           rev x           = x
-          -- I'm unsure if messinng with DoPa's is necessary.
-          -- I leave the code here for a while (today is 20080218)
-          -- we can drop it later.
-          fixDoPa (PCarat p) = PCarat (f p)
-          fixDoPa (PDollar p) = PDollar (f p)
-          fixDoPa (PAny p x) = PAny (f p) x
-          fixDoPa (PDot p) = PDot (f p)
-          fixDoPa (PAnyNot p x) = PAnyNot (f p) x
-          fixDoPa (PEscape p x) = PEscape (f p) x
-          fixDoPa (PChar p x) = PChar (f p) x
-          fixDoPa x = x
-          f (DoPa x) = DoPa (maxDoPa + 1 - x)
+
+{-
+Chris K Commentary:
+
+I have one DIRE WARNING and one suggestion.
+
+The DIRE WARNING is against using the reversed Pattern to find captured subexpressions.  
+It will work perfectly to find the longest match but give nonsense for captures.  In 
+particular matching text "abc" with "(.)*" forward returns the 1st capture as "c".  
+Searching "cba" with the reverse of "(.)*", which is identical, returns the 1st capture as "a".
+
+Enough changes to the matching engine could allow for the reversed search on the 
+reversed text to return the same captures as the the forward search on the forward 
+text.  Rather than that tricky complexity, if you need the substring captures you 
+can use the reversed pattern to find a whole match and then run the forward pattern 
+on that substring.
+
+The one suggestion is that the DoPa are irrelevant to the matching — they are there to
+allow a person to understand how the output of each stage of the regex-tdfa code relates
+to the input pattern.  
+
+-}
 
 -- Cannot use Derive because we have to handle list arguments specially (POr, PConcat)
 instance Uniplate Pattern where
