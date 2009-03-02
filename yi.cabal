@@ -307,7 +307,7 @@ executable yi
         build-depends: pureMD5 >= 0.2.3
         build-depends: random
         build-depends: regex-base ==0.93.*
-        build-depends: regex-tdfa >=0.95.2
+        build-depends: regex-tdfa == 1.0.*
         build-depends: rosezipper >= 0.1 && < 0.2
         build-depends: split == 0.1.*
         build-depends: time == 1.1.*

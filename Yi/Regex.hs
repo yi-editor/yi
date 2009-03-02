@@ -15,7 +15,7 @@ import Text.Regex.TDFA.Pattern
 import Text.Regex.TDFA.Common
 import Control.Applicative
 import Text.Regex.TDFA.ReadRegex(parseRegex)
-import Text.Regex.TDFA.TDFA(patternToDFA)
+import Text.Regex.TDFA.TDFA(patternToRegex)
 import Yi.Buffer.Basic (Direction(..))
 
 -- input string, regexexp, backward regex.
@@ -48,7 +48,7 @@ searchOpt QuoteRegex = id
 makeSearchOptsM :: [SearchF] -> String -> Either String SearchExp
 makeSearchOptsM opts re = (\p->SearchExp re (compile p) (compile $ reversePattern p)) <$> pattern
     where searchOpts = foldr (.) id . map searchOpt
-          compile = compilePattern (searchOpts opts defaultCompOpt) defaultExecOpt
+          compile source = patternToRegex source (searchOpts opts defaultCompOpt) defaultExecOpt
           pattern = if QuoteRegex `elem` opts 
                           then Right (literalPattern re) 
                           else mapLeft show (parseRegex re)
@@ -60,15 +60,6 @@ mapLeft f (Left a) = Left (f a)
 -- | Return a pattern that matches its argument.
 literalPattern :: (Num t) => String -> (Pattern, (t, DoPa))
 literalPattern source = (PConcat $ map (PChar (DoPa 0)) $ source, (0,DoPa 0))
-
-compilePattern  :: CompOption -- ^ Flags (summed together)
-         -> ExecOption -- ^ Flags (summed together)
-         -> (Pattern, (GroupIndex, DoPa))    -- ^ The pattern to compile
-         -> Regex -- ^ Returns: the compiled regular expression
-compilePattern compOpt execOpt source =
-      let (dfa,i,tags,groups) = patternToDFA compOpt source
-      in Regex dfa i tags groups compOpt execOpt
-
 
 reversePattern :: (Pattern, (t, DoPa)) -> (Pattern, (t, DoPa))
 reversePattern (pattern,(gi,DoPa maxDoPa)) = (transform (rev) pattern, (gi,DoPa maxDoPa))
