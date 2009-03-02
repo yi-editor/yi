@@ -171,7 +171,7 @@ toEmacsStyleConfig cfg
             configKillringAccumulate = True
           }
 
--- Input preprocessor: Transform Esc;Char into Meta-Char
+-- | Input preprocessor: Transform Esc;Char into Meta-Char
 -- Useful for emacs lovers ;)
 escToMeta :: I.P Event Event
 escToMeta = mkAutomaton $ forever $ (anyEvent >>= I.write) ||> do
