@@ -1,4 +1,4 @@
-{-# LANGUAGE ScopedTypeVariables, FlexibleInstances, MultiParamTypeClasses, UndecidableInstances #-}
+{-# LANGUAGE ScopedTypeVariables, FlexibleInstances, MultiParamTypeClasses, UndecidableInstances, TypeOperators #-}
 
 -- Copyright (c) 2005,2007,2008 Jean-Philippe Bernardy
 
@@ -279,21 +279,19 @@ switchBufferE = do
                              forM choices $ \k -> gets (shortIdentString prefix . findBufferWith k)
     withMinibufferFin "switch to buffer:" names (withEditor . switchToBufferWithNameE)
 
-askCloseBuffer :: String -> YiM ()
-askCloseBuffer nm = do
-    Just b <- withEditor $ findBuffer =<< getBufferWithNameOrCurrent nm
-    ch <- deservesSave b
+killBufferE :: BufferRef ::: ToKill -> YiM ()
+killBufferE (Doc b) = do
+    buf <- withEditor $ gets $ findBufferWith b
+    ch <- deservesSave buf
     let askKeymap = choice [ char 'n' ?>>! closeBufferAndWindowE
                            , char 'y' ?>>! delBuf >> closeBufferAndWindowE
                            , ctrlCh 'g' ?>>! closeBufferAndWindowE
                            ]
-        delBuf = deleteBuffer $ bkey b
+        delBuf = deleteBuffer b
     withEditor $ 
-       if ch then (spawnMinibufferE (identString b ++ " changed, close anyway? (y/n)") (const askKeymap)) >> return () 
+       if ch then (spawnMinibufferE (identString buf ++ " changed, close anyway? (y/n)") (const askKeymap)) >> return () 
              else delBuf
 
-killBufferE :: YiM ()
-killBufferE = withMinibuffer "kill buffer:" matchingBufferNames $ askCloseBuffer
 
 -- | Shortcut to use a default list when a blank list is given.
 -- Used for default values to emacs queries

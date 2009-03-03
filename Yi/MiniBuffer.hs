@@ -219,6 +219,11 @@ class DocType t where
 data LineNumber
 instance DocType LineNumber where
     typeGetPrompt _ = "Line"
+
+data ToKill
+instance DocType ToKill where
+    typeGetPrompt _ = "kill buffer"
+
     
 data RegexTag deriving Typeable
 instance DocType RegexTag where
