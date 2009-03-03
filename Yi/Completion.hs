@@ -36,7 +36,7 @@ completeInList s match l
     | prefix /= s = return prefix
     | isSingleton filtered = printMsg "Sole completion" >> return s
     | prefix `elem` filtered = printMsg ("Complete, but not unique: " ++ show filtered) >> return s
-    | otherwise = printMsg ("Matches: " ++ show filtered) >> return s
+    | otherwise = printMsgs filtered >> return s
     where
     prefix   = commonPrefix filtered
     filtered = nub $ catMaybes $ fmap match l
