@@ -9,7 +9,7 @@ module Yi.MiniBuffer
   matchingBufferNames, anyModeByNameM, anyModeName,
 
   (:::)(..),
-  LineNumber, RegexTag, FilePatternTag
+  LineNumber, RegexTag, FilePatternTag, ToKill
  ) where
 
 import Prelude (filter, length)
@@ -140,12 +140,15 @@ completionFunction f = do
 
 class Promptable a where
     getPromptedValue :: String -> YiM a
-    getPromptedValue _ = error "Promptable: getPromptedValue missing"
-    getPrompt :: a -> String           -- Parameter can be "undefined"
-    getPrompt _ = "Promptable: prompt missing"
-    doPrompt :: (a -> YiM ()) -> YiM ()
-    doPrompt act = withMinibufferFree (getPrompt (undefined::a) ++ ":") $ 
+    getPrompt :: a -> String           -- Parameter can be "undefined/bottom"
+    getMinibuffer :: a -> String -> (String -> YiM ()) -> YiM ()
+    getMinibuffer _ = withMinibufferFree
+
+doPrompt :: forall a. Promptable a => (a -> YiM ()) -> YiM ()
+doPrompt act = getMinibuffer witness (getPrompt witness ++ ":") $ 
                      \string -> act =<< getPromptedValue string
+    where witness = error "Promptable argument should not be accessed"
+          witness :: a
 
 instance Promptable String where
     getPromptedValue = return
@@ -174,16 +177,18 @@ getAllModeNames :: YiM [String]
 getAllModeNames = fmap anyModeName . modeTable <$> askCfg
 
 instance Promptable AnyMode where
-    doPrompt act = do
+    getPrompt _ = "Mode"
+    getPromptedValue = anyModeByName
+    getMinibuffer _ prompt act = do
       names <- getAllModeNames
-      withMinibufferFin "Mode" names $ anyModeByName >=> act
+      withMinibufferFin prompt names act
 
 instance Promptable BufferRef where
-    doPrompt act = do 
+    getPrompt _ = "Buffer"
+    getPromptedValue = withEditor . getBufferWithNameOrCurrent
+    getMinibuffer _ prompt act = do 
       bufs <- matchingBufferNames ""
-      withMinibufferFin "Buffer" bufs $ \n -> 
-          do b <- withEditor $ getBufferWithName n
-             act b
+      withMinibufferFin prompt bufs act
 
 -- | Returns all the buffer names.
 matchingBufferNames :: String -> YiM [String]
