@@ -52,3 +52,15 @@ hoogle = do
     ((modl,fun):_) <- io $ hoogleFunModule word
     withBuffer $ replaceRegionB wordRegion fun
     return modl
+
+-- | Call out to 'hoogleRaw', and print inside the Minibuffer the results of
+-- searching Hoogle with the word at point.
+hoogleSearch :: YiM ()
+hoogleSearch = do
+  word <- withBuffer $ do wordRegion <- regionOfB unitWord
+                          readRegionB wordRegion
+  results <- io $ hoogleRaw word ""
+  
+  -- The quotes help legibility between closely-packed results
+  withEditor $ printMsgs $ map show results
+

@@ -53,7 +53,7 @@ import Yi.Style
 import Yi.TextCompletion
 import Yi.Tag 
 import Yi.Window (bufkey)
-import Yi.Hoogle (hoogle)
+import Yi.Hoogle (hoogle, hoogleSearch)
 import qualified Codec.Binary.UTF8.String as UTF8
 
 
@@ -1118,7 +1118,7 @@ defKeymap = Proto template
            ex_complete s                                       = catchAllComplete s
 
            catchAllComplete = exSimpleComplete $ const $ return $
-                                ("hoogle-word" :) $ ("set ft=" :) $ ("set tags=" :) $ map (++ " ") $ words $
+                                ("hoogle-word" :) $ ("hoogle-search" : )$ ("set ft=" :) $ ("set tags=" :) $ map (++ " ") $ words $
                                 "e edit r read saveas saveas! tabe tabnew tabm b buffer bd bd! bdelete bdelete! " ++
                                 "yi cabal nohlsearch suspend stop undo redo redraw reload tag .! quit quitall " ++
                                 "qall quit! quitall! qall! write wq wqall ascii xit exit next prev $ split new ball"
@@ -1318,6 +1318,7 @@ defKeymap = Proto template
            fn ('y':'i':' ':s) = execEditorAction $ dropSpace s
 
            fn "hoogle-word" = hoogle >> return ()
+           fn "hoogle-search" = hoogleSearch
            fn "tabm"       = withEditor (moveTab Nothing)
            fn ('t':'a':'b':'m':' ':n) = withEditor (moveTab $ Just (read n))
            fn "tabnew"     = withEditor newTabE

@@ -297,6 +297,9 @@ currentBuffer = head . bufferStack
 printMsg :: String -> EditorM ()
 printMsg s = printStatus ([s], defaultStyle)
 
+printMsgs :: [String] -> EditorM ()
+printMsgs s = printStatus (s, defaultStyle)
+
 printStatus :: Status -> EditorM ()
 printStatus = setTmpStatus 1
 
