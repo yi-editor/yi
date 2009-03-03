@@ -5,7 +5,7 @@ module Yi.Syntax.Haskell where
 import Yi.IncrementalParse
 import Yi.Lexer.Alex
 import Yi.Lexer.Haskell
-import Yi.Style (hintStyle, errorStyle, StyleName)
+import Yi.Style (hintStyle, errorStyle, commentStyle, StyleName)
 import Yi.Syntax.Layout
 import Yi.Syntax.Tree
 import Yi.Syntax.Paren (modStroke, tokenToStroke)
@@ -29,12 +29,16 @@ indentScanner = layoutHandler startsLayout [(Special '(', Special ')'),
 ignoredToken :: TT -> Bool
 ignoredToken (Tok t _ (Posn _ _ col)) = col == 0 && isComment t || t == CppDirective
     
-isNoise :: Token -> Bool
-isNoise (Special _) = False
-isNoise (ReservedOp _) = False
-isNoise (Reserved _) = False
-isNoise (Comment _) = False
-isNoise _ = True
+-- isNoise :: Token -> Bool
+isNoise :: (Char -> Bool) -> Token -> Bool
+-- isNoise (Special _) = False
+isNoise f (Special c) =  f c
+isNoise _ (ReservedOp _) = False
+-- isNoise _ (ReservedOp Equal) = False
+isNoise _ (Reserved _) = False
+isNoise _ (Comment _) = False
+-- isNoise _ (Operator _) = False
+isNoise _ _ = True
 
 data Tree t
     = Paren t (Tree t) t -- A parenthesized expression (maybe with [ ] ...)
@@ -125,10 +129,11 @@ parse :: P TT (Tree TT)
 parse = parse' tokT tokFromT
 
 parse' :: (TT -> Token) -> (Token -> TT) -> P TT (Tree TT)
-parse' toTok fromT = pBlockOf pDecl <* eof
+parse' toTok fromT = pc <* eof -- pBlockOf pDecl <* eof
     where 
       -- | parse a special symbol
       sym f = symbol (f . toTok)
+      sym' d = sym (`elem` d)
       exact s = sym (== s)
       spec '|' = exact (ReservedOp Pipe)
       spec '=' = exact (ReservedOp Equal)
@@ -138,25 +143,53 @@ parse' toTok fromT = pBlockOf pDecl <* eof
       newT c = fromT (Special c)
 
       pleaseSym c = (recoverWith (pure $ newT '!')) <|> spec c
+      pleaseB b = (recoverWith (pure $ newT '!')) <|> b
 
 
-      pFun = Bin <$> pExpr' <*> ((Block <$> some pGuard) <|> pRhs)
-      pGuard = KW <$> spec '|' <*> (Bin <$> pExpr <*> (pRhs <|> pEmpty))
-      
+      pFun = Bin <$> pExpr' <*> ((Block <$> some pGuard) <|> pRhs) -- add support for do
+      pGuard = KW <$> spec '|' <*> (Bin <$> pExpr <*> (pRhs <|> pEmpty)) -- same here, add support for do
+
       pRhs, pEmpty :: P TT (Tree TT)
-      pRhs = KW <$> spec '=' <*> pExpr 
-      pModule = KW <$> sym (`elem` fmap Reserved [Module]) <*> pExpr
-      -- pComment p = p <|> (Cmnt <$> some (sym isComment) <*> p)
+      pRhs = KW <$> spec '=' <*> (pExpr <|> pDo)
 
+      pDo = KW <$> sym' [Reserved OtherLayout] <*> pExpr -- do let in and so on, should maybe match more exact char..
+      pImport = KW <$> sym' [Reserved Other] <*> (pAs <|> pEmpty) -- (Atom <$> sym (`elem` [ConsIdent])) <|> pEmpty) -- catch imports, import qualified, import A as B, import A ()
+
+      pAs = Bin <$> (Atom <$> sym' [ConsIdent]) <*> 
+              (Bin <$> ((Atom <$> sym' [Reserved Other]) <|> pExpr) <*> ((Atom <$> sym' [ConsIdent]) <|> pExpr)) -- can be more sensitive
+
+      pModule = KW <$> sym' [Reserved Module] <*> pExpr
+      pType = KW <$> sym' (fmap Reserved [NewType, Data, Type]) <*> pExpr
+
+      -- Comments
+      pCommentLine = Atom <$> sym' [Comment Line]
+      pComment = (pCommentLine <|> pCommentBrack)
+      pCommentBrack = Paren <$> sym' [Comment Open] <*> 
+                      pLine <*> (pleaseB $  sym' [Comment Close])
+      pLine = Expr <$> many (Atom <$> sym' [Comment Text]) -- some comment lines
+      pCommentBlock = KW <$> (sym' [Comment Open]) <*> (Block <$> (spec '<' *> (filter (not . isEmpty) <$> ((Atom <$> sym' [Comment Close]) `sepBy` spec '.')) <* spec '>'))
+      -- blocks dont work yet..
+      
+
+      -- Begin the parsing
+      pc = (Bin <$> (Expr <$> many (pComment <|> pCppDir)) <*> (pBlockOf pBegin <|> pEmpty)) <|> pBlockOf pBegin
+
+      pCppDir = Atom <$> sym' [CppDirective]
 
       pTuple = Paren  <$>  spec '(' <*> pExpr  <*> pleaseSym ')'
       pBlockOf p = Block <$> (spec '<' *> (filter (not . isEmpty) <$> (p `sepBy` spec '.')) <* spec '>')  -- see HACK above 
       pBlock = pBlockOf pExpr
-      -- pWhereCl = KW <$> sym (== Reserved Where) <*> pBlock
+      pWhereCl = KW <$> sym' [Reserved Where] <*> ((Bin <$> (Expr <$> many pComment) <*> pd) <|> pd)
 
-      -- pDecls = many pDecl
+      pd = pBlockOf pDecl <|> pEmpty
+
       pEmpty = pure Empty
-      pDecl = pModule <|> pFun <|> pExpr' <|> pEmpty -- pComment (pBind <|> pModule)
+
+      pAny = pComment <|> pType <|> pEmpty
+
+      pBegin = pModule <|> pDecl -- small hack to avoid allowing several module declarations
+
+      pDecl = pImport <|> pFun <|> pExpr' <|> pEmpty <|> pType
 
       pExpr' = Expr <$> some pElem
       pExpr = pExpr' <|> pEmpty
@@ -165,13 +198,12 @@ parse' toTok fromT = pBlockOf pDecl <* eof
       pElem :: P TT (Tree TT)
       pElem = pTuple
           <|> (Paren  <$>  spec '[' <*> pExpr  <*> pleaseSym ']')
-          <|> (Paren  <$>  spec '{' <*> pExpr  <*> pleaseSym '}')
-
+          <|> (Paren  <$>  spec '{' <*> pExpr  <*> pleaseSym '}') -- records should be able to contain '='
+          <|> pWhereCl
           <|> pBlock
-
-          <|> (Atom <$> sym isNoise)
---          <|> (Error <$> recoverWith (sym (isSpecial "})]" <||> (== ReservedOp Equal) <||> (== Reserved Module))))
-          <|> (Error <$> recoverWith (sym (not . isNoise)))
+          <|> pComment
+          <|> (Atom <$> sym (isNoise (\x -> elem x ";,`")))
+          <|> (Error <$> recoverWith (sym (not . isNoise (\x -> not $ elem x "})]"))))
 
       -- note that, by construction in Layout module, '<' and '>' will always be
       -- matched, so we don't try to recover errors with them.
@@ -199,6 +231,7 @@ getStrokes point _begin _end t0 = result
           getStrokes' (Bin l r) = getStrokes' l . getStrokes' r
           getStrokes' (KW k b) = tk k . getStrokes' b
           getStrokes' Empty = id
+          getStrokes' (Cmnt t t') = ((++) (fmap ((modStroke commentStyle) . ts) t)) . getStrokes' t'
           getStrokesL g = compose (fmap getStrokes' g)
           tk t | isErrorTok $ tokT t = id
                | otherwise = (ts t :)
