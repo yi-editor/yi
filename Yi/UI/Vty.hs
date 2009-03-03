@@ -27,7 +27,6 @@ import Data.Traversable
 import System.Exit
 import System.Posix.Signals (raiseSignal, sigTSTP)
 import Yi.Buffer
-import Yi.Config
 import Yi.Editor
 import Yi.Event
 import Yi.Monad
