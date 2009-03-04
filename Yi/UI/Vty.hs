@@ -31,7 +31,6 @@ import Yi.Editor
 import Yi.Event
 import Yi.Monad
 import Yi.Style
-import qualified Data.ByteString.Char8 as B
 import qualified Yi.UI.Common as Common
 import Yi.Config
 import Yi.Window
@@ -351,7 +350,7 @@ drawText h w topPoint point tabWidth bufData
     | otherwise = [(c,p)]
 
 withAttributes :: Attributes -> String -> Image
-withAttributes sty str = renderBS (attributesToAttr sty attr) (B.pack str)
+withAttributes sty str = horzcat $ fmap (renderChar (attributesToAttr sty attr)) str
 
 ------------------------------------------------------------------------
 
