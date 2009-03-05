@@ -1,4 +1,4 @@
-module Yi.Char.Unicode (greek, symbols) where
+module Yi.Char.Unicode (greek, symbols, subscripts) where
 greek :: [(String, String)]
 greek = [("alpha", "α")
         ,("'a", "α")
@@ -129,6 +129,7 @@ symbols =
  ,("^n","ⁿ")
  ,("::","∷")
  ,("0", "∅")
+ ,("*", "★") -- or "⋆"
 
  -- dashes
  ,("-","−")
@@ -143,6 +144,7 @@ symbols =
  ,("|=", "⊨")
  ,("|/=", "⊭")
  ,("||-", "⊩")
+
  ]
 
 -- More:
@@ -151,3 +153,7 @@ symbols =
 -- circled operators: ⊕ ⊖ ⊗ ⊘ ⊙ ⊚ ⊛ ⊜ ⊝ ⍟  ⎊ ⎉
 -- squared operators: ⊞ ⊟ ⊠ ⊡
 -- turnstyles: ⊦ ⊧
+
+
+subscripts :: [(String, String)]
+subscripts = zip (fmap (('_':). (:[])) "0123456789+-=()") (fmap (:[]) "₀₁₂₃₄₅₆₇₈₉₊₋₌₍₎")
