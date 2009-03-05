@@ -50,6 +50,7 @@ data Editor = Editor {
        ,dynamic       :: !(DynamicValues)              -- ^ dynamic components
 
        ,statusLines   :: !Statuses
+       ,maxStatusHeight :: !Int
        ,killring      :: !Killring
        ,regex         :: !(Maybe SearchExp) -- ^ most recent regex
        ,searchDirection :: !Direction
@@ -58,17 +59,19 @@ data Editor = Editor {
     deriving Typeable
 
 instance Binary Editor where
-    put (Editor bss bs supply ts _dv _sl kr _re _dir _ev) = put bss >> put bs >> put supply >> put ts >> put kr 
+    put (Editor bss bs supply ts _dv _sl msh kr _re _dir _ev) = put bss >> put bs >> put supply >> put ts >> put msh >> put kr 
     get = do
         bss <- get
         bs <- get
         supply <- get
         ts <- get
+        msh <- get
         kr <- get
         return $ emptyEditor {bufferStack = bss,
                               buffers = bs,
                               refSupply = supply,
                               tabs_ = ts,
+                              maxStatusHeight = msh,
                               killring = kr
                              }
 
@@ -108,6 +111,7 @@ emptyEditor = Editor {
        ,statusLines  = DelayList.insert (maxBound, ([""], defaultStyle)) []
        ,killring     = krEmpty
        ,pendingEvents = []
+       ,maxStatusHeight = 1
        }
         where buf = newB 0 (Left "console") (LazyUTF8.fromString "")
               win = (dummyWindow (bkey buf)) {wkey = 1, isMini = False}
