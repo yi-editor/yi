@@ -11,7 +11,7 @@ import Yi.Keymap.Emacs (keymap)
 import Data.List (drop, length)
 import Data.Monoid
 import Prelude ()
-import Yi.Char.Unicode (greek, symbols)
+import Yi.Char.Unicode
 import Yi.Hoogle
 import Yi.Keymap.Keys
 import Yi.Lexer.Alex (tokToSpan, Tok)
@@ -76,7 +76,7 @@ mkInputMethod xs = choice [pString i >> adjustPriority (negate (length i)) >>! i
 
 extraInput :: Keymap
 extraInput 
-    = spec KEsc ?>> mkInputMethod (greek ++ symbols)
+    = spec KEsc ?>> mkInputMethod (greek ++ symbols ++ subscripts)
 
 
 tta :: Yi.Lexer.Alex.Tok Token -> Maybe (Yi.Syntax.Span String)
