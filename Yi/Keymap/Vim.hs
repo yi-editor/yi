@@ -1082,7 +1082,7 @@ defKeymap = Proto template
                       ,spec KTab   ?>>! completeMinibuffer
                       ,spec KEsc   ?>>! closeBufferAndWindowE
                       ,ctrlCh 'h'  ?>>! deleteB Character Backward
-                      ,spec KBS    ?>>! deleteB Character Backward
+                      ,spec KBS    ?>>! deleteBkdOrClose
                       ,spec KDel   ?>>! deleteB Character Forward
                       ,ctrlCh 'p'  ?>>! historyUp
                       ,spec KUp    ?>>! historyUp
@@ -1093,6 +1093,10 @@ defKeymap = Proto template
                       ,ctrlCh 'w'  ?>>! deleteB unitWord Backward
                       ,ctrlCh 'u'  ?>>! moveToSol >> deleteToEol]
                   <|| (textChar >>= write . insertB)
+           deleteBkdOrClose = do
+             ls <- withBuffer0 elemsB
+             if null ls then closeBufferAndWindowE
+                        else withBuffer0 $ deleteB Character Backward
            completeMinibuffer = withBuffer elemsB >>= ex_complete >>= withBuffer . insertN
            exSimpleComplete compl s' = let s = dropWhile isSpace s' in drop (length s) <$> simpleComplete compl s
            f_complete = exSimpleComplete (matchingFileNames Nothing)
