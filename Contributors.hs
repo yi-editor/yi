@@ -10,13 +10,16 @@ import qualified Data.ByteString.Char8 as BS
 import qualified Data.Map as M
 
 capitalize :: ByteString -> ByteString
-capitalize s = BS.cons (toUpper $ BS.head s) (BS.tail s)
+capitalize s
+   | BS.null s = s
+   | otherwise = BS.cons (toUpper $ BS.head s) (BS.tail s)
 
 tx :: String
 tx = "Thu Oct 14 05:40:06 CEST 2004 "
 
 unquote :: ByteString -> ByteString
 unquote x
+    | BS.null x = x
     | BS.head x == '\'' && BS.last x == '\'' = unquote (BS.init $ BS.tail $ x)
     | otherwise = x
 
@@ -42,6 +45,7 @@ nickToName :: ByteString -> ByteString
 nickToName x = case BS.map toLower x of
             "a.d.clark"             -> "Allan Clark"
             "alson"                 -> "Alson Kemp"
+            "andekar"               -> "Anders Karlsson"
             "andrii.z"              -> "Andrii Zvorygin"
             "cgibbard"              -> "Cale Gibbard"
             "coreyoconnor"          -> "Corey O'Connor"
