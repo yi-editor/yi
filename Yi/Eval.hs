@@ -20,6 +20,8 @@ import Yi.Dired
 import Data.Dynamic
 #ifdef GHC_INTERPRETER
 import qualified Language.Haskell.Interpreter as LHI
+import System.FilePath
+import System.Directory
 import Control.Monad
 #else
 import qualified Data.Map as M
@@ -34,15 +36,22 @@ import Yi.MiniBuffer (FilePatternTag, RegexTag, (:::))
 -- | Returns an Interpreter action that loads the desired modules and interprets the expression.
 execEditorAction :: String -> YiM ()
 execEditorAction s = do
-   res <-io $ LHI.runInterpreter $ do
+   contextPath <- (</> ".yi" </> "Env") <$> io getHomeDirectory
+   let contextFile = contextPath </> "Main.hs"
+   haveUserContext <- io $ doesFileExist contextFile
+   res <- io $ LHI.runInterpreter $ do
        LHI.set [LHI.searchPath LHI.:= []]
        LHI.set [LHI.languageExtensions LHI.:= [LHI.OverloadedStrings, 
                                                LHI.NoImplicitPrelude -- use Yi prelude instead.
                                               ]]
+       when haveUserContext $ do
+          LHI.loadModules [contextFile]
+          LHI.setTopLevelModules ["Env"]
+
        LHI.setImportsQ [("Yi", Nothing), ("Yi.Keymap",Just "Yi.Keymap")] -- Yi.Keymap: Action lives there
        LHI.interpret ("Yi.makeAction ("++s++")") (error "as" :: Action)
    case res of
-       Left err ->errorEditor (show err)
+       Left err -> errorEditor (show err)
        Right action -> runAction action
 
 data NamesCache = NamesCache [String] deriving Typeable
@@ -51,7 +60,7 @@ instance Initializable NamesCache where
  
 getAllNamesInScope :: YiM [String]
 getAllNamesInScope = do 
-   NamesCache cache <-withEditor $ getA dynA
+   NamesCache cache <- withEditor $ getA dynA
    result <-if null cache then do
         res <-io $ LHI.runInterpreter $ do
             LHI.set [LHI.searchPath LHI.:= []]
@@ -59,7 +68,7 @@ getAllNamesInScope = do
         return $ case res of
            Left err ->[show err]
            Right exports -> flattenExports exports
-      else return cache
+      else return $ sort cache
    withEditor $ putA dynA (NamesCache result)
    return result
   
