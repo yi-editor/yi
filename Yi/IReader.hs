@@ -120,6 +120,7 @@ saveAndNextArticle = do (oldb,newa) <- oldDbNewArticle
 -- | Assume the buffer is an entirely new article just imported this second, and save it.
 -- We don't want to use 'updateSetLast' since that will erase an article.
 saveAsNewArticle :: YiM ()
-saveAsNewArticle = do (oldb,newa) <- oldDbNewArticle
+saveAsNewArticle = do oldb <- readDB -- make sure we read from disk - we aren't in iread-mode!
+                      (_,newa) <- oldDbNewArticle -- we ignore the fst - the Initializable is 'empty'
                       let newdb = insertArticle oldb newa
                       writeDB newdb
