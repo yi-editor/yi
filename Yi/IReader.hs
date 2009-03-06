@@ -12,7 +12,7 @@ import Data.Binary (decode, encodeFile)
 import Data.Sequence as S
 import Data.Typeable (Typeable)
 import System.Directory (getHomeDirectory)
-import qualified Data.ByteString.Char8 as B (readFile)
+import qualified Data.ByteString.Char8 as B (pack, unpack, readFile, ByteString)
 import qualified Data.ByteString.Lazy.Char8 as BL (fromChunks)
 
 import Yi.Buffer.HighLevel (replaceBufferContent, topB)
@@ -23,7 +23,7 @@ import Yi.Dynamic (Initializable(initial))
 import Yi.Keymap (withBuffer, YiM)
 import Yi.Prelude (getA, putA, io)
 
-type Article = String
+type Article = B.ByteString
 type ArticleDB = Seq Article
 
 instance (Typeable a) => Initializable (Seq a) where
@@ -32,7 +32,7 @@ instance (Typeable a) => Initializable (Seq a) where
 -- | Take an 'ArticleDB', and return the first 'Article' and an ArticleDB - *without* that article.
 split :: ArticleDB -> (Article, ArticleDB)
 split adb = case viewl adb of
-               EmptyL -> ("", S.empty)
+               EmptyL -> (B.pack "", S.empty)
                (a :< b) -> (a, b)
 
 -- | Get the first article in the list. We use the list to express relative priority;
@@ -72,7 +72,7 @@ dbLocation = getHomeDirectory >>= \home -> return (home ++ "/.yi/articles.db")
 --   (that is, if we get an empty Seq), only then do we call 'readDB'.
 oldDbNewArticle :: YiM (ArticleDB, Article)
 oldDbNewArticle = do saveddb <- withBuffer $ getA bufferDynamicValueA
-                     newarticle <- withBuffer getBufferContents
+                     newarticle <-fmap B.pack $ withBuffer getBufferContents
                      if not $ S.null saveddb
                       then return (saveddb, newarticle)
                       else do olddb <- readDB
@@ -84,8 +84,8 @@ getBufferContents = readRegionB =<< regionOfB Document
 
 -- | Given an 'ArticleDB', dump the scheduled article into the buffer (replacing previous contents).
 setDisplayedArticle :: ArticleDB -> YiM ()
-setDisplayedArticle newdb = do let nextarticle = getLatestArticle newdb
-                               withBuffer $ do replaceBufferContent nextarticle
+setDisplayedArticle newdb = do let next = getLatestArticle newdb
+                               withBuffer $ do replaceBufferContent $ B.unpack next
                                                topB -- replaceBufferContents moves us
                                                     -- to bottom?
                                                putA bufferDynamicValueA newdb
