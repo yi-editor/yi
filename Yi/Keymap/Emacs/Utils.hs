@@ -263,12 +263,12 @@ findFileHint startPath s = snd <$> getAppropriateFiles (Just startPath) s
 scrollDownE :: UnivArgument -> BufferM ()
 scrollDownE a = case a of
                  Nothing -> downScreenB
-                 Just n -> replicateM_ n lineDown
+                 Just n -> scrollB n
 
 scrollUpE :: UnivArgument -> BufferM ()
 scrollUpE a = case a of
                  Nothing -> upScreenB
-                 Just n -> replicateM_ n lineUp
+                 Just n -> scrollB (negate n)
 
 switchBufferE :: YiM ()
 switchBufferE = do
