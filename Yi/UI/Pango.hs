@@ -335,26 +335,28 @@ newWindow e ui w b = mdo
                boxChildPacking ml := PackNatural]
       return (castToBox vb)
      
-    sig <- newIORef =<< (v `onExpose` render e ui b win)
-    rRef <- newIORef (askBuffer w b winRegionB)
-    context <- widgetCreatePangoContext v
-    layout <- layoutEmpty context
-    layoutSetWrap layout WrapAnywhere
-    language <- contextGetLanguage context
-    metrics <- contextGetMetrics context f language
-    layoutSetFontDescription layout (Just f)
+    sig       <- newIORef =<< (v `onExpose` render e ui b win)
+    rRef      <- newIORef (askBuffer w b winRegionB)
+    context   <- widgetCreatePangoContext v
+    layout    <- layoutEmpty context
+    language  <- contextGetLanguage context
+    metrics   <- contextGetMetrics context f language
     motionSig <- newIORef Nothing
-    let win = WinInfo {
-                     coreWin   = w
-                   , winLayout = layout
-                   , winMetrics = metrics
-                   , winMotionSignal = motionSig
-                   , textview  = v
-                   , modeline  = ml
-                   , widget    = box
-                   , renderer  = sig
-                   , shownRegion = rRef
-              }
+
+    layoutSetWrap layout WrapAnywhere
+    layoutSetFontDescription layout (Just f)
+
+    let win = WinInfo { coreWin   = w
+                      , winLayout = layout
+                      , winMetrics = metrics
+                      , winMotionSignal = motionSig
+                      , textview  = v
+                      , modeline  = ml
+                      , widget    = box
+                      , renderer  = sig
+                      , shownRegion = rRef
+                      }
+
     return win
 
 insertWindowBefore :: Editor -> UI -> Window -> WinInfo -> IO WinInfo
@@ -431,16 +433,18 @@ render e ui b w _ev = do
   r'' <- if inRegion point r'
     then return r'
     else do
-      logPutStrLn $ "out!"
-      let newTos = askBuffer win b $ do
-                         indexOfSolAbove (winh `div` 2)
-          text' = askBuffer win b $ do
-                         numChars <- winEls newTos winh
-                         nelemsB' numChars newTos
+      logPutStrLn $ "out! " ++ show winh ++ " ascent:" ++ show (ascent metrics) ++ " descent:" ++ show (descent metrics)
+
+      let (topOfScreen, numChars, text') = askBuffer win b $ do
+            top      <- indexOfSolAbove 10
+            numChars <- winEls top winh
+            content  <- nelemsB' numChars top
+            return (top, numChars, content)
+
       layoutSetText layout text'
-      (_,bos',_) <- layoutXYToIndex layout width' height'
-      logPutStrLn $ "bos = " ++ show bos' ++ " + " ++ show newTos
-      return $ mkRegion newTos (newTos +~ Size bos')  -- FIXME: Unicode
+      (_, lastIndex, _) <- layoutXYToIndex layout width' height'
+
+      return $ mkSizeRegion topOfScreen numChars
 
   writeRef (shownRegion w) r''
   logPutStrLn $ "updated: " ++ show r''
