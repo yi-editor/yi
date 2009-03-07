@@ -425,10 +425,12 @@ defKeymap = Proto template
          ,(char '$',    eol)
          ,(spec KEnd,   eol)
           -- words
-         ,(char 'w',    Replicate $ GenMove unitViWord (Backward,InsideBound) Forward)
-         ,(char 'W',    Replicate $ GenMove unitViWORD (Backward,InsideBound) Forward)
-         ,(char 'b',    Replicate $ Move unitViWord Backward)
-         ,(char 'B',    Replicate $ Move unitViWORD Backward)
+         ,(char 'w',    jumpF unitViWord)
+         ,(char 'W',    jumpF unitViWORD)
+         ,(char 'b',    jumpB unitViWord)
+         ,(char 'B',    jumpB unitViWORD)
+         ,(ctrl $ spec KLeft,    jumpB unitViWORD)
+         ,(ctrl $ spec KRight,   jumpF unitViWORD)
           -- text
          ,(char '{',    Replicate $ Move unitEmacsParagraph Backward)
          ,(char '}',    Replicate $ Move unitEmacsParagraph Forward)
@@ -440,6 +442,8 @@ defKeymap = Proto template
              right = Replicate $ CharMove Forward
              sol   = Replicate viMoveToSol
              eol   = ArbMove . viMoveToNthEol
+             jumpF = \unit -> Replicate $ GenMove unit (Backward,InsideBound) Forward
+             jumpB = \unit -> Replicate $ Move unit Backward
 
      -- | movement *multi-chars* commands (with exclusive cut/yank semantics)
      moveCmdS_exclusive :: [([Event], (Int -> ViMove))]
@@ -656,6 +660,7 @@ defKeymap = Proto template
          ,([char 'Y'],      withEditor . yank LineWise . (Replicate $ Move Line Forward))
          ,([char 'X'],      savingCommandE'Y $ cut Exclusive . (Replicate $ CharMove Backward))
          ,([char 'x'],      savingCommandE'Y $ cut Exclusive . (Replicate $ CharMove Forward))
+         ,([spec KDel],     savingCommandE'Y $ cut Exclusive . (Replicate $ CharMove Forward))
 
          -- pasting
          ,([char 'p'],      savingCommandEY $ flip replicateM_ pasteAfter)
@@ -1015,6 +1020,8 @@ defKeymap = Proto template
               ,spec KHome     ?>>! moveToSol
               ,spec KDel      ?>>! savingDeleteCharB Forward
               ,spec KEnter    ?>>! savingInsertCharB '\n'
+              ,(ctrl $ spec KLeft)  ?>>! moveB unitViWORD Backward
+              ,(ctrl $ spec KRight) ?>>! genMoveB unitViWORD (Backward,InsideBound) Forward
               ,ctrlCh 'j'     ?>>! savingInsertCharB '\n'
               ,ctrlCh 'm'     ?>>! savingInsertCharB '\r'
               ,spec KTab      ?>>! mapM_ insrepB =<< tabB
