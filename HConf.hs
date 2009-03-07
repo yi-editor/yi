@@ -57,14 +57,16 @@ import System.Info
 #ifndef mingw32_HOST_OS
 #ifdef darwin_HOST_OS
 import System.Posix.Process
-            (executeFile,
-             getProcessStatus,
+            (getProcessStatus,
              forkProcess,
-             exitImmediately)
+             exitImmediately,
+             ProcessStatus(..))
+import qualified System.Posix.Process as SPP (executeFile)
+import System.Posix.Signals (raiseSignal, sigTSTP)
 #else
 import System.Posix.Process (executeFile)
-import Control.OldException (handle)
 #endif
+import Control.OldException (handle)
 #endif
 import System.Process
 import System.Directory
@@ -308,27 +310,30 @@ buildLaunch params@HConfParams{ projectName = app } = do
           ++ " (" ++ show executable_path ++ ") "
           ++ "could not be launched!\n") +++ errMsg
 
-# ifndef darwin_HOST_OS
     handle (\_exception -> return ())
        (executeFile executable_path False args' Nothing)
     -- if we reach this point then exec failed.
     launchFailed
-# else
-    -- Darwin is odd or broken; Take your pick. According to:
-    --      http://uninformed.org/index.cgi?v=1&a=1&p=16
-    -- and
-    --      http://www.cherrypy.org/ticket/581
-    -- In order to get around a "Operation not supported" error on execv[e] it's
-    -- required to fork THEN execv[e]. - coconnor
-    child_pid <- forkProcess $ executeFile executable_path False args' Nothing
-    child_status <- getProcessStatus True False child_pid
-    case child_status of
-        Nothing -> launchFailed
-        Just _ -> do
-            exitImmediately ExitSuccess
-            return Nothing
-# endif
 
 #else
     return Nothing
+#endif
+
+#ifdef darwin_HOST_OS
+-- Darwin is odd or broken; Take your pick. According to:
+--      http://uninformed.org/index.cgi?v=1&a=1&p=16
+-- and
+--      http://www.cherrypy.org/ticket/581
+-- In order to get around a "Operation not supported" error on execv[e] it's
+-- required to fork THEN execv[e]. - coconnor
+executeFile :: FilePath -> Bool -> [String] -> Maybe [(String,String)] -> IO ()
+executeFile cmd usePath args cmdEnv = do
+    child_pid <- forkProcess $ SPP.executeFile cmd usePath args cmdEnv
+    forever $ do
+        child_status <- getProcessStatus True True child_pid
+        case child_status of
+            Nothing -> error "executeFile: could not get child process status"
+            Just (Exited code) -> exitImmediately code
+            Just (Terminated _) -> exitImmediately ExitSuccess
+            Just (Stopped _) -> raiseSignal sigTSTP
 #endif
