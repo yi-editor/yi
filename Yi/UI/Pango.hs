@@ -84,6 +84,7 @@ mkFontDesc cfg = do
   fontDescriptionSetFamily f (maybe "Monospace" id (configFontName cfg))
   case  configFontSize cfg of
     Just x -> fontDescriptionSetSize f (fromIntegral x)
+    -- When the font size is not set, it defaults to 0.0 for the metrics.
     Nothing -> return ()
   return f
 
@@ -433,10 +434,10 @@ render e ui b w _ev = do
   r'' <- if inRegion point r'
     then return r'
     else do
-      logPutStrLn $ "out! " ++ show winh ++ " ascent:" ++ show (ascent metrics) ++ " descent:" ++ show (descent metrics)
+      logPutStrLn $ "point moved out of visible region"
 
       let (topOfScreen, numChars, text') = askBuffer win b $ do
-            top      <- indexOfSolAbove 10
+            top      <- indexOfSolAbove (winh `div` 2)
             numChars <- winEls top winh
             content  <- nelemsB' numChars top
             return (top, numChars, content)
@@ -500,3 +501,4 @@ mkCol False Default = Color maxBound maxBound maxBound
 mkCol _ (RGB x y z) = Color (fromIntegral x * 256)
                             (fromIntegral y * 256)
                             (fromIntegral z * 256)
+
