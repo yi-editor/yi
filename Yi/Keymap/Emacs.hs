@@ -115,7 +115,7 @@ emacsKeys univArg =
          , ctrlCh 'i'           ?>>! (adjIndent IncreaseOnly)
          , ctrlCh 'j'           ?>>! (repeatingArg $ insertB '\n')
          , ctrlCh 'k'           ?>>! killLineE univArg
-         , ctrlCh 'l'           ?>>! scrollToCursorB
+         , ctrlCh 'l'           ?>>! (withBuffer scrollToCursorB >> userForceRefresh)
          , ctrlCh 'm'           ?>>! (repeatingArg $ insertB '\n')
          , ctrlCh 'n'           ?>>! (repeatingArg $ moveB VLine Forward)
          , ctrlCh 'o'           ?>>! (repeatingArg (insertB '\n' >> leftB))
