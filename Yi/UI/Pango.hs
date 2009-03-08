@@ -24,12 +24,12 @@ import Control.Applicative
 import Control.Concurrent ( yield )
 import Control.Monad (ap)
 import Control.Monad.Reader (liftIO, when, MonadIO)
-import Control.Monad.State (gets)
+import Control.Monad.State (gets, modify, runState, State)
 
 import Data.Prototype
 import Data.Foldable
 import Data.IORef
-import Data.List (nub, findIndex, zip, drop)
+import Data.List (nub, findIndex, zip, drop, partition, repeat)
 import qualified Data.List.PointedList.Circular as PL
 import Data.Maybe
 import Data.Traversable
@@ -410,23 +410,24 @@ render e ui b w _ev = do
   reg <- readRef (shownRegion w)
   drawWindow <- widgetGetDrawWindow $ textview w
   (width, height) <- widgetGetSize $ textview w
-  let win = coreWin w
-  let [width', height'] = map fromIntegral [width, height]
-  let metrics = winMetrics w
-      layout = winLayout w
-      winh = round (height' / (ascent metrics + descent metrics))
 
-  let (point, text) = askBuffer win b $ do
-                      numChars <- winEls (regionStart reg) winh
-                      (,) 
-                       <$> pointB
-                       <*> nelemsB' numChars (regionStart reg)
+  let win               = coreWin w
+      [width', height'] = map fromIntegral [width, height]
+      metrics           = winMetrics w
+      layout            = winLayout w
+      winh              = round (height' / (ascent metrics + descent metrics))
+
+      (point, text)     = askBuffer win b $ do
+                            numChars <- winEls (regionStart reg) winh
+                            p        <- pointB
+                            content  <- nelemsB' numChars (regionStart reg)
+                            return (p, content)
+
   layoutSetWidth layout (Just width')
   layoutSetText layout text
 
   (_,bos,_) <- layoutXYToIndex layout width' height' 
   let r' = mkRegion (regionStart reg) (fromIntegral bos + regionStart reg)
-
 
   -- Scroll the window when the cursor goes out of it:
   logPutStrLn $ "prewin: " ++ show r'
@@ -443,7 +444,6 @@ render e ui b w _ev = do
             return (top, numChars, content)
 
       layoutSetText layout text'
-      (_, lastIndex, _) <- layoutXYToIndex layout width' height'
 
       return $ mkSizeRegion topOfScreen numChars
 
@@ -463,7 +463,6 @@ render e ui b w _ev = do
 
   layoutSetAttributes layout allAttrs
 
-
   (PangoRectangle curx cury curw curh, _) <- layoutGetCursorPos layout (fromPoint (point - regionStart r''))
 
   gc <- gcNew drawWindow
@@ -481,21 +480,38 @@ prepareAction ui = do
     rs <- mapM (readRef . shownRegion) wins
     logPutStrLn $ "new wins: " ++ show wins
     logPutStrLn $ "new regs: " ++ show rs
+    heights <- forM wins $ \w -> do
+      (_, h) <- widgetGetSize $ textview w
+      let metrics = winMetrics w
+      return $ round ((fromIntegral h) / (ascent metrics + descent metrics))
     return $ do
       let updWin w r = do
              withGivenBufferAndWindow0 w (bufkey w) $ do
                  Just (MarkSet f _ _ t) <- getMarks w
                  setMarkPointB f (regionStart r)
                  setMarkPointB t (regionEnd   r)
-      -- TODO: also update height and bos.
       sequence_ $ zipWith updWin ws rs
+      modA windowsA (computeHeights $ heights ++ repeat 0)
+      -- TODO: bos needs to be set also.
+      -- FIXME: Get rid of 'repeat 0'; it seems to be necessary because no
+      -- windows are available when this is first executed.
 
+-- | Calculate window heights, given all the windows and current height.
+computeHeights :: [Int] -> PL.PointedList Window -> PL.PointedList Window
+computeHeights heights ws = fst $ runState (Data.Traversable.mapM distribute ws) heights
+
+distribute :: Window -> State [Int] Window
+distribute win = case isMini win of
+                 True -> return win {height = 1}
+                 False -> do h <- gets head
+                             modify tail
+                             return win {height = h}
 
 reloadProject :: UI -> FilePath -> IO ()
 reloadProject _ _ = return ()
 
 mkCol :: Bool -- ^ is foreground?
-   ->Yi.Style.Color -> Gtk.Color
+      -> Yi.Style.Color -> Gtk.Color
 mkCol True  Default = Color 0 0 0
 mkCol False Default = Color maxBound maxBound maxBound
 mkCol _ (RGB x y z) = Color (fromIntegral x * 256)
