@@ -14,12 +14,10 @@ import qualified Yi.Main
 import qualified Yi.Config.Default
 
 recoverState :: FilePath -> IO (Maybe Editor)
-recoverState path = do
-    Data.Binary.decodeFile path
+recoverState = Data.Binary.decodeFile
 
 saveState :: FilePath -> Maybe Editor -> IO ()
-saveState path ed = do
-    Data.Binary.encodeFile path ed
+saveState = Data.Binary.encodeFile
 
 realMain :: Config -> Maybe Editor -> IO ()
 realMain staticConfig state = do
