@@ -37,7 +37,8 @@ where
 
 {- Standard Library Module Imports -}
 
-import Prelude (take)
+import Prelude (take, takeWhile, dropWhile)
+import Data.Char (isAlphaNum)
 import Data.List ((\\))
 import Data.Maybe (maybe)
 import System.FriendlyPath
@@ -313,17 +314,20 @@ maybeList _   ls = ls
 -- | Prompt the user to give a tag and then jump to that tag
 promptTag :: YiM ()
 promptTag = do
-  -- default tag is where the buffer is on
-  defaultTag <- withBuffer $ readUnitB unitWord
-  -- if we have tags use them to generate hints
-  tagTable <- withEditor getTags
-  -- Hints are expensive - only lazily generate 10
-  let hinter =  return . take 10 . maybe fail hintTags tagTable
-  -- Completions are super-cheap. Go wild
-  let completer =  return . maybe id completeTag tagTable
-  withMinibufferGen "" hinter ("Find tag: (default " ++ defaultTag ++ ")") completer  $
-                 -- if the string is "" use the defaultTag
-                 gotoTag . maybeList defaultTag
+    -- default tag is where the buffer is on
+    defaultTag <- trimToWord <$> (withBuffer $ readUnitB unitWord)
+    -- if we have tags use them to generate hints
+    tagTable <- withEditor getTags
+    -- Hints are expensive - only lazily generate 10
+    let hinter =  return . take 10 . maybe fail hintTags tagTable
+    -- Completions are super-cheap. Go wild
+    let completer =  return . maybe id completeTag tagTable
+    withMinibufferGen "" hinter ("Find tag: (default " ++ defaultTag ++ ")") completer  $
+                   -- if the string is "" use the defaultTag
+                   gotoTag . maybeList defaultTag
+  where trimToWord :: String -> String
+        trimToWord = takeWhile isWordChar . dropWhile (not . isWordChar)
+        isWordChar c = isAlphaNum c || c == '_'
 
 -- | Opens the file that contains @tag@. Uses the global tag table and prompts
 -- the user to open one if it does not exist
