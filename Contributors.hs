@@ -31,6 +31,7 @@ name tag
      | tag == "tora@zonetora.co.uk" = "Tristan Allwood"
      | tag == "andy@nobugs.org" = "Andrew Birkett"
      | tag == "jeff@nokrev.com" = "Jeff Wheeler"
+     | tag == "kevin@sb.org" = "Kevin Ballard"
      | AllTextSubmatches [_,nme] <- tag =~ pack "^\"?(.+)<.*>\"?$" = nme
      | AllTextSubmatches [_,nme] <- tag =~ pack "^?(.+)<.*>?$" = nme
      | AllTextSubmatches [_,firstname,lastname] <- tag =~ pack "^<?(.*)@(.*)\\.name>?$"
@@ -49,6 +50,7 @@ nickToName x = case BS.map toLower x of
             "andrii.z"              -> "Andrii Zvorygin"
             "cgibbard"              -> "Cale Gibbard"
             "coreyoconnor"          -> "Corey O'Connor"
+            "deniz.a.m.dogan"       -> "Deniz Dogan"
             "dons"                  -> "Don Stewart"
             "grddev"                -> "Gustav Munkby"
             "gwern0"                -> "Gwern Branwen"
