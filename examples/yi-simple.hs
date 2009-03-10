@@ -10,9 +10,9 @@ increaseIndent = do
 
 
 main :: IO ()
-main = yi $ defaultConfig
+main = yi $ defaultEmacsConfig
        {
          defaultKm = Emacs.keymap <|>
-                       (ctrl (char '>') ?>>! increaseIndent)
+                       (ctrlCh '>') ?>>! increaseIndent
          -- bind the function to Ctrl-> and mix with default Emacs keymap.
        }

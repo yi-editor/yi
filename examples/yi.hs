@@ -17,8 +17,9 @@ import Yi.Keymap.Vim (keymap)
 -- import Yi.UI.Cocoa (start)
 -- import Yi.UI.Pango (start)
 
+myConfig = defaultEmacsConfig -- replace with defaultVimConfig or defaultCuaConfig
 
-defaultUIConfig = configUI defaultConfig
+defaultUIConfig = configUI myConfig
 
 -- Change the below to your needs, following the explanation in comments. See
 -- module Yi.Config for more information on configuration. Other configuration
@@ -26,16 +27,15 @@ defaultUIConfig = configUI defaultConfig
 -- another user configuration, which can be found in modules Yi.Users.*
 
 main :: IO ()
-main = yi $ defaultConfig 
+main = yi $ myConfig
   {
    
    -- Keymap Configuration
-   defaultKm = Yi.Keymap.Emacs.keymap,   -- Replace Emacs by Vim or Cua as needed.
-   configKillringAccumulate = True,      -- Should be True for emacs, False for others.
+   defaultKm = defaultKm myConfig,
 
    -- UI Configuration
    -- Override the default UI as such: 
-   startFrontEnd = startFrontEnd defaultConfig,
+   startFrontEnd = startFrontEnd myConfig,
                     -- Yi.UI.Vty.start -- for Vty
    -- (can be overridden at the command line)
    -- Options:

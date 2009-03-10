@@ -24,16 +24,16 @@ defaultVimUiTheme = defaultLightTheme  `override` \super self -> super {
  }
 
 myConfigUI :: UIConfig
-myConfigUI = (configUI defaultConfig)  {
+myConfigUI = (configUI defaultVimConfig)  {
         configFontSize = Just 10,
         configTheme = defaultVimUiTheme,
         configWindowFill = '~'
  }
 
 main :: IO ()
-main = yi $ defaultConfig {
+main = yi $ defaultVimConfig {
     -- Uncomment for Shim support
-    -- modeTable = [shimMode] <|> modeTable defaultConfig,
+    -- modeTable = [shimMode] <|> modeTable defaultVimConfig,
     configUI = myConfigUI,
     defaultKm = keymap
  }
