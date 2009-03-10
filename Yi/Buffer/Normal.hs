@@ -266,9 +266,9 @@ genMoveB unit (boundDir, boundSide) moveDir =
 -- As genMoveB, but don't move if we are at boundary already.
 genMaybeMoveB :: TextUnit -> (Direction, BoundarySide) -> Direction -> BufferM ()
 genMaybeMoveB Document boundSpec moveDir = genMoveB Document boundSpec moveDir 
-   -- optimized casex for Document
+   -- optimized case for Document
 genMaybeMoveB Line (Backward, InsideBound) Backward = moveTo =<< solPointB
-   -- optimized casex for begin of Line
+   -- optimized case for begin of Line
 genMaybeMoveB unit (boundDir, boundSide) moveDir =
   untilB_ (genAtBoundaryB unit boundDir boundSide) (moveB Character moveDir)
 
