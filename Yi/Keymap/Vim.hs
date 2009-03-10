@@ -1088,22 +1088,29 @@ defKeymap = Proto template
                choice [spec KEnter ?>>! ex_buffer_finish
                       ,spec KTab   ?>>! completeMinibuffer
                       ,spec KEsc   ?>>! closeBufferAndWindowE
-                      ,ctrlCh 'h'  ?>>! deleteB Character Backward
+                      ,ctrlCh 'h'  ?>>! actionAndHistoryPrefix $ deleteB Character Backward
                       ,spec KBS    ?>>! deleteBkdOrClose
-                      ,spec KDel   ?>>! deleteB Character Forward
+                      ,spec KDel   ?>>! actionAndHistoryPrefix $ deleteB Character Forward
                       ,ctrlCh 'p'  ?>>! historyUp
                       ,spec KUp    ?>>! historyUp
                       ,ctrlCh 'n'  ?>>! historyDown
                       ,spec KDown  ?>>! historyDown
                       ,spec KLeft  ?>>! moveXorSol 1
                       ,spec KRight ?>>! moveXorEol 1
-                      ,ctrlCh 'w'  ?>>! deleteB unitWord Backward
+                      ,ctrlCh 'w'  ?>>! actionAndHistoryPrefix $ deleteB unitWord Backward
                       ,ctrlCh 'u'  ?>>! moveToSol >> deleteToEol]
-                  <|| (textChar >>= write . insertB)
+                  <|| (insertChar >>! setHistoryPrefix)
+           actionAndHistoryPrefix act = do
+             withBuffer0 $ act
+             setHistoryPrefix
+           setHistoryPrefix = do
+             ls <- withEditor . withBuffer0 $ elemsB
+             historyPrefixSet ls
+           insertChar = textChar >>= write . insertB
            deleteBkdOrClose = do
              ls <- withBuffer0 elemsB
              if null ls then closeBufferAndWindowE
-                        else withBuffer0 $ deleteB Character Backward
+                        else actionAndHistoryPrefix $ deleteB Character Backward
            completeMinibuffer = withBuffer elemsB >>= ex_complete >>= withBuffer . insertN
            exSimpleComplete compl s' = let s = dropWhile isSpace s' in drop (length s) <$> simpleComplete compl s
            f_complete = exSimpleComplete (matchingFileNames Nothing)
@@ -1139,6 +1146,7 @@ defKeymap = Proto template
            completeModes = exSimpleComplete $ const getAllModeNames
 
        historyStart
+       historyPrefixSet ""
        spawnMinibufferE prompt $ const ex_process
        return ()
 

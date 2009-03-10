@@ -20,11 +20,12 @@ instance (Typeable k, Typeable v) => Initializable (M.Map k v) where
     initial = M.empty
 
 data History = History {_historyCurrent :: Int,
-                        _historyContents :: [String]}
+                        _historyContents :: [String],
+                        _historyPrefix :: String}
 
     deriving (Show, Typeable)
 instance Initializable History where
-    initial = (History (-1) [])
+    initial = (History (-1) [] "")
 
 dynKeyA :: (Initializable v, Ord k) => k -> Accessor (M.Map k v) v
 dynKeyA = mapDefault initial
@@ -44,8 +45,8 @@ historyStart = historyStartGen miniBuffer
 -- | Start an input session with History
 historyStartGen :: String -> EditorM ()
 historyStartGen ident = do
-  (History _cur cont) <- getA (dynKeyA ident . dynA)
-  putA (dynKeyA ident . dynA) (History 0 (nub ("":cont)))
+  (History _cur cont pref) <- getA (dynKeyA ident . dynA)
+  putA (dynKeyA ident . dynA) (History 0 (nub ("":cont)) pref)
   debugHist
 
 historyFinish :: EditorM ()
@@ -54,10 +55,10 @@ historyFinish = historyFinishGen miniBuffer (withBuffer0 elemsB)
 -- | Finish the current input session with history.
 historyFinishGen :: String -> EditorM String -> EditorM ()
 historyFinishGen ident getCurValue = do
-  (History _cur cont) <- getA (dynKeyA ident . dynA)
+  (History _cur cont pref) <- getA (dynKeyA ident . dynA)
   curValue <- getCurValue
   length curValue `seq` -- force this, otherwise we'll hold on to the buffer from which it's computed
-    putA (dynKeyA ident . dynA) $ History (-1) (nub $ dropWhile null $ (curValue:cont))
+    putA (dynKeyA ident . dynA) $ History (-1) (nub $ dropWhile null $ (curValue:cont)) pref
 
 -- historyGetGen :: String -> EditorM String
 -- historyGetGen ident = do
@@ -67,18 +68,29 @@ historyFinishGen ident getCurValue = do
 -- TODO: scrap
 debugHist :: EditorM ()
 debugHist = return ()
-  
+
+historyFind :: [String] -> Int -> Int -> Int -> String -> Int
+historyFind cont len cur delta pref =
+  case (next < 0, next >= len) of
+    (True,_) -> next
+    (_,True) -> next
+    (_,_) -> if isPrefixOf pref (cont !! next)
+      then next
+      else historyFind cont len cur deltaLarger pref
+  where
+    next = cur + delta
+    deltaLarger = delta + signum delta
 
 historyMove :: String -> Int -> EditorM ()
 historyMove ident delta = (withBuffer0 . replaceBufferContent) =<< historyMoveGen ident delta (withBuffer0 elemsB) 
 
 historyMoveGen :: String -> Int -> EditorM String -> EditorM String
 historyMoveGen ident delta getCurValue = do
-  (History cur cont) <- getA (dynKeyA ident . dynA) 
+  (History cur cont pref) <- getA (dynKeyA ident . dynA) 
   
   curValue <- getCurValue
   let len = length cont
-      next = cur + delta
+      next = historyFind cont len cur delta pref
       nextValue = cont !! next
   case (next < 0, next >= len) of
     (True, _) -> do printMsg $ "end of " ++ ident ++ " history, no next item." 
@@ -86,6 +98,15 @@ historyMoveGen ident delta getCurValue = do
     (_, True) -> do printMsg $ "beginning of " ++ ident ++ " history, no previous item."
                     return curValue
     (_,_) -> do
-         putA (dynKeyA ident . dynA) (History next (take cur cont ++ [curValue] ++ drop (cur+1) cont))
+         putA (dynKeyA ident . dynA) (History next (take cur cont ++ [curValue] ++ drop (cur+1) cont) pref)
          debugHist
          return nextValue
+
+historyPrefixSet :: String -> EditorM ()
+historyPrefixSet pref = historyPrefixSet' miniBuffer pref
+
+historyPrefixSet' :: String -> String -> EditorM ()
+historyPrefixSet' ident pref = do
+  (History cur cont _pref) <- getA (dynKeyA ident . dynA)
+  putA (dynKeyA ident . dynA) (History cur cont pref)
+  return ()
