@@ -117,11 +117,17 @@ perlMode = (linearSyntaxMode Perl.initState Perl.alexScanToken id)
     modeApplies = anyExtension ["t", "pl", "pm"]
   }
 
-pythonMode = (linearSyntaxMode Python.initState Python.alexScanToken id)
+pythonMode = base
   {
     modeName = "python",
-    modeApplies = anyExtension ["py"]
+    modeApplies = anyExtension ["py"],
+    modeIndentSettings = (modeIndentSettings base)
+      {
+        expandTabs = True,
+        tabSize = 4
+      }
   }
+    where base = linearSyntaxMode Python.initState Python.alexScanToken id
 
 isMakefile :: FilePath -> String -> Bool
 isMakefile path _contents = matches $ takeFileName path
