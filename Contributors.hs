@@ -44,6 +44,7 @@ trim = fst . BS.spanEnd isSpace
 
 nickToName :: ByteString -> ByteString
 nickToName x = case BS.map toLower x of
+            "aconbere"              -> "Anders Conbere"
             "a.d.clark"             -> "Allan Clark"
             "alson"                 -> "Alson Kemp"
             "andekar"               -> "Anders Karlsson"
@@ -66,6 +67,7 @@ nickToName x = case BS.map toLower x of
             "sjw"                   -> "Simon Winwood"
             "tactics40"             -> "Michael Maloney"
             "vintermann"            -> "Harald Korneliussen"
+            "viraptor"              -> "Stanisław Pitucha"
             "vivian.mcphail"        -> "Vivian McPhail"
             "zapf"                  -> "Bastiaan Zapf"
             _ | AllTextSubmatches [_,firstname,lastname] <- x =~ pack "^(.*)\\.(.*)$"

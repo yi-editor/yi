@@ -5,15 +5,15 @@ Yi is a text editor written in Haskell and extensible in Haskell. The
 long-term goal of the Yi project is to provide the editor of
 choice for Haskell programmers.
 
-Yi is now a fully usable editor for the unix console. Community is growing, and
-the #yi irc channel on freenode is taking off. This might help with your first
-steps.
+Yi is now a fully usable editor for the unix console. The community is growing:
+the #yi irc channel on freenode has about 20 people. They be able to help with your
+first steps!
 
 ## Installation
 
 Using cabal install:
 
-  cabal install yi-0.6.0.1 -fvty
+  cabal install yi-0.6.0 -fvty
 
 ## Features
 * A purely functional editor core
@@ -39,13 +39,6 @@ Using cabal install:
 
 ## Credits
 
-Yi would not exist without the Haskell platform. It depends on many packages:
-Cabal, Diff, array, containers, directory, process, old-locale, base, binary,
-bytestring, derive, data-accessor, data-accessor-monads-fd,
-data-accessor-template, filepath, fingertree, ghc-paths, monads-fd, pointedlist,
-pureMD5, random, regex-base, regex-tdfa, rosezipper, split, time, transformers,
-utf8-string, uniplate, unix-compat, vty
-
 This release is brought to you by:
 
 * Aleksandar Dimitrov (vim patches)
@@ -64,7 +57,14 @@ This release is brought to you by:
 * Michael Dagitses
 * Nicolas Pouillard (vim keymap maintainter)
 * Sasha Rush
-* viraptor
+* Stanisław Pitucha
 
 and all the contributors to the previous versions.
 
+
+Also, Yi would not exist without all the work put into the Haskell platform. It
+depends on many packages: Cabal, Diff, array, containers, directory, process,
+old-locale, base, binary, bytestring, derive, data-accessor,
+data-accessor-monads-fd, data-accessor-template, filepath, fingertree,
+ghc-paths, monads-fd, pointedlist, pureMD5, random, regex-base, regex-tdfa,
+rosezipper, split, time, transformers, utf8-string, uniplate, unix-compat, vty
