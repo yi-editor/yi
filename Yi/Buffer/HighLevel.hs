@@ -213,9 +213,8 @@ swapB = do eol <- atEol
 
 -- | Delete trailing whitespace from all lines
 deleteTrailingSpaceB :: BufferM ()
-deleteTrailingSpaceB = do r <- regionOfB Document
-                          modifyRegionClever deleteSpaces r
-  where deleteSpaces = mapLines $ reverse . dropWhile (' '==) . reverse
+deleteTrailingSpaceB = modifyRegionClever deleteSpaces =<< regionOfB Document
+  where deleteSpaces = mapLines $ reverse . dropWhile (' ' ==) . reverse
 
 -- ----------------------------------------------------
 -- | Marks
