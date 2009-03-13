@@ -1,3 +1,4 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 -- Copyright (C) 2007-8 JP Bernardy
 -- Copyright (C) 2004-5 Don Stewart - http://www.cse.unsw.edu.au/~dons
 -- Originally derived from: riot/UI.hs Copyright (c) Tuomo Valkonen 2004.
@@ -11,7 +12,7 @@ import Yi.Prelude hiding ((<|>))
 import Prelude (map, take, zip, repeat, length, break, splitAt)
 import Control.Arrow
 import Control.Concurrent
-import Control.OldException
+import Control.Exception
 import Control.Monad (forever)
 import Control.Monad.State (runState, State, gets, modify, get, put)
 import Control.Monad.Trans (liftIO, MonadIO)
@@ -101,10 +102,10 @@ main ui = do
       refreshLoop = forever $ do 
                       logPutStrLn "waiting for refresh"
                       takeMVar (uiRefresh ui)
-                      handleJust ioErrors (\except -> do 
-                                             logPutStrLn "refresh crashed with IO Error"
-                                             logError $ show $ except)
-                                     (readRef (uiEditor ui) >>= refresh ui >> return ())
+                      handle (\(except :: IOException) -> do
+                                 logPutStrLn "refresh crashed with IO Error"
+                                 logError $ show $ except)
+                             (readRef (uiEditor ui) >>= refresh ui >> return ())
   readRef (uiEditor ui) >>= scheduleRefresh ui
   logPutStrLn "refreshLoop started"
   refreshLoop
@@ -114,7 +115,7 @@ main ui = do
 end :: UI -> IO ()
 end i = do  
   Vty.shutdown (vty i)
-  throwTo (uiThread i) (ExitException ExitSuccess)
+  throwTo (uiThread i) ExitSuccess
 
 fromVtyEvent :: Vty.Event -> Yi.Event.Event
 fromVtyEvent (EvKey Vty.KBackTab mods) = Event Yi.Event.KTab (sort $ nub $ Yi.Event.MShift : map fromVtyMod mods)
