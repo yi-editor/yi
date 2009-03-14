@@ -24,6 +24,7 @@ import Data.Accessor.Template
 import Data.Binary
 import Data.List (nub, delete, (\\))
 import qualified Data.List.PointedList.Circular as PL
+import qualified Data.List.PointedList as PL (atEnd)
 import Data.Either (rights)
 import Data.Foldable (concatMap)
 import qualified Data.DelayList as DelayList
@@ -495,6 +496,16 @@ moveTab (Just n) = do newTabs <- getsA tabsA (PL.move n)
                       when (isNothing newTabs) failure
                       putA tabsA $ fromJust newTabs
   where failure = fail $ "moveTab " ++ show n ++ ": no such tab"
+
+-- | Deletes the current tab. If there is only one tab open then error out.
+--   When the last tab is focused, move focus to the left, otherwise
+--   move focus to the right.
+deleteTabE :: EditorM ()
+deleteTabE = modA tabsA $ maybe failure id . deleteTab
+  where failure = error "deleteTab: cannot delete sole tab"
+        deleteTab tabs = case PL.atEnd tabs of
+                           True ->  PL.deleteLeft tabs
+                           False -> PL.deleteRight tabs
 
 -- | Close the current window. If there is only one tab open and the tab 
 -- contains only one window then do nothing.
