@@ -273,6 +273,19 @@ handleClick ui w event = do
   uiActionCh ui (makeAction editorAction)
   return True
 
+handleScroll :: UI -> WinInfo -> Gdk.Events.Event -> IO Bool
+handleScroll ui _ event = do
+  logPutStrLn $ "Scrolling"
+
+  let editorAction = do 
+        withBuffer0 $ scrollB $ case Gdk.Events.eventDirection event of
+                        Gdk.Events.ScrollUp   -> (-1)
+                        Gdk.Events.ScrollDown -> 1
+                        _ -> 0 -- Left/right scrolling not supported
+
+  uiActionCh ui (makeAction editorAction)
+  return True
+
 handleMove :: UI -> WinInfo -> Point -> Gdk.Events.Event -> IO Bool
 handleMove ui w p0 event = do
   logPutStrLn $ "Motion: " ++ show (Gdk.Events.eventX event, Gdk.Events.eventY event)
@@ -298,8 +311,6 @@ handleMove ui w p0 event = do
   uiActionCh ui (makeAction editorAction)
   -- drawWindowGetPointer (textview w) -- be ready for next message.
   return True
-
-
 
 -- | Make A new window
 newWindow :: Editor -> UI -> Window -> FBuffer -> IO WinInfo
@@ -374,6 +385,7 @@ insertWindow e i win = do
                              boxChildPacking (widget w) := if isMini (coreWin w) then PackNatural else PackGrow]
               textview w `onButtonRelease` handleClick i w
               textview w `onButtonPress` handleClick i w
+              textview w `onScroll` handleScroll i w
               widgetShowAll (widget w)
               return w
 
@@ -391,7 +403,7 @@ refresh ui e = do
     writeRef (windowCache ui) cache'
     forM_ cache' $ \w -> do
         let b = findBufferWith (bufkey (coreWin w)) e
-        --when (not $ null $ pendingUpdates b) $ 
+        -- when (not $ null $ pendingUpdates b) $ 
         do 
            sig <- readIORef (renderer w)
            signalDisconnect sig
