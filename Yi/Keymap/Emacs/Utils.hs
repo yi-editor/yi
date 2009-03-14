@@ -29,6 +29,7 @@ module Yi.Keymap.Emacs.Utils
   , killBufferE
   , insertNextC
   , findFile
+  , findFileNewTab
   , promptFile
   , promptTag
   )
@@ -253,6 +254,13 @@ findFile :: YiM ()
 findFile = promptFile "find file:" $ \filename -> do
                 msgEditor $ "loading " ++ filename
                 fnewE filename
+
+-- | Open a file in a new tab using the minibuffer.
+findFileNewTab :: YiM ()
+findFileNewTab = promptFile "find file (new tab): " $ \filename -> do
+                      withEditor newTabE
+                      msgEditor $ "loading " ++ filename
+                      fnewE filename
 
 -- | For use as the hint when opening a file using the minibuffer.
 -- We essentially return all the files in the given directory which
