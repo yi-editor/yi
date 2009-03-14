@@ -491,7 +491,10 @@ previousTabE = modA tabsA PL.previous
 moveTab :: Maybe Int -> EditorM ()
 moveTab Nothing  = do count <- getsA tabsA PL.length
                       modA tabsA $ fromJust . PL.move (pred count)
-moveTab (Just n) = do modA tabsA $ fromJust . PL.move n
+moveTab (Just n) = do newTabs <- getsA tabsA (PL.move n)
+                      when (isNothing newTabs) failure
+                      putA tabsA $ fromJust newTabs
+  where failure = fail $ "moveTab " ++ show n ++ ": no such tab"
 
 -- | Close the current window. If there is only one tab open and the tab 
 -- contains only one window then do nothing.
