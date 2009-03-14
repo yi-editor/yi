@@ -193,7 +193,7 @@ showEvs :: [Event] -> String
 quitEditor :: YiM ()
 quitEditor = do
     onYiVar $ terminateSubprocesses (const True)
-    withUI UI.end
+    withUI (flip UI.end True)
 
 -- | Redraw
 refreshEditor :: YiM ()

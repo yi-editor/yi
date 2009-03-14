@@ -195,22 +195,12 @@ mainMaster params@HConfParams { showErrorsInConf = showErrors, realMain = main }
 restart :: HConfParams config state -> state -> IO ()
 restart HConfParams { projectName = app, saveState = save } state = do
 #ifndef mingw32_HOST_OS
-# ifdef darwin_HOST_OS
-        -- disable restart for the time being
-        -- executeFile is custom-defined for darwin, and it causes
-        -- significant issues when trying to restart as it leaves
-        -- the UI of both the old and the new processes alive.
-        -- Unfortunately UI.end cannot be used to fix this as that
-        -- terminates the program.
-        error "restart: this operation is not supported under darwin"
-# else
         f <- getStateFile app
         createDirectoryIfMissing True (takeDirectory f)
         save f state
         let args = ["--resume"]
         executeFile app True args Nothing -- TODO: catch exceptions
         -- run the master, who will take care of recompiling; handle errors, etc.
-# endif
 #else
         return ()
 #endif

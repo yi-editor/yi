@@ -50,6 +50,7 @@ data Rendered =
 data UI = UI {  vty       :: Vty             -- ^ Vty
              , scrsize    :: IORef (Int,Int) -- ^ screen size
              , uiThread   :: ThreadId
+             , uiEnd      :: MVar ()
              , uiRefresh  :: MVar ()
              , uiEditor   :: IORef Editor    -- ^ Copy of the editor state, local to the UI
              , config     :: Config
@@ -75,12 +76,13 @@ start cfg ch _outCh editor = do
           sz <- newIORef (y0,x0)
           -- fork input-reading thread. important to block *thread* on getKey
           -- otherwise all threads will block waiting for input
-          t <- myThreadId
+          tid <- myThreadId
+          endUI <- newEmptyMVar
           tuiRefresh <- newEmptyMVar
           editorRef <- newIORef editor
-          let result = UI v sz t tuiRefresh editorRef cfg
+          let result = UI v sz tid endUI tuiRefresh editorRef cfg
               -- | Action to read characters into a channel
-              getcLoop = forever $ getKey >>= ch
+              getcLoop = maybe (getKey >>= ch >> getcLoop) (const (return ())) =<< tryTakeMVar endUI
 
               -- | Read a key. UIs need to define a method for getting events.
               getKey = do 
@@ -89,9 +91,8 @@ start cfg ch _outCh editor = do
                   (EvResize x y) -> do logPutStrLn $ "UI: EvResize: " ++ show (x,y)
                                        writeIORef sz (y,x) >> readRef (uiEditor result) >>= Yi.UI.Vty.refresh result >> getKey
                   _ -> return (fromVtyEvent event)
-          forkIO $ getcLoop
+          forkIO getcLoop
           return (mkUI result)
-        
 
 main :: UI -> IO ()
 main ui = do
@@ -110,12 +111,13 @@ main ui = do
   logPutStrLn "refreshLoop started"
   refreshLoop
   
-
 -- | Clean up and go home
-end :: UI -> IO ()
-end i = do  
+end :: UI -> Bool -> IO ()
+end i reallyQuit = do  
   Vty.shutdown (vty i)
-  throwTo (uiThread i) ExitSuccess
+  tryPutMVar (uiEnd i) ()
+  when reallyQuit $ throwTo (uiThread i) ExitSuccess
+  return ()
 
 fromVtyEvent :: Vty.Event -> Yi.Event.Event
 fromVtyEvent (EvKey Vty.KBackTab mods) = Event Yi.Event.KTab (sort $ nub $ Yi.Event.MShift : map fromVtyMod mods)

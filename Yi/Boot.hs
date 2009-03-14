@@ -9,7 +9,8 @@ import Yi.Buffer.Basic
 import Yi.Config
 import Yi.Debug
 import Yi.Editor (newBufferE, Editor, withEditor)
-import Yi.Keymap (makeAction, YiM)
+import Yi.Keymap (makeAction, withUI, YiM)
+import qualified Yi.UI.Common as UI
 import qualified Yi.Main
 import qualified Yi.Config.Default
 
@@ -36,6 +37,7 @@ initState = Nothing
 reloadEditor :: YiM ()
 reloadEditor = do
     editor <- withEditor get
+    withUI (flip UI.end False)
     liftIO $ restart (Just editor)
 
 
