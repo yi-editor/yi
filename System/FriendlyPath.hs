@@ -3,9 +3,33 @@ import System.FilePath
 import System.Directory
 import Data.List
 
+
+-- | A version of canonicalizePath that works.
+
+-- Note that we cannot use canonicalizePath because if used on a non existing directory
+-- then the file part will be dropped (arguably this is a bug in canonicalizePath)
+-- eg. @x/y@ can become @x@, and we do not want that.
+canonicalizePathFix f = do
+    de <- doesDirectoryExist (takeDirectory f)
+    if de then canonicalizePath f else makeAbsolute f
+
+
+-- The documentation for 'System.FilePath.makeRelative' is wrong. It says
+
+-- There is no corresponding makeAbsolute function, instead use
+-- System.Directory.canonicalizePath which has the same effect.
+
+-- canonicalizePath follows symlinks, and does not work if the directory does not exist.
+
+-- | Make a path absolute.
+makeAbsolute f
+    | isAbsolute' f = return f
+    | otherwise = fmap (</> f) getCurrentDirectory 
+
+
 -- | Canonicalize a user-friendly path
 userToCanonPath :: FilePath -> IO String
-userToCanonPath f = canonicalizePath =<< expandTilda f
+userToCanonPath f = canonicalizePathFix =<< expandTilda f
 
 
 -- | Make a path more user-friendly by replacing the home directory with tilda.
@@ -18,7 +42,7 @@ recoverTilda path = do
 
 -- | Turn a path into its canonicalized, user-friendly version.
 canonicalizePath' :: FilePath -> IO String
-canonicalizePath' f = recoverTilda =<< canonicalizePath f
+canonicalizePath' f = recoverTilda =<< canonicalizePathFix f
 
 -- | Turn a user-friendly path into a computer-friendly path by expanding the leading tilda.
 expandTilda :: String -> IO FilePath
