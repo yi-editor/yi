@@ -63,7 +63,7 @@ import System.FriendlyPath
 -- windows to buffers.
 --
 fnewE  :: FilePath -> YiM ()
-fnewE f = fnewCanonicalized =<< liftIO (userToCanonPath f)
+fnewE f = fnewCanonicalized =<< io (userToCanonPath f)
 
 fnewCanonicalized :: FilePath -> YiM ()
 fnewCanonicalized f = do
@@ -72,9 +72,9 @@ fnewCanonicalized f = do
     let bufsWithThisFilename = filter assocWithSameFile bufs
         -- The names of the existing buffers
     let fDirectory = takeDirectory f
-    de <- liftIO $ doesDirectoryExist f
-    fe <- liftIO $ doesFileExist f
-    dfe <- liftIO $ doesDirectoryExist fDirectory
+    de <- io $ doesDirectoryExist f
+    fe <- io $ doesFileExist f
+    dfe <- io $ doesDirectoryExist fDirectory
     b <- case bufsWithThisFilename of
         (h:_) -> return (bkey h)
         [] -> 
@@ -84,7 +84,7 @@ fnewCanonicalized f = do
                  else -- File does not exist
                    do when (not dfe) $ do
                         userWantMkDir <- return True -- TODO
-                        when userWantMkDir $ liftIO $ createDirectory fDirectory
+                        when userWantMkDir $ io $ createDirectoryIfMissing True fDirectory
                       withEditor $ stringToNewBuffer (Right f) (fromString "") -- Create new empty buffer
             -- adjust the mode
             tbl <- asks (modeTable . yiConfig)
@@ -178,7 +178,7 @@ diredKeymap = do
 dired :: YiM ()
 dired = do
     msgEditor "Dired..."
-    dir <- liftIO getCurrentDirectory
+    dir <- io getCurrentDirectory
     fnewE dir
 
 diredDir :: FilePath -> YiM ()
@@ -197,7 +197,7 @@ diredRefresh = do
     -- Get directory name
     Just dir <- withBuffer $ gets file
     -- Scan directory
-    di <- liftIO $ diredScanDir dir
+    di <- io $ diredScanDir dir
     let ds = DiredState { diredPath        = dir
                         , diredMarks      = M.empty
                         , diredEntries    = di
@@ -374,30 +374,30 @@ diredLoad = do
     let sel = dir </> fn
     case de of
             (DiredFile _dfi) -> do
-                               exists <- liftIO $ doesFileExist sel
+                               exists <- io $ doesFileExist sel
                                if exists then fnewE sel else msgEditor $ sel ++ " no longer exists"
             (DiredDir _dfi)  -> do
-                              exists <- liftIO $ doesDirectoryExist sel
+                              exists <- io $ doesDirectoryExist sel
                               if exists then diredDir sel else msgEditor $ sel ++ " no longer exists"
             (DiredSymLink _dfi dest) -> do
                                        let target = if isAbsolute dest then dest else dir </> dest
-                                       existsFile <- liftIO $ doesFileExist target
-                                       existsDir <- liftIO $ doesDirectoryExist target
+                                       existsFile <- io $ doesFileExist target
+                                       existsDir <- io $ doesDirectoryExist target
                                        msgEditor $ "Following link:"++target
                                        if existsFile then fnewE target else
                                           if existsDir then diredDir target else
                                              msgEditor $ target ++ " does not exist"
             (DiredSocket _dfi) -> do
-                               exists <- liftIO $ doesFileExist sel
+                               exists <- io $ doesFileExist sel
                                if exists then msgEditor ("Can't open Socket " ++ sel) else msgEditor $ sel ++ " no longer exists"
             (DiredBlockDevice _dfi) -> do
-                               exists <- liftIO $ doesFileExist sel
+                               exists <- io $ doesFileExist sel
                                if exists then msgEditor ("Can't open Block Device " ++ sel) else msgEditor $ sel ++ " no longer exists"
             (DiredCharacterDevice _dfi) -> do
-                               exists <- liftIO $ doesFileExist sel
+                               exists <- io $ doesFileExist sel
                                if exists then msgEditor ("Can't open Character Device " ++ sel) else msgEditor $ sel ++ " no longer exists"
             (DiredNamedPipe _dfi) -> do
-                               exists <- liftIO $ doesFileExist sel
+                               exists <- io $ doesFileExist sel
                                if exists then msgEditor ("Can't open Pipe " ++ sel) else msgEditor $ sel ++ " no longer exists"
             DiredNoInfo -> msgEditor $ "No File Info for:"++sel
 
@@ -420,5 +420,5 @@ diredCreateDir = do
     (Just dir) <- withBuffer $ gets file
     let newdir = dir </> nm
     msgEditor $ "Creating "++newdir++"..."
-    liftIO $ createDirectoryIfMissing True newdir
+    io $ createDirectoryIfMissing True newdir
     diredRefresh
