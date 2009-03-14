@@ -80,7 +80,7 @@ mkUI :: UI -> Common.UI
 mkUI ui = Common.dummyUI
   {
    Common.main                  = main ui,
-   Common.end                   = postGUIAsync $ end,
+   Common.end                   = const (postGUIAsync $ end),
    Common.suspend               = postGUIAsync $ windowIconify (uiWindow ui),
    Common.refresh               = postGUIAsync . refresh                 ui,
    Common.prepareAction         =                prepareAction           ui,

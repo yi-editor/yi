@@ -71,7 +71,7 @@ instance Show WinInfo where
 mkUI :: UI -> Common.UI
 mkUI ui = Common.dummyUI
     { Common.main          = main ui
-    , Common.end           = end
+    , Common.end           = const end
     , Common.suspend       = windowIconify (uiWindow ui)
     , Common.refresh       = refresh ui
     , Common.prepareAction = prepareAction ui
