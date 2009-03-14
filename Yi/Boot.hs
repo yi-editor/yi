@@ -30,10 +30,6 @@ realMain staticConfig state = do
 initState :: Maybe Editor
 initState = Nothing
 
--- FIXME: Reloading works now, but the terminal is messed up when we reload,
--- then quit (in vty).  I attempted to quit the UI (via withUI UI.end) from
--- here, as a cleanup before restarting, but then the program would exit
--- immediately.
 reloadEditor :: YiM ()
 reloadEditor = do
     editor <- withEditor get
