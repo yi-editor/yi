@@ -490,7 +490,7 @@ previousTabE = modA tabsA PL.previous
 -- | Moves the focused tab to the given index, or to the end if the index is not specified.
 moveTab :: Maybe Int -> EditorM ()
 moveTab Nothing  = do count <- getsA tabsA PL.length
-                      modA tabsA $ fromJust . PL.move count
+                      modA tabsA $ fromJust . PL.move (pred count)
 moveTab (Just n) = do modA tabsA $ fromJust . PL.move n
 
 -- | Close the current window. If there is only one tab open and the tab 
