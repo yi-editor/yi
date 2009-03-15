@@ -113,6 +113,7 @@ emacsKeys univArg =
          , ctrlCh 'e'           ?>>! (repeatingArg (maybeMoveB Line Forward))
          , ctrlCh 'f'           ?>>! (repeatingArg rightB)
          , ctrlCh 'g'           ?>>! (setVisibleSelection False)               
+         , ctrlCh 'h'           ?>> char 'b' ?>>! acceptedInputs               
          , ctrlCh 'i'           ?>>! (adjIndent IncreaseOnly)
          , ctrlCh 'j'           ?>>! (repeatingArg $ insertB '\n')
          , ctrlCh 'k'           ?>>! killLineE univArg

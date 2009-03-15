@@ -7,6 +7,8 @@ import Yi.Event
 
 data Action
 
+instance I.PEq Action
+
 emptyAction :: Action
 
 type Interact ev a = I.I ev Action a

@@ -53,6 +53,7 @@ module Yi.Interact
      runWrite,
      anyEvent,
      eventBetween,
+     accepted
     ) where
 
 import Control.Arrow (first)
@@ -161,6 +162,22 @@ data P event w
     | Best (P event w) (P event w)
     | End
     | forall mid. PEq mid => Chain (P event mid) (P mid w)
+
+accepted :: (Show ev) => Int -> P ev w -> [[String]]
+accepted 0 _ = [[]]
+accepted d (Get (Just low) (Just high) k) = do
+    t <- accepted (d - 1) (k low)
+    let h = if low == high then show low else (show low ++ ".." ++ show high)
+    return (h : t)
+accepted d (Get Nothing Nothing _) = [["<any>"]]
+accepted d (Get Nothing (Just e) _) = [[".." ++ show e]]
+accepted d (Get (Just e) Nothing _) = [[show e ++ ".."]]
+accepted d Fail = []
+accepted d (Write _ _) = [[]] -- this should show what action we get...
+accepted d (Prior _ p) = accepted d p
+accepted d (Best p q) = accepted d p ++ accepted d q
+accepted d (End) = []
+accepted d (Chain a b) = error "accepted: chain not supported"
 
 -- ---------------------------------------------------------------------------
 -- Operations over P
