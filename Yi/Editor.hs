@@ -7,33 +7,31 @@
 
 module Yi.Editor where
 
-import Yi.Buffer
-import Yi.Config
-import Yi.Dynamic
-import Yi.KillRing
-import Yi.Window
-import Yi.Window
-import Yi.Event (Event)
-import Yi.Style (StyleName, defaultStyle)
-
-import Prelude (map, filter, (!!), takeWhile, length, reverse)
-import Yi.Prelude
-
+import Control.Monad.RWS hiding (get, put, mapM, forM_)
 import Data.Accessor.Basic (fromSetGet)
 import Data.Accessor.Template
 import Data.Binary
-import Data.List (nub, delete, (\\))
-import qualified Data.List.PointedList.Circular as PL
-import qualified Data.List.PointedList as PL (atEnd)
 import Data.Either (rights)
 import Data.Foldable (concatMap)
-import qualified Data.DelayList as DelayList
-import qualified Data.Map as M
+import Data.List (nub, delete, (\\), intercalate)
 import Data.Maybe
 import Data.Typeable
+import Prelude (map, filter, (!!), takeWhile, length, reverse)
 import System.FilePath (splitPath)
-import Control.Monad.RWS hiding (get, put, mapM, forM_)
+import Yi.Buffer
+import Yi.Config
+import Yi.Dynamic
+import Yi.Event (Event)
+import Yi.Interact as I
+import Yi.KillRing
+import Yi.Prelude
+import Yi.Style (StyleName, defaultStyle)
+import Yi.Window
 import qualified Data.ByteString.Lazy.UTF8 as LazyUTF8
+import qualified Data.DelayList as DelayList
+import qualified Data.List.PointedList as PL (atEnd)
+import qualified Data.List.PointedList.Circular as PL
+import qualified Data.Map as M
 
 type Status = ([String],StyleName)
 type Statuses = DelayList.DelayList Status
