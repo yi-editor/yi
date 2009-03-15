@@ -1139,7 +1139,8 @@ defKeymap = Proto template
                                 ("hoogle-word" :) $ ("hoogle-search" : )$ ("set ft=" :) $ ("set tags=" :) $ map (++ " ") $ words $
                                 "e edit r read saveas saveas! tabe tabnew tabm b buffer bd bd! bdelete bdelete! " ++
                                 "yi cabal nohlsearch suspend stop undo redo redraw reload tag .! quit quitall " ++
-                                "qall quit! quitall! qall! write wq wqall ascii xit exit next prev $ split new ball"
+                                "qall quit! quitall! qall! write wq wqall ascii xit exit next prev" ++
+                                "$ split new ball h help"
            cabalComplete = exSimpleComplete $ const $ return cabalCmds
            cabalCmds = words "configure install list update upgrade fetch upload check sdist" ++
                        words "report build copy haddock clean hscolour register test help"
@@ -1231,6 +1232,9 @@ defKeymap = Proto template
            wquitall = forAllBuffers fwriteBufferE >> quitEditor
            bdelete  = whenUnchanged (withBuffer' $ gets isUnchangedBuffer) . withEditor . closeBufferE . dropSpace
            bdeleteNoW = withEditor . closeBufferE . dropSpace
+
+           -- the help feature currently try to show available key bindings
+           help = withEditor (printMsg . show =<< acceptedInputs)
 
            -- fn maps from the text entered on the command line to a YiM () implementing the 
            -- command.
@@ -1338,6 +1342,8 @@ defKeymap = Proto template
 
            fn "hoogle-word" = hoogle >> return ()
            fn "hoogle-search" = hoogleSearch
+           fn "h"          = help
+           fn "help"       = help
            fn "tabm"       = withEditor (moveTab Nothing)
            fn ('t':'a':'b':'m':' ':n) = withEditor (moveTab $ Just (read n))
            fn "tabnew"     = withEditor newTabE
