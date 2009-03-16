@@ -33,8 +33,10 @@ spawnMinibufferE prompt kmMod =
     do b <- stringToNewBuffer (Left prompt) (fromString "")
        withGivenBuffer0 b $ modifyMode (\m -> m {modeKeymap = kmMod})
        w <- newWindowE True b
-       modA windowsA (PL.insertRight w)
+       modA windowsA (insertAtEnd w)
        return b
+  where insertAtEnd :: a -> PL.PointedList a -> PL.PointedList a
+        insertAtEnd w = PL.insertRight w . fromJust . (PL.move =<< pred . PL.length)
 
 -- | @withMinibuffer prompt completer act@: open a minibuffer with @prompt@. Once
 -- a string @s@ is obtained, run @act s@. @completer@ can be used to complete
