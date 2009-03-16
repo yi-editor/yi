@@ -30,7 +30,7 @@ indentScanner = layoutHandler startsLayout [(Special '(', Special ')'),
 -- parsing.
 
 ignoredToken :: TT -> Bool
-ignoredToken (Tok t _ (Posn _ _ col)) = col == 0 && isComment t || t == CppDirective
+ignoredToken (Tok t _ (Posn _ _ col)) = isComment t || t == CppDirective
     
 isNoise :: Token -> Bool
 isNoise (Special c) = c `elem` ";,`"
