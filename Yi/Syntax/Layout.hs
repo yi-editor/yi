@@ -75,8 +75,10 @@ layoutHandler isSpecial parens isIgnored [openT, closeT, nextT] isBrace lexSourc
               = (st, tok) : parse (IState levels doOpen line) tokss
 
             -- start a compound
-            | doOpen &&(not $ isBrace tok) -- not if open brace in do block
-              = (st', tt openT) : parse (IState (Indent col:levels) (False) lastLine) toks
+            | doOpen
+              = case (not $ isBrace tok) of -- check so that the do is not followed by a {
+                  True ->(st', tt openT) : parse (IState (Indent col:levels) (False) lastLine) toks
+                  False -> parse (IState levels (not doOpen) lastLine) toks -- If not change doOpen to false
 
             -- close, or prepare to close, a paren block
             | isJust $ findParen id $ (deepestParen levels, tokT tok) -- check that the most nested paren matches.
