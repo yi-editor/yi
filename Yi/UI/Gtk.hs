@@ -502,7 +502,7 @@ newGtkBuffer ui b = do
   return buf
 
 -- | Convert a color to Gtk counterpart. 
-toColor :: Bool -> -- ^ is the color intended to be used as Foreground?
-           Style.Color -> Gtk.Color
+toColor :: Bool -- ^ is the color intended to be used as Foreground?
+           -> Style.Color -> Gtk.Color
 toColor fg Default = let c = if fg then 0xffff else 0 in Color c c c
 toColor _fg (RGB r g b) = Color (fromIntegral r * 0xff) (fromIntegral g * 0xff) (fromIntegral b * 0xff)
