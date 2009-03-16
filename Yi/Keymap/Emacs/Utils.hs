@@ -192,7 +192,7 @@ queryReplaceE = do
     withEditor $ do
        setRegexE re
        spawnMinibufferE
-            ("Replacing " ++ replaceWhat ++ "with " ++ replaceWith ++ " (y,n,q,!):")
+            ("Replacing " ++ replaceWhat ++ " with " ++ replaceWith ++ " (y,n,q,!):")
             (const replaceKm)
        qrNext win b re
 
