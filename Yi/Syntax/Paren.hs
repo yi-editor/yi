@@ -24,10 +24,12 @@ indentScanner :: Scanner (AlexState lexState) (TT)
 indentScanner = layoutHandler startsLayout [(Special '(', Special ')'),
                                             (Special '[', Special ']'),
                                             (Special '{', Special '}')] ignoredToken
-                         (fmap Special ['<', '>', '.'])
+                         (fmap Special ['<', '>', '.']) isBrace
 
 -- HACK: We insert the Special '<', '>', '.', that don't occur in normal haskell
 -- parsing.
+
+isBrace (Tok b _ _) = (Special '{') == b
 
 ignoredToken :: TT -> Bool
 ignoredToken (Tok t _ (Posn _ _ col)) = isComment t || t == CppDirective

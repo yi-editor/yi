@@ -38,9 +38,9 @@ type State t lexState = (IState t, AlexState lexState)
 
 layoutHandler :: forall t lexState. (Show t, Eq t) => (t -> Bool) -> [(t,t)] ->
             (Tok t -> Bool) ->                 
-            [t] -> 
+            [t] -> (Tok t -> Bool) ->
             Scanner (AlexState lexState) (Tok t) -> Scanner (State t lexState) (Tok t)
-layoutHandler isSpecial parens isIgnored [openT, closeT, nextT] lexSource = Scanner 
+layoutHandler isSpecial parens isIgnored [openT, closeT, nextT] isBrace lexSource = Scanner 
   {
    scanLooked = scanLooked lexSource . snd,
    scanEmpty = error "layoutHandler: scanEmpty",
@@ -75,7 +75,7 @@ layoutHandler isSpecial parens isIgnored [openT, closeT, nextT] lexSource = Scan
               = (st, tok) : parse (IState levels doOpen line) tokss
 
             -- start a compound
-            | doOpen
+            | doOpen &&(not $ isBrace tok) -- not if open brace in do block
               = (st', tt openT) : parse (IState (Indent col:levels) (False) lastLine) toks
 
             -- close, or prepare to close, a paren block
