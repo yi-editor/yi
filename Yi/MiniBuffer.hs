@@ -59,7 +59,7 @@ noPossibilities _s = return []
 withMinibufferFree :: String -> (String -> YiM ()) -> YiM ()
 withMinibufferFree prompt = withMinibufferGen "" noHint prompt return
 
--- | @withMinibuffer proposal getHint prompt completer act@: open a minibuffer
+-- | @withMinibufferGen proposal getHint prompt completer act@: open a minibuffer
 -- with @prompt@, and initial content @proposal@. Once a string @s@ is obtained,
 -- run @act s@. @completer@ can be used to complete inputs by returning an
 -- incrementally better match, and getHint can give an immediate feedback to the
