@@ -275,10 +275,8 @@ handleClick ui w event = do
 
 handleScroll :: UI -> WinInfo -> Gdk.Events.Event -> IO Bool
 handleScroll ui _ event = do
-  logPutStrLn $ "Scrolling"
-
   let editorAction = do 
-        withBuffer0 $ scrollB $ case Gdk.Events.eventDirection event of
+        withBuffer0 $ vimScrollB $ case Gdk.Events.eventDirection event of
                         Gdk.Events.ScrollUp   -> (-1)
                         Gdk.Events.ScrollDown -> 1
                         _ -> 0 -- Left/right scrolling not supported
