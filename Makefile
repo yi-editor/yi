@@ -1,9 +1,5 @@
 cabal-make = .
 
-include config.mk
-
-include $(cabal-make)/cabal-make.inc
-
 interactive:
 	ghci -cpp -XRank2Types -XFlexibleContexts -XGeneralizedNewtypeDeriving -XDeriveDataTypeable -IYi/Lexer -idist/build/autogen -idist/build/yi/yi-tmp HackerMain.hs
 # autogen -> Paths_
@@ -36,7 +32,7 @@ prof-config::
 	cabal configure -f-cocoa -f-gtk -f-pango --enable-executable-profiling --enable-library-profiling --ghc-options=-auto-all
 
 run-inplace: build
-	dist/build/yi/yi -f$(frontend)
+	dist/build/yi/yi
 
 distclean: clean
 	rm -f yi.buildinfo testsuite/pp/logpp config.log config.cache config.status cbits/config.h .setup-config
@@ -51,8 +47,6 @@ CONTRIBUTORS: Contributors _darcs/hashed_inventory
 activity.png: _darcs/hashed_inventory
 	darcs-graph . -y20 --name=yi -o $@
 
-dist/yi-$(version).tar.gz:: sdist
-
 test_prefix := $(shell pwd)/hackage
 
 test-dist: sdist
@@ -65,14 +59,6 @@ test-dist: sdist
 	cabal haddock &&\
 	cabal install &&\
 	cd ..;\
-
-
-test-gtk:
-	$(test_prefix)/bin/yi -fvty
-
-
-test-vty:
-	$(test_prefix)/bin/yi -fgtk
 
 HS := $(shell find Yi Shim Data -type f -name '[^.]*.hs') Yi.hs Main.hs
 tags: $(HS)
