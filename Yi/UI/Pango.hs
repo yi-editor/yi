@@ -38,6 +38,7 @@ import qualified Data.Map as M
 import Graphics.UI.Gtk hiding (on, Region, Window, Action, Point, Style)
 import qualified Graphics.UI.Gtk.Gdk.Events as Gdk.Events
 import qualified Graphics.UI.Gtk as Gtk
+import System.Glib.GError
 import Yi.UI.Gtk.ProjectTree
 import Yi.UI.Gtk.Utils
 import Yi.UI.Utils
@@ -92,7 +93,10 @@ askBuffer w b f = fst $ runBuffer w b f
 
 -- | Initialise the ui
 start :: UIBoot
-start cfg ch outCh _ed = do
+start cfg ch outCh ed = catchGError (startNoMsg cfg ch outCh ed) (\(GError _dom _code msg) -> fail msg)
+
+startNoMsg :: UIBoot
+startNoMsg cfg ch outCh _ed = do
   unsafeInitGUIForThreadedRTS
 
   -- rest.

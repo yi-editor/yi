@@ -40,6 +40,7 @@ import Graphics.UI.Gtk hiding ( on, Window, Action, Point, Style, Region )
 import qualified Graphics.UI.Gtk as Gtk
 import qualified Graphics.UI.Gtk.ModelView as MView
 import qualified Graphics.UI.Gtk.Gdk.Events as Gdk.Events
+import System.Glib.GError
 import Yi.UI.Gtk.ProjectTree
 import Yi.UI.Gtk.Utils
 import Yi.UI.Utils
@@ -98,7 +99,10 @@ mkFontDesc cfg = do
 
 -- | Initialise the ui
 start :: UIBoot
-start cfg ch outCh _ed = do
+start cfg ch outCh ed = catchGError (startNoMsg cfg ch outCh ed) (\(GError _dom _code msg) -> fail msg)
+
+startNoMsg :: UIBoot
+startNoMsg cfg ch outCh _ed = do
   unsafeInitGUIForThreadedRTS
 
   -- rest.
