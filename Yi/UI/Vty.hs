@@ -78,6 +78,7 @@ start cfg ch _outCh editor = do
           v <- mkVtyEscDelay $ configVtyEscDelay $ configUI $ cfg
           nattr <- getTerminalAttributes stdInput
           setTerminalAttributes stdInput (withoutMode nattr ExtendedFunctions) Immediately
+          -- remove the above call to setTerminalAttributes when vty does it.
           (x0,y0) <- Vty.getSize v
           sz <- newIORef (y0,x0)
           -- fork input-reading thread. important to block *thread* on getKey
