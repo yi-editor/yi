@@ -78,7 +78,9 @@ layoutHandler isSpecial parens isIgnored [openT, closeT, nextT] isGroupOpen lexS
             | doOpen
               = case isGroupOpen tok of -- check so that the do is not followed by a {
                   False -> (st', tt openT) : parse (IState (Indent col:levels) False lastLine) toks
-                  True  -> (st', tok)      : parse (IState levels              False lastLine) toks
+                  True  ->                   parse (IState levels              False lastLine) toks
+                  -- if it's a block opening, we ignore the layout, and just let the "normal" rule
+                  -- handle the creation of another level.
 
             -- close, or prepare to close, a paren block
             | isJust $ findParen id $ (deepestParen levels, tokT tok) -- check that the most nested paren matches.
