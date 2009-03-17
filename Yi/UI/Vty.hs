@@ -251,11 +251,11 @@ scrollAndRenderWindow cfg width (win,hasFocus) = do
         showPoint buf = snd $ runBuffer win buf $ do r <- winRegionB
                                                      p <- pointB
                                                      moveTo $ max (regionStart r) $ min (regionEnd r - 1) $ p
-                                                     putA pointDriveA True -- revert to a point-driven behaviour
         b2 = if inWindow then b1 else 
                 if pointDriven then moveWinTosShowPoint b1 win else showPoint b1
-        (rendered, b3) = drawWindow cfg e b2 sty hasFocus width win
-    put e { buffers = M.insert (bufkey win) b3 (buffers e) }
+        b3 = snd $ runBuffer win b2 $ putA pointDriveA True -- always revert to a point-drive behavior
+        (rendered, b4) = drawWindow cfg e b3 sty hasFocus width win
+    put e { buffers = M.insert (bufkey win) b4 (buffers e) }
     return rendered
 
 -- | Draw a window
