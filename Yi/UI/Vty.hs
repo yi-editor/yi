@@ -27,6 +27,8 @@ import Data.Monoid
 import Data.Traversable
 import System.Exit
 import System.Posix.Signals (raiseSignal, sigTSTP)
+import System.Posix.Terminal
+import System.Posix.IO (stdInput)
 import Yi.Buffer
 import Yi.Editor
 import Yi.Event
@@ -54,6 +56,7 @@ data UI = UI {  vty       :: Vty             -- ^ Vty
              , uiRefresh  :: MVar ()
              , uiEditor   :: IORef Editor    -- ^ Copy of the editor state, local to the UI
              , config     :: Config
+             , oAttrs     :: TerminalAttributes
              }
 
 mkUI :: UI -> Common.UI
@@ -71,7 +74,10 @@ mkUI ui = Common.dummyUI
 start :: UIBoot
 start cfg ch _outCh editor = do
   liftIO $ do 
+          oattr <- getTerminalAttributes stdInput
           v <- mkVtyEscDelay $ configVtyEscDelay $ configUI $ cfg
+          nattr <- getTerminalAttributes stdInput
+          setTerminalAttributes stdInput (withoutMode nattr ExtendedFunctions) Immediately
           (x0,y0) <- Vty.getSize v
           sz <- newIORef (y0,x0)
           -- fork input-reading thread. important to block *thread* on getKey
@@ -80,7 +86,7 @@ start cfg ch _outCh editor = do
           endUI <- newEmptyMVar
           tuiRefresh <- newEmptyMVar
           editorRef <- newIORef editor
-          let result = UI v sz tid endUI tuiRefresh editorRef cfg
+          let result = UI v sz tid endUI tuiRefresh editorRef cfg oattr
               -- | Action to read characters into a channel
               getcLoop = maybe (getKey >>= ch >> getcLoop) (const (return ())) =<< tryTakeMVar endUI
 
@@ -115,6 +121,7 @@ main ui = do
 end :: UI -> Bool -> IO ()
 end i reallyQuit = do  
   Vty.shutdown (vty i)
+  setTerminalAttributes stdInput (oAttrs i) Immediately
   tryPutMVar (uiEnd i) ()
   when reallyQuit $ throwTo (uiThread i) ExitSuccess
   return ()
