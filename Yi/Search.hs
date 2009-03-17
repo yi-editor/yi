@@ -12,11 +12,11 @@ module Yi.Search (
         getRegexE,      -- :: EditorM (Maybe SearchExp)
         SearchMatch,
         SearchResult(..),
-        SearchF(..),
-        doSearch,            -- :: (Maybe String) -> [SearchF]
+        SearchOption(..),
+        doSearch,            -- :: (Maybe String) -> [SearchOption]
                             -- -> Direction -> YiM ()
         searchInit,        -- :: String
-                            -- -> [SearchF]
+                            -- -> [SearchOption]
                             -- -> IO SearchExp
         continueSearch,          -- :: SearchExp
                             -- -> IO SearchResult
@@ -98,7 +98,7 @@ data SearchResult = PatternFound
 doSearch :: Maybe String        -- ^ @Nothing@ means used previous
                                 -- pattern, if any. Complain otherwise.
                                 -- Use getRegexE to check for previous patterns
-        -> [SearchF]            -- ^ Flags to modify the compiled regex
+        -> [SearchOption]            -- ^ Flags to modify the compiled regex
         -> Direction            -- ^ @Backward@ or @Forward@
         -> EditorM SearchResult
 
@@ -110,7 +110,7 @@ doSearch Nothing   _  d = do
     Just r  -> withBuffer0 (continueSearch (r,d))
 
 -- | Set up a search.
-searchInit :: String -> Direction -> [SearchF] -> EditorM (SearchExp, Direction)
+searchInit :: String -> Direction -> [SearchOption] -> EditorM (SearchExp, Direction)
 searchInit re d fs = do
     let Right c_re = makeSearchOptsM fs re
     setRegexE c_re

@@ -2,7 +2,7 @@
 -- Copyright (c) Jean-Philippe Bernardy 2008
 module Yi.Regex 
   (
-   SearchF(..), makeSearchOptsM,
+   SearchOption(..), makeSearchOptsM,
    SearchExp(..), searchString, searchRegex, emptySearch,
    emptyRegex,
    module Text.Regex.TDFA,
@@ -35,17 +35,18 @@ searchRegex Backward = seBackCompiled
 -- under regex(3).
 --
 
-data SearchF = IgnoreCase   -- ^ Compile for matching that ignores char case
-             | NoNewLine    -- ^ Compile for newline-insensitive matching
-             | QuoteRegex   -- ^ Treat the input not as a regex but as a literal string to search for.
+data SearchOption
+    = IgnoreCase   -- ^ Compile for matching that ignores char case
+    | NoNewLine    -- ^ Compile for newline-insensitive matching
+    | QuoteRegex   -- ^ Treat the input not as a regex but as a literal string to search for.
     deriving Eq
 
-searchOpt :: SearchF -> CompOption -> CompOption
+searchOpt :: SearchOption -> CompOption -> CompOption
 searchOpt IgnoreCase = \o->o{caseSensitive = False}
 searchOpt NoNewLine = \o->o{multiline = False}
 searchOpt QuoteRegex = id
 
-makeSearchOptsM :: [SearchF] -> String -> Either String SearchExp
+makeSearchOptsM :: [SearchOption] -> String -> Either String SearchExp
 makeSearchOptsM opts re = (\p->SearchExp re (compile p) (compile $ reversePattern p)) <$> pattern
     where searchOpts = foldr (.) id . map searchOpt
           compile source = patternToRegex source (searchOpts opts defaultCompOpt) defaultExecOpt
