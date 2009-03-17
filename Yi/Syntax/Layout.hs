@@ -40,7 +40,7 @@ layoutHandler :: forall t lexState. (Show t, Eq t) => (t -> Bool) -> [(t,t)] ->
             (Tok t -> Bool) ->                 
             [t] -> (Tok t -> Bool) ->
             Scanner (AlexState lexState) (Tok t) -> Scanner (State t lexState) (Tok t)
-layoutHandler isSpecial parens isIgnored [openT, closeT, nextT] isBrace lexSource = Scanner 
+layoutHandler isSpecial parens isIgnored [openT, closeT, nextT] isGroupOpen lexSource = Scanner 
   {
    scanLooked = scanLooked lexSource . snd,
    scanEmpty = error "layoutHandler: scanEmpty",
@@ -76,9 +76,9 @@ layoutHandler isSpecial parens isIgnored [openT, closeT, nextT] isBrace lexSourc
 
             -- start a compound
             | doOpen
-              = case (not $ isBrace tok) of -- check so that the do is not followed by a {
-                  True ->(st', tt openT) : parse (IState (Indent col:levels) (False) lastLine) toks
-                  False -> parse (IState levels (not doOpen) lastLine) toks -- If not change doOpen to false
+              = case isGroupOpen tok of -- check so that the do is not followed by a {
+                  False -> (st', tt openT) : parse (IState (Indent col:levels) False lastLine) toks
+                  True  -> (st', tok)      : parse (IState levels              False lastLine) toks
 
             -- close, or prepare to close, a paren block
             | isJust $ findParen id $ (deepestParen levels, tokT tok) -- check that the most nested paren matches.
