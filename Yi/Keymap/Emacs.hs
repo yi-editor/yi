@@ -156,6 +156,7 @@ emacsKeys univArg =
          , metaCh 'h'           ?>>! (setSelectRegionB =<< regionOfB unitParagraph)
          , metaCh 'k'           ?>>! (repeatingArg $ deleteB unitSentence Forward)
          , metaCh 'l'           ?>>! (repeatingArg lowercaseWordB)
+         , metaCh 'm'           ?>>! firstNonSpaceB
          , metaCh 'q'           ?>>! (withSyntax modePrettify)
          , metaCh 'u'           ?>>! (repeatingArg uppercaseWordB)
          , metaCh 't'           ?>>! (repeatingArg $ transposeB unitWord Forward)
