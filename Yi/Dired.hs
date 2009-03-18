@@ -213,7 +213,8 @@ diredRefresh = do
     let dlines = linesToDisplay ds
         (strss, stys, strs) = unzip3 dlines
         strss' = transpose $ map doPadding $ transpose $ strss
-        namecol = if null strss' then 0 else Data.List.sum (map length $ head strss') - 1
+        namecol = if null strss' then 0 else
+                  let l1details = init $ head strss' in Data.List.sum (map length l1details) + (length l1details)
 
     -- Set buffer contents
     withBuffer $ do -- Clear buffer
@@ -371,8 +372,7 @@ diredMarkWithChar :: Char -> BufferM () -> BufferM ()
 diredMarkWithChar c mv = do
     p <- pointB
     moveToSol >> insertN [c] >> deleteN 1
-    moveTo p
-    mv
+    filenameColOf mv
 
 diredUnmark :: BufferM ()
 diredUnmark = diredMarkWithChar ' ' lineUp
