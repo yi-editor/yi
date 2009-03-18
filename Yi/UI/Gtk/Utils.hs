@@ -13,8 +13,8 @@ import System.Glib.GError
 
 loadIcon :: FilePath -> IO Pixbuf
 loadIcon fpath = do
-  datadir <- getDataDir
-  icoProject <- catchGError (pixbufNewFromFile (datadir </> "art" </> fpath))
+  iconfile <- getDataFileName $ "art" </> fpath
+  icoProject <- catchGError (pixbufNewFromFile iconfile)
                             (\(GError dom code msg) -> throwGError $ GError dom code $
                              msg ++ " -- use the yi_datadir environment variable to specify an alternate location")
   pixbufAddAlpha icoProject (Just (0,255,0))
