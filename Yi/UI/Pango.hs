@@ -415,7 +415,8 @@ refresh ui e = do
 winEls :: Point -> Int -> BufferM Yi.Buffer.Size
 winEls tospnt h = savingPointB $ do
              moveTo tospnt
-             gotoLnFrom h
+             gotoLnFrom (h-1)
+             moveToEol
              p <- pointB
              return (p ~- tospnt)
 
