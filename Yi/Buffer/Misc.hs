@@ -75,6 +75,7 @@ module Yi.Buffer.Misc
   , getPercent
   , forgetPreferCol
   , movingToPrefCol
+  , setPrefCol
   , markSavedB
   , addOverlayB
   , delOverlayB

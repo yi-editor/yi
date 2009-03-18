@@ -148,6 +148,7 @@ data DiredState = DiredState
    , diredMarks :: M.Map Char [FilePath] -- ^ Map values are just leafnames, not full paths
    , diredEntries :: M.Map FilePath DiredEntry -- ^ keys are just leafnames, not full paths
    , diredFilePoints :: [(Point,Point,FilePath)] -- ^ position in the buffer where filename is
+   , diredNameCol :: Int -- ^ position on line where filename is (all pointA are this col)
   }
   deriving (Show, Eq, Typeable)
 
@@ -156,13 +157,17 @@ instance Initializable DiredState where
                          , diredMarks      = M.empty
                          , diredEntries    = M.empty
                          , diredFilePoints = []
+                         , diredNameCol    = 0
                          }
+
+filenameColOf :: BufferM () -> BufferM ()
+filenameColOf f = getA bufferDynamicValueA >>= setPrefCol . Just . diredNameCol >> f
 
 diredKeymap :: Keymap -> Keymap
 diredKeymap = do
     (choice [
-             char 'p'                   ?>>! lineUp,
-             oneOf [char 'n', char ' ']  >>! lineDown,
+             char 'p'                   ?>>! filenameColOf lineUp,
+             oneOf [char 'n', char ' ']  >>! filenameColOf lineDown,
              char 'b'                   ?>>! leftB,
              char 'f'                   ?>>! rightB,
              char 'm'                   ?>>! diredMark,
@@ -202,11 +207,13 @@ diredRefresh = do
                         , diredMarks      = M.empty
                         , diredEntries    = di
                         , diredFilePoints = []
+                        , diredNameCol    = 0
                         }
     -- Compute results
     let dlines = linesToDisplay ds
         (strss, stys, strs) = unzip3 dlines
         strss' = transpose $ map doPadding $ transpose $ strss
+        namecol = if null strss' then 0 else Data.List.sum (map length $ head strss') - 1
 
     -- Set buffer contents
     withBuffer $ do -- Clear buffer
@@ -217,10 +224,13 @@ diredRefresh = do
                     -- paint header
                     addOverlayB $ mkOverlay UserLayer (mkRegion 0 (p-2)) headStyle
                     ptsList <- mapM insertDiredLine $ zip3 strss' stys strs
-                    putA bufferDynamicValueA ds{diredFilePoints=ptsList}
+                    putA bufferDynamicValueA ds{diredFilePoints=ptsList,
+                                                diredNameCol   =namecol}
                     -- Colours for Dired come from overlays not syntax highlighting
                     modifyMode $ \m -> m {modeKeymap = diredKeymap, modeName = "dired"}                    
-                    moveTo p
+                    moveTo (p-2)
+                    filenameColOf lineDown
+
     where
     headStyle = const (withFg grey)
     doPadding :: [DRStrings] -> [String]
