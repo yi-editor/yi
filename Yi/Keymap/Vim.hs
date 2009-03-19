@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, DeriveDataTypeable, TemplateHaskell #-}
+{-# LANGUAGE FlexibleContexts, DeriveDataTypeable, TemplateHaskell, CPP #-}
 
 -- Copyright (c) 2004-5 Don Stewart - http://www.cse.unsw.edu.au/~dons
 -- Copyright (c) 2008 Nicolas Pouillard
@@ -33,7 +33,11 @@ import Data.Prototype
 import Data.Accessor.Template
 import Numeric (showHex, showOct)
 import System.IO (readFile)
+#ifdef mingw32_HOST_OS
+import System.PosixCompat.Files (fileExist)
+#else
 import System.Posix.Files (fileExist)
+#endif
 
 import Control.Monad.State hiding (mapM_, mapM, sequence)
 import Control.Arrow hiding (left, right)

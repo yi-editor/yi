@@ -171,7 +171,7 @@ library
         Yi.Char.Unicode
 
     include-dirs:   Yi/Lexer
-    if flag (vty)
+    if flag (vty) && !os(windows)
        cpp-options: -DFRONTEND_VTY
        exposed-modules: Yi.UI.Vty
        
@@ -328,7 +328,7 @@ executable yi
         if !os(mingw32)
            build-depends: unix
 
-        if flag (vty)
+        if flag (vty) && !os(windows)
            build-depends: vty>=3.1.8 && < 4
            cpp-options: -DFRONTEND_VTY
 
