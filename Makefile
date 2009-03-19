@@ -65,4 +65,7 @@ tags: $(HS)
 	@ echo [tags]
 	@ echo '!_TAG_FILE_SORTED	0	~' > tags
 	@ hasktags -a -c $(HS)
+
+TAGS: $(HS)
+	@ echo [TAGS]
 	@ hasktags -e $(HS)
