@@ -165,6 +165,7 @@ library
         Yi.Templates
         Yi.TextCompletion,
         Yi.UI.Common
+        Yi.UI.Batch
         Yi.UI.Utils
         Yi.UI.TabBar
         Yi.Window
@@ -359,9 +360,6 @@ executable yi
           -- Shim uses old-time
           cpp-options: -DGHC_API
 
-        if !(flag(vty) || flag (gtk) || flag(cocoa))
-         buildable: False
-
         if flag(hacking)
           main-is:        HackerMain.hs
         else
@@ -385,6 +383,7 @@ executable yi
            Shim.ProjectContent
            System.FriendlyPath
            Yi.UI.Common
+           Yi.UI.Batch
 
            Paths_yi
            Yi.GHC

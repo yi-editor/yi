@@ -44,6 +44,7 @@ import qualified Yi.UI.Gtk
 #ifdef FRONTEND_VTY
 import qualified Yi.UI.Vty
 #endif
+import qualified Yi.UI.Batch
 
 availableFrontends :: [(String,UIBoot)]
 availableFrontends =
@@ -59,6 +60,7 @@ availableFrontends =
 #ifdef FRONTEND_VTY
    ("vty", Yi.UI.Vty.start) :
 #endif
+   ("batch", Yi.UI.Batch.start) :
    []
 
 -- | List of published Actions
