@@ -315,7 +315,8 @@ vimScrollByB f n = do h <- askWindow height
 scrollToCursorB :: BufferM ()
 scrollToCursorB = do
     MarkSet f i _ t <- markLines
-    let m = (f + t) `div` 2
+    h <- askWindow height
+    let m = f + (h `div` 2)
     scrollB $ i - m
 
 -- | Move cursor to the top of the screen
