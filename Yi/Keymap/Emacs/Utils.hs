@@ -33,6 +33,7 @@ module Yi.Keymap.Emacs.Utils
   , promptFile
   , promptTag
   , justOneSep
+  , joinLinesE
   )
 where
 
@@ -311,6 +312,12 @@ justOneSep = doIfCharB isSeparator $ do genMaybeMoveB unitSepThisLine (Backward,
                                         doIfCharB isSeparator $ deleteB unitSepThisLine Forward
 
 
+-- | Join this line to previous (or next N if universal)
+joinLinesE :: UnivArgument -> BufferM ()
+joinLinesE a = do case a of
+                     Nothing -> return ()
+                     Just _n -> moveB VLine Forward
+                  moveToSol >> transformB (\_ -> " ") Character Backward >> justOneSep
 
 -- | Shortcut to use a default list when a blank list is given.
 -- Used for default values to emacs queries

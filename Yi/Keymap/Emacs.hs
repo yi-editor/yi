@@ -37,6 +37,7 @@ import Yi.Keymap.Emacs.Utils
   , argToInt
   , promptTag
   , justOneSep
+  , joinLinesE
   )
 import Data.Maybe
 import Data.Char
@@ -148,6 +149,7 @@ emacsKeys univArg =
          , metaCh '<'           ?>>! (repeatingArg topB)
          , metaCh '>'           ?>>! (repeatingArg botB)
          , metaCh '%'           ?>>! queryReplaceE
+         , metaCh '^'           ?>>! joinLinesE univArg
          , metaCh ';'           ?>>! withModeB modeToggleCommentSelection
          , metaCh 'a'           ?>>! (repeatingArg $ moveB unitSentence Backward)
          , metaCh 'b'           ?>>! (repeatingArg prevWordB)
