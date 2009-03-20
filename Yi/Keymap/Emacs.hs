@@ -36,6 +36,7 @@ import Yi.Keymap.Emacs.Utils
   , askSaveEditor
   , argToInt
   , promptTag
+  , justOneSep
   )
 import Data.Maybe
 import Data.Char
@@ -140,6 +141,7 @@ emacsKeys univArg =
          , ctrlCh 'c' ?>>      ctrlC
           
          -- All The key-bindings of the form M-c where 'c' is some character.
+         , metaCh ' '           ?>>! justOneSep
          , metaCh 'v'           ?>>! scrollUpE univArg
          , metaCh '!'           ?>>! shellCommandE
          , metaCh 'p'           ?>>! cabalConfigureE

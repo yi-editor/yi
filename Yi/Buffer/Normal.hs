@@ -20,13 +20,14 @@ module Yi.Buffer.Normal (TextUnit(Character, Line, VLine, Document),
                          unitViWORDOnLine,
                          unitDelimited,
                          unitSentence, unitEmacsParagraph, unitParagraph,
+                         unitSep, unitSepThisLine,
                          -- TextUnit is exported abstract intentionally:
                          -- we'd like to move more units to the GenUnit format.
                          moveB, maybeMoveB,
                          transformB, transposeB,
                          regionOfB, regionOfPartB, regionOfPartNonEmptyB,
                          readUnitB,
-                         untilB, doUntilB_, untilB_, whileB,
+                         untilB, doUntilB_, untilB_, whileB, doIfCharB,
                          atBoundaryB,
                          numberOfB,
                          deleteB, genMaybeMoveB,
@@ -149,6 +150,20 @@ viWORDCharType :: Char -> Int
 viWORDCharType c | isSpace c = 1
                  | otherwise = 2
 
+-- | Separator characters (space, tab, unicode separators)
+
+atSepBoundary :: Direction -> BufferM Bool
+atSepBoundary = genBoundary (-1) $ \cs -> case cs of
+    (c1:c2:_) -> isNl c1 || isNl c2 || isSeparator c1 /= isSeparator c2
+    _ -> True
+
+unitSep :: TextUnit
+unitSep = GenUnit Document atSepBoundary
+
+unitSepThisLine :: TextUnit
+unitSepThisLine = GenUnit Line atSepBoundary
+
+
 -- | Is the point at a @Unit@ boundary in the specified @Direction@?
 atBoundary :: TextUnit -> Direction -> BufferM Bool
 atBoundary Document Backward = (== 0) <$> pointB
@@ -241,6 +256,10 @@ doUntilB_ cond f = doUntilB cond f >> return () -- maybe do an optimized version
 
 untilB_ :: BufferM Bool -> BufferM a -> BufferM ()
 untilB_ cond f = untilB cond f >> return () -- maybe do an optimized version?
+
+-- | Do an action if the current buffer character passes the predicate
+doIfCharB :: (Char -> Bool) -> BufferM a -> BufferM ()
+doIfCharB p o = readB >>= \c -> if p c then o >> return () else return ()
 
 
 -- | Boundary side
