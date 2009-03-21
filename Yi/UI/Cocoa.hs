@@ -113,7 +113,7 @@ data WinInfo = WinInfo
 mkUI :: UI -> Common.UI
 mkUI ui = Common.dummyUI
   { Common.main    = main
-  , Common.end     = end
+  , Common.end     = const end
   , Common.suspend = uiWindow ui # performMiniaturize nil
   , Common.refresh = refresh ui
   }
@@ -357,7 +357,7 @@ newWindow before ui win b = do
   flip (setIVar _runBuffer) v $ \act -> do
     wCache <- readIORef (windowCache ui)
     uiActionCh ui $ makeAction $ do
-      (modA windowsA) $ fromJust $ PL.move $ fromJust $ L.findIndex ((k ==) . wikey) wCache
+      (modA windowsA) $ fromJust . (PL.move $ fromJust $ L.findIndex ((k ==) . wikey) wCache)
       withGivenBufferAndWindow0 win (bkey b) act
 
   return $ WinInfo 
@@ -392,7 +392,7 @@ refresh ui e = withAutoreleasePool $ logNSException "refresh" $ do
     _YiApplication # sharedApplication >>=
       pushClipboard (snd $ runEditor (uiFullConfig ui) getRegE e) . toYiApplication
   
-    (uiCmdLine ui) # setStringValue (toNSString $ statusLine e)
+    (uiCmdLine ui) # setStringValue (toNSString $ L.intercalate "\n" $ statusLine e)
 
     cache <- readRef $ windowCache ui
     (uiWindow ui) # setAutodisplay False -- avoid redrawing while window syncing
