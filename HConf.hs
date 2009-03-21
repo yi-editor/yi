@@ -262,7 +262,13 @@ recompile HConfParams {projectName = app, ghcFlags = flags} force = do
             -- we disable ghc recompilaton checks.
             flags' <- getGhcFlags
             let allFlags = ["--make", app ++ ".hs", "-i", "-optl-s",
-                             "-fforce-recomp", "-v0", "-o",binn,"-threaded"]
+                            "-fforce-recomp", "-v0", "-o",binn,"-threaded",
+
+                            -- monads-fd collide with mtl.
+                            -- Could not find module `Control.Monad.Writer':
+                            --       it was found in multiple packages: monads-fd-0.0.0.0 mtl-1.1.0.2
+                            "-hide-package", "mtl"
+                           ]
                             ++ flags ++ flags'
             waitForProcess =<< runProcess GHC.Paths.ghc allFlags (Just dir)
                                           Nothing Nothing Nothing (Just h)
