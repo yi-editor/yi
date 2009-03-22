@@ -20,7 +20,7 @@ module Yi.Buffer.Normal (TextUnit(Character, Line, VLine, Document),
                          unitViWORDOnLine,
                          unitDelimited,
                          unitSentence, unitEmacsParagraph, unitParagraph,
-                         unitSep, unitSepThisLine,
+                         isAnySep, unitSep, unitSepThisLine,
                          -- TextUnit is exported abstract intentionally:
                          -- we'd like to move more units to the GenUnit format.
                          moveB, maybeMoveB,
@@ -150,16 +150,25 @@ viWORDCharType :: Char -> Int
 viWORDCharType c | isSpace c = 1
                  | otherwise = 2
 
--- | Separator characters (space, tab, unicode separators)
+-- | Separator characters (space, tab, unicode separators). Most of the units
+-- above attempt to identify "words" with various punctuation and symbols included
+-- or excluded. This set of units is a simple inverse: it is true for "whitespace"
+-- or "separators" and false for anything that is not (letters, numbers, symbols,
+-- punctuation, whatever).
+
+isAnySep :: Char -> Bool
+isAnySep c = isSeparator c || isSpace c || generalCategory c `elem` [ Space, LineSeparator, ParagraphSeparator ]
 
 atSepBoundary :: Direction -> BufferM Bool
 atSepBoundary = genBoundary (-1) $ \cs -> case cs of
-    (c1:c2:_) -> isNl c1 || isNl c2 || isSeparator c1 /= isSeparator c2
+    (c1:c2:_) -> isNl c1 || isNl c2 || isAnySep c1 /= isAnySep c2
     _ -> True
 
+-- | unitSep is true for any kind of whitespace/separator
 unitSep :: TextUnit
 unitSep = GenUnit Document atSepBoundary
 
+-- | unitSepThisLine is true for any kind of whitespace/separator on this line only
 unitSepThisLine :: TextUnit
 unitSepThisLine = GenUnit Line atSepBoundary
 

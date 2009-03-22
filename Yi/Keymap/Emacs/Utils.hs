@@ -42,7 +42,6 @@ where
 import Prelude (take)
 import Data.List ((\\))
 import Data.Maybe (maybe)
-import Data.Char (isSeparator)
 import System.FriendlyPath
 import System.FilePath (addTrailingPathSeparator, takeDirectory, takeFileName, (</>))
 import System.Directory
@@ -307,9 +306,9 @@ killBufferE (Doc b) = do
 -- | If on separators (space, tab, unicode seps), reduce multiple
 --   separators to just a single separator.
 justOneSep :: BufferM ()
-justOneSep = doIfCharB isSeparator $ do genMaybeMoveB unitSepThisLine (Backward,InsideBound) Backward
-                                        moveB Character Forward
-                                        doIfCharB isSeparator $ deleteB unitSepThisLine Forward
+justOneSep = doIfCharB isAnySep $ do genMaybeMoveB unitSepThisLine (Backward,InsideBound) Backward
+                                     moveB Character Forward
+                                     doIfCharB isAnySep $ deleteB unitSepThisLine Forward
 
 
 -- | Join this line to previous (or next N if universal)
