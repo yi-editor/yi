@@ -10,6 +10,7 @@
 --  * the direction towards which they operate (if applicable)
 
 module Yi.Buffer.Normal (TextUnit(Character, Line, VLine, Document),
+                         outsideUnit,
                          leftBoundaryUnit,                         
                          unitWord,
                          unitViWord,
@@ -61,6 +62,13 @@ data TextUnit = Character -- ^ a single character
       -- there could be more text units, like Page, Searched, etc. it's probably a good
       -- idea to use GenUnit though.
                 deriving Typeable
+
+-- | Turns a unit into its "negative" by inverting the boundaries. For example,
+-- @outsideUnit unitViWord@ will be the unit of spaces between words. For units
+-- without boundaries ('Character', 'Document', ...), this is the identity
+-- function.
+outsideUnit (GenUnit enclosing boundary) = GenUnit enclosing (boundary . reverseDir)
+outsideUnit x = x -- for a lack of better definition
 
 -- | Common boundary checking function: run the condition on @siz@ characters in specified direction
 -- shifted by specified offset.
