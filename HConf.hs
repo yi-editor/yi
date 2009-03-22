@@ -78,6 +78,8 @@ import qualified GHC.Paths
 import HConf.Paths
 import HConf.Utils
 
+import Paths_yi (getBinDir)
+
 -- | Input to getHConf
 
 data HConfParams config state = HConfParams
@@ -122,7 +124,7 @@ data HConfOption
 
 actionDescriptions :: HConfParams config state -> [OptDescr HConfOption]
 actionDescriptions params@HConfParams {projectName = app} =
-  [ Option [] ["recompile-force"]
+  [ Option [] ["force-recompile"]
            (NoArg . Action . const $ recompile params True >> return ())
            ("Force recompile of custom " ++ app ++ " before starting")
   , Option [] ["resume"]
@@ -224,6 +226,7 @@ mainSlave params userConfig initialState = do
 --      * force is True
 --      * the Project executable does not exist
 --      * the Project executable is older than Project.hs
+--      * the Project executable is older than the libraries from which it was built
 --
 -- The -i flag is used to restrict recompilation to the Project.hs file only.
 --
@@ -246,13 +249,16 @@ recompile :: HConfParams config state -> Bool -> IO (Maybe String)
 recompile HConfParams {projectName = app, ghcFlags = flags} force = do
     dir <- getProjectDir app
     err <- getErrorsFile app
+    cabalBinDir <- getBinDir
     let binn = app ++ "-"++arch++"-"++os
         bin  = dir </> binn
         base = dir </> app
         src  = base ++ ".hs"
+        cabalBin = cabalBinDir </> "yi"
     srcT <- getModTime src
     binT <- getModTime bin
-    if (force || srcT > binT)
+    cabalBinT <- getModTime cabalBin
+    if (force || srcT > binT || cabalBinT > binT)
       then do
         if force
             then putStrLn $ "Forcing recompile of custom " ++ app
