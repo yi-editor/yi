@@ -11,7 +11,7 @@
 module Parser.Incremental (Process, 
                           recoverWith, symbol, eof, lookNext, testNext, run,
                           mkProcess, profile, pushSyms, pushEof, evalL, evalR, feedZ,
-                           Parser(Look, Pure)
+                           Parser(Look, Pure), countWidth
                           ) where
 
 import Control.Applicative
@@ -117,6 +117,20 @@ instance Show (Steps s r) where
     show (Fail) = "0"
     show (Sus _ _) = "..."
     show (Best _ _ p q) = "(" ++ show p ++ ")" ++ show q
+
+countWidth :: Zip s r -> Int
+countWidth (Zip _ _ r) = countWidth' r
+  where countWidth' :: (Steps s r) -> Int
+        countWidth' r = case r of
+            (Best _ _ p q) ->  countWidth' p + countWidth' q
+            (Val _ _ p) -> countWidth' p
+            (App p) -> countWidth' p
+            (Done) -> 1
+            (Shift p) -> countWidth' p
+            (Sh' p) -> countWidth' p
+            (Dislike _ p) -> countWidth' p
+            (Fail) -> 1
+            (Sus _ _) -> 1
 
 instance Show (RPolish i o) where
     show (RPush _ _ p) = show p ++ "^"
