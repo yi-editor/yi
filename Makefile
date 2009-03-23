@@ -23,6 +23,9 @@ test::
 %.pdf: %.ps
 	ps2pdf $<
 
+dist-config::
+	cabal configure
+
 prof-config-hacking::
 	cabal configure -fhacking -f-cocoa -f-gtk -f-pango --enable-executable-profiling --ghc-options=-auto-all
 
@@ -46,10 +49,10 @@ CONTRIBUTORS: Contributors _darcs/hashed_inventory
 	darcs-graph . -y20 --name=yi -o $@ -f `date -d "now - $*" +"%Y%m%d"`
 
 # A few ways to use the above rule...
-3year-activity.png:
-year-activity.png:
-6month-activity.png:
-2month-activity.png:
+3year-activity.png::
+year-activity.png::
+6month-activity.png::
+2month-activity.png::
 
 
 
@@ -76,3 +79,26 @@ tags: $(HS)
 TAGS: $(HS)
 	@ echo [TAGS]
 	@ hasktags -e $(HS)
+
+
+DOCDIR=dist/doc/html/yi
+
+$(DOCDIR)/yi.txt: $(HS)
+	cabal haddock --hoogle
+
+
+yi.txt: $(DOCDIR)/yi.txt
+	cat $< | grep -v "^_" | grep -v ":::" > $@
+# hoogle stumbles on leading underscores. (20090323)
+# hoogle stumbles on ::: (20090323)
+
+
+%.hoo: %.txt
+	hoogle --convert=$<
+
+
+actions: BufferM-actions EditorM-actions YiM-actions
+	cat $+ > $@
+
+%-actions: yi.hoo
+	hoogle --data=$< ":: $* a" | grep $* > $@
