@@ -6,6 +6,7 @@ module Yi.TextCompletion (
         -- * Word completion
         wordComplete,
         wordCompleteString,
+        wordCompleteString',
         resetComplete,
         completeWordB,
 ) where
@@ -13,7 +14,7 @@ module Yi.TextCompletion (
 import Prelude ()
 import Yi.Completion
 import Data.Char
-import Data.List (filter, drop, isPrefixOf, reverse, findIndex, length, groupBy)
+import Data.List (map, filter, drop, isPrefixOf, reverse, findIndex, length, groupBy)
 import Data.Maybe
 
 import Yi.Core
@@ -41,8 +42,8 @@ resetComplete = setDynamic (Completion [])
 
 -- | Try to complete the current word with occurences found elsewhere in the
 -- editor. Further calls try other options. 
-wordCompleteString :: EditorM String
-wordCompleteString = do
+wordCompleteString' :: Bool -> EditorM String
+wordCompleteString' caseSensitive = do
   Completion complList <- getDynamic
   case complList of
     (x:xs) -> do -- more alternatives, use them.
@@ -56,7 +57,14 @@ wordCompleteString = do
       -- all possibilities. 
       wordCompleteString -- to pick the 1st possibility.
 
-  where matches x y = x `isPrefixOf` y && x /= y
+  -- where matches x y = x `isPrefixOf` y && x /= y
+  where matches x y = prepare x `isPrefixOf` prepare y &&
+                      x /= y
+
+        prepare x = if caseSensitive then x else map toLower x
+
+wordCompleteString :: EditorM String
+wordCompleteString = wordCompleteString' True
 
 wordComplete :: EditorM ()
 wordComplete = do x <- wordCompleteString
