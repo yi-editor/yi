@@ -1,23 +1,21 @@
 cabal-make = .
 
+
 interactive:
 	ghci -cpp -XRank2Types -XFlexibleContexts -XGeneralizedNewtypeDeriving -XDeriveDataTypeable -IYi/Lexer -idist/build/autogen -idist/build/yi/yi-tmp HackerMain.hs
 # autogen -> Paths_
 # dist/build/yi/yi-tmp -> preprocessed lexers
 
+# Test the source tree.
 test::
-	cabal configure -f-cocoa -ftesting --disable-library-profiling
+	cabal configure -ftesting --disable-library-profiling
 	cabal build
+	dist/build/yi/yi -fbatch --self-check 
 	cabal copy
-# for this test rule to be complete, we need to also:
-#	check that examples/yi.hs can be recompiled;
-# and finally 
-#	justcompiledyi/yi --self-check
-# must pass.
-#	
-# annoyingly, it's also difficult to find the correct set of options
-# for configuration.
-# maybe we need "dummy" UI for testing purposes only.
+	cabal register
+	dist/build/yi/yi -fbatch --force-recompile -y examples/yi.hs
+# annoyingly, we do not know which interface will be compiled in, beside 'batch',
+# which is not good to put as default in the examples/yi.hs.
 
 %.ps: %.hp
 	hp2ps -c $<
@@ -44,11 +42,20 @@ Contributors: Contributors.hs
 CONTRIBUTORS: Contributors _darcs/hashed_inventory
 	darcs changes | ./Contributors > $@
 
-activity.png: _darcs/hashed_inventory
-	darcs-graph . -y20 --name=yi -o $@
+%-activity.png:
+	darcs-graph . -y20 --name=yi -o $@ -f `date -d "now - $*" +"%Y%m%d"`
+
+# A few ways to use the above rule...
+3year-activity.png:
+year-activity.png:
+6month-activity.png:
+2month-activity.png:
+
+
 
 test_prefix := $(shell pwd)/hackage
 
+# test the distribution.
 test-dist: sdist
 	rm -fr hackage
 	mkdir -p hackage
