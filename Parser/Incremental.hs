@@ -41,7 +41,8 @@ data Parser s a where
     Shif :: Parser s a -> Parser s a
     Empt :: Parser s a
     Disj :: Parser s a -> Parser s a -> Parser s a
-    Yuck :: String -> Parser s a -> Parser s a
+    Yuck :: Parser s a -> Parser s a
+    Enter :: String -> Parser s a -> Parser s a
     
 
 -- | Parser process
@@ -53,7 +54,8 @@ data Steps s a where
     Sh'   ::             Steps s a        -> Steps s a
     Sus   :: Steps s a -> (s -> Steps s a) -> Steps s a
     Best  :: Ordering -> Profile -> Steps s a -> Steps s a -> Steps s a
-    Dislike :: String -> Steps s a -> Steps s a
+    Dislike :: Steps s a -> Steps s a
+    Log :: String -> Steps s a -> Steps s a
     Fail :: Steps s a
 
 
@@ -102,7 +104,8 @@ profile (App p) = profile p
 profile (Shift p) = 0 :> profile p
 profile (Done) = PRes 0 -- success with zero dislikes
 profile (Fail) = PFail
-profile (Dislike _ p) = mapSucc (profile p)
+profile (Dislike p) = mapSucc (profile p)
+profile (Log _ p) = profile p
 profile (Sus _ _) = PSusp
 profile (Best _ pr _ _) = pr
 profile (Sh' _) = error "Sh' should be hidden by Sus"
@@ -113,7 +116,8 @@ instance Show (Steps s r) where
     show (Done) = "1"
     show (Shift p) = ">" ++ show p
     show (Sh' p) = "'" ++ show p
-    show (Dislike msg p) = msg ++ "?"  ++ show p
+    show (Dislike p) = "?"  ++ show p
+    show (Log msg p) = "[" ++ msg ++ "]"  ++ show p
     show (Fail) = "0"
     show (Sus _ _) = "..."
     show (Best _ _ p q) = "(" ++ show p ++ ")" ++ show q
@@ -147,7 +151,8 @@ evalR' Done = ((), [])
 evalR' (Val _ a r) = first (a :<) (evalR' r)
 evalR' (App s) = first apply (evalR' s)
 evalR' (Shift v) = evalR' v
-evalR' (Dislike err v) = second (err:) (evalR' v)
+evalR' (Dislike v) = evalR' v
+evalR' (Log err v) = second (err:) (evalR' v)
 evalR' (Fail) = error "evalR: No parse!"
 evalR' (Sus _ _) = error "evalR: Not fully evaluated!"
 evalR' (Sh' _) = error "evalR: Sh' should be hidden by Sus"
@@ -180,7 +185,8 @@ toQ (Pure a _)     = \k h -> k (h, a)
 toQ (Disj p q)   = \k h -> iBest (toQ p k h) (toQ q k h)
 toQ (Bind p a2q) = \k -> (toQ p) (\(h,a) -> toQ (a2q a) k h)
 toQ Empt = \_k _h -> Fail
-toQ (Yuck err p) = \k h -> Dislike err $ toQ p k h
+toQ (Yuck p) = \k h -> Dislike $ toQ p k h
+toQ (Enter err p) = \k h -> Log err $ toQ p k h
 toQ (Shif p) = \k h -> Sh' $ toQ p k h
 
 toP :: Parser s a -> forall r. (Steps s r)  -> (Steps s (a :< r))
@@ -190,7 +196,8 @@ toP (Pure x y)   = Val x y
 toP Empt = \_fut -> Fail
 toP (Disj a b)  = \fut -> iBest (toP a fut) (toP b fut)
 toP (Bind p a2q) = \fut -> (toQ p) (\(_,a) -> (toP (a2q a)) fut) ()
-toP (Yuck err p) = Dislike err . toP p 
+toP (Yuck p) = Dislike . toP p 
+toP (Enter err p) = Log err . toP p 
 toP (Shif p) = Sh' . toP p
 
 -- | Intelligent, caching best.
@@ -213,7 +220,8 @@ feed ss p = case p of
                       Just (s:_) -> feed ss (cons s)
                   (Shift p') -> Shift (feed ss p')
                   (Sh' p')   -> Shift (feed (fmap (drop 1) ss) p')
-                  (Dislike err p') -> Dislike err (feed ss p')
+                  (Dislike p') -> Dislike (feed ss p')
+                  (Log err p') -> Log err (feed ss p')
                   (Val x y p') -> Val x y (feed ss p')
                   (App p') -> App (feed ss p')
                   Done -> Done
@@ -237,7 +245,8 @@ evalL (Zip errs0 l0 r0) = help errs0 l0 r0
           (Val a b r) -> help errs (simplify (RPush a b l)) r
           (App r)  -> help errs (RApp l) r
           (Shift p) -> help errs l p
-          (Dislike err p) -> help (err:errs) l p
+          (Log err p) -> help (err:errs) l p
+          (Dislike p) -> help errs l p
           (Best choice _ p q) -> case choice of
               LT -> help errs l p
               GT -> help errs l q
@@ -276,7 +285,7 @@ lookNext = Look (pure Nothing) (\s -> pure (Just s))
 -- parser.
 
 recoverWith :: Parser s a -> Parser s a
-recoverWith = Yuck "recoverWith"
+recoverWith = Enter "recoverWith" . Yuck
 
 ----------------------------------------------------
 
