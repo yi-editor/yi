@@ -26,7 +26,7 @@ module Yi.Buffer.Normal (TextUnit(Character, Line, VLine, Document),
                          -- we'd like to move more units to the GenUnit format.
                          moveB, maybeMoveB,
                          transformB, transposeB,
-                         regionOfB, regionOfPartB, regionOfPartNonEmptyB,
+                         regionOfB, regionOfNonEmptyB, regionOfPartB, regionOfPartNonEmptyB,
                          readUnitB,
                          untilB, doUntilB_, untilB_, whileB, doIfCharB,
                          atBoundaryB,
@@ -353,9 +353,15 @@ deleteB unit dir = deleteRegionB =<< regionOfPartNonEmptyB unit dir
 indexAfterB :: BufferM a -> BufferM Point
 indexAfterB f = savingPointB (f >> pointB)
 
--- | Non empty region of the whole textunit where the current point is.
+-- | Region of the whole textunit where the current point is.
 regionOfB :: TextUnit -> BufferM Region
-regionOfB unit = savingPointB $
+regionOfB unit = mkRegion
+                 <$> indexAfterB (maybeMoveB unit Backward)
+                 <*> indexAfterB (maybeMoveB unit Forward)
+
+-- | Non empty region of the whole textunit where the current point is.
+regionOfNonEmptyB :: TextUnit -> BufferM Region
+regionOfNonEmptyB unit = savingPointB $
   mkRegion <$> (maybeMoveB unit Backward >> pointB) <*> (moveB unit Forward >> pointB)
 
 -- | Region between the point and the next boundary.

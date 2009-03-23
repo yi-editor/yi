@@ -534,7 +534,7 @@ defKeymap = Proto template
      -- TODO: add word bounds: search for \<word\>
      searchCurrentWord :: Direction -> EditorM ()
      searchCurrentWord dir = do
-       w <- withBuffer0' $ readRegionB =<< regionOfB unitViWord
+       w <- withBuffer0' $ readRegionB =<< regionOfNonEmptyB unitViWord
        viSearch w [QuoteRegex] dir
 
      gotoTag :: Tag -> YiM ()
@@ -563,7 +563,7 @@ defKeymap = Proto template
                        act tagTable
 
      gotoTagCurrentWord :: YiM ()
-     gotoTagCurrentWord = gotoTag =<< withEditor (withBuffer0' (readRegionB =<< regionOfB unitViWord))
+     gotoTagCurrentWord = gotoTag =<< withEditor (withBuffer0' (readRegionB =<< regionOfNonEmptyB unitViWord))
 
      -- | Parse any character that can be inserted in the text.
      textChar :: KeymapM Char
@@ -598,7 +598,7 @@ defKeymap = Proto template
      concatLinesB = savingPointB . (modifyRegionB $ skippingLast $ filter (/='\n'))
 
      onCurrentWord :: (String -> String) -> BufferM ()
-     onCurrentWord f = savingPointB $ modifyRegionB f =<< regionOfB unitViWord
+     onCurrentWord f = savingPointB $ modifyRegionB f =<< regionOfNonEmptyB unitViWord
 
      onNumberInString :: (Read a, Show a, Num a) => (a -> a) -> String -> String
      onNumberInString f s = case reads s2 of
@@ -789,7 +789,7 @@ defKeymap = Proto template
      select_any_unit :: (MonadInteract m Action Event) => (Region -> EditorM ()) -> m ()
      select_any_unit f = do
        outer <- (char 'a' ?>> pure True) <|> (char 'i' ?>> pure False)
-       choice [ char c ?>> write (f =<< withBuffer0' (regionOfB $ unit outer))
+       choice [ char c ?>> write (f =<< withBuffer0' (regionOfNonEmptyB $ unit outer))
               | (c, unit) <- char2unit]
 
 
