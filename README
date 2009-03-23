@@ -147,7 +147,7 @@ Of course, feel free to adjust those rules to your needs. If you go for the
 prof-config variant, here's an example of how you then can run yi to get
 profiling output:
 
-    yi --recompile-force --ghc-options="-prof -auto-all" +RTS -p -hc
+    yi --force-recompile --ghc-options="-prof -auto-all" +RTS -p -hc
 
 
 PORTABILITY
