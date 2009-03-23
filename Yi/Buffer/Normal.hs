@@ -355,10 +355,15 @@ indexAfterB f = savingPointB (f >> pointB)
 
 -- | Region of the whole textunit where the current point is.
 regionOfB :: TextUnit -> BufferM Region
-regionOfB unit = mkRegion
-                 <$> indexAfterB (maybeMoveB unit Backward)
-                 <*> indexAfterB (maybeMoveB unit Forward)
+regionOfB unit = savingPointB $ mkRegion
+                 <$> (maybeMoveB unit Backward >> pointB)
+                 <*> (maybeMoveB unit Forward >> pointB)
 
+-- An alternate definition would be the following, but it can return two units if the current point is between them.
+-- eg.  "word1 ^ word2" would return both words.
+-- regionOfB unit = mkRegion                                                                                  
+--                  <$> pointAfter (maybeMoveB unit Backward)
+--                  <*> indexAfterB (maybeMoveB unit Forward)                                                                
 -- | Non empty region of the whole textunit where the current point is.
 regionOfNonEmptyB :: TextUnit -> BufferM Region
 regionOfNonEmptyB unit = savingPointB $
