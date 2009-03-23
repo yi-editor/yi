@@ -126,7 +126,10 @@ data ViInsertion = ViIns { viActFirst  :: Maybe (EditorM ()) -- ^ The action per
 
 $(nameDeriveAccessors ''ViInsertion $ Just.(++ "A"))
 
-data VimOpts = VimOpts { tildeop :: Bool }
+data VimOpts = VimOpts { tildeop :: Bool
+                       , completeCaseSensitive :: Bool
+                       }
+
 $(nameDeriveAccessors ''VimOpts $ Just.(++ "A"))
 
 -- | The Vim keymap is divided into several parts, roughly corresponding
@@ -305,7 +308,8 @@ defKeymap = Proto template
                             , v_opts      = def_opts }
      where
 
-     def_opts = VimOpts { tildeop = False }
+     def_opts = VimOpts { tildeop = False
+                        , completeCaseSensitive = True }
 
      -- | Top level consists of simple commands that take a count arg,
      -- the replace cmd, which consumes one char of input, and commands
@@ -1453,7 +1457,7 @@ leaveInsRep = do oneOf [spec KEsc, ctrlCh '[', ctrlCh 'c']
 -- | Insert mode is either insertion actions, or the meta (\ESC) action
 -- TODO repeat
 ins_mode :: ModeMap -> VimMode
-ins_mode self = write (setStatus (["-- INSERT --"], defaultStyle)) >> many (v_ins_char self <|> kwd_mode) >> leaveInsRep >> write (moveXorSol 1)
+ins_mode self = write (setStatus (["-- INSERT --"], defaultStyle)) >> many (v_ins_char self <|> kwd_mode (v_opts self) ) >> leaveInsRep >> write (moveXorSol 1)
 
 -- TODO refactor with beginInsB and beginInsE
 beginIns :: (Show x, YiAction a x) => ModeMap -> a -> I Event Action ()
@@ -1545,10 +1549,13 @@ validMarkIdentifier = fmap f $ oneOfchar "<>^'`" <|> charOf id 'a' 'z' <|> fail 
 
 -- --------------------
 -- | Keyword
-kwd_mode :: VimMode
-kwd_mode = some (ctrlCh 'n' ?>> write viWordComplete) >> deprioritize >> write resetComplete
+kwd_mode :: VimOpts -> VimMode
+kwd_mode opts = some (ctrlCh 'n' ?>> write . viWordComplete $ completeCaseSensitive opts) >> 
+                deprioritize >> 
+                write resetComplete
 -- 'adjustPriority' is there to lift the ambiguity between "continuing" completion
 -- and resetting it (restarting at the 1st completion).
-  where viWordComplete = withBuffer0 . (savingDeleteWordB Backward >>) . savingInsertStringB =<< wordCompleteString
-
+  where viWordComplete caseSensitive = 
+          withBuffer0 . (savingDeleteWordB Backward >>) . 
+          savingInsertStringB =<< wordCompleteString' caseSensitive
 
