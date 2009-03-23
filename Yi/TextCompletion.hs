@@ -5,6 +5,7 @@
 module Yi.TextCompletion (
         -- * Word completion
         wordComplete,
+        wordComplete',
         wordCompleteString,
         wordCompleteString',
         resetComplete,
@@ -66,9 +67,13 @@ wordCompleteString' caseSensitive = do
 wordCompleteString :: EditorM String
 wordCompleteString = wordCompleteString' True
 
+wordComplete' :: Bool -> EditorM ()
+wordComplete' caseSensitive = do 
+  x <- wordCompleteString' caseSensitive
+  withBuffer0 $ flip replaceRegionB x =<< regionOfPartB unitWord Backward
+
 wordComplete :: EditorM ()
-wordComplete = do x <- wordCompleteString
-                  withBuffer0 $ flip replaceRegionB x =<< regionOfPartB unitWord Backward
+wordComplete = wordComplete' True
 
 ----------------------------
 -- Alternative Word Completion

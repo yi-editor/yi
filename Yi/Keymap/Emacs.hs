@@ -7,8 +7,13 @@
 -- emulation. For example, M-x gives access to Yi (Haskell) functions,
 -- with their native names.
 
-module Yi.Keymap.Emacs (keymap) where
+module Yi.Keymap.Emacs (keymap,
+                        mkKeymap,
+                        defKeymap,
+                        ModeMap(..),
+                        EmacsOpts(..)) where
 import Prelude ()
+import Data.Prototype
 import Yi.Core
 import Yi.Dired
 import Yi.File
@@ -16,6 +21,7 @@ import Yi.MiniBuffer
 import Yi.Misc
 import Yi.Rectangle
 import Yi.TextCompletion
+import Yi.Keymap
 import Yi.Keymap.Emacs.KillRing
 import Yi.Keymap.Emacs.Utils
   ( askQuitEditor
@@ -45,11 +51,30 @@ import Data.Char
 import Control.Monad
 import Control.Applicative
 
-keymap :: Keymap
-keymap = selfInsertKeymap Nothing isDigit <|> completionKm <|>
-     do univArg <- readUniversalArg
-        selfInsertKeymap univArg (not . isDigit) <|> emacsKeys univArg
+data ModeMap = ModeMap { e_keymap :: Keymap
+                       , e_opts :: EmacsOpts
+                       }
 
+data EmacsOpts = EmacsOpts { completeCaseSensitive :: Bool }
+
+keymap :: Keymap
+keymap = mkKeymap defKeymap
+
+mkKeymap :: Proto ModeMap -> Keymap
+mkKeymap = e_keymap . extractValue
+
+defKeymap :: Proto ModeMap
+defKeymap = Proto template
+  where
+    template self = ModeMap { e_keymap = emacs_keymap (e_opts self)
+                            , e_opts = def_opts }
+
+    def_opts = EmacsOpts { completeCaseSensitive = False }
+
+    -- emace_keymap :: Keymap
+    emacs_keymap opts = selfInsertKeymap Nothing isDigit <|> completionKm (completeCaseSensitive opts) <|>
+         do univArg <- readUniversalArg
+            selfInsertKeymap univArg (not . isDigit) <|> emacsKeys univArg
 
 selfInsertKeymap :: Maybe Int -> (Char -> Bool) -> Keymap
 selfInsertKeymap univArg condition = do
@@ -58,14 +83,12 @@ selfInsertKeymap univArg condition = do
   let n = argToInt univArg
   write (adjBlock n >> replicateM_ n (insertB c))
 
-
-completionKm :: Keymap
-completionKm = do some ((meta (char '/') ?>>! wordComplete))
-                  deprioritize
-                  write resetComplete
+completionKm :: Bool -> Keymap
+completionKm caseSensitive = do some ((meta (char '/') ?>>! wordComplete' caseSensitive))
+                                deprioritize
+                                write resetComplete
            -- 'adjustPriority' is there to lift the ambiguity between "continuing" completion
            -- and resetting it (restarting at the 1st completion).
-
 
 placeMark :: BufferM ()
 placeMark = do
