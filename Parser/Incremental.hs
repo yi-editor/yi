@@ -132,7 +132,8 @@ countWidth (Zip _ _ r) = countWidth' r
             (Done) -> 1
             (Shift p) -> countWidth' p
             (Sh' p) -> countWidth' p
-            (Dislike _ p) -> countWidth' p
+            (Dislike p) -> countWidth' p
+            (Log _ p) -> countWidth' p
             (Fail) -> 1
             (Sus _ _) -> 1
 
