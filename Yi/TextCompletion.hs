@@ -138,6 +138,7 @@ words' = filter (not . isNothing . charClass . head) . groupBy ((==) `on` charCl
 charClass :: Char -> Maybe Int
 charClass c = findIndex (generalCategory c `elem`)
                 [[UppercaseLetter, LowercaseLetter, TitlecaseLetter, ModifierLetter, OtherLetter, 
+                  ConnectorPunctuation,
                   NonSpacingMark, SpacingCombiningMark, EnclosingMark, DecimalNumber, LetterNumber, OtherNumber],
                  [MathSymbol, CurrencySymbol, ModifierSymbol, OtherSymbol]
                 ]
