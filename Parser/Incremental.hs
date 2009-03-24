@@ -11,7 +11,7 @@
 module Parser.Incremental (Process, 
                           recoverWith, symbol, eof, lookNext, testNext, run,
                           mkProcess, profile, pushSyms, pushEof, evalL, evalR, feedZ,
-                           Parser(Look, Pure), countWidth
+                           Parser(Look, Pure, Enter), countWidth
                           ) where
 
 import Control.Applicative
