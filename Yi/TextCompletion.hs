@@ -8,6 +8,7 @@ module Yi.TextCompletion (
         wordComplete',
         wordCompleteString,
         wordCompleteString',
+        mkWordComplete,
         resetComplete,
         completeWordB,
 ) where
@@ -43,36 +44,40 @@ resetComplete = setDynamic (Completion [])
 
 -- | Try to complete the current word with occurences found elsewhere in the
 -- editor. Further calls try other options. 
-wordCompleteString' :: Bool -> EditorM String
-wordCompleteString' caseSensitive = do
-  Completion complList <- getDynamic
+mkWordComplete :: YiM String -> (String -> YiM [String]) -> ([String] -> YiM () ) -> (String -> String -> Bool) -> YiM String
+mkWordComplete extractFn sourceFn msgFn predMatch = do
+  Completion complList <- withEditor getDynamic
   case complList of
     (x:xs) -> do -- more alternatives, use them.
-       setDynamic (Completion xs)
+       msgFn (x:xs)
+       withEditor $ setDynamic (Completion xs)
        return x
     [] -> do -- no alternatives, build them.
-      w <- withBuffer0 $ do readRegionB =<< regionOfPartB unitWord Backward
-      ws <- wordsForCompletion
-      setDynamic (Completion $ (nubSet $ filter (matches w) ws) ++ [w])
+      w <- extractFn
+      ws <- sourceFn w
+      withEditor $ setDynamic (Completion $ (nubSet $ filter (matches w) ws) ++ [w])
       -- We put 'w' back at the end so we go back to it after seeing
       -- all possibilities. 
-      wordCompleteString -- to pick the 1st possibility.
+      mkWordComplete extractFn sourceFn msgFn predMatch -- to pick the 1st possibility.
 
-  -- where matches x y = x `isPrefixOf` y && x /= y
-  where matches x y = prepare x `isPrefixOf` prepare y &&
-                      x /= y
+  where matches x y = x `predMatch` y && x/=y
 
-        prepare x = if caseSensitive then x else map toLower x
+wordCompleteString' :: Bool -> YiM String
+wordCompleteString' caseSensitive = mkWordComplete 
+                                      (withEditor $ withBuffer0 $ do readRegionB =<< regionOfPartB unitWord Backward) 
+                                      (\_ -> withEditor wordsForCompletion) 
+                                      (\_ -> return ()) 
+                                      (mkIsPrefixOf caseSensitive)
 
-wordCompleteString :: EditorM String
+wordCompleteString :: YiM String
 wordCompleteString = wordCompleteString' True
 
-wordComplete' :: Bool -> EditorM ()
+wordComplete' :: Bool -> YiM ()
 wordComplete' caseSensitive = do 
   x <- wordCompleteString' caseSensitive
-  withBuffer0 $ flip replaceRegionB x =<< regionOfPartB unitWord Backward
+  withEditor $ withBuffer0 $ flip replaceRegionB x =<< regionOfPartB unitWord Backward
 
-wordComplete :: EditorM ()
+wordComplete :: YiM ()
 wordComplete = wordComplete' True
 
 ----------------------------

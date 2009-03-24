@@ -16,8 +16,10 @@ module Yi.Keymap.Vim (keymap,
                       exCmd,
                       exCmds,
                       exSimpleComplete,
-                      exInfixComplete',
-                      exInfixComplete,
+                      exInfixComplete', exInfixComplete,
+                      mkExHistComplete,
+                      exHistComplete', exHistComplete,
+                      exHistInfixComplete', exHistInfixComplete,
                       savingInsertB,
                       savingInsertCharB,
                       savingInsertStringB,
@@ -34,7 +36,7 @@ import Prelude (maybe, length, filter, map, drop, break, uncurry, reads)
 
 import Data.Char
 import Data.List (nub, take, words, dropWhile, takeWhile, intersperse, reverse)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, isJust)
 import Data.Either (either)
 import Data.Prototype
 import Data.Accessor.Template
@@ -63,6 +65,7 @@ import Yi.Regex (seInput, regexEscapeString)
 import Yi.Search
 import Yi.Style
 import Yi.TextCompletion
+import Yi.Completion (containsMatch', mkIsPrefixOf)
 import Yi.Tag 
 import Yi.Window (bufkey)
 import Yi.Hoogle (hoogle, hoogleSearch)
@@ -351,6 +354,28 @@ exInfixComplete' caseSensitive compl s' = do
 
 exInfixComplete :: (String -> YiM [String]) -> String -> YiM ()
 exInfixComplete = exInfixComplete' True
+
+mkExHistComplete :: (String -> String -> Bool) -> (String -> YiM [String]) -> String -> YiM ()
+mkExHistComplete matchFn compl s =
+    mkWordComplete (return s) compl (withEditor . printMsgs . tail) matchFn >>= 
+    (withBuffer . (testDeleteB >> ) . insertN)
+  where 
+    testDeleteB = if null s then return () else deleteWordB
+    deleteWordB = deleteUnitB unitSep Backward
+    deleteUnitB unit dir = deleteRegionB =<< regionOfPartNonEmptyB unit dir
+
+exHistComplete' :: Bool -> (String -> YiM [String]) -> String -> YiM ()
+exHistComplete' caseSensitive = mkExHistComplete (mkIsPrefixOf caseSensitive)
+
+exHistComplete :: (String -> YiM [String]) -> String -> YiM ()
+exHistComplete = exHistComplete' True
+
+exHistInfixComplete' :: Bool -> (String -> YiM [String]) -> String -> YiM ()
+exHistInfixComplete' caseSensitive = mkExHistComplete match 
+  where match x y = isJust $ containsMatch' caseSensitive x y
+
+exHistInfixComplete :: (String -> YiM [String]) -> String -> YiM ()
+exHistInfixComplete = exHistInfixComplete' True
 
 defKeymap :: Proto ModeMap
 defKeymap = Proto template
@@ -1149,21 +1174,20 @@ defKeymap = Proto template
              withEditor closeBufferAndWindowE
              ex_eval (head prompt : lineString)
            ex_process :: VimMode
-           ex_process =
-               choice [spec KEnter ?>>! ex_buffer_finish
-                      ,spec KTab   ?>>! completeMinibuffer
-                      ,spec KEsc   ?>>! closeBufferAndWindowE
-                      ,ctrlCh 'h'  ?>>! actionAndHistoryPrefix $ deleteB Character Backward
-                      ,spec KBS    ?>>! deleteBkdOrClose
-                      ,spec KDel   ?>>! actionAndHistoryPrefix $ deleteB Character Forward
-                      ,ctrlCh 'p'  ?>>! historyUp
-                      ,spec KUp    ?>>! historyUp
-                      ,ctrlCh 'n'  ?>>! historyDown
-                      ,spec KDown  ?>>! historyDown
-                      ,spec KLeft  ?>>! moveXorSol 1
-                      ,spec KRight ?>>! moveXorEol 1
-                      ,ctrlCh 'w'  ?>>! actionAndHistoryPrefix $ deleteB unitWord Backward
-                      ,ctrlCh 'u'  ?>>! moveToSol >> deleteToEol]
+           ex_process = (some (spec KTab ?>>! completeMinibuffer) >> deprioritize >>! resetComplete)
+               <|| choice [spec KEnter ?>>! ex_buffer_finish
+                          ,spec KEsc   ?>>! closeBufferAndWindowE
+                          ,ctrlCh 'h'  ?>>! actionAndHistoryPrefix $ deleteB Character Backward
+                          ,spec KBS    ?>>! deleteBkdOrClose
+                          ,spec KDel   ?>>! actionAndHistoryPrefix $ deleteB Character Forward
+                          ,ctrlCh 'p'  ?>>! historyUp
+                          ,spec KUp    ?>>! historyUp
+                          ,ctrlCh 'n'  ?>>! historyDown
+                          ,spec KDown  ?>>! historyDown
+                          ,spec KLeft  ?>>! moveXorSol 1
+                          ,spec KRight ?>>! moveXorEol 1
+                          ,ctrlCh 'w'  ?>>! actionAndHistoryPrefix $ deleteB unitWord Backward
+                          ,ctrlCh 'u'  ?>>! moveToSol >> deleteToEol]
                   <|| (insertChar >>! setHistoryPrefix)
            actionAndHistoryPrefix act = do
              withBuffer0 $ act
@@ -1628,6 +1652,6 @@ kwd_mode opts = some (ctrlCh 'n' ?>> write . viWordComplete $ completeCaseSensit
 -- 'adjustPriority' is there to lift the ambiguity between "continuing" completion
 -- and resetting it (restarting at the 1st completion).
   where viWordComplete caseSensitive = 
-          withBuffer0 . (savingDeleteWordB Backward >>) . 
+          withEditor . withBuffer0 . (savingDeleteWordB Backward >>) . 
           savingInsertStringB =<< wordCompleteString' caseSensitive
 

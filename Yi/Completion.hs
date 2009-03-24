@@ -6,7 +6,7 @@ module Yi.Completion
   , commonPrefix
   , prefixMatch, infixMatch
   , containsMatch', containsMatch, containsMatchCaseInsensitive
-
+  , mkIsPrefixOf
   )
 where
 
@@ -20,6 +20,11 @@ import Data.Char (toLower)
 -------------------------------------------
 -- General completion
 
+mkIsPrefixOf :: Bool -> String -> String -> Bool
+mkIsPrefixOf caseSensitive = if caseSensitive 
+                             then isPrefixOf
+                             else isPrefixOfIC
+  where isPrefixOfIC x y = map toLower x `isPrefixOf` map toLower y
 
 -- | Prefix matching function, for use with 'completeInList'
 prefixMatch :: String -> String -> Maybe String
@@ -30,11 +35,8 @@ infixMatch :: String -> String -> Maybe String
 infixMatch needle haystack = fmap (\n -> drop n haystack) $ findIndex (needle `isPrefixOf`) (tails haystack)
 
 containsMatch' :: Bool -> String -> String -> Maybe String
-containsMatch' caseSensitive pattern str = fmap (const str) $ find tstPrefix (tails str)
-  where
-    tstPrefix = if caseSensitive 
-                then (pattern `isPrefixOf`) 
-                else (map toLower pattern `isPrefixOf`) . map toLower
+containsMatch' caseSensitive pattern str = fmap (const str) $ find (pattern `tstPrefix`) (tails str)
+  where tstPrefix = mkIsPrefixOf caseSensitive
 
 containsMatch :: String -> String -> Maybe String
 containsMatch = containsMatch' True 
@@ -73,3 +75,4 @@ filterMatches match = nub . catMaybes . fmap match
 isSingleton :: [a] -> Bool
 isSingleton [_] = True
 isSingleton _   = False
+
