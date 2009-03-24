@@ -2,7 +2,7 @@ cabal-make = .
 
 
 interactive:
-	ghci -cpp -XRank2Types -XFlexibleContexts -XGeneralizedNewtypeDeriving -XDeriveDataTypeable -IYi/Lexer -idist/build/autogen -idist/build/yi/yi-tmp HackerMain.hs
+	ghci -cpp -XRank2Types -XFlexibleContexts -XGeneralizedNewtypeDeriving -XDeriveDataTypeable -IYi/Lexer -idist/build/autogen -idist/build/yi/yi-tmp -hide-package mtl HackerMain.hs
 # autogen -> Paths_
 # dist/build/yi/yi-tmp -> preprocessed lexers
 

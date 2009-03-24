@@ -28,8 +28,7 @@ gv = filter f
 hoogleRaw :: String -> String -> IO [String]
 hoogleRaw srch opts = do (out,_err,status) <- runProgCommand "hoogle" [opts, srch]
                          when (status == ExitFailure 1) $
-                             fail "Error running hoogle command.  Is hoogle \
-                                  \on path?"
+                             fail "Error running hoogle command.  Is hoogle on path?"
                          let results = lines out
                          if results == ["No results found"] then fail "No Hoogle results"
                                                             else return results

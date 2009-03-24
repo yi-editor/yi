@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, DeriveDataTypeable, TemplateHaskell, CPP #-}
+{-# LANGUAGE FlexibleContexts, DeriveDataTypeable, TemplateHaskell, CPP, PatternGuards #-}
 
 -- Copyright (c) 2004-5 Don Stewart - http://www.cse.unsw.edu.au/~dons
 -- Copyright (c) 2008 Nicolas Pouillard
@@ -11,6 +11,13 @@ module Yi.Keymap.Vim (keymap,
                       leave,
                       ModeMap(..),
                       VimOpts(..),
+                      VimExCmd(..),
+                      nilCmd,
+                      exCmd,
+                      exCmds,
+                      exSimpleComplete,
+                      exInfixComplete',
+                      exInfixComplete,
                       savingInsertB,
                       savingInsertCharB,
                       savingInsertStringB,
@@ -26,12 +33,13 @@ module Yi.Keymap.Vim (keymap,
 import Prelude (maybe, length, filter, map, drop, break, uncurry, reads)
 
 import Data.Char
-import Data.List (nub, take, words, dropWhile, intersperse, reverse)
+import Data.List (nub, take, words, dropWhile, takeWhile, intersperse, reverse)
 import Data.Maybe (fromMaybe)
 import Data.Either (either)
 import Data.Prototype
 import Data.Accessor.Template
 import Numeric (showHex, showOct)
+import Shim.Utils (splitBy, uncurry3)
 import System.IO (readFile)
 #ifdef mingw32_HOST_OS
 import System.PosixCompat.Files (fileExist)
@@ -130,6 +138,13 @@ data VimOpts = VimOpts { tildeop :: Bool
                        , completeCaseSensitive :: Bool
                        }
 
+data VimExCmd = VimExCmd { cmdNames :: [String]
+                         , cmdFn :: String -> YiM ()
+                         , completeFn :: Maybe (String -> YiM ())
+                         }
+
+type VimExCmdMap = [VimExCmd] -- very simple implementation yet
+
 $(nameDeriveAccessors ''VimOpts $ Just.(++ "A"))
 
 -- | The Vim keymap is divided into several parts, roughly corresponding
@@ -143,6 +158,9 @@ data ModeMap = ModeMap { -- | Top level mode
                        , v_ins_char :: VimMode
 
                        , v_opts :: VimOpts
+
+                       , v_ex_cmds :: VimExCmdMap
+
                        }
 
 $(nameDeriveAccessors ''ModeMap $ Just.(++ "A"))
@@ -300,12 +318,47 @@ mkKeymap = v_top_level . extractValue
 keymap :: VimMode
 keymap = mkKeymap defKeymap
 
+nilCmd :: VimExCmd
+nilCmd = VimExCmd { cmdNames   = []
+                  , cmdFn      = (return . const ())
+                  , completeFn = Nothing}
+
+exCmd :: String -> (String -> YiM ()) -> Maybe (String -> YiM ()) -> VimExCmd
+exCmd names fn cfn = VimExCmd { cmdNames   = splitBy isSpace names
+                              , cmdFn      = fn
+                              , completeFn = cfn }
+
+exCmds :: [(String, String->YiM (), Maybe (String -> YiM ()))] -> VimExCmdMap
+exCmds = map $ uncurry3 exCmd
+
+ignoreExCmd :: String -> String
+ignoreExCmd = dropWhile (isSpace) . dropWhile (not . isSpace)
+
+exSimpleComplete :: (String -> YiM [String]) -> String -> YiM ()
+exSimpleComplete compl s' = simpleComplete compl s >>=
+                            withBuffer . insertN . drop (length s)
+    where s = dropWhile isSpace s'
+
+exInfixComplete' :: Bool -> (String -> YiM [String]) -> String -> YiM ()
+exInfixComplete' caseSensitive compl s' = do 
+    cs <- infixComplete' caseSensitive compl s
+    when (not $ null cs)
+         (withBuffer $ do
+              leftN (length s)
+              deleteToEol 
+              insertN cs)
+   where s = dropWhile isSpace s'
+
+exInfixComplete :: (String -> YiM [String]) -> String -> YiM ()
+exInfixComplete = exInfixComplete' True
+
 defKeymap :: Proto ModeMap
 defKeymap = Proto template
   where 
     template self = ModeMap { v_top_level = def_top_level
                             , v_ins_char  = def_ins_char
-                            , v_opts      = def_opts }
+                            , v_opts      = def_opts
+                            , v_ex_cmds   = [] }
      where
 
      def_opts = VimOpts { tildeop = False
@@ -880,7 +933,6 @@ defKeymap = Proto template
          case txt' of
            '\n':txt -> moveToSol >> insertN txt >> leftN (length txt)
            _        -> insertN txt' >> leftB
-
      switchCaseChar :: Char -> Char
      switchCaseChar c = if isUpper c then toLower c else toUpper c
 
@@ -1083,6 +1135,10 @@ defKeymap = Proto template
 
      -- ---------------------------------------------------------------------
      -- Ex mode. We also process regex searching mode here.
+     --
+     findUserCmd :: String -> Maybe VimExCmd
+     findUserCmd cmdLine = find ((name `elem`) . cmdNames) $ v_ex_cmds self
+       where name = takeWhile (not . isSpace) $ dropWhile isSpace cmdLine
 
      ex_mode :: String -> EditorM ()
      ex_mode prompt = do
@@ -1120,8 +1176,15 @@ defKeymap = Proto template
              ls <- withBuffer0 elemsB
              if null ls then closeBufferAndWindowE
                         else actionAndHistoryPrefix $ deleteB Character Backward
-           completeMinibuffer = withBuffer elemsB >>= ex_complete >>= withBuffer . insertN
-           exSimpleComplete compl s' = let s = dropWhile isSpace s' in drop (length s) <$> simpleComplete compl s
+
+           findUserComplFn s | Just ex_cmd <- findUserCmd s = completeFn ex_cmd
+                             | otherwise                    = Nothing
+
+           completeMinibuffer = do s <- withBuffer elemsB
+                                   case findUserComplFn s of
+                                     Just cmplFn -> cmplFn $ ignoreExCmd s
+                                     Nothing     -> ex_complete s
+
            f_complete = exSimpleComplete (matchingFileNames Nothing)
            b_complete = exSimpleComplete matchingBufferNames
            ex_complete ('e':' ':f)                             = f_complete f
@@ -1144,7 +1207,10 @@ defKeymap = Proto template
            ex_complete ('y':'i':' ':s)                         = exSimpleComplete (const getAllNamesInScope) s
            ex_complete s                                       = catchAllComplete s
 
+           userExCmds = concatMap (map (++ " ") . cmdNames) $ v_ex_cmds self
+
            catchAllComplete = exSimpleComplete $ const $ return $
+                                (userExCmds ++) $
                                 ("hoogle-word" :) $ ("hoogle-search" : )$ ("set ft=" :) $ ("set tags=" :) $ map (++ " ") $ words $
                                 "e edit r read saveas saveas! tabe tabnew tabm b buffer bd bd! bdelete bdelete! " ++
                                 "yi cabal nohlsearch suspend stop undo redo redraw reload tag .! quit quitall " ++
@@ -1185,7 +1251,7 @@ defKeymap = Proto template
 
 
              -- just a normal ex command
-               (_:src) -> fn $ dropSpace src
+               (_:src) -> evalCmd $ dropSpace src
 
              -- can't happen, but deal with it
                [] -> return ()
@@ -1244,6 +1310,11 @@ defKeymap = Proto template
 
            -- the help feature currently try to show available key bindings
            help = withEditor (printMsg . show =<< acceptedInputs)
+
+
+           evalCmd cmdLine = case findUserCmd cmdLine of
+                               Just ex_cmd -> cmdFn ex_cmd $ ignoreExCmd cmdLine
+                               Nothing     -> fn cmdLine
 
            -- fn maps from the text entered on the command line to a YiM () implementing the 
            -- command.

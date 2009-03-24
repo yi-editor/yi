@@ -5,7 +5,7 @@ module Yi.MiniBuffer
  (
   spawnMinibufferE,
   withMinibufferFree, withMinibuffer, withMinibufferGen, withMinibufferFin, 
-  noHint, noPossibilities, simpleComplete, anyModeByName, getAllModeNames,
+  noHint, noPossibilities, mkCompleteFn, simpleComplete, infixComplete, infixComplete', anyModeByName, getAllModeNames,
   matchingBufferNames, anyModeByNameM, anyModeName,
 
   (:::)(..),
@@ -20,7 +20,7 @@ import Data.String (IsString)
 import Yi.Config
 import Yi.Core
 import Yi.History
-import Yi.Completion (commonPrefix, infixMatch, prefixMatch, completeInList)
+import Yi.Completion (commonPrefix, infixMatch, prefixMatch, containsMatch', completeInList, completeInList')
 import Yi.Style (defaultStyle)
 import qualified Yi.Core as Editor
 import Control.Monad.Reader
@@ -47,10 +47,20 @@ withMinibuffer prompt getPossibilities act =
     where giveHint s = catMaybes . fmap (prefixMatch s) <$> getPossibilities s
           completer = simpleComplete getPossibilities
 
-simpleComplete :: (String -> YiM [String]) -> String -> YiM String
-simpleComplete getPossibilities s = do
+mkCompleteFn :: (String -> (String -> Maybe String) -> [String] -> EditorM String) ->
+                (String -> String -> Maybe String) -> (String -> YiM [String]) -> String -> YiM String
+mkCompleteFn completeInListFn match getPossibilities s = do
               possibles <- getPossibilities s
-              withEditor $ completeInList s (prefixMatch s) possibles
+              withEditor $ completeInListFn s (match s) possibles
+
+simpleComplete :: (String -> YiM [String]) -> String -> YiM String
+simpleComplete = mkCompleteFn completeInList prefixMatch
+
+infixComplete' :: Bool -> (String -> YiM [String]) -> String -> YiM String
+infixComplete' caseSensitive = mkCompleteFn completeInList' $ containsMatch' caseSensitive
+
+infixComplete :: (String -> YiM [String]) -> String -> YiM String
+infixComplete = infixComplete' True
 
 noHint :: String -> YiM [String]
 noHint = const $ return []

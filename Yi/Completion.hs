@@ -2,17 +2,20 @@
 
 
 module Yi.Completion 
-  ( completeInList
+  ( completeInList, completeInList'
   , commonPrefix
   , prefixMatch, infixMatch
+  , containsMatch', containsMatch, containsMatchCaseInsensitive
+
   )
 where
 
 import Prelude ()
-import Yi.Prelude hiding (elem)
+import Yi.Prelude hiding (elem, find)
 import Yi.Editor
 import Data.List
 import Data.Maybe
+import Data.Char (toLower)
 
 -------------------------------------------
 -- General completion
@@ -25,6 +28,19 @@ prefixMatch prefix s = if prefix `isPrefixOf` s then Just s else Nothing
 -- | Infix matching function, for use with 'completeInList'
 infixMatch :: String -> String -> Maybe String
 infixMatch needle haystack = fmap (\n -> drop n haystack) $ findIndex (needle `isPrefixOf`) (tails haystack)
+
+containsMatch' :: Bool -> String -> String -> Maybe String
+containsMatch' caseSensitive pattern str = fmap (const str) $ find tstPrefix (tails str)
+  where
+    tstPrefix = if caseSensitive 
+                then (pattern `isPrefixOf`) 
+                else (map toLower pattern `isPrefixOf`) . map toLower
+
+containsMatch :: String -> String -> Maybe String
+containsMatch = containsMatch' True 
+
+containsMatchCaseInsensitive :: String -> String -> Maybe String
+containsMatchCaseInsensitive = containsMatch' False
 
 
 -- | Complete a string given a user input string, a matching function
@@ -39,12 +55,21 @@ completeInList s match l
     | otherwise = printMsgs filtered >> return s
     where
     prefix   = commonPrefix filtered
-    filtered = nub $ catMaybes $ fmap match l
+    -- filtered = nub $ catMaybes $ fmap match l
+    filtered = filterMatches match l
 
-    -- Not really necessary but a bit faster than @(length l) == 1@
-    isSingleton :: [a] -> Bool
-    isSingleton [_] = True
-    isSingleton _   = False
+completeInList' :: String -> (String -> Maybe String) -> [String] -> EditorM String
+completeInList' s match l
+    | null filtered = printMsg "No match" >> return s
+    | isSingleton filtered && s == (head filtered) = printMsg "Sole completion" >> return s
+    | isSingleton filtered                         = return $ head filtered
+    | otherwise = printMsgs filtered >> return s
+    where
+    filtered = filterMatches match l
 
+filterMatches match = nub . catMaybes . fmap match
 
-
+-- Not really necessary but a bit faster than @(length l) == 1@
+isSingleton :: [a] -> Bool
+isSingleton [_] = True
+isSingleton _   = False

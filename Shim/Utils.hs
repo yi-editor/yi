@@ -29,6 +29,7 @@ module Shim.Utils
   , whenM
   , unlessM
   , shorten
+  , uncurry3
   ) where
   
 import System.IO
@@ -182,3 +183,5 @@ shorten n s = if length s > n then take (n-4) s ++ "..." else s
 --  where sep = ','
 --test2 = tester hexDecode hexEncode
   
+uncurry3 :: (a -> b -> c -> d) -> (a, b, c) -> d
+uncurry3 fn (a, b, c) = fn a b c
