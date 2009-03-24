@@ -241,9 +241,9 @@ library
 
 executable parserTest
   if !flag(testing)
-          main-is:        Dummy.hs
+          main-is:        ParserTest/Dummy.hs
   else
-          main-is:        ParserTest.hs
+          main-is:        ParserTest/ParserTest.hs
           other-modules:
                 Yi
                 Yi.Modes
