@@ -195,7 +195,7 @@ emacsKeys univArg =
          -- Other meta key-bindings
          , meta (spec KBS)      ?>>! (repeatingArg bkillWordB)
          , metaCh 'g' ?>> 
-             char 'g'           ?>>! (gotoLn . fromDoc :: Int ::: LineNumber -> BufferM Int)
+             optMod meta (char 'g') >>! (gotoLn . fromDoc :: Int ::: LineNumber -> BufferM Int)
          ]
   where
   withUnivArg :: YiAction (m ()) () => (Maybe Int -> m ()) -> YiM ()
