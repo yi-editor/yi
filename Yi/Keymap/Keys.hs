@@ -10,6 +10,7 @@ module Yi.Keymap.Keys
      printableChar, charOf, shift, meta, ctrl, super, spec, char,
      (>>!), (>>=!), (?>>), (?>>!),
      ctrlCh, metaCh,
+     optMod,
      pString
     ) where
 
@@ -58,6 +59,9 @@ ctrlCh = ctrl . char
 metaCh :: Char -> Event
 metaCh = meta . char
 
+-- | @optMod f ev@ produces a 'MonadInteract' that consumes @ev@ or @f ev@
+optMod ::(MonadInteract m w Event) => (Event -> Event) -> Event -> m Event
+optMod f ev = oneOf [ev, f ev]
 
 -- | Convert a special key into an event
 spec :: Key -> Event

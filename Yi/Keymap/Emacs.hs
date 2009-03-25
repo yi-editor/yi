@@ -218,11 +218,11 @@ emacsKeys univArg =
                               ]
 
   tabFunctions :: Keymap
-  tabFunctions = choice [ oneOf [ char 'n', ctrlCh 'n' ] >>! nextTabE
-                        , oneOf [ char 'p', ctrlCh 'p' ] >>! previousTabE
-                        , oneOf [ char 't', ctrlCh 't' ] >>! newTabE
-                        , oneOf [ char 'e', ctrlCh 'e' ] >>! findFileNewTab
-                        , oneOf [ char 'd', ctrlCh 'd' ] >>! deleteTabE
+  tabFunctions = choice [ optMod ctrl (char 'n') >>! nextTabE
+                        , optMod ctrl (char 'p') >>! previousTabE
+                        , optMod ctrl (char 't') >>! newTabE
+                        , optMod ctrl (char 'e') >>! findFileNewTab
+                        , optMod ctrl (char 'd') >>! deleteTabE
                         , charOf id '0' '9' >>=! moveTab . Just . digitToInt
                         ]
   -- These keybindings are all preceded by a 'C-x' so for example to
@@ -248,6 +248,6 @@ emacsKeys univArg =
                  , char 'r'      ?>> rectangleFuntions
                  , char 'u'      ?>>! (repeatingArg undoB)
                  , char 'v'      ?>>! (repeatingArg shrinkWinE)
-                 , oneOf [char 't', ctrlCh 't'] >> tabFunctions
+                 , optMod ctrl (char 't') >> tabFunctions
                  ]
   
