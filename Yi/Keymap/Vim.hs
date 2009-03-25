@@ -30,7 +30,12 @@ module Yi.Keymap.Vim (keymap,
                       mkKeymap,
                       beginIns,
                       beginInsE,
-                      beginInsB) where
+                      beginInsB,
+                      listTagStack,
+                      pushTagStack,
+                      popTagStack,
+                      peekTagStack
+                      ) where
 
 import Prelude (maybe, length, filter, map, drop, break, uncurry, reads)
 
@@ -44,10 +49,11 @@ import Numeric (showHex, showOct)
 import Shim.Utils (splitBy, uncurry3)
 import System.IO (readFile)
 #ifdef mingw32_HOST_OS
-import System.PosixCompat.Files (fileExist)
+import System.PosixCompat (fileExist, getWorkingDirectory)
 #else
-import System.Posix.Files (fileExist)
+import System.Posix (fileExist, getWorkingDirectory)
 #endif
+import System.FilePath (FilePath)
 
 import Control.Monad.State hiding (mapM_, mapM, sequence)
 import Control.Arrow hiding (left, right)
@@ -139,6 +145,7 @@ $(nameDeriveAccessors ''ViInsertion $ Just.(++ "A"))
 
 data VimOpts = VimOpts { tildeop :: Bool
                        , completeCaseSensitive :: Bool
+                       , enableTagStack :: Bool
                        }
 
 data VimExCmd = VimExCmd { cmdNames :: [String]
@@ -147,6 +154,38 @@ data VimExCmd = VimExCmd { cmdNames :: [String]
                          }
 
 type VimExCmdMap = [VimExCmd] -- very simple implementation yet
+
+newtype VimTagStack = VimTagStack { tagsStack :: [(FilePath, Point)] }
+    deriving (Typeable)
+
+instance Initializable VimTagStack where
+    initial = VimTagStack []
+
+getTagStack :: EditorM VimTagStack
+getTagStack = getDynamic
+
+setTagStack :: VimTagStack -> EditorM ()
+setTagStack = setDynamic
+
+listTagStack :: EditorM [(FilePath, Point)]
+listTagStack = return . tagsStack =<< getTagStack
+
+pushTagStack :: FilePath -> Point -> EditorM ()
+pushTagStack fp p = do VimTagStack ts <- getTagStack
+                       setTagStack $ VimTagStack $ (fp, p):ts
+
+peekTagStack :: EditorM (Maybe (FilePath, Point))
+peekTagStack = do VimTagStack ts <- getTagStack
+                  case ts of
+                    []    -> return Nothing
+                    (p:_) -> return $ Just p
+
+popTagStack :: EditorM (Maybe (FilePath, Point))
+popTagStack = do VimTagStack ts <- getTagStack
+                 case ts of
+                   []     -> return Nothing
+                   (p:ps) -> do setTagStack $ VimTagStack ps
+                                return $ Just p
 
 $(nameDeriveAccessors ''VimOpts $ Just.(++ "A"))
 
@@ -387,7 +426,8 @@ defKeymap = Proto template
      where
 
      def_opts = VimOpts { tildeop = False
-                        , completeCaseSensitive = True }
+                        , completeCaseSensitive = True
+                        , enableTagStack = True }
 
      -- | Top level consists of simple commands that take a count arg,
      -- the replace cmd, which consumes one char of input, and commands
@@ -626,9 +666,24 @@ defKeymap = Proto template
          case lookupTag tag tagTable of
            Nothing -> fail $ "No tags containing " ++ tag
            Just (filename, line) -> do
+             when (enableTagStack $ v_opts self)
+                  viTagStackPushPos
              viFnewE filename
              withBuffer' $ gotoLn line
              return ()
+
+     viTagStackPushPos :: YiM ()
+     viTagStackPushPos = withEditor $ do bn <- withBuffer0 $ gets identString
+                                         p  <- withBuffer0 pointB
+                                         pushTagStack bn p
+
+     gotoPrevTagMark :: YiM ()
+     gotoPrevTagMark = do
+       lastP <- withEditor $ popTagStack
+       case lastP of
+         Nothing      -> withEditor $ fail "bottom of tag stack"
+         Just (fp, p) -> do viFnewE fp
+                            withBuffer' $ moveTo p
 
      -- | Call continuation @act@ with the TagTable. Uses the global table
      -- and prompts the user if it doesn't exist
@@ -694,6 +749,7 @@ defKeymap = Proto template
      visOrCmdFM =
          [([ctrlCh 'l'],      userForceRefresh)
          ,([ctrlCh 'z'],      suspendEditor)
+         ,([ctrlCh 't'],      gotoPrevTagMark)
          ,([ctrlCh ']'],      gotoTagCurrentWord)
          ] ++
          map (second withEditor)
@@ -1237,7 +1293,7 @@ defKeymap = Proto template
                                 (userExCmds ++) $
                                 ("hoogle-word" :) $ ("hoogle-search" : )$ ("set ft=" :) $ ("set tags=" :) $ map (++ " ") $ words $
                                 "e edit r read saveas saveas! tabe tabnew tabm b buffer bd bd! bdelete bdelete! " ++
-                                "yi cabal nohlsearch suspend stop undo redo redraw reload tag .! quit quitall " ++
+                                "yi cabal nohlsearch pwd suspend stop undo redo redraw reload tag .! quit quitall " ++
                                 "qall quit! quitall! qall! write wq wqall ascii xit exit next prev" ++
                                 "$ split new ball h help"
            cabalComplete = exSimpleComplete $ const $ return cabalCmds
@@ -1435,6 +1491,8 @@ defKeymap = Proto template
            fn "undo"       = withBuffer' undoB
            fn "red"        = withBuffer' redoB
            fn "redo"       = withBuffer' redoB
+
+           fn "pwd"        = (io $ getWorkingDirectory) >>= withEditor . printMsg
 
            fn "sus"        = suspendEditor
            fn "suspend"    = suspendEditor
