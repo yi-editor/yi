@@ -72,6 +72,17 @@ $nl        = [\n\r]
   | volatile
   | while
 
+@cppid =
+    "#define"
+  | "#defined"
+  | "#if"
+  | "#ifdef"
+  | "#ifndef"
+  | "#elif"
+  | "#else"
+  | "#endif"
+  | "#include"
+
 -- From this list, but only the C ones: http://en.wikipedia.org/wiki/Operators_in_C_and_C%2B%2B
 @reservedop = 
   "+"  | "++"  | "+=" | "-"   | "--" | "-=" | "*"      | "*=" | "/"  | "/=" | "%"  | "%=" |
@@ -120,6 +131,7 @@ haskell :-
  $special                                       { c defaultStyle }
 
  @reservedid                                    { c keywordStyle }
+ @cppid                                         { c preprocessorStyle }
  @varid                                         { c defaultStyle }
  @conid                                         { c typeStyle }
 
