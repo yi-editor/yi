@@ -5,6 +5,7 @@ module Yi.Regex
    SearchOption(..), makeSearchOptsM,
    SearchExp(..), searchString, searchRegex, emptySearch,
    emptyRegex,
+   regexEscapeString,
    module Text.Regex.TDFA,
    )
 where
@@ -58,9 +59,16 @@ mapLeft :: (t1 -> a) -> Either t1 t -> Either a t
 mapLeft _ (Right a) = Right a
 mapLeft f (Left a) = Left (f a)
 
+-- | Return an escaped (for parseRegex use) version of the string.
+regexEscapeString :: String -> String
+regexEscapeString source = showPattern . literalPattern' $ source
+
 -- | Return a pattern that matches its argument.
 literalPattern :: (Num t) => String -> (Pattern, (t, DoPa))
-literalPattern source = (PConcat $ map (PChar (DoPa 0)) $ source, (0,DoPa 0))
+literalPattern source = (literalPattern' source, (0,DoPa 0))
+
+literalPattern' :: String -> Pattern
+literalPattern' = PConcat . map (PChar (DoPa 0))
 
 -- | Reverse a pattern. Note that the submatches will be reversed as well.
 reversePattern :: (Pattern, (t, DoPa)) -> (Pattern, (t, DoPa))

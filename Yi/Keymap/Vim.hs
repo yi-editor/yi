@@ -51,7 +51,7 @@ import Yi.History
 import Yi.Misc (matchingFileNames,adjBlock,adjIndent,cabalRun)
 import Yi.String (dropSpace,lines')
 import Yi.MiniBuffer
-import Yi.Regex (seInput)
+import Yi.Regex (seInput, regexEscapeString)
 import Yi.Search
 import Yi.Style
 import Yi.TextCompletion
@@ -535,11 +535,12 @@ defKeymap = Proto template
           ,char '.' ?>>! applyViCmd cnt =<< getA lastViCommandA]
 
 
-     -- TODO: add word bounds: search for \<word\>
      searchCurrentWord :: Direction -> EditorM ()
      searchCurrentWord dir = do
        w <- withBuffer0' $ readRegionB =<< regionOfNonEmptyB unitViWord
-       viSearch w [QuoteRegex] dir
+       viSearch (boundedPattern  w) [] dir
+       where
+         boundedPattern x = "\\<" ++ (regexEscapeString x) ++ "\\>"
 
      gotoTag :: Tag -> YiM ()
      gotoTag tag =
