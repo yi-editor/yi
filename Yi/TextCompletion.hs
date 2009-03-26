@@ -16,7 +16,7 @@ module Yi.TextCompletion (
 import Prelude ()
 import Yi.Completion
 import Data.Char
-import Data.List (map, filter, drop, isPrefixOf, reverse, findIndex, length, groupBy)
+import Data.List (filter, drop, isPrefixOf, reverse, findIndex, length, groupBy)
 import Data.Maybe
 
 import Yi.Core
