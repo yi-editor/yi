@@ -241,7 +241,7 @@ library
 
 executable parserTest
   if !flag(testing)
-          main-is:        ParserTest/Dummy.hs
+          main-is:        Dummy.hs
   else
           main-is:        ParserTest/ParserTest.hs
           other-modules:
