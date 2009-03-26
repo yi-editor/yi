@@ -67,6 +67,7 @@ data TextUnit = Character -- ^ a single character
 -- @outsideUnit unitViWord@ will be the unit of spaces between words. For units
 -- without boundaries ('Character', 'Document', ...), this is the identity
 -- function.
+outsideUnit :: TextUnit -> TextUnit
 outsideUnit (GenUnit enclosing boundary) = GenUnit enclosing (boundary . reverseDir)
 outsideUnit x = x -- for a lack of better definition
 

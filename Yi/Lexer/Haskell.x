@@ -11,7 +11,7 @@
 module Yi.Lexer.Haskell ( initState, alexScanToken, tokenToStyle, 
                           tokenToText,
                           TT, isErrorTok, isSpecial,
-                          startsLayout, isComment, Token(..), CommentType(..), ReservedType(..), OpType(..) ) where
+                          startsLayout, isComment, Token(..), HlState, CommentType(..), ReservedType(..), OpType(..) ) where
 import Yi.Lexer.Alex
 import Yi.Style
 }

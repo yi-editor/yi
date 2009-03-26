@@ -125,7 +125,7 @@ instance Show (Steps s r) where
 countWidth :: Zip s r -> Int
 countWidth (Zip _ _ r) = countWidth' r
   where countWidth' :: (Steps s r) -> Int
-        countWidth' r = case r of
+        countWidth' r' = case r' of
             (Best _ _ p q) ->  countWidth' p + countWidth' q
             (Val _ _ p) -> countWidth' p
             (App p) -> countWidth' p

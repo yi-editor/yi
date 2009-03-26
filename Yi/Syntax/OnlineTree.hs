@@ -3,26 +3,25 @@ module Yi.Syntax.OnlineTree (Tree(..), manyToks,
                              tokAtOrBefore, dropToBut',
                              manyT, sepByT, MaybeOneMore(..), TreeAtPos) where
 import Prelude ()
-import Yi.Prelude -- hiding (trace)
--- import Debug.Trace
-import Yi.IncrementalParse
+
 import Control.Applicative
 import Data.Traversable
 import Data.Foldable
-import Data.List (takeWhile, iterate)
+import Data.List hiding (mapAccumL, concat)
 import Data.Maybe (maybeToList)
-import Yi.Lexer.Alex
-import Yi.Region
-import Yi.Syntax.Tree
 import Data.Monoid
 
 #ifdef TESTING
+import System.Random
 import Test.QuickCheck 
 import Parser.Incremental
 #endif
 
-import Data.List (isSuffixOf, dropWhile, length, drop, take, zipWith, zip, zip3, scanl)
 import Yi.Buffer.Basic
+import Yi.Prelude 
+import Yi.IncrementalParse
+import Yi.Lexer.Alex
+import Yi.Syntax.Tree
 
 #ifdef TESTING
 instance Arbitrary Point where
@@ -65,7 +64,7 @@ instance Traversable Tree where
 
 
 instance Foldable Tree where 
-    foldMap f Tip = mempty
+    foldMap _ Tip = mempty
     foldMap f (Leaf a) = f a
     foldMap f (Bin l r) = foldMap f l <> foldMap f r
     -- foldMap = foldMapDefault
@@ -88,6 +87,7 @@ symbolBefore p x = tokBegin x <= p
 symbolAt :: Point -> (Tok t) -> Bool
 symbolAt p x = tokBegin x == p
 
+manyToks :: P (Tok t) (TreeAtPos (Tok t))
 manyToks = manyToks' tokBegin
 
 -- TODO: scrap in favour of the below.
@@ -113,7 +113,6 @@ manyToks' tokBegin = curPos >>= \p -> TreeAtPos p <$> topLvl p initialSize
             where tB Nothing = maxBound
                   tB (Just x) = tokBegin x
 
-
 manyT' :: (a -> Point) -> P a b -> P a (TreeAtPos b)
 manyT' tokBegin element = curPos >>= \p -> TreeAtPos p <$> topLvl p initialSize
     where 
@@ -135,9 +134,6 @@ manyT' tokBegin element = curPos >>= \p -> TreeAtPos p <$> topLvl p initialSize
         curPos = tB <$> lookNext
             where tB Nothing = maxBound
                   tB (Just x) = tokBegin x
-
-
-
 
 curPos :: P (Tok t) Point
 curPos = tB <$> lookNext
@@ -219,25 +215,30 @@ selectTo toTheLeft f index (TreeAtPos point0 input) = -- trace ("selectTo: start
 
 
 #ifdef TESTING
+both :: (a -> b) -> (a, a) -> (b, b)
 both f (x,y) = (f x, f y)
 
 -- | Generate a list of @n@ non-overlapping things
+anyList :: (Num t, Num a, Random a) => t -> Gen [(a, a)]
 anyList 0 = return [(0,1)]
 anyList n = do h <-choose (1,100)
                t <- anyList (n-1)
                return $ (0,h) : fmap (both (+(h+1))) t
     
+shrinkList :: [a] -> [[a]]
 shrinkList l = concat [[drop (n+1) l, take n l] | n <- shrinkIntegral n]
     where n = length l
 
+prop_dropTo :: Property
 prop_dropTo = 
        forAll (choose (1::Int,100)) $ \n -> 
        forAllShrink (anyList n) shrinkList $ \l0 ->not (null l0) ==>
               let m = snd $ last l0; l = fmap (both Point) l0 in
                   forAllShrink (choose (0,m)) shrinkIntegral $ \i0 ->let i = Point i0 in
                                                      
-                  dropWhile ((< i) . fst) l == dropTo box i (toTree 0 fst l)
+                  dropWhile ((< i) . fst) l == dropTo (:[]) i (toTree 0 fst l)
 
+prop_dropToBut :: Property
 prop_dropToBut = 
        forAll (choose (1::Int,100)) $ \n -> 
        forAllShrink (anyList n) shrinkList $ \l0 ->not (null l0) ==>
@@ -247,6 +248,7 @@ prop_dropToBut =
                   dropWhile ((<= i) . snd) l `isSuffixOf` dropToBut i (toTree 0 fst l)
 
 
+prop_parse :: Property
 prop_parse = 
        forAll (choose (1::Int,100)) $ \n -> 
        forAllShrink (anyList n) shrinkList $ \l0 ->not (null l0) ==>
@@ -257,14 +259,16 @@ prop_parse =
 
 
 
+qc :: IO ()
 qc = quickCheck prop_parse
 
-box x = [x]
-
-
+t1 :: (Num b) => TreeAtPos (Point, b)
 t1 = toTree 0 fst $ [(408,420),(421,499)] ++ undefined
-t2 = dropTo box 440 t1
 
+t2 :: (Num b) => [(Point, b)]
+t2 = dropTo (:[]) 440 t1
+
+t3 :: [Point]
 t3 = dropToBut 5 $ fst $ run (mkProcess $ manyT' id (symbol $ const True) <* eof) $ [1..10]
 
 #endif

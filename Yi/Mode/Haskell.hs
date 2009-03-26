@@ -106,8 +106,10 @@ preciseMode = haskellAbstract
  }
 
 
+haskellLexer :: Scanner Point Char -> Scanner (Alex.AlexState Haskell.HlState) (Tok Token) 
 haskellLexer = Alex.lexScanner Haskell.alexScanToken Haskell.initState 
 
+literateHaskellLexer :: Scanner Point Char -> Scanner (Alex.AlexState LiterateHaskell.HlState) (Tok Token)
 literateHaskellLexer = Alex.lexScanner LiterateHaskell.alexScanToken LiterateHaskell.initState
 
 adjustBlock :: Expr (Tok Token) -> Int -> BufferM ()
@@ -180,6 +182,7 @@ cleverAutoIndentHaskellB e behaviour = do
               Nothing -> openCol + nominalIndent openChar -- no such token: indent normally.
               Just t -> posnCol . tokPosn $ t -- indent along that other token
           | otherwise = openCol
+      groupIndent (Tok _ _ _) _ = error "unable to indent code"
   case getLastPath e solPnt of
     Nothing -> return ()
     Just path -> let stops = stopsOf path

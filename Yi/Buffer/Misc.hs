@@ -154,10 +154,10 @@ import Yi.Buffer.Basic
 import Data.Time
 
 #ifdef TESTING
-import Test.QuickCheck
-import Driver ()
-
 -- TODO: make this compile.
+
+-- import Test.QuickCheck
+-- import Driver ()
 
 -- instance Arbitrary FBuffer where
 --     arbitrary = do b0 <- return (newB 0 "*buffername*") `ap` (LazyUTF8.fromString `fmap` arbitrary)

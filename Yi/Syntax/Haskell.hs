@@ -2,19 +2,19 @@
 
 module Yi.Syntax.Haskell where
 
+import Prelude ()
+import Data.Maybe
+import Data.List (filter, takeWhile)
+
 import Yi.IncrementalParse
 import Yi.Lexer.Alex
 import Yi.Lexer.Haskell
-import Yi.Style (hintStyle, errorStyle, commentStyle, StyleName)
+import Yi.Style (hintStyle, errorStyle, commentStyle)
 import Yi.Syntax.Layout
 import Yi.Syntax.Tree
 import Yi.Syntax.Paren (modStroke, tokenToStroke)
 import Yi.Syntax
 import Yi.Prelude
-import Prelude ()
-import Data.Monoid
-import Data.Maybe
-import Data.List (filter, takeWhile)
 
 indentScanner :: Scanner (AlexState lexState) (TT)
               -> Scanner (Yi.Syntax.Layout.State Token lexState) (TT)
@@ -26,6 +26,7 @@ indentScanner = layoutHandler startsLayout [(Special '(', Special ')'),
 -- HACK: We insert the Special '<', '>', '.', that don't occur in normal haskell
 -- parsing. 
 
+isBrace :: TT -> Bool
 isBrace (Tok b _ _) = (Special '{') == b
 
 ignoredToken :: TT -> Bool

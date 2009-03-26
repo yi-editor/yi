@@ -2,11 +2,9 @@
 module Yi.Mode.Compilation where
 
 import Prelude ()
-import Yi.Buffer.Misc (modeNeverApplies)
 import Yi.Core
 import Yi.Lexer.Alex (Tok(..), Posn(..))
 import Yi.Style
-import Yi.Syntax
 import Yi.Dired
 import Yi.Modes (linearSyntaxMode)
 import qualified Yi.Lexer.Alex as Alex
