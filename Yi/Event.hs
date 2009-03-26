@@ -10,7 +10,8 @@ module Yi.Event
 import Data.Bits
 import Data.Char (chr,ord)
 import Data.Monoid
-import Yi.Debug
+import Yi.Prelude
+import Prelude ()
 
 data Modifier = MShift | MCtrl | MMeta | MSuper
                 deriving (Show,Eq,Ord)
@@ -34,7 +35,7 @@ prettyEvent (Event k mods) =
   where prettyKey (KFun i) = 'F' : show i
         prettyKey (KASCII c) = [c]
         prettyKey key = tail $ show key
-        prettyModifier m = [show m !! 1]
+        prettyModifier m = [head $ show m]
       
 
 
@@ -49,7 +50,7 @@ eventToChar (Event (KASCII c) mods) = (if MMeta `elem` mods then setMeta else id
                                       (if MCtrl `elem` mods then ctrlLowcase else id) $
                                       c
 
-eventToChar ev = '?'
+eventToChar _ev = '?'
 
 
 

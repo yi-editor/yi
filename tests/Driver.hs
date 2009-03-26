@@ -9,9 +9,8 @@ import Test.QuickCheck hiding (promote)
 import System.IO
 import System.Random hiding (next)
 import Text.Printf
-import Data.List            (nub,sort,group,intersperse)
+import Data.List            (sort,group,intersperse)
 import qualified Data.List as L
-import Control.Exception (evaluate)
 
 -- Following code shamelessly stolen from XMonad.
 main :: (Read t, Num t, PrintfArg t1, Num b, PrintfArg b) =>

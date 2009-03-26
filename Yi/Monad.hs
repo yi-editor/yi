@@ -18,7 +18,6 @@ import Data.IORef
 import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Trans
-import Control.Applicative
 import Control.Concurrent.MVar
 
 -- | Combination of the Control.Monad.State 'modify' and 'gets'

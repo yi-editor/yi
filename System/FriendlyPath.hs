@@ -9,6 +9,7 @@ import Data.List
 -- Note that we cannot use canonicalizePath because if used on a non existing directory
 -- then the file part will be dropped (arguably this is a bug in canonicalizePath)
 -- eg. @x/y@ can become @x@, and we do not want that.
+canonicalizePathFix :: FilePath -> IO FilePath
 canonicalizePathFix f = do
     de <- doesDirectoryExist (takeDirectory f)
     if de then canonicalizePath f else makeAbsolute f
@@ -22,6 +23,7 @@ canonicalizePathFix f = do
 -- canonicalizePath follows symlinks, and does not work if the directory does not exist.
 
 -- | Make a path absolute.
+makeAbsolute :: FilePath -> IO FilePath
 makeAbsolute f
     | isAbsolute' f = return f
     | otherwise = fmap (</> f) getCurrentDirectory 

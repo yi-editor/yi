@@ -370,7 +370,6 @@ diredMarkDel = diredMarkWithChar 'D' lineDown
 
 diredMarkWithChar :: Char -> BufferM () -> BufferM ()
 diredMarkWithChar c mv = do
-    p <- pointB
     moveToSol >> insertN [c] >> deleteN 1
     filenameColOf mv
 
