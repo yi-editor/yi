@@ -24,15 +24,12 @@
 
 {-# OPTIONS -w  #-}
 
-module Yi.Lexer.JavaScript ( initState,
-                             alexScanToken,
+module Yi.Lexer.JavaScript ( initState, alexScanToken,
                              tokenToStyle,
-                             isSpecial,
-                             TT,
-                             Token(..),
-                             Reserved(..),
-                             Operator(..) ) where
+                             Failable(..), Strokable(..),
+                             TT, Token(..), Reserved(..), Operator(..) ) where
 
+import Data.Monoid (Endo(..))
 import Yi.Lexer.Alex
 import Yi.Style
 
@@ -53,7 +50,7 @@ $whitechar  = [\ \t\n\r\f\v]
 
 $large     = [A-Z \xc0-\xd6 \xd8-\xde]
 $small     = [a-z \xdf-\xf6 \xf8-\xff]
-$special   = [\(\)\,\;\[\]\`\{\}\.\:]
+$special   = [\(\)\,\;\[\]\{\}\.\:]
 
 $ascdigit  = 0-9
 $unidigit  = [] -- TODO
@@ -97,7 +94,7 @@ $special               { cs $ (Special . head) } -- All of the special symbols a
 "//".*                 { c  $ Comment Line }
 "/*"                   { m (subtract 1) $ Comment Start }
 
-.                      { cs $ Unknown }
+.                      { c  $ Unknown }
 
 }
 
@@ -146,7 +143,7 @@ data Operator = Add' | Subtract' | Multiply' | Divide' | Modulo' | Increment'
 type HlState = Int
 
 -- | The different tokens.
-data Token = Unknown !String
+data Token = Unknown
            | Res !Reserved
            | Str !String
            | Op !Operator
@@ -157,15 +154,18 @@ data Token = Unknown !String
            | Const !String
              deriving (Show, Eq)
 
+instance Failable Token where
+    hasFailed Unknown = True
+    hasFailed _       = False
+
+instance Failable TT where
+    hasFailed t = hasFailed (tokT t)
+
 stateToInit x | x < 0     = multicomm
               | otherwise = 0
 
 initState :: HlState
 initState = 0
-
-isSpecial :: Token -> Bool
-isSpecial (Special _) = True
-isSpecial _           = False
 
 -- | Takes a 'Token' and returns a style to be used for that type of token.
 tokenToStyle (Comment Line) = commentStyle
@@ -176,8 +176,8 @@ tokenToStyle (Op _)         = defaultStyle
 tokenToStyle (Res _)        = keywordStyle
 tokenToStyle (Special _)    = defaultStyle
 tokenToStyle (Str _)        = stringStyle
-tokenToStyle (Unknown _)    = errorStyle
-tokenToStyle (ValidName _)   = defaultStyle
+tokenToStyle Unknown        = errorStyle
+tokenToStyle (ValidName _)  = defaultStyle
 
 -- | Given a @String@ representing an operator, returns an 'Operator' with the
 --   appropriate constructor.
@@ -246,6 +246,17 @@ resToRes "true"       = True'
 resToRes "false"      = False'
 resToRes "null"       = Null'
 resToRes "undefined"  = Undefined'
+
+-- | Minimal definition: hasFailed or hasPassed.
+class Failable a where
+    hasFailed :: a -> Bool
+    hasPassed :: a -> Bool
+    hasFailed = not . hasPassed
+    hasPassed = not . hasFailed
+
+-- | Instances of @Strokable@ are datatypes which can be syntax highlighted.
+class Strokable a where
+    toStrokes :: a -> Endo [Stroke]
 
 #include "alex.hsinc"
 }
