@@ -12,11 +12,10 @@ import Data.Accessor.Basic (fromSetGet)
 import Data.Accessor.Template
 import Data.Binary
 import Data.Either (rights)
-import Data.Foldable (concatMap)
 import Data.List (nub, delete, (\\), intercalate)
 import Data.Maybe
 import Data.Typeable
-import Prelude (map, filter, (!!), takeWhile, length, reverse)
+import Prelude (map, filter, (!!), length, reverse)
 import System.FilePath (splitPath)
 import Yi.Buffer
 import Yi.Config
@@ -51,7 +50,7 @@ data Editor = Editor {
        ,statusLines   :: !Statuses
        ,maxStatusHeight :: !Int
        ,killring      :: !Killring
-       ,regex         :: !(Maybe SearchExp) -- ^ most recent regex
+       ,currentRegex         :: !(Maybe SearchExp) -- ^ currently highlighted regex (also most recent regex for use in vim bindings)
        ,searchDirection :: !Direction
        ,pendingEvents :: ![Event]                   -- ^ Processed events that didn't yield any action yet.
     }
@@ -104,7 +103,7 @@ emptyEditor = Editor {
        ,tabs_        = PL.singleton (PL.singleton win)
        ,bufferStack  = [bkey buf]
        ,refSupply    = 2
-       ,regex        = Nothing
+       ,currentRegex = Nothing
        ,searchDirection = Forward
        ,dynamic      = M.empty
        ,statusLines  = DelayList.insert (maxBound, ([""], defaultStyle)) []
@@ -130,6 +129,7 @@ windows editor = PL.focus $ tabs_ editor
 windowsA :: Accessor Editor (PL.PointedList Window)
 windowsA =  PL.focusA . tabsA
 
+tabsA :: Accessor Editor (PL.PointedList (PL.PointedList Window))
 tabsA = tabs_A . fixCurrentBufferA_
 
 dynA :: Initializable a => Accessor Editor a

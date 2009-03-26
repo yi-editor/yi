@@ -69,6 +69,7 @@ completeInList' s match l
     where
     filtered = filterMatches match l
 
+filterMatches :: Eq a => (b -> Maybe a) -> [b] -> [a]
 filterMatches match = nub . catMaybes . fmap match
 
 -- Not really necessary but a bit faster than @(length l) == 1@

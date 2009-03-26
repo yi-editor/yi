@@ -69,15 +69,15 @@ import Yi.History
 
 -- | Put regex into regex 'register'
 setRegexE :: SearchExp -> EditorM ()
-setRegexE re = putA regexA (Just re)
+setRegexE re = putA currentRegexA (Just re)
 
 -- | Clear the regex 'register'
 resetRegexE :: EditorM ()
-resetRegexE = putA regexA Nothing
+resetRegexE = putA currentRegexA Nothing
 
 -- | Return contents of regex register
 getRegexE :: EditorM (Maybe SearchExp)
-getRegexE = getA regexA
+getRegexE = getA currentRegexA
 
 
 -- ---------------------------------------------------------------------
@@ -368,7 +368,7 @@ qrReplaceAll win b what replacement = do
 -- |  Exit from query/replace.
 qrFinish :: EditorM ()
 qrFinish = do
-  putA regexA Nothing
+  putA currentRegexA Nothing
   closeBufferAndWindowE  -- the minibuffer.
   
 {-

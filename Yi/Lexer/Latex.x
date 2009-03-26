@@ -9,7 +9,7 @@
 
 {
 {-# OPTIONS -w  #-}
-module Yi.Lexer.Latex ( initState, alexScanToken, Token(..) ) where
+module Yi.Lexer.Latex ( initState, alexScanToken, Token(..), HlState ) where
 import Yi.Lexer.Alex
 import Yi.Style
 }

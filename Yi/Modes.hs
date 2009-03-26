@@ -15,7 +15,7 @@ import System.FilePath
 import Text.Regex.TDFA ((=~))
 
 import Yi.Buffer
-import Yi.Lexer.Alex (Tok(..), Posn(..), tokToSpan)
+import Yi.Lexer.Alex (Tok(..), tokToSpan)
 import Yi.Prelude
 import Yi.Style
 import Yi.Syntax
@@ -37,8 +37,12 @@ import qualified Yi.Lexer.SVNCommit  as SVNCommit
 import Yi.Syntax.OnlineTree as OnlineTree
 import qualified Yi.IncrementalParse as IncrParser
 
+type TokenBasedMode tok = Mode (TreeAtPos (Tok tok))
+type StyleBasedMode = TokenBasedMode StyleName
+
 fundamentalMode :: Mode syntax
--- cMode, objectiveCMode, cppMode, cabalMode, srmcMode, ocamlMode, ottMode, gnuMakeMode, perlMode, pythonMode :: Mode (OnlineTree.Tree Stroke)
+svnCommitMode, cMode, objectiveCMode, cppMode, cabalMode, srmcMode, ottMode, gnuMakeMode, perlMode, pythonMode :: StyleBasedMode
+ocamlMode :: TokenBasedMode (OCaml.Token)
 
 fundamentalMode = emptyMode
   { 

@@ -29,7 +29,7 @@ import Control.Monad.State (gets, modify, runState, State)
 import Data.Prototype
 import Data.Foldable
 import Data.IORef
-import Data.List (nub, findIndex, zip, drop, partition, repeat)
+import Data.List (nub, findIndex, zip, drop, repeat)
 import qualified Data.List.PointedList.Circular as PL
 import Data.Maybe
 import Data.Traversable
@@ -89,6 +89,7 @@ mkFontDesc cfg = do
     Nothing -> return ()
   return f
 
+askBuffer :: Window -> FBuffer -> BufferM a -> a
 askBuffer w b f = fst $ runBuffer w b f
 
 -- | Initialise the ui
@@ -466,7 +467,7 @@ render e ui b w _ev = do
   logPutStrLn $ "updated: " ++ show r''
 
   -- add color attributes.
-  let picture = askBuffer win b $ attributesPictureAndSelB sty (regex e) r''
+  let picture = askBuffer win b $ attributesPictureAndSelB sty (currentRegex e) r''
       sty = extractValue $ configTheme (uiConfig ui)
       strokes = [(start,s,end) | ((start, s), end) <- zip picture (drop 1 (map fst picture) ++ [regionEnd r'']),
                   s /= emptyAttributes]

@@ -2,7 +2,7 @@
 --  Simple lexer for c
 
 {
-
+{-# OPTIONS -w  #-} -- Alex generate warnings-ridden code.
 module Yi.Lexer.C ( initState, alexScanToken ) where
 
 {- Standard Library Modules Imported -}
@@ -157,6 +157,7 @@ haskell :-
 type HlState = Int
 type Token = StyleName
 
+stateToInit :: HlState -> Int
 stateToInit x | x < 0     = nestcomm
               | otherwise = 0
 

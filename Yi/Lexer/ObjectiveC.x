@@ -2,7 +2,7 @@
 --  Simple lexer for objective-c
 
 {
-
+{-# OPTIONS -w  #-} -- Alex generate warnings-ridden code.
 module Yi.Lexer.ObjectiveC ( initState, alexScanToken ) where
 
 {- Standard Library Modules Imported -}

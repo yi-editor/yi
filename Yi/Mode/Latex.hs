@@ -11,7 +11,7 @@ import qualified Yi.Lexer.Alex as Alex
 import qualified Yi.Syntax.Latex as Latex
 import Yi.Syntax.OnlineTree as OnlineTree
 import qualified Yi.Lexer.Latex               as Latex
-import Yi.Modes (anyExtension, linearSyntaxMode, fundamentalMode)
+import Yi.Modes (anyExtension, fundamentalMode)
 
 
 abstract :: forall syntax. Mode syntax
@@ -40,5 +40,6 @@ latexMode2 = abstract
     modeGetStrokes = \t point begin end -> Latex.getStrokes point begin end t
   }
 
+latexLexer :: Scanner Point Char -> Scanner (Alex.AlexState Latex.HlState) (Alex.Tok Latex.Token)
 latexLexer = Alex.lexScanner Latex.alexScanToken Latex.initState
 

@@ -282,7 +282,7 @@ drawWindow cfg e b sty focused w win = (Rendered { picture = pict,cursor = cur},
                             else Point 0
         (text, _)    = runBuffer win b (indexedAnnotatedStreamB fromMarkPoint) -- read chars from the buffer, lazily
         
-        (attributes, _) = runBuffer win b $ attributesPictureAndSelB sty (regex e) region 
+        (attributes, _) = runBuffer win b $ attributesPictureAndSelB sty (currentRegex e) region 
         colors = map (second (($ attr) . attributesToAttr)) attributes
         bufData = -- trace (unlines (map show text) ++ unlines (map show $ concat strokes)) $ 
                   paintChars attr colors text
