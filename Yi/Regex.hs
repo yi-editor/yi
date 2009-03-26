@@ -76,6 +76,8 @@ reversePattern (pattern,(gi,DoPa maxDoPa)) = (transform (rev) pattern, (gi,DoPa 
     where rev (PConcat l) = PConcat (reverse l)
           rev (PCarat  x) = PDollar x
           rev (PDollar x) = PCarat  x
+          rev (PEscape {getDoPa = dp, getPatternChar = '<'}) = PEscape {getDoPa = dp, getPatternChar = '>'}
+          rev (PEscape {getDoPa = dp, getPatternChar = '>'}) = PEscape {getDoPa = dp, getPatternChar = '<'}
           rev x           = x
 
 {-
