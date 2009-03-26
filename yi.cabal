@@ -334,12 +334,12 @@ executable yi
            cpp-options: -DFRONTEND_VTY
 
         if flag (gtk)
-          build-depends: gtk>=0.9.13
-          build-depends: glib>=0.9.13
+          build-depends: gtk==0.10.*
+          build-depends: glib==0.10.*
           cpp-options: -DFRONTEND_GTK
 
         if flag (pango)
-          build-depends: gtk>=0.9.13
+          build-depends: gtk==0.10.*
           cpp-options: -DFRONTEND_PANGO
           other-modules: Yi.UI.Gtk.ProjectTree
                          Yi.UI.Gtk.Utils
