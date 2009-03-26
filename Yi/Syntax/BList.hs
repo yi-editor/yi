@@ -9,7 +9,7 @@ module Yi.Syntax.BList (foldMapAfter, many, some, sepBy, BList) where
 
 import Data.Monoid
 import Parser.Incremental 
-import Prelude (reverse, takeWhile, dropWhile)
+import Prelude (reverse, takeWhile)
 import Yi.Prelude hiding (some, many)
 import Yi.Syntax.Tree hiding (sepBy)
 import Yi.Lexer.Alex
@@ -23,15 +23,22 @@ instance Show a => Show (BList a) where
 
 -- Note that consR /must/ be lazy in its rhs argument.
 -- It's possible because it /cannot/ take the 'Two' case.
+consR, consL :: a -> BList a -> BList a
 consR x ~(One r) = One  (x:r)
 consL x (One r) = Two (x:) r
 consL x (Two l r) = Two (l . (x:))  r
 
+cons :: Parser s (a -> BList a -> BList a)
 cons = Pure consL consR
+
+nil :: BList a
 nil = One []
 
+many, some :: Parser s a -> Parser s (BList a)
 many v = some v <|> pure nil
 some v = cons <*> v <*> many v
+
+sepBy :: Parser s a -> Parser s a1 -> Parser s (BList a)
 sepBy p q = pure nil <|> cons <*> p <*> many (q *> p)
 
 
@@ -40,7 +47,7 @@ instance Foldable BList where
     foldMap f (Two l r) = getDual (foldMap (Dual . f) (l [])) <> foldMap f r
 
 foldMapAfter :: (SubTree a, Element a ~ Tok t, Monoid m) => Point -> (a -> m) -> BList a -> m
-foldMapAfter begin f (One r)   = foldMap f r    
+foldMapAfter _ f (One r)   = foldMap f r    
 foldMapAfter begin f (Two l r) = getDual (foldMap (Dual . f) (takeWhile (\t -> getLastOffset  t > begin) $ l [])) 
                               <> foldMap f r 
 

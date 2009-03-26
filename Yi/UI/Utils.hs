@@ -4,7 +4,7 @@ module Yi.UI.Utils where
 
 import Yi.Buffer
 import Yi.Prelude
-import Prelude (Ordering(..), maybe)
+import Prelude (Ordering(..))
 import Yi.Window
 import Control.Arrow (second)
 import Data.Monoid
@@ -89,11 +89,13 @@ attributesPictureAndSelB sty mexp region = do
 
 
 -- | Arrange a list of items in columns over maximum @maxNumberOfLines@ lines
+arrangeItems :: [String] -> Int -> Int -> [String]
 arrangeItems items maxWidth maxNumberOfLines = take maxNumberOfLines $ snd choice
     where choice = maximumBy (compare `on` fst) arrangements
           arrangements = fmap (arrangeItems' items maxWidth) (reverse [1..maxNumberOfLines])
 
 -- | Arrange a list of items in columns over @numberOfLines@ lines.
+arrangeItems' :: [String] -> Int -> Int -> (Int, [String])
 arrangeItems' items maxWidth numberOfLines = (fittedItems,theLines)
     where columns = splitEvery numberOfLines items
           columnsWidth = fmap (maximum . fmap length) columns

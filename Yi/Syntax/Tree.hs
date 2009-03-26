@@ -43,8 +43,10 @@ toksAfter begin t = foldMapToksAfter begin (\x ->(x:)) t []
 allToks :: SubTree tree =>tree -> [Element tree]
 allToks t = foldMapToks (\x ->(x:)) t []
 
+tokAtOrBefore :: (Element a ~ Tok t, SubTree a) => Point -> a -> Maybe (Tok t)
 tokAtOrBefore p res = listToMaybe $ reverse $ toksInRegion (mkRegion 0 (p+1)) res
 
+toksInRegion :: (Element a ~ Tok t, SubTree a) => Region -> a -> [Tok t]
 toksInRegion reg = takeWhile (\t -> tokBegin t <= regionEnd   reg) . dropWhile (\t -> tokEnd t < regionStart reg) . toksAfter (regionStart reg)
 
 
@@ -80,6 +82,7 @@ getAllSubTrees t = t : concatMap getAllSubTrees (subtrees t)
 getFirstElement :: Foldable t => t a -> Maybe a
 getFirstElement tree = getFirst $ foldMap (\x -> First (Just x)) tree
 
+getFirstTok, getLastTok :: (SubTree a) => a -> Maybe (Element a)
 getFirstTok = getFirst . foldMapToks (First . Just) 
 getLastTok = getLast . foldMapToks (Last . Just) 
 

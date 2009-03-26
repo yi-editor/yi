@@ -169,15 +169,15 @@ accepted d (Get (Just low) (Just high) k) = do
     t <- accepted (d - 1) (k low)
     let h = if low == high then show low else (show low ++ ".." ++ show high)
     return (h : t)
-accepted d (Get Nothing Nothing _) = [["<any>"]]
-accepted d (Get Nothing (Just e) _) = [[".." ++ show e]]
-accepted d (Get (Just e) Nothing _) = [[show e ++ ".."]]
-accepted d Fail = []
-accepted d (Write _ _) = [[]] -- this should show what action we get...
+accepted _ (Get Nothing Nothing _) = [["<any>"]]
+accepted _ (Get Nothing (Just e) _) = [[".." ++ show e]]
+accepted _ (Get (Just e) Nothing _) = [[show e ++ ".."]]
+accepted _ Fail = []
+accepted _ (Write _ _) = [[]] -- this should show what action we get...
 accepted d (Prior _ p) = accepted d p
 accepted d (Best p q) = accepted d p ++ accepted d q
-accepted d (End) = []
-accepted d (Chain a b) = error "accepted: chain not supported"
+accepted _ (End) = []
+accepted _ (Chain a b) = error "accepted: chain not supported"
 
 -- ---------------------------------------------------------------------------
 -- Operations over P

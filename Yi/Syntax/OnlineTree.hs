@@ -9,10 +9,9 @@ import Yi.IncrementalParse
 import Control.Applicative
 import Data.Traversable
 import Data.Foldable
-import Data.List (takeWhile, reverse, iterate)
-import Data.Maybe (listToMaybe, maybeToList)
+import Data.List (takeWhile, iterate)
+import Data.Maybe (maybeToList)
 import Yi.Lexer.Alex
-import Yi.Buffer.Basic (Point)
 import Yi.Region
 import Yi.Syntax.Tree
 import Data.Monoid
