@@ -238,26 +238,15 @@ openAllBuffersE = do bs <- gets bufferSet
 
 ------------------------------------------------------------------------
 
--- | Return the next buffer
-nextBuffer :: EditorM ()
-nextBuffer = shiftBuffer 1
-
--- | Return the prev buffer
-prevBuffer :: EditorM ()
-prevBuffer = shiftBuffer (negate 1)
-
--- | Return the buffer using a function applied to the current window's
--- buffer's index.
+-- | Rotate the buffer stack by the given amount.
 shiftBuffer :: Int -> EditorM ()
 shiftBuffer shift = do 
-    modA bufferStackA (rotate shift)
+    modA bufferStackA rotate
     fixCurrentWindow
-
-rotate i list = take len $ drop (i `mod` len) $ cycle list
-    where len = length list
+  where rotate l = take len $ drop (shift `mod` len) $ cycle l
+            where len = length l
 
 ------------------------------------------------------------------------
-
 -- | Perform action with any given buffer, using the last window that was used for that buffer.
 withGivenBuffer0 :: BufferRef -> BufferM a -> EditorM a
 withGivenBuffer0 k f = do
@@ -368,11 +357,11 @@ setDynamic x = putA (dynamicValueA . dynamicA) x
 
 -- | Attach the next buffer in the buffer stack to the current window.
 nextBufW :: EditorM ()
-nextBufW = nextBuffer
+nextBufW = shiftBuffer 1
 
 -- | Attach the previous buffer in the stack list to the current window.
 prevBufW :: EditorM ()
-prevBufW = prevBuffer
+prevBufW = shiftBuffer (negate 1)
 
 -- | Like fnewE, create a new buffer filled with the String @s@,
 -- Switch the current window to this buffer. Doesn't associate any file

@@ -314,7 +314,7 @@ vimScrollByB f n = do h <- askWindow height
 -- | Move to middle line in screen
 scrollToCursorB :: BufferM ()
 scrollToCursorB = do
-    MarkSet f i _ t <- markLines
+    MarkSet f i _ _ <- markLines
     h <- askWindow height
     let m = f + (h `div` 2)
     scrollB $ i - m
