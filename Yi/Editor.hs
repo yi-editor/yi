@@ -12,10 +12,10 @@ import Data.Accessor.Basic (fromSetGet)
 import Data.Accessor.Template
 import Data.Binary
 import Data.Either (rights)
-import Data.List (nub, delete, (\\), intercalate)
+import Data.List (nub, delete, (\\), intercalate, take, drop, cycle)
 import Data.Maybe
 import Data.Typeable
-import Prelude (map, filter, (!!), length, reverse)
+import Prelude (map, filter, length, reverse)
 import System.FilePath (splitPath)
 import Yi.Buffer
 import Yi.Config
@@ -239,20 +239,22 @@ openAllBuffersE = do bs <- gets bufferSet
 ------------------------------------------------------------------------
 
 -- | Return the next buffer
-nextBuffer :: EditorM BufferRef
+nextBuffer :: EditorM ()
 nextBuffer = shiftBuffer 1
 
 -- | Return the prev buffer
-prevBuffer :: EditorM BufferRef
+prevBuffer :: EditorM ()
 prevBuffer = shiftBuffer (negate 1)
 
 -- | Return the buffer using a function applied to the current window's
 -- buffer's index.
-shiftBuffer :: Int -> EditorM BufferRef
-shiftBuffer shift = gets $ \e ->
-    let bs  = bufferStack e
-        n   = shift `mod` length bs
-    in (bs !! n)
+shiftBuffer :: Int -> EditorM ()
+shiftBuffer shift = do 
+    modA bufferStackA (rotate shift)
+    fixCurrentWindow
+
+rotate i list = take len $ drop (i `mod` len) $ cycle list
+    where len = length list
 
 ------------------------------------------------------------------------
 
@@ -364,14 +366,13 @@ getDynamic = getA (dynamicValueA . dynamicA)
 setDynamic :: Initializable a => a -> EditorM ()
 setDynamic x = putA (dynamicValueA . dynamicA) x
 
--- | Attach the next buffer in the buffer list
--- to the current window.
+-- | Attach the next buffer in the buffer stack to the current window.
 nextBufW :: EditorM ()
-nextBufW = nextBuffer >>= switchToBufferE
+nextBufW = nextBuffer
 
--- | edit the previous buffer in the buffer list
+-- | Attach the previous buffer in the stack list to the current window.
 prevBufW :: EditorM ()
-prevBufW = prevBuffer >>= switchToBufferE
+prevBufW = prevBuffer
 
 -- | Like fnewE, create a new buffer filled with the String @s@,
 -- Switch the current window to this buffer. Doesn't associate any file
@@ -429,21 +430,25 @@ prevWinE = modA windowsA PL.previous
 
 -- | A "fake" accessor that fixes the current buffer after a change of the current
 -- window. 
--- Enforces invariant that top of buffer stack is the buffer of the current
+-- Enforces invariant that top of buffer stack is the buffer of the current window.
 fixCurrentBufferA_ :: Accessor Editor Editor
 fixCurrentBufferA_ = fromSetGet (\new _old -> let 
     ws = windows new
     b = findBufferWith (bufkey $ PL.focus ws) new
     newBufferStack = nub (bkey b : bufferStack new)
-    -- make sure we do not hold to old versions.
+    -- make sure we do not hold to old versions by seqing the length.
     in length newBufferStack `seq` new { bufferStack = newBufferStack  } ) id
     
 
-withWindows :: (PL.PointedList Window -> a) -> EditorM a
-withWindows = getsA windowsA
+-- | Counterpart of fixCurrentBufferA_: fix the current window to point to the
+-- right buffer.
+fixCurrentWindow :: EditorM ()
+fixCurrentWindow = do
+    b <- gets currentBuffer
+    modA (PL.focusA . PL.focusA . tabs_A) (\w -> w {bufkey = b})
 
 withWindow :: (Window -> a) -> EditorM a
-withWindow f = getsA (PL.focusA . windowsA) f
+withWindow = getsA (PL.focusA . windowsA)
 
 findWindowWith :: WindowRef -> Editor -> Window
 findWindowWith k e =
@@ -523,7 +528,7 @@ closeOtherE = modA windowsA PL.deleteOthers
 -- | Switch focus to some other window. If none is available, create one.
 shiftOtherWindow :: MonadEditor m => m ()
 shiftOtherWindow = liftEditor $ do
-  len <- withWindows PL.length
+  len <- getsA windowsA PL.length
   if (len == 1) 
     then splitE
     else nextWinE
