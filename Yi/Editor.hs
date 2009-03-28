@@ -160,14 +160,13 @@ stringToNewBuffer nm cs = do
     withGivenBuffer0 u $ setAnyMode m
     return u
 
-insertBuffer :: FBuffer -> EditorM BufferRef
-insertBuffer b = getsAndModify $
-                 \e -> (let first:bs = bufferStack e in 
-                        -- may not be active so don't put it on the top of the stack
-                        -- valid since bufferstack is never empty
-                        e {bufferStack = nub (first:bkey b:bs),
-                           buffers = M.insert (bkey b) b (buffers e)
-                          }, bkey b)
+insertBuffer :: FBuffer -> EditorM ()
+insertBuffer b = modify $
+                 \e -> -- insert buffers at the end, so that "background" buffers
+                        -- do not interfere.
+                        e {bufferStack = nub (bufferStack e ++ [bkey b]),
+                           buffers = M.insert (bkey b) b (buffers e)}
+                       
 
 -- | Delete a buffer (and release resources associated with it).
 deleteBuffer :: BufferRef -> EditorM ()
