@@ -134,7 +134,7 @@ defaultConfig =
            , configVtyEscDelay = 0
            }
          , defaultKm        = nilKeymap
-         , startActions     = [makeAction openScratchBuffer] -- emacs-style behaviour
+         , startActions     = []
          , publishedActions = defaultPublishedActions
          , modeTable = [AnyMode Haskell.cleverMode,
                         AnyMode Latex.latexMode2,
@@ -170,6 +170,7 @@ toEmacsStyleConfig cfg
     = cfg {
             configUI = (configUI cfg) { configVtyEscDelay = 1000 },
             defaultKm = Emacs.keymap,
+            startActions = makeAction openScratchBuffer : startActions cfg,
             configInputPreprocess = escToMeta,
             configKillringAccumulate = True
           }
