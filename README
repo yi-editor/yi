@@ -11,7 +11,7 @@ report bugs at: http://code.google.com/p/yi-editor/issues/list
 
 DEPENDENCIES
 
-* Cabal 1.4
+* Cabal 1.6
 
 * ghc 6.10.1
 
@@ -21,7 +21,7 @@ DEPENDENCIES
 * for vty frontend, vty 3.1.6
   * http://hackage.haskell.org/cgi-bin/hackage-scripts/package/vty
 
-* for gtk frontend, gtk2hs 0.9.13.
+* for gtk frontend, gtk2hs 0.10
         http://haskell.org/gtk2hs/download/
 
 * for cocoa frontend
