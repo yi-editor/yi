@@ -106,7 +106,7 @@ getConfig cfg opt =
       Help          -> throwError $ Err usage ExitSuccess
       Version       -> throwError $ Err versinfo ExitSuccess
       Debug         -> return cfg { debugMode = True }
-      LineNo l      -> appendAction (withBuffer (gotoLn (read l)))
+      LineNo l      -> appendAction (gotoLn (read l))
       File filename -> appendAction (fnewE filename)
       EditorNm emul -> case lookup (fmap toLower emul) editors of
              Just modifyCfg -> return $ modifyCfg cfg
