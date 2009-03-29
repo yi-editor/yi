@@ -107,13 +107,14 @@ getConfig cfg opt =
       Version       -> throwError $ Err versinfo ExitSuccess
       Debug         -> return cfg { debugMode = True }
       LineNo l      -> appendAction (gotoLn (read l))
-      File filename -> appendAction (fnewE filename)
+      File filename -> prependAction (fnewE filename)
       EditorNm emul -> case lookup (fmap toLower emul) editors of
              Just modifyCfg -> return $ modifyCfg cfg
              Nothing -> fail $ "Unknown emulation: " ++ show emul
       _ -> return cfg
   where 
     appendAction a = return $ cfg { startActions = startActions cfg ++ [makeAction a]}
+    prependAction a = return $ cfg { startActions = makeAction a : startActions cfg}
 
 -- ---------------------------------------------------------------------
 -- | Static main. This is the front end to the statically linked
