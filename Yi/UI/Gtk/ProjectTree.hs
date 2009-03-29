@@ -126,4 +126,3 @@ folderIcon icos PlainFolder     = icoPlainFolder    icos
 
 moduleIcon icos ExposedModule icoE _    = icoE icos
 moduleIcon icos HiddenModule  _    icoH = icoH icos
-
