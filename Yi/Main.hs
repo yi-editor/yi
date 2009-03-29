@@ -106,14 +106,15 @@ getConfig cfg opt =
       Help          -> throwError $ Err usage ExitSuccess
       Version       -> throwError $ Err versinfo ExitSuccess
       Debug         -> return cfg { debugMode = True }
-      LineNo l      -> appendAction (gotoLn (read l))
+      LineNo l      -> case startActions cfg of
+                         x : xs -> return cfg { startActions = x:makeAction (gotoLn (read l)):xs }
+                         []     -> fail "The `-l' option must come after a file argument"
       File filename -> prependAction (fnewE filename)
       EditorNm emul -> case lookup (fmap toLower emul) editors of
              Just modifyCfg -> return $ modifyCfg cfg
              Nothing -> fail $ "Unknown emulation: " ++ show emul
       _ -> return cfg
   where 
-    appendAction a = return $ cfg { startActions = startActions cfg ++ [makeAction a]}
     prependAction a = return $ cfg { startActions = makeAction a : startActions cfg}
 
 -- ---------------------------------------------------------------------
