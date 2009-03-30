@@ -32,6 +32,9 @@ import qualified Yi.Mode.JavaScript as JavaScript
 import qualified Yi.Mode.Latex as Latex
 import qualified Yi.Interact as I
 
+#ifdef FRONTEND_VTY
+import qualified Yi.UI.Vty
+#endif
 #ifdef FRONTEND_COCOA
 import qualified Yi.UI.Cocoa
 #endif
@@ -41,13 +44,13 @@ import qualified Yi.UI.Pango
 #ifdef FRONTEND_GTK
 import qualified Yi.UI.Gtk
 #endif
-#ifdef FRONTEND_VTY
-import qualified Yi.UI.Vty
-#endif
 import qualified Yi.UI.Batch
 
-availableFrontends :: [(String,UIBoot)]
+availableFrontends :: [(String, UIBoot)]
 availableFrontends =
+#ifdef FRONTEND_VTY
+   ("vty", Yi.UI.Vty.start) :
+#endif
 #ifdef FRONTEND_COCOA
    ("cocoa", Yi.UI.Cocoa.start) :
 #endif
@@ -56,9 +59,6 @@ availableFrontends =
 #endif
 #ifdef FRONTEND_GTK
    ("gtk", Yi.UI.Gtk.start) :
-#endif
-#ifdef FRONTEND_VTY
-   ("vty", Yi.UI.Vty.start) :
 #endif
    ("batch", Yi.UI.Batch.start) :
    []
