@@ -1,15 +1,17 @@
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleInstances, TemplateHaskell #-}
 -- (C) Copyright 2009 Deniz Dogan
 
 module Yi.Syntax.JavaScript where
 
+import Data.DeriveTH
+import Data.Derive.Foldable
 import Data.List (intersperse)
 import Data.Monoid (Endo(..))
 import Prelude (map)
 import Yi.Buffer.Basic (Point(..))
 import Yi.IncrementalParse (P, eof, symbol, recoverWith)
 import Yi.Lexer.Alex
-import Yi.Lexer.JavaScript (TT, Token(..), Reserved(..), Operator(..), tokenToStyle, Failable(..), Strokable(..))
+import Yi.Lexer.JavaScript (TT, Token(..), Reserved(..), Operator(..), tokenToStyle, Failable(..))
 import Yi.Prelude
 import Yi.Style (errorStyle, StyleName)
 import Yi.Syntax.Tree (sepBy, sepBy1)
@@ -24,6 +26,7 @@ data JTree t = JFunDecl { res :: t, fname :: t
              | JFunCall { fname :: t, lpar :: t, args :: [JExpr t], rpar :: t, sc :: t }
              | JError t
                deriving (Eq, Show)
+
 
 -- | Represents either a variable name or a variable name assigned to an
 --   expression.  @AssignNo@ means it's a simple declaration.  @AssignYes@ means
@@ -42,6 +45,13 @@ data JExpr t = JObj { objlcurl :: t, objrcurl :: t }
 data JKeyValue t = JKV { key :: t, colon :: t, value :: (JExpr t) }
                  | JKVErr t
                    deriving (Eq, Show)
+
+$(derive makeFoldable ''JTree)
+$(derive makeFoldable ''JExpr)
+$(derive makeFoldable ''JKeyValue)
+$(derive makeFoldable ''JVarDecAss)
+
+
 
 instance Strokable (JVarDecAss TT) where
     toStrokes (AssignNo x)      = one (tokenToStroke x)
@@ -74,9 +84,7 @@ instance Strokable (JExpr TT) where
     toStrokes   (ExprErr t) = one (modStroke errorStyle (tokenToStroke t))
 
 instance Strokable (JKeyValue TT) where
-    toStrokes    (JKVErr t) = one (modStroke errorStyle (tokenToStroke t))
-    toStrokes kv@(JKV {})   = few tokenToStroke [key kv, colon kv]
-                           <> toStrokes (value kv)
+    toStrokes = foldMap (one . tokenToStroke)
 
 instance Failable (JTree TT) where
     hasFailed (JError _) = True
@@ -210,3 +218,11 @@ parse = pForest <* eof
       plzSpc   = plzTok . spec
 
       unknownToken = tokFromT Unknown
+
+
+
+
+-- | Instances of @Strokable@ are datatypes which can be syntax highlighted.
+class Strokable a where
+    toStrokes :: a -> Endo [Stroke]
+

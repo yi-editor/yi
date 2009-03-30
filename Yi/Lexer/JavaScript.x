@@ -26,7 +26,7 @@
 
 module Yi.Lexer.JavaScript ( initState, alexScanToken,
                              tokenToStyle,
-                             Failable(..), Strokable(..),
+                             Failable(..), 
                              TT, Token(..), Reserved(..), Operator(..) ) where
 
 import Data.Monoid (Endo(..))
@@ -253,10 +253,6 @@ class Failable a where
     hasPassed :: a -> Bool
     hasFailed = not . hasPassed
     hasPassed = not . hasFailed
-
--- | Instances of @Strokable@ are datatypes which can be syntax highlighted.
-class Strokable a where
-    toStrokes :: a -> Endo [Stroke]
 
 #include "alex.hsinc"
 }
