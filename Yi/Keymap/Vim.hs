@@ -790,6 +790,8 @@ defKeymap = Proto template
      cmdFM =
          [([ctrlCh 'g'],    const $ withEditor viFileInfo)
 
+         ,([ctrlCh '^'],    withEditor . alternateBufferE . (+ (-1)) )
+
          -- undo/redo
          ,([char 'u'],      withBuffer' . flip replicateM_ undoB)
          ,([char 'U'],      withBuffer' . flip replicateM_ undoB)    -- NB not correct
