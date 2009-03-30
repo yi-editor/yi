@@ -20,8 +20,10 @@ import qualified Yi.UI.Common as Common
 import Yi.Config
 import Yi.Style
 
+import Shim.ProjectContent
+
 import Control.Applicative
-import Control.Concurrent ( yield )
+import Control.Concurrent (yield)
 import Control.Monad (ap)
 import Control.Monad.Reader (liftIO, when, MonadIO)
 import Control.Monad.State (gets, modify, runState, State)
@@ -34,13 +36,14 @@ import qualified Data.List.PointedList.Circular as PL
 import Data.Maybe
 import Data.Traversable
 import qualified Data.Map as M
+import System.Directory (getCurrentDirectory)
 
 import Graphics.UI.Gtk hiding (on, Region, Window, Action, Point, Style)
 import qualified Graphics.UI.Gtk.Gdk.Events as Gdk.Events
 import qualified Graphics.UI.Gtk as Gtk
 import System.Glib.GError
-import Yi.UI.Gtk.ProjectTree
-import Yi.UI.Gtk.Utils
+import Yi.UI.Pango.ProjectTree
+import Yi.UI.Pango.Utils
 import Yi.UI.Utils
 
 ------------------------------------------------------------------------
@@ -113,15 +116,21 @@ startNoMsg cfg ch outCh _ed = do
 
   vb <- vBoxNew False 1  -- Top-level vbox
 
-  (projectTree, _projectStore) <- projectTreeNew (outCh . singleton)
-  modulesTree <- treeViewNew
-
   tabs <- notebookNew
-  set tabs [notebookTabPos := PosBottom]
+  notebookSetTabPos tabs PosBottom
   panedAdd1 paned tabs
 
+  -- Create the tree views for files and modules
+  (filesProject, modulesProject) <- loadProject =<< getCurrentDirectory
+
+  filesStore   <- treeStoreNew [filesProject]
+  modulesStore <- treeStoreNew [modulesProject]
+
+  filesTree   <- projectTreeNew (outCh . singleton) filesStore
+  modulesTree <- projectTreeNew (outCh . singleton) modulesStore
+
   scrlProject <- scrolledWindowNew Nothing Nothing
-  scrolledWindowAddWithViewport scrlProject projectTree
+  scrolledWindowAddWithViewport scrlProject filesTree
   scrolledWindowSetPolicy scrlProject PolicyAutomatic PolicyAutomatic
   notebookAppendPage tabs scrlProject "Project"
 

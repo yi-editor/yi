@@ -52,9 +52,6 @@ flag ghcAPI
 flag vty
   Description: Provide Vty UI
 
-flag gtk
-  Description: Provide GTK UI
-
 flag pango
   Description: Provide Pango UI
 
@@ -176,17 +173,11 @@ library
        cpp-options: -DFRONTEND_VTY
        exposed-modules: Yi.UI.Vty
        
-    if flag (gtk)
-      cpp-options: -DFRONTEND_GTK
-      exposed-modules: Yi.UI.Gtk
-      other-modules: Yi.UI.Gtk.ProjectTree
-                     Yi.UI.Gtk.Utils
-
     if flag (pango)
       cpp-options: -DFRONTEND_PANGO
       exposed-modules: Yi.UI.Pango
-      other-modules: Yi.UI.Gtk.ProjectTree
-                     Yi.UI.Gtk.Utils
+      other-modules: Yi.UI.Pango.ProjectTree
+                     Yi.UI.Pango.Utils
 
 
     if flag (cocoa)
@@ -323,7 +314,7 @@ executable yi
         ghc-options:   -Wall -fno-warn-orphans -threaded
         -- orphans are a performance warning, but 
         -- we need this in Yi.
--- ghc-options later on get appended to the original
+        -- ghc-options later on get appended to the original
         ghc-prof-options:   -prof -auto-all
 
         if !os(mingw32)
@@ -333,16 +324,12 @@ executable yi
            build-depends: vty>=3.1.8 && < 4
            cpp-options: -DFRONTEND_VTY
 
-        if flag (gtk)
-          build-depends: gtk==0.10.*
-          build-depends: glib==0.10.*
-          cpp-options: -DFRONTEND_GTK
-
         if flag (pango)
           build-depends: gtk==0.10.*
+          build-depends: glib==0.10.*
           cpp-options: -DFRONTEND_PANGO
-          other-modules: Yi.UI.Gtk.ProjectTree
-                         Yi.UI.Gtk.Utils
+          other-modules: Yi.UI.Pango.ProjectTree
+                         Yi.UI.Pango.Utils
                          Yi.UI.Pango
 
         if flag (cocoa)

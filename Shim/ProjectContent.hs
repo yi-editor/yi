@@ -110,7 +110,7 @@ loadProject projPath = do
                             addFilePath LicenseText projPath (licenseFile pkgDescr)) tloc4
       tloc6 = execState (mapM_ (\item -> insertDown item >> up) (Set.toList mod_items)) tloc1
   return (tree tloc5, tree tloc6)
-                            
+
 getTop :: Tree a -> TreeLoc a
 getTop = fromTree
 

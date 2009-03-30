@@ -4,7 +4,7 @@
 -- Random GTK utils
 --
 
-module Yi.UI.Gtk.Utils where
+module Yi.UI.Pango.Utils where
 
 import Paths_yi
 import System.FilePath

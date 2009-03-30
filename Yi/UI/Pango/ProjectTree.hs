@@ -6,31 +6,29 @@
 -- algorithm.
 --
 
-module Yi.UI.Gtk.ProjectTree
+module Yi.UI.Pango.ProjectTree
          ( projectTreeNew
          , loadProjectTree
          ) where
 
-import Distribution.Text 
-import Distribution.Package
+import Data.Tree
 import Shim.ProjectContent
 import qualified Graphics.UI.Gtk.ModelView as MView
 import qualified Graphics.UI.Gtk as Gtk
-import Graphics.UI.Gtk.Gdk.Pixbuf (Pixbuf(..))
+import Graphics.UI.Gtk.Gdk.Pixbuf (Pixbuf)
 import Graphics.UI.Gtk.ModelView.TreeView ( treeViewHeadersVisible
                                           , onRowActivated
                                           )
 import System.Glib.Attributes
 import Yi.Keymap
 import Yi.Dired
-import Yi.UI.Gtk.Utils
+import Yi.UI.Pango.Utils
 
-projectTreeNew post = do
-  projectStore <- MView.treeStoreNew []
-  projectTree <- MView.treeViewNewWithModel projectStore
+projectTreeNew :: (Action -> IO ()) -> Gtk.TreeStore ProjectItem -> IO Gtk.TreeView
+projectTreeNew post store = do
+  projectTree <- MView.treeViewNewWithModel store
   set projectTree [treeViewHeadersVisible := False]
 
-  -- add three columns
   col1 <- MView.treeViewColumnNew
   col2 <- MView.treeViewColumnNew
 
@@ -69,25 +67,25 @@ projectTreeNew post = do
                    icoPackage
                    icoSetupScript
 
-  MView.cellLayoutSetAttributes col1 renderer1 projectStore $ \row -> [MView.cellPixbuf := itemIcon icos row]
-  MView.cellLayoutSetAttributes col2 renderer2 projectStore $ \row -> [MView.cellText   := itemName row]
+  MView.cellLayoutSetAttributes col1 renderer1 store $ \row -> [MView.cellPixbuf := itemIcon icos row]
+  MView.cellLayoutSetAttributes col2 renderer2 store $ \row -> [MView.cellText   := itemName row]
 
   MView.treeViewAppendColumn projectTree col1
   MView.treeViewAppendColumn projectTree col2
   
-  onRowActivated projectTree $ \path col -> do
-    item <- MView.treeStoreGetValue projectStore path
+  onRowActivated projectTree $ \path _col -> do
+    item <- MView.treeStoreGetValue store path
     case item of
       FileItem  {itemFPath=path} -> post (makeAction (fnewE path))
       ModuleItem{itemFPath=path} -> post (makeAction (fnewE path))
       _                          -> return ()
 
-  return (projectTree, projectStore)
+  return projectTree
 
+loadProjectTree :: Gtk.TreeStore a -> Tree a -> IO ()
 loadProjectTree projectStore tree = do
   MView.treeStoreClear projectStore
   MView.treeStoreInsertTree projectStore [] 0 tree
-
 
 data Icons
   = Icons
