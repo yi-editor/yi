@@ -54,9 +54,13 @@ instance Strokable (JTree TT) where
     -- Foldable to work.
 
     -- TODO: Error styling combinator.
-    toStrokes f@(JFunDecl {}) = few tokenToStroke [res f, lpar f, rpar f, lcurl f, rcurl f]
+    toStrokes f@(JFunDecl {}) = one (tokenToStroke (res f) )
+                             <> one (tokenToStroke (lpar f))
                              <> few tokenToStroke (pars f)
+                             <> one (tokenToStroke (rpar f))
+                             <> one (tokenToStroke (lcurl f))
                              <> foldMap toStrokes (fbody f) -- TODO
+                             <> one (tokenToStroke (rcurl f))
     toStrokes v@(JVarDecl {}) = fewNotError tokenToStroke [res v, sc v]
                              <> foldMap toStrokes (vars v) -- TODO
     toStrokes f@(JFunCall {}) = few tokenToStroke [fname f, lpar f, rpar f, sc f]
