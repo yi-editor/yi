@@ -26,4 +26,5 @@ javaScriptMode = javaScriptAbstract
     modeGetStrokes = \tree point begin end -> JSSyn.getStrokes point begin end tree
   }
 
+jsLexer :: Scanner Point Char -> Scanner (Alex.AlexState JSLex.HlState) (Alex.Tok Token)
 jsLexer = Alex.lexScanner JSLex.alexScanToken JSLex.initState

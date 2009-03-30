@@ -24,10 +24,9 @@
 
 {-# OPTIONS -w  #-}
 
-module Yi.Lexer.JavaScript ( initState, alexScanToken,
-                             tokenToStyle,
-                             Failable(..), 
-                             TT, Token(..), Reserved(..), Operator(..) ) where
+module Yi.Lexer.JavaScript ( initState, alexScanToken, tokenToStyle,
+                             TT, Token(..), Reserved(..), Operator(..),
+                             HlState ) where
 
 import Data.Monoid (Endo(..))
 import Yi.Lexer.Alex
@@ -154,13 +153,6 @@ data Token = Unknown
            | Const !String
              deriving (Show, Eq)
 
-instance Failable Token where
-    hasFailed Unknown = True
-    hasFailed _       = False
-
-instance Failable TT where
-    hasFailed t = hasFailed (tokT t)
-
 stateToInit x | x < 0     = multicomm
               | otherwise = 0
 
@@ -247,12 +239,6 @@ resToRes "false"      = False'
 resToRes "null"       = Null'
 resToRes "undefined"  = Undefined'
 
--- | Minimal definition: hasFailed or hasPassed.
-class Failable a where
-    hasFailed :: a -> Bool
-    hasPassed :: a -> Bool
-    hasFailed = not . hasPassed
-    hasPassed = not . hasFailed
-
 #include "alex.hsinc"
+
 }

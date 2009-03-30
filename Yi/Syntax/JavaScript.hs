@@ -5,19 +5,33 @@ module Yi.Syntax.JavaScript where
 
 import Data.DeriveTH
 import Data.Derive.Foldable
-import Data.List (intersperse)
 import Data.Monoid (Endo(..))
-import Prelude (map)
+import Prelude ()
 import Yi.Buffer.Basic (Point(..))
 import Yi.IncrementalParse (P, eof, symbol, recoverWith)
 import Yi.Lexer.Alex
-import Yi.Lexer.JavaScript (TT, Token(..), Reserved(..), Operator(..), tokenToStyle, Failable(..))
+import Yi.Lexer.JavaScript (TT, Token(..), Reserved(..), Operator(..), tokenToStyle)
 import Yi.Prelude
 import Yi.Style (errorStyle, StyleName)
-import Yi.Syntax.Tree (sepBy, sepBy1)
+import Yi.Syntax.Tree (sepBy)
 
 
 -- * Data types, classes and instances
+
+-- | Instances of @Strokable@ are datatypes which can be syntax highlighted.
+class Strokable a where
+    toStrokes :: a -> Endo [Stroke]
+
+-- | Minimal definition: hasFailed or hasPassed.
+class Failable a where
+    hasFailed :: a -> Bool
+    hasPassed :: a -> Bool
+    hasFailed = not . hasPassed
+    hasPassed = not . hasFailed
+
+instance Failable Token where
+    hasFailed Unknown = True
+    hasFailed _       = False
 
 data JTree t = JFunDecl { res :: t, fname :: t
                         , lpar :: t, pars :: [t], rpar :: t
@@ -39,6 +53,7 @@ data JVarDecAss t = AssignNo  t             -- ^ No, no assignment
 data JExpr t = JObj { objlcurl :: t, objrcurl :: t }
              | JStr t
              | JNum t
+             | JName t
              | ExprErr t
                deriving (Eq, Show)
 
@@ -51,37 +66,37 @@ $(derive makeFoldable ''JExpr)
 $(derive makeFoldable ''JKeyValue)
 $(derive makeFoldable ''JVarDecAss)
 
-
-
 instance Strokable (JVarDecAss TT) where
     toStrokes (AssignNo x)      = one (tokenToStroke x)
-    toStrokes (AssignYes x y z) = few tokenToStroke [x, y]
+    toStrokes (AssignYes x y z) = one (tokenToStroke x)
+                               <> one (tokenToStroke y)
                                <> toStrokes z
-    toStrokes (AssignErr t)     = one (modStroke errorStyle (tokenToStroke t))
+    toStrokes (AssignErr x)     = one (modStroke errorStyle (tokenToStroke x))
 
 instance Strokable (JTree TT) where
-    -- TODO: toStrokes for JFunDecl probably needs an appropriate instance of
-    -- Foldable to work.
-
-    -- TODO: Error styling combinator.
-    toStrokes f@(JFunDecl {}) = one (tokenToStroke (res f) )
+    toStrokes f@(JFunDecl {}) = one (tokenToStroke (res f))
                              <> one (tokenToStroke (lpar f))
                              <> few tokenToStroke (pars f)
                              <> one (tokenToStroke (rpar f))
                              <> one (tokenToStroke (lcurl f))
-                             <> foldMap toStrokes (fbody f) -- TODO
+                             <> foldMap toStrokes (fbody f)
                              <> one (tokenToStroke (rcurl f))
-    toStrokes v@(JVarDecl {}) = fewNotError tokenToStroke [res v, sc v]
-                             <> foldMap toStrokes (vars v) -- TODO
-    toStrokes f@(JFunCall {}) = few tokenToStroke [fname f, lpar f, rpar f, sc f]
-                             <> foldMap toStrokes (args f) -- TODO
-    toStrokes e@(JError t)    = one (modStroke errorStyle (tokenToStroke t))
+    toStrokes v@(JVarDecl {}) = one (tokenToStroke (res v))
+                             <> foldMap toStrokes (vars v)
+                             <> one (tokenToStroke (sc v))
+    toStrokes f@(JFunCall {}) = one (tokenToStroke (fname f))
+                             <> one (tokenToStroke (lpar f))
+                             <> foldMap toStrokes (args f)
+                             <> one (tokenToStroke (rpar f))
+                             <> one (tokenToStroke (sc f))
+    toStrokes (JError x) = one (modStroke errorStyle (tokenToStroke x))
 
 instance Strokable (JExpr TT) where
     toStrokes o@(JObj {})   = one (tokenToStroke (objlcurl o))
-    toStrokes   (JNum t)    = one (tokenToStroke t)
-    toStrokes   (JStr t)    = one (tokenToStroke t)
-    toStrokes   (ExprErr t) = one (modStroke errorStyle (tokenToStroke t))
+    toStrokes   (JNum x)    = one (tokenToStroke x)
+    toStrokes   (JName x)   = one (tokenToStroke x)
+    toStrokes   (JStr x)    = one (tokenToStroke x)
+    toStrokes   (ExprErr x) = one (modStroke errorStyle (tokenToStroke x))
 
 instance Strokable (JKeyValue TT) where
     toStrokes = foldMap (one . tokenToStroke)
@@ -101,20 +116,14 @@ instance Failable (JExpr TT) where
 
 -- * Helper functions.
 
+one :: a -> Endo [a]
 one x = Endo (x :)
+
+few :: (Foldable t) => (a -> b) -> t a -> Endo [b]
 few g = foldMap (one . g)
 
--- | Given a list of tokens, if any of the tokens is an error token, style every
---   token in error style, otherwise just tokenToStroke all of them.  TODO:
---   Figure out whether this is usable at all.
-fewNotError f xs = few (stroker . f) xs
-    where
-      stroker = if any hasFailed xs
-                  then modStroke errorStyle
-                  else id
-
 getStrokes :: Point -> Point -> Point -> [JTree TT] -> [Stroke]
-getStrokes point begin end t0 = trace (show t0) result
+getStrokes _point _begin _end t0 = trace (show t0) result
     where
       result = appEndo (foldMap toStrokes t0) []
 
@@ -139,7 +148,12 @@ parse = pForest <* eof
 
       -- * High-level stuff
 
+      -- | Parser for stuff that's allowed only at the top level of the program.
+      topLevel :: P TT (JTree TT)
       topLevel = funDecl
+
+      -- | Parser for stuff that's allowed anywhere in the program.
+      anyLevel :: P TT (JTree TT)
       anyLevel = varDecl <|> funCall
 
       funDecl :: P TT (JTree TT)
@@ -157,18 +171,29 @@ parse = pForest <* eof
               <|> AssignYes <$> name <*> plzTok (oper Assign') <*> (expression)
               <|> AssignErr <$> pure unknownToken
 
+      funCall :: P TT (JTree TT)
       funCall = JFunCall <$> name <*> plzSpc '(' <*> arguments <*> plzSpc ')' <*> plzSpc ';'
 
 
       -- * Helper parsers
 
+      -- | Like 'sepBy1', but with recovery.
       pleaseSepBy1 p s r  = (:) <$> p <*> (many (s *> p) <|> recoverWith r)
 
+      -- | Parser for comma-separated identifiers.
+      parameters :: P TT [TT]
       parameters = commas (plzTok name)
-      arguments  = commas (expression)
+
+      -- | Parser for comma-separated expressions.
+      arguments :: P TT [JExpr TT]
+      arguments = commas (expression)
+
+      -- | Parser for expressions.
+      expression :: P TT (JExpr TT)
       expression = JStr    <$> strTok
                <|> JNum    <$> numTok
                <|> JObj    <$> spec '{' <*> plzSpc '}'
+               <|> JName   <$> name
                <|> ExprErr <$> recoverWith (symbol (const True))
 
 
@@ -182,9 +207,10 @@ parse = pForest <* eof
                                Number _ -> True
                                _        -> False)
 
-      comments = symbol (\t -> case tokT t of
-                                 Comment _ -> True
-                                 _         -> False)
+      -- comments :: P TT TT
+      -- comments = symbol (\t -> case tokT t of
+      --                            Comment _ -> True
+      --                            _         -> False)
 
       name = symbol (\t -> case tokT t of
                              ValidName _ -> True
@@ -205,24 +231,15 @@ parse = pForest <* eof
 
       -- * Recovery stuff
 
-      commas  = (`sepBy`  (spec ','))
-      commas1 = (`sepBy1` (spec ','))
-
       -- | Recover operator.  Prefers RHS.
       x <>> y = recoverWith x <|> y
 
       -- | Recovery operator.  Prefers LHS.
       x <<> y = y <>> x
-      plzLst x = pure [] <>> x
-      plzTok x = (pure unknownToken) <>> x
+
+      plzTok x = x <<> (pure unknownToken)
       plzSpc   = plzTok . spec
+      commas x = x `sepBy` (spec ',')
 
       unknownToken = tokFromT Unknown
-
-
-
-
--- | Instances of @Strokable@ are datatypes which can be syntax highlighted.
-class Strokable a where
-    toStrokes :: a -> Endo [Stroke]
 
