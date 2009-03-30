@@ -21,6 +21,7 @@ type WindowRef = Int
 data Window = Window {
                       isMini    :: !Bool   -- ^ regular or mini window?
                      ,bufkey    :: !BufferRef -- ^ the buffer this window opens to
+                     ,bufAccessList :: ![BufferRef] -- ^ list of last accessed buffers. Last accessed one is first element
                      ,height    :: !Int    -- ^ height of the window (in number of lines displayed)
                      ,wkey      :: !WindowRef -- ^ identifier for the window (for UI sync)
                      }
@@ -52,4 +53,5 @@ dummyWindowKey = (-1)
 
 -- | Return a "fake" window onto a buffer.
 dummyWindow :: BufferRef -> Window
-dummyWindow b = Window False b 0 dummyWindowKey
+dummyWindow b = Window False b [] 0 dummyWindowKey
+

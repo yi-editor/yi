@@ -12,7 +12,7 @@ import Data.Accessor.Basic (fromSetGet)
 import Data.Accessor.Template
 import Data.Binary
 import Data.Either (rights)
-import Data.List (nub, delete, (\\), intercalate, take, drop, cycle)
+import Data.List (nub, delete, (\\), (!!), intercalate, take, drop, cycle)
 import Data.Maybe
 import Data.Typeable
 import Prelude (map, filter, length, reverse)
@@ -374,13 +374,22 @@ newBufferE f s = do
     switchToBufferE b
     return b
 
+alternateBufferE n = do
+    Window { bufAccessList = lst } <- getA currentWindowA
+    if null lst || (length lst - 1) < n
+      then fail "no alternate buffer"
+      else switchToBufferE $ lst!!n
+
 -- | Create a new window onto the given buffer.
 newWindowE :: Bool -> BufferRef -> EditorM Window
-newWindowE mini bk = Window mini bk 0 <$> newRef
+newWindowE mini bk = Window mini bk [] 0 <$> newRef
 
 -- | Attach the specified buffer to the current window
 switchToBufferE :: BufferRef -> EditorM ()
-switchToBufferE bk = modA (PL.focusA . windowsA) (\w -> w { bufkey = bk })
+switchToBufferE bk = do
+    modA (PL.focusA . windowsA) (\w -> 
+        w { bufkey = bk, 
+            bufAccessList = ((bufkey w):) . filter (bk/=) $ bufAccessList w })
 
 -- | Attach the specified buffer to some other window than the current one
 switchToBufferOtherWindowE :: BufferRef -> EditorM ()
@@ -388,7 +397,7 @@ switchToBufferOtherWindowE b = shiftOtherWindow >> switchToBufferE b
 
 -- | Switch to the buffer specified as parameter. If the buffer name is empty, switch to the next buffer.
 switchToBufferWithNameE :: String -> EditorM ()
-switchToBufferWithNameE "" = nextBufW
+switchToBufferWithNameE "" = alternateBufferE 0
 switchToBufferWithNameE bufName = switchToBufferE =<< getBufferWithName bufName
 
 -- | Close a buffer.
