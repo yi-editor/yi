@@ -40,9 +40,9 @@ $symchar   = [$symbol \:]
 $nl        = [\n\r]
 
 @reservedid =
-        as|case|class|default|else|hiding|if|
-        import|in|infix|infixl|infixr|instance|
-        qualified|then|family|foreign|export|dynamic|
+        case|class|default|else|if|
+        in|infix|infixl|infixr|instance|
+        then|family|foreign|export|dynamic|
         safe|threadsafe|unsafe|stdcall|ccall|dotnet
 
 @layoutReservedId =
@@ -111,11 +111,15 @@ haskell :-
   "deriving"                                    { c (Reserved Deriving) }
   "forall"                                      { c (Reserved Forall) }
   @reservedid                                   { c (Reserved Other) }
+  "hiding"                                      { c (Reserved Hiding) }
   "module"                                      { c (Reserved Module) }
   "type"                                        { c (Reserved Type) }
   "newtype"                                     { c (Reserved NewType) }
+  "as"                                          { c (Reserved As) }
+  "import"                                      { c (Reserved Import) }
   "data"                                        { c (Reserved Data) }
   "where"                                       { c (Reserved Where) }
+  "qualified"                                   { c (Reserved Qualified) }
   @layoutReservedId                             { c (Reserved OtherLayout) }
   `@qual @varid`                                { cs $ Operator . init . tail }
   `@qual @conid`                                { cs $ ConsOperator . init . tail }
@@ -153,7 +157,7 @@ type HlState = Int
 data CommentType = Open | Close | Text | Line
     deriving (Eq, Show)
 
-data ReservedType = Data | NewType | Type | Where | Let | OtherLayout | Deriving | Module | Forall | Other
+data ReservedType = Hiding | Qualified | As | Import | Data | NewType | Type | Where | Let | OtherLayout | Deriving | Module | Forall | Other
     deriving (Eq, Show)
 
 data OpType = Pipe | Equal | BackSlash | LeftArrow | RightArrow | DoubleRightArrow | OtherOp String
