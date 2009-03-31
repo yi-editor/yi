@@ -105,7 +105,7 @@ startNoMsg cfg ch outCh _ed = do
 
   -- rest.
   win <- windowNew
-  windowSetDefaultSize win 800 700
+  windowSetDefaultSize win 900 700
   --windowFullscreen win
   ico <- loadIcon "yi+lambda-fat.32.png"
   windowSetIcon win ico
@@ -117,6 +117,7 @@ startNoMsg cfg ch outCh _ed = do
   vb <- vBoxNew False 1  -- Top-level vbox
 
   tabs <- notebookNew
+  widgetSetSizeRequest tabs 200 (-1)
   notebookSetTabPos tabs PosBottom
   panedAdd1 paned tabs
 
@@ -178,12 +179,12 @@ processEvent ch ev = do
   return True
 
 gtkToYiEvent :: Gdk.Events.Event -> Maybe Event
-gtkToYiEvent (Gdk.Events.Key {Gdk.Events.eventKeyName = keyName, Gdk.Events.eventModifier = evModifier, Gdk.Events.eventKeyChar = char})
+gtkToYiEvent (Gdk.Events.Key {Gdk.Events.eventKeyName = key, Gdk.Events.eventModifier = evModifier, Gdk.Events.eventKeyChar = char})
     = fmap (\k -> Event k $ (nub $ (if isShift then filter (/= MShift) else id) $ concatMap modif evModifier)) key'
       where (key',isShift) =
                 case char of
                   Just c -> (Just $ KASCII c, True)
-                  Nothing -> (M.lookup keyName keyTable, False)
+                  Nothing -> (M.lookup key keyTable, False)
             modif Gdk.Events.Control = [MCtrl]
             modif Gdk.Events.Alt = [MMeta]
             modif Gdk.Events.Shift = [MShift]
@@ -432,26 +433,26 @@ winEls tospnt h = savingPointB $ do
 
 render :: Editor -> UI -> FBuffer -> WinInfo -> t -> IO Bool
 render e ui b w _ev = do
-  reg <- readRef (shownRegion w)
-  drawWindow <- widgetGetDrawWindow $ textview w
-  (width, height) <- widgetGetSize $ textview w
+  reg               <- readRef (shownRegion w)
+  drawWindow        <- widgetGetDrawWindow $ textview w
+  (width', height') <- widgetGetSize $ textview w
 
-  let win               = coreWin w
-      [width', height'] = map fromIntegral [width, height]
-      metrics           = winMetrics w
-      layout            = winLayout w
-      winh              = round (height' / (ascent metrics + descent metrics))
+  let win                 = coreWin w
+      [width'', height''] = map fromIntegral [width', height']
+      metrics             = winMetrics w
+      layout              = winLayout w
+      winh                = round (height'' / (ascent metrics + descent metrics))
 
-      (point, text)     = askBuffer win b $ do
-                            numChars <- winEls (regionStart reg) winh
-                            p        <- pointB
-                            content  <- nelemsB' numChars (regionStart reg)
-                            return (p, content)
+      (point, text)       = askBuffer win b $ do
+                              numChars <- winEls (regionStart reg) winh
+                              p        <- pointB
+                              content  <- nelemsB' numChars (regionStart reg)
+                              return (p, content)
 
-  layoutSetWidth layout (Just width')
+  layoutSetWidth layout (Just width'')
   layoutSetText layout text
 
-  (_,bos,_) <- layoutXYToIndex layout width' height' 
+  (_,bos,_) <- layoutXYToIndex layout width'' height''
   let r' = mkRegion (regionStart reg) (fromIntegral bos + regionStart reg)
 
   -- Scroll the window when the cursor goes out of it:
@@ -463,10 +464,10 @@ render e ui b w _ev = do
       logPutStrLn $ "point moved out of visible region"
 
       let (topOfScreen, numChars, text') = askBuffer win b $ do
-            top      <- indexOfSolAbove (winh `div` 2)
-            numChars <- winEls top winh
-            content  <- nelemsB' numChars top
-            return (top, numChars, content)
+            top       <- indexOfSolAbove (winh `div` 2)
+            charCount <- winEls top winh
+            content   <- nelemsB' numChars top
+            return (top, charCount, content)
 
       layoutSetText layout text'
 
@@ -478,7 +479,7 @@ render e ui b w _ev = do
   -- add color attributes.
   let picture = askBuffer win b $ attributesPictureAndSelB sty (currentRegex e) r''
       sty = extractValue $ configTheme (uiConfig ui)
-      strokes = [(start,s,end) | ((start, s), end) <- zip picture (drop 1 (map fst picture) ++ [regionEnd r'']),
+      strokes = [(start',s,end') | ((start', s), end') <- zip picture (drop 1 (map fst picture) ++ [regionEnd r'']),
                   s /= emptyAttributes]
       rel p = fromIntegral (p - regionStart r'')
       allAttrs = [gen (rel p1) (rel p2) (mkCol isFg col) 
