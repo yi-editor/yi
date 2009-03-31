@@ -13,7 +13,6 @@ import Yi.Keymap.Vim (keymap)
 -- Some are not complied in, so we import none here.
 
 -- import Yi.UI.Vty (start)
--- import Yi.UI.Gtk (start)
 -- import Yi.UI.Cocoa (start)
 -- import Yi.UI.Pango (start)
 
