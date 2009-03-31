@@ -29,10 +29,11 @@ indentScanner = layoutHandler startsLayout [(Special '(', Special ')'),
 -- HACK: We insert the Special '<', '>', '.', that don't occur in normal haskell
 -- parsing.
 
+isBrace :: TT -> Bool
 isBrace (Tok b _ _) = (Special '{') == b
 
 ignoredToken :: TT -> Bool
-ignoredToken (Tok t _ (Posn _ _ col)) = isComment t || t == CppDirective
+ignoredToken (Tok t _ _) = isComment t || t == CppDirective
     
 isNoise :: Token -> Bool
 isNoise (Special c) = c `elem` ";,`"
