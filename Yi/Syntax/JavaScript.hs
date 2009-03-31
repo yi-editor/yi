@@ -22,25 +22,21 @@ import Yi.Syntax.Tree (sepBy)
 class Strokable a where
     toStrokes :: a -> Endo [Stroke]
 
--- | Minimal definition: hasFailed or hasPassed.
-class Failable a where
-    hasFailed :: a -> Bool
-    hasPassed :: a -> Bool
-    hasFailed = not . hasPassed
-    hasPassed = not . hasFailed
-
-instance Failable Token where
-    hasFailed Unknown = True
-    hasFailed _       = False
-
 data JTree t = JFunDecl { res :: t, fname :: t
                         , lpar :: t, pars :: [t], rpar :: t
-                        , lcurl :: t, fbody :: [JTree t], rcurl :: t }
+                        , fbody :: (JFunBody t) }
              | JVarDecl { res :: t, vars :: [JVarDecAss t], sc :: t }
              | JFunCall { fname :: t, lpar :: t, args :: [JExpr t], rpar :: t, sc :: t }
              | JError t
                deriving (Eq, Show)
 
+-- | @JOldFunBody@ represents the "standard" function body, using the curly
+--   brackets wrapped around multiple statements.  @JNewFunBody@ represents the
+--   JS 1.8 "lambda style" function body, containing only a simple expression.
+data JFunBody t = JOldFunBody { lcurl :: t, body :: [JTree t], rcurl :: t }
+                | JNewFunBody { expr :: (JExpr t) }
+                | JErrFunBody t
+                  deriving (Eq, Show)
 
 -- | Represents either a variable name or a variable name assigned to an
 --   expression.  @AssignNo@ means it's a simple declaration.  @AssignYes@ means
@@ -65,22 +61,28 @@ $(derive makeFoldable ''JTree)
 $(derive makeFoldable ''JExpr)
 $(derive makeFoldable ''JKeyValue)
 $(derive makeFoldable ''JVarDecAss)
+$(derive makeFoldable ''JFunBody)
 
 instance Strokable (JVarDecAss TT) where
-    toStrokes (AssignNo x)      = one (tokenToStroke x)
+    toStrokes (AssignNo x) = one (tokenToStroke x)
     toStrokes (AssignYes x y z) = one (tokenToStroke x)
                                <> one (tokenToStroke y)
                                <> toStrokes z
-    toStrokes (AssignErr x)     = one (modStroke errorStyle (tokenToStroke x))
+    toStrokes (AssignErr x) = one (modStroke errorStyle (tokenToStroke x))
+
+instance Strokable (JFunBody TT) where
+    toStrokes (JOldFunBody l s r) = one (tokenToStroke l)
+                                 <> foldMap toStrokes s
+                                 <> one (tokenToStroke r)
+    toStrokes (JNewFunBody x) = toStrokes x
+    toStrokes (JErrFunBody x) = one (modStroke errorStyle (tokenToStroke x))
 
 instance Strokable (JTree TT) where
     toStrokes f@(JFunDecl {}) = one (tokenToStroke (res f))
                              <> one (tokenToStroke (lpar f))
                              <> few tokenToStroke (pars f)
                              <> one (tokenToStroke (rpar f))
-                             <> one (tokenToStroke (lcurl f))
-                             <> foldMap toStrokes (fbody f)
-                             <> one (tokenToStroke (rcurl f))
+                             <> toStrokes (fbody f)
     toStrokes v@(JVarDecl {}) = one (tokenToStroke (res v))
                              <> foldMap toStrokes (vars v)
                              <> one (tokenToStroke (sc v))
@@ -100,18 +102,6 @@ instance Strokable (JExpr TT) where
 
 instance Strokable (JKeyValue TT) where
     toStrokes = foldMap (one . tokenToStroke)
-
-instance Failable (JTree TT) where
-    hasFailed (JError _) = True
-    hasFailed _          = False
-
-instance Failable (JVarDecAss TT) where
-    hasFailed (AssignErr _) = True
-    hasFailed _             = False
-
-instance Failable (JExpr TT) where
-    hasFailed (ExprErr _) = True
-    hasFailed _           = False
 
 
 -- * Helper functions.
@@ -156,21 +146,30 @@ parse = pForest <* eof
       anyLevel :: P TT (JTree TT)
       anyLevel = varDecl <|> funCall
 
+      -- | Parser for function declarations.  TODO: Currently doesn't really
+      --   support the JS 1.8 "lambda" function style.
       funDecl :: P TT (JTree TT)
       funDecl = JFunDecl <$> resWord Function' <*> plzTok name
                          <*> plzSpc '(' <*>  parameters   <*> plzSpc ')'
-                         <*> plzSpc '{' <*> many anyLevel <*> plzSpc '}'
+                         <*> funBody
 
+      -- | Parser for old-style function bodies and "lambda style" ones.
+      funBody = JOldFunBody <$> plzSpc '{' <*> many anyLevel <*> plzSpc '}'
+            <|> JNewFunBody <$> expression
+            <|> JErrFunBody <$> pure unknownToken
+
+      -- | Parser for variable declarations.
       varDecl :: P TT (JTree TT)
       varDecl = JVarDecl <$> resWord Var'
-                         <*> pleaseSepBy1 varDecAss (spec ',') (pure []) -- TODO: Ugly recovery? How about pure Error instead?
+                         <*> pleaseSepBy1 varDecAss (spec ',') (pure []) -- TODO: Ugly recovery?
                          <*> plzSpc ';'
+          where
+            varDecAss :: P TT (JVarDecAss TT)
+            varDecAss = AssignNo  <$> name
+                    <|> AssignYes <$> name <*> plzTok (oper Assign') <*> expression
+                    <|> AssignErr <$> pure unknownToken
 
-      varDecAss :: P TT (JVarDecAss TT)
-      varDecAss = AssignNo  <$> name
-              <|> AssignYes <$> name <*> plzTok (oper Assign') <*> (expression)
-              <|> AssignErr <$> pure unknownToken
-
+      -- | Parser for function calls.
       funCall :: P TT (JTree TT)
       funCall = JFunCall <$> name <*> plzSpc '(' <*> arguments <*> plzSpc ')' <*> plzSpc ';'
 
@@ -186,15 +185,15 @@ parse = pForest <* eof
 
       -- | Parser for comma-separated expressions.
       arguments :: P TT [JExpr TT]
-      arguments = commas (expression)
+      arguments = commas expression
 
       -- | Parser for expressions.
       expression :: P TT (JExpr TT)
       expression = JStr    <$> strTok
                <|> JNum    <$> numTok
-               <|> JObj    <$> spec '{' <*> plzSpc '}'
+               <|> JObj    <$> spec '{' <*> plzSpc '}' -- TODO
                <|> JName   <$> name
-               <|> ExprErr <$> recoverWith (symbol (const True))
+               <|> ExprErr <$> recoverWith (pure unknownToken)
 
 
       -- * Simple parsers
@@ -206,11 +205,6 @@ parse = pForest <* eof
       numTok = symbol (\t -> case tokT t of
                                Number _ -> True
                                _        -> False)
-
-      -- comments :: P TT TT
-      -- comments = symbol (\t -> case tokT t of
-      --                            Comment _ -> True
-      --                            _         -> False)
 
       name = symbol (\t -> case tokT t of
                              ValidName _ -> True
