@@ -8,6 +8,7 @@ module Yi.Config.Default (defaultConfig, availableFrontends,
 import {-# source #-} Yi.Boot (reloadEditor)
 import Control.Monad (forever)
 import Data.Dynamic
+import Data.Either (rights)
 import Paths_yi
 import Prelude ()
 import System.Directory
@@ -186,13 +187,16 @@ escToMeta = mkAutomaton $ forever $ (anyEvent >>= I.write) ||> do
 toVimStyleConfig cfg = cfg {defaultKm = Vim.keymap, configRegionStyle = Inclusive}
 toCuaStyleConfig cfg = cfg {defaultKm = Cua.keymap}
 
+-- | Open an emacs-like scratch buffer if no file is open.
 openScratchBuffer :: YiM ()
-openScratchBuffer = withEditor $ do     -- emacs-like behaviour
-      newBufferE (Left "scratch") $ fromString $ unlines
+openScratchBuffer = withEditor $ do 
+      noFileBufOpen <- null . rights . fmap (getVal identA) . M.elems <$> getA buffersA
+      when noFileBufOpen $ do
+           newBufferE (Left "scratch") $ fromString $ unlines
                    ["This buffer is for notes you don't want to save.", --, and for haskell evaluation" -- maybe someday?
                     "If you want to create a file, open that file,",
                     "then enter the text in that file's own buffer."]
-      return ()
+           return ()
 
 nilKeymap :: Keymap
 nilKeymap = choice [
