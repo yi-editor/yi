@@ -17,7 +17,7 @@ module Yi.UI.Cocoa.TextStorage
   ) where
 
 import Prelude (takeWhile, take, dropWhile, drop, span, unzip)
-import Yi.Editor (regex, emptyEditor, Editor)
+import Yi.Editor (currentRegex, emptyEditor, Editor)
 import Yi.Prelude
 import Yi.Buffer
 import Yi.Style
@@ -376,7 +376,7 @@ bufferPicture ed sty buf win r =
   , picStrokes =
       paintCocoaPicture sty (regionEnd r) $
         byteToCharPicture (regionStart r) is $
-          (fst $ runBuffer win buf (attributesPictureB sty (regex ed) r' []))
+          (fst $ runBuffer win buf (attributesPictureB sty (currentRegex ed) r' []))
   }
 
 type TextStorage = YiTextStorage ()
