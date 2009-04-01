@@ -22,18 +22,26 @@ import Yi.Syntax.Tree (sepBy)
 class Strokable a where
     toStrokes :: a -> Endo [Stroke]
 
-data JTree t = JFunDecl { res :: t, fname :: t
-                        , lpar :: t, pars :: [t], rpar :: t
-                        , fbody :: (JFunBody t) }
+-- Unfortunately the selector functions for many of these datatypes have been
+-- prefixed with two characters to differentiate them from selector functions of
+-- other datatypes.  E.g. you can't have "body" as a selector function for
+-- different datatypes, so I call them fdbody, fbbody and afbody for function
+-- declarations, function bodies and anonymous function bodies respectively.  I
+-- haven't been able to find any extension which automagically solves this
+-- problem nicely...
+
+data JTree t = JFunDecl { fdres :: t, fdname :: t
+                        , fdlpar :: t, fdpars :: [t], fdrpar :: t
+                        , fdbody :: (JFunBody t) }
              | JVarDecl { res :: t, vars :: [JVarDecAss t], sc :: t }
-             | JFunCall { fname :: t, lpar :: t, args :: [JExpr t], rpar :: t, sc :: t }
+             | JFunCall { fcname :: t, fclpar :: t, fcargs :: [JExpr t], fcrpar :: t, fcsc :: t }
              | JError t
                deriving (Eq, Show)
 
 -- | @JOldFunBody@ represents the "standard" function body, using the curly
 --   brackets wrapped around multiple statements.  @JNewFunBody@ represents the
 --   JS 1.8 "lambda style" function body, containing only a simple expression.
-data JFunBody t = JOldFunBody { lcurl :: t, body :: [JTree t], rcurl :: t }
+data JFunBody t = JOldFunBody { fblcurl :: t, fbbody :: [JTree t], fbrcurl :: t }
                 | JNewFunBody { expr :: (JExpr t) }
                 | JErrFunBody t
                   deriving (Eq, Show)
@@ -50,6 +58,7 @@ data JExpr t = JObj { objlcurl :: t, objrcurl :: t }
              | JStr t
              | JNum t
              | JName t
+             | JAnonFun { afres :: t, aflpar :: t, afpars :: [t], afrpar :: t, afbody :: (JFunBody t) }
              | ExprErr t
                deriving (Eq, Show)
 
@@ -78,27 +87,32 @@ instance Strokable (JFunBody TT) where
     toStrokes (JErrFunBody x) = one (modStroke errorStyle (tokenToStroke x))
 
 instance Strokable (JTree TT) where
-    toStrokes f@(JFunDecl {}) = one (tokenToStroke (res f))
-                             <> one (tokenToStroke (lpar f))
-                             <> few tokenToStroke (pars f)
-                             <> one (tokenToStroke (rpar f))
-                             <> toStrokes (fbody f)
+    toStrokes f@(JFunDecl {}) = one (tokenToStroke (fdres f))
+                             <> one (tokenToStroke (fdlpar f))
+                             <> few tokenToStroke (fdpars f)
+                             <> one (tokenToStroke (fdrpar f))
+                             <> toStrokes (fdbody f)
     toStrokes v@(JVarDecl {}) = one (tokenToStroke (res v))
                              <> foldMap toStrokes (vars v)
                              <> one (tokenToStroke (sc v))
-    toStrokes f@(JFunCall {}) = one (tokenToStroke (fname f))
-                             <> one (tokenToStroke (lpar f))
-                             <> foldMap toStrokes (args f)
-                             <> one (tokenToStroke (rpar f))
-                             <> one (tokenToStroke (sc f))
+    toStrokes f@(JFunCall {}) = one (tokenToStroke (fcname f))
+                             <> one (tokenToStroke (fclpar f))
+                             <> foldMap toStrokes (fcargs f)
+                             <> one (tokenToStroke (fcrpar f))
+                             <> one (tokenToStroke (fcsc f))
     toStrokes (JError x) = one (modStroke errorStyle (tokenToStroke x))
 
 instance Strokable (JExpr TT) where
-    toStrokes o@(JObj {})   = one (tokenToStroke (objlcurl o))
-    toStrokes   (JNum x)    = one (tokenToStroke x)
-    toStrokes   (JName x)   = one (tokenToStroke x)
-    toStrokes   (JStr x)    = one (tokenToStroke x)
-    toStrokes   (ExprErr x) = one (modStroke errorStyle (tokenToStroke x))
+    toStrokes o@(JObj {})     = one (tokenToStroke (objlcurl o))
+    toStrokes   (JNum x)      = one (tokenToStroke x)
+    toStrokes   (JName x)     = one (tokenToStroke x)
+    toStrokes   (JStr x)      = one (tokenToStroke x)
+    toStrokes f@(JAnonFun {}) = one (tokenToStroke (afres f))
+                             <> one (tokenToStroke (aflpar f))
+                             <> few tokenToStroke (afpars f)
+                             <> one (tokenToStroke (afrpar f))
+                             <> toStrokes (afbody f)
+    toStrokes   (ExprErr x)   = one (modStroke errorStyle (tokenToStroke x))
 
 instance Strokable (JKeyValue TT) where
     toStrokes = foldMap (one . tokenToStroke)
@@ -112,16 +126,22 @@ one x = Endo (x :)
 few :: (Foldable t) => (a -> b) -> t a -> Endo [b]
 few g = foldMap (one . g)
 
+modStroke :: StyleName -> Stroke -> Stroke
+modStroke style stroke = fmap (style <>) stroke
+
+
+-- * Stroking functions
+
+tokenToStroke :: TT -> Stroke
+tokenToStroke = fmap tokenToStyle . tokToSpan
+
 getStrokes :: Point -> Point -> Point -> [JTree TT] -> [Stroke]
 getStrokes _point _begin _end t0 = trace (show t0) result
     where
       result = appEndo (foldMap toStrokes t0) []
 
-modStroke :: StyleName -> Stroke -> Stroke
-modStroke style stroke = fmap (style <>) stroke
 
-tokenToStroke :: TT -> Stroke
-tokenToStroke = fmap tokenToStyle . tokToSpan
+-- * The parser
 
 parse :: P TT [JTree TT]
 parse = pForest <* eof
@@ -131,20 +151,22 @@ parse = pForest <* eof
       pForest = many pTree
 
       pTree :: P TT (JTree TT)
-      pTree = topLevel
-          <|> anyLevel
+      pTree = anyLevel
           <|> (JError <$> recoverWith (symbol (const True)))
 
 
       -- * High-level stuff
 
-      -- | Parser for stuff that's allowed only at the top level of the program.
-      topLevel :: P TT (JTree TT)
-      topLevel = funDecl
+      -- We don't have anything that's only allowed at the top level yet...  And
+      -- yes, apparently function declarations inside of function declarations
+      -- are okay.
+      --
+      -- topLevel :: P TT (JTree TT)
+      -- topLevel = undefined
 
       -- | Parser for stuff that's allowed anywhere in the program.
       anyLevel :: P TT (JTree TT)
-      anyLevel = varDecl <|> funCall
+      anyLevel = funDecl <|> varDecl <|> funCall
 
       -- | Parser for function declarations.  TODO: Currently doesn't really
       --   support the JS 1.8 "lambda" function style.
@@ -189,11 +211,12 @@ parse = pForest <* eof
 
       -- | Parser for expressions.
       expression :: P TT (JExpr TT)
-      expression = JStr    <$> strTok
-               <|> JNum    <$> numTok
-               <|> JObj    <$> spec '{' <*> plzSpc '}' -- TODO
-               <|> JName   <$> name
-               <|> ExprErr <$> recoverWith (pure unknownToken)
+      expression = JStr     <$> strTok
+               <|> JNum     <$> numTok
+               <|> JObj     <$> spec '{' <*> plzSpc '}' -- TODO
+               <|> JName    <$> name
+               <|> JAnonFun <$> resWord Function' <*> plzSpc '(' <*> parameters <*> plzSpc ')' <*> funBody
+               <|> ExprErr  <$> recoverWith (pure unknownToken)
 
 
       -- * Simple parsers
