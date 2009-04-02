@@ -9,6 +9,7 @@ import qualified Data.ByteString.UTF8 as UTF8
 import qualified Data.ByteString.Lazy.UTF8 as LazyUTF8
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as LB
+import qualified Data.Rope as R
 import Data.Char (ord)
 import Data.Typeable
 import Data.DeriveTH
@@ -68,17 +69,5 @@ instance SemiNum Point Size where
     Point p -~ Size s = Point (p - s)
     Point p ~- Point q = Size (abs (p - q))
 
-utf8Size :: String -> Size
-utf8Size = Size . B.length . UTF8.fromString
-
-utf8CharSize :: Char -> Size
-utf8CharSize c = case ord c of i | i < 0x80    -> 1
-                                 | i < 0x800   -> 2
-                                 | i < 0x10000 -> 3
-                                 | otherwise   -> 4
-
--- fromUTF8ByteString :: B.ByteString -> String
--- fromUTF8ByteString = UTF8.toString
-
-fromString :: String -> LB.ByteString
-fromString = LazyUTF8.fromString
+fromString :: String -> Rope
+fromString = R.fromString

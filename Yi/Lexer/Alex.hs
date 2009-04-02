@@ -1,7 +1,7 @@
 {-# LANGUAGE Rank2Types #-}
 module Yi.Lexer.Alex (
                        alexGetChar, alexInputPrevChar, unfoldLexer, lexScanner,
-                       alexCollectChar, utf8CharSize,
+                       alexCollectChar, 
                        AlexState(..), AlexInput, Stroke,
                        actionConst, actionAndModify, actionStringAndModify, actionStringConst,
                        Tok(..), tokBegin, tokEnd, tokFromT, tokRegion, 
@@ -14,7 +14,6 @@ module Yi.Lexer.Alex (
 import Yi.Syntax hiding (mkHighlighter)
 import Yi.Prelude
 import Prelude ()
-import Yi.Buffer.Basic (utf8CharSize)
 import Yi.Region
 
 type IndexedStr = [(Point, Char)]
@@ -72,9 +71,9 @@ moveStr :: Posn -> IndexedStr -> Posn
 moveStr posn str = foldl' moveCh posn (fmap snd str)
 
 moveCh :: Posn -> Char -> Posn
-moveCh (Posn o l c) '\t' = Posn (o+1)  l     (((c+8) `div` 8)*8)
-moveCh (Posn o l _) '\n' = Posn (o+1) (l+1)   0
-moveCh (Posn o l c) chr  = Posn (o+~utf8CharSize chr) l (c+1)
+moveCh (Posn o l c) '\t' = Posn (o+1)  l       (((c+8) `div` 8)*8)
+moveCh (Posn o l _) '\n' = Posn (o+1)  (l+1)   0
+moveCh (Posn o l c) chr  = Posn (o+~1) l       (c+1)
 
 alexGetChar :: AlexInput -> Maybe (Char, AlexInput)
 alexGetChar (_,[]) = Nothing
