@@ -1,6 +1,6 @@
 {-# LANGUAGE CPP, TypeFamilies #-}
 import Yi hiding (defaultConfig)
-import Yi.Keymap.Emacs (keymap)
+import Yi.Keymap.Emacs (mkKeymap, defKeymap, ModeMap(..))
 -- import Yi.Users.JP.Experimental (keymap)
 -- You can use other keymap by importing some other module:
 -- import  Yi.Keymap.Cua (keymap)
@@ -94,6 +94,9 @@ defaultConfig :: Config
 defaultConfig = defaultEmacsConfig
 
 
+myKeymap :: Keymap
+myKeymap = mkKeymap $ override defKeymap $ \proto _self -> proto {completionCaseSensitive = True}
+
 main :: IO ()
 main = yi $ defaultConfig {
                            configInputPreprocess = I.idAutomaton,
@@ -114,7 +117,7 @@ main = yi $ defaultConfig {
                                }
                               -- , configFontName = Just "Monaco"
                              },
-                           defaultKm = (adjustPriority (-1) >> choice [extraInput]) <|| keymap
+                           defaultKm = (adjustPriority (-1) >> choice [extraInput]) <|| myKeymap
                               <|> (ctrl (char '>') ?>>! increaseIndent)
                               <|> (ctrl (char '<') ?>>! decreaseIndent)
                           }
