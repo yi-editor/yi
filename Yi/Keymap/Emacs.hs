@@ -10,8 +10,7 @@
 module Yi.Keymap.Emacs (keymap,
                         mkKeymap,
                         defKeymap,
-                        ModeMap(..),
-                        EmacsOpts(..)) where
+                        ModeMap(..)) where
 import Prelude ()
 import Data.Prototype
 import Yi.Core
@@ -51,30 +50,26 @@ import Data.Char
 import Control.Monad
 import Control.Applicative
 
-data ModeMap = ModeMap { e_keymap :: Keymap
-                       , e_opts :: EmacsOpts
+data ModeMap = ModeMap { eKeymap :: Keymap
+                       , completionCaseSensitive :: Bool
                        }
-
-data EmacsOpts = EmacsOpts { completeCaseSensitive :: Bool }
 
 keymap :: Keymap
 keymap = mkKeymap defKeymap
 
 mkKeymap :: Proto ModeMap -> Keymap
-mkKeymap = e_keymap . extractValue
+mkKeymap = eKeymap . extractValue
 
 defKeymap :: Proto ModeMap
 defKeymap = Proto template
   where
-    template self = ModeMap { e_keymap = emacs_keymap (e_opts self)
-                            , e_opts = def_opts }
-
-    def_opts = EmacsOpts { completeCaseSensitive = False }
-
-    -- emace_keymap :: Keymap
-    emacs_keymap opts = selfInsertKeymap Nothing isDigit <|> completionKm (completeCaseSensitive opts) <|>
-         do univArg <- readUniversalArg
-            selfInsertKeymap univArg (not . isDigit) <|> emacsKeys univArg
+    template self = ModeMap { eKeymap = emacsKeymap
+                            , completionCaseSensitive = False }
+      where 
+        emacsKeymap :: Keymap
+        emacsKeymap = selfInsertKeymap Nothing isDigit <|> completionKm (completionCaseSensitive self) <|>
+             do univArg <- readUniversalArg
+                selfInsertKeymap univArg (not . isDigit) <|> emacsKeys univArg
 
 selfInsertKeymap :: Maybe Int -> (Char -> Bool) -> Keymap
 selfInsertKeymap univArg condition = do
