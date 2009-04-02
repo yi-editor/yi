@@ -3,7 +3,7 @@
 -- Copyright (c) 2004-5 Don Stewart - http://www.cse.unsw.edu.au/~dons
 -- Copyright (c) 2007-8 JP Bernardy
 
--- | 'Buffer' implementation, wrapping ByteRope
+-- | 'Buffer' implementation, wrapping Rope
 module Yi.Buffer.Implementation
   ( UIUpdate (..)
   , Update (..)
@@ -37,14 +37,11 @@ module Yi.Buffer.Implementation
   , delOverlayBI
   , delOverlayLayer
   , inBounds
-  , findNextChar
   , updateSyntax
   , getAst
   , strokesRangesBI
-  , toIndexedString
   , getStream
   , getIndexedStream
-  , newLine
   , lineAt
   , SearchExp
 )
@@ -53,11 +50,11 @@ where
 import Control.Monad
 import Data.Array
 import Data.Binary
-import Data.ByteRope (ByteRope)
+import Data.Rope (Rope)
 import Data.Char
 import Data.DeriveTH
 import Data.Derive.Binary
-import Data.List (groupBy, drop)
+import Data.List (groupBy, drop, zip, filter, takeWhile, length)
 import Data.Maybe 
 import Data.Monoid
 import Data.Typeable
@@ -70,7 +67,7 @@ import Yi.Region
 import Yi.Style
 import Yi.Syntax 
 import qualified Codec.Binary.UTF8.Generic as UF8Codec
-import qualified Data.ByteRope as F
+import qualified Data.Rope as F
 import qualified Data.ByteString.Lazy as LazyB
 import qualified Data.ByteString.Lazy.UTF8 as LazyUTF8
 import qualified Data.Map as M
@@ -102,7 +99,7 @@ instance Ord Overlay where
 
 
 data BufferImpl syntax =
-        FBufferData { mem        :: !ByteRope          -- ^ buffer text
+        FBufferData { mem        :: !Rope          -- ^ buffer text
                     , marks      :: !Marks                 -- ^ Marks for this buffer
                     , markNames  :: !(M.Map String Mark)
                     , hlCache    :: !(HLState syntax)       -- ^ syntax highlighting state
@@ -131,8 +128,8 @@ instance Binary (BufferImpl ()) where
 -- Note that the update direction is only a hint for moving the cursor
 -- (mainly for undo purposes); the insertions and deletions are always
 -- applied Forward.
-data Update = Insert {updatePoint :: !Point, updateDirection :: !Direction, insertUpdateString :: !LazyB.ByteString} 
-            | Delete {updatePoint :: !Point, updateDirection :: !Direction, deleteUpdateString :: !LazyB.ByteString}
+data Update = Insert {updatePoint :: !Point, updateDirection :: !Direction, insertUpdateString :: !Rope} 
+            | Delete {updatePoint :: !Point, updateDirection :: !Direction, deleteUpdateString :: !Rope}
               -- Note that keeping the text does not cost much: we keep the updates in the undo list;
               -- if it's a "Delete" it means we have just inserted the text in the buffer, so the update shares
               -- the data with the buffer. If it's an "Insert" we have to keep the data any way.
@@ -144,12 +141,12 @@ updateIsDelete :: Update -> Bool
 updateIsDelete Delete {} = True
 updateIsDelete Insert {} = False
 
-updateString :: Update -> LazyUTF8.ByteString
+updateString :: Update -> Rope
 updateString (Insert _ _ s) = s
 updateString (Delete _ _ s) = s
 
 updateSize :: Update -> Size
-updateSize = Size . fromIntegral . LazyB.length . updateString
+updateSize = Size . fromIntegral . F.length . updateString
 
 data UIUpdate = TextUpdate !Update
               | StyleUpdate !Point !Size
@@ -160,27 +157,27 @@ $(derive makeBinary ''UIUpdate)
 -- Low-level primitives.
 
 -- | New FBuffer filled from string.
-newBI :: LazyB.ByteString -> BufferImpl ()
-newBI s = FBufferData (F.fromLazyByteString s) M.empty M.empty dummyHlState Set.empty 0
+newBI :: Rope -> BufferImpl ()
+newBI s = FBufferData s M.empty M.empty dummyHlState Set.empty 0
 
 -- | read @n@ chars from buffer @b@, starting at @i@
-readChars :: ByteRope -> Int -> Point -> String
-readChars p n (Point i) = take n $ LazyUTF8.toString $ F.toLazyByteString $ F.drop i $ p
+readChars :: Rope -> Int -> Point -> String
+readChars p n (Point i) = take n $ F.toString $ F.drop i $ p
 {-# INLINE readChars #-}
 
 -- | read @n@ bytes from buffer @b@, starting at @i@
-readChunk :: ByteRope -> Size -> Point -> ByteRope
+readChunk :: Rope -> Size -> Point -> Rope
 readChunk p (Size n) (Point i) = F.take n $ F.drop i $ p
 
 -- | Write string into buffer.
-insertChars :: ByteRope -> ByteRope -> Point -> ByteRope
+insertChars :: Rope -> Rope -> Point -> Rope
 insertChars p cs (Point i) = left `F.append` cs `F.append` right
     where (left,right) = F.splitAt i p
 {-# INLINE insertChars #-}
 
 
 -- | Write string into buffer.
-deleteChars :: ByteRope -> Point -> Size -> ByteRope
+deleteChars :: Rope -> Point -> Size -> Rope
 deleteChars p (Point i) (Size n) = left `F.append` right
     where (left,rest) = F.splitAt i p
           right = F.drop n rest
@@ -223,16 +220,17 @@ nelemsBI :: Int -> Point -> BufferImpl syntax -> String
 nelemsBI n i fb = readChars (mem fb) n i
 
 nelemsBI' :: Size -> Point -> BufferImpl syntax -> String
-nelemsBI' n i fb = LazyUTF8.toString $ F.toLazyByteString $ readChunk (mem fb) n i
+nelemsBI' n i fb = F.toString $ readChunk (mem fb) n i
 
-getStream :: Direction -> Point -> BufferImpl syntax -> LazyUTF8.ByteString
-getStream Forward  (Point i) fb = F.toLazyByteString        $ F.drop i $ mem $ fb
-getStream Backward (Point i) fb = F.toReverseLazyByteString $ F.take i $ mem $ fb
+getStream :: Direction -> Point -> BufferImpl syntax -> Rope
+getStream Forward  (Point i) fb =             F.drop i $ mem $ fb
+getStream Backward (Point i) fb = F.reverse $ F.take i $ mem $ fb
 
 getIndexedStream :: Direction -> Point -> BufferImpl syntax -> [(Point,Char)]
-getIndexedStream Forward  (Point i) fb = toIndexedString Forward  (Point i) $ F.toLazyByteString        $ F.drop i $ mem $ fb
-getIndexedStream Backward (Point i) fb = toIndexedString Backward (Point i) $ F.toReverseLazyByteString $ F.take i $ mem $ fb
+getIndexedStream Forward  (Point p) fb = zip [Point p..]           $ F.toString        $ F.drop p $ mem $ fb
+getIndexedStream Backward (Point p) fb = zip (dF (pred (Point p))) $ F.toReverseString $ F.take p $ mem $ fb
 
+dF n = n : dF (pred n)
 
 -- | Create an "overlay" for the style @sty@ between points @s@ and @e@
 mkOverlay :: OvlLayer -> Region -> StyleName -> Overlay
@@ -284,15 +282,6 @@ strokesRangesBI getStrokes regex rgn  point fb@(FBufferData {hlCache = HLState h
 ------------------------------------------------------------------------
 -- Point based editing
 
-findNextChar :: Int -> Point -> BufferImpl syntax -> Point
-findNextChar m p fb 
-    | m < 0 = case drop (0 - 1 - m) (getIndexedStream Backward p fb) of
-        [] -> 0
-        (i,_):_ -> i
-    | otherwise = case drop m (getIndexedStream Forward p fb) of
-        [] -> sizeBI fb
-        (i,_):_ -> i
-
 -- | Checks if an Update is valid
 isValidUpdate :: Update -> BufferImpl syntax -> Bool
 isValidUpdate u b = case u of
@@ -309,7 +298,7 @@ applyUpdateI u fb = touchSyntax (updatePoint u) $
                                    -- FIXME: this is inefficient; find a way to use mapMonotonic
                                    -- (problem is that marks can have different gravities)
     where (p', amount) = case u of
-                           Insert pnt _ cs -> (insertChars p (F.fromLazyByteString cs) pnt, sz)
+                           Insert pnt _ cs -> (insertChars p cs pnt, sz)
                            Delete pnt _ _  -> (deleteChars p pnt sz, negate sz)
           sz = updateSize u
           shift = shiftMarkValue (updatePoint u) amount
@@ -328,15 +317,23 @@ reverseUpdateI (Insert p dir cs) = Delete p (reverseDir dir) cs
 ord' :: Char -> Word8
 ord' = fromIntegral . ord
 
-newLine :: Word8
-newLine = ord' '\n'
+newLine :: Char
+newLine = '\n'
+
+count :: Char -> String -> Int
+count c = length . filter (== c)
 
 lineAt :: Point -> BufferImpl syntax -> Int
-lineAt point fb = 1 + F.count newLine (F.take (fromPoint point) (mem fb))
+lineAt point fb = 1 + (count newLine $ F.toString $ F.take (fromPoint point) (mem fb))
+
+
+elemIndices :: Char -> Point -> Direction -> BufferImpl syntax -> [Point]
+elemIndices c p dir fb = map fst $ filter ((c ==) . snd) $ getIndexedStream dir p fb
+
 
 -- | Get begin of the line relatively to @point@.
 solPointI :: Point -> BufferImpl syntax -> Point
-solPointI (Point point) = Point . maybe 0 (+1) . F.elemIndexEnd newLine . F.take point . mem
+solPointI point = maybe 0 (+1) . listToMaybe . elemIndices newLine point Backward
 
 -- | Get the point at line number @n@, relatively from @point@. @0@ will go to
 -- the start of this line. Returns the actual line difference we went
@@ -344,10 +341,8 @@ solPointI (Point point) = Point . maybe 0 (+1) . F.elemIndexEnd newLine . F.take
 -- Note that the line-difference returned will be negative if we are
 -- going backwards to previous lines (that is if @n@ was negative).
 gotoLnRelI :: Int -> Point -> BufferImpl syntax -> (Point, Int)
-gotoLnRelI n (Point point) fb = (Point newPoint, difference)
+gotoLnRelI n point fb = (newPoint, difference)
   where
-  -- The text of the buffer
-  s     = mem fb
   -- The current point that we are at in the buffer.
   (difference, newPoint)
     -- Important that we go up if it is 0 since findDownLine
@@ -356,12 +351,12 @@ gotoLnRelI n (Point point) fb = (Point newPoint, difference)
     | otherwise = findDownLine 1 n downLineStarts
 
   -- The offsets of all line beginnings above the current point.
-  upLineStarts = map (+1) (F.elemIndicesEnd newLine (F.take point s)) ++ [0]
+  upLineStarts = map (+1) (elemIndices newLine point Backward fb) ++ [0]
 
   -- Go up to find the line we wish for the returned value is a pair
   -- consisting of the point of the start of the line to which we move
   -- and the difference in lines we have moved (negative here if we move at all)
-  findUpLine :: Int -> Int -> [ Int ] -> (Int, Int)
+  findUpLine :: Int -> Int -> [Point] -> (Int, Point)
   findUpLine acc _ [x]    = (acc, x)
   findUpLine acc 0 (x:_)  = (acc, x)
   findUpLine acc l (_:xs) = findUpLine (acc - 1) (l + 1) xs
@@ -372,14 +367,14 @@ gotoLnRelI n (Point point) fb = (Point newPoint, difference)
   -- The offsets of all the line beginnings below the current point
   -- so we drop everything before the point, find all the indices of
   -- the newlines from there and add the point (plus 1) to them.
-  downLineStarts = map (+(1 + point)) (F.elemIndices newLine $ F.drop point s)
+  downLineStarts = map (+1) $ elemIndices newLine point Forward fb
 
   -- Go down to find the line we wish for, the returned value is a pair
   -- consisting of the point of the start of the line to which we move
   -- and the number of lines we have actually moved.
   -- Note: that this doesn't work if the number of lines to move down
   -- is zero. 
-  findDownLine :: Int -> Int -> [ Int ] -> (Int, Int)
+  findDownLine :: Int -> Int -> [Point] -> (Int, Point)
   -- try to go forward, but there is no such line
   -- this cannot happen on a recursive call so it can only happen if
   -- we started on the last line, so we return the current point.
@@ -389,16 +384,14 @@ gotoLnRelI n (Point point) fb = (Point newPoint, difference)
   findDownLine acc l (_:xs) = findDownLine (acc + 1) (l - 1) xs
 
 charsFromSolBI :: Point -> BufferImpl syntax -> String
-charsFromSolBI (Point pnt) fb = LazyUTF8.toString $ F.toLazyByteString $ readChunk ptr (Size (pnt - sol)) (Point sol)
-  where sol = maybe 0 (1 +) (F.elemIndexEnd newLine (F.take pnt ptr))
-        ptr = mem fb
+charsFromSolBI pnt fb = reverse $ takeWhile (/= newLine) $ F.toString $ getStream Backward pnt fb
 
 
 -- | Return indices of all strings in buffer matching regex, inside the given region.
 regexRegionBI :: SearchExp -> Region -> forall syntax. BufferImpl syntax -> [Region]
 regexRegionBI se r fb = case dir of
-     Forward  -> fmap (fmapRegion addPoint . matchedRegion) $ matchAll' $ F.toLazyByteString bufReg
-     Backward -> fmap (fmapRegion subPoint . matchedRegion) $ matchAll' $ F.toReverseLazyByteString bufReg
+     Forward  -> fmap (fmapRegion addPoint . matchedRegion) $ matchAll' $ F.toString        bufReg
+     Backward -> fmap (fmapRegion subPoint . matchedRegion) $ matchAll' $ F.toReverseString bufReg
     where matchedRegion arr = let (off,len) = arr!0 in mkRegion (Point off) (Point (off+len))
           addPoint (Point x) = Point (p + x)
           subPoint (Point x) = Point (q - x) 
@@ -442,34 +435,8 @@ updateSyntax fb@FBufferData {dirtyOffset = touchedIndex, hlCache = HLState hl ca
           hlCache = HLState hl (hlRun hl getText touchedIndex cache)
          }
     where getText = Scanner 0 id (error "getText: no character beyond eof")
-                     (\idx -> toIndexedString Forward idx (F.toLazyByteString (F.drop (fromPoint idx) (mem fb))))
-
-toIndexedString :: Direction -> Point -> LazyB.ByteString -> [(Point, Char)]
-toIndexedString dir p = (case dir of
-    Forward -> toIndexedStringForward
-    Backward -> toIndexedStringBackward) p . LazyB.unpack
-
-toIndexedStringForward :: Point -> [Word8] -> [(Point, Char)]
-toIndexedStringForward curIdx bs = 
-    case UF8Codec.decode bs of
-      Nothing -> []
-      Just (c,n) -> let newIndex = curIdx + fromIntegral n in
-                    (curIdx,c) : (newIndex `seq` toIndexedStringForward newIndex (drop n bs))
-                  
-toIndexedStringBackward :: Point -> [Word8] -> [(Point,Char)]
-toIndexedStringBackward curIdx bs = case UF8Codec.decode (reverse $ decodeBack bs) of
-    Nothing -> []
-    Just (c,n) -> let newIndex = curIdx - fromIntegral n in
-                      (newIndex,c) : (newIndex `seq` toIndexedStringBackward newIndex (drop n bs))
-    
-
-decodeBack :: [Word8] -> [Word8]
-decodeBack [] = []
-decodeBack (x:xs)
-    | x < 128 || x > 192  = [x] -- beginning of char: take it and stop
-    | otherwise           = x : decodeBack xs    -- continue
-
-
+                     (\idx -> getIndexedStream Forward idx fb)
+                                        
 ------------------------------------------------------------------------
 
 -- | Returns the requested mark, creating a new mark with that name (at the supplied position) if needed

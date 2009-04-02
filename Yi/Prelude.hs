@@ -49,6 +49,7 @@ module Data.Bool,
 module Data.Foldable,
 module Data.Function,
 module Data.Int,
+module Data.Rope,
 module Data.Traversable,
 module Text.Show,
 module Yi.Debug,
@@ -80,6 +81,7 @@ import Data.Bool
 import Data.Foldable
 import Data.Function hiding ((.), id)
 import Data.Int
+import Data.Rope (Rope)
 import Control.Category
 import Control.Monad.Reader
 import Control.Applicative

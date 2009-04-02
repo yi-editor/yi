@@ -32,6 +32,7 @@ import qualified Yi.Mode.Haskell as Haskell
 import qualified Yi.Mode.JavaScript as JavaScript
 import qualified Yi.Mode.Latex as Latex
 import qualified Yi.Interact as I
+import qualified Data.Rope as R
 
 #ifdef FRONTEND_VTY
 import qualified Yi.UI.Vty
@@ -192,7 +193,7 @@ openScratchBuffer :: YiM ()
 openScratchBuffer = withEditor $ do 
       noFileBufOpen <- null . rights . fmap (getVal identA) . M.elems <$> getA buffersA
       when noFileBufOpen $ do
-           newBufferE (Left "scratch") $ fromString $ unlines
+           newBufferE (Left "scratch") $ R.fromString $ unlines
                    ["This buffer is for notes you don't want to save.", --, and for haskell evaluation" -- maybe someday?
                     "If you want to create a file, open that file,",
                     "then enter the text in that file's own buffer."]
@@ -208,7 +209,7 @@ nilKeymap = choice [
              char 'h' ?>>! configHelp
             ] 
             <|| (anyEvent >>! errorEditor "Keymap not defined, 'q' to quit, 'h' for help.")
-    where configHelp = newBufferE (Left "configuration help") $ fromString $ unlines $
+    where configHelp = newBufferE (Left "configuration help") $ R.fromString $ unlines $
                          ["This instance of Yi is not configured.",
                           "To get a standard reasonable keymap, you can run yi with either --as=cua, --as=vim or --as=emacs.",
                           "You should however create your own ~/.yi/yi.hs file: ",

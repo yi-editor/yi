@@ -30,7 +30,6 @@ module Yi.Dired (
 
 import Prelude (uncurry, catch, realToFrac)
 
-import qualified Data.ByteString.Lazy as LazyB
 import Data.List hiding (find, maximum, concat)
 import Data.Maybe
 import qualified Data.Map as M
@@ -52,6 +51,9 @@ import Yi.Config
 import Yi.Core
 import Yi.Style
 import System.FriendlyPath
+import qualified Data.Rope as R
+
+
 ------------------------------------------------
 -- | If file exists, read contents of file into a new buffer, otherwise
 -- creating a new empty buffer. Replace the current window with a new
@@ -85,7 +87,7 @@ fnewCanonicalized f = do
                    do when (not dfe) $ do
                         userWantMkDir <- return True -- TODO
                         when userWantMkDir $ io $ createDirectoryIfMissing True fDirectory
-                      withEditor $ stringToNewBuffer (Right f) (fromString "") -- Create new empty buffer
+                      withEditor $ stringToNewBuffer (Right f) (R.fromString "") -- Create new empty buffer
             -- adjust the mode
             tbl <- asks (modeTable . yiConfig)
             contents <- withGivenBuffer b $ elemsB
@@ -114,7 +116,7 @@ fnewCanonicalized f = do
     -- The first argument is the buffer name
     fileToNewBuffer :: FilePath -> YiM BufferRef
     fileToNewBuffer path = do
-      contents <- io $ LazyB.readFile path
+      contents <- io $ R.readFile path
       now <- io getCurrentTime
       b <- withEditor $ stringToNewBuffer (Right path) contents
       withGivenBuffer b $ markSavedB now
@@ -191,7 +193,7 @@ diredDir dir = diredDirBuffer dir >> return ()
 
 diredDirBuffer :: FilePath -> YiM BufferRef
 diredDirBuffer dir = do
-    b <- withEditor $ stringToNewBuffer (Right dir) (fromString "")
+    b <- withEditor $ stringToNewBuffer (Right dir) (R.fromString "")
     withEditor $ switchToBufferE b
     diredRefresh
     return b

@@ -50,7 +50,6 @@ module Yi.Buffer.Misc
   , writeB
   , writeN
   , deleteNAt
-  , deleteNBytes
   , readB
   , elemsB
   , undosA
@@ -141,6 +140,7 @@ import Data.Accessor.Template
 import Data.Binary
 import Data.DeriveTH
 import Data.Derive.Binary
+import qualified Data.Rope as R
 import Data.List (scanl, takeWhile, zip, length)
 import qualified Data.Map as M
 import Data.Maybe
@@ -579,7 +579,7 @@ emptyMode = Mode
   }
 
 -- | Create buffer named @nm@ with contents @s@
-newB :: BufferRef -> BufferId -> LB.ByteString -> FBuffer
+newB :: BufferRef -> BufferId -> Rope -> FBuffer
 newB unique nm s = 
  FBuffer { bmode  = emptyMode
          , rawbuf = newBI s
@@ -619,7 +619,7 @@ nelemsB n i = queryBuffer $ nelemsBI n i
 nelemsB' :: Size -> Point -> BufferM String
 nelemsB' n i = queryBuffer $ nelemsBI' n i
 
-streamB :: Direction -> Point -> BufferM LazyUTF8.ByteString
+streamB :: Direction -> Point -> BufferM Rope
 streamB dir i = queryBuffer (getStream dir i)
 
 indexedStreamB :: Direction -> Point -> BufferM [(Point,Char)]
@@ -677,7 +677,7 @@ writeN cs = do
 
 -- | Insert the list at specified point, extending size of buffer
 insertNAt :: String -> Point -> BufferM ()
-insertNAt cs pnt = applyUpdate (Insert pnt Forward $ LazyUTF8.fromString cs)
+insertNAt cs pnt = applyUpdate (Insert pnt Forward $ R.fromString cs)
 
 -- | Insert the list at current point, extending size of buffer
 insertN :: String -> BufferM ()
@@ -692,13 +692,7 @@ insertB = insertN . return
 -- | @deleteNAt n p@ deletes @n@ characters forwards from position @p@
 deleteNAt :: Direction -> Int -> Point -> BufferM ()
 deleteNAt dir n pos = do
-  els <- nelemsB n pos
-  applyUpdate (Delete pos dir $ LazyUTF8.fromString els)
-
--- | @deleteNBytes n p@ deletes @n@ bytes forwards from position @p@
-deleteNBytes :: Direction -> Size -> Point -> BufferM ()
-deleteNBytes dir n pos = do
-  els <- LB.take (fromIntegral n) <$> streamB Forward pos
+  els <- R.take n <$> streamB Forward pos
   applyUpdate (Delete pos dir els)
 
 
@@ -816,10 +810,8 @@ mayGetMarkB m = queryBuffer (getMarkBI m)
 -- | Move point by the given number of characters.
 -- A negative offset moves backwards a positive one forward.
 moveN :: Int -> BufferM ()
-moveN n = do
-  p <- pointB
-  nextPoint <- queryBuffer (findNextChar n p)
-  moveTo nextPoint
+moveN n = moveTo =<< (+~ Size n) <$> pointB
+
 
 -- | Move point -1
 leftB :: BufferM ()
@@ -864,7 +856,7 @@ moveToColB targetCol = do
   chrs <- nelemsB maxBound solPnt -- get all chars in the buffer, lazily.
   let cols = scanl colMove 0 chrs    -- columns corresponding to the char
       toSkip = takeWhile (\(char,col) -> char /= '\n' && col < targetCol) (zip chrs cols)
-  moveTo =<< queryBuffer (findNextChar (length toSkip) solPnt)
+  moveTo $ solPnt +~ fromIntegral (length toSkip)
 
 moveToLineColB :: Int -> Int -> BufferM ()
 moveToLineColB line col = gotoLn line >> moveToColB col

@@ -41,8 +41,8 @@ import Yi.Templates
   , templateNames
   )
 import Yi.UI.Common 
-import qualified Data.ByteString.Lazy.UTF8 as LazyUTF8
 import qualified Yi.Mode.Interactive as Interactive
+import qualified Data.Rope as R
 
 ---------------------------
 -- | Changing the buffer name quite useful if you have
@@ -62,7 +62,7 @@ shellCommandE = do
     withMinibufferFree "Shell command:" $ \cmd -> do
       (cmdOut,cmdErr,exitCode) <- liftIO $ runShellCommand cmd
       case exitCode of
-        ExitSuccess -> withEditor $ newBufferE (Left "Shell Command Output") (LazyUTF8.fromString cmdOut) >> return ()
+        ExitSuccess -> withEditor $ newBufferE (Left "Shell Command Output") (R.fromString cmdOut) >> return ()
         -- FIXME: here we get a string and convert it back to utf8; this indicates a possible bug.
         ExitFailure _ -> msgEditor cmdErr
 

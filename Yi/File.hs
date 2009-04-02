@@ -23,7 +23,7 @@ import System.Directory
 import System.IO.UTF8 as UTF8
 import System.FilePath
 import System.FriendlyPath
-import qualified Data.ByteString.Lazy as LB
+import qualified Data.Rope as R
 
 -- | Revert to the contents of the file on disk
 revertE :: YiM ()
@@ -79,7 +79,7 @@ fwriteBufferE bufferKey =
      now <- io getCurrentTime
      case nameContents of
        (Just f, contents) -> do withGivenBuffer bufferKey (markSavedB now)
-                                liftIO $ LB.writeFile f contents 
+                                liftIO $ R.writeFile f contents
        (Nothing, _c)      -> msgEditor "Buffer not associated with a file"
 
 -- | Write current buffer to disk as @f@. The file is also set to @f@

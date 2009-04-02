@@ -83,6 +83,7 @@ import qualified System.IO.UTF8 as UTF8
 import qualified Yi.Editor as Editor
 import qualified Yi.Interact as I
 import qualified Yi.UI.Common as UI
+import qualified Data.Rope as R
 
 -- | Make an action suitable for an interactive run.
 -- UI will be refreshed.
@@ -314,7 +315,7 @@ startSubprocess :: FilePath -> [String] -> (Either Exception ExitCode -> YiM x) 
 startSubprocess cmd args onExit = onYiVar $ \yi var -> do
         let (e', bufref) = runEditor 
                               (yiConfig yi) 
-                              (printMsg ("Launched process: " ++ cmd) >> newBufferE (Left bufferName) (fromString ""))
+                              (printMsg ("Launched process: " ++ cmd) >> newBufferE (Left bufferName) (R.fromString ""))
                               (yiEditor var)
             procid = yiSubprocessIdSupply var + 1
         procinfo <- createSubprocess cmd args bufref

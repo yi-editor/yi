@@ -18,7 +18,6 @@ module Yi.Buffer
   , UIUpdate (..)
   , Update (..)
   , updateIsDelete
-  , toIndexedString
   )
 where
 

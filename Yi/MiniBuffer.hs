@@ -24,13 +24,15 @@ import Yi.Completion (commonPrefix, infixMatch, prefixMatch, containsMatch', com
 import Yi.Style (defaultStyle)
 import qualified Yi.Core as Editor
 import Control.Monad.Reader
+import qualified Data.Rope as R
+
 -- | Open a minibuffer window with the given prompt and keymap
 -- The third argument is an action to perform after the minibuffer
 -- is opened such as move to the first occurence of a searched for
 -- string. If you don't need this just supply @return ()@
 spawnMinibufferE :: String -> KeymapEndo -> EditorM BufferRef
 spawnMinibufferE prompt kmMod =
-    do b <- stringToNewBuffer (Left prompt) (fromString "")
+    do b <- stringToNewBuffer (Left prompt) (R.fromString "")
        withGivenBuffer0 b $ modifyMode (\m -> m {modeKeymap = kmMod})
        w <- newWindowE True b
        modA windowsA (insertAtEnd w)

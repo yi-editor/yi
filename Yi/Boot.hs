@@ -13,6 +13,7 @@ import Yi.Keymap (makeAction, withUI, YiM)
 import qualified Yi.UI.Common as UI
 import qualified Yi.Main
 import qualified Yi.Config.Default
+import qualified Data.Rope as R
 
 recoverState :: FilePath -> IO (Maybe Editor)
 recoverState = Data.Binary.decodeFile
@@ -44,7 +45,7 @@ HConf driver yi restart = getHConf defaultHConfParams Yi.Config.Default.defaultC
 
 showErrorsInConf :: String -> Config -> Config
 showErrorsInConf errs conf 
-    = conf {startActions = [makeAction $ newBufferE (Left "errors") (fromString errs)]}
+    = conf {startActions = [makeAction $ newBufferE (Left "errors") (R.fromString errs)]}
 
 projectName :: String
 projectName = "yi"

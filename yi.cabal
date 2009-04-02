@@ -213,7 +213,7 @@ library
         Data.Prototype
 
         -- Should probably be split out to another package.
-        Data.ByteRope
+        Data.Rope
         Data.DelayList
         Data.Trie
         Parser.Incremental
@@ -407,7 +407,7 @@ executable yi
            Yi.Buffer.Indent
            Yi.Buffer.HighLevel, Yi.Buffer.Implementation,
            Yi.Buffer.Normal, Yi.Buffer.Region, Yi.Completion, Yi.Core,
-           Yi.Debug, Yi.Dired, Yi.Dynamic, Yi.Editor, Yi.Eval, Yi.Event, Data.ByteRope, Yi.History,
+           Yi.Debug, Yi.Dired, Yi.Dynamic, Yi.Editor, Yi.Eval, Yi.Event, Data.Rope, Yi.History,
            Yi.Interact, Yi.Keymap, Yi.Keymap.Completion,
            Yi.Keymap.Emacs.KillRing, 
            Yi.Keymap.Emacs.Utils, Yi.Main, Yi.MkTemp, Yi.Monad, Yi.Process,

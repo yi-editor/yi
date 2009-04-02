@@ -6,6 +6,7 @@ import Control.Monad.RWS.Strict (ask)
 import Control.Monad.State
 import Data.Char
 import Data.List (isPrefixOf, sort, lines, drop, filter, length, takeWhile, dropWhile, reverse)
+import qualified Data.Rope as R
 import Data.Maybe (fromMaybe, listToMaybe)
 import Data.Time (UTCTime)
 import Prelude (FilePath, map)
@@ -13,13 +14,10 @@ import Yi.Prelude
 
 import Yi.Buffer.Basic
 import Yi.Buffer.Misc
-import Yi.Buffer.Implementation (newLine)
 import Yi.Buffer.Normal
 import Yi.Buffer.Region
 import Yi.String
 import Yi.Window
-import qualified Data.ByteString.Lazy as LB
-import qualified Data.ByteString.Lazy.UTF8 as LazyUTF8
 
 -- ---------------------------------------------------------------------
 -- Movement operations
@@ -418,10 +416,10 @@ deleteBlankLinesB =
 -- | Get a (lazy) stream of lines in the buffer, starting at the /next/ line
 -- in the given direction.
 lineStreamB :: Direction -> BufferM [String]
-lineStreamB dir = fmap (LazyUTF8.toString . rev) . drop 1 . LB.split newLine <$> (streamB dir =<< pointB)
+lineStreamB dir = fmap rev . lines' . R.toString <$> (streamB dir =<< pointB)
     where rev = case dir of
                   Forward -> id
-                  Backward -> LB.reverse
+                  Backward -> reverse
 
 {-
   | Get the next line of text in the given direction. This returns simply 'Nothing' if there

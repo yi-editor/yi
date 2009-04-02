@@ -38,7 +38,7 @@ winRegionB = do
 
 -- | Delete an arbitrary part of the buffer
 deleteRegionB :: Region -> BufferM ()
-deleteRegionB r = deleteNBytes (regionDirection r) (regionEnd r ~- regionStart r) (regionStart r)
+deleteRegionB r = deleteNAt (regionDirection r) (fromIntegral (regionEnd r ~- regionStart r)) (regionStart r)
 
 -- | Read an arbitrary part of the buffer
 readRegionB :: Region -> BufferM String

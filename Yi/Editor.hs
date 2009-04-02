@@ -26,6 +26,7 @@ import Yi.KillRing
 import Yi.Prelude
 import Yi.Style (StyleName, defaultStyle)
 import Yi.Window
+import qualified Data.Rope as R
 import qualified Data.ByteString.Lazy.UTF8 as LazyUTF8
 import qualified Data.DelayList as DelayList
 import qualified Data.List.PointedList as PL (atEnd)
@@ -111,7 +112,7 @@ emptyEditor = Editor {
        ,pendingEvents = []
        ,maxStatusHeight = 1
        }
-        where buf = newB 0 (Left "console") (LazyUTF8.fromString "")
+        where buf = newB 0 (Left "console") (R.fromString "")
               win = (dummyWindow (bkey buf)) {wkey = 1, isMini = False}
 
 -- ---------------------------------------------------------------------
@@ -150,7 +151,7 @@ newBufRef = BufferRef <$> newRef
 -- | Does not focus the window, or make it the current window.
 -- | Call newWindowE or switchToBufferE to take care of that.
 stringToNewBuffer :: BufferId -- ^ The buffer indentifier
-                  -> LazyUTF8.ByteString -- ^ The contents with which to populate the buffer
+                  -> Rope -- ^ The contents with which to populate the buffer
                   -> EditorM BufferRef
 stringToNewBuffer nm cs = do
     u <- newBufRef
@@ -264,7 +265,7 @@ withGivenBufferAndWindow0 w k f = do
                         in (e {buffers = mapAdjust' (const b') k (buffers e),
                                killring = (if accum && all updateIsDelete us
                                            then foldl (.) id 
-                                                (reverse [krPut dir (LazyUTF8.toString s) | Delete _ dir s <- us])
+                                                (reverse [krPut dir (R.toString s) | Delete _ dir s <- us])
                                            else id) 
                                           (killring e)
                               },v)
@@ -319,7 +320,7 @@ setTmpStatus delay s = do
 
   b <- case bs of
          (b':_) -> return $ bkey b'
-         [] -> stringToNewBuffer (Left "messages") (fromString "")
+         [] -> stringToNewBuffer (Left "messages") (R.fromString "")
   withGivenBuffer0 b $ do botB; insertN (show s ++ "\n")
 
 
@@ -367,7 +368,7 @@ prevBufW = shiftBuffer (negate 1)
 -- with the buffer (unlike fnewE) and so is good for popup internal
 -- buffers (like scratch)
 newBufferE :: BufferId   -- ^ buffer name
-              -> LazyUTF8.ByteString -- ^ buffer contents
+              -> Rope -- ^ buffer contents
               -> EditorM BufferRef
 newBufferE f s = do
     b <- stringToNewBuffer f s
