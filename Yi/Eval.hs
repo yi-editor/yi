@@ -28,7 +28,7 @@ import qualified Data.Map as M
 import Control.Monad.Reader (asks)
 import Yi.Config
 import Yi.Interpreter
-import Yi.MiniBuffer (FilePatternTag, RegexTag, (:::))
+import Yi.MiniBuffer (FilePatternTag, RegexTag, (:::), CommandArguments)
 #endif
 
 #ifdef GHC_INTERPRETER
@@ -115,6 +115,7 @@ execEditorAction s = do
                  toDyn (makeAction :: (String ::: RegexTag -> YiM ()) -> Action),
                  toDyn (makeAction :: (String ::: FilePatternTag -> String ::: RegexTag -> YiM ()) -> Action),
                  toDyn (makeAction :: (String -> YiM ()) -> Action),
+                 toDyn (makeAction :: (CommandArguments -> YiM ()) -> Action),
 
                  toDyn (makeAction :: (String -> String -> BufferM ()) -> Action),
                  toDyn (makeAction :: (String -> String -> BufferM Int) -> Action),

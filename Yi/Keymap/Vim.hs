@@ -1503,7 +1503,7 @@ defKeymap = Proto template
            fn "st"         = suspendEditor
            fn "stop"       = suspendEditor
 
-           fn ('c':'a':'b':'a':'l':' ':s) = cabalRun s1 (const $ return ()) (drop 1 s2) where (s1, s2) = break (==' ') s
+           fn ('c':'a':'b':'a':'l':' ':s) = cabalRun s1 (const $ return ()) (CommandArguments $ words $ drop 1 s2) where (s1, s2) = break (==' ') s
            fn ('y':'i':' ':s) = execEditorAction $ dropSpace s
 
            fn "hoogle-word" = hoogle >> return ()

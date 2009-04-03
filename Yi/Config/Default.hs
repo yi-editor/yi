@@ -95,6 +95,7 @@ defaultPublishedActions = M.fromList $
     , ("leftB"                  , box leftB)
     , ("linePrefixSelectionB"   , box linePrefixSelectionB)
     , ("mkRegion"               , box mkRegion)
+    , ("makeBuild"              , box makeBuild)
     , ("moveB"                  , box moveB)
     , ("numberOfB"              , box numberOfB)
     , ("pointB"                 , box pointB) 

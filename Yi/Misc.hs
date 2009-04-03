@@ -31,7 +31,7 @@ import Control.Monad.Trans (MonadIO (..))
 {- External Library Module Imports -}
 {- Local (yi) module imports -}
 
-import Prelude (words)
+import Prelude ()
 import Yi.Core
 import Yi.MiniBuffer
 import qualified Yi.Mode.Compilation as Compilation
@@ -68,14 +68,15 @@ shellCommandE = do
 
 ----------------------------
 -- Cabal-related commands
+-- TODO: rename to "BuildBuffer" or something.
 newtype CabalBuffer = CabalBuffer {cabalBuffer :: Maybe BufferRef}
     deriving (Initializable, Typeable, Binary)
 
 
 ----------------------------
 -- | cabal-configure
-cabalConfigureE :: YiM ()
-cabalConfigureE = withMinibufferFree "Configure args:" $ cabalRun "configure" configureExit
+cabalConfigureE :: CommandArguments -> YiM ()
+cabalConfigureE = cabalRun "configure" configureExit
 
 configureExit :: Either Exception ExitCode -> YiM ()
 configureExit (Right ExitSuccess) = reloadProjectE "."
@@ -85,19 +86,27 @@ configureExit _ = return ()
 reloadProjectE :: String -> YiM ()
 reloadProjectE s = withUI $ \ui -> reloadProject ui s
 
-cabalRun :: String -> (Either Exception ExitCode -> YiM x) -> String -> YiM ()
-cabalRun cmd onExit args = withOtherWindow $ do
-   b <- startSubprocess "cabal" (cmd:words args) onExit
+-- | Run the given commands with args and pipe the ouput into the build buffer,
+-- which is shown in an other window.
+buildRun :: String -> [String] -> (Either Exception ExitCode -> YiM x) -> YiM ()
+buildRun cmd args onExit = withOtherWindow $ do
+   b <- startSubprocess cmd args onExit
    withEditor $ do
        maybeM deleteBuffer =<< cabalBuffer <$> getDynamic
        setDynamic $ CabalBuffer $ Just b
        withBuffer0 $ setMode Compilation.mode
    return ()
 
+makeBuild :: CommandArguments -> YiM ()
+makeBuild (CommandArguments args) = buildRun "make" args (const $ return ())
+
+cabalRun :: String -> (Either Exception ExitCode -> YiM x) -> CommandArguments -> YiM ()
+cabalRun cmd onExit (CommandArguments args) = buildRun "cabal" (cmd:args) onExit
+
 -----------------------
 -- | cabal-build
-cabalBuildE :: YiM ()
-cabalBuildE = withMinibufferFree "Build args:" $ cabalRun "build" (const $ return ())
+cabalBuildE :: CommandArguments -> YiM ()
+cabalBuildE = cabalRun "build" (const $ return ())
 
 
 shell :: YiM BufferRef

@@ -9,10 +9,11 @@ module Yi.MiniBuffer
   matchingBufferNames, anyModeByNameM, anyModeName,
 
   (:::)(..),
-  LineNumber, RegexTag, FilePatternTag, ToKill
+  LineNumber, RegexTag, FilePatternTag, ToKill,
+  CommandArguments(..)
  ) where
 
-import Prelude (filter, length)
+import Prelude (filter, length, words)
 import Data.List (isInfixOf)
 import qualified Data.List.PointedList.Circular as PL
 import Data.Maybe
@@ -245,4 +246,12 @@ instance DocType RegexTag where
     
 data FilePatternTag deriving Typeable
 instance DocType FilePatternTag where
-    typeGetPrompt _ = "FilePattern"
+    typeGetPrompt _ = "File pattern"
+
+newtype CommandArguments = CommandArguments [String] 
+    deriving Typeable
+
+instance Promptable CommandArguments where
+    getPromptedValue = return . CommandArguments . words
+    getPrompt _ = "Command arguments"
+    
