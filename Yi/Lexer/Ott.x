@@ -80,8 +80,10 @@ main :-
 }
 
 <beginHom> {
-  $white* @homid                                { m (const hom) typeStyle }
-  ""                                            { m (const hom) defaultStyle }
+  $white+                                       ; -- whitespace
+  @homid                                        { m (const hom) typeStyle }
+  "}}"                                          { m (const 0) stringStyle }
+  .                                             { m (const hom) defaultStyle }
 }
 
 <hom> {
