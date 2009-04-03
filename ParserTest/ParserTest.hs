@@ -5,6 +5,7 @@ import qualified Yi.Syntax.Paren as Paren
 import qualified Yi.Syntax.JavaScript as JS
 import Yi.Syntax
 import Yi.Lexer.Haskell
+import Yi.Lexer.Alex
 import qualified Yi.Lexer.JavaScript as JSLex
 import qualified Yi.IncrementalParse as IncrParser
 import System.FilePath.Posix
@@ -13,7 +14,7 @@ import Control.Monad
 import qualified Data.Foldable as P
 import Data.List as List
 import qualified Yi.Lexer.Alex as Alex
-import Data.Time
+import Data.Tree
 
 haskellLexer = Alex.lexScanner alexScanToken initState
 jsLexer = Alex.lexScanner JSLex.alexScanToken JSLex.initState
@@ -24,20 +25,22 @@ main = do
     case arg of
         [] -> putStrLn $ "-js for javascript\n-hs for haskell\n-d for debug mode\n" ++
                          "-r for recursive\notherwise a list of files/folders...\n" ++
-                         "-cmp to compare with Paren.hs parse\n-oneBy to parse one token at a time"
+                         "-cmp to compare with Paren.hs parse\n-oneBy to parse one token at a time" ++
+                         "-Tree-Filename to get a Dot file with the Tree in graphical form the tree might be cut if too big" ++
+                         "-Toks-num to parse num tokens of the input."
         _ -> mapM_ (dirs flags) rest
 
 -- | Find files to parse, recursively if flagged -r
 dirs flags dir = do
     b <- doesDirectoryExist dir
-    let b' = b &&(List.all ((/=) '.') dir) -- dont look in "." or ".."
+    let b' = b &&(List.all ((/=) '.') dir) -- dont look in "." or ".."e
     case b' of
         True -> (pFiles =<< getFiles) >> recurse
         False -> pFiles [dir] -- check so that file has correct extension
-  where recurse = if (List.elem "-r" flags) then ((\x -> mapM_ (dirs flags) x) =<< filterM (doesDirectoryExist) 
+  where recurse = if (List.elem "-r" flags) then ((\x -> mapM_ (dirs flags) x) =<< filterM (doesDirectoryExist)
                       =<< liftM2 map (return $ (</>) dir) (getDirectoryContents dir)) else return ()
         getExt = if (List.elem "-hs" flags) then [".hs"] else [".js",".json"] -- Should take more js files
-        getFiles = (filterM doesFileExist . filter (\x -> elem (takeExtension x) getExt )
+        getFiles = (filterM doesFileExist . filter (\x -> elem (takeExtension x) getExt)
                    . map ((</>) dir) =<< getDirectoryContents dir)
         pFiles arg' = do
             b <-P.foldlM (\a b -> liftM2 (==) (return a) (doesFileExist b)) True arg'
@@ -47,34 +50,33 @@ dirs flags dir = do
                     Control.Monad.mapM_ (parse flags) $ zip arg' input
                 False -> return () -- not valid file/folder
 
+extract t input = take (fromIntegral $ tokLen t) (drop (fromIntegral $ posnOfs (tokPosn t)) input)
+
 -- | Parse given flags, file name and content
 parse flags (fName, input) = do
     if (List.elem "-cmp" flags) then do -- compare with Paren.hs
---        t <-getCurrentTime
        let tokList = getSyms (Haskell.indentScanner . haskellLexer)
            (paths, finRes) = option (mkProcess Haskell.parse) tokList
---        putStrLn $ "Haskell: " ++ fName ++ " # " ++ (show $ evalL finRes)
---        t' <- getCurrentTime
        let tokList' = getSyms (Paren.indentScanner . haskellLexer)
            (paths', finRes') = option (mkProcess Paren.parse) tokList'
---        putStrLn $ "Paren:   " ++ fName ++ " # " ++ (show $ evalL finRes')
---        tt' <- getCurrentTime
---        print $ (-) (diffUTCTime t' t) (diffUTCTime tt' t')
        debug $ getSyms (Haskell.indentScanner . haskellLexer)
-       mapM_ print (zip3 paths paths' tokList)
+       write tokList (fullLog finRes) -- write the dot file version of the tree if correct flag
+       mapM_ print (zip3 paths paths' (zip tokList (map (\t -> extract t input) tokList)))
        putStrLn $ "Different paths (Haskell,Paren): " ++ (show $ zip paths paths')
-       putStrLn $ "Haskell: " ++ fName ++ " # " ++ (show $ evalL finRes)
-       putStrLn $ "Paren:   " ++ fName ++ " # " ++ (show $ evalL finRes')
+       putStrLn $ "Haskell: " ++ fName ++ " # " ++ (show $ evalL $ pushEof finRes)
+       putStrLn $ "Paren:   " ++ fName ++ " # " ++ (show $ evalL $ pushEof finRes')
        else if (List.elem "-hs" flags) then do
                  let tokList = getSyms (Haskell.indentScanner . haskellLexer)
                      (r,info) = option (mkProcess Haskell.parse) tokList -- otherwise just run the parser
-                 mapM_ print r
-                 putStrLn $ show $ evalL info
+                 write tokList (fullLog info) -- write the dot file version of the tree if correct flag
+                 mapM_ print (zip3 r tokList (map (\t -> extract t input) tokList)) -- will print width followed by token added
+                 putStrLn $ fName ++ " :" ++ (show $ evalL $ pushEof info)
                  else do
                      let tokList = getSyms jsLexer
                          (r,info) = option (mkProcess JS.parse) tokList
-                     mapM_ print (zip r tokList) -- will print width followed by token added
-                     putStrLn $ show $ evalL info
+                     write [] (fullLog info) -- write the dot file version of the tree if correct flag
+                     mapM_ print (zip3 r tokList (map (\t -> extract t input) tokList)) -- will print width followed by token added
+                     putStrLn $ show $ evalL $ pushEof info
   where
       debug allSyms = if (List.elem "-d" flags) then
                            mapM_ print allSyms
@@ -83,23 +85,54 @@ parse flags (fName, input) = do
           let getText = Scanner 0 id (error "getText: no character beyond eof")
                          (\idx -> zip [idx..] (drop (fromIntegral idx) input))
               scan' = scan getText
-          in map snd $ scanRun scan' $ scanInit scan'
+          in numToks $ map snd $ scanRun scan' $ scanInit scan'
       option thisFar xs = if (List.elem "-oneBy" flags) then -- Choose to go stepwise or all in
                               oneByOne thisFar xs
-                              else ([],pushEof $ pushSyms xs $ thisFar)
+                              else ([], pushSyms xs $ thisFar)
+      write toks (msgs,log) = case (find (isPrefixOf "-Tree=") flags) of
+          Nothing -> return () -- if not write then dont!
+          Just x ->do print msgs
+                      writeTree toks (drop 6 x) log
+      numToks toks = case (find (isPrefixOf "-Toks=") flags) of
+          Nothing -> toks
+          Just x -> take (read (drop 6 x) :: Int) toks
 
 -- | Push the symbols into the parser one by one
 -- Send around the different number of (Best)
-oneByOne thisFar [] = let p = pushEof thisFar in ([], p)
-oneByOne thisFar (h:rest) = 
+oneByOne thisFar [] = let p = pushEof thisFar in ([], thisFar) -- should be p later
+oneByOne thisFar (h:rest) =
     let res = pushSyms [h] thisFar
         eRes = evalL res
         (i, p') = oneByOne eRes rest
     in  ((countWidth res):i,p')
 
--- best s = length $ filter ('^' ==) (show s)
+-- | Dot functions
+fromTree :: Tree String ->[String]
+fromTree node
+    = let r = map (names) (subForest node)
+          rest = (map fromTree (subForest node))
+      in (r ++ (concat rest))
+ where names n = "        " ++ (show $ rootLabel node)
+                  ++ " -> " ++ (show $ rootLabel n)
 
-best s = List.foldl (\p q -> p + value q) 0 (show s)
+-- | Write the file
+writeTree :: [TT] -> String -> Tree String -> IO ()
+writeTree toks fName r = writeFile fName addBegEnd
+    where addBegEnd = unlines $ ["digraph G {"] 
+                         ++ take 3000 (fromTree $ (\(x,y)-> x)(numTree toks (r,0))) -- dont create too big trees
+                         ++ ["}"]
 
-value '^' = 1
-value _ = 0
+-- | Give unique number to each tree, also put the added token into the Tree
+numTree ::[TT] -> ((Tree String),Int) ->((Tree String),Int)
+numTree toks ((Node name []),n) = let (name',toks') = getTok' name toks
+                                  in ((Node (name'++(show n)) []),n+1)
+numTree toks ((Node name (x:[]),n)) = let (name',toks') = getTok' name toks
+                                          (x',n') = numTree toks' (x,n)
+                                      in ((Node (name'++(show n')) [x']),n'+1)
+numTree toks ((Node name (x:xx:[])),n) = let (name',toks') = getTok' name toks
+                                             (x',n') = numTree toks' (x,n)
+                                             (x'',n'') = numTree toks' (xx,n')
+                                          in ((Node (name'++(show n'')) (x':[x''])),n''+1)
+
+getTok' str [] = (str,[])
+getTok' str (t:toks) = ((str),(t:toks))
